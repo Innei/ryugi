@@ -1,0 +1,7 @@
+@layer reset, lobe-base, lobe-popup, lobe-ui;
+
+@layer reset {
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body, #root { height: 100%; margin: 0; }
+  button { font: inherit; color: inherit; }
+}

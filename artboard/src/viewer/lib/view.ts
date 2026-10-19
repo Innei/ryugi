@@ -1,0 +1,69 @@
+import { NAME_STRIP_H } from '../../shared/geometry';
+import type { Bounds, CanvasLayout, CanvasSpec, Rect } from '../../shared/types';
+
+export interface View {
+  x: number;
+  y: number;
+  k: number;
+}
+
+export interface Insets {
+  top: number;
+  right: number;
+  bottom: number;
+  left: number;
+}
+
+export const MIN_ZOOM = 0.02;
+export const MAX_ZOOM = 4;
+export const LABEL_MIN_WIDTH = 48;
+const FIT_MARGIN = 0.9;
+
+const clampZoom = (k: number) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, k));
+
+const toBounds = (r: Rect): Bounds => ({ minX: r.x, minY: r.y, maxX: r.x + r.w, maxY: r.y + r.h });
+
+export function fitView(bounds: Bounds, viewport: { width: number; height: number }, insets: Insets): View {
+  const availW = Math.max(1, viewport.width - insets.left - insets.right);
+  const availH = Math.max(1, viewport.height - insets.top - insets.bottom);
+  const bw = Math.max(1, bounds.maxX - bounds.minX);
+  const bh = Math.max(1, bounds.maxY - bounds.minY);
+  const k = clampZoom(Math.min(1, Math.min(availW / bw, availH / bh) * FIT_MARGIN));
+  return {
+    k,
+    x: insets.left + (availW - bw * k) / 2 - bounds.minX * k,
+    y: insets.top + (availH - bh * k) / 2 - bounds.minY * k,
+  };
+}
+
+export function zoomAround(view: View, factor: number, cx: number, cy: number): View {
+  const k = clampZoom(view.k * factor);
+  const ratio = k / view.k;
+  return { k, x: cx - (cx - view.x) * ratio, y: cy - (cy - view.y) * ratio };
+}
+
+export function zoomTo(view: View, k: number, cx: number, cy: number): View {
+  return zoomAround(view, k / view.k, cx, cy);
+}
+
+export function resolveFocus(
+  canvas: CanvasSpec,
+  layout: CanvasLayout,
+  target: string,
+): { page: string; bounds: Bounds } | null {
+  const board = canvas.boards[target];
+  if (board) {
+    return { page: board.page, bounds: toBounds({ ...board, y: board.y - NAME_STRIP_H, h: board.h + NAME_STRIP_H }) };
+  }
+  for (const [page, pageLayout] of Object.entries(layout.pages)) {
+    const rect = pageLayout.groups[target] ?? pageLayout.notes[target];
+    if (rect) return { page, bounds: toBounds(rect) };
+  }
+  return null;
+}
+
+export function labelRect(board: { x: number; y: number; w: number }, view: View) {
+  const width = board.w * view.k;
+  if (width < LABEL_MIN_WIDTH) return null;
+  return { left: view.x + board.x * view.k, top: view.y + board.y * view.k, width };
+}

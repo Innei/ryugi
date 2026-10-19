@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "name": "ryugi",
+  "displayName": "Ryugi",
+  "version": "7.0.0",
+  "description": "Core skills library for Muse: TDD, debugging, collaboration patterns, and proven techniques",
+  "compat": {
+    "source": "native",
+    "manifestDir": ".muse-plugin"
+  },
+  "capabilities": {
+    "skills": [
+      {
+        "id": "brainstorming",
+        "path": "skills/brainstorming/SKILL.md"
+      },
+      {
+        "id": "executing-specs",
+        "path": "skills/executing-specs/SKILL.md"
+      },
+      {
+        "id": "systematic-debugging",
+        "path": "skills/systematic-debugging/SKILL.md"
+      },
+      {
+        "id": "test-driven-development",
+        "path": "skills/test-driven-development/SKILL.md"
+      },
+      {
+        "id": "using-git-worktrees",
+        "path": "skills/using-git-worktrees/SKILL.md"
+      },
+      {
+        "id": "using-ryugi",
+        "path": "skills/using-ryugi/SKILL.md"
+      }
+    ],
+    "commands": [],
+    "hooks": [
+      {
+        "id": "session-start",
+        "event": "SessionStart",
+        "command": [
+          "sh",
+          "hooks/session-start"
+        ],
+        "timeoutMs": 5000
+      }
+    ],
+    "mcpServers": [],
+    "reminders": []
+  }
+}
