@@ -24,6 +24,19 @@ isn't supported yet.
 | Tuning: a test bench with controls, a page that runs code | `html` | `html.md`, `ui.md` for components |
 | A simple task | none: discuss in text | |
 
+## Gate: read the contract before writing
+
+The "Read before writing" column is a gate, not a hint. Every time you
+create an artifact or change its type, open that type's doc in this skill
+first (`document.md`, `artboard.md`, `html.md`). "I already read the skill"
+does not carry over to a type you have not read.
+
+- For `html`, also read `ui.md`. Controls and basic display use the bundled
+  `<ryugi-…>` components; plain HTML and CSS are for layout only. Never
+  hand-roll a control that `ui.md` lists.
+- Verify against the doc, not just against the render: stable control ids,
+  `ryugi-change`, and settings restored after the viewer rewrites the page.
+
 ## Pick the artifact
 
 Each artifact is `<project>/.ryugi/artifacts/<type>/<id>/`. The id is

@@ -23,6 +23,11 @@ This is not negotiable. You cannot rationalize your way out of this.
 
 Then announce "Using [skill] to [purpose]" and follow the skill exactly. If it has a checklist, create a todo per item.
 
+**A change of output format re-opens the contract.** When the task moves to a
+different artifact type, file type, or deliverable (document → html, code →
+spec, …), re-read the matching skill and its type-specific docs before
+writing. "Already read once" does not carry over.
+
 ## Skill Priority
 
 When multiple skills apply, process skills come first — they set the approach, then implementation skills (frontend-design, etc.) carry it out. Brainstorming and systematic-debugging are Ryugi' most common process skills, but the rule holds for any of them.
