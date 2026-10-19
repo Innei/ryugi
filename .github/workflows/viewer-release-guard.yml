@@ -1,0 +1,51 @@
+name: Viewer release guard
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Viewer changes ship with a version bump
+        if: github.event_name == 'pull_request'
+        run: scripts/check-viewer-release.sh
+
+      - name: Main points at a released viewer
+        if: github.event_name == 'push'
+        run: scripts/check-viewer-release.sh --require-tag
+
+      - run: tests/viewer-release/test-check-viewer-release.sh
+
+  artifacts-tests:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: artifacts
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12.4.1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: artifacts/pnpm-lock.yaml
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm test

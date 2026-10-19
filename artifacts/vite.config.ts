@@ -15,7 +15,16 @@ export default defineConfig({
     react(),
   ],
   build: {
-    outDir: fileURLToPath(new URL('../skills/artifacts/app/viewer', import.meta.url)),
+    outDir: fileURLToPath(new URL('dist/viewer', import.meta.url)),
     emptyOutDir: true,
+    assetsDir: '',
+    rolldownOptions: {
+      output: {
+        entryFileNames: 'index.js',
+        chunkFileNames: '[name]-[hash].js',
+        // StyleX emits an intermediate index.css (with originalFileNames) that is later merged away; naming it too makes the survivor index2.css.
+        assetFileNames: (asset) => (asset.names[0]?.endsWith('.css') && asset.originalFileNames.length === 0 ? 'index.css' : '[name]-[hash][extname]'),
+      },
+    },
   },
 });

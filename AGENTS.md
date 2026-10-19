@@ -13,7 +13,18 @@ Skill files shape agent behavior; treat edits to them like code changes.
 
 ## Zero Dependencies
 
-The plugin ships without runtime dependencies. The artifacts app (Artboard and HTML artifacts) is built from `artifacts/` (React, Vite) into a prebuilt bundle under `skills/artifacts/app/`; the bundle needs only Node built-ins at runtime. Rebuild it with `cd artifacts && pnpm build` after changing its source.
+The plugin ships without runtime dependencies. The artifacts app (Artboard and HTML artifacts) is built from `artifacts/` (React, Vite) in two parts:
+
+- **Server**: `skills/artifacts/app/server.cjs`, committed, Node built-ins only. Rebuild it with `cd artifacts && pnpm build:server` after changing server source.
+- **Viewer**: never committed. Users load it from `cdn.jsdelivr.net/npm/ryugi-artifacts@<version>/`, pinned to `skills/artifacts/app/version.json`. `pnpm build:viewer` writes a gitignored local copy to `skills/artifacts/app/viewer/`, which the server prefers over the CDN while you develop.
+
+## Releasing
+
+Users install from `main`, so any change under `artifacts/src/` ships as a release. CI fails a PR that changes it since the last tag without a version bump, and fails `main` whenever its version has no tag.
+
+1. `scripts/bump-version.sh <version>` and commit.
+2. `git tag v<version>` and `git push --atomic origin main v<version>`.
+3. The `Release` workflow checks the versions, tests, publishes `ryugi-artifacts` to npm and creates the GitHub Release. Until it finishes, new installs cannot load the viewer.
 
 ## Harness Integrations
 

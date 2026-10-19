@@ -24,8 +24,8 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
 
 // src/server/main.ts
 var import_node_child_process = require("node:child_process");
-var import_node_fs9 = __toESM(require("node:fs"), 1);
-var import_node_path8 = __toESM(require("node:path"), 1);
+var import_node_fs10 = __toESM(require("node:fs"), 1);
+var import_node_path9 = __toESM(require("node:path"), 1);
 
 // src/server/app.ts
 var import_node_fs7 = __toESM(require("node:fs"), 1);
@@ -743,18 +743,39 @@ function handleClientFrames(socket, onText) {
 }
 
 // src/server/app.ts
-var VIEWER_CSP = [
-  "default-src 'self'",
-  "script-src 'self'",
-  "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob:",
-  "font-src 'self' data:",
-  "connect-src 'self'",
-  "frame-src 'self'",
-  "base-uri 'none'",
-  "form-action 'none'",
-  "frame-ancestors 'none'"
-].join("; ");
+function viewerCsp(cdnOrigin = "") {
+  const cdn = cdnOrigin ? ` ${cdnOrigin}` : "";
+  return [
+    "default-src 'self'",
+    `script-src 'self'${cdn}`,
+    `style-src 'self' 'unsafe-inline'${cdn}`,
+    "img-src 'self' data: blob:",
+    `font-src 'self' data:${cdn}`,
+    "connect-src 'self'",
+    "frame-src 'self'",
+    "base-uri 'none'",
+    "form-action 'none'",
+    "frame-ancestors 'none'"
+  ].join("; ");
+}
+var VIEWER_CSP = viewerCsp();
+function cdnShell(cdn) {
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>Artifacts</title>
+<script type="module" crossorigin src="${cdn}index.js"></script>
+<link rel="stylesheet" crossorigin href="${cdn}index.css">
+</head>
+<body>
+<div id="root"></div>
+</body>
+</html>
+`;
+}
 var CONTENT_CSP = {
   artboard: "sandbox allow-scripts",
   html: "sandbox allow-scripts allow-modals allow-forms allow-popups allow-downloads"
@@ -775,6 +796,8 @@ function titleOf(payload, ref) {
 async function startArtifactsServer(options) {
   const root = import_node_path7.default.resolve(options.root);
   const viewerDir = import_node_path7.default.resolve(options.viewerDir);
+  const viewerCdn = options.viewerCdn;
+  const cdnCsp = viewerCdn ? viewerCsp(new URL(viewerCdn).origin) : VIEWER_CSP;
   const stateDir = import_node_path7.default.join(root, ".state");
   import_node_fs7.default.mkdirSync(stateDir, { recursive: true, mode: 448 });
   import_node_fs7.default.writeFileSync(import_node_path7.default.join(stateDir, ".gitignore"), "*\n");
@@ -900,9 +923,12 @@ async function startArtifactsServer(options) {
       return;
     }
     if (SHELL_ROUTE.test(pathname) || pathname === "/index.html") {
-      const headers = { "Content-Security-Policy": VIEWER_CSP };
+      const localShell = import_node_path7.default.join(viewerDir, "index.html");
+      const fromCdn = viewerCdn !== void 0 && !import_node_fs7.default.existsSync(localShell);
+      const headers = { "Content-Security-Policy": fromCdn ? cdnCsp : VIEWER_CSP };
       if (key !== null) headers["Set-Cookie"] = `${cookieName}=${token}; HttpOnly; SameSite=Strict; Path=/`;
-      sendFile(res, import_node_path7.default.join(viewerDir, "index.html"), headers);
+      if (fromCdn) send(res, 200, cdnShell(viewerCdn), { "Content-Type": "text/html; charset=utf-8", ...headers });
+      else sendFile(res, localShell, headers);
       return;
     }
     const target = resolveInside(viewerDir, pathname.slice(1));
@@ -1072,14 +1098,23 @@ function processAlive(pid) {
   }
 }
 
+// src/server/viewer.ts
+var import_node_fs9 = __toESM(require("node:fs"), 1);
+var import_node_path8 = __toESM(require("node:path"), 1);
+function viewerCdnFor(appDir) {
+  const { version } = JSON.parse(import_node_fs9.default.readFileSync(import_node_path8.default.join(appDir, "version.json"), "utf8"));
+  return `https://cdn.jsdelivr.net/npm/ryugi-artifacts@${version}/dist/viewer/`;
+}
+
 // src/server/main.ts
 async function main() {
   const config = parseEnv(process.env, process.argv.slice(2));
-  const root = import_node_path8.default.resolve(config.root);
-  const stateDir = import_node_path8.default.join(root, ".state");
+  const root = import_node_path9.default.resolve(config.root);
+  const stateDir = import_node_path9.default.join(root, ".state");
   const server = await startArtifactsServer({
     root,
-    viewerDir: import_node_path8.default.join(__dirname, "viewer"),
+    viewerDir: import_node_path9.default.join(__dirname, "viewer"),
+    viewerCdn: viewerCdnFor(__dirname),
     host: config.host,
     urlHost: config.urlHost
   });
@@ -1106,12 +1141,12 @@ async function main() {
   });
   const shutdown = async (reason) => {
     console.log(JSON.stringify({ type: "server-stopped", reason }));
-    import_node_fs9.default.rmSync(import_node_path8.default.join(stateDir, "server-info"), { force: true });
-    writeJsonAtomic(import_node_path8.default.join(stateDir, "server-stopped"), { reason, timestamp: Date.now() });
+    import_node_fs10.default.rmSync(import_node_path9.default.join(stateDir, "server-info"), { force: true });
+    writeJsonAtomic(import_node_path9.default.join(stateDir, "server-stopped"), { reason, timestamp: Date.now() });
     await server.close();
     process.exit(0);
   };
-  const ownersFile = import_node_path8.default.join(stateDir, "owners");
+  const ownersFile = import_node_path9.default.join(stateDir, "owners");
   const timer = setInterval(() => {
     const owners = readOwners(ownersFile);
     const reason = shutdownReason({
@@ -1125,7 +1160,7 @@ async function main() {
   timer.unref();
   process.on("SIGTERM", () => void shutdown("SIGTERM"));
   process.on("SIGINT", () => void shutdown("SIGINT"));
-  import_node_fs9.default.rmSync(import_node_path8.default.join(stateDir, "server-stopped"), { force: true });
+  import_node_fs10.default.rmSync(import_node_path9.default.join(stateDir, "server-stopped"), { force: true });
   console.log(JSON.stringify({ type: "server-started", url: server.url, port: server.port, root }));
 }
 main().catch((err) => {

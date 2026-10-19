@@ -4,6 +4,7 @@ import path from 'node:path';
 import { startArtifactsServer } from './app';
 import { browserLauncher, isLoopback, liveOwners, parseEnv, processAlive, readOwners, shutdownReason } from './lifecycle';
 import { writeJsonAtomic } from './state';
+import { viewerCdnFor } from './viewer';
 
 async function main() {
   const config = parseEnv(process.env, process.argv.slice(2));
@@ -12,6 +13,7 @@ async function main() {
   const server = await startArtifactsServer({
     root,
     viewerDir: path.join(__dirname, 'viewer'),
+    viewerCdn: viewerCdnFor(__dirname),
     host: config.host,
     urlHost: config.urlHost,
   });

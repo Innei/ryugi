@@ -15,6 +15,7 @@ import { completeHandshake, handleClientFrames, rejectUpgrade, textFrame } from 
 export interface ServerOptions {
   root: string;
   viewerDir: string;
+  viewerCdn?: string;
   host: string;
   urlHost: string;
   debounceMs?: number;
@@ -34,18 +35,41 @@ export interface ArtifactsServer {
   close(): Promise<void>;
 }
 
-const VIEWER_CSP = [
-  "default-src 'self'",
-  "script-src 'self'",
-  "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob:",
-  "font-src 'self' data:",
-  "connect-src 'self'",
-  "frame-src 'self'",
-  "base-uri 'none'",
-  "form-action 'none'",
-  "frame-ancestors 'none'",
-].join('; ');
+function viewerCsp(cdnOrigin = '') {
+  const cdn = cdnOrigin ? ` ${cdnOrigin}` : '';
+  return [
+    "default-src 'self'",
+    `script-src 'self'${cdn}`,
+    `style-src 'self' 'unsafe-inline'${cdn}`,
+    "img-src 'self' data: blob:",
+    `font-src 'self' data:${cdn}`,
+    "connect-src 'self'",
+    "frame-src 'self'",
+    "base-uri 'none'",
+    "form-action 'none'",
+    "frame-ancestors 'none'",
+  ].join('; ');
+}
+
+const VIEWER_CSP = viewerCsp();
+
+function cdnShell(cdn: string) {
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>Artifacts</title>
+<script type="module" crossorigin src="${cdn}index.js"></script>
+<link rel="stylesheet" crossorigin href="${cdn}index.css">
+</head>
+<body>
+<div id="root"></div>
+</body>
+</html>
+`;
+}
 
 const CONTENT_CSP: Record<ArtifactType, string> = {
   artboard: 'sandbox allow-scripts',
@@ -72,6 +96,8 @@ function titleOf(payload: ArtifactPayload, ref: ArtifactRef) {
 export async function startArtifactsServer(options: ServerOptions): Promise<ArtifactsServer> {
   const root = path.resolve(options.root);
   const viewerDir = path.resolve(options.viewerDir);
+  const viewerCdn = options.viewerCdn;
+  const cdnCsp = viewerCdn ? viewerCsp(new URL(viewerCdn).origin) : VIEWER_CSP;
   const stateDir = path.join(root, '.state');
   fs.mkdirSync(stateDir, { recursive: true, mode: 0o700 });
   fs.writeFileSync(path.join(stateDir, '.gitignore'), '*\n');
@@ -211,9 +237,12 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
     }
 
     if (SHELL_ROUTE.test(pathname) || pathname === '/index.html') {
-      const headers: Record<string, string> = { 'Content-Security-Policy': VIEWER_CSP };
+      const localShell = path.join(viewerDir, 'index.html');
+      const fromCdn = viewerCdn !== undefined && !fs.existsSync(localShell);
+      const headers: Record<string, string> = { 'Content-Security-Policy': fromCdn ? cdnCsp : VIEWER_CSP };
       if (key !== null) headers['Set-Cookie'] = `${cookieName}=${token}; HttpOnly; SameSite=Strict; Path=/`;
-      sendFile(res, path.join(viewerDir, 'index.html'), headers);
+      if (fromCdn) send(res, 200, cdnShell(viewerCdn), { 'Content-Type': 'text/html; charset=utf-8', ...headers });
+      else sendFile(res, localShell, headers);
       return;
     }
 

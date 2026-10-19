@@ -1,7 +1,7 @@
 # Viewer on CDN: design
 
 Date: 2026-10-19
-Status: draft
+Status: approved
 
 ## Intent
 
@@ -94,8 +94,30 @@ removed from history.
    - `npm publish` with provenance
    - create a GitHub Release for the tag
 
+### Unreleased changes on main
+
+- Users install from `main` HEAD, and `server.cjs` is committed per change
+  while the viewer only moves at a release. A viewer or server–viewer
+  contract change on `main` without a release would pair a new server with
+  an old viewer.
+- Rule: any change under `artifacts/src/` ships with a version bump. A CI
+  check on pushes and PRs to `main` fails when `artifacts/src/` differs from
+  the latest `v*` tag and the version still equals that tag. Each such
+  change therefore goes out as a release, with the publish gap above.
+
 ### History purge
 
+- Goal: fresh clones carry no viewer bundles. Removing the objects from
+  GitHub's servers is out of scope: open PR #1 (Renovate) pins old history
+  through `refs/pull/1/head`, which only GitHub Support can clear.
+- Done when a fresh `git clone` has no blob under any `viewer/assets/` path.
+- Before rewriting, the working tree must be clean. At design time it held
+  uncommitted work outside this spec (CORS header in
+  `artifacts/src/server/app.ts`, start lock in
+  `skills/artifacts/app/start-server.sh`, tests in
+  `artifacts/test/scripts.test.ts` and `server.test.ts`); it is committed as
+  its own commit first, after the human partner confirms, so it is rewritten
+  along with the rest.
 - Rewrite all history with `git filter-repo`, removing built viewer output
   from every path it has lived at: `skills/artifacts/app/viewer/` and the
   earlier `skills/brainstorming/artboard/viewer/`. Keep `server.cjs`.
