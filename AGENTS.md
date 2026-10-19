@@ -1,6 +1,6 @@
 # Ryugi — Project Guidelines
 
-Ryugi is a fork of [Superpowers](https://github.com/obra/superpowers), reshaped around one workflow: brainstorm with mockups on the Artboard, approve a spec, build it inline under TDD. Read `README.md` for the workflow before changing anything.
+Ryugi is a fork of [Superpowers](https://github.com/obra/superpowers), reshaped around one workflow: brainstorm with mockups on the Artboard, approve a spec, build it inline under TDD. Read `README.md` for the workflow before changing anything. `UPSTREAM.md` records the upstream baseline (superpowers v7.0.0) and how to port upstream changes.
 
 ## Skills Are Code
 

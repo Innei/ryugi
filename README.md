@@ -228,7 +228,7 @@ Restart any active Muse sessions after installing so the `SessionStart` hook tak
 
 ## Credits
 
-Ryugi is a fork of [Superpowers](https://github.com/obra/superpowers) by Jesse Vincent and [Prime Radiant](https://primeradiant.com), used under the MIT License. The skill design, the TDD and debugging disciplines, and most of the harness integrations come from there.
+Ryugi is a fork of [Superpowers](https://github.com/obra/superpowers) v7.0.0 by Jesse Vincent and [Prime Radiant](https://primeradiant.com), used under the MIT License. [UPSTREAM.md](UPSTREAM.md) records the baseline and how to follow upstream changes. The skill design, the TDD and debugging disciplines, and most of the harness integrations come from there.
 
 - **Issues**: https://github.com/Innei/ryugi/issues
 
