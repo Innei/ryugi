@@ -36,9 +36,7 @@ checked boxes and radios, open `<details>`, and the scroll position.
 - **Test bench:** a live preview with one control per thing being decided
   (switches for modes, sliders for amounts), and a readout of the current
   values they can copy back to you.
-- **Review or report:** before/after pairs, each finding with a short id
-  they can name ("fix r3, skip r5").
-- **Proposal:** the recommendation first, then the sketches that support it.
+- **Interactive demo:** a flow they click through to feel how it behaves.
 
 ## Errors
 

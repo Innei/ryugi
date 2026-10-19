@@ -152,6 +152,14 @@ could build from without going back to your human partner. Cover:
 - constraints
 - the parts of the how they decided, as they decided them
 - what's left to the builder
+- every artifact the conversation used: type, id, path, and what was
+  decided there, stated in the text too, since `.ryugi/artifacts/` may not
+  be committed
+
+When your human partner has ADHD, also write `<spec>.tldr.md` beside it for
+them: what gets built, what they'll see as numbered steps, decisions in a
+table, your own calls under "check these", a concrete time estimate. They
+review the TL;DR; the builder works from the spec.
 
 **Where it goes:** in a software repo,
 `docs/ryugi/specs/YYYY-MM-DD-<topic>-design.md`, committed.
@@ -241,6 +249,5 @@ Mockups, layouts, diagrams, and side-by-side designs go on the Artboard.
 Requirements, scope, tradeoffs, and conceptual choices stay in text. A
 question about a UI topic isn't automatically a visual question.
 
-If they accept, use ryugi:artifacts with the `artboard` type. A single page
-to read or tune (a flow, a report, a test bench) can be an `html` artifact
-instead.
+If they accept, use ryugi:artifacts. Its type table says when a `document`
+or an `html` page fits better than the `artboard`.

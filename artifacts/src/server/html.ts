@@ -4,7 +4,7 @@ import type { HtmlPayload } from '../shared/types';
 
 const TITLE = /<title[^>]*>([\s\S]*?)<\/title>/i;
 
-function latestMtime(dir: string): number {
+export function latestMtime(dir: string): number {
   let latest = 0;
   let entries: fs.Dirent[];
   try {

@@ -21,5 +21,6 @@ __pycache__/
 
 # Built artifacts server and viewer; CI publishes them to npm and start-server.sh installs the pinned release
 artifacts/dist/
+artifacts/.vitest/
 skills/artifacts/app/server.cjs
 skills/artifacts/app/viewer/

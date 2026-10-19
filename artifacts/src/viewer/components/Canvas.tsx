@@ -2,7 +2,10 @@ import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
 import { DEFAULT_TITLE_SIZE, STICKY_DEFAULT_W, STICKY_FONT_SIZE, STICKY_LINE_H, STICKY_PAD } from '../../shared/geometry';
 import type { BoardSpec, NoteSpec } from '../../shared/types';
+import { boardSrc } from '../lib/play';
 import type { View } from '../lib/view';
+
+const PLAY_ACCENT = '#8b7cf8';
 
 const styles = stylex.create({
   world: { position: 'absolute', left: 0, top: 0, transformOrigin: '0 0' },
@@ -16,6 +19,7 @@ const styles = stylex.create({
     outlineStyle: 'solid',
     outlineColor: cssVar.colorBorderSecondary,
   },
+  playing: { pointerEvents: 'auto', outlineWidth: 2, outlineColor: PLAY_ACCENT },
   title: {
     position: 'absolute',
     margin: 0,
@@ -41,19 +45,21 @@ interface CanvasProps {
   notes: [string, NoteSpec][];
   contentBase: string;
   versions: Record<string, number>;
+  playing: ReadonlySet<string>;
+  replays: Record<string, number>;
 }
 
-export function Canvas({ view, boards, notes, contentBase, versions }: CanvasProps) {
+export function Canvas({ view, boards, notes, contentBase, versions, playing, replays }: CanvasProps) {
   return (
     <div {...stylex.props(styles.world)} style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.k})` }}>
       {boards.map(([id, board]) => (
         <iframe
           key={id}
           title={board.title ?? id}
-          src={`${contentBase}${board.file}?v=${versions[board.file] ?? 0}`}
+          src={boardSrc(contentBase, board.file, versions[board.file] ?? 0, replays[id] ?? 0)}
           sandbox="allow-scripts"
           loading="lazy"
-          {...stylex.props(styles.board)}
+          {...stylex.props(styles.board, playing.has(id) && styles.playing)}
           style={{ left: board.x, top: board.y, width: board.w, height: board.h }}
         />
       ))}

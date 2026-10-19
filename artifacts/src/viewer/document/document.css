@@ -1,0 +1,53 @@
+::highlight(ryugi-comment) {
+  background-color: rgba(240, 194, 75, 0.28);
+}
+
+::highlight(ryugi-comment-draft),
+::highlight(ryugi-comment-active) {
+  background-color: rgba(240, 194, 75, 0.6);
+}
+
+.ryugi-doc .rich-editor__content {
+  font-size: 17px;
+  line-height: 1.85;
+}
+
+.ryugi-doc .rich-paragraph {
+  font-size: 17px;
+  line-height: 1.85;
+  margin: 0 0 16px;
+}
+
+.ryugi-doc .rich-heading-h1 {
+  font-size: 28px;
+  line-height: 1.35;
+  font-weight: 700;
+  margin: 0 0 32px;
+}
+
+.ryugi-doc .rich-heading-h2 {
+  font-size: 20px;
+  line-height: 1.45;
+  font-weight: 600;
+  margin: 36px 0 10px;
+}
+
+.ryugi-doc .rich-heading-h3 {
+  font-size: 17px;
+  line-height: 1.5;
+  font-weight: 600;
+  margin: 24px 0 6px;
+}
+
+.ryugi-doc .rich-heading-h4,
+.ryugi-doc .rich-heading-h5,
+.ryugi-doc .rich-heading-h6 {
+  font-size: 16px;
+  line-height: 1.5;
+  font-weight: 600;
+  margin: 20px 0 6px;
+}
+
+.ryugi-doc table {
+  font-size: 15px;
+}

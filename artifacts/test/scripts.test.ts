@@ -97,6 +97,8 @@ describe('start-server.sh', () => {
     const second = run(start, ['--project-dir', project, '--artifact', 'artboard/header']);
     expect(second.reused).toBe(true);
     expect(second.link).toBe(`http://localhost:${first.port}/artboard/header?key=${key}`);
+    const third = run(start, ['--project-dir', project, '--artifact', 'document/relay-sync']);
+    expect(third.link).toBe(`http://localhost:${first.port}/document/relay-sync?key=${key}`);
   });
 
   test('rejects an invalid artifact name', () => {
@@ -172,10 +174,16 @@ describe('start-server.sh without a local server build', () => {
 
     const info = runIn(app, npm.bin, cache, ['--project-dir', project]);
     expect(info.type).toBe('server-started');
-    expect((await get(info.url.replace('localhost', '127.0.0.1'))).status).toBe(200);
+    expect((await get(info.url.replace('localhost', '127.0.0.1'), { Connection: 'close' })).status).toBe(200);
     expect(run(path.join(app, 'stop-server.sh'), [project]).status).toBe('stopped');
 
-    expect(runIn(app, npm.bin, cache, ['--project-dir', project]).type).toBe('server-started');
+    fs.mkdirSync(path.join(project, '.ryugi', 'artifacts', 'document', 'relay'), { recursive: true });
+    fs.writeFileSync(path.join(project, '.ryugi', 'artifacts', 'document', 'relay', 'doc.xml'), '<doc><p>one</p></doc>');
+    const again = runIn(app, npm.bin, cache, ['--project-dir', project]);
+    expect(again.type).toBe('server-started');
+    const key = again.url.split('key=')[1];
+    const state = await get(`http://127.0.0.1:${again.port}/api/document/relay/state?key=${key}`);
+    expect(state.status).toBe(200);
     expect(npm.calls()).toHaveLength(1);
     expect(npm.calls()[0]).toContain(`ryugi-artifacts@${version}`);
   }, 30000);

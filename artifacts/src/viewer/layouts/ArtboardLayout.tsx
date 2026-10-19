@@ -8,6 +8,7 @@ import { Labels } from '../components/Labels';
 import { TopLeftBar, TopRightBar } from '../components/Toolbar';
 import { useCanvasData } from '../hooks/useCanvasData';
 import { usePanZoom, type Tool } from '../hooks/usePanZoom';
+import { togglePlaying } from '../lib/play';
 import { resolveFocus } from '../lib/view';
 
 const styles = stylex.create({
@@ -42,6 +43,8 @@ export function ArtboardLayout({ id }: { id: string }) {
   const { viewportRef, view, fit, zoomBy, zoomTo, cursor, handlers } = usePanZoom(tool);
   const [page, setPage] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [playing, setPlaying] = useState<ReadonlySet<string>>(() => new Set());
+  const [replays, setReplays] = useState<Record<string, number>>({});
   const seenActivePage = useRef<string | undefined>(undefined);
   const seenFocusAt = useRef<string | undefined>(undefined);
   const pendingFit = useRef<string | null>(null);
@@ -140,14 +143,17 @@ export function ArtboardLayout({ id }: { id: string }) {
     <div ref={viewportRef} {...stylex.props(styles.viewport)} style={{ cursor }} {...handlers}>
       {canvas && layout && (
         <CanvasErrorBoundary resetKey={canvas}>
-          <Canvas view={view} boards={boards} notes={notes} contentBase={contentBase} versions={versions} />
+          <Canvas view={view} boards={boards} notes={notes} contentBase={contentBase} versions={versions} playing={playing} replays={replays} />
           <Labels
             view={view}
             boards={boards}
             groups={groups}
             allBoards={allBoards}
             contentBase={contentBase}
+            playing={playing}
             onExpand={setExpanded}
+            onTogglePlay={(id) => setPlaying((current) => togglePlaying(current, id))}
+            onReplay={(id) => setReplays((prev) => ({ ...prev, [id]: (prev[id] ?? 0) + 1 }))}
           />
         </CanvasErrorBoundary>
       )}

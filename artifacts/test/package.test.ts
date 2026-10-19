@@ -7,16 +7,22 @@ const pkgDir = path.resolve(__dirname, '..');
 const repoRoot = path.resolve(pkgDir, '..');
 const localApp = path.join(repoRoot, 'skills/artifacts/app');
 
-test('the published package holds the server and the viewer under fixed names and nothing else', () => {
+test('the published package holds the server, the viewer under fixed entry names, and nothing else', () => {
   const [pack] = JSON.parse(execFileSync('npm', ['pack', '--dry-run', '--json'], { cwd: pkgDir, encoding: 'utf8' }));
   const files = (pack.files as { path: string }[]).map((f) => f.path).sort();
-  expect(files).toEqual([
-    'dist/server.cjs',
-    'dist/viewer/index.css',
-    'dist/viewer/index.html',
-    'dist/viewer/index.js',
-    'package.json',
-  ]);
+  expect(files).toEqual(expect.arrayContaining(['dist/server.cjs', 'dist/viewer/index.css', 'dist/viewer/index.html', 'dist/viewer/index.js', 'package.json']));
+  expect(files.filter((file) => !file.startsWith('dist/viewer/') && file !== 'dist/server.cjs' && file !== 'package.json')).toEqual([]);
+});
+
+test('the document page is a separate chunk that artboard and html pages never load', () => {
+  const entry = fs.readFileSync(path.join(pkgDir, 'dist/viewer/index.js'), 'utf8');
+  expect(fs.readdirSync(path.join(pkgDir, 'dist/viewer')).some((file) => /^DocumentPage-.*\.js$/.test(file))).toBe(true);
+  expect(entry.length).toBeLessThan(1_500_000);
+});
+
+test('the published package installs nothing else: the server bundles its dependencies', () => {
+  const pkg = JSON.parse(fs.readFileSync(path.join(pkgDir, 'package.json'), 'utf8'));
+  expect(pkg.dependencies ?? {}).toEqual({});
 });
 
 test('the viewer is a production build even when built from the test runner', () => {
@@ -25,7 +31,7 @@ test('the viewer is a production build even when built from the test runner', ()
 
 test('the server and viewer builds are mirrored into the plugin for local development', () => {
   expect(fs.existsSync(path.join(localApp, 'server.cjs'))).toBe(true);
-  expect(fs.readdirSync(path.join(localApp, 'viewer')).sort()).toEqual(['index.css', 'index.html', 'index.js']);
+  expect(fs.readdirSync(path.join(localApp, 'viewer')).sort()).toEqual(fs.readdirSync(path.join(pkgDir, 'dist/viewer')).sort());
 });
 
 test('build output is never committed', () => {

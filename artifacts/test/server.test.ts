@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, test } from 'vitest';
 import { startArtifactsServer, type ArtifactsServer } from '../src/server/app';
-import { get, openWs, readJson, sendWsText, tempRoot, waitFor, writeArtboard, writeHtml } from './helpers';
+import { get, openWs, readJson, sendWsText, tempRoot, waitFor, writeArtboard, writeDocument, writeHtml } from './helpers';
 
 const canvas = {
   version: 1,
@@ -46,7 +46,7 @@ describe('session key', () => {
 
   test('the key serves the shell at the root and at an artifact link, and sets a per-port cookie', async () => {
     const { server } = await start();
-    for (const rel of ['/', '/html/arrow-tuner', '/artboard/brainstorm/']) {
+    for (const rel of ['/', '/html/arrow-tuner', '/artboard/brainstorm/', '/document/relay-sync']) {
       const res = await get(`${base(server)}${rel}?key=${server.token}`);
       expect(res.status, rel).toBe(200);
       expect(res.body).toContain('<title>viewer</title>');
@@ -80,6 +80,19 @@ describe('session key', () => {
     expect(csp).not.toMatch(/https?:/);
   });
 
+  test('the shell lets the viewer compile WebAssembly, which the document CRDT needs, and nothing else eval-like', async () => {
+    const { server } = await start();
+    const csp = String((await get(`${base(server)}/?key=${server.token}`)).headers['content-security-policy']);
+    expect(csp).toContain("script-src 'self' 'wasm-unsafe-eval'");
+    expect(csp).not.toContain("'unsafe-eval'");
+  });
+
+  test('the shell lets a document point <base> at its own content route, so assets/ paths resolve', async () => {
+    const { server } = await start();
+    const csp = String((await get(`${base(server)}/document/doc?key=${server.token}`)).headers['content-security-policy']);
+    expect(csp).toContain("base-uri 'self'");
+  });
+
   test('the url and artifact links carry the key and the display host', async () => {
     const { server } = await start();
     expect(server.url).toBe(`http://localhost:${server.port}/?key=${server.token}`);
@@ -93,9 +106,11 @@ describe('artifact list API', () => {
     writeArtboard(root, 'brainstorm', { ...canvas, title: 'Header ideas' }, { 'pages/p/a.html': '<p>a</p>' });
     writeHtml(root, 'arrow-tuner', { 'index.html': '<title>Arrow tuner</title><p>x</p>' });
     writeHtml(root, 'untitled', { 'index.html': '<p>x</p>' });
+    writeDocument(root, 'relay-sync', { 'doc.xml': '<doc><p>intro</p><h1 id="a">Relay <b>sync</b></h1></doc>' });
     const list = await api(server, '/api/artifacts');
     expect(list.artifacts).toEqual([
       { type: 'artboard', id: 'brainstorm', title: 'Header ideas' },
+      { type: 'document', id: 'relay-sync', title: 'Relay sync' },
       { type: 'html', id: 'arrow-tuner', title: 'Arrow tuner' },
       { type: 'html', id: 'untitled', title: 'untitled' },
     ]);
@@ -169,6 +184,37 @@ describe('html API', () => {
     const later = new Date(Date.now() + 5000);
     fs.utimesSync(path.join(dir, 'img/a.png'), later, later);
     expect((await api(server, '/api/artifacts/html/tuner')).version).not.toBe(before);
+  });
+});
+
+describe('document API', () => {
+  test('returns the title, a version and the content path prefix', async () => {
+    const { server, root } = await start();
+    writeDocument(root, 'relay-sync', { 'doc.xml': '<doc><h2>Relay</h2></doc>' });
+    const payload = await api(server, '/api/artifacts/document/relay-sync');
+    expect(payload.title).toBe('Relay');
+    expect(payload.warnings).toEqual([]);
+    expect(typeof payload.version).toBe('number');
+    expect(payload.contentBase).toBe(`/c/${server.contentToken}/document/relay-sync/`);
+  });
+
+  test('a missing doc.xml is a warning and the id is the title', async () => {
+    const { server, root } = await start();
+    writeDocument(root, 'relay-sync', { 'notes.txt': 'x' });
+    const payload = await api(server, '/api/artifacts/document/relay-sync');
+    expect(payload.title).toBe('relay-sync');
+    expect(payload.warnings).toEqual(['doc.xml not found']);
+  });
+
+  test('only files under assets/ are served, sandboxed', async () => {
+    const { server, root } = await start();
+    writeDocument(root, 'relay-sync', { 'doc.xml': '<doc/>', 'comments.json': '{}', 'assets/flow.excalidraw': '{"a":1}' });
+    const asset = await content(server, 'document/relay-sync/assets/flow.excalidraw');
+    expect(asset.status).toBe(200);
+    expect(asset.body).toBe('{"a":1}');
+    expect(asset.headers['content-security-policy']).toBe("sandbox; default-src 'none'");
+    expect((await content(server, 'document/relay-sync/doc.xml')).status).toBe(404);
+    expect((await content(server, 'document/relay-sync/comments.json')).status).toBe(404);
   });
 });
 

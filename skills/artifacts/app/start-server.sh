@@ -30,8 +30,8 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --project-dir) PROJECT_DIR="$2"; shift 2 ;;
     --artifact)
-      if ! [[ "${2:-}" =~ ^(artboard|html)/[a-z0-9][a-z0-9-]*$ ]]; then
-        echo '{"error": "--artifact must be <type>/<id>: type artboard or html, id of lowercase letters, digits and hyphens"}'
+      if ! [[ "${2:-}" =~ ^(artboard|document|html)/[a-z0-9][a-z0-9-]*$ ]]; then
+        echo '{"error": "--artifact must be <type>/<id>: type artboard, document or html, id of lowercase letters, digits and hyphens"}'
         exit 1
       fi
       ARTIFACT="$2"

@@ -1,4 +1,4 @@
-export const ARTIFACT_TYPES = ['artboard', 'html'] as const;
+export const ARTIFACT_TYPES = ['artboard', 'document', 'html'] as const;
 export type ArtifactType = (typeof ARTIFACT_TYPES)[number];
 
 export interface Rect {
@@ -80,10 +80,29 @@ export interface HtmlPayload {
   version: number;
 }
 
+export interface DocumentPayload {
+  title: string;
+  warnings: string[];
+  version: number;
+}
+
 export interface ArtifactSummary {
   type: ArtifactType;
   id: string;
   title: string;
 }
 
-export type ServerMessage = { type: 'change'; artifact: string; files: string[] };
+import type { CommentsFile } from './comments';
+
+export type DocumentOutcomeMessage =
+  | { kind: 'idle' }
+  | { kind: 'merged'; stats: string }
+  | { kind: 'rejected'; message: string }
+  | { kind: 'failed'; message: string };
+
+export type ServerMessage =
+  | { type: 'change'; artifact: string; files: string[] }
+  | { type: 'doc-update'; artifact: string; bytes: string }
+  | { type: 'doc-cursor'; artifact: string; cursor: { id: string; offset: number } | null }
+  | { type: 'doc-status'; artifact: string; streaming: boolean; outcome: DocumentOutcomeMessage }
+  | { type: 'doc-comments'; artifact: string; comments: CommentsFile };

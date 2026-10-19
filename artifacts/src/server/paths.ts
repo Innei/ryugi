@@ -30,5 +30,8 @@ function resolveFileWithin(root: string, relative: string, allowedDir: string): 
 export const resolveBoardFile = (boardDir: string, relative: string) =>
   resolveFileWithin(boardDir, relative, path.join(boardDir, 'pages'));
 
+export const resolveDocumentAsset = (artifactDir: string, relative: string) =>
+  resolveFileWithin(artifactDir, relative, path.join(artifactDir, 'assets'));
+
 export const resolveHtmlFile = (artifactDir: string, relative: string) =>
   resolveFileWithin(artifactDir, relative, artifactDir);

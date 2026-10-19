@@ -52,7 +52,9 @@ export function ArtifactList() {
     }
   }, []);
 
-  useArtifactSocket(() => void refresh(), refresh);
+  useArtifactSocket((message) => {
+    if (message.type === 'change') void refresh();
+  }, refresh);
 
   useEffect(() => {
     document.title = 'Artifacts';

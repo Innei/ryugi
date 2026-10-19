@@ -2,12 +2,15 @@ import fs from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
 import type { Duplex } from 'node:stream';
-import type { ArtifactSummary, ArtifactType, CanvasPayload, HtmlPayload, ServerMessage } from '../shared/types';
+import { ARTIFACT_TYPES, type ArtifactSummary, type ArtifactType, type CanvasPayload, type DocumentPayload, type HtmlPayload, type ServerMessage } from '../shared/types';
 import { artifactKeyOf, artifactSignature, listArtifacts, resolveArtifactDir, type ArtifactRef } from './artifacts';
+import { readDocument } from './document';
+import { asHumanOp } from './document-comments';
+import { createDocumentRegistry, type DocumentTiming } from './documents';
 import { readHtml } from './html';
 import { injectRuntime } from './inject';
 import { listen, parseCookies, randomToken, readPersisted, safeEqual, send, sendFile, sendJson, urlHostForHttp } from './http';
-import { resolveBoardFile, resolveHtmlFile, resolveInside } from './paths';
+import { resolveBoardFile, resolveDocumentAsset, resolveHtmlFile, resolveInside } from './paths';
 import { readCanvas, writeArtifactState, writeJsonAtomic } from './state';
 import { watchTree } from './watch';
 import { completeHandshake, handleClientFrames, rejectUpgrade, textFrame } from './ws';
@@ -18,9 +21,10 @@ export interface ServerOptions {
   host: string;
   urlHost: string;
   debounceMs?: number;
+  documentTiming?: DocumentTiming;
 }
 
-export type ArtifactPayload = (CanvasPayload | HtmlPayload) & { warnings: string[] };
+export type ArtifactPayload = (CanvasPayload | HtmlPayload | DocumentPayload) & { warnings: string[] };
 
 export interface ArtifactsServer {
   port: number;
@@ -36,30 +40,38 @@ export interface ArtifactsServer {
 
 const VIEWER_CSP = [
   "default-src 'self'",
-  "script-src 'self'",
+  "script-src 'self' 'wasm-unsafe-eval'",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob:",
   "font-src 'self' data:",
   "connect-src 'self'",
   "frame-src 'self'",
-  "base-uri 'none'",
+  "base-uri 'self'",
   "form-action 'none'",
   "frame-ancestors 'none'",
 ].join('; ');
 
 const CONTENT_CSP: Record<ArtifactType, string> = {
   artboard: 'sandbox allow-scripts',
+  document: "sandbox; default-src 'none'",
   html: 'sandbox allow-scripts allow-modals allow-forms allow-popups allow-downloads',
 };
 
-const SHELL_ROUTE = /^\/(?:(artboard|html)\/([^/]+)\/?)?$/;
+const SHELL_ROUTE = new RegExp(`^/(?:(${ARTIFACT_TYPES.join('|')})/([^/]+)/?)?$`);
 const API_ARTIFACT_ROUTE = /^\/api\/artifacts\/([^/]+)\/([^/]+)$/;
+const API_DOCUMENT_ROUTE = /^\/api\/document\/([^/]+)\/(state|update|comments)$/;
+const MAX_COMMENT_OP = 64 * 1024;
+const MAX_DOCUMENT_UPDATE = 8 * 1024 * 1024;
 
 const MAX_RUNTIME_MESSAGE = 2048;
 const MAX_RUNTIME_WARNINGS = 20;
 
 function readArtifact(dir: string, ref: ArtifactRef, runtime: string[] = []): ArtifactPayload {
   if (ref.type === 'artboard') return readCanvas(dir);
+  if (ref.type === 'document') {
+    const payload = readDocument(dir, ref.id);
+    return { ...payload, warnings: [...payload.warnings, ...runtime] };
+  }
   const payload = readHtml(dir, ref.id);
   return { ...payload, warnings: [...payload.warnings, ...runtime.map((message) => `runtime: ${message}`)] };
 }
@@ -83,7 +95,8 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
   const contentToken = randomToken();
   const runtimeWarnings = new Map<string, string[]>();
   const ranVersions = new Map<string, number>();
-  const runtimeOf = (ref: ArtifactRef) => runtimeWarnings.get(`${ref.type}/${ref.id}`) ?? [];
+  const runtimeOf = (ref: ArtifactRef) =>
+    ref.type === 'document' ? documents.warnings(ref.id) : (runtimeWarnings.get(`${ref.type}/${ref.id}`) ?? []);
   const contentPrefix = `/c/${contentToken}/`;
 
   const clients = new Set<Duplex>();
@@ -92,6 +105,99 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
   const touch = () => activityListeners.forEach((listener) => listener());
   let port = 0;
   let cookieName = '';
+
+  const broadcast = (message: ServerMessage) => {
+    const frame = textFrame(JSON.stringify(message));
+    for (const socket of clients) socket.write(frame);
+  };
+  const documents = createDocumentRegistry({
+    root,
+    stateDir,
+    timing: options.documentTiming,
+    broadcast,
+    onWarningsChange: (id) => {
+      const dir = resolveArtifactDir(root, 'document', id);
+      if (!dir) return;
+      writeState({ type: 'document', id }, dir);
+      broadcast({ type: 'change', artifact: `document/${id}`, files: [] });
+    },
+    log: (line) => console.log(JSON.stringify({ type: 'document-log', line })),
+  });
+
+  const sameOrigin = (req: http.IncomingMessage) => {
+    const origin = req.headers.origin;
+    const host = req.headers.host ?? '';
+    return origin === `http://${host}` || origin === `https://${host}`;
+  };
+
+  const serveDocumentApi = async (req: http.IncomingMessage, res: http.ServerResponse, id: string, action: string) => {
+    if (action !== 'state' && (req.method !== 'POST' || !sameOrigin(req))) {
+      send(res, 403, 'Forbidden');
+      return;
+    }
+    if (action === 'comments') {
+      if (!resolveArtifactDir(root, 'document', id)) {
+        sendJson(res, 404, { error: `document/${id} not found` });
+        return;
+      }
+      const parts: Buffer[] = [];
+      let received = 0;
+      for await (const chunk of req) {
+        received += (chunk as Buffer).length;
+        if (received <= MAX_COMMENT_OP) parts.push(chunk as Buffer);
+      }
+      const body = received > MAX_COMMENT_OP ? '' : Buffer.concat(parts).toString('utf8');
+      let op = null;
+      try {
+        op = asHumanOp(JSON.parse(body));
+      } catch {
+        op = null;
+      }
+      if (!op) {
+        sendJson(res, 400, { error: 'not a comment op' });
+        return;
+      }
+      sendJson(res, 200, { comments: documents.applyCommentOp(id, op) });
+      return;
+    }
+    const session = resolveArtifactDir(root, 'document', id) ? await documents.open(id) : null;
+    if (!session) {
+      sendJson(res, 404, { error: `document/${id} has no doc.xml` });
+      return;
+    }
+    if (action === 'state') {
+      sendJson(res, 200, {
+        snapshot: Buffer.from(session.snapshot()).toString('base64'),
+        lineage: session.lineage(),
+        outcome: session.outcome(),
+        streaming: session.streaming(),
+        cursor: session.cursor(),
+        comments: documents.comments(id),
+      });
+      return;
+    }
+    if (Number(req.headers['content-length'] ?? 0) > MAX_DOCUMENT_UPDATE) {
+      req.resume();
+      send(res, 413, 'Update too large');
+      return;
+    }
+    const chunks: Buffer[] = [];
+    let size = 0;
+    for await (const chunk of req) {
+      size += (chunk as Buffer).length;
+      if (size <= MAX_DOCUMENT_UPDATE) chunks.push(chunk as Buffer);
+    }
+    if (size > MAX_DOCUMENT_UPDATE) {
+      send(res, 413, 'Update too large');
+      return;
+    }
+    try {
+      session.importUpdate(new Uint8Array(Buffer.concat(chunks)));
+      send(res, 204, '');
+    } catch (err) {
+      sendJson(res, 400, { error: (err as Error).message });
+    }
+  };
 
   const isAuthorized = (req: http.IncomingMessage, keyFromQuery: string | null) =>
     (keyFromQuery !== null && safeEqual(keyFromQuery, token)) ||
@@ -110,7 +216,8 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
       send(res, 403, 'Forbidden');
       return;
     }
-    const target = ref.type === 'artboard' ? resolveBoardFile(dir, relative) : resolveHtmlFile(dir, relative);
+    const resolve = { artboard: resolveBoardFile, document: resolveDocumentAsset, html: resolveHtmlFile }[ref.type];
+    const target = resolve(dir, relative);
     if (!target) {
       send(res, 404, 'Not found');
       return;
@@ -204,6 +311,14 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
       return;
     }
 
+    const documentMatch = API_DOCUMENT_ROUTE.exec(pathname);
+    if (documentMatch) {
+      void serveDocumentApi(req, res, documentMatch[1]!, documentMatch[2]!).catch((err) => {
+        if (!res.headersSent) send(res, 500, `Artifacts error: ${(err as Error).message}`);
+      });
+      return;
+    }
+
     const apiMatch = API_ARTIFACT_ROUTE.exec(pathname);
     if (apiMatch) {
       serveArtifactApi(res, apiMatch[1]!, apiMatch[2]!);
@@ -237,10 +352,7 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
       rejectUpgrade(socket, 400, 'Bad Request');
       return;
     }
-    const origin = req.headers.origin;
-    const host = req.headers.host ?? '';
-    const sameHost = origin === `http://${host}` || origin === `https://${host}`;
-    if (!isAuthorized(req, url.searchParams.get('key')) || !sameHost) {
+    if (!isAuthorized(req, url.searchParams.get('key')) || !sameOrigin(req)) {
       rejectUpgrade(socket, 403, 'Forbidden');
       return;
     }
@@ -268,7 +380,7 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
   const signatures = new Map<string, string>();
   const writeState = (ref: ArtifactRef, dir: string) => {
     const payload = readArtifact(dir, ref, runtimeOf(ref));
-    const extra = 'version' in payload ? { ran: ranVersions.get(`${ref.type}/${ref.id}`) === payload.version } : {};
+    const extra = ref.type === 'html' && 'version' in payload ? { ran: ranVersions.get(`${ref.type}/${ref.id}`) === payload.version } : {};
     try {
       writeArtifactState(stateDir, ref, payload, extra);
     } catch (err) {
@@ -281,7 +393,10 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
     return writeState(ref, dir);
   };
 
-  for (const entry of listArtifacts(root).artifacts) refreshState(entry, entry.dir);
+  for (const entry of listArtifacts(root).artifacts) {
+    refreshState(entry, entry.dir);
+    if (entry.type === 'document') void documents.open(entry.id);
+  }
   writeJsonAtomic(path.join(stateDir, 'server-info'), { type: 'server-started', url, port, root });
 
   const watcher = watchTree(
@@ -303,6 +418,8 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
           signatures.delete(key);
           continue;
         }
+        if (ref.type === 'document' && (changed.includes('doc.xml') || changed.length === 0)) documents.fileChanged(ref.id);
+        if (ref.type === 'document' && changed.includes('comments.json')) documents.commentsChanged(ref.id);
         if (signatures.get(key) === artifactSignature(dir)) continue;
         runtimeWarnings.delete(key);
         const payload = refreshState(ref, dir);
@@ -330,6 +447,6 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
         for (const socket of clients) socket.destroy();
         server.close(() => resolve());
         server.closeAllConnections();
-      }),
+      }).then(() => documents.close().catch(() => undefined)),
   };
 }

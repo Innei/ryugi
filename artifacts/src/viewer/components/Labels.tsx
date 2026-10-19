@@ -1,11 +1,13 @@
 import { ActionIcon } from '@lobehub/ui';
 import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
-import { Download, Maximize2 } from 'lucide-react';
+import { Download, Maximize2, Play, RotateCcw } from 'lucide-react';
 import type { BoardSpec, GroupSpec } from '../../shared/types';
 import { labelRect, type View } from '../lib/view';
 
 const ACTIONS_MIN_WIDTH = 150;
+const PLAY_MIN_WIDTH = 240;
+const PLAY_ACCENT = '#8b7cf8';
 
 function downloadFile(href: string, name: string) {
   const link = document.createElement('a');
@@ -49,6 +51,26 @@ const styles = stylex.create({
     color: cssVar.colorText,
     whiteSpace: 'nowrap',
   },
+  play: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 4,
+    height: 20,
+    marginInlineStart: 4,
+    paddingInline: 7,
+    borderWidth: 1,
+    borderStyle: 'solid',
+    borderColor: PLAY_ACCENT,
+    borderRadius: 6,
+    backgroundColor: { default: 'transparent', ':hover': 'rgba(139, 124, 248, 0.14)' },
+    color: PLAY_ACCENT,
+    fontFamily: cssVar.fontFamily,
+    fontSize: 11,
+    fontWeight: 600,
+    letterSpacing: '0.04em',
+    cursor: 'pointer',
+  },
+  playOn: { backgroundColor: { default: PLAY_ACCENT, ':hover': PLAY_ACCENT }, color: '#ffffff' },
   chip: {
     paddingInline: 5,
     borderRadius: 4,
@@ -67,10 +89,13 @@ interface LabelsProps {
   groups: [string, GroupSpec][];
   allBoards: Record<string, BoardSpec>;
   contentBase: string;
+  playing: ReadonlySet<string>;
   onExpand: (id: string) => void;
+  onTogglePlay: (id: string) => void;
+  onReplay: (id: string) => void;
 }
 
-export function Labels({ view, boards, groups, allBoards, contentBase, onExpand }: LabelsProps) {
+export function Labels({ view, boards, groups, allBoards, contentBase, playing, onExpand, onTogglePlay, onReplay }: LabelsProps) {
   return (
     <div {...stylex.props(styles.layer)}>
       {groups.map(([id, group]) => {
@@ -105,6 +130,21 @@ export function Labels({ view, boards, groups, allBoards, contentBase, onExpand 
                   onClick={() => downloadFile(`${contentBase}${board.file}`, board.file.split('/').pop() ?? `${id}.html`)}
                 />
               </>
+            )}
+            {rect.width >= PLAY_MIN_WIDTH && playing.has(id) && (
+              <ActionIcon icon={RotateCcw} size={{ blockSize: 22, size: 13 }} title="Replay" aria-label={`Replay ${id}`} onClick={() => onReplay(id)} />
+            )}
+            {rect.width >= PLAY_MIN_WIDTH && (
+              <button
+                type="button"
+                aria-pressed={playing.has(id)}
+                aria-label={`${playing.has(id) ? 'Stop' : 'Play'} ${id}`}
+                onClick={() => onTogglePlay(id)}
+                {...stylex.props(styles.play, playing.has(id) && styles.playOn)}
+              >
+                <Play size={11} strokeWidth={2.4} />
+                {playing.has(id) ? 'PLAYING' : 'PLAY'}
+              </button>
             )}
           </div>
         );

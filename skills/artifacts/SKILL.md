@@ -1,13 +1,13 @@
 ---
 name: artifacts
-description: Use when your human partner asks to see something as an artifact, an HTML page, or an artboard ("show me in an artifact", "artifact html", "discuss in artboard"), or when a review, a report, a proposal, a tuner with sliders, or side-by-side mockups would be clearer to look at than to read — inside brainstorming or anywhere else
+description: Use when your human partner asks to see something as an artifact, a document, an HTML page, or an artboard ("show me in an artifact", "artifact docs", "artifact html", "discuss in artboard"), or when an architecture discussion, a review, a report, a proposal, a tuner with sliders, or side-by-side mockups would be clearer in the browser than in the terminal — inside brainstorming or anywhere else
 ---
 
 # Artifacts
 
 Artifacts are pages your human partner opens in their browser while you
-work: an artboard of mockups to choose from, or one HTML page to read, click
-and tune. You write files into the project; a local server shows each
+work: an artboard of mockups to choose from, a document to read and comment
+on, or one HTML page to click and tune. You write files into the project; a local server shows each
 artifact at its own link and updates it the moment a file changes. They look,
 then answer in the terminal.
 
@@ -17,10 +17,12 @@ isn't supported yet.
 
 ## Pick the type
 
-| They want | Type | Read before writing |
-|-----------|------|---------------------|
-| Several options side by side to choose from; screens across pages | `artboard` | `artboard.md` |
-| One page: a test bench with controls, a review, a report, a proposal | `html` | `html.md` |
+| The discussion | Type | Read before writing |
+|----------------|------|---------------------|
+| Architecture; a review, report, proposal or flow walkthrough | `document` | `document.md` |
+| Creative work: options side by side, screens across pages | `artboard` | `artboard.md` |
+| Tuning: a test bench with controls, a page that runs code | `html` | `html.md` |
+| A simple task | none: discuss in text | |
 
 ## Pick the artifact
 
@@ -73,6 +75,7 @@ browser, bind a non-loopback host and name the host they reach it by:
 ```
 <project>/.ryugi/artifacts/
   artboard/<id>/       canvas.json + pages/          (you write)
+  document/<id>/       doc.xml + comments.json + assets/  (you and the server write)
   html/<id>/           index.html + its files        (you write)
   .state/              the server writes; never edit
     <type>/<id>/warnings.json   read after every change

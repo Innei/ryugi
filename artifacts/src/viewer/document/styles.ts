@@ -1,0 +1,11 @@
+import '@haklex/rich-editor/style.css';
+import '@haklex/rich-editor-ui/style.css';
+import '@haklex/rich-renderer-alert/style.css';
+import '@haklex/rich-renderer-codeblock/style.css';
+import '@haklex/rich-renderer-image/style.css';
+import '@haklex/rich-renderer-katex/style.css';
+import '@haklex/rich-renderer-mermaid/style.css';
+import '@haklex/rich-ext-excalidraw/style.css';
+import '@haklex/rich-ext-chart/style.css';
+import 'katex/dist/katex.min.css';
+import './document.css';

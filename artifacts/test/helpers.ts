@@ -35,6 +35,13 @@ export function writeHtml(root: string, id: string, files: Record<string, string
   return dir;
 }
 
+export function writeDocument(root: string, id: string, files: Record<string, string>) {
+  const dir = path.join(root, 'document', id);
+  fs.mkdirSync(dir, { recursive: true });
+  writeFiles(dir, files);
+  return dir;
+}
+
 export const readJson = (file: string) => JSON.parse(fs.readFileSync(file, 'utf8'));
 
 export interface Fetched {
