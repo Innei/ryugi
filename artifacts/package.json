@@ -1,6 +1,6 @@
 {
   "name": "ryugi-artifacts",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "type": "module",
   "description": "Prebuilt viewer for the Ryugi artifacts app, served from jsDelivr",
   "license": "MIT",
