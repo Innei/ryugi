@@ -145,6 +145,76 @@ function readHtml(dir, id) {
   return { title: title || id, warnings: [], version: latestMtime(dir) };
 }
 
+// src/server/inject.ts
+var RUNTIME = `(() => {
+  const post = (message) => parent.postMessage(message, '*');
+  addEventListener('error', (event) => {
+    const el = event.target;
+    if (el && el !== window && el.getAttribute) {
+      post({ type: 'ryugi:error', message: 'failed to load ' + (el.getAttribute('src') || el.getAttribute('href') || el.tagName) });
+      return;
+    }
+    const where = event.filename ? ' (' + event.filename.split('/').pop().split('?')[0] + ':' + event.lineno + ')' : '';
+    post({ type: 'ryugi:error', message: String(event.message || 'error') + where });
+  }, true);
+  addEventListener('unhandledrejection', (event) => {
+    const reason = event.reason;
+    post({ type: 'ryugi:error', message: 'unhandled rejection: ' + String((reason && reason.message) || reason) });
+  });
+  const fields = () => Array.from(document.querySelectorAll('input, select, textarea, details'));
+  const keyOf = (el, index) => {
+    if (el.id) return '#' + el.id;
+    if (el.type === 'radio') return 'radio:' + el.name + ':' + el.value;
+    if (el.name) return el.tagName + ':' + el.name;
+    return el.tagName + ':' + index;
+  };
+  const fire = (el) => {
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    el.dispatchEvent(new Event('change', { bubbles: true }));
+  };
+  addEventListener('message', (event) => {
+    if (event.source !== parent) return;
+    const data = event.data || {};
+    if (data.type === 'ryugi:snapshot') {
+      const state = { scroll: [scrollX, scrollY], fields: {} };
+      fields().forEach((el, index) => {
+        const key = keyOf(el, index);
+        if (el.tagName === 'DETAILS') state.fields[key] = { open: el.open };
+        else if (el.type === 'checkbox' || el.type === 'radio') state.fields[key] = { checked: el.checked };
+        else if (el.type !== 'file' && el.type !== 'password') state.fields[key] = { value: el.value };
+      });
+      post({ type: 'ryugi:state', state });
+    }
+    if (data.type === 'ryugi:restore' && data.state && data.state.fields) {
+      fields().forEach((el, index) => {
+        const saved = data.state.fields[keyOf(el, index)];
+        if (!saved) return;
+        if ('open' in saved) el.open = saved.open;
+        else if ('checked' in saved) {
+          if (el.checked !== saved.checked) {
+            el.checked = saved.checked;
+            fire(el);
+          }
+        } else if ('value' in saved && el.value !== saved.value) {
+          el.value = saved.value;
+          fire(el);
+        }
+      });
+      const scroll = data.state.scroll || [0, 0];
+      scrollTo(scroll[0], scroll[1]);
+    }
+  });
+})();`;
+var HEAD = /<head(\s[^>]*)?>/i;
+var RUNTIME_LINE = RUNTIME.split("\n").map((line) => line.trim()).join(" ");
+function injectRuntime(html) {
+  const tag = `<script>${RUNTIME_LINE}</script>`;
+  const match = HEAD.exec(html);
+  if (!match) return tag + html;
+  const at = match.index + match[0].length;
+  return html.slice(0, at) + tag + html.slice(at);
+}
+
 // src/server/http.ts
 var import_node_crypto = __toESM(require("node:crypto"), 1);
 var import_node_fs3 = __toESM(require("node:fs"), 1);
@@ -639,11 +709,12 @@ Content-Length: 0\r
 \r
 `);
 }
-function handleClientFrames(socket) {
+function handleClientFrames(socket, onText) {
   let buffer = Buffer.alloc(0);
   socket.on("data", (chunk) => {
     buffer = Buffer.concat([buffer, chunk]);
     while (buffer.length >= 2) {
+      const fin = (buffer[0] & 128) !== 0;
       const opcode = buffer[0] & 15;
       let len = buffer[1] & 127;
       let offset = 2;
@@ -666,6 +737,7 @@ function handleClientFrames(socket) {
         return;
       }
       if (opcode === OPCODE_PING) socket.write(encodeFrame(OPCODE_PONG, payload));
+      else if (opcode === OPCODE_TEXT && fin) onText?.(payload.toString("utf8"));
     }
   });
 }
@@ -689,8 +761,12 @@ var CONTENT_CSP = {
 };
 var SHELL_ROUTE = /^\/(?:(artboard|html)\/([^/]+)\/?)?$/;
 var API_ARTIFACT_ROUTE = /^\/api\/artifacts\/([^/]+)\/([^/]+)$/;
-function readArtifact(dir, ref) {
-  return ref.type === "artboard" ? readCanvas(dir) : readHtml(dir, ref.id);
+var MAX_RUNTIME_MESSAGE = 2048;
+var MAX_RUNTIME_WARNINGS = 20;
+function readArtifact(dir, ref, runtime = []) {
+  if (ref.type === "artboard") return readCanvas(dir);
+  const payload = readHtml(dir, ref.id);
+  return { ...payload, warnings: [...payload.warnings, ...runtime.map((message) => `runtime: ${message}`)] };
 }
 function titleOf(payload, ref) {
   if ("title" in payload) return payload.title;
@@ -708,6 +784,8 @@ async function startArtifactsServer(options) {
   import_node_fs7.default.writeFileSync(tokenFile, `${token}
 `, { mode: 384 });
   const contentToken = randomToken();
+  const runtimeWarnings = /* @__PURE__ */ new Map();
+  const runtimeOf = (ref) => runtimeWarnings.get(`${ref.type}/${ref.id}`) ?? [];
   const contentPrefix = `/c/${contentToken}/`;
   const clients = /* @__PURE__ */ new Set();
   const changeListeners = [];
@@ -730,8 +808,19 @@ async function startArtifactsServer(options) {
       return;
     }
     const target = ref.type === "artboard" ? resolveBoardFile(dir, relative) : resolveHtmlFile(dir, relative);
-    if (!target) send(res, 404, "Not found");
-    else sendFile(res, target, { "Content-Security-Policy": CONTENT_CSP[ref.type] });
+    if (!target) {
+      send(res, 404, "Not found");
+      return;
+    }
+    const headers = { "Content-Security-Policy": CONTENT_CSP[ref.type] };
+    if (ref.type !== "html" || relative !== "index.html") {
+      sendFile(res, target, headers);
+      return;
+    }
+    import_node_fs7.default.readFile(target, "utf8", (err, source) => {
+      if (err) send(res, 404, "Not found");
+      else send(res, 200, injectRuntime(source), { "Content-Type": "text/html; charset=utf-8", ...headers });
+    });
   };
   const serveArtifactApi = (res, type, id) => {
     const dir = resolveArtifactDir(root, type, id);
@@ -740,7 +829,7 @@ async function startArtifactsServer(options) {
       return;
     }
     const ref = artifactKeyOf(`${type}/${id}`);
-    sendJson(res, 200, { ...readArtifact(dir, ref), contentBase: `${contentPrefix}${type}/${id}/` });
+    sendJson(res, 200, { ...readArtifact(dir, ref, runtimeOf(ref)), contentBase: `${contentPrefix}${type}/${id}/` });
   };
   const serveList = (res) => {
     const { artifacts, warnings } = listArtifacts(root);
@@ -751,6 +840,28 @@ async function startArtifactsServer(options) {
     }));
     sendJson(res, 200, { artifacts: summaries, warnings });
   };
+  function onClientText(text) {
+    let message;
+    try {
+      message = JSON.parse(text);
+    } catch {
+      return;
+    }
+    if (typeof message !== "object" || message === null) return;
+    const { type, artifact, message: detail } = message;
+    if (type !== "runtime-error" || typeof artifact !== "string" || typeof detail !== "string") return;
+    if (detail.length === 0 || detail.length > MAX_RUNTIME_MESSAGE) return;
+    const ref = artifactKeyOf(artifact);
+    if (!ref || ref.type !== "html" || artifact !== `${ref.type}/${ref.id}`) return;
+    const dir = resolveArtifactDir(root, ref.type, ref.id);
+    if (!dir) return;
+    const list = runtimeWarnings.get(artifact) ?? [];
+    if (list.includes(detail) || list.length >= MAX_RUNTIME_WARNINGS) return;
+    runtimeWarnings.set(artifact, [...list, detail]);
+    refreshState(ref, dir);
+    const frame = textFrame(JSON.stringify({ type: "change", artifact, files: [] }));
+    for (const socket of clients) socket.write(frame);
+  }
   const handleRequest = (req, res) => {
     touch();
     const url2 = new URL(req.url ?? "/", "http://artifacts.local");
@@ -813,7 +924,7 @@ async function startArtifactsServer(options) {
     }
     completeHandshake(socket, clientKey);
     clients.add(socket);
-    handleClientFrames(socket);
+    handleClientFrames(socket, onClientText);
     socket.on("close", () => clients.delete(socket));
     socket.on("error", () => clients.delete(socket));
     touch();
@@ -833,7 +944,7 @@ async function startArtifactsServer(options) {
   const signatures = /* @__PURE__ */ new Map();
   const refreshState = (ref, dir) => {
     signatures.set(`${ref.type}/${ref.id}`, artifactSignature(dir));
-    const payload = readArtifact(dir, ref);
+    const payload = readArtifact(dir, ref, runtimeOf(ref));
     try {
       writeArtifactState(stateDir, ref, payload);
     } catch (err) {
@@ -863,6 +974,7 @@ async function startArtifactsServer(options) {
           continue;
         }
         if (signatures.get(key) === artifactSignature(dir)) continue;
+        runtimeWarnings.delete(key);
         const payload = refreshState(ref, dir);
         const frame = textFrame(JSON.stringify({ type: "change", artifact: key, files: changed }));
         for (const socket of clients) socket.write(frame);
