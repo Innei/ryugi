@@ -35,10 +35,11 @@ interface ExpandedBoardProps {
   id: string;
   board: BoardSpec;
   src: string;
+  interactive: boolean;
   onClose: () => void;
 }
 
-export function ExpandedBoard({ id, board, src, onClose }: ExpandedBoardProps) {
+export function ExpandedBoard({ id, board, src, interactive, onClose }: ExpandedBoardProps) {
   return (
     <div data-chrome {...stylex.props(styles.overlay)}>
       <div {...stylex.props(styles.head)}>
@@ -54,7 +55,7 @@ export function ExpandedBoard({ id, board, src, onClose }: ExpandedBoardProps) {
           src={src}
           sandbox="allow-scripts"
           {...stylex.props(styles.frame)}
-          style={{ width: board.w, height: board.h }}
+          style={{ width: board.w, height: board.h, pointerEvents: interactive ? 'auto' : 'none' }}
         />
       </div>
     </div>

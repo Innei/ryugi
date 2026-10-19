@@ -179,7 +179,13 @@ Matches the spike's final layout (Figma-like):
 
 - Plain canvas, no dot grid, no section backgrounds. Boards are sandboxed
   iframes (`sandbox="allow-scripts"`, no same-origin) drawn at their exact
-  `w`×`h`, pointer events off on the canvas.
+  `w`×`h`, pointer events off on the canvas. A board is static unless its
+  spec says `interactive: true`; only then does PLAY appear, and expanded
+  view respects the same flag.
+- A new artboard is written canvas-first with `building: true`: missing board
+  files are pending, drawn as `Drawing…` skeletons, and fill in one at a time
+  over the WebSocket. The browser opens once the focus group is complete;
+  later boards keep streaming into the open tab.
 - Top-left floating bar: page dropdown, then tool buttons. In the MVP only
   Select and Hand are present (Hand = drag to pan; Space held also pans);
   markup tools arrive with the next version.
@@ -216,8 +222,10 @@ Matches the spike's final layout (Figma-like):
 - Watches the board directory recursively, debounced, ignores `state/`.
 - `start-server.sh` / `stop-server.sh` keep the companion's behaviours:
   backgrounding, foreground mode on Windows and Codex, owner-PID cleanup,
-  `--open` to launch the browser on first content, `server-info` written to
-  `state/`.
+  `--open` is the default; an artboard opens once its focus group is complete
+  (two boards without groups) and warnings are clear, while remaining pending
+  boards stream as skeletons. `--no-open` suppresses it for headless or
+  scripted use. `server-info` is written to `state/`.
 
 ### Brainstorming integration
 

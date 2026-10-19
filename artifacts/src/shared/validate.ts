@@ -17,6 +17,16 @@ export function structuralWarnings(raw: unknown): string[] {
   if (raw.focus !== undefined && (!isObject(raw.focus) || typeof raw.focus.target !== 'string')) {
     warnings.push('"focus" must be { "target": <id>, "at": <time> }');
   }
+  if (raw.building !== undefined && typeof raw.building !== 'boolean') {
+    warnings.push('"building" must be a boolean');
+  }
+  if (isObject(raw.boards)) {
+    for (const [id, board] of Object.entries(raw.boards)) {
+      if (isObject(board) && board.interactive !== undefined && typeof board.interactive !== 'boolean') {
+        warnings.push(`board "${id}" field "interactive" must be a boolean`);
+      }
+    }
+  }
   if (warnings.length > 0) return warnings;
 
   (raw.pages as unknown[]).forEach((page, index) => {
@@ -64,7 +74,11 @@ export function structuralWarnings(raw: unknown): string[] {
   return warnings;
 }
 
-export function validateCanvas(raw: unknown, fileExists: (file: string) => boolean): string[] {
+export function validateCanvas(
+  raw: unknown,
+  fileExists: (file: string) => boolean,
+  options: { pending?: Set<string>; allowPending?: boolean } = {},
+): string[] {
   const structural = structuralWarnings(raw);
   if (structural.length > 0) return structural;
 
@@ -78,7 +92,10 @@ export function validateCanvas(raw: unknown, fileExists: (file: string) => boole
   for (const [id, board] of boards) {
     if (!pages.has(board.page)) warnings.push(`board "${id}" uses unknown page "${board.page}"`);
     if (!board.file.startsWith('pages/')) warnings.push(`board "${id}" file must start with "pages/": ${board.file}`);
-    else if (!fileExists(board.file)) warnings.push(`board "${id}" file not found: ${board.file}`);
+    else if (!fileExists(board.file)) {
+      options.pending?.add(id);
+      if (!options.allowPending) warnings.push(`board "${id}" file not found: ${board.file}`);
+    }
   }
 
   for (let i = 0; i < boards.length; i++) {

@@ -3,6 +3,7 @@ import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
 import { Download, Maximize2, Play, RotateCcw } from 'lucide-react';
 import type { BoardSpec, GroupSpec } from '../../shared/types';
+import { boardReady, canPlay } from '../lib/play';
 import { labelRect, type View } from '../lib/view';
 
 const ACTIONS_MIN_WIDTH = 150;
@@ -89,13 +90,27 @@ interface LabelsProps {
   groups: [string, GroupSpec][];
   allBoards: Record<string, BoardSpec>;
   contentBase: string;
+  versions: Record<string, number>;
+  pending: ReadonlySet<string>;
   playing: ReadonlySet<string>;
   onExpand: (id: string) => void;
   onTogglePlay: (id: string) => void;
   onReplay: (id: string) => void;
 }
 
-export function Labels({ view, boards, groups, allBoards, contentBase, playing, onExpand, onTogglePlay, onReplay }: LabelsProps) {
+export function Labels({
+  view,
+  boards,
+  groups,
+  allBoards,
+  contentBase,
+  versions,
+  pending,
+  playing,
+  onExpand,
+  onTogglePlay,
+  onReplay,
+}: LabelsProps) {
   return (
     <div {...stylex.props(styles.layer)}>
       {groups.map(([id, group]) => {
@@ -113,13 +128,15 @@ export function Labels({ view, boards, groups, allBoards, contentBase, playing, 
       {boards.map(([id, board]) => {
         const rect = labelRect(board, view);
         if (!rect) return null;
+        const ready = boardReady(versions, board.file) && !pending.has(id);
+        const interactive = ready && canPlay(board, versions);
         return (
           <div key={id} data-chrome {...stylex.props(styles.boardLabel)} style={rect}>
             <span {...stylex.props(styles.title)}>
               {board.title ?? id}
               <span {...stylex.props(styles.id)}>{id}</span>
             </span>
-            {rect.width >= ACTIONS_MIN_WIDTH && (
+            {ready && rect.width >= ACTIONS_MIN_WIDTH && (
               <>
                 <ActionIcon icon={Maximize2} size={{ blockSize: 22, size: 13 }} title="Expand" aria-label={`Expand ${id}`} onClick={() => onExpand(id)} />
                 <ActionIcon
@@ -131,10 +148,10 @@ export function Labels({ view, boards, groups, allBoards, contentBase, playing, 
                 />
               </>
             )}
-            {rect.width >= PLAY_MIN_WIDTH && playing.has(id) && (
+            {interactive && rect.width >= PLAY_MIN_WIDTH && playing.has(id) && (
               <ActionIcon icon={RotateCcw} size={{ blockSize: 22, size: 13 }} title="Replay" aria-label={`Replay ${id}`} onClick={() => onReplay(id)} />
             )}
-            {rect.width >= PLAY_MIN_WIDTH && (
+            {interactive && rect.width >= PLAY_MIN_WIDTH && (
               <button
                 type="button"
                 aria-pressed={playing.has(id)}

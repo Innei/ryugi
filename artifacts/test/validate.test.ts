@@ -22,6 +22,18 @@ describe('validateCanvas', () => {
     expect(validateCanvas([], exists)).toEqual(['canvas.json must be a JSON object']);
   });
 
+  test('rejects a non-boolean interactive flag and building state', () => {
+    const canvas = base() as unknown as {
+      building: unknown;
+      boards: Record<string, Record<string, unknown>>;
+    };
+    canvas.building = 'yes';
+    canvas.boards.a!.interactive = 'always';
+    const warnings = validateCanvas(canvas, exists);
+    expect(warnings).toContain('"building" must be a boolean');
+    expect(warnings).toContain('board "a" field "interactive" must be a boolean');
+  });
+
   test('reports missing and non-numeric board fields', () => {
     const canvas = base() as unknown as { boards: Record<string, Record<string, unknown>> };
     delete canvas.boards.a!.page;

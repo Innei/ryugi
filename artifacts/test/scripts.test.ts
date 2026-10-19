@@ -3,14 +3,18 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, test } from 'vitest';
-import { get } from './helpers';
+import { get, waitFor } from './helpers';
 
 const scriptsDir = path.resolve(__dirname, '../../skills/artifacts/app');
 const start = path.join(scriptsDir, 'start-server.sh');
 const stop = path.join(scriptsDir, 'stop-server.sh');
 
 const run = (script: string, args: string[]) => {
-  const result = spawnSync('bash', [script, ...args], { encoding: 'utf8', timeout: 15000 });
+  const result = spawnSync('bash', [script, ...args], {
+    encoding: 'utf8',
+    timeout: 15000,
+    env: { ...process.env, ARTIFACTS_OPEN: '0' },
+  });
   return JSON.parse(result.stdout.trim().split('\n').pop()!);
 };
 
@@ -63,7 +67,9 @@ describe('start-server.sh', () => {
     expect(before).toBe(0);
     const runAsync = () =>
       new Promise<{ port: number }>((resolve) => {
-        const child = spawn('bash', [start, '--project-dir', project]);
+        const child = spawn('bash', [start, '--project-dir', project], {
+          env: { ...process.env, ARTIFACTS_OPEN: '0' },
+        });
         let out = '';
         child.stdout.on('data', (chunk) => (out += chunk));
         child.on('close', () => resolve(JSON.parse(out.trim().split('\n').pop()!)));
@@ -88,6 +94,43 @@ describe('start-server.sh', () => {
     expect(new Set(lines).size).toBe(lines.length);
     expect(lines.length).toBe(2);
   });
+
+  test('opens the requested artifact once it is ready, by default', async () => {
+    const project = newProject();
+    const artboard = path.join(project, '.ryugi', 'artifacts', 'artboard', 'header');
+    fs.mkdirSync(path.join(artboard, 'pages', 'p'), { recursive: true });
+    fs.writeFileSync(
+      path.join(artboard, 'canvas.json'),
+      JSON.stringify({
+        version: 1,
+        pages: [{ id: 'p', name: 'P' }],
+        boards: { a: { file: 'pages/p/a.html', page: 'p', x: 0, y: 0, w: 640, h: 400 } },
+      }),
+    );
+    fs.writeFileSync(path.join(artboard, 'pages', 'p', 'a.html'), '<p>ready</p>');
+
+    const bin = fs.mkdtempSync(path.join(os.tmpdir(), 'artifacts-open-bin-'));
+    const log = path.join(bin, 'opened.log');
+    const open = path.join(bin, 'open');
+    fs.writeFileSync(open, `#!/bin/sh\nprintf '%s\\n' "$1" >> ${JSON.stringify(log)}\n`, { mode: 0o755 });
+
+    const env: NodeJS.ProcessEnv = { ...process.env, ARTIFACTS_OPEN_CMD: open };
+    delete env.ARTIFACTS_OPEN;
+    const info = JSON.parse(
+      spawnSync('bash', [start, '--project-dir', project, '--artifact', 'artboard/header'], {
+        encoding: 'utf8',
+        env,
+        timeout: 15000,
+      }).stdout
+        .trim()
+        .split('\n')
+        .pop()!,
+    );
+    expect(info.type).toBe('server-started');
+
+    await waitFor(() => fs.existsSync(log), 5000);
+    expect(fs.readFileSync(log, 'utf8')).toContain('/artboard/header?key=');
+  }, 15000);
 
   test('prints a link for an artifact, on start and on reuse', () => {
     const project = newProject();
@@ -114,7 +157,7 @@ describe('start-server.sh', () => {
       '#!/bin/bash\nfor a in "$@"; do [[ "$a" == "-o" ]] && exit 1; done\nexec /bin/ps "$@"\n',
       { mode: 0o755 },
     );
-    const env = { ...process.env, PATH: `${shim}:${process.env.PATH}` };
+    const env = { ...process.env, PATH: `${shim}:${process.env.PATH}`, ARTIFACTS_OPEN: '0' };
     const runWith = (script: string, args: string[]) =>
       JSON.parse(spawnSync('bash', [script, ...args], { encoding: 'utf8', env }).stdout.trim().split('\n').pop()!);
     const first = runWith(start, ['--project-dir', project]);
@@ -161,7 +204,7 @@ describe('start-server.sh without a local server build', () => {
   }
 
   function runIn(app: string, npmBin: string, cache: string, args: string[]) {
-    const env = { ...process.env, PATH: `${npmBin}:${process.env.PATH}`, XDG_CACHE_HOME: cache };
+    const env = { ...process.env, PATH: `${npmBin}:${process.env.PATH}`, XDG_CACHE_HOME: cache, ARTIFACTS_OPEN: '0' };
     const result = spawnSync('bash', [path.join(app, path.basename(start)), ...args], { encoding: 'utf8', env, timeout: 15000 });
     return JSON.parse(result.stdout.trim().split('\n').pop()!);
   }

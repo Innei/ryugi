@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { startArtifactsServer } from './app';
 import { browserLauncher, isLoopback, liveOwners, parseEnv, processAlive, readOwners, shutdownReason } from './lifecycle';
+import { openReady } from './ready';
 import { writeJsonAtomic } from './state';
 
 async function main() {
@@ -24,8 +25,8 @@ async function main() {
   let browserOpened = false;
   server.onArtifactChange((ref, payload) => {
     if (browserOpened || !config.open || !isLoopback(config.host)) return;
-    if ('canvas' in payload && (!payload.canvas || Object.keys(payload.canvas.boards ?? {}).length === 0)) return;
-    if ('title' in payload && payload.warnings.length > 0) return;
+    if (config.openArtifact && `${ref.type}/${ref.id}` !== config.openArtifact) return;
+    if ('canvas' in payload ? !openReady(payload) : payload.warnings.length > 0) return;
     browserOpened = true;
     if (server.clientCount() > 0) return;
     const link = server.linkFor(ref.type, ref.id);

@@ -393,8 +393,10 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
     return writeState(ref, dir);
   };
 
+  const initialChanges: { ref: ArtifactRef; payload: ArtifactPayload; files: string[] }[] = [];
   for (const entry of listArtifacts(root).artifacts) {
-    refreshState(entry, entry.dir);
+    const payload = refreshState(entry, entry.dir);
+    initialChanges.push({ ref: entry, payload, files: [] });
     if (entry.type === 'document') void documents.open(entry.id);
   }
   writeJsonAtomic(path.join(stateDir, 'server-info'), { type: 'server-started', url, port, root });
@@ -439,7 +441,10 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
     url,
     linkFor,
     clientCount: () => clients.size,
-    onArtifactChange: (listener) => changeListeners.push(listener),
+    onArtifactChange: (listener) => {
+      changeListeners.push(listener);
+      for (const change of initialChanges) listener(change.ref, change.payload, change.files);
+    },
     onActivity: (listener) => activityListeners.push(listener),
     close: () =>
       new Promise<void>((resolve) => {

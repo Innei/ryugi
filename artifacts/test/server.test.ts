@@ -128,6 +128,55 @@ describe('artboard API', () => {
     expect(payload.contentBase).toBe(`/c/${server.contentToken}/artboard/b1/`);
   });
 
+  test('a building artboard reports missing files as pending, not warnings', async () => {
+    const { server, root } = await start();
+    writeArtboard(
+      root,
+      'b1',
+      {
+        ...canvas,
+        building: true,
+        boards: {
+          a: { file: 'pages/p/a.html', page: 'p', x: 0, y: 0, w: 640, h: 400 },
+          b: { file: 'pages/p/b.html', page: 'p', x: 680, y: 0, w: 640, h: 400 },
+        },
+      },
+      { 'pages/p/a.html': '<p>a</p>' },
+    );
+    const payload = await api(server, '/api/artifacts/artboard/b1');
+    expect(payload.warnings).toEqual([]);
+    expect(payload.pending).toEqual(['b']);
+    expect(payload.versions['pages/p/b.html']).toBe(0);
+  });
+
+  test('an empty board file is pending even without building', async () => {
+    const { server, root } = await start();
+    writeArtboard(root, 'b1', canvas, { 'pages/p/a.html': '' });
+    const payload = await api(server, '/api/artifacts/artboard/b1');
+    expect(payload.warnings).toEqual([]);
+    expect(payload.pending).toEqual(['a']);
+    expect(payload.versions['pages/p/a.html']).toBe(0);
+  });
+
+  test('without building, a missing board is both pending and a warning', async () => {
+    const { server, root } = await start();
+    writeArtboard(
+      root,
+      'b1',
+      {
+        ...canvas,
+        boards: {
+          a: { file: 'pages/p/a.html', page: 'p', x: 0, y: 0, w: 640, h: 400 },
+          b: { file: 'pages/p/b.html', page: 'p', x: 680, y: 0, w: 640, h: 400 },
+        },
+      },
+      { 'pages/p/a.html': '<p>a</p>' },
+    );
+    const payload = await api(server, '/api/artifacts/artboard/b1');
+    expect(payload.pending).toEqual(['b']);
+    expect(payload.warnings).toContain('board "b" file not found: pages/p/b.html');
+  });
+
   test('reports each board file modification time for cache-busting', async () => {
     const { server, root } = await start();
     const dir = writeArtboard(root, 'b1', canvas, { 'pages/p/a.html': '<p>a</p>' });
@@ -311,6 +360,7 @@ describe('state files', () => {
     await start(temp);
     const artboard = readJson(stateFile(temp.root, 'artboard', 'b1', 'warnings.json'));
     expect(artboard.warnings).toEqual([]);
+    expect(artboard.pending).toEqual([]);
     expect(typeof artboard.checkedAt).toBe('string');
     expect(readJson(stateFile(temp.root, 'artboard', 'b1', 'layout.json')).pages.p.bounds.maxX).toBe(640);
     expect(readJson(stateFile(temp.root, 'html', 'tuner', 'warnings.json')).warnings).toEqual(['index.html not found']);

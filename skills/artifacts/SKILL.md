@@ -51,8 +51,11 @@ bash app/start-server.sh --project-dir /path/to/project --artifact html/arrow-tu
   and otherwise starts it on the same port and key, so open tabs reconnect.
 - Every run registers your session. The server stops when every session
   that used it has exited, or after 4 hours idle.
-- `--open` opens their browser when the first artifact appears. Still share
-  the link; headless and remote setups can't auto-open.
+- The browser opens when the first artifact is ready enough: for an artboard,
+  once its focus group is complete (or two boards when there are no groups),
+  even while later boards are still drawing. Pass `--no-open` only for
+  headless or scripted use. Still share the link; remote setups can't
+  auto-open. Read `artboard.md` for the streaming write order.
 - Stop it with `bash app/stop-server.sh /path/to/project`. The artifacts stay.
 
 **Launching by harness.** The server must survive across turns.
@@ -78,7 +81,7 @@ browser, bind a non-loopback host and name the host they reach it by:
   document/<id>/       doc.xml + comments.json + assets/  (you and the server write)
   html/<id>/           index.html + its files        (you write)
   .state/              the server writes; never edit
-    <type>/<id>/warnings.json   read after every change
+    <type>/<id>/warnings.json   warnings + pending, read after every change
     artboard/<id>/layout.json   computed geometry
 ```
 

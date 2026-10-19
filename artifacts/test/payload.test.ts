@@ -7,6 +7,7 @@ const good: ViewerPayload = {
   canvas,
   layout: { pages: { p: { groups: {}, notes: {}, bounds: null } } },
   warnings: [],
+  pending: [],
   versions: { 'pages/p/a.html': 1 },
   contentBase: '/b/one/',
   stale: false,
@@ -19,13 +20,19 @@ describe('mergePayload', () => {
   });
 
   test('a withheld canvas keeps the last good canvas, takes the new warnings and marks it stale', () => {
-    const broken = { canvas: null, layout: null, warnings: ['bad'], versions: {}, contentBase: '/b/two/', stale: false };
-    expect(mergePayload(good, broken)).toEqual({ ...good, warnings: ['bad'], contentBase: '/b/two/', stale: true });
+    const broken = { canvas: null, layout: null, warnings: ['bad'], pending: ['b'], versions: {}, contentBase: '/b/two/', stale: false };
+    expect(mergePayload(good, broken)).toEqual({
+      ...good,
+      warnings: ['bad'],
+      pending: ['b'],
+      contentBase: '/b/two/',
+      stale: true,
+    });
   });
 
   test('with no previous canvas a withheld canvas stays empty', () => {
     const empty = { ...good, canvas: null, layout: null };
-    const broken = { canvas: null, layout: null, warnings: ['bad'], versions: {}, contentBase: '/b/two/', stale: false };
+    const broken = { canvas: null, layout: null, warnings: ['bad'], pending: ['b'], versions: {}, contentBase: '/b/two/', stale: false };
     expect(mergePayload(empty, broken).canvas).toBeNull();
   });
 });

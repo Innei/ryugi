@@ -17,7 +17,7 @@ Start the server and get the link as `SKILL.md` describes, with
   pages/<page-id>/<board>.html ← you write: one self-contained page per board
 
 <project>/.ryugi/artifacts/.state/artboard/<id>/   ← the server writes; never edit it
-  warnings.json                layout problems — read after every change
+  warnings.json                warnings + pending boards — read after every change
   layout.json                  computed geometry — read before placing new content
 ```
 
@@ -27,6 +27,7 @@ Start the server and get the link as `SKILL.md` describes, with
 {
   "version": 1,
   "title": "settings-page",
+  "building": true,
   "activePage": "settings",
   "focus": { "target": "q1", "at": "2026-10-19T08:40:00Z" },
   "pages": [
@@ -36,7 +37,8 @@ Start the server and get the link as `SKILL.md` describes, with
     "q1-a": { "file": "pages/settings/q1-a.html", "page": "settings",
               "x": 0, "y": 0, "w": 1280, "h": 800, "title": "Sidebar nav" },
     "q1-b": { "file": "pages/settings/q1-b.html", "page": "settings",
-              "x": 1360, "y": 0, "w": 1280, "h": 800, "title": "Top tabs" }
+              "x": 1360, "y": 0, "w": 1280, "h": 800, "title": "Top tabs",
+              "interactive": true }
   },
   "groups": {
     "q1": { "title": "Navigation layout", "boards": ["q1-a", "q1-b"] }
@@ -52,8 +54,16 @@ Start the server and get the link as `SKILL.md` describes, with
 - `pages`: separate canvases, each with its own coordinate space.
 - `boards`: keyed by a short, stable id your human partner can say out loud
   (`q1-a`, `hero-2`). Required: `file`, `page`, `x`, `y`, `w`, `h`. Optional:
-  `title`. Coordinates are canvas pixels; `x`/`y` is the board's top-left. The
-  viewer shows the title and id just above each board.
+  `title`, `interactive`. Coordinates are canvas pixels; `x`/`y` is the
+  board's top-left. The viewer shows the title and id just above each board.
+- `interactive: true` is the only way a board becomes playable. Static boards
+  (the default) never show PLAY and their iframe stays read-only, including
+  when expanded. Use it for prototypes the human partner should click through,
+  not for design mockups.
+- `building: true` marks a new artboard whose boards are still being written.
+  While it is true, a missing board file is `pending`, not a warning: the
+  viewer draws a skeleton and fills it when the file appears. Set it to `false`
+  once every board exists; then a missing board becomes a warning.
 - `groups`: a question with options. List member board ids only; all members
   on one page. The viewer labels the group with its id and title above the
   boards.
@@ -108,7 +118,30 @@ iframe at exactly `w`×`h` pixels, with no scrollbars.
 - Realistic content, never lorem ipsum.
 - Variants in one group differ in the one thing the question asks about and
   stay the same elsewhere, so the comparison is clean.
+- Static by default. Add `"interactive": true` only when the board is a real
+  prototype; otherwise no PLAY button appears.
 - Use your file-writing tool, not cat or heredocs.
+
+## Streaming a new artboard
+
+Write a new artboard in this order:
+
+1. Write `canvas.json` first with every board, group and note, plus
+   `"building": true`, and set `focus` to the first group (or board) you will finish.
+   Nothing else exists yet; this is the skeleton.
+2. Write the boards in the focus group first, one file at a time. The browser
+   opens once that group is complete: all its boards are ready and the canvas
+   has no warnings. Without groups it opens after two boards, or one when the
+   page has a single board.
+3. Write the remaining boards. Each one replaces its skeleton as the file
+   appears; the WebSocket keeps the open viewer in sync.
+4. Write `canvas.json` again with `"building": false`. Any board still missing
+   is now a warning. Read `warnings.json`: `pending` must be empty and
+   `warnings` must be empty before you tell your human partner it is ready.
+
+A board file is ready only when it exists and is not empty. Pending boards show
+`Drawing…` and have no actions. The browser opens once, on the first start,
+so later rounds stream into the already-open tab.
 
 ## Rounds and pages
 
@@ -123,17 +156,18 @@ iframe at exactly `w`×`h` pixels, with no scrollbars.
 
 ## After every change
 
-1. Write the board HTML files first, then `canvas.json` in a single write
-   (each write triggers a check; a half-edited file can show warnings that
-   aren't real).
-2. Read `checkedAt` in the artboard's `.state/` `warnings.json` before you write, then wait
-   until it changes after your last write (about 150ms) before trusting the
-   warnings. It lists invalid JSON,
-   missing fields, unknown pages, missing files, overlapping boards, groups
-   and titles, stickies covering boards, and unknown `focus` targets. Fix
-   every warning before telling your human partner the board is ready.
-3. Tell them what changed and where (ids), give them the link, and ask
-   for their answer in the terminal.
+1. For a new artboard, write `canvas.json` first with `"building": true`, then
+   the boards in focus-group order. For an edit, write the board files first,
+   then `canvas.json` in one write so focus and metadata land together.
+2. Read `checkedAt` in `.state/artboard/<id>/warnings.json` before you write,
+   then wait until it changes after your last write (about 150ms) before
+   trusting it. `warnings` lists invalid JSON, missing fields, unknown pages,
+   missing files, overlapping boards, groups and titles, stickies covering
+   boards, and unknown `focus` targets. `pending` lists boards still being
+   drawn while `building` is true.
+3. Before telling your human partner the board is ready, set
+   `"building": false` and confirm both `warnings` and `pending` are empty.
+   Then give the link and ask for their answer in the terminal.
 
 When the conversation moves on to something that doesn't need the canvas,
 leave the board as it is; it's the record of what was explored.

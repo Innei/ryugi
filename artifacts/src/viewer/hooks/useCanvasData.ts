@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { mergePayload, type ViewerPayload } from '../lib/payload';
 import { useArtifactSocket } from './useArtifactSocket';
 
-const EMPTY: ViewerPayload = { canvas: null, warnings: [], layout: null, versions: {}, contentBase: '', stale: false };
+const EMPTY: ViewerPayload = { canvas: null, warnings: [], pending: [], layout: null, versions: {}, contentBase: '', stale: false };
 
 export function useCanvasData(id: string) {
   const [data, setData] = useState<ViewerPayload>(EMPTY);

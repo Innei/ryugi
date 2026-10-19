@@ -7,7 +7,13 @@ export interface ViewerPayload extends CanvasPayload {
 
 export function mergePayload(prev: ViewerPayload, next: Omit<ViewerPayload, 'stale'> & { stale?: boolean }): ViewerPayload {
   if (next.canvas === null && prev.canvas !== null) {
-    return { ...prev, warnings: next.warnings, contentBase: next.contentBase || prev.contentBase, stale: true };
+    return {
+      ...prev,
+      warnings: next.warnings,
+      pending: next.pending ?? prev.pending,
+      contentBase: next.contentBase || prev.contentBase,
+      stale: true,
+    };
   }
-  return { ...next, stale: false };
+  return { ...next, pending: next.pending ?? prev.pending ?? [], stale: false };
 }

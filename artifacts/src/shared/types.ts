@@ -24,6 +24,7 @@ export interface BoardSpec extends Rect {
   file: string;
   page: string;
   title?: string;
+  interactive?: boolean;
 }
 
 export interface GroupSpec {
@@ -51,6 +52,7 @@ export interface CanvasSpec {
   title?: string;
   activePage?: string;
   focus?: FocusSpec;
+  building?: boolean;
   pages: PageSpec[];
   boards: Record<string, BoardSpec>;
   groups?: Record<string, GroupSpec>;
@@ -70,6 +72,7 @@ export interface CanvasLayout {
 export interface CanvasPayload {
   canvas: CanvasSpec | null;
   warnings: string[];
+  pending: string[];
   layout: CanvasLayout | null;
   versions: Record<string, number>;
 }

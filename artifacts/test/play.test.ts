@@ -1,26 +1,22 @@
 import { describe, expect, test } from 'vitest';
-import { boardSrc, togglePlaying } from '../src/viewer/lib/play';
+import type { BoardSpec } from '../src/shared/types';
+import { boardReady, canPlay } from '../src/viewer/lib/play';
 
-describe('togglePlaying', () => {
-  test('plays the board, and a second press stops it', () => {
-    const on = togglePlaying(new Set(), 'q1-a');
-    expect([...on]).toEqual(['q1-a']);
-    expect([...togglePlaying(on, 'q1-a')]).toEqual([]);
-  });
+const board: BoardSpec = { file: 'pages/p/a.html', page: 'p', x: 0, y: 0, w: 640, h: 400 };
 
-  test('boards play independently', () => {
-    const both = togglePlaying(togglePlaying(new Set(), 'q1-a'), 'q1-b');
-    expect([...both].sort()).toEqual(['q1-a', 'q1-b']);
-    expect([...togglePlaying(both, 'q1-a')]).toEqual(['q1-b']);
+describe('boardReady', () => {
+  test('is true only when the board file has a version', () => {
+    expect(boardReady({ 'pages/p/a.html': 12 }, board.file)).toBe(true);
+    expect(boardReady({}, board.file)).toBe(false);
+    expect(boardReady({ 'pages/p/a.html': 0 }, board.file)).toBe(false);
   });
 });
 
-describe('boardSrc', () => {
-  test('carries the file version so edits reload the board', () => {
-    expect(boardSrc('/c/k/artboard/x/', 'pages/p/a.html', 3, 0)).toBe('/c/k/artboard/x/pages/p/a.html?v=3');
-  });
-
-  test('a replay changes the url so the board starts over', () => {
-    expect(boardSrc('/c/k/artboard/x/', 'pages/p/a.html', 3, 2)).toBe('/c/k/artboard/x/pages/p/a.html?v=3&r=2');
+describe('canPlay', () => {
+  test('requires an explicit interactive board and a ready file', () => {
+    expect(canPlay({ ...board, interactive: true }, { 'pages/p/a.html': 1 })).toBe(true);
+    expect(canPlay(board, { 'pages/p/a.html': 1 })).toBe(false);
+    expect(canPlay({ ...board, interactive: false }, { 'pages/p/a.html': 1 })).toBe(false);
+    expect(canPlay({ ...board, interactive: true }, {})).toBe(false);
   });
 });

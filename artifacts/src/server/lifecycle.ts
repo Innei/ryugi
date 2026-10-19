@@ -8,6 +8,7 @@ export interface ServerConfig {
   lifecycleCheckMs: number;
   open: boolean;
   openCmd: string | null;
+  openArtifact: string | null;
   serverId: string | null;
 }
 
@@ -34,8 +35,9 @@ export function parseEnv(env: Record<string, string | undefined>, argv: string[]
     urlHost,
     idleTimeoutMs: positive(env.ARTIFACTS_IDLE_TIMEOUT_MS, DEFAULT_IDLE_TIMEOUT_MS),
     lifecycleCheckMs: positive(env.ARTIFACTS_LIFECYCLE_CHECK_MS, DEFAULT_LIFECYCLE_CHECK_MS),
-    open: env.ARTIFACTS_OPEN === '1',
+    open: env.ARTIFACTS_OPEN !== '0',
     openCmd: env.ARTIFACTS_OPEN_CMD || null,
+    openArtifact: env.ARTIFACTS_OPEN_ARTIFACT || null,
     serverId: serverIdArg ? serverIdArg.slice(SERVER_ID_ARG.length) : null,
   };
 }

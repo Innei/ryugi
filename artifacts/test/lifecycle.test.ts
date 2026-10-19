@@ -58,7 +58,8 @@ describe('parseEnv', () => {
       host: '127.0.0.1',
       urlHost: 'localhost',
       idleTimeoutMs: 4 * 60 * 60 * 1000,
-      open: false,
+      open: true,
+      openArtifact: null,
     });
   });
 
@@ -71,10 +72,19 @@ describe('parseEnv', () => {
 
   test('parses idle timeout, open flag and the server id argument', () => {
     const config = parseEnv(
-      { ARTIFACTS_ROOT: '/r', ARTIFACTS_IDLE_TIMEOUT_MS: '5000', ARTIFACTS_OPEN: '1' },
+      {
+        ARTIFACTS_ROOT: '/r',
+        ARTIFACTS_IDLE_TIMEOUT_MS: '5000',
+        ARTIFACTS_OPEN: '1',
+        ARTIFACTS_OPEN_ARTIFACT: 'artboard/header',
+      },
       ['--artifacts-server-id=abc'],
     );
-    expect(config).toMatchObject({ idleTimeoutMs: 5000, open: true, serverId: 'abc' });
+    expect(config).toMatchObject({ idleTimeoutMs: 5000, open: true, openArtifact: 'artboard/header', serverId: 'abc' });
+  });
+
+  test('turns opening off when ARTIFACTS_OPEN is 0', () => {
+    expect(parseEnv({ ARTIFACTS_ROOT: '/r', ARTIFACTS_OPEN: '0' }).open).toBe(false);
   });
 
   test('requires an artifacts root', () => {

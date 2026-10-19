@@ -1,6 +1,6 @@
 import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Canvas } from '../components/Canvas';
 import { CanvasErrorBoundary } from '../components/CanvasErrorBoundary';
 import { ExpandedBoard } from '../components/ExpandedBoard';
@@ -38,13 +38,14 @@ const styles = stylex.create({
 });
 
 export function ArtboardLayout({ id }: { id: string }) {
-  const { canvas, layout, warnings, contentBase, versions, live, loaded } = useCanvasData(id);
+  const { canvas, layout, warnings, pending, contentBase, versions, live, loaded } = useCanvasData(id);
   const [tool, setTool] = useState<Tool>('select');
   const { viewportRef, view, fit, zoomBy, zoomTo, cursor, handlers } = usePanZoom(tool);
   const [page, setPage] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [playing, setPlaying] = useState<ReadonlySet<string>>(() => new Set());
   const [replays, setReplays] = useState<Record<string, number>>({});
+  const pendingBoards = useMemo(() => new Set(pending), [pending]);
   const seenActivePage = useRef<string | undefined>(undefined);
   const seenFocusAt = useRef<string | undefined>(undefined);
   const pendingFit = useRef<string | null>(null);
@@ -133,6 +134,9 @@ export function ArtboardLayout({ id }: { id: string }) {
   );
   const notes = Object.entries(canvas?.notes ?? {}).filter(([, n]) => n.page === page);
   const expandedBoard = expanded ? allBoards[expanded] : undefined;
+  const expandedReady = expandedBoard
+    ? (versions[expandedBoard.file] ?? 0) > 0 && !pendingBoards.has(expanded!)
+    : false;
 
   const changePage = (id: string) => {
     setPage(id);
@@ -143,13 +147,24 @@ export function ArtboardLayout({ id }: { id: string }) {
     <div ref={viewportRef} {...stylex.props(styles.viewport)} style={{ cursor }} {...handlers}>
       {canvas && layout && (
         <CanvasErrorBoundary resetKey={canvas}>
-          <Canvas view={view} boards={boards} notes={notes} contentBase={contentBase} versions={versions} playing={playing} replays={replays} />
+          <Canvas
+            view={view}
+            boards={boards}
+            notes={notes}
+            contentBase={contentBase}
+            versions={versions}
+            pending={pendingBoards}
+            playing={playing}
+            replays={replays}
+          />
           <Labels
             view={view}
             boards={boards}
             groups={groups}
             allBoards={allBoards}
             contentBase={contentBase}
+            versions={versions}
+            pending={pendingBoards}
             playing={playing}
             onExpand={setExpanded}
             onTogglePlay={(id) => setPlaying((current) => togglePlaying(current, id))}
@@ -172,11 +187,12 @@ export function ArtboardLayout({ id }: { id: string }) {
         onFit={() => fit(pageBounds(page))}
         onActualSize={() => zoomTo(1)}
       />
-      {expanded && expandedBoard && (
+      {expanded && expandedBoard && expandedReady && (
         <ExpandedBoard
           id={expanded}
           board={expandedBoard}
           src={`${contentBase}${expandedBoard.file}?v=${versions[expandedBoard.file] ?? 0}`}
+          interactive={expandedBoard.interactive === true}
           onClose={() => setExpanded(null)}
         />
       )}

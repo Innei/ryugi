@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Start the artifacts server for a project and print its connection info as JSON.
 # Usage: start-server.sh [--project-dir <path>] [--artifact <type>/<id>] [--host <bind-host>]
-#                        [--url-host <display-host>] [--idle-timeout-minutes <n>] [--open]
+#                        [--url-host <display-host>] [--idle-timeout-minutes <n>] [--open] [--no-open]
 #                        [--foreground] [--background]
 #
 #   --project-dir <path>  Project root (default: current directory). Artifacts live in
@@ -11,7 +11,8 @@
 #                         containerized environments.
 #   --url-host <host>     Hostname shown in the returned URL.
 #   --idle-timeout-minutes <n>  Stop after n minutes without activity (default 240).
-#   --open                Open the browser when the first board appears.
+#   --open                Open the browser when the first artifact is ready (default).
+#   --no-open             Do not open a browser (for headless or scripted use).
 #   --foreground          Run in the current terminal instead of backgrounding.
 #   --background          Force background mode (overrides the Codex/Windows auto-foreground).
 #
@@ -26,6 +27,7 @@ FORCE_BACKGROUND="false"
 BIND_HOST="127.0.0.1"
 URL_HOST=""
 ARTIFACT=""
+OPEN="${ARTIFACTS_OPEN:-1}"
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --project-dir) PROJECT_DIR="$2"; shift 2 ;;
@@ -47,7 +49,8 @@ while [[ $# -gt 0 ]]; do
       export ARTIFACTS_IDLE_TIMEOUT_MS=$(( $2 * 60 * 1000 ))
       shift 2
       ;;
-    --open) export ARTIFACTS_OPEN=1; shift ;;
+    --open) OPEN=1; shift ;;
+    --no-open) OPEN=0; shift ;;
     --foreground|--no-daemon) FOREGROUND="true"; shift ;;
     --background|--daemon) FORCE_BACKGROUND="true"; shift ;;
     *) echo "{\"error\": \"Unknown argument: $1\"}"; exit 1 ;;
@@ -231,7 +234,8 @@ if ! [[ "$SERVER_ID" =~ ^[A-Za-z0-9_-]{32,64}$ ]]; then
 fi
 printf '%s\n' "$SERVER_ID" > "$SERVER_ID_FILE"
 
-SERVER_ENV=(ARTIFACTS_ROOT="$ROOT_DIR" ARTIFACTS_HOST="$BIND_HOST" ARTIFACTS_URL_HOST="$URL_HOST")
+SERVER_ENV=(ARTIFACTS_ROOT="$ROOT_DIR" ARTIFACTS_HOST="$BIND_HOST" ARTIFACTS_URL_HOST="$URL_HOST" ARTIFACTS_OPEN="$OPEN")
+[[ -n "$ARTIFACT" ]] && SERVER_ENV+=(ARTIFACTS_OPEN_ARTIFACT="$ARTIFACT")
 
 if [[ "$FOREGROUND" == "true" ]]; then
   env "${SERVER_ENV[@]}" node "$SERVER" "--artifacts-server-id=$SERVER_ID" &
