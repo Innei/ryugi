@@ -9,7 +9,7 @@ Ryugi has two distinct kinds of tests, each in its own directory:
 
 Live in `tests/`. Currently:
 
-- `artboard/test/` — vitest suite for the Artboard server, scripts and viewer logic (`cd artboard && pnpm test`).
+- `artifacts/test/` — vitest suite for the artifacts server, scripts and viewer logic (`cd artifacts && pnpm test`).
 - `tests/opencode/` — bash tests for OpenCode plugin loading, bootstrap caching, and tool registration.
 - `tests/codex-plugin-sync/` — bash sync verification.
 - `tests/kimi/` — bash/Python checks for Kimi plugin manifest wiring.

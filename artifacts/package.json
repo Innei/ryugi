@@ -1,10 +1,10 @@
 {
-  "name": "ryugi-artboard",
+  "name": "ryugi-artifacts",
   "private": true,
   "type": "module",
   "scripts": {
     "build": "pnpm run build:server && pnpm run build:viewer",
-    "build:server": "esbuild src/server/main.ts --bundle --platform=node --target=node18 --format=cjs --outfile=../skills/brainstorming/artboard/server.cjs",
+    "build:server": "esbuild src/server/main.ts --bundle --platform=node --target=node18 --format=cjs --outfile=../skills/artifacts/app/server.cjs",
     "build:viewer": "vite build",
     "dev": "vite",
     "test": "vitest run",

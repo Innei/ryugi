@@ -241,5 +241,5 @@ Mockups, layouts, diagrams, and side-by-side designs go on the Artboard.
 Requirements, scope, tradeoffs, and conceptual choices stay in text. A
 question about a UI topic isn't automatically a visual question.
 
-If they accept, read `artboard.md` in this directory before starting the
+If they accept, read `../artifacts/artboard.md` before starting the
 server.

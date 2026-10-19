@@ -15,7 +15,7 @@ export default defineConfig({
     react(),
   ],
   build: {
-    outDir: fileURLToPath(new URL('../skills/brainstorming/artboard/viewer', import.meta.url)),
+    outDir: fileURLToPath(new URL('../skills/artifacts/app/viewer', import.meta.url)),
     emptyOutDir: true,
   },
 });

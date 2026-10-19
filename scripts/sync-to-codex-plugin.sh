@@ -74,7 +74,7 @@ EXCLUDES=(
   "/package.json"
 
   # Directories not shipped by canonical Codex plugins
-  "/artboard/"
+  "/artifacts/"
   "/commands/"
   "/docs/"
   "/evals/"

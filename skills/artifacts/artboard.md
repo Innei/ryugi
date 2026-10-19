@@ -13,7 +13,7 @@ paths below are relative to this skill's directory (the one holding this
 file); use the absolute path if you run from elsewhere.
 
 ```bash
-bash artboard/start-server.sh --project-dir /path/to/project --open
+bash app/start-server.sh --project-dir /path/to/project --open
 # {"type":"server-started","url":"http://localhost:52341/?key=…","port":52341,"dir":"/path/to/project/.ryugi/artboard"}
 ```
 
@@ -31,7 +31,7 @@ bash artboard/start-server.sh --project-dir /path/to/project --open
   prints `"reused": true` when the server is still up, and otherwise starts
   it again on the same port and key, so an open tab reconnects. (The server
   exits after 4 hours idle, or when your session ends.)
-- Stop it with `bash artboard/stop-server.sh /path/to/project`. The board
+- Stop it with `bash app/stop-server.sh /path/to/project`. The board
   files stay.
 
 **Launching by harness.** The server must survive across turns.
@@ -48,7 +48,7 @@ bash artboard/start-server.sh --project-dir /path/to/project --open
 browser, bind a non-loopback host and name the host they reach it by:
 
 ```bash
-bash artboard/start-server.sh --project-dir /path/to/project --host 0.0.0.0 --url-host localhost
+bash app/start-server.sh --project-dir /path/to/project --host 0.0.0.0 --url-host localhost
 ```
 
 ## Directory

@@ -13,7 +13,7 @@ Skill files shape agent behavior; treat edits to them like code changes.
 
 ## Zero Dependencies
 
-The plugin ships without runtime dependencies. The Artboard is built from `artboard/` (React, Vite) into a prebuilt bundle under `skills/brainstorming/artboard/`; the bundle needs only Node built-ins at runtime. Rebuild it with `cd artboard && pnpm build` after changing its source.
+The plugin ships without runtime dependencies. The artifacts app (Artboard and HTML artifacts) is built from `artifacts/` (React, Vite) into a prebuilt bundle under `skills/artifacts/app/`; the bundle needs only Node built-ins at runtime. Rebuild it with `cd artifacts && pnpm build` after changing its source.
 
 ## Harness Integrations
 
@@ -26,7 +26,7 @@ A working integration auto-triggers `brainstorming` before any code is written. 
 ## Tests
 
 - Plugin-infrastructure tests live in `tests/`; run the relevant `run-*.sh` or test script for what you changed.
-- Artboard tests: `cd artboard && pnpm test`.
+- Artifacts app tests: `cd artifacts && pnpm test`.
 - `docs/testing.md` lists what each suite covers.
 
 ## Pull Requests

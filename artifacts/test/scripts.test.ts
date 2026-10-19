@@ -5,7 +5,7 @@ import path from 'node:path';
 import { afterEach, beforeAll, describe, expect, test } from 'vitest';
 import { get } from './helpers';
 
-const scriptsDir = path.resolve(__dirname, '../../skills/brainstorming/artboard');
+const scriptsDir = path.resolve(__dirname, '../../skills/artifacts/app');
 const start = path.join(scriptsDir, 'start-server.sh');
 const stop = path.join(scriptsDir, 'stop-server.sh');
 
