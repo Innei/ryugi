@@ -1,6 +1,7 @@
 # Artboard
 
-An artboard is a live canvas of mockups. You put design explorations on it by
+An artboard is the space of a business requirement: boards are options,
+groups are questions, pages are areas. You put design explorations on it by
 writing files into the artboard's directory; the canvas updates the moment a
 file changes. Your human partner cannot move boards or pick options in the
 browser: they look, then tell you in the terminal what they want
@@ -116,7 +117,6 @@ iframe at exactly `w`×`h` pixels, with no scrollbars.
 - Content taller than `h` is clipped and nothing warns you: size `h` to the
   content. A board showing a long scrolling page may clip on purpose; say so
   in its `title`.
-- Realistic content, never lorem ipsum.
 - When a group asks a question, its variants differ in the one thing the
   question asks about and stay the same elsewhere, so the comparison is clean.
 - Static by default. Add `"interactive": true` only when the board is a real

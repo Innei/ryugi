@@ -4,6 +4,10 @@ A living doc at `.ryugi/artifacts/document/<id>/`. You write it; your human
 partner reads it in their browser, comments on passages, and can fix text in
 place. Their edits and yours merge live.
 
+This is where architecture and engineering decisions are argued — design
+docs, reviews, proposals and flow walkthroughs — with diagrams, code and
+tables.
+
 | File | Written by | Holds |
 |------|------------|-------|
 | `doc.xml` | you and the server | the document, in LiteXML |

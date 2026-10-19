@@ -39,7 +39,8 @@ there is no layout wrapper to learn.
   It bubbles. `value` is a string, number, boolean, or `null`; `checked` is
   present for checkboxes and switches.
 - `value` / `checked` attributes set the initial state. Read the current state
-  from the element's `value` / `checked` property.
+  from the element's `value` / `checked` property after `ryugi-ui:ready`, and
+  listen for `ryugi-change` for later updates.
 - `class` styles the host; `style` is forwarded to the component as well, so
   `style="width:100%"` works. Style the host, not the component's internal
   classes.
@@ -52,8 +53,11 @@ there is no layout wrapper to learn.
   padding on both the host and the card: pick one. For a floating panel,
   either position the host and let the card paint its own surface, or make the
   host the surface and use `variant="borderless"` without `glass`/`shadow`.
-- The theme follows `prefers-color-scheme`. Lobe tokens such as
-  `--lobe-color-primary` can be overridden on the host or page.
+- Components follow `prefers-color-scheme`. The runtime writes `data-theme` on
+  `<html>` at startup and again when the OS theme changes, so a value set
+  before `ryugi-ui:ready` is overwritten; set it afterwards to pin a page.
+  Lobe tokens such as `--lobe-color-primary` can be overridden on the host or
+  page.
 
 ## Controls
 

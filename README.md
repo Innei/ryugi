@@ -32,7 +32,7 @@ It starts from the moment you fire up your coding agent. As soon as it sees that
 
 Once it's teased a spec out of the conversation, it shows it to you in chunks short enough to actually read and digest. 
 
-When it helps to see things, it opens an artifact in your browser: an artboard with mockup variants side by side so you can point at the one you want, or a single HTML page — a test bench with sliders, a review, a proposal — that updates live as the agent rewrites it. HTML artifacts can use a bundled Web Component kit (Lobe UI buttons, inputs, sliders, switches, cards and more), so a test bench looks like the product and keeps its settings across rewrites. Everything runs locally; no subscription.
+When it helps to see things, it opens an artifact in your browser: a document for architecture, reviews and proposals; an artboard for a business space with several dimensions to choose between; or a single HTML page — a test bench with sliders or a focused design study — that updates live as the agent rewrites it. HTML artifacts can use a bundled Web Component kit (Lobe UI buttons, inputs, sliders, switches, cards and more), so a test bench looks like the product and keeps its settings across rewrites. Everything runs locally; no subscription.
 
 After you've signed off on the design, it asks one question: build it inline from the spec, or just code it. Inline, your agent slices the spec into tasks itself, proves each one with true red/green TDD, keeps a ledger of every judgment call it made on your behalf, and gets one fresh review of the whole branch at the end. It's not uncommon for your agent to work autonomously for a couple hours at a time without stopping to ask "should I continue?".
 

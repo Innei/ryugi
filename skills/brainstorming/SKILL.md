@@ -89,7 +89,7 @@ several ideas and drop the weak ones, including any that fight what
 they've told you about why. Show the comparison only when it helps them
 decide.
 
-**Show, don't tell.** Offer the Artboard (below) whenever seeing
+**Show, don't tell.** Offer an artifact (below) whenever seeing
 would help more than reading:
 
 - something they'll look at: a screen, a page, a printout, a sign
@@ -122,7 +122,7 @@ as theirs. End each chunk by asking what's wrong or missing.
 
 Before you send a chunk, check it: does it describe something they'll
 look at, like a page, a screen, a schedule, or a printout? If so, and
-they haven't seen the Artboard offer yet, send the offer instead
+they haven't seen the artifact offer yet, send the offer instead
 (its own message, below) and hold the chunk for the next message. Once
 they've accepted, put a mockup next to the description.
 
@@ -225,18 +225,18 @@ asking.
 | "They said 'sounds good' to the idea" | Approval covers what you showed them. A description you haven't written isn't approved. |
 | "The spike works, I'll keep building on it" | Keeping it is a new request. Back through the gate. |
 
-## Artboard
+## Showing it
 
-A live canvas in a browser tab: mockup variants side by side, grouped
-into sections, across pages. Your human partner looks at it and answers
-in the terminal. It's a tool, not a mode: accepting it doesn't send every
-question to the browser.
+An artifact in a browser tab: an artboard of mockup variants side by side,
+one HTML page to tune, or a document to read. Your human partner looks at it
+and answers in the terminal. It's a tool, not a mode: accepting it doesn't
+send every question to the browser.
 
 **Offer it just-in-time.** Offer it the first time one of the moments
 above comes up, never upfront. The offer is its own message with nothing
 else in it:
 
-> "This might be easier if I show you. Want me to open the Artboard with some mockups?"
+> "This might be easier if I show you. Want me to open an artifact with some mockups?"
 
 If they decline, stay in text and don't offer again unless they raise it.
 
@@ -245,9 +245,11 @@ one, check whether the project has its own design skill or design system
 (tokens, components, type). If it does, load it first and draw with it.
 
 **Per question, ask: would they understand this better by seeing it?**
-Mockups, layouts, diagrams, and side-by-side designs go on the Artboard.
+Mockups and layouts go to ryugi:artifacts: one surface on an HTML page,
+several dimensions on the Artboard; diagrams belong in the document.
 Requirements, scope, tradeoffs, and conceptual choices stay in text. A
 question about a UI topic isn't automatically a visual question.
 
-If they accept, use ryugi:artifacts. Its type table says when a `document`
-or an `html` page fits better than the `artboard`.
+If they accept, use ryugi:artifacts. Its decision table picks the type: one
+surface (`html`), several dimensions (`artboard`), or an engineering argument
+(`document`).

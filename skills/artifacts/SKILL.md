@@ -1,6 +1,6 @@
 ---
 name: artifacts
-description: Use when your human partner asks to see something as an artifact, a document, an HTML page, or an artboard ("show me in an artifact", "artifact docs", "artifact html", "discuss in artboard"), or when an architecture discussion, a review, a report, a proposal, a tuner with sliders, or side-by-side mockups would be clearer in the browser than in the terminal — inside brainstorming or anywhere else
+description: Use when seeing decides faster than reading — UI directions or mockups to choose between, a page to tune or click through, a review, proposal, or architecture walkthrough — or when they ask for an artifact or artboard by name. Inside brainstorming or anywhere else
 ---
 
 # Artifacts
@@ -17,25 +17,38 @@ isn't supported yet.
 
 ## Pick the type
 
-| The discussion | Type | Read before writing |
+| What is being decided | Type | Read before writing |
 |----------------|------|---------------------|
-| Architecture; a review, report, proposal or flow walkthrough | `document` | `document.md` |
-| Creative work: options side by side, screens across pages | `artboard` | `artboard.md` |
-| Tuning: a test bench with controls, a page that runs code | `html` | `html.md`, `ui.md` for components |
-| A simple task | none: discuss in text | |
+| Architecture, engineering design, a review, proposal or flow walkthrough | `document` | `document.md` |
+| One surface or one dimension — a component, type scale, background, motion | `html` | `html.md`, `ui.md` for components |
+| A business space — several screens, dimensions, states or questions at once | `artboard` | `artboard.md` |
+| Nothing to see | text | |
 
-## Gate: read the contract before writing
+A control does not make it an artboard: one surface, however tunable, is
+`html`. The artboard is for several dimensions at once; one group is one
+dimension. "HTML" or "page" names the medium, not the type.
 
-The "Read before writing" column is a gate, not a hint. Every time you
-create an artifact or change its type, open that type's doc in this skill
-first (`document.md`, `artboard.md`, `html.md`). "I already read the skill"
-does not carry over to a type you have not read.
+## Before writing
 
-- For `html`, also read `ui.md`. Controls and basic display use the bundled
-  `<ryugi-…>` components; plain HTML and CSS are for layout only. Never
-  hand-roll a control that `ui.md` lists.
-- Verify against the doc, not just against the render: stable control ids,
-  `ryugi-change`, and settings restored after the viewer rewrites the page.
+The type column is a gate, not a menu: open that doc first. `html` also reads
+`ui.md` — its controls are `<ryugi-…>`; artboard boards get no runtime and
+stay plain HTML. Verify against the doc — ids, `ryugi-change`, restored
+state — not just that it renders.
+
+## Creative work
+
+Load the project's design system (tokens, components, type) before the first
+frame; if it has none, say which type, scale and palette you are using. Use
+real copy and data, never lorem ipsum.
+
+`html` is one surface: both themes when the product has them, and the states
+the decision touches; a control tunes one dimension.
+
+`artboard` is the space of a requirement: one group per question, its
+variants differing in that one dimension; everything else stays still.
+
+`document` is where architecture and engineering decisions are argued, with
+diagrams and code — not a gallery of screens.
 
 ## Pick the artifact
 

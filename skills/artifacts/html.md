@@ -8,14 +8,13 @@ directory changes.
 
 - A complete HTML document. Its `<title>` names the browser tab and the
   artifact list entry.
-- Images, scripts and styles it uses go in the same directory and are
-  referenced relatively (`img/before.png`). CDN scripts and Google Fonts
-  load fine.
+- Images and scripts it uses live in the same directory and are referenced
+  relatively (`img/before.png`). CDN fonts and scripts are allowed; absolute
+  local paths are not.
 - The page runs sandboxed. Scripts, `alert`/`confirm`, forms, popups,
   downloads and copying to the clipboard work. `localStorage`,
   `sessionStorage` and cookies throw: keep state in the page's DOM and
   variables.
-- Realistic content, never lorem ipsum.
 
 ## Use the bundled components
 
@@ -41,10 +40,11 @@ checked boxes and radios, open `<details>`, and the scroll position.
 
 ## What pages are for
 
-- **Test bench:** a live preview with one control per thing being decided
-  (switches for modes, sliders for amounts), and a readout of the current
-  values they can copy back to you.
-- **Interactive demo:** a flow they click through to feel how it behaves.
+- **One surface:** a test bench with one control per thing being decided and
+  a readout of the current values; an interactive demo they click through; or
+  a focused design study — a component, type scale, background, motion.
+- **Not several dimensions:** screens, questions or states to compare belong
+  on the artboard.
 
 ## Errors
 
