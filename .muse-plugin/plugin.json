@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "name": "ryugi",
   "displayName": "Ryugi",
-  "version": "1.4.2",
+  "version": "1.5.1",
   "description": "Core skills library for Muse: TDD, debugging, collaboration patterns, and proven techniques",
   "compat": {
     "source": "native",
