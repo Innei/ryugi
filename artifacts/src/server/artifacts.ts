@@ -1,6 +1,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { isArtifactId, isArtifactType } from '../shared/ids';
 import { ARTIFACT_TYPES, type ArtifactType } from '../shared/types';
+
+export { isArtifactId, isArtifactType };
 
 export interface ArtifactRef {
   type: ArtifactType;
@@ -10,13 +13,6 @@ export interface ArtifactRef {
 export interface ArtifactEntry extends ArtifactRef {
   dir: string;
 }
-
-const ID_PATTERN = /^[a-z0-9][a-z0-9-]*$/;
-
-export const isArtifactId = (id: string) => ID_PATTERN.test(id);
-
-export const isArtifactType = (type: string): type is ArtifactType =>
-  (ARTIFACT_TYPES as readonly string[]).includes(type);
 
 function subdirectories(dir: string) {
   try {

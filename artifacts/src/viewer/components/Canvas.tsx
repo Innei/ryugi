@@ -39,18 +39,18 @@ interface CanvasProps {
   view: View;
   boards: [string, BoardSpec][];
   notes: [string, NoteSpec][];
-  boardBase: string;
+  contentBase: string;
   versions: Record<string, number>;
 }
 
-export function Canvas({ view, boards, notes, boardBase, versions }: CanvasProps) {
+export function Canvas({ view, boards, notes, contentBase, versions }: CanvasProps) {
   return (
     <div {...stylex.props(styles.world)} style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.k})` }}>
       {boards.map(([id, board]) => (
         <iframe
           key={id}
           title={board.title ?? id}
-          src={`${boardBase}${board.file}?v=${versions[board.file] ?? 0}`}
+          src={`${contentBase}${board.file}?v=${versions[board.file] ?? 0}`}
           sandbox="allow-scripts"
           loading="lazy"
           {...stylex.props(styles.board)}

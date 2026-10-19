@@ -66,11 +66,11 @@ interface LabelsProps {
   boards: [string, BoardSpec][];
   groups: [string, GroupSpec][];
   allBoards: Record<string, BoardSpec>;
-  boardBase: string;
+  contentBase: string;
   onExpand: (id: string) => void;
 }
 
-export function Labels({ view, boards, groups, allBoards, boardBase, onExpand }: LabelsProps) {
+export function Labels({ view, boards, groups, allBoards, contentBase, onExpand }: LabelsProps) {
   return (
     <div {...stylex.props(styles.layer)}>
       {groups.map(([id, group]) => {
@@ -102,7 +102,7 @@ export function Labels({ view, boards, groups, allBoards, boardBase, onExpand }:
                   size={{ blockSize: 22, size: 13 }}
                   title="Download"
                   aria-label={`Download ${id}`}
-                  onClick={() => downloadFile(`${boardBase}${board.file}`, board.file.split('/').pop() ?? `${id}.html`)}
+                  onClick={() => downloadFile(`${contentBase}${board.file}`, board.file.split('/').pop() ?? `${id}.html`)}
                 />
               </>
             )}

@@ -39,10 +39,12 @@ var import_node_path = __toESM(require("node:path"), 1);
 // src/shared/types.ts
 var ARTIFACT_TYPES = ["artboard", "html"];
 
-// src/server/artifacts.ts
+// src/shared/ids.ts
 var ID_PATTERN = /^[a-z0-9][a-z0-9-]*$/;
 var isArtifactId = (id) => ID_PATTERN.test(id);
 var isArtifactType = (type) => ARTIFACT_TYPES.includes(type);
+
+// src/server/artifacts.ts
 function subdirectories(dir) {
   try {
     return import_node_fs.default.readdirSync(dir, { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => entry.name).sort();

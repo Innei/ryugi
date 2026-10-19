@@ -6,14 +6,14 @@ import { ConfigProvider } from '@lobehub/ui';
 import { motion } from 'motion/react';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { App } from './App';
+import { Shell } from './Shell';
 import { useSystemTheme } from './hooks/useSystemTheme';
 
 function Root() {
   useSystemTheme();
   return (
     <ConfigProvider motion={motion} enableCustomFonts={false}>
-      <App />
+      <Shell />
     </ConfigProvider>
   );
 }

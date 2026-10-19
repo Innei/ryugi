@@ -1,14 +1,14 @@
 import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
 import { useEffect, useRef, useState } from 'react';
-import { Canvas } from './components/Canvas';
-import { CanvasErrorBoundary } from './components/CanvasErrorBoundary';
-import { ExpandedBoard } from './components/ExpandedBoard';
-import { Labels } from './components/Labels';
-import { TopLeftBar, TopRightBar } from './components/Toolbar';
-import { useCanvasData } from './hooks/useCanvasData';
-import { usePanZoom, type Tool } from './hooks/usePanZoom';
-import { resolveFocus } from './lib/view';
+import { Canvas } from '../components/Canvas';
+import { CanvasErrorBoundary } from '../components/CanvasErrorBoundary';
+import { ExpandedBoard } from '../components/ExpandedBoard';
+import { Labels } from '../components/Labels';
+import { TopLeftBar, TopRightBar } from '../components/Toolbar';
+import { useCanvasData } from '../hooks/useCanvasData';
+import { usePanZoom, type Tool } from '../hooks/usePanZoom';
+import { resolveFocus } from '../lib/view';
 
 const styles = stylex.create({
   viewport: {
@@ -36,8 +36,8 @@ const styles = stylex.create({
   },
 });
 
-export function App() {
-  const { canvas, layout, warnings, boardBase, versions, live, loaded } = useCanvasData();
+export function ArtboardLayout({ id }: { id: string }) {
+  const { canvas, layout, warnings, contentBase, versions, live, loaded } = useCanvasData(id);
   const [tool, setTool] = useState<Tool>('select');
   const { viewportRef, view, fit, zoomBy, zoomTo, cursor, handlers } = usePanZoom(tool);
   const [page, setPage] = useState<string | null>(null);
@@ -48,6 +48,10 @@ export function App() {
   const initialized = useRef(false);
 
   const pages = canvas?.pages ?? [];
+
+  useEffect(() => {
+    document.title = canvas?.title || id;
+  }, [canvas?.title, id]);
   const pageBounds = (id: string | null) => (id && layout?.pages[id]?.bounds) || null;
 
   useEffect(() => {
@@ -136,13 +140,13 @@ export function App() {
     <div ref={viewportRef} {...stylex.props(styles.viewport)} style={{ cursor }} {...handlers}>
       {canvas && layout && (
         <CanvasErrorBoundary resetKey={canvas}>
-          <Canvas view={view} boards={boards} notes={notes} boardBase={boardBase} versions={versions} />
+          <Canvas view={view} boards={boards} notes={notes} contentBase={contentBase} versions={versions} />
           <Labels
             view={view}
             boards={boards}
             groups={groups}
             allBoards={allBoards}
-            boardBase={boardBase}
+            contentBase={contentBase}
             onExpand={setExpanded}
           />
         </CanvasErrorBoundary>
@@ -166,7 +170,7 @@ export function App() {
         <ExpandedBoard
           id={expanded}
           board={expandedBoard}
-          src={`${boardBase}${expandedBoard.file}?v=${versions[expandedBoard.file] ?? 0}`}
+          src={`${contentBase}${expandedBoard.file}?v=${versions[expandedBoard.file] ?? 0}`}
           onClose={() => setExpanded(null)}
         />
       )}
