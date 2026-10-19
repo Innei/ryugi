@@ -39,8 +39,8 @@ Options:
   --keep-stage             Print and keep the temporary staging directory.
   -h, --help               Show this help.
 
-The archive is rootless: .codex-plugin/, assets/, skills/, README.md, LICENSE,
-and CODE_OF_CONDUCT.md sit at the archive root. Source-only repo files, hooks, tests,
+The archive is rootless: .codex-plugin/, assets/, skills/, README.md, and
+LICENSE sit at the archive root. Source-only repo files, hooks, tests,
 docs, and other harness manifests are intentionally not shipped.
 EOF
 }
@@ -234,7 +234,6 @@ METADATA_ROOT="$(prepare_metadata_root "$METADATA_SOURCE")"
 # regardless of the builder's git config or process umask.
 git -C "$REPO_ROOT" -c tar.umask=0022 archive --format=tar "$REF" -- \
   .codex-plugin \
-  CODE_OF_CONDUCT.md \
   LICENSE \
   README.md \
   assets \
