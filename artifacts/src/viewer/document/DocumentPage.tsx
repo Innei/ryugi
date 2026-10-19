@@ -11,6 +11,7 @@ import { createChannel } from './channel';
 import type { ThreadActions } from './CommentCard';
 import { CommentRail } from './CommentRail';
 import { DocumentEditor } from './DocumentEditor';
+import { DynamicHostContext, type DynamicHost } from './DynamicBlock';
 import { DocumentToc } from './DocumentToc';
 import { DRAFT_WIDTH, DraftPanel } from './DraftPanel';
 import { popoverPosition, toolbarPosition } from './layoutCards';
@@ -128,7 +129,7 @@ export default function DocumentPage({ id }: { id: string }) {
     };
   }, [id, refreshMeta]);
 
-  useArtifactSocket(
+  const { send: sendSocket } = useArtifactSocket(
     (message) => {
       if (message.artifact !== artifact) return;
       if (message.type === 'change') void refreshMeta();
@@ -140,6 +141,10 @@ export default function DocumentPage({ id }: { id: string }) {
   );
 
   useAssetBase(meta?.contentBase);
+  const dynamicHost = useMemo<DynamicHost>(
+    () => ({ artifact, contentBase: meta?.contentBase ?? '', channel, send: sendSocket }),
+    [artifact, meta?.contentBase, channel, sendSocket],
+  );
   useEffect(() => {
     document.title = meta?.title || id;
   }, [meta?.title, id]);
@@ -193,15 +198,17 @@ export default function DocumentPage({ id }: { id: string }) {
           style={narrow ? { marginInline: 'auto' } : undefined}
           onClick={(event) => setActiveId(threadAtPoint(anchors, event.clientX, event.clientY))}
         >
-          <DocumentEditor
-            id={id}
-            doc={doc}
-            channel={channel}
-            theme={dark ? 'dark' : 'light'}
-            onAgentSection={setSection}
-            onOffline={setOffline}
-            onEditorReady={setEditor}
-          />
+          <DynamicHostContext.Provider value={dynamicHost}>
+            <DocumentEditor
+              id={id}
+              doc={doc}
+              channel={channel}
+              theme={dark ? 'dark' : 'light'}
+              onAgentSection={setSection}
+              onOffline={setOffline}
+              onEditorReady={setEditor}
+            />
+          </DynamicHostContext.Provider>
         </article>
         <div {...stylex.props(styles.railWrap)}>
           <CommentRail

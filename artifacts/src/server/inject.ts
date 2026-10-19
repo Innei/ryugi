@@ -1,5 +1,26 @@
 const RUNTIME = `(() => {
   const post = (message) => parent.postMessage(message, '*');
+  const readProps = () => {
+    const match = /[#&]ryugi-props=([^&]*)/.exec(location.hash);
+    try {
+      const props = match ? JSON.parse(decodeURIComponent(match[1])) : {};
+      return props && typeof props === 'object' && !Array.isArray(props) ? props : {};
+    } catch {
+      return {};
+    }
+  };
+  window.ryugiProps = readProps();
+  addEventListener('hashchange', () => {
+    window.ryugiProps = readProps();
+    document.dispatchEvent(new CustomEvent('ryugi-props', { detail: window.ryugiProps }));
+  });
+  let height = 0;
+  new ResizeObserver(() => {
+    const next = Math.ceil(document.documentElement.offsetHeight);
+    if (next === height) return;
+    height = next;
+    post({ type: 'ryugi:height', height });
+  }).observe(document.documentElement);
   addEventListener('error', (event) => {
     const el = event.target;
     if (el && el !== window && el.getAttribute) {
@@ -87,11 +108,14 @@ const RUNTIME_LINE = RUNTIME.split('\n')
   .map((line) => line.trim())
   .join(' ');
 
+const EMBEDDED_STYLE =
+  '<style>:root{color-scheme:light dark;background:transparent}body{margin:0;font-family:system-ui,-apple-system,sans-serif}</style>';
+
 const UI_MARKER = /<ryugi-[a-z0-9-]+(?:\s|>)/i;
 const UI_META = /<meta[^>]+name=["']ryugi-ui["'][^>]*>/i;
 
-export function injectRuntime(html: string, options: { uiRuntimeUrl?: string } = {}): string {
-  const tag = `<script>${RUNTIME_LINE}</script>`;
+export function injectRuntime(html: string, options: { uiRuntimeUrl?: string; embedded?: boolean } = {}): string {
+  const tag = `${options.embedded ? EMBEDDED_STYLE : ''}<script>${RUNTIME_LINE}</script>`;
   const ui =
     options.uiRuntimeUrl && (UI_MARKER.test(html) || UI_META.test(html))
       ? `<script defer src="${options.uiRuntimeUrl.replace(/"/g, '&quot;')}"></script>`

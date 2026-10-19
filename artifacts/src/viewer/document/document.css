@@ -51,3 +51,7 @@
 .ryugi-doc table {
   font-size: 15px;
 }
+
+.ryugi-doc .ryugi-dynamic {
+  margin: 0 0 16px;
+}

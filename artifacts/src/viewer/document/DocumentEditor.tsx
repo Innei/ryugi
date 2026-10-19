@@ -19,9 +19,10 @@ import type { LoroDoc } from 'loro-crdt';
 import { useState, type ReactNode } from 'react';
 import { AgentCaret } from './AgentCaret';
 import type { Channel } from './channel';
+import { DynamicNode } from './DynamicNode';
 import { LoroSync, type AgentCaretPosition } from './LoroSync';
 
-const extraNodes = [ChartEditNode, ExcalidrawEditNode, ...katexEditNodes];
+const extraNodes = [ChartEditNode, ExcalidrawEditNode, DynamicNode, ...katexEditNodes];
 
 const rendererConfig: RendererConfig = {
   [ALERT_NODE_KEY]: AlertEditRenderer,

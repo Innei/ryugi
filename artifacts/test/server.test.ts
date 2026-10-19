@@ -267,6 +267,18 @@ describe('document API', () => {
     expect((await content(server, 'document/relay-sync/doc.xml')).status).toBe(404);
     expect((await content(server, 'document/relay-sync/comments.json')).status).toBe(404);
   });
+
+  test('an HTML asset is served like an HTML artifact page, with the runtimes injected', async () => {
+    const { server, root } = await start();
+    writeDocument(root, 'relay-sync', { 'doc.xml': '<doc/>', 'assets/tuner.html': '<ryugi-slider id="r"></ryugi-slider>' });
+    const res = await content(server, 'document/relay-sync/assets/tuner.html');
+    expect(res.status).toBe(200);
+    expect(res.headers['content-type']).toContain('text/html');
+    expect(res.headers['content-security-policy']).toBe('sandbox allow-scripts allow-modals allow-forms allow-popups allow-downloads');
+    expect(res.body).toContain('ryugi:snapshot');
+    expect(res.body).toContain(`<script defer src="/c/${server.contentToken}/runtime/ryugi-ui.js"></script>`);
+    expect(res.body).toContain('color-scheme:light dark');
+  });
 });
 
 describe('artboard content', () => {
@@ -549,6 +561,69 @@ describe('html runtime', () => {
     await waitFor(() => fs.existsSync(file) && readJson(file).warnings.length === 1);
     fs.writeFileSync(path.join(dir, 'index.html'), '<p>fixed</p>');
     await waitFor(() => readJson(file).warnings.length === 0);
+    ws.socket?.destroy();
+  });
+});
+
+describe('document dynamic blocks', () => {
+  const origin = (s: ArtifactsServer) => `http://127.0.0.1:${s.port}`;
+  const dynamicDoc = (url: string) => `<doc><p>intro</p><dynamic url="${url}"></dynamic></doc>`;
+  const report = (type: 'runtime-error' | 'loaded', file: string, message?: string) =>
+    JSON.stringify({ type, artifact: 'document/spec', file, ...(message ? { message } : {}) });
+
+  async function setup() {
+    const { server, root } = await start();
+    const dir = writeDocument(root, 'spec', { 'doc.xml': dynamicDoc('assets/tuner.html'), 'assets/tuner.html': '<p>x</p>' });
+    const ws = await openWs(server.port, { Cookie: cookie(server), Origin: origin(server) });
+    await api(server, '/api/document/spec/state');
+    return { server, root, dir, ws, file: stateFile(root, 'document', 'spec', 'warnings.json') };
+  }
+
+  test('a runtime error names its file and survives a doc.xml rewrite', async () => {
+    const { dir, ws, file } = await setup();
+    sendWsText(ws.socket!, report('runtime-error', 'assets/tuner.html', 'ReferenceError: r is not defined'));
+    await waitFor(() => fs.existsSync(file) && readJson(file).warnings.includes('runtime: assets/tuner.html: ReferenceError: r is not defined'));
+    fs.writeFileSync(path.join(dir, 'doc.xml'), dynamicDoc('assets/tuner.html').replace('intro', 'intro, edited'));
+    await waitFor(() => fs.readFileSync(path.join(dir, 'doc.xml'), 'utf8').includes('id="'));
+    await new Promise((r) => setTimeout(r, 100));
+    expect(readJson(file).warnings).toContain('runtime: assets/tuner.html: ReferenceError: r is not defined');
+    ws.socket?.destroy();
+  });
+
+  test('changing the asset clears its runtime errors and its ran flag', async () => {
+    const { dir, ws, file } = await setup();
+    sendWsText(ws.socket!, report('runtime-error', 'assets/tuner.html', 'boom'));
+    sendWsText(ws.socket!, report('loaded', 'assets/tuner.html'));
+    await waitFor(() => fs.existsSync(file) && readJson(file).dynamic?.['assets/tuner.html']?.ran === true && readJson(file).warnings.length === 1);
+    fs.writeFileSync(path.join(dir, 'assets', 'tuner.html'), '<p>fixed</p>');
+    await waitFor(() => readJson(file).warnings.length === 0);
+    expect(readJson(file).dynamic['assets/tuner.html'].ran).toBe(false);
+    ws.socket?.destroy();
+  });
+
+  test('errors for a block no longer in doc.xml are dropped', async () => {
+    const { dir, ws, file } = await setup();
+    sendWsText(ws.socket!, report('runtime-error', 'assets/tuner.html', 'boom'));
+    await waitFor(() => fs.existsSync(file) && readJson(file).warnings.length === 1);
+    fs.writeFileSync(path.join(dir, 'doc.xml'), '<doc><p>intro</p></doc>');
+    await waitFor(() => readJson(file).warnings.length === 0);
+    expect(readJson(file).dynamic).toEqual({});
+    ws.socket?.destroy();
+  });
+
+  test('a dynamic block whose file is missing is a warning without a browser', async () => {
+    const { root } = await start();
+    writeDocument(root, 'spec', { 'doc.xml': dynamicDoc('assets/gone.html') });
+    const file = stateFile(root, 'document', 'spec', 'warnings.json');
+    await waitFor(() => fs.existsSync(file) && readJson(file).warnings.includes('assets/gone.html not found'));
+  });
+
+  test('reports for files outside assets/ are ignored', async () => {
+    const { ws, file } = await setup();
+    sendWsText(ws.socket!, report('runtime-error', '../doc.xml', 'boom'));
+    sendWsText(ws.socket!, report('runtime-error', 'assets/tuner.html', 'marker'));
+    await waitFor(() => fs.existsSync(file) && readJson(file).warnings.some((w: string) => w.includes('marker')));
+    expect(readJson(file).warnings).toEqual(['runtime: assets/tuner.html: marker']);
     ws.socket?.destroy();
   });
 });

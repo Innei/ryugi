@@ -1,6 +1,7 @@
 import { createDefaultRegistry, deserializeFromXml, serializeToXml } from '@haklex/rich-litexml';
 import type { SerializedEditorState, SerializedLexicalNode } from 'lexical';
 import { nanoid } from 'nanoid';
+import { DYNAMIC_URL } from '../shared/dynamic';
 import { stripOpaque, TAG, unbalancedTag } from './balance';
 
 type Block = SerializedLexicalNode & { $?: { blockId?: string }; children?: Block[]; text?: string };
@@ -30,8 +31,12 @@ const BLOCK_TAGS = [
   'chart',
   'math',
   'alert',
+  'details',
+  'footnote-section',
+  'def',
+  'dynamic',
 ];
-const INLINE_TAGS = ['b', 'strong', 'i', 'em', 'u', 's', 'del', 'strike', 'code', 'sub', 'sup', 'mark', 'a', 'br'];
+const INLINE_TAGS = ['b', 'strong', 'i', 'em', 'u', 's', 'del', 'strike', 'code', 'sub', 'sup', 'mark', 'a', 'br', 'footnote'];
 export const DOCUMENT_TAGS = new Set([...BLOCK_TAGS, ...INLINE_TAGS]);
 
 const LITEXML_ONLY_TAGS = new Set([
@@ -41,11 +46,7 @@ const LITEXML_ONLY_TAGS = new Set([
   'chat',
   'code-snippet',
   'comment',
-  'details',
-  'dynamic',
   'embed',
-  'footnote',
-  'footnote-section',
   'gallery',
   'grid',
   'link-card',
@@ -62,6 +63,12 @@ const registry = createDefaultRegistry();
 
 export class DocumentRejected extends Error {}
 
+export const URL_ATTR = /\surl\s*=\s*(?:"([^"]*)"|'([^']*)')/i;
+const DYNAMIC_BODY = /<dynamic\b[^>]*?(?<!\/)>([\s\S]*?)<\/dynamic>/gi;
+const FOOTNOTE_SECTION = /<footnote-section\b[\s\S]*?<\/footnote-section>/gi;
+const DEF_TAG = /<def[\s>/]/i;
+const CDATA_BODY = /^\s*<!\[CDATA\[([\s\S]*)\]\]>\s*$/;
+
 function unsupportedTag(xml: string): string | null {
   for (const match of stripOpaque(xml).matchAll(TAG)) {
     const name = match[2]!.toLowerCase();
@@ -72,15 +79,46 @@ function unsupportedTag(xml: string): string | null {
   return null;
 }
 
+function strayDef(xml: string): string | null {
+  return DEF_TAG.test(stripOpaque(xml).replace(FOOTNOTE_SECTION, '')) ? '<def> belongs inside <footnote-section>' : null;
+}
+
+function badDynamicProps(xml: string): string | null {
+  for (const match of xml.matchAll(DYNAMIC_BODY)) {
+    const body = match[1]!;
+    const raw = (CDATA_BODY.exec(body)?.[1] ?? body).trim();
+    if (!raw) continue;
+    try {
+      const props: unknown = JSON.parse(raw);
+      if (props && typeof props === 'object' && !Array.isArray(props)) continue;
+    } catch {}
+    return '<dynamic> props must be a JSON object';
+  }
+  return null;
+}
+
+function badDynamicUrl(nodes: Block[]): string | null {
+  for (const node of nodes) {
+    if (node.type === 'dynamic' && !DYNAMIC_URL.test((node as { url?: string }).url ?? '')) return '<dynamic> url must be assets/<name>.html';
+    const nested = badDynamicUrl(node.children ?? []);
+    if (nested) return nested;
+  }
+  return null;
+}
+
 export function parseDocument(xml: string): SerializedEditorState {
   const wrapped = /^\s*<doc[\s>]/.test(xml) ? xml : `<doc>${xml}</doc>`;
-  const problem = unbalancedTag(wrapped) ?? unsupportedTag(wrapped);
+  const problem = unbalancedTag(wrapped) ?? unsupportedTag(wrapped) ?? strayDef(wrapped) ?? badDynamicProps(wrapped);
   if (problem) throw new DocumentRejected(problem);
+  let state: SerializedEditorState;
   try {
-    return deserializeFromXml(wrapped, registry);
+    state = deserializeFromXml(wrapped, registry);
   } catch (err) {
     throw new DocumentRejected((err as Error).message);
   }
+  const url = badDynamicUrl(state.root.children as Block[]);
+  if (url) throw new DocumentRejected(url);
+  return state;
 }
 
 export const serializeDocument = (state: SerializedEditorState) => `${serializeToXml(state, registry, { compact: false })}\n`;

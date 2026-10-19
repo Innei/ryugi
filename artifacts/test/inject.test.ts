@@ -50,6 +50,79 @@ describe('injectRuntime', () => {
     expect(injectRuntime('<!doctype html>\n<html lang="en"><body>z').startsWith('<!doctype html>\n<html lang="en"><script>')).toBe(true);
   });
 
+  test('an embedded page gets a transparent, theme-following base style before its own styles', () => {
+    const out = injectRuntime('<head><style>body{margin:4px}</style></head>', { embedded: true });
+    const base = out.indexOf('color-scheme:light dark');
+    expect(base).toBeGreaterThan(-1);
+    expect(out).toContain('background:transparent');
+    expect(base).toBeLessThan(out.indexOf('body{margin:4px}'));
+    expect(injectRuntime('<head></head>')).not.toContain('color-scheme');
+  });
+
+  describe('in a dynamic block', () => {
+    function run(hash: string) {
+      const listeners: Record<string, (event?: unknown) => void> = {};
+      const posted: unknown[] = [];
+      const dispatched: CustomEvent[] = [];
+      let observe: () => void = () => {};
+      const env = {
+        window: {} as Record<string, unknown>,
+        location: { hash },
+        parent: { postMessage: (message: unknown) => posted.push(message) },
+        addEventListener: (type: string, fn: (event?: unknown) => void) => (listeners[type] = fn),
+        document: {
+          documentElement: { offsetHeight: 412 },
+          dispatchEvent: (event: CustomEvent) => dispatched.push(event),
+        },
+        CustomEvent: class {
+          constructor(
+            public type: string,
+            public init?: unknown,
+          ) {}
+        },
+        ResizeObserver: class {
+          constructor(fn: () => void) {
+            observe = fn;
+          }
+          observe() {}
+        },
+      };
+      const out = injectRuntime('<p>x</p>');
+      const code = out.slice('<script>'.length, out.indexOf('</script>'));
+      new Function(...Object.keys(env), code)(...Object.values(env));
+      return { env, listeners, posted, dispatched, resize: () => observe() };
+    }
+
+    test('props in the URL hash are on window.ryugiProps before page scripts run', () => {
+      const { env } = run(`#ryugi-props=${encodeURIComponent('{"radius":8}')}`);
+      expect(env.window.ryugiProps).toEqual({ radius: 8 });
+    });
+
+    test('a page without props gets an empty object', () => {
+      expect(run('').env.window.ryugiProps).toEqual({});
+    });
+
+    test('new props in the hash update window.ryugiProps and fire ryugi-props', () => {
+      const { env, listeners, dispatched } = run('');
+      env.location.hash = `#ryugi-props=${encodeURIComponent('{"radius":4}')}`;
+      listeners.hashchange!();
+      expect(env.window.ryugiProps).toEqual({ radius: 4 });
+      expect(dispatched.map((event) => event.type)).toEqual(['ryugi-props']);
+    });
+
+    test('the content height is posted to the parent when it changes', () => {
+      const { posted, resize, env } = run('');
+      resize();
+      resize();
+      env.document.documentElement.offsetHeight = 500;
+      resize();
+      expect(posted).toEqual([
+        { type: 'ryugi:height', height: 412 },
+        { type: 'ryugi:height', height: 500 },
+      ]);
+    });
+  });
+
   test('prepends the script to a page without <head>', () => {
     const out = injectRuntime('<p>hello</p>');
     expect(out.startsWith('<script>')).toBe(true);

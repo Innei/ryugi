@@ -43,6 +43,56 @@ describe('parseDocument', () => {
     expect(JSON.parse(xml.match(/<!\[CDATA\[(.*)\]\]>/s)![1]!)).toEqual(JSON.parse(spec));
   });
 
+  test('reads details and footnotes and serializes them back', () => {
+    const xml = `<doc>
+      <details summary="Alternatives" open="true"><p>dropped</p></details>
+      <p>Loro<footnote ref="1"/> merges.</p>
+      <footnote-section><def ref="1">Loro docs.</def></footnote-section>
+    </doc>`;
+    const state = parseDocument(xml);
+    expect(state.root.children.map((node) => node.type)).toEqual(['details', 'paragraph', 'footnote-section']);
+    const out = serializeDocument(state);
+    expect(out).toContain('summary="Alternatives"');
+    expect(out).toContain('<footnote ref="1"');
+    expect(out).toContain('<def ref="1">Loro docs.</def>');
+  });
+
+  test('rejects a grid: edits inside its cells do not reach doc.xml', () => {
+    expect(() => parseDocument('<doc><grid><cell><p>A</p></cell></grid></doc>')).toThrow('<grid> is not supported in documents');
+  });
+
+  test('a dynamic block keeps its url, height and props', () => {
+    const state = parseDocument('<doc><dynamic id="d1" url="assets/tuner.html" initial-height="240"><![CDATA[{"radius":8}]]></dynamic></doc>');
+    expect(state.root.children[0]).toMatchObject({ type: 'dynamic', url: 'assets/tuner.html', initialHeight: 240, props: { radius: 8 } });
+    const out = serializeDocument(state);
+    expect(out).toContain('url="assets/tuner.html"');
+    expect(out).toContain('"radius":8');
+  });
+
+  test.each(['https://example.com/x.html', 'assets/../doc.xml', '/assets/x.html', 'assets/x.js', 'assets/sub/x.html', ''])(
+    'rejects a dynamic url outside assets/<name>.html: %s',
+    (url) => {
+      expect(() => parseDocument(`<doc><dynamic url="${url}"></dynamic></doc>`)).toThrow('<dynamic> url must be assets/<name>.html');
+    },
+  );
+
+  test('rejects a dynamic url hidden behind a decoy in another attribute', () => {
+    expect(() => parseDocument(`<doc><dynamic x=" url='assets/a.html'" url="../../html/other/index.html"></dynamic></doc>`)).toThrow(
+      '<dynamic> url must be assets/<name>.html',
+    );
+  });
+
+  test.each(['{bad json', '[1,2]', '"text"'])('rejects dynamic props that are not a JSON object: %s', (props) => {
+    expect(() => parseDocument(`<doc><dynamic url="assets/a.html"><![CDATA[${props}]]></dynamic></doc>`)).toThrow(
+      '<dynamic> props must be a JSON object',
+    );
+  });
+
+  test('rejects a <def> outside <footnote-section>', () => {
+    expect(() => parseDocument('<doc><p>a</p><def ref="1">x</def></doc>')).toThrow('<def> belongs inside <footnote-section>');
+    expect(() => parseDocument('<doc><footnote-section><def ref="1">x</def></footnote-section></doc>')).not.toThrow();
+  });
+
   test('rejects a mismatched tag and names it', () => {
     expect(() => parseDocument('<doc><p>a</h2></doc>')).toThrow('</h2> closes <p>');
   });

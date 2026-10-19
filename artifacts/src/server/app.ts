@@ -11,6 +11,7 @@ import { readHtml } from './html';
 import { injectRuntime } from './inject';
 import { listen, parseCookies, randomToken, readPersisted, safeEqual, send, sendFile, sendJson, urlHostForHttp } from './http';
 import { resolveBoardFile, resolveDocumentAsset, resolveHtmlFile, resolveInside } from './paths';
+import { createDynamicBlocks } from './dynamic-blocks';
 import { readCanvas, writeArtifactState, writeJsonAtomic } from './state';
 import { watchTree } from './watch';
 import { completeHandshake, handleClientFrames, rejectUpgrade, textFrame } from './ws';
@@ -97,8 +98,11 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
   const contentToken = randomToken();
   const runtimeWarnings = new Map<string, string[]>();
   const ranVersions = new Map<string, number>();
-  const runtimeOf = (ref: ArtifactRef) =>
-    ref.type === 'document' ? documents.warnings(ref.id) : (runtimeWarnings.get(`${ref.type}/${ref.id}`) ?? []);
+  const dynamicBlocks = createDynamicBlocks({ maxErrors: MAX_RUNTIME_WARNINGS });
+  const runtimeOf = (ref: ArtifactRef, dir: string) =>
+    ref.type === 'document'
+      ? [...documents.warnings(ref.id), ...dynamicBlocks.state(ref.id, dir).warnings]
+      : (runtimeWarnings.get(`${ref.type}/${ref.id}`) ?? []);
   const contentPrefix = `/c/${contentToken}/`;
 
   const clients = new Set<Duplex>();
@@ -238,8 +242,9 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
       send(res, 404, 'Not found');
       return;
     }
-    const headers = { 'Content-Security-Policy': CONTENT_CSP[ref.type], 'Access-Control-Allow-Origin': '*' };
-    if (ref.type !== 'html' || relative !== 'index.html') {
+    const page = ref.type === 'html' ? relative === 'index.html' : ref.type === 'document' && relative.endsWith('.html');
+    const headers = { 'Content-Security-Policy': CONTENT_CSP[page ? 'html' : ref.type], 'Access-Control-Allow-Origin': '*' };
+    if (!page) {
       sendFile(res, target, headers);
       return;
     }
@@ -247,7 +252,7 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
       if (err) send(res, 404, 'Not found');
       else {
         const uiRuntimeUrl = runtimeDir ? `${contentPrefix}runtime/ryugi-ui.js` : undefined;
-        send(res, 200, injectRuntime(source, { uiRuntimeUrl }), { 'Content-Type': 'text/html; charset=utf-8', ...headers });
+        send(res, 200, injectRuntime(source, { uiRuntimeUrl, embedded: ref.type === 'document' }), { 'Content-Type': 'text/html; charset=utf-8', ...headers });
       }
     });
   };
@@ -259,7 +264,7 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
       return;
     }
     const ref = artifactKeyOf(`${type}/${id}`)!;
-    sendJson(res, 200, { ...readArtifact(dir, ref, runtimeOf(ref)), contentBase: `${contentPrefix}${type}/${id}/` });
+    sendJson(res, 200, { ...readArtifact(dir, ref, runtimeOf(ref, dir)), contentBase: `${contentPrefix}${type}/${id}/` });
   };
 
   const serveList = (res: http.ServerResponse) => {
@@ -280,12 +285,25 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
       return;
     }
     if (typeof message !== 'object' || message === null) return;
-    const { type, artifact, message: detail, version } = message as Record<string, unknown>;
+    const { type, artifact, message: detail, version, file } = message as Record<string, unknown>;
     if (typeof artifact !== 'string') return;
     const ref = artifactKeyOf(artifact);
-    if (!ref || ref.type !== 'html' || artifact !== `${ref.type}/${ref.id}`) return;
+    if (!ref || ref.type === 'artboard' || artifact !== `${ref.type}/${ref.id}`) return;
     const dir = resolveArtifactDir(root, ref.type, ref.id);
     if (!dir) return;
+    if (ref.type === 'document') {
+      if (!dynamicBlocks.accepts(file)) return;
+      if (type === 'loaded') {
+        if (dynamicBlocks.loaded(ref.id, dir, file)) writeState(ref, dir);
+        return;
+      }
+      if (type !== 'runtime-error' || typeof detail !== 'string') return;
+      if (detail.length === 0 || detail.length > MAX_RUNTIME_MESSAGE) return;
+      if (!dynamicBlocks.report(ref.id, dir, file, detail)) return;
+      writeState(ref, dir);
+      broadcast({ type: 'change', artifact, files: [] });
+      return;
+    }
     if (type === 'loaded') {
       if (typeof version !== 'number' || version !== readHtml(dir, ref.id).version) return;
       ranVersions.set(artifact, version);
@@ -398,8 +416,13 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
 
   const signatures = new Map<string, string>();
   const writeState = (ref: ArtifactRef, dir: string) => {
-    const payload = readArtifact(dir, ref, runtimeOf(ref));
-    const extra = ref.type === 'html' && 'version' in payload ? { ran: ranVersions.get(`${ref.type}/${ref.id}`) === payload.version } : {};
+    const payload = readArtifact(dir, ref, runtimeOf(ref, dir));
+    const extra =
+      ref.type === 'document'
+        ? { dynamic: dynamicBlocks.state(ref.id, dir).dynamic }
+        : ref.type === 'html' && 'version' in payload
+          ? { ran: ranVersions.get(`${ref.type}/${ref.id}`) === payload.version }
+          : {};
     try {
       writeArtifactState(stateDir, ref, payload, extra);
     } catch (err) {
