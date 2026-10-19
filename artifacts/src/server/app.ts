@@ -3,7 +3,7 @@ import http from 'node:http';
 import path from 'node:path';
 import type { Duplex } from 'node:stream';
 import type { ArtifactSummary, ArtifactType, CanvasPayload, HtmlPayload, ServerMessage } from '../shared/types';
-import { artifactKeyOf, listArtifacts, resolveArtifactDir, type ArtifactRef } from './artifacts';
+import { artifactKeyOf, artifactSignature, listArtifacts, resolveArtifactDir, type ArtifactRef } from './artifacts';
 import { readHtml } from './html';
 import { listen, parseCookies, randomToken, readPersisted, safeEqual, send, sendFile, sendJson, urlHostForHttp } from './http';
 import { resolveBoardFile, resolveHtmlFile, resolveInside } from './paths';
@@ -215,7 +215,9 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
   const url = `${origin}/?key=${token}`;
   const linkFor = (type: ArtifactType, id: string) => `${origin}/${type}/${id}?key=${token}`;
 
+  const signatures = new Map<string, string>();
   const refreshState = (ref: ArtifactRef, dir: string) => {
+    signatures.set(`${ref.type}/${ref.id}`, artifactSignature(dir));
     const payload = readArtifact(dir, ref);
     try {
       writeArtifactState(stateDir, ref, payload);
@@ -243,7 +245,11 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
       }
       for (const [key, { ref, files: changed }] of byArtifact) {
         const dir = resolveArtifactDir(root, ref.type, ref.id);
-        if (!dir) continue;
+        if (!dir) {
+          signatures.delete(key);
+          continue;
+        }
+        if (signatures.get(key) === artifactSignature(dir)) continue;
         const payload = refreshState(ref, dir);
         const frame = textFrame(JSON.stringify({ type: 'change', artifact: key, files: changed } satisfies ServerMessage));
         for (const socket of clients) socket.write(frame);

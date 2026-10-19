@@ -62,3 +62,32 @@ export function artifactKeyOf(relative: string): ArtifactRef | null {
   if (!type || !id || !isArtifactType(type) || !isArtifactId(id)) return null;
   return { type, id };
 }
+
+export function artifactSignature(dir: string): string {
+  let count = 0;
+  let size = 0;
+  let latest = 0;
+  const walk = (current: string) => {
+    let entries: fs.Dirent[];
+    try {
+      entries = fs.readdirSync(current, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const entry of entries) {
+      if (entry.name.startsWith('.')) continue;
+      const full = path.join(current, entry.name);
+      try {
+        const stat = fs.statSync(full);
+        count += 1;
+        latest = Math.max(latest, stat.mtimeMs);
+        if (entry.isDirectory()) walk(full);
+        else size += stat.size;
+      } catch {
+        continue;
+      }
+    }
+  };
+  walk(dir);
+  return `${count}:${size}:${latest}`;
+}

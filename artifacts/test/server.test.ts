@@ -322,6 +322,15 @@ describe('websocket', () => {
     expect(message.files).toContain('index.html');
     ws.socket?.destroy();
   });
+  test('sends one change per real change, even when the backup poll sees it again', async () => {
+    const { server, root } = await start();
+    const ws = await openWs(server.port, { Cookie: cookie(server), Origin: origin(server) });
+    writeHtml(root, 'tuner', { 'index.html': '<p>x</p>' });
+    await waitFor(() => ws.messages.some((m) => m.includes('"html/tuner"')));
+    await new Promise((r) => setTimeout(r, 1500));
+    expect(ws.messages.filter((m) => m.includes('"html/tuner"'))).toHaveLength(1);
+    ws.socket?.destroy();
+  });
 });
 
 describe('malformed canvas', () => {

@@ -44,7 +44,7 @@ export function pollTree(root: string, onChange: (files: string[]) => void, inte
   return { close: () => clearInterval(timer) };
 }
 
-export function watchTree(root: string, onChange: (files: string[]) => void, debounceMs = 120): Watcher {
+export function watchTree(root: string, onChange: (files: string[]) => void, debounceMs = 120, backupPollMs = 1000): Watcher {
   let pending = new Set<string>();
   let timer: NodeJS.Timeout | undefined;
   const queue = (files: string[]) => {
@@ -63,10 +63,13 @@ export function watchTree(root: string, onChange: (files: string[]) => void, deb
       if (filename) queue([toPosix(filename.toString())]);
     });
     watcher.on('error', () => {});
+    // fs.watch on macOS drops whole batches of events while many watchers start and stop; the poll catches them.
+    const backup = pollTree(root, queue, backupPollMs);
     return {
       close: () => {
         clearTimeout(timer);
         watcher.close();
+        backup.close();
       },
     };
   } catch {
