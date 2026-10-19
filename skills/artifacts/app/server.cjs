@@ -24,44 +24,233 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
 
 // src/server/main.ts
 var import_node_child_process = require("node:child_process");
-var import_node_fs5 = __toESM(require("node:fs"), 1);
-var import_node_path5 = __toESM(require("node:path"), 1);
+var import_node_fs9 = __toESM(require("node:fs"), 1);
+var import_node_path8 = __toESM(require("node:path"), 1);
 
 // src/server/app.ts
-var import_node_crypto2 = __toESM(require("node:crypto"), 1);
-var import_node_fs4 = __toESM(require("node:fs"), 1);
+var import_node_fs7 = __toESM(require("node:fs"), 1);
 var import_node_http = __toESM(require("node:http"), 1);
-var import_node_path4 = __toESM(require("node:path"), 1);
+var import_node_path7 = __toESM(require("node:path"), 1);
 
-// src/server/paths.ts
+// src/server/artifacts.ts
 var import_node_fs = __toESM(require("node:fs"), 1);
 var import_node_path = __toESM(require("node:path"), 1);
-function resolveInside(root, relative) {
-  const target = import_node_path.default.resolve(root, `.${import_node_path.default.sep}${relative}`);
-  if (!target.startsWith(root + import_node_path.default.sep)) return null;
-  const first = import_node_path.default.relative(root, target).split(import_node_path.default.sep)[0];
-  if (first?.toLowerCase() === "state") return null;
-  return target;
-}
-var isWithin = (child, parent) => child.toLowerCase().startsWith(`${parent.toLowerCase()}${import_node_path.default.sep}`);
-function resolveBoardFile(boardDir, relative) {
-  const target = resolveInside(boardDir, relative);
-  if (!target) return null;
-  let real;
-  let pagesReal;
+
+// src/shared/types.ts
+var ARTIFACT_TYPES = ["artboard", "html"];
+
+// src/server/artifacts.ts
+var ID_PATTERN = /^[a-z0-9][a-z0-9-]*$/;
+var isArtifactId = (id) => ID_PATTERN.test(id);
+var isArtifactType = (type) => ARTIFACT_TYPES.includes(type);
+function subdirectories(dir) {
   try {
-    real = import_node_fs.default.realpathSync(target);
-    pagesReal = import_node_fs.default.realpathSync(import_node_path.default.join(boardDir, "pages"));
+    return import_node_fs.default.readdirSync(dir, { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => entry.name).sort();
+  } catch {
+    return [];
+  }
+}
+function listArtifacts(root) {
+  const artifacts = [];
+  const warnings = [];
+  for (const type of subdirectories(root)) {
+    if (type.startsWith(".")) continue;
+    if (!isArtifactType(type)) {
+      warnings.push(`unknown artifact type directory: ${type}/ (known: ${ARTIFACT_TYPES.join(", ")})`);
+      continue;
+    }
+    for (const id of subdirectories(import_node_path.default.join(root, type))) {
+      if (isArtifactId(id)) artifacts.push({ type, id, dir: import_node_path.default.join(root, type, id) });
+      else warnings.push(`invalid artifact id: ${type}/${id} (use lowercase letters, digits and hyphens)`);
+    }
+  }
+  return { artifacts, warnings };
+}
+function resolveArtifactDir(root, type, id) {
+  if (!isArtifactType(type) || !isArtifactId(id)) return null;
+  const dir = import_node_path.default.join(root, type, id);
+  try {
+    return import_node_fs.default.statSync(dir).isDirectory() ? dir : null;
   } catch {
     return null;
   }
-  if (!isWithin(real, pagesReal)) return null;
-  return import_node_fs.default.statSync(real).isFile() ? real : null;
+}
+function artifactKeyOf(relative) {
+  const [type, id] = relative.split("/");
+  if (!type || !id || !isArtifactType(type) || !isArtifactId(id)) return null;
+  return { type, id };
+}
+function artifactSignature(dir) {
+  let count = 0;
+  let size = 0;
+  let latest = 0;
+  const walk = (current) => {
+    let entries;
+    try {
+      entries = import_node_fs.default.readdirSync(current, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const entry of entries) {
+      if (entry.name.startsWith(".")) continue;
+      const full = import_node_path.default.join(current, entry.name);
+      try {
+        const stat = import_node_fs.default.statSync(full);
+        count += 1;
+        latest = Math.max(latest, stat.mtimeMs);
+        if (entry.isDirectory()) walk(full);
+        else size += stat.size;
+      } catch {
+        continue;
+      }
+    }
+  };
+  walk(dir);
+  return `${count}:${size}:${latest}`;
 }
 
-// src/server/state.ts
+// src/server/html.ts
 var import_node_fs2 = __toESM(require("node:fs"), 1);
 var import_node_path2 = __toESM(require("node:path"), 1);
+var TITLE = /<title[^>]*>([\s\S]*?)<\/title>/i;
+function latestMtime(dir) {
+  let latest = 0;
+  let entries;
+  try {
+    entries = import_node_fs2.default.readdirSync(dir, { withFileTypes: true });
+  } catch {
+    return latest;
+  }
+  for (const entry of entries) {
+    if (entry.name.startsWith(".")) continue;
+    const full = import_node_path2.default.join(dir, entry.name);
+    try {
+      latest = Math.max(latest, entry.isDirectory() ? latestMtime(full) : import_node_fs2.default.statSync(full).mtimeMs);
+    } catch {
+      continue;
+    }
+  }
+  return latest;
+}
+function readHtml(dir, id) {
+  let source;
+  try {
+    source = import_node_fs2.default.readFileSync(import_node_path2.default.join(dir, "index.html"), "utf8");
+  } catch {
+    return { title: id, warnings: ["index.html not found"], version: latestMtime(dir) };
+  }
+  const title = TITLE.exec(source)?.[1]?.trim();
+  return { title: title || id, warnings: [], version: latestMtime(dir) };
+}
+
+// src/server/http.ts
+var import_node_crypto = __toESM(require("node:crypto"), 1);
+var import_node_fs3 = __toESM(require("node:fs"), 1);
+var import_node_path3 = __toESM(require("node:path"), 1);
+var MIME = {
+  ".html": "text/html; charset=utf-8",
+  ".js": "text/javascript; charset=utf-8",
+  ".mjs": "text/javascript; charset=utf-8",
+  ".css": "text/css; charset=utf-8",
+  ".json": "application/json; charset=utf-8",
+  ".txt": "text/plain; charset=utf-8",
+  ".svg": "image/svg+xml",
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".gif": "image/gif",
+  ".webp": "image/webp",
+  ".avif": "image/avif",
+  ".ico": "image/x-icon",
+  ".woff": "font/woff",
+  ".woff2": "font/woff2",
+  ".ttf": "font/ttf",
+  ".otf": "font/otf",
+  ".mp4": "video/mp4",
+  ".webm": "video/webm"
+};
+var mimeOf = (file) => MIME[import_node_path3.default.extname(file).toLowerCase()] ?? "application/octet-stream";
+var randomToken = () => import_node_crypto.default.randomBytes(24).toString("base64url");
+function safeEqual(a, b) {
+  const ab = Buffer.from(a);
+  const bb = Buffer.from(b);
+  return ab.length === bb.length && import_node_crypto.default.timingSafeEqual(ab, bb);
+}
+function parseCookies(header) {
+  const cookies = {};
+  for (const part of (header ?? "").split(";")) {
+    const index = part.indexOf("=");
+    if (index > 0) cookies[part.slice(0, index).trim()] = part.slice(index + 1).trim();
+  }
+  return cookies;
+}
+function readPersisted(file) {
+  try {
+    return import_node_fs3.default.readFileSync(file, "utf8").trim();
+  } catch {
+    return "";
+  }
+}
+function listen(server, host, port) {
+  return new Promise((resolve, reject) => {
+    const onError = (err) => {
+      server.off("listening", onListening);
+      reject(err);
+    };
+    const onListening = () => {
+      server.off("error", onError);
+      resolve(server.address().port);
+    };
+    server.once("error", onError);
+    server.once("listening", onListening);
+    server.listen(port, host);
+  });
+}
+var urlHostForHttp = (host) => host.includes(":") && !host.startsWith("[") ? `[${host}]` : host;
+function send(res, status, body, headers = {}) {
+  res.writeHead(status, { "Referrer-Policy": "no-referrer", "Cache-Control": "no-store", ...headers });
+  res.end(body);
+}
+function sendJson(res, status, value) {
+  send(res, status, JSON.stringify(value), { "Content-Type": MIME[".json"] });
+}
+function sendFile(res, file, headers = {}) {
+  import_node_fs3.default.readFile(file, (err, data) => {
+    if (err) send(res, 404, "Not found");
+    else send(res, 200, data, { "Content-Type": mimeOf(file), ...headers });
+  });
+}
+
+// src/server/paths.ts
+var import_node_fs4 = __toESM(require("node:fs"), 1);
+var import_node_path4 = __toESM(require("node:path"), 1);
+function resolveInside(root, relative) {
+  const target = import_node_path4.default.resolve(root, `.${import_node_path4.default.sep}${relative}`);
+  if (!target.startsWith(root + import_node_path4.default.sep)) return null;
+  if (import_node_path4.default.relative(root, target).split(import_node_path4.default.sep).some((segment) => segment.startsWith("."))) return null;
+  return target;
+}
+var isWithin = (child, parent) => child.toLowerCase().startsWith(`${parent.toLowerCase()}${import_node_path4.default.sep}`);
+function resolveFileWithin(root, relative, allowedDir) {
+  const target = resolveInside(root, relative);
+  if (!target) return null;
+  let real;
+  let allowedReal;
+  try {
+    real = import_node_fs4.default.realpathSync(target);
+    allowedReal = import_node_fs4.default.realpathSync(allowedDir);
+  } catch {
+    return null;
+  }
+  if (!isWithin(real, allowedReal)) return null;
+  return import_node_fs4.default.statSync(real).isFile() ? real : null;
+}
+var resolveBoardFile = (boardDir, relative) => resolveFileWithin(boardDir, relative, import_node_path4.default.join(boardDir, "pages"));
+var resolveHtmlFile = (artifactDir, relative) => resolveFileWithin(artifactDir, relative, artifactDir);
+
+// src/server/state.ts
+var import_node_fs5 = __toESM(require("node:fs"), 1);
+var import_node_path5 = __toESM(require("node:path"), 1);
 
 // src/shared/geometry.ts
 var GROUP_PAD = 48;
@@ -269,7 +458,7 @@ function validateCanvas(raw, fileExists) {
 function readRaw(boardDir) {
   let text;
   try {
-    text = import_node_fs2.default.readFileSync(import_node_path2.default.join(boardDir, "canvas.json"), "utf8");
+    text = import_node_fs5.default.readFileSync(import_node_path5.default.join(boardDir, "canvas.json"), "utf8");
   } catch {
     return { warning: "canvas.json not found" };
   }
@@ -285,7 +474,7 @@ function boardVersions(boardDir, canvas) {
     const target = resolveBoardFile(boardDir, board.file);
     if (!target) continue;
     try {
-      versions[board.file] = import_node_fs2.default.statSync(target).mtimeMs;
+      versions[board.file] = import_node_fs5.default.statSync(target).mtimeMs;
     } catch {
       versions[board.file] = 0;
     }
@@ -311,39 +500,41 @@ function readCanvas(boardDir) {
   }
 }
 function writeJsonAtomic(file, value) {
-  import_node_fs2.default.mkdirSync(import_node_path2.default.dirname(file), { recursive: true });
+  import_node_fs5.default.mkdirSync(import_node_path5.default.dirname(file), { recursive: true });
   const tmp = `${file}.${process.pid}.tmp`;
-  import_node_fs2.default.writeFileSync(tmp, `${JSON.stringify(value, null, 2)}
+  import_node_fs5.default.writeFileSync(tmp, `${JSON.stringify(value, null, 2)}
 `, { mode: 384 });
-  import_node_fs2.default.renameSync(tmp, file);
+  import_node_fs5.default.renameSync(tmp, file);
 }
-function writeStateFiles(boardDir, payload) {
+function writeArtifactState(stateDir, ref, payload) {
   const checkedAt = (/* @__PURE__ */ new Date()).toISOString();
-  const stateDir = import_node_path2.default.join(boardDir, "state");
-  writeJsonAtomic(import_node_path2.default.join(stateDir, "layout.json"), { checkedAt, ...payload.layout ?? { pages: {} } });
-  writeJsonAtomic(import_node_path2.default.join(stateDir, "warnings.json"), { checkedAt, warnings: payload.warnings });
+  const dir = import_node_path5.default.join(stateDir, ref.type, ref.id);
+  if (ref.type === "artboard") {
+    writeJsonAtomic(import_node_path5.default.join(dir, "layout.json"), { checkedAt, ...payload.layout ?? { pages: {} } });
+  }
+  writeJsonAtomic(import_node_path5.default.join(dir, "warnings.json"), { checkedAt, warnings: payload.warnings });
 }
 
 // src/server/watch.ts
-var import_node_fs3 = __toESM(require("node:fs"), 1);
-var import_node_path3 = __toESM(require("node:path"), 1);
-var toPosix = (file) => file.split(import_node_path3.default.sep).join("/");
-var ignored = (file) => file === "state" || file.startsWith("state/");
+var import_node_fs6 = __toESM(require("node:fs"), 1);
+var import_node_path6 = __toESM(require("node:path"), 1);
+var toPosix = (file) => file.split(import_node_path6.default.sep).join("/");
+var ignored = (file) => file === ".state" || file.startsWith(".state/");
 function snapshot(root, dir = root, out = /* @__PURE__ */ new Map()) {
   let entries;
   try {
-    entries = import_node_fs3.default.readdirSync(dir, { withFileTypes: true });
+    entries = import_node_fs6.default.readdirSync(dir, { withFileTypes: true });
   } catch {
     return out;
   }
   for (const entry of entries) {
-    const full = import_node_path3.default.join(dir, entry.name);
-    const rel = toPosix(import_node_path3.default.relative(root, full));
+    const full = import_node_path6.default.join(dir, entry.name);
+    const rel = toPosix(import_node_path6.default.relative(root, full));
     if (ignored(rel)) continue;
     if (entry.isDirectory()) snapshot(root, full, out);
     else {
       try {
-        out.set(rel, import_node_fs3.default.statSync(full).mtimeMs);
+        out.set(rel, import_node_fs6.default.statSync(full).mtimeMs);
       } catch {
       }
     }
@@ -362,7 +553,7 @@ function pollTree(root, onChange, intervalMs = 400) {
   }, intervalMs);
   return { close: () => clearInterval(timer) };
 }
-function watchTree(root, onChange, debounceMs = 120) {
+function watchTree(root, onChange, debounceMs = 120, backupPollMs = 1e3) {
   let pending = /* @__PURE__ */ new Set();
   let timer;
   const queue = (files) => {
@@ -376,15 +567,17 @@ function watchTree(root, onChange, debounceMs = 120) {
     }, debounceMs);
   };
   try {
-    const watcher = import_node_fs3.default.watch(root, { recursive: true }, (_event, filename) => {
+    const watcher = import_node_fs6.default.watch(root, { recursive: true }, (_event, filename) => {
       if (filename) queue([toPosix(filename.toString())]);
     });
     watcher.on("error", () => {
     });
+    const backup = pollTree(root, queue, backupPollMs);
     return {
       close: () => {
         clearTimeout(timer);
         watcher.close();
+        backup.close();
       }
     };
   } catch {
@@ -399,14 +592,14 @@ function watchTree(root, onChange, debounceMs = 120) {
 }
 
 // src/server/ws.ts
-var import_node_crypto = __toESM(require("node:crypto"), 1);
+var import_node_crypto2 = __toESM(require("node:crypto"), 1);
 var WS_MAGIC = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
 var OPCODE_TEXT = 1;
 var OPCODE_CLOSE = 8;
 var OPCODE_PING = 9;
 var OPCODE_PONG = 10;
 function acceptKey(clientKey) {
-  return import_node_crypto.default.createHash("sha1").update(clientKey + WS_MAGIC).digest("base64");
+  return import_node_crypto2.default.createHash("sha1").update(clientKey + WS_MAGIC).digest("base64");
 }
 function encodeFrame(opcode, payload) {
   const len = payload.length;
@@ -476,27 +669,6 @@ function handleClientFrames(socket) {
 }
 
 // src/server/app.ts
-var MIME = {
-  ".html": "text/html; charset=utf-8",
-  ".js": "text/javascript; charset=utf-8",
-  ".mjs": "text/javascript; charset=utf-8",
-  ".css": "text/css; charset=utf-8",
-  ".json": "application/json; charset=utf-8",
-  ".svg": "image/svg+xml",
-  ".png": "image/png",
-  ".jpg": "image/jpeg",
-  ".jpeg": "image/jpeg",
-  ".gif": "image/gif",
-  ".webp": "image/webp",
-  ".avif": "image/avif",
-  ".ico": "image/x-icon",
-  ".woff": "font/woff",
-  ".woff2": "font/woff2",
-  ".ttf": "font/ttf",
-  ".otf": "font/otf",
-  ".mp4": "video/mp4",
-  ".webm": "video/webm"
-};
 var VIEWER_CSP = [
   "default-src 'self'",
   "script-src 'self'",
@@ -509,75 +681,77 @@ var VIEWER_CSP = [
   "form-action 'none'",
   "frame-ancestors 'none'"
 ].join("; ");
-var BOARD_CSP = "sandbox allow-scripts";
-var randomToken = () => import_node_crypto2.default.randomBytes(24).toString("base64url");
-function safeEqual(a, b) {
-  const ab = Buffer.from(a);
-  const bb = Buffer.from(b);
-  return ab.length === bb.length && import_node_crypto2.default.timingSafeEqual(ab, bb);
+var CONTENT_CSP = {
+  artboard: "sandbox allow-scripts",
+  html: "sandbox allow-scripts allow-modals allow-forms allow-popups allow-downloads"
+};
+var SHELL_ROUTE = /^\/(?:(artboard|html)\/([^/]+)\/?)?$/;
+var API_ARTIFACT_ROUTE = /^\/api\/artifacts\/([^/]+)\/([^/]+)$/;
+function readArtifact(dir, ref) {
+  return ref.type === "artboard" ? readCanvas(dir) : readHtml(dir, ref.id);
 }
-function parseCookies(header) {
-  const cookies = {};
-  for (const part of (header ?? "").split(";")) {
-    const index = part.indexOf("=");
-    if (index > 0) cookies[part.slice(0, index).trim()] = part.slice(index + 1).trim();
-  }
-  return cookies;
+function titleOf(payload, ref) {
+  if ("title" in payload) return payload.title;
+  return payload.canvas?.title || ref.id;
 }
-function readPersisted(file) {
-  try {
-    return import_node_fs4.default.readFileSync(file, "utf8").trim();
-  } catch {
-    return "";
-  }
-}
-function listen(server, host, port) {
-  return new Promise((resolve, reject) => {
-    const onError = (err) => {
-      server.off("listening", onListening);
-      reject(err);
-    };
-    const onListening = () => {
-      server.off("error", onError);
-      resolve(server.address().port);
-    };
-    server.once("error", onError);
-    server.once("listening", onListening);
-    server.listen(port, host);
-  });
-}
-var urlHostForHttp = (host) => host.includes(":") && !host.startsWith("[") ? `[${host}]` : host;
-async function startArtboardServer(options) {
-  const boardDir = import_node_path4.default.resolve(options.boardDir);
-  const viewerDir = import_node_path4.default.resolve(options.viewerDir);
-  const stateDir = import_node_path4.default.join(boardDir, "state");
-  import_node_fs4.default.mkdirSync(stateDir, { recursive: true, mode: 448 });
-  const portFile = import_node_path4.default.join(stateDir, ".last-port");
-  const tokenFile = import_node_path4.default.join(stateDir, ".last-token");
+async function startArtifactsServer(options) {
+  const root = import_node_path7.default.resolve(options.root);
+  const viewerDir = import_node_path7.default.resolve(options.viewerDir);
+  const stateDir = import_node_path7.default.join(root, ".state");
+  import_node_fs7.default.mkdirSync(stateDir, { recursive: true, mode: 448 });
+  import_node_fs7.default.writeFileSync(import_node_path7.default.join(stateDir, ".gitignore"), "*\n");
+  const portFile = import_node_path7.default.join(stateDir, ".last-port");
+  const tokenFile = import_node_path7.default.join(stateDir, ".last-token");
   const token = readPersisted(tokenFile) || randomToken();
-  import_node_fs4.default.writeFileSync(tokenFile, `${token}
+  import_node_fs7.default.writeFileSync(tokenFile, `${token}
 `, { mode: 384 });
-  const boardToken = randomToken();
+  const contentToken = randomToken();
+  const contentPrefix = `/c/${contentToken}/`;
   const clients = /* @__PURE__ */ new Set();
   const changeListeners = [];
   const activityListeners = [];
   const touch = () => activityListeners.forEach((listener) => listener());
   let port = 0;
   let cookieName = "";
-  const send = (res, status, body, headers = {}) => {
-    res.writeHead(status, { "Referrer-Policy": "no-referrer", "Cache-Control": "no-store", ...headers });
-    res.end(body);
-  };
-  const sendFile = (res, file, headers = {}) => {
-    import_node_fs4.default.readFile(file, (err, data) => {
-      if (err) send(res, 404, "Not found");
-      else send(res, 200, data, { "Content-Type": MIME[import_node_path4.default.extname(file).toLowerCase()] ?? "application/octet-stream", ...headers });
-    });
-  };
   const isAuthorized = (req, keyFromQuery) => keyFromQuery !== null && safeEqual(keyFromQuery, token) || safeEqual(parseCookies(req.headers.cookie)[cookieName] ?? "", token);
+  const serveContent = (res, rest) => {
+    const [type = "", id = "", ...parts] = rest.split("/");
+    const dir = resolveArtifactDir(root, type, id);
+    if (!dir) {
+      send(res, 404, "Not found");
+      return;
+    }
+    const ref = artifactKeyOf(`${type}/${id}`);
+    const relative = parts.join("/");
+    if (!resolveInside(dir, relative)) {
+      send(res, 403, "Forbidden");
+      return;
+    }
+    const target = ref.type === "artboard" ? resolveBoardFile(dir, relative) : resolveHtmlFile(dir, relative);
+    if (!target) send(res, 404, "Not found");
+    else sendFile(res, target, { "Content-Security-Policy": CONTENT_CSP[ref.type] });
+  };
+  const serveArtifactApi = (res, type, id) => {
+    const dir = resolveArtifactDir(root, type, id);
+    if (!dir) {
+      sendJson(res, 404, { warnings: [`artifact ${type}/${id} not found`] });
+      return;
+    }
+    const ref = artifactKeyOf(`${type}/${id}`);
+    sendJson(res, 200, { ...readArtifact(dir, ref), contentBase: `${contentPrefix}${type}/${id}/` });
+  };
+  const serveList = (res) => {
+    const { artifacts, warnings } = listArtifacts(root);
+    const summaries = artifacts.map((entry) => ({
+      type: entry.type,
+      id: entry.id,
+      title: titleOf(readArtifact(entry.dir, entry), entry)
+    }));
+    sendJson(res, 200, { artifacts: summaries, warnings });
+  };
   const handleRequest = (req, res) => {
     touch();
-    const url2 = new URL(req.url ?? "/", "http://artboard.local");
+    const url2 = new URL(req.url ?? "/", "http://artifacts.local");
     let pathname;
     try {
       pathname = decodeURIComponent(url2.pathname);
@@ -585,39 +759,29 @@ async function startArtboardServer(options) {
       send(res, 400, "Bad request");
       return;
     }
-    const boardPrefix = "/b/";
-    if (pathname.startsWith(boardPrefix)) {
-      const rest = pathname.slice(boardPrefix.length);
-      const slash = rest.indexOf("/");
-      const given = slash < 0 ? rest : rest.slice(0, slash);
-      if (!safeEqual(given, boardToken)) {
-        send(res, 404, "Not found");
-        return;
-      }
-      const relative = rest.slice(slash + 1);
-      if (!resolveInside(boardDir, relative)) {
-        send(res, 403, "Forbidden");
-        return;
-      }
-      const target2 = resolveBoardFile(boardDir, relative);
-      if (!target2) send(res, 404, "Not found");
-      else sendFile(res, target2, { "Content-Security-Policy": BOARD_CSP });
+    if (pathname.startsWith("/c/")) {
+      if (!pathname.startsWith(contentPrefix)) send(res, 404, "Not found");
+      else serveContent(res, pathname.slice(contentPrefix.length));
       return;
     }
     const key = url2.searchParams.get("key");
     if (!isAuthorized(req, key)) {
-      send(res, 403, "Forbidden: open the full Artboard URL including ?key=");
+      send(res, 403, "Forbidden: open the full artifact link including ?key=");
       return;
     }
-    if (pathname === "/api/canvas") {
-      const payload = { ...readCanvas(boardDir), boardBase: `${boardPrefix}${boardToken}/` };
-      send(res, 200, JSON.stringify(payload), { "Content-Type": MIME[".json"] });
+    if (pathname === "/api/artifacts") {
+      serveList(res);
       return;
     }
-    if (pathname === "/" || pathname === "/index.html") {
+    const apiMatch = API_ARTIFACT_ROUTE.exec(pathname);
+    if (apiMatch) {
+      serveArtifactApi(res, apiMatch[1], apiMatch[2]);
+      return;
+    }
+    if (SHELL_ROUTE.test(pathname) || pathname === "/index.html") {
       const headers = { "Content-Security-Policy": VIEWER_CSP };
       if (key !== null) headers["Set-Cookie"] = `${cookieName}=${token}; HttpOnly; SameSite=Strict; Path=/`;
-      sendFile(res, import_node_path4.default.join(viewerDir, "index.html"), headers);
+      sendFile(res, import_node_path7.default.join(viewerDir, "index.html"), headers);
       return;
     }
     const target = resolveInside(viewerDir, pathname.slice(1));
@@ -628,19 +792,19 @@ async function startArtboardServer(options) {
     try {
       handleRequest(req, res);
     } catch (err) {
-      if (!res.headersSent) send(res, 500, `Artboard error: ${err.message}`);
+      if (!res.headersSent) send(res, 500, `Artifacts error: ${err.message}`);
     }
   });
   server.on("upgrade", (req, socket) => {
-    const url2 = new URL(req.url ?? "/", "http://artboard.local");
+    const url2 = new URL(req.url ?? "/", "http://artifacts.local");
     const clientKey = req.headers["sec-websocket-key"];
     if (url2.pathname !== "/ws" || typeof clientKey !== "string") {
       rejectUpgrade(socket, 400, "Bad Request");
       return;
     }
-    const origin = req.headers.origin;
+    const origin2 = req.headers.origin;
     const host = req.headers.host ?? "";
-    const sameHost = origin === `http://${host}` || origin === `https://${host}`;
+    const sameHost = origin2 === `http://${host}` || origin2 === `https://${host}`;
     if (!isAuthorized(req, url2.searchParams.get("key")) || !sameHost) {
       rejectUpgrade(socket, 403, "Forbidden");
       return;
@@ -658,35 +822,62 @@ async function startArtboardServer(options) {
   } catch {
     port = await listen(server, options.host, 0);
   }
-  cookieName = `artboard_${port}`;
-  import_node_fs4.default.writeFileSync(portFile, `${port}
+  cookieName = `ryugi_artifacts_${port}`;
+  import_node_fs7.default.writeFileSync(portFile, `${port}
 `, { mode: 384 });
-  const url = `http://${urlHostForHttp(options.urlHost)}:${port}/?key=${token}`;
-  writeStateFiles(boardDir, readCanvas(boardDir));
-  writeJsonAtomic(import_node_path4.default.join(stateDir, "server-info"), { type: "server-started", url, port, dir: boardDir });
+  const origin = `http://${urlHostForHttp(options.urlHost)}:${port}`;
+  const url = `${origin}/?key=${token}`;
+  const linkFor = (type, id) => `${origin}/${type}/${id}?key=${token}`;
+  const signatures = /* @__PURE__ */ new Map();
+  const refreshState = (ref, dir) => {
+    signatures.set(`${ref.type}/${ref.id}`, artifactSignature(dir));
+    const payload = readArtifact(dir, ref);
+    try {
+      writeArtifactState(stateDir, ref, payload);
+    } catch (err) {
+      console.error(JSON.stringify({ type: "state-write-error", error: err.message }));
+    }
+    return payload;
+  };
+  for (const entry of listArtifacts(root).artifacts) refreshState(entry, entry.dir);
+  writeJsonAtomic(import_node_path7.default.join(stateDir, "server-info"), { type: "server-started", url, port, root });
   const watcher = watchTree(
-    boardDir,
+    root,
     (files) => {
-      const payload = readCanvas(boardDir);
-      try {
-        writeStateFiles(boardDir, payload);
-      } catch (err) {
-        console.error(JSON.stringify({ type: "state-write-error", error: err.message }));
+      const byArtifact = /* @__PURE__ */ new Map();
+      for (const file of files) {
+        const ref = artifactKeyOf(file);
+        if (!ref) continue;
+        const key = `${ref.type}/${ref.id}`;
+        const entry = byArtifact.get(key) ?? { ref, files: [] };
+        const inner = file.slice(key.length + 1);
+        if (inner) entry.files.push(inner);
+        byArtifact.set(key, entry);
       }
-      const frame = textFrame(JSON.stringify({ type: "change", files }));
-      for (const socket of clients) socket.write(frame);
+      for (const [key, { ref, files: changed }] of byArtifact) {
+        const dir = resolveArtifactDir(root, ref.type, ref.id);
+        if (!dir) {
+          signatures.delete(key);
+          continue;
+        }
+        if (signatures.get(key) === artifactSignature(dir)) continue;
+        const payload = refreshState(ref, dir);
+        const frame = textFrame(JSON.stringify({ type: "change", artifact: key, files: changed }));
+        for (const socket of clients) socket.write(frame);
+        changeListeners.forEach((listener) => listener(ref, payload, changed));
+      }
       touch();
-      changeListeners.forEach((listener) => listener(payload, files));
     },
     options.debounceMs
   );
   return {
     port,
     token,
-    boardToken,
+    contentToken,
     url,
+    linkFor,
     clientCount: () => clients.size,
-    onBoardChange: (listener) => changeListeners.push(listener),
+    onArtifactChange: (listener) => changeListeners.push(listener),
     onActivity: (listener) => activityListeners.push(listener),
     close: () => new Promise((resolve) => {
       watcher.close();
@@ -698,32 +889,43 @@ async function startArtboardServer(options) {
 }
 
 // src/server/lifecycle.ts
+var import_node_fs8 = __toESM(require("node:fs"), 1);
 var DEFAULT_IDLE_TIMEOUT_MS = 4 * 60 * 60 * 1e3;
 var DEFAULT_LIFECYCLE_CHECK_MS = 60 * 1e3;
+var SERVER_ID_ARG = "--artifacts-server-id=";
 var positive = (value, fallback) => {
   const n = Number(value);
   return Number.isFinite(n) && n > 0 ? n : fallback;
 };
 var isLoopback = (host) => host === "127.0.0.1" || host === "localhost" || host === "::1";
 function parseEnv(env, argv = []) {
-  const boardDir = env.ARTBOARD_DIR;
-  if (!boardDir) throw new Error("ARTBOARD_DIR is required");
-  const host = env.ARTBOARD_HOST || "127.0.0.1";
-  const urlHost = env.ARTBOARD_URL_HOST || (isLoopback(host) ? "localhost" : host);
-  const ownerPid = Number(env.ARTBOARD_OWNER_PID);
-  const serverIdArg = argv.find((arg) => arg.startsWith("--artboard-server-id="));
+  const root = env.ARTIFACTS_ROOT;
+  if (!root) throw new Error("ARTIFACTS_ROOT is required");
+  const host = env.ARTIFACTS_HOST || "127.0.0.1";
+  const urlHost = env.ARTIFACTS_URL_HOST || (isLoopback(host) ? "localhost" : host);
+  const serverIdArg = argv.find((arg) => arg.startsWith(SERVER_ID_ARG));
   return {
-    boardDir,
+    root,
     host,
     urlHost,
-    ownerPid: Number.isInteger(ownerPid) && ownerPid > 1 ? ownerPid : null,
-    idleTimeoutMs: positive(env.ARTBOARD_IDLE_TIMEOUT_MS, DEFAULT_IDLE_TIMEOUT_MS),
-    lifecycleCheckMs: positive(env.ARTBOARD_LIFECYCLE_CHECK_MS, DEFAULT_LIFECYCLE_CHECK_MS),
-    open: env.ARTBOARD_OPEN === "1",
-    openCmd: env.ARTBOARD_OPEN_CMD || null,
-    serverId: serverIdArg ? serverIdArg.slice("--artboard-server-id=".length) : null
+    idleTimeoutMs: positive(env.ARTIFACTS_IDLE_TIMEOUT_MS, DEFAULT_IDLE_TIMEOUT_MS),
+    lifecycleCheckMs: positive(env.ARTIFACTS_LIFECYCLE_CHECK_MS, DEFAULT_LIFECYCLE_CHECK_MS),
+    open: env.ARTIFACTS_OPEN === "1",
+    openCmd: env.ARTIFACTS_OPEN_CMD || null,
+    serverId: serverIdArg ? serverIdArg.slice(SERVER_ID_ARG.length) : null
   };
 }
+function readOwners(file) {
+  let text;
+  try {
+    text = import_node_fs8.default.readFileSync(file, "utf8");
+  } catch {
+    return [];
+  }
+  const pids = text.split("\n").map((line) => Number(line.trim())).filter((pid) => Number.isInteger(pid) && pid > 1);
+  return [...new Set(pids)];
+}
+var liveOwners = (pids, alive) => pids.filter(alive);
 function browserLauncher(platform, url) {
   if (platform === "darwin") return { bin: "open", args: [url] };
   if (platform === "win32") return { bin: "cmd", args: ["/c", "start", '""', url] };
@@ -731,7 +933,7 @@ function browserLauncher(platform, url) {
   return null;
 }
 function shutdownReason(state) {
-  if (!state.ownerAlive) return "owner process exited";
+  if (!state.ownersAlive) return "all owner processes exited";
   if (state.now - state.lastActivity > state.idleTimeoutMs) return "idle timeout";
   return null;
 }
@@ -747,11 +949,11 @@ function processAlive(pid) {
 // src/server/main.ts
 async function main() {
   const config = parseEnv(process.env, process.argv.slice(2));
-  const boardDir = import_node_path5.default.resolve(config.boardDir);
-  const stateDir = import_node_path5.default.join(boardDir, "state");
-  const server = await startArtboardServer({
-    boardDir,
-    viewerDir: import_node_path5.default.join(__dirname, "viewer"),
+  const root = import_node_path8.default.resolve(config.root);
+  const stateDir = import_node_path8.default.join(root, ".state");
+  const server = await startArtifactsServer({
+    root,
+    viewerDir: import_node_path8.default.join(__dirname, "viewer"),
     host: config.host,
     urlHost: config.urlHost
   });
@@ -760,41 +962,45 @@ async function main() {
     lastActivity = Date.now();
   });
   let browserOpened = false;
-  server.onBoardChange((payload) => {
+  server.onArtifactChange((ref, payload) => {
     if (browserOpened || !config.open || !isLoopback(config.host)) return;
-    if (!payload.canvas || Object.keys(payload.canvas.boards ?? {}).length === 0) return;
+    if ("canvas" in payload && (!payload.canvas || Object.keys(payload.canvas.boards ?? {}).length === 0)) return;
+    if ("title" in payload && payload.warnings.length > 0) return;
     browserOpened = true;
     if (server.clientCount() > 0) return;
+    const link = server.linkFor(ref.type, ref.id);
     if (config.openCmd) {
-      (0, import_node_child_process.exec)(`${config.openCmd} ${JSON.stringify(server.url)}`, () => {
+      (0, import_node_child_process.exec)(`${config.openCmd} ${JSON.stringify(link)}`, () => {
       });
       return;
     }
-    const launcher = browserLauncher(process.platform, server.url);
+    const launcher = browserLauncher(process.platform, link);
     if (launcher) (0, import_node_child_process.execFile)(launcher.bin, launcher.args, () => {
     });
   });
   const shutdown = async (reason) => {
     console.log(JSON.stringify({ type: "server-stopped", reason }));
-    import_node_fs5.default.rmSync(import_node_path5.default.join(stateDir, "server-info"), { force: true });
-    writeJsonAtomic(import_node_path5.default.join(stateDir, "server-stopped"), { reason, timestamp: Date.now() });
+    import_node_fs9.default.rmSync(import_node_path8.default.join(stateDir, "server-info"), { force: true });
+    writeJsonAtomic(import_node_path8.default.join(stateDir, "server-stopped"), { reason, timestamp: Date.now() });
     await server.close();
     process.exit(0);
   };
+  const ownersFile = import_node_path8.default.join(stateDir, "owners");
   const timer = setInterval(() => {
+    const owners = readOwners(ownersFile);
     const reason = shutdownReason({
       now: Date.now(),
       lastActivity,
       idleTimeoutMs: config.idleTimeoutMs,
-      ownerAlive: config.ownerPid === null || processAlive(config.ownerPid)
+      ownersAlive: owners.length === 0 || liveOwners(owners, processAlive).length > 0
     });
     if (reason) void shutdown(reason);
   }, config.lifecycleCheckMs);
   timer.unref();
   process.on("SIGTERM", () => void shutdown("SIGTERM"));
   process.on("SIGINT", () => void shutdown("SIGINT"));
-  import_node_fs5.default.rmSync(import_node_path5.default.join(stateDir, "server-stopped"), { force: true });
-  console.log(JSON.stringify({ type: "server-started", url: server.url, port: server.port, dir: boardDir }));
+  import_node_fs9.default.rmSync(import_node_path8.default.join(stateDir, "server-stopped"), { force: true });
+  console.log(JSON.stringify({ type: "server-started", url: server.url, port: server.port, root }));
 }
 main().catch((err) => {
   console.log(JSON.stringify({ type: "server-error", error: err.message }));

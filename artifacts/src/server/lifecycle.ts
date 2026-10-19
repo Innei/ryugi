@@ -1,8 +1,9 @@
+import fs from 'node:fs';
+
 export interface ServerConfig {
-  boardDir: string;
+  root: string;
   host: string;
   urlHost: string;
-  ownerPid: number | null;
   idleTimeoutMs: number;
   lifecycleCheckMs: number;
   open: boolean;
@@ -12,6 +13,7 @@ export interface ServerConfig {
 
 const DEFAULT_IDLE_TIMEOUT_MS = 4 * 60 * 60 * 1000;
 const DEFAULT_LIFECYCLE_CHECK_MS = 60 * 1000;
+const SERVER_ID_ARG = '--artifacts-server-id=';
 
 const positive = (value: string | undefined, fallback: number) => {
   const n = Number(value);
@@ -21,24 +23,38 @@ const positive = (value: string | undefined, fallback: number) => {
 export const isLoopback = (host: string) => host === '127.0.0.1' || host === 'localhost' || host === '::1';
 
 export function parseEnv(env: Record<string, string | undefined>, argv: string[] = []): ServerConfig {
-  const boardDir = env.ARTBOARD_DIR;
-  if (!boardDir) throw new Error('ARTBOARD_DIR is required');
-  const host = env.ARTBOARD_HOST || '127.0.0.1';
-  const urlHost = env.ARTBOARD_URL_HOST || (isLoopback(host) ? 'localhost' : host);
-  const ownerPid = Number(env.ARTBOARD_OWNER_PID);
-  const serverIdArg = argv.find((arg) => arg.startsWith('--artboard-server-id='));
+  const root = env.ARTIFACTS_ROOT;
+  if (!root) throw new Error('ARTIFACTS_ROOT is required');
+  const host = env.ARTIFACTS_HOST || '127.0.0.1';
+  const urlHost = env.ARTIFACTS_URL_HOST || (isLoopback(host) ? 'localhost' : host);
+  const serverIdArg = argv.find((arg) => arg.startsWith(SERVER_ID_ARG));
   return {
-    boardDir,
+    root,
     host,
     urlHost,
-    ownerPid: Number.isInteger(ownerPid) && ownerPid > 1 ? ownerPid : null,
-    idleTimeoutMs: positive(env.ARTBOARD_IDLE_TIMEOUT_MS, DEFAULT_IDLE_TIMEOUT_MS),
-    lifecycleCheckMs: positive(env.ARTBOARD_LIFECYCLE_CHECK_MS, DEFAULT_LIFECYCLE_CHECK_MS),
-    open: env.ARTBOARD_OPEN === '1',
-    openCmd: env.ARTBOARD_OPEN_CMD || null,
-    serverId: serverIdArg ? serverIdArg.slice('--artboard-server-id='.length) : null,
+    idleTimeoutMs: positive(env.ARTIFACTS_IDLE_TIMEOUT_MS, DEFAULT_IDLE_TIMEOUT_MS),
+    lifecycleCheckMs: positive(env.ARTIFACTS_LIFECYCLE_CHECK_MS, DEFAULT_LIFECYCLE_CHECK_MS),
+    open: env.ARTIFACTS_OPEN === '1',
+    openCmd: env.ARTIFACTS_OPEN_CMD || null,
+    serverId: serverIdArg ? serverIdArg.slice(SERVER_ID_ARG.length) : null,
   };
 }
+
+export function readOwners(file: string): number[] {
+  let text: string;
+  try {
+    text = fs.readFileSync(file, 'utf8');
+  } catch {
+    return [];
+  }
+  const pids = text
+    .split('\n')
+    .map((line) => Number(line.trim()))
+    .filter((pid) => Number.isInteger(pid) && pid > 1);
+  return [...new Set(pids)];
+}
+
+export const liveOwners = (pids: number[], alive: (pid: number) => boolean) => pids.filter(alive);
 
 export function browserLauncher(platform: string, url: string): { bin: string; args: string[] } | null {
   if (platform === 'darwin') return { bin: 'open', args: [url] };
@@ -51,9 +67,9 @@ export function shutdownReason(state: {
   now: number;
   lastActivity: number;
   idleTimeoutMs: number;
-  ownerAlive: boolean;
+  ownersAlive: boolean;
 }): string | null {
-  if (!state.ownerAlive) return 'owner process exited';
+  if (!state.ownersAlive) return 'all owner processes exited';
   if (state.now - state.lastActivity > state.idleTimeoutMs) return 'idle timeout';
   return null;
 }

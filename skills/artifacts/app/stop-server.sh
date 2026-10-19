@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Stop the Artboard server for a project. The board directory is kept.
+# Stop the artifacts server for a project. The artifacts are kept.
 # Usage: stop-server.sh [<project-dir>]   (default: current directory)
 
 PROJECT_DIR="${1:-$PWD}"
@@ -8,7 +8,7 @@ if ! PROJECT_REAL="$(cd "$PROJECT_DIR" 2>/dev/null && pwd -P)"; then
   exit 1
 fi
 
-STATE_DIR="$PROJECT_REAL/.ryugi/artboard/state"
+STATE_DIR="$PROJECT_REAL/.ryugi/artifacts/.state"
 PID_FILE="$STATE_DIR/server.pid"
 SERVER_ID_FILE="$STATE_DIR/server-instance-id"
 
@@ -18,7 +18,7 @@ mark_stopped() {
 }
 
 command_has_server_id() {
-  local pid="$1" expected_arg="--artboard-server-id=$2" arg command_line
+  local pid="$1" expected_arg="--artifacts-server-id=$2" arg command_line
   if [[ -r "/proc/$pid/cmdline" ]]; then
     while IFS= read -r -d '' arg || [[ -n "$arg" ]]; do
       [[ "$arg" == "$expected_arg" ]] && return 0
@@ -32,9 +32,9 @@ command_has_server_id() {
   esac
 }
 
-# Only signal a PID whose command line carries this board's per-start server id:
+# Only signal a PID whose command line carries this project's per-start server id:
 # a stale pid file can point at an unrelated process after a reboot.
-is_artboard_server() {
+is_artifacts_server() {
   kill -0 "$1" 2>/dev/null || return 1
   [[ -f "$SERVER_ID_FILE" ]] || return 1
   local id
@@ -49,7 +49,7 @@ if [[ ! -f "$PID_FILE" ]]; then
 fi
 
 pid="$(cat "$PID_FILE")"
-if ! is_artboard_server "$pid"; then
+if ! is_artifacts_server "$pid"; then
   rm -f "$PID_FILE" "$SERVER_ID_FILE"
   mark_stopped "stale_pid"
   echo '{"status": "stale_pid"}'
@@ -70,6 +70,6 @@ if kill -0 "$pid" 2>/dev/null; then
   exit 1
 fi
 
-rm -f "$PID_FILE" "$SERVER_ID_FILE" "$STATE_DIR/server.log"
+rm -f "$PID_FILE" "$SERVER_ID_FILE" "$STATE_DIR/server.log" "$STATE_DIR/owners"
 mark_stopped "stop-server.sh"
 echo '{"status": "stopped"}'

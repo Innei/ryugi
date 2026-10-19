@@ -2,12 +2,12 @@ import { exec, execFile } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { startArtifactsServer } from './app';
-import { browserLauncher, isLoopback, parseEnv, processAlive, shutdownReason } from './lifecycle';
+import { browserLauncher, isLoopback, liveOwners, parseEnv, processAlive, readOwners, shutdownReason } from './lifecycle';
 import { writeJsonAtomic } from './state';
 
 async function main() {
   const config = parseEnv(process.env, process.argv.slice(2));
-  const root = path.resolve(config.boardDir);
+  const root = path.resolve(config.root);
   const stateDir = path.join(root, '.state');
   const server = await startArtifactsServer({
     root,
@@ -45,12 +45,14 @@ async function main() {
     process.exit(0);
   };
 
+  const ownersFile = path.join(stateDir, 'owners');
   const timer = setInterval(() => {
+    const owners = readOwners(ownersFile);
     const reason = shutdownReason({
       now: Date.now(),
       lastActivity,
       idleTimeoutMs: config.idleTimeoutMs,
-      ownerAlive: config.ownerPid === null || processAlive(config.ownerPid),
+      ownersAlive: owners.length === 0 || liveOwners(owners, processAlive).length > 0,
     });
     if (reason) void shutdown(reason);
   }, config.lifecycleCheckMs);

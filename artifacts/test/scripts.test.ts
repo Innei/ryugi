@@ -34,7 +34,7 @@ afterEach(() => {
 });
 
 function newProject() {
-  const project = fs.mkdtempSync(path.join(os.tmpdir(), 'artboard-project-'));
+  const project = fs.mkdtempSync(path.join(os.tmpdir(), 'artifacts-project-'));
   projects.push(project);
   return project;
 }
@@ -44,7 +44,7 @@ describe('start-server.sh', () => {
     const project = newProject();
     const info = run(start, ['--project-dir', project]);
     expect(info.type).toBe('server-started');
-    expect(info.dir).toBe(fs.realpathSync(path.join(project, '.ryugi', 'artboard')));
+    expect(info.root).toBe(fs.realpathSync(path.join(project, '.ryugi', 'artifacts')));
     expect(info.url).toMatch(/^http:\/\/localhost:\d+\/\?key=/);
     const res = await get(info.url.replace('localhost', '127.0.0.1'));
     expect(res.status).toBe(200);
@@ -58,9 +58,33 @@ describe('start-server.sh', () => {
     expect(second.reused).toBe(true);
   });
 
+  test('registers an owner on start and another on every reuse', () => {
+    const project = newProject();
+    run(start, ['--project-dir', project]);
+    const owners = path.join(project, '.ryugi', 'artifacts', '.state', 'owners');
+    const firstCount = fs.readFileSync(owners, 'utf8').trim().split('\n').length;
+    run(start, ['--project-dir', project]);
+    expect(fs.readFileSync(owners, 'utf8').trim().split('\n').length).toBe(firstCount + 1);
+  });
+
+  test('prints a link for an artifact, on start and on reuse', () => {
+    const project = newProject();
+    const first = run(start, ['--project-dir', project, '--artifact', 'html/arrow-tuner']);
+    const key = first.url.split('key=')[1];
+    expect(first.link).toBe(`http://localhost:${first.port}/html/arrow-tuner?key=${key}`);
+    const second = run(start, ['--project-dir', project, '--artifact', 'artboard/header']);
+    expect(second.reused).toBe(true);
+    expect(second.link).toBe(`http://localhost:${first.port}/artboard/header?key=${key}`);
+  });
+
+  test('rejects an invalid artifact name', () => {
+    expect(run(start, ['--project-dir', newProject(), '--artifact', 'slides/x']).error).toMatch(/--artifact must be/);
+    expect(run(start, ['--project-dir', newProject(), '--artifact', 'html/../x']).error).toMatch(/--artifact must be/);
+  });
+
   test('detects its running server even where ps has no -o option (Git Bash)', () => {
     const project = newProject();
-    const shim = fs.mkdtempSync(path.join(os.tmpdir(), 'artboard-ps-'));
+    const shim = fs.mkdtempSync(path.join(os.tmpdir(), 'artifacts-ps-'));
     fs.writeFileSync(
       path.join(shim, 'ps'),
       '#!/bin/bash\nfor a in "$@"; do [[ "$a" == "-o" ]] && exit 1; done\nexec /bin/ps "$@"\n',
@@ -87,12 +111,12 @@ describe('stop-server.sh', () => {
     const info = run(start, ['--project-dir', project]);
     expect(run(stop, [project]).status).toBe('stopped');
     await expect(get(info.url.replace('localhost', '127.0.0.1'))).rejects.toThrow();
-    expect(fs.existsSync(path.join(project, '.ryugi', 'artboard', 'state'))).toBe(true);
+    expect(fs.existsSync(path.join(project, '.ryugi', 'artifacts', '.state'))).toBe(true);
   });
 
   test('refuses to signal a pid that is not this board\'s server', () => {
     const project = newProject();
-    const stateDir = path.join(project, '.ryugi', 'artboard', 'state');
+    const stateDir = path.join(project, '.ryugi', 'artifacts', '.state');
     fs.mkdirSync(stateDir, { recursive: true });
     const foreign = spawn('sleep', ['30'], { detached: true, stdio: 'ignore' });
     try {
