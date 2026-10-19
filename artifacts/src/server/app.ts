@@ -1,54 +1,37 @@
-import crypto from 'node:crypto';
 import fs from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
 import type { Duplex } from 'node:stream';
-import type { CanvasPayload, ServerMessage } from '../shared/types';
-import { resolveBoardFile, resolveInside } from './paths';
-import { readCanvas, writeJsonAtomic, writeStateFiles } from './state';
+import type { ArtifactSummary, ArtifactType, CanvasPayload, HtmlPayload, ServerMessage } from '../shared/types';
+import { artifactKeyOf, listArtifacts, resolveArtifactDir, type ArtifactRef } from './artifacts';
+import { readHtml } from './html';
+import { listen, parseCookies, randomToken, readPersisted, safeEqual, send, sendFile, sendJson, urlHostForHttp } from './http';
+import { resolveBoardFile, resolveHtmlFile, resolveInside } from './paths';
+import { readCanvas, writeArtifactState, writeJsonAtomic } from './state';
 import { watchTree } from './watch';
 import { completeHandshake, handleClientFrames, rejectUpgrade, textFrame } from './ws';
 
 export interface ServerOptions {
-  boardDir: string;
+  root: string;
   viewerDir: string;
   host: string;
   urlHost: string;
   debounceMs?: number;
 }
 
-export interface ArtboardServer {
+export type ArtifactPayload = (CanvasPayload | HtmlPayload) & { warnings: string[] };
+
+export interface ArtifactsServer {
   port: number;
   token: string;
-  boardToken: string;
+  contentToken: string;
   url: string;
+  linkFor(type: ArtifactType, id: string): string;
   clientCount(): number;
-  onBoardChange(listener: (payload: CanvasPayload, files: string[]) => void): void;
+  onArtifactChange(listener: (ref: ArtifactRef, payload: ArtifactPayload, files: string[]) => void): void;
   onActivity(listener: () => void): void;
   close(): Promise<void>;
 }
-
-const MIME: Record<string, string> = {
-  '.html': 'text/html; charset=utf-8',
-  '.js': 'text/javascript; charset=utf-8',
-  '.mjs': 'text/javascript; charset=utf-8',
-  '.css': 'text/css; charset=utf-8',
-  '.json': 'application/json; charset=utf-8',
-  '.svg': 'image/svg+xml',
-  '.png': 'image/png',
-  '.jpg': 'image/jpeg',
-  '.jpeg': 'image/jpeg',
-  '.gif': 'image/gif',
-  '.webp': 'image/webp',
-  '.avif': 'image/avif',
-  '.ico': 'image/x-icon',
-  '.woff': 'font/woff',
-  '.woff2': 'font/woff2',
-  '.ttf': 'font/ttf',
-  '.otf': 'font/otf',
-  '.mp4': 'video/mp4',
-  '.webm': 'video/webm',
-};
 
 const VIEWER_CSP = [
   "default-src 'self'",
@@ -63,89 +46,89 @@ const VIEWER_CSP = [
   "frame-ancestors 'none'",
 ].join('; ');
 
-const BOARD_CSP = 'sandbox allow-scripts';
+const CONTENT_CSP: Record<ArtifactType, string> = {
+  artboard: 'sandbox allow-scripts',
+  html: 'sandbox allow-scripts allow-modals allow-forms allow-popups allow-downloads',
+};
 
-const randomToken = () => crypto.randomBytes(24).toString('base64url');
+const SHELL_ROUTE = /^\/(?:(artboard|html)\/([^/]+)\/?)?$/;
+const API_ARTIFACT_ROUTE = /^\/api\/artifacts\/([^/]+)\/([^/]+)$/;
 
-function safeEqual(a: string, b: string) {
-  const ab = Buffer.from(a);
-  const bb = Buffer.from(b);
-  return ab.length === bb.length && crypto.timingSafeEqual(ab, bb);
+function readArtifact(dir: string, ref: ArtifactRef): ArtifactPayload {
+  return ref.type === 'artboard' ? readCanvas(dir) : readHtml(dir, ref.id);
 }
 
-function parseCookies(header: string | undefined) {
-  const cookies: Record<string, string> = {};
-  for (const part of (header ?? '').split(';')) {
-    const index = part.indexOf('=');
-    if (index > 0) cookies[part.slice(0, index).trim()] = part.slice(index + 1).trim();
-  }
-  return cookies;
+function titleOf(payload: ArtifactPayload, ref: ArtifactRef) {
+  if ('title' in payload) return payload.title;
+  return payload.canvas?.title || ref.id;
 }
 
-function readPersisted(file: string) {
-  try {
-    return fs.readFileSync(file, 'utf8').trim();
-  } catch {
-    return '';
-  }
-}
-
-function listen(server: http.Server, host: string, port: number) {
-  return new Promise<number>((resolve, reject) => {
-    const onError = (err: Error) => {
-      server.off('listening', onListening);
-      reject(err);
-    };
-    const onListening = () => {
-      server.off('error', onError);
-      resolve((server.address() as { port: number }).port);
-    };
-    server.once('error', onError);
-    server.once('listening', onListening);
-    server.listen(port, host);
-  });
-}
-
-const urlHostForHttp = (host: string) => (host.includes(':') && !host.startsWith('[') ? `[${host}]` : host);
-
-export async function startArtboardServer(options: ServerOptions): Promise<ArtboardServer> {
-  const boardDir = path.resolve(options.boardDir);
+export async function startArtifactsServer(options: ServerOptions): Promise<ArtifactsServer> {
+  const root = path.resolve(options.root);
   const viewerDir = path.resolve(options.viewerDir);
-  const stateDir = path.join(boardDir, 'state');
+  const stateDir = path.join(root, '.state');
   fs.mkdirSync(stateDir, { recursive: true, mode: 0o700 });
+  fs.writeFileSync(path.join(stateDir, '.gitignore'), '*\n');
 
   const portFile = path.join(stateDir, '.last-port');
   const tokenFile = path.join(stateDir, '.last-token');
   const token = readPersisted(tokenFile) || randomToken();
   fs.writeFileSync(tokenFile, `${token}\n`, { mode: 0o600 });
-  const boardToken = randomToken();
+  const contentToken = randomToken();
+  const contentPrefix = `/c/${contentToken}/`;
 
   const clients = new Set<Duplex>();
-  const changeListeners: ((payload: CanvasPayload, files: string[]) => void)[] = [];
+  const changeListeners: ((ref: ArtifactRef, payload: ArtifactPayload, files: string[]) => void)[] = [];
   const activityListeners: (() => void)[] = [];
   const touch = () => activityListeners.forEach((listener) => listener());
   let port = 0;
   let cookieName = '';
 
-  const send = (res: http.ServerResponse, status: number, body: string | Buffer, headers: Record<string, string> = {}) => {
-    res.writeHead(status, { 'Referrer-Policy': 'no-referrer', 'Cache-Control': 'no-store', ...headers });
-    res.end(body);
-  };
-
-  const sendFile = (res: http.ServerResponse, file: string, headers: Record<string, string> = {}) => {
-    fs.readFile(file, (err, data) => {
-      if (err) send(res, 404, 'Not found');
-      else send(res, 200, data, { 'Content-Type': MIME[path.extname(file).toLowerCase()] ?? 'application/octet-stream', ...headers });
-    });
-  };
-
   const isAuthorized = (req: http.IncomingMessage, keyFromQuery: string | null) =>
     (keyFromQuery !== null && safeEqual(keyFromQuery, token)) ||
     safeEqual(parseCookies(req.headers.cookie)[cookieName] ?? '', token);
 
+  const serveContent = (res: http.ServerResponse, rest: string) => {
+    const [type = '', id = '', ...parts] = rest.split('/');
+    const dir = resolveArtifactDir(root, type, id);
+    if (!dir) {
+      send(res, 404, 'Not found');
+      return;
+    }
+    const ref = artifactKeyOf(`${type}/${id}`)!;
+    const relative = parts.join('/');
+    if (!resolveInside(dir, relative)) {
+      send(res, 403, 'Forbidden');
+      return;
+    }
+    const target = ref.type === 'artboard' ? resolveBoardFile(dir, relative) : resolveHtmlFile(dir, relative);
+    if (!target) send(res, 404, 'Not found');
+    else sendFile(res, target, { 'Content-Security-Policy': CONTENT_CSP[ref.type] });
+  };
+
+  const serveArtifactApi = (res: http.ServerResponse, type: string, id: string) => {
+    const dir = resolveArtifactDir(root, type, id);
+    if (!dir) {
+      sendJson(res, 404, { warnings: [`artifact ${type}/${id} not found`] });
+      return;
+    }
+    const ref = artifactKeyOf(`${type}/${id}`)!;
+    sendJson(res, 200, { ...readArtifact(dir, ref), contentBase: `${contentPrefix}${type}/${id}/` });
+  };
+
+  const serveList = (res: http.ServerResponse) => {
+    const { artifacts, warnings } = listArtifacts(root);
+    const summaries: ArtifactSummary[] = artifacts.map((entry) => ({
+      type: entry.type,
+      id: entry.id,
+      title: titleOf(readArtifact(entry.dir, entry), entry),
+    }));
+    sendJson(res, 200, { artifacts: summaries, warnings });
+  };
+
   const handleRequest = (req: http.IncomingMessage, res: http.ServerResponse) => {
     touch();
-    const url = new URL(req.url ?? '/', 'http://artboard.local');
+    const url = new URL(req.url ?? '/', 'http://artifacts.local');
     let pathname: string;
     try {
       pathname = decodeURIComponent(url.pathname);
@@ -154,39 +137,30 @@ export async function startArtboardServer(options: ServerOptions): Promise<Artbo
       return;
     }
 
-    const boardPrefix = '/b/';
-    if (pathname.startsWith(boardPrefix)) {
-      const rest = pathname.slice(boardPrefix.length);
-      const slash = rest.indexOf('/');
-      const given = slash < 0 ? rest : rest.slice(0, slash);
-      if (!safeEqual(given, boardToken)) {
-        send(res, 404, 'Not found');
-        return;
-      }
-      const relative = rest.slice(slash + 1);
-      if (!resolveInside(boardDir, relative)) {
-        send(res, 403, 'Forbidden');
-        return;
-      }
-      const target = resolveBoardFile(boardDir, relative);
-      if (!target) send(res, 404, 'Not found');
-      else sendFile(res, target, { 'Content-Security-Policy': BOARD_CSP });
+    if (pathname.startsWith('/c/')) {
+      if (!pathname.startsWith(contentPrefix)) send(res, 404, 'Not found');
+      else serveContent(res, pathname.slice(contentPrefix.length));
       return;
     }
 
     const key = url.searchParams.get('key');
     if (!isAuthorized(req, key)) {
-      send(res, 403, 'Forbidden: open the full Artboard URL including ?key=');
+      send(res, 403, 'Forbidden: open the full artifact link including ?key=');
       return;
     }
 
-    if (pathname === '/api/canvas') {
-      const payload = { ...readCanvas(boardDir), boardBase: `${boardPrefix}${boardToken}/` };
-      send(res, 200, JSON.stringify(payload), { 'Content-Type': MIME['.json']! });
+    if (pathname === '/api/artifacts') {
+      serveList(res);
       return;
     }
 
-    if (pathname === '/' || pathname === '/index.html') {
+    const apiMatch = API_ARTIFACT_ROUTE.exec(pathname);
+    if (apiMatch) {
+      serveArtifactApi(res, apiMatch[1]!, apiMatch[2]!);
+      return;
+    }
+
+    if (SHELL_ROUTE.test(pathname) || pathname === '/index.html') {
       const headers: Record<string, string> = { 'Content-Security-Policy': VIEWER_CSP };
       if (key !== null) headers['Set-Cookie'] = `${cookieName}=${token}; HttpOnly; SameSite=Strict; Path=/`;
       sendFile(res, path.join(viewerDir, 'index.html'), headers);
@@ -202,12 +176,12 @@ export async function startArtboardServer(options: ServerOptions): Promise<Artbo
     try {
       handleRequest(req, res);
     } catch (err) {
-      if (!res.headersSent) send(res, 500, `Artboard error: ${(err as Error).message}`);
+      if (!res.headersSent) send(res, 500, `Artifacts error: ${(err as Error).message}`);
     }
   });
 
   server.on('upgrade', (req: http.IncomingMessage, socket: Duplex) => {
-    const url = new URL(req.url ?? '/', 'http://artboard.local');
+    const url = new URL(req.url ?? '/', 'http://artifacts.local');
     const clientKey = req.headers['sec-websocket-key'];
     if (url.pathname !== '/ws' || typeof clientKey !== 'string') {
       rejectUpgrade(socket, 400, 'Bad Request');
@@ -234,26 +208,48 @@ export async function startArtboardServer(options: ServerOptions): Promise<Artbo
   } catch {
     port = await listen(server, options.host, 0);
   }
-  cookieName = `artboard_${port}`;
+  cookieName = `ryugi_artifacts_${port}`;
   fs.writeFileSync(portFile, `${port}\n`, { mode: 0o600 });
 
-  const url = `http://${urlHostForHttp(options.urlHost)}:${port}/?key=${token}`;
-  writeStateFiles(boardDir, readCanvas(boardDir));
-  writeJsonAtomic(path.join(stateDir, 'server-info'), { type: 'server-started', url, port, dir: boardDir });
+  const origin = `http://${urlHostForHttp(options.urlHost)}:${port}`;
+  const url = `${origin}/?key=${token}`;
+  const linkFor = (type: ArtifactType, id: string) => `${origin}/${type}/${id}?key=${token}`;
+
+  const refreshState = (ref: ArtifactRef, dir: string) => {
+    const payload = readArtifact(dir, ref);
+    try {
+      writeArtifactState(stateDir, ref, payload);
+    } catch (err) {
+      console.error(JSON.stringify({ type: 'state-write-error', error: (err as Error).message }));
+    }
+    return payload;
+  };
+
+  for (const entry of listArtifacts(root).artifacts) refreshState(entry, entry.dir);
+  writeJsonAtomic(path.join(stateDir, 'server-info'), { type: 'server-started', url, port, root });
 
   const watcher = watchTree(
-    boardDir,
+    root,
     (files) => {
-      const payload = readCanvas(boardDir);
-      try {
-        writeStateFiles(boardDir, payload);
-      } catch (err) {
-        console.error(JSON.stringify({ type: 'state-write-error', error: (err as Error).message }));
+      const byArtifact = new Map<string, { ref: ArtifactRef; files: string[] }>();
+      for (const file of files) {
+        const ref = artifactKeyOf(file);
+        if (!ref) continue;
+        const key = `${ref.type}/${ref.id}`;
+        const entry = byArtifact.get(key) ?? { ref, files: [] };
+        const inner = file.slice(key.length + 1);
+        if (inner) entry.files.push(inner);
+        byArtifact.set(key, entry);
       }
-      const frame = textFrame(JSON.stringify({ type: 'change', files } satisfies ServerMessage));
-      for (const socket of clients) socket.write(frame);
+      for (const [key, { ref, files: changed }] of byArtifact) {
+        const dir = resolveArtifactDir(root, ref.type, ref.id);
+        if (!dir) continue;
+        const payload = refreshState(ref, dir);
+        const frame = textFrame(JSON.stringify({ type: 'change', artifact: key, files: changed } satisfies ServerMessage));
+        for (const socket of clients) socket.write(frame);
+        changeListeners.forEach((listener) => listener(ref, payload, changed));
+      }
       touch();
-      changeListeners.forEach((listener) => listener(payload, files));
     },
     options.debounceMs,
   );
@@ -261,10 +257,11 @@ export async function startArtboardServer(options: ServerOptions): Promise<Artbo
   return {
     port,
     token,
-    boardToken,
+    contentToken,
     url,
+    linkFor,
     clientCount: () => clients.size,
-    onBoardChange: (listener) => changeListeners.push(listener),
+    onArtifactChange: (listener) => changeListeners.push(listener),
     onActivity: (listener) => activityListeners.push(listener),
     close: () =>
       new Promise<void>((resolve) => {

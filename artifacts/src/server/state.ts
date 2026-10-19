@@ -59,9 +59,15 @@ export function writeJsonAtomic(file: string, value: unknown) {
   fs.renameSync(tmp, file);
 }
 
-export function writeStateFiles(boardDir: string, payload: CanvasPayload) {
+export function writeArtifactState(
+  stateDir: string,
+  ref: { type: string; id: string },
+  payload: { warnings: string[]; layout?: CanvasPayload['layout'] },
+) {
   const checkedAt = new Date().toISOString();
-  const stateDir = path.join(boardDir, 'state');
-  writeJsonAtomic(path.join(stateDir, 'layout.json'), { checkedAt, ...(payload.layout ?? { pages: {} }) });
-  writeJsonAtomic(path.join(stateDir, 'warnings.json'), { checkedAt, warnings: payload.warnings });
+  const dir = path.join(stateDir, ref.type, ref.id);
+  if (ref.type === 'artboard') {
+    writeJsonAtomic(path.join(dir, 'layout.json'), { checkedAt, ...(payload.layout ?? { pages: {} }) });
+  }
+  writeJsonAtomic(path.join(dir, 'warnings.json'), { checkedAt, warnings: payload.warnings });
 }

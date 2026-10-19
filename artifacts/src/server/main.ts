@@ -1,16 +1,16 @@
 import { exec, execFile } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
-import { startArtboardServer } from './app';
+import { startArtifactsServer } from './app';
 import { browserLauncher, isLoopback, parseEnv, processAlive, shutdownReason } from './lifecycle';
 import { writeJsonAtomic } from './state';
 
 async function main() {
   const config = parseEnv(process.env, process.argv.slice(2));
-  const boardDir = path.resolve(config.boardDir);
-  const stateDir = path.join(boardDir, 'state');
-  const server = await startArtboardServer({
-    boardDir,
+  const root = path.resolve(config.boardDir);
+  const stateDir = path.join(root, '.state');
+  const server = await startArtifactsServer({
+    root,
     viewerDir: path.join(__dirname, 'viewer'),
     host: config.host,
     urlHost: config.urlHost,
@@ -22,16 +22,18 @@ async function main() {
   });
 
   let browserOpened = false;
-  server.onBoardChange((payload) => {
+  server.onArtifactChange((ref, payload) => {
     if (browserOpened || !config.open || !isLoopback(config.host)) return;
-    if (!payload.canvas || Object.keys(payload.canvas.boards ?? {}).length === 0) return;
+    if ('canvas' in payload && (!payload.canvas || Object.keys(payload.canvas.boards ?? {}).length === 0)) return;
+    if ('title' in payload && payload.warnings.length > 0) return;
     browserOpened = true;
     if (server.clientCount() > 0) return;
+    const link = server.linkFor(ref.type, ref.id);
     if (config.openCmd) {
-      exec(`${config.openCmd} ${JSON.stringify(server.url)}`, () => {});
+      exec(`${config.openCmd} ${JSON.stringify(link)}`, () => {});
       return;
     }
-    const launcher = browserLauncher(process.platform, server.url);
+    const launcher = browserLauncher(process.platform, link);
     if (launcher) execFile(launcher.bin, launcher.args, () => {});
   });
 
@@ -58,7 +60,7 @@ async function main() {
   process.on('SIGINT', () => void shutdown('SIGINT'));
 
   fs.rmSync(path.join(stateDir, 'server-stopped'), { force: true });
-  console.log(JSON.stringify({ type: 'server-started', url: server.url, port: server.port, dir: boardDir }));
+  console.log(JSON.stringify({ type: 'server-started', url: server.url, port: server.port, root }));
 }
 
 main().catch((err) => {

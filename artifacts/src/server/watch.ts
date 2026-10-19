@@ -6,7 +6,7 @@ export interface Watcher {
 }
 
 const toPosix = (file: string) => file.split(path.sep).join('/');
-const ignored = (file: string) => file === 'state' || file.startsWith('state/');
+const ignored = (file: string) => file === '.state' || file.startsWith('.state/');
 
 function snapshot(root: string, dir = root, out = new Map<string, number>()) {
   let entries: fs.Dirent[];

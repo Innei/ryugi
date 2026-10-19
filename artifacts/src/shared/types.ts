@@ -74,4 +74,16 @@ export interface CanvasPayload {
   versions: Record<string, number>;
 }
 
-export type ServerMessage = { type: 'change'; files: string[] };
+export interface HtmlPayload {
+  title: string;
+  warnings: string[];
+  version: number;
+}
+
+export interface ArtifactSummary {
+  type: ArtifactType;
+  id: string;
+  title: string;
+}
+
+export type ServerMessage = { type: 'change'; artifact: string; files: string[] };

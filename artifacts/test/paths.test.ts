@@ -22,7 +22,9 @@ describe('resolveInside', () => {
     expect(resolveInside(root, '../board-other/x.html')).toBeNull();
   });
 
-  test('rejects the state directory', () => {
-    expect(resolveInside(root, 'state/server-info')).toBeNull();
+  test('rejects any path segment starting with a dot, whatever the case', () => {
+    expect(resolveInside(root, '.state/server-info')).toBeNull();
+    expect(resolveInside(root, '.State/.last-token')).toBeNull();
+    expect(resolveInside(root, 'pages/.hidden/a.html')).toBeNull();
   });
 });

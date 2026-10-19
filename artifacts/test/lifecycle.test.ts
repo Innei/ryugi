@@ -72,16 +72,16 @@ describe('parseEnv', () => {
 });
 
 describe('pollTree', () => {
-  test('reports added and changed files and ignores state/', async () => {
+  test('reports added and changed files and ignores .state/', async () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'artboard-poll-'));
     const seen: string[] = [];
     const watcher = pollTree(dir, (files) => seen.push(...files), 30);
-    fs.mkdirSync(path.join(dir, 'pages', 'p'), { recursive: true });
-    fs.writeFileSync(path.join(dir, 'pages', 'p', 'a.html'), 'a');
-    fs.mkdirSync(path.join(dir, 'state'));
-    fs.writeFileSync(path.join(dir, 'state', 'warnings.json'), '{}');
-    await waitFor(() => seen.includes('pages/p/a.html'));
+    fs.mkdirSync(path.join(dir, 'html', 'x'), { recursive: true });
+    fs.writeFileSync(path.join(dir, 'html', 'x', 'index.html'), 'a');
+    fs.mkdirSync(path.join(dir, '.state'));
+    fs.writeFileSync(path.join(dir, '.state', 'warnings.json'), '{}');
+    await waitFor(() => seen.includes('html/x/index.html'));
     watcher.close();
-    expect(seen.some((f) => f.startsWith('state'))).toBe(false);
+    expect(seen.some((f) => f.startsWith('.state'))).toBe(false);
   });
 });

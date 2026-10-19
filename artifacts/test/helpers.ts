@@ -4,22 +4,38 @@ import os from 'node:os';
 import path from 'node:path';
 import type { Socket } from 'node:net';
 
-export function tempBoardDir() {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'artboard-test-'));
-  const viewer = fs.mkdtempSync(path.join(os.tmpdir(), 'artboard-viewer-'));
+export function tempRoot() {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'artifacts-test-'));
+  const viewer = fs.mkdtempSync(path.join(os.tmpdir(), 'artifacts-viewer-'));
   fs.writeFileSync(path.join(viewer, 'index.html'), '<!doctype html><title>viewer</title>');
   fs.mkdirSync(path.join(viewer, 'assets'));
   fs.writeFileSync(path.join(viewer, 'assets', 'app.js'), 'console.log(1)');
-  return { dir, viewer };
+  return { root, viewer };
 }
 
-export function writeBoard(dir: string, canvas: unknown, files: Record<string, string> = {}) {
-  for (const [file, html] of Object.entries(files)) {
+export function writeFiles(dir: string, files: Record<string, string>) {
+  for (const [file, content] of Object.entries(files)) {
     fs.mkdirSync(path.dirname(path.join(dir, file)), { recursive: true });
-    fs.writeFileSync(path.join(dir, file), html);
+    fs.writeFileSync(path.join(dir, file), content);
   }
-  fs.writeFileSync(path.join(dir, 'canvas.json'), JSON.stringify(canvas));
 }
+
+export function writeArtboard(root: string, id: string, canvas: unknown, files: Record<string, string> = {}) {
+  const dir = path.join(root, 'artboard', id);
+  writeFiles(dir, files);
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, 'canvas.json'), JSON.stringify(canvas));
+  return dir;
+}
+
+export function writeHtml(root: string, id: string, files: Record<string, string>) {
+  const dir = path.join(root, 'html', id);
+  fs.mkdirSync(dir, { recursive: true });
+  writeFiles(dir, files);
+  return dir;
+}
+
+export const readJson = (file: string) => JSON.parse(fs.readFileSync(file, 'utf8'));
 
 export interface Fetched {
   status: number;
