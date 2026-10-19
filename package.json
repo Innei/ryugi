@@ -1,0 +1,23 @@
+{
+  "name": "ryugi",
+  "version": "7.0.0",
+  "description": "Ryugi skills and runtime bootstrap for coding agents",
+  "type": "module",
+  "main": ".opencode/plugins/ryugi.js",
+  "keywords": [
+    "pi-package",
+    "skills",
+    "tdd",
+    "debugging",
+    "collaboration",
+    "workflow"
+  ],
+  "pi": {
+    "extensions": [
+      "./.pi/extensions/ryugi.ts"
+    ],
+    "skills": [
+      "./skills"
+    ]
+  }
+}

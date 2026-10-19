@@ -1,0 +1,20 @@
+{
+  "name": "ryugi",
+  "description": "Core skills library for Claude Code: TDD, debugging, collaboration patterns, and proven techniques",
+  "version": "7.0.0",
+  "author": {
+    "name": "Innei",
+    "email": "i@innei.dev"
+  },
+  "homepage": "https://github.com/Innei/ryugi",
+  "repository": "https://github.com/Innei/ryugi",
+  "license": "MIT",
+  "keywords": [
+    "skills",
+    "tdd",
+    "debugging",
+    "collaboration",
+    "best-practices",
+    "workflows"
+  ]
+}
