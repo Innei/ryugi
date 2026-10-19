@@ -228,9 +228,9 @@ asking.
 ## Artboard
 
 A live canvas in a browser tab: mockup variants side by side, grouped
-into the questions you're asking, across pages. Your human partner looks
-at it and answers in the terminal. It's a tool, not a mode: accepting it
-doesn't send every question to the browser.
+into sections, across pages. Your human partner looks at it and answers
+in the terminal. It's a tool, not a mode: accepting it doesn't send every
+question to the browser.
 
 **Offer it just-in-time.** Offer it the first time one of the moments
 above comes up, never upfront. The offer is its own message with nothing

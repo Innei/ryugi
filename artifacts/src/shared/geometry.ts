@@ -2,9 +2,9 @@ import type { BoardSpec, Bounds, CanvasLayout, CanvasSpec, GroupSpec, NoteSpec, 
 
 export const GROUP_PAD = 48;
 export const GROUP_TOP = 144;
-export const NAME_STRIP_H = 32;
+export const NAME_STRIP_H = 48;
 export const TITLE_LINE_HEIGHT = 1.15;
-export const DEFAULT_TITLE_SIZE = 56;
+export const DEFAULT_TITLE_SIZE = 96;
 export const STICKY_DEFAULT_W = 240;
 export const STICKY_FONT_SIZE = 18;
 export const STICKY_LINE_H = 27;

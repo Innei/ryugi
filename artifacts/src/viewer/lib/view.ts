@@ -67,3 +67,23 @@ export function labelRect(board: { x: number; y: number; w: number }, view: View
   if (width < LABEL_MIN_WIDTH) return null;
   return { left: view.x + board.x * view.k, top: view.y + board.y * view.k, width };
 }
+
+export interface LabelRule {
+  base: number;
+  follow: number;
+  min: number;
+  hideBelow: number;
+  cap: boolean;
+}
+
+export const GROUP_LABEL_RULE: LabelRule = { base: 27, follow: 0.7, min: 4, hideBelow: 0.05, cap: true };
+export const BOARD_LABEL_RULE: LabelRule = { base: 23, follow: 0.85, min: 0, hideBelow: 0.11, cap: true };
+const TITLE_RULE: Omit<LabelRule, 'base'> = { follow: 1, min: 24, hideBelow: 0, cap: false };
+
+export function labelSize(rule: LabelRule, k: number) {
+  if (k < rule.hideBelow) return null;
+  const size = rule.base * k ** rule.follow;
+  return Math.max(rule.cap ? Math.min(size, rule.base) : size, rule.min);
+}
+
+export const titleScale = (size: number, k: number) => labelSize({ ...TITLE_RULE, base: size }, k)! / (size * k);

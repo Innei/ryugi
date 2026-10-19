@@ -64,11 +64,12 @@ Start the server and get the link as `SKILL.md` describes, with
   While it is true, a missing board file is `pending`, not a warning: the
   viewer draws a skeleton and fills it when the file appears. Set it to `false`
   once every board exists; then a missing board becomes a warning.
-- `groups`: a question with options. List member board ids only; all members
-  on one page. The viewer labels the group with its id and title above the
-  boards.
+- `groups`: a section: a titled set of related boards, such as the options
+  for a question, the states of a component, or the parts of a review. List
+  member board ids only; all members on one page. The viewer labels the group
+  with its id and title above the boards.
 - `notes`: `kind` is `title` or `sticky`; `x`/`y` is the top-left corner.
-  - `title`: bold text, `size` px (default 56), one line tall (about
+  - `title`: bold text, `size` px (default 96), one line tall (about
     1.15 × `size`). Without `w` it stays on one line; with `w` it wraps.
   - `sticky`: yellow note, `w` default 240. Plain text; `\n` starts a new
     line.
@@ -85,12 +86,12 @@ Start the server and get the link as `SKILL.md` describes, with
 
 The viewer does no layout. You place everything with these spacings:
 
-- 80px between boards in a row. Every board in a group has the same `h`.
+- 80px between boards in a row, top edges aligned.
 - A group's frame: top edge 144px above its boards (room for the labels),
   left, right and bottom edges 48px outside them. Leave 240px between the
   bottom of one group's boards and the top of the next group's boards, and
   200px between groups side by side.
-- Without groups: 160px between rows.
+- 160px between rows, inside a group or not.
 - Title notes go above what they introduce: the title's bottom at least 80px
   above the group frame or board labels below it.
 - Stickies sit beside boards or group frames, at least 80px clear of both.
@@ -116,8 +117,8 @@ iframe at exactly `w`×`h` pixels, with no scrollbars.
   content. A board showing a long scrolling page may clip on purpose; say so
   in its `title`.
 - Realistic content, never lorem ipsum.
-- Variants in one group differ in the one thing the question asks about and
-  stay the same elsewhere, so the comparison is clean.
+- When a group asks a question, its variants differ in the one thing the
+  question asks about and stay the same elsewhere, so the comparison is clean.
 - Static by default. Add `"interactive": true` only when the board is a real
   prototype; otherwise no PLAY button appears.
 - Use your file-writing tool, not cat or heredocs.
@@ -147,7 +148,7 @@ so later rounds stream into the already-open tab.
 
 - Same topic, next round: append to the current page below the existing
   content (keep earlier rounds; they are the history), add a title note for
-  the round and new groups for its questions.
+  the round and a group for each of its sections.
 - Another area of the same topic (the settings screen after the header): add
   a page and set `activePage` to it.
 - A new topic: a new artboard artifact, with its own id and link.

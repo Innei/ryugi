@@ -4,11 +4,15 @@ import * as stylex from '@stylexjs/stylex';
 import { Download, Maximize2, Play, RotateCcw } from 'lucide-react';
 import type { BoardSpec, GroupSpec } from '../../shared/types';
 import { boardReady, canPlay } from '../lib/play';
-import { labelRect, type View } from '../lib/view';
+import { BOARD_LABEL_RULE, GROUP_LABEL_RULE, labelRect, labelSize, type View } from '../lib/view';
 
 const ACTIONS_MIN_WIDTH = 150;
 const PLAY_MIN_WIDTH = 240;
 const PLAY_ACCENT = '#8b7cf8';
+const BOARD_LABEL_FONT = 12;
+const GROUP_LABEL_FONT = 13;
+const GROUP_LABEL_GAP = 26;
+const scaleOf = (size: number | null, font: number) => (size === null ? null : size / font);
 
 function downloadFile(href: string, name: string) {
   const link = document.createElement('a');
@@ -24,7 +28,7 @@ const styles = stylex.create({
     display: 'flex',
     alignItems: 'center',
     height: 24,
-    transform: 'translateY(-100%)',
+    transformOrigin: '0 0',
     paddingBottom: 2,
     color: cssVar.colorTextSecondary,
     pointerEvents: 'auto',
@@ -36,7 +40,7 @@ const styles = stylex.create({
     gap: 6,
     minWidth: 0,
     overflow: 'hidden',
-    fontSize: 12,
+    fontSize: BOARD_LABEL_FONT,
     whiteSpace: 'nowrap',
     textOverflow: 'ellipsis',
   },
@@ -46,8 +50,8 @@ const styles = stylex.create({
     display: 'flex',
     alignItems: 'center',
     gap: 6,
-    transform: 'translateY(calc(-100% - 26px))',
-    fontSize: 13,
+    transformOrigin: '0 0',
+    fontSize: GROUP_LABEL_FONT,
     fontWeight: 600,
     color: cssVar.colorText,
     whiteSpace: 'nowrap',
@@ -111,61 +115,79 @@ export function Labels({
   onTogglePlay,
   onReplay,
 }: LabelsProps) {
+  const groupScale = scaleOf(labelSize(GROUP_LABEL_RULE, view.k), GROUP_LABEL_FONT);
+  const boardScale = scaleOf(labelSize(BOARD_LABEL_RULE, view.k), BOARD_LABEL_FONT);
   return (
     <div {...stylex.props(styles.layer)}>
-      {groups.map(([id, group]) => {
-        const members = group.boards.map((m) => allBoards[m]).filter((b): b is BoardSpec => Boolean(b));
-        if (members.length === 0) return null;
-        const x = Math.min(...members.map((b) => b.x));
-        const y = Math.min(...members.map((b) => b.y));
-        return (
-          <div key={id} {...stylex.props(styles.groupLabel)} style={{ left: view.x + x * view.k, top: view.y + y * view.k }}>
-            <span {...stylex.props(styles.chip)}>{id}</span>
-            {group.title}
-          </div>
-        );
-      })}
-      {boards.map(([id, board]) => {
-        const rect = labelRect(board, view);
-        if (!rect) return null;
-        const ready = boardReady(versions, board.file) && !pending.has(id);
-        const interactive = ready && canPlay(board, versions);
-        return (
-          <div key={id} data-chrome {...stylex.props(styles.boardLabel)} style={rect}>
-            <span {...stylex.props(styles.title)}>
-              {board.title ?? id}
-              <span {...stylex.props(styles.id)}>{id}</span>
-            </span>
-            {ready && rect.width >= ACTIONS_MIN_WIDTH && (
-              <>
-                <ActionIcon icon={Maximize2} size={{ blockSize: 22, size: 13 }} title="Expand" aria-label={`Expand ${id}`} onClick={() => onExpand(id)} />
-                <ActionIcon
-                  icon={Download}
-                  size={{ blockSize: 22, size: 13 }}
-                  title="Download"
-                  aria-label={`Download ${id}`}
-                  onClick={() => downloadFile(`${contentBase}${board.file}`, board.file.split('/').pop() ?? `${id}.html`)}
-                />
-              </>
-            )}
-            {interactive && rect.width >= PLAY_MIN_WIDTH && playing.has(id) && (
-              <ActionIcon icon={RotateCcw} size={{ blockSize: 22, size: 13 }} title="Replay" aria-label={`Replay ${id}`} onClick={() => onReplay(id)} />
-            )}
-            {interactive && rect.width >= PLAY_MIN_WIDTH && (
-              <button
-                type="button"
-                aria-pressed={playing.has(id)}
-                aria-label={`${playing.has(id) ? 'Stop' : 'Play'} ${id}`}
-                onClick={() => onTogglePlay(id)}
-                {...stylex.props(styles.play, playing.has(id) && styles.playOn)}
-              >
-                <Play size={11} strokeWidth={2.4} />
-                {playing.has(id) ? 'PLAYING' : 'PLAY'}
-              </button>
-            )}
-          </div>
-        );
-      })}
+      {groupScale !== null &&
+        groups.map(([id, group]) => {
+          const members = group.boards.map((m) => allBoards[m]).filter((b): b is BoardSpec => Boolean(b));
+          if (members.length === 0) return null;
+          const x = Math.min(...members.map((b) => b.x));
+          const y = Math.min(...members.map((b) => b.y));
+          return (
+            <div
+              key={id}
+              {...stylex.props(styles.groupLabel)}
+              style={{
+                left: view.x + x * view.k,
+                top: view.y + y * view.k,
+                transform: `scale(${groupScale}) translateY(calc(-100% - ${GROUP_LABEL_GAP}px))`,
+              }}
+            >
+              <span {...stylex.props(styles.chip)}>{id}</span>
+              {group.title}
+            </div>
+          );
+        })}
+      {boardScale !== null &&
+        boards.map(([id, board]) => {
+          const rect = labelRect(board, view);
+          if (!rect) return null;
+          const width = rect.width / boardScale;
+          const ready = boardReady(versions, board.file) && !pending.has(id);
+          const interactive = ready && canPlay(board, versions);
+          return (
+            <div
+              key={id}
+              data-chrome
+              {...stylex.props(styles.boardLabel)}
+              style={{ left: rect.left, top: rect.top, width, transform: `scale(${boardScale}) translateY(-100%)` }}
+            >
+              <span {...stylex.props(styles.title)}>
+                {board.title ?? id}
+                <span {...stylex.props(styles.id)}>{id}</span>
+              </span>
+              {ready && width >= ACTIONS_MIN_WIDTH && (
+                <>
+                  <ActionIcon icon={Maximize2} size={{ blockSize: 22, size: 13 }} title="Expand" aria-label={`Expand ${id}`} onClick={() => onExpand(id)} />
+                  <ActionIcon
+                    icon={Download}
+                    size={{ blockSize: 22, size: 13 }}
+                    title="Download"
+                    aria-label={`Download ${id}`}
+                    onClick={() => downloadFile(`${contentBase}${board.file}`, board.file.split('/').pop() ?? `${id}.html`)}
+                  />
+                </>
+              )}
+              {interactive && width >= PLAY_MIN_WIDTH && playing.has(id) && (
+                <ActionIcon icon={RotateCcw} size={{ blockSize: 22, size: 13 }} title="Replay" aria-label={`Replay ${id}`} onClick={() => onReplay(id)} />
+              )}
+              {interactive && width >= PLAY_MIN_WIDTH && (
+                <button
+                  type="button"
+                  aria-pressed={playing.has(id)}
+                  aria-label={`${playing.has(id) ? 'Stop' : 'Play'} ${id}`}
+                  onClick={() => onTogglePlay(id)}
+                  {...stylex.props(styles.play, playing.has(id) && styles.playOn)}
+                >
+                  <Play size={11} strokeWidth={2.4} />
+                  {playing.has(id) ? 'PLAYING' : 'PLAY'}
+                </button>
+              )}
+            </div>
+          );
+        })}
     </div>
   );
 }

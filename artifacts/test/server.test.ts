@@ -124,7 +124,7 @@ describe('artboard API', () => {
     const payload = await api(server, '/api/artifacts/artboard/b1');
     expect(payload.canvas.boards.a.w).toBe(640);
     expect(payload.warnings).toEqual([]);
-    expect(payload.layout.pages.p.bounds).toEqual({ minX: 0, minY: -32, maxX: 640, maxY: 400 });
+    expect(payload.layout.pages.p.bounds).toEqual({ minX: 0, minY: -48, maxX: 640, maxY: 400 });
     expect(payload.contentBase).toBe(`/c/${server.contentToken}/artboard/b1/`);
   });
 

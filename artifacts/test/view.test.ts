@@ -1,6 +1,17 @@
 import { describe, expect, test } from 'vitest';
 import type { CanvasLayout, CanvasSpec } from '../src/shared/types';
-import { MAX_ZOOM, MIN_ZOOM, fitView, labelRect, resolveFocus, zoomAround } from '../src/viewer/lib/view';
+import {
+  MAX_ZOOM,
+  MIN_ZOOM,
+  fitView,
+  BOARD_LABEL_RULE,
+  GROUP_LABEL_RULE,
+  labelRect,
+  labelSize,
+  resolveFocus,
+  titleScale,
+  zoomAround,
+} from '../src/viewer/lib/view';
 
 describe('fitView', () => {
   const viewport = { width: 1000, height: 800 };
@@ -62,7 +73,7 @@ describe('resolveFocus', () => {
   test('a board focuses its page and its rect including the name strip', () => {
     expect(resolveFocus(canvas, layout, 'a')).toEqual({
       page: 'q',
-      bounds: { minX: 10, minY: -12, maxX: 310, maxY: 220 },
+      bounds: { minX: 10, minY: -28, maxX: 310, maxY: 220 },
     });
   });
 
@@ -89,5 +100,40 @@ describe('labelRect', () => {
 
   test('hides the label when the board is too narrow on screen', () => {
     expect(labelRect({ x: 0, y: 0, w: 80 }, { x: 0, y: 0, k: 0.5 })).toBeNull();
+  });
+});
+
+describe('labelSize', () => {
+  test('caps group and board labels at their 100% size when zoomed in', () => {
+    expect(labelSize(GROUP_LABEL_RULE, 2)).toBe(27);
+    expect(labelSize(BOARD_LABEL_RULE, 2)).toBe(23);
+  });
+
+  test('shrinks labels slower than the canvas', () => {
+    expect(labelSize(GROUP_LABEL_RULE, 0.3)).toBeCloseTo(27 * 0.3 ** 0.7);
+    expect(labelSize(BOARD_LABEL_RULE, 0.5)).toBeCloseTo(23 * 0.5 ** 0.85);
+  });
+
+  test('hides group labels below 5% and board labels below 11%', () => {
+    expect(labelSize(GROUP_LABEL_RULE, 0.05)).not.toBeNull();
+    expect(labelSize(GROUP_LABEL_RULE, 0.04)).toBeNull();
+    expect(labelSize(BOARD_LABEL_RULE, 0.11)).not.toBeNull();
+    expect(labelSize(BOARD_LABEL_RULE, 0.1)).toBeNull();
+  });
+
+  test('holds the floor once the scaled size drops below it', () => {
+    expect(labelSize(GROUP_LABEL_RULE, 0.05)).toBe(4);
+  });
+});
+
+describe('titleScale', () => {
+  test('leaves a title alone while it renders at 24px or more', () => {
+    expect(titleScale(96, 1)).toBe(1);
+    expect(titleScale(96, 2)).toBe(1);
+  });
+
+  test('enlarges a title so it never renders below 24px', () => {
+    expect(96 * 0.1 * titleScale(96, 0.1)).toBeCloseTo(24);
+    expect(16 * 1 * titleScale(16, 1)).toBeCloseTo(24);
   });
 });

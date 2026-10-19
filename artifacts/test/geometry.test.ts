@@ -41,8 +41,8 @@ describe('noteRect', () => {
     expect(rect.h).toBeCloseTo(46);
   });
 
-  test('a title defaults to size 56', () => {
-    expect(noteRect({ page: 'p', kind: 'title', x: 0, y: 0, text: 'Hi' }).h).toBeCloseTo(64.4);
+  test('a title defaults to size 96', () => {
+    expect(noteRect({ page: 'p', kind: 'title', x: 0, y: 0, text: 'Hi' }).h).toBeCloseTo(110.4);
   });
 
   test('a title with w wraps and grows taller', () => {
