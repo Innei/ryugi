@@ -300,10 +300,46 @@ When the final review is clean and its fixes are committed, delete this
 spec's workspace directory — the git history is the record now. Sibling
 directories belong to other specs; leave them alone.
 
-Then stop. Merging, pushing, and opening a PR are your human partner's
-call — use their project's shipping skill when they name one. If you
-created a worktree, clean it up per ryugi:using-git-worktrees once
-the work has landed.
+Then stop, and end your final message with the ways to land the branch:
+
+1. **Squash into `<base>`** (default)
+2. **Rebase onto `<base>`**
+3. **Push and open a PR**
+4. **Keep the branch as-is**
+
+Landing is your human partner's call — use their project's shipping skill
+when they name one. Whichever way it lands, `<base>` gets no merge
+commit: "merge it" means squash; rebase only when they ask for it.
+
+Run the `<base>` steps in the checkout that has `<base>` checked out: the
+main repo root if you worked in a worktree, the same checkout if you
+worked on a branch. Run the branch steps where the branch is checked out.
+
+**Squash:**
+
+```bash
+git switch <base> && git pull --ff-only
+git merge --squash <branch>
+git commit          # one message for the whole branch, in the repo's style
+<the project's test command>
+```
+
+**Rebase:**
+
+```bash
+git switch <base> && git pull --ff-only
+git rebase <base>                 # on the branch
+<the project's test command>      # on the rebased branch
+git merge --ff-only <branch>      # on <base>
+```
+
+**PR:** push the branch and open it against `<base>`. If you are asked to
+merge it, use `gh pr merge --squash` (or `--rebase` when asked).
+
+Once it has landed, remove the worktree if you made one, per
+ryugi:using-git-worktrees, then delete the branch: `git branch -d
+<branch>` after a rebase, `git branch -D <branch>` after a squash (git
+cannot see a squashed branch as merged).
 
 ## Common Rationalizations
 
@@ -360,5 +396,9 @@ Deferred minors:
 
 [Delete this spec's workspace]
 
-Done. Ready for you to ship.
+Ways to land feat/config-recovery:
+1. Squash into main (default)
+2. Rebase onto main
+3. Push and open a PR
+4. Keep the branch as-is
 ```

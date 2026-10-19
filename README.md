@@ -212,7 +212,7 @@ Restart any active Muse sessions after installing so the `SessionStart` hook tak
 
 1. **brainstorming** - Activates before building anything. Draws out what you actually want, and why, through questions that get you describing it, then plays its understanding back for correction. Shows mockups on the Artboard when seeing beats reading. Small changes get agreed in chat; projects get a written design document a builder could build from.
 
-2. **executing-specs** - Activates when you approve the spec and choose inline. Slices the spec into tasks, implements each under TDD with a ledger that survives compaction, records every judgment call as a ruling, gets one fresh review of the whole branch, then stops and reports. Shipping stays yours.
+2. **executing-specs** - Activates when you approve the spec and choose inline. Slices the spec into tasks, implements each under TDD with a ledger that survives compaction, records every judgment call as a ruling, gets one fresh review of the whole branch, then stops and reports with the ways to land it: squash (default), rebase, PR, or keep. Never a merge commit; you choose.
 
 3. **test-driven-development** - Activates during implementation. Enforces RED-GREEN-REFACTOR: write failing test, watch it fail, write minimal code, watch it pass, commit.
 
