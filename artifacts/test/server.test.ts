@@ -12,14 +12,13 @@ const canvas = {
 
 let running: ArtifactsServer[] = [];
 
-async function start(overrides: { root?: string; viewer?: string; viewerCdn?: string } = {}) {
+async function start(overrides: { root?: string; viewer?: string } = {}) {
   const temp = tempRoot();
   const root = overrides.root ?? temp.root;
   const viewer = overrides.viewer ?? temp.viewer;
   const server = await startArtifactsServer({
     root,
     viewerDir: viewer,
-    viewerCdn: overrides.viewerCdn,
     host: '127.0.0.1',
     urlHost: 'localhost',
   });
@@ -85,45 +84,6 @@ describe('session key', () => {
     const { server } = await start();
     expect(server.url).toBe(`http://localhost:${server.port}/?key=${server.token}`);
     expect(server.linkFor('html', 'arrow-tuner')).toBe(`http://localhost:${server.port}/html/arrow-tuner?key=${server.token}`);
-  });
-});
-
-describe('viewer from the CDN', () => {
-  const cdn = 'https://cdn.jsdelivr.net/npm/ryugi-artifacts@7.1.0/dist/viewer/';
-  const withoutLocalViewer = () => {
-    const viewer = tempRoot().viewer;
-    fs.rmSync(viewer, { recursive: true });
-    return viewer;
-  };
-
-  test('without a local build the shell loads the viewer from the CDN', async () => {
-    const { server } = await start({ viewer: withoutLocalViewer(), viewerCdn: cdn });
-    for (const rel of ['/', '/html/arrow-tuner']) {
-      const res = await get(`${base(server)}${rel}?key=${server.token}`);
-      expect(res.status, rel).toBe(200);
-      expect(res.headers['content-type']).toContain('text/html');
-      expect(res.body).toContain(`<script type="module" crossorigin src="${cdn}index.js"></script>`);
-      expect(res.body).toContain(`<link rel="stylesheet" crossorigin href="${cdn}index.css">`);
-      expect(res.body).toContain('<div id="root"></div>');
-      expect(res.body).toContain('<title>Artifacts</title>');
-    }
-  });
-
-  test('the CDN shell allows only the CDN origin, and only for scripts, styles and fonts', async () => {
-    const { server } = await start({ viewer: withoutLocalViewer(), viewerCdn: cdn });
-    const csp = String((await get(`${base(server)}/?key=${server.token}`)).headers['content-security-policy']);
-    expect(csp).toContain("script-src 'self' https://cdn.jsdelivr.net");
-    expect(csp).toContain("style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net");
-    expect(csp).toContain("font-src 'self' data: https://cdn.jsdelivr.net");
-    expect(csp).toContain("connect-src 'self';");
-    expect(csp).not.toContain('/npm/');
-  });
-
-  test('a local build wins over the CDN', async () => {
-    const { server } = await start({ viewerCdn: cdn });
-    const res = await get(`${base(server)}/?key=${server.token}`);
-    expect(res.body).toContain('<title>viewer</title>');
-    expect(String(res.headers['content-security-policy'])).not.toMatch(/https?:/);
   });
 });
 

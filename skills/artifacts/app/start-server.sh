@@ -93,6 +93,40 @@ OWNERS_FILE="$STATE_DIR/owners"
 mkdir -p "$STATE_DIR"
 [[ -f "$STATE_DIR/.gitignore" ]] || printf '*\n' > "$STATE_DIR/.gitignore"
 
+# A local build (pnpm build:server) wins; otherwise run the release pinned in version.json,
+# installed once per version. Runs before the project lock: a slow install must not outlive
+# the lock's stale threshold. npm installs into a staging dir that is renamed into place;
+# rename(2) refuses a non-empty target, so a concurrent start that finished first keeps its install.
+resolve_server() {
+  if [[ -f "$SCRIPT_DIR/server.cjs" ]]; then
+    SERVER="$SCRIPT_DIR/server.cjs"
+    return 0
+  fi
+  local version cache staging
+  version="$(node -p 'require(process.argv[1]).version' "$SCRIPT_DIR/version.json")"
+  cache="${XDG_CACHE_HOME:-$HOME/.cache}/ryugi/artifacts/$version"
+  SERVER="$cache/node_modules/ryugi-artifacts/dist/server.cjs"
+  [[ -f "$SERVER" ]] && return 0
+  staging="$cache.install.$$"
+  rm -rf "$staging"
+  mkdir -p "$staging"
+  if ! npm install --prefix "$staging" --no-save --no-package-lock --no-audit --no-fund --loglevel=error \
+      "ryugi-artifacts@$version" > "$staging.log" 2>&1 || [[ ! -f "$staging/node_modules/ryugi-artifacts/dist/server.cjs" ]]; then
+    node -e 'console.log(JSON.stringify({ error: `Could not install ${process.argv[1]} from npm; the first start of each version needs network access and a writable ${process.argv[2]}, so rerun outside the sandbox. npm: ${process.argv[3].trim().split("\n").pop() || "failed"}` }))' \
+      "ryugi-artifacts@$version" "$(dirname "$cache")" "$(cat "$staging.log")"
+    rm -rf "$staging" "$staging.log"
+    return 1
+  fi
+  rm -f "$staging.log"
+  node -e 'try { require("node:fs").renameSync(process.argv[1], process.argv[2]) } catch {}' "$staging" "$cache"
+  rm -rf "$staging"
+  [[ -f "$SERVER" ]] && return 0
+  echo "{\"error\": \"Installed ryugi-artifacts@$version but could not move it into $cache\"}"
+  return 1
+}
+
+resolve_server || exit 1
+
 # Concurrent runs for one project must not both spawn a server: hold a lock from the
 # running-server check until the new server has written server-info.
 LOCK_DIR="$STATE_DIR/start.lock"
@@ -197,11 +231,10 @@ if ! [[ "$SERVER_ID" =~ ^[A-Za-z0-9_-]{32,64}$ ]]; then
 fi
 printf '%s\n' "$SERVER_ID" > "$SERVER_ID_FILE"
 
-cd "$SCRIPT_DIR" || exit 1
 SERVER_ENV=(ARTIFACTS_ROOT="$ROOT_DIR" ARTIFACTS_HOST="$BIND_HOST" ARTIFACTS_URL_HOST="$URL_HOST")
 
 if [[ "$FOREGROUND" == "true" ]]; then
-  env "${SERVER_ENV[@]}" node server.cjs "--artifacts-server-id=$SERVER_ID" &
+  env "${SERVER_ENV[@]}" node "$SERVER" "--artifacts-server-id=$SERVER_ID" &
   SERVER_PID=$!
   echo "$SERVER_PID" > "$PID_FILE"
   for _ in {1..50}; do
@@ -213,7 +246,7 @@ if [[ "$FOREGROUND" == "true" ]]; then
   exit $?
 fi
 
-nohup env "${SERVER_ENV[@]}" node server.cjs "--artifacts-server-id=$SERVER_ID" > "$LOG_FILE" 2>&1 &
+nohup env "${SERVER_ENV[@]}" node "$SERVER" "--artifacts-server-id=$SERVER_ID" > "$LOG_FILE" 2>&1 &
 SERVER_PID=$!
 disown "$SERVER_PID" 2>/dev/null
 echo "$SERVER_PID" > "$PID_FILE"

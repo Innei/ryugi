@@ -19,6 +19,7 @@ __pycache__/
 *.pyo
 .pytest_cache/
 
-# Built artifacts viewer; CI publishes it to npm and users load it from jsDelivr
+# Built artifacts server and viewer; CI publishes them to npm and start-server.sh installs the pinned release
 artifacts/dist/
+skills/artifacts/app/server.cjs
 skills/artifacts/app/viewer/

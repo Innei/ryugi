@@ -2,8 +2,8 @@
 #
 # check-viewer-release.sh — fail when artifacts/src changed since the last
 # release tag but the version was not bumped. Users install from main and
-# load the viewer pinned to that version from the CDN, so an unreleased
-# viewer change would pair a new server.cjs with an old viewer.
+# start-server.sh runs the npm release pinned to that version, so an unreleased
+# change under artifacts/src never reaches them.
 #
 set -euo pipefail
 
@@ -13,7 +13,7 @@ cd "$REPO_ROOT"
 version="$(jq -r '.version' artifacts/package.json)"
 
 if [[ "${1:-}" == "--require-tag" ]] && ! git rev-parse -q --verify "refs/tags/v$version" >/dev/null; then
-  echo "error: main is at version $version but tag v$version does not exist, so the CDN has no viewer for it." >&2
+  echo "error: main is at version $version but tag v$version does not exist, so npm has no server or viewer for it." >&2
   echo "Push the tag with the commit: git push --atomic origin main v$version" >&2
   exit 1
 fi
@@ -35,6 +35,6 @@ if git diff --quiet "$tag" HEAD -- artifacts/src; then
 fi
 
 echo "error: artifacts/src changed since $tag but the version is still $version." >&2
-echo "Run scripts/bump-version.sh <next-version> and release it, or the CDN keeps serving the $tag viewer." >&2
+echo "Run scripts/bump-version.sh <next-version> and release it, or users keep running the $tag release." >&2
 git diff --stat "$tag" HEAD -- artifacts/src >&2
 exit 1

@@ -39,7 +39,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
       - run: pnpm test
-      - run: pnpm build:viewer
+      - run: pnpm build
 
       - name: Publish to npm
         run: |

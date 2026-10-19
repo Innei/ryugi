@@ -2,7 +2,7 @@ import { spawn, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { afterEach, beforeAll, describe, expect, test } from 'vitest';
+import { afterEach, describe, expect, test } from 'vitest';
 import { get } from './helpers';
 
 const scriptsDir = path.resolve(__dirname, '../../skills/artifacts/app');
@@ -15,12 +15,6 @@ const run = (script: string, args: string[]) => {
 };
 
 let projects: string[] = [];
-
-beforeAll(() => {
-  if (!fs.existsSync(path.join(scriptsDir, 'server.cjs'))) {
-    throw new Error('build the server first: pnpm build:server');
-  }
-});
 
 afterEach(() => {
   for (const project of projects) {
@@ -131,6 +125,98 @@ describe('start-server.sh', () => {
   test('rejects an unknown argument', () => {
     expect(run(start, ['--nope']).error).toMatch(/Unknown argument/);
   });
+});
+
+describe('start-server.sh without a local server build', () => {
+  const version = '9.9.9';
+
+  function installedCopy() {
+    const app = fs.mkdtempSync(path.join(os.tmpdir(), 'artifacts-app-'));
+    for (const file of ['start-server.sh', 'stop-server.sh']) fs.copyFileSync(path.join(scriptsDir, file), path.join(app, file));
+    fs.writeFileSync(path.join(app, 'version.json'), JSON.stringify({ version }));
+    return app;
+  }
+
+  function fakeNpm({ exitCode = 0, before = '' } = {}) {
+    const bin = fs.mkdtempSync(path.join(os.tmpdir(), 'artifacts-npm-'));
+    const log = path.join(bin, 'calls.log');
+    fs.writeFileSync(
+      path.join(bin, 'npm'),
+      [
+        '#!/bin/bash',
+        `echo "$*" >> ${JSON.stringify(log)}`,
+        `[[ ${exitCode} -eq 0 ]] || exit ${exitCode}`,
+        'while [[ $# -gt 0 ]]; do [[ "$1" == "--prefix" ]] && prefix="$2"; shift; done',
+        before,
+        'dist="$prefix/node_modules/ryugi-artifacts/dist"',
+        'mkdir -p "$dist"',
+        `cp ${JSON.stringify(path.join(scriptsDir, 'server.cjs'))} "$dist/server.cjs"`,
+        `cp -R ${JSON.stringify(path.join(scriptsDir, 'viewer'))} "$dist/viewer"`,
+      ].join('\n'),
+      { mode: 0o755 },
+    );
+    return { bin, calls: () => (fs.existsSync(log) ? fs.readFileSync(log, 'utf8').trim().split('\n') : []) };
+  }
+
+  function runIn(app: string, npmBin: string, cache: string, args: string[]) {
+    const env = { ...process.env, PATH: `${npmBin}:${process.env.PATH}`, XDG_CACHE_HOME: cache };
+    const result = spawnSync('bash', [path.join(app, path.basename(start)), ...args], { encoding: 'utf8', env, timeout: 15000 });
+    return JSON.parse(result.stdout.trim().split('\n').pop()!);
+  }
+
+  test('installs the pinned release once and runs its server', async () => {
+    const app = installedCopy();
+    const npm = fakeNpm();
+    const cache = fs.mkdtempSync(path.join(os.tmpdir(), 'artifacts-cache-'));
+    const project = newProject();
+
+    const info = runIn(app, npm.bin, cache, ['--project-dir', project]);
+    expect(info.type).toBe('server-started');
+    expect((await get(info.url.replace('localhost', '127.0.0.1'))).status).toBe(200);
+    expect(run(path.join(app, 'stop-server.sh'), [project]).status).toBe('stopped');
+
+    expect(runIn(app, npm.bin, cache, ['--project-dir', project]).type).toBe('server-started');
+    expect(npm.calls()).toHaveLength(1);
+    expect(npm.calls()[0]).toContain(`ryugi-artifacts@${version}`);
+  }, 30000);
+
+  test('reports the release it could not install', () => {
+    const npm = fakeNpm({ exitCode: 1 });
+    const cache = fs.mkdtempSync(path.join(os.tmpdir(), 'artifacts-cache-'));
+    const info = runIn(installedCopy(), npm.bin, cache, ['--project-dir', newProject()]);
+    expect(info.error).toContain(`ryugi-artifacts@${version}`);
+    expect(info.error).toMatch(/network access/);
+    expect(fs.readdirSync(path.join(cache, 'ryugi', 'artifacts'))).toEqual([]);
+  });
+
+  test('keeps an install another start finished first', () => {
+    const npm = fakeNpm({
+      before: [
+        'installed="${prefix%.install.*}/node_modules/ryugi-artifacts/dist"',
+        'mkdir -p "$installed"',
+        `cp ${JSON.stringify(path.join(scriptsDir, 'server.cjs'))} "$installed/server.cjs"`,
+        `cp -R ${JSON.stringify(path.join(scriptsDir, 'viewer'))} "$installed/viewer"`,
+        'touch "${prefix%.install.*}/first"',
+      ].join('\n'),
+    });
+    const cache = fs.mkdtempSync(path.join(os.tmpdir(), 'artifacts-cache-'));
+    expect(runIn(installedCopy(), npm.bin, cache, ['--project-dir', newProject()]).type).toBe('server-started');
+    expect(fs.readdirSync(path.join(cache, 'ryugi', 'artifacts'))).toEqual([version]);
+    expect(fs.existsSync(path.join(cache, 'ryugi', 'artifacts', version, 'first'))).toBe(true);
+  }, 30000);
+
+  test('installs without holding the project start lock', async () => {
+    const npm = fakeNpm({ before: 'sleep 2' });
+    const cache = fs.mkdtempSync(path.join(os.tmpdir(), 'artifacts-cache-'));
+    const project = newProject();
+    const lock = path.join(project, '.ryugi', 'artifacts', '.state', 'start.lock');
+    const env = { ...process.env, PATH: `${npm.bin}:${process.env.PATH}`, XDG_CACHE_HOME: cache };
+    const child = spawn('bash', [path.join(installedCopy(), 'start-server.sh'), '--project-dir', project], { env });
+    const done = new Promise((resolve) => child.on('close', resolve));
+    while (npm.calls().length === 0) await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(fs.existsSync(lock)).toBe(false);
+    await done;
+  }, 30000);
 });
 
 describe('stop-server.sh', () => {

@@ -13,10 +13,10 @@ Skill files shape agent behavior; treat edits to them like code changes.
 
 ## Zero Dependencies
 
-The plugin ships without runtime dependencies. The artifacts app (Artboard and HTML artifacts) is built from `artifacts/` (React, Vite) in two parts:
+The plugin ships without runtime dependencies. The artifacts app (Artboard and HTML artifacts) is built from `artifacts/` (React, Vite) and published to npm as `ryugi-artifacts`: the server (`dist/server.cjs`) and the viewer it serves (`dist/viewer/`). Neither is committed.
 
-- **Server**: `skills/artifacts/app/server.cjs`, committed, Node built-ins only. Rebuild it with `cd artifacts && pnpm build:server` after changing server source.
-- **Viewer**: never committed. Users load it from `cdn.jsdelivr.net/npm/ryugi-artifacts@<version>/`, pinned to `skills/artifacts/app/version.json`. `pnpm build:viewer` writes a gitignored local copy to `skills/artifacts/app/viewer/`, which the server prefers over the CDN while you develop.
+- **Users**: `start-server.sh` installs `ryugi-artifacts@<version>`, pinned to `skills/artifacts/app/version.json`, once into `~/.cache/ryugi/artifacts/<version>/` and runs its server. The server may have npm dependencies.
+- **Development**: `cd artifacts && pnpm build` writes gitignored copies to `skills/artifacts/app/server.cjs` and `skills/artifacts/app/viewer/`. `start-server.sh` prefers a local `server.cjs` over the npm release, so rebuild after changing server or viewer source.
 
 ## Releasing
 
