@@ -1,6 +1,6 @@
 {
   "name": "ryugi-artifacts",
-  "version": "7.0.0",
+  "version": "1.0.0",
   "type": "module",
   "description": "Prebuilt viewer for the Ryugi artifacts app, served from jsDelivr",
   "license": "MIT",
@@ -19,6 +19,7 @@
   "scripts": {
     "build": "pnpm run build:server && pnpm run build:viewer",
     "build:server": "esbuild src/server/main.ts --bundle --platform=node --target=node18 --format=cjs --outfile=../skills/artifacts/app/server.cjs",
+    "prepublishOnly": "pnpm build:viewer",
     "build:viewer": "NODE_ENV=production vite build && node -e \"const fs=require('node:fs');const to='../skills/artifacts/app/viewer';fs.rmSync(to,{recursive:true,force:true});fs.cpSync('dist/viewer',to,{recursive:true})\"",
     "dev": "vite",
     "test": "vitest run",

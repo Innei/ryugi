@@ -43,7 +43,14 @@ jobs:
       - run: pnpm build:viewer
 
       - name: Publish to npm
-        run: npm publish
+        run: |
+          version="$(jq -r '.version' package.json)"
+          if npm view "ryugi-artifacts@$version" version >/dev/null 2>&1; then
+            echo "ryugi-artifacts@$version is already on npm; skipping publish."
+            exit 0
+          fi
+          npm install -g npm@^11.5.1
+          npm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
