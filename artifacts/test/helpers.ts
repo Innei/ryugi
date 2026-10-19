@@ -104,6 +104,21 @@ export function openWs(port: number, headers: Record<string, string>): Promise<W
   });
 }
 
+export function sendWsText(socket: Socket, text: string) {
+  const payload = Buffer.from(text);
+  const mask = Buffer.from([1, 2, 3, 4]);
+  const masked = Buffer.from(payload.map((byte, i) => byte ^ mask[i % 4]!));
+  let header: Buffer;
+  if (payload.length < 126) header = Buffer.from([0x81, 0x80 | payload.length]);
+  else {
+    header = Buffer.alloc(4);
+    header[0] = 0x81;
+    header[1] = 0x80 | 126;
+    header.writeUInt16BE(payload.length, 2);
+  }
+  socket.write(Buffer.concat([header, mask, masked]));
+}
+
 export async function waitFor(check: () => boolean, timeoutMs = 3000) {
   const start = Date.now();
   while (!check()) {

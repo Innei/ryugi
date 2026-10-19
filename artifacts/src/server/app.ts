@@ -5,6 +5,7 @@ import type { Duplex } from 'node:stream';
 import type { ArtifactSummary, ArtifactType, CanvasPayload, HtmlPayload, ServerMessage } from '../shared/types';
 import { artifactKeyOf, artifactSignature, listArtifacts, resolveArtifactDir, type ArtifactRef } from './artifacts';
 import { readHtml } from './html';
+import { injectRuntime } from './inject';
 import { listen, parseCookies, randomToken, readPersisted, safeEqual, send, sendFile, sendJson, urlHostForHttp } from './http';
 import { resolveBoardFile, resolveHtmlFile, resolveInside } from './paths';
 import { readCanvas, writeArtifactState, writeJsonAtomic } from './state';
@@ -54,8 +55,13 @@ const CONTENT_CSP: Record<ArtifactType, string> = {
 const SHELL_ROUTE = /^\/(?:(artboard|html)\/([^/]+)\/?)?$/;
 const API_ARTIFACT_ROUTE = /^\/api\/artifacts\/([^/]+)\/([^/]+)$/;
 
-function readArtifact(dir: string, ref: ArtifactRef): ArtifactPayload {
-  return ref.type === 'artboard' ? readCanvas(dir) : readHtml(dir, ref.id);
+const MAX_RUNTIME_MESSAGE = 2048;
+const MAX_RUNTIME_WARNINGS = 20;
+
+function readArtifact(dir: string, ref: ArtifactRef, runtime: string[] = []): ArtifactPayload {
+  if (ref.type === 'artboard') return readCanvas(dir);
+  const payload = readHtml(dir, ref.id);
+  return { ...payload, warnings: [...payload.warnings, ...runtime.map((message) => `runtime: ${message}`)] };
 }
 
 function titleOf(payload: ArtifactPayload, ref: ArtifactRef) {
@@ -75,6 +81,8 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
   const token = readPersisted(tokenFile) || randomToken();
   fs.writeFileSync(tokenFile, `${token}\n`, { mode: 0o600 });
   const contentToken = randomToken();
+  const runtimeWarnings = new Map<string, string[]>();
+  const runtimeOf = (ref: ArtifactRef) => runtimeWarnings.get(`${ref.type}/${ref.id}`) ?? [];
   const contentPrefix = `/c/${contentToken}/`;
 
   const clients = new Set<Duplex>();
@@ -102,8 +110,19 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
       return;
     }
     const target = ref.type === 'artboard' ? resolveBoardFile(dir, relative) : resolveHtmlFile(dir, relative);
-    if (!target) send(res, 404, 'Not found');
-    else sendFile(res, target, { 'Content-Security-Policy': CONTENT_CSP[ref.type] });
+    if (!target) {
+      send(res, 404, 'Not found');
+      return;
+    }
+    const headers = { 'Content-Security-Policy': CONTENT_CSP[ref.type] };
+    if (ref.type !== 'html' || relative !== 'index.html') {
+      sendFile(res, target, headers);
+      return;
+    }
+    fs.readFile(target, 'utf8', (err, source) => {
+      if (err) send(res, 404, 'Not found');
+      else send(res, 200, injectRuntime(source), { 'Content-Type': 'text/html; charset=utf-8', ...headers });
+    });
   };
 
   const serveArtifactApi = (res: http.ServerResponse, type: string, id: string) => {
@@ -113,7 +132,7 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
       return;
     }
     const ref = artifactKeyOf(`${type}/${id}`)!;
-    sendJson(res, 200, { ...readArtifact(dir, ref), contentBase: `${contentPrefix}${type}/${id}/` });
+    sendJson(res, 200, { ...readArtifact(dir, ref, runtimeOf(ref)), contentBase: `${contentPrefix}${type}/${id}/` });
   };
 
   const serveList = (res: http.ServerResponse) => {
@@ -125,6 +144,29 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
     }));
     sendJson(res, 200, { artifacts: summaries, warnings });
   };
+
+  function onClientText(text: string) {
+    let message: unknown;
+    try {
+      message = JSON.parse(text);
+    } catch {
+      return;
+    }
+    if (typeof message !== 'object' || message === null) return;
+    const { type, artifact, message: detail } = message as Record<string, unknown>;
+    if (type !== 'runtime-error' || typeof artifact !== 'string' || typeof detail !== 'string') return;
+    if (detail.length === 0 || detail.length > MAX_RUNTIME_MESSAGE) return;
+    const ref = artifactKeyOf(artifact);
+    if (!ref || ref.type !== 'html' || artifact !== `${ref.type}/${ref.id}`) return;
+    const dir = resolveArtifactDir(root, ref.type, ref.id);
+    if (!dir) return;
+    const list = runtimeWarnings.get(artifact) ?? [];
+    if (list.includes(detail) || list.length >= MAX_RUNTIME_WARNINGS) return;
+    runtimeWarnings.set(artifact, [...list, detail]);
+    refreshState(ref, dir);
+    const frame = textFrame(JSON.stringify({ type: 'change', artifact, files: [] } satisfies ServerMessage));
+    for (const socket of clients) socket.write(frame);
+  }
 
   const handleRequest = (req: http.IncomingMessage, res: http.ServerResponse) => {
     touch();
@@ -196,7 +238,7 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
     }
     completeHandshake(socket, clientKey);
     clients.add(socket);
-    handleClientFrames(socket);
+    handleClientFrames(socket, onClientText);
     socket.on('close', () => clients.delete(socket));
     socket.on('error', () => clients.delete(socket));
     touch();
@@ -218,7 +260,7 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
   const signatures = new Map<string, string>();
   const refreshState = (ref: ArtifactRef, dir: string) => {
     signatures.set(`${ref.type}/${ref.id}`, artifactSignature(dir));
-    const payload = readArtifact(dir, ref);
+    const payload = readArtifact(dir, ref, runtimeOf(ref));
     try {
       writeArtifactState(stateDir, ref, payload);
     } catch (err) {
@@ -250,6 +292,7 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
           continue;
         }
         if (signatures.get(key) === artifactSignature(dir)) continue;
+        runtimeWarnings.delete(key);
         const payload = refreshState(ref, dir);
         const frame = textFrame(JSON.stringify({ type: 'change', artifact: key, files: changed } satisfies ServerMessage));
         for (const socket of clients) socket.write(frame);

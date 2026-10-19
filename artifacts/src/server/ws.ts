@@ -43,11 +43,12 @@ export function rejectUpgrade(socket: Duplex, status: number, reason: string) {
   socket.end(`HTTP/1.1 ${status} ${reason}\r\nConnection: close\r\nContent-Length: 0\r\n\r\n`);
 }
 
-export function handleClientFrames(socket: Duplex) {
+export function handleClientFrames(socket: Duplex, onText?: (text: string) => void) {
   let buffer = Buffer.alloc(0);
   socket.on('data', (chunk: Buffer) => {
     buffer = Buffer.concat([buffer, chunk]);
     while (buffer.length >= 2) {
+      const fin = (buffer[0]! & 0x80) !== 0;
       const opcode = buffer[0]! & 0x0f;
       let len = buffer[1]! & 0x7f;
       let offset = 2;
@@ -70,6 +71,7 @@ export function handleClientFrames(socket: Duplex) {
         return;
       }
       if (opcode === OPCODE_PING) socket.write(encodeFrame(OPCODE_PONG, payload));
+      else if (opcode === OPCODE_TEXT && fin) onText?.(payload.toString('utf8'));
     }
   });
 }

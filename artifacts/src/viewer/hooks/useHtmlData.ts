@@ -26,7 +26,7 @@ export function useHtmlData(id: string) {
     }
   }, [id]);
 
-  const live = useArtifactSocket((message) => {
+  const { live, send } = useArtifactSocket((message) => {
     if (message.type === 'change' && message.artifact === `html/${id}`) void refresh();
   }, refresh);
 
@@ -34,5 +34,5 @@ export function useHtmlData(id: string) {
     void refresh();
   }, [refresh]);
 
-  return { data, live };
+  return { data, live, send };
 }

@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ServerMessage } from '../../shared/types';
 
 export function useArtifactSocket(onMessage: (message: ServerMessage) => void, onOpen?: () => void) {
   const [live, setLive] = useState(false);
   const handlers = useRef({ onMessage, onOpen });
+  const socketRef = useRef<WebSocket | null>(null);
   handlers.current = { onMessage, onOpen };
 
   useEffect(() => {
@@ -13,6 +14,7 @@ export function useArtifactSocket(onMessage: (message: ServerMessage) => void, o
 
     const connect = () => {
       socket = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`);
+      socketRef.current = socket;
       socket.onopen = () => {
         setLive(true);
         handlers.current.onOpen?.();
@@ -32,5 +34,10 @@ export function useArtifactSocket(onMessage: (message: ServerMessage) => void, o
     };
   }, []);
 
-  return live;
+  const send = useCallback((message: unknown) => {
+    const socket = socketRef.current;
+    if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify(message));
+  }, []);
+
+  return { live, send };
 }

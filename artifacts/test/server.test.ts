@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, test } from 'vitest';
 import { startArtifactsServer, type ArtifactsServer } from '../src/server/app';
-import { get, openWs, readJson, tempRoot, waitFor, writeArtboard, writeHtml } from './helpers';
+import { get, openWs, readJson, sendWsText, tempRoot, waitFor, writeArtboard, writeHtml } from './helpers';
 
 const canvas = {
   version: 1,
@@ -329,6 +329,60 @@ describe('websocket', () => {
     await waitFor(() => ws.messages.some((m) => m.includes('"html/tuner"')));
     await new Promise((r) => setTimeout(r, 1500));
     expect(ws.messages.filter((m) => m.includes('"html/tuner"'))).toHaveLength(1);
+    ws.socket?.destroy();
+  });
+});
+
+describe('html runtime', () => {
+  const origin = (s: ArtifactsServer) => `http://127.0.0.1:${s.port}`;
+  const runtimeError = (artifact: string, message: string) => JSON.stringify({ type: 'runtime-error', artifact, message });
+
+  test('only an html artifact\'s index.html gets the runtime script', async () => {
+    const { server, root } = await start();
+    writeHtml(root, 'tuner', { 'index.html': '<head></head><p>x</p>', 'other.html': '<head></head><p>y</p>' });
+    writeArtboard(root, 'b1', canvas, { 'pages/p/a.html': '<head></head><p>a</p>' });
+    expect((await content(server, 'html/tuner/index.html')).body).toContain('ryugi:snapshot');
+    expect((await content(server, 'html/tuner/other.html')).body).not.toContain('ryugi:snapshot');
+    expect((await content(server, 'artboard/b1/pages/p/a.html')).body).not.toContain('ryugi:snapshot');
+  });
+
+  test('a runtime error from the viewer becomes a warning for that artifact', async () => {
+    const { server, root } = await start();
+    writeHtml(root, 'tuner', { 'index.html': '<p>x</p>' });
+    const ws = await openWs(server.port, { Cookie: cookie(server), Origin: origin(server) });
+    sendWsText(ws.socket!, runtimeError('html/tuner', 'ReferenceError: slider is not defined (index.html:12)'));
+    const file = stateFile(root, 'html', 'tuner', 'warnings.json');
+    await waitFor(() => fs.existsSync(file) && readJson(file).warnings.some((w: string) => w.includes('slider is not defined')));
+    const payload = await api(server, '/api/artifacts/html/tuner');
+    expect(payload.warnings.some((w: string) => w.startsWith('runtime: ReferenceError'))).toBe(true);
+    ws.socket?.destroy();
+  });
+
+  test('oversized, malformed and unknown-artifact messages are ignored', async () => {
+    const { server, root } = await start();
+    writeHtml(root, 'tuner', { 'index.html': '<p>x</p>' });
+    const ws = await openWs(server.port, { Cookie: cookie(server), Origin: origin(server) });
+    sendWsText(ws.socket!, runtimeError('html/tuner', 'x'.repeat(3000)));
+    sendWsText(ws.socket!, runtimeError('html/missing', 'boom'));
+    sendWsText(ws.socket!, runtimeError('artboard/b1', 'boom'));
+    sendWsText(ws.socket!, '{ not json');
+    sendWsText(ws.socket!, runtimeError('html/tuner', 'marker'));
+    const file = stateFile(root, 'html', 'tuner', 'warnings.json');
+    await waitFor(() => fs.existsSync(file) && readJson(file).warnings.some((w: string) => w.includes('marker')));
+    expect(readJson(file).warnings).toEqual(['runtime: marker']);
+    expect(fs.existsSync(stateFile(root, 'html', 'missing'))).toBe(false);
+    ws.socket?.destroy();
+  });
+
+  test('a real change to the artifact clears its runtime warnings', async () => {
+    const { server, root } = await start();
+    const dir = writeHtml(root, 'tuner', { 'index.html': '<p>x</p>' });
+    const ws = await openWs(server.port, { Cookie: cookie(server), Origin: origin(server) });
+    sendWsText(ws.socket!, runtimeError('html/tuner', 'boom'));
+    const file = stateFile(root, 'html', 'tuner', 'warnings.json');
+    await waitFor(() => fs.existsSync(file) && readJson(file).warnings.length === 1);
+    fs.writeFileSync(path.join(dir, 'index.html'), '<p>fixed</p>');
+    await waitFor(() => readJson(file).warnings.length === 0);
     ws.socket?.destroy();
   });
 });

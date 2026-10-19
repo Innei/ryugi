@@ -19,7 +19,7 @@ export function useCanvasData(id: string) {
     }
   }, [id]);
 
-  const live = useArtifactSocket((message) => {
+  const { live } = useArtifactSocket((message) => {
     if (message.type === 'change' && message.artifact === `artboard/${id}`) void refresh();
   }, refresh);
 
