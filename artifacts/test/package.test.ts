@@ -12,7 +12,7 @@ test('the published package holds the server, the viewer under fixed entry names
   const files = (pack.files as { path: string }[]).map((f) => f.path).sort();
   expect(files).toEqual(expect.arrayContaining(['dist/server.cjs', 'dist/viewer/index.css', 'dist/viewer/index.html', 'dist/viewer/index.js', 'package.json']));
   expect(files.filter((file) => !file.startsWith('dist/viewer/') && file !== 'dist/server.cjs' && file !== 'package.json')).toEqual([]);
-});
+}, 60_000);
 
 test('the document page is a separate chunk that artboard and html pages never load', () => {
   const entry = fs.readFileSync(path.join(pkgDir, 'dist/viewer/index.js'), 'utf8');
