@@ -241,5 +241,6 @@ Mockups, layouts, diagrams, and side-by-side designs go on the Artboard.
 Requirements, scope, tradeoffs, and conceptual choices stay in text. A
 question about a UI topic isn't automatically a visual question.
 
-If they accept, read `../artifacts/artboard.md` before starting the
-server.
+If they accept, use ryugi:artifacts with the `artboard` type. A single page
+to read or tune (a flow, a report, a test bench) can be an `html` artifact
+instead.

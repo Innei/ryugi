@@ -11,6 +11,10 @@
   "capabilities": {
     "skills": [
       {
+        "id": "artifacts",
+        "path": "skills/artifacts/SKILL.md"
+      },
+      {
         "id": "brainstorming",
         "path": "skills/brainstorming/SKILL.md"
       },

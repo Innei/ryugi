@@ -1,66 +1,24 @@
 # Artboard
 
-Artboard is a live canvas your human partner watches in their browser. You
-put design explorations on it by writing files into the project's board
-directory; the canvas updates the moment a file changes. Your human partner
-cannot move boards or pick options in the browser: they look, then tell you
-in the terminal what they want ("q1 → b", "make q3-a's header lighter").
+An artboard is a live canvas of mockups. You put design explorations on it by
+writing files into the artboard's directory; the canvas updates the moment a
+file changes. Your human partner cannot move boards or pick options in the
+browser: they look, then tell you in the terminal what they want
+("q1 → b", "make q3-a's header lighter").
 
-## Starting the server
-
-Start it only after your human partner accepts the Artboard offer. Script
-paths below are relative to this skill's directory (the one holding this
-file); use the absolute path if you run from elsewhere.
-
-```bash
-bash app/start-server.sh --project-dir /path/to/project --open
-# {"type":"server-started","url":"http://localhost:52341/?key=…","port":52341,"dir":"/path/to/project/.ryugi/artboard"}
-```
-
-- Give your human partner the **complete** `url`, including `?key=`. The
-  server refuses requests without the key. Never strip the query string.
-- `--open` opens their browser when the first board appears. Still share the
-  URL; headless and remote setups can't auto-open.
-- One board directory per project: `<project>/.ryugi/artboard/`. If a
-  server for the project is already running, the script prints its info with
-  `"reused": true`. A later session reopens the same directory, so earlier
-  pages stay as history.
-- Remind your human partner to add `.ryugi/` to `.gitignore` if it
-  isn't there.
-- Before you refer to the URL again, re-run the same start command. It
-  prints `"reused": true` when the server is still up, and otherwise starts
-  it again on the same port and key, so an open tab reconnects. (The server
-  exits after 4 hours idle, or when your session ends.)
-- Stop it with `bash app/stop-server.sh /path/to/project`. The board
-  files stay.
-
-**Launching by harness.** The server must survive across turns.
-
-- Claude Code: run the command as is; the script backgrounds the server. On
-  Windows it switches to foreground mode, so use `run_in_background: true` and
-  read `state/server-info` on the next turn.
-- Codex: run it as is; the script detects `CODEX_CI` and stays in the
-  foreground.
-- Gemini CLI, Copilot CLI and others that reap detached processes: add
-  `--foreground` and start it with the harness's background-shell mechanism.
-
-**Remote or containerized setups:** if the URL is unreachable from their
-browser, bind a non-loopback host and name the host they reach it by:
-
-```bash
-bash app/start-server.sh --project-dir /path/to/project --host 0.0.0.0 --url-host localhost
-```
+Start the server and get the link as `SKILL.md` describes, with
+`--artifact artboard/<id>`.
 
 ## Directory
 
 ```
-<project>/.ryugi/artboard/
+<project>/.ryugi/artifacts/artboard/<id>/
   canvas.json                  ← you write: pages, boards, groups, notes, focus
   pages/<page-id>/<board>.html ← you write: one self-contained page per board
-  state/                       ← the server writes; never edit it
-    server-info                url, port, dir
-    warnings.json              layout problems — read after every change
-    layout.json                computed geometry — read before placing new content
+
+<project>/.ryugi/artifacts/.state/artboard/<id>/   ← the server writes; never edit it
+  warnings.json                layout problems — read after every change
+  layout.json                  computed geometry — read before placing new content
 ```
 
 ## canvas.json
@@ -127,7 +85,7 @@ The viewer does no layout. You place everything with these spacings:
   above the group frame or board labels below it.
 - Stickies sit beside boards or group frames, at least 80px clear of both.
 
-**Don't re-derive where things are.** Read `state/layout.json`: per page it
+**Don't re-derive where things are.** Read `layout.json` in the artboard's `.state/` directory: per page it
 lists every group frame rect, every note rect (sticky heights included), and
 the page's content `bounds` (`minX`, `minY`, `maxX`, `maxY`). A new round
 goes below `bounds.maxY`: its title at `maxY + 120`, its boards a further
@@ -157,8 +115,10 @@ iframe at exactly `w`×`h` pixels, with no scrollbars.
 - Same topic, next round: append to the current page below the existing
   content (keep earlier rounds; they are the history), add a title note for
   the round and new groups for its questions.
-- New topic: add a page and set `activePage` to it.
-- Your human partner can override either ("put this on a new page").
+- Another area of the same topic (the settings screen after the header): add
+  a page and set `activePage` to it.
+- A new topic: a new artboard artifact, with its own id and link.
+- Your human partner can override any of these ("put this on a new page").
 - A change to one board: edit its HTML file in place, then refresh `focus`.
 
 ## After every change
@@ -166,13 +126,13 @@ iframe at exactly `w`×`h` pixels, with no scrollbars.
 1. Write the board HTML files first, then `canvas.json` in a single write
    (each write triggers a check; a half-edited file can show warnings that
    aren't real).
-2. Read `checkedAt` in `state/warnings.json` before you write, then wait
+2. Read `checkedAt` in the artboard's `.state/` `warnings.json` before you write, then wait
    until it changes after your last write (about 150ms) before trusting the
    warnings. It lists invalid JSON,
    missing fields, unknown pages, missing files, overlapping boards, groups
    and titles, stickies covering boards, and unknown `focus` targets. Fix
    every warning before telling your human partner the board is ready.
-3. Tell them what changed and where (ids), remind them of the URL, and ask
+3. Tell them what changed and where (ids), give them the link, and ask
    for their answer in the terminal.
 
 When the conversation moves on to something that doesn't need the canvas,
