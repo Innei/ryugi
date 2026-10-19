@@ -1,3 +1,6 @@
+export const ARTIFACT_TYPES = ['artboard', 'html'] as const;
+export type ArtifactType = (typeof ARTIFACT_TYPES)[number];
+
 export interface Rect {
   x: number;
   y: number;
