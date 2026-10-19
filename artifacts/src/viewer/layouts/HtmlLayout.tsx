@@ -92,6 +92,8 @@ export function HtmlLayout({ id }: { id: string }) {
 
   const onFrameLoad = () => {
     errorsThisLoad.current = 0;
+    const version = Number(new URL(src ?? '', location.href).searchParams.get('v'));
+    send({ type: 'loaded', artifact: `html/${id}`, version });
     const state = pendingState.current;
     pendingState.current = null;
     if (state) frameRef.current?.contentWindow?.postMessage({ type: 'ryugi:restore', state }, '*');

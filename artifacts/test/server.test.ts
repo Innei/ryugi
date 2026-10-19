@@ -212,6 +212,14 @@ describe('html content', () => {
     expect((await content(server, 'html/tuner/img/a.png')).status).toBe(200);
   });
 
+  test('content allows the opaque-origin frame to fetch, import and load fonts from it', async () => {
+    const { server, root } = await start();
+    writeHtml(root, 'tuner', { 'index.html': '<p>x</p>', 'app.js': 'export const a = 1;', 'data.json': '{}' });
+    for (const rel of ['index.html', 'app.js', 'data.json']) {
+      expect((await content(server, `html/tuner/${rel}`)).headers['access-control-allow-origin'], rel).toBe('*');
+    }
+  });
+
   test('dotfiles, the state directory and other artifacts are never served', async () => {
     const { server, root } = await start();
     writeHtml(root, 'tuner', { 'index.html': '<p>x</p>', '.secret': 'x' });
@@ -371,6 +379,41 @@ describe('html runtime', () => {
     await waitFor(() => fs.existsSync(file) && readJson(file).warnings.some((w: string) => w.includes('marker')));
     expect(readJson(file).warnings).toEqual(['runtime: marker']);
     expect(fs.existsSync(stateFile(root, 'html', 'missing'))).toBe(false);
+    ws.socket?.destroy();
+  });
+
+  test('an error report arriving right after a rewrite does not hide that rewrite', async () => {
+    const { server, root } = await start();
+    const dir = writeHtml(root, 'tuner', { 'index.html': '<p>x</p>' });
+    const ws = await openWs(server.port, { Cookie: cookie(server), Origin: origin(server) });
+    sendWsText(ws.socket!, runtimeError('html/tuner', 'old error 1'));
+    const file = stateFile(root, 'html', 'tuner', 'warnings.json');
+    await waitFor(() => fs.existsSync(file) && readJson(file).warnings.length === 1);
+    fs.writeFileSync(path.join(dir, 'index.html'), '<p>rewritten</p>');
+    sendWsText(ws.socket!, runtimeError('html/tuner', 'old error 2'));
+    await waitFor(() => ws.messages.some((m) => m.includes('"html/tuner"') && m.includes('index.html')));
+    await waitFor(() => readJson(file).warnings.length === 0);
+    ws.socket?.destroy();
+  });
+
+  test('warnings.json says whether the current version has run in a browser', async () => {
+    const { server, root } = await start();
+    const dir = writeHtml(root, 'tuner', { 'index.html': '<p>x</p>' });
+    const file = stateFile(root, 'html', 'tuner', 'warnings.json');
+    await waitFor(() => fs.existsSync(file));
+    expect(readJson(file).ran).toBe(false);
+    const ws = await openWs(server.port, { Cookie: cookie(server), Origin: origin(server) });
+    const loaded = (version: number) => JSON.stringify({ type: 'loaded', artifact: 'html/tuner', version });
+    sendWsText(ws.socket!, loaded(1));
+    const { version } = await api(server, '/api/artifacts/html/tuner');
+    sendWsText(ws.socket!, loaded(version));
+    await waitFor(() => readJson(file).ran === true);
+    const before = readJson(file).checkedAt;
+    const later = new Date(Date.now() + 5000);
+    fs.writeFileSync(path.join(dir, 'index.html'), '<p>rewritten</p>');
+    fs.utimesSync(path.join(dir, 'index.html'), later, later);
+    await waitFor(() => readJson(file).checkedAt !== before);
+    expect(readJson(file).ran).toBe(false);
     ws.socket?.destroy();
   });
 

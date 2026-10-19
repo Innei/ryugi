@@ -45,5 +45,10 @@ checked boxes and radios, open `<details>`, and the scroll position.
 The viewer reports uncaught exceptions, unhandled promise rejections and
 relative files that fail to load as `runtime: …` warnings in
 `.state/html/<id>/warnings.json`. They clear on your next change. A page that
-throws looks fine from where you sit: check the warnings after your human
-partner has opened it.
+throws looks fine from where you sit.
+
+`"ran": true` in that file means the current version has loaded in their
+browser, so its runtime lines are complete. While it is `false` the page
+hasn't run since your last change (the tab may be closed): don't call the
+page working yet; give them the link and check again after they've
+looked.

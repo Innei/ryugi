@@ -59,6 +59,7 @@ const RUNTIME = `(() => {
 })();`;
 
 const HEAD = /<head(\s[^>]*)?>/i;
+const PROLOGUE = /^\s*(<!doctype[^>]*>)?\s*(<html(\s[^>]*)?>)?/i;
 
 // One line, so error line numbers the page reports match the agent's file.
 const RUNTIME_LINE = RUNTIME.split('\n')
@@ -67,8 +68,7 @@ const RUNTIME_LINE = RUNTIME.split('\n')
 
 export function injectRuntime(html: string): string {
   const tag = `<script>${RUNTIME_LINE}</script>`;
-  const match = HEAD.exec(html);
-  if (!match) return tag + html;
-  const at = match.index + match[0].length;
+  const head = HEAD.exec(html);
+  const at = head ? head.index + head[0].length : (PROLOGUE.exec(html)?.[0].length ?? 0);
   return html.slice(0, at) + tag + html.slice(at);
 }

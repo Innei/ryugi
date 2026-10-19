@@ -206,12 +206,12 @@ var RUNTIME = `(() => {
   });
 })();`;
 var HEAD = /<head(\s[^>]*)?>/i;
+var PROLOGUE = /^\s*(<!doctype[^>]*>)?\s*(<html(\s[^>]*)?>)?/i;
 var RUNTIME_LINE = RUNTIME.split("\n").map((line) => line.trim()).join(" ");
 function injectRuntime(html) {
   const tag = `<script>${RUNTIME_LINE}</script>`;
-  const match = HEAD.exec(html);
-  if (!match) return tag + html;
-  const at = match.index + match[0].length;
+  const head = HEAD.exec(html);
+  const at = head ? head.index + head[0].length : PROLOGUE.exec(html)?.[0].length ?? 0;
   return html.slice(0, at) + tag + html.slice(at);
 }
 
@@ -578,13 +578,13 @@ function writeJsonAtomic(file, value) {
 `, { mode: 384 });
   import_node_fs5.default.renameSync(tmp, file);
 }
-function writeArtifactState(stateDir, ref, payload) {
+function writeArtifactState(stateDir, ref, payload, extra = {}) {
   const checkedAt = (/* @__PURE__ */ new Date()).toISOString();
   const dir = import_node_path5.default.join(stateDir, ref.type, ref.id);
   if (ref.type === "artboard") {
     writeJsonAtomic(import_node_path5.default.join(dir, "layout.json"), { checkedAt, ...payload.layout ?? { pages: {} } });
   }
-  writeJsonAtomic(import_node_path5.default.join(dir, "warnings.json"), { checkedAt, warnings: payload.warnings });
+  writeJsonAtomic(import_node_path5.default.join(dir, "warnings.json"), { checkedAt, warnings: payload.warnings, ...extra });
 }
 
 // src/server/watch.ts
@@ -785,6 +785,7 @@ async function startArtifactsServer(options) {
 `, { mode: 384 });
   const contentToken = randomToken();
   const runtimeWarnings = /* @__PURE__ */ new Map();
+  const ranVersions = /* @__PURE__ */ new Map();
   const runtimeOf = (ref) => runtimeWarnings.get(`${ref.type}/${ref.id}`) ?? [];
   const contentPrefix = `/c/${contentToken}/`;
   const clients = /* @__PURE__ */ new Set();
@@ -812,7 +813,7 @@ async function startArtifactsServer(options) {
       send(res, 404, "Not found");
       return;
     }
-    const headers = { "Content-Security-Policy": CONTENT_CSP[ref.type] };
+    const headers = { "Content-Security-Policy": CONTENT_CSP[ref.type], "Access-Control-Allow-Origin": "*" };
     if (ref.type !== "html" || relative !== "index.html") {
       sendFile(res, target, headers);
       return;
@@ -848,17 +849,24 @@ async function startArtifactsServer(options) {
       return;
     }
     if (typeof message !== "object" || message === null) return;
-    const { type, artifact, message: detail } = message;
-    if (type !== "runtime-error" || typeof artifact !== "string" || typeof detail !== "string") return;
-    if (detail.length === 0 || detail.length > MAX_RUNTIME_MESSAGE) return;
+    const { type, artifact, message: detail, version } = message;
+    if (typeof artifact !== "string") return;
     const ref = artifactKeyOf(artifact);
     if (!ref || ref.type !== "html" || artifact !== `${ref.type}/${ref.id}`) return;
     const dir = resolveArtifactDir(root, ref.type, ref.id);
     if (!dir) return;
+    if (type === "loaded") {
+      if (typeof version !== "number" || version !== readHtml(dir, ref.id).version) return;
+      ranVersions.set(artifact, version);
+      writeState(ref, dir);
+      return;
+    }
+    if (type !== "runtime-error" || typeof detail !== "string") return;
+    if (detail.length === 0 || detail.length > MAX_RUNTIME_MESSAGE) return;
     const list = runtimeWarnings.get(artifact) ?? [];
     if (list.includes(detail) || list.length >= MAX_RUNTIME_WARNINGS) return;
     runtimeWarnings.set(artifact, [...list, detail]);
-    refreshState(ref, dir);
+    writeState(ref, dir);
     const frame = textFrame(JSON.stringify({ type: "change", artifact, files: [] }));
     for (const socket of clients) socket.write(frame);
   }
@@ -942,15 +950,19 @@ async function startArtifactsServer(options) {
   const url = `${origin}/?key=${token}`;
   const linkFor = (type, id) => `${origin}/${type}/${id}?key=${token}`;
   const signatures = /* @__PURE__ */ new Map();
-  const refreshState = (ref, dir) => {
-    signatures.set(`${ref.type}/${ref.id}`, artifactSignature(dir));
+  const writeState = (ref, dir) => {
     const payload = readArtifact(dir, ref, runtimeOf(ref));
+    const extra = "version" in payload ? { ran: ranVersions.get(`${ref.type}/${ref.id}`) === payload.version } : {};
     try {
-      writeArtifactState(stateDir, ref, payload);
+      writeArtifactState(stateDir, ref, payload, extra);
     } catch (err) {
       console.error(JSON.stringify({ type: "state-write-error", error: err.message }));
     }
     return payload;
+  };
+  const refreshState = (ref, dir) => {
+    signatures.set(`${ref.type}/${ref.id}`, artifactSignature(dir));
+    return writeState(ref, dir);
   };
   for (const entry of listArtifacts(root).artifacts) refreshState(entry, entry.dir);
   writeJsonAtomic(import_node_path7.default.join(stateDir, "server-info"), { type: "server-started", url, port, root });

@@ -93,6 +93,30 @@ OWNERS_FILE="$STATE_DIR/owners"
 mkdir -p "$STATE_DIR"
 [[ -f "$STATE_DIR/.gitignore" ]] || printf '*\n' > "$STATE_DIR/.gitignore"
 
+# Concurrent runs for one project must not both spawn a server: hold a lock from the
+# running-server check until the new server has written server-info.
+LOCK_DIR="$STATE_DIR/start.lock"
+release_lock() { rmdir "$LOCK_DIR" 2>/dev/null; return 0; }
+acquire_lock() {
+  local _
+  for _ in {1..150}; do
+    if mkdir "$LOCK_DIR" 2>/dev/null; then
+      trap release_lock EXIT
+      return 0
+    fi
+    if [[ -n "$(find "$LOCK_DIR" -maxdepth 0 -mmin +1 2>/dev/null)" ]]; then
+      rmdir "$LOCK_DIR" 2>/dev/null
+      continue
+    fi
+    sleep 0.1
+  done
+  return 1
+}
+if ! acquire_lock; then
+  echo '{"error": "Another start-server.sh run for this project is still starting; retry in a moment"}'
+  exit 1
+fi
+
 command_has_server_id() {
   local pid="$1" expected_arg="--artifacts-server-id=$2" arg command_line
   if [[ -r "/proc/$pid/cmdline" ]]; then
@@ -129,8 +153,16 @@ if is_windows_like_shell; then
 fi
 
 register_owner() {
-  [[ -n "$OWNER_PID" ]] && printf '%s\n' "$OWNER_PID" >> "$OWNERS_FILE"
-  return 0
+  local tmp="$OWNERS_FILE.$$" pid
+  {
+    if [[ -f "$OWNERS_FILE" ]]; then
+      while IFS= read -r pid; do
+        [[ "$pid" =~ ^[0-9]+$ ]] && kill -0 "$pid" 2>/dev/null && printf '%s\n' "$pid"
+      done < "$OWNERS_FILE"
+    fi
+    [[ -n "$OWNER_PID" ]] && printf '%s\n' "$OWNER_PID"
+  } | sort -u > "$tmp"
+  mv "$tmp" "$OWNERS_FILE"
 }
 
 # Prints the server info JSON with "link" for --artifact, and "reused" when $1 is true.
@@ -153,8 +185,8 @@ if running_server_pid >/dev/null && [[ -f "$INFO_FILE" ]]; then
   exit 0
 fi
 
-: > "$OWNERS_FILE"
 register_owner
+rm -f "$INFO_FILE"
 
 SERVER_ID=""
 if [[ -r /dev/urandom ]]; then
@@ -172,6 +204,11 @@ if [[ "$FOREGROUND" == "true" ]]; then
   env "${SERVER_ENV[@]}" node server.cjs "--artifacts-server-id=$SERVER_ID" &
   SERVER_PID=$!
   echo "$SERVER_PID" > "$PID_FILE"
+  for _ in {1..50}; do
+    [[ -f "$INFO_FILE" ]] && break
+    sleep 0.1
+  done
+  release_lock
   wait "$SERVER_PID"
   exit $?
 fi

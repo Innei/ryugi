@@ -5,6 +5,7 @@ export function useArtifactSocket(onMessage: (message: ServerMessage) => void, o
   const [live, setLive] = useState(false);
   const handlers = useRef({ onMessage, onOpen });
   const socketRef = useRef<WebSocket | null>(null);
+  const queue = useRef<string[]>([]);
   handlers.current = { onMessage, onOpen };
 
   useEffect(() => {
@@ -17,6 +18,7 @@ export function useArtifactSocket(onMessage: (message: ServerMessage) => void, o
       socketRef.current = socket;
       socket.onopen = () => {
         setLive(true);
+        for (const text of queue.current.splice(0)) socket?.send(text);
         handlers.current.onOpen?.();
       };
       socket.onclose = () => {
@@ -36,7 +38,9 @@ export function useArtifactSocket(onMessage: (message: ServerMessage) => void, o
 
   const send = useCallback((message: unknown) => {
     const socket = socketRef.current;
-    if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify(message));
+    const text = JSON.stringify(message);
+    if (socket?.readyState === WebSocket.OPEN) socket.send(text);
+    else if (queue.current.length < 50) queue.current.push(text);
   }, []);
 
   return { live, send };

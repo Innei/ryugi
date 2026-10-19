@@ -82,6 +82,7 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
   fs.writeFileSync(tokenFile, `${token}\n`, { mode: 0o600 });
   const contentToken = randomToken();
   const runtimeWarnings = new Map<string, string[]>();
+  const ranVersions = new Map<string, number>();
   const runtimeOf = (ref: ArtifactRef) => runtimeWarnings.get(`${ref.type}/${ref.id}`) ?? [];
   const contentPrefix = `/c/${contentToken}/`;
 
@@ -114,7 +115,7 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
       send(res, 404, 'Not found');
       return;
     }
-    const headers = { 'Content-Security-Policy': CONTENT_CSP[ref.type] };
+    const headers = { 'Content-Security-Policy': CONTENT_CSP[ref.type], 'Access-Control-Allow-Origin': '*' };
     if (ref.type !== 'html' || relative !== 'index.html') {
       sendFile(res, target, headers);
       return;
@@ -153,17 +154,24 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
       return;
     }
     if (typeof message !== 'object' || message === null) return;
-    const { type, artifact, message: detail } = message as Record<string, unknown>;
-    if (type !== 'runtime-error' || typeof artifact !== 'string' || typeof detail !== 'string') return;
-    if (detail.length === 0 || detail.length > MAX_RUNTIME_MESSAGE) return;
+    const { type, artifact, message: detail, version } = message as Record<string, unknown>;
+    if (typeof artifact !== 'string') return;
     const ref = artifactKeyOf(artifact);
     if (!ref || ref.type !== 'html' || artifact !== `${ref.type}/${ref.id}`) return;
     const dir = resolveArtifactDir(root, ref.type, ref.id);
     if (!dir) return;
+    if (type === 'loaded') {
+      if (typeof version !== 'number' || version !== readHtml(dir, ref.id).version) return;
+      ranVersions.set(artifact, version);
+      writeState(ref, dir);
+      return;
+    }
+    if (type !== 'runtime-error' || typeof detail !== 'string') return;
+    if (detail.length === 0 || detail.length > MAX_RUNTIME_MESSAGE) return;
     const list = runtimeWarnings.get(artifact) ?? [];
     if (list.includes(detail) || list.length >= MAX_RUNTIME_WARNINGS) return;
     runtimeWarnings.set(artifact, [...list, detail]);
-    refreshState(ref, dir);
+    writeState(ref, dir);
     const frame = textFrame(JSON.stringify({ type: 'change', artifact, files: [] } satisfies ServerMessage));
     for (const socket of clients) socket.write(frame);
   }
@@ -258,15 +266,19 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
   const linkFor = (type: ArtifactType, id: string) => `${origin}/${type}/${id}?key=${token}`;
 
   const signatures = new Map<string, string>();
-  const refreshState = (ref: ArtifactRef, dir: string) => {
-    signatures.set(`${ref.type}/${ref.id}`, artifactSignature(dir));
+  const writeState = (ref: ArtifactRef, dir: string) => {
     const payload = readArtifact(dir, ref, runtimeOf(ref));
+    const extra = 'version' in payload ? { ran: ranVersions.get(`${ref.type}/${ref.id}`) === payload.version } : {};
     try {
-      writeArtifactState(stateDir, ref, payload);
+      writeArtifactState(stateDir, ref, payload, extra);
     } catch (err) {
       console.error(JSON.stringify({ type: 'state-write-error', error: (err as Error).message }));
     }
     return payload;
+  };
+  const refreshState = (ref: ArtifactRef, dir: string) => {
+    signatures.set(`${ref.type}/${ref.id}`, artifactSignature(dir));
+    return writeState(ref, dir);
   };
 
   for (const entry of listArtifacts(root).artifacts) refreshState(entry, entry.dir);

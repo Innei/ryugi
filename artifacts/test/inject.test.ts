@@ -22,6 +22,11 @@ describe('injectRuntime', () => {
     expect(() => new Function(code)).not.toThrow();
   });
 
+  test('without <head>, the script goes after the doctype and <html> so the page stays in standards mode', () => {
+    expect(injectRuntime('<!DOCTYPE html><meta charset=utf-8><title>x</title><p>y').startsWith('<!DOCTYPE html><script>')).toBe(true);
+    expect(injectRuntime('<!doctype html>\n<html lang="en"><body>z').startsWith('<!doctype html>\n<html lang="en"><script>')).toBe(true);
+  });
+
   test('prepends the script to a page without <head>', () => {
     const out = injectRuntime('<p>hello</p>');
     expect(out.startsWith('<script>')).toBe(true);

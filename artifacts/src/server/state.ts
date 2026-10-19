@@ -63,11 +63,12 @@ export function writeArtifactState(
   stateDir: string,
   ref: { type: string; id: string },
   payload: { warnings: string[]; layout?: CanvasPayload['layout'] },
+  extra: Record<string, unknown> = {},
 ) {
   const checkedAt = new Date().toISOString();
   const dir = path.join(stateDir, ref.type, ref.id);
   if (ref.type === 'artboard') {
     writeJsonAtomic(path.join(dir, 'layout.json'), { checkedAt, ...(payload.layout ?? { pages: {} }) });
   }
-  writeJsonAtomic(path.join(dir, 'warnings.json'), { checkedAt, warnings: payload.warnings });
+  writeJsonAtomic(path.join(dir, 'warnings.json'), { checkedAt, warnings: payload.warnings, ...extra });
 }

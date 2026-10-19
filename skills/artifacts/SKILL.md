@@ -91,7 +91,9 @@ browser, bind a non-loopback host and name the host they reach it by:
 2. Read `checkedAt` in `.state/<type>/<id>/warnings.json` before you write,
    and wait until it changes (about 150ms) before trusting the warnings.
    Fix every warning. For `html` this includes `runtime: …` lines: errors
-   the page threw in their browser, reported once it has run there.
+   the page threw in their browser. They only count once `"ran": true`
+   shows the new version has loaded there; until then, an empty list
+   means "not run yet", not "no errors".
 3. Tell them what changed, give the link, and ask for their answer in the
    terminal.
 

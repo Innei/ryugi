@@ -58,13 +58,41 @@ describe('start-server.sh', () => {
     expect(second.reused).toBe(true);
   });
 
-  test('registers an owner on start and another on every reuse', () => {
+  test('concurrent starts share one server that stop-server then stops', async () => {
     const project = newProject();
-    run(start, ['--project-dir', project]);
+    const root = `ARTIFACTS_ROOT=${fs.realpathSync(project)}/.ryugi/artifacts`;
+    const serverCount = () =>
+      spawnSync('ps', ['eww', '-A', '-o', 'command='], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 })
+        .stdout.split('\n')
+        .filter((line) => line.includes('server.cjs --artifacts-server-id=') && line.split(' ').includes(root)).length;
+    const before = serverCount();
+    expect(before).toBe(0);
+    const runAsync = () =>
+      new Promise<{ port: number }>((resolve) => {
+        const child = spawn('bash', [start, '--project-dir', project]);
+        let out = '';
+        child.stdout.on('data', (chunk) => (out += chunk));
+        child.on('close', () => resolve(JSON.parse(out.trim().split('\n').pop()!)));
+      });
+    const [a, b] = await Promise.all([runAsync(), runAsync()]);
+    expect(a.port).toBe(b.port);
+    expect(serverCount()).toBe(before + 1);
+    expect(run(stop, [project]).status).toBe('stopped');
+    expect(serverCount()).toBe(before);
+  });
+
+  test('registers the calling session once, keeps live owners and drops dead ones', () => {
+    const project = newProject();
     const owners = path.join(project, '.ryugi', 'artifacts', '.state', 'owners');
-    const firstCount = fs.readFileSync(owners, 'utf8').trim().split('\n').length;
+    fs.mkdirSync(path.dirname(owners), { recursive: true });
+    fs.writeFileSync(owners, `2147483646\n${process.pid}\n`);
     run(start, ['--project-dir', project]);
-    expect(fs.readFileSync(owners, 'utf8').trim().split('\n').length).toBe(firstCount + 1);
+    run(start, ['--project-dir', project]);
+    const lines = fs.readFileSync(owners, 'utf8').trim().split('\n');
+    expect(lines).not.toContain('2147483646');
+    expect(lines).toContain(String(process.pid));
+    expect(new Set(lines).size).toBe(lines.length);
+    expect(lines.length).toBe(2);
   });
 
   test('prints a link for an artifact, on start and on reuse', () => {
