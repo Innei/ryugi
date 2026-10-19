@@ -13,6 +13,7 @@ async function main() {
   const server = await startArtifactsServer({
     root,
     viewerDir: path.join(__dirname, 'viewer'),
+    runtimeDir: path.join(__dirname, 'runtime'),
     host: config.host,
     urlHost: config.urlHost,
   });

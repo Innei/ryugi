@@ -13,7 +13,10 @@ const RUNTIME = `(() => {
     const reason = event.reason;
     post({ type: 'ryugi:error', message: 'unhandled rejection: ' + String((reason && reason.message) || reason) });
   });
-  const fields = () => Array.from(document.querySelectorAll('input, select, textarea, details'));
+  const fields = () =>
+    Array.from(document.querySelectorAll('input, select, textarea, details, [data-ryugi-control]')).filter(
+      (el) => el.hasAttribute('data-ryugi-control') || !el.closest('[data-ryugi-control]'),
+    );
   const keyOf = (el, index) => {
     if (el.id) return '#' + el.id;
     if (el.type === 'radio') return 'radio:' + el.name + ':' + el.value;
@@ -31,7 +34,12 @@ const RUNTIME = `(() => {
       const state = { scroll: [scrollX, scrollY], fields: {} };
       fields().forEach((el, index) => {
         const key = keyOf(el, index);
-        if (el.tagName === 'DETAILS') state.fields[key] = { open: el.open };
+        if (el.hasAttribute('data-ryugi-control')) {
+          const saved = {};
+          if ('value' in el && el.value !== undefined) saved.value = el.value;
+          if (typeof el.checked === 'boolean') saved.checked = el.checked;
+          state.fields[key] = saved;
+        } else if (el.tagName === 'DETAILS') state.fields[key] = { open: el.open };
         else if (el.type === 'checkbox' || el.type === 'radio') state.fields[key] = { checked: el.checked };
         else if (el.type !== 'file' && el.type !== 'password') state.fields[key] = { value: el.value };
       });
@@ -41,7 +49,20 @@ const RUNTIME = `(() => {
       fields().forEach((el, index) => {
         const saved = data.state.fields[keyOf(el, index)];
         if (!saved) return;
-        if ('open' in saved) el.open = saved.open;
+        if (el.hasAttribute('data-ryugi-control')) {
+          let changed = false;
+          if ('value' in saved && el.value !== saved.value) {
+            el.value = saved.value;
+            changed = true;
+          }
+          if ('checked' in saved && el.checked !== saved.checked) {
+            el.checked = saved.checked;
+            changed = true;
+          }
+          if (changed) {
+            el.dispatchEvent(new CustomEvent('ryugi-change', { bubbles: true, detail: { value: el.value, checked: el.checked } }));
+          }
+        } else if ('open' in saved) el.open = saved.open;
         else if ('checked' in saved) {
           if (el.checked !== saved.checked) {
             el.checked = saved.checked;
@@ -66,9 +87,16 @@ const RUNTIME_LINE = RUNTIME.split('\n')
   .map((line) => line.trim())
   .join(' ');
 
-export function injectRuntime(html: string): string {
+const UI_MARKER = /<ryugi-[a-z0-9-]+(?:\s|>)/i;
+const UI_META = /<meta[^>]+name=["']ryugi-ui["'][^>]*>/i;
+
+export function injectRuntime(html: string, options: { uiRuntimeUrl?: string } = {}): string {
   const tag = `<script>${RUNTIME_LINE}</script>`;
+  const ui =
+    options.uiRuntimeUrl && (UI_MARKER.test(html) || UI_META.test(html))
+      ? `<script defer src="${options.uiRuntimeUrl.replace(/"/g, '&quot;')}"></script>`
+      : '';
   const head = HEAD.exec(html);
   const at = head ? head.index + head[0].length : (PROLOGUE.exec(html)?.[0].length ?? 0);
-  return html.slice(0, at) + tag + html.slice(at);
+  return html.slice(0, at) + tag + ui + html.slice(at);
 }

@@ -10,8 +10,25 @@ const localApp = path.join(repoRoot, 'skills/artifacts/app');
 test('the published package holds the server, the viewer under fixed entry names, and nothing else', () => {
   const [pack] = JSON.parse(execFileSync('npm', ['pack', '--dry-run', '--json'], { cwd: pkgDir, encoding: 'utf8' }));
   const files = (pack.files as { path: string }[]).map((f) => f.path).sort();
-  expect(files).toEqual(expect.arrayContaining(['dist/server.cjs', 'dist/viewer/index.css', 'dist/viewer/index.html', 'dist/viewer/index.js', 'package.json']));
-  expect(files.filter((file) => !file.startsWith('dist/viewer/') && file !== 'dist/server.cjs' && file !== 'package.json')).toEqual([]);
+  expect(files).toEqual(
+    expect.arrayContaining([
+      'dist/server.cjs',
+      'dist/runtime/ryugi-ui.js',
+      'dist/viewer/index.css',
+      'dist/viewer/index.html',
+      'dist/viewer/index.js',
+      'package.json',
+    ]),
+  );
+  expect(
+    files.filter(
+      (file) =>
+        !file.startsWith('dist/viewer/') &&
+        !file.startsWith('dist/runtime/') &&
+        file !== 'dist/server.cjs' &&
+        file !== 'package.json',
+    ),
+  ).toEqual([]);
 }, 60_000);
 
 test('the document page is a separate chunk that artboard and html pages never load', () => {
@@ -32,12 +49,16 @@ test('the viewer is a production build even when built from the test runner', ()
 test('the server and viewer builds are mirrored into the plugin for local development', () => {
   expect(fs.existsSync(path.join(localApp, 'server.cjs'))).toBe(true);
   expect(fs.readdirSync(path.join(localApp, 'viewer')).sort()).toEqual(fs.readdirSync(path.join(pkgDir, 'dist/viewer')).sort());
+  expect(fs.readFileSync(path.join(localApp, 'runtime/ryugi-ui.js'), 'utf8')).toBe(
+    fs.readFileSync(path.join(pkgDir, 'dist/runtime/ryugi-ui.js'), 'utf8'),
+  );
 });
 
 test('build output is never committed', () => {
   for (const rel of [
     'skills/artifacts/app/server.cjs',
     'skills/artifacts/app/viewer/index.js',
+    'skills/artifacts/app/runtime/ryugi-ui.js',
     'artifacts/dist/server.cjs',
     'artifacts/dist/viewer/index.js',
   ]) {

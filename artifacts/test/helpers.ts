@@ -10,7 +10,9 @@ export function tempRoot() {
   fs.writeFileSync(path.join(viewer, 'index.html'), '<!doctype html><title>viewer</title>');
   fs.mkdirSync(path.join(viewer, 'assets'));
   fs.writeFileSync(path.join(viewer, 'assets', 'app.js'), 'console.log(1)');
-  return { root, viewer };
+  const runtime = fs.mkdtempSync(path.join(os.tmpdir(), 'artifacts-runtime-'));
+  fs.writeFileSync(path.join(runtime, 'ryugi-ui.js'), 'window.__ryugiUi = true');
+  return { root, viewer, runtime };
 }
 
 export function writeFiles(dir: string, files: Record<string, string>) {

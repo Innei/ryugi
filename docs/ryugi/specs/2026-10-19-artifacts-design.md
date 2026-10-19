@@ -147,6 +147,19 @@ behavior) and `html` (new).
   per-artifact warnings, next to the structural ones, so the agent can tell
   whether the page it rewrote actually runs.
 
+## HTML UI runtime
+
+HTML artifacts can use a curated set of Lobe UI components through Web
+Components (`ryugi-button`, `ryugi-input`, `ryugi-slider-input`, and 18
+others). The server serves one classic IIFE bundle at
+`/c/<token>/runtime/ryugi-ui.js` (React, the selected Lobe components, and
+their CSS inlined) and injects it with `defer` when the page contains a
+`<ryugi-*>` element or a `ryugi-ui` meta opt-in. The wrappers use light DOM
+so Lobe's global styles and portals keep working; option lists are children
+(`ryugi-option`, `ryugi-segment`, `ryugi-radio`). Custom controls participate
+in the existing HTML state snapshot/restore through `data-ryugi-control`, and
+their component reference lives in `skills/artifacts/ui.md`.
+
 ## Constraints
 
 - Agent-written content (board pages, html artifacts and their assets) is

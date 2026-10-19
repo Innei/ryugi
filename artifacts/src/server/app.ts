@@ -18,6 +18,7 @@ import { completeHandshake, handleClientFrames, rejectUpgrade, textFrame } from 
 export interface ServerOptions {
   root: string;
   viewerDir: string;
+  runtimeDir?: string;
   host: string;
   urlHost: string;
   debounceMs?: number;
@@ -84,6 +85,7 @@ function titleOf(payload: ArtifactPayload, ref: ArtifactRef) {
 export async function startArtifactsServer(options: ServerOptions): Promise<ArtifactsServer> {
   const root = path.resolve(options.root);
   const viewerDir = path.resolve(options.viewerDir);
+  const runtimeDir = options.runtimeDir ? path.resolve(options.runtimeDir) : null;
   const stateDir = path.join(root, '.state');
   fs.mkdirSync(stateDir, { recursive: true, mode: 0o700 });
   fs.writeFileSync(path.join(stateDir, '.gitignore'), '*\n');
@@ -204,6 +206,20 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
     safeEqual(parseCookies(req.headers.cookie)[cookieName] ?? '', token);
 
   const serveContent = (res: http.ServerResponse, rest: string) => {
+    if (rest.startsWith('runtime/')) {
+      if (!runtimeDir) {
+        send(res, 404, 'Not found');
+        return;
+      }
+      const relative = rest.slice('runtime/'.length);
+      const target = resolveInside(runtimeDir, relative);
+      if (!target) {
+        send(res, 403, 'Forbidden');
+        return;
+      }
+      sendFile(res, target, { 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'public, max-age=3600' });
+      return;
+    }
     const [type = '', id = '', ...parts] = rest.split('/');
     const dir = resolveArtifactDir(root, type, id);
     if (!dir) {
@@ -229,7 +245,10 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
     }
     fs.readFile(target, 'utf8', (err, source) => {
       if (err) send(res, 404, 'Not found');
-      else send(res, 200, injectRuntime(source), { 'Content-Type': 'text/html; charset=utf-8', ...headers });
+      else {
+        const uiRuntimeUrl = runtimeDir ? `${contentPrefix}runtime/ryugi-ui.js` : undefined;
+        send(res, 200, injectRuntime(source, { uiRuntimeUrl }), { 'Content-Type': 'text/html; charset=utf-8', ...headers });
+      }
     });
   };
 

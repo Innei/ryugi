@@ -17,6 +17,14 @@ directory changes.
   variables.
 - Realistic content, never lorem ipsum.
 
+## Use the bundled components
+
+For controls and basic UI, use the Web Components in
+[`ui.md`](./ui.md): buttons, inputs, sliders, switches, selects, segmented
+controls, cards, alerts, tags, progress and text. They render Lobe UI
+components inside the page and participate in state restoration. Plain HTML
+and CSS remain the right choice for layout.
+
 ## Controls survive your rewrites
 
 When you rewrite the page, the viewer carries your human partner's settings

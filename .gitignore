@@ -24,3 +24,4 @@ artifacts/dist/
 artifacts/.vitest/
 skills/artifacts/app/server.cjs
 skills/artifacts/app/viewer/
+skills/artifacts/app/runtime/

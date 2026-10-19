@@ -12,13 +12,15 @@ const canvas = {
 
 let running: ArtifactsServer[] = [];
 
-async function start(overrides: { root?: string; viewer?: string } = {}) {
+async function start(overrides: { root?: string; viewer?: string; runtime?: string } = {}) {
   const temp = tempRoot();
   const root = overrides.root ?? temp.root;
   const viewer = overrides.viewer ?? temp.viewer;
+  const runtime = overrides.runtime ?? temp.runtime;
   const server = await startArtifactsServer({
     root,
     viewerDir: viewer,
+    runtimeDir: runtime,
     host: '127.0.0.1',
     urlHost: 'localhost',
   });
@@ -297,6 +299,26 @@ describe('artboard content', () => {
     const res = await content(server, 'artboard/b1/pages/leak/.last-token');
     expect(res.status).not.toBe(200);
     expect(res.body).not.toContain(server.token);
+  });
+});
+
+describe('UI runtime', () => {
+  test('serves the runtime under the content token only', async () => {
+    const { server } = await start();
+    const ok = await get(`${base(server)}/c/${server.contentToken}/runtime/ryugi-ui.js`);
+    expect(ok.status).toBe(200);
+    expect(ok.body).toBe('window.__ryugiUi = true');
+    expect((await get(`${base(server)}/runtime/ryugi-ui.js`)).status).not.toBe(200);
+    expect((await get(`${base(server)}/c/wrong/runtime/ryugi-ui.js`)).status).toBe(404);
+  });
+
+  test('injects the runtime into HTML that uses ryugi elements, and not into plain HTML', async () => {
+    const { server, root } = await start();
+    writeHtml(root, 'ui', { 'index.html': '<title>UI</title><ryugi-button>Go</ryugi-button>' });
+    writeHtml(root, 'plain', { 'index.html': '<title>Plain</title><p>plain</p>' });
+    const injected = await content(server, 'html/ui/index.html');
+    expect(injected.body).toContain(`<script defer src="/c/${server.contentToken}/runtime/ryugi-ui.js"></script>`);
+    expect((await content(server, 'html/plain/index.html')).body).not.toContain('ryugi-ui.js');
   });
 });
 

@@ -21,7 +21,7 @@ isn't supported yet.
 |----------------|------|---------------------|
 | Architecture; a review, report, proposal or flow walkthrough | `document` | `document.md` |
 | Creative work: options side by side, screens across pages | `artboard` | `artboard.md` |
-| Tuning: a test bench with controls, a page that runs code | `html` | `html.md` |
+| Tuning: a test bench with controls, a page that runs code | `html` | `html.md`, `ui.md` for components |
 | A simple task | none: discuss in text | |
 
 ## Pick the artifact
