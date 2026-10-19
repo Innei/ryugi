@@ -32,7 +32,7 @@ It starts from the moment you fire up your coding agent. As soon as it sees that
 
 Once it's teased a spec out of the conversation, it shows it to you in chunks short enough to actually read and digest. 
 
-When it helps to see things, it opens an artifact in your browser: an artboard with mockup variants side by side so you can point at the one you want, or a single HTML page — a test bench with sliders, a review, a proposal — that updates live as the agent rewrites it. Everything runs locally; no subscription.
+When it helps to see things, it opens an artifact in your browser: an artboard with mockup variants side by side so you can point at the one you want, or a single HTML page — a test bench with sliders, a review, a proposal — that updates live as the agent rewrites it. HTML artifacts can use a bundled Web Component kit (Lobe UI buttons, inputs, sliders, switches, cards and more), so a test bench looks like the product and keeps its settings across rewrites. Everything runs locally; no subscription.
 
 After you've signed off on the design, it asks one question: build it inline from the spec, or just code it. Inline, your agent slices the spec into tasks itself, proves each one with true red/green TDD, keeps a ledger of every judgment call it made on your behalf, and gets one fresh review of the whole branch at the end. It's not uncommon for your agent to work autonomously for a couple hours at a time without stopping to ask "should I continue?".
 
@@ -220,7 +220,7 @@ Restart any active Muse sessions after installing so the `SessionStart` hook tak
 
 5. **using-git-worktrees** - Activates when you want isolation. Follows your stated preference; asks when there is none.
 
-6. **artifacts** - Activates when something is clearer to look at than to read, in brainstorming or anywhere else. Artboards of mockups and live HTML pages, each at its own local link.
+6. **artifacts** - Activates when something is clearer to look at than to read, in brainstorming or anywhere else. Artboards of mockups, live HTML pages, and a bundled Web Component UI kit, each at its own local link.
 
 **Your project's own skills come first at their step** — a design system before mockups, a verify skill before reporting, a ship skill for merging. Ryugi sets the process; your project carries its domain.
 
@@ -238,7 +238,7 @@ Ryugi is a fork of [Superpowers](https://github.com/obra/superpowers) v7.0.0 by 
 
 **Process**
 - **brainstorming** - Drawing out intent before building
-- **artifacts** - Local artifacts at their own links: artboards of mockups and live HTML pages
+- **artifacts** - Local artifacts at their own links: artboards of mockups, live HTML pages, and the `ryugi-*` component kit
 - **executing-specs** - Build an approved spec inline: one context, one ledger, one final review
 
 **Discipline**
