@@ -132,12 +132,13 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
     for (const socket of clients) socket.write(frame);
   };
   const avatars = createAvatars(options.fetch);
+  const names = commentNames({ agentFile: path.join(stateDir, 'agent'), projectDir: path.resolve(root, '../..'), cloud: options.cloud });
   const documents = createDocumentRegistry({
     root,
     stateDir,
     timing: options.documentTiming,
     broadcast,
-    names: commentNames({ agentFile: path.join(stateDir, 'agent'), projectDir: path.resolve(root, '../..'), cloud: options.cloud }),
+    names,
     onWarningsChange: (id) => {
       const dir = resolveArtifactDir(root, 'document', id);
       if (!dir) return;
@@ -155,6 +156,9 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
     const payload = readArtifact(dir, ref, runtimeOf(ref, dir));
     const reasons = [...payload.warnings];
     if ('pending' in payload) reasons.push(...payload.pending.map((board) => `board ${board} is still being written`));
+    if ('canvas' in payload && payload.canvas?.writing && !payload.pending.includes(payload.canvas.writing)) {
+      reasons.push(`board ${payload.canvas.writing} is still being written`);
+    }
     if (session?.streaming()) reasons.push('the document is still being written');
     const title = titleOf(payload, ref);
     let published: Record<string, unknown> | null = null;
@@ -306,7 +310,7 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
       return;
     }
     const ref = artifactKeyOf(`${type}/${id}`)!;
-    sendJson(res, 200, { ...readArtifact(dir, ref, runtimeOf(ref, dir)), contentBase: `${contentPrefix}${type}/${id}/` });
+    sendJson(res, 200, { ...readArtifact(dir, ref, runtimeOf(ref, dir)), ...(ref.type !== 'html' ? { agent: names.agent() } : {}), contentBase: `${contentPrefix}${type}/${id}/` });
   };
 
   const serveList = (res: http.ServerResponse) => {

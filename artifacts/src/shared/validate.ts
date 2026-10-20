@@ -20,6 +20,16 @@ export function structuralWarnings(raw: unknown): string[] {
   if (raw.building !== undefined && typeof raw.building !== 'boolean') {
     warnings.push('"building" must be a boolean');
   }
+  if (raw.writing !== undefined && (typeof raw.writing !== 'string' || !raw.writing)) {
+    warnings.push('"writing" must be a board id');
+  }
+  if (isObject(raw.notes)) {
+    for (const [id, note] of Object.entries(raw.notes)) {
+      if (isObject(note) && note.color !== undefined && (typeof note.color !== 'string' || !/^#(?:[\da-f]{3}|[\da-f]{6})$/i.test(note.color))) {
+        warnings.push(`note "${id}" color must be #RGB or #RRGGBB`);
+      }
+    }
+  }
   if (isObject(raw.boards)) {
     for (const [id, board] of Object.entries(raw.boards)) {
       if (isObject(board) && board.interactive !== undefined && typeof board.interactive !== 'boolean') {
@@ -147,6 +157,9 @@ export function validateCanvas(
     warnings.push(`activePage "${canvas.activePage}" is not a page`);
   }
   const target = canvas.focus?.target;
+  if (canvas.writing !== undefined && !canvas.boards[canvas.writing]) {
+    warnings.push(`writing target "${canvas.writing}" is not a board`);
+  }
   if (target !== undefined && !canvas.boards[target] && !canvas.groups?.[target] && !canvas.notes?.[target]) {
     warnings.push(`focus target "${target}" is not a board, group or note`);
   }

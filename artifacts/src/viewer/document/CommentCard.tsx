@@ -118,7 +118,7 @@ export interface ThreadActions {
 
 const CONFIRMED = { backgroundColor: '#2ea043', color: '#fff' };
 
-export function CommentCard({ thread, active, actions, onActivate }: { thread: Thread; active: boolean; actions: ThreadActions; onActivate: () => void }) {
+export function CommentCard({ thread, active, actions, onActivate, agent = 'Agent' }: { thread: Thread; active: boolean; actions: ThreadActions; onActivate: () => void; agent?: string }) {
   const [expanded, setExpanded] = useState(false);
   const [closing, setClosing] = useState(false);
   const [confirming, setConfirming] = useState(false);
@@ -183,7 +183,7 @@ export function CommentCard({ thread, active, actions, onActivate }: { thread: T
               <span {...stylex.props(styles.quote)}>{quote}</span>
               {waiting === 'human' ? <span {...stylex.props(styles.badge, styles.badgeHuman)}>等你回复</span> : null}
               {waiting === 'agent' ? (
-                <span title="Agent 下一轮会读到这条" {...stylex.props(styles.badge, styles.badgeAgent)}>等 Agent</span>
+                <span title={`${agent} 下一轮会读到这条`} {...stylex.props(styles.badge, styles.badgeAgent)}>等 {agent}</span>
               ) : null}
               {resolved ? (
                 <button type="button" title="重新打开" onClick={() => actions.reopen(thread.id)} {...stylex.props(styles.icon)}>

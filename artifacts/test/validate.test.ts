@@ -14,6 +14,14 @@ const base = (): CanvasSpec => ({
 });
 
 describe('validateCanvas', () => {
+  test('rejects malformed colors and writing targets before they reach the viewer', () => {
+    const canvas = { ...base(), writing: 42, notes: { n: { page: 'p', kind: 'sticky', x: 3000, y: 0, text: 'Note', color: 'url(https://example.com)' } } };
+    const warnings = validateCanvas(canvas, exists);
+    expect(warnings).toContain('"writing" must be a board id');
+    expect(warnings.some((warning) => warning.includes('color'))).toBe(true);
+    expect(validateCanvas({ ...base(), writing: 'missing' }, exists)).toContain('writing target "missing" is not a board');
+  });
+
   test('a well-formed canvas has no warnings', () => {
     expect(validateCanvas(base(), exists)).toEqual([]);
   });

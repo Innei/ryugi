@@ -521,6 +521,18 @@ describe('publishing', () => {
     expect(cloud.requests).toEqual([]);
   });
 
+  test('an artboard being revised is not published even when every file exists', async () => {
+    const { server, root, cloud } = await start();
+    writeArtboard(root, 'editing', {
+      version: 1, pages: [{ id: 'p', name: 'Page' }], writing: 'a',
+      boards: { a: { page: 'p', file: 'pages/a.html', x: 0, y: 0, w: 640, h: 400 } },
+    }, { 'pages/a.html': '<p>Previous version</p>' });
+    const { status, json } = await call(server, 'POST', '/api/cloud/publish/artboard/editing');
+    expect(status).toBe(409);
+    expect(json.reasons).toContain('board a is still being written');
+    expect(cloud.requests).toEqual([]);
+  });
+
   test('an unknown artifact is a 404', async () => {
     const { server } = await start();
     expect((await call(server, 'POST', '/api/cloud/publish/html/missing')).status).toBe(404);

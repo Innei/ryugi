@@ -20,6 +20,7 @@ const styles = stylex.create({
 });
 
 interface Props {
+  agent?: string;
   narrow: boolean;
   threads: Thread[];
   anchors: ThreadAnchor[];
@@ -47,7 +48,7 @@ function Measured({ id, onHeight, children }: { id: string; onHeight: (id: strin
   return <div ref={ref}>{children}</div>;
 }
 
-export function CommentRail({ narrow, threads, anchors, activeId, actions, onActivate, railRef }: Props) {
+export function CommentRail({ narrow, threads, anchors, activeId, actions, onActivate, railRef, agent }: Props) {
   const [heights, setHeights] = useState<Record<string, number>>({});
   const [links, setLinks] = useState<Link[]>([]);
   const own = useRef<HTMLDivElement | null>(null);
@@ -85,7 +86,7 @@ export function CommentRail({ narrow, threads, anchors, activeId, actions, onAct
   }, [narrow, anchors, threads, activeId, layoutKey]);
 
   const card = (thread: Thread) => (
-    <CommentCard thread={thread} active={thread.id === activeId} actions={actions} onActivate={() => onActivate(thread.id)} />
+    <CommentCard thread={thread} active={thread.id === activeId} actions={actions} onActivate={() => onActivate(thread.id)} agent={agent} />
   );
 
   if (narrow) {

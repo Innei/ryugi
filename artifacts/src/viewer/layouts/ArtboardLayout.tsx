@@ -58,7 +58,7 @@ export function ArtboardLayout({ id }: { id: string }) {
   return <ArtboardView id={id} artifact={`artboard/${id}`} {...data} />;
 }
 
-export function ArtboardView({ id, artifact, canvas, layout, warnings, pending, contentBase, versions, live, loaded, send }: ArtboardViewProps) {
+export function ArtboardView({ id, artifact, canvas, layout, warnings, pending, contentBase, versions, live, loaded, send, agent }: ArtboardViewProps) {
   const [tool, setTool] = useState<Tool>('select');
   const { viewportRef, view, fit, zoomBy, zoomTo, cursor, handlers, panBy, wheelAt, panning, setSpaceHeld } = usePanZoom(tool);
   const [inspectorOpen, setInspectorOpen] = useState(false);
@@ -86,6 +86,10 @@ export function ArtboardView({ id, artifact, canvas, layout, warnings, pending, 
     },
   });
   useSelectionSync({ artifact, boards: canvas?.boards, live, inspector, send });
+  const retained = useMemo(() => new Set([
+    ...inspector.selectedTargets.map((target) => target.boardId),
+    ...Object.entries(inspector.frames).filter(([, frame]) => frame.tweaks.length > 0).map(([id]) => id),
+  ]), [inspector.selectedTargets, inspector.frames]);
   const closeInspector = useCallback(() => setInspectorOpen(false), []);
   useEffect(() => { if (expanded) setSpaceHeld(false); }, [expanded, setSpaceHeld]);
   useEffect(() => { gesture.current = null; setMarquee(null); setSelecting(false); inspector.cancelDrag(); }, [tool, expanded, page, panning, inspector.cancelDrag]);
@@ -241,6 +245,9 @@ export function ArtboardView({ id, artifact, canvas, layout, warnings, pending, 
             inspecting={selectionEnabled}
             frameRef={inspector.refFor}
             frameLoaded={inspector.loaded}
+            writing={live ? canvas.writing : undefined}
+            agent={agent}
+            retained={retained}
           />
           <Labels
             view={view}

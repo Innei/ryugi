@@ -18,6 +18,11 @@ const payload = (spec: CanvasSpec, versions: Record<string, number>, pending: st
   ({ canvas: spec, versions, pending, warnings, layout: null }) satisfies CanvasPayload;
 
 describe('openReady', () => {
+  test('opens the full skeleton before any HTML is written during a build', () => {
+    expect(openReady(payload(canvas({ building: true }), {}, ['a', 'b']))).toBe(true);
+    expect(openReady(payload(canvas({ building: true }), {}, ['a', 'b'], ['invalid layout']))).toBe(false);
+  });
+
   test('needs a valid canvas and no warnings', () => {
     expect(openReady(payload({ ...canvas(), boards: {} }, {}))).toBe(false);
     expect(openReady({ ...payload(canvas(), { 'pages/p/a.html': 1, 'pages/p/b.html': 1 }), canvas: null })).toBe(false);

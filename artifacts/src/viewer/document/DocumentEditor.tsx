@@ -33,6 +33,7 @@ export const rendererConfig: RendererConfig = {
 
 interface Props {
   id: string;
+  agent?: string;
   doc: LoroDoc;
   channel: Channel;
   theme: 'light' | 'dark';
@@ -42,7 +43,7 @@ interface Props {
   children?: ReactNode;
 }
 
-export function DocumentEditor({ id, doc, channel, theme, onAgentSection, onOffline, onEditorReady, children }: Props) {
+export function DocumentEditor({ id, doc, channel, theme, onAgentSection, onOffline, onEditorReady, children, agent }: Props) {
   const [caret, setCaret] = useState<AgentCaretPosition | null>(null);
   const [container, setContainer] = useState<HTMLDivElement | null>(null);
   const onAgentCaret = useState(() => (next: AgentCaretPosition | null, section: string | null) => {
@@ -55,7 +56,7 @@ export function DocumentEditor({ id, doc, channel, theme, onAgentSection, onOffl
       <RichEditor variant="article" theme={theme} extraNodes={extraNodes} rendererConfig={rendererConfig} onEditorReady={onEditorReady}>
         <LoroSync id={id} doc={doc} channel={channel} onAgentCaret={onAgentCaret} onOffline={onOffline} />
         <ExcalidrawPlugin />
-        <AgentCaret caret={caret} container={container} />
+        <AgentCaret caret={caret} container={container} agent={agent} />
         {children}
       </RichEditor>
     </div>

@@ -186,6 +186,7 @@ export default function DocumentPage({ id }: { id: string }) {
     <div {...stylex.props(styles.root)} className={`ryugi-doc ${stylex.props(styles.root).className ?? ''}`}>
       <TopBar
         id={id}
+        agent={meta?.agent}
         agentEditing={streaming}
         agentSection={section}
         offline={offline}
@@ -202,6 +203,7 @@ export default function DocumentPage({ id }: { id: string }) {
           <DynamicHostContext.Provider value={dynamicHost}>
             <DocumentEditor
               id={id}
+              agent={meta?.agent}
               doc={doc}
               channel={channel}
               theme={dark ? 'dark' : 'light'}
@@ -214,6 +216,7 @@ export default function DocumentPage({ id }: { id: string }) {
         </article>
         <div {...stylex.props(styles.railWrap)}>
           <CommentRail
+            agent={meta?.agent}
             narrow={narrow}
             threads={comments.threads}
             anchors={anchors}

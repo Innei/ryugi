@@ -192,12 +192,15 @@ export async function createDocumentSession(options: DocumentSessionOptions): Pr
       setOutcome({ kind: 'rejected', message: messageOf(err) });
       return;
     }
-    const baseText = closestBase(written, text, lastGoodText ?? serializeDocument(editor.getEditorState().toJSON()));
+    const fallback = lastGoodText ?? serializeDocument(editor.getEditorState().toJSON());
+    const queued = streaming > 0;
     lastGoodText = text;
     streaming += 1;
     emit({ type: 'status', outcome, streaming: true });
     playing = playing.then(async () => {
       try {
+        // Autosaves pause during streaming, so queued file edits build on the preceding agent write.
+        const baseText = queued ? fallback : closestBase(written, text, fallback);
         const { stats, steps } = prepareAgentEdit(baseText, text, target);
         for (const step of steps) {
           applyStep(step);

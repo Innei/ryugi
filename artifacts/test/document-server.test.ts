@@ -66,6 +66,16 @@ const docFile = (root: string, id: string) => path.join(root, 'document', id, 'd
 const warningsFile = (root: string, id: string) => path.join(root, '.state', 'document', id, 'warnings.json');
 
 describe('document state API', () => {
+  test('document metadata uses the same detected agent identity as artboards', async () => {
+    const { server, root } = await start();
+    writeDocument(root, 'named', { 'doc.xml': '<doc><h1>Named document</h1></doc>' });
+    const agentFile = path.join(root, '.state', 'agent');
+    fs.writeFileSync(agentFile, JSON.stringify({ AI_AGENT: 'codex' }));
+    expect((await api(server, '/api/artifacts/document/named')).agent).toBe('Codex');
+    fs.unlinkSync(agentFile);
+    expect((await api(server, '/api/artifacts/document/named')).agent).toBeUndefined();
+  });
+
   test('returns the Loro snapshot, its lineage and the last outcome', async () => {
     const { server, root } = await start();
     writeDocument(root, 'relay', { 'doc.xml': '<doc><h2>Relay</h2></doc>' });

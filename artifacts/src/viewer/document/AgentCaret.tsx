@@ -46,7 +46,7 @@ function measure(element: HTMLElement, offset: number): Rect {
   return { left: box.left, top: box.top, height: Math.min(box.height, 24) };
 }
 
-export function AgentCaret({ caret, container }: { caret: AgentCaretPosition | null; container: HTMLElement | null }) {
+export function AgentCaret({ caret, container, agent = 'Agent' }: { caret: AgentCaretPosition | null; container: HTMLElement | null; agent?: string }) {
   const [editor] = useLexicalComposerContext();
   const [rect, setRect] = useState<Rect | null>(null);
 
@@ -85,7 +85,7 @@ export function AgentCaret({ caret, container }: { caret: AgentCaretPosition | n
   return createPortal(
     <div aria-hidden {...stylex.props(styles.caret)} style={{ left: rect.left, top: rect.top, height: rect.height }}>
       <div {...stylex.props(styles.bar)} />
-      <span {...stylex.props(styles.label)}>Agent</span>
+      <span {...stylex.props(styles.label)}>{agent}</span>
     </div>,
     container,
   );

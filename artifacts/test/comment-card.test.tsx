@@ -68,17 +68,25 @@ test('clicking 编辑 focuses the edit box, not the reply box', async () => {
   expect(focused.value).toBe('离线怎么办？');
 });
 
-async function renderCard(props: { thread?: Thread; active?: boolean }, onActivate = () => {}) {
+async function renderCard(props: { thread?: Thread; active?: boolean; agent?: string }, onActivate = () => {}) {
   if (!root) {
     const host = document.createElement('div');
     document.body.append(host);
     root = createRoot(host);
   }
-  await act(async () => root!.render(createElement(CommentCard, { thread: props.thread ?? thread, active: props.active ?? false, actions, onActivate })));
+  await act(async () => root!.render(createElement(CommentCard, { thread: props.thread ?? thread, active: props.active ?? false, agent: props.agent, actions, onActivate })));
   return document.body;
 }
 
 const buttonOf = (host: HTMLElement, title: string) => host.querySelector<HTMLButtonElement>(`button[title="${title}"]`)!;
+
+test('waiting for a reply names the detected agent in the badge and tooltip', async () => {
+  const host = await renderCard({ agent: 'Codex' });
+  expect(host.textContent).toContain('等 Codex');
+  expect(host.querySelector('[title="Codex 下一轮会读到这条"]')).not.toBeNull();
+  await renderCard({});
+  expect(host.textContent).toContain('等 Agent');
+});
 
 test('leaving the card closes the reply box', async () => {
   const host = await renderCard({ active: true });

@@ -251,6 +251,20 @@ describe('read-only previews', () => {
 });
 
 describe('artboard API', () => {
+  test('identifies the active writer and preserves an optional sticky color', async () => {
+    const { server, root } = await start();
+    fs.writeFileSync(stateFile(root, 'agent'), JSON.stringify({ AI_AGENT: 'codex' }));
+    writeArtboard(root, 'writing', {
+      ...canvas, building: true, writing: 'a',
+      notes: { n: { page: 'p', kind: 'sticky', x: 700, y: 0, text: 'Decision', color: '#cce8df' } },
+    });
+    const payload = await api(server, '/api/artifacts/artboard/writing');
+    expect(payload.warnings).toEqual([]);
+    expect(payload.agent).toBe('Codex');
+    expect(payload.canvas.writing).toBe('a');
+    expect(payload.canvas.notes.n.color).toBe('#cce8df');
+  });
+
   test('returns canvas, warnings, layout and the content path prefix', async () => {
     const { server, root } = await start();
     writeArtboard(root, 'b1', canvas, { 'pages/p/a.html': '<p>a</p>' });

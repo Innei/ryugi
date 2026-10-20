@@ -3,7 +3,7 @@ import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { ConfigProvider } from '@lobehub/ui';
 import { motion } from 'motion/react';
-import { afterEach, expect, test, vi } from 'vitest';
+import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { ArtboardLayout } from '../src/viewer/layouts/ArtboardLayout';
 import { Properties } from '../src/viewer/inspector/Properties';
 import { Layers } from '../src/viewer/inspector/Layers';
@@ -20,6 +20,13 @@ const socketSend = vi.hoisted(() => vi.fn());
 
 let root: Root | undefined;
 let host: HTMLDivElement | undefined;
+beforeEach(() => {
+  vi.stubGlobal('IntersectionObserver', class {
+    constructor(private callback: IntersectionObserverCallback) {}
+    observe(target: Element) { this.callback([{ target, isIntersecting: true } as IntersectionObserverEntry], this as unknown as IntersectionObserver); }
+    disconnect() {}
+  });
+});
 afterEach(() => { if (root) act(() => root!.unmount()); host?.remove(); vi.unstubAllGlobals(); });
 
 test('the pointer selects nodes with the sidebar closed and keeps all selected outlines when it opens', async () => {
@@ -53,7 +60,7 @@ test('the pointer selects nodes with the sidebar closed and keeps all selected o
   expect(host.querySelector('.ri-marquee')).not.toBeNull();
   expect(host.querySelectorAll('.ri-outline-selected')).toHaveLength(1);
   expect(host.querySelector('.ri-outline-name')?.textContent).toBe('Preview hit');
-  const viewport = frame.parentElement!.parentElement!;
+  const viewport = frame.closest('[data-board]')!.parentElement!.parentElement!;
   await act(async () => viewport.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, button: 0, clientX: 100, clientY: 100 })));
   expect(host.querySelector('.ri-marquee')).toBeNull();
   await report('drag', { phase: 'start', id: 1, x: 0, y: 0, append: false });
@@ -74,7 +81,8 @@ test('the Inspector opens and closes without changing canvas zoom or iframe sand
   root = createRoot(host);
   await act(async () => root!.render(createElement(ConfigProvider, { motion, enableCustomFonts: false, children: createElement(ArtboardLayout, { id: 'test' }) })));
   const frame = host.querySelector('iframe')!;
-  const transform = frame.parentElement!.style.transform;
+  const world = frame.closest('[data-board]')!.parentElement!;
+  const transform = world.style.transform;
   const toggle = host.querySelector<HTMLButtonElement>('[aria-label="Toggle inspector"]');
   expect(toggle).not.toBeNull();
   expect(host.querySelector('[aria-label="Inspector"]')).toBeNull();
@@ -86,11 +94,11 @@ test('the Inspector opens and closes without changing canvas zoom or iframe sand
   const code = host.querySelector<HTMLButtonElement>('[role=tab][aria-selected=true]')!;
   expect(code.textContent).toBe('Code');
   expect(host.querySelector('[role=tabpanel]')?.getAttribute('aria-labelledby')).toBe(code.id);
-  expect(frame.parentElement!.style.transform).toBe(transform);
+  expect(world.style.transform).toBe(transform);
   expect(frame.getAttribute('sandbox')).toBe('allow-scripts');
   await act(async () => host!.querySelector<HTMLButtonElement>('[aria-label="Close inspector"]')!.click());
   expect(host.querySelector('[aria-label="Inspector"]')).toBeNull();
-  expect(frame.parentElement!.style.transform).toBe(transform);
+  expect(world.style.transform).toBe(transform);
 });
 
 test('property controls have associated labels and editing a number previews CSS', async () => {

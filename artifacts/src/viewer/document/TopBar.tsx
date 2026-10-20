@@ -36,13 +36,14 @@ const styles = stylex.create({
 
 interface Props {
   id: string;
+  agent?: string;
   agentEditing: boolean;
   agentSection: string | null;
   offline: boolean;
   openComments: number;
 }
 
-export function TopBar({ id, agentEditing, agentSection, offline, openComments }: Props) {
+export function TopBar({ id, agentEditing, agentSection, offline, openComments, agent = 'Agent' }: Props) {
   return (
     <header {...stylex.props(styles.bar)}>
       <span {...stylex.props(styles.crumb)}>
@@ -51,7 +52,7 @@ export function TopBar({ id, agentEditing, agentSection, offline, openComments }
       {agentEditing ? (
         <span {...stylex.props(styles.pill)}>
           <i {...stylex.props(styles.dot)} />
-          Agent 正在编辑{agentSection ? ` ${agentSection}` : ''}
+          {agent} 正在编辑{agentSection ? ` ${agentSection}` : ''}
         </span>
       ) : null}
       {offline ? <span {...stylex.props(styles.pill, styles.offline)}>未同步，正在重试</span> : null}

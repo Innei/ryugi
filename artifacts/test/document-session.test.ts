@@ -23,8 +23,8 @@ function setup(xml: string) {
   return { dir, file, snapshotFile };
 }
 
-async function open(file: string, snapshotFile: string) {
-  const session = await createDocumentSession({ file, snapshotFile, stepDelayMs: 0, writeDelayMs: 5 });
+async function open(file: string, snapshotFile: string, stepDelayMs = 0) {
+  const session = await createDocumentSession({ file, snapshotFile, stepDelayMs, writeDelayMs: 5 });
   sessions.push(session);
   return session;
 }
@@ -125,6 +125,41 @@ test('streams agent edits as updates', async () => {
   await session.flush();
   expect(events.some((event) => event.type === 'update')).toBe(true);
   expect(events.some((event) => event.type === 'status' && event.outcome.kind === 'merged')).toBe(true);
+});
+
+test('queued section writes appear once and preserve a concurrent human edit', async () => {
+  const { file, snapshotFile } = setup('<doc><p id="intro">one</p></doc>');
+  const session = await open(file, snapshotFile, 1);
+  await session.flush();
+  const base = read(file);
+  const first = base.replace('</doc>', '  <p id="second">two</p>\n</doc>');
+  const second = first.replace('two</p>', 'two revised</p>').replace('</doc>', '  <p id="third">three</p>\n</doc>');
+  const third = second.replace('</doc>', '  <p id="fourth">four</p>\n</doc>');
+  for (const text of [first, second, third]) {
+    fs.writeFileSync(file, text);
+    session.onFileText(text);
+  }
+  expect(session.streaming()).toBe(true);
+
+  const peer = new LoroDoc();
+  peer.import(session.snapshot());
+  const editor = createDocumentHeadlessEditor();
+  const binding = createLoroBinding(editor, peer);
+  const from = peer.oplogVersion();
+  editor.update(() => $findText($getRoot(), 'one')!.setTextContent('one, edited by hand'), { discrete: true });
+  session.importUpdate(peer.export({ mode: 'update', from }));
+  binding.dispose();
+
+  await session.flush();
+  expect(read(file).match(/<p\b[^>]*>.*?<\/p>/g)).toEqual([
+    '<p id="intro">one, edited by hand</p>',
+    '<p id="second">two revised</p>',
+    '<p id="third">three</p>',
+    '<p id="fourth">four</p>',
+  ]);
+  expect(session.outcome().kind).toBe('merged');
+  expect(session.streaming()).toBe(false);
+  expect(session.cursor()).toBeNull();
 });
 
 test('reopens from the snapshot and takes a file written while it was closed', async () => {

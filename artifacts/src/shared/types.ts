@@ -40,6 +40,7 @@ export interface NoteSpec {
   text: string;
   w?: number;
   size?: number;
+  color?: string;
 }
 
 export interface FocusSpec {
@@ -53,6 +54,7 @@ export interface CanvasSpec {
   activePage?: string;
   focus?: FocusSpec;
   building?: boolean;
+  writing?: string;
   pages: PageSpec[];
   boards: Record<string, BoardSpec>;
   groups?: Record<string, GroupSpec>;
@@ -70,6 +72,7 @@ export interface CanvasLayout {
 }
 
 export interface CanvasPayload {
+  agent?: string;
   canvas: CanvasSpec | null;
   warnings: string[];
   pending: string[];
@@ -84,6 +87,7 @@ export interface HtmlPayload {
 }
 
 export interface DocumentPayload {
+  agent?: string;
   title: string;
   warnings: string[];
   version: number;

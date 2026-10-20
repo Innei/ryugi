@@ -9,6 +9,7 @@ export function openReady(payload: CanvasPayload): boolean {
 
   const boards = Object.entries(canvas.boards);
   if (boards.length === 0) return false;
+  if (canvas.building === true) return true;
 
   const pending = new Set(payload.pending);
   const ready = (id: string) => {
