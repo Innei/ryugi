@@ -6,14 +6,17 @@ export function installInspector(win: Window & typeof globalThis, properties: re
   const session = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
   const ids = new WeakMap<Element, number>();
   const elements = new Map<number, Element>();
-  const originals = new Map<HTMLElement | SVGElement, Map<string, { value: string; priority: string; applied: string }>>();
+  const originals = new Map<HTMLElement | SVGElement, Map<string, { applied: string; declarations: Map<string, { value: string; priority: string; applied: string }> }>>();
   const ignored = new Set(['SCRIPT', 'STYLE', 'META', 'LINK', 'NOSCRIPT', 'HEAD']);
   let nextId = 0;
   let enabled = false;
   let connection = '';
   let selected: Element | null = null;
   let treeTimer = 0;
-  let hoverFrame = 0;
+  let geometryFrame = 0;
+  let hovered: Element | null = null;
+  let selectedRect: InspectorRect | null = null;
+  let hoverRect: InspectorRect | null = null;
   let dragging: { x: number; y: number; pointer: number } | null = null;
   const post = (type: string, data: Record<string, unknown>) => win.parent.postMessage({ type: `ryugi:inspect:${type}`, session, connection, ...data }, '*');
   const idOf = (el: Element) => {
@@ -42,7 +45,7 @@ export function installInspector(win: Window & typeof globalThis, properties: re
     const style = win.getComputedStyle(el);
     const inline = (el as HTMLElement).style;
     const info: InspectorSelection = {
-      id: idOf(el), name: label(el), tag: el.tagName.toLowerCase(), selector: selector(el), rect: rectOf(el),
+      id: idOf(el), name: label(el), tag: el.tagName.toLowerCase(), selector: selector(el), rect: selectedRect = rectOf(el),
       css: Object.fromEntries(properties.map((property) => [property, style.getPropertyValue(property)])) as InspectorSelection['css'],
       html: el.outerHTML.slice(0, 20000),
       widthMode: inline?.width === '100%' ? 'fill' : inline?.width === 'max-content' ? 'hug' : 'fixed',
@@ -86,7 +89,19 @@ export function installInspector(win: Window & typeof globalThis, properties: re
   };
   const schedule = () => { if (enabled && !treeTimer) treeTimer = win.setTimeout(refresh, 100); };
   const observer = new win.MutationObserver(schedule);
-  const resize = new win.ResizeObserver(() => { if (enabled && selected) selection('update'); });
+  const sameRect = (a: InspectorRect | null, b: InspectorRect) => a && a.x === b.x && a.y === b.y && a.width === b.width && a.height === b.height;
+  const geometry = () => {
+    if (!enabled) return;
+    if (selected?.isConnected) {
+      const rect = rectOf(selected);
+      if (!sameRect(selectedRect, rect)) { selectedRect = rect; post('rect', { id: idOf(selected), rect }); }
+    }
+    if (hovered?.isConnected) {
+      const rect = rectOf(hovered);
+      if (!sameRect(hoverRect, rect)) { hoverRect = rect; post('hover', { rect }); }
+    } else if (hoverRect) { hoverRect = null; post('hover', { rect: null }); }
+    geometryFrame = win.requestAnimationFrame(geometry);
+  };
   const ignoredTarget = (el: Element) => !!el.closest('[data-ryugi-inspector], script, style, link');
   const onClick = (event: MouseEvent) => {
     if (!enabled || event.button !== 0 || !(event.target instanceof win.Element) || ignoredTarget(event.target)) return;
@@ -109,12 +124,11 @@ export function installInspector(win: Window & typeof globalThis, properties: re
       dragging.x = event.screenX; dragging.y = event.screenY;
       return;
     }
-    if (hoverFrame || !(event.target instanceof win.Element)) return;
-    const el = event.target.closest('svg') || event.target;
-    hoverFrame = win.requestAnimationFrame(() => { hoverFrame = 0; if (enabled && el.isConnected) post('hover', { rect: rectOf(el) }); });
+    if (!(event.target instanceof win.Element)) return;
+    hovered = ignoredTarget(event.target) ? null : event.target.closest('svg') || event.target;
   };
   const endDrag = () => { dragging = null; };
-  const leave = () => { if (enabled) post('hover', { rect: null }); };
+  const leave = () => { hovered = null; hoverRect = null; if (enabled) post('hover', { rect: null }); };
   const wheel = (event: WheelEvent) => {
     if (!enabled) return;
     event.preventDefault(); event.stopImmediatePropagation();
@@ -130,9 +144,9 @@ export function installInspector(win: Window & typeof globalThis, properties: re
   const scroll = () => { if (enabled && selected) selection('update'); };
   const disable = () => {
     enabled = false; dragging = null;
-    observer.disconnect(); resize.disconnect();
-    win.clearTimeout(treeTimer); win.cancelAnimationFrame(hoverFrame);
-    treeTimer = 0; hoverFrame = 0;
+    observer.disconnect();
+    win.clearTimeout(treeTimer); win.cancelAnimationFrame(geometryFrame);
+    treeTimer = 0; geometryFrame = 0; hovered = null; hoverRect = null;
     post('hover', { rect: null });
   };
   const onMessage = (event: MessageEvent) => {
@@ -143,9 +157,10 @@ export function installInspector(win: Window & typeof globalThis, properties: re
       connection = data.connection;
       enabled = true;
       observer.observe(doc.documentElement, { subtree: true, childList: true, characterData: true, attributes: true });
-      resize.observe(doc.documentElement);
+      win.cancelAnimationFrame(geometryFrame);
+      geometryFrame = win.requestAnimationFrame(geometry);
       tree(); tweaks();
-      if (selected) selection('command');
+      if (selected) selection('update');
       return;
     }
     if (data.connection !== connection) return;
@@ -157,7 +172,9 @@ export function installInspector(win: Window & typeof globalThis, properties: re
       if (el?.isConnected) { selected = el; selection('command'); }
     } else if (data.action === 'hover') {
       const el = elements.get(data.id);
-      post('hover', { rect: el?.isConnected ? rectOf(el) : null });
+      hovered = el?.isConnected ? el : null;
+      hoverRect = hovered ? rectOf(hovered) : null;
+      post('hover', { rect: hoverRect });
     } else if (data.action === 'style' && data.session === session && selected && ids.get(selected) === data.id && properties.includes(data.property) && typeof data.value === 'string' && data.value.length <= 300) {
       const el = selected as HTMLElement | SVGElement;
       if (!el.style || !el.isConnected) return;
@@ -168,14 +185,21 @@ export function installInspector(win: Window & typeof globalThis, properties: re
       if (!value) return;
       if (!originals.has(el)) originals.set(el, new Map());
       const changes = originals.get(el)!;
-      if (!changes.has(property)) changes.set(property, { value: el.style.getPropertyValue(property), priority: el.style.getPropertyPriority(property), applied: '' });
+      if (!changes.has(property)) {
+        const affected = new Set([...Array.from(probe), ...Array.from(el.style).filter((name) => probe.getPropertyValue(name))]);
+        changes.set(property, { applied: '', declarations: new Map(Array.from(affected, (name) => [name, { value: el.style.getPropertyValue(name), priority: el.style.getPropertyPriority(name), applied: '' }])) });
+      }
       el.style.setProperty(property, value);
-      changes.get(property)!.applied = el.style.getPropertyValue(property);
+      const saved = changes.get(property)!;
+      saved.applied = el.style.getPropertyValue(property);
+      for (const [name, declaration] of saved.declarations) declaration.applied = el.style.getPropertyValue(name);
       selection('update'); tweaks();
     } else if (data.action === 'reset') {
-      for (const [el, changes] of originals) for (const [property, saved] of changes) {
-        if (el.style.getPropertyValue(property) !== saved.applied || el.style.getPropertyPriority(property)) continue;
-        if (saved.value) el.style.setProperty(property, saved.value, saved.priority); else el.style.removeProperty(property);
+      for (const [el, changes] of originals) for (const saved of changes.values()) {
+        const owned = Array.from(saved.declarations).filter(([name, declaration]) => el.style.getPropertyValue(name) === declaration.applied && !el.style.getPropertyPriority(name));
+        for (const [name, declaration] of owned) {
+          if (declaration.value) el.style.setProperty(name, declaration.value, declaration.priority); else el.style.removeProperty(name);
+        }
       }
       originals.clear(); selection('update'); tweaks();
     }

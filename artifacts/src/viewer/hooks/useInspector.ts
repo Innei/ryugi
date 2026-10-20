@@ -48,10 +48,11 @@ export function useInspector(options: Options) {
   useEffect(() => {
     const message = (event: MessageEvent) => {
       const match = Array.from(registered.current).find(([, entry]) => entry.element.contentWindow === event.source);
-      if (!match || !current.current.options.enabled) return;
+      if (!match) return;
       const [boardId, entry] = match;
       const data = readInspectorReport(event.data);
       if (!data || data.connection !== entry.connection || (entry.session !== null && entry.session !== data.session)) return;
+      if (!current.current.options.enabled && data.type !== 'ryugi:inspect:tweaks') return;
       if (current.current.options.playing.has(boardId) && data.type !== 'ryugi:inspect:tweaks') return;
       if (data.type === 'ryugi:inspect:tree') {
         entry.session = data.session;
@@ -71,6 +72,8 @@ export function useInspector(options: Options) {
         });
       } else if (data.type === 'ryugi:inspect:hover') {
         setState((previous) => ({ ...previous, hover: data.rect ? { boardId, rect: data.rect } : null }));
+      } else if (data.type === 'ryugi:inspect:rect') {
+        setState((previous) => previous.selection?.boardId === boardId && previous.selection.node.id === data.id ? { ...previous, selection: { boardId, node: { ...previous.selection.node, rect: data.rect } } } : previous);
       } else if (data.type === 'ryugi:inspect:tweaks') {
         setState((previous) => previous.frames[boardId] ? { ...previous, frames: { ...previous.frames, [boardId]: { ...previous.frames[boardId], tweaks: data.tweaks } } } : previous);
       } else current.current.options.onInput(boardId, data);

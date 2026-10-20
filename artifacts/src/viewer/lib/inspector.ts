@@ -30,6 +30,7 @@ export function readInspectorReport(value: unknown): InspectorReport | null {
   switch (value.type) {
     case 'ryugi:inspect:tree': valid = typeof value.truncated === 'boolean' && validTree(value.nodes); break;
     case 'ryugi:inspect:hover': valid = rect(value.rect); break;
+    case 'ryugi:inspect:rect': valid = id(value.id) && value.rect !== null && rect(value.rect); break;
     case 'ryugi:inspect:selection': {
       if (!['user', 'command', 'update'].includes(value.reason as string)) break;
       const node = value.selection;

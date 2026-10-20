@@ -100,6 +100,50 @@ test('reset preserves a later page-owned change to an overridden property', () =
   expect(root.style.color).toBe('green');
 });
 
+test('reset restores original shorthand longhands and their priorities', () => {
+  root.style.cssText = 'padding-left: 12px !important; border-top-left-radius: 8px; border-top-style: dashed; row-gap: 3px';
+  const id = cardId();
+  command('select', { id });
+  for (const [property, value] of [['padding', '20px'], ['border-radius', '10px'], ['border-style', 'solid'], ['gap', '9px']]) command('style', { id, property, value });
+  root.style.color = 'green';
+  command('reset');
+  expect(root.style.paddingLeft).toBe('12px');
+  expect(root.style.getPropertyPriority('padding-left')).toBe('important');
+  expect(root.style.borderTopLeftRadius).toBe('8px');
+  expect(root.style.borderTopStyle).toBe('dashed');
+  expect(root.style.rowGap).toBe('3px');
+  expect(root.style.color).toBe('green');
+});
+
+test('re-enabling a frame reports remembered selection as a passive update', () => {
+  const id = cardId();
+  command('select', { id });
+  expect(last('selection')?.reason).toBe('command');
+  command('disable');
+  command('enable');
+  expect(last('selection')?.reason).toBe('update');
+});
+
+test('geometry follows selected and hovered nodes without rebuilding the DOM tree', () => {
+  const frames: FrameRequestCallback[] = [];
+  vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => { frames.push(callback); return frames.length; });
+  let x = 0;
+  vi.spyOn(root, 'getBoundingClientRect').mockImplementation(() => ({ x, y: 0, width: 100, height: 50 }) as DOMRect);
+  const id = cardId();
+  command('select', { id });
+  command('hover', { id });
+  const treeCount = posted.filter((message) => message.type === 'ryugi:inspect:tree').length;
+  x = 42;
+  frames.shift()?.(0);
+  expect(last('rect')).toMatchObject({ id, rect: { x: 42, width: 100 } });
+  expect(last('hover')?.rect.x).toBe(42);
+  expect(posted.filter((message) => message.type === 'ryugi:inspect:tree')).toHaveLength(treeCount);
+  command('disable');
+  const count = posted.length;
+  frames.shift()?.(16);
+  expect(posted).toHaveLength(count);
+});
+
 test('commands from a previous connection cannot edit a current selection', () => {
   const id = cardId();
   command('select', { id });

@@ -1,10 +1,14 @@
 import { ColorPicker, Input, InputNumber, Segmented, Select } from '@lobehub/ui';
-import { useId, type ReactNode } from 'react';
+import { useEffect, useId, useState, type ReactNode } from 'react';
 import type { InspectorProperty, InspectorSelection } from '../../shared/inspector';
 
 interface Props { node: InspectorSelection; change: (property: InspectorProperty, value: string) => void }
 const numeric = (value: string) => Number.isFinite(parseFloat(value)) ? Math.round(parseFloat(value) * 100) / 100 : 0;
 const options = (values: [string, string][]) => values.map(([value, label]) => ({ value, label }));
+const pickerColor = (value: string) => {
+  const rgb = value.match(/^rgba?\(([\d.]+),\s*([\d.]+),\s*([\d.]+)(?:,\s*([\d.]+))?\)$/);
+  return rgb ? '#' + rgb.slice(1).filter((part) => part !== undefined).map((part, index) => Math.round(Number(part) * (index === 3 ? 255 : 1)).toString(16).padStart(2, '0')).join('') : value;
+};
 
 function Field({ label, children, controlId }: { label: string; children: ReactNode; controlId?: string }) {
   return <div className="ri-field">{controlId ? <label className="ri-field-label" htmlFor={controlId}>{label}</label> : <span className="ri-field-label">{label}</span>}{children}</div>;
@@ -27,6 +31,8 @@ export function Properties({ node, change }: Props) {
   const props = { node, change };
   const widthSizing = useId();
   const heightSizing = useId();
+  const [shadow, setShadow] = useState(node.css['box-shadow']);
+  useEffect(() => setShadow(node.css['box-shadow']), [node.css['box-shadow']]);
   return (
     <>
       <section className="ri-section"><h2>Size</h2>
@@ -45,17 +51,17 @@ export function Properties({ node, change }: Props) {
         <NumberField {...props} label="Padding" property="padding" />
       </section>
       <section className="ri-section"><h2>Appearance</h2>
-        <Field label="Fill"><ColorPicker size="small" trigger="field" alpha recent={false} value={node.css['background-color']} onChange={(value) => change('background-color', value)} /></Field>
+        <Field label="Fill"><ColorPicker size="small" trigger="field" alpha recent={false} value={pickerColor(node.css['background-color'])} onChange={(value) => change('background-color', value)} /></Field>
         <NumberField {...props} label="Opacity" property="opacity" unit="" max={1} step={0.1} />
         <NumberField {...props} label="Radius" property="border-radius" />
         <Choice {...props} label="Border" property="border-style" values={[[ 'none', 'None' ], [ 'solid', '— Solid' ], [ 'dashed', '– – Dashed' ], [ 'dotted', '··· Dotted' ]]} />
       </section>
       <details className="ri-section ri-disclosure"><summary>Typography</summary>
         <NumberField {...props} label="Font size" property="font-size" min={1} />
-        <Field label="Color"><ColorPicker size="small" trigger="field" alpha recent={false} value={node.css.color} onChange={(value) => change('color', value)} /></Field>
+        <Field label="Color"><ColorPicker size="small" trigger="field" alpha recent={false} value={pickerColor(node.css.color)} onChange={(value) => change('color', value)} /></Field>
       </details>
       <details className="ri-section ri-disclosure"><summary>Effects</summary>
-        <Field label="Shadow"><Input aria-label="Shadow" size="small" value={node.css['box-shadow']} onChange={(event) => change('box-shadow', event.target.value)} /></Field>
+        <Field label="Shadow"><Input aria-label="Shadow" size="small" value={shadow} onChange={(event) => setShadow(event.target.value)} onBlur={() => change('box-shadow', shadow)} onPressEnter={(event) => event.currentTarget.blur()} /></Field>
       </details>
     </>
   );

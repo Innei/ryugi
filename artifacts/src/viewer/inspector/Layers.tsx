@@ -46,7 +46,11 @@ export function Layers({ boards, frames, selection, playing, select, hoverNode }
     };
     append(root, 0);
   }
-  const toggle = (key: string, expanded: boolean) => setOpen((previous) => { const next = new Set(previous); if (expanded) next.add(key); else next.delete(key); return next; });
+  const focusKey = ancestors.find((key) => rows.some((row) => row.key === key)) ?? rows[0]?.key;
+  const toggle = (key: string, expanded: boolean) => {
+    if (!expanded && ancestors.includes(key)) elements.current.get(key)?.focus();
+    setOpen((previous) => { const next = new Set(previous); if (expanded) next.add(key); else next.delete(key); return next; });
+  };
   const focus = (index: number) => {
     const row = rows[index];
     if (row) { elements.current.get(row.key)?.focus(); if (!playing.has(row.boardId)) select(row.boardId, row.node.id); }
@@ -58,10 +62,10 @@ export function Layers({ boards, frames, selection, playing, select, hoverNode }
       case 'ArrowUp': event.preventDefault(); focus(index - 1); break;
       case 'Home': event.preventDefault(); focus(0); break;
       case 'End': event.preventDefault(); focus(rows.length - 1); break;
-      case 'ArrowRight': event.preventDefault(); if (open.has(row.key)) focus(index + 1); else toggle(row.key, true); break;
+      case 'ArrowRight': event.preventDefault(); if (row.node.children.length) { if (open.has(row.key)) focus(index + 1); else toggle(row.key, true); } break;
       case 'ArrowLeft': {
         event.preventDefault();
-        if (open.has(row.key)) toggle(row.key, false);
+        if (row.node.children.length && open.has(row.key)) toggle(row.key, false);
         else if (row.node.parentId !== null) focus(rows.findIndex((item) => item.boardId === row.boardId && item.node.id === row.node.parentId));
         break;
       }
@@ -83,7 +87,7 @@ export function Layers({ boards, frames, selection, playing, select, hoverNode }
               ref={(el) => { if (el) elements.current.set(key, el); else elements.current.delete(key); }}
               className="ri-layer" role="treeitem" aria-label={`${depth === 0 ? 'Frame' : node.kind} ${name || node.tag}`}
               aria-level={depth + 1} aria-selected={chosen} aria-expanded={node.children.length ? open.has(key) : undefined}
-              aria-disabled={paused || undefined} tabIndex={chosen || (!selection && index === 0) ? 0 : -1}
+              aria-disabled={paused || undefined} tabIndex={key === focusKey ? 0 : -1}
               style={{ paddingLeft: 7 + depth * 14 }} title={paused ? 'Pause this board to inspect its elements' : `${node.tag} · ${name || node.selector}`}
               onClick={() => { if (!paused) select(boardId, node.id); }} onKeyDown={(event) => onKey(event, index)}
               onMouseEnter={() => hoverNode(boardId, node.id)}

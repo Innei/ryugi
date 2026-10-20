@@ -78,6 +78,26 @@ test('closing inspection sends disable without mutating style or resetting the c
   expect(sent.some((message) => message.action === 'reset')).toBe(false);
 });
 
+test('geometry reports update only the currently selected node in their frame', () => {
+  select();
+  const rect = { x: 42, y: 8, width: 120, height: 60 };
+  report('rect', { id: 99, rect });
+  expect(inspector.selection?.node.rect.x).toBe(0);
+  report('rect', { id: 1, rect });
+  expect(inspector.selection?.node.rect).toEqual(rect);
+  expect(inspector.selection?.node.name).toBe('Main');
+});
+
+test('Reset updates the Tweaks list while inspection is suspended for expanded preview', () => {
+  select();
+  report('tweaks', { tweaks: [{ id: 1, name: 'Main', property: 'gap', value: '24px' }] });
+  act(() => root.render(createElement(Harness, { enabled: false })));
+  act(() => inspector.reset());
+  expect(sent.at(-1)?.action).toBe('reset');
+  report('tweaks', { tweaks: [] });
+  expect(inspector.frames.a?.tweaks).toHaveLength(0);
+});
+
 test('report validation rejects cycles, invalid coordinates and unsupported CSS properties', () => {
   const header = { session: 's', connection: 'c' };
   expect(readInspectorReport({ ...header, type: 'ryugi:inspect:tree', truncated: false, nodes: [{ ...nodes[0], parentId: 1, children: [1] }] })).toBeNull();

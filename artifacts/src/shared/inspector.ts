@@ -33,6 +33,7 @@ export type InspectorReport = { session: string; connection: string } & (
   | { type: 'ryugi:inspect:tree'; nodes: InspectorNode[]; truncated: boolean }
   | { type: 'ryugi:inspect:selection'; selection: InspectorSelection | null; reason: 'user' | 'command' | 'update' }
   | { type: 'ryugi:inspect:hover'; rect: InspectorRect | null }
+  | { type: 'ryugi:inspect:rect'; id: number; rect: InspectorRect }
   | { type: 'ryugi:inspect:tweaks'; tweaks: InspectorTweak[] }
   | { type: 'ryugi:inspect:wheel'; deltaX: number; deltaY: number; x: number; y: number; zoom: boolean }
   | { type: 'ryugi:inspect:pan'; deltaX: number; deltaY: number }
