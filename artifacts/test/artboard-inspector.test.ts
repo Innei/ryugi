@@ -47,10 +47,26 @@ test('the pointer selects nodes with the sidebar closed and keeps all selected o
   expect(host.querySelector('.ri-selection-capture')).not.toBeNull();
   await report('drag', { phase: 'move', x: 500, y: 500, append: false });
   expect(host.querySelector('.ri-marquee')).not.toBeNull();
+  await act(async () => { await new Promise(requestAnimationFrame); });
+  const preview = sent.filter((message) => message.action === 'marquee').at(-1);
+  expect(preview).toBeDefined();
+  await report('targets', { request: preview.request, targets: [{ id: 3, name: 'Preview hit', rect: node.rect }] });
+  expect(host.querySelectorAll('.ri-outline-selected')).toHaveLength(1);
+  expect(host.querySelector('.ri-outline-name')?.textContent).toBe('Preview hit');
+  expect(host.querySelector('.ri-marquee')).not.toBeNull();
   const viewport = frame.parentElement!.parentElement!;
   await act(async () => viewport.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, button: 0, clientX: 100, clientY: 100 })));
   expect(host.querySelector('.ri-marquee')).toBeNull();
   expect(sent.some((message) => message.action === 'marquee')).toBe(true);
+  await report('drag', { phase: 'start', id: 1, x: 0, y: 0, append: false });
+  await report('drag', { phase: 'move', x: 500, y: 500, append: false });
+  await act(async () => { await new Promise(requestAnimationFrame); });
+  await report('drag', { phase: 'move', x: 0, y: 0, append: false });
+  await act(async () => { await new Promise(requestAnimationFrame); });
+  expect(host.querySelectorAll('.ri-outline-selected')).toHaveLength(0);
+  const commandCount = sent.filter((message) => message.action === 'select').length;
+  await report('drag', { phase: 'end', x: 0, y: 0, append: false });
+  expect(sent.filter((message) => message.action === 'select')).toHaveLength(commandCount);
 });
 
 test('the Inspector opens and closes without changing canvas zoom or iframe sandbox', async () => {

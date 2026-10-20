@@ -8,17 +8,17 @@ export type InspectorInput = Extract<InspectorReport, { type: 'ryugi:inspect:whe
 interface Options { enabled: boolean; playing: ReadonlySet<string>; onInput: (boardId: string, input: InspectorInput) => void }
 interface RegisteredFrame { element: HTMLIFrameElement; connection: string; session: string | null }
 interface Target extends InspectorTarget { boardId: string }
-interface State { frames: Record<string, InspectedFrame>; selection: InspectedSelection | null; targets: Target[]; hover: { boardId: string; rect: InspectorRect } | null }
+interface State { frames: Record<string, InspectedFrame>; selection: InspectedSelection | null; targets: Target[]; previewTargets: Target[] | null; hover: { boardId: string; rect: InspectorRect } | null }
 type Command = InspectorCommand extends infer T ? T extends InspectorCommand ? Omit<T, 'type' | 'connection'> : never : never;
 
 export function useInspector(options: Options) {
-  const [state, setState] = useState<State>({ frames: {}, selection: null, targets: [], hover: null });
+  const [state, setState] = useState<State>({ frames: {}, selection: null, targets: [], previewTargets: null, hover: null });
   const current = useRef({ options, state });
   current.current = { options, state };
   const registered = useRef(new Map<string, RegisteredFrame>());
   const refs = useRef(new Map<string, (element: HTMLIFrameElement | null) => void>());
   const sequence = useRef(0);
-  const area = useRef<{ request: number; waiting: Set<string>; base: Target[]; results: Map<string, Target[]> } | null>(null);
+  const area = useRef<{ request: number; waiting: Set<string>; base: Target[]; results: Map<string, Target[]>; preview: boolean } | null>(null);
   const send = useCallback((boardId: string, command: Command) => {
     const entry = registered.current.get(boardId);
     entry?.element.contentWindow?.postMessage({ type: 'ryugi:inspect', connection: entry.connection, session: entry.session, ...command }, '*');
@@ -27,7 +27,7 @@ export function useInspector(options: Options) {
     area.current = null;
     setState((previous) => {
       const frames = { ...previous.frames }; delete frames[boardId];
-      return { frames, targets: previous.targets.filter((target) => target.boardId !== boardId), selection: previous.selection?.boardId === boardId ? null : previous.selection, hover: previous.hover?.boardId === boardId ? null : previous.hover };
+      return { frames, previewTargets: null, targets: previous.targets.filter((target) => target.boardId !== boardId), selection: previous.selection?.boardId === boardId ? null : previous.selection, hover: previous.hover?.boardId === boardId ? null : previous.hover };
     });
   }, []);
   const refFor = useCallback((boardId: string) => {
@@ -77,15 +77,16 @@ export function useInspector(options: Options) {
           const existing = previous.targets.some((target) => target.boardId === boardId && target.id === node.id);
           const target = { boardId, id: node.id, name: node.name || node.selector, rect: node.rect };
           const targets = data.toggle ? existing ? previous.targets.filter((item) => item.boardId !== boardId || item.id !== node.id) : [...previous.targets, target] : [target];
-          return { ...previous, targets, selection: data.toggle && existing ? null : { boardId, node } };
+          return { ...previous, targets, previewTargets: null, selection: data.toggle && existing ? null : { boardId, node } };
         });
       } else if (data.type === 'ryugi:inspect:targets') {
         const pending = area.current;
         if (!pending || data.request !== pending.request || !pending.waiting.delete(boardId)) return;
         pending.results.set(boardId, data.targets.map((target) => ({ ...target, boardId })));
+        if (pending.waiting.size) return;
         const targets = [...pending.base];
         for (const result of pending.results.values()) for (const target of result) if (!targets.some((item) => item.boardId === target.boardId && item.id === target.id)) targets.push(target);
-        setState((previous) => ({ ...previous, targets, selection: null }));
+        setState((previous) => pending.preview ? { ...previous, previewTargets: targets } : { ...previous, targets, previewTargets: null, selection: null });
       } else if (data.type === 'ryugi:inspect:hover') {
         setState((previous) => ({ ...previous, hover: data.rect ? { boardId, rect: data.rect } : null }));
       } else if (data.type === 'ryugi:inspect:rect') {
@@ -105,7 +106,7 @@ export function useInspector(options: Options) {
     for (const boardId of registered.current.keys()) send(boardId, { action: options.enabled && !current.current.options.playing.has(boardId) ? 'enable' : 'disable' });
     setState((previous) => {
       const playingSelection = previous.selection && current.current.options.playing.has(previous.selection.boardId);
-      return { ...previous, targets: previous.targets.filter((target) => !current.current.options.playing.has(target.boardId)), hover: null, selection: playingSelection ? null : previous.selection };
+      return { ...previous, previewTargets: null, targets: previous.targets.filter((target) => !current.current.options.playing.has(target.boardId)), hover: null, selection: playingSelection ? null : previous.selection };
     });
   }, [options.enabled, playingKey, send]);
 
@@ -118,15 +119,21 @@ export function useInspector(options: Options) {
     const primary = state.targets.at(-1);
     if (options.enabled && primary && (state.selection?.boardId !== primary.boardId || state.selection.node.id !== primary.id)) send(primary.boardId, { action: 'select', id: primary.id, primary: true });
   }, [targetKey, state.selection, options.enabled, send]);
-  const clearSelection = useCallback(() => { area.current = null; setState((previous) => ({ ...previous, targets: [], selection: null, hover: null })); }, []);
-  const cancelDrag = useCallback(() => { for (const boardId of registered.current.keys()) send(boardId, { action: 'cancel-drag' }); }, [send]);
-  const selectArea = useCallback((areas: { boardId: string; rect: InspectorRect }[], append: boolean) => {
+  const clearSelection = useCallback(() => { area.current = null; setState((previous) => ({ ...previous, targets: [], previewTargets: null, selection: null, hover: null })); }, []);
+  const cancelDrag = useCallback(() => {
+    if (area.current?.preview) area.current = null;
+    setState((previous) => previous.previewTargets ? { ...previous, previewTargets: null } : previous);
+    for (const boardId of registered.current.keys()) send(boardId, { action: 'cancel-drag' });
+  }, [send]);
+  const selectArea = useCallback((areas: { boardId: string; rect: InspectorRect }[], append: boolean, preview = false) => {
     const { options, state } = current.current;
     if (!options.enabled) return;
     const ready = areas.filter(({ boardId }) => registered.current.get(boardId)?.session && !options.playing.has(boardId));
     const base = append ? state.targets : [];
-    area.current = { request: ++sequence.current, waiting: new Set(ready.map(({ boardId }) => boardId)), base, results: new Map() };
-    setState((previous) => ({ ...previous, targets: base, selection: append ? previous.selection : null, hover: null }));
+    area.current = { request: ++sequence.current, waiting: new Set(ready.map(({ boardId }) => boardId)), base, results: new Map(), preview };
+    setState((previous) => preview
+      ? { ...previous, previewTargets: ready.length ? previous.previewTargets ?? base : base, hover: null }
+      : { ...previous, targets: ready.length ? previous.previewTargets ?? base : base, previewTargets: null, selection: append ? previous.selection : null, hover: null });
     for (const { boardId, rect } of ready) send(boardId, { action: 'marquee', request: sequence.current, rect });
   }, [send]);
   const select = useCallback((boardId: string, id: number, toggle = false) => {
@@ -146,7 +153,7 @@ export function useInspector(options: Options) {
   }, [send]);
   const reset = useCallback(() => { for (const boardId of registered.current.keys()) send(boardId, { action: 'reset' }); }, [send]);
 
-  return { ...state, refFor, loaded, select, selectArea, clearSelection, cancelDrag, hoverNode, change, reset };
+  return { ...state, targets: state.previewTargets ?? state.targets, refFor, loaded, select, selectArea, clearSelection, cancelDrag, hoverNode, change, reset };
 }
 
 export type Inspector = ReturnType<typeof useInspector>;

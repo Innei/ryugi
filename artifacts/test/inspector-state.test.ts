@@ -67,6 +67,74 @@ test('marquee replies replace or append selection and stale requests cannot over
   expect(inspector.selection).toBeNull();
 });
 
+test('live Shift marquee highlights current hits without accumulating nodes that leave the rectangle', () => {
+  select();
+  const query = () => {
+    act(() => inspector.selectArea([{ boardId: 'a', rect: { x: 0, y: 0, width: 100, height: 100 } }], true, true));
+    return sent.filter((message) => message.action === 'marquee').at(-1).request;
+  };
+  const target = { id: 2, name: 'Second', rect: { x: 10, y: 10, width: 40, height: 30 } };
+  report('targets', { request: query(), targets: [target] });
+  expect(inspector.targets.map((target) => target.id)).toEqual([1, 2]);
+  expect(inspector.selection?.node.id).toBe(1);
+  report('targets', { request: query(), targets: [{ ...target, id: 3 }] });
+  expect(inspector.targets.map((target) => target.id)).toEqual([1, 3]);
+  expect(sent.some((message) => message.action === 'select' && message.primary)).toBe(false);
+  act(() => inspector.selectArea([], true, true));
+  expect(inspector.targets.map((target) => target.id)).toEqual([1]);
+});
+
+test('cancelled or superseded live marquee replies cannot change the final selection', () => {
+  select();
+  const areas = [{ boardId: 'a', rect: { x: 0, y: 0, width: 100, height: 100 } }];
+  const target = { id: 2, name: 'Second', rect: { x: 10, y: 10, width: 40, height: 30 } };
+  act(() => inspector.selectArea(areas, false, true));
+  const previewRequest = sent.filter((message) => message.action === 'marquee').at(-1).request;
+  report('targets', { request: previewRequest, targets: [target] });
+  expect(inspector.targets.map((target) => target.id)).toEqual([2]);
+  act(() => inspector.cancelDrag());
+  expect(inspector.targets.map((target) => target.id)).toEqual([1]);
+  report('targets', { request: previewRequest, targets: [target] });
+  expect(inspector.targets.map((target) => target.id)).toEqual([1]);
+  act(() => inspector.selectArea(areas, false));
+  const finalRequest = sent.filter((message) => message.action === 'marquee').at(-1).request;
+  report('targets', { request: finalRequest, targets: [{ ...target, id: 3 }] });
+  report('targets', { request: previewRequest, targets: [target] });
+  expect(inspector.targets.map((target) => target.id)).toEqual([3]);
+});
+
+test('live marquee updates multiple boards together instead of flashing partial results', () => {
+  select();
+  const second = document.createElement('iframe'); host.append(second);
+  act(() => inspector.refFor('b')(second));
+  const secondSent: any[] = [];
+  vi.spyOn(second.contentWindow!, 'postMessage').mockImplementation((message) => secondSent.push(message));
+  act(() => inspector.loaded('b'));
+  const secondConnection = secondSent.at(-1).connection;
+  report('tree', { connection: secondConnection, nodes, truncated: false }, second.contentWindow!);
+  act(() => inspector.selectArea(['a', 'b'].map((boardId) => ({ boardId, rect: { x: 0, y: 0, width: 100, height: 100 } })), false, true));
+  const request = sent.filter((message) => message.action === 'marquee').at(-1).request;
+  const target = { id: 2, name: 'Hit', rect: { x: 10, y: 10, width: 40, height: 30 } };
+  report('targets', { request, targets: [target] });
+  expect(inspector.targets).toEqual([]);
+  report('targets', { connection: secondConnection, request, targets: [target] }, second.contentWindow!);
+  expect(inspector.targets.map(({ boardId, id }) => [boardId, id])).toEqual([['a', 2], ['b', 2]]);
+});
+
+test('releasing the pointer keeps live highlights until the final hit test answers', () => {
+  select();
+  const areas = [{ boardId: 'a', rect: { x: 0, y: 0, width: 100, height: 100 } }];
+  const target = { id: 2, name: 'Hit', rect: { x: 10, y: 10, width: 40, height: 30 } };
+  act(() => inspector.selectArea(areas, false, true));
+  report('targets', { request: sent.filter((message) => message.action === 'marquee').at(-1).request, targets: [target] });
+  act(() => inspector.selectArea(areas, false));
+  expect(inspector.targets.map((target) => target.id)).toEqual([2]);
+  const request = sent.filter((message) => message.action === 'marquee').at(-1).request;
+  act(() => inspector.cancelDrag());
+  report('targets', { request, targets: [target] });
+  expect(inspector.targets.map((target) => target.id)).toEqual([2]);
+});
+
 test('registered current frames can select nodes and send session-scoped style commands', () => {
   select();
   expect(inspector.selection?.node.name).toBe('Main');

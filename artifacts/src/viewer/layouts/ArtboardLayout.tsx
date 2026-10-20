@@ -63,7 +63,7 @@ export function ArtboardView({ id, artifact, canvas, layout, warnings, pending, 
   const [expanded, setExpanded] = useState<string | null>(null);
   const [playing, setPlaying] = useState<ReadonlySet<string>>(() => new Set());
   const [replays, setReplays] = useState<Record<string, number>>({});
-  const gesture = useRef<{ x: number; y: number; append: boolean; frame?: { boardId: string; id: number } } | null>(null);
+  const gesture = useRef<{ x: number; y: number; append: boolean; moved: boolean; frame?: { boardId: string; id: number } } | null>(null);
   const [selecting, setSelecting] = useState(false);
   const [marquee, setMarquee] = useState<InspectorRect | null>(null);
   const selectionEnabled = tool === 'select' && !expanded && !panning;
@@ -176,25 +176,38 @@ export function ArtboardView({ id, artifact, canvas, layout, warnings, pending, 
     ? (versions[expandedBoard.file] ?? 0) > 0 && !pendingBoards.has(expanded!)
     : false;
 
+  const areasFor = useCallback((rect: InspectorRect) => boards.flatMap(([boardId, board]) => {
+    const left = Math.max(rect.x, board.x), top = Math.max(rect.y, board.y);
+    const right = Math.min(rect.x + rect.width, board.x + board.w), bottom = Math.min(rect.y + rect.height, board.y + board.h);
+    return right > left && bottom > top ? [{ boardId, rect: { x: left - board.x, y: top - board.y, width: right - left, height: bottom - top } }] : [];
+  }), [boards]);
+
+  useEffect(() => {
+    const start = gesture.current;
+    if (!marquee || !start) return;
+    const frame = requestAnimationFrame(() => {
+      if (gesture.current === start) inspector.selectArea(areasFor(marquee), start.append, true);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [marquee, areasFor, inspector.selectArea]);
+
   function dragSelection(phase: 'start' | 'move' | 'end' | 'cancel', x: number, y: number, append = false, frame?: { boardId: string; id: number }) {
-    if (phase === 'start') { gesture.current = { x, y, append, frame }; setMarquee(null); setSelecting(true); return; }
+    if (phase === 'start') { gesture.current = { x, y, append, moved: false, frame }; setMarquee(null); setSelecting(true); return; }
     const start = gesture.current;
     if (!start) return;
     const rect = { x: Math.min(start.x, x), y: Math.min(start.y, y), width: Math.abs(x - start.x), height: Math.abs(y - start.y) };
-    const moved = Math.hypot(rect.width, rect.height) * view.k >= 3;
-    if (phase === 'move') { if (moved) setMarquee(rect); return; }
-    gesture.current = null; setMarquee(null); setSelecting(false); inspector.cancelDrag();
+    if (Math.hypot(rect.width, rect.height) * view.k >= 3) start.moved = true;
+    if (phase === 'move') { if (start.moved) setMarquee(rect); return; }
+    gesture.current = null; setMarquee(null); setSelecting(false);
+    if (phase === 'cancel' || !start.moved) inspector.cancelDrag();
     if (phase === 'cancel') return;
-    if (!moved) {
+    if (!start.moved) {
       if (start.frame) inspector.select(start.frame.boardId, start.frame.id, start.append);
       else if (!start.append) inspector.clearSelection();
       return;
     }
-    inspector.selectArea(boards.flatMap(([boardId, board]) => {
-      const left = Math.max(rect.x, board.x), top = Math.max(rect.y, board.y);
-      const right = Math.min(rect.x + rect.width, board.x + board.w), bottom = Math.min(rect.y + rect.height, board.y + board.h);
-      return right > left && bottom > top ? [{ boardId, rect: { x: left - board.x, y: top - board.y, width: right - left, height: bottom - top } }] : [];
-    }), start.append);
+    inspector.selectArea(areasFor(rect), start.append);
+    inspector.cancelDrag();
   }
   const worldPoint = (event: { clientX: number; clientY: number }) => {
     const rect = viewportRef.current!.getBoundingClientRect();
