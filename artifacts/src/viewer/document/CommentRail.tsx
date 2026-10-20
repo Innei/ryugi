@@ -14,7 +14,7 @@ const styles = stylex.create({
   wide: { position: 'relative', width: '100%', flexShrink: 0 },
   narrow: { display: 'flex', flexDirection: 'column', gap: GAP, width: '100%', maxWidth: 680, marginInline: 'auto' },
   placed: { position: 'absolute', left: 0, width: '100%', transitionProperty: 'top', transitionDuration: '150ms' },
-  section: { marginTop: 24, marginBottom: 8, color: cssVar.colorTextTertiary, fontFamily: cssVar.fontFamily, fontSize: 12 },
+  section: { marginTop: 24, marginBottom: 8, color: cssVar.colorTextTertiary, fontFamily: cssVar.fontFamily, fontSize: 11 },
   links: { position: 'absolute', top: 0, left: 0, width: 1, height: 1, overflow: 'visible', pointerEvents: 'none' },
 });
 

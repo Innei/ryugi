@@ -27,16 +27,16 @@ const styles = stylex.create({
   main: {
     position: 'relative',
     display: 'grid',
-    gridTemplateColumns: '220px minmax(0, 760px) 320px',
+    gridTemplateColumns: '220px minmax(0, 700px) 320px',
     justifyContent: 'center',
     columnGap: 48,
     paddingBlock: 40,
     paddingInline: 24,
   },
-  mainNoToc: { gridTemplateColumns: 'minmax(0, 760px) 320px' },
+  mainNoToc: { gridTemplateColumns: 'minmax(0, 700px) 320px' },
   mainNarrow: { display: 'flex', flexDirection: 'column', alignItems: 'stretch', paddingInline: 20 },
   railWrap: { position: 'relative' },
-  column: { width: '100%', maxWidth: 760, minWidth: 0 },
+  column: { width: '100%', maxWidth: 700, minWidth: 0 },
   message: { padding: 48, textAlign: 'center', color: cssVar.colorTextSecondary, fontFamily: cssVar.fontFamily, fontSize: 14 },
 });
 

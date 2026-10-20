@@ -38,7 +38,7 @@ const styles = stylex.create({
     backgroundColor: { default: 'transparent', ':hover': 'rgba(255, 255, 255, 0.12)' },
     color: cssVar.colorTextLightSolid,
     fontFamily: cssVar.fontFamily,
-    fontSize: 13,
+    fontSize: 12,
     cursor: 'pointer',
   },
   secondary: { opacity: 0.7 },

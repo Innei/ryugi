@@ -10,8 +10,8 @@ interface Entry {
 }
 
 const styles = stylex.create({
-  toc: { position: 'sticky', top: 72, alignSelf: 'start', fontFamily: cssVar.fontFamily, fontSize: 13, lineHeight: 2.1, color: cssVar.colorTextTertiary },
-  label: { marginBottom: 4, color: cssVar.colorTextSecondary, fontSize: 12, fontWeight: 600, letterSpacing: '0.04em' },
+  toc: { position: 'sticky', top: 72, alignSelf: 'start', fontFamily: cssVar.fontFamily, fontSize: 12, lineHeight: 2.1, color: cssVar.colorTextTertiary },
+  label: { marginBottom: 4, color: cssVar.colorTextSecondary, fontSize: 11, fontWeight: 600, letterSpacing: '0.04em' },
   item: {
     display: 'block',
     width: '100%',

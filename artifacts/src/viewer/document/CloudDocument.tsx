@@ -11,7 +11,7 @@ import { DynamicHostContext, type DynamicHost } from './DynamicBlock';
 
 const styles = stylex.create({
   root: { minHeight: '100%', backgroundColor: cssVar.colorBgContainer, color: cssVar.colorText },
-  column: { maxWidth: 760, marginInline: 'auto', paddingBlock: 40, paddingInline: 24 },
+  column: { maxWidth: 700, marginInline: 'auto', paddingBlock: 40, paddingInline: 24 },
 });
 
 function usePrefersDark() {

@@ -27,7 +27,7 @@ const styles = stylex.create({
     animationFillMode: 'both',
   },
   leaving: { animationName: fade, animationDuration: `${LEAVE_MS}ms`, animationTimingFunction: 'ease-in', pointerEvents: 'none' },
-  head: { display: 'flex', alignItems: 'baseline', gap: 8, paddingTop: 12, paddingInline: 16, fontFamily: cssVar.fontFamily, fontSize: 12 },
+  head: { display: 'flex', alignItems: 'baseline', gap: 8, paddingTop: 12, paddingInline: 16, fontFamily: cssVar.fontFamily, fontSize: 11 },
   quote: { flex: 1, minWidth: 0, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', color: cssVar.colorTextTertiary },
   restored: { flexShrink: 0, color: cssVar.colorWarningText },
 });

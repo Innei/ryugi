@@ -15,7 +15,7 @@ const styles = stylex.create({
     backgroundColor: cssVar.colorBgContainer,
     fontFamily: cssVar.fontFamily,
   },
-  crumb: { color: cssVar.colorTextTertiary, fontSize: 13, whiteSpace: 'nowrap' },
+  crumb: { color: cssVar.colorTextTertiary, fontSize: 12, whiteSpace: 'nowrap' },
   crumbId: { color: cssVar.colorText, fontWeight: 600 },
   pill: {
     display: 'flex',
@@ -26,7 +26,7 @@ const styles = stylex.create({
     borderRadius: 999,
     backgroundColor: cssVar.colorInfoBg,
     color: cssVar.colorInfoText,
-    fontSize: 12,
+    fontSize: 11,
     whiteSpace: 'nowrap',
   },
   dot: { width: 6, height: 6, borderRadius: '50%', backgroundColor: 'currentColor' },
