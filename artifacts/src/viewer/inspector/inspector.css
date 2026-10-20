@@ -8,4 +8,4 @@
 
 .ri-number-sizing{display:flex;gap:8px;min-width:0}.ri-size-input{flex:1;min-width:0}.ri-size-mode{width:75px;flex:0 0 75px}.ri-size-mode>*{width:100%}
 
-.ri-sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0}.ryugi-inspector .lobe-input-number__suffix{color:var(--lobe-color-text-secondary)}
+.ri-sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0}.ryugi-inspector .lobe-color-picker>span,.ryugi-inspector .lobe-input-number__suffix{color:var(--lobe-color-text-secondary)}
