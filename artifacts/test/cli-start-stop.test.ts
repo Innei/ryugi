@@ -1,0 +1,190 @@
+import { spawn, spawnSync } from 'node:child_process';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { afterEach, describe, expect, test } from 'vitest';
+import { get, waitFor } from './helpers';
+
+const cli = path.resolve(__dirname, '../../skills/artifacts/app/cli.cjs');
+
+const run = (args: string[], env: NodeJS.ProcessEnv = {}) => {
+  const result = spawnSync(process.execPath, [cli, ...args], {
+    encoding: 'utf8',
+    timeout: 15000,
+    env: { ...process.env, ARTIFACTS_OPEN: '0', ...env },
+  });
+  return { code: result.status, out: JSON.parse(result.stdout.trim().split('\n').pop()!) };
+};
+
+let projects: string[] = [];
+
+afterEach(() => {
+  for (const project of projects) spawnSync(process.execPath, [cli, 'stop', '--project-dir', project], { timeout: 15000 });
+  projects = [];
+});
+
+function newProject() {
+  const project = fs.mkdtempSync(path.join(os.tmpdir(), 'artifacts-project-'));
+  projects.push(project);
+  return project;
+}
+
+const stateOf = (project: string) => path.join(project, '.ryugi', 'artifacts', '.state');
+
+describe('ryugi-artifacts start', () => {
+  test('starts a server for the project and prints its url as one JSON line', async () => {
+    const project = newProject();
+    const { code, out } = run(['start', '--project-dir', project]);
+    expect(code).toBe(0);
+    expect(out.type).toBe('server-started');
+    expect(out.root).toBe(fs.realpathSync(path.join(project, '.ryugi', 'artifacts')));
+    expect(out.url).toMatch(/^http:\/\/localhost:\d+\/\?key=/);
+    expect((await get(out.url.replace('localhost', '127.0.0.1'))).status).toBe(200);
+    expect((fs.statSync(path.join(stateOf(project), 'server-info')).mode & 0o077)).toBe(0);
+  });
+
+  test('reuses the running server for the same project', () => {
+    const project = newProject();
+    const first = run(['start', '--project-dir', project]).out;
+    const second = run(['start', '--project-dir', project]).out;
+    expect(second.url).toBe(first.url);
+    expect(second.reused).toBe(true);
+  }, 30000);
+
+  test('concurrent starts share one server that stop then stops', async () => {
+    const project = newProject();
+    const runAsync = () =>
+      new Promise<{ port: number }>((resolve) => {
+        const child = spawn(process.execPath, [cli, 'start', '--project-dir', project], { env: { ...process.env, ARTIFACTS_OPEN: '0' } });
+        let out = '';
+        child.stdout.on('data', (chunk) => (out += chunk));
+        child.on('close', () => resolve(JSON.parse(out.trim().split('\n').pop()!)));
+      });
+    const [a, b] = await Promise.all([runAsync(), runAsync()]);
+    expect(a.port).toBe(b.port);
+    const pid = Number(fs.readFileSync(path.join(stateOf(project), 'server.pid'), 'utf8'));
+    expect(run(['stop', '--project-dir', project]).out.status).toBe('stopped');
+    expect(() => process.kill(pid, 0)).toThrow();
+  }, 30000);
+
+  test('registers the owner once, keeps live owners and drops dead ones', () => {
+    const project = newProject();
+    const owners = path.join(stateOf(project), 'owners');
+    fs.mkdirSync(path.dirname(owners), { recursive: true });
+    fs.writeFileSync(owners, `2147483646\n${process.pid}\n`);
+    run(['start', '--project-dir', project], { RYUGI_ARTIFACTS_OWNER: String(process.ppid) });
+    run(['start', '--project-dir', project], { RYUGI_ARTIFACTS_OWNER: String(process.ppid) });
+    const lines = fs.readFileSync(owners, 'utf8').trim().split('\n');
+    expect(lines.sort()).toEqual([String(process.pid), String(process.ppid)].sort());
+  }, 30000);
+
+  test('opens the requested artifact once it is ready, by default', async () => {
+    const project = newProject();
+    const artboard = path.join(project, '.ryugi', 'artifacts', 'artboard', 'header');
+    fs.mkdirSync(path.join(artboard, 'pages', 'p'), { recursive: true });
+    fs.writeFileSync(path.join(artboard, 'canvas.json'), JSON.stringify({ version: 1, pages: [{ id: 'p', name: 'P' }], boards: { a: { file: 'pages/p/a.html', page: 'p', x: 0, y: 0, w: 640, h: 400 } } }));
+    fs.writeFileSync(path.join(artboard, 'pages', 'p', 'a.html'), '<p>ready</p>');
+    const bin = fs.mkdtempSync(path.join(os.tmpdir(), 'artifacts-open-bin-'));
+    const log = path.join(bin, 'opened.log');
+    const open = path.join(bin, 'open');
+    fs.writeFileSync(open, `#!/bin/sh\nprintf '%s\\n' "$1" >> ${JSON.stringify(log)}\n`, { mode: 0o755 });
+    const env: NodeJS.ProcessEnv = { ...process.env, ARTIFACTS_OPEN_CMD: open };
+    delete env.ARTIFACTS_OPEN;
+    const result = spawnSync(process.execPath, [cli, 'start', '--project-dir', project, '--artifact', 'artboard/header'], { encoding: 'utf8', env, timeout: 15000 });
+    expect(JSON.parse(result.stdout.trim().split('\n').pop()!).type).toBe('server-started');
+    await waitFor(() => fs.existsSync(log), 5000);
+    expect(fs.readFileSync(log, 'utf8')).toContain('/artboard/header?key=');
+  }, 15000);
+
+  test('prints a link for an artifact, on start and on reuse', () => {
+    const project = newProject();
+    const first = run(['start', '--project-dir', project, '--artifact', 'html/arrow-tuner']).out;
+    const key = first.url.split('key=')[1];
+    expect(first.link).toBe(`http://localhost:${first.port}/html/arrow-tuner?key=${key}`);
+    const second = run(['start', '--project-dir', project, '--artifact', 'artboard/header']).out;
+    expect(second.reused).toBe(true);
+    expect(second.link).toBe(`http://localhost:${first.port}/artboard/header?key=${key}`);
+  }, 30000);
+
+  test('rejects an invalid artifact name and unknown arguments with exit code 1', () => {
+    const bad = run(['start', '--project-dir', newProject(), '--artifact', 'html/../x']);
+    expect(bad.code).toBe(1);
+    expect(bad.out.error).toMatch(/--artifact must be/);
+    expect(run(['start', '--project-dir', newProject(), '--artifact', 'slides/x']).out.error).toMatch(/--artifact must be/);
+    const unknown = run(['start', '--nope']);
+    expect(unknown.code).toBe(1);
+    expect(unknown.out.error).toMatch(/Unknown argument/);
+  });
+
+  test('detects its running server even where ps has no -o option', () => {
+    const project = newProject();
+    const shim = fs.mkdtempSync(path.join(os.tmpdir(), 'artifacts-ps-'));
+    fs.writeFileSync(path.join(shim, 'ps'), '#!/bin/bash\nfor a in "$@"; do [[ "$a" == "-o" ]] && exit 1; done\nexec /bin/ps "$@"\n', { mode: 0o755 });
+    const env = { PATH: `${shim}:${process.env.PATH}` };
+    const first = run(['start', '--project-dir', project], env).out;
+    const second = run(['start', '--project-dir', project], env).out;
+    expect(second.reused).toBe(true);
+    expect(second.url).toBe(first.url);
+    expect(run(['stop', '--project-dir', project], env).out.status).toBe('stopped');
+  }, 30000);
+
+  test('a managed start replaces a running server from another release, keeping its link', () => {
+    const project = newProject();
+    const first = run(['start', '--project-dir', project], { RYUGI_ARTIFACTS_VERSION: '9.9.9' }).out;
+    const oldPid = Number(fs.readFileSync(path.join(stateOf(project), 'server.pid'), 'utf8'));
+    expect(run(['start', '--project-dir', project], { RYUGI_ARTIFACTS_VERSION: '9.9.9' }).out.reused).toBe(true);
+    expect(run(['start', '--project-dir', project]).out.reused).toBe(true);
+    const second = run(['start', '--project-dir', project], { RYUGI_ARTIFACTS_VERSION: '9.9.8' }).out;
+    expect(second.type).toBe('server-started');
+    expect(second.reused).toBeUndefined();
+    expect(second.url).toBe(first.url);
+    expect(() => process.kill(oldPid, 0)).toThrow();
+  }, 30000);
+
+  test('a foreground start passes the server through and stops with it, leaving another start’s lock alone', async () => {
+    const project = newProject();
+    const state = stateOf(project);
+    const child = spawn(process.execPath, [cli, 'start', '--project-dir', project, '--foreground', '--artifact', 'html/x'], { env: { ...process.env, ARTIFACTS_OPEN: '0' } });
+    let out = '';
+    child.stdout.on('data', (chunk) => (out += chunk));
+    const exited = new Promise((resolve) => child.on('close', resolve));
+    while (!fs.existsSync(path.join(state, 'server-info'))) await new Promise((resolve) => setTimeout(resolve, 50));
+    await waitFor(() => out.includes('server-started'));
+    expect(JSON.parse(out.trim().split('\n')[0]!).link).toMatch(/\/html\/x\?key=/);
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    fs.mkdirSync(path.join(state, 'start.lock'));
+    process.kill(Number(fs.readFileSync(path.join(state, 'server.pid'), 'utf8')), 'SIGTERM');
+    await exited;
+    expect(fs.existsSync(path.join(state, 'start.lock'))).toBe(true);
+  }, 30000);
+});
+
+describe('ryugi-artifacts stop', () => {
+  test('stops the server and keeps the state directory', async () => {
+    const project = newProject();
+    const info = run(['start', '--project-dir', project]).out;
+    expect(run(['stop', project]).out.status).toBe('stopped');
+    await expect(get(info.url.replace('localhost', '127.0.0.1'))).rejects.toThrow();
+    expect(fs.existsSync(stateOf(project))).toBe(true);
+    expect(fs.existsSync(path.join(stateOf(project), 'server-info'))).toBe(false);
+    expect(JSON.parse(fs.readFileSync(path.join(stateOf(project), 'server-stopped'), 'utf8')).reason).toBe('stop');
+  });
+
+  test('refuses to signal a pid that is not this project’s server', () => {
+    const project = newProject();
+    fs.mkdirSync(stateOf(project), { recursive: true });
+    const foreign = spawn('sleep', ['30'], { detached: true, stdio: 'ignore' });
+    try {
+      fs.writeFileSync(path.join(stateOf(project), 'server.pid'), `${foreign.pid}\n`);
+      fs.writeFileSync(path.join(stateOf(project), 'server-instance-id'), `${'a'.repeat(48)}\n`);
+      expect(run(['stop', '--project-dir', project]).out.status).toBe('stale_pid');
+      expect(() => process.kill(foreign.pid!, 0)).not.toThrow();
+    } finally {
+      foreign.kill();
+    }
+  });
+
+  test('reports not_running when nothing was started', () => {
+    expect(run(['stop', '--project-dir', newProject()]).out.status).toBe('not_running');
+  });
+});

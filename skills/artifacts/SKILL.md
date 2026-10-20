@@ -62,10 +62,13 @@ lowercase letters, digits and hyphens, named after the topic
 
 ## Start the server and get the link
 
-Paths below are relative to this skill's directory.
+Paths below are relative to this skill's directory: resolve `app/` to its
+absolute path before you run them. Every artifacts command goes through the
+launcher `app/ryugi-artifacts.cjs` with `--json`; it runs the newest
+`ryugi-artifacts` CLI and prints one JSON line.
 
 ```bash
-bash app/start-server.sh --project-dir /path/to/project --artifact html/arrow-tuner
+node app/ryugi-artifacts.cjs start --json --project-dir /path/to/project --artifact html/arrow-tuner
 # {"type":"server-started","url":"http://localhost:52341/?key=…","port":52341,
 #  "root":"/path/to/project/.ryugi/artifacts","link":"http://localhost:52341/html/arrow-tuner?key=…"}
 ```
@@ -82,16 +85,16 @@ bash app/start-server.sh --project-dir /path/to/project --artifact html/arrow-tu
   even while later boards are still drawing. Pass `--no-open` only for
   headless or scripted use. Still share the link; remote setups can't
   auto-open. Read `artboard.md` for the streaming write order.
-- Stop it with `bash app/stop-server.sh /path/to/project`. The artifacts stay.
+- Stop it with `node app/ryugi-artifacts.cjs stop --json --project-dir /path/to/project`.
+  The artifacts stay.
 
 **Launching by harness.** The server must survive across turns.
 
-- Claude Code: run the command as is; the script backgrounds the server. On
-  Windows it switches to foreground mode: use `run_in_background: true` and
+- Claude Code: run the command as is; it backgrounds the server. On
+  Windows it stays in the foreground: use `run_in_background: true` and
   read `.ryugi/artifacts/.state/server-info` on the next turn, then build
   the link as `<origin>/<type>/<id>?key=<key>` from its `url`.
-- Codex: run it as is; the script detects `CODEX_CI` and stays in the
-  foreground.
+- Codex: run it as is; it detects `CODEX_CI` and stays in the foreground.
 - Gemini CLI, Copilot CLI and others that reap detached processes: add
   `--foreground` and start it with the harness's background-shell mechanism.
 
@@ -105,7 +108,7 @@ Publish when they want a link that works outside this machine. The server
 must be running.
 
 ```bash
-bash app/publish.sh --project-dir /path/to/project --artifact html/arrow-tuner --public
+node app/ryugi-artifacts.cjs publish --json --project-dir /path/to/project --artifact html/arrow-tuner --public
 # {"type":"published","artifact":"html/arrow-tuner","url":"https://ryugi.innei.dev/a/…","visibility":"public"}
 ```
 

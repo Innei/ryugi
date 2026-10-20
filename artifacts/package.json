@@ -15,7 +15,7 @@
   "files": [
     "bin",
     "dist/server.cjs",
-    "dist/start-server.sh",
+    "dist/cli.cjs",
     "dist/viewer",
     "dist/runtime"
   ],
@@ -24,14 +24,15 @@
     "provenance": true
   },
   "scripts": {
-    "build": "pnpm run build:server && pnpm run build:viewer && pnpm run build:runtime",
-    "build:server": "esbuild src/server/main.ts --bundle --platform=node --target=node18 --format=cjs --alias:loro-crdt=loro-crdt/base64 --outfile=dist/server.cjs && node -e \"const fs=require('node:fs');fs.copyFileSync('dist/server.cjs','../skills/artifacts/app/server.cjs');fs.copyFileSync('../skills/artifacts/app/start-server.sh','dist/start-server.sh')\"",
+    "build": "pnpm run build:server && pnpm run build:cli && pnpm run build:viewer && pnpm run build:runtime",
+    "build:server": "esbuild src/server/main.ts --bundle --platform=node --target=node18 --format=cjs --alias:loro-crdt=loro-crdt/base64 --outfile=dist/server.cjs && node -e \"const fs=require('node:fs');fs.copyFileSync('dist/server.cjs','../skills/artifacts/app/server.cjs')\"",
     "prepublishOnly": "pnpm build",
     "build:viewer": "NODE_ENV=production vite build && node -e \"const fs=require('node:fs');const to='../skills/artifacts/app/viewer';fs.rmSync(to,{recursive:true,force:true});fs.cpSync('dist/viewer',to,{recursive:true})\"",
     "build:runtime": "NODE_ENV=production vite build -c vite.runtime.config.ts && node scripts/inline-runtime-css.mjs",
     "dev": "vite",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit -p tsconfig.json"
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "build:cli": "node scripts/build-cli.mjs"
   },
   "devDependencies": {
     "@base-ui/react": "^1.9.0",

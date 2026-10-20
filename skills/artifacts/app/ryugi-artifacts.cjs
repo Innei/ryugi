@@ -1,0 +1,130 @@
+#!/usr/bin/env node
+'use strict';
+
+const { spawn, spawnSync } = require('node:child_process');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+
+const MIN_VERSION = '1.9.0';
+const LATEST_CHECK_MS = 24 * 60 * 60 * 1000;
+const RETRY_CHECK_MS = 60 * 60 * 1000;
+const RELEASES = path.join(process.env.XDG_CACHE_HOME || path.join(os.homedir(), '.cache'), 'ryugi', 'artifacts');
+const LATEST_FILE = path.join(RELEASES, 'latest.json');
+const win32 = process.platform === 'win32';
+
+const valid = (v) => /^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/.test(v || '');
+const parts = (v) => v.split(/[-+]/)[0].split('.').map(Number);
+const compare = (a, b) => {
+  const x = parts(a), y = parts(b);
+  for (let i = 0; i < 3; i++) if (x[i] !== y[i]) return x[i] - y[i];
+  return 0;
+};
+const supported = (v) => valid(v) && compare(v, MIN_VERSION) >= 0;
+const cliOf = (version) => path.join(RELEASES, version, 'node_modules', 'ryugi-artifacts', 'dist', 'cli.cjs');
+
+class LaunchError extends Error {}
+
+function record(version, checkedAt) {
+  fs.mkdirSync(RELEASES, { recursive: true });
+  const tmp = `${LATEST_FILE}.${process.pid}`;
+  fs.writeFileSync(tmp, JSON.stringify({ version, checkedAt }));
+  fs.renameSync(tmp, LATEST_FILE);
+}
+
+function cachedLatest() {
+  try {
+    const { version, checkedAt } = JSON.parse(fs.readFileSync(LATEST_FILE, 'utf8'));
+    if (supported(version) && Date.now() - checkedAt < LATEST_CHECK_MS) return version;
+  } catch {}
+  return null;
+}
+
+function newestInstalled() {
+  let names = [];
+  try { names = fs.readdirSync(RELEASES); } catch {}
+  return names.filter((v) => supported(v) && fs.existsSync(cliOf(v))).sort(compare).pop() || null;
+}
+
+function npm(args) {
+  return spawnSync('npm', args, { encoding: 'utf8', shell: win32, maxBuffer: 16 * 1024 * 1024 });
+}
+
+function askNpm() {
+  const result = npm(['view', 'ryugi-artifacts', 'version', '--prefer-online', '--fetch-retries=0', '--fetch-timeout=10000']);
+  const version = result.status === 0 ? (result.stdout || '').trim().split('\n').pop().trim() : '';
+  return valid(version) ? version : null;
+}
+
+function fallback(reason) {
+  const installed = newestInstalled();
+  if (!installed) throw new LaunchError(reason);
+  record(installed, Date.now() - LATEST_CHECK_MS + RETRY_CHECK_MS);
+  return installed;
+}
+
+function install(version) {
+  if (fs.existsSync(cliOf(version))) return version;
+  const target = path.join(RELEASES, version);
+  const staging = `${target}.install.${process.pid}`;
+  fs.rmSync(staging, { recursive: true, force: true });
+  fs.mkdirSync(staging, { recursive: true });
+  const result = npm(['install', '--prefix', staging, '--no-save', '--no-package-lock', '--no-audit', '--no-fund', '--loglevel=error', `ryugi-artifacts@${version}`]);
+  if (result.status !== 0 || !fs.existsSync(path.join(staging, 'node_modules', 'ryugi-artifacts', 'dist', 'cli.cjs'))) {
+    fs.rmSync(staging, { recursive: true, force: true });
+    return fallback(`Could not install ryugi-artifacts@${version} from npm; the first start of each version needs network access and a writable ${RELEASES}. npm said: ${(result.stderr || result.stdout || '').trim()}`);
+  }
+  try { fs.renameSync(staging, target); } catch {}
+  fs.rmSync(staging, { recursive: true, force: true });
+  if (!fs.existsSync(cliOf(version))) throw new LaunchError(`Installed ryugi-artifacts@${version} but could not move it into ${target}`);
+  return version;
+}
+
+function resolveRelease(command) {
+  if (command !== 'start') {
+    const installed = newestInstalled();
+    if (installed) return installed;
+  }
+  const cached = cachedLatest();
+  if (cached) return install(cached);
+  const latest = askNpm();
+  if (!latest) return fallback('Could not reach npm for the latest ryugi-artifacts; the first start needs network access and a writable cache directory.');
+  if (!supported(latest)) {
+    const installed = newestInstalled();
+    if (installed) return installed;
+    throw new LaunchError(`This skill needs ryugi-artifacts ${MIN_VERSION} or newer, and npm still serves ${latest}. A new release may still be processing on npm; retry in a few minutes.`);
+  }
+  record(latest, Date.now());
+  return install(latest);
+}
+
+function ownerPid() {
+  if (win32) return null;
+  const result = spawnSync('ps', ['-o', 'ppid=', '-p', String(process.ppid)], { encoding: 'utf8' });
+  const parent = Number((result.stdout || '').trim());
+  return Number.isInteger(parent) && parent > 1 ? parent : process.ppid;
+}
+
+function main() {
+  const args = process.argv.slice(2);
+  const local = path.join(__dirname, 'cli.cjs');
+  const env = { ...process.env };
+  let cli = local;
+  if (!fs.existsSync(local)) {
+    const version = resolveRelease(args[0]);
+    cli = cliOf(version);
+    env.RYUGI_ARTIFACTS_VERSION = version;
+  }
+  const owner = ownerPid();
+  if (owner) env.RYUGI_ARTIFACTS_OWNER = String(owner);
+  const child = spawn(process.execPath, [cli, ...args], { env, stdio: 'inherit' });
+  for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => child.kill(signal));
+  child.on('close', (code, signal) => { process.exitCode = code ?? (signal ? 1 : 0); });
+}
+
+try {
+  main();
+} catch (err) {
+  console.log(JSON.stringify({ error: err.message }));
+  process.exitCode = 1;
+}

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # check-viewer-release.sh — fail when artifacts/src changed since the last
-# release tag but the version was not bumped. start-server.sh runs the newest
+# release tag but the version was not bumped. The skill's launcher runs the newest
 # npm release, so a change under artifacts/src reaches users only once it is
 # published under a new version.
 #

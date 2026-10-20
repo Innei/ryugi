@@ -725,7 +725,7 @@ Then:
   as mode `600`. A bare `scripts/foo.sh` or `./foo.js` in a skill then fails
   with `Permission denied` on that harness even though the repo's tree records
   `100755`. So every script invocation in `skills/**/*.md` is spelled through
-  its interpreter — `bash scripts/start-server.sh …`, `bash
+  its interpreter — `node app/ryugi-artifacts.cjs …`, `bash
   scripts/review-package …`, `node ./render-graphs.js …` — and a script that
   runs a sibling script needs the same treatment (#2134). Don't "tidy" the
   prefixes away, and don't reach for a packaging-side `chmod`: the mode loss

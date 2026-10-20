@@ -13,10 +13,10 @@ Skill files shape agent behavior; treat edits to them like code changes.
 
 ## Zero Dependencies
 
-The plugin ships without runtime dependencies. The artifacts app (artboard, document and HTML artifacts) is built from `artifacts/` (React, Vite) and published to npm as `ryugi-artifacts`: the server (`dist/server.cjs`, one file with its dependencies bundled, including Loro and haklex) and the viewer it serves (`dist/viewer/`). Neither is committed, and the package declares no runtime dependencies.
+The plugin ships without runtime dependencies. The artifacts app (artboard, document and HTML artifacts) is built from `artifacts/` (React, Vite) and published to npm as `ryugi-artifacts`: the `ryugi-artifacts` CLI (`dist/cli.cjs`: `start`, `stop`, `publish`), the server (`dist/server.cjs`, one file with its dependencies bundled, including Loro and haklex) and the viewer it serves (`dist/viewer/`). Neither is committed, and the package declares no runtime dependencies.
 
-- **Users**: `start-server.sh` runs the newest `ryugi-artifacts` release. It asks npm for the latest version at most once a day, installs each version once into `~/.cache/ryugi/artifacts/<version>/`, and offline runs the newest version already installed. A running server from an older release is replaced on the same port and key. The server may have npm dependencies.
-- **Development**: `cd artifacts && pnpm build` writes gitignored copies to `skills/artifacts/app/server.cjs` and `skills/artifacts/app/viewer/`. `start-server.sh` prefers a local `server.cjs` over the npm release, so rebuild after changing server or viewer source.
+- **Users**: the skill runs every command through `skills/artifacts/app/ryugi-artifacts.cjs`, a small launcher that runs the newest `ryugi-artifacts` release (1.9.0 or newer; older releases have no subcommands). It asks npm for the latest version at most once a day, installs each version once into `~/.cache/ryugi/artifacts/<version>/`, and offline runs the newest version already installed. A running server from an older release is replaced on the same port and key. The server may have npm dependencies.
+- **Development**: `cd artifacts && pnpm build` writes gitignored copies to `skills/artifacts/app/cli.cjs`, `server.cjs` and `viewer/`. The launcher prefers a local `cli.cjs` over the npm release, so rebuild after changing CLI, server or viewer source.
 
 ## Releasing
 
@@ -24,7 +24,7 @@ Users install from `main`, so any change under `artifacts/src/` ships as a relea
 
 1. `scripts/bump-version.sh <version>` and commit.
 2. `git tag v<version>` and `git push --atomic origin main v<version>`.
-3. The `Release` workflow checks the versions, tests, publishes `ryugi-artifacts` to npm and creates the GitHub Release. Users pick it up within a day of the npm publish; to roll everyone back, point npm's `latest` tag at a good release (`npm dist-tag add ryugi-artifacts@<version> latest`).
+3. The `Release` workflow checks the versions, tests, publishes `ryugi-artifacts` to npm and creates the GitHub Release. Users pick it up within a day of the npm publish; to roll everyone back, point npm's `latest` tag at a good release (`npm dist-tag add ryugi-artifacts@<version> latest`), 1.9.0 or newer.
 
 ## Harness Integrations
 

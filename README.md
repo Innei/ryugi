@@ -61,7 +61,9 @@ npx ryugi-artifacts --no-open
 
 The local library shows content previews, type filters and title/id search. Sort by newest update, oldest update or name. Previews load as their cards come into view; opening a card takes you to the full artifact. The server reads `.ryugi/artifacts/` in the selected project and keeps the library in sync with file changes.
 
-The command reuses a running project server. A new server stays in the terminal; Ctrl+C stops it and keeps your artifacts. Node.js and Bash are required (Git Bash on Windows). For development, run `cd artifacts && pnpm build`, then `node artifacts/bin/ryugi-artifacts.cjs /path/to/project` from the repository root.
+The command reuses a running project server. A new server stays in the terminal; Ctrl+C stops it and keeps your artifacts. Node.js is required.
+
+The same CLI runs what the skill uses: `npx ryugi-artifacts start`, `stop` and `publish` (`--help` lists their options; add `--json` for one JSON line). For development, run `cd artifacts && pnpm build`, then `node artifacts/bin/ryugi-artifacts.cjs /path/to/project` from the repository root.
 
 ## The workflow
 

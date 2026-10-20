@@ -6,7 +6,6 @@ import { afterEach, expect, test } from 'vitest';
 import { get, readJson, waitFor, writeHtml } from './helpers';
 
 const entry = path.resolve(__dirname, '../bin/ryugi-artifacts.cjs');
-const stop = path.resolve(__dirname, '../../skills/artifacts/app/stop-server.sh');
 const projects: string[] = [];
 const children: ChildProcess[] = [];
 
@@ -17,7 +16,7 @@ function project() {
 }
 
 afterEach(() => {
-  for (const dir of projects.splice(0)) spawnSync('bash', [stop, dir], { timeout: 5000 });
+  for (const dir of projects.splice(0)) spawnSync(process.execPath, [entry, 'stop', '--project-dir', dir], { timeout: 5000 });
   for (const child of children.splice(0)) child.kill('SIGTERM');
 });
 
@@ -28,6 +27,17 @@ test('help and invalid options exit without starting a server', () => {
   expect(help.stdout).toContain('ryugi-artifacts');
   const invalid = spawnSync(process.execPath, [entry, '--no-such-option'], { cwd, encoding: 'utf8' });
   expect(invalid.status).toBe(1);
+  expect(fs.existsSync(path.join(cwd, '.ryugi'))).toBe(false);
+});
+
+test('--version and -v print the package version without starting a server', () => {
+  const cwd = project();
+  const version = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../package.json'), 'utf8')).version;
+  for (const flag of ['--version', '-v']) {
+    const result = spawnSync(process.execPath, [entry, flag], { cwd, encoding: 'utf8' });
+    expect(result.status).toBe(0);
+    expect(result.stdout.trim()).toBe(version);
+  }
   expect(fs.existsSync(path.join(cwd, '.ryugi'))).toBe(false);
 });
 
@@ -67,3 +77,14 @@ test('opens the library root and reuses its server for the next invocation', asy
   expect(again.stdout).toContain(info.url);
   expect(fs.readFileSync(pidFile, 'utf8')).toBe(pid);
 }, 15000);
+
+test('the npm bin runs the start, stop and publish subcommands', () => {
+  const dir = project();
+  const env = { ...process.env, ARTIFACTS_OPEN: '0' };
+  const started = spawnSync(process.execPath, [entry, 'start', '--project-dir', dir, '--json'], { encoding: 'utf8', env, timeout: 15000 });
+  expect(JSON.parse(started.stdout.trim()).type).toBe('server-started');
+  const published = spawnSync(process.execPath, [entry, 'publish', '--project-dir', dir, '--artifact', 'html/Bad'], { encoding: 'utf8', env });
+  expect(published.status).toBe(1);
+  const stopped = spawnSync(process.execPath, [entry, 'stop', '--project-dir', dir], { encoding: 'utf8', env, timeout: 15000 });
+  expect(JSON.parse(stopped.stdout.trim())).toEqual({ status: 'stopped' });
+}, 20000);

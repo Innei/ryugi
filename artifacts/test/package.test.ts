@@ -7,14 +7,14 @@ const pkgDir = path.resolve(__dirname, '..');
 const repoRoot = path.resolve(pkgDir, '..');
 const localApp = path.join(repoRoot, 'skills/artifacts/app');
 
-test('the published package holds the server, the viewer under fixed entry names, and nothing else', () => {
+test('the published package holds the CLI, the server, the viewer under fixed entry names, and nothing else', () => {
   const [pack] = JSON.parse(execFileSync('npm', ['pack', '--dry-run', '--json'], { cwd: pkgDir, encoding: 'utf8' }));
   const files = (pack.files as { path: string }[]).map((f) => f.path).sort();
   expect(files).toEqual(
     expect.arrayContaining([
       'dist/server.cjs',
       'bin/ryugi-artifacts.cjs',
-      'dist/start-server.sh',
+      'dist/cli.cjs',
       'dist/runtime/ryugi-ui.js',
       'dist/viewer/index.css',
       'dist/viewer/index.html',
@@ -29,7 +29,7 @@ test('the published package holds the server, the viewer under fixed entry names
         !file.startsWith('dist/runtime/') &&
         file !== 'dist/server.cjs' &&
         file !== 'bin/ryugi-artifacts.cjs' &&
-        file !== 'dist/start-server.sh' &&
+        file !== 'dist/cli.cjs' &&
         file !== 'package.json',
     ),
   ).toEqual([]);
@@ -61,6 +61,7 @@ test('the server and viewer builds are mirrored into the plugin for local develo
 test('build output is never committed', () => {
   for (const rel of [
     'skills/artifacts/app/server.cjs',
+    'skills/artifacts/app/cli.cjs',
     'skills/artifacts/app/viewer/index.js',
     'skills/artifacts/app/runtime/ryugi-ui.js',
     'artifacts/dist/server.cjs',
