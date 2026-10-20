@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import readline from 'node:readline';
 import { AGENT_MARKERS } from '../server/agent';
-import { ARTIFACT_ERROR, ARTIFACT_PATTERN, CliError, projectPaths, type ProjectPaths } from './paths';
+import { ARTIFACT_ERROR, ARTIFACT_PATTERN, CliError, invocation, projectPaths, type ProjectPaths } from './paths';
 import { alive, hasServerId, parentOf, readText, sleep, waitForExit } from './process';
 
 export interface StartOptions {
@@ -82,12 +82,12 @@ function recordAgent(paths: ProjectPaths) {
   if (Object.keys(markers).length) fs.writeFileSync(paths.agent, `${JSON.stringify(markers)}\n`);
 }
 
-async function replace(pid: number) {
+async function replace(pid: number, paths: ProjectPaths) {
   try { process.kill(pid, 'SIGTERM'); } catch {}
   if (await waitForExit(pid, 5000)) return;
   try { process.kill(pid, 'SIGKILL'); } catch {}
   if (await waitForExit(pid, 2000)) return;
-  throw new CliError(`The running server (pid ${pid}) is on another release and did not stop; stop it with \`ryugi-artifacts stop\` and retry`);
+  throw new CliError(`The running server (pid ${pid}) is on another release and did not stop; stop it with \`${invocation()} stop --project-dir ${paths.project}\` and retry`);
 }
 
 function serverEnv(paths: ProjectPaths, options: StartOptions) {
@@ -96,6 +96,7 @@ function serverEnv(paths: ProjectPaths, options: StartOptions) {
   if (options.idleTimeoutMinutes) env.ARTIFACTS_IDLE_TIMEOUT_MS = String(Number(options.idleTimeoutMinutes) * 60_000);
   delete env.RYUGI_ARTIFACTS_OWNER;
   delete env.RYUGI_ARTIFACTS_VERSION;
+  delete env.RYUGI_ARTIFACTS_COMMAND;
   return env;
 }
 
@@ -128,7 +129,7 @@ export async function start(options: StartOptions, emit: Emit): Promise<number> 
         emit(withLink(JSON.parse(info), options.artifact, true));
         return 0;
       }
-      await replace(running);
+      await replace(running, paths);
     }
     registerOwner(paths);
     recordAgent(paths);
@@ -164,7 +165,7 @@ export async function start(options: StartOptions, emit: Emit): Promise<number> 
       const started = lines.find((line) => line.includes('"server-started"'));
       if (started) {
         for (let check = 0; check < 20; check++) {
-          if (!alive(child.pid!)) throw new CliError(`Server started but was killed. Retry in a persistent terminal with: ryugi-artifacts start --project-dir ${paths.project} --host ${options.host} --url-host ${options.urlHost} --foreground`);
+          if (!alive(child.pid!)) throw new CliError(`Server started but was killed. Retry in a persistent terminal with: ${invocation()} start --project-dir ${paths.project}${options.artifact ? ` --artifact ${options.artifact}` : ''} --host ${options.host} --url-host ${options.urlHost} --foreground`);
           await sleep(100);
         }
         emit(withLink(JSON.parse(started), options.artifact, false));

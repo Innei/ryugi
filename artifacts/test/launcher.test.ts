@@ -1,4 +1,5 @@
 import { spawn, spawnSync } from 'node:child_process';
+import { createRequire } from 'node:module';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -156,8 +157,22 @@ describe('launcher without a local build', () => {
     expect(code).toBe(1);
     expect(out.error).toContain('ryugi-artifacts');
     expect(out.error).toMatch(/network access/);
+    expect(out.error).toMatch(/rerun outside the sandbox/);
     expect(npm.installs()).toHaveLength(0);
   });
+
+  test('a cache it cannot write to still runs the release already installed', () => {
+    const { npm, cache, launch, project } = setup();
+    const dir = project();
+    expect(launch(['start', '--project-dir', dir]).out.type).toBe('server-started');
+    launch(['stop', '--project-dir', dir]);
+    npm.goOffline();
+    ageLatestCheck(cache, DAY_MS + 60_000);
+    const releasesDir = path.join(cache, 'ryugi', 'artifacts');
+    fs.chmodSync(releasesDir, 0o555);
+    cleanups.push(() => fs.chmodSync(releasesDir, 0o755));
+    expect(launch(['start', '--project-dir', dir]).out.type).toBe('server-started');
+  }, 30000);
 
   test('reuses a running server on the latest release and replaces one from another release, keeping its link', () => {
     const { npm, cache, launch, project } = setup();
@@ -252,7 +267,7 @@ describe('launcher without a local build', () => {
   });
 
   test('stop and publish use the installed release without asking npm, and pass exit codes through', () => {
-    const { npm, cache, launch, project } = setup();
+    const { app, npm, cache, launch, project } = setup();
     const dir = project();
     expect(launch(['start', '--project-dir', dir]).out.type).toBe('server-started');
     ageLatestCheck(cache, DAY_MS + 60_000);
@@ -260,7 +275,24 @@ describe('launcher without a local build', () => {
     expect(launch(['stop', '--project-dir', dir]).out.status).toBe('stopped');
     const unpublished = launch(['publish', '--project-dir', dir, '--artifact', 'html/x']);
     expect(unpublished.code).toBe(1);
-    expect(unpublished.out.error).toMatch(/ryugi-artifacts start/);
+    expect(unpublished.out.error).toContain(`node "${fs.realpathSync(path.join(app, launcherName))}" start`);
     expect(npm.views()).toHaveLength(1);
   }, 30000);
+});
+
+describe('npm on Windows', () => {
+  const { npmCommand } = createRequire(__filename)(path.join(appDir, launcherName));
+  const args = ['install', '--prefix', 'C:\\Users\\Jane Doe\\.cache\\ryugi\\artifacts\\1.9.1.install.42', 'ryugi-artifacts@1.9.1'];
+
+  test('runs through cmd with every argument quoted, so a home folder with a space survives', () => {
+    expect(npmCommand(args, true)).toEqual({
+      file: 'npm "install" "--prefix" "C:\\Users\\Jane Doe\\.cache\\ryugi\\artifacts\\1.9.1.install.42" "ryugi-artifacts@1.9.1"',
+      args: [],
+      shell: true,
+    });
+  });
+
+  test('elsewhere runs npm directly with the arguments as given', () => {
+    expect(npmCommand(args, false)).toEqual({ file: 'npm', args, shell: false });
+  });
 });

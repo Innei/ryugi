@@ -1,4 +1,4 @@
-import { ARTIFACT_ERROR, ARTIFACT_PATTERN, CliError, projectPaths } from './paths';
+import { ARTIFACT_ERROR, ARTIFACT_PATTERN, CliError, invocation, projectPaths } from './paths';
 import { readText } from './process';
 import type { Emit } from './start';
 
@@ -12,7 +12,8 @@ export interface PublishOptions {
   cloudId?: string;
 }
 
-const NOT_RUNNING = 'No artifacts server is running for this project. Start it with `ryugi-artifacts start`, then run this again.';
+const notRunning = (project: string) =>
+  `No artifacts server is running for this project. Start it with \`${invocation()} start --project-dir ${project}\`, then run this again.`;
 
 export async function publish(options: PublishOptions, emit: Emit): Promise<number> {
   if (options.action === 'publish' || options.action === 'unpublish') {
@@ -25,7 +26,7 @@ export async function publish(options: PublishOptions, emit: Emit): Promise<numb
   try {
     info = JSON.parse(readText(paths.info) ?? '');
   } catch {
-    throw new CliError(NOT_RUNNING);
+    throw new CliError(notRunning(paths.project));
   }
   const base = new URL(info.url);
   const key = base.searchParams.get('key') ?? '';
@@ -39,7 +40,7 @@ export async function publish(options: PublishOptions, emit: Emit): Promise<numb
         body: body ? JSON.stringify(body) : undefined,
       });
     } catch {
-      throw new CliError(NOT_RUNNING);
+      throw new CliError(notRunning(paths.project));
     }
     const json = (await res.json().catch(() => ({}))) as Record<string, any>;
     if (res.status === 401) throw new CliError('', { type: 'login-required', url: json.loginUrl, message: 'Open url to sign in to the Ryugi cloud, then run the same command again.' }, 2);

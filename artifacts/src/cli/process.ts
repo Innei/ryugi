@@ -24,10 +24,17 @@ function commandLine(pid: number): string[] | null {
   return line ? line.split(/\s+/) : null;
 }
 
+export const isNodeImage = (tasklistLine: string) => /^"node\.exe"/i.test(tasklistLine.trim());
+
+// Windows reuses pids quickly and Node cannot read another process's command line there; a node.exe at our pid is the best check.
+function windowsNodeAt(pid: number) {
+  const result = spawnSync('tasklist', ['/FI', `PID eq ${pid}`, '/FO', 'CSV', '/NH'], { encoding: 'utf8', windowsHide: true });
+  return result.status === 0 && isNodeImage(result.stdout);
+}
+
 export function hasServerId(pid: number, id: string) {
   if (!alive(pid)) return false;
-  // Node cannot read another process's command line on Windows; a live pid with our id file is trusted there.
-  if (process.platform === 'win32') return true;
+  if (process.platform === 'win32') return windowsNodeAt(pid);
   return commandLine(pid)?.includes(`--artifacts-server-id=${id}`) ?? false;
 }
 

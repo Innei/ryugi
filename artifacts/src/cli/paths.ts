@@ -46,5 +46,8 @@ export function projectPaths(dir: string): ProjectPaths {
   };
 }
 
+// The skill runs the CLI through its launcher, so `ryugi-artifacts` is not on its PATH.
+export const invocation = () => process.env.RYUGI_ARTIFACTS_COMMAND || 'ryugi-artifacts';
+
 export const ARTIFACT_PATTERN = /^(artboard|document|html)\/[a-z0-9][a-z0-9-]*$/;
 export const ARTIFACT_ERROR = '--artifact must be <type>/<id>: type artboard, document or html, id of lowercase letters, digits and hyphens';

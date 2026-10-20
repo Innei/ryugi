@@ -25,11 +25,14 @@ const cliOf = (version) => path.join(RELEASES, version, 'node_modules', 'ryugi-a
 
 class LaunchError extends Error {}
 
+// Best effort: a sandbox with a read-only cache can still run a release that is already installed.
 function record(version, checkedAt) {
-  fs.mkdirSync(RELEASES, { recursive: true });
-  const tmp = `${LATEST_FILE}.${process.pid}`;
-  fs.writeFileSync(tmp, JSON.stringify({ version, checkedAt }));
-  fs.renameSync(tmp, LATEST_FILE);
+  try {
+    fs.mkdirSync(RELEASES, { recursive: true });
+    const tmp = `${LATEST_FILE}.${process.pid}`;
+    fs.writeFileSync(tmp, JSON.stringify({ version, checkedAt }));
+    fs.renameSync(tmp, LATEST_FILE);
+  } catch {}
 }
 
 function cachedLatest() {
@@ -46,9 +49,18 @@ function newestInstalled() {
   return names.filter((v) => supported(v) && fs.existsSync(cliOf(v))).sort(compare).pop() || null;
 }
 
-function npm(args) {
-  return spawnSync('npm', args, { encoding: 'utf8', shell: win32, maxBuffer: 16 * 1024 * 1024 });
+// npm is npm.cmd on Windows and needs cmd, which splits unquoted arguments on spaces (C:\Users\Jane Doe).
+function npmCommand(args, windows) {
+  if (!windows) return { file: 'npm', args, shell: false };
+  return { file: ['npm', ...args.map((arg) => `"${arg.replace(/"/g, '""')}"`)].join(' '), args: [], shell: true };
 }
+
+function npm(args) {
+  const { file, args: argv, shell } = npmCommand(args, win32);
+  return spawnSync(file, argv, { encoding: 'utf8', shell, maxBuffer: 16 * 1024 * 1024 });
+}
+
+const NEEDS_NETWORK = `network access and a writable ${RELEASES}, so rerun outside the sandbox`;
 
 function askNpm() {
   const result = npm(['view', 'ryugi-artifacts', 'version', '--prefer-online', '--fetch-retries=0', '--fetch-timeout=10000']);
@@ -67,12 +79,16 @@ function install(version) {
   if (fs.existsSync(cliOf(version))) return version;
   const target = path.join(RELEASES, version);
   const staging = `${target}.install.${process.pid}`;
-  fs.rmSync(staging, { recursive: true, force: true });
-  fs.mkdirSync(staging, { recursive: true });
+  try {
+    fs.rmSync(staging, { recursive: true, force: true });
+    fs.mkdirSync(staging, { recursive: true });
+  } catch {
+    return fallback(`Could not install ryugi-artifacts@${version}; the first start of each version needs ${NEEDS_NETWORK}.`);
+  }
   const result = npm(['install', '--prefix', staging, '--no-save', '--no-package-lock', '--no-audit', '--no-fund', '--loglevel=error', `ryugi-artifacts@${version}`]);
   if (result.status !== 0 || !fs.existsSync(path.join(staging, 'node_modules', 'ryugi-artifacts', 'dist', 'cli.cjs'))) {
     fs.rmSync(staging, { recursive: true, force: true });
-    return fallback(`Could not install ryugi-artifacts@${version} from npm; the first start of each version needs network access and a writable ${RELEASES}. npm said: ${(result.stderr || result.stdout || '').trim()}`);
+    return fallback(`Could not install ryugi-artifacts@${version} from npm; the first start of each version needs ${NEEDS_NETWORK}. npm said: ${(result.stderr || result.stdout || '').trim()}`);
   }
   try { fs.renameSync(staging, target); } catch {}
   fs.rmSync(staging, { recursive: true, force: true });
@@ -88,7 +104,7 @@ function resolveRelease(command) {
   const cached = cachedLatest();
   if (cached) return install(cached);
   const latest = askNpm();
-  if (!latest) return fallback('Could not reach npm for the latest ryugi-artifacts; the first start needs network access and a writable cache directory.');
+  if (!latest) return fallback(`Could not reach npm for the latest ryugi-artifacts; the first start needs ${NEEDS_NETWORK}.`);
   if (!supported(latest)) {
     const installed = newestInstalled();
     if (installed) return installed;
@@ -108,7 +124,7 @@ function ownerPid() {
 function main() {
   const args = process.argv.slice(2);
   const local = path.join(__dirname, 'cli.cjs');
-  const env = { ...process.env };
+  const env = { ...process.env, RYUGI_ARTIFACTS_COMMAND: `node "${__filename}"` };
   let cli = local;
   if (!fs.existsSync(local)) {
     const version = resolveRelease(args[0]);
@@ -122,9 +138,13 @@ function main() {
   child.on('close', (code, signal) => { process.exitCode = code ?? (signal ? 1 : 0); });
 }
 
-try {
-  main();
-} catch (err) {
-  console.log(JSON.stringify({ error: err.message }));
-  process.exitCode = 1;
+if (require.main === module) {
+  try {
+    main();
+  } catch (err) {
+    console.log(JSON.stringify({ error: err.message }));
+    process.exitCode = 1;
+  }
 }
+
+module.exports = { npmCommand };
