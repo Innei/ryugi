@@ -175,20 +175,37 @@ test('Shift clicking requests a toggle, and tracked selections keep their geomet
   expect(posted.some((message) => message.type === 'ryugi:inspect:rect' && message.id === headingId && message.rect.x === 25)).toBe(true);
 });
 
-test('marquee selects fully enclosed top-level nodes and rejects invalid rectangles', () => {
+test('marquee leaves are the outermost visible content nodes with their rects', () => {
   const id = cardId();
   const heading = document.querySelector('h1')!;
   const button = root.querySelector('button')!;
   for (const [el, x, y, width, height] of [[heading, 10, 10, 80, 20], [root, 10, 50, 100, 100], [button, 20, 60, 50, 30]] as const) {
     vi.spyOn(el, 'getBoundingClientRect').mockReturnValue({ x, y, width, height } as DOMRect);
   }
-  command('marquee', { request: 1, rect: { x: 0, y: 0, width: 120, height: 160 } });
+  command('leaves', { request: 1 });
   expect(last('targets')).toMatchObject({ request: 1 });
-  expect(last('targets')!.targets.map((node: { id: number }) => node.id)).toContain(id);
-  expect(last('targets')!.targets.map((node: { name: string }) => node.name)).toEqual(['Heading', 'card']);
+  expect(last('targets')!.targets).toEqual([
+    { id: expect.any(Number), name: 'Heading', rect: { x: 10, y: 10, width: 80, height: 20 } },
+    { id: expect.any(Number), name: 'Continue', rect: { x: 20, y: 60, width: 50, height: 30 } },
+  ]);
+  root.prepend('Card ');
+  command('leaves', { request: 2 });
+  expect(last('targets')!.targets.map((node: { id: number }) => node.id)).toEqual([expect.any(Number), id]);
+  vi.spyOn(heading, 'getBoundingClientRect').mockReturnValue({ x: 0, y: 0, width: 0, height: 0 } as DOMRect);
+  command('leaves', { request: 3 });
+  expect(last('targets')!.targets.map((node: { name: string }) => node.name)).toEqual(['card']);
   const count = posted.length;
-  command('marquee', { request: 2, rect: { x: NaN, y: 0, width: 100, height: 100 } });
+  command('leaves', { request: 0 });
   expect(posted).toHaveLength(count);
+});
+
+test('select mode shows the default cursor over every node and restores the page cursor when disabled', () => {
+  cardId();
+  const style = document.querySelector('style[data-ryugi-inspector]');
+  expect(style?.textContent).toContain('cursor:default!important');
+  expect(last('tree')!.nodes.some((node: { tag: string }) => node.tag === 'style')).toBe(false);
+  command('disable');
+  expect(document.querySelector('style[data-ryugi-inspector]')).toBeNull();
 });
 
 test('a pointer drag forwards marquee coordinates and suppresses the resulting page click', () => {
@@ -201,4 +218,57 @@ test('a pointer drag forwards marquee coordinates and suppresses the resulting p
   const count = posted.filter((message) => message.type === 'ryugi:inspect:selection').length;
   root.click();
   expect(posted.filter((message) => message.type === 'ryugi:inspect:selection')).toHaveLength(count);
+});
+
+test('every tree node carries a CSS path from body that resolves back to it', () => {
+  document.body.insertAdjacentHTML('beforeend', '<ul><li>One</li><li>Two</li></ul>');
+  cardId();
+  const nodes = last('tree')!.nodes as { path: string; tag: string }[];
+  expect(nodes[0]!.path).toBe('body');
+  expect(nodes.find((node) => node.tag === 'button')!.path).toBe('body > main > section#card > button');
+  const items = nodes.filter((node) => node.tag === 'li').map((node) => node.path);
+  expect(items).toEqual(['body > ul > li:nth-of-type(1)', 'body > ul > li:nth-of-type(2)']);
+  expect(items.map((path) => document.querySelector(path)?.textContent)).toEqual(['One', 'Two']);
+});
+
+test('describe answers text and capped HTML for the requested nodes only', () => {
+  const id = cardId();
+  const heading = last('tree')!.nodes.find((node: { tag: string }) => node.tag === 'h1').id;
+  root.querySelector('button')!.textContent = `Continue ${'x'.repeat(3000)}`;
+  command('describe', { request: 7, ids: [heading, id, 99999] });
+  const details = last('details')!;
+  expect(details.request).toBe(7);
+  expect(details.nodes.map((node: { id: number }) => node.id)).toEqual([heading, id]);
+  expect(details.nodes[0]).toMatchObject({ text: 'Heading', html: '<h1>Heading</h1>' });
+  expect(details.nodes[1].html.length).toBe(2000);
+  expect(details.nodes[1].text.length).toBe(200);
+  const count = posted.length;
+  command('describe', { request: 8, ids: 'nope' });
+  expect(posted).toHaveLength(count);
+});
+
+test('tweaks report the computed value from before the first change', () => {
+  const id = cardId();
+  command('select', { id });
+  command('style', { id, property: 'padding', value: '20px' });
+  command('style', { id, property: 'padding', value: '24px' });
+  expect(last('tweaks')!.tweaks).toEqual([{ id, name: 'card', property: 'padding', from: '12px', value: '24px' }]);
+});
+
+test('hover reports name the hovered tree node, and a new node with the same rect still reports', () => {
+  const id = cardId();
+  const heading = last('tree')!.nodes.find((node: { tag: string }) => node.tag === 'h1').id;
+  command('hover', { id });
+  expect(last('hover')).toMatchObject({ id });
+  command('hover', { id: heading });
+  expect(last('hover')).toMatchObject({ id: heading });
+  command('hover', { id: 99999 });
+  expect(last('hover')).toMatchObject({ rect: null, id: null });
+});
+
+test('tree paths and tweak origins are clipped to what the viewer accepts', () => {
+  root.id = `c${'x'.repeat(5000)}`;
+  command('enable');
+  const card = last('tree')!.nodes.find((node: { tag: string }) => node.tag === 'section');
+  expect(card.path.length).toBeLessThanOrEqual(4000);
 });

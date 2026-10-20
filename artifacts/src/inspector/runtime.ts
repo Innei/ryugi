@@ -6,7 +6,7 @@ export function installInspector(win: Window & typeof globalThis, properties: re
   const session = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
   const ids = new WeakMap<Element, number>();
   const elements = new Map<number, Element>();
-  const originals = new Map<HTMLElement | SVGElement, Map<string, { applied: string; declarations: Map<string, { value: string; priority: string; applied: string }> }>>();
+  const originals = new Map<HTMLElement | SVGElement, Map<string, { from: string; applied: string; declarations: Map<string, { value: string; priority: string; applied: string }> }>>();
   const ignored = new Set(['SCRIPT', 'STYLE', 'META', 'LINK', 'NOSCRIPT', 'HEAD']);
   let nextId = 0;
   let enabled = false;
@@ -17,10 +17,14 @@ export function installInspector(win: Window & typeof globalThis, properties: re
   let hovered: Element | null = null;
   let selectedRect: InspectorRect | null = null;
   let hoverRect: InspectorRect | null = null;
+  let hoverId: number | null = null;
   let dragging: { x: number; y: number; pointer: number } | null = null;
   let marquee: { x: number; y: number; screenX: number; screenY: number; pointer: number; append: boolean; moved: boolean } | null = null;
   let suppressClick = false;
   const tracked = new Map<number, InspectorRect>();
+  const cursor = doc.createElement('style');
+  cursor.setAttribute('data-ryugi-inspector', '');
+  cursor.textContent = '*{cursor:default!important}';
   const post = (type: string, data: Record<string, unknown>) => win.parent.postMessage({ type: `ryugi:inspect:${type}`, session, connection, ...data }, '*');
   const idOf = (el: Element) => {
     let id = ids.get(el);
@@ -30,6 +34,18 @@ export function installInspector(win: Window & typeof globalThis, properties: re
   };
   const label = (el: Element) => (el.getAttribute('data-layer-name') || el.getAttribute('aria-label') || el.id || (!el.childElementCount ? el.textContent?.trim() : '') || '').slice(0, 100);
   const selector = (el: Element) => (el.id ? `#${el.id}` : el.tagName.toLowerCase() + Array.from(el.classList).slice(0, 2).map((name) => `.${name}`).join('')).slice(0, 200);
+  const pathOf = (el: Element) => {
+    const segments: string[] = [];
+    for (let node: Element | null = el; node && node !== doc.documentElement; node = node.parentElement) {
+      const tag = node.tagName.toLowerCase();
+      const parent = node.parentElement;
+      const same = parent && node !== doc.body ? Array.from(parent.children).filter((child) => child.tagName === node!.tagName) : [];
+      segments.unshift(node.id && node.id.length <= 64 && /^[A-Za-z][\w-]*$/.test(node.id) ? `${tag}#${node.id}` : same.length > 1 ? `${tag}:nth-of-type(${same.indexOf(node) + 1})` : tag);
+      if (node === doc.body) break;
+    }
+    return segments.join(' > ').slice(0, 4000);
+  };
+  const treeId = (el: Element) => { const id = ids.get(el); return id !== undefined && elements.get(id) === el ? id : null; };
   const kind = (el: Element, style: CSSStyleDeclaration): LayerKind => {
     if (/^H[1-6]$/.test(el.tagName)) return 'Title';
     if (['IMG', 'SVG', 'CANVAS', 'VIDEO'].includes(el.tagName.toUpperCase())) return 'Image';
@@ -60,7 +76,7 @@ export function installInspector(win: Window & typeof globalThis, properties: re
     const list = [];
     for (const [el, changes] of originals) {
       if (!el.isConnected) { originals.delete(el); continue; }
-      for (const [property, saved] of changes) list.push({ id: idOf(el), name: label(el) || selector(el), property, value: saved.applied });
+      for (const [property, saved] of changes) list.push({ id: idOf(el), name: label(el) || selector(el), property, from: saved.from, value: saved.applied });
     }
     post('tweaks', { tweaks: list });
   };
@@ -73,7 +89,7 @@ export function installInspector(win: Window & typeof globalThis, properties: re
       if (ignored.has(el.tagName) || el.hasAttribute('data-ryugi-inspector')) return null;
       if (nodes.length >= 2500 || depth >= 50) { truncated = true; return null; }
       const id = idOf(el);
-      const node: InspectorNode = { id, parentId, name: label(el), tag: el.tagName.toLowerCase(), selector: selector(el), kind: kind(el, win.getComputedStyle(el)), children: [] };
+      const node: InspectorNode = { id, parentId, name: label(el), tag: el.tagName.toLowerCase(), selector: selector(el), path: pathOf(el), kind: kind(el, win.getComputedStyle(el)), children: [] };
       nodes.push(node);
       for (const child of el.children) {
         if (nodes.length >= 2500) { truncated = true; break; }
@@ -107,8 +123,9 @@ export function installInspector(win: Window & typeof globalThis, properties: re
     }
     if (hovered?.isConnected) {
       const rect = rectOf(hovered);
-      if (!sameRect(hoverRect, rect)) { hoverRect = rect; post('hover', { rect }); }
-    } else if (hoverRect) { hoverRect = null; post('hover', { rect: null }); }
+      const id = treeId(hovered);
+      if (!sameRect(hoverRect, rect) || id !== hoverId) { hoverRect = rect; hoverId = id; post('hover', { rect, id }); }
+    } else if (hoverRect) { hoverRect = null; hoverId = null; post('hover', { rect: null, id: null }); }
     geometryFrame = win.requestAnimationFrame(geometry);
   };
   const ignoredTarget = (el: Element) => !!el.closest('[data-ryugi-inspector], script, style, link');
@@ -156,7 +173,7 @@ export function installInspector(win: Window & typeof globalThis, properties: re
     }
     dragging = null; marquee = null;
   };
-  const leave = () => { hovered = null; hoverRect = null; if (enabled) post('hover', { rect: null }); };
+  const leave = () => { hovered = null; hoverRect = null; hoverId = null; if (enabled) post('hover', { rect: null, id: null }); };
   const wheel = (event: WheelEvent) => {
     if (!enabled) return;
     event.preventDefault(); event.stopImmediatePropagation();
@@ -174,9 +191,10 @@ export function installInspector(win: Window & typeof globalThis, properties: re
     endDrag(new win.Event('pointercancel'));
     enabled = false;
     observer.disconnect();
+    cursor.remove();
     win.clearTimeout(treeTimer); win.cancelAnimationFrame(geometryFrame);
-    treeTimer = 0; geometryFrame = 0; hovered = null; hoverRect = null;
-    post('hover', { rect: null });
+    treeTimer = 0; geometryFrame = 0; hovered = null; hoverRect = null; hoverId = null;
+    post('hover', { rect: null, id: null });
   };
   const onMessage = (event: MessageEvent) => {
     if (event.source !== win.parent || event.data?.type !== 'ryugi:inspect') return;
@@ -185,6 +203,7 @@ export function installInspector(win: Window & typeof globalThis, properties: re
       if (typeof data.connection !== 'string' || !data.connection || data.connection.length > 128) return;
       connection = data.connection;
       enabled = true;
+      if (!cursor.isConnected) (doc.head || doc.documentElement).append(cursor);
       observer.observe(doc.documentElement, { subtree: true, childList: true, characterData: true, attributes: true });
       win.cancelAnimationFrame(geometryFrame);
       geometryFrame = win.requestAnimationFrame(geometry);
@@ -203,27 +222,37 @@ export function installInspector(win: Window & typeof globalThis, properties: re
     } else if (data.action === 'track' && Array.isArray(data.ids) && data.ids.length <= 2500 && data.ids.every((id: unknown) => Number.isSafeInteger(id) && (id as number) > 0)) {
       tracked.clear();
       for (const id of data.ids) { const el = elements.get(id); if (el?.isConnected) tracked.set(id, rectOf(el)); }
-    } else if (data.action === 'marquee' && Number.isSafeInteger(data.request) && data.request > 0) {
-      const r = data.rect;
-      if (!r || !['x', 'y', 'width', 'height'].every((key) => typeof r[key] === 'number' && Number.isFinite(r[key]) && Math.abs(r[key]) <= 1e8) || r.width < 0 || r.height < 0) return;
-      const contained = new Set<Element>();
+    } else if (data.action === 'leaves' && Number.isSafeInteger(data.request) && data.request > 0) {
+      const inTree = (el: Element) => treeId(el) !== null;
+      const content = (el: Element) => el.tagName.toLowerCase() === 'svg'
+        || Array.from(el.childNodes).some((child) => child.nodeType === 3 && child.textContent!.trim())
+        || !Array.from(el.children).some(inTree);
+      const picked = new Set<Element>();
       const targets = [];
       for (const [id, el] of elements) {
-        if (el === doc.body || !el.isConnected) continue;
-        const rect = rectOf(el);
-        if (rect.width <= 0 || rect.height <= 0 || rect.x < r.x || rect.y < r.y || rect.x + rect.width > r.x + r.width || rect.y + rect.height > r.y + r.height) continue;
+        if (el === doc.body || !el.isConnected || el.parentElement?.closest('svg') || !content(el)) continue;
         let parent = el.parentElement;
-        while (parent && !contained.has(parent)) parent = parent.parentElement;
+        while (parent && !picked.has(parent)) parent = parent.parentElement;
         if (parent) continue;
-        contained.add(el);
+        const rect = rectOf(el);
+        if (rect.width <= 0 || rect.height <= 0) continue;
+        picked.add(el);
         targets.push({ id, name: label(el) || selector(el), rect });
       }
       post('targets', { request: data.request, targets });
+    } else if (data.action === 'describe' && Number.isSafeInteger(data.request) && data.request > 0 && Array.isArray(data.ids) && data.ids.length <= 2500) {
+      const nodes = [];
+      for (const id of data.ids) {
+        const el = Number.isSafeInteger(id) ? elements.get(id) : undefined;
+        if (el?.isConnected) nodes.push({ id, text: (el.textContent ?? '').replace(/\s+/g, ' ').trim().slice(0, 200), html: el.outerHTML.slice(0, 2000) });
+      }
+      post('details', { request: data.request, nodes });
     } else if (data.action === 'hover') {
       const el = elements.get(data.id);
       hovered = el?.isConnected ? el : null;
       hoverRect = hovered ? rectOf(hovered) : null;
-      post('hover', { rect: hoverRect });
+      hoverId = hovered ? treeId(hovered) : null;
+      post('hover', { rect: hoverRect, id: hoverId });
     } else if (data.action === 'style' && data.session === session && selected && ids.get(selected) === data.id && properties.includes(data.property) && typeof data.value === 'string' && data.value.length <= 300) {
       const el = selected as HTMLElement | SVGElement;
       if (!el.style || !el.isConnected) return;
@@ -236,7 +265,7 @@ export function installInspector(win: Window & typeof globalThis, properties: re
       const changes = originals.get(el)!;
       if (!changes.has(property)) {
         const affected = new Set([...Array.from(probe), ...Array.from(el.style).filter((name) => probe.getPropertyValue(name))]);
-        changes.set(property, { applied: '', declarations: new Map(Array.from(affected, (name) => [name, { value: el.style.getPropertyValue(name), priority: el.style.getPropertyPriority(name), applied: '' }])) });
+        changes.set(property, { from: win.getComputedStyle(el).getPropertyValue(property).slice(0, 2000), applied: '', declarations: new Map(Array.from(affected, (name) => [name, { value: el.style.getPropertyValue(name), priority: el.style.getPropertyPriority(name), applied: '' }])) });
       }
       el.style.setProperty(property, value);
       const saved = changes.get(property)!;

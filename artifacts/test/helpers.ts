@@ -119,7 +119,12 @@ export function sendWsText(socket: Socket, text: string) {
   const masked = Buffer.from(payload.map((byte, i) => byte ^ mask[i % 4]!));
   let header: Buffer;
   if (payload.length < 126) header = Buffer.from([0x81, 0x80 | payload.length]);
-  else {
+  else if (payload.length >= 65536) {
+    header = Buffer.alloc(10);
+    header[0] = 0x81;
+    header[1] = 0x80 | 127;
+    header.writeBigUInt64BE(BigInt(payload.length), 2);
+  } else {
     header = Buffer.alloc(4);
     header[0] = 0x81;
     header[1] = 0x80 | 126;

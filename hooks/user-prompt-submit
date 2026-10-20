@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+set -uo pipefail
+
+case "$0" in
+  */*|*\\*) SCRIPT_DIR="$(cd "${0%[/\\]*}" && pwd)" ;;
+  *) SCRIPT_DIR="$(pwd)" ;;
+esac
+
+project="${CLAUDE_PROJECT_DIR:-$PWD}"
+state="$project/.ryugi/artifacts/.state"
+[ -f "$state/server-info" ] || exit 0
+command -v node >/dev/null 2>&1 || exit 0
+
+node "$SCRIPT_DIR/selection-context.cjs" "$project"
+exit 0

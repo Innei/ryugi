@@ -20,6 +20,7 @@ Start the server and get the link as `SKILL.md` describes, with
 <project>/.ryugi/artifacts/.state/artboard/<id>/   ← the server writes; never edit it
   warnings.json                warnings + pending boards — read after every change
   layout.json                  computed geometry — read before placing new content
+  selection.json               what your human partner selected and tweaked in the viewer
 ```
 
 ## canvas.json
@@ -143,6 +144,29 @@ Write a new artboard in this order:
 A board file is ready only when it exists and is not empty. Pending boards show
 `Drawing…` and have no actions. The browser opens once, on the first start,
 so later rounds stream into the already-open tab.
+
+## Selection and node IDs
+
+Your human partner can point at elements instead of describing them: they
+select nodes in the viewer, tweak CSS in the Inspector, or name a node by
+the ID the viewer shows on hover, `<board id>#<n>` (`hero-2#7`).
+`selection.json` holds the selection as it is right now:
+
+- `selected`: the selected nodes, each with its `file`, a CSS `path` from
+  `body`, `text`, `html`, and its `tweaks` (`property`, `from`, `value`);
+  `more` counts selected nodes left out.
+- `tweaks`: Inspector changes on nodes that are not selected.
+- `nodes`: every node's ID, `file` and `path`, for IDs they type.
+
+Read it before you act whenever they say "这里", "this", "the selected
+ones", name an ID, or refer to what they tweaked. Some harnesses attach it
+to their message already; the file is the same either way. Edit the
+element at `path` in `file`. Inspector tweaks are preview only: they exist
+in the source once you write them.
+
+IDs are renumbered when a board reloads, which happens after every edit to
+it. Resolve an ID against the current `nodes`, and before you change a board
+again, ask for the ID again rather than reusing an old one.
 
 ## Rounds and pages
 

@@ -38,7 +38,7 @@ export function Layers({ boards, frames, selection, targets, playing, select, ho
         const Icon = icons[kind];
         return {
           key, disabled: paused, icon: <Icon size={14} aria-hidden />,
-          title: <><span className="ri-layer-label" title={`${node.tag} · ${name || node.selector}`}><span className="ri-layer-kind">{kind}</span><span className="ri-layer-name">{name ? `“${name}”` : `<${node.tag}>`}</span></span>{paused && <span className="ri-playing">Playing</span>}</>,
+          title: <><span className="ri-layer-label" title={`${node.tag} · ${name || node.selector}`}><span className="ri-layer-kind">{kind}</span><span className="ri-layer-name">{name ? `“${name}”` : `<${node.tag}>`}</span></span>{parentKey !== null && <span className="ri-layer-id">#{node.id}</span>}{paused && <span className="ri-playing">Playing</span>}</>,
           children: node.children.flatMap((id) => { const child = nodes.get(id); return child ? [append(child, key)] : []; }),
         };
       };

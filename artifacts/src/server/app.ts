@@ -13,6 +13,7 @@ import { listen, parseCookies, randomToken, readPersisted, safeEqual, send, send
 import { resolveBoardFile, resolveDocumentAsset, resolveHtmlFile, resolveInside } from './paths';
 import { createDynamicBlocks } from './dynamic-blocks';
 import { readCanvas, writeArtifactState, writeJsonAtomic } from './state';
+import { createSelectionStore } from './selection';
 import { ensureConfig } from './config';
 import { createCloudRoutes, type CloudOptions } from './cloud';
 import { publishPayload } from './publish-payload';
@@ -115,6 +116,8 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
   const contentPrefix = `/c/${contentToken}/`;
 
   const clients = new Set<Duplex>();
+  const selections = createSelectionStore(stateDir, (id) => resolveArtifactDir(root, 'artboard', id) !== null);
+  selections.clearAll();
   const changeListeners: ((ref: ArtifactRef, payload: ArtifactPayload, files: string[]) => void)[] = [];
   const activityListeners: (() => void)[] = [];
   const touch = () => activityListeners.forEach((listener) => listener());
@@ -312,7 +315,7 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
     sendJson(res, 200, { project: path.basename(path.dirname(path.dirname(root))), artifacts: summaries, warnings });
   };
 
-  function onClientText(text: string) {
+  function onClientText(socket: Duplex, text: string) {
     let message: unknown;
     try {
       message = JSON.parse(text);
@@ -320,6 +323,10 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
       return;
     }
     if (typeof message !== 'object' || message === null) return;
+    if ((message as { type?: unknown }).type === 'selection') {
+      selections.accept(socket, message);
+      return;
+    }
     const { type, artifact, message: detail, version, file } = message as Record<string, unknown>;
     if (typeof artifact !== 'string') return;
     const ref = artifactKeyOf(artifact);
@@ -485,9 +492,11 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
     }
     completeHandshake(socket, clientKey);
     clients.add(socket);
-    handleClientFrames(socket, onClientText);
-    socket.on('close', () => clients.delete(socket));
-    socket.on('error', () => clients.delete(socket));
+    handleClientFrames(socket, (text) => onClientText(socket, text));
+    const forget = () => { clients.delete(socket); selections.drop(socket); };
+    socket.on('end', () => { forget(); socket.end(); });
+    socket.on('close', forget);
+    socket.on('error', forget);
     touch();
   });
 
@@ -583,6 +592,7 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
     close: () =>
       new Promise<void>((resolve) => {
         watcher.close();
+        selections.clearAll();
         for (const socket of clients) socket.destroy();
         server.close(() => resolve());
         server.closeAllConnections();

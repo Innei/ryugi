@@ -2,6 +2,7 @@ import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { InspectorRect, InspectorReport } from '../../shared/inspector';
+import type { SelectionMessage } from '../../shared/selection';
 import { Canvas } from '../components/Canvas';
 import { CanvasErrorBoundary } from '../components/CanvasErrorBoundary';
 import { ExpandedBoard } from '../components/ExpandedBoard';
@@ -9,6 +10,7 @@ import { Labels } from '../components/Labels';
 import { TopLeftBar, TopRightBar } from '../components/Toolbar';
 import { useCanvasData } from '../hooks/useCanvasData';
 import { useInspector } from '../hooks/useInspector';
+import { useSelectionSync } from '../hooks/useSelectionSync';
 import { usePanZoom, type Tool } from '../hooks/usePanZoom';
 import { InspectionOutline } from '../inspector/InspectionOutline';
 import { InspectorPanel } from '../inspector/InspectorPanel';
@@ -44,10 +46,11 @@ const styles = stylex.create({
   },
 });
 
-type ArtboardViewProps = Omit<ReturnType<typeof useCanvasData>, 'live' | 'stale'> & {
+type ArtboardViewProps = Omit<ReturnType<typeof useCanvasData>, 'live' | 'stale' | 'send'> & {
   id: string;
   artifact: string | null;
   live?: boolean;
+  send?: (message: SelectionMessage) => void;
 };
 
 export function ArtboardLayout({ id }: { id: string }) {
@@ -55,7 +58,7 @@ export function ArtboardLayout({ id }: { id: string }) {
   return <ArtboardView id={id} artifact={`artboard/${id}`} {...data} />;
 }
 
-export function ArtboardView({ id, artifact, canvas, layout, warnings, pending, contentBase, versions, live, loaded }: ArtboardViewProps) {
+export function ArtboardView({ id, artifact, canvas, layout, warnings, pending, contentBase, versions, live, loaded, send }: ArtboardViewProps) {
   const [tool, setTool] = useState<Tool>('select');
   const { viewportRef, view, fit, zoomBy, zoomTo, cursor, handlers, panBy, wheelAt, panning, setSpaceHeld } = usePanZoom(tool);
   const [inspectorOpen, setInspectorOpen] = useState(false);
@@ -82,6 +85,7 @@ export function ArtboardView({ id, artifact, canvas, layout, warnings, pending, 
       else if (input.down) onKey(input);
     },
   });
+  useSelectionSync({ artifact, boards: canvas?.boards, live, inspector, send });
   const closeInspector = useCallback(() => setInspectorOpen(false), []);
   useEffect(() => { if (expanded) setSpaceHeld(false); }, [expanded, setSpaceHeld]);
   useEffect(() => { gesture.current = null; setMarquee(null); setSelecting(false); inspector.cancelDrag(); }, [tool, expanded, page, panning, inspector.cancelDrag]);
@@ -182,22 +186,13 @@ export function ArtboardView({ id, artifact, canvas, layout, warnings, pending, 
     return right > left && bottom > top ? [{ boardId, rect: { x: left - board.x, y: top - board.y, width: right - left, height: bottom - top } }] : [];
   }), [boards]);
 
-  useEffect(() => {
-    const start = gesture.current;
-    if (!marquee || !start) return;
-    const frame = requestAnimationFrame(() => {
-      if (gesture.current === start) inspector.selectArea(areasFor(marquee), start.append, true);
-    });
-    return () => cancelAnimationFrame(frame);
-  }, [marquee, areasFor, inspector.selectArea]);
-
   function dragSelection(phase: 'start' | 'move' | 'end' | 'cancel', x: number, y: number, append = false, frame?: { boardId: string; id: number }) {
-    if (phase === 'start') { gesture.current = { x, y, append, moved: false, frame }; setMarquee(null); setSelecting(true); return; }
+    if (phase === 'start') { gesture.current = { x, y, append, moved: false, frame }; setMarquee(null); setSelecting(true); inspector.beginArea(); return; }
     const start = gesture.current;
     if (!start) return;
     const rect = { x: Math.min(start.x, x), y: Math.min(start.y, y), width: Math.abs(x - start.x), height: Math.abs(y - start.y) };
     if (Math.hypot(rect.width, rect.height) * view.k >= 3) start.moved = true;
-    if (phase === 'move') { if (start.moved) setMarquee(rect); return; }
+    if (phase === 'move') { if (start.moved) { setMarquee(rect); inspector.selectArea(areasFor(rect), start.append, true); } return; }
     gesture.current = null; setMarquee(null); setSelecting(false);
     if (phase === 'cancel' || !start.moved) inspector.cancelDrag();
     if (phase === 'cancel') return;
@@ -262,7 +257,7 @@ export function ArtboardView({ id, artifact, canvas, layout, warnings, pending, 
           />
         </CanvasErrorBoundary>
       )}
-      {selectionEnabled && !marquee && inspector.hover && allBoards[inspector.hover.boardId] && <InspectionOutline board={allBoards[inspector.hover.boardId]!} rect={inspector.hover.rect} view={view} />}
+      {selectionEnabled && !marquee && inspector.hover && allBoards[inspector.hover.boardId] && <InspectionOutline board={allBoards[inspector.hover.boardId]!} rect={inspector.hover.rect} view={view} nodeId={inspector.hover.id ? `${inspector.hover.boardId}#${inspector.hover.id}` : undefined} />}
       {!expanded && inspector.targets.map((target) => allBoards[target.boardId] && <InspectionOutline key={`${target.boardId}:${target.id}`} board={allBoards[target.boardId]!} rect={target.rect} view={view} name={target.name} selected />)}
       {selecting && <div className="ri-selection-capture" aria-hidden="true" />}
       {marquee && <div className="ri-marquee" aria-hidden="true" style={{ left: view.x + marquee.x * view.k, top: view.y + marquee.y * view.k, width: marquee.width * view.k, height: marquee.height * view.k }} />}

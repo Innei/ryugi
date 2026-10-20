@@ -6,6 +6,7 @@ const OPCODE_TEXT = 0x01;
 const OPCODE_CLOSE = 0x08;
 const OPCODE_PING = 0x09;
 const OPCODE_PONG = 0x0a;
+const MAX_CLIENT_FRAME = 8 * 1024 * 1024;
 
 export function acceptKey(clientKey: string) {
   return crypto.createHash('sha1').update(clientKey + WS_MAGIC).digest('base64');
@@ -57,8 +58,14 @@ export function handleClientFrames(socket: Duplex, onText?: (text: string) => vo
         len = buffer.readUInt16BE(2);
         offset = 4;
       } else if (len === 127) {
-        socket.destroy();
-        return;
+        if (buffer.length < 10) return;
+        const big = buffer.readBigUInt64BE(2);
+        if (big > BigInt(MAX_CLIENT_FRAME)) {
+          socket.destroy();
+          return;
+        }
+        len = Number(big);
+        offset = 10;
       }
       const total = offset + 4 + len;
       if (buffer.length < total) return;

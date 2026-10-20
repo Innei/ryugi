@@ -16,29 +16,33 @@ export interface InspectorNode {
   name: string;
   kind: LayerKind;
   selector: string;
+  path: string;
 }
-export interface InspectorSelection extends Omit<InspectorNode, 'parentId' | 'children' | 'kind'> {
+export interface InspectorDetail { id: number; text: string; html: string }
+export interface InspectorSelection extends Omit<InspectorNode, 'parentId' | 'children' | 'kind' | 'path'> {
   rect: InspectorRect;
   css: Record<InspectorProperty, string>;
   html: string;
   widthMode: 'fixed' | 'fill' | 'hug';
   heightMode: 'fixed' | 'hug';
 }
-export interface InspectorTweak { id: number; name: string; property: InspectorProperty; value: string }
+export interface InspectorTweak { id: number; name: string; property: InspectorProperty; from: string; value: string }
 export type InspectorCommand = { type: 'ryugi:inspect'; connection: string; session?: string } & (
   | { action: 'enable' | 'disable' | 'reset' | 'cancel-drag' }
   | { action: 'select'; id: number | null; primary?: boolean; toggle?: boolean }
   | { action: 'hover'; id: number | null }
   | { action: 'track'; ids: number[] }
-  | { action: 'marquee'; request: number; rect: InspectorRect }
+  | { action: 'leaves'; request: number }
+  | { action: 'describe'; request: number; ids: number[] }
   | { action: 'style'; id: number; property: InspectorProperty; value: string; session: string }
 );
 export type InspectorReport = { session: string; connection: string } & (
   | { type: 'ryugi:inspect:tree'; nodes: InspectorNode[]; truncated: boolean }
   | { type: 'ryugi:inspect:selection'; selection: InspectorSelection | null; reason: 'user' | 'command' | 'update' | 'primary'; toggle?: boolean }
   | { type: 'ryugi:inspect:targets'; request: number; targets: InspectorTarget[] }
+  | { type: 'ryugi:inspect:details'; request: number; nodes: InspectorDetail[] }
   | { type: 'ryugi:inspect:drag'; phase: 'start' | 'move' | 'end' | 'cancel'; x: number; y: number; append: boolean; id?: number }
-  | { type: 'ryugi:inspect:hover'; rect: InspectorRect | null }
+  | { type: 'ryugi:inspect:hover'; rect: InspectorRect | null; id?: number | null }
   | { type: 'ryugi:inspect:rect'; id: number; rect: InspectorRect }
   | { type: 'ryugi:inspect:tweaks'; tweaks: InspectorTweak[] }
   | { type: 'ryugi:inspect:wheel'; deltaX: number; deltaY: number; x: number; y: number; zoom: boolean }
