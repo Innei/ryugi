@@ -150,7 +150,7 @@ export function Labels({
           return (
             <div
               key={id}
-              data-chrome
+              data-chrome="board-label"
               {...stylex.props(styles.boardLabel)}
               style={{ left: rect.left, top: rect.top, width, transform: `scale(${boardScale}) translateY(-100%)` }}
             >

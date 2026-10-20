@@ -17,6 +17,7 @@ function Harness({ tool }: { tool: Tool }) {
     { ref: viewportRef, ...handlers, style: { cursor } },
     createElement('output', null, JSON.stringify(view)),
     createElement('button', { 'data-chrome': '' }, 'Toolbar'),
+    createElement('div', { 'data-chrome': 'board-label' }, createElement('span', { id: 'board-title' }, 'Board title')),
     createPortal(createElement('button', { id: 'menu-item' }, 'Zoom in'), document.body),
   );
 }
@@ -101,4 +102,20 @@ test('Space on toolbar controls keeps its native keyboard action instead of star
   });
   expect(event!.defaultPrevented).toBe(false);
   expect(viewport.style.cursor).toBe('default');
+});
+
+test('trackpad gestures over a board title pan and pinch the canvas, while toolbar scrolling stays local', () => {
+  render('select');
+  const wheel = (target: Element, init: WheelEventInit) => act(() => {
+    const event = new WheelEvent('wheel', { bubbles: true, cancelable: true, ...init });
+    // happy-dom's WheelEvent omits modifier keys.
+    Object.defineProperty(event, 'ctrlKey', { value: init.ctrlKey ?? false });
+    target.dispatchEvent(event);
+  });
+  wheel(host.querySelector('button')!, { deltaY: 40 });
+  expect(panZoom.view).toEqual({ x: 0, y: 0, k: 0.5 });
+  wheel(host.querySelector('#board-title')!, { deltaX: 12, deltaY: 40 });
+  expect(panZoom.view).toEqual({ x: -12, y: -40, k: 0.5 });
+  wheel(host.querySelector('#board-title')!, { deltaY: -Math.log(2) / 0.01, ctrlKey: true });
+  expect(panZoom.view.k).toBe(1);
 });

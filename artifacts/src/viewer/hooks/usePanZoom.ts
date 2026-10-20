@@ -25,7 +25,7 @@ export function usePanZoom(tool: Tool) {
     const el = viewportRef.current;
     if (!el) return;
     const onWheel = (e: WheelEvent) => {
-      if ((e.target as HTMLElement | null)?.closest?.('[data-chrome]')) return;
+      if ((e.target as HTMLElement | null)?.closest?.('[data-chrome]:not([data-chrome="board-label"])')) return;
       e.preventDefault();
       const rect = el.getBoundingClientRect();
       wheelAt({ deltaX: e.deltaX, deltaY: e.deltaY, x: e.clientX - rect.left, y: e.clientY - rect.top, zoom: e.ctrlKey || e.metaKey });
