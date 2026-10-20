@@ -7,7 +7,7 @@ import { Layers } from './Layers';
 import { Properties } from './Properties';
 import './inspector.css';
 
-interface Props extends Pick<Inspector, 'frames' | 'selection' | 'select' | 'hoverNode' | 'change' | 'reset'> {
+interface Props extends Pick<Inspector, 'frames' | 'selection' | 'targets' | 'select' | 'hoverNode' | 'change' | 'reset'> {
   boards: [string, BoardSpec][];
   playing: ReadonlySet<string>;
   enabled: boolean;
@@ -15,7 +15,7 @@ interface Props extends Pick<Inspector, 'frames' | 'selection' | 'select' | 'hov
 }
 const tabs = ['Properties', 'Code', 'Tweaks'] as const;
 
-export const InspectorPanel = memo(function InspectorPanel({ boards, frames, selection, playing, select, hoverNode, change, reset, enabled, onClose }: Props) {
+export const InspectorPanel = memo(function InspectorPanel({ boards, frames, selection, targets, playing, select, hoverNode, change, reset, enabled, onClose }: Props) {
   const [tab, setTab] = useState<(typeof tabs)[number]>('Properties');
   const [copyStatus, setCopyStatus] = useState('');
   const node = selection?.node;
@@ -31,8 +31,9 @@ export const InspectorPanel = memo(function InspectorPanel({ boards, frames, sel
       <header className="ri-header"><TabsList className="ri-tabs" activateOnFocus style={{ alignSelf: 'center' }} aria-label="Inspector views"><TabsIndicator />
         {tabs.map((name) => <TabsTab key={name} value={name}>{name}{name === 'Tweaks' && tweaks.length > 0 && <Circle className="ri-change-dot" size={4} fill="currentColor" aria-hidden />}</TabsTab>)}
       </TabsList><ActionIcon icon={X} size="small" aria-label="Close inspector" title="Close inspector" onClick={onClose} /></header>
-      <Layers boards={boards} frames={frames} selection={selection} playing={playing} select={select} hoverNode={hoverNode} />
-      <div className="ri-node-meta"><code>{node ? `<${node.tag}>` : 'Select an element'}</code><span title={node?.selector}>{node?.selector}</span>{node && <span className="ri-live"><Circle size={6} fill="currentColor" aria-hidden />Live</span>}</div>
+      <Layers boards={boards} frames={frames} selection={selection} targets={targets} playing={playing} select={select} hoverNode={hoverNode} />
+      <div className="ri-node-meta"><code>{targets.length > 1 ? `${targets.length} selected` : node ? `<${node.tag}>` : 'Select an element'}</code><span title={node?.selector}>{node?.selector}</span>{node && <span className="ri-live"><Circle size={6} fill="currentColor" aria-hidden />Live</span>}</div>
+      {targets.length > 1 && <p className="ri-hint" style={{ margin: '8px 16px' }}>Properties show the last selected element.</p>}
       <div className="ri-panel-body">
         <TabsPanel value="Properties">{node && enabled ? <Properties key={`${selection!.boardId}:${frames[selection!.boardId]?.session}:${node.id}`} node={node} change={change} /> : <p className="ri-empty">{!enabled ? 'Close the expanded preview to inspect elements.' : 'Click an element on the canvas or choose a layer to inspect its properties.'}</p>}</TabsPanel>
         <TabsPanel value="Code">{node ? <div className="ri-code">

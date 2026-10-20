@@ -7,6 +7,7 @@ export const INSPECTOR_PROPERTIES = [
 export type InspectorProperty = (typeof INSPECTOR_PROPERTIES)[number];
 export type LayerKind = 'Frame' | 'Column' | 'Row' | 'Grid' | 'Title' | 'Text' | 'Image' | 'Button';
 export interface InspectorRect { x: number; y: number; width: number; height: number }
+export interface InspectorTarget { id: number; name: string; rect: InspectorRect }
 export interface InspectorNode {
   id: number;
   parentId: number | null;
@@ -25,13 +26,18 @@ export interface InspectorSelection extends Omit<InspectorNode, 'parentId' | 'ch
 }
 export interface InspectorTweak { id: number; name: string; property: InspectorProperty; value: string }
 export type InspectorCommand = { type: 'ryugi:inspect'; connection: string; session?: string } & (
-  | { action: 'enable' | 'disable' | 'reset' }
-  | { action: 'select' | 'hover'; id: number | null }
+  | { action: 'enable' | 'disable' | 'reset' | 'cancel-drag' }
+  | { action: 'select'; id: number | null; primary?: boolean; toggle?: boolean }
+  | { action: 'hover'; id: number | null }
+  | { action: 'track'; ids: number[] }
+  | { action: 'marquee'; request: number; rect: InspectorRect }
   | { action: 'style'; id: number; property: InspectorProperty; value: string; session: string }
 );
 export type InspectorReport = { session: string; connection: string } & (
   | { type: 'ryugi:inspect:tree'; nodes: InspectorNode[]; truncated: boolean }
-  | { type: 'ryugi:inspect:selection'; selection: InspectorSelection | null; reason: 'user' | 'command' | 'update' }
+  | { type: 'ryugi:inspect:selection'; selection: InspectorSelection | null; reason: 'user' | 'command' | 'update' | 'primary'; toggle?: boolean }
+  | { type: 'ryugi:inspect:targets'; request: number; targets: InspectorTarget[] }
+  | { type: 'ryugi:inspect:drag'; phase: 'start' | 'move' | 'end' | 'cancel'; x: number; y: number; append: boolean; id?: number }
   | { type: 'ryugi:inspect:hover'; rect: InspectorRect | null }
   | { type: 'ryugi:inspect:rect'; id: number; rect: InspectorRect }
   | { type: 'ryugi:inspect:tweaks'; tweaks: InspectorTweak[] }

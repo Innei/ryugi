@@ -32,11 +32,13 @@ export function readInspectorReport(value: unknown): InspectorReport | null {
     case 'ryugi:inspect:hover': valid = rect(value.rect); break;
     case 'ryugi:inspect:rect': valid = id(value.id) && value.rect !== null && rect(value.rect); break;
     case 'ryugi:inspect:selection': {
-      if (!['user', 'command', 'update'].includes(value.reason as string)) break;
+      if (!['user', 'command', 'update', 'primary'].includes(value.reason as string) || (value.toggle !== undefined && typeof value.toggle !== 'boolean')) break;
       const node = value.selection;
       valid = node === null || (object(node) && id(node.id) && text(node.name, 100) && text(node.tag, 80) && text(node.selector, 200) && node.rect !== null && rect(node.rect) && text(node.html, 20000) && ['fixed', 'fill', 'hug'].includes(node.widthMode as string) && ['fixed', 'hug'].includes(node.heightMode as string) && object(node.css) && INSPECTOR_PROPERTIES.every((key) => text((node.css as Record<string, unknown>)[key], 2000)));
       break;
     }
+    case 'ryugi:inspect:targets': valid = id(value.request) && Array.isArray(value.targets) && value.targets.length <= 2500 && new Set(value.targets.map((node) => object(node) ? node.id : null)).size === value.targets.length && value.targets.every((node) => object(node) && id(node.id) && text(node.name, 100) && node.rect !== null && rect(node.rect)); break;
+    case 'ryugi:inspect:drag': valid = ['start', 'move', 'end', 'cancel'].includes(value.phase as string) && number(value.x) && number(value.y) && typeof value.append === 'boolean' && (value.id === undefined || id(value.id)); break;
     case 'ryugi:inspect:tweaks': valid = Array.isArray(value.tweaks) && value.tweaks.length <= 2500 && value.tweaks.every((item) => object(item) && id(item.id) && text(item.name, 200) && property(item.property) && text(item.value, 300)); break;
     case 'ryugi:inspect:wheel': valid = number(value.deltaX) && number(value.deltaY) && number(value.x) && number(value.y) && typeof value.zoom === 'boolean'; break;
     case 'ryugi:inspect:pan': valid = number(value.deltaX) && number(value.deltaY); break;

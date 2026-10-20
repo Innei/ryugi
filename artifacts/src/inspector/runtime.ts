@@ -18,6 +18,9 @@ export function installInspector(win: Window & typeof globalThis, properties: re
   let selectedRect: InspectorRect | null = null;
   let hoverRect: InspectorRect | null = null;
   let dragging: { x: number; y: number; pointer: number } | null = null;
+  let marquee: { x: number; y: number; screenX: number; screenY: number; pointer: number; append: boolean; moved: boolean } | null = null;
+  let suppressClick = false;
+  const tracked = new Map<number, InspectorRect>();
   const post = (type: string, data: Record<string, unknown>) => win.parent.postMessage({ type: `ryugi:inspect:${type}`, session, connection, ...data }, '*');
   const idOf = (el: Element) => {
     let id = ids.get(el);
@@ -39,7 +42,7 @@ export function installInspector(win: Window & typeof globalThis, properties: re
     const rect = el.getBoundingClientRect();
     return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
   };
-  const selection = (reason: 'user' | 'command' | 'update') => {
+  const selection = (reason: 'user' | 'command' | 'update' | 'primary', toggle = false) => {
     if (!selected?.isConnected) { selected = null; post('selection', { selection: null, reason }); return; }
     const el = selected;
     const style = win.getComputedStyle(el);
@@ -51,7 +54,7 @@ export function installInspector(win: Window & typeof globalThis, properties: re
       widthMode: inline?.width === '100%' ? 'fill' : inline?.width === 'max-content' ? 'hug' : 'fixed',
       heightMode: inline?.height && inline.height !== 'auto' ? 'fixed' : 'hug',
     };
-    post('selection', { selection: info, reason });
+    post('selection', { selection: info, reason, toggle });
   };
   const tweaks = () => {
     const list = [];
@@ -96,6 +99,12 @@ export function installInspector(win: Window & typeof globalThis, properties: re
       const rect = rectOf(selected);
       if (!sameRect(selectedRect, rect)) { selectedRect = rect; post('rect', { id: idOf(selected), rect }); }
     }
+    for (const [id, previous] of tracked) {
+      const el = elements.get(id);
+      if (!el?.isConnected) { tracked.delete(id); continue; }
+      const rect = rectOf(el);
+      if (!sameRect(previous, rect)) { tracked.set(id, rect); post('rect', { id, rect }); }
+    }
     if (hovered?.isConnected) {
       const rect = rectOf(hovered);
       if (!sameRect(hoverRect, rect)) { hoverRect = rect; post('hover', { rect }); }
@@ -106,8 +115,9 @@ export function installInspector(win: Window & typeof globalThis, properties: re
   const onClick = (event: MouseEvent) => {
     if (!enabled || event.button !== 0 || !(event.target instanceof win.Element) || ignoredTarget(event.target)) return;
     event.preventDefault(); event.stopImmediatePropagation();
+    if (suppressClick) { suppressClick = false; return; }
     selected = event.target.closest('svg') || event.target;
-    selection('user');
+    selection('user', event.shiftKey || event.metaKey || event.ctrlKey);
   };
   const onPointerDown = (event: PointerEvent) => {
     if (!enabled) return;
@@ -115,7 +125,13 @@ export function installInspector(win: Window & typeof globalThis, properties: re
       event.preventDefault(); event.stopImmediatePropagation();
       dragging = { x: event.screenX, y: event.screenY, pointer: event.pointerId };
       doc.documentElement.setPointerCapture?.(event.pointerId);
-    } else if (event.button === 0) { event.preventDefault(); event.stopImmediatePropagation(); }
+    } else if (event.button === 0 && event.target instanceof win.Element) {
+      event.preventDefault(); event.stopImmediatePropagation();
+      suppressClick = false;
+      marquee = { x: event.clientX, y: event.clientY, screenX: event.screenX, screenY: event.screenY, pointer: event.pointerId, append: event.shiftKey || event.metaKey || event.ctrlKey, moved: false };
+      event.target.setPointerCapture?.(event.pointerId);
+      post('drag', { phase: 'start', x: event.clientX, y: event.clientY, append: marquee.append, id: idOf(event.target.closest('svg') || event.target) });
+    }
   };
   const onPointerMove = (event: PointerEvent) => {
     if (!enabled) return;
@@ -124,10 +140,22 @@ export function installInspector(win: Window & typeof globalThis, properties: re
       dragging.x = event.screenX; dragging.y = event.screenY;
       return;
     }
+    if (marquee && event.pointerId === marquee.pointer) {
+      if (Math.hypot(event.screenX - marquee.screenX, event.screenY - marquee.screenY) >= 3) marquee.moved = true;
+      if (marquee.moved) post('drag', { phase: 'move', x: event.clientX, y: event.clientY, append: marquee.append });
+      return;
+    }
     if (!(event.target instanceof win.Element)) return;
     hovered = ignoredTarget(event.target) ? null : event.target.closest('svg') || event.target;
   };
-  const endDrag = () => { dragging = null; };
+  const endDrag = (event: Event) => {
+    if (marquee) {
+      const pointer = event as PointerEvent;
+      post('drag', { phase: event.type === 'pointerup' && marquee.moved ? 'end' : 'cancel', x: pointer.clientX ?? marquee.x, y: pointer.clientY ?? marquee.y, append: marquee.append });
+      suppressClick = marquee.moved;
+    }
+    dragging = null; marquee = null;
+  };
   const leave = () => { hovered = null; hoverRect = null; if (enabled) post('hover', { rect: null }); };
   const wheel = (event: WheelEvent) => {
     if (!enabled) return;
@@ -143,7 +171,8 @@ export function installInspector(win: Window & typeof globalThis, properties: re
   };
   const scroll = () => { if (enabled && selected) selection('update'); };
   const disable = () => {
-    enabled = false; dragging = null;
+    endDrag(new win.Event('pointercancel'));
+    enabled = false;
     observer.disconnect();
     win.clearTimeout(treeTimer); win.cancelAnimationFrame(geometryFrame);
     treeTimer = 0; geometryFrame = 0; hovered = null; hoverRect = null;
@@ -167,9 +196,29 @@ export function installInspector(win: Window & typeof globalThis, properties: re
     if (data.action === 'disable') { disable(); return; }
     if (!enabled && data.action !== 'reset') return;
     if (data.session !== session) return;
+    if (data.action === 'cancel-drag') { endDrag(new win.Event('pointercancel')); return; }
     if (data.action === 'select' && Number.isSafeInteger(data.id)) {
       const el = elements.get(data.id);
-      if (el?.isConnected) { selected = el; selection('command'); }
+      if (el?.isConnected) { selected = el; selection(data.primary === true ? 'primary' : 'command', data.toggle === true); }
+    } else if (data.action === 'track' && Array.isArray(data.ids) && data.ids.length <= 2500 && data.ids.every((id: unknown) => Number.isSafeInteger(id) && (id as number) > 0)) {
+      tracked.clear();
+      for (const id of data.ids) { const el = elements.get(id); if (el?.isConnected) tracked.set(id, rectOf(el)); }
+    } else if (data.action === 'marquee' && Number.isSafeInteger(data.request) && data.request > 0) {
+      const r = data.rect;
+      if (!r || !['x', 'y', 'width', 'height'].every((key) => typeof r[key] === 'number' && Number.isFinite(r[key]) && Math.abs(r[key]) <= 1e8) || r.width < 0 || r.height < 0) return;
+      const contained = new Set<Element>();
+      const targets = [];
+      for (const [id, el] of elements) {
+        if (el === doc.body || !el.isConnected) continue;
+        const rect = rectOf(el);
+        if (rect.width <= 0 || rect.height <= 0 || rect.x < r.x || rect.y < r.y || rect.x + rect.width > r.x + r.width || rect.y + rect.height > r.y + r.height) continue;
+        let parent = el.parentElement;
+        while (parent && !contained.has(parent)) parent = parent.parentElement;
+        if (parent) continue;
+        contained.add(el);
+        targets.push({ id, name: label(el) || selector(el), rect });
+      }
+      post('targets', { request: data.request, targets });
     } else if (data.action === 'hover') {
       const el = elements.get(data.id);
       hovered = el?.isConnected ? el : null;

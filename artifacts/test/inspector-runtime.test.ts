@@ -158,3 +158,47 @@ test('removing the selected node clears the selection and updates the tree', asy
   await vi.waitFor(() => expect(last('selection')?.selection).toBeNull());
   expect(last('tree')!.nodes.some((node: { id: number }) => node.id === id)).toBe(false);
 });
+
+test('Shift clicking requests a toggle, and tracked selections keep their geometry in sync', () => {
+  const frames: FrameRequestCallback[] = [];
+  vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => { frames.push(callback); return frames.length; });
+  const id = cardId();
+  const heading = document.querySelector('h1')!;
+  let x = 10;
+  vi.spyOn(heading, 'getBoundingClientRect').mockImplementation(() => ({ x, y: 0, width: 90, height: 30 }) as DOMRect);
+  heading.dispatchEvent(new MouseEvent('click', { bubbles: true, shiftKey: true }));
+  expect(last('selection')?.toggle).toBe(true);
+  const headingId = last('selection')!.selection.id;
+  command('track', { ids: [headingId, id] });
+  x = 25;
+  frames.shift()?.(0);
+  expect(posted.some((message) => message.type === 'ryugi:inspect:rect' && message.id === headingId && message.rect.x === 25)).toBe(true);
+});
+
+test('marquee selects fully enclosed top-level nodes and rejects invalid rectangles', () => {
+  const id = cardId();
+  const heading = document.querySelector('h1')!;
+  const button = root.querySelector('button')!;
+  for (const [el, x, y, width, height] of [[heading, 10, 10, 80, 20], [root, 10, 50, 100, 100], [button, 20, 60, 50, 30]] as const) {
+    vi.spyOn(el, 'getBoundingClientRect').mockReturnValue({ x, y, width, height } as DOMRect);
+  }
+  command('marquee', { request: 1, rect: { x: 0, y: 0, width: 120, height: 160 } });
+  expect(last('targets')).toMatchObject({ request: 1 });
+  expect(last('targets')!.targets.map((node: { id: number }) => node.id)).toContain(id);
+  expect(last('targets')!.targets.map((node: { name: string }) => node.name)).toEqual(['Heading', 'card']);
+  const count = posted.length;
+  command('marquee', { request: 2, rect: { x: NaN, y: 0, width: 100, height: 100 } });
+  expect(posted).toHaveLength(count);
+});
+
+test('a pointer drag forwards marquee coordinates and suppresses the resulting page click', () => {
+  cardId();
+  const pointer = (type: string, x: number, y: number) => root.dispatchEvent(new PointerEvent(type, { bubbles: true, pointerId: 1, button: 0, clientX: x, clientY: y, screenX: x, screenY: y }));
+  pointer('pointerdown', 10, 20);
+  pointer('pointermove', 100, 120);
+  pointer('pointerup', 100, 120);
+  expect(last('drag')).toMatchObject({ phase: 'end', x: 100, y: 120, append: false });
+  const count = posted.filter((message) => message.type === 'ryugi:inspect:selection').length;
+  root.click();
+  expect(posted.filter((message) => message.type === 'ryugi:inspect:selection')).toHaveLength(count);
+});

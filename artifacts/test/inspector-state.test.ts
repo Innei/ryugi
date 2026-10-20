@@ -40,6 +40,33 @@ function select() {
   report('selection', { reason: 'command', selection: { id: 1, tag: 'body', name: 'Main', selector: 'body', rect: { x: 0, y: 0, width: 400, height: 300 }, css: Object.fromEntries(INSPECTOR_PROPERTIES.map((property) => [property, '0px'])), html: '<body></body>', widthMode: 'fixed', heightMode: 'hug' } });
 }
 
+test('selection starts empty, Shift toggles nodes and blank-canvas selection clears them', () => {
+  report('tree', { nodes, truncated: false });
+  expect(sent.some((message) => message.action === 'select')).toBe(false);
+  select();
+  const node = inspector.selection!.node;
+  report('selection', { reason: 'user', toggle: true, selection: { ...node, id: 2, name: 'Second' } });
+  expect(inspector.targets.map((target) => target.id)).toEqual([1, 2]);
+  report('selection', { reason: 'user', toggle: true, selection: { ...node, id: 2 } });
+  expect(inspector.targets.map((target) => target.id)).toEqual([1]);
+  act(() => inspector.clearSelection());
+  expect(inspector.targets).toEqual([]);
+  expect(inspector.selection).toBeNull();
+});
+
+test('marquee replies replace or append selection and stale requests cannot overwrite it', () => {
+  select();
+  act(() => inspector.selectArea([{ boardId: 'a', rect: { x: 0, y: 0, width: 100, height: 100 } }], true));
+  const request = sent.filter((message) => message.action === 'marquee').at(-1).request;
+  const target = { id: 2, name: 'Second', rect: { x: 10, y: 10, width: 40, height: 30 } };
+  report('targets', { request, targets: [target] });
+  expect(inspector.targets.map((target) => target.id)).toEqual([1, 2]);
+  act(() => inspector.selectArea([], false));
+  report('targets', { request, targets: [target] });
+  expect(inspector.targets).toEqual([]);
+  expect(inspector.selection).toBeNull();
+});
+
 test('registered current frames can select nodes and send session-scoped style commands', () => {
   select();
   expect(inspector.selection?.node.name).toBe('Main');

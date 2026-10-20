@@ -21,6 +21,38 @@ let root: Root | undefined;
 let host: HTMLDivElement | undefined;
 afterEach(() => { if (root) act(() => root!.unmount()); host?.remove(); vi.unstubAllGlobals(); });
 
+test('the pointer selects nodes with the sidebar closed and keeps all selected outlines when it opens', async () => {
+  vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ signedIn: false, artifacts: {} }) }));
+  host = document.createElement('div'); document.body.append(host);
+  root = createRoot(host);
+  await act(async () => root!.render(createElement(ConfigProvider, { motion, enableCustomFonts: false, children: createElement(ArtboardLayout, { id: 'test' }) })));
+  const frame = host.querySelector('iframe')!;
+  const sent: any[] = [];
+  vi.spyOn(frame.contentWindow!, 'postMessage').mockImplementation((message) => sent.push(message));
+  await act(async () => frame.dispatchEvent(new Event('load')));
+  expect(sent.at(-1)?.action).toBe('enable');
+  const connection = sent.at(-1)!.connection;
+  const report = async (type: string, fields: Record<string, unknown>) => act(async () => window.dispatchEvent(new MessageEvent('message', { source: frame.contentWindow!, data: { type: `ryugi:inspect:${type}`, session: 'test', connection, ...fields } })));
+  await report('tree', { nodes: [], truncated: false });
+  const node = { id: 1, name: 'First', tag: 'h1', selector: 'h1', rect: { x: 10, y: 10, width: 120, height: 40 }, html: '<h1>First</h1>', css: Object.fromEntries(INSPECTOR_PROPERTIES.map((property) => [property, '0'])), widthMode: 'fixed', heightMode: 'hug' };
+  await report('selection', { reason: 'user', selection: node });
+  await report('selection', { reason: 'user', toggle: true, selection: { ...node, id: 2, name: 'Second', rect: { ...node.rect, y: 80 } } });
+  expect(host.querySelector('[aria-label="Inspector"]')).toBeNull();
+  expect(host.querySelectorAll('.ri-outline-selected')).toHaveLength(2);
+  await act(async () => host!.querySelector<HTMLButtonElement>('[aria-label="Toggle inspector"]')!.click());
+  expect(host.querySelectorAll('.ri-outline-selected')).toHaveLength(2);
+  expect(host.querySelector('[aria-label="Inspector"]')?.textContent).toContain('2 selected');
+  await report('drag', { phase: 'start', id: 1, x: 0, y: 0, append: false });
+  expect(host.querySelector('.ri-selection-capture')).not.toBeNull();
+  await report('drag', { phase: 'move', x: 500, y: 500, append: false });
+  expect(host.querySelector('.ri-marquee')).not.toBeNull();
+  const viewport = frame.parentElement!.parentElement!;
+  await act(async () => viewport.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, button: 0, clientX: 100, clientY: 100 })));
+  expect(host.querySelector('.ri-marquee')).toBeNull();
+  expect(sent.some((message) => message.action === 'marquee')).toBe(true);
+});
+
 test('the Inspector opens and closes without changing canvas zoom or iframe sandbox', async () => {
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ signedIn: false, login: null, origin: 'https://cloud.test', artifacts: {}, warning: null }) }));

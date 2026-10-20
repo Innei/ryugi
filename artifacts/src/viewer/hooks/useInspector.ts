@@ -1,31 +1,33 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { InspectorCommand, InspectorNode, InspectorProperty, InspectorRect, InspectorReport, InspectorSelection, InspectorTweak } from '../../shared/inspector';
+import type { InspectorCommand, InspectorNode, InspectorProperty, InspectorRect, InspectorReport, InspectorSelection, InspectorTarget, InspectorTweak } from '../../shared/inspector';
 import { readInspectorReport } from '../lib/inspector';
 
 export interface InspectedFrame { session: string; nodes: InspectorNode[]; truncated: boolean; tweaks: InspectorTweak[] }
 export interface InspectedSelection { boardId: string; node: InspectorSelection }
-export type InspectorInput = Extract<InspectorReport, { type: 'ryugi:inspect:wheel' | 'ryugi:inspect:pan' | 'ryugi:inspect:key' }>;
+export type InspectorInput = Extract<InspectorReport, { type: 'ryugi:inspect:wheel' | 'ryugi:inspect:pan' | 'ryugi:inspect:key' | 'ryugi:inspect:drag' }>;
 interface Options { enabled: boolean; playing: ReadonlySet<string>; onInput: (boardId: string, input: InspectorInput) => void }
 interface RegisteredFrame { element: HTMLIFrameElement; connection: string; session: string | null }
-interface State { frames: Record<string, InspectedFrame>; selection: InspectedSelection | null; hover: { boardId: string; rect: InspectorRect } | null }
+interface Target extends InspectorTarget { boardId: string }
+interface State { frames: Record<string, InspectedFrame>; selection: InspectedSelection | null; targets: Target[]; hover: { boardId: string; rect: InspectorRect } | null }
 type Command = InspectorCommand extends infer T ? T extends InspectorCommand ? Omit<T, 'type' | 'connection'> : never : never;
 
 export function useInspector(options: Options) {
-  const [state, setState] = useState<State>({ frames: {}, selection: null, hover: null });
+  const [state, setState] = useState<State>({ frames: {}, selection: null, targets: [], hover: null });
   const current = useRef({ options, state });
   current.current = { options, state };
   const registered = useRef(new Map<string, RegisteredFrame>());
   const refs = useRef(new Map<string, (element: HTMLIFrameElement | null) => void>());
-  const pendingSelection = useRef(false);
+  const sequence = useRef(0);
+  const area = useRef<{ request: number; waiting: Set<string>; base: Target[]; results: Map<string, Target[]> } | null>(null);
   const send = useCallback((boardId: string, command: Command) => {
     const entry = registered.current.get(boardId);
     entry?.element.contentWindow?.postMessage({ type: 'ryugi:inspect', connection: entry.connection, session: entry.session, ...command }, '*');
   }, []);
   const invalidate = useCallback((boardId: string) => {
-    if (current.current.state.selection?.boardId === boardId) pendingSelection.current = false;
+    area.current = null;
     setState((previous) => {
       const frames = { ...previous.frames }; delete frames[boardId];
-      return { frames, selection: previous.selection?.boardId === boardId ? null : previous.selection, hover: previous.hover?.boardId === boardId ? null : previous.hover };
+      return { frames, targets: previous.targets.filter((target) => target.boardId !== boardId), selection: previous.selection?.boardId === boardId ? null : previous.selection, hover: previous.hover?.boardId === boardId ? null : previous.hover };
     });
   }, []);
   const refFor = useCallback((boardId: string) => {
@@ -56,24 +58,38 @@ export function useInspector(options: Options) {
       if (current.current.options.playing.has(boardId) && data.type !== 'ryugi:inspect:tweaks') return;
       if (data.type === 'ryugi:inspect:tree') {
         entry.session = data.session;
-        setState((previous) => ({ ...previous, frames: { ...previous.frames, [boardId]: { session: data.session, nodes: data.nodes, truncated: data.truncated, tweaks: previous.frames[boardId]?.tweaks ?? [] } } }));
-        if (!current.current.state.selection && !pendingSelection.current && data.nodes[0]) {
-          pendingSelection.current = true;
-          send(boardId, { action: 'select', id: data.nodes[0].id });
-        }
+        const ids = new Set(data.nodes.map((node) => node.id));
+        setState((previous) => ({ ...previous, targets: previous.targets.filter((target) => target.boardId !== boardId || ids.has(target.id)), selection: previous.selection?.boardId === boardId && !ids.has(previous.selection.node.id) ? null : previous.selection, frames: { ...previous.frames, [boardId]: { session: data.session, nodes: data.nodes, truncated: data.truncated, tweaks: previous.frames[boardId]?.tweaks ?? [] } } }));
         return;
       }
       if (entry.session === null) return;
       if (data.type === 'ryugi:inspect:selection') {
-        pendingSelection.current = false;
+        if (data.reason === 'user' || data.reason === 'command') area.current = null;
         setState((previous) => {
-          if (data.reason === 'update' && previous.selection?.boardId !== boardId) return previous;
-          return { ...previous, selection: data.selection ? { boardId, node: data.selection } : null };
+          const node = data.selection;
+          if (data.reason === 'primary' || data.reason === 'update') {
+            if (!node) return previous;
+            const primary = previous.targets.at(-1);
+            if (!primary || primary.boardId !== boardId || primary.id !== node.id) return previous;
+            return { ...previous, selection: { boardId, node }, targets: previous.targets.map((target) => target.boardId === boardId && target.id === node.id ? { ...target, name: node.name || node.selector, rect: node.rect } : target) };
+          }
+          if (!node) return previous;
+          const existing = previous.targets.some((target) => target.boardId === boardId && target.id === node.id);
+          const target = { boardId, id: node.id, name: node.name || node.selector, rect: node.rect };
+          const targets = data.toggle ? existing ? previous.targets.filter((item) => item.boardId !== boardId || item.id !== node.id) : [...previous.targets, target] : [target];
+          return { ...previous, targets, selection: data.toggle && existing ? null : { boardId, node } };
         });
+      } else if (data.type === 'ryugi:inspect:targets') {
+        const pending = area.current;
+        if (!pending || data.request !== pending.request || !pending.waiting.delete(boardId)) return;
+        pending.results.set(boardId, data.targets.map((target) => ({ ...target, boardId })));
+        const targets = [...pending.base];
+        for (const result of pending.results.values()) for (const target of result) if (!targets.some((item) => item.boardId === target.boardId && item.id === target.id)) targets.push(target);
+        setState((previous) => ({ ...previous, targets, selection: null }));
       } else if (data.type === 'ryugi:inspect:hover') {
         setState((previous) => ({ ...previous, hover: data.rect ? { boardId, rect: data.rect } : null }));
       } else if (data.type === 'ryugi:inspect:rect') {
-        setState((previous) => previous.selection?.boardId === boardId && previous.selection.node.id === data.id ? { ...previous, selection: { boardId, node: { ...previous.selection.node, rect: data.rect } } } : previous);
+        setState((previous) => ({ ...previous, targets: previous.targets.map((target) => target.boardId === boardId && target.id === data.id ? { ...target, rect: data.rect } : target), selection: previous.selection?.boardId === boardId && previous.selection.node.id === data.id ? { boardId, node: { ...previous.selection.node, rect: data.rect } } : previous.selection }));
       } else if (data.type === 'ryugi:inspect:tweaks') {
         setState((previous) => previous.frames[boardId] ? { ...previous, frames: { ...previous.frames, [boardId]: { ...previous.frames[boardId], tweaks: data.tweaks } } } : previous);
       } else current.current.options.onInput(boardId, data);
@@ -85,17 +101,38 @@ export function useInspector(options: Options) {
 
   const playingKey = Array.from(options.playing).sort().join('\0');
   useEffect(() => {
+    area.current = null;
     for (const boardId of registered.current.keys()) send(boardId, { action: options.enabled && !current.current.options.playing.has(boardId) ? 'enable' : 'disable' });
     setState((previous) => {
       const playingSelection = previous.selection && current.current.options.playing.has(previous.selection.boardId);
-      if (!previous.hover && !playingSelection) return previous;
-      return { ...previous, hover: null, selection: playingSelection ? null : previous.selection };
+      return { ...previous, targets: previous.targets.filter((target) => !current.current.options.playing.has(target.boardId)), hover: null, selection: playingSelection ? null : previous.selection };
     });
   }, [options.enabled, playingKey, send]);
 
-  const select = useCallback((boardId: string, id: number) => {
+  const targetKey = JSON.stringify(state.targets.map(({ boardId, id }) => [boardId, id]));
+  useEffect(() => {
+    if (!options.enabled) return;
+    for (const boardId of registered.current.keys()) if (!current.current.options.playing.has(boardId)) send(boardId, { action: 'track', ids: current.current.state.targets.filter((target) => target.boardId === boardId).map((target) => target.id) });
+  }, [targetKey, options.enabled, playingKey, send]);
+  useEffect(() => {
+    const primary = state.targets.at(-1);
+    if (options.enabled && primary && (state.selection?.boardId !== primary.boardId || state.selection.node.id !== primary.id)) send(primary.boardId, { action: 'select', id: primary.id, primary: true });
+  }, [targetKey, state.selection, options.enabled, send]);
+  const clearSelection = useCallback(() => { area.current = null; setState((previous) => ({ ...previous, targets: [], selection: null, hover: null })); }, []);
+  const cancelDrag = useCallback(() => { for (const boardId of registered.current.keys()) send(boardId, { action: 'cancel-drag' }); }, [send]);
+  const selectArea = useCallback((areas: { boardId: string; rect: InspectorRect }[], append: boolean) => {
+    const { options, state } = current.current;
+    if (!options.enabled) return;
+    const ready = areas.filter(({ boardId }) => registered.current.get(boardId)?.session && !options.playing.has(boardId));
+    const base = append ? state.targets : [];
+    area.current = { request: ++sequence.current, waiting: new Set(ready.map(({ boardId }) => boardId)), base, results: new Map() };
+    setState((previous) => ({ ...previous, targets: base, selection: append ? previous.selection : null, hover: null }));
+    for (const { boardId, rect } of ready) send(boardId, { action: 'marquee', request: sequence.current, rect });
+  }, [send]);
+  const select = useCallback((boardId: string, id: number, toggle = false) => {
     if (!current.current.options.enabled || current.current.options.playing.has(boardId)) return;
-    send(boardId, { action: 'select', id });
+    area.current = null;
+    send(boardId, { action: 'select', id, toggle });
   }, [send]);
   const hoverNode = useCallback((boardId: string, id: number | null) => {
     if (current.current.options.enabled && !current.current.options.playing.has(boardId)) send(boardId, { action: 'hover', id });
@@ -109,7 +146,7 @@ export function useInspector(options: Options) {
   }, [send]);
   const reset = useCallback(() => { for (const boardId of registered.current.keys()) send(boardId, { action: 'reset' }); }, [send]);
 
-  return { ...state, refFor, loaded, select, hoverNode, change, reset };
+  return { ...state, refFor, loaded, select, selectArea, clearSelection, cancelDrag, hoverNode, change, reset };
 }
 
 export type Inspector = ReturnType<typeof useInspector>;

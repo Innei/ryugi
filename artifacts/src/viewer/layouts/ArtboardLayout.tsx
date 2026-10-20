@@ -1,7 +1,7 @@
 import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { InspectorReport } from '../../shared/inspector';
+import type { InspectorRect, InspectorReport } from '../../shared/inspector';
 import { Canvas } from '../components/Canvas';
 import { CanvasErrorBoundary } from '../components/CanvasErrorBoundary';
 import { ExpandedBoard } from '../components/ExpandedBoard';
@@ -63,20 +63,28 @@ export function ArtboardView({ id, artifact, canvas, layout, warnings, pending, 
   const [expanded, setExpanded] = useState<string | null>(null);
   const [playing, setPlaying] = useState<ReadonlySet<string>>(() => new Set());
   const [replays, setReplays] = useState<Record<string, number>>({});
+  const gesture = useRef<{ x: number; y: number; append: boolean; frame?: { boardId: string; id: number } } | null>(null);
+  const [selecting, setSelecting] = useState(false);
+  const [marquee, setMarquee] = useState<InspectorRect | null>(null);
+  const selectionEnabled = tool === 'select' && !expanded && !panning;
   const inspector = useInspector({
-    enabled: inspectorOpen && !expanded,
+    enabled: !expanded && (tool === 'select' || inspectorOpen),
     playing,
     onInput: (boardId, input) => {
       const board = canvas?.boards[boardId];
       if (!board) return;
       if (input.type === 'ryugi:inspect:wheel') wheelAt({ ...input, x: view.x + (board.x + input.x) * view.k, y: view.y + (board.y + input.y) * view.k });
       else if (input.type === 'ryugi:inspect:pan') panBy(input.deltaX, input.deltaY);
+      else if (input.type === 'ryugi:inspect:drag') {
+        if (selectionEnabled) dragSelection(input.phase, board.x + input.x, board.y + input.y, input.append, input.id ? { boardId, id: input.id } : undefined);
+      }
       else if (input.code === 'Space') setSpaceHeld(input.down);
       else if (input.down) onKey(input);
     },
   });
   const closeInspector = useCallback(() => setInspectorOpen(false), []);
-  useEffect(() => { if (!inspectorOpen || expanded) setSpaceHeld(false); }, [inspectorOpen, expanded, setSpaceHeld]);
+  useEffect(() => { if (expanded) setSpaceHeld(false); }, [expanded, setSpaceHeld]);
+  useEffect(() => { gesture.current = null; setMarquee(null); setSelecting(false); inspector.cancelDrag(); }, [tool, expanded, page, panning, inspector.cancelDrag]);
   const pendingBoards = useMemo(() => new Set(pending), [pending]);
   const seenActivePage = useRef<string | undefined>(undefined);
   const seenFocusAt = useRef<string | undefined>(undefined);
@@ -94,7 +102,7 @@ export function ArtboardView({ id, artifact, canvas, layout, warnings, pending, 
     if ('target' in e && (e.target as HTMLElement | null)?.closest?.('input, textarea, select, [contenteditable], [role="tree"], [role="treeitem"]')) return;
     const prevent = () => { if ('preventDefault' in e) e.preventDefault(); };
     const mod = e.metaKey || e.ctrlKey;
-    if (e.key === 'Escape') setExpanded(null);
+    if (e.key === 'Escape') { setExpanded(null); inspector.clearSelection(); gesture.current = null; setMarquee(null); setSelecting(false); inspector.cancelDrag(); }
     else if (mod && (e.key === '=' || e.key === '+')) { prevent(); zoomBy(1.25); }
     else if (mod && e.key === '-') { prevent(); zoomBy(0.8); }
     else if (e.shiftKey && e.code === 'Digit1') fit(pageBounds(page));
@@ -168,6 +176,31 @@ export function ArtboardView({ id, artifact, canvas, layout, warnings, pending, 
     ? (versions[expandedBoard.file] ?? 0) > 0 && !pendingBoards.has(expanded!)
     : false;
 
+  function dragSelection(phase: 'start' | 'move' | 'end' | 'cancel', x: number, y: number, append = false, frame?: { boardId: string; id: number }) {
+    if (phase === 'start') { gesture.current = { x, y, append, frame }; setMarquee(null); setSelecting(true); return; }
+    const start = gesture.current;
+    if (!start) return;
+    const rect = { x: Math.min(start.x, x), y: Math.min(start.y, y), width: Math.abs(x - start.x), height: Math.abs(y - start.y) };
+    const moved = Math.hypot(rect.width, rect.height) * view.k >= 3;
+    if (phase === 'move') { if (moved) setMarquee(rect); return; }
+    gesture.current = null; setMarquee(null); setSelecting(false); inspector.cancelDrag();
+    if (phase === 'cancel') return;
+    if (!moved) {
+      if (start.frame) inspector.select(start.frame.boardId, start.frame.id, start.append);
+      else if (!start.append) inspector.clearSelection();
+      return;
+    }
+    inspector.selectArea(boards.flatMap(([boardId, board]) => {
+      const left = Math.max(rect.x, board.x), top = Math.max(rect.y, board.y);
+      const right = Math.min(rect.x + rect.width, board.x + board.w), bottom = Math.min(rect.y + rect.height, board.y + board.h);
+      return right > left && bottom > top ? [{ boardId, rect: { x: left - board.x, y: top - board.y, width: right - left, height: bottom - top } }] : [];
+    }), start.append);
+  }
+  const worldPoint = (event: { clientX: number; clientY: number }) => {
+    const rect = viewportRef.current!.getBoundingClientRect();
+    return { x: (event.clientX - rect.left - view.x) / view.k, y: (event.clientY - rect.top - view.y) / view.k };
+  };
+
   const changePage = (id: string) => {
     setPage(id);
     pendingFit.current = id;
@@ -175,7 +208,17 @@ export function ArtboardView({ id, artifact, canvas, layout, warnings, pending, 
 
   return (
     <div {...stylex.props(styles.layout)}>
-    <div ref={viewportRef} {...stylex.props(styles.viewport)} style={{ cursor }} {...handlers}>
+    <div ref={viewportRef} {...stylex.props(styles.viewport)} style={{ cursor }}
+      onPointerDown={(event) => {
+        handlers.onPointerDown(event);
+        if (!selectionEnabled || event.button !== 0 || !event.currentTarget.contains(event.target as Node) || (event.target as Element).closest('[data-chrome]')) return;
+        const point = worldPoint(event);
+        event.currentTarget.setPointerCapture(event.pointerId);
+        dragSelection('start', point.x, point.y, event.shiftKey || event.metaKey || event.ctrlKey);
+      }}
+      onPointerMove={(event) => { handlers.onPointerMove(event); if (gesture.current) { if (event.buttons === 1) event.currentTarget.setPointerCapture(event.pointerId); const point = worldPoint(event); dragSelection('move', point.x, point.y); } }}
+      onPointerUp={(event) => { handlers.onPointerUp(); if (gesture.current) { const point = worldPoint(event); dragSelection('end', point.x, point.y); } }}
+      onPointerCancel={() => { handlers.onPointerCancel(); gesture.current = null; setMarquee(null); setSelecting(false); inspector.cancelDrag(); }}>
       {canvas && layout && (
         <CanvasErrorBoundary resetKey={canvas}>
           <Canvas
@@ -187,7 +230,7 @@ export function ArtboardView({ id, artifact, canvas, layout, warnings, pending, 
             pending={pendingBoards}
             playing={playing}
             replays={replays}
-            inspecting={inspectorOpen && !expanded && !panning}
+            inspecting={selectionEnabled}
             frameRef={inspector.refFor}
             frameLoaded={inspector.loaded}
           />
@@ -206,8 +249,10 @@ export function ArtboardView({ id, artifact, canvas, layout, warnings, pending, 
           />
         </CanvasErrorBoundary>
       )}
-      {inspectorOpen && !expanded && inspector.hover && !panning && allBoards[inspector.hover.boardId] && <InspectionOutline board={allBoards[inspector.hover.boardId]!} rect={inspector.hover.rect} view={view} />}
-      {inspectorOpen && !expanded && inspector.selection && allBoards[inspector.selection.boardId] && <InspectionOutline board={allBoards[inspector.selection.boardId]!} rect={inspector.selection.node.rect} view={view} name={inspector.selection.node.name || inspector.selection.node.selector} selected />}
+      {selectionEnabled && !marquee && inspector.hover && allBoards[inspector.hover.boardId] && <InspectionOutline board={allBoards[inspector.hover.boardId]!} rect={inspector.hover.rect} view={view} />}
+      {!expanded && inspector.targets.map((target) => allBoards[target.boardId] && <InspectionOutline key={`${target.boardId}:${target.id}`} board={allBoards[target.boardId]!} rect={target.rect} view={view} name={target.name} selected />)}
+      {selecting && <div className="ri-selection-capture" aria-hidden="true" />}
+      {marquee && <div className="ri-marquee" aria-hidden="true" style={{ left: view.x + marquee.x * view.k, top: view.y + marquee.y * view.k, width: marquee.width * view.k, height: marquee.height * view.k }} />}
       {(!canvas || !layout) && (
         <div {...stylex.props(styles.empty)}>
           {loaded ? (warnings[0] ?? 'Waiting for the agent to write canvas.json…') : 'Connecting…'}
@@ -236,7 +281,7 @@ export function ArtboardView({ id, artifact, canvas, layout, warnings, pending, 
         />
       )}
     </div>
-    {inspectorOpen && <InspectorPanel boards={boards} frames={inspector.frames} selection={inspector.selection} select={inspector.select} hoverNode={inspector.hoverNode} change={inspector.change} reset={inspector.reset} playing={playing} enabled={!expanded} onClose={closeInspector} />}
+    {inspectorOpen && <InspectorPanel boards={boards} frames={inspector.frames} selection={inspector.selection} targets={inspector.targets} select={inspector.select} hoverNode={inspector.hoverNode} change={inspector.change} reset={inspector.reset} playing={playing} enabled={!expanded} onClose={closeInspector} />}
     </div>
   );
 }
