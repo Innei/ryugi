@@ -150,7 +150,7 @@ export function installInspector(win: Window & typeof globalThis, properties: re
     }
     if (data.connection !== connection) return;
     if (data.action === 'disable') { disable(); return; }
-    if (!enabled) return;
+    if (!enabled && data.action !== 'reset') return;
     if (data.session !== session) return;
     if (data.action === 'select' && Number.isSafeInteger(data.id)) {
       const el = elements.get(data.id);

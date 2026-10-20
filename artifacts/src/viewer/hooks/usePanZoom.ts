@@ -6,6 +6,7 @@ export type Tool = 'select' | 'hand';
 
 const INSETS: Insets = { top: 64, right: 24, bottom: 24, left: 24 };
 const WHEEL_ZOOM_SPEED = 0.01;
+export interface WheelInput { deltaX: number; deltaY: number; x: number; y: number; zoom: boolean }
 
 export function usePanZoom(tool: Tool) {
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -14,21 +15,24 @@ export function usePanZoom(tool: Tool) {
   const [dragging, setDragging] = useState(false);
   const last = useRef<{ x: number; y: number } | null>(null);
 
+  const panBy = useCallback((x: number, y: number) => setView((v) => ({ ...v, x: v.x + x, y: v.y + y })), []);
+  const wheelAt = useCallback((input: WheelInput) => {
+    if (input.zoom) setView((v) => zoomAround(v, Math.exp(-input.deltaY * WHEEL_ZOOM_SPEED), input.x, input.y));
+    else panBy(-input.deltaX, -input.deltaY);
+  }, [panBy]);
+
   useEffect(() => {
     const el = viewportRef.current;
     if (!el) return;
     const onWheel = (e: WheelEvent) => {
+      if ((e.target as HTMLElement | null)?.closest?.('[data-chrome]')) return;
       e.preventDefault();
-      if (e.ctrlKey || e.metaKey) {
-        const rect = el.getBoundingClientRect();
-        setView((v) => zoomAround(v, Math.exp(-e.deltaY * WHEEL_ZOOM_SPEED), e.clientX - rect.left, e.clientY - rect.top));
-      } else {
-        setView((v) => ({ ...v, x: v.x - e.deltaX, y: v.y - e.deltaY }));
-      }
+      const rect = el.getBoundingClientRect();
+      wheelAt({ deltaX: e.deltaX, deltaY: e.deltaY, x: e.clientX - rect.left, y: e.clientY - rect.top, zoom: e.ctrlKey || e.metaKey });
     };
     el.addEventListener('wheel', onWheel, { passive: false });
     return () => el.removeEventListener('wheel', onWheel);
-  }, []);
+  }, [wheelAt]);
 
   useEffect(() => {
     const isTyping = (e: KeyboardEvent) => (e.target as HTMLElement | null)?.closest?.('input, textarea, [contenteditable]');
@@ -58,6 +62,8 @@ export function usePanZoom(tool: Tool) {
     (e: ReactPointerEvent<HTMLDivElement>) => {
       const middle = e.button === 1;
       if ((!panning && !middle) || (e.button !== 0 && !middle)) return;
+      // Portal events bubble through React even when their targets are outside the viewport.
+      if (!e.currentTarget.contains(e.target as Node)) return;
       if ((e.target as HTMLElement).closest('[data-chrome]')) return;
       e.currentTarget.setPointerCapture(e.pointerId);
       last.current = { x: e.clientX, y: e.clientY };
@@ -105,6 +111,10 @@ export function usePanZoom(tool: Tool) {
     fit,
     zoomBy,
     zoomTo: zoomToLevel,
+    panBy,
+    wheelAt,
+    panning,
+    setSpaceHeld,
     cursor: dragging ? 'grabbing' : panning ? 'grab' : 'default',
     handlers: { onPointerDown, onPointerMove, onPointerUp, onPointerCancel: onPointerUp },
   };
