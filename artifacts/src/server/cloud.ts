@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import type http from 'node:http';
 import { artifactKeyOf, type ArtifactRef } from './artifacts';
+import { CALLBACK_PAGE_CSP, callbackPage } from './callback-page';
 import { isVisibility } from '../shared/cloud';
 import { readConfig, updateArtifactConfig, type Visibility } from './config';
 import { clearCredentials, readCredentials, writeCredentials } from './credentials';
@@ -224,13 +225,17 @@ export function createCloudRoutes(options: CloudRoutesOptions) {
 
   return {
     async handleCallback(url: URL, res: http.ServerResponse) {
-      const text = (status: number, body: string) => send(res, status, body, { 'Content-Type': 'text/plain; charset=utf-8' });
+      const page = (status: number, result: { ok: true; login: string } | { ok: false; detail: string }) =>
+        send(res, status, callbackPage({ ...result, origin }), {
+          'Content-Type': 'text/html; charset=utf-8',
+          'Content-Security-Policy': CALLBACK_PAGE_CSP,
+        });
       const state = url.searchParams.get('state') ?? '';
       const pending = pendingStates.get(state);
       pendingStates.delete(state);
       const code = url.searchParams.get('code');
       if (!pending || pending.expires < Date.now() || !code) {
-        text(400, 'This sign-in link has expired or was already used. Start the sign-in again.');
+        page(400, { ok: false, detail: '这个登录链接已过期或已经用过。回到 Ryugi 重新发起一次登录。' });
         return;
       }
       let swap: Response;
@@ -241,16 +246,17 @@ export function createCloudRoutes(options: CloudRoutesOptions) {
           body: JSON.stringify({ code, verifier: pending.verifier }),
         });
       } catch (err) {
-        text(502, `Could not reach ${origin}: ${(err as Error).message}`);
+        page(502, { ok: false, detail: `连不上 ${origin}（${(err as Error).message}）。检查网络后回到 Ryugi 重新发起登录。` });
         return;
       }
       const issued = (await swap.json().catch(() => ({}))) as { token?: unknown; login?: unknown; error?: unknown };
       if (!swap.ok || typeof issued.token !== 'string' || typeof issued.login !== 'string') {
-        text(400, `Sign-in failed: ${typeof issued.error === 'string' ? issued.error : `HTTP ${swap.status}`}. Start the sign-in again.`);
+        const reason = typeof issued.error === 'string' ? issued.error : `HTTP ${swap.status}`;
+        page(400, { ok: false, detail: `Ryugi Cloud 没有接受这次登录（${reason}）。回到 Ryugi 重新发起登录。` });
         return;
       }
       writeCredentials(credentialsFile, { origin, token: issued.token, login: issued.login });
-      text(200, `Signed in to the Ryugi cloud as ${issued.login}. You can close this tab.`);
+      page(200, { ok: true, login: issued.login });
     },
 
     match: (pathname: string) => ROUTE.exec(pathname),

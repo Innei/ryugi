@@ -176,6 +176,39 @@ describe('cloud sign-in', () => {
     expect((await call(server, 'GET', '/api/cloud/status')).json).toMatchObject({ signedIn: true, login: 'innei' });
   });
 
+  test('a successful sign-in answers with a page that names the account and runs no script', async () => {
+    const { server } = await start({ signedIn: false });
+    const state = new URL(String((await call(server, 'POST', '/api/cloud/login')).json.url)).searchParams.get('state');
+    const res = await fetch(`http://127.0.0.1:${server.port}/api/cloud/callback?state=${state}&code=one-time`);
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-type')).toBe('text/html; charset=utf-8');
+    expect(res.headers.get('content-security-policy')).toContain("default-src 'none'");
+    expect(res.headers.get('content-security-policy')).toContain("script-src 'none'");
+    const page = await res.text();
+    expect(page).toContain('<title>已登录 Ryugi Cloud</title>');
+    expect(page).toContain('innei');
+    expect(page).not.toContain('<script');
+  });
+
+  test('the sign-in page escapes the account name', async () => {
+    const { server, cloud } = await start({ signedIn: false });
+    cloud.respond = (r) => (r.path === '/auth/cli/token' ? { status: 200, body: { token: 't', login: '<img src=x onerror=alert(1)>' } } : undefined);
+    const state = new URL(String((await call(server, 'POST', '/api/cloud/login')).json.url)).searchParams.get('state');
+    const page = await (await fetch(`http://127.0.0.1:${server.port}/api/cloud/callback?state=${state}&code=c`)).text();
+    expect(page).not.toContain('<img src=x');
+    expect(page).toContain('&lt;img src=x onerror=alert(1)&gt;');
+  });
+
+  test('a failed sign-in answers with a page that says why', async () => {
+    const { server } = await start({ signedIn: false });
+    const res = await fetch(`http://127.0.0.1:${server.port}/api/cloud/callback?state=forged&code=c`);
+    expect(res.status).toBe(400);
+    expect(res.headers.get('content-type')).toBe('text/html; charset=utf-8');
+    const page = await res.text();
+    expect(page).toContain('<title>登录没有完成</title>');
+    expect(page).toContain('这个登录链接已过期或已经用过');
+  });
+
   test('a callback with an unknown or reused state is refused', async () => {
     const { server, credentialsFile } = await start({ signedIn: false });
     expect((await call(server, 'GET', '/api/cloud/callback?state=forged&code=c', undefined, { key: false })).status).toBe(400);
