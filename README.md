@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/logo/ryugi.png" width="104" alt="Ryugi">
+  <img src="assets/logo/ryugi.png" width="208" alt="Ryugi">
 </p>
 
 <h1 align="center">Ryugi 流儀</h1>
