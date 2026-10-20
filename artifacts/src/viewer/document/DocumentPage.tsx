@@ -20,6 +20,7 @@ import { SelectionToolbar, TOOLBAR_HEIGHT, TOOLBAR_WIDTH } from './SelectionTool
 import { decodeBase64 } from './LoroSync';
 import { TopBar } from './TopBar';
 import { threadAtPoint, useAnchors, useHighlights } from './useAnchors';
+import { useDocumentSelectionSync } from './useDocumentSelectionSync';
 import { useDraftComment } from './useDraftComment';
 import { useSelectionComment } from './useSelectionComment';
 
@@ -130,7 +131,7 @@ export default function DocumentPage({ id }: { id: string }) {
     };
   }, [id, refreshMeta]);
 
-  const { send: sendSocket } = useArtifactSocket(
+  const { live, send: sendSocket } = useArtifactSocket(
     (message) => {
       if (message.artifact !== artifact) return;
       if (message.type === 'change') void refreshMeta();
@@ -142,6 +143,7 @@ export default function DocumentPage({ id }: { id: string }) {
   );
 
   useAssetBase(meta?.contentBase);
+  useDocumentSelectionSync(editor, artifact, live, sendSocket);
   const dynamicHost = useMemo<DynamicHost>(
     () => ({ artifact, contentBase: meta?.contentBase ?? '', channel, send: sendSocket }),
     [artifact, meta?.contentBase, channel, sendSocket],

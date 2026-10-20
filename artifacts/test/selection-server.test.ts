@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { afterEach, expect, test } from 'vitest';
 import { startArtifactsServer, type ArtifactsServer } from '../src/server/app';
-import { openWs, readJson, sendWsText, tempRoot, waitFor, writeArtboard } from './helpers';
+import { openWs, readJson, sendWsText, tempRoot, waitFor, writeArtboard, writeDocument } from './helpers';
 
 const canvas = {
   version: 1,
@@ -104,5 +104,69 @@ test('a rejected message drops the tab instead of leaving its old selection on d
   await waitFor(() => fs.existsSync(selectionFile(root)));
   sendWsText(ws.socket!, message('t1', true, [2], { nodes: 'nope' }));
   await waitFor(() => !fs.existsSync(selectionFile(root)));
+  ws.socket?.destroy();
+});
+
+const docMessage = (tab: string, human: boolean, quote: string, extra: Record<string, unknown> = {}) =>
+  JSON.stringify({ type: 'selection', artifact: 'document/d1', tab, human, quote, blockIds: quote ? ['b2'] : [], heading: quote ? '同步' : '', ...extra });
+const docSelectionFile = (root: string) => path.join(root, '.state', 'document', 'd1', 'selection.json');
+const withDoc = (root: string) => writeDocument(root, 'd1', { 'doc.xml': '<doc><h2 id="b1">同步</h2><p id="b2">按事件粒度推送</p></doc>' });
+
+test('a document text selection is written to selection.json for its document', async () => {
+  const { server, root } = await start();
+  withDoc(root);
+  const ws = await connect(server);
+  sendWsText(ws.socket!, docMessage('t1', true, '事件粒度'));
+  await waitFor(() => fs.existsSync(docSelectionFile(root)));
+  const file = readJson(docSelectionFile(root));
+  expect(file).toEqual({ artifact: 'document/d1', updatedAt: expect.any(String), quote: '事件粒度', blockIds: ['b2'], heading: '同步' });
+  ws.socket?.destroy();
+  await waitFor(() => !fs.existsSync(docSelectionFile(root)));
+});
+
+test('clearing the document selection removes the file', async () => {
+  const { server, root } = await start();
+  withDoc(root);
+  const ws = await connect(server);
+  sendWsText(ws.socket!, docMessage('t1', true, '事件粒度'));
+  await waitFor(() => fs.existsSync(docSelectionFile(root)));
+  sendWsText(ws.socket!, docMessage('t1', true, ''));
+  await waitFor(() => !fs.existsSync(docSelectionFile(root)));
+  ws.socket?.destroy();
+});
+
+test('a long quote is clipped and malformed document selections are ignored', async () => {
+  const { server, root } = await start();
+  withDoc(root);
+  const ws = await connect(server);
+  sendWsText(ws.socket!, docMessage('t1', true, 'x', { artifact: 'document/missing' }));
+  sendWsText(ws.socket!, docMessage('t1', true, 'x', { blockIds: 'b2' }));
+  sendWsText(ws.socket!, docMessage('t1', true, 'x', { quote: 5 }));
+  await new Promise((r) => setTimeout(r, 100));
+  expect(fs.existsSync(docSelectionFile(root))).toBe(false);
+  sendWsText(ws.socket!, docMessage('t1', true, 'y'.repeat(5000)));
+  await waitFor(() => fs.existsSync(docSelectionFile(root)));
+  expect(readJson(docSelectionFile(root)).quote).toHaveLength(2000);
+  ws.socket?.destroy();
+});
+
+test('document selection files left by an earlier server are removed at startup', async () => {
+  const root = tempRoot().root;
+  withDoc(root);
+  fs.mkdirSync(path.dirname(docSelectionFile(root)), { recursive: true });
+  fs.writeFileSync(docSelectionFile(root), '{}');
+  await start(root);
+  expect(fs.existsSync(docSelectionFile(root))).toBe(false);
+});
+
+test('one tab moving from an artboard to a document drops its artboard selection', async () => {
+  const { server, root } = await start();
+  writeArtboard(root, 'b1', canvas, { 'pages/p/a.html': '<p>a</p>' });
+  withDoc(root);
+  const ws = await connect(server);
+  sendWsText(ws.socket!, message('t1', true, [1]));
+  await waitFor(() => fs.existsSync(selectionFile(root)));
+  sendWsText(ws.socket!, docMessage('t1', true, '事件'));
+  await waitFor(() => fs.existsSync(docSelectionFile(root)) && !fs.existsSync(selectionFile(root)));
   ws.socket?.destroy();
 });

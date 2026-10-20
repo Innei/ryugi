@@ -121,7 +121,7 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
   const contentPrefix = `/c/${contentToken}/`;
 
   const clients = new Set<Duplex>();
-  const selections = createSelectionStore(stateDir, (id) => resolveArtifactDir(root, 'artboard', id) !== null);
+  const selections = createSelectionStore(stateDir, (kind, id) => resolveArtifactDir(root, kind, id) !== null);
   selections.clearAll();
   const changeListeners: ((ref: ArtifactRef, payload: ArtifactPayload, files: string[]) => void)[] = [];
   const activityListeners: (() => void)[] = [];

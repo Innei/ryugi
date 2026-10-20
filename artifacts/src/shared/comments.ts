@@ -272,8 +272,8 @@ function changesSince(thread: Thread, cursor: string): Pick<UnreadThread, 'chang
 
 function waitingSince(thread: Thread): Pick<UnreadThread, 'changes' | 'messageIds'> {
   const live = thread.messages.filter((m) => !m.deleted);
-  const lastAgent = live.findLastIndex((m) => m.author === 'agent');
-  return { changes: [live.length === 1 ? 'new-thread' : 'new-message'], messageIds: live.slice(lastAgent + 1).map((m) => m.id) };
+  const afterAgent = live.map((m) => m.author).lastIndexOf('agent') + 1;
+  return { changes: [live.length === 1 ? 'new-thread' : 'new-message'], messageIds: live.slice(afterAgent).map((m) => m.id) };
 }
 
 // With no cursor the agent has never listed: only threads it owes an answer count, so old documents don't all read as news.

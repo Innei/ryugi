@@ -28,3 +28,23 @@ export interface SelectionFile extends SelectionState {
   artifact: string;
   updatedAt: string;
 }
+
+export const DOCUMENT_SELECTION_LIMITS = { quote: 2000, heading: 200, blockId: 100, blockIds: 200 };
+
+export interface DocumentSelectionState {
+  quote: string;
+  blockIds: string[];
+  heading: string;
+}
+
+export interface DocumentSelectionMessage extends DocumentSelectionState {
+  type: 'selection';
+  artifact: string;
+  tab: string;
+  human: boolean;
+}
+
+export interface DocumentSelectionFile extends DocumentSelectionState {
+  artifact: string;
+  updatedAt: string;
+}
