@@ -11,7 +11,7 @@ tables.
 | File | Written by | Holds |
 |------|------------|-------|
 | `doc.xml` | you and the server | the document, in LiteXML |
-| `comments.json` | you and the server | comment threads |
+| `comments.json` | the server only | comment threads; use the `comment` commands below |
 | `assets/` | you | images and Excalidraw scenes, referenced as `assets/<name>` |
 
 ## Editing doc.xml
@@ -97,12 +97,30 @@ complete only once `dynamic["assets/<name>.html"].ran` is `true`.
 
 ## Comments
 
-Read `comments.json` whenever you work on the document. A thread whose last
-message is theirs is waiting on you.
+Read and answer comments through the CLI, never through `comments.json`.
 
-- Reply: append `{"author": "agent", "text": "…"}` to its `messages`; the
-  server fills in ids and times.
-- Settled: set its `"status": "resolved"`.
-- Ask about a passage: add a thread
-  `{"anchor": {"blockId": "<block id>", "quote": "<text>"}, "messages": [{"author": "agent", "text": "…"}]}`.
-- Never edit or delete their messages.
+```bash
+node app/ryugi-artifacts.cjs comment list --json --project-dir /path/to/project --artifact document/<id>
+```
+
+- `list` prints what your human partner changed since you last ran it: new
+  threads, replies, edits, resolves. Run it whenever you work on the
+  document, and when a message says the document has new comments. `--all`
+  prints every thread without marking anything as read.
+- Each thread has an `id`, an `anchor` (`blockId`, `quote`), `waitingOn`
+  and its `messages`. `"waitingOn": "agent"` means it is waiting on you.
+- A comment asking for a change: edit `doc.xml`, reply with what changed,
+  then resolve the thread.
+- Reply, with the message on stdin:
+
+  ```bash
+  node app/ryugi-artifacts.cjs comment reply --json --project-dir /path/to/project --artifact document/<id> --thread <thread-id> <<'EOF'
+  改成 2% 了，正文同步更新。
+  EOF
+  ```
+
+- Ask about a passage: `comment add … --block <blockId> --quote "<text>"`,
+  message on stdin.
+- Settled: `comment resolve … --thread <thread-id>`.
+- An error saying the server is older than the CLI: run `start` again, then
+  retry.

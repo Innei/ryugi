@@ -9,12 +9,12 @@ Ryugi has two distinct kinds of tests, each in its own directory:
 
 Live in `tests/`. Currently:
 
-- `artifacts/test/` — vitest suite for the artifacts server, scripts, viewer logic, the document LiteXML codec, Loro merge session and comment store, installing the newest release and the published package contents (`cd artifacts && pnpm test`, which builds first).
+- `artifacts/test/` — vitest suite for the artifacts server, scripts, viewer logic, the document LiteXML codec, Loro merge session and comment store, the agent comment route and `comment` command, unread-comment parity between the server and the hook, installing the newest release and the published package contents (`cd artifacts && pnpm test`, which builds first).
 - `tests/viewer-release/` — the guard that fails when `artifacts/src/` changed since the last release tag without a version bump.
 - `tests/version-bump/` — `bump-version.sh` behavior and that every declared version file, including the viewer's, stays in sync.
 - `tests/opencode/` — bash tests for OpenCode plugin loading, bootstrap caching, and tool registration.
 - `tests/codex-plugin-sync/` — bash sync verification.
-- `tests/hooks/` — the hook scripts: `session-start` bootstrap output, the Windows `run-hook.cmd` wrapper, and the `user-prompt-submit` hook that attaches the open Artboard selection.
+- `tests/hooks/` — the hook scripts: `session-start` bootstrap output, the Windows `run-hook.cmd` wrapper, and the `user-prompt-submit` hook that attaches the open Artboard and document selections and unread comment reminders.
 - `tests/kimi/` — bash/Python checks for Kimi plugin manifest wiring.
 - `tests/claude-code/test-helpers.sh`, `analyze-token-usage.py` — utilities used by remaining bash tests.
 - `tests/claude-code/test-worktree-native-preference.sh` — RED-GREEN-REFACTOR validation for worktree skill (quorum covers the PRESSURE phase; bash also covers RED/GREEN baselines).

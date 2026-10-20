@@ -130,7 +130,7 @@ node app/ryugi-artifacts.cjs publish --json --project-dir /path/to/project --art
 ```
 <project>/.ryugi/artifacts/
   artboard/<id>/       canvas.json + pages/          (you write)
-  document/<id>/       doc.xml + comments.json + assets/  (you and the server write)
+  document/<id>/       doc.xml + assets/ (you write); comments.json (server only)
   html/<id>/           index.html + its files        (you write)
   .state/              the server writes; never edit
     <type>/<id>/warnings.json   warnings + pending, read after every change

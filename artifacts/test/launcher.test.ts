@@ -253,14 +253,14 @@ describe('launcher without a local build', () => {
     await done;
   }, 30000);
 
-  test('refuses a release older than the first one with subcommands, even when the cache is fresh', () => {
+  test('refuses a release older than the first one with the comment command, even when the cache is fresh', () => {
     const { npm, cache, launch, project } = setup();
-    npm.publish('1.8.0');
+    npm.publish('1.10.1');
     fs.mkdirSync(path.join(cache, 'ryugi', 'artifacts'), { recursive: true });
-    fs.writeFileSync(path.join(cache, 'ryugi', 'artifacts', 'latest.json'), JSON.stringify({ version: '1.8.0', checkedAt: Date.now() }));
+    fs.writeFileSync(path.join(cache, 'ryugi', 'artifacts', 'latest.json'), JSON.stringify({ version: '1.10.1', checkedAt: Date.now() }));
     const { code, out } = launch(['start', '--project-dir', project()]);
     expect(code).toBe(1);
-    expect(out.error).toMatch(/ryugi-artifacts 1\.9\.0 or newer/);
+    expect(out.error).toMatch(/ryugi-artifacts 1\.11\.0 or newer/);
     expect(out.error).toMatch(/retry/);
     expect(npm.views()).toHaveLength(1);
     expect(npm.installs()).toHaveLength(0);
