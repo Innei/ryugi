@@ -1,6 +1,6 @@
 ---
 name: artifacts
-description: Use when seeing decides faster than reading — UI directions or mockups to choose between, a page to tune or click through, a review, proposal, or architecture walkthrough — or when they ask for an artifact or artboard by name. Inside brainstorming or anywhere else
+description: Use when seeing decides faster than reading — UI directions or mockups to choose between, a page to tune or click through, a review, proposal, or architecture walkthrough — or when they ask for an artifact or artboard by name, or for a link to share one. Inside brainstorming or anywhere else
 ---
 
 # Artifacts
@@ -11,9 +11,9 @@ on, or one HTML page to click and tune. You write files into the project; a loca
 artifact at its own link and updates it the moment a file changes. They look,
 then answer in the terminal.
 
-**Local only.** Use this app even when your harness offers its own hosted
-artifact or publishing tool. If they ask for a public share link, say that
-isn't supported yet.
+**Local first.** Use this app even when your harness offers its own hosted
+artifact or publishing tool. When they want a link that opens outside this
+machine, publish it to Ryugi Cloud (see Share a link).
 
 ## Pick the type
 
@@ -98,6 +98,26 @@ bash app/start-server.sh --project-dir /path/to/project --artifact html/arrow-tu
 **Remote or containerized setups:** if the link is unreachable from their
 browser, bind a non-loopback host and name the host they reach it by:
 `--host 0.0.0.0 --url-host localhost`.
+
+## Share a link
+
+Publish when they want a link that works outside this machine. The server
+must be running.
+
+```bash
+bash app/publish.sh --project-dir /path/to/project --artifact html/arrow-tuner --public
+# {"type":"published","artifact":"html/arrow-tuner","url":"https://ryugi.innei.dev/a/…","visibility":"public"}
+```
+
+- Someone else will open it (a teammate, a reviewer): `--public`. Only they
+  will look: `--private`, which needs their sign-in. With neither flag the
+  artifact keeps its visibility; a new one is private.
+- Publishing again replaces what the same link shows.
+- Exit code 2 prints `{"type":"login-required","url":…}`: give them `url`,
+  wait until they say they signed in, then run the same command again.
+- `--unpublish` deletes the cloud copy and the link stops working. `--list`
+  and `--delete <cloud-id>` clean up copies published from other machines.
+- Exit code 1 with `reasons`: fix those warnings, then publish again.
 
 ## Directory
 
