@@ -1,24 +1,23 @@
 #!/usr/bin/env bash
 #
-# Render the Antigravity Marketplace logo from assets/logo/ryugi-icon.svg.
+# Render the Antigravity Marketplace logo from assets/ryugi-small.svg.
 #
 # Usage:
 #   scripts/render-antigravity-logo.sh [--output PATH]
 #
-# The mark is a raster painting (the kitsune crest) wrapped as an SVG, so this
-# is a plain 512x512 render of the icon tile, with the rounded corners keeping
-# their transparency. Run it whenever the icon changes;
-# tests/antigravity/test-logo.sh fails if the committed PNG is stale.
+# Draws the Ryugi mark in near-black on a white rounded square with
+# transparent corners, 512x512 PNG. Run it whenever ryugi-small.svg
+# changes; tests/antigravity/test-logo.sh fails if the committed PNG is stale.
 # Requires rsvg-convert (Homebrew: librsvg).
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-SOURCE_SVG="$REPO_ROOT/assets/logo/ryugi-icon.svg"
+SOURCE_SVG="$REPO_ROOT/assets/ryugi-small.svg"
 OUTPUT="$REPO_ROOT/assets/antigravity-logo.png"
 
 usage() {
-  sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'
+  sed -n '2,11p' "$0" | sed 's/^# \{0,1\}//'
 }
 
 die() {
@@ -46,7 +45,22 @@ done
 
 command -v rsvg-convert >/dev/null 2>&1 \
   || die "rsvg-convert is not on PATH (install librsvg, e.g. 'brew install librsvg')"
-[[ -r "$SOURCE_SVG" ]] || die "icon source not readable: $SOURCE_SVG"
+[[ -r "$SOURCE_SVG" ]] || die "source mark not readable: $SOURCE_SVG"
 
-rsvg-convert -w 512 -h 512 "$SOURCE_SVG" -o "$OUTPUT"
+# Everything inside the source <svg> element: the mark's paths and ellipse.
+mark="$(sed -E 's/^.*<svg[^>]*>//; s#</svg>.*$##' "$SOURCE_SVG")"
+[[ -n "$mark" ]] || die "could not extract the mark from $SOURCE_SVG"
+
+# The mark's bounding box is centered at (256,256) in its 512 viewBox and is
+# 348 units wide; scale 0.905 makes it ~70% of the 450-unit rounded square.
+composed="$(mktemp)"
+trap 'rm -f "$composed"' EXIT
+cat >"$composed" <<EOF
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect x="31" y="31" width="450" height="450" rx="100" ry="100" fill="#ffffff"/>
+  <g fill="#1a1a1a" transform="translate(256 256) scale(0.905) translate(-256 -256)">$mark</g>
+</svg>
+EOF
+
+rsvg-convert -w 512 -h 512 "$composed" -o "$OUTPUT"
 echo "wrote $OUTPUT"
