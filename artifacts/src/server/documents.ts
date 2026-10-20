@@ -65,6 +65,13 @@ export function createDocumentRegistry(options: RegistryOptions): DocumentRegist
   };
   const pushComments = (id: string) =>
     options.broadcast({ type: 'doc-comments', artifact: `document/${id}`, comments: commentStore(id).current() });
+  const syncComments = (id: string) => {
+    const store = commentStore(id);
+    const before = JSON.stringify(store.warnings());
+    if (!store.sync()) return;
+    pushComments(id);
+    if (JSON.stringify(store.warnings()) !== before) options.onWarningsChange(id);
+  };
 
   const create = async (id: string) => {
     if (!fs.existsSync(docFile(id))) return null;
@@ -121,13 +128,7 @@ export function createDocumentRegistry(options: RegistryOptions): DocumentRegist
       });
     },
     comments: (id) => commentStore(id).current(),
-    commentsChanged: (id) => {
-      const store = commentStore(id);
-      const before = JSON.stringify(store.warnings());
-      if (!store.sync()) return;
-      pushComments(id);
-      if (JSON.stringify(store.warnings()) !== before) options.onWarningsChange(id);
-    },
+    commentsChanged: syncComments,
     applyCommentOp: (id, op) => {
       const file = commentStore(id).apply(op);
       pushComments(id);
@@ -139,9 +140,8 @@ export function createDocumentRegistry(options: RegistryOptions): DocumentRegist
       return { threadId, ...(messageId ? { messageId } : {}) };
     },
     listComments: (id, agent, all) => {
-      const store = commentStore(id);
-      store.sync();
-      const file = store.current();
+      syncComments(id);
+      const file = commentStore(id).current();
       if (all) return file.threads.filter((t) => !t.messages.every((m) => m.deleted)).map(forAgent);
       const { threads, newest } = unreadThreads(file, cursors.get(id, agent));
       if (newest) cursors.set(id, agent, newest);

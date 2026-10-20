@@ -130,7 +130,7 @@ JSON
 dir="$(doc_project doc-unread)"
 write_doc_comments "$dir"
 out="$(run_hook "$dir" "继续")"
-expect "reminds about a document with unread comments" "$out" 'document/relay: 1 comment thread(s) changed since you last listed.'
+expect "reminds about a document with unread comments" "$out" 'Comment threads changed since you last listed: document/relay (1).'
 expect "gives the command that lists them" "$out" "skills/artifacts/app/ryugi-artifacts.cjs\" comment list --json --project-dir \"$dir\" --artifact document/relay"
 
 printf '{"Claude Code":"2026-10-21T08:00:00.000Z"}\n' > "$dir/.ryugi/artifacts/.state/document/relay/comment-cursors.json"
@@ -138,7 +138,7 @@ out="$(run_hook "$dir" "继续")"
 if [[ -z "$out" ]]; then pass "is quiet once the agent has listed past the changes"; else fail "is quiet once the agent has listed past the changes"; echo "$out" | sed 's/^/      /'; fi
 
 out="$(run_hook "$dir" "继续" CLAUDE_CODE_IS_COWORK=1)"
-expect "uses the Claude Cowork cursor under Cowork" "$out" 'document/relay: 1 comment thread(s) changed'
+expect "uses the Claude Cowork cursor under Cowork" "$out" 'document/relay (1)'
 
 dir="$(doc_project doc-selected)"
 cat > "$dir/.ryugi/artifacts/.state/document/relay/selection.json" <<'JSON'
@@ -159,8 +159,21 @@ fs.writeFileSync(process.argv[1], JSON.stringify({ artifact: "document/relay", u
 write_doc_comments "$dir"
 out="$(run_hook "$dir" "看看")"
 expect "keeps the artboard selection first" "$out" 'hero-2#12 <div>'
-expect "still reminds about comments in a crowded context" "$out" 'document/relay: 1 comment thread(s) changed'
+expect "still reminds about comments in a crowded context" "$out" 'document/relay (1)'
 if [[ "${#out}" -le 8200 ]]; then pass "stays within the context budget with documents"; else fail "stays within the context budget with documents (${#out})"; fi
+
+dir="$(doc_project many-docs)"
+write_selection "$dir"
+write_doc_comments "$dir"
+for n in $(seq 1 60); do
+    mkdir -p "$dir/.ryugi/artifacts/document/waiting-document-number-$n"
+    cp "$dir/.ryugi/artifacts/document/relay/comments.json" "$dir/.ryugi/artifacts/document/waiting-document-number-$n/comments.json"
+done
+out="$(run_hook "$dir" "看看")"
+expect "keeps the artboard selection when many documents wait on the agent" "$out" 'hero-2#12 <div>'
+expect "summarizes documents that do not fit" "$out" 'more document(s)'
+expect "names the command once for many documents" "$out" '--artifact document/<id>'
+if [[ "${#out}" -le 8200 ]]; then pass "stays within the context budget with many documents"; else fail "stays within the context budget with many documents (${#out})"; fi
 
 if grep -q '"UserPromptSubmit"' "$REPO_ROOT/hooks/hooks.json"; then pass "is registered in hooks.json"; else fail "is registered in hooks.json"; fi
 

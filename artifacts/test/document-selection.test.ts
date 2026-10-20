@@ -1,4 +1,5 @@
 import { expect, test } from 'vitest';
+import { DOCUMENT_SELECTION_LIMITS } from '../src/shared/selection';
 import { selectionContext } from '../src/viewer/document/selectionContext';
 
 const blocks = [
@@ -24,4 +25,11 @@ test('a selection made backwards gives the same blocks', () => {
 
 test('no heading above means an empty heading', () => {
   expect(selectionContext(blocks.slice(1), 0, 0)).toEqual({ blockIds: ['p1'], heading: '' });
+});
+
+test('a select-all in a long document keeps the first ids the server accepts', () => {
+  const long = Array.from({ length: 300 }, (_, i) => ({ id: `b${i}`, heading: false, text: '' }));
+  const { blockIds } = selectionContext(long, 0, 299);
+  expect(blockIds).toHaveLength(DOCUMENT_SELECTION_LIMITS.blockIds);
+  expect(blockIds[0]).toBe('b0');
 });

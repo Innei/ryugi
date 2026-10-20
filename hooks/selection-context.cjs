@@ -121,18 +121,32 @@ function documentIds(root) {
   }
 }
 
+const MAX_REMINDERS = 600;
+
 function commentReminders(project, root, key) {
-  const lines = [];
+  const waiting = [];
   for (const id of documentIds(root)) {
     const file = readJson(path.join(root, 'document', id, 'comments.json'));
     if (!file) continue;
     const cursors = readJson(path.join(root, '.state', 'document', id, 'comment-cursors.json'));
     const cursor = cursors && typeof cursors[key] === 'string' ? cursors[key] : null;
     const count = unreadThreadCount(file, cursor);
-    if (!count) continue;
-    lines.push(`document/${id}: ${count} comment thread(s) changed since you last listed. Run \`node "${LAUNCHER}" comment list --json --project-dir "${project}" --artifact document/${id}\`.`);
+    if (count) waiting.push({ id, count });
   }
-  return lines.join('\n');
+  if (!waiting.length) return '';
+  const target = waiting.length === 1 ? `document/${waiting[0].id}` : 'document/<id>';
+  const command = `List them with \`node "${LAUNCHER}" comment list --json --project-dir "${project}" --artifact ${target}\`.`;
+  const head = 'Comment threads changed since you last listed: ';
+  const named = [];
+  for (const [index, { id, count }] of waiting.entries()) {
+    const more = waiting.length - index - 1;
+    const next = [...named, `document/${id} (${count})`];
+    const tail = more ? `, and ${more} more document(s)` : '';
+    if (head.length + next.join(', ').length + tail.length + command.length + 2 > MAX_REMINDERS) break;
+    named.push(next.at(-1));
+  }
+  const left = waiting.length - named.length;
+  return `${head}${named.join(', ')}${left ? `${named.length ? ', and ' : ''}${left} more document(s)` : ''}.\n${command}`;
 }
 
 function documentSelections(project, root, budget) {
@@ -166,6 +180,7 @@ function main() {
   const reminders = commentReminders(project, root, cursorKey(process.env));
   const files = selectionFiles(state).sort((a, b) => String(b.value.updatedAt).localeCompare(String(a.value.updatedAt)));
   const sections = [];
+  // Reminders are capped at MAX_REMINDERS and reserved first so a large artboard selection cannot crowd them out.
   let left = MAX_CONTEXT - (reminders ? reminders.length + 2 : 0);
   for (const entry of files) {
     if (left <= 0) break;
