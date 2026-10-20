@@ -68,6 +68,14 @@ describe('updateArtifactConfig', () => {
     });
   });
 
+  test('keeps a cloud record that was created but never published', () => {
+    const dir = tempRyugiDir();
+    const file = path.join(dir, 'config.json');
+    const cloud = { id: 'k3x9', url: 'https://ryugi.innei.dev/a/k3x9', publishedAt: null, visibility: 'private' as const };
+    updateArtifactConfig(file, 'html/a', { cloud });
+    expect(readConfig(file).config.artifacts['html/a']).toEqual({ cloud });
+  });
+
   test('removes the cloud record when patched with null', () => {
     const dir = tempRyugiDir();
     const file = path.join(dir, 'config.json');

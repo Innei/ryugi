@@ -12,6 +12,10 @@ describe('publishState', () => {
     expect(publishState({ visibility: 'private', cloud })).toEqual({ published: true, visibility: 'private', url: cloud.url, synced: true });
   });
 
+  test('a cloud copy that was created but never got a version is not published', () => {
+    expect(publishState({ visibility: 'private', cloud: { ...cloud, publishedAt: null } })).toEqual({ published: false, visibility: 'private', url: null, synced: true });
+  });
+
   test('a hand-edited visibility that the cloud has not seen yet is out of sync', () => {
     expect(publishState({ visibility: 'public', cloud }).synced).toBe(false);
   });

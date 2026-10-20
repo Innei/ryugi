@@ -17,15 +17,20 @@ interface Recorded {
   method: string;
   path: string;
   auth: string | undefined;
-  meta?: Record<string, unknown>;
-  payload?: Record<string, any>;
-  files?: Record<string, string>;
-  json?: unknown;
+  json?: any;
+  body?: string;
+}
+
+interface StoredArtifact {
+  visibility: string;
+  blobs: Map<string, string>;
+  versions: { title: string; payload: Record<string, any>; files: { path: string; hash: string }[] }[];
 }
 
 interface FakeCloud {
   origin: string;
   requests: Recorded[];
+  store: Map<string, StoredArtifact>;
   respond: (req: Recorded) => { status: number; body?: unknown } | undefined;
   close(): Promise<void>;
 }
@@ -40,31 +45,30 @@ afterEach(async () => {
   clouds = [];
 });
 
+const sha256 = (data: Buffer | string) => crypto.createHash('sha256').update(data).digest('hex');
+
 async function fakeCloud(): Promise<FakeCloud> {
   let next = 0;
   const cloud: FakeCloud = {
     origin: '',
     requests: [],
+    store: new Map(),
     respond: () => undefined,
     close: () => new Promise((resolve) => server.close(() => resolve())),
   };
-  const server = http.createServer(async (req, res) => {
+  const server = http.createServer((req, res) => {
+    handle(req, res).catch((err: Error) => {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: `fake cloud: ${err.message}` }));
+    });
+  });
+  const handle = async (req: http.IncomingMessage, res: http.ServerResponse) => {
     const chunks: Buffer[] = [];
     for await (const chunk of req) chunks.push(chunk as Buffer);
     const body = Buffer.concat(chunks);
     const recorded: Recorded = { method: req.method ?? '', path: req.url ?? '', auth: req.headers.authorization };
-    const type = req.headers['content-type'] ?? '';
-    if (type.startsWith('multipart/form-data')) {
-      const form = await new Response(body, { headers: { 'content-type': type } }).formData();
-      recorded.meta = JSON.parse(String(form.get('meta')));
-      recorded.payload = JSON.parse(String(form.get('payload')));
-      recorded.files = {};
-      for (const [name, value] of form.entries()) {
-        if (name.startsWith('file:')) recorded.files[name.slice(5)] = await (value as Blob).text();
-      }
-    } else if (body.length > 0) {
-      recorded.json = JSON.parse(body.toString());
-    }
+    if ((req.headers['content-type'] ?? '').startsWith('application/json')) recorded.json = JSON.parse(body.toString());
+    else if (body.length > 0) recorded.body = body.toString();
     cloud.requests.push(recorded);
     const custom = cloud.respond(recorded);
     const reply = (status: number, value?: unknown) => {
@@ -72,26 +76,64 @@ async function fakeCloud(): Promise<FakeCloud> {
       res.end(value === undefined ? '' : JSON.stringify(value));
     };
     if (custom) return reply(custom.status, custom.body);
-    const visibility = (recorded.meta?.visibility ?? (recorded.json as { visibility?: string } | undefined)?.visibility ?? 'private') as string;
+    const artifactJson = (id: string) => {
+      const stored = cloud.store.get(id)!;
+      const version = stored.versions.length;
+      return { id, url: `${cloud.origin}/a/${id}`, visibility: stored.visibility, version: version || null, updatedAt: `2026-10-20T${String(7 + Math.max(version, 1)).padStart(2, '0')}:00:00.000Z` };
+    };
     if (req.method === 'POST' && req.url === '/api/artifacts') {
       const id = `cloud${++next}`;
-      return reply(200, { id, url: `${cloud.origin}/a/${id}`, visibility, updatedAt: '2026-10-20T08:00:00.000Z' });
+      cloud.store.set(id, { visibility: recorded.json.visibility, blobs: new Map(), versions: [] });
+      return reply(200, artifactJson(id));
+    }
+    const blob = /^\/api\/artifacts\/([^/]+)\/blobs\/([0-9a-f]{64})$/.exec(req.url ?? '');
+    if (blob && req.method === 'PUT') {
+      const stored = cloud.store.get(blob[1]!);
+      if (!stored) return reply(404, { error: 'artifact not found' });
+      if (sha256(body) !== blob[2]) return reply(400, { error: 'the body does not match its hash' });
+      stored.blobs.set(blob[2]!, body.toString());
+      return reply(204);
+    }
+    const versions = /^\/api\/artifacts\/([^/]+)\/versions$/.exec(req.url ?? '');
+    if (versions && req.method === 'POST') {
+      const stored = cloud.store.get(versions[1]!);
+      if (!stored) return reply(404, { error: 'artifact not found' });
+      const { title, payload, files, visibility } = recorded.json as { title: string; payload: Record<string, any>; files: { path: string; hash: string }[]; visibility?: string };
+      const missing = [...new Set(files.map((f) => f.hash))].filter((hash) => !stored.blobs.has(hash));
+      if (missing.length > 0) return reply(409, { error: 'missing files', missing });
+      stored.versions.push({ title, payload, files });
+      if (visibility) stored.visibility = visibility;
+      return reply(200, artifactJson(versions[1]!));
     }
     const match = /^\/api\/artifacts\/([^/]+)$/.exec(req.url ?? '');
-    if (match && (req.method === 'PUT' || req.method === 'PATCH')) {
-      return reply(200, { id: match[1], url: `${cloud.origin}/a/${match[1]}`, visibility, updatedAt: '2026-10-20T09:00:00.000Z' });
+    if (match && req.method === 'PATCH') {
+      const stored = cloud.store.get(match[1]!);
+      if (!stored) return reply(404, { error: 'artifact not found' });
+      stored.visibility = recorded.json.visibility;
+      return reply(200, artifactJson(match[1]!));
     }
-    if (match && req.method === 'DELETE') return reply(204);
+    if (match && req.method === 'DELETE') {
+      cloud.store.delete(match[1]!);
+      return reply(204);
+    }
     if (req.method === 'GET' && req.url === '/api/artifacts') return reply(200, { artifacts: [] });
     if (req.method === 'POST' && req.url === '/auth/cli/token') return reply(200, { token: 'new-token', login: 'innei' });
     if (req.method === 'POST' && req.url === '/api/logout') return reply(204);
     reply(404, { error: 'not found' });
-  });
+  };
   const port = await listen(server, '127.0.0.1', 0);
   cloud.origin = `http://127.0.0.1:${port}`;
   clouds.push(cloud);
   return cloud;
 }
+
+function latest(cloud: FakeCloud, id = 'cloud1') {
+  const stored = cloud.store.get(id)!;
+  const version = stored.versions.at(-1)!;
+  return { title: version.title, payload: version.payload, files: Object.fromEntries(version.files.map((f) => [f.path, stored.blobs.get(f.hash)!])) };
+}
+
+const requestLines = (cloud: FakeCloud, from = 0) => cloud.requests.slice(from).map((r) => `${r.method} ${r.path.replace(/[0-9a-f]{64}/, '<hash>')}`);
 
 async function start({ signedIn = true, writeDelayMs }: { signedIn?: boolean; writeDelayMs?: number } = {}) {
   const temp = tempRoot();
@@ -273,20 +315,22 @@ describe('publishing', () => {
     expect(cloud.requests).toEqual([]);
   });
 
-  test('first publish uploads the files privately and records the link', async () => {
+  test('first publish creates the artifact privately, uploads its files and records the link', async () => {
     const { server, root, cloud, configFile } = await start();
     writeHtml(root, 'a', { 'index.html': '<title>Arrow</title>', 'img/x.svg': '<svg/>', '.DS_Store': 'x' });
     const { status, json } = await call(server, 'POST', '/api/cloud/publish/html/a');
     expect(status).toBe(200);
     expect(json).toMatchObject({ id: 'cloud1', url: `${cloud.origin}/a/cloud1`, visibility: 'private' });
-    expect(cloud.requests[0]).toMatchObject({
-      method: 'POST',
-      path: '/api/artifacts',
-      auth: 'Bearer tok',
-      meta: { type: 'html', title: 'Arrow', visibility: 'private' },
-    });
-    expect(Object.keys(cloud.requests[0]!.files!).sort()).toEqual(['img/x.svg', 'index.html']);
-    expect(cloud.requests[0]!.files!['img/x.svg']).toBe('<svg/>');
+    expect(cloud.requests[0]).toMatchObject({ method: 'POST', path: '/api/artifacts', auth: 'Bearer tok', json: { type: 'html', visibility: 'private' } });
+    expect(requestLines(cloud)).toEqual([
+      'POST /api/artifacts',
+      'POST /api/artifacts/cloud1/versions',
+      'PUT /api/artifacts/cloud1/blobs/<hash>',
+      'PUT /api/artifacts/cloud1/blobs/<hash>',
+      'POST /api/artifacts/cloud1/versions',
+    ]);
+    expect(latest(cloud)).toMatchObject({ title: 'Arrow', files: { 'img/x.svg': '<svg/>', 'index.html': expect.stringContaining('Arrow') } });
+    expect(Object.keys(latest(cloud).files).sort()).toEqual(['img/x.svg', 'index.html']);
     expect(config(configFile).artifacts['html/a']).toEqual({
       visibility: 'private',
       cloud: { id: 'cloud1', url: `${cloud.origin}/a/cloud1`, publishedAt: '2026-10-20T08:00:00.000Z', visibility: 'private' },
@@ -297,10 +341,10 @@ describe('publishing', () => {
     const { server, root, cloud } = await start();
     writeHtml(root, 'a', { 'index.html': '<!doctype html><html><head><title>A</title></head><body><ryugi-slider></ryugi-slider></body></html>' });
     await call(server, 'POST', '/api/cloud/publish/html/a');
-    const page = cloud.requests[0]!.files!['index.html']!;
+    const page = latest(cloud).files['index.html']!;
     expect(page).toContain('<script defer src="/_ryugi/runtime/ryugi-ui.js"></script>');
     expect(page).toContain('ryugi:error');
-    expect(cloud.requests[0]!.payload).toEqual({ title: 'A' });
+    expect(latest(cloud).payload).toEqual({ title: 'A' });
   });
 
   test('an artboard is uploaded with the canvas and its computed layout', async () => {
@@ -308,41 +352,67 @@ describe('publishing', () => {
     const canvas = { version: 1, title: 'Board', pages: [{ id: 'p', name: 'P' }], boards: { a: { file: 'pages/p/a.html', page: 'p', x: 0, y: 0, w: 640, h: 400 } } };
     writeArtboard(root, 'b', canvas, { 'pages/p/a.html': '<p>a</p>' });
     await call(server, 'POST', '/api/cloud/publish/artboard/b');
-    const payload = cloud.requests[0]!.payload!;
+    const { payload, files } = latest(cloud);
     expect(payload.canvas).toEqual(canvas);
     expect(payload.layout.pages.p).toBeDefined();
     expect(Object.keys(payload.versions)).toEqual(['pages/p/a.html']);
-    expect(cloud.requests[0]!.files!['pages/p/a.html']).toContain('<p>a</p>');
+    expect(files['pages/p/a.html']).toContain('<p>a</p>');
   });
 
   test('a document is uploaded with its editor state parsed from doc.xml, without comments', async () => {
     const { server, root, cloud } = await start();
     writeDocument(root, 'd', { 'doc.xml': '<doc><h1>Design</h1><p>Hello</p></doc>', 'comments.json': '{"threads":[]}' });
     await call(server, 'POST', '/api/cloud/publish/document/d');
-    const { payload, files } = cloud.requests[0]!;
-    expect(payload!.title).toBe('Design');
-    expect(JSON.stringify(payload!.state.root)).toContain('Hello');
-    expect(Object.keys(files!)).toEqual(['doc.xml']);
+    const { payload, files } = latest(cloud);
+    expect(payload.title).toBe('Design');
+    expect(JSON.stringify(payload.state.root)).toContain('Hello');
+    expect(Object.keys(files)).toEqual(['doc.xml']);
   });
 
-  test('publishing again replaces the same cloud artifact', async () => {
+  test('publishing again unchanged adds a version to the same cloud artifact without uploading anything', async () => {
     const { server, root, cloud, configFile } = await start();
     writeHtml(root, 'a', { 'index.html': '<title>A</title>' });
     await call(server, 'POST', '/api/cloud/publish/html/a');
+    const before = cloud.requests.length;
     const { json } = await call(server, 'POST', '/api/cloud/publish/html/a');
-    expect(cloud.requests.map((r) => `${r.method} ${r.path}`)).toEqual(['POST /api/artifacts', 'PUT /api/artifacts/cloud1']);
+    expect(requestLines(cloud, before)).toEqual(['POST /api/artifacts/cloud1/versions']);
+    expect(cloud.store.get('cloud1')!.versions).toHaveLength(2);
     expect(json.url).toBe(`${cloud.origin}/a/cloud1`);
     expect(config(configFile).artifacts['html/a'].cloud.publishedAt).toBe('2026-10-20T09:00:00.000Z');
+  });
+
+  test('publishing again uploads only the files that changed', async () => {
+    const { server, root, cloud } = await start();
+    writeHtml(root, 'a', { 'index.html': '<title>A</title>', 'a.css': 'p{}', 'b.css': 'a{}' });
+    await call(server, 'POST', '/api/cloud/publish/html/a');
+    fs.writeFileSync(path.join(root, 'html', 'a', 'a.css'), 'p{color:red}');
+    const before = cloud.requests.length;
+    await call(server, 'POST', '/api/cloud/publish/html/a');
+    const uploads = cloud.requests.slice(before).filter((r) => r.method === 'PUT');
+    expect(uploads.map((r) => r.body)).toEqual(['p{color:red}']);
+    expect(latest(cloud).files['a.css']).toBe('p{color:red}');
   });
 
   test('publishing again after the cloud copy was deleted creates a new link', async () => {
     const { server, root, cloud, configFile } = await start();
     writeHtml(root, 'a', { 'index.html': '<title>A</title>' });
     await call(server, 'POST', '/api/cloud/publish/html/a');
-    cloud.respond = (r) => (r.method === 'PUT' ? { status: 404, body: { error: 'not found' } } : undefined);
+    cloud.store.delete('cloud1');
     const { json } = await call(server, 'POST', '/api/cloud/publish/html/a');
     expect(json.id).toBe('cloud2');
     expect(config(configFile).artifacts['html/a'].cloud.id).toBe('cloud2');
+  });
+
+  test('a first publish that fails after the artifact was created reuses it next time', async () => {
+    const { server, root, cloud, configFile } = await start();
+    writeHtml(root, 'a', { 'index.html': '<title>A</title>' });
+    cloud.respond = (r) => (r.path.endsWith('/versions') ? { status: 413, body: { error: 'artifact is 21.0 MB; the limit is 20.0 MB' } } : undefined);
+    expect((await call(server, 'POST', '/api/cloud/publish/html/a')).status).toBe(502);
+    expect(config(configFile).artifacts['html/a'].cloud).toMatchObject({ id: 'cloud1', publishedAt: null });
+    cloud.respond = () => undefined;
+    const { json } = await call(server, 'POST', '/api/cloud/publish/html/a');
+    expect(json.id).toBe('cloud1');
+    expect(cloud.requests.filter((r) => r.method === 'POST' && r.path === '/api/artifacts')).toHaveLength(1);
   });
 
   test('the visibility chosen in config is what gets published', async () => {
@@ -350,25 +420,26 @@ describe('publishing', () => {
     writeHtml(root, 'a', { 'index.html': '<title>A</title>' });
     fs.writeFileSync(configFile, JSON.stringify({ version: 1, artifacts: { 'html/a': { visibility: 'public' } } }));
     await call(server, 'POST', '/api/cloud/publish/html/a');
-    expect(cloud.requests[0]!.meta!.visibility).toBe('public');
+    expect(cloud.requests[0]!.json.visibility).toBe('public');
   });
 
   test('a visibility sent with a refused publish leaves the cloud copy as it was', async () => {
     const { server, root, cloud, configFile } = await start();
     writeHtml(root, 'a', { 'index.html': '<title>A</title>' });
     await call(server, 'POST', '/api/cloud/publish/html/a');
+    const before = cloud.requests.length;
     fs.rmSync(path.join(root, 'html', 'a', 'index.html'));
     expect((await call(server, 'POST', '/api/cloud/publish/html/a', { visibility: 'public' })).status).toBe(409);
-    expect(cloud.requests.map((r) => r.method)).toEqual(['POST']);
+    expect(cloud.requests).toHaveLength(before);
     expect(config(configFile).artifacts['html/a'].cloud.visibility).toBe('private');
   });
 
-  test('a visibility sent with a publish is uploaded with it', async () => {
+  test('a visibility sent with a first publish creates the artifact with it', async () => {
     const { server, root, cloud, configFile } = await start();
     writeHtml(root, 'a', { 'index.html': '<title>A</title>' });
     const { json } = await call(server, 'POST', '/api/cloud/publish/html/a', { visibility: 'public' });
     expect(json.visibility).toBe('public');
-    expect(cloud.requests[0]!.meta!.visibility).toBe('public');
+    expect(cloud.requests[0]!.json.visibility).toBe('public');
     expect(config(configFile).artifacts['html/a'].cloud.visibility).toBe('public');
   });
 
@@ -376,29 +447,32 @@ describe('publishing', () => {
     const { server, root, cloud, configFile } = await start();
     writeHtml(root, 'a', { 'index.html': '<title>A</title>' });
     await call(server, 'POST', '/api/cloud/publish/html/a');
-    cloud.respond = (r) =>
-      r.method === 'PUT' ? { status: 200, body: { id: 'cloud1', url: `${cloud.origin}/a/cloud1`, visibility: 'public', updatedAt: '2026-10-20T09:00:00.000Z' } } : undefined;
+    cloud.store.get('cloud1')!.visibility = 'public';
+    const before = cloud.requests.length;
     const { json } = await call(server, 'POST', '/api/cloud/publish/html/a');
-    expect(cloud.requests[1]!.meta).not.toHaveProperty('visibility');
+    expect(cloud.requests[before]!.json).not.toHaveProperty('visibility');
     expect(json.visibility).toBe('public');
     expect(config(configFile).artifacts['html/a']).toMatchObject({ visibility: 'public', cloud: { visibility: 'public' } });
   });
 
-  test('a republish with an explicit visibility still sends it', async () => {
+  test('a republish with an explicit visibility sends it with the version', async () => {
     const { server, root, cloud } = await start();
     writeHtml(root, 'a', { 'index.html': '<title>A</title>' });
     await call(server, 'POST', '/api/cloud/publish/html/a');
+    const before = cloud.requests.length;
     await call(server, 'POST', '/api/cloud/publish/html/a', { visibility: 'public' });
-    expect(cloud.requests[1]!.meta!.visibility).toBe('public');
+    expect(requestLines(cloud, before)).toEqual(['POST /api/artifacts/cloud1/versions']);
+    expect(cloud.requests[before]!.json.visibility).toBe('public');
   });
 
   test('a new link made after the cloud copy was deleted uses the local visibility', async () => {
     const { server, root, cloud, configFile } = await start();
     writeHtml(root, 'a', { 'index.html': '<title>A</title>' });
     await call(server, 'POST', '/api/cloud/publish/html/a', { visibility: 'public' });
-    cloud.respond = (r) => (r.method === 'PUT' ? { status: 404, body: { error: 'not found' } } : undefined);
+    cloud.store.delete('cloud1');
     await call(server, 'POST', '/api/cloud/publish/html/a');
-    expect(cloud.requests.map((r) => `${r.method} ${r.meta?.visibility}`)).toEqual(['POST public', 'PUT undefined', 'POST public']);
+    const creates = cloud.requests.filter((r) => r.method === 'POST' && r.path === '/api/artifacts');
+    expect(creates.map((r) => r.json.visibility)).toEqual(['public', 'public']);
     expect(config(configFile).artifacts['html/a'].cloud.id).toBe('cloud2');
   });
 
@@ -434,8 +508,8 @@ describe('publishing', () => {
     expect(update.status).toBe(204);
     expect(fs.readFileSync(docFile, 'utf8')).not.toContain('one, by hand');
     await call(server, 'POST', '/api/cloud/publish/document/d');
-    expect(cloud.requests[0]!.files!['doc.xml']).toContain('one, by hand');
-    expect(JSON.stringify(cloud.requests[0]!.payload!.state)).toContain('one, by hand');
+    expect(latest(cloud).files['doc.xml']).toContain('one, by hand');
+    expect(JSON.stringify(latest(cloud).payload.state)).toContain('one, by hand');
   });
 
   test('an artifact with warnings is not published', async () => {
@@ -478,7 +552,7 @@ describe('visibility and unpublishing', () => {
     await call(server, 'POST', '/api/cloud/publish/html/a');
     const { status } = await call(server, 'POST', '/api/cloud/visibility/html/a', { visibility: 'public' });
     expect(status).toBe(200);
-    expect(cloud.requests[1]).toMatchObject({ method: 'PATCH', path: '/api/artifacts/cloud1', json: { visibility: 'public' } });
+    expect(cloud.requests.at(-1)).toMatchObject({ method: 'PATCH', path: '/api/artifacts/cloud1', json: { visibility: 'public' } });
     expect(config(configFile).artifacts['html/a'].visibility).toBe('public');
     expect(config(configFile).artifacts['html/a'].cloud.visibility).toBe('public');
   });
@@ -502,7 +576,7 @@ describe('visibility and unpublishing', () => {
     writeHtml(root, 'a', { 'index.html': '<title>A</title>' });
     await call(server, 'POST', '/api/cloud/publish/html/a');
     expect((await call(server, 'DELETE', '/api/cloud/publish/html/a')).status).toBe(200);
-    expect(cloud.requests[1]).toMatchObject({ method: 'DELETE', path: '/api/artifacts/cloud1' });
+    expect(cloud.requests.at(-1)).toMatchObject({ method: 'DELETE', path: '/api/artifacts/cloud1' });
     expect(config(configFile).artifacts['html/a']).toEqual({ visibility: 'private' });
   });
 
@@ -517,7 +591,7 @@ describe('visibility and unpublishing', () => {
     writeHtml(root, 'a', { 'index.html': '<title>A</title>' });
     await call(server, 'POST', '/api/cloud/publish/html/a');
     expect((await call(server, 'DELETE', '/api/cloud/artifacts/cloud1')).status).toBe(200);
-    expect(cloud.requests[1]).toMatchObject({ method: 'DELETE', path: '/api/artifacts/cloud1' });
+    expect(cloud.requests.at(-1)).toMatchObject({ method: 'DELETE', path: '/api/artifacts/cloud1' });
     expect(config(configFile).artifacts['html/a'].cloud).toBeUndefined();
   });
 });

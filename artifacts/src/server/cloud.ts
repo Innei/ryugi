@@ -35,6 +35,7 @@ interface CloudArtifact {
 }
 
 const LOGIN_STATE_TTL_MS = 10 * 60 * 1000;
+const UPLOAD_CONCURRENCY = 6;
 const MAX_JSON_BODY = 4096;
 const CLOUD_ID = /^[A-Za-z0-9_-]{1,64}$/;
 const ROUTE = /^\/api\/cloud\/(status|login|logout|artifacts|publish|visibility)(?:\/([^/]+)(?:\/([^/]+))?)?$/;
@@ -89,13 +90,15 @@ export function createCloudRoutes(options: CloudRoutesOptions) {
     return `${origin}/auth/cli?port=${options.port()}&state=${state}&challenge=${challenge}`;
   };
 
-  const cloudFetch = async (method: string, path: string, body?: FormData | object) => {
+  const cloudFetch = async (method: string, path: string, body?: Uint8Array<ArrayBuffer> | object) => {
     const credentials = readCredentials(credentialsFile, origin);
     if (!credentials) throw new SignedOut();
     const headers: Record<string, string> = { Authorization: `Bearer ${credentials.token}` };
     let payload: BodyInit | undefined;
-    if (body instanceof FormData) payload = body;
-    else if (body) {
+    if (body instanceof Uint8Array) {
+      headers['Content-Type'] = 'application/octet-stream';
+      payload = body;
+    } else if (body) {
       headers['Content-Type'] = 'application/json';
       payload = JSON.stringify(body);
     }
@@ -128,15 +131,44 @@ export function createCloudRoutes(options: CloudRoutesOptions) {
     }
     const key = `${ref.type}/${ref.id}`;
     const entry = artifactEntry(key);
-    const upload = (visibility: Visibility | undefined) => {
-      const form = new FormData();
-      form.set('meta', JSON.stringify({ type: ref.type, title: inspected.title, ...(visibility ? { visibility } : {}) }));
-      form.set('payload', JSON.stringify(inspected.payload));
-      for (const file of files) form.set(`file:${file.path}`, new Blob([new Uint8Array(file.data)]), file.path);
-      return form;
+    const hashed = files.map((file) => ({ ...file, hash: crypto.createHash('sha256').update(file.data).digest('hex') }));
+    const byHash = new Map(hashed.map((file) => [file.hash, file.data]));
+    const manifest = hashed.map(({ path, hash }) => ({ path, hash }));
+    const version = (visibility: Visibility | undefined) => ({ title: inspected.title, payload: inspected.payload, files: manifest, ...(visibility ? { visibility } : {}) });
+
+    const create = async () => {
+      const res = await cloudFetch('POST', '/api/artifacts', { type: ref.type, visibility: requested ?? entry.visibility ?? 'private' });
+      const created = (await (await expectOk(res)).json()) as CloudArtifact;
+      updateArtifactConfig(configFile, key, {
+        visibility: created.visibility,
+        cloud: { id: created.id, url: created.url, publishedAt: null, visibility: created.visibility },
+      });
+      return created.id;
     };
-    let res = entry.cloud ? await cloudFetch('PUT', `/api/artifacts/${entry.cloud.id}`, upload(requested)) : null;
-    if (!res || res.status === 404) res = await cloudFetch('POST', '/api/artifacts', upload(requested ?? entry.visibility ?? 'private'));
+
+    const upload = async (id: string, hashes: string[]) => {
+      for (let i = 0; i < hashes.length; i += UPLOAD_CONCURRENCY) {
+        await Promise.all(
+          hashes.slice(i, i + UPLOAD_CONCURRENCY).map(async (hash) => {
+            const data = byHash.get(hash);
+            if (!data) throw new CloudRefused(502, `cloud asked for a file this artifact does not have (${hash})`);
+            await expectOk(await cloudFetch('PUT', `/api/artifacts/${id}/blobs/${hash}`, new Uint8Array(data)));
+          }),
+        );
+      }
+    };
+
+    const commit = async (id: string, visibility: Visibility | undefined) => {
+      const res = await cloudFetch('POST', `/api/artifacts/${id}/versions`, version(visibility));
+      if (res.status !== 409) return res;
+      const { missing } = (await res.clone().json().catch(() => ({}))) as { missing?: unknown };
+      if (!Array.isArray(missing)) return res;
+      await upload(id, missing as string[]);
+      return cloudFetch('POST', `/api/artifacts/${id}/versions`, version(visibility));
+    };
+
+    let res = entry.cloud ? await commit(entry.cloud.id, requested) : await commit(await create(), undefined);
+    if (res.status === 404 && entry.cloud) res = await commit(await create(), undefined);
     const published = (await (await expectOk(res)).json()) as CloudArtifact;
     updateArtifactConfig(configFile, key, {
       visibility: published.visibility,

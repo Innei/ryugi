@@ -26,24 +26,20 @@ let configHome = '';
 
 beforeEach(async () => {
   seen = [];
+  let visibility = 'private';
   configHome = fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-xdg-'));
   cloud = http.createServer(async (req, res) => {
     const chunks: Buffer[] = [];
     for await (const chunk of req) chunks.push(chunk as Buffer);
     const body = Buffer.concat(chunks);
     const entry: Seen = { method: req.method ?? '', path: req.url ?? '' };
-    const type = req.headers['content-type'] ?? '';
-    if (type.startsWith('multipart/form-data')) {
-      const form = await new Response(body, { headers: { 'content-type': type } }).formData();
-      entry.visibility = JSON.parse(String(form.get('meta'))).visibility;
-    } else if (body.length > 0) {
-      entry.visibility = JSON.parse(body.toString()).visibility;
-    }
+    if ((req.headers['content-type'] ?? '').startsWith('application/json')) entry.visibility = JSON.parse(body.toString()).visibility;
+    if (entry.visibility) visibility = entry.visibility;
     seen.push(entry);
     res.writeHead(entry.method === 'DELETE' ? 204 : 200, { 'Content-Type': 'application/json' });
     if (entry.method === 'GET') res.end(JSON.stringify({ artifacts: [{ id: 'c1' }] }));
     else if (entry.method === 'DELETE') res.end();
-    else res.end(JSON.stringify({ id: 'c1', url: `${cloudOrigin}/a/c1`, visibility: entry.visibility, updatedAt: '2026-10-20T08:00:00.000Z' }));
+    else res.end(JSON.stringify({ id: 'c1', url: `${cloudOrigin}/a/c1`, visibility, updatedAt: '2026-10-20T08:00:00.000Z' }));
   });
   cloudOrigin = `http://127.0.0.1:${await listen(cloud, '127.0.0.1', 0)}`;
 });
@@ -90,14 +86,14 @@ describe('publish.sh', () => {
     const { code, out } = await run(publish, ['--project-dir', dir, '--artifact', 'html/arrow']);
     expect(code).toBe(0);
     expect(out).toMatchObject({ type: 'published', artifact: 'html/arrow', url: `${cloudOrigin}/a/c1`, visibility: 'private' });
-    expect(seen.map((s) => `${s.method} ${s.path}`)).toEqual(['POST /api/artifacts']);
+    expect(seen.map((s) => `${s.method} ${s.path}`)).toEqual(['POST /api/artifacts', 'POST /api/artifacts/c1/versions']);
   });
 
   test('--public sets the visibility before publishing', async () => {
     const dir = await project();
     const { out } = await run(publish, ['--project-dir', dir, '--artifact', 'html/arrow', '--public']);
     expect(out.visibility).toBe('public');
-    expect(seen.at(-1)!.visibility).toBe('public');
+    expect(seen.find((s) => s.path === '/api/artifacts')!.visibility).toBe('public');
   });
 
   test('prints a sign-in link and exits 2 when not signed in', async () => {

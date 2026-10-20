@@ -3,7 +3,7 @@ export type Visibility = 'private' | 'public';
 export interface CloudRecord {
   id: string;
   url: string;
-  publishedAt: string;
+  publishedAt: string | null;
   visibility: Visibility;
 }
 
@@ -32,5 +32,6 @@ export const isVisibility = (value: unknown): value is Visibility => value === '
 export function publishState(entry: ArtifactConfig | undefined): PublishState {
   const visibility = entry?.visibility ?? 'private';
   const cloud = entry?.cloud;
-  return { published: !!cloud, visibility, url: cloud?.url ?? null, synced: !cloud || cloud.visibility === visibility };
+  const published = !!cloud?.publishedAt;
+  return { published, visibility, url: published ? cloud.url : null, synced: !published || cloud.visibility === visibility };
 }

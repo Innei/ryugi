@@ -20,7 +20,7 @@ const defaults = (): RyugiConfig => ({ version: 1, artifacts: {} });
 function isCloudRecord(value: unknown): value is CloudRecord {
   if (typeof value !== 'object' || value === null) return false;
   const { id, url, publishedAt, visibility } = value as Record<string, unknown>;
-  return typeof id === 'string' && typeof url === 'string' && typeof publishedAt === 'string' && isVisibility(visibility);
+  return typeof id === 'string' && typeof url === 'string' && (typeof publishedAt === 'string' || publishedAt === null) && isVisibility(visibility);
 }
 
 function normalize(raw: unknown): RyugiConfig {
