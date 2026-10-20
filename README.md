@@ -1,270 +1,80 @@
-# Ryugi 流儀
+<p align="center">
+  <img src="assets/logo/ryugi.png" width="104" alt="Ryugi">
+</p>
 
-Ryugi (りゅうぎ, "one's own way of doing things") is a software development workflow for coding agents: a small set of composable skills plus a bootstrap that makes sure your agent uses them. It started as a fork of [Superpowers](https://github.com/obra/superpowers) and was reshaped around one workflow: brainstorm with mockups, approve a spec, build it inline under TDD.
+<h1 align="center">Ryugi 流儀</h1>
 
-## Table of Contents
+<p align="center">Brainstorm with mockups. Approve a spec. Build it inline under TDD.</p>
 
-- [How it works](#how-it-works)
-- [Getting Started](#installation)
-  - [Claude Code](#claude-code)
-  - [Antigravity](#antigravity)
-  - [Codex, Cursor](#codex-cursor)
-  - [Devin CLI](#devin-cli)
-  - [Factory Droid](#factory-droid)
-  - [Gemini CLI](#gemini-cli)
-  - [Kimi Code](#kimi-code)
-  - [OpenCode](#opencode)
-  - [Pi](#pi)
-  - [Qwen Code](#qwen-code)
-  - [Hermes Agent](#hermes-agent)
-  - [Muse](#muse)
-- [The Basic Workflow](#the-basic-workflow)
-- [Credits](#credits)
-- [What's Inside](#whats-inside)
-- [Philosophy](#philosophy)
-- [Contributing](#contributing)
-- [Updating](#updating)
-- [License](#license)
+Ryugi (りゅうぎ, "one's own way of doing things") is a software development workflow for coding agents: a few composable skills plus a bootstrap that makes sure your agent uses them. It started as a fork of [Superpowers](https://github.com/obra/superpowers) v7.0.0 and was reshaped around a single workflow.
 
 ## How it works
 
-It starts from the moment you fire up your coding agent. As soon as it sees that you're building something, it *doesn't* just jump into trying to write code. Instead, it steps back and asks you what you're really trying to do. 
+Your agent doesn't jump into code. It asks what you're really trying to do, pulls a spec out of the conversation, and plays it back in chunks short enough to read.
 
-Once it's teased a spec out of the conversation, it shows it to you in chunks short enough to actually read and digest. 
+When seeing beats reading, it opens a local artifact: a document for architecture, reviews and proposals; an artboard to compare mockups across several dimensions; or one HTML page — a test bench with sliders, a focused design study — that updates live as the agent rewrites it. HTML artifacts can use a bundled Web Component kit (Lobe UI buttons, inputs, sliders, switches, cards) so a test bench looks like the product and keeps its settings across rewrites. Everything runs locally; no subscription.
 
-When it helps to see things, it opens an artifact in your browser: a document for architecture, reviews and proposals; an artboard for a business space with several dimensions to choose between; or a single HTML page — a test bench with sliders or a focused design study — that updates live as the agent rewrites it. HTML artifacts can use a bundled Web Component kit (Lobe UI buttons, inputs, sliders, switches, cards and more), so a test bench looks like the product and keeps its settings across rewrites. Everything runs locally; no subscription.
-
-After you've signed off on the design, it asks one question: build it inline from the spec, or just code it. Inline, your agent slices the spec into tasks itself, proves each one with true red/green TDD, keeps a ledger of every judgment call it made on your behalf, and gets one fresh review of the whole branch at the end. It's not uncommon for your agent to work autonomously for a couple hours at a time without stopping to ask "should I continue?".
-
-There's a bunch more to it, but that's the core of the system. And because the skills trigger automatically, you don't need to do anything special. Your coding agent just has Ryugi.
-
-## Installation
-
-Ryugi is not listed in any harness's official marketplace; install it from this repository. If you use more than one harness, install it in each.
-
-### Claude Code
-
-- Register this repository as a marketplace:
-
-  ```bash
-  /plugin marketplace add Innei/ryugi
-  ```
-
-- Install the plugin:
-
-  ```bash
-  /plugin install ryugi@ryugi-dev
-  ```
-
-### Antigravity
-
-Install Ryugi as a plugin from this repository:
-
-```bash
-agy plugin install https://github.com/Innei/ryugi
+```mermaid
+flowchart LR
+  I[Idea] --> B[brainstorming]
+  B --> A[artifacts<br/>artboard · document · html]
+  A --> S[Approved spec]
+  S --> E[executing-specs]
+  E --> T[per-task TDD]
+  T --> R[one fresh review] --> L[you land it]
 ```
 
-Antigravity lists each installed skill's description, and the description of
-the `using-ryugi` skill prompts the model to load that skill at the start
-of a conversation. Reinstall with the same command to update.
+After you sign off, it asks one question: build it inline from the spec, or just code it. Inline, your agent slices the spec into tasks, proves each with true red/green TDD, keeps a ledger of every judgment call across compaction, gets one fresh review of the whole branch, then reports how to land it — squash (default), rebase, PR, or keep. Never a merge commit.
 
-### Codex, Cursor
+Two-hour autonomous stretches without "should I continue?" are normal. Because the skills trigger automatically, there is nothing to invoke.
 
-The repository carries the manifests (`.codex-plugin/`, `.agents/plugins/marketplace.json`, `.cursor-plugin/`), but Ryugi is not in either official marketplace. Add this repository as a local plugin source following your harness's plugin docs.
+## Install
 
-### Devin CLI
+Install from this repository; Ryugi is in no harness's official marketplace. If you use several harnesses, install it in each. [docs/install.md](docs/install.md) has update commands, caveats, and per-harness detail.
 
-- Install the plugin from this repository:
+| Harness | Command |
+|---|---|
+| Claude Code | `/plugin marketplace add Innei/ryugi` then `/plugin install ryugi@ryugi-dev` |
+| Antigravity | `agy plugin install https://github.com/Innei/ryugi` |
+| Codex, Cursor | Add this repo as a local plugin source ([detail](docs/install.md#codex-cursor)) |
+| Devin CLI | `devin plugins install Innei/ryugi` |
+| Factory Droid | `droid plugin marketplace add https://github.com/Innei/ryugi` then `droid plugin install ryugi@ryugi` |
+| Gemini CLI | `gemini extensions install https://github.com/Innei/ryugi` |
+| Kimi Code | `/plugins install https://github.com/Innei/ryugi` |
+| OpenCode | [.opencode/INSTALL.md](.opencode/INSTALL.md) |
+| Pi | `pi install git:github.com/Innei/ryugi` |
+| Qwen Code | `qwen extensions install Innei/ryugi` |
+| Hermes Agent | `hermes plugins install Innei/ryugi --enable` |
+| Muse | `muse plugins install ./` then `muse plugins approve ryugi` |
 
-  ```bash
-  devin plugins install Innei/ryugi
-  ```
+Verify with a clean session: send `Let's make a react todo list`. A working install triggers `brainstorming` before any code is written.
 
-- Update to the latest version with:
+## The workflow
 
-  ```bash
-  devin plugins update ryugi
-  ```
-
-### Factory Droid
-
-- Register the marketplace:
-
-  ```bash
-  droid plugin marketplace add https://github.com/Innei/ryugi
-  ```
-
-- Install the plugin:
-
-  ```bash
-  droid plugin install ryugi@ryugi
-  ```
-
-### Gemini CLI
-
-- Install the extension:
-
-  ```bash
-  gemini extensions install https://github.com/Innei/ryugi
-  ```
-
-- Update later:
-
-  ```bash
-  gemini extensions update ryugi
-  ```
-
-### Kimi Code
-
-- Install directly from this repository:
-
-  ```text
-  /plugins install https://github.com/Innei/ryugi
-  ```
-
-- Detailed docs: [docs/README.kimi.md](docs/README.kimi.md)
-
-### OpenCode
-
-OpenCode uses its own plugin install; install Ryugi separately even if you
-already use it in another harness.
-
-- Tell OpenCode:
-
-  ```
-  Fetch and follow instructions from https://raw.githubusercontent.com/Innei/ryugi/refs/heads/main/.opencode/INSTALL.md
-  ```
-
-- Detailed docs: [docs/README.opencode.md](docs/README.opencode.md)
-
-### Pi
-
-Install Ryugi as a Pi package from this repository:
-
-```bash
-pi install git:github.com/Innei/ryugi
-```
-
-For local development, run Pi with this checkout loaded as a temporary package:
-
-```bash
-pi -e /path/to/ryugi
-```
-
-The Pi package loads the Ryugi skills and a small extension that injects the `using-ryugi` bootstrap at session startup and again after compaction. Pi has native skills, so no compatibility `Skill` tool is required. Subagent and task-list tools remain optional Pi companion packages.
-
-### Qwen Code
-
-Qwen Code installs plugins from Claude Code marketplaces directly.
-
-- Install the plugin from this repository, and pick `ryugi` when prompted:
-
-  ```bash
-  qwen extensions install Innei/ryugi
-  ```
-
-- Update later:
-
-  ```bash
-  qwen extensions update ryugi
-  ```
-
-### Hermes Agent
-
-Install Ryugi as a Hermes plugin from this repository:
-
-```bash
-hermes plugins install Innei/ryugi --enable
-```
-
-Restart any active Hermes sessions after installing. Note: Hermes has no
-post-compaction hook, so a very long session that compacts over its first
-turn loses the bootstrap — start a fresh session if skills stop triggering.
-
-### Muse
-
-Ryugi is available as a native Muse plugin — same repo, same skills, all harnesses. The `using-ryugi` bootstrap is injected via the native `SessionStart` hook alongside Claude Code, Codex, Cursor, Gemini, Pi, and the rest — no per-session opt-in.
-
-- Install from a local checkout:
-
-  ```bash
-  muse plugins install ./
-  muse plugins approve ryugi
-  ```
-
-  Or clone and install:
-
-  ```bash
-  git clone https://github.com/Innei/ryugi.git
-  muse plugins install ./ryugi
-  muse plugins approve ryugi
-  ```
-
-- Update later:
-
-  ```bash
-  muse plugins update ryugi
-  ```
-
-Restart any active Muse sessions after installing so the `SessionStart` hook takes effect — skills are active immediately, hooks require approval on first install. To verify, start a fresh session and send `Let's make a react todo list` — a working install auto-triggers `brainstorming` before any code is written. Version is tracked in `.version-bump.json` so `scripts/bump-version.sh` keeps it in sync.
-
-## The Basic Workflow
-
-1. **brainstorming** - Activates before building anything. Draws out what you actually want, and why, through questions that get you describing it, then plays its understanding back for correction. Shows mockups on the Artboard when seeing beats reading. Small changes get agreed in chat; projects get a written design document a builder could build from.
-
-2. **executing-specs** - Activates when you approve the spec and choose inline. Slices the spec into tasks, implements each under TDD with a ledger that survives compaction, records every judgment call as a ruling, gets one fresh review of the whole branch, then stops and reports with the ways to land it: squash (default), rebase, PR, or keep. Never a merge commit; you choose.
-
-3. **test-driven-development** - Activates during implementation. Enforces RED-GREEN-REFACTOR: write failing test, watch it fail, write minimal code, watch it pass, commit.
-
-4. **systematic-debugging** - Activates on a bug or unexpected behavior. Root cause before fixes.
-
-5. **using-git-worktrees** - Activates when you want isolation. Follows your stated preference; asks when there is none.
-
-6. **artifacts** - Activates when something is clearer to look at than to read, in brainstorming or anywhere else. Artboards of mockups, live HTML pages, and a bundled Web Component UI kit, each at its own local link.
+1. **brainstorming** — activates before building anything. Draws out what you actually want and why, then plays its understanding back for correction. Small changes get agreed in chat; projects get a design document a builder could build from.
+2. **executing-specs** — activates when you approve the spec and choose inline. Slices the spec into tasks, implements each under TDD with a ledger that survives compaction, records every judgment call as a ruling, gets one fresh review, then stops and reports.
+3. **test-driven-development** — activates during implementation. RED-GREEN-REFACTOR: failing test, watch it fail, minimal code, watch it pass, commit.
+4. **systematic-debugging** — activates on a bug or unexpected behavior. Root cause before fixes.
+5. **using-git-worktrees** — activates when you want isolation. Follows your stated preference; asks when there is none.
+6. **artifacts** — activates when something is clearer to look at than to read, in brainstorming or anywhere else. Artboards, live HTML pages, and a bundled Web Component kit, each at its own local link.
 
 **Your project's own skills come first at their step** — a design system before mockups, a verify skill before reporting, a ship skill for merging. Ryugi sets the process; your project carries its domain.
 
-**The agent checks for relevant skills before any task.** Mandatory workflows, not suggestions.
+## What's inside
+
+- **Process** — `brainstorming`, `artifacts`, `executing-specs`
+- **Discipline** — `test-driven-development`, `systematic-debugging`
+- **Workspace** — `using-git-worktrees`
+- **Meta** — `using-ryugi` (bootstrap, plus evidence before claims)
+
+`writing-skills` — creating and testing skills — lives at `.claude/skills/writing-skills/` and loads only when you work on Ryugi itself.
 
 ## Credits
 
-Ryugi is a fork of [Superpowers](https://github.com/obra/superpowers) v7.0.0 by Jesse Vincent and [Prime Radiant](https://primeradiant.com), used under the MIT License. [UPSTREAM.md](UPSTREAM.md) records the baseline and how to follow upstream changes. The skill design, the TDD and debugging disciplines, and most of the harness integrations come from there.
+Ryugi is a fork of [Superpowers](https://github.com/obra/superpowers) v7.0.0 by Jesse Vincent and [Prime Radiant](https://primeradiant.com), used under the MIT License. [UPSTREAM.md](UPSTREAM.md) records the baseline and how to port upstream changes. The skill design, the TDD and debugging disciplines, and most harness integrations come from there.
 
-- **Issues**: https://github.com/Innei/ryugi/issues
-
-## What's Inside
-
-### Skills Library
-
-**Process**
-- **brainstorming** - Drawing out intent before building
-- **artifacts** - Local artifacts at their own links: artboards of mockups, live HTML pages, and the `ryugi-*` component kit
-- **executing-specs** - Build an approved spec inline: one context, one ledger, one final review
-
-**Discipline**
-- **test-driven-development** - RED-GREEN-REFACTOR cycle (includes testing anti-patterns reference)
-- **systematic-debugging** - 4-phase root cause process (includes root-cause-tracing, defense-in-depth, condition-based-waiting techniques)
-
-**Workspace**
-- **using-git-worktrees** - Isolated workspaces, and cleaning them up
-
-**Meta**
-- **using-ryugi** - Introduction to the skills system, plus evidence before claims
-
-`writing-skills` (creating and testing skills) lives in this repo at `.claude/skills/writing-skills/` and loads only when you work on Ryugi itself.
-
-## Contributing
-
-1. Fork the repository and create a branch
-2. Follow the repo-local `writing-skills` skill (`.claude/skills/writing-skills/SKILL.md`) for creating and testing new and modified skills
-3. Open a PR against `main`, filling in the pull request template
-
-Plugin-infrastructure tests live at `tests/` and run via the relevant `run-*.sh` or `npm test`.
-
-## Updating
-
-Ryugi updates are somewhat coding-agent dependent, but are often automatic.
+Bug reports and ideas: [Issues](https://github.com/Innei/ryugi/issues). Contributions: fork, branch, follow the repo-local `writing-skills` skill, open a PR against `main` with the template filled in. Plugin infrastructure tests live in `tests/`; [docs/testing.md](docs/testing.md) lists what each suite covers.
 
 ## License
 
-MIT License - see LICENSE file for details
+MIT — see [LICENSE](LICENSE).
