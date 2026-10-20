@@ -1,7 +1,7 @@
 import { ActionIcon, DropdownMenu, Popover } from '@lobehub/ui';
 import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
-import { Check, ChevronDown, Hand, MousePointer2 } from 'lucide-react';
+import { Check, ChevronDown, Hand, MousePointer2, PanelRight } from 'lucide-react';
 import type { PageSpec } from '../../shared/types';
 import type { Tool } from '../hooks/usePanZoom';
 import { PublishMenu } from './PublishMenu';
@@ -116,9 +116,11 @@ interface TopRightBarProps {
   onZoomOut: () => void;
   onFit: () => void;
   onActualSize: () => void;
+  inspectorOpen: boolean;
+  onToggleInspector: () => void;
 }
 
-export function TopRightBar({ artifact, live, warnings, zoom, onZoomIn, onZoomOut, onFit, onActualSize }: TopRightBarProps) {
+export function TopRightBar({ artifact, live, warnings, zoom, onZoomIn, onZoomOut, onFit, onActualSize, inspectorOpen, onToggleInspector }: TopRightBarProps) {
   const hint = (text: string) => <span {...stylex.props(styles.hint)}>{text}</span>;
   return (
     <div data-chrome {...stylex.props(styles.bar, styles.right)}>
@@ -144,6 +146,7 @@ export function TopRightBar({ artifact, live, warnings, zoom, onZoomIn, onZoomOu
         </Popover>
       )}
       <span {...stylex.props(styles.divider)} />
+      <ActionIcon icon={PanelRight} size="small" active={inspectorOpen} aria-label="Toggle inspector" aria-pressed={inspectorOpen} title="Inspector" onClick={onToggleInspector} />
       <DropdownMenu
         placement="bottomRight"
         items={[

@@ -119,9 +119,9 @@ const UI_META = /<meta[^>]+name=["']ryugi-ui["'][^>]*>/i;
 
 export function injectRuntime(html: string, options: { uiRuntimeUrl?: string; embedded?: boolean; inspector?: boolean } = {}): string {
   const inspect = options.inspector ? `;(${installInspector.toString().replace(/\n/g, ' ')})(window,${JSON.stringify(INSPECTOR_PROPERTIES)});` : '';
-  const tag = `${options.embedded ? EMBEDDED_STYLE : ''}<script>${RUNTIME_LINE}${inspect}</script>`;
+  const tag = `${options.embedded ? EMBEDDED_STYLE : ''}<script>${inspect || RUNTIME_LINE}</script>`;
   const ui =
-    options.uiRuntimeUrl && (UI_MARKER.test(html) || UI_META.test(html))
+    options.uiRuntimeUrl && !options.inspector && (UI_MARKER.test(html) || UI_META.test(html))
       ? `<script defer src="${options.uiRuntimeUrl.replace(/"/g, '&quot;')}"></script>`
       : '';
   const head = HEAD.exec(html);

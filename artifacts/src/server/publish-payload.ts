@@ -18,12 +18,12 @@ export function publishPayload(ref: ArtifactRef, dir: string, title: string, pay
 }
 
 const isPage = (type: ArtifactRef['type'], file: string) =>
-  type === 'html' ? file === 'index.html' : type === 'document' && file.endsWith('.html');
+  type === 'html' ? file === 'index.html' : (type === 'document' || type === 'artboard') && file.endsWith('.html');
 
 export function withCloudRuntime(type: ArtifactRef['type'], files: PackedFile[]): PackedFile[] {
   return files.map((file) =>
     isPage(type, file.path)
-      ? { path: file.path, data: Buffer.from(injectRuntime(file.data.toString('utf8'), { uiRuntimeUrl: CLOUD_RUNTIME_URL, embedded: type === 'document' })) }
+      ? { path: file.path, data: Buffer.from(injectRuntime(file.data.toString('utf8'), { uiRuntimeUrl: CLOUD_RUNTIME_URL, embedded: type === 'document', inspector: type === 'artboard' })) }
       : file,
   );
 }

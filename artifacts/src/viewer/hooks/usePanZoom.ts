@@ -35,7 +35,7 @@ export function usePanZoom(tool: Tool) {
   }, [wheelAt]);
 
   useEffect(() => {
-    const isTyping = (e: KeyboardEvent) => (e.target as HTMLElement | null)?.closest?.('input, textarea, [contenteditable]');
+    const isTyping = (e: KeyboardEvent) => (e.target as HTMLElement | null)?.closest?.('input, textarea, select, [contenteditable], [data-chrome]');
     const down = (e: KeyboardEvent) => {
       if (e.code === 'Space' && !isTyping(e)) {
         e.preventDefault();

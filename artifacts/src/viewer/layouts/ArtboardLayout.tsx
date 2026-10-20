@@ -1,18 +1,25 @@
 import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { InspectorReport } from '../../shared/inspector';
 import { Canvas } from '../components/Canvas';
 import { CanvasErrorBoundary } from '../components/CanvasErrorBoundary';
 import { ExpandedBoard } from '../components/ExpandedBoard';
 import { Labels } from '../components/Labels';
 import { TopLeftBar, TopRightBar } from '../components/Toolbar';
 import { useCanvasData } from '../hooks/useCanvasData';
+import { useInspector } from '../hooks/useInspector';
 import { usePanZoom, type Tool } from '../hooks/usePanZoom';
+import { InspectionOutline } from '../inspector/InspectionOutline';
+import { InspectorPanel } from '../inspector/InspectorPanel';
 import { togglePlaying } from '../lib/play';
 import { resolveFocus } from '../lib/view';
 
 const styles = stylex.create({
+  layout: { display: 'flex', width: '100%', height: '100%', overflow: 'hidden' },
   viewport: {
+    flex: 1,
+    minWidth: 0,
     position: 'relative',
     width: '100%',
     height: '100%',
@@ -50,11 +57,26 @@ export function ArtboardLayout({ id }: { id: string }) {
 
 export function ArtboardView({ id, artifact, canvas, layout, warnings, pending, contentBase, versions, live, loaded }: ArtboardViewProps) {
   const [tool, setTool] = useState<Tool>('select');
-  const { viewportRef, view, fit, zoomBy, zoomTo, cursor, handlers } = usePanZoom(tool);
+  const { viewportRef, view, fit, zoomBy, zoomTo, cursor, handlers, panBy, wheelAt, panning, setSpaceHeld } = usePanZoom(tool);
+  const [inspectorOpen, setInspectorOpen] = useState(false);
   const [page, setPage] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [playing, setPlaying] = useState<ReadonlySet<string>>(() => new Set());
   const [replays, setReplays] = useState<Record<string, number>>({});
+  const inspector = useInspector({
+    enabled: inspectorOpen && !expanded,
+    playing,
+    onInput: (boardId, input) => {
+      const board = canvas?.boards[boardId];
+      if (!board) return;
+      if (input.type === 'ryugi:inspect:wheel') wheelAt({ ...input, x: view.x + (board.x + input.x) * view.k, y: view.y + (board.y + input.y) * view.k });
+      else if (input.type === 'ryugi:inspect:pan') panBy(input.deltaX, input.deltaY);
+      else if (input.code === 'Space') setSpaceHeld(input.down);
+      else if (input.down) onKey(input);
+    },
+  });
+  const closeInspector = useCallback(() => setInspectorOpen(false), []);
+  useEffect(() => { if (!inspectorOpen || expanded) setSpaceHeld(false); }, [inspectorOpen, expanded, setSpaceHeld]);
   const pendingBoards = useMemo(() => new Set(pending), [pending]);
   const seenActivePage = useRef<string | undefined>(undefined);
   const seenFocusAt = useRef<string | undefined>(undefined);
@@ -67,6 +89,19 @@ export function ArtboardView({ id, artifact, canvas, layout, warnings, pending, 
     document.title = canvas?.title || id;
   }, [canvas?.title, id]);
   const pageBounds = (id: string | null) => (id && layout?.pages[id]?.bounds) || null;
+
+  function onKey(e: KeyboardEvent | Extract<InspectorReport, { type: 'ryugi:inspect:key' }>) {
+    if ('target' in e && (e.target as HTMLElement | null)?.closest?.('input, textarea, select, [contenteditable], [role="tree"], [role="treeitem"]')) return;
+    const prevent = () => { if ('preventDefault' in e) e.preventDefault(); };
+    const mod = e.metaKey || e.ctrlKey;
+    if (e.key === 'Escape') setExpanded(null);
+    else if (mod && (e.key === '=' || e.key === '+')) { prevent(); zoomBy(1.25); }
+    else if (mod && e.key === '-') { prevent(); zoomBy(0.8); }
+    else if (e.shiftKey && e.code === 'Digit1') fit(pageBounds(page));
+    else if (e.shiftKey && e.code === 'Digit0') zoomTo(1);
+    else if (!mod && !e.shiftKey && e.key.toLowerCase() === 'v') setTool('select');
+    else if (!mod && !e.shiftKey && e.key.toLowerCase() === 'h') setTool('hand');
+  }
 
   useEffect(() => {
     if (!canvas || !layout) return;
@@ -118,27 +153,12 @@ export function ArtboardView({ id, artifact, canvas, layout, warnings, pending, 
   });
 
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if ((e.target as HTMLElement | null)?.closest?.('input, textarea, [contenteditable]')) return;
-      const mod = e.metaKey || e.ctrlKey;
-      if (e.key === 'Escape') setExpanded(null);
-      else if (mod && (e.key === '=' || e.key === '+')) {
-        e.preventDefault();
-        zoomBy(1.25);
-      } else if (mod && e.key === '-') {
-        e.preventDefault();
-        zoomBy(0.8);
-      } else if (e.shiftKey && e.code === 'Digit1') fit(pageBounds(page));
-      else if (e.shiftKey && e.code === 'Digit0') zoomTo(1);
-      else if (!mod && !e.shiftKey && e.key.toLowerCase() === 'v') setTool('select');
-      else if (!mod && !e.shiftKey && e.key.toLowerCase() === 'h') setTool('hand');
-    };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   });
 
   const allBoards = canvas?.boards ?? {};
-  const boards = Object.entries(allBoards).filter(([, b]) => b.page === page);
+  const boards = useMemo(() => Object.entries(canvas?.boards ?? {}).filter(([, b]) => b.page === page), [canvas, page]);
   const groups = Object.entries(canvas?.groups ?? {}).filter(([, g]) =>
     g.boards.some((id) => allBoards[id]?.page === page),
   );
@@ -154,6 +174,7 @@ export function ArtboardView({ id, artifact, canvas, layout, warnings, pending, 
   };
 
   return (
+    <div {...stylex.props(styles.layout)}>
     <div ref={viewportRef} {...stylex.props(styles.viewport)} style={{ cursor }} {...handlers}>
       {canvas && layout && (
         <CanvasErrorBoundary resetKey={canvas}>
@@ -166,6 +187,9 @@ export function ArtboardView({ id, artifact, canvas, layout, warnings, pending, 
             pending={pendingBoards}
             playing={playing}
             replays={replays}
+            inspecting={inspectorOpen && !expanded && !panning}
+            frameRef={inspector.refFor}
+            frameLoaded={inspector.loaded}
           />
           <Labels
             view={view}
@@ -182,6 +206,8 @@ export function ArtboardView({ id, artifact, canvas, layout, warnings, pending, 
           />
         </CanvasErrorBoundary>
       )}
+      {inspectorOpen && !expanded && inspector.hover && !panning && allBoards[inspector.hover.boardId] && <InspectionOutline board={allBoards[inspector.hover.boardId]!} rect={inspector.hover.rect} view={view} />}
+      {inspectorOpen && !expanded && inspector.selection && allBoards[inspector.selection.boardId] && <InspectionOutline board={allBoards[inspector.selection.boardId]!} rect={inspector.selection.node.rect} view={view} name={inspector.selection.node.name || inspector.selection.node.selector} selected />}
       {(!canvas || !layout) && (
         <div {...stylex.props(styles.empty)}>
           {loaded ? (warnings[0] ?? 'Waiting for the agent to write canvas.json…') : 'Connecting…'}
@@ -197,6 +223,8 @@ export function ArtboardView({ id, artifact, canvas, layout, warnings, pending, 
         onZoomOut={() => zoomBy(0.8)}
         onFit={() => fit(pageBounds(page))}
         onActualSize={() => zoomTo(1)}
+        inspectorOpen={inspectorOpen}
+        onToggleInspector={() => setInspectorOpen((open) => !open)}
       />
       {expanded && expandedBoard && expandedReady && (
         <ExpandedBoard
@@ -207,6 +235,8 @@ export function ArtboardView({ id, artifact, canvas, layout, warnings, pending, 
           onClose={() => setExpanded(null)}
         />
       )}
+    </div>
+    {inspectorOpen && <InspectorPanel boards={boards} frames={inspector.frames} selection={inspector.selection} select={inspector.select} hoverNode={inspector.hoverNode} change={inspector.change} reset={inspector.reset} playing={playing} enabled={!expanded} onClose={closeInspector} />}
     </div>
   );
 }

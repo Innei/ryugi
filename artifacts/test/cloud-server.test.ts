@@ -269,7 +269,7 @@ describe('publishing', () => {
     expect(payload.canvas).toEqual(canvas);
     expect(payload.layout.pages.p).toBeDefined();
     expect(Object.keys(payload.versions)).toEqual(['pages/p/a.html']);
-    expect(cloud.requests[0]!.files!['pages/p/a.html']).toBe('<p>a</p>');
+    expect(cloud.requests[0]!.files!['pages/p/a.html']).toContain('<p>a</p>');
   });
 
   test('a document is uploaded with its editor state parsed from doc.xml, without comments', async () => {

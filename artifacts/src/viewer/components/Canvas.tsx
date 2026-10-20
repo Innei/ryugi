@@ -2,6 +2,7 @@ import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
 import { DEFAULT_TITLE_SIZE, STICKY_DEFAULT_W, STICKY_FONT_SIZE, STICKY_LINE_H, STICKY_PAD } from '../../shared/geometry';
 import type { BoardSpec, NoteSpec } from '../../shared/types';
+import type { Inspector } from '../hooks/useInspector';
 import { boardReady, boardSrc, canPlay } from '../lib/play';
 import { titleScale, type View } from '../lib/view';
 
@@ -20,6 +21,7 @@ const styles = stylex.create({
     outlineColor: cssVar.colorBorderSecondary,
   },
   playing: { pointerEvents: 'auto', outlineWidth: 2, outlineColor: PLAY_ACCENT },
+  inspecting: { pointerEvents: 'auto' },
   skeleton: {
     position: 'absolute',
     display: 'flex',
@@ -66,9 +68,12 @@ interface CanvasProps {
   pending: ReadonlySet<string>;
   playing: ReadonlySet<string>;
   replays: Record<string, number>;
+  inspecting: boolean;
+  frameRef: Inspector['refFor'];
+  frameLoaded: Inspector['loaded'];
 }
 
-export function Canvas({ view, boards, notes, contentBase, versions, pending, playing, replays }: CanvasProps) {
+export function Canvas({ view, boards, notes, contentBase, versions, pending, playing, replays, inspecting, frameRef, frameLoaded }: CanvasProps) {
   return (
     <div {...stylex.props(styles.world)} style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.k})` }}>
       {boards.map(([id, board]) => {
@@ -84,11 +89,13 @@ export function Canvas({ view, boards, notes, contentBase, versions, pending, pl
         return (
           <iframe
             key={id}
+            ref={frameRef(id)}
+            onLoad={() => frameLoaded(id)}
             title={board.title ?? id}
             src={boardSrc(contentBase, board.file, versions[board.file] ?? 0, replays[id] ?? 0)}
             sandbox="allow-scripts"
             loading="lazy"
-            {...stylex.props(styles.board, canPlay(board, versions) && playing.has(id) && styles.playing)}
+            {...stylex.props(styles.board, inspecting && styles.inspecting, canPlay(board, versions) && playing.has(id) && styles.playing)}
             style={position}
           />
         );

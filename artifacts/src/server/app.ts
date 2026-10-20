@@ -273,8 +273,8 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
       send(res, 404, 'Not found');
       return;
     }
-    const page = ref.type === 'html' ? relative === 'index.html' : ref.type === 'document' && relative.endsWith('.html');
-    const headers = { 'Content-Security-Policy': CONTENT_CSP[page ? 'html' : ref.type], 'Access-Control-Allow-Origin': '*' };
+    const page = ref.type === 'html' ? relative === 'index.html' : relative.endsWith('.html');
+    const headers = { 'Content-Security-Policy': CONTENT_CSP[page && ref.type === 'document' ? 'html' : ref.type], 'Access-Control-Allow-Origin': '*' };
     if (!page) {
       sendFile(res, target, headers);
       return;

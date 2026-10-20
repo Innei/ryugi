@@ -91,3 +91,14 @@ test('frame input pans and zooms around its translated cursor without resetting 
   act(() => panZoom.wheelAt?.({ deltaX: 0, deltaY: -Math.log(2) / 0.01, x: 100, y: 100, zoom: true }));
   expect(JSON.parse(host.querySelector('output')!.textContent!)).toEqual({ x: -20, y: -60, k: 1 });
 });
+
+test('Space on toolbar controls keeps its native keyboard action instead of starting canvas pan', () => {
+  const viewport = render('select');
+  let event: KeyboardEvent;
+  act(() => {
+    event = new KeyboardEvent('keydown', { code: 'Space', bubbles: true, cancelable: true });
+    host.querySelector('button')!.dispatchEvent(event);
+  });
+  expect(event!.defaultPrevented).toBe(false);
+  expect(viewport.style.cursor).toBe('default');
+});

@@ -287,7 +287,8 @@ describe('artboard content', () => {
     writeArtboard(root, 'b1', canvas, { 'pages/p/a.html': '<p>a</p>' });
     const res = await content(server, 'artboard/b1/pages/p/a.html');
     expect(res.status).toBe(200);
-    expect(res.body).toBe('<p>a</p>');
+    expect(res.body).toContain('<p>a</p>');
+    expect(res.body).toContain('ryugi:inspect');
     expect(res.headers['content-type']).toContain('text/html');
     expect(res.headers['content-security-policy']).toBe('sandbox allow-scripts');
   });
