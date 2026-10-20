@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 #
 # check-viewer-release.sh — fail when artifacts/src changed since the last
-# release tag but the version was not bumped. Users install from main and
-# start-server.sh runs the npm release pinned to that version, so an unreleased
-# change under artifacts/src never reaches them.
+# release tag but the version was not bumped. start-server.sh runs the newest
+# npm release, so a change under artifacts/src reaches users only once it is
+# published under a new version.
 #
 set -euo pipefail
 

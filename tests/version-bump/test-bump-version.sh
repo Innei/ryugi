@@ -58,7 +58,7 @@ jq -e '
 ' "$REPO_ROOT/.version-bump.json" >/dev/null \
   || fail "Hermes manifest is not registered"
 
-for viewer_file in artifacts/package.json skills/artifacts/app/version.json; do
+for viewer_file in artifacts/package.json; do
   jq -e --arg path "$viewer_file" '
     any(.files[]; .path == $path and .field == "version")
   ' "$REPO_ROOT/.version-bump.json" >/dev/null \

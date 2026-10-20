@@ -12,8 +12,7 @@
     { "path": ".claude-plugin/marketplace.json", "field": "plugins.0.version" },
     { "path": ".muse-plugin/marketplace.json", "field": "plugins.0.version" },
     { "path": "gemini-extension.json", "field": "version" },
-    { "path": "artifacts/package.json", "field": "version" },
-    { "path": "skills/artifacts/app/version.json", "field": "version" }
+    { "path": "artifacts/package.json", "field": "version" }
   ],
   "audit": {
     "exclude": [

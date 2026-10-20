@@ -92,11 +92,59 @@ PID_FILE="$STATE_DIR/server.pid"
 LOG_FILE="$STATE_DIR/server.log"
 SERVER_ID_FILE="$STATE_DIR/server-instance-id"
 INFO_FILE="$STATE_DIR/server-info"
+VERSION_FILE="$STATE_DIR/server-version"
 OWNERS_FILE="$STATE_DIR/owners"
 mkdir -p "$STATE_DIR"
 [[ -f "$STATE_DIR/.gitignore" ]] || printf '*\n' > "$STATE_DIR/.gitignore"
 
-# A local build (pnpm build:server) wins; otherwise run the release pinned in version.json,
+RELEASES_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/ryugi/artifacts"
+LATEST_CHECK_MS=$((24 * 60 * 60 * 1000))
+RETRY_CHECK_MS=$((60 * 60 * 1000))
+SERVER_VERSION=""
+
+# Modes: "cached" prints the release npm named within the last day; "checked <version>" records
+# what npm just said. When npm or the install fails, "installed" falls back to the newest release
+# already installed and records it so npm is asked again in an hour, not on every start.
+latest_version() {
+  node -e '(() => {
+    const fs = require("node:fs");
+    const path = require("node:path");
+    const [releases, maxAge, retryAfter, mode, fresh] = process.argv.slice(1);
+    const file = path.join(releases, "latest.json");
+    const valid = (v) => /^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/.test(v || "");
+    const record = (version, checkedAt) => {
+      fs.mkdirSync(releases, { recursive: true });
+      fs.writeFileSync(`${file}.${process.pid}`, JSON.stringify({ version, checkedAt }));
+      fs.renameSync(`${file}.${process.pid}`, file);
+    };
+    if (mode === "cached") {
+      try {
+        const { version, checkedAt } = JSON.parse(fs.readFileSync(file, "utf8"));
+        if (valid(version) && Date.now() - checkedAt < Number(maxAge)) console.log(version);
+      } catch {}
+      return;
+    }
+    if (mode === "checked" && valid(fresh)) {
+      record(fresh, Date.now());
+      return console.log(fresh);
+    }
+    const parts = (v) => v.split(/[-+]/)[0].split(".").map(Number);
+    const newer = (a, b) => { const x = parts(a), y = parts(b); for (let i = 0; i < 3; i++) if (x[i] !== y[i]) return x[i] - y[i]; return 0; };
+    let installed = [];
+    try { installed = fs.readdirSync(releases).filter((v) => valid(v) && fs.existsSync(path.join(releases, v, "node_modules/ryugi-artifacts/dist/server.cjs"))); } catch {}
+    const newest = installed.sort(newer).pop();
+    if (!newest) return;
+    record(newest, Date.now() - Number(maxAge) + Number(retryAfter));
+    console.log(newest);
+  })()' "$RELEASES_DIR" "$LATEST_CHECK_MS" "$RETRY_CHECK_MS" "$@"
+}
+
+use_release() {
+  SERVER_VERSION="$1"
+  SERVER="$RELEASES_DIR/$1/node_modules/ryugi-artifacts/dist/server.cjs"
+}
+
+# A local build (pnpm build:server) wins; otherwise run the newest ryugi-artifacts release,
 # installed once per version. Runs before the project lock: a slow install must not outlive
 # the lock's stale threshold. npm installs into a staging dir that is renamed into place;
 # rename(2) refuses a non-empty target, so a concurrent start that finished first keeps its install.
@@ -105,16 +153,27 @@ resolve_server() {
     SERVER="$SCRIPT_DIR/server.cjs"
     return 0
   fi
-  local version cache staging
-  version="$(node -p 'require(process.argv[1]).version' "$SCRIPT_DIR/version.json")"
-  cache="${XDG_CACHE_HOME:-$HOME/.cache}/ryugi/artifacts/$version"
-  SERVER="$cache/node_modules/ryugi-artifacts/dist/server.cjs"
+  local version cache staging fallback
+  version="$(latest_version cached)"
+  [[ -n "$version" ]] || version="$(latest_version checked "$(npm view ryugi-artifacts version --prefer-online --fetch-retries=0 --fetch-timeout=10000 2>/dev/null | tail -1 | tr -d '[:space:]')")"
+  if [[ -z "$version" ]]; then
+    node -e 'console.log(JSON.stringify({ error: `Could not reach npm for the latest ryugi-artifacts; the first start needs network access and a writable ${process.argv[1]}, so rerun outside the sandbox.` }))' "$RELEASES_DIR"
+    return 1
+  fi
+  use_release "$version"
+  cache="$RELEASES_DIR/$version"
   [[ -f "$SERVER" ]] && return 0
   staging="$cache.install.$$"
   rm -rf "$staging"
   mkdir -p "$staging"
   if ! npm install --prefix "$staging" --no-save --no-package-lock --no-audit --no-fund --loglevel=error \
       "ryugi-artifacts@$version" > "$staging.log" 2>&1 || [[ ! -f "$staging/node_modules/ryugi-artifacts/dist/server.cjs" ]]; then
+    fallback="$(latest_version installed)"
+    if [[ -n "$fallback" ]]; then
+      rm -rf "$staging" "$staging.log"
+      use_release "$fallback"
+      return 0
+    fi
     node -e 'console.log(JSON.stringify({ error: `Could not install ${process.argv[1]} from npm; the first start of each version needs network access and a writable ${process.argv[2]}, so rerun outside the sandbox. npm: ${process.argv[3].trim().split("\n").pop() || "failed"}` }))' \
       "ryugi-artifacts@$version" "$(dirname "$cache")" "$(cat "$staging.log")"
     rm -rf "$staging" "$staging.log"
@@ -216,10 +275,29 @@ emit_info() {
   ' "$1" "$2" "$ARTIFACT"
 }
 
-if running_server_pid >/dev/null && [[ -f "$INFO_FILE" ]]; then
-  register_owner
-  emit_info "$(cat "$INFO_FILE")" true
-  exit 0
+# A server from an older release is replaced; the new one keeps its port and key, so open tabs reconnect.
+if RUNNING_PID="$(running_server_pid)" && [[ -f "$INFO_FILE" ]]; then
+  if [[ -z "$SERVER_VERSION" || "$(cat "$VERSION_FILE" 2>/dev/null)" == "$SERVER_VERSION" ]]; then
+    register_owner
+    emit_info "$(cat "$INFO_FILE")" true
+    exit 0
+  fi
+  kill -TERM "$RUNNING_PID" 2>/dev/null
+  for _ in {1..50}; do
+    kill -0 "$RUNNING_PID" 2>/dev/null || break
+    sleep 0.1
+  done
+  if kill -0 "$RUNNING_PID" 2>/dev/null; then
+    kill -KILL "$RUNNING_PID" 2>/dev/null
+    for _ in {1..20}; do
+      kill -0 "$RUNNING_PID" 2>/dev/null || break
+      sleep 0.1
+    done
+  fi
+  if kill -0 "$RUNNING_PID" 2>/dev/null; then
+    echo "{\"error\": \"The running server (pid $RUNNING_PID) is on an older release and did not stop; stop it with stop-server.sh and retry\"}"
+    exit 1
+  fi
 fi
 
 register_owner
@@ -233,6 +311,7 @@ if ! [[ "$SERVER_ID" =~ ^[A-Za-z0-9_-]{32,64}$ ]]; then
   SERVER_ID="$(printf '%08x%08x%08x%08x' "$$" "$(date +%s)" "${RANDOM:-0}" "${RANDOM:-0}")"
 fi
 printf '%s\n' "$SERVER_ID" > "$SERVER_ID_FILE"
+printf '%s\n' "$SERVER_VERSION" > "$VERSION_FILE"
 
 SERVER_ENV=(ARTIFACTS_ROOT="$ROOT_DIR" ARTIFACTS_HOST="$BIND_HOST" ARTIFACTS_URL_HOST="$URL_HOST" ARTIFACTS_OPEN="$OPEN")
 [[ -n "$ARTIFACT" ]] && SERVER_ENV+=(ARTIFACTS_OPEN_ARTIFACT="$ARTIFACT")
@@ -247,6 +326,7 @@ if [[ "$FOREGROUND" == "true" ]]; then
     sleep 0.1
   done
   release_lock
+  trap - EXIT
   wait "$SERVER_PID"
   exit $?
 fi
