@@ -89,3 +89,17 @@ mounts every board that is visible; thumbnail caching is deferred.
   with the inherited `CODEX_CI` marker, which forces the CLI into foreground
   mode. Removing that marker for the test run allowed the full suite to pass;
   the CLI implementation did not change.
+
+### CI follow-up
+
+The first release CI caught an obsolete `open.test.ts` integration
+expectation: it still asserted that a building artboard would wait for a
+complete group. That contradicted the approved skeleton-first behavior.
+The local run passed that assertion only because it checked the opener's
+log before the asynchronous command had written it.
+
+The test now starts with zero HTML files, waits for the opener to actually
+run and verifies that each subsequent board write leaves the open count at
+one. The focused open/readiness run passed all 13 cases, and the corrected
+full run passed all 556 tests in 51 files. The failed
+`v1.10.0` tag remains intact; the correction ships as `v1.10.1`.

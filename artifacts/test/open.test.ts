@@ -105,7 +105,7 @@ describe('automatic browser open', () => {
     expect(opened(log)[0]).toMatch(/\/artboard\/header\?key=/);
   }, 15000);
 
-  test('opens after the first group is complete, not on the first board', async () => {
+  test('opens a building artboard skeleton before any HTML and does not reopen as boards arrive', async () => {
     const root = projectRoot();
     const { bin, log } = fakeOpenCommand();
     const spec = {
@@ -121,16 +121,24 @@ describe('automatic browser open', () => {
     };
 
     await startServer(root, bin);
-    writeArtboard(root, 'header', spec, { 'pages/p/a.html': '<p>a</p>' });
+    writeArtboard(root, 'header', spec);
 
     const warningsFile = path.join(root, '.state/artboard/header/warnings.json');
-    await waitFor(() => fs.existsSync(warningsFile) && readJson(warningsFile).pending?.length === 2, 3000);
+    await waitFor(() => fs.existsSync(warningsFile) && readJson(warningsFile).pending?.length === 3, 3000);
     expect(readJson(warningsFile).warnings).toEqual([]);
-    expect(opened(log)).toEqual([]);
-
-    fs.writeFileSync(path.join(root, 'artboard/header/pages/p/b.html'), '<p>b</p>');
     await waitFor(() => opened(log).length > 0, 5000);
+    expect(opened(log)).toHaveLength(1);
     expect(opened(log)[0]).toMatch(/\/artboard\/header\?key=/);
+
+    for (const [id, remaining] of [['a', 2], ['b', 1], ['c', 0]] as const) {
+      const file = path.join(root, `artboard/header/pages/p/${id}.html`);
+      expect(fs.existsSync(file)).toBe(false);
+      fs.mkdirSync(path.dirname(file), { recursive: true });
+      fs.writeFileSync(file, `<p>${id}</p>`);
+      await waitFor(() => readJson(warningsFile).pending?.length === remaining, 3000);
+      expect(readJson(warningsFile).warnings).toEqual([]);
+      expect(opened(log)).toHaveLength(1);
+    }
   }, 15000);
 
   test('does not open when the target is still broken', async () => {
