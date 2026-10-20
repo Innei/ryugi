@@ -4,6 +4,7 @@ import * as stylex from '@stylexjs/stylex';
 import { Check, ChevronDown, Hand, MousePointer2 } from 'lucide-react';
 import type { PageSpec } from '../../shared/types';
 import type { Tool } from '../hooks/usePanZoom';
+import { PublishMenu } from './PublishMenu';
 
 const styles = stylex.create({
   bar: {
@@ -107,7 +108,8 @@ export function TopLeftBar({ pages, page, onPageChange, tool, onToolChange }: To
 }
 
 interface TopRightBarProps {
-  live: boolean;
+  artifact: string | null;
+  live?: boolean;
   warnings: string[];
   zoom: number;
   onZoomIn: () => void;
@@ -116,13 +118,15 @@ interface TopRightBarProps {
   onActualSize: () => void;
 }
 
-export function TopRightBar({ live, warnings, zoom, onZoomIn, onZoomOut, onFit, onActualSize }: TopRightBarProps) {
+export function TopRightBar({ artifact, live, warnings, zoom, onZoomIn, onZoomOut, onFit, onActualSize }: TopRightBarProps) {
   const hint = (text: string) => <span {...stylex.props(styles.hint)}>{text}</span>;
   return (
     <div data-chrome {...stylex.props(styles.bar, styles.right)}>
-      <span {...stylex.props(styles.live)} title={live ? 'Live' : 'Reconnecting…'}>
-        <span {...stylex.props(styles.dot, live && styles.dotOn)} />
-      </span>
+      {live === undefined ? null : (
+        <span {...stylex.props(styles.live)} title={live ? 'Live' : 'Reconnecting…'}>
+          <span {...stylex.props(styles.dot, live && styles.dotOn)} />
+        </span>
+      )}
       {warnings.length > 0 && (
         <Popover
           placement="bottomRight"
@@ -154,6 +158,12 @@ export function TopRightBar({ live, warnings, zoom, onZoomIn, onZoomOut, onFit, 
           <ChevronDown size={14} {...stylex.props(styles.chevron)} />
         </button>
       </DropdownMenu>
+      {artifact ? (
+        <>
+          <span {...stylex.props(styles.divider)} />
+          <PublishMenu artifact={artifact} />
+        </>
+      ) : null}
     </div>
   );
 }

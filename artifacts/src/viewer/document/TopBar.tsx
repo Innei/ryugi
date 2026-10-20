@@ -1,5 +1,6 @@
 import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
+import { PublishMenu } from '../components/PublishMenu';
 
 const styles = stylex.create({
   bar: {
@@ -56,6 +57,7 @@ export function TopBar({ id, agentEditing, agentSection, offline, openComments }
       {offline ? <span {...stylex.props(styles.pill, styles.offline)}>未同步，正在重试</span> : null}
       <span {...stylex.props(styles.spacer)} />
       <span {...stylex.props(styles.crumb)}>评论 {openComments}</span>
+      <PublishMenu artifact={`document/${id}`} />
     </header>
   );
 }

@@ -10,11 +10,13 @@ export interface ServerConfig {
   openCmd: string | null;
   openArtifact: string | null;
   serverId: string | null;
+  cloudOrigin: string;
 }
 
 const DEFAULT_IDLE_TIMEOUT_MS = 4 * 60 * 60 * 1000;
 const DEFAULT_LIFECYCLE_CHECK_MS = 60 * 1000;
 const SERVER_ID_ARG = '--artifacts-server-id=';
+const DEFAULT_CLOUD_ORIGIN = 'https://ryugi.innei.dev';
 
 const positive = (value: string | undefined, fallback: number) => {
   const n = Number(value);
@@ -39,6 +41,7 @@ export function parseEnv(env: Record<string, string | undefined>, argv: string[]
     openCmd: env.ARTIFACTS_OPEN_CMD || null,
     openArtifact: env.ARTIFACTS_OPEN_ARTIFACT || null,
     serverId: serverIdArg ? serverIdArg.slice(SERVER_ID_ARG.length) : null,
+    cloudOrigin: (env.RYUGI_CLOUD_ORIGIN || DEFAULT_CLOUD_ORIGIN).replace(/\/+$/, ''),
   };
 }
 

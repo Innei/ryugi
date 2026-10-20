@@ -1,7 +1,9 @@
 import { exec, execFile } from 'node:child_process';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { startArtifactsServer } from './app';
+import { credentialsFile } from './credentials';
 import { browserLauncher, isLoopback, liveOwners, parseEnv, processAlive, readOwners, shutdownReason } from './lifecycle';
 import { openReady } from './ready';
 import { writeJsonAtomic } from './state';
@@ -16,6 +18,8 @@ async function main() {
     runtimeDir: path.join(__dirname, 'runtime'),
     host: config.host,
     urlHost: config.urlHost,
+    configFile: path.join(path.dirname(root), 'config.json'),
+    cloud: { origin: config.cloudOrigin, credentialsFile: credentialsFile(process.env, process.platform, os.homedir()) },
   });
 
   let lastActivity = Date.now();

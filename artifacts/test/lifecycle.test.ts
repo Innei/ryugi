@@ -83,6 +83,11 @@ describe('parseEnv', () => {
     expect(config).toMatchObject({ idleTimeoutMs: 5000, open: true, openArtifact: 'artboard/header', serverId: 'abc' });
   });
 
+  test('points at the official cloud unless RYUGI_CLOUD_ORIGIN overrides it', () => {
+    expect(parseEnv({ ARTIFACTS_ROOT: '/r' }).cloudOrigin).toBe('https://ryugi.innei.dev');
+    expect(parseEnv({ ARTIFACTS_ROOT: '/r', RYUGI_CLOUD_ORIGIN: 'http://localhost:8787/' }).cloudOrigin).toBe('http://localhost:8787');
+  });
+
   test('turns opening off when ARTIFACTS_OPEN is 0', () => {
     expect(parseEnv({ ARTIFACTS_ROOT: '/r', ARTIFACTS_OPEN: '0' }).open).toBe(false);
   });
