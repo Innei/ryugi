@@ -1,6 +1,7 @@
 import './layers.css';
 import '@lobehub/ui/theme.css';
 import '@lobehub/ui/style.css';
+import '../shared/fonts.css';
 
 import { ConfigProvider } from '@lobehub/ui';
 import { motion } from 'motion/react';

@@ -1,0 +1,19 @@
+/* Geist v1.8.1 from vercel/geist-font; license: public/Geist-OFL.txt. */
+@font-face {
+  font-family: 'Geist';
+  src: url('./fonts/Geist.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+:root,
+[data-theme] {
+  --lobe-font-family: 'Geist', system-ui, sans-serif;
+}
+
+@layer lobe-base {
+  :where(button, input, select, textarea) {
+    font-family: inherit;
+  }
+}

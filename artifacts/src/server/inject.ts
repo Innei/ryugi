@@ -109,7 +109,7 @@ const RUNTIME_LINE = RUNTIME.split('\n')
   .join(' ');
 
 const EMBEDDED_STYLE =
-  '<style>:root{color-scheme:light dark;background:transparent}body{margin:0;font-family:system-ui,-apple-system,sans-serif}</style>';
+  '<style>:root{color-scheme:light dark;background:transparent}body{margin:0;font-family:var(--lobe-font-family,system-ui,-apple-system,sans-serif)}</style>';
 
 const UI_MARKER = /<ryugi-[a-z0-9-]+(?:\s|>)/i;
 const UI_META = /<meta[^>]+name=["']ryugi-ui["'][^>]*>/i;

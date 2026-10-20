@@ -25,6 +25,7 @@ import {
 } from '@lobehub/ui';
 import '@lobehub/ui/theme.css';
 import '@lobehub/ui/style.css';
+import '../shared/fonts.css';
 import {
   type LucideIcon,
   Check,

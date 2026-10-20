@@ -1,3 +1,8 @@
+.ryugi-doc .rich-editor {
+  --rc-font-family: var(--lobe-font-family);
+  --rc-font-family-sans: var(--lobe-font-family);
+}
+
 ::highlight(ryugi-comment) {
   background-color: rgba(240, 194, 75, 0.28);
 }
