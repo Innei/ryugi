@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { applyHumanOp, emptyComments, mergeComments, parseComments, waitingOn, type CommentsFile } from '../src/shared/comments';
+import { applyHumanOp, emptyComments, mergeComments, parseComments, savedComments, unreadThreads, waitingOn, type CommentsFile } from '../src/shared/comments';
 
 let counter = 0;
 const ids = () => `id${++counter}`;
@@ -160,5 +160,117 @@ describe('author names', () => {
     const once = mergeComments(before, reply as never, 'agent', at(50), ids, 'Claude Code').file;
     const again = mergeComments(once, structuredClone(once), 'agent', at(51), ids, 'Codex').file;
     expect(again.threads[0]!.messages[1]!.name).toBe('Claude Code');
+  });
+});
+
+describe('statusBy', () => {
+  test('records who last changed the status', () => {
+    let file = withThread();
+    const threadId = file.threads[0]!.id;
+    expect(file.threads[0]!.statusBy).toBe('human');
+    const resolved = structuredClone(file);
+    resolved.threads[0]!.status = 'resolved';
+    file = mergeComments(file, resolved, 'agent', at(50), ids).file;
+    expect(file.threads[0]).toMatchObject({ status: 'resolved', statusBy: 'agent' });
+    file = applyHumanOp(file, { op: 'reopen', threadId }, at(51), ids);
+    expect(file.threads[0]).toMatchObject({ status: 'open', statusBy: 'human' });
+  });
+
+  test('a thread the agent opens is marked as the agent\'s', () => {
+    const incoming = { threads: [{ anchor: { blockId: 'b2', quote: '' }, messages: [{ author: 'agent', text: 'q' }] }] };
+    expect(mergeComments(emptyComments(), incoming as never, 'agent', at(50), ids).file.threads[0]!.statusBy).toBe('agent');
+  });
+
+  test('a saved file keeps statusBy', () => {
+    const file = withThread();
+    expect(savedComments(file).threads[0]!.statusBy).toBe('human');
+  });
+});
+
+describe('unreadThreads', () => {
+  const agentReply = (file: CommentsFile, text: string, minute: number) => {
+    const next = structuredClone(file) as unknown as { threads: { messages: unknown[] }[] };
+    next.threads[0]!.messages.push({ author: 'agent', text });
+    return mergeComments(file, next as never, 'agent', at(minute), ids).file;
+  };
+  const kinds = (file: CommentsFile, cursor: string | null) => unreadThreads(file, cursor).threads.map((t) => t.changes);
+
+  test('with no cursor, only open threads waiting on the agent are unread', () => {
+    const waiting = withThread();
+    const answered = agentReply(withThread(), 'done', 44);
+    const resolved = applyHumanOp(withThread(), { op: 'resolve', threadId: withThread().threads[0]!.id }, at(45), ids);
+    const file: CommentsFile = { version: 1, threads: [...waiting.threads, ...answered.threads, { ...resolved.threads[0]!, status: 'resolved' }] };
+    const unread = unreadThreads(file, null);
+    expect(unread.threads.map((t) => t.id)).toEqual([waiting.threads[0]!.id]);
+    expect(unread.threads[0]!.changes).toEqual(['new-thread']);
+    expect(unread.newest).toBe(at(42));
+  });
+
+  test('with no cursor, a longer thread waiting on the agent reads as a new message', () => {
+    let file = agentReply(withThread(), 'why?', 43);
+    file = applyHumanOp(file, { op: 'reply', threadId: file.threads[0]!.id, text: 'because' }, at(44), ids);
+    const [thread] = unreadThreads(file, null).threads;
+    expect(thread!.changes).toEqual(['new-message']);
+    expect(thread!.messageIds).toEqual([file.threads[0]!.messages[2]!.id]);
+  });
+
+  test('a new human thread after the cursor is new-thread', () => {
+    expect(kinds(withThread(), at(41))).toEqual([['new-thread']]);
+  });
+
+  test('nothing after the cursor is nothing unread', () => {
+    expect(unreadThreads(withThread(), at(42))).toEqual({ threads: [], newest: at(42) });
+  });
+
+  test('a human reply, edit and delete after the cursor are reported', () => {
+    let file = agentReply(withThread(), 'ok', 43);
+    const threadId = file.threads[0]!.id;
+    const first = file.threads[0]!.messages[0]!.id;
+    file = applyHumanOp(file, { op: 'reply', threadId, text: 'more' }, at(45), ids);
+    expect(kinds(file, at(44))).toEqual([['new-message']]);
+    file = applyHumanOp(file, { op: 'edit', threadId, messageId: first, text: 'edited' }, at(46), ids);
+    expect(kinds(file, at(45))).toEqual([['edited']]);
+    file = applyHumanOp(file, { op: 'delete', threadId, messageId: first }, at(47), ids);
+    expect(kinds(file, at(46))).toEqual([['deleted']]);
+  });
+
+  test('a human message added and deleted since the cursor is not news', () => {
+    let file = agentReply(withThread(), 'ok', 43);
+    const threadId = file.threads[0]!.id;
+    file = applyHumanOp(file, { op: 'reply', threadId, text: 'oops' }, at(45), ids);
+    file = applyHumanOp(file, { op: 'delete', threadId, messageId: file.threads[0]!.messages.at(-1)!.id }, at(46), ids);
+    expect(kinds(file, at(44))).toEqual([]);
+  });
+
+  test('the human resolving or reopening is reported; the agent doing it is not', () => {
+    let file = agentReply(withThread(), 'ok', 43);
+    const threadId = file.threads[0]!.id;
+    file = applyHumanOp(file, { op: 'resolve', threadId }, at(45), ids);
+    expect(kinds(file, at(44))).toEqual([['resolved']]);
+    file = applyHumanOp(file, { op: 'reopen', threadId }, at(46), ids);
+    expect(kinds(file, at(45))).toEqual([['reopened']]);
+    const byAgent = structuredClone(file);
+    byAgent.threads[0]!.status = 'resolved';
+    file = mergeComments(file, byAgent, 'agent', at(47), ids).file;
+    expect(kinds(file, at(46))).toEqual([]);
+  });
+
+  test('the agent\'s own messages are never unread', () => {
+    const file = agentReply(withThread(), 'ok', 43);
+    expect(kinds(file, at(42))).toEqual([]);
+  });
+
+  test('a legacy status change without statusBy counts as the human\'s', () => {
+    const file = agentReply(withThread(), 'ok', 43);
+    const legacy: CommentsFile = { version: 1, threads: [{ ...file.threads[0]!, status: 'resolved', statusAt: at(50), statusBy: undefined }] };
+    expect(kinds(legacy, at(45))).toEqual([['resolved']]);
+  });
+
+  test('newest is the latest human stamp, so the next list starts after it', () => {
+    let file = agentReply(withThread(), 'ok', 43);
+    file = applyHumanOp(file, { op: 'reply', threadId: file.threads[0]!.id, text: 'more' }, at(45), ids);
+    const first = unreadThreads(file, at(44));
+    expect(first.newest).toBe(at(45));
+    expect(unreadThreads(file, first.newest).threads).toEqual([]);
   });
 });

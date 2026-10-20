@@ -21,6 +21,7 @@ export interface Thread {
   anchor: Anchor;
   status: 'open' | 'resolved';
   statusAt: string;
+  statusBy?: Author;
   messages: Message[];
 }
 
@@ -71,7 +72,8 @@ export function savedComments(incoming: IncomingComments): CommentsFile {
   for (const t of incoming.threads) {
     if (!t.id || !t.anchor?.blockId || !t.statusAt || (t.status !== 'open' && t.status !== 'resolved')) continue;
     const messages = (t.messages ?? []).filter(isSavedMessage);
-    threads.push({ id: t.id, anchor: { blockId: t.anchor.blockId, quote: t.anchor.quote ?? '' }, status: t.status, statusAt: t.statusAt, messages });
+    const statusBy = t.statusBy === 'human' || t.statusBy === 'agent' ? { statusBy: t.statusBy } : {};
+    threads.push({ id: t.id, anchor: { blockId: t.anchor.blockId, quote: t.anchor.quote ?? '' }, status: t.status, statusAt: t.statusAt, ...statusBy, messages });
   }
   return { version: 1, threads };
 }
@@ -127,15 +129,16 @@ function mergeThread(
   }
   messages.sort((a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : 0));
 
-  let { status, statusAt } = base;
+  let { status, statusAt, statusBy } = base;
   if (incoming.status && incoming.status !== base.status) {
     const stamp = incoming.statusAt && incoming.statusAt !== base.statusAt ? incoming.statusAt : now;
     if (stamp >= base.statusAt) {
       status = incoming.status;
       statusAt = stamp;
+      statusBy = origin;
     }
   }
-  return { ...base, status, statusAt, messages };
+  return { ...base, status, statusAt, ...(statusBy ? { statusBy } : {}), messages };
 }
 
 // The agent writes new threads and messages without ids; the server's rewrite adds them.
@@ -170,6 +173,7 @@ export function mergeComments(
       anchor: { blockId: thread.anchor.blockId, quote: thread.anchor.quote ?? '' },
       status: 'open',
       statusAt: now,
+      statusBy: origin,
       messages: [],
     };
     threads.push(mergeThread(fresh, { ...thread, status: thread.status ?? 'open' }, origin, now, newId, warnings, name));
@@ -199,6 +203,7 @@ export function applyHumanOp(file: CommentsFile, op: HumanOp, now: string, newId
             anchor: { blockId: op.blockId, quote: op.quote },
             status: 'open',
             statusAt: now,
+            statusBy: 'human',
             messages: [{ id: newId(), author: 'human', ...personOf(who), text: op.text, at: now }],
           },
         ],
@@ -211,7 +216,7 @@ export function applyHumanOp(file: CommentsFile, op: HumanOp, now: string, newId
       return updateThread(file, op.threadId, (t) => updateHumanMessage(t, op.messageId, (m) => ({ ...m, text: '', deleted: true, editedAt: now })));
     case 'resolve':
     case 'reopen':
-      return updateThread(file, op.threadId, (t) => ({ ...t, status: op.op === 'resolve' ? 'resolved' : 'open', statusAt: now }));
+      return updateThread(file, op.threadId, (t) => ({ ...t, status: op.op === 'resolve' ? 'resolved' : 'open', statusAt: now, statusBy: 'human' }));
   }
 }
 
@@ -220,4 +225,60 @@ export function waitingOn(thread: Thread): Author | null {
   const last = thread.messages.filter((m) => !m.deleted).at(-1);
   if (!last) return null;
   return last.author === 'human' ? 'agent' : 'human';
+}
+
+export type ChangeKind = 'new-thread' | 'new-message' | 'edited' | 'deleted' | 'resolved' | 'reopened';
+
+export interface UnreadThread extends Thread {
+  changes: ChangeKind[];
+  messageIds: string[];
+}
+
+const humanStatus = (thread: Thread) => (thread.statusBy ?? 'human') === 'human';
+
+function humanStamps(thread: Thread): string[] {
+  const stamps = thread.messages.filter((m) => m.author === 'human').map(stampOf);
+  return humanStatus(thread) ? [...stamps, thread.statusAt] : stamps;
+}
+
+function changesSince(thread: Thread, cursor: string): Pick<UnreadThread, 'changes' | 'messageIds'> {
+  const changes = new Set<ChangeKind>();
+  const messageIds: string[] = [];
+  thread.messages.forEach((m, index) => {
+    if (m.author !== 'human') return;
+    const created = m.at > cursor;
+    if (m.deleted) {
+      if (!created && stampOf(m) > cursor) changes.add('deleted');
+      return;
+    }
+    if (created) {
+      changes.add(index === 0 ? 'new-thread' : 'new-message');
+      messageIds.push(m.id);
+    } else if (stampOf(m) > cursor) {
+      changes.add('edited');
+      messageIds.push(m.id);
+    }
+  });
+  if (!changes.has('new-thread') && humanStatus(thread) && thread.statusAt > cursor && thread.messages.some((m) => m.at <= cursor)) {
+    changes.add(thread.status === 'resolved' ? 'resolved' : 'reopened');
+  }
+  return { changes: [...changes], messageIds };
+}
+
+function waitingSince(thread: Thread): Pick<UnreadThread, 'changes' | 'messageIds'> {
+  const live = thread.messages.filter((m) => !m.deleted);
+  const lastAgent = live.findLastIndex((m) => m.author === 'agent');
+  return { changes: [live.length === 1 ? 'new-thread' : 'new-message'], messageIds: live.slice(lastAgent + 1).map((m) => m.id) };
+}
+
+// With no cursor the agent has never listed: only threads it owes an answer count, so old documents don't all read as news.
+export function unreadThreads(file: CommentsFile, cursor: string | null): { threads: UnreadThread[]; newest: string | null } {
+  const threads: UnreadThread[] = [];
+  let newest = cursor;
+  for (const thread of file.threads) {
+    for (const stamp of humanStamps(thread)) if (!newest || stamp > newest) newest = stamp;
+    const unread = cursor === null ? (waitingOn(thread) === 'agent' ? waitingSince(thread) : null) : changesSince(thread, cursor);
+    if (unread && unread.changes.length > 0) threads.push({ ...thread, ...unread });
+  }
+  return { threads, newest };
 }
