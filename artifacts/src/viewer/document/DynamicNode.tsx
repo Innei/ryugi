@@ -4,7 +4,7 @@ import { DynamicBlock } from './DynamicBlock';
 
 type SerializedDynamicNode = Spread<{ url: string; props: Record<string, unknown>; initialHeight: number }, SerializedLexicalNode>;
 
-// Replaces @haklex/rich-ext-dynamic's node, whose module calls `new Function` on load and so dies under the viewer's CSP.
+// Replaces @haklex/rich-ext-dynamic's node, which import()s the component into the viewer's own origin; agent-written code must stay in the sandboxed iframe.
 export class DynamicNode extends DecoratorNode<ReactElement> {
   __url: string;
   __props: Record<string, unknown>;
