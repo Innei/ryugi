@@ -124,3 +124,41 @@ describe('agent writes without ids', () => {
     expect(twice.threads).toHaveLength(1);
   });
 });
+
+describe('author names', () => {
+  test('a human create and reply carry the given name and avatar', () => {
+    const who = { name: 'Innei', avatar: 'https://avatars.githubusercontent.com/Innei?s=64' };
+    let file = applyHumanOp(emptyComments(), { op: 'create', blockId: 'b1', quote: '', text: 'hi' }, at(40), ids, who);
+    file = applyHumanOp(file, { op: 'reply', threadId: file.threads[0]!.id, text: 'again' }, at(41), ids, who);
+    expect(file.threads[0]!.messages.map((m) => [m.name, m.avatar])).toEqual([
+      ['Innei', who.avatar],
+      ['Innei', who.avatar],
+    ]);
+  });
+
+  test('a name without an avatar stores no avatar field', () => {
+    const file = applyHumanOp(emptyComments(), { op: 'create', blockId: 'b1', quote: '', text: 'hi' }, at(40), ids, { name: 'Innei' });
+    expect(file.threads[0]!.messages[0]).not.toHaveProperty('avatar');
+  });
+
+  test('a human message without a name has no name field', () => {
+    expect(withThread().threads[0]!.messages[0]).not.toHaveProperty('name');
+  });
+
+  test('new agent messages are stamped with the agent name, whatever the agent wrote', () => {
+    const before = withThread();
+    const reply = structuredClone(before) as unknown as { threads: { messages: unknown[] }[] };
+    reply.threads[0]!.messages.push({ author: 'agent', text: 'because', name: 'Innei' });
+    const { file } = mergeComments(before, reply as never, 'agent', at(50), ids, 'Codex');
+    expect(file.threads[0]!.messages.map((m) => m.name)).toEqual([undefined, 'Codex']);
+  });
+
+  test('an existing agent message keeps the name it was saved with', () => {
+    const before = withThread();
+    const reply = structuredClone(before) as unknown as { threads: { messages: unknown[] }[] };
+    reply.threads[0]!.messages.push({ author: 'agent', text: 'because' });
+    const once = mergeComments(before, reply as never, 'agent', at(50), ids, 'Claude Code').file;
+    const again = mergeComments(once, structuredClone(once), 'agent', at(51), ids, 'Codex').file;
+    expect(again.threads[0]!.messages[1]!.name).toBe('Claude Code');
+  });
+});

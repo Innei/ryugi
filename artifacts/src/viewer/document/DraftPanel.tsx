@@ -1,7 +1,8 @@
 import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
 import type { Ref } from 'react';
-import { Composer, PanelFrame } from './CommentCard';
+import { PanelFrame } from './CommentCard';
+import { Composer } from './Composer';
 
 export const DRAFT_WIDTH = 340;
 export const LEAVE_MS = 120;

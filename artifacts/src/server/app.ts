@@ -15,7 +15,9 @@ import { createDynamicBlocks } from './dynamic-blocks';
 import { readCanvas, writeArtifactState, writeJsonAtomic } from './state';
 import { createSelectionStore } from './selection';
 import { ensureConfig } from './config';
+import { AVATAR_ROUTE, createAvatars } from './avatars';
 import { createCloudRoutes, type CloudOptions } from './cloud';
+import { commentNames } from './comment-names';
 import { publishPayload } from './publish-payload';
 import { viewerPage } from './viewer-page';
 import { watchTree } from './watch';
@@ -31,6 +33,7 @@ export interface ServerOptions {
   documentTiming?: DocumentTiming;
   configFile?: string;
   cloud?: CloudOptions;
+  fetch?: typeof fetch;
 }
 
 export type ArtifactPayload = (CanvasPayload | HtmlPayload | DocumentPayload) & { warnings: string[] };
@@ -128,11 +131,13 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
     const frame = textFrame(JSON.stringify(message));
     for (const socket of clients) socket.write(frame);
   };
+  const avatars = createAvatars(options.fetch);
   const documents = createDocumentRegistry({
     root,
     stateDir,
     timing: options.documentTiming,
     broadcast,
+    names: commentNames({ agentFile: path.join(stateDir, 'agent'), projectDir: path.resolve(root, '../..'), cloud: options.cloud }),
     onWarningsChange: (id) => {
       const dir = resolveArtifactDir(root, 'document', id);
       if (!dir) return;
@@ -400,6 +405,15 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
 
     if (pathname === '/api/artifacts') {
       serveList(res);
+      return;
+    }
+
+    const avatarMatch = AVATAR_ROUTE.exec(pathname);
+    if (avatarMatch) {
+      void avatars.load(avatarMatch[1]!, avatarMatch[2]!).then(({ status, type, body }) => {
+        if (body && type) send(res, status, body, { 'Content-Type': type, 'Cache-Control': 'private, max-age=86400' });
+        else send(res, status, 'No avatar');
+      });
       return;
     }
 

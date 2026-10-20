@@ -12,7 +12,7 @@ const canvas = {
 
 let running: ArtifactsServer[] = [];
 
-async function start(overrides: { root?: string; viewer?: string; runtime?: string } = {}) {
+async function start(overrides: { root?: string; viewer?: string; runtime?: string; fetch?: typeof fetch } = {}) {
   const temp = tempRoot();
   const root = overrides.root ?? temp.root;
   const viewer = overrides.viewer ?? temp.viewer;
@@ -23,6 +23,7 @@ async function start(overrides: { root?: string; viewer?: string; runtime?: stri
     runtimeDir: runtime,
     host: '127.0.0.1',
     urlHost: 'localhost',
+    fetch: overrides.fetch,
   });
   running.push(server);
   return { server, root, viewer };
@@ -73,6 +74,22 @@ describe('session key', () => {
     const { server } = await start();
     expect((await get(`${base(server)}/`)).headers['referrer-policy']).toBe('no-referrer');
     expect((await get(`${base(server)}/?key=${server.token}`)).headers['referrer-policy']).toBe('no-referrer');
+  });
+
+  test('avatars go through the server, behind the key, and only for ids it can map', async () => {
+    const upstream: string[] = [];
+    const fetch = (async (url: string) => {
+      upstream.push(url);
+      return new Response(new Uint8Array([1, 2, 3]), { headers: { 'Content-Type': 'image/png' } });
+    }) as unknown as typeof globalThis.fetch;
+    const { server } = await start({ fetch });
+    const ok = await get(`${base(server)}/api/avatar/github/innei?key=${server.token}`);
+    expect(ok.status).toBe(200);
+    expect(ok.headers['content-type']).toBe('image/png');
+    expect(upstream).toEqual(['https://avatars.githubusercontent.com/innei?s=64']);
+    expect((await get(`${base(server)}/api/avatar/github/innei`)).status).toBe(403);
+    expect((await get(`${base(server)}/api/avatar/github/..%2Fetc?key=${server.token}`)).status).toBe(404);
+    expect((await get(`${base(server)}/api/avatar/elsewhere/innei?key=${server.token}`)).status).toBe(404);
   });
 
   test('the shell forbids loading anything from other hosts', async () => {

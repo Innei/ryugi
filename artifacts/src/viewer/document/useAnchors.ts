@@ -2,12 +2,24 @@ import { blockIdState } from '@haklex/rich-editor';
 import { $getRoot, $getState, type LexicalEditor } from 'lexical';
 import { useEffect, useState } from 'react';
 import type { Thread } from '../../shared/comments';
-import { resolveAnchor } from './anchor';
+import { resolveAnchor, shownThreadIds } from './anchor';
+import { barLinkStart, blockBar, type Box } from './layoutCards';
 
-export interface ThreadAnchor {
-  threadId: string;
-  top: number;
-  range: Range;
+export type ThreadAnchor =
+  | { threadId: string; top: number; kind: 'text'; range: Range }
+  | { threadId: string; top: number; kind: 'block'; element: HTMLElement };
+
+const BAR_HIT = 4;
+
+export function anchorBoxes(anchor: ThreadAnchor): Box[] {
+  return anchor.kind === 'text' ? [...anchor.range.getClientRects()] : [blockBar(anchor.element.getBoundingClientRect())];
+}
+
+export function anchorLinkStart(anchor: ThreadAnchor): { x: number; y: number } | null {
+  const boxes = anchorBoxes(anchor);
+  const last = boxes[boxes.length - 1];
+  if (!last) return null;
+  return anchor.kind === 'text' ? { x: last.right, y: last.bottom } : barLinkStart(last);
 }
 
 function rangeAt(element: HTMLElement, start: number, end: number): Range {
@@ -52,9 +64,13 @@ export function useAnchors(editor: LexicalEditor | null, threads: Thread[], cont
         const element = key ? editor.getElementByKey(key) : null;
         if (!element) continue;
         const at = resolveAnchor(element.textContent ?? '', thread.anchor.quote);
-        const range = at === 'block' ? rangeAt(element, 0, Infinity) : rangeAt(element, at.start, at.end);
+        if (at === 'block') {
+          next.push({ threadId: thread.id, top: element.getBoundingClientRect().top - origin, kind: 'block', element });
+          continue;
+        }
+        const range = rangeAt(element, at.start, at.end);
         const rect = range.getClientRects()[0] ?? element.getBoundingClientRect();
-        next.push({ threadId: thread.id, top: rect.top - origin, range });
+        next.push({ threadId: thread.id, top: rect.top - origin, kind: 'text', range });
       }
       setAnchors(next);
     };
@@ -82,9 +98,10 @@ export function useAnchors(editor: LexicalEditor | null, threads: Thread[], cont
 export function useHighlights(anchors: ThreadAnchor[], threads: Thread[], activeId: string | null) {
   useEffect(() => {
     if (typeof CSS === 'undefined' || !('highlights' in CSS)) return;
-    const open = new Set(threads.filter((t) => t.status === 'open').map((t) => t.id));
-    const normal = anchors.filter((a) => open.has(a.threadId) && a.threadId !== activeId).map((a) => a.range);
-    const active = anchors.filter((a) => a.threadId === activeId).map((a) => a.range);
+    const shown = shownThreadIds(threads, activeId);
+    const text = anchors.filter((a) => a.kind === 'text');
+    const normal = text.filter((a) => shown.has(a.threadId) && a.threadId !== activeId).map((a) => a.range);
+    const active = text.filter((a) => a.threadId === activeId).map((a) => a.range);
     CSS.highlights.set('ryugi-comment', new Highlight(...normal));
     CSS.highlights.set('ryugi-comment-active', new Highlight(...active));
     return () => {
@@ -106,8 +123,9 @@ export function useDraftHighlight(range: Range | null) {
 
 export function threadAtPoint(anchors: ThreadAnchor[], x: number, y: number): string | null {
   for (const anchor of anchors) {
-    for (const rect of anchor.range.getClientRects()) {
-      if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) return anchor.threadId;
+    const pad = anchor.kind === 'block' ? BAR_HIT : 0;
+    for (const box of anchorBoxes(anchor)) {
+      if (x >= box.left - pad && x <= box.right + pad && y >= box.top && y <= box.bottom) return anchor.threadId;
     }
   }
   return null;

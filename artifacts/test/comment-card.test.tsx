@@ -1,0 +1,137 @@
+// @vitest-environment happy-dom
+import { act, createElement, useState } from 'react';
+import { createRoot, type Root } from 'react-dom/client';
+import { afterEach, beforeAll, beforeEach, expect, test, vi } from 'vitest';
+import type { Thread } from '../src/shared/comments';
+import { CommentCard, type ThreadActions } from '../src/viewer/document/CommentCard';
+
+vi.mock('@stylexjs/stylex', async (original) => ({ ...await original<object>(), create: (value: unknown) => value, props: () => ({}) }));
+vi.mock('@lobehub/ui/stylex/cssVar.stylex', () => ({ cssVar: new Proxy({}, { get: (_, key) => `var(--${String(key)})` }) }));
+
+let root: Root | null = null;
+
+beforeAll(() => {
+  (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+});
+
+const reduceMotion = (reduce: boolean) => vi.stubGlobal('matchMedia', (query: string) => ({ matches: reduce && query.includes('reduce') }));
+
+beforeEach(() => reduceMotion(true));
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+  act(() => root?.unmount());
+  root = null;
+  document.body.innerHTML = '';
+});
+
+const thread: Thread = {
+  id: 't1',
+  anchor: { blockId: 'b1', quote: '按事件粒度推送' },
+  status: 'open',
+  statusAt: '2026-10-20T10:00:00.000Z',
+  messages: [{ id: 'm1', author: 'human', name: 'innei', text: '离线怎么办？', at: '2026-10-20T10:00:00.000Z' }],
+};
+
+const actions: ThreadActions = { reply: vi.fn(), edit: vi.fn(), remove: vi.fn(), resolve: vi.fn(), reopen: vi.fn() };
+
+function Harness() {
+  const [active, setActive] = useState(false);
+  return createElement(CommentCard, { thread, active, actions, onActivate: () => setActive(true) });
+}
+
+async function mount() {
+  const host = document.createElement('div');
+  document.body.append(host);
+  root = createRoot(host);
+  await act(async () => root!.render(createElement(Harness)));
+  return host;
+}
+
+const textOf = (host: HTMLElement, text: string) => [...host.querySelectorAll('div')].find((el) => el.textContent === text)!;
+
+test('clicking the card opens the reply box with the cursor in it', async () => {
+  const host = await mount();
+  await act(async () => textOf(host, '离线怎么办？').click());
+  const reply = host.querySelector<HTMLTextAreaElement>('textarea[placeholder="回复…"]');
+  expect(reply).not.toBeNull();
+  expect(document.activeElement).toBe(reply);
+});
+
+test('clicking 编辑 focuses the edit box, not the reply box', async () => {
+  const host = await mount();
+  const edit = [...host.querySelectorAll('button')].find((b) => b.textContent === '编辑')!;
+  await act(async () => edit.click());
+  const focused = document.activeElement as HTMLTextAreaElement;
+  expect(focused.tagName).toBe('TEXTAREA');
+  expect(focused.value).toBe('离线怎么办？');
+});
+
+async function renderCard(props: { thread?: Thread; active?: boolean }, onActivate = () => {}) {
+  if (!root) {
+    const host = document.createElement('div');
+    document.body.append(host);
+    root = createRoot(host);
+  }
+  await act(async () => root!.render(createElement(CommentCard, { thread: props.thread ?? thread, active: props.active ?? false, actions, onActivate })));
+  return document.body;
+}
+
+const buttonOf = (host: HTMLElement, title: string) => host.querySelector<HTMLButtonElement>(`button[title="${title}"]`)!;
+
+test('leaving the card closes the reply box', async () => {
+  const host = await renderCard({ active: true });
+  expect(host.querySelector('textarea[placeholder="回复…"]')).not.toBeNull();
+  await renderCard({ active: false });
+  expect(host.querySelector('textarea[placeholder="回复…"]')).toBeNull();
+});
+
+test('✓ resolves the thread and folds the card to its resolved row right away', async () => {
+  const host = await renderCard({ active: true });
+  await act(async () => buttonOf(host, '标为已解决').click());
+  expect(actions.resolve).toHaveBeenCalledWith('t1');
+  expect(host.textContent).toContain('已解决');
+  expect(host.textContent).not.toContain('离线怎么办？');
+});
+
+test('a resolved thread unfolds on click and stays unfolded while it reopens', async () => {
+  const resolved = { ...thread, status: 'resolved' as const };
+  const host = await renderCard({ thread: resolved });
+  const row = [...host.querySelectorAll('div')].filter((el) => el.textContent?.trim().startsWith('已解决')).at(-1)!;
+  await act(async () => row.click());
+  expect(host.textContent).toContain('离线怎么办？');
+  await act(async () => buttonOf(host, '重新打开').click());
+  expect(actions.reopen).toHaveBeenCalledWith('t1');
+  expect(host.textContent).toContain('离线怎么办？');
+});
+
+test('the reply box opens on the soft spring', async () => {
+  reduceMotion(false);
+  const animate = vi.spyOn(HTMLElement.prototype, 'animate');
+  await renderCard({ active: false });
+  await renderCard({ active: true });
+  const easings = animate.mock.calls.map(([, options]) => (typeof options === 'object' ? options.easing : undefined));
+  expect(easings.some((easing) => easing?.startsWith('linear('))).toBe(true);
+});
+
+test('resolve, reopen and the resolved row use icons, not text glyphs', async () => {
+  const host = await renderCard({ active: true });
+  expect(buttonOf(host, '标为已解决').querySelector('svg')).not.toBeNull();
+  expect(buttonOf(host, '标为已解决').textContent).toBe('');
+  await renderCard({ thread: { ...thread, status: 'resolved' } });
+  expect(host.textContent).not.toContain('✓');
+  const row = [...host.querySelectorAll('div')].filter((el) => el.textContent?.trim().startsWith('已解决')).at(-1)!;
+  expect(row.querySelector('svg')).not.toBeNull();
+  await act(async () => row.click());
+  expect(buttonOf(host, '重新打开').querySelector('svg')).not.toBeNull();
+  expect(buttonOf(host, '重新打开').textContent).toBe('');
+});
+
+test('unfolding a resolved thread also makes it the active one', async () => {
+  const onActivate = vi.fn();
+  const host = await renderCard({ thread: { ...thread, status: 'resolved' } }, onActivate);
+  const row = [...host.querySelectorAll('div')].filter((el) => el.textContent?.trim().startsWith('已解决')).at(-1)!;
+  await act(async () => row.click());
+  expect(onActivate).toHaveBeenCalled();
+});

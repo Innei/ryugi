@@ -1,11 +1,14 @@
 import fs from 'node:fs';
 import http from 'node:http';
+import os from 'node:os';
 import path from 'node:path';
 import { createLoroBinding } from '@haklex/rich-collab-loro';
 import { $getRoot, $isElementNode, $isTextNode, type LexicalNode, type TextNode } from 'lexical';
 import { LoroDoc } from 'loro-crdt';
 import { afterEach, describe, expect, test } from 'vitest';
 import { startArtifactsServer, type ArtifactsServer } from '../src/server/app';
+import type { CloudOptions } from '../src/server/cloud';
+import { writeCredentials } from '../src/server/credentials';
 import { createDocumentHeadlessEditor } from '../src/server/document-headless';
 import { get, openWs, readJson, tempRoot, waitFor, writeDocument, type Fetched } from './helpers';
 
@@ -16,7 +19,7 @@ afterEach(async () => {
   running = [];
 });
 
-async function start() {
+async function start(cloud?: CloudOptions) {
   const { root, viewer } = tempRoot();
   const server = await startArtifactsServer({
     root,
@@ -25,6 +28,7 @@ async function start() {
     urlHost: 'localhost',
     debounceMs: 20,
     documentTiming: { stepDelayMs: 0, writeDelayMs: 5 },
+    cloud,
   });
   running.push(server);
   return { server, root };
@@ -186,6 +190,27 @@ describe('comments', () => {
     await waitFor(() => ws.messages.some((m) => JSON.parse(m).type === 'doc-comments'));
     expect((await api(server, '/api/document/relay/state')).comments.threads).toHaveLength(1);
     ws.socket?.destroy();
+  });
+
+  test('a comment from the page carries the signed-in login', async () => {
+    const credentialsFile = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-creds-')), 'credentials.json');
+    writeCredentials(credentialsFile, { origin: 'https://ryugi.test', token: 't', login: 'innei' });
+    const { server, root } = await start({ origin: 'https://ryugi.test', credentialsFile });
+    writeDocument(root, 'relay', { 'doc.xml': '<doc><p id="b1">x</p></doc>' });
+    await postJson(server, 'relay', { op: 'create', blockId: 'b1', quote: 'x', text: 'why?' });
+    expect(readJson(commentsFile(root, 'relay')).threads[0].messages[0]).toMatchObject({ author: 'human', name: 'innei' });
+  });
+
+  test('an agent reply is named after the agent that last started the server', async () => {
+    const { server, root } = await start();
+    writeDocument(root, 'relay', { 'doc.xml': '<doc><p id="b1">x</p></doc>' });
+    fs.writeFileSync(path.join(root, '.state', 'agent'), JSON.stringify({ CODEX_THREAD_ID: 't1' }));
+    await postJson(server, 'relay', { op: 'create', blockId: 'b1', quote: 'x', text: 'why?' });
+    const file = readJson(commentsFile(root, 'relay'));
+    file.threads[0].messages.push({ author: 'agent', text: 'because' });
+    fs.writeFileSync(commentsFile(root, 'relay'), JSON.stringify(file));
+    await waitFor(() => readJson(commentsFile(root, 'relay')).threads[0].messages[1]?.id !== undefined);
+    expect(readJson(commentsFile(root, 'relay')).threads[0].messages[1]).toMatchObject({ author: 'agent', name: 'Codex' });
   });
 
   test('an agent reply written into the file is kept and filled in', async () => {

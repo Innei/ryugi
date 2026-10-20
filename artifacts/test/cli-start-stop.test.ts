@@ -3,15 +3,18 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, test } from 'vitest';
+import { AGENT_MARKERS } from '../src/server/agent';
 import { get, waitFor } from './helpers';
 
 const cli = path.resolve(__dirname, '../../skills/artifacts/app/cli.cjs');
+
+const withoutAgent = () => Object.fromEntries(Object.entries(process.env).filter(([key]) => !AGENT_MARKERS.includes(key)));
 
 const run = (args: string[], env: NodeJS.ProcessEnv = {}) => {
   const result = spawnSync(process.execPath, [cli, ...args], {
     encoding: 'utf8',
     timeout: 15000,
-    env: { ...process.env, ARTIFACTS_OPEN: '0', ...env },
+    env: { ...withoutAgent(), ARTIFACTS_OPEN: '0', ...env },
   });
   return { code: result.status, out: JSON.parse(result.stdout.trim().split('\n').pop()!) };
 };
@@ -42,6 +45,17 @@ describe('ryugi-artifacts start', () => {
     expect((await get(out.url.replace('localhost', '127.0.0.1'))).status).toBe(200);
     expect((fs.statSync(path.join(stateOf(project), 'server-info')).mode & 0o077)).toBe(0);
   });
+
+  test('records the agent of each start, and a start outside any agent keeps the last one', () => {
+    const project = newProject();
+    const agentFile = path.join(stateOf(project), 'agent');
+    run(['start', '--project-dir', project], { AI_AGENT: 'claude-code_2-1-304_agent', CLAUDECODE: '1' });
+    expect(JSON.parse(fs.readFileSync(agentFile, 'utf8'))).toEqual({ AI_AGENT: 'claude-code_2-1-304_agent', CLAUDECODE: '1' });
+    expect(run(['start', '--project-dir', project], { CODEX_THREAD_ID: 't1' }).out.reused).toBe(true);
+    expect(JSON.parse(fs.readFileSync(agentFile, 'utf8'))).toEqual({ CODEX_THREAD_ID: 't1' });
+    run(['start', '--project-dir', project]);
+    expect(JSON.parse(fs.readFileSync(agentFile, 'utf8'))).toEqual({ CODEX_THREAD_ID: 't1' });
+  }, 30000);
 
   test('reuses the running server for the same project', () => {
     const project = newProject();

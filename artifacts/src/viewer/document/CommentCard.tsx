@@ -1,8 +1,14 @@
 import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
-import { ArrowUp } from 'lucide-react';
-import { useState, type ReactNode } from 'react';
+import { Check, RotateCcw } from 'lucide-react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { flushSync } from 'react-dom';
 import { waitingOn, type Message, type Thread } from '../../shared/comments';
+import { authorOf } from './author';
+import { Avatar } from './Avatar';
+import { Composer } from './Composer';
+import { play } from './motion';
+import { useFold, useReplyPresence } from './useCardMotion';
 
 const styles = stylex.create({
   panel: {
@@ -47,97 +53,16 @@ const styles = stylex.create({
   body: { paddingBlock: 10, paddingInline: 14 },
   message: { marginTop: { default: 12, ':first-child': 0 } },
   who: { display: 'flex', alignItems: 'center', gap: 7, fontSize: 11, fontWeight: 600, marginBottom: 2 },
-  avatar: { width: 20, height: 20, flexShrink: 0, borderRadius: '50%', display: 'grid', placeItems: 'center', color: '#fff', fontSize: 10 },
-  human: { backgroundColor: '#c46a3b' },
-  agent: { backgroundColor: '#7c5cff' },
   time: { color: cssVar.colorTextQuaternary, fontWeight: 400 },
   deleted: { color: cssVar.colorTextQuaternary, fontStyle: 'italic' },
   text: { whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' },
   small: { marginInlineStart: 'auto', display: 'flex', gap: 6 },
   link: { padding: 0, borderWidth: 0, backgroundColor: 'transparent', color: { default: cssVar.colorTextTertiary, ':hover': cssVar.colorText }, fontSize: 11, cursor: 'pointer' },
-  composer: { position: 'relative', paddingTop: 2, paddingInline: 14, paddingBottom: 12 },
-  input: {
-    display: 'block',
-    width: '100%',
-    boxSizing: 'border-box',
-    minHeight: 44,
-    padding: 0,
-    paddingInlineEnd: 36,
-    borderWidth: 0,
-    outline: 'none',
-    backgroundColor: 'transparent',
-    color: cssVar.colorText,
-    fontFamily: cssVar.fontFamily,
-    fontSize: 12,
-    lineHeight: 1.6,
-    resize: 'none',
-    fieldSizing: 'content',
-  },
-  send: {
-    position: 'absolute',
-    right: 10,
-    bottom: 10,
-    width: 28,
-    height: 28,
-    display: 'grid',
-    placeItems: 'center',
-    padding: 0,
-    borderWidth: 0,
-    borderRadius: '50%',
-    backgroundColor: cssVar.colorText,
-    color: cssVar.colorBgContainer,
-    cursor: { default: 'pointer', ':disabled': 'default' },
-    opacity: { default: 1, ':disabled': 0.35 },
-  },
+  replyBox: { overflow: 'hidden' },
   collapsed: { display: 'flex', alignItems: 'center', gap: 8, paddingBlock: 8, paddingInline: 12, color: cssVar.colorTextTertiary, cursor: 'pointer' },
 });
 
 const timeOf = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-interface ComposerProps {
-  placeholder: string;
-  initial?: string;
-  autoFocus?: boolean;
-  onSubmit: (text: string) => void;
-  onCancel?: () => void;
-  onChange?: (text: string) => void;
-}
-
-export function Composer({ placeholder, initial = '', autoFocus, onSubmit, onCancel, onChange }: ComposerProps) {
-  const [text, setText] = useState(initial);
-  const update = (next: string) => {
-    setText(next);
-    onChange?.(next);
-  };
-  const submit = () => {
-    if (!text.trim()) return;
-    onSubmit(text.trim());
-    update('');
-  };
-  return (
-    <div {...stylex.props(styles.composer)} onClick={(event) => event.stopPropagation()}>
-      <textarea
-        autoFocus={autoFocus}
-        value={text}
-        rows={1}
-        placeholder={placeholder}
-        onChange={(event) => update(event.target.value)}
-        onKeyDown={(event) => {
-          if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) submit();
-          if (event.key === 'Escape') onCancel?.();
-        }}
-        {...stylex.props(styles.input)}
-      />
-      <button type="button" aria-label="发送" title="发送 ⌘↵" disabled={!text.trim()} onClick={submit} {...stylex.props(styles.send)}>
-        <ArrowUp size={15} strokeWidth={2.4} />
-      </button>
-    </div>
-  );
-}
-
-export function Avatar({ human }: { human: boolean }) {
-  return <span {...stylex.props(styles.avatar, human ? styles.human : styles.agent)}>{human ? '你' : 'A'}</span>;
-}
 
 export function PanelFrame({ active, children }: { active?: boolean; children: ReactNode }) {
   return <div {...stylex.props(styles.panel, active && styles.active)}>{children}</div>;
@@ -159,11 +84,12 @@ export function PanelWho({ human, label }: { human: boolean; label: string }) {
 function MessageView({ message, onEdit, onDelete }: { message: Message; onEdit: (text: string) => void; onDelete: () => void }) {
   const [editing, setEditing] = useState(false);
   const human = message.author === 'human';
+  const { label, initial } = authorOf(message);
   return (
     <div {...stylex.props(styles.message)}>
       <div {...stylex.props(styles.who)}>
-        <Avatar human={human} />
-        {human ? '你' : 'Agent'} <span {...stylex.props(styles.time)}>{timeOf(message.editedAt ?? message.at)}</span>
+        <Avatar human={human} initial={initial} name={message.name} src={message.avatar} />
+        {label} <span {...stylex.props(styles.time)}>{timeOf(message.editedAt ?? message.at)}</span>
         {human && !message.deleted && !editing ? (
           <span {...stylex.props(styles.small)}>
             <button type="button" onClick={() => setEditing(true)} {...stylex.props(styles.link)}>编辑</button>
@@ -190,49 +116,111 @@ export interface ThreadActions {
   reopen(threadId: string): void;
 }
 
+const CONFIRMED = { backgroundColor: '#2ea043', color: '#fff' };
+
 export function CommentCard({ thread, active, actions, onActivate }: { thread: Thread; active: boolean; actions: ThreadActions; onActivate: () => void }) {
   const [expanded, setExpanded] = useState(false);
+  const [closing, setClosing] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const [focusReply, setFocusReply] = useState(0);
+  const content = useRef<HTMLDivElement>(null);
+  const row = useRef<HTMLDivElement>(null);
   const waiting = waitingOn(thread);
   const resolved = thread.status === 'resolved';
+  const folded = (resolved || closing) && !expanded;
   const quote = thread.anchor.quote || '整段';
+  const frame = useFold(folded);
+  const reply = useReplyPresence(active && !resolved && !closing);
 
-  if (resolved && !expanded) {
-    return (
-      <PanelFrame>
-        <div onClick={() => setExpanded(true)} {...stylex.props(styles.collapsed)}>
-          ✓ 已解决 · <span {...stylex.props(styles.quote)}>{quote}</span>
-        </div>
-      </PanelFrame>
-    );
-  }
+  useEffect(() => {
+    if (thread.status !== 'open') return;
+    setExpanded(false);
+    setClosing(false);
+  }, [thread.status]);
+
+  const resolve = async (button: HTMLElement) => {
+    if (confirming) return;
+    setConfirming(true);
+    await play(button, [{ transform: 'scale(1)' }, { transform: 'scale(1.2)', offset: 0.23 }, { transform: 'scale(1)', offset: 0.52 }, { transform: 'scale(1)' }], {
+      duration: 420,
+      easing: 'ease-out',
+    });
+    await play(content.current, [{ opacity: 1 }, { opacity: 0 }], { duration: 120, easing: 'ease-out' });
+    flushSync(() => {
+      setClosing(true);
+      setExpanded(false);
+      setConfirming(false);
+    });
+    actions.resolve(thread.id);
+  };
+
+  const unfold = async () => {
+    onActivate();
+    await play(row.current, [{ opacity: 1 }, { opacity: 0 }], { duration: 100, easing: 'ease-in' });
+    flushSync(() => setExpanded(true));
+  };
 
   return (
-    <div onClick={onActivate}>
-      <PanelFrame active={active}>
-        <div {...stylex.props(styles.bar)}>
-          <span {...stylex.props(styles.quote)}>{quote}</span>
-          {waiting === 'human' ? <span {...stylex.props(styles.badge, styles.badgeHuman)}>等你回复</span> : null}
-          {waiting === 'agent' ? (
-            <span title="Agent 下一轮会读到这条" {...stylex.props(styles.badge, styles.badgeAgent)}>等 Agent</span>
-          ) : null}
-          {resolved ? (
-            <button type="button" title="重新打开" onClick={() => (actions.reopen(thread.id), setExpanded(false))} {...stylex.props(styles.icon)}>↺</button>
-          ) : (
-            <button type="button" title="标为已解决" onClick={(event) => (event.stopPropagation(), actions.resolve(thread.id))} {...stylex.props(styles.icon)}>✓</button>
-          )}
+    <div ref={frame}>
+      {folded ? (
+        <PanelFrame>
+          <div ref={row} onClick={() => void unfold()} {...stylex.props(styles.collapsed)}>
+            <Check size={13} strokeWidth={2.2} />
+            已解决 · <span {...stylex.props(styles.quote)}>{quote}</span>
+          </div>
+        </PanelFrame>
+      ) : (
+        <div
+          ref={content}
+          onClick={(event) => {
+            onActivate();
+            const interactive = (event.target as HTMLElement).closest('button, textarea, input, a');
+            if (!interactive && window.getSelection()?.isCollapsed !== false) setFocusReply((n) => n + 1);
+          }}
+        >
+          <PanelFrame active={active}>
+            <div {...stylex.props(styles.bar)}>
+              <span {...stylex.props(styles.quote)}>{quote}</span>
+              {waiting === 'human' ? <span {...stylex.props(styles.badge, styles.badgeHuman)}>等你回复</span> : null}
+              {waiting === 'agent' ? (
+                <span title="Agent 下一轮会读到这条" {...stylex.props(styles.badge, styles.badgeAgent)}>等 Agent</span>
+              ) : null}
+              {resolved ? (
+                <button type="button" title="重新打开" onClick={() => actions.reopen(thread.id)} {...stylex.props(styles.icon)}>
+                  <RotateCcw size={13} strokeWidth={2.2} />
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  title="标为已解决"
+                  onClick={(event) => (event.stopPropagation(), void resolve(event.currentTarget))}
+                  {...stylex.props(styles.icon)}
+                  style={confirming ? CONFIRMED : undefined}
+                >
+                  <Check size={14} strokeWidth={2.4} />
+                </button>
+              )}
+            </div>
+            <div {...stylex.props(styles.body)}>
+              {thread.messages.map((message) => (
+                <MessageView
+                  key={message.id}
+                  message={message}
+                  onEdit={(text) => actions.edit(thread.id, message.id, text)}
+                  onDelete={() => actions.remove(thread.id, message.id)}
+                />
+              ))}
+            </div>
+            {reply.shown ? (
+              <div ref={reply.outer} {...stylex.props(styles.replyBox)}>
+                <div ref={reply.inner}>
+                  <Composer placeholder="回复…" focusKey={focusReply} onSubmit={(text) => actions.reply(thread.id, text)} />
+                </div>
+              </div>
+            ) : null}
+          </PanelFrame>
         </div>
-        <div {...stylex.props(styles.body)}>
-          {thread.messages.map((message) => (
-            <MessageView
-              key={message.id}
-              message={message}
-              onEdit={(text) => actions.edit(thread.id, message.id, text)}
-              onDelete={() => actions.remove(thread.id, message.id)}
-            />
-          ))}
-        </div>
-        {active && !resolved ? <Composer placeholder="回复…" onSubmit={(text) => actions.reply(thread.id, text)} /> : null}
-      </PanelFrame>
+      )}
     </div>
   );
 }

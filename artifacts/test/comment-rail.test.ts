@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest';
-import { resolveAnchor } from '../src/viewer/document/anchor';
+import { resolveAnchor, shownThreadIds } from '../src/viewer/document/anchor';
 import { createDrafts, draftKey } from '../src/viewer/document/drafts';
-import { connectorPath, layoutCards, popoverPosition, toolbarPosition } from '../src/viewer/document/layoutCards';
+import { barLinkStart, blockBar, connectorPath, layoutCards, popoverPosition, toolbarPosition } from '../src/viewer/document/layoutCards';
 
 describe('layoutCards', () => {
   test('a card sits at its anchor when there is room', () => {
@@ -49,12 +49,26 @@ describe('resolveAnchor', () => {
 });
 
 describe('connectorPath', () => {
-  test('runs along the highlight line, then bends into the panel', () => {
-    expect(connectorPath({ x: -300, y: 40 }, { x: 0, y: 18 }, 40)).toBe('M-300 40 H-40 L0 18');
+  test('runs along the highlight line, then curves into the panel', () => {
+    expect(connectorPath({ x: -300, y: 40 }, { x: 0, y: 18 }, 40)).toBe('M-300 40 H-40 C-20 40 -20 18 0 18');
   });
 
-  test('skips the horizontal run when the highlight ends inside the bend', () => {
-    expect(connectorPath({ x: -20, y: 40 }, { x: 0, y: 18 }, 40)).toBe('M-20 40 L0 18');
+  test('curves straight from the highlight when it ends inside the bend', () => {
+    expect(connectorPath({ x: -20, y: 40 }, { x: 0, y: 18 }, 40)).toBe('M-20 40 C-10 40 -10 18 0 18');
+  });
+});
+
+describe('blockBar', () => {
+  test('sits just outside the right edge of the block, full height', () => {
+    expect(blockBar({ top: 100, right: 700, bottom: 400 })).toEqual({ left: 708, right: 711, top: 100, bottom: 400 });
+  });
+
+  test('links to the panel from near the top of the bar', () => {
+    expect(barLinkStart({ left: 708, right: 711, top: 100, bottom: 400 })).toEqual({ x: 711, y: 118 });
+  });
+
+  test('links from the middle of a bar shorter than the card offset', () => {
+    expect(barLinkStart({ left: 708, right: 711, top: 100, bottom: 120 })).toEqual({ x: 711, y: 110 });
   });
 });
 
@@ -100,5 +114,21 @@ describe('drafts', () => {
     drafts.save(key, '写了一半');
     drafts.save(key, '   ');
     expect(drafts.take(key)).toBe('');
+  });
+});
+
+describe('shownThreadIds', () => {
+  const threads = [
+    { id: 'a', status: 'open' as const },
+    { id: 'b', status: 'resolved' as const },
+    { id: 'c', status: 'resolved' as const },
+  ];
+
+  test('open threads show their highlight and link; resolved ones stay hidden', () => {
+    expect([...shownThreadIds(threads, null)]).toEqual(['a']);
+  });
+
+  test('a resolved thread shows them again while it is active', () => {
+    expect([...shownThreadIds(threads, 'b')].sort()).toEqual(['a', 'b']);
   });
 });

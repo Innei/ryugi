@@ -11,6 +11,7 @@ export interface ProjectPaths {
   info: string;
   version: string;
   owners: string;
+  agent: string;
   stopped: string;
   lock: string;
 }
@@ -39,6 +40,7 @@ export function projectPaths(dir: string): ProjectPaths {
     info: path.join(state, 'server-info'),
     version: path.join(state, 'server-version'),
     owners: path.join(state, 'owners'),
+    agent: path.join(state, 'agent'),
     stopped: path.join(state, 'server-stopped'),
     lock: path.join(state, 'start.lock'),
   };

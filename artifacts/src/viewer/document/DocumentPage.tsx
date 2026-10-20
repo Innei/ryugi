@@ -7,6 +7,7 @@ import { emptyComments, type CommentsFile, type HumanOp } from '../../shared/com
 import type { DocumentPayload } from '../../shared/types';
 import { WarningsBadge } from '../components/WarningsBadge';
 import { useArtifactSocket } from '../hooks/useArtifactSocket';
+import { BlockBars } from './BlockBars';
 import { createChannel } from './channel';
 import type { ThreadActions } from './CommentCard';
 import { CommentRail } from './CommentRail';
@@ -36,7 +37,7 @@ const styles = stylex.create({
   mainNoToc: { gridTemplateColumns: 'minmax(0, 700px) 320px' },
   mainNarrow: { display: 'flex', flexDirection: 'column', alignItems: 'stretch', paddingInline: 20 },
   railWrap: { position: 'relative' },
-  column: { width: '100%', maxWidth: 700, minWidth: 0 },
+  column: { position: 'relative', width: '100%', maxWidth: 700, minWidth: 0 },
   message: { padding: 48, textAlign: 'center', color: cssVar.colorTextSecondary, fontFamily: cssVar.fontFamily, fontSize: 14 },
 });
 
@@ -209,6 +210,7 @@ export default function DocumentPage({ id }: { id: string }) {
               onEditorReady={setEditor}
             />
           </DynamicHostContext.Provider>
+          <BlockBars container={articleEl} anchors={anchors} threads={comments.threads} activeId={activeId} />
         </article>
         <div {...stylex.props(styles.railWrap)}>
           <CommentRail

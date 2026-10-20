@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type { ServerMessage } from '../shared/types';
 import type { CommentsFile, HumanOp } from '../shared/comments';
+import type { CommentNames } from './comment-names';
 import { createCommentStore, type CommentStore } from './document-comments';
 import { createDocumentSession, type DocumentOutcome, type DocumentSession } from './document-session';
 
@@ -26,6 +27,7 @@ interface RegistryOptions {
   timing?: DocumentTiming;
   broadcast: (message: ServerMessage) => void;
   onWarningsChange: (id: string) => void;
+  names?: CommentNames;
   log?: (line: string) => void;
 }
 
@@ -44,7 +46,7 @@ export function createDocumentRegistry(options: RegistryOptions): DocumentRegist
   const commentStore = (id: string) => {
     let store = commentStores.get(id);
     if (!store) {
-      store = createCommentStore(path.join(options.root, 'document', id, 'comments.json'));
+      store = createCommentStore(path.join(options.root, 'document', id, 'comments.json'), options.names);
       commentStores.set(id, store);
     }
     return store;

@@ -77,6 +77,9 @@ importers:
       '@lexical/table':
         specifier: 0.52.0
         version: 0.52.0(typescript@5.9.3)
+      '@lobehub/icons':
+        specifier: 6.0.0
+        version: 6.0.0(@lobehub/ui@6.5.1)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       '@lobehub/ui':
         specifier: 6.5.1
         version: 6.5.1(@lobehub/fluent-emoji@5.0.0(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(@lobehub/icons@6.0.0)(@shikijs/themes@4.5.0)(@types/mdast@4.0.4)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(micromark-util-types@2.0.3)(micromark@4.0.3)(motion@14.3.0(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)

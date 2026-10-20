@@ -3,6 +3,8 @@ export type Author = 'human' | 'agent';
 export interface Message {
   id: string;
   author: Author;
+  name?: string;
+  avatar?: string;
   text: string;
   at: string;
   editedAt?: string;
@@ -60,6 +62,20 @@ export function parseComments(text: string): IncomingComments {
   return raw as unknown as IncomingComments;
 }
 
+const isSavedMessage = (m: Loose<Message>): m is Message =>
+  !!m.id && (m.author === 'human' || m.author === 'agent') && typeof m.text === 'string' && typeof m.at === 'string';
+
+// The file the server last wrote is trusted as written; only entries the server has given ids count as saved.
+export function savedComments(incoming: IncomingComments): CommentsFile {
+  const threads: Thread[] = [];
+  for (const t of incoming.threads) {
+    if (!t.id || !t.anchor?.blockId || !t.statusAt || (t.status !== 'open' && t.status !== 'resolved')) continue;
+    const messages = (t.messages ?? []).filter(isSavedMessage);
+    threads.push({ id: t.id, anchor: { blockId: t.anchor.blockId, quote: t.anchor.quote ?? '' }, status: t.status, statusAt: t.statusAt, messages });
+  }
+  return { version: 1, threads };
+}
+
 const stampOf = (m: Pick<Message, 'at' | 'editedAt'>) => m.editedAt ?? m.at;
 
 function mergeMessage(base: Message, incoming: Loose<Message>, origin: Author, now: string, warnings: string[]): Message {
@@ -77,7 +93,22 @@ function mergeMessage(base: Message, incoming: Loose<Message>, origin: Author, n
   return { ...base, text: incoming.text!, editedAt: incomingStamp === stampOf(base) ? now : incomingStamp };
 }
 
-function mergeThread(base: Thread, incoming: IncomingThread, origin: Author, now: string, newId: () => string, warnings: string[]): Thread {
+export interface Person {
+  name?: string;
+  avatar?: string;
+}
+
+const personOf = (who: Person | undefined): Person => ({ ...(who?.name ? { name: who.name } : {}), ...(who?.avatar ? { avatar: who.avatar } : {}) });
+
+function mergeThread(
+  base: Thread,
+  incoming: IncomingThread,
+  origin: Author,
+  now: string,
+  newId: () => string,
+  warnings: string[],
+  name: string | undefined,
+): Thread {
   const messages = [...base.messages];
   for (const message of incoming.messages ?? []) {
     const index = message.id ? messages.findIndex((m) => m.id === message.id) : -1;
@@ -92,7 +123,7 @@ function mergeThread(base: Thread, incoming: IncomingThread, origin: Author, now
       continue;
     }
     if (typeof message.text !== 'string' || message.text.length === 0) continue;
-    messages.push({ id: message.id ?? newId(), author, text: message.text, at: message.at ?? now });
+    messages.push({ id: message.id ?? newId(), author, ...personOf({ name }), text: message.text, at: message.at ?? now });
   }
   messages.sort((a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : 0));
 
@@ -120,13 +151,14 @@ export function mergeComments(
   origin: Author,
   now: string,
   newId: () => string,
+  name?: string,
 ): { file: CommentsFile; warnings: string[] } {
   const warnings: string[] = [];
   const threads = [...base.threads];
   for (const thread of incoming.threads) {
     const index = thread.id ? threads.findIndex((t) => t.id === thread.id) : threads.findIndex((t) => sameUnsavedThread(t, thread));
     if (index >= 0) {
-      threads[index] = mergeThread(threads[index]!, thread, origin, now, newId, warnings);
+      threads[index] = mergeThread(threads[index]!, thread, origin, now, newId, warnings, name);
       continue;
     }
     if (!thread.anchor?.blockId) {
@@ -140,7 +172,7 @@ export function mergeComments(
       statusAt: now,
       messages: [],
     };
-    threads.push(mergeThread(fresh, { ...thread, status: thread.status ?? 'open' }, origin, now, newId, warnings));
+    threads.push(mergeThread(fresh, { ...thread, status: thread.status ?? 'open' }, origin, now, newId, warnings, name));
   }
   return { file: { version: 1, threads }, warnings };
 }
@@ -155,7 +187,7 @@ const updateHumanMessage = (thread: Thread, messageId: string, update: (message:
   messages: thread.messages.map((m) => (m.id === messageId && m.author === 'human' && !m.deleted ? update(m) : m)),
 });
 
-export function applyHumanOp(file: CommentsFile, op: HumanOp, now: string, newId: () => string): CommentsFile {
+export function applyHumanOp(file: CommentsFile, op: HumanOp, now: string, newId: () => string, who?: Person): CommentsFile {
   switch (op.op) {
     case 'create':
       return {
@@ -167,12 +199,12 @@ export function applyHumanOp(file: CommentsFile, op: HumanOp, now: string, newId
             anchor: { blockId: op.blockId, quote: op.quote },
             status: 'open',
             statusAt: now,
-            messages: [{ id: newId(), author: 'human', text: op.text, at: now }],
+            messages: [{ id: newId(), author: 'human', ...personOf(who), text: op.text, at: now }],
           },
         ],
       };
     case 'reply':
-      return updateThread(file, op.threadId, (t) => ({ ...t, messages: [...t.messages, { id: newId(), author: 'human', text: op.text, at: now }] }));
+      return updateThread(file, op.threadId, (t) => ({ ...t, messages: [...t.messages, { id: newId(), author: 'human', ...personOf(who), text: op.text, at: now }] }));
     case 'edit':
       return updateThread(file, op.threadId, (t) => updateHumanMessage(t, op.messageId, (m) => ({ ...m, text: op.text, editedAt: now })));
     case 'delete':

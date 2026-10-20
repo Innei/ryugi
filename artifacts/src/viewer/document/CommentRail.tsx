@@ -2,9 +2,10 @@ import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
 import { useCallback, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import type { Thread } from '../../shared/comments';
+import { shownThreadIds } from './anchor';
 import { CommentCard, type ThreadActions } from './CommentCard';
 import { connectorPath, layoutCards } from './layoutCards';
-import type { ThreadAnchor } from './useAnchors';
+import { anchorLinkStart, type ThreadAnchor } from './useAnchors';
 
 const GAP = 12;
 const BEND = 40;
@@ -71,18 +72,17 @@ export function CommentRail({ narrow, threads, anchors, activeId, actions, onAct
     const rail = own.current;
     if (narrow || !rail) return setLinks([]);
     const origin = rail.getBoundingClientRect();
-    const open = new Set(threads.filter((thread) => thread.status === 'open').map((thread) => thread.id));
+    const shown = shownThreadIds(threads, activeId);
     const next: Link[] = [];
     for (const anchor of anchors) {
       const top = tops[anchor.threadId];
-      const rects = anchor.range.getClientRects();
-      const last = rects[rects.length - 1];
-      if (top === undefined || !last || !open.has(anchor.threadId)) continue;
-      const from = { x: last.right - origin.left, y: last.bottom - origin.top };
+      const start = anchorLinkStart(anchor);
+      if (top === undefined || !start || !shown.has(anchor.threadId)) continue;
+      const from = { x: start.x - origin.left, y: start.y - origin.top };
       next.push({ id: anchor.threadId, d: connectorPath(from, { x: 0, y: top + CONNECT_Y }, BEND) });
     }
     setLinks(next);
-  }, [narrow, anchors, threads, layoutKey]);
+  }, [narrow, anchors, threads, activeId, layoutKey]);
 
   const card = (thread: Thread) => (
     <CommentCard thread={thread} active={thread.id === activeId} actions={actions} onActivate={() => onActivate(thread.id)} />

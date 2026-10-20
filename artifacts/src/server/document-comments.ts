@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import { nanoid } from 'nanoid';
-import { applyHumanOp, emptyComments, mergeComments, parseComments, type CommentsFile, type HumanOp } from '../shared/comments';
+import { applyHumanOp, emptyComments, mergeComments, parseComments, savedComments, type CommentsFile, type HumanOp } from '../shared/comments';
+import type { CommentNames } from './comment-names';
 import { writeJsonAtomic } from './state';
 
 const MAX_TEXT = 20000;
@@ -39,10 +40,18 @@ export interface CommentStore {
   apply(op: HumanOp): CommentsFile;
 }
 
-export function createCommentStore(file: string, now = () => new Date().toISOString(), newId = () => nanoid(10)): CommentStore {
+const noNames: CommentNames = { human: () => undefined, agent: () => undefined };
+
+export function createCommentStore(
+  file: string,
+  names = noNames,
+  now = () => new Date().toISOString(),
+  newId = () => nanoid(10),
+): CommentStore {
   let current = emptyComments();
   let lastSeen: string | null = null;
   let warnings: string[] = [];
+  let loaded = false;
 
   const write = () => {
     writeJsonAtomic(file, current);
@@ -59,7 +68,9 @@ export function createCommentStore(file: string, now = () => new Date().toISOStr
     if (text === lastSeen) return false;
     lastSeen = text;
     try {
-      const merged = mergeComments(current, parseComments(text), 'agent', now(), newId);
+      const incoming = parseComments(text);
+      const base = loaded ? current : savedComments(incoming);
+      const merged = mergeComments(base, incoming, 'agent', now(), newId, names.agent());
       current = merged.file;
       warnings = merged.warnings;
       if (`${JSON.stringify(current, null, 2)}\n` !== text) write();
@@ -70,13 +81,14 @@ export function createCommentStore(file: string, now = () => new Date().toISOStr
   };
 
   sync();
+  loaded = true;
   return {
     current: () => current,
     warnings: () => warnings,
     sync,
     apply: (op) => {
       sync();
-      current = applyHumanOp(current, op, now(), newId);
+      current = applyHumanOp(current, op, now(), newId, names.human());
       write();
       return current;
     },

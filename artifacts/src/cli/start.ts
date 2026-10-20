@@ -3,6 +3,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import readline from 'node:readline';
+import { AGENT_MARKERS } from '../server/agent';
 import { ARTIFACT_ERROR, ARTIFACT_PATTERN, CliError, projectPaths, type ProjectPaths } from './paths';
 import { alive, hasServerId, parentOf, readText, sleep, waitForExit } from './process';
 
@@ -75,6 +76,12 @@ function registerOwner(paths: ProjectPaths) {
   fs.renameSync(tmp, paths.owners);
 }
 
+// The server names agent comments after the latest session that started it; a start outside any agent keeps the last name.
+function recordAgent(paths: ProjectPaths) {
+  const markers = Object.fromEntries(AGENT_MARKERS.flatMap((key) => (process.env[key] ? [[key, process.env[key]]] : [])));
+  if (Object.keys(markers).length) fs.writeFileSync(paths.agent, `${JSON.stringify(markers)}\n`);
+}
+
 async function replace(pid: number) {
   try { process.kill(pid, 'SIGTERM'); } catch {}
   if (await waitForExit(pid, 5000)) return;
@@ -117,12 +124,14 @@ export async function start(options: StartOptions, emit: Emit): Promise<number> 
     if (running && info) {
       if (!version || readText(paths.version) === version) {
         registerOwner(paths);
+        recordAgent(paths);
         emit(withLink(JSON.parse(info), options.artifact, true));
         return 0;
       }
       await replace(running);
     }
     registerOwner(paths);
+    recordAgent(paths);
     fs.rmSync(paths.info, { force: true });
     const id = crypto.randomBytes(24).toString('hex');
     fs.writeFileSync(paths.serverId, `${id}\n`);
