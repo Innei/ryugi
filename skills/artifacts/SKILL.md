@@ -109,9 +109,12 @@ bash app/publish.sh --project-dir /path/to/project --artifact html/arrow-tuner -
 # {"type":"published","artifact":"html/arrow-tuner","url":"https://ryugi.innei.dev/a/…","visibility":"public"}
 ```
 
-- Someone else will open it (a teammate, a reviewer): `--public`. Only they
-  will look: `--private`, which needs their sign-in. With neither flag the
-  artifact keeps its visibility; a new one is private.
+- First publish of an artifact: someone else will open it (a teammate, a
+  reviewer): `--public`. Only they will look: `--private`, which needs their
+  sign-in.
+- Publishing an artifact again: no `--public` or `--private`. The link keeps
+  whoever can see it now, which they may have changed on the web page since
+  your last command. Add a flag only when they ask to change who can see it.
 - Publishing again replaces what the same link shows.
 - Exit code 2 prints `{"type":"login-required","url":…}`: give them `url`,
   wait until they say they signed in, then run the same command again.

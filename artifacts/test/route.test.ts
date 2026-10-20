@@ -12,9 +12,11 @@ describe('parseRoute', () => {
     expect(parseRoute('/artboard/header/')).toEqual({ kind: 'artifact', type: 'artboard', id: 'header' });
   });
 
-  test('a cloud link names the cloud artifact id', () => {
+  test('a cloud link opens the shell, and its view path opens the framed view', () => {
     expect(parseRoute('/a/V1StGXR8_Z5jdHi6B-myT')).toEqual({ kind: 'cloud', id: 'V1StGXR8_Z5jdHi6B-myT' });
-    for (const pathname of ['/a/', '/a/x/y', '/a/bad%20id', '/a/../x']) {
+    expect(parseRoute('/a/V1StGXR8_Z5jdHi6B-myT/view')).toEqual({ kind: 'cloud-view', id: 'V1StGXR8_Z5jdHi6B-myT' });
+    expect(parseRoute('/a/V1StGXR8_Z5jdHi6B-myT/view/')).toEqual({ kind: 'cloud-view', id: 'V1StGXR8_Z5jdHi6B-myT' });
+    for (const pathname of ['/a/', '/a/x/y', '/a/x/view/y', '/a/bad%20id', '/a/../x']) {
       expect(parseRoute(pathname), pathname).toEqual({ kind: 'unknown' });
     }
   });

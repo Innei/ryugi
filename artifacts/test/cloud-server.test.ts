@@ -134,6 +134,8 @@ async function call(server: ArtifactsServer, method: string, rel: string, body?:
 
 const config = (file: string) => JSON.parse(fs.readFileSync(file, 'utf8'));
 
+const RYUGI_MARK_PATH = /<path d="([^"]+)"/.exec(fs.readFileSync(path.join(__dirname, '../../assets/ryugi-small.svg'), 'utf8'))![1]!;
+
 function $findText(node: LexicalNode, text: string): TextNode | null {
   if ($isTextNode(node) && node.getTextContent() === text) return node;
   if ($isElementNode(node)) {
@@ -190,6 +192,9 @@ describe('cloud sign-in', () => {
     expect(page).toContain('<meta name="robots" content="noindex, nofollow">');
     expect(page).toContain('innei');
     expect(page).not.toContain('<script');
+    expect(page).toContain(RYUGI_MARK_PATH);
+    for (const text of ['已连接 Ryugi Cloud', '在 Ryugi 页面里发布的？', '让 agent 发布的？', '可以关闭这个页面']) expect(page).toContain(text);
+    expect(page).not.toContain('class="moon"');
   });
 
   test('the sign-in page escapes the account name', async () => {
@@ -210,6 +215,8 @@ describe('cloud sign-in', () => {
     const page = await res.text();
     expect(page).toContain('<title>登录没有完成</title>');
     expect(page).toContain('这个登录链接已过期或已经用过');
+    expect(page).toContain(RYUGI_MARK_PATH);
+    for (const text of ['未连接', '重新登录', '可以关闭这个页面后重试']) expect(page).toContain(text);
   });
 
   test('a callback with an unknown or reused state is refused', async () => {
@@ -363,6 +370,48 @@ describe('publishing', () => {
     expect(json.visibility).toBe('public');
     expect(cloud.requests[0]!.meta!.visibility).toBe('public');
     expect(config(configFile).artifacts['html/a'].cloud.visibility).toBe('public');
+  });
+
+  test('a republish without a visibility keeps the one the owner set on the web', async () => {
+    const { server, root, cloud, configFile } = await start();
+    writeHtml(root, 'a', { 'index.html': '<title>A</title>' });
+    await call(server, 'POST', '/api/cloud/publish/html/a');
+    cloud.respond = (r) =>
+      r.method === 'PUT' ? { status: 200, body: { id: 'cloud1', url: `${cloud.origin}/a/cloud1`, visibility: 'public', updatedAt: '2026-10-20T09:00:00.000Z' } } : undefined;
+    const { json } = await call(server, 'POST', '/api/cloud/publish/html/a');
+    expect(cloud.requests[1]!.meta).not.toHaveProperty('visibility');
+    expect(json.visibility).toBe('public');
+    expect(config(configFile).artifacts['html/a']).toMatchObject({ visibility: 'public', cloud: { visibility: 'public' } });
+  });
+
+  test('a republish with an explicit visibility still sends it', async () => {
+    const { server, root, cloud } = await start();
+    writeHtml(root, 'a', { 'index.html': '<title>A</title>' });
+    await call(server, 'POST', '/api/cloud/publish/html/a');
+    await call(server, 'POST', '/api/cloud/publish/html/a', { visibility: 'public' });
+    expect(cloud.requests[1]!.meta!.visibility).toBe('public');
+  });
+
+  test('a new link made after the cloud copy was deleted uses the local visibility', async () => {
+    const { server, root, cloud, configFile } = await start();
+    writeHtml(root, 'a', { 'index.html': '<title>A</title>' });
+    await call(server, 'POST', '/api/cloud/publish/html/a', { visibility: 'public' });
+    cloud.respond = (r) => (r.method === 'PUT' ? { status: 404, body: { error: 'not found' } } : undefined);
+    await call(server, 'POST', '/api/cloud/publish/html/a');
+    expect(cloud.requests.map((r) => `${r.method} ${r.meta?.visibility}`)).toEqual(['POST public', 'PUT undefined', 'POST public']);
+    expect(config(configFile).artifacts['html/a'].cloud.id).toBe('cloud2');
+  });
+
+  test('listing cloud artifacts brings their current visibility into the config', async () => {
+    const { server, root, cloud, configFile } = await start();
+    writeHtml(root, 'a', { 'index.html': '<title>A</title>' });
+    await call(server, 'POST', '/api/cloud/publish/html/a');
+    cloud.respond = (r) =>
+      r.method === 'GET' && r.path === '/api/artifacts'
+        ? { status: 200, body: { artifacts: [{ id: 'cloud1', url: `${cloud.origin}/a/cloud1`, visibility: 'public', updatedAt: '2026-10-20T08:00:00.000Z' }] } }
+        : undefined;
+    expect((await call(server, 'GET', '/api/cloud/artifacts')).status).toBe(200);
+    expect(config(configFile).artifacts['html/a']).toMatchObject({ visibility: 'public', cloud: { id: 'cloud1', visibility: 'public' } });
   });
 
   test('an edit made in the viewer but not yet saved is part of the upload', async () => {

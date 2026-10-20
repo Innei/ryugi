@@ -128,19 +128,21 @@ export function createCloudRoutes(options: CloudRoutesOptions) {
     }
     const key = `${ref.type}/${ref.id}`;
     const entry = artifactEntry(key);
-    const visibility = requested ?? entry.visibility ?? 'private';
-    const form = new FormData();
-    form.set('meta', JSON.stringify({ type: ref.type, title: inspected.title, visibility }));
-    form.set('payload', JSON.stringify(inspected.payload));
-    for (const file of files) form.set(`file:${file.path}`, new Blob([new Uint8Array(file.data)]), file.path);
-    let res = entry.cloud ? await cloudFetch('PUT', `/api/artifacts/${entry.cloud.id}`, form) : null;
-    if (!res || res.status === 404) res = await cloudFetch('POST', '/api/artifacts', form);
+    const upload = (visibility: Visibility | undefined) => {
+      const form = new FormData();
+      form.set('meta', JSON.stringify({ type: ref.type, title: inspected.title, ...(visibility ? { visibility } : {}) }));
+      form.set('payload', JSON.stringify(inspected.payload));
+      for (const file of files) form.set(`file:${file.path}`, new Blob([new Uint8Array(file.data)]), file.path);
+      return form;
+    };
+    let res = entry.cloud ? await cloudFetch('PUT', `/api/artifacts/${entry.cloud.id}`, upload(requested)) : null;
+    if (!res || res.status === 404) res = await cloudFetch('POST', '/api/artifacts', upload(requested ?? entry.visibility ?? 'private'));
     const published = (await (await expectOk(res)).json()) as CloudArtifact;
     updateArtifactConfig(configFile, key, {
-      visibility,
+      visibility: published.visibility,
       cloud: { id: published.id, url: published.url, publishedAt: published.updatedAt, visibility: published.visibility },
     });
-    return { status: 200, body: { id: published.id, url: published.url, visibility, publishedAt: published.updatedAt } };
+    return { status: 200, body: { id: published.id, url: published.url, visibility: published.visibility, publishedAt: published.updatedAt } };
   };
 
   const setVisibility = async (ref: ArtifactRef, visibility: Visibility) => {
@@ -156,6 +158,15 @@ export function createCloudRoutes(options: CloudRoutesOptions) {
       }
     }
     return updateArtifactConfig(configFile, key, { visibility });
+  };
+
+  const adoptCloudVisibility = (artifacts: CloudArtifact[]) => {
+    const current = new Map(artifacts.map((artifact) => [artifact.id, artifact.visibility]));
+    for (const [key, entry] of Object.entries(readConfig(configFile).config.artifacts)) {
+      const visibility = entry.cloud && current.get(entry.cloud.id);
+      if (!entry.cloud || !visibility || (entry.visibility === visibility && entry.cloud.visibility === visibility)) continue;
+      updateArtifactConfig(configFile, key, { visibility, cloud: { ...entry.cloud, visibility } });
+    }
   };
 
   const deleteCloud = async (cloudId: string) => {
@@ -191,7 +202,9 @@ export function createCloudRoutes(options: CloudRoutesOptions) {
       return;
     }
     if (action === 'artifacts' && method === 'GET' && !first) {
-      sendJson(res, 200, await (await expectOk(await cloudFetch('GET', '/api/artifacts'))).json());
+      const listed = (await (await expectOk(await cloudFetch('GET', '/api/artifacts'))).json()) as { artifacts: CloudArtifact[] };
+      adoptCloudVisibility(listed.artifacts);
+      sendJson(res, 200, listed);
       return;
     }
     if (action === 'artifacts' && method === 'DELETE' && first && !second) {

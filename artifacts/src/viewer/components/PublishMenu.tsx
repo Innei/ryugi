@@ -82,6 +82,11 @@ export function PublishMenu({ artifact, floating = false }: Props) {
 
   const setVisibility = (visibility: Visibility) => run(() => cloudRequest('POST', `visibility/${artifact}`, { visibility }));
 
+  const adoptCloudVisibility = async (open: boolean) => {
+    if (!open || !status?.signedIn || !state.published) return;
+    if ((await cloudRequest('GET', 'artifacts')).ok) await refresh();
+  };
+
   const content = !status ? (
     <div {...stylex.props(styles.panel, styles.muted)}>正在读取发布状态…</div>
   ) : !status.signedIn ? (
@@ -150,7 +155,7 @@ export function PublishMenu({ artifact, floating = false }: Props) {
   );
 
   return (
-    <Popover placement="bottomRight" trigger="click" content={content}>
+    <Popover placement="bottomRight" trigger="click" content={content} onOpenChange={(open) => void adoptCloudVisibility(open)}>
       <button type="button" aria-label="Share" {...stylex.props(styles.trigger, floating && styles.floating)}>
         {state.published && state.visibility === 'public' ? <Globe size={14} /> : <Lock size={14} />}
         {state.published ? '已发布' : '分享'}

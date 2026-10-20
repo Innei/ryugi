@@ -23,7 +23,6 @@ const styles = stylex.create({
     fontSize: 14,
     textAlign: 'center',
   },
-  link: { color: cssVar.colorLink },
 });
 
 type CloudArtifact =
@@ -60,16 +59,7 @@ export function CloudLayout({ id }: { id: string }) {
 
   if (state.status === 'loading') return <div {...stylex.props(styles.message)}>正在加载…</div>;
   if (state.status === 'failed') return <div {...stylex.props(styles.message)}>{state.message}</div>;
-  if (state.status === 'missing') {
-    return (
-      <div {...stylex.props(styles.message)}>
-        <span>这个链接不存在，或者你没有权限查看。</span>
-        <a href={`/auth/login?return=${encodeURIComponent(`/a/${id}`)}`} {...stylex.props(styles.link)}>
-          如果它是你发布的，登录后再打开
-        </a>
-      </div>
-    );
-  }
+  if (state.status === 'missing') return <div {...stylex.props(styles.message)}>这个链接打不开</div>;
 
   const { artifact } = state;
   if (artifact.type === 'html') {
