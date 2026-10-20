@@ -45,6 +45,14 @@ describe('injectRuntime', () => {
     expect(() => new Function(code)).not.toThrow();
   });
 
+  test('artboard inspection keeps original HTML line numbers and produces valid JavaScript', () => {
+    const page = '<!doctype html>\n<html>\n<head></head>\n<body>\n<p>Original line</p>\n</body></html>';
+    const html = injectRuntime(page, { inspector: true });
+    expect(html.split('\n')[4]).toBe('<p>Original line</p>');
+    const code = html.slice(html.indexOf('<script>') + 8, html.indexOf('</script>'));
+    expect(() => new Function(code)).not.toThrow();
+  });
+
   test('without <head>, the script goes after the doctype and <html> so the page stays in standards mode', () => {
     expect(injectRuntime('<!DOCTYPE html><meta charset=utf-8><title>x</title><p>y').startsWith('<!DOCTYPE html><script>')).toBe(true);
     expect(injectRuntime('<!doctype html>\n<html lang="en"><body>z').startsWith('<!doctype html>\n<html lang="en"><script>')).toBe(true);

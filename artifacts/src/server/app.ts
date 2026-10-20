@@ -252,7 +252,7 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
       if (err) send(res, 404, 'Not found');
       else {
         const uiRuntimeUrl = runtimeDir ? `${contentPrefix}runtime/ryugi-ui.js` : undefined;
-        send(res, 200, injectRuntime(source, { uiRuntimeUrl, embedded: ref.type === 'document' }), { 'Content-Type': 'text/html; charset=utf-8', ...headers });
+        send(res, 200, injectRuntime(source, { uiRuntimeUrl, embedded: ref.type === 'document', inspector: ref.type === 'artboard' }), { 'Content-Type': 'text/html; charset=utf-8', ...headers });
       }
     });
   };
