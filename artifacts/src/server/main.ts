@@ -43,7 +43,10 @@ async function main() {
     if (launcher) execFile(launcher.bin, launcher.args, () => {});
   });
 
+  let stopping = false;
   const shutdown = async (reason: string) => {
+    if (stopping) return;
+    stopping = true;
     console.log(JSON.stringify({ type: 'server-stopped', reason }));
     fs.rmSync(path.join(stateDir, 'server-info'), { force: true });
     writeJsonAtomic(path.join(stateDir, 'server-stopped'), { reason, timestamp: Date.now() });

@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, test } from 'vitest';
-import { readJson, waitFor, writeArtboard } from './helpers';
+import { readJson, waitFor, writeArtboard, writeDocument } from './helpers';
 
 const repoRoot = path.resolve(__dirname, '../..');
 const serverEntry = path.join(repoRoot, 'skills/artifacts/app/server.cjs');
@@ -61,6 +61,20 @@ async function startServer(root: string, openCmd: string, openArtifact = 'artboa
 }
 
 describe('automatic browser open', () => {
+  test('closes a document session once when Ctrl+C and its forwarded termination signal arrive together', async () => {
+    const root = projectRoot();
+    writeDocument(root, 'notes', { 'doc.xml': '<doc><p>Keep this document</p></doc>' });
+    const child = await startServer(root, '');
+    let output = '';
+    child.stdout!.on('data', (chunk) => { output += chunk; });
+    const closed = new Promise((resolve) => child.on('close', resolve));
+    child.kill('SIGINT');
+    child.kill('SIGTERM');
+    await closed;
+    expect(output.match(/server-stopped/g)).toHaveLength(1);
+    expect(fs.readFileSync(path.join(root, 'document/notes/doc.xml'), 'utf8')).toContain('Keep this document');
+  });
+
   test('opens an artboard that is already ready when the server starts', async () => {
     const root = projectRoot();
     const { bin, log } = fakeOpenCommand();

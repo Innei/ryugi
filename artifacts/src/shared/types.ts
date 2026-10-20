@@ -93,6 +93,7 @@ export interface ArtifactSummary {
   type: ArtifactType;
   id: string;
   title: string;
+  updatedAt: number;
 }
 
 import type { CommentsFile } from './comments';

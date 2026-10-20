@@ -185,6 +185,8 @@ export function callbackPage(result: SignedIn | Failed): string {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="referrer" content="no-referrer">
+<meta name="robots" content="noindex, nofollow">
+<meta name="description" content="Ryugi Cloud 本地登录结果。完成连接后，返回 Ryugi 继续发布和分享 Artifact。">
 <title>${title}</title>
 <style>${STYLE}</style>
 </head>

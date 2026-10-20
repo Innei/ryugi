@@ -19,6 +19,14 @@ describe('parseRoute', () => {
     }
   });
 
+  test('a preview route names a valid local artifact', () => {
+    expect(parseRoute('/preview/artboard/header')).toEqual({ kind: 'preview', type: 'artboard', id: 'header' });
+    expect(parseRoute('/preview/document/spec/')).toEqual({ kind: 'preview', type: 'document', id: 'spec' });
+    for (const pathname of ['/preview/slides/deck', '/preview/html/Bad', '/preview/html/x/y']) {
+      expect(parseRoute(pathname)).toEqual({ kind: 'unknown' });
+    }
+  });
+
   test('unknown types, invalid ids and deeper paths are unknown', () => {
     for (const pathname of ['/slides/deck', '/html/../x', '/html/Bad', '/html/a/b', '/html', '/html/']) {
       expect(parseRoute(pathname), pathname).toEqual({ kind: 'unknown' });

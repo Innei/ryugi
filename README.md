@@ -49,6 +49,20 @@ Install from this repository; Ryugi is in no harness's official marketplace. If 
 
 Verify with a clean session: send `Let's make a react todo list`. A working install triggers `brainstorming` before any code is written.
 
+## Browse project artifacts
+
+Open a project's saved artboards, documents and HTML pages without starting an agent session:
+
+```bash
+npx ryugi-artifacts
+npx ryugi-artifacts /path/to/project
+npx ryugi-artifacts --no-open
+```
+
+The local library shows content previews, type filters and title/id search. Sort by newest update, oldest update or name. Previews load as their cards come into view; opening a card takes you to the full artifact. The server reads `.ryugi/artifacts/` in the selected project and keeps the library in sync with file changes.
+
+The command reuses a running project server. A new server stays in the terminal; Ctrl+C stops it and keeps your artifacts. Node.js and Bash are required (Git Bash on Windows). For development, run `cd artifacts && pnpm build`, then `node artifacts/bin/ryugi-artifacts.cjs /path/to/project` from the repository root.
+
 ## The workflow
 
 1. **brainstorming** — activates before building anything. Draws out what you actually want and why, then plays its understanding back for correction. Small changes get agreed in chat; projects get a design document a builder could build from.

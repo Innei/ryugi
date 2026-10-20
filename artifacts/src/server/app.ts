@@ -7,7 +7,7 @@ import { artifactKeyOf, artifactSignature, listArtifacts, resolveArtifactDir, ty
 import { readDocument } from './document';
 import { asHumanOp } from './document-comments';
 import { createDocumentRegistry, type DocumentTiming } from './documents';
-import { readHtml } from './html';
+import { latestMtime, readHtml } from './html';
 import { injectRuntime } from './inject';
 import { listen, parseCookies, randomToken, readPersisted, safeEqual, send, sendFile, sendJson, urlHostForHttp } from './http';
 import { resolveBoardFile, resolveDocumentAsset, resolveHtmlFile, resolveInside } from './paths';
@@ -16,6 +16,7 @@ import { readCanvas, writeArtifactState, writeJsonAtomic } from './state';
 import { ensureConfig } from './config';
 import { createCloudRoutes, type CloudOptions } from './cloud';
 import { publishPayload } from './publish-payload';
+import { viewerPage } from './viewer-page';
 import { watchTree } from './watch';
 import { completeHandshake, handleClientFrames, rejectUpgrade, textFrame } from './ws';
 
@@ -66,6 +67,8 @@ const CONTENT_CSP: Record<ArtifactType, string> = {
 
 const SHELL_ROUTE = new RegExp(`^/(?:(${ARTIFACT_TYPES.join('|')})/([^/]+)/?)?$`);
 const API_ARTIFACT_ROUTE = /^\/api\/artifacts\/([^/]+)\/([^/]+)$/;
+const PREVIEW_ROUTE = /^\/preview\/(artboard|document|html)\/([a-z0-9][a-z0-9-]*)\/?$/;
+const API_PREVIEW_ROUTE = /^\/api\/preview\/([^/]+)\/([^/]+)$/;
 const API_DOCUMENT_ROUTE = /^\/api\/document\/([^/]+)\/(state|update|comments)$/;
 const MAX_COMMENT_OP = 64 * 1024;
 const MAX_DOCUMENT_UPDATE = 8 * 1024 * 1024;
@@ -304,8 +307,9 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
       type: entry.type,
       id: entry.id,
       title: titleOf(readArtifact(entry.dir, entry), entry),
+      updatedAt: latestMtime(entry.dir),
     }));
-    sendJson(res, 200, { artifacts: summaries, warnings });
+    sendJson(res, 200, { project: path.basename(path.dirname(path.dirname(root))), artifacts: summaries, warnings });
   };
 
   function onClientText(text: string) {
@@ -353,12 +357,18 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
 
   const handleRequest = (req: http.IncomingMessage, res: http.ServerResponse) => {
     touch();
+    res.setHeader('X-Robots-Tag', 'noindex, nofollow');
     const url = new URL(req.url ?? '/', 'http://artifacts.local');
     let pathname: string;
     try {
       pathname = decodeURIComponent(url.pathname);
     } catch {
       send(res, 400, 'Bad request');
+      return;
+    }
+
+    if (pathname === '/robots.txt') {
+      sendFile(res, path.join(viewerDir, 'robots.txt'));
       return;
     }
 
@@ -386,6 +396,25 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
       return;
     }
 
+    const previewMatch = API_PREVIEW_ROUTE.exec(pathname);
+    if (previewMatch) {
+      const [, type = '', id = ''] = previewMatch;
+      const dir = resolveArtifactDir(root, type, id);
+      const ref = artifactKeyOf(`${type}/${id}`);
+      if (!dir || !ref) {
+        sendJson(res, 404, { error: 'Artifact not found' });
+        return;
+      }
+      try {
+        const payload = readArtifact(dir, ref);
+        const title = titleOf(payload, ref);
+        sendJson(res, 200, { ...publishPayload(ref, dir, title, payload), title, warnings: payload.warnings, contentBase: `${contentPrefix}${type}/${id}/` });
+      } catch {
+        sendJson(res, 422, { error: 'Preview unavailable' });
+      }
+      return;
+    }
+
     const cloudMatch = cloud?.match(pathname);
     if (cloud && cloudMatch) {
       if (req.method !== 'GET' && !(key !== null && safeEqual(key, token)) && !sameOrigin(req)) {
@@ -410,10 +439,23 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
       return;
     }
 
-    if (SHELL_ROUTE.test(pathname) || pathname === '/index.html') {
-      const headers: Record<string, string> = { 'Content-Security-Policy': VIEWER_CSP };
+    if (SHELL_ROUTE.test(pathname) || PREVIEW_ROUTE.test(pathname) || pathname === '/index.html') {
+      const ref = artifactKeyOf(pathname.replace(/^\/(?:preview\/)?/, '').replace(/\/$/, ''));
+      const dir = ref && resolveArtifactDir(root, ref.type, ref.id);
+      const project = path.basename(path.dirname(path.dirname(root)));
+      const title = ref ? (dir ? titleOf(readArtifact(dir, ref), ref) : ref.id) : `${project} · Artifacts`;
+      const description = ref
+        ? `在 ${project} 项目中查看 ${title}，这是一个 ${ref.type === 'artboard' ? 'Artboard' : ref.type === 'document' ? 'Document' : 'HTML'} Artifact。`
+        : `浏览 ${project} 项目的全部 Artboard、Document 和 HTML Artifact，预览真实内容，按类型、名称和更新时间查找作品。`;
+      const canonical = `http://${urlHostForHttp(options.urlHost)}:${port}/${ref ? `${ref.type}/${ref.id}` : ''}`;
+      const headers: Record<string, string> = {
+        'Content-Type': 'text/html; charset=utf-8',
+        'Content-Security-Policy': PREVIEW_ROUTE.test(pathname) ? VIEWER_CSP.replace("frame-ancestors 'none'", "frame-ancestors 'self'") : VIEWER_CSP,
+      };
       if (key !== null) headers['Set-Cookie'] = `${cookieName}=${token}; HttpOnly; SameSite=Strict; Path=/`;
-      sendFile(res, path.join(viewerDir, 'index.html'), headers);
+      void fs.promises.readFile(path.join(viewerDir, 'index.html'), 'utf8')
+        .then((template) => send(res, 200, viewerPage(template, { title, description, url: canonical }), headers))
+        .catch((err: NodeJS.ErrnoException) => send(res, err.code === 'ENOENT' ? 404 : 500, 'Viewer unavailable'));
       return;
     }
 
@@ -508,6 +550,8 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
         const dir = resolveArtifactDir(root, ref.type, ref.id);
         if (!dir) {
           signatures.delete(key);
+          const frame = textFrame(JSON.stringify({ type: 'change', artifact: key, files: changed } satisfies ServerMessage));
+          for (const socket of clients) socket.write(frame);
           continue;
         }
         if (ref.type === 'document' && (changed.includes('doc.xml') || changed.length === 0)) documents.fileChanged(ref.id);

@@ -241,6 +241,7 @@ if [[ "$FOREGROUND" == "true" ]]; then
   env "${SERVER_ENV[@]}" node "$SERVER" "--artifacts-server-id=$SERVER_ID" &
   SERVER_PID=$!
   echo "$SERVER_PID" > "$PID_FILE"
+  trap 'kill -TERM "$SERVER_PID" 2>/dev/null || true' INT TERM
   for _ in {1..50}; do
     [[ -f "$INFO_FILE" ]] && break
     sleep 0.1

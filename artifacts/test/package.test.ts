@@ -13,6 +13,8 @@ test('the published package holds the server, the viewer under fixed entry names
   expect(files).toEqual(
     expect.arrayContaining([
       'dist/server.cjs',
+      'bin/ryugi-artifacts.cjs',
+      'dist/start-server.sh',
       'dist/runtime/ryugi-ui.js',
       'dist/viewer/index.css',
       'dist/viewer/index.html',
@@ -26,6 +28,8 @@ test('the published package holds the server, the viewer under fixed entry names
         !file.startsWith('dist/viewer/') &&
         !file.startsWith('dist/runtime/') &&
         file !== 'dist/server.cjs' &&
+        file !== 'bin/ryugi-artifacts.cjs' &&
+        file !== 'dist/start-server.sh' &&
         file !== 'package.json',
     ),
   ).toEqual([]);

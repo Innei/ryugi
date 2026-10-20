@@ -51,7 +51,7 @@ describe('session key', () => {
     for (const rel of ['/', '/html/arrow-tuner', '/artboard/brainstorm/', '/document/relay-sync']) {
       const res = await get(`${base(server)}${rel}?key=${server.token}`);
       expect(res.status, rel).toBe(200);
-      expect(res.body).toContain('<title>viewer</title>');
+      expect(res.headers['content-type']).toBe('text/html; charset=utf-8');
       expect(String(res.headers['set-cookie'])).toContain(`ryugi_artifacts_${server.port}=${server.token}`);
       expect(String(res.headers['set-cookie'])).toContain('HttpOnly');
     }
@@ -102,6 +102,61 @@ describe('session key', () => {
   });
 });
 
+describe('page metadata', () => {
+  test('serves crawler rules without a session while keeping artifacts behind authentication', async () => {
+    const { server } = await start({ viewer: path.resolve(__dirname, '../dist/viewer') });
+    const robots = await get(`${base(server)}/robots.txt`);
+    expect(robots.status).toBe(200);
+    expect(robots.headers['content-type']).toBe('text/plain; charset=utf-8');
+    expect(robots.body).not.toContain(server.token);
+    expect((await get(`${base(server)}/`)).status).toBe(403);
+    expect((await get(`${base(server)}/html/private`)).status).toBe(403);
+  });
+
+  test('serves each page title and description before JavaScript runs, with key-free canonical and sharing URLs', async () => {
+    const temp = tempRoot();
+    const { server, root } = await start({ root: path.join(temp.root, 'test-project/.ryugi/artifacts'), viewer: path.resolve(__dirname, '../dist/viewer') });
+    writeArtboard(root, 'ideas', { ...canvas, title: 'Header ideas' }, { 'pages/p/a.html': '<p>Idea</p>' });
+    writeDocument(root, 'plan', { 'doc.xml': '<doc><h1>Shipping plan</h1><p>Plan</p></doc>' });
+    writeHtml(root, 'tuner', { 'index.html': '<title>Arrow tuner</title><p>Tuner</p>' });
+    for (const [route, title] of [['/', 'test-project · Artifacts'], ['/artboard/ideas', 'Header ideas'], ['/document/plan', 'Shipping plan'], ['/html/tuner', 'Arrow tuner']]) {
+      const response = await get(`${base(server)}${route}?key=${server.token}&tracking=private`);
+      expect(response.status).toBe(200);
+      expect(response.body).toContain(`<title>${title}</title>`);
+      expect(response.body).toContain(`<meta property="og:title" content="${title}">`);
+      expect(response.body).toContain(`<meta name="twitter:title" content="${title}">`);
+      expect(response.body.match(/<meta name="description"/g)).toHaveLength(1);
+      expect(response.body.match(/<meta name="robots"/g)).toHaveLength(1);
+      expect(response.body).toMatch(/<meta name="description" content="[^"]*test-project[^"]*">/);
+      expect(response.body).toContain(`<link rel="canonical" href="http://localhost:${server.port}${route}">`);
+      expect(response.body).toContain(`<meta property="og:url" content="http://localhost:${server.port}${route}">`);
+      expect(response.body).not.toContain(server.token);
+      expect(response.body).not.toContain('tracking=private');
+      expect(response.headers['x-robots-tag']).toBe('noindex, nofollow');
+      expect(response.body).toContain('<meta name="robots" content="noindex, nofollow">');
+    }
+    const response = await get(`${base(server)}/?key=${server.token}`);
+    const image = response.body.match(/<meta property="og:image" content="([^"]+)"/)?.[1];
+    expect(image).toMatch(new RegExp(`^http://localhost:${server.port}/app-icon-.*\\.png$`));
+    expect((await get(image!.replace('localhost', '127.0.0.1'), { Cookie: cookie(server) })).status).toBe(200);
+    const icon = response.body.match(/<link rel="icon"[^>]*href="([^"]+)"/)?.[1];
+    expect(icon).toBeTruthy();
+    expect((await get(new URL(icon!, base(server)).href, { Cookie: cookie(server) })).headers['content-type']).toBe('image/svg+xml');
+  });
+
+  test('escapes artifact titles and uses the configured host, including for preview and index aliases', async () => {
+    const { server, root } = await start({ viewer: path.resolve(__dirname, '../dist/viewer') });
+    writeArtboard(root, 'unsafe', { ...canvas, title: 'Research "A&B" </title><script>alert(1)</script>' }, { 'pages/p/a.html': '<p>Idea</p>' });
+    const page = await get(`${base(server)}/preview/artboard/unsafe/?key=${server.token}`, { Host: 'untrusted.example:123' });
+    expect(page.body).toContain('<title>Research &quot;A&amp;B&quot; &lt;/title&gt;&lt;script&gt;alert(1)&lt;/script&gt;</title>');
+    expect(page.body).not.toContain('<script>alert(1)</script>');
+    expect(page.body).not.toContain('untrusted.example');
+    expect(page.body).toContain(`<link rel="canonical" href="http://localhost:${server.port}/artboard/unsafe">`);
+    const index = await get(`${base(server)}/index.html?key=${server.token}`);
+    expect(index.body).toContain(`<link rel="canonical" href="http://localhost:${server.port}/">`);
+  });
+});
+
 describe('artifact list API', () => {
   test('lists every artifact with its title', async () => {
     const { server, root } = await start();
@@ -110,12 +165,71 @@ describe('artifact list API', () => {
     writeHtml(root, 'untitled', { 'index.html': '<p>x</p>' });
     writeDocument(root, 'relay-sync', { 'doc.xml': '<doc><p>intro</p><h1 id="a">Relay <b>sync</b></h1></doc>' });
     const list = await api(server, '/api/artifacts');
-    expect(list.artifacts).toEqual([
-      { type: 'artboard', id: 'brainstorm', title: 'Header ideas' },
-      { type: 'document', id: 'relay-sync', title: 'Relay sync' },
-      { type: 'html', id: 'arrow-tuner', title: 'Arrow tuner' },
-      { type: 'html', id: 'untitled', title: 'untitled' },
-    ]);
+    expect(list.artifacts).toHaveLength(4);
+    expect(list.artifacts).toEqual(expect.arrayContaining([
+      expect.objectContaining({ type: 'artboard', id: 'brainstorm', title: 'Header ideas' }),
+      expect.objectContaining({ type: 'document', id: 'relay-sync', title: 'Relay sync' }),
+      expect.objectContaining({ type: 'html', id: 'arrow-tuner', title: 'Arrow tuner' }),
+      expect.objectContaining({ type: 'html', id: 'untitled', title: 'untitled' }),
+    ]));
+  });
+
+  test('names the project and includes asset changes in the update time', async () => {
+    const project = fs.mkdtempSync(path.join((await import('node:os')).tmpdir(), 'library-project-'));
+    const { server, root } = await start({ root: path.join(project, '.ryugi/artifacts') });
+    const dir = writeHtml(root, 'tuner', { 'index.html': '<title>Tuner</title>', 'style.css': 'body{}' });
+    fs.utimesSync(path.join(dir, 'index.html'), new Date('2026-01-01'), new Date('2026-01-01'));
+    fs.utimesSync(path.join(dir, 'style.css'), new Date('2026-02-01'), new Date('2026-02-01'));
+    const list = await api(server, '/api/artifacts');
+    expect(list.project).toBe(path.basename(project));
+    expect(list.artifacts[0].updatedAt).toBe(Date.parse('2026-02-01'));
+  });
+
+  test('notifies the list when an artifact is removed', async () => {
+    const { server, root } = await start();
+    const dir = writeHtml(root, 'removed', { 'index.html': '<p>before</p>' });
+    const ws = await openWs(server.port, { Cookie: cookie(server), Origin: base(server) });
+    await waitFor(() => fs.existsSync(stateFile(root, 'html/removed/warnings.json')));
+    ws.messages.length = 0;
+    fs.rmSync(dir, { recursive: true });
+    await waitFor(() => ws.messages.some((m) => m.includes('html/removed')));
+    expect((await api(server, '/api/artifacts')).artifacts).toEqual([]);
+    ws.socket?.destroy();
+  });
+});
+
+describe('read-only previews', () => {
+  test('preview pages require the key and allow embedding only by this viewer', async () => {
+    const { server } = await start();
+    expect((await get(`${base(server)}/preview/html/tuner`)).status).toBe(403);
+    const response = await get(`${base(server)}/preview/html/tuner?key=${server.token}`);
+    expect(response.status).toBe(200);
+    expect(response.headers['content-security-policy']).toContain("frame-ancestors 'self'");
+    expect((await get(`${base(server)}/?key=${server.token}`)).headers['content-security-policy']).toContain("frame-ancestors 'none'");
+  });
+
+  test('previews the actual document, canvas and HTML without returning raw document markup', async () => {
+    const { server, root } = await start();
+    writeDocument(root, 'spec', { 'doc.xml': '<doc><h1>Actual design</h1><p>Opening paragraph</p></doc>' });
+    writeArtboard(root, 'ideas', canvas, { 'pages/p/a.html': '<p>Actual board</p>' });
+    writeHtml(root, 'tuner', { 'index.html': '<title>Actual tuner</title>' });
+    expect((await get(`${base(server)}/api/preview/document/spec`)).status).toBe(403);
+    const doc = await api(server, '/api/preview/document/spec');
+    expect(doc.title).toBe('Actual design');
+    expect(JSON.stringify(doc.state)).toContain('Opening paragraph');
+    expect(doc.contentBase).toBe(`/c/${server.contentToken}/document/spec/`);
+    const board = await api(server, '/api/preview/artboard/ideas');
+    expect(board.canvas.boards.a.file).toBe('pages/p/a.html');
+    expect(board.layout.pages.p.bounds.maxX).toBe(640);
+    expect((await api(server, '/api/preview/html/tuner')).title).toBe('Actual tuner');
+    expect((await get(`${base(server)}/api/preview/html/missing`, { Cookie: cookie(server) })).status).toBe(404);
+  });
+
+  test('malformed documents return an unavailable preview without breaking the list', async () => {
+    const { server, root } = await start();
+    writeDocument(root, 'broken', { 'doc.xml': '<doc><script>alert(1)</script></doc>' });
+    expect((await get(`${base(server)}/api/preview/document/broken`, { Cookie: cookie(server) })).status).toBe(422);
+    expect((await api(server, '/api/artifacts')).artifacts[0].id).toBe('broken');
   });
 });
 

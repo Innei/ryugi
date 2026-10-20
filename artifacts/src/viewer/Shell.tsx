@@ -5,6 +5,7 @@ import { ArtifactList } from './layouts/ArtifactList';
 import { CloudLayout } from './layouts/CloudLayout';
 import { DocumentLayout } from './layouts/DocumentLayout';
 import { HtmlLayout } from './layouts/HtmlLayout';
+import { PreviewLayout } from './layouts/PreviewLayout';
 import { parseRoute } from './lib/route';
 
 const styles = stylex.create({
@@ -25,6 +26,7 @@ export function Shell() {
   if (route.kind === 'list') return <ArtifactList />;
   if (route.kind === 'cloud') return <CloudLayout id={route.id} />;
   if (route.kind === 'unknown') return <div {...stylex.props(styles.unknown)}>No artifact lives at this address.</div>;
+  if (route.kind === 'preview') return <PreviewLayout type={route.type} id={route.id} />;
   if (route.type === 'html') return <HtmlLayout id={route.id} />;
   if (route.type === 'document') return <DocumentLayout id={route.id} />;
   return <ArtboardLayout id={route.id} />;

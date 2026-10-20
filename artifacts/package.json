@@ -1,16 +1,21 @@
 {
   "name": "ryugi-artifacts",
-  "version": "1.6.0",
+  "version": "1.6.1",
   "type": "module",
   "description": "Server and viewer for the Ryugi artifacts app",
   "license": "MIT",
+  "bin": {
+    "ryugi-artifacts": "bin/ryugi-artifacts.cjs"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Innei/ryugi.git",
     "directory": "artifacts"
   },
   "files": [
+    "bin",
     "dist/server.cjs",
+    "dist/start-server.sh",
     "dist/viewer",
     "dist/runtime"
   ],
@@ -20,7 +25,7 @@
   },
   "scripts": {
     "build": "pnpm run build:server && pnpm run build:viewer && pnpm run build:runtime",
-    "build:server": "esbuild src/server/main.ts --bundle --platform=node --target=node18 --format=cjs --alias:loro-crdt=loro-crdt/base64 --outfile=dist/server.cjs && node -e \"require('node:fs').copyFileSync('dist/server.cjs','../skills/artifacts/app/server.cjs')\"",
+    "build:server": "esbuild src/server/main.ts --bundle --platform=node --target=node18 --format=cjs --alias:loro-crdt=loro-crdt/base64 --outfile=dist/server.cjs && node -e \"const fs=require('node:fs');fs.copyFileSync('dist/server.cjs','../skills/artifacts/app/server.cjs');fs.copyFileSync('../skills/artifacts/app/start-server.sh','dist/start-server.sh')\"",
     "prepublishOnly": "pnpm build",
     "build:viewer": "NODE_ENV=production vite build && node -e \"const fs=require('node:fs');const to='../skills/artifacts/app/viewer';fs.rmSync(to,{recursive:true,force:true});fs.cpSync('dist/viewer',to,{recursive:true})\"",
     "build:runtime": "NODE_ENV=production vite build -c vite.runtime.config.ts && node scripts/inline-runtime-css.mjs",

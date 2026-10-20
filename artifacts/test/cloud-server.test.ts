@@ -184,8 +184,10 @@ describe('cloud sign-in', () => {
     expect(res.headers.get('content-type')).toBe('text/html; charset=utf-8');
     expect(res.headers.get('content-security-policy')).toContain("default-src 'none'");
     expect(res.headers.get('content-security-policy')).toContain("script-src 'none'");
+    expect(res.headers.get('x-robots-tag')).toBe('noindex, nofollow');
     const page = await res.text();
     expect(page).toContain('<title>已登录 Ryugi Cloud</title>');
+    expect(page).toContain('<meta name="robots" content="noindex, nofollow">');
     expect(page).toContain('innei');
     expect(page).not.toContain('<script');
   });
@@ -204,6 +206,7 @@ describe('cloud sign-in', () => {
     const res = await fetch(`http://127.0.0.1:${server.port}/api/cloud/callback?state=forged&code=c`);
     expect(res.status).toBe(400);
     expect(res.headers.get('content-type')).toBe('text/html; charset=utf-8');
+    expect(res.headers.get('x-robots-tag')).toBe('noindex, nofollow');
     const page = await res.text();
     expect(page).toContain('<title>登录没有完成</title>');
     expect(page).toContain('这个登录链接已过期或已经用过');

@@ -1,0 +1,9 @@
+# Link previews may read shared pages; search and other crawlers may not.
+User-agent: Twitterbot
+User-agent: facebookexternalhit
+User-agent: Slackbot-LinkExpanding
+User-agent: Slack-ImgProxy
+Allow: /
+
+User-agent: *
+Disallow: /
