@@ -143,3 +143,33 @@ test('unfolding a resolved thread also makes it the active one', async () => {
   await act(async () => row.click());
   expect(onActivate).toHaveBeenCalled();
 });
+
+async function renderReadOnly(props: { thread?: Thread; active?: boolean }, onActivate = vi.fn()) {
+  if (!root) {
+    const host = document.createElement('div');
+    document.body.append(host);
+    root = createRoot(host);
+  }
+  await act(async () => root!.render(createElement(CommentCard, { thread: props.thread ?? thread, active: props.active ?? false, onActivate })));
+  return { host: document.body, onActivate };
+}
+
+test('without actions the card is read-only: no reply box, buttons or waiting badges', async () => {
+  const { host, onActivate } = await renderReadOnly({ active: true });
+  expect(host.textContent).toContain('离线怎么办？');
+  expect(host.querySelector('textarea')).toBeNull();
+  expect(host.querySelectorAll('button')).toHaveLength(0);
+  expect(host.textContent).not.toContain('等 ');
+  expect(host.textContent).not.toContain('等你回复');
+  await act(async () => textOf(host, '离线怎么办？').click());
+  expect(onActivate).toHaveBeenCalled();
+});
+
+test('a read-only resolved thread still folds and unfolds', async () => {
+  const { host } = await renderReadOnly({ thread: { ...thread, status: 'resolved' } });
+  expect(host.textContent).not.toContain('离线怎么办？');
+  const row = [...host.querySelectorAll('div')].filter((el) => el.textContent?.trim().startsWith('已解决')).at(-1)!;
+  await act(async () => row.click());
+  expect(host.textContent).toContain('离线怎么办？');
+  expect(host.querySelectorAll('button')).toHaveLength(0);
+});

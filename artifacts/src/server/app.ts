@@ -166,7 +166,7 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
     let published: Record<string, unknown> | null = null;
     if (reasons.length === 0) {
       try {
-        published = publishPayload(ref, dir, title, payload);
+        published = publishPayload(ref, dir, title, payload, ref.type === 'document' ? documents.comments(ref.id) : undefined);
       } catch (err) {
         reasons.push((err as Error).message);
       }

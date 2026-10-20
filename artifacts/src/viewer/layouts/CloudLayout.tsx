@@ -2,6 +2,7 @@ import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
 import type { SerializedEditorState } from 'lexical';
 import { lazy, Suspense, useEffect, useState } from 'react';
+import type { CommentsFile } from '../../shared/comments';
 import type { CanvasPayload } from '../../shared/types';
 import { HTML_SANDBOX } from '../hooks/useSandboxFrame';
 import { ArtboardView } from './ArtboardLayout';
@@ -28,7 +29,7 @@ const styles = stylex.create({
 type CloudArtifact =
   | { type: 'html'; title: string; contentBase: string; payload: { title: string } }
   | { type: 'artboard'; title: string; contentBase: string; payload: Pick<CanvasPayload, 'canvas' | 'layout' | 'versions'> }
-  | { type: 'document'; title: string; contentBase: string; payload: { title: string; state: SerializedEditorState } };
+  | { type: 'document'; title: string; contentBase: string; payload: { title: string; state: SerializedEditorState; comments?: CommentsFile } };
 
 type LoadState = { status: 'loading' } | { status: 'missing' } | { status: 'failed'; message: string } | { status: 'ready'; artifact: CloudArtifact };
 
@@ -83,7 +84,7 @@ export function CloudLayout({ id }: { id: string }) {
   }
   return (
     <Suspense fallback={null}>
-      <CloudDocument id={id} state={artifact.payload.state} contentBase={artifact.contentBase} />
+      <CloudDocument id={id} state={artifact.payload.state} contentBase={artifact.contentBase} comments={artifact.payload.comments} />
     </Suspense>
   );
 }

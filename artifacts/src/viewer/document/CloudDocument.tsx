@@ -3,15 +3,16 @@ import { RichEditor } from '@haklex/rich-editor';
 import { ExcalidrawPlugin } from '@haklex/rich-ext-excalidraw';
 import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
-import type { SerializedEditorState } from 'lexical';
+import type { LexicalEditor, SerializedEditorState } from 'lexical';
 import { useEffect, useMemo, useState } from 'react';
+import { emptyComments, type CommentsFile } from '../../shared/comments';
 import { createChannel } from './channel';
 import { extraNodes, rendererConfig } from './DocumentEditor';
+import { DocumentLayout } from './DocumentLayout';
 import { DynamicHostContext, type DynamicHost } from './DynamicBlock';
 
 const styles = stylex.create({
   root: { minHeight: '100%', backgroundColor: cssVar.colorBgContainer, color: cssVar.colorText },
-  column: { maxWidth: 700, marginInline: 'auto', paddingBlock: 40, paddingInline: 24 },
 });
 
 function usePrefersDark() {
@@ -29,10 +30,12 @@ interface Props {
   id: string;
   state: SerializedEditorState;
   contentBase: string;
+  comments?: CommentsFile;
 }
 
-export default function CloudDocument({ id, state, contentBase }: Props) {
+export default function CloudDocument({ id, state, contentBase, comments = emptyComments() }: Props) {
   const dark = usePrefersDark();
+  const [editor, setEditor] = useState<LexicalEditor | null>(null);
   const host = useMemo<DynamicHost>(() => ({ artifact: `cloud/${id}`, contentBase, channel: createChannel(), send: () => undefined }), [id, contentBase]);
 
   useEffect(() => {
@@ -44,7 +47,7 @@ export default function CloudDocument({ id, state, contentBase }: Props) {
 
   return (
     <div {...stylex.props(styles.root)} className={`ryugi-doc ${stylex.props(styles.root).className ?? ''}`}>
-      <article {...stylex.props(styles.column)}>
+      <DocumentLayout editor={editor} threads={comments.threads}>
         <DynamicHostContext.Provider value={host}>
           <RichEditor
             variant="article"
@@ -52,12 +55,15 @@ export default function CloudDocument({ id, state, contentBase }: Props) {
             initialValue={state}
             extraNodes={extraNodes}
             rendererConfig={rendererConfig}
-            onEditorReady={(editor) => editor?.setEditable(false)}
+            onEditorReady={(ready) => {
+              ready?.setEditable(false);
+              setEditor(ready ?? null);
+            }}
           >
             <ExcalidrawPlugin />
           </RichEditor>
         </DynamicHostContext.Provider>
-      </article>
+      </DocumentLayout>
     </div>
   );
 }

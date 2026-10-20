@@ -7,38 +7,22 @@ import { emptyComments, type CommentsFile, type HumanOp } from '../../shared/com
 import type { DocumentPayload } from '../../shared/types';
 import { WarningsBadge } from '../components/WarningsBadge';
 import { useArtifactSocket } from '../hooks/useArtifactSocket';
-import { BlockBars } from './BlockBars';
 import { createChannel } from './channel';
 import type { ThreadActions } from './CommentCard';
-import { CommentRail } from './CommentRail';
 import { DocumentEditor } from './DocumentEditor';
+import { DocumentLayout } from './DocumentLayout';
 import { DynamicHostContext, type DynamicHost } from './DynamicBlock';
-import { DocumentToc } from './DocumentToc';
 import { DRAFT_WIDTH, DraftPanel } from './DraftPanel';
 import { popoverPosition, toolbarPosition } from './layoutCards';
 import { SelectionToolbar, TOOLBAR_HEIGHT, TOOLBAR_WIDTH } from './SelectionToolbar';
 import { decodeBase64 } from './LoroSync';
 import { TopBar } from './TopBar';
-import { threadAtPoint, useAnchors, useHighlights } from './useAnchors';
 import { useDocumentSelectionSync } from './useDocumentSelectionSync';
 import { useDraftComment } from './useDraftComment';
 import { useSelectionComment } from './useSelectionComment';
 
 const styles = stylex.create({
   root: { minHeight: '100%', backgroundColor: cssVar.colorBgContainer, color: cssVar.colorText },
-  main: {
-    position: 'relative',
-    display: 'grid',
-    gridTemplateColumns: '220px minmax(0, 700px) 320px',
-    justifyContent: 'center',
-    columnGap: 48,
-    paddingBlock: 40,
-    paddingInline: 24,
-  },
-  mainNoToc: { gridTemplateColumns: 'minmax(0, 700px) 320px' },
-  mainNarrow: { display: 'flex', flexDirection: 'column', alignItems: 'stretch', paddingInline: 20 },
-  railWrap: { position: 'relative' },
-  column: { position: 'relative', width: '100%', maxWidth: 700, minWidth: 0 },
   message: { padding: 48, textAlign: 'center', color: cssVar.colorTextSecondary, fontFamily: cssVar.fontFamily, fontSize: 14 },
 });
 
@@ -48,17 +32,6 @@ interface Meta extends DocumentPayload {
 
 function columnBounds(article: HTMLElement) {
   return { left: article.offsetLeft, right: Math.min(article.offsetLeft + article.offsetWidth, window.innerWidth - 16) };
-}
-
-function useMedia(query: string) {
-  const list = useMemo(() => window.matchMedia(query), [query]);
-  const [matches, setMatches] = useState(list.matches);
-  useEffect(() => {
-    const onChange = () => setMatches(list.matches);
-    list.addEventListener('change', onChange);
-    return () => list.removeEventListener('change', onChange);
-  }, [list]);
-  return matches;
 }
 
 function usePrefersDark() {
@@ -91,12 +64,7 @@ export default function DocumentPage({ id }: { id: string }) {
   const [section, setSection] = useState<string | null>(null);
   const [offline, setOffline] = useState(false);
   const [editor, setEditor] = useState<LexicalEditor | null>(null);
-  const [rail, setRail] = useState<HTMLDivElement | null>(null);
-  const [activeId, setActiveId] = useState<string | null>(null);
   const [mainEl, setMainEl] = useState<HTMLElement | null>(null);
-  const [articleEl, setArticleEl] = useState<HTMLElement | null>(null);
-  const narrow = useMedia('(max-width: 1100px)');
-  const withToc = !useMedia('(max-width: 1480px)');
   const channel = useMemo(createChannel, []);
   const dark = usePrefersDark();
   const artifact = `document/${id}`;
@@ -153,8 +121,6 @@ export default function DocumentPage({ id }: { id: string }) {
   }, [meta?.title, id]);
 
   const openComments = comments.threads.filter((thread) => thread.status === 'open').length;
-  const anchors = useAnchors(editor, comments.threads, rail);
-  useHighlights(anchors, comments.threads, activeId);
   const [selection, clearSelection] = useSelectionComment(editor, mainEl);
   const composing = useDraftComment(clearSelection);
   const { draft } = composing;
@@ -194,70 +160,59 @@ export default function DocumentPage({ id }: { id: string }) {
         offline={offline}
         openComments={openComments}
       />
-      <main ref={setMainEl} {...stylex.props(styles.main, !withToc && styles.mainNoToc, narrow && styles.mainNarrow)}>
-        {withToc && !narrow ? <DocumentToc editor={editor} /> : null}
-        <article
-          ref={setArticleEl}
-          {...stylex.props(styles.column)}
-          style={narrow ? { marginInline: 'auto' } : undefined}
-          onClick={(event) => setActiveId(threadAtPoint(anchors, event.clientX, event.clientY))}
-        >
-          <DynamicHostContext.Provider value={dynamicHost}>
-            <DocumentEditor
-              id={id}
-              agent={meta?.agent}
-              doc={doc}
-              channel={channel}
-              theme={dark ? 'dark' : 'light'}
-              onAgentSection={setSection}
-              onOffline={setOffline}
-              onEditorReady={setEditor}
-            />
-          </DynamicHostContext.Provider>
-          <BlockBars container={articleEl} anchors={anchors} threads={comments.threads} activeId={activeId} />
-        </article>
-        <div {...stylex.props(styles.railWrap)}>
-          <CommentRail
+      <DocumentLayout
+        editor={editor}
+        threads={comments.threads}
+        actions={actions}
+        agent={meta?.agent}
+        onMain={setMainEl}
+        overlay={(articleEl) => (
+          <>
+            {selection && !draft ? (
+              <SelectionToolbar
+                ref={composing.toolbarRef}
+                {...toolbarPosition(selection, columnBounds(articleEl), TOOLBAR_WIDTH, TOOLBAR_HEIGHT, 8)}
+                onComment={() => composing.open(selection)}
+                onCopy={() => {
+                  void navigator.clipboard?.writeText(selection.quote);
+                  window.getSelection()?.removeAllRanges();
+                  clearSelection();
+                }}
+              />
+            ) : null}
+            {draft ? (
+              <DraftPanel
+                ref={composing.panelRef}
+                key={`${draft.target.blockId}:${draft.target.quote}`}
+                {...popoverPosition(draft.target, columnBounds(articleEl), DRAFT_WIDTH, 8)}
+                quote={draft.target.quote}
+                initial={draft.initial}
+                restored={composing.restored}
+                leaving={composing.leaving}
+                onChange={composing.onText}
+                onSubmit={(text) => {
+                  void send({ op: 'create', blockId: draft.target.blockId, quote: draft.target.quote, text });
+                  composing.close(false);
+                }}
+                onCancel={() => composing.close(true)}
+              />
+            ) : null}
+          </>
+        )}
+      >
+        <DynamicHostContext.Provider value={dynamicHost}>
+          <DocumentEditor
+            id={id}
             agent={meta?.agent}
-            narrow={narrow}
-            threads={comments.threads}
-            anchors={anchors}
-            activeId={activeId}
-            actions={actions}
-            onActivate={setActiveId}
-            railRef={setRail}
+            doc={doc}
+            channel={channel}
+            theme={dark ? 'dark' : 'light'}
+            onAgentSection={setSection}
+            onOffline={setOffline}
+            onEditorReady={setEditor}
           />
-        </div>
-        {selection && !draft && articleEl ? (
-          <SelectionToolbar
-            ref={composing.toolbarRef}
-            {...toolbarPosition(selection, columnBounds(articleEl), TOOLBAR_WIDTH, TOOLBAR_HEIGHT, 8)}
-            onComment={() => composing.open(selection)}
-            onCopy={() => {
-              void navigator.clipboard?.writeText(selection.quote);
-              window.getSelection()?.removeAllRanges();
-              clearSelection();
-            }}
-          />
-        ) : null}
-        {draft && articleEl ? (
-          <DraftPanel
-            ref={composing.panelRef}
-            key={`${draft.target.blockId}:${draft.target.quote}`}
-            {...popoverPosition(draft.target, columnBounds(articleEl), DRAFT_WIDTH, 8)}
-            quote={draft.target.quote}
-            initial={draft.initial}
-            restored={composing.restored}
-            leaving={composing.leaving}
-            onChange={composing.onText}
-            onSubmit={(text) => {
-              void send({ op: 'create', blockId: draft.target.blockId, quote: draft.target.quote, text });
-              composing.close(false);
-            }}
-            onCancel={() => composing.close(true)}
-          />
-        ) : null}
-      </main>
+        </DynamicHostContext.Provider>
+      </DocumentLayout>
       <WarningsBadge warnings={meta?.warnings ?? []} />
     </div>
   );

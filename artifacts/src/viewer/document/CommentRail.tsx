@@ -25,7 +25,7 @@ interface Props {
   threads: Thread[];
   anchors: ThreadAnchor[];
   activeId: string | null;
-  actions: ThreadActions;
+  actions?: ThreadActions;
   onActivate: (threadId: string) => void;
   railRef: (element: HTMLDivElement | null) => void;
 }

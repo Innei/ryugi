@@ -81,7 +81,7 @@ export function PanelWho({ human, label }: { human: boolean; label: string }) {
   );
 }
 
-function MessageView({ message, onEdit, onDelete }: { message: Message; onEdit: (text: string) => void; onDelete: () => void }) {
+function MessageView({ message, onEdit, onDelete }: { message: Message; onEdit?: (text: string) => void; onDelete?: () => void }) {
   const [editing, setEditing] = useState(false);
   const human = message.author === 'human';
   const { label, initial } = authorOf(message);
@@ -90,7 +90,7 @@ function MessageView({ message, onEdit, onDelete }: { message: Message; onEdit: 
       <div {...stylex.props(styles.who)}>
         <Avatar human={human} initial={initial} name={message.name} src={message.avatar} />
         {label} <span {...stylex.props(styles.time)}>{timeOf(message.editedAt ?? message.at)}</span>
-        {human && !message.deleted && !editing ? (
+        {human && onEdit && onDelete && !message.deleted && !editing ? (
           <span {...stylex.props(styles.small)}>
             <button type="button" onClick={() => setEditing(true)} {...stylex.props(styles.link)}>编辑</button>
             <button type="button" onClick={onDelete} {...stylex.props(styles.link)}>删除</button>
@@ -100,7 +100,7 @@ function MessageView({ message, onEdit, onDelete }: { message: Message; onEdit: 
       {message.deleted ? (
         <div {...stylex.props(styles.deleted)}>已删除</div>
       ) : editing ? (
-        <Composer autoFocus initial={message.text} placeholder="" onSubmit={(text) => (onEdit(text), setEditing(false))} onCancel={() => setEditing(false)} />
+        <Composer autoFocus initial={message.text} placeholder="" onSubmit={(text) => (onEdit?.(text), setEditing(false))} onCancel={() => setEditing(false)} />
       ) : (
         <div {...stylex.props(styles.text)}>{message.text}</div>
       )}
@@ -118,19 +118,19 @@ export interface ThreadActions {
 
 const CONFIRMED = { backgroundColor: '#2ea043', color: '#fff' };
 
-export function CommentCard({ thread, active, actions, onActivate, agent = 'Agent' }: { thread: Thread; active: boolean; actions: ThreadActions; onActivate: () => void; agent?: string }) {
+export function CommentCard({ thread, active, actions, onActivate, agent = 'Agent' }: { thread: Thread; active: boolean; actions?: ThreadActions; onActivate: () => void; agent?: string }) {
   const [expanded, setExpanded] = useState(false);
   const [closing, setClosing] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [focusReply, setFocusReply] = useState(0);
   const content = useRef<HTMLDivElement>(null);
   const row = useRef<HTMLDivElement>(null);
-  const waiting = waitingOn(thread);
+  const waiting = actions ? waitingOn(thread) : null;
   const resolved = thread.status === 'resolved';
   const folded = (resolved || closing) && !expanded;
   const quote = thread.anchor.quote || '整段';
   const frame = useFold(folded);
-  const reply = useReplyPresence(active && !resolved && !closing);
+  const reply = useReplyPresence(!!actions && active && !resolved && !closing);
 
   useEffect(() => {
     if (thread.status !== 'open') return;
@@ -151,7 +151,7 @@ export function CommentCard({ thread, active, actions, onActivate, agent = 'Agen
       setExpanded(false);
       setConfirming(false);
     });
-    actions.resolve(thread.id);
+    actions?.resolve(thread.id);
   };
 
   const unfold = async () => {
@@ -185,7 +185,7 @@ export function CommentCard({ thread, active, actions, onActivate, agent = 'Agen
               {waiting === 'agent' ? (
                 <span title={`${agent} 下一轮会读到这条`} {...stylex.props(styles.badge, styles.badgeAgent)}>等 {agent}</span>
               ) : null}
-              {resolved ? (
+              {!actions ? null : resolved ? (
                 <button type="button" title="重新打开" onClick={() => actions.reopen(thread.id)} {...stylex.props(styles.icon)}>
                   <RotateCcw size={13} strokeWidth={2.2} />
                 </button>
@@ -206,12 +206,12 @@ export function CommentCard({ thread, active, actions, onActivate, agent = 'Agen
                 <MessageView
                   key={message.id}
                   message={message}
-                  onEdit={(text) => actions.edit(thread.id, message.id, text)}
-                  onDelete={() => actions.remove(thread.id, message.id)}
+                  onEdit={actions && ((text) => actions.edit(thread.id, message.id, text))}
+                  onDelete={actions && (() => actions.remove(thread.id, message.id))}
                 />
               ))}
             </div>
-            {reply.shown ? (
+            {actions && reply.shown ? (
               <div ref={reply.outer} {...stylex.props(styles.replyBox)}>
                 <div ref={reply.inner}>
                   <Composer placeholder="回复…" focusKey={focusReply} onSubmit={(text) => actions.reply(thread.id, text)} />
