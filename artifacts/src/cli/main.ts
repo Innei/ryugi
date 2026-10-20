@@ -1,5 +1,6 @@
 import { execFile } from 'node:child_process';
 import { parseArgs, type ParseArgsConfig } from 'node:util';
+import { comment, commentText } from './comment';
 import { CliError } from './paths';
 import { start, type Emit } from './start';
 import { publish, type PublishAction } from './publish';
@@ -19,6 +20,12 @@ Commands:
   publish   Publish an artifact to the Ryugi cloud (needs a running server):
               --artifact <type>/<id> [--public | --private] [--unpublish]
               --list | --delete <cloud-id> | --login | --logout
+  comment   Read and answer a document's comments (needs a running server):
+              list    --artifact document/<id> [--all]   what changed since you last listed
+              add     --artifact document/<id> --block <blockId> [--quote <text>] [--text <text>]
+              reply   --artifact document/<id> --thread <threadId> [--text <text>]
+              resolve --artifact document/<id> --thread <threadId>
+            Without --text, add and reply read the message from stdin.
 
 Options:
   --project-dir <path>  Project directory (default: current directory)
@@ -47,6 +54,8 @@ function text(value: Record<string, unknown>) {
   if (value.type === 'server-started') return `${value.link ?? value.url}${value.reused ? ' (already running)' : ''}`;
   if (value.type === 'login-required' || value.type === 'login') return `${value.message}\n${value.url}`;
   if (value.type === 'published') return `${value.url} (${value.visibility})`;
+  const commented = commentText(value);
+  if (commented !== null) return commented;
   if (typeof value.status === 'string') return value.status === 'stopped' ? 'Stopped.' : value.status.replace(/_/g, ' ');
   return JSON.stringify(value);
 }
@@ -119,6 +128,22 @@ async function main(argv: string[]) {
         artifact: values.artifact as string | undefined,
         visibility: values.public ? 'public' : values.private ? 'private' : undefined,
         cloudId: values.delete as string | undefined,
+      }, emit);
+    }
+    if (command === 'comment') {
+      const { values, positionals } = parse(rest, {
+        artifact: { type: 'string' }, all: { type: 'boolean' }, block: { type: 'string' }, quote: { type: 'string' },
+        thread: { type: 'string' }, text: { type: 'string' },
+      }, 1);
+      return await comment({
+        projectDir: (values['project-dir'] as string | undefined) ?? process.cwd(),
+        action: positionals[0],
+        artifact: values.artifact as string | undefined,
+        all: values.all as boolean | undefined,
+        block: values.block as string | undefined,
+        quote: values.quote as string | undefined,
+        thread: values.thread as string | undefined,
+        text: values.text as string | undefined,
       }, emit);
     }
     if (command === '--version' || command === '-v') {
