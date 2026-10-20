@@ -1,10 +1,12 @@
-import { ChevronRight, Columns3, Frame, Grid2X2, Image, MousePointer2, Rows3, Type } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { Tree, type TreeDataNode } from '@lobehub/ui';
+import { Columns3, Frame, Grid2X2, Image, MousePointer2, Rows3, Type } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { BoardSpec } from '../../shared/types';
 import type { InspectorNode } from '../../shared/inspector';
 import type { Inspector } from '../hooks/useInspector';
 
 const icons = { Frame, Column: Columns3, Row: Rows3, Grid: Grid2X2, Title: Type, Text: Type, Image, Button: MousePointer2 };
+const keyOf = (boardId: string, session: string, id: number) => `${encodeURIComponent(boardId)}:${encodeURIComponent(session)}:${id}`;
 interface Props {
   boards: [string, BoardSpec][];
   frames: Inspector['frames'];
@@ -15,94 +17,66 @@ interface Props {
 }
 
 export function Layers({ boards, frames, selection, playing, select, hoverNode }: Props) {
-  const [open, setOpen] = useState<ReadonlySet<string>>(() => new Set());
-  const elements = useRef(new Map<string, HTMLDivElement>());
-  const keyOf = (boardId: string, id: number) => `${boardId}:${frames[boardId]?.session}:${id}`;
-  const maps = useMemo(() => new Map(Object.entries(frames).map(([boardId, frame]) => [boardId, new Map(frame.nodes.map((node) => [node.id, node]))])), [frames]);
-  const ancestors: string[] = [];
-  if (selection) {
-    let node = maps.get(selection.boardId)?.get(selection.node.id);
-    while (node) { ancestors.push(keyOf(selection.boardId, node.id)); node = node.parentId === null ? undefined : maps.get(selection.boardId)?.get(node.parentId); }
-  }
-  const ancestorKey = ancestors.join('|');
-  useEffect(() => {
-    if (!ancestorKey) return;
-    setOpen((previous) => new Set([...previous, ...ancestorKey.split('|')]));
-  }, [ancestorKey]);
-  useEffect(() => {
-    const selectedKey = ancestorKey.split('|')[0];
-    if (selectedKey) elements.current.get(selectedKey)?.scrollIntoView({ block: 'nearest' });
-  }, [ancestorKey, open]);
-
-  const rows: { boardId: string; node: InspectorNode; depth: number; key: string; name: string }[] = [];
-  for (const [boardId, board] of boards) {
-    const nodes = maps.get(boardId);
-    const root = frames[boardId]?.nodes[0];
-    if (!root) continue;
-    const append = (node: InspectorNode, depth: number) => {
-      const key = keyOf(boardId, node.id);
-      rows.push({ boardId, node, depth, key, name: depth === 0 ? board.title || boardId : node.name });
-      if (open.has(key)) for (const id of node.children) { const child = nodes?.get(id); if (child) append(child, depth + 1); }
-    };
-    append(root, 0);
-  }
-  const focusKey = ancestors.find((key) => rows.some((row) => row.key === key)) ?? rows[0]?.key;
-  const toggle = (key: string, expanded: boolean) => {
-    if (!expanded && ancestors.includes(key)) elements.current.get(key)?.focus();
-    setOpen((previous) => { const next = new Set(previous); if (expanded) next.add(key); else next.delete(key); return next; });
-  };
-  const focus = (index: number) => {
-    const row = rows[index];
-    if (row) { elements.current.get(row.key)?.focus(); if (!playing.has(row.boardId)) select(row.boardId, row.node.id); }
-  };
-  const onKey = (event: KeyboardEvent, index: number) => {
-    const row = rows[index]!;
-    switch (event.key) {
-      case 'ArrowDown': event.preventDefault(); focus(index + 1); break;
-      case 'ArrowUp': event.preventDefault(); focus(index - 1); break;
-      case 'Home': event.preventDefault(); focus(0); break;
-      case 'End': event.preventDefault(); focus(rows.length - 1); break;
-      case 'ArrowRight': event.preventDefault(); if (row.node.children.length) { if (open.has(row.key)) focus(index + 1); else toggle(row.key, true); } break;
-      case 'ArrowLeft': {
-        event.preventDefault();
-        if (row.node.children.length && open.has(row.key)) toggle(row.key, false);
-        else if (row.node.parentId !== null) focus(rows.findIndex((item) => item.boardId === row.boardId && item.node.id === row.node.parentId));
-        break;
-      }
-      case 'Enter': case ' ': event.preventDefault(); if (!playing.has(row.boardId)) select(row.boardId, row.node.id); break;
+  const [expanded, setExpanded] = useState<string[]>([]);
+  const container = useRef<HTMLDivElement>(null);
+  const hovered = useRef<string | null>(null);
+  const { treeData, byKey } = useMemo(() => {
+    const byKey = new Map<string, { boardId: string; node: InspectorNode; parentKey: string | null }>();
+    const treeData: TreeDataNode[] = [];
+    for (const [boardId, board] of boards) {
+      const frame = frames[boardId];
+      if (!frame?.nodes[0]) continue;
+      const nodes = new Map(frame.nodes.map((node) => [node.id, node]));
+      const paused = playing.has(boardId);
+      const append = (node: InspectorNode, parentKey: string | null): TreeDataNode => {
+        const key = keyOf(boardId, frame.session, node.id);
+        byKey.set(key, { boardId, node, parentKey });
+        const kind = parentKey === null ? 'Frame' : node.kind;
+        const name = parentKey === null ? board.title || boardId : node.name;
+        const Icon = icons[kind];
+        return {
+          key, disabled: paused, icon: <Icon size={14} aria-hidden />,
+          title: <><span className="ri-layer-label" title={`${node.tag} · ${name || node.selector}`}><span className="ri-layer-kind">{kind}</span><span className="ri-layer-name">{name ? `“${name}”` : `<${node.tag}>`}</span></span>{paused && <span className="ri-playing">Playing</span>}</>,
+          children: node.children.flatMap((id) => { const child = nodes.get(id); return child ? [append(child, key)] : []; }),
+        };
+      };
+      treeData.push(append(frame.nodes[0], null));
     }
-  };
+    return { treeData, byKey };
+  }, [boards, frames, playing]);
+  const selectedKey = selection && frames[selection.boardId] ? keyOf(selection.boardId, frames[selection.boardId]!.session, selection.node.id) : null;
+  const ancestors: string[] = [];
+  let parent = selectedKey ? byKey.get(selectedKey)?.parentKey : null;
+  while (parent) { ancestors.push(parent); parent = byKey.get(parent)?.parentKey; }
+  const ancestorKey = [selectedKey, ...ancestors].filter((key): key is string => !!key && !!byKey.get(key)?.node.children.length).join('|');
+  useEffect(() => {
+    if (ancestorKey) setExpanded((previous) => Array.from(new Set([...previous, ...ancestorKey.split('|')])));
+  }, [ancestorKey]);
+  const rowOf = (key: string) => Array.from(container.current?.querySelectorAll<HTMLElement>('[role=treeitem]') ?? []).find((el) => el.dataset.id === key);
+  useEffect(() => { if (selectedKey) rowOf(selectedKey)?.scrollIntoView({ block: 'nearest' }); }, [selectedKey, expanded]);
   const count = Object.values(frames).reduce((sum, frame) => sum + frame.nodes.length, 0);
   return (
     <>
       <div className="ri-layer-heading"><span>LAYERS</span><span>{count ? `${count} elements` : 'Loading…'}</span></div>
-      <div className="ri-layers" role="tree" aria-label="DOM layers" onMouseLeave={() => { if (selection) hoverNode(selection.boardId, null); }}>
-        {rows.map(({ boardId, node, depth, key, name }, index) => {
-          const Icon = icons[node.kind];
-          const chosen = selection?.boardId === boardId && selection.node.id === node.id;
-          const paused = playing.has(boardId);
-          return (
-            <div
-              key={key}
-              ref={(el) => { if (el) elements.current.set(key, el); else elements.current.delete(key); }}
-              className="ri-layer" role="treeitem" aria-label={`${depth === 0 ? 'Frame' : node.kind} ${name || node.tag}`}
-              aria-level={depth + 1} aria-selected={chosen} aria-expanded={node.children.length ? open.has(key) : undefined}
-              aria-disabled={paused || undefined} tabIndex={key === focusKey ? 0 : -1}
-              style={{ paddingLeft: 7 + depth * 14 }} title={paused ? 'Pause this board to inspect its elements' : `${node.tag} · ${name || node.selector}`}
-              onClick={() => { if (!paused) select(boardId, node.id); }} onKeyDown={(event) => onKey(event, index)}
-              onMouseEnter={() => hoverNode(boardId, node.id)}
-            >
-              <button type="button" className="ri-chevron" tabIndex={-1} aria-label={`${open.has(key) ? 'Collapse' : 'Expand'} ${name || node.tag}`} disabled={!node.children.length}
-                onClick={(event) => { event.stopPropagation(); toggle(key, !open.has(key)); }}>
-                {node.children.length > 0 && <ChevronRight size={13} style={{ transform: open.has(key) ? 'rotate(90deg)' : undefined }} />}
-              </button>
-              <Icon size={14} className="ri-node-icon" />
-              <span className="ri-layer-label"><span className="ri-layer-kind">{depth === 0 ? 'Frame' : node.kind}</span><span className="ri-layer-name">{name ? `“${name}”` : `<${node.tag}>`}</span></span>
-              {paused && <span className="ri-playing">Playing</span>}
-            </div>
-          );
-        })}
-        {!rows.length && <p className="ri-hint">Waiting for a ready board…</p>}
+      <div ref={container} className="ri-layers" role="region" aria-label="DOM layers"
+        onMouseOver={(event) => {
+          const key = (event.target as Element).closest<HTMLElement>('[role=treeitem]')?.dataset.id;
+          if (!key || hovered.current === key) return;
+          const previous = hovered.current ? byKey.get(hovered.current) : null;
+          const next = byKey.get(key);
+          if (previous && previous.boardId !== next?.boardId) hoverNode(previous.boardId, null);
+          hovered.current = key;
+          if (next) hoverNode(next.boardId, next.node.id);
+        }}
+        onMouseLeave={() => { const previous = hovered.current ? byKey.get(hovered.current) : null; if (previous) hoverNode(previous.boardId, null); hovered.current = null; }}>
+        <Tree treeData={treeData} size="small" blockNode showIcon indent={14} expandedKeys={expanded} selectedKeys={selectedKey ? [selectedKey] : []}
+          classNames={{ node: 'ri-layer' }} styles={{ node: { height: 27, fontSize: 12 }, title: { display: 'flex', alignItems: 'center', gap: 6 } }}
+          onExpand={(keys, { expanded: opening, node }) => {
+            if (!opening && (node.key === selectedKey || ancestors.includes(node.key))) rowOf(node.key)?.focus();
+            setExpanded(keys);
+          }}
+          onSelect={(_, { node }) => { const entry = byKey.get(node.key); if (entry) select(entry.boardId, entry.node.id); }} />
+        {!treeData.length && <p className="ri-hint">Waiting for a ready board…</p>}
       </div>
       {Object.values(frames).some((frame) => frame.truncated) && <p className="ri-limit" role="status">Showing up to 2,500 elements per board and 50 levels.</p>}
     </>

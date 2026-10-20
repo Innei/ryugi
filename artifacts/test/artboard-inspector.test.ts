@@ -35,6 +35,11 @@ test('the Inspector opens and closes without changing canvas zoom or iframe sand
   await act(async () => toggle!.click());
   expect(host.querySelector('[aria-label="Inspector"]')).not.toBeNull();
   expect(host.querySelector('[role=tab][aria-selected=true]')?.textContent).toBe('Properties');
+  const properties = host.querySelector<HTMLButtonElement>('[role=tab][aria-selected=true]')!;
+  await act(async () => { properties.focus(); properties.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', code: 'ArrowRight', bubbles: true })); });
+  const code = host.querySelector<HTMLButtonElement>('[role=tab][aria-selected=true]')!;
+  expect(code.textContent).toBe('Code');
+  expect(host.querySelector('[role=tabpanel]')?.getAttribute('aria-labelledby')).toBe(code.id);
   expect(frame.parentElement!.style.transform).toBe(transform);
   expect(frame.getAttribute('sandbox')).toBe('allow-scripts');
   await act(async () => host!.querySelector<HTMLButtonElement>('[aria-label="Close inspector"]')!.click());
@@ -79,7 +84,7 @@ test('Shadow keeps an editable draft and commits it on blur', async () => {
   expect(input.value).toBe('none');
 });
 
-test('collapsing a selected layer ancestor preserves a visible keyboard entry point', async () => {
+test('layer keyboard navigation survives collapse and quoted board/session names', async () => {
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
   host = document.createElement('div'); document.body.append(host);
   root = createRoot(host);
@@ -87,12 +92,21 @@ test('collapsing a selected layer ancestor preserves a visible keyboard entry po
     { id: 1, parentId: null, children: [2], name: 'Root', tag: 'body', kind: 'Frame' as const, selector: 'body' },
     { id: 2, parentId: 1, children: [], name: 'Child', tag: 'p', kind: 'Text' as const, selector: 'p' },
   ];
-  await act(async () => root!.render(createElement(Layers, { boards: [['a', { page: 'p', title: 'Board', file: 'a.html', x: 0, y: 0, w: 100, h: 100 }]], frames: { a: { session: 's', nodes, truncated: false, tweaks: [] } }, selection: { boardId: 'a', node: { id: 2 } as InspectorSelection }, playing: new Set<string>(), select: vi.fn(), hoverNode: vi.fn() })));
-  host.querySelector<HTMLElement>('[aria-label="Text Child"]')!.focus();
-  await act(async () => host!.querySelector<HTMLButtonElement>('[aria-label="Collapse Board"]')!.click());
+  const boardId = 'board "A"';
+  const select = vi.fn();
+  await act(async () => root!.render(createElement(Layers, { boards: [[boardId, { page: 'p', title: 'Board', file: 'a.html', x: 0, y: 0, w: 100, h: 100 }]], frames: { [boardId]: { session: 'session "quoted"', nodes, truncated: false, tweaks: [] } }, selection: { boardId, node: { id: 2 } as InspectorSelection }, playing: new Set<string>(), select, hoverNode: vi.fn() })));
+  const rows = Array.from(host.querySelectorAll<HTMLElement>('[role=treeitem]'));
+  rows.find((el) => el.textContent?.includes('Child'))!.focus();
+  await act(async () => rows.find((el) => el.textContent?.includes('Board'))!.querySelector('button')!.click());
   const entry = host.querySelector<HTMLElement>('[role=treeitem][tabindex="0"]');
-  expect(entry?.getAttribute('aria-label')).toBe('Frame Board');
+  expect(entry?.textContent).toContain('Board');
   expect(document.activeElement).toBe(entry);
+  const key = async (key: string) => act(async () => { document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key, code: key, bubbles: true })); });
+  await key('ArrowRight');
+  await key('ArrowRight');
+  expect(document.activeElement?.textContent).toContain('Child');
+  await key('Enter');
+  expect(select).toHaveBeenCalledWith(boardId, 2);
 });
 
 test('computed RGB colors remain readable in the color picker fields', async () => {
@@ -102,4 +116,17 @@ test('computed RGB colors remain readable in the color picker fields', async () 
   const node = { css: { ...Object.fromEntries(INSPECTOR_PROPERTIES.map((property) => [property, '0'])), 'background-color': 'rgb(255, 0, 128)', color: 'rgba(12, 34, 56, 0.5)' } } as InspectorSelection;
   await act(async () => root!.render(createElement(ConfigProvider, { motion, enableCustomFonts: false, children: createElement(Properties, { node, change: vi.fn() }) })));
   expect(Array.from(host.querySelectorAll('.lobe-color-picker__text')).map((el) => el.textContent)).toEqual(['#FF0080', '#0C2238']);
+});
+
+test('direction icons have readable names and preview the chosen layout direction', async () => {
+  vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
+  host = document.createElement('div'); document.body.append(host);
+  root = createRoot(host);
+  const change = vi.fn();
+  const node = { css: { ...Object.fromEntries(INSPECTOR_PROPERTIES.map((property) => [property, '0'])), display: 'flex', 'flex-direction': 'column' } } as InspectorSelection;
+  await act(async () => root!.render(createElement(ConfigProvider, { motion, enableCustomFonts: false, children: createElement(Properties, { node, change }) })));
+  const horizontal = host.querySelector<HTMLButtonElement>('button[title="Horizontal"]')!;
+  expect(horizontal.getAttribute('aria-label') || horizontal.textContent).toBe('Horizontal');
+  await act(async () => horizontal.click());
+  expect(change).toHaveBeenCalledWith('flex-direction', 'row');
 });
