@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import { nanoid } from 'nanoid';
-import { applyHumanOp, emptyComments, mergeComments, parseComments, savedComments, type CommentsFile, type HumanOp } from '../shared/comments';
+import { applyAgentOp, applyHumanOp, emptyComments, mergeComments, parseComments, savedComments, type AgentOp, type CommentsFile, type HumanOp } from '../shared/comments';
 import type { CommentNames } from './comment-names';
 import { writeJsonAtomic } from './state';
 
@@ -33,11 +33,29 @@ export function asHumanOp(value: unknown): HumanOp | null {
   }
 }
 
+export function asAgentOp(value: unknown): AgentOp | null {
+  if (typeof value !== 'object' || value === null) return null;
+  const v = value as Record<string, unknown>;
+  switch (v.op) {
+    case 'add':
+      return isId(v.blockId) && (v.quote === undefined || isText(v.quote)) && isText(v.text) && v.text.length > 0
+        ? { op: 'add', blockId: v.blockId, quote: (v.quote as string | undefined) ?? '', text: v.text }
+        : null;
+    case 'reply':
+      return isId(v.threadId) && isText(v.text) && v.text.length > 0 ? { op: 'reply', threadId: v.threadId, text: v.text } : null;
+    case 'resolve':
+      return isId(v.threadId) ? { op: 'resolve', threadId: v.threadId } : null;
+    default:
+      return null;
+  }
+}
+
 export interface CommentStore {
   current(): CommentsFile;
   warnings(): string[];
   sync(): boolean;
   apply(op: HumanOp): CommentsFile;
+  applyAgent(op: AgentOp, name?: string): { file: CommentsFile; threadId: string; messageId?: string };
 }
 
 const noNames: CommentNames = { human: () => undefined, agent: () => undefined };
@@ -91,6 +109,13 @@ export function createCommentStore(
       current = applyHumanOp(current, op, now(), newId, names.human());
       write();
       return current;
+    },
+    applyAgent: (op, name) => {
+      sync();
+      const result = applyAgentOp(current, op, now(), newId, name ?? names.agent());
+      current = result.file;
+      write();
+      return result;
     },
   };
 }

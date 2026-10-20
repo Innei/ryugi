@@ -1,7 +1,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import type { ServerMessage } from '../shared/types';
-import type { CommentsFile, HumanOp } from '../shared/comments';
+import { unreadThreads, waitingOn, type AgentOp, type CommentsFile, type HumanOp, type Thread } from '../shared/comments';
+import { createCommentCursors } from './comment-cursors';
 import type { CommentNames } from './comment-names';
 import { createCommentStore, type CommentStore } from './document-comments';
 import { createDocumentSession, type DocumentOutcome, type DocumentSession } from './document-session';
@@ -17,9 +18,19 @@ export interface DocumentRegistry {
   comments(id: string): CommentsFile;
   commentsChanged(id: string): void;
   applyCommentOp(id: string, op: HumanOp): CommentsFile;
+  applyAgentCommentOp(id: string, op: AgentOp, agent?: string): { threadId: string; messageId?: string };
+  listComments(id: string, agent: string, all: boolean): AgentThread[];
   warnings(id: string): string[];
   close(): Promise<void>;
 }
+
+export type AgentThread = Thread & { waitingOn: ReturnType<typeof waitingOn>; changes?: string[]; messageIds?: string[] };
+
+const forAgent = <T extends Thread>(thread: T) => ({
+  ...thread,
+  waitingOn: waitingOn(thread),
+  messages: thread.messages.map(({ avatar: _avatar, ...message }) => message),
+});
 
 interface RegistryOptions {
   root: string;
@@ -43,6 +54,7 @@ export function createDocumentRegistry(options: RegistryOptions): DocumentRegist
   const warnings = new Map<string, string[]>();
   const docFile = (id: string) => path.join(options.root, 'document', id, 'doc.xml');
   const commentStores = new Map<string, CommentStore>();
+  const cursors = createCommentCursors(options.stateDir);
   const commentStore = (id: string) => {
     let store = commentStores.get(id);
     if (!store) {
@@ -120,6 +132,20 @@ export function createDocumentRegistry(options: RegistryOptions): DocumentRegist
       const file = commentStore(id).apply(op);
       pushComments(id);
       return file;
+    },
+    applyAgentCommentOp: (id, op, agent) => {
+      const { threadId, messageId } = commentStore(id).applyAgent(op, agent);
+      pushComments(id);
+      return { threadId, ...(messageId ? { messageId } : {}) };
+    },
+    listComments: (id, agent, all) => {
+      const store = commentStore(id);
+      store.sync();
+      const file = store.current();
+      if (all) return file.threads.filter((t) => !t.messages.every((m) => m.deleted)).map(forAgent);
+      const { threads, newest } = unreadThreads(file, cursors.get(id, agent));
+      if (newest) cursors.set(id, agent, newest);
+      return threads.map(forAgent);
     },
     warnings: (id) => [...(warnings.get(id) ?? []), ...commentStore(id).warnings()],
     close: async () => {

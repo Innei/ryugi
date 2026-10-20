@@ -267,3 +267,118 @@ describe('comments', () => {
     expect((await postJson(server, 'relay', { op: 'erase-all' })).status).toBe(400);
   });
 });
+
+describe('agent comments', () => {
+  const commentsFile = (root: string, id: string) => path.join(root, 'document', id, 'comments.json');
+  const cursorsFile = (root: string, id: string) => path.join(root, '.state', 'document', id, 'comment-cursors.json');
+  const agentCall = (server: ArtifactsServer, id: string, body: unknown, key: string | null = server.token, headers: Record<string, string> = {}) =>
+    post(`${base(server)}/api/agent/document/${id}/comments${key === null ? '' : `?key=${key}`}`, Buffer.from(JSON.stringify(body)), {
+      'Content-Type': 'application/json',
+      ...headers,
+    });
+  const human = (server: ArtifactsServer, id: string, body: unknown) =>
+    post(`${base(server)}/api/document/${id}/comments`, Buffer.from(JSON.stringify(body)), {
+      Cookie: cookie(server),
+      Origin: base(server),
+      'Content-Type': 'application/json',
+    });
+  const relay = async () => {
+    const started = await start();
+    writeDocument(started.root, 'relay', { 'doc.xml': '<doc><p id="b1">按事件粒度推送</p><p id="b2">阈值</p></doc>' });
+    return started;
+  };
+
+  test('add opens a thread named after the agent the CLI sent', async () => {
+    const { server, root } = await relay();
+    fs.writeFileSync(path.join(root, '.state', 'agent'), JSON.stringify({ CLAUDECODE: '1' }));
+    const res = await agentCall(server, 'relay', { op: 'add', blockId: 'b2', quote: '阈值', text: '7 天合适吗？', agent: 'Codex' });
+    expect(res.status).toBe(200);
+    const { threadId, messageId } = JSON.parse(res.body);
+    const thread = readJson(commentsFile(root, 'relay')).threads[0];
+    expect(thread).toMatchObject({ id: threadId, anchor: { blockId: 'b2', quote: '阈值' }, status: 'open', statusBy: 'agent' });
+    expect(thread.messages[0]).toMatchObject({ id: messageId, author: 'agent', name: 'Codex', text: '7 天合适吗？' });
+  });
+
+  test('a reply without an agent name falls back to the agent that started the server', async () => {
+    const { server, root } = await relay();
+    fs.writeFileSync(path.join(root, '.state', 'agent'), JSON.stringify({ CLAUDECODE: '1' }));
+    await human(server, 'relay', { op: 'create', blockId: 'b1', quote: '', text: 'why?' });
+    const threadId = readJson(commentsFile(root, 'relay')).threads[0].id;
+    expect((await agentCall(server, 'relay', { op: 'reply', threadId, text: 'because' })).status).toBe(200);
+    expect(readJson(commentsFile(root, 'relay')).threads[0].messages[1]).toMatchObject({ author: 'agent', name: 'Claude Code', text: 'because' });
+  });
+
+  test('resolve marks the thread resolved by the agent and pushes it to sockets', async () => {
+    const { server, root } = await relay();
+    await human(server, 'relay', { op: 'create', blockId: 'b1', quote: '', text: 'why?' });
+    const threadId = readJson(commentsFile(root, 'relay')).threads[0].id;
+    const ws = await openWs(server.port, { Cookie: cookie(server), Origin: base(server), Host: `127.0.0.1:${server.port}` });
+    expect((await agentCall(server, 'relay', { op: 'resolve', threadId, agent: 'Codex' })).status).toBe(200);
+    expect(readJson(commentsFile(root, 'relay')).threads[0]).toMatchObject({ status: 'resolved', statusBy: 'agent' });
+    await waitFor(() => ws.messages.some((m) => JSON.parse(m).type === 'doc-comments'));
+    ws.socket?.destroy();
+  });
+
+  test('list returns unread threads once per agent, and all leaves the cursor alone', async () => {
+    const { server, root } = await relay();
+    await human(server, 'relay', { op: 'create', blockId: 'b1', quote: '事件', text: 'why?' });
+    const list = async (agent: string, all = false) => JSON.parse((await agentCall(server, 'relay', { op: 'list', agent, all })).body);
+    const first = await list('Codex');
+    expect(first).toMatchObject({ type: 'comments', artifact: 'document/relay' });
+    expect(first.threads).toHaveLength(1);
+    expect(first.threads[0]).toMatchObject({ anchor: { blockId: 'b1', quote: '事件' }, changes: ['new-thread'], waitingOn: 'agent' });
+    expect((await list('Codex')).threads).toEqual([]);
+    expect((await list('Claude Code')).threads).toHaveLength(1);
+    expect((await list('Codex', true)).threads).toHaveLength(1);
+    expect((await list('Codex')).threads).toEqual([]);
+    expect(Object.keys(readJson(cursorsFile(root, 'relay'))).sort()).toEqual(['Claude Code', 'Codex']);
+    const threadId = first.threads[0].id;
+    await agentCall(server, 'relay', { op: 'reply', threadId, text: 'because', agent: 'Codex' });
+    expect((await list('Codex')).threads).toEqual([]);
+    await human(server, 'relay', { op: 'reply', threadId, text: 'and?' });
+    expect((await list('Codex')).threads[0].changes).toEqual(['new-message']);
+  });
+
+  test('list without an agent name keeps its cursor under Agent', async () => {
+    const { server, root } = await relay();
+    await human(server, 'relay', { op: 'create', blockId: 'b1', quote: '', text: 'why?' });
+    await agentCall(server, 'relay', { op: 'list' });
+    expect(Object.keys(readJson(cursorsFile(root, 'relay')))).toEqual(['Agent']);
+  });
+
+  test('a corrupt cursor file reads as no cursor', async () => {
+    const { server, root } = await relay();
+    await human(server, 'relay', { op: 'create', blockId: 'b1', quote: '', text: 'why?' });
+    fs.mkdirSync(path.dirname(cursorsFile(root, 'relay')), { recursive: true });
+    fs.writeFileSync(cursorsFile(root, 'relay'), '{ nope');
+    expect(JSON.parse((await agentCall(server, 'relay', { op: 'list', agent: 'Codex' })).body).threads).toHaveLength(1);
+  });
+
+  test('needs the key in the URL; the browser cookie is not enough', async () => {
+    const { server } = await relay();
+    expect((await agentCall(server, 'relay', { op: 'list' }, null)).status).toBe(403);
+    expect((await agentCall(server, 'relay', { op: 'list' }, null, { Cookie: cookie(server), Origin: base(server) })).status).toBe(403);
+    expect((await agentCall(server, 'relay', { op: 'list' }, 'wrong')).status).toBe(403);
+  });
+
+  test('refuses human ops, bad ids and empty text', async () => {
+    const { server, root } = await relay();
+    await human(server, 'relay', { op: 'create', blockId: 'b1', quote: '', text: 'why?' });
+    const { id: threadId, messages } = readJson(commentsFile(root, 'relay')).threads[0];
+    const refused = async (body: unknown) => {
+      const res = await agentCall(server, 'relay', body);
+      return [res.status, JSON.parse(res.body).error];
+    };
+    expect(await refused({ op: 'edit', threadId, messageId: messages[0].id, text: 'hijack' })).toEqual([400, expect.any(String)]);
+    expect(await refused({ op: 'delete', threadId, messageId: messages[0].id })).toEqual([400, expect.any(String)]);
+    expect(await refused({ op: 'reply', threadId: 'missing', text: 'x' })).toEqual([400, expect.stringContaining('missing')]);
+    expect(await refused({ op: 'reply', threadId, text: '' })).toEqual([400, expect.any(String)]);
+    expect(await refused({ op: 'add', blockId: 'nope', text: 'x' })).toEqual([400, expect.stringContaining('nope')]);
+    expect(readJson(commentsFile(root, 'relay')).threads[0].messages).toHaveLength(1);
+  });
+
+  test('an unknown document is a 404', async () => {
+    const { server } = await relay();
+    expect((await agentCall(server, 'missing', { op: 'list' })).status).toBe(404);
+  });
+});

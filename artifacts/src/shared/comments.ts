@@ -47,6 +47,11 @@ export type HumanOp =
   | { op: 'resolve'; threadId: string }
   | { op: 'reopen'; threadId: string };
 
+export type AgentOp =
+  | { op: 'add'; blockId: string; quote: string; text: string }
+  | { op: 'reply'; threadId: string; text: string }
+  | { op: 'resolve'; threadId: string };
+
 export const emptyComments = (): CommentsFile => ({ version: 1, threads: [] });
 
 const isObject = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null;
@@ -281,4 +286,30 @@ export function unreadThreads(file: CommentsFile, cursor: string | null): { thre
     if (unread && unread.changes.length > 0) threads.push({ ...thread, ...unread });
   }
   return { threads, newest };
+}
+
+export function applyAgentOp(
+  file: CommentsFile,
+  op: AgentOp,
+  now: string,
+  newId: () => string,
+  name?: string,
+): { file: CommentsFile; threadId: string; messageId?: string } {
+  if (op.op === 'add') {
+    const thread: Thread = {
+      id: newId(),
+      anchor: { blockId: op.blockId, quote: op.quote },
+      status: 'open',
+      statusAt: now,
+      statusBy: 'agent',
+      messages: [{ id: newId(), author: 'agent', ...personOf({ name }), text: op.text, at: now }],
+    };
+    return { file: { ...file, threads: [...file.threads, thread] }, threadId: thread.id, messageId: thread.messages[0]!.id };
+  }
+  if (!file.threads.some((t) => t.id === op.threadId)) throw new Error(`no thread ${op.threadId}`);
+  if (op.op === 'resolve') {
+    return { file: updateThread(file, op.threadId, (t) => ({ ...t, status: 'resolved', statusAt: now, statusBy: 'agent' })), threadId: op.threadId };
+  }
+  const message: Message = { id: newId(), author: 'agent', ...personOf({ name }), text: op.text, at: now };
+  return { file: updateThread(file, op.threadId, (t) => ({ ...t, messages: [...t.messages, message] })), threadId: op.threadId, messageId: message.id };
 }

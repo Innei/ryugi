@@ -5,7 +5,8 @@ import type { Duplex } from 'node:stream';
 import { ARTIFACT_TYPES, type ArtifactSummary, type ArtifactType, type CanvasPayload, type DocumentPayload, type HtmlPayload, type ServerMessage } from '../shared/types';
 import { artifactKeyOf, artifactSignature, listArtifacts, resolveArtifactDir, type ArtifactRef } from './artifacts';
 import { readDocument } from './document';
-import { asHumanOp } from './document-comments';
+import { parseDocument } from './document-codec';
+import { asAgentOp, asHumanOp } from './document-comments';
 import { createDocumentRegistry, type DocumentTiming } from './documents';
 import { latestMtime, readHtml } from './html';
 import { injectRuntime } from './inject';
@@ -75,6 +76,7 @@ const PREVIEW_ROUTE = /^\/preview\/(artboard|document|html)\/([a-z0-9][a-z0-9-]*
 const API_PREVIEW_ROUTE = /^\/api\/preview\/([^/]+)\/([^/]+)$/;
 const API_DOCUMENT_ROUTE = /^\/api\/document\/([^/]+)\/(state|update|comments)$/;
 const MAX_COMMENT_OP = 64 * 1024;
+const API_AGENT_COMMENTS_ROUTE = /^\/api\/agent\/document\/([^/]+)\/comments$/;
 const MAX_DOCUMENT_UPDATE = 8 * 1024 * 1024;
 
 const MAX_RUNTIME_MESSAGE = 2048;
@@ -182,6 +184,21 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
     return origin === `http://${host}` || origin === `https://${host}`;
   };
 
+  const readCommentBody = async (req: http.IncomingMessage): Promise<unknown> => {
+    const parts: Buffer[] = [];
+    let received = 0;
+    for await (const chunk of req) {
+      received += (chunk as Buffer).length;
+      if (received <= MAX_COMMENT_OP) parts.push(chunk as Buffer);
+    }
+    if (received > MAX_COMMENT_OP) return null;
+    try {
+      return JSON.parse(Buffer.concat(parts).toString('utf8'));
+    } catch {
+      return null;
+    }
+  };
+
   const serveDocumentApi = async (req: http.IncomingMessage, res: http.ServerResponse, id: string, action: string) => {
     if (action !== 'state' && (req.method !== 'POST' || !sameOrigin(req))) {
       send(res, 403, 'Forbidden');
@@ -192,19 +209,7 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
         sendJson(res, 404, { error: `document/${id} not found` });
         return;
       }
-      const parts: Buffer[] = [];
-      let received = 0;
-      for await (const chunk of req) {
-        received += (chunk as Buffer).length;
-        if (received <= MAX_COMMENT_OP) parts.push(chunk as Buffer);
-      }
-      const body = received > MAX_COMMENT_OP ? '' : Buffer.concat(parts).toString('utf8');
-      let op = null;
-      try {
-        op = asHumanOp(JSON.parse(body));
-      } catch {
-        op = null;
-      }
+      const op = asHumanOp(await readCommentBody(req));
       if (!op) {
         sendJson(res, 400, { error: 'not a comment op' });
         return;
@@ -246,6 +251,50 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
     try {
       session.importUpdate(new Uint8Array(Buffer.concat(chunks)));
       send(res, 204, '');
+    } catch (err) {
+      sendJson(res, 400, { error: (err as Error).message });
+    }
+  };
+
+  const blockIdsOf = async (id: string, dir: string) => {
+    await (await documents.open(id))?.flush();
+    const state = parseDocument(fs.readFileSync(path.join(dir, 'doc.xml'), 'utf8'));
+    return new Set((state.root.children as { $?: { blockId?: string } }[]).flatMap((block) => (block.$?.blockId ? [block.$.blockId] : [])));
+  };
+
+  const serveAgentComments = async (req: http.IncomingMessage, res: http.ServerResponse, id: string) => {
+    const dir = resolveArtifactDir(root, 'document', id);
+    if (!dir) {
+      sendJson(res, 404, { error: `document/${id} not found` });
+      return;
+    }
+    const body = await readCommentBody(req);
+    const fields = typeof body === 'object' && body !== null ? (body as Record<string, unknown>) : {};
+    const agent = typeof fields.agent === 'string' && fields.agent.length > 0 && fields.agent.length <= 100 ? fields.agent : undefined;
+    if (fields.op === 'list') {
+      sendJson(res, 200, { type: 'comments', artifact: `document/${id}`, threads: documents.listComments(id, agent ?? 'Agent', fields.all === true) });
+      return;
+    }
+    const op = asAgentOp(body);
+    if (!op) {
+      sendJson(res, 400, { error: 'not an agent comment op: use list, add {blockId, text}, reply {threadId, text} or resolve {threadId}; text must not be empty' });
+      return;
+    }
+    if (op.op === 'add') {
+      let blocks: Set<string>;
+      try {
+        blocks = await blockIdsOf(id, dir);
+      } catch (err) {
+        sendJson(res, 400, { error: `doc.xml could not be read: ${(err as Error).message}` });
+        return;
+      }
+      if (!blocks.has(op.blockId)) {
+        sendJson(res, 400, { error: `no block ${op.blockId} in document/${id}` });
+        return;
+      }
+    }
+    try {
+      sendJson(res, 200, documents.applyAgentCommentOp(id, op, agent));
     } catch (err) {
       sendJson(res, 400, { error: (err as Error).message });
     }
@@ -447,6 +496,18 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
         return;
       }
       void cloud.handle(req, res, cloudMatch);
+      return;
+    }
+
+    const agentCommentsMatch = API_AGENT_COMMENTS_ROUTE.exec(pathname);
+    if (agentCommentsMatch) {
+      if (req.method !== 'POST' || key === null || !safeEqual(key, token)) {
+        send(res, 403, 'Forbidden: agent calls need ?key=');
+        return;
+      }
+      void serveAgentComments(req, res, agentCommentsMatch[1]!).catch((err) => {
+        if (!res.headersSent) send(res, 500, `Artifacts error: ${(err as Error).message}`);
+      });
       return;
     }
 
