@@ -1,10 +1,14 @@
 <p align="center">
-  <img src="assets/logo/ryugi.png" width="104" alt="Ryugi">
+  <img src="assets/logo/ryugi-mask.png" width="112" alt="Ryugi kitsune crest">
 </p>
 
 <h1 align="center">Ryugi 流儀</h1>
 
 <p align="center">Brainstorm with mockups. Approve a spec. Build it inline under TDD.</p>
+
+<p align="center">
+  <img src="assets/logo/ryugi-mascot.png" width="320" alt="Ryugi, an apprentice with a laptop and a brush">
+</p>
 
 Ryugi (りゅうぎ, "one's own way of doing things") is a software development workflow for coding agents: a few composable skills plus a bootstrap that makes sure your agent uses them. It started as a fork of [Superpowers](https://github.com/obra/superpowers) v7.0.0 and was reshaped around a single workflow.
 
