@@ -76,15 +76,97 @@ function describe(project, { file, value }, prompt, budget) {
   return [head.join('\n'), kept, tail].filter(Boolean).join('\n');
 }
 
+const stampOf = (m) => m.editedAt || m.at;
+const humanStatus = (thread) => (thread.statusBy || 'human') === 'human';
+
+function waitingOnAgent(thread) {
+  if (thread.status === 'resolved') return false;
+  const live = (thread.messages || []).filter((m) => !m.deleted);
+  return live.length > 0 && live[live.length - 1].author === 'human';
+}
+
+function changedSince(thread, cursor) {
+  const messages = thread.messages || [];
+  let changed = false;
+  let newThread = false;
+  messages.forEach((m, index) => {
+    if (m.author !== 'human') return;
+    const created = m.at > cursor;
+    if (m.deleted) {
+      if (!created && stampOf(m) > cursor) changed = true;
+      return;
+    }
+    if (created || stampOf(m) > cursor) changed = true;
+    if (created && index === 0) newThread = true;
+  });
+  if (!newThread && humanStatus(thread) && thread.statusAt > cursor && messages.some((m) => m.at <= cursor)) changed = true;
+  return changed;
+}
+
+// Mirrors unreadThreads in artifacts/src/shared/comments.ts; artifacts/test/hook-parity.test.ts keeps them in step.
+function unreadThreadCount(file, cursor) {
+  const threads = file && Array.isArray(file.threads) ? file.threads : [];
+  return threads.filter((thread) => (cursor === null ? waitingOnAgent(thread) : changedSince(thread, cursor))).length;
+}
+
+const cursorKey = (env) => (env.CLAUDE_CODE_IS_COWORK ? 'Claude Cowork' : 'Claude Code');
+
+const LAUNCHER = path.resolve(__dirname, '..', 'skills', 'artifacts', 'app', 'ryugi-artifacts.cjs');
+
+function documentIds(root) {
+  try {
+    return fs.readdirSync(path.join(root, 'document')).sort();
+  } catch {
+    return [];
+  }
+}
+
+function commentReminders(project, root, key) {
+  const lines = [];
+  for (const id of documentIds(root)) {
+    const file = readJson(path.join(root, 'document', id, 'comments.json'));
+    if (!file) continue;
+    const cursors = readJson(path.join(root, '.state', 'document', id, 'comment-cursors.json'));
+    const cursor = cursors && typeof cursors[key] === 'string' ? cursors[key] : null;
+    const count = unreadThreadCount(file, cursor);
+    if (!count) continue;
+    lines.push(`document/${id}: ${count} comment thread(s) changed since you last listed. Run \`node "${LAUNCHER}" comment list --json --project-dir "${project}" --artifact document/${id}\`.`);
+  }
+  return lines.join('\n');
+}
+
+function documentSelections(project, root, budget) {
+  const sections = [];
+  let left = budget;
+  for (const id of documentIds(root)) {
+    const file = path.join(root, '.state', 'document', id, 'selection.json');
+    const value = readJson(file);
+    if (!value || typeof value.quote !== 'string' || !value.quote || !Array.isArray(value.blockIds)) continue;
+    const blocks = value.blockIds.length ? `${value.heading ? ',' : ' in'} blocks ${value.blockIds.join(', ')}` : '';
+    const where = `${value.heading ? ` under "${value.heading}"` : ''}${blocks}`;
+    const head = `Document document/${id}, open in the viewer (updated ${value.updatedAt}):\nSelected${where}:`;
+    const tail = `Full selection: ${path.relative(project, file)}`;
+    const room = left - head.length - tail.length - 4;
+    if (room < 40) break;
+    const quote = clip(value.quote, room).split('\n').map((line) => `> ${line}`).join('\n');
+    const section = [head, quote, tail].join('\n');
+    sections.push(section);
+    left -= section.length + 2;
+  }
+  return sections;
+}
+
 function main() {
   const project = process.argv[2];
   let input = {};
   try { input = JSON.parse(fs.readFileSync(0, 'utf8')); } catch {}
   const prompt = typeof input.prompt === 'string' ? input.prompt : '';
-  const state = path.join(project, '.ryugi', 'artifacts', '.state');
+  const root = path.join(project, '.ryugi', 'artifacts');
+  const state = path.join(root, '.state');
+  const reminders = commentReminders(project, root, cursorKey(process.env));
   const files = selectionFiles(state).sort((a, b) => String(b.value.updatedAt).localeCompare(String(a.value.updatedAt)));
   const sections = [];
-  let left = MAX_CONTEXT;
+  let left = MAX_CONTEXT - (reminders ? reminders.length + 2 : 0);
   for (const entry of files) {
     if (left <= 0) break;
     const section = describe(project, entry, prompt, left);
@@ -92,8 +174,12 @@ function main() {
     sections.push(section);
     left -= section.length + 2;
   }
+  sections.push(...documentSelections(project, root, left));
+  if (reminders) sections.push(reminders);
   if (!sections.length) return;
   process.stdout.write(`${sections.join('\n\n')}\n`);
 }
 
-main();
+module.exports = { unreadThreadCount, cursorKey };
+
+if (require.main === module) main();

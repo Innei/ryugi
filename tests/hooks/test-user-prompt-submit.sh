@@ -41,8 +41,9 @@ JSON
 
 run_hook() {
     local dir="$1" prompt="$2"
+    shift 2
     printf '{"hook_event_name":"UserPromptSubmit","cwd":"%s","prompt":"%s"}' "$dir" "$prompt" |
-        env -i PATH="${PATH:-}" HOME="$TEST_ROOT" CLAUDE_PROJECT_DIR="$dir" bash "$HOOK" user-prompt-submit
+        env -i PATH="${PATH:-}" HOME="$TEST_ROOT" CLAUDE_PROJECT_DIR="$dir" "$@" bash "$HOOK" user-prompt-submit
 }
 
 expect() {
@@ -105,6 +106,61 @@ if [[ -z "$out" ]]; then pass "ignores selections when no server is running"; el
 
 out="$(run_hook "$TEST_ROOT/none" "改一下这里")"
 if [[ -z "$out" ]]; then pass "is silent in projects without artifacts"; else fail "is silent in projects without artifacts"; fi
+
+echo "Documents"
+
+doc_project() {
+    local dir
+    dir="$(project "$1")"
+    mkdir -p "$dir/.ryugi/artifacts/document/relay" "$dir/.ryugi/artifacts/.state/document/relay"
+    printf '%s\n' "$dir"
+}
+
+write_doc_comments() {
+    cat > "$1/.ryugi/artifacts/document/relay/comments.json" <<'JSON'
+{ "version": 1, "threads": [
+  { "id": "t1", "anchor": { "blockId": "b1", "quote": "事件" }, "status": "open", "statusAt": "2026-10-21T08:00:00.000Z", "statusBy": "human",
+    "messages": [{ "id": "m1", "author": "human", "text": "why?", "at": "2026-10-21T08:00:00.000Z" }] },
+  { "id": "t2", "anchor": { "blockId": "b2", "quote": "" }, "status": "open", "statusAt": "2026-10-21T07:00:00.000Z", "statusBy": "agent",
+    "messages": [{ "id": "m2", "author": "agent", "name": "Codex", "text": "ok?", "at": "2026-10-21T07:00:00.000Z" }] }
+] }
+JSON
+}
+
+dir="$(doc_project doc-unread)"
+write_doc_comments "$dir"
+out="$(run_hook "$dir" "继续")"
+expect "reminds about a document with unread comments" "$out" 'document/relay: 1 comment thread(s) changed since you last listed.'
+expect "gives the command that lists them" "$out" "skills/artifacts/app/ryugi-artifacts.cjs\" comment list --json --project-dir \"$dir\" --artifact document/relay"
+
+printf '{"Claude Code":"2026-10-21T08:00:00.000Z"}\n' > "$dir/.ryugi/artifacts/.state/document/relay/comment-cursors.json"
+out="$(run_hook "$dir" "继续")"
+if [[ -z "$out" ]]; then pass "is quiet once the agent has listed past the changes"; else fail "is quiet once the agent has listed past the changes"; echo "$out" | sed 's/^/      /'; fi
+
+out="$(run_hook "$dir" "继续" CLAUDE_CODE_IS_COWORK=1)"
+expect "uses the Claude Cowork cursor under Cowork" "$out" 'document/relay: 1 comment thread(s) changed'
+
+dir="$(doc_project doc-selected)"
+cat > "$dir/.ryugi/artifacts/.state/document/relay/selection.json" <<'JSON'
+{ "artifact": "document/relay", "updatedAt": "2026-10-21T09:00:00.000Z", "quote": "按事件粒度推送\n再说", "blockIds": ["b2", "b3"], "heading": "同步策略" }
+JSON
+out="$(run_hook "$dir" "改一下这段")"
+expect "names the document with a selection" "$out" 'Document document/relay, open in the viewer (updated 2026-10-21T09:00:00.000Z):'
+expect "gives the heading and blocks of the selection" "$out" 'Selected under "同步策略", blocks b2, b3:'
+expect "quotes the selected text" "$out" '> 按事件粒度推送'
+expect "points at the document selection file" "$out" '.ryugi/artifacts/.state/document/relay/selection.json'
+
+dir="$(doc_project doc-crowded)"
+write_selection "$dir"
+node -e '
+const fs = require("fs");
+fs.writeFileSync(process.argv[1], JSON.stringify({ artifact: "document/relay", updatedAt: "2026-10-21T09:00:00.000Z", quote: "q".repeat(2000), blockIds: ["b1"], heading: "" }));
+' "$dir/.ryugi/artifacts/.state/document/relay/selection.json"
+write_doc_comments "$dir"
+out="$(run_hook "$dir" "看看")"
+expect "keeps the artboard selection first" "$out" 'hero-2#12 <div>'
+expect "still reminds about comments in a crowded context" "$out" 'document/relay: 1 comment thread(s) changed'
+if [[ "${#out}" -le 8200 ]]; then pass "stays within the context budget with documents"; else fail "stays within the context budget with documents (${#out})"; fi
 
 if grep -q '"UserPromptSubmit"' "$REPO_ROOT/hooks/hooks.json"; then pass "is registered in hooks.json"; else fail "is registered in hooks.json"; fi
 
