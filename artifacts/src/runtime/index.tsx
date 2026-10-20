@@ -47,8 +47,8 @@ import {
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { type ReactNode } from 'react';
-import { createRoot, type Root } from 'react-dom/client';
 import { type AttributeKind, readAttribute, styleObject } from './attrs';
+import { createHostRoot } from './host';
 
 const ICONS: Record<string, LucideIcon> = {
   check: Check,
@@ -96,6 +96,8 @@ interface Spec {
   view: (el: RuntimeElement, props: Record<string, unknown>, slot: (node: HTMLSpanElement | null) => void) => ReactNode;
 }
 
+let hosts: ReturnType<typeof createHostRoot>;
+
 const BASE_ATTRS = ['class', 'style', 'title', 'aria-label', 'disabled', 'name', 'placeholder', 'value', 'checked'];
 
 class RyugiElement extends HTMLElement {
@@ -104,7 +106,6 @@ class RyugiElement extends HTMLElement {
   #children: Node[] = [];
   #mounted = false;
   #options: Option[] = [];
-  #root?: Root;
   #slot: HTMLSpanElement | null = null;
   #text = '';
   #value: unknown;
@@ -157,14 +158,14 @@ class RyugiElement extends HTMLElement {
       this.#checked = this.#initialChecked();
       if (spec.options) this.#options = this.#readOptions(spec.options);
       if (spec.control) this.setAttribute('data-ryugi-control', '');
-      this.#root = createRoot(this);
+      // A portal appends to its container instead of replacing it the way a root does.
+      this.replaceChildren();
     }
-    try {
-      this.render();
-    } catch (error) {
-      console.error('[ryugi-ui]', error);
-      window.dispatchEvent(new ErrorEvent('error', { error, message: String(error) }));
-    }
+    hosts.register(this, () => spec.view(this as RuntimeElement, this.#props(spec), this.attachSlot));
+  }
+
+  disconnectedCallback() {
+    hosts.unregister(this);
   }
 
   attributeChangedCallback(name: string, previous: string | null, next: string | null) {
@@ -194,13 +195,7 @@ class RyugiElement extends HTMLElement {
   };
 
   render() {
-    if (!this.#root) return;
-    const spec = RyugiElement.specOf(this);
-    this.#root.render(
-      <ConfigProvider motion={motion} enableCustomFonts={false}>
-        {spec.view(this as RuntimeElement, this.#props(spec), this.attachSlot)}
-      </ConfigProvider>,
-    );
+    hosts.update(this);
   }
 
   #initialChecked() {
@@ -543,6 +538,11 @@ ryugi-button,ryugi-action-icon,ryugi-input,ryugi-textarea,ryugi-input-number,ryu
 ryugi-card,ryugi-alert,ryugi-progress,ryugi-divider,ryugi-text{display:block}
 `;
 
+const reportError = (error: unknown) => {
+  console.error('[ryugi-ui]', error);
+  window.dispatchEvent(new ErrorEvent('error', { error, message: String(error) }));
+};
+
 const applyTheme = () =>
   setLobeTheme({ appearance: matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light' });
 
@@ -552,6 +552,14 @@ if (typeof window !== 'undefined' && !customElements.get('ryugi-button')) {
   style.textContent = HOST_CSS;
   document.head.append(style);
   applyTheme();
+  hosts = createHostRoot({
+    wrap: (children) => (
+      <ConfigProvider motion={motion} enableCustomFonts={false}>
+        {children}
+      </ConfigProvider>
+    ),
+    onError: reportError,
+  });
   const query = matchMedia('(prefers-color-scheme: dark)');
   query.addEventListener('change', applyTheme);
   for (const spec of definitions) {

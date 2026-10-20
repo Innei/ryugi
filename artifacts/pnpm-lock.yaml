@@ -101,6 +101,9 @@ importers:
       esbuild:
         specifier: ^0.28.2
         version: 0.28.2
+      happy-dom:
+        specifier: 20.14.6
+        version: 20.14.6
       jotai:
         specifier: ^3.0.1
         version: 3.0.1(@types/react@19.3.0)(react@19.3.1)
