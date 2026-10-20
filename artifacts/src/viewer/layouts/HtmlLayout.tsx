@@ -1,6 +1,7 @@
 import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
 import { useEffect } from 'react';
+import { PublishMenu } from '../components/PublishMenu';
 import { WarningsBadge } from '../components/WarningsBadge';
 import { useHtmlData } from '../hooks/useHtmlData';
 import { HTML_SANDBOX, useSandboxFrame } from '../hooks/useSandboxFrame';
@@ -60,6 +61,7 @@ export function HtmlLayout({ id }: { id: string }) {
           {data ? (data.warnings[0] ?? 'Waiting for the agent to write index.html…') : 'Connecting…'}
         </div>
       )}
+      <PublishMenu artifact={`html/${id}`} floating />
       <WarningsBadge warnings={data?.warnings ?? []} />
     </div>
   );

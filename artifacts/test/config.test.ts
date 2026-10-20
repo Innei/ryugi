@@ -1,0 +1,86 @@
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { describe, expect, test } from 'vitest';
+import { ensureConfig, readConfig, updateArtifactConfig } from '../src/server/config';
+
+function tempRyugiDir() {
+  return fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-config-'));
+}
+
+describe('ensureConfig', () => {
+  test('writes a default config and a .gitignore that hides it', () => {
+    const dir = tempRyugiDir();
+    const file = path.join(dir, 'config.json');
+    ensureConfig(file);
+    expect(JSON.parse(fs.readFileSync(file, 'utf8'))).toEqual({ version: 1, artifacts: {} });
+    expect(fs.readFileSync(path.join(dir, '.gitignore'), 'utf8')).toBe('config.json\n');
+  });
+
+  test('leaves an existing config untouched', () => {
+    const dir = tempRyugiDir();
+    const file = path.join(dir, 'config.json');
+    fs.writeFileSync(file, '{"version":1,"artifacts":{"html/a":{"visibility":"public"}}}');
+    ensureConfig(file);
+    expect(fs.readFileSync(file, 'utf8')).toBe('{"version":1,"artifacts":{"html/a":{"visibility":"public"}}}');
+  });
+
+  test('appends to an existing .gitignore only when config.json is missing from it', () => {
+    const dir = tempRyugiDir();
+    const file = path.join(dir, 'config.json');
+    fs.writeFileSync(path.join(dir, '.gitignore'), 'notes/');
+    ensureConfig(file);
+    ensureConfig(file);
+    expect(fs.readFileSync(path.join(dir, '.gitignore'), 'utf8')).toBe('notes/\nconfig.json\n');
+  });
+});
+
+describe('readConfig', () => {
+  test('returns defaults with a warning when the file is not valid JSON', () => {
+    const dir = tempRyugiDir();
+    const file = path.join(dir, 'config.json');
+    fs.writeFileSync(file, '{oops');
+    const { config, warning } = readConfig(file);
+    expect(config).toEqual({ version: 1, artifacts: {} });
+    expect(warning).toMatch(/config\.json is not valid JSON/);
+  });
+
+  test('drops artifact entries with an unknown visibility', () => {
+    const dir = tempRyugiDir();
+    const file = path.join(dir, 'config.json');
+    fs.writeFileSync(file, JSON.stringify({ version: 1, artifacts: { 'html/a': { visibility: 'secret' }, 'html/b': { visibility: 'public' } } }));
+    expect(readConfig(file).config.artifacts).toEqual({ 'html/b': { visibility: 'public' } });
+  });
+});
+
+describe('updateArtifactConfig', () => {
+  test('merges a patch into one artifact and keeps the others', () => {
+    const dir = tempRyugiDir();
+    const file = path.join(dir, 'config.json');
+    ensureConfig(file);
+    updateArtifactConfig(file, 'html/a', { visibility: 'public' });
+    updateArtifactConfig(file, 'html/b', { visibility: 'private' });
+    const cloud = { id: 'k3x9', url: 'https://ryugi.innei.dev/a/k3x9', publishedAt: '2026-10-20T08:00:00Z', visibility: 'public' as const };
+    updateArtifactConfig(file, 'html/a', { cloud });
+    expect(readConfig(file).config.artifacts).toEqual({
+      'html/a': { visibility: 'public', cloud },
+      'html/b': { visibility: 'private' },
+    });
+  });
+
+  test('removes the cloud record when patched with null', () => {
+    const dir = tempRyugiDir();
+    const file = path.join(dir, 'config.json');
+    updateArtifactConfig(file, 'html/a', { visibility: 'public', cloud: { id: 'x', url: 'u', publishedAt: 't', visibility: 'public' } });
+    updateArtifactConfig(file, 'html/a', { cloud: null });
+    expect(readConfig(file).config.artifacts).toEqual({ 'html/a': { visibility: 'public' } });
+  });
+
+  test('refuses to overwrite a config that is not valid JSON', () => {
+    const dir = tempRyugiDir();
+    const file = path.join(dir, 'config.json');
+    fs.writeFileSync(file, '{oops');
+    expect(() => updateArtifactConfig(file, 'html/a', { visibility: 'public' })).toThrow(/not valid JSON/);
+    expect(fs.readFileSync(file, 'utf8')).toBe('{oops');
+  });
+});

@@ -22,9 +22,9 @@ import type { Channel } from './channel';
 import { DynamicNode } from './DynamicNode';
 import { LoroSync, type AgentCaretPosition } from './LoroSync';
 
-const extraNodes = [ChartEditNode, ExcalidrawEditNode, DynamicNode, ...katexEditNodes];
+export const extraNodes = [ChartEditNode, ExcalidrawEditNode, DynamicNode, ...katexEditNodes];
 
-const rendererConfig: RendererConfig = {
+export const rendererConfig: RendererConfig = {
   [ALERT_NODE_KEY]: AlertEditRenderer,
   [CODE_BLOCK_NODE_KEY]: CodeBlockEditRenderer,
   [IMAGE_NODE_KEY]: ImageEditRenderer,

@@ -37,8 +37,18 @@ const styles = stylex.create({
   },
 });
 
+type ArtboardViewProps = Omit<ReturnType<typeof useCanvasData>, 'live' | 'stale'> & {
+  id: string;
+  artifact: string | null;
+  live?: boolean;
+};
+
 export function ArtboardLayout({ id }: { id: string }) {
-  const { canvas, layout, warnings, pending, contentBase, versions, live, loaded } = useCanvasData(id);
+  const data = useCanvasData(id);
+  return <ArtboardView id={id} artifact={`artboard/${id}`} {...data} />;
+}
+
+export function ArtboardView({ id, artifact, canvas, layout, warnings, pending, contentBase, versions, live, loaded }: ArtboardViewProps) {
   const [tool, setTool] = useState<Tool>('select');
   const { viewportRef, view, fit, zoomBy, zoomTo, cursor, handlers } = usePanZoom(tool);
   const [page, setPage] = useState<string | null>(null);
@@ -179,6 +189,7 @@ export function ArtboardLayout({ id }: { id: string }) {
       )}
       <TopLeftBar pages={pages} page={page} onPageChange={changePage} tool={tool} onToolChange={setTool} />
       <TopRightBar
+        artifact={artifact}
         live={live}
         warnings={warnings}
         zoom={view.k}

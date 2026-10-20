@@ -13,6 +13,9 @@ import { listen, parseCookies, randomToken, readPersisted, safeEqual, send, send
 import { resolveBoardFile, resolveDocumentAsset, resolveHtmlFile, resolveInside } from './paths';
 import { createDynamicBlocks } from './dynamic-blocks';
 import { readCanvas, writeArtifactState, writeJsonAtomic } from './state';
+import { ensureConfig } from './config';
+import { createCloudRoutes, type CloudOptions } from './cloud';
+import { publishPayload } from './publish-payload';
 import { watchTree } from './watch';
 import { completeHandshake, handleClientFrames, rejectUpgrade, textFrame } from './ws';
 
@@ -24,6 +27,8 @@ export interface ServerOptions {
   urlHost: string;
   debounceMs?: number;
   documentTiming?: DocumentTiming;
+  configFile?: string;
+  cloud?: CloudOptions;
 }
 
 export type ArtifactPayload = (CanvasPayload | HtmlPayload | DocumentPayload) & { warnings: string[] };
@@ -90,6 +95,7 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
   const stateDir = path.join(root, '.state');
   fs.mkdirSync(stateDir, { recursive: true, mode: 0o700 });
   fs.writeFileSync(path.join(stateDir, '.gitignore'), '*\n');
+  if (options.configFile) ensureConfig(options.configFile);
 
   const portFile = path.join(stateDir, '.last-port');
   const tokenFile = path.join(stateDir, '.last-token');
@@ -129,6 +135,31 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
     },
     log: (line) => console.log(JSON.stringify({ type: 'document-log', line })),
   });
+
+  const inspect = async (ref: ArtifactRef) => {
+    const dir = resolveArtifactDir(root, ref.type, ref.id);
+    if (!dir) return null;
+    const session = ref.type === 'document' ? await documents.open(ref.id) : null;
+    await session?.flush();
+    const payload = readArtifact(dir, ref, runtimeOf(ref, dir));
+    const reasons = [...payload.warnings];
+    if ('pending' in payload) reasons.push(...payload.pending.map((board) => `board ${board} is still being written`));
+    if (session?.streaming()) reasons.push('the document is still being written');
+    const title = titleOf(payload, ref);
+    let published: Record<string, unknown> | null = null;
+    if (reasons.length === 0) {
+      try {
+        published = publishPayload(ref, dir, title, payload);
+      } catch (err) {
+        reasons.push((err as Error).message);
+      }
+    }
+    return { dir, title, reasons, payload: published };
+  };
+  const cloud =
+    options.cloud && options.configFile
+      ? createCloudRoutes({ ...options.cloud, configFile: options.configFile, port: () => port, inspect })
+      : null;
 
   const sameOrigin = (req: http.IncomingMessage) => {
     const origin = req.headers.origin;
@@ -337,6 +368,13 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
       return;
     }
 
+    if (cloud && pathname === '/api/cloud/callback') {
+      void cloud.handleCallback(url, res).catch((err) => {
+        if (!res.headersSent) send(res, 500, `Artifacts error: ${(err as Error).message}`);
+      });
+      return;
+    }
+
     const key = url.searchParams.get('key');
     if (!isAuthorized(req, key)) {
       send(res, 403, 'Forbidden: open the full artifact link including ?key=');
@@ -345,6 +383,16 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
 
     if (pathname === '/api/artifacts') {
       serveList(res);
+      return;
+    }
+
+    const cloudMatch = cloud?.match(pathname);
+    if (cloud && cloudMatch) {
+      if (req.method !== 'GET' && !(key !== null && safeEqual(key, token)) && !sameOrigin(req)) {
+        send(res, 403, 'Forbidden');
+        return;
+      }
+      void cloud.handle(req, res, cloudMatch);
       return;
     }
 
