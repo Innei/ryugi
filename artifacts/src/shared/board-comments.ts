@@ -23,6 +23,8 @@ export interface BoardNodeRef {
 export interface BoardAnchor {
   page: string;
   board?: string;
+  group?: string;
+  verdict?: 'pass' | 'reject';
   x: number;
   y: number;
   nodes?: BoardNodeRef[];
@@ -67,6 +69,14 @@ export function readBoardAnchor(value: unknown): BoardAnchor | null {
     if (!isName(value.board)) return null;
     anchor.board = value.board;
   }
+  if (value.group !== undefined) {
+    if (!isName(value.group)) return null;
+    anchor.group = value.group;
+  }
+  if (value.verdict !== undefined) {
+    if (!anchor.group || (value.verdict !== 'pass' && value.verdict !== 'reject')) return null;
+    anchor.verdict = value.verdict;
+  }
   if (value.nodes !== undefined) {
     const nodes = readNodes(value.nodes);
     if (!nodes) return null;
@@ -87,7 +97,7 @@ export function readBoardAnchor(value: unknown): BoardAnchor | null {
 
 export const boardAnchors: AnchorSpec<BoardAnchor> = {
   read: readBoardAnchor,
-  same: (a, b) => a.page === b.page && a.board === b.board && a.x === b.x && a.y === b.y,
+  same: (a, b) => a.page === b.page && a.board === b.board && a.group === b.group && a.verdict === b.verdict && a.x === b.x && a.y === b.y,
   missing: 'a new thread needs a board anchor (page, x, y); dropped it',
 };
 

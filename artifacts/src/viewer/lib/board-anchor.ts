@@ -36,6 +36,7 @@ export function pinPoint(anchor: BoardAnchor, boards: Record<string, Point>): Po
 const percent = (value: number) => `${Math.round(value * 100)}%`;
 
 export function anchorLabel(anchor: BoardAnchor): string {
+  if (anchor.group) return anchor.verdict === 'reject' ? `${anchor.group} · 打回` : anchor.group;
   if (!anchor.board) return `页面 ${anchor.page}`;
   const nodes = anchor.nodes ?? [];
   if (nodes.length > 1) return `${anchor.board} · ${nodes.length} 个元素`;
@@ -47,6 +48,6 @@ export function anchorLabel(anchor: BoardAnchor): string {
 const openedAt = (thread: BoardThread) => thread.messages[0]?.at ?? thread.statusAt;
 
 export function pinNumbers(threads: BoardThread[]): Map<string, number> {
-  const ordered = [...threads].sort((a, b) => (openedAt(a) < openedAt(b) ? -1 : openedAt(a) > openedAt(b) ? 1 : 0));
+  const ordered = threads.filter((thread) => thread.anchor?.verdict !== 'pass').sort((a, b) => (openedAt(a) < openedAt(b) ? -1 : openedAt(a) > openedAt(b) ? 1 : 0));
   return new Map(ordered.map((thread, index) => [thread.id, index + 1]));
 }
