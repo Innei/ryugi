@@ -67,6 +67,7 @@ describe('notices', () => {
     const second = hook.autoPublishContext(project, env, 's1');
     expect(second).toContain('limit of 100 published artifacts reached');
     expect(second).toContain('publish --list');
+    expect(second).not.toContain('ryugi.innei.dev');
   });
 });
 

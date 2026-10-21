@@ -54,6 +54,8 @@ class CloudRefused extends Error {
   }
 }
 
+class CloudCopyGone extends Error {}
+
 class CreateRefused extends CloudRefused {
   constructor(readonly detail: string) {
     super(502, `cloud refused (403): ${detail}`);
@@ -134,7 +136,20 @@ export function createCloudRoutes(options: CloudRoutesOptions) {
 
   const artifactEntry = (key: string) => readConfig(configFile).config.artifacts[key] ?? {};
 
-  const publish = async (ref: ArtifactRef, requested?: Visibility) => {
+  const locks = new Map<string, Promise<unknown>>();
+  const serialized = <T>(key: string, task: () => Promise<T>): Promise<T> => {
+    const run = (locks.get(key) ?? Promise.resolve()).then(task, task);
+    const tail = run.catch(() => undefined);
+    locks.set(key, tail);
+    void tail.then(() => {
+      if (locks.get(key) === tail) locks.delete(key);
+    });
+    return run;
+  };
+  const keyOfCloudId = (cloudId: string) =>
+    Object.entries(readConfig(configFile).config.artifacts).find(([, entry]) => entry.cloud?.id === cloudId)?.[0] ?? `cloud:${cloudId}`;
+
+  const publish = async (ref: ArtifactRef, requested?: Visibility, { recreate = true } = {}) => {
     const inspected = await options.inspect(ref);
     if (!inspected) throw new CloudRefused(404, `${ref.type}/${ref.id} not found`);
     if (inspected.reasons.length > 0 || !inspected.payload) return { status: 409, body: { error: 'fix these before publishing', reasons: inspected.reasons } };
@@ -184,7 +199,10 @@ export function createCloudRoutes(options: CloudRoutesOptions) {
     };
 
     let res = entry.cloud ? await commit(entry.cloud.id, requested) : await commit(await create(), undefined);
-    if (res.status === 404 && entry.cloud) res = await commit(await create(), undefined);
+    if (res.status === 404 && entry.cloud) {
+      if (!recreate) throw new CloudCopyGone();
+      res = await commit(await create(), undefined);
+    }
     const published = (await (await expectOk(res)).json()) as CloudArtifact;
     updateArtifactConfig(configFile, key, {
       visibility: published.visibility,
@@ -225,16 +243,22 @@ export function createCloudRoutes(options: CloudRoutesOptions) {
     }
   };
 
-  const autoPublish = async (key: string): Promise<AutoPublishOutcome> => {
+  const autoPublish = (key: string) => serialized(key, () => autoPublishNow(key));
+
+  const autoPublishNow = async (key: string): Promise<AutoPublishOutcome> => {
     const ref = artifactKeyOf(key);
     if (!ref) return { kind: 'gone' };
     const entry = artifactEntry(key);
     if (entry.autoPublish === false) return { kind: 'opted-out' };
     try {
-      const result = await publish(ref);
+      const result = await publish(ref, undefined, { recreate: false });
       if (result.status !== 200) return { kind: 'not-ready' };
       return { kind: 'published', created: (result.body as { id?: unknown }).id !== entry.cloud?.id };
     } catch (err) {
+      if (err instanceof CloudCopyGone) {
+        updateArtifactConfig(configFile, key, { cloud: null, autoPublish: false });
+        return { kind: 'opted-out' };
+      }
       if (err instanceof SignedOut) return { kind: 'signed-out' };
       if (err instanceof CreateRefused) return { kind: 'cannot-create', message: err.detail };
       if (err instanceof CloudRefused && err.status === 404) return { kind: 'gone' };
@@ -275,22 +299,30 @@ export function createCloudRoutes(options: CloudRoutesOptions) {
     }
     if (action === 'artifacts' && method === 'DELETE' && first && !second) {
       if (!CLOUD_ID.test(first)) throw new CloudRefused(400, 'not a cloud artifact id');
-      await deleteCloud(first);
+      await serialized(keyOfCloudId(first), () => deleteCloud(first));
       sendJson(res, 200, { deleted: first });
       return;
     }
     if (action === 'publish' && ref && method === 'POST') {
       const body = (await readJsonBody(req)) as { visibility?: unknown } | null;
       if (body?.visibility !== undefined && !isVisibility(body.visibility)) throw new CloudRefused(400, 'visibility must be "public" or "private"');
-      const result = await publish(ref, body?.visibility);
-      if (result.status === 200) updateArtifactConfig(configFile, `${ref.type}/${ref.id}`, { autoPublish: null });
+      const key = `${ref.type}/${ref.id}`;
+      const requested = body?.visibility;
+      const result = await serialized(key, async () => {
+        const published = await publish(ref, requested);
+        if (published.status === 200) updateArtifactConfig(configFile, key, { autoPublish: null });
+        return published;
+      });
       sendJson(res, result.status, result.body);
       return;
     }
     if (action === 'publish' && ref && method === 'DELETE') {
-      const entry = artifactEntry(`${ref.type}/${ref.id}`);
-      if (entry.cloud) await deleteCloud(entry.cloud.id);
-      updateArtifactConfig(configFile, `${ref.type}/${ref.id}`, { autoPublish: false });
+      const key = `${ref.type}/${ref.id}`;
+      await serialized(key, async () => {
+        const entry = artifactEntry(key);
+        if (entry.cloud) await deleteCloud(entry.cloud.id);
+        updateArtifactConfig(configFile, key, { autoPublish: false });
+      });
       sendJson(res, 200, { unpublished: `${ref.type}/${ref.id}` });
       return;
     }

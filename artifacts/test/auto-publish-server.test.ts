@@ -160,3 +160,61 @@ describe('failures', () => {
     expect(dirty()).toEqual(['html/new']);
   });
 });
+
+describe('races with manual actions', () => {
+  const hold = (cloud: Awaited<ReturnType<typeof startEnabled>>['cloud'], match: (method: string, path: string) => boolean) => {
+    let release!: () => void;
+    const released = new Promise<void>((resolve) => (release = resolve));
+    let seen = false;
+    cloud.gate = (r) => {
+      if (!match(r.method, r.path)) return undefined;
+      seen = true;
+      return released;
+    };
+    return { release, seen: () => seen };
+  };
+
+  test('a manual publish during a flush of a new artifact makes one cloud copy', async () => {
+    const { server, cloud, edit } = await startEnabled();
+    await edit('a', '<title>A</title>');
+    const gate = hold(cloud, (method, path) => method === 'POST' && path === '/api/artifacts');
+    expect((await call(server, 'POST', '/api/cloud/flush')).status).toBe(202);
+    await waitFor(gate.seen);
+    const manual = call(server, 'POST', '/api/cloud/publish/html/a');
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    gate.release();
+    expect((await manual).status).toBe(200);
+    expect(cloud.requests.filter((r) => r.method === 'POST' && r.path === '/api/artifacts')).toHaveLength(1);
+  });
+
+  test('unpublishing during a flush leaves no cloud copy and keeps the artifact opted out', async () => {
+    const { server, cloud, configFile, edit, flush } = await startEnabled();
+    await edit('a', '<title>A</title>');
+    await flush();
+    await edit('a', '<title>A2</title>');
+    const gate = hold(cloud, (method, path) => method === 'POST' && path.endsWith('/versions'));
+    expect((await call(server, 'POST', '/api/cloud/flush')).status).toBe(202);
+    await waitFor(gate.seen);
+    const unpublish = call(server, 'DELETE', '/api/cloud/publish/html/a');
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    gate.release();
+    expect((await unpublish).status).toBe(200);
+    await flush();
+    expect(cloud.store.size).toBe(0);
+    expect(config(configFile).artifacts['html/a']).toMatchObject({ autoPublish: false });
+    expect(config(configFile).artifacts['html/a'].cloud).toBeUndefined();
+  });
+
+  test('a copy deleted from another machine is not recreated by auto-publish', async () => {
+    const { cloud, configFile, edit, flush, dirty } = await startEnabled();
+    await edit('a', '<title>A</title>');
+    await flush();
+    cloud.store.delete('cloud1');
+    await edit('a', '<title>A2</title>');
+    await flush();
+    expect(cloud.requests.filter((r) => r.method === 'POST' && r.path === '/api/artifacts')).toHaveLength(1);
+    expect(config(configFile).artifacts['html/a']).toMatchObject({ autoPublish: false });
+    expect(config(configFile).artifacts['html/a'].cloud).toBeUndefined();
+    expect(dirty()).toEqual([]);
+  });
+});

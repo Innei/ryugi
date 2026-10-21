@@ -176,8 +176,8 @@ enough.
 - When a create is refused for the cap (403), auto-publish stops creating
   new cloud copies; artifacts that already have one keep being republished.
   The next UserPromptSubmit hook tells the agent once that the limit is
-  reached and the human partner can delete old copies on the list page or
-  with `publish --list` / `--delete`. Creates resume after a later flush
+  reached and the human partner can delete old copies with
+  `publish --list` / `--delete` (the cloud list page has no delete yet). Creates resume after a later flush
   succeeds in creating one (a successful create resets the notice).
 
 ### Edge cases (my calls)

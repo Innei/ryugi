@@ -27,6 +27,7 @@ export interface FakeCloud {
   requests: Recorded[];
   store: Map<string, StoredArtifact>;
   respond: (req: Recorded) => { status: number; body?: unknown } | undefined;
+  gate: (req: Recorded) => Promise<void> | undefined;
   close(): Promise<void>;
 }
 
@@ -49,6 +50,7 @@ export async function fakeCloud(): Promise<FakeCloud> {
     requests: [],
     store: new Map(),
     respond: () => undefined,
+    gate: () => undefined,
     close: () => new Promise((resolve) => server.close(() => resolve())),
   };
   const server = http.createServer((req, res) => {
@@ -65,6 +67,7 @@ export async function fakeCloud(): Promise<FakeCloud> {
     if ((req.headers['content-type'] ?? '').startsWith('application/json')) recorded.json = JSON.parse(body.toString());
     else if (body.length > 0) recorded.body = body.toString();
     cloud.requests.push(recorded);
+    await cloud.gate(recorded);
     const custom = cloud.respond(recorded);
     const reply = (status: number, value?: unknown) => {
       res.writeHead(status, { 'Content-Type': 'application/json' });
