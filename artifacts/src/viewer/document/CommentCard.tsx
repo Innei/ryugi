@@ -3,8 +3,8 @@ import * as stylex from '@stylexjs/stylex';
 import { Check, RotateCcw } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { flushSync } from 'react-dom';
-import { waitingOn, type Message, type Thread } from '../../shared/comments';
-import { authorOf } from './author';
+import type { Thread } from '../../shared/comments';
+import { ThreadMessages, WaitingText, type ThreadActions } from '../comments/ThreadView';
 import { Avatar } from './Avatar';
 import { Composer } from './Composer';
 import { play } from './motion';
@@ -15,15 +15,19 @@ const styles = stylex.create({
     width: '100%',
     boxSizing: 'border-box',
     overflow: 'hidden',
-    borderRadius: 14,
-    backgroundColor: cssVar.colorFillQuaternary,
+    borderLeftWidth: 2,
+    borderLeftStyle: 'solid',
+    borderLeftColor: 'transparent',
+    borderBottomWidth: 1,
+    borderBottomStyle: 'solid',
+    borderBottomColor: cssVar.colorBorderSecondary,
     fontFamily: cssVar.fontFamily,
     fontSize: 12,
     lineHeight: 1.6,
     color: cssVar.colorText,
     cursor: 'default',
   },
-  active: { backgroundColor: cssVar.colorBgElevated, boxShadow: cssVar.boxShadowSecondary },
+  active: { borderLeftColor: cssVar.colorPrimary },
   bar: {
     display: 'flex',
     alignItems: 'center',
@@ -33,9 +37,6 @@ const styles = stylex.create({
     fontSize: 11,
   },
   quote: { flex: 1, minWidth: 0, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', color: cssVar.colorWarningText },
-  badge: { flexShrink: 0, paddingBlock: 1, paddingInline: 8, borderRadius: 999, fontSize: 10 },
-  badgeHuman: { backgroundColor: cssVar.colorWarningBg, color: cssVar.colorWarningText },
-  badgeAgent: { backgroundColor: cssVar.colorInfoBg, color: cssVar.colorInfoText },
   icon: {
     flexShrink: 0,
     width: 22,
@@ -51,18 +52,10 @@ const styles = stylex.create({
     cursor: 'pointer',
   },
   body: { paddingBlock: 10, paddingInline: 14 },
-  message: { marginTop: { default: 12, ':first-child': 0 } },
   who: { display: 'flex', alignItems: 'center', gap: 7, fontSize: 11, fontWeight: 600, marginBottom: 2 },
-  time: { color: cssVar.colorTextQuaternary, fontWeight: 400 },
-  deleted: { color: cssVar.colorTextQuaternary, fontStyle: 'italic' },
-  text: { whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' },
-  small: { marginInlineStart: 'auto', display: 'flex', gap: 6 },
-  link: { padding: 0, borderWidth: 0, backgroundColor: 'transparent', color: { default: cssVar.colorTextTertiary, ':hover': cssVar.colorText }, fontSize: 11, cursor: 'pointer' },
   replyBox: { overflow: 'hidden' },
   collapsed: { display: 'flex', alignItems: 'center', gap: 8, paddingBlock: 8, paddingInline: 12, color: cssVar.colorTextTertiary, cursor: 'pointer' },
 });
-
-const timeOf = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
 export function PanelFrame({ active, children }: { active?: boolean; children: ReactNode }) {
   return <div {...stylex.props(styles.panel, active && styles.active)}>{children}</div>;
@@ -81,40 +74,7 @@ export function PanelWho({ human, label }: { human: boolean; label: string }) {
   );
 }
 
-function MessageView({ message, onEdit, onDelete }: { message: Message; onEdit?: (text: string) => void; onDelete?: () => void }) {
-  const [editing, setEditing] = useState(false);
-  const human = message.author === 'human';
-  const { label, initial } = authorOf(message);
-  return (
-    <div {...stylex.props(styles.message)}>
-      <div {...stylex.props(styles.who)}>
-        <Avatar human={human} initial={initial} name={message.name} src={message.avatar} />
-        {label} <span {...stylex.props(styles.time)}>{timeOf(message.editedAt ?? message.at)}</span>
-        {human && onEdit && onDelete && !message.deleted && !editing ? (
-          <span {...stylex.props(styles.small)}>
-            <button type="button" onClick={() => setEditing(true)} {...stylex.props(styles.link)}>编辑</button>
-            <button type="button" onClick={onDelete} {...stylex.props(styles.link)}>删除</button>
-          </span>
-        ) : null}
-      </div>
-      {message.deleted ? (
-        <div {...stylex.props(styles.deleted)}>已删除</div>
-      ) : editing ? (
-        <Composer autoFocus initial={message.text} placeholder="" onSubmit={(text) => (onEdit?.(text), setEditing(false))} onCancel={() => setEditing(false)} />
-      ) : (
-        <div {...stylex.props(styles.text)}>{message.text}</div>
-      )}
-    </div>
-  );
-}
-
-export interface ThreadActions {
-  reply(threadId: string, text: string): void | Promise<boolean>;
-  edit(threadId: string, messageId: string, text: string): void;
-  remove(threadId: string, messageId: string): void;
-  resolve(threadId: string): void;
-  reopen(threadId: string): void;
-}
+export type { ThreadActions };
 
 const CONFIRMED = { backgroundColor: '#2ea043', color: '#fff' };
 
@@ -125,7 +85,6 @@ export function CommentCard({ thread, active, actions, onActivate, agent = 'Agen
   const [focusReply, setFocusReply] = useState(0);
   const content = useRef<HTMLDivElement>(null);
   const row = useRef<HTMLDivElement>(null);
-  const waiting = actions ? waitingOn(thread) : null;
   const resolved = thread.status === 'resolved';
   const folded = (resolved || closing) && !expanded;
   const quote = thread.anchor.quote || '整段';
@@ -181,10 +140,7 @@ export function CommentCard({ thread, active, actions, onActivate, agent = 'Agen
           <PanelFrame active={active}>
             <div {...stylex.props(styles.bar)}>
               <span {...stylex.props(styles.quote)}>{quote}</span>
-              {waiting === 'human' ? <span {...stylex.props(styles.badge, styles.badgeHuman)}>等你回复</span> : null}
-              {waiting === 'agent' ? (
-                <span title={`${agent} 下一轮会读到这条`} {...stylex.props(styles.badge, styles.badgeAgent)}>等 {agent}</span>
-              ) : null}
+              {actions ? <WaitingText thread={thread} agent={agent} /> : null}
               {!actions ? null : resolved ? (
                 <button type="button" title="重新打开" onClick={() => actions.reopen(thread.id)} {...stylex.props(styles.icon)}>
                   <RotateCcw size={13} strokeWidth={2.2} />
@@ -201,16 +157,7 @@ export function CommentCard({ thread, active, actions, onActivate, agent = 'Agen
                 </button>
               )}
             </div>
-            <div {...stylex.props(styles.body)}>
-              {thread.messages.map((message) => (
-                <MessageView
-                  key={message.id}
-                  message={message}
-                  onEdit={actions && ((text) => actions.edit(thread.id, message.id, text))}
-                  onDelete={actions && (() => actions.remove(thread.id, message.id))}
-                />
-              ))}
-            </div>
+            <ThreadMessages thread={thread} actions={actions} />
             {actions && reply.shown ? (
               <div ref={reply.outer} {...stylex.props(styles.replyBox)}>
                 <div ref={reply.inner}>
