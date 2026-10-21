@@ -209,7 +209,7 @@ function DesktopArtboard({ id, artifact, canvas, layout, warnings, pending, cont
     <div ref={viewportRef} {...stylex.props(styles.viewport)} style={{ cursor }}
       onPointerDown={(event) => {
         handlers.onPointerDown(event);
-        if (commentTool && !panning && !expanded && event.button === 0 && event.pointerType !== 'touch' && !(event.target as Element).closest('[data-chrome]')) boardComments.onCanvasClick(worldPoint(event));
+        if (commentTool && !panning && !expanded && event.button === 0 && event.pointerType !== 'touch' && event.currentTarget.contains(event.target as Node) && !(event.target as Element).closest('[data-chrome]')) boardComments.onCanvasClick(worldPoint(event));
         if (!selectionEnabled || event.pointerType === 'touch' || event.button !== 0 || !event.currentTarget.contains(event.target as Node) || (event.target as Element).closest('[data-chrome]')) return;
         const point = worldPoint(event);
         event.currentTarget.setPointerCapture(event.pointerId);

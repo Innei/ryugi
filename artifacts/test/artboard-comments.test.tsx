@@ -2,6 +2,7 @@
 import { ConfigProvider } from '@lobehub/ui';
 import { motion } from 'motion/react';
 import { act, createElement } from 'react';
+import { createPortal } from 'react-dom';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import type { BoardCommentsFile } from '../src/shared/board-comments';
@@ -9,12 +10,17 @@ import { ArtboardLayout } from '../src/viewer/layouts/ArtboardLayout';
 
 vi.mock('@stylexjs/stylex', async (original) => ({ ...await original<object>(), create: (value: unknown) => value, defineConsts: (value: unknown) => value, defineVars: (value: unknown) => value, props: () => ({}) }));
 vi.mock('@lobehub/ui/stylex/cssVar.stylex', () => ({ cssVar: new Proxy({}, { get: (_, key) => `var(--${String(key)})` }) }));
+vi.mock('@lobehub/ui', async (original) => ({
+  ...await original<object>(),
+  DropdownMenu: (props: { items: { key: string; label: string; onClick: () => void }[]; children: unknown }) =>
+    createElement('div', { 'data-menu': '' }, props.children as never, createPortal(props.items.map((item) => createElement('button', { key: item.key, 'data-menu-item': item.key, onClick: item.onClick }, item.label)), document.body)),
+}));
 
 const state = vi.hoisted(() => ({ comments: { comments: { version: 1, threads: [] }, stale: [] } as { comments: BoardCommentsFile; stale: string[] }, comment: null as unknown as ReturnType<typeof vi.fn> }));
 vi.mock('../src/viewer/hooks/useCanvasData', () => ({ useCanvasData: () => ({
-  canvas: { version: 1, pages: [{ id: 'p', name: 'Page' }], boards: { a: { page: 'p', file: 'pages/a.html', x: 0, y: 0, w: 600, h: 400 } } },
-  layout: { pages: { p: { groups: {}, notes: {}, bounds: { minX: 0, minY: 0, maxX: 600, maxY: 400 } } } },
-  pending: [], versions: { 'pages/a.html': 1 }, contentBase: 'about:blank#', warnings: [], live: true, loaded: true, send: vi.fn(),
+  canvas: { version: 1, pages: [{ id: 'p', name: 'Page' }, { id: 'q', name: 'Other' }], boards: { a: { page: 'p', file: 'pages/a.html', x: 0, y: 0, w: 600, h: 400 }, b: { page: 'q', file: 'pages/b.html', x: 0, y: 0, w: 600, h: 400 } } },
+  layout: { pages: { p: { groups: {}, notes: {}, bounds: { minX: 0, minY: 0, maxX: 600, maxY: 400 } }, q: { groups: {}, notes: {}, bounds: { minX: 0, minY: 0, maxX: 600, maxY: 400 } } } },
+  pending: [], versions: { 'pages/a.html': 1, 'pages/b.html': 1 }, contentBase: 'about:blank#', warnings: [], live: true, loaded: true, send: vi.fn(),
   comments: state.comments, comment: state.comment,
 }) }));
 
@@ -152,4 +158,50 @@ test('the comment tool swaps the right panel for the thread list, and a row open
   await act(async () => panel.querySelector<HTMLButtonElement>('[aria-label="Close comments"]')!.click());
   expect(host.querySelector('aside[aria-label="Comments"]')).toBeNull();
   expect(host.querySelector('[aria-label="评论 1"]')).toBeNull();
+});
+
+const pointerDown = (target: Element) => act(async () => target.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0, pointerType: 'mouse', clientX: 300, clientY: 300 })));
+
+async function draftOnNode(report: Awaited<ReturnType<typeof mount>>['report']) {
+  await report('hover', { rect: { x: 100, y: 100, width: 200, height: 100 }, id: 7 });
+  await report('drag', { phase: 'start', id: 7, x: 150, y: 125, append: false });
+  await report('drag', { phase: 'cancel', x: 150, y: 125, append: false });
+}
+
+test('a click inside a menu that portals out of the canvas opens no draft', async () => {
+  await mount();
+  await key('c');
+  await pointerDown(document.querySelector('[data-menu-item="q"]')!);
+  expect(document.querySelector('textarea[placeholder="添加评论…"]')).toBeNull();
+});
+
+test('switching page drops the draft', async () => {
+  const { report } = await mount();
+  await key('c');
+  await draftOnNode(report);
+  expect(document.querySelector('textarea[placeholder="添加评论…"]')).not.toBeNull();
+  await act(async () => document.querySelector<HTMLElement>('[data-menu-item="q"]')!.click());
+  expect(document.querySelector('textarea[placeholder="添加评论…"]')).toBeNull();
+});
+
+test('a thread whose board is gone still opens from the list', async () => {
+  state.comments = {
+    comments: { version: 1, threads: [{ id: 't1', anchor: { page: 'p', board: 'gone', x: 10, y: 10 }, status: 'open', statusAt: 'x', messages: [{ id: 'm1', author: 'human', text: '删掉这个', at: '2026-10-22T10:00:00Z' }, { id: 'm2', author: 'agent', text: '已删除 board', at: '2026-10-22T10:01:00Z' }] }] },
+    stale: ['t1'],
+  };
+  const { host } = await mount();
+  await key('c');
+  await act(async () => host.querySelector<HTMLElement>('aside[aria-label="Comments"] [data-thread="t1"]')!.click());
+  expect(host.querySelector('textarea[placeholder="回复…"]')).not.toBeNull();
+  expect(host.textContent).toContain('已删除 board');
+});
+
+test('a thread with every message deleted leaves no pin', async () => {
+  state.comments = {
+    comments: { version: 1, threads: [{ id: 't1', anchor: { page: 'p', board: 'a', x: 10, y: 10 }, status: 'open', statusAt: 'x', messages: [{ id: 'm1', author: 'human', text: 'x', at: '2026-10-22T10:00:00Z', deleted: true }] }] },
+    stale: [],
+  };
+  const { host } = await mount();
+  await key('c');
+  expect(host.querySelector('[aria-label^="评论"]')).toBeNull();
 });

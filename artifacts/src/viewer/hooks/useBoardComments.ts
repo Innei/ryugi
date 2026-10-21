@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { BoardAnchor, BoardHumanOp } from '../../shared/board-comments';
 import type { BoardSpec } from '../../shared/types';
 import type { ThreadActions } from '../comments/ThreadView';
@@ -23,6 +23,7 @@ export function useBoardComments({ comments, comment, page, boards, inspector }:
   const threads = useMemo(() => comments?.comments.threads ?? [], [comments]);
   const stale = useMemo(() => new Set(comments?.stale ?? []), [comments]);
   const numbers = useMemo(() => pinNumbers(threads), [threads]);
+  useEffect(() => { setDraft(null); setOpenId(null); }, [page]);
 
   const pathOf = useCallback((boardId: string, id: number | undefined) => (id === undefined ? undefined : inspector.frames[boardId]?.nodes.find((node) => node.id === id)?.path), [inspector.frames]);
 

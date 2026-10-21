@@ -95,7 +95,7 @@ function popoverLeft(x: number, width: number) {
 }
 
 export function CommentLayer({ view, page, boards, width, threads, stale, numbers, showResolved, draft, openId, actions, agent, onOpen, onSubmit, onCancelDraft }: Props) {
-  const visible = threads.filter((thread) => thread.anchor.page === page && (showResolved || thread.status === 'open' || thread.id === openId));
+  const visible = threads.filter((thread) => thread.anchor.page === page && thread.messages.some((m) => !m.deleted) && (showResolved || thread.status === 'open' || thread.id === openId));
   const open = threads.find((thread) => thread.id === openId);
   const openPoint = open ? pinPoint(open.anchor, boards) : null;
   const draftPoint = draft ? pinPoint(draft, boards) : null;
@@ -119,8 +119,8 @@ export function CommentLayer({ view, page, boards, width, threads, stale, number
           </button>
         );
       })}
-      {open && openPoint ? (
-        <div {...stylex.props(styles.popover)} style={{ left: popoverLeft(screenOf(view, openPoint).x, width), top: screenOf(view, openPoint).y - PIN }}>
+      {open ? (
+        <div {...stylex.props(styles.popover)} style={openPoint ? { left: popoverLeft(screenOf(view, openPoint).x, width), top: screenOf(view, openPoint).y - PIN } : { right: 12, top: 64 }}>
           <ThreadView thread={open} label={`#${numbers.get(open.id)} ${anchorLabel(open.anchor)}${stale.has(open.id) ? ' · 锚点已失效' : ''}`} actions={actions} agent={agent} onClose={() => onOpen(null)} />
         </div>
       ) : null}
