@@ -86,7 +86,7 @@ describe('cloud library management', () => {
       return Response.json(list);
     }) as typeof fetch);
     await click('选择');
-    await choose('选择项目 first');
+    await choose('选择该项目 first');
     await choose('选择 Notes');
     await click('删除 2 项');
     const dialog = document.querySelector('[role="dialog"]')!;

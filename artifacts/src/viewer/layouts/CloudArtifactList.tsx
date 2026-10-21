@@ -12,6 +12,7 @@ import { CloudRequestError, deleteCloudArtifact } from '../lib/cloud-shell';
 
 const labels = { artboard: 'Artboard', document: 'Document', html: 'HTML' };
 const icons = { artboard: PanelsTopLeft, document: FileText, html: Code2 };
+const deleteButtonStyle = { backgroundColor: 'var(--lobe-color-error-active)', color: '#fff' };
 type Loaded = { state: 'loading' } | { state: 'signed-out' } | { state: 'error' } | { state: 'ready'; login: string; artifacts: CloudListItem[] };
 type Notice = { message: string; error?: boolean; auth?: boolean; retry?: boolean };
 
@@ -163,7 +164,7 @@ export function CloudArtifactList() {
           return (
             <section key={project ?? ''} aria-label={project ?? '其他'}>
               <div className="cloud-project-heading"><h2 className="library-group">{project ?? '其他'}<span>{artifacts.length}</span></h2>
-                {selecting && <Checkbox aria-label={`选择项目 ${project ?? '其他'}`} checked={all} indeterminate={!all && some} disabled={busy} onChange={(checked) => select(ids, checked)}>选择该项目</Checkbox>}
+                {selecting && <Checkbox aria-label={`选择该项目 ${project ?? '其他'}`} checked={all} indeterminate={!all && some} disabled={busy} onChange={(checked) => select(ids, checked)}>选择该项目</Checkbox>}
               </div>
               <ul className="library-grid">
                 {artifacts.map((artifact) => {
@@ -191,7 +192,7 @@ export function CloudArtifactList() {
         })}
         {selecting && <div className="cloud-batch-bar" role="region" aria-label="批量管理">
           <span role="status">已选 {selected.size} 项</span><Button size="small" disabled={busy} onClick={cancelSelection}>取消</Button>
-          <Button size="small" danger type="primary" loading={busy} disabled={selected.size === 0 || busy || notice?.auth} onClick={() => {
+          <Button size="small" danger type="primary" style={deleteButtonStyle} loading={busy} disabled={selected.size === 0 || busy || notice?.auth} onClick={() => {
             const targets = visible.filter((artifact) => selected.has(artifact.id));
             if (notice?.retry) void remove(targets);
             else setPending(targets);
@@ -200,7 +201,7 @@ export function CloudArtifactList() {
       </main>
       <Modal open={pending !== null} title={`删除这 ${pending?.length ?? 0} 个 Artifact？`} width={492} centered
         okText={busy ? '正在删除…' : `删除 ${pending?.length ?? 0} 项`} cancelText="取消" confirmLoading={busy}
-        okButtonProps={{ danger: true }} cancelButtonProps={{ disabled: busy }} closable={!busy} keyboard={!busy} maskClosable={!busy}
+        okButtonProps={{ danger: true, style: deleteButtonStyle }} cancelButtonProps={{ disabled: busy }} closable={!busy} keyboard={!busy} maskClosable={!busy}
         onCancel={() => !busy && setPending(null)} onOk={() => pending && void remove(pending)}>
         <p className="cloud-delete-description">云端内容和历史版本将永久删除，原分享链接会失效。此操作无法撤销。</p>
         <ul className="cloud-delete-items">{pending?.map((artifact) => <li key={artifact.id}><span>{artifact.title ?? artifact.id}</span><small>{artifact.project ?? '其他'}</small></li>)}</ul>
