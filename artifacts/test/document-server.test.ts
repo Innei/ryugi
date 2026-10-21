@@ -130,6 +130,31 @@ describe('live document', () => {
     await waitFor(() => fs.readFileSync(docFile(root, 'relay'), 'utf8').includes('one, by hand'));
   });
 
+  test('an edit posted by one page reaches the other open pages', async () => {
+    const { server, root } = await start();
+    writeDocument(root, 'relay', { 'doc.xml': '<doc><p>one</p></doc>' });
+    await waitFor(() => fs.readFileSync(docFile(root, 'relay'), 'utf8').includes(' id="'));
+    const state = await api(server, '/api/document/relay/state');
+    const other = new LoroDoc();
+    other.import(Buffer.from(state.snapshot, 'base64'));
+    const ws = await openWs(server.port, { Cookie: cookie(server), Origin: base(server), Host: `127.0.0.1:${server.port}` });
+    const peer = new LoroDoc();
+    peer.import(Buffer.from(state.snapshot, 'base64'));
+    const editor = createDocumentHeadlessEditor();
+    const binding = createLoroBinding(editor, peer);
+    const from = peer.oplogVersion();
+    editor.update(() => $findText($getRoot(), 'one')!.setTextContent('one, from another tab'), { discrete: true });
+    await post(`${base(server)}/api/document/relay/update`, Buffer.from(peer.export({ mode: 'update', from })), { Cookie: cookie(server), Origin: base(server) });
+    binding.dispose();
+    await waitFor(() => ws.messages.some((m) => JSON.parse(m).type === 'doc-update'));
+    for (const update of ws.messages.map((m) => JSON.parse(m)).filter((m) => m.type === 'doc-update')) other.import(Buffer.from(update.bytes, 'base64'));
+    const otherEditor = createDocumentHeadlessEditor();
+    const otherBinding = createLoroBinding(otherEditor, other);
+    expect(otherEditor.getEditorState().read(() => $getRoot().getTextContent())).toContain('one, from another tab');
+    otherBinding.dispose();
+    ws.socket?.destroy();
+  });
+
   test('a rejected agent edit is a warning in warnings.json', async () => {
     const { root } = await start();
     writeDocument(root, 'relay', { 'doc.xml': '<doc><p>one</p></doc>' });

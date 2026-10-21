@@ -266,6 +266,26 @@ describe('events', () => {
   });
 });
 
+describe('edits travel both ways', () => {
+  test('an edit from the phone is sent back out to everyone watching', async () => {
+    const hub = await fakeHub();
+    const { root } = await start({ hub });
+    await hub.next('hello');
+    await stampedBlockId(root);
+    hub.send({ t: 'watch', ids: ['cloudplan'] });
+    const state = (await request(hub, { op: 'state' })).body.data;
+    const peer = new LoroDoc();
+    peer.import(Buffer.from(state.snapshot, 'base64'));
+    const editor = createDocumentHeadlessEditor();
+    const binding = createLoroBinding(editor, peer);
+    const from = peer.oplogVersion();
+    editor.update(() => $findText($getRoot(), 'one')!.setTextContent('one, from the phone'), { discrete: true });
+    await request(hub, { op: 'update', bytes: Buffer.from(peer.export({ mode: 'update', from })).toString('base64') });
+    binding.dispose();
+    await waitFor(() => hub.messages.some((m) => m.t === 'event' && m.body?.type === 'doc-update'));
+  });
+});
+
 test('a server started by the CLI tells the relay its release version', async () => {
   const hub = await fakeHub();
   const origin = hub.url.replace(/^ws/, 'http').replace(/\/api\/relay\/host$/, '');

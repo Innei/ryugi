@@ -285,6 +285,7 @@ export async function createDocumentSession(options: DocumentSessionOptions): Pr
       probe.import(bytes);
       if (probe.getTree(TREE_NAME).roots().length > 1) throw new Error('update belongs to a different document; reload the page');
       binding.import(bytes);
+      emit({ type: 'update', bytes });
       scheduleWrite();
     },
     onFileText,
