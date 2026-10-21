@@ -1,12 +1,16 @@
+import fs from 'node:fs';
 import { createRequire } from 'node:module';
+import os from 'node:os';
 import path from 'node:path';
 import { expect, test } from 'vitest';
 import { detectAgent } from '../src/server/agent';
+import { applyBoardHumanOp, emptyBoardComments } from '../src/shared/board-comments';
 import { applyHumanOp, emptyComments, mergeComments, unreadThreads, type CommentsFile } from '../src/shared/comments';
 
 const hook = createRequire(import.meta.url)(path.resolve(__dirname, '../../hooks/selection-context.cjs')) as {
   unreadThreadCount(file: CommentsFile, cursor: string | null): number;
   cursorKey(env: Record<string, string | undefined>): string;
+  commentReminders(project: string, root: string, key: string): string;
 };
 
 let counter = 0;
@@ -40,4 +44,24 @@ test('the hook counts the same unread threads as the server for every cursor', (
 
 test('the hook reads the cursor the CLI writes for the same harness', () => {
   for (const env of [{ CLAUDECODE: '1' }, { CLAUDECODE: '1', CLAUDE_CODE_IS_COWORK: '1' }]) expect(hook.cursorKey(env)).toBe(detectAgent(env));
+});
+
+test('the reminder names artboards with comments waiting on the agent', () => {
+  const project = fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-hook-'));
+  const root = path.join(project, '.ryugi', 'artifacts');
+  const write = (file: string, value: unknown) => {
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, JSON.stringify(value));
+  };
+  write(path.join(root, 'artboard', 'review', 'comments.json'), applyBoardHumanOp(emptyBoardComments(), { op: 'create', anchor: { page: 'p', board: 'a', x: 1, y: 1 }, text: '没对齐' }, at(1), ids));
+  const alone = hook.commentReminders(project, root, 'Claude Code');
+  expect(alone).toContain('artboard/review (1)');
+  expect(alone).toContain('--artifact artboard/review`');
+  write(path.join(root, 'document', 'plan', 'comments.json'), applyHumanOp(emptyComments(), { op: 'create', blockId: 'b1', quote: '', text: 'why?' }, at(2), ids));
+  const both = hook.commentReminders(project, root, 'Claude Code');
+  expect(both).toContain('artboard/review (1)');
+  expect(both).toContain('document/plan (1)');
+  expect(both).toContain('--artifact <type>/<id>');
+  write(path.join(root, '.state', 'artboard', 'review', 'comment-cursors.json'), { 'Claude Code': at(5) });
+  expect(hook.commentReminders(project, root, 'Claude Code')).not.toContain('artboard/review');
 });

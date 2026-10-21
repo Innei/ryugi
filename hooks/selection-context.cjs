@@ -124,30 +124,41 @@ function documentIds(root) {
 
 const MAX_REMINDERS = 600;
 
+function artifactIds(root, type) {
+  try {
+    return fs.readdirSync(path.join(root, type)).sort();
+  } catch {
+    return [];
+  }
+}
+
 function commentReminders(project, root, key) {
   const waiting = [];
-  for (const id of documentIds(root)) {
-    const file = readJson(path.join(root, 'document', id, 'comments.json'));
-    if (!file) continue;
-    const cursors = readJson(path.join(root, '.state', 'document', id, 'comment-cursors.json'));
-    const cursor = cursors && typeof cursors[key] === 'string' ? cursors[key] : null;
-    const count = unreadThreadCount(file, cursor);
-    if (count) waiting.push({ id, count });
+  for (const type of ['document', 'artboard']) {
+    for (const id of artifactIds(root, type)) {
+      const file = readJson(path.join(root, type, id, 'comments.json'));
+      if (!file) continue;
+      const cursors = readJson(path.join(root, '.state', type, id, 'comment-cursors.json'));
+      const cursor = cursors && typeof cursors[key] === 'string' ? cursors[key] : null;
+      const count = unreadThreadCount(file, cursor);
+      if (count) waiting.push({ artifact: `${type}/${id}`, count });
+    }
   }
   if (!waiting.length) return '';
-  const target = waiting.length === 1 ? `document/${waiting[0].id}` : 'document/<id>';
+  const types = new Set(waiting.map(({ artifact }) => artifact.split('/')[0]));
+  const target = waiting.length === 1 ? waiting[0].artifact : types.size === 1 ? `${[...types][0]}/<id>` : '<type>/<id>';
   const command = `List them with \`node "${LAUNCHER}" comment list --json --project-dir "${project}" --artifact ${target}\`.`;
   const head = 'Comment threads changed since you last listed: ';
   const named = [];
-  for (const [index, { id, count }] of waiting.entries()) {
+  for (const [index, { artifact, count }] of waiting.entries()) {
     const more = waiting.length - index - 1;
-    const next = [...named, `document/${id} (${count})`];
-    const tail = more ? `, and ${more} more document(s)` : '';
+    const next = [...named, `${artifact} (${count})`];
+    const tail = more ? `, and ${more} more artifact(s)` : '';
     if (head.length + next.join(', ').length + tail.length + command.length + 2 > MAX_REMINDERS) break;
     named.push(next.at(-1));
   }
   const left = waiting.length - named.length;
-  return `${head}${named.join(', ')}${left ? `${named.length ? ', and ' : ''}${left} more document(s)` : ''}.\n${command}`;
+  return `${head}${named.join(', ')}${left ? `${named.length ? ', and ' : ''}${left} more artifact(s)` : ''}.\n${command}`;
 }
 
 // Mirrors credentialsFile in artifacts/src/server/credentials.ts; artifacts/test/hook-auto-publish.test.ts keeps them in step.
@@ -242,6 +253,6 @@ function main() {
   process.stdout.write(`${sections.join('\n\n')}\n`);
 }
 
-module.exports = { unreadThreadCount, cursorKey, credentialsPath, autoPublishContext };
+module.exports = { unreadThreadCount, cursorKey, credentialsPath, autoPublishContext, commentReminders };
 
 if (require.main === module) main();

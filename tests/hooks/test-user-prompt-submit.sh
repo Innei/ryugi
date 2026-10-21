@@ -171,7 +171,7 @@ for n in $(seq 1 60); do
 done
 out="$(run_hook "$dir" "看看")"
 expect "keeps the artboard selection when many documents wait on the agent" "$out" 'hero-2#12 <div>'
-expect "summarizes documents that do not fit" "$out" 'more document(s)'
+expect "summarizes documents that do not fit" "$out" 'more artifact(s)'
 expect "names the command once for many documents" "$out" '--artifact document/<id>'
 if [[ "${#out}" -le 8200 ]]; then pass "stays within the context budget with many documents"; else fail "stays within the context budget with many documents (${#out})"; fi
 
