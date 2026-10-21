@@ -70,11 +70,15 @@ launcher `app/ryugi-artifacts.cjs` with `--json`; it runs the newest
 ```bash
 node app/ryugi-artifacts.cjs start --json --project-dir /path/to/project --artifact html/arrow-tuner
 # {"type":"server-started","url":"http://localhost:52341/?key=…","port":52341,
-#  "root":"/path/to/project/.ryugi/artifacts","link":"http://localhost:52341/html/arrow-tuner?key=…"}
+#  "root":"/path/to/project/.ryugi/artifacts","link":"http://localhost:52341/html/arrow-tuner?key=…",
+#  "cloudLink":"https://ryugi.innei.dev/a/…"}
 ```
 
-- Give them the complete `link`, including `?key=`. The server refuses
-  requests without the key. `url` opens a list of every artifact.
+- Give them `cloudLink` when it is printed, and only that link. It is the
+  same live page, on this computer and on any other, published or not.
+- No `cloudLink`: give them the complete `link`, including `?key=`. The
+  server refuses requests without the key. `url` opens a list of every
+  artifact.
 - Re-run the same command, with the artifact you're about to mention, before
   you give a link again. It prints `"reused": true` while the server is up,
   and otherwise starts it on the same port and key, so open tabs reconnect.
@@ -133,10 +137,10 @@ changed during your turn is published as a private copy when the turn ends
 whether it is on.
 
 - Do not run `publish` to keep a private copy current; the turn end does it.
-- They want to look from their phone or another machine: give them the
-  artifact's `cloud.url` from `.ryugi/config.json`, or ryugi.innei.dev,
-  which lists every copy once they sign in there. No cloud link yet (made
-  this turn) and they want it now: publish it once with `--private`.
+- They want to look from their phone or another machine: give them
+  `cloudLink` from `start`. It is live while this computer is on, and shows
+  the last published copy when it is off. Or ryugi.innei.dev, which lists
+  every copy once they sign in there.
 - Someone else will open it: `--public`, as in Share a link.
 - An unpublished artifact stays out of auto-publish until it is published by
   hand.
