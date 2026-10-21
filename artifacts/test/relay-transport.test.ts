@@ -221,3 +221,29 @@ describe('local document transport', () => {
     ]);
   });
 });
+
+describe('requests that never get an answer', () => {
+  test('a request times out as offline', async () => {
+    const connection = createRelayConnection({
+      url: 'wss://cloud.example/api/relay/a/c1',
+      artifact: 'document/c1',
+      WebSocket: FakeSocket as never,
+      requestTimeoutMs: 20,
+      onPresence: () => {},
+      onEvent: () => {},
+      onOnline: () => {},
+    });
+    connections.push(connection);
+    FakeSocket.all.at(-1)!.open();
+    await expect(connection.request({ op: 'state' })).rejects.toThrow('offline');
+  });
+
+  test('the host going offline fails what it was asked', async () => {
+    const { connection, socket } = connect();
+    socket().open();
+    socket().receive({ t: 'presence', online: true, version: '1.13.0' });
+    const pending = connection.request({ op: 'update', bytes: 'AA==' });
+    socket().receive({ t: 'presence', online: false, version: null });
+    await expect(pending).rejects.toThrow('offline');
+  });
+});

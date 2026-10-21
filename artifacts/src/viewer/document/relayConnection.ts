@@ -12,6 +12,7 @@ export interface RelayConnectionOptions {
   WebSocket?: typeof WebSocket;
   retryMs?: number;
   maxRetryMs?: number;
+  requestTimeoutMs?: number;
   onPresence: (presence: RelayPresence) => void;
   onEvent: (event: unknown) => void;
   onOnline: () => void;
@@ -28,7 +29,8 @@ export function createRelayConnection(options: RelayConnectionOptions): RelayCon
   const Socket = options.WebSocket ?? WebSocket;
   const baseRetry = options.retryMs ?? 1000;
   const maxRetry = options.maxRetryMs ?? 30_000;
-  const pending = new Map<number, { resolve: (data: unknown) => void; reject: (error: Error) => void }>();
+  const timeoutMs = options.requestTimeoutMs ?? 15_000;
+  const pending = new Map<number, { resolve: (data: unknown) => void; reject: (error: Error) => void; timer: ReturnType<typeof setTimeout> }>();
   const queue: string[] = [];
   let socket: WebSocket | null = null;
   let open = false;
@@ -42,14 +44,20 @@ export function createRelayConnection(options: RelayConnectionOptions): RelayCon
     const waiter = pending.get(rid);
     if (!waiter) return;
     pending.delete(rid);
+    clearTimeout(waiter.timer);
     if ('error' in outcome) waiter.reject(new Error(outcome.error));
     else waiter.resolve(outcome.data);
+  };
+
+  const failPending = () => {
+    for (const rid of [...pending.keys()]) settle(rid, { error: 'offline' });
   };
 
   const receive = (message: RelayIncoming) => {
     if (message.t === 'presence') {
       const wasOnline = online;
       online = message.online;
+      if (!online) failPending();
       options.onPresence({ online: message.online, version: message.version });
       if (online && !wasOnline) options.onOnline();
     } else if (message.t === 'reply') {
@@ -80,7 +88,7 @@ export function createRelayConnection(options: RelayConnectionOptions): RelayCon
       open = false;
       socket = null;
       queue.length = 0;
-      for (const rid of [...pending.keys()]) settle(rid, { error: 'offline' });
+      failPending();
       online = false;
       options.onPresence(OFFLINE);
       if (closed) return;
@@ -96,7 +104,8 @@ export function createRelayConnection(options: RelayConnectionOptions): RelayCon
       const rid = nextRid++;
       const text = JSON.stringify({ t: 'request', rid, body });
       return new Promise<T>((resolve, reject) => {
-        pending.set(rid, { resolve: resolve as (data: unknown) => void, reject });
+        const timer = setTimeout(() => settle(rid, { error: 'offline' }), timeoutMs);
+        pending.set(rid, { resolve: resolve as (data: unknown) => void, reject, timer });
         if (open && socket) socket.send(text);
         else queue.push(text);
       });
