@@ -119,3 +119,35 @@ test('trackpad gestures over a board title pan and pinch the canvas, while toolb
   wheel(host.querySelector('#board-title')!, { deltaY: -Math.log(2) / 0.01, ctrlKey: true });
   expect(panZoom.view.k).toBe(1);
 });
+
+function touch(target: Element, type: string, id: number, x: number, y: number) {
+  act(() => {
+    target.dispatchEvent(new PointerEvent(type, { bubbles: true, pointerId: id, pointerType: 'touch', button: 0, clientX: x, clientY: y }));
+  });
+}
+
+test('one finger pans the canvas whatever the tool', () => {
+  const viewport = render('select');
+  touch(viewport, 'pointerdown', 7, 100, 100);
+  touch(viewport, 'pointermove', 7, 130, 80);
+  touch(viewport, 'pointerup', 7, 130, 80);
+  expect(panZoom.view).toEqual({ x: 30, y: -20, k: 0.5 });
+});
+
+test('two fingers pinch around their midpoint and pan with it', () => {
+  const viewport = render('select');
+  touch(viewport, 'pointerdown', 1, 100, 100);
+  touch(viewport, 'pointerdown', 2, 200, 100);
+  touch(viewport, 'pointermove', 2, 300, 100);
+  expect(panZoom.view).toEqual({ x: -100, y: -100, k: 1 });
+  touch(viewport, 'pointerup', 2, 300, 100);
+  touch(viewport, 'pointermove', 1, 110, 100);
+  expect(panZoom.view).toEqual({ x: -90, y: -100, k: 1 });
+});
+
+test('a finger on the toolbar never moves the canvas', () => {
+  const viewport = render('select');
+  touch(host.querySelector('button')!, 'pointerdown', 3, 10, 10);
+  touch(viewport, 'pointermove', 3, 60, 60);
+  expect(panZoom.view).toEqual({ x: 0, y: 0, k: 0.5 });
+});

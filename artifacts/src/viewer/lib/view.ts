@@ -42,6 +42,21 @@ export function zoomAround(view: View, factor: number, cx: number, cy: number): 
   return { k, x: cx - (cx - view.x) * ratio, y: cy - (cy - view.y) * ratio };
 }
 
+export interface Point {
+  x: number;
+  y: number;
+}
+
+export function pinchView(view: View, from: [Point, Point], to: [Point, Point]): View {
+  const distance = ([a, b]: [Point, Point]) => Math.max(1, Math.hypot(b.x - a.x, b.y - a.y));
+  const mid = ([a, b]: [Point, Point]) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+  const k = clampZoom(view.k * (distance(to) / distance(from)));
+  const ratio = k / view.k;
+  const start = mid(from);
+  const end = mid(to);
+  return { k, x: end.x - (start.x - view.x) * ratio, y: end.y - (start.y - view.y) * ratio };
+}
+
 export function zoomTo(view: View, k: number, cx: number, cy: number): View {
   return zoomAround(view, k / view.k, cx, cy);
 }

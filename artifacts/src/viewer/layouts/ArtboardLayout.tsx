@@ -223,14 +223,14 @@ export function ArtboardView({ id, artifact, canvas, layout, warnings, pending, 
     <div ref={viewportRef} {...stylex.props(styles.viewport)} style={{ cursor }}
       onPointerDown={(event) => {
         handlers.onPointerDown(event);
-        if (!selectionEnabled || event.button !== 0 || !event.currentTarget.contains(event.target as Node) || (event.target as Element).closest('[data-chrome]')) return;
+        if (!selectionEnabled || event.pointerType === 'touch' || event.button !== 0 || !event.currentTarget.contains(event.target as Node) || (event.target as Element).closest('[data-chrome]')) return;
         const point = worldPoint(event);
         event.currentTarget.setPointerCapture(event.pointerId);
         dragSelection('start', point.x, point.y, event.shiftKey || event.metaKey || event.ctrlKey);
       }}
       onPointerMove={(event) => { handlers.onPointerMove(event); if (gesture.current) { if (event.buttons === 1) event.currentTarget.setPointerCapture(event.pointerId); const point = worldPoint(event); dragSelection('move', point.x, point.y); } }}
-      onPointerUp={(event) => { handlers.onPointerUp(); if (gesture.current) { const point = worldPoint(event); dragSelection('end', point.x, point.y); } }}
-      onPointerCancel={() => { handlers.onPointerCancel(); gesture.current = null; setMarquee(null); setSelecting(false); inspector.cancelDrag(); }}>
+      onPointerUp={(event) => { handlers.onPointerUp(event); if (gesture.current) { const point = worldPoint(event); dragSelection('end', point.x, point.y); } }}
+      onPointerCancel={(event) => { handlers.onPointerCancel(event); gesture.current = null; setMarquee(null); setSelecting(false); inspector.cancelDrag(); }}>
       {canvas && layout && (
         <CanvasErrorBoundary resetKey={canvas}>
           <Canvas
