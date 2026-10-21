@@ -32,6 +32,26 @@ function withLink(info: Record<string, unknown>, artifact: string | undefined, r
   return out;
 }
 
+const RESERVE_TIMEOUT_MS = 5000;
+
+const inClaudeCode = () => !!(process.env.CLAUDECODE || process.env.CLAUDE_CODE);
+
+async function withCloudLink(out: Record<string, unknown>, artifact: string | undefined) {
+  if (!artifact || !inClaudeCode() || typeof out.url !== 'string') return out;
+  const server = new URL(out.url);
+  if (server.hostname === 'localhost') server.hostname = '127.0.0.1';
+  try {
+    const res = await fetch(`${server.origin}/api/cloud/reserve/${artifact}?key=${encodeURIComponent(server.searchParams.get('key') ?? '')}`, {
+      method: 'POST',
+      signal: AbortSignal.timeout(RESERVE_TIMEOUT_MS),
+    });
+    const { url } = (await res.json()) as { url?: unknown };
+    return typeof url === 'string' ? { ...out, cloudLink: url } : out;
+  } catch {
+    return out;
+  }
+}
+
 async function acquireLock(lock: string) {
   for (let attempt = 0; attempt < 150; attempt++) {
     try {
@@ -126,7 +146,7 @@ export async function start(options: StartOptions, emit: Emit): Promise<number> 
       if (!version || readText(paths.version) === version) {
         registerOwner(paths);
         recordAgent(paths);
-        emit(withLink(JSON.parse(info), options.artifact, true));
+        emit(await withCloudLink(withLink(JSON.parse(info), options.artifact, true), options.artifact));
         return 0;
       }
       await replace(running, paths);
@@ -147,7 +167,8 @@ export async function start(options: StartOptions, emit: Emit): Promise<number> 
       readline.createInterface({ input: child.stdout! }).on('line', (line) => {
         let value: Record<string, unknown>;
         try { value = JSON.parse(line); } catch { process.stdout.write(`${line}\n`); return; }
-        emit(value.type === 'server-started' ? withLink(value, options.artifact, false) : value);
+        if (value.type !== 'server-started') emit(value);
+        else void withCloudLink(withLink(value, options.artifact, false), options.artifact).then(emit);
       });
       const exited = new Promise<number>((resolve) => child.on('close', (code) => resolve(code ?? 1)));
       for (let waited = 0; waited < 5000 && !fs.existsSync(paths.info); waited += 100) await sleep(100);
@@ -168,7 +189,7 @@ export async function start(options: StartOptions, emit: Emit): Promise<number> 
           if (!alive(child.pid!)) throw new CliError(`Server started but was killed. Retry in a persistent terminal with: ${invocation()} start --project-dir ${paths.project}${options.artifact ? ` --artifact ${options.artifact}` : ''} --host ${options.host} --url-host ${options.urlHost} --foreground`);
           await sleep(100);
         }
-        emit(withLink(JSON.parse(started), options.artifact, false));
+        emit(await withCloudLink(withLink(JSON.parse(started), options.artifact, false), options.artifact));
         return 0;
       }
       const failed = lines.find((line) => line.includes('"server-error"'));

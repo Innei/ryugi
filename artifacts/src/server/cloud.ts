@@ -5,6 +5,7 @@ import { CALLBACK_PAGE_CSP, callbackPage } from './callback-page';
 import { isVisibility } from '../shared/cloud';
 import { readConfig, setProjectAutoPublish, updateArtifactConfig, type Visibility } from './config';
 import { clearCredentials, readCredentials, writeCredentials } from './credentials';
+import { hostIdFor } from './host-id';
 import { randomToken, send, sendJson } from './http';
 import { packArtifact } from './pack';
 import type { AutoPublishOutcome } from './auto-publish';
@@ -41,7 +42,7 @@ const LOGIN_STATE_TTL_MS = 10 * 60 * 1000;
 const UPLOAD_CONCURRENCY = 6;
 const MAX_JSON_BODY = 4096;
 const CLOUD_ID = /^[A-Za-z0-9_-]{1,64}$/;
-const ROUTE = /^\/api\/cloud\/(status|login|logout|artifacts|publish|visibility|auto-publish)(?:\/([^/]+)(?:\/([^/]+))?)?$/;
+const ROUTE = /^\/api\/cloud\/(status|login|logout|artifacts|publish|reserve|visibility|auto-publish)(?:\/([^/]+)(?:\/([^/]+))?)?$/;
 
 class SignedOut extends Error {}
 
@@ -149,6 +150,30 @@ export function createCloudRoutes(options: CloudRoutesOptions) {
   const keyOfCloudId = (cloudId: string) =>
     Object.entries(readConfig(configFile).config.artifacts).find(([, entry]) => entry.cloud?.id === cloudId)?.[0] ?? `cloud:${cloudId}`;
 
+  const createRecord = async (ref: ArtifactRef, visibility: Visibility) => {
+    const res = await cloudFetch('POST', '/api/artifacts', { type: ref.type, visibility, project });
+    if (res.status === 403) throw new CreateRefused(await errorMessage(res));
+    const created = (await (await expectOk(res)).json()) as CloudArtifact;
+    updateArtifactConfig(configFile, `${ref.type}/${ref.id}`, {
+      visibility: created.visibility,
+      cloud: { id: created.id, url: created.url, publishedAt: null, visibility: created.visibility },
+    });
+    return created.id;
+  };
+
+  const reserve = async (ref: ArtifactRef) => {
+    const key = `${ref.type}/${ref.id}`;
+    const entry = artifactEntry(key);
+    if (entry.cloud) return entry.cloud.url;
+    if (entry.autoPublish === false || !autoPublishState().enabled) return null;
+    try {
+      await createRecord(ref, entry.visibility ?? 'private');
+    } catch {
+      return null;
+    }
+    return artifactEntry(key).cloud?.url ?? null;
+  };
+
   const publish = async (ref: ArtifactRef, requested?: Visibility, { recreate = true } = {}) => {
     const inspected = await options.inspect(ref);
     if (!inspected) throw new CloudRefused(404, `${ref.type}/${ref.id} not found`);
@@ -166,16 +191,7 @@ export function createCloudRoutes(options: CloudRoutesOptions) {
     const manifest = hashed.map(({ path, hash }) => ({ path, hash }));
     const version = (visibility: Visibility | undefined) => ({ title: inspected.title, payload: inspected.payload, files: manifest, project, ...(visibility ? { visibility } : {}) });
 
-    const create = async () => {
-      const res = await cloudFetch('POST', '/api/artifacts', { type: ref.type, visibility: requested ?? entry.visibility ?? 'private', project });
-      if (res.status === 403) throw new CreateRefused(await errorMessage(res));
-      const created = (await (await expectOk(res)).json()) as CloudArtifact;
-      updateArtifactConfig(configFile, key, {
-        visibility: created.visibility,
-        cloud: { id: created.id, url: created.url, publishedAt: null, visibility: created.visibility },
-      });
-      return created.id;
-    };
+    const create = () => createRecord(ref, requested ?? entry.visibility ?? 'private');
 
     const upload = async (id: string, hashes: string[]) => {
       for (let i = 0; i < hashes.length; i += UPLOAD_CONCURRENCY) {
@@ -275,7 +291,7 @@ export function createCloudRoutes(options: CloudRoutesOptions) {
     if (action === 'status' && method === 'GET' && !first) {
       const credentials = readCredentials(credentialsFile, origin);
       const { config, warning } = readConfig(configFile);
-      sendJson(res, 200, { signedIn: !!credentials, login: credentials?.login ?? null, origin, artifacts: config.artifacts, autoPublish: autoPublishState(), warning: warning ?? null });
+      sendJson(res, 200, { signedIn: !!credentials, login: credentials?.login ?? null, origin, hostId: hostIdFor(credentialsFile), artifacts: config.artifacts, autoPublish: autoPublishState(), warning: warning ?? null });
       return;
     }
     if (action === 'login' && method === 'POST' && !first) {
@@ -314,6 +330,10 @@ export function createCloudRoutes(options: CloudRoutesOptions) {
         return published;
       });
       sendJson(res, result.status, result.body);
+      return;
+    }
+    if (action === 'reserve' && ref && method === 'POST') {
+      sendJson(res, 200, { url: await serialized(`${ref.type}/${ref.id}`, () => reserve(ref)) });
       return;
     }
     if (action === 'publish' && ref && method === 'DELETE') {

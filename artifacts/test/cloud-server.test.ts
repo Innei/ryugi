@@ -442,3 +442,60 @@ describe('visibility and unpublishing', () => {
     expect(config(configFile).artifacts['html/a'].cloud).toBeUndefined();
   });
 });
+
+describe('reserving a cloud link', () => {
+  const autoPublish = (server: Parameters<typeof call>[0], value: boolean) => call(server, 'POST', '/api/cloud/auto-publish', { scope: 'global', value });
+
+  test('with auto-publish on, an artifact with no files yet gets a private cloud record and its link', async () => {
+    const { server, cloud, configFile } = await start();
+    await autoPublish(server, true);
+    const { status, json } = await call(server, 'POST', '/api/cloud/reserve/artboard/fresh');
+    expect(status).toBe(200);
+    expect(json).toEqual({ url: `${cloud.origin}/a/cloud1` });
+    expect(requestLines(cloud)).toEqual(['POST /api/artifacts']);
+    expect(cloud.requests[0]!.json).toMatchObject({ type: 'artboard', visibility: 'private' });
+    expect(config(configFile).artifacts['artboard/fresh']).toEqual({
+      visibility: 'private',
+      cloud: { id: 'cloud1', url: `${cloud.origin}/a/cloud1`, publishedAt: null, visibility: 'private' },
+    });
+  });
+
+  test('an artifact that already has a link keeps it', async () => {
+    const { server, cloud } = await start();
+    await autoPublish(server, true);
+    await call(server, 'POST', '/api/cloud/reserve/html/a');
+    const { json } = await call(server, 'POST', '/api/cloud/reserve/html/a');
+    expect(json).toEqual({ url: `${cloud.origin}/a/cloud1` });
+    expect(requestLines(cloud)).toEqual(['POST /api/artifacts']);
+  });
+
+  test('nothing is reserved with auto-publish off, signed out, or for an artifact taken out of auto-publish', async () => {
+    const off = await start();
+    await autoPublish(off.server, false);
+    expect((await call(off.server, 'POST', '/api/cloud/reserve/html/a')).json).toEqual({ url: null });
+    expect(off.cloud.requests).toEqual([]);
+
+    const signedOut = await start({ signedIn: false });
+    expect((await call(signedOut.server, 'POST', '/api/cloud/reserve/html/a')).json).toEqual({ url: null });
+
+    const optedOut = await start();
+    await autoPublish(optedOut.server, true);
+    writeHtml(optedOut.root, 'a', { 'index.html': '<title>A</title>' });
+    await call(optedOut.server, 'POST', '/api/cloud/publish/html/a');
+    await call(optedOut.server, 'DELETE', '/api/cloud/publish/html/a');
+    const before = optedOut.cloud.requests.length;
+    expect((await call(optedOut.server, 'POST', '/api/cloud/reserve/html/a')).json).toEqual({ url: null });
+    expect(optedOut.cloud.requests).toHaveLength(before);
+  });
+
+  test('reserving is an agent call and needs the key', async () => {
+    const { server } = await start();
+    expect((await call(server, 'POST', '/api/cloud/reserve/html/a', undefined, { key: false })).status).toBe(403);
+  });
+
+  test('status names this computer so the local page can mark its cloud links', async () => {
+    const { server } = await start();
+    const { json } = await call(server, 'GET', '/api/cloud/status');
+    expect(json.hostId).toMatch(/^[A-Za-z0-9_-]{16,64}$/);
+  });
+});

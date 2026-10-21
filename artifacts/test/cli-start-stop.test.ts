@@ -4,6 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, test } from 'vitest';
 import { AGENT_MARKERS } from '../src/server/agent';
+import { closeAll, fakeCloud } from './fake-cloud';
 import { get, waitFor } from './helpers';
 
 const cli = path.resolve(__dirname, '../../skills/artifacts/app/cli.cjs');
@@ -21,7 +22,8 @@ const run = (args: string[], env: NodeJS.ProcessEnv = {}) => {
 
 let projects: string[] = [];
 
-afterEach(() => {
+afterEach(async () => {
+  await closeAll();
   for (const project of projects) spawnSync(process.execPath, [cli, 'stop', '--project-dir', project], { timeout: 15000 });
   projects = [];
 });
@@ -201,4 +203,59 @@ describe('ryugi-artifacts stop', () => {
   test('reports not_running when nothing was started', () => {
     expect(run(['stop', '--project-dir', newProject()]).out.status).toBe('not_running');
   });
+});
+
+describe('cloud link on start', () => {
+  const runAsync = (args: string[], env: NodeJS.ProcessEnv) =>
+    new Promise<{ out: any }>((resolve) => {
+      const child = spawn(process.execPath, [cli, ...args], { env: { ...withoutAgent(), ARTIFACTS_OPEN: '0', ...env } });
+      let stdout = '';
+      child.stdout.on('data', (chunk) => (stdout += chunk));
+      child.on('close', () => resolve({ out: JSON.parse(stdout.trim().split('\n').pop()!) }));
+    });
+
+  async function signedIn() {
+    const cloud = await fakeCloud();
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), 'artifacts-home-'));
+    fs.mkdirSync(path.join(home, 'ryugi'));
+    fs.writeFileSync(path.join(home, 'ryugi', 'credentials.json'), JSON.stringify({ origin: cloud.origin, token: 'tok', login: 'innei' }));
+    fs.writeFileSync(path.join(home, 'ryugi', 'config.json'), JSON.stringify({ autoPublish: true }));
+    return { cloud, env: { RYUGI_CLOUD_ORIGIN: cloud.origin, XDG_CONFIG_HOME: home } };
+  }
+
+  test('in Claude Code with auto-publish on, start reserves the cloud link and prints it', async () => {
+    const { cloud, env } = await signedIn();
+    const project = newProject();
+    const { out } = await runAsync(['start', '--project-dir', project, '--artifact', 'html/arrow'], { ...env, CLAUDECODE: '1' });
+    expect(out.link).toContain('/html/arrow?key=');
+    expect(out.cloudLink).toBe(`${cloud.origin}/a/cloud1`);
+    expect(JSON.parse(fs.readFileSync(path.join(project, '.ryugi', 'config.json'), 'utf8')).artifacts['html/arrow'].cloud.url).toBe(`${cloud.origin}/a/cloud1`);
+    expect((await runAsync(['start', '--project-dir', project, '--artifact', 'html/arrow'], { ...env, CLAUDECODE: '1' })).out).toMatchObject({ reused: true, cloudLink: `${cloud.origin}/a/cloud1` });
+    expect(cloud.requests.filter((r) => r.path === '/api/artifacts')).toHaveLength(1);
+  }, 30000);
+
+  test('outside Claude Code no cloud link is reserved', async () => {
+    const { cloud, env } = await signedIn();
+    const { out } = await runAsync(['start', '--project-dir', newProject(), '--artifact', 'html/arrow'], env);
+    expect(out.cloudLink).toBeUndefined();
+    expect(cloud.requests).toEqual([]);
+  }, 30000);
+
+  test('the browser opens the cloud link with this computer marked, once the artifact is ready', async () => {
+    const { cloud, env } = await signedIn();
+    const project = newProject();
+    const artboard = path.join(project, '.ryugi', 'artifacts', 'artboard', 'header');
+    const bin = fs.mkdtempSync(path.join(os.tmpdir(), 'artifacts-open-bin-'));
+    const log = path.join(bin, 'opened.log');
+    const open = path.join(bin, 'open');
+    fs.writeFileSync(open, `#!/bin/sh\nprintf '%s\\n' "$1" >> ${JSON.stringify(log)}\n`, { mode: 0o755 });
+    const { out } = await runAsync(['start', '--project-dir', project, '--artifact', 'artboard/header'], { ...env, CLAUDECODE: '1', ARTIFACTS_OPEN: '1', ARTIFACTS_OPEN_CMD: open });
+    expect(out.cloudLink).toBe(`${cloud.origin}/a/cloud1`);
+    fs.mkdirSync(path.join(artboard, 'pages', 'p'), { recursive: true });
+    fs.writeFileSync(path.join(artboard, 'pages', 'p', 'a.html'), '<p>ready</p>');
+    fs.writeFileSync(path.join(artboard, 'canvas.json'), JSON.stringify({ version: 1, pages: [{ id: 'p', name: 'P' }], boards: { a: { file: 'pages/p/a.html', page: 'p', x: 0, y: 0, w: 640, h: 400 } } }));
+    await waitFor(() => fs.existsSync(log), 8000);
+    const hostId = fs.readFileSync(path.join(env.XDG_CONFIG_HOME, 'ryugi', 'host-id'), 'utf8').trim();
+    expect(fs.readFileSync(log, 'utf8').trim()).toBe(`${cloud.origin}/a/cloud1#ryugi-host=${hostId}`);
+  }, 20000);
 });

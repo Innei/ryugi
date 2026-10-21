@@ -22,6 +22,7 @@ import { createDirectRelay } from './direct-relay';
 import { hostIdFor } from './host-id';
 import { AVATAR_ROUTE, createAvatars } from './avatars';
 import { createCloudRoutes, type CloudOptions } from './cloud';
+import { ownLink } from '../shared/cloud';
 import { commentNames } from './comment-names';
 import { publishPayload } from './publish-payload';
 import { viewerPage } from './viewer-page';
@@ -53,6 +54,7 @@ export interface ArtifactsServer {
   contentToken: string;
   url: string;
   linkFor(type: ArtifactType, id: string): string;
+  cloudLinkFor(type: ArtifactType, id: string): string | null;
   clientCount(): number;
   onArtifactChange(listener: (ref: ArtifactRef, payload: ArtifactPayload, files: string[]) => void): void;
   onActivity(listener: () => void): void;
@@ -801,6 +803,11 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
     contentToken,
     url,
     linkFor,
+    cloudLinkFor: (type, id) => {
+      if (!options.cloud || !options.configFile || !readCredentials(options.cloud.credentialsFile, options.cloud.origin)) return null;
+      const url = readConfig(options.configFile).config.artifacts[`${type}/${id}`]?.cloud?.url;
+      return url ? ownLink(url, hostIdFor(options.cloud.credentialsFile)) : null;
+    },
     clientCount: () => clients.size,
     onArtifactChange: (listener) => {
       changeListeners.push(listener);

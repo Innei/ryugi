@@ -36,7 +36,7 @@ async function main() {
     if ('canvas' in payload ? !openReady(payload) : payload.warnings.length > 0) return;
     browserOpened = true;
     if (server.clientCount() > 0) return;
-    const link = server.linkFor(ref.type, ref.id);
+    const link = server.cloudLinkFor(ref.type, ref.id) ?? server.linkFor(ref.type, ref.id);
     if (config.openCmd) {
       exec(`${config.openCmd} ${JSON.stringify(link)}`, () => {});
       return;

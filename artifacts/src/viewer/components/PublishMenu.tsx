@@ -3,7 +3,7 @@ import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
 import { Globe, Lock } from 'lucide-react';
 import { useState } from 'react';
-import { publishState, type Visibility } from '../../shared/cloud';
+import { ownLink, publishState, type Visibility } from '../../shared/cloud';
 import { cloudRequest, useCloudStatus, type CloudResult } from '../hooks/useCloudStatus';
 
 const styles = stylex.create({
@@ -117,7 +117,7 @@ export function PublishMenu({ artifact, floating = false }: Props) {
       <span {...stylex.props(styles.muted)}>{VISIBILITY_HINT[state.visibility]}</span>
       {state.url ? (
         <div {...stylex.props(styles.row)}>
-          <a href={state.url} target="_blank" rel="noreferrer" {...stylex.props(styles.link)}>
+          <a href={ownLink(state.url, status.hostId)} target="_blank" rel="noreferrer" {...stylex.props(styles.link)}>
             {state.url}
           </a>
           <CopyButton content={state.url} size="small" />

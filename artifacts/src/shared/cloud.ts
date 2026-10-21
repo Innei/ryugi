@@ -25,6 +25,7 @@ export interface CloudStatus {
   origin: string;
   artifacts: Record<string, ArtifactConfig>;
   autoPublish?: AutoPublishStatus;
+  hostId?: string;
   warning: string | null;
 }
 
@@ -34,6 +35,8 @@ export interface PublishState {
   url: string | null;
   synced: boolean;
 }
+
+export const ownLink = (url: string, hostId?: string | null) => (hostId ? `${url}#ryugi-host=${hostId}` : url);
 
 export const isVisibility = (value: unknown): value is Visibility => value === 'private' || value === 'public';
 
