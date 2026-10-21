@@ -101,3 +101,16 @@ test('the agent adds a thread on an existing board only', async () => {
   expect(missing.status).toBe(400);
   expect(JSON.parse(missing.body).error).toBe('no board zz in artboard/review');
 });
+
+test('a verdict on a group that is not a verify group is refused, and list reports verify groups', async () => {
+  const { root, viewer } = tempRoot();
+  writeArtboard(root, 'review', { ...canvas, groups: { g: { title: '验收', boards: ['a'], verify: true }, h: { boards: [] } } }, { 'pages/a.html': '<html><body><p>a</p></body></html>' });
+  const server = await startArtifactsServer({ root, viewerDir: viewer, host: '127.0.0.1', urlHost: 'localhost', debounceMs: 20 });
+  running.push(server);
+  const refused = await human(server, { op: 'create', anchor: { page: 'p', group: 'h', verdict: 'pass', x: 0, y: 0 }, text: '通过' });
+  expect(refused.status).toBe(400);
+  expect(JSON.parse(refused.body).error).toBe('no verify group h in artboard/review');
+  expect((await human(server, { op: 'create', anchor: { page: 'p', group: 'g', verdict: 'reject', x: 0, y: 0 }, text: '字号小了' })).status).toBe(200);
+  const listed = JSON.parse((await agent(server, { op: 'list', all: true })).body);
+  expect(listed.groups).toEqual([{ id: 'g', page: 'p', title: '验收', verdict: 'reject', at: expect.any(String), evidenceUpdated: false, rejectThreads: 1, boards: ['a'] }]);
+});

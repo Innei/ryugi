@@ -345,7 +345,11 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
       sendJson(res, 400, { error: 'not a comment op' });
       return;
     }
-    sendJson(res, 200, boardComments.apply(id, op));
+    try {
+      sendJson(res, 200, boardComments.apply(id, op));
+    } catch (err) {
+      sendJson(res, 400, { error: (err as Error).message });
+    }
   };
 
   const serveAgentBoardComments = async (req: http.IncomingMessage, res: http.ServerResponse, id: string) => {
@@ -358,7 +362,8 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
     const fields = typeof body === 'object' && body !== null ? (body as Record<string, unknown>) : {};
     const agent = typeof fields.agent === 'string' && fields.agent.length > 0 && fields.agent.length <= 100 ? fields.agent : undefined;
     if (fields.op === 'list') {
-      sendJson(res, 200, { type: 'comments', artifact: `artboard/${id}`, threads: boardComments.list(id, agent ?? 'Agent', fields.all === true) });
+      const threads = boardComments.list(id, agent ?? 'Agent', fields.all === true);
+      sendJson(res, 200, { type: 'comments', artifact: `artboard/${id}`, threads, groups: boardComments.groups(id) });
       return;
     }
     const shorthand = agentAddOnBoard(body, boardSpecs(dir));

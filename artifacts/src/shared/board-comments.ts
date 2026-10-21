@@ -109,11 +109,18 @@ export const mergeBoardComments = (base: BoardCommentsFile, incoming: IncomingCo
   mergeComments(base, incoming, origin, now, newId, name, boardAnchors);
 
 export function applyBoardHumanOp(file: BoardCommentsFile, op: BoardHumanOp, now: string, newId: () => string, who?: Person): BoardCommentsFile {
-  if (op.op === 'create') return { ...file, threads: [...file.threads, openThread(op.anchor, 'human', op.text, now, newId, who)] };
-  return applyThreadOp(file, op, now, newId, who);
+  if (op.op !== 'create') return applyThreadOp(file, op, now, newId, who);
+  const thread = openThread(op.anchor, 'human', op.text, now, newId, who);
+  if (op.anchor.verdict !== 'pass') return { ...file, threads: [...file.threads, thread] };
+  const closed = { status: 'resolved' as const, statusAt: now, statusBy: 'human' as const };
+  const rejected = (t: BoardThread) => t.anchor.group === op.anchor.group && t.anchor.verdict === 'reject' && t.status === 'open';
+  return { ...file, threads: [...file.threads.map((t) => (rejected(t) ? { ...t, ...closed } : t)), { ...thread, ...closed }] };
 }
 
 export function applyBoardAgentOp(file: BoardCommentsFile, op: BoardAgentOp, now: string, newId: () => string, name?: string) {
+  if (op.op === 'resolve' && file.threads.find((t) => t.id === op.threadId)?.anchor.verdict === 'reject') {
+    throw new Error('a reject closes only when your human partner passes the group');
+  }
   if (op.op === 'add') {
     const thread = openThread(op.anchor, 'agent', op.text, now, newId, { name });
     return { file: { ...file, threads: [...file.threads, thread] }, threadId: thread.id, messageId: thread.messages[0]!.id };
