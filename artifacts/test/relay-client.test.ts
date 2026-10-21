@@ -305,6 +305,55 @@ describe('edits travel both ways', () => {
   });
 });
 
+describe('artboards and html over the relay', () => {
+  async function startHtml(hub: Hub) {
+    const started = await start({ hub, published: false });
+    writeHtml(started.root, 'page', { 'index.html': '<p>hi</p><ryugi-slider></ryugi-slider>', 'logo.svg': '<svg/>' });
+    updateArtifactConfig(started.configFile, 'html/page', { cloud: { id: 'cloudpage', url: 'u', publishedAt: null, visibility: 'private' } });
+    await hub.next('hello');
+    return started;
+  }
+  const stateOf = (root: string) => JSON.parse(fs.readFileSync(path.join(root, '.state/html/page/warnings.json'), 'utf8'));
+
+  test('file returns an html page with the cloud runtime, and other files as they are', async () => {
+    const hub = await fakeHub();
+    await startHtml(hub);
+    const page = (await request(hub, { op: 'file', path: 'index.html' }, 'cloudpage')).body;
+    expect(page.ok).toBe(true);
+    expect(page.data.contentType).toBe('text/html; charset=utf-8');
+    const html = Buffer.from(page.data.data, 'base64').toString('utf8');
+    expect(html).toContain('<p>hi</p>');
+    expect(html).toContain('/_ryugi/runtime/ryugi-ui.js');
+    const logo = (await request(hub, { op: 'file', path: 'logo.svg' }, 'cloudpage')).body;
+    expect(logo.data.contentType).toBe('image/svg+xml');
+    expect(Buffer.from(logo.data.data, 'base64').toString('utf8')).toBe('<svg/>');
+  });
+
+  test('file refuses paths outside the artifact and files that do not exist', async () => {
+    const hub = await fakeHub();
+    await startHtml(hub);
+    expect((await request(hub, { op: 'file', path: '../../config.json' }, 'cloudpage')).body).toEqual({ ok: false, error: 'not found' });
+    expect((await request(hub, { op: 'file', path: 'missing.png' }, 'cloudpage')).body).toEqual({ ok: false, error: 'not found' });
+    expect((await request(hub, { op: 'file' }, 'cloudpage')).body).toEqual({ ok: false, error: 'not found' });
+  });
+
+  test('a loaded report from the cloud page marks the html as run, a runtime error lands in its warnings', async () => {
+    const hub = await fakeHub();
+    const { root } = await startHtml(hub);
+    const { version } = (await request(hub, { op: 'meta' }, 'cloudpage')).body.data;
+    expect((await request(hub, { op: 'client', message: { type: 'loaded', version } }, 'cloudpage')).body).toEqual({ ok: true, data: null });
+    await waitFor(() => stateOf(root).ran === true);
+    await request(hub, { op: 'client', message: { type: 'runtime-error', message: 'boom' } }, 'cloudpage');
+    await waitFor(() => stateOf(root).warnings.includes('runtime: boom'));
+  });
+
+  test('document-only ops are refused for html', async () => {
+    const hub = await fakeHub();
+    await startHtml(hub);
+    expect((await request(hub, { op: 'state' }, 'cloudpage')).body).toEqual({ ok: false, error: 'html/page is not a document' });
+  });
+});
+
 test('a server started by the CLI tells the relay its release version', async () => {
   const hub = await fakeHub();
   const origin = hub.url.replace(/^ws/, 'http').replace(/\/api\/relay\/host$/, '');

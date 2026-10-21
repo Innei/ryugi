@@ -25,6 +25,8 @@ import { commentNames } from './comment-names';
 import { publishPayload } from './publish-payload';
 import { viewerPage } from './viewer-page';
 import { createAutoPublisher } from './auto-publish';
+import { readArtifactFile } from './artifact-file';
+import { CLOUD_RUNTIME_URL } from './publish-payload';
 import { watchTree } from './watch';
 import { completeHandshake, handleClientFrames, rejectUpgrade, textFrame } from './ws';
 
@@ -83,6 +85,7 @@ const API_DOCUMENT_ROUTE = /^\/api\/document\/([^/]+)\/(state|update|comments)$/
 const MAX_COMMENT_OP = 64 * 1024;
 const API_AGENT_COMMENTS_ROUTE = /^\/api\/agent\/document\/([^/]+)\/comments$/;
 const MAX_DOCUMENT_UPDATE = 8 * 1024 * 1024;
+const MAX_RELAY_FILE = 8 * 1024 * 1024;
 
 const MAX_RUNTIME_MESSAGE = 2048;
 const MAX_RUNTIME_WARNINGS = 20;
@@ -403,7 +406,10 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
       selections.accept(socket, message);
       return;
     }
-    const { type, artifact, message: detail, version, file } = message as Record<string, unknown>;
+    acceptReport(message as Record<string, unknown>);
+  }
+
+  function acceptReport({ type, artifact, message: detail, version, file }: Record<string, unknown>) {
     if (typeof artifact !== 'string') return;
     const ref = artifactKeyOf(artifact);
     if (!ref || ref.type === 'artboard' || artifact !== `${ref.type}/${ref.id}`) return;
@@ -669,6 +675,17 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
     if (!dir) throw new Error(`${key} not found`);
     const request = (typeof body === 'object' && body !== null ? body : {}) as Record<string, unknown>;
     if (request.op === 'meta') return artifactMeta(ref, dir);
+    if (request.op === 'file') {
+      const file = typeof request.path === 'string' ? readArtifactFile(dir, ref.type, request.path, CLOUD_RUNTIME_URL) : null;
+      if (!file) throw new Error('not found');
+      if (file.data.length > MAX_RELAY_FILE) throw new Error('too large');
+      return { contentType: file.contentType, data: file.data.toString('base64') };
+    }
+    if (request.op === 'client') {
+      if (typeof request.message === 'object' && request.message !== null) acceptReport({ ...(request.message as Record<string, unknown>), artifact: key });
+      return null;
+    }
+    if ((request.op === 'state' || request.op === 'update' || request.op === 'comment') && ref.type !== 'document') throw new Error(`${key} is not a document`);
     if (request.op === 'state' || request.op === 'update') {
       const session = await documents.open(ref.id);
       if (!session) throw new Error(`${key} has no doc.xml`);
