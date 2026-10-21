@@ -13,11 +13,18 @@ export interface ArtifactConfig {
   autoPublish?: false;
 }
 
+export interface AutoPublishStatus {
+  global: boolean | null;
+  project: boolean | null;
+  enabled: boolean;
+}
+
 export interface CloudStatus {
   signedIn: boolean;
   login: string | null;
   origin: string;
   artifacts: Record<string, ArtifactConfig>;
+  autoPublish?: AutoPublishStatus;
   warning: string | null;
 }
 

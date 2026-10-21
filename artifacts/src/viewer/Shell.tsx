@@ -1,5 +1,7 @@
 import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
+import type { ReactNode } from 'react';
+import { AutoPublishBar } from './components/AutoPublishPrompt';
 import { ArtboardLayout } from './layouts/ArtboardLayout';
 import { ArtifactList } from './layouts/ArtifactList';
 import { CloudLayout } from './layouts/CloudLayout';
@@ -22,14 +24,21 @@ const styles = stylex.create({
   },
 });
 
+const local = (page: ReactNode) => (
+  <>
+    {page}
+    <AutoPublishBar />
+  </>
+);
+
 export function Shell() {
   const route = parseRoute(location.pathname);
-  if (route.kind === 'list') return <ArtifactList />;
+  if (route.kind === 'list') return local(<ArtifactList />);
   if (route.kind === 'cloud') return <CloudShell id={route.id} />;
   if (route.kind === 'cloud-view') return <CloudLayout id={route.id} />;
   if (route.kind === 'unknown') return <div {...stylex.props(styles.unknown)}>No artifact lives at this address.</div>;
   if (route.kind === 'preview') return <PreviewLayout type={route.type} id={route.id} />;
-  if (route.type === 'html') return <HtmlLayout id={route.id} />;
-  if (route.type === 'document') return <DocumentLayout id={route.id} />;
-  return <ArtboardLayout id={route.id} />;
+  if (route.type === 'html') return local(<HtmlLayout id={route.id} />);
+  if (route.type === 'document') return local(<DocumentLayout id={route.id} />);
+  return local(<ArtboardLayout id={route.id} />);
 }

@@ -151,6 +151,9 @@ export function PublishMenu({ artifact, floating = false }: Props) {
           取消发布（链接将失效）
         </button>
       ) : null}
+      {state.published && status.autoPublish?.enabled ? (
+        <span {...stylex.props(styles.muted)}>自动发布已打开。取消发布后它会跳过这个 artifact，直到你再手动发布一次。</span>
+      ) : null}
     </div>
   );
 
