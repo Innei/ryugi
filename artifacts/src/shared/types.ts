@@ -100,6 +100,7 @@ export interface ArtifactSummary {
   updatedAt: number;
 }
 
+import type { BoardCommentsFile } from './board-comments';
 import type { CommentsFile } from './comments';
 
 export type DocumentOutcomeMessage =
@@ -113,4 +114,5 @@ export type ServerMessage =
   | { type: 'doc-update'; artifact: string; bytes: string }
   | { type: 'doc-cursor'; artifact: string; cursor: { id: string; offset: number } | null }
   | { type: 'doc-status'; artifact: string; streaming: boolean; outcome: DocumentOutcomeMessage }
-  | { type: 'doc-comments'; artifact: string; comments: CommentsFile };
+  | { type: 'doc-comments'; artifact: string; comments: CommentsFile }
+  | { type: 'board-comments'; artifact: string; comments: BoardCommentsFile; stale: string[] };

@@ -15,7 +15,7 @@ export function formatBytes(bytes: number) {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
-const excluded = (type: ArtifactType, relative: string) => type === 'document' && relative === 'comments.json';
+const excluded = (type: ArtifactType, relative: string) => (type === 'document' || type === 'artboard') && relative === 'comments.json';
 
 export function packArtifact(dir: string, type: ArtifactType, { maxBytes = MAX_ARTIFACT_BYTES } = {}): PackedFile[] {
   const rootReal = fs.realpathSync(dir);

@@ -6,6 +6,7 @@ import { ARTIFACT_TYPES, type ArtifactSummary, type ArtifactType, type CanvasPay
 import { artifactKeyOf, artifactSignature, listArtifacts, resolveArtifactDir, type ArtifactRef } from './artifacts';
 import { readDocument } from './document';
 import { parseDocument } from './document-codec';
+import { createBoardCommentRegistry } from './board-comments';
 import { asAgentOp, asHumanOp } from './document-comments';
 import { createDocumentRegistry, type DocumentTiming } from './documents';
 import { latestMtime, readHtml } from './html';
@@ -156,6 +157,7 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
   };
   const avatars = createAvatars(options.fetch);
   const names = commentNames({ agentFile: path.join(stateDir, 'agent'), projectDir: path.resolve(root, '../..'), cloud: options.cloud });
+  const boardComments = createBoardCommentRegistry({ root, stateDir, broadcast, names });
   const documents = createDocumentRegistry({
     root,
     stateDir,
@@ -670,7 +672,7 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
     return payload;
   };
   const refreshState = (ref: ArtifactRef, dir: string) => {
-    signatures.set(`${ref.type}/${ref.id}`, artifactSignature(dir));
+    signatures.set(`${ref.type}/${ref.id}`, artifactSignature(dir, ref.type));
     return writeState(ref, dir);
   };
 
@@ -782,7 +784,9 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
         }
         if (ref.type === 'document' && (changed.includes('doc.xml') || changed.length === 0)) documents.fileChanged(ref.id);
         if (ref.type === 'document' && changed.includes('comments.json')) documents.commentsChanged(ref.id);
-        if (signatures.get(key) === artifactSignature(dir)) continue;
+        if (ref.type === 'artboard' && changed.includes('comments.json')) boardComments.sync(ref.id);
+        if (ref.type === 'artboard' && (changed.some((file) => file !== 'comments.json') || changed.length === 0)) boardComments.boardsChanged(ref.id);
+        if (signatures.get(key) === artifactSignature(dir, ref.type)) continue;
         autoPublisher?.changed(key);
         runtimeWarnings.delete(key);
         const payload = refreshState(ref, dir);

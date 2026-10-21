@@ -59,7 +59,7 @@ export function artifactKeyOf(relative: string): ArtifactRef | null {
   return { type, id };
 }
 
-export function artifactSignature(dir: string): string {
+export function artifactSignature(dir: string, type?: ArtifactType): string {
   let count = 0;
   let size = 0;
   let latest = 0;
@@ -72,6 +72,7 @@ export function artifactSignature(dir: string): string {
     }
     for (const entry of entries) {
       if (entry.name.startsWith('.')) continue;
+      if (type === 'artboard' && current === dir && entry.name === 'comments.json') continue;
       const full = path.join(current, entry.name);
       try {
         const stat = fs.statSync(full);
