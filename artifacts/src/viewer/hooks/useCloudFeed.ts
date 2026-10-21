@@ -6,6 +6,7 @@ import { boardCommentsFromMessage, type BoardCommentsState } from '../lib/board-
 import { knownHosts } from '../lib/knownHosts';
 import { createLiveConnection, type LivePresence } from '../lib/liveConnection';
 import type { ArtifactFeed } from './useArtifactFeed';
+import { reportCloudHeader, useCloudHeader } from './useCloudHeader';
 
 const RENEW_BEFORE_MS = 60 * 60 * 1000;
 
@@ -22,6 +23,7 @@ export function useCloudFeed(cloudId: string, type: ArtifactType, liveContentBas
   const [connection, setConnection] = useState<RelayConnection | null>(null);
   const [boardComments, setBoardComments] = useState<BoardCommentsState | null>(null);
   const liveBase = useRef(liveContentBase);
+  useCloudHeader(cloudId, { online: presence?.online ?? null });
 
   useEffect(() => {
     liveBase.current = liveContentBase;
@@ -63,9 +65,11 @@ export function useCloudFeed(cloudId: string, type: ArtifactType, liveContentBas
   const load = useCallback(async () => {
     if (!connection) throw new Error('offline');
     const meta = await connection.request<Record<string, unknown>>({ op: 'meta' });
+    const title = type === 'artboard' ? (meta.canvas as { title?: unknown } | null)?.title : meta.title;
+    if (typeof title === 'string') reportCloudHeader(cloudId, { title });
     const own = typeof meta.contentBase === 'string' && /^https?:\/\//.test(meta.contentBase);
     return { found: true, data: { ...meta, contentBase: own ? meta.contentBase : await currentLiveBase() } };
-  }, [connection, currentLiveBase]);
+  }, [connection, currentLiveBase, cloudId, type]);
 
   const send = useCallback(
     (message: unknown) => {

@@ -1,6 +1,7 @@
 import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
 import { PublishMenu } from '../components/PublishMenu';
+import { useCloudHeader } from '../hooks/useCloudHeader';
 import type { CloudLive } from './DocumentPage';
 
 const styles = stylex.create({
@@ -54,6 +55,7 @@ const styles = stylex.create({
 
 interface Props {
   id: string;
+  title?: string;
   agent?: string;
   agentEditing: boolean;
   agentSection: string | null;
@@ -64,7 +66,16 @@ interface Props {
   onDone?: () => void;
 }
 
-export function TopBar({ id, agentEditing, agentSection, offline, openComments, cloud, compact = false, onDone, agent = 'Agent' }: Props) {
+export function TopBar({ id, title, agentEditing, agentSection, offline, openComments, cloud, compact = false, onDone, agent = 'Agent' }: Props) {
+  const framed = useCloudHeader(id, cloud ? {
+    ...(title ? { title } : {}),
+    online: cloud.online,
+    comments: openComments,
+    activity: agentEditing ? `${agent} 正在编辑${agentSection ? ` ${agentSection}` : ''}` : null,
+    retrying: offline,
+    reason: cloud.reason,
+  } : null);
+  if (framed && !compact) return null;
   return (
     <header {...stylex.props(styles.bar, compact && styles.compact)}>
       {compact ? null : (

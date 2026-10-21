@@ -1,6 +1,7 @@
 import type { SerializedEditorState } from 'lexical';
 import { useEffect, useState } from 'react';
 import type { CommentsFile } from '../../shared/comments';
+import { useCloudHeader } from '../hooks/useCloudHeader';
 import { VIEWER_VERSION } from '../lib/version';
 import { CloudMessage } from '../layouts/CloudMessage';
 import CloudDocument from './CloudDocument';
@@ -19,6 +20,7 @@ interface Props {
 export default function CloudLiveDocument({ id, state, contentBase, liveContentBase, comments }: Props) {
   const { transport, presence } = useRelayTransport(id, liveContentBase ?? contentBase ?? '');
   const online = presence?.online ?? false;
+  useCloudHeader(id, { online: presence?.online ?? null });
   const [wasLive, setWasLive] = useState(false);
   useEffect(() => {
     if (online) setWasLive(true);

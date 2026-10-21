@@ -25,12 +25,12 @@ function fakeFetch(routes: Record<string, () => Response>) {
 describe('loading the shell', () => {
   test('a readable artifact gives its title, ownership and visibility', async () => {
     const { impl } = fakeFetch({ 'GET /api/a/abc': () => Response.json({ type: 'html', title: 'Arrow', owner: true, visibility: 'private' }) });
-    expect(await loadShell('abc', impl)).toEqual({ kind: 'ready', title: 'Arrow', owner: true, visibility: 'private' });
+    expect(await loadShell('abc', impl)).toEqual({ kind: 'ready', type: 'html', title: 'Arrow', owner: true, visibility: 'private' });
   });
 
   test('an artifact that is not published yet is named as such for its owner', async () => {
     const { impl } = fakeFetch({ 'GET /api/a/abc': () => Response.json({ title: null, owner: true, visibility: 'private', published: false }) });
-    expect(await loadShell('abc', impl)).toEqual({ kind: 'ready', title: '还没发布', owner: true, visibility: 'private' });
+    expect(await loadShell('abc', impl)).toEqual({ kind: 'ready', type: null, title: '还没发布', owner: true, visibility: 'private' });
   });
 
   test('a link that will not open asks who is signed in', async () => {

@@ -196,6 +196,7 @@ export function DocumentView({ id, transport, live, cloud }: { id: string; trans
     <div {...stylex.props(styles.root)} className={`ryugi-doc ${stylex.props(styles.root).className ?? ''}`}>
       <TopBar
         id={id}
+        title={meta?.title || id}
         agent={meta?.agent}
         agentEditing={streaming}
         agentSection={section}

@@ -1,9 +1,11 @@
 import { CopyButton, Popover } from '@lobehub/ui';
 import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
-import { ArrowRight, Globe, Lock } from 'lucide-react';
+import { ArrowRight, CircleAlert, Globe, Lock, MessageCircle } from 'lucide-react';
 import { useState } from 'react';
 import type { Visibility } from '../../shared/cloud';
+import type { ArtifactType } from '../../shared/types';
+import type { CloudHeaderState } from '../hooks/useCloudHeader';
 import { changeVisibility, INSTALL_URL } from '../lib/cloud-shell';
 import { RyugiMark } from './RyugiMark';
 
@@ -14,9 +16,10 @@ const styles = stylex.create({
     flex: 'none',
     display: 'flex',
     alignItems: 'center',
-    gap: 6,
-    height: 34,
-    paddingInline: '12px 10px',
+    justifyContent: 'space-between',
+    gap: { default: 24, [NARROW]: 12 },
+    height: 56,
+    paddingInline: { default: 24, [NARROW]: 12 },
     borderBottomWidth: 1,
     borderBottomStyle: 'solid',
     borderBottomColor: cssVar.colorBorderSecondary,
@@ -25,15 +28,29 @@ const styles = stylex.create({
     fontFamily: cssVar.fontFamily,
     fontSize: 12,
   },
-  name: { fontSize: 13, fontWeight: 600, letterSpacing: '-0.4px', marginInlineStart: -2 },
-  tag: { color: cssVar.colorTextTertiary, whiteSpace: 'nowrap', display: { default: 'inline', [NARROW]: 'none' } },
-  spacer: { flex: 1 },
+  left: { display: 'flex', alignItems: 'center', gap: 20, minWidth: 0, flex: 1 },
+  brand: { display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0, minHeight: 40, color: { default: cssVar.colorText, ':hover': cssVar.colorTextSecondary }, textDecoration: 'none', borderRadius: 5 },
+  name: { fontSize: 15, fontWeight: 600, letterSpacing: '-0.4px', marginInlineStart: -2 },
+  crumb: { display: 'flex', alignItems: 'center', gap: 12, minWidth: 0, fontSize: 13, whiteSpace: 'nowrap' },
+  slash: { color: cssVar.colorTextTertiary },
+  type: { display: { default: 'contents', [NARROW]: 'none' }, color: cssVar.colorTextSecondary },
+  title: { minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', fontWeight: 500 },
+  actions: { display: 'flex', alignItems: 'center', gap: 16, flexShrink: 0 },
+  statuses: { display: { default: 'flex', [NARROW]: 'none' }, alignItems: 'center', gap: 16, color: cssVar.colorTextSecondary },
+  status: { display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' },
+  dot: { width: 6, height: 6, borderRadius: '50%', backgroundColor: cssVar.colorTextQuaternary },
+  online: { backgroundColor: cssVar.colorSuccess },
+  activity: { maxWidth: 160, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', color: cssVar.colorInfoText },
+  retrying: { color: cssVar.colorWarningText, whiteSpace: 'nowrap' },
+  divider: { width: 1, height: 18, backgroundColor: cssVar.colorBorderSecondary },
+  visibilityLabel: { display: { default: 'inline', [NARROW]: 'none' } },
   cta: {
     display: 'flex',
     alignItems: 'center',
     gap: 4,
     color: { default: cssVar.colorText, ':hover': cssVar.colorTextSecondary },
     fontWeight: 500,
+    minHeight: 40,
     textDecoration: 'none',
     whiteSpace: 'nowrap',
   },
@@ -41,8 +58,8 @@ const styles = stylex.create({
     display: 'flex',
     alignItems: 'center',
     gap: 4,
-    paddingBlock: 2,
-    paddingInline: 8,
+    paddingBlock: 5,
+    paddingInline: 9,
     borderRadius: 999,
     backgroundColor: cssVar.colorFillTertiary,
     color: cssVar.colorTextSecondary,
@@ -50,8 +67,9 @@ const styles = stylex.create({
     whiteSpace: 'nowrap',
   },
   share: {
-    paddingBlock: 3,
-    paddingInline: 10,
+    minHeight: 40,
+    paddingBlock: 6,
+    paddingInline: 14,
     borderWidth: 0,
     borderRadius: 5,
     backgroundColor: { default: cssVar.colorText, ':hover': cssVar.colorTextSecondary },
@@ -107,30 +125,55 @@ const OPTIONS: { value: Visibility; label: string; hint: string; Icon: typeof Lo
   { value: 'public', label: '有链接的人', hint: '不用登录，拿到链接就能看', Icon: Globe },
 ];
 
-function Brand({ tag }: { tag: string }) {
-  return (
-    <>
-      <RyugiMark size={16} />
-      <span {...stylex.props(styles.name)}>ryugi</span>
-      <span {...stylex.props(styles.tag)}>· {tag}</span>
-      <span {...stylex.props(styles.spacer)} />
-    </>
-  );
+interface Props {
+  id: string;
+  type: ArtifactType | null;
+  title: string;
+  owner: boolean;
+  status: CloudHeaderState;
+  visibility: Visibility;
+  onChange: (next: Visibility) => void;
 }
 
-export function VisitorBanner() {
+export function CloudHeader({ id, type, title, owner, status, visibility, onChange }: Props) {
   return (
     <header {...stylex.props(styles.bar)}>
-      <Brand tag="让 agent 把方案画给你看" />
-      <a href={INSTALL_URL} target="_blank" rel="noopener noreferrer" {...stylex.props(styles.cta)}>
-        开始使用
-        <ArrowRight size={12} />
-      </a>
+      <div {...stylex.props(styles.left)}>
+        <a href="/" aria-label="返回 Ryugi Cloud 列表" {...stylex.props(styles.brand)}>
+          <RyugiMark size={24} />
+          <span {...stylex.props(styles.name)}>ryugi</span>
+        </a>
+        <nav aria-label="面包屑" {...stylex.props(styles.crumb)}>
+          <span aria-hidden="true" {...stylex.props(styles.slash)}>/</span>
+          {type ? <span {...stylex.props(styles.type)}>{type}<span aria-hidden="true" {...stylex.props(styles.slash)}> / </span></span> : null}
+          <span aria-current="page" title={title} {...stylex.props(styles.title)}>{title}</span>
+        </nav>
+      </div>
+      <div {...stylex.props(styles.actions)}>
+        <div {...stylex.props(styles.statuses)}>
+          {status.activity ? <span title={status.activity} {...stylex.props(styles.activity)}>{status.activity}</span> : null}
+          {status.retrying ? <span role="status" {...stylex.props(styles.retrying)}>未同步，正在重试</span> : null}
+          {status.reason ? <CircleAlert size={14} aria-label={status.reason} /> : null}
+          {status.online !== undefined ? (
+            <span role="status" title={status.reason || (status.online === false ? '电脑离线，暂时不能评论' : undefined)} {...stylex.props(styles.status)}>
+              <i aria-hidden="true" {...stylex.props(styles.dot, status.online === true && styles.online)} />
+              {status.online === null ? '正在连接…' : status.online ? '电脑在线' : '电脑离线'}
+            </span>
+          ) : null}
+          {status.comments !== undefined ? <span {...stylex.props(styles.status)}><MessageCircle size={14} aria-hidden="true" />评论 {status.comments}</span> : null}
+          {(status.online !== undefined || status.comments !== undefined) && owner ? <span aria-hidden="true" {...stylex.props(styles.divider)} /> : null}
+        </div>
+        {owner ? <OwnerActions id={id} visibility={visibility} onChange={onChange} /> : (
+          <a href={INSTALL_URL} target="_blank" rel="noopener noreferrer" {...stylex.props(styles.cta)}>
+            开始使用<ArrowRight size={12} />
+          </a>
+        )}
+      </div>
     </header>
   );
 }
 
-export function OwnerBanner({ id, visibility, onChange }: { id: string; visibility: Visibility; onChange: (next: Visibility) => void }) {
+function OwnerActions({ id, visibility, onChange }: { id: string; visibility: Visibility; onChange: (next: Visibility) => void }) {
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const url = `${location.origin}/a/${id}`;
@@ -181,17 +224,16 @@ export function OwnerBanner({ id, visibility, onChange }: { id: string; visibili
   );
 
   return (
-    <header {...stylex.props(styles.bar)}>
-      <Brand tag="你的 artifact" />
-      <span {...stylex.props(styles.chip)}>
+    <>
+      <span title={`${current.label}可见`} {...stylex.props(styles.chip)}>
         <current.Icon size={11} />
-        {current.label}可见
+        <span {...stylex.props(styles.visibilityLabel)}>{current.label}可见</span>
       </span>
       <Popover placement="bottomRight" trigger="click" content={panel}>
         <button type="button" {...stylex.props(styles.share)}>
           分享
         </button>
       </Popover>
-    </header>
+    </>
   );
 }

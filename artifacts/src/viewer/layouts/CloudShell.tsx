@@ -1,7 +1,8 @@
 import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
-import { useEffect, useState } from 'react';
-import { OwnerBanner, VisitorBanner } from '../components/CloudBanner';
+import { useEffect, useRef, useState } from 'react';
+import { CloudHeader } from '../components/CloudBanner';
+import { readCloudHeader, type CloudHeaderState } from '../hooks/useCloudHeader';
 import { loadShell, type ShellState } from '../lib/cloud-shell';
 import { knownHosts, takeHostHint } from '../lib/knownHosts';
 import { CloudNotFound } from './CloudNotFound';
@@ -29,6 +30,18 @@ function rememberHostHint() {
 export function CloudShell({ id }: { id: string }) {
   useState(rememberHostHint);
   const [state, setState] = useState<ShellState>({ kind: 'loading' });
+  const [header, setHeader] = useState<CloudHeaderState>({});
+  const frame = useRef<HTMLIFrameElement>(null);
+
+  useEffect(() => {
+    const receive = (event: MessageEvent) => {
+      if (!frame.current?.contentWindow || event.source !== frame.current.contentWindow || event.origin !== location.origin) return;
+      const update = readCloudHeader(event.data, id);
+      if (update) setHeader((previous) => ({ ...previous, ...update }));
+    };
+    window.addEventListener('message', receive);
+    return () => window.removeEventListener('message', receive);
+  }, [id]);
 
   useEffect(() => {
     let cancelled = false;
@@ -42,21 +55,17 @@ export function CloudShell({ id }: { id: string }) {
   }, [id]);
 
   useEffect(() => {
-    if (state.kind === 'ready') document.title = state.title;
+    if (state.kind === 'ready') document.title = header.title || state.title;
     if (state.kind === 'missing') document.title = '这个链接打不开';
-  }, [state]);
+  }, [state, header.title]);
 
   if (state.kind === 'loading') return <div {...stylex.props(styles.message)}>正在加载…</div>;
   if (state.kind === 'failed') return <div {...stylex.props(styles.message)}>{state.message}</div>;
   if (state.kind === 'missing') return <CloudNotFound id={id} login={state.login} />;
   return (
     <div {...stylex.props(styles.shell)}>
-      {state.owner ? (
-        <OwnerBanner id={id} visibility={state.visibility} onChange={(visibility) => setState({ ...state, visibility })} />
-      ) : (
-        <VisitorBanner />
-      )}
-      <iframe title={state.title} src={`/a/${id}/view`} allow="clipboard-write; local-network-access; loopback-network" {...stylex.props(styles.frame)} />
+      <CloudHeader id={id} type={state.type} title={header.title || state.title} owner={state.owner} status={header} visibility={state.visibility} onChange={(visibility) => setState({ ...state, visibility })} />
+      <iframe ref={frame} title={header.title || state.title} src={`/a/${id}/view`} allow="clipboard-write; local-network-access; loopback-network" {...stylex.props(styles.frame)} />
     </div>
   );
 }

@@ -1,7 +1,7 @@
 {
   "name": "ryugi",
   "description": "Core skills library for Claude Code: TDD, debugging, collaboration patterns, and proven techniques",
-  "version": "1.15.1",
+  "version": "1.15.2",
   "author": {
     "name": "Innei",
     "email": "i@innei.dev"

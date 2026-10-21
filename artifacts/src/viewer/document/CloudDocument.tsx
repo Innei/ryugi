@@ -6,6 +6,7 @@ import * as stylex from '@stylexjs/stylex';
 import type { LexicalEditor, SerializedEditorState } from 'lexical';
 import { useEffect, useMemo, useState } from 'react';
 import { emptyComments, type CommentsFile } from '../../shared/comments';
+import { useCloudHeader } from '../hooks/useCloudHeader';
 import { createChannel } from './channel';
 import { extraNodes, rendererConfig } from './DocumentEditor';
 import { DocumentLayout } from './DocumentLayout';
@@ -24,6 +25,7 @@ const styles = stylex.create({
     fontSize: 12,
   },
   dot: { width: 7, height: 7, borderRadius: '50%', backgroundColor: cssVar.colorTextQuaternary },
+  framedOffline: { display: { default: 'none', '@media (max-width: 640px)': 'flex' } },
 });
 
 function usePrefersDark() {
@@ -49,6 +51,7 @@ export default function CloudDocument({ id, state, contentBase, comments = empty
   const dark = usePrefersDark();
   const [editor, setEditor] = useState<LexicalEditor | null>(null);
   const host = useMemo<DynamicHost>(() => ({ artifact: `cloud/${id}`, contentBase, channel: createChannel(), send: () => undefined }), [id, contentBase]);
+  const framed = useCloudHeader(id, { comments: comments.threads.filter((thread) => thread.status === 'open').length, activity: null, retrying: false, reason: null });
 
   useEffect(() => {
     const base = document.createElement('base');
@@ -60,7 +63,7 @@ export default function CloudDocument({ id, state, contentBase, comments = empty
   return (
     <div {...stylex.props(styles.root)} className={`ryugi-doc ${stylex.props(styles.root).className ?? ''}`}>
       {offline ? (
-        <div {...stylex.props(styles.offline)}>
+        <div {...stylex.props(styles.offline, framed && styles.framedOffline)}>
           <i {...stylex.props(styles.dot)} />
           电脑离线，暂时不能评论
         </div>

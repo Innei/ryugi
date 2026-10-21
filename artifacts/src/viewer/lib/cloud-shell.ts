@@ -1,11 +1,12 @@
 import { isVisibility, type Visibility } from '../../shared/cloud';
+import { ARTIFACT_TYPES, type ArtifactType } from '../../shared/types';
 
 export const INSTALL_URL = 'https://github.com/Innei/ryugi#install';
 export const INSTALL_COMMAND = '/plugin marketplace add Innei/ryugi';
 
 export type ShellState =
   | { kind: 'loading' }
-  | { kind: 'ready'; title: string; owner: boolean; visibility: Visibility }
+  | { kind: 'ready'; type: ArtifactType | null; title: string; owner: boolean; visibility: Visibility }
   | { kind: 'missing'; login: string | null }
   | { kind: 'failed'; message: string };
 
@@ -26,8 +27,9 @@ export async function loadShell(id: string, fetchImpl: typeof fetch = fetch): Pr
     return { kind: 'missing', login: typeof login === 'string' ? login : null };
   }
   if (!res.ok) return { kind: 'failed', message: `加载失败（${res.status}）` };
-  const artifact = (await res.json()) as { title?: unknown; owner?: unknown; visibility?: unknown };
-  return { kind: 'ready', title: typeof artifact.title === 'string' ? artifact.title : '还没发布', owner: artifact.owner === true, visibility: isVisibility(artifact.visibility) ? artifact.visibility : 'private' };
+  const artifact = (await res.json()) as { type?: unknown; title?: unknown; owner?: unknown; visibility?: unknown };
+  const type = ARTIFACT_TYPES.find((type) => type === artifact.type) ?? null;
+  return { kind: 'ready', type, title: typeof artifact.title === 'string' ? artifact.title : '还没发布', owner: artifact.owner === true, visibility: isVisibility(artifact.visibility) ? artifact.visibility : 'private' };
 }
 
 export async function changeVisibility(id: string, visibility: Visibility, fetchImpl: typeof fetch = fetch): Promise<Visibility> {
