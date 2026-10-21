@@ -1,4 +1,5 @@
 // @vitest-environment happy-dom
+import { $createMermaidNode } from '@haklex/rich-editor/nodes';
 import { $createLinkNode } from '@lexical/link';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { $createParagraphNode, $createTextNode, $getRoot } from 'lexical';
@@ -28,7 +29,7 @@ vi.mock('../src/viewer/document/LoroSync', () => ({
     useEffect(() => {
       editor.update(() => {
         const link = $createLinkNode('https://example.com/').append($createTextNode('Example'));
-        $getRoot().clear().append($createParagraphNode().append(link));
+        $getRoot().clear().append($createParagraphNode().append(link), $createMermaidNode('flowchart LR\n  A --> B'));
       }, { discrete: true });
     }, [editor]);
     return null;
@@ -44,11 +45,10 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-test('a modifier click opens a link while the document is editable', async () => {
+async function renderEditor() {
   const host = document.createElement('div');
   document.body.append(host);
   root = createRoot(host);
-  const open = vi.spyOn(window, 'open').mockImplementation(() => null);
   await act(async () => root!.render(createElement(DocumentEditor, {
     id: 'draft',
     doc: new LoroDoc(),
@@ -58,6 +58,12 @@ test('a modifier click opens a link while the document is editable', async () =>
     onOffline: () => {},
     onEditorReady: () => {},
   })));
+  return host;
+}
+
+test('a modifier click opens a link while the document is editable', async () => {
+  const open = vi.spyOn(window, 'open').mockImplementation(() => null);
+  const host = await renderEditor();
 
   const anchor = host.querySelector<HTMLAnchorElement>('[contenteditable="true"] a[href="https://example.com/"]');
   expect(anchor).not.toBeNull();
@@ -65,4 +71,11 @@ test('a modifier click opens a link while the document is editable', async () =>
   expect(open).not.toHaveBeenCalled();
   anchor!.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, metaKey: true }));
   expect(open).toHaveBeenCalledWith('https://example.com/', '_blank', 'noopener,noreferrer');
+});
+
+test('a mermaid block renders as a diagram that opens the enlarged viewer', async () => {
+  const host = await renderEditor();
+  const trigger = host.querySelector('[contenteditable="true"] [aria-label="放大查看 Mermaid 图"]');
+  expect(trigger).toBeInstanceOf(HTMLElement);
+  expect(trigger!.querySelector('img[alt="Mermaid diagram"]')).toBeInstanceOf(HTMLImageElement);
 });

@@ -14,7 +14,6 @@ import { AlertEditRenderer } from '@haklex/rich-renderer-alert';
 import { CodeBlockEditRenderer } from '@haklex/rich-renderer-codeblock';
 import { ImageEditRenderer } from '@haklex/rich-renderer-image';
 import { katexEditNodes } from '@haklex/rich-renderer-katex';
-import { MermaidEditRenderer } from '@haklex/rich-renderer-mermaid';
 import type { LexicalEditor } from 'lexical';
 import type { LoroDoc } from 'loro-crdt';
 import { useState, type ReactNode } from 'react';
@@ -22,6 +21,7 @@ import { AgentCaret } from './AgentCaret';
 import type { Channel } from './channel';
 import { DynamicNode } from './DynamicNode';
 import { LoroSync, type AgentCaretPosition } from './LoroSync';
+import { MermaidPreview } from './MermaidPreview';
 
 export const extraNodes = [ChartEditNode, ExcalidrawEditNode, DynamicNode, ...katexEditNodes];
 
@@ -29,7 +29,7 @@ export const rendererConfig: RendererConfig = {
   [ALERT_NODE_KEY]: AlertEditRenderer,
   [CODE_BLOCK_NODE_KEY]: CodeBlockEditRenderer,
   [IMAGE_NODE_KEY]: ImageEditRenderer,
-  [MERMAID_NODE_KEY]: MermaidEditRenderer,
+  [MERMAID_NODE_KEY]: MermaidPreview,
 };
 
 interface Props {

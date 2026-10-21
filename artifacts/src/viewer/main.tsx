@@ -3,7 +3,7 @@ import '@lobehub/ui/theme.css';
 import '@lobehub/ui/style.css';
 import '../shared/fonts.css';
 
-import { ConfigProvider } from '@lobehub/ui';
+import { ConfigProvider, ModalHost } from '@lobehub/ui';
 import { motion } from 'motion/react';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -15,6 +15,7 @@ function Root() {
   return (
     <ConfigProvider motion={motion} enableCustomFonts={false}>
       <Shell />
+      <ModalHost />
     </ConfigProvider>
   );
 }

@@ -1,0 +1,76 @@
+import { useColorScheme } from '@haklex/rich-editor';
+import type { MermaidRendererProps } from '@haklex/rich-editor/renderers';
+import { MermaidRenderer } from '@haklex/rich-renderer-mermaid';
+import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
+import * as stylex from '@stylexjs/stylex';
+import { ZoomIn } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { headingAbove, useMermaidDiagram } from './mermaid';
+import { openMermaidViewer } from './MermaidViewer';
+
+const styles = stylex.create({
+  root: {
+    position: 'relative',
+    marginBlock: 16,
+    cursor: 'zoom-in',
+    outlineWidth: 1,
+    outlineStyle: 'solid',
+    outlineColor: 'transparent',
+    outlineOffset: 6,
+    transitionProperty: 'outline-color',
+    transitionDuration: '150ms',
+  },
+  hovered: { outlineColor: cssVar.colorBorder },
+  image: { display: 'block', maxWidth: '100%', height: 'auto', marginInline: 'auto' },
+  hint: {
+    position: 'absolute',
+    top: 'calc(100% + 10px)',
+    right: 0,
+    display: 'flex',
+    alignItems: 'center',
+    gap: 6,
+    fontSize: 12,
+    lineHeight: 1,
+    color: cssVar.colorTextSecondary,
+    opacity: 0,
+    pointerEvents: 'none',
+    transitionProperty: 'opacity',
+    transitionDuration: '150ms',
+  },
+  hintShown: { opacity: 1 },
+});
+
+export function MermaidPreview({ content }: MermaidRendererProps) {
+  const colorScheme = useColorScheme();
+  const diagram = useMermaidDiagram(content, colorScheme);
+  const [hovered, setHovered] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  if (!diagram) return <MermaidRenderer content={content} colorScheme={colorScheme} />;
+
+  const open = () => openMermaidViewer({ source: content, diagram, title: headingAbove(ref.current) ?? 'Mermaid 图' });
+
+  return (
+    <div
+      ref={ref}
+      role="button"
+      tabIndex={0}
+      aria-label="放大查看 Mermaid 图"
+      onClick={open}
+      onKeyDown={(event) => {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        event.preventDefault();
+        open();
+      }}
+      onPointerEnter={() => setHovered(true)}
+      onPointerLeave={() => setHovered(false)}
+      {...stylex.props(styles.root, hovered && styles.hovered)}
+    >
+      <img alt="Mermaid diagram" src={diagram.src} width={diagram.width} height={diagram.height} {...stylex.props(styles.image)} />
+      <span {...stylex.props(styles.hint, hovered && styles.hintShown)}>
+        <ZoomIn size={12} />
+        点击放大查看
+      </span>
+    </div>
+  );
+}
