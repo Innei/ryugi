@@ -6,7 +6,7 @@ import { ARTIFACT_TYPES, type ArtifactSummary, type ArtifactType, type CanvasPay
 import { artifactKeyOf, artifactSignature, listArtifacts, resolveArtifactDir, type ArtifactRef } from './artifacts';
 import { readDocument } from './document';
 import { parseDocument } from './document-codec';
-import { asBoardAgentOp, asBoardHumanOp, boardFiles, createBoardCommentRegistry } from './board-comments';
+import { agentAddOnBoard, asBoardAgentOp, asBoardHumanOp, boardFiles, boardSpecs, createBoardCommentRegistry } from './board-comments';
 import { asAgentOp, asHumanOp } from './document-comments';
 import { createDocumentRegistry, type DocumentTiming } from './documents';
 import { latestMtime, readHtml } from './html';
@@ -361,7 +361,12 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
       sendJson(res, 200, { type: 'comments', artifact: `artboard/${id}`, threads: boardComments.list(id, agent ?? 'Agent', fields.all === true) });
       return;
     }
-    const op = asBoardAgentOp(body);
+    const shorthand = agentAddOnBoard(body, boardSpecs(dir));
+    if (shorthand && 'error' in shorthand) {
+      sendJson(res, 400, { error: `${shorthand.error} in artboard/${id}` });
+      return;
+    }
+    const op = shorthand ?? asBoardAgentOp(body);
     if (!op) {
       sendJson(res, 400, { error: 'not an agent comment op: use list, add {anchor: {page, board, x, y}, text}, reply {threadId, text} or resolve {threadId}; text must not be empty' });
       return;

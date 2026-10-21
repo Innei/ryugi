@@ -56,13 +56,32 @@ export function asBoardAgentOp(value: unknown): BoardAgentOp | null {
   return null;
 }
 
-export function boardFiles(dir: string): Record<string, string> {
+export interface BoardSpec {
+  file: string;
+  page: string;
+  w: number;
+}
+
+export function boardSpecs(dir: string): Record<string, BoardSpec> {
   try {
-    const canvas = JSON.parse(fs.readFileSync(path.join(dir, 'canvas.json'), 'utf8')) as { boards?: Record<string, { file?: unknown }> };
-    return Object.fromEntries(Object.entries(canvas.boards ?? {}).flatMap(([id, board]) => (typeof board?.file === 'string' ? [[id, board.file]] : [])));
+    const canvas = JSON.parse(fs.readFileSync(path.join(dir, 'canvas.json'), 'utf8')) as { boards?: Record<string, { file?: unknown; page?: unknown; w?: unknown }> };
+    return Object.fromEntries(Object.entries(canvas.boards ?? {}).flatMap(([id, board]) =>
+      typeof board?.file === 'string' ? [[id, { file: board.file, page: typeof board.page === 'string' ? board.page : '', w: typeof board.w === 'number' ? board.w : 0 }]] : [],
+    ));
   } catch {
     return {};
   }
+}
+
+export const boardFiles = (dir: string): Record<string, string> => Object.fromEntries(Object.entries(boardSpecs(dir)).map(([id, spec]) => [id, spec.file]));
+
+export function agentAddOnBoard(value: unknown, specs: Record<string, BoardSpec>): BoardAgentOp | { error: string } | null {
+  if (typeof value !== 'object' || value === null) return null;
+  const v = value as Record<string, unknown>;
+  if (v.op !== 'add' || typeof v.board !== 'string' || v.anchor !== undefined) return null;
+  const spec = specs[v.board];
+  if (!spec) return { error: `no board ${v.board}` };
+  return asBoardAgentOp({ op: 'add', anchor: { page: spec.page, board: v.board, x: v.x ?? spec.w, y: v.y ?? 0 }, text: v.text });
 }
 
 function fileHash(dir: string, relative: string): string | null {

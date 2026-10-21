@@ -7,7 +7,7 @@ import { afterEach, describe, expect, test } from 'vitest';
 import { commentText } from '../src/cli/comment';
 import { AGENT_MARKERS } from '../src/server/agent';
 import { listen } from '../src/server/http';
-import { writeDocument } from './helpers';
+import { writeArtboard, writeDocument } from './helpers';
 
 const cli = path.resolve(__dirname, '../../skills/artifacts/app/cli.cjs');
 let projects: string[] = [];
@@ -157,6 +157,71 @@ describe('comment text output', () => {
     });
     expect(text).toBe(
       ['thread t1 (open · waiting on agent · new-message)', '  on block b1 "事件"', '  agent (Codex): q?', '  human (innei): 第一行\n    第二行', '  human: [deleted]'].join('\n'),
+    );
+  });
+});
+
+describe('artboard comments', () => {
+  const board = (dir: string) => ['--project-dir', dir, '--artifact', 'artboard/review'];
+  async function artboardProject() {
+    const dir = await project({ running: false });
+    writeArtboard(path.join(dir, '.ryugi', 'artifacts'), 'review', {
+      version: 1,
+      pages: [{ id: 'p', name: 'P' }],
+      boards: { a: { file: 'pages/a.html', page: 'p', x: 0, y: 0, w: 640, h: 400 } },
+    }, { 'pages/a.html': '<html><body><p>a</p></body></html>' });
+    expect((await run(['start', '--project-dir', dir, '--background'])).out.type).toBe('server-started');
+    return dir;
+  }
+
+  test('add puts a thread on a board, at its top-right corner unless told where', async () => {
+    const dir = await artboardProject();
+    const added = await run(['comment', 'add', ...board(dir), '--board', 'a', '--text', '这里不确定']);
+    expect(added.out).toMatchObject({ type: 'comment-added', artifact: 'artboard/review', threadId: expect.any(String) });
+    await run(['comment', 'add', ...board(dir), '--board', 'a', '--x', '12', '--y', '30', '--text', '还有这里']);
+    const all = (await run(['comment', 'list', ...board(dir), '--all'])).out;
+    expect(all.threads.map((t: { anchor: unknown }) => t.anchor)).toEqual([
+      expect.objectContaining({ page: 'p', board: 'a', x: 640, y: 0 }),
+      expect.objectContaining({ page: 'p', board: 'a', x: 12, y: 30 }),
+    ]);
+    expect(all.threads[0]).toMatchObject({ stale: false, files: { a: 'pages/a.html' } });
+  });
+
+  test('add on an artboard needs --board, and the board must exist', async () => {
+    const dir = await artboardProject();
+    expect((await run(['comment', 'add', ...board(dir), '--text', 'x'])).out.error).toContain('--board');
+    expect((await run(['comment', 'add', ...board(dir), '--board', 'zz', '--text', 'x'])).out.error).toContain('no board zz');
+  });
+
+  test('text output names the page, board file, nodes, offset and staleness', () => {
+    const text = commentText({
+      type: 'comments',
+      artifact: 'artboard/review',
+      threads: [
+        {
+          id: 't1',
+          status: 'open',
+          anchor: { page: 'p', board: 'a', x: 510, y: 172, nodes: [{ board: 'a', path: 'body > img' }], offset: { x: 0.91, y: 0.45 } },
+          stale: true,
+          files: { a: 'pages/a.html' },
+          waitingOn: 'agent',
+          messages: [{ author: 'human', name: 'innei', text: '开关没对齐' }],
+        },
+        { id: 't2', status: 'open', anchor: { page: 'p', x: -40, y: 1200 }, stale: false, files: {}, waitingOn: null, messages: [{ author: 'agent', text: '整体' }] },
+      ],
+    });
+    expect(text).toBe(
+      [
+        'thread t1 (open · waiting on agent · stale)',
+        '  on page p, board a (pages/a.html) at 510,172',
+        '  node a: body > img at 91%, 45%',
+        '  the board changed since this comment; the node may have moved',
+        '  human (innei): 开关没对齐',
+        '',
+        'thread t2 (open)',
+        '  on page p at -40,1200',
+        '  agent: 整体',
+      ].join('\n'),
     );
   });
 });

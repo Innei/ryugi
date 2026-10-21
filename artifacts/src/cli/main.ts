@@ -21,11 +21,12 @@ Commands:
   publish   Publish an artifact to the Ryugi cloud (needs a running server):
               --artifact <type>/<id> [--public | --private] [--unpublish]
               --list | --delete <cloud-id> | --login | --logout
-  comment   Read and answer a document's comments (needs a running server):
-              list    --artifact document/<id> [--all]   what changed since you last listed
+  comment   Read and answer comments on a document or artboard (needs a running server):
+              list    --artifact <document|artboard>/<id> [--all]   what changed since you last listed
               add     --artifact document/<id> --block <blockId> [--quote <text>] [--text <text>]
-              reply   --artifact document/<id> --thread <threadId> [--text <text>]
-              resolve --artifact document/<id> --thread <threadId>
+              add     --artifact artboard/<id> --board <boardId> [--x <px> --y <px>] [--text <text>]
+              reply   --artifact <document|artboard>/<id> --thread <threadId> [--text <text>]
+              resolve --artifact <document|artboard>/<id> --thread <threadId>
             Without --text, add and reply read the message from stdin.
   config    Auto-publish changed artifacts as private cloud copies when the agent's turn ends:
               --auto-publish on|off              for every project
@@ -139,7 +140,7 @@ async function main(argv: string[]) {
     if (command === 'comment') {
       const { values, positionals } = parse(rest, {
         artifact: { type: 'string' }, all: { type: 'boolean' }, block: { type: 'string' }, quote: { type: 'string' },
-        thread: { type: 'string' }, text: { type: 'string' },
+        thread: { type: 'string' }, text: { type: 'string' }, board: { type: 'string' }, x: { type: 'string' }, y: { type: 'string' },
       }, 1);
       return await comment({
         projectDir: (values['project-dir'] as string | undefined) ?? process.cwd(),
@@ -150,6 +151,9 @@ async function main(argv: string[]) {
         quote: values.quote as string | undefined,
         thread: values.thread as string | undefined,
         text: values.text as string | undefined,
+        board: values.board as string | undefined,
+        x: values.x as string | undefined,
+        y: values.y as string | undefined,
       }, emit);
     }
     if (command === 'config') {

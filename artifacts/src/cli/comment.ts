@@ -16,9 +16,12 @@ export interface CommentOptions {
   quote?: string;
   thread?: string;
   text?: string;
+  board?: string;
+  x?: string;
+  y?: string;
 }
 
-const DOCUMENT = /^document\/[a-z0-9][a-z0-9-]*$/;
+const ARTIFACT = /^(document|artboard)\/[a-z0-9][a-z0-9-]*$/;
 const WRITTEN = { add: 'comment-added', reply: 'comment-replied', resolve: 'comment-resolved' } as const;
 
 function readStdin(): string {
@@ -36,8 +39,21 @@ function messageText(options: CommentOptions): string {
   return text;
 }
 
-function requestOf(options: CommentOptions, action: CommentAction): Record<string, unknown> {
+function coordinate(value: string | undefined, flag: string): number | undefined {
+  if (value === undefined) return undefined;
+  const number = Number(value);
+  if (!Number.isFinite(number)) throw new CliError(`${flag} must be a number`);
+  return number;
+}
+
+function requestOf(options: CommentOptions, action: CommentAction, type: string): Record<string, unknown> {
   if (action === 'list') return { op: 'list', all: !!options.all };
+  if (action === 'add' && type === 'artboard') {
+    if (!options.board) throw new CliError('comment add on an artboard needs --board <boardId>');
+    const x = coordinate(options.x, '--x');
+    const y = coordinate(options.y, '--y');
+    return { op: 'add', board: options.board, ...(x !== undefined ? { x } : {}), ...(y !== undefined ? { y } : {}), text: messageText(options) };
+  }
   if (action === 'add') {
     if (!options.block) throw new CliError('comment add needs --block <blockId>');
     return { op: 'add', blockId: options.block, ...(options.quote ? { quote: options.quote } : {}), text: messageText(options) };
@@ -49,12 +65,12 @@ function requestOf(options: CommentOptions, action: CommentAction): Record<strin
 export async function comment(options: CommentOptions, emit: Emit): Promise<number> {
   const action = COMMENT_ACTIONS.find((name) => name === options.action);
   if (!action) throw new CliError('comment needs an action: list, add, reply or resolve');
-  if (!options.artifact || !DOCUMENT.test(options.artifact)) throw new CliError('--artifact must be document/<id>');
-  const request = requestOf(options, action);
+  if (!options.artifact || !ARTIFACT.test(options.artifact)) throw new CliError('--artifact must be document/<id> or artboard/<id>');
+  const [type, id] = options.artifact.split('/') as [string, string];
+  const request = requestOf(options, action, type);
   const server = serverClient(options.projectDir);
   const agent = detectAgent(process.env);
-  const id = options.artifact.slice('document/'.length);
-  const { status, json } = await server.call('POST', `/api/agent/document/${id}/comments`, { ...request, ...(agent ? { agent } : {}) });
+  const { status, json } = await server.call('POST', `/api/agent/${type}/${id}/comments`, { ...request, ...(agent ? { agent } : {}) });
   if (status === 404 && typeof json.error !== 'string') {
     throw new CliError(`The running artifacts server is older than this CLI. Run \`${invocation()} start --project-dir ${server.project}\` to replace it, then run this again.`);
   }
@@ -71,20 +87,46 @@ interface ListedMessage {
   deleted?: boolean;
 }
 
+interface ListedBoardAnchor {
+  page: string;
+  board?: string;
+  x: number;
+  y: number;
+  nodes?: { board: string; path: string }[];
+  offset?: { x: number; y: number };
+}
+
 interface ListedThread {
   id: string;
   status: string;
-  anchor: { blockId: string; quote: string };
+  anchor: { blockId: string; quote: string } | ListedBoardAnchor;
   waitingOn: string | null;
   changes?: string[];
+  stale?: boolean;
+  files?: Record<string, string>;
   messages: ListedMessage[];
 }
 
 const clip = (text: string, max: number) => (text.length > max ? `${text.slice(0, max)}…` : text);
+const percent = (value: number) => `${Math.round(value * 100)}%`;
+
+function anchorLines(thread: ListedThread): string[] {
+  const anchor = thread.anchor;
+  if ('blockId' in anchor) return [`  on block ${anchor.blockId}${anchor.quote ? ` "${clip(anchor.quote, 120)}"` : ''}`];
+  const file = anchor.board ? thread.files?.[anchor.board] : undefined;
+  const where = anchor.board ? `, board ${anchor.board}${file ? ` (${file})` : ''}` : '';
+  const lines = [`  on page ${anchor.page}${where} at ${anchor.x},${anchor.y}`];
+  anchor.nodes?.forEach((node, index) => {
+    const offset = index === 0 && anchor.offset ? ` at ${percent(anchor.offset.x)}, ${percent(anchor.offset.y)}` : '';
+    lines.push(`  node ${node.board}: ${node.path}${offset}`);
+  });
+  if (thread.stale) lines.push('  the board changed since this comment; the node may have moved');
+  return lines;
+}
 
 function threadText(thread: ListedThread) {
-  const state = [thread.status, thread.waitingOn ? `waiting on ${thread.waitingOn}` : '', thread.changes?.length ? thread.changes.join(', ') : ''].filter(Boolean).join(' · ');
-  const lines = [`thread ${thread.id} (${state})`, `  on block ${thread.anchor.blockId}${thread.anchor.quote ? ` "${clip(thread.anchor.quote, 120)}"` : ''}`];
+  const state = [thread.status, thread.waitingOn ? `waiting on ${thread.waitingOn}` : '', thread.changes?.length ? thread.changes.join(', ') : '', thread.stale ? 'stale' : ''].filter(Boolean).join(' · ');
+  const lines = [`thread ${thread.id} (${state})`, ...anchorLines(thread)];
   for (const message of thread.messages) {
     const who = message.name ? `${message.author} (${message.name})` : message.author;
     lines.push(`  ${who}: ${message.deleted ? '[deleted]' : message.text.replace(/\n/g, '\n    ')}`);
