@@ -10,6 +10,7 @@ export interface CloudRecord {
 export interface ArtifactConfig {
   visibility?: Visibility;
   cloud?: CloudRecord;
+  autoPublish?: false;
 }
 
 export interface CloudStatus {

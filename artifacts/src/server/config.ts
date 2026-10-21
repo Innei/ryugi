@@ -7,12 +7,14 @@ export type { ArtifactConfig, CloudRecord, Visibility };
 
 export interface RyugiConfig {
   version: 1;
+  autoPublish?: boolean;
   artifacts: Record<string, ArtifactConfig>;
 }
 
 export interface ArtifactConfigPatch {
   visibility?: Visibility;
   cloud?: CloudRecord | null;
+  autoPublish?: false | null;
 }
 
 const defaults = (): RyugiConfig => ({ version: 1, artifacts: {} });
@@ -26,15 +28,18 @@ function isCloudRecord(value: unknown): value is CloudRecord {
 function normalize(raw: unknown): RyugiConfig {
   const config = defaults();
   if (typeof raw !== 'object' || raw === null) return config;
+  const { autoPublish } = raw as Record<string, unknown>;
+  if (typeof autoPublish === 'boolean') config.autoPublish = autoPublish;
   const artifacts = (raw as Record<string, unknown>).artifacts;
   if (typeof artifacts !== 'object' || artifacts === null) return config;
   for (const [key, value] of Object.entries(artifacts)) {
     if (typeof value !== 'object' || value === null) continue;
-    const { visibility, cloud } = value as Record<string, unknown>;
+    const { visibility, cloud, autoPublish } = value as Record<string, unknown>;
     if (visibility !== undefined && !isVisibility(visibility)) continue;
     const entry: ArtifactConfig = {};
     if (visibility) entry.visibility = visibility;
     if (isCloudRecord(cloud)) entry.cloud = { id: cloud.id, url: cloud.url, publishedAt: cloud.publishedAt, visibility: cloud.visibility };
+    if (autoPublish === false) entry.autoPublish = false;
     config.artifacts[key] = entry;
   }
   return config;
@@ -80,7 +85,18 @@ export function updateArtifactConfig(file: string, key: string, patch: ArtifactC
   if (patch.visibility) entry.visibility = patch.visibility;
   if (patch.cloud === null) delete entry.cloud;
   else if (patch.cloud) entry.cloud = patch.cloud;
+  if (patch.autoPublish === null) delete entry.autoPublish;
+  else if (patch.autoPublish === false) entry.autoPublish = false;
   config.artifacts[key] = entry;
   writeJsonAtomic(file, config);
   return entry;
+}
+
+export function setProjectAutoPublish(file: string, value: boolean | null) {
+  const { config, warning } = readConfig(file);
+  if (warning) throw new Error(warning);
+  if (value === null) delete config.autoPublish;
+  else config.autoPublish = value;
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  writeJsonAtomic(file, config);
 }

@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { describe, expect, test } from 'vitest';
-import { ensureConfig, readConfig, updateArtifactConfig } from '../src/server/config';
+import { ensureConfig, readConfig, setProjectAutoPublish, updateArtifactConfig } from '../src/server/config';
 
 function tempRyugiDir() {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-config-'));
@@ -90,5 +90,36 @@ describe('updateArtifactConfig', () => {
     fs.writeFileSync(file, '{oops');
     expect(() => updateArtifactConfig(file, 'html/a', { visibility: 'public' })).toThrow(/not valid JSON/);
     expect(fs.readFileSync(file, 'utf8')).toBe('{oops');
+  });
+});
+
+describe('auto-publish settings in the project config', () => {
+  test('keeps the project switch and per-artifact opt-outs across artifact updates', () => {
+    const file = path.join(tempRyugiDir(), 'config.json');
+    fs.writeFileSync(file, JSON.stringify({ version: 1, autoPublish: false, artifacts: { 'html/a': { autoPublish: false } } }));
+    updateArtifactConfig(file, 'html/b', { visibility: 'public' });
+    expect(readConfig(file).config).toEqual({ version: 1, autoPublish: false, artifacts: { 'html/a': { autoPublish: false }, 'html/b': { visibility: 'public' } } });
+  });
+
+  test('drops values that are not booleans, and per-artifact true', () => {
+    const file = path.join(tempRyugiDir(), 'config.json');
+    fs.writeFileSync(file, JSON.stringify({ version: 1, autoPublish: 'yes', artifacts: { 'html/a': { autoPublish: true } } }));
+    expect(readConfig(file).config).toEqual({ version: 1, artifacts: { 'html/a': {} } });
+  });
+
+  test('opts an artifact out and back in', () => {
+    const file = path.join(tempRyugiDir(), 'config.json');
+    updateArtifactConfig(file, 'html/a', { visibility: 'public', autoPublish: false });
+    expect(readConfig(file).config.artifacts['html/a']).toEqual({ visibility: 'public', autoPublish: false });
+    updateArtifactConfig(file, 'html/a', { autoPublish: null });
+    expect(readConfig(file).config.artifacts['html/a']).toEqual({ visibility: 'public' });
+  });
+
+  test('sets and clears the project switch', () => {
+    const file = path.join(tempRyugiDir(), 'config.json');
+    setProjectAutoPublish(file, false);
+    expect(readConfig(file).config.autoPublish).toBe(false);
+    setProjectAutoPublish(file, null);
+    expect(readConfig(file).config).toEqual({ version: 1, artifacts: {} });
   });
 });
