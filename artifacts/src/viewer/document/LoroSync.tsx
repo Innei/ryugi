@@ -4,7 +4,7 @@ import { $getNodeByKey, $getRoot, $isElementNode, type NodeKey } from 'lexical';
 import type { LoroDoc, TreeID, VersionVector } from 'loro-crdt';
 import { useEffect } from 'react';
 import { sectionLabel } from '../lib/section';
-import type { Channel } from './channel';
+import type { DocumentTransport } from './transport';
 
 export interface AgentCaretPosition {
   key: NodeKey;
@@ -12,9 +12,8 @@ export interface AgentCaretPosition {
 }
 
 interface Props {
-  id: string;
+  transport: DocumentTransport;
   doc: LoroDoc;
-  channel: Channel;
   onAgentCaret: (caret: AgentCaretPosition | null, section: string | null) => void;
   onOffline: (offline: boolean) => void;
 }
@@ -23,7 +22,7 @@ const BATCH_MS = 100;
 
 export const decodeBase64 = (base64: string) => Uint8Array.from(atob(base64), (char) => char.charCodeAt(0));
 
-export function LoroSync({ id, doc, channel, onAgentCaret, onOffline }: Props) {
+export function LoroSync({ transport, doc, onAgentCaret, onOffline }: Props) {
   const [editor] = useLexicalComposerContext();
 
   useEffect(() => {
@@ -60,12 +59,7 @@ export function LoroSync({ id, doc, channel, onAgentCaret, onOffline }: Props) {
       sent = doc.oplogVersion();
       inFlight = true;
       try {
-        const res = await fetch(`/api/document/${id}/update`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/octet-stream' },
-          body: bytes as Uint8Array<ArrayBuffer>,
-        });
-        if (!res.ok) throw new Error(`update failed (${res.status})`);
+        await transport.update(bytes);
         onOffline(false);
       } catch {
         sent = from;
@@ -82,8 +76,7 @@ export function LoroSync({ id, doc, channel, onAgentCaret, onOffline }: Props) {
 
     const resync = async (resend: boolean) => {
       try {
-        const res = await fetch(`/api/document/${id}/state`, { cache: 'no-store' });
-        const state = (await res.json()) as { snapshot: string; lineage: string; cursor: typeof caret };
+        const state = await transport.state();
         if (state.lineage !== doc.getTree(TREE_NAME).roots()[0]?.id) {
           location.reload();
           return;
@@ -100,8 +93,8 @@ export function LoroSync({ id, doc, channel, onAgentCaret, onOffline }: Props) {
       }
     };
 
-    const artifact = `document/${id}`;
-    const unsubscribeChannel = channel.subscribe((event) => {
+    const { artifact } = transport;
+    const unsubscribeChannel = transport.channel.subscribe((event) => {
       if (event.type === 'open') void resync(true);
       else if (event.type === 'doc-update' && event.artifact === artifact) binding.import(decodeBase64(event.bytes));
       else if (event.type === 'doc-cursor' && event.artifact === artifact) {
@@ -119,7 +112,7 @@ export function LoroSync({ id, doc, channel, onAgentCaret, onOffline }: Props) {
       unsubscribeLocal();
       binding.dispose();
     };
-  }, [editor, doc, id, channel, onAgentCaret, onOffline]);
+  }, [editor, doc, transport, onAgentCaret, onOffline]);
 
   return null;
 }

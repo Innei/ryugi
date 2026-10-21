@@ -12,6 +12,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeAll, expect, test, vi } from 'vitest';
 import { createChannel } from '../src/viewer/document/channel';
 import { DocumentEditor } from '../src/viewer/document/DocumentEditor';
+import { createLocalTransport } from '../src/viewer/document/transport';
 
 vi.mock('@stylexjs/stylex', async (original) => ({ ...await original<object>(), create: (value: unknown) => value, props: () => ({}) }));
 vi.mock('@lobehub/ui/stylex/cssVar.stylex', () => ({ cssVar: new Proxy({}, { get: (_, key) => `var(--${String(key)})` }) }));
@@ -62,9 +63,8 @@ async function renderEditor() {
   root = createRoot(host);
   const page = createElement('div', null,
     createElement(DocumentEditor, {
-      id: 'draft',
+      transport: createLocalTransport({ id: 'draft', channel: createChannel(), send: () => {} }),
       doc: new LoroDoc(),
-      channel: createChannel(),
       theme: 'light',
       onAgentSection: () => {},
       onOffline: () => {},

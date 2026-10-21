@@ -4,10 +4,7 @@ import type { LexicalEditor } from 'lexical';
 import { LoroDoc } from 'loro-crdt';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { emptyComments, type CommentsFile, type HumanOp } from '../../shared/comments';
-import type { DocumentPayload } from '../../shared/types';
 import { WarningsBadge } from '../components/WarningsBadge';
-import { useArtifactSocket } from '../hooks/useArtifactSocket';
-import { createChannel } from './channel';
 import type { ThreadActions } from './CommentCard';
 import { DocumentEditor } from './DocumentEditor';
 import { DocumentLayout } from './DocumentLayout';
@@ -16,8 +13,10 @@ import { DRAFT_WIDTH, DraftPanel } from './DraftPanel';
 import { popoverPosition, toolbarPosition } from './layoutCards';
 import { SelectionToolbar, TOOLBAR_HEIGHT, TOOLBAR_WIDTH } from './SelectionToolbar';
 import { decodeBase64 } from './LoroSync';
+import type { DocumentMeta, DocumentTransport } from './transport';
 import { TopBar } from './TopBar';
 import { useDocumentSelectionSync } from './useDocumentSelectionSync';
+import { useLocalTransport } from './useDocumentTransport';
 import { useDraftComment } from './useDraftComment';
 import { useSelectionComment } from './useSelectionComment';
 
@@ -25,10 +24,6 @@ const styles = stylex.create({
   root: { minHeight: '100%', backgroundColor: cssVar.colorBgContainer, color: cssVar.colorText },
   message: { padding: 48, textAlign: 'center', color: cssVar.colorTextSecondary, fontFamily: cssVar.fontFamily, fontSize: 14 },
 });
-
-interface Meta extends DocumentPayload {
-  contentBase: string;
-}
 
 function columnBounds(article: HTMLElement) {
   return { left: article.offsetLeft, right: Math.min(article.offsetLeft + article.offsetWidth, window.innerWidth - 16) };
@@ -56,7 +51,12 @@ function useAssetBase(contentBase: string | undefined) {
 }
 
 export default function DocumentPage({ id }: { id: string }) {
-  const [meta, setMeta] = useState<Meta | null>(null);
+  const { transport, live } = useLocalTransport(id);
+  return <DocumentView id={id} transport={transport} live={live} />;
+}
+
+export function DocumentView({ id, transport, live }: { id: string; transport: DocumentTransport; live: boolean }) {
+  const [meta, setMeta] = useState<DocumentMeta | null>(null);
   const [doc, setDoc] = useState<LoroDoc | null>(null);
   const [comments, setComments] = useState<CommentsFile>(emptyComments);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -65,23 +65,20 @@ export default function DocumentPage({ id }: { id: string }) {
   const [offline, setOffline] = useState(false);
   const [editor, setEditor] = useState<LexicalEditor | null>(null);
   const [mainEl, setMainEl] = useState<HTMLElement | null>(null);
-  const channel = useMemo(createChannel, []);
   const dark = usePrefersDark();
-  const artifact = `document/${id}`;
+  const { artifact, channel } = transport;
 
   const refreshMeta = useCallback(async () => {
-    const res = await fetch(`/api/artifacts/document/${id}`, { cache: 'no-store' });
-    if (res.ok) setMeta((await res.json()) as Meta);
-  }, [id]);
+    const next = await transport.meta();
+    if (next) setMeta(next);
+  }, [transport]);
 
   useEffect(() => {
     let cancelled = false;
     void (async () => {
       try {
         await refreshMeta();
-        const res = await fetch(`/api/document/${id}/state`, { cache: 'no-store' });
-        const state = (await res.json()) as { snapshot?: string; streaming?: boolean; comments?: CommentsFile; error?: string };
-        if (!res.ok || !state.snapshot) throw new Error(state.error ?? `load failed (${res.status})`);
+        const state = await transport.state();
         if (cancelled) return;
         const loro = new LoroDoc();
         loro.setRecordTimestamp(true);
@@ -97,24 +94,23 @@ export default function DocumentPage({ id }: { id: string }) {
     return () => {
       cancelled = true;
     };
-  }, [id, refreshMeta]);
+  }, [transport, refreshMeta]);
 
-  const { live, send: sendSocket } = useArtifactSocket(
-    (message) => {
-      if (message.artifact !== artifact) return;
-      if (message.type === 'change') void refreshMeta();
-      else if (message.type === 'doc-status') setStreaming(message.streaming);
-      else if (message.type === 'doc-comments') setComments(message.comments);
-      channel.emit(message);
-    },
-    () => channel.emit({ type: 'open' }),
+  useEffect(
+    () =>
+      channel.subscribe((event) => {
+        if (event.type === 'change') void refreshMeta();
+        else if (event.type === 'doc-status') setStreaming(event.streaming);
+        else if (event.type === 'doc-comments') setComments(event.comments);
+      }),
+    [channel, refreshMeta],
   );
 
   useAssetBase(meta?.contentBase);
-  useDocumentSelectionSync(editor, artifact, live, sendSocket);
+  useDocumentSelectionSync(editor, artifact, live, transport.send);
   const dynamicHost = useMemo<DynamicHost>(
-    () => ({ artifact, contentBase: meta?.contentBase ?? '', channel, send: sendSocket }),
-    [artifact, meta?.contentBase, channel, sendSocket],
+    () => ({ artifact, contentBase: meta?.contentBase ?? '', channel, send: transport.send }),
+    [artifact, meta?.contentBase, channel, transport],
   );
   useEffect(() => {
     document.title = meta?.title || id;
@@ -127,14 +123,11 @@ export default function DocumentPage({ id }: { id: string }) {
 
   const send = useCallback(
     async (op: HumanOp) => {
-      const res = await fetch(`/api/document/${id}/comments`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(op),
-      });
-      if (res.ok) setComments(((await res.json()) as { comments: CommentsFile }).comments);
+      try {
+        setComments(await transport.comment(op));
+      } catch {}
     },
-    [id],
+    [transport],
   );
   const actions = useMemo<ThreadActions>(
     () => ({
@@ -202,10 +195,9 @@ export default function DocumentPage({ id }: { id: string }) {
       >
         <DynamicHostContext.Provider value={dynamicHost}>
           <DocumentEditor
-            id={id}
+            transport={transport}
             agent={meta?.agent}
             doc={doc}
-            channel={channel}
             theme={dark ? 'dark' : 'light'}
             onAgentSection={setSection}
             onOffline={setOffline}
