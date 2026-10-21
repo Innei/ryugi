@@ -59,6 +59,11 @@ comments.json in the artboard directory is the server's; never write it.
   (`q1-a`, `hero-2`). Required: `file`, `page`, `x`, `y`, `w`, `h`. Optional:
   `title`, `interactive`. Coordinates are canvas pixels; `x`/`y` is the
   board's top-left. The viewer shows the title and id just above each board.
+- Image and video boards show a file as it is, with no HTML around it:
+  `"after": { "type": "image", "src": "pages/verify/after.png", "page": …, "x": …, "y": …, "w": 1280, "h": 800 }`.
+  `type` is `image` or `video`; `src` replaces `file` and must live under
+  `pages/` too. Copy the file in; never point outside the artboard. A video
+  plays muted in the viewer's own player, with its controls under the board.
 - `interactive: true` is the only way a board becomes playable. Static boards
   (the default) never show PLAY and their iframe stays read-only, including
   when expanded. Use it for prototypes the human partner should click through,
@@ -70,7 +75,8 @@ comments.json in the artboard directory is the server's; never write it.
 - `groups`: a section: a titled set of related boards, such as the options
   for a question, the states of a component, or the parts of a review. List
   member board ids only; all members on one page. The viewer labels the group
-  with its id and title above the boards.
+  with its id and title above the boards. `"verify": true` turns a group into
+  something your human partner passes or rejects (see Verify groups).
 - `notes`: `kind` is `title` or `sticky`; `x`/`y` is the top-left corner.
   - `title`: bold text, `size` px (default 96), one line tall (about
     1.15 × `size`). Without `w` it stays on one line; with `w` it wraps.
@@ -217,6 +223,29 @@ node app/ryugi-artifacts.cjs comment list --json --project-dir /path/to/project 
 - Settled: `comment resolve … --thread <thread-id>`.
 - An error saying the server is older than the CLI: run `start` again, then
   retry.
+
+## Verify groups
+
+A group with `"verify": true` gets 通过 and 打回 buttons next to its title.
+Your human partner decides; you cannot pass or reject.
+
+- `comment list --json` returns `groups`: each verify group with `verdict`
+  (`pending`, `pass` or `reject`), `evidenceUpdated` and `rejectThreads`.
+  Read it with the threads whenever you work on the artboard.
+- A reject is a thread on the group (`anchor.group`, `anchor.verdict:
+  "reject"`); its first message is the reason. Pins elsewhere may point at
+  the exact spot.
+- Fix what the reason asks for, then replace the evidence: overwrite the
+  board's file, or add a board to the group. Any change to a group's board
+  files sends the group back to `pending` with "证据已更新"; that is how your
+  human partner knows to look again.
+- Reply on the reject thread with what changed. Leave it open: `comment
+  resolve` refuses a reject, and passing the group closes it.
+- `pass` is final for that evidence. Don't touch a passed group's files
+  unless asked; changing them sends it back to `pending`.
+- A new verify round goes below the last one on the same page, with new
+  groups; remove `"verify": true` from the previous round's groups so only
+  the current round counts.
 
 ## Rounds and pages
 
