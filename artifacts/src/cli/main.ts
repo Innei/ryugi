@@ -1,6 +1,7 @@
 import { execFile } from 'node:child_process';
 import { parseArgs, type ParseArgsConfig } from 'node:util';
 import { comment, commentText } from './comment';
+import { config } from './config';
 import { CliError } from './paths';
 import { start, type Emit } from './start';
 import { publish, type PublishAction } from './publish';
@@ -26,6 +27,10 @@ Commands:
               reply   --artifact document/<id> --thread <threadId> [--text <text>]
               resolve --artifact document/<id> --thread <threadId>
             Without --text, add and reply read the message from stdin.
+  config    Auto-publish changed artifacts as private cloud copies when the agent's turn ends:
+              --auto-publish on|off              for every project
+              --auto-publish on|off|inherit --project   override for this project only
+            Without --auto-publish, prints the current values.
 
 Options:
   --project-dir <path>  Project directory (default: current directory)
@@ -54,6 +59,7 @@ function text(value: Record<string, unknown>) {
   if (value.type === 'server-started') return `${value.link ?? value.url}${value.reused ? ' (already running)' : ''}`;
   if (value.type === 'login-required' || value.type === 'login') return `${value.message}\n${value.url}`;
   if (value.type === 'published') return `${value.url} (${value.visibility})`;
+  if (value.type === 'auto-publish') return `Auto-publish: ${value.global === null ? 'not decided' : value.global ? 'on' : 'off'} for every project${value.project === null ? '' : `, ${value.project ? 'on' : 'off'} for this project`}.`;
   const commented = commentText(value);
   if (commented !== null) return commented;
   if (typeof value.status === 'string') return value.status === 'stopped' ? 'Stopped.' : value.status.replace(/_/g, ' ');
@@ -144,6 +150,14 @@ async function main(argv: string[]) {
         quote: values.quote as string | undefined,
         thread: values.thread as string | undefined,
         text: values.text as string | undefined,
+      }, emit);
+    }
+    if (command === 'config') {
+      const { values } = parse(rest, { 'auto-publish': { type: 'string' }, project: { type: 'boolean' } });
+      return config({
+        projectDir: (values['project-dir'] as string | undefined) ?? process.cwd(),
+        autoPublish: values['auto-publish'] as string | undefined,
+        project: !!values.project,
       }, emit);
     }
     if (command === '--version' || command === '-v') {
