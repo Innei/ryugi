@@ -391,7 +391,7 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
     (keyFromQuery !== null && safeEqual(keyFromQuery, token)) ||
     safeEqual(parseCookies(req.headers.cookie)[cookieName] ?? '', token);
 
-  const serveContent = (res: http.ServerResponse, rest: string) => {
+  const serveContent = (res: http.ServerResponse, rest: string, range?: string) => {
     if (rest.startsWith('runtime/')) {
       if (!runtimeDir) {
         send(res, 404, 'Not found');
@@ -427,7 +427,7 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
     const page = ref.type === 'html' ? relative === 'index.html' : relative.endsWith('.html');
     const headers = { 'Content-Security-Policy': CONTENT_CSP[page && ref.type === 'document' ? 'html' : ref.type], 'Access-Control-Allow-Origin': '*' };
     if (!page) {
-      sendFile(res, target, headers);
+      sendFile(res, target, headers, range);
       return;
     }
     fs.readFile(target, 'utf8', (err, source) => {
@@ -535,7 +535,7 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
 
     if (pathname.startsWith('/c/')) {
       if (!pathname.startsWith(contentPrefix)) send(res, 404, 'Not found');
-      else serveContent(res, pathname.slice(contentPrefix.length));
+      else serveContent(res, pathname.slice(contentPrefix.length), req.headers.range);
       return;
     }
 
@@ -786,7 +786,7 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
     const request = (typeof body === 'object' && body !== null ? body : {}) as Record<string, unknown>;
     if (request.op === 'meta') return artifactMeta(ref, dir, contentOrigin);
     if (request.op === 'file') {
-      const file = typeof request.path === 'string' ? readArtifactFile(dir, ref.type, request.path, CLOUD_RUNTIME_URL) : null;
+      const file = typeof request.path === 'string' ? readArtifactFile(dir, ref.type, request.path, CLOUD_RUNTIME_URL, MAX_RELAY_FILE) : null;
       if (!file) throw new Error('not found');
       if (file.data.length > MAX_RELAY_FILE) throw new Error('too large');
       return { contentType: file.contentType, data: file.data.toString('base64') };

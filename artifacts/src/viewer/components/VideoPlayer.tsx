@@ -49,6 +49,7 @@ const styles = stylex.create({
   rail: { position: 'absolute', left: 0, right: 0, height: 3, backgroundColor: '#3a3a3a' },
   fill: { position: 'absolute', left: 0, height: 3, backgroundColor: '#fff' },
   rate: { minWidth: 30, fontWeight: 600 },
+  failed: { position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', padding: 16, backgroundColor: '#111', color: '#aaa', fontFamily: cssVar.fontFamily, fontSize: 13, textAlign: 'center', pointerEvents: 'none' },
 });
 
 const clock = (seconds: number) => {
@@ -71,19 +72,24 @@ export function VideoPlayer({ src, title, barScale, barWidth, onExpand }: Props)
   const [duration, setDuration] = useState(0);
   const [rate, setRate] = useState(1);
   const [loop, setLoop] = useState(false);
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     const el = video.current;
     if (!el) return;
     const sync = () => {
+      setFailed(false);
       setTime(el.currentTime);
       setDuration(el.duration);
       setPlaying(!el.paused);
     };
     const events = ['loadedmetadata', 'timeupdate', 'play', 'pause', 'ended', 'seeked'];
+    const fail = () => setFailed(true);
     for (const name of events) el.addEventListener(name, sync);
+    el.addEventListener('error', fail);
     return () => {
       for (const name of events) el.removeEventListener(name, sync);
+      el.removeEventListener('error', fail);
     };
   }, []);
 
@@ -113,6 +119,7 @@ export function VideoPlayer({ src, title, barScale, barWidth, onExpand }: Props)
   return (
     <>
       <video ref={video} src={src} title={title} muted playsInline preload="metadata" {...stylex.props(styles.video)} />
+      {failed && <div {...stylex.props(styles.failed)}>视频加载失败：格式不受支持，或文件太大没能传过来</div>}
       {barWidth >= MIN_BAR_WIDTH && (
         <div
           data-chrome="video-controls"

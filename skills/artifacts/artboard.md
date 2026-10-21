@@ -64,6 +64,8 @@ comments.json in the artboard directory is the server's; never write it.
   `type` is `image` or `video`; `src` replaces `file` and must live under
   `pages/` too. Copy the file in; never point outside the artboard. A video
   plays muted in the viewer's own player, with its controls under the board.
+  Keep each file under 8MB (a cloud link can't fetch more) and the whole
+  artboard under 20MB; record short clips as mp4 (H.264) or webm.
 - `interactive: true` is the only way a board becomes playable. Static boards
   (the default) never show PLAY and their iframe stays read-only, including
   when expanded. Use it for prototypes the human partner should click through,
@@ -241,8 +243,9 @@ Your human partner decides; you cannot pass or reject.
   human partner knows to look again.
 - Reply on the reject thread with what changed. Leave it open: `comment
   resolve` refuses a reject, and passing the group closes it.
-- `pass` is final for that evidence. Don't touch a passed group's files
-  unless asked; changing them sends it back to `pending`.
+- `pass` covers the evidence as it was. Don't touch a passed group's files
+  unless asked; changing them sends it back to `pending`. Your human partner
+  can undo a pass, which returns the group to `pending`.
 - A new verify round goes below the last one on the same page, with new
   groups; remove `"verify": true` from the previous round's groups so only
   the current round counts.

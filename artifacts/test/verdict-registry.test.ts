@@ -1,7 +1,8 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { expect, test } from 'vitest';
+import { expect, test, vi } from 'vitest';
+import { readArtifactFile } from '../src/server/artifact-file';
 import { asBoardAgentOp, asBoardHumanOp, createBoardCommentRegistry } from '../src/server/board-comments';
 
 function project() {
@@ -76,4 +77,40 @@ test('list reports each verify group with its verdict', () => {
   fs.writeFileSync(path.join(dir, 'pages', 'after.png'), 'png-2');
   registry.boardsChanged('review');
   expect(registry.groups('review')[0]).toMatchObject({ verdict: 'pending', evidenceUpdated: true, rejectThreads: 1 });
+});
+
+test('adding or removing a board in the group after a verdict sends it back to pending', () => {
+  const { registry, dir } = project();
+  registry.apply('review', verdict('notify', 'reject'));
+  const canvas = JSON.parse(fs.readFileSync(path.join(dir, 'canvas.json'), 'utf8'));
+  canvas.boards.extra = { type: 'image', src: 'pages/after.png', page: 'p', x: 400, y: 0, w: 100, h: 100 };
+  canvas.groups.notify.boards.push('extra');
+  fs.writeFileSync(path.join(dir, 'canvas.json'), JSON.stringify(canvas));
+  registry.boardsChanged('review');
+  expect(registry.groups('review')[0]).toMatchObject({ verdict: 'pending', evidenceUpdated: true });
+  canvas.groups.notify.boards = ['design'];
+  fs.writeFileSync(path.join(dir, 'canvas.json'), JSON.stringify(canvas));
+  registry.boardsChanged('review');
+  expect(registry.groups('review')[0]).toMatchObject({ verdict: 'pending', evidenceUpdated: true });
+});
+
+test('an unchanged media file is hashed once, not on every board change', () => {
+  const { registry, dir } = project();
+  const read = vi.spyOn(fs, 'readFileSync');
+  const reads = () => read.mock.calls.filter(([file]) => String(file).endsWith('after.png')).length;
+  registry.apply('review', verdict('notify', 'reject'));
+  const first = reads();
+  fs.writeFileSync(path.join(dir, 'pages', 'design.html'), '<html><body>design 2</body></html>');
+  registry.boardsChanged('review');
+  registry.boardsChanged('review');
+  expect(reads()).toBe(first);
+  read.mockRestore();
+});
+
+test('a relayed file over the limit is refused before it is read', () => {
+  const { dir } = project();
+  const read = vi.spyOn(fs, 'readFileSync');
+  expect(() => readArtifactFile(dir, 'artboard', 'pages/after.png', '', 3)).toThrow('too large');
+  expect(read.mock.calls.some(([file]) => String(file).endsWith('after.png'))).toBe(false);
+  read.mockRestore();
 });

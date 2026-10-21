@@ -128,3 +128,10 @@ test('without comment access the state shows but the buttons do not', async () =
   expect(label(host, 'notify').textContent).toContain('待验收');
   expect(button(label(host, 'notify'), '通过')).toBeUndefined();
 });
+
+test('a pass can be undone from the label', async () => {
+  state.comments = { comments: { version: 1, threads: [verdictThread('p1', 'notify', 'pass', '2026-10-22T08:40:00Z')] }, stale: [] };
+  const host = await mount();
+  await act(async () => button(label(host, 'notify'), '撤销')!.click());
+  expect(state.comment).toHaveBeenCalledWith({ op: 'delete', threadId: 'p1', messageId: 'p1-m' });
+});

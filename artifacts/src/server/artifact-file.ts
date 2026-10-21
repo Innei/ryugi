@@ -8,14 +8,16 @@ const RESOLVE = { artboard: resolveBoardFile, document: resolveDocumentAsset, ht
 
 export const isArtifactPage = (type: ArtifactType, relative: string) => (type === 'html' ? relative === 'index.html' : relative.endsWith('.html'));
 
-export function readArtifactFile(dir: string, type: ArtifactType, relative: string, uiRuntimeUrl: string) {
+export function readArtifactFile(dir: string, type: ArtifactType, relative: string, uiRuntimeUrl: string, maxBytes = Infinity) {
   if (!resolveInside(dir, relative)) return null;
   const target = RESOLVE[type](dir, relative);
   if (!target) return null;
   let data: Buffer;
   try {
+    if (fs.statSync(target).size > maxBytes) throw new RangeError('too large');
     data = fs.readFileSync(target);
-  } catch {
+  } catch (err) {
+    if (err instanceof RangeError) throw err;
     return null;
   }
   if (!isArtifactPage(type, relative)) return { contentType: mimeOf(target), data };

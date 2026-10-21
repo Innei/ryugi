@@ -439,6 +439,22 @@ describe('artboard content', () => {
     expect(res.headers['content-security-policy']).toBe('sandbox allow-scripts');
   });
 
+  test('media files answer byte ranges so Safari can play video', async () => {
+    const { server, root } = await start();
+    writeArtboard(root, 'b1', canvas, { 'pages/p/a.html': '<p>a</p>', 'pages/p/flow.webm': '0123456789' });
+    const whole = await content(server, 'artboard/b1/pages/p/flow.webm');
+    expect(whole.status).toBe(200);
+    expect(whole.headers['accept-ranges']).toBe('bytes');
+    const part = await get(`${base(server)}/c/${server.contentToken}/artboard/b1/pages/p/flow.webm`, { Range: 'bytes=2-5' });
+    expect(part.status).toBe(206);
+    expect(part.body).toBe('2345');
+    expect(part.headers['content-range']).toBe('bytes 2-5/10');
+    const tail = await get(`${base(server)}/c/${server.contentToken}/artboard/b1/pages/p/flow.webm`, { Range: 'bytes=-3' });
+    expect(tail.body).toBe('789');
+    const beyond = await get(`${base(server)}/c/${server.contentToken}/artboard/b1/pages/p/flow.webm`, { Range: 'bytes=20-' });
+    expect(beyond.status).toBe(416);
+  });
+
   test('a wrong content token is refused', async () => {
     const { server, root } = await start();
     writeArtboard(root, 'b1', canvas, { 'pages/p/a.html': '<p>a</p>' });

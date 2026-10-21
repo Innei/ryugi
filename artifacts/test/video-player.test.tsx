@@ -75,3 +75,9 @@ test('the bar hides when the board is too small on screen to use it', async () =
   const { host } = await render({ barWidth: 120 });
   expect(button(host, '播放')).toBeNull();
 });
+
+test('a video that cannot load says so instead of sitting black', async () => {
+  const { host, video } = await render();
+  await act(async () => video.dispatchEvent(new Event('error')));
+  expect(host.textContent).toContain('视频加载失败');
+});

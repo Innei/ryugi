@@ -109,11 +109,19 @@ export function agentAddOnBoard(value: unknown, specs: Record<string, BoardSpec>
   return asBoardAgentOp({ op: 'add', anchor: { page: spec.page, board: v.board, x: v.x ?? spec.w, y: v.y ?? 0 }, text: v.text });
 }
 
+const hashCache = new Map<string, { stamp: string; hash: string }>();
+
 function fileHash(dir: string, relative: string): string | null {
   const file = resolveBoardFile(dir, relative);
   if (!file) return null;
   try {
-    return crypto.createHash('sha1').update(fs.readFileSync(file)).digest('hex').slice(0, 12);
+    const stat = fs.statSync(file);
+    const stamp = `${stat.size}:${stat.mtimeMs}`;
+    const cached = hashCache.get(file);
+    if (cached?.stamp === stamp) return cached.hash;
+    const hash = crypto.createHash('sha1').update(fs.readFileSync(file)).digest('hex').slice(0, 12);
+    hashCache.set(file, { stamp, hash });
+    return hash;
   } catch {
     return null;
   }
@@ -136,8 +144,14 @@ function stamp(anchor: BoardAnchor, hashes: Record<string, string>, groups: Reco
   return { ...withoutHashes(anchor), hashes: Object.fromEntries(boards.map((board) => [board, hashes[board] ?? 'missing'])) };
 }
 
-const isStale = (thread: BoardThread, hashes: Record<string, string>) =>
-  Object.entries(thread.anchor.hashes ?? {}).some(([board, hash]) => hashes[board] !== hash);
+const sameMembers = (thread: BoardThread, groups: Record<string, GroupSpec>) => {
+  const group = thread.anchor.group;
+  if (!group) return true;
+  return Object.keys(thread.anchor.hashes ?? {}).sort().join('\n') === [...(groups[group]?.boards ?? [])].sort().join('\n');
+};
+
+const isStale = (thread: BoardThread, hashes: Record<string, string>, groups: Record<string, GroupSpec>) =>
+  !sameMembers(thread, groups) || Object.entries(thread.anchor.hashes ?? {}).some(([board, hash]) => hashes[board] !== hash);
 
 interface Options {
   root: string;
@@ -172,7 +186,8 @@ export function createBoardCommentRegistry(options: Options) {
   };
   const stale = (id: string) => {
     const now = currentHashes(id);
-    return store(id).current().threads.filter((thread) => isStale(thread, now)).map((thread) => thread.id);
+    const groups = groupSpecs(dirOf(id));
+    return store(id).current().threads.filter((thread) => isStale(thread, now, groups)).map((thread) => thread.id);
   };
   const push = (id: string) => {
     const ids = stale(id);

@@ -38,14 +38,16 @@ interface Props {
   canJudge: boolean;
   onPass: () => void;
   onReject: () => void;
+  onUndo: () => void;
 }
 
-export function GroupVerdict({ verdict, evidenceAt, canJudge, onPass, onReject }: Props) {
+export function GroupVerdict({ verdict, evidenceAt, canJudge, onPass, onReject, onUndo }: Props) {
   if (verdict.state === 'pass') {
     return (
       <>
         <span {...stylex.props(styles.state, styles.pass)}><Check size={13} />已通过</span>
         {verdict.at && <span {...stylex.props(styles.note)}>{clock(verdict.at)}</span>}
+        {canJudge && <button type="button" onClick={onUndo} {...stylex.props(styles.button, styles.note)}>撤销</button>}
       </>
     );
   }

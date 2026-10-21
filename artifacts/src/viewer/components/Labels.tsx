@@ -104,7 +104,7 @@ interface LabelsProps {
   onExpand: (id: string) => void;
   onTogglePlay: (id: string) => void;
   onReplay: (id: string) => void;
-  verdicts?: Pick<Verdicts, 'states' | 'evidenceAt' | 'canJudge' | 'pass' | 'startReject'>;
+  verdicts?: Pick<Verdicts, 'states' | 'evidenceAt' | 'canJudge' | 'pass' | 'startReject' | 'undoPass'>;
 }
 
 export function Labels({
@@ -147,7 +147,7 @@ export function Labels({
               <span {...stylex.props(styles.chip)}>{id}</span>
               {group.title}
               {verdict && verdicts && (
-                <GroupVerdict verdict={verdict} evidenceAt={verdicts.evidenceAt(id)} canJudge={verdicts.canJudge} onPass={() => verdicts.pass(id)} onReject={() => verdicts.startReject(id)} />
+                <GroupVerdict verdict={verdict} evidenceAt={verdicts.evidenceAt(id)} canJudge={verdicts.canJudge} onPass={() => verdicts.pass(id)} onReject={() => verdicts.startReject(id)} onUndo={() => verdicts.undoPass(id)} />
               )}
             </div>
           );

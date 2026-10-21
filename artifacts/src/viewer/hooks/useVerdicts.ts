@@ -43,6 +43,11 @@ export function useVerdicts({ canvas, page, threads, stale, versions, comment }:
     evidenceAt,
     origin: (id: string) => ({ x: Math.min(...members(id).map((b) => b.x)), y: Math.min(...members(id).map((b) => b.y)) }),
     pass: (id: string) => void send(id, 'pass', '通过'),
+    undoPass: (id: string) => {
+      const pass = threads.filter((t) => t.anchor.group === id && t.anchor.verdict === 'pass' && t.messages.some((m) => !m.deleted)).at(-1);
+      const message = pass?.messages.find((m) => !m.deleted);
+      if (pass && message && comment) void comment({ op: 'delete', threadId: pass.id, messageId: message.id }).catch(() => {});
+    },
     startReject: (id: string) => setRejecting(id),
     cancelReject: () => setRejecting(null),
     submitReject: async (text: string) => {
