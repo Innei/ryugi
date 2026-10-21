@@ -7,27 +7,21 @@ import { emptyComments, type CommentsFile, type HumanOp } from '../../shared/com
 import { WarningsBadge } from '../components/WarningsBadge';
 import type { ThreadActions } from './CommentCard';
 import { DocumentEditor } from './DocumentEditor';
-import { DocumentLayout } from './DocumentLayout';
+import { DesktopDocument } from './DesktopDocument';
+import { useMedia } from './DocumentLayout';
 import { DynamicHostContext, type DynamicHost } from './DynamicBlock';
-import { DRAFT_WIDTH, DraftPanel } from './DraftPanel';
-import { popoverPosition, toolbarPosition } from './layoutCards';
-import { SelectionToolbar, TOOLBAR_HEIGHT, TOOLBAR_WIDTH } from './SelectionToolbar';
 import { decodeBase64 } from './LoroSync';
 import type { DocumentMeta, DocumentState, DocumentTransport } from './transport';
 import { TopBar } from './TopBar';
 import { useDocumentSelectionSync } from './useDocumentSelectionSync';
 import { useLocalTransport } from './useDocumentTransport';
-import { useDraftComment } from './useDraftComment';
-import { useSelectionComment } from './useSelectionComment';
+import { PHONE_QUERY, PhoneLayout } from './PhoneLayout';
+import { useSelectionComment, type SelectionTarget } from './useSelectionComment';
 
 const styles = stylex.create({
   root: { minHeight: '100%', backgroundColor: cssVar.colorBgContainer, color: cssVar.colorText },
   message: { padding: 48, textAlign: 'center', color: cssVar.colorTextSecondary, fontFamily: cssVar.fontFamily, fontSize: 14 },
 });
-
-function columnBounds(article: HTMLElement) {
-  return { left: article.offsetLeft, right: Math.min(article.offsetLeft + article.offsetWidth, window.innerWidth - 16) };
-}
 
 function usePrefersDark() {
   const query = useMemo(() => window.matchMedia('(prefers-color-scheme: dark)'), []);
@@ -75,6 +69,9 @@ export function DocumentView({ id, transport, live, cloud }: { id: string; trans
   const { artifact, channel } = transport;
   const canComment = cloud ? cloud.online : true;
   const canEdit = cloud ? cloud.canEdit : true;
+  const phone = useMedia(PHONE_QUERY);
+  const [editing, setEditing] = useState(false);
+  const editable = phone ? editing && canEdit : canEdit;
 
   const refreshMeta = useCallback(async () => {
     const next = await transport.meta();
@@ -115,8 +112,11 @@ export function DocumentView({ id, transport, live, cloud }: { id: string; trans
   );
 
   useEffect(() => {
-    editor?.setEditable(canEdit);
-  }, [editor, canEdit]);
+    editor?.setEditable(editable);
+  }, [editor, editable]);
+  useEffect(() => {
+    if (!canEdit) setEditing(false);
+  }, [canEdit]);
   const onState = useCallback((state: DocumentState) => {
     setStreaming(Boolean(state.streaming));
     if (state.comments) setComments(state.comments);
@@ -134,8 +134,6 @@ export function DocumentView({ id, transport, live, cloud }: { id: string; trans
 
   const openComments = comments.threads.filter((thread) => thread.status === 'open').length;
   const [selection, clearSelection] = useSelectionComment(editor, mainEl);
-  const composing = useDraftComment(clearSelection);
-  const { draft } = composing;
 
   const send = useCallback(
     async (op: HumanOp) => {
@@ -159,8 +157,40 @@ export function DocumentView({ id, transport, live, cloud }: { id: string; trans
     [send],
   );
 
+  const create = useCallback(
+    (target: SelectionTarget, text: string) => send({ op: 'create', blockId: target.blockId, quote: target.quote, text }),
+    [send],
+  );
+  const startEditing = useCallback(
+    (target: SelectionTarget) => {
+      if (!editor) return;
+      editor.setEditable(true);
+      setEditing(true);
+      editor.getRootElement()?.focus({ preventScroll: true });
+      const dom = window.getSelection();
+      dom?.removeAllRanges();
+      dom?.addRange(target.range);
+    },
+    [editor],
+  );
+
   if (loadError) return <div {...stylex.props(styles.message)}>{loadError}</div>;
   if (!doc) return <div {...stylex.props(styles.message)}>Loading…</div>;
+
+  const editorView = (
+    <DynamicHostContext.Provider value={dynamicHost}>
+      <DocumentEditor
+        transport={transport}
+        agent={meta?.agent}
+        doc={doc}
+        theme={dark ? 'dark' : 'light'}
+        onAgentSection={setSection}
+        onOffline={setOffline}
+        onState={onState}
+        onEditorReady={setEditor}
+      />
+    </DynamicHostContext.Provider>
+  );
 
   return (
     <div {...stylex.props(styles.root)} className={`ryugi-doc ${stylex.props(styles.root).className ?? ''}`}>
@@ -172,62 +202,41 @@ export function DocumentView({ id, transport, live, cloud }: { id: string; trans
         offline={offline}
         openComments={openComments}
         cloud={cloud}
+        compact={phone}
+        onDone={phone && editing ? () => setEditing(false) : undefined}
       />
-      <DocumentLayout
-        editor={editor}
-        threads={comments.threads}
-        actions={actions}
-        agent={meta?.agent}
-        onMain={setMainEl}
-        overlay={(articleEl) => (
-          <>
-            {selection && !draft ? (
-              <SelectionToolbar
-                ref={composing.toolbarRef}
-                {...toolbarPosition(selection, columnBounds(articleEl), TOOLBAR_WIDTH, TOOLBAR_HEIGHT, 8)}
-                onComment={canComment ? () => composing.open(selection) : undefined}
-                onCopy={() => {
-                  void navigator.clipboard?.writeText(selection.quote);
-                  window.getSelection()?.removeAllRanges();
-                  clearSelection();
-                }}
-              />
-            ) : null}
-            {draft ? (
-              <DraftPanel
-                ref={composing.panelRef}
-                key={`${draft.target.blockId}:${draft.target.quote}`}
-                {...popoverPosition(draft.target, columnBounds(articleEl), DRAFT_WIDTH, 8)}
-                quote={draft.target.quote}
-                initial={draft.initial}
-                restored={composing.restored}
-                leaving={composing.leaving}
-                onChange={composing.onText}
-                onSubmit={(text) =>
-                  send({ op: 'create', blockId: draft.target.blockId, quote: draft.target.quote, text }).then((ok) => {
-                    if (ok) composing.close(false);
-                    return ok;
-                  })
-                }
-                onCancel={() => composing.close(true)}
-              />
-            ) : null}
-          </>
-        )}
-      >
-        <DynamicHostContext.Provider value={dynamicHost}>
-          <DocumentEditor
-            transport={transport}
-            agent={meta?.agent}
-            doc={doc}
-            theme={dark ? 'dark' : 'light'}
-            onAgentSection={setSection}
-            onOffline={setOffline}
-            onState={onState}
-            onEditorReady={setEditor}
-          />
-        </DynamicHostContext.Provider>
-      </DocumentLayout>
+      {phone ? (
+        <PhoneLayout
+          editor={editor}
+          threads={comments.threads}
+          actions={canComment ? actions : undefined}
+          agent={meta?.agent}
+          canComment={canComment}
+          canEdit={canEdit}
+          offline={Boolean(cloud && !cloud.online)}
+          selection={editing ? null : selection}
+          clearSelection={clearSelection}
+          onCreate={create}
+          onEdit={startEditing}
+          onMain={setMainEl}
+        >
+          {editorView}
+        </PhoneLayout>
+      ) : (
+        <DesktopDocument
+          editor={editor}
+          threads={comments.threads}
+          actions={actions}
+          agent={meta?.agent}
+          canComment={canComment}
+          selection={selection}
+          clearSelection={clearSelection}
+          onCreate={create}
+          onMain={setMainEl}
+        >
+          {editorView}
+        </DesktopDocument>
+      )}
       <WarningsBadge warnings={meta?.warnings ?? []} />
     </div>
   );

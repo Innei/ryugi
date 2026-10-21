@@ -76,3 +76,14 @@
   border-radius: 0;
   box-shadow: none;
 }
+
+.ryugi-phone-sheet {
+  pointer-events: auto;
+}
+
+@media (max-width: 640px) {
+  .ryugi-doc .rich-editor {
+    --rc-font-size-base: 16px;
+    --rc-font-size-small: 14px;
+  }
+}

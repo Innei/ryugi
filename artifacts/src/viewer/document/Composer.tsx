@@ -18,7 +18,7 @@ const styles = stylex.create({
     backgroundColor: 'transparent',
     color: cssVar.colorText,
     fontFamily: cssVar.fontFamily,
-    fontSize: 12,
+    fontSize: { default: 12, '@media (max-width: 640px)': 16 },
     lineHeight: 1.6,
     resize: 'none',
     fieldSizing: 'content',
