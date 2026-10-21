@@ -125,6 +125,25 @@ node app/ryugi-artifacts.cjs publish --json --project-dir /path/to/project --art
   and `--delete <cloud-id>` clean up copies published from other machines.
 - Exit code 1 with `reasons`: fix those warnings, then publish again.
 
+## Auto-publish
+
+When your human partner is signed in and auto-publish is on, every artifact
+changed during your turn is published as a private copy when the turn ends
+(Claude Code only; elsewhere, publish when asked). `config --json` prints
+whether it is on.
+
+- Do not run `publish` to keep a private copy current; the turn end does it.
+- They want to look from their phone or another machine: give them the
+  artifact's `cloud.url` from `.ryugi/config.json`, or ryugi.innei.dev,
+  which lists every copy once they sign in there. No cloud link yet (made
+  this turn) and they want it now: publish it once with `--private`.
+- Someone else will open it: `--public`, as in Share a link.
+- An unpublished artifact stays out of auto-publish until it is published by
+  hand.
+- When asked to put the auto-publish question to them, ask once and run
+  `config --auto-publish on` or `off` with their answer. Their project-only
+  choice: add `--project`.
+
 ## Directory
 
 ```
