@@ -64,9 +64,10 @@ interface Props {
   agent?: string;
   actions?: ThreadActions;
   active?: boolean;
+  offline?: boolean;
 }
 
-export function PhoneThread({ thread, agent = 'Agent', actions, active = false }: Props) {
+export function PhoneThread({ thread, agent = 'Agent', actions, active = false, offline = false }: Props) {
   const waiting = waitingOn(thread);
   const resolved = thread.status === 'resolved';
   const state = resolved
@@ -105,9 +106,11 @@ export function PhoneThread({ thread, agent = 'Agent', actions, active = false }
               <Composer placeholder="回复…" onSubmit={(text) => actions.reply(thread.id, text)} />
             </div>
           )}
-          <button type="button" onClick={() => (resolved ? actions.reopen(thread.id) : actions.resolve(thread.id))} {...stylex.props(styles.action)}>
-            {resolved ? '重新打开' : '解决'}
-          </button>
+          {offline ? null : (
+            <button type="button" onClick={() => (resolved ? actions.reopen(thread.id) : actions.resolve(thread.id))} {...stylex.props(styles.action)}>
+              {resolved ? '重新打开' : '解决'}
+            </button>
+          )}
         </div>
       ) : null}
     </div>

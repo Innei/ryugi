@@ -209,7 +209,7 @@ export function DocumentView({ id, transport, live, cloud }: { id: string; trans
         <PhoneLayout
           editor={editor}
           threads={comments.threads}
-          actions={canComment ? actions : undefined}
+          actions={actions}
           agent={meta?.agent}
           canComment={canComment}
           canEdit={canEdit}

@@ -164,3 +164,30 @@ test('opening a thread raises a collapsed sheet to half and leaves a taller one 
   expect(raiseSheet(SHEET_HALF)).toBe(SHEET_HALF);
   expect(raiseSheet(SHEET_FULL)).toBe(SHEET_FULL);
 });
+
+describe('going offline keeps what the owner is typing', () => {
+  test('a thread keeps its reply box offline but cannot be resolved', async () => {
+    const host = await render(createElement(PhoneThread, { thread: waiting, agent: 'Claude Code', actions: actions(), offline: true }));
+    expect(host.querySelector('textarea[placeholder="回复…"]')).not.toBeNull();
+    expect([...host.querySelectorAll('button')].map((b) => b.textContent)).not.toContain('解决');
+  });
+
+  test('a new comment being written survives the computer dropping', async () => {
+    const selection = { blockId: 'b1', quote: '四个脚本', left: 40, top: 120, right: 120, bottom: 140, range: document.createRange() };
+    const props = {
+      editor: null,
+      threads: [waiting],
+      actions: actions(),
+      agent: 'Claude Code',
+      selection,
+      clearSelection: vi.fn(),
+      onCreate: vi.fn(async () => false),
+      onEdit: vi.fn(),
+      children: createElement('p', null, '正文'),
+    };
+    const host = await render(createElement(PhoneLayout, { ...props, canComment: true, canEdit: true, offline: false }));
+    await act(async () => [...host.querySelectorAll('button')].find((b) => b.textContent === '评论')!.click());
+    await act(async () => root!.render(createElement(PhoneLayout, { ...props, selection: null, canComment: false, canEdit: false, offline: true })));
+    expect(host.querySelector('textarea[placeholder="写给 agent 的评论…"]')).not.toBeNull();
+  });
+});

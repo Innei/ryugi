@@ -1,6 +1,6 @@
 import * as stylex from '@stylexjs/stylex';
 import type { LexicalEditor } from 'lexical';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import type { Thread } from '../../shared/comments';
 import type { ThreadActions } from './CommentCard';
 import { toolbarPosition } from './layoutCards';
@@ -50,10 +50,6 @@ export function PhoneLayout({ editor, threads, actions, agent, canComment, canEd
   const anchors = useAnchors(editor, threads, main);
   useHighlights(anchors, threads, activeId);
   useDraftHighlight(draft?.range ?? null);
-
-  useEffect(() => {
-    if (!canComment) setDraft(null);
-  }, [canComment]);
 
   const done = () => {
     window.getSelection()?.removeAllRanges();

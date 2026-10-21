@@ -104,7 +104,7 @@ export function PhoneSheet({ threads, agent = 'Agent', actions, offline, draft, 
         ) : null}
         {shown.length === 0 && !draft ? <div {...stylex.props(styles.empty)}>还没有评论。选中文字就能评论。</div> : null}
         {shown.map((thread) => (
-          <PhoneThread key={thread.id} thread={thread} agent={agent} actions={actions} active={thread.id === activeId} />
+          <PhoneThread key={thread.id} thread={thread} agent={agent} actions={actions} active={thread.id === activeId} offline={offline} />
         ))}
       </div>
     </FloatingSheet>
