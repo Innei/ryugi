@@ -86,7 +86,7 @@ test('pins open their thread, and Esc closes it before leaving the tool', async 
   await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="评论 1"]')!.click());
   expect(host.textContent).toContain('整体太挤');
   await key('Escape');
-  expect(host.textContent).not.toContain('整体太挤');
+  expect(host.querySelector('textarea[placeholder="回复…"]')).toBeNull();
   expect(host.querySelector('[aria-label="Comment"]')).not.toBeNull();
   await key('Escape');
   expect(host.querySelector('[aria-label="评论 1"]')).toBeNull();
@@ -128,5 +128,28 @@ test('Esc in the reply box closes the thread', async () => {
   await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="评论 1"]')!.click());
   const reply = host.querySelector<HTMLTextAreaElement>('textarea[placeholder="回复…"]')!;
   await act(async () => reply.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })));
-  expect(host.textContent).not.toContain('整体太挤');
+  expect(host.querySelector('textarea[placeholder="回复…"]')).toBeNull();
+});
+
+test('the comment tool swaps the right panel for the thread list, and a row opens its thread', async () => {
+  state.comments = {
+    comments: { version: 1, threads: [
+      { id: 't1', anchor: { page: 'p', board: 'a', x: 10, y: 10 }, status: 'open', statusAt: 'x', messages: [{ id: 'm1', author: 'human', text: '整体太挤', at: '2026-10-22T10:00:00Z' }] },
+      { id: 't2', anchor: { page: 'p', board: 'a', x: 20, y: 20 }, status: 'resolved', statusAt: 'x', messages: [{ id: 'm2', author: 'human', text: '已经改好', at: '2026-10-22T10:01:00Z' }] },
+    ] },
+    stale: [],
+  };
+  const { host } = await mount();
+  expect(host.querySelector('aside[aria-label="Comments"]')).toBeNull();
+  await key('c');
+  const panel = host.querySelector('aside[aria-label="Comments"]')!;
+  expect(panel.textContent).toContain('Open 1');
+  expect(host.querySelector('[aria-label="评论 2"]')).toBeNull();
+  await act(async () => [...panel.querySelectorAll('button')].find((b) => b.textContent?.startsWith('All'))!.click());
+  expect(host.querySelector('[aria-label="评论 2"]')).not.toBeNull();
+  await act(async () => panel.querySelector<HTMLElement>('[data-thread="t1"]')!.click());
+  expect(host.querySelector('textarea[placeholder="回复…"]')).not.toBeNull();
+  await act(async () => panel.querySelector<HTMLButtonElement>('[aria-label="Close comments"]')!.click());
+  expect(host.querySelector('aside[aria-label="Comments"]')).toBeNull();
+  expect(host.querySelector('[aria-label="评论 1"]')).toBeNull();
 });

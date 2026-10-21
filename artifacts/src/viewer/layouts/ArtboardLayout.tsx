@@ -6,6 +6,7 @@ import type { BoardHumanOp } from '../../shared/board-comments';
 import type { SelectionMessage } from '../../shared/selection';
 import { Canvas } from '../components/Canvas';
 import { CommentLayer } from '../components/CommentLayer';
+import { CommentsPanel, type CommentsTab } from '../comments/CommentsPanel';
 import { CanvasErrorBoundary } from '../components/CanvasErrorBoundary';
 import { ExpandedBoard } from '../components/ExpandedBoard';
 import { Labels } from '../components/Labels';
@@ -19,6 +20,7 @@ import { useSelectionSync } from '../hooks/useSelectionSync';
 import { usePanZoom, type Tool } from '../hooks/usePanZoom';
 import { InspectionOutline } from '../inspector/InspectionOutline';
 import { InspectorPanel } from '../inspector/InspectorPanel';
+import { pinPoint } from '../lib/board-anchor';
 import { togglePlaying } from '../lib/play';
 import type { Bounds } from '../../shared/types';
 import { useArtboardPage } from '../hooks/useArtboardPage';
@@ -78,6 +80,7 @@ function DesktopArtboard({ id, artifact, canvas, layout, warnings, pending, cont
   const [tool, setTool] = useState<Tool>('select');
   const { viewportRef, view, fit, zoomBy, zoomTo, cursor, handlers, panBy, wheelAt, panning, setSpaceHeld } = usePanZoom(tool);
   const [inspectorOpen, setInspectorOpen] = useState(false);
+  const [commentsTab, setCommentsTab] = useState<CommentsTab>('open');
   const pageBounds = (id: string | null) => (id && layout?.pages[id]?.bounds) || null;
   const fitPage = useCallback((id: string) => {
     const bounds = layout?.pages[id]?.bounds;
@@ -119,6 +122,13 @@ function DesktopArtboard({ id, artifact, canvas, layout, warnings, pending, cont
     if (next === 'comment' && tool === 'select') boardComments.commentSelection();
     if (next !== 'comment') boardComments.close();
     setTool(next);
+  };
+  const openThread = (threadId: string) => {
+    const thread = boardComments.threads.find((t) => t.id === threadId);
+    const point = thread && pinPoint(thread.anchor, canvas?.boards ?? {});
+    const el = viewportRef.current;
+    if (point && el) panBy(el.clientWidth / 2 - (view.x + point.x * view.k), el.clientHeight / 2 - (view.y + point.y * view.k));
+    boardComments.setOpenId(threadId);
   };
   const retained = useMemo(() => new Set([
     ...inspector.selectedTargets.map((target) => target.boardId),
@@ -239,7 +249,7 @@ function DesktopArtboard({ id, artifact, canvas, layout, warnings, pending, cont
             onTogglePlay={(id) => setPlaying((current) => togglePlaying(current, id))}
             onReplay={(id) => setReplays((prev) => ({ ...prev, [id]: (prev[id] ?? 0) + 1 }))}
           />
-          {commentTool && <CommentLayer view={view} page={page} boards={allBoards} width={viewportRef.current?.clientWidth ?? 0} threads={boardComments.threads} stale={boardComments.stale} numbers={boardComments.numbers} showResolved={false}
+          {commentTool && <CommentLayer view={view} page={page} boards={allBoards} width={viewportRef.current?.clientWidth ?? 0} threads={boardComments.threads} stale={boardComments.stale} numbers={boardComments.numbers} showResolved={commentsTab === 'all'}
             draft={boardComments.draft} openId={boardComments.openId} actions={boardComments.actions} agent={agent} onOpen={boardComments.setOpenId} onSubmit={boardComments.submit} onCancelDraft={boardComments.cancelDraft} />}
         </CanvasErrorBoundary>
       )}
@@ -275,7 +285,8 @@ function DesktopArtboard({ id, artifact, canvas, layout, warnings, pending, cont
         />
       )}
     </div>
-    {inspectorOpen && <InspectorPanel boards={boards} frames={inspector.frames} selection={inspector.selection} targets={inspector.targets} select={inspector.select} hoverNode={inspector.hoverNode} change={inspector.change} reset={inspector.reset} playing={playing} enabled={!expanded} onClose={closeInspector} />}
+    {commentTool && <CommentsPanel threads={boardComments.threads} page={page} stale={boardComments.stale} numbers={boardComments.numbers} openId={boardComments.openId} tab={commentsTab} onTab={setCommentsTab} onOpen={openThread} onClose={() => changeTool('select')} />}
+    {inspectorOpen && !commentTool && <InspectorPanel boards={boards} frames={inspector.frames} selection={inspector.selection} targets={inspector.targets} select={inspector.select} hoverNode={inspector.hoverNode} change={inspector.change} reset={inspector.reset} playing={playing} enabled={!expanded} onClose={closeInspector} />}
     </div>
   );
 }
