@@ -205,3 +205,13 @@ test('a thread with every message deleted leaves no pin', async () => {
   await key('c');
   expect(host.querySelector('[aria-label^="评论"]')).toBeNull();
 });
+
+test('pressing empty canvas in the comment tool keeps focus on the new draft', async () => {
+  const { host } = await mount();
+  await key('c');
+  const viewport = host.querySelector('iframe')!.closest('[style*="cursor"]')!;
+  const event = new PointerEvent('pointerdown', { bubbles: true, cancelable: true, button: 0, pointerType: 'mouse', clientX: 900, clientY: 700 });
+  await act(async () => viewport.dispatchEvent(event));
+  expect(host.querySelector('textarea[placeholder="添加评论…"]')).not.toBeNull();
+  expect(event.defaultPrevented).toBe(true);
+});
