@@ -44,6 +44,7 @@
     "@haklex/rich-ext-excalidraw": "0.51.1",
     "@haklex/rich-headless": "0.51.1",
     "@haklex/rich-litexml": "0.51.1",
+    "@haklex/rich-plugin-link-edit": "0.51.1",
     "@haklex/rich-renderer-alert": "0.51.1",
     "@haklex/rich-renderer-codeblock": "0.51.1",
     "@haklex/rich-renderer-image": "0.51.1",

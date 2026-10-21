@@ -9,6 +9,7 @@ import {
 } from '@haklex/rich-editor';
 import { ChartEditNode } from '@haklex/rich-ext-chart';
 import { ExcalidrawEditNode, ExcalidrawPlugin } from '@haklex/rich-ext-excalidraw';
+import { FloatingLinkEditorPlugin } from '@haklex/rich-plugin-link-edit';
 import { AlertEditRenderer } from '@haklex/rich-renderer-alert';
 import { CodeBlockEditRenderer } from '@haklex/rich-renderer-codeblock';
 import { ImageEditRenderer } from '@haklex/rich-renderer-image';
@@ -56,6 +57,7 @@ export function DocumentEditor({ id, doc, channel, theme, onAgentSection, onOffl
       <RichEditor variant="article" theme={theme} extraNodes={extraNodes} rendererConfig={rendererConfig} onEditorReady={onEditorReady}>
         <LoroSync id={id} doc={doc} channel={channel} onAgentCaret={onAgentCaret} onOffline={onOffline} />
         <ExcalidrawPlugin />
+        <FloatingLinkEditorPlugin />
         <AgentCaret caret={caret} container={container} agent={agent} />
         {children}
       </RichEditor>
