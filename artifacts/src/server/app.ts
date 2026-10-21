@@ -175,7 +175,7 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
   };
   const cloud =
     options.cloud && options.configFile
-      ? createCloudRoutes({ ...options.cloud, configFile: options.configFile, port: () => port, inspect })
+      ? createCloudRoutes({ ...options.cloud, configFile: options.configFile, project: path.basename(path.resolve(root, '../..')), port: () => port, inspect })
       : null;
 
   const sameOrigin = (req: http.IncomingMessage) => {

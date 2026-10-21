@@ -80,6 +80,7 @@ footer code { font: 12px var(--mono); }
 interface SignedIn {
   ok: true;
   login: string;
+  autoPublish?: boolean;
   origin: string;
 }
 
@@ -98,7 +99,7 @@ export function callbackPage(result: SignedIn | Failed): string {
     ? `<p class="status">${CIRCLE_CHECK}已连接 Ryugi Cloud</p>
       <h1>已登录<em>${escapeHtml(result.login)}</em></h1>
       <p class="lead">这台电脑上的 Ryugi 现在可以发布 artifact 了。</p>
-      <ul class="rows">${row('在 Ryugi 页面里发布的？', '回到 Ryugi，分享面板会自动刷新。')}${row('让 agent 发布的？', '让它再运行一次发布命令。')}</ul>`
+      <ul class="rows">${row('在 Ryugi 页面里发布的？', '回到 Ryugi，分享面板会自动刷新。')}${row('让 agent 发布的？', '让它再运行一次发布命令。')}${result.autoPublish ? row('自动发布已打开', 'agent 每轮结束后，改过的 artifact 会以私密方式同步到 Ryugi Cloud。关闭：运行 <code>ryugi-artifacts config --auto-publish off</code>。') : ''}</ul>`
     : `<p class="status">${CIRCLE_ALERT}未连接</p>
       <h1>登录没有完成</h1>
       <p class="lead">${escapeHtml(result.detail)}</p>

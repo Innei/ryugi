@@ -3,11 +3,12 @@ import type http from 'node:http';
 import { artifactKeyOf, type ArtifactRef } from './artifacts';
 import { CALLBACK_PAGE_CSP, callbackPage } from './callback-page';
 import { isVisibility } from '../shared/cloud';
-import { readConfig, updateArtifactConfig, type Visibility } from './config';
+import { readConfig, setProjectAutoPublish, updateArtifactConfig, type Visibility } from './config';
 import { clearCredentials, readCredentials, writeCredentials } from './credentials';
 import { randomToken, send, sendJson } from './http';
 import { packArtifact } from './pack';
 import { withCloudRuntime } from './publish-payload';
+import { autoPublishEnabled, defaultGlobalAutoPublish, readGlobalAutoPublish, settingsFileFor, writeGlobalAutoPublish } from './settings';
 
 export interface CloudOptions {
   origin: string;
@@ -23,6 +24,7 @@ export interface InspectedArtifact {
 
 interface CloudRoutesOptions extends CloudOptions {
   configFile: string;
+  project: string;
   port: () => number;
   inspect: (ref: ArtifactRef) => Promise<InspectedArtifact | null>;
 }
@@ -38,7 +40,7 @@ const LOGIN_STATE_TTL_MS = 10 * 60 * 1000;
 const UPLOAD_CONCURRENCY = 6;
 const MAX_JSON_BODY = 4096;
 const CLOUD_ID = /^[A-Za-z0-9_-]{1,64}$/;
-const ROUTE = /^\/api\/cloud\/(status|login|logout|artifacts|publish|visibility)(?:\/([^/]+)(?:\/([^/]+))?)?$/;
+const ROUTE = /^\/api\/cloud\/(status|login|logout|artifacts|publish|visibility|auto-publish)(?:\/([^/]+)(?:\/([^/]+))?)?$/;
 
 class SignedOut extends Error {}
 
@@ -77,7 +79,13 @@ async function errorMessage(res: Response) {
 }
 
 export function createCloudRoutes(options: CloudRoutesOptions) {
-  const { origin, credentialsFile, configFile } = options;
+  const { origin, credentialsFile, configFile, project } = options;
+  const settingsFile = settingsFileFor(credentialsFile);
+  const autoPublishState = () => ({
+    global: readGlobalAutoPublish(settingsFile) ?? null,
+    project: readConfig(configFile).config.autoPublish ?? null,
+    enabled: !!readCredentials(credentialsFile, origin) && autoPublishEnabled({ globalFile: settingsFile, projectFile: configFile }),
+  });
   const pendingStates = new Map<string, { expires: number; verifier: string }>();
 
   const loginUrl = () => {
@@ -134,10 +142,10 @@ export function createCloudRoutes(options: CloudRoutesOptions) {
     const hashed = files.map((file) => ({ ...file, hash: crypto.createHash('sha256').update(file.data).digest('hex') }));
     const byHash = new Map(hashed.map((file) => [file.hash, file.data]));
     const manifest = hashed.map(({ path, hash }) => ({ path, hash }));
-    const version = (visibility: Visibility | undefined) => ({ title: inspected.title, payload: inspected.payload, files: manifest, ...(visibility ? { visibility } : {}) });
+    const version = (visibility: Visibility | undefined) => ({ title: inspected.title, payload: inspected.payload, files: manifest, project, ...(visibility ? { visibility } : {}) });
 
     const create = async () => {
-      const res = await cloudFetch('POST', '/api/artifacts', { type: ref.type, visibility: requested ?? entry.visibility ?? 'private' });
+      const res = await cloudFetch('POST', '/api/artifacts', { type: ref.type, visibility: requested ?? entry.visibility ?? 'private', project });
       const created = (await (await expectOk(res)).json()) as CloudArtifact;
       updateArtifactConfig(configFile, key, {
         visibility: created.visibility,
@@ -205,7 +213,7 @@ export function createCloudRoutes(options: CloudRoutesOptions) {
     const res = await cloudFetch('DELETE', `/api/artifacts/${cloudId}`);
     if (res.status !== 404) await expectOk(res);
     for (const [key, entry] of Object.entries(readConfig(configFile).config.artifacts)) {
-      if (entry.cloud?.id === cloudId) updateArtifactConfig(configFile, key, { cloud: null });
+      if (entry.cloud?.id === cloudId) updateArtifactConfig(configFile, key, { cloud: null, autoPublish: false });
     }
   };
 
@@ -217,7 +225,7 @@ export function createCloudRoutes(options: CloudRoutesOptions) {
     if (action === 'status' && method === 'GET' && !first) {
       const credentials = readCredentials(credentialsFile, origin);
       const { config, warning } = readConfig(configFile);
-      sendJson(res, 200, { signedIn: !!credentials, login: credentials?.login ?? null, origin, artifacts: config.artifacts, warning: warning ?? null });
+      sendJson(res, 200, { signedIn: !!credentials, login: credentials?.login ?? null, origin, artifacts: config.artifacts, autoPublish: autoPublishState(), warning: warning ?? null });
       return;
     }
     if (action === 'login' && method === 'POST' && !first) {
@@ -249,12 +257,14 @@ export function createCloudRoutes(options: CloudRoutesOptions) {
       const body = (await readJsonBody(req)) as { visibility?: unknown } | null;
       if (body?.visibility !== undefined && !isVisibility(body.visibility)) throw new CloudRefused(400, 'visibility must be "public" or "private"');
       const result = await publish(ref, body?.visibility);
+      if (result.status === 200) updateArtifactConfig(configFile, `${ref.type}/${ref.id}`, { autoPublish: null });
       sendJson(res, result.status, result.body);
       return;
     }
     if (action === 'publish' && ref && method === 'DELETE') {
       const entry = artifactEntry(`${ref.type}/${ref.id}`);
       if (entry.cloud) await deleteCloud(entry.cloud.id);
+      updateArtifactConfig(configFile, `${ref.type}/${ref.id}`, { autoPublish: false });
       sendJson(res, 200, { unpublished: `${ref.type}/${ref.id}` });
       return;
     }
@@ -265,12 +275,21 @@ export function createCloudRoutes(options: CloudRoutesOptions) {
       sendJson(res, 200, await setVisibility(ref, visibility));
       return;
     }
+    if (action === 'auto-publish' && method === 'POST' && !first) {
+      const body = (await readJsonBody(req)) as { scope?: unknown; value?: unknown } | null;
+      const value = body?.value;
+      if (body?.scope === 'global' && typeof value === 'boolean') writeGlobalAutoPublish(settingsFile, value);
+      else if (body?.scope === 'project' && (typeof value === 'boolean' || value === null)) setProjectAutoPublish(configFile, value);
+      else throw new CloudRefused(400, 'send {"scope":"global","value":true|false} or {"scope":"project","value":true|false|null}');
+      sendJson(res, 200, autoPublishState());
+      return;
+    }
     send(res, 404, 'Not found');
   };
 
   return {
     async handleCallback(url: URL, res: http.ServerResponse) {
-      const page = (status: number, result: { ok: true; login: string } | { ok: false; detail: string }) =>
+      const page = (status: number, result: { ok: true; login: string; autoPublish: boolean } | { ok: false; detail: string }) =>
         send(res, status, callbackPage({ ...result, origin }), {
           'Content-Type': 'text/html; charset=utf-8',
           'Content-Security-Policy': CALLBACK_PAGE_CSP,
@@ -301,7 +320,8 @@ export function createCloudRoutes(options: CloudRoutesOptions) {
         return;
       }
       writeCredentials(credentialsFile, { origin, token: issued.token, login: issued.login });
-      page(200, { ok: true, login: issued.login });
+      defaultGlobalAutoPublish(settingsFile);
+      page(200, { ok: true, login: issued.login, autoPublish: autoPublishState().enabled });
     },
 
     match: (pathname: string) => ROUTE.exec(pathname),
