@@ -6,8 +6,8 @@ description: Use when seeing decides faster than reading — UI directions or mo
 # Artifacts
 
 Artifacts are pages your human partner opens in their browser while you
-work: an artboard of mockups to choose from, a document to read and comment
-on, or one HTML page to click and tune. You write files into the project; a local server shows each
+work: an artboard of mockups to choose from and comment on, a document to
+read and comment on, or one HTML page to click and tune. You write files into the project; a local server shows each
 artifact at its own link and updates it the moment a file changes. They look,
 then answer in the terminal.
 
@@ -152,7 +152,7 @@ whether it is on.
 
 ```
 <project>/.ryugi/artifacts/
-  artboard/<id>/       canvas.json + pages/          (you write)
+  artboard/<id>/       canvas.json + pages/ (you write); comments.json (server only)
   document/<id>/       doc.xml + assets/ (you write); comments.json (server only)
   html/<id>/           index.html + its files        (you write)
   .state/              the server writes; never edit

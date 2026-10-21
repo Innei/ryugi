@@ -21,6 +21,8 @@ Start the server and get the link as `SKILL.md` describes, with
   warnings.json                warnings + pending boards — read after every change
   layout.json                  computed geometry — read before placing new content
   selection.json               what your human partner selected and tweaked in the viewer
+
+comments.json in the artboard directory is the server's; never write it.
 ```
 
 ## canvas.json
@@ -176,6 +178,45 @@ in the source once you write them.
 IDs are renumbered when a board reloads, which happens after every edit to
 it. Resolve an ID against the current `nodes`, and before you change a board
 again, ask for the ID again rather than reusing an old one.
+
+## Comments
+
+Your human partner comments on the canvas with the comment tool (C): on
+selected nodes, on a spot inside a board, or on empty canvas. Read and
+answer through the CLI, never through `comments.json`.
+
+```bash
+node app/ryugi-artifacts.cjs comment list --json --project-dir /path/to/project --artifact artboard/<id>
+```
+
+- `list` prints what changed since you last ran it: new threads, replies,
+  edits, resolves. Run it whenever you work on the artboard, and when a
+  message says comment threads changed. `--all` prints every thread without
+  marking anything as read.
+- Each thread has an `id`, `waitingOn`, `messages` and an `anchor`: `page`
+  and `x`/`y`. With a `board`, `x`/`y` are inside that board, and `nodes`
+  (`board` + CSS `path` from `body`) and `offset` (where inside the node,
+  as fractions of its width and height) say what was hit. No `board`: it
+  is about the page or the space between boards, at canvas `x`/`y`.
+- `"stale": true` means that board's HTML changed after the comment was
+  made: the node at `path` may have moved or gone. Check the board before
+  editing by path, and say what you matched it to when you reply.
+- A comment asking for a change: edit the board's HTML, reply with what
+  changed, then resolve the thread.
+- Reply, with the message on stdin:
+
+  ```bash
+  node app/ryugi-artifacts.cjs comment reply --json --project-dir /path/to/project --artifact artboard/<id> --thread <thread-id> <<'EOF'
+  输入框往右挪了 8px，和 pin 不再重叠。
+  EOF
+  ```
+
+- Ask about a board: `comment add … --board <boardId>`, message on stdin;
+  the pin goes at the board's top-right corner unless you pass `--x` and
+  `--y` (board coordinates).
+- Settled: `comment resolve … --thread <thread-id>`.
+- An error saying the server is older than the CLI: run `start` again, then
+  retry.
 
 ## Rounds and pages
 
