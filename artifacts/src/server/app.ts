@@ -15,7 +15,9 @@ import { resolveBoardFile, resolveDocumentAsset, resolveHtmlFile, resolveInside 
 import { createDynamicBlocks } from './dynamic-blocks';
 import { readCanvas, writeArtifactState, writeJsonAtomic } from './state';
 import { createSelectionStore } from './selection';
-import { ensureConfig } from './config';
+import { ensureConfig, readConfig } from './config';
+import { readCredentials } from './credentials';
+import { createRelayClient } from './relay';
 import { AVATAR_ROUTE, createAvatars } from './avatars';
 import { createCloudRoutes, type CloudOptions } from './cloud';
 import { commentNames } from './comment-names';
@@ -35,6 +37,7 @@ export interface ServerOptions {
   documentTiming?: DocumentTiming;
   configFile?: string;
   cloud?: CloudOptions;
+  relay?: { url: string; version: string; pollMs?: number };
   fetch?: typeof fetch;
 }
 
@@ -130,9 +133,11 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
   let port = 0;
   let cookieName = '';
 
+  let relay: ReturnType<typeof createRelayClient> | null = null;
   const broadcast = (message: ServerMessage) => {
     const frame = textFrame(JSON.stringify(message));
     for (const socket of clients) socket.write(frame);
+    relay?.emit(message.artifact, message);
   };
   const avatars = createAvatars(options.fetch);
   const names = commentNames({ agentFile: path.join(stateDir, 'agent'), projectDir: path.resolve(root, '../..'), cloud: options.cloud });
@@ -204,6 +209,15 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
     }
   };
 
+  const documentState = (id: string, session: NonNullable<Awaited<ReturnType<typeof documents.open>>>) => ({
+    snapshot: Buffer.from(session.snapshot()).toString('base64'),
+    lineage: session.lineage(),
+    outcome: session.outcome(),
+    streaming: session.streaming(),
+    cursor: session.cursor(),
+    comments: documents.comments(id),
+  });
+
   const serveDocumentApi = async (req: http.IncomingMessage, res: http.ServerResponse, id: string, action: string) => {
     if (action !== 'state' && (req.method !== 'POST' || !sameOrigin(req))) {
       send(res, 403, 'Forbidden');
@@ -228,14 +242,7 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
       return;
     }
     if (action === 'state') {
-      sendJson(res, 200, {
-        snapshot: Buffer.from(session.snapshot()).toString('base64'),
-        lineage: session.lineage(),
-        outcome: session.outcome(),
-        streaming: session.streaming(),
-        cursor: session.cursor(),
-        comments: documents.comments(id),
-      });
+      sendJson(res, 200, documentState(id, session));
       return;
     }
     if (Number(req.headers['content-length'] ?? 0) > MAX_DOCUMENT_UPDATE) {
@@ -357,14 +364,19 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
     });
   };
 
+  const artifactMeta = (ref: ArtifactRef, dir: string) => ({
+    ...readArtifact(dir, ref, runtimeOf(ref, dir)),
+    ...(ref.type !== 'html' ? { agent: names.agent() } : {}),
+    contentBase: `${contentPrefix}${ref.type}/${ref.id}/`,
+  });
+
   const serveArtifactApi = (res: http.ServerResponse, type: string, id: string) => {
     const dir = resolveArtifactDir(root, type, id);
     if (!dir) {
       sendJson(res, 404, { warnings: [`artifact ${type}/${id} not found`] });
       return;
     }
-    const ref = artifactKeyOf(`${type}/${id}`)!;
-    sendJson(res, 200, { ...readArtifact(dir, ref, runtimeOf(ref, dir)), ...(ref.type !== 'html' ? { agent: names.agent() } : {}), contentBase: `${contentPrefix}${type}/${id}/` });
+    sendJson(res, 200, artifactMeta(artifactKeyOf(`${type}/${id}`)!, dir));
   };
 
   const serveList = (res: http.ServerResponse) => {
@@ -640,6 +652,64 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
   }
   writeJsonAtomic(path.join(stateDir, 'server-info'), { type: 'server-started', url, port, root });
 
+  const relayViewers = new Map<string, { key: string; tab: object }>();
+  const servedDocuments = () => {
+    const served = new Map<string, string>();
+    if (!options.configFile) return served;
+    for (const [key, entry] of Object.entries(readConfig(options.configFile).config.artifacts)) {
+      const ref = artifactKeyOf(key);
+      if (entry.cloud && ref?.type === 'document' && resolveArtifactDir(root, 'document', ref.id)) served.set(entry.cloud.id, key);
+    }
+    return served;
+  };
+  const handleRelay = async (key: string, body: unknown, conn: string) => {
+    const ref = artifactKeyOf(key)!;
+    const dir = resolveArtifactDir(root, ref.type, ref.id);
+    if (!dir) throw new Error(`${key} not found`);
+    const request = (typeof body === 'object' && body !== null ? body : {}) as Record<string, unknown>;
+    if (request.op === 'meta') return artifactMeta(ref, dir);
+    if (request.op === 'state' || request.op === 'update') {
+      const session = await documents.open(ref.id);
+      if (!session) throw new Error(`${key} has no doc.xml`);
+      if (request.op === 'state') return documentState(ref.id, session);
+      const bytes = typeof request.bytes === 'string' ? Buffer.from(request.bytes, 'base64') : null;
+      if (!bytes) throw new Error('update needs bytes');
+      if (bytes.length > MAX_DOCUMENT_UPDATE) throw new Error('update too large');
+      session.importUpdate(new Uint8Array(bytes));
+      return null;
+    }
+    if (request.op === 'comment') {
+      const op = JSON.stringify(request.comment ?? null).length <= MAX_COMMENT_OP ? asHumanOp(request.comment) : null;
+      if (!op) throw new Error('not a comment op');
+      return { comments: documents.applyCommentOp(ref.id, op) };
+    }
+    if (request.op === 'selection') {
+      if (typeof request.selection !== 'object' || request.selection === null) throw new Error('not a selection');
+      const viewer = relayViewers.get(conn) ?? { key, tab: {} };
+      relayViewers.set(conn, viewer);
+      selections.accept(viewer.tab, { ...request.selection, artifact: key });
+      return null;
+    }
+    throw new Error('unknown request');
+  };
+  relay =
+    options.relay && options.cloud
+      ? createRelayClient({
+          ...options.relay,
+          token: () => readCredentials(options.cloud!.credentialsFile, options.cloud!.origin)?.token ?? null,
+          served: servedDocuments,
+          handle: handleRelay,
+          onActivity: touch,
+          onWatch: (keys) => {
+            for (const [conn, viewer] of relayViewers) {
+              if (keys.has(viewer.key)) continue;
+              selections.drop(viewer.tab);
+              relayViewers.delete(conn);
+            }
+          },
+        })
+      : null;
+
   const watcher = watchTree(
     root,
     (files) => {
@@ -670,6 +740,7 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
         const payload = refreshState(ref, dir);
         const frame = textFrame(JSON.stringify({ type: 'change', artifact: key, files: changed } satisfies ServerMessage));
         for (const socket of clients) socket.write(frame);
+        relay?.emit(key, { type: 'change', artifact: key, files: changed });
         changeListeners.forEach((listener) => listener(ref, payload, changed));
       }
       touch();
@@ -692,6 +763,7 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
     close: () =>
       new Promise<void>((resolve) => {
         watcher.close();
+        relay?.close();
         selections.clearAll();
         for (const socket of clients) socket.destroy();
         server.close(() => resolve());

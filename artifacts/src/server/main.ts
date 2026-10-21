@@ -20,6 +20,7 @@ async function main() {
     urlHost: config.urlHost,
     configFile: path.join(path.dirname(root), 'config.json'),
     cloud: { origin: config.cloudOrigin, credentialsFile: credentialsFile(process.env, process.platform, os.homedir()) },
+    relay: { url: `${config.cloudOrigin.replace(/^http/, 'ws')}/api/relay/host`, version: process.env.RYUGI_ARTIFACTS_VERSION || 'local' },
   });
 
   let lastActivity = Date.now();

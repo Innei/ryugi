@@ -1,6 +1,5 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import type { Duplex } from 'node:stream';
 import { INSPECTOR_PROPERTIES, type InspectorProperty } from '../shared/inspector';
 import { isArtifactId } from '../shared/ids';
 import { DOCUMENT_SELECTION_LIMITS as DOC_LIMIT, SELECTION_FULL_NODES, SELECTION_LIMITS as LIMIT, SELECTION_MAX_NODES as MAX_NODES, type DocumentSelectionState, type SelectedNode, type SelectionChange, type SelectionNode, type SelectionState, type SelectionTweak } from '../shared/selection';
@@ -78,7 +77,7 @@ function readAnySelection(value: unknown) {
 }
 
 export function createSelectionStore(stateDir: string, exists: (kind: Kind, id: string) => boolean) {
-  const tabs = new Map<Duplex, Tab>();
+  const tabs = new Map<object, Tab>();
   let clock = 0;
   const fileOf = (kind: Kind, id: string) => path.join(stateDir, kind, id, 'selection.json');
   const write = (kind: Kind, id: string) => {
@@ -91,7 +90,7 @@ export function createSelectionStore(stateDir: string, exists: (kind: Kind, id: 
     else writeJsonAtomic(fileOf(kind, id), { artifact: `${kind}/${id}`, updatedAt: new Date().toISOString(), ...winner.state });
   };
   return {
-    accept(socket: Duplex, value: unknown) {
+    accept(socket: object, value: unknown) {
       const message = readAnySelection(value);
       const previous = tabs.get(socket);
       if (!message || !exists(message.kind, message.id)) {
@@ -104,7 +103,7 @@ export function createSelectionStore(stateDir: string, exists: (kind: Kind, id: 
       if (previous && !same) write(previous.kind, previous.id);
       write(message.kind, message.id);
     },
-    drop(socket: Duplex) {
+    drop(socket: object) {
       const tab = tabs.get(socket);
       if (!tab) return;
       tabs.delete(socket);
