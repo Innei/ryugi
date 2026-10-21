@@ -194,6 +194,21 @@ describe('requests', () => {
     expect(file.threads[0].messages[0]).toMatchObject({ author: 'human', text: 'from the phone' });
   });
 
+  test('a comment op on a published artboard lands in its comments.json and meta carries the threads', async () => {
+    const hub = await fakeHub();
+    const { root, configFile } = await start({ hub, published: false });
+    writeArtboard(root, 'board', { version: 1, pages: [{ id: 'p', name: 'P' }], boards: { a: { file: 'pages/a.html', page: 'p', x: 0, y: 0, w: 10, h: 10 } } }, { 'pages/a.html': '<html><body></body></html>' });
+    updateArtifactConfig(configFile, 'artboard/board', { cloud: { id: 'cloudboard', url: 'u', publishedAt: null, visibility: 'private' } });
+    await hub.next('hello');
+    const reply = await request(hub, { op: 'comment', comment: { op: 'create', anchor: { page: 'p', board: 'a', x: 1, y: 1 }, text: 'from the cloud' } }, 'cloudboard');
+    expect(reply.body.ok).toBe(true);
+    expect(reply.body.data.comments.threads[0].messages[0]).toMatchObject({ author: 'human', text: 'from the cloud' });
+    const file = JSON.parse(fs.readFileSync(path.join(root, 'artboard/board/comments.json'), 'utf8'));
+    expect(file.threads).toHaveLength(1);
+    const meta = await request(hub, { op: 'meta' }, 'cloudboard');
+    expect(meta.body.data).toMatchObject({ comments: { threads: [{ anchor: { board: 'a' } }] }, stale: [] });
+  });
+
   test('a Loro update from the phone reaches doc.xml', async () => {
     const hub = await fakeHub();
     const { root } = await start({ hub });

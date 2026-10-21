@@ -6,7 +6,7 @@ import { ARTIFACT_TYPES, type ArtifactSummary, type ArtifactType, type CanvasPay
 import { artifactKeyOf, artifactSignature, listArtifacts, resolveArtifactDir, type ArtifactRef } from './artifacts';
 import { readDocument } from './document';
 import { parseDocument } from './document-codec';
-import { createBoardCommentRegistry } from './board-comments';
+import { asBoardAgentOp, asBoardHumanOp, boardFiles, createBoardCommentRegistry } from './board-comments';
 import { asAgentOp, asHumanOp } from './document-comments';
 import { createDocumentRegistry, type DocumentTiming } from './documents';
 import { latestMtime, readHtml } from './html';
@@ -89,6 +89,8 @@ const API_PREVIEW_ROUTE = /^\/api\/preview\/([^/]+)\/([^/]+)$/;
 const API_DOCUMENT_ROUTE = /^\/api\/document\/([^/]+)\/(state|update|comments)$/;
 const MAX_COMMENT_OP = 64 * 1024;
 const API_AGENT_COMMENTS_ROUTE = /^\/api\/agent\/document\/([^/]+)\/comments$/;
+const API_BOARD_COMMENTS_ROUTE = /^\/api\/artboard\/([^/]+)\/comments$/;
+const API_AGENT_BOARD_COMMENTS_ROUTE = /^\/api\/agent\/artboard\/([^/]+)\/comments$/;
 const MAX_DOCUMENT_UPDATE = 8 * 1024 * 1024;
 const MAX_RELAY_FILE = 8 * 1024 * 1024;
 
@@ -329,6 +331,52 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
     }
   };
 
+  const serveBoardComments = async (req: http.IncomingMessage, res: http.ServerResponse, id: string) => {
+    if (req.method !== 'POST' || !sameOrigin(req)) {
+      send(res, 403, 'Forbidden');
+      return;
+    }
+    if (!resolveArtifactDir(root, 'artboard', id)) {
+      sendJson(res, 404, { error: `artboard/${id} not found` });
+      return;
+    }
+    const op = asBoardHumanOp(await readCommentBody(req));
+    if (!op) {
+      sendJson(res, 400, { error: 'not a comment op' });
+      return;
+    }
+    sendJson(res, 200, boardComments.apply(id, op));
+  };
+
+  const serveAgentBoardComments = async (req: http.IncomingMessage, res: http.ServerResponse, id: string) => {
+    const dir = resolveArtifactDir(root, 'artboard', id);
+    if (!dir) {
+      sendJson(res, 404, { error: `artboard/${id} not found` });
+      return;
+    }
+    const body = await readCommentBody(req);
+    const fields = typeof body === 'object' && body !== null ? (body as Record<string, unknown>) : {};
+    const agent = typeof fields.agent === 'string' && fields.agent.length > 0 && fields.agent.length <= 100 ? fields.agent : undefined;
+    if (fields.op === 'list') {
+      sendJson(res, 200, { type: 'comments', artifact: `artboard/${id}`, threads: boardComments.list(id, agent ?? 'Agent', fields.all === true) });
+      return;
+    }
+    const op = asBoardAgentOp(body);
+    if (!op) {
+      sendJson(res, 400, { error: 'not an agent comment op: use list, add {anchor: {page, board, x, y}, text}, reply {threadId, text} or resolve {threadId}; text must not be empty' });
+      return;
+    }
+    if (op.op === 'add' && op.anchor.board && !(op.anchor.board in boardFiles(dir))) {
+      sendJson(res, 400, { error: `no board ${op.anchor.board} in artboard/${id}` });
+      return;
+    }
+    try {
+      sendJson(res, 200, boardComments.applyAgent(id, op, agent));
+    } catch (err) {
+      sendJson(res, 400, { error: (err as Error).message });
+    }
+  };
+
   const isAuthorized = (req: http.IncomingMessage, keyFromQuery: string | null) =>
     (keyFromQuery !== null && safeEqual(keyFromQuery, token)) ||
     safeEqual(parseCookies(req.headers.cookie)[cookieName] ?? '', token);
@@ -384,6 +432,7 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
   const artifactMeta = (ref: ArtifactRef, dir: string, contentOrigin = '') => ({
     ...readArtifact(dir, ref, runtimeOf(ref, dir)),
     ...(ref.type !== 'html' ? { agent: names.agent() } : {}),
+    ...(ref.type === 'artboard' ? { comments: boardComments.comments(ref.id), stale: boardComments.stale(ref.id) } : {}),
     contentBase: `${contentOrigin}${contentPrefix}${ref.type}/${ref.id}/`,
   });
 
@@ -562,6 +611,26 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
       return;
     }
 
+    const agentBoardMatch = API_AGENT_BOARD_COMMENTS_ROUTE.exec(pathname);
+    if (agentBoardMatch) {
+      if (req.method !== 'POST' || key === null || !safeEqual(key, token)) {
+        send(res, 403, 'Forbidden: agent calls need ?key=');
+        return;
+      }
+      void serveAgentBoardComments(req, res, agentBoardMatch[1]!).catch((err) => {
+        if (!res.headersSent) send(res, 500, `Artifacts error: ${(err as Error).message}`);
+      });
+      return;
+    }
+
+    const boardCommentsMatch = API_BOARD_COMMENTS_ROUTE.exec(pathname);
+    if (boardCommentsMatch) {
+      void serveBoardComments(req, res, boardCommentsMatch[1]!).catch((err) => {
+        if (!res.headersSent) send(res, 500, `Artifacts error: ${(err as Error).message}`);
+      });
+      return;
+    }
+
     const documentMatch = API_DOCUMENT_ROUTE.exec(pathname);
     if (documentMatch) {
       void serveDocumentApi(req, res, documentMatch[1]!, documentMatch[2]!).catch((err) => {
@@ -715,6 +784,11 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
     if (request.op === 'client') {
       if (typeof request.message === 'object' && request.message !== null) acceptReport({ ...(request.message as Record<string, unknown>), artifact: key });
       return null;
+    }
+    if (request.op === 'comment' && ref.type === 'artboard') {
+      const op = JSON.stringify(request.comment ?? null).length <= MAX_COMMENT_OP ? asBoardHumanOp(request.comment) : null;
+      if (!op) throw new Error('not a comment op');
+      return boardComments.apply(ref.id, op);
     }
     if ((request.op === 'state' || request.op === 'update' || request.op === 'comment') && ref.type !== 'document') throw new Error(`${key} is not a document`);
     if (request.op === 'state' || request.op === 'update') {
