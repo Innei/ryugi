@@ -1,6 +1,7 @@
 'use strict';
 
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 
 const MAX_CONTEXT = 8000;
@@ -149,6 +150,51 @@ function commentReminders(project, root, key) {
   return `${head}${named.join(', ')}${left ? `${named.length ? ', and ' : ''}${left} more document(s)` : ''}.\n${command}`;
 }
 
+// Mirrors credentialsFile in artifacts/src/server/credentials.ts; artifacts/test/hook-auto-publish.test.ts keeps them in step.
+function credentialsPath(env, platform, home) {
+  if (platform === 'win32' && env.APPDATA) return path.join(env.APPDATA, 'ryugi', 'credentials.json');
+  return path.join(env.XDG_CONFIG_HOME || path.join(home, '.config'), 'ryugi', 'credentials.json');
+}
+
+function readText(file) {
+  try {
+    return fs.readFileSync(file, 'utf8').trim();
+  } catch {
+    return '';
+  }
+}
+
+function remember(file, value) {
+  try { fs.writeFileSync(file, `${value}\n`); } catch {}
+}
+
+function autoPublishContext(project, env, sessionId) {
+  const state = path.join(project, '.ryugi', 'artifacts', '.state');
+  const credentials = credentialsPath(env, process.platform, os.homedir());
+  const signedIn = typeof (readJson(credentials) || {}).token === 'string';
+  const settings = readJson(path.join(path.dirname(credentials), 'config.json')) || {};
+  const lines = [];
+  const askedFile = path.join(state, 'auto-publish-asked');
+  if (signedIn && typeof settings.autoPublish !== 'boolean' && readText(askedFile) !== sessionId) {
+    remember(askedFile, sessionId);
+    lines.push(
+      'Ryugi auto-publish is not decided yet. Ask your human partner once, in their language: when your turn ends, artifacts changed during it can be published automatically as private copies on Ryugi Cloud, so they can open them from another device (only they can see them; ryugi.innei.dev lists them when signed in). Nothing is published until they answer.',
+      `Then run \`node "${LAUNCHER}" config --auto-publish on\` or \`node "${LAUNCHER}" config --auto-publish off\` with their answer.`,
+    );
+  }
+  const notice = (readJson(path.join(state, 'auto-publish.json')) || {}).notice;
+  const notifiedFile = path.join(state, 'auto-publish-notified');
+  if (notice && typeof notice.id === 'string' && readText(notifiedFile) !== notice.id) {
+    remember(notifiedFile, notice.id);
+    if (notice.kind === 'signed-out') {
+      lines.push(`Ryugi auto-publish paused: the Ryugi Cloud sign-in expired. Tell your human partner and offer to sign in again with \`node "${LAUNCHER}" publish --login --json --project-dir "${project}"\`.`);
+    } else if (notice.kind === 'cap') {
+      lines.push(`Ryugi auto-publish could not create a new cloud copy (${clip(String(notice.message), 200)}). Existing copies still update. Tell your human partner; they can delete old copies on ryugi.innei.dev or with \`node "${LAUNCHER}" publish --list --json --project-dir "${project}"\` and \`--delete <cloud-id>\`.`);
+    }
+  }
+  return lines.join('\n');
+}
+
 function documentSelections(project, root, budget) {
   const sections = [];
   let left = budget;
@@ -177,7 +223,8 @@ function main() {
   const prompt = typeof input.prompt === 'string' ? input.prompt : '';
   const root = path.join(project, '.ryugi', 'artifacts');
   const state = path.join(root, '.state');
-  const reminders = commentReminders(project, root, cursorKey(process.env));
+  const autoPublish = autoPublishContext(project, process.env, typeof input.session_id === 'string' ? input.session_id : '');
+  const reminders = [commentReminders(project, root, cursorKey(process.env)), autoPublish].filter(Boolean).join('\n\n');
   const files = selectionFiles(state).sort((a, b) => String(b.value.updatedAt).localeCompare(String(a.value.updatedAt)));
   const sections = [];
   // Reminders are capped at MAX_REMINDERS and reserved first so a large artboard selection cannot crowd them out.
@@ -195,6 +242,6 @@ function main() {
   process.stdout.write(`${sections.join('\n\n')}\n`);
 }
 
-module.exports = { unreadThreadCount, cursorKey };
+module.exports = { unreadThreadCount, cursorKey, credentialsPath, autoPublishContext };
 
 if (require.main === module) main();
