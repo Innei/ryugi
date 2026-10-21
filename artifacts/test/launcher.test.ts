@@ -112,6 +112,31 @@ describe('launcher with a local build', () => {
     const owners = fs.readFileSync(path.join(dir, '.ryugi', 'artifacts', '.state', 'owners'), 'utf8').trim().split('\n');
     expect(owners).toEqual([String(process.pid)]);
   });
+
+  test('records a local source version and replaces the server when it changes', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'artifacts-project-'));
+    const launch = (extraEnv: Record<string, string> = {}) => JSON.parse(spawnSync(process.execPath,
+      [path.join(appDir, launcherName), 'start', '--project-dir', dir, '--json'],
+      { encoding: 'utf8', env: { ...process.env, ARTIFACTS_OPEN: '0', ...extraEnv }, timeout: 20000 }).stdout.trim().split('\n').pop()!);
+    cleanups.push(() => launch({ RYUGI_ARTIFACTS_COMMAND: '' }));
+
+    const first = launch();
+    expect(first.type).toBe('server-started');
+    const version = fs.readFileSync(path.join(dir, '.ryugi', 'artifacts', '.state', 'server-version'), 'utf8').trim();
+    expect(version).toMatch(/^local-[0-9a-f]{12}$/);
+
+    const pid = pidOf(dir);
+    expect(launch().reused).toBe(true);
+    expect(pidOf(dir)).toBe(pid);
+
+    expect(launch({ RYUGI_ARTIFACTS_VERSION: 'local-forced' }).reused).not.toBe(true);
+    expect(pidOf(dir)).not.toBe(pid);
+
+    expect(launch({ RYUGI_ARTIFACTS_VERSION: version }).reused).not.toBe(true);
+    const restored = pidOf(dir);
+    expect(launch({ RYUGI_ARTIFACTS_VERSION: version }).reused).toBe(true);
+    expect(pidOf(dir)).toBe(restored);
+  }, 30000);
 });
 
 describe('launcher without a local build', () => {

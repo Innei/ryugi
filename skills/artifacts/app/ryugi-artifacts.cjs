@@ -2,6 +2,7 @@
 'use strict';
 
 const { spawn, spawnSync } = require('node:child_process');
+const crypto = require('node:crypto');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
@@ -22,6 +23,19 @@ const compare = (a, b) => {
 };
 const supported = (v) => valid(v) && compare(v, MIN_VERSION) >= 0;
 const cliOf = (version) => path.join(RELEASES, version, 'node_modules', 'ryugi-artifacts', 'dist', 'cli.cjs');
+
+// The local checkout has no release version. Fingerprint the code that affects
+// the running server so start replaces an older process instead of reusing it.
+function localVersion() {
+  const hash = crypto.createHash('sha256');
+  for (const name of ['cli.cjs', 'server.cjs']) {
+    try {
+      hash.update(`${name}\0`);
+      hash.update(fs.readFileSync(path.join(__dirname, name)));
+    } catch {}
+  }
+  return `local-${hash.digest('hex').slice(0, 12)}`;
+}
 
 class LaunchError extends Error {}
 
@@ -130,6 +144,8 @@ function main() {
     const version = resolveRelease(args[0]);
     cli = cliOf(version);
     env.RYUGI_ARTIFACTS_VERSION = version;
+  } else if (!env.RYUGI_ARTIFACTS_VERSION) {
+    env.RYUGI_ARTIFACTS_VERSION = localVersion();
   }
   const given = Number(env.RYUGI_ARTIFACTS_OWNER);
   const owner = Number.isInteger(given) && given > 1 ? given : ownerPid();
