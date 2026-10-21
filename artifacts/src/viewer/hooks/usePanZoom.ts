@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import { COMMENT_CURSOR } from '../../shared/inspector';
 import type { Bounds } from '../../shared/types';
 import { fitView, pinchView, zoomAround, zoomTo, type Insets, type Point, type View } from '../lib/view';
 
-export type Tool = 'select' | 'hand';
+export type Tool = 'select' | 'hand' | 'comment';
 
 const INSETS: Insets = { top: 64, right: 24, bottom: 24, left: 24 };
 const WHEEL_ZOOM_SPEED = 0.01;
@@ -132,7 +133,7 @@ export function usePanZoom(tool: Tool) {
     wheelAt,
     panning,
     setSpaceHeld,
-    cursor: dragging ? 'grabbing' : panning ? 'grab' : 'default',
+    cursor: dragging ? 'grabbing' : panning ? 'grab' : tool === 'comment' ? COMMENT_CURSOR : 'default',
     handlers: { onPointerDown, onPointerMove, onPointerUp, onPointerCancel: onPointerUp },
   };
 }

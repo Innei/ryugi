@@ -1,5 +1,5 @@
 import { installInspector } from '../inspector/runtime';
-import { INSPECTOR_PROPERTIES } from '../shared/inspector';
+import { COMMENT_CURSOR, INSPECTOR_PROPERTIES } from '../shared/inspector';
 
 const RUNTIME = `(() => {
   const post = (message) => parent.postMessage(message, '*');
@@ -118,7 +118,7 @@ const UI_MARKER = /<ryugi-[a-z0-9-]+(?:\s|>)/i;
 const UI_META = /<meta[^>]+name=["']ryugi-ui["'][^>]*>/i;
 
 export function injectRuntime(html: string, options: { uiRuntimeUrl?: string; embedded?: boolean; inspector?: boolean } = {}): string {
-  const inspect = options.inspector ? `;(${installInspector.toString().replace(/\n/g, ' ')})(window,${JSON.stringify(INSPECTOR_PROPERTIES)});` : '';
+  const inspect = options.inspector ? `;(${installInspector.toString().replace(/\n/g, ' ')})(window,${JSON.stringify(INSPECTOR_PROPERTIES)},${JSON.stringify(COMMENT_CURSOR)});` : '';
   const tag = `${options.embedded ? EMBEDDED_STYLE : ''}<script>${inspect || RUNTIME_LINE}</script>`;
   const ui =
     options.uiRuntimeUrl && !options.inspector && (UI_MARKER.test(html) || UI_META.test(html))

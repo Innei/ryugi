@@ -1,7 +1,7 @@
 import { ActionIcon, DropdownMenu, Popover } from '@lobehub/ui';
 import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
-import { Check, ChevronDown, Hand, MousePointer2, PanelRight } from 'lucide-react';
+import { Check, ChevronDown, Hand, MessageCirclePlus, MousePointer2, PanelRight } from 'lucide-react';
 import type { PageSpec } from '../../shared/types';
 import type { Tool } from '../hooks/usePanZoom';
 import { PublishMenu } from './PublishMenu';
@@ -66,9 +66,10 @@ interface TopLeftBarProps {
   onPageChange: (id: string) => void;
   tool: Tool;
   onToolChange: (tool: Tool) => void;
+  commenting?: boolean;
 }
 
-export function TopLeftBar({ pages, page, onPageChange, tool, onToolChange }: TopLeftBarProps) {
+export function TopLeftBar({ pages, page, onPageChange, tool, onToolChange, commenting = false }: TopLeftBarProps) {
   const current = pages.find((p) => p.id === page);
   return (
     <div data-chrome {...stylex.props(styles.bar, styles.left)}>
@@ -103,6 +104,16 @@ export function TopLeftBar({ pages, page, onPageChange, tool, onToolChange }: To
         aria-label="Hand"
         onClick={() => onToolChange('hand')}
       />
+      {commenting ? (
+        <ActionIcon
+          icon={MessageCirclePlus}
+          size="small"
+          active={tool === 'comment'}
+          title="Comment (C)"
+          aria-label="Comment"
+          onClick={() => onToolChange('comment')}
+        />
+      ) : null}
     </div>
   );
 }

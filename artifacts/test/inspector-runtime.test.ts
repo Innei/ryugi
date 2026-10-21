@@ -272,3 +272,33 @@ test('tree paths and tweak origins are clipped to what the viewer accepts', () =
   const card = last('tree')!.nodes.find((node: { tag: string }) => node.tag === 'section');
   expect(card.path.length).toBeLessThanOrEqual(4000);
 });
+
+test('comment mode shows the bubble cursor and swallows clicks without selecting', () => {
+  cardId();
+  command('mode', { mode: 'comment' });
+  const style = document.querySelector('style[data-ryugi-inspector]')!;
+  expect(style.textContent).toContain('data:image/svg+xml');
+  const button = root.querySelector('button')!;
+  const action = vi.fn();
+  button.addEventListener('click', action);
+  const before = posted.filter((m) => m.type === 'ryugi:inspect:selection').length;
+  button.click();
+  expect(action).not.toHaveBeenCalled();
+  expect(posted.filter((m) => m.type === 'ryugi:inspect:selection')).toHaveLength(before);
+  command('mode', { mode: 'select' });
+  expect(style.textContent).toBe('*{cursor:default!important}');
+  button.click();
+  expect(last('selection')!.selection.tag).toBe('button');
+});
+
+test('C is forwarded to the canvas so the comment tool works with focus in a board', () => {
+  cardId();
+  document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'c', code: 'KeyC', bubbles: true }));
+  expect(last('key')).toMatchObject({ key: 'c', code: 'KeyC', down: true });
+});
+
+test('the mode can be set right after enabling, before the frame knows its session', () => {
+  command('enable');
+  window.dispatchEvent(new MessageEvent('message', { source: window.parent, data: { type: 'ryugi:inspect', action: 'mode', mode: 'comment', connection: 'test-connection', session: null } }));
+  expect(document.querySelector('style[data-ryugi-inspector]')!.textContent).toContain('data:image/svg+xml');
+});

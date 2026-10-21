@@ -1,7 +1,7 @@
 import type { InspectorNode, InspectorProperty, InspectorRect, InspectorSelection, LayerKind } from '../shared/inspector';
 
 // Self-contained: the server serializes this function into sandboxed artboard HTML.
-export function installInspector(win: Window & typeof globalThis, properties: readonly string[]) {
+export function installInspector(win: Window & typeof globalThis, properties: readonly string[], commentCursor = 'crosshair') {
   const doc = win.document;
   const session = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
   const ids = new WeakMap<Element, number>();
@@ -10,6 +10,7 @@ export function installInspector(win: Window & typeof globalThis, properties: re
   const ignored = new Set(['SCRIPT', 'STYLE', 'META', 'LINK', 'NOSCRIPT', 'HEAD']);
   let nextId = 0;
   let enabled = false;
+  let mode: 'select' | 'comment' = 'select';
   let connection = '';
   let selected: Element | null = null;
   let treeTimer = 0;
@@ -133,6 +134,7 @@ export function installInspector(win: Window & typeof globalThis, properties: re
     if (!enabled || event.button !== 0 || !(event.target instanceof win.Element) || ignoredTarget(event.target)) return;
     event.preventDefault(); event.stopImmediatePropagation();
     if (suppressClick) { suppressClick = false; return; }
+    if (mode === 'comment') return;
     selected = event.target.closest('svg') || event.target;
     selection('user', event.shiftKey || event.metaKey || event.ctrlKey);
   };
@@ -182,7 +184,7 @@ export function installInspector(win: Window & typeof globalThis, properties: re
   };
   const key = (event: KeyboardEvent) => {
     if (!enabled || event.composedPath().some((target) => target instanceof win.Element && target.matches('input,textarea,select,[contenteditable]'))) return;
-    if (!['Space', 'KeyH', 'KeyV', 'Escape', 'Equal', 'Minus', 'Digit0', 'Digit1'].includes(event.code)) return;
+    if (!['Space', 'KeyH', 'KeyV', 'KeyC', 'Escape', 'Equal', 'Minus', 'Digit0', 'Digit1'].includes(event.code)) return;
     event.preventDefault(); event.stopImmediatePropagation();
     post('key', { key: event.key, code: event.code, down: event.type === 'keydown', ctrlKey: event.ctrlKey, metaKey: event.metaKey, shiftKey: event.shiftKey, altKey: event.altKey });
   };
@@ -213,6 +215,11 @@ export function installInspector(win: Window & typeof globalThis, properties: re
     }
     if (data.connection !== connection) return;
     if (data.action === 'disable') { disable(); return; }
+    if (data.action === 'mode' && (data.mode === 'select' || data.mode === 'comment')) {
+      mode = data.mode;
+      cursor.textContent = `*{cursor:${mode === 'comment' ? commentCursor : 'default'}!important}`;
+      return;
+    }
     if (!enabled && data.action !== 'reset') return;
     if (data.session !== session) return;
     if (data.action === 'cancel-drag') { endDrag(new win.Event('pointercancel')); return; }

@@ -3,6 +3,7 @@ import { act, createElement } from 'react';
 import { createPortal } from 'react-dom';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
+import { COMMENT_CURSOR } from '../src/shared/inspector';
 import { usePanZoom, type Tool } from '../src/viewer/hooks/usePanZoom';
 
 let root: Root;
@@ -158,4 +159,16 @@ test('a finger that started on the toolbar never moves the canvas while another 
   touch(host.querySelector('button')!, 'pointerdown', 2, 300, 300);
   touch(viewport, 'pointermove', 2, 310, 310);
   expect(panZoom.view).toEqual({ x: 0, y: 0, k: 0.5 });
+});
+
+test('the comment tool shows the bubble cursor and does not pan', () => {
+  const viewport = render('comment');
+  expect(panZoom.cursor).toBe(COMMENT_CURSOR);
+  expect(panZoom.panning).toBe(false);
+  expect(viewport).toBeTruthy();
+});
+
+test('holding space still pans from the comment tool', () => {
+  render('comment', true);
+  expect(panZoom.cursor).toBe('grab');
 });

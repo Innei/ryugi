@@ -5,7 +5,7 @@ import { readInspectorReport } from '../lib/inspector';
 export interface InspectedFrame { session: string; nodes: InspectorNode[]; truncated: boolean; tweaks: InspectorTweak[] }
 export interface InspectedSelection { boardId: string; node: InspectorSelection }
 export type InspectorInput = Extract<InspectorReport, { type: 'ryugi:inspect:wheel' | 'ryugi:inspect:pan' | 'ryugi:inspect:key' | 'ryugi:inspect:drag' }>;
-interface Options { enabled: boolean; playing: ReadonlySet<string>; onInput: (boardId: string, input: InspectorInput) => void }
+interface Options { enabled: boolean; mode?: 'select' | 'comment'; playing: ReadonlySet<string>; onInput: (boardId: string, input: InspectorInput) => void }
 interface RegisteredFrame { element: HTMLIFrameElement; connection: string; session: string | null }
 interface Target extends InspectorTarget { boardId: string }
 interface BoardArea { boardId: string; rect: InspectorRect }
@@ -60,8 +60,9 @@ export function useInspector(options: Options) {
     if (!entry) return;
     entry.connection = crypto.randomUUID(); entry.session = null;
     invalidate(boardId);
-    const { enabled, playing } = current.current.options;
+    const { enabled, playing, mode = 'select' } = current.current.options;
     if (enabled && !playing.has(boardId)) send(boardId, { action: 'enable' });
+    if (mode !== 'select') send(boardId, { action: 'mode', mode });
   }, [invalidate, send]);
 
   useEffect(() => {
@@ -121,6 +122,11 @@ export function useInspector(options: Options) {
     const frames = registered.current;
     return () => { window.removeEventListener('message', message); for (const boardId of frames.keys()) send(boardId, { action: 'disable' }); };
   }, [applyArea, send]);
+
+  const mode = options.mode ?? 'select';
+  useEffect(() => {
+    for (const boardId of registered.current.keys()) send(boardId, { action: 'mode', mode });
+  }, [mode, send]);
 
   const playingKey = Array.from(options.playing).sort().join('\0');
   useEffect(() => {

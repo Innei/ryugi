@@ -5,6 +5,7 @@ import type { InspectorRect, InspectorReport } from '../../shared/inspector';
 import type { BoardHumanOp } from '../../shared/board-comments';
 import type { SelectionMessage } from '../../shared/selection';
 import { Canvas } from '../components/Canvas';
+import { CommentLayer } from '../components/CommentLayer';
 import { CanvasErrorBoundary } from '../components/CanvasErrorBoundary';
 import { ExpandedBoard } from '../components/ExpandedBoard';
 import { Labels } from '../components/Labels';
@@ -12,6 +13,7 @@ import { TopLeftBar, TopRightBar } from '../components/Toolbar';
 import { useLocalFeed } from '../hooks/useArtifactFeed';
 import { useCanvasData } from '../hooks/useCanvasData';
 import type { BoardCommentsState } from '../lib/board-comments';
+import { useBoardComments } from '../hooks/useBoardComments';
 import { useInspector } from '../hooks/useInspector';
 import { useSelectionSync } from '../hooks/useSelectionSync';
 import { usePanZoom, type Tool } from '../hooks/usePanZoom';
@@ -72,7 +74,7 @@ export function ArtboardView(props: ArtboardViewProps) {
   return phone ? <PhoneArtboard {...props} /> : <DesktopArtboard {...props} />;
 }
 
-function DesktopArtboard({ id, artifact, canvas, layout, warnings, pending, contentBase, versions, live, loaded, send, agent, menu = true }: ArtboardViewProps) {
+function DesktopArtboard({ id, artifact, canvas, layout, warnings, pending, contentBase, versions, live, loaded, send, agent, comments, comment, menu = true }: ArtboardViewProps) {
   const [tool, setTool] = useState<Tool>('select');
   const { viewportRef, view, fit, zoomBy, zoomTo, cursor, handlers, panBy, wheelAt, panning, setSpaceHeld } = usePanZoom(tool);
   const [inspectorOpen, setInspectorOpen] = useState(false);
@@ -92,8 +94,10 @@ function DesktopArtboard({ id, artifact, canvas, layout, warnings, pending, cont
   const [selecting, setSelecting] = useState(false);
   const [marquee, setMarquee] = useState<InspectorRect | null>(null);
   const selectionEnabled = tool === 'select' && !expanded && !panning;
+  const commentTool = tool === 'comment';
   const inspector = useInspector({
-    enabled: !expanded && (tool === 'select' || inspectorOpen),
+    enabled: !expanded && (tool === 'select' || commentTool || inspectorOpen),
+    mode: commentTool ? 'comment' : 'select',
     playing,
     onInput: (boardId, input) => {
       const board = canvas?.boards[boardId];
@@ -101,13 +105,21 @@ function DesktopArtboard({ id, artifact, canvas, layout, warnings, pending, cont
       if (input.type === 'ryugi:inspect:wheel') wheelAt({ ...input, x: view.x + (board.x + input.x) * view.k, y: view.y + (board.y + input.y) * view.k });
       else if (input.type === 'ryugi:inspect:pan') panBy(input.deltaX, input.deltaY);
       else if (input.type === 'ryugi:inspect:drag') {
-        if (selectionEnabled) dragSelection(input.phase, board.x + input.x, board.y + input.y, input.append, input.id ? { boardId, id: input.id } : undefined);
+        if (commentTool) boardComments.onFrameDrag(boardId, input);
+        else if (selectionEnabled) dragSelection(input.phase, board.x + input.x, board.y + input.y, input.append, input.id ? { boardId, id: input.id } : undefined);
       }
       else if (input.code === 'Space') setSpaceHeld(input.down);
       else if (input.down) onKey(input);
     },
   });
   useSelectionSync({ artifact, boards: canvas?.boards, live, inspector, send });
+  const boardComments = useBoardComments({ comments, comment, page, boards: canvas?.boards ?? {}, inspector });
+  const changeTool = (next: Tool) => {
+    if (next === 'comment' && !comment) return;
+    if (next === 'comment' && tool === 'select') boardComments.commentSelection();
+    if (next !== 'comment') boardComments.close();
+    setTool(next);
+  };
   const retained = useMemo(() => new Set([
     ...inspector.selectedTargets.map((target) => target.boardId),
     ...Object.entries(inspector.frames).filter(([, frame]) => frame.tweaks.length > 0).map(([id]) => id),
@@ -126,13 +138,15 @@ function DesktopArtboard({ id, artifact, canvas, layout, warnings, pending, cont
     if ('target' in e && (e.target as HTMLElement | null)?.closest?.('input, textarea, select, [contenteditable], [role="tree"], [role="treeitem"]')) return;
     const prevent = () => { if ('preventDefault' in e) e.preventDefault(); };
     const mod = e.metaKey || e.ctrlKey;
-    if (e.key === 'Escape') { setExpanded(null); inspector.clearSelection(); gesture.current = null; setMarquee(null); setSelecting(false); inspector.cancelDrag(); }
+    if (e.key === 'Escape' && commentTool) { if (!boardComments.close()) changeTool('select'); }
+    else if (e.key === 'Escape') { setExpanded(null); inspector.clearSelection(); gesture.current = null; setMarquee(null); setSelecting(false); inspector.cancelDrag(); }
     else if (mod && (e.key === '=' || e.key === '+')) { prevent(); zoomBy(1.25); }
     else if (mod && e.key === '-') { prevent(); zoomBy(0.8); }
     else if (e.shiftKey && e.code === 'Digit1') fit(pageBounds(page));
     else if (e.shiftKey && e.code === 'Digit0') zoomTo(1);
-    else if (!mod && !e.shiftKey && e.key.toLowerCase() === 'v') setTool('select');
-    else if (!mod && !e.shiftKey && e.key.toLowerCase() === 'h') setTool('hand');
+    else if (!mod && !e.shiftKey && e.key.toLowerCase() === 'v') changeTool('select');
+    else if (!mod && !e.shiftKey && e.key.toLowerCase() === 'h') changeTool('hand');
+    else if (!mod && !e.shiftKey && e.key.toLowerCase() === 'c') changeTool('comment');
   }
 
   useEffect(() => {
@@ -185,6 +199,7 @@ function DesktopArtboard({ id, artifact, canvas, layout, warnings, pending, cont
     <div ref={viewportRef} {...stylex.props(styles.viewport)} style={{ cursor }}
       onPointerDown={(event) => {
         handlers.onPointerDown(event);
+        if (commentTool && !panning && !expanded && event.button === 0 && event.pointerType !== 'touch' && !(event.target as Element).closest('[data-chrome]')) boardComments.onCanvasClick(worldPoint(event));
         if (!selectionEnabled || event.pointerType === 'touch' || event.button !== 0 || !event.currentTarget.contains(event.target as Node) || (event.target as Element).closest('[data-chrome]')) return;
         const point = worldPoint(event);
         event.currentTarget.setPointerCapture(event.pointerId);
@@ -204,7 +219,7 @@ function DesktopArtboard({ id, artifact, canvas, layout, warnings, pending, cont
             pending={pendingBoards}
             playing={playing}
             replays={replays}
-            inspecting={selectionEnabled}
+            inspecting={selectionEnabled || (commentTool && !expanded)}
             frameRef={inspector.refFor}
             frameLoaded={inspector.loaded}
             writing={live ? canvas.writing : undefined}
@@ -224,9 +239,11 @@ function DesktopArtboard({ id, artifact, canvas, layout, warnings, pending, cont
             onTogglePlay={(id) => setPlaying((current) => togglePlaying(current, id))}
             onReplay={(id) => setReplays((prev) => ({ ...prev, [id]: (prev[id] ?? 0) + 1 }))}
           />
+          {commentTool && <CommentLayer view={view} page={page} boards={allBoards} width={viewportRef.current?.clientWidth ?? 0} threads={boardComments.threads} stale={boardComments.stale} numbers={boardComments.numbers} showResolved={false}
+            draft={boardComments.draft} openId={boardComments.openId} actions={boardComments.actions} agent={agent} onOpen={boardComments.setOpenId} onSubmit={boardComments.submit} onCancelDraft={boardComments.cancelDraft} />}
         </CanvasErrorBoundary>
       )}
-      {selectionEnabled && !marquee && inspector.hover && allBoards[inspector.hover.boardId] && <InspectionOutline board={allBoards[inspector.hover.boardId]!} rect={inspector.hover.rect} view={view} nodeId={inspector.hover.id ? `${inspector.hover.boardId}#${inspector.hover.id}` : undefined} />}
+      {(selectionEnabled || commentTool) && !marquee && inspector.hover && allBoards[inspector.hover.boardId] && <InspectionOutline board={allBoards[inspector.hover.boardId]!} rect={inspector.hover.rect} view={view} nodeId={inspector.hover.id ? `${inspector.hover.boardId}#${inspector.hover.id}` : undefined} />}
       {!expanded && inspector.targets.map((target) => allBoards[target.boardId] && <InspectionOutline key={`${target.boardId}:${target.id}`} board={allBoards[target.boardId]!} rect={target.rect} view={view} name={target.name} selected />)}
       {selecting && <div className="ri-selection-capture" aria-hidden="true" />}
       {marquee && <div className="ri-marquee" aria-hidden="true" style={{ left: view.x + marquee.x * view.k, top: view.y + marquee.y * view.k, width: marquee.width * view.k, height: marquee.height * view.k }} />}
@@ -235,7 +252,7 @@ function DesktopArtboard({ id, artifact, canvas, layout, warnings, pending, cont
           {loaded ? (warnings[0] ?? 'Waiting for the agent to write canvas.json…') : 'Connecting…'}
         </div>
       )}
-      <TopLeftBar pages={pages} page={page} onPageChange={changePage} tool={tool} onToolChange={setTool} />
+      <TopLeftBar pages={pages} page={page} onPageChange={changePage} tool={tool} onToolChange={changeTool} commenting={!!comment} />
       <TopRightBar
         artifact={menu ? artifact : null}
         live={live}

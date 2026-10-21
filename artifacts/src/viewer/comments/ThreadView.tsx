@@ -147,7 +147,7 @@ export function ThreadView({ thread, label, actions, agent, onClose }: Props) {
       <ThreadMessages thread={thread} actions={actions} />
       {actions && !resolved ? (
         <div {...stylex.props(styles.reply)}>
-          <Composer placeholder="回复…" onSubmit={(text) => actions.reply(thread.id, text)} />
+          <Composer placeholder="回复…" onSubmit={(text) => actions.reply(thread.id, text)} onCancel={onClose} />
         </div>
       ) : null}
     </div>
