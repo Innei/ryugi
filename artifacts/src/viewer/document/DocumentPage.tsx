@@ -5,17 +5,17 @@ import { LoroDoc } from 'loro-crdt';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { emptyComments, type CommentsFile, type HumanOp } from '../../shared/comments';
 import { WarningsBadge } from '../components/WarningsBadge';
+import { PHONE_QUERY, useMedia } from '../hooks/useMedia';
 import type { ThreadActions } from './CommentCard';
 import { DocumentEditor } from './DocumentEditor';
 import { DesktopDocument } from './DesktopDocument';
-import { useMedia } from './DocumentLayout';
 import { DynamicHostContext, type DynamicHost } from './DynamicBlock';
 import { decodeBase64 } from './LoroSync';
 import type { DocumentMeta, DocumentState, DocumentTransport } from './transport';
 import { TopBar } from './TopBar';
 import { useDocumentSelectionSync } from './useDocumentSelectionSync';
 import { useLocalTransport } from './useDocumentTransport';
-import { PHONE_QUERY, PhoneLayout } from './PhoneLayout';
+import { PhoneLayout } from './PhoneLayout';
 import { useSelectionComment, type SelectionTarget } from './useSelectionComment';
 
 const styles = stylex.create({

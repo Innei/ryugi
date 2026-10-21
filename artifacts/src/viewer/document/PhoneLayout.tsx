@@ -9,7 +9,6 @@ import { PhoneSheet, raiseSheet, SHEET_FULL, SHEET_HALF, SHEET_PEEK } from './Ph
 import { threadAtPoint, useAnchors, useDraftHighlight, useHighlights } from './useAnchors';
 import type { SelectionTarget } from './useSelectionComment';
 
-export const PHONE_QUERY = '(max-width: 640px)';
 const TOP_BAR = 52;
 
 const styles = stylex.create({

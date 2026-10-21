@@ -1,6 +1,7 @@
 import * as stylex from '@stylexjs/stylex';
 import type { LexicalEditor } from 'lexical';
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
+import { useMedia } from '../hooks/useMedia';
 import type { Thread } from '../../shared/comments';
 import { BlockBars } from './BlockBars';
 import type { ThreadActions } from './CommentCard';
@@ -23,17 +24,6 @@ const styles = stylex.create({
   railWrap: { position: 'relative' },
   column: { position: 'relative', width: '100%', maxWidth: 700, minWidth: 0 },
 });
-
-export function useMedia(query: string) {
-  const list = useMemo(() => window.matchMedia(query), [query]);
-  const [matches, setMatches] = useState(list.matches);
-  useEffect(() => {
-    const onChange = () => setMatches(list.matches);
-    list.addEventListener('change', onChange);
-    return () => list.removeEventListener('change', onChange);
-  }, [list]);
-  return matches;
-}
 
 interface Props {
   editor: LexicalEditor | null;

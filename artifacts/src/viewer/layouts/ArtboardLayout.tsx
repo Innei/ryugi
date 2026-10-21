@@ -15,7 +15,8 @@ import { usePanZoom, type Tool } from '../hooks/usePanZoom';
 import { InspectionOutline } from '../inspector/InspectionOutline';
 import { InspectorPanel } from '../inspector/InspectorPanel';
 import { togglePlaying } from '../lib/play';
-import { resolveFocus } from '../lib/view';
+import type { Bounds } from '../../shared/types';
+import { useArtboardPage } from '../hooks/useArtboardPage';
 
 const styles = stylex.create({
   layout: { display: 'flex', width: '100%', height: '100%', overflow: 'hidden' },
@@ -62,7 +63,15 @@ export function ArtboardView({ id, artifact, canvas, layout, warnings, pending, 
   const [tool, setTool] = useState<Tool>('select');
   const { viewportRef, view, fit, zoomBy, zoomTo, cursor, handlers, panBy, wheelAt, panning, setSpaceHeld } = usePanZoom(tool);
   const [inspectorOpen, setInspectorOpen] = useState(false);
-  const [page, setPage] = useState<string | null>(null);
+  const pageBounds = (id: string | null) => (id && layout?.pages[id]?.bounds) || null;
+  const fitPage = useCallback((id: string) => {
+    const bounds = layout?.pages[id]?.bounds;
+    if (!bounds) return false;
+    fit(bounds);
+    return true;
+  }, [layout, fit]);
+  const fitFocus = useCallback((_target: string, resolved: { bounds: Bounds }) => fit(resolved.bounds), [fit]);
+  const { page, changePage } = useArtboardPage({ canvas, layout, fitPage, fitFocus });
   const [expanded, setExpanded] = useState<string | null>(null);
   const [playing, setPlaying] = useState<ReadonlySet<string>>(() => new Set());
   const [replays, setReplays] = useState<Record<string, number>>({});
@@ -94,18 +103,12 @@ export function ArtboardView({ id, artifact, canvas, layout, warnings, pending, 
   useEffect(() => { if (expanded) setSpaceHeld(false); }, [expanded, setSpaceHeld]);
   useEffect(() => { gesture.current = null; setMarquee(null); setSelecting(false); inspector.cancelDrag(); }, [tool, expanded, page, panning, inspector.cancelDrag]);
   const pendingBoards = useMemo(() => new Set(pending), [pending]);
-  const seenActivePage = useRef<string | undefined>(undefined);
-  const seenFocusAt = useRef<string | undefined>(undefined);
-  const pendingFit = useRef<string | null>(null);
-  const initialized = useRef(false);
 
   const pages = canvas?.pages ?? [];
 
   useEffect(() => {
     document.title = canvas?.title || id;
   }, [canvas?.title, id]);
-  const pageBounds = (id: string | null) => (id && layout?.pages[id]?.bounds) || null;
-
   function onKey(e: KeyboardEvent | Extract<InspectorReport, { type: 'ryugi:inspect:key' }>) {
     if ('target' in e && (e.target as HTMLElement | null)?.closest?.('input, textarea, select, [contenteditable], [role="tree"], [role="treeitem"]')) return;
     const prevent = () => { if ('preventDefault' in e) e.preventDefault(); };
@@ -118,55 +121,6 @@ export function ArtboardView({ id, artifact, canvas, layout, warnings, pending, 
     else if (!mod && !e.shiftKey && e.key.toLowerCase() === 'v') setTool('select');
     else if (!mod && !e.shiftKey && e.key.toLowerCase() === 'h') setTool('hand');
   }
-
-  useEffect(() => {
-    if (!canvas || !layout) return;
-    const firstPage = canvas.pages[0]?.id ?? null;
-
-    if (!initialized.current) {
-      initialized.current = true;
-      seenActivePage.current = canvas.activePage;
-      seenFocusAt.current = canvas.focus?.at;
-      const start = canvas.activePage ?? firstPage;
-      setPage(start);
-      pendingFit.current = start;
-      return;
-    }
-
-    const focus = canvas.focus;
-    if (focus && focus.at !== seenFocusAt.current) {
-      seenFocusAt.current = focus.at;
-      seenActivePage.current = canvas.activePage;
-      const target = resolveFocus(canvas, layout, focus.target);
-      if (target) {
-        setPage(target.page);
-        fit(target.bounds);
-        return;
-      }
-    }
-
-    if (canvas.activePage !== seenActivePage.current) {
-      seenActivePage.current = canvas.activePage;
-      if (canvas.activePage) {
-        setPage(canvas.activePage);
-        pendingFit.current = canvas.activePage;
-      }
-      return;
-    }
-
-    if (!page || !canvas.pages.some((p) => p.id === page)) {
-      setPage(firstPage);
-      pendingFit.current = firstPage;
-    }
-  }, [canvas, layout, fit, page]);
-
-  useEffect(() => {
-    if (pendingFit.current === null || pendingFit.current !== page) return;
-    const bounds = pageBounds(page);
-    if (!bounds) return;
-    pendingFit.current = null;
-    fit(bounds);
-  });
 
   useEffect(() => {
     window.addEventListener('keydown', onKey);
@@ -211,11 +165,6 @@ export function ArtboardView({ id, artifact, canvas, layout, warnings, pending, 
   const worldPoint = (event: { clientX: number; clientY: number }) => {
     const rect = viewportRef.current!.getBoundingClientRect();
     return { x: (event.clientX - rect.left - view.x) / view.k, y: (event.clientY - rect.top - view.y) / view.k };
-  };
-
-  const changePage = (id: string) => {
-    setPage(id);
-    pendingFit.current = id;
   };
 
   return (
