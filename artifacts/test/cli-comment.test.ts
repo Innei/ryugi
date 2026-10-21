@@ -163,12 +163,13 @@ describe('comment text output', () => {
 
 describe('artboard comments', () => {
   const board = (dir: string) => ['--project-dir', dir, '--artifact', 'artboard/review'];
-  async function artboardProject() {
+  async function artboardProject(extra: Record<string, unknown> = {}) {
     const dir = await project({ running: false });
     writeArtboard(path.join(dir, '.ryugi', 'artifacts'), 'review', {
       version: 1,
       pages: [{ id: 'p', name: 'P' }],
       boards: { a: { file: 'pages/a.html', page: 'p', x: 0, y: 0, w: 640, h: 400 } },
+      ...extra,
     }, { 'pages/a.html': '<html><body><p>a</p></body></html>' });
     expect((await run(['start', '--project-dir', dir, '--background'])).out.type).toBe('server-started');
     return dir;
@@ -185,6 +186,33 @@ describe('artboard comments', () => {
       expect.objectContaining({ page: 'p', board: 'a', x: 12, y: 30 }),
     ]);
     expect(all.threads[0]).toMatchObject({ stale: false, files: { a: 'pages/a.html' } });
+  });
+
+  test('list passes each verify group and its verdict through', async () => {
+    const dir = await artboardProject({ groups: { g: { title: '验收', boards: ['a'], verify: true } } });
+    const listed = (await run(['comment', 'list', ...board(dir)])).out;
+    expect(listed.groups).toEqual([{ id: 'g', page: 'p', title: '验收', verdict: 'pending', evidenceUpdated: false, rejectThreads: 0, boards: ['a'] }]);
+  });
+
+  test('text output lists the verify groups after the threads', () => {
+    const group = { page: 'p', evidenceUpdated: false, rejectThreads: 0, boards: ['a'] };
+    expect(commentText({
+      type: 'comments',
+      artifact: 'artboard/r',
+      threads: [],
+      groups: [
+        { ...group, id: 'notify', title: '通知设置', verdict: 'pass' },
+        { ...group, id: 'digest', verdict: 'reject', rejectThreads: 1 },
+        { ...group, id: 'onboard', verdict: 'pending', evidenceUpdated: true, rejectThreads: 2 },
+      ],
+    })).toBe([
+      'No new comments on artboard/r.',
+      '',
+      'Verify groups:',
+      '  notify (通知设置): passed',
+      '  digest: rejected · 1 open reject thread',
+      '  onboard: waiting for a verdict · evidence replaced since the last verdict · 2 open reject threads',
+    ].join('\n'));
   });
 
   test('add on an artboard needs --board, and the board must exist', async () => {

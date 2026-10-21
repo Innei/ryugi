@@ -75,7 +75,7 @@ export async function comment(options: CommentOptions, emit: Emit): Promise<numb
     throw new CliError(`The running artifacts server is older than this CLI. Run \`${invocation()} start --project-dir ${server.project}\` to replace it, then run this again.`);
   }
   if (status < 200 || status >= 300) throw new CliError(json.error || `HTTP ${status}`);
-  if (action === 'list') emit({ type: 'comments', artifact: options.artifact, threads: json.threads, ...(options.all ? { all: true } : {}) });
+  if (action === 'list') emit({ type: 'comments', artifact: options.artifact, threads: json.threads, ...(json.groups ? { groups: json.groups } : {}), ...(options.all ? { all: true } : {}) });
   else emit({ type: WRITTEN[action], artifact: options.artifact, threadId: json.threadId, ...(json.messageId ? { messageId: json.messageId } : {}) });
   return 0;
 }
@@ -105,6 +105,22 @@ interface ListedThread {
   stale?: boolean;
   files?: Record<string, string>;
   messages: ListedMessage[];
+}
+
+interface ListedGroup {
+  id: string;
+  title?: string;
+  verdict: 'pending' | 'pass' | 'reject';
+  evidenceUpdated: boolean;
+  rejectThreads: number;
+}
+
+const VERDICT_TEXT = { pass: 'passed', reject: 'rejected', pending: 'waiting for a verdict' };
+const plural = (count: number, word: string) => `${count} ${word}${count === 1 ? '' : 's'}`;
+
+function groupText(group: ListedGroup) {
+  const parts = [VERDICT_TEXT[group.verdict], group.evidenceUpdated ? 'evidence replaced since the last verdict' : '', group.rejectThreads ? `${plural(group.rejectThreads, 'open reject thread')}` : ''];
+  return `  ${group.id}${group.title ? ` (${group.title})` : ''}: ${parts.filter(Boolean).join(' · ')}`;
 }
 
 const clip = (text: string, max: number) => (text.length > max ? `${text.slice(0, max)}…` : text);
@@ -137,8 +153,9 @@ function threadText(thread: ListedThread) {
 export function commentText(value: Record<string, unknown>): string | null {
   if (value.type === 'comments') {
     const threads = (value.threads as ListedThread[] | undefined) ?? [];
-    if (!threads.length) return value.all ? `No comments on ${value.artifact}.` : `No new comments on ${value.artifact}.`;
-    return threads.map(threadText).join('\n\n');
+    const groups = (value.groups as ListedGroup[] | undefined) ?? [];
+    const head = threads.length ? threads.map(threadText).join('\n\n') : value.all ? `No comments on ${value.artifact}.` : `No new comments on ${value.artifact}.`;
+    return groups.length ? `${head}\n\nVerify groups:\n${groups.map(groupText).join('\n')}` : head;
   }
   if (value.type === 'comment-added') return `Added thread ${value.threadId} (message ${value.messageId})`;
   if (value.type === 'comment-replied') return `Replied in thread ${value.threadId} (message ${value.messageId})`;
