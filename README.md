@@ -24,7 +24,7 @@ flowchart LR
   T --> R[one fresh review] --> L[you land it]
 ```
 
-After you sign off, it asks one question: build it inline from the spec, or just code it. Inline, your agent slices the spec into tasks, proves each with true red/green TDD, keeps a ledger of every judgment call across compaction, gets one fresh review of the whole branch, then reports how to land it — squash (default), rebase, PR, or keep. Never a merge commit.
+After you sign off, it builds inline from the spec unless you say "just code it": your agent slices the spec into tasks, proves each with true red/green TDD, keeps a ledger of every judgment call across compaction, gets one fresh review of the whole branch, then reports how to land it — squash (default), rebase, PR, or keep. Never a merge commit.
 
 Two-hour autonomous stretches without "should I continue?" are normal. Because the skills trigger automatically, there is nothing to invoke.
 
@@ -67,7 +67,7 @@ The same CLI runs what the skill uses: `npx ryugi-artifacts start`, `stop` and `
 
 ## The workflow
 
-1. **brainstorming** — activates before building anything. Draws out what you actually want and why, then plays its understanding back for correction. Small changes get agreed in chat; projects get a design document a builder could build from.
+1. **brainstorming** — activates before building anything. Draws out what you actually want and why, then plays its understanding back for correction. Questions start in chat, one at a time; once the work spans modules or reaches the architecture, or you ask for a design up front, they move into a document you answer a round at a time. What you'll see is designed on the Artboard, a round of options at a time. Small changes get agreed in chat; projects get a design document a builder could build from.
 2. **executing-specs** — activates when you approve the spec and choose inline. Slices the spec into tasks, implements each under TDD with a ledger that survives compaction, records every judgment call as a ruling, gets one fresh review, then stops and reports.
 3. **test-driven-development** — activates during implementation. RED-GREEN-REFACTOR: failing test, watch it fail, minimal code, watch it pass, commit.
 4. **systematic-debugging** — activates on a bug or unexpected behavior. Root cause before fixes.

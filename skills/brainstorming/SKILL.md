@@ -14,36 +14,38 @@ People often haven't finished working out what they want. Good questions
 help them think it through. When you understand the why, you make the
 hundred decisions they never mention the way they would have made them.
 
-## First: What Do You Actually Know?
+## The Flow
+
+1. **Pick the path** from what you already know (below).
+2. **Talk it through** on that path, until you understand what they want
+   and why.
+3. **Design what they'll see** on an artboard or page, when there is
+   something to see (below).
+4. **Size the work** and say the size.
+5. **Get approval** of the full description: in chat for a small change,
+   the written design for a project.
+6. **Hand off** to building.
+
+## Pick the Path
 
 Before you reply, ask yourself: what do I know about what they want, and
 why?
 
-- **Everything that matters is in the request** ("make the icon cornflower
-  blue"). This is a quick, clear task. Do it, and say what you did.
-- **Something non-trivial is missing.** Start the conversation.
+| What you know | Do |
+|---------------|----|
+| Everything that matters is in the request ("make the icon cornflower blue") | Do it, and say what you did. |
+| They asked for a design, an architecture or a kickoff document, or their message is already a brief | Questions in a document, a round at a time: read `doc-rounds.md` |
+| Something non-trivial is missing | One question at a time in chat, stepping up to the document when the work outgrows chat: read `chat.md` |
 
-## Your First Message
+Read the file before your first message.
 
-Your first message is two things, in this order:
+Whenever they say to just start, stop asking: state any significant
+how-it-gets-made choice (platform, language, medium) in one plain line,
+then do what they asked through the normal workflow. This skill is done.
 
-1. One line letting them know that if they'd rather skip the questions and
-   have you just start, they can say so. If they take you up on it, this
-   skill is done: state any significant how-it-gets-made choice
-   (platform, language, medium) in one plain line, then do what they
-   asked through the normal workflow.
-2. One open question that gets them describing. Ask about a real moment
-   or a concrete picture: "What's the moment you find yourself wishing
-   this existed?" or "Tell me about the people who'll be in the room."
+## Talking It Through
 
-That's the whole message.
-
-## The Conversation
-
-Each message ends with one question: a single sentence with no list of
-example answers hanging off it. Use plain language, pitched just a little
-above where your human partner is. Match their vocabulary; never use
-process jargon.
+These hold on both paths.
 
 Be clear and concise. Lead with what matters. Avoid jargon. When you
 report what you found, give them the most important findings and offer
@@ -89,18 +91,6 @@ several ideas and drop the weak ones, including any that fight what
 they've told you about why. Show the comparison only when it helps them
 decide.
 
-**Show, don't tell.** Offer an artifact (below) whenever seeing
-would help more than reading:
-
-- something they'll look at: a screen, a page, a printout, a sign
-- a layout or arrangement: of a screen, a room, a schedule
-- a flow or a sequence of steps
-- options that would look different from each other
-- a structure that's easier to see than read: a diagram, a timeline, a map
-
-Once they've accepted, use it for mockups to react to, side-by-side
-options, and throwaway prototypes they can click.
-
 **Spike to feel things out.** Agentic work is waterfall, but very, very
 fast. A quick throwaway build is often the cheapest way to learn what
 they want or whether something works. Offer one when it would help.
@@ -109,22 +99,33 @@ or minimal ones, aren't bulletproof, and skip the spec, execution, and
 review process. Bring what the spike taught you back into the
 conversation.
 
-## Play It Back
+## Designing What They'll See
 
-Play back as you go. As soon as you understand one part well enough to
-describe it (what it's for and who it serves, say, or how one piece
-behaves), describe that part back in about 200-300 words, then return to
-questions about the next part. Playback and questions alternate through
-the whole conversation; the last chunk covers whatever is left.
+When the next question is about something they'll look at, show it
+instead of describing it:
 
-Mark anything you're guessing as your guess; only what they said goes in
-as theirs. End each chunk by asking what's wrong or missing.
+- a screen, a page, a printout, a sign
+- a layout or arrangement: of a screen, a room, a schedule
+- a flow or a sequence of steps
+- options that would look different from each other
 
-Before you send a chunk, check it: does it describe something they'll
-look at, like a page, a screen, a schedule, or a printout? If so, and
-they haven't seen the artifact offer yet, send the offer instead
-(its own message, below) and hold the chunk for the next message. Once
-they've accepted, put a mockup next to the description.
+| What is being decided | Where |
+|-----------------------|-------|
+| Several screens, states or visual questions at once | an artboard, in rounds: read `artboard-rounds.md` |
+| One surface or one dimension to tune | an `html` page as ryugi:artifacts says |
+| Structure, architecture, tradeoffs | words: chat or the document |
+
+Requirements, scope, tradeoffs, and conceptual choices stay in words. A
+question about a UI topic isn't automatically a visual question.
+
+Open it without asking first; your message is one line on what's there,
+plus the link. Showing a mockup doesn't send every question to the
+browser. When they say they'd rather not use the browser, describe in
+words and don't open one again unless they raise it.
+
+**Mockups of their product look like their product.** Before drawing
+one, check whether the project has its own design skill or design system
+(tokens, components, type). If it does, load it first and draw with it.
 
 ## Size the Work
 
@@ -135,54 +136,12 @@ words. They can override it.
 |------|----------------------|------|
 | A quick, clear task | the request itself | do it |
 | A small change | in chat | build it under ryugi:test-driven-development |
-| A project with a written design | a written design document | the handoff below |
+| A project | a written design: read `written-design.md` | the handoff below |
 
 If it grows mid-task, stop, say so, and step up a size.
 
 If this is really several independent projects, say so, agree on an
 order, and brainstorm them one at a time.
-
-## The Written Design
-
-For a project, write a plain document a talented builder in the domain
-could build from without going back to your human partner. Cover:
-
-- intent and the why
-- goals, non-goals, anti-goals
-- constraints
-- the parts of the how they decided, as they decided them
-- what's left to the builder
-- every artifact the conversation used: type, id, path, and what was
-  decided there, stated in the text too, since `.ryugi/artifacts/` may not
-  be committed
-
-When your human partner has ADHD, also write `<spec>.tldr.md` beside it for
-them: what gets built, what they'll see as numbered steps, decisions in a
-table, your own calls under "check these", a concrete time estimate. They
-review the TL;DR; the builder works from the spec.
-
-**Where it goes:** in a software repo,
-`docs/ryugi/specs/YYYY-MM-DD-<topic>-design.md`, committed.
-Otherwise, ask. Your human partner's preferences override both.
-
-**Builder check:** dispatch a fresh subagent with
-`builder-check-prompt.md` in this directory. When you tell your human
-partner you're writing it up, say a reviewer will read it first and you
-may come back once with a few questions. Don't hand over the document
-until the check is back. Sort what the builder asks into three piles:
-
-- **Answered already** by the conversation or the project: put the answer
-  in the document.
-- **Minor:** a sensible builder could settle it without changing what gets
-  built. Settle it yourself and mark it in the document as your call.
-- **Theirs:** only your human partner can answer it, and the answer changes
-  what gets built.
-
-Bring the "theirs" pile in one message, most important first. Update the
-document with their answers, then hand it over with a short list of the
-calls you made so they can check those while reading. That's the only
-round of questions the check produces. Without a subagent tool, read the
-document as that builder yourself.
 
 <HARD-GATE>
 Nothing gets built until your human partner approves the full
@@ -203,17 +162,11 @@ that comes back through this gate.
 The approved document is what gets built from. There is no plan document
 in between.
 
-After your human partner approves a project's document, ask one question,
-as its own message:
-
-> "Build it inline from the spec (recommended), or just code it?"
-
-- **Inline:** invoke ryugi:executing-specs with the document's path.
-- **Just code it:** build it under ryugi:test-driven-development,
-  then report.
-
-When their instructions already name an execution mode, use it without
-asking.
+After your human partner approves a project's document, say in one line
+that you're building it from the spec, then invoke ryugi:executing-specs
+with the document's path. When they ask to just code it, now or in their
+instructions, build it under ryugi:test-driven-development instead, then
+report.
 
 ## Red Flags
 
@@ -224,32 +177,3 @@ asking.
 | "I should explain the process first" | Ask your question. The process shows itself. |
 | "They said 'sounds good' to the idea" | Approval covers what you showed them. A description you haven't written isn't approved. |
 | "The spike works, I'll keep building on it" | Keeping it is a new request. Back through the gate. |
-
-## Showing it
-
-An artifact in a browser tab: an artboard of mockup variants side by side,
-one HTML page to tune, or a document to read. Your human partner looks at it
-and answers in the terminal. It's a tool, not a mode: accepting it doesn't
-send every question to the browser.
-
-**Offer it just-in-time.** Offer it the first time one of the moments
-above comes up, never upfront. The offer is its own message with nothing
-else in it:
-
-> "This might be easier if I show you. Want me to open an artifact with some mockups?"
-
-If they decline, stay in text and don't offer again unless they raise it.
-
-**Mockups of their product look like their product.** Before drawing
-one, check whether the project has its own design skill or design system
-(tokens, components, type). If it does, load it first and draw with it.
-
-**Per question, ask: would they understand this better by seeing it?**
-Mockups and layouts go to ryugi:artifacts: one surface on an HTML page,
-several dimensions on the Artboard; diagrams belong in the document.
-Requirements, scope, tradeoffs, and conceptual choices stay in text. A
-question about a UI topic isn't automatically a visual question.
-
-If they accept, use ryugi:artifacts. Its decision table picks the type: one
-surface (`html`), several dimensions (`artboard`), or an engineering argument
-(`document`).
