@@ -1,9 +1,16 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ArtifactType } from '../../shared/types';
 import type { RelayConnection } from '../document/relayConnection';
 import { knownHosts } from '../lib/knownHosts';
 import { createLiveConnection, type LivePresence } from '../lib/liveConnection';
 import type { ArtifactFeed } from './useArtifactFeed';
+
+const RENEW_BEFORE_MS = 60 * 60 * 1000;
+
+const expiresAt = (base: string) => {
+  const match = /\/live\/(\d+)\./.exec(base);
+  return match ? Number(match[1]) * 1000 : Number.POSITIVE_INFINITY;
+};
 
 export const relayUrlFor = (cloudId: string) => `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/api/relay/a/${encodeURIComponent(cloudId)}`;
 
@@ -11,6 +18,21 @@ export function useCloudFeed(cloudId: string, type: ArtifactType, liveContentBas
   const [presence, setPresence] = useState<LivePresence | null>(null);
   const [revision, setRevision] = useState(0);
   const [connection, setConnection] = useState<RelayConnection | null>(null);
+  const liveBase = useRef(liveContentBase);
+
+  useEffect(() => {
+    liveBase.current = liveContentBase;
+  }, [liveContentBase]);
+
+  const currentLiveBase = useCallback(async () => {
+    if (expiresAt(liveBase.current) - Date.now() > RENEW_BEFORE_MS) return liveBase.current;
+    try {
+      const res = await fetch(`/api/a/${encodeURIComponent(cloudId)}`, { cache: 'no-store', credentials: 'same-origin' });
+      const { liveContentBase: renewed } = (await res.json()) as { liveContentBase?: unknown };
+      if (typeof renewed === 'string') liveBase.current = renewed;
+    } catch {}
+    return liveBase.current;
+  }, [cloudId]);
 
   useEffect(() => {
     const bump = () => setRevision((current) => current + 1);
@@ -37,8 +59,8 @@ export function useCloudFeed(cloudId: string, type: ArtifactType, liveContentBas
     if (!connection) throw new Error('offline');
     const meta = await connection.request<Record<string, unknown>>({ op: 'meta' });
     const own = typeof meta.contentBase === 'string' && /^https?:\/\//.test(meta.contentBase);
-    return { found: true, data: { ...meta, contentBase: own ? meta.contentBase : liveContentBase } };
-  }, [connection, liveContentBase]);
+    return { found: true, data: { ...meta, contentBase: own ? meta.contentBase : await currentLiveBase() } };
+  }, [connection, currentLiveBase]);
 
   const send = useCallback(
     (message: unknown) => {

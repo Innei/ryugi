@@ -39,7 +39,7 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-function connect(known: string[] = ['mac']) {
+function connect(known: string[] = ['mac'], probe: (port: number) => Promise<boolean> = async () => true) {
   const presence: any[] = [];
   const events: unknown[] = [];
   const remembered: string[] = [];
@@ -50,6 +50,7 @@ function connect(known: string[] = ['mac']) {
     WebSocket: FakeSocket as never,
     retryMs: 10,
     directTimeoutMs: 50,
+    probe,
     known: { has: (id) => known.includes(id), remember: (id) => remembered.push(id) },
     onPresence: (p) => presence.push(p),
     onEvent: (e) => events.push(e),
@@ -73,6 +74,7 @@ describe('choosing the pipe', () => {
     expect(direct).toBeDefined();
     direct!.open();
     direct!.receive({ t: 'presence', online: true, version: '1.14.0' });
+    await Promise.resolve();
     expect(presence.at(-1)).toEqual({ online: true, version: '1.14.0', via: 'direct' });
     expect(remembered).toEqual(['mac']);
     const reply = connection.request({ op: 'meta' });
@@ -100,12 +102,13 @@ describe('choosing the pipe', () => {
     expect(socket(RELAY)!.sent.at(-1)).toMatchObject({ body: { op: 'meta' } });
   });
 
-  test('when the direct pipe drops, the relay takes over again and direct is retried on its next presence', () => {
+  test('when the direct pipe drops, the relay takes over again and direct is retried on its next presence', async () => {
     const { connection, socket, presence } = connect();
     relayOnline(socket(RELAY));
     const direct = socket(DIRECT)!;
     direct.open();
     direct.receive({ t: 'presence', online: true, version: '1.14.0' });
+    await Promise.resolve();
     direct.close();
     expect(presence.at(-1)).toEqual({ online: true, version: '1.14.0', via: 'relay' });
     void connection.request({ op: 'meta' }).catch(() => {});
@@ -114,14 +117,42 @@ describe('choosing the pipe', () => {
     expect(FakeSocket.all.filter((s) => s.url === DIRECT)).toHaveLength(2);
   });
 
-  test('events come from the pipe in use only', () => {
+  test('events come from the pipe in use only', async () => {
     const { socket, events } = connect();
     relayOnline(socket(RELAY));
     const direct = socket(DIRECT)!;
     direct.open();
     direct.receive({ t: 'presence', online: true, version: '1.14.0' });
+    await Promise.resolve();
     socket(RELAY)!.receive({ t: 'event', body: { type: 'change', artifact: 'html/page', files: ['a'] } });
     direct.receive({ t: 'event', body: { type: 'change', artifact: 'html/page', files: ['b'] } });
     expect(events).toEqual([{ type: 'change', artifact: 'html/c1', files: ['b'] }]);
+  });
+
+  test('the socket alone is not enough: if the browser refuses local network access, the relay stays', async () => {
+    const { socket, presence, remembered } = connect(['mac'], async () => false);
+    relayOnline(socket(RELAY));
+    const direct = socket(DIRECT)!;
+    direct.open();
+    direct.receive({ t: 'presence', online: true, version: '1.14.0' });
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(presence.every((p) => p.via === 'relay')).toBe(true);
+    expect(direct.readyState).toBe(3);
+    expect(remembered).toEqual([]);
+  });
+
+  test('a permission prompt left open past the timeout still switches once it is allowed', async () => {
+    let allow!: (ok: boolean) => void;
+    const { socket, presence } = connect(['mac'], () => new Promise((resolve) => (allow = resolve)));
+    relayOnline(socket(RELAY));
+    const direct = socket(DIRECT)!;
+    direct.open();
+    direct.receive({ t: 'presence', online: true, version: '1.14.0' });
+    await new Promise((resolve) => setTimeout(resolve, 80));
+    expect(presence.at(-1).via).toBe('relay');
+    allow(true);
+    await Promise.resolve();
+    expect(presence.at(-1)).toEqual({ online: true, version: '1.14.0', via: 'direct' });
   });
 });

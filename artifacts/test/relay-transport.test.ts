@@ -150,12 +150,29 @@ describe('relay document transport', () => {
     return { relay, socket, reply, presence };
   }
 
-  test('meta keeps the host’s fields but loads assets from the published snapshot', async () => {
+  test('meta keeps the host’s fields but loads relayed assets from the given content base', async () => {
     const { relay, socket, reply } = transport();
     const meta = relay.meta();
     expect(socket.sent.at(-1).body).toEqual({ op: 'meta' });
     reply({ title: 'Plan', contentBase: '/content/document/plan/', warnings: [] });
     expect(await meta).toEqual({ title: 'Plan', contentBase: 'https://cloud.example/content/c1/', warnings: [] });
+  });
+
+  test('a host on this computer keeps its own absolute content base', async () => {
+    const { relay, reply } = transport();
+    const meta = relay.meta();
+    reply({ title: 'Plan', contentBase: 'http://127.0.0.1:4100/c/token/document/plan/', warnings: [] });
+    expect((await meta)!.contentBase).toBe('http://127.0.0.1:4100/c/token/document/plan/');
+  });
+
+  test('loaded and runtime-error reports from embedded blocks go to the host as client reports', () => {
+    const { relay, socket } = transport();
+    const error = { type: 'runtime-error', artifact: 'document/c1', file: 'assets/chart.html', message: 'boom' };
+    relay.send(error);
+    expect(socket.sent.at(-1).body).toEqual({ op: 'client', message: error });
+    const loaded = { type: 'loaded', artifact: 'document/c1', file: 'assets/chart.html' };
+    relay.send(loaded);
+    expect(socket.sent.at(-1).body).toEqual({ op: 'client', message: loaded });
   });
 
   test('updates travel as base64 and comments return the new comments', async () => {

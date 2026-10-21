@@ -88,7 +88,7 @@ export function createRelayTransport(options: RelayTransportOptions): DocumentTr
     close: connection.close,
     async meta() {
       const meta = await connection.request<DocumentMeta>({ op: 'meta' });
-      return { ...meta, contentBase: options.contentBase };
+      return /^https?:\/\//.test(meta.contentBase ?? '') ? meta : { ...meta, contentBase: options.contentBase };
     },
     state: () => connection.request<DocumentState>({ op: 'state' }),
     async update(bytes) {
@@ -98,8 +98,9 @@ export function createRelayTransport(options: RelayTransportOptions): DocumentTr
       return (await connection.request<{ comments: CommentsFile }>({ op: 'comment', comment: op })).comments;
     },
     send(message) {
-      if ((message as { type?: unknown }).type !== 'selection') return;
-      connection.request({ op: 'selection', selection: message as never }).catch(() => {});
+      const { type } = message as { type?: unknown };
+      if (type === 'selection') connection.request({ op: 'selection', selection: message as never }).catch(() => {});
+      else if (type === 'loaded' || type === 'runtime-error') connection.request({ op: 'client', message }).catch(() => {});
     },
   };
 }

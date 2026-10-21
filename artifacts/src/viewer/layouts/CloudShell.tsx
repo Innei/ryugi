@@ -56,7 +56,7 @@ export function CloudShell({ id }: { id: string }) {
       ) : (
         <VisitorBanner />
       )}
-      <iframe title={state.title} src={`/a/${id}/view`} allow="clipboard-write" {...stylex.props(styles.frame)} />
+      <iframe title={state.title} src={`/a/${id}/view`} allow="clipboard-write; local-network-access; loopback-network" {...stylex.props(styles.frame)} />
     </div>
   );
 }

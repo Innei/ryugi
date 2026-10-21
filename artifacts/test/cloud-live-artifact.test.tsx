@@ -44,7 +44,7 @@ class FakeSocket {
   }
 }
 
-const LIVE = 'https://content.example/c1/live/1.owner.sig/';
+const LIVE = 'https://content.example/c1/live/9999999999.owner.sig/';
 const PUBLISHED = 'https://content.example/c1/3/1.owner.sig/';
 let root: Root | null = null;
 
@@ -108,4 +108,28 @@ test('an artboard renders live with selection but without the publish menu', asy
   await answerMeta({ canvas: { title: 'Board', boards: [] }, layout: null, versions: {}, warnings: [], pending: [], contentBase: 'http://127.0.0.1:4100/c/token/artboard/board/' });
   const view = host.querySelector<HTMLElement>('[data-view="artboard"]')!.dataset;
   expect(view).toMatchObject({ title: 'Board', base: 'http://127.0.0.1:4100/c/token/artboard/board/', artifact: 'artboard/c1', menu: 'false', live: 'true' });
+});
+
+test('when the computer goes offline after being live, the published copy comes back', async () => {
+  const { host, presence, answerMeta } = await mount({ type: 'html', title: 'Page', published: true, contentBase: PUBLISHED, payload: { title: 'Page' } });
+  await presence(true);
+  await answerMeta({ title: 'Page', warnings: [], version: 7, contentBase: '/c/token/html/page/' });
+  await presence(false);
+  expect(host.querySelector('iframe')!.getAttribute('src')).toBe(`${PUBLISHED}index.html`);
+});
+
+test('a live content grant about to expire is renewed before the frame reloads', async () => {
+  const fresh = 'https://content.example/c1/live/9999999999.owner.renewed/';
+  const fetched: string[] = [];
+  vi.stubGlobal('fetch', async (url: string) => {
+    fetched.push(url);
+    return Response.json({ owner: true, liveContentBase: fresh });
+  });
+  const stale = `https://content.example/c1/live/${Math.floor(Date.now() / 1000) + 60}.owner.old/`;
+  const { host, presence, answerMeta } = await mount({ type: 'html', title: 'Page', published: true, contentBase: PUBLISHED, payload: { title: 'Page' }, liveContentBase: stale });
+  await presence(true);
+  await answerMeta({ title: 'Page', warnings: [], version: 8, contentBase: '/c/token/html/page/' });
+  await act(async () => {});
+  expect(fetched).toEqual(['/api/a/c1']);
+  expect(host.querySelector('iframe')!.getAttribute('src')).toBe(`${fresh}index.html?v=8`);
 });

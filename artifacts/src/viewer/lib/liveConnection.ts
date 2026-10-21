@@ -12,10 +12,18 @@ export interface LiveConnectionOptions extends Omit<RelayConnectionOptions, 'onP
   cloudId: string;
   known: KnownHosts;
   directTimeoutMs?: number;
+  probe?: (port: number) => Promise<boolean>;
   onPresence: (presence: LivePresence) => void;
 }
 
 const DIRECT_TIMEOUT_MS = 2000;
+
+// Chrome does not yet ask permission for WebSockets to 127.0.0.1, but it does for fetch and frames; probing with fetch keeps a refused permission from leaving every content frame blank.
+const probeLoopback = (port: number) =>
+  fetch(`http://127.0.0.1:${port}/robots.txt`, { mode: 'no-cors', cache: 'no-store' }).then(
+    () => true,
+    () => false,
+  );
 
 export function createLiveConnection(options: LiveConnectionOptions): RelayConnection {
   let relayPresence: RelayPresence = { online: false, version: null };
@@ -23,6 +31,7 @@ export function createLiveConnection(options: LiveConnectionOptions): RelayConne
   let directLive = false;
   let directVersion: string | null = null;
   let attempt: ReturnType<typeof setTimeout> | undefined;
+  let probing = false;
 
   const report = () =>
     options.onPresence(directLive ? { online: true, version: directVersion, via: 'direct' } : { online: relayPresence.online, version: relayPresence.version, via: 'relay' });
@@ -33,6 +42,7 @@ export function createLiveConnection(options: LiveConnectionOptions): RelayConne
     const current = direct;
     direct = null;
     directLive = false;
+    probing = false;
     current?.close();
     if (!wasLive) return;
     report();
@@ -53,12 +63,21 @@ export function createLiveConnection(options: LiveConnectionOptions): RelayConne
           return;
         }
         clearTimeout(attempt);
-        if (directLive) return;
-        directLive = true;
         directVersion = presence.version;
-        options.known.remember(host.hostId);
-        report();
-        options.onOnline();
+        if (directLive || probing) return;
+        probing = true;
+        void (options.probe ?? probeLoopback)(host.port).then((allowed) => {
+          probing = false;
+          if (direct !== connection || directLive) return;
+          if (!allowed) {
+            fallBack();
+            return;
+          }
+          directLive = true;
+          options.known.remember(host.hostId);
+          report();
+          options.onOnline();
+        });
       },
       onEvent: (event) => {
         if (directLive && direct === connection) options.onEvent(event);

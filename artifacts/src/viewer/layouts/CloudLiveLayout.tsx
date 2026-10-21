@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from 'react';
+import { lazy, Suspense } from 'react';
 import { useCanvasData } from '../hooks/useCanvasData';
 import type { ArtifactFeed } from '../hooks/useArtifactFeed';
 import { useCloudFeed } from '../hooks/useCloudFeed';
@@ -18,12 +18,7 @@ function LiveArtboard({ id, feed }: { id: string; feed: ArtifactFeed }) {
 
 function LiveFeedArtifact({ id, artifact }: { id: string; artifact: Exclude<OwnerArtifact, { type: 'document' }> }) {
   const { presence, feed } = useCloudFeed(id, artifact.type, artifact.liveContentBase);
-  const [wasLive, setWasLive] = useState(false);
-  useEffect(() => {
-    if (feed.live) setWasLive(true);
-  }, [feed.live]);
-
-  if (!feed.live && !wasLive) return presence === null && !artifact.payload ? <CloudMessage>正在连接…</CloudMessage> : <CloudSnapshot id={id} artifact={artifact} />;
+  if (!feed.live) return presence === null && !artifact.payload ? <CloudMessage>正在连接…</CloudMessage> : <CloudSnapshot id={id} artifact={artifact} />;
   if (artifact.type === 'html') return <HtmlView id={id} feed={feed} />;
   return <LiveArtboard id={id} feed={feed} />;
 }
@@ -35,7 +30,8 @@ export function CloudLiveArtifact({ id, artifact }: { id: string; artifact: Owne
       <CloudLiveDocument
         id={id}
         state={artifact.payload?.state ?? null}
-        contentBase={artifact.contentBase ?? artifact.liveContentBase}
+        contentBase={artifact.contentBase}
+        liveContentBase={artifact.liveContentBase}
         comments={artifact.payload?.comments}
       />
     </Suspense>
