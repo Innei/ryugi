@@ -76,3 +76,10 @@ test('the viewer copies the diagram source', async () => {
   expect(writeText).toHaveBeenCalledWith(source);
   vi.unstubAllGlobals();
 });
+
+test('the inline diagram cannot be dragged into the document as an image', async () => {
+  const host = await renderDocument('发布流程');
+  const image = host.querySelector<HTMLImageElement>('[aria-label="放大查看 Mermaid 图"] img');
+  expect(image).toBeInstanceOf(HTMLImageElement);
+  expect(image!.getAttribute('draggable')).toBe('false');
+});

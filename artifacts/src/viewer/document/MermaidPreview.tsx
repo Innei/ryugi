@@ -44,6 +44,7 @@ export function MermaidPreview({ content }: MermaidRendererProps) {
   const colorScheme = useColorScheme();
   const diagram = useMermaidDiagram(content, colorScheme);
   const [hovered, setHovered] = useState(false);
+  const [focused, setFocused] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
   if (!diagram) return <MermaidRenderer content={content} colorScheme={colorScheme} />;
@@ -57,17 +58,21 @@ export function MermaidPreview({ content }: MermaidRendererProps) {
       tabIndex={0}
       aria-label="放大查看 Mermaid 图"
       onClick={open}
-      onKeyDown={(event) => {
+      onKeyDownCapture={(event) => {
         if (event.key !== 'Enter' && event.key !== ' ') return;
+        // Lexical's native keydown listener on the contenteditable would otherwise also see the key and split a paragraph at the last caret.
         event.preventDefault();
+        event.stopPropagation();
         open();
       }}
       onPointerEnter={() => setHovered(true)}
       onPointerLeave={() => setHovered(false)}
+      onFocus={(event) => setFocused(event.currentTarget.matches(':focus-visible'))}
+      onBlur={() => setFocused(false)}
       {...stylex.props(styles.root, hovered && styles.hovered)}
     >
-      <img alt="Mermaid diagram" src={diagram.src} width={diagram.width} height={diagram.height} {...stylex.props(styles.image)} />
-      <span {...stylex.props(styles.hint, hovered && styles.hintShown)}>
+      <img alt="Mermaid diagram" src={diagram.src} width={diagram.width} height={diagram.height} draggable={false} {...stylex.props(styles.image)} />
+      <span {...stylex.props(styles.hint, (hovered || focused) && styles.hintShown)}>
         <ZoomIn size={12} />
         点击放大查看
       </span>

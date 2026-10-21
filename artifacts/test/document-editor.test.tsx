@@ -1,9 +1,12 @@
 // @vitest-environment happy-dom
+// @vitest-environment-options {"happyDOM":{"settings":{"navigator":{"userAgent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36"}}}}
 import { $createMermaidNode } from '@haklex/rich-editor/nodes';
 import { $createLinkNode } from '@lexical/link';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
-import { $createParagraphNode, $createTextNode, $getRoot } from 'lexical';
+import { ConfigProvider, ModalHost } from '@lobehub/ui';
+import { $createParagraphNode, $createTextNode, $getRoot, type LexicalEditor, type ParagraphNode } from 'lexical';
 import { LoroDoc } from 'loro-crdt';
+import { motion, MotionGlobalConfig } from 'motion/react';
 import { act, createElement, useEffect } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeAll, expect, test, vi } from 'vitest';
@@ -37,27 +40,39 @@ vi.mock('../src/viewer/document/LoroSync', () => ({
 }));
 
 let root: Root | null = null;
-beforeAll(() => { (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true; });
-afterEach(() => {
+beforeAll(() => {
+  (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+  MotionGlobalConfig.skipAnimations = true;
+});
+afterEach(async () => {
+  const close = document.querySelector<HTMLElement>('[role="dialog"] [aria-label="关闭"]');
+  if (close) await act(async () => close.click());
+  await vi.waitFor(() => expect(document.querySelector('[role="dialog"]')).toBeNull());
   act(() => root?.unmount());
   root = null;
   document.body.innerHTML = '';
   vi.restoreAllMocks();
 });
 
+let editor: LexicalEditor | null = null;
+
 async function renderEditor() {
   const host = document.createElement('div');
   document.body.append(host);
   root = createRoot(host);
-  await act(async () => root!.render(createElement(DocumentEditor, {
-    id: 'draft',
-    doc: new LoroDoc(),
-    channel: createChannel(),
-    theme: 'light',
-    onAgentSection: () => {},
-    onOffline: () => {},
-    onEditorReady: () => {},
-  })));
+  const page = createElement('div', null,
+    createElement(DocumentEditor, {
+      id: 'draft',
+      doc: new LoroDoc(),
+      channel: createChannel(),
+      theme: 'light',
+      onAgentSection: () => {},
+      onOffline: () => {},
+      onEditorReady: (ready) => { editor = ready; },
+    }),
+    createElement(ModalHost),
+  );
+  await act(async () => root!.render(createElement(ConfigProvider, { motion, enableCustomFonts: false, children: page })));
   return host;
 }
 
@@ -78,4 +93,17 @@ test('a mermaid block renders as a diagram that opens the enlarged viewer', asyn
   const trigger = host.querySelector('[contenteditable="true"] [aria-label="放大查看 Mermaid 图"]');
   expect(trigger).toBeInstanceOf(HTMLElement);
   expect(trigger!.querySelector('img[alt="Mermaid diagram"]')).toBeInstanceOf(HTMLImageElement);
+});
+
+test('pressing Enter on a focused diagram opens the viewer without editing the document', async () => {
+  const host = await renderEditor();
+  await act(async () => editor!.update(() => {
+    $getRoot().getFirstChildOrThrow<ParagraphNode>().select(2, 2);
+  }, { discrete: true }));
+  const before = editor!.getEditorState().read(() => $getRoot().getTextContent());
+  const trigger = host.querySelector<HTMLElement>('[aria-label="放大查看 Mermaid 图"]')!;
+  trigger.focus();
+  await act(async () => trigger.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })));
+  expect(document.querySelector('[role="dialog"]')).toBeInstanceOf(HTMLElement);
+  expect(editor!.getEditorState().read(() => $getRoot().getTextContent())).toBe(before);
 });

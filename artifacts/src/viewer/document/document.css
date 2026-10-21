@@ -59,8 +59,18 @@
   margin: 0 0 16px;
 }
 
+.ryugi-mermaid-viewer {
+  --ryugi-viewer-inset: 40px;
+}
+
+@media (max-width: 640px) {
+  .ryugi-mermaid-viewer {
+    --ryugi-viewer-inset: 12px;
+  }
+}
+
 .ryugi-mermaid-viewer > div {
-  height: calc(100vh - 80px);
+  height: calc(100dvh - 2 * var(--ryugi-viewer-inset));
   max-height: none;
   border: 1px solid var(--lobe-color-border-secondary);
   border-radius: 0;

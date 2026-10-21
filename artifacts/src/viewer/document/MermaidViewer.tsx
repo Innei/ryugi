@@ -6,6 +6,8 @@ import { useState, type ReactNode } from 'react';
 import { TransformComponent, TransformWrapper } from 'react-zoom-pan-pinch';
 import type { MermaidDiagram } from './mermaid';
 
+const NARROW = '@media (max-width: 640px)';
+
 const styles = stylex.create({
   root: { display: 'flex', flexDirection: 'column', height: '100%', fontFamily: cssVar.fontFamily },
   head: {
@@ -14,13 +16,13 @@ const styles = stylex.create({
     gap: 8,
     flexShrink: 0,
     height: 52,
-    paddingInline: '18px 10px',
+    paddingInline: { default: '18px 10px', [NARROW]: '12px 4px' },
     borderBottomWidth: 1,
     borderBottomStyle: 'solid',
     borderBottomColor: cssVar.colorBorderSecondary,
   },
-  title: { fontSize: 14, fontWeight: 600, color: cssVar.colorText, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
-  meta: { marginInlineEnd: 'auto', fontSize: 12, color: cssVar.colorTextQuaternary, whiteSpace: 'nowrap' },
+  title: { flexShrink: 0, maxWidth: '40%', fontSize: 14, fontWeight: 600, color: cssVar.colorText, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
+  meta: { flex: 1, minWidth: 0, fontSize: 12, color: cssVar.colorTextQuaternary, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
   tools: { display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 },
   button: {
     display: 'inline-flex',
@@ -37,6 +39,7 @@ const styles = stylex.create({
   },
   percent: { minWidth: 44, textAlign: 'center', fontSize: 12, fontVariantNumeric: 'tabular-nums', color: cssVar.colorTextSecondary },
   divider: { width: 1, height: 18, marginInline: 4, backgroundColor: cssVar.colorBorderSecondary },
+  wide: { display: { default: null, [NARROW]: 'none' } },
   stage: { flex: 1, minHeight: 0, cursor: { default: 'grab', ':active': 'grabbing' } },
 });
 
@@ -83,13 +86,13 @@ function MermaidViewer({ title, source, diagram }: ViewerProps) {
               <ToolButton label="缩小" onClick={() => zoomOut()}><Minus size={16} /></ToolButton>
               <span {...stylex.props(styles.percent)}>{`${Math.round(scale * 100)}%`}</span>
               <ToolButton label="放大" onClick={() => zoomIn()}><Plus size={16} /></ToolButton>
+              <span {...stylex.props(styles.divider, styles.wide)} />
+              <button type="button" onClick={() => void fitToView({ maxScale: 1 })} {...stylex.props(styles.button, styles.wide)}>适配窗口</button>
+              <button type="button" onClick={() => void centerView(1)} {...stylex.props(styles.button, styles.wide)}>原尺寸</button>
               <span {...stylex.props(styles.divider)} />
-              <button type="button" onClick={() => void fitToView({ maxScale: 1 })} {...stylex.props(styles.button)}>适配窗口</button>
-              <button type="button" onClick={() => void centerView(1)} {...stylex.props(styles.button)}>原尺寸</button>
-              <span {...stylex.props(styles.divider)} />
-              <button type="button" onClick={() => void copy()} {...stylex.props(styles.button)}>
+              <button type="button" aria-label="复制源码" onClick={() => void copy()} {...stylex.props(styles.button)}>
                 {copied ? <Check size={14} /> : <Copy size={14} />}
-                {copied ? '已复制' : '复制源码'}
+                <span {...stylex.props(styles.wide)}>{copied ? '已复制' : '复制源码'}</span>
               </button>
               <ToolButton label="关闭" onClick={close}><X size={16} /></ToolButton>
             </div>
@@ -106,7 +109,7 @@ function MermaidViewer({ title, source, diagram }: ViewerProps) {
 export function openMermaidViewer(props: ViewerProps) {
   createModal({
     content: <MermaidViewer {...props} />,
-    width: 'calc(100vw - 80px)',
+    width: 'calc(100vw - 2 * var(--ryugi-viewer-inset))',
     classNames: { popup: 'ryugi-mermaid-viewer' },
     styles: { content: { height: '100%', padding: 0, overflow: 'hidden' } },
   });
