@@ -7,6 +7,7 @@ import { readConfig, setProjectAutoPublish, updateArtifactConfig, type Visibilit
 import { clearCredentials, readCredentials, writeCredentials } from './credentials';
 import { randomToken, send, sendJson } from './http';
 import { packArtifact } from './pack';
+import type { AutoPublishOutcome } from './auto-publish';
 import { withCloudRuntime } from './publish-payload';
 import { autoPublishEnabled, defaultGlobalAutoPublish, readGlobalAutoPublish, settingsFileFor, writeGlobalAutoPublish } from './settings';
 
@@ -50,6 +51,12 @@ class CloudRefused extends Error {
     message: string,
   ) {
     super(message);
+  }
+}
+
+class CreateRefused extends CloudRefused {
+  constructor(readonly detail: string) {
+    super(502, `cloud refused (403): ${detail}`);
   }
 }
 
@@ -146,6 +153,7 @@ export function createCloudRoutes(options: CloudRoutesOptions) {
 
     const create = async () => {
       const res = await cloudFetch('POST', '/api/artifacts', { type: ref.type, visibility: requested ?? entry.visibility ?? 'private', project });
+      if (res.status === 403) throw new CreateRefused(await errorMessage(res));
       const created = (await (await expectOk(res)).json()) as CloudArtifact;
       updateArtifactConfig(configFile, key, {
         visibility: created.visibility,
@@ -214,6 +222,24 @@ export function createCloudRoutes(options: CloudRoutesOptions) {
     if (res.status !== 404) await expectOk(res);
     for (const [key, entry] of Object.entries(readConfig(configFile).config.artifacts)) {
       if (entry.cloud?.id === cloudId) updateArtifactConfig(configFile, key, { cloud: null, autoPublish: false });
+    }
+  };
+
+  const autoPublish = async (key: string): Promise<AutoPublishOutcome> => {
+    const ref = artifactKeyOf(key);
+    if (!ref) return { kind: 'gone' };
+    const entry = artifactEntry(key);
+    if (entry.autoPublish === false) return { kind: 'opted-out' };
+    try {
+      const result = await publish(ref);
+      if (result.status !== 200) return { kind: 'not-ready' };
+      return { kind: 'published', created: (result.body as { id?: unknown }).id !== entry.cloud?.id };
+    } catch (err) {
+      if (err instanceof SignedOut) return { kind: 'signed-out' };
+      if (err instanceof CreateRefused) return { kind: 'cannot-create', message: err.detail };
+      if (err instanceof CloudRefused && err.status === 404) return { kind: 'gone' };
+      if (err instanceof CloudRefused && err.status === 413) return { kind: 'not-ready' };
+      return { kind: 'failed', message: (err as Error).message };
     }
   };
 
@@ -325,6 +351,10 @@ export function createCloudRoutes(options: CloudRoutesOptions) {
     },
 
     match: (pathname: string) => ROUTE.exec(pathname),
+
+    autoPublish,
+    autoPublishEnabled: () => autoPublishState().enabled,
+    token: () => readCredentials(credentialsFile, origin)?.token ?? null,
 
     async handle(req: http.IncomingMessage, res: http.ServerResponse, match: RegExpExecArray) {
       try {

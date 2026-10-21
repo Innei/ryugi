@@ -1,0 +1,169 @@
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { describe, expect, test } from 'vitest';
+import { createAutoPublisher, readAutoPublishState, type AutoPublishOutcome } from '../src/server/auto-publish';
+
+function setup(outcomes: Record<string, AutoPublishOutcome | (() => AutoPublishOutcome | Promise<AutoPublishOutcome>)> = {}) {
+  const stateFile = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-auto-')), 'auto-publish.json');
+  const calls: string[] = [];
+  const ctx = { enabled: true, token: 'tok' as string | null, stateFile, calls };
+  const publisher = createAutoPublisher({
+    stateFile,
+    enabled: () => ctx.enabled,
+    token: () => ctx.token,
+    publish: async (key) => {
+      calls.push(key);
+      const outcome = outcomes[key] ?? { kind: 'published', created: false };
+      return typeof outcome === 'function' ? outcome() : outcome;
+    },
+  });
+  return { ...ctx, ctx, publisher, state: () => readAutoPublishState(stateFile) };
+}
+
+describe('dirty tracking', () => {
+  test('ignores changes while auto-publish is off', async () => {
+    const { ctx, publisher, calls } = setup();
+    ctx.enabled = false;
+    publisher.changed('html/a');
+    ctx.enabled = true;
+    await publisher.flush();
+    expect(calls).toEqual([]);
+  });
+
+  test('publishes each changed artifact once and marks it clean', async () => {
+    const { publisher, calls, state } = setup();
+    publisher.changed('html/a');
+    publisher.changed('html/a');
+    publisher.changed('document/b');
+    await publisher.flush();
+    expect(calls.sort()).toEqual(['document/b', 'html/a']);
+    expect(state().dirty).toEqual([]);
+    await publisher.flush();
+    expect(calls).toHaveLength(2);
+  });
+
+  test('keeps the marks in the state file for the next server', async () => {
+    const first = setup();
+    first.publisher.changed('html/a');
+    const calls: string[] = [];
+    const second = createAutoPublisher({ stateFile: first.stateFile, enabled: () => true, token: () => 'tok', publish: async (key) => (calls.push(key), { kind: 'published', created: false }) });
+    await second.flush();
+    expect(calls).toEqual(['html/a']);
+  });
+
+  test('drops the mark of an artifact deleted locally', async () => {
+    const { publisher, calls } = setup();
+    publisher.changed('html/a');
+    publisher.removed('html/a');
+    await publisher.flush();
+    expect(calls).toEqual([]);
+  });
+
+  test('does not flush while auto-publish is off', async () => {
+    const { ctx, publisher, calls, state } = setup();
+    publisher.changed('html/a');
+    ctx.enabled = false;
+    await publisher.flush();
+    expect(calls).toEqual([]);
+    expect(state().dirty).toEqual(['html/a']);
+  });
+});
+
+describe('outcomes', () => {
+  test('a failure or an artifact that is not ready stays dirty and is retried', async () => {
+    let failing = true;
+    const { publisher, calls, state } = setup({
+      'html/a': () => (failing ? { kind: 'failed', message: 'offline' } : { kind: 'published', created: false }),
+      'html/b': { kind: 'not-ready' },
+    });
+    publisher.changed('html/a');
+    publisher.changed('html/b');
+    await publisher.flush();
+    expect(state().dirty.sort()).toEqual(['html/a', 'html/b']);
+    failing = false;
+    await publisher.flush();
+    expect(calls.filter((k) => k === 'html/a')).toHaveLength(2);
+    expect(state().dirty).toEqual(['html/b']);
+    expect(state().notice).toBeNull();
+  });
+
+  test('an opted-out or vanished artifact drops its mark', async () => {
+    const { publisher, state } = setup({ 'html/a': { kind: 'opted-out' }, 'html/b': { kind: 'gone' } });
+    publisher.changed('html/a');
+    publisher.changed('html/b');
+    await publisher.flush();
+    expect(state().dirty).toEqual([]);
+  });
+});
+
+describe('flush queue', () => {
+  test('a flush requested during a flush runs once more afterwards, never in parallel', async () => {
+    let release!: () => void;
+    let active = 0;
+    let peak = 0;
+    const gate = new Promise<void>((resolve) => (release = resolve));
+    const { publisher, calls } = setup({
+      'html/a': async () => {
+        active++;
+        peak = Math.max(peak, active);
+        await gate;
+        active--;
+        return { kind: 'published', created: false };
+      },
+    });
+    publisher.changed('html/a');
+    const first = publisher.flush();
+    publisher.changed('html/b');
+    const second = publisher.flush();
+    const third = publisher.flush();
+    release();
+    await Promise.all([first, second, third]);
+    expect(peak).toBe(1);
+    expect(calls).toEqual(['html/a', 'html/b']);
+  });
+});
+
+describe('signed out', () => {
+  test('pauses with one notice until a different token appears', async () => {
+    let signedOut = true;
+    const { ctx, publisher, calls, state } = setup({ 'html/a': () => (signedOut ? { kind: 'signed-out' } : { kind: 'published', created: false }) });
+    publisher.changed('html/a');
+    await publisher.flush();
+    const notice = state().notice;
+    expect(notice).toMatchObject({ kind: 'signed-out' });
+    await publisher.flush();
+    expect(calls).toHaveLength(1);
+    expect(state().notice).toEqual(notice);
+    signedOut = false;
+    ctx.token = 'new-token';
+    await publisher.flush();
+    expect(calls).toHaveLength(2);
+    expect(state().notice).toBeNull();
+    expect(state().dirty).toEqual([]);
+  });
+});
+
+describe('account cap', () => {
+  test('notifies once per episode, keeps republishing existing copies, and clears after a create succeeds', async () => {
+    let capped = true;
+    const { publisher, calls, state } = setup({
+      'html/new': () => (capped ? { kind: 'cannot-create', message: 'limit of 100 published artifacts reached' } : { kind: 'published', created: true }),
+      'html/old': { kind: 'published', created: false },
+    });
+    publisher.changed('html/new');
+    publisher.changed('html/old');
+    await publisher.flush();
+    const notice = state().notice;
+    expect(notice).toMatchObject({ kind: 'cap', message: 'limit of 100 published artifacts reached' });
+    expect(state().dirty).toEqual(['html/new']);
+    publisher.changed('html/old');
+    await publisher.flush();
+    expect(state().notice).toEqual(notice);
+    expect(calls.filter((k) => k === 'html/old')).toHaveLength(2);
+    capped = false;
+    await publisher.flush();
+    expect(state().notice).toBeNull();
+    expect(state().dirty).toEqual([]);
+  });
+});

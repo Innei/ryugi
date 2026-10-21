@@ -21,6 +21,7 @@ import { createCloudRoutes, type CloudOptions } from './cloud';
 import { commentNames } from './comment-names';
 import { publishPayload } from './publish-payload';
 import { viewerPage } from './viewer-page';
+import { createAutoPublisher } from './auto-publish';
 import { watchTree } from './watch';
 import { completeHandshake, handleClientFrames, rejectUpgrade, textFrame } from './ws';
 
@@ -177,6 +178,10 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
     options.cloud && options.configFile
       ? createCloudRoutes({ ...options.cloud, configFile: options.configFile, project: path.basename(path.resolve(root, '../..')), port: () => port, inspect })
       : null;
+
+  const autoPublisher = cloud
+    ? createAutoPublisher({ stateFile: path.join(stateDir, 'auto-publish.json'), enabled: cloud.autoPublishEnabled, token: cloud.token, publish: cloud.autoPublish })
+    : null;
 
   const sameOrigin = (req: http.IncomingMessage) => {
     const origin = req.headers.origin;
@@ -489,6 +494,20 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
       return;
     }
 
+    if (pathname === '/api/cloud/flush') {
+      if (req.method !== 'POST' || key === null || !safeEqual(key, token)) {
+        send(res, 403, 'Forbidden: agent calls need ?key=');
+        return;
+      }
+      if (!autoPublisher) sendJson(res, 404, { error: 'cloud publishing is not configured' });
+      else if (url.searchParams.get('wait') === '1') void autoPublisher.flush().then(() => sendJson(res, 200, { flushed: true }));
+      else {
+        void autoPublisher.flush();
+        sendJson(res, 202, { queued: true });
+      }
+      return;
+    }
+
     const cloudMatch = cloud?.match(pathname);
     if (cloud && cloudMatch) {
       if (req.method !== 'GET' && !(key !== null && safeEqual(key, token)) && !sameOrigin(req)) {
@@ -638,6 +657,7 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
         const dir = resolveArtifactDir(root, ref.type, ref.id);
         if (!dir) {
           signatures.delete(key);
+          autoPublisher?.removed(key);
           const frame = textFrame(JSON.stringify({ type: 'change', artifact: key, files: changed } satisfies ServerMessage));
           for (const socket of clients) socket.write(frame);
           continue;
@@ -645,6 +665,7 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
         if (ref.type === 'document' && (changed.includes('doc.xml') || changed.length === 0)) documents.fileChanged(ref.id);
         if (ref.type === 'document' && changed.includes('comments.json')) documents.commentsChanged(ref.id);
         if (signatures.get(key) === artifactSignature(dir)) continue;
+        autoPublisher?.changed(key);
         runtimeWarnings.delete(key);
         const payload = refreshState(ref, dir);
         const frame = textFrame(JSON.stringify({ type: 'change', artifact: key, files: changed } satisfies ServerMessage));
