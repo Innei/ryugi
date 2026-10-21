@@ -1,12 +1,12 @@
-import { CopyButton, Popover } from '@lobehub/ui';
+import { Popover } from '@lobehub/ui';
 import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
-import { ArrowRight, CircleAlert, Globe, Lock, MessageCircle } from 'lucide-react';
+import { ArrowRight, CircleAlert, Copy, Globe, Lock, MessageCircle } from 'lucide-react';
 import { useState } from 'react';
 import type { Visibility } from '../../shared/cloud';
 import type { ArtifactType } from '../../shared/types';
 import type { CloudHeaderState } from '../hooks/useCloudHeader';
-import { changeVisibility, INSTALL_URL } from '../lib/cloud-shell';
+import { changeVisibility, CloudRequestError, INSTALL_URL } from '../lib/cloud-shell';
 import { RyugiMark } from './RyugiMark';
 
 const NARROW = '@media (max-width: 640px)';
@@ -175,11 +175,11 @@ export function CloudHeader({ id, type, title, owner, status, visibility, onChan
   );
 }
 
-function OwnerActions({ id, visibility, onChange }: { id: string; visibility: Visibility; onChange: (next: Visibility) => void }) {
-  const [error, setError] = useState<string | null>(null);
+export function CloudSharePanel({ id, visibility, onChange }: { id: string; visibility: Visibility; onChange: (next: Visibility) => void }) {
+  const [error, setError] = useState<{ message: string; auth?: boolean } | null>(null);
   const [saving, setSaving] = useState(false);
+  const [copied, setCopied] = useState(false);
   const url = `${location.origin}/a/${id}`;
-  const current = OPTIONS.find((option) => option.value === visibility)!;
 
   const choose = async (next: Visibility) => {
     if (next === visibility || saving) return;
@@ -188,12 +188,22 @@ function OwnerActions({ id, visibility, onChange }: { id: string; visibility: Vi
     try {
       onChange(await changeVisibility(id, next));
     } catch (err) {
-      setError((err as Error).message);
+      setError({ message: (err as Error).message, auth: err instanceof CloudRequestError && err.status === 401 });
     }
     setSaving(false);
   };
 
-  const panel = (
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setError(null);
+    } catch {
+      setError({ message: '复制失败，请手动复制链接。' });
+    }
+  };
+
+  return (
     <div {...stylex.props(styles.panel)}>
       <p {...stylex.props(styles.heading)}>谁能看到这个链接</p>
       <div role="radiogroup" aria-label="谁能看到这个链接" {...stylex.props(styles.options)}>
@@ -219,11 +229,15 @@ function OwnerActions({ id, visibility, onChange }: { id: string; visibility: Vi
       </div>
       <div {...stylex.props(styles.link)}>
         <span {...stylex.props(styles.url)}>{url.replace(/^https?:\/\//, '')}</span>
-        <CopyButton content={url} size="small" />
+        <button type="button" onClick={() => void copy()} {...stylex.props(styles.share)}><Copy size={12} /> {copied ? '已复制' : '复制'}</button>
       </div>
-      {error ? <p {...stylex.props(styles.error)}>{error}</p> : <p {...stylex.props(styles.foot)}>改动立即生效，链接不变。</p>}
+      {error ? <p role="alert" {...stylex.props(styles.error)}>{error.auth ? '登录已过期，请重新登录。' : error.message} {error.auth && <a href={`/auth/login?return=${encodeURIComponent(location.pathname)}`}>重新登录</a>}</p> : <p {...stylex.props(styles.foot)}>{visibility === 'private' ? '复制不会自动公开。' : ''}改动立即生效，链接不变。</p>}
     </div>
   );
+}
+
+function OwnerActions({ id, visibility, onChange }: { id: string; visibility: Visibility; onChange: (next: Visibility) => void }) {
+  const current = OPTIONS.find((option) => option.value === visibility)!;
 
   return (
     <>
@@ -231,7 +245,7 @@ function OwnerActions({ id, visibility, onChange }: { id: string; visibility: Vi
         <current.Icon size={11} />
         <span {...stylex.props(styles.visibilityLabel)}>{current.label}可见</span>
       </span>
-      <Popover placement="bottomRight" trigger="click" content={panel}>
+      <Popover placement="bottomRight" trigger="click" content={<CloudSharePanel id={id} visibility={visibility} onChange={onChange} />}>
         <button type="button" {...stylex.props(styles.share)}>
           分享
         </button>

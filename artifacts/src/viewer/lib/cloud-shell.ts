@@ -12,6 +12,12 @@ export type ShellState =
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
 
+export class CloudRequestError extends Error {
+  constructor(readonly status: number, message: string) {
+    super(message);
+  }
+}
+
 export const loginUrl = (id: string) => `/auth/login?return=${encodeURIComponent(`/a/${id}`)}`;
 
 async function errorOf(res: Response) {
@@ -39,9 +45,14 @@ export async function changeVisibility(id: string, visibility: Visibility, fetch
     body: JSON.stringify({ visibility }),
     credentials: 'same-origin',
   });
-  if (!res.ok) throw new Error(await errorOf(res));
+  if (!res.ok) throw new CloudRequestError(res.status, await errorOf(res));
   const stored = ((await res.json()) as { visibility?: unknown }).visibility;
   return isVisibility(stored) ? stored : visibility;
+}
+
+export async function deleteCloudArtifact(id: string) {
+  const res = await fetch(`/api/a/${id}`, { method: 'DELETE', headers: JSON_HEADERS, body: '{}', credentials: 'same-origin' });
+  if (!res.ok && res.status !== 404) throw new CloudRequestError(res.status, await errorOf(res));
 }
 
 export async function switchAccount(id: string, fetchImpl: typeof fetch = fetch): Promise<string> {
