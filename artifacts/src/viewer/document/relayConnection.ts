@@ -1,7 +1,7 @@
-import type { RelayPresence, RelayReply, RelayRequest } from '../../shared/relay';
+import type { LiveHost, RelayPresence, RelayReply, RelayRequest } from '../../shared/relay';
 
 type RelayIncoming =
-  | { t: 'presence'; online: boolean; version: string | null }
+  | { t: 'presence'; online: boolean; version: string | null; hosts?: LiveHost[] }
   | { t: 'reply'; rid: number; body: RelayReply }
   | { t: 'event'; body: { artifact?: string } & Record<string, unknown> }
   | { t: 'error'; rid: number; error: string };
@@ -58,7 +58,7 @@ export function createRelayConnection(options: RelayConnectionOptions): RelayCon
       const wasOnline = online;
       online = message.online;
       if (!online) failPending();
-      options.onPresence({ online: message.online, version: message.version });
+      options.onPresence({ online: message.online, version: message.version, ...(Array.isArray(message.hosts) ? { hosts: message.hosts } : {}) });
       if (online && !wasOnline) options.onOnline();
     } else if (message.t === 'reply') {
       settle(message.rid, message.body.ok ? { data: message.body.data } : { error: message.body.error });

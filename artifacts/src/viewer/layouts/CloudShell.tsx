@@ -3,6 +3,7 @@ import * as stylex from '@stylexjs/stylex';
 import { useEffect, useState } from 'react';
 import { OwnerBanner, VisitorBanner } from '../components/CloudBanner';
 import { loadShell, type ShellState } from '../lib/cloud-shell';
+import { knownHosts, takeHostHint } from '../lib/knownHosts';
 import { CloudNotFound } from './CloudNotFound';
 
 const styles = stylex.create({
@@ -21,7 +22,12 @@ const styles = stylex.create({
   },
 });
 
+function rememberHostHint() {
+  if (takeHostHint(location.hash, knownHosts()) !== null) history.replaceState(history.state, '', `${location.pathname}${location.search}`);
+}
+
 export function CloudShell({ id }: { id: string }) {
+  useState(rememberHostHint);
   const [state, setState] = useState<ShellState>({ kind: 'loading' });
 
   useEffect(() => {

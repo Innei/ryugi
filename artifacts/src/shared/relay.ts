@@ -10,4 +10,6 @@ export type RelayRequest =
 
 export type RelayReply<T = unknown> = { ok: true; data: T } | { ok: false; error: string };
 
-export type RelayPresence = { online: boolean; version: string | null };
+export type LiveHost = { hostId: string; port: number; key: string };
+
+export type RelayPresence = { online: boolean; version: string | null; hosts?: LiveHost[] };
