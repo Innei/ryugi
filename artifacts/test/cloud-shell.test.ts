@@ -28,6 +28,11 @@ describe('loading the shell', () => {
     expect(await loadShell('abc', impl)).toEqual({ kind: 'ready', title: 'Arrow', owner: true, visibility: 'private' });
   });
 
+  test('an artifact that is not published yet is named as such for its owner', async () => {
+    const { impl } = fakeFetch({ 'GET /api/a/abc': () => Response.json({ title: null, owner: true, visibility: 'private', published: false }) });
+    expect(await loadShell('abc', impl)).toEqual({ kind: 'ready', title: '还没发布', owner: true, visibility: 'private' });
+  });
+
   test('a link that will not open asks who is signed in', async () => {
     const { impl, calls } = fakeFetch({
       'GET /api/a/abc': () => Response.json({ error: 'artifact not found' }, { status: 404 }),

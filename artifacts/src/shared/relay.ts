@@ -6,7 +6,9 @@ export type RelayRequest =
   | { op: 'state' }
   | { op: 'update'; bytes: string }
   | { op: 'comment'; comment: HumanOp }
-  | { op: 'selection'; selection: DocumentSelectionMessage };
+  | { op: 'selection'; selection: DocumentSelectionMessage }
+  | { op: 'file'; path: string }
+  | { op: 'client'; message: unknown };
 
 export type RelayReply<T = unknown> = { ok: true; data: T } | { ok: false; error: string };
 

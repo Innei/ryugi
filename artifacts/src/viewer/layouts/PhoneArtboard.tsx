@@ -45,9 +45,10 @@ interface Props {
   live?: boolean;
   loaded: boolean;
   agent?: string;
+  menu?: boolean;
 }
 
-export function PhoneArtboard({ id, artifact, canvas, layout, warnings, pending, contentBase, versions, live, loaded, agent }: Props) {
+export function PhoneArtboard({ id, artifact, canvas, layout, warnings, pending, contentBase, versions, live, loaded, agent, menu = true }: Props) {
   const { viewportRef, view, fit, handlers } = usePanZoom('hand');
   const [current, setCurrent] = useState<string | null>(null);
   const [snap, setSnap] = useState(SHEET_PEEK);
@@ -121,7 +122,7 @@ export function PhoneArtboard({ id, artifact, canvas, layout, warnings, pending,
 
   return (
     <div {...stylex.props(styles.root)}>
-      <PhoneArtboardBar title={canvas?.title || id} pages={canvas?.pages ?? []} page={page} onPageChange={changePage} artifact={artifact} live={live} zoom={view.k} />
+      <PhoneArtboardBar title={canvas?.title || id} pages={canvas?.pages ?? []} page={page} onPageChange={changePage} artifact={menu ? artifact : null} live={live} zoom={view.k} />
       <div
         ref={viewportRef}
         {...stylex.props(styles.viewport)}

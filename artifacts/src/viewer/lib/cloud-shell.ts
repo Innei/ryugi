@@ -26,8 +26,8 @@ export async function loadShell(id: string, fetchImpl: typeof fetch = fetch): Pr
     return { kind: 'missing', login: typeof login === 'string' ? login : null };
   }
   if (!res.ok) return { kind: 'failed', message: `加载失败（${res.status}）` };
-  const artifact = (await res.json()) as { title: string; owner?: unknown; visibility?: unknown };
-  return { kind: 'ready', title: artifact.title, owner: artifact.owner === true, visibility: isVisibility(artifact.visibility) ? artifact.visibility : 'private' };
+  const artifact = (await res.json()) as { title?: unknown; owner?: unknown; visibility?: unknown };
+  return { kind: 'ready', title: typeof artifact.title === 'string' ? artifact.title : '还没发布', owner: artifact.owner === true, visibility: isVisibility(artifact.visibility) ? artifact.visibility : 'private' };
 }
 
 export async function changeVisibility(id: string, visibility: Visibility, fetchImpl: typeof fetch = fetch): Promise<Visibility> {

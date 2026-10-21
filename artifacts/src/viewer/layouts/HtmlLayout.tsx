@@ -3,6 +3,7 @@ import * as stylex from '@stylexjs/stylex';
 import { useEffect } from 'react';
 import { PublishMenu } from '../components/PublishMenu';
 import { WarningsBadge } from '../components/WarningsBadge';
+import { useLocalFeed, type ArtifactFeed } from '../hooks/useArtifactFeed';
 import { useHtmlData } from '../hooks/useHtmlData';
 import { HTML_SANDBOX, useSandboxFrame } from '../hooks/useSandboxFrame';
 
@@ -28,7 +29,11 @@ const styles = stylex.create({
 });
 
 export function HtmlLayout({ id }: { id: string }) {
-  const { data, send } = useHtmlData(id);
+  return <HtmlView id={id} feed={useLocalFeed('html', id)} menu />;
+}
+
+export function HtmlView({ id, feed, menu = false }: { id: string; feed: ArtifactFeed; menu?: boolean }) {
+  const { data, send } = useHtmlData(id, feed);
 
   useEffect(() => {
     document.title = data?.title || id;
@@ -61,7 +66,7 @@ export function HtmlLayout({ id }: { id: string }) {
           {data ? (data.warnings[0] ?? 'Waiting for the agent to write index.html…') : 'Connecting…'}
         </div>
       )}
-      <PublishMenu artifact={`html/${id}`} floating />
+      {menu ? <PublishMenu artifact={`html/${id}`} floating /> : null}
       <WarningsBadge warnings={data?.warnings ?? []} />
     </div>
   );

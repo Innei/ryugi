@@ -2,7 +2,7 @@ import type { CommentsFile, HumanOp } from '../../shared/comments';
 import type { RelayPresence } from '../../shared/relay';
 import type { DocumentPayload } from '../../shared/types';
 import { createChannel, type Channel } from './channel';
-import { createRelayConnection } from './relayConnection';
+import { createRelayConnection, type RelayConnection, type RelayConnectionOptions } from './relayConnection';
 
 export interface DocumentMeta extends DocumentPayload {
   contentBase: string;
@@ -68,11 +68,12 @@ export interface RelayTransportOptions {
   WebSocket?: typeof WebSocket;
   retryMs?: number;
   onPresence: (presence: RelayPresence) => void;
+  connect?: (options: RelayConnectionOptions) => RelayConnection;
 }
 
 export function createRelayTransport(options: RelayTransportOptions): DocumentTransport & { close(): void } {
   const channel = createChannel();
-  const connection = createRelayConnection({
+  const connection = (options.connect ?? createRelayConnection)({
     url: options.url,
     artifact: options.artifact,
     WebSocket: options.WebSocket,

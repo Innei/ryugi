@@ -2,6 +2,9 @@ import { useEffect, useMemo, useState } from 'react';
 import type { RelayPresence } from '../../shared/relay';
 import { useArtifactSocket } from '../hooks/useArtifactSocket';
 import { createChannel } from './channel';
+import { relayUrlFor } from '../hooks/useCloudFeed';
+import { knownHosts } from '../lib/knownHosts';
+import { createLiveConnection } from '../lib/liveConnection';
 import { createLocalTransport, createRelayTransport, type DocumentTransport } from './transport';
 
 export function useLocalTransport(id: string) {
@@ -23,10 +26,11 @@ export function useRelayTransport(cloudId: string, contentBase: string) {
 
   useEffect(() => {
     const relay = createRelayTransport({
-      url: `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/api/relay/a/${encodeURIComponent(cloudId)}`,
+      url: relayUrlFor(cloudId),
       artifact: `document/${cloudId}`,
       contentBase,
       onPresence: setPresence,
+      connect: (options) => createLiveConnection({ ...options, cloudId, known: knownHosts() }),
     });
     setTransport(relay);
     return () => {

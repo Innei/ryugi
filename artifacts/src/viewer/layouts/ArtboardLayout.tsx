@@ -8,6 +8,7 @@ import { CanvasErrorBoundary } from '../components/CanvasErrorBoundary';
 import { ExpandedBoard } from '../components/ExpandedBoard';
 import { Labels } from '../components/Labels';
 import { TopLeftBar, TopRightBar } from '../components/Toolbar';
+import { useLocalFeed } from '../hooks/useArtifactFeed';
 import { useCanvasData } from '../hooks/useCanvasData';
 import { useInspector } from '../hooks/useInspector';
 import { useSelectionSync } from '../hooks/useSelectionSync';
@@ -53,11 +54,12 @@ type ArtboardViewProps = Omit<ReturnType<typeof useCanvasData>, 'live' | 'stale'
   id: string;
   artifact: string | null;
   live?: boolean;
+  menu?: boolean;
   send?: (message: SelectionMessage) => void;
 };
 
 export function ArtboardLayout({ id }: { id: string }) {
-  const data = useCanvasData(id);
+  const data = useCanvasData(useLocalFeed('artboard', id));
   return <ArtboardView id={id} artifact={`artboard/${id}`} {...data} />;
 }
 
@@ -66,7 +68,7 @@ export function ArtboardView(props: ArtboardViewProps) {
   return phone ? <PhoneArtboard {...props} /> : <DesktopArtboard {...props} />;
 }
 
-function DesktopArtboard({ id, artifact, canvas, layout, warnings, pending, contentBase, versions, live, loaded, send, agent }: ArtboardViewProps) {
+function DesktopArtboard({ id, artifact, canvas, layout, warnings, pending, contentBase, versions, live, loaded, send, agent, menu = true }: ArtboardViewProps) {
   const [tool, setTool] = useState<Tool>('select');
   const { viewportRef, view, fit, zoomBy, zoomTo, cursor, handlers, panBy, wheelAt, panning, setSpaceHeld } = usePanZoom(tool);
   const [inspectorOpen, setInspectorOpen] = useState(false);
@@ -231,7 +233,7 @@ function DesktopArtboard({ id, artifact, canvas, layout, warnings, pending, cont
       )}
       <TopLeftBar pages={pages} page={page} onPageChange={changePage} tool={tool} onToolChange={setTool} />
       <TopRightBar
-        artifact={artifact}
+        artifact={menu ? artifact : null}
         live={live}
         warnings={warnings}
         zoom={view.k}

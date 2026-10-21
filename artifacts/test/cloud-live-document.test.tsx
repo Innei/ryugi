@@ -5,6 +5,8 @@ import { afterEach, beforeAll, expect, test, vi } from 'vitest';
 import { editableAcross } from '../src/viewer/document/cloudLive';
 import CloudLiveDocument from '../src/viewer/document/CloudLiveDocument';
 
+vi.mock('@stylexjs/stylex', async (original) => ({ ...await original<object>(), create: (value: unknown) => value, props: () => ({}), defineConsts: (value: unknown) => value, defineVars: (value: unknown) => value }));
+vi.mock('@lobehub/ui/stylex/cssVar.stylex', () => ({ cssVar: new Proxy({}, { get: (_, key) => `var(--${String(key)})` }) }));
 vi.mock('../src/viewer/document/CloudDocument', () => ({
   default: (props: { offline?: boolean }) => createElement('div', { 'data-view': 'snapshot', 'data-offline': String(Boolean(props.offline)) }),
 }));

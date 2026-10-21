@@ -1,31 +1,27 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { mergePayload, type ViewerPayload } from '../lib/payload';
-import { useArtifactSocket } from './useArtifactSocket';
+import type { ArtifactFeed } from './useArtifactFeed';
 
 const EMPTY: ViewerPayload = { canvas: null, warnings: [], pending: [], layout: null, versions: {}, contentBase: '', stale: false };
 
-export function useCanvasData(id: string) {
+export function useCanvasData({ live, revision, load, send }: ArtifactFeed) {
   const [data, setData] = useState<ViewerPayload>(EMPTY);
   const [loaded, setLoaded] = useState(false);
 
-  const refresh = useCallback(async () => {
-    try {
-      const res = await fetch(`/api/artifacts/artboard/${id}`, { cache: 'no-store' });
-      const next = (await res.json()) as Omit<ViewerPayload, 'stale'>;
-      setData((prev) => mergePayload(prev, { ...EMPTY, ...next }));
-      setLoaded(true);
-    } catch {
-      setLoaded(true);
-    }
-  }, [id]);
-
-  const { live, send } = useArtifactSocket((message) => {
-    if (message.type === 'change' && message.artifact === `artboard/${id}`) void refresh();
-  }, refresh);
-
   useEffect(() => {
-    void refresh();
-  }, [refresh]);
+    let cancelled = false;
+    load().then(
+      ({ data: next }) => {
+        if (cancelled) return;
+        setData((prev) => mergePayload(prev, { ...EMPTY, ...(next as Partial<ViewerPayload>) }));
+        setLoaded(true);
+      },
+      () => !cancelled && setLoaded(true),
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [load, revision]);
 
   return { ...data, loaded, live, send };
 }
