@@ -104,10 +104,10 @@ export function usePanZoom(tool: Tool) {
     return { cx: (el?.clientWidth ?? 0) / 2, cy: (el?.clientHeight ?? 0) / 2 };
   };
 
-  const fit = useCallback((bounds: Bounds | null | undefined) => {
+  const fit = useCallback((bounds: Bounds | null | undefined, insets: Insets = INSETS) => {
     const el = viewportRef.current;
     if (!el || !bounds) return;
-    setView(fitView(bounds, { width: el.clientWidth, height: el.clientHeight }, INSETS));
+    setView(fitView(bounds, { width: el.clientWidth, height: el.clientHeight }, insets));
   }, []);
 
   const zoomBy = useCallback((factor: number) => {
@@ -123,6 +123,7 @@ export function usePanZoom(tool: Tool) {
   return {
     viewportRef,
     view,
+    place: setView,
     fit,
     zoomBy,
     zoomTo: zoomToLevel,

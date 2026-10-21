@@ -17,6 +17,8 @@ import { InspectorPanel } from '../inspector/InspectorPanel';
 import { togglePlaying } from '../lib/play';
 import type { Bounds } from '../../shared/types';
 import { useArtboardPage } from '../hooks/useArtboardPage';
+import { PHONE_QUERY, useMedia } from '../hooks/useMedia';
+import { PhoneArtboard } from './PhoneArtboard';
 
 const styles = stylex.create({
   layout: { display: 'flex', width: '100%', height: '100%', overflow: 'hidden' },
@@ -59,7 +61,12 @@ export function ArtboardLayout({ id }: { id: string }) {
   return <ArtboardView id={id} artifact={`artboard/${id}`} {...data} />;
 }
 
-export function ArtboardView({ id, artifact, canvas, layout, warnings, pending, contentBase, versions, live, loaded, send, agent }: ArtboardViewProps) {
+export function ArtboardView(props: ArtboardViewProps) {
+  const phone = useMedia(PHONE_QUERY);
+  return phone ? <PhoneArtboard {...props} /> : <DesktopArtboard {...props} />;
+}
+
+function DesktopArtboard({ id, artifact, canvas, layout, warnings, pending, contentBase, versions, live, loaded, send, agent }: ArtboardViewProps) {
   const [tool, setTool] = useState<Tool>('select');
   const { viewportRef, view, fit, zoomBy, zoomTo, cursor, handlers, panBy, wheelAt, panning, setSpaceHeld } = usePanZoom(tool);
   const [inspectorOpen, setInspectorOpen] = useState(false);
