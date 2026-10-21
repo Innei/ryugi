@@ -168,6 +168,13 @@ describe('cloud library management', () => {
     expect(host.querySelector('.library-card-meta')?.textContent).toContain('私有');
   });
 
+  test('opening sharing does not add an invisible button to the tab order', async () => {
+    const host = await render({ status: 200, body: list });
+    await act(async () => { host.querySelector<HTMLButtonElement>('button[aria-label="管理 Arrow"]')!.click(); });
+    await click('分享设置');
+    expect(document.querySelector('[role="button"][aria-hidden="true"][tabindex="0"]')).toBeNull();
+  });
+
   test('can retry an initial loading error', async () => {
     let fail = true;
     const host = await render({ status: 503, body: {} }, (async () => fail ? new Response(null, { status: 503 }) : Response.json(list)) as typeof fetch);

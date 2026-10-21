@@ -42,7 +42,7 @@ function CardActions({ artifact, onVisibility, onDelete, onNotice }: {
         <button ref={trigger} type="button" aria-label={`管理 ${artifact.title ?? artifact.id}`} className="cloud-menu-trigger"><MoreHorizontal size={16} /></button>
       </DropdownMenu>
       {sharing && <Popover standalone open trigger={[]} placement="bottomRight" nativeButton={false}
-        onOpenChange={(open) => !open && setSharing(false)} positionerProps={{ anchor: trigger }}
+        onOpenChange={(open) => !open && setSharing(false)} positionerProps={{ anchor: trigger }} triggerProps={{ tabIndex: -1 }}
         popupProps={{ finalFocus: trigger, 'aria-label': `分享 ${artifact.title ?? artifact.id}` }}
         content={<CloudSharePanel id={artifact.id} visibility={artifact.visibility} onChange={onVisibility} />}>
         <span aria-hidden="true" tabIndex={-1} />
