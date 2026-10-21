@@ -1,7 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { ArtifactSummary } from '../../shared/types';
-
-export function ArtifactThumbnail({ artifact }: { artifact: ArtifactSummary }) {
+export function ArtifactThumbnail({ title, src, version }: { title: string; src: string; version: string | number }) {
   const ref = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
   const [size, setSize] = useState({ width: 0, height: 140 });
@@ -19,16 +17,16 @@ export function ArtifactThumbnail({ artifact }: { artifact: ArtifactSummary }) {
     return () => { intersection.disconnect(); resize.disconnect(); };
   }, []);
 
-  useEffect(() => setFailed(false), [artifact.updatedAt]);
+  useEffect(() => setFailed(false), [version]);
   const scale = size.width / 1000;
   return (
     <div ref={ref} className="library-thumbnail" aria-hidden="true" inert>
       <span>{failed ? '预览暂不可用' : '正在加载预览…'}</span>
       {visible && scale > 0 && !failed && (
         <iframe
-          key={artifact.updatedAt}
-          src={`/preview/${artifact.type}/${artifact.id}?v=${artifact.updatedAt}`}
-          title={`${artifact.title} 预览`}
+          key={version}
+          src={src}
+          title={`${title} 预览`}
           sandbox="allow-scripts allow-same-origin"
           tabIndex={-1}
           onError={() => setFailed(true)}

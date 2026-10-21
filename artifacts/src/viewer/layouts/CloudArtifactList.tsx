@@ -3,6 +3,7 @@ import { ArrowUpRight, Code2, FileText, Globe, Lock, PanelsTopLeft } from 'lucid
 import { useEffect, useState } from 'react';
 import logo from '../../../../assets/ryugi-small.svg';
 import { relativeUpdatedAt } from '../lib/artifact-list';
+import { ArtifactThumbnail } from '../components/ArtifactThumbnail';
 import { groupByProject, type CloudListItem } from '../lib/cloud-list';
 
 const labels = { artboard: 'Artboard', document: 'Document', html: 'HTML' };
@@ -34,7 +35,7 @@ export function CloudArtifactList() {
   return (
     <div className="artifact-library">
       <header className="library-topbar">
-        <div className="library-breadcrumb"><img className="library-logo" src={logo} alt="" /><strong>ryugi</strong><span>/</span><span>Cloud</span></div>
+        <div className="library-breadcrumb"><img className="library-logo" src={logo} alt="" /><strong>ryugi</strong><span>/</span><b>Cloud</b></div>
         {loaded.state === 'ready' && <span className="library-status">{loaded.login}</span>}
       </header>
       <main className="library-main">
@@ -59,16 +60,17 @@ export function CloudArtifactList() {
                 const Icon = icons[artifact.type];
                 const Seen = artifact.visibility === 'public' ? Globe : Lock;
                 const title = artifact.title ?? artifact.id;
+                const version = Date.parse(artifact.updatedAt);
                 return (
                   <li key={artifact.id}>
                     <a className="library-card" href={`/a/${artifact.id}`}>
-                      <div className="library-thumbnail" aria-hidden="true"><Icon size={28} /></div>
+                      <ArtifactThumbnail title={title} src={`/a/${artifact.id}/preview?v=${version}`} version={version} />
                       <div className="library-card-info">
                         <div className="library-card-title"><span title={title}>{title}</span><ArrowUpRight size={13} aria-hidden="true" /></div>
                         <div className="library-card-meta">
                           <span><Icon size={12} aria-hidden="true" />{labels[artifact.type]}</span>
                           <span><Seen size={12} aria-hidden="true" />{artifact.visibility === 'public' ? '公开' : '私有'}</span>
-                          <time dateTime={artifact.updatedAt} title={new Date(artifact.updatedAt).toLocaleString()}>{relativeUpdatedAt(Date.parse(artifact.updatedAt), now)}</time>
+                          <time dateTime={artifact.updatedAt} title={new Date(artifact.updatedAt).toLocaleString()}>{relativeUpdatedAt(version, now)}</time>
                         </div>
                       </div>
                     </a>

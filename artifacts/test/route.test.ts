@@ -7,6 +7,10 @@ describe('parseRoute', () => {
     expect(parseRoute('/index.html')).toEqual({ kind: 'list' });
   });
 
+  test('a cloud preview path opens the thumbnail view', () => {
+    expect(parseRoute('/a/V1StGXR8_Z5jdHi6B-myT/preview')).toEqual({ kind: 'cloud-preview', id: 'V1StGXR8_Z5jdHi6B-myT' });
+  });
+
   test('on the cloud host the root is the signed-in cloud list', () => {
     expect(parseRoute('/', true)).toEqual({ kind: 'cloud-list' });
     expect(parseRoute('/a/abc', true)).toEqual({ kind: 'cloud', id: 'abc' });

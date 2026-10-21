@@ -1,8 +1,9 @@
 import type { SerializedEditorState } from 'lexical';
-import { lazy, Suspense, useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import type { ArtifactType, CanvasPayload } from '../../shared/types';
 import { Canvas } from '../components/Canvas';
 import { CanvasErrorBoundary } from '../components/CanvasErrorBoundary';
+import { cloudPreviewPayload, type CloudArtifactData } from '../lib/cloud-list';
 import { fitView } from '../lib/view';
 
 const DocumentPreview = lazy(() => import('../document/shims').then(() => import('../document/CloudDocument')));
@@ -16,24 +17,41 @@ interface Payload extends Partial<CanvasPayload> {
   state?: SerializedEditorState;
 }
 
-export function PreviewLayout({ type, id }: { type: ArtifactType; id: string }) {
-  const [data, setData] = useState<Payload | null>(null);
+function useJson<T>(url: string) {
+  const [data, setData] = useState<T | null>(null);
   const [failed, setFailed] = useState(false);
-  const [viewport, setViewport] = useState(() => ({ width: innerWidth, height: innerHeight }));
-
   useEffect(() => {
     const controller = new AbortController();
-    void fetch(`/api/preview/${type}/${id}`, { signal: controller.signal })
+    void fetch(url, { signal: controller.signal, credentials: 'same-origin' })
       .then((response) => {
         if (!response.ok) throw new Error('Preview unavailable');
-        return response.json() as Promise<Payload>;
+        return response.json() as Promise<T>;
       })
       .then(setData)
       .catch(() => { if (!controller.signal.aborted) setFailed(true); });
+    return () => controller.abort();
+  }, [url]);
+  return { data, failed };
+}
+
+export function PreviewLayout({ type, id }: { type: ArtifactType; id: string }) {
+  const { data, failed } = useJson<Payload>(`/api/preview/${type}/${id}`);
+  return <PreviewView type={type} id={id} data={data} failed={failed} />;
+}
+
+export function CloudPreviewLayout({ id }: { id: string }) {
+  const { data, failed } = useJson<CloudArtifactData>(`/api/a/${id}`);
+  const payload = useMemo(() => (data ? cloudPreviewPayload(data) : null), [data]);
+  return <PreviewView type={data?.type ?? 'html'} id={id} data={payload} failed={failed} />;
+}
+
+function PreviewView({ type, id, data, failed }: { type: ArtifactType; id: string; data: Payload | null; failed: boolean }) {
+  const [viewport, setViewport] = useState(() => ({ width: innerWidth, height: innerHeight }));
+  useEffect(() => {
     const resize = () => setViewport({ width: innerWidth, height: innerHeight });
     addEventListener('resize', resize);
-    return () => { controller.abort(); removeEventListener('resize', resize); };
-  }, [type, id]);
+    return () => removeEventListener('resize', resize);
+  }, []);
 
   const message = (text: string) => <div className="artifact-preview-message">{text}</div>;
   if (failed) return message('预览暂不可用');

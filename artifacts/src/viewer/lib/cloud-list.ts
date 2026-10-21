@@ -1,4 +1,5 @@
-import type { ArtifactType } from '../../shared/types';
+import type { SerializedEditorState } from 'lexical';
+import type { ArtifactType, CanvasPayload } from '../../shared/types';
 import type { Visibility } from '../../shared/cloud';
 
 export interface CloudListItem {
@@ -28,4 +29,19 @@ export function groupByProject(items: CloudListItem[]): CloudListGroup[] {
   return [...groups]
     .map(([project, artifacts]) => ({ project, artifacts: artifacts.sort(newestFirst) }))
     .sort((a, b) => (a.project === null ? 1 : b.project === null ? -1 : newestFirst(a.artifacts[0]!, b.artifacts[0]!)));
+}
+
+export type CloudArtifactData =
+  | { type: 'html'; title: string; contentBase: string; payload: { title: string } }
+  | { type: 'artboard'; title: string; contentBase: string; payload: Pick<CanvasPayload, 'canvas' | 'layout' | 'versions'> }
+  | { type: 'document'; title: string; contentBase: string; payload: { title: string; state: SerializedEditorState } };
+
+export function cloudPreviewPayload(artifact: CloudArtifactData) {
+  const base = { title: artifact.title, contentBase: artifact.contentBase };
+  if (artifact.type === 'artboard') {
+    const { canvas, layout, versions } = artifact.payload;
+    return { ...base, canvas, layout, versions, pending: [] };
+  }
+  if (artifact.type === 'document') return { ...base, state: artifact.payload.state };
+  return base;
 }

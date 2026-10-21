@@ -9,7 +9,7 @@ import { CloudArtifactList } from './layouts/CloudArtifactList';
 import { CloudShell } from './layouts/CloudShell';
 import { DocumentLayout } from './layouts/DocumentLayout';
 import { HtmlLayout } from './layouts/HtmlLayout';
-import { PreviewLayout } from './layouts/PreviewLayout';
+import { CloudPreviewLayout, PreviewLayout } from './layouts/PreviewLayout';
 import { parseRoute } from './lib/route';
 
 const styles = stylex.create({
@@ -38,6 +38,7 @@ export function Shell() {
   if (route.kind === 'cloud-list') return <CloudArtifactList />;
   if (route.kind === 'cloud') return <CloudShell id={route.id} />;
   if (route.kind === 'cloud-view') return <CloudLayout id={route.id} />;
+  if (route.kind === 'cloud-preview') return <CloudPreviewLayout id={route.id} />;
   if (route.kind === 'unknown') return <div {...stylex.props(styles.unknown)}>No artifact lives at this address.</div>;
   if (route.kind === 'preview') return <PreviewLayout type={route.type} id={route.id} />;
   if (route.type === 'html') return local(<HtmlLayout id={route.id} />);
