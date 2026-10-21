@@ -1,5 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
+import net from 'node:net';
 import type { IncomingHttpHeaders } from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
@@ -283,3 +284,35 @@ test('a server started by the CLI tells the relay its release version', async ()
   expect(hello.version).toBe(JSON.parse(fs.readFileSync(path.resolve(__dirname, '../package.json'), 'utf8')).version);
   expect(hello.ids).toEqual(['cloudplan']);
 }, 30_000);
+
+describe('a relay that never finishes the handshake', () => {
+  async function stalledServer() {
+    const sockets: net.Socket[] = [];
+    const server = net.createServer((socket) => sockets.push(socket));
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+    cleanups.push(() => new Promise<void>((resolve) => { for (const s of sockets) s.destroy(); server.close(() => resolve()); }));
+    return { url: `ws://127.0.0.1:${(server.address() as net.AddressInfo).port}/api/relay/host`, sockets };
+  }
+
+  test('signing out mid-handshake does not crash the server', async () => {
+    const stalled = await stalledServer();
+    const errors: unknown[] = [];
+    const onError = (err: unknown) => errors.push(err);
+    process.on('uncaughtException', onError);
+    cleanups.push(() => void process.off('uncaughtException', onError));
+    let token: string | null = 'tok';
+    const client = createRelayClient({ url: stalled.url, version: 't', pollMs: 20, token: () => token, served: () => new Map([['c1', 'document/plan']]), handle: async () => null, onActivity: () => {} });
+    cleanups.push(() => client.close());
+    await waitFor(() => stalled.sockets.length === 1);
+    token = null;
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    expect(errors).toEqual([]);
+  });
+
+  test('a stalled handshake gives up and tries again', async () => {
+    const stalled = await stalledServer();
+    const client = createRelayClient({ url: stalled.url, version: 't', pollMs: 20, handshakeTimeoutMs: 100, token: () => 'tok', served: () => new Map([['c1', 'document/plan']]), handle: async () => null, onActivity: () => {} });
+    cleanups.push(() => client.close());
+    await waitFor(() => stalled.sockets.length >= 2, 3000);
+  });
+});

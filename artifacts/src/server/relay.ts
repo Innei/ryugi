@@ -6,6 +6,7 @@ export interface RelayClientOptions {
   version: string;
   pollMs?: number;
   heartbeatMs?: number;
+  handshakeTimeoutMs?: number;
   token: () => string | null;
   served: () => Map<string, string>;
   handle: (key: string, body: unknown, conn: string) => Promise<unknown>;
@@ -15,6 +16,7 @@ export interface RelayClientOptions {
 
 const HEARTBEAT_MS = 25_000;
 const PONG_TIMEOUT_MS = 10_000;
+const HANDSHAKE_TIMEOUT_MS = 10_000;
 const MAX_BACKOFF_MS = 30_000;
 
 export function createRelayClient(options: RelayClientOptions) {
@@ -36,6 +38,8 @@ export function createRelayClient(options: RelayClientOptions) {
     clearInterval(heartbeat);
     clearTimeout(pongDeadline);
     socket?.removeAllListeners();
+    // ws emits 'error' when a socket still connecting is terminated; with no listener that throws and kills the server.
+    socket?.on('error', () => {});
     socket?.terminate();
     socket = null;
     announced = '';
@@ -58,7 +62,7 @@ export function createRelayClient(options: RelayClientOptions) {
   };
 
   const connect = (token: string, served: Map<string, string>) => {
-    const ws = new WebSocket(options.url, { headers: { Authorization: `Bearer ${token}` } });
+    const ws = new WebSocket(options.url, { headers: { Authorization: `Bearer ${token}` }, handshakeTimeout: options.handshakeTimeoutMs ?? HANDSHAKE_TIMEOUT_MS });
     socket = ws;
     ws.on('open', () => {
       backoff = 1000;
