@@ -14,7 +14,7 @@ Start the server and get the link as `SKILL.md` describes, with
 
 ```
 <project>/.ryugi/artifacts/artboard/<id>/
-  canvas.json                  ← you write: pages, boards, groups, notes, focus, writing
+  canvas.json                  ← you write: pages, boards, groups, notes, focus
   pages/<page-id>/<board>.html ← you write: one self-contained page per board
 
 <project>/.ryugi/artifacts/.state/artboard/<id>/   ← the server writes; never edit it
@@ -29,8 +29,6 @@ Start the server and get the link as `SKILL.md` describes, with
 {
   "version": 1,
   "title": "settings-page",
-  "building": true,
-  "writing": "q1-a",
   "activePage": "settings",
   "focus": { "target": "q1", "at": "2026-10-19T08:40:00Z" },
   "pages": [
@@ -63,15 +61,10 @@ Start the server and get the link as `SKILL.md` describes, with
   (the default) never show PLAY and their iframe stays read-only, including
   when expanded. Use it for prototypes the human partner should click through,
   not for design mockups.
-- `building: true` marks a new artboard whose boards are still being written.
-  While it is true, a missing board file is `pending`, not a warning: the
-  viewer draws a skeleton and fills it when the file appears. Set it to `false`
-  once every board exists; then a missing board becomes a warning.
-- `writing`: optional id of the board whose HTML you are currently writing.
-  Set it before writing that file; remove it when you finish or stop. The
-  viewer highlights that board and shows a pointer named for your agent.
-  This also works for revisions after `building` is false. It does not move
-  the camera; use `focus` only when you want to direct attention.
+- The server derives build and writing state from the board files. Missing
+  files show `Waiting…`; unfinished HTML shows `Drawing…` and the agent
+  pointer. Complete HTML replaces its skeleton. This also works for revisions.
+  `building` and `writing` are runtime fields; leave them out of `canvas.json`.
 - `groups`: a section: a titled set of related boards, such as the options
   for a question, the states of a component, or the parts of a review. List
   member board ids only; all members on one page. The viewer labels the group
@@ -85,9 +78,10 @@ Start the server and get the link as `SKILL.md` describes, with
 - `activePage`: when you change it, the viewer switches to that page.
 - `focus`: `{ "target": <board, group or note id>, "at": <ISO time> }`.
   Whenever `at` changes, the viewer switches to the target's page and zooms
-  to it. Set it every time you add or change something, with a new `at`, so
+  to it. Set it when you want to direct attention, with a new `at`, so
   your human partner lands on it — even if the target is the same as last
-  time. Any value different from the previous one works; `date -u +%FT%TZ`
+  time. HTML updates alone keep the current camera. Any value different
+  from the previous one works; `date -u +%FT%TZ`
   gives a real one. When a round adds several groups, target the one they
   should look at first.
 
@@ -130,26 +124,30 @@ iframe at exactly `w`×`h` pixels, with no scrollbars.
 - Static by default. Add `"interactive": true` only when the board is a real
   prototype; otherwise no PLAY button appears.
 - Use your file-writing tool, not cat or heredocs.
+- Write a full document beginning with `<!doctype html>` or `<html>` and
+  finish it with `</html>`. The server uses the closing tag as the completion
+  marker (case-insensitive; trailing whitespace and comments are allowed).
+  Write that marker last when streaming a file. It is a writing convention,
+  not an HTML syntax check. Existing nonempty HTML fragments remain supported.
 
 ## Streaming a new artboard
 
 Write a new artboard in this order:
 
-1. Write `canvas.json` first with every board, group and note, plus
-   `"building": true`. Set `focus` to the first group (or board) and `writing`
-   to the first board you will draw. The browser opens once the layout is
-   valid, before any HTML exists, showing the complete skeleton.
-2. Before each HTML write, set `writing` to that board's id in `canvas.json`.
-   Write one board file at a time, starting with the focus group. Each file
-   replaces its skeleton as it appears; the WebSocket keeps the viewer in sync.
-3. After a file is complete, set `writing` to the next board before writing
-   its HTML, or remove `writing` if you are stopping. Pending boards show
-   `Waiting…`; only the active writer shows `Drawing…` and the agent pointer.
-4. Write `canvas.json` again with `"building": false` and remove `writing`. Any board still missing
-   is now a warning. Read `warnings.json`: `pending` must be empty and
-   `warnings` must be empty before you tell your human partner it is ready.
+1. Write `canvas.json` once with every board, group and note. Set `focus` to
+   the first group (or board). The browser opens once the layout is valid,
+   before any HTML exists, showing the complete skeleton.
+2. Write one full HTML document per board, starting with the focus group.
+   The server watches creation and edits, keeps unfinished documents pending,
+   and loads each board when its closing `</html>` arrives. An atomic write
+   can go straight from `Waiting…` to the preview.
+3. Read `warnings.json`: `pending` and `warnings` must both be empty before
+   you tell your human partner it is ready. No final `canvas.json` write is
+   needed. Change it only for layout, metadata or deliberate focus changes.
 
-A board file is ready only when it exists and is not empty. Pending boards
+A full-document board is ready when it is nonempty and ends with `</html>`
+(apart from whitespace and comments). Missing or unfinished boards remain
+pending, including interrupted writes. Pending boards
 have no actions. The browser opens once, on the first start, so later rounds
 stream into the already-open tab. Ready HTML frames load near the viewport
 and unload after moving away; playback, selection and Inspector tweaks keep
@@ -188,23 +186,22 @@ again, ask for the ID again rather than reusing an old one.
   a page and set `activePage` to it.
 - A new topic: a new artboard artifact, with its own id and link.
 - Your human partner can override any of these ("put this on a new page").
-- A change to one board: set `writing` to its id, edit its HTML file in place,
-  then remove `writing` and refresh `focus`.
+- A change to one board: edit its HTML file in place. Update `canvas.json`
+  only if its layout or metadata changes, or you want to redirect focus.
 
 ## After every change
 
-1. For a new artboard, write `canvas.json` first with `"building": true`, then
-   the boards in focus-group order. For an edit, set `writing` before touching
-   the HTML; after the write, clear `writing` and update focus and metadata
-   together. Clear `writing` too if a write fails or you stop before finishing.
+1. For a new artboard, declare all boards in `canvas.json` first, then write
+   their HTML in focus-group order. For an edit, change the HTML directly.
+   The server derives readiness and the active incomplete writer from files;
+   a completed file stays visible while an in-place edit keeps its closing tag.
 2. Read `checkedAt` in `.state/artboard/<id>/warnings.json` before you write,
    then wait until it changes after your last write (about 150ms) before
    trusting it. `warnings` lists invalid JSON, missing fields, unknown pages,
-   missing files, overlapping boards, groups and titles, stickies covering
-   boards, and unknown `focus` targets. `pending` lists boards still being
-   drawn while `building` is true.
-3. Before telling your human partner the board is ready, set
-   `"building": false`, remove `writing`, and confirm both `warnings` and `pending` are empty.
+   overlapping boards, groups and titles, stickies covering boards, and
+   unknown `focus` targets. `pending` lists missing or unfinished boards.
+3. Before telling your human partner the board is ready, confirm both
+   `warnings` and `pending` are empty.
    Then give the link and ask for their answer in the terminal.
 
 When the conversation moves on to something that doesn't need the canvas,

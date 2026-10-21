@@ -21,7 +21,9 @@ function readRaw(boardDir: string): { raw?: unknown; warning?: string } {
 
 function boardVersions(boardDir: string, canvas: CanvasSpec) {
   const versions: Record<string, number> = {};
-  for (const board of Object.values(canvas.boards)) {
+  let writing: string | undefined;
+  let latestWrite = -Infinity;
+  for (const [id, board] of Object.entries(canvas.boards)) {
     const target = resolveBoardFile(boardDir, board.file);
     if (!target) {
       versions[board.file] = 0;
@@ -29,12 +31,20 @@ function boardVersions(boardDir: string, canvas: CanvasSpec) {
     }
     try {
       const stat = fs.statSync(target);
-      versions[board.file] = stat.size > 0 ? stat.mtimeMs : 0;
+      const html = fs.readFileSync(target, 'utf8');
+      // shortcut: fragments have no completion marker, use full HTML documents for streaming.
+      const document = /<(?:!doctype|html)\b/i.test(html);
+      const ready = html.trim().length > 0 && (!document || /<\/html>\s*(?:<!--[\s\S]*?-->\s*)*$/i.test(html));
+      versions[board.file] = ready ? stat.mtimeMs : 0;
+      if (!ready && stat.mtimeMs >= latestWrite) {
+        writing = id;
+        latestWrite = stat.mtimeMs;
+      }
     } catch {
       versions[board.file] = 0;
     }
   }
-  return versions;
+  return { versions, writing };
 }
 
 export function readCanvas(boardDir: string): CanvasPayload {
@@ -43,16 +53,19 @@ export function readCanvas(boardDir: string): CanvasPayload {
   try {
     const structural = structuralWarnings(raw);
     if (structural.length > 0) return { canvas: null, warnings: structural, pending: [], layout: null, versions: {} };
-    const canvas = raw as CanvasSpec;
+    const canvas = { ...(raw as CanvasSpec) };
+    const { versions, writing } = boardVersions(boardDir, canvas);
     const pending = new Set<string>();
-    const warnings = validateCanvas(canvas, (rel) => resolveBoardFile(boardDir, rel) !== null, {
-      pending,
-      allowPending: canvas.building === true,
-    });
-    const versions = boardVersions(boardDir, canvas);
     for (const [id, board] of Object.entries(canvas.boards)) {
       if (!versions[board.file]) pending.add(id);
     }
+    canvas.building = pending.size > 0;
+    delete canvas.writing;
+    if (writing) canvas.writing = writing;
+    const warnings = validateCanvas(canvas, (rel) => resolveBoardFile(boardDir, rel) !== null, {
+      pending,
+      allowPending: true,
+    });
     return { canvas, warnings, pending: [...pending].sort(), layout: computeLayout(canvas), versions };
   } catch (err) {
     return {

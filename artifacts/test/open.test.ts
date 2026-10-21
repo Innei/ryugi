@@ -86,31 +86,26 @@ describe('automatic browser open', () => {
     expect(opened(log)[0]).toMatch(/\/artboard\/header\?key=/);
   }, 15000);
 
-  test('waits for a target artboard to be ready, then opens it', async () => {
+  test('opens a target artboard skeleton from its declaration alone', async () => {
     const root = projectRoot();
     const { bin, log } = fakeOpenCommand();
 
     await startServer(root, bin);
 
-    // canvas.json arrives before its board file: the artboard is not ready yet.
     writeArtboard(root, 'header', canvas);
     const warningsFile = path.join(root, '.state/artboard/header/warnings.json');
-    await waitFor(() => fs.existsSync(warningsFile) && readJson(warningsFile).warnings.length > 0, 3000);
-    expect(opened(log)).toEqual([]);
-
-    fs.mkdirSync(path.join(root, 'artboard/header/pages/p'), { recursive: true });
-    fs.writeFileSync(path.join(root, 'artboard/header/pages/p/a.html'), '<p>a</p>');
-
+    await waitFor(() => fs.existsSync(warningsFile) && readJson(warningsFile).pending?.length === 1, 3000);
+    expect(readJson(warningsFile).warnings).toEqual([]);
     await waitFor(() => opened(log).length > 0, 5000);
     expect(opened(log)[0]).toMatch(/\/artboard\/header\?key=/);
+    expect(fs.existsSync(path.join(root, 'artboard/header/pages/p/a.html'))).toBe(false);
   }, 15000);
 
-  test('opens a building artboard skeleton before any HTML and does not reopen as boards arrive', async () => {
+  test('opens a declared skeleton before any HTML and does not reopen as boards arrive', async () => {
     const root = projectRoot();
     const { bin, log } = fakeOpenCommand();
     const spec = {
       version: 1,
-      building: true,
       pages: [{ id: 'p', name: 'P' }],
       boards: {
         a: { file: 'pages/p/a.html', page: 'p', x: 0, y: 0, w: 640, h: 400 },
@@ -134,7 +129,7 @@ describe('automatic browser open', () => {
       const file = path.join(root, `artboard/header/pages/p/${id}.html`);
       expect(fs.existsSync(file)).toBe(false);
       fs.mkdirSync(path.dirname(file), { recursive: true });
-      fs.writeFileSync(file, `<p>${id}</p>`);
+      fs.writeFileSync(file, `<!doctype html><html><body>${id}</body></html>`);
       await waitFor(() => readJson(warningsFile).pending?.length === remaining, 3000);
       expect(readJson(warningsFile).warnings).toEqual([]);
       expect(opened(log)).toHaveLength(1);

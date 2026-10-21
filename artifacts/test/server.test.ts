@@ -255,9 +255,9 @@ describe('artboard API', () => {
     const { server, root } = await start();
     fs.writeFileSync(stateFile(root, 'agent'), JSON.stringify({ AI_AGENT: 'codex' }));
     writeArtboard(root, 'writing', {
-      ...canvas, building: true, writing: 'a',
+      ...canvas,
       notes: { n: { page: 'p', kind: 'sticky', x: 700, y: 0, text: 'Decision', color: '#cce8df' } },
-    });
+    }, { 'pages/p/a.html': '<!doctype html><html><body>Drawing' });
     const payload = await api(server, '/api/artifacts/artboard/writing');
     expect(payload.warnings).toEqual([]);
     expect(payload.agent).toBe('Codex');
@@ -305,7 +305,7 @@ describe('artboard API', () => {
     expect(payload.versions['pages/p/a.html']).toBe(0);
   });
 
-  test('without building, a missing board is both pending and a warning', async () => {
+  test('without agent state, a missing board is pending without a warning', async () => {
     const { server, root } = await start();
     writeArtboard(
       root,
@@ -321,7 +321,8 @@ describe('artboard API', () => {
     );
     const payload = await api(server, '/api/artifacts/artboard/b1');
     expect(payload.pending).toEqual(['b']);
-    expect(payload.warnings).toContain('board "b" file not found: pages/p/b.html');
+    expect(payload.warnings).toEqual([]);
+    expect(payload.canvas.building).toBe(true);
   });
 
   test('reports each board file modification time for cache-busting', async () => {
@@ -610,6 +611,38 @@ describe('websocket', () => {
     expect(message).toMatchObject({ type: 'change', artifact: 'html/tuner' });
     expect(message.files).toContain('index.html');
     ws.socket?.destroy();
+  });
+
+  test('streams board readiness from HTML writes alone', async () => {
+    const { server, root } = await start();
+    const dir = writeArtboard(root, 'streaming', canvas);
+    const source = fs.readFileSync(path.join(dir, 'canvas.json'), 'utf8');
+    const file = path.join(dir, 'pages/p/a.html');
+    const checked = stateFile(root, 'artboard/streaming/warnings.json');
+    const ws = await openWs(server.port, { Cookie: cookie(server), Origin: origin(server) });
+    try {
+      await waitFor(() => fs.existsSync(checked));
+      expect(readJson(checked).pending).toEqual(['a']);
+      const before = readJson(checked).checkedAt;
+      fs.mkdirSync(path.dirname(file), { recursive: true });
+      fs.writeFileSync(file, '<!doctype html><html><body>Drawing');
+      await waitFor(() => readJson(checked).checkedAt !== before);
+      const drawing = await api(server, '/api/artifacts/artboard/streaming');
+      expect(drawing.pending).toEqual(['a']);
+      expect(drawing.canvas.writing).toBe('a');
+      expect(drawing.versions['pages/p/a.html']).toBe(0);
+
+      fs.appendFileSync(file, '</body></html>');
+      await waitFor(() => readJson(checked).pending.length === 0);
+      const ready = await api(server, '/api/artifacts/artboard/streaming');
+      expect(ready.canvas.building).toBe(false);
+      expect(ready.canvas.writing).toBeUndefined();
+      expect(ready.versions['pages/p/a.html']).toBeGreaterThan(0);
+      expect(ws.messages.some((message) => message.includes('pages/p/a.html'))).toBe(true);
+      expect(fs.readFileSync(path.join(dir, 'canvas.json'), 'utf8')).toBe(source);
+    } finally {
+      ws.socket?.destroy();
+    }
   });
   test('sends one change per real change, even when the backup poll sees it again', async () => {
     const { server, root } = await start();

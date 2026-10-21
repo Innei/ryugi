@@ -188,7 +188,7 @@ describe('publishing', () => {
     writeArtboard(root, 'b', canvas, { 'pages/p/a.html': '<p>a</p>' });
     await call(server, 'POST', '/api/cloud/publish/artboard/b');
     const { payload, files } = latest(cloud);
-    expect(payload.canvas).toEqual(canvas);
+    expect(payload.canvas).toMatchObject(canvas);
     expect(payload.layout.pages.p).toBeDefined();
     expect(Object.keys(payload.versions)).toEqual(['pages/p/a.html']);
     expect(files['pages/p/a.html']).toContain('<p>a</p>');
@@ -359,13 +359,18 @@ describe('publishing', () => {
   test('an artboard being revised is not published even when every file exists', async () => {
     const { server, root, cloud } = await start();
     writeArtboard(root, 'editing', {
-      version: 1, pages: [{ id: 'p', name: 'Page' }], writing: 'a',
+      version: 1, pages: [{ id: 'p', name: 'Page' }],
       boards: { a: { page: 'p', file: 'pages/a.html', x: 0, y: 0, w: 640, h: 400 } },
-    }, { 'pages/a.html': '<p>Previous version</p>' });
+    }, { 'pages/a.html': '<!doctype html><html><body>Revising' });
     const { status, json } = await call(server, 'POST', '/api/cloud/publish/artboard/editing');
     expect(status).toBe(409);
     expect(json.reasons).toContain('board a is still being written');
     expect(cloud.requests).toEqual([]);
+
+    fs.appendFileSync(path.join(root, 'artboard/editing/pages/a.html'), '</body></html>');
+    expect((await call(server, 'POST', '/api/cloud/publish/artboard/editing')).status).toBe(200);
+    expect(latest(cloud).payload.canvas.building).toBe(false);
+    expect(latest(cloud).payload.canvas.writing).toBeUndefined();
   });
 
   test('an unknown artifact is a 404', async () => {
