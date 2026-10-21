@@ -12,6 +12,7 @@ export interface RelayClientOptions {
   handle: (key: string, body: unknown, conn: string) => Promise<unknown>;
   onActivity: () => void;
   onWatch?: (keys: Set<string>) => void;
+  local?: () => { hostId: string; port: number; key: string };
 }
 
 const HEARTBEAT_MS = 25_000;
@@ -67,7 +68,7 @@ export function createRelayClient(options: RelayClientOptions) {
     ws.on('open', () => {
       backoff = 1000;
       announced = idsOf(served).join('\n');
-      send({ t: 'hello', version: options.version, ids: idsOf(served) });
+      send({ t: 'hello', version: options.version, ids: idsOf(served), ...(options.local ? { local: options.local() } : {}) });
       heartbeat = setInterval(() => {
         if (watched.size > 0) options.onActivity();
         ws.send('ping');

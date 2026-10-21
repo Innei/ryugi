@@ -18,6 +18,7 @@ import { createSelectionStore } from './selection';
 import { ensureConfig, readConfig } from './config';
 import { readCredentials } from './credentials';
 import { createRelayClient } from './relay';
+import { hostIdFor } from './host-id';
 import { AVATAR_ROUTE, createAvatars } from './avatars';
 import { createCloudRoutes, type CloudOptions } from './cloud';
 import { commentNames } from './comment-names';
@@ -653,12 +654,12 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
   writeJsonAtomic(path.join(stateDir, 'server-info'), { type: 'server-started', url, port, root });
 
   const relayViewers = new Map<string, { key: string; tab: object }>();
-  const servedDocuments = () => {
+  const servedArtifacts = () => {
     const served = new Map<string, string>();
     if (!options.configFile) return served;
     for (const [key, entry] of Object.entries(readConfig(options.configFile).config.artifacts)) {
       const ref = artifactKeyOf(key);
-      if (entry.cloud && ref?.type === 'document' && resolveArtifactDir(root, 'document', ref.id)) served.set(entry.cloud.id, key);
+      if (entry.cloud && ref && resolveArtifactDir(root, ref.type, ref.id)) served.set(entry.cloud.id, key);
     }
     return served;
   };
@@ -697,7 +698,8 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
       ? createRelayClient({
           ...options.relay,
           token: () => readCredentials(options.cloud!.credentialsFile, options.cloud!.origin)?.token ?? null,
-          served: servedDocuments,
+          served: servedArtifacts,
+          local: () => ({ hostId: hostIdFor(options.cloud!.credentialsFile), port, key: token }),
           handle: handleRelay,
           onActivity: touch,
           onWatch: (keys) => {

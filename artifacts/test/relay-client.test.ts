@@ -14,7 +14,7 @@ import { updateArtifactConfig } from '../src/server/config';
 import { writeCredentials } from '../src/server/credentials';
 import { createDocumentHeadlessEditor } from '../src/server/document-headless';
 import { createRelayClient } from '../src/server/relay';
-import { tempRoot, writeDocument } from './helpers';
+import { tempRoot, writeArtboard, writeDocument, writeHtml } from './helpers';
 
 interface Hub {
   url: string;
@@ -66,10 +66,9 @@ async function fakeHub(): Promise<Hub> {
   return hub;
 }
 
-async function start({ signedIn = true, published = true, hub }: { signedIn?: boolean; published?: boolean; hub: Hub }) {
+async function start({ signedIn = true, published = true, hub, credentialsFile = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-home-')), 'credentials.json') }: { signedIn?: boolean; published?: boolean; hub: Hub; credentialsFile?: string }) {
   const temp = tempRoot();
   const configFile = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-dir-')), 'config.json');
-  const credentialsFile = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-home-')), 'credentials.json');
   if (signedIn) writeCredentials(credentialsFile, { origin: 'https://cloud.example', token: 'tok', login: 'innei' });
   writeDocument(temp.root, 'plan', { 'doc.xml': '<doc><p>one</p></doc>' });
   if (published) updateArtifactConfig(configFile, 'document/plan', { cloud: { id: 'cloudplan', url: 'u', publishedAt: '2026-10-21T00:00:00Z', visibility: 'private' } });
@@ -84,7 +83,7 @@ async function start({ signedIn = true, published = true, hub }: { signedIn?: bo
     relay: { url: hub.url, version: '1.13.0', pollMs: 50 },
   });
   cleanups.push(() => server.close());
-  return { server, root: temp.root, configFile };
+  return { server, root: temp.root, configFile, credentialsFile };
 }
 
 let rid = 0;
@@ -118,11 +117,31 @@ function $findText(node: LexicalNode, text: string): TextNode | null {
 }
 
 describe('connecting', () => {
-  test('a signed-in server with a published document announces it with its token', async () => {
+  test('a signed-in server with a published document announces it with its token and where it listens', async () => {
     const hub = await fakeHub();
-    await start({ hub });
-    expect(await hub.next('hello')).toEqual({ t: 'hello', version: '1.13.0', ids: ['cloudplan'] });
+    const { server } = await start({ hub });
+    const hello = await hub.next('hello');
+    expect(hello).toEqual({ t: 'hello', version: '1.13.0', ids: ['cloudplan'], local: { hostId: expect.stringMatching(/^[A-Za-z0-9_-]{16,64}$/), port: server.port, key: server.token } });
     expect(hub.headers[0]!.authorization).toBe('Bearer tok');
+  });
+
+  test('every server on this computer reports the same host id', async () => {
+    const hub = await fakeHub();
+    const { credentialsFile } = await start({ hub });
+    const first = (await hub.next('hello')).local.hostId;
+    const again = await fakeHub();
+    await start({ hub: again, credentialsFile });
+    expect((await again.next('hello')).local.hostId).toBe(first);
+  });
+
+  test('published artboards and html are announced next to documents', async () => {
+    const hub = await fakeHub();
+    const { root, configFile } = await start({ hub, published: false });
+    writeHtml(root, 'page', { 'index.html': '<p>hi</p>' });
+    writeArtboard(root, 'board', { title: 'Board', groups: [] });
+    updateArtifactConfig(configFile, 'html/page', { cloud: { id: 'cloudpage', url: 'u', publishedAt: null, visibility: 'private' } });
+    updateArtifactConfig(configFile, 'artboard/board', { cloud: { id: 'cloudboard', url: 'u', publishedAt: null, visibility: 'private' } });
+    expect((await hub.next('hello')).ids).toEqual(['cloudboard', 'cloudpage']);
   });
 
   test('stays away while signed out or with nothing published, and connects once that changes', async () => {
