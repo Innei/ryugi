@@ -7,6 +7,7 @@ import { credentialsFile } from './credentials';
 import { browserLauncher, isLoopback, liveOwners, parseEnv, processAlive, readOwners, shutdownReason } from './lifecycle';
 import { openReady } from './ready';
 import { writeJsonAtomic } from './state';
+import { version } from '../../package.json';
 
 async function main() {
   const config = parseEnv(process.env, process.argv.slice(2));
@@ -20,7 +21,7 @@ async function main() {
     urlHost: config.urlHost,
     configFile: path.join(path.dirname(root), 'config.json'),
     cloud: { origin: config.cloudOrigin, credentialsFile: credentialsFile(process.env, process.platform, os.homedir()) },
-    relay: { url: `${config.cloudOrigin.replace(/^http/, 'ws')}/api/relay/host`, version: process.env.RYUGI_ARTIFACTS_VERSION || 'local' },
+    relay: { url: `${config.cloudOrigin.replace(/^http/, 'ws')}/api/relay/host`, version },
   });
 
   let lastActivity = Date.now();

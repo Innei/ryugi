@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import type { IncomingHttpHeaders } from 'node:http';
 import os from 'node:os';
@@ -263,3 +264,22 @@ describe('events', () => {
     expect(event).toMatchObject({ t: 'event', id: 'cloudplan', body: { type: 'doc-comments' } });
   });
 });
+
+test('a server started by the CLI tells the relay its release version', async () => {
+  const hub = await fakeHub();
+  const origin = hub.url.replace(/^ws/, 'http').replace(/\/api\/relay\/host$/, '');
+  const project = fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-project-'));
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-xdg-'));
+  writeCredentials(path.join(home, 'ryugi', 'credentials.json'), { origin, token: 'tok', login: 'innei' });
+  writeDocument(path.join(project, '.ryugi', 'artifacts'), 'plan', { 'doc.xml': '<doc><p>one</p></doc>' });
+  updateArtifactConfig(path.join(project, '.ryugi', 'config.json'), 'document/plan', {
+    cloud: { id: 'cloudplan', url: 'u', publishedAt: '2026-10-21T00:00:00Z', visibility: 'private' },
+  });
+  const cli = path.resolve(__dirname, '../dist/cli.cjs');
+  const env = { ...process.env, RYUGI_CLOUD_ORIGIN: origin, XDG_CONFIG_HOME: home, RYUGI_ARTIFACTS_OWNER: String(process.pid), RYUGI_ARTIFACTS_VERSION: '0.0.0-launcher' };
+  execFileSync(process.execPath, [cli, 'start', '--json', '--no-open', '--project-dir', project], { env, encoding: 'utf8' });
+  cleanups.push(() => void execFileSync(process.execPath, [cli, 'stop', '--project-dir', project], { env, encoding: 'utf8' }));
+  const hello = await hub.next('hello', 15_000);
+  expect(hello.version).toBe(JSON.parse(fs.readFileSync(path.resolve(__dirname, '../package.json'), 'utf8')).version);
+  expect(hello.ids).toEqual(['cloudplan']);
+}, 30_000);
