@@ -15,3 +15,4 @@
 @media(max-width:700px){.library-main{padding:20px 16px}.library-topbar{padding-inline:16px}.library-toolbar{align-items:stretch;flex-direction:column;gap:8px}.library-tools{justify-content:space-between}.library-search{width:100%;max-width:300px}.library-grid{grid-template-columns:repeat(auto-fill,minmax(230px,1fr))}.library-footer code{display:none}.library-breadcrumb b{max-width:130px}}
 @media(max-width:420px){.library-breadcrumb>span:last-child,.library-breadcrumb>span:nth-of-type(2){display:none}.library-status{font-size:10px}.library-tab-label{gap:4px}}
 @media(prefers-reduced-motion:no-preference){.library-card{transition:border-color 120ms}}
+.library-group{display:flex;align-items:baseline;gap:8px;margin:24px 0 0;font-size:13px;font-weight:600}.library-group span{font-size:11px;font-weight:400;color:var(--lobe-color-text-tertiary)}

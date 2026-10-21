@@ -5,6 +5,7 @@ import { AutoPublishBar } from './components/AutoPublishPrompt';
 import { ArtboardLayout } from './layouts/ArtboardLayout';
 import { ArtifactList } from './layouts/ArtifactList';
 import { CloudLayout } from './layouts/CloudLayout';
+import { CloudArtifactList } from './layouts/CloudArtifactList';
 import { CloudShell } from './layouts/CloudShell';
 import { DocumentLayout } from './layouts/DocumentLayout';
 import { HtmlLayout } from './layouts/HtmlLayout';
@@ -32,8 +33,9 @@ const local = (page: ReactNode) => (
 );
 
 export function Shell() {
-  const route = parseRoute(location.pathname);
+  const route = parseRoute(location.pathname, document.documentElement.dataset.ryugiHost === 'cloud');
   if (route.kind === 'list') return local(<ArtifactList />);
+  if (route.kind === 'cloud-list') return <CloudArtifactList />;
   if (route.kind === 'cloud') return <CloudShell id={route.id} />;
   if (route.kind === 'cloud-view') return <CloudLayout id={route.id} />;
   if (route.kind === 'unknown') return <div {...stylex.props(styles.unknown)}>No artifact lives at this address.</div>;

@@ -7,6 +7,11 @@ describe('parseRoute', () => {
     expect(parseRoute('/index.html')).toEqual({ kind: 'list' });
   });
 
+  test('on the cloud host the root is the signed-in cloud list', () => {
+    expect(parseRoute('/', true)).toEqual({ kind: 'cloud-list' });
+    expect(parseRoute('/a/abc', true)).toEqual({ kind: 'cloud', id: 'abc' });
+  });
+
   test('an artifact link names its type and id, with or without a trailing slash', () => {
     expect(parseRoute('/html/arrow-tuner')).toEqual({ kind: 'artifact', type: 'html', id: 'arrow-tuner' });
     expect(parseRoute('/artboard/header/')).toEqual({ kind: 'artifact', type: 'artboard', id: 'header' });
