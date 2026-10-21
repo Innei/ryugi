@@ -57,7 +57,7 @@ test('a comment from the page is saved, pushed to sockets and served with the ar
   await waitFor(() => ws.messages.some((m) => JSON.parse(m).type === 'board-comments'));
   const payload = JSON.parse((await get(`${base(server)}/api/artifacts/artboard/review`, { Cookie: cookie(server) })).body);
   expect(payload.comments.threads).toHaveLength(1);
-  expect(payload.stale).toEqual([]);
+  expect(payload.staleThreads).toEqual([]);
   ws.socket?.destroy();
 });
 
@@ -68,7 +68,7 @@ test('a board rewrite marks the thread stale for the page', async () => {
   const until = Date.now() + 3000;
   let stale: string[] = [];
   while (stale.length === 0 && Date.now() < until) {
-    stale = JSON.parse((await get(`${base(server)}/api/artifacts/artboard/review`, { Cookie: cookie(server) })).body).stale;
+    stale = JSON.parse((await get(`${base(server)}/api/artifacts/artboard/review`, { Cookie: cookie(server) })).body).staleThreads;
     if (stale.length === 0) await new Promise((resolve) => setTimeout(resolve, 30));
   }
   expect(stale).toHaveLength(1);

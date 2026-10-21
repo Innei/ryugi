@@ -2,6 +2,7 @@ import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { InspectorRect, InspectorReport } from '../../shared/inspector';
+import type { BoardHumanOp } from '../../shared/board-comments';
 import type { SelectionMessage } from '../../shared/selection';
 import { Canvas } from '../components/Canvas';
 import { CanvasErrorBoundary } from '../components/CanvasErrorBoundary';
@@ -10,6 +11,7 @@ import { Labels } from '../components/Labels';
 import { TopLeftBar, TopRightBar } from '../components/Toolbar';
 import { useLocalFeed } from '../hooks/useArtifactFeed';
 import { useCanvasData } from '../hooks/useCanvasData';
+import type { BoardCommentsState } from '../lib/board-comments';
 import { useInspector } from '../hooks/useInspector';
 import { useSelectionSync } from '../hooks/useSelectionSync';
 import { usePanZoom, type Tool } from '../hooks/usePanZoom';
@@ -50,12 +52,14 @@ const styles = stylex.create({
   },
 });
 
-type ArtboardViewProps = Omit<ReturnType<typeof useCanvasData>, 'live' | 'stale' | 'send'> & {
+type ArtboardViewProps = Omit<ReturnType<typeof useCanvasData>, 'live' | 'stale' | 'send' | 'comments' | 'comment'> & {
   id: string;
   artifact: string | null;
   live?: boolean;
   menu?: boolean;
   send?: (message: SelectionMessage) => void;
+  comments?: BoardCommentsState | null;
+  comment?: (op: BoardHumanOp) => Promise<BoardCommentsState>;
 };
 
 export function ArtboardLayout({ id }: { id: string }) {

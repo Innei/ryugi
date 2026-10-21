@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import type { BoardHumanOp } from '../../shared/board-comments';
 import type { ArtifactType } from '../../shared/types';
 import type { RelayConnection } from '../document/relayConnection';
+import { boardCommentsFromMessage, type BoardCommentsState } from '../lib/board-comments';
 import { knownHosts } from '../lib/knownHosts';
 import { createLiveConnection, type LivePresence } from '../lib/liveConnection';
 import type { ArtifactFeed } from './useArtifactFeed';
@@ -18,6 +20,7 @@ export function useCloudFeed(cloudId: string, type: ArtifactType, liveContentBas
   const [presence, setPresence] = useState<LivePresence | null>(null);
   const [revision, setRevision] = useState(0);
   const [connection, setConnection] = useState<RelayConnection | null>(null);
+  const [boardComments, setBoardComments] = useState<BoardCommentsState | null>(null);
   const liveBase = useRef(liveContentBase);
 
   useEffect(() => {
@@ -44,6 +47,8 @@ export function useCloudFeed(cloudId: string, type: ArtifactType, liveContentBas
       onPresence: setPresence,
       onEvent: (event) => {
         if ((event as { type?: unknown }).type === 'change') bump();
+        const comments = boardCommentsFromMessage(event, null);
+        if (comments) setBoardComments(comments);
       },
       onOnline: bump,
     });
@@ -71,5 +76,15 @@ export function useCloudFeed(cloudId: string, type: ArtifactType, liveContentBas
     [connection],
   );
 
-  return { presence, feed: { live: presence?.online ?? false, revision, load, send } };
+  const comment = useCallback(
+    async (op: BoardHumanOp) => {
+      if (!connection) throw new Error('offline');
+      const next = await connection.request<BoardCommentsState>({ op: 'comment', comment: op as never });
+      setBoardComments(next);
+      return next;
+    },
+    [connection],
+  );
+
+  return { presence, feed: { live: presence?.online ?? false, revision, load, send, ...(type === 'artboard' ? { boardComments, comment } : {}) } };
 }

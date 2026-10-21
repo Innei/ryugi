@@ -437,7 +437,7 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
   const artifactMeta = (ref: ArtifactRef, dir: string, contentOrigin = '') => ({
     ...readArtifact(dir, ref, runtimeOf(ref, dir)),
     ...(ref.type !== 'html' ? { agent: names.agent() } : {}),
-    ...(ref.type === 'artboard' ? { comments: boardComments.comments(ref.id), stale: boardComments.stale(ref.id) } : {}),
+    ...(ref.type === 'artboard' ? { comments: boardComments.comments(ref.id), staleThreads: boardComments.stale(ref.id) } : {}),
     contentBase: `${contentOrigin}${contentPrefix}${ref.type}/${ref.id}/`,
   });
 

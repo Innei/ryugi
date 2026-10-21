@@ -206,7 +206,7 @@ describe('requests', () => {
     const file = JSON.parse(fs.readFileSync(path.join(root, 'artboard/board/comments.json'), 'utf8'));
     expect(file.threads).toHaveLength(1);
     const meta = await request(hub, { op: 'meta' }, 'cloudboard');
-    expect(meta.body.data).toMatchObject({ comments: { threads: [{ anchor: { board: 'a' } }] }, stale: [] });
+    expect(meta.body.data).toMatchObject({ comments: { threads: [{ anchor: { board: 'a' } }] }, staleThreads: [] });
   });
 
   test('a Loro update from the phone reaches doc.xml', async () => {
