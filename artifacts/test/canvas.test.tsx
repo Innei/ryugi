@@ -243,3 +243,18 @@ test.each([
   expect(note.style.backgroundColor).toBe(background);
   expect(note.style.color).toBe(foreground);
 });
+
+test('image and video boards render as media, not as iframes', async () => {
+  const media: ComponentProps<typeof Canvas>['boards'] = [
+    ['shot', { type: 'image', src: 'pages/shot.png', file: 'pages/shot.png', page: 'p', x: 0, y: 0, w: 640, h: 400 }],
+    ['flow', { type: 'video', src: 'pages/flow.webm', file: 'pages/flow.webm', page: 'p', x: 1000, y: 0, w: 640, h: 400 }],
+  ];
+  const body = await render({ boards: media, versions: { 'pages/shot.png': 3, 'pages/flow.webm': 4 } });
+  await visibility(['shot', 'flow']);
+  expect(body.querySelector('iframe')).toBeNull();
+  expect(body.querySelector('img')?.getAttribute('src')).toBe('about:blank#pages/shot.png?v=3');
+  const video = body.querySelector('video')!;
+  expect(video.getAttribute('src')).toBe('about:blank#pages/flow.webm?v=4');
+  expect(video.hasAttribute('controls')).toBe(false);
+  expect(body.querySelector('[aria-label="播放"]')).not.toBeNull();
+});

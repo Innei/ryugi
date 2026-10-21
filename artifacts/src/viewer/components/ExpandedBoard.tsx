@@ -2,7 +2,8 @@ import { ActionIcon } from '@lobehub/ui';
 import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
 import { X } from 'lucide-react';
-import type { BoardSpec } from '../../shared/types';
+import { isMediaBoard, type BoardSpec } from '../../shared/types';
+import { VideoPlayer } from './VideoPlayer';
 
 const styles = stylex.create({
   overlay: {
@@ -29,6 +30,8 @@ const styles = stylex.create({
   id: { marginInlineStart: 8, fontFamily: cssVar.fontFamilyCode, fontSize: 12, color: cssVar.colorTextTertiary },
   body: { flex: 1, overflow: 'auto', padding: 32, display: 'flex', justifyContent: 'center', alignItems: 'flex-start' },
   frame: { flexShrink: 0, borderWidth: 0, backgroundColor: '#fff', boxShadow: cssVar.boxShadowSecondary },
+  media: { position: 'relative', flexShrink: 0, maxWidth: '100%' },
+  image: { display: 'block', maxWidth: '100%', height: 'auto' },
 });
 
 interface ExpandedBoardProps {
@@ -50,13 +53,21 @@ export function ExpandedBoard({ id, board, src, interactive, onClose }: Expanded
         <ActionIcon icon={X} size="small" title="Close (Esc)" aria-label="Close" onClick={onClose} />
       </div>
       <div {...stylex.props(styles.body)}>
-        <iframe
-          title={board.title ?? id}
-          src={src}
-          sandbox="allow-scripts"
-          {...stylex.props(styles.frame)}
-          style={{ width: board.w, height: board.h, pointerEvents: interactive ? 'auto' : 'none' }}
-        />
+        {board.type === 'video' ? (
+          <div {...stylex.props(styles.media)} style={{ width: board.w, height: board.h, marginBottom: 36 }}>
+            <VideoPlayer src={src} title={board.title ?? id} barScale={1} barWidth={board.w} />
+          </div>
+        ) : isMediaBoard(board) ? (
+          <img src={src} alt={board.title ?? id} {...stylex.props(styles.image)} style={{ width: board.w }} />
+        ) : (
+          <iframe
+            title={board.title ?? id}
+            src={src}
+            sandbox="allow-scripts"
+            {...stylex.props(styles.frame)}
+            style={{ width: board.w, height: board.h, pointerEvents: interactive ? 'auto' : 'none' }}
+          />
+        )}
       </div>
     </div>
   );

@@ -1,8 +1,8 @@
 import { ActionIcon } from '@lobehub/ui';
 import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
-import { Download, Maximize2, Play, RotateCcw } from 'lucide-react';
-import type { BoardSpec, GroupSpec } from '../../shared/types';
+import { Download, Film, Image as ImageIcon, Maximize2, Play, RotateCcw } from 'lucide-react';
+import { isMediaBoard, type BoardSpec, type GroupSpec } from '../../shared/types';
 import { boardReady, canPlay } from '../lib/play';
 import { BOARD_LABEL_RULE, GROUP_LABEL_RULE, labelRect, labelSize, type View } from '../lib/view';
 
@@ -45,6 +45,7 @@ const styles = stylex.create({
     textOverflow: 'ellipsis',
   },
   id: { fontFamily: cssVar.fontFamilyCode, fontSize: 11, color: cssVar.colorTextTertiary },
+  kind: { flexShrink: 0, alignSelf: 'center', display: 'flex', color: cssVar.colorTextTertiary },
   groupLabel: {
     position: 'absolute',
     display: 'flex',
@@ -155,8 +156,13 @@ export function Labels({
               style={{ left: rect.left, top: rect.top, width, transform: `scale(${boardScale}) translateY(-100%)` }}
             >
               <span {...stylex.props(styles.title)}>
+                {isMediaBoard(board) && (
+                  <span data-board-type={board.type} {...stylex.props(styles.kind)}>
+                    {board.type === 'video' ? <Film size={12} /> : <ImageIcon size={12} />}
+                  </span>
+                )}
                 {board.title ?? id}
-                <span {...stylex.props(styles.id)}>{id}</span>
+                <span {...stylex.props(styles.id)}>{isMediaBoard(board) ? `${id} · ${board.file.split('/').pop()}` : id}</span>
               </span>
               {ready && width >= ACTIONS_MIN_WIDTH && (
                 <>

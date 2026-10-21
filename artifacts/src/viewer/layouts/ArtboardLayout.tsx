@@ -239,6 +239,7 @@ function DesktopArtboard({ id, artifact, canvas, layout, warnings, pending, cont
             writing={live ? canvas.writing : undefined}
             agent={agent}
             retained={retained}
+            onExpand={setExpanded}
           />
           <Labels
             view={view}

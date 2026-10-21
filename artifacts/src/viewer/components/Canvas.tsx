@@ -1,11 +1,12 @@
 import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
 import { DEFAULT_TITLE_SIZE, STICKY_DEFAULT_W, STICKY_FONT_SIZE, STICKY_LINE_H, STICKY_PAD } from '../../shared/geometry';
-import type { BoardSpec, NoteSpec } from '../../shared/types';
+import { isMediaBoard, type BoardSpec, type NoteSpec } from '../../shared/types';
 import type { Inspector } from '../hooks/useInspector';
 import { useVisibleBoards } from '../hooks/useVisibleBoards';
 import { boardReady, boardSrc, canPlay } from '../lib/play';
 import { titleScale, type View } from '../lib/view';
+import { MediaBoard } from './MediaBoard';
 import { WritingCursor } from './WritingCursor';
 
 const PLAY_ACCENT = '#8b7cf8';
@@ -82,6 +83,7 @@ interface CanvasProps {
   inspecting: boolean;
   frameRef: Inspector['refFor'];
   frameLoaded: Inspector['loaded'];
+  onExpand?: (id: string) => void;
 }
 
 function stickyColors(color?: string) {
@@ -95,7 +97,7 @@ function stickyColors(color?: string) {
   return { backgroundColor: color, color: luminance > 0.179 ? '#000' : '#fff' };
 }
 
-export function Canvas({ view, boards, notes, contentBase, versions, pending, playing, replays, inspecting, frameRef, frameLoaded, writing, agent, retained }: CanvasProps) {
+export function Canvas({ view, boards, notes, contentBase, versions, pending, playing, replays, inspecting, frameRef, frameLoaded, writing, agent, retained, onExpand }: CanvasProps) {
   const { ref, visible } = useVisibleBoards(boards.map(([id]) => id));
   const active = boards.find(([id]) => id === writing)?.[1];
   return (
@@ -109,7 +111,9 @@ export function Canvas({ view, boards, notes, contentBase, versions, pending, pl
           <div key={id} data-board={id} aria-busy={drawing || undefined}
             {...stylex.props(styles.slot, !mounted && styles.skeleton, drawing && styles.drawing)}
             style={{ ...position, ...(drawing ? { outlineWidth: 2 / view.k } : {}) }}>
-            {mounted ? (
+            {mounted && isMediaBoard(board) ? (
+              <MediaBoard id={id} board={board} src={boardSrc(contentBase, board.file, versions[board.file] ?? 0, 0)} zoom={view.k} onExpand={onExpand && (() => onExpand(id))} />
+            ) : mounted ? (
               <iframe
                 ref={frameRef(id)}
                 onLoad={() => frameLoaded(id)}
