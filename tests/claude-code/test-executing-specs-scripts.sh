@@ -2,12 +2,13 @@
 # Tests for executing-specs' bookkeeping helpers: scripts/task-start extracts
 # the brief and records BASE in one call; scripts/task-done runs the task's
 # test command, records the result in the ledger, and refuses to record a
-# failing task.
+# failing task, and records listed commits when other agents share the branch;
+# scripts/review-package packages a range or a list of commits.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-EP_SCRIPTS="$REPO_ROOT/skills/executing-specs/scripts"
+EP_SCRIPTS="${EP_SCRIPTS:-$REPO_ROOT/skills/executing-specs/scripts}"
 
 FAILURES=0
 TEST_ROOT=""
@@ -152,6 +153,95 @@ PLAN
         fail "task-done records a passing task that printed no output"
         echo "    expected: $expected2"
         echo "    ledger:"; sed 's/^/      /' "$ledger" 2>/dev/null || echo "      (missing)"
+    fi
+
+    # --- task-done + review-package: other agents commit to the same branch ---
+    local before_mine m1 m2
+    before_mine="$(cd "$repo" && git rev-parse HEAD)"
+    ( cd "$repo" && echo search > search.txt && git add search.txt && git "${git_id[@]}" commit -qm "feat(search): mine one" )
+    m1="$(cd "$repo" && git rev-parse HEAD)"
+    ( cd "$repo" && echo billing > billing.txt && git add billing.txt && git "${git_id[@]}" commit -qm "fix(billing): someone else" )
+    ( cd "$repo" && echo more >> search.txt && git add search.txt && git "${git_id[@]}" commit -qm "feat(search): mine two" )
+    m2="$(cd "$repo" && git rev-parse HEAD)"
+
+    rc=0
+    out="$(cd "$repo" && "$EP_SCRIPTS/task-done" plan.md 3 "$before_mine" "$m1" "$m2" -- true 2>&1)" || rc=$?
+    local expected3="Task 3: complete (commits ${m1:0:7} ${m2:0:7}, tests: true → (no output))"
+    if [[ "$rc" -eq 0 ]] && grep -qF "$expected3" "$ledger" 2>/dev/null; then
+        pass "task-done records the listed commits instead of the range"
+    else
+        fail "task-done records the listed commits instead of the range (rc=$rc)"
+        echo "    expected: $expected3"
+        echo "    got: $out"
+    fi
+
+    rc=0
+    (cd "$repo" && "$EP_SCRIPTS/task-done" plan.md 3 "$before_mine" nosuchsha -- true >/dev/null 2>&1) || rc=$?
+    if [[ "$rc" -eq 2 ]] && [[ "$(grep -c '^Task 3: complete' "$ledger")" -eq 1 ]]; then
+        pass "task-done rejects an unknown SHA and records nothing"
+    else
+        fail "task-done rejects an unknown SHA and records nothing (got $rc)"
+    fi
+
+    rc=0
+    out="$(cd "$repo" && "$EP_SCRIPTS/review-package" plan.md --commits "$m2" "$m1" 2>&1)" || rc=$?
+    local pkg
+    pkg="$(printf '%s\n' "$out" | sed -n 's/^wrote \(.*\): .*$/\1/p')"
+    if [[ "$rc" -eq 0 && -f "$pkg" ]] \
+        && grep -q "mine one" "$pkg" && grep -q "mine two" "$pkg" \
+        && ! grep -q "someone else" "$pkg" && ! grep -q "billing.txt" "$pkg"; then
+        pass "review-package --commits packages only the listed commits"
+    else
+        fail "review-package --commits packages only the listed commits (rc=$rc)"
+        echo "    got: $out"
+    fi
+    if [[ -f "$pkg" ]] && [[ "$(grep -n 'mine one' "$pkg" | head -n 1 | cut -d: -f1)" -lt "$(grep -n 'mine two' "$pkg" | head -n 1 | cut -d: -f1)" ]]; then
+        pass "review-package --commits lists commits oldest first"
+    else
+        fail "review-package --commits lists commits oldest first"
+    fi
+
+    rc=0
+    out="$(cd "$repo" && "$EP_SCRIPTS/review-package" plan.md "$before_mine" HEAD 2>&1)" || rc=$?
+    pkg="$(printf '%s\n' "$out" | sed -n 's/^wrote \(.*\): .*$/\1/p')"
+    if [[ "$rc" -eq 0 && -f "$pkg" ]] && grep -q "someone else" "$pkg" && [[ "$out" == *": 3 commit(s),"* ]]; then
+        pass "review-package BASE HEAD still packages the whole range"
+    else
+        fail "review-package BASE HEAD still packages the whole range (rc=$rc)"
+        echo "    got: $out"
+    fi
+
+    # --- task-done + review-package: exploratory work commits nothing ---
+    rc=0
+    out="$(cd "$repo" && "$EP_SCRIPTS/task-done" plan.md 4 HEAD --uncommitted -- true 2>&1)" || rc=$?
+    if [[ "$rc" -eq 0 ]] && grep -qF "Task 4: complete (uncommitted, tests: true → (no output))" "$ledger"; then
+        pass "task-done --uncommitted records an uncommitted task"
+    else
+        fail "task-done --uncommitted records an uncommitted task (rc=$rc)"
+        echo "    got: $out"
+    fi
+
+    ( cd "$repo" && echo explored >> search.txt && echo fresh > explore-new.txt && echo theirs >> billing.txt )
+    printf 'Exploratory: may be thrown away.\nsearch.txt\nexplore-new.txt\n' > "$repo/.ryugi/sdd/plan/EXPLORING"
+    rc=0
+    out="$(cd "$repo" && "$EP_SCRIPTS/review-package" plan.md --exploring 2>&1)" || rc=$?
+    pkg="$(printf '%s\n' "$out" | sed -n 's/^wrote \(.*\): .*$/\1/p')"
+    if [[ "$rc" -eq 0 && -f "$pkg" ]] \
+        && grep -q "^+explored" "$pkg" && grep -q "^+fresh" "$pkg" \
+        && ! grep -q "theirs" "$pkg"; then
+        pass "review-package --exploring packages uncommitted changes to the listed paths only"
+    else
+        fail "review-package --exploring packages uncommitted changes to the listed paths only (rc=$rc)"
+        echo "    got: $out"
+    fi
+
+    rc=0
+    rm "$repo/.ryugi/sdd/plan/EXPLORING"
+    (cd "$repo" && "$EP_SCRIPTS/review-package" plan.md --exploring >/dev/null 2>&1) || rc=$?
+    if [[ "$rc" -eq 2 ]]; then
+        pass "review-package --exploring without an EXPLORING file errors with exit 2"
+    else
+        fail "review-package --exploring without an EXPLORING file errors with exit 2 (got $rc)"
     fi
 
     # --- task-start: a spec's tasks come from tasks.md in its workspace ---

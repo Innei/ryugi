@@ -4,23 +4,43 @@
 # only if the command succeeded — append the completion line to the ledger.
 # A failing command records nothing: the task is not complete.
 #
-# Usage: task-done SPEC_FILE TASK_NUMBER BASE -- TEST_COMMAND [ARGS...]
-#   BASE is the SHA task-start printed; the completion line records BASE..HEAD.
+# Usage: task-done SPEC_FILE TASK_NUMBER BASE [SHA... | --uncommitted] -- TEST_COMMAND [ARGS...]
+#   BASE is the SHA task-start printed; the completion line records BASE..HEAD,
+#   the listed SHAs when other agents commit to the same branch, or
+#   "uncommitted" for exploratory work that commits nothing.
 # Exit: the test command's exit status.
 set -euo pipefail
 
-if [ $# -lt 5 ] || [ "$4" != "--" ]; then
-  echo "usage: task-done SPEC_FILE TASK_NUMBER BASE -- TEST_COMMAND [ARGS...]" >&2
+usage() {
+  echo "usage: task-done SPEC_FILE TASK_NUMBER BASE [SHA... | --uncommitted] -- TEST_COMMAND [ARGS...]" >&2
   exit 2
-fi
+}
 
+[ $# -ge 5 ] || usage
 plan=$1
 n=$2
 base=$3
-shift 4
+shift 3
+shas=()
+while [ $# -gt 0 ] && [ "$1" != "--" ]; do
+  shas+=("$1")
+  shift
+done
+[ $# -ge 2 ] || usage
+shift
 sdd="$(cd "$(dirname "$0")" && pwd)"
 
 git rev-parse --verify --quiet "$base" >/dev/null || { echo "bad BASE: $base" >&2; exit 2; }
+recorded="commits $(git rev-parse --short=7 "$base")..$(git rev-parse --short=7 HEAD)"
+if [ ${#shas[@]} -eq 1 ] && [ "${shas[0]}" = "--uncommitted" ]; then
+  recorded="uncommitted"
+elif [ ${#shas[@]} -gt 0 ]; then
+  recorded="commits"
+  for c in "${shas[@]}"; do
+    git rev-parse --verify --quiet "$c^{commit}" >/dev/null || { echo "bad SHA: $c" >&2; exit 2; }
+    recorded="$recorded $(git rev-parse --short=7 "$c")"
+  done
+fi
 
 dir=$("$sdd/sdd-workspace" "$plan")
 log="$dir/task-${n}-tests.log"
@@ -47,6 +67,6 @@ fi
 
 last=$(grep -v '^[[:space:]]*$' "$log" | tail -n 1) || last="(no output)"
 [ -f "$ledger" ] || printf '# SDD ledger — plan: %s\n' "$plan" > "$ledger"
-line="Task $n: complete (commits $(git rev-parse --short=7 "$base")..$(git rev-parse --short=7 HEAD), tests: $cmd → $last)"
+line="Task $n: complete ($recorded, tests: $cmd → $last)"
 printf '%s\n' "$line" >> "$ledger"
 echo "ledger: $line"

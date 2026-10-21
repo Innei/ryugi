@@ -97,9 +97,40 @@ digraph process {
 
 ## Setup
 
-Work where your human partner's instructions say: if they work on main,
-so do you. With no stated preference, use ryugi:using-git-worktrees
-— it asks.
+Work where your human partner's instructions say: on main, on a branch,
+or in a worktree. With no stated preference, choose from what the
+checkout shows. Other agents may be working in it at the same time;
+isolation is per file, not per directory.
+
+Run `git rev-parse --git-dir --git-common-dir`, `git branch --show-current`,
+`git status --porcelain` and `cat .ryugi/sdd/*/EXPLORING`, then take the
+first row that matches:
+
+| The checkout shows | Where you work |
+|---|---|
+| `--git-dir` differs from `--git-common-dir` (a linked worktree) | Stay there |
+| A file your spec changes has uncommitted edits you did not make | New worktree, without asking |
+| An `EXPLORING` file lists a path your spec changes | New worktree, without asking |
+| The spec changes state the whole checkout shares: switching branches, rebase, bisect, upgrading dependencies or the lockfile, repo-wide formatting or codegen | New worktree, without asking |
+| HEAD is on a branch that is neither the default branch nor one made for this spec | Ask whether to use a worktree |
+| Anything else, including uncommitted edits in files your spec does not change | In place, no question |
+
+New worktrees come from ryugi:using-git-worktrees.
+
+**In place**, the checkout is shared:
+
+- Files you did not change belong to someone else: never stage, stash,
+  restore, reset or check them out. Stage your own paths by name; never
+  `git add -A`, `git add .` or `git commit -a`.
+- Your human partner calls the work exploratory: commit nothing until
+  they keep it. Once `tasks.md` exists, write `<workspace>/EXPLORING` —
+  first line `Exploratory: may be thrown away.`, then every path from the
+  tasks' **Files:**, one per line, and add any path you touch later.
+  Close each task with `task-done … BASE --uncommitted -- <test command>`
+  and review with `review-package SPEC_FILE --exploring`. When they keep
+  it, commit the listed paths by name. When they discard it, `git restore`
+  the listed paths that exist in HEAD and delete the listed files you
+  created, nothing else. Delete `EXPLORING` either way.
 
 Conversation memory does not survive compaction. An executor that loses
 its place re-implements tasks whose commits already exist. Track progress
@@ -110,7 +141,8 @@ ledger is the record.
   `bash scripts/sdd-workspace SPEC_FILE` — it prints the spec's
   git-ignored directory (`<repo-root>/.ryugi/sdd/<spec-basename>/`),
   home to every artifact for THIS spec: task list, ledger, briefs, review
-  packages. Another spec's directory is never yours to read or write.
+  packages. Another spec's directory is never yours to read or write,
+  apart from reading its `EXPLORING` at Setup.
 - Check for the ledger at `<workspace>/progress.md`. If its first line
   names your spec file, tasks with a `Task <N>: complete` line are DONE —
   do not redo them; resume at the first task without one. Their commits
@@ -187,7 +219,7 @@ test that passes before the implementation exists is a finding about the
 test. Then write the minimal code, run Verify, read its output, and
 compare it against `Expected:`. Three outcomes:
 
-- **Matches.** Commit.
+- **Matches.** Commit — exploratory work skips the commit (see Setup).
 - **The code is wrong.** Use ryugi:systematic-debugging. Find the
   cause; never patch the symptom to make the output match.
 - **The task list is wrong** — a task contradicts the spec, an interface
@@ -197,7 +229,8 @@ compare it against `Expected:`. Three outcomes:
   fix the later tasks in `tasks.md` that it touches, and continue.
 
 A task that spans several commits is fine; BASE is what the review range
-is cut from, never `HEAD~1`.
+is cut from, never `HEAD~1`. In place, other agents' commits can land
+inside BASE..HEAD: keep the SHA of every commit you make.
 
 ### 3. The completion contract
 
@@ -222,6 +255,10 @@ completion line to the ledger:
 
 `Task <N>: complete (commits <base7>..<head7>, tests: <command> → <result>)`
 
+In place, list your own commits instead of the range:
+`bash scripts/task-done SPEC_FILE N BASE <sha>... -- <test command>`
+records `commits <sha7> <sha7>`.
+
 A failing run records nothing; the task is not complete. When it records,
 mark the todo complete and take the next task.
 
@@ -229,8 +266,11 @@ mark the todo complete and take the next task.
 
 Run `bash scripts/review-package SPEC_FILE MERGE_BASE HEAD`
 (MERGE_BASE = the commit the work started from, e.g.
-`git merge-base main HEAD`, or the commit before Task 1 when you worked on
-main) and review from the file it prints.
+`git merge-base main HEAD`) and review from the file it prints. In place,
+run `bash scripts/review-package SPEC_FILE --commits <sha>...` with every
+SHA from the ledger's `Task <N>: complete` lines, so other agents' commits
+stay out of the package. Exploratory work has no commits: run
+`bash scripts/review-package SPEC_FILE --exploring`.
 
 **With a subagent tool:** dispatch the reviewer on the most capable
 available model — the whole-branch review is a judgment task — using
@@ -300,7 +340,16 @@ When the final review is clean and its fixes are committed, delete this
 spec's workspace directory — the git history is the record now. Sibling
 directories belong to other specs; leave them alone.
 
-Then stop, and end your final message with the ways to land the branch:
+Exploratory work instead keeps its workspace and `EXPLORING`, and stays
+uncommitted: end your final message with the listed paths and ask your
+human partner to keep it or discard it. Act on the answer as Setup says,
+then delete the workspace.
+
+Committed work in place on the default branch has nothing to land: end your final
+message with the commits from the ledger, and stop. Pushing is your
+human partner's call.
+
+On a branch, stop, and end your final message with the ways to land it:
 
 1. **Squash into `<base>`** (default)
 2. **Rebase onto `<base>`**

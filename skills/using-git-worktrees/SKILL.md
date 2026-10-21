@@ -38,6 +38,8 @@ Report with branch state:
 
 **If `GIT_DIR == GIT_COMMON` (or in a submodule):** You are in a normal repo checkout.
 
+Did the skill that sent you here already decide a worktree is needed (ryugi:executing-specs does, for a file with someone else's uncommitted edits, an `EXPLORING` claim, or state the whole checkout shares)? Then create it without asking: skip to Step 1.
+
 Has the user already indicated their worktree preference in your instructions? If not, ask for consent before creating a worktree:
 
 > "Would you like me to set up an isolated worktree? It protects your current branch from changes."
