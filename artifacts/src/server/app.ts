@@ -18,6 +18,7 @@ import { createSelectionStore } from './selection';
 import { ensureConfig, readConfig } from './config';
 import { readCredentials } from './credentials';
 import { createRelayClient } from './relay';
+import { createDirectRelay } from './direct-relay';
 import { hostIdFor } from './host-id';
 import { AVATAR_ROUTE, createAvatars } from './avatars';
 import { createCloudRoutes, type CloudOptions } from './cloud';
@@ -77,6 +78,7 @@ const CONTENT_CSP: Record<ArtifactType, string> = {
   html: 'sandbox allow-scripts allow-modals allow-forms allow-popups allow-downloads',
 };
 
+const DIRECT_RELAY_ROUTE = /^\/relay\/a\/([A-Za-z0-9_-]{1,64})$/;
 const SHELL_ROUTE = new RegExp(`^/(?:(${ARTIFACT_TYPES.join('|')})/([^/]+)/?)?$`);
 const API_ARTIFACT_ROUTE = /^\/api\/artifacts\/([^/]+)\/([^/]+)$/;
 const PREVIEW_ROUTE = /^\/preview\/(artboard|document|html)\/([a-z0-9][a-z0-9-]*)\/?$/;
@@ -138,10 +140,17 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
   let cookieName = '';
 
   let relay: ReturnType<typeof createRelayClient> | null = null;
+  const direct = createDirectRelay({
+    version: options.relay?.version ?? '',
+    handle: (key, body, conn) => handleRelay(key, body, conn, `http://127.0.0.1:${port}`),
+    onActivity: () => touch(),
+    onClose: (conn) => dropRelayViewer(conn),
+  });
   const broadcast = (message: ServerMessage) => {
     const frame = textFrame(JSON.stringify(message));
     for (const socket of clients) socket.write(frame);
     relay?.emit(message.artifact, message);
+    direct.emit(message.artifact, message);
   };
   const avatars = createAvatars(options.fetch);
   const names = commentNames({ agentFile: path.join(stateDir, 'agent'), projectDir: path.resolve(root, '../..'), cloud: options.cloud });
@@ -368,10 +377,10 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
     });
   };
 
-  const artifactMeta = (ref: ArtifactRef, dir: string) => ({
+  const artifactMeta = (ref: ArtifactRef, dir: string, contentOrigin = '') => ({
     ...readArtifact(dir, ref, runtimeOf(ref, dir)),
     ...(ref.type !== 'html' ? { agent: names.agent() } : {}),
-    contentBase: `${contentPrefix}${ref.type}/${ref.id}/`,
+    contentBase: `${contentOrigin}${contentPrefix}${ref.type}/${ref.id}/`,
   });
 
   const serveArtifactApi = (res: http.ServerResponse, type: string, id: string) => {
@@ -599,6 +608,18 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
   server.on('upgrade', (req: http.IncomingMessage, socket: Duplex) => {
     const url = new URL(req.url ?? '/', 'http://artifacts.local');
     const clientKey = req.headers['sec-websocket-key'];
+    const directMatch = DIRECT_RELAY_ROUTE.exec(url.pathname);
+    if (directMatch && typeof clientKey === 'string') {
+      const fromCloud = options.cloud !== undefined && req.headers.origin === options.cloud.origin;
+      if (!safeEqual(url.searchParams.get('key') ?? '', token) || !(fromCloud || sameOrigin(req))) {
+        rejectUpgrade(socket, 403, 'Forbidden');
+        return;
+      }
+      const key = servedArtifacts().get(directMatch[1]!);
+      if (!key) rejectUpgrade(socket, 404, 'Not Found');
+      else direct.accept(socket, clientKey, key);
+      return;
+    }
     if (url.pathname !== '/ws' || typeof clientKey !== 'string') {
       rejectUpgrade(socket, 400, 'Bad Request');
       return;
@@ -669,12 +690,18 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
     }
     return served;
   };
-  const handleRelay = async (key: string, body: unknown, conn: string) => {
+  const dropRelayViewer = (conn: string) => {
+    const viewer = relayViewers.get(conn);
+    if (!viewer) return;
+    selections.drop(viewer.tab);
+    relayViewers.delete(conn);
+  };
+  const handleRelay = async (key: string, body: unknown, conn: string, contentOrigin = '') => {
     const ref = artifactKeyOf(key)!;
     const dir = resolveArtifactDir(root, ref.type, ref.id);
     if (!dir) throw new Error(`${key} not found`);
     const request = (typeof body === 'object' && body !== null ? body : {}) as Record<string, unknown>;
-    if (request.op === 'meta') return artifactMeta(ref, dir);
+    if (request.op === 'meta') return artifactMeta(ref, dir, contentOrigin);
     if (request.op === 'file') {
       const file = typeof request.path === 'string' ? readArtifactFile(dir, ref.type, request.path, CLOUD_RUNTIME_URL) : null;
       if (!file) throw new Error('not found');
@@ -721,7 +748,7 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
           onActivity: touch,
           onWatch: (keys) => {
             for (const [conn, viewer] of relayViewers) {
-              if (keys.has(viewer.key)) continue;
+              if (keys.has(viewer.key) || conn.startsWith('direct:')) continue;
               selections.drop(viewer.tab);
               relayViewers.delete(conn);
             }
@@ -760,6 +787,7 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
         const frame = textFrame(JSON.stringify({ type: 'change', artifact: key, files: changed } satisfies ServerMessage));
         for (const socket of clients) socket.write(frame);
         relay?.emit(key, { type: 'change', artifact: key, files: changed });
+        direct.emit(key, { type: 'change', artifact: key, files: changed });
         changeListeners.forEach((listener) => listener(ref, payload, changed));
       }
       touch();
@@ -783,6 +811,7 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
       new Promise<void>((resolve) => {
         watcher.close();
         relay?.close();
+        direct.close();
         selections.clearAll();
         for (const socket of clients) socket.destroy();
         server.close(() => resolve());

@@ -8,7 +8,7 @@ import { createLoroBinding } from '@haklex/rich-collab-loro';
 import { $getRoot, $isElementNode, $isTextNode, type LexicalNode, type TextNode } from 'lexical';
 import { LoroDoc } from 'loro-crdt';
 import { afterEach, describe, expect, test } from 'vitest';
-import { WebSocketServer, type WebSocket } from 'ws';
+import WebSocket, { WebSocketServer } from 'ws';
 import { startArtifactsServer } from '../src/server/app';
 import { updateArtifactConfig } from '../src/server/config';
 import { writeCredentials } from '../src/server/credentials';
@@ -220,6 +220,21 @@ describe('requests', () => {
     expect(reply.body.ok).toBe(true);
     await waitFor(() => fs.existsSync(path.join(root, '.state/document/plan/selection.json')));
     expect(JSON.parse(fs.readFileSync(path.join(root, '.state/document/plan/selection.json'), 'utf8'))).toMatchObject({ artifact: 'document/plan', quote: 'one' });
+  });
+
+  test('a selection made over the direct pipe survives the relay losing its viewers', async () => {
+    const hub = await fakeHub();
+    const { root, server } = await start({ hub });
+    await hub.next('hello');
+    const ws = new WebSocket(`ws://127.0.0.1:${server.port}/relay/a/cloudplan?key=${server.token}`, { headers: { Origin: 'https://cloud.example' } });
+    cleanups.push(() => ws.terminate());
+    await new Promise((resolve) => ws.on('open', resolve));
+    ws.send(JSON.stringify({ t: 'request', rid: 1, body: { op: 'selection', selection: { type: 'selection', artifact: 'document/cloudplan', tab: 't1', human: true, quote: 'one', blockIds: [], heading: '' } } }));
+    const file = path.join(root, '.state/document/plan/selection.json');
+    await waitFor(() => fs.existsSync(file));
+    hub.send({ t: 'watch', ids: [] });
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    expect(fs.existsSync(file)).toBe(true);
   });
 
   test('requests for documents it does not serve, or unknown ops, are refused', async () => {
