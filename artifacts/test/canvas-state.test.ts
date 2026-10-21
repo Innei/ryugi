@@ -92,3 +92,22 @@ test('keeps existing nonempty HTML fragments available', () => {
   expect(payload.pending).toEqual([]);
   expect(payload.versions['pages/p/a.html']).toBeGreaterThan(0);
 });
+
+const media = {
+  version: 1,
+  pages: [{ id: 'p', name: 'P' }],
+  boards: {
+    shot: { type: 'image', src: 'pages/p/shot.png', page: 'p', x: 0, y: 0, w: 640, h: 400 },
+    flow: { type: 'video', src: 'pages/p/flow.webm', page: 'p', x: 720, y: 0, w: 640, h: 400 },
+  },
+};
+
+test('a media board is ready once its file has bytes, and reads as file = src', () => {
+  const payload = readCanvas(artboard(media, { 'pages/p/shot.png': '\x89PNG', 'pages/p/flow.webm': '' }));
+  expect(payload.warnings).toEqual([]);
+  expect(payload.canvas?.boards.shot?.file).toBe('pages/p/shot.png');
+  expect(payload.versions['pages/p/shot.png']).toBeGreaterThan(0);
+  expect(payload.pending).toEqual(['flow']);
+  expect(payload.canvas?.writing).toBeUndefined();
+});
+

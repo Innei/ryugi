@@ -135,4 +135,22 @@ describe('validateCanvas', () => {
     expect(warnings).toContain('activePage "nope" is not a page');
     expect(warnings).toContain('focus target "ghost" is not a board, group or note');
   });
+
+  test('a media board takes type and src instead of file', () => {
+    const canvas = { ...base(), boards: { ...base().boards, v: { type: 'video', src: 'pages/p/flow.webm', page: 'p', x: 2720, y: 0, w: 640, h: 400 } } };
+    expect(validateCanvas(canvas, exists)).toEqual([]);
+  });
+
+  test('a media board needs a src under pages/ and a known type', () => {
+    const board = { page: 'p', x: 2720, y: 0, w: 640, h: 400 };
+    expect(validateCanvas({ ...base(), boards: { v: { ...board, type: 'image' } } }, exists)).toContain('board "v" is missing "src"');
+    expect(validateCanvas({ ...base(), boards: { v: { ...board, type: 'image', src: 'evidence/a.png' } } }, exists)).toContain('board "v" src must start with "pages/": evidence/a.png');
+    expect(validateCanvas({ ...base(), boards: { v: { ...board, type: 'gif', file: 'pages/p/a.gif' } } }, exists)).toContain('board "v" field "type" must be "html", "image" or "video"');
+  });
+
+  test('a group verify flag must be a boolean', () => {
+    const canvas = { ...base(), groups: { g: { boards: ['a', 'b'], verify: 'yes' } } };
+    expect(validateCanvas(canvas, exists)).toContain('group "g" field "verify" must be a boolean');
+    expect(validateCanvas({ ...base(), groups: { g: { boards: ['a', 'b'], verify: true } } }, exists)).toEqual([]);
+  });
 });

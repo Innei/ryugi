@@ -20,16 +20,24 @@ export interface PageSpec {
   name: string;
 }
 
+export const BOARD_TYPES = ['html', 'image', 'video'] as const;
+export type BoardType = (typeof BOARD_TYPES)[number];
+
 export interface BoardSpec extends Rect {
   file: string;
   page: string;
+  type?: BoardType;
+  src?: string;
   title?: string;
   interactive?: boolean;
 }
 
+export const isMediaBoard = (board: { type?: unknown }): board is { type: 'image' | 'video' } => board.type === 'image' || board.type === 'video';
+
 export interface GroupSpec {
   title?: string;
   boards: string[];
+  verify?: boolean;
 }
 
 export interface NoteSpec {

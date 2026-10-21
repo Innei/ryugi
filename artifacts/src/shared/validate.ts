@@ -1,8 +1,11 @@
 import { groupFrame, intersects, noteRect } from './geometry';
-import type { CanvasSpec } from './types';
+import { BOARD_TYPES, isMediaBoard, type BoardSpec, type CanvasSpec } from './types';
 
 const BOARD_NUMBERS = ['x', 'y', 'w', 'h'] as const;
 const BOARD_REQUIRED = ['file', 'page', ...BOARD_NUMBERS] as const;
+const MEDIA_REQUIRED = ['src', 'page', ...BOARD_NUMBERS] as const;
+const fileOf = (board: BoardSpec) => (isMediaBoard(board) ? board.src ?? '' : board.file);
+const fileField = (board: BoardSpec) => (isMediaBoard(board) ? 'src' : 'file');
 
 const isObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -35,6 +38,16 @@ export function structuralWarnings(raw: unknown): string[] {
       if (isObject(board) && board.interactive !== undefined && typeof board.interactive !== 'boolean') {
         warnings.push(`board "${id}" field "interactive" must be a boolean`);
       }
+      if (isObject(board) && board.type !== undefined && !(BOARD_TYPES as readonly unknown[]).includes(board.type)) {
+        warnings.push(`board "${id}" field "type" must be "html", "image" or "video"`);
+      }
+    }
+  }
+  if (isObject(raw.groups)) {
+    for (const [id, group] of Object.entries(raw.groups)) {
+      if (isObject(group) && group.verify !== undefined && typeof group.verify !== 'boolean') {
+        warnings.push(`group "${id}" field "verify" must be a boolean`);
+      }
     }
   }
   if (warnings.length > 0) return warnings;
@@ -50,7 +63,7 @@ export function structuralWarnings(raw: unknown): string[] {
       warnings.push(`board "${id}" must be an object`);
       continue;
     }
-    for (const key of BOARD_REQUIRED) {
+    for (const key of isMediaBoard(board) ? MEDIA_REQUIRED : BOARD_REQUIRED) {
       if (board[key] === undefined) warnings.push(`board "${id}" is missing "${key}"`);
     }
     for (const key of BOARD_NUMBERS) {
@@ -58,7 +71,7 @@ export function structuralWarnings(raw: unknown): string[] {
         warnings.push(`board "${id}" field "${key}" must be a number`);
       }
     }
-    for (const key of ['file', 'page'] as const) {
+    for (const key of ['file', 'src', 'page'] as const) {
       if (board[key] !== undefined && typeof board[key] !== 'string') {
         warnings.push(`board "${id}" field "${key}" must be a string`);
       }
@@ -101,10 +114,11 @@ export function validateCanvas(
 
   for (const [id, board] of boards) {
     if (!pages.has(board.page)) warnings.push(`board "${id}" uses unknown page "${board.page}"`);
-    if (!board.file.startsWith('pages/')) warnings.push(`board "${id}" file must start with "pages/": ${board.file}`);
-    else if (!fileExists(board.file)) {
+    const file = fileOf(board);
+    if (!file.startsWith('pages/')) warnings.push(`board "${id}" ${fileField(board)} must start with "pages/": ${file}`);
+    else if (!fileExists(file)) {
       options.pending?.add(id);
-      if (!options.allowPending) warnings.push(`board "${id}" file not found: ${board.file}`);
+      if (!options.allowPending) warnings.push(`board "${id}" file not found: ${file}`);
     }
   }
 

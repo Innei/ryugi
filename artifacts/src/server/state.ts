@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { computeLayout } from '../shared/geometry';
-import type { CanvasPayload, CanvasSpec } from '../shared/types';
+import { isMediaBoard, type CanvasPayload, type CanvasSpec } from '../shared/types';
 import { structuralWarnings, validateCanvas } from '../shared/validate';
 import { resolveBoardFile } from './paths';
 
@@ -31,6 +31,10 @@ function boardVersions(boardDir: string, canvas: CanvasSpec) {
     }
     try {
       const stat = fs.statSync(target);
+      if (isMediaBoard(board)) {
+        versions[board.file] = stat.size > 0 ? stat.mtimeMs : 0;
+        continue;
+      }
       const html = fs.readFileSync(target, 'utf8');
       // shortcut: fragments have no completion marker, use full HTML documents for streaming.
       const document = /<(?:!doctype|html)\b/i.test(html);
@@ -54,6 +58,7 @@ export function readCanvas(boardDir: string): CanvasPayload {
     const structural = structuralWarnings(raw);
     if (structural.length > 0) return { canvas: null, warnings: structural, pending: [], layout: null, versions: {} };
     const canvas = { ...(raw as CanvasSpec) };
+    canvas.boards = Object.fromEntries(Object.entries(canvas.boards).map(([id, board]) => [id, isMediaBoard(board) ? { ...board, file: board.src ?? '' } : board]));
     const { versions, writing } = boardVersions(boardDir, canvas);
     const pending = new Set<string>();
     for (const [id, board] of Object.entries(canvas.boards)) {
