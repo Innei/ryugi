@@ -17,26 +17,10 @@ export interface ThreadActions {
 
 const styles = stylex.create({
   thread: { fontFamily: cssVar.fontFamily, fontSize: 12, lineHeight: 1.6, color: cssVar.colorText, cursor: 'default' },
-  head: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 8,
-    minHeight: 34,
-    paddingInline: 12,
-    borderBottomWidth: 1,
-    borderBottomStyle: 'solid',
-    borderBottomColor: cssVar.colorBorderSecondary,
-    fontSize: 11,
-    color: cssVar.colorTextTertiary,
-  },
-  label: { flex: 1, minWidth: 0, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', fontFamily: cssVar.fontFamilyCode },
-  message: {
-    paddingBlock: 10,
-    paddingInline: 12,
-    borderBottomWidth: 1,
-    borderBottomStyle: 'solid',
-    borderBottomColor: { default: cssVar.colorBorderSecondary, ':last-child': 'transparent' },
-  },
+  head: { display: 'flex', alignItems: 'center', gap: 8, paddingTop: 10, paddingInline: 14, fontSize: 11 },
+  label: { flex: 1, minWidth: 0, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', color: cssVar.colorTextTertiary },
+  body: { paddingBlock: 10, paddingInline: 14 },
+  message: { marginTop: { default: 12, ':first-child': 0 } },
   who: { display: 'flex', alignItems: 'center', gap: 7, fontSize: 11, fontWeight: 600, marginBottom: 2 },
   time: { color: cssVar.colorTextQuaternary, fontWeight: 400 },
   deleted: { color: cssVar.colorTextQuaternary, fontStyle: 'italic' },
@@ -45,19 +29,21 @@ const styles = stylex.create({
   link: { padding: 0, borderWidth: 0, backgroundColor: 'transparent', color: { default: cssVar.colorTextTertiary, ':hover': cssVar.colorText }, fontSize: 11, cursor: 'pointer' },
   icon: {
     flexShrink: 0,
-    display: 'flex',
-    alignItems: 'center',
-    gap: 4,
+    width: 22,
+    height: 22,
+    display: 'grid',
+    placeItems: 'center',
     padding: 0,
     borderWidth: 0,
-    backgroundColor: 'transparent',
+    borderRadius: 6,
+    backgroundColor: { default: 'transparent', ':hover': cssVar.colorFillTertiary },
     color: { default: cssVar.colorTextTertiary, ':hover': cssVar.colorText },
-    fontSize: 11,
+    fontSize: 12,
     cursor: 'pointer',
   },
-  waitHuman: { flexShrink: 0, fontSize: 11, color: cssVar.colorWarningText },
-  waitAgent: { flexShrink: 0, fontSize: 11, color: cssVar.colorInfoText },
-  reply: { borderTopWidth: 1, borderTopStyle: 'solid', borderTopColor: cssVar.colorBorderSecondary },
+  badge: { flexShrink: 0, paddingBlock: 1, paddingInline: 8, borderRadius: 999, fontSize: 10 },
+  badgeHuman: { backgroundColor: cssVar.colorWarningBg, color: cssVar.colorWarningText },
+  badgeAgent: { backgroundColor: cssVar.colorInfoBg, color: cssVar.colorInfoText },
 });
 
 const timeOf = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -91,14 +77,14 @@ export function MessageView({ message, onEdit, onDelete }: { message: Message; o
 
 export function WaitingText({ thread, agent = 'Agent' }: { thread: Thread<unknown>; agent?: string }) {
   const waiting = waitingOn(thread);
-  if (waiting === 'human') return <span {...stylex.props(styles.waitHuman)}>等你回复</span>;
-  if (waiting === 'agent') return <span title={`${agent} 下一轮会读到这条`} {...stylex.props(styles.waitAgent)}>等 {agent}</span>;
+  if (waiting === 'human') return <span {...stylex.props(styles.badge, styles.badgeHuman)}>等你回复</span>;
+  if (waiting === 'agent') return <span title={`${agent} 下一轮会读到这条`} {...stylex.props(styles.badge, styles.badgeAgent)}>等 {agent}</span>;
   return null;
 }
 
 export function ThreadMessages({ thread, actions }: { thread: Thread<unknown>; actions?: ThreadActions }) {
   return (
-    <>
+    <div {...stylex.props(styles.body)}>
       {thread.messages.map((message) => (
         <MessageView
           key={message.id}
@@ -107,7 +93,7 @@ export function ThreadMessages({ thread, actions }: { thread: Thread<unknown>; a
           onDelete={actions && (() => actions.remove(thread.id, message.id))}
         />
       ))}
-    </>
+    </div>
   );
 }
 
@@ -129,12 +115,11 @@ export function ThreadView({ thread, label, actions, agent, onClose }: Props) {
         {actions ? (
           resolved ? (
             <button type="button" title="重新打开" onClick={() => actions.reopen(thread.id)} {...stylex.props(styles.icon)}>
-              <RotateCcw size={12} strokeWidth={2.2} />
+              <RotateCcw size={13} strokeWidth={2.2} />
             </button>
           ) : (
             <button type="button" title="标为已解决" onClick={() => actions.resolve(thread.id)} {...stylex.props(styles.icon)}>
-              <Check size={13} strokeWidth={2.4} />
-              解决
+              <Check size={14} strokeWidth={2.4} />
             </button>
           )
         ) : null}
@@ -146,9 +131,7 @@ export function ThreadView({ thread, label, actions, agent, onClose }: Props) {
       </div>
       <ThreadMessages thread={thread} actions={actions} />
       {actions && !resolved ? (
-        <div {...stylex.props(styles.reply)}>
-          <Composer placeholder="回复…" onSubmit={(text) => actions.reply(thread.id, text)} onCancel={onClose} />
-        </div>
+        <Composer placeholder="回复…" onSubmit={(text) => actions.reply(thread.id, text)} onCancel={onClose} />
       ) : null}
     </div>
   );
