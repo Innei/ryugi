@@ -317,6 +317,26 @@ else
     fail "session-start pipes its JSON through cat when cat is on PATH"
 fi
 
+project_home="$(make_home published-project)"
+project_dir="$project_home/project"
+mkdir -p "$project_dir/.ryugi"
+printf '{"version":1,"artifacts":{"document/plan":{"cloud":{"id":"c1","url":"u","publishedAt":"t","visibility":"private"}}}}\n' > "$project_dir/.ryugi/config.json"
+started=$SECONDS
+assert_command_output \
+    "a project with published documents still gets normal context" \
+    "nested" \
+    "" \
+    "" \
+    "$project_home" \
+    CLAUDE_PLUGIN_ROOT="$REPO_ROOT" \
+    CLAUDE_PROJECT_DIR="$project_dir" \
+    bash "$HOOK_UNDER_TEST"
+if [[ $((SECONDS - started)) -le 2 ]]; then
+    pass "starting the artifacts server never delays session start"
+else
+    fail "starting the artifacts server never delays session start"
+fi
+
 if [[ "$FAILURES" -gt 0 ]]; then
     echo "STATUS: FAILED ($FAILURES failure(s))"
     exit 1

@@ -5,6 +5,7 @@ export interface RelayClientOptions {
   url: string;
   version: string;
   pollMs?: number;
+  heartbeatMs?: number;
   token: () => string | null;
   served: () => Map<string, string>;
   handle: (key: string, body: unknown, conn: string) => Promise<unknown>;
@@ -64,9 +65,10 @@ export function createRelayClient(options: RelayClientOptions) {
       announced = idsOf(served).join('\n');
       send({ t: 'hello', version: options.version, ids: idsOf(served) });
       heartbeat = setInterval(() => {
+        if (watched.size > 0) options.onActivity();
         ws.send('ping');
         pongDeadline ??= setTimeout(drop, PONG_TIMEOUT_MS);
-      }, HEARTBEAT_MS);
+      }, options.heartbeatMs ?? HEARTBEAT_MS);
     });
     ws.on('message', (data) => {
       const text = data.toString();

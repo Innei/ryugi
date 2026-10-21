@@ -37,7 +37,7 @@ export interface ServerOptions {
   documentTiming?: DocumentTiming;
   configFile?: string;
   cloud?: CloudOptions;
-  relay?: { url: string; version: string; pollMs?: number };
+  relay?: { url: string; version: string; pollMs?: number; heartbeatMs?: number };
   fetch?: typeof fetch;
 }
 

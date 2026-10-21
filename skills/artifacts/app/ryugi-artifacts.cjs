@@ -131,7 +131,8 @@ function main() {
     cli = cliOf(version);
     env.RYUGI_ARTIFACTS_VERSION = version;
   }
-  const owner = ownerPid();
+  const given = Number(env.RYUGI_ARTIFACTS_OWNER);
+  const owner = Number.isInteger(given) && given > 1 ? given : ownerPid();
   if (owner) env.RYUGI_ARTIFACTS_OWNER = String(owner);
   const child = spawn(process.execPath, [cli, ...args], { env, stdio: 'inherit' });
   for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => child.kill(signal));

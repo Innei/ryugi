@@ -11,6 +11,7 @@ import { startArtifactsServer } from '../src/server/app';
 import { updateArtifactConfig } from '../src/server/config';
 import { writeCredentials } from '../src/server/credentials';
 import { createDocumentHeadlessEditor } from '../src/server/document-headless';
+import { createRelayClient } from '../src/server/relay';
 import { tempRoot, writeDocument } from './helpers';
 
 interface Hub {
@@ -216,6 +217,34 @@ describe('requests', () => {
     server.onActivity(() => touched++);
     await request(hub, { op: 'meta' });
     expect(touched).toBeGreaterThan(0);
+  });
+});
+
+describe('keeping the server awake', () => {
+  test('an open viewer counts as activity even when it sends nothing', async () => {
+    const hub = await fakeHub();
+    let touched = 0;
+    const client = createRelayClient({
+      url: hub.url,
+      version: '1.13.0',
+      pollMs: 50,
+      heartbeatMs: 50,
+      token: () => 'tok',
+      served: () => new Map([['cloudplan', 'document/plan']]),
+      handle: async () => null,
+      onActivity: () => touched++,
+    });
+    cleanups.push(() => client.close());
+    await hub.next('hello');
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    expect(touched).toBe(0);
+    hub.send({ t: 'watch', ids: ['cloudplan'] });
+    await waitFor(() => touched > 0);
+    hub.send({ t: 'watch', ids: [] });
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    const settled = touched;
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    expect(touched).toBe(settled);
   });
 });
 

@@ -102,6 +102,16 @@ describe('launcher with a local build', () => {
     const owners = fs.readFileSync(path.join(dir, '.ryugi', 'artifacts', '.state', 'owners'), 'utf8').trim().split('\n');
     expect(owners).toEqual([String(process.ppid)]);
   });
+
+  test('keeps an owner it was handed instead of guessing one', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'artifacts-project-'));
+    const env = { ...process.env, ARTIFACTS_OPEN: '0', RYUGI_ARTIFACTS_OWNER: String(process.pid) };
+    const launch = (args: string[]) => JSON.parse(spawnSync(process.execPath, [path.join(appDir, launcherName), ...args], { encoding: 'utf8', env, timeout: 20000 }).stdout.trim().split('\n').pop()!);
+    cleanups.push(() => launch(['stop', '--project-dir', dir]));
+    expect(launch(['start', '--project-dir', dir, '--json']).type).toBe('server-started');
+    const owners = fs.readFileSync(path.join(dir, '.ryugi', 'artifacts', '.state', 'owners'), 'utf8').trim().split('\n');
+    expect(owners).toEqual([String(process.pid)]);
+  });
 });
 
 describe('launcher without a local build', () => {
