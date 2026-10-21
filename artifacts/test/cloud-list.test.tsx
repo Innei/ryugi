@@ -7,6 +7,7 @@ import { afterEach, beforeAll, describe, expect, test, vi } from 'vitest';
 import { cloudPreviewPayload, type CloudArtifactData } from '../src/viewer/lib/cloud-list';
 import { groupByProject, type CloudListItem } from '../src/viewer/lib/cloud-list';
 import { CloudArtifactList } from '../src/viewer/layouts/CloudArtifactList';
+import { CloudHeader } from '../src/viewer/components/CloudBanner';
 
 vi.mock('@stylexjs/stylex', async (original) => ({ ...await original<object>(), create: (value: unknown) => value, props: () => ({}) }));
 vi.mock('../src/viewer/components/ArtifactThumbnail', () => ({
@@ -173,6 +174,52 @@ describe('cloud library management', () => {
     await act(async () => { host.querySelector<HTMLButtonElement>('button[aria-label="管理 Arrow"]')!.click(); });
     await click('分享设置');
     expect(document.querySelector('[role="button"][aria-hidden="true"][tabindex="0"]')).toBeNull();
+  });
+
+  test.each(['homepage', 'header'] as const)('keeps pending sharing and late errors across dismissal in the %s', async (surface) => {
+    let settle: (response: Response) => void = () => {};
+    let requests = 0;
+    const host = await render({ status: 200, body: list }, (async (_url, init) => {
+      if (init?.method !== 'PATCH') return Response.json(list);
+      requests++;
+      return new Promise<Response>((resolve) => { settle = resolve; });
+    }) as typeof fetch);
+    if (surface === 'header') await act(async () => root!.render(createElement(ConfigProvider, { motion, enableCustomFonts: false, children: createElement(CloudHeader, { id: 'a', type: 'html', title: 'Arrow', owner: true, status: {}, visibility: 'private', onChange: () => {} }) })));
+    const open = async () => {
+      if (surface === 'header') await click('分享');
+      else {
+        await act(async () => { host.querySelector<HTMLButtonElement>('button[aria-label="管理 Arrow"]')!.click(); });
+        await click('分享设置');
+      }
+    };
+    const option = () => Array.from(document.querySelectorAll<HTMLButtonElement>('[role="radio"]')).find((node) => node.textContent?.includes('有链接的人'))!;
+    for (const status of [503, 401]) {
+      await open();
+      await act(async () => { option().click(); });
+      await act(async () => { document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); });
+      await open();
+      expect(option().disabled).toBe(true);
+      await act(async () => { option().click(); });
+      expect(requests).toBe(status === 503 ? 1 : 2);
+      await act(async () => { settle(Response.json({ error: 'late refusal' }, { status })); });
+      expect(option().disabled).toBe(false);
+      expect(document.querySelector('[role="alert"]')?.textContent).toContain(status === 401 ? '登录已过期' : 'late refusal');
+      if (status === 401) expect(document.querySelector('a[href^="/auth/login"]')).not.toBeNull();
+      await act(async () => { document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); });
+    }
+  });
+
+  test('the manual-copy fallback exposes the complete link to keyboard users', async () => {
+    const host = await render({ status: 200, body: list });
+    await act(async () => { host.querySelector<HTMLButtonElement>('button[aria-label="管理 Arrow"]')!.click(); });
+    await click('分享设置');
+    const input = document.querySelector<HTMLInputElement>('input[aria-label="分享链接"]');
+    expect(input).not.toBeNull();
+    expect(input!.readOnly).toBe(true);
+    expect(input!.value).toBe(`${location.origin}/a/a`);
+    await act(async () => { input!.focus(); });
+    expect(input!.selectionStart).toBe(0);
+    expect(input!.selectionEnd).toBe(input!.value.length);
   });
 
   test('can retry an initial loading error', async () => {

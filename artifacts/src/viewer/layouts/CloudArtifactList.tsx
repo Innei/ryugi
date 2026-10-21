@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import logo from '../../../../assets/ryugi-small.svg';
 import type { Visibility } from '../../shared/cloud';
 import { ArtifactThumbnail } from '../components/ArtifactThumbnail';
-import { CloudSharePanel } from '../components/CloudBanner';
+import { useCloudSharePanel } from '../components/CloudBanner';
 import { relativeUpdatedAt } from '../lib/artifact-list';
 import { groupByProject, type CloudListItem } from '../lib/cloud-list';
 import { CloudRequestError, deleteCloudArtifact } from '../lib/cloud-shell';
@@ -24,6 +24,7 @@ function CardActions({ artifact, onVisibility, onDelete, onNotice }: {
 }) {
   const [sharing, setSharing] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);
+  const sharePanel = useCloudSharePanel({ id: artifact.id, visibility: artifact.visibility, onChange: onVisibility });
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(artifact.url);
@@ -45,7 +46,7 @@ function CardActions({ artifact, onVisibility, onDelete, onNotice }: {
       {sharing && <Popover standalone open trigger={[]} placement="bottomRight" nativeButton={false}
         onOpenChange={(open) => !open && setSharing(false)} positionerProps={{ anchor: trigger }} triggerProps={{ tabIndex: -1 }}
         popupProps={{ finalFocus: trigger, 'aria-label': `分享 ${artifact.title ?? artifact.id}` }}
-        content={<CloudSharePanel id={artifact.id} visibility={artifact.visibility} onChange={onVisibility} />}>
+        content={sharePanel}>
         <span aria-hidden="true" tabIndex={-1} />
       </Popover>}
     </div>

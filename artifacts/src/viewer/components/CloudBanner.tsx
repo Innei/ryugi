@@ -1,4 +1,4 @@
-import { Popover } from '@lobehub/ui';
+import { Input, Popover } from '@lobehub/ui';
 import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
 import { ArrowRight, CircleAlert, Copy, Globe, Lock, MessageCircle } from 'lucide-react';
@@ -175,7 +175,7 @@ export function CloudHeader({ id, type, title, owner, status, visibility, onChan
   );
 }
 
-export function CloudSharePanel({ id, visibility, onChange }: { id: string; visibility: Visibility; onChange: (next: Visibility) => void }) {
+export function useCloudSharePanel({ id, visibility, onChange }: { id: string; visibility: Visibility; onChange: (next: Visibility) => void }) {
   const [error, setError] = useState<{ message: string; auth?: boolean } | null>(null);
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -228,7 +228,7 @@ export function CloudSharePanel({ id, visibility, onChange }: { id: string; visi
         ))}
       </div>
       <div {...stylex.props(styles.link)}>
-        <span {...stylex.props(styles.url)}>{url.replace(/^https?:\/\//, '')}</span>
+        <Input aria-label="分享链接" value={url} readOnly size="small" onFocus={(event) => event.currentTarget.select()} {...stylex.props(styles.url)} />
         <button type="button" onClick={() => void copy()} {...stylex.props(styles.share)}><Copy size={12} /> {copied ? '已复制' : '复制'}</button>
       </div>
       {error ? <p role="alert" {...stylex.props(styles.error)}>{error.auth ? '登录已过期，请重新登录。' : error.message} {error.auth && <a href={`/auth/login?return=${encodeURIComponent(location.pathname)}`}>重新登录</a>}</p> : <p {...stylex.props(styles.foot)}>{visibility === 'private' ? '复制不会自动公开。' : ''}改动立即生效，链接不变。</p>}
@@ -237,6 +237,7 @@ export function CloudSharePanel({ id, visibility, onChange }: { id: string; visi
 }
 
 function OwnerActions({ id, visibility, onChange }: { id: string; visibility: Visibility; onChange: (next: Visibility) => void }) {
+  const panel = useCloudSharePanel({ id, visibility, onChange });
   const current = OPTIONS.find((option) => option.value === visibility)!;
 
   return (
@@ -245,7 +246,7 @@ function OwnerActions({ id, visibility, onChange }: { id: string; visibility: Vi
         <current.Icon size={11} />
         <span {...stylex.props(styles.visibilityLabel)}>{current.label}可见</span>
       </span>
-      <Popover placement="bottomRight" trigger="click" content={<CloudSharePanel id={id} visibility={visibility} onChange={onChange} />}>
+      <Popover placement="bottomRight" trigger="click" content={panel}>
         <button type="button" {...stylex.props(styles.share)}>
           分享
         </button>
