@@ -74,7 +74,7 @@ digraph process {
     "Final whole-branch review (fresh reviewer if you have one)" [shape=box];
     "Re-grade, then: Critical/Important → ONE fix pass, each fix RED→GREEN + green suite; Minor → ledger" [shape=box];
     "Project verification, if the project has a skill for it" [shape=box];
-    "Stop and report: rulings, deferred minors, what landed" [shape=box style=filled fillcolor=lightgreen];
+    "Stop and report: rulings, deferred minors, what landed; verify link if the UI changed" [shape=box style=filled fillcolor=lightgreen];
 
     "Setup: workspace + ledger, read the spec" -> "Slice the spec into tasks.md (skip if it exists)";
     "Slice the spec into tasks.md (skip if it exists)" -> "task-start: brief + BASE; read the brief";
@@ -91,7 +91,7 @@ digraph process {
     "More tasks remain?" -> "Final whole-branch review (fresh reviewer if you have one)" [label="no"];
     "Final whole-branch review (fresh reviewer if you have one)" -> "Re-grade, then: Critical/Important → ONE fix pass, each fix RED→GREEN + green suite; Minor → ledger";
     "Re-grade, then: Critical/Important → ONE fix pass, each fix RED→GREEN + green suite; Minor → ledger" -> "Project verification, if the project has a skill for it";
-    "Project verification, if the project has a skill for it" -> "Stop and report: rulings, deferred minors, what landed";
+    "Project verification, if the project has a skill for it" -> "Stop and report: rulings, deferred minors, what landed; verify link if the UI changed";
 }
 ```
 
@@ -344,6 +344,13 @@ Exploratory work instead keeps its workspace and `EXPLORING`, and stays
 uncommitted: end your final message with the listed paths and ask your
 human partner to keep it or discard it. Act on the answer as Setup says,
 then delete the workspace.
+
+When the spec changes what your human partner sees, use
+ryugi:verifying-ui last, after the steps above: your final message
+carries its link and says which groups wait on their verdict. The work is
+not done, and the ways to land it below wait, until every group has
+passed. Fixes for rejects follow that skill; in exploratory work they stay
+uncommitted and their paths join `EXPLORING`.
 
 Committed work in place on the default branch has nothing to land: end your final
 message with the commits from the ledger, and stop. Pushing is your

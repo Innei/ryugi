@@ -33,6 +33,7 @@ When multiple skills apply, process skills come first — they set the approach,
 
 - "Let's build X" → ryugi:brainstorming first, then implementation skills.
 - "Fix this bug" → ryugi:systematic-debugging first, then domain skills.
+- UI built, or a visible bug to fix → ryugi:verifying-ui before calling it done; the project's own app-checking skill can make the evidence, not the verdict.
 
 When the project has its own skill for a step — its design system, checking the running app, shipping — that skill does that step. Ryugi sets the process; the project's skills carry its domain.
 

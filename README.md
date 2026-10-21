@@ -21,7 +21,8 @@ flowchart LR
   A --> S[Approved spec]
   S --> E[executing-specs]
   E --> T[per-task TDD]
-  T --> R[one fresh review] --> L[you land it]
+  T --> R[one fresh review] --> V[verifying-ui<br/>UI changed: you pass or reject]
+  V --> L[you land it]
 ```
 
 After you sign off, it builds inline from the spec unless you say "just code it": your agent slices the spec into tasks, proves each with true red/green TDD, keeps a ledger of every judgment call across compaction, gets one fresh review of the whole branch, then reports how to land it — squash (default), rebase, PR, or keep. Never a merge commit.
@@ -71,14 +72,15 @@ The same CLI runs what the skill uses: `npx ryugi-artifacts start`, `stop` and `
 2. **executing-specs** — activates when you approve the spec and choose inline. Slices the spec into tasks, implements each under TDD with a ledger that survives compaction, records every judgment call as a ruling, gets one fresh review, then stops and reports.
 3. **test-driven-development** — activates during implementation. RED-GREEN-REFACTOR: failing test, watch it fail, minimal code, watch it pass, commit.
 4. **systematic-debugging** — activates on a bug or unexpected behavior. Root cause before fixes.
-5. **using-git-worktrees** — activates when work needs isolation. Follows your stated preference. Without one, executing-specs works in place beside other agents and opens a worktree only when the work would collide with theirs: a file with someone else's uncommitted edits, a path another agent is exploring, or a lockfile, branch switch or repo-wide change.
-6. **artifacts** — activates when something is clearer to look at than to read, in brainstorming or anywhere else. Artboards, live HTML pages, and a bundled Web Component kit, each at its own local link.
+5. **verifying-ui** — activates when built work or a bug fix changes what you see. Puts real screenshots and recordings next to the approved design (or before next to after) on the Artboard; you pass or reject each group in the browser, and rejected ones come back fixed until all pass.
+6. **using-git-worktrees** — activates when work needs isolation. Follows your stated preference. Without one, executing-specs works in place beside other agents and opens a worktree only when the work would collide with theirs: a file with someone else's uncommitted edits, a path another agent is exploring, or a lockfile, branch switch or repo-wide change.
+7. **artifacts** — activates when something is clearer to look at than to read, in brainstorming or anywhere else. Artboards, live HTML pages, and a bundled Web Component kit, each at its own local link.
 
 **Your project's own skills come first at their step** — a design system before mockups, a verify skill before reporting, a ship skill for merging. Ryugi sets the process; your project carries its domain.
 
 ## What's inside
 
-- **Process** — `brainstorming`, `artifacts`, `executing-specs`
+- **Process** — `brainstorming`, `artifacts`, `executing-specs`, `verifying-ui`
 - **Discipline** — `test-driven-development`, `systematic-debugging`
 - **Workspace** — `using-git-worktrees`
 - **Meta** — `using-ryugi` (bootstrap, plus evidence before claims)

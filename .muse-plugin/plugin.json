@@ -37,6 +37,10 @@
       {
         "id": "using-ryugi",
         "path": "skills/using-ryugi/SKILL.md"
+      },
+      {
+        "id": "verifying-ui",
+        "path": "skills/verifying-ui/SKILL.md"
       }
     ],
     "commands": [],
