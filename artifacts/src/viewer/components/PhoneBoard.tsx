@@ -2,8 +2,9 @@ import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
 import { X } from 'lucide-react';
 import { useLayoutEffect } from 'react';
-import type { BoardSpec } from '../../shared/types';
+import { isMediaBoard, type BoardSpec } from '../../shared/types';
 import { usePanZoom } from '../hooks/usePanZoom';
+import { MediaBoard } from './MediaBoard';
 
 const styles = stylex.create({
   overlay: {
@@ -92,14 +93,18 @@ export function PhoneBoard({ id, board, src, siblings, onOpen, onClose }: Props)
       </div>
       <div ref={viewportRef} {...handlers} {...stylex.props(styles.body)}>
         <div {...stylex.props(styles.world)} style={{ width: board.w, height: board.h, transform: `translate(${view.x}px, ${view.y}px) scale(${view.k})` }}>
-          <iframe
-            key={id}
-            title={board.title ?? id}
-            src={src}
-            sandbox="allow-scripts"
-            {...stylex.props(styles.frame)}
-            style={{ width: board.w, height: board.h, pointerEvents: board.interactive ? 'auto' : 'none' }}
-          />
+          {isMediaBoard(board) ? (
+            <MediaBoard key={id} id={id} board={board} src={src} zoom={view.k} />
+          ) : (
+            <iframe
+              key={id}
+              title={board.title ?? id}
+              src={src}
+              sandbox="allow-scripts"
+              {...stylex.props(styles.frame)}
+              style={{ width: board.w, height: board.h, pointerEvents: board.interactive ? 'auto' : 'none' }}
+            />
+          )}
         </div>
       </div>
       {siblings.length > 1 ? (

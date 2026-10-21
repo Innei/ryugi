@@ -10,6 +10,8 @@ import { PhoneBoard } from '../components/PhoneBoard';
 import { QuestionSheet, SHEET_PEEK } from '../components/QuestionSheet';
 import { useArtboardPage } from '../hooks/useArtboardPage';
 import { usePanZoom } from '../hooks/usePanZoom';
+import { useVerdicts } from '../hooks/useVerdicts';
+import type { BoardCommentsState } from '../lib/board-comments';
 import { openingQuestion, questionList, roundsOf, stepQuestion, type Question } from '../lib/questions';
 import type { Insets } from '../lib/view';
 
@@ -46,9 +48,12 @@ interface Props {
   loaded: boolean;
   agent?: string;
   menu?: boolean;
+  comments?: BoardCommentsState | null;
 }
 
-export function PhoneArtboard({ id, artifact, canvas, layout, warnings, pending, contentBase, versions, live, loaded, agent, menu = true }: Props) {
+const NO_THREADS: never[] = [];
+
+export function PhoneArtboard({ id, artifact, canvas, layout, warnings, pending, contentBase, versions, live, loaded, agent, comments, menu = true }: Props) {
   const { viewportRef, view, fit, handlers } = usePanZoom('hand');
   const [current, setCurrent] = useState<string | null>(null);
   const [snap, setSnap] = useState(SHEET_PEEK);
@@ -88,6 +93,8 @@ export function PhoneArtboard({ id, artifact, canvas, layout, warnings, pending,
   const groups = Object.entries(canvas?.groups ?? {}).filter(([, g]) => g.boards.some((boardId) => allBoards[boardId]?.page === page));
   const notes = Object.entries(canvas?.notes ?? {}).filter(([, n]) => n.page === page);
   const pendingBoards = useMemo(() => new Set(pending), [pending]);
+  const stale = useMemo(() => new Set(comments?.stale ?? []), [comments]);
+  const verdicts = useVerdicts({ canvas, page, threads: comments?.comments.threads ?? NO_THREADS, stale, versions });
 
   const boardAt = (event: { clientX: number; clientY: number }) => {
     const rect = viewportRef.current!.getBoundingClientRect();
@@ -163,6 +170,7 @@ export function PhoneArtboard({ id, artifact, canvas, layout, warnings, pending,
               onExpand={setOpen}
               onTogglePlay={setOpen}
               onReplay={() => {}}
+              verdicts={verdicts}
             />
           </CanvasErrorBoundary>
         ) : (

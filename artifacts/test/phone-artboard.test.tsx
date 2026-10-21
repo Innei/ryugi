@@ -51,12 +51,12 @@ beforeEach(() => {
 });
 afterEach(() => { if (root) act(() => root!.unmount()); host?.remove(); document.body.innerHTML = ''; vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 
-async function mount(spec: object = canvas, specLayout: object = layout) {
+async function mount(spec: object = canvas, specLayout: object = layout, extra: object = {}) {
   host = document.createElement('div');
   document.body.append(host);
   root = createRoot(host);
   const specVersions = Object.fromEntries(Object.values((spec as typeof canvas).boards).map((b) => [b.file, 1]));
-  const view = createElement(ArtboardView, { id: 'mobile-comments', artifact: null, canvas: spec, layout: specLayout, warnings: [], pending: [], contentBase: 'about:blank#', versions: specVersions, loaded: true } as never);
+  const view = createElement(ArtboardView, { id: 'mobile-comments', artifact: null, canvas: spec, layout: specLayout, warnings: [], pending: [], contentBase: 'about:blank#', versions: specVersions, loaded: true, ...extra } as never);
   await act(async () => root!.render(createElement(ConfigProvider, { motion, enableCustomFonts: false, children: view })));
   return host;
 }
@@ -192,3 +192,29 @@ test('an interactive board fits the whole screen so every part of it can be reac
   await render(false);
   expect(scale()).toBe(1);
 });
+
+test('a verify group on the phone shows its verdict but never the verdict buttons', async () => {
+  const spec = { ...canvas, groups: { ...canvas.groups, q1: { ...canvas.groups.q1, verify: true }, q2: { ...canvas.groups.q2, verify: true } } };
+  const pass = { id: 'p1', anchor: { page: 'p', group: 'q1', verdict: 'pass', x: 0, y: 0 }, status: 'resolved', statusAt: '2026-10-22T08:40:00Z', messages: [{ id: 'm', author: 'human', text: '通过', at: '2026-10-22T08:40:00Z' }] };
+  await mount(spec, layout, { comments: { comments: { version: 1, threads: [pass] }, stale: [] }, comment: vi.fn() });
+  expect(host!.querySelector('[data-group-label="q1"]')!.textContent).toContain('已通过');
+  const pending = host!.querySelector<HTMLElement>('[data-group-label="q2"]')!;
+  expect(pending.textContent).toContain('待验收');
+  expect([...pending.querySelectorAll('button')].map((b) => b.textContent?.trim())).not.toContain('通过');
+});
+
+test('an opened image or video board shows the media instead of a frame', async () => {
+  host = document.createElement('div');
+  document.body.append(host);
+  root = createRoot(host);
+  const image = { type: 'image' as const, src: 'pages/p/shot.png', file: 'pages/p/shot.png', page: 'p', x: 0, y: 0, w: 390, h: 844 };
+  const video = { ...image, type: 'video' as const, src: 'pages/p/flow.webm', file: 'pages/p/flow.webm' };
+  const open = (board: typeof image | typeof video) => act(async () => root!.render(createElement(ConfigProvider, { motion, enableCustomFonts: false, children: createElement(PhoneBoard, { id: 'shot', board, src: `about:blank#${board.file}`, siblings: ['shot'], onOpen: () => {}, onClose: () => {} }) })));
+  await open(image);
+  expect(host.querySelector('[data-phone-board] iframe')).toBeNull();
+  expect(host.querySelector('[data-phone-board] img')?.getAttribute('src')).toBe('about:blank#pages/p/shot.png');
+  await open(video);
+  expect(host.querySelector('[data-phone-board] video')).not.toBeNull();
+  expect(host.querySelector('[data-phone-board] [aria-label="播放"]')).not.toBeNull();
+});
+
