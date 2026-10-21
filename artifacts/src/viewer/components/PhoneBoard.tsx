@@ -75,9 +75,10 @@ export function PhoneBoard({ id, board, src, siblings, onOpen, onClose }: Props)
 
   useLayoutEffect(() => {
     const width = viewportRef.current?.clientWidth ?? board.w;
-    const k = Math.min(1, width / board.w);
+    const height = viewportRef.current?.clientHeight ?? board.h;
+    const k = board.interactive ? Math.min(1, width / board.w, height / board.h) : Math.min(1, width / board.w);
     place({ k, x: (width - board.w * k) / 2, y: 0 });
-  }, [id, board.w, place, viewportRef]);
+  }, [id, board.w, board.h, board.interactive, place, viewportRef]);
 
   return (
     <div data-phone-board {...stylex.props(styles.overlay)}>

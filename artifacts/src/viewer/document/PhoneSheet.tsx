@@ -3,6 +3,7 @@ import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
 import { useEffect, useRef } from 'react';
 import { waitingOn, type Thread } from '../../shared/comments';
+import { useSheetSwipe } from '../hooks/useSheetSwipe';
 import type { ThreadActions } from './CommentCard';
 import { Composer } from './Composer';
 import { PhoneThread } from './PhoneThread';
@@ -52,6 +53,7 @@ interface Props {
 
 export function PhoneSheet({ threads, agent = 'Agent', actions, offline, draft, onCreate, onCancelDraft, activeId, snap, onSnap }: Props) {
   const body = useRef<HTMLDivElement>(null);
+  const swipe = useSheetSwipe([SHEET_PEEK, SHEET_HALF, SHEET_FULL], snap, onSnap);
   const shown = threads.filter((thread) => !thread.messages.every((message) => message.deleted));
   const waiting = shown.filter((thread) => waitingOn(thread) === 'agent').length;
   const note = offline ? '电脑离线，暂时不能评论' : waiting > 0 ? `${waiting} 条等 ${agent} 回复` : null;
@@ -73,7 +75,7 @@ export function PhoneSheet({ threads, agent = 'Agent', actions, offline, draft, 
       activeSnapPoint={snap}
       onSnapPointChange={onSnap}
       title={
-        <span {...stylex.props(styles.title)}>
+        <span {...swipe} {...stylex.props(styles.title)}>
           评论 {shown.length}
           {note ? <span {...stylex.props(styles.note)}>· {note}</span> : null}
         </span>

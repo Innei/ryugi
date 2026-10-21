@@ -191,3 +191,15 @@ describe('going offline keeps what the owner is typing', () => {
     expect(host.querySelector('textarea[placeholder="写给 agent 的评论…"]')).not.toBeNull();
   });
 });
+
+test('a finger swipe on the sheet title moves it between heights', async () => {
+  const onSnap = vi.fn();
+  const host = await render(
+    createElement(PhoneSheet, { threads: [waiting], agent: 'Claude Code', actions: actions(), offline: false, draft: null, onCreate: vi.fn(), onCancelDraft: vi.fn(), activeId: null, snap: 78, onSnap }),
+  );
+  const title = host.querySelector('header')!.firstElementChild!;
+  const finger = (type: string, y: number) => act(async () => title.dispatchEvent(new PointerEvent(type, { bubbles: true, pointerId: 5, pointerType: 'touch', clientX: 50, clientY: y })));
+  await finger('pointerdown', 800);
+  await finger('pointerup', 700);
+  expect(onSnap).toHaveBeenLastCalledWith(SHEET_HALF);
+});

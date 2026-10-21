@@ -151,3 +151,11 @@ test('a finger on the toolbar never moves the canvas', () => {
   touch(viewport, 'pointermove', 3, 60, 60);
   expect(panZoom.view).toEqual({ x: 0, y: 0, k: 0.5 });
 });
+
+test('a finger that started on the toolbar never moves the canvas while another finger is down', () => {
+  const viewport = render('select');
+  touch(viewport, 'pointerdown', 1, 100, 100);
+  touch(host.querySelector('button')!, 'pointerdown', 2, 300, 300);
+  touch(viewport, 'pointermove', 2, 310, 310);
+  expect(panZoom.view).toEqual({ x: 0, y: 0, k: 0.5 });
+});

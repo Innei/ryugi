@@ -7,9 +7,10 @@ interface Options {
   layout: CanvasLayout | null | undefined;
   fitPage: (page: string) => boolean;
   fitFocus: (target: string, resolved: { page: string; bounds: Bounds }) => void;
+  startAtFocus?: boolean;
 }
 
-export function useArtboardPage({ canvas, layout, fitPage, fitFocus }: Options) {
+export function useArtboardPage({ canvas, layout, fitPage, fitFocus, startAtFocus = false }: Options) {
   const [page, setPage] = useState<string | null>(null);
   const seenActivePage = useRef<string | undefined>(undefined);
   const seenFocusAt = useRef<string | undefined>(undefined);
@@ -24,7 +25,8 @@ export function useArtboardPage({ canvas, layout, fitPage, fitFocus }: Options) 
       initialized.current = true;
       seenActivePage.current = canvas.activePage;
       seenFocusAt.current = canvas.focus?.at;
-      const start = canvas.activePage ?? firstPage;
+      const focused = startAtFocus && canvas.focus ? resolveFocus(canvas, layout, canvas.focus.target)?.page : undefined;
+      const start = focused ?? canvas.activePage ?? firstPage;
       setPage(start);
       pendingFit.current = start;
       return;
@@ -55,7 +57,7 @@ export function useArtboardPage({ canvas, layout, fitPage, fitFocus }: Options) 
       setPage(firstPage);
       pendingFit.current = firstPage;
     }
-  }, [canvas, layout, fitFocus, page]);
+  }, [canvas, layout, fitFocus, page, startAtFocus]);
 
   useEffect(() => {
     if (pendingFit.current === null || pendingFit.current !== page) return;

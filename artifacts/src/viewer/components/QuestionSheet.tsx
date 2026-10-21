@@ -2,6 +2,7 @@ import { FloatingSheet } from '@lobehub/ui';
 import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
 import type { PageSpec } from '../../shared/types';
+import { useSheetSwipe } from '../hooks/useSheetSwipe';
 import type { Question, Round } from '../lib/questions';
 import { PageSwitcher } from './PhoneArtboardBar';
 
@@ -63,6 +64,7 @@ interface Props {
 }
 
 export function QuestionSheet({ rounds, current, previous, next, pages, page, onPageChange, onPick, snap, onSnap }: Props) {
+  const swipe = useSheetSwipe([SHEET_PEEK, SHEET_OPEN], snap, onSnap);
   return (
     <FloatingSheet
       open
@@ -76,7 +78,7 @@ export function QuestionSheet({ rounds, current, previous, next, pages, page, on
       activeSnapPoint={snap}
       onSnapPointChange={onSnap}
       title={
-        <span data-question-bar {...stylex.props(styles.current)}>
+        <span data-question-bar {...swipe} {...stylex.props(styles.current)}>
           {current ? (
             <>
               <code {...stylex.props(styles.id)}>{current.id}</code>

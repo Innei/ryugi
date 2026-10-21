@@ -76,6 +76,7 @@ export function usePanZoom(tool: Tool) {
   );
 
   const onPointerMove = useCallback((e: ReactPointerEvent<HTMLDivElement>) => {
+    if (e.pointerType === 'touch' && !touches.current.has(e.pointerId)) return;
     if (touches.current.has(e.pointerId)) {
       const before = [...touches.current.values()];
       touches.current.set(e.pointerId, { x: e.clientX, y: e.clientY });

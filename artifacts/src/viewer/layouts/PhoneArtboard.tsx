@@ -72,7 +72,7 @@ export function PhoneArtboard({ id, artifact, canvas, layout, warnings, pending,
     if (canvas && layout && show(openingQuestion(roundsOf(canvas, layout, resolved.page), target))) return;
     fit(resolved.bounds, INSETS);
   }, [canvas, layout, fit, show]);
-  const { page, changePage } = useArtboardPage({ canvas, layout, fitPage, fitFocus });
+  const { page, changePage } = useArtboardPage({ canvas, layout, fitPage, fitFocus, startAtFocus: true });
 
   const rounds = useMemo(() => (canvas && layout && page ? roundsOf(canvas, layout, page) : []), [canvas, layout, page]);
   const list = useMemo(() => questionList(rounds), [rounds]);
@@ -96,7 +96,8 @@ export function PhoneArtboard({ id, artifact, canvas, layout, warnings, pending,
   };
   const onPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     handlers.onPointerDown(event);
-    tap.current = tap.current || (event.target as Element).closest('[data-chrome]') ? null : { pointer: event.pointerId, x: event.clientX, y: event.clientY };
+    const outside = !event.currentTarget.contains(event.target as Node) || (event.target as Element).closest('[data-chrome]');
+    tap.current = tap.current || outside ? null : { pointer: event.pointerId, x: event.clientX, y: event.clientY };
   };
   const onPointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
     handlers.onPointerMove(event);
@@ -113,7 +114,10 @@ export function PhoneArtboard({ id, artifact, canvas, layout, warnings, pending,
   };
 
   const openBoard = open ? allBoards[open] : undefined;
-  const siblings = open ? (list.find((q) => q.boards.includes(open))?.boards ?? [open]) : [];
+  const loose = (q: Question) => !canvas?.groups?.[q.id];
+  const openRound = open ? rounds.find((r) => r.questions.some((q) => q.boards.includes(open))) : undefined;
+  const openQuestion = openRound?.questions.find((q) => q.boards.includes(open!));
+  const siblings = !open ? [] : !openQuestion ? [open] : loose(openQuestion) ? openRound!.questions.filter(loose).map((q) => q.id) : openQuestion.boards;
 
   return (
     <div {...stylex.props(styles.root)}>
