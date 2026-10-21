@@ -41,7 +41,7 @@ interface Props {
   restored: boolean;
   leaving: boolean;
   onChange: (text: string) => void;
-  onSubmit: (text: string) => void;
+  onSubmit: (text: string) => void | Promise<boolean>;
   onCancel: () => void;
   ref?: Ref<HTMLDivElement>;
 }

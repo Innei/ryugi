@@ -13,7 +13,7 @@ import { DRAFT_WIDTH, DraftPanel } from './DraftPanel';
 import { popoverPosition, toolbarPosition } from './layoutCards';
 import { SelectionToolbar, TOOLBAR_HEIGHT, TOOLBAR_WIDTH } from './SelectionToolbar';
 import { decodeBase64 } from './LoroSync';
-import type { DocumentMeta, DocumentTransport } from './transport';
+import type { DocumentMeta, DocumentState, DocumentTransport } from './transport';
 import { TopBar } from './TopBar';
 import { useDocumentSelectionSync } from './useDocumentSelectionSync';
 import { useLocalTransport } from './useDocumentTransport';
@@ -55,7 +55,13 @@ export default function DocumentPage({ id }: { id: string }) {
   return <DocumentView id={id} transport={transport} live={live} />;
 }
 
-export function DocumentView({ id, transport, live }: { id: string; transport: DocumentTransport; live: boolean }) {
+export interface CloudLive {
+  online: boolean;
+  canEdit: boolean;
+  reason: string | null;
+}
+
+export function DocumentView({ id, transport, live, cloud }: { id: string; transport: DocumentTransport; live: boolean; cloud?: CloudLive }) {
   const [meta, setMeta] = useState<DocumentMeta | null>(null);
   const [doc, setDoc] = useState<LoroDoc | null>(null);
   const [comments, setComments] = useState<CommentsFile>(emptyComments);
@@ -67,6 +73,8 @@ export function DocumentView({ id, transport, live }: { id: string; transport: D
   const [mainEl, setMainEl] = useState<HTMLElement | null>(null);
   const dark = usePrefersDark();
   const { artifact, channel } = transport;
+  const canComment = cloud ? cloud.online : true;
+  const canEdit = cloud ? cloud.canEdit : true;
 
   const refreshMeta = useCallback(async () => {
     const next = await transport.meta();
@@ -106,6 +114,14 @@ export function DocumentView({ id, transport, live }: { id: string; transport: D
     [channel, refreshMeta],
   );
 
+  useEffect(() => {
+    editor?.setEditable(canEdit);
+  }, [editor, canEdit]);
+  const onState = useCallback((state: DocumentState) => {
+    setStreaming(Boolean(state.streaming));
+    if (state.comments) setComments(state.comments);
+  }, []);
+
   useAssetBase(meta?.contentBase);
   useDocumentSelectionSync(editor, artifact, live, transport.send);
   const dynamicHost = useMemo<DynamicHost>(
@@ -125,13 +141,16 @@ export function DocumentView({ id, transport, live }: { id: string; transport: D
     async (op: HumanOp) => {
       try {
         setComments(await transport.comment(op));
-      } catch {}
+        return true;
+      } catch {
+        return false;
+      }
     },
     [transport],
   );
   const actions = useMemo<ThreadActions>(
     () => ({
-      reply: (threadId, text) => void send({ op: 'reply', threadId, text }),
+      reply: (threadId, text) => send({ op: 'reply', threadId, text }),
       edit: (threadId, messageId, text) => void send({ op: 'edit', threadId, messageId, text }),
       remove: (threadId, messageId) => void send({ op: 'delete', threadId, messageId }),
       resolve: (threadId) => void send({ op: 'resolve', threadId }),
@@ -152,6 +171,7 @@ export function DocumentView({ id, transport, live }: { id: string; transport: D
         agentSection={section}
         offline={offline}
         openComments={openComments}
+        cloud={cloud}
       />
       <DocumentLayout
         editor={editor}
@@ -165,7 +185,7 @@ export function DocumentView({ id, transport, live }: { id: string; transport: D
               <SelectionToolbar
                 ref={composing.toolbarRef}
                 {...toolbarPosition(selection, columnBounds(articleEl), TOOLBAR_WIDTH, TOOLBAR_HEIGHT, 8)}
-                onComment={() => composing.open(selection)}
+                onComment={canComment ? () => composing.open(selection) : undefined}
                 onCopy={() => {
                   void navigator.clipboard?.writeText(selection.quote);
                   window.getSelection()?.removeAllRanges();
@@ -183,10 +203,12 @@ export function DocumentView({ id, transport, live }: { id: string; transport: D
                 restored={composing.restored}
                 leaving={composing.leaving}
                 onChange={composing.onText}
-                onSubmit={(text) => {
-                  void send({ op: 'create', blockId: draft.target.blockId, quote: draft.target.quote, text });
-                  composing.close(false);
-                }}
+                onSubmit={(text) =>
+                  send({ op: 'create', blockId: draft.target.blockId, quote: draft.target.quote, text }).then((ok) => {
+                    if (ok) composing.close(false);
+                    return ok;
+                  })
+                }
                 onCancel={() => composing.close(true)}
               />
             ) : null}
@@ -201,6 +223,7 @@ export function DocumentView({ id, transport, live }: { id: string; transport: D
             theme={dark ? 'dark' : 'light'}
             onAgentSection={setSection}
             onOffline={setOffline}
+            onState={onState}
             onEditorReady={setEditor}
           />
         </DynamicHostContext.Provider>

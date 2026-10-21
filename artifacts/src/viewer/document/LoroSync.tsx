@@ -4,7 +4,7 @@ import { $getNodeByKey, $getRoot, $isElementNode, type NodeKey } from 'lexical';
 import type { LoroDoc, TreeID, VersionVector } from 'loro-crdt';
 import { useEffect } from 'react';
 import { sectionLabel } from '../lib/section';
-import type { DocumentTransport } from './transport';
+import type { DocumentState, DocumentTransport } from './transport';
 
 export interface AgentCaretPosition {
   key: NodeKey;
@@ -16,13 +16,14 @@ interface Props {
   doc: LoroDoc;
   onAgentCaret: (caret: AgentCaretPosition | null, section: string | null) => void;
   onOffline: (offline: boolean) => void;
+  onState?: (state: DocumentState) => void;
 }
 
 const BATCH_MS = 100;
 
 export const decodeBase64 = (base64: string) => Uint8Array.from(atob(base64), (char) => char.charCodeAt(0));
 
-export function LoroSync({ transport, doc, onAgentCaret, onOffline }: Props) {
+export function LoroSync({ transport, doc, onAgentCaret, onOffline, onState }: Props) {
   const [editor] = useLexicalComposerContext();
 
   useEffect(() => {
@@ -84,6 +85,7 @@ export function LoroSync({ transport, doc, onAgentCaret, onOffline }: Props) {
         binding.import(decodeBase64(state.snapshot));
         caret = state.cursor;
         showCaret();
+        onState?.(state);
         if (resend) {
           sent = undefined;
           schedule();
@@ -112,7 +114,7 @@ export function LoroSync({ transport, doc, onAgentCaret, onOffline }: Props) {
       unsubscribeLocal();
       binding.dispose();
     };
-  }, [editor, doc, transport, onAgentCaret, onOffline]);
+  }, [editor, doc, transport, onAgentCaret, onOffline, onState]);
 
   return null;
 }

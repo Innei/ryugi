@@ -13,6 +13,17 @@ import { DynamicHostContext, type DynamicHost } from './DynamicBlock';
 
 const styles = stylex.create({
   root: { minHeight: '100%', backgroundColor: cssVar.colorBgContainer, color: cssVar.colorText },
+  offline: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 6,
+    height: 40,
+    paddingInline: 24,
+    color: cssVar.colorTextSecondary,
+    fontFamily: cssVar.fontFamily,
+    fontSize: 12,
+  },
+  dot: { width: 7, height: 7, borderRadius: '50%', backgroundColor: cssVar.colorTextQuaternary },
 });
 
 function usePrefersDark() {
@@ -31,9 +42,10 @@ interface Props {
   state: SerializedEditorState;
   contentBase: string;
   comments?: CommentsFile;
+  offline?: boolean;
 }
 
-export default function CloudDocument({ id, state, contentBase, comments = emptyComments() }: Props) {
+export default function CloudDocument({ id, state, contentBase, comments = emptyComments(), offline = false }: Props) {
   const dark = usePrefersDark();
   const [editor, setEditor] = useState<LexicalEditor | null>(null);
   const host = useMemo<DynamicHost>(() => ({ artifact: `cloud/${id}`, contentBase, channel: createChannel(), send: () => undefined }), [id, contentBase]);
@@ -47,6 +59,12 @@ export default function CloudDocument({ id, state, contentBase, comments = empty
 
   return (
     <div {...stylex.props(styles.root)} className={`ryugi-doc ${stylex.props(styles.root).className ?? ''}`}>
+      {offline ? (
+        <div {...stylex.props(styles.offline)}>
+          <i {...stylex.props(styles.dot)} />
+          电脑离线，暂时不能评论
+        </div>
+      ) : null}
       <DocumentLayout editor={editor} threads={comments.threads}>
         <DynamicHostContext.Provider value={host}>
           <RichEditor

@@ -47,7 +47,7 @@ const styles = stylex.create({
 interface Props {
   left: number;
   top: number;
-  onComment: () => void;
+  onComment?: () => void;
   onCopy: () => void;
   ref?: Ref<HTMLDivElement>;
 }
@@ -55,10 +55,12 @@ interface Props {
 export function SelectionToolbar({ left, top, onComment, onCopy, ref }: Props) {
   return (
     <div ref={ref} {...stylex.props(styles.bar)} style={{ left, top }} onMouseDown={(event) => event.preventDefault()}>
-      <button type="button" onClick={onComment} {...stylex.props(styles.button)}>
-        <MessageSquare size={14} />
-        评论
-      </button>
+      {onComment ? (
+        <button type="button" onClick={onComment} {...stylex.props(styles.button)}>
+          <MessageSquare size={14} />
+          评论
+        </button>
+      ) : null}
       <button type="button" onClick={onCopy} {...stylex.props(styles.button, styles.secondary)}>
         复制
       </button>

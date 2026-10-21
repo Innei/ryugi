@@ -109,7 +109,7 @@ function MessageView({ message, onEdit, onDelete }: { message: Message; onEdit?:
 }
 
 export interface ThreadActions {
-  reply(threadId: string, text: string): void;
+  reply(threadId: string, text: string): void | Promise<boolean>;
   edit(threadId: string, messageId: string, text: string): void;
   remove(threadId: string, messageId: string): void;
   resolve(threadId: string): void;

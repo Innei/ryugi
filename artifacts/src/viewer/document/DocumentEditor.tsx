@@ -21,7 +21,7 @@ import { AgentCaret } from './AgentCaret';
 import { DynamicNode } from './DynamicNode';
 import { LoroSync, type AgentCaretPosition } from './LoroSync';
 import { MermaidPreview } from './MermaidPreview';
-import type { DocumentTransport } from './transport';
+import type { DocumentState, DocumentTransport } from './transport';
 
 export const extraNodes = [ChartEditNode, ExcalidrawEditNode, DynamicNode, ...katexEditNodes];
 
@@ -39,11 +39,12 @@ interface Props {
   theme: 'light' | 'dark';
   onAgentSection: (section: string | null) => void;
   onOffline: (offline: boolean) => void;
+  onState?: (state: DocumentState) => void;
   onEditorReady: (editor: LexicalEditor | null) => void;
   children?: ReactNode;
 }
 
-export function DocumentEditor({ transport, doc, theme, onAgentSection, onOffline, onEditorReady, children, agent }: Props) {
+export function DocumentEditor({ transport, doc, theme, onAgentSection, onOffline, onState, onEditorReady, children, agent }: Props) {
   const [caret, setCaret] = useState<AgentCaretPosition | null>(null);
   const [container, setContainer] = useState<HTMLDivElement | null>(null);
   const onAgentCaret = useState(() => (next: AgentCaretPosition | null, section: string | null) => {
@@ -54,7 +55,7 @@ export function DocumentEditor({ transport, doc, theme, onAgentSection, onOfflin
   return (
     <div ref={setContainer} style={{ position: 'relative' }}>
       <RichEditor variant="article" theme={theme} extraNodes={extraNodes} rendererConfig={rendererConfig} onEditorReady={onEditorReady}>
-        <LoroSync transport={transport} doc={doc} onAgentCaret={onAgentCaret} onOffline={onOffline} />
+        <LoroSync transport={transport} doc={doc} onAgentCaret={onAgentCaret} onOffline={onOffline} onState={onState} />
         <ExcalidrawPlugin />
         <FloatingLinkEditorPlugin />
         <AgentCaret caret={caret} container={container} agent={agent} />

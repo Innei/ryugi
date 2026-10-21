@@ -173,3 +173,22 @@ test('a read-only resolved thread still folds and unfolds', async () => {
   expect(host.textContent).toContain('离线怎么办？');
   expect(host.querySelectorAll('button')).toHaveLength(0);
 });
+
+test('a reply that did not reach the computer comes back into the box with a note', async () => {
+  let settle: (ok: boolean) => void = () => {};
+  const failing: ThreadActions = { ...actions, reply: () => new Promise<boolean>((resolve) => (settle = resolve)) };
+  const host = document.createElement('div');
+  document.body.append(host);
+  root = createRoot(host);
+  await act(async () => root!.render(createElement(CommentCard, { thread, active: true, actions: failing, onActivate: () => {} })));
+  const reply = host.querySelector<HTMLTextAreaElement>('textarea[placeholder="回复…"]')!;
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!.call(reply, '先这样');
+    reply.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await act(async () => host.querySelector<HTMLButtonElement>('button[aria-label="发送"]')!.click());
+  expect(reply.value).toBe('');
+  await act(async () => settle(false));
+  expect(reply.value).toBe('先这样');
+  expect(host.textContent).toContain('没发出去');
+});

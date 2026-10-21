@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 
 const styles = stylex.create({
   composer: { position: 'relative', paddingTop: 2, paddingInline: 14, paddingBottom: 12 },
+  unsent: { marginBottom: 6, color: cssVar.colorWarningText, fontFamily: cssVar.fontFamily, fontSize: 11 },
   input: {
     display: 'block',
     width: '100%',
@@ -45,13 +46,14 @@ interface ComposerProps {
   initial?: string;
   autoFocus?: boolean;
   focusKey?: number;
-  onSubmit: (text: string) => void;
+  onSubmit: (text: string) => void | Promise<boolean>;
   onCancel?: () => void;
   onChange?: (text: string) => void;
 }
 
 export function Composer({ placeholder, initial = '', autoFocus, focusKey, onSubmit, onCancel, onChange }: ComposerProps) {
   const [text, setText] = useState(initial);
+  const [unsent, setUnsent] = useState(false);
   const input = useRef<HTMLTextAreaElement>(null);
   useEffect(() => {
     if (focusKey) input.current?.focus({ preventScroll: true });
@@ -61,12 +63,20 @@ export function Composer({ placeholder, initial = '', autoFocus, focusKey, onSub
     onChange?.(next);
   };
   const submit = () => {
-    if (!text.trim()) return;
-    onSubmit(text.trim());
+    const value = text.trim();
+    if (!value) return;
+    const sent = onSubmit(value);
     update('');
+    setUnsent(false);
+    void sent?.then((ok) => {
+      if (ok) return;
+      update(value);
+      setUnsent(true);
+    });
   };
   return (
     <div {...stylex.props(styles.composer)} onClick={(event) => event.stopPropagation()}>
+      {unsent ? <div {...stylex.props(styles.unsent)}>没发出去：电脑离线了，文字还在这里</div> : null}
       <textarea
         ref={input}
         autoFocus={autoFocus}

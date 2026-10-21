@@ -8,6 +8,7 @@ import { HTML_SANDBOX } from '../hooks/useSandboxFrame';
 import { ArtboardView } from './ArtboardLayout';
 
 const CloudDocument = lazy(() => import('../document/shims').then(() => import('../document/CloudDocument')));
+const CloudLiveDocument = lazy(() => import('../document/shims').then(() => import('../document/CloudLiveDocument')));
 
 const styles = stylex.create({
   frame: { position: 'fixed', inset: 0, display: 'block', width: '100%', height: '100%', borderWidth: 0 },
@@ -29,7 +30,7 @@ const styles = stylex.create({
 type CloudArtifact =
   | { type: 'html'; title: string; contentBase: string; payload: { title: string } }
   | { type: 'artboard'; title: string; contentBase: string; payload: Pick<CanvasPayload, 'canvas' | 'layout' | 'versions'> }
-  | { type: 'document'; title: string; contentBase: string; payload: { title: string; state: SerializedEditorState; comments?: CommentsFile } };
+  | { type: 'document'; title: string; contentBase: string; owner?: boolean; payload: { title: string; state: SerializedEditorState; comments?: CommentsFile } };
 
 type LoadState = { status: 'loading' } | { status: 'missing' } | { status: 'failed'; message: string } | { status: 'ready'; artifact: CloudArtifact };
 
@@ -82,9 +83,10 @@ export function CloudLayout({ id }: { id: string }) {
       />
     );
   }
+  const Document = artifact.owner === true ? CloudLiveDocument : CloudDocument;
   return (
     <Suspense fallback={null}>
-      <CloudDocument id={id} state={artifact.payload.state} contentBase={artifact.contentBase} comments={artifact.payload.comments} />
+      <Document id={id} state={artifact.payload.state} contentBase={artifact.contentBase} comments={artifact.payload.comments} />
     </Suspense>
   );
 }
