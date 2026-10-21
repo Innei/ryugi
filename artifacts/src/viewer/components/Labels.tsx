@@ -3,7 +3,9 @@ import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
 import { Download, Film, Image as ImageIcon, Maximize2, Play, RotateCcw } from 'lucide-react';
 import { isMediaBoard, type BoardSpec, type GroupSpec } from '../../shared/types';
+import type { Verdicts } from '../hooks/useVerdicts';
 import { boardReady, canPlay } from '../lib/play';
+import { GroupVerdict } from '../verdicts/GroupVerdict';
 import { BOARD_LABEL_RULE, GROUP_LABEL_RULE, labelRect, labelSize, type View } from '../lib/view';
 
 const ACTIONS_MIN_WIDTH = 150;
@@ -57,6 +59,7 @@ const styles = stylex.create({
     color: cssVar.colorText,
     whiteSpace: 'nowrap',
   },
+  judged: { pointerEvents: 'auto' },
   play: {
     display: 'flex',
     alignItems: 'center',
@@ -101,6 +104,7 @@ interface LabelsProps {
   onExpand: (id: string) => void;
   onTogglePlay: (id: string) => void;
   onReplay: (id: string) => void;
+  verdicts?: Pick<Verdicts, 'states' | 'evidenceAt' | 'canJudge' | 'pass' | 'startReject'>;
 }
 
 export function Labels({
@@ -115,6 +119,7 @@ export function Labels({
   onExpand,
   onTogglePlay,
   onReplay,
+  verdicts,
 }: LabelsProps) {
   const groupScale = scaleOf(labelSize(GROUP_LABEL_RULE, view.k), GROUP_LABEL_FONT);
   const boardScale = scaleOf(labelSize(BOARD_LABEL_RULE, view.k), BOARD_LABEL_FONT);
@@ -126,10 +131,13 @@ export function Labels({
           if (members.length === 0) return null;
           const x = Math.min(...members.map((b) => b.x));
           const y = Math.min(...members.map((b) => b.y));
+          const verdict = verdicts?.states[id];
           return (
             <div
               key={id}
-              {...stylex.props(styles.groupLabel)}
+              data-group-label={id}
+              data-chrome={verdict ? 'group-label' : undefined}
+              {...stylex.props(styles.groupLabel, verdict && styles.judged)}
               style={{
                 left: view.x + x * view.k,
                 top: view.y + y * view.k,
@@ -138,6 +146,9 @@ export function Labels({
             >
               <span {...stylex.props(styles.chip)}>{id}</span>
               {group.title}
+              {verdict && verdicts && (
+                <GroupVerdict verdict={verdict} evidenceAt={verdicts.evidenceAt(id)} canJudge={verdicts.canJudge} onPass={() => verdicts.pass(id)} onReject={() => verdicts.startReject(id)} />
+              )}
             </div>
           );
         })}

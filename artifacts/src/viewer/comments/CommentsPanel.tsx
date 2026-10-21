@@ -3,7 +3,7 @@ import * as stylex from '@stylexjs/stylex';
 import { MessageCirclePlus, X } from 'lucide-react';
 import type { BoardThread } from '../../shared/board-comments';
 import { authorOf } from '../document/author';
-import { anchorLabel } from '../lib/board-anchor';
+import { anchorLabel, staleText } from '../lib/board-anchor';
 import '../inspector/inspector.css';
 
 export type CommentsTab = 'open' | 'all';
@@ -66,6 +66,7 @@ const styles = stylex.create({
     fontWeight: 600,
   },
   numAgent: { backgroundColor: '#8b7cf8' },
+  numReject: { backgroundColor: '#e5484d' },
   numResolved: { backgroundColor: '#3a3a3a', color: '#999' },
   numStale: { backgroundColor: 'transparent', borderWidth: 1, borderStyle: 'dashed', borderColor: '#e5a54b', color: '#e5a54b' },
   body: { flex: 1, minWidth: 0 },
@@ -94,7 +95,7 @@ interface Props {
 const timeOf = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
 export function CommentsPanel({ threads, page, stale, numbers, openId, tab, onTab, onOpen, onClose }: Props) {
-  const onPage = threads.filter((thread) => thread.anchor.page === page && thread.messages.some((m) => !m.deleted));
+  const onPage = threads.filter((thread) => thread.anchor.page === page && thread.anchor.verdict !== 'pass' && thread.messages.some((m) => !m.deleted));
   const open = onPage.filter((thread) => thread.status === 'open');
   const shown = (tab === 'open' ? open : onPage).sort((a, b) => (numbers.get(a.id) ?? 0) - (numbers.get(b.id) ?? 0));
   return (
@@ -122,7 +123,7 @@ export function CommentsPanel({ threads, page, stale, numbers, openId, tab, onTa
           const isStale = stale.has(thread.id);
           return (
             <div key={thread.id} data-thread={thread.id} onClick={() => onOpen(thread.id)} {...stylex.props(styles.row, thread.id === openId && styles.rowOn)}>
-              <span {...stylex.props(styles.num, first?.author === 'agent' && styles.numAgent, thread.status === 'resolved' && styles.numResolved, isStale && styles.numStale)}>{numbers.get(thread.id)}</span>
+              <span {...stylex.props(styles.num, first?.author === 'agent' && styles.numAgent, thread.anchor.verdict === 'reject' && styles.numReject, thread.status === 'resolved' && styles.numResolved, isStale && styles.numStale)}>{numbers.get(thread.id)}</span>
               <div {...stylex.props(styles.body)}>
                 <div {...stylex.props(styles.meta)}>
                   <span {...stylex.props(styles.who)}>{first ? authorOf(first).label : ''}</span>
@@ -131,7 +132,7 @@ export function CommentsPanel({ threads, page, stale, numbers, openId, tab, onTa
                 </div>
                 <div {...stylex.props(styles.where, isStale && styles.stale)}>
                   {anchorLabel(thread.anchor)}
-                  {isStale ? ' · 锚点已失效' : ''}
+                  {isStale ? ` · ${staleText(thread.anchor)}` : ''}
                 </div>
                 <div {...stylex.props(styles.text)}>{first?.deleted ? '已删除' : first?.text}</div>
                 {replies > 0 ? <div {...stylex.props(styles.foot)}>{replies} 条回复</div> : null}

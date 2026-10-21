@@ -1,7 +1,7 @@
 import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { InspectorRect, InspectorReport } from '../../shared/inspector';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import type { InspectorReport } from '../../shared/inspector';
 import type { BoardHumanOp } from '../../shared/board-comments';
 import type { SelectionMessage } from '../../shared/selection';
 import { Canvas } from '../components/Canvas';
@@ -15,7 +15,10 @@ import { useLocalFeed } from '../hooks/useArtifactFeed';
 import { useCanvasData } from '../hooks/useCanvasData';
 import type { BoardCommentsState } from '../lib/board-comments';
 import { useBoardComments } from '../hooks/useBoardComments';
+import { useVerdicts } from '../hooks/useVerdicts';
+import { RejectComposer } from '../verdicts/RejectComposer';
 import { useInspector } from '../hooks/useInspector';
+import { useMarqueeSelection } from '../hooks/useMarqueeSelection';
 import { useSelectionSync } from '../hooks/useSelectionSync';
 import { usePanZoom, type Tool } from '../hooks/usePanZoom';
 import { InspectionOutline } from '../inspector/InspectionOutline';
@@ -93,9 +96,6 @@ function DesktopArtboard({ id, artifact, canvas, layout, warnings, pending, cont
   const [expanded, setExpanded] = useState<string | null>(null);
   const [playing, setPlaying] = useState<ReadonlySet<string>>(() => new Set());
   const [replays, setReplays] = useState<Record<string, number>>({});
-  const gesture = useRef<{ x: number; y: number; append: boolean; moved: boolean; frame?: { boardId: string; id: number } } | null>(null);
-  const [selecting, setSelecting] = useState(false);
-  const [marquee, setMarquee] = useState<InspectorRect | null>(null);
   const selectionEnabled = tool === 'select' && !expanded && !panning;
   const commentTool = tool === 'comment';
   const inspector = useInspector({
@@ -109,7 +109,7 @@ function DesktopArtboard({ id, artifact, canvas, layout, warnings, pending, cont
       else if (input.type === 'ryugi:inspect:pan') panBy(input.deltaX, input.deltaY);
       else if (input.type === 'ryugi:inspect:drag') {
         if (commentTool) boardComments.onFrameDrag(boardId, input);
-        else if (selectionEnabled) dragSelection(input.phase, board.x + input.x, board.y + input.y, input.append, input.id ? { boardId, id: input.id } : undefined);
+        else if (selectionEnabled) selection.drag(input.phase, board.x + input.x, board.y + input.y, input.append, input.id ? { boardId, id: input.id } : undefined);
       }
       else if (input.code === 'Space') setSpaceHeld(input.down);
       else if (input.down) onKey(input);
@@ -117,6 +117,9 @@ function DesktopArtboard({ id, artifact, canvas, layout, warnings, pending, cont
   });
   useSelectionSync({ artifact, boards: canvas?.boards, live, inspector, send });
   const boardComments = useBoardComments({ comments, comment, page, boards: canvas?.boards ?? {}, inspector });
+  const verdicts = useVerdicts({ canvas, page, threads: boardComments.threads, stale: boardComments.stale, versions, comment });
+  const rejectAt = verdicts.rejecting ? verdicts.origin(verdicts.rejecting) : null;
+  const nextVerify = () => { const rect = verdicts.progress.next && page ? layout?.pages[page]?.groups[verdicts.progress.next] : undefined; if (rect) fit({ minX: rect.x, minY: rect.y, maxX: rect.x + rect.w, maxY: rect.y + rect.h }); };
   const changeTool = (next: Tool) => {
     if (next === 'comment' && !comment) return;
     if (next === 'comment' && tool === 'select') boardComments.commentSelection();
@@ -136,7 +139,6 @@ function DesktopArtboard({ id, artifact, canvas, layout, warnings, pending, cont
   ]), [inspector.selectedTargets, inspector.frames]);
   const closeInspector = useCallback(() => setInspectorOpen(false), []);
   useEffect(() => { if (expanded) setSpaceHeld(false); }, [expanded, setSpaceHeld]);
-  useEffect(() => { gesture.current = null; setMarquee(null); setSelecting(false); inspector.cancelDrag(); }, [tool, expanded, page, panning, inspector.cancelDrag]);
   const pendingBoards = useMemo(() => new Set(pending), [pending]);
 
   const pages = canvas?.pages ?? [];
@@ -149,7 +151,7 @@ function DesktopArtboard({ id, artifact, canvas, layout, warnings, pending, cont
     const prevent = () => { if ('preventDefault' in e) e.preventDefault(); };
     const mod = e.metaKey || e.ctrlKey;
     if (e.key === 'Escape' && commentTool) { if (!boardComments.close()) changeTool('select'); }
-    else if (e.key === 'Escape') { setExpanded(null); inspector.clearSelection(); gesture.current = null; setMarquee(null); setSelecting(false); inspector.cancelDrag(); }
+    else if (e.key === 'Escape') { setExpanded(null); inspector.clearSelection(); selection.reset(); }
     else if (mod && (e.key === '=' || e.key === '+')) { prevent(); zoomBy(1.25); }
     else if (mod && e.key === '-') { prevent(); zoomBy(0.8); }
     else if (e.shiftKey && e.code === 'Digit1') fit(pageBounds(page));
@@ -175,30 +177,7 @@ function DesktopArtboard({ id, artifact, canvas, layout, warnings, pending, cont
     ? (versions[expandedBoard.file] ?? 0) > 0 && !pendingBoards.has(expanded!)
     : false;
 
-  const areasFor = useCallback((rect: InspectorRect) => boards.flatMap(([boardId, board]) => {
-    const left = Math.max(rect.x, board.x), top = Math.max(rect.y, board.y);
-    const right = Math.min(rect.x + rect.width, board.x + board.w), bottom = Math.min(rect.y + rect.height, board.y + board.h);
-    return right > left && bottom > top ? [{ boardId, rect: { x: left - board.x, y: top - board.y, width: right - left, height: bottom - top } }] : [];
-  }), [boards]);
-
-  function dragSelection(phase: 'start' | 'move' | 'end' | 'cancel', x: number, y: number, append = false, frame?: { boardId: string; id: number }) {
-    if (phase === 'start') { gesture.current = { x, y, append, moved: false, frame }; setMarquee(null); setSelecting(true); inspector.beginArea(); return; }
-    const start = gesture.current;
-    if (!start) return;
-    const rect = { x: Math.min(start.x, x), y: Math.min(start.y, y), width: Math.abs(x - start.x), height: Math.abs(y - start.y) };
-    if (Math.hypot(rect.width, rect.height) * view.k >= 3) start.moved = true;
-    if (phase === 'move') { if (start.moved) { setMarquee(rect); inspector.selectArea(areasFor(rect), start.append, true); } return; }
-    gesture.current = null; setMarquee(null); setSelecting(false);
-    if (phase === 'cancel' || !start.moved) inspector.cancelDrag();
-    if (phase === 'cancel') return;
-    if (!start.moved) {
-      if (start.frame) inspector.select(start.frame.boardId, start.frame.id, start.append);
-      else if (!start.append) inspector.clearSelection();
-      return;
-    }
-    inspector.selectArea(areasFor(rect), start.append);
-    inspector.cancelDrag();
-  }
+  const selection = useMarqueeSelection(boards, inspector, view.k, [tool, expanded, page, panning]);
   const worldPoint = (event: { clientX: number; clientY: number }) => {
     const rect = viewportRef.current!.getBoundingClientRect();
     return { x: (event.clientX - rect.left - view.x) / view.k, y: (event.clientY - rect.top - view.y) / view.k };
@@ -217,11 +196,11 @@ function DesktopArtboard({ id, artifact, canvas, layout, warnings, pending, cont
         if (!selectionEnabled || event.pointerType === 'touch' || event.button !== 0 || !event.currentTarget.contains(event.target as Node) || (event.target as Element).closest('[data-chrome]')) return;
         const point = worldPoint(event);
         event.currentTarget.setPointerCapture(event.pointerId);
-        dragSelection('start', point.x, point.y, event.shiftKey || event.metaKey || event.ctrlKey);
+        selection.drag('start', point.x, point.y, event.shiftKey || event.metaKey || event.ctrlKey);
       }}
-      onPointerMove={(event) => { handlers.onPointerMove(event); if (gesture.current) { if (event.buttons === 1) event.currentTarget.setPointerCapture(event.pointerId); const point = worldPoint(event); dragSelection('move', point.x, point.y); } }}
-      onPointerUp={(event) => { handlers.onPointerUp(event); if (gesture.current) { const point = worldPoint(event); dragSelection('end', point.x, point.y); } }}
-      onPointerCancel={(event) => { handlers.onPointerCancel(event); gesture.current = null; setMarquee(null); setSelecting(false); inspector.cancelDrag(); }}>
+      onPointerMove={(event) => { handlers.onPointerMove(event); if (selection.dragging()) { if (event.buttons === 1) event.currentTarget.setPointerCapture(event.pointerId); const point = worldPoint(event); selection.drag('move', point.x, point.y); } }}
+      onPointerUp={(event) => { handlers.onPointerUp(event); if (selection.dragging()) { const point = worldPoint(event); selection.drag('end', point.x, point.y); } }}
+      onPointerCancel={(event) => { handlers.onPointerCancel(event); selection.reset(); }}>
       {canvas && layout && (
         <CanvasErrorBoundary resetKey={canvas}>
           <Canvas
@@ -253,15 +232,17 @@ function DesktopArtboard({ id, artifact, canvas, layout, warnings, pending, cont
             onExpand={setExpanded}
             onTogglePlay={(id) => setPlaying((current) => togglePlaying(current, id))}
             onReplay={(id) => setReplays((prev) => ({ ...prev, [id]: (prev[id] ?? 0) + 1 }))}
+            verdicts={verdicts}
           />
+          {verdicts.rejecting && rejectAt && <RejectComposer group={verdicts.rejecting} left={view.x + rejectAt.x * view.k} top={view.y + rejectAt.y * view.k + 8} onSubmit={verdicts.submitReject} onCancel={verdicts.cancelReject} />}
           {commentTool && <CommentLayer view={view} page={page} boards={allBoards} width={viewportRef.current?.clientWidth ?? 0} threads={boardComments.threads} stale={boardComments.stale} numbers={boardComments.numbers} showResolved={commentsTab === 'all'}
             draft={boardComments.draft} openId={boardComments.openId} actions={boardComments.actions} agent={agent} onOpen={boardComments.setOpenId} onSubmit={boardComments.submit} onCancelDraft={boardComments.cancelDraft} />}
         </CanvasErrorBoundary>
       )}
-      {(selectionEnabled || commentTool) && !marquee && inspector.hover && allBoards[inspector.hover.boardId] && <InspectionOutline board={allBoards[inspector.hover.boardId]!} rect={inspector.hover.rect} view={view} nodeId={inspector.hover.id ? `${inspector.hover.boardId}#${inspector.hover.id}` : undefined} />}
+      {(selectionEnabled || commentTool) && !selection.marquee && inspector.hover && allBoards[inspector.hover.boardId] && <InspectionOutline board={allBoards[inspector.hover.boardId]!} rect={inspector.hover.rect} view={view} nodeId={inspector.hover.id ? `${inspector.hover.boardId}#${inspector.hover.id}` : undefined} />}
       {!expanded && inspector.targets.map((target) => allBoards[target.boardId] && <InspectionOutline key={`${target.boardId}:${target.id}`} board={allBoards[target.boardId]!} rect={target.rect} view={view} name={target.name} selected />)}
-      {selecting && <div className="ri-selection-capture" aria-hidden="true" />}
-      {marquee && <div className="ri-marquee" aria-hidden="true" style={{ left: view.x + marquee.x * view.k, top: view.y + marquee.y * view.k, width: marquee.width * view.k, height: marquee.height * view.k }} />}
+      {selection.selecting && <div className="ri-selection-capture" aria-hidden="true" />}
+      {selection.marquee && <div className="ri-marquee" aria-hidden="true" style={{ left: view.x + selection.marquee.x * view.k, top: view.y + selection.marquee.y * view.k, width: selection.marquee.width * view.k, height: selection.marquee.height * view.k }} />}
       {(!canvas || !layout) && (
         <div {...stylex.props(styles.empty)}>
           {loaded ? (warnings[0] ?? 'Waiting for the agent to write canvas.json…') : 'Connecting…'}
@@ -279,6 +260,8 @@ function DesktopArtboard({ id, artifact, canvas, layout, warnings, pending, cont
         onActualSize={() => zoomTo(1)}
         inspectorOpen={inspectorOpen}
         onToggleInspector={() => setInspectorOpen((open) => !open)}
+        verify={verdicts.progress}
+        onNextVerify={nextVerify}
       />
       {expanded && expandedBoard && expandedReady && (
         <ExpandedBoard

@@ -45,6 +45,8 @@ export function anchorLabel(anchor: BoardAnchor): string {
   return `${anchor.board} · ${nodes[0].path}${offset}`;
 }
 
+export const staleText = (anchor: BoardAnchor) => (anchor.verdict ? '证据已更新' : '锚点已失效');
+
 const openedAt = (thread: BoardThread) => thread.messages[0]?.at ?? thread.statusAt;
 
 export function pinNumbers(threads: BoardThread[]): Map<string, number> {

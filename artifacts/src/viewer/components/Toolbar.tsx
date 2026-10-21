@@ -44,6 +44,21 @@ const styles = stylex.create({
   chevron: { color: cssVar.colorTextTertiary },
   zoom: { fontVariantNumeric: 'tabular-nums', minWidth: 36, textAlign: 'right' },
   live: { display: 'flex', alignItems: 'center', justifyContent: 'center', width: 26, height: 30 },
+  progress: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 6,
+    height: 30,
+    paddingInline: 6,
+    borderWidth: 0,
+    backgroundColor: 'transparent',
+    color: cssVar.colorTextSecondary,
+    fontFamily: cssVar.fontFamily,
+    fontSize: 13,
+    fontWeight: 500,
+    cursor: 'pointer',
+  },
+  progressIcon: { color: '#2ea043' },
   dot: { width: 7, height: 7, borderRadius: '50%', backgroundColor: cssVar.colorTextTertiary },
   dotOn: { backgroundColor: cssVar.colorSuccess, outlineWidth: 3, outlineStyle: 'solid', outlineColor: 'rgba(0, 160, 63, 0.18)' },
   warnButton: {
@@ -129,12 +144,22 @@ interface TopRightBarProps {
   onActualSize: () => void;
   inspectorOpen: boolean;
   onToggleInspector: () => void;
+  verify?: { passed: number; total: number };
+  onNextVerify?: () => void;
 }
 
-export function TopRightBar({ artifact, live, warnings, zoom, onZoomIn, onZoomOut, onFit, onActualSize, inspectorOpen, onToggleInspector }: TopRightBarProps) {
+export function TopRightBar({ artifact, live, warnings, zoom, onZoomIn, onZoomOut, onFit, onActualSize, inspectorOpen, onToggleInspector, verify, onNextVerify }: TopRightBarProps) {
   const hint = (text: string) => <span {...stylex.props(styles.hint)}>{text}</span>;
   return (
     <div data-chrome {...stylex.props(styles.bar, styles.right)}>
+      {verify && verify.total > 0 && (
+        <>
+          <button type="button" title="下一个待验收的 group" onClick={onNextVerify} {...stylex.props(styles.progress)}>
+            <Check size={13} {...stylex.props(styles.progressIcon)} />验收 {verify.passed} / {verify.total}
+          </button>
+          <span {...stylex.props(styles.divider)} />
+        </>
+      )}
       {live === undefined ? null : (
         <span {...stylex.props(styles.live)} title={live ? 'Live' : 'Reconnecting…'}>
           <span {...stylex.props(styles.dot, live && styles.dotOn)} />
