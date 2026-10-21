@@ -4,6 +4,9 @@ Agreed with the human partner on 2026-10-21, in chat and in the Claude Doc
 "Ryugi 线上页面直连本机". Builds on `2026-10-21-auto-publish-design.md` and
 `2026-10-21-owner-cloud-editing-design.md`.
 
+Updated 2026-10-22: automatic first-time discovery replaces the known-host
+requirement below. An ordinary cloud link must also discover this computer.
+
 ## Why
 
 Auto-publish is on globally (`~/.config/ryugi/config.json` →
@@ -136,19 +139,22 @@ and the direct pipe needs no CORS on `/api/*`.
 When the owner opens `/a/<id>/view`:
 
 1. Connect to the relay (as today) and wait for `presence`.
-2. If `presence` carries `local` entries (below) **and this browser is known
-   to sit on that machine**, try the direct socket to `127.0.0.1:<port>` with
-   a short timeout. *My call*, to keep Chrome's local-network prompt off
-   phones and other machines: a browser is "known" when the page was opened
-   from the local machine (the server's auto-open and the localhost page's
-   "open on cloud" carry a one-time hint in the URL fragment) or when a direct
-   connection to that host succeeded before (remembered per host id in
-   `localStorage`). Other devices never try, so never see the prompt.
-3. Direct opens → use it, close the relay viewer socket or keep it idle.
-   Direct fails (other machine, Safari, Chrome permission denied, timeout) →
-   stay on the relay.
-4. On a dropped direct socket, fall back to the relay, then retry direct on
-   the next `presence`.
+2. If `presence` carries candidates, automatically try their direct sockets
+   at `127.0.0.1:<port>` with a short handshake timeout. Remembered host ids
+   and the URL fragment hint only determine priority; an empty browser cache
+   must not prevent discovery. Try the candidates one at a time, keeping
+   requests on the relay until both the authenticated socket and local HTTP
+   probe succeed. Waiting for browser permission does not block the page or
+   expire with the socket handshake timeout.
+3. After verification, use the direct pipe and remember its host id. Keep the
+   relay connected for fallback. A first-time candidate that fails is tried
+   once per page, unless its connection information changes or the host comes
+   online again; duplicate presence messages do not restart the attempt.
+4. On a dropped, previously successful direct socket, fall back immediately
+   and retry with exponential backoff while the host is online. Successful
+   recovery resets the backoff. A refused HTTP probe suspends that candidate
+   for the current round rather than repeatedly prompting. Changed or removed
+   candidates and page closure invalidate pending checks and retries.
 
 Non-owners never get `local` and never try.
 

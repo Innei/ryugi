@@ -31,7 +31,7 @@ Full spec (for the agent): `2026-10-21-cloud-direct-local-design.md`
 
 ## My calls (check these)
 
-- Direct is only tried from a browser known to be on that machine, so phones never get Chrome's prompt.
+- Updated 2026-10-22: automatically try the owner's advertised candidates, including on a first visit. Known hosts get priority; permission checks and failed attempts leave the relay usable. Previously successful direct connections retry with backoff after a disconnect.
 - The server's auto-open opens the cloud link.
 - Selection, Inspector tweaks and runtime errors from the cloud page go back to the agent on both pipes.
 - Cloud links only where auto-publish runs (Claude Code).
