@@ -122,6 +122,8 @@ export function PhoneArtboard({ id, artifact, canvas, layout, warnings, pending,
   };
 
   const openBoard = open ? allBoards[open] : undefined;
+  const box = viewportRef.current?.getBoundingClientRect();
+  const origin = openBoard && box ? { x: box.left + view.x + openBoard.x * view.k, y: box.top + view.y + openBoard.y * view.k, w: openBoard.w * view.k, h: openBoard.h * view.k } : undefined;
   const loose = (q: Question) => !canvas?.groups?.[q.id];
   const openRound = open ? rounds.find((r) => r.questions.some((q) => q.boards.includes(open))) : undefined;
   const openQuestion = openRound?.questions.find((q) => q.boards.includes(open!));
@@ -200,6 +202,7 @@ export function PhoneArtboard({ id, artifact, canvas, layout, warnings, pending,
           board={openBoard}
           src={`${contentBase}${openBoard.file}?v=${versions[openBoard.file] ?? 0}`}
           siblings={siblings}
+          origin={origin}
           onOpen={setOpen}
           onClose={() => setOpen(null)}
         />

@@ -19,7 +19,9 @@ export function spring(stiffness: number, damping: number): { easing: string; du
   return { easing: `linear(${points.join(', ')})`, duration: Math.round(samples.length * dt * 1000) };
 }
 
-const reducedMotion = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+export const SPRING = spring(380, 34);
+
+export const reducedMotion = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 export function play(el: Element | null, keyframes: Keyframe[], options: KeyframeAnimationOptions): Promise<void> {
   if (!el || reducedMotion()) return Promise.resolve();

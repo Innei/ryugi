@@ -6,6 +6,7 @@ import type { GroupVerdict } from '../../shared/verdicts';
 import { brand } from '../tokens.stylex';
 import { questionList, type Question, type Round } from '../lib/questions';
 import { BottomSheet } from './BottomSheet';
+import { ghostStyles } from './ghost';
 import { PageSwitcher } from './PhoneArtboardBar';
 
 export const SHEET_PEEK = 78;
@@ -25,22 +26,6 @@ const styles = stylex.create({
   markCurrent: { backgroundColor: brand.accent },
   markPass: { backgroundColor: cssVar.colorSuccess },
   markReject: { backgroundColor: cssVar.colorWarning },
-  ghost: {
-    display: 'grid',
-    placeItems: 'center',
-    flexShrink: 0,
-    width: 44,
-    height: 44,
-    padding: 0,
-    borderWidth: 0,
-    borderRadius: 12,
-    backgroundColor: { default: 'transparent', ':active': cssVar.colorFillTertiary },
-    color: { default: cssVar.colorText, ':disabled': cssVar.colorTextQuaternary },
-    cursor: { default: 'pointer', ':disabled': 'default' },
-    transitionProperty: 'background-color, transform',
-    transitionDuration: '120ms',
-    transform: { default: null, ':active': 'scale(0.96)' },
-  },
   list: { paddingBottom: 24, fontFamily: cssVar.fontFamily },
   pages: { display: 'flex', justifyContent: 'flex-end', paddingInline: 16, paddingBlock: 4 },
   round: { paddingTop: 14, paddingBottom: 6, paddingInline: 16, color: cssVar.colorTextTertiary, fontSize: 12 },
@@ -95,7 +80,7 @@ export function QuestionSheet({ rounds, current, previous, next, pages, page, on
       onScrim={() => onSnap(SHEET_PEEK)}
       header={
         <div {...stylex.props(styles.head)}>
-          <button type="button" aria-label="上一题" disabled={!previous} onClick={() => previous && onPick(previous)} {...stylex.props(styles.ghost)}>
+          <button type="button" aria-label="上一题" disabled={!previous} onClick={() => previous && onPick(previous)} {...stylex.props(ghostStyles.ghost)}>
             <ChevronLeft size={20} />
           </button>
           <span data-question-bar {...stylex.props(styles.current)}>
@@ -125,7 +110,7 @@ export function QuestionSheet({ rounds, current, previous, next, pages, page, on
               })}
             </span>
           </span>
-          <button type="button" aria-label="下一题" disabled={!next} onClick={() => next && onPick(next)} {...stylex.props(styles.ghost)}>
+          <button type="button" aria-label="下一题" disabled={!next} onClick={() => next && onPick(next)} {...stylex.props(ghostStyles.ghost)}>
             <ChevronRight size={20} />
           </button>
         </div>

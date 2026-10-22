@@ -59,7 +59,6 @@ async function mount(spec: object = canvas, specLayout: object = layout, extra: 
   return host;
 }
 
-const button = (label: string) => [...document.querySelectorAll('button')].find((b) => b.textContent?.trim() === label);
 const bar = () => host!.querySelector('[data-question-bar]')?.textContent ?? '';
 
 test('opens on the question the agent focused, with no selection tools or inspector', async () => {
@@ -117,7 +116,8 @@ test('the page switcher lists the other page’s questions', async () => {
   expect(bar()).toContain('另一页的问题');
 });
 
-test('tapping a board opens it full screen and pages through its question', async () => {
+test('tapping a board opens it full screen out of its tile and pages through its question', async () => {
+  const animate = vi.spyOn(HTMLElement.prototype, 'animate');
   await mount();
   const slot = host!.querySelector('[data-board="q2-a"]') as HTMLElement;
   const world = slot.parentElement!.style.transform.match(/translate\(([-\d.]+)px, ([-\d.]+)px\) scale\(([-\d.]+)\)/)!.slice(1).map(Number);
@@ -131,11 +131,12 @@ test('tapping a board opens it full screen and pages through its question', asyn
   expect(full.textContent).toContain('选中文字');
   expect(full.textContent).toContain('q2-a');
   expect(full.textContent).toContain('1 / 2');
-  await act(async () => button('下一张 ›')!.click());
-  expect(host!.querySelector('[data-phone-board]')!.textContent).toContain('长按段落');
+  expect(animate.mock.calls.some(([frames]) => JSON.stringify(frames).includes('scale('))).toBe(true);
+  await act(async () => labelled('下一张').click());
+  await vi.waitFor(() => expect(host!.querySelector('[data-phone-board]')!.textContent).toContain('长按段落'));
   expect(host!.querySelector('[data-phone-board]')!.textContent).toContain('2 / 2');
-  await act(async () => (host!.querySelector('[aria-label="关闭"]') as HTMLElement).click());
-  expect(host!.querySelector('[data-phone-board]')).toBeNull();
+  await act(async () => labelled('返回画布').click());
+  await vi.waitFor(() => expect(host!.querySelector('[data-phone-board]')).toBeNull());
 });
 
 const touchOn = (target: Element, type: string, x: number, y: number, id = 11) =>

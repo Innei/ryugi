@@ -1,10 +1,9 @@
 import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
 import { useLayoutEffect, useRef, useState, type MouseEvent, type PointerEvent, type ReactNode } from 'react';
-import { spring } from '../document/motion';
+import { reducedMotion, SPRING } from '../document/motion';
 import { lockAxis, rubber, settle, velocityTracker } from '../lib/gesture';
 
-const SPRING = spring(380, 34);
 const SCRIM = 0.28;
 
 const styles = stylex.create({
@@ -44,7 +43,6 @@ interface Props {
 }
 
 const heightOf = (snap: number, container: number) => (snap <= 1 ? snap * container : snap);
-const reducedMotion = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 const INTERACTIVE = 'button, a, input, textarea, select, [contenteditable="true"]';
 
 export function BottomSheet({ snaps, snap, onSnap, header, children, onScrim, className }: Props) {
