@@ -132,3 +132,69 @@ test('a tall board scrolled down pans back up instead of closing', async () => {
   await new Promise((resolve) => setTimeout(resolve, 300));
   expect(onClose).not.toHaveBeenCalled();
 });
+
+const fire = async (type: string, id: number, x: number, y: number, at: number) => {
+  now = at;
+  body().setPointerCapture = vi.fn();
+  await act(async () => body().dispatchEvent(new PointerEvent(type, { bubbles: true, pointerId: id, pointerType: 'touch', clientX: x, clientY: y })));
+};
+
+test('a vertical pinch zooms the board and never closes it', async () => {
+  const { onClose } = await open('p1', ['p1']);
+  await fire('pointerdown', 1, 195, 400, 0);
+  await fire('pointerdown', 2, 195, 300, 5);
+  for (let i = 1; i <= 10; i++) {
+    await fire('pointermove', 1, 195, 400 + i * 15, 10 + i * 16);
+    await fire('pointermove', 2, 195, 300 - i * 15, 12 + i * 16);
+  }
+  expect(scaleOf(stage())).toBe(1);
+  const world = host!.querySelector<HTMLElement>('iframe')!.parentElement!;
+  expect(Number(world.style.transform.match(/scale\(([-\d.]+)\)/)![1])).toBeGreaterThan(1);
+  await fire('pointerup', 1, 195, 550, 180);
+  await fire('pointerup', 2, 195, 150, 182);
+  await new Promise((resolve) => setTimeout(resolve, 300));
+  expect(onClose).not.toHaveBeenCalled();
+});
+
+test('a horizontal pinch on a board with siblings zooms instead of paging', async () => {
+  const { onOpen } = await open('p1', ['p1', 'p2']);
+  await fire('pointerdown', 1, 150, 400, 0);
+  await fire('pointerdown', 2, 240, 400, 5);
+  for (let i = 1; i <= 10; i++) {
+    await fire('pointermove', 1, 150 - i * 14, 400, 10 + i * 16);
+    await fire('pointermove', 2, 240 + i * 14, 400, 12 + i * 16);
+  }
+  await fire('pointerup', 1, 10, 400, 180);
+  await fire('pointerup', 2, 380, 400, 182);
+  await new Promise((resolve) => setTimeout(resolve, 300));
+  expect(onOpen).not.toHaveBeenCalled();
+});
+
+test('a finger landing while the board is still growing takes over at once', async () => {
+  await open('p1', ['p1'], { origin: { x: 20, y: 300, w: 104, h: 225 } });
+  expect(stage().getAnimations().length).toBeGreaterThan(0);
+  await finger('pointerdown', 195, 200, 0);
+  expect(stage().getAnimations()).toHaveLength(0);
+});
+
+test('pulling down then flicking back up cancels the close', async () => {
+  const { onClose } = await open('p1', ['p1']);
+  await finger('pointerdown', 195, 200, 0);
+  await finger('pointermove', 195, 300, 200);
+  await finger('pointermove', 195, 350, 400);
+  await finger('pointermove', 195, 330, 410);
+  await finger('pointerup', 195, 330, 415);
+  await new Promise((resolve) => setTimeout(resolve, 400));
+  expect(onClose).not.toHaveBeenCalled();
+});
+
+test('swiping past the threshold then flicking back cancels the page turn', async () => {
+  const { onOpen } = await open('p1', ['p1', 'p2']);
+  await finger('pointerdown', 300, 300, 0);
+  await finger('pointermove', 250, 300, 200);
+  await finger('pointermove', 170, 300, 400);
+  await finger('pointermove', 180, 300, 410);
+  await finger('pointerup', 182, 300, 415);
+  await new Promise((resolve) => setTimeout(resolve, 300));
+  expect(onOpen).not.toHaveBeenCalled();
+});

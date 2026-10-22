@@ -242,7 +242,7 @@ test('stepping to another question glides the canvas there instead of jumping', 
   const frame = vi.fn();
   vi.stubGlobal('requestAnimationFrame', frame);
   await mount();
-  expect(frame).not.toHaveBeenCalled();
+  const before = frame.mock.calls.length;
   await act(async () => host!.querySelector<HTMLButtonElement>('button[aria-label="上一题"]')!.click());
-  expect(frame).toHaveBeenCalled();
+  expect(frame.mock.calls.length).toBeGreaterThan(before);
 });

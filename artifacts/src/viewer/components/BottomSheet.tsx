@@ -1,13 +1,13 @@
 import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
-import { useLayoutEffect, useRef, useState, type MouseEvent, type PointerEvent, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent, type PointerEvent, type ReactNode } from 'react';
 import { reducedMotion, SPRING } from '../document/motion';
 import { lockAxis, rubber, settle, velocityTracker } from '../lib/gesture';
 
 const SCRIM = 0.28;
 
 const styles = stylex.create({
-  root: { position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none' },
+  root: { position: 'absolute', inset: 0, overflow: 'clip', pointerEvents: 'none' },
   scrim: { position: 'absolute', inset: 0, backgroundColor: '#18181b' },
   sheet: {
     position: 'absolute',
@@ -42,12 +42,15 @@ interface Props {
   className?: string;
 }
 
-const heightOf = (snap: number, container: number) => (snap <= 1 ? snap * container : snap);
+export const sheetHeight = (snap: number, container: number) => (snap <= 1 ? snap * container : snap);
+const shiftOf = (transform: string) => Number(transform.match(/matrix\([^,]+,[^,]+,[^,]+,[^,]+,[^,]+,\s*([-\d.]+)\)/)?.[1] ?? transform.match(/translateY\(([-\d.]+)px\)/)?.[1] ?? 0);
 const INTERACTIVE = 'button, a, input, textarea, select, [contenteditable="true"]';
 
 export function BottomSheet({ snaps, snap, onSnap, header, children, onScrim, className }: Props) {
   const rootRef = useRef<HTMLDivElement>(null);
+  const sheetRef = useRef<HTMLElement>(null);
   const [container, setContainer] = useState(0);
+  const [ready, setReady] = useState(false);
   const [drag, setDrag] = useState<number | null>(null);
   const gesture = useRef<{ id: number; y: number; from: number; locked: boolean; track: ReturnType<typeof velocityTracker> } | null>(null);
   const dragged = useRef(false);
@@ -62,23 +65,31 @@ export function BottomSheet({ snaps, snap, onSnap, header, children, onScrim, cl
     return () => observer.disconnect();
   }, []);
 
-  const heights = snaps.map((s) => heightOf(s, container));
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => setReady(true));
+    return () => cancelAnimationFrame(frame);
+  }, []);
+
+  const heights = snaps.map((s) => sheetHeight(s, container));
   const index = Math.max(0, snaps.indexOf(snap));
   const lowest = heights[0] ?? 0;
   const highest = heights.at(-1) ?? 0;
   const resting = heights[index] ?? lowest;
   const height = drag ?? resting;
   const progress = highest > lowest ? Math.min(1, Math.max(0, (height - lowest) / (highest - lowest))) : 0;
-  const transition = drag !== null || reducedMotion() ? 'none' : `transform ${SPRING.duration}ms ${SPRING.easing}`;
+  const transition = !ready || drag !== null || reducedMotion() ? 'none' : `transform ${SPRING.duration}ms ${SPRING.easing}`;
   const step = () => onSnap(snaps[index === snaps.length - 1 ? 0 : index + 1]!);
 
   const onPointerDown = (event: PointerEvent<HTMLDivElement>) => {
-    if (event.button !== 0) return;
+    if (event.button !== 0 || gesture.current) return;
     const now = performance.now();
     const track = velocityTracker();
     track.add(event.clientX, event.clientY, now);
-    gesture.current = { id: event.pointerId, y: event.clientY, from: height, locked: false, track };
+    const onScreen = sheetRef.current ? highest - shiftOf(getComputedStyle(sheetRef.current).transform) : height;
+    const caught = Math.abs(onScreen - height) > 1;
+    gesture.current = { id: event.pointerId, y: event.clientY, from: caught ? onScreen : height, locked: false, track };
     dragged.current = false;
+    if (caught) setDrag(onScreen);
   };
   const onPointerMove = (event: PointerEvent<HTMLDivElement>) => {
     const g = gesture.current;
@@ -98,7 +109,7 @@ export function BottomSheet({ snaps, snap, onSnap, header, children, onScrim, cl
     const g = gesture.current;
     if (!g || g.id !== event.pointerId) return;
     gesture.current = null;
-    if (!g.locked) return;
+    if (!g.locked) return setDrag(null);
     const released = rubber(g.from - (event.clientY - g.y), lowest, highest);
     const next = settle(heights, released, -g.track.velocity(performance.now()).y);
     setDrag(null);
@@ -123,6 +134,7 @@ export function BottomSheet({ snaps, snap, onSnap, header, children, onScrim, cl
         />
       ) : null}
       <section
+        ref={sheetRef}
         data-sheet
         data-snap={String(snap)}
         className={[stylex.props(styles.sheet).className, className].filter(Boolean).join(' ') || undefined}
@@ -133,7 +145,8 @@ export function BottomSheet({ snaps, snap, onSnap, header, children, onScrim, cl
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
-          onPointerCancel={() => {
+          onPointerCancel={(event) => {
+            if (gesture.current?.id !== event.pointerId) return;
             gesture.current = null;
             setDrag(null);
           }}
@@ -148,7 +161,7 @@ export function BottomSheet({ snaps, snap, onSnap, header, children, onScrim, cl
           </button>
           {header}
         </div>
-        <div {...stylex.props(styles.body)} style={{ paddingBottom: highest - resting }}>
+        <div data-sheet-body {...stylex.props(styles.body)} style={{ paddingBottom: highest - resting }}>
           {children}
         </div>
       </section>

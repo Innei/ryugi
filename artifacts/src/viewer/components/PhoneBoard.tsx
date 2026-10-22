@@ -5,7 +5,7 @@ import { useLayoutEffect, useRef, useState, type PointerEvent } from 'react';
 import { isMediaBoard, type BoardSpec } from '../../shared/types';
 import { EASE, EXIT, play, reducedMotion, SPRING } from '../document/motion';
 import { usePanZoom } from '../hooks/usePanZoom';
-import { lockAxis, velocityTracker, type Axis } from '../lib/gesture';
+import { FLICK, lockAxis, velocityTracker, type Axis } from '../lib/gesture';
 import { ghostStyles } from './ghost';
 import { MediaBoard } from './MediaBoard';
 
@@ -162,9 +162,12 @@ export function PhoneBoard({ id, board, src, siblings, origin, onOpen, onClose }
   };
 
   const onPointerDown = (event: PointerEvent<HTMLDivElement>) => {
-    if (busy.current) return;
+    const g = gesture.current;
+    if (busy.current || g?.mode === 'dismiss' || g?.mode === 'swipe') return;
+    if (g) g.mode = 'pan';
     handlers.onPointerDown(event);
-    if (gesture.current) return;
+    if (g) return;
+    [stage.current, backdrop.current, ...chrome()].forEach((el) => el?.getAnimations().forEach((animation) => animation.cancel()));
     const track = velocityTracker();
     track.add(event.clientX, event.clientY, performance.now());
     gesture.current = { id: event.pointerId, x: event.clientX, y: event.clientY, mode: 'pending', track };
@@ -193,8 +196,10 @@ export function PhoneBoard({ id, board, src, siblings, origin, onOpen, onClose }
     const velocity = g.track.velocity(performance.now());
     const dx = event.clientX - g.x;
     const dy = event.clientY - g.y;
-    if (g.mode === 'dismiss') return dy > DISMISS || velocity.y > DISMISS_SPEED ? void close() : settleBack();
-    const dir = dx < -PAGE || velocity.x < -PAGE_SPEED ? 1 : dx > PAGE || velocity.x > PAGE_SPEED ? -1 : 0;
+    if (g.mode === 'dismiss') return (dy > DISMISS && velocity.y > -FLICK) || velocity.y > DISMISS_SPEED ? void close() : settleBack();
+    const flick = velocity.x < -PAGE_SPEED ? 1 : velocity.x > PAGE_SPEED ? -1 : 0;
+    const far = dx < -PAGE ? 1 : dx > PAGE ? -1 : 0;
+    const dir = flick === 0 ? far : far === 0 || far === flick ? flick : 0;
     const target = dir === 1 ? next : dir === -1 ? previous : undefined;
     if (target && dir) void go(dir, target);
     else settleBack();
@@ -239,8 +244,11 @@ export function PhoneBoard({ id, board, src, siblings, origin, onOpen, onClose }
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onPointerCancel={(event) => {
-          if (gesture.current?.mode === 'dismiss' || gesture.current?.mode === 'swipe') settleBack();
-          gesture.current = null;
+          const g = gesture.current;
+          if (g?.id === event.pointerId) {
+            if (g.mode === 'dismiss' || g.mode === 'swipe') settleBack();
+            gesture.current = null;
+          }
           handlers.onPointerCancel(event);
         }}
         {...stylex.props(styles.body)}

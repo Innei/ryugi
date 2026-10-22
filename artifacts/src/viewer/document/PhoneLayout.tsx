@@ -1,4 +1,5 @@
 import * as stylex from '@stylexjs/stylex';
+import { sheetHeight } from '../components/BottomSheet';
 import type { LexicalEditor } from 'lexical';
 import { useState, type ReactNode } from 'react';
 import type { Thread } from '../../shared/comments';
@@ -68,7 +69,7 @@ export function PhoneLayout({ editor, threads, actions, agent, canComment, canEd
           {...editMenuPosition(selection, { left: 8, right: (main?.clientWidth ?? 0) - 8 }, EDIT_MENU_WIDTH, EDIT_MENU_HEIGHT, {
             top: main?.getBoundingClientRect().top ?? 0,
             height: window.innerHeight,
-            reserved: SHEET_PEEK,
+            reserved: sheetHeight(snap, window.innerHeight - TOP_BAR),
           })}
           canComment={canComment}
           canEdit={canEdit}

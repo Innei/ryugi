@@ -59,8 +59,9 @@ export function PhoneSheet({ threads, agent = 'Agent', actions, offline, draft, 
 
   useEffect(() => {
     const thread = activeId ? body.current?.querySelector(`[data-thread="${CSS.escape(activeId)}"]`) : null;
-    if (!thread) return;
-    thread.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    const scroller = thread?.closest('[data-sheet-body]');
+    if (!thread || !scroller) return;
+    scroller.scrollTo({ top: scroller.scrollTop + thread.getBoundingClientRect().top - scroller.getBoundingClientRect().top - 8, behavior: 'smooth' });
     void play(thread, [{ backgroundColor: 'rgba(232, 194, 74, 0.24)' }, { backgroundColor: 'transparent' }], { duration: 600, delay: 250, easing: EASE });
   }, [activeId]);
 

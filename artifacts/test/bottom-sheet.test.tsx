@@ -127,3 +127,48 @@ test('the scrim darkens with the sheet and only catches taps at the top height',
   await act(async () => scrim().click());
   expect(onScrim).toHaveBeenCalled();
 });
+
+test('a second finger tapping during a drag leaves the first finger in charge', async () => {
+  const onSnap = await mount(78);
+  const title = host!.querySelector('[data-title]')!;
+  title.setPointerCapture = vi.fn();
+  await touch(title, 'pointerdown', 800, 0);
+  await touch(title, 'pointermove', 760, 20);
+  await touch(title, 'pointermove', 650, 60);
+  await act(async () => title.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: 8, pointerType: 'touch', clientX: 200, clientY: 800 })));
+  await act(async () => title.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerId: 8, pointerType: 'touch', clientX: 200, clientY: 800 })));
+  await touch(title, 'pointerup', 650, 70);
+  expect(onSnap).toHaveBeenCalled();
+  expect(sheet().style.transition).not.toBe('none');
+});
+
+test('the first frame lands in place without sliding in', async () => {
+  const queue: FrameRequestCallback[] = [];
+  vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => queue.push(cb));
+  vi.stubGlobal('cancelAnimationFrame', () => {});
+  await mount(78);
+  expect(sheet().style.transition).toBe('none');
+  await act(async () => queue.splice(0).forEach((cb) => cb(0)));
+  expect(sheet().style.transition).toContain('transform');
+});
+
+test('grabbing a sheet mid-spring catches it where it is on screen', async () => {
+  await mount(78);
+  const title = host!.querySelector('[data-title]')!;
+  title.setPointerCapture = vi.fn();
+  vi.spyOn(window, 'getComputedStyle').mockReturnValue({ transform: 'matrix(1, 0, 0, 1, 0, 200)' } as CSSStyleDeclaration);
+  await touch(title, 'pointerdown', 800, 0);
+  expect(shown()).toBe(222);
+  await touch(title, 'pointermove', 780, 50);
+  expect(shown()).toBe(242);
+});
+
+test('a tap on a sheet caught mid-spring lets it finish where it was going', async () => {
+  await mount(78);
+  const title = host!.querySelector('[data-title]')!;
+  vi.spyOn(window, 'getComputedStyle').mockReturnValue({ transform: 'matrix(1, 0, 0, 1, 0, 200)' } as CSSStyleDeclaration);
+  await touch(title, 'pointerdown', 800, 0);
+  await touch(title, 'pointerup', 800, 40);
+  expect(shown()).toBe(78);
+  expect(sheet().style.transition).not.toBe('none');
+});

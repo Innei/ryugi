@@ -126,6 +126,22 @@ test('the edit menu sits under the selection, clear of the system menu above it,
   expect(editMenuPosition({ left: 300, top: 120, bottom: 140 }, bounds, 160, 44, { top: 0, height: 844, reserved: 78 }).left).toBe(222);
 });
 
+test('locating a thread scrolls only the sheet body, never the page or the sheet itself', async () => {
+  const intoView = vi.fn();
+  const original = Element.prototype.scrollIntoView;
+  Element.prototype.scrollIntoView = intoView;
+  const scrollTo = vi.spyOn(HTMLElement.prototype, 'scrollTo').mockImplementation(() => {});
+  const props = { threads: [waiting, answered], agent: 'Claude Code', actions: actions(), offline: false, draft: null, onCreate: vi.fn(), onCancelDraft: vi.fn(), snap: 0.5, onSnap: vi.fn() };
+  const host = await render(createElement(PhoneSheet, { ...props, activeId: null }));
+  await act(async () => root!.render(createElement(PhoneSheet, { ...props, activeId: answered.id })));
+  expect(intoView).not.toHaveBeenCalled();
+  expect(scrollTo).toHaveBeenCalled();
+  expect((scrollTo.mock.contexts.at(-1) as Element).hasAttribute('data-sheet-body')).toBe(true);
+  expect(host.querySelector('[data-sheet-body]')).not.toBeNull();
+  scrollTo.mockRestore();
+  Element.prototype.scrollIntoView = original;
+});
+
 test('locating a thread flashes it once the sheet scrolls to it', async () => {
   const animate = vi.spyOn(HTMLElement.prototype, 'animate');
   const props = { threads: [waiting], agent: 'Claude Code', actions: actions(), offline: false, draft: null, onCreate: vi.fn(), onCancelDraft: vi.fn(), snap: 0.5, onSnap: vi.fn() };
@@ -172,6 +188,16 @@ describe('phone layout', () => {
     const host = await render(layout({ onEdit }));
     await act(async () => button(host, '改字').click());
     expect(onEdit).toHaveBeenCalledWith(selection);
+  });
+
+  test('with the sheet at half the menu moves above a selection the sheet would cover', async () => {
+    vi.spyOn(window, 'innerHeight', 'get').mockReturnValue(844);
+    const host = await render(layout({}));
+    await act(async () => button(host, '评论').click());
+    await act(async () => button(host, '取消').click());
+    const low = { ...selection, top: 380, bottom: 400 };
+    await act(async () => root!.render(layout({ selection: low })));
+    expect(host.querySelector('[data-edit-menu]')!.getAttribute('data-placement')).toBe('above');
   });
 
   test('offline, no edit menu covers the selection', async () => {
