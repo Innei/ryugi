@@ -41,7 +41,6 @@ const styles = stylex.create({
   spacer: { flex: 1 },
   dot: { width: 7, height: 7, flexShrink: 0, borderRadius: '50%', backgroundColor: cssVar.colorTextQuaternary },
   dotOn: { backgroundColor: cssVar.colorSuccess },
-  zoom: { flexShrink: 0, color: cssVar.colorTextTertiary, fontSize: 12, fontVariantNumeric: 'tabular-nums' },
 });
 
 interface PageSwitcherProps {
@@ -70,17 +69,15 @@ interface Props extends PageSwitcherProps {
   title: string;
   artifact: string | null;
   live?: boolean;
-  zoom: number;
 }
 
-export function PhoneArtboardBar({ title, pages, page, onPageChange, artifact, live, zoom }: Props) {
+export function PhoneArtboardBar({ title, pages, page, onPageChange, artifact, live }: Props) {
   return (
     <header data-chrome {...stylex.props(styles.bar)}>
       <span {...stylex.props(styles.title)}>{title}</span>
       <PageSwitcher pages={pages} page={page} onPageChange={onPageChange} />
       <span {...stylex.props(styles.spacer)} />
       {live === undefined ? null : <i title={live ? 'Live' : 'Reconnecting…'} {...stylex.props(styles.dot, live && styles.dotOn)} />}
-      <span {...stylex.props(styles.zoom)}>{Math.round(zoom * 100)}%</span>
       {artifact ? <PublishMenu artifact={artifact} /> : null}
     </header>
   );

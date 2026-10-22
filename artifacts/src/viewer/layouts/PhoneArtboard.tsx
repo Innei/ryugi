@@ -129,7 +129,7 @@ export function PhoneArtboard({ id, artifact, canvas, layout, warnings, pending,
 
   return (
     <div {...stylex.props(styles.root)}>
-      <PhoneArtboardBar title={canvas?.title || id} pages={canvas?.pages ?? []} page={page} onPageChange={changePage} artifact={menu ? artifact : null} live={live} zoom={view.k} />
+      <PhoneArtboardBar title={canvas?.title || id} pages={canvas?.pages ?? []} page={page} onPageChange={changePage} artifact={menu ? artifact : null} live={live} />
       <div
         ref={viewportRef}
         {...stylex.props(styles.viewport)}
@@ -189,6 +189,7 @@ export function PhoneArtboard({ id, artifact, canvas, layout, warnings, pending,
               onPick={pick}
               snap={snap}
               onSnap={setSnap}
+              verdicts={verdicts.states}
             />
           </div>
         ) : null}

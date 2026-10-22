@@ -71,16 +71,33 @@ test('opens on the question the agent focused, with no selection tools or inspec
   expect(host!.textContent).toContain('mobile-comments');
 });
 
+const labelled = (label: string) => host!.querySelector<HTMLButtonElement>(`button[aria-label="${label}"]`)!;
+
 test('上一题 and 下一题 step through the list, newest round first, and stop at the ends', async () => {
   await mount();
-  expect(button('下一题 ›')!.disabled).toBe(true);
-  await act(async () => button('‹ 上一题')!.click());
+  expect(bar()).toContain('3 / 3');
+  expect(labelled('下一题').disabled).toBe(true);
+  await act(async () => labelled('上一题').click());
   expect(bar()).toContain('q1');
-  await act(async () => button('‹ 上一题')!.click());
+  expect(bar()).toContain('2 / 3');
+  await act(async () => labelled('上一题').click());
   expect(bar()).toContain('q3');
-  expect(button('‹ 上一题')!.disabled).toBe(true);
-  await act(async () => button('下一题 ›')!.click());
+  expect(labelled('上一题').disabled).toBe(true);
+  await act(async () => labelled('下一题').click());
   expect(bar()).toContain('q1');
+});
+
+test('the dock shows one progress mark per question: passed, current, still open', async () => {
+  const spec = { ...canvas, groups: { ...canvas.groups, q1: { ...canvas.groups.q1, verify: true } } };
+  const pass = { id: 'p1', anchor: { page: 'p', group: 'q1', verdict: 'pass', x: 0, y: 0 }, status: 'resolved', statusAt: '2026-10-22T08:40:00Z', messages: [{ id: 'm', author: 'human', text: '通过', at: '2026-10-22T08:40:00Z' }] };
+  await mount(spec, layout, { comments: { comments: { version: 1, threads: [pass] }, stale: [] } });
+  const marks = [...host!.querySelectorAll('[data-progress] > [data-mark]')].map((mark) => mark.getAttribute('data-mark'));
+  expect(marks).toEqual(['open', 'pass', 'current']);
+});
+
+test('the phone top bar has no zoom level', async () => {
+  await mount();
+  expect(host!.querySelector('header')!.textContent).not.toMatch(/\d+%/);
 });
 
 test('the jump panel lists every question under its round and jumps to the one tapped', async () => {
