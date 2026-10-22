@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, test } from 'vitest';
@@ -104,6 +105,18 @@ describe('session key', () => {
     const csp = String((await get(`${base(server)}/?key=${server.token}`)).headers['content-security-policy']);
     expect(csp).toContain("script-src 'self' 'wasm-unsafe-eval'");
     expect(csp).not.toContain("'unsafe-eval'");
+  });
+
+  test('the shell runs its own inline scripts by hash, so the theme is set before the first paint', async () => {
+    const { server, viewer } = await start();
+    const script = "document.documentElement.dataset.theme = 'dark';";
+    fs.writeFileSync(path.join(viewer, 'index.html'), `<!doctype html><head><script>${script}</script><script type="module" src="/index.js"></script></head>`);
+    const hash = createHash('sha256').update(script).digest('base64');
+    for (const route of ['/', '/preview/html/tuner']) {
+      const csp = String((await get(`${base(server)}${route}?key=${server.token}`)).headers['content-security-policy']);
+      expect(csp).toContain(`script-src 'self' 'wasm-unsafe-eval' 'sha256-${hash}';`);
+      expect(csp).not.toContain("'unsafe-inline' ");
+    }
   });
 
   test('the shell lets a document point <base> at its own content route, so assets/ paths resolve', async () => {

@@ -28,7 +28,7 @@ import { ownLink } from '../shared/cloud';
 import { DOCUMENT_FEATURES_HEADER } from '../shared/document-features';
 import { commentNames } from './comment-names';
 import { publishPayload } from './publish-payload';
-import { viewerPage } from './viewer-page';
+import { allowInlineScripts, viewerPage } from './viewer-page';
 import { createAutoPublisher } from './auto-publish';
 import { readArtifactFile } from './artifact-file';
 import { CLOUD_RUNTIME_URL } from './publish-payload';
@@ -670,13 +670,14 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
         ? `在 ${project} 项目中查看 ${title}，这是一个 ${ref.type === 'artboard' ? 'Artboard' : ref.type === 'document' ? 'Document' : 'HTML'} Artifact。`
         : `浏览 ${project} 项目的全部 Artboard、Document 和 HTML Artifact，预览真实内容，按类型、名称和更新时间查找作品。`;
       const canonical = `http://${urlHostForHttp(options.urlHost)}:${port}/${ref ? `${ref.type}/${ref.id}` : ''}`;
-      const headers: Record<string, string> = {
-        'Content-Type': 'text/html; charset=utf-8',
-        'Content-Security-Policy': PREVIEW_ROUTE.test(pathname) ? VIEWER_CSP.replace("frame-ancestors 'none'", "frame-ancestors 'self'") : VIEWER_CSP,
-      };
+      const csp = PREVIEW_ROUTE.test(pathname) ? VIEWER_CSP.replace("frame-ancestors 'none'", "frame-ancestors 'self'") : VIEWER_CSP;
+      const headers: Record<string, string> = { 'Content-Type': 'text/html; charset=utf-8' };
       if (key !== null) headers['Set-Cookie'] = `${cookieName}=${token}; HttpOnly; SameSite=Strict; Path=/`;
       void fs.promises.readFile(path.join(viewerDir, 'index.html'), 'utf8')
-        .then((template) => send(res, 200, viewerPage(template, { title, description, url: canonical }), headers))
+        .then((template) => {
+          const html = viewerPage(template, { title, description, url: canonical });
+          send(res, 200, html, { ...headers, 'Content-Security-Policy': allowInlineScripts(csp, html) });
+        })
         .catch((err: NodeJS.ErrnoException) => send(res, err.code === 'ENOENT' ? 404 : 500, 'Viewer unavailable'));
       return;
     }
