@@ -5,6 +5,7 @@ import { unreadThreads, waitingOn, type AgentOp, type CommentsFile, type HumanOp
 import { createCommentCursors } from './comment-cursors';
 import type { CommentNames } from './comment-names';
 import { createCommentStore, type CommentStore } from './document-comments';
+import { boxDrawingDiagrams } from './document-codec';
 import { createDocumentSession, type DocumentOutcome, type DocumentSession } from './document-session';
 
 export interface DocumentTiming {
@@ -42,8 +43,12 @@ interface RegistryOptions {
   log?: (line: string) => void;
 }
 
-function outcomeWarnings(outcome: DocumentOutcome, streaming: boolean): string[] {
-  if (streaming) return [];
+const diagramWarnings = (session: DocumentSession) =>
+  boxDrawingDiagrams(session.state()).map(
+    (id) => `block ${id} draws a diagram with box-drawing characters; this document is rendered, not Markdown, so draw it as <mermaid>`,
+  );
+
+function outcomeWarnings(outcome: DocumentOutcome): string[] {
   if (outcome.kind === 'rejected') return [`agent edit rejected: ${outcome.message} (doc.xml is left as written; fix it)`];
   if (outcome.kind === 'failed') return [`agent edit failed: ${outcome.message}`];
   return [];
@@ -87,15 +92,22 @@ export function createDocumentRegistry(options: RegistryOptions): DocumentRegist
       warnings.set(id, next);
       options.onWarningsChange(id);
     };
-    setWarnings(outcomeWarnings(session.outcome(), false));
+    const currentWarnings = () => {
+      if (session.streaming()) return [];
+      const outcome = session.outcome();
+      return outcome.kind === 'rejected' ? outcomeWarnings(outcome) : [...outcomeWarnings(outcome), ...diagramWarnings(session)];
+    };
+    setWarnings(currentWarnings());
     session.subscribe((event) => {
       if (event.type === 'update') {
         options.broadcast({ type: 'doc-update', artifact, bytes: Buffer.from(event.bytes).toString('base64') });
       } else if (event.type === 'cursor') {
         options.broadcast({ type: 'doc-cursor', artifact, cursor: event.cursor });
+      } else if (event.type === 'saved') {
+        setWarnings(currentWarnings());
       } else {
         options.broadcast({ type: 'doc-status', artifact, streaming: event.streaming, outcome: event.outcome, agentActiveAt: event.agentActiveAt, now: Date.now() });
-        setWarnings(outcomeWarnings(event.outcome, event.streaming));
+        setWarnings(currentWarnings());
       }
     });
     return session;

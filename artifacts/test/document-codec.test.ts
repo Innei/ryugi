@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { documentTitle, parseDocument, serializeDocument, stampBlockIds } from '../src/server/document-codec';
+import { boxDrawingDiagrams, documentTitle, parseDocument, serializeDocument, stampBlockIds } from '../src/server/document-codec';
 
 const sample = `<doc>
   <h2 id="h1">Relay <b>sync</b></h2>
@@ -144,4 +144,32 @@ describe('stampBlockIds', () => {
 test('the title is the text of the first heading', () => {
   expect(documentTitle(parseDocument('<doc><p>intro</p><h3>Relay <i>sync</i></h3><h1>later</h1></doc>'))).toBe('Relay sync');
   expect(documentTitle(parseDocument('<doc><p>no heading</p></doc>'))).toBeNull();
+});
+
+describe('boxDrawingDiagrams', () => {
+  const diagram = '┌──────────┐\n│ Cloud    │\n└────┬─────┘\n     ▼\n┌──────────┐\n│ Market   │\n└──────────┘';
+
+  test('names code blocks drawn with box-drawing characters', () => {
+    const state = parseDocument(`<doc><p>x</p><codeblock id="c1" lang="text"><![CDATA[${diagram}]]></codeblock></doc>`);
+    expect(boxDrawingDiagrams(state)).toEqual(['c1']);
+  });
+
+  test('names the top-level block that holds a nested diagram', () => {
+    const state = parseDocument(`<doc><details id="d1" summary="Design"><codeblock lang="text"><![CDATA[${diagram}]]></codeblock></details></doc>`);
+    expect(boxDrawingDiagrams(state)).toEqual(['d1']);
+  });
+
+  test('leaves boxed program output alone', () => {
+    const table = '┌─────────┬─────────┐\n│ Package │ Latest  │\n├─────────┼─────────┤\n│ vite    │ 8.3.5   │\n└─────────┴─────────┘';
+    const notice = '╭──────────────────────────────╮\n│   Update available! 9 → 10   │\n│   Run pnpm add -g pnpm       │\n╰──────────────────────────────╯';
+    const state = parseDocument(`<doc><codeblock id="t1"><![CDATA[${table}]]></codeblock><codeblock id="n1"><![CDATA[${notice}]]></codeblock></doc>`);
+    expect(boxDrawingDiagrams(state)).toEqual([]);
+  });
+
+  test('leaves code and a stray box character alone', () => {
+    const tree = 'src/\n├─ a.ts\n└─ b.ts';
+    const code = 'const a = 1;\n// │ not a diagram\nconst b = 2;';
+    const state = parseDocument(`<doc><codeblock id="t1"><![CDATA[${tree}]]></codeblock><codeblock id="k1" lang="ts"><![CDATA[${code}]]></codeblock></doc>`);
+    expect(boxDrawingDiagrams(state)).toEqual([]);
+  });
 });

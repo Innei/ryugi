@@ -192,6 +192,69 @@ describe('live document', () => {
   });
 });
 
+describe('diagram warnings', () => {
+  test('a box-drawing diagram in a code block is a warning until it becomes mermaid', async () => {
+    const { root } = await start();
+    writeDocument(root, 'relay', { 'doc.xml': '<doc><p>one</p></doc>' });
+    await waitFor(() => fs.readFileSync(docFile(root, 'relay'), 'utf8').includes(' id="'));
+    const art = '┌───────┐\n│ Cloud │\n└───┬───┘\n    ▼\n┌────────┐\n│ Market │\n└────────┘';
+    fs.writeFileSync(docFile(root, 'relay'), `<doc><p>one</p><codeblock id="flow" lang="text"><![CDATA[${art}]]></codeblock></doc>`);
+    await waitFor(() => fs.existsSync(warningsFile(root, 'relay')) && readJson(warningsFile(root, 'relay')).warnings.length > 0);
+    expect(readJson(warningsFile(root, 'relay')).warnings).toEqual([
+      'block flow draws a diagram with box-drawing characters; this document is rendered, not Markdown, so draw it as <mermaid>',
+    ]);
+    await waitFor(() => fs.readFileSync(docFile(root, 'relay'), 'utf8').includes('<p id='));
+    const current = fs.readFileSync(docFile(root, 'relay'), 'utf8');
+    fs.writeFileSync(docFile(root, 'relay'), current.replace(/<codeblock id="flow"[\s\S]*?<\/codeblock>/, '<mermaid id="flow"><![CDATA[flowchart TD\n  Cloud --> Market]]></mermaid>'));
+    await waitFor(() => readJson(warningsFile(root, 'relay')).warnings.length === 0);
+  });
+});
+
+describe('diagram warnings without ids', () => {
+  test('a box-drawing block written without an id is reported once the server stamps it', async () => {
+    const { root } = await start();
+    writeDocument(root, 'relay', { 'doc.xml': '<doc><p>one</p></doc>' });
+    await waitFor(() => fs.readFileSync(docFile(root, 'relay'), 'utf8').includes(' id="'));
+    const art = '┌───────┐\n│ Cloud │\n└───┬───┘\n    ▼\n┌────────┐\n│ Market │\n└────────┘';
+    const current = fs.readFileSync(docFile(root, 'relay'), 'utf8');
+    fs.writeFileSync(docFile(root, 'relay'), current.replace('</doc>', `<codeblock lang="text"><![CDATA[${art}]]></codeblock></doc>`));
+    await waitFor(() => fs.existsSync(warningsFile(root, 'relay')) && readJson(warningsFile(root, 'relay')).warnings.length > 0);
+    const id = /<codeblock id="([^"]+)"/.exec(fs.readFileSync(docFile(root, 'relay'), 'utf8'))![1];
+    expect(readJson(warningsFile(root, 'relay')).warnings[0]).toContain(`block ${id} draws a diagram`);
+  });
+
+  test('a human removing the diagram in the browser clears its warning', async () => {
+    const { server, root } = await start();
+    const art = '┌───────┐\n│ Cloud │\n└───┬───┘\n    ▼\n┌────────┐\n│ Market │\n└────────┘';
+    writeDocument(root, 'relay', { 'doc.xml': `<doc><p>one</p><codeblock id="flow" lang="text"><![CDATA[${art}]]></codeblock></doc>` });
+    await waitFor(() => fs.existsSync(warningsFile(root, 'relay')) && readJson(warningsFile(root, 'relay')).warnings.length > 0);
+    const state = await api(server, '/api/document/relay/state');
+    const peer = new LoroDoc();
+    peer.import(Buffer.from(state.snapshot, 'base64'));
+    const editor = createDocumentHeadlessEditor();
+    const binding = createLoroBinding(editor, peer);
+    const from = peer.oplogVersion();
+    editor.update(() => $getRoot().getChildren().find((node) => node.getType() === 'code-block')!.remove(), { discrete: true });
+    const res = await post(`${base(server)}/api/document/relay/update`, Buffer.from(peer.export({ mode: 'update', from })), {
+      Cookie: cookie(server),
+      Origin: base(server),
+    });
+    binding.dispose();
+    expect(res.status).toBe(204);
+    await waitFor(() => readJson(warningsFile(root, 'relay')).warnings.length === 0);
+  });
+
+  test('a rejected edit shows only the rejection', async () => {
+    const { root } = await start();
+    const art = '┌───────┐\n│ Cloud │\n└───┬───┘\n    ▼\n┌────────┐\n│ Market │\n└────────┘';
+    writeDocument(root, 'relay', { 'doc.xml': `<doc><p>one</p><codeblock id="flow" lang="text"><![CDATA[${art}]]></codeblock></doc>` });
+    await waitFor(() => fs.existsSync(warningsFile(root, 'relay')) && readJson(warningsFile(root, 'relay')).warnings.length > 0);
+    fs.writeFileSync(docFile(root, 'relay'), '<doc><p>one</h2><mermaid id="flow"><![CDATA[flowchart TD]]></mermaid></doc>');
+    await waitFor(() => readJson(warningsFile(root, 'relay')).warnings.some((w: string) => w.startsWith('agent edit rejected')));
+    expect(readJson(warningsFile(root, 'relay')).warnings).toHaveLength(1);
+  });
+});
+
 describe('document update endpoint', () => {
   test('refuses requests without the key or from another origin', async () => {
     const { server, root } = await start();

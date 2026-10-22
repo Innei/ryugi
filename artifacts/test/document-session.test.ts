@@ -301,3 +301,38 @@ test('agent activity survives a restart even when a human autosave touched the f
   const second = await open(file, snapshotFile);
   expect(second.agentActiveAt()).toBe(wrote);
 });
+
+test('an agent that replaces a large block with a small one removes the large block', async () => {
+  const art = Array.from({ length: 12 }, (_, i) => `│ row ${i} │`).join('\n');
+  const { file, snapshotFile } = setup('<doc><h2>Flow</h2><p>intro</p></doc>');
+  const session = await open(file, snapshotFile);
+  await session.flush();
+  const withArt = read(file).replace('</doc>', `  <codeblock id="flow" lang="text"><![CDATA[${art}]]></codeblock>\n</doc>`);
+  fs.writeFileSync(file, withArt);
+  session.onFileText(withArt);
+  await session.flush();
+  const current = read(file);
+  const replaced = current.replace(/<codeblock id="flow"[\s\S]*?<\/codeblock>/, '<mermaid id="flow"><![CDATA[flowchart TD\n  A --> B]]></mermaid>');
+  fs.writeFileSync(file, replaced);
+  session.onFileText(replaced);
+  await session.flush();
+  expect(read(file)).not.toContain('row 0');
+  expect(read(file)).toContain('<mermaid');
+  expect(read(file).match(/<h2/g)).toHaveLength(1);
+});
+
+test('an agent that removes a block it added earlier removes it', async () => {
+  const { file, snapshotFile } = setup('<doc><h2>Flow</h2><p>intro</p></doc>');
+  const session = await open(file, snapshotFile);
+  await session.flush();
+  const before = read(file);
+  const added = before.replace('</doc>', '  <p>temporary section</p>\n</doc>');
+  fs.writeFileSync(file, added);
+  session.onFileText(added);
+  await session.flush();
+  const removed = read(file).replace(/\s*<p id="[^"]+">temporary section<\/p>/, '');
+  fs.writeFileSync(file, removed);
+  session.onFileText(removed);
+  await session.flush();
+  expect(read(file)).not.toContain('temporary section');
+});

@@ -52,6 +52,15 @@ the document is finished when no `<pending>` is left.
 The viewer already streams document updates; you do not need a separate
 tool call for every node or character.
 
+## Diagrams
+
+This document is a rendered page, not Markdown and not a code comment. Draw
+every flow, sequence, state or architecture diagram as a `<mermaid>` block:
+the viewer renders it as a diagram readers can open and zoom. Diagram rules
+written for code comments or Markdown files, such as box-drawing art in a
+monospaced block, are for plain text and do not apply here. A code block
+drawn with box-drawing characters is reported in `warnings.json`.
+
 ## LiteXML
 
 ```xml

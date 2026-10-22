@@ -157,6 +157,25 @@ export function stampBlockIds(state: SerializedEditorState): SerializedEditorSta
   return { ...state, root: { ...state.root, children } };
 }
 
+const BOX_LINE = /[\u2500-\u257F]/;
+const TOP_LEFT = /[┌╭╔┏]/g;
+const BOTTOM_RIGHT = /[┘╯╝┛]/;
+const ARROW = /[▼▲▶◀►◄]|[─━]>/;
+
+// Program output (tables, boxed notices) also uses box characters; a drawn diagram has several boxes joined by arrows.
+const isBoxDiagram = (code: string) =>
+  code.split('\n').filter((line) => BOX_LINE.test(line)).length >= 3 &&
+  (code.match(TOP_LEFT)?.length ?? 0) >= 2 &&
+  BOTTOM_RIGHT.test(code) &&
+  ARROW.test(code);
+
+const holdsBoxDiagram = (node: Block): boolean =>
+  (node.type === 'code-block' && isBoxDiagram((node as { code?: string }).code ?? '')) || (node.children ?? []).some(holdsBoxDiagram);
+
+export function boxDrawingDiagrams(state: SerializedEditorState): string[] {
+  return (state.root.children as Block[]).flatMap((block) => (block.$?.blockId && holdsBoxDiagram(block) ? [block.$.blockId] : []));
+}
+
 const textOf = (node: Block): string => node.text ?? (node.children ?? []).map(textOf).join('');
 
 export function documentTitle(state: SerializedEditorState): string | null {

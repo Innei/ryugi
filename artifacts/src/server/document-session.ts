@@ -21,7 +21,8 @@ export type DocumentOutcome =
 export type DocumentEvent =
   | { type: 'update'; bytes: Uint8Array }
   | { type: 'cursor'; cursor: AgentCursor | null }
-  | { type: 'status'; outcome: DocumentOutcome; streaming: boolean; agentActiveAt: number };
+  | { type: 'status'; outcome: DocumentOutcome; streaming: boolean; agentActiveAt: number }
+  | { type: 'saved' };
 
 export interface DocumentSessionOptions {
   file: string;
@@ -34,6 +35,7 @@ export interface DocumentSessionOptions {
 
 export interface DocumentSession {
   snapshot(): Uint8Array;
+  state(): SerializedEditorState;
   lineage(): string;
   importUpdate(bytes: Uint8Array, features?: readonly string[]): void;
   onFileText(text: string): void;
@@ -74,12 +76,16 @@ function blockStats(before: SerializedEditorState, after: SerializedEditorState)
 }
 
 // An agent edits the copy it last read, which may be several autosaves old. Merging
-// against the newest text would read every human change since as a deletion.
-function closestBase(written: Map<string, unknown>, text: string, fallback: string) {
+// against the newest text would read every human change since as a deletion. It has seen
+// at least its own previous write, so older copies are not candidates: from those, a
+// block it replaced or removed would look like a human addition and survive the merge.
+function closestBase(written: Map<string, unknown>, text: string, fallback: string, floor: string | null) {
+  const keys = [...written.keys()];
+  const from = floor === null ? -1 : keys.indexOf(floor);
   const wanted = new Set(text.split('\n').map((line) => line.trim()));
   let best = fallback;
   let bestScore = -1;
-  for (const candidate of written.keys()) {
+  for (const candidate of from >= 0 ? keys.slice(from) : keys) {
     const lines = candidate.split('\n').map((line) => line.trim());
     const shared = lines.filter((line) => wanted.has(line)).length;
     const score = shared - (lines.length - shared);
@@ -149,6 +155,7 @@ export async function createDocumentSession(options: DocumentSessionOptions): Pr
   let streaming = 0;
   let lastCursor: AgentCursor | null = null;
   let lastGoodText: string | null = null;
+  let lastAgentText: string | null = null;
   let lastFileText = (await readText(file)) ?? '';
   // doc.xml's mtime also moves on human autosaves, so it only stands in before the first recorded agent write.
   const activityFile = path.join(path.dirname(snapshotFile), 'agent-active');
@@ -215,6 +222,8 @@ export async function createDocumentSession(options: DocumentSessionOptions): Pr
       return;
     }
     const fallback = lastGoodText ?? serializeDocument(editor.getEditorState().toJSON());
+    const floor = lastAgentText;
+    lastAgentText = text;
     const queued = streaming > 0;
     lastGoodText = text;
     streaming += 1;
@@ -222,7 +231,7 @@ export async function createDocumentSession(options: DocumentSessionOptions): Pr
     playing = playing.then(async () => {
       try {
         // Autosaves pause during streaming, so queued file edits build on the preceding agent write.
-        const baseText = queued ? fallback : closestBase(written, text, fallback);
+        const baseText = queued ? fallback : closestBase(written, text, fallback, floor);
         const { stats, steps } = prepareAgentEdit(baseText, text, target);
         for (const step of steps) {
           applyStep(step);
@@ -275,6 +284,7 @@ export async function createDocumentSession(options: DocumentSessionOptions): Pr
       lastFileText = text;
       lastGoodText = text;
       remember(text);
+      emit({ type: 'saved' });
     }
     snapshotDirty = true;
     await saveSnapshot();
@@ -301,6 +311,7 @@ export async function createDocumentSession(options: DocumentSessionOptions): Pr
 
   return {
     snapshot: () => loro.export({ mode: 'snapshot' }),
+    state: () => editor.getEditorState().toJSON(),
     lineage: () => loro.getTree(TREE_NAME).roots()[0]?.id ?? '',
     importUpdate: (bytes, features = []) => {
       const undeclared = DOCUMENT_FEATURES.filter((feature) => !features.includes(feature));
