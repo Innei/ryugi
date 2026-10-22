@@ -2,8 +2,9 @@ import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
 import { MessageSquare } from 'lucide-react';
 import type { Ref } from 'react';
+import { brand } from '../tokens.stylex';
 
-export const TOOLBAR_WIDTH = 138;
+export const TOOLBAR_WIDTH = 128;
 export const TOOLBAR_HEIGHT = 36;
 
 const rise = stylex.keyframes({
@@ -16,12 +17,16 @@ const styles = stylex.create({
     position: 'absolute',
     zIndex: 5,
     display: 'flex',
+    alignItems: 'center',
     gap: 2,
     height: TOOLBAR_HEIGHT,
     boxSizing: 'border-box',
-    padding: 4,
+    padding: 3,
+    borderWidth: 1,
+    borderStyle: 'solid',
+    borderColor: cssVar.colorBorder,
     borderRadius: 10,
-    backgroundColor: cssVar.colorBgSpotlight,
+    backgroundColor: cssVar.colorBgElevated,
     boxShadow: cssVar.boxShadowSecondary,
     animationName: rise,
     animationDuration: '140ms',
@@ -31,17 +36,29 @@ const styles = stylex.create({
     display: 'flex',
     alignItems: 'center',
     gap: 6,
+    height: 28,
     paddingBlock: 0,
     paddingInline: 10,
     borderWidth: 0,
     borderRadius: 7,
-    backgroundColor: { default: 'transparent', ':hover': 'rgba(255, 255, 255, 0.12)' },
-    color: cssVar.colorTextLightSolid,
+    backgroundColor: {
+      default: 'transparent',
+      ':hover': cssVar.colorFillTertiary,
+      ':active': cssVar.colorFillSecondary,
+    },
+    color: cssVar.colorText,
     fontFamily: cssVar.fontFamily,
     fontSize: 12,
+    fontWeight: 500,
     cursor: 'pointer',
+    outlineWidth: 2,
+    outlineStyle: 'solid',
+    outlineOffset: 1,
+    outlineColor: { default: 'transparent', ':focus-visible': brand.accent },
   },
-  secondary: { opacity: 0.7 },
+  secondary: { color: cssVar.colorTextSecondary },
+  icon: { flexShrink: 0, color: brand.accent },
+  divider: { flexShrink: 0, width: 1, height: 16, marginInline: 3, backgroundColor: cssVar.colorBorder },
 });
 
 interface Props {
@@ -56,10 +73,13 @@ export function SelectionToolbar({ left, top, onComment, onCopy, ref }: Props) {
   return (
     <div ref={ref} {...stylex.props(styles.bar)} style={{ left, top }} onMouseDown={(event) => event.preventDefault()}>
       {onComment ? (
-        <button type="button" onClick={onComment} {...stylex.props(styles.button)}>
-          <MessageSquare size={14} />
-          评论
-        </button>
+        <>
+          <button type="button" onClick={onComment} {...stylex.props(styles.button)}>
+            <MessageSquare size={14} {...stylex.props(styles.icon)} />
+            评论
+          </button>
+          <span aria-hidden="true" {...stylex.props(styles.divider)} />
+        </>
       ) : null}
       <button type="button" onClick={onCopy} {...stylex.props(styles.button, styles.secondary)}>
         复制
