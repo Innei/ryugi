@@ -31,6 +31,19 @@ export function groupByProject(items: CloudListItem[]): CloudListGroup[] {
     .sort((a, b) => (a.project === null ? 1 : b.project === null ? -1 : newestFirst(a.artifacts[0]!, b.artifacts[0]!)));
 }
 
+export interface CloudFilter {
+  project?: string | null;
+  visibility?: Visibility;
+  type?: ArtifactType;
+}
+
+export const publishedNewestFirst = (items: CloudListItem[]) => items.filter((item) => item.version !== null).sort(newestFirst);
+
+export const projectCounts = (items: CloudListItem[]) => groupByProject(items).map(({ project, artifacts }) => ({ project, count: artifacts.length }));
+
+export const filterCloudItems = (items: CloudListItem[], { project, visibility, type }: CloudFilter) => items.filter((item) =>
+  (project === undefined || item.project === project) && (!visibility || item.visibility === visibility) && (!type || item.type === type));
+
 export type CloudArtifactData =
   | { type: 'html'; title: string; contentBase: string; payload: { title: string } }
   | { type: 'artboard'; title: string; contentBase: string; payload: Pick<CanvasPayload, 'canvas' | 'layout' | 'versions'> }

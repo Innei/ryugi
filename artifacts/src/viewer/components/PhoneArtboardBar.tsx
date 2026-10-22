@@ -18,7 +18,7 @@ const styles = stylex.create({
     borderBottomWidth: 1,
     borderBottomStyle: 'solid',
     borderBottomColor: cssVar.colorBorderSecondary,
-    backgroundColor: cssVar.colorBgLayout,
+    backgroundColor: cssVar.colorBgContainer,
     color: cssVar.colorText,
     fontFamily: cssVar.fontFamily,
     fontSize: 14,

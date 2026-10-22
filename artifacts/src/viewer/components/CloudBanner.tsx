@@ -1,4 +1,4 @@
-import { Input, Popover } from '@lobehub/ui';
+import { FormField, Input, Popover, Switch } from '@lobehub/ui';
 import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
 import { ArrowRight, CircleAlert, Copy, Globe, Lock, MessageCircle } from 'lucide-react';
@@ -23,7 +23,7 @@ const styles = stylex.create({
     borderBottomWidth: 1,
     borderBottomStyle: 'solid',
     borderBottomColor: cssVar.colorBorderSecondary,
-    backgroundColor: cssVar.colorBgLayout,
+    backgroundColor: cssVar.colorBgContainer,
     color: cssVar.colorText,
     fontFamily: cssVar.fontFamily,
     fontSize: 12,
@@ -84,6 +84,7 @@ const styles = stylex.create({
   },
   shareRound: { borderRadius: 999 },
   panel: { display: 'flex', flexDirection: 'column', gap: 2, width: 'min(288px, calc(100vw - 16px))', fontFamily: cssVar.fontFamily, fontSize: 12 },
+  panelInline: { width: '100%' },
   heading: { margin: '2px 4px 6px', fontSize: 12, fontWeight: 600 },
   options: { display: 'flex', flexDirection: 'column', gap: 2 },
   option: {
@@ -186,7 +187,7 @@ export function CloudHeader({ id, type, title, owner, status, visibility, onChan
   );
 }
 
-export function useCloudSharePanel({ id, visibility, onChange }: { id: string; visibility: Visibility; onChange: (next: Visibility) => void }) {
+export function useCloudSharePanel({ id, visibility, onChange, inline = false }: { id: string; visibility: Visibility; onChange: (next: Visibility) => void; inline?: boolean }) {
   const [error, setError] = useState<{ message: string; auth?: boolean } | null>(null);
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -215,29 +216,37 @@ export function useCloudSharePanel({ id, visibility, onChange }: { id: string; v
   };
 
   return (
-    <div {...stylex.props(styles.panel)}>
-      <p {...stylex.props(styles.heading)}>谁能看到这个链接</p>
-      <div role="radiogroup" aria-label="谁能看到这个链接" {...stylex.props(styles.options)}>
-        {OPTIONS.map(({ value, label, hint, Icon }) => (
-          <button
-            key={value}
-            type="button"
-            role="radio"
-            aria-checked={value === visibility}
-            disabled={saving}
-            onClick={() => void choose(value)}
-            {...stylex.props(styles.option, value === visibility && styles.optionOn)}
-          >
-            <span {...stylex.props(styles.icon)}>
-              <Icon size={12} />
-            </span>
-            <span>
-              <span {...stylex.props(styles.label)}>{label}</span>
-              <span {...stylex.props(styles.hint)}>{hint}</span>
-            </span>
-          </button>
-        ))}
-      </div>
+    <div {...stylex.props(styles.panel, inline && styles.panelInline)}>
+      {inline ? (
+        <FormField layout="horizontal" variant="borderless" label="有链接的人可以看" desc={visibility === 'public' ? '不用登录，拿到链接就能看' : '关闭时，只有你登录后能打开'}>
+          <Switch checked={visibility === 'public'} loading={saving} disabled={saving} onChange={(checked) => void choose(checked ? 'public' : 'private')} />
+        </FormField>
+      ) : (
+        <>
+          <p {...stylex.props(styles.heading)}>谁能看到这个链接</p>
+          <div role="radiogroup" aria-label="谁能看到这个链接" {...stylex.props(styles.options)}>
+            {OPTIONS.map(({ value, label, hint, Icon }) => (
+              <button
+                key={value}
+                type="button"
+                role="radio"
+                aria-checked={value === visibility}
+                disabled={saving}
+                onClick={() => void choose(value)}
+                {...stylex.props(styles.option, value === visibility && styles.optionOn)}
+              >
+                <span {...stylex.props(styles.icon)}>
+                  <Icon size={12} />
+                </span>
+                <span>
+                  <span {...stylex.props(styles.label)}>{label}</span>
+                  <span {...stylex.props(styles.hint)}>{hint}</span>
+                </span>
+              </button>
+            ))}
+          </div>
+        </>
+      )}
       <div {...stylex.props(styles.link)}>
         <Input aria-label="分享链接" value={url} readOnly size="small" onFocus={(event) => event.currentTarget.select()} {...stylex.props(styles.url)} />
         <button type="button" onClick={() => void copy()} {...stylex.props(styles.share)}><Copy size={12} /> {copied ? '已复制' : '复制'}</button>
