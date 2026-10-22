@@ -18,7 +18,7 @@ const styles = stylex.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: { default: 24, [NARROW]: 12 },
-    height: 56,
+    height: 45,
     paddingInline: { default: 24, [NARROW]: 12 },
     borderBottomWidth: 1,
     borderBottomStyle: 'solid',
@@ -80,6 +80,7 @@ const styles = stylex.create({
     cursor: 'pointer',
     '::before': { content: '""', position: 'absolute', insetBlock: -6, insetInline: 0 },
   },
+  shareRound: { borderRadius: 999 },
   panel: { display: 'flex', flexDirection: 'column', gap: 2, width: 'min(288px, calc(100vw - 16px))', fontFamily: cssVar.fontFamily, fontSize: 12 },
   heading: { margin: '2px 4px 6px', fontSize: 12, fontWeight: 600 },
   options: { display: 'flex', flexDirection: 'column', gap: 2 },
@@ -247,7 +248,7 @@ function OwnerActions({ id, visibility, onChange }: { id: string; visibility: Vi
         <span {...stylex.props(styles.visibilityLabel)}>{current.label}可见</span>
       </span>
       <Popover placement="bottomRight" trigger="click" content={panel}>
-        <button type="button" {...stylex.props(styles.share)}>
+        <button type="button" {...stylex.props(styles.share, styles.shareRound)}>
           分享
         </button>
       </Popover>
