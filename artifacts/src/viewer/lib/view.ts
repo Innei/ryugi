@@ -102,3 +102,24 @@ export function labelSize(rule: LabelRule, k: number) {
 }
 
 export const titleScale = (size: number, k: number) => labelSize({ ...TITLE_RULE, base: size }, k)! / (size * k);
+
+export function cubicBezier(x1: number, y1: number, x2: number, y2: number) {
+  const at = (t: number, a: number, b: number) => 3 * a * t * (1 - t) ** 2 + 3 * b * t ** 2 * (1 - t) + t ** 3;
+  const slope = (t: number, a: number, b: number) => 3 * a * (1 - t) ** 2 + 6 * (b - a) * t * (1 - t) + 3 * (1 - b) * t ** 2;
+  return (x: number) => {
+    if (x <= 0 || x >= 1) return Math.min(1, Math.max(0, x));
+    let t = x;
+    for (let i = 0; i < 8; i++) {
+      const d = slope(t, x1, x2);
+      if (Math.abs(d) < 1e-6) break;
+      t = Math.min(1, Math.max(0, t - (at(t, x1, x2) - x) / d));
+    }
+    return at(t, y1, y2);
+  };
+}
+
+export const tweenView = (from: View, to: View, p: number): View => ({
+  x: from.x + (to.x - from.x) * p,
+  y: from.y + (to.y - from.y) * p,
+  k: from.k + (to.k - from.k) * p,
+});

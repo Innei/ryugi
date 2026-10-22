@@ -236,3 +236,12 @@ test('an opened image or video board shows the media instead of a frame', async 
   expect(host.querySelector('[data-phone-board] [aria-label="播放"]')).not.toBeNull();
 });
 
+
+test('stepping to another question glides the canvas there instead of jumping', async () => {
+  const frame = vi.fn();
+  vi.stubGlobal('requestAnimationFrame', frame);
+  await mount();
+  expect(frame).not.toHaveBeenCalled();
+  await act(async () => host!.querySelector<HTMLButtonElement>('button[aria-label="上一题"]')!.click());
+  expect(frame).toHaveBeenCalled();
+});

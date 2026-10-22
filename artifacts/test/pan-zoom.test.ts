@@ -5,6 +5,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { COMMENT_CURSOR } from '../src/shared/inspector';
 import { usePanZoom, type Tool } from '../src/viewer/hooks/usePanZoom';
+import { fitView } from '../src/viewer/lib/view';
 
 let root: Root;
 let host: HTMLDivElement;
@@ -171,4 +172,69 @@ test('the comment tool shows the bubble cursor and does not pan', () => {
 test('holding space still pans from the comment tool', () => {
   render('comment', true);
   expect(panZoom.cursor).toBe('grab');
+});
+
+function frames() {
+  const queue: FrameRequestCallback[] = [];
+  let now = 0;
+  vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => queue.push(cb));
+  vi.stubGlobal('cancelAnimationFrame', () => queue.splice(0));
+  vi.spyOn(performance, 'now').mockImplementation(() => now);
+  return (ms: number) =>
+    act(() => {
+      now += ms;
+      queue.splice(0).forEach((cb) => cb(now));
+    });
+}
+const shown = () => JSON.parse(host.querySelector('output')!.textContent!) as { x: number; y: number; k: number };
+const sized = () => {
+  vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(400);
+  vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(400);
+};
+const target = { minX: 0, minY: 0, maxX: 800, maxY: 800 };
+const flat = { top: 0, right: 0, bottom: 0, left: 0 };
+const fitted = () => fitView(target, { width: 400, height: 400 }, flat);
+
+test('an animated fit eases the view over several frames and lands on the fitted view', () => {
+  sized();
+  const step = frames();
+  render('hand');
+  act(() => panZoom.place({ x: 100, y: 100, k: 2 }));
+  act(() => panZoom.fit(target, flat, { animate: true }));
+  expect(shown()).toEqual({ x: 100, y: 100, k: 2 });
+  step(100);
+  const mid = shown();
+  expect(mid.k).toBeLessThan(2);
+  expect(mid.k).toBeGreaterThan(fitted().k);
+  expect(mid.x).toBeLessThan(100);
+  step(400);
+  expect(shown()).toEqual(fitted());
+  vi.restoreAllMocks();
+});
+
+test('with reduced motion an animated fit jumps straight to the fitted view', () => {
+  sized();
+  frames();
+  vi.stubGlobal('matchMedia', (query: string) => ({ matches: query.includes('reduce') }));
+  render('hand');
+  act(() => panZoom.place({ x: 100, y: 100, k: 2 }));
+  act(() => panZoom.fit(target, flat, { animate: true }));
+  expect(shown()).toEqual(fitted());
+  vi.restoreAllMocks();
+});
+
+test('a finger landing during an animated fit stops it where it is', () => {
+  sized();
+  const step = frames();
+  render('hand');
+  act(() => panZoom.place({ x: 100, y: 100, k: 2 }));
+  act(() => panZoom.fit(target, flat, { animate: true }));
+  step(100);
+  const caught = shown();
+  const el = host.firstElementChild as HTMLElement;
+  el.setPointerCapture = vi.fn();
+  act(() => el.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: 1, pointerType: 'touch', clientX: 10, clientY: 10 })));
+  step(400);
+  expect(shown()).toEqual(caught);
+  vi.restoreAllMocks();
 });

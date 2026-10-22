@@ -60,10 +60,10 @@ export function PhoneArtboard({ id, artifact, canvas, layout, warnings, pending,
   const [open, setOpen] = useState<string | null>(null);
   const tap = useRef<{ pointer: number; x: number; y: number } | null>(null);
 
-  const show = useCallback((question: Question | null) => {
+  const show = useCallback((question: Question | null, animate = false) => {
     if (!question) return false;
     setCurrent(question.id);
-    fit(question.bounds, INSETS);
+    fit(question.bounds, INSETS, { animate });
     return true;
   }, [fit]);
   const fitPage = useCallback((page: string) => {
@@ -84,7 +84,7 @@ export function PhoneArtboard({ id, artifact, canvas, layout, warnings, pending,
   const list = useMemo(() => questionList(rounds), [rounds]);
   const question = list.find((q) => q.id === current) ?? null;
   const pick = (next: Question) => {
-    show(next);
+    show(next, true);
     setSnap(SHEET_PEEK);
   };
 

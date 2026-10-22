@@ -1,12 +1,15 @@
 import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { COMMENT_CURSOR } from '../../shared/inspector';
 import type { Bounds } from '../../shared/types';
-import { fitView, pinchView, zoomAround, zoomTo, type Insets, type Point, type View } from '../lib/view';
+import { cubicBezier, fitView, pinchView, tweenView, zoomAround, zoomTo, type Insets, type Point, type View } from '../lib/view';
 
 export type Tool = 'select' | 'hand' | 'comment';
 
 const INSETS: Insets = { top: 64, right: 24, bottom: 24, left: 24 };
 const WHEEL_ZOOM_SPEED = 0.01;
+const FIT_MS = 420;
+const ease = cubicBezier(0.2, 0, 0, 1);
+const reducedMotion = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 export interface WheelInput { deltaX: number; deltaY: number; x: number; y: number; zoom: boolean }
 
 export function usePanZoom(tool: Tool) {
@@ -16,6 +19,14 @@ export function usePanZoom(tool: Tool) {
   const [dragging, setDragging] = useState(false);
   const last = useRef<{ x: number; y: number } | null>(null);
   const touches = useRef(new Map<number, Point>());
+  const current = useRef(view);
+  current.current = view;
+  const animation = useRef<number | null>(null);
+  const stop = useCallback(() => {
+    if (animation.current !== null) cancelAnimationFrame(animation.current);
+    animation.current = null;
+  }, []);
+  useEffect(() => stop, [stop]);
 
   const panBy = useCallback((x: number, y: number) => setView((v) => ({ ...v, x: v.x + x, y: v.y + y })), []);
   const wheelAt = useCallback((input: WheelInput) => {
@@ -29,12 +40,13 @@ export function usePanZoom(tool: Tool) {
     const onWheel = (e: WheelEvent) => {
       if ((e.target as HTMLElement | null)?.closest?.('[data-chrome]:not([data-chrome="board-label"])')) return;
       e.preventDefault();
+      stop();
       const rect = el.getBoundingClientRect();
       wheelAt({ deltaX: e.deltaX, deltaY: e.deltaY, x: e.clientX - rect.left, y: e.clientY - rect.top, zoom: e.ctrlKey || e.metaKey });
     };
     el.addEventListener('wheel', onWheel, { passive: false });
     return () => el.removeEventListener('wheel', onWheel);
-  }, [wheelAt]);
+  }, [wheelAt, stop]);
 
   useEffect(() => {
     const isTyping = (e: KeyboardEvent) => (e.target as HTMLElement | null)?.closest?.('input, textarea, select, [contenteditable], [data-chrome]');
@@ -68,12 +80,13 @@ export function usePanZoom(tool: Tool) {
       // Portal events bubble through React even when their targets are outside the viewport.
       if (!e.currentTarget.contains(e.target as Node)) return;
       if ((e.target as HTMLElement).closest('[data-chrome]')) return;
+      stop();
       e.currentTarget.setPointerCapture(e.pointerId);
       last.current = { x: e.clientX, y: e.clientY };
       if (touch) touches.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
       setDragging(true);
     },
-    [panning],
+    [panning, stop],
   );
 
   const onPointerMove = useCallback((e: ReactPointerEvent<HTMLDivElement>) => {
@@ -106,11 +119,24 @@ export function usePanZoom(tool: Tool) {
     return { cx: (el?.clientWidth ?? 0) / 2, cy: (el?.clientHeight ?? 0) / 2 };
   };
 
-  const fit = useCallback((bounds: Bounds | null | undefined, insets: Insets = INSETS) => {
+  const fit = useCallback((bounds: Bounds | null | undefined, insets: Insets = INSETS, options: { animate?: boolean } = {}) => {
     const el = viewportRef.current;
     if (!el || !bounds) return;
-    setView(fitView(bounds, { width: el.clientWidth, height: el.clientHeight }, insets));
-  }, []);
+    const target = fitView(bounds, { width: el.clientWidth, height: el.clientHeight }, insets);
+    stop();
+    if (!options.animate || reducedMotion()) {
+      setView(target);
+      return;
+    }
+    const from = current.current;
+    const start = performance.now();
+    const tick = () => {
+      const p = Math.min(1, (performance.now() - start) / FIT_MS);
+      setView(p === 1 ? target : tweenView(from, target, ease(p)));
+      animation.current = p === 1 ? null : requestAnimationFrame(tick);
+    };
+    animation.current = requestAnimationFrame(tick);
+  }, [stop]);
 
   const zoomBy = useCallback((factor: number) => {
     const { cx, cy } = center();
