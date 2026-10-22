@@ -5,6 +5,7 @@ import type { BoardThread } from '../../shared/board-comments';
 import { authorOf } from '../document/author';
 import { anchorLabel, staleText } from '../lib/board-anchor';
 import '../inspector/inspector.css';
+import { brand } from '../tokens.stylex';
 
 export type CommentsTab = 'open' | 'all';
 
@@ -65,7 +66,7 @@ const styles = stylex.create({
     fontSize: 10,
     fontWeight: 600,
   },
-  numAgent: { backgroundColor: '#8b7cf8' },
+  numAgent: { backgroundColor: brand.accentStrong },
   numReject: { backgroundColor: '#e5484d' },
   numResolved: { backgroundColor: '#3a3a3a', color: '#999' },
   numStale: { backgroundColor: 'transparent', borderWidth: 1, borderStyle: 'dashed', borderColor: '#e5a54b', color: '#e5a54b' },

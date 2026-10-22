@@ -1,4 +1,5 @@
 import type { CommentsFile, HumanOp } from '../../shared/comments';
+import { DOCUMENT_FEATURES, DOCUMENT_FEATURES_HEADER } from '../../shared/document-features';
 import type { RelayPresence } from '../../shared/relay';
 import type { DocumentPayload } from '../../shared/types';
 import { createChannel, type Channel } from './channel';
@@ -13,6 +14,8 @@ export interface DocumentState {
   lineage: string;
   cursor: { id: string; offset: number } | null;
   streaming?: boolean;
+  agentActiveAt?: number;
+  now?: number;
   comments?: CommentsFile;
 }
 
@@ -34,7 +37,11 @@ export const encodeBase64 = (bytes: Uint8Array) => {
 
 export function createLocalTransport({ id, channel, send }: { id: string; channel: Channel; send: (message: unknown) => void }): DocumentTransport {
   const post = (action: string, body: BodyInit, type: string) =>
-    fetch(`/api/document/${id}/${action}`, { method: 'POST', headers: { 'Content-Type': type }, body });
+    fetch(`/api/document/${id}/${action}`, {
+      method: 'POST',
+      headers: { 'Content-Type': type, [DOCUMENT_FEATURES_HEADER]: DOCUMENT_FEATURES.join(',') },
+      body,
+    });
   return {
     artifact: `document/${id}`,
     channel,
@@ -92,7 +99,7 @@ export function createRelayTransport(options: RelayTransportOptions): DocumentTr
     },
     state: () => connection.request<DocumentState>({ op: 'state' }),
     async update(bytes) {
-      await connection.request({ op: 'update', bytes: encodeBase64(bytes) });
+      await connection.request({ op: 'update', bytes: encodeBase64(bytes), features: DOCUMENT_FEATURES });
     },
     async comment(op) {
       return (await connection.request<{ comments: CommentsFile }>({ op: 'comment', comment: op })).comments;

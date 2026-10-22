@@ -2,6 +2,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { createLoroBinding } from '@haklex/rich-collab-loro';
+import { allHeadlessNodes } from '@haklex/rich-headless';
+import { createHeadlessEditor } from '@lexical/headless';
 import { $getRoot, $isElementNode, $isTextNode, type LexicalNode, type TextNode } from 'lexical';
 import { LoroDoc } from 'loro-crdt';
 import { afterEach, expect, test } from 'vitest';
@@ -201,4 +203,101 @@ test('an agent write from a copy older than the human edit does not revert it', 
   await session.flush();
   expect(read(file)).toContain('one, edited by hand');
   expect(read(file)).toContain('two</p>');
+});
+
+test('a pending block survives load and an agent edit that fills the section before it', async () => {
+  const { file, snapshotFile } = setup('<doc><h2 id="a">One</h2><pending id="p1" intent="first"/><h2 id="b">Two</h2><pending id="p2" intent="second"/></doc>');
+  const session = await open(file, snapshotFile);
+  await session.flush();
+  expect(read(file)).toContain('<pending id="p1" intent="first" />');
+  const agentText = read(file).replace('<pending id="p1" intent="first" />', '<p>filled</p>');
+  fs.writeFileSync(file, agentText);
+  session.onFileText(agentText);
+  await session.flush();
+  expect(session.outcome().kind).toBe('merged');
+  expect(read(file)).toContain('filled</p>');
+  expect(read(file)).not.toContain('intent="first"');
+  expect(read(file)).toContain('<pending id="p2" intent="second" />');
+});
+
+test('agent activity starts at the file time and moves only with agent writes', async () => {
+  const { file, snapshotFile } = setup('<doc><p>one</p></doc>');
+  const written = new Date(Date.now() - 60_000);
+  fs.utimesSync(file, written, written);
+  const session = await open(file, snapshotFile);
+  await session.flush();
+  expect(session.agentActiveAt()).toBe(written.getTime());
+
+  const peer = new LoroDoc();
+  peer.import(session.snapshot());
+  const editor = createDocumentHeadlessEditor();
+  const binding = createLoroBinding(editor, peer);
+  const from = peer.oplogVersion();
+  editor.update(() => $findText($getRoot(), 'one')!.setTextContent('one by hand'), { discrete: true });
+  session.importUpdate(peer.export({ mode: 'update', from }));
+  binding.dispose();
+  await session.flush();
+  expect(session.agentActiveAt()).toBe(written.getTime());
+
+  const events: DocumentEvent[] = [];
+  session.subscribe((event) => events.push(event));
+  const before = Date.now();
+  const broken = '<doc><p>one</h2></doc>';
+  fs.writeFileSync(file, broken);
+  session.onFileText(broken);
+  expect(session.agentActiveAt()).toBeGreaterThanOrEqual(before);
+  expect(events.some((event) => event.type === 'status' && event.agentActiveAt === session.agentActiveAt())).toBe(true);
+});
+
+test('a client that cannot show pending blocks is refused instead of wiping the document', async () => {
+  const { file, snapshotFile } = setup('<doc><h2>One</h2><p>keep me</p><pending intent="first"/></doc>');
+  const session = await open(file, snapshotFile);
+  await session.flush();
+
+  const peer = new LoroDoc();
+  const updates: Uint8Array[] = [];
+  peer.subscribeLocalUpdates((bytes) => updates.push(bytes));
+  const binding = createLoroBinding(createHeadlessEditor({ nodes: allHeadlessNodes, onError: () => {} }), peer);
+  binding.import(session.snapshot());
+  binding.dispose();
+  expect(updates.length).toBeGreaterThan(0);
+
+  for (const update of updates) expect(() => session.importUpdate(update)).toThrow('reload the page');
+  await session.flush();
+  expect(read(file)).toContain('keep me');
+  expect(read(file)).toContain('intent="first"');
+});
+
+test('a client that declares pending support edits a document that has pending blocks', async () => {
+  const { file, snapshotFile } = setup('<doc><p>one</p><pending intent="first"/></doc>');
+  const session = await open(file, snapshotFile);
+  await session.flush();
+  const peer = new LoroDoc();
+  peer.import(session.snapshot());
+  const editor = createDocumentHeadlessEditor();
+  const binding = createLoroBinding(editor, peer);
+  const from = peer.oplogVersion();
+  editor.update(() => $findText($getRoot(), 'one')!.setTextContent('one by hand'), { discrete: true });
+  session.importUpdate(peer.export({ mode: 'update', from }), ['pending']);
+  binding.dispose();
+  await session.flush();
+  expect(read(file)).toContain('one by hand');
+});
+
+test('agent activity survives a restart even when a human autosave touched the file since', async () => {
+  const { file, snapshotFile } = setup('<doc><p>one</p><pending intent="later"/></doc>');
+  const first = await open(file, snapshotFile);
+  await first.flush();
+  const agentText = read(file).replace('</doc>', '  <p>two</p>\n</doc>');
+  fs.writeFileSync(file, agentText);
+  first.onFileText(agentText);
+  await first.flush();
+  const wrote = first.agentActiveAt();
+  await first.close();
+  sessions = sessions.filter((s) => s !== first);
+
+  const later = new Date(Date.now() + 3_600_000);
+  fs.utimesSync(file, later, later);
+  const second = await open(file, snapshotFile);
+  expect(second.agentActiveAt()).toBe(wrote);
 });

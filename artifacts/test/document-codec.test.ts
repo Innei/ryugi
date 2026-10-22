@@ -69,6 +69,19 @@ describe('parseDocument', () => {
     expect(out).toContain('"radius":8');
   });
 
+  test('a pending block keeps its intent and block id through a round trip', () => {
+    const state = parseDocument('<doc><h2 id="h1">存储</h2><pending id="p1" intent="讲清三类存储与 R2 key 前缀"/></doc>');
+    expect(state.root.children[1]).toMatchObject({ type: 'pending', intent: '讲清三类存储与 R2 key 前缀' });
+    const out = serializeDocument(state);
+    expect(out).toContain('<pending id="p1" intent="讲清三类存储与 R2 key 前缀" />');
+    expect(parseDocument(out).root.children[1]).toMatchObject({ type: 'pending', intent: '讲清三类存储与 R2 key 前缀' });
+  });
+
+  test('rejects a pending block that is not a top-level block', () => {
+    expect(() => parseDocument('<doc><details summary="x"><pending intent="later"/></details></doc>')).toThrow('<pending> must be a top-level block');
+    expect(() => parseDocument('<doc><blockquote><pending intent="later"/></blockquote></doc>')).toThrow('<pending> must be a top-level block');
+  });
+
   test.each(['https://example.com/x.html', 'assets/../doc.xml', '/assets/x.html', 'assets/x.js', 'assets/sub/x.html', ''])(
     'rejects a dynamic url outside assets/<name>.html: %s',
     (url) => {

@@ -4,9 +4,9 @@ import { ArrowRight, LogIn, LogOut } from 'lucide-react';
 import { useState } from 'react';
 import { RyugiMark } from '../components/RyugiMark';
 import { INSTALL_COMMAND, INSTALL_URL, loginUrl, switchAccount } from '../lib/cloud-shell';
+import { brand } from '../tokens.stylex';
 
 const NARROW = '@media (max-width: 900px)';
-const BRAND = '#c65d3b';
 
 const styles = stylex.create({
   page: {
@@ -29,7 +29,7 @@ const styles = stylex.create({
   title: { margin: '0 0 10px', fontSize: 30, fontWeight: 650 },
   lead: { margin: '0 0 22px', color: cssVar.colorTextSecondary, fontSize: 15, lineHeight: 1.8 },
   line: { margin: 0, color: cssVar.colorText, fontSize: 14, lineHeight: 1.9 },
-  inlineLink: { color: BRAND, textDecoration: 'underline', textUnderlineOffset: 3, cursor: 'pointer' },
+  inlineLink: { color: brand.accentStrong, textDecoration: 'underline', textUnderlineOffset: 3, cursor: 'pointer' },
   who: { display: 'flex', alignItems: 'flex-start', gap: 10, marginTop: 14, fontSize: 14, lineHeight: 1.7 },
   avatar: {
     display: 'grid',
@@ -38,7 +38,7 @@ const styles = stylex.create({
     width: 28,
     height: 28,
     borderRadius: '50%',
-    backgroundColor: BRAND,
+    backgroundColor: brand.accentStrong,
     color: '#fff',
     fontSize: 13,
     fontWeight: 600,
@@ -138,7 +138,7 @@ export function CloudNotFound({ id, login }: { id: string; login: string | null 
         {error && <p {...stylex.props(styles.error)}>{error}</p>}
       </section>
       <aside {...stylex.props(styles.promo)}>
-        <RyugiMark size={32} color={BRAND} />
+        <RyugiMark size={32} color={brand.accent} />
         <h2 {...stylex.props(styles.promoTitle)}>让 agent 把方案画给你看</h2>
         <p {...stylex.props(styles.promoText)}>Ryugi 让 coding agent 先出 mockup、写设计文档，确认后再写代码。</p>
         <div {...stylex.props(styles.tiles)} aria-hidden="true">

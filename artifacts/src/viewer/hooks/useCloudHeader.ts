@@ -1,10 +1,15 @@
 import { useEffect } from 'react';
 
+export type ActivityTone = 'live' | 'quiet' | 'warning';
+
+const TONES: readonly string[] = ['live', 'quiet', 'warning'];
+
 export interface CloudHeaderState {
   title?: string;
   online?: boolean | null;
   comments?: number;
   activity?: string | null;
+  activityTone?: ActivityTone;
   retrying?: boolean;
   reason?: string | null;
 }
@@ -15,10 +20,10 @@ export function reportCloudHeader(id: string, state: CloudHeaderState) {
 
 export function useCloudHeader(id: string, state: CloudHeaderState | null) {
   const enabled = state !== null;
-  const { title, online, comments, activity, retrying, reason } = state ?? {};
+  const { title, online, comments, activity, activityTone, retrying, reason } = state ?? {};
   useEffect(() => {
-    if (enabled) reportCloudHeader(id, { title, online, comments, activity, retrying, reason });
-  }, [id, enabled, title, online, comments, activity, retrying, reason]);
+    if (enabled) reportCloudHeader(id, { title, online, comments, activity, activityTone, retrying, reason });
+  }, [id, enabled, title, online, comments, activity, activityTone, retrying, reason]);
   return enabled && window.parent !== window;
 }
 
@@ -30,7 +35,10 @@ export function readCloudHeader(data: unknown, id: string): CloudHeaderState | n
   if (typeof message.title === 'string') state.title = message.title;
   if (typeof message.online === 'boolean' || message.online === null) state.online = message.online;
   if (typeof message.comments === 'number' && Number.isSafeInteger(message.comments) && message.comments >= 0) state.comments = message.comments;
-  if (typeof message.activity === 'string' || message.activity === null) state.activity = message.activity;
+  if (typeof message.activity === 'string' || message.activity === null) {
+    state.activity = message.activity;
+    state.activityTone = typeof message.activityTone === 'string' && TONES.includes(message.activityTone) ? (message.activityTone as ActivityTone) : undefined;
+  }
   if (typeof message.retrying === 'boolean') state.retrying = message.retrying;
   if (typeof message.reason === 'string' || message.reason === null) state.reason = message.reason;
   return state;

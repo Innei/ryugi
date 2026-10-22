@@ -20,6 +20,7 @@ import {
 import * as stylex from '@stylexjs/stylex';
 import { useState, type ComponentType, type CSSProperties } from 'react';
 import { agentIconOf, type AgentIconKey } from './author';
+import { brand } from '../tokens.stylex';
 
 const SIZE = 20;
 
@@ -48,8 +49,8 @@ const ICONS: Record<AgentIconKey, { Avatar: IconAvatar }> = {
 const styles = stylex.create({
   avatar: { width: SIZE, height: SIZE, flexShrink: 0, borderRadius: '50%', display: 'grid', placeItems: 'center', color: '#fff', fontSize: 10 },
   image: { width: SIZE, height: SIZE, flexShrink: 0, borderRadius: '50%', objectFit: 'cover' },
-  human: { backgroundColor: '#c46a3b' },
-  agent: { backgroundColor: '#7c5cff' },
+  human: { backgroundColor: '#2f6fd6' },
+  agent: { backgroundColor: brand.accentStrong },
 });
 
 interface Props {

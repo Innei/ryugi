@@ -8,8 +8,7 @@ import { boardReady, boardSrc, canPlay } from '../lib/play';
 import { titleScale, type View } from '../lib/view';
 import { MediaBoard } from './MediaBoard';
 import { WritingCursor } from './WritingCursor';
-
-const PLAY_ACCENT = '#8b7cf8';
+import { brand } from '../tokens.stylex';
 
 const styles = stylex.create({
   world: { position: 'absolute', left: 0, top: 0, transformOrigin: '0 0' },
@@ -27,7 +26,7 @@ const styles = stylex.create({
     outlineStyle: 'solid',
     outlineColor: cssVar.colorBorderSecondary,
   },
-  playing: { pointerEvents: 'auto', outlineWidth: 2, outlineColor: PLAY_ACCENT },
+  playing: { pointerEvents: 'auto', outlineWidth: 2, outlineColor: brand.accent },
   inspecting: { pointerEvents: 'auto' },
   skeleton: {
     display: 'flex',
@@ -42,8 +41,8 @@ const styles = stylex.create({
   },
   drawing: {
     outlineStyle: 'solid',
-    outlineColor: PLAY_ACCENT,
-    backgroundImage: 'linear-gradient(110deg, transparent, rgba(139,124,248,0.1), transparent)',
+    outlineColor: brand.accent,
+    backgroundImage: `linear-gradient(110deg, transparent, color-mix(in srgb, ${brand.accent} 10%, transparent), transparent)`,
   },
   skeletonText: {
     color: cssVar.colorTextSecondary,

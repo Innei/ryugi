@@ -4,7 +4,7 @@ import type { DocumentSelectionMessage } from './selection';
 export type RelayRequest =
   | { op: 'meta' }
   | { op: 'state' }
-  | { op: 'update'; bytes: string }
+  | { op: 'update'; bytes: string; features?: string[] }
   | { op: 'comment'; comment: HumanOp }
   | { op: 'selection'; selection: DocumentSelectionMessage }
   | { op: 'file'; path: string }

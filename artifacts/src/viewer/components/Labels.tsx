@@ -7,10 +7,10 @@ import type { Verdicts } from '../hooks/useVerdicts';
 import { boardReady, canPlay } from '../lib/play';
 import { GroupVerdict } from '../verdicts/GroupVerdict';
 import { BOARD_LABEL_RULE, GROUP_LABEL_RULE, labelRect, labelSize, type View } from '../lib/view';
+import { brand } from '../tokens.stylex';
 
 const ACTIONS_MIN_WIDTH = 150;
 const PLAY_MIN_WIDTH = 240;
-const PLAY_ACCENT = '#8b7cf8';
 const BOARD_LABEL_FONT = 12;
 const GROUP_LABEL_FONT = 13;
 const GROUP_LABEL_GAP = 26;
@@ -69,17 +69,17 @@ const styles = stylex.create({
     paddingInline: 7,
     borderWidth: 1,
     borderStyle: 'solid',
-    borderColor: PLAY_ACCENT,
+    borderColor: brand.accent,
     borderRadius: 6,
-    backgroundColor: { default: 'transparent', ':hover': 'rgba(139, 124, 248, 0.14)' },
-    color: PLAY_ACCENT,
+    backgroundColor: { default: 'transparent', ':hover': `color-mix(in srgb, ${brand.accent} 14%, transparent)` },
+    color: brand.accentStrong,
     fontFamily: cssVar.fontFamily,
     fontSize: 11,
     fontWeight: 600,
     letterSpacing: '0.04em',
     cursor: 'pointer',
   },
-  playOn: { backgroundColor: { default: PLAY_ACCENT, ':hover': PLAY_ACCENT }, color: '#ffffff' },
+  playOn: { backgroundColor: { default: brand.accentStrong, ':hover': brand.accentStrong }, color: '#ffffff' },
   chip: {
     paddingInline: 5,
     borderRadius: 4,

@@ -84,6 +84,8 @@ describe('document state API', () => {
     expect(typeof state.snapshot).toBe('string');
     expect(state.lineage).toMatch(/@/);
     expect(state.outcome).toEqual({ kind: 'idle' });
+    expect(state.agentActiveAt).toBeGreaterThan(0);
+    expect(Math.abs(state.now - Date.now())).toBeLessThan(5000);
     const peer = new LoroDoc();
     expect(() => peer.import(Buffer.from(state.snapshot, 'base64'))).not.toThrow();
   });
@@ -107,6 +109,9 @@ describe('live document', () => {
     expect(update.artifact).toBe('document/relay');
     expect(typeof update.bytes).toBe('string');
     await waitFor(() => ws.messages.some((m) => JSON.parse(m).type === 'doc-status' && JSON.parse(m).outcome.kind === 'merged'));
+    const status = ws.messages.map((m) => JSON.parse(m)).find((m) => m.type === 'doc-status' && m.outcome.kind === 'merged');
+    expect(status.agentActiveAt).toBe((await api(server, '/api/document/relay/state')).agentActiveAt);
+    expect(Math.abs(status.now - Date.now())).toBeLessThan(5000);
     ws.socket?.destroy();
   });
 
@@ -127,6 +132,28 @@ describe('live document', () => {
     });
     binding.dispose();
     expect(res.status).toBe(204);
+    await waitFor(() => fs.readFileSync(docFile(root, 'relay'), 'utf8').includes('one, by hand'));
+  });
+
+  test('a page that does not declare pending support cannot post into a document with pending blocks', async () => {
+    const { server, root } = await start();
+    writeDocument(root, 'relay', { 'doc.xml': '<doc><p>one</p><pending intent="later"/></doc>' });
+    await waitFor(() => fs.readFileSync(docFile(root, 'relay'), 'utf8').includes(' id="'));
+    const state = await api(server, '/api/document/relay/state');
+    const peer = new LoroDoc();
+    peer.import(Buffer.from(state.snapshot, 'base64'));
+    const editor = createDocumentHeadlessEditor();
+    const binding = createLoroBinding(editor, peer);
+    const from = peer.oplogVersion();
+    editor.update(() => $findText($getRoot(), 'one')!.setTextContent('one, by hand'), { discrete: true });
+    const update = Buffer.from(peer.export({ mode: 'update', from }));
+    binding.dispose();
+    const headers = { Cookie: cookie(server), Origin: base(server) };
+    const refused = await post(`${base(server)}/api/document/relay/update`, update, headers);
+    expect(refused.status).toBe(409);
+    expect(JSON.parse(refused.body).error).toContain('reload the page');
+    const accepted = await post(`${base(server)}/api/document/relay/update`, update, { ...headers, 'X-Ryugi-Document-Features': 'pending' });
+    expect(accepted.status).toBe(204);
     await waitFor(() => fs.readFileSync(docFile(root, 'relay'), 'utf8').includes('one, by hand'));
   });
 

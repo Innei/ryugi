@@ -26,16 +26,28 @@ tables.
 
 ## Show the document early
 
-For a new document, first save a short, valid `doc.xml` containing the title,
-a brief introduction and the planned section headings inside a closed
-`<doc>`. This lets your human partner open the outline while you write the
-body. Read the current file again before filling it, preserving the ids the
-server added and any edits your human partner made. Keep the XML valid at
-every save, and check warnings as above.
+For a new document, first save a short, valid `doc.xml` inside a closed
+`<doc>`: the title, a brief introduction, then each planned section as its
+heading followed by a `<pending>` block naming what the section will cover:
+
+```xml
+<h2>2. 存储</h2>
+<pending intent="三类数据各存在哪里，以及 R2 的 key 前缀"/>
+```
+
+Your human partner opens this outline while you write. The viewer shows each
+`<pending>` as a placeholder and puts your caret on the first one, so they
+can see what is left and where you write next.
+
+To fill a section, read the current file again, preserving the ids the server
+added and any edits your human partner made, then replace that section's
+`<pending>` with its body in the same save. Keep the XML valid at every save,
+and check warnings as above.
 
 For an existing or interrupted document, keep completed sections and fill
 the gaps; do not replace it with a new outline. An outline is a start, not a
-completed document. Finish the planned body before reporting completion.
+completed document. Finish the planned body before reporting completion:
+the document is finished when no `<pending>` is left.
 
 The viewer already streams document updates; you do not need a separate
 tool call for every node or character.
@@ -66,6 +78,7 @@ tool call for every node or character.
 </doc>
 ```
 
+`<pending intent="…"/>` marks a section you have not written yet.
 `<math>` is inline unless `display="block"`. `<alert>` `type`: `note`,
 `tip`, `important`, `warning`, `caution`. `<ol start="3">` and
 `<details open="true">` also work.

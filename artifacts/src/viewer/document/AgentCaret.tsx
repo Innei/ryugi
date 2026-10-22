@@ -3,6 +3,7 @@ import * as stylex from '@stylexjs/stylex';
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { AgentCaretPosition } from './LoroSync';
+import { brand } from '../tokens.stylex';
 
 interface Rect {
   left: number;
@@ -10,11 +11,9 @@ interface Rect {
   height: number;
 }
 
-const AGENT = '#7c5cff';
-
 const styles = stylex.create({
   caret: { position: 'absolute', zIndex: 5, pointerEvents: 'none', transitionProperty: 'left, top', transitionDuration: '100ms' },
-  bar: { width: 2, height: '100%', borderRadius: 1, backgroundColor: AGENT },
+  bar: { width: 2, height: '100%', borderRadius: 1, backgroundColor: brand.accent },
   label: {
     position: 'absolute',
     bottom: '100%',
@@ -22,7 +21,7 @@ const styles = stylex.create({
     marginBottom: 2,
     paddingInline: 4,
     borderRadius: 3,
-    backgroundColor: AGENT,
+    backgroundColor: brand.accentStrong,
     color: '#fff',
     fontSize: 10,
     fontWeight: 600,

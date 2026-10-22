@@ -227,6 +227,30 @@ describe('requests', () => {
     await waitFor(() => fs.readFileSync(path.join(root, 'document/plan/doc.xml'), 'utf8').includes('one, from the phone'));
   });
 
+  test('a phone page that does not declare pending support is refused on a document with pending blocks', async () => {
+    const hub = await fakeHub();
+    const { root } = await start({ hub });
+    await hub.next('hello');
+    const file = path.join(root, 'document/plan/doc.xml');
+    await waitFor(() => fs.readFileSync(file, 'utf8').includes(' id="'));
+    fs.writeFileSync(file, fs.readFileSync(file, 'utf8').replace('</doc>', '<pending intent="later"/></doc>'));
+    await waitFor(() => fs.readFileSync(file, 'utf8').includes('<pending id='));
+    const state = (await request(hub, { op: 'state' })).body.data;
+    const peer = new LoroDoc();
+    peer.import(Buffer.from(state.snapshot, 'base64'));
+    const editor = createDocumentHeadlessEditor();
+    const binding = createLoroBinding(editor, peer);
+    const from = peer.oplogVersion();
+    editor.update(() => $findText($getRoot(), 'one')!.setTextContent('one, from the phone'), { discrete: true });
+    const bytes = Buffer.from(peer.export({ mode: 'update', from })).toString('base64');
+    binding.dispose();
+    const refused = await request(hub, { op: 'update', bytes });
+    expect(refused.body.ok).toBe(false);
+    const accepted = await request(hub, { op: 'update', bytes, features: ['pending'] });
+    expect(accepted.body.ok).toBe(true);
+    await waitFor(() => fs.readFileSync(file, 'utf8').includes('one, from the phone'));
+  });
+
   test('a selection from the phone is written for the hook', async () => {
     const hub = await fakeHub();
     const { root } = await start({ hub });

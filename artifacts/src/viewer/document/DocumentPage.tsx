@@ -6,15 +6,18 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { emptyComments, type CommentsFile, type HumanOp } from '../../shared/comments';
 import { WarningsBadge } from '../components/WarningsBadge';
 import { PHONE_QUERY, useMedia } from '../hooks/useMedia';
+import { agentActivity } from './agentActivity';
 import type { ThreadActions } from './CommentCard';
 import { DocumentEditor } from './DocumentEditor';
 import { DesktopDocument } from './DesktopDocument';
 import { DynamicHostContext, type DynamicHost } from './DynamicBlock';
 import { decodeBase64 } from './LoroSync';
+import { PendingContext, type PendingProgress } from './PendingBlock';
 import type { DocumentMeta, DocumentState, DocumentTransport } from './transport';
 import { TopBar } from './TopBar';
 import { useDocumentSelectionSync } from './useDocumentSelectionSync';
 import { useLocalTransport } from './useDocumentTransport';
+import { useNow, usePendingBlocks } from './usePendingBlocks';
 import { PhoneLayout } from './PhoneLayout';
 import { useSelectionComment, type SelectionTarget } from './useSelectionComment';
 
@@ -61,6 +64,11 @@ export function DocumentView({ id, transport, live, cloud }: { id: string; trans
   const [comments, setComments] = useState<CommentsFile>(emptyComments);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [streaming, setStreaming] = useState(false);
+  const [agentActiveAt, setAgentActiveAt] = useState<number | undefined>(undefined);
+  const [clockOffset, setClockOffset] = useState(0);
+  const syncClock = useCallback((serverNow: number | undefined) => {
+    if (serverNow !== undefined) setClockOffset(serverNow - Date.now());
+  }, []);
   const [section, setSection] = useState<string | null>(null);
   const [offline, setOffline] = useState(false);
   const [editor, setEditor] = useState<LexicalEditor | null>(null);
@@ -90,6 +98,8 @@ export function DocumentView({ id, transport, live, cloud }: { id: string; trans
         loro.setChangeMergeInterval(20);
         loro.import(decodeBase64(state.snapshot));
         setStreaming(Boolean(state.streaming));
+        setAgentActiveAt(state.agentActiveAt);
+        syncClock(state.now);
         setComments(state.comments ?? emptyComments());
         setDoc(loro);
       } catch (err) {
@@ -99,16 +109,20 @@ export function DocumentView({ id, transport, live, cloud }: { id: string; trans
     return () => {
       cancelled = true;
     };
-  }, [transport, refreshMeta]);
+  }, [transport, refreshMeta, syncClock]);
 
   useEffect(
     () =>
       channel.subscribe((event) => {
         if (event.type === 'change') void refreshMeta();
-        else if (event.type === 'doc-status') setStreaming(event.streaming);
+        else if (event.type === 'doc-status') {
+          setStreaming(event.streaming);
+          setAgentActiveAt(event.agentActiveAt);
+          syncClock(event.now);
+        }
         else if (event.type === 'doc-comments') setComments(event.comments);
       }),
-    [channel, refreshMeta],
+    [channel, refreshMeta, syncClock],
   );
 
   useEffect(() => {
@@ -119,8 +133,10 @@ export function DocumentView({ id, transport, live, cloud }: { id: string; trans
   }, [canEdit]);
   const onState = useCallback((state: DocumentState) => {
     setStreaming(Boolean(state.streaming));
+    setAgentActiveAt(state.agentActiveAt);
+    syncClock(state.now);
     if (state.comments) setComments(state.comments);
-  }, []);
+  }, [syncClock]);
 
   useAssetBase(meta?.contentBase);
   useDocumentSelectionSync(editor, artifact, live, transport.send);
@@ -131,6 +147,14 @@ export function DocumentView({ id, transport, live, cloud }: { id: string; trans
   useEffect(() => {
     document.title = meta?.title || id;
   }, [meta?.title, id]);
+  const pendingBlocks = usePendingBlocks(editor);
+  const now = useNow(pendingBlocks.count > 0 && !streaming);
+  const activity = agentActivity({ streaming, pending: pendingBlocks.count, agentActiveAt, now: now + clockOffset });
+  const agentName = meta?.agent ?? 'Agent';
+  const pendingProgress = useMemo<PendingProgress>(
+    () => ({ nextKey: pendingBlocks.firstKey, agent: agentName, activity: activity.kind }),
+    [pendingBlocks.firstKey, agentName, activity.kind],
+  );
 
   const openComments = comments.threads.filter((thread) => thread.status === 'open').length;
   const [selection, clearSelection] = useSelectionComment(editor, mainEl);
@@ -179,16 +203,18 @@ export function DocumentView({ id, transport, live, cloud }: { id: string; trans
 
   const editorView = (
     <DynamicHostContext.Provider value={dynamicHost}>
-      <DocumentEditor
-        transport={transport}
-        agent={meta?.agent}
-        doc={doc}
-        theme={dark ? 'dark' : 'light'}
-        onAgentSection={setSection}
-        onOffline={setOffline}
-        onState={onState}
-        onEditorReady={setEditor}
-      />
+      <PendingContext.Provider value={pendingProgress}>
+        <DocumentEditor
+          transport={transport}
+          agent={meta?.agent}
+          doc={doc}
+          theme={dark ? 'dark' : 'light'}
+          onAgentSection={setSection}
+          onOffline={setOffline}
+          onState={onState}
+          onEditorReady={setEditor}
+        />
+      </PendingContext.Provider>
     </DynamicHostContext.Provider>
   );
 
@@ -198,7 +224,7 @@ export function DocumentView({ id, transport, live, cloud }: { id: string; trans
         id={id}
         title={meta?.title || id}
         agent={meta?.agent}
-        agentEditing={streaming}
+        activity={activity}
         agentSection={section}
         offline={offline}
         openComments={openComments}

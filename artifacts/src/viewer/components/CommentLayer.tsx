@@ -6,6 +6,7 @@ import { ThreadView, type ThreadActions } from '../comments/ThreadView';
 import { Composer } from '../document/Composer';
 import { anchorLabel, pinPoint, staleText } from '../lib/board-anchor';
 import type { View } from '../lib/view';
+import { brand } from '../tokens.stylex';
 
 const PIN = 28;
 const POPOVER = 300;
@@ -33,7 +34,7 @@ const styles = stylex.create({
     pointerEvents: 'auto',
     cursor: 'pointer',
   },
-  agent: { backgroundColor: '#8b7cf8' },
+  agent: { backgroundColor: brand.accentStrong },
   reject: { backgroundColor: '#e5484d' },
   resolved: { backgroundColor: '#3a3a3a', color: '#aaa' },
   stale: { backgroundColor: cssVar.colorBgLayout, borderStyle: 'dashed', borderColor: '#e5a54b', color: '#e5a54b' },

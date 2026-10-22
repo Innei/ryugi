@@ -6,6 +6,7 @@ import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeAll, expect, test, vi } from 'vitest';
 import { AgentCaret } from '../src/viewer/document/AgentCaret';
+import type { AgentActivity } from '../src/viewer/document/agentActivity';
 import { TopBar } from '../src/viewer/document/TopBar';
 
 vi.mock('@stylexjs/stylex', async (original) => ({ ...await original<object>(), create: (value: unknown) => value, props: () => ({}) }));
@@ -38,7 +39,7 @@ test('the document caret and editing status use the detected name and fall back 
     createElement(LexicalComposer, { initialConfig },
       createElement(ContentEditable),
       createElement(AgentCaret, { caret: key ? { key, offset: 1 } : null, container: host, agent }),
-      createElement(TopBar, { id: 'draft', agentEditing: true, agentSection: '方案', offline: false, openComments: 0, agent }),
+      createElement(TopBar, { id: 'draft', activity: { kind: 'editing' }, agentSection: '方案', offline: false, openComments: 0, agent }),
     ),
   ));
   await render('Codex');
@@ -48,4 +49,19 @@ test('the document caret and editing status use the detected name and fall back 
   await render();
   expect(host.querySelector('header')?.textContent).toContain('Agent 正在编辑 方案');
   expect(host.querySelector('[aria-hidden]')?.textContent).toBe('Agent');
+});
+
+test('between writes the bar says what is left, and turns to a warning once the agent goes quiet', async () => {
+  const host = document.createElement('div');
+  document.body.append(host);
+  root = createRoot(host);
+  const render = (activity: AgentActivity) => act(async () => root!.render(
+    createElement(TopBar, { id: 'draft', activity, agentSection: null, offline: false, openComments: 0, agent: 'Codex' }),
+  ));
+  await render({ kind: 'working', pending: 3, idleMs: 40_000 });
+  expect(host.querySelector('header')?.textContent).toContain('Codex 还有 3 节待写 · 40 秒前更新');
+  await render({ kind: 'stale', pending: 3, idleMs: 6 * 60_000 });
+  expect(host.querySelector('header')?.textContent).toContain('Codex 6 分钟没有更新 · 还有 3 节待写');
+  await render({ kind: 'idle' });
+  expect(host.querySelector('header')?.textContent).not.toContain('Codex');
 });

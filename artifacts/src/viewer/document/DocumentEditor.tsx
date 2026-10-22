@@ -21,9 +21,10 @@ import { AgentCaret } from './AgentCaret';
 import { DynamicNode } from './DynamicNode';
 import { LoroSync, type AgentCaretPosition } from './LoroSync';
 import { MermaidPreview } from './MermaidPreview';
+import { PendingNode } from './PendingNode';
 import type { DocumentState, DocumentTransport } from './transport';
 
-export const extraNodes = [ChartEditNode, ExcalidrawEditNode, DynamicNode, ...katexEditNodes];
+export const extraNodes = [ChartEditNode, ExcalidrawEditNode, DynamicNode, PendingNode, ...katexEditNodes];
 
 export const rendererConfig: RendererConfig = {
   [ALERT_NODE_KEY]: AlertEditRenderer,

@@ -1,8 +1,9 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { $reconcileRoot, createLoroBinding, streamAtVersion, type StreamStep, TREE_NAME } from '@haklex/rich-collab-loro';
-import type { SerializedEditorState } from 'lexical';
+import { $getRoot, type SerializedEditorState } from 'lexical';
 import { LoroDoc, type TreeID } from 'loro-crdt';
+import { DOCUMENT_FEATURES } from '../shared/document-features';
 import { createDocumentHeadlessEditor } from './document-headless';
 import { parseDocument, serializeDocument, stampBlockIds } from './document-codec';
 
@@ -20,7 +21,7 @@ export type DocumentOutcome =
 export type DocumentEvent =
   | { type: 'update'; bytes: Uint8Array }
   | { type: 'cursor'; cursor: AgentCursor | null }
-  | { type: 'status'; outcome: DocumentOutcome; streaming: boolean };
+  | { type: 'status'; outcome: DocumentOutcome; streaming: boolean; agentActiveAt: number };
 
 export interface DocumentSessionOptions {
   file: string;
@@ -34,11 +35,12 @@ export interface DocumentSessionOptions {
 export interface DocumentSession {
   snapshot(): Uint8Array;
   lineage(): string;
-  importUpdate(bytes: Uint8Array): void;
+  importUpdate(bytes: Uint8Array, features?: readonly string[]): void;
   onFileText(text: string): void;
   subscribe(listener: (event: DocumentEvent) => void): () => void;
   outcome(): DocumentOutcome;
   streaming(): boolean;
+  agentActiveAt(): number;
   cursor(): AgentCursor | null;
   settled(): Promise<void>;
   flush(): Promise<void>;
@@ -46,6 +48,8 @@ export interface DocumentSession {
 }
 
 const WRITTEN_LIMIT = 50;
+
+export class OutdatedClient extends Error {}
 
 const messageOf = (err: unknown) => (err instanceof Error ? err.message : String(err));
 
@@ -85,6 +89,16 @@ function closestBase(written: Map<string, unknown>, text: string, fallback: stri
     }
   }
   return best;
+}
+
+async function lastAgentWrite(activityFile: string, file: string) {
+  const recorded = Number(await readText(activityFile));
+  if (recorded > 0) return recorded;
+  try {
+    return Math.round((await fs.stat(file)).mtimeMs);
+  } catch {
+    return Date.now();
+  }
 }
 
 async function readText(file: string) {
@@ -136,9 +150,14 @@ export async function createDocumentSession(options: DocumentSessionOptions): Pr
   let lastCursor: AgentCursor | null = null;
   let lastGoodText: string | null = null;
   let lastFileText = (await readText(file)) ?? '';
+  // doc.xml's mtime also moves on human autosaves, so it only stands in before the first recorded agent write.
+  const activityFile = path.join(path.dirname(snapshotFile), 'agent-active');
+  let agentActiveAt = await lastAgentWrite(activityFile, file);
+  let activitySaved = Promise.resolve();
+  const emitStatus = () => emit({ type: 'status', outcome, streaming: streaming > 0, agentActiveAt });
   const setOutcome = (next: DocumentOutcome) => {
     outcome = next;
-    emit({ type: 'status', outcome, streaming: streaming > 0 });
+    emitStatus();
   };
 
   try {
@@ -184,6 +203,9 @@ export async function createDocumentSession(options: DocumentSessionOptions): Pr
   const onFileText = (text: string) => {
     if (text === lastFileText) return;
     lastFileText = text;
+    agentActiveAt = Date.now();
+    const at = agentActiveAt;
+    activitySaved = activitySaved.then(() => writeAtomic(activityFile, String(at))).catch((err) => log(`agent activity not saved: ${messageOf(err)}`));
     let target: SerializedEditorState;
     try {
       target = parseDocument(text);
@@ -196,7 +218,7 @@ export async function createDocumentSession(options: DocumentSessionOptions): Pr
     const queued = streaming > 0;
     lastGoodText = text;
     streaming += 1;
-    emit({ type: 'status', outcome, streaming: true });
+    emitStatus();
     playing = playing.then(async () => {
       try {
         // Autosaves pause during streaming, so queued file edits build on the preceding agent write.
@@ -280,7 +302,12 @@ export async function createDocumentSession(options: DocumentSessionOptions): Pr
   return {
     snapshot: () => loro.export({ mode: 'snapshot' }),
     lineage: () => loro.getTree(TREE_NAME).roots()[0]?.id ?? '',
-    importUpdate: (bytes) => {
+    importUpdate: (bytes, features = []) => {
+      const undeclared = DOCUMENT_FEATURES.filter((feature) => !features.includes(feature));
+      const types = undeclared.length ? editor.getEditorState().read(() => new Set($getRoot().getChildren().map((block) => block.getType()))) : new Set<string>();
+      const missing = undeclared.filter((feature) => types.has(feature));
+      // A viewer that cannot build these nodes reconciles them away and sends that deletion back.
+      if (missing.length) throw new OutdatedClient(`this page cannot show <${missing.join('>, <')}> blocks; reload the page`);
       const probe = loro.fork();
       probe.import(bytes);
       if (probe.getTree(TREE_NAME).roots().length > 1) throw new Error('update belongs to a different document; reload the page');
@@ -295,6 +322,7 @@ export async function createDocumentSession(options: DocumentSessionOptions): Pr
     },
     outcome: () => outcome,
     streaming: () => streaming > 0,
+    agentActiveAt: () => agentActiveAt,
     cursor: () => lastCursor,
     settled: () => playing,
     flush,
@@ -302,6 +330,7 @@ export async function createDocumentSession(options: DocumentSessionOptions): Pr
       clearInterval(snapshotTimer);
       await flush();
       await saveSnapshot();
+      await activitySaved;
       binding.dispose();
       listeners.clear();
     },

@@ -17,7 +17,7 @@ afterEach(() => {
   document.body.innerHTML = '';
 });
 
-const props = { id: 'c1', agent: 'Codex', agentEditing: true, agentSection: '1. 结论', offline: false, openComments: 2, cloud: { online: true, canEdit: true, reason: null } };
+const props = { id: 'c1', agent: 'Codex', activity: { kind: 'editing' } as const, agentSection: '1. 结论', offline: false, openComments: 2, cloud: { online: true, canEdit: true, reason: null } };
 
 async function render(extra = {}) {
   const host = document.createElement('div');
@@ -32,8 +32,8 @@ test('an embedded cloud document moves its status to the shell instead of adding
   vi.stubGlobal('parent', { postMessage });
   const host = await render();
   expect(host.querySelector('header')).toBeNull();
-  expect(postMessage).toHaveBeenLastCalledWith(expect.objectContaining({ type: 'ryugi:cloud-header', id: 'c1', online: true, comments: 2, activity: 'Codex 正在编辑 1. 结论' }), location.origin);
-  await act(async () => root!.render(createElement(TopBar, { ...props, agentEditing: false, offline: true, openComments: 0, cloud: { online: false, canEdit: false, reason: '版本不同' } })));
+  expect(postMessage).toHaveBeenLastCalledWith(expect.objectContaining({ type: 'ryugi:cloud-header', id: 'c1', online: true, comments: 2, activity: 'Codex 正在编辑 1. 结论', activityTone: 'live' }), location.origin);
+  await act(async () => root!.render(createElement(TopBar, { ...props, activity: { kind: 'idle' } as const, offline: true, openComments: 0, cloud: { online: false, canEdit: false, reason: '版本不同' } })));
   expect(postMessage).toHaveBeenLastCalledWith(expect.objectContaining({ online: false, comments: 0, activity: null, retrying: true, reason: '版本不同' }), location.origin);
 });
 

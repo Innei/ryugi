@@ -65,6 +65,11 @@ test('only the artifact frame can update the header, including live title and of
   expect(host.textContent).toContain('电脑离线');
   expect(host.textContent).toContain('评论 0');
   expect(host.textContent).not.toContain('Codex 正在编辑');
+  await update({ ...data, activity: 'Codex 7 分钟没有更新 · 还有 3 节待写', activityTone: 'warning' });
+  expect(host.querySelector('[title="Codex 7 分钟没有更新 · 还有 3 节待写"]')?.getAttribute('data-tone')).toBe('warning');
+  await update({ ...data, activity: 'Codex 正在编辑', activityTone: 'loud' });
+  expect(host.querySelector('[title="Codex 正在编辑"]')?.getAttribute('data-tone')).toBe('live');
+  await update({ ...data, online: false, comments: 0, activity: null, retrying: false });
   await update({ ...data, title: {}, online: 'yes', comments: -1, activity: {}, retrying: 'yes' });
   expect(host.querySelector('[aria-current="page"]')?.textContent).toBe('Updated eval');
   expect(host.textContent).toContain('电脑离线');

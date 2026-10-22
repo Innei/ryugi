@@ -178,7 +178,7 @@ describe('relay document transport', () => {
   test('updates travel as base64 and comments return the new comments', async () => {
     const { relay, socket, reply } = transport();
     const update = relay.update(new Uint8Array([1, 2, 255]));
-    expect(socket.sent.at(-1).body).toEqual({ op: 'update', bytes: 'AQL/' });
+    expect(socket.sent.at(-1).body).toEqual({ op: 'update', bytes: 'AQL/', features: ['pending'] });
     reply(null);
     await update;
     const op = { op: 'reply' as const, threadId: 't1', text: 'ok' };
@@ -236,6 +236,8 @@ describe('local document transport', () => {
       '/api/document/plan/update',
       '/api/document/plan/comments',
     ]);
+    const update = calls.find(([url]) => url.endsWith('/update'))![1]!;
+    expect(new Headers(update.headers).get('X-Ryugi-Document-Features')).toBe('pending');
   });
 });
 

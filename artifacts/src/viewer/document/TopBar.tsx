@@ -2,6 +2,7 @@ import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
 import { PublishMenu } from '../components/PublishMenu';
 import { useCloudHeader } from '../hooks/useCloudHeader';
+import { activityLabel, type AgentActivity } from './agentActivity';
 import type { CloudLive } from './DocumentPage';
 
 const styles = stylex.create({
@@ -30,8 +31,12 @@ const styles = stylex.create({
     color: cssVar.colorInfoText,
     fontSize: 11,
     whiteSpace: 'nowrap',
+    minWidth: 0,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
   },
   dot: { width: 6, height: 6, borderRadius: '50%', backgroundColor: 'currentColor' },
+  quiet: { backgroundColor: cssVar.colorFillTertiary, color: cssVar.colorTextSecondary },
   offline: { backgroundColor: cssVar.colorWarningBg, color: cssVar.colorWarningText },
   host: { display: 'flex', alignItems: 'center', gap: 6, color: cssVar.colorTextSecondary, fontSize: 12, whiteSpace: 'nowrap' },
   hostDot: { width: 7, height: 7, borderRadius: '50%', backgroundColor: cssVar.colorTextQuaternary },
@@ -57,7 +62,7 @@ interface Props {
   id: string;
   title?: string;
   agent?: string;
-  agentEditing: boolean;
+  activity: AgentActivity;
   agentSection: string | null;
   offline: boolean;
   openComments: number;
@@ -66,12 +71,14 @@ interface Props {
   onDone?: () => void;
 }
 
-export function TopBar({ id, title, agentEditing, agentSection, offline, openComments, cloud, compact = false, onDone, agent = 'Agent' }: Props) {
+export function TopBar({ id, title, activity, agentSection, offline, openComments, cloud, compact = false, onDone, agent = 'Agent' }: Props) {
+  const label = activityLabel(activity, agent, agentSection);
   const framed = useCloudHeader(id, cloud ? {
     ...(title ? { title } : {}),
     online: cloud.online,
     comments: openComments,
-    activity: agentEditing ? `${agent} 正在编辑${agentSection ? ` ${agentSection}` : ''}` : null,
+    activity: label,
+    activityTone: activity.kind === 'stale' ? 'warning' : activity.kind === 'working' ? 'quiet' : 'live',
     retrying: offline,
     reason: cloud.reason,
   } : null);
@@ -83,10 +90,10 @@ export function TopBar({ id, title, agentEditing, agentSection, offline, openCom
           document / <span {...stylex.props(styles.crumbId)}>{id}</span>
         </span>
       )}
-      {agentEditing ? (
-        <span {...stylex.props(styles.pill)}>
-          <i {...stylex.props(styles.dot)} />
-          {agent} 正在编辑{agentSection ? ` ${agentSection}` : ''}
+      {label ? (
+        <span {...stylex.props(styles.pill, activity.kind === 'working' && styles.quiet, activity.kind === 'stale' && styles.offline)}>
+          {activity.kind === 'stale' ? null : <i {...stylex.props(styles.dot)} />}
+          {label}
         </span>
       ) : null}
       {offline ? <span {...stylex.props(styles.pill, styles.offline)}>未同步，正在重试</span> : null}

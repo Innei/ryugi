@@ -1,16 +1,17 @@
 import * as stylex from '@stylexjs/stylex';
 import { useLayoutEffect, useRef } from 'react';
 import { cursorPath, type CursorPose } from '../lib/cursorMotion';
+import { brand } from '../tokens.stylex';
 
 const styles = stylex.create({
   cursor: { position: 'absolute', left: 0, top: 0, zIndex: 5, pointerEvents: 'none', transformOrigin: '0 0' },
   arrow: {
-    display: 'block', transformOrigin: '4.5px 4px', fill: '#8b7cf8', stroke: '#fff', strokeWidth: 1.6,
+    display: 'block', transformOrigin: '4.5px 4px', fill: brand.accent, stroke: '#fff', strokeWidth: 1.6,
     filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.2))',
   },
   label: {
     position: 'absolute', left: 15, top: 16, paddingBlock: 2, paddingInline: 7,
-    borderRadius: 5, backgroundColor: '#705bd4', color: '#fff',
+    borderRadius: 5, backgroundColor: brand.accentStrong, color: '#fff',
     fontSize: 11, fontWeight: 500, lineHeight: '16px', whiteSpace: 'nowrap',
     boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
   },

@@ -35,6 +35,7 @@ const BLOCK_TAGS = [
   'footnote-section',
   'def',
   'dynamic',
+  'pending',
 ];
 const INLINE_TAGS = ['b', 'strong', 'i', 'em', 'u', 's', 'del', 'strike', 'code', 'sub', 'sup', 'mark', 'a', 'br', 'footnote'];
 export const DOCUMENT_TAGS = new Set([...BLOCK_TAGS, ...INLINE_TAGS]);
@@ -60,6 +61,14 @@ const LITEXML_ONLY_TAGS = new Set([
 ]);
 
 const registry = createDefaultRegistry();
+registry.registerReader('pending', (el) => {
+  const id = el.getAttribute('id');
+  return { type: 'pending', ...(id ? { $: { blockId: id } } : {}), intent: el.getAttribute('intent') ?? '', version: 1 } as SerializedLexicalNode;
+});
+registry.registerWriter('pending', (node) => {
+  const { $: state, intent } = node as Block & { intent?: string };
+  return { tag: 'pending', attrs: { ...(state?.blockId ? { id: state.blockId } : {}), intent: intent ?? '' }, selfClosing: true };
+});
 
 export class DocumentRejected extends Error {}
 
@@ -97,6 +106,15 @@ function badDynamicProps(xml: string): string | null {
   return null;
 }
 
+function containsPending(value: unknown): boolean {
+  if (Array.isArray(value)) return value.some(containsPending);
+  if (!value || typeof value !== 'object') return false;
+  return (value as { type?: unknown }).type === 'pending' || Object.values(value).some(containsPending);
+}
+
+const nestedPending = (blocks: Block[]) =>
+  blocks.some((block) => block.type !== 'pending' && containsPending(block)) ? '<pending> must be a top-level block' : null;
+
 function badDynamicUrl(nodes: Block[]): string | null {
   for (const node of nodes) {
     if (node.type === 'dynamic' && !DYNAMIC_URL.test((node as { url?: string }).url ?? '')) return '<dynamic> url must be assets/<name>.html';
@@ -116,7 +134,7 @@ export function parseDocument(xml: string): SerializedEditorState {
   } catch (err) {
     throw new DocumentRejected((err as Error).message);
   }
-  const url = badDynamicUrl(state.root.children as Block[]);
+  const url = badDynamicUrl(state.root.children as Block[]) ?? nestedPending(state.root.children as Block[]);
   if (url) throw new DocumentRejected(url);
   return state;
 }

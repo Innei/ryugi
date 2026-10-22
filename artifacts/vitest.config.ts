@@ -5,6 +5,7 @@ export default defineConfig({
     include: ['test/**/*.test.{ts,tsx}'],
     environment: 'node',
     globalSetup: ['test/global-setup.ts'],
+    setupFiles: ['test/setup-tokens.ts'],
     hookTimeout: 120000,
   },
 });

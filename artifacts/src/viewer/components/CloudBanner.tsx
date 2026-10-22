@@ -40,7 +40,9 @@ const styles = stylex.create({
   status: { display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' },
   dot: { width: 6, height: 6, borderRadius: '50%', backgroundColor: cssVar.colorTextQuaternary },
   online: { backgroundColor: cssVar.colorSuccess },
-  activity: { maxWidth: 160, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', color: cssVar.colorInfoText },
+  activity: { maxWidth: 260, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', color: cssVar.colorInfoText },
+  activityQuiet: { color: cssVar.colorTextSecondary },
+  activityWarning: { color: cssVar.colorWarningText },
   retrying: { color: cssVar.colorWarningText, whiteSpace: 'nowrap' },
   divider: { width: 1, height: 18, backgroundColor: cssVar.colorBorderSecondary },
   visibilityLabel: { display: { default: 'inline', [NARROW]: 'none' } },
@@ -154,7 +156,15 @@ export function CloudHeader({ id, type, title, owner, status, visibility, onChan
       </div>
       <div {...stylex.props(styles.actions)}>
         <div {...stylex.props(styles.statuses)}>
-          {status.activity ? <span title={status.activity} {...stylex.props(styles.activity)}>{status.activity}</span> : null}
+          {status.activity ? (
+            <span
+              title={status.activity}
+              data-tone={status.activityTone ?? 'live'}
+              {...stylex.props(styles.activity, status.activityTone === 'quiet' && styles.activityQuiet, status.activityTone === 'warning' && styles.activityWarning)}
+            >
+              {status.activity}
+            </span>
+          ) : null}
           {status.retrying ? <span role="status" {...stylex.props(styles.retrying)}>未同步，正在重试</span> : null}
           {status.reason ? <CircleAlert size={14} aria-label={status.reason} /> : null}
           {status.online !== undefined ? (

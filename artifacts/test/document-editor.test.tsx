@@ -14,7 +14,7 @@ import { createChannel } from '../src/viewer/document/channel';
 import { DocumentEditor } from '../src/viewer/document/DocumentEditor';
 import { createLocalTransport } from '../src/viewer/document/transport';
 
-vi.mock('@stylexjs/stylex', async (original) => ({ ...await original<object>(), create: (value: unknown) => value, props: () => ({}) }));
+vi.mock('@stylexjs/stylex', async (original) => ({ ...await original<object>(), create: (value: unknown) => value, props: () => ({}), keyframes: () => 'k' }));
 vi.mock('@lobehub/ui/stylex/cssVar.stylex', () => ({ cssVar: new Proxy({}, { get: (_, key) => `var(--${String(key)})` }) }));
 vi.mock('@haklex/rich-ext-excalidraw', async () => {
   const { DecoratorNode } = await import('lexical');

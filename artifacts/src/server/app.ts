@@ -9,6 +9,7 @@ import { parseDocument } from './document-codec';
 import { agentAddOnBoard, asBoardAgentOp, asBoardHumanOp, boardFiles, boardSpecs, createBoardCommentRegistry } from './board-comments';
 import { asAgentOp, asHumanOp } from './document-comments';
 import { createDocumentRegistry, type DocumentTiming } from './documents';
+import { OutdatedClient } from './document-session';
 import { latestMtime, readHtml } from './html';
 import { injectRuntime } from './inject';
 import { listen, parseCookies, randomToken, readPersisted, safeEqual, send, sendFile, sendJson, urlHostForHttp } from './http';
@@ -24,6 +25,7 @@ import { hostIdFor } from './host-id';
 import { AVATAR_ROUTE, createAvatars } from './avatars';
 import { createCloudRoutes, type CloudOptions } from './cloud';
 import { ownLink } from '../shared/cloud';
+import { DOCUMENT_FEATURES_HEADER } from '../shared/document-features';
 import { commentNames } from './comment-names';
 import { publishPayload } from './publish-payload';
 import { viewerPage } from './viewer-page';
@@ -233,6 +235,8 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
     lineage: session.lineage(),
     outcome: session.outcome(),
     streaming: session.streaming(),
+    agentActiveAt: session.agentActiveAt(),
+    now: Date.now(),
     cursor: session.cursor(),
     comments: documents.comments(id),
   });
@@ -279,11 +283,13 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
       send(res, 413, 'Update too large');
       return;
     }
+    const header = req.headers[DOCUMENT_FEATURES_HEADER];
+    const features = typeof header === 'string' ? header.split(',').map((feature) => feature.trim()) : [];
     try {
-      session.importUpdate(new Uint8Array(Buffer.concat(chunks)));
+      session.importUpdate(new Uint8Array(Buffer.concat(chunks)), features);
       send(res, 204, '');
     } catch (err) {
-      sendJson(res, 400, { error: (err as Error).message });
+      sendJson(res, err instanceof OutdatedClient ? 409 : 400, { error: (err as Error).message });
     }
   };
 
@@ -808,7 +814,8 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
       const bytes = typeof request.bytes === 'string' ? Buffer.from(request.bytes, 'base64') : null;
       if (!bytes) throw new Error('update needs bytes');
       if (bytes.length > MAX_DOCUMENT_UPDATE) throw new Error('update too large');
-      session.importUpdate(new Uint8Array(bytes));
+      const features = Array.isArray(request.features) ? request.features.filter((feature): feature is string => typeof feature === 'string') : [];
+      session.importUpdate(new Uint8Array(bytes), features);
       return null;
     }
     if (request.op === 'comment') {

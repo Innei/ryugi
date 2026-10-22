@@ -94,7 +94,7 @@ export function createDocumentRegistry(options: RegistryOptions): DocumentRegist
       } else if (event.type === 'cursor') {
         options.broadcast({ type: 'doc-cursor', artifact, cursor: event.cursor });
       } else {
-        options.broadcast({ type: 'doc-status', artifact, streaming: event.streaming, outcome: event.outcome });
+        options.broadcast({ type: 'doc-status', artifact, streaming: event.streaming, outcome: event.outcome, agentActiveAt: event.agentActiveAt, now: Date.now() });
         setWarnings(outcomeWarnings(event.outcome, event.streaming));
       }
     });
