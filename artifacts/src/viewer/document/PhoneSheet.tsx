@@ -5,6 +5,7 @@ import { waitingOn, type Thread } from '../../shared/comments';
 import { BottomSheet } from '../components/BottomSheet';
 import type { ThreadActions } from './CommentCard';
 import { Composer } from './Composer';
+import { EASE, play } from './motion';
 import { PhoneThread } from './PhoneThread';
 import type { SelectionTarget } from './useSelectionComment';
 
@@ -57,7 +58,10 @@ export function PhoneSheet({ threads, agent = 'Agent', actions, offline, draft, 
   const note = offline ? '电脑离线，暂时不能评论' : waiting > 0 ? `${waiting} 条等 ${agent} 回复` : null;
 
   useEffect(() => {
-    if (activeId) body.current?.querySelector(`[data-thread="${CSS.escape(activeId)}"]`)?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    const thread = activeId ? body.current?.querySelector(`[data-thread="${CSS.escape(activeId)}"]`) : null;
+    if (!thread) return;
+    thread.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    void play(thread, [{ backgroundColor: 'rgba(232, 194, 74, 0.24)' }, { backgroundColor: 'transparent' }], { duration: 600, delay: 250, easing: EASE });
   }, [activeId]);
 
   return (

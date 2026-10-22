@@ -47,7 +47,10 @@ const styles = stylex.create({
   },
   action: {
     flexShrink: 0,
-    padding: 0,
+    minHeight: 44,
+    paddingBlock: 0,
+    paddingInline: 8,
+    marginInlineEnd: -8,
     borderWidth: 0,
     backgroundColor: 'transparent',
     color: cssVar.colorTextSecondary,

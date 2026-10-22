@@ -3,7 +3,7 @@ import type { LexicalEditor } from 'lexical';
 import { useState, type ReactNode } from 'react';
 import type { Thread } from '../../shared/comments';
 import type { ThreadActions } from './CommentCard';
-import { toolbarPosition } from './layoutCards';
+import { editMenuPosition } from './layoutCards';
 import { EDIT_MENU_HEIGHT, EDIT_MENU_WIDTH, PhoneEditMenu } from './PhoneEditMenu';
 import { PhoneSheet, raiseSheet, SHEET_HALF, SHEET_PEEK } from './PhoneSheet';
 import { threadAtPoint, useAnchors, useDraftHighlight, useHighlights } from './useAnchors';
@@ -65,16 +65,16 @@ export function PhoneLayout({ editor, threads, actions, agent, canComment, canEd
       </article>
       {selection && !draft ? (
         <PhoneEditMenu
-          {...toolbarPosition(selection, { left: 8, right: (main?.clientWidth ?? 0) - 8 }, EDIT_MENU_WIDTH, EDIT_MENU_HEIGHT, 8)}
+          {...editMenuPosition(selection, { left: 8, right: (main?.clientWidth ?? 0) - 8 }, EDIT_MENU_WIDTH, EDIT_MENU_HEIGHT, {
+            top: main?.getBoundingClientRect().top ?? 0,
+            height: window.innerHeight,
+            reserved: SHEET_PEEK,
+          })}
           canComment={canComment}
           canEdit={canEdit}
           onComment={() => {
             setDraft(selection);
             setSnap(SHEET_HALF);
-            done();
-          }}
-          onCopy={() => {
-            void navigator.clipboard?.writeText(selection.quote);
             done();
           }}
           onEdit={() => {

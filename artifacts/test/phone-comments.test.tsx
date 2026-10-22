@@ -4,6 +4,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeAll, describe, expect, test, vi } from 'vitest';
 import type { Thread } from '../src/shared/comments';
 import type { ThreadActions } from '../src/viewer/document/CommentCard';
+import { editMenuPosition } from '../src/viewer/document/layoutCards';
 import { PhoneEditMenu } from '../src/viewer/document/PhoneEditMenu';
 import { PhoneLayout } from '../src/viewer/document/PhoneLayout';
 import { PhoneSheet, raiseSheet, SHEET_FULL, SHEET_HALF, SHEET_PEEK } from '../src/viewer/document/PhoneSheet';
@@ -98,19 +99,43 @@ test('a new comment quotes the selection and closes once the computer has it', a
   expect(onCancelDraft).toHaveBeenCalled();
 });
 
-test('the edit menu offers only what the page can do right now', async () => {
+test('the edit menu offers only what the page can do right now, leaving copy to the system menu', async () => {
   const labels = (host: HTMLElement) => [...host.querySelectorAll('button')].map((b) => b.textContent);
-  const handlers = { onComment: vi.fn(), onCopy: vi.fn(), onEdit: vi.fn() };
-  const online = await render(createElement(PhoneEditMenu, { left: 0, top: 0, canComment: true, canEdit: true, ...handlers }));
-  expect(labels(online)).toEqual(['评论', '复制', '改字']);
-  await act(async () => online.querySelectorAll('button')[2]!.click());
+  const handlers = { onComment: vi.fn(), onEdit: vi.fn() };
+  const online = await render(createElement(PhoneEditMenu, { left: 0, top: 0, placement: 'below', canComment: true, canEdit: true, ...handlers }));
+  expect(labels(online)).toEqual(['评论', '改字']);
+  await act(async () => online.querySelectorAll('button')[1]!.click());
   expect(handlers.onEdit).toHaveBeenCalled();
   act(() => root?.unmount());
-  const commentsOnly = await render(createElement(PhoneEditMenu, { left: 0, top: 0, canComment: true, canEdit: false, ...handlers }));
-  expect(labels(commentsOnly)).toEqual(['评论', '复制']);
-  act(() => root?.unmount());
-  const offline = await render(createElement(PhoneEditMenu, { left: 0, top: 0, canComment: false, canEdit: false, ...handlers }));
-  expect(labels(offline)).toEqual(['复制']);
+  const commentsOnly = await render(createElement(PhoneEditMenu, { left: 0, top: 0, placement: 'below', canComment: true, canEdit: false, ...handlers }));
+  expect(labels(commentsOnly)).toEqual(['评论']);
+});
+
+test('the edit menu grows in from the selection it points at', async () => {
+  const animate = vi.spyOn(HTMLElement.prototype, 'animate');
+  await render(createElement(PhoneEditMenu, { left: 0, top: 0, placement: 'below', canComment: true, canEdit: true, onComment: vi.fn(), onEdit: vi.fn() }));
+  expect(animate.mock.calls.some(([frames]) => JSON.stringify(frames).includes('scale(0.96)'))).toBe(true);
+  animate.mockRestore();
+});
+
+test('the edit menu sits under the selection, clear of the system menu above it, unless the sheet is in the way', () => {
+  const selection = { left: 40, top: 120, bottom: 140 };
+  const bounds = { left: 8, right: 382 };
+  expect(editMenuPosition(selection, bounds, 160, 44, { top: 0, height: 844, reserved: 78 })).toEqual({ left: 40, top: 150, placement: 'below' });
+  expect(editMenuPosition({ left: 40, top: 700, bottom: 720 }, bounds, 160, 44, { top: 0, height: 844, reserved: 78 })).toEqual({ left: 40, top: 646, placement: 'above' });
+  expect(editMenuPosition({ left: 300, top: 120, bottom: 140 }, bounds, 160, 44, { top: 0, height: 844, reserved: 78 }).left).toBe(222);
+});
+
+test('locating a thread flashes it once the sheet scrolls to it', async () => {
+  const animate = vi.spyOn(HTMLElement.prototype, 'animate');
+  const props = { threads: [waiting], agent: 'Claude Code', actions: actions(), offline: false, draft: null, onCreate: vi.fn(), onCancelDraft: vi.fn(), snap: 0.5, onSnap: vi.fn() };
+  const host = await render(createElement(PhoneSheet, { ...props, activeId: null }));
+  expect(animate.mock.calls.some(([frames]) => JSON.stringify(frames).includes('backgroundColor'))).toBe(false);
+  await act(async () => root!.render(createElement(PhoneSheet, { ...props, activeId: waiting.id })));
+  const flashed = animate.mock.contexts.find((_, i) => JSON.stringify(animate.mock.calls[i]![0]).includes('backgroundColor')) as Element | undefined;
+  expect(flashed?.getAttribute('data-thread')).toBe(waiting.id);
+  expect(host.contains(flashed!)).toBe(true);
+  animate.mockRestore();
 });
 
 describe('phone layout', () => {
@@ -149,9 +174,9 @@ describe('phone layout', () => {
     expect(onEdit).toHaveBeenCalledWith(selection);
   });
 
-  test('offline, the menu only copies', async () => {
+  test('offline, no edit menu covers the selection', async () => {
     const host = await render(layout({ canComment: false, canEdit: false, offline: true, actions: undefined }));
-    expect([...host.querySelectorAll('[data-edit-menu] button')].map((b) => b.textContent)).toEqual(['复制']);
+    expect(host.querySelector('[data-edit-menu]')).toBeNull();
   });
 });
 
