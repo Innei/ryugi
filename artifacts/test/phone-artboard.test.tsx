@@ -12,8 +12,6 @@ vi.mock('@stylexjs/stylex', async (original) => ({ ...await original<object>(), 
 vi.mock('@lobehub/ui/stylex/cssVar.stylex', () => ({ cssVar: new Proxy({}, { get: (_, key) => `var(--${String(key)})` }) }));
 vi.mock('@lobehub/ui', async (original) => ({
   ...await original<object>(),
-  FloatingSheet: (props: { title: unknown; headerActions?: unknown; children: unknown; activeSnapPoint?: number }) =>
-    createElement('section', { 'data-sheet': '', 'data-snap': String(props.activeSnapPoint) }, createElement('header', null, props.title as never, props.headerActions as never), props.children as never),
   DropdownMenu: (props: { items: { key: string; label: string; onClick: () => void }[]; children: unknown }) =>
     createElement('div', { 'data-menu': '' }, props.children as never, createPortal(props.items.map((item) => createElement('button', { key: item.key, 'data-menu-item': item.key, onClick: item.onClick }, item.label)), document.body)),
 }));
@@ -132,18 +130,21 @@ function screenOf(boardId: string, bx: number, by: number) {
   return { x: x + bx * k, y: y + by * k, viewport: slot.parentElement!.parentElement! };
 }
 
-test('a finger opens the jump panel by swiping the bar up or tapping it, and closes it swiping down', async () => {
+test('a finger opens the jump panel by dragging the bar up or tapping it, and closes it dragging down', async () => {
   await mount();
   const title = host!.querySelector('[data-question-bar]')!;
+  const head = host!.querySelector('[data-sheet-head]')!;
+  head.setPointerCapture = vi.fn();
   const snap = () => host!.querySelector('[data-sheet]')!.getAttribute('data-snap');
   await touchOn(title, 'pointerdown', 100, 800);
+  await touchOn(title, 'pointermove', 100, 700);
   await touchOn(title, 'pointerup', 100, 700);
   expect(snap()).toBe('0.66');
   await touchOn(title, 'pointerdown', 100, 300);
+  await touchOn(title, 'pointermove', 100, 420);
   await touchOn(title, 'pointerup', 100, 420);
   expect(snap()).toBe('78');
-  await touchOn(title, 'pointerdown', 100, 800);
-  await touchOn(title, 'pointerup', 100, 802);
+  await act(async () => (title as HTMLElement).click());
   expect(snap()).toBe('0.66');
 });
 

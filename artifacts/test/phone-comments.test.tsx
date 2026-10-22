@@ -11,10 +11,6 @@ import { PhoneThread } from '../src/viewer/document/PhoneThread';
 
 vi.mock('@stylexjs/stylex', async (original) => ({ ...await original<object>(), create: (value: unknown) => value, props: () => ({}) }));
 vi.mock('@lobehub/ui/stylex/cssVar.stylex', () => ({ cssVar: new Proxy({}, { get: (_, key) => `var(--${String(key)})` }) }));
-vi.mock('@lobehub/ui', () => ({
-  FloatingSheet: (props: { title: unknown; children: unknown; activeSnapPoint?: number }) =>
-    createElement('section', { 'data-snap': String(props.activeSnapPoint) }, createElement('header', null, props.title as never), props.children as never),
-}));
 
 let root: Root | null = null;
 beforeAll(() => {
@@ -78,14 +74,14 @@ test('the collapsed sheet counts comments and the ones waiting on the agent', as
   const host = await render(
     createElement(PhoneSheet, { threads: [waiting, answered], agent: 'Claude Code', actions: actions(), offline: false, draft: null, onCreate: vi.fn(), onCancelDraft: vi.fn(), activeId: null, snap: 78, onSnap: vi.fn() }),
   );
-  expect(host.querySelector('header')!.textContent).toBe('评论 2· 1 条等 Claude Code 回复');
+  expect(host.querySelector('[data-sheet-head]')!.textContent).toBe('评论 2· 1 条等 Claude Code 回复');
 });
 
 test('offline, the sheet title says comments wait for the computer', async () => {
   const host = await render(
     createElement(PhoneSheet, { threads: [waiting], agent: 'Claude Code', offline: true, draft: null, onCreate: vi.fn(), onCancelDraft: vi.fn(), activeId: null, snap: 78, onSnap: vi.fn() }),
   );
-  expect(host.querySelector('header')!.textContent).toBe('评论 1· 电脑离线，暂时不能评论');
+  expect(host.querySelector('[data-sheet-head]')!.textContent).toBe('评论 1· 电脑离线，暂时不能评论');
   expect(host.querySelector('textarea')).toBeNull();
 });
 
@@ -192,14 +188,17 @@ describe('going offline keeps what the owner is typing', () => {
   });
 });
 
-test('a finger swipe on the sheet title moves it between heights', async () => {
+test('a finger dragging the sheet title moves it between heights', async () => {
+  vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(844);
   const onSnap = vi.fn();
   const host = await render(
     createElement(PhoneSheet, { threads: [waiting], agent: 'Claude Code', actions: actions(), offline: false, draft: null, onCreate: vi.fn(), onCancelDraft: vi.fn(), activeId: null, snap: 78, onSnap }),
   );
-  const title = host.querySelector('header')!.firstElementChild!;
+  const title = host.querySelector('[data-sheet-head]')!;
+  title.setPointerCapture = vi.fn();
   const finger = (type: string, y: number) => act(async () => title.dispatchEvent(new PointerEvent(type, { bubbles: true, pointerId: 5, pointerType: 'touch', clientX: 50, clientY: y })));
   await finger('pointerdown', 800);
+  await finger('pointermove', 700);
   await finger('pointerup', 700);
   expect(onSnap).toHaveBeenLastCalledWith(SHEET_HALF);
 });

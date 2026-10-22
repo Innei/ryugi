@@ -1,17 +1,16 @@
-import { FloatingSheet } from '@lobehub/ui';
 import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
 import type { PageSpec } from '../../shared/types';
-import { useSheetSwipe } from '../hooks/useSheetSwipe';
 import type { Question, Round } from '../lib/questions';
+import { BottomSheet } from './BottomSheet';
 import { PageSwitcher } from './PhoneArtboardBar';
 
 export const SHEET_PEEK = 78;
 export const SHEET_OPEN = 0.66;
 
 const styles = stylex.create({
-  sheet: { pointerEvents: 'auto' },
-  current: { display: 'flex', alignItems: 'baseline', gap: 8, minWidth: 0, fontFamily: cssVar.fontFamily, fontSize: 14 },
+  head: { display: 'flex', alignItems: 'center', gap: 12, minHeight: 44, paddingInline: 16, paddingBottom: 8 },
+  current: { flex: 1, display: 'flex', alignItems: 'baseline', gap: 8, minWidth: 0, fontFamily: cssVar.fontFamily, fontSize: 14 },
   id: { flexShrink: 0, fontFamily: cssVar.fontFamilyCode, fontSize: 13 },
   name: { minWidth: 0, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', fontWeight: 400 },
   steps: { display: 'flex', gap: 14 },
@@ -64,40 +63,33 @@ interface Props {
 }
 
 export function QuestionSheet({ rounds, current, previous, next, pages, page, onPageChange, onPick, snap, onSnap }: Props) {
-  const swipe = useSheetSwipe([SHEET_PEEK, SHEET_OPEN], snap, onSnap);
   return (
-    <FloatingSheet
-      open
-      dismissible={false}
-      variant="embedded"
-      mode="overlay"
-      className={stylex.props(styles.sheet).className}
-      minHeight={SHEET_PEEK}
-      maxHeight={SHEET_OPEN}
-      snapPoints={[SHEET_PEEK, SHEET_OPEN]}
-      activeSnapPoint={snap}
-      onSnapPointChange={onSnap}
-      title={
-        <span data-question-bar {...swipe} {...stylex.props(styles.current)}>
-          {current ? (
-            <>
-              <code {...stylex.props(styles.id)}>{current.id}</code>
-              <span {...stylex.props(styles.name)}>{current.title}</span>
-            </>
-          ) : (
-            <span {...stylex.props(styles.name)}>跳到</span>
-          )}
-        </span>
-      }
-      headerActions={
-        <span {...stylex.props(styles.steps)}>
-          <button type="button" disabled={!previous} onClick={() => previous && onPick(previous)} {...stylex.props(styles.step)}>
-            ‹ 上一题
-          </button>
-          <button type="button" disabled={!next} onClick={() => next && onPick(next)} {...stylex.props(styles.step)}>
-            下一题 ›
-          </button>
-        </span>
+    <BottomSheet
+      snaps={[SHEET_PEEK, SHEET_OPEN]}
+      snap={snap}
+      onSnap={onSnap}
+      onScrim={() => onSnap(SHEET_PEEK)}
+      header={
+        <div {...stylex.props(styles.head)}>
+          <span data-question-bar {...stylex.props(styles.current)}>
+            {current ? (
+              <>
+                <code {...stylex.props(styles.id)}>{current.id}</code>
+                <span {...stylex.props(styles.name)}>{current.title}</span>
+              </>
+            ) : (
+              <span {...stylex.props(styles.name)}>跳到</span>
+            )}
+          </span>
+          <span {...stylex.props(styles.steps)}>
+            <button type="button" disabled={!previous} onClick={() => previous && onPick(previous)} {...stylex.props(styles.step)}>
+              ‹ 上一题
+            </button>
+            <button type="button" disabled={!next} onClick={() => next && onPick(next)} {...stylex.props(styles.step)}>
+              下一题 ›
+            </button>
+          </span>
+        </div>
       }
     >
       <div {...stylex.props(styles.list)}>
@@ -125,6 +117,6 @@ export function QuestionSheet({ rounds, current, previous, next, pages, page, on
           </div>
         ))}
       </div>
-    </FloatingSheet>
+    </BottomSheet>
   );
 }

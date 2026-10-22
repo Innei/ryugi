@@ -5,7 +5,7 @@ import type { Thread } from '../../shared/comments';
 import type { ThreadActions } from './CommentCard';
 import { toolbarPosition } from './layoutCards';
 import { EDIT_MENU_HEIGHT, EDIT_MENU_WIDTH, PhoneEditMenu } from './PhoneEditMenu';
-import { PhoneSheet, raiseSheet, SHEET_FULL, SHEET_HALF, SHEET_PEEK } from './PhoneSheet';
+import { PhoneSheet, raiseSheet, SHEET_HALF, SHEET_PEEK } from './PhoneSheet';
 import { threadAtPoint, useAnchors, useDraftHighlight, useHighlights } from './useAnchors';
 import type { SelectionTarget } from './useSelectionComment';
 
@@ -14,15 +14,6 @@ const TOP_BAR = 52;
 const styles = stylex.create({
   main: { position: 'relative', paddingTop: 20, paddingInline: 20, paddingBottom: 120 },
   dock: { position: 'fixed', top: TOP_BAR, left: 0, right: 0, bottom: 0, zIndex: 20, pointerEvents: 'none' },
-  scrim: {
-    position: 'absolute',
-    inset: 0,
-    backgroundColor: '#18181b',
-    opacity: 0,
-    transitionProperty: 'opacity',
-    transitionDuration: '300ms',
-  },
-  scrimShown: { opacity: 0.28, pointerEvents: 'auto' },
 });
 
 interface Props {
@@ -93,7 +84,6 @@ export function PhoneLayout({ editor, threads, actions, agent, canComment, canEd
         />
       ) : null}
       <div {...stylex.props(styles.dock)}>
-        <div {...stylex.props(styles.scrim, snap === SHEET_FULL && styles.scrimShown)} onClick={() => setSnap(SHEET_HALF)} />
         <PhoneSheet
           threads={threads}
           agent={agent}

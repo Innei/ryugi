@@ -11,10 +11,12 @@ export const rubber = (value: number, min: number, max: number) =>
 
 export function settle(heights: number[], height: number, velocity: number) {
   if (Math.abs(velocity) > FLICK) {
-    const up = heights.findIndex((h) => h > height);
-    const down = heights.findLastIndex((h) => h < height);
-    if (velocity > 0) return up === -1 ? heights.length - 1 : up;
-    return down === -1 ? 0 : down;
+    if (velocity > 0) {
+      const up = heights.findIndex((h) => h > height);
+      return up === -1 ? heights.length - 1 : up;
+    }
+    const down = heights.filter((h) => h < height).length - 1;
+    return Math.max(0, down);
   }
   let best = 0;
   heights.forEach((h, i) => {

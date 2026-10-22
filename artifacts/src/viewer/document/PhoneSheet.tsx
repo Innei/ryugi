@@ -1,9 +1,8 @@
-import { FloatingSheet } from '@lobehub/ui';
 import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
 import { useEffect, useRef } from 'react';
 import { waitingOn, type Thread } from '../../shared/comments';
-import { useSheetSwipe } from '../hooks/useSheetSwipe';
+import { BottomSheet } from '../components/BottomSheet';
 import type { ThreadActions } from './CommentCard';
 import { Composer } from './Composer';
 import { PhoneThread } from './PhoneThread';
@@ -17,7 +16,7 @@ export const raiseSheet = (snap: number) => (snap === SHEET_PEEK ? SHEET_HALF : 
 
 const styles = stylex.create({
   body: { paddingInline: 20, paddingBottom: 24 },
-  title: { display: 'flex', alignItems: 'baseline', gap: 6, fontFamily: cssVar.fontFamily, fontSize: 15, fontWeight: 600 },
+  title: { display: 'flex', alignItems: 'baseline', gap: 6, minHeight: 36, paddingInline: 20, paddingBottom: 8, fontFamily: cssVar.fontFamily, fontSize: 15, fontWeight: 600 },
   note: { color: cssVar.colorTextTertiary, fontSize: 12, fontWeight: 400 },
   draft: { paddingBlock: 12, fontFamily: cssVar.fontFamily },
   draftHead: { display: 'flex', alignItems: 'baseline', gap: 8, fontSize: 13 },
@@ -53,7 +52,6 @@ interface Props {
 
 export function PhoneSheet({ threads, agent = 'Agent', actions, offline, draft, onCreate, onCancelDraft, activeId, snap, onSnap }: Props) {
   const body = useRef<HTMLDivElement>(null);
-  const swipe = useSheetSwipe([SHEET_PEEK, SHEET_HALF, SHEET_FULL], snap, onSnap);
   const shown = threads.filter((thread) => !thread.messages.every((message) => message.deleted));
   const waiting = shown.filter((thread) => waitingOn(thread) === 'agent').length;
   const note = offline ? '电脑离线，暂时不能评论' : waiting > 0 ? `${waiting} 条等 ${agent} 回复` : null;
@@ -63,19 +61,13 @@ export function PhoneSheet({ threads, agent = 'Agent', actions, offline, draft, 
   }, [activeId]);
 
   return (
-    <FloatingSheet
-      open
-      className="ryugi-phone-sheet"
-      dismissible={false}
-      variant="embedded"
-      mode="overlay"
-      minHeight={SHEET_PEEK}
-      maxHeight={SHEET_FULL}
-      snapPoints={[SHEET_PEEK, SHEET_HALF, SHEET_FULL]}
-      activeSnapPoint={snap}
-      onSnapPointChange={onSnap}
-      title={
-        <span {...swipe} {...stylex.props(styles.title)}>
+    <BottomSheet
+      snaps={[SHEET_PEEK, SHEET_HALF, SHEET_FULL]}
+      snap={snap}
+      onSnap={onSnap}
+      onScrim={() => onSnap(SHEET_HALF)}
+      header={
+        <span {...stylex.props(styles.title)}>
           评论 {shown.length}
           {note ? <span {...stylex.props(styles.note)}>· {note}</span> : null}
         </span>
@@ -109,6 +101,6 @@ export function PhoneSheet({ threads, agent = 'Agent', actions, offline, draft, 
           <PhoneThread key={thread.id} thread={thread} agent={agent} actions={actions} active={thread.id === activeId} offline={offline} />
         ))}
       </div>
-    </FloatingSheet>
+    </BottomSheet>
   );
 }
