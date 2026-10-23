@@ -57,6 +57,15 @@ class CloudRefused extends Error {
 
 class CloudCopyGone extends Error {}
 
+class PlanLimited extends CloudRefused {
+  constructor(
+    message: string,
+    readonly upgradeUrl: string,
+  ) {
+    super(402, message);
+  }
+}
+
 class CreateRefused extends CloudRefused {
   constructor(readonly detail: string) {
     super(502, `cloud refused (403): ${detail}`);
@@ -76,6 +85,17 @@ async function readJsonBody(req: http.IncomingMessage): Promise<unknown> {
   } catch {
     return null;
   }
+}
+
+async function refuse(res: Response): Promise<never> {
+  const text = await res.text().catch(() => '');
+  let parsed: { error?: unknown; code?: unknown; upgradeUrl?: unknown } = {};
+  try {
+    parsed = JSON.parse(text);
+  } catch {}
+  const message = typeof parsed.error === 'string' ? parsed.error : text || res.statusText;
+  if (res.status === 402 && parsed.code === 'plan_limit' && typeof parsed.upgradeUrl === 'string') throw new PlanLimited(message, parsed.upgradeUrl);
+  throw new CloudRefused(502, `cloud refused (${res.status}): ${message}`);
 }
 
 async function errorMessage(res: Response) {
@@ -137,7 +157,7 @@ export function createCloudRoutes(options: CloudRoutesOptions) {
   };
 
   const expectOk = async (res: Response) => {
-    if (!res.ok) throw new CloudRefused(502, `cloud refused (${res.status}): ${await errorMessage(res)}`);
+    if (!res.ok) await refuse(res);
     return res;
   };
 
@@ -170,14 +190,14 @@ export function createCloudRoutes(options: CloudRoutesOptions) {
   const reserve = async (ref: ArtifactRef) => {
     const key = `${ref.type}/${ref.id}`;
     const entry = artifactEntry(key);
-    if (entry.cloud) return entry.cloud.url;
-    if (entry.autoPublish === false || !autoPublishState().enabled) return null;
+    if (entry.cloud) return { url: entry.cloud.url };
+    if (entry.autoPublish === false || !autoPublishState().enabled) return { url: null };
     try {
       await createRecord(ref, entry.visibility ?? 'private');
-    } catch {
-      return null;
+    } catch (err) {
+      return err instanceof PlanLimited ? { url: null, limit: { message: err.message, upgradeUrl: err.upgradeUrl } } : { url: null };
     }
-    return artifactEntry(key).cloud?.url ?? null;
+    return { url: artifactEntry(key).cloud?.url ?? null };
   };
 
   const prepare = async (ref: ArtifactRef) => {
@@ -305,6 +325,7 @@ export function createCloudRoutes(options: CloudRoutesOptions) {
         return { kind: 'opted-out' };
       }
       if (err instanceof SignedOut) return { kind: 'signed-out' };
+      if (err instanceof PlanLimited) return { kind: 'cannot-create', message: err.message, upgradeUrl: err.upgradeUrl };
       if (err instanceof CreateRefused) return { kind: 'cannot-create', message: err.detail };
       if (err instanceof CloudRefused && err.status === 404) return { kind: 'gone' };
       if (err instanceof CloudRefused && err.status === 413) return { kind: 'not-ready' };
@@ -366,7 +387,7 @@ export function createCloudRoutes(options: CloudRoutesOptions) {
       return;
     }
     if (action === 'reserve' && ref && method === 'POST') {
-      sendJson(res, 200, { url: await serialized(`${ref.type}/${ref.id}`, () => reserve(ref)) });
+      sendJson(res, 200, await serialized(`${ref.type}/${ref.id}`, () => reserve(ref)));
       return;
     }
     if (action === 'publish' && ref && method === 'DELETE') {
@@ -448,6 +469,8 @@ export function createCloudRoutes(options: CloudRoutesOptions) {
         if (res.headersSent) return;
         if (err instanceof SignedOut) {
           sendJson(res, 401, { error: 'not signed in to the Ryugi cloud', loginUrl: loginUrl() });
+        } else if (err instanceof PlanLimited) {
+          sendJson(res, 402, { error: err.message, code: 'plan_limit', upgradeUrl: err.upgradeUrl });
         } else if (err instanceof CloudRefused) {
           sendJson(res, err.status, { error: err.message });
         } else {

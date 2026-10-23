@@ -20,9 +20,11 @@ let cloudOrigin = '';
 let seen: Seen[] = [];
 let projects: string[] = [];
 let configHome = '';
+let refuseCreate = false;
 
 beforeEach(async () => {
   seen = [];
+  refuseCreate = false;
   let visibility = 'private';
   configHome = fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-xdg-'));
   cloud = http.createServer(async (req, res) => {
@@ -33,6 +35,11 @@ beforeEach(async () => {
     if ((req.headers['content-type'] ?? '').startsWith('application/json')) entry.visibility = JSON.parse(body.toString()).visibility;
     if (entry.visibility) visibility = entry.visibility;
     seen.push(entry);
+    if (refuseCreate && entry.method === 'POST' && entry.path === '/api/artifacts') {
+      res.writeHead(402, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'The free plan allows 5 private artifacts and you have 5.', code: 'plan_limit', upgradeUrl: 'https://cloud.example/billing' }));
+      return;
+    }
     res.writeHead(entry.method === 'DELETE' ? 204 : 200, { 'Content-Type': 'application/json' });
     if (entry.method === 'GET') res.end(JSON.stringify({ artifacts: [{ id: 'c1' }] }));
     else if (entry.method === 'DELETE') res.end();
@@ -84,6 +91,14 @@ describe('ryugi-artifacts publish', () => {
     expect(code).toBe(0);
     expect(out).toMatchObject({ type: 'published', artifact: 'html/arrow', url: `${cloudOrigin}/a/c1`, visibility: 'private' });
     expect(seen.map((s) => `${s.method} ${s.path}`)).toEqual(['POST /api/artifacts', 'POST /api/artifacts/c1/versions']);
+  });
+
+  test('a plan limit exits 2 with the upgrade link', async () => {
+    const dir = await project();
+    refuseCreate = true;
+    const { code, out } = await run('publish', ['--project-dir', dir, '--artifact', 'html/arrow']);
+    expect(code).toBe(2);
+    expect(out).toEqual({ type: 'plan-limit', message: 'The free plan allows 5 private artifacts and you have 5.', upgradeUrl: 'https://cloud.example/billing' });
   });
 
   test('--public sets the visibility before publishing', async () => {

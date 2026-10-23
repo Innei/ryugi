@@ -80,6 +80,8 @@ node app/ryugi-artifacts.cjs start --json --project-dir /path/to/project --artif
 
 - Give them `cloudLink` when it is printed, and only that link. It is the
   same live page, on this computer and on any other, published or not.
+- `cloudLimit` instead of `cloudLink`: their Ryugi Cloud plan is full. Tell
+  them its `message` and give them `upgradeUrl`, then the local `link`.
 - No `cloudLink`: give them the complete `link`, including `?key=`. The
   server refuses requests without the key. `url` opens a list of every
   artifact.
@@ -131,6 +133,8 @@ node app/ryugi-artifacts.cjs publish --json --project-dir /path/to/project --art
   wait until they say they signed in, then run the same command again.
 - `--unpublish` deletes the cloud copy and the link stops working. `--list`
   and `--delete <cloud-id>` clean up copies published from other machines.
+- Exit code 2 with `{"type":"plan-limit",…}`: their plan is full. Tell them
+  its `message` and give them `upgradeUrl`.
 - Exit code 1 with `reasons`: fix those warnings, then publish again.
 
 ## Auto-publish

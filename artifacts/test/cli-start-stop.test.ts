@@ -234,6 +234,14 @@ describe('cloud link on start', () => {
     expect(cloud.requests.filter((r) => r.path === '/api/artifacts')).toHaveLength(1);
   }, 30000);
 
+  test('in Claude Code, a plan limit prints the upgrade link instead of a cloud link', async () => {
+    const { cloud, env } = await signedIn();
+    cloud.respond = (r) => (r.method === 'POST' && r.path === '/api/artifacts' ? { status: 402, body: { error: 'The free plan allows 5 private artifacts and you have 5. Upgrade to Pro for 500.', code: 'plan_limit', plan: 'free', limit: { kind: 'private', used: 5, max: 5 }, upgradeUrl: 'https://cloud.example/billing' } } : undefined);
+    const { out } = await runAsync(['start', '--project-dir', newProject(), '--artifact', 'html/arrow'], { ...env, CLAUDECODE: '1' });
+    expect(out.cloudLink).toBeUndefined();
+    expect(out.cloudLimit).toEqual({ message: 'The free plan allows 5 private artifacts and you have 5. Upgrade to Pro for 500.', upgradeUrl: 'https://cloud.example/billing' });
+  }, 30000);
+
   test('outside Claude Code no cloud link is reserved', async () => {
     const { cloud, env } = await signedIn();
     const { out } = await runAsync(['start', '--project-dir', newProject(), '--artifact', 'html/arrow'], env);

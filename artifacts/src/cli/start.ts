@@ -45,8 +45,10 @@ async function withCloudLink(out: Record<string, unknown>, artifact: string | un
       method: 'POST',
       signal: AbortSignal.timeout(RESERVE_TIMEOUT_MS),
     });
-    const { url } = (await res.json()) as { url?: unknown };
-    return typeof url === 'string' ? { ...out, cloudLink: url } : out;
+    const { url, limit } = (await res.json()) as { url?: unknown; limit?: { message?: unknown; upgradeUrl?: unknown } };
+    if (typeof url === 'string') return { ...out, cloudLink: url };
+    if (typeof limit?.upgradeUrl === 'string') return { ...out, cloudLimit: { message: limit.message, upgradeUrl: limit.upgradeUrl } };
+    return out;
   } catch {
     return out;
   }

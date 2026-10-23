@@ -9,12 +9,13 @@ export type AutoPublishOutcome =
   | { kind: 'opted-out' }
   | { kind: 'gone' }
   | { kind: 'signed-out' }
-  | { kind: 'cannot-create'; message: string };
+  | { kind: 'cannot-create'; message: string; upgradeUrl?: string };
 
 export interface AutoPublishNotice {
   id: string;
   kind: 'signed-out' | 'cap' | 'failing';
   message: string;
+  upgradeUrl?: string;
 }
 
 export interface AutoPublishState {
@@ -67,8 +68,8 @@ export function createAutoPublisher(options: AutoPublisherOptions) {
   const remarked = new Set<string>();
   const failures = new Map<string, number>();
   const save = () => writeJsonAtomic(options.stateFile, { dirty: [...dirty], notice, paused } satisfies AutoPublishState);
-  const raise = (kind: AutoPublishNotice['kind'], message: string) => {
-    if (notice?.kind !== kind) notice = { id: crypto.randomUUID(), kind, message };
+  const raise = (kind: AutoPublishNotice['kind'], message: string, upgradeUrl?: string) => {
+    if (notice?.kind !== kind) notice = { id: crypto.randomUUID(), kind, message, ...(upgradeUrl ? { upgradeUrl } : {}) };
   };
 
   let idleTimer: NodeJS.Timeout | null = null;
@@ -118,7 +119,7 @@ export function createAutoPublisher(options: AutoPublisherOptions) {
       } else if (outcome.kind === 'opted-out' || outcome.kind === 'gone') {
         dirty.delete(key);
       } else if (outcome.kind === 'cannot-create') {
-        raise('cap', outcome.message);
+        raise('cap', outcome.message, outcome.upgradeUrl);
       } else {
         retry = true;
       }

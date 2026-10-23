@@ -179,6 +179,15 @@ describe('failures', () => {
     expect(cloud.requests.length).toBe(before);
   });
 
+  test('a plan limit on create raises the cap notice with the upgrade link', async () => {
+    const { cloud, edit, flush, state } = await startEnabled();
+    cloud.respond = (r) => (r.method === 'POST' && r.path === '/api/artifacts' ? { status: 402, body: { error: 'The free plan allows 5 private artifacts and you have 5. Upgrade to Pro for 500.', code: 'plan_limit', plan: 'free', limit: { kind: 'private', used: 5, max: 5 }, upgradeUrl: 'https://cloud.example/billing' } } : undefined);
+    await edit('a', '<title>A</title>');
+    await flush();
+    expect(state().notice).toMatchObject({ kind: 'cap', upgradeUrl: 'https://cloud.example/billing' });
+    expect(state().notice!.message).toContain('free plan allows 5 private');
+  });
+
   test('a refused create raises the cap notice while existing copies keep publishing', async () => {
     const { cloud, edit, flush, state, dirty } = await startEnabled();
     await edit('old', '<title>Old</title>');

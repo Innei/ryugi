@@ -22,6 +22,7 @@ export async function publish(options: PublishOptions, emit: Emit): Promise<numb
   const call = async (method: string, route: string, body?: unknown) => {
     const { status, json } = await server.call(method, route, body);
     if (status === 401) throw new CliError('', { type: 'login-required', url: json.loginUrl, message: 'Open url to sign in to the Ryugi cloud, then run the same command again.' }, 2);
+    if (status === 402 && json.code === 'plan_limit') throw new CliError('', { type: 'plan-limit', message: json.error, upgradeUrl: json.upgradeUrl }, 2);
     if (status < 200 || status >= 300) throw new CliError(json.error || `HTTP ${status}`, json.reasons ? { reasons: json.reasons } : {});
     return json;
   };

@@ -71,6 +71,16 @@ describe('notices', () => {
   });
 });
 
+describe('plan limit notice', () => {
+  test('passes the upgrade link on to the agent', () => {
+    const { project, env, state } = setup({ decided: true });
+    fs.writeFileSync(path.join(state, 'auto-publish.json'), JSON.stringify({ dirty: [], paused: null, notice: { id: 'n4', kind: 'cap', message: 'The free plan allows 5 private artifacts and you have 5.', upgradeUrl: 'https://cloud.example/billing' } }));
+    const text = hook.autoPublishContext(project, env, 's1');
+    expect(text).toContain('free plan allows 5 private');
+    expect(text).toContain('https://cloud.example/billing');
+  });
+});
+
 describe('failing notice', () => {
   test('tells the agent which artifact keeps failing to publish', () => {
     const { project, env, state } = setup({ decided: true });

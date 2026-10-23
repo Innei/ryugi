@@ -535,6 +535,24 @@ describe('reserving a cloud link', () => {
     });
   });
 
+  test('a plan limit on reserve comes back with its upgrade link instead of a cloud link', async () => {
+    const { server, cloud } = await start();
+    await autoPublish(server, true);
+    cloud.respond = (r) => (r.method === 'POST' && r.path === '/api/artifacts' ? { status: 402, body: { error: 'The free plan allows 5 private artifacts and you have 5. Upgrade to Pro for 500.', code: 'plan_limit', plan: 'free', limit: { kind: 'private', used: 5, max: 5 }, upgradeUrl: 'https://cloud.example/billing' } } : undefined);
+    const { json } = await call(server, 'POST', '/api/cloud/reserve/html/a');
+    expect(json).toEqual({ url: null, limit: { message: 'The free plan allows 5 private artifacts and you have 5. Upgrade to Pro for 500.', upgradeUrl: 'https://cloud.example/billing' } });
+  });
+
+  test('a manual publish refused by the plan answers 402 with the upgrade link', async () => {
+    const { server, cloud, root } = await start();
+    writeHtml(root, 'a', { 'index.html': '<title>A</title>' });
+    cloud.respond = (r) => (r.method === 'POST' && r.path === '/api/artifacts' ? { status: 402, body: { error: 'The free plan allows 5 private artifacts and you have 5. Upgrade to Pro for 500.', code: 'plan_limit', plan: 'free', limit: { kind: 'private', used: 5, max: 5 }, upgradeUrl: 'https://cloud.example/billing' } } : undefined);
+    const { status, json } = await call(server, 'POST', '/api/cloud/publish/html/a');
+    expect(status).toBe(402);
+    expect(json).toMatchObject({ code: 'plan_limit', upgradeUrl: 'https://cloud.example/billing' });
+    expect(json.error).toContain('free plan allows 5 private');
+  });
+
   test('an artifact that already has a link keeps it', async () => {
     const { server, cloud } = await start();
     await autoPublish(server, true);
