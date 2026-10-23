@@ -1,6 +1,8 @@
 import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Button } from '@lobehub/ui';
+import { SlidersHorizontal } from 'lucide-react';
 import type { InspectorReport } from '../../shared/inspector';
 import type { BoardHumanOp } from '../../shared/board-comments';
 import type { SelectionMessage } from '../../shared/selection';
@@ -29,6 +31,8 @@ import type { Bounds } from '../../shared/types';
 import { useArtboardPage } from '../hooks/useArtboardPage';
 import { PHONE_QUERY, useMedia } from '../hooks/useMedia';
 import { PhoneArtboard } from './PhoneArtboard';
+import { useBoardTweaks } from '../hooks/useBoardTweaks';
+import { TweaksPanel, tweakPanelAnchor } from '../tweaks/TweaksPanel';
 
 const styles = stylex.create({
   layout: { display: 'flex', width: '100%', height: '100%', overflow: 'hidden' },
@@ -96,6 +100,12 @@ function DesktopArtboard({ id, artifact, canvas, layout, warnings, pending, cont
   const [expanded, setExpanded] = useState<string | null>(null);
   const [playing, setPlaying] = useState<ReadonlySet<string>>(() => new Set());
   const [replays, setReplays] = useState<Record<string, number>>({});
+  const parameters = useBoardTweaks(id);
+  const [parameterBoard, setParameterBoard] = useState<string | null>(null);
+  const parameterTrigger = useRef<HTMLElement | null>(null);
+  useEffect(() => setParameterBoard(null), [page, id]);
+  const closeParameters = () => { setParameterBoard(null); parameterTrigger.current?.focus(); };
+  const toggleParameters = (id: string, trigger: HTMLElement) => { parameterTrigger.current = trigger; setParameterBoard((current) => current === id ? null : id); };
   const selectionEnabled = tool === 'select' && !expanded && !panning;
   const commentTool = tool === 'comment';
   const inspector = useInspector({
@@ -116,6 +126,14 @@ function DesktopArtboard({ id, artifact, canvas, layout, warnings, pending, cont
     },
   });
   useSelectionSync({ artifact, boards: canvas?.boards, live, inspector, send });
+  const frameRef = useMemo(() => {
+    const refs = new Map<string, (element: HTMLIFrameElement | null) => void>();
+    return (id: string) => {
+      if (!refs.has(id)) refs.set(id, (element) => { parameters.refFor(id)(element); inspector.refFor(id)(element); });
+      return refs.get(id)!;
+    };
+  }, [parameters.refFor, inspector.refFor]);
+  const frameLoaded = useCallback((id: string) => { parameters.loaded(id); inspector.loaded(id); }, [parameters.loaded, inspector.loaded]);
   const boardComments = useBoardComments({ comments, comment, page, boards: canvas?.boards ?? {}, inspector });
   const verdicts = useVerdicts({ canvas, page, threads: boardComments.threads, stale: boardComments.stale, versions, comment });
   const rejectAt = verdicts.rejecting ? verdicts.origin(verdicts.rejecting) : null;
@@ -134,9 +152,10 @@ function DesktopArtboard({ id, artifact, canvas, layout, warnings, pending, cont
     boardComments.setOpenId(threadId);
   };
   const retained = useMemo(() => new Set([
+    ...(parameterBoard ? [parameterBoard] : []),
     ...inspector.selectedTargets.map((target) => target.boardId),
     ...Object.entries(inspector.frames).filter(([, frame]) => frame.tweaks.length > 0).map(([id]) => id),
-  ]), [inspector.selectedTargets, inspector.frames]);
+  ]), [inspector.selectedTargets, inspector.frames, parameterBoard]);
   const closeInspector = useCallback(() => setInspectorOpen(false), []);
   useEffect(() => { if (expanded) setSpaceHeld(false); }, [expanded, setSpaceHeld]);
   const pendingBoards = useMemo(() => new Set(pending), [pending]);
@@ -147,11 +166,11 @@ function DesktopArtboard({ id, artifact, canvas, layout, warnings, pending, cont
     document.title = canvas?.title || id;
   }, [canvas?.title, id]);
   function onKey(e: KeyboardEvent | Extract<InspectorReport, { type: 'ryugi:inspect:key' }>) {
-    if ('target' in e && (e.target as HTMLElement | null)?.closest?.('input, textarea, select, [contenteditable], [role="tree"], [role="treeitem"]')) return;
+    if ('target' in e && (e.target as HTMLElement | null)?.closest?.('input, textarea, select, [contenteditable], [role="tree"], [role="treeitem"], [data-chrome="parameters"]')) return;
     const prevent = () => { if ('preventDefault' in e) e.preventDefault(); };
     const mod = e.metaKey || e.ctrlKey;
     if (e.key === 'Escape' && commentTool) { if (!boardComments.close()) changeTool('select'); }
-    else if (e.key === 'Escape') { setExpanded(null); inspector.clearSelection(); selection.reset(); }
+    else if (e.key === 'Escape') { if (parameterBoard) closeParameters(); else { setExpanded(null); inspector.clearSelection(); selection.reset(); } }
     else if (mod && (e.key === '=' || e.key === '+')) { prevent(); zoomBy(1.25); }
     else if (mod && e.key === '-') { prevent(); zoomBy(0.8); }
     else if (e.shiftKey && e.code === 'Digit1') fit(pageBounds(page));
@@ -173,6 +192,13 @@ function DesktopArtboard({ id, artifact, canvas, layout, warnings, pending, cont
   );
   const notes = Object.entries(canvas?.notes ?? {}).filter(([, n]) => n.page === page);
   const expandedBoard = expanded ? allBoards[expanded] : undefined;
+  const parameterCounts = Object.fromEntries(Object.entries(parameters.states).flatMap(([id, state]) => {
+    const count = Object.keys(state.schema?.controls ?? {}).length;
+    return count || state.error ? [[id, count]] : [];
+  }));
+  const parameterState = parameterBoard ? parameters.states[parameterBoard] : undefined;
+  const parameterSpec = parameterBoard ? allBoards[parameterBoard] : undefined;
+  const panel = (anchored: boolean) => parameterBoard && parameterState && parameterSpec && (parameterState.schema || parameterState.error) ? <TweaksPanel boardId={parameterBoard} title={parameterSpec.title ?? parameterBoard} state={parameterState} anchor={anchored ? tweakPanelAnchor(parameterSpec, view) : undefined} onChange={(key, value) => parameters.change(parameterBoard, key, value)} onReset={() => parameters.reset(parameterBoard)} onClose={closeParameters} /> : null;
   const expandedReady = expandedBoard
     ? (versions[expandedBoard.file] ?? 0) > 0 && !pendingBoards.has(expanded!)
     : false;
@@ -213,8 +239,8 @@ function DesktopArtboard({ id, artifact, canvas, layout, warnings, pending, cont
             playing={playing}
             replays={replays}
             inspecting={selectionEnabled || (commentTool && !expanded)}
-            frameRef={inspector.refFor}
-            frameLoaded={inspector.loaded}
+            frameRef={frameRef}
+            frameLoaded={frameLoaded}
             writing={live ? canvas.writing : undefined}
             agent={agent}
             retained={retained}
@@ -232,6 +258,9 @@ function DesktopArtboard({ id, artifact, canvas, layout, warnings, pending, cont
             onExpand={setExpanded}
             onTogglePlay={(id) => setPlaying((current) => togglePlaying(current, id))}
             onReplay={(id) => setReplays((prev) => ({ ...prev, [id]: (prev[id] ?? 0) + 1 }))}
+            parameters={parameterCounts}
+            activeParameters={parameterBoard}
+            onToggleParameters={toggleParameters}
             verdicts={verdicts}
           />
           {verdicts.rejecting && rejectAt && <RejectComposer group={verdicts.rejecting} left={view.x + rejectAt.x * view.k} top={view.y + rejectAt.y * view.k + 8} onSubmit={verdicts.submitReject} onCancel={verdicts.cancelReject} />}
@@ -263,6 +292,7 @@ function DesktopArtboard({ id, artifact, canvas, layout, warnings, pending, cont
         verify={verdicts.progress}
         onNextVerify={nextVerify}
       />
+      {!expanded && panel(true)}
       {expanded && expandedBoard && expandedReady && (
         <ExpandedBoard
           id={expanded}
@@ -270,6 +300,10 @@ function DesktopArtboard({ id, artifact, canvas, layout, warnings, pending, cont
           src={`${contentBase}${expandedBoard.file}?v=${versions[expandedBoard.file] ?? 0}`}
           interactive={expandedBoard.interactive === true}
           onClose={() => setExpanded(null)}
+          frameRef={parameters.refFor(expanded, 'expanded')}
+          onFrameLoad={() => parameters.loaded(expanded, 'expanded')}
+          parameterAction={parameterCounts[expanded] !== undefined ? <Button icon={SlidersHorizontal} size="small" type="text" aria-expanded={parameterBoard === expanded} onClick={(event) => toggleParameters(expanded, event.currentTarget)}>Parameters</Button> : undefined}
+          parameters={parameterBoard === expanded ? panel(false) : undefined}
         />
       )}
     </div>

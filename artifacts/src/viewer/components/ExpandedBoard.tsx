@@ -2,6 +2,7 @@ import { ActionIcon } from '@lobehub/ui';
 import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
 import { X } from 'lucide-react';
+import type { ReactNode, Ref } from 'react';
 import { isMediaBoard, type BoardSpec } from '../../shared/types';
 import { VideoPlayer } from './VideoPlayer';
 
@@ -28,10 +29,10 @@ const styles = stylex.create({
   },
   title: { flex: 1, fontWeight: 600 },
   id: { marginInlineStart: 8, fontFamily: cssVar.fontFamilyCode, fontSize: 12, color: cssVar.colorTextTertiary },
-  body: { flex: 1, overflow: 'auto', padding: 32, display: 'flex', justifyContent: 'center', alignItems: 'flex-start' },
+  body: { flex: 1, overflow: 'auto', padding: 32, display: 'flex', alignItems: 'flex-start' },
   frame: { flexShrink: 0, borderWidth: 0, backgroundColor: '#fff', boxShadow: cssVar.boxShadowSecondary },
-  media: { position: 'relative', flexShrink: 0, maxWidth: '100%' },
-  image: { display: 'block', maxWidth: '100%', height: 'auto' },
+  media: { position: 'relative', flexShrink: 0, maxWidth: '100%', marginInline: 'auto' },
+  image: { display: 'block', maxWidth: '100%', height: 'auto', marginInline: 'auto' },
 });
 
 interface ExpandedBoardProps {
@@ -40,9 +41,13 @@ interface ExpandedBoardProps {
   src: string;
   interactive: boolean;
   onClose: () => void;
+  parameterAction?: ReactNode;
+  parameters?: ReactNode;
+  frameRef?: Ref<HTMLIFrameElement>;
+  onFrameLoad?: () => void;
 }
 
-export function ExpandedBoard({ id, board, src, interactive, onClose }: ExpandedBoardProps) {
+export function ExpandedBoard({ id, board, src, interactive, onClose, parameterAction, parameters, frameRef, onFrameLoad }: ExpandedBoardProps) {
   return (
     <div data-chrome {...stylex.props(styles.overlay)}>
       <div {...stylex.props(styles.head)}>
@@ -50,7 +55,7 @@ export function ExpandedBoard({ id, board, src, interactive, onClose }: Expanded
           {board.title ?? id}
           <span {...stylex.props(styles.id)}>{id}</span>
         </span>
-        <ActionIcon icon={X} size="small" title="Close (Esc)" aria-label="Close" onClick={onClose} />
+        {parameterAction}<ActionIcon icon={X} size="small" title="Close (Esc)" aria-label="Close" onClick={onClose} />
       </div>
       <div {...stylex.props(styles.body)}>
         {board.type === 'video' ? (
@@ -60,13 +65,15 @@ export function ExpandedBoard({ id, board, src, interactive, onClose }: Expanded
         ) : isMediaBoard(board) ? (
           <img src={src} alt={board.title ?? id} {...stylex.props(styles.image)} style={{ width: board.w }} />
         ) : (
-          <iframe
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, flexShrink: 0, marginInline: 'auto' }}><iframe
+            ref={frameRef}
+            onLoad={onFrameLoad}
             title={board.title ?? id}
             src={src}
             sandbox="allow-scripts"
             {...stylex.props(styles.frame)}
             style={{ width: board.w, height: board.h, pointerEvents: interactive ? 'auto' : 'none' }}
-          />
+          />{parameters}</div>
         )}
       </div>
     </div>

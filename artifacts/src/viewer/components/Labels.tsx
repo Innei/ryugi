@@ -1,7 +1,7 @@
 import { ActionIcon } from '@lobehub/ui';
 import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
-import { Download, Film, Image as ImageIcon, Maximize2, Play, RotateCcw } from 'lucide-react';
+import { Download, Film, Image as ImageIcon, Maximize2, Play, RotateCcw, SlidersHorizontal } from 'lucide-react';
 import { isMediaBoard, type BoardSpec, type GroupSpec } from '../../shared/types';
 import type { Verdicts } from '../hooks/useVerdicts';
 import { boardReady, canPlay } from '../lib/play';
@@ -104,6 +104,9 @@ interface LabelsProps {
   onExpand: (id: string) => void;
   onTogglePlay: (id: string) => void;
   onReplay: (id: string) => void;
+  parameters?: Record<string, number>;
+  activeParameters?: string | null;
+  onToggleParameters?: (id: string, trigger: HTMLButtonElement) => void;
   verdicts?: Pick<Verdicts, 'states' | 'evidenceAt' | 'canJudge' | 'pass' | 'startReject' | 'undoPass'>;
 }
 
@@ -119,6 +122,9 @@ export function Labels({
   onExpand,
   onTogglePlay,
   onReplay,
+  parameters,
+  activeParameters,
+  onToggleParameters,
   verdicts,
 }: LabelsProps) {
   const groupScale = scaleOf(labelSize(GROUP_LABEL_RULE, view.k), GROUP_LABEL_FONT);
@@ -187,6 +193,7 @@ export function Labels({
                   />
                 </>
               )}
+              {ready && parameters?.[id] !== undefined && width >= PLAY_MIN_WIDTH && <button type="button" aria-label={`Parameters ${id}`} aria-expanded={activeParameters === id} onClick={(event) => onToggleParameters?.(id, event.currentTarget)} {...stylex.props(styles.play, activeParameters === id && styles.playOn)}><SlidersHorizontal size={11} />Parameters {parameters[id] || '!'}</button>}
               {interactive && width >= PLAY_MIN_WIDTH && playing.has(id) && (
                 <ActionIcon icon={RotateCcw} size={{ blockSize: 22, size: 13 }} title="Replay" aria-label={`Replay ${id}`} onClick={() => onReplay(id)} />
               )}
