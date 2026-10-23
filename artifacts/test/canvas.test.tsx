@@ -81,9 +81,54 @@ function animationClock(reduced = false) {
 
 function cursorPose() {
   const cursor = document.querySelector<HTMLElement>('[role="status"]')!;
+  expect(cursor).not.toBeNull();
   const [x, y] = cursor.style.transform.match(/translate\(([-\d.e]+)px,\s*([-\d.e]+)px\)/)!.slice(1).map(Number);
   return { x: x!, y: y!, angle: Number(cursor.querySelector('svg')?.style.transform.match(/rotate\(([-\d.e]+)deg\)/)?.[1] ?? 0) };
 }
+
+test('keeps the cursor on a completed HTML board until another complete write arrives', async () => {
+  const clock = animationClock();
+  const first = { 'pages/a.html': 1 };
+  await render({ live: true, agent: 'Codex', versions: first, pending: new Set(['b']) });
+  expect(document.querySelector('[role="status"]')).not.toBeNull();
+  expect(document.querySelector('[role="status"]')?.getAttribute('aria-label')).toContain('First');
+  expect(cursorPose()).toMatchObject({ x: 64, y: 80 });
+  await render({ live: true, agent: 'Codex', versions: first, pending: new Set(['b']), writing: 'b' });
+  expect(cursorPose()).toMatchObject({ x: 64, y: 80 });
+  expect(clock.frames.size).toBe(0);
+  const second = { ...first, 'pages/b.html': 2 };
+  await render({ live: true, agent: 'Codex', versions: second });
+  expect(document.querySelector('[role="status"]')?.getAttribute('aria-label')).toContain('Second');
+  clock.step(3000);
+  expect(cursorPose()).toMatchObject({ x: 1064, y: 80 });
+  await render({ live: true, agent: 'Codex', versions: second });
+  expect(cursorPose()).toMatchObject({ x: 1064, y: 80 });
+  expect(document.querySelector('[aria-busy="true"]')).toBeNull();
+});
+
+test('moves back when an earlier HTML board is rewritten as a complete file', async () => {
+  animationClock(true);
+  await render({ live: true, versions: { 'pages/a.html': 1, 'pages/b.html': 2 } });
+  expect(cursorPose()).toMatchObject({ x: 1064, y: 80 });
+  await render({ live: true, versions: { 'pages/a.html': 3, 'pages/b.html': 2 } });
+  expect(cursorPose()).toMatchObject({ x: 64, y: 80 });
+});
+
+test('ignores pending boards and newer media when choosing the last completed HTML', async () => {
+  animationClock(true);
+  await render({
+    live: true,
+    boards: [...boards, ['shot', { file: 'pages/shot.png', type: 'image', page: 'p', x: 2000, y: 0, w: 640, h: 400 }]],
+    versions: { 'pages/a.html': 1, 'pages/b.html': 2, 'pages/shot.png': 3 },
+    pending: new Set(['b']),
+  });
+  expect(cursorPose()).toMatchObject({ x: 64, y: 80 });
+});
+
+test('does not show a completed-file cursor on static previews or snapshots', async () => {
+  await render({ live: false, agent: 'Codex', versions: { 'pages/a.html': 1, 'pages/b.html': 2 } });
+  expect(document.querySelector('[role="status"]')).toBeNull();
+});
 
 test('flies along a curved route, turns the arrow and arrives without animating the name', async () => {
   const clock = animationClock();

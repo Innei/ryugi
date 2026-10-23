@@ -252,6 +252,7 @@ function DesktopArtboard({ id, artifact, canvas, layout, warnings, pending, cont
             inspecting={selectionEnabled || (commentTool && !expanded)}
             frameRef={frameRef}
             frameLoaded={frameLoaded}
+            live={live}
             writing={live ? canvas.writing : undefined}
             agent={agent}
             retained={retained}

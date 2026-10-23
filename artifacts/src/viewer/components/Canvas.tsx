@@ -68,6 +68,7 @@ const styles = stylex.create({
 });
 
 interface CanvasProps {
+  live?: boolean;
   writing?: string;
   agent?: string;
   retained?: ReadonlySet<string>;
@@ -96,9 +97,20 @@ function stickyColors(color?: string) {
   return { backgroundColor: color, color: luminance > 0.179 ? '#000' : '#fff' };
 }
 
-export function Canvas({ view, boards, notes, contentBase, versions, pending, playing, replays, inspecting, frameRef, frameLoaded, writing, agent, retained, onExpand }: CanvasProps) {
+export function Canvas({ view, boards, notes, contentBase, versions, pending, playing, replays, inspecting, frameRef, frameLoaded, live, writing, agent, retained, onExpand }: CanvasProps) {
   const { ref, visible } = useVisibleBoards(boards.map(([id]) => id));
-  const active = boards.find(([id]) => id === writing)?.[1];
+  let cursor = writing;
+  if (live) {
+    cursor = undefined;
+    let latest = 0;
+    for (const [id, board] of boards) {
+      const version = versions[board.file] ?? 0;
+      if (isMediaBoard(board) || pending.has(id) || version <= latest) continue;
+      cursor = id;
+      latest = version;
+    }
+  }
+  const active = boards.find(([id]) => id === cursor)?.[1];
   return (
     <div ref={ref} {...stylex.props(styles.world)} style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.k})` }}>
       {boards.map(([id, board]) => {
@@ -161,7 +173,7 @@ export function Canvas({ view, boards, notes, contentBase, versions, pending, pl
       )}
       {active && (
         <WritingCursor x={active.x + Math.min(64, active.w * 0.15)} y={active.y + Math.min(80, active.h * 0.2)}
-          zoom={view.k} agent={agent ?? 'Agent'} title={active.title ?? writing!} />
+          zoom={view.k} agent={agent ?? 'Agent'} title={active.title ?? cursor!} />
       )}
     </div>
   );

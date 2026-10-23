@@ -73,7 +73,7 @@ export function WritingCursor({ x, y, zoom, agent, title }: { x: number; y: numb
 
   const initial = pose.current ?? { x, y, angle: 0 };
   return (
-    <div ref={cursor} role="status" aria-label={`${agent} is drawing ${title}`} {...stylex.props(styles.cursor)} style={{ transform: transform(initial) }}>
+    <div ref={cursor} role="status" aria-label={`${agent} last worked on ${title}`} {...stylex.props(styles.cursor)} style={{ transform: transform(initial) }}>
       <svg ref={arrow} width="32" height="34" viewBox="0 0 32 34" aria-hidden="true" {...stylex.props(styles.arrow)} style={{ transform: rotation(initial.angle) }}>
         <path d="M6.1 3.4C4.8 2.3 3.5 3.1 3.8 4.8L8.7 28.2C9 29.9 10.8 30.2 11.7 28.8L16.3 21.4C16.6 21 17.2 20.8 17.7 20.9L26.1 22.2C27.9 22.5 28.7 20.5 27.3 19.3Z" />
       </svg>

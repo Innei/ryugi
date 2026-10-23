@@ -157,6 +157,7 @@ export function PhoneArtboard({ id, artifact, canvas, layout, warnings, pending,
               inspecting={false}
               frameRef={() => () => {}}
               frameLoaded={() => {}}
+              live={live}
               writing={live ? canvas.writing : undefined}
               agent={agent}
             />
