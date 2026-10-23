@@ -3,6 +3,7 @@ import type http from 'node:http';
 import { artifactKeyOf, type ArtifactRef } from './artifacts';
 import { CALLBACK_PAGE_CSP, callbackPage } from './callback-page';
 import { isVisibility } from '../shared/cloud';
+import { cloudErrorDetails, type CloudErrorDetails } from '../shared/cloud-error';
 import { readConfig, setProjectAutoPublish, updateArtifactConfig, type Visibility } from './config';
 import { clearCredentials, readCredentials, writeCredentials } from './credentials';
 import { hostIdFor } from './host-id';
@@ -50,6 +51,7 @@ class CloudRefused extends Error {
   constructor(
     readonly status: number,
     message: string,
+    readonly details: CloudErrorDetails = {},
   ) {
     super(message);
   }
@@ -61,14 +63,15 @@ class PlanLimited extends CloudRefused {
   constructor(
     message: string,
     readonly upgradeUrl: string,
+    details: CloudErrorDetails,
   ) {
-    super(402, message);
+    super(402, message, details);
   }
 }
 
 class CreateRefused extends CloudRefused {
   constructor(readonly detail: string) {
-    super(502, `cloud refused (403): ${detail}`);
+    super(403, `cloud refused (403): ${detail}`);
   }
 }
 
@@ -89,13 +92,15 @@ async function readJsonBody(req: http.IncomingMessage): Promise<unknown> {
 
 async function refuse(res: Response): Promise<never> {
   const text = await res.text().catch(() => '');
-  let parsed: { error?: unknown; code?: unknown; upgradeUrl?: unknown } = {};
+  let parsed: { error?: unknown } = {};
   try {
-    parsed = JSON.parse(text);
+    const body: unknown = JSON.parse(text);
+    if (body && typeof body === 'object') parsed = body;
   } catch {}
+  const details = cloudErrorDetails(parsed);
   const message = typeof parsed.error === 'string' ? parsed.error : text || res.statusText;
-  if (res.status === 402 && parsed.code === 'plan_limit' && typeof parsed.upgradeUrl === 'string') throw new PlanLimited(message, parsed.upgradeUrl);
-  throw new CloudRefused(502, `cloud refused (${res.status}): ${message}`);
+  if (res.status === 402 && details.code === 'plan_limit' && details.upgradeUrl) throw new PlanLimited(message, details.upgradeUrl, details);
+  throw new CloudRefused(res.status, `cloud refused (${res.status}): ${message}`, details);
 }
 
 async function errorMessage(res: Response) {
@@ -328,7 +333,7 @@ export function createCloudRoutes(options: CloudRoutesOptions) {
       if (err instanceof PlanLimited) return { kind: 'cannot-create', message: err.message, upgradeUrl: err.upgradeUrl };
       if (err instanceof CreateRefused) return { kind: 'cannot-create', message: err.detail };
       if (err instanceof CloudRefused && err.status === 404) return { kind: 'gone' };
-      if (err instanceof CloudRefused && err.status === 413) return { kind: 'not-ready' };
+      if (err instanceof CloudRefused && err.status === 413) return { kind: 'cannot-create', message: err.message };
       return { kind: 'failed', message: (err as Error).message };
     }
   };
@@ -470,9 +475,9 @@ export function createCloudRoutes(options: CloudRoutesOptions) {
         if (err instanceof SignedOut) {
           sendJson(res, 401, { error: 'not signed in to the Ryugi cloud', loginUrl: loginUrl() });
         } else if (err instanceof PlanLimited) {
-          sendJson(res, 402, { error: err.message, code: 'plan_limit', upgradeUrl: err.upgradeUrl });
+          sendJson(res, 402, { error: err.message, ...err.details });
         } else if (err instanceof CloudRefused) {
-          sendJson(res, err.status, { error: err.message });
+          sendJson(res, err.status, { error: err.message, ...err.details });
         } else {
           sendJson(res, 500, { error: (err as Error).message });
         }

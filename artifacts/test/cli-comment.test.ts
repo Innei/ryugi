@@ -74,13 +74,13 @@ describe('ryugi-artifacts comment', () => {
   test('reply, list and resolve work on threads by id', async () => {
     const dir = await project();
     const threadId = (await run(['comment', 'add', ...doc(dir), '--block', 'b1', '--text', 'q?'])).out.threadId;
-    expect((await run(['comment', 'reply', ...doc(dir), '--thread', threadId, '--text', 'more'], { agent: { CLAUDECODE: '1' } })).out).toMatchObject({ type: 'comment-replied', threadId });
+    expect((await run(['comment', 'reply', ...doc(dir), `--thread=${threadId}`, '--text', 'more'], { agent: { CLAUDECODE: '1' } })).out).toMatchObject({ type: 'comment-replied', threadId });
     expect(comments(dir).threads[0].messages[1]).toMatchObject({ author: 'agent', name: 'Claude Code', text: 'more' });
     expect((await run(['comment', 'list', ...doc(dir)])).out).toEqual({ type: 'comments', artifact: 'document/relay', threads: [] });
     const all = (await run(['comment', 'list', ...doc(dir), '--all'])).out;
     expect(all.threads).toHaveLength(1);
     expect(all.threads[0]).toMatchObject({ id: threadId, waitingOn: 'human' });
-    expect((await run(['comment', 'resolve', ...doc(dir), '--thread', threadId])).out).toMatchObject({ type: 'comment-resolved', threadId });
+    expect((await run(['comment', 'resolve', ...doc(dir), `--thread=${threadId}`])).out).toMatchObject({ type: 'comment-resolved', threadId });
     expect(comments(dir).threads[0]).toMatchObject({ status: 'resolved', statusBy: 'agent' });
   });
 

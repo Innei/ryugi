@@ -188,6 +188,15 @@ describe('failures', () => {
     expect(state().notice!.message).toContain('free plan allows 5 private');
   });
 
+  test('artifact storage exhaustion raises its reason immediately', async () => {
+    const { cloud, edit, flush, state } = await startEnabled();
+    cloud.respond = r => r.path.endsWith('/versions') ? { status: 413, body: { error: 'Artifact history is full.', code: 'artifact_storage_limit', limit: { kind: 'artifact_storage', used: 20971520, max: 20971520 } } } : undefined;
+    await edit('a', '<title>A</title>');
+    await flush();
+    expect(state().notice).toMatchObject({ kind: 'cap' });
+    expect(state().notice!.message).toContain('Artifact history is full.');
+  });
+
   test('a refused create raises the cap notice while existing copies keep publishing', async () => {
     const { cloud, edit, flush, state, dirty } = await startEnabled();
     await edit('old', '<title>Old</title>');

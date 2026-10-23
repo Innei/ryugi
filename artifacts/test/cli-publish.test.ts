@@ -21,10 +21,12 @@ let seen: Seen[] = [];
 let projects: string[] = [];
 let configHome = '';
 let refuseCreate = false;
+let refusal: { status: number; body: Record<string, unknown> } | null = null;
 
 beforeEach(async () => {
   seen = [];
   refuseCreate = false;
+  refusal = null;
   let visibility = 'private';
   configHome = fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-xdg-'));
   cloud = http.createServer(async (req, res) => {
@@ -35,6 +37,11 @@ beforeEach(async () => {
     if ((req.headers['content-type'] ?? '').startsWith('application/json')) entry.visibility = JSON.parse(body.toString()).visibility;
     if (entry.visibility) visibility = entry.visibility;
     seen.push(entry);
+    if (refusal && entry.path.endsWith('/versions')) {
+      res.writeHead(refusal.status, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(refusal.body));
+      return;
+    }
     if (refuseCreate && entry.method === 'POST' && entry.path === '/api/artifacts') {
       res.writeHead(402, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'The free plan allows 5 private artifacts and you have 5.', code: 'plan_limit', upgradeUrl: 'https://cloud.example/billing' }));
@@ -98,7 +105,35 @@ describe('ryugi-artifacts publish', () => {
     refuseCreate = true;
     const { code, out } = await run('publish', ['--project-dir', dir, '--artifact', 'html/arrow']);
     expect(code).toBe(2);
-    expect(out).toEqual({ type: 'plan-limit', message: 'The free plan allows 5 private artifacts and you have 5.', upgradeUrl: 'https://cloud.example/billing' });
+    expect(out).toEqual({ type: 'plan-limit', status: 402, code: 'plan_limit', message: 'The free plan allows 5 private artifacts and you have 5.', upgradeUrl: 'https://cloud.example/billing' });
+  });
+
+  test('artifact storage refusal preserves status, code and usage in CLI JSON', async () => {
+    const dir = await project();
+    refusal = { status: 413, body: { error: 'Artifact history is full.', code: 'artifact_storage_limit', limit: { kind: 'artifact_storage', used: 20971518, max: 20971520, requested: 7 } } };
+    const { code, out } = await run('publish', ['--project-dir', dir, '--artifact', 'html/arrow']);
+    expect(code).toBe(1);
+    expect(out).toMatchObject({ status: 413, code: 'artifact_storage_limit', limit: { kind: 'artifact_storage', used: 20971518, max: 20971520, requested: 7 } });
+    expect(out.error).toContain('Artifact history is full.');
+  });
+
+  test('account storage refusal preserves its quota instead of only the upgrade link', async () => {
+    const dir = await project();
+    refusal = { status: 402, body: { error: 'Account storage is full.', code: 'plan_limit', plan: 'free', limit: { kind: 'storage', used: 104857599, max: 104857600 }, upgradeUrl: 'https://cloud.example/billing' } };
+    const { code, out } = await run('publish', ['--project-dir', dir, '--artifact', 'html/arrow']);
+    expect(code).toBe(2);
+    expect(out).toMatchObject({ type: 'plan-limit', status: 402, code: 'plan_limit', plan: 'free', limit: { kind: 'storage', used: 104857599, max: 104857600 }, upgradeUrl: 'https://cloud.example/billing' });
+  });
+
+  test('invalid cloud metadata cannot replace the CLI error classification', async () => {
+    const dir = await project();
+    refusal = { status: 413, body: { error: 'Storage exhausted.', code: 'artifact_storage_limit', status: 200, type: 'published', limit: { kind: 'artifact_storage', used: -1, max: 20971520 } } };
+    const { code, out } = await run('publish', ['--project-dir', dir, '--artifact', 'html/arrow']);
+    expect(code).toBe(1);
+    expect(out.status).toBe(413);
+    expect(out.error).toContain('Storage exhausted.');
+    expect(out).not.toHaveProperty('limit');
+    expect(out).not.toHaveProperty('type');
   });
 
   test('--public sets the visibility before publishing', async () => {

@@ -243,7 +243,7 @@ describe('publishing', () => {
     const { server, root, cloud, configFile } = await start();
     writeHtml(root, 'a', { 'index.html': '<title>A</title>' });
     cloud.respond = (r) => (r.path.endsWith('/versions') ? { status: 413, body: { error: 'artifact is 21.0 MB; the limit is 20.0 MB' } } : undefined);
-    expect((await call(server, 'POST', '/api/cloud/publish/html/a')).status).toBe(502);
+    expect((await call(server, 'POST', '/api/cloud/publish/html/a')).status).toBe(413);
     expect(config(configFile).artifacts['html/a'].cloud).toMatchObject({ id: 'cloud1', publishedAt: null });
     cloud.respond = () => undefined;
     const { json } = await call(server, 'POST', '/api/cloud/publish/html/a');
@@ -393,7 +393,7 @@ describe('publishing', () => {
     writeHtml(root, 'a', { 'index.html': '<title>A</title>' });
     cloud.respond = () => ({ status: 403, body: { error: 'limit of 100 published artifacts reached' } });
     const { status, json } = await call(server, 'POST', '/api/cloud/publish/html/a');
-    expect(status).toBe(502);
+    expect(status).toBe(403);
     expect(json.error).toContain('limit of 100 published artifacts reached');
   });
 });
