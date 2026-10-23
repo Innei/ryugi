@@ -201,12 +201,16 @@ export function createCloudRoutes(options: CloudRoutesOptions) {
     return prepared.ready ? prepared.fingerprint === cloud.fingerprint : null;
   };
 
-  const publish = async (ref: ArtifactRef, requested?: Visibility, { recreate = true } = {}) => {
+  const publish = async (ref: ArtifactRef, requested?: Visibility, { recreate = true, skipUnchanged = false } = {}) => {
     const prepared = await prepare(ref);
     if (!prepared.ready) return { status: 409, body: { error: 'fix these before publishing', reasons: prepared.reasons } };
     const { hashed, content, fingerprint } = prepared;
     const key = `${ref.type}/${ref.id}`;
     const entry = artifactEntry(key);
+    const current = entry.cloud;
+    if (skipUnchanged && current?.publishedAt && current.fingerprint === fingerprint) {
+      return { status: 200, body: { id: current.id, url: current.url, visibility: current.visibility, publishedAt: current.publishedAt } };
+    }
     const byHash = new Map(hashed.map((file) => [file.hash, file.data]));
     const version = (visibility: Visibility | undefined) => ({ ...content, project, ...(visibility ? { visibility } : {}) });
 
@@ -286,7 +290,7 @@ export function createCloudRoutes(options: CloudRoutesOptions) {
     const entry = artifactEntry(key);
     if (entry.autoPublish === false) return { kind: 'opted-out' };
     try {
-      const result = await publish(ref, undefined, { recreate: false });
+      const result = await publish(ref, undefined, { recreate: false, skipUnchanged: true });
       if (result.status !== 200) return { kind: 'not-ready' };
       return { kind: 'published', created: (result.body as { id?: unknown }).id !== entry.cloud?.id };
     } catch (err) {

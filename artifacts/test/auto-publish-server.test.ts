@@ -69,6 +69,18 @@ describe('turn-end flush', () => {
     expect(requestLines(cloud, before)).not.toContain('POST /api/artifacts');
   });
 
+  test('a change that leaves the content as published sends nothing', async () => {
+    const { cloud, edit, flush, dirty } = await startEnabled();
+    await edit('a', '<title>A</title>');
+    await flush();
+    const before = cloud.requests.length;
+    await edit('a', '<title>A2</title>');
+    await edit('a', '<title>A</title>');
+    await flush();
+    expect(requestLines(cloud, before)).toEqual([]);
+    expect(dirty()).toEqual([]);
+  });
+
   test('without the session key the flush route is refused', async () => {
     const { server } = await startEnabled();
     expect((await call(server, 'POST', '/api/cloud/flush', undefined, { key: false })).status).toBe(403);
