@@ -324,7 +324,7 @@ the ID the viewer shows on hover, `<board id>#<n>` (`hero-2#7`).
 - `tweaks`: Inspector changes on nodes that are not selected.
 - `nodes`: every node's ID, `file` and `path`, for IDs they type.
 
-Read it before you act whenever they say "这里", "this", "the selected
+Read it before you act whenever they say "here", "this", "the selected
 ones", name an ID, or refer to what they tweaked. Some harnesses attach it
 to their message already; the file is the same either way. Edit the
 element at `path` in `file`. Inspector tweaks are preview only: they exist
@@ -362,7 +362,7 @@ node app/ryugi-artifacts.cjs comment list --json --project-dir /path/to/project 
 
   ```bash
   node app/ryugi-artifacts.cjs comment reply --json --project-dir /path/to/project --artifact artboard/<id> --thread <thread-id> <<'EOF'
-  输入框往右挪了 8px，和 pin 不再重叠。
+  Moved the input 8px right; it no longer overlaps the pin.
   EOF
   ```
 
@@ -375,7 +375,7 @@ node app/ryugi-artifacts.cjs comment list --json --project-dir /path/to/project 
 
 ## Verify groups
 
-A group with `"verify": true` gets 通过 and 打回 buttons next to its title.
+A group with `"verify": true` gets pass and reject buttons next to its title.
 Your human partner decides; you cannot pass or reject.
 
 - `comment list --json` returns `groups`: each verify group with `verdict`
@@ -386,8 +386,8 @@ Your human partner decides; you cannot pass or reject.
   the exact spot.
 - Fix what the reason asks for, then replace the evidence: overwrite the
   board's file, or add a board to the group. Any change to a group's board
-  files sends the group back to `pending` with "证据已更新"; that is how your
-  human partner knows to look again.
+  files sends the group back to `pending` with an "evidence updated" note;
+  that is how your human partner knows to look again.
 - Reply on the reject thread with what changed. Leave it open: `comment
   resolve` refuses a reject, and passing the group closes it.
 - `pass` covers the evidence as it was. Don't touch a passed group's files

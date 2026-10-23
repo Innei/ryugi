@@ -26,31 +26,27 @@ tables.
 
 ## Show the document early
 
-For a new document, first save a short, valid `doc.xml` inside a closed
-`<doc>`: the title, a brief introduction, then each planned section as its
-heading followed by a `<pending>` block naming what the section will cover:
+For a new document, look up only what the structure needs, then save a
+short, valid `doc.xml` inside a closed `<doc>`: the title, a brief
+introduction, and each planned section as its heading followed by a
+`<pending>` naming what it will cover:
 
 ```xml
-<h2>2. 存储</h2>
-<pending intent="三类数据各存在哪里，以及 R2 的 key 前缀"/>
+<h2>2. Storage</h2>
+<pending intent="Where each of the three data kinds lives, and the R2 key prefixes"/>
 ```
 
-Your human partner opens this outline while you write. The viewer shows each
-`<pending>` as a placeholder and puts your caret on the first one, so they
-can see what is left and where you write next.
+The viewer shows each `<pending>` as a placeholder, with your caret on the
+first one.
 
-To fill a section, read the current file again, preserving the ids the server
-added and any edits your human partner made, then replace that section's
-`<pending>` with its body in the same save. Keep the XML valid at every save,
-and check warnings as above.
+Before your first lookup, write the body of every section you can already
+write, in this save or the next, in any order. Then set the `intent` of each
+section still waiting to what you are checking, and look it up. Revise
+earlier sections whenever you learn more.
 
-For an existing or interrupted document, keep completed sections and fill
-the gaps; do not replace it with a new outline. An outline is a start, not a
-completed document. Finish the planned body before reporting completion:
-the document is finished when no `<pending>` is left.
-
-The viewer already streams document updates; you do not need a separate
-tool call for every node or character.
+For an existing or interrupted document, fill the gaps instead of starting
+a new outline. The document is finished when no `<pending>` is left; report
+completion only then.
 
 ## Diagrams
 
@@ -65,7 +61,7 @@ drawn with box-drawing characters is reported in `warnings.json`.
 
 ```xml
 <doc>
-  <h2>2. 方案</h2>
+  <h2>2. Design</h2>
   <p>Events carry a <code>seq</code>; see <a href="https://example.com">spec</a>.</p>
   <ul><li>one</li></ul>
   <ul type="check"><li checked="true">done</li><li checked="false">open</li></ul>
@@ -144,7 +140,7 @@ node app/ryugi-artifacts.cjs comment list --json --project-dir /path/to/project 
 
   ```bash
   node app/ryugi-artifacts.cjs comment reply --json --project-dir /path/to/project --artifact document/<id> --thread <thread-id> <<'EOF'
-  改成 2% 了，正文同步更新。
+  Changed to 2% and updated the body to match.
   EOF
   ```
 

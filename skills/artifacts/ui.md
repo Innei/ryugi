@@ -201,7 +201,7 @@ Attributes: `value`, `alpha`, `defaultFormat` (`hex`, `rgb`, `hsl`),
 ### Tag
 
 ```html
-<ryugi-tag variant="outlined">新着</ryugi-tag>
+<ryugi-tag variant="outlined">New</ryugi-tag>
 ```
 
 Attributes: `variant` (`filled`, `outlined`, `borderless`, `solid`), `size`,
