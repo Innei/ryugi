@@ -41,6 +41,12 @@ test('accepts complete valid values but rejects invalid types, bounds, steps and
   for (const values of [{ count: '4', enabled: true }, { count: 1, enabled: true }, { count: 6, enabled: true }, { count: 2, enabled: 'true' }, { count: 2 }, { count: 2, enabled: true, foreign: 1 }]) expect(readTweakValues(s, values)).toBeNull();
 });
 
+test('rejects keys that would collide in case-insensitive HTML data attributes', () => {
+  const result = schema({ density: { type: 'text', default: 'comfortable' }, Density: { type: 'text', default: 'compact' } });
+  expect(result.schema).toBeNull();
+  expect(result.error).toMatch(/key|case|duplicate/i);
+});
+
 test('source refresh follows untouched defaults, preserves valid overrides and drops invalid or removed overrides', () => {
   const before = schema({ count: { type: 'range', default: 2, min: 0, max: 8 }, theme: { type: 'enum', default: 'light', options: ['light', 'dark'] }, removed: { type: 'text', default: 'old' } }).schema!;
   const after = schema({ count: { type: 'range', default: 3, min: 0, max: 4 }, theme: { type: 'enum', default: 'dark', options: ['light', 'dark'] }, fresh: { type: 'boolean', default: false } }).schema!;

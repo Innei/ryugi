@@ -31,9 +31,13 @@ dimension. "HTML" or "page" names the medium, not the type.
 ## Before writing
 
 The type column is a gate, not a menu: open that doc first. `html` also reads
-`ui.md` — its controls are `<ryugi-…>`; artboard boards get no runtime and
-stay plain HTML. Verify against the doc — ids, `ryugi-change`, restored
-state — not just that it renders.
+`ui.md` — its controls are `<ryugi-…>`; artboard boards use plain HTML, CSS
+and JavaScript, including their own event handlers. Verify against the doc —
+ids, `ryugi-change`, restored state — not just that it renders.
+
+For board-level controls, `artboard.md` documents `data-ryugi-tweaks`: a JSON
+declaration creates a Parameters panel beside its board. Use it for a few
+intentional levers; the board consumes typed values through CSS and JS.
 
 ## Creative work
 

@@ -5,7 +5,7 @@ import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { useBoardTweaks } from '../src/viewer/hooks/useBoardTweaks';
-import { TweaksPanel, tweakPanelAnchor } from '../src/viewer/tweaks/TweaksPanel';
+import { TweaksPanel, tweakPanelAnchor, revealTweakPanel } from '../src/viewer/tweaks/TweaksPanel';
 
 let current: ReturnType<typeof useBoardTweaks>;
 let root: Root;
@@ -118,4 +118,19 @@ test('the real parameter controls update state and reset while the anchor follow
   expect(panel.style.left).toBe('932px');
   expect(panel.style.top).toBe('90px');
   expect(panel.style.width).toBe('352px');
+});
+
+test('parameter button icons are decorative or have an accessible alternative', async () => {
+  await render({ panel: true }); await report('a', await connect('a'));
+  const unnamed = [...host.querySelectorAll('[aria-label="Parameters"] [role="img"]')].filter((icon) => !icon.closest('[aria-hidden="true"]') && !icon.getAttribute('aria-label') && !icon.getAttribute('aria-labelledby') && !icon.getAttribute('title'));
+  expect(unnamed).toHaveLength(0);
+});
+
+test('opening parameters can reveal the entire panel while keeping its board anchor', () => {
+  const board = { x: 0, y: 0, w: 1280, h: 800 };
+  const view = { x: 80, y: 700, k: 1 };
+  const offset = revealTweakPanel(board, view, { width: 1200, height: 900 });
+  const anchor = tweakPanelAnchor(board, { ...view, x: view.x + offset.x, y: view.y + offset.y });
+  expect(anchor).toEqual({ left: 836, top: 284 });
+  expect(revealTweakPanel({ x: 10, y: 20, w: 400, h: 300 }, { x: 100, y: 50, k: 0.5 }, { width: 1200, height: 900 })).toEqual({ x: 0, y: 0 });
 });

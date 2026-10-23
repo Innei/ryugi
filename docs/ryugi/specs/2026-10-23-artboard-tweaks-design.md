@@ -11,7 +11,8 @@ An HTML board can declare a small set of intentional controls. Its label
 opens a 352px floating Parameters panel, 12 screen pixels beyond the board's
 right edge and aligned to its top. Canvas pan/zoom moves the anchor while
 the panel and its controls retain their screen size. Closing the panel
-does not reset values or change the camera. Only one panel opens at a time.
+does not reset values or change the camera. Opening may pan the board and
+panel together just enough to reveal the controls. Only one panel opens at a time.
 The existing Inspector Tweaks tab keeps its CSS-session-change meaning.
 
 ## Authoring

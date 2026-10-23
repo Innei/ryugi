@@ -1,7 +1,7 @@
 import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Button } from '@lobehub/ui';
+import { Button, IconProvider } from '@lobehub/ui';
 import { SlidersHorizontal } from 'lucide-react';
 import type { InspectorReport } from '../../shared/inspector';
 import type { BoardHumanOp } from '../../shared/board-comments';
@@ -33,7 +33,7 @@ import { useArtboardPage } from '../hooks/useArtboardPage';
 import { PHONE_QUERY, useMedia } from '../hooks/useMedia';
 import { PhoneArtboard } from './PhoneArtboard';
 import { useBoardTweaks } from '../hooks/useBoardTweaks';
-import { TweaksPanel, tweakPanelAnchor } from '../tweaks/TweaksPanel';
+import { TweaksPanel, tweakPanelAnchor, revealTweakPanel } from '../tweaks/TweaksPanel';
 
 const styles = stylex.create({
   layout: { display: 'flex', width: '100%', height: '100%', overflow: 'hidden' },
@@ -106,7 +106,15 @@ function DesktopArtboard({ id, artifact, canvas, layout, warnings, pending, cont
   const parameterTrigger = useRef<HTMLElement | null>(null);
   useEffect(() => setParameterBoard(null), [page, id]);
   const closeParameters = () => { setParameterBoard(null); parameterTrigger.current?.focus(); };
-  const toggleParameters = (id: string, trigger: HTMLElement) => { parameterTrigger.current = trigger; setParameterBoard((current) => current === id ? null : id); };
+  const toggleParameters = (id: string, trigger: HTMLElement) => {
+    parameterTrigger.current = trigger;
+    const board = canvas?.boards[id], viewport = viewportRef.current;
+    if (parameterBoard !== id && !expanded && board && viewport) {
+      const offset = revealTweakPanel(board, view, { width: viewport.clientWidth, height: viewport.clientHeight });
+      if (offset.x || offset.y) panBy(offset.x, offset.y);
+    }
+    setParameterBoard((current) => current === id ? null : id);
+  };
   const selectionEnabled = tool === 'select' && !expanded && !panning;
   const commentTool = tool === 'comment';
   const inspector = useInspector({
@@ -304,7 +312,7 @@ function DesktopArtboard({ id, artifact, canvas, layout, warnings, pending, cont
           onClose={() => setExpanded(null)}
           frameRef={parameters.refFor(expanded, 'expanded')}
           onFrameLoad={() => parameters.loaded(expanded, 'expanded')}
-          parameterAction={parameterCounts[expanded] !== undefined ? <Button icon={SlidersHorizontal} size="small" type="text" aria-expanded={parameterBoard === expanded} onClick={(event) => toggleParameters(expanded, event.currentTarget)}>Parameters</Button> : undefined}
+          parameterAction={parameterCounts[expanded] !== undefined ? <IconProvider config={{ 'aria-hidden': true }}><Button icon={SlidersHorizontal} size="small" type="text" aria-expanded={parameterBoard === expanded} onClick={(event) => toggleParameters(expanded, event.currentTarget)}>Parameters</Button></IconProvider> : undefined}
           parameters={parameterBoard === expanded ? panel(false) : undefined}
         />
       )}

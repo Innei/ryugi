@@ -1,4 +1,4 @@
-import { ActionIcon, Button, ColorPicker, Input, InputNumber, Segmented, Select, Slider, Switch } from '@lobehub/ui';
+import { ActionIcon, Button, ColorPicker, IconProvider, Input, InputNumber, Segmented, Select, Slider, Switch } from '@lobehub/ui';
 import { Code2, RotateCcw, SlidersHorizontal, X } from 'lucide-react';
 import { useId, useRef } from 'react';
 import type { TweakControl, TweakValue } from '../../shared/tweaks';
@@ -9,6 +9,13 @@ import './tweaks.css';
 
 export const TWEAK_PANEL_WIDTH = 352;
 export const tweakPanelAnchor = (board: Rect, view: View) => ({ left: view.x + (board.x + board.w) * view.k + 12, top: view.y + board.y * view.k });
+export function revealTweakPanel(board: Rect, view: View, viewport: { width: number; height: number }) {
+  const anchor = tweakPanelAnchor(board, view);
+  return {
+    x: Math.min(Math.max(12, anchor.left), Math.max(12, viewport.width - TWEAK_PANEL_WIDTH - 12)) - anchor.left,
+    y: Math.min(Math.max(60, anchor.top), Math.max(60, viewport.height - 604 - 12)) - anchor.top,
+  };
+}
 
 function Control({ control, value, change }: { control: TweakControl; value: TweakValue; change: (value: TweakValue) => void }) {
   const id = useId();
@@ -46,8 +53,8 @@ export function TweaksPanel({ boardId, title, state, anchor, onChange, onReset, 
     groups.get(name)!.push(entry);
   }
   const changed = Object.entries(state.values).filter(([key, value]) => value !== state.schema?.controls[key]?.default).length;
-  return <>
-    <aside className="ryugi-parameters" data-chrome="parameters" aria-label="Parameters" style={{ position: anchor ? 'absolute' : 'relative', ...anchor, width: TWEAK_PANEL_WIDTH }} onKeyDown={(event) => { event.stopPropagation(); if (event.key === 'Escape' && !event.defaultPrevented) onClose(); }}>
+  return <IconProvider config={{ 'aria-hidden': true }}>
+    <aside className="ryugi-parameters" data-chrome="parameters" aria-label="Parameters" style={{ position: anchor ? 'absolute' : 'relative', ...anchor, width: TWEAK_PANEL_WIDTH, maxHeight: anchor ? `min(604px, calc(100% - ${Math.max(0, anchor.top)}px - 12px))` : 'min(604px, calc(100vh - 112px))' }} onKeyDown={(event) => { event.stopPropagation(); if (event.key === 'Escape' && !event.defaultPrevented) onClose(); }}>
       <header className="rt-header"><SlidersHorizontal size={15} aria-hidden /><h2>Parameters</h2><ActionIcon icon={X} size="small" aria-label="Close parameters" title="Close parameters" onClick={onClose} /></header>
       <div className="rt-board"><Code2 size={17} aria-hidden /><div><strong>{title}</strong><code>{boardId}</code></div><span>Current board</span></div>
       <div className="rt-body">
@@ -61,5 +68,5 @@ export function TweaksPanel({ boardId, title, state, anchor, onChange, onReset, 
       <header><h2>Parameter declaration</h2><ActionIcon icon={X} size="small" aria-label="Close declaration" onClick={() => dialog.current?.close()} /></header>
       <pre tabIndex={0}>{JSON.stringify(state.schema, null, 2)}</pre><h3>Current values</h3><pre tabIndex={0}>{JSON.stringify(state.values, null, 2)}</pre><p>Preview values stay in this viewer session. Source files are unchanged.</p>
     </dialog>
-  </>;
+  </IconProvider>;
 }

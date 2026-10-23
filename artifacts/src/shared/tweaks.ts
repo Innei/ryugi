@@ -36,9 +36,12 @@ export function tweakTools() {
     const entries = Object.entries(input.controls);
     if (entries.length > 32) return fail('Declare at most 32 parameters.');
     const controls: [string, TweakControl][] = [];
+    const keys = new Set<string>();
     for (const [key, raw] of entries) {
       const bad = (message: string) => fail(`Parameter ${key.slice(0, 64)}: ${message}`);
       if (!/^[A-Za-z][\w-]{0,63}$/.test(key) || ['constructor', 'prototype'].includes(key)) return bad('invalid key.');
+      if (keys.has(key.toLowerCase())) return bad('duplicate case-insensitive key.');
+      keys.add(key.toLowerCase());
       if (!object(raw) || !['color', 'range', 'number', 'boolean', 'enum', 'text'].includes(String(raw.type))) return bad('unsupported type.');
       if (raw.label !== undefined && !text(raw.label, 128)) return bad('label must be short text.');
       if (raw.section !== undefined && !text(raw.section, 128)) return bad('section must be short text.');

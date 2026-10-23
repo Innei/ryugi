@@ -193,7 +193,7 @@ export function Labels({
                   />
                 </>
               )}
-              {ready && parameters?.[id] !== undefined && width >= PLAY_MIN_WIDTH && <button type="button" aria-label={`Parameters ${id}`} aria-expanded={activeParameters === id} onClick={(event) => onToggleParameters?.(id, event.currentTarget)} {...stylex.props(styles.play, activeParameters === id && styles.playOn)}><SlidersHorizontal size={11} />Parameters {parameters[id] || '!'}</button>}
+              {ready && parameters?.[id] !== undefined && width >= ACTIONS_MIN_WIDTH && <button type="button" aria-label={`Parameters ${id}`} aria-expanded={activeParameters === id} onClick={(event) => onToggleParameters?.(id, event.currentTarget)} {...stylex.props(styles.play, activeParameters === id && styles.playOn)}><SlidersHorizontal size={11} />Parameters {parameters[id] || '!'}</button>}
               {interactive && width >= PLAY_MIN_WIDTH && playing.has(id) && (
                 <ActionIcon icon={RotateCcw} size={{ blockSize: 22, size: 13 }} title="Replay" aria-label={`Replay ${id}`} onClick={() => onReplay(id)} />
               )}
