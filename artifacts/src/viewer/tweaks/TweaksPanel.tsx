@@ -20,6 +20,8 @@ export function revealTweakPanel(board: Rect, view: View, viewport: { width: num
 
 function Control({ control, value, change }: { control: TweakControl; value: TweakValue; change: (value: TweakValue) => void }) {
   const id = useId();
+  const segmented = control.type === 'enum' && control.options!.length <= 3;
+  const Field = segmented ? 'fieldset' : 'div';
   let input;
   if (control.type === 'color') input = <div className="rt-color">
     {control.options && <div className="rt-swatches" role="group" aria-label={control.label}>{control.options.map((option) => <button key={option.value} type="button" aria-label={`${control.label}: ${option.label}`} aria-pressed={value === option.value} style={{ backgroundColor: option.value }} onClick={() => change(option.value)} />)}</div>}
@@ -28,11 +30,11 @@ function Control({ control, value, change }: { control: TweakControl; value: Twe
   else if (control.type === 'boolean') input = <Switch id={id} aria-label={control.label} checked={value as boolean} onChange={change} />;
   else if (control.type === 'range') input = <div className="rt-range"><Slider aria-labelledby={`${id}-label`} value={value as number} min={control.min} max={control.max} step={control.step} onChange={change} /><output>{String(value)}</output></div>;
   else if (control.type === 'number') input = <InputNumber id={id} aria-label={control.label} size="small" value={value as number} min={control.min} max={control.max} step={control.step} onChange={(next) => { if (next !== null) change(next); }} style={{ width: '100%' }} />;
-  else if (control.type === 'enum') input = control.options!.length <= 3
-    ? <Segmented size="small" block aria-label={control.label} value={value as string} options={control.options} onChange={change} />
-    : <Select id={id} aria-label={control.label} size="small" value={value as string} options={control.options} onChange={(next) => { if (typeof next === 'string') change(next); }} style={{ width: '100%' }} />;
+  else if (control.type === 'enum') input = segmented
+    ? <Segmented size="small" block value={value as string} options={control.options} onChange={change} />
+    : <Select id={id} size="small" value={value as string} options={control.options} onChange={(next) => { if (typeof next === 'string') change(next); }} style={{ width: '100%' }} />;
   else input = <Input id={id} aria-label={control.label} size="small" maxLength={512} value={value as string} onChange={(event) => change(event.target.value)} />;
-  return <div className="rt-field">{control.type === 'range' || control.type === 'enum' ? <span id={`${id}-label`}>{control.label}</span> : <label htmlFor={id}>{control.label}</label>}{input}</div>;
+  return <Field className="rt-field">{segmented ? <legend>{control.label}</legend> : control.type === 'range' ? <span id={`${id}-label`}>{control.label}</span> : <label htmlFor={id}>{control.label}</label>}{input}</Field>;
 }
 
 interface Props {
