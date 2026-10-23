@@ -6,7 +6,7 @@ import { useState } from 'react';
 import type { Visibility } from '../../shared/cloud';
 import type { ArtifactType } from '../../shared/types';
 import type { CloudHeaderState } from '../hooks/useCloudHeader';
-import { changeVisibility, CloudRequestError, INSTALL_URL } from '../lib/cloud-shell';
+import { changeVisibility, CloudRequestError, INSTALL_URL, planLimitMessage } from '../lib/cloud-shell';
 import { RyugiMark } from './RyugiMark';
 
 const NARROW = '@media (max-width: 640px)';
@@ -188,7 +188,7 @@ export function CloudHeader({ id, type, title, owner, status, visibility, onChan
 }
 
 export function useCloudSharePanel({ id, visibility, onChange, inline = false }: { id: string; visibility: Visibility; onChange: (next: Visibility) => void; inline?: boolean }) {
-  const [error, setError] = useState<{ message: string; auth?: boolean } | null>(null);
+  const [error, setError] = useState<{ message: string; auth?: boolean; upgradeUrl?: string } | null>(null);
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
   const url = `${location.origin}/a/${id}`;
@@ -200,7 +200,9 @@ export function useCloudSharePanel({ id, visibility, onChange, inline = false }:
     try {
       onChange(await changeVisibility(id, next));
     } catch (err) {
-      setError({ message: (err as Error).message, auth: err instanceof CloudRequestError && err.status === 401 });
+      const limit = err instanceof CloudRequestError ? err.limit : undefined;
+      if (limit) setError({ message: planLimitMessage(limit), upgradeUrl: limit.kind === 'total' ? undefined : (err as CloudRequestError).upgradeUrl });
+      else setError({ message: (err as Error).message, auth: err instanceof CloudRequestError && err.status === 401 });
     }
     setSaving(false);
   };
@@ -251,7 +253,7 @@ export function useCloudSharePanel({ id, visibility, onChange, inline = false }:
         <Input aria-label="分享链接" value={url} readOnly size="small" onFocus={(event) => event.currentTarget.select()} {...stylex.props(styles.url)} />
         <button type="button" onClick={() => void copy()} {...stylex.props(styles.share)}><Copy size={12} /> {copied ? '已复制' : '复制'}</button>
       </div>
-      {error ? <p role="alert" {...stylex.props(styles.error)}>{error.auth ? '登录已过期，请重新登录。' : error.message} {error.auth && <a href={`/auth/login?return=${encodeURIComponent(location.pathname)}`}>重新登录</a>}</p> : <p {...stylex.props(styles.foot)}>{visibility === 'private' ? '复制不会自动公开。' : ''}改动立即生效，链接不变。</p>}
+      {error ? <p role="alert" {...stylex.props(styles.error)}>{error.auth ? '登录已过期，请重新登录。' : error.message} {error.auth && <a href={`/auth/login?return=${encodeURIComponent(location.pathname)}`}>重新登录</a>}{error.upgradeUrl && <a href={error.upgradeUrl}>升级到 Pro</a>}</p> : <p {...stylex.props(styles.foot)}>{visibility === 'private' ? '复制不会自动公开。' : ''}改动立即生效，链接不变。</p>}
     </div>
   );
 }

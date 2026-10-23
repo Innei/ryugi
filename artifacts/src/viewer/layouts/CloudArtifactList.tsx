@@ -10,6 +10,7 @@ import { CloudLibrarySidebar } from '../components/CloudLibrarySidebar';
 import { RyugiMark } from '../components/RyugiMark';
 import { filterCloudItems, projectCounts, publishedNewestFirst, type CloudFilter, type CloudListItem } from '../lib/cloud-list';
 import { CloudRequestError, deleteCloudArtifact } from '../lib/cloud-shell';
+import { CloudPlanUsage } from '../components/CloudPlanUsage';
 
 const deleteButtonStyle = { backgroundColor: 'var(--lobe-color-error-active)', color: '#fff' };
 type Loaded = { state: 'loading' } | { state: 'signed-out' } | { state: 'error' } | { state: 'ready'; login: string; artifacts: CloudListItem[] };
@@ -123,7 +124,7 @@ export function CloudArtifactList() {
     <div className="artifact-library cloud-library">
       <header className="library-topbar">
         <div className="library-breadcrumb"><img className="library-logo" src={logo} alt="" /><strong>ryugi</strong><span>/</span><b>Cloud</b></div>
-        {loaded.state === 'ready' && <span className="library-status">{loaded.login}</span>}
+        {loaded.state === 'ready' && <div className="library-topbar-end"><CloudPlanUsage key={all.length} /><span className="library-status">{loaded.login}</span></div>}
       </header>
       {loaded.state === 'loading' && <p className="library-empty" role="status">正在加载…</p>}
       {loaded.state === 'error' && <div className="library-empty" role="alert"><p>暂时无法加载你的 Artifact。</p><Button size="small" onClick={() => setRevision((value) => value + 1)}>重新加载</Button></div>}

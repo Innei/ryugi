@@ -12,17 +12,34 @@ export type ShellState =
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
 
+export interface PlanLimit {
+  kind: 'private' | 'public' | 'total' | 'publishes';
+  used: number;
+  max: number;
+}
+
 export class CloudRequestError extends Error {
-  constructor(readonly status: number, message: string) {
+  constructor(readonly status: number, message: string, readonly limit?: PlanLimit, readonly upgradeUrl?: string) {
     super(message);
   }
 }
 
+export function planLimitMessage({ kind, max }: PlanLimit) {
+  if (kind === 'total') return `Pro 的 ${max} 个名额已用完，删除一些后再试。`;
+  if (kind === 'publishes') return `免费版今天的 ${max} 次发布已用完。`;
+  return `免费版的 ${max} 个${kind === 'private' ? '私有' : '公开'}名额已用完。`;
+}
+
 export const loginUrl = (id: string) => `/auth/login?return=${encodeURIComponent(`/a/${id}`)}`;
 
-async function errorOf(res: Response) {
-  const body = (await res.json().catch(() => null)) as { error?: unknown } | null;
-  return typeof body?.error === 'string' ? body.error : `请求失败（${res.status}）`;
+const isPlanLimit = (value: unknown): value is PlanLimit =>
+  typeof value === 'object' && value !== null && ['private', 'public', 'total', 'publishes'].includes((value as PlanLimit).kind) && typeof (value as PlanLimit).max === 'number';
+
+async function requestError(res: Response) {
+  const body = (await res.json().catch(() => null)) as { error?: unknown; code?: unknown; limit?: unknown; upgradeUrl?: unknown } | null;
+  const message = typeof body?.error === 'string' ? body.error : `请求失败（${res.status}）`;
+  if (res.status !== 402 || body?.code !== 'plan_limit' || !isPlanLimit(body.limit)) return new CloudRequestError(res.status, message);
+  return new CloudRequestError(res.status, message, body.limit, typeof body.upgradeUrl === 'string' ? body.upgradeUrl : '/billing');
 }
 
 export async function loadShell(id: string, fetchImpl: typeof fetch = fetch): Promise<Exclude<ShellState, { kind: 'loading' }>> {
@@ -45,18 +62,18 @@ export async function changeVisibility(id: string, visibility: Visibility, fetch
     body: JSON.stringify({ visibility }),
     credentials: 'same-origin',
   });
-  if (!res.ok) throw new CloudRequestError(res.status, await errorOf(res));
+  if (!res.ok) throw await requestError(res);
   const stored = ((await res.json()) as { visibility?: unknown }).visibility;
   return isVisibility(stored) ? stored : visibility;
 }
 
 export async function deleteCloudArtifact(id: string) {
   const res = await fetch(`/api/a/${id}`, { method: 'DELETE', headers: JSON_HEADERS, body: '{}', credentials: 'same-origin' });
-  if (!res.ok && res.status !== 404) throw new CloudRequestError(res.status, await errorOf(res));
+  if (!res.ok && res.status !== 404) throw await requestError(res);
 }
 
 export async function switchAccount(id: string, fetchImpl: typeof fetch = fetch): Promise<string> {
   const res = await fetchImpl('/auth/logout', { method: 'POST', headers: JSON_HEADERS, body: '{}', credentials: 'same-origin' });
-  if (!res.ok && res.status !== 401) throw new Error(await errorOf(res));
+  if (!res.ok && res.status !== 401) throw new Error((await requestError(res)).message);
   return `${loginUrl(id)}&switch=1`;
 }
