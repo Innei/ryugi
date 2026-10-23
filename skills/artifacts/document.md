@@ -19,10 +19,16 @@ tables.
 - Re-read it before every edit: their typing and the server's block ids land
   in the file. Edit in place, touching only the blocks you mean to change.
   A whole-file write from an old copy reads as deleting their text.
+- The server rewrites the file in its own form after each save: it indents
+  blocks, adds ids, writes `<strong>` as `<b>`, `<em>` as `<i>`, `<del>` as
+  `<s>`, and `/>` as ` />`. Copy the text you match from that fresh read,
+  never from what you wrote earlier.
 - Keep the `id` on every top-level block; comments hang on it. The server
   adds ids to blocks you write without one.
-- Then read `warnings.json` as `SKILL.md` says. A rejected edit names the
-  tag; the file stays as you wrote it until you fix it.
+- Then run `check` as `SKILL.md` says; it is the validation, so don't
+  parse `doc.xml` yourself. A rejected edit names the tag; the file stays as
+  you wrote it until you fix it. `"merging": true` means a long edit is
+  still playing into the document: run `check` again.
 
 ## Show the document early
 
@@ -102,7 +108,8 @@ Optional: `title`, `subtitle`, `note`, `source`, `xLabel`, `stacked`,
 signed}`, `y` `{min, max}`, `refs` `[{y, label}]`.
 
 Also `h1`–`h6`, `ol`, `blockquote`, `hr`, and inline `b i u s sub sup mark br`.
-Any other tag is rejected.
+`strong`, `em` and `del` are read as `b`, `i` and `s`. Any other tag is
+rejected.
 
 ## Live blocks
 

@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { isArtifactId, isArtifactType } from '../shared/ids';
@@ -60,9 +61,9 @@ export function artifactKeyOf(relative: string): ArtifactRef | null {
 }
 
 export function artifactSignature(dir: string, type?: ArtifactType): string {
-  let count = 0;
   let size = 0;
   let latest = 0;
+  const names: string[] = [];
   const walk = (current: string) => {
     let entries: fs.Dirent[];
     try {
@@ -76,7 +77,7 @@ export function artifactSignature(dir: string, type?: ArtifactType): string {
       const full = path.join(current, entry.name);
       try {
         const stat = fs.statSync(full);
-        count += 1;
+        names.push(path.relative(dir, full));
         latest = Math.max(latest, stat.mtimeMs);
         if (entry.isDirectory()) walk(full);
         else size += stat.size;
@@ -86,5 +87,6 @@ export function artifactSignature(dir: string, type?: ArtifactType): string {
     }
   };
   walk(dir);
-  return `${count}:${size}:${latest}`;
+  const hash = crypto.createHash('sha1').update(names.sort().join('\0')).digest('hex').slice(0, 12);
+  return `${names.length}:${size}:${latest}:${hash}`;
 }

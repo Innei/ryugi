@@ -21,7 +21,8 @@ machine, publish it to Ryugi Cloud (see Share a link).
 |----------------|------|---------------------|
 | Architecture, engineering design, a review, proposal or flow walkthrough | `document` | `document.md` |
 | One surface or one dimension — a component, type scale, background, motion | `html` | `html.md`, `ui.md` for components |
-| A business space — several screens, dimensions, states or questions at once | `artboard` | `artboard.md` |
+| A business space — several screens, dimensions, states or questions at once | `artboard` | `artboard.md`; `artboard-prototype.md` for playable boards or parameters |
+| Whether a built change matches what was approved, when they ask you to verify it | `artboard`, a verify group | `artboard.md` |
 | Nothing to see | text | |
 
 A control does not make it an artboard: one surface, however tunable, is
@@ -30,12 +31,14 @@ dimension. "HTML" or "page" names the medium, not the type.
 
 ## Before writing
 
-The type column is a gate, not a menu: open that doc first. `html` also reads
+The type column is a gate, not a menu: open that doc first, in a command of
+its own. Read alongside other files, a harness's output cap can cut it off
+midway. `html` also reads
 `ui.md` — its controls are `<ryugi-…>`; artboard boards use plain HTML, CSS
 and JavaScript, including their own event handlers. Verify against the doc —
 ids, `ryugi-change`, restored state — not just that it renders.
 
-For board-level controls, `artboard.md` documents `data-ryugi-tweaks`: a JSON
+For board-level controls, `artboard-prototype.md` documents `data-ryugi-tweaks`: a JSON
 declaration creates a Parameters panel beside its board. Use it for a few
 intentional levers; the board consumes typed values through CSS and JS.
 
@@ -85,9 +88,12 @@ node app/ryugi-artifacts.cjs start --json --project-dir /path/to/project --artif
 - No `cloudLink`: give them the complete `link`, including `?key=`. The
   server refuses requests without the key. `url` opens a list of every
   artifact.
-- Re-run the same command, with the artifact you're about to mention, before
-  you give a link again. It prints `"reused": true` while the server is up,
-  and otherwise starts it on the same port and key, so open tabs reconnect.
+- Run `start` before you write a new artifact's first file, so the page is
+  open while you write it.
+- Run it again only right before a message that gives a link, with the
+  artifact you're about to mention; edits in between need no `start`. It
+  prints `"reused": true` while the server is up, and otherwise starts it on
+  the same port and key, so open tabs reconnect.
 - Every run registers your session. The server stops when every session
   that used it has exited, or after 4 hours idle.
 - The browser opens when the first artifact is ready enough: for an artboard,
@@ -105,6 +111,13 @@ node app/ryugi-artifacts.cjs start --json --project-dir /path/to/project --artif
   read `.ryugi/artifacts/.state/server-info` on the next turn, then build
   the link as `<origin>/<type>/<id>?key=<key>` from its `url`.
 - Codex: run it as is; it detects `CODEX_CI` and stays in the foreground.
+  Give it its own tool call with a yield of at least 5 seconds (a first run
+  may install a release). When it starts a new server it does not return,
+  so anything chained after it with `;` or `&&` runs only once the server
+  stops.
+- OMP (oh-my-pi): run it as is. OMP cuts output lines longer than 768
+  bytes, so pipe `comment list --json` and `check --json` through `jq .`.
+  Don't pipe `start`.
 - Gemini CLI, Copilot CLI and others that reap detached processes: add
   `--foreground` and start it with the harness's background-shell mechanism.
 
@@ -164,7 +177,7 @@ whether it is on.
   document/<id>/       doc.xml + assets/ (you write); comments.json (server only)
   html/<id>/           index.html + its files        (you write)
   .state/              the server writes; never edit
-    <type>/<id>/warnings.json   warnings + pending, read after every change
+    <type>/<id>/warnings.json   warnings + pending; `check` prints it
     artboard/<id>/layout.json   computed geometry
 ```
 
@@ -177,14 +190,24 @@ whether it is on.
 ## After every change
 
 1. Write the files with your file-writing tool.
-2. Read `checkedAt` in `.state/<type>/<id>/warnings.json` before you write,
-   and wait until it changes (about 150ms) before trusting the warnings.
+2. Run `check` after your last write. It waits until the server has checked
+   that write, then prints `warnings` (and `pending` for an artboard); no
+   sleep or `checkedAt` comparison is needed.
+
+   ```bash
+   node app/ryugi-artifacts.cjs check --json --project-dir /path/to/project --artifact artboard/settings-nav
+   # {"type":"checked","artifact":"artboard/settings-nav","checkedAt":"…","warnings":[],"pending":[]}
+   ```
+
    Fix every warning. For `html` this includes `runtime: …` lines: errors
    the page threw in their browser. They only count once `"ran": true`
    shows the new version has loaded there; until then, an empty list
    means "not run yet", not "no errors".
 3. Tell them what changed, give the link, and ask for their answer in the
-   terminal.
+   terminal. For a document, an `html` page or static boards, send that
+   message as soon as `check` is clean; screenshots or browser checks of
+   your own come after it, reported in the next message. Playable boards
+   follow `artboard.md`.
 
 When the conversation moves on, leave the artifact as it is; it's the
 record of what was explored.

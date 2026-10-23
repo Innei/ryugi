@@ -660,6 +660,19 @@ describe('websocket', () => {
     ws.socket?.destroy();
   });
 
+  test('an agent check right after a write leaves the change message to the watcher, with the file it wrote', async () => {
+    const { server, root } = await start();
+    writeDocument(root, 'plan', { 'doc.xml': '<doc><p id="b1">one</p><dynamic url="assets/backoff.html"><![CDATA[{}]]></dynamic></doc>', 'assets/backoff.html': '<p>v1</p>' });
+    await waitFor(() => fs.existsSync(stateFile(root, 'document', 'plan', 'warnings.json')));
+    const ws = await openWs(server.port, { Cookie: cookie(server), Origin: origin(server) });
+    fs.writeFileSync(path.join(root, 'document', 'plan', 'assets', 'backoff.html'), '<p>v2</p>');
+    const res = await fetch(`${base(server)}/api/agent/document/plan/check?key=${server.token}`, { method: 'POST' });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ warnings: [] });
+    await waitFor(() => ws.messages.some((m) => m.includes('"document/plan"') && m.includes('assets/backoff.html')));
+    ws.socket?.destroy();
+  });
+
   test('streams board readiness from HTML writes alone', async () => {
     const { server, root } = await start();
     const dir = writeArtboard(root, 'streaming', canvas);

@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { describe, expect, test } from 'vitest';
-import { artifactKeyOf, isArtifactId, listArtifacts, resolveArtifactDir } from '../src/server/artifacts';
+import { artifactKeyOf, artifactSignature, isArtifactId, listArtifacts, resolveArtifactDir } from '../src/server/artifacts';
 
 function tempRoot(dirs: string[]) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'artifacts-root-'));
@@ -83,5 +83,15 @@ describe('artifactKeyOf', () => {
     expect(artifactKeyOf('slides/x/index.html')).toBeNull();
     expect(artifactKeyOf('html/.hidden/index.html')).toBeNull();
     expect(artifactKeyOf('html')).toBeNull();
+  });
+});
+
+describe('artifactSignature', () => {
+  test('changes when a file is renamed, though its size and time stay the same', () => {
+    const dir = path.join(tempRoot(['html/tuner']), 'html', 'tuner');
+    fs.writeFileSync(path.join(dir, 'draft.html'), '<html></html>');
+    const before = artifactSignature(dir, 'html');
+    fs.renameSync(path.join(dir, 'draft.html'), path.join(dir, 'index.html'));
+    expect(artifactSignature(dir, 'html')).not.toBe(before);
   });
 });

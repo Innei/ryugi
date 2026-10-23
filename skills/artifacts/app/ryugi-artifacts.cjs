@@ -7,7 +7,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 
-const MIN_VERSION = '1.17.0';
+const MIN_VERSION = '1.31.0';
 const LATEST_CHECK_MS = 24 * 60 * 60 * 1000;
 const RETRY_CHECK_MS = 60 * 60 * 1000;
 const RELEASES = path.join(process.env.XDG_CACHE_HOME || path.join(os.homedir(), '.cache'), 'ryugi', 'artifacts');

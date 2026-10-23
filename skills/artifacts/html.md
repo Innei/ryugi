@@ -50,7 +50,8 @@ checked boxes and radios, open `<details>`, and the scroll position.
 
 The viewer reports uncaught exceptions, unhandled promise rejections and
 relative files that fail to load as `runtime: …` warnings in
-`.state/html/<id>/warnings.json`. They clear on your next change. A page that
+`.state/html/<id>/warnings.json`, which `check` prints. They clear on your
+next change. A page that
 throws looks fine from where you sit.
 
 `"ran": true` in that file means the current version has loaded in their

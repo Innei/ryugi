@@ -95,10 +95,13 @@ const MAX_COMMENT_OP = 64 * 1024;
 const API_AGENT_COMMENTS_ROUTE = /^\/api\/agent\/document\/([^/]+)\/comments$/;
 const API_BOARD_COMMENTS_ROUTE = /^\/api\/artboard\/([^/]+)\/comments$/;
 const API_AGENT_BOARD_COMMENTS_ROUTE = /^\/api\/agent\/artboard\/([^/]+)\/comments$/;
+const API_AGENT_CHECK_ROUTE = /^\/api\/agent\/([^/]+)\/([^/]+)\/check$/;
 const MAX_DOCUMENT_UPDATE = 8 * 1024 * 1024;
 const MAX_RELAY_FILE = 8 * 1024 * 1024;
 
 const MAX_RUNTIME_MESSAGE = 2048;
+const CHECK_WATCH_WAIT_MS = 2_000;
+const CHECK_MERGE_WAIT_MS = 60_000;
 const MAX_RUNTIME_WARNINGS = 20;
 
 function readArtifact(dir: string, ref: ArtifactRef, runtime: string[] = []): ArtifactPayload {
@@ -653,6 +656,18 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
       return;
     }
 
+    const agentCheckMatch = API_AGENT_CHECK_ROUTE.exec(pathname);
+    if (agentCheckMatch) {
+      if (req.method !== 'POST' || key === null || !safeEqual(key, token)) {
+        send(res, 403, 'Forbidden: agent calls need ?key=');
+        return;
+      }
+      void serveAgentCheck(res, agentCheckMatch[1]!, agentCheckMatch[2]!).catch((err) => {
+        if (!res.headersSent) send(res, 500, `Artifacts error: ${(err as Error).message}`);
+      });
+      return;
+    }
+
     const boardCommentsMatch = API_BOARD_COMMENTS_ROUTE.exec(pathname);
     if (boardCommentsMatch) {
       void serveBoardComments(req, res, boardCommentsMatch[1]!).catch((err) => {
@@ -865,6 +880,33 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
           },
         })
       : null;
+
+  // The watcher debounces and its backup poll can lag a second, and a document's warnings arrive only after its merge plays out.
+  const serveAgentCheck = async (res: http.ServerResponse, type: string, id: string) => {
+    const ref = artifactKeyOf(`${type}/${id}`);
+    const dir = ref && resolveArtifactDir(root, ref.type, ref.id);
+    if (!ref || !dir) {
+      sendJson(res, 404, { error: `${type}/${id} not found in ${root}` });
+      return;
+    }
+    const key = `${ref.type}/${ref.id}`;
+    for (let waited = 0; waited < CHECK_WATCH_WAIT_MS && signatures.get(key) !== artifactSignature(dir, ref.type); waited += 50) {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+    let merging = false;
+    if (ref.type === 'document') {
+      const session = await documents.open(ref.id);
+      const text = await fs.promises.readFile(path.join(dir, 'doc.xml'), 'utf8').catch(() => null);
+      if (session && text !== null) {
+        session.onFileText(text);
+        const timeout = new Promise<'timeout'>((resolve) => setTimeout(() => resolve('timeout'), CHECK_MERGE_WAIT_MS).unref());
+        merging = (await Promise.race([session.settled(), timeout])) === 'timeout';
+      }
+    }
+    writeState(ref, dir);
+    const state = JSON.parse(await fs.promises.readFile(path.join(stateDir, ref.type, ref.id, 'warnings.json'), 'utf8'));
+    sendJson(res, 200, merging ? { ...state, merging: true } : state);
+  };
 
   const watcher = watchTree(
     root,

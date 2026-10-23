@@ -1,5 +1,6 @@
 import { execFile } from 'node:child_process';
 import { parseArgs, type ParseArgsConfig } from 'node:util';
+import { check, checkText } from './check';
 import { comment, commentText } from './comment';
 import { config } from './config';
 import { CliError } from './paths';
@@ -18,6 +19,8 @@ running until Ctrl+C.
 Commands:
   start     Start the project's artifacts server, or reuse the running one
   stop      Stop the project's artifacts server; the artifacts are kept
+  check     Wait until the server has checked the latest write, then print its warnings (needs a running server):
+              --artifact <type>/<id>
   publish   Publish an artifact to the Ryugi cloud (needs a running server):
               --artifact <type>/<id> [--public | --private] [--unpublish]
               --list | --delete <cloud-id> | --login | --logout
@@ -61,6 +64,8 @@ function text(value: Record<string, unknown>) {
   if (value.type === 'login-required' || value.type === 'login') return `${value.message}\n${value.url}`;
   if (value.type === 'published') return `${value.url} (${value.visibility})`;
   if (value.type === 'auto-publish') return `Auto-publish: ${value.global === null ? 'not decided' : value.global ? 'on' : 'off'} for every project${value.project === null ? '' : `, ${value.project ? 'on' : 'off'} for this project`}.`;
+  const checked = checkText(value);
+  if (checked !== null) return checked;
   const commented = commentText(value);
   if (commented !== null) return commented;
   if (typeof value.status === 'string') return value.status === 'stopped' ? 'Stopped.' : value.status.replace(/_/g, ' ');
@@ -120,6 +125,13 @@ async function main(argv: string[]) {
     if (command === 'stop') {
       const { values, positionals } = parse(rest, {}, 1);
       return await stop((values['project-dir'] as string | undefined) ?? positionals[0] ?? process.cwd(), emit);
+    }
+    if (command === 'check') {
+      const { values } = parse(rest, { artifact: { type: 'string' } });
+      return await check({
+        projectDir: (values['project-dir'] as string | undefined) ?? process.cwd(),
+        artifact: values.artifact as string | undefined,
+      }, emit);
     }
     if (command === 'publish') {
       const { values } = parse(rest, {
