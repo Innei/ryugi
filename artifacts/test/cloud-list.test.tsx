@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { act, createElement } from 'react';
-import { ConfigProvider } from '@lobehub/ui';
+import { ConfigProvider, ModalHost } from '@lobehub/ui';
 import { motion, MotionGlobalConfig } from 'motion/react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeAll, describe, expect, test, vi } from 'vitest';
@@ -237,6 +237,21 @@ describe('cloud library management', () => {
     expect(visibilitySwitch(host).getAttribute('aria-checked')).toBe('true');
   });
 
+  test('a switch refused by the plan opens the limit dialog instead of an inline error', async () => {
+    const modals = document.createElement('div');
+    document.body.append(modals);
+    const modalRoot = createRoot(modals);
+    await act(async () => modalRoot.render(createElement(ConfigProvider, { motion, enableCustomFonts: false, children: createElement(ModalHost) })));
+    const refusal = { error: 'The free plan allows 10 public artifacts and you have 10.', code: 'plan_limit', plan: 'free', limit: { kind: 'public', used: 10, max: 10 }, upgradeUrl: 'https://ryugi.innei.dev/billing' };
+    const host = await render({ status: 200, body: list }, (async (_url, init) => init?.method === 'PATCH' ? Response.json(refusal, { status: 402 }) : Response.json(list)) as typeof fetch);
+    await act(async () => { visibilitySwitch(host).click(); });
+    await act(async () => {});
+    expect(document.body.textContent).toContain('公开名额已用完');
+    expect(document.body.textContent).toContain('「Arrow」会保持私有');
+    expect(inspector(host).querySelector('[role="alert"]')).toBeNull();
+    act(() => modalRoot.unmount());
+  });
+
   test('a pending visibility change keeps its options disabled until the server answers', async () => {
     let settle: (response: Response) => void = () => {};
     let requests = 0;
@@ -420,5 +435,16 @@ describe('cloudPreviewPayload', () => {
     const state = { root: {} };
     expect(cloudPreviewPayload({ type: 'document', title: 'D', contentBase: '/c/', payload: { title: 'D', state } } as unknown as CloudArtifactData)).toEqual({ title: 'D', contentBase: '/c/', state });
     expect(cloudPreviewPayload({ type: 'html', title: 'H', contentBase: '/c/', payload: { title: 'H' } })).toEqual({ title: 'H', contentBase: '/c/' });
+  });
+  test('opens already filtered when the address asks for one visibility', async () => {
+    const before = location.href;
+    history.replaceState(null, '', '/?visibility=public');
+    try {
+      const host = await render({ status: 200, body: { login: 'innei', artifacts: [item('a', 'ryugi', '2026-10-21T08:00:00Z', { visibility: 'public' }), item('b', null, '2026-10-21T07:00:00Z')] } });
+      const pressed = Array.from(host.querySelectorAll<HTMLButtonElement>('.cloud-side-button[aria-pressed="true"]')).map((b) => b.querySelector('.cloud-side-label')?.textContent);
+      expect(pressed).toContain('有链接的人');
+    } finally {
+      history.replaceState(null, '', before);
+    }
   });
 });

@@ -42,8 +42,9 @@ export function CloudPlanUsage() {
       </span>
     );
   }
+  const tight = (limits.private !== null && usage.private >= limits.private) || (limits.public !== null && usage.public >= limits.public);
   return (
-    <span className="cloud-plan">
+    <span className={`cloud-plan${tight ? ' is-tight' : ''}`}>
       <b>免费版</b>
       <Count label="私有" used={usage.private} max={limits.private} />
       <span aria-hidden>·</span>

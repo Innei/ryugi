@@ -13,7 +13,7 @@ export function CloudLibraryInspector({ artifact, busy, onVisibility, onDelete }
   onVisibility: (visibility: Visibility) => void;
   onDelete: () => void;
 }) {
-  const share = useCloudSharePanel({ id: artifact.id, visibility: artifact.visibility, onChange: onVisibility, inline: true });
+  const share = useCloudSharePanel({ id: artifact.id, title: artifact.title, visibility: artifact.visibility, onChange: onVisibility, inline: true });
   const title = artifact.title ?? artifact.id;
   const version = Date.parse(artifact.updatedAt);
   const project = artifact.project ?? '其他';

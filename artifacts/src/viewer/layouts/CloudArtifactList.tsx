@@ -16,10 +16,15 @@ const deleteButtonStyle = { backgroundColor: 'var(--lobe-color-error-active)', c
 type Loaded = { state: 'loading' } | { state: 'signed-out' } | { state: 'error' } | { state: 'ready'; login: string; artifacts: CloudListItem[] };
 type Notice = { message: string; error?: boolean; auth?: boolean; retry?: boolean };
 
+const filterFromAddress = (): CloudFilter => {
+  const visibility = new URLSearchParams(location.search).get('visibility');
+  return visibility === 'public' || visibility === 'private' ? { visibility } : {};
+};
+
 export function CloudArtifactList() {
   const [loaded, setLoaded] = useState<Loaded>({ state: 'loading' });
   const [revision, setRevision] = useState(0);
-  const [filter, setFilter] = useState<CloudFilter>({});
+  const [filter, setFilter] = useState<CloudFilter>(filterFromAddress);
   const [inspected, setInspected] = useState<string | null>(null);
   const [selecting, setSelecting] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());

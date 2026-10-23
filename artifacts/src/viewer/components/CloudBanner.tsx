@@ -7,6 +7,7 @@ import type { Visibility } from '../../shared/cloud';
 import type { ArtifactType } from '../../shared/types';
 import type { CloudHeaderState } from '../hooks/useCloudHeader';
 import { changeVisibility, CloudRequestError, INSTALL_URL, planLimitMessage } from '../lib/cloud-shell';
+import { isSlotLimit, openPlanLimitDialog } from './PlanLimitDialog';
 import { RyugiMark } from './RyugiMark';
 
 const NARROW = '@media (max-width: 640px)';
@@ -177,7 +178,7 @@ export function CloudHeader({ id, type, title, owner, status, visibility, onChan
           {status.comments !== undefined ? <span {...stylex.props(styles.status)}><MessageCircle size={14} aria-hidden="true" />评论 {status.comments}</span> : null}
           {(status.online !== undefined || status.comments !== undefined) && owner ? <span aria-hidden="true" {...stylex.props(styles.divider)} /> : null}
         </div>
-        {owner ? <OwnerActions id={id} visibility={visibility} onChange={onChange} /> : (
+        {owner ? <OwnerActions id={id} title={title} visibility={visibility} onChange={onChange} /> : (
           <a href={INSTALL_URL} target="_blank" rel="noopener noreferrer" {...stylex.props(styles.cta)}>
             开始使用<ArrowRight size={12} />
           </a>
@@ -187,7 +188,7 @@ export function CloudHeader({ id, type, title, owner, status, visibility, onChan
   );
 }
 
-export function useCloudSharePanel({ id, visibility, onChange, inline = false }: { id: string; visibility: Visibility; onChange: (next: Visibility) => void; inline?: boolean }) {
+export function useCloudSharePanel({ id, title = null, visibility, onChange, inline = false }: { id: string; title?: string | null; visibility: Visibility; onChange: (next: Visibility) => void; inline?: boolean }) {
   const [error, setError] = useState<{ message: string; auth?: boolean; upgradeUrl?: string } | null>(null);
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -201,7 +202,8 @@ export function useCloudSharePanel({ id, visibility, onChange, inline = false }:
       onChange(await changeVisibility(id, next));
     } catch (err) {
       const limit = err instanceof CloudRequestError ? err.limit : undefined;
-      if (limit) setError({ message: planLimitMessage(limit), upgradeUrl: limit.kind === 'total' ? undefined : (err as CloudRequestError).upgradeUrl });
+      if (limit && isSlotLimit(limit)) openPlanLimitDialog({ limit, title, upgradeUrl: (err as CloudRequestError).upgradeUrl ?? '/billing' });
+      else if (limit) setError({ message: planLimitMessage(limit), upgradeUrl: limit.kind === 'total' ? undefined : (err as CloudRequestError).upgradeUrl });
       else setError({ message: (err as Error).message, auth: err instanceof CloudRequestError && err.status === 401 });
     }
     setSaving(false);
@@ -258,8 +260,8 @@ export function useCloudSharePanel({ id, visibility, onChange, inline = false }:
   );
 }
 
-function OwnerActions({ id, visibility, onChange }: { id: string; visibility: Visibility; onChange: (next: Visibility) => void }) {
-  const panel = useCloudSharePanel({ id, visibility, onChange });
+function OwnerActions({ id, title, visibility, onChange }: { id: string; title: string; visibility: Visibility; onChange: (next: Visibility) => void }) {
+  const panel = useCloudSharePanel({ id, title, visibility, onChange });
   const current = OPTIONS.find((option) => option.value === visibility)!;
 
   return (
