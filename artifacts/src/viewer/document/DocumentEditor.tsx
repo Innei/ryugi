@@ -9,6 +9,7 @@ import {
 } from '@haklex/rich-editor';
 import { ChartEditNode } from '@haklex/rich-ext-chart';
 import { ExcalidrawEditNode, ExcalidrawPlugin } from '@haklex/rich-ext-excalidraw';
+import { stepsEditNodes } from '@haklex/rich-ext-steps/edit';
 import { FloatingLinkEditorPlugin } from '@haklex/rich-plugin-link-edit';
 import { AlertEditRenderer } from '@haklex/rich-renderer-alert';
 import { CodeBlockEditRenderer } from '@haklex/rich-renderer-codeblock';
@@ -24,7 +25,7 @@ import { MermaidPreview } from './MermaidPreview';
 import { PendingNode } from './PendingNode';
 import type { DocumentState, DocumentTransport } from './transport';
 
-export const extraNodes = [ChartEditNode, ExcalidrawEditNode, DynamicNode, PendingNode, ...katexEditNodes];
+export const extraNodes = [ChartEditNode, ExcalidrawEditNode, ...stepsEditNodes, DynamicNode, PendingNode, ...katexEditNodes];
 
 export const rendererConfig: RendererConfig = {
   [ALERT_NODE_KEY]: AlertEditRenderer,

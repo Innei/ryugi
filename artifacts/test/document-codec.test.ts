@@ -57,6 +57,15 @@ describe('parseDocument', () => {
     expect(out).toContain('<def ref="1">Loro docs.</def>');
   });
 
+  test('steps keep their ids, titles and content through a round trip', () => {
+    const state = parseDocument(`<doc><steps id="s"><step id="a" title="安装"><p>下载 <code>ryugi</code>。</p></step><step id="b" title="Run"><p>go</p></step></steps></doc>`);
+    expect(state.root.children[0]).toMatchObject({ type: 'steps', steps: [{ id: 'a', title: '安装' }, { id: 'b', title: 'Run' }] });
+    const out = serializeDocument(state);
+    expect(out).toContain('<step id="a" title="安装">');
+    expect(out).toContain('<code>ryugi</code>');
+    expect(parseDocument(out).root.children[0]).toMatchObject({ type: 'steps', steps: [{ id: 'a' }, { id: 'b' }] });
+  });
+
   test('rejects a grid: edits inside its cells do not reach doc.xml', () => {
     expect(() => parseDocument('<doc><grid><cell><p>A</p></cell></grid></doc>')).toThrow('<grid> is not supported in documents');
   });

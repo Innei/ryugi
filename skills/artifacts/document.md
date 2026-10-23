@@ -76,6 +76,8 @@ drawn with box-drawing characters is reported in `warnings.json`.
   C->>S: ack(41)]]></mermaid>
   <alert type="note"><p>Offline over 7 days falls back to snapshots.</p></alert>
   <details summary="Alternatives considered"><p>Polling every 5s.</p></details>
+  <steps><step title="Install the CLI"><p>Run <code>pnpm add -g ryugi</code>.</p></step>
+    <step title="Start the relay"><codeblock lang="sh"><![CDATA[ryugi relay]]></codeblock></step></steps>
   <math display="block">x^2</math>
   <img src="assets/flow.png" alt="flow" caption="Sync flow" width="640"/>
   <excalidraw>assets/flow.excalidraw</excalidraw>
@@ -91,6 +93,11 @@ drawn with box-drawing characters is reported in `warnings.json`.
 `<math>` is inline unless `display="block"`. `<alert>` `type`: `note`,
 `tip`, `important`, `warning`, `caution`. `<ol start="3">` and
 `<details open="true">` also work.
+
+`<steps>` is a numbered procedure: one `<step title="…">` per step, in
+order, each holding block tags. Use it when a reader follows the steps one
+by one and a step needs more than a line; a list of short items stays an
+`<ol>`. Write the title without its number: the viewer numbers the steps.
 
 `<chart>` holds one ChartSpec: `type` `bar`|`line`|`area`|`pie`, `x` names
 the category field, each `series` key names a numeric field in `data`.

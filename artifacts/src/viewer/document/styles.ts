@@ -7,6 +7,7 @@ import '@haklex/rich-renderer-katex/style.css';
 import '@haklex/rich-renderer-mermaid/style.css';
 import '@haklex/rich-ext-excalidraw/style.css';
 import '@haklex/rich-ext-chart/style.css';
+import '@haklex/rich-ext-steps/style.css';
 import '@haklex/rich-plugin-link-edit/style.css';
 import 'katex/dist/katex.min.css';
 import './document.css';

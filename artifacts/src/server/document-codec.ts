@@ -32,6 +32,8 @@ const BLOCK_TAGS = [
   'math',
   'alert',
   'details',
+  'steps',
+  'step',
   'footnote-section',
   'def',
   'dynamic',
