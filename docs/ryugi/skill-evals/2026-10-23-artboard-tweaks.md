@@ -51,7 +51,9 @@ Built local Artboard server, Chrome at 1600×1100, sandboxed HTML boards:
 - Canvas and expanded instances share parameter values; dismissing an
   inbox card in one instance remains independent application state when
   changing its parameters. Source refresh preserves the accent override.
-- Viewer reload restores defaults. Scoped axe checks in light and dark
+- Viewer reload restores defaults. Canvas PLAY dismissal followed by Replay
+  restored both cards while retaining the blue accent override. A canvas
+  page switch away and back also retained that override. Scoped axe checks in light and dark
   report zero violations and zero incomplete checks.
 
 Real screenshots and a short interaction recording are retained under the
