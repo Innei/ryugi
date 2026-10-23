@@ -1,5 +1,6 @@
 // @vitest-environment happy-dom
 import { act, createElement, type ComponentProps } from 'react';
+import { MotionGlobalConfig } from 'motion/react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeAll, expect, test, vi } from 'vitest';
 import { VideoPlayer } from '../src/viewer/components/VideoPlayer';
@@ -9,6 +10,7 @@ vi.mock('@lobehub/ui/stylex/cssVar.stylex', () => ({ cssVar: new Proxy({}, { get
 
 let root: Root | null = null;
 beforeAll(() => {
+  MotionGlobalConfig.skipAnimations = true;
   (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 });
 afterEach(() => {
@@ -80,4 +82,55 @@ test('a video that cannot load says so instead of sitting black', async () => {
   const { host, video } = await render();
   await act(async () => video.dispatchEvent(new Event('error')));
   expect(host.textContent).toContain('视频加载失败');
+});
+
+test('clicking the video surface toggles playback even when the control bar is hidden', async () => {
+  vi.spyOn(HTMLMediaElement.prototype, 'play').mockImplementation(function (this: HTMLMediaElement) {
+    Object.defineProperty(this, 'paused', { configurable: true, value: false });
+    this.dispatchEvent(new Event('play')); return Promise.resolve();
+  });
+  vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(function (this: HTMLMediaElement) {
+    Object.defineProperty(this, 'paused', { configurable: true, value: true });
+    this.dispatchEvent(new Event('pause'));
+  });
+  const { host, video } = await render({ barWidth: 120 });
+  const surface = button(host, '播放 flow');
+  expect(surface).not.toBeNull();
+  await act(async () => surface.click());
+  expect(video.paused).toBe(false);
+  expect(button(host, '暂停 flow')).toBe(surface);
+  await act(async () => surface.click());
+  expect(video.paused).toBe(true);
+  expect(button(host, '播放 flow')).toBe(surface);
+});
+
+test('dragging across the video does not count as a playback click', async () => {
+  const { host, video } = await render();
+  const surface = button(host, '播放 flow');
+  expect(surface).not.toBeNull();
+  await act(async () => {
+    surface.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, clientX: 10, clientY: 10 }));
+    surface.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1, clientX: 60, clientY: 10 }));
+  });
+  expect(video.paused).toBe(true);
+  expect(button(host, '播放 flow')).toBe(surface);
+});
+
+
+test('a delayed play promise cannot put the icon back in playing state after pause', async () => {
+  let started!: () => void;
+  vi.spyOn(HTMLMediaElement.prototype, 'play').mockImplementation(function (this: HTMLMediaElement) {
+    Object.defineProperty(this, 'paused', { configurable: true, value: false });
+    this.dispatchEvent(new Event('play'));
+    return new Promise<void>((resolve) => { started = resolve; });
+  });
+  vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(function (this: HTMLMediaElement) {
+    Object.defineProperty(this, 'paused', { configurable: true, value: true }); this.dispatchEvent(new Event('pause'));
+  });
+  const { host, video } = await render();
+  await act(async () => button(host, '播放 flow').click());
+  await act(async () => button(host, '暂停 flow').click());
+  await act(async () => started());
+  expect(video.paused).toBe(true);
+  expect(button(host, '播放')).not.toBeNull();
 });

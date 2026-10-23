@@ -222,6 +222,7 @@ function DesktopArtboard({ id, artifact, canvas, layout, warnings, pending, cont
   return (
     <div {...stylex.props(styles.layout)}>
     <div ref={viewportRef} {...stylex.props(styles.viewport)} style={{ cursor }}
+      onClickCapture={(event) => { if (!expanded && (commentTool || panning) && (event.target as Element).closest('[data-video-surface]')) event.stopPropagation(); }}
       onPointerDown={(event) => {
         handlers.onPointerDown(event);
         if (commentTool && !panning && !expanded && event.button === 0 && event.pointerType !== 'touch' && event.currentTarget.contains(event.target as Node) && !(event.target as Element).closest('[data-chrome]')) {
@@ -229,7 +230,7 @@ function DesktopArtboard({ id, artifact, canvas, layout, warnings, pending, cont
           event.preventDefault();
           boardComments.onCanvasClick(worldPoint(event));
         }
-        if (!selectionEnabled || event.pointerType === 'touch' || event.button !== 0 || !event.currentTarget.contains(event.target as Node) || (event.target as Element).closest('[data-chrome]')) return;
+        if (!selectionEnabled || event.pointerType === 'touch' || event.button !== 0 || !event.currentTarget.contains(event.target as Node) || (event.target as Element).closest('[data-chrome], [data-video-surface]')) return;
         const point = worldPoint(event);
         event.currentTarget.setPointerCapture(event.pointerId);
         selection.drag('start', point.x, point.y, event.shiftKey || event.metaKey || event.ctrlKey);

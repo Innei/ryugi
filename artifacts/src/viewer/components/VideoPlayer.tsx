@@ -1,6 +1,7 @@
 import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
-import { Maximize2, Pause, Play, Repeat } from 'lucide-react';
+import { Maximize2, Repeat } from 'lucide-react';
+import { motion } from 'motion/react';
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 
 const BAR_HEIGHT = 36;
@@ -9,6 +10,7 @@ const RATES = [1, 1.5, 2, 0.5];
 
 const styles = stylex.create({
   video: { position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block', objectFit: 'contain', backgroundColor: '#000', pointerEvents: 'none' },
+  surface: { position: 'absolute', inset: 0, width: '100%', height: '100%', padding: 0, borderWidth: 0, backgroundColor: 'transparent', cursor: 'pointer', outlineStyle: { default: 'none', ':focus-visible': 'solid' }, outlineWidth: 2, outlineColor: '#fff', outlineOffset: -3 },
   bar: {
     position: 'absolute',
     left: 0,
@@ -57,6 +59,16 @@ const clock = (seconds: number) => {
   return `${Math.floor(whole / 60)}:${String(whole % 60).padStart(2, '0')}`;
 };
 
+function PlaybackIcon({ playing }: { playing: boolean }) {
+  return <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    {[false, true].map((pause) => <motion.g key={String(pause)} initial={false}
+      animate={{ opacity: playing === pause ? 1 : 0, scale: playing === pause ? 1 : 0.25, filter: playing === pause ? 'blur(0px)' : 'blur(4px)' }}
+      transition={{ type: 'spring', duration: 0.3, bounce: 0 }} style={{ transformOrigin: '12px 12px' }}>
+      {pause ? <><rect x="6" y="4" width="4" height="16" rx="1" /><rect x="14" y="4" width="4" height="16" rx="1" /></> : <path d="M8 4.6c-.9-.5-2 .1-2 1.1v12.6c0 1 1.1 1.6 2 1.1l11-6.3c.9-.5.9-1.7 0-2.2Z" />}
+    </motion.g>)}
+  </svg>;
+}
+
 interface Props {
   src: string;
   title: string;
@@ -67,6 +79,7 @@ interface Props {
 
 export function VideoPlayer({ src, title, barScale, barWidth, onExpand }: Props) {
   const video = useRef<HTMLVideoElement>(null);
+  const press = useRef<{ x: number; y: number } | null>(null);
   const [playing, setPlaying] = useState(false);
   const [time, setTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -96,7 +109,7 @@ export function VideoPlayer({ src, title, barScale, barWidth, onExpand }: Props)
   const toggle = () => {
     const el = video.current;
     if (!el) return;
-    if (el.paused) void el.play().then(() => setPlaying(true), () => setPlaying(false));
+    if (el.paused) void el.play().catch(() => setPlaying(!el.paused));
     else el.pause();
   };
   const cycleRate = () => {
@@ -119,6 +132,14 @@ export function VideoPlayer({ src, title, barScale, barWidth, onExpand }: Props)
   return (
     <>
       <video ref={video} src={src} title={title} muted playsInline preload="metadata" {...stylex.props(styles.video)} />
+      <button type="button" data-video-surface aria-label={`${playing ? '暂停' : '播放'} ${title}`}
+        onPointerDown={(event) => { press.current = { x: event.clientX, y: event.clientY }; }}
+        onClick={(event) => {
+          if (!event.detail || !press.current || Math.hypot(event.clientX - press.current.x, event.clientY - press.current.y) < 4) toggle();
+          press.current = null;
+        }}
+        onKeyDown={(event) => { if (event.key === ' ' || event.key === 'Enter') event.stopPropagation(); }}
+        {...stylex.props(styles.surface)} />
       {failed && <div {...stylex.props(styles.failed)}>视频加载失败：格式不受支持，或文件太大没能传过来</div>}
       {barWidth >= MIN_BAR_WIDTH && (
         <div
@@ -128,7 +149,7 @@ export function VideoPlayer({ src, title, barScale, barWidth, onExpand }: Props)
           style={{ width: barWidth, transform: `scale(${barScale})` }}
         >
           <button type="button" aria-label={playing ? '暂停' : '播放'} onClick={toggle} {...stylex.props(styles.icon)}>
-            {playing ? <Pause size={14} /> : <Play size={14} />}
+            <PlaybackIcon playing={playing} />
           </button>
           <span {...stylex.props(styles.time)}>{clock(time)} / {clock(duration)}</span>
           <div

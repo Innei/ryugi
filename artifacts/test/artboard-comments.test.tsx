@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { ConfigProvider } from '@lobehub/ui';
-import { motion } from 'motion/react';
+import { motion, MotionGlobalConfig } from 'motion/react';
 import { act, createElement } from 'react';
 import { createPortal } from 'react-dom';
 import { createRoot, type Root } from 'react-dom/client';
@@ -16,9 +16,9 @@ vi.mock('@lobehub/ui', async (original) => ({
     createElement('div', { 'data-menu': '' }, props.children as never, createPortal(props.items.map((item) => createElement('button', { key: item.key, 'data-menu-item': item.key, onClick: item.onClick }, item.label)), document.body)),
 }));
 
-const state = vi.hoisted(() => ({ comments: { comments: { version: 1, threads: [] }, stale: [] } as { comments: BoardCommentsFile; stale: string[] }, comment: null as unknown as ReturnType<typeof vi.fn> }));
+const state = vi.hoisted(() => ({ video: false, comments: { comments: { version: 1, threads: [] }, stale: [] } as { comments: BoardCommentsFile; stale: string[] }, comment: null as unknown as ReturnType<typeof vi.fn> }));
 vi.mock('../src/viewer/hooks/useCanvasData', () => ({ useCanvasData: () => ({
-  canvas: { version: 1, pages: [{ id: 'p', name: 'Page' }, { id: 'q', name: 'Other' }], boards: { a: { page: 'p', file: 'pages/a.html', x: 0, y: 0, w: 600, h: 400 }, b: { page: 'q', file: 'pages/b.html', x: 0, y: 0, w: 600, h: 400 } } },
+  canvas: { version: 1, pages: [{ id: 'p', name: 'Page' }, { id: 'q', name: 'Other' }], boards: { a: { ...(state.video ? { type: 'video', src: 'pages/a.html' } : {}), page: 'p', file: 'pages/a.html', x: 0, y: 0, w: 600, h: 400 }, b: { page: 'q', file: 'pages/b.html', x: 0, y: 0, w: 600, h: 400 } } },
   layout: { pages: { p: { groups: {}, notes: {}, bounds: { minX: 0, minY: 0, maxX: 600, maxY: 400 } }, q: { groups: {}, notes: {}, bounds: { minX: 0, minY: 0, maxX: 600, maxY: 400 } } } },
   pending: [], versions: { 'pages/a.html': 1, 'pages/b.html': 1 }, contentBase: 'about:blank#', warnings: [], live: true, loaded: true, send: vi.fn(),
   comments: state.comments, comment: state.comment,
@@ -28,6 +28,7 @@ let root: Root | undefined;
 let host: HTMLDivElement | undefined;
 
 beforeEach(() => {
+  MotionGlobalConfig.skipAnimations = true;
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ signedIn: false, artifacts: {} }) }));
   vi.stubGlobal('IntersectionObserver', class {
@@ -37,8 +38,9 @@ beforeEach(() => {
   });
   state.comments = { comments: { version: 1, threads: [] }, stale: [] };
   state.comment = vi.fn(async () => state.comments);
+  state.video = false;
 });
-afterEach(() => { if (root) act(() => root!.unmount()); host?.remove(); vi.unstubAllGlobals(); });
+afterEach(() => { if (root) act(() => root!.unmount()); host?.remove(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 
 async function mount() {
   host = document.createElement('div');
@@ -237,4 +239,40 @@ test('pressing empty canvas in the comment tool keeps focus on the new draft', a
   await act(async () => viewport.dispatchEvent(event));
   expect(host.querySelector('textarea[placeholder="添加评论…"]')).not.toBeNull();
   expect(event.defaultPrevented).toBe(true);
+});
+
+
+test('video clicks reach playback while Hand and Comment keep their canvas gestures', async () => {
+  state.video = true;
+  vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(1200);
+  vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(900);
+  host = document.createElement('div'); document.body.append(host); root = createRoot(host);
+  vi.spyOn(HTMLMediaElement.prototype, 'play').mockImplementation(function (this: HTMLMediaElement) {
+    Object.defineProperty(this, 'paused', { configurable: true, value: false });
+    this.dispatchEvent(new Event('play')); return Promise.resolve();
+  });
+  await act(async () => root!.render(createElement(ConfigProvider, { motion, enableCustomFonts: false, children: createElement(ArtboardLayout, { id: 'review' }) })));
+  const surface = host.querySelector<HTMLButtonElement>('[aria-label="播放 a"]');
+  expect(surface).not.toBeNull();
+  const viewport = host.querySelector('[data-board="a"]')!.parentElement!.parentElement!;
+  const capture = vi.fn(); viewport.setPointerCapture = capture;
+  await act(async () => surface!.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0, pointerId: 1 })));
+  expect(capture).not.toHaveBeenCalled();
+  await act(async () => surface!.click());
+  expect(host.querySelector('video')!.paused).toBe(false);
+  await key('h');
+  await act(async () => surface!.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0, pointerId: 2 })));
+  expect(capture).toHaveBeenCalledWith(2);
+  await key('c');
+  await act(async () => {
+    surface!.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0, pointerId: 3 }));
+    surface!.click();
+  });
+  expect(host.querySelector('textarea[placeholder="添加评论…"]')).not.toBeNull();
+  expect(host.querySelector('video')!.paused).toBe(false);
+  await act(async () => host!.querySelector<HTMLButtonElement>('[aria-label="Expand a"]')!.click());
+  const expandedSurface = host.querySelector<HTMLButtonElement>('[data-chrome] [data-video-surface]')!;
+  await act(async () => expandedSurface.click());
+  expect(expandedSurface.previousElementSibling!.tagName).toBe('VIDEO');
+  expect((expandedSurface.previousElementSibling as HTMLVideoElement).paused).toBe(false);
 });
