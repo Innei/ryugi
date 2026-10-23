@@ -12,6 +12,8 @@ export interface CloudHeaderState {
   activityTone?: ActivityTone;
   retrying?: boolean;
   reason?: string | null;
+  history?: boolean;
+  historyOpen?: boolean;
 }
 
 export function reportCloudHeader(id: string, state: CloudHeaderState) {
@@ -20,10 +22,10 @@ export function reportCloudHeader(id: string, state: CloudHeaderState) {
 
 export function useCloudHeader(id: string, state: CloudHeaderState | null) {
   const enabled = state !== null;
-  const { title, online, comments, activity, activityTone, retrying, reason } = state ?? {};
+  const { title, online, comments, activity, activityTone, retrying, reason, history, historyOpen } = state ?? {};
   useEffect(() => {
-    if (enabled) reportCloudHeader(id, { title, online, comments, activity, activityTone, retrying, reason });
-  }, [id, enabled, title, online, comments, activity, activityTone, retrying, reason]);
+    if (enabled) reportCloudHeader(id, { title, online, comments, activity, activityTone, retrying, reason, history, historyOpen });
+  }, [id, enabled, title, online, comments, activity, activityTone, retrying, reason, history, historyOpen]);
   return enabled && window.parent !== window;
 }
 
@@ -41,5 +43,7 @@ export function readCloudHeader(data: unknown, id: string): CloudHeaderState | n
   }
   if (typeof message.retrying === 'boolean') state.retrying = message.retrying;
   if (typeof message.reason === 'string' || message.reason === null) state.reason = message.reason;
+  if (typeof message.history === 'boolean') state.history = message.history;
+  if (typeof message.historyOpen === 'boolean') state.historyOpen = message.historyOpen;
   return state;
 }

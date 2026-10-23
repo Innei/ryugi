@@ -43,6 +43,13 @@ test('standalone documents keep their toolbar', async () => {
   expect(host.textContent).toContain('document / c1');
 });
 
+test('an embedded document reports its history availability to the outer header', async () => {
+  const postMessage = vi.fn();
+  vi.stubGlobal('parent', { postMessage });
+  await render({ history: { available: true, open: false, toggle: () => {}, close: () => {} } });
+  expect(postMessage).toHaveBeenLastCalledWith(expect.objectContaining({ history: true, historyOpen: false }), location.origin);
+});
+
 test('the phone editing toolbar still lets the human partner finish editing', async () => {
   vi.stubGlobal('parent', { postMessage: vi.fn() });
   const onDone = vi.fn();

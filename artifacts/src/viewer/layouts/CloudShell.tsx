@@ -66,7 +66,7 @@ export function CloudShell({ id }: { id: string }) {
   if (state.kind === 'missing') return <CloudNotFound id={id} login={state.login} />;
   return (
     <div {...stylex.props(styles.shell)}>
-      <CloudHeader id={id} type={state.type} title={header.title || state.title} owner={state.owner} status={header} visibility={state.visibility} onChange={(visibility) => setState({ ...state, visibility })} />
+      <CloudHeader id={id} type={state.type} title={header.title || state.title} owner={state.owner} status={header} visibility={state.visibility} onChange={(visibility) => setState({ ...state, visibility })} onHistory={(action) => frame.current?.contentWindow?.postMessage({ type: 'ryugi:document-history', id, action }, location.origin)} />
       <iframe ref={frame} title={header.title || state.title} src={`/a/${id}/view`} allow="clipboard-write; local-network-access; loopback-network" {...stylex.props(styles.frame)} />
     </div>
   );

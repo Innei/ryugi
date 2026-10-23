@@ -69,9 +69,10 @@ interface Props {
   cloud?: CloudLive;
   compact?: boolean;
   onDone?: () => void;
+  history?: { available: boolean; open: boolean; toggle: () => void; close: () => void };
 }
 
-export function TopBar({ id, title, activity, agentSection, offline, openComments, cloud, compact = false, onDone, agent = 'Agent' }: Props) {
+export function TopBar({ id, title, activity, agentSection, offline, openComments, cloud, compact = false, onDone, agent = 'Agent', history }: Props) {
   const label = activityLabel(activity, agent, agentSection);
   const framed = useCloudHeader(id, cloud ? {
     ...(title ? { title } : {}),
@@ -81,6 +82,8 @@ export function TopBar({ id, title, activity, agentSection, offline, openComment
     activityTone: activity.kind === 'stale' ? 'warning' : activity.kind === 'working' ? 'quiet' : 'live',
     retrying: offline,
     reason: cloud.reason,
+    history: history?.available,
+    historyOpen: history?.open,
   } : null);
   if (framed && !compact) return null;
   return (
@@ -105,7 +108,8 @@ export function TopBar({ id, title, activity, agentSection, offline, openComment
           {cloud.online ? '电脑在线' : '电脑离线'}
         </span>
       ) : null}
-      {compact ? null : <span {...stylex.props(styles.crumb)}>评论 {openComments}</span>}
+      {compact ? null : <button type="button" onClick={history?.close} className="doc-history-entry">评论 {openComments}</button>}
+      {history ? <button type="button" className="doc-history-entry" aria-pressed={history.open} disabled={!history.available} title={!history.available ? '电脑离线，历史暂不可用' : undefined} onClick={history.toggle}>历史记录</button> : null}
       {onDone ? (
         <button type="button" onClick={onDone} {...stylex.props(styles.done)}>
           完成

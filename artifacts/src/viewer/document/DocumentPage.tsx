@@ -10,6 +10,9 @@ import { useTypeFavicon } from '../hooks/useTypeFavicon';
 import { agentActivity } from './agentActivity';
 import type { ThreadActions } from './CommentCard';
 import { DocumentEditor } from './DocumentEditor';
+import { DocumentHistory } from './DocumentHistory';
+import { allNodes } from '@haklex/rich-editor/static';
+import { extraNodes } from './DocumentEditor';
 import { DesktopDocument } from './DesktopDocument';
 import { DynamicHostContext, type DynamicHost } from './DynamicBlock';
 import { decodeBase64 } from './LoroSync';
@@ -26,6 +29,7 @@ const styles = stylex.create({
   root: { minHeight: '100%', backgroundColor: cssVar.colorBgContainer, color: cssVar.colorText },
   message: { padding: 48, textAlign: 'center', color: cssVar.colorTextSecondary, fontFamily: cssVar.fontFamily, fontSize: 14 },
 });
+const historyNodes = [...allNodes.filter((node) => !extraNodes.some((extra) => extra.getType() === ('getType' in node ? node.getType() : node.replace.getType()))), ...extraNodes];
 
 function usePrefersDark() {
   const query = useMemo(() => window.matchMedia('(prefers-color-scheme: dark)'), []);
@@ -72,6 +76,20 @@ export function DocumentView({ id, transport, live, cloud }: { id: string; trans
   }, []);
   const [section, setSection] = useState<string | null>(null);
   const [offline, setOffline] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const historyAvailable = !cloud || (cloud.online && !offline);
+  const historyVisible = historyOpen && historyAvailable;
+  useEffect(() => { if (!historyAvailable) setHistoryOpen(false); }, [historyAvailable]);
+  useEffect(() => {
+    if (!cloud) return;
+    const receive = (event: MessageEvent) => {
+      if (event.source !== window.parent || event.origin !== location.origin || event.data?.type !== 'ryugi:document-history' || event.data.id !== id) return;
+      if (event.data.action === 'close') setHistoryOpen(false);
+      else if (event.data.action === 'toggle' && historyAvailable) setHistoryOpen((open) => !open);
+    };
+    window.addEventListener('message', receive);
+    return () => window.removeEventListener('message', receive);
+  }, [id, cloud, historyAvailable]);
   const [editor, setEditor] = useState<LexicalEditor | null>(null);
   const [mainEl, setMainEl] = useState<HTMLElement | null>(null);
   const dark = usePrefersDark();
@@ -127,8 +145,8 @@ export function DocumentView({ id, transport, live, cloud }: { id: string; trans
   );
 
   useEffect(() => {
-    editor?.setEditable(editable);
-  }, [editor, editable]);
+    editor?.setEditable(editable && !historyVisible);
+  }, [editor, editable, historyVisible]);
   useEffect(() => {
     if (!canEdit) setEditing(false);
   }, [canEdit]);
@@ -140,7 +158,7 @@ export function DocumentView({ id, transport, live, cloud }: { id: string; trans
   }, [syncClock]);
 
   useAssetBase(meta?.contentBase);
-  useDocumentSelectionSync(editor, artifact, live, transport.send);
+  useDocumentSelectionSync(editor, artifact, live && !historyVisible, transport.send);
   const dynamicHost = useMemo<DynamicHost>(
     () => ({ artifact, contentBase: meta?.contentBase ?? '', channel, send: transport.send }),
     [artifact, meta?.contentBase, channel, transport],
@@ -233,7 +251,10 @@ export function DocumentView({ id, transport, live, cloud }: { id: string; trans
         cloud={cloud}
         compact={phone}
         onDone={phone && editing ? () => setEditing(false) : undefined}
+        history={{ available: historyAvailable, open: historyVisible, toggle: () => setHistoryOpen((open) => !open), close: () => setHistoryOpen(false) }}
       />
+      {historyVisible ? <DocumentHistory doc={doc} nodes={historyNodes} streaming={streaming} theme={dark ? 'dark' : 'light'} title={meta?.title || id} onClose={() => setHistoryOpen(false)} /> : null}
+      <div hidden={historyVisible}>
       {phone ? (
         <PhoneLayout
           editor={editor}
@@ -266,6 +287,7 @@ export function DocumentView({ id, transport, live, cloud }: { id: string; trans
           {editorView}
         </DesktopDocument>
       )}
+      </div>
       <WarningsBadge warnings={meta?.warnings ?? []} />
     </div>
   );
