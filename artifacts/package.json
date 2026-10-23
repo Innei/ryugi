@@ -1,6 +1,6 @@
 {
   "name": "ryugi-artifacts",
-  "version": "1.24.3",
+  "version": "1.25.0",
   "type": "module",
   "description": "Server and viewer for the Ryugi artifacts app",
   "license": "MIT",
