@@ -42,7 +42,7 @@ const LOGIN_STATE_TTL_MS = 10 * 60 * 1000;
 const UPLOAD_CONCURRENCY = 6;
 const MAX_JSON_BODY = 4096;
 const CLOUD_ID = /^[A-Za-z0-9_-]{1,64}$/;
-const ROUTE = /^\/api\/cloud\/(status|login|logout|artifacts|publish|reserve|visibility|auto-publish)(?:\/([^/]+)(?:\/([^/]+))?)?$/;
+const ROUTE = /^\/api\/cloud\/(status|login|logout|artifacts|publish|reserve|visibility|auto-publish|sync)(?:\/([^/]+)(?:\/([^/]+))?)?$/;
 
 class SignedOut extends Error {}
 
@@ -174,22 +174,41 @@ export function createCloudRoutes(options: CloudRoutesOptions) {
     return artifactEntry(key).cloud?.url ?? null;
   };
 
-  const publish = async (ref: ArtifactRef, requested?: Visibility, { recreate = true } = {}) => {
+  const prepare = async (ref: ArtifactRef) => {
     const inspected = await options.inspect(ref);
     if (!inspected) throw new CloudRefused(404, `${ref.type}/${ref.id} not found`);
-    if (inspected.reasons.length > 0 || !inspected.payload) return { status: 409, body: { error: 'fix these before publishing', reasons: inspected.reasons } };
+    if (inspected.reasons.length > 0 || !inspected.payload) return { ready: false as const, reasons: inspected.reasons };
     let files;
     try {
       files = withCloudRuntime(ref.type, packArtifact(inspected.dir, ref.type));
     } catch (err) {
       throw new CloudRefused(413, (err as Error).message);
     }
+    const hashed = files.map((file) => ({ ...file, hash: crypto.createHash('sha256').update(file.data).digest('hex') }));
+    const manifest = hashed.map(({ path, hash }) => ({ path, hash }));
+    const content = { title: inspected.title, payload: inspected.payload, files: manifest };
+    const fingerprint = crypto.createHash('sha256').update(JSON.stringify(content)).digest('hex');
+    return { ready: true as const, hashed, content, fingerprint };
+  };
+
+  const upToDate = async (ref: ArtifactRef) => {
+    const cloud = artifactEntry(`${ref.type}/${ref.id}`).cloud;
+    if (!cloud?.publishedAt) {
+      if (!(await options.inspect(ref))) throw new CloudRefused(404, `${ref.type}/${ref.id} not found`);
+      return null;
+    }
+    const prepared = await prepare(ref);
+    return prepared.ready ? prepared.fingerprint === cloud.fingerprint : null;
+  };
+
+  const publish = async (ref: ArtifactRef, requested?: Visibility, { recreate = true } = {}) => {
+    const prepared = await prepare(ref);
+    if (!prepared.ready) return { status: 409, body: { error: 'fix these before publishing', reasons: prepared.reasons } };
+    const { hashed, content, fingerprint } = prepared;
     const key = `${ref.type}/${ref.id}`;
     const entry = artifactEntry(key);
-    const hashed = files.map((file) => ({ ...file, hash: crypto.createHash('sha256').update(file.data).digest('hex') }));
     const byHash = new Map(hashed.map((file) => [file.hash, file.data]));
-    const manifest = hashed.map(({ path, hash }) => ({ path, hash }));
-    const version = (visibility: Visibility | undefined) => ({ title: inspected.title, payload: inspected.payload, files: manifest, project, ...(visibility ? { visibility } : {}) });
+    const version = (visibility: Visibility | undefined) => ({ ...content, project, ...(visibility ? { visibility } : {}) });
 
     const create = () => createRecord(ref, requested ?? entry.visibility ?? 'private');
 
@@ -222,7 +241,7 @@ export function createCloudRoutes(options: CloudRoutesOptions) {
     const published = (await (await expectOk(res)).json()) as CloudArtifact;
     updateArtifactConfig(configFile, key, {
       visibility: published.visibility,
-      cloud: { id: published.id, url: published.url, publishedAt: published.updatedAt, visibility: published.visibility },
+      cloud: { id: published.id, url: published.url, publishedAt: published.updatedAt, visibility: published.visibility, fingerprint },
     });
     return { status: 200, body: { id: published.id, url: published.url, visibility: published.visibility, publishedAt: published.updatedAt } };
   };
@@ -330,6 +349,10 @@ export function createCloudRoutes(options: CloudRoutesOptions) {
         return published;
       });
       sendJson(res, result.status, result.body);
+      return;
+    }
+    if (action === 'sync' && ref && method === 'GET') {
+      sendJson(res, 200, { upToDate: await serialized(`${ref.type}/${ref.id}`, () => upToDate(ref)) });
       return;
     }
     if (action === 'reserve' && ref && method === 'POST') {

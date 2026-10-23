@@ -76,6 +76,14 @@ describe('updateArtifactConfig', () => {
     expect(readConfig(file).config.artifacts['html/a']).toEqual({ cloud });
   });
 
+  test('keeps the fingerprint of the published content', () => {
+    const dir = tempRyugiDir();
+    const file = path.join(dir, 'config.json');
+    const cloud = { id: 'k3x9', url: 'https://ryugi.innei.dev/a/k3x9', publishedAt: '2026-10-20T08:00:00Z', visibility: 'public' as const, fingerprint: 'abc' };
+    updateArtifactConfig(file, 'html/a', { cloud });
+    expect(readConfig(file).config.artifacts['html/a']).toEqual({ cloud });
+  });
+
   test('removes the cloud record when patched with null', () => {
     const dir = tempRyugiDir();
     const file = path.join(dir, 'config.json');

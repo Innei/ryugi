@@ -25,6 +25,10 @@ function isCloudRecord(value: unknown): value is CloudRecord {
   return typeof id === 'string' && typeof url === 'string' && (typeof publishedAt === 'string' || publishedAt === null) && isVisibility(visibility);
 }
 
+function cloudRecord({ id, url, publishedAt, visibility, fingerprint }: CloudRecord): CloudRecord {
+  return { id, url, publishedAt, visibility, ...(typeof fingerprint === 'string' ? { fingerprint } : {}) };
+}
+
 function normalize(raw: unknown): RyugiConfig {
   const config = defaults();
   if (typeof raw !== 'object' || raw === null) return config;
@@ -38,7 +42,7 @@ function normalize(raw: unknown): RyugiConfig {
     if (visibility !== undefined && !isVisibility(visibility)) continue;
     const entry: ArtifactConfig = {};
     if (visibility) entry.visibility = visibility;
-    if (isCloudRecord(cloud)) entry.cloud = { id: cloud.id, url: cloud.url, publishedAt: cloud.publishedAt, visibility: cloud.visibility };
+    if (isCloudRecord(cloud)) entry.cloud = cloudRecord(cloud);
     if (autoPublish === false) entry.autoPublish = false;
     config.artifacts[key] = entry;
   }

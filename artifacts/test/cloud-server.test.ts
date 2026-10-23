@@ -5,6 +5,7 @@ import { createLoroBinding } from '@haklex/rich-collab-loro';
 import { $getRoot, $isElementNode, $isTextNode, type LexicalNode, type TextNode } from 'lexical';
 import { LoroDoc } from 'loro-crdt';
 import { afterEach, describe, expect, test } from 'vitest';
+import { updateArtifactConfig } from '../src/server/config';
 import { createDocumentHeadlessEditor } from '../src/server/document-headless';
 import { call, closeAll, config, latest, requestLines, start } from './fake-cloud';
 import { writeArtboard, writeDocument, writeHtml } from './helpers';
@@ -168,7 +169,7 @@ describe('publishing', () => {
     expect(Object.keys(latest(cloud).files).sort()).toEqual(['img/x.svg', 'index.html']);
     expect(config(configFile).artifacts['html/a']).toEqual({
       visibility: 'private',
-      cloud: { id: 'cloud1', url: `${cloud.origin}/a/cloud1`, publishedAt: '2026-10-20T08:00:00.000Z', visibility: 'private' },
+      cloud: { id: 'cloud1', url: `${cloud.origin}/a/cloud1`, publishedAt: '2026-10-20T08:00:00.000Z', visibility: 'private', fingerprint: expect.stringMatching(/^[0-9a-f]{64}$/) },
     });
   });
 
@@ -394,6 +395,64 @@ describe('publishing', () => {
     const { status, json } = await call(server, 'POST', '/api/cloud/publish/html/a');
     expect(status).toBe(502);
     expect(json.error).toContain('limit of 100 published artifacts reached');
+  });
+});
+
+describe('sync with the cloud copy', () => {
+  const sync = async (server: Awaited<ReturnType<typeof start>>['server'], key: string) => (await call(server, 'GET', `/api/cloud/sync/${key}`)).json;
+
+  test('an artifact never published has nothing to compare', async () => {
+    const { server, root, cloud } = await start();
+    writeHtml(root, 'a', { 'index.html': '<title>A</title>' });
+    expect(await sync(server, 'html/a')).toEqual({ upToDate: null });
+    expect(cloud.requests).toEqual([]);
+  });
+
+  test('right after publishing, each artifact type is up to date', async () => {
+    const { server, root } = await start();
+    writeHtml(root, 'a', { 'index.html': '<title>A</title>' });
+    writeArtboard(root, 'b', { version: 1, title: 'Board', pages: [{ id: 'p', name: 'P' }], boards: { a: { file: 'pages/p/a.html', page: 'p', x: 0, y: 0, w: 640, h: 400 } } }, { 'pages/p/a.html': '<p>a</p>' });
+    writeDocument(root, 'd', { 'doc.xml': '<doc><h1>Design</h1><p>Hello</p></doc>' });
+    for (const key of ['html/a', 'artboard/b', 'document/d']) {
+      await call(server, 'POST', `/api/cloud/publish/${key}`);
+      expect(await sync(server, key)).toEqual({ upToDate: true });
+    }
+  });
+
+  test('a local edit makes it out of date until it is published again', async () => {
+    const { server, root } = await start();
+    writeHtml(root, 'a', { 'index.html': '<title>A</title>' });
+    await call(server, 'POST', '/api/cloud/publish/html/a');
+    fs.writeFileSync(path.join(root, 'html', 'a', 'index.html'), '<title>B</title>');
+    expect(await sync(server, 'html/a')).toEqual({ upToDate: false });
+    await call(server, 'POST', '/api/cloud/publish/html/a');
+    expect(await sync(server, 'html/a')).toEqual({ upToDate: true });
+  });
+
+  test('an edit undone by hand is up to date again', async () => {
+    const { server, root } = await start();
+    writeHtml(root, 'a', { 'index.html': '<title>A</title>' });
+    await call(server, 'POST', '/api/cloud/publish/html/a');
+    fs.writeFileSync(path.join(root, 'html', 'a', 'index.html'), '<title>B</title>');
+    fs.writeFileSync(path.join(root, 'html', 'a', 'index.html'), '<title>A</title>');
+    expect(await sync(server, 'html/a')).toEqual({ upToDate: true });
+  });
+
+  test('a copy published before fingerprints were recorded counts as out of date', async () => {
+    const { server, root, configFile } = await start();
+    writeHtml(root, 'a', { 'index.html': '<title>A</title>' });
+    await call(server, 'POST', '/api/cloud/publish/html/a');
+    const { fingerprint: _fingerprint, ...legacy } = config(configFile).artifacts['html/a'].cloud;
+    updateArtifactConfig(configFile, 'html/a', { cloud: legacy });
+    expect(await sync(server, 'html/a')).toEqual({ upToDate: false });
+  });
+
+  test('changing visibility keeps the fingerprint', async () => {
+    const { server, root } = await start();
+    writeHtml(root, 'a', { 'index.html': '<title>A</title>' });
+    await call(server, 'POST', '/api/cloud/publish/html/a');
+    await call(server, 'POST', '/api/cloud/visibility/html/a', { visibility: 'public' });
+    expect(await sync(server, 'html/a')).toEqual({ upToDate: true });
   });
 });
 

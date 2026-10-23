@@ -5,6 +5,7 @@ export interface CloudRecord {
   url: string;
   publishedAt: string | null;
   visibility: Visibility;
+  fingerprint?: string;
 }
 
 export interface ArtifactConfig {
