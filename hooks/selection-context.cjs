@@ -199,6 +199,8 @@ function autoPublishContext(project, env, sessionId) {
     remember(notifiedFile, notice.id);
     if (notice.kind === 'signed-out') {
       lines.push(`Ryugi auto-publish paused: the Ryugi Cloud sign-in expired. Tell your human partner and offer to sign in again with \`node "${LAUNCHER}" publish --login --json --project-dir "${project}"\`.`);
+    } else if (notice.kind === 'failing') {
+      lines.push(`Ryugi auto-publish could not publish ${clip(String(notice.message), 200)}. It keeps retrying. Tell your human partner, and fix the artifact's warnings if there are any.`);
     } else if (notice.kind === 'cap') {
       lines.push(`Ryugi auto-publish could not create a new cloud copy (${clip(String(notice.message), 200)}). Existing copies still update. Tell your human partner; they can delete old copies with \`node "${LAUNCHER}" publish --list --json --project-dir "${project}"\` and \`--delete <cloud-id>\`.`);
     }

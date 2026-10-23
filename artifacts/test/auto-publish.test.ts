@@ -88,6 +88,43 @@ describe('outcomes', () => {
     expect(state().notice).toBeNull();
   });
 
+  test('three failed runs in a row raise a failing notice naming the artifact', async () => {
+    const { publisher, state } = setup({ 'html/a': { kind: 'failed', message: 'cloud answered 500' } });
+    publisher.changed('html/a');
+    await publisher.flush();
+    await publisher.flush();
+    expect(state().notice).toBeNull();
+    await publisher.flush();
+    expect(state().notice).toMatchObject({ kind: 'failing' });
+    expect(state().notice!.message).toContain('html/a');
+    expect(state().notice!.message).toContain('cloud answered 500');
+  });
+
+  test('a publish that succeeds clears the failing notice', async () => {
+    let failing = true;
+    const { publisher, state } = setup({ 'html/a': () => (failing ? { kind: 'not-ready' } : { kind: 'published', created: false }) });
+    publisher.changed('html/a');
+    for (let i = 0; i < 3; i++) await publisher.flush();
+    expect(state().notice).toMatchObject({ kind: 'failing' });
+    failing = false;
+    await publisher.flush();
+    expect(state().notice).toBeNull();
+  });
+
+  test('logs the outcome of every attempt', async () => {
+    const log = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const { publisher } = setup({ 'html/a': { kind: 'failed', message: 'offline' } });
+    publisher.changed('html/a');
+    publisher.changed('html/b');
+    await publisher.flush();
+    const lines = log.mock.calls.map(([line]) => JSON.parse(String(line)));
+    expect(lines).toEqual([
+      { type: 'auto-publish', key: 'html/a', outcome: 'failed', message: 'offline' },
+      { type: 'auto-publish', key: 'html/b', outcome: 'published' },
+    ]);
+    log.mockRestore();
+  });
+
   test('an opted-out or vanished artifact drops its mark', async () => {
     const { publisher, state } = setup({ 'html/a': { kind: 'opted-out' }, 'html/b': { kind: 'gone' } });
     publisher.changed('html/a');

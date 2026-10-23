@@ -13,7 +13,7 @@ export type AutoPublishOutcome =
 
 export interface AutoPublishNotice {
   id: string;
-  kind: 'signed-out' | 'cap';
+  kind: 'signed-out' | 'cap' | 'failing';
   message: string;
 }
 
@@ -36,11 +36,12 @@ const IDLE_MS = 5 * 60 * 1000;
 const MAX_WAIT_MS = 15 * 60 * 1000;
 
 const SIGNED_OUT_MESSAGE = 'auto-publish paused: the Ryugi Cloud sign-in expired';
+const FAILURES_BEFORE_NOTICE = 3;
 
 function isNotice(value: unknown): value is AutoPublishNotice {
   if (typeof value !== 'object' || value === null) return false;
   const { id, kind, message } = value as Record<string, unknown>;
-  return typeof id === 'string' && (kind === 'signed-out' || kind === 'cap') && typeof message === 'string';
+  return typeof id === 'string' && (kind === 'signed-out' || kind === 'cap' || kind === 'failing') && typeof message === 'string';
 }
 
 export function readAutoPublishState(file: string): AutoPublishState {
@@ -64,6 +65,7 @@ export function createAutoPublisher(options: AutoPublisherOptions) {
   let notice = saved.notice;
   let paused = saved.paused;
   const remarked = new Set<string>();
+  const failures = new Map<string, number>();
   const save = () => writeJsonAtomic(options.stateFile, { dirty: [...dirty], notice, paused } satisfies AutoPublishState);
   const raise = (kind: AutoPublishNotice['kind'], message: string) => {
     if (notice?.kind !== kind) notice = { id: crypto.randomUUID(), kind, message };
@@ -95,6 +97,15 @@ export function createAutoPublisher(options: AutoPublisherOptions) {
     for (const key of [...dirty]) {
       remarked.delete(key);
       const outcome = await options.publish(key);
+      console.error(JSON.stringify({ type: 'auto-publish', key, outcome: outcome.kind, ...('message' in outcome ? { message: outcome.message } : {}) }));
+      if (outcome.kind === 'failed' || outcome.kind === 'not-ready') {
+        const count = (failures.get(key) ?? 0) + 1;
+        failures.set(key, count);
+        if (count >= FAILURES_BEFORE_NOTICE) raise('failing', `${key}: ${outcome.kind === 'failed' ? outcome.message : 'not ready to publish; fix its warnings'}`);
+      } else {
+        failures.delete(key);
+        if (failures.size === 0 && notice?.kind === 'failing') notice = null;
+      }
       if (outcome.kind === 'signed-out') {
         paused = { token };
         raise('signed-out', SIGNED_OUT_MESSAGE);

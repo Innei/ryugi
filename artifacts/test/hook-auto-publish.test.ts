@@ -71,6 +71,16 @@ describe('notices', () => {
   });
 });
 
+describe('failing notice', () => {
+  test('tells the agent which artifact keeps failing to publish', () => {
+    const { project, env, state } = setup({ decided: true });
+    fs.writeFileSync(path.join(state, 'auto-publish.json'), JSON.stringify({ dirty: ['html/a'], paused: null, notice: { id: 'n3', kind: 'failing', message: 'html/a: cloud answered 500' } }));
+    const text = hook.autoPublishContext(project, env, 's1');
+    expect(text).toContain('html/a: cloud answered 500');
+    expect(text).toContain('could not publish');
+  });
+});
+
 describe('turn-end flush hook', () => {
   test('asks the running server to publish what changed and returns', { timeout: 15000 }, async () => {
     const started = await start();
