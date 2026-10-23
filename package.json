@@ -1,6 +1,6 @@
 {
   "name": "ryugi",
-  "version": "1.24.1",
+  "version": "1.24.2",
   "description": "Ryugi skills and runtime bootstrap for coding agents",
   "type": "module",
   "main": ".opencode/plugins/ryugi.js",

@@ -20,6 +20,12 @@ function Harness({ tool }: { tool: Tool }) {
     createElement('output', null, JSON.stringify(view)),
     createElement('button', { 'data-chrome': '' }, 'Toolbar'),
     createElement('div', { 'data-chrome': 'board-label' }, createElement('span', { id: 'board-title' }, 'Board title')),
+    createElement('div', { 'data-chrome': 'group-label' }, createElement('button', { id: 'verdict' }, '通过')),
+    createElement('div', { 'data-chrome': 'video-controls' }, createElement('span', { id: 'clock' }, '0:00')),
+    createElement('div', { 'data-chrome': 'reject' }, createElement('textarea', { id: 'reason' })),
+    createElement('aside', { 'data-chrome': 'parameters' }, createElement('label', { id: 'control' }, 'Accent')),
+    createElement('div', { 'data-chrome': 'comments' }, createElement('div', { id: 'popover', style: { overflowY: 'auto' } }, createElement('p', { id: 'reply' }, 'Reply'))),
+    createElement('div', { 'data-chrome': '' }, createElement('aside', { 'data-chrome': 'parameters' }, createElement('label', { id: 'expanded-control' }, 'Accent'))),
     createPortal(createElement('button', { id: 'menu-item' }, 'Zoom in'), document.body),
   );
 }
@@ -120,6 +126,61 @@ test('trackpad gestures over a board title pan and pinch the canvas, while toolb
   expect(panZoom.view).toEqual({ x: -12, y: -40, k: 0.5 });
   wheel(host.querySelector('#board-title')!, { deltaY: -Math.log(2) / 0.01, ctrlKey: true });
   expect(panZoom.view.k).toBe(1);
+});
+
+function wheelAt(target: Element, init: WheelEventInit & { deltaMode?: number }) {
+  const event = new WheelEvent('wheel', { bubbles: true, cancelable: true, ...init });
+  // happy-dom's WheelEvent omits modifier keys and deltaMode.
+  Object.defineProperty(event, 'ctrlKey', { value: init.ctrlKey ?? false });
+  Object.defineProperty(event, 'deltaMode', { value: init.deltaMode ?? 0 });
+  act(() => { target.dispatchEvent(event); });
+  return event;
+}
+
+test.each(['#verdict', '#clock', '#reason', '#control', '#reply'])('trackpad gestures over canvas chrome %s pan the canvas', (selector) => {
+  render('select');
+  const event = wheelAt(host.querySelector(selector)!, { deltaX: 12, deltaY: 40 });
+  expect(event.defaultPrevented).toBe(true);
+  expect(panZoom.view).toEqual({ x: -12, y: -40, k: 0.5 });
+});
+
+test('a pinch over canvas chrome zooms the canvas', () => {
+  render('select');
+  wheelAt(host.querySelector('#verdict')!, { deltaY: -Math.log(2) / 0.01, ctrlKey: true });
+  expect(panZoom.view.k).toBe(1);
+});
+
+test('canvas chrome that overflows scrolls itself instead of panning', () => {
+  render('select');
+  const popover = host.querySelector('#popover')!;
+  Object.defineProperty(popover, 'scrollHeight', { value: 800 });
+  Object.defineProperty(popover, 'clientHeight', { value: 400 });
+  const event = wheelAt(host.querySelector('#reply')!, { deltaY: 40 });
+  expect(event.defaultPrevented).toBe(false);
+  expect(panZoom.view).toEqual({ x: 0, y: 0, k: 0.5 });
+});
+
+test('a panel inside fixed chrome keeps its wheel even though it can sit on the canvas', () => {
+  render('select');
+  wheelAt(host.querySelector('#expanded-control')!, { deltaY: 40 });
+  expect(panZoom.view).toEqual({ x: 0, y: 0, k: 0.5 });
+});
+
+test('a pinch over fixed chrome or a side panel never zooms the browser page', () => {
+  render('select');
+  const side = document.createElement('aside');
+  document.body.append(side);
+  expect(wheelAt(host.querySelector('button')!, { deltaY: 10, ctrlKey: true }).defaultPrevented).toBe(true);
+  expect(wheelAt(side, { deltaY: 10, ctrlKey: true }).defaultPrevented).toBe(true);
+  expect(wheelAt(side, { deltaY: 10 }).defaultPrevented).toBe(false);
+  expect(panZoom.view).toEqual({ x: 0, y: 0, k: 0.5 });
+  side.remove();
+});
+
+test('line-based wheel deltas pan by pixels', () => {
+  render('select');
+  wheelAt(host.querySelector('#board-title')!, { deltaY: 3, deltaMode: 1 });
+  expect(panZoom.view).toEqual({ x: 0, y: -48, k: 0.5 });
 });
 
 function touch(target: Element, type: string, id: number, x: number, y: number) {

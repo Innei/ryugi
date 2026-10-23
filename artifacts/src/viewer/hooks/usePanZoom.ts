@@ -12,6 +12,19 @@ const ease = cubicBezier(0.2, 0, 0, 1);
 const reducedMotion = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 export interface WheelInput { deltaX: number; deltaY: number; x: number; y: number; zoom: boolean }
 
+// Chrome positioned in canvas space moves with the boards, so a wheel over it belongs to the canvas.
+const CANVAS_CHROME = ['board-label', 'group-label', 'video-controls', 'comments', 'reject', 'parameters'];
+const FIXED_CHROME = `[data-chrome]${CANVAS_CHROME.map((name) => `:not([data-chrome="${name}"])`).join('')}`;
+
+function scrollsItself(target: Element | null, root: Element, dx: number, dy: number) {
+  for (let el = target; el && el !== root; el = el.parentElement) {
+    const { overflowX, overflowY } = getComputedStyle(el);
+    if (dy && /auto|scroll/.test(overflowY) && el.scrollHeight > el.clientHeight) return true;
+    if (dx && /auto|scroll/.test(overflowX) && el.scrollWidth > el.clientWidth) return true;
+  }
+  return false;
+}
+
 export function usePanZoom(tool: Tool) {
   const viewportRef = useRef<HTMLDivElement>(null);
   const [view, setView] = useState<View>({ x: 0, y: 0, k: 0.5 });
@@ -38,14 +51,23 @@ export function usePanZoom(tool: Tool) {
     const el = viewportRef.current;
     if (!el) return;
     const onWheel = (e: WheelEvent) => {
-      if ((e.target as HTMLElement | null)?.closest?.('[data-chrome]:not([data-chrome="board-label"])')) return;
+      const target = e.target as Element | null;
+      const zoom = e.ctrlKey || e.metaKey;
+      if (target?.closest?.(FIXED_CHROME) || (!zoom && scrollsItself(target, el, e.deltaX, e.deltaY))) return;
       e.preventDefault();
       stop();
       const rect = el.getBoundingClientRect();
-      wheelAt({ deltaX: e.deltaX, deltaY: e.deltaY, x: e.clientX - rect.left, y: e.clientY - rect.top, zoom: e.ctrlKey || e.metaKey });
+      const factor = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? el.clientHeight : 1;
+      wheelAt({ deltaX: e.deltaX * factor, deltaY: e.deltaY * factor, x: e.clientX - rect.left, y: e.clientY - rect.top, zoom });
     };
+    // A trackpad pinch arrives as a ctrl-wheel; left alone over any panel it zooms the whole page.
+    const blockPageZoom = (e: WheelEvent) => { if (e.ctrlKey) e.preventDefault(); };
     el.addEventListener('wheel', onWheel, { passive: false });
-    return () => el.removeEventListener('wheel', onWheel);
+    window.addEventListener('wheel', blockPageZoom, { passive: false });
+    return () => {
+      el.removeEventListener('wheel', onWheel);
+      window.removeEventListener('wheel', blockPageZoom);
+    };
   }, [wheelAt, stop]);
 
   useEffect(() => {
