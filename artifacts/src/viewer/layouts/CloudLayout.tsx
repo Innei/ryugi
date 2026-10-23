@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
+import { useTypeFavicon } from '../hooks/useTypeFavicon';
 import { CloudLiveArtifact } from './CloudLiveLayout';
 import { CloudMessage } from './CloudMessage';
 import { CloudSnapshot, type CloudArtifact } from './CloudSnapshot';
@@ -31,6 +32,7 @@ export function CloudLayout({ id }: { id: string }) {
   useEffect(() => {
     if (state.status === 'ready' && state.artifact.title) document.title = state.artifact.title;
   }, [state]);
+  useTypeFavicon(state.status === 'ready' ? state.artifact.type : null);
 
   if (state.status === 'loading') return <CloudMessage>正在加载…</CloudMessage>;
   if (state.status === 'failed') return <CloudMessage>{state.message}</CloudMessage>;

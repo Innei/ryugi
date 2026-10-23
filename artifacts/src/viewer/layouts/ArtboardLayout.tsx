@@ -15,6 +15,7 @@ import { Labels } from '../components/Labels';
 import { TopLeftBar, TopRightBar } from '../components/Toolbar';
 import { useLocalFeed } from '../hooks/useArtifactFeed';
 import { useCanvasData } from '../hooks/useCanvasData';
+import { useTypeFavicon } from '../hooks/useTypeFavicon';
 import type { BoardCommentsState } from '../lib/board-comments';
 import { useBoardComments } from '../hooks/useBoardComments';
 import { useVerdicts } from '../hooks/useVerdicts';
@@ -165,6 +166,7 @@ function DesktopArtboard({ id, artifact, canvas, layout, warnings, pending, cont
   useEffect(() => {
     document.title = canvas?.title || id;
   }, [canvas?.title, id]);
+  useTypeFavicon('artboard');
   function onKey(e: KeyboardEvent | Extract<InspectorReport, { type: 'ryugi:inspect:key' }>) {
     if ('target' in e && (e.target as HTMLElement | null)?.closest?.('input, textarea, select, [contenteditable], [role="tree"], [role="treeitem"], [data-chrome="parameters"]')) return;
     const prevent = () => { if ('preventDefault' in e) e.preventDefault(); };

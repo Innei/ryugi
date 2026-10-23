@@ -26,6 +26,7 @@ import { AVATAR_ROUTE, createAvatars } from './avatars';
 import { createCloudRoutes, type CloudOptions } from './cloud';
 import { ownLink } from '../shared/cloud';
 import { DOCUMENT_FEATURES_HEADER } from '../shared/document-features';
+import { typeFaviconHref } from '../shared/type-icons';
 import { commentNames } from './comment-names';
 import { publishPayload } from './publish-payload';
 import { allowInlineScripts, viewerPage } from './viewer-page';
@@ -675,7 +676,7 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
       if (key !== null) headers['Set-Cookie'] = `${cookieName}=${token}; HttpOnly; SameSite=Strict; Path=/`;
       void fs.promises.readFile(path.join(viewerDir, 'index.html'), 'utf8')
         .then((template) => {
-          const html = viewerPage(template, { title, description, url: canonical });
+          const html = viewerPage(template, { title, description, url: canonical, icon: ref ? typeFaviconHref(ref.type) : undefined });
           send(res, 200, html, { ...headers, 'Content-Security-Policy': allowInlineScripts(csp, html) });
         })
         .catch((err: NodeJS.ErrnoException) => send(res, err.code === 'ENOENT' ? 404 : 500, 'Viewer unavailable'));

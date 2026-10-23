@@ -1,13 +1,13 @@
 import './artifact-list.css';
 import './cloud-library.css';
 import { Button, Modal } from '@lobehub/ui';
-import { PanelsTopLeft } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import logo from '../../../../assets/ryugi-small.svg';
 import type { Visibility } from '../../shared/cloud';
 import { CloudLibraryInspector, CloudSelectionSummary } from '../components/CloudLibraryInspector';
 import { CloudLibraryList } from '../components/CloudLibraryList';
 import { CloudLibrarySidebar } from '../components/CloudLibrarySidebar';
+import { RyugiMark } from '../components/RyugiMark';
 import { filterCloudItems, projectCounts, publishedNewestFirst, type CloudFilter, type CloudListItem } from '../lib/cloud-list';
 import { CloudRequestError, deleteCloudArtifact } from '../lib/cloud-shell';
 
@@ -129,12 +129,12 @@ export function CloudArtifactList() {
       {loaded.state === 'error' && <div className="library-empty" role="alert"><p>暂时无法加载你的 Artifact。</p><Button size="small" onClick={() => setRevision((value) => value + 1)}>重新加载</Button></div>}
       {loaded.state === 'signed-out' && (
         <div className="library-empty">
-          <PanelsTopLeft size={28} /><h2>Ryugi Cloud</h2>
+          <RyugiMark size={28} /><h2>Ryugi Cloud</h2>
           <p>这里存放从 Ryugi 分享出来的 artifact。登录后可以看到你自己发布的全部 artifact。</p>
           <a href="/auth/login?return=/">用 GitHub 登录</a>
         </div>
       )}
-      {loaded.state === 'ready' && all.length === 0 && <div className="library-empty">{notice && !notice.error && <p role="status">{notice.message}</p>}<PanelsTopLeft size={28} /><h2>还没有发布过 Artifact</h2><p>打开自动发布，或在本地分享面板里发布，它们会出现在这里。</p></div>}
+      {loaded.state === 'ready' && all.length === 0 && <div className="library-empty">{notice && !notice.error && <p role="status">{notice.message}</p>}<RyugiMark size={28} /><h2>还没有发布过 Artifact</h2><p>打开自动发布，或在本地分享面板里发布，它们会出现在这里。</p></div>}
       {all.length > 0 && <>
         <main className="cloud-panel">
           <CloudLibrarySidebar items={all} filter={filter} onFilter={changeFilter} />

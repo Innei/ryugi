@@ -1,12 +1,12 @@
 import { Checkbox } from '@lobehub/ui';
-import { Code2, FileText, PanelsTopLeft, SquareCheckBig } from 'lucide-react';
+import { SquareCheckBig } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import type { ArtifactType } from '../../shared/types';
 import { relativeUpdatedAt } from '../lib/artifact-list';
 import type { CloudFilter, CloudListItem } from '../lib/cloud-list';
+import { TypeIcon } from './TypeIcon';
 
 export const typeLabels = { artboard: 'Artboard', document: 'Document', html: 'HTML' };
-const icons = { artboard: PanelsTopLeft, document: FileText, html: Code2 };
 const TYPES: { value: ArtifactType | undefined; label: string }[] = [
   { value: undefined, label: '全部' },
   { value: 'artboard', label: 'Artboard' },
@@ -61,7 +61,6 @@ export function CloudLibraryList({ items, filter, onFilter, inspected, onInspect
       </div>
       <ul className="cloud-rows">
         {items.map((artifact) => {
-          const Icon = icons[artifact.type];
           const title = artifact.title ?? artifact.id;
           const version = Date.parse(artifact.updatedAt);
           const isPublic = artifact.visibility === 'public';
@@ -73,7 +72,7 @@ export function CloudLibraryList({ items, filter, onFilter, inspected, onInspect
                 aria-pressed={selecting ? picked : artifact.id === inspected}
                 onClick={() => selecting ? onSelect([artifact.id], !picked) : onInspect(artifact.id)}>
                 <span className="cloud-row-name">
-                  <span className="cloud-type-chip"><Icon size={13} aria-hidden="true" /></span>
+                  <span className="cloud-type-chip"><TypeIcon type={artifact.type} size={13} /></span>
                   <span className="cloud-row-text">
                     <span className="cloud-row-title">{title}</span>
                     <span className="cloud-row-meta">{typeLabels[artifact.type]} · {artifact.project ?? '其他'}</span>

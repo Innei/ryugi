@@ -8,6 +8,7 @@ import { cloudPreviewPayload, filterCloudItems, projectCounts, publishedNewestFi
 import { groupByProject, type CloudListItem } from '../src/viewer/lib/cloud-list';
 import { CloudArtifactList } from '../src/viewer/layouts/CloudArtifactList';
 import { CloudHeader } from '../src/viewer/components/CloudBanner';
+import { TYPE_GLYPHS } from '../src/shared/type-icons';
 
 vi.mock('@stylexjs/stylex', async (original) => ({ ...await original<object>(), create: (value: unknown) => value, props: () => ({}) }));
 vi.mock('../src/viewer/components/ArtifactThumbnail', () => ({
@@ -118,6 +119,14 @@ const shareOption = (label: string) => Array.from(document.querySelectorAll<HTML
 describe('cloud library management', () => {
   const artifacts = [item('a', 'first', '2026-10-21T08:00:00Z', { title: 'Arrow' }), item('b', 'second', '2026-10-21T07:00:00Z', { title: 'Notes' })];
   const list = { login: 'innei', artifacts };
+
+  test('each row marks its type with the Ryugi type glyph', async () => {
+    const typed = [item('p', 'first', '2026-10-21T08:00:00Z', { type: 'artboard', title: 'Palette' }), item('d', 'first', '2026-10-21T07:00:00Z', { type: 'document', title: 'Doc' })];
+    const host = await render({ status: 200, body: { login: 'innei', artifacts: typed } });
+    const glyphOf = (title: string) => Array.from(row(host, title)!.querySelectorAll('.cloud-type-chip path')).map((p) => p.getAttribute('d'));
+    expect(glyphOf('Palette')).toContain(TYPE_GLYPHS.artboard.stroke);
+    expect(glyphOf('Doc')).toContain(TYPE_GLYPHS.document.stroke);
+  });
 
   test('selects across projects and waits for confirmation before deleting', async () => {
     const requests: string[] = [];

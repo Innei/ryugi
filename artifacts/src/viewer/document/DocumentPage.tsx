@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { emptyComments, type CommentsFile, type HumanOp } from '../../shared/comments';
 import { WarningsBadge } from '../components/WarningsBadge';
 import { PHONE_QUERY, useMedia } from '../hooks/useMedia';
+import { useTypeFavicon } from '../hooks/useTypeFavicon';
 import { agentActivity } from './agentActivity';
 import type { ThreadActions } from './CommentCard';
 import { DocumentEditor } from './DocumentEditor';
@@ -147,6 +148,7 @@ export function DocumentView({ id, transport, live, cloud }: { id: string; trans
   useEffect(() => {
     document.title = meta?.title || id;
   }, [meta?.title, id]);
+  useTypeFavicon('document');
   const pendingBlocks = usePendingBlocks(editor);
   const now = useNow(pendingBlocks.count > 0 && !streaming);
   const activity = agentActivity({ streaming, pending: pendingBlocks.count, agentActiveAt, now: now + clockOffset });

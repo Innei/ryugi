@@ -3,6 +3,7 @@ import * as stylex from '@stylexjs/stylex';
 import { useEffect, useRef, useState } from 'react';
 import { CloudHeader } from '../components/CloudBanner';
 import { readCloudHeader, type CloudHeaderState } from '../hooks/useCloudHeader';
+import { useTypeFavicon } from '../hooks/useTypeFavicon';
 import { loadShell, type ShellState } from '../lib/cloud-shell';
 import { knownHosts, takeHostHint } from '../lib/knownHosts';
 import { CloudNotFound } from './CloudNotFound';
@@ -58,6 +59,7 @@ export function CloudShell({ id }: { id: string }) {
     if (state.kind === 'ready') document.title = header.title || state.title;
     if (state.kind === 'missing') document.title = '这个链接打不开';
   }, [state, header.title]);
+  useTypeFavicon(state.kind === 'ready' ? state.type : null);
 
   if (state.kind === 'loading') return <div {...stylex.props(styles.message)}>正在加载…</div>;
   if (state.kind === 'failed') return <div {...stylex.props(styles.message)}>{state.message}</div>;

@@ -1,16 +1,17 @@
 import './artifact-list.css';
 import { Button, Input, Segmented, Select } from '@lobehub/ui';
-import { ArrowUpRight, Code2, FileText, PanelsTopLeft, Search } from 'lucide-react';
+import { ArrowUpRight, Search } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import logo from '../../../../assets/ryugi-small.svg';
 import { ARTIFACT_TYPES, type ArtifactSummary, type ArtifactType } from '../../shared/types';
 import { ArtifactThumbnail } from '../components/ArtifactThumbnail';
+import { RyugiMark } from '../components/RyugiMark';
+import { TypeIcon } from '../components/TypeIcon';
 import { WarningsBadge } from '../components/WarningsBadge';
 import { useArtifactSocket } from '../hooks/useArtifactSocket';
 import { filterArtifacts, relativeUpdatedAt, type ArtifactSort } from '../lib/artifact-list';
 
 const labels = { all: '全部', artboard: 'Artboard', document: 'Document', html: 'HTML' };
-const icons = { artboard: PanelsTopLeft, document: FileText, html: Code2 };
 const sortOptions = [
   { label: '最近更新', value: 'recent' },
   { label: '最早更新', value: 'oldest' },
@@ -88,18 +89,17 @@ export function ArtifactList() {
         </div>
         {error && <div className="library-error" role="alert">暂时无法加载 Artifact。<Button size="small" type="text" onClick={() => void refresh()}>重试</Button></div>}
         {artifacts === null && !error && <p className="library-empty" role="status">正在加载 Artifact…</p>}
-        {artifacts?.length === 0 && <div className="library-empty"><PanelsTopLeft size={28} /><h2>这个项目还没有 Artifact</h2><p>在项目中开始一次设计讨论，生成的画板、文档和 HTML 会出现在这里。</p></div>}
+        {artifacts?.length === 0 && <div className="library-empty"><RyugiMark size={28} /><h2>这个项目还没有 Artifact</h2><p>在项目中开始一次设计讨论，生成的画板、文档和 HTML 会出现在这里。</p></div>}
         {artifacts !== null && artifacts.length > 0 && items.length === 0 && <div className="library-empty"><Search size={24} /><h2>没有找到匹配的 Artifact</h2><p>试试其他关键词或类型。</p><Button size="small" onClick={() => { setQuery(''); setType('all'); }}>清除筛选</Button></div>}
         <ul className="library-grid" aria-label="Artifact 列表">
           {items.map((artifact) => {
-            const Icon = icons[artifact.type];
             return (
               <li key={`${artifact.type}/${artifact.id}`}>
                 <a className="library-card" href={`/${artifact.type}/${artifact.id}`} aria-label={`打开 ${artifact.title}`}>
                   <ArtifactThumbnail title={artifact.title} src={`/preview/${artifact.type}/${artifact.id}?v=${artifact.updatedAt}`} version={artifact.updatedAt} />
                   <div className="library-card-info">
                     <div className="library-card-title"><span title={artifact.title}>{artifact.title}</span><ArrowUpRight size={13} aria-hidden="true" /></div>
-                    <div className="library-card-meta"><span><Icon size={12} aria-hidden="true" />{labels[artifact.type]}</span><time dateTime={new Date(artifact.updatedAt).toISOString()} title={new Date(artifact.updatedAt).toLocaleString()}>{relativeUpdatedAt(artifact.updatedAt, now)}</time></div>
+                    <div className="library-card-meta"><span><TypeIcon type={artifact.type} size={12} />{labels[artifact.type]}</span><time dateTime={new Date(artifact.updatedAt).toISOString()} title={new Date(artifact.updatedAt).toLocaleString()}>{relativeUpdatedAt(artifact.updatedAt, now)}</time></div>
                   </div>
                 </a>
               </li>

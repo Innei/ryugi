@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, test } from 'vitest';
 import { startArtifactsServer, type ArtifactsServer } from '../src/server/app';
+import { typeFaviconHref } from '../src/shared/type-icons';
 import { get, openWs, readJson, sendWsText, tempRoot, waitFor, writeArtboard, writeDocument, writeHtml } from './helpers';
 
 const canvas = {
@@ -172,6 +173,23 @@ describe('page metadata', () => {
     const icon = response.body.match(/<link rel="icon"[^>]*href="([^"]+)"/)?.[1];
     expect(icon).toBeTruthy();
     expect((await get(new URL(icon!, base(server)).href, { Cookie: cookie(server) })).headers['content-type']).toBe('image/svg+xml');
+  });
+
+  test('serves each artifact page with its type favicon before JavaScript runs, and the list with the app icon', async () => {
+    const { server, root } = await start({ viewer: path.resolve(__dirname, '../dist/viewer') });
+    writeArtboard(root, 'ideas', canvas, { 'pages/p/a.html': '<p>Idea</p>' });
+    writeDocument(root, 'plan', { 'doc.xml': '<doc><p>Plan</p></doc>' });
+    writeHtml(root, 'tuner', { 'index.html': '<p>Tuner</p>' });
+    const iconOf = async (route: string) => (await get(`${base(server)}${route}?key=${server.token}`)).body.match(/<link rel="icon"[^>]*href="([^"]+)"/g)!;
+    for (const type of ['artboard', 'document', 'html'] as const) {
+      const route = `/${type}/${{ artboard: 'ideas', document: 'plan', html: 'tuner' }[type]}`;
+      const links = await iconOf(route);
+      expect(links).toHaveLength(1);
+      expect(links[0]).toContain(`href="${typeFaviconHref(type).replace(/"/g, '&quot;')}"`);
+    }
+    const list = await iconOf('/');
+    expect(list).toHaveLength(1);
+    expect(list[0]).toMatch(/href="\/app-icon-[^"]*\.svg"/);
   });
 
   test('escapes artifact titles and uses the configured host, including for preview and index aliases', async () => {

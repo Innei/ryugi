@@ -5,6 +5,7 @@ import { PublishMenu } from '../components/PublishMenu';
 import { WarningsBadge } from '../components/WarningsBadge';
 import { useLocalFeed, type ArtifactFeed } from '../hooks/useArtifactFeed';
 import { useHtmlData } from '../hooks/useHtmlData';
+import { useTypeFavicon } from '../hooks/useTypeFavicon';
 import { HTML_SANDBOX, useSandboxFrame } from '../hooks/useSandboxFrame';
 
 const styles = stylex.create({
@@ -38,6 +39,7 @@ export function HtmlView({ id, feed, menu = false }: { id: string; feed: Artifac
   useEffect(() => {
     document.title = data?.title || id;
   }, [data?.title, id]);
+  useTypeFavicon('html');
 
   const ready = data?.found && !data.warnings.includes('index.html not found');
   const target = ready ? `${data.contentBase}index.html?v=${data.version}` : null;
