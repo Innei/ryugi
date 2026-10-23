@@ -251,7 +251,7 @@ function DesktopArtboard({ id, artifact, canvas, layout, warnings, pending, cont
             pending={pendingBoards}
             playing={playing}
             replays={replays}
-            inspecting={selectionEnabled || (commentTool && !expanded)}
+            inspecting={selectionEnabled || (commentTool && !expanded && !panning)}
             frameRef={frameRef}
             frameLoaded={frameLoaded}
             live={live}
