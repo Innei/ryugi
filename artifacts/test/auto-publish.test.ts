@@ -230,6 +230,15 @@ describe('timed flush', () => {
     expect(calls).toHaveLength(2);
   });
 
+  test('an artifact the account cap refuses is not retried on a timer', async () => {
+    vi.useFakeTimers();
+    const { publisher, calls } = setup({ 'html/a': { kind: 'cannot-create', message: 'limit reached' } });
+    publisher.changed('html/a');
+    await vi.advanceTimersByTimeAsync(5 * MINUTE);
+    await vi.advanceTimersByTimeAsync(60 * MINUTE);
+    expect(calls).toEqual(['html/a']);
+  });
+
   test('marks left by the last server are published after a quiet period', async () => {
     const first = setup();
     first.publisher.changed('html/a');

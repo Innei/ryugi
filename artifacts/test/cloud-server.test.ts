@@ -438,6 +438,17 @@ describe('sync with the cloud copy', () => {
     expect(await sync(server, 'html/a')).toEqual({ upToDate: true });
   });
 
+  test('rewriting an artboard page with the same content keeps it up to date', async () => {
+    const { server, root } = await start();
+    const dir = writeArtboard(root, 'b', { version: 1, title: 'Board', pages: [{ id: 'p', name: 'P' }], boards: { a: { file: 'pages/p/a.html', page: 'p', x: 0, y: 0, w: 640, h: 400 } } }, { 'pages/p/a.html': '<p>a</p>' });
+    await call(server, 'POST', '/api/cloud/publish/artboard/b');
+    const page = path.join(dir, 'pages', 'p', 'a.html');
+    fs.writeFileSync(page, '<p>a</p>');
+    const later = new Date(Date.now() + 60_000);
+    fs.utimesSync(page, later, later);
+    expect(await sync(server, 'artboard/b')).toEqual({ upToDate: true });
+  });
+
   test('a copy published before fingerprints were recorded counts as out of date', async () => {
     const { server, root, configFile } = await start();
     writeHtml(root, 'a', { 'index.html': '<title>A</title>' });

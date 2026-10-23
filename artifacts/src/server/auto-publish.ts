@@ -91,6 +91,7 @@ export function createAutoPublisher(options: AutoPublisherOptions) {
       paused = null;
       if (notice?.kind === 'signed-out') notice = null;
     }
+    let retry = false;
     for (const key of [...dirty]) {
       remarked.delete(key);
       const outcome = await options.publish(key);
@@ -100,16 +101,19 @@ export function createAutoPublisher(options: AutoPublisherOptions) {
         break;
       }
       if (outcome.kind === 'published') {
-        if (!remarked.has(key)) dirty.delete(key);
+        if (remarked.has(key)) retry = true;
+        else dirty.delete(key);
         if (outcome.created && notice?.kind === 'cap') notice = null;
       } else if (outcome.kind === 'opted-out' || outcome.kind === 'gone') {
         dirty.delete(key);
       } else if (outcome.kind === 'cannot-create') {
         raise('cap', outcome.message);
+      } else {
+        retry = true;
       }
     }
     save();
-    if (dirty.size > 0 && !paused) schedule();
+    if (retry) schedule();
   };
 
   let running: Promise<void> | null = null;

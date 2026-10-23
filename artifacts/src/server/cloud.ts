@@ -88,6 +88,12 @@ async function errorMessage(res: Response) {
   }
 }
 
+function fingerprintPayload(payload: Record<string, unknown>) {
+  const versions = payload.versions as Record<string, number> | undefined;
+  if (!versions) return payload;
+  return { ...payload, versions: Object.fromEntries(Object.entries(versions).map(([file, version]) => [file, version > 0])) };
+}
+
 export function createCloudRoutes(options: CloudRoutesOptions) {
   const { origin, credentialsFile, configFile, project } = options;
   const settingsFile = settingsFileFor(credentialsFile);
@@ -178,16 +184,16 @@ export function createCloudRoutes(options: CloudRoutesOptions) {
     const inspected = await options.inspect(ref);
     if (!inspected) throw new CloudRefused(404, `${ref.type}/${ref.id} not found`);
     if (inspected.reasons.length > 0 || !inspected.payload) return { ready: false as const, reasons: inspected.reasons };
-    let files;
+    let packed;
     try {
-      files = withCloudRuntime(ref.type, packArtifact(inspected.dir, ref.type));
+      packed = packArtifact(inspected.dir, ref.type);
     } catch (err) {
       throw new CloudRefused(413, (err as Error).message);
     }
-    const hashed = files.map((file) => ({ ...file, hash: crypto.createHash('sha256').update(file.data).digest('hex') }));
-    const manifest = hashed.map(({ path, hash }) => ({ path, hash }));
-    const content = { title: inspected.title, payload: inspected.payload, files: manifest };
-    const fingerprint = crypto.createHash('sha256').update(JSON.stringify(content)).digest('hex');
+    const sha = (data: Buffer | string) => crypto.createHash('sha256').update(data).digest('hex');
+    const hashed = withCloudRuntime(ref.type, packed).map((file) => ({ ...file, hash: sha(file.data) }));
+    const content = { title: inspected.title, payload: inspected.payload, files: hashed.map(({ path, hash }) => ({ path, hash })) };
+    const fingerprint = sha(JSON.stringify({ title: inspected.title, payload: fingerprintPayload(inspected.payload), files: packed.map((file) => ({ path: file.path, hash: sha(file.data) })) }));
     return { ready: true as const, hashed, content, fingerprint };
   };
 
