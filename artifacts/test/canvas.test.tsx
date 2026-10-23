@@ -149,6 +149,27 @@ test('flies along a curved route, turns the arrow and arrives without animating 
   expect(clock.frames.size).toBe(0);
 });
 
+test('trails three fading dots behind the arrow while flying and drops them on arrival', async () => {
+  const clock = animationClock();
+  const trail = () => document.querySelector<HTMLElement>('[role="status"] [data-trail]')!;
+  const offset = (dot: Element) => (dot as HTMLElement).style.transform.match(/translate\(([-\d.e]+)px,\s*([-\d.e]+)px\)/)!.slice(1).map(Number) as [number, number];
+  await render({ writing: 'a' });
+  expect(trail().style.opacity).toBe('0');
+  await render({ writing: 'b' });
+  clock.step(500);
+  const before = cursorPose();
+  clock.step(516);
+  const after = cursorPose();
+  expect(trail().style.opacity).toBe('1');
+  const dots = [...trail().children];
+  expect(dots).toHaveLength(3);
+  const [dx, dy] = offset(dots[2]!);
+  expect(dx * (after.x - before.x) + dy * (after.y - before.y)).toBeLessThan(0);
+  expect(Math.hypot(...offset(dots[2]!))).toBeGreaterThan(Math.hypot(...offset(dots[0]!)));
+  clock.step(3000);
+  expect(trail().style.opacity).toBe('0');
+});
+
 test.each([-800, 800])('smoothly hooks back into a target with a %spx height difference', async (height) => {
   const clock = animationClock();
   const targets = [boards[0]!, ['b', { ...boards[1]![1], x: 600, y: height }] as (typeof boards)[number]];

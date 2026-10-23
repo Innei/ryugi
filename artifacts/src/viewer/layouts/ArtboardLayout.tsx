@@ -11,6 +11,7 @@ import { CommentLayer } from '../components/CommentLayer';
 import { CommentsPanel, type CommentsTab } from '../comments/CommentsPanel';
 import { CanvasErrorBoundary } from '../components/CanvasErrorBoundary';
 import { ExpandedBoard } from '../components/ExpandedBoard';
+import { HandCursor } from '../components/HandCursor';
 import { Labels } from '../components/Labels';
 import { TopLeftBar, TopRightBar } from '../components/Toolbar';
 import { useLocalFeed } from '../hooks/useArtifactFeed';
@@ -86,7 +87,7 @@ export function ArtboardView(props: ArtboardViewProps) {
 
 function DesktopArtboard({ id, artifact, canvas, layout, warnings, pending, contentBase, versions, live, loaded, send, agent, comments, comment, menu = true }: ArtboardViewProps) {
   const [tool, setTool] = useState<Tool>('select');
-  const { viewportRef, view, fit, zoomBy, zoomTo, cursor, handlers, panBy, wheelAt, panning, setSpaceHeld } = usePanZoom(tool);
+  const { viewportRef, view, fit, zoomBy, zoomTo, cursor, hand, handlers, panBy, wheelAt, panning, setSpaceHeld } = usePanZoom(tool);
   const [inspectorOpen, setInspectorOpen] = useState(false);
   const [commentsTab, setCommentsTab] = useState<CommentsTab>('open');
   const pageBounds = (id: string | null) => (id && layout?.pages[id]?.bounds) || null;
@@ -238,6 +239,7 @@ function DesktopArtboard({ id, artifact, canvas, layout, warnings, pending, cont
       onPointerMove={(event) => { handlers.onPointerMove(event); if (selection.dragging()) { if (event.buttons === 1) event.currentTarget.setPointerCapture(event.pointerId); const point = worldPoint(event); selection.drag('move', point.x, point.y); } }}
       onPointerUp={(event) => { handlers.onPointerUp(event); if (selection.dragging()) { const point = worldPoint(event); selection.drag('end', point.x, point.y); } }}
       onPointerCancel={(event) => { handlers.onPointerCancel(event); selection.reset(); }}>
+      <HandCursor viewport={viewportRef} hand={hand} />
       {canvas && layout && (
         <CanvasErrorBoundary resetKey={canvas}>
           <Canvas

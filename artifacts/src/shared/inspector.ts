@@ -51,5 +51,6 @@ export type InspectorReport = { session: string; connection: string } & (
   | { type: 'ryugi:inspect:key'; code: string; key: string; down: boolean; ctrlKey: boolean; metaKey: boolean; shiftKey: boolean; altKey: boolean }
 );
 
-const COMMENT_CURSOR_SVG = "<svg xmlns='http://www.w3.org/2000/svg' width='26' height='26' viewBox='0 0 26 26'><path d='M2 24V13a11 11 0 1 1 11 11z' fill='white' stroke='black' stroke-width='1.5' stroke-linejoin='round'/><path d='M13 8.5v9M8.5 13h9' stroke='black' stroke-width='1.8' stroke-linecap='round'/></svg>";
-export const COMMENT_CURSOR = `url("data:image/svg+xml,${encodeURIComponent(COMMENT_CURSOR_SVG)}") 2 24, crosshair`;
+const COMMENT_BUBBLE = 'M14.5 3a10.5 10.5 0 1 1-4.2 20.1l-5 1.6c-.9.3-1.7-.5-1.4-1.4l1.6-5A10.5 10.5 0 0 1 14.5 3z';
+const COMMENT_CURSOR_SVG = `<svg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 28 28'><path d='${COMMENT_BUBBLE}' fill='none' stroke='white' stroke-width='4' stroke-linejoin='round'/><path d='${COMMENT_BUBBLE}' fill='#c65d3b'/><path d='M14.5 9.3v8.4M10.3 13.5h8.4' stroke='white' stroke-width='2.4' stroke-linecap='round'/></svg>`;
+export const COMMENT_CURSOR = `url("data:image/svg+xml,${encodeURIComponent(COMMENT_CURSOR_SVG)}") 4 24, crosshair`;

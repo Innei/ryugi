@@ -12,21 +12,33 @@ interface Rect {
 }
 
 const styles = stylex.create({
-  caret: { position: 'absolute', zIndex: 5, pointerEvents: 'none', transitionProperty: 'left, top', transitionDuration: '100ms' },
-  bar: { width: 2, height: '100%', borderRadius: 1, backgroundColor: brand.accent },
+  caret: { position: 'absolute', zIndex: 5, marginInlineStart: -1, pointerEvents: 'none', transitionProperty: 'left, top', transitionDuration: '100ms' },
+  bar: { width: 3, height: '100%', borderRadius: 2, backgroundColor: brand.accent },
+  bead: {
+    position: 'absolute',
+    top: -5,
+    left: -2.5,
+    width: 8,
+    height: 8,
+    borderRadius: '50%',
+    backgroundColor: brand.accent,
+    boxShadow: '0 0 0 1.5px #fff',
+  },
   label: {
     position: 'absolute',
     bottom: '100%',
-    left: 0,
-    marginBottom: 2,
-    paddingInline: 4,
-    borderRadius: 3,
+    left: 5,
+    marginBottom: 1,
+    paddingBlock: 1,
+    paddingInline: 8,
+    borderRadius: '999px 999px 999px 4px',
     backgroundColor: brand.accentStrong,
     color: '#fff',
-    fontSize: 10,
-    fontWeight: 600,
-    lineHeight: 1.4,
+    fontSize: 11,
+    fontWeight: 700,
+    lineHeight: '16px',
     whiteSpace: 'nowrap',
+    boxShadow: '0 2px 6px rgba(0,0,0,0.12)',
   },
 });
 
@@ -84,6 +96,7 @@ export function AgentCaret({ caret, container, agent = 'Agent' }: { caret: Agent
   return createPortal(
     <div aria-hidden {...stylex.props(styles.caret)} style={{ left: rect.left, top: rect.top, height: rect.height }}>
       <div {...stylex.props(styles.bar)} />
+      <div {...stylex.props(styles.bead)} />
       <span {...stylex.props(styles.label)}>{agent}</span>
     </div>,
     container,

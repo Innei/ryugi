@@ -47,3 +47,14 @@ test('the mouse still starts a selection box there', async () => {
   await press(viewport, 'mouse');
   expect(host!.querySelector('.ri-selection-capture')).not.toBeNull();
 });
+
+test('holding space draws the hand under the mouse and hides the system cursor until space is released', async () => {
+  const viewport = await mount();
+  await act(async () => window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space' })));
+  await act(async () => viewport.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, pointerType: 'mouse', clientX: 300, clientY: 200 })));
+  expect(host!.querySelector('[data-hand-cursor]')).not.toBeNull();
+  expect(viewport.hasAttribute('data-hand-drawn')).toBe(true);
+  await act(async () => window.dispatchEvent(new KeyboardEvent('keyup', { code: 'Space' })));
+  expect(host!.querySelector('[data-hand-cursor]')).toBeNull();
+  expect(viewport.hasAttribute('data-hand-drawn')).toBe(false);
+});

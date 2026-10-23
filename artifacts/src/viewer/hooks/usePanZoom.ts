@@ -182,6 +182,7 @@ export function usePanZoom(tool: Tool) {
     panning,
     setSpaceHeld,
     cursor: dragging ? 'grabbing' : panning ? 'grab' : tool === 'comment' ? COMMENT_CURSOR : 'default',
+    hand: dragging ? 'pinch' as const : panning ? 'open' as const : null,
     handlers: { onPointerDown, onPointerMove, onPointerUp, onPointerCancel: onPointerUp },
   };
 }

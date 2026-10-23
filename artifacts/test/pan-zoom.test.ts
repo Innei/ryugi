@@ -235,6 +235,24 @@ test('holding space still pans from the comment tool', () => {
   expect(panZoom.cursor).toBe('grab');
 });
 
+test('a pan tool offers an open hand that pinches while dragging', () => {
+  const viewport = render('select', true);
+  expect(panZoom.hand).toBe('open');
+  pointer(viewport, 'pointerdown');
+  expect(panZoom.hand).toBe('pinch');
+  pointer(viewport, 'pointerup');
+  expect(panZoom.hand).toBe('open');
+});
+
+test('a middle-button drag pinches even without a pan tool, and other tools show no hand', () => {
+  const viewport = render('comment');
+  expect(panZoom.hand).toBeNull();
+  pointer(viewport, 'pointerdown', 1);
+  expect(panZoom.hand).toBe('pinch');
+  pointer(viewport, 'pointerup', 1);
+  expect(panZoom.hand).toBeNull();
+});
+
 function frames() {
   const queue: FrameRequestCallback[] = [];
   let now = 0;
