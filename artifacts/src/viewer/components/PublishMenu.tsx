@@ -3,7 +3,8 @@ import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
 import { Globe, Lock } from 'lucide-react';
 import { useState } from 'react';
-import { ownLink, publishState, type Visibility } from '../../shared/cloud';
+import { ownLink, publishState, syncNote, type Visibility } from '../../shared/cloud';
+import { useCloudSync } from '../hooks/useCloudSync';
 import { cloudRequest, useCloudStatus, type CloudResult } from '../hooks/useCloudStatus';
 
 const styles = stylex.create({
@@ -25,6 +26,7 @@ const styles = stylex.create({
     whiteSpace: 'nowrap',
   },
   floating: { position: 'fixed', top: 12, right: 12, zIndex: 10, boxShadow: cssVar.boxShadowTertiary },
+  dot: { width: 6, height: 6, borderRadius: '50%', backgroundColor: cssVar.colorWarning },
   panel: { display: 'flex', flexDirection: 'column', gap: 12, width: 320, fontFamily: cssVar.fontFamily, fontSize: 12 },
   row: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   muted: { color: cssVar.colorTextSecondary, lineHeight: 1.6 },
@@ -65,7 +67,10 @@ export function PublishMenu({ artifact, floating = false }: Props) {
   const { status, refresh, login, waitingForLogin } = useCloudStatus();
   const [busy, setBusy] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
-  const state = publishState(status?.artifacts[artifact]);
+  const entry = status?.artifacts[artifact];
+  const state = publishState(entry);
+  const sync = useCloudSync(artifact, !!status?.signedIn && state.published);
+  const note = syncNote(sync.upToDate, !!status?.autoPublish?.enabled && entry?.autoPublish !== false);
 
   const run = async (action: () => Promise<CloudResult>) => {
     setBusy(true);
@@ -76,7 +81,7 @@ export function PublishMenu({ artifact, floating = false }: Props) {
       const reasons = Array.isArray(result.json.reasons) ? (result.json.reasons as string[]) : [];
       setErrors([String(result.json.error ?? `请求失败（${result.status}）`), ...reasons]);
     }
-    await refresh();
+    await Promise.all([refresh(), sync.refresh()]);
     setBusy(false);
   };
 
@@ -84,6 +89,7 @@ export function PublishMenu({ artifact, floating = false }: Props) {
 
   const adoptCloudVisibility = async (open: boolean) => {
     if (!open || !status?.signedIn || !state.published) return;
+    void sync.refresh();
     if ((await cloudRequest('GET', 'artifacts')).ok) await refresh();
   };
 
@@ -123,6 +129,7 @@ export function PublishMenu({ artifact, floating = false }: Props) {
           <CopyButton content={state.url} size="small" />
         </div>
       ) : null}
+      {note ? <span {...stylex.props(sync.upToDate ? styles.muted : styles.warning)}>{note}</span> : null}
       {!state.synced ? (
         <div {...stylex.props(styles.row, styles.warning)}>
           <span>本地可见性还没同步到云端</span>
@@ -162,6 +169,7 @@ export function PublishMenu({ artifact, floating = false }: Props) {
       <button type="button" aria-label="Share" {...stylex.props(styles.trigger, floating && styles.floating)}>
         {state.published && state.visibility === 'public' ? <Globe size={14} /> : <Lock size={14} />}
         {state.published ? '已发布' : '分享'}
+        {sync.upToDate === false ? <span aria-label="有未发布的修改" {...stylex.props(styles.dot)} /> : null}
       </button>
     </Popover>
   );

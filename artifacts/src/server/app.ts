@@ -207,7 +207,19 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
       : null;
 
   const autoPublisher = cloud
-    ? createAutoPublisher({ stateFile: path.join(stateDir, 'auto-publish.json'), enabled: cloud.autoPublishEnabled, token: cloud.token, publish: cloud.autoPublish })
+    ? createAutoPublisher({
+        stateFile: path.join(stateDir, 'auto-publish.json'),
+        enabled: cloud.autoPublishEnabled,
+        token: cloud.token,
+        publish: async (key) => {
+          const outcome = await cloud.autoPublish(key);
+          if (outcome.kind === 'published') {
+            const frame = textFrame(JSON.stringify({ type: 'cloud-published', artifact: key } satisfies ServerMessage));
+            for (const socket of clients) socket.write(frame);
+          }
+          return outcome;
+        },
+      })
     : null;
 
   const sameOrigin = (req: http.IncomingMessage) => {

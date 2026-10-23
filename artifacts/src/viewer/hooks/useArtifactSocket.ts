@@ -1,6 +1,19 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ServerMessage } from '../../shared/types';
 
+const listeners = new Set<(message: ServerMessage) => void>();
+
+export function onServerMessage(listener: (message: ServerMessage) => void) {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+}
+
+export function emitServerMessage(message: ServerMessage) {
+  for (const listener of listeners) listener(message);
+}
+
 export function useArtifactSocket(onMessage: (message: ServerMessage) => void, onOpen?: () => void) {
   const [live, setLive] = useState(false);
   const handlers = useRef({ onMessage, onOpen });
@@ -25,7 +38,11 @@ export function useArtifactSocket(onMessage: (message: ServerMessage) => void, o
         setLive(false);
         if (!disposed) retry = setTimeout(connect, 1000);
       };
-      socket.onmessage = (event) => handlers.current.onMessage(JSON.parse(String(event.data)) as ServerMessage);
+      socket.onmessage = (event) => {
+        const message = JSON.parse(String(event.data)) as ServerMessage;
+        handlers.current.onMessage(message);
+        emitServerMessage(message);
+      };
     };
 
     connect();

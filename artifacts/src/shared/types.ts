@@ -123,4 +123,5 @@ export type ServerMessage =
   | { type: 'doc-cursor'; artifact: string; cursor: { id: string; offset: number } | null }
   | { type: 'doc-status'; artifact: string; streaming: boolean; outcome: DocumentOutcomeMessage; agentActiveAt: number; now: number }
   | { type: 'doc-comments'; artifact: string; comments: CommentsFile }
-  | { type: 'board-comments'; artifact: string; comments: BoardCommentsFile; stale: string[] };
+  | { type: 'board-comments'; artifact: string; comments: BoardCommentsFile; stale: string[] }
+  | { type: 'cloud-published'; artifact: string };

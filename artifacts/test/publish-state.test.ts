@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { ownLink, publishState } from '../src/shared/cloud';
+import { ownLink, publishState, syncNote } from '../src/shared/cloud';
 
 const cloud = { id: 'c1', url: 'https://ryugi.innei.dev/a/c1', publishedAt: '2026-10-20T08:00:00Z', visibility: 'private' as const };
 
@@ -25,5 +25,20 @@ describe('ownLink', () => {
   test('marks a cloud link as opened from this computer when its host id is known', () => {
     expect(ownLink('https://cloud.example/a/c1', 'abcdefghijklmnop1234')).toBe('https://cloud.example/a/c1#ryugi-host=abcdefghijklmnop1234');
     expect(ownLink('https://cloud.example/a/c1', null)).toBe('https://cloud.example/a/c1');
+  });
+});
+
+describe('syncNote', () => {
+  test('says nothing until the comparison is known', () => {
+    expect(syncNote(null, true)).toBeNull();
+  });
+
+  test('says the cloud copy is current', () => {
+    expect(syncNote(true, true)).toBe('线上已是最新');
+  });
+
+  test('names unpublished changes and when auto-follow will send them', () => {
+    expect(syncNote(false, false)).toBe('本地有未发布的修改');
+    expect(syncNote(false, true)).toBe('本地有未发布的修改，停止修改 5 分钟后自动更新');
   });
 });

@@ -47,3 +47,9 @@ export function publishState(entry: ArtifactConfig | undefined): PublishState {
   const published = !!cloud?.publishedAt;
   return { published, visibility, url: published ? cloud.url : null, synced: !published || cloud.visibility === visibility };
 }
+
+export function syncNote(upToDate: boolean | null, autoFollow: boolean): string | null {
+  if (upToDate === null) return null;
+  if (upToDate) return '线上已是最新';
+  return autoFollow ? '本地有未发布的修改，停止修改 5 分钟后自动更新' : '本地有未发布的修改';
+}

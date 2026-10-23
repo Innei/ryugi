@@ -5,7 +5,7 @@ import { readAutoPublishState } from '../src/server/auto-publish';
 import { updateArtifactConfig } from '../src/server/config';
 import { settingsFileFor, writeGlobalAutoPublish } from '../src/server/settings';
 import { call, closeAll, config, requestLines, start } from './fake-cloud';
-import { writeHtml } from './helpers';
+import { openWs, writeHtml } from './helpers';
 
 afterEach(closeAll);
 
@@ -79,6 +79,16 @@ describe('turn-end flush', () => {
     await flush();
     expect(requestLines(cloud, before)).toEqual([]);
     expect(dirty()).toEqual([]);
+  });
+
+  test('open local pages hear when an auto-publish reaches the cloud', async () => {
+    const { server, edit, flush } = await startEnabled();
+    const ws = await openWs(server.port, { Cookie: `ryugi_artifacts_${server.port}=${server.token}`, Origin: `http://127.0.0.1:${server.port}`, Host: `127.0.0.1:${server.port}` });
+    await edit('a', '<title>A</title>');
+    await flush();
+    await waitFor(() => ws.messages.some((m) => JSON.parse(m).type === 'cloud-published'));
+    expect(ws.messages.map((m) => JSON.parse(m)).filter((m) => m.type === 'cloud-published')).toEqual([{ type: 'cloud-published', artifact: 'html/a' }]);
+    ws.socket?.destroy();
   });
 
   test('without the session key the flush route is refused', async () => {
