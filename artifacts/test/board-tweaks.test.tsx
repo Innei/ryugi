@@ -12,13 +12,14 @@ let root: Root;
 let host: HTMLDivElement;
 const initial = { version: 1, controls: { count: { type: 'range', default: 2, min: 0, max: 8, step: 1, label: 'Count' } } };
 const messages = new Map<HTMLIFrameElement, any[]>();
+const closed = vi.fn();
 
 function Harness({ artifact = 'one', expanded = false, panel = false, zoom = 0.5 }: { artifact?: string; expanded?: boolean; panel?: boolean; zoom?: number }) {
   current = useBoardTweaks(artifact);
   return <>
     {['a', 'b'].map((id) => <iframe key={id} data-frame={id} src="about:blank" ref={current.refFor(id)} onLoad={() => current.loaded(id)} />)}
     {expanded && <iframe data-frame="expanded" src="about:blank" ref={current.refFor('a', 'expanded')} onLoad={() => current.loaded('a', 'expanded')} />}
-    {panel && current.states.a && <TweaksPanel boardId="a" title="First board" state={current.states.a} anchor={tweakPanelAnchor({ x: 10, y: 20, w: 400, h: 300 }, { x: 100, y: 50, k: zoom })} onChange={(key, value) => current.change('a', key, value)} onReset={() => current.reset('a')} onClose={() => {}} />}
+    {panel && current.states.a && <TweaksPanel boardId="a" title="First board" state={current.states.a} anchor={tweakPanelAnchor({ x: 10, y: 20, w: 400, h: 300 }, { x: 100, y: 50, k: zoom })} onChange={(key, value) => current.change('a', key, value)} onReset={() => current.reset('a')} onClose={closed} />}
   </>;
 }
 
@@ -118,6 +119,16 @@ test('the real parameter controls update state and reset while the anchor follow
   expect(panel.style.left).toBe('932px');
   expect(panel.style.top).toBe('90px');
   expect(panel.style.width).toBe('352px');
+});
+
+test('Esc closes the panel unless it ends an IME composition', async () => {
+  await render({ panel: true }); await report('a', await connect('a'));
+  const slider = host.querySelector('[aria-label="Parameters"] input[type="range"]')!;
+  await act(async () => slider.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', isComposing: true, bubbles: true })));
+  await act(async () => slider.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', keyCode: 229, bubbles: true })));
+  expect(closed).not.toHaveBeenCalled();
+  await act(async () => slider.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })));
+  expect(closed).toHaveBeenCalledTimes(1);
 });
 
 test('parameter button icons are decorative or have an accessible alternative', async () => {

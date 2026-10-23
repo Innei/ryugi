@@ -2,6 +2,7 @@ import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
 import { ArrowUp } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { isComposing } from '../lib/keyboard';
 
 const styles = stylex.create({
   composer: { position: 'relative', paddingTop: 2, paddingInline: 14, paddingBottom: 12 },
@@ -86,7 +87,7 @@ export function Composer({ placeholder, initial = '', autoFocus, focusKey, onSub
         onChange={(event) => update(event.target.value)}
         onKeyDown={(event) => {
           if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) submit();
-          if (event.key === 'Escape') onCancel?.();
+          if (event.key === 'Escape' && !isComposing(event.nativeEvent)) onCancel?.();
         }}
         {...stylex.props(styles.input)}
       />

@@ -4,6 +4,7 @@ import { useId, useRef } from 'react';
 import type { TweakControl, TweakValue } from '../../shared/tweaks';
 import type { Rect } from '../../shared/types';
 import type { BoardTweakState } from '../hooks/useBoardTweaks';
+import { isComposing } from '../lib/keyboard';
 import type { View } from '../lib/view';
 import './tweaks.css';
 
@@ -54,7 +55,7 @@ export function TweaksPanel({ boardId, title, state, anchor, onChange, onReset, 
   }
   const changed = Object.entries(state.values).filter(([key, value]) => value !== state.schema?.controls[key]?.default).length;
   return <IconProvider config={{ 'aria-hidden': true }}>
-    <aside className="ryugi-parameters" data-chrome="parameters" aria-label="Parameters" style={{ position: anchor ? 'absolute' : 'relative', ...anchor, width: TWEAK_PANEL_WIDTH, maxHeight: anchor ? `min(604px, calc(100% - ${Math.max(0, anchor.top)}px - 12px))` : 'min(604px, calc(100vh - 112px))' }} onKeyDown={(event) => { event.stopPropagation(); if (event.key === 'Escape' && !event.defaultPrevented) onClose(); }}>
+    <aside className="ryugi-parameters" data-chrome="parameters" aria-label="Parameters" style={{ position: anchor ? 'absolute' : 'relative', ...anchor, width: TWEAK_PANEL_WIDTH, maxHeight: anchor ? `min(604px, calc(100% - ${Math.max(0, anchor.top)}px - 12px))` : 'min(604px, calc(100vh - 112px))' }} onKeyDown={(event) => { event.stopPropagation(); if (event.key === 'Escape' && !event.defaultPrevented && !isComposing(event.nativeEvent)) onClose(); }}>
       <header className="rt-header"><SlidersHorizontal size={15} aria-hidden /><h2>Parameters</h2><ActionIcon icon={X} size="small" aria-label="Close parameters" title="Close parameters" onClick={onClose} /></header>
       <div className="rt-board"><Code2 size={17} aria-hidden /><div><strong>{title}</strong><code>{boardId}</code></div><span>Current board</span></div>
       <div className="rt-body">

@@ -65,6 +65,15 @@ test('C turns on the comment tool and tells every board', async () => {
   expect(sent.some((message) => message.action === 'mode' && message.mode === 'comment')).toBe(true);
 });
 
+test('the C that opens a draft never lands in it', async () => {
+  const { report } = await mount();
+  const css = Object.fromEntries((await import('../src/shared/inspector')).INSPECTOR_PROPERTIES.map((property) => [property, '0']));
+  await report('selection', { reason: 'user', selection: { id: 7, name: 'shot', tag: 'img', selector: 'img', rect: { x: 40, y: 60, width: 200, height: 100 }, html: '<img>', css, widthMode: 'fixed', heightMode: 'fixed' } });
+  const event = new KeyboardEvent('keydown', { key: 'c', bubbles: true, cancelable: true });
+  await act(async () => window.dispatchEvent(event));
+  expect(event.defaultPrevented).toBe(true);
+});
+
 test('a click on a node opens a draft anchored to it, and sending creates the thread', async () => {
   const { host, report } = await mount();
   await key('c');
@@ -135,6 +144,20 @@ test('Esc in the reply box closes the thread', async () => {
   const reply = host.querySelector<HTMLTextAreaElement>('textarea[placeholder="回复…"]')!;
   await act(async () => reply.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })));
   expect(host.querySelector('textarea[placeholder="回复…"]')).toBeNull();
+});
+
+test('Esc that ends an IME composition in the reply box keeps the thread open', async () => {
+  state.comments = {
+    comments: { version: 1, threads: [{ id: 't1', anchor: { page: 'p', board: 'a', x: 10, y: 10 }, status: 'open', statusAt: 'x', messages: [{ id: 'm1', author: 'human', text: '整体太挤', at: '2026-10-22T10:00:00Z' }] }] },
+    stale: [],
+  };
+  const { host } = await mount();
+  await key('c');
+  await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="评论 1"]')!.click());
+  const reply = host.querySelector<HTMLTextAreaElement>('textarea[placeholder="回复…"]')!;
+  await act(async () => reply.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', isComposing: true, bubbles: true })));
+  await act(async () => reply.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', keyCode: 229, bubbles: true })));
+  expect(host.querySelector('textarea[placeholder="回复…"]')).not.toBeNull();
 });
 
 test('the comment tool swaps the right panel for the thread list, and a row opens its thread', async () => {

@@ -187,7 +187,7 @@ function DesktopArtboard({ id, artifact, canvas, layout, warnings, pending, cont
     else if (e.shiftKey && e.code === 'Digit0') zoomTo(1);
     else if (!mod && !e.shiftKey && e.key.toLowerCase() === 'v') changeTool('select');
     else if (!mod && !e.shiftKey && e.key.toLowerCase() === 'h') changeTool('hand');
-    else if (!mod && !e.shiftKey && e.key.toLowerCase() === 'c') changeTool('comment');
+    else if (!mod && !e.shiftKey && e.key.toLowerCase() === 'c') { prevent(); changeTool('comment'); }
   }
 
   useEffect(() => {
