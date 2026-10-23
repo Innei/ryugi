@@ -245,7 +245,7 @@ export function createCloudRoutes(options: CloudRoutesOptions) {
 
     let res = entry.cloud ? await commit(entry.cloud.id, requested) : await commit(await create(), undefined);
     if (res.status === 404 && entry.cloud) {
-      if (!recreate) throw new CloudCopyGone();
+      if (!recreate && entry.cloud.publishedAt) throw new CloudCopyGone();
       res = await commit(await create(), undefined);
     }
     const published = (await (await expectOk(res)).json()) as CloudArtifact;

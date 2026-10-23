@@ -236,6 +236,18 @@ describe('races with manual actions', () => {
     expect(config(configFile).artifacts['html/a'].cloud).toBeUndefined();
   });
 
+  test('a reserved placeholder deleted before its first publish is created again', async () => {
+    const { cloud, server, configFile, edit, flush, dirty } = await startEnabled();
+    expect((await call(server, 'POST', '/api/cloud/reserve/html/a')).status).toBe(200);
+    cloud.store.delete('cloud1');
+    await edit('a', '<title>A</title>');
+    await flush();
+    expect(config(configFile).artifacts['html/a'].autoPublish).not.toBe(false);
+    expect(config(configFile).artifacts['html/a'].cloud).toMatchObject({ id: 'cloud2' });
+    expect(config(configFile).artifacts['html/a'].cloud?.publishedAt).toBeTruthy();
+    expect(dirty()).toEqual([]);
+  });
+
   test('a copy deleted from another machine is not recreated by auto-publish', async () => {
     const { cloud, configFile, edit, flush, dirty } = await startEnabled();
     await edit('a', '<title>A</title>');
