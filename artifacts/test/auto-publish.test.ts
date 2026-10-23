@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { describe, expect, test } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 import { createAutoPublisher, readAutoPublishState, type AutoPublishOutcome } from '../src/server/auto-publish';
 
 function setup(outcomes: Record<string, AutoPublishOutcome | (() => AutoPublishOutcome | Promise<AutoPublishOutcome>)> = {}) {
@@ -165,5 +165,88 @@ describe('account cap', () => {
     await publisher.flush();
     expect(state().notice).toBeNull();
     expect(state().dirty).toEqual([]);
+  });
+});
+
+describe('timed flush', () => {
+  const MINUTE = 60_000;
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  test('publishes after five quiet minutes', async () => {
+    vi.useFakeTimers();
+    const { publisher, calls } = setup();
+    publisher.changed('html/a');
+    await vi.advanceTimersByTimeAsync(5 * MINUTE - 1);
+    expect(calls).toEqual([]);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(calls).toEqual(['html/a']);
+  });
+
+  test('each change restarts the quiet period', async () => {
+    vi.useFakeTimers();
+    const { publisher, calls } = setup();
+    publisher.changed('html/a');
+    await vi.advanceTimersByTimeAsync(4 * MINUTE);
+    publisher.changed('html/a');
+    await vi.advanceTimersByTimeAsync(4 * MINUTE);
+    expect(calls).toEqual([]);
+    await vi.advanceTimersByTimeAsync(MINUTE);
+    expect(calls).toEqual(['html/a']);
+  });
+
+  test('steady editing still publishes fifteen minutes after the first change', async () => {
+    vi.useFakeTimers();
+    const { publisher, calls } = setup();
+    for (let minute = 0; minute < 15; minute++) {
+      publisher.changed('html/a');
+      await vi.advanceTimersByTimeAsync(MINUTE - 1);
+      expect(calls).toEqual([]);
+      await vi.advanceTimersByTimeAsync(1);
+    }
+    expect(calls).toEqual(['html/a']);
+  });
+
+  test('a turn-end flush cancels the pending timers', async () => {
+    vi.useFakeTimers();
+    const { publisher, calls } = setup();
+    publisher.changed('html/a');
+    await publisher.flush();
+    await vi.advanceTimersByTimeAsync(15 * MINUTE);
+    expect(calls).toEqual(['html/a']);
+  });
+
+  test('a failed publish is retried after another quiet period', async () => {
+    vi.useFakeTimers();
+    let failing = true;
+    const { publisher, calls } = setup({ 'html/a': () => (failing ? { kind: 'failed', message: 'offline' } : { kind: 'published', created: false }) });
+    publisher.changed('html/a');
+    await vi.advanceTimersByTimeAsync(5 * MINUTE);
+    failing = false;
+    await vi.advanceTimersByTimeAsync(5 * MINUTE);
+    expect(calls).toEqual(['html/a', 'html/a']);
+    await vi.advanceTimersByTimeAsync(15 * MINUTE);
+    expect(calls).toHaveLength(2);
+  });
+
+  test('marks left by the last server are published after a quiet period', async () => {
+    const first = setup();
+    first.publisher.changed('html/a');
+    first.publisher.close();
+    vi.useFakeTimers();
+    const calls: string[] = [];
+    createAutoPublisher({ stateFile: first.stateFile, enabled: () => true, token: () => 'tok', publish: async (key) => (calls.push(key), { kind: 'published', created: false }) });
+    await vi.advanceTimersByTimeAsync(5 * MINUTE);
+    expect(calls).toEqual(['html/a']);
+  });
+
+  test('closing stops the timers', async () => {
+    vi.useFakeTimers();
+    const { publisher, calls } = setup();
+    publisher.changed('html/a');
+    publisher.close();
+    await vi.advanceTimersByTimeAsync(15 * MINUTE);
+    expect(calls).toEqual([]);
   });
 });

@@ -28,7 +28,12 @@ interface AutoPublisherOptions {
   enabled: () => boolean;
   token: () => string | null;
   publish: (key: string) => Promise<AutoPublishOutcome>;
+  idleMs?: number;
+  maxWaitMs?: number;
 }
+
+const IDLE_MS = 5 * 60 * 1000;
+const MAX_WAIT_MS = 15 * 60 * 1000;
 
 const SIGNED_OUT_MESSAGE = 'auto-publish paused: the Ryugi Cloud sign-in expired';
 
@@ -64,7 +69,21 @@ export function createAutoPublisher(options: AutoPublisherOptions) {
     if (notice?.kind !== kind) notice = { id: crypto.randomUUID(), kind, message };
   };
 
+  let idleTimer: NodeJS.Timeout | null = null;
+  let maxTimer: NodeJS.Timeout | null = null;
+  const clearTimers = () => {
+    if (idleTimer) clearTimeout(idleTimer);
+    if (maxTimer) clearTimeout(maxTimer);
+    idleTimer = maxTimer = null;
+  };
+  const schedule = () => {
+    if (idleTimer) clearTimeout(idleTimer);
+    idleTimer = setTimeout(() => void flush(), options.idleMs ?? IDLE_MS).unref();
+    maxTimer ??= setTimeout(() => void flush(), options.maxWaitMs ?? MAX_WAIT_MS).unref();
+  };
+
   const run = async () => {
+    clearTimers();
     if (!options.enabled() || dirty.size === 0) return;
     const token = options.token();
     if (paused && paused.token === token) return;
@@ -90,6 +109,7 @@ export function createAutoPublisher(options: AutoPublisherOptions) {
       }
     }
     save();
+    if (dirty.size > 0 && !paused) schedule();
   };
 
   let running: Promise<void> | null = null;
@@ -110,18 +130,22 @@ export function createAutoPublisher(options: AutoPublisherOptions) {
     return queued;
   };
 
+  if (dirty.size > 0) schedule();
+
   return {
     changed(key: string) {
       if (!options.enabled()) return;
       dirty.add(key);
       remarked.add(key);
       save();
+      schedule();
     },
     removed(key: string) {
       if (!dirty.delete(key)) return;
       save();
     },
     flush,
+    close: clearTimers,
   };
 }
 

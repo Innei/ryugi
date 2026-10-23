@@ -914,6 +914,7 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
     close: () =>
       new Promise<void>((resolve) => {
         watcher.close();
+        autoPublisher?.close();
         relay?.close();
         direct.close();
         selections.clearAll();
