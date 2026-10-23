@@ -58,6 +58,15 @@ describe('turn-end flush', () => {
     expect(cloud.requests).toEqual([]);
   });
 
+  test('closing the server publishes what is still pending', async () => {
+    const { cloud, configFile, edit, server, dirty } = await startEnabled();
+    await edit('a', '<title>A</title>');
+    await server.close();
+    expect(cloud.requests.map((r) => `${r.method} ${r.path}`)).toContain('POST /api/artifacts');
+    expect(config(configFile).artifacts['html/a'].cloud?.publishedAt).toBeTruthy();
+    expect(dirty()).toEqual([]);
+  });
+
   test('a later change republishes to the same link', async () => {
     const { cloud, edit, flush } = await startEnabled();
     await edit('a', '<title>A</title>');

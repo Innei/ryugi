@@ -84,6 +84,7 @@ const CONTENT_CSP: Record<ArtifactType, string> = {
   html: 'sandbox allow-scripts allow-modals allow-forms allow-popups allow-downloads',
 };
 
+const CLOSE_FLUSH_MS = 5000;
 const DIRECT_RELAY_ROUTE = /^\/relay\/a\/([A-Za-z0-9_-]{1,64})$/;
 const SHELL_ROUTE = new RegExp(`^/(?:(${ARTIFACT_TYPES.join('|')})/([^/]+)/?)?$`);
 const API_ARTIFACT_ROUTE = /^\/api\/artifacts\/([^/]+)\/([^/]+)$/;
@@ -923,8 +924,9 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
       for (const change of initialChanges) listener(change.ref, change.payload, change.files);
     },
     onActivity: (listener) => activityListeners.push(listener),
-    close: () =>
-      new Promise<void>((resolve) => {
+    close: async () => {
+      await Promise.race([autoPublisher?.flush(), new Promise((resolve) => setTimeout(resolve, CLOSE_FLUSH_MS).unref())]);
+      await new Promise<void>((resolve) => {
         watcher.close();
         autoPublisher?.close();
         relay?.close();
@@ -933,6 +935,8 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
         for (const socket of clients) socket.destroy();
         server.close(() => resolve());
         server.closeAllConnections();
-      }).then(() => documents.close().catch(() => undefined)),
+      });
+      await documents.close().catch(() => undefined);
+    },
   };
 }
