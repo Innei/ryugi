@@ -24,18 +24,18 @@ function fakeFetch(routes: Record<string, () => Response>) {
 
 describe('loading the shell', () => {
   test('a readable artifact gives its title, ownership and visibility', async () => {
-    const { impl } = fakeFetch({ 'GET /api/a/abc': () => Response.json({ type: 'html', title: 'Arrow', owner: true, visibility: 'private' }) });
+    const { impl } = fakeFetch({ 'GET /api/a/abc/meta': () => Response.json({ type: 'html', title: 'Arrow', owner: true, visibility: 'private' }) });
     expect(await loadShell('abc', impl)).toEqual({ kind: 'ready', type: 'html', title: 'Arrow', owner: true, visibility: 'private' });
   });
 
   test('an artifact that is not published yet is named as such for its owner', async () => {
-    const { impl } = fakeFetch({ 'GET /api/a/abc': () => Response.json({ title: null, owner: true, visibility: 'private', published: false }) });
+    const { impl } = fakeFetch({ 'GET /api/a/abc/meta': () => Response.json({ title: null, owner: true, visibility: 'private', published: false }) });
     expect(await loadShell('abc', impl)).toEqual({ kind: 'ready', type: null, title: '还没发布', owner: true, visibility: 'private' });
   });
 
   test('a link that will not open asks who is signed in', async () => {
     const { impl, calls } = fakeFetch({
-      'GET /api/a/abc': () => Response.json({ error: 'artifact not found' }, { status: 404 }),
+      'GET /api/a/abc/meta': () => Response.json({ error: 'artifact not found' }, { status: 404 }),
       'GET /api/session': () => Response.json({ login: 'Innei' }),
     });
     expect(await loadShell('abc', impl)).toEqual({ kind: 'missing', login: 'Innei' });
@@ -44,14 +44,14 @@ describe('loading the shell', () => {
 
   test('a signed-out visitor of a link that will not open has no login', async () => {
     const { impl } = fakeFetch({
-      'GET /api/a/abc': () => Response.json({ error: 'artifact not found' }, { status: 404 }),
+      'GET /api/a/abc/meta': () => Response.json({ error: 'artifact not found' }, { status: 404 }),
       'GET /api/session': () => Response.json({ login: null }),
     });
     expect(await loadShell('abc', impl)).toEqual({ kind: 'missing', login: null });
   });
 
   test('a server error is reported, not shown as missing', async () => {
-    const { impl } = fakeFetch({ 'GET /api/a/abc': () => new Response('boom', { status: 500 }) });
+    const { impl } = fakeFetch({ 'GET /api/a/abc/meta': () => new Response('boom', { status: 500 }) });
     expect(await loadShell('abc', impl)).toEqual({ kind: 'failed', message: '加载失败（500）' });
   });
 });

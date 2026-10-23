@@ -43,7 +43,7 @@ async function requestError(res: Response) {
 }
 
 export async function loadShell(id: string, fetchImpl: typeof fetch = fetch): Promise<Exclude<ShellState, { kind: 'loading' }>> {
-  const res = await fetchImpl(`/api/a/${id}`, { cache: 'no-store', credentials: 'same-origin' });
+  const res = await fetchImpl(`/api/a/${id}/meta`, { cache: 'no-store', credentials: 'same-origin' });
   if (res.status === 404) {
     const session = await fetchImpl('/api/session', { cache: 'no-store', credentials: 'same-origin' });
     const { login } = (await session.json().catch(() => ({ login: null }))) as { login?: unknown };
