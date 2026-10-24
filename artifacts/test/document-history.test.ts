@@ -4,7 +4,7 @@ import { createHeadlessEditor } from '@lexical/headless';
 import { $createParagraphNode, $createTextNode, $getRoot } from 'lexical';
 import { LoroDoc } from 'loro-crdt';
 import { expect, test } from 'vitest';
-import { readHistory, readHistoryState } from '../src/viewer/document/history';
+import { blockAuthors, readHistory, readHistoryState } from '../src/viewer/document/history';
 
 test('a selected causal prefix includes earlier edits from other peers', async () => {
   const doc = new LoroDoc();
@@ -66,7 +66,7 @@ test('materializing old rich content never adds operations to the live document'
   editor.update(() => $getRoot().getAllTextNodes()[0]!.setTextContent('after'), { discrete: true });
   const current = doc.frontiers();
   const count = doc.opCount();
-  const state = readHistoryState(doc, old, allHeadlessNodes);
+  const state = readHistoryState(doc, old, allHeadlessNodes).value;
   expect(JSON.stringify(state)).toContain('before');
   expect(JSON.stringify(state)).not.toContain('after');
   expect(doc.frontiers()).toEqual(current);
@@ -87,8 +87,54 @@ test('retained versions in a shallow snapshot can be projected without touching 
   const before = shallow.frontiers(); const count = shallow.opCount();
   const history = await readHistory(shallow);
   expect(history.shallow).toBe(true);
-  expect(JSON.stringify(readHistoryState(shallow, boundary, allHeadlessNodes))).toContain('retained boundary');
-  expect(JSON.stringify(readHistoryState(shallow, shallow.frontiers(), allHeadlessNodes))).toContain('retained latest');
+  expect(JSON.stringify(readHistoryState(shallow, boundary, allHeadlessNodes).value)).toContain('retained boundary');
+  expect(JSON.stringify(readHistoryState(shallow, shallow.frontiers(), allHeadlessNodes).value)).toContain('retained latest');
   expect(shallow.frontiers()).toEqual(before); expect(shallow.opCount()).toBe(count);
   binding.dispose(); shallow.free(); doc.free();
+});
+
+function authored() {
+  const doc = new LoroDoc();
+  doc.setChangeMergeInterval(0);
+  const editor = createHeadlessEditor({ nodes: allHeadlessNodes });
+  const binding = createLoroBinding(editor, doc);
+  const edit = (timestamp: number, message: string, change: () => void) => {
+    doc.setNextCommitOptions({ timestamp, message });
+    editor.update(change, { discrete: true });
+  };
+  edit(100, 'session start', () => $getRoot().append(...['one', 'two', 'three'].map((text) => $createParagraphNode().append($createTextNode(text)))));
+  return { doc, edit, dispose: () => { binding.dispose(); doc.free(); } };
+}
+
+async function compare(doc: LoroDoc) {
+  const history = await readHistory(doc);
+  const start = history.entries.findIndex((entry) => entry.change.message === 'session start');
+  const before = readHistoryState(doc, history.entries[start]!.frontiers, allHeadlessNodes);
+  const after = readHistoryState(doc, doc.frontiers(), allHeadlessNodes);
+  const authors = blockAuthors(doc, history.entries.slice(start + 1), [before, after]);
+  return { before, after, authors };
+}
+
+test('each changed block is attributed to the edit that changed it', async () => {
+  const { doc, edit, dispose } = authored();
+  edit(200, 'human', () => $getRoot().getAllTextNodes()[0]!.setTextContent('one, revised'));
+  edit(300, 'agent:claude-code', () => $getRoot().getChildren()[1]!.remove());
+  edit(400, 'human', () => $getRoot().append($createParagraphNode().append($createTextNode('four'))));
+  const { before, after, authors } = await compare(doc);
+  expect(before.ids).toHaveLength(3);
+  expect(after.ids).toHaveLength(3);
+  expect(authors.get(before.ids[0]!)?.change.timestamp).toBe(200);
+  expect(authors.get(before.ids[1]!)?.change.message).toBe('agent:claude-code');
+  expect(authors.get(after.ids[2]!)?.change.timestamp).toBe(400);
+  expect(authors.has(before.ids[2]!)).toBe(false);
+  dispose();
+});
+
+test('a block edited twice is attributed to its newest edit', async () => {
+  const { doc, edit, dispose } = authored();
+  edit(200, 'human', () => $getRoot().getAllTextNodes()[0]!.setTextContent('one, revised'));
+  edit(300, 'agent:claude-code', () => $getRoot().getAllTextNodes()[0]!.setTextContent('one, revised again'));
+  const { before, authors } = await compare(doc);
+  expect(authors.get(before.ids[0]!)?.change.timestamp).toBe(300);
+  dispose();
 });

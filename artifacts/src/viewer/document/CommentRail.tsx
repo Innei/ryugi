@@ -91,7 +91,7 @@ export function CommentRail({ narrow, threads, anchors, activeId, actions, onAct
 
   if (narrow) {
     return (
-      <div ref={setRef} {...stylex.props(styles.narrow)}>
+      <div ref={setRef} role="region" aria-label="评论" {...stylex.props(styles.narrow)}>
         {[...placed].sort((a, b) => topOf.get(a.id)! - topOf.get(b.id)!).map((thread) => (
           <div key={thread.id}>{card(thread)}</div>
         ))}
@@ -104,7 +104,7 @@ export function CommentRail({ narrow, threads, anchors, activeId, actions, onAct
   }
 
   return (
-    <aside ref={setRef} {...stylex.props(styles.wide)} style={{ minHeight: bottom }}>
+    <aside ref={setRef} aria-label="评论" {...stylex.props(styles.wide)} style={{ minHeight: bottom }}>
       <svg {...stylex.props(styles.links)}>
         {links.map((link) => (
           <path

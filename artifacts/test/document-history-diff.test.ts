@@ -66,3 +66,15 @@ test('converting a paragraph to a heading is one change with old content first',
   expect(blocks[0]!.before!.root.children[0]!.type).toBe('paragraph');
   expect(blocks[0]!.value.root.children[0]!.type).toBe('heading');
 });
+
+test('each block points at its position in the versions it came from', () => {
+  const blocks = historyDiff(parseDocument('<doc><p>kept</p><p>old</p><p>gone</p></doc>'), parseDocument('<doc><p>kept</p><p>new</p><p>added</p></doc>'));
+  expect(blocks.map(({ kind, oldIndex, newIndex }) => ({ kind, oldIndex, newIndex }))).toEqual([
+    { kind: 'equal', oldIndex: 0, newIndex: 0 },
+    { kind: 'modify', oldIndex: 1, newIndex: 1 },
+    { kind: 'modify', oldIndex: 2, newIndex: 2 },
+  ]);
+  const removed = historyDiff(parseDocument('<doc><p>a</p><p>b</p></doc>'), parseDocument('<doc><p>a</p></doc>'));
+  expect(removed.at(-1)).toMatchObject({ kind: 'delete', oldIndex: 1 });
+  expect(removed.at(-1)!.newIndex).toBeUndefined();
+});

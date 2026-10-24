@@ -2,6 +2,7 @@ import type { LexicalEditor } from 'lexical';
 import type { ReactNode } from 'react';
 import type { Thread } from '../../shared/comments';
 import type { ThreadActions } from './CommentCard';
+import type { DocumentHistoryView } from './DocumentHistory';
 import { DocumentLayout } from './DocumentLayout';
 import { DRAFT_WIDTH, DraftPanel } from './DraftPanel';
 import { popoverPosition, toolbarPosition } from './layoutCards';
@@ -23,10 +24,11 @@ interface Props {
   clearSelection: () => void;
   onCreate: (target: SelectionTarget, text: string) => Promise<boolean>;
   onMain: (element: HTMLElement | null) => void;
+  history?: DocumentHistoryView | null;
   children: ReactNode;
 }
 
-export function DesktopDocument({ editor, threads, actions, agent, canComment, selection, clearSelection, onCreate, onMain, children }: Props) {
+export function DesktopDocument({ editor, threads, actions, agent, canComment, selection, clearSelection, onCreate, onMain, history, children }: Props) {
   const composing = useDraftComment(clearSelection);
   const { draft } = composing;
   return (
@@ -36,6 +38,7 @@ export function DesktopDocument({ editor, threads, actions, agent, canComment, s
       actions={actions}
       agent={agent}
       onMain={onMain}
+      history={history}
       overlay={(articleEl) => (
         <>
           {selection && !draft ? (

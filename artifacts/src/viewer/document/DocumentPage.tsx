@@ -10,7 +10,7 @@ import { useTypeFavicon } from '../hooks/useTypeFavicon';
 import { agentActivity } from './agentActivity';
 import type { ThreadActions } from './CommentCard';
 import { DocumentEditor } from './DocumentEditor';
-import { DocumentHistory } from './DocumentHistory';
+import { useDocumentHistory } from './DocumentHistory';
 import { allNodes } from '@haklex/rich-editor/static';
 import { extraNodes } from './DocumentEditor';
 import { DesktopDocument } from './DesktopDocument';
@@ -182,6 +182,8 @@ export function DocumentView({ id, transport, live, cloud, fallback }: { id: str
 
   const openComments = comments.threads.filter((thread) => thread.status === 'open').length;
   const [selection, clearSelection] = useSelectionComment(editor, mainEl);
+  const closeHistory = useCallback(() => setHistoryOpen(false), []);
+  const historyView = useDocumentHistory({ doc, nodes: historyNodes, streaming, theme: dark ? 'dark' : 'light', title: meta?.title || id, open: historyVisible, onClose: closeHistory });
 
   const send = useCallback(
     async (op: HumanOp) => {
@@ -255,10 +257,8 @@ export function DocumentView({ id, transport, live, cloud, fallback }: { id: str
         cloud={cloud}
         compact={phone}
         onDone={phone && editing ? () => setEditing(false) : undefined}
-        history={{ available: historyAvailable, open: historyVisible, toggle: () => setHistoryOpen((open) => !open), close: () => setHistoryOpen(false) }}
+        history={{ available: historyAvailable, open: historyVisible, toggle: () => setHistoryOpen((open) => !open), close: closeHistory }}
       />
-      {historyVisible ? <DocumentHistory doc={doc} nodes={historyNodes} streaming={streaming} theme={dark ? 'dark' : 'light'} title={meta?.title || id} onClose={() => setHistoryOpen(false)} /> : null}
-      <div hidden={historyVisible}>
       {phone ? (
         <PhoneLayout
           editor={editor}
@@ -273,6 +273,7 @@ export function DocumentView({ id, transport, live, cloud, fallback }: { id: str
           onCreate={create}
           onEdit={startEditing}
           onMain={setMainEl}
+          history={historyView}
         >
           {editorView}
         </PhoneLayout>
@@ -287,11 +288,11 @@ export function DocumentView({ id, transport, live, cloud, fallback }: { id: str
           clearSelection={clearSelection}
           onCreate={create}
           onMain={setMainEl}
+          history={historyView}
         >
           {editorView}
         </DesktopDocument>
       )}
-      </div>
       <WarningsBadge warnings={meta?.warnings ?? []} />
     </div>
   );

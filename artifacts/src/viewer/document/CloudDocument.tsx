@@ -6,6 +6,7 @@ import * as stylex from '@stylexjs/stylex';
 import type { LexicalEditor, SerializedEditorState } from 'lexical';
 import { useEffect, useMemo, useState } from 'react';
 import { emptyComments, type CommentsFile } from '../../shared/comments';
+import { RailSwitch } from '../components/RailSwitch';
 import { useCloudHeader } from '../hooks/useCloudHeader';
 import { createChannel } from './channel';
 import { extraNodes, rendererConfig } from './DocumentEditor';
@@ -51,7 +52,8 @@ export default function CloudDocument({ id, state, contentBase, comments = empty
   const dark = usePrefersDark();
   const [editor, setEditor] = useState<LexicalEditor | null>(null);
   const host = useMemo<DynamicHost>(() => ({ artifact: `cloud/${id}`, contentBase, channel: createChannel(), send: () => undefined }), [id, contentBase]);
-  const framed = useCloudHeader(id, { comments: comments.threads.filter((thread) => thread.status === 'open').length, activity: null, retrying: false, reason: null, history: false, historyOpen: false });
+  const openComments = comments.threads.filter((thread) => thread.status === 'open').length;
+  const framed = useCloudHeader(id, { comments: openComments, activity: null, retrying: false, reason: null, history: false, historyOpen: false });
 
   useEffect(() => {
     const base = document.createElement('base');
@@ -62,7 +64,7 @@ export default function CloudDocument({ id, state, contentBase, comments = empty
 
   return (
     <div {...stylex.props(styles.root)} className={`ryugi-doc ${stylex.props(styles.root).className ?? ''}`}>
-      {!framed ? <div {...stylex.props(styles.offline)}><button type="button" className="doc-history-entry" disabled title="电脑离线，历史暂不可用">历史记录</button><span>电脑离线，历史暂不可用</span></div> : null}
+      {!framed ? <div {...stylex.props(styles.offline)}><RailSwitch comments={openComments} open={false} available={false} onComments={() => {}} onHistory={() => {}} /><span>电脑离线，历史暂不可用</span></div> : null}
       {offline ? (
         <div {...stylex.props(styles.offline, framed && styles.framedOffline)}>
           <i {...stylex.props(styles.dot)} />

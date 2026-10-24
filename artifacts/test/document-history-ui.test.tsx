@@ -8,7 +8,7 @@ import { LoroDoc } from 'loro-crdt';
 import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeAll, expect, test, vi } from 'vitest';
-import { DocumentHistory } from '../src/viewer/document/DocumentHistory';
+import { useDocumentHistory, type DocumentHistoryOptions } from '../src/viewer/document/DocumentHistory';
 import { DocumentView } from '../src/viewer/document/DocumentPage';
 import { createChannel } from '../src/viewer/document/channel';
 import type { DocumentTransport } from '../src/viewer/document/transport';
@@ -28,7 +28,14 @@ vi.mock('@haklex/rich-ext-excalidraw/static', async () => {
 let root: Root | null = null;
 const cleanup: (() => void)[] = [];
 beforeAll(() => { (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true; });
-afterEach(() => { act(() => root?.unmount()); root = null; cleanup.splice(0).forEach((fn) => fn()); document.body.innerHTML = ''; });
+afterEach(() => { act(() => root?.unmount()); root = null; cleanup.splice(0).forEach((fn) => fn()); document.body.innerHTML = ''; viewport(1024); });
+
+function viewport(width: number) { (window as unknown as { happyDOM: { setViewport: (size: { width: number; height: number }) => void } }).happyDOM.setViewport({ width, height: 900 }); }
+
+function History(props: Omit<DocumentHistoryOptions, 'open' | 'onClose'>) {
+  const view = useDocumentHistory({ ...props, open: true, onClose: () => {} });
+  return createElement('div', null, view?.content, view?.panel);
+}
 
 function fixture() {
   const doc = new LoroDoc();
@@ -68,25 +75,25 @@ async function historyReady(host: HTMLElement, text?: string) {
 test('the document title is displayed once when it is part of the rich content', async () => {
   const { doc, editor } = fixture();
   editor.update(() => $getRoot().getFirstChildOrThrow().insertBefore($createHeadingNode('h1').append($createTextNode('Document'))), { discrete: true });
-  const host = await mount(createElement(DocumentHistory, { doc, nodes: allHeadlessNodes, streaming: false, theme: 'light', title: 'Document', onClose: () => {} }));
+  const host = await mount(createElement(History, { doc, nodes: allHeadlessNodes, streaming: false, theme: 'light', title: 'Document' }));
   await historyReady(host);
   expect(host.querySelectorAll('[aria-label="差异正文"] h1')).toHaveLength(1);
 });
 
 test('real rich history renders read-only and navigating it never writes to the live CRDT', async () => {
   const { doc } = fixture(); const count = doc.opCount(); const version = doc.frontiers();
-  const host = await mount(createElement(DocumentHistory, { doc, nodes: allHeadlessNodes, streaming: false, theme: 'light', title: 'Test', onClose: () => {} }));
+  const host = await mount(createElement(History, { doc, nodes: allHeadlessNodes, streaming: false, theme: 'light', title: 'Test' }));
   await historyReady(host, 'content');
   expect(host.querySelector('[contenteditable="true"]')).toBeNull();
   await act(async () => button(host, '仅看变更').click());
-  await act(async () => button(host, '选择历史版本').click());
-  await act(async () => button(host, '展开').click());
+  await act(async () => button(host, '点按切换').click());
+  await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="展开原始提交"]')!.click());
   expect(doc.frontiers()).toEqual(version); expect(doc.opCount()).toBe(count);
 });
 
 test('incoming edits keep the comparison fixed until the human partner refreshes it', async () => {
   const { doc, update } = fixture();
-  const host = await mount(createElement(DocumentHistory, { doc, nodes: allHeadlessNodes, streaming: false, theme: 'light', title: 'Test', onClose: () => {} }));
+  const host = await mount(createElement(History, { doc, nodes: allHeadlessNodes, streaming: false, theme: 'light', title: 'Test' }));
   await historyReady(host);
   await act(async () => update('Newest revision'));
   expect(host.querySelector('[aria-label="差异正文"]')?.textContent).not.toContain('Newest');
@@ -96,9 +103,9 @@ test('incoming edits keep the comparison fixed until the human partner refreshes
 
 test('the narrow version picker keeps keyboard focus inside and restores it on close', async () => {
   const { doc } = fixture();
-  const host = await mount(createElement(DocumentHistory, { doc, nodes: allHeadlessNodes, streaming: false, theme: 'light', title: 'Test', onClose: () => {} }));
+  const host = await mount(createElement(History, { doc, nodes: allHeadlessNodes, streaming: false, theme: 'light', title: 'Test' }));
   await historyReady(host);
-  const selector = button(host, '选择历史版本'); selector.focus();
+  const selector = button(host, '点按切换'); selector.focus();
   await act(async () => selector.click());
   const dialog = host.querySelector<HTMLElement>('[role="dialog"]')!;
   expect(dialog.contains(document.activeElement)).toBe(true);
@@ -106,7 +113,7 @@ test('the narrow version picker keeps keyboard focus inside and restores it on c
   controls.at(-1)!.focus();
   await act(async () => document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true })));
   expect(document.activeElement).toBe(controls[0]);
-  await act(async () => button(dialog, '关闭').click());
+  await act(async () => button(dialog, '完成').click());
   expect(document.activeElement).toBe(selector);
 });
 
@@ -129,7 +136,44 @@ test('cloud disconnect closes history while preserving the original editor insta
   const baselineUpdates = updates.length;
   await act(async () => root!.render(createElement(DocumentView, { id: 'test', transport, live: false, cloud: { online: false, canEdit: false, reason: null } })));
   expect(host.querySelector('[aria-label="差异正文"]')).toBeNull();
-  expect(button(host, '历史记录').disabled).toBe(true);
+  expect(button(host, '历史').disabled).toBe(true);
   expect(host.querySelector('[contenteditable]')).toBe(editor);
   expect(updates.length).toBe(baselineUpdates);
+});
+
+function localTransport(doc: LoroDoc): DocumentTransport {
+  return {
+    artifact: 'document/test', channel: createChannel(), send: () => {},
+    meta: async () => ({ id: 'test', title: 'Test', contentBase: '', warnings: [], version: 1 }),
+    state: async () => ({ snapshot: Buffer.from(doc.export({ mode: 'snapshot' })).toString('base64'), lineage: doc.getTree('lexical').roots()[0]!.id, cursor: null }),
+    update: async () => {}, comment: async () => ({ version: 1, threads: [] }),
+  };
+}
+
+test('history replaces the comment rail inside the same document layout', async () => {
+  viewport(1600);
+  const { doc } = fixture();
+  const host = await mount(createElement(DocumentView, { id: 'test', transport: localTransport(doc), live: true }));
+  await vi.waitFor(() => expect(host.querySelector('[contenteditable]')).not.toBeNull());
+  const main = host.querySelector('main'); const editor = host.querySelector('[contenteditable]');
+  expect(host.querySelector('aside[aria-label="评论"]')).not.toBeNull();
+  await act(async () => button(host, '历史').click());
+  await historyReady(host);
+  expect(host.querySelector('main')).toBe(main);
+  expect(main!.querySelector('aside[aria-label="历史记录"]')).not.toBeNull();
+  expect(host.querySelector('aside[aria-label="评论"]')).toBeNull();
+  expect(main!.querySelector('article [aria-label="差异正文"]')).not.toBeNull();
+  expect(host.querySelector('[contenteditable]')).toBe(editor);
+  await act(async () => button(host, '评论').click());
+  expect(host.querySelector('[aria-label="差异正文"]')).toBeNull();
+  expect(host.querySelector('aside[aria-label="评论"]')).not.toBeNull();
+});
+
+test('each change names the edit that made it', async () => {
+  const { doc } = fixture();
+  const host = await mount(createElement(History, { doc, nodes: allHeadlessNodes, streaming: false, theme: 'light', title: 'Test' }));
+  await historyReady(host);
+  const change = host.querySelector('[data-history-change]');
+  expect(change?.textContent).toContain('修改');
+  expect(change?.textContent).toContain('浏览器编辑');
 });

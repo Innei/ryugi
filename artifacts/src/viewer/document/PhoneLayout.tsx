@@ -4,6 +4,7 @@ import type { LexicalEditor } from 'lexical';
 import { useState, type ReactNode } from 'react';
 import type { Thread } from '../../shared/comments';
 import type { ThreadActions } from './CommentCard';
+import type { DocumentHistoryView } from './DocumentHistory';
 import { editMenuPosition } from './layoutCards';
 import { EDIT_MENU_HEIGHT, EDIT_MENU_WIDTH, PhoneEditMenu } from './PhoneEditMenu';
 import { PhoneSheet, raiseSheet, SHEET_HALF, SHEET_PEEK } from './PhoneSheet';
@@ -30,10 +31,11 @@ interface Props {
   onCreate: (target: SelectionTarget, text: string) => Promise<boolean>;
   onEdit: (target: SelectionTarget) => void;
   onMain?: (element: HTMLElement | null) => void;
+  history?: DocumentHistoryView | null;
   children: ReactNode;
 }
 
-export function PhoneLayout({ editor, threads, actions, agent, canComment, canEdit, offline, selection, clearSelection, onCreate, onEdit, onMain, children }: Props) {
+export function PhoneLayout({ editor, threads, actions, agent, canComment, canEdit, offline, selection, clearSelection, onCreate, onEdit, onMain, history, children }: Props) {
   const [main, setMain] = useState<HTMLElement | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [snap, setSnap] = useState(SHEET_PEEK);
@@ -62,9 +64,10 @@ export function PhoneLayout({ editor, threads, actions, agent, canComment, canEd
           if (id) setSnap(raiseSheet);
         }}
       >
-        {children}
+        {history?.content}
+        <div hidden={Boolean(history)}>{children}</div>
       </article>
-      {selection && !draft ? (
+      {selection && !draft && !history ? (
         <PhoneEditMenu
           {...editMenuPosition(selection, { left: 8, right: (main?.clientWidth ?? 0) - 8 }, EDIT_MENU_WIDTH, EDIT_MENU_HEIGHT, {
             top: main?.getBoundingClientRect().top ?? 0,
@@ -84,7 +87,7 @@ export function PhoneLayout({ editor, threads, actions, agent, canComment, canEd
           }}
         />
       ) : null}
-      <div {...stylex.props(styles.dock)}>
+      <div hidden={Boolean(history)} {...stylex.props(styles.dock)}>
         <PhoneSheet
           threads={threads}
           agent={agent}

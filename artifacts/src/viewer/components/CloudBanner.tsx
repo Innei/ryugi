@@ -9,6 +9,7 @@ import type { CloudHeaderState } from '../hooks/useCloudHeader';
 import { pageLink, usePageQuery } from '../hooks/usePageQuery';
 import { changeVisibility, CloudRequestError, INSTALL_URL, planLimitMessage } from '../lib/cloud-shell';
 import { isSlotLimit, openPlanLimitDialog } from './PlanLimitDialog';
+import { RailSwitch } from './RailSwitch';
 import { RyugiMark } from './RyugiMark';
 
 const NARROW = '@media (max-width: 640px)';
@@ -38,8 +39,6 @@ const styles = stylex.create({
   type: { display: { default: 'contents', [NARROW]: 'none' }, color: cssVar.colorTextSecondary },
   title: { minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', fontWeight: 500 },
   actions: { display: 'flex', alignItems: 'center', gap: 16, flexShrink: 0 },
-  historyButton: { borderWidth: 0, borderRadius: 6, paddingBlock: 6, paddingInline: 9, backgroundColor: 'transparent', color: cssVar.colorTextSecondary, fontFamily: cssVar.fontFamily, fontSize: 12, cursor: 'pointer' },
-  historyActive: { backgroundColor: cssVar.colorFillTertiary, color: cssVar.colorText },
   statuses: { display: { default: 'flex', [NARROW]: 'none' }, alignItems: 'center', gap: 16, color: cssVar.colorTextSecondary },
   status: { display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' },
   dot: { width: 6, height: 6, borderRadius: '50%', backgroundColor: cssVar.colorTextQuaternary },
@@ -161,7 +160,7 @@ export function CloudHeader({ id, type, title, owner, status, visibility, onChan
         </nav>
       </div>
       <div {...stylex.props(styles.actions)}>
-        {status.history !== undefined ? <button type="button" {...stylex.props(styles.historyButton, status.historyOpen && styles.historyActive)} disabled={!status.history} aria-pressed={status.historyOpen} title={!status.history ? '电脑离线，历史暂不可用' : undefined} onClick={() => onHistory?.('toggle')}>历史记录</button> : null}
+        {status.history !== undefined ? <RailSwitch comments={status.comments ?? 0} open={Boolean(status.historyOpen)} available={status.history} onComments={() => onHistory?.('close')} onHistory={() => onHistory?.('toggle')} /> : null}
         <div {...stylex.props(styles.statuses)}>
           {status.activity ? (
             <span
@@ -180,7 +179,7 @@ export function CloudHeader({ id, type, title, owner, status, visibility, onChan
               {status.online === null ? '正在连接…' : status.online ? '电脑在线' : '电脑离线'}
             </span>
           ) : null}
-          {status.comments !== undefined ? status.history !== undefined ? <button type="button" onClick={() => onHistory?.('close')} {...stylex.props(styles.historyButton, styles.status)}><MessageCircle size={14} aria-hidden="true" />评论 {status.comments}</button> : <span {...stylex.props(styles.status)}><MessageCircle size={14} aria-hidden="true" />评论 {status.comments}</span> : null}
+          {status.comments !== undefined && status.history === undefined ? <span {...stylex.props(styles.status)}><MessageCircle size={14} aria-hidden="true" />评论 {status.comments}</span> : null}
           {(status.online !== undefined || status.comments !== undefined) && owner ? <span aria-hidden="true" {...stylex.props(styles.divider)} /> : null}
         </div>
         {owner ? <OwnerActions id={id} title={title} visibility={visibility} onChange={onChange} /> : (

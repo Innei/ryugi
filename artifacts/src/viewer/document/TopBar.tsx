@@ -1,6 +1,8 @@
 import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
+import { Lock } from 'lucide-react';
 import { PublishMenu } from '../components/PublishMenu';
+import { RailSwitch } from '../components/RailSwitch';
 import { useCloudHeader } from '../hooks/useCloudHeader';
 import { activityLabel, type AgentActivity } from './agentActivity';
 import type { CloudLive } from './DocumentPage';
@@ -100,6 +102,7 @@ export function TopBar({ id, title, activity, agentSection, offline, openComment
         </span>
       ) : null}
       {offline ? <span {...stylex.props(styles.pill, styles.offline)}>未同步，正在重试</span> : null}
+      {history?.open ? <span {...stylex.props(styles.pill, styles.quiet)}><Lock size={11} aria-hidden="true" />只读 · 正在对比历史</span> : null}
       {cloud?.reason && !compact ? <span {...stylex.props(styles.reason)}>{cloud.reason}</span> : null}
       <span {...stylex.props(styles.spacer)} />
       {cloud ? (
@@ -108,8 +111,7 @@ export function TopBar({ id, title, activity, agentSection, offline, openComment
           {cloud.online ? '电脑在线' : '电脑离线'}
         </span>
       ) : null}
-      {compact ? null : <button type="button" onClick={history?.close} className="doc-history-entry">评论 {openComments}</button>}
-      {history ? <button type="button" className="doc-history-entry" aria-pressed={history.open} disabled={!history.available} title={!history.available ? '电脑离线，历史暂不可用' : undefined} onClick={history.toggle}>历史记录</button> : null}
+      {history ? <RailSwitch comments={openComments} open={history.open} available={history.available} onComments={history.close} onHistory={history.toggle} /> : null}
       {onDone ? (
         <button type="button" onClick={onDone} {...stylex.props(styles.done)}>
           完成

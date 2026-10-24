@@ -6,6 +6,7 @@ import type { Thread } from '../../shared/comments';
 import { BlockBars } from './BlockBars';
 import type { ThreadActions } from './CommentCard';
 import { CommentRail } from './CommentRail';
+import type { DocumentHistoryView } from './DocumentHistory';
 import { DocumentToc } from './DocumentToc';
 import { threadAtPoint, useAnchors, useHighlights } from './useAnchors';
 
@@ -32,10 +33,11 @@ interface Props {
   agent?: string;
   onMain?: (element: HTMLElement | null) => void;
   overlay?: (article: HTMLElement) => ReactNode;
+  history?: DocumentHistoryView | null;
   children: ReactNode;
 }
 
-export function DocumentLayout({ editor, threads, actions, agent, onMain, overlay, children }: Props) {
+export function DocumentLayout({ editor, threads, actions, agent, onMain, overlay, history, children }: Props) {
   const [rail, setRail] = useState<HTMLDivElement | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [articleEl, setArticleEl] = useState<HTMLElement | null>(null);
@@ -53,11 +55,12 @@ export function DocumentLayout({ editor, threads, actions, agent, onMain, overla
         style={narrow ? { marginInline: 'auto' } : undefined}
         onClick={(event) => setActiveId(threadAtPoint(anchors, event.clientX, event.clientY))}
       >
-        {children}
-        <BlockBars container={articleEl} anchors={anchors} threads={threads} activeId={activeId} />
+        {history?.content}
+        <div hidden={Boolean(history)}>{children}</div>
+        {history ? null : <BlockBars container={articleEl} anchors={anchors} threads={threads} activeId={activeId} />}
       </article>
       <div {...stylex.props(styles.railWrap)}>
-        <CommentRail
+        {history ? history.panel : <CommentRail
           agent={agent}
           narrow={narrow}
           threads={threads}
@@ -66,9 +69,9 @@ export function DocumentLayout({ editor, threads, actions, agent, onMain, overla
           actions={actions}
           onActivate={setActiveId}
           railRef={setRail}
-        />
+        />}
       </div>
-      {articleEl && overlay ? overlay(articleEl) : null}
+      {articleEl && overlay && !history ? overlay(articleEl) : null}
     </main>
   );
 }

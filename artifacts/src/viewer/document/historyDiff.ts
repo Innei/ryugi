@@ -1,7 +1,7 @@
 import { computeDiff, decorateSubtree, diffMergedNode } from '@haklex/rich-diff-core';
 import type { SerializedEditorState, SerializedLexicalNode } from 'lexical';
 
-export interface HistoryDiffBlock { kind: 'equal' | 'insert' | 'delete' | 'modify'; value: SerializedEditorState; before?: SerializedEditorState }
+export interface HistoryDiffBlock { kind: 'equal' | 'insert' | 'delete' | 'modify'; value: SerializedEditorState; before?: SerializedEditorState; oldIndex?: number; newIndex?: number }
 type Node = SerializedLexicalNode & { children?: Node[]; text?: string; $?: Record<string, unknown>; [key: string]: unknown };
 
 function normalize(value: SerializedLexicalNode): Node {
@@ -41,13 +41,13 @@ function wrap(nodes: SerializedLexicalNode[]): SerializedEditorState {
 
 function align(oldNodes: Node[], newNodes: Node[]) {
   const hunks = computeDiff(wrap(oldNodes), wrap(newNodes));
-  const parts: { kind: HistoryDiffBlock['kind']; old: Node[]; current: Node[] }[] = [];
+  const parts: { kind: HistoryDiffBlock['kind']; old: Node[]; current: Node[]; oldIndex?: number; newIndex?: number }[] = [];
   let oldIndex = 0;
   let newIndex = 0;
   for (let index = 0; index < hunks.length; index++) {
     const hunk = hunks[index]!;
     if (hunk.type === 'equal') {
-      parts.push({ kind: 'equal', old: oldNodes.slice(oldIndex, oldIndex + hunk.nodes.length), current: newNodes.slice(newIndex, newIndex + hunk.nodes.length) });
+      parts.push({ kind: 'equal', old: oldNodes.slice(oldIndex, oldIndex + hunk.nodes.length), current: newNodes.slice(newIndex, newIndex + hunk.nodes.length), oldIndex, newIndex });
       oldIndex += hunk.nodes.length; newIndex += hunk.nodes.length;
       continue;
     }
@@ -61,7 +61,7 @@ function align(oldNodes: Node[], newNodes: Node[]) {
     for (let offset = 0; offset < Math.max(deleted, inserted); offset++) {
       const old = offset < deleted ? [oldNodes[oldIndex + offset]!] : [];
       const current = offset < inserted ? [newNodes[newIndex + offset]!] : [];
-      parts.push({ kind: old.length && current.length ? 'modify' : old.length ? 'delete' : 'insert', old, current });
+      parts.push({ kind: old.length && current.length ? 'modify' : old.length ? 'delete' : 'insert', old, current, oldIndex: old.length ? oldIndex + offset : undefined, newIndex: current.length ? newIndex + offset : undefined });
     }
     oldIndex += deleted; newIndex += inserted;
   }
@@ -69,14 +69,15 @@ function align(oldNodes: Node[], newNodes: Node[]) {
 }
 
 export function historyDiff(before: SerializedEditorState, after: SerializedEditorState): HistoryDiffBlock[] {
-  return align(before.root.children.map(normalize), after.root.children.map(normalize)).map((part) => {
+  return align(before.root.children.map(normalize), after.root.children.map(normalize)).map((part): HistoryDiffBlock => {
+    const at = { oldIndex: part.oldIndex, newIndex: part.newIndex };
     if (part.kind === 'modify') {
       const old = part.old[0]!; const current = part.current[0]!;
       return old.type === current.type && !attributesChanged(old, current)
-        ? { kind: 'modify', value: documentOf([diffMergedNode(old, current)]) }
-        : { kind: 'modify', before: documentOf(part.old), value: documentOf(part.current) };
+        ? { kind: 'modify', value: documentOf([diffMergedNode(old, current)]), ...at }
+        : { kind: 'modify', before: documentOf(part.old), value: documentOf(part.current), ...at };
     }
     const nodes = part.kind === 'delete' ? part.old : part.current;
-    return { kind: part.kind, value: documentOf(part.kind === 'equal' ? nodes : nodes.map((node) => decorateSubtree(node, part.kind as 'insert' | 'delete'))) };
+    return { kind: part.kind, value: documentOf(part.kind === 'equal' ? nodes : nodes.map((node) => decorateSubtree(node, part.kind as 'insert' | 'delete'))), ...at };
   });
 }
