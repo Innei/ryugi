@@ -8,7 +8,7 @@ import { useCloudSync } from '../hooks/useCloudSync';
 import { pageLink, usePageQuery } from '../hooks/usePageQuery';
 import { cloudRequest, useCloudStatus, type CloudResult } from '../hooks/useCloudStatus';
 import { useTranslation } from '../i18n';
-import { errorText } from '../lib/error-text';
+import { responseErrorText } from '../lib/error-text';
 
 const styles = stylex.create({
   trigger: {
@@ -82,7 +82,7 @@ export function PublishMenu({ artifact, floating = false }: Props) {
     if (result.status === 401) void login(result.json.loginUrl as string | undefined);
     else if (!result.ok) {
       const reasons = Array.isArray(result.json.reasons) ? (result.json.reasons as string[]) : [];
-      setErrors([errorText(result.json.code, String(result.json.error ?? t('common.requestFailed', { status: result.status }))), ...reasons]);
+      setErrors([responseErrorText(result.json, t('common.requestFailed', { status: result.status })), ...reasons]);
     }
     await Promise.all([refresh(), sync.refresh()]);
     setBusy(false);

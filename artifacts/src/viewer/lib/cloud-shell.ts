@@ -1,7 +1,9 @@
 import { isVisibility, type Visibility } from '../../shared/cloud';
 import { ARTIFACT_TYPES, type ArtifactType } from '../../shared/types';
 import { i18n } from '../i18n';
-import { errorText } from './error-text';
+import { errorText, isPlanLimit } from './error-text';
+
+export { planLimitMessage } from './error-text';
 
 export const INSTALL_URL = 'https://github.com/Innei/ryugi#install';
 export const INSTALL_COMMAND = '/plugin marketplace add Innei/ryugi';
@@ -26,14 +28,7 @@ export class CloudRequestError extends Error {
   }
 }
 
-export function planLimitMessage({ kind, max }: PlanLimit) {
-  return i18n.t(`planLimit.${kind}`, { max });
-}
-
 export const loginUrl = (id: string) => `/auth/login?return=${encodeURIComponent(`/a/${id}`)}`;
-
-const isPlanLimit = (value: unknown): value is PlanLimit =>
-  typeof value === 'object' && value !== null && ['private', 'public', 'total', 'publishes'].includes((value as PlanLimit).kind) && typeof (value as PlanLimit).max === 'number';
 
 async function requestError(res: Response) {
   const body = (await res.json().catch(() => null)) as { error?: unknown; code?: unknown; limit?: unknown; upgradeUrl?: unknown } | null;
