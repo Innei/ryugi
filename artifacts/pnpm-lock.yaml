@@ -168,8 +168,8 @@ importers:
         specifier: ^5.0.5
         version: 5.0.5(@types/node@22.20.5)(happy-dom@20.14.6)(vite@8.3.4(@types/node@22.20.5)(esbuild@0.28.2))
       ws:
-        specifier: 8.18.3
-        version: 8.18.3
+        specifier: 8.21.0
+        version: 8.21.0
 
 packages:
 
@@ -4423,8 +4423,8 @@ packages:
     engines: {node: '>=20.11'}
     hasBin: true
 
-  ws@8.18.3:
-    resolution: {integrity: sha512-PEIGCY5tSlUt50cqyMXfCzX+oOPqN0vuGqWzbcJ2xvnkzkq46oOpz7dQaTDBdfICb4N14+GARUDw2XV2N4tvzg==}
+  ws@8.21.0:
+    resolution: {integrity: sha512-Vsp28b7DRcimFQvrqu2Wek3z1iYxDCWqHYB8Qsnk/S4RfaCQzPGPyBNuVjJV3cd6UiKtUtp6sNM77gWvzcCH+g==}
     engines: {node: '>=10.0.0'}
     peerDependencies:
       bufferutil: ^4.0.1
@@ -9469,7 +9469,7 @@ snapshots:
 
   why-is-node-running@3.2.1: {}
 
-  ws@8.18.3: {}
+  ws@8.21.0: {}
 
   ws@8.22.0: {}
 
