@@ -127,6 +127,10 @@ describe('parseDocument', () => {
     expect(() => parseDocument('<doc><callout>x</callout></doc>')).toThrow('<callout> is not a LiteXML tag');
   });
 
+  test('a paragraph with <strike> keeps the spaces between its inline tags', () => {
+    expect(serializeDocument(parseDocument('<doc><p>a <strike>x</strike> <b>b</b> <i>c</i></p></doc>'))).toContain('<p>a <s>x</s> <b>b</b> <i>c</i></p>');
+  });
+
   test('ignores tag-like text inside CDATA', () => {
     expect(() => parseDocument('<doc><codeblock><![CDATA[<poll></div>]]></codeblock></doc>')).not.toThrow();
   });
