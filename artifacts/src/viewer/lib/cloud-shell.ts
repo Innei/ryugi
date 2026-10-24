@@ -1,6 +1,7 @@
 import { isVisibility, type Visibility } from '../../shared/cloud';
 import { ARTIFACT_TYPES, type ArtifactType } from '../../shared/types';
 import { i18n } from '../i18n';
+import { errorText } from './error-text';
 
 export const INSTALL_URL = 'https://github.com/Innei/ryugi#install';
 export const INSTALL_COMMAND = '/plugin marketplace add Innei/ryugi';
@@ -36,7 +37,7 @@ const isPlanLimit = (value: unknown): value is PlanLimit =>
 
 async function requestError(res: Response) {
   const body = (await res.json().catch(() => null)) as { error?: unknown; code?: unknown; limit?: unknown; upgradeUrl?: unknown } | null;
-  const message = typeof body?.error === 'string' ? body.error : i18n.t('common.requestFailed', { status: res.status });
+  const message = errorText(body?.code, typeof body?.error === 'string' ? body.error : i18n.t('common.requestFailed', { status: res.status }));
   if (res.status !== 402 || body?.code !== 'plan_limit' || !isPlanLimit(body.limit)) return new CloudRequestError(res.status, message);
   return new CloudRequestError(res.status, message, body.limit, typeof body.upgradeUrl === 'string' ? body.upgradeUrl : '/billing');
 }

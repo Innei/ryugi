@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'vitest';
+import { i18n } from '../src/viewer/i18n';
 import { changeVisibility, loadShell, loginUrl, switchAccount } from '../src/viewer/lib/cloud-shell';
 
 interface Call {
@@ -66,6 +67,17 @@ describe('changing visibility', () => {
   test('a refusal is thrown with the cloud’s message', async () => {
     const { impl } = fakeFetch({ 'PATCH /api/a/abc': () => Response.json({ error: 'sign in to Ryugi Cloud first' }, { status: 401 }) });
     await expect(changeVisibility('abc', 'public', impl)).rejects.toThrow('sign in to Ryugi Cloud first');
+  });
+
+  test('a refusal with a known code is shown in the viewer language', async () => {
+    const { impl } = fakeFetch({ 'PATCH /api/a/abc': () => Response.json({ error: 'artifact not found', code: 'artifact_not_found' }, { status: 404 }) });
+    await expect(changeVisibility('abc', 'public', impl)).rejects.toThrow('This artifact no longer exists.');
+    await i18n.changeLanguage('zh');
+    try {
+      await expect(changeVisibility('abc', 'public', impl)).rejects.toThrow('这个 artifact 已经不存在。');
+    } finally {
+      await i18n.changeLanguage('en');
+    }
   });
 });
 

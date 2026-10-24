@@ -363,5 +363,32 @@
     "backToCanvas": "返回画布",
     "previousBoard": "上一张",
     "nextBoard": "下一张"
+  },
+  "errors": {
+    "invalid_request": "请求无效。",
+    "sign_in_required": "请先登录 Ryugi Cloud。",
+    "forbidden": "你没有权限访问这里。",
+    "cross_site_refused": "这个请求来自其他网站，已被拒绝。",
+    "not_found": "找不到。",
+    "body_too_large": "请求内容太大。",
+    "rate_limited": "请求太频繁，稍等一会儿再试。",
+    "server_error": "Ryugi Cloud 出了点问题，稍后再试。",
+    "artifact_storage_limit": "这个 artifact 已达存储上限（含保留的历史版本和上传）。",
+    "artifact_too_large": "这个 artifact 太大，无法发布。",
+    "artifact_not_found": "这个 artifact 已经不存在。",
+    "artifact_deleting": "这个 artifact 正在删除。",
+    "missing_entry_file": "这个 artifact 缺少主文件。",
+    "missing_files": "还有文件没上传完，请重新发布。",
+    "publish_conflict": "发布时 artifact 有变动，请重试。",
+    "upload_conflict": "上传时 artifact 有变动，请重试。",
+    "upload_busy": "有文件正在上传，请重试。",
+    "delete_busy": "有上传正在收尾，请再删除一次。",
+    "count_conflict": "保存时 artifact 数量有变动，请重试。",
+    "view_limit": "这个链接本月的浏览次数已用完。",
+    "view_rate_limited": "这个网络的浏览次数太多，明天再试。",
+    "live_paused": "实时预览已暂停，UTC 00:00 恢复。",
+    "live_connections_full": "实时连接太多，关掉一些标签页后再试。",
+    "service_paused": "Ryugi Cloud 暂停服务中，稍后再试。",
+    "publish_not_ready": "发布前先修复这些问题："
   }
 }

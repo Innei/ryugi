@@ -236,7 +236,7 @@ export function createCloudRoutes(options: CloudRoutesOptions) {
 
   const publish = async (ref: ArtifactRef, requested?: Visibility, { recreate = true, skipUnchanged = false } = {}) => {
     const prepared = await prepare(ref);
-    if (!prepared.ready) return { status: 409, body: { error: 'fix these before publishing', reasons: prepared.reasons } };
+    if (!prepared.ready) return { status: 409, body: { error: 'fix these before publishing', code: 'publish_not_ready', reasons: prepared.reasons } };
     const { hashed, content, fingerprint } = prepared;
     const key = `${ref.type}/${ref.id}`;
     const entry = artifactEntry(key);

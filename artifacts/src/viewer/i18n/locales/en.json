@@ -382,5 +382,32 @@
     "backToCanvas": "Back to canvas",
     "previousBoard": "Previous board",
     "nextBoard": "Next board"
+  },
+  "errors": {
+    "invalid_request": "The request wasn't valid.",
+    "sign_in_required": "Sign in to Ryugi Cloud first.",
+    "forbidden": "You don't have access to this.",
+    "cross_site_refused": "This request came from another site and was refused.",
+    "not_found": "Not found.",
+    "body_too_large": "The request is too large.",
+    "rate_limited": "Too many requests. Wait a moment and try again.",
+    "server_error": "Ryugi Cloud ran into a problem. Try again later.",
+    "artifact_storage_limit": "This artifact has reached its storage limit, including retained versions and uploads.",
+    "artifact_too_large": "This artifact is too large to publish.",
+    "artifact_not_found": "This artifact no longer exists.",
+    "artifact_deleting": "This artifact is being deleted.",
+    "missing_entry_file": "This artifact is missing its main file.",
+    "missing_files": "Some files haven't been uploaded yet. Publish again.",
+    "publish_conflict": "The artifact changed while publishing. Try again.",
+    "upload_conflict": "The artifact changed while uploading. Try again.",
+    "upload_busy": "A file is still uploading. Try again.",
+    "delete_busy": "An upload is finishing. Try deleting again.",
+    "count_conflict": "Your artifact count changed while saving. Try again.",
+    "view_limit": "This link has reached its monthly view limit.",
+    "view_rate_limited": "Too many views from this network. Try again tomorrow.",
+    "live_paused": "Live preview is paused until 00:00 UTC.",
+    "live_connections_full": "Too many live connections. Close some tabs and try again.",
+    "service_paused": "Ryugi Cloud is paused for now. Try again later.",
+    "publish_not_ready": "Fix these before publishing:"
   }
 }
