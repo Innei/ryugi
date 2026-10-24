@@ -99,7 +99,7 @@ test('while the computer is offline the published copy shows', async () => {
 test('an artifact never published says so while the computer is offline', async () => {
   const { host, presence } = await mount({ type: 'artboard', title: null, published: false, contentBase: null, payload: null });
   await presence(false);
-  expect(host.textContent).toContain('还没发布');
+  expect(host.textContent).toContain('Not published yet');
 });
 
 test('an artboard renders live with selection but without the publish menu', async () => {

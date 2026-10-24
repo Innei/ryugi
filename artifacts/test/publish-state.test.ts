@@ -34,11 +34,11 @@ describe('syncNote', () => {
   });
 
   test('says the cloud copy is current', () => {
-    expect(syncNote(true, true)).toBe('线上已是最新');
+    expect(syncNote(true, true)).toBe('upToDate');
   });
 
   test('names unpublished changes and when auto-follow will send them', () => {
-    expect(syncNote(false, false)).toBe('本地有未发布的修改');
-    expect(syncNote(false, true)).toBe('本地有未发布的修改，停止修改 5 分钟后自动更新');
+    expect(syncNote(false, false)).toBe('localChanges');
+    expect(syncNote(false, true)).toBe('localChangesAuto');
   });
 });

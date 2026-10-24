@@ -11,6 +11,7 @@ import { RyugiMark } from '../components/RyugiMark';
 import { filterCloudItems, projectCounts, publishedNewestFirst, type CloudFilter, type CloudListItem } from '../lib/cloud-list';
 import { CloudRequestError, deleteCloudArtifact } from '../lib/cloud-shell';
 import { CloudPlanUsage } from '../components/CloudPlanUsage';
+import { i18n, useTranslation } from '../i18n';
 
 const deleteButtonStyle = { backgroundColor: 'var(--lobe-color-error-active)', color: '#fff' };
 type Loaded = { state: 'loading' } | { state: 'signed-out' } | { state: 'error' } | { state: 'ready'; login: string; artifacts: CloudListItem[] };
@@ -22,6 +23,7 @@ const filterFromAddress = (): CloudFilter => {
 };
 
 export function CloudArtifactList() {
+  const { t } = useTranslation();
   const [loaded, setLoaded] = useState<Loaded>({ state: 'loading' });
   const [revision, setRevision] = useState(0);
   const [filter, setFilter] = useState<CloudFilter>(filterFromAddress);
@@ -118,9 +120,9 @@ export function CloudArtifactList() {
     afterDelete.current = failed.size === 0;
     setPending(null);
     setNotice(failed.size ? {
-      message: `已删除 ${removed.size} 项，${failed.size} 项未删除。${auth ? '登录已过期，请重新登录。' : '请检查网络后重试。'}`,
+      message: `${i18n.t('cloudLibrary.deletedSome', { removed: removed.size, failed: failed.size })}${auth ? i18n.t('common.sessionExpired') : i18n.t('cloudLibrary.checkNetwork')}`,
       error: true, auth, retry: !auth,
-    } : { message: `已删除 ${removed.size} 项，原分享链接已失效。` });
+    } : { message: i18n.t('cloudLibrary.deletedAll', { count: removed.size }) });
     deleting.current = false;
     setBusy(false);
   };
@@ -131,16 +133,16 @@ export function CloudArtifactList() {
         <div className="library-breadcrumb"><img className="library-logo" src={logo} alt="" /><strong>ryugi</strong><span>/</span><b>Cloud</b></div>
         {loaded.state === 'ready' && <div className="library-topbar-end"><CloudPlanUsage key={all.length} /><span className="library-status">{loaded.login}</span></div>}
       </header>
-      {loaded.state === 'loading' && <p className="library-empty" role="status">正在加载…</p>}
-      {loaded.state === 'error' && <div className="library-empty" role="alert"><p>暂时无法加载你的 Artifact。</p><Button size="small" onClick={() => setRevision((value) => value + 1)}>重新加载</Button></div>}
+      {loaded.state === 'loading' && <p className="library-empty" role="status">{t('common.loading')}</p>}
+      {loaded.state === 'error' && <div className="library-empty" role="alert"><p>{t('cloudLibrary.loadFailed')}</p><Button size="small" onClick={() => setRevision((value) => value + 1)}>{t('cloudLibrary.reload')}</Button></div>}
       {loaded.state === 'signed-out' && (
         <div className="library-empty">
           <RyugiMark size={28} /><h2>Ryugi Cloud</h2>
-          <p>这里存放从 Ryugi 分享出来的 artifact。登录后可以看到你自己发布的全部 artifact。</p>
-          <a href="/auth/login?return=/">用 GitHub 登录</a>
+          <p>{t('cloudLibrary.signedOutBody')}</p>
+          <a href="/auth/login?return=/">{t('common.signInGithub')}</a>
         </div>
       )}
-      {loaded.state === 'ready' && all.length === 0 && <div className="library-empty">{notice && !notice.error && <p role="status">{notice.message}</p>}<RyugiMark size={28} /><h2>还没有发布过 Artifact</h2><p>打开自动发布，或在本地分享面板里发布，它们会出现在这里。</p></div>}
+      {loaded.state === 'ready' && all.length === 0 && <div className="library-empty">{notice && !notice.error && <p role="status">{notice.message}</p>}<RyugiMark size={28} /><h2>{t('cloudLibrary.emptyTitle')}</h2><p>{t('cloudLibrary.emptyBody')}</p></div>}
       {all.length > 0 && <>
         <main className="cloud-panel">
           <CloudLibrarySidebar items={all} filter={filter} onFilter={changeFilter} />
@@ -148,7 +150,7 @@ export function CloudArtifactList() {
             onInspect={(id) => { setInspected(id); setNotice(null); reveal.current = true; }}
             selecting={selecting} selected={selected} busy={busy} onSelect={select}
             onStartSelecting={() => { setSelecting(true); setNotice(null); }} onClearFilter={() => changeFilter({})} />
-          <section ref={inspectorRef} className="cloud-inspector" aria-label="详情">
+          <section ref={inspectorRef} className="cloud-inspector" aria-label={t('cloudLibrary.details')}>
             {selecting
               ? <CloudSelectionSummary items={picked} />
               : current && <CloudLibraryInspector key={current.id} artifact={current} busy={busy}
@@ -157,31 +159,31 @@ export function CloudArtifactList() {
           </section>
         </main>
         <footer className="cloud-footer">
-          {notice?.error && <div className="cloud-notice" role="alert">{notice.message} {notice.auth && <a href="/auth/login?return=/">重新登录</a>}</div>}
+          {notice?.error && <div className="cloud-notice" role="alert">{notice.message} {notice.auth && <a href="/auth/login?return=/">{t('common.signInAgain')}</a>}</div>}
           <div className="cloud-footer-bar">
             {selecting ? <>
-              <span className="cloud-strong" role="status">已选 {picked.length} 项</span>
+              <span className="cloud-strong" role="status">{t('cloudLibrary.selected', { count: picked.length })}</span>
               <span className="cloud-grow" />
-              <Button size="small" disabled={busy} onClick={cancelSelection}>取消</Button>
+              <Button size="small" disabled={busy} onClick={cancelSelection}>{t('common.cancel')}</Button>
               <Button size="small" danger type="primary" style={deleteButtonStyle} loading={busy} disabled={picked.length === 0 || busy || notice?.auth} onClick={() => {
                 if (notice?.retry) void remove(picked);
                 else setPending(picked);
-              }}>{notice?.retry ? '重试删除' : `删除 ${picked.length} 项`}</Button>
+              }}>{notice?.retry ? t('cloudLibrary.retryDelete') : t('cloudLibrary.deleteCount', { count: picked.length })}</Button>
             </> : <>
               <i className={notice ? 'cloud-dot is-on' : 'cloud-dot'} />
-              <span className="cloud-grow cloud-ellipsis" role="status">{notice && !notice.error ? notice.message : `${all.length} 个 Artifact · ${projectCounts(all).length} 个项目`}</span>
+              <span className="cloud-grow cloud-ellipsis" role="status">{notice && !notice.error ? notice.message : t('cloudLibrary.summary', { artifacts: t('cloudLibrary.artifacts', { count: all.length }), projects: t('cloudLibrary.projects', { count: projectCounts(all).length }) })}</span>
               <span className="cloud-mono">{location.host}</span>
             </>}
           </div>
         </footer>
       </>}
-      <Modal open={pending !== null} title={`删除这 ${pending?.length ?? 0} 个 Artifact？`} width={492} centered
-        okText={busy ? '正在删除…' : `删除 ${pending?.length ?? 0} 项`} cancelText="取消" confirmLoading={busy}
+      <Modal open={pending !== null} title={t('cloudLibrary.confirmTitle', { count: pending?.length ?? 0 })} width={492} centered
+        okText={busy ? t('cloudLibrary.deleting') : t('cloudLibrary.deleteCount', { count: pending?.length ?? 0 })} cancelText={t('common.cancel')} confirmLoading={busy}
         okButtonProps={{ danger: true, style: deleteButtonStyle }} cancelButtonProps={{ disabled: busy }} closable={!busy} keyboard={!busy} maskClosable={!busy}
         onCancel={() => !busy && setPending(null)} onOk={() => pending && void remove(pending)}>
-        <p className="cloud-delete-description">云端内容和历史版本将永久删除，原分享链接会失效。此操作无法撤销。</p>
-        <ul className="cloud-delete-items">{pending?.map((artifact) => <li key={artifact.id}><span>{artifact.title ?? artifact.id}</span><small>{artifact.project ?? '其他'}</small></li>)}</ul>
-        <p className="cloud-delete-hint"><strong>本地源文件会保留。</strong><br />本地发现云端副本已删除后，会停止自动发布。之后手动发布会生成新链接。</p>
+        <p className="cloud-delete-description">{t('cloudLibrary.confirmBody')}</p>
+        <ul className="cloud-delete-items">{pending?.map((artifact) => <li key={artifact.id}><span>{artifact.title ?? artifact.id}</span><small>{artifact.project ?? t('common.other')}</small></li>)}</ul>
+        <p className="cloud-delete-hint"><strong>{t('cloudLibrary.keepLocal')}</strong><br />{t('cloudLibrary.keepLocalBody')}</p>
       </Modal>
     </div>
   );

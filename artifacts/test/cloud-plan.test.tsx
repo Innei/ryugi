@@ -37,12 +37,12 @@ const FREE = {
 describe('CloudPlanUsage', () => {
   test('a free account sees its private and public counts and a way to upgrade', async () => {
     const host = await render(FREE);
-    expect(host.textContent).toContain('免费版');
-    expect(host.textContent).toContain('私有 4/5');
-    expect(host.textContent).toContain('公开 10/10');
-    const full = Array.from(host.querySelectorAll('.cloud-plan-count')).find((node) => node.textContent === '公开 10/10');
+    expect(host.textContent).toContain('Free');
+    expect(host.textContent).toContain('Private 4/5');
+    expect(host.textContent).toContain('Public 10/10');
+    const full = Array.from(host.querySelectorAll('.cloud-plan-count')).find((node) => node.textContent === 'Public 10/10');
     expect(full?.classList.contains('is-full')).toBe(true);
-    expect(host.querySelector<HTMLAnchorElement>('a[href="/billing"]')?.textContent).toBe('升级到 Pro');
+    expect(host.querySelector<HTMLAnchorElement>('a[href="/billing"]')?.textContent).toBe('Upgrade to Pro');
   });
 
   test('the pill turns amber once any free count is full, and stays calm otherwise', async () => {
@@ -55,7 +55,7 @@ describe('CloudPlanUsage', () => {
     const host = await render({ ...FREE, plan: 'pro', usage: { ...FREE.usage, total: 160 }, limits: { private: null, public: null, total: 500, publishesPerDay: null, viewsPerMonth: 100000 } });
     expect(host.textContent).toContain('Pro');
     expect(host.textContent).toContain('160/500');
-    expect(host.querySelector<HTMLAnchorElement>('a[href="/billing"]')?.textContent).toBe('方案');
+    expect(host.querySelector<HTMLAnchorElement>('a[href="/billing"]')?.textContent).toBe('Plans');
   });
 
   test('shows nothing when the plan cannot be read', async () => {
@@ -70,13 +70,13 @@ describe('plan limit refusals', () => {
     const error = await changeVisibility('a1', 'public', (async () => new Response(JSON.stringify(refusal), { status: 402 })) as typeof fetch).catch((err: unknown) => err);
     expect(error).toBeInstanceOf(CloudRequestError);
     expect(error).toMatchObject({ status: 402, upgradeUrl: 'https://ryugi.innei.dev/billing', limit: { kind: 'public', max: 10 } });
-    expect(planLimitMessage((error as CloudRequestError).limit!)).toBe('免费版的 10 个公开名额已用完。');
+    expect(planLimitMessage((error as CloudRequestError).limit!)).toBe('All 10 public slots on the free plan are used.');
   });
 
   test('describes each kind of limit in Chinese', () => {
-    expect(planLimitMessage({ kind: 'private', used: 5, max: 5 })).toBe('免费版的 5 个私有名额已用完。');
-    expect(planLimitMessage({ kind: 'total', used: 500, max: 500 })).toBe('Pro 的 500 个名额已用完，删除一些后再试。');
-    expect(planLimitMessage({ kind: 'publishes', used: 20, max: 20 })).toBe('免费版今天的 20 次发布已用完。');
+    expect(planLimitMessage({ kind: 'private', used: 5, max: 5 })).toBe('All 5 private slots on the free plan are used.');
+    expect(planLimitMessage({ kind: 'total', used: 500, max: 500 })).toBe('All 500 Pro slots are used. Delete some and try again.');
+    expect(planLimitMessage({ kind: 'publishes', used: 20, max: 20 })).toBe("You've used today's 20 publishes on the free plan.");
   });
 });
 
@@ -92,25 +92,25 @@ describe('PlanLimitDialog', () => {
   test('a full public quota keeps the artifact private and offers Pro, tidying up, or leaving it', async () => {
     const onClose = vi.fn();
     const host = await dialog({ limit: { kind: 'public', used: 10, max: 10 }, title: '发布会海报', upgradeUrl: 'https://ryugi.innei.dev/billing', onClose });
-    expect(host.querySelector('h2')?.textContent).toBe('公开名额已用完');
-    expect(host.textContent).toContain('「发布会海报」会保持私有');
+    expect(host.querySelector('h2')?.textContent).toBe('Public slots are full');
+    expect(host.textContent).toContain('“发布会海报” stays private');
     expect(host.textContent).toContain('10 / 10');
     expect(host.querySelectorAll('.plan-limit-slot')).toHaveLength(10);
     const links = Array.from(host.querySelectorAll('a')).map((a) => [a.getAttribute('href'), a.textContent]);
     expect(links).toEqual([
-      ['https://ryugi.innei.dev/billing', '升级到 Pro$5 / 月 · 500 个名额'],
-      ['/?visibility=public', '去整理公开作品'],
+      ['https://ryugi.innei.dev/billing', 'Upgrade to Pro$5 / month · 500 slots'],
+      ['/?visibility=public', 'Tidy up public artifacts'],
     ]);
-    const stay = Array.from(host.querySelectorAll('button')).find((b) => b.textContent === '先保持私有')!;
+    const stay = Array.from(host.querySelectorAll('button')).find((b) => b.textContent === 'Keep it private')!;
     act(() => stay.click());
     expect(onClose).toHaveBeenCalledOnce();
   });
 
   test('a full private quota keeps the artifact public', async () => {
     const host = await dialog({ limit: { kind: 'private', used: 5, max: 5 }, title: null, upgradeUrl: '/billing', onClose: () => {} });
-    expect(host.querySelector('h2')?.textContent).toBe('私有名额已用完');
-    expect(host.textContent).toContain('「这个作品」会保持公开');
+    expect(host.querySelector('h2')?.textContent).toBe('Private slots are full');
+    expect(host.textContent).toContain('“this artifact” stays public');
     expect(host.querySelectorAll('.plan-limit-slot')).toHaveLength(5);
-    expect(host.textContent).toContain('先保持公开');
+    expect(host.textContent).toContain('Keep it public');
   });
 });

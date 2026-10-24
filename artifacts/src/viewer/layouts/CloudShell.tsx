@@ -7,6 +7,7 @@ import { useTypeFavicon } from '../hooks/useTypeFavicon';
 import { loadShell, type ShellState } from '../lib/cloud-shell';
 import { knownHosts, takeHostHint } from '../lib/knownHosts';
 import { CloudNotFound } from './CloudNotFound';
+import { useTranslation } from '../i18n';
 
 const styles = stylex.create({
   shell: { position: 'fixed', inset: 0, display: 'flex', flexDirection: 'column', backgroundColor: cssVar.colorBgLayout },
@@ -29,6 +30,7 @@ function rememberHostHint() {
 }
 
 export function CloudShell({ id }: { id: string }) {
+  const { t } = useTranslation();
   useState(rememberHostHint);
   const [state, setState] = useState<ShellState>({ kind: 'loading' });
   const [header, setHeader] = useState<CloudHeaderState>({});
@@ -57,11 +59,11 @@ export function CloudShell({ id }: { id: string }) {
 
   useEffect(() => {
     if (state.kind === 'ready') document.title = header.title || state.title;
-    if (state.kind === 'missing') document.title = '这个链接打不开';
+    if (state.kind === 'missing') document.title = t('notFound.title');
   }, [state, header.title]);
   useTypeFavicon(state.kind === 'ready' ? state.type : null);
 
-  if (state.kind === 'loading') return <div {...stylex.props(styles.message)}>正在加载…</div>;
+  if (state.kind === 'loading') return <div {...stylex.props(styles.message)}>{t('common.loading')}</div>;
   if (state.kind === 'failed') return <div {...stylex.props(styles.message)}>{state.message}</div>;
   if (state.kind === 'missing') return <CloudNotFound id={id} login={state.login} />;
   return (

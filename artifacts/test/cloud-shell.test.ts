@@ -30,7 +30,7 @@ describe('loading the shell', () => {
 
   test('an artifact that is not published yet is named as such for its owner', async () => {
     const { impl } = fakeFetch({ 'GET /api/a/abc/meta': () => Response.json({ title: null, owner: true, visibility: 'private', published: false }) });
-    expect(await loadShell('abc', impl)).toEqual({ kind: 'ready', type: null, title: '还没发布', owner: true, visibility: 'private' });
+    expect(await loadShell('abc', impl)).toEqual({ kind: 'ready', type: null, title: 'Not published yet', owner: true, visibility: 'private' });
   });
 
   test('a link that will not open asks who is signed in', async () => {
@@ -52,7 +52,7 @@ describe('loading the shell', () => {
 
   test('a server error is reported, not shown as missing', async () => {
     const { impl } = fakeFetch({ 'GET /api/a/abc/meta': () => new Response('boom', { status: 500 }) });
-    expect(await loadShell('abc', impl)).toEqual({ kind: 'failed', message: '加载失败（500）' });
+    expect(await loadShell('abc', impl)).toEqual({ kind: 'failed', message: "Couldn't load (500)" });
   });
 });
 

@@ -1,5 +1,6 @@
 import { isVisibility, type Visibility } from '../../shared/cloud';
 import { ARTIFACT_TYPES, type ArtifactType } from '../../shared/types';
+import { i18n } from '../i18n';
 
 export const INSTALL_URL = 'https://github.com/Innei/ryugi#install';
 export const INSTALL_COMMAND = '/plugin marketplace add Innei/ryugi';
@@ -25,9 +26,7 @@ export class CloudRequestError extends Error {
 }
 
 export function planLimitMessage({ kind, max }: PlanLimit) {
-  if (kind === 'total') return `Pro 的 ${max} 个名额已用完，删除一些后再试。`;
-  if (kind === 'publishes') return `免费版今天的 ${max} 次发布已用完。`;
-  return `免费版的 ${max} 个${kind === 'private' ? '私有' : '公开'}名额已用完。`;
+  return i18n.t(`planLimit.${kind}`, { max });
 }
 
 export const loginUrl = (id: string) => `/auth/login?return=${encodeURIComponent(`/a/${id}`)}`;
@@ -37,7 +36,7 @@ const isPlanLimit = (value: unknown): value is PlanLimit =>
 
 async function requestError(res: Response) {
   const body = (await res.json().catch(() => null)) as { error?: unknown; code?: unknown; limit?: unknown; upgradeUrl?: unknown } | null;
-  const message = typeof body?.error === 'string' ? body.error : `请求失败（${res.status}）`;
+  const message = typeof body?.error === 'string' ? body.error : i18n.t('common.requestFailed', { status: res.status });
   if (res.status !== 402 || body?.code !== 'plan_limit' || !isPlanLimit(body.limit)) return new CloudRequestError(res.status, message);
   return new CloudRequestError(res.status, message, body.limit, typeof body.upgradeUrl === 'string' ? body.upgradeUrl : '/billing');
 }
@@ -49,10 +48,10 @@ export async function loadShell(id: string, fetchImpl: typeof fetch = fetch): Pr
     const { login } = (await session.json().catch(() => ({ login: null }))) as { login?: unknown };
     return { kind: 'missing', login: typeof login === 'string' ? login : null };
   }
-  if (!res.ok) return { kind: 'failed', message: `加载失败（${res.status}）` };
+  if (!res.ok) return { kind: 'failed', message: i18n.t('common.loadFailed', { status: res.status }) };
   const artifact = (await res.json()) as { type?: unknown; title?: unknown; owner?: unknown; visibility?: unknown };
   const type = ARTIFACT_TYPES.find((type) => type === artifact.type) ?? null;
-  return { kind: 'ready', type, title: typeof artifact.title === 'string' ? artifact.title : '还没发布', owner: artifact.owner === true, visibility: isVisibility(artifact.visibility) ? artifact.visibility : 'private' };
+  return { kind: 'ready', type, title: typeof artifact.title === 'string' ? artifact.title : i18n.t('cloudShell.untitled'), owner: artifact.owner === true, visibility: isVisibility(artifact.visibility) ? artifact.visibility : 'private' };
 }
 
 export async function changeVisibility(id: string, visibility: Visibility, fetchImpl: typeof fetch = fetch): Promise<Visibility> {

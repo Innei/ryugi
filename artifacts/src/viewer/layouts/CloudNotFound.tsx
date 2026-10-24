@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { RyugiMark } from '../components/RyugiMark';
 import { INSTALL_COMMAND, INSTALL_URL, loginUrl, switchAccount } from '../lib/cloud-shell';
 import { brand } from '../tokens.stylex';
+import { Trans, useTranslation } from '../i18n';
 
 const NARROW = '@media (max-width: 900px)';
 
@@ -94,6 +95,7 @@ const styles = stylex.create({
 });
 
 export function CloudNotFound({ id, login }: { id: string; login: string | null }) {
+  const { t } = useTranslation();
   const [error, setError] = useState<string | null>(null);
 
   const switchTo = async () => {
@@ -111,36 +113,36 @@ export function CloudNotFound({ id, login }: { id: string; login: string | null 
         ryugi
       </div>
       <section {...stylex.props(styles.left)}>
-        <h1 {...stylex.props(styles.title)}>这个链接打不开</h1>
-        <p {...stylex.props(styles.lead)}>它可能是私有的、已被撤下，或者链接不完整。</p>
-        <p {...stylex.props(styles.line)}>别人发给你的？请对方把它设为公开。</p>
+        <h1 {...stylex.props(styles.title)}>{t('notFound.title')}</h1>
+        <p {...stylex.props(styles.lead)}>{t('notFound.lead')}</p>
+        <p {...stylex.props(styles.line)}>{t('notFound.fromSomeone')}</p>
         {login ? (
           <div {...stylex.props(styles.who)}>
             <span {...stylex.props(styles.avatar)}>{login.slice(0, 1).toUpperCase()}</span>
             <div>
-              你已用 <b>{login}</b> 登录，这个链接不属于这个账号，或已被撤下。
+              <Trans i18nKey="notFound.signedInAs" values={{ login }} components={{ b: <b /> }} />
               <button type="button" onClick={() => void switchTo()} {...stylex.props(styles.button)}>
                 <LogOut size={12} />
-                换个账号
+                {t('notFound.switchAccount')}
               </button>
             </div>
           </div>
         ) : (
           <p {...stylex.props(styles.line)}>
-            你自己发布的？
+            {t('notFound.yours')}
             <a href={loginUrl(id)} {...stylex.props(styles.inlineLink)}>
               <LogIn size={13} style={{ verticalAlign: '-2px', marginInlineEnd: 3 }} />
-              用 GitHub 登录
+              {t('common.signInGithub')}
             </a>
-            后再打开。
+            {t('notFound.signInThen')}
           </p>
         )}
         {error && <p {...stylex.props(styles.error)}>{error}</p>}
       </section>
       <aside {...stylex.props(styles.promo)}>
         <RyugiMark size={32} color={brand.accent} />
-        <h2 {...stylex.props(styles.promoTitle)}>让 agent 把方案画给你看</h2>
-        <p {...stylex.props(styles.promoText)}>Ryugi 让 coding agent 先出 mockup、写设计文档，确认后再写代码。</p>
+        <h2 {...stylex.props(styles.promoTitle)}>{t('notFound.promoTitle')}</h2>
+        <p {...stylex.props(styles.promoText)}>{t('notFound.promoText')}</p>
         <div {...stylex.props(styles.tiles)} aria-hidden="true">
           <i {...stylex.props(styles.tile)} />
           <i {...stylex.props(styles.tile, styles.tileInk)} />
@@ -148,7 +150,7 @@ export function CloudNotFound({ id, login }: { id: string; login: string | null 
         </div>
         <code {...stylex.props(styles.code)}>{INSTALL_COMMAND}</code>
         <a href={INSTALL_URL} target="_blank" rel="noopener noreferrer" {...stylex.props(styles.go)}>
-          在 GitHub 上查看
+          {t('notFound.viewGithub')}
           <ArrowRight size={14} />
         </a>
       </aside>

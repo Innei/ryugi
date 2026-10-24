@@ -7,6 +7,7 @@ import { ownLink, publishState, syncNote, type Visibility } from '../../shared/c
 import { useCloudSync } from '../hooks/useCloudSync';
 import { pageLink, usePageQuery } from '../hooks/usePageQuery';
 import { cloudRequest, useCloudStatus, type CloudResult } from '../hooks/useCloudStatus';
+import { useTranslation } from '../i18n';
 
 const styles = stylex.create({
   trigger: {
@@ -54,10 +55,7 @@ const styles = stylex.create({
   warning: { color: cssVar.colorWarningText },
 });
 
-const VISIBILITY_HINT: Record<Visibility, string> = {
-  private: '只有你登录后能打开链接',
-  public: '拿到链接的人都能打开，不需要登录',
-};
+const VISIBILITY_HINT = { private: 'publish.hintPrivate', public: 'publish.hintPublic' } as const;
 
 interface Props {
   artifact: string;
@@ -65,6 +63,7 @@ interface Props {
 }
 
 export function PublishMenu({ artifact, floating = false }: Props) {
+  const { t } = useTranslation();
   const { status, refresh, login, waitingForLogin } = useCloudStatus();
   const [busy, setBusy] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
@@ -82,7 +81,7 @@ export function PublishMenu({ artifact, floating = false }: Props) {
     if (result.status === 401) void login(result.json.loginUrl as string | undefined);
     else if (!result.ok) {
       const reasons = Array.isArray(result.json.reasons) ? (result.json.reasons as string[]) : [];
-      setErrors([String(result.json.error ?? `请求失败（${result.status}）`), ...reasons]);
+      setErrors([String(result.json.error ?? t('common.requestFailed', { status: result.status })), ...reasons]);
     }
     await Promise.all([refresh(), sync.refresh()]);
     setBusy(false);
@@ -97,20 +96,20 @@ export function PublishMenu({ artifact, floating = false }: Props) {
   };
 
   const content = !status ? (
-    <div {...stylex.props(styles.panel, styles.muted)}>正在读取发布状态…</div>
+    <div {...stylex.props(styles.panel, styles.muted)}>{t('publish.readingStatus')}</div>
   ) : !status.signedIn ? (
     <div {...stylex.props(styles.panel)}>
-      <span {...stylex.props(styles.muted)}>登录 Ryugi Cloud 后，可以把这个 artifact 发布成一个链接分享给别人。</span>
+      <span {...stylex.props(styles.muted)}>{t('publish.signInPrompt')}</span>
       <Button type="primary" loading={waitingForLogin} onClick={() => void login()}>
-        {waitingForLogin ? '等待浏览器完成登录…' : '用 GitHub 登录'}
+        {waitingForLogin ? t('publish.waitingLogin') : t('common.signInGithub')}
       </Button>
     </div>
   ) : (
     <div {...stylex.props(styles.panel)}>
       <div {...stylex.props(styles.row)}>
-        <span {...stylex.props(styles.muted)}>已登录：{status.login}</span>
+        <span {...stylex.props(styles.muted)}>{t('publish.signedInAs', { login: status.login })}</span>
         <button type="button" {...stylex.props(styles.textButton)} onClick={() => void run(() => cloudRequest('POST', 'logout'))}>
-          退出登录
+          {t('publish.signOut')}
         </button>
       </div>
       <Segmented
@@ -118,12 +117,12 @@ export function PublishMenu({ artifact, floating = false }: Props) {
         disabled={busy}
         value={state.visibility}
         options={[
-          { label: '私有', value: 'private' },
-          { label: '公开', value: 'public' },
+          { label: t('visibility.private'), value: 'private' },
+          { label: t('visibility.public'), value: 'public' },
         ]}
         onChange={(value) => void setVisibility(value as Visibility)}
       />
-      <span {...stylex.props(styles.muted)}>{VISIBILITY_HINT[state.visibility]}</span>
+      <span {...stylex.props(styles.muted)}>{t(VISIBILITY_HINT[state.visibility])}</span>
       {shareUrl ? (
         <div {...stylex.props(styles.row)}>
           <a href={ownLink(shareUrl, status.hostId)} target="_blank" rel="noreferrer" {...stylex.props(styles.link)}>
@@ -132,12 +131,12 @@ export function PublishMenu({ artifact, floating = false }: Props) {
           <CopyButton content={shareUrl} size="small" />
         </div>
       ) : null}
-      {note ? <span {...stylex.props(sync.upToDate ? styles.muted : styles.warning)}>{note}</span> : null}
+      {note ? <span {...stylex.props(sync.upToDate ? styles.muted : styles.warning)}>{t(`publish.${note}`)}</span> : null}
       {!state.synced ? (
         <div {...stylex.props(styles.row, styles.warning)}>
-          <span>本地可见性还没同步到云端</span>
+          <span>{t('publish.visibilityNotSynced')}</span>
           <Button size="small" disabled={busy} onClick={() => void setVisibility(state.visibility)}>
-            同步
+            {t('publish.sync')}
           </Button>
         </div>
       ) : null}
@@ -149,7 +148,7 @@ export function PublishMenu({ artifact, floating = false }: Props) {
         </ul>
       ) : null}
       <Button type="primary" loading={busy} onClick={() => void run(() => cloudRequest('POST', `publish/${artifact}`))}>
-        {state.published ? '更新发布内容' : '发布'}
+        {state.published ? t('publish.update') : t('publish.publish')}
       </Button>
       {state.published ? (
         <button
@@ -158,11 +157,11 @@ export function PublishMenu({ artifact, floating = false }: Props) {
           {...stylex.props(styles.textButton, styles.danger)}
           onClick={() => void run(() => cloudRequest('DELETE', `publish/${artifact}`))}
         >
-          取消发布（链接将失效）
+          {t('publish.unpublish')}
         </button>
       ) : null}
       {state.published && status.autoPublish?.enabled ? (
-        <span {...stylex.props(styles.muted)}>自动发布已打开。取消发布后它会跳过这个 artifact，直到你再手动发布一次。</span>
+        <span {...stylex.props(styles.muted)}>{t('publish.autoPublishNote')}</span>
       ) : null}
     </div>
   );
@@ -171,8 +170,8 @@ export function PublishMenu({ artifact, floating = false }: Props) {
     <Popover placement="bottomRight" trigger="click" content={content} onOpenChange={(open) => void adoptCloudVisibility(open)}>
       <button type="button" aria-label="Share" {...stylex.props(styles.trigger, floating && styles.floating)}>
         {state.published && state.visibility === 'public' ? <Globe size={14} /> : <Lock size={14} />}
-        {state.published ? '已发布' : '分享'}
-        {sync.upToDate === false ? <span aria-label="有未发布的修改" {...stylex.props(styles.dot)} /> : null}
+        {state.published ? t('publish.published') : t('common.share')}
+        {sync.upToDate === false ? <span aria-label={t('publish.unpublishedChanges')} {...stylex.props(styles.dot)} /> : null}
       </button>
     </Popover>
   );
