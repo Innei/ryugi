@@ -4,6 +4,7 @@ import path from 'node:path';
 import type { Duplex } from 'node:stream';
 import { ARTIFACT_TYPES, type ArtifactSummary, type ArtifactType, type CanvasPayload, type DocumentPayload, type HtmlPayload, type ServerMessage } from '../shared/types';
 import { artifactKeyOf, artifactSignature, listArtifacts, resolveArtifactDir, type ArtifactRef } from './artifacts';
+import { artifactPath, resolveArtifactAddress } from './artifact-address';
 import { readDocument } from './document';
 import { parseDocument } from './document-codec';
 import { agentAddOnBoard, asBoardAgentOp, asBoardHumanOp, boardFiles, boardSpecs, createBoardCommentRegistry } from './board-comments';
@@ -483,6 +484,7 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
     const summaries: ArtifactSummary[] = artifacts.map((entry) => ({
       type: entry.type,
       id: entry.id,
+      url: artifactPath(root, entry.type, entry.id),
       title: titleOf(readArtifact(entry.dir, entry), entry),
       updatedAt: latestMtime(entry.dir),
     }));
@@ -691,20 +693,24 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
     }
 
     if (SHELL_ROUTE.test(pathname) || PREVIEW_ROUTE.test(pathname) || pathname === '/index.html') {
-      const ref = artifactKeyOf(pathname.replace(/^\/(?:preview\/)?/, '').replace(/\/$/, ''));
-      const dir = ref && resolveArtifactDir(root, ref.type, ref.id);
+      const requested = artifactKeyOf(pathname.replace(/^\/(?:preview\/)?/, '').replace(/\/$/, ''));
+      const resolved = requested && resolveArtifactAddress(root, requested.type, requested.id);
+      const ref = resolved ?? requested;
+      const dir = resolved?.dir;
       const project = path.basename(path.dirname(path.dirname(root)));
       const title = ref ? (dir ? titleOf(readArtifact(dir, ref), ref) : ref.id) : `${project} · Artifacts`;
       const description = ref
         ? `在 ${project} 项目中查看 ${title}，这是一个 ${ref.type === 'artboard' ? 'Artboard' : ref.type === 'document' ? 'Document' : 'HTML'} Artifact。`
         : `浏览 ${project} 项目的全部 Artboard、Document 和 HTML Artifact，预览真实内容，按类型、名称和更新时间查找作品。`;
-      const canonical = `http://${urlHostForHttp(options.urlHost)}:${port}/${ref ? `${ref.type}/${ref.id}` : ''}`;
-      const csp = PREVIEW_ROUTE.test(pathname) ? VIEWER_CSP.replace("frame-ancestors 'none'", "frame-ancestors 'self'") : VIEWER_CSP;
+      const preview = PREVIEW_ROUTE.test(pathname);
+      const canonicalPath = ref ? (dir ? artifactPath(root, ref.type, ref.id) : `/${ref.type}/${ref.id}`) : '/';
+      const canonical = `http://${urlHostForHttp(options.urlHost)}:${port}${preview ? '/preview' : ''}${canonicalPath}`;
+      const csp = preview ? VIEWER_CSP.replace("frame-ancestors 'none'", "frame-ancestors 'self'") : VIEWER_CSP;
       const headers: Record<string, string> = { 'Content-Type': 'text/html; charset=utf-8' };
       if (key !== null) headers['Set-Cookie'] = `${cookieName}=${token}; HttpOnly; SameSite=Strict; Path=/`;
       void fs.promises.readFile(path.join(viewerDir, 'index.html'), 'utf8')
         .then((template) => {
-          const html = viewerPage(template, { title, description, url: canonical, icon: ref ? typeFaviconHref(ref.type) : undefined });
+          const html = viewerPage(template, { title, description, url: canonical, icon: ref ? typeFaviconHref(ref.type) : undefined, artifactId: resolved?.id });
           send(res, 200, html, { ...headers, 'Content-Security-Policy': allowInlineScripts(csp, html) });
         })
         .catch((err: NodeJS.ErrnoException) => send(res, err.code === 'ENOENT' ? 404 : 500, 'Viewer unavailable'));
@@ -768,7 +774,7 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
 
   const origin = `http://${urlHostForHttp(options.urlHost)}:${port}`;
   const url = `${origin}/?key=${token}`;
-  const linkFor = (type: ArtifactType, id: string) => `${origin}/${type}/${id}?key=${token}`;
+  const linkFor = (type: ArtifactType, id: string) => `${origin}${artifactPath(root, type, id)}?key=${token}`;
 
   const signatures = new Map<string, string>();
   const writeState = (ref: ArtifactRef, dir: string) => {

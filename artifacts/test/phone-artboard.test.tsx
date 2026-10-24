@@ -40,6 +40,7 @@ const layout = {
 let root: Root | undefined;
 let host: HTMLDivElement | undefined;
 beforeEach(() => {
+  history.replaceState(null, '', '/artboard/mobile-comments');
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ signedIn: false, artifacts: {} }) }));
   vi.stubGlobal('IntersectionObserver', class { observe() {} disconnect() {} });

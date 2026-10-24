@@ -83,7 +83,7 @@ describe('automatic browser open', () => {
     await startServer(root, bin);
 
     await waitFor(() => opened(log).length > 0, 5000);
-    expect(opened(log)[0]).toMatch(/\/artboard\/header\?key=/);
+    expect(opened(log)[0]).toMatch(/\/artboard\/[a-f0-9]{32}\?key=/);
   }, 15000);
 
   test('opens a target artboard skeleton from its declaration alone', async () => {
@@ -97,7 +97,7 @@ describe('automatic browser open', () => {
     await waitFor(() => fs.existsSync(warningsFile) && readJson(warningsFile).pending?.length === 1, 3000);
     expect(readJson(warningsFile).warnings).toEqual([]);
     await waitFor(() => opened(log).length > 0, 5000);
-    expect(opened(log)[0]).toMatch(/\/artboard\/header\?key=/);
+    expect(opened(log)[0]).toMatch(/\/artboard\/[a-f0-9]{32}\?key=/);
     expect(fs.existsSync(path.join(root, 'artboard/header/pages/p/a.html'))).toBe(false);
   }, 15000);
 
@@ -123,7 +123,7 @@ describe('automatic browser open', () => {
     expect(readJson(warningsFile).warnings).toEqual([]);
     await waitFor(() => opened(log).length > 0, 5000);
     expect(opened(log)).toHaveLength(1);
-    expect(opened(log)[0]).toMatch(/\/artboard\/header\?key=/);
+    expect(opened(log)[0]).toMatch(/\/artboard\/[a-f0-9]{32}\?key=/);
 
     for (const [id, remaining] of [['a', 2], ['b', 1], ['c', 0]] as const) {
       const file = path.join(root, `artboard/header/pages/p/${id}.html`);

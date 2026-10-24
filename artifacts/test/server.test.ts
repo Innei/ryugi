@@ -129,7 +129,10 @@ describe('session key', () => {
   test('the url and artifact links carry the key and the display host', async () => {
     const { server } = await start();
     expect(server.url).toBe(`http://localhost:${server.port}/?key=${server.token}`);
-    expect(server.linkFor('html', 'arrow-tuner')).toBe(`http://localhost:${server.port}/html/arrow-tuner?key=${server.token}`);
+    const link = new URL(server.linkFor('html', 'arrow-tuner'));
+    expect(link.origin).toBe(`http://localhost:${server.port}`);
+    expect(link.pathname).toMatch(/^\/html\/[a-f0-9]{32}$/);
+    expect(link.searchParams.get('key')).toBe(server.token);
   });
 });
 
@@ -150,7 +153,10 @@ describe('page metadata', () => {
     writeArtboard(root, 'ideas', { ...canvas, title: 'Header ideas' }, { 'pages/p/a.html': '<p>Idea</p>' });
     writeDocument(root, 'plan', { 'doc.xml': '<doc><h1>Shipping plan</h1><p>Plan</p></doc>' });
     writeHtml(root, 'tuner', { 'index.html': '<title>Arrow tuner</title><p>Tuner</p>' });
-    for (const [route, title] of [['/', 'test-project · Artifacts'], ['/artboard/ideas', 'Header ideas'], ['/document/plan', 'Shipping plan'], ['/html/tuner', 'Arrow tuner']]) {
+    fs.writeFileSync(path.join(root, 'artboard/ideas/.artifact-id'), 'a'.repeat(32));
+    fs.writeFileSync(path.join(root, 'document/plan/.artifact-id'), 'b'.repeat(32));
+    fs.writeFileSync(path.join(root, 'html/tuner/.artifact-id'), 'c'.repeat(32));
+    for (const [route, title, canonical] of [['/', 'test-project · Artifacts', '/'], ['/artboard/ideas', 'Header ideas', `/artboard/${'a'.repeat(32)}`], ['/document/plan', 'Shipping plan', `/document/${'b'.repeat(32)}`], ['/html/tuner', 'Arrow tuner', `/html/${'c'.repeat(32)}`]]) {
       const response = await get(`${base(server)}${route}?key=${server.token}&tracking=private`);
       expect(response.status).toBe(200);
       expect(response.body).toContain(`<title>${title}</title>`);
@@ -159,8 +165,8 @@ describe('page metadata', () => {
       expect(response.body.match(/<meta name="description"/g)).toHaveLength(1);
       expect(response.body.match(/<meta name="robots"/g)).toHaveLength(1);
       expect(response.body).toMatch(/<meta name="description" content="[^"]*test-project[^"]*">/);
-      expect(response.body).toContain(`<link rel="canonical" href="http://localhost:${server.port}${route}">`);
-      expect(response.body).toContain(`<meta property="og:url" content="http://localhost:${server.port}${route}">`);
+      expect(response.body).toContain(`<link rel="canonical" href="http://localhost:${server.port}${canonical}">`);
+      expect(response.body).toContain(`<meta property="og:url" content="http://localhost:${server.port}${canonical}">`);
       expect(response.body).not.toContain(server.token);
       expect(response.body).not.toContain('tracking=private');
       expect(response.headers['x-robots-tag']).toBe('noindex, nofollow');
@@ -195,11 +201,12 @@ describe('page metadata', () => {
   test('escapes artifact titles and uses the configured host, including for preview and index aliases', async () => {
     const { server, root } = await start({ viewer: path.resolve(__dirname, '../dist/viewer') });
     writeArtboard(root, 'unsafe', { ...canvas, title: 'Research "A&B" </title><script>alert(1)</script>' }, { 'pages/p/a.html': '<p>Idea</p>' });
+    fs.writeFileSync(path.join(root, 'artboard/unsafe/.artifact-id'), 'd'.repeat(32));
     const page = await get(`${base(server)}/preview/artboard/unsafe/?key=${server.token}`, { Host: 'untrusted.example:123' });
     expect(page.body).toContain('<title>Research &quot;A&amp;B&quot; &lt;/title&gt;&lt;script&gt;alert(1)&lt;/script&gt;</title>');
     expect(page.body).not.toContain('<script>alert(1)</script>');
     expect(page.body).not.toContain('untrusted.example');
-    expect(page.body).toContain(`<link rel="canonical" href="http://localhost:${server.port}/artboard/unsafe">`);
+    expect(page.body).toContain(`<link rel="canonical" href="http://localhost:${server.port}/preview/artboard/${'d'.repeat(32)}">`);
     const index = await get(`${base(server)}/index.html?key=${server.token}`);
     expect(index.body).toContain(`<link rel="canonical" href="http://localhost:${server.port}/">`);
   });

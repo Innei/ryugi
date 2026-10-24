@@ -4,6 +4,7 @@ import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeAll, expect, test, vi } from 'vitest';
 import { CloudShell } from '../src/viewer/layouts/CloudShell';
+import { useCloudSharePanel } from '../src/viewer/components/CloudBanner';
 
 vi.mock('@stylexjs/stylex', async (original) => ({ ...await original<object>(), create: (value: unknown) => value, props: () => ({}), defineConsts: (value: unknown) => value, defineVars: (value: unknown) => value }));
 vi.mock('@lobehub/ui/stylex/cssVar.stylex', () => ({ cssVar: new Proxy({}, { get: (_, key) => `var(--${String(key)})` }) }));
@@ -17,6 +18,7 @@ afterEach(() => {
   root = null;
   vi.unstubAllGlobals();
   document.body.innerHTML = '';
+  history.replaceState(null, '', '/');
 });
 
 async function mount(owner = true) {
@@ -82,4 +84,19 @@ test('visitors get the same navigation without owner share controls', async () =
   expect(host.querySelector('[aria-current="page"]')?.textContent).toBe('Memory eval');
   expect(host.textContent).toContain('开始使用');
   expect(Array.from(host.querySelectorAll('button')).some((button) => button.textContent === '分享')).toBe(false);
+});
+
+test('sharing keeps the current page and follows later navigation without copying the local key', async () => {
+  history.replaceState(null, '', '/a/c1?page=review&key=private#ryugi-host=abcdefghijklmnop');
+  function Share() { return useCloudSharePanel({ id: 'c1', visibility: 'private', onChange: () => {} }); }
+  const host = document.body.appendChild(document.createElement('div'));
+  root = createRoot(host);
+  await act(async () => root!.render(createElement(Share)));
+  const link = () => host.querySelector<HTMLInputElement>('input[aria-label="分享链接"]')!.value;
+  expect(link()).toBe(`${location.origin}/a/c1?page=review`);
+  await act(async () => {
+    history.replaceState(null, '', '/a/c1?page=first');
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  });
+  expect(link()).toBe(`${location.origin}/a/c1?page=first`);
 });

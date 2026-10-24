@@ -6,6 +6,7 @@ import { useState } from 'react';
 import type { Visibility } from '../../shared/cloud';
 import type { ArtifactType } from '../../shared/types';
 import type { CloudHeaderState } from '../hooks/useCloudHeader';
+import { pageLink, usePageQuery } from '../hooks/usePageQuery';
 import { changeVisibility, CloudRequestError, INSTALL_URL, planLimitMessage } from '../lib/cloud-shell';
 import { isSlotLimit, openPlanLimitDialog } from './PlanLimitDialog';
 import { RyugiMark } from './RyugiMark';
@@ -196,7 +197,8 @@ export function useCloudSharePanel({ id, title = null, visibility, onChange, inl
   const [error, setError] = useState<{ message: string; auth?: boolean; upgradeUrl?: string } | null>(null);
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
-  const url = `${location.origin}/a/${id}`;
+  const [page] = usePageQuery();
+  const url = pageLink(`${location.origin}/a/${id}`, page);
 
   const choose = async (next: Visibility) => {
     if (next === visibility || saving) return;

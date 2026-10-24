@@ -5,6 +5,7 @@ import { Globe, Lock } from 'lucide-react';
 import { useState } from 'react';
 import { ownLink, publishState, syncNote, type Visibility } from '../../shared/cloud';
 import { useCloudSync } from '../hooks/useCloudSync';
+import { pageLink, usePageQuery } from '../hooks/usePageQuery';
 import { cloudRequest, useCloudStatus, type CloudResult } from '../hooks/useCloudStatus';
 
 const styles = stylex.create({
@@ -69,6 +70,8 @@ export function PublishMenu({ artifact, floating = false }: Props) {
   const [errors, setErrors] = useState<string[]>([]);
   const entry = status?.artifacts[artifact];
   const state = publishState(entry);
+  const [page] = usePageQuery();
+  const shareUrl = state.url ? pageLink(state.url, page) : null;
   const sync = useCloudSync(artifact, !!status?.signedIn && state.published);
   const note = syncNote(sync.upToDate, !!status?.autoPublish?.enabled && entry?.autoPublish !== false);
 
@@ -121,12 +124,12 @@ export function PublishMenu({ artifact, floating = false }: Props) {
         onChange={(value) => void setVisibility(value as Visibility)}
       />
       <span {...stylex.props(styles.muted)}>{VISIBILITY_HINT[state.visibility]}</span>
-      {state.url ? (
+      {shareUrl ? (
         <div {...stylex.props(styles.row)}>
-          <a href={ownLink(state.url, status.hostId)} target="_blank" rel="noreferrer" {...stylex.props(styles.link)}>
-            {state.url}
+          <a href={ownLink(shareUrl, status.hostId)} target="_blank" rel="noreferrer" {...stylex.props(styles.link)}>
+            {shareUrl}
           </a>
-          <CopyButton content={state.url} size="small" />
+          <CopyButton content={shareUrl} size="small" />
         </div>
       ) : null}
       {note ? <span {...stylex.props(sync.upToDate ? styles.muted : styles.warning)}>{note}</span> : null}

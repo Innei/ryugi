@@ -109,17 +109,21 @@ describe('ryugi-artifacts start', () => {
     const result = spawnSync(process.execPath, [cli, 'start', '--project-dir', project, '--artifact', 'artboard/header'], { encoding: 'utf8', env, timeout: 15000 });
     expect(JSON.parse(result.stdout.trim().split('\n').pop()!).type).toBe('server-started');
     await waitFor(() => fs.existsSync(log), 5000);
-    expect(fs.readFileSync(log, 'utf8')).toContain('/artboard/header?key=');
+    expect(fs.readFileSync(log, 'utf8')).toMatch(/\/artboard\/[a-f0-9]{32}\?key=/);
   }, 15000);
 
   test('prints a link for an artifact, on start and on reuse', () => {
     const project = newProject();
     const first = run(['start', '--project-dir', project, '--artifact', 'html/arrow-tuner']).out;
     const key = first.url.split('key=')[1];
-    expect(first.link).toBe(`http://localhost:${first.port}/html/arrow-tuner?key=${key}`);
+    expect(new URL(first.link).pathname).toMatch(/^\/html\/[a-f0-9]{32}$/);
+    expect(new URL(first.link).searchParams.get('key')).toBe(key);
+    expect(run(['start', '--project-dir', project, '--artifact', 'html/arrow-tuner']).out.link).toBe(first.link);
     const second = run(['start', '--project-dir', project, '--artifact', 'artboard/header']).out;
     expect(second.reused).toBe(true);
-    expect(second.link).toBe(`http://localhost:${first.port}/artboard/header?key=${key}`);
+    expect(new URL(second.link).pathname).toMatch(/^\/artboard\/[a-f0-9]{32}$/);
+    expect(new URL(second.link).origin).toBe(`http://localhost:${first.port}`);
+    expect(new URL(second.link).searchParams.get('key')).toBe(key);
   }, 30000);
 
   test('rejects an invalid artifact name and unknown arguments with exit code 1', () => {
@@ -166,7 +170,7 @@ describe('ryugi-artifacts start', () => {
     const exited = new Promise((resolve) => child.on('close', resolve));
     while (!fs.existsSync(path.join(state, 'server-info'))) await new Promise((resolve) => setTimeout(resolve, 50));
     await waitFor(() => out.includes('server-started'));
-    expect(JSON.parse(out.trim().split('\n')[0]!).link).toMatch(/\/html\/x\?key=/);
+    expect(JSON.parse(out.trim().split('\n')[0]!).link).toMatch(/\/html\/[a-f0-9]{32}\?key=/);
     await new Promise((resolve) => setTimeout(resolve, 300));
     fs.mkdirSync(path.join(state, 'start.lock'));
     process.kill(Number(fs.readFileSync(path.join(state, 'server.pid'), 'utf8')), 'SIGTERM');
@@ -227,7 +231,7 @@ describe('cloud link on start', () => {
     const { cloud, env } = await signedIn();
     const project = newProject();
     const { out } = await runAsync(['start', '--project-dir', project, '--artifact', 'html/arrow'], { ...env, CLAUDECODE: '1' });
-    expect(out.link).toContain('/html/arrow?key=');
+    expect(out.link).toMatch(/\/html\/[a-f0-9]{32}\?key=/);
     expect(out.cloudLink).toBe(`${cloud.origin}/a/cloud1`);
     expect(JSON.parse(fs.readFileSync(path.join(project, '.ryugi', 'config.json'), 'utf8')).artifacts['html/arrow'].cloud.url).toBe(`${cloud.origin}/a/cloud1`);
     expect((await runAsync(['start', '--project-dir', project, '--artifact', 'html/arrow'], { ...env, CLAUDECODE: '1' })).out).toMatchObject({ reused: true, cloudLink: `${cloud.origin}/a/cloud1` });

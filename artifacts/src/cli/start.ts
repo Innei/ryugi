@@ -4,6 +4,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import readline from 'node:readline';
 import { AGENT_MARKERS } from '../server/agent';
+import { artifactPath } from '../server/artifact-address';
+import { artifactKeyOf } from '../server/artifacts';
 import { ARTIFACT_ERROR, ARTIFACT_PATTERN, CliError, invocation, projectPaths, type ProjectPaths } from './paths';
 import { alive, hasServerId, parentOf, readText, sleep, waitForExit } from './process';
 
@@ -27,7 +29,8 @@ function withLink(info: Record<string, unknown>, artifact: string | undefined, r
   if (reused) out.reused = true;
   if (artifact && typeof out.url === 'string') {
     const url = new URL(out.url);
-    out.link = `${url.origin}/${artifact}?key=${url.searchParams.get('key')}`;
+    const ref = artifactKeyOf(artifact)!;
+    out.link = `${url.origin}${artifactPath(String(out.root), ref.type, ref.id)}?key=${url.searchParams.get('key')}`;
   }
   return out;
 }

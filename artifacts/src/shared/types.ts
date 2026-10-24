@@ -104,6 +104,7 @@ export interface DocumentPayload {
 export interface ArtifactSummary {
   type: ArtifactType;
   id: string;
+  url?: string;
   title: string;
   updatedAt: number;
 }

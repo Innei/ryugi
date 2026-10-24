@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 const escapeHtml = (value: string) =>
   value.replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]!);
 
-export function viewerPage(template: string, page: { title: string; description: string; url: string; icon?: string }): string {
+export function viewerPage(template: string, page: { title: string; description: string; url: string; icon?: string; artifactId?: string }): string {
   const values: Record<string, string> = {
     robots: 'noindex, nofollow',
     description: page.description,
@@ -13,6 +13,7 @@ export function viewerPage(template: string, page: { title: string; description:
     'twitter:description': page.description,
   };
   return template
+    .replace(/<html\b/i, (tag) => page.artifactId ? `${tag} data-ryugi-artifact-id="${escapeHtml(page.artifactId)}"` : tag)
     .replace(/<title\b[^>]*>[\s\S]*?<\/title>/i, () => `<title>${escapeHtml(page.title)}</title>`)
     .replace(/(<link\b[^>]*\brel="icon"[^>]*\bhref=")[^"]*(")/i, (tag, prefix: string, suffix: string) => (page.icon ? `${prefix}${escapeHtml(page.icon)}${suffix}` : tag))
     .replace(/(<meta\b[^>]*\b(?:name|property)="([^"]+)"[^>]*\bcontent=")([^"]*)("[^>]*>)/gi, (tag, prefix: string, name: string, value: string, suffix: string) => {
