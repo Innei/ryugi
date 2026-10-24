@@ -52,7 +52,7 @@ describe('sign-in default', () => {
     const { server, credentialsFile } = await start({ signedIn: false });
     const page = await signIn(server);
     expect(readGlobalAutoPublish(settingsFileFor(credentialsFile))).toBe(true);
-    expect(page).toContain('自动发布已打开');
+    expect(page).toContain('Auto-publish is on');
     expect(page).toContain('ryugi-artifacts config --auto-publish off');
   });
 
@@ -61,7 +61,7 @@ describe('sign-in default', () => {
     writeGlobalAutoPublish(settingsFileFor(credentialsFile), false);
     const page = await signIn(server);
     expect(readGlobalAutoPublish(settingsFileFor(credentialsFile))).toBe(false);
-    expect(page).not.toContain('自动发布已打开');
+    expect(page).not.toContain('Auto-publish is on');
   });
 });
 
