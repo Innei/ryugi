@@ -19,3 +19,10 @@ test('falls back to English, then to the key', () => {
 test('leaves unknown placeholders in place', () => {
   expect(translator(dictionaries, 'en')('page.title')).toBe('Signed in as {{login}}');
 });
+
+test('picks the plural form from count', () => {
+  const plural = { en: { items_one: '{{count}} item', items_other: '{{count}} items' }, zh: { items_other: '{{count}} 项' } };
+  expect(translator(plural, 'en')('items', { count: 1 })).toBe('1 item');
+  expect(translator(plural, 'en')('items', { count: 3 })).toBe('3 items');
+  expect(translator(plural, 'zh')('items', { count: 1 })).toBe('1 项');
+});
