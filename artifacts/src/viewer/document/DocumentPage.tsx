@@ -2,7 +2,7 @@ import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
 import type { LexicalEditor } from 'lexical';
 import { LoroDoc } from 'loro-crdt';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { emptyComments, type CommentsFile, type HumanOp } from '../../shared/comments';
 import { WarningsBadge } from '../components/WarningsBadge';
 import { PHONE_QUERY, useMedia } from '../hooks/useMedia';
@@ -63,7 +63,7 @@ export interface CloudLive {
   reason: string | null;
 }
 
-export function DocumentView({ id, transport, live, cloud }: { id: string; transport: DocumentTransport; live: boolean; cloud?: CloudLive }) {
+export function DocumentView({ id, transport, live, cloud, fallback }: { id: string; transport: DocumentTransport; live: boolean; cloud?: CloudLive; fallback?: ReactNode }) {
   const [meta, setMeta] = useState<DocumentMeta | null>(null);
   const [doc, setDoc] = useState<LoroDoc | null>(null);
   const [comments, setComments] = useState<CommentsFile>(emptyComments);
@@ -105,6 +105,7 @@ export function DocumentView({ id, transport, live, cloud }: { id: string; trans
     if (next) setMeta(next);
   }, [transport]);
 
+  const preserveScroll = fallback != null;
   useEffect(() => {
     let cancelled = false;
     void (async () => {
@@ -120,7 +121,10 @@ export function DocumentView({ id, transport, live, cloud }: { id: string; trans
         setAgentActiveAt(state.agentActiveAt);
         syncClock(state.now);
         setComments(state.comments ?? emptyComments());
+        const scroll = preserveScroll ? { left: window.scrollX, top: window.scrollY, behavior: 'instant' as const } : null;
         setDoc(loro);
+        // The editor binding fills its initially empty DOM after mounting.
+        if (scroll) requestAnimationFrame(() => { if (!cancelled) window.scrollTo(scroll); });
       } catch (err) {
         if (!cancelled) setLoadError((err as Error).message);
       }
@@ -128,7 +132,7 @@ export function DocumentView({ id, transport, live, cloud }: { id: string; trans
     return () => {
       cancelled = true;
     };
-  }, [transport, refreshMeta, syncClock]);
+  }, [transport, refreshMeta, syncClock, preserveScroll]);
 
   useEffect(
     () =>
@@ -219,7 +223,7 @@ export function DocumentView({ id, transport, live, cloud }: { id: string; trans
   );
 
   if (loadError) return <div {...stylex.props(styles.message)}>{loadError}</div>;
-  if (!doc) return <div {...stylex.props(styles.message)}>Loading…</div>;
+  if (!doc) return fallback ?? <div {...stylex.props(styles.message)}>Loading…</div>;
 
   const editorView = (
     <DynamicHostContext.Provider value={dynamicHost}>

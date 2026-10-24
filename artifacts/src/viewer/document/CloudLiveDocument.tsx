@@ -26,11 +26,11 @@ export default function CloudLiveDocument({ id, state, contentBase, liveContentB
     if (online) setWasLive(true);
   }, [online]);
 
+  const snapshot = state && contentBase ? <CloudDocument id={id} state={state} contentBase={contentBase} comments={comments} offline={presence !== null && !online} /> : null;
   if (!transport || !(wasLive || online)) {
-    if (!state || !contentBase) return <CloudMessage>{presence === null ? '正在连接…' : '还没发布。电脑在线时，这里会实时显示。'}</CloudMessage>;
-    return <CloudDocument id={id} state={state} contentBase={contentBase} comments={comments} offline={presence !== null && !online} />;
+    return snapshot ?? <CloudMessage>{presence === null ? '正在连接…' : '还没发布。电脑在线时，这里会实时显示。'}</CloudMessage>;
   }
   const canEdit = online && editableAcross(VIEWER_VERSION, presence?.version ?? null);
   const reason = online && !canEdit ? versionReason(VIEWER_VERSION, presence?.version ?? null) : null;
-  return <DocumentView id={id} transport={transport} live={online} cloud={{ online, canEdit, reason }} />;
+  return <DocumentView id={id} transport={transport} live={online} cloud={{ online, canEdit, reason }} fallback={snapshot} />;
 }
