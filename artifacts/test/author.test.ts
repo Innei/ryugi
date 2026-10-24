@@ -12,9 +12,9 @@ test.each([
   expect(authorOf(message)).toEqual(expected);
 });
 
-test('every agent the server can name has an icon, except Augment, which lobe-icons lacks', () => {
+test('every agent the server can name has an icon, except the ones lobe-icons lacks', () => {
   const missing = AGENT_DISPLAY_NAMES.filter((name) => !agentIconOf(name));
-  expect(missing).toEqual(['Augment']);
+  expect(missing).toEqual(['OMP', 'Augment']);
 });
 
 test('an unknown agent has no icon', () => {

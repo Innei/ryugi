@@ -5,6 +5,9 @@ describe('detectAgent', () => {
   test.each([
     [{ AI_AGENT: 'claude-code_2-1-304_agent', CLAUDECODE: '1' }, 'Claude Code'],
     [{ CLAUDECODE: '1' }, 'Claude Code'],
+    [{ OMPCODE: '1', CLAUDECODE: '1', AGENT: '1' }, 'OMP'],
+    [{ OMPCODE: '1' }, 'OMP'],
+    [{ AI_AGENT: 'oh-my-pi@1', CLAUDECODE: '1' }, 'OMP'],
     [{ CLAUDECODE: '1', CLAUDE_CODE_IS_COWORK: '1' }, 'Claude Cowork'],
     [{ CODEX_THREAD_ID: 'abc' }, 'Codex'],
     [{ CODEX_SANDBOX: 'seatbelt' }, 'Codex'],

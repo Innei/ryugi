@@ -12,6 +12,8 @@ const NAMES: Record<string, string> = {
   'github-copilot': 'GitHub Copilot',
   'github-copilot-cli': 'GitHub Copilot',
   kilo: 'Kilo Code',
+  omp: 'OMP',
+  'oh-my-pi': 'OMP',
   opencode: 'OpenCode',
   'qwen-code': 'Qwen Code',
   antigravity: 'Antigravity',
@@ -28,8 +30,10 @@ const NAMES: Record<string, string> = {
 
 export const AGENT_DISPLAY_NAMES = [...new Set(Object.values(NAMES))];
 
-// Order matters: Cowork also sets the Claude Code markers, and Kilo is an OpenCode fork that sets OpenCode's.
+// Order matters: Cowork also sets the Claude Code markers, Kilo is an OpenCode fork that sets OpenCode's,
+// and omp sets CLAUDECODE so Claude-compatible extensions keep loading.
 const MARKERS: [string, (env: Env) => boolean][] = [
+  ['omp', (env) => !!env.OMPCODE],
   ['cowork', (env) => !!env.CLAUDE_CODE_IS_COWORK],
   ['kilo', (env) => !!env.KILO],
   ['codex', (env) => !!(env.CODEX_THREAD_ID || env.CODEX_SANDBOX || env.CODEX_CI)],
@@ -48,6 +52,7 @@ const MARKERS: [string, (env: Env) => boolean][] = [
 export const AGENT_MARKERS = [
   'AI_AGENT',
   'AGENT',
+  'OMPCODE',
   'CLAUDE_CODE_IS_COWORK',
   'KILO',
   'CODEX_THREAD_ID',
