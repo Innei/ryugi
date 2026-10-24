@@ -109,7 +109,10 @@ node app/ryugi-artifacts.cjs start --json --project-dir /path/to/project --artif
 - Claude Code: run the command as is; it backgrounds the server. On
   Windows it stays in the foreground: use `run_in_background: true` and
   read `.ryugi/artifacts/.state/server-info` on the next turn, then build
-  the link as `<origin>/<type>/<id>?key=<key>` from its `url`.
+  the link as `<origin>/<type>/<id>?key=<key>` from its `url`. Inside a git
+  repository that file sits at the repository root
+  (`git rev-parse --show-toplevel`), not under a subdirectory you passed as
+  `--project-dir`, unless that subdirectory already has `.ryugi/artifacts/`.
 - Codex: run it as is; it detects `CODEX_CI` and stays in the foreground.
   Give it its own tool call with a yield of at least 5 seconds (a first run
   may install a release). When it starts a new server it does not return,

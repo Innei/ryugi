@@ -107,6 +107,13 @@ if [[ -z "$out" ]]; then pass "ignores selections when no server is running"; el
 out="$(run_hook "$TEST_ROOT/none" "改一下这里")"
 if [[ -z "$out" ]]; then pass "is silent in projects without artifacts"; else fail "is silent in projects without artifacts"; fi
 
+dir="$(project repo)"
+mkdir -p "$dir/.git" "$dir/packages/app"
+write_selection "$dir"
+out="$(run_hook "$dir/packages/app" "change this")"
+expect "finds the repository's server from a session in a subdirectory" "$out" 'hero-2#12 <div> in pages/main/hero-2.html'
+expect "points at the file relative to the session directory" "$out" 'Full selection and node map: ../../.ryugi/artifacts/.state/artboard/node-id/selection.json'
+
 echo "Documents"
 
 doc_project() {
@@ -131,7 +138,7 @@ dir="$(doc_project doc-unread)"
 write_doc_comments "$dir"
 out="$(run_hook "$dir" "继续")"
 expect "reminds about a document with unread comments" "$out" 'Comment threads changed since you last listed: document/relay (1).'
-expect "gives the command that lists them" "$out" "skills/artifacts/app/ryugi-artifacts.cjs\" comment list --json --project-dir \"$dir\" --artifact document/relay"
+expect "gives the command that lists them" "$out" "skills/artifacts/app/ryugi-artifacts.cjs\" comment list --json --project-dir \"$(cd "$dir" && pwd -P)\" --artifact document/relay"
 
 printf '{"Claude Code":"2026-10-21T08:00:00.000Z"}\n' > "$dir/.ryugi/artifacts/.state/document/relay/comment-cursors.json"
 out="$(run_hook "$dir" "继续")"

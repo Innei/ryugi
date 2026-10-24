@@ -46,7 +46,7 @@ function typedNodes(nodes, prompt) {
   return nodes.filter((node) => typed.has(node.id));
 }
 
-function describe(project, { file, value }, prompt, budget) {
+function describe(session, { file, value }, prompt, budget) {
   const named = typedNodes(value.nodes, prompt);
   if (!value.selected.length && !value.tweaks.length && !named.length) return '';
   const head = [`Artboard ${value.artifact}, open in the viewer (updated ${value.updatedAt}):`];
@@ -54,7 +54,7 @@ function describe(project, { file, value }, prompt, budget) {
     head.push('Nodes named in this message:');
     for (const node of named) head.push(`- ${where(node)}${node.name ? ` "${node.name}"` : ''}`);
   }
-  const tail = `Full selection and node map: ${path.relative(project, file)}`;
+  const tail = `Full selection and node map: ${path.relative(session, file)}`;
   const body = [];
   if (value.selected.length) {
     const html = Math.max(80, Math.min(MAX_HTML, Math.floor(budget / 2 / value.selected.length)));
@@ -210,7 +210,7 @@ function autoPublishContext(project, env, sessionId) {
   return lines.join('\n');
 }
 
-function documentSelections(project, root, budget) {
+function documentSelections(session, root, budget) {
   const sections = [];
   let left = budget;
   for (const id of documentIds(root)) {
@@ -220,7 +220,7 @@ function documentSelections(project, root, budget) {
     const blocks = value.blockIds.length ? `${value.heading ? ',' : ' in'} blocks ${value.blockIds.join(', ')}` : '';
     const where = `${value.heading ? ` under "${value.heading}"` : ''}${blocks}`;
     const head = `Document document/${id}, open in the viewer (updated ${value.updatedAt}):\nSelected${where}:`;
-    const tail = `Full selection: ${path.relative(project, file)}`;
+    const tail = `Full selection: ${path.relative(session, file)}`;
     const room = left - head.length - tail.length - 4;
     if (room < 40) break;
     const quote = clip(value.quote, room).split('\n').map((line) => `> ${line}`).join('\n');
@@ -233,6 +233,7 @@ function documentSelections(project, root, budget) {
 
 function main() {
   const project = process.argv[2];
+  const session = process.argv[3] || project;
   let input = {};
   try { input = JSON.parse(fs.readFileSync(0, 'utf8')); } catch {}
   const prompt = typeof input.prompt === 'string' ? input.prompt : '';
@@ -246,12 +247,12 @@ function main() {
   let left = MAX_CONTEXT - (reminders ? reminders.length + 2 : 0);
   for (const entry of files) {
     if (left <= 0) break;
-    const section = describe(project, entry, prompt, left);
+    const section = describe(session, entry, prompt, left);
     if (!section) continue;
     sections.push(section);
     left -= section.length + 2;
   }
-  sections.push(...documentSelections(project, root, left));
+  sections.push(...documentSelections(session, root, left));
   if (reminders) sections.push(reminders);
   if (!sections.length) return;
   process.stdout.write(`${sections.join('\n\n')}\n`);

@@ -337,6 +337,21 @@ else
     fail "starting the artifacts server never delays session start"
 fi
 
+repo_home="$(make_home published-repo)"
+repo_dir="$(cd "$repo_home" && pwd -P)/repo"
+mkdir -p "$repo_dir/.git" "$repo_dir/.ryugi" "$repo_dir/packages/app" "$repo_home/bin"
+cp "$project_dir/.ryugi/config.json" "$repo_dir/.ryugi/config.json"
+printf '#!/usr/bin/env bash\nprintf "%%s\\n" "$@" > "%s"\n' "$repo_home/node-args" > "$repo_home/bin/node"
+chmod +x "$repo_home/bin/node"
+env -i PATH="$repo_home/bin:${PATH:-}" HOME="$repo_home" CLAUDE_PLUGIN_ROOT="$REPO_ROOT" CLAUDE_PROJECT_DIR="$repo_dir/packages/app" \
+    bash "$HOOK_UNDER_TEST" >/dev/null 2>&1 || true
+for _ in 1 2 3 4 5 6 7 8 9 10; do [[ -s "$repo_home/node-args" ]] && break; sleep 0.2; done
+if [[ "$(tail -n 1 "$repo_home/node-args" 2>/dev/null)" == "$repo_dir" ]]; then
+    pass "starts the repository's server from a session in a subdirectory"
+else
+    fail "starts the repository's server from a session in a subdirectory"
+fi
+
 if [[ "$FAILURES" -gt 0 ]]; then
     echo "STATUS: FAILED ($FAILURES failure(s))"
     exit 1

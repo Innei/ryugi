@@ -72,6 +72,10 @@ emit_json() {
 # session, so its owner can comment from the cloud. Backgrounded and silent:
 # it must never delay or break session start, and skips when node is missing.
 project_dir="${CLAUDE_PROJECT_DIR:-}"
+if [ -n "$project_dir" ]; then
+  . "${SCRIPT_DIR}/project-root.sh"
+  project_dir="$(ryugi_project_root "$project_dir")"
+fi
 if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -z "${CURSOR_PLUGIN_ROOT:-}" ] && [ "${OS:-}" != "Windows_NT" ] && [ -n "$project_dir" ] \
   && [ -f "$project_dir/.ryugi/config.json" ] && command -v node >/dev/null 2>&1; then
   RYUGI_ARTIFACTS_OWNER="$PPID" node "${SCRIPT_DIR}/start-artifacts.cjs" "$project_dir" </dev/null >/dev/null 2>&1 &

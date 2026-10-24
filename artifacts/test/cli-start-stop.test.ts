@@ -68,6 +68,28 @@ describe('ryugi-artifacts start', () => {
     expect(second.reused).toBe(true);
   }, 30000);
 
+  test('a start from a subdirectory of the repository reuses the root server', () => {
+    const project = newProject();
+    fs.mkdirSync(path.join(project, '.git'));
+    fs.mkdirSync(path.join(project, 'packages', 'app'), { recursive: true });
+    const first = run(['start', '--project-dir', project]).out;
+    const second = run(['start', '--project-dir', path.join(project, 'packages', 'app')]).out;
+    expect(second.url).toBe(first.url);
+    expect(second.reused).toBe(true);
+    expect(second.root).toBe(fs.realpathSync(path.join(project, '.ryugi', 'artifacts')));
+  }, 30000);
+
+  test('the skill launcher resolves a subdirectory to the repository root', () => {
+    const project = newProject();
+    fs.mkdirSync(path.join(project, '.git'));
+    fs.mkdirSync(path.join(project, 'packages', 'app'), { recursive: true });
+    const launcher = path.resolve(__dirname, '../../skills/artifacts/app/ryugi-artifacts.cjs');
+    const result = spawnSync(process.execPath, [launcher, 'start', '--json', '--project-dir', path.join(project, 'packages', 'app')], {
+      encoding: 'utf8', timeout: 15000, env: { ...withoutAgent(), ARTIFACTS_OPEN: '0' },
+    });
+    expect(JSON.parse(result.stdout.trim().split('\n').pop()!).root).toBe(fs.realpathSync(path.join(project, '.ryugi', 'artifacts')));
+  }, 30000);
+
   test('the server registers itself globally while it runs', () => {
     const project = newProject();
     const real = fs.realpathSync(project);

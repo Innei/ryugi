@@ -138,7 +138,7 @@ function ownerPid() {
 function main() {
   const args = process.argv.slice(2);
   const local = path.join(__dirname, 'cli.cjs');
-  const env = { ...process.env, RYUGI_ARTIFACTS_COMMAND: `node "${__filename}"` };
+  const env = { ...process.env, RYUGI_ARTIFACTS_COMMAND: `node "${__filename}"`, RYUGI_ARTIFACTS_RESOLVE_ROOT: '1' };
   let cli = local;
   if (!fs.existsSync(local)) {
     const version = resolveRelease(args[0]);

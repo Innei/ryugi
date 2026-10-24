@@ -10,14 +10,11 @@ Agents start artifacts servers in the background, so nobody can see which projec
 
 - `start` already takes `.state/start.lock`, validates the running pid by its `--artifacts-server-id`, and reuses it (`reused: true`, same port and key). That stays.
 
-### Deferred: resolving subdirectories to the repository root
+### Subdirectories resolve to the repository root (shipped after the monitor)
 
-Agreed, then split out during implementation. Resolving `--project-dir` to the git root (nearest existing `.ryugi/artifacts/` below it wins) also needs:
-
-- the skill (`SKILL.md`, `artboard.md`, `document.md`, `html.md`) to write under the `root` that `start` prints instead of `<project>/.ryugi/artifacts/`, with a baseline and after run per `AGENTS.md`;
-- the hooks (`stop`, `user-prompt-submit`, `selection-context.cjs`, `flush-artifacts.cjs`, `start-artifacts.cjs`), which read `$CLAUDE_PROJECT_DIR/.ryugi/artifacts` directly and would miss a server resolved to a parent directory.
-
-Shipping the CLI part alone breaks selections, comment reminders and auto-publish for sessions opened in a subdirectory. Until then the monitor shows such duplicates as separate rows.
+- Every CLI command resolves `--project-dir` (or cwd) before building `ProjectPaths`: walk up to the nearest `.git` (directory or file, so each worktree is its own project); between the given directory and that root, the nearest directory that already has `.ryugi/artifacts/` wins; no `.git` anywhere means the directory itself. The walk never goes above the git root, and a `.git` in the home directory counts only for the home directory itself, so a dotfiles repository does not merge every folder under `~`. Only launchers from this release on set `RYUGI_ARTIFACTS_RESOLVE_ROOT=1`; an older plugin's launcher, whose hooks still read the given directory, gets it unresolved (a direct `npx` run resolves). No library: JS workspace finders stop at sub-packages and miss non-JS projects. *(Claude's call.)*
+- The hooks (`stop`, `user-prompt-submit`, `session-start`) resolve the same way in `hooks/project-root.sh` and pass the resolved root to their node scripts. `selection-context.cjs` also gets the session directory, so the paths it prints stay relative to where the agent works. Under Git Bash the resolved path goes through `cygpath -m`, since native `node.exe` cannot read `/c/...`.
+- Skill: baseline runs (5 scenarios, sonnet and haiku) already wrote under the `root` that `start` prints; only the Windows foreground instruction, which reads `server-info` without seeing that output, failed. Only that paragraph of `SKILL.md` changed.
 
 ### Global registry
 
@@ -50,7 +47,7 @@ Shipping the CLI part alone breaks selections, comment reminders and auto-publis
 ## Anti-goals
 
 - The monitor listing a dead server as running, or hiding a live one it has an entry for.
-- A second server for the same project directory.
+- A second server for the same project because a command ran from a subdirectory.
 - An agent writing artifacts into a directory the server does not watch.
 - A crashed monitor leaving the terminal in raw mode.
 
