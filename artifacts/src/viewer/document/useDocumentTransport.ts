@@ -5,6 +5,7 @@ import { createChannel } from './channel';
 import { relayUrlFor } from '../hooks/useCloudFeed';
 import { knownHosts } from '../lib/knownHosts';
 import { createLiveConnection } from '../lib/liveConnection';
+import { connectPublication } from '../lib/cloud-publication';
 import { createLocalTransport, createRelayTransport, type DocumentTransport } from './transport';
 
 export function useLocalTransport(id: string) {
@@ -30,7 +31,7 @@ export function useRelayTransport(cloudId: string, contentBase: string) {
       artifact: `document/${cloudId}`,
       contentBase,
       onPresence: setPresence,
-      connect: (options) => createLiveConnection({ ...options, cloudId, known: knownHosts() }),
+      connect: (options) => connectPublication(cloudId, options, (next) => createLiveConnection({ ...next, cloudId, known: knownHosts() })),
     });
     setTransport(relay);
     return () => {

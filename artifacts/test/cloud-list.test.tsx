@@ -215,7 +215,7 @@ describe('cloud library management', () => {
     expect(requests).toEqual(['/api/a/a']);
     expect(rows(host)).toHaveLength(1);
     expect(inspector(host).querySelector('h2')?.textContent).toBe('Notes');
-    expect(host.querySelector('[role="status"]')?.textContent).toContain('Deleted 1 item');
+    expect(Array.from(host.querySelectorAll('[role="status"]')).some((status) => status.textContent?.includes('Deleted 1 item'))).toBe(true);
   });
 
   test('sharing failures preserve visibility and a later success updates the row', async () => {
@@ -325,7 +325,7 @@ describe('cloud library management', () => {
       requests++;
       return new Promise<Response>((resolve) => { settle = resolve; });
     }) as typeof fetch);
-    await act(async () => root!.render(createElement(ConfigProvider, { motion, enableCustomFonts: false, children: createElement(CloudHeader, { id: 'a', type: 'html', title: 'Arrow', owner: true, status: {}, visibility: 'private', onChange: () => {} }) })));
+    await act(async () => root!.render(createElement(ConfigProvider, { motion, enableCustomFonts: false, children: createElement(CloudHeader, { id: 'a', type: 'html', title: 'Arrow', owner: true, status: {}, visibility: 'private', published: true, onChange: () => {} }) })));
     for (const status of [503, 401]) {
       await click('Share');
       await act(async () => { shareOption('Anyone with the link').click(); });

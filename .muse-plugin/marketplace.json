@@ -9,7 +9,7 @@
     {
       "name": "ryugi",
       "description": "Core skills library for Muse: TDD, debugging, collaboration patterns, and proven techniques",
-      "version": "1.34.1",
+      "version": "1.34.2",
       "source": "./",
       "author": {
         "name": "Innei",

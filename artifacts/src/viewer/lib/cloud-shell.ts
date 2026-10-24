@@ -10,7 +10,7 @@ export const INSTALL_COMMAND = '/plugin marketplace add Innei/ryugi';
 
 export type ShellState =
   | { kind: 'loading' }
-  | { kind: 'ready'; type: ArtifactType | null; title: string; owner: boolean; visibility: Visibility }
+  | { kind: 'ready'; type: ArtifactType | null; title: string; owner: boolean; visibility: Visibility; published: boolean; publishedAt: string | null }
   | { kind: 'missing'; login: string | null }
   | { kind: 'failed'; message: string };
 
@@ -45,9 +45,9 @@ export async function loadShell(id: string, fetchImpl: typeof fetch = fetch): Pr
     return { kind: 'missing', login: typeof login === 'string' ? login : null };
   }
   if (!res.ok) return { kind: 'failed', message: i18n.t('common.loadFailed', { status: res.status }) };
-  const artifact = (await res.json()) as { type?: unknown; title?: unknown; owner?: unknown; visibility?: unknown };
+  const artifact = (await res.json()) as { type?: unknown; title?: unknown; owner?: unknown; visibility?: unknown; published?: unknown; publishedAt?: unknown };
   const type = ARTIFACT_TYPES.find((type) => type === artifact.type) ?? null;
-  return { kind: 'ready', type, title: typeof artifact.title === 'string' ? artifact.title : i18n.t('cloudShell.untitled'), owner: artifact.owner === true, visibility: isVisibility(artifact.visibility) ? artifact.visibility : 'private' };
+  return { kind: 'ready', type, title: typeof artifact.title === 'string' ? artifact.title : i18n.t('cloudShell.untitled'), owner: artifact.owner === true, visibility: isVisibility(artifact.visibility) ? artifact.visibility : 'private', published: artifact.published === true, publishedAt: typeof artifact.publishedAt === 'string' ? artifact.publishedAt : null };
 }
 
 export async function changeVisibility(id: string, visibility: Visibility, fetchImpl: typeof fetch = fetch): Promise<Visibility> {

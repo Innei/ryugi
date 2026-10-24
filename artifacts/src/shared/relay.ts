@@ -2,6 +2,8 @@ import type { HumanOp } from './comments';
 import type { DocumentSelectionMessage } from './selection';
 
 export type RelayRequest =
+  | { op: 'publication' }
+  | { op: 'publish' }
   | { op: 'meta' }
   | { op: 'state' }
   | { op: 'update'; bytes: string; features?: string[] }

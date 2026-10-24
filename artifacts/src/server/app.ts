@@ -215,7 +215,11 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
   };
   const cloud =
     options.cloud && options.configFile
-      ? createCloudRoutes({ ...options.cloud, configFile: options.configFile, project: path.basename(path.resolve(root, '../..')), port: () => port, inspect })
+      ? createCloudRoutes({ ...options.cloud, configFile: options.configFile, project: path.basename(path.resolve(root, '../..')), port: () => port, inspect,
+          onPublication: (key, publication) => {
+            broadcast({ type: 'cloud-publication', artifact: key, publication });
+          },
+        })
       : null;
 
   const autoPublisher = cloud
@@ -841,6 +845,8 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
     const dir = resolveArtifactDir(root, ref.type, ref.id);
     if (!dir) throw new Error(`${key} not found`);
     const request = (typeof body === 'object' && body !== null ? body : {}) as Record<string, unknown>;
+    if (request.op === 'publication' && cloud) return cloud.publication(key);
+    if (request.op === 'publish' && cloud) return cloud.publishNow(key);
     if (request.op === 'meta') return artifactMeta(ref, dir, contentOrigin);
     if (request.op === 'file') {
       const file = typeof request.path === 'string' ? readArtifactFile(dir, ref.type, request.path, CLOUD_RUNTIME_URL, MAX_RELAY_FILE) : null;
@@ -963,6 +969,7 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
         for (const socket of clients) socket.write(frame);
         relay?.emit(key, { type: 'change', artifact: key, files: changed });
         direct.emit(key, { type: 'change', artifact: key, files: changed });
+        cloud?.changed(key);
         changeListeners.forEach((listener) => listener(ref, payload, changed));
       }
       touch();

@@ -25,13 +25,13 @@ function fakeFetch(routes: Record<string, () => Response>) {
 
 describe('loading the shell', () => {
   test('a readable artifact gives its title, ownership and visibility', async () => {
-    const { impl } = fakeFetch({ 'GET /api/a/abc/meta': () => Response.json({ type: 'html', title: 'Arrow', owner: true, visibility: 'private' }) });
-    expect(await loadShell('abc', impl)).toEqual({ kind: 'ready', type: 'html', title: 'Arrow', owner: true, visibility: 'private' });
+    const { impl } = fakeFetch({ 'GET /api/a/abc/meta': () => Response.json({ type: 'html', title: 'Arrow', owner: true, visibility: 'private', published: true, publishedAt: '2026-10-24T06:20:00Z' }) });
+    expect(await loadShell('abc', impl)).toEqual({ kind: 'ready', type: 'html', title: 'Arrow', owner: true, visibility: 'private', published: true, publishedAt: '2026-10-24T06:20:00Z' });
   });
 
   test('an artifact that is not published yet is named as such for its owner', async () => {
     const { impl } = fakeFetch({ 'GET /api/a/abc/meta': () => Response.json({ title: null, owner: true, visibility: 'private', published: false }) });
-    expect(await loadShell('abc', impl)).toEqual({ kind: 'ready', type: null, title: 'Not published yet', owner: true, visibility: 'private' });
+    expect(await loadShell('abc', impl)).toEqual({ kind: 'ready', type: null, title: 'Not published yet', owner: true, visibility: 'private', published: false, publishedAt: null });
   });
 
   test('a link that will not open asks who is signed in', async () => {

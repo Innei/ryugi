@@ -1,5 +1,25 @@
 export type Visibility = 'private' | 'public';
 
+export interface Publication {
+  phase: 'waiting' | 'preparing' | 'uploading' | 'publishing' | 'not-ready' | 'failed' | 'published';
+  publishedAt: string | null;
+  autoPublish: boolean;
+  reasons?: string[];
+  message?: string;
+}
+
+export const publishing = (phase: Publication['phase']) => phase === 'preparing' || phase === 'uploading' || phase === 'publishing';
+
+export function readPublication(value: unknown): Publication | null {
+  if (!value || typeof value !== 'object') return null;
+  const p = value as Record<string, unknown>;
+  if (typeof p.phase !== 'string' || !['waiting', 'preparing', 'uploading', 'publishing', 'not-ready', 'failed', 'published'].includes(p.phase)) return null;
+  if (p.publishedAt !== null && (typeof p.publishedAt !== 'string' || !Number.isFinite(Date.parse(p.publishedAt)))) return null;
+  if (typeof p.autoPublish !== 'boolean' || (p.message !== undefined && typeof p.message !== 'string')) return null;
+  if (p.reasons !== undefined && (!Array.isArray(p.reasons) || !p.reasons.every((reason) => typeof reason === 'string'))) return null;
+  return p as unknown as Publication;
+}
+
 export interface CloudRecord {
   id: string;
   url: string;

@@ -2,7 +2,7 @@ import crypto from 'node:crypto';
 import type http from 'node:http';
 import { artifactKeyOf, type ArtifactRef } from './artifacts';
 import { CALLBACK_PAGE_CSP, callbackPage } from './callback-page';
-import { isVisibility } from '../shared/cloud';
+import { isVisibility, publishing, type Publication } from '../shared/cloud';
 import { cloudErrorDetails, type CloudErrorDetails } from '../shared/cloud-error';
 import { readConfig, setProjectAutoPublish, updateArtifactConfig, type Visibility } from './config';
 import { clearCredentials, readCredentials, writeCredentials } from './credentials';
@@ -32,6 +32,7 @@ interface CloudRoutesOptions extends CloudOptions {
   project: string;
   port: () => number;
   inspect: (ref: ArtifactRef) => Promise<InspectedArtifact | null>;
+  onPublication?: (key: string, publication: Publication) => void;
 }
 
 interface CloudArtifact {
@@ -45,7 +46,7 @@ const LOGIN_STATE_TTL_MS = 10 * 60 * 1000;
 const UPLOAD_CONCURRENCY = 6;
 const MAX_JSON_BODY = 4096;
 const CLOUD_ID = /^[A-Za-z0-9_-]{1,64}$/;
-const ROUTE = /^\/api\/cloud\/(status|login|logout|artifacts|publish|reserve|visibility|auto-publish|sync)(?:\/([^/]+)(?:\/([^/]+))?)?$/;
+const ROUTE = /^\/api\/cloud\/(status|login|logout|artifacts|publish|publication|reserve|visibility|auto-publish|sync)(?:\/([^/]+)(?:\/([^/]+))?)?$/;
 
 class SignedOut extends Error {}
 
@@ -169,6 +170,19 @@ export function createCloudRoutes(options: CloudRoutesOptions) {
   };
 
   const artifactEntry = (key: string) => readConfig(configFile).config.artifacts[key] ?? {};
+  type PublicationState = Pick<Publication, 'phase' | 'reasons' | 'message'> & { autoPublish?: boolean };
+  const publications = new Map<string, PublicationState>();
+  const changedDuringPublish = new Set<string>();
+  const snapshot = (key: string): Publication => ({
+    phase: artifactEntry(key).cloud?.publishedAt ? 'published' : 'waiting',
+    ...publications.get(key),
+    publishedAt: artifactEntry(key).cloud?.publishedAt ?? null,
+    autoPublish: autoPublishState().enabled && artifactEntry(key).autoPublish !== false && publications.get(key)?.autoPublish !== false,
+  });
+  const setPublication = (key: string, state: PublicationState) => {
+    publications.set(key, state);
+    options.onPublication?.(key, snapshot(key));
+  };
 
   const locks = new Map<string, Promise<unknown>>();
   const serialized = <T>(key: string, task: () => Promise<T>): Promise<T> => {
@@ -234,7 +248,22 @@ export function createCloudRoutes(options: CloudRoutesOptions) {
     return prepared.ready ? prepared.fingerprint === cloud.fingerprint : null;
   };
 
-  const publish = async (ref: ArtifactRef, requested?: Visibility, { recreate = true, skipUnchanged = false } = {}) => {
+  const publication = async (key: string): Promise<Publication> => {
+    const saved = publications.get(key);
+    if (saved && saved.phase !== 'waiting' && saved.phase !== 'published') return snapshot(key);
+    const ref = artifactKeyOf(key);
+    if (!ref) throw new CloudRefused(404, 'artifact not found');
+    try {
+      const prepared = await prepare(ref);
+      if (publications.get(key) !== saved) return snapshot(key);
+      const cloud = artifactEntry(key).cloud;
+      return { ...snapshot(key), ...(!prepared.ready ? { phase: 'not-ready', reasons: prepared.reasons } : { phase: cloud?.publishedAt && cloud.fingerprint === prepared.fingerprint ? 'published' : 'waiting' }) };
+    } catch (err) {
+      return { ...snapshot(key), phase: 'failed', message: (err as Error).message };
+    }
+  };
+
+  const publishFiles = async (ref: ArtifactRef, requested?: Visibility, { recreate = true, skipUnchanged = false } = {}) => {
     const prepared = await prepare(ref);
     if (!prepared.ready) return { status: 409, body: { error: 'fix these before publishing', code: 'publish_not_ready', reasons: prepared.reasons } };
     const { hashed, content, fingerprint } = prepared;
@@ -262,11 +291,14 @@ export function createCloudRoutes(options: CloudRoutesOptions) {
     };
 
     const commit = async (id: string, visibility: Visibility | undefined) => {
+      setPublication(key, { phase: 'preparing' });
       const res = await cloudFetch('POST', `/api/artifacts/${id}/versions`, version(visibility));
       if (res.status !== 409) return res;
       const { missing } = (await res.clone().json().catch(() => ({}))) as { missing?: unknown };
       if (!Array.isArray(missing)) return res;
+      setPublication(key, { phase: 'uploading' });
       await upload(id, missing as string[]);
+      setPublication(key, { phase: 'publishing' });
       return cloudFetch('POST', `/api/artifacts/${id}/versions`, version(visibility));
     };
 
@@ -281,6 +313,20 @@ export function createCloudRoutes(options: CloudRoutesOptions) {
       cloud: { id: published.id, url: published.url, publishedAt: published.updatedAt, visibility: published.visibility, fingerprint },
     });
     return { status: 200, body: { id: published.id, url: published.url, visibility: published.visibility, publishedAt: published.updatedAt } };
+  };
+
+  const publish = async (ref: ArtifactRef, requested?: Visibility, flags?: { recreate?: boolean; skipUnchanged?: boolean }) => {
+    const key = `${ref.type}/${ref.id}`;
+    changedDuringPublish.delete(key);
+    setPublication(key, { phase: 'preparing' });
+    try {
+      const result = await publishFiles(ref, requested, flags);
+      setPublication(key, result.status === 200 ? { phase: changedDuringPublish.has(key) ? 'waiting' : 'published' } : { phase: 'not-ready', reasons: (result.body as { reasons: string[] }).reasons });
+      return result;
+    } catch (err) {
+      setPublication(key, { phase: 'failed', message: err instanceof SignedOut ? 'Sign in to Ryugi Cloud on this computer to publish.' : (err as Error).message.replace(/^cloud refused \(\d+\): /, ''), autoPublish: !(err instanceof SignedOut || err instanceof PlanLimited || err instanceof CreateRefused || (err instanceof CloudRefused && err.status === 413)) });
+      throw err;
+    }
   };
 
   const setVisibility = async (ref: ArtifactRef, visibility: Visibility) => {
@@ -311,7 +357,10 @@ export function createCloudRoutes(options: CloudRoutesOptions) {
     const res = await cloudFetch('DELETE', `/api/artifacts/${cloudId}`);
     if (res.status !== 404) await expectOk(res);
     for (const [key, entry] of Object.entries(readConfig(configFile).config.artifacts)) {
-      if (entry.cloud?.id === cloudId) updateArtifactConfig(configFile, key, { cloud: null, autoPublish: false });
+      if (entry.cloud?.id === cloudId) {
+        updateArtifactConfig(configFile, key, { cloud: null, autoPublish: false });
+        setPublication(key, { phase: 'waiting' });
+      }
     }
   };
 
@@ -393,6 +442,10 @@ export function createCloudRoutes(options: CloudRoutesOptions) {
       sendJson(res, 200, { upToDate: await serialized(`${ref.type}/${ref.id}`, () => upToDate(ref)) });
       return;
     }
+    if (action === 'publication' && ref && method === 'GET') {
+      sendJson(res, 200, await publication(`${ref.type}/${ref.id}`));
+      return;
+    }
     if (action === 'reserve' && ref && method === 'POST') {
       sendJson(res, 200, await serialized(`${ref.type}/${ref.id}`, () => reserve(ref)));
       return;
@@ -467,6 +520,23 @@ export function createCloudRoutes(options: CloudRoutesOptions) {
     match: (pathname: string) => ROUTE.exec(pathname),
 
     autoPublish,
+    publication,
+    changed(key: string) {
+      changedDuringPublish.add(key);
+      if (!publishing(snapshot(key).phase)) setPublication(key, { phase: 'waiting' });
+    },
+    publishNow(key: string) {
+      const ref = artifactKeyOf(key);
+      if (!ref) throw new CloudRefused(404, 'artifact not found');
+      if (!publishing(snapshot(key).phase)) {
+        setPublication(key, { phase: 'preparing' });
+        void serialized(key, async () => {
+          const result = await publish(ref, undefined, { recreate: false });
+          if (result.status === 200) updateArtifactConfig(configFile, key, { autoPublish: null });
+        }).catch(() => {});
+      }
+      return snapshot(key);
+    },
     autoPublishEnabled: () => autoPublishState().enabled,
     token: () => readCredentials(credentialsFile, origin)?.token ?? null,
 

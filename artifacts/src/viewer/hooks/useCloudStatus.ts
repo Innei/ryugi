@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { CloudStatus } from '../../shared/cloud';
+import { onServerMessage } from './useArtifactSocket';
 
 export interface CloudResult {
   ok: boolean;
@@ -60,7 +61,10 @@ export function useCloudStatus() {
 
   useEffect(() => {
     void refresh();
-    return stopPolling;
+    const unsubscribe = onServerMessage((message) => {
+      if (message.type === 'cloud-publication' || message.type === 'cloud-published') void refresh();
+    });
+    return () => { unsubscribe(); stopPolling(); };
   }, [refresh, stopPolling]);
 
   return { status, refresh, login, waitingForLogin };

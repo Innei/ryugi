@@ -3,7 +3,7 @@ import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
 import { ArrowRight, CircleAlert, Copy, Globe, Lock, MessageCircle } from 'lucide-react';
 import { useState } from 'react';
-import type { Visibility } from '../../shared/cloud';
+import type { Publication, Visibility } from '../../shared/cloud';
 import type { ArtifactType } from '../../shared/types';
 import type { CloudHeaderState } from '../hooks/useCloudHeader';
 import { pageLink, usePageQuery } from '../hooks/usePageQuery';
@@ -12,6 +12,7 @@ import { isSlotLimit, openPlanLimitDialog } from './PlanLimitDialog';
 import { RailSwitch } from './RailSwitch';
 import { RyugiMark } from './RyugiMark';
 import { useTranslation } from '../i18n';
+import { PublicationStatus } from './PublicationStatus';
 
 const NARROW = '@media (max-width: 640px)';
 
@@ -87,6 +88,7 @@ const styles = stylex.create({
     '::before': { content: '""', position: 'absolute', insetBlock: -6, insetInline: 0 },
   },
   shareRound: { borderRadius: 999 },
+  disabled: { backgroundColor: cssVar.colorFillTertiary, color: cssVar.colorTextDisabled, cursor: 'not-allowed' },
   panel: { display: 'flex', flexDirection: 'column', gap: 2, width: 'min(288px, calc(100vw - 16px))', fontFamily: cssVar.fontFamily, fontSize: 12 },
   panelInline: { width: '100%' },
   heading: { margin: '2px 4px 6px', fontSize: 12, fontWeight: 600 },
@@ -141,12 +143,15 @@ interface Props {
   title: string;
   owner: boolean;
   status: CloudHeaderState;
+  published: boolean;
+  publishedAt?: string | null;
+  onPublish?: () => void;
   visibility: Visibility;
   onChange: (next: Visibility) => void;
   onHistory?: (action: 'toggle' | 'close') => void;
 }
 
-export function CloudHeader({ id, type, title, owner, status, visibility, onChange, onHistory }: Props) {
+export function CloudHeader({ id, type, title, owner, status, visibility, published, publishedAt, onPublish, onChange, onHistory }: Props) {
   const { t } = useTranslation();
   return (
     <header {...stylex.props(styles.bar)}>
@@ -162,6 +167,7 @@ export function CloudHeader({ id, type, title, owner, status, visibility, onChan
         </nav>
       </div>
       <div {...stylex.props(styles.actions)}>
+        {owner ? <PublicationStatus compact publication={status.publication} published={published} /> : null}
         {status.history !== undefined ? <RailSwitch comments={status.comments ?? 0} open={Boolean(status.historyOpen)} available={status.history} onComments={() => onHistory?.('close')} onHistory={() => onHistory?.('toggle')} /> : null}
         <div {...stylex.props(styles.statuses)}>
           {status.activity ? (
@@ -184,7 +190,7 @@ export function CloudHeader({ id, type, title, owner, status, visibility, onChan
           {status.comments !== undefined && status.history === undefined ? <span {...stylex.props(styles.status)}><MessageCircle size={14} aria-hidden="true" />{t('share.comments', { count: status.comments })}</span> : null}
           {(status.online !== undefined || status.comments !== undefined) && owner ? <span aria-hidden="true" {...stylex.props(styles.divider)} /> : null}
         </div>
-        {owner ? <OwnerActions id={id} title={title} visibility={visibility} onChange={onChange} /> : (
+        {owner ? <OwnerActions id={id} title={title} visibility={visibility} published={published} publishedAt={publishedAt} publication={status.publication} online={status.online} onPublish={onPublish} onChange={onChange} /> : (
           <a href={INSTALL_URL} target="_blank" rel="noopener noreferrer" {...stylex.props(styles.cta)}>
             {t('share.getStarted')}<ArrowRight size={12} />
           </a>
@@ -194,7 +200,7 @@ export function CloudHeader({ id, type, title, owner, status, visibility, onChan
   );
 }
 
-export function useCloudSharePanel({ id, title = null, visibility, onChange, inline = false }: { id: string; title?: string | null; visibility: Visibility; onChange: (next: Visibility) => void; inline?: boolean }) {
+export function useCloudSharePanel({ id, title = null, visibility, published, publishedAt, publication, online, onPublish, onChange, inline = false }: { id: string; title?: string | null; visibility: Visibility; published: boolean; publishedAt?: string | null; publication?: Publication | null; online?: boolean | null; onPublish?: () => void; onChange: (next: Visibility) => void; inline?: boolean }) {
   const { t } = useTranslation();
   const [error, setError] = useState<{ message: string; auth?: boolean; upgradeUrl?: string } | null>(null);
   const [saving, setSaving] = useState(false);
@@ -218,6 +224,7 @@ export function useCloudSharePanel({ id, title = null, visibility, onChange, inl
   };
 
   const copy = async () => {
+    if (!published) return;
     try {
       await navigator.clipboard.writeText(url);
       setCopied(true);
@@ -229,6 +236,7 @@ export function useCloudSharePanel({ id, title = null, visibility, onChange, inl
 
   return (
     <div {...stylex.props(styles.panel, inline && styles.panelInline)}>
+      <PublicationStatus publication={publication} published={published} publishedAt={publishedAt} online={online} onPublish={onPublish} />
       {inline ? (
         <FormField layout="horizontal" variant="borderless" label={t('visibility.anyoneCanView')} desc={visibility === 'public' ? t('visibility.anyoneHint') : t('visibility.offHint')}>
           <Switch checked={visibility === 'public'} loading={saving} disabled={saving} onChange={(checked) => void choose(checked ? 'public' : 'private')} />
@@ -260,17 +268,17 @@ export function useCloudSharePanel({ id, title = null, visibility, onChange, inl
         </>
       )}
       <div {...stylex.props(styles.link)}>
-        <Input aria-label={t('share.linkLabel')} value={url} readOnly size="small" onFocus={(event) => event.currentTarget.select()} {...stylex.props(styles.url)} />
-        <button type="button" onClick={() => void copy()} {...stylex.props(styles.share)}><Copy size={12} /> {copied ? t('common.copied') : t('common.copy')}</button>
+        <Input aria-label={t('share.linkLabel')} value={published ? url : ''} placeholder={t('publication.linkPending')} readOnly size="small" onFocus={(event) => event.currentTarget.select()} {...stylex.props(styles.url)} />
+        <button type="button" disabled={!published} onClick={() => void copy()} {...stylex.props(styles.share, !published && styles.disabled)}><Copy size={12} /> {copied ? t('common.copied') : t('common.copy')}</button>
       </div>
-      {error ? <p role="alert" {...stylex.props(styles.error)}>{error.auth ? t('common.sessionExpired') : error.message} {error.auth && <a href={`/auth/login?return=${encodeURIComponent(location.pathname)}`}>{t('common.signInAgain')}</a>}{error.upgradeUrl && <a href={error.upgradeUrl}>{t('common.upgradePro')}</a>}</p> : <p {...stylex.props(styles.foot)}>{visibility === 'private' ? t('share.copyNotPublic') : ''}{t('share.appliesNow')}</p>}
+      {error ? <p role="alert" {...stylex.props(styles.error)}>{error.auth ? t('common.sessionExpired') : error.message} {error.auth && <a href={`/auth/login?return=${encodeURIComponent(location.pathname)}`}>{t('common.signInAgain')}</a>}{error.upgradeUrl && <a href={error.upgradeUrl}>{t('common.upgradePro')}</a>}</p> : <p {...stylex.props(styles.foot)}>{published ? <>{visibility === 'private' ? t('share.copyNotPublic') : ''}{t('share.appliesNow')}</> : t('publication.permissionPending')}</p>}
     </div>
   );
 }
 
-function OwnerActions({ id, title, visibility, onChange }: { id: string; title: string; visibility: Visibility; onChange: (next: Visibility) => void }) {
+function OwnerActions({ id, title, visibility, onChange, ...publication }: { id: string; title: string; visibility: Visibility; onChange: (next: Visibility) => void; published: boolean; publishedAt?: string | null; publication?: Publication | null; online?: boolean | null; onPublish?: () => void }) {
   const { t } = useTranslation();
-  const panel = useCloudSharePanel({ id, title, visibility, onChange });
+  const panel = useCloudSharePanel({ id, title, visibility, onChange, ...publication });
   const current = OPTIONS.find((option) => option.value === visibility)!;
 
   return (
@@ -279,7 +287,7 @@ function OwnerActions({ id, title, visibility, onChange }: { id: string; title: 
         <current.Icon size={11} />
         <span {...stylex.props(styles.visibilityLabel)}>{t('visibility.chip', { label: t(current.label) })}</span>
       </span>
-      <Popover placement="bottomRight" trigger="click" content={panel}>
+      <Popover placement="bottomRight" trigger="click" content={panel} popupProps={{ 'aria-label': t('common.share') }}>
         <button type="button" {...stylex.props(styles.share, styles.shareRound)}>
           {t('common.share')}
         </button>

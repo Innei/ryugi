@@ -21,8 +21,8 @@ afterEach(() => {
   history.replaceState(null, '', '/');
 });
 
-async function mount(owner = true) {
-  vi.stubGlobal('fetch', async () => Response.json({ type: 'document', title: 'Memory eval', owner, visibility: 'private' }));
+async function mount(owner = true, published = false) {
+  vi.stubGlobal('fetch', async () => Response.json({ type: 'document', title: 'Memory eval', owner, visibility: 'private', published, publishedAt: published ? '2026-10-24T06:20:00Z' : null }));
   const host = document.createElement('div');
   document.body.append(host);
   root = createRoot(host);
@@ -88,7 +88,7 @@ test('visitors get the same navigation without owner share controls', async () =
 
 test('sharing keeps the current page and follows later navigation without copying the local key', async () => {
   history.replaceState(null, '', '/a/c1?page=review&key=private#ryugi-host=abcdefghijklmnop');
-  function Share() { return useCloudSharePanel({ id: 'c1', visibility: 'private', onChange: () => {} }); }
+  function Share() { return useCloudSharePanel({ id: 'c1', visibility: 'private', published: true, onChange: () => {} }); }
   const host = document.body.appendChild(document.createElement('div'));
   root = createRoot(host);
   await act(async () => root!.render(createElement(Share)));
@@ -99,4 +99,38 @@ test('sharing keeps the current page and follows later navigation without copyin
     window.dispatchEvent(new PopStateEvent('popstate'));
   });
   expect(link()).toBe(`${location.origin}/a/c1?page=first`);
+});
+
+test('a first publication cannot be copied, even while its local preview is online', async () => {
+  const host = await mount();
+  const frame = host.querySelector('iframe')!.contentWindow;
+  await act(async () => window.dispatchEvent(new MessageEvent('message', { source: frame, origin: location.origin, data: { type: 'ryugi:cloud-header', id: 'c1', online: true, publication: { phase: 'uploading', publishedAt: null, autoPublish: true } } })));
+  expect(host.textContent).toContain('Uploading');
+  function Share() { return useCloudSharePanel({ id: 'c1', visibility: 'public', published: false, publication: { phase: 'uploading', publishedAt: null, autoPublish: true }, onChange: () => {} }); }
+  await act(async () => root!.render(createElement(Share)));
+  const copy = Array.from(host.querySelectorAll('button')).find((button) => button.textContent?.includes('Copy'))!;
+  expect(copy.disabled).toBe(true);
+  expect(host.querySelector('input')!.value).not.toContain('/a/c1');
+});
+
+test('a cloud version removed by the local app stops being presented as available', async () => {
+  const host = await mount(true, true);
+  const frame = host.querySelector('iframe')!.contentWindow;
+  await act(async () => window.dispatchEvent(new MessageEvent('message', { source: frame, origin: location.origin, data: { type: 'ryugi:cloud-header', id: 'c1', publication: { phase: 'waiting', publishedAt: null, autoPublish: false } } })));
+  expect(host.textContent).toContain('Waiting to publish');
+  expect(host.textContent).not.toContain('Changes waiting to publish');
+});
+
+test('a failed update can still share the last cloud version and retry the update', async () => {
+  const retry = vi.fn();
+  function Share() { return useCloudSharePanel({ id: 'c1', visibility: 'public', published: true, publication: { phase: 'failed', publishedAt: '2026-10-24T06:20:00Z', autoPublish: true }, onPublish: retry, onChange: () => {} }); }
+  const host = document.body.appendChild(document.createElement('div'));
+  root = createRoot(host);
+  await act(async () => root!.render(createElement(Share)));
+  expect(host.textContent).toContain('previously published version');
+  const copy = Array.from(host.querySelectorAll('button')).find((button) => button.textContent?.includes('Copy'))!;
+  expect(copy.disabled).toBe(false);
+  const update = Array.from(host.querySelectorAll('button')).find((button) => button.textContent?.includes('Retry'))!;
+  await act(async () => update.click());
+  expect(retry).toHaveBeenCalledOnce();
 });

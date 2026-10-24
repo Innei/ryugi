@@ -61,6 +61,10 @@ export function CloudShell({ id }: { id: string }) {
     if (state.kind === 'ready') document.title = header.title || state.title;
     if (state.kind === 'missing') document.title = t('notFound.title');
   }, [state, header.title]);
+  useEffect(() => {
+    const publication = header.publication;
+    if (publication) setState((previous) => previous.kind === 'ready' ? { ...previous, published: publication.publishedAt !== null, publishedAt: publication.publishedAt } : previous);
+  }, [header.publication?.publishedAt]);
   useTypeFavicon(state.kind === 'ready' ? state.type : null);
 
   if (state.kind === 'loading') return <div {...stylex.props(styles.message)}>{t('common.loading')}</div>;
@@ -68,7 +72,7 @@ export function CloudShell({ id }: { id: string }) {
   if (state.kind === 'missing') return <CloudNotFound id={id} login={state.login} />;
   return (
     <div {...stylex.props(styles.shell)}>
-      <CloudHeader id={id} type={state.type} title={header.title || state.title} owner={state.owner} status={header} visibility={state.visibility} onChange={(visibility) => setState({ ...state, visibility })} onHistory={(action) => frame.current?.contentWindow?.postMessage({ type: 'ryugi:document-history', id, action }, location.origin)} />
+      <CloudHeader id={id} type={state.type} title={header.title || state.title} owner={state.owner} status={header} visibility={state.visibility} published={state.published} publishedAt={state.publishedAt} onPublish={header.online === true && header.publication ? () => frame.current?.contentWindow?.postMessage({ type: 'ryugi:publish', id }, location.origin) : undefined} onChange={(visibility) => setState((previous) => previous.kind === 'ready' ? { ...previous, visibility } : previous)} onHistory={(action) => frame.current?.contentWindow?.postMessage({ type: 'ryugi:document-history', id, action }, location.origin)} />
       <iframe ref={frame} title={header.title || state.title} src={`/a/${id}/view`} allow="clipboard-write; local-network-access; loopback-network" {...stylex.props(styles.frame)} />
     </div>
   );

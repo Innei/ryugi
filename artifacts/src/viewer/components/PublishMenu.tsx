@@ -3,12 +3,14 @@ import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
 import { Globe, Lock } from 'lucide-react';
 import { useState } from 'react';
-import { ownLink, publishState, syncNote, type Visibility } from '../../shared/cloud';
+import { ownLink, publishing, publishState, syncNote, type Visibility } from '../../shared/cloud';
 import { useCloudSync } from '../hooks/useCloudSync';
 import { pageLink, usePageQuery } from '../hooks/usePageQuery';
 import { cloudRequest, useCloudStatus, type CloudResult } from '../hooks/useCloudStatus';
 import { useTranslation } from '../i18n';
 import { responseErrorText } from '../lib/error-text';
+import { PublicationStatus } from './PublicationStatus';
+import { usePublication } from '../hooks/usePublication';
 
 const styles = stylex.create({
   trigger: {
@@ -70,6 +72,8 @@ export function PublishMenu({ artifact, floating = false }: Props) {
   const [errors, setErrors] = useState<string[]>([]);
   const entry = status?.artifacts[artifact];
   const state = publishState(entry);
+  const publication = usePublication(artifact, !!status?.signedIn);
+  const uploading = publication && publishing(publication.phase);
   const [page] = usePageQuery();
   const shareUrl = state.url ? pageLink(state.url, page) : null;
   const sync = useCloudSync(artifact, !!status?.signedIn && state.published);
@@ -113,6 +117,7 @@ export function PublishMenu({ artifact, floating = false }: Props) {
           {t('publish.signOut')}
         </button>
       </div>
+      <PublicationStatus publication={publication} published={state.published} publishedAt={entry?.cloud?.publishedAt} online busy={busy} onPublish={() => void run(() => cloudRequest('POST', `publish/${artifact}`))} />
       <Segmented
         block
         disabled={busy}
@@ -148,9 +153,9 @@ export function PublishMenu({ artifact, floating = false }: Props) {
           ))}
         </ul>
       ) : null}
-      <Button type="primary" loading={busy} onClick={() => void run(() => cloudRequest('POST', `publish/${artifact}`))}>
-        {state.published ? t('publish.update') : t('publish.publish')}
-      </Button>
+      {state.published && (!publication || publication.phase === 'published') ? <Button type="primary" loading={busy || !!uploading} onClick={() => void run(() => cloudRequest('POST', `publish/${artifact}`))}>
+        {t('publish.update')}
+      </Button> : null}
       {state.published ? (
         <button
           type="button"
@@ -168,10 +173,11 @@ export function PublishMenu({ artifact, floating = false }: Props) {
   );
 
   return (
-    <Popover placement="bottomRight" trigger="click" content={content} onOpenChange={(open) => void adoptCloudVisibility(open)}>
+    <Popover placement="bottomRight" trigger="click" content={content} popupProps={{ 'aria-label': t('common.share') }} onOpenChange={(open) => void adoptCloudVisibility(open)}>
       <button type="button" aria-label="Share" {...stylex.props(styles.trigger, floating && styles.floating)}>
         {state.published && state.visibility === 'public' ? <Globe size={14} /> : <Lock size={14} />}
         {state.published ? t('publish.published') : t('common.share')}
+        {publication && publication.phase !== 'published' ? <PublicationStatus compact publication={publication} published={state.published} /> : null}
         {sync.upToDate === false ? <span aria-label={t('publish.unpublishedChanges')} {...stylex.props(styles.dot)} /> : null}
       </button>
     </Popover>

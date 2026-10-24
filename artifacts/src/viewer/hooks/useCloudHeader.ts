@@ -1,10 +1,12 @@
 import { useEffect } from 'react';
+import { readPublication, type Publication } from '../../shared/cloud';
 
 export type ActivityTone = 'live' | 'quiet' | 'warning';
 
 const TONES: readonly string[] = ['live', 'quiet', 'warning'];
 
 export interface CloudHeaderState {
+  publication?: Publication | null;
   title?: string;
   online?: boolean | null;
   comments?: number;
@@ -34,6 +36,11 @@ export function readCloudHeader(data: unknown, id: string): CloudHeaderState | n
   const message = data as Record<string, unknown>;
   if (message.type !== 'ryugi:cloud-header' || message.id !== id) return null;
   const state: CloudHeaderState = {};
+  if (message.publication === null) state.publication = null;
+  else {
+    const publication = readPublication(message.publication);
+    if (publication) state.publication = publication;
+  }
   if (typeof message.title === 'string') state.title = message.title;
   if (typeof message.online === 'boolean' || message.online === null) state.online = message.online;
   if (typeof message.comments === 'number' && Number.isSafeInteger(message.comments) && message.comments >= 0) state.comments = message.comments;

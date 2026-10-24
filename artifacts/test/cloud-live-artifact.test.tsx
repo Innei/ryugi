@@ -81,6 +81,19 @@ test('html from the owner computer loads through the live content base while it 
   expect(host.querySelector('iframe')!.getAttribute('src')).toBe(`${LIVE}index.html?v=7`);
 });
 
+test('publication status and owner retry use the existing live connection and reject foreign commands', async () => {
+  const { relay, presence } = await mount({ type: 'html', title: 'Page', published: false, contentBase: null, payload: null });
+  await presence(true);
+  expect(relay().sent.some((m) => m.body?.op === 'publication')).toBe(true);
+  const command = async (id: string, origin: string) => act(async () => window.dispatchEvent(new MessageEvent('message', { source: window.parent, origin, data: { type: 'ryugi:publish', id } })));
+  await command('c1', 'https://untrusted.example');
+  await command('other', location.origin);
+  expect(relay().sent.some((m) => m.body?.op === 'publish')).toBe(false);
+  await command('c1', location.origin);
+  expect(relay().sent.filter((m) => m.body?.op === 'publish')).toHaveLength(1);
+  expect(FakeSocket.all).toHaveLength(1);
+});
+
 test('a change from the computer fetches the html again', async () => {
   const { relay, presence, answerMeta } = await mount({ type: 'html', title: 'Page', published: true, contentBase: PUBLISHED, payload: { title: 'Page' } });
   await presence(true);
