@@ -181,6 +181,17 @@ describe('page metadata', () => {
     expect((await get(new URL(icon!, base(server)).href, { Cookie: cookie(server) })).headers['content-type']).toBe('image/svg+xml');
   });
 
+  test('page language and description follow Accept-Language', async () => {
+    const temp = tempRoot();
+    const { server } = await start({ root: path.join(temp.root, 'test-project/.ryugi/artifacts'), viewer: path.resolve(__dirname, '../dist/viewer') });
+    const english = await get(`${base(server)}/?key=${server.token}`, { 'Accept-Language': 'en-US,en;q=0.9' });
+    expect(english.body).toMatch(/<html[^>]* lang="en"/);
+    expect(english.body).toMatch(/<meta name="description" content="Browse every artboard[^"]*test-project/);
+    const chinese = await get(`${base(server)}/?key=${server.token}`, { 'Accept-Language': 'zh-CN,zh;q=0.9' });
+    expect(chinese.body).toMatch(/<html[^>]* lang="zh-CN"/);
+    expect(chinese.body).toMatch(/<meta name="description" content="浏览 test-project 项目/);
+  });
+
   test('serves each artifact page with its type favicon before JavaScript runs, and the list with the app icon', async () => {
     const { server, root } = await start({ viewer: path.resolve(__dirname, '../dist/viewer') });
     writeArtboard(root, 'ideas', canvas, { 'pages/p/a.html': '<p>Idea</p>' });

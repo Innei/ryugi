@@ -1,0 +1,30 @@
+{
+  "callback": {
+    "titleOk": "已登录 Ryugi Cloud",
+    "titleFailed": "登录没有完成",
+    "connected": "已连接 Ryugi Cloud",
+    "signedIn": "已登录",
+    "lead": "这台电脑上的 Ryugi 现在可以发布 artifact 了。",
+    "fromPage": "在 Ryugi 页面里发布的？",
+    "fromPageDetail": "回到 Ryugi，分享面板会自动刷新。",
+    "fromAgent": "让 agent 发布的？",
+    "fromAgentDetail": "让它再运行一次发布命令。",
+    "autoPublish": "自动发布已打开",
+    "autoPublishDetail": "agent 每轮结束后，改过的 artifact 会以私密方式同步到 Ryugi Cloud。关闭：运行 <code>ryugi-artifacts config --auto-publish off</code>。",
+    "notConnected": "未连接",
+    "retry": "重新登录",
+    "retryDetail": "回到 Ryugi，在分享面板里再点一次「登录」。",
+    "description": "Ryugi Cloud 本地登录结果。完成连接后，返回 Ryugi 继续发布和分享 Artifact。",
+    "closeOk": "可以关闭这个页面",
+    "closeFailed": "可以关闭这个页面后重试"
+  },
+  "login": {
+    "expired": "这个登录链接已过期或已经用过。回到 Ryugi 重新发起一次登录。",
+    "unreachable": "连不上 {{origin}}（{{message}}）。检查网络后回到 Ryugi 重新发起登录。",
+    "refused": "Ryugi Cloud 没有接受这次登录（{{reason}}）。回到 Ryugi 重新发起登录。"
+  },
+  "meta": {
+    "artifact": "在 {{project}} 项目中查看 {{title}}，这是一个 {{type}} Artifact。",
+    "library": "浏览 {{project}} 项目的全部 Artboard、Document 和 HTML Artifact，预览真实内容，按类型、名称和更新时间查找作品。"
+  }
+}

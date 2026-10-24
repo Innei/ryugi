@@ -1,0 +1,30 @@
+{
+  "callback": {
+    "titleOk": "Signed in to Ryugi Cloud",
+    "titleFailed": "Sign-in didn't finish",
+    "connected": "Connected to Ryugi Cloud",
+    "signedIn": "Signed in as",
+    "lead": "Ryugi on this computer can publish artifacts now.",
+    "fromPage": "Published from a Ryugi page?",
+    "fromPageDetail": "Go back to Ryugi; the share panel refreshes on its own.",
+    "fromAgent": "Asked the agent to publish?",
+    "fromAgentDetail": "Have it run the publish command again.",
+    "autoPublish": "Auto-publish is on",
+    "autoPublishDetail": "After each agent turn, changed artifacts sync privately to Ryugi Cloud. To turn it off, run <code>ryugi-artifacts config --auto-publish off</code>.",
+    "notConnected": "Not connected",
+    "retry": "Sign in again",
+    "retryDetail": "Go back to Ryugi and click Sign in in the share panel again.",
+    "description": "Result of signing in to Ryugi Cloud on this computer. Once connected, go back to Ryugi to publish and share artifacts.",
+    "closeOk": "You can close this page",
+    "closeFailed": "You can close this page and try again"
+  },
+  "login": {
+    "expired": "This sign-in link has expired or was already used. Go back to Ryugi and sign in again.",
+    "unreachable": "Couldn't reach {{origin}} ({{message}}). Check your network, then go back to Ryugi and sign in again.",
+    "refused": "Ryugi Cloud didn't accept this sign-in ({{reason}}). Go back to Ryugi and sign in again."
+  },
+  "meta": {
+    "artifact": "View {{title}} in the {{project}} project. This is a {{type}} artifact.",
+    "library": "Browse every artboard, document and HTML artifact in the {{project}} project, preview their content, and find them by type, name or update time."
+  }
+}

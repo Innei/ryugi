@@ -1,4 +1,6 @@
 import { RYUGI_MARK_BODY, RYUGI_MARK_VIEWBOX } from '../shared/brand';
+import { HTML_LANG, type Locale } from '../shared/locale';
+import { serverText } from './locales';
 
 export const CALLBACK_PAGE_CSP =
   "default-src 'none'; style-src 'unsafe-inline'; img-src data:; script-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'";
@@ -92,26 +94,27 @@ interface Failed {
 
 const row = (title: string, detail: string) => `<li><b>${title}</b><span>${detail}</span></li>`;
 
-export function callbackPage(result: SignedIn | Failed): string {
+export function callbackPage(result: SignedIn | Failed, locale: Locale = 'en'): string {
+  const t = serverText(locale);
   const host = escapeHtml(new URL(result.origin).host);
-  const title = result.ok ? '已登录 Ryugi Cloud' : '登录没有完成';
+  const title = result.ok ? t('callback.titleOk') : t('callback.titleFailed');
   const body = result.ok
-    ? `<p class="status">${CIRCLE_CHECK}已连接 Ryugi Cloud</p>
-      <h1>已登录<em>${escapeHtml(result.login)}</em></h1>
-      <p class="lead">这台电脑上的 Ryugi 现在可以发布 artifact 了。</p>
-      <ul class="rows">${row('在 Ryugi 页面里发布的？', '回到 Ryugi，分享面板会自动刷新。')}${row('让 agent 发布的？', '让它再运行一次发布命令。')}${result.autoPublish ? row('自动发布已打开', 'agent 每轮结束后，改过的 artifact 会以私密方式同步到 Ryugi Cloud。关闭：运行 <code>ryugi-artifacts config --auto-publish off</code>。') : ''}</ul>`
-    : `<p class="status">${CIRCLE_ALERT}未连接</p>
-      <h1>登录没有完成</h1>
+    ? `<p class="status">${CIRCLE_CHECK}${t('callback.connected')}</p>
+      <h1>${t('callback.signedIn')}<em>${escapeHtml(result.login)}</em></h1>
+      <p class="lead">${t('callback.lead')}</p>
+      <ul class="rows">${row(t('callback.fromPage'), t('callback.fromPageDetail'))}${row(t('callback.fromAgent'), t('callback.fromAgentDetail'))}${result.autoPublish ? row(t('callback.autoPublish'), t('callback.autoPublishDetail')) : ''}</ul>`
+    : `<p class="status">${CIRCLE_ALERT}${t('callback.notConnected')}</p>
+      <h1>${t('callback.titleFailed')}</h1>
       <p class="lead">${escapeHtml(result.detail)}</p>
-      <ul class="rows">${row('重新登录', '回到 Ryugi，在分享面板里再点一次「登录」。')}</ul>`;
+      <ul class="rows">${row(t('callback.retry'), t('callback.retryDetail'))}</ul>`;
   return `<!doctype html>
-<html lang="zh-CN">
+<html lang="${HTML_LANG[locale]}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="referrer" content="no-referrer">
 <meta name="robots" content="noindex, nofollow">
-<meta name="description" content="Ryugi Cloud 本地登录结果。完成连接后，返回 Ryugi 继续发布和分享 Artifact。">
+<meta name="description" content="${t('callback.description')}">
 <title>${title}</title>
 <style>${STYLE}</style>
 </head>
@@ -119,7 +122,7 @@ export function callbackPage(result: SignedIn | Failed): string {
   <div class="mark">${MARK}ryugi</div>
   <main class="${result.ok ? 'signed-in' : 'failed'}">
     ${body}
-    <footer><span>${result.ok ? '可以关闭这个页面' : '可以关闭这个页面后重试'}</span><code>${host}</code></footer>
+    <footer><span>${result.ok ? t('callback.closeOk') : t('callback.closeFailed')}</span><code>${host}</code></footer>
   </main>
 </body>
 </html>
