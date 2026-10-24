@@ -16,6 +16,18 @@ Browser links use a stable random ID, such as `/document/<id>` or `/artboard/<id
 
 Artboard page links restore the selected page on refresh and support browser back and forward. Page changes also carry into cloud share links.
 
+## See and stop running servers
+
+Agents start servers in the background, one per project. To see them all:
+
+```bash
+npx ryugi-artifacts monitor
+```
+
+In a terminal it opens a live view that refreshes every 2 seconds: project, port, pid, uptime, open browser tabs, time since last use and release. A server with no open tab and 30 minutes without use is tagged `safe to stop`. Keys: `↑`/`↓` (or `j`/`k`) select, `o` opens it in the browser, `c` copies its URL, `l` follows its log, `x` stops it, `X` stops every server that is safe to stop (both ask for `y` first), `q` quits. Outside a terminal, or with `--json`, it prints the list once.
+
+Each server lists itself in `/tmp/ryugi-<uid>/servers/` (`<temp>\ryugi\servers\` on Windows) while it runs; `RYUGI_RUNTIME_DIR` moves it. Servers from releases before 1.33.0 don't list themselves.
+
 The same CLI runs what the skill uses: `npx ryugi-artifacts start`, `stop` and `publish` (`--help` lists their options; add `--json` for one JSON line). For development, run `cd artifacts && pnpm build`, then `node artifacts/bin/ryugi-artifacts.cjs /path/to/project` from the repository root.
 
 Cloud publish failures keep the cloud HTTP status in `publish --json` output. When provided, `code`, `plan`, and `limit` (`kind`, `used`, `max`, and `requested`) are preserved. Account quota failures remain `type: "plan-limit"` with exit code 2; artifact storage exhaustion uses `code: "artifact_storage_limit"`, status 413 and exit code 1. Auto-publish reports the same exhaustion reason immediately.

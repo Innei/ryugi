@@ -3,6 +3,7 @@ import { parseArgs, type ParseArgsConfig } from 'node:util';
 import { check, checkText } from './check';
 import { comment, commentText } from './comment';
 import { config } from './config';
+import { monitor, monitorText } from './monitor';
 import { CliError } from './paths';
 import { start, type Emit } from './start';
 import { publish, type PublishAction } from './publish';
@@ -31,6 +32,8 @@ Commands:
               reply   --artifact <document|artboard>/<id> --thread <threadId> [--text <text>]
               resolve --artifact <document|artboard>/<id> --thread <threadId>
             Without --text, add and reply read the message from stdin.
+  monitor   List every running artifacts server on this machine and manage them. In a terminal it
+            opens a live view (open, copy URL, logs, stop); otherwise, or with --json, prints the list once.
   config    Auto-publish changed artifacts as private cloud copies when the agent's turn ends:
               --auto-publish on|off              for every project
               --auto-publish on|off|inherit --project   override for this project only
@@ -66,6 +69,8 @@ function text(value: Record<string, unknown>) {
   if (value.type === 'auto-publish') return `Auto-publish: ${value.global === null ? 'not decided' : value.global ? 'on' : 'off'} for every project${value.project === null ? '' : `, ${value.project ? 'on' : 'off'} for this project`}.`;
   const checked = checkText(value);
   if (checked !== null) return checked;
+  const servers = monitorText(value);
+  if (servers !== null) return servers;
   const commented = commentText(value);
   if (commented !== null) return commented;
   if (typeof value.status === 'string') return value.status === 'stopped' ? 'Stopped.' : value.status.replace(/_/g, ' ');
@@ -175,6 +180,10 @@ async function main(argv: string[]) {
         autoPublish: values['auto-publish'] as string | undefined,
         project: !!values.project,
       }, emit);
+    }
+    if (command === 'monitor') {
+      const { values } = parse(rest, {});
+      return await monitor({ json: !!values.json }, emit);
     }
     if (command === '--version' || command === '-v') {
       console.log(CLI_VERSION);

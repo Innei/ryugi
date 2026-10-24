@@ -13,6 +13,7 @@ export default defineConfig({
     // Spawned CLIs and servers inherit these, so no test can sign in with the developer's real account.
     env: {
       XDG_CONFIG_HOME: fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-test-config-')),
+      RYUGI_RUNTIME_DIR: fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-test-runtime-')),
       RYUGI_CLOUD_ORIGIN: 'http://127.0.0.1:9',
     },
   },

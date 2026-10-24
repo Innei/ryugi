@@ -4,6 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, test } from 'vitest';
 import { AGENT_MARKERS } from '../src/server/agent';
+import { readEntries, registryDir } from '../src/server/registry';
 import { closeAll, fakeCloud } from './fake-cloud';
 import { get, waitFor } from './helpers';
 
@@ -65,6 +66,27 @@ describe('ryugi-artifacts start', () => {
     const second = run(['start', '--project-dir', project]).out;
     expect(second.url).toBe(first.url);
     expect(second.reused).toBe(true);
+  }, 30000);
+
+  test('the server registers itself globally while it runs', () => {
+    const project = newProject();
+    const real = fs.realpathSync(project);
+    run(['start', '--project-dir', project]);
+    const pid = Number(fs.readFileSync(path.join(stateOf(project), 'server.pid'), 'utf8'));
+    expect(readEntries(registryDir()).find((e) => e.project === real)).toMatchObject({ pid, root: path.join(real, '.ryugi', 'artifacts') });
+    run(['stop', '--project-dir', project]);
+    expect(readEntries(registryDir()).find((e) => e.project === real)).toBeUndefined();
+  }, 30000);
+
+  test('a server whose terminal closes unregisters itself', async () => {
+    const project = newProject();
+    const real = fs.realpathSync(project);
+    run(['start', '--project-dir', project]);
+    const pid = Number(fs.readFileSync(path.join(stateOf(project), 'server.pid'), 'utf8'));
+    expect(readEntries(registryDir()).some((e) => e.project === real)).toBe(true);
+    process.kill(pid, 'SIGHUP');
+    await waitFor(() => { try { process.kill(pid, 0); return false; } catch { return true; } }, 5000);
+    await waitFor(() => !readEntries(registryDir()).some((e) => e.project === real), 5000);
   }, 30000);
 
   test('concurrent starts share one server that stop then stops', async () => {

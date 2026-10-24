@@ -150,7 +150,12 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
   selections.clearAll();
   const changeListeners: ((ref: ArtifactRef, payload: ArtifactPayload, files: string[]) => void)[] = [];
   const activityListeners: (() => void)[] = [];
-  const touch = () => activityListeners.forEach((listener) => listener());
+  const startedAt = Date.now();
+  let lastActivity = startedAt;
+  const touch = () => {
+    lastActivity = Date.now();
+    activityListeners.forEach((listener) => listener());
+  };
   let port = 0;
   let cookieName = '';
 
@@ -544,9 +549,15 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
   }
 
   const handleRequest = (req: http.IncomingMessage, res: http.ServerResponse) => {
-    touch();
     res.setHeader('X-Robots-Tag', 'noindex, nofollow');
     const url = new URL(req.url ?? '/', 'http://artifacts.local');
+    // The monitor polls this; counting it as activity would keep every watched server from ever going idle.
+    if (url.pathname === '/api/status') {
+      if (!isAuthorized(req, url.searchParams.get('key'))) send(res, 403, 'Forbidden: agent calls need ?key=');
+      else sendJson(res, 200, { pid: process.pid, startedAt, lastActivity, clients: clients.size });
+      return;
+    }
+    touch();
     let pathname: string;
     try {
       pathname = decodeURIComponent(url.pathname);

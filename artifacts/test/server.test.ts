@@ -136,6 +136,40 @@ describe('session key', () => {
   });
 });
 
+describe('status API', () => {
+  const status = async (s: ArtifactsServer, key = s.token) => {
+    const res = await get(`${base(s)}/api/status?key=${key}`);
+    return { status: res.status, json: res.status === 200 ? JSON.parse(res.body) : null };
+  };
+
+  test('is refused without the key', async () => {
+    const { server } = await start();
+    expect((await status(server, 'wrong')).status).toBe(403);
+  });
+
+  test('reports the pid, open tabs and last activity', async () => {
+    const { server } = await start();
+    const before = (await status(server)).json;
+    expect(before).toMatchObject({ pid: process.pid, clients: 0 });
+    expect(before.startedAt).toBeLessThanOrEqual(Date.now());
+    const ws = await openWs(server.port, { Cookie: cookie(server), Origin: base(server) });
+    expect((await status(server)).json.clients).toBe(1);
+    ws.socket?.destroy();
+  });
+
+  test('polling it does not count as activity', async () => {
+    const { server } = await start();
+    let touched = 0;
+    server.onActivity(() => touched++);
+    const first = (await status(server)).json.lastActivity;
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect((await status(server)).json.lastActivity).toBe(first);
+    expect(touched).toBe(0);
+    await api(server, '/api/artifacts');
+    expect((await status(server)).json.lastActivity).toBeGreaterThan(first);
+  });
+});
+
 describe('page metadata', () => {
   test('serves crawler rules without a session while keeping artifacts behind authentication', async () => {
     const { server } = await start({ viewer: path.resolve(__dirname, '../dist/viewer') });

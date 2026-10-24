@@ -6,6 +6,7 @@ import { startArtifactsServer } from './app';
 import { credentialsFile } from './credentials';
 import { browserLauncher, isLoopback, liveOwners, parseEnv, processAlive, readOwners, shutdownReason } from './lifecycle';
 import { openReady } from './ready';
+import { registryDir, removeEntry, touchEntry, writeEntry, type RegistryEntry } from './registry';
 import { writeJsonAtomic } from './state';
 import { version } from '../../package.json';
 
@@ -45,6 +46,14 @@ async function main() {
     if (launcher) execFile(launcher.bin, launcher.args, () => {});
   });
 
+  const registry = registryDir();
+  const entry: RegistryEntry | null = config.serverId
+    ? { project: path.dirname(path.dirname(root)), root, pid: process.pid, serverId: config.serverId, startedAt: Date.now() }
+    : null;
+  const quietly = (fn: () => void) => {
+    try { fn(); } catch {}
+  };
+
   let stopping = false;
   const shutdown = async (reason: string) => {
     if (stopping) return;
@@ -52,6 +61,7 @@ async function main() {
     console.log(JSON.stringify({ type: 'server-stopped', reason }));
     fs.rmSync(path.join(stateDir, 'server-info'), { force: true });
     writeJsonAtomic(path.join(stateDir, 'server-stopped'), { reason, timestamp: Date.now() });
+    if (entry) quietly(() => removeEntry(registry, entry));
     await server.close();
     process.exit(0);
   };
@@ -66,13 +76,16 @@ async function main() {
       ownersAlive: owners.length === 0 || liveOwners(owners, processAlive).length > 0,
     });
     if (reason) void shutdown(reason);
+    else if (entry) quietly(() => touchEntry(registry, entry));
   }, config.lifecycleCheckMs);
   timer.unref();
 
   process.on('SIGTERM', () => void shutdown('SIGTERM'));
   process.on('SIGINT', () => void shutdown('SIGINT'));
+  process.on('SIGHUP', () => void shutdown('SIGHUP'));
 
   fs.rmSync(path.join(stateDir, 'server-stopped'), { force: true });
+  if (entry) quietly(() => writeEntry(registry, entry));
   console.log(JSON.stringify({ type: 'server-started', url: server.url, port: server.port, root }));
 }
 
