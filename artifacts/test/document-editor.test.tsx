@@ -46,7 +46,7 @@ beforeAll(() => {
   MotionGlobalConfig.skipAnimations = true;
 });
 afterEach(async () => {
-  const close = document.querySelector<HTMLElement>('[role="dialog"] [aria-label="关闭"]');
+  const close = document.querySelector<HTMLElement>('[role="dialog"] [aria-label="Close"]');
   if (close) await act(async () => close.click());
   await vi.waitFor(() => expect(document.querySelector('[role="dialog"]')).toBeNull());
   act(() => root?.unmount());
@@ -90,7 +90,7 @@ test('a modifier click opens a link while the document is editable', async () =>
 
 test('a mermaid block renders as a diagram that opens the enlarged viewer', async () => {
   const host = await renderEditor();
-  const trigger = host.querySelector('[contenteditable="true"] [aria-label="放大查看 Mermaid 图"]');
+  const trigger = host.querySelector('[contenteditable="true"] [aria-label="Enlarge Mermaid diagram"]');
   expect(trigger).toBeInstanceOf(HTMLElement);
   expect(trigger!.querySelector('img[alt="Mermaid diagram"]')).toBeInstanceOf(HTMLImageElement);
 });
@@ -101,7 +101,7 @@ test('pressing Enter on a focused diagram opens the viewer without editing the d
     $getRoot().getFirstChildOrThrow<ParagraphNode>().select(2, 2);
   }, { discrete: true }));
   const before = editor!.getEditorState().read(() => $getRoot().getTextContent());
-  const trigger = host.querySelector<HTMLElement>('[aria-label="放大查看 Mermaid 图"]')!;
+  const trigger = host.querySelector<HTMLElement>('[aria-label="Enlarge Mermaid diagram"]')!;
   trigger.focus();
   await act(async () => trigger.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })));
   expect(document.querySelector('[role="dialog"]')).toBeInstanceOf(HTMLElement);

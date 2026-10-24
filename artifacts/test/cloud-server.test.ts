@@ -66,12 +66,13 @@ describe('cloud sign-in', () => {
     expect(res.headers.get('content-security-policy')).toContain("script-src 'none'");
     expect(res.headers.get('x-robots-tag')).toBe('noindex, nofollow');
     const page = await res.text();
-    expect(page).toContain('<title>已登录 Ryugi Cloud</title>');
+    expect(page).toContain('<title>Signed in to Ryugi Cloud</title>');
+    expect(page).toContain('<html lang="en">');
     expect(page).toContain('<meta name="robots" content="noindex, nofollow">');
     expect(page).toContain('innei');
     expect(page).not.toContain('<script');
     expect(page).toContain(RYUGI_MARK_PATH);
-    for (const text of ['已连接 Ryugi Cloud', '在 Ryugi 页面里发布的？', '让 agent 发布的？', '可以关闭这个页面']) expect(page).toContain(text);
+    for (const text of ['Connected to Ryugi Cloud', 'Published from a Ryugi page?', 'Asked the agent to publish?', 'You can close this page']) expect(page).toContain(text);
     expect(page).not.toContain('class="moon"');
   });
 
@@ -91,10 +92,19 @@ describe('cloud sign-in', () => {
     expect(res.headers.get('content-type')).toBe('text/html; charset=utf-8');
     expect(res.headers.get('x-robots-tag')).toBe('noindex, nofollow');
     const page = await res.text();
+    expect(page).toContain('<title>Sign-in didn\'t finish</title>');
+    expect(page).toContain('This sign-in link has expired or was already used');
+    expect(page).toContain(RYUGI_MARK_PATH);
+    for (const text of ['Not connected', 'Sign in again', 'You can close this page and try again']) expect(page).toContain(text);
+  });
+
+  test('the sign-in page follows a Chinese browser', async () => {
+    const { server } = await start({ signedIn: false });
+    const res = await fetch(`http://127.0.0.1:${server.port}/api/cloud/callback?state=forged&code=c`, { headers: { 'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8' } });
+    const page = await res.text();
+    expect(page).toContain('<html lang="zh-CN">');
     expect(page).toContain('<title>登录没有完成</title>');
     expect(page).toContain('这个登录链接已过期或已经用过');
-    expect(page).toContain(RYUGI_MARK_PATH);
-    for (const text of ['未连接', '重新登录', '可以关闭这个页面后重试']) expect(page).toContain(text);
   });
 
   test('a callback with an unknown or reused state is refused', async () => {

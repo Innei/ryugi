@@ -1,6 +1,7 @@
 import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
 import { Component, type ReactNode } from 'react';
+import { t } from '../i18n';
 
 const styles = stylex.create({
   message: {
@@ -39,7 +40,7 @@ export class CanvasErrorBoundary extends Component<Props, State> {
 
   render() {
     if (this.state.error) {
-      return <div {...stylex.props(styles.message)}>The canvas could not be drawn: {this.state.error.message}</div>;
+      return <div {...stylex.props(styles.message)}>{t('chrome.canvasFailed', { message: this.state.error.message })}</div>;
     }
     return this.props.children;
   }

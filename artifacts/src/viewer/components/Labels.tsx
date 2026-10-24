@@ -8,6 +8,7 @@ import { boardReady, canPlay } from '../lib/play';
 import { GroupVerdict } from '../verdicts/GroupVerdict';
 import { BOARD_LABEL_RULE, GROUP_LABEL_RULE, labelRect, labelSize, type View } from '../lib/view';
 import { brand } from '../tokens.stylex';
+import { t } from '../i18n';
 
 const ACTIONS_MIN_WIDTH = 150;
 const PLAY_MIN_WIDTH = 240;
@@ -183,30 +184,30 @@ export function Labels({
               </span>
               {ready && width >= ACTIONS_MIN_WIDTH && (
                 <>
-                  <ActionIcon icon={Maximize2} size={{ blockSize: 22, size: 13 }} title="Expand" aria-label={`Expand ${id}`} onClick={() => onExpand(id)} />
+                  <ActionIcon icon={Maximize2} size={{ blockSize: 22, size: 13 }} title={t('chrome.expand')} aria-label={t('chrome.expandBoard', { id })} onClick={() => onExpand(id)} />
                   <ActionIcon
                     icon={Download}
                     size={{ blockSize: 22, size: 13 }}
-                    title="Download"
-                    aria-label={`Download ${id}`}
+                    title={t('chrome.download')}
+                    aria-label={t('chrome.downloadBoard', { id })}
                     onClick={() => downloadFile(`${contentBase}${board.file}`, board.file.split('/').pop() ?? `${id}.html`)}
                   />
                 </>
               )}
-              {ready && parameters?.[id] !== undefined && width >= ACTIONS_MIN_WIDTH && <button type="button" aria-label={`Parameters ${id}`} aria-expanded={activeParameters === id} onClick={(event) => onToggleParameters?.(id, event.currentTarget)} {...stylex.props(styles.play, activeParameters === id && styles.playOn)}><SlidersHorizontal size={11} />Parameters {parameters[id] || '!'}</button>}
+              {ready && parameters?.[id] !== undefined && width >= ACTIONS_MIN_WIDTH && <button type="button" aria-label={t('chrome.parametersBoard', { id })} aria-expanded={activeParameters === id} onClick={(event) => onToggleParameters?.(id, event.currentTarget)} {...stylex.props(styles.play, activeParameters === id && styles.playOn)}><SlidersHorizontal size={11} />{t('chrome.parameters')} {parameters[id] || '!'}</button>}
               {interactive && width >= PLAY_MIN_WIDTH && playing.has(id) && (
-                <ActionIcon icon={RotateCcw} size={{ blockSize: 22, size: 13 }} title="Replay" aria-label={`Replay ${id}`} onClick={() => onReplay(id)} />
+                <ActionIcon icon={RotateCcw} size={{ blockSize: 22, size: 13 }} title={t('chrome.replay')} aria-label={t('chrome.replayBoard', { id })} onClick={() => onReplay(id)} />
               )}
               {interactive && width >= PLAY_MIN_WIDTH && (
                 <button
                   type="button"
                   aria-pressed={playing.has(id)}
-                  aria-label={`${playing.has(id) ? 'Stop' : 'Play'} ${id}`}
+                  aria-label={playing.has(id) ? t('chrome.stopBoard', { id }) : t('chrome.playBoard', { id })}
                   onClick={() => onTogglePlay(id)}
                   {...stylex.props(styles.play, playing.has(id) && styles.playOn)}
                 >
                   <Play size={11} strokeWidth={2.4} />
-                  {playing.has(id) ? 'PLAYING' : 'PLAY'}
+                  {playing.has(id) ? t('chrome.playing') : t('chrome.play')}
                 </button>
               )}
             </div>

@@ -73,17 +73,17 @@ test('opens on the question the agent focused, with no selection tools or inspec
 
 const labelled = (label: string) => host!.querySelector<HTMLButtonElement>(`button[aria-label="${label}"]`)!;
 
-test('上一题 and 下一题 step through the list, newest round first, and stop at the ends', async () => {
+test('Previous and next step through the list, newest round first, and stop at the ends', async () => {
   await mount();
   expect(bar()).toContain('3 / 3');
-  expect(labelled('下一题').disabled).toBe(true);
-  await act(async () => labelled('上一题').click());
+  expect(labelled('Next question').disabled).toBe(true);
+  await act(async () => labelled('Previous question').click());
   expect(bar()).toContain('q1');
   expect(bar()).toContain('2 / 3');
-  await act(async () => labelled('上一题').click());
+  await act(async () => labelled('Previous question').click());
   expect(bar()).toContain('q3');
-  expect(labelled('上一题').disabled).toBe(true);
-  await act(async () => labelled('下一题').click());
+  expect(labelled('Previous question').disabled).toBe(true);
+  await act(async () => labelled('Next question').click());
   expect(bar()).toContain('q1');
 });
 
@@ -133,10 +133,10 @@ test('tapping a board opens it full screen out of its tile and pages through its
   expect(full.textContent).toContain('q2-a');
   expect(full.textContent).toContain('1 / 2');
   expect(animate.mock.calls.some(([frames]) => JSON.stringify(frames).includes('scale('))).toBe(true);
-  await act(async () => labelled('下一张').click());
+  await act(async () => labelled('Next board').click());
   await vi.waitFor(() => expect(host!.querySelector('[data-phone-board]')!.textContent).toContain('长按段落'));
   expect(host!.querySelector('[data-phone-board]')!.textContent).toContain('2 / 2');
-  await act(async () => labelled('返回画布').click());
+  await act(async () => labelled('Back to canvas').click());
   await vi.waitFor(() => expect(host!.querySelector('[data-phone-board]')).toBeNull());
 });
 
@@ -217,10 +217,10 @@ test('a verify group on the phone shows its verdict but never the verdict button
   const spec = { ...canvas, groups: { ...canvas.groups, q1: { ...canvas.groups.q1, verify: true }, q2: { ...canvas.groups.q2, verify: true } } };
   const pass = { id: 'p1', anchor: { page: 'p', group: 'q1', verdict: 'pass', x: 0, y: 0 }, status: 'resolved', statusAt: '2026-10-22T08:40:00Z', messages: [{ id: 'm', author: 'human', text: '通过', at: '2026-10-22T08:40:00Z' }] };
   await mount(spec, layout, { comments: { comments: { version: 1, threads: [pass] }, stale: [] }, comment: vi.fn() });
-  expect(host!.querySelector('[data-group-label="q1"]')!.textContent).toContain('已通过');
+  expect(host!.querySelector('[data-group-label="q1"]')!.textContent).toContain('Passed');
   const pending = host!.querySelector<HTMLElement>('[data-group-label="q2"]')!;
-  expect(pending.textContent).toContain('待验收');
-  expect([...pending.querySelectorAll('button')].map((b) => b.textContent?.trim())).not.toContain('通过');
+  expect(pending.textContent).toContain('Awaiting review');
+  expect([...pending.querySelectorAll('button')].map((b) => b.textContent?.trim())).not.toContain('Pass');
 });
 
 test('an opened image or video board shows the media instead of a frame', async () => {
@@ -235,7 +235,7 @@ test('an opened image or video board shows the media instead of a frame', async 
   expect(host.querySelector('[data-phone-board] img')?.getAttribute('src')).toBe('about:blank#pages/p/shot.png');
   await open(video);
   expect(host.querySelector('[data-phone-board] video')).not.toBeNull();
-  expect(host.querySelector('[data-phone-board] [aria-label="播放"]')).not.toBeNull();
+  expect(host.querySelector('[data-phone-board] [aria-label="Play"]')).not.toBeNull();
 });
 
 
@@ -244,6 +244,6 @@ test('stepping to another question glides the canvas there instead of jumping', 
   vi.stubGlobal('requestAnimationFrame', frame);
   await mount();
   const before = frame.mock.calls.length;
-  await act(async () => host!.querySelector<HTMLButtonElement>('button[aria-label="上一题"]')!.click());
+  await act(async () => host!.querySelector<HTMLButtonElement>('button[aria-label="Previous question"]')!.click());
   expect(frame.mock.calls.length).toBeGreaterThan(before);
 });

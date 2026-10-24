@@ -37,7 +37,7 @@ async function type(host: HTMLElement, text: string) {
     Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!.call(box, text);
     box.dispatchEvent(new Event('input', { bubbles: true }));
   });
-  await act(async () => host.querySelector<HTMLButtonElement>('button[aria-label="发送"]')!.click());
+  await act(async () => host.querySelector<HTMLButtonElement>('button[aria-label="Send"]')!.click());
 }
 
 const at = '2026-10-21T10:00:00.000Z';
@@ -59,7 +59,7 @@ test('a thread is flat: quote, state, every message, and a reply line', async ()
   const thread = actions();
   const host = await render(createElement(PhoneThread, { thread: waiting, agent: 'Claude Code', actions: thread }));
   expect(host.textContent).toContain('每个入口各自解析参数');
-  expect(host.textContent).toContain('等 Claude Code 回复');
+  expect(host.textContent).toContain('Waiting on Claude Code');
   expect(host.textContent).toContain('这里能合并吗？');
   await type(host, '顺便看下测试');
   expect(thread.reply).toHaveBeenCalledWith('t1', '顺便看下测试');
@@ -67,7 +67,7 @@ test('a thread is flat: quote, state, every message, and a reply line', async ()
 
 test('a thread the agent answered says so, and offline threads cannot be answered', async () => {
   const host = await render(createElement(PhoneThread, { thread: answered, agent: 'Claude Code' }));
-  expect(host.textContent).toContain('Claude Code 已回复');
+  expect(host.textContent).toContain('Claude Code replied');
   expect(host.querySelector('textarea')).toBeNull();
 });
 
@@ -75,14 +75,14 @@ test('the collapsed sheet counts comments and the ones waiting on the agent', as
   const host = await render(
     createElement(PhoneSheet, { threads: [waiting, answered], agent: 'Claude Code', actions: actions(), offline: false, draft: null, onCreate: vi.fn(), onCancelDraft: vi.fn(), activeId: null, snap: 78, onSnap: vi.fn() }),
   );
-  expect(host.querySelector('[data-sheet-head]')!.textContent).toBe('评论 2· 1 条等 Claude Code 回复');
+  expect(host.querySelector('[data-sheet-head]')!.textContent).toBe('Comments 2· 1 waiting on Claude Code');
 });
 
 test('offline, the sheet title says comments wait for the computer', async () => {
   const host = await render(
     createElement(PhoneSheet, { threads: [waiting], agent: 'Claude Code', offline: true, draft: null, onCreate: vi.fn(), onCancelDraft: vi.fn(), activeId: null, snap: 78, onSnap: vi.fn() }),
   );
-  expect(host.querySelector('[data-sheet-head]')!.textContent).toBe('评论 1· 电脑离线，暂时不能评论');
+  expect(host.querySelector('[data-sheet-head]')!.textContent).toBe('Comments 1· Computer offline; commenting is unavailable');
   expect(host.querySelector('textarea')).toBeNull();
 });
 
@@ -103,12 +103,12 @@ test('the edit menu offers only what the page can do right now, leaving copy to 
   const labels = (host: HTMLElement) => [...host.querySelectorAll('button')].map((b) => b.textContent);
   const handlers = { onComment: vi.fn(), onEdit: vi.fn() };
   const online = await render(createElement(PhoneEditMenu, { left: 0, top: 0, placement: 'below', canComment: true, canEdit: true, ...handlers }));
-  expect(labels(online)).toEqual(['评论', '改字']);
+  expect(labels(online)).toEqual(['Comment', 'Edit text']);
   await act(async () => online.querySelectorAll('button')[1]!.click());
   expect(handlers.onEdit).toHaveBeenCalled();
   act(() => root?.unmount());
   const commentsOnly = await render(createElement(PhoneEditMenu, { left: 0, top: 0, placement: 'below', canComment: true, canEdit: false, ...handlers }));
-  expect(labels(commentsOnly)).toEqual(['评论']);
+  expect(labels(commentsOnly)).toEqual(['Comment']);
 });
 
 test('the edit menu grows in from the selection it points at', async () => {
@@ -174,27 +174,27 @@ describe('phone layout', () => {
     });
   const button = (host: HTMLElement, label: string) => [...host.querySelectorAll('button')].find((b) => b.textContent === label)!;
 
-  test('评论 raises the sheet to half with a composer quoting the selection', async () => {
+  test('Comment raises the sheet to half with a composer quoting the selection', async () => {
     const host = await render(layout({}));
     expect(host.querySelector('section')!.dataset.snap).toBe('78');
-    await act(async () => button(host, '评论').click());
+    await act(async () => button(host, 'Comment').click());
     expect(host.querySelector('section')!.dataset.snap).toBe('0.5');
     expect(host.querySelector('section')!.textContent).toContain('四个脚本');
-    expect(host.querySelector('textarea[placeholder="写给 agent 的评论…"]')).not.toBeNull();
+    expect(host.querySelector('textarea[placeholder="Comment for the agent…"]')).not.toBeNull();
   });
 
-  test('改字 hands the selection to the page', async () => {
+  test('Edit text hands the selection to the page', async () => {
     const onEdit = vi.fn();
     const host = await render(layout({ onEdit }));
-    await act(async () => button(host, '改字').click());
+    await act(async () => button(host, 'Edit text').click());
     expect(onEdit).toHaveBeenCalledWith(selection);
   });
 
   test('with the sheet at half the menu moves above a selection the sheet would cover', async () => {
     vi.spyOn(window, 'innerHeight', 'get').mockReturnValue(844);
     const host = await render(layout({}));
-    await act(async () => button(host, '评论').click());
-    await act(async () => button(host, '取消').click());
+    await act(async () => button(host, 'Comment').click());
+    await act(async () => button(host, 'Cancel').click());
     const low = { ...selection, top: 380, bottom: 400 };
     await act(async () => root!.render(layout({ selection: low })));
     expect(host.querySelector('[data-edit-menu]')!.getAttribute('data-placement')).toBe('above');
@@ -215,8 +215,8 @@ test('opening a thread raises a collapsed sheet to half and leaves a taller one 
 describe('going offline keeps what the owner is typing', () => {
   test('a thread keeps its reply box offline but cannot be resolved', async () => {
     const host = await render(createElement(PhoneThread, { thread: waiting, agent: 'Claude Code', actions: actions(), offline: true }));
-    expect(host.querySelector('textarea[placeholder="回复…"]')).not.toBeNull();
-    expect([...host.querySelectorAll('button')].map((b) => b.textContent)).not.toContain('解决');
+    expect(host.querySelector('textarea[placeholder="Reply…"]')).not.toBeNull();
+    expect([...host.querySelectorAll('button')].map((b) => b.textContent)).not.toContain('Resolve');
   });
 
   test('a new comment being written survives the computer dropping', async () => {
@@ -233,9 +233,9 @@ describe('going offline keeps what the owner is typing', () => {
       children: createElement('p', null, '正文'),
     };
     const host = await render(createElement(PhoneLayout, { ...props, canComment: true, canEdit: true, offline: false }));
-    await act(async () => [...host.querySelectorAll('button')].find((b) => b.textContent === '评论')!.click());
+    await act(async () => [...host.querySelectorAll('button')].find((b) => b.textContent === 'Comment')!.click());
     await act(async () => root!.render(createElement(PhoneLayout, { ...props, selection: null, canComment: false, canEdit: false, offline: true })));
-    expect(host.querySelector('textarea[placeholder="写给 agent 的评论…"]')).not.toBeNull();
+    expect(host.querySelector('textarea[placeholder="Comment for the agent…"]')).not.toBeNull();
   });
 });
 

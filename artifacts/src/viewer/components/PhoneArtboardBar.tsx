@@ -4,6 +4,7 @@ import * as stylex from '@stylexjs/stylex';
 import { Check, ChevronDown } from 'lucide-react';
 import type { PageSpec } from '../../shared/types';
 import { PublishMenu } from './PublishMenu';
+import { t } from '../i18n';
 
 export const PHONE_BAR_HEIGHT = 52;
 
@@ -57,7 +58,7 @@ export function PageSwitcher({ pages, page, onPageChange }: PageSwitcherProps) {
       placement="bottomLeft"
       items={pages.map((p) => ({ key: p.id, label: p.name, icon: p.id === page ? Check : undefined, onClick: () => onPageChange(p.id) }))}
     >
-      <button type="button" aria-label="Switch page" {...stylex.props(styles.trigger)}>
+      <button type="button" aria-label={t('chrome.switchPage')} {...stylex.props(styles.trigger)}>
         <span {...stylex.props(styles.pageName)}>{current?.name ?? page}</span>
         <ChevronDown size={13} />
       </button>
@@ -77,7 +78,7 @@ export function PhoneArtboardBar({ title, pages, page, onPageChange, artifact, l
       <span {...stylex.props(styles.title)}>{title}</span>
       <PageSwitcher pages={pages} page={page} onPageChange={onPageChange} />
       <span {...stylex.props(styles.spacer)} />
-      {live === undefined ? null : <i title={live ? 'Live' : 'Reconnecting…'} {...stylex.props(styles.dot, live && styles.dotOn)} />}
+      {live === undefined ? null : <i title={live ? t('chrome.live') : t('chrome.reconnecting')} {...stylex.props(styles.dot, live && styles.dotOn)} />}
       {artifact ? <PublishMenu artifact={artifact} /> : null}
     </header>
   );

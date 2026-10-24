@@ -7,6 +7,7 @@ import type { BoardTweakState } from '../hooks/useBoardTweaks';
 import { isComposing } from '../lib/keyboard';
 import type { View } from '../lib/view';
 import './tweaks.css';
+import { t } from '../i18n';
 
 export const TWEAK_PANEL_WIDTH = 352;
 export const tweakPanelAnchor = (board: Rect, view: View) => ({ left: view.x + (board.x + board.w) * view.k + 12, top: view.y + board.y * view.k });
@@ -51,25 +52,25 @@ export function TweaksPanel({ boardId, title, state, anchor, onChange, onReset, 
   const dialog = useRef<HTMLDialogElement>(null);
   const groups = new Map<string, [string, TweakControl][]>();
   for (const entry of Object.entries(state.schema?.controls ?? {})) {
-    const name = entry[1].section || 'Controls';
+    const name = entry[1].section || t('parameters.controls');
     if (!groups.has(name)) groups.set(name, []);
     groups.get(name)!.push(entry);
   }
   const changed = Object.entries(state.values).filter(([key, value]) => value !== state.schema?.controls[key]?.default).length;
   return <IconProvider config={{ 'aria-hidden': true }}>
-    <aside className="ryugi-parameters" data-chrome="parameters" aria-label="Parameters" style={{ position: anchor ? 'absolute' : 'relative', ...anchor, width: TWEAK_PANEL_WIDTH, maxHeight: anchor ? `min(604px, calc(100% - ${Math.max(0, anchor.top)}px - 12px))` : 'min(604px, calc(100vh - 112px))' }} onKeyDown={(event) => { event.stopPropagation(); if (event.key === 'Escape' && !event.defaultPrevented && !isComposing(event.nativeEvent)) onClose(); }}>
-      <header className="rt-header"><SlidersHorizontal size={15} aria-hidden /><h2>Parameters</h2><ActionIcon icon={X} size="small" aria-label="Close parameters" title="Close parameters" onClick={onClose} /></header>
-      <div className="rt-board"><Code2 size={17} aria-hidden /><div><strong>{title}</strong><code>{boardId}</code></div><span>Current board</span></div>
+    <aside className="ryugi-parameters" data-chrome="parameters" aria-label={t('parameters.title')} style={{ position: anchor ? 'absolute' : 'relative', ...anchor, width: TWEAK_PANEL_WIDTH, maxHeight: anchor ? `min(604px, calc(100% - ${Math.max(0, anchor.top)}px - 12px))` : 'min(604px, calc(100vh - 112px))' }} onKeyDown={(event) => { event.stopPropagation(); if (event.key === 'Escape' && !event.defaultPrevented && !isComposing(event.nativeEvent)) onClose(); }}>
+      <header className="rt-header"><SlidersHorizontal size={15} aria-hidden /><h2>{t('parameters.title')}</h2><ActionIcon icon={X} size="small" aria-label={t('parameters.close')} title={t('parameters.close')} onClick={onClose} /></header>
+      <div className="rt-board"><Code2 size={17} aria-hidden /><div><strong>{title}</strong><code>{boardId}</code></div><span>{t('parameters.currentBoard')}</span></div>
       <div className="rt-body">
         {state.error && <p className="rt-error" role="alert">{state.error}</p>}
         {[...groups].map(([name, controls]) => <section className="rt-section" key={name}><h3>{name}</h3>{controls.map(([key, control]) => <Control key={key} control={control} value={state.values[key]!} change={(value) => onChange(key, value)} />)}</section>)}
-        {state.schema && <div className="rt-declaration"><span>Declared by this board's author</span><Button size="small" type="text" icon={Code2} onClick={() => dialog.current?.showModal()}>View declaration</Button></div>}
+        {state.schema && <div className="rt-declaration"><span>{t('parameters.declaredBy')}</span><Button size="small" type="text" icon={Code2} onClick={() => dialog.current?.showModal()}>{t('parameters.viewDeclaration')}</Button></div>}
       </div>
-      <footer className="rt-footer"><span role="status">{changed ? `${changed} changed · this board` : 'Defaults'}</span><Button size="small" type="text" icon={RotateCcw} disabled={!changed} onClick={onReset}>Reset</Button></footer>
+      <footer className="rt-footer"><span role="status">{changed ? t('parameters.changed', { count: changed }) : t('parameters.defaults')}</span><Button size="small" type="text" icon={RotateCcw} disabled={!changed} onClick={onReset}>{t('parameters.reset')}</Button></footer>
     </aside>
-    <dialog ref={dialog} className="rt-dialog" aria-label="Parameter declaration" onKeyDown={(event) => event.stopPropagation()}>
-      <header><h2>Parameter declaration</h2><ActionIcon icon={X} size="small" aria-label="Close declaration" onClick={() => dialog.current?.close()} /></header>
-      <pre tabIndex={0}>{JSON.stringify(state.schema, null, 2)}</pre><h3>Current values</h3><pre tabIndex={0}>{JSON.stringify(state.values, null, 2)}</pre><p>Preview values stay in this viewer session. Source files are unchanged.</p>
+    <dialog ref={dialog} className="rt-dialog" aria-label={t('parameters.declaration')} onKeyDown={(event) => event.stopPropagation()}>
+      <header><h2>{t('parameters.declaration')}</h2><ActionIcon icon={X} size="small" aria-label={t('parameters.closeDeclaration')} onClick={() => dialog.current?.close()} /></header>
+      <pre tabIndex={0}>{JSON.stringify(state.schema, null, 2)}</pre><h3>{t('parameters.currentValues')}</h3><pre tabIndex={0}>{JSON.stringify(state.values, null, 2)}</pre><p>{t('parameters.sessionOnly')}</p>
     </dialog>
   </IconProvider>;
 }

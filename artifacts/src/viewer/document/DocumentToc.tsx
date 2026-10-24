@@ -3,6 +3,7 @@ import * as stylex from '@stylexjs/stylex';
 import { $getRoot, type LexicalEditor } from 'lexical';
 import { useEffect, useRef, useState } from 'react';
 import { springScrollToElement } from './scroller';
+import { t } from '../i18n';
 
 interface Entry {
   key: string;
@@ -104,8 +105,8 @@ export function DocumentToc({ editor }: { editor: LexicalEditor | null }) {
 
   if (entries.length === 0) return <nav {...stylex.props(styles.toc)} />;
   return (
-    <nav aria-label="目录" {...stylex.props(styles.toc)}>
-      <div {...stylex.props(styles.label)}>目录</div>
+    <nav aria-label={t('document.toc')} {...stylex.props(styles.toc)}>
+      <div {...stylex.props(styles.label)}>{t('document.toc')}</div>
       <div ref={listRef} {...stylex.props(styles.list)}>
         {entries.map((entry) => (
           <button

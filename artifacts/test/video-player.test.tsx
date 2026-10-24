@@ -43,24 +43,24 @@ test('the bar shows the time and plays and pauses the video', async () => {
   });
   const { host, video } = await render();
   expect(host.textContent).toContain('0:00 / 0:12');
-  await act(async () => button(host, '播放').click());
+  await act(async () => button(host, 'Play').click());
   expect(play).toHaveBeenCalled();
   Object.defineProperty(video, 'currentTime', { configurable: true, writable: true, value: 4 });
   await act(async () => video.dispatchEvent(new Event('timeupdate')));
   expect(host.textContent).toContain('0:04 / 0:12');
-  expect(button(host, '暂停')).not.toBeNull();
+  expect(button(host, 'Pause')).not.toBeNull();
 });
 
 test('speed cycles, loop toggles, and expand reports back', async () => {
   const onExpand = vi.fn();
   const { host, video } = await render({ onExpand });
-  await act(async () => button(host, '倍速').click());
+  await act(async () => button(host, 'Speed').click());
   expect(video.playbackRate).toBe(1.5);
-  expect(button(host, '倍速').textContent).toBe('1.5×');
-  await act(async () => button(host, '循环').click());
+  expect(button(host, 'Speed').textContent).toBe('1.5×');
+  await act(async () => button(host, 'Loop').click());
   expect(video.loop).toBe(true);
-  expect(button(host, '循环').getAttribute('aria-pressed')).toBe('true');
-  await act(async () => button(host, '放大').click());
+  expect(button(host, 'Loop').getAttribute('aria-pressed')).toBe('true');
+  await act(async () => button(host, 'Expand').click());
   expect(onExpand).toHaveBeenCalled();
 });
 
@@ -75,13 +75,13 @@ test('a press on the track seeks there, and presses on the bar never reach the c
 
 test('the bar hides when the board is too small on screen to use it', async () => {
   const { host } = await render({ barWidth: 120 });
-  expect(button(host, '播放')).toBeNull();
+  expect(button(host, 'Play')).toBeNull();
 });
 
 test('a video that cannot load says so instead of sitting black', async () => {
   const { host, video } = await render();
   await act(async () => video.dispatchEvent(new Event('error')));
-  expect(host.textContent).toContain('视频加载失败');
+  expect(host.textContent).toContain("Couldn't load the video");
 });
 
 test('clicking the video surface toggles playback even when the control bar is hidden', async () => {
@@ -94,26 +94,26 @@ test('clicking the video surface toggles playback even when the control bar is h
     this.dispatchEvent(new Event('pause'));
   });
   const { host, video } = await render({ barWidth: 120 });
-  const surface = button(host, '播放 flow');
+  const surface = button(host, 'Play flow');
   expect(surface).not.toBeNull();
   await act(async () => surface.click());
   expect(video.paused).toBe(false);
-  expect(button(host, '暂停 flow')).toBe(surface);
+  expect(button(host, 'Pause flow')).toBe(surface);
   await act(async () => surface.click());
   expect(video.paused).toBe(true);
-  expect(button(host, '播放 flow')).toBe(surface);
+  expect(button(host, 'Play flow')).toBe(surface);
 });
 
 test('dragging across the video does not count as a playback click', async () => {
   const { host, video } = await render();
-  const surface = button(host, '播放 flow');
+  const surface = button(host, 'Play flow');
   expect(surface).not.toBeNull();
   await act(async () => {
     surface.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, clientX: 10, clientY: 10 }));
     surface.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1, clientX: 60, clientY: 10 }));
   });
   expect(video.paused).toBe(true);
-  expect(button(host, '播放 flow')).toBe(surface);
+  expect(button(host, 'Play flow')).toBe(surface);
 });
 
 
@@ -128,9 +128,9 @@ test('a delayed play promise cannot put the icon back in playing state after pau
     Object.defineProperty(this, 'paused', { configurable: true, value: true }); this.dispatchEvent(new Event('pause'));
   });
   const { host, video } = await render();
-  await act(async () => button(host, '播放 flow').click());
-  await act(async () => button(host, '暂停 flow').click());
+  await act(async () => button(host, 'Play flow').click());
+  await act(async () => button(host, 'Pause flow').click());
   await act(async () => started());
   expect(video.paused).toBe(true);
-  expect(button(host, '播放')).not.toBeNull();
+  expect(button(host, 'Play')).not.toBeNull();
 });

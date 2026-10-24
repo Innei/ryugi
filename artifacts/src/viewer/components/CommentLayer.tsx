@@ -7,6 +7,7 @@ import { Composer } from '../document/Composer';
 import { anchorLabel, pinPoint, staleText } from '../lib/board-anchor';
 import type { View } from '../lib/view';
 import { brand } from '../tokens.stylex';
+import { useTranslation } from '../i18n';
 
 const PIN = 28;
 const POPOVER = 300;
@@ -92,6 +93,7 @@ function popoverLeft(x: number, width: number) {
 }
 
 export function CommentLayer({ view, page, boards, width, threads, stale, numbers, showResolved, draft, openId, actions, agent, onOpen, onSubmit, onCancelDraft }: Props) {
+  const { t } = useTranslation();
   const visible = threads.filter((thread) => thread.anchor.page === page && thread.anchor.verdict !== 'pass' && thread.messages.some((m) => !m.deleted) && (showResolved || thread.status === 'open' || thread.id === openId));
   const open = threads.find((thread) => thread.id === openId);
   const openPoint = open ? pinPoint(open.anchor, boards) : null;
@@ -107,7 +109,7 @@ export function CommentLayer({ view, page, boards, width, threads, stale, number
           <button
             key={thread.id}
             type="button"
-            aria-label={`评论 ${numbers.get(thread.id) ?? ''}`}
+            aria-label={t('comments.pin', { number: numbers.get(thread.id) ?? '' })}
             data-verdict={thread.anchor.verdict}
             onClick={() => onOpen(thread.id === openId ? null : thread.id)}
             {...stylex.props(styles.pin, author === 'agent' && styles.agent, thread.anchor.verdict === 'reject' && styles.reject, thread.status === 'resolved' && styles.resolved, stale.has(thread.id) && styles.stale, thread.id === openId && styles.open)}
@@ -126,9 +128,9 @@ export function CommentLayer({ view, page, boards, width, threads, stale, number
         <>
           <span {...stylex.props(styles.pin)} style={{ left: screenOf(view, draftPoint).x, top: screenOf(view, draftPoint).y }} />
           <div {...stylex.props(styles.popover)} style={{ left: popoverLeft(screenOf(view, draftPoint).x, width), top: screenOf(view, draftPoint).y - PIN }}>
-            <div {...stylex.props(styles.draftHead)}>锚到 {anchorLabel(draft)}</div>
-            <Composer autoFocus placeholder="添加评论…" onSubmit={onSubmit} onCancel={onCancelDraft} />
-            <div {...stylex.props(styles.hint)}>⌘↵ 发送 · Esc 取消</div>
+            <div {...stylex.props(styles.draftHead)}>{t('comments.anchoredTo', { label: anchorLabel(draft) })}</div>
+            <Composer autoFocus placeholder={t('comments.addPlaceholder')} onSubmit={onSubmit} onCancel={onCancelDraft} />
+            <div {...stylex.props(styles.hint)}>{t('comments.sendHint')}</div>
           </div>
         </>
       ) : null}

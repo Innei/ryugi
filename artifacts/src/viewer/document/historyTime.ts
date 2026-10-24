@@ -1,16 +1,19 @@
+import { HTML_LANG, type Locale } from '../../shared/locale';
+import { i18n } from '../i18n';
+
 const DAY = 86_400_000;
 const pad = (value: number) => String(value).padStart(2, '0');
 const midnight = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
 
 export function historyDay(seconds: number, now = Date.now()): string {
-  if (!(seconds > 0)) return '时间未记录';
+  if (!(seconds > 0)) return i18n.t('time.notRecorded');
   const date = new Date(seconds * 1000);
   const today = new Date(now);
   const days = Math.round((midnight(today) - midnight(date)) / DAY);
-  if (days === 0) return '今天';
-  if (days === 1) return '昨天';
-  const day = `${date.getMonth() + 1}月${date.getDate()}日`;
-  return date.getFullYear() === today.getFullYear() ? day : `${date.getFullYear()}年${day}`;
+  if (days === 0) return i18n.t('time.today');
+  if (days === 1) return i18n.t('time.yesterday');
+  const sameYear = date.getFullYear() === today.getFullYear();
+  return new Intl.DateTimeFormat(HTML_LANG[i18n.language as Locale], sameYear ? { month: 'long', day: 'numeric' } : { year: 'numeric', month: 'long', day: 'numeric' }).format(date);
 }
 
 export function historyClock(seconds: number, withSeconds = false): string {
@@ -21,5 +24,5 @@ export function historyClock(seconds: number, withSeconds = false): string {
 }
 
 export function historyWhen(seconds: number): string {
-  return seconds > 0 ? `${historyDay(seconds)} ${historyClock(seconds)}` : '时间未记录';
+  return seconds > 0 ? `${historyDay(seconds)} ${historyClock(seconds)}` : i18n.t('time.notRecorded');
 }

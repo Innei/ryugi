@@ -1,4 +1,5 @@
 import { expect, test } from 'vitest';
+import { i18n } from '../src/viewer/i18n';
 import { filterArtifacts, relativeUpdatedAt } from '../src/viewer/lib/artifact-list';
 
 const artifacts = [
@@ -17,10 +18,21 @@ test('searches titles and ids, combines the type filter and sorts recent work fi
 
 test('relative times handle fresh updates, elapsed time and future file timestamps', () => {
   const now = Date.parse('2026-10-20T08:00:00Z');
-  expect(relativeUpdatedAt(now, now)).toBe('刚刚');
-  expect(relativeUpdatedAt(now + 60000, now)).toBe('刚刚');
-  expect(relativeUpdatedAt(now - 60000, now)).toBe('1分钟前');
-  expect(relativeUpdatedAt(now - 3600000, now)).toBe('1小时前');
+  expect(relativeUpdatedAt(now, now)).toBe('just now');
+  expect(relativeUpdatedAt(now + 60000, now)).toBe('just now');
+  expect(relativeUpdatedAt(now - 60000, now)).toBe('1 minute ago');
+  expect(relativeUpdatedAt(now - 3600000, now)).toBe('1 hour ago');
+});
+
+test('relative times follow the viewer language', async () => {
+  const now = Date.parse('2026-10-20T08:00:00Z');
+  await i18n.changeLanguage('zh');
+  try {
+    expect(relativeUpdatedAt(now, now)).toBe('刚刚');
+    expect(relativeUpdatedAt(now - 60000, now)).toBe('1分钟前');
+  } finally {
+    await i18n.changeLanguage('en');
+  }
 });
 
 test('sorts by oldest update or name while preserving search and type filters', () => {

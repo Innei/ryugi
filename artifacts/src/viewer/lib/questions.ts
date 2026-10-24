@@ -1,4 +1,5 @@
 import type { Bounds, CanvasLayout, CanvasSpec, Rect } from '../../shared/types';
+import { i18n } from '../i18n';
 
 export interface Question {
   id: string;
@@ -42,7 +43,7 @@ export function roundsOf(canvas: CanvasSpec, layout: CanvasLayout, page: string)
       .filter((title) => title.rect.y + title.rect.h <= question.bounds.minY)
       .sort((a, b) => b.rect.y - a.rect.y)[0];
     const key = above?.id ?? null;
-    if (!rounds.has(key)) rounds.set(key, { id: key, title: above?.text ?? '其他', questions: [] });
+    if (!rounds.has(key)) rounds.set(key, { id: key, title: above?.text ?? i18n.t('common.other'), questions: [] });
     rounds.get(key)!.questions.push(question);
   }
   const titleY = (id: string | null) => titles.find((title) => title.id === id)?.rect.y ?? -Infinity;

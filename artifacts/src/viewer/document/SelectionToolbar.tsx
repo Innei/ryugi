@@ -3,6 +3,7 @@ import * as stylex from '@stylexjs/stylex';
 import { MessageSquare } from 'lucide-react';
 import type { Ref } from 'react';
 import { brand } from '../tokens.stylex';
+import { t } from '../i18n';
 
 export const TOOLBAR_WIDTH = 128;
 export const TOOLBAR_HEIGHT = 36;
@@ -76,13 +77,13 @@ export function SelectionToolbar({ left, top, onComment, onCopy, ref }: Props) {
         <>
           <button type="button" onClick={onComment} {...stylex.props(styles.button)}>
             <MessageSquare size={14} {...stylex.props(styles.icon)} />
-            评论
+            {t('common.comment')}
           </button>
           <span aria-hidden="true" {...stylex.props(styles.divider)} />
         </>
       ) : null}
       <button type="button" onClick={onCopy} {...stylex.props(styles.button, styles.secondary)}>
-        复制
+        {t('document.copy')}
       </button>
     </div>
   );

@@ -1,5 +1,6 @@
 import { computeDiff, decorateSubtree, diffMergedNode } from '@haklex/rich-diff-core';
 import type { SerializedEditorState, SerializedLexicalNode } from 'lexical';
+import { i18n } from '../i18n';
 
 export interface HistoryDiffBlock { kind: 'equal' | 'insert' | 'delete' | 'modify'; value: SerializedEditorState; before?: SerializedEditorState; oldIndex?: number; newIndex?: number }
 type Node = SerializedLexicalNode & { children?: Node[]; text?: string; $?: Record<string, unknown>; [key: string]: unknown };
@@ -25,7 +26,7 @@ function attributesChanged(before: Node, after: Node): boolean {
 function inert(value: SerializedLexicalNode): SerializedLexicalNode {
   const node = value as Node;
   if (node.type === 'dynamic' || node.type === 'pending') {
-    const text = node.type === 'dynamic' ? `动态内容（历史中不运行）\n${node.url}\n高度：${node.initialHeight ?? 320}px\n${JSON.stringify(node.props ?? {})}` : `待完成：${node.intent ?? ''}`;
+    const text = node.type === 'dynamic' ? i18n.t('history.dynamic', { url: node.url, height: node.initialHeight ?? 320, props: JSON.stringify(node.props ?? {}) }) : i18n.t('history.pendingIntent', { intent: node.intent ?? '' });
     return { type: 'paragraph', version: 1, direction: null, format: '', indent: 0, children: [{ type: 'text', version: 1, text, format: 0, detail: 0, mode: 'normal', style: '' }] } as SerializedLexicalNode;
   }
   return node.children ? { ...node, children: node.children.map(inert) } as SerializedLexicalNode : node;

@@ -3,6 +3,7 @@ import * as stylex from '@stylexjs/stylex';
 import type { Ref } from 'react';
 import { PanelFrame } from './CommentCard';
 import { Composer } from './Composer';
+import { t } from '../i18n';
 
 export const DRAFT_WIDTH = 340;
 export const LEAVE_MS = 120;
@@ -52,9 +53,9 @@ export function DraftPanel({ left, top, quote, initial, restored, leaving, onCha
       <PanelFrame active>
         <div {...stylex.props(styles.head)}>
           <span {...stylex.props(styles.quote)}>“{quote}”</span>
-          {restored ? <span {...stylex.props(styles.restored)}>已恢复上次的草稿</span> : null}
+          {restored ? <span {...stylex.props(styles.restored)}>{t('document.draftRestored')}</span> : null}
         </div>
-        <Composer autoFocus initial={initial} placeholder="写下你的问题或意见…" onChange={onChange} onSubmit={onSubmit} onCancel={onCancel} />
+        <Composer autoFocus initial={initial} placeholder={t('document.draftPlaceholder')} onChange={onChange} onSubmit={onSubmit} onCancel={onCancel} />
       </PanelFrame>
     </div>
   );

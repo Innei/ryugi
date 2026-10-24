@@ -9,6 +9,10 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Shell } from './Shell';
 import { useSystemTheme } from './hooks/useSystemTheme';
+import { i18n } from './i18n';
+import { HTML_LANG, type Locale } from '../shared/locale';
+
+document.documentElement.lang = HTML_LANG[i18n.language as Locale];
 
 function Root() {
   useSystemTheme();

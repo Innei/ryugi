@@ -3,6 +3,7 @@ import * as stylex from '@stylexjs/stylex';
 import { Maximize2, Repeat } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import { useTranslation } from '../i18n';
 
 const BAR_HEIGHT = 36;
 const MIN_BAR_WIDTH = 160;
@@ -78,6 +79,7 @@ interface Props {
 }
 
 export function VideoPlayer({ src, title, barScale, barWidth, onExpand }: Props) {
+  const { t } = useTranslation();
   const video = useRef<HTMLVideoElement>(null);
   const press = useRef<{ x: number; y: number } | null>(null);
   const [playing, setPlaying] = useState(false);
@@ -132,7 +134,7 @@ export function VideoPlayer({ src, title, barScale, barWidth, onExpand }: Props)
   return (
     <>
       <video ref={video} src={src} title={title} muted playsInline preload="metadata" {...stylex.props(styles.video)} />
-      <button type="button" data-video-surface aria-label={`${playing ? '暂停' : '播放'} ${title}`}
+      <button type="button" data-video-surface aria-label={playing ? t('video.pauseTitle', { title }) : t('video.playTitle', { title })}
         onPointerDown={(event) => { press.current = { x: event.clientX, y: event.clientY }; }}
         onClick={(event) => {
           if (!event.detail || !press.current || Math.hypot(event.clientX - press.current.x, event.clientY - press.current.y) < 4) toggle();
@@ -140,7 +142,7 @@ export function VideoPlayer({ src, title, barScale, barWidth, onExpand }: Props)
         }}
         onKeyDown={(event) => { if (event.key === ' ' || event.key === 'Enter') event.stopPropagation(); }}
         {...stylex.props(styles.surface)} />
-      {failed && <div {...stylex.props(styles.failed)}>视频加载失败：格式不受支持，或文件太大没能传过来</div>}
+      {failed && <div {...stylex.props(styles.failed)}>{t('video.failed')}</div>}
       {barWidth >= MIN_BAR_WIDTH && (
         <div
           data-chrome="video-controls"
@@ -148,13 +150,13 @@ export function VideoPlayer({ src, title, barScale, barWidth, onExpand }: Props)
           {...stylex.props(styles.bar)}
           style={{ width: barWidth, transform: `scale(${barScale})` }}
         >
-          <button type="button" aria-label={playing ? '暂停' : '播放'} onClick={toggle} {...stylex.props(styles.icon)}>
+          <button type="button" aria-label={playing ? t('video.pause') : t('video.play')} onClick={toggle} {...stylex.props(styles.icon)}>
             <PlaybackIcon playing={playing} />
           </button>
           <span {...stylex.props(styles.time)}>{clock(time)} / {clock(duration)}</span>
           <div
             role="slider"
-            aria-label="进度"
+            aria-label={t('video.progress')}
             aria-valuemin={0}
             aria-valuemax={Math.round(duration || 0)}
             aria-valuenow={Math.round(time)}
@@ -171,14 +173,14 @@ export function VideoPlayer({ src, title, barScale, barWidth, onExpand }: Props)
             <span {...stylex.props(styles.rail)} />
             <span {...stylex.props(styles.fill)} style={{ width: `${duration > 0 ? (time / duration) * 100 : 0}%` }} />
           </div>
-          <button type="button" aria-label="倍速" onClick={cycleRate} {...stylex.props(styles.icon, styles.rate)}>
+          <button type="button" aria-label={t('video.speed')} onClick={cycleRate} {...stylex.props(styles.icon, styles.rate)}>
             {rate}×
           </button>
-          <button type="button" aria-label="循环" aria-pressed={loop} onClick={toggleLoop} {...stylex.props(styles.icon, !loop && styles.off)}>
+          <button type="button" aria-label={t('video.loop')} aria-pressed={loop} onClick={toggleLoop} {...stylex.props(styles.icon, !loop && styles.off)}>
             <Repeat size={14} />
           </button>
           {onExpand && (
-            <button type="button" aria-label="放大" onClick={onExpand} {...stylex.props(styles.icon)}>
+            <button type="button" aria-label={t('video.expand')} onClick={onExpand} {...stylex.props(styles.icon)}>
               <Maximize2 size={13} />
             </button>
           )}

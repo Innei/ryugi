@@ -66,7 +66,7 @@ function button(host: HTMLElement, text: string) {
 async function historyReady(host: HTMLElement, text?: string) {
   await vi.waitFor(async () => {
     await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
-    const content = host.querySelector('[aria-label="差异正文"]');
+    const content = host.querySelector('[aria-label="Diff"]');
     expect(content).not.toBeNull();
     if (text) expect(content?.textContent).toContain(text);
   });
@@ -77,7 +77,7 @@ test('the document title is displayed once when it is part of the rich content',
   editor.update(() => $getRoot().getFirstChildOrThrow().insertBefore($createHeadingNode('h1').append($createTextNode('Document'))), { discrete: true });
   const host = await mount(createElement(History, { doc, nodes: allHeadlessNodes, streaming: false, theme: 'light', title: 'Document' }));
   await historyReady(host);
-  expect(host.querySelectorAll('[aria-label="差异正文"] h1')).toHaveLength(1);
+  expect(host.querySelectorAll('[aria-label="Diff"] h1')).toHaveLength(1);
 });
 
 test('real rich history renders read-only and navigating it never writes to the live CRDT', async () => {
@@ -85,9 +85,9 @@ test('real rich history renders read-only and navigating it never writes to the 
   const host = await mount(createElement(History, { doc, nodes: allHeadlessNodes, streaming: false, theme: 'light', title: 'Test' }));
   await historyReady(host, 'content');
   expect(host.querySelector('[contenteditable="true"]')).toBeNull();
-  await act(async () => button(host, '仅看变更').click());
-  await act(async () => button(host, '点按切换').click());
-  await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="展开原始提交"]')!.click());
+  await act(async () => button(host, 'Changes only').click());
+  await act(async () => button(host, 'tap to change').click());
+  await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="Show raw commits"]')!.click());
   expect(doc.frontiers()).toEqual(version); expect(doc.opCount()).toBe(count);
 });
 
@@ -96,8 +96,8 @@ test('incoming edits keep the comparison fixed until the human partner refreshes
   const host = await mount(createElement(History, { doc, nodes: allHeadlessNodes, streaming: false, theme: 'light', title: 'Test' }));
   await historyReady(host);
   await act(async () => update('Newest revision'));
-  expect(host.querySelector('[aria-label="差异正文"]')?.textContent).not.toContain('Newest');
-  await act(async () => button(host, '更新对比').click());
+  expect(host.querySelector('[aria-label="Diff"]')?.textContent).not.toContain('Newest');
+  await act(async () => button(host, 'Update comparison').click());
   await historyReady(host, 'Newest');
 });
 
@@ -105,7 +105,7 @@ test('the narrow version picker keeps keyboard focus inside and restores it on c
   const { doc } = fixture();
   const host = await mount(createElement(History, { doc, nodes: allHeadlessNodes, streaming: false, theme: 'light', title: 'Test' }));
   await historyReady(host);
-  const selector = button(host, '点按切换'); selector.focus();
+  const selector = button(host, 'tap to change'); selector.focus();
   await act(async () => selector.click());
   const dialog = host.querySelector<HTMLElement>('[role="dialog"]')!;
   expect(dialog.contains(document.activeElement)).toBe(true);
@@ -113,7 +113,7 @@ test('the narrow version picker keeps keyboard focus inside and restores it on c
   controls.at(-1)!.focus();
   await act(async () => document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true })));
   expect(document.activeElement).toBe(controls[0]);
-  await act(async () => button(dialog, '完成').click());
+  await act(async () => button(dialog, 'Done').click());
   expect(document.activeElement).toBe(selector);
 });
 
@@ -130,13 +130,13 @@ test('cloud disconnect closes history while preserving the original editor insta
   await vi.waitFor(() => expect(host.querySelector('[contenteditable]')).not.toBeNull());
   const editor = host.querySelector('[contenteditable]');
   await act(async () => window.dispatchEvent(new MessageEvent('message', { source: window.parent, origin: 'https://untrusted.example', data: { type: 'ryugi:document-history', id: 'test', action: 'toggle' } })));
-  expect(host.querySelector('[aria-label="差异正文"]')).toBeNull();
+  expect(host.querySelector('[aria-label="Diff"]')).toBeNull();
   await act(async () => window.dispatchEvent(new MessageEvent('message', { source: window.parent, origin: location.origin, data: { type: 'ryugi:document-history', id: 'test', action: 'toggle' } })));
   await historyReady(host);
   const baselineUpdates = updates.length;
   await act(async () => root!.render(createElement(DocumentView, { id: 'test', transport, live: false, cloud: { online: false, canEdit: false, reason: null } })));
-  expect(host.querySelector('[aria-label="差异正文"]')).toBeNull();
-  expect(button(host, '历史').disabled).toBe(true);
+  expect(host.querySelector('[aria-label="Diff"]')).toBeNull();
+  expect(button(host, 'History').disabled).toBe(true);
   expect(host.querySelector('[contenteditable]')).toBe(editor);
   expect(updates.length).toBe(baselineUpdates);
 });
@@ -156,17 +156,17 @@ test('history replaces the comment rail inside the same document layout', async 
   const host = await mount(createElement(DocumentView, { id: 'test', transport: localTransport(doc), live: true }));
   await vi.waitFor(() => expect(host.querySelector('[contenteditable]')).not.toBeNull());
   const main = host.querySelector('main'); const editor = host.querySelector('[contenteditable]');
-  expect(host.querySelector('aside[aria-label="评论"]')).not.toBeNull();
-  await act(async () => button(host, '历史').click());
+  expect(host.querySelector('aside[aria-label="Comments"]')).not.toBeNull();
+  await act(async () => button(host, 'History').click());
   await historyReady(host);
   expect(host.querySelector('main')).toBe(main);
-  expect(main!.querySelector('aside[aria-label="历史记录"]')).not.toBeNull();
-  expect(host.querySelector('aside[aria-label="评论"]')).toBeNull();
-  expect(main!.querySelector('article [aria-label="差异正文"]')).not.toBeNull();
+  expect(main!.querySelector('aside[aria-label="History"]')).not.toBeNull();
+  expect(host.querySelector('aside[aria-label="Comments"]')).toBeNull();
+  expect(main!.querySelector('article [aria-label="Diff"]')).not.toBeNull();
   expect(host.querySelector('[contenteditable]')).toBe(editor);
-  await act(async () => button(host, '评论').click());
-  expect(host.querySelector('[aria-label="差异正文"]')).toBeNull();
-  expect(host.querySelector('aside[aria-label="评论"]')).not.toBeNull();
+  await act(async () => button(host, 'Comments').click());
+  expect(host.querySelector('[aria-label="Diff"]')).toBeNull();
+  expect(host.querySelector('aside[aria-label="Comments"]')).not.toBeNull();
 });
 
 test('each change names the edit that made it', async () => {
@@ -174,6 +174,6 @@ test('each change names the edit that made it', async () => {
   const host = await mount(createElement(History, { doc, nodes: allHeadlessNodes, streaming: false, theme: 'light', title: 'Test' }));
   await historyReady(host);
   const change = host.querySelector('[data-history-change]');
-  expect(change?.textContent).toContain('修改');
-  expect(change?.textContent).toContain('浏览器编辑');
+  expect(change?.textContent).toContain('Changed');
+  expect(change?.textContent).toContain('Browser edit');
 });

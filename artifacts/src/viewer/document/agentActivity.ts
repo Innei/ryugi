@@ -1,3 +1,5 @@
+import { i18n } from '../i18n';
+
 export type AgentActivity =
   | { kind: 'editing' }
   | { kind: 'idle' }
@@ -22,23 +24,23 @@ export function agentActivity({ streaming, pending, agentActiveAt, now }: Activi
 }
 
 function duration(ms: number) {
-  if (ms < 60_000) return `${Math.floor(ms / 1000)} 秒`;
-  if (ms < 3_600_000) return `${Math.floor(ms / 60_000)} 分钟`;
-  return `${Math.floor(ms / 3_600_000)} 小时`;
+  if (ms < 60_000) return i18n.t('time.seconds', { count: Math.floor(ms / 1000) });
+  if (ms < 3_600_000) return i18n.t('time.minutes', { count: Math.floor(ms / 60_000) });
+  return i18n.t('time.hours', { count: Math.floor(ms / 3_600_000) });
 }
 
 export function activityLabel(activity: AgentActivity, agent: string, section: string | null): string | null {
   switch (activity.kind) {
     case 'editing':
-      return `${agent} 正在编辑${section ? ` ${section}` : ''}`;
+      return section ? i18n.t('activity.editingSection', { agent, section }) : i18n.t('activity.editing', { agent });
     case 'idle':
       return null;
     case 'working': {
-      const left = `${agent} 还有 ${activity.pending} 节待写`;
+      const left = i18n.t('activity.pending', { agent, count: activity.pending });
       if (activity.idleMs === null) return left;
-      return `${left} · ${activity.idleMs < 10_000 ? '刚刚' : `${duration(activity.idleMs)}前`}更新`;
+      return activity.idleMs < 10_000 ? i18n.t('activity.updatedJustNow', { left }) : i18n.t('activity.updatedAgo', { left, duration: duration(activity.idleMs) });
     }
     case 'stale':
-      return `${agent} ${duration(activity.idleMs)}没有更新 · 还有 ${activity.pending} 节待写`;
+      return i18n.t('activity.stale', { agent, duration: duration(activity.idleMs), count: activity.pending });
   }
 }

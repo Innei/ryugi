@@ -50,7 +50,7 @@ const scaleOf = (el: HTMLElement) => Number(el.style.transform.match(/scale\(([-
 test('the header leads with a back button, the title, the board id and the position', async () => {
   await open('q2-a', ['q2-a', 'q2-b']);
   const head = host!.querySelector('[data-phone-board] header')!;
-  expect(head.querySelector('button[aria-label="返回画布"]')).not.toBeNull();
+  expect(head.querySelector('button[aria-label="Back to canvas"]')).not.toBeNull();
   expect(head.textContent).toContain('标题 q2-a');
   expect(head.textContent).toContain('q2-a');
   expect(head.textContent).toContain('1 / 2');
@@ -59,7 +59,7 @@ test('the header leads with a back button, the title, the board id and the posit
 test('the footer marks the current board with a dot and steps with icon buttons', async () => {
   const { onOpen } = await open('q2-b', ['q2-a', 'q2-b', 'q2-c']);
   expect([...host!.querySelectorAll('[data-dot]')].map((dot) => dot.getAttribute('data-dot'))).toEqual(['', 'current', '']);
-  await act(async () => host!.querySelector<HTMLElement>('button[aria-label="上一张"]')!.click());
+  await act(async () => host!.querySelector<HTMLElement>('button[aria-label="Previous board"]')!.click());
   await vi.waitFor(() => expect(onOpen).toHaveBeenCalledWith('q2-a'));
 });
 

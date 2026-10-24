@@ -53,5 +53,5 @@ test('pass verdicts get no pin number, and a reject is labelled by its group', (
   const numbers = pinNumbers([verdict('p1', 'pass', '2026-10-22T09:00:00Z'), verdict('r1', 'reject', '2026-10-22T10:00:00Z')]);
   expect(numbers.has('p1')).toBe(false);
   expect(numbers.get('r1')).toBe(1);
-  expect(anchorLabel({ page: 'p', group: 'g', verdict: 'reject', x: 0, y: 0 })).toBe('g · 打回');
+  expect(anchorLabel({ page: 'p', group: 'g', verdict: 'reject', x: 0, y: 0 })).toBe('g · Rejected');
 });

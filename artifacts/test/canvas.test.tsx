@@ -322,5 +322,5 @@ test('image and video boards render as media, not as iframes', async () => {
   const video = body.querySelector('video')!;
   expect(video.getAttribute('src')).toBe('about:blank#pages/flow.webm?v=4');
   expect(video.hasAttribute('controls')).toBe(false);
-  expect(body.querySelector('[aria-label="播放"]')).not.toBeNull();
+  expect(body.querySelector('[aria-label="Play"]')).not.toBeNull();
 });

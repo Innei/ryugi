@@ -49,19 +49,19 @@ test('shows the anchor label, every message and who it waits on', async () => {
   expect(host.textContent).toContain('notify-after · 91%, 45%');
   expect(host.textContent).toContain('开关离右边多了 18px');
   expect(host.textContent).toContain('去掉了多出来的 margin');
-  expect(host.textContent).toContain('等你回复');
+  expect(host.textContent).toContain('Waiting on you');
 });
 
 test('only human messages can be edited or deleted', async () => {
   const host = await render();
-  expect([...host.querySelectorAll('button')].filter((b) => b.textContent === '删除')).toHaveLength(1);
-  await act(async () => button(host, '删除').click());
+  expect([...host.querySelectorAll('button')].filter((b) => b.textContent === 'Delete')).toHaveLength(1);
+  await act(async () => button(host, 'Delete').click());
   expect(actions.remove).toHaveBeenCalledWith('t1', 'm1');
 });
 
 test('the reply box sends with ⌘↵', async () => {
   const host = await render();
-  const reply = host.querySelector<HTMLTextAreaElement>('textarea[placeholder="回复…"]')!;
+  const reply = host.querySelector<HTMLTextAreaElement>('textarea[placeholder="Reply…"]')!;
   await act(async () => {
     const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!;
     setter.call(reply, '再往左一点');
@@ -73,11 +73,11 @@ test('the reply box sends with ⌘↵', async () => {
 
 test('resolve and reopen follow the thread status, and a resolved thread takes no reply', async () => {
   const host = await render();
-  await act(async () => button(host, '标为已解决').click());
+  await act(async () => button(host, 'Mark as resolved').click());
   expect(actions.resolve).toHaveBeenCalledWith('t1');
   const resolved = await render({ thread: { ...thread, status: 'resolved' } });
-  expect(resolved.querySelector('textarea[placeholder="回复…"]')).toBeNull();
-  await act(async () => button(resolved, '重新打开').click());
+  expect(resolved.querySelector('textarea[placeholder="Reply…"]')).toBeNull();
+  await act(async () => button(resolved, 'Reopen').click());
   expect(actions.reopen).toHaveBeenCalledWith('t1');
 });
 
@@ -90,6 +90,6 @@ test('without actions the thread is read-only', async () => {
 test('close is offered when the caller can close it', async () => {
   const onClose = vi.fn();
   const host = await render({ onClose });
-  await act(async () => button(host, '关闭').click());
+  await act(async () => button(host, 'Close').click());
   expect(onClose).toHaveBeenCalled();
 });

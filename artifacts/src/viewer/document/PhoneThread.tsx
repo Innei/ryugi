@@ -5,6 +5,7 @@ import { authorOf } from './author';
 import { Avatar } from './Avatar';
 import type { ThreadActions } from './CommentCard';
 import { Composer } from './Composer';
+import { t } from '../i18n';
 
 const styles = stylex.create({
   thread: {
@@ -74,17 +75,17 @@ export function PhoneThread({ thread, agent = 'Agent', actions, active = false, 
   const waiting = waitingOn(thread);
   const resolved = thread.status === 'resolved';
   const state = resolved
-    ? { label: '已解决', tone: styles.resolved }
+    ? { label: t('common.resolved'), tone: styles.resolved }
     : waiting === 'agent'
-      ? { label: `等 ${agent} 回复`, tone: styles.waitingAgent }
+      ? { label: t('document.waitingAgentReply', { agent }), tone: styles.waitingAgent }
       : waiting === 'human'
-        ? { label: `${agent} 已回复`, tone: styles.answered }
+        ? { label: t('document.agentReplied', { agent }), tone: styles.answered }
         : null;
 
   return (
     <div data-thread={thread.id} {...stylex.props(styles.thread, active && styles.active)}>
       <div {...stylex.props(styles.quote)}>
-        <span {...stylex.props(styles.quoteText)}>{thread.anchor.quote || '整段'}</span>
+        <span {...stylex.props(styles.quoteText)}>{thread.anchor.quote || t('document.wholeBlock')}</span>
         {state ? <span {...stylex.props(styles.state, state.tone)}>{state.label}</span> : null}
       </div>
       {resolved && !active
@@ -98,7 +99,7 @@ export function PhoneThread({ thread, agent = 'Agent', actions, active = false, 
                   {label}
                   <span {...stylex.props(styles.time)}>{timeOf(message.editedAt ?? message.at)}</span>
                 </div>
-                <div {...stylex.props(styles.text, message.deleted && styles.deleted)}>{message.deleted ? '已删除' : message.text}</div>
+                <div {...stylex.props(styles.text, message.deleted && styles.deleted)}>{message.deleted ? t('common.deleted') : message.text}</div>
               </div>
             );
           })}
@@ -106,12 +107,12 @@ export function PhoneThread({ thread, agent = 'Agent', actions, active = false, 
         <div {...stylex.props(styles.footer)}>
           {resolved ? null : (
             <div {...stylex.props(styles.reply)}>
-              <Composer placeholder="回复…" onSubmit={(text) => actions.reply(thread.id, text)} />
+              <Composer placeholder={t('common.reply')} onSubmit={(text) => actions.reply(thread.id, text)} />
             </div>
           )}
           {offline ? null : (
             <button type="button" onClick={() => (resolved ? actions.reopen(thread.id) : actions.resolve(thread.id))} {...stylex.props(styles.action)}>
-              {resolved ? '重新打开' : '解决'}
+              {resolved ? t('common.reopen') : t('common.resolve')}
             </button>
           )}
         </div>

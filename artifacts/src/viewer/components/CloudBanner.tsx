@@ -11,6 +11,7 @@ import { changeVisibility, CloudRequestError, INSTALL_URL, planLimitMessage } fr
 import { isSlotLimit, openPlanLimitDialog } from './PlanLimitDialog';
 import { RailSwitch } from './RailSwitch';
 import { RyugiMark } from './RyugiMark';
+import { useTranslation } from '../i18n';
 
 const NARROW = '@media (max-width: 640px)';
 
@@ -129,10 +130,10 @@ const styles = stylex.create({
   error: { margin: '6px 4px 0', color: cssVar.colorError, fontSize: 11 },
 });
 
-const OPTIONS: { value: Visibility; label: string; hint: string; Icon: typeof Lock }[] = [
-  { value: 'private', label: '仅自己', hint: '登录后只有你能打开', Icon: Lock },
-  { value: 'public', label: '有链接的人', hint: '不用登录，拿到链接就能看', Icon: Globe },
-];
+const OPTIONS = [
+  { value: 'private', label: 'visibility.onlyMe', hint: 'visibility.onlyMeHint', Icon: Lock },
+  { value: 'public', label: 'visibility.anyoneWithLink', hint: 'visibility.anyoneHint', Icon: Globe },
+] as const satisfies readonly { value: Visibility; label: string; hint: string; Icon: typeof Lock }[];
 
 interface Props {
   id: string;
@@ -146,14 +147,15 @@ interface Props {
 }
 
 export function CloudHeader({ id, type, title, owner, status, visibility, onChange, onHistory }: Props) {
+  const { t } = useTranslation();
   return (
     <header {...stylex.props(styles.bar)}>
       <div {...stylex.props(styles.left)}>
-        <a href="/" aria-label="返回 Ryugi Cloud 列表" {...stylex.props(styles.brand)}>
+        <a href="/" aria-label={t('share.backToList')} {...stylex.props(styles.brand)}>
           <RyugiMark size={24} />
           <span {...stylex.props(styles.name)}>ryugi</span>
         </a>
-        <nav aria-label="面包屑" {...stylex.props(styles.crumb)}>
+        <nav aria-label={t('share.breadcrumb')} {...stylex.props(styles.crumb)}>
           <span aria-hidden="true" {...stylex.props(styles.slash)}>/</span>
           {type ? <span {...stylex.props(styles.type)}>{type}<span aria-hidden="true" {...stylex.props(styles.slash)}> / </span></span> : null}
           <span aria-current="page" title={title} {...stylex.props(styles.title)}>{title}</span>
@@ -171,20 +173,20 @@ export function CloudHeader({ id, type, title, owner, status, visibility, onChan
               {status.activity}
             </span>
           ) : null}
-          {status.retrying ? <span role="status" {...stylex.props(styles.retrying)}>未同步，正在重试</span> : null}
+          {status.retrying ? <span role="status" {...stylex.props(styles.retrying)}>{t('share.retrying')}</span> : null}
           {status.reason ? <CircleAlert size={14} aria-label={status.reason} /> : null}
           {status.online !== undefined ? (
-            <span role="status" title={status.reason || (status.online === false ? '电脑离线，暂时不能评论' : undefined)} {...stylex.props(styles.status)}>
+            <span role="status" title={status.reason || (status.online === false ? t('share.offlineNoComments') : undefined)} {...stylex.props(styles.status)}>
               <i aria-hidden="true" {...stylex.props(styles.dot, status.online === true && styles.online)} />
-              {status.online === null ? '正在连接…' : status.online ? '电脑在线' : '电脑离线'}
+              {status.online === null ? t('common.connecting') : status.online ? t('share.computerOnline') : t('share.computerOffline')}
             </span>
           ) : null}
-          {status.comments !== undefined && status.history === undefined ? <span {...stylex.props(styles.status)}><MessageCircle size={14} aria-hidden="true" />评论 {status.comments}</span> : null}
+          {status.comments !== undefined && status.history === undefined ? <span {...stylex.props(styles.status)}><MessageCircle size={14} aria-hidden="true" />{t('share.comments', { count: status.comments })}</span> : null}
           {(status.online !== undefined || status.comments !== undefined) && owner ? <span aria-hidden="true" {...stylex.props(styles.divider)} /> : null}
         </div>
         {owner ? <OwnerActions id={id} title={title} visibility={visibility} onChange={onChange} /> : (
           <a href={INSTALL_URL} target="_blank" rel="noopener noreferrer" {...stylex.props(styles.cta)}>
-            开始使用<ArrowRight size={12} />
+            {t('share.getStarted')}<ArrowRight size={12} />
           </a>
         )}
       </div>
@@ -193,6 +195,7 @@ export function CloudHeader({ id, type, title, owner, status, visibility, onChan
 }
 
 export function useCloudSharePanel({ id, title = null, visibility, onChange, inline = false }: { id: string; title?: string | null; visibility: Visibility; onChange: (next: Visibility) => void; inline?: boolean }) {
+  const { t } = useTranslation();
   const [error, setError] = useState<{ message: string; auth?: boolean; upgradeUrl?: string } | null>(null);
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -220,20 +223,20 @@ export function useCloudSharePanel({ id, title = null, visibility, onChange, inl
       setCopied(true);
       setError(null);
     } catch {
-      setError({ message: '复制失败，请手动复制链接。' });
+      setError({ message: t('share.copyFailed') });
     }
   };
 
   return (
     <div {...stylex.props(styles.panel, inline && styles.panelInline)}>
       {inline ? (
-        <FormField layout="horizontal" variant="borderless" label="有链接的人可以看" desc={visibility === 'public' ? '不用登录，拿到链接就能看' : '关闭时，只有你登录后能打开'}>
+        <FormField layout="horizontal" variant="borderless" label={t('visibility.anyoneCanView')} desc={visibility === 'public' ? t('visibility.anyoneHint') : t('visibility.offHint')}>
           <Switch checked={visibility === 'public'} loading={saving} disabled={saving} onChange={(checked) => void choose(checked ? 'public' : 'private')} />
         </FormField>
       ) : (
         <>
-          <p {...stylex.props(styles.heading)}>谁能看到这个链接</p>
-          <div role="radiogroup" aria-label="谁能看到这个链接" {...stylex.props(styles.options)}>
+          <p {...stylex.props(styles.heading)}>{t('visibility.whoCanSee')}</p>
+          <div role="radiogroup" aria-label={t('visibility.whoCanSee')} {...stylex.props(styles.options)}>
             {OPTIONS.map(({ value, label, hint, Icon }) => (
               <button
                 key={value}
@@ -248,8 +251,8 @@ export function useCloudSharePanel({ id, title = null, visibility, onChange, inl
                   <Icon size={12} />
                 </span>
                 <span>
-                  <span {...stylex.props(styles.label)}>{label}</span>
-                  <span {...stylex.props(styles.hint)}>{hint}</span>
+                  <span {...stylex.props(styles.label)}>{t(label)}</span>
+                  <span {...stylex.props(styles.hint)}>{t(hint)}</span>
                 </span>
               </button>
             ))}
@@ -257,27 +260,28 @@ export function useCloudSharePanel({ id, title = null, visibility, onChange, inl
         </>
       )}
       <div {...stylex.props(styles.link)}>
-        <Input aria-label="分享链接" value={url} readOnly size="small" onFocus={(event) => event.currentTarget.select()} {...stylex.props(styles.url)} />
-        <button type="button" onClick={() => void copy()} {...stylex.props(styles.share)}><Copy size={12} /> {copied ? '已复制' : '复制'}</button>
+        <Input aria-label={t('share.linkLabel')} value={url} readOnly size="small" onFocus={(event) => event.currentTarget.select()} {...stylex.props(styles.url)} />
+        <button type="button" onClick={() => void copy()} {...stylex.props(styles.share)}><Copy size={12} /> {copied ? t('common.copied') : t('common.copy')}</button>
       </div>
-      {error ? <p role="alert" {...stylex.props(styles.error)}>{error.auth ? '登录已过期，请重新登录。' : error.message} {error.auth && <a href={`/auth/login?return=${encodeURIComponent(location.pathname)}`}>重新登录</a>}{error.upgradeUrl && <a href={error.upgradeUrl}>升级到 Pro</a>}</p> : <p {...stylex.props(styles.foot)}>{visibility === 'private' ? '复制不会自动公开。' : ''}改动立即生效，链接不变。</p>}
+      {error ? <p role="alert" {...stylex.props(styles.error)}>{error.auth ? t('common.sessionExpired') : error.message} {error.auth && <a href={`/auth/login?return=${encodeURIComponent(location.pathname)}`}>{t('common.signInAgain')}</a>}{error.upgradeUrl && <a href={error.upgradeUrl}>{t('common.upgradePro')}</a>}</p> : <p {...stylex.props(styles.foot)}>{visibility === 'private' ? t('share.copyNotPublic') : ''}{t('share.appliesNow')}</p>}
     </div>
   );
 }
 
 function OwnerActions({ id, title, visibility, onChange }: { id: string; title: string; visibility: Visibility; onChange: (next: Visibility) => void }) {
+  const { t } = useTranslation();
   const panel = useCloudSharePanel({ id, title, visibility, onChange });
   const current = OPTIONS.find((option) => option.value === visibility)!;
 
   return (
     <>
-      <span title={`${current.label}可见`} {...stylex.props(styles.chip)}>
+      <span title={t('visibility.chip', { label: t(current.label) })} {...stylex.props(styles.chip)}>
         <current.Icon size={11} />
-        <span {...stylex.props(styles.visibilityLabel)}>{current.label}可见</span>
+        <span {...stylex.props(styles.visibilityLabel)}>{t('visibility.chip', { label: t(current.label) })}</span>
       </span>
       <Popover placement="bottomRight" trigger="click" content={panel}>
         <button type="button" {...stylex.props(styles.share, styles.shareRound)}>
-          分享
+          {t('common.share')}
         </button>
       </Popover>
     </>

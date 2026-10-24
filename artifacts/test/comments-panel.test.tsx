@@ -73,10 +73,10 @@ test('a row shows where it is, the first message, the reply count, and a stale a
   const { host } = await render();
   const first = host.querySelector('[data-thread="t1"]')!;
   expect(first.textContent).toContain('after · body > img · 91%, 45%');
-  expect(first.textContent).toContain('锚点已失效');
+  expect(first.textContent).toContain('Anchor no longer matches');
   expect(first.textContent).toContain('t1 开关');
-  expect(first.textContent).toContain('1 条回复');
-  expect(host.querySelector('[data-thread="t2"]')!.textContent).toContain('页面 p');
+  expect(first.textContent).toContain('1 reply');
+  expect(host.querySelector('[data-thread="t2"]')!.textContent).toContain('Page p');
 });
 
 test('clicking a row opens that thread, and the tabs and close report back', async () => {
@@ -91,5 +91,5 @@ test('clicking a row opens that thread, and the tabs and close report back', asy
 
 test('an empty page says how to add one', async () => {
   const { host } = await render({ threads: [] });
-  expect(host.textContent).toContain('点画布上的任意位置添加评论');
+  expect(host.textContent).toContain('Click anywhere on the canvas to add a comment');
 });

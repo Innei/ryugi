@@ -5,6 +5,7 @@ import type { CanvasPayload } from '../../shared/types';
 import { HTML_SANDBOX } from '../hooks/useSandboxFrame';
 import { ArtboardView } from './ArtboardLayout';
 import { CloudMessage } from './CloudMessage';
+import { useTranslation } from '../i18n';
 
 const styles = stylex.create({
   frame: { position: 'fixed', inset: 0, display: 'block', width: '100%', height: '100%', borderWidth: 0 },
@@ -24,7 +25,8 @@ export type CloudArtifact =
   | (CloudBase & { type: 'document'; payload: { title: string; state: SerializedEditorState; comments?: CommentsFile } | null });
 
 export function CloudSnapshot({ id, artifact }: { id: string; artifact: Exclude<CloudArtifact, { type: 'document' }> }) {
-  if (!artifact.payload || !artifact.contentBase) return <CloudMessage>还没发布。电脑在线时，这里会实时显示。</CloudMessage>;
+  const { t } = useTranslation();
+  if (!artifact.payload || !artifact.contentBase) return <CloudMessage>{t('cloudShell.notPublished')}</CloudMessage>;
   if (artifact.type === 'html') {
     return <iframe title={artifact.title ?? id} src={`${artifact.contentBase}index.html`} sandbox={HTML_SANDBOX} allow="clipboard-write" {...stylex.props(styles.frame)} />;
   }

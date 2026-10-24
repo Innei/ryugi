@@ -4,6 +4,7 @@ import { CloudUpload } from 'lucide-react';
 import { useState } from 'react';
 import type { CloudStatus } from '../../shared/cloud';
 import { cloudRequest, useCloudStatus } from '../hooks/useCloudStatus';
+import { useTranslation } from '../i18n';
 
 const styles = stylex.create({
   card: {
@@ -56,6 +57,7 @@ interface Props {
 }
 
 export function AutoPublishPrompt({ status, onAnswer }: Props) {
+  const { t } = useTranslation();
   const [busy, setBusy] = useState(false);
   if (!status?.signedIn || status.autoPublish?.global !== null) return null;
   const answer = async (value: boolean) => {
@@ -64,18 +66,18 @@ export function AutoPublishPrompt({ status, onAnswer }: Props) {
     setBusy(false);
   };
   return (
-    <aside role="dialog" aria-label="自动发布" {...stylex.props(styles.card)}>
+    <aside role="dialog" aria-label={t('autoPublish.label')} {...stylex.props(styles.card)}>
       <CloudUpload size={16} />
       <span {...stylex.props(styles.text)}>
-        <span {...stylex.props(styles.title)}>要打开自动发布吗？</span>
-        <span {...stylex.props(styles.hint)}>agent 每轮结束后，改过的 artifact 会以私密方式同步到 Ryugi Cloud，换台设备登录后也能打开。</span>
+        <span {...stylex.props(styles.title)}>{t('autoPublish.title')}</span>
+        <span {...stylex.props(styles.hint)}>{t('autoPublish.hint')}</span>
       </span>
       <span {...stylex.props(styles.actions)}>
         <button type="button" disabled={busy} onClick={() => void answer(false)} {...stylex.props(styles.button)}>
-          以后再说
+          {t('autoPublish.later')}
         </button>
         <button type="button" disabled={busy} onClick={() => void answer(true)} {...stylex.props(styles.button, styles.primary)}>
-          打开
+          {t('autoPublish.turnOn')}
         </button>
       </span>
     </aside>

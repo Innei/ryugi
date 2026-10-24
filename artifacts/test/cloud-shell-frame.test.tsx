@@ -39,8 +39,8 @@ test('the artifact frame is allowed to reach this computer', async () => {
 
 test('the header links back to the cloud library and identifies the artifact by title', async () => {
   const host = await mount();
-  expect(host.querySelector('header a[href="/"]')?.getAttribute('aria-label')).toBe('返回 Ryugi Cloud 列表');
-  expect(host.querySelector('nav[aria-label="面包屑"]')?.textContent).toContain('document');
+  expect(host.querySelector('header a[href="/"]')?.getAttribute('aria-label')).toBe('Back to the Ryugi Cloud list');
+  expect(host.querySelector('nav[aria-label="Breadcrumb"]')?.textContent).toContain('document');
   expect(host.querySelector('[aria-current="page"]')?.textContent).toBe('Memory eval');
   expect(host.textContent).not.toContain('你的 artifact');
 });
@@ -55,17 +55,17 @@ test('only the artifact frame can update the header, including live title and of
   await update(data, window);
   await update(data, frame, 'https://untrusted.example');
   await update({ ...data, id: 'another-artifact' });
-  expect(host.textContent).not.toContain('电脑在线');
+  expect(host.textContent).not.toContain('Computer online');
   await update(data);
   expect(host.querySelector('[aria-current="page"]')?.textContent).toBe('Updated eval');
   expect(document.title).toBe('Updated eval');
-  expect(host.textContent).toContain('电脑在线');
-  expect(host.textContent).toContain('评论 3');
+  expect(host.textContent).toContain('Computer online');
+  expect(host.textContent).toContain('Comments 3');
   expect(host.textContent).toContain('Codex 正在编辑');
-  expect(host.textContent).toContain('未同步，正在重试');
+  expect(host.textContent).toContain('Not synced, retrying');
   await update({ ...data, online: false, comments: 0, activity: null, retrying: false });
-  expect(host.textContent).toContain('电脑离线');
-  expect(host.textContent).toContain('评论 0');
+  expect(host.textContent).toContain('Computer offline');
+  expect(host.textContent).toContain('Comments 0');
   expect(host.textContent).not.toContain('Codex 正在编辑');
   await update({ ...data, activity: 'Codex 7 分钟没有更新 · 还有 3 节待写', activityTone: 'warning' });
   expect(host.querySelector('[title="Codex 7 分钟没有更新 · 还有 3 节待写"]')?.getAttribute('data-tone')).toBe('warning');
@@ -74,16 +74,16 @@ test('only the artifact frame can update the header, including live title and of
   await update({ ...data, online: false, comments: 0, activity: null, retrying: false });
   await update({ ...data, title: {}, online: 'yes', comments: -1, activity: {}, retrying: 'yes' });
   expect(host.querySelector('[aria-current="page"]')?.textContent).toBe('Updated eval');
-  expect(host.textContent).toContain('电脑离线');
-  expect(host.textContent).toContain('评论 0');
+  expect(host.textContent).toContain('Computer offline');
+  expect(host.textContent).toContain('Comments 0');
 });
 
 test('visitors get the same navigation without owner share controls', async () => {
   const host = await mount(false);
   expect(host.querySelector('header a[href="/"]')).not.toBeNull();
   expect(host.querySelector('[aria-current="page"]')?.textContent).toBe('Memory eval');
-  expect(host.textContent).toContain('开始使用');
-  expect(Array.from(host.querySelectorAll('button')).some((button) => button.textContent === '分享')).toBe(false);
+  expect(host.textContent).toContain('Get started');
+  expect(Array.from(host.querySelectorAll('button')).some((button) => button.textContent === 'Share')).toBe(false);
 });
 
 test('sharing keeps the current page and follows later navigation without copying the local key', async () => {
@@ -92,7 +92,7 @@ test('sharing keeps the current page and follows later navigation without copyin
   const host = document.body.appendChild(document.createElement('div'));
   root = createRoot(host);
   await act(async () => root!.render(createElement(Share)));
-  const link = () => host.querySelector<HTMLInputElement>('input[aria-label="分享链接"]')!.value;
+  const link = () => host.querySelector<HTMLInputElement>('input[aria-label="Share link"]')!.value;
   expect(link()).toBe(`${location.origin}/a/c1?page=review`);
   await act(async () => {
     history.replaceState(null, '', '/a/c1?page=first');

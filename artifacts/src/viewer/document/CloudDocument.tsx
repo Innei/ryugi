@@ -12,6 +12,7 @@ import { createChannel } from './channel';
 import { extraNodes, rendererConfig } from './DocumentEditor';
 import { DocumentLayout } from './DocumentLayout';
 import { DynamicHostContext, type DynamicHost } from './DynamicBlock';
+import { t } from '../i18n';
 
 const styles = stylex.create({
   root: { minHeight: '100%', backgroundColor: cssVar.colorBgContainer, color: cssVar.colorText },
@@ -64,11 +65,11 @@ export default function CloudDocument({ id, state, contentBase, comments = empty
 
   return (
     <div {...stylex.props(styles.root)} className={`ryugi-doc ${stylex.props(styles.root).className ?? ''}`}>
-      {!framed ? <div {...stylex.props(styles.offline)}><RailSwitch comments={openComments} open={false} available={false} onComments={() => {}} onHistory={() => {}} /><span>电脑离线，历史暂不可用</span></div> : null}
+      {!framed ? <div {...stylex.props(styles.offline)}><RailSwitch comments={openComments} open={false} available={false} onComments={() => {}} onHistory={() => {}} /><span>{t('document.historyOffline')}</span></div> : null}
       {offline ? (
         <div {...stylex.props(styles.offline, framed && styles.framedOffline)}>
           <i {...stylex.props(styles.dot)} />
-          电脑离线，暂时不能评论
+          {t('document.offlineNoComments')}
         </div>
       ) : null}
       <DocumentLayout editor={editor} threads={comments.threads}>

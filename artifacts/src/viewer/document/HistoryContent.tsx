@@ -13,10 +13,11 @@ import type { HistoryChange, HistoryModel } from './DocumentHistory';
 import { ChangeNav, OnlyChanges, SOURCES, UpdateNotice } from './HistoryPanel';
 import { historyWhen } from './historyTime';
 import { MermaidPreview } from './MermaidPreview';
+import { t } from '../i18n';
 
 const renderNodes = [ChartNode, ExcalidrawNode, ...stepsNodes];
 const renderers: RendererConfig = { [ALERT_NODE_KEY]: AlertRenderer, [CODE_BLOCK_NODE_KEY]: CodeBlockRenderer, [IMAGE_NODE_KEY]: ImageRenderer, [MERMAID_NODE_KEY]: MermaidPreview };
-const KINDS = { insert: '新增', delete: '删除', modify: '修改' };
+const KINDS = { insert: 'history.kindInsert', delete: 'history.kindDelete', modify: 'history.kindModify' } as const;
 
 interface Props { model: HistoryModel; theme: 'light' | 'dark'; title: string; narrow: boolean; bodyRef: RefObject<HTMLDivElement | null>; onPick: () => void }
 
@@ -27,14 +28,14 @@ export function HistoryContent({ model, theme, title, narrow, bodyRef, onPick }:
   const block = (item: HistoryChange, index: number) => {
     if (item.kind === 'equal') {
       if (!onlyChanges) return <section key={index} className="history-hunk history-equal">{render(item.value)}</section>;
-      return <button type="button" key={index} className="history-fold" onClick={model.showAll}><span>{item.value.root.children.length} 段未改动 · 展开</span></button>;
+      return <button type="button" key={index} className="history-fold" onClick={model.showAll}><span>{t('history.unchanged', { count: item.value.root.children.length })}</span></button>;
     }
     change++;
     const box = item.before ? null : item.kind === 'insert' ? 'history-after' : item.kind === 'delete' ? 'history-before' : 'history-merged';
     return <section key={index} data-history-change="" data-current={change === changeIndex ? '' : undefined} className={`history-hunk history-${item.kind}`}>
       <div className="history-caption">
-        <span className="history-kind">{KINDS[item.kind]}</span>
-        {item.author ? <span>{historyWhen(item.author.change.timestamp)}{item.group ? ` · ${SOURCES[item.group.source]}` : ''}</span> : null}
+        <span className="history-kind">{t(KINDS[item.kind])}</span>
+        {item.author ? <span>{historyWhen(item.author.change.timestamp)}{item.group ? ` · ${t(SOURCES[item.group.source])}` : ''}</span> : null}
       </div>
       {item.before
         ? <><div className="history-before">{render(item.before)}</div><div className="history-after">{render(item.value)}</div></>
@@ -45,8 +46,8 @@ export function HistoryContent({ model, theme, title, narrow, bodyRef, onPick }:
   return <div className="history-view">
     {narrow ? <div className="history-strip">
       <button type="button" className="history-pick" onClick={onPick}>
-        <span>对比起点 · 点按切换</span>
-        <strong>{selected ? historyWhen(selected.change.timestamp) : '选择时间点'} → 最新<ChevronDown size={12} aria-hidden="true" /></strong>
+        <span>{t('history.compareFrom')}</span>
+        <strong>{t('history.toLatest', { from: selected ? historyWhen(selected.change.timestamp) : t('history.pickPoint') })}<ChevronDown size={12} aria-hidden="true" /></strong>
       </button>
       <OnlyChanges model={model} />
       <ChangeNav model={model} />
@@ -54,15 +55,15 @@ export function HistoryContent({ model, theme, title, narrow, bodyRef, onPick }:
     {narrow ? <UpdateNotice model={model} /> : null}
     {error
       ? narrow
-        ? <div role="alert" className="history-message">无法读取历史：{error}<button type="button" disabled={streaming} onClick={model.refresh}>重试</button></div>
-        : <p className="history-message">历史暂不可读，详情见右侧。</p>
+        ? <div role="alert" className="history-message">{t('history.readFailed', { error })}<button type="button" disabled={streaming} onClick={model.refresh}>{t('common.retry')}</button></div>
+        : <p className="history-message">{t('history.unreadable')}</p>
       : loading || !session
-        ? <div role="status" className="history-message">{streaming ? '等待本轮编辑完成…' : '正在计算差异…'}</div>
-        : <div ref={bodyRef} aria-label="差异正文" className="history-content">
+        ? <div role="status" className="history-message">{streaming ? t('history.waitingEdits') : t('history.computing')}</div>
+        : <div ref={bodyRef} aria-label={t('history.diffBody')} className="history-content">
           {session.latest.value.root.children.some((node) => node.type === 'heading' && (node as { tag?: string }).tag === 'h1') ? null : <h1>{title}</h1>}
-          {!count ? <p role="status" className="history-note">与所选时间点没有差异。选择更早的记录查看修改。</p> : null}
+          {!count ? <p role="status" className="history-note">{t('history.noDiff')}</p> : null}
           {blocks.map(block)}
-          <p className="history-end">已到本次对比末尾。媒体资源未做历史归档，同一地址的文件可能已更新。</p>
+          <p className="history-end">{t('history.endOfDiff')}</p>
         </div>}
   </div>;
 }

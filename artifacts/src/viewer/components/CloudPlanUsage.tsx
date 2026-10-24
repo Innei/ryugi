@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from '../i18n';
 
 interface PlanSummary {
   plan: 'free' | 'pro';
@@ -18,6 +19,7 @@ function Count({ label, used, max }: { label?: string; used: number; max: number
 }
 
 export function CloudPlanUsage() {
+  const { t } = useTranslation();
   const [summary, setSummary] = useState<PlanSummary | null>(null);
 
   useEffect(() => {
@@ -38,18 +40,18 @@ export function CloudPlanUsage() {
       <span className="cloud-plan">
         <b>Pro</b>
         <Count used={usage.total} max={limits.total} />
-        <a href="/billing">方案</a>
+        <a href="/billing">{t('planLimit.plans')}</a>
       </span>
     );
   }
   const tight = (limits.private !== null && usage.private >= limits.private) || (limits.public !== null && usage.public >= limits.public);
   return (
     <span className={`cloud-plan${tight ? ' is-tight' : ''}`}>
-      <b>免费版</b>
-      <Count label="私有" used={usage.private} max={limits.private} />
+      <b>{t('planLimit.free')}</b>
+      <Count label={t('visibility.private')} used={usage.private} max={limits.private} />
       <span aria-hidden>·</span>
-      <Count label="公开" used={usage.public} max={limits.public} />
-      <a href="/billing">升级到 Pro</a>
+      <Count label={t('visibility.public')} used={usage.public} max={limits.public} />
+      <a href="/billing">{t('common.upgradePro')}</a>
     </span>
   );
 }

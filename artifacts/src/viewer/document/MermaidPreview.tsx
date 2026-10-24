@@ -7,6 +7,7 @@ import { ZoomIn } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { headingAbove, useMermaidDiagram } from './mermaid';
 import { openMermaidViewer } from './MermaidViewer';
+import { t } from '../i18n';
 
 const styles = stylex.create({
   root: {
@@ -49,14 +50,14 @@ export function MermaidPreview({ content }: MermaidRendererProps) {
 
   if (!diagram) return <MermaidRenderer content={content} colorScheme={colorScheme} />;
 
-  const open = () => openMermaidViewer({ source: content, diagram, title: headingAbove(ref.current) ?? 'Mermaid 图' });
+  const open = () => openMermaidViewer({ source: content, diagram, title: headingAbove(ref.current) ?? t('mermaid.diagram') });
 
   return (
     <div
       ref={ref}
       role="button"
       tabIndex={0}
-      aria-label="放大查看 Mermaid 图"
+      aria-label={t('mermaid.open')}
       onClick={open}
       onKeyDownCapture={(event) => {
         if (event.key !== 'Enter' && event.key !== ' ') return;
@@ -74,7 +75,7 @@ export function MermaidPreview({ content }: MermaidRendererProps) {
       <img alt="Mermaid diagram" src={diagram.src} width={diagram.width} height={diagram.height} draggable={false} {...stylex.props(styles.image)} />
       <span {...stylex.props(styles.hint, (hovered || focused) && styles.hintShown)}>
         <ZoomIn size={12} />
-        点击放大查看
+        {t('mermaid.clickToEnlarge')}
       </span>
     </div>
   );

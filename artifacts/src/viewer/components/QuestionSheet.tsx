@@ -8,6 +8,7 @@ import { questionList, type Question, type Round } from '../lib/questions';
 import { BottomSheet } from './BottomSheet';
 import { ghostStyles } from './ghost';
 import { PageSwitcher } from './PhoneArtboardBar';
+import { useTranslation } from '../i18n';
 
 export const SHEET_PEEK = 78;
 export const SHEET_OPEN = 0.66;
@@ -70,6 +71,7 @@ const markOf = (question: Question, current: Question | null, verdicts: Record<s
   question.id === current?.id ? 'current' : verdicts[question.id]?.state === 'pass' ? 'pass' : verdicts[question.id]?.state === 'reject' ? 'reject' : 'open';
 
 export function QuestionSheet({ rounds, current, previous, next, pages, page, onPageChange, onPick, snap, onSnap, verdicts = {} }: Props) {
+  const { t } = useTranslation();
   const list = questionList(rounds);
   const index = current ? list.findIndex((q) => q.id === current.id) : -1;
   return (
@@ -80,7 +82,7 @@ export function QuestionSheet({ rounds, current, previous, next, pages, page, on
       onScrim={() => onSnap(SHEET_PEEK)}
       header={
         <div {...stylex.props(styles.head)}>
-          <button type="button" aria-label="上一题" disabled={!previous} onClick={() => previous && onPick(previous)} {...stylex.props(ghostStyles.ghost)}>
+          <button type="button" aria-label={t('questions.previous')} disabled={!previous} onClick={() => previous && onPick(previous)} {...stylex.props(ghostStyles.ghost)}>
             <ChevronLeft size={20} />
           </button>
           <span data-question-bar {...stylex.props(styles.current)}>
@@ -94,7 +96,7 @@ export function QuestionSheet({ rounds, current, previous, next, pages, page, on
                   </span>
                 </>
               ) : (
-                <span {...stylex.props(styles.name)}>跳到</span>
+                <span {...stylex.props(styles.name)}>{t('questions.jumpTo')}</span>
               )}
             </span>
             <span data-progress {...stylex.props(styles.progress)}>
@@ -110,7 +112,7 @@ export function QuestionSheet({ rounds, current, previous, next, pages, page, on
               })}
             </span>
           </span>
-          <button type="button" aria-label="下一题" disabled={!next} onClick={() => next && onPick(next)} {...stylex.props(ghostStyles.ghost)}>
+          <button type="button" aria-label={t('questions.next')} disabled={!next} onClick={() => next && onPick(next)} {...stylex.props(ghostStyles.ghost)}>
             <ChevronRight size={20} />
           </button>
         </div>
@@ -123,7 +125,7 @@ export function QuestionSheet({ rounds, current, previous, next, pages, page, on
           </div>
         ) : null}
         {rounds.map((round) => (
-          <div key={round.id ?? '其他'}>
+          <div key={round.id ?? ''}>
             <div data-round {...stylex.props(styles.round)}>{round.title}</div>
             {round.questions.map((question) => (
               <button
@@ -135,7 +137,7 @@ export function QuestionSheet({ rounds, current, previous, next, pages, page, on
               >
                 <code {...stylex.props(styles.id)}>{question.id}</code>
                 <span {...stylex.props(styles.name)}>{question.title}</span>
-                <span {...stylex.props(styles.count)}>{question.boards.length} 张</span>
+                <span {...stylex.props(styles.count)}>{t('questions.boards', { count: question.boards.length })}</span>
               </button>
             ))}
           </div>

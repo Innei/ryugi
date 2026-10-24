@@ -111,7 +111,7 @@ async function choose(label: string) {
 
 const rows = (host: HTMLElement) => Array.from(host.querySelectorAll<HTMLElement>('.cloud-row'));
 const row = (host: HTMLElement, title: string) => rows(host).find((node) => node.querySelector('.cloud-row-title')?.textContent === title);
-const inspector = (host: HTMLElement) => host.querySelector<HTMLElement>('section[aria-label="详情"]')!;
+const inspector = (host: HTMLElement) => host.querySelector<HTMLElement>('section[aria-label="Details"]')!;
 const visibilitySwitch = (host: HTMLElement) => inspector(host).querySelector<HTMLElement>('[role="switch"]')!;
 const isDisabled = (node: HTMLElement) => node.hasAttribute('disabled') || node.getAttribute('aria-disabled') === 'true' || node.hasAttribute('data-disabled');
 const shareOption = (label: string) => Array.from(document.querySelectorAll<HTMLButtonElement>('[role="radio"]')).find((node) => node.textContent?.includes(label))!;
@@ -134,31 +134,31 @@ describe('cloud library management', () => {
       if (init?.method === 'DELETE') { requests.push(String(url)); return new Response(null, { status: 204 }); }
       return Response.json(list);
     }) as typeof fetch);
-    await press('button[aria-label="选择多项"]');
-    await choose('选择 Arrow');
-    await choose('选择 Notes');
-    expect(inspector(host).textContent).toContain('已选 2 项');
-    await click('删除 2 项');
+    await press('button[aria-label="Select multiple"]');
+    await choose('Select Arrow');
+    await choose('Select Notes');
+    expect(inspector(host).textContent).toContain('2 selected');
+    await click('Delete 2 items');
     const dialog = document.querySelector('[role="dialog"]')!;
     expect(dialog.textContent).toContain('Arrow');
     expect(dialog.textContent).toContain('Notes');
     expect(requests).toEqual([]);
-    await click('取消', dialog);
+    await click('Cancel', dialog);
     expect(rows(host)).toHaveLength(2);
-    await click('删除 2 项');
-    await click('删除 2 项', document.querySelector('[role="dialog"]')!);
+    await click('Delete 2 items');
+    await click('Delete 2 items', document.querySelector('[role="dialog"]')!);
     expect(requests).toEqual(['/api/a/a', '/api/a/b']);
     expect(rows(host)).toHaveLength(0);
-    expect(host.textContent).toContain('还没有');
-    expect(host.querySelector('[role="status"]')?.textContent).toContain('已删除 2 项');
+    expect(host.textContent).toContain('Nothing published yet');
+    expect(host.querySelector('[role="status"]')?.textContent).toContain('Deleted 2 items');
   });
 
   test('select all picks only what the current filter shows', async () => {
     const host = await render({ status: 200, body: list });
     await click('first1');
-    await press('button[aria-label="选择多项"]');
-    await choose('全选当前列表');
-    expect(inspector(host).textContent).toContain('已选 1 项');
+    await press('button[aria-label="Select multiple"]');
+    await choose('Select all in this list');
+    expect(inspector(host).textContent).toContain('1 selected');
     expect(inspector(host).textContent).toContain('Arrow');
     expect(inspector(host).textContent).not.toContain('Notes');
   });
@@ -171,17 +171,17 @@ describe('cloud library management', () => {
       requests.push(String(url));
       return String(url).endsWith('/b') && fail ? Response.json({ error: 'try again' }, { status: 503 }) : new Response(null, { status: 204 });
     }) as typeof fetch);
-    await press('button[aria-label="选择多项"]');
-    await choose('选择 Arrow');
-    await choose('选择 Notes');
-    await click('删除 2 项');
-    await click('删除 2 项', document.querySelector('[role="dialog"]')!);
+    await press('button[aria-label="Select multiple"]');
+    await choose('Select Arrow');
+    await choose('Select Notes');
+    await click('Delete 2 items');
+    await click('Delete 2 items', document.querySelector('[role="dialog"]')!);
     expect(rows(host)).toHaveLength(1);
     expect(row(host, 'Notes')).toBeDefined();
-    expect(document.querySelector('[role="checkbox"][aria-label="选择 Notes"]')?.getAttribute('aria-checked')).toBe('true');
+    expect(document.querySelector('[role="checkbox"][aria-label="Select Notes"]')?.getAttribute('aria-checked')).toBe('true');
     expect(host.querySelector('[role="alert"]')?.textContent).toContain('1');
     fail = false;
-    await click('重试删除');
+    await click('Retry delete');
     expect(requests).toEqual(['/api/a/a', '/api/a/b', '/api/a/b']);
     expect(rows(host)).toHaveLength(0);
   });
@@ -193,11 +193,11 @@ describe('cloud library management', () => {
       requests.push(String(url));
       return Response.json({ error: 'sign in' }, { status: 401 });
     }) as typeof fetch);
-    await press('button[aria-label="选择多项"]');
-    await choose('选择 Arrow');
-    await choose('选择 Notes');
-    await click('删除 2 项');
-    await click('删除 2 项', document.querySelector('[role="dialog"]')!);
+    await press('button[aria-label="Select multiple"]');
+    await choose('Select Arrow');
+    await choose('Select Notes');
+    await click('Delete 2 items');
+    await click('Delete 2 items', document.querySelector('[role="dialog"]')!);
     expect(rows(host)).toHaveLength(2);
     expect(host.querySelector('a[href="/auth/login?return=/"]')).not.toBeNull();
     expect(requests).toEqual(['/api/a/a']);
@@ -209,13 +209,13 @@ describe('cloud library management', () => {
       if (init?.method === 'DELETE') { requests.push(String(url)); return new Response(null, { status: 204 }); }
       return Response.json(list);
     }) as typeof fetch);
-    await click('删除…', inspector(host));
+    await click('Delete…', inspector(host));
     expect(requests).toEqual([]);
-    await click('删除 1 项', document.querySelector('[role="dialog"]')!);
+    await click('Delete 1 item', document.querySelector('[role="dialog"]')!);
     expect(requests).toEqual(['/api/a/a']);
     expect(rows(host)).toHaveLength(1);
     expect(inspector(host).querySelector('h2')?.textContent).toBe('Notes');
-    expect(host.querySelector('[role="status"]')?.textContent).toContain('已删除 1 项');
+    expect(host.querySelector('[role="status"]')?.textContent).toContain('Deleted 1 item');
   });
 
   test('sharing failures preserve visibility and a later success updates the row', async () => {
@@ -225,15 +225,15 @@ describe('cloud library management', () => {
       return fail ? Response.json({ error: 'try again' }, { status: 503 }) : Response.json({ id: 'a', visibility: 'public' });
     }) as typeof fetch);
     expect(inspector(host).querySelector('[role="radio"]')).toBeNull();
-    expect(inspector(host).textContent).toContain('有链接的人可以看');
+    expect(inspector(host).textContent).toContain('Anyone with the link can view');
     expect(visibilitySwitch(host).getAttribute('aria-checked')).toBe('false');
     await act(async () => { visibilitySwitch(host).click(); });
-    expect(row(host, 'Arrow')?.textContent).toContain('仅自己');
+    expect(row(host, 'Arrow')?.textContent).toContain('Only me');
     expect(visibilitySwitch(host).getAttribute('aria-checked')).toBe('false');
     expect(document.querySelector('[role="alert"]')?.textContent).toContain('try again');
     fail = false;
     await act(async () => { visibilitySwitch(host).click(); });
-    expect(row(host, 'Arrow')?.textContent).toContain('有链接');
+    expect(row(host, 'Arrow')?.textContent).toContain('Has link');
     expect(visibilitySwitch(host).getAttribute('aria-checked')).toBe('true');
   });
 
@@ -246,8 +246,8 @@ describe('cloud library management', () => {
     const host = await render({ status: 200, body: list }, (async (_url, init) => init?.method === 'PATCH' ? Response.json(refusal, { status: 402 }) : Response.json(list)) as typeof fetch);
     await act(async () => { visibilitySwitch(host).click(); });
     await act(async () => {});
-    expect(document.body.textContent).toContain('公开名额已用完');
-    expect(document.body.textContent).toContain('「Arrow」会保持私有');
+    expect(document.body.textContent).toContain('Public slots are full');
+    expect(document.body.textContent).toContain('“Arrow” stays private');
     expect(inspector(host).querySelector('[role="alert"]')).toBeNull();
     act(() => modalRoot.unmount());
   });
@@ -266,24 +266,24 @@ describe('cloud library management', () => {
     expect(requests).toBe(1);
     await act(async () => { settle(Response.json({ error: 'sign in' }, { status: 401 })); });
     expect(isDisabled(visibilitySwitch(host))).toBe(false);
-    expect(document.querySelector('[role="alert"]')?.textContent).toContain('登录已过期');
+    expect(document.querySelector('[role="alert"]')?.textContent).toContain('Your session expired');
     expect(document.querySelector('a[href^="/auth/login"]')).not.toBeNull();
   });
 
   test('reports clipboard refusal without changing visibility', async () => {
     vi.stubGlobal('navigator', Object.create(navigator, { clipboard: { value: { writeText: async () => { throw new Error('denied'); } } } }));
     const host = await render({ status: 200, body: list });
-    await click('复制', inspector(host));
-    expect(host.querySelector('[role="alert"]')?.textContent).toContain('复制失败');
-    expect(row(host, 'Arrow')?.textContent).toContain('仅自己');
+    await click('Copy', inspector(host));
+    expect(host.querySelector('[role="alert"]')?.textContent).toContain("Couldn't copy");
+    expect(row(host, 'Arrow')?.textContent).toContain('Only me');
   });
 
-  test('making the inspected artifact public under a 仅自己 filter keeps it in the inspector', async () => {
+  test('making the inspected artifact public under an Only me filter keeps it in the inspector', async () => {
     const host = await render({ status: 200, body: list }, (async (_url, init) => {
       if (init?.method !== 'PATCH') return Response.json(list);
       return Response.json({ id: 'a', visibility: 'public' });
     }) as typeof fetch);
-    await click('仅自己2');
+    await click('Only me2');
     expect(inspector(host).querySelector('h2')?.textContent).toBe('Arrow');
     await act(async () => { visibilitySwitch(host).click(); });
     expect(inspector(host).querySelector('h2')?.textContent).toBe('Arrow');
@@ -292,16 +292,16 @@ describe('cloud library management', () => {
 
   test('keyboard focus follows select mode in and out', async () => {
     await render({ status: 200, body: list });
-    await press('button[aria-label="选择多项"]');
-    expect(document.activeElement?.getAttribute('aria-label')).toBe('全选当前列表');
-    await click('取消');
-    expect(document.activeElement?.getAttribute('aria-label')).toBe('选择多项');
+    await press('button[aria-label="Select multiple"]');
+    expect(document.activeElement?.getAttribute('aria-label')).toBe('Select all in this list');
+    await click('Cancel');
+    expect(document.activeElement?.getAttribute('aria-label')).toBe('Select multiple');
   });
 
   test('after a confirmed delete, focus lands on the next inspected artifact', async () => {
     const host = await render({ status: 200, body: list }, (async (_url, init) => init?.method === 'DELETE' ? new Response(null, { status: 204 }) : Response.json(list)) as typeof fetch);
-    await click('删除…', inspector(host));
-    await click('删除 1 项', document.querySelector('[role="dialog"]')!);
+    await click('Delete…', inspector(host));
+    await click('Delete 1 item', document.querySelector('[role="dialog"]')!);
     await act(async () => { await new Promise((resolve) => setTimeout(resolve, 50)); });
     expect(document.activeElement).toBe(inspector(host).querySelector('h2'));
   });
@@ -327,16 +327,16 @@ describe('cloud library management', () => {
     }) as typeof fetch);
     await act(async () => root!.render(createElement(ConfigProvider, { motion, enableCustomFonts: false, children: createElement(CloudHeader, { id: 'a', type: 'html', title: 'Arrow', owner: true, status: {}, visibility: 'private', onChange: () => {} }) })));
     for (const status of [503, 401]) {
-      await click('分享');
-      await act(async () => { shareOption('有链接的人').click(); });
+      await click('Share');
+      await act(async () => { shareOption('Anyone with the link').click(); });
       await act(async () => { document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); });
-      await click('分享');
-      expect(shareOption('有链接的人').disabled).toBe(true);
-      await act(async () => { shareOption('有链接的人').click(); });
+      await click('Share');
+      expect(shareOption('Anyone with the link').disabled).toBe(true);
+      await act(async () => { shareOption('Anyone with the link').click(); });
       expect(requests).toBe(status === 503 ? 1 : 2);
       await act(async () => { settle(Response.json({ error: 'late refusal' }, { status })); });
-      expect(shareOption('有链接的人').disabled).toBe(false);
-      expect(document.querySelector('[role="alert"]')?.textContent).toContain(status === 401 ? '登录已过期' : 'late refusal');
+      expect(shareOption('Anyone with the link').disabled).toBe(false);
+      expect(document.querySelector('[role="alert"]')?.textContent).toContain(status === 401 ? 'Your session expired' : 'late refusal');
       if (status === 401) expect(document.querySelector('a[href^="/auth/login"]')).not.toBeNull();
       await act(async () => { document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); });
     }
@@ -344,7 +344,7 @@ describe('cloud library management', () => {
 
   test('the manual-copy fallback exposes the complete link to keyboard users', async () => {
     await render({ status: 200, body: list });
-    const input = document.querySelector<HTMLInputElement>('input[aria-label="分享链接"]');
+    const input = document.querySelector<HTMLInputElement>('input[aria-label="Share link"]');
     expect(input).not.toBeNull();
     expect(input!.readOnly).toBe(true);
     expect(input!.value).toBe(`${location.origin}/a/a`);
@@ -357,7 +357,7 @@ describe('cloud library management', () => {
     let fail = true;
     const host = await render({ status: 503, body: {} }, (async () => fail ? new Response(null, { status: 503 }) : Response.json(list)) as typeof fetch);
     fail = false;
-    await click('重新加载');
+    await click('Reload');
     expect(rows(host)).toHaveLength(2);
   });
 });
@@ -375,10 +375,10 @@ describe('CloudArtifactList', () => {
       body: { login: 'innei', artifacts: [item('a', 'ryugi', '2026-10-21T08:00:00Z', { title: 'Arrow' }), item('b', null, '2026-10-21T07:00:00Z', { title: 'Loose', visibility: 'public' })] },
     });
     expect(row(host, 'Arrow')?.textContent).toContain('ryugi');
-    expect(row(host, 'Arrow')?.textContent).toContain('仅自己');
-    expect(row(host, 'Loose')?.textContent).toContain('其他');
-    expect(row(host, 'Loose')?.textContent).toContain('有链接');
-    expect(inspector(host).querySelector('a[href="/a/a"]')?.textContent).toContain('打开');
+    expect(row(host, 'Arrow')?.textContent).toContain('Only me');
+    expect(row(host, 'Loose')?.textContent).toContain('Other');
+    expect(row(host, 'Loose')?.textContent).toContain('Has link');
+    expect(inspector(host).querySelector('a[href="/a/a"]')?.textContent).toContain('Open');
   });
 
   test('clicking a row inspects that artifact', async () => {
@@ -397,9 +397,9 @@ describe('CloudArtifactList', () => {
     ] } });
     await click('Document');
     expect(rows(host).map((node) => node.querySelector('.cloud-row-title')?.textContent)).toEqual(['Notes']);
-    await click('仅自己1');
+    await click('Only me1');
     expect(rows(host)).toHaveLength(0);
-    await click('清除筛选');
+    await click('Clear filter');
     expect(rows(host)).toHaveLength(2);
     await click('ryugi1');
     expect(rows(host).map((node) => node.querySelector('.cloud-row-title')?.textContent)).toEqual(['Arrow']);
@@ -407,7 +407,7 @@ describe('CloudArtifactList', () => {
 
   test('signed in with nothing published, it says so', async () => {
     const host = await render({ status: 200, body: { login: 'innei', artifacts: [] } });
-    expect(host.textContent).toContain('还没有');
+    expect(host.textContent).toContain('Nothing published yet');
   });
 });
 
@@ -442,7 +442,7 @@ describe('cloudPreviewPayload', () => {
     try {
       const host = await render({ status: 200, body: { login: 'innei', artifacts: [item('a', 'ryugi', '2026-10-21T08:00:00Z', { visibility: 'public' }), item('b', null, '2026-10-21T07:00:00Z')] } });
       const pressed = Array.from(host.querySelectorAll<HTMLButtonElement>('.cloud-side-button[aria-pressed="true"]')).map((b) => b.querySelector('.cloud-side-label')?.textContent);
-      expect(pressed).toContain('有链接的人');
+      expect(pressed).toContain('Anyone with the link');
     } finally {
       history.replaceState(null, '', before);
     }

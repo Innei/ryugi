@@ -83,15 +83,15 @@ test('a click on a node opens a draft anchored to it, and sending creates the th
   await report('hover', { rect: { x: 100, y: 100, width: 200, height: 100 }, id: 7 });
   await report('drag', { phase: 'start', id: 7, x: 150, y: 125, append: false });
   await report('drag', { phase: 'cancel', x: 150, y: 125, append: false });
-  expect(host.textContent).toContain('锚到 a · body > img · 25%, 25%');
-  const box = host.querySelector<HTMLTextAreaElement>('textarea[placeholder="添加评论…"]')!;
+  expect(host.textContent).toContain('Anchored to a · body > img · 25%, 25%');
+  const box = host.querySelector<HTMLTextAreaElement>('textarea[placeholder="Add a comment…"]')!;
   await act(async () => {
     Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!.call(box, '开关没对齐');
     box.dispatchEvent(new Event('input', { bubbles: true }));
   });
   await act(async () => box.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', metaKey: true, bubbles: true })));
   expect(state.comment).toHaveBeenCalledWith({ op: 'create', anchor: { page: 'p', board: 'a', x: 150, y: 125, nodes: [{ board: 'a', path: 'body > img' }], offset: { x: 0.25, y: 0.25 } }, text: '开关没对齐' });
-  expect(host.querySelector('textarea[placeholder="添加评论…"]')).toBeNull();
+  expect(host.querySelector('textarea[placeholder="Add a comment…"]')).toBeNull();
 });
 
 test('pins open their thread, and Esc closes it before leaving the tool', async () => {
@@ -101,13 +101,13 @@ test('pins open their thread, and Esc closes it before leaving the tool', async 
   };
   const { host } = await mount();
   await key('c');
-  await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="评论 1"]')!.click());
+  await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="Comment 1"]')!.click());
   expect(host.textContent).toContain('整体太挤');
   await key('Escape');
-  expect(host.querySelector('textarea[placeholder="回复…"]')).toBeNull();
+  expect(host.querySelector('textarea[placeholder="Reply…"]')).toBeNull();
   expect(host.querySelector('[aria-label="Comment"]')).not.toBeNull();
   await key('Escape');
-  expect(host.querySelector('[aria-label="评论 1"]')).toBeNull();
+  expect(host.querySelector('[aria-label="Comment 1"]')).toBeNull();
 });
 
 test('a stale thread says its anchor is gone', async () => {
@@ -117,8 +117,8 @@ test('a stale thread says its anchor is gone', async () => {
   };
   const { host } = await mount();
   await key('c');
-  await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="评论 1"]')!.click());
-  expect(host.textContent).toContain('锚点已失效');
+  await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="Comment 1"]')!.click());
+  expect(host.textContent).toContain('Anchor no longer matches');
 });
 
 test('C with nodes selected opens a draft on those nodes, pinned at the first one', async () => {
@@ -126,8 +126,8 @@ test('C with nodes selected opens a draft on those nodes, pinned at the first on
   const css = Object.fromEntries((await import('../src/shared/inspector')).INSPECTOR_PROPERTIES.map((property) => [property, '0']));
   await report('selection', { reason: 'user', selection: { id: 7, name: 'shot', tag: 'img', selector: 'img', rect: { x: 40, y: 60, width: 200, height: 100 }, html: '<img>', css, widthMode: 'fixed', heightMode: 'fixed' } });
   await key('c');
-  expect(host.textContent).toContain('锚到 a · body > img');
-  const box = host.querySelector<HTMLTextAreaElement>('textarea[placeholder="添加评论…"]')!;
+  expect(host.textContent).toContain('Anchored to a · body > img');
+  const box = host.querySelector<HTMLTextAreaElement>('textarea[placeholder="Add a comment…"]')!;
   await act(async () => {
     Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!.call(box, '这两行间距不对');
     box.dispatchEvent(new Event('input', { bubbles: true }));
@@ -143,10 +143,10 @@ test('Esc in the reply box closes the thread', async () => {
   };
   const { host } = await mount();
   await key('c');
-  await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="评论 1"]')!.click());
-  const reply = host.querySelector<HTMLTextAreaElement>('textarea[placeholder="回复…"]')!;
+  await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="Comment 1"]')!.click());
+  const reply = host.querySelector<HTMLTextAreaElement>('textarea[placeholder="Reply…"]')!;
   await act(async () => reply.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })));
-  expect(host.querySelector('textarea[placeholder="回复…"]')).toBeNull();
+  expect(host.querySelector('textarea[placeholder="Reply…"]')).toBeNull();
 });
 
 test('Esc that ends an IME composition in the reply box keeps the thread open', async () => {
@@ -156,11 +156,11 @@ test('Esc that ends an IME composition in the reply box keeps the thread open', 
   };
   const { host } = await mount();
   await key('c');
-  await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="评论 1"]')!.click());
-  const reply = host.querySelector<HTMLTextAreaElement>('textarea[placeholder="回复…"]')!;
+  await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="Comment 1"]')!.click());
+  const reply = host.querySelector<HTMLTextAreaElement>('textarea[placeholder="Reply…"]')!;
   await act(async () => reply.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', isComposing: true, bubbles: true })));
   await act(async () => reply.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', keyCode: 229, bubbles: true })));
-  expect(host.querySelector('textarea[placeholder="回复…"]')).not.toBeNull();
+  expect(host.querySelector('textarea[placeholder="Reply…"]')).not.toBeNull();
 });
 
 test('the comment tool swaps the right panel for the thread list, and a row opens its thread', async () => {
@@ -176,14 +176,14 @@ test('the comment tool swaps the right panel for the thread list, and a row open
   await key('c');
   const panel = host.querySelector('aside[aria-label="Comments"]')!;
   expect(panel.textContent).toContain('Open 1');
-  expect(host.querySelector('[aria-label="评论 2"]')).toBeNull();
+  expect(host.querySelector('[aria-label="Comment 2"]')).toBeNull();
   await act(async () => [...panel.querySelectorAll('button')].find((b) => b.textContent?.startsWith('All'))!.click());
-  expect(host.querySelector('[aria-label="评论 2"]')).not.toBeNull();
+  expect(host.querySelector('[aria-label="Comment 2"]')).not.toBeNull();
   await act(async () => panel.querySelector<HTMLElement>('[data-thread="t1"]')!.click());
-  expect(host.querySelector('textarea[placeholder="回复…"]')).not.toBeNull();
+  expect(host.querySelector('textarea[placeholder="Reply…"]')).not.toBeNull();
   await act(async () => panel.querySelector<HTMLButtonElement>('[aria-label="Close comments"]')!.click());
   expect(host.querySelector('aside[aria-label="Comments"]')).toBeNull();
-  expect(host.querySelector('[aria-label="评论 1"]')).toBeNull();
+  expect(host.querySelector('[aria-label="Comment 1"]')).toBeNull();
 });
 
 const pointerDown = (target: Element) => act(async () => target.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0, pointerType: 'mouse', clientX: 300, clientY: 300 })));
@@ -198,16 +198,16 @@ test('a click inside a menu that portals out of the canvas opens no draft', asyn
   await mount();
   await key('c');
   await pointerDown(document.querySelector('[data-menu-item="q"]')!);
-  expect(document.querySelector('textarea[placeholder="添加评论…"]')).toBeNull();
+  expect(document.querySelector('textarea[placeholder="Add a comment…"]')).toBeNull();
 });
 
 test('switching page drops the draft', async () => {
   const { report } = await mount();
   await key('c');
   await draftOnNode(report);
-  expect(document.querySelector('textarea[placeholder="添加评论…"]')).not.toBeNull();
+  expect(document.querySelector('textarea[placeholder="Add a comment…"]')).not.toBeNull();
   await act(async () => document.querySelector<HTMLElement>('[data-menu-item="q"]')!.click());
-  expect(document.querySelector('textarea[placeholder="添加评论…"]')).toBeNull();
+  expect(document.querySelector('textarea[placeholder="Add a comment…"]')).toBeNull();
 });
 
 test('a thread whose board is gone still opens from the list', async () => {
@@ -218,7 +218,7 @@ test('a thread whose board is gone still opens from the list', async () => {
   const { host } = await mount();
   await key('c');
   await act(async () => host.querySelector<HTMLElement>('aside[aria-label="Comments"] [data-thread="t1"]')!.click());
-  expect(host.querySelector('textarea[placeholder="回复…"]')).not.toBeNull();
+  expect(host.querySelector('textarea[placeholder="Reply…"]')).not.toBeNull();
   expect(host.textContent).toContain('已删除 board');
 });
 
@@ -229,7 +229,7 @@ test('a thread with every message deleted leaves no pin', async () => {
   };
   const { host } = await mount();
   await key('c');
-  expect(host.querySelector('[aria-label^="评论"]')).toBeNull();
+  expect(host.querySelector('[aria-label^="Comment "]')).toBeNull();
 });
 
 test('pressing empty canvas in the comment tool keeps focus on the new draft', async () => {
@@ -238,7 +238,7 @@ test('pressing empty canvas in the comment tool keeps focus on the new draft', a
   const viewport = host.querySelector('iframe')!.closest('[style*="cursor"]')!;
   const event = new PointerEvent('pointerdown', { bubbles: true, cancelable: true, button: 0, pointerType: 'mouse', clientX: 900, clientY: 700 });
   await act(async () => viewport.dispatchEvent(event));
-  expect(host.querySelector('textarea[placeholder="添加评论…"]')).not.toBeNull();
+  expect(host.querySelector('textarea[placeholder="Add a comment…"]')).not.toBeNull();
   expect(event.defaultPrevented).toBe(true);
 });
 
@@ -253,7 +253,7 @@ test('video clicks reach playback while Hand and Comment keep their canvas gestu
     this.dispatchEvent(new Event('play')); return Promise.resolve();
   });
   await act(async () => root!.render(createElement(ConfigProvider, { motion, enableCustomFonts: false, children: createElement(ArtboardLayout, { id: 'review' }) })));
-  const surface = host.querySelector<HTMLButtonElement>('[aria-label="播放 a"]');
+  const surface = host.querySelector<HTMLButtonElement>('[aria-label="Play a"]');
   expect(surface).not.toBeNull();
   const viewport = host.querySelector('[data-board="a"]')!.parentElement!.parentElement!;
   const capture = vi.fn(); viewport.setPointerCapture = capture;
@@ -269,7 +269,7 @@ test('video clicks reach playback while Hand and Comment keep their canvas gestu
     surface!.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0, pointerId: 3 }));
     surface!.click();
   });
-  expect(host.querySelector('textarea[placeholder="添加评论…"]')).not.toBeNull();
+  expect(host.querySelector('textarea[placeholder="Add a comment…"]')).not.toBeNull();
   expect(host.querySelector('video')!.paused).toBe(false);
   await act(async () => host!.querySelector<HTMLButtonElement>('[aria-label="Expand a"]')!.click());
   const expandedSurface = host.querySelector<HTMLButtonElement>('[data-chrome] [data-video-surface]')!;

@@ -24,6 +24,7 @@ import { useLocalTransport } from './useDocumentTransport';
 import { useNow, usePendingBlocks } from './usePendingBlocks';
 import { PhoneLayout } from './PhoneLayout';
 import { useSelectionComment, type SelectionTarget } from './useSelectionComment';
+import { t } from '../i18n';
 
 const styles = stylex.create({
   root: { minHeight: '100%', backgroundColor: cssVar.colorBgContainer, color: cssVar.colorText },
@@ -225,7 +226,7 @@ export function DocumentView({ id, transport, live, cloud, fallback }: { id: str
   );
 
   if (loadError) return <div {...stylex.props(styles.message)}>{loadError}</div>;
-  if (!doc) return fallback ?? <div {...stylex.props(styles.message)}>Loading…</div>;
+  if (!doc) return fallback ?? <div {...stylex.props(styles.message)}>{t('common.loading')}</div>;
 
   const editorView = (
     <DynamicHostContext.Provider value={dynamicHost}>

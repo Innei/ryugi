@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'vitest';
+import { i18n } from '../src/viewer/i18n';
 import { changeVisibility, loadShell, loginUrl, switchAccount } from '../src/viewer/lib/cloud-shell';
 
 interface Call {
@@ -30,7 +31,7 @@ describe('loading the shell', () => {
 
   test('an artifact that is not published yet is named as such for its owner', async () => {
     const { impl } = fakeFetch({ 'GET /api/a/abc/meta': () => Response.json({ title: null, owner: true, visibility: 'private', published: false }) });
-    expect(await loadShell('abc', impl)).toEqual({ kind: 'ready', type: null, title: '还没发布', owner: true, visibility: 'private' });
+    expect(await loadShell('abc', impl)).toEqual({ kind: 'ready', type: null, title: 'Not published yet', owner: true, visibility: 'private' });
   });
 
   test('a link that will not open asks who is signed in', async () => {
@@ -52,7 +53,7 @@ describe('loading the shell', () => {
 
   test('a server error is reported, not shown as missing', async () => {
     const { impl } = fakeFetch({ 'GET /api/a/abc/meta': () => new Response('boom', { status: 500 }) });
-    expect(await loadShell('abc', impl)).toEqual({ kind: 'failed', message: '加载失败（500）' });
+    expect(await loadShell('abc', impl)).toEqual({ kind: 'failed', message: "Couldn't load (500)" });
   });
 });
 
@@ -66,6 +67,17 @@ describe('changing visibility', () => {
   test('a refusal is thrown with the cloud’s message', async () => {
     const { impl } = fakeFetch({ 'PATCH /api/a/abc': () => Response.json({ error: 'sign in to Ryugi Cloud first' }, { status: 401 }) });
     await expect(changeVisibility('abc', 'public', impl)).rejects.toThrow('sign in to Ryugi Cloud first');
+  });
+
+  test('a refusal with a known code is shown in the viewer language', async () => {
+    const { impl } = fakeFetch({ 'PATCH /api/a/abc': () => Response.json({ error: 'artifact not found', code: 'artifact_not_found' }, { status: 404 }) });
+    await expect(changeVisibility('abc', 'public', impl)).rejects.toThrow('This artifact no longer exists.');
+    await i18n.changeLanguage('zh');
+    try {
+      await expect(changeVisibility('abc', 'public', impl)).rejects.toThrow('这个 artifact 已经不存在。');
+    } finally {
+      await i18n.changeLanguage('en');
+    }
   });
 });
 

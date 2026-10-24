@@ -6,6 +6,7 @@ import { ArtboardView } from './ArtboardLayout';
 import { CloudMessage } from './CloudMessage';
 import { CloudSnapshot, type CloudArtifact } from './CloudSnapshot';
 import { HtmlView } from './HtmlLayout';
+import { useTranslation } from '../i18n';
 
 const CloudLiveDocument = lazy(() => import('../document/shims').then(() => import('../document/CloudLiveDocument')));
 
@@ -17,8 +18,9 @@ function LiveArtboard({ id, feed }: { id: string; feed: ArtifactFeed }) {
 }
 
 function LiveFeedArtifact({ id, artifact }: { id: string; artifact: Exclude<OwnerArtifact, { type: 'document' }> }) {
+  const { t } = useTranslation();
   const { presence, feed } = useCloudFeed(id, artifact.type, artifact.liveContentBase);
-  if (!feed.live) return presence === null && !artifact.payload ? <CloudMessage>正在连接…</CloudMessage> : <CloudSnapshot id={id} artifact={artifact} />;
+  if (!feed.live) return presence === null && !artifact.payload ? <CloudMessage>{t('common.connecting')}</CloudMessage> : <CloudSnapshot id={id} artifact={artifact} />;
   if (artifact.type === 'html') return <HtmlView id={id} feed={feed} />;
   return <LiveArtboard id={id} feed={feed} />;
 }

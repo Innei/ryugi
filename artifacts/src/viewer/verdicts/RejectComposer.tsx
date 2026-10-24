@@ -1,6 +1,7 @@
 import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
 import { Composer } from '../document/Composer';
+import { useTranslation } from '../i18n';
 
 const styles = stylex.create({
   card: {
@@ -32,15 +33,16 @@ interface Props {
 }
 
 export function RejectComposer({ group, left, top, onSubmit, onCancel }: Props) {
+  const { t } = useTranslation();
   return (
     <div data-chrome="reject" {...stylex.props(styles.card)} style={{ left, top }}>
       <div {...stylex.props(styles.head)}>
-        <span {...stylex.props(styles.verdict)}>打回</span>
+        <span {...stylex.props(styles.verdict)}>{t('verdict.reject')}</span>
         <span {...stylex.props(styles.group)}>{group}</span>
-        <span {...stylex.props(styles.required)}>原因必填</span>
+        <span {...stylex.props(styles.required)}>{t('verdict.reasonRequired')}</span>
       </div>
-      <Composer autoFocus placeholder="写下打回原因…" onSubmit={onSubmit} onCancel={onCancel} />
-      <div {...stylex.props(styles.hint)}>⌘↵ 打回 · Esc 取消 · 可以再按 C 在截图上标出具体位置</div>
+      <Composer autoFocus placeholder={t('verdict.reasonPlaceholder')} onSubmit={onSubmit} onCancel={onCancel} />
+      <div {...stylex.props(styles.hint)}>{t('verdict.rejectHint')}</div>
     </div>
   );
 }

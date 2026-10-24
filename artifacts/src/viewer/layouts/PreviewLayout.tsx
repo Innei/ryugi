@@ -3,6 +3,7 @@ import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import type { ArtifactType, CanvasPayload } from '../../shared/types';
 import { Canvas } from '../components/Canvas';
 import { CanvasErrorBoundary } from '../components/CanvasErrorBoundary';
+import { useTranslation } from '../i18n';
 import { cloudPreviewPayload, type CloudArtifactData } from '../lib/cloud-list';
 import { fitView } from '../lib/view';
 
@@ -46,6 +47,7 @@ export function CloudPreviewLayout({ id }: { id: string }) {
 }
 
 function PreviewView({ type, id, data, failed }: { type: ArtifactType; id: string; data: Payload | null; failed: boolean }) {
+  const { t } = useTranslation();
   const [viewport, setViewport] = useState(() => ({ width: innerWidth, height: innerHeight }));
   useEffect(() => {
     const resize = () => setViewport({ width: innerWidth, height: innerHeight });
@@ -54,25 +56,25 @@ function PreviewView({ type, id, data, failed }: { type: ArtifactType; id: strin
   }, []);
 
   const message = (text: string) => <div className="artifact-preview-message">{text}</div>;
-  if (failed) return message('预览暂不可用');
-  if (!data) return message('正在加载预览…');
+  if (failed) return message(t('preview.unavailable'));
+  if (!data) return message(t('preview.loading'));
   if (type === 'html') {
-    if (data.warnings?.length) return message('等待页面内容…');
+    if (data.warnings?.length) return message(t('preview.waitingPage'));
     return <iframe className="artifact-preview-html" title={data.title} src={`${data.contentBase}index.html`} sandbox="allow-scripts" tabIndex={-1} />;
   }
   if (type === 'document') {
     return data.state ? (
       <CanvasErrorBoundary resetKey={data.state}>
-        <Suspense fallback={message('正在加载预览…')}>
+        <Suspense fallback={message(t('preview.loading'))}>
           <DocumentPreview id={id} state={data.state} contentBase={data.contentBase} />
         </Suspense>
       </CanvasErrorBoundary>
-    ) : message('等待文档内容…');
+    ) : message(t('preview.waitingDocument'));
   }
   const canvas = data.canvas;
   const page = canvas?.activePage ?? canvas?.pages[0]?.id;
   const bounds = page ? data.layout?.pages[page]?.bounds : null;
-  if (!canvas || !page || !bounds) return message('等待画布内容…');
+  if (!canvas || !page || !bounds) return message(t('preview.waitingCanvas'));
   return (
     <div className="artifact-preview-canvas">
       <CanvasErrorBoundary resetKey={canvas}>

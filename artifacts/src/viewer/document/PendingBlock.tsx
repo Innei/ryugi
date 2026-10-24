@@ -4,6 +4,7 @@ import type { NodeKey } from 'lexical';
 import { createContext, useContext } from 'react';
 import type { AgentActivity } from './agentActivity';
 import { brand } from '../tokens.stylex';
+import { t } from '../i18n';
 
 export interface PendingProgress {
   nextKey: NodeKey | null;
@@ -85,10 +86,10 @@ export function PendingBlock({ nodeKey, intent }: { nodeKey: NodeKey; intent: st
   const kind = progress?.activity;
   const next = progress?.nextKey === nodeKey && kind === 'working';
   return (
-    <div data-pending="" data-next={next ? 'true' : undefined} title="待写" {...stylex.props(styles.block)}>
-      {kind === 'stale' ? <span {...stylex.props(styles.tag)}>未完成</span> : null}
+    <div data-pending="" data-next={next ? 'true' : undefined} title={t('document.pending')} {...stylex.props(styles.block)}>
+      {kind === 'stale' ? <span {...stylex.props(styles.tag)}>{t('document.unfinished')}</span> : null}
       <p style={{ margin: 0 }}>
-        <span {...stylex.props(styles.ghost, next && styles.shine)}>{intent || '待写'}</span>
+        <span {...stylex.props(styles.ghost, next && styles.shine)}>{intent || t('document.pending')}</span>
         {next ? (
           <span data-caret="" aria-hidden {...stylex.props(styles.caret)}>
             <span {...stylex.props(styles.bar)} />

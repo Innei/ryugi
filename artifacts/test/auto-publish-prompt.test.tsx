@@ -41,15 +41,15 @@ const button = (host: HTMLElement, text: string) => [...host.querySelectorAll('b
 
 test('asks a signed-in partner who has not decided', () => {
   const { host } = render(status(true, null));
-  expect(host.textContent).toContain('自动发布');
-  expect(host.textContent).toContain('私密');
+  expect(host.textContent).toContain('auto-publish');
+  expect(host.textContent).toContain('privately');
 });
 
 test('answers on and off', async () => {
   const { host, onAnswer } = render(status(true, null));
-  await act(async () => button(host, '打开').click());
+  await act(async () => button(host, 'Turn on').click());
   expect(onAnswer).toHaveBeenCalledWith(true);
-  await act(async () => button(host, '以后再说').click());
+  await act(async () => button(host, 'Not now').click());
   expect(onAnswer).toHaveBeenCalledWith(false);
 });
 

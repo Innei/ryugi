@@ -12,6 +12,8 @@ import { packArtifact } from './pack';
 import type { AutoPublishOutcome } from './auto-publish';
 import { withCloudRuntime } from './publish-payload';
 import { autoPublishEnabled, defaultGlobalAutoPublish, readGlobalAutoPublish, settingsFileFor, writeGlobalAutoPublish } from './settings';
+import type { Locale } from '../shared/locale';
+import { serverText } from './locales';
 
 export interface CloudOptions {
   origin: string;
@@ -234,7 +236,7 @@ export function createCloudRoutes(options: CloudRoutesOptions) {
 
   const publish = async (ref: ArtifactRef, requested?: Visibility, { recreate = true, skipUnchanged = false } = {}) => {
     const prepared = await prepare(ref);
-    if (!prepared.ready) return { status: 409, body: { error: 'fix these before publishing', reasons: prepared.reasons } };
+    if (!prepared.ready) return { status: 409, body: { error: 'fix these before publishing', code: 'publish_not_ready', reasons: prepared.reasons } };
     const { hashed, content, fingerprint } = prepared;
     const key = `${ref.type}/${ref.id}`;
     const entry = artifactEntry(key);
@@ -425,9 +427,10 @@ export function createCloudRoutes(options: CloudRoutesOptions) {
   };
 
   return {
-    async handleCallback(url: URL, res: http.ServerResponse) {
+    async handleCallback(url: URL, res: http.ServerResponse, locale: Locale = 'en') {
+      const t = serverText(locale);
       const page = (status: number, result: { ok: true; login: string; autoPublish: boolean } | { ok: false; detail: string }) =>
-        send(res, status, callbackPage({ ...result, origin }), {
+        send(res, status, callbackPage({ ...result, origin }, locale), {
           'Content-Type': 'text/html; charset=utf-8',
           'Content-Security-Policy': CALLBACK_PAGE_CSP,
         });
@@ -436,7 +439,7 @@ export function createCloudRoutes(options: CloudRoutesOptions) {
       pendingStates.delete(state);
       const code = url.searchParams.get('code');
       if (!pending || pending.expires < Date.now() || !code) {
-        page(400, { ok: false, detail: '这个登录链接已过期或已经用过。回到 Ryugi 重新发起一次登录。' });
+        page(400, { ok: false, detail: t('login.expired') });
         return;
       }
       let swap: Response;
@@ -447,13 +450,13 @@ export function createCloudRoutes(options: CloudRoutesOptions) {
           body: JSON.stringify({ code, verifier: pending.verifier }),
         });
       } catch (err) {
-        page(502, { ok: false, detail: `连不上 ${origin}（${(err as Error).message}）。检查网络后回到 Ryugi 重新发起登录。` });
+        page(502, { ok: false, detail: t('login.unreachable', { origin, message: (err as Error).message }) });
         return;
       }
       const issued = (await swap.json().catch(() => ({}))) as { token?: unknown; login?: unknown; error?: unknown };
       if (!swap.ok || typeof issued.token !== 'string' || typeof issued.login !== 'string') {
         const reason = typeof issued.error === 'string' ? issued.error : `HTTP ${swap.status}`;
-        page(400, { ok: false, detail: `Ryugi Cloud 没有接受这次登录（${reason}）。回到 Ryugi 重新发起登录。` });
+        page(400, { ok: false, detail: t('login.refused', { reason }) });
         return;
       }
       writeCredentials(credentialsFile, { origin, token: issued.token, login: issued.login });

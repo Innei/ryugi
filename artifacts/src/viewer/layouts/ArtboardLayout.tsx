@@ -35,6 +35,7 @@ import { PHONE_QUERY, useMedia } from '../hooks/useMedia';
 import { PhoneArtboard } from './PhoneArtboard';
 import { useBoardTweaks } from '../hooks/useBoardTweaks';
 import { TweaksPanel, tweakPanelAnchor, revealTweakPanel } from '../tweaks/TweaksPanel';
+import { t } from '../i18n';
 
 const styles = stylex.create({
   layout: { display: 'flex', width: '100%', height: '100%', overflow: 'hidden' },
@@ -288,7 +289,7 @@ function DesktopArtboard({ id, artifact, canvas, layout, warnings, pending, cont
       {selection.marquee && <div className="ri-marquee" aria-hidden="true" style={{ left: view.x + selection.marquee.x * view.k, top: view.y + selection.marquee.y * view.k, width: selection.marquee.width * view.k, height: selection.marquee.height * view.k }} />}
       {(!canvas || !layout) && (
         <div {...stylex.props(styles.empty)}>
-          {loaded ? (warnings[0] ?? 'Waiting for the agent to write canvas.json…') : 'Connecting…'}
+          {loaded ? (warnings[0] ?? t('chrome.waitingCanvas')) : t('common.connecting')}
         </div>
       )}
       <TopLeftBar pages={pages} page={page} onPageChange={changePage} tool={tool} onToolChange={changeTool} commenting={!!comment} />
@@ -316,7 +317,7 @@ function DesktopArtboard({ id, artifact, canvas, layout, warnings, pending, cont
           onClose={() => setExpanded(null)}
           frameRef={parameters.refFor(expanded, 'expanded')}
           onFrameLoad={() => parameters.loaded(expanded, 'expanded')}
-          parameterAction={parameterCounts[expanded] !== undefined ? <IconProvider config={{ 'aria-hidden': true }}><Button icon={SlidersHorizontal} size="small" type="text" aria-expanded={parameterBoard === expanded} onClick={(event) => toggleParameters(expanded, event.currentTarget)}>Parameters</Button></IconProvider> : undefined}
+          parameterAction={parameterCounts[expanded] !== undefined ? <IconProvider config={{ 'aria-hidden': true }}><Button icon={SlidersHorizontal} size="small" type="text" aria-expanded={parameterBoard === expanded} onClick={(event) => toggleParameters(expanded, event.currentTarget)}>{t('chrome.parameters')}</Button></IconProvider> : undefined}
           parameters={parameterBoard === expanded ? panel(false) : undefined}
         />
       )}

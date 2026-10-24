@@ -36,6 +36,8 @@ import { readArtifactFile } from './artifact-file';
 import { CLOUD_RUNTIME_URL } from './publish-payload';
 import { watchTree } from './watch';
 import { completeHandshake, handleClientFrames, rejectUpgrade, textFrame } from './ws';
+import { parseAcceptLanguage, resolveLocale } from '../shared/locale';
+import { serverText } from './locales';
 
 export interface ServerOptions {
   root: string;
@@ -565,7 +567,7 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
     }
 
     if (cloud && pathname === '/api/cloud/callback') {
-      void cloud.handleCallback(url, res).catch((err) => {
+      void cloud.handleCallback(url, res, resolveLocale(parseAcceptLanguage(req.headers['accept-language']))).catch((err) => {
         if (!res.headersSent) send(res, 500, `Artifacts error: ${(err as Error).message}`);
       });
       return;
@@ -699,9 +701,11 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
       const dir = resolved?.dir;
       const project = path.basename(path.dirname(path.dirname(root)));
       const title = ref ? (dir ? titleOf(readArtifact(dir, ref), ref) : ref.id) : `${project} · Artifacts`;
+      const locale = resolveLocale(parseAcceptLanguage(req.headers['accept-language']));
+      const t = serverText(locale);
       const description = ref
-        ? `在 ${project} 项目中查看 ${title}，这是一个 ${ref.type === 'artboard' ? 'Artboard' : ref.type === 'document' ? 'Document' : 'HTML'} Artifact。`
-        : `浏览 ${project} 项目的全部 Artboard、Document 和 HTML Artifact，预览真实内容，按类型、名称和更新时间查找作品。`;
+        ? t('meta.artifact', { project, title, type: ref.type === 'artboard' ? 'Artboard' : ref.type === 'document' ? 'Document' : 'HTML' })
+        : t('meta.library', { project });
       const preview = PREVIEW_ROUTE.test(pathname);
       const canonicalPath = ref ? (dir ? artifactPath(root, ref.type, ref.id) : `/${ref.type}/${ref.id}`) : '/';
       const canonical = `http://${urlHostForHttp(options.urlHost)}:${port}${preview ? '/preview' : ''}${canonicalPath}`;
@@ -710,7 +714,7 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
       if (key !== null) headers['Set-Cookie'] = `${cookieName}=${token}; HttpOnly; SameSite=Strict; Path=/`;
       void fs.promises.readFile(path.join(viewerDir, 'index.html'), 'utf8')
         .then((template) => {
-          const html = viewerPage(template, { title, description, url: canonical, icon: ref ? typeFaviconHref(ref.type) : undefined, artifactId: resolved?.id });
+          const html = viewerPage(template, { title, description, locale, url: canonical, icon: ref ? typeFaviconHref(ref.type) : undefined, artifactId: resolved?.id });
           send(res, 200, html, { ...headers, 'Content-Security-Policy': allowInlineScripts(csp, html) });
         })
         .catch((err: NodeJS.ErrnoException) => send(res, err.code === 'ENOENT' ? 404 : 500, 'Viewer unavailable'));

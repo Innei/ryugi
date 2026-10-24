@@ -44,10 +44,10 @@ test('the document caret and editing status use the detected name and fall back 
   ));
   await render('Codex');
   await render('Codex');
-  expect(host.querySelector('header')?.textContent).toContain('Codex 正在编辑 方案');
+  expect(host.querySelector('header')?.textContent).toContain('Codex is editing 方案');
   expect(host.querySelector('[aria-hidden]')?.textContent).toBe('Codex');
   await render();
-  expect(host.querySelector('header')?.textContent).toContain('Agent 正在编辑 方案');
+  expect(host.querySelector('header')?.textContent).toContain('Agent is editing 方案');
   expect(host.querySelector('[aria-hidden]')?.textContent).toBe('Agent');
 });
 
@@ -59,9 +59,9 @@ test('between writes the bar says what is left, and turns to a warning once the 
     createElement(TopBar, { id: 'draft', activity, agentSection: null, offline: false, openComments: 0, agent: 'Codex' }),
   ));
   await render({ kind: 'working', pending: 3, idleMs: 40_000 });
-  expect(host.querySelector('header')?.textContent).toContain('Codex 还有 3 节待写 · 40 秒前更新');
+  expect(host.querySelector('header')?.textContent).toContain('Codex has 3 sections left · updated 40s ago');
   await render({ kind: 'stale', pending: 3, idleMs: 6 * 60_000 });
-  expect(host.querySelector('header')?.textContent).toContain('Codex 6 分钟没有更新 · 还有 3 节待写');
+  expect(host.querySelector('header')?.textContent).toContain("Codex hasn't updated in 6 min · 3 sections left");
   await render({ kind: 'idle' });
   expect(host.querySelector('header')?.textContent).not.toContain('Codex');
 });

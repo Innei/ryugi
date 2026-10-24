@@ -1,4 +1,5 @@
 import type { ArtifactSummary, ArtifactType } from '../../shared/types';
+import { i18n } from '../i18n';
 
 export type ArtifactSort = 'recent' | 'oldest' | 'name';
 
@@ -12,11 +13,10 @@ export function filterArtifacts(artifacts: ArtifactSummary[], type: ArtifactType
     });
 }
 
-const relative = new Intl.RelativeTimeFormat('zh-CN', { numeric: 'always' });
-
 export function relativeUpdatedAt(updatedAt: number, now = Date.now()) {
+  const relative = new Intl.RelativeTimeFormat(i18n.language, { numeric: 'always' });
   const minutes = Math.floor(Math.max(0, now - updatedAt) / 60000);
-  if (minutes === 0) return '刚刚';
+  if (minutes === 0) return i18n.t('time.justNow');
   if (minutes < 60) return relative.format(-minutes, 'minute');
   if (minutes < 1440) return relative.format(-Math.floor(minutes / 60), 'hour');
   return relative.format(-Math.floor(minutes / 1440), 'day');
