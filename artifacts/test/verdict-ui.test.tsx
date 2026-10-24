@@ -66,58 +66,58 @@ const button = (scope: HTMLElement, text: string) => [...scope.querySelectorAll(
 
 test('a verify group shows its state and the two verdict buttons; other groups show neither', async () => {
   const host = await mount();
-  expect(label(host, 'notify').textContent).toContain('待验收');
-  expect(button(label(host, 'notify'), '通过')).toBeDefined();
-  expect(button(label(host, 'notify'), '打回')).toBeDefined();
-  expect(label(host, 'ideas').textContent).not.toContain('待验收');
-  expect(host.textContent).toContain('验收 0 / 2');
+  expect(label(host, 'notify').textContent).toContain('Awaiting review');
+  expect(button(label(host, 'notify'), 'Pass')).toBeDefined();
+  expect(button(label(host, 'notify'), 'Reject')).toBeDefined();
+  expect(label(host, 'ideas').textContent).not.toContain('Awaiting review');
+  expect(host.textContent).toContain('Verified 0 / 2');
 });
 
-test('通过 sends a pass on the group, anchored at its top-right', async () => {
+test('Pass sends a pass on the group, anchored at its top-right', async () => {
   const host = await mount();
-  await act(async () => button(label(host, 'notify'), '通过')!.click());
-  expect(state.comment).toHaveBeenCalledWith({ op: 'create', anchor: { page: 'p', group: 'notify', verdict: 'pass', x: 1300, y: 0 }, text: '通过' });
+  await act(async () => button(label(host, 'notify'), 'Pass')!.click());
+  expect(state.comment).toHaveBeenCalledWith({ op: 'create', anchor: { page: 'p', group: 'notify', verdict: 'pass', x: 1300, y: 0 }, text: 'Pass' });
 });
 
-test('打回 asks for a reason before sending the reject', async () => {
+test('Reject asks for a reason before sending the reject', async () => {
   const host = await mount();
-  await act(async () => button(label(host, 'notify'), '打回')!.click());
-  const box = host.querySelector<HTMLTextAreaElement>('textarea[placeholder="写下打回原因…"]')!;
-  expect(host.textContent).toContain('原因必填');
+  await act(async () => button(label(host, 'notify'), 'Reject')!.click());
+  const box = host.querySelector<HTMLTextAreaElement>('textarea[placeholder="Why are you rejecting this?"]')!;
+  expect(host.textContent).toContain('Reason required');
   await act(async () => {
     Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!.call(box, '两行说明文字都小了一号');
     box.dispatchEvent(new Event('input', { bubbles: true }));
   });
   await act(async () => box.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', metaKey: true, bubbles: true })));
   expect(state.comment).toHaveBeenCalledWith({ op: 'create', anchor: { page: 'p', group: 'notify', verdict: 'reject', x: 1300, y: 0 }, text: '两行说明文字都小了一号' });
-  expect(host.querySelector('textarea[placeholder="写下打回原因…"]')).toBeNull();
+  expect(host.querySelector('textarea[placeholder="Why are you rejecting this?"]')).toBeNull();
 });
 
 test('passed and rejected groups say so, hide the buttons, and count toward progress', async () => {
   state.comments = { comments: { version: 1, threads: [verdictThread('p1', 'notify', 'pass', '2026-10-22T08:40:00Z'), verdictThread('r1', 'digest', 'reject', '2026-10-22T08:45:00Z')] }, stale: [] };
   const host = await mount();
-  expect(label(host, 'notify').textContent).toContain('已通过');
-  expect(button(label(host, 'notify'), '通过')).toBeUndefined();
-  expect(label(host, 'digest').textContent).toContain('已打回');
-  expect(label(host, 'digest').textContent).toContain('等 agent 修复 · 1 条线程');
-  expect(button(label(host, 'digest'), '打回')).toBeUndefined();
-  expect(host.textContent).toContain('验收 1 / 2');
+  expect(label(host, 'notify').textContent).toContain('Passed');
+  expect(button(label(host, 'notify'), 'Pass')).toBeUndefined();
+  expect(label(host, 'digest').textContent).toContain('Rejected');
+  expect(label(host, 'digest').textContent).toContain('Waiting for the agent to fix · 1 thread');
+  expect(button(label(host, 'digest'), 'Reject')).toBeUndefined();
+  expect(host.textContent).toContain('Verified 1 / 2');
 });
 
 test('new evidence after a reject brings the buttons back with the update time', async () => {
   state.comments = { comments: { version: 1, threads: [verdictThread('r1', 'notify', 'reject', '2026-10-22T08:45:00Z')] }, stale: ['r1'] };
   const host = await mount();
-  expect(label(host, 'notify').textContent).toContain('待验收');
-  expect(label(host, 'notify').textContent).toMatch(/证据已更新 \d\d:\d\d/);
-  expect(button(label(host, 'notify'), '通过')).toBeDefined();
+  expect(label(host, 'notify').textContent).toContain('Awaiting review');
+  expect(label(host, 'notify').textContent).toMatch(/Evidence updated \d\d:\d\d/);
+  expect(button(label(host, 'notify'), 'Pass')).toBeDefined();
 });
 
 test('a reject gets a red pin and a sidebar row; a pass gets neither', async () => {
   state.comments = { comments: { version: 1, threads: [verdictThread('p1', 'notify', 'pass', '2026-10-22T08:40:00Z'), verdictThread('r1', 'digest', 'reject', '2026-10-22T08:45:00Z')] }, stale: [] };
   const host = await mount();
   await act(async () => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'c', bubbles: true })));
-  expect([...host.querySelectorAll('[aria-label^="评论"]')].map((pin) => pin.getAttribute('aria-label'))).toEqual(['评论 1']);
-  expect(host.querySelector('[aria-label="评论 1"]')!.getAttribute('data-verdict')).toBe('reject');
+  expect([...host.querySelectorAll('[aria-label^="Comment "]')].map((pin) => pin.getAttribute('aria-label'))).toEqual(['Comment 1']);
+  expect(host.querySelector('[aria-label="Comment 1"]')!.getAttribute('data-verdict')).toBe('reject');
   const rows = [...host.querySelectorAll('aside[aria-label="Comments"] [data-thread]')].map((row) => row.getAttribute('data-thread'));
   expect(rows).toEqual(['r1']);
 });
@@ -125,13 +125,13 @@ test('a reject gets a red pin and a sidebar row; a pass gets neither', async () 
 test('without comment access the state shows but the buttons do not', async () => {
   state.comment = undefined;
   const host = await mount();
-  expect(label(host, 'notify').textContent).toContain('待验收');
-  expect(button(label(host, 'notify'), '通过')).toBeUndefined();
+  expect(label(host, 'notify').textContent).toContain('Awaiting review');
+  expect(button(label(host, 'notify'), 'Pass')).toBeUndefined();
 });
 
 test('a pass can be undone from the label', async () => {
   state.comments = { comments: { version: 1, threads: [verdictThread('p1', 'notify', 'pass', '2026-10-22T08:40:00Z')] }, stale: [] };
   const host = await mount();
-  await act(async () => button(label(host, 'notify'), '撤销')!.click());
+  await act(async () => button(label(host, 'notify'), 'Undo')!.click());
   expect(state.comment).toHaveBeenCalledWith({ op: 'delete', threadId: 'p1', messageId: 'p1-m' });
 });

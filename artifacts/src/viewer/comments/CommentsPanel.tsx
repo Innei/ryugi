@@ -6,6 +6,7 @@ import { authorOf } from '../document/author';
 import { anchorLabel, staleText } from '../lib/board-anchor';
 import '../inspector/inspector.css';
 import { brand } from '../tokens.stylex';
+import { i18n, useTranslation } from '../i18n';
 
 export type CommentsTab = 'open' | 'all';
 
@@ -93,9 +94,10 @@ interface Props {
   onClose: () => void;
 }
 
-const timeOf = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+const timeOf = (iso: string) => new Date(iso).toLocaleTimeString(i18n.language, { hour: '2-digit', minute: '2-digit' });
 
 export function CommentsPanel({ threads, page, stale, numbers, openId, tab, onTab, onOpen, onClose }: Props) {
+  const { t } = useTranslation();
   const onPage = threads.filter((thread) => thread.anchor.page === page && thread.anchor.verdict !== 'pass' && thread.messages.some((m) => !m.deleted));
   const open = onPage.filter((thread) => thread.status === 'open');
   const shown = (tab === 'open' ? open : onPage).sort((a, b) => (numbers.get(a.id) ?? 0) - (numbers.get(b.id) ?? 0));
@@ -115,7 +117,7 @@ export function CommentsPanel({ threads, page, stale, numbers, openId, tab, onTa
         {shown.length === 0 ? (
           <div {...stylex.props(styles.empty)}>
             <MessageCirclePlus size={14} aria-hidden />
-            点画布上的任意位置添加评论
+            {t('comments.emptyCanvas')}
           </div>
         ) : null}
         {shown.map((thread) => {
@@ -128,15 +130,15 @@ export function CommentsPanel({ threads, page, stale, numbers, openId, tab, onTa
               <div {...stylex.props(styles.body)}>
                 <div {...stylex.props(styles.meta)}>
                   <span {...stylex.props(styles.who)}>{first ? authorOf(first).label : ''}</span>
-                  {thread.status === 'resolved' ? <span>已解决</span> : null}
+                  {thread.status === 'resolved' ? <span>{t('common.resolved')}</span> : null}
                   <span {...stylex.props(styles.time)}>{first ? timeOf(first.at) : ''}</span>
                 </div>
                 <div {...stylex.props(styles.where, isStale && styles.stale)}>
                   {anchorLabel(thread.anchor)}
                   {isStale ? ` · ${staleText(thread.anchor)}` : ''}
                 </div>
-                <div {...stylex.props(styles.text)}>{first?.deleted ? '已删除' : first?.text}</div>
-                {replies > 0 ? <div {...stylex.props(styles.foot)}>{replies} 条回复</div> : null}
+                <div {...stylex.props(styles.text)}>{first?.deleted ? t('common.deleted') : first?.text}</div>
+                {replies > 0 ? <div {...stylex.props(styles.foot)}>{t('comments.replies', { count: replies })}</div> : null}
               </div>
             </div>
           );

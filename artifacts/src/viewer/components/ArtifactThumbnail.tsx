@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from '../i18n';
+
 export function ArtifactThumbnail({ title, src, version }: { title: string; src: string; version: string | number }) {
+  const { t } = useTranslation();
   const ref = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
   const [size, setSize] = useState({ width: 0, height: 140 });
@@ -21,12 +24,12 @@ export function ArtifactThumbnail({ title, src, version }: { title: string; src:
   const scale = size.width / 1000;
   return (
     <div ref={ref} className="library-thumbnail" aria-hidden="true" inert>
-      <span>{failed ? '预览暂不可用' : '正在加载预览…'}</span>
+      <span>{failed ? t('preview.unavailable') : t('preview.loading')}</span>
       {visible && scale > 0 && !failed && (
         <iframe
           key={version}
           src={src}
-          title={`${title} 预览`}
+          title={t('preview.frameTitle', { title })}
           sandbox="allow-scripts allow-same-origin"
           tabIndex={-1}
           onError={() => setFailed(true)}

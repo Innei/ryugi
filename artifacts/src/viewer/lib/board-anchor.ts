@@ -1,5 +1,6 @@
 import type { BoardAnchor, BoardThread } from '../../shared/board-comments';
 import type { InspectorRect } from '../../shared/inspector';
+import { i18n } from '../i18n';
 
 interface Point {
   x: number;
@@ -36,16 +37,16 @@ export function pinPoint(anchor: BoardAnchor, boards: Record<string, Point>): Po
 const percent = (value: number) => `${Math.round(value * 100)}%`;
 
 export function anchorLabel(anchor: BoardAnchor): string {
-  if (anchor.group) return anchor.verdict === 'reject' ? `${anchor.group} · 打回` : anchor.group;
-  if (!anchor.board) return `页面 ${anchor.page}`;
+  if (anchor.group) return anchor.verdict === 'reject' ? i18n.t('anchor.rejected', { group: anchor.group }) : anchor.group;
+  if (!anchor.board) return i18n.t('anchor.page', { page: anchor.page });
   const nodes = anchor.nodes ?? [];
-  if (nodes.length > 1) return `${anchor.board} · ${nodes.length} 个元素`;
+  if (nodes.length > 1) return i18n.t('anchor.elements', { board: anchor.board, count: nodes.length });
   if (!nodes[0]) return anchor.board;
   const offset = anchor.offset ? ` · ${percent(anchor.offset.x)}, ${percent(anchor.offset.y)}` : '';
   return `${anchor.board} · ${nodes[0].path}${offset}`;
 }
 
-export const staleText = (anchor: BoardAnchor) => (anchor.verdict ? '证据已更新' : '锚点已失效');
+export const staleText = (anchor: BoardAnchor) => (anchor.verdict ? i18n.t('anchor.evidenceUpdated') : i18n.t('anchor.stale'));
 
 const openedAt = (thread: BoardThread) => thread.messages[0]?.at ?? thread.statusAt;
 

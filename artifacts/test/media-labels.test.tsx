@@ -51,6 +51,6 @@ test('an expanded media board shows the media, with the player for video', async
   const video = await render(createElement(ExpandedBoard, { id: 'flow', board: flow, src: 'about:blank#pages/p/notify-flow.webm?v=1', interactive: false, onClose: () => {} }));
   expect(video.querySelector('iframe')).toBeNull();
   expect(video.querySelector('video')).not.toBeNull();
-  expect(video.querySelector('[aria-label="播放"]')).not.toBeNull();
-  expect(video.querySelector('[aria-label="放大"]')).toBeNull();
+  expect(video.querySelector('[aria-label="Play"]')).not.toBeNull();
+  expect(video.querySelector('[aria-label="Expand"]')).toBeNull();
 });

@@ -2,6 +2,7 @@ import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
 import { Check, X } from 'lucide-react';
 import type { GroupVerdict as Verdict } from '../../shared/verdicts';
+import { useTranslation } from '../i18n';
 
 const GREEN = '#2ea043';
 const RED = '#e5484d';
@@ -30,7 +31,7 @@ const styles = stylex.create({
   rejectButton: { color: { default: cssVar.colorTextSecondary, ':hover': RED } },
 });
 
-const clock = (time: string | number) => new Date(time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+const clock = (time: string | number, locale: string) => new Date(time).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', hour12: false });
 
 interface Props {
   verdict: Verdict;
@@ -42,32 +43,33 @@ interface Props {
 }
 
 export function GroupVerdict({ verdict, evidenceAt, canJudge, onPass, onReject, onUndo }: Props) {
+  const { t, i18n } = useTranslation();
   if (verdict.state === 'pass') {
     return (
       <>
-        <span {...stylex.props(styles.state, styles.pass)}><Check size={13} />已通过</span>
-        {verdict.at && <span {...stylex.props(styles.note)}>{clock(verdict.at)}</span>}
-        {canJudge && <button type="button" onClick={onUndo} {...stylex.props(styles.button, styles.note)}>撤销</button>}
+        <span {...stylex.props(styles.state, styles.pass)}><Check size={13} />{t('verdict.passed')}</span>
+        {verdict.at && <span {...stylex.props(styles.note)}>{clock(verdict.at, i18n.language)}</span>}
+        {canJudge && <button type="button" onClick={onUndo} {...stylex.props(styles.button, styles.note)}>{t('verdict.undo')}</button>}
       </>
     );
   }
   if (verdict.state === 'reject') {
     return (
       <>
-        <span {...stylex.props(styles.state, styles.reject)}><X size={13} />已打回</span>
-        <span {...stylex.props(styles.note)}>等 agent 修复 · {verdict.rejectThreads} 条线程</span>
+        <span {...stylex.props(styles.state, styles.reject)}><X size={13} />{t('verdict.rejected')}</span>
+        <span {...stylex.props(styles.note)}>{t('verdict.waitingFix', { count: verdict.rejectThreads })}</span>
       </>
     );
   }
   return (
     <>
-      <span {...stylex.props(styles.state)}><span {...stylex.props(styles.ring)} />待验收</span>
-      {verdict.evidenceUpdated && evidenceAt > 0 && <span {...stylex.props(styles.note)}>证据已更新 {clock(evidenceAt)}</span>}
+      <span {...stylex.props(styles.state)}><span {...stylex.props(styles.ring)} />{t('verdict.pending')}</span>
+      {verdict.evidenceUpdated && evidenceAt > 0 && <span {...stylex.props(styles.note)}>{t('verdict.evidenceUpdatedAt', { time: clock(evidenceAt, i18n.language) })}</span>}
       {canJudge && (
         <>
           <span {...stylex.props(styles.rule)} />
-          <button type="button" onClick={onPass} {...stylex.props(styles.button, styles.passButton)}><Check size={13} />通过</button>
-          <button type="button" onClick={onReject} {...stylex.props(styles.button, styles.rejectButton)}><X size={13} />打回</button>
+          <button type="button" onClick={onPass} {...stylex.props(styles.button, styles.passButton)}><Check size={13} />{t('verdict.pass')}</button>
+          <button type="button" onClick={onReject} {...stylex.props(styles.button, styles.rejectButton)}><X size={13} />{t('verdict.reject')}</button>
         </>
       )}
     </>

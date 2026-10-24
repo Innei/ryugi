@@ -9,16 +9,17 @@ import { RyugiMark } from '../components/RyugiMark';
 import { TypeIcon } from '../components/TypeIcon';
 import { WarningsBadge } from '../components/WarningsBadge';
 import { useArtifactSocket } from '../hooks/useArtifactSocket';
+import { useTranslation } from '../i18n';
 import { filterArtifacts, relativeUpdatedAt, type ArtifactSort } from '../lib/artifact-list';
 
-const labels = { all: '全部', artboard: 'Artboard', document: 'Document', html: 'HTML' };
-const sortOptions = [
-  { label: '最近更新', value: 'recent' },
-  { label: '最早更新', value: 'oldest' },
-  { label: '名称 A–Z', value: 'name' },
-];
-
 export function ArtifactList() {
+  const { t, i18n } = useTranslation();
+  const labels = { all: t('type.all'), artboard: t('type.artboard'), document: t('type.document'), html: t('type.html') };
+  const sortOptions = [
+    { label: t('library.sortRecent'), value: 'recent' },
+    { label: t('library.sortOldest'), value: 'oldest' },
+    { label: t('library.sortName'), value: 'name' },
+  ];
   const [artifacts, setArtifacts] = useState<ArtifactSummary[] | null>(null);
   const [project, setProject] = useState('');
   const [warnings, setWarnings] = useState<string[]>([]);
@@ -74,39 +75,39 @@ export function ArtifactList() {
   return (
     <div className="artifact-library">
       <header className="library-topbar">
-        <div className="library-breadcrumb"><img className="library-logo" src={logo} alt="" /><strong>ryugi</strong><span>/</span><b>{project || '项目'}</b><span>/</span><span>Artifacts</span></div>
-        <span className="library-status"><i data-live={live} />{live ? '本地项目' : '正在重连…'}</span>
+        <div className="library-breadcrumb"><img className="library-logo" src={logo} alt="" /><strong>ryugi</strong><span>/</span><b>{project || t('common.project')}</b><span>/</span><span>Artifacts</span></div>
+        <span className="library-status"><i data-live={live} />{live ? t('library.localProject') : t('library.reconnecting')}</span>
       </header>
       <main className="library-main">
-        <div className="library-heading"><h1>Artifacts</h1><span>{artifacts?.length ?? '…'} 个 Artifact</span></div>
+        <div className="library-heading"><h1>Artifacts</h1><span>{artifacts ? t('library.count', { count: artifacts.length }) : '…'}</span></div>
         <div className="library-toolbar">
           <Segmented<ArtifactType | 'all'> className="library-tabs" size="small" styles={{ item: { height: 30, paddingInline: 8 } }} value={type} options={options} onChange={setType} />
           <div className="library-tools">
-            <Input ref={searchRef} className="library-search" variant="filled" prefix={<Search size={16} />} suffix={<kbd>/</kbd>} aria-label="搜索 Artifact" placeholder="搜索 Artifact…" value={query} onChange={(event) => setQuery(event.target.value)} />
-            <label className="library-sr-only" htmlFor="artifact-sort">排序方式</label>
+            <Input ref={searchRef} className="library-search" variant="filled" prefix={<Search size={16} />} suffix={<kbd>/</kbd>} aria-label={t('library.searchLabel')} placeholder={t('library.searchPlaceholder')} value={query} onChange={(event) => setQuery(event.target.value)} />
+            <label className="library-sr-only" htmlFor="artifact-sort">{t('library.sortLabel')}</label>
             <Select id="artifact-sort" className="library-sort" variant="filled" value={sort} options={sortOptions} onSelect={setSort} />
           </div>
         </div>
-        {error && <div className="library-error" role="alert">暂时无法加载 Artifact。<Button size="small" type="text" onClick={() => void refresh()}>重试</Button></div>}
-        {artifacts === null && !error && <p className="library-empty" role="status">正在加载 Artifact…</p>}
-        {artifacts?.length === 0 && <div className="library-empty"><RyugiMark size={28} /><h2>这个项目还没有 Artifact</h2><p>在项目中开始一次设计讨论，生成的画板、文档和 HTML 会出现在这里。</p></div>}
-        {artifacts !== null && artifacts.length > 0 && items.length === 0 && <div className="library-empty"><Search size={24} /><h2>没有找到匹配的 Artifact</h2><p>试试其他关键词或类型。</p><Button size="small" onClick={() => { setQuery(''); setType('all'); }}>清除筛选</Button></div>}
-        <ul className="library-grid" aria-label="Artifact 列表">
+        {error && <div className="library-error" role="alert">{t('library.loadFailed')}<Button size="small" type="text" onClick={() => void refresh()}>{t('common.retry')}</Button></div>}
+        {artifacts === null && !error && <p className="library-empty" role="status">{t('library.loadingList')}</p>}
+        {artifacts?.length === 0 && <div className="library-empty"><RyugiMark size={28} /><h2>{t('library.emptyTitle')}</h2><p>{t('library.emptyBody')}</p></div>}
+        {artifacts !== null && artifacts.length > 0 && items.length === 0 && <div className="library-empty"><Search size={24} /><h2>{t('library.noMatchTitle')}</h2><p>{t('library.noMatchBody')}</p><Button size="small" onClick={() => { setQuery(''); setType('all'); }}>{t('common.clearFilter')}</Button></div>}
+        <ul className="library-grid" aria-label={t('library.listLabel')}>
           {items.map((artifact) => {
             return (
               <li key={`${artifact.type}/${artifact.id}`}>
-                <a className="library-card" href={artifact.url ?? `/${artifact.type}/${artifact.id}`} aria-label={`打开 ${artifact.title}`}>
+                <a className="library-card" href={artifact.url ?? `/${artifact.type}/${artifact.id}`} aria-label={t('library.open', { title: artifact.title })}>
                   <ArtifactThumbnail title={artifact.title} src={`/preview${artifact.url ?? `/${artifact.type}/${artifact.id}`}?v=${artifact.updatedAt}`} version={artifact.updatedAt} />
                   <div className="library-card-info">
                     <div className="library-card-title"><span title={artifact.title}>{artifact.title}</span><ArrowUpRight size={13} aria-hidden="true" /></div>
-                    <div className="library-card-meta"><span><TypeIcon type={artifact.type} size={12} />{labels[artifact.type]}</span><time dateTime={new Date(artifact.updatedAt).toISOString()} title={new Date(artifact.updatedAt).toLocaleString()}>{relativeUpdatedAt(artifact.updatedAt, now)}</time></div>
+                    <div className="library-card-meta"><span><TypeIcon type={artifact.type} size={12} />{labels[artifact.type]}</span><time dateTime={new Date(artifact.updatedAt).toISOString()} title={new Date(artifact.updatedAt).toLocaleString(i18n.language)}>{relativeUpdatedAt(artifact.updatedAt, now)}</time></div>
                   </div>
                 </a>
               </li>
             );
           })}
         </ul>
-        <footer className="library-footer"><span><img className="library-logo" src={logo} alt="" />内容随项目文件实时更新</span><code>{project ? `${project} / ` : ''}.ryugi / artifacts</code></footer>
+        <footer className="library-footer"><span><img className="library-logo" src={logo} alt="" />{t('library.footer')}</span><code>{project ? `${project} / ` : ''}.ryugi / artifacts</code></footer>
       </main>
       <WarningsBadge warnings={warnings} />
     </div>

@@ -6,6 +6,7 @@ import { waitingOn, type Message, type Thread } from '../../shared/comments';
 import { authorOf } from '../document/author';
 import { Avatar } from '../document/Avatar';
 import { Composer } from '../document/Composer';
+import { i18n, useTranslation } from '../i18n';
 
 export interface ThreadActions {
   reply(threadId: string, text: string): void | Promise<boolean>;
@@ -46,9 +47,10 @@ const styles = stylex.create({
   badgeAgent: { backgroundColor: cssVar.colorInfoBg, color: cssVar.colorInfoText },
 });
 
-const timeOf = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+const timeOf = (iso: string) => new Date(iso).toLocaleTimeString(i18n.language, { hour: '2-digit', minute: '2-digit' });
 
 export function MessageView({ message, onEdit, onDelete }: { message: Message; onEdit?: (text: string) => void; onDelete?: () => void }) {
+  const { t } = useTranslation();
   const [editing, setEditing] = useState(false);
   const human = message.author === 'human';
   const { label, initial } = authorOf(message);
@@ -59,13 +61,13 @@ export function MessageView({ message, onEdit, onDelete }: { message: Message; o
         {label} <span {...stylex.props(styles.time)}>{timeOf(message.editedAt ?? message.at)}</span>
         {human && onEdit && onDelete && !message.deleted && !editing ? (
           <span {...stylex.props(styles.small)}>
-            <button type="button" onClick={() => setEditing(true)} {...stylex.props(styles.link)}>编辑</button>
-            <button type="button" onClick={onDelete} {...stylex.props(styles.link)}>删除</button>
+            <button type="button" onClick={() => setEditing(true)} {...stylex.props(styles.link)}>{t('common.edit')}</button>
+            <button type="button" onClick={onDelete} {...stylex.props(styles.link)}>{t('common.delete')}</button>
           </span>
         ) : null}
       </div>
       {message.deleted ? (
-        <div {...stylex.props(styles.deleted)}>已删除</div>
+        <div {...stylex.props(styles.deleted)}>{t('common.deleted')}</div>
       ) : editing ? (
         <Composer autoFocus initial={message.text} placeholder="" onSubmit={(text) => (onEdit?.(text), setEditing(false))} onCancel={() => setEditing(false)} />
       ) : (
@@ -77,8 +79,8 @@ export function MessageView({ message, onEdit, onDelete }: { message: Message; o
 
 export function WaitingText({ thread, agent = 'Agent' }: { thread: Thread<unknown>; agent?: string }) {
   const waiting = waitingOn(thread);
-  if (waiting === 'human') return <span {...stylex.props(styles.badge, styles.badgeHuman)}>等你回复</span>;
-  if (waiting === 'agent') return <span title={`${agent} 下一轮会读到这条`} {...stylex.props(styles.badge, styles.badgeAgent)}>等 {agent}</span>;
+  if (waiting === 'human') return <span {...stylex.props(styles.badge, styles.badgeHuman)}>{i18n.t('comments.waitingYou')}</span>;
+  if (waiting === 'agent') return <span title={i18n.t('comments.agentReadsNext', { agent })} {...stylex.props(styles.badge, styles.badgeAgent)}>{i18n.t('comments.waitingAgent', { agent })}</span>;
   return null;
 }
 
@@ -106,6 +108,7 @@ interface Props {
 }
 
 export function ThreadView({ thread, label, actions, agent, onClose }: Props) {
+  const { t } = useTranslation();
   const resolved = thread.status === 'resolved';
   return (
     <div {...stylex.props(styles.thread)}>
@@ -114,24 +117,24 @@ export function ThreadView({ thread, label, actions, agent, onClose }: Props) {
         {actions ? <WaitingText thread={thread} agent={agent} /> : null}
         {actions ? (
           resolved ? (
-            <button type="button" title="重新打开" onClick={() => actions.reopen(thread.id)} {...stylex.props(styles.icon)}>
+            <button type="button" title={t('common.reopen')} onClick={() => actions.reopen(thread.id)} {...stylex.props(styles.icon)}>
               <RotateCcw size={13} strokeWidth={2.2} />
             </button>
           ) : (
-            <button type="button" title="标为已解决" onClick={() => actions.resolve(thread.id)} {...stylex.props(styles.icon)}>
+            <button type="button" title={t('common.markResolved')} onClick={() => actions.resolve(thread.id)} {...stylex.props(styles.icon)}>
               <Check size={14} strokeWidth={2.4} />
             </button>
           )
         ) : null}
         {onClose ? (
-          <button type="button" title="关闭" onClick={onClose} {...stylex.props(styles.icon)}>
+          <button type="button" title={t('common.close')} onClick={onClose} {...stylex.props(styles.icon)}>
             <X size={13} strokeWidth={2.2} />
           </button>
         ) : null}
       </div>
       <ThreadMessages thread={thread} actions={actions} />
       {actions && !resolved ? (
-        <Composer placeholder="回复…" onSubmit={(text) => actions.reply(thread.id, text)} onCancel={onClose} />
+        <Composer placeholder={t('common.reply')} onSubmit={(text) => actions.reply(thread.id, text)} onCancel={onClose} />
       ) : null}
     </div>
   );

@@ -68,9 +68,9 @@ describe('rounds', () => {
     expect(loose).toMatchObject({ title: 'A board on its own', boards: ['loose'] });
   });
 
-  test('questions with no title above them come last under 其他', () => {
+  test('questions with no title above them come last under Other', () => {
     const rounds = roundsOf(canvas, layout, 'q');
-    expect(rounds).toEqual([{ id: null, title: '其他', questions: [expect.objectContaining({ id: 'other' })] }]);
+    expect(rounds).toEqual([{ id: null, title: 'Other', questions: [expect.objectContaining({ id: 'other' })] }]);
   });
 });
 

@@ -61,9 +61,9 @@ test('a page pin sits at its own coordinates and a pin on a removed board has no
 
 test('labels say where a thread is', () => {
   expect(anchorLabel({ page: 'p', board: 'after', x: 1, y: 1, nodes: [{ board: 'after', path: 'body > img' }], offset: { x: 0.91, y: 0.454 } })).toBe('after · body > img · 91%, 45%');
-  expect(anchorLabel({ page: 'p', board: 'design', x: 1, y: 1, nodes: [{ board: 'design', path: 'a' }, { board: 'design', path: 'b' }] })).toBe('design · 2 个元素');
+  expect(anchorLabel({ page: 'p', board: 'design', x: 1, y: 1, nodes: [{ board: 'design', path: 'a' }, { board: 'design', path: 'b' }] })).toBe('design · 2 elements');
   expect(anchorLabel({ page: 'p', board: 'after', x: 1, y: 1 })).toBe('after');
-  expect(anchorLabel({ page: 'p', x: 1, y: 1 })).toBe('页面 p');
+  expect(anchorLabel({ page: 'p', x: 1, y: 1 })).toBe('Page p');
 });
 
 test('pins are numbered in the order threads were opened', () => {

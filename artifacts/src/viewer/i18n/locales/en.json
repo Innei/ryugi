@@ -1,5 +1,112 @@
 {
   "common": {
-    "share": "Share"
+    "share": "Share",
+    "retry": "Retry",
+    "clearFilter": "Clear filter",
+    "loading": "Loading…",
+    "connecting": "Connecting…",
+    "other": "Other",
+    "project": "Project",
+    "edit": "Edit",
+    "delete": "Delete",
+    "deleted": "Deleted",
+    "resolved": "Resolved",
+    "reopen": "Reopen",
+    "markResolved": "Mark as resolved",
+    "close": "Close",
+    "reply": "Reply…",
+    "cancel": "Cancel"
+  },
+  "time": {
+    "justNow": "just now"
+  },
+  "type": {
+    "all": "All",
+    "artboard": "Artboard",
+    "document": "Document",
+    "html": "HTML"
+  },
+  "library": {
+    "sortRecent": "Recently updated",
+    "sortOldest": "Oldest updated",
+    "sortName": "Name A–Z",
+    "sortLabel": "Sort by",
+    "localProject": "Local project",
+    "reconnecting": "Reconnecting…",
+    "count_one": "{{count}} artifact",
+    "count_other": "{{count}} artifacts",
+    "searchLabel": "Search artifacts",
+    "searchPlaceholder": "Search artifacts…",
+    "loadFailed": "Couldn't load artifacts.",
+    "loadingList": "Loading artifacts…",
+    "emptyTitle": "No artifacts in this project yet",
+    "emptyBody": "Start a design discussion in this project. The artboards, documents and HTML pages it produces show up here.",
+    "noMatchTitle": "No matching artifacts",
+    "noMatchBody": "Try another keyword or type.",
+    "listLabel": "Artifacts",
+    "open": "Open {{title}}",
+    "footer": "Updates live as project files change"
+  },
+  "preview": {
+    "unavailable": "Preview unavailable",
+    "loading": "Loading preview…",
+    "waitingPage": "Waiting for page content…",
+    "waitingDocument": "Waiting for document content…",
+    "waitingCanvas": "Waiting for canvas content…",
+    "frameTitle": "{{title}} preview"
+  },
+  "comments": {
+    "waitingYou": "Waiting on you",
+    "waitingAgent": "Waiting on {{agent}}",
+    "agentReadsNext": "{{agent}} reads this next turn",
+    "emptyCanvas": "Click anywhere on the canvas to add a comment",
+    "replies_one": "{{count}} reply",
+    "replies_other": "{{count}} replies",
+    "pin": "Comment {{number}}",
+    "anchoredTo": "Anchored to {{label}}",
+    "addPlaceholder": "Add a comment…",
+    "sendHint": "⌘↵ send · Esc cancel"
+  },
+  "anchor": {
+    "rejected": "{{group}} · Rejected",
+    "page": "Page {{page}}",
+    "elements_one": "{{board}} · {{count}} element",
+    "elements_other": "{{board}} · {{count}} elements",
+    "evidenceUpdated": "Evidence updated",
+    "stale": "Anchor no longer matches"
+  },
+  "verdict": {
+    "passed": "Passed",
+    "undo": "Undo",
+    "rejected": "Rejected",
+    "waitingFix_one": "Waiting for the agent to fix · {{count}} thread",
+    "waitingFix_other": "Waiting for the agent to fix · {{count}} threads",
+    "pending": "Awaiting review",
+    "evidenceUpdatedAt": "Evidence updated {{time}}",
+    "pass": "Pass",
+    "reject": "Reject",
+    "reasonRequired": "Reason required",
+    "reasonPlaceholder": "Why are you rejecting this?",
+    "rejectHint": "⌘↵ reject · Esc cancel · press C to mark the exact spot on a screenshot",
+    "progress": "Verified {{passed}} / {{total}}",
+    "nextPending": "Next group awaiting review"
+  },
+  "questions": {
+    "previous": "Previous question",
+    "next": "Next question",
+    "jumpTo": "Jump to",
+    "boards_one": "{{count}} board",
+    "boards_other": "{{count}} boards"
+  },
+  "video": {
+    "play": "Play",
+    "pause": "Pause",
+    "playTitle": "Play {{title}}",
+    "pauseTitle": "Pause {{title}}",
+    "failed": "Couldn't load the video: the format isn't supported, or the file was too large to transfer",
+    "progress": "Progress",
+    "speed": "Speed",
+    "loop": "Loop",
+    "expand": "Expand"
   }
 }

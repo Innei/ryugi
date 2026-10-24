@@ -5,6 +5,7 @@ import { Check, ChevronDown, Hand, MessageCirclePlus, MousePointer2, PanelRight 
 import type { PageSpec } from '../../shared/types';
 import type { Tool } from '../hooks/usePanZoom';
 import { PublishMenu } from './PublishMenu';
+import { useTranslation } from '../i18n';
 
 const styles = stylex.create({
   bar: {
@@ -149,13 +150,14 @@ interface TopRightBarProps {
 }
 
 export function TopRightBar({ artifact, live, warnings, zoom, onZoomIn, onZoomOut, onFit, onActualSize, inspectorOpen, onToggleInspector, verify, onNextVerify }: TopRightBarProps) {
+  const { t } = useTranslation();
   const hint = (text: string) => <span {...stylex.props(styles.hint)}>{text}</span>;
   return (
     <div data-chrome {...stylex.props(styles.bar, styles.right)}>
       {verify && verify.total > 0 && (
         <>
-          <button type="button" title="下一个待验收的 group" onClick={onNextVerify} {...stylex.props(styles.progress)}>
-            <Check size={13} {...stylex.props(styles.progressIcon)} />验收 {verify.passed} / {verify.total}
+          <button type="button" title={t('verdict.nextPending')} onClick={onNextVerify} {...stylex.props(styles.progress)}>
+            <Check size={13} {...stylex.props(styles.progressIcon)} />{t('verdict.progress', { passed: verify.passed, total: verify.total })}
           </button>
           <span {...stylex.props(styles.divider)} />
         </>
