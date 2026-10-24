@@ -390,6 +390,23 @@ describe('CloudArtifactList', () => {
     expect(inspector(host).querySelector('a[href="/a/b"]')).not.toBeNull();
   });
 
+  test('double-clicking a row opens that artifact', async () => {
+    const host = await render({ status: 200, body: { login: 'innei', artifacts: [item('a', 'ryugi', '2026-10-21T08:00:00Z', { title: 'Arrow' }), item('b', null, '2026-10-21T07:00:00Z', { title: 'Loose' })] } });
+    const assign = vi.spyOn(location, 'assign').mockImplementation(() => {});
+    await act(async () => { row(host, 'Loose')!.dispatchEvent(new MouseEvent('dblclick', { bubbles: true })); });
+    expect(assign).toHaveBeenCalledWith('/a/b');
+    assign.mockRestore();
+  });
+
+  test('double-clicking while selecting changes no page', async () => {
+    const host = await render({ status: 200, body: { login: 'innei', artifacts: [item('a', 'ryugi', '2026-10-21T08:00:00Z', { title: 'Arrow' }), item('b', null, '2026-10-21T07:00:00Z', { title: 'Loose' })] } });
+    await press('button[aria-label="Select multiple"]');
+    const assign = vi.spyOn(location, 'assign').mockImplementation(() => {});
+    await act(async () => { row(host, 'Loose')!.dispatchEvent(new MouseEvent('dblclick', { bubbles: true })); });
+    expect(assign).not.toHaveBeenCalled();
+    assign.mockRestore();
+  });
+
   test('filters by type, visibility and project, and offers to clear an empty result', async () => {
     const host = await render({ status: 200, body: { login: 'innei', artifacts: [
       item('a', 'ryugi', '2026-10-21T08:00:00Z', { title: 'Arrow', type: 'artboard' }),

@@ -72,7 +72,8 @@ export function CloudLibraryList({ items, filter, onFilter, inspected, onInspect
               <button type="button" className="cloud-row" disabled={selecting && busy}
                 aria-label={selecting ? t('cloudLibrary.toggle', { title }) : undefined}
                 aria-pressed={selecting ? picked : artifact.id === inspected}
-                onClick={() => selecting ? onSelect([artifact.id], !picked) : onInspect(artifact.id)}>
+                onClick={() => selecting ? onSelect([artifact.id], !picked) : onInspect(artifact.id)}
+                onDoubleClick={() => { if (!selecting && !busy) location.assign(`/a/${artifact.id}`); }}>
                 <span className="cloud-row-name">
                   <span className="cloud-type-chip"><TypeIcon type={artifact.type} size={13} /></span>
                   <span className="cloud-row-text">
