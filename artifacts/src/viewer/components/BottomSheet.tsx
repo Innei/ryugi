@@ -3,6 +3,7 @@ import * as stylex from '@stylexjs/stylex';
 import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent, type PointerEvent, type ReactNode } from 'react';
 import { reducedMotion, SPRING } from '../document/motion';
 import { lockAxis, rubber, settle, velocityTracker } from '../lib/gesture';
+import { t } from '../i18n';
 
 const SCRIM = 0.28;
 
@@ -156,7 +157,7 @@ export function BottomSheet({ snaps, snap, onSnap, header, children, onScrim, cl
           onClick={onClick}
           {...stylex.props(styles.head)}
         >
-          <button type="button" aria-label={index === snaps.length - 1 ? '收起' : '展开'} onClick={step} {...stylex.props(styles.handle)}>
+          <button type="button" aria-label={index === snaps.length - 1 ? t('common.collapse') : t('common.expand')} onClick={step} {...stylex.props(styles.handle)}>
             <span {...stylex.props(styles.bar)} />
           </button>
           {header}

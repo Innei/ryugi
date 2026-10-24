@@ -3,6 +3,7 @@ import * as stylex from '@stylexjs/stylex';
 import { MessageSquare, PenLine } from 'lucide-react';
 import { useLayoutEffect, useRef } from 'react';
 import { EASE, play } from './motion';
+import { t } from '../i18n';
 
 export const EDIT_MENU_HEIGHT = 44;
 export const EDIT_MENU_WIDTH = 170;
@@ -43,8 +44,8 @@ interface Props {
 export function PhoneEditMenu({ left, top, placement, canComment, canEdit, onComment, onEdit }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const items = [
-    canComment ? { label: '评论', Icon: MessageSquare, run: onComment, primary: true } : null,
-    canEdit ? { label: '改字', Icon: PenLine, run: onEdit, primary: false } : null,
+    canComment ? { label: t('common.comment'), Icon: MessageSquare, run: onComment, primary: true } : null,
+    canEdit ? { label: t('document.editText'), Icon: PenLine, run: onEdit, primary: false } : null,
   ].filter((item) => item !== null);
 
   useLayoutEffect(() => {

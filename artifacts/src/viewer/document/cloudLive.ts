@@ -1,3 +1,5 @@
+import { i18n } from '../i18n';
+
 const minorOf = (version: string | null) => /^(\d+)\.(\d+)\./.exec(version ?? '')?.slice(1, 3).join('.') ?? null;
 
 export function editableAcross(viewer: string, host: string | null) {
@@ -6,4 +8,4 @@ export function editableAcross(viewer: string, host: string | null) {
 }
 
 export const versionReason = (viewer: string, host: string | null) =>
-  `电脑上的 ryugi 是 ${host ?? '未知版本'}，网页是 ${viewer}，版本对上之前只能评论`;
+  i18n.t('document.versionReason', { host: host ?? i18n.t('document.unknownVersion'), viewer });

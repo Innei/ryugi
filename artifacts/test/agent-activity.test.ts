@@ -31,20 +31,20 @@ describe('agentActivity', () => {
 
 describe('activityLabel', () => {
   test('editing names the section', () => {
-    expect(activityLabel({ kind: 'editing' }, 'Codex', '方案')).toBe('Codex 正在编辑 方案');
-    expect(activityLabel({ kind: 'editing' }, 'Codex', null)).toBe('Codex 正在编辑');
+    expect(activityLabel({ kind: 'editing' }, 'Codex', '方案')).toBe('Codex is editing 方案');
+    expect(activityLabel({ kind: 'editing' }, 'Codex', null)).toBe('Codex is editing');
   });
 
   test('working counts what is left and how long since the last write', () => {
-    expect(activityLabel({ kind: 'working', pending: 3, idleMs: 4_000 }, 'Codex', null)).toBe('Codex 还有 3 节待写 · 刚刚更新');
-    expect(activityLabel({ kind: 'working', pending: 3, idleMs: 40_000 }, 'Codex', null)).toBe('Codex 还有 3 节待写 · 40 秒前更新');
-    expect(activityLabel({ kind: 'working', pending: 1, idleMs: 125_000 }, 'Codex', null)).toBe('Codex 还有 1 节待写 · 2 分钟前更新');
-    expect(activityLabel({ kind: 'working', pending: 1, idleMs: null }, 'Codex', null)).toBe('Codex 还有 1 节待写');
+    expect(activityLabel({ kind: 'working', pending: 3, idleMs: 4_000 }, 'Codex', null)).toBe('Codex has 3 sections left · updated just now');
+    expect(activityLabel({ kind: 'working', pending: 3, idleMs: 40_000 }, 'Codex', null)).toBe('Codex has 3 sections left · updated 40s ago');
+    expect(activityLabel({ kind: 'working', pending: 1, idleMs: 125_000 }, 'Codex', null)).toBe('Codex has 1 section left · updated 2 min ago');
+    expect(activityLabel({ kind: 'working', pending: 1, idleMs: null }, 'Codex', null)).toBe('Codex has 1 section left');
   });
 
   test('stale says how long it has been quiet', () => {
-    expect(activityLabel({ kind: 'stale', pending: 2, idleMs: 6 * 60_000 }, 'Codex', null)).toBe('Codex 6 分钟没有更新 · 还有 2 节待写');
-    expect(activityLabel({ kind: 'stale', pending: 2, idleMs: 2 * 3_600_000 }, 'Codex', null)).toBe('Codex 2 小时没有更新 · 还有 2 节待写');
+    expect(activityLabel({ kind: 'stale', pending: 2, idleMs: 6 * 60_000 }, 'Codex', null)).toBe("Codex hasn't updated in 6 min · 2 sections left");
+    expect(activityLabel({ kind: 'stale', pending: 2, idleMs: 2 * 3_600_000 }, 'Codex', null)).toBe("Codex hasn't updated in 2 h · 2 sections left");
   });
 
   test('idle has no label', () => {

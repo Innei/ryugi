@@ -107,7 +107,7 @@ test('a tap on the header toggles the height, a tap on a button inside it does n
 
 test('the handle is a button that toggles the height', async () => {
   const onSnap = await mount(0.5);
-  await act(async () => host!.querySelector<HTMLElement>('button[aria-label="收起"]')!.click());
+  await act(async () => host!.querySelector<HTMLElement>('button[aria-label="Collapse"]')!.click());
   expect(onSnap).toHaveBeenLastCalledWith(78);
 });
 

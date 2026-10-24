@@ -8,6 +8,7 @@ import { Composer } from './Composer';
 import { EASE, play } from './motion';
 import { PhoneThread } from './PhoneThread';
 import type { SelectionTarget } from './useSelectionComment';
+import { t } from '../i18n';
 
 export const SHEET_PEEK = 78;
 export const SHEET_HALF = 0.5;
@@ -55,7 +56,7 @@ export function PhoneSheet({ threads, agent = 'Agent', actions, offline, draft, 
   const body = useRef<HTMLDivElement>(null);
   const shown = threads.filter((thread) => !thread.messages.every((message) => message.deleted));
   const waiting = shown.filter((thread) => waitingOn(thread) === 'agent').length;
-  const note = offline ? '电脑离线，暂时不能评论' : waiting > 0 ? `${waiting} 条等 ${agent} 回复` : null;
+  const note = offline ? t('document.offlineNoComments') : waiting > 0 ? t('document.waitingCount', { count: waiting, agent }) : null;
 
   useEffect(() => {
     const thread = activeId ? body.current?.querySelector(`[data-thread="${CSS.escape(activeId)}"]`) : null;
@@ -73,7 +74,7 @@ export function PhoneSheet({ threads, agent = 'Agent', actions, offline, draft, 
       onScrim={() => onSnap(SHEET_HALF)}
       header={
         <span {...stylex.props(styles.title)}>
-          评论 {shown.length}
+          {t('document.sheetComments', { count: shown.length })}
           {note ? <span {...stylex.props(styles.note)}>· {note}</span> : null}
         </span>
       }
@@ -84,13 +85,13 @@ export function PhoneSheet({ threads, agent = 'Agent', actions, offline, draft, 
             <div {...stylex.props(styles.draftHead)}>
               <span {...stylex.props(styles.draftQuote)}>{draft.quote}</span>
               <button type="button" onClick={onCancelDraft} {...stylex.props(styles.cancel)}>
-                取消
+                {t('common.cancel')}
               </button>
             </div>
             <div {...stylex.props(styles.draftBox)}>
               <Composer
                 autoFocus
-                placeholder="写给 agent 的评论…"
+                placeholder={t('document.agentPlaceholder')}
                 onSubmit={(text) =>
                   onCreate(draft, text).then((ok) => {
                     if (ok) onCancelDraft();
@@ -101,7 +102,7 @@ export function PhoneSheet({ threads, agent = 'Agent', actions, offline, draft, 
             </div>
           </div>
         ) : null}
-        {shown.length === 0 && !draft ? <div {...stylex.props(styles.empty)}>还没有评论。选中文字就能评论。</div> : null}
+        {shown.length === 0 && !draft ? <div {...stylex.props(styles.empty)}>{t('document.noComments')}</div> : null}
         {shown.map((thread) => (
           <PhoneThread key={thread.id} thread={thread} agent={agent} actions={actions} active={thread.id === activeId} offline={offline} />
         ))}

@@ -9,6 +9,7 @@ import { Avatar } from './Avatar';
 import { Composer } from './Composer';
 import { play } from './motion';
 import { useFold, useReplyPresence } from './useCardMotion';
+import { t } from '../i18n';
 
 const styles = stylex.create({
   panel: {
@@ -83,7 +84,7 @@ export function CommentCard({ thread, active, actions, onActivate, agent = 'Agen
   const row = useRef<HTMLDivElement>(null);
   const resolved = thread.status === 'resolved';
   const folded = (resolved || closing) && !expanded;
-  const quote = thread.anchor.quote || '整段';
+  const quote = thread.anchor.quote || t('document.wholeBlock');
   const frame = useFold(folded);
   const reply = useReplyPresence(!!actions && active && !resolved && !closing);
 
@@ -121,7 +122,7 @@ export function CommentCard({ thread, active, actions, onActivate, agent = 'Agen
         <PanelFrame>
           <div ref={row} onClick={() => void unfold()} {...stylex.props(styles.collapsed)}>
             <Check size={13} strokeWidth={2.2} />
-            已解决 · <span {...stylex.props(styles.quote)}>{quote}</span>
+            {t('common.resolved')} · <span {...stylex.props(styles.quote)}>{quote}</span>
           </div>
         </PanelFrame>
       ) : (
@@ -138,13 +139,13 @@ export function CommentCard({ thread, active, actions, onActivate, agent = 'Agen
               <span {...stylex.props(styles.quote)}>{quote}</span>
               {actions ? <WaitingText thread={thread} agent={agent} /> : null}
               {!actions ? null : resolved ? (
-                <button type="button" title="重新打开" onClick={() => actions.reopen(thread.id)} {...stylex.props(styles.icon)}>
+                <button type="button" title={t('common.reopen')} onClick={() => actions.reopen(thread.id)} {...stylex.props(styles.icon)}>
                   <RotateCcw size={13} strokeWidth={2.2} />
                 </button>
               ) : (
                 <button
                   type="button"
-                  title="标为已解决"
+                  title={t('common.markResolved')}
                   onClick={(event) => (event.stopPropagation(), void resolve(event.currentTarget))}
                   {...stylex.props(styles.icon)}
                   style={confirming ? CONFIRMED : undefined}
@@ -157,7 +158,7 @@ export function CommentCard({ thread, active, actions, onActivate, agent = 'Agen
             {actions && reply.shown ? (
               <div ref={reply.outer} {...stylex.props(styles.replyBox)}>
                 <div ref={reply.inner}>
-                  <Composer placeholder="回复…" focusKey={focusReply} onSubmit={(text) => actions.reply(thread.id, text)} />
+                  <Composer placeholder={t('common.reply')} focusKey={focusReply} onSubmit={(text) => actions.reply(thread.id, text)} />
                 </div>
               </div>
             ) : null}

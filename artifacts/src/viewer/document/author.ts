@@ -1,4 +1,5 @@
 import type { Message } from '../../shared/comments';
+import { i18n } from '../i18n';
 
 export type AgentIconKey =
   | 'ClaudeCode'
@@ -44,6 +45,6 @@ const AGENT_ICONS: Record<string, AgentIconKey> = {
 export const agentIconOf = (name: string): AgentIconKey | undefined => AGENT_ICONS[name];
 
 export function authorOf({ author, name }: Pick<Message, 'author' | 'name'>): { label: string; initial: string } {
-  const label = name ?? (author === 'human' ? '你' : 'Agent');
+  const label = name ?? (author === 'human' ? i18n.t('common.you') : 'Agent');
   return { label, initial: [...label][0]!.toUpperCase() };
 }

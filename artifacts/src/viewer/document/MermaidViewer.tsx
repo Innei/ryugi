@@ -5,6 +5,7 @@ import { Check, Copy, Minus, Plus, X } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { TransformComponent, TransformWrapper } from 'react-zoom-pan-pinch';
 import type { MermaidDiagram } from './mermaid';
+import { t } from '../i18n';
 
 const NARROW = '@media (max-width: 640px)';
 
@@ -83,18 +84,18 @@ function MermaidViewer({ title, source, diagram }: ViewerProps) {
             <span {...stylex.props(styles.title)}>{title}</span>
             <span {...stylex.props(styles.meta)}>{`${diagram.type} · ${Math.round(diagram.width)} × ${Math.round(diagram.height)}`}</span>
             <div {...stylex.props(styles.tools)}>
-              <ToolButton label="缩小" onClick={() => zoomOut()}><Minus size={16} /></ToolButton>
+              <ToolButton label={t('mermaid.zoomOut')} onClick={() => zoomOut()}><Minus size={16} /></ToolButton>
               <span {...stylex.props(styles.percent)}>{`${Math.round(scale * 100)}%`}</span>
-              <ToolButton label="放大" onClick={() => zoomIn()}><Plus size={16} /></ToolButton>
+              <ToolButton label={t('mermaid.zoomIn')} onClick={() => zoomIn()}><Plus size={16} /></ToolButton>
               <span {...stylex.props(styles.divider, styles.wide)} />
-              <button type="button" onClick={() => void fitToView({ maxScale: 1 })} {...stylex.props(styles.button, styles.wide)}>适配窗口</button>
-              <button type="button" onClick={() => void centerView(1)} {...stylex.props(styles.button, styles.wide)}>原尺寸</button>
+              <button type="button" onClick={() => void fitToView({ maxScale: 1 })} {...stylex.props(styles.button, styles.wide)}>{t('mermaid.fit')}</button>
+              <button type="button" onClick={() => void centerView(1)} {...stylex.props(styles.button, styles.wide)}>{t('mermaid.actualSize')}</button>
               <span {...stylex.props(styles.divider)} />
-              <button type="button" aria-label="复制源码" onClick={() => void copy()} {...stylex.props(styles.button)}>
+              <button type="button" aria-label={t('mermaid.copySource')} onClick={() => void copy()} {...stylex.props(styles.button)}>
                 {copied ? <Check size={14} /> : <Copy size={14} />}
-                <span {...stylex.props(styles.wide)}>{copied ? '已复制' : '复制源码'}</span>
+                <span {...stylex.props(styles.wide)}>{copied ? t('common.copied') : t('mermaid.copySource')}</span>
               </button>
-              <ToolButton label="关闭" onClick={close}><X size={16} /></ToolButton>
+              <ToolButton label={t('common.close')} onClick={close}><X size={16} /></ToolButton>
             </div>
           </div>
           <TransformComponent wrapperStyle={{ width: '100%', height: '100%', backgroundColor: diagram.background }} wrapperClass={stylex.props(styles.stage).className}>

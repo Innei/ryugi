@@ -32,7 +32,7 @@ test('an embedded cloud document moves its status to the shell instead of adding
   vi.stubGlobal('parent', { postMessage });
   const host = await render();
   expect(host.querySelector('header')).toBeNull();
-  expect(postMessage).toHaveBeenLastCalledWith(expect.objectContaining({ type: 'ryugi:cloud-header', id: 'c1', online: true, comments: 2, activity: 'Codex 正在编辑 1. 结论', activityTone: 'live' }), location.origin);
+  expect(postMessage).toHaveBeenLastCalledWith(expect.objectContaining({ type: 'ryugi:cloud-header', id: 'c1', online: true, comments: 2, activity: 'Codex is editing 1. 结论', activityTone: 'live' }), location.origin);
   await act(async () => root!.render(createElement(TopBar, { ...props, activity: { kind: 'idle' } as const, offline: true, openComments: 0, cloud: { online: false, canEdit: false, reason: '版本不同' } })));
   expect(postMessage).toHaveBeenLastCalledWith(expect.objectContaining({ online: false, comments: 0, activity: null, retrying: true, reason: '版本不同' }), location.origin);
 });
@@ -54,7 +54,7 @@ test('the phone editing toolbar still lets the human partner finish editing', as
   vi.stubGlobal('parent', { postMessage: vi.fn() });
   const onDone = vi.fn();
   const host = await render({ compact: true, onDone });
-  const done = Array.from(host.querySelectorAll('button')).find((button) => button.textContent === '完成');
+  const done = Array.from(host.querySelectorAll('button')).find((button) => button.textContent === 'Done');
   expect(done).toBeDefined();
   act(() => done!.click());
   expect(onDone).toHaveBeenCalledOnce();

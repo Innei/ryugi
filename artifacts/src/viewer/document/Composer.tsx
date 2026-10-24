@@ -3,6 +3,7 @@ import * as stylex from '@stylexjs/stylex';
 import { ArrowUp } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { isComposing } from '../lib/keyboard';
+import { t } from '../i18n';
 
 const styles = stylex.create({
   composer: { position: 'relative', paddingTop: 2, paddingInline: 14, paddingBottom: 12 },
@@ -77,7 +78,7 @@ export function Composer({ placeholder, initial = '', autoFocus, focusKey, onSub
   };
   return (
     <div {...stylex.props(styles.composer)} onClick={(event) => event.stopPropagation()}>
-      {unsent ? <div {...stylex.props(styles.unsent)}>没发出去：电脑离线了，文字还在这里</div> : null}
+      {unsent ? <div {...stylex.props(styles.unsent)}>{t('document.unsent')}</div> : null}
       <textarea
         ref={input}
         autoFocus={autoFocus}
@@ -91,7 +92,7 @@ export function Composer({ placeholder, initial = '', autoFocus, focusKey, onSub
         }}
         {...stylex.props(styles.input)}
       />
-      <button type="button" aria-label="发送" title="发送 ⌘↵" disabled={!text.trim()} onClick={submit} {...stylex.props(styles.send)}>
+      <button type="button" aria-label={t('common.send')} title={t('common.sendShortcut')} disabled={!text.trim()} onClick={submit} {...stylex.props(styles.send)}>
         <ArrowUp size={15} strokeWidth={2.4} />
       </button>
     </div>

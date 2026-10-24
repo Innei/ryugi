@@ -6,6 +6,7 @@ import { RailSwitch } from '../components/RailSwitch';
 import { useCloudHeader } from '../hooks/useCloudHeader';
 import { activityLabel, type AgentActivity } from './agentActivity';
 import type { CloudLive } from './DocumentPage';
+import { t } from '../i18n';
 
 const styles = stylex.create({
   bar: {
@@ -101,20 +102,20 @@ export function TopBar({ id, title, activity, agentSection, offline, openComment
           {label}
         </span>
       ) : null}
-      {offline ? <span {...stylex.props(styles.pill, styles.offline)}>未同步，正在重试</span> : null}
-      {history?.open ? <span {...stylex.props(styles.pill, styles.quiet)}><Lock size={11} aria-hidden="true" />只读 · 正在对比历史</span> : null}
+      {offline ? <span {...stylex.props(styles.pill, styles.offline)}>{t('document.notSynced')}</span> : null}
+      {history?.open ? <span {...stylex.props(styles.pill, styles.quiet)}><Lock size={11} aria-hidden="true" />{t('document.readOnlyHistory')}</span> : null}
       {cloud?.reason && !compact ? <span {...stylex.props(styles.reason)}>{cloud.reason}</span> : null}
       <span {...stylex.props(styles.spacer)} />
       {cloud ? (
         <span {...stylex.props(styles.host)}>
           <i {...stylex.props(styles.hostDot, cloud.online && styles.hostOnline)} />
-          {cloud.online ? '电脑在线' : '电脑离线'}
+          {cloud.online ? t('share.computerOnline') : t('share.computerOffline')}
         </span>
       ) : null}
       {history ? <RailSwitch comments={openComments} open={history.open} available={history.available} onComments={history.close} onHistory={history.toggle} /> : null}
       {onDone ? (
         <button type="button" onClick={onDone} {...stylex.props(styles.done)}>
-          完成
+          {t('common.done')}
         </button>
       ) : cloud || compact ? null : (
         <PublishMenu artifact={`document/${id}`} />

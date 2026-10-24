@@ -22,6 +22,7 @@ import * as stylex from '@stylexjs/stylex';
 import { useState, type ComponentType, type CSSProperties } from 'react';
 import { agentIconOf, type AgentIconKey } from './author';
 import { brand } from '../tokens.stylex';
+import { t } from '../i18n';
 
 const SIZE = 20;
 
@@ -72,5 +73,5 @@ export function Avatar({ human, initial, name, src }: Props) {
   if (src && failed !== src) {
     return <img src={src} alt="" width={SIZE} height={SIZE} onError={() => setFailed(src)} {...stylex.props(styles.image)} />;
   }
-  return <span {...stylex.props(styles.avatar, human ? styles.human : styles.agent)}>{initial ?? (human ? '你' : 'A')}</span>;
+  return <span {...stylex.props(styles.avatar, human ? styles.human : styles.agent)}>{initial ?? (human ? [...t('common.you')][0] : 'A')}</span>;
 }

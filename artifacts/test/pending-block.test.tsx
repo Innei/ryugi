@@ -75,7 +75,7 @@ test('every pending block shows its intent as ghost text, and only the next one 
 
 test('a stale document marks the blocks unfinished without an agent', async () => {
   await render('stale');
-  expect(blocks().map((block) => block.textContent)).toEqual(['未完成讲清三类存储', '未完成部署顺序']);
+  expect(blocks().map((block) => block.textContent)).toEqual(['Unfinished讲清三类存储', 'Unfinished部署顺序']);
   expect(blocks().every((block) => block.dataset.next === undefined)).toBe(true);
   expect(host.querySelector('[data-caret]')).toBeNull();
 });

@@ -8,6 +8,7 @@ import CloudDocument from './CloudDocument';
 import { editableAcross, versionReason } from './cloudLive';
 import { DocumentView } from './DocumentPage';
 import { useRelayTransport } from './useDocumentTransport';
+import { t } from '../i18n';
 
 interface Props {
   id: string;
@@ -28,7 +29,7 @@ export default function CloudLiveDocument({ id, state, contentBase, liveContentB
 
   const snapshot = state && contentBase ? <CloudDocument id={id} state={state} contentBase={contentBase} comments={comments} offline={presence !== null && !online} /> : null;
   if (!transport || !(wasLive || online)) {
-    return snapshot ?? <CloudMessage>{presence === null ? '正在连接…' : '还没发布。电脑在线时，这里会实时显示。'}</CloudMessage>;
+    return snapshot ?? <CloudMessage>{presence === null ? t('common.connecting') : t('document.notPublished')}</CloudMessage>;
   }
   const canEdit = online && editableAcross(VIEWER_VERSION, presence?.version ?? null);
   const reason = online && !canEdit ? versionReason(VIEWER_VERSION, presence?.version ?? null) : null;

@@ -17,7 +17,7 @@ beforeAll(() => {
   MotionGlobalConfig.skipAnimations = true;
 });
 afterEach(async () => {
-  const close = document.querySelector<HTMLElement>('[role="dialog"] [aria-label="关闭"]');
+  const close = document.querySelector<HTMLElement>('[role="dialog"] [aria-label="Close"]');
   if (close) await act(async () => close.click());
   await vi.waitFor(() => expect(document.querySelector('[role="dialog"]')).toBeNull());
   await act(async () => root?.unmount());
@@ -43,7 +43,7 @@ async function renderDocument(heading: string | null) {
 }
 
 async function openViewer() {
-  const trigger = document.querySelector<HTMLElement>('[aria-label="放大查看 Mermaid 图"]');
+  const trigger = document.querySelector<HTMLElement>('[aria-label="Enlarge Mermaid diagram"]');
   expect(trigger).not.toBeNull();
   await act(async () => trigger!.click());
   const dialog = document.querySelector<HTMLElement>('[role="dialog"]');
@@ -62,7 +62,7 @@ test('clicking a diagram opens a viewer titled by the nearest heading above it',
 test('a diagram with no heading above it opens a viewer with a generic title', async () => {
   await renderDocument(null);
   const dialog = await openViewer();
-  expect(dialog.textContent).toContain('Mermaid 图');
+  expect(dialog.textContent).toContain('Mermaid diagram');
 });
 
 test('the viewer copies the diagram source', async () => {
@@ -70,7 +70,7 @@ test('the viewer copies the diagram source', async () => {
   vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText } });
   await renderDocument('发布流程');
   const dialog = await openViewer();
-  const copy = [...dialog.querySelectorAll('button')].find((button) => button.textContent?.includes('复制源码'));
+  const copy = [...dialog.querySelectorAll('button')].find((button) => button.textContent?.includes('Copy source'));
   expect(copy).toBeDefined();
   await act(async () => copy!.click());
   expect(writeText).toHaveBeenCalledWith(source);
@@ -79,7 +79,7 @@ test('the viewer copies the diagram source', async () => {
 
 test('the inline diagram cannot be dragged into the document as an image', async () => {
   const host = await renderDocument('发布流程');
-  const image = host.querySelector<HTMLImageElement>('[aria-label="放大查看 Mermaid 图"] img');
+  const image = host.querySelector<HTMLImageElement>('[aria-label="Enlarge Mermaid diagram"] img');
   expect(image).toBeInstanceOf(HTMLImageElement);
   expect(image!.getAttribute('draggable')).toBe('false');
 });

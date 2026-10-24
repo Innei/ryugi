@@ -1,6 +1,7 @@
 import { createLoroBinding, TREE_NAME } from '@haklex/rich-collab-loro';
 import { createEditor, type CreateEditorArgs, type SerializedEditorState } from 'lexical';
 import type { Change, LoroDoc, LoroTreeNode, OpId, TreeID } from 'loro-crdt';
+import { i18n } from '../i18n';
 
 export interface HistoryEntry { id: string; change: Change; frontiers: OpId[] }
 export interface HistoryGroup { id: string; source: 'human' | 'agent' | 'session' | 'unknown'; entries: HistoryEntry[] }
@@ -43,7 +44,7 @@ export function readHistoryState(doc: LoroDoc, frontiers: OpId[], nodes: CreateE
   try {
     fork.checkout(frontiers);
     const roots = fork.getTree(TREE_NAME).roots();
-    if (roots.length !== 1) throw new Error('此版本的文档内容不可用');
+    if (roots.length !== 1) throw new Error(i18n.t('history.contentUnavailable'));
     const editor = createEditor({ nodes, editable: false, onError: (error) => { throw error; } });
     binding = createLoroBinding(editor, fork);
     const blocks = roots[0]!.children() ?? [];

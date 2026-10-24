@@ -8,6 +8,7 @@ import { usePanZoom } from '../hooks/usePanZoom';
 import { FLICK, lockAxis, velocityTracker, type Axis } from '../lib/gesture';
 import { ghostStyles } from './ghost';
 import { MediaBoard } from './MediaBoard';
+import { t } from '../i18n';
 
 const DISMISS = 120;
 const DISMISS_SPEED = 0.5;
@@ -224,7 +225,7 @@ export function PhoneBoard({ id, board, src, siblings, origin, onOpen, onClose }
     <div data-phone-board {...stylex.props(styles.overlay)}>
       <div ref={backdrop} {...stylex.props(styles.backdrop)} style={drag ? { opacity: fade } : undefined} />
       <header ref={head} {...stylex.props(styles.head)} style={drag ? { opacity: chromeFade } : undefined}>
-        <button type="button" aria-label="返回画布" onClick={() => void close()} {...stylex.props(ghostStyles.ghost)}>
+        <button type="button" aria-label={t('phone.backToCanvas')} onClick={() => void close()} {...stylex.props(ghostStyles.ghost)}>
           <ChevronLeft size={22} />
         </button>
         <span {...stylex.props(styles.heading)}>
@@ -272,7 +273,7 @@ export function PhoneBoard({ id, board, src, siblings, origin, onOpen, onClose }
       </div>
       {siblings.length > 1 ? (
         <div ref={foot} {...stylex.props(styles.foot)} style={drag ? { opacity: chromeFade } : undefined}>
-          <button type="button" aria-label="上一张" disabled={!previous} onClick={() => void go(-1, previous)} {...stylex.props(ghostStyles.ghost)}>
+          <button type="button" aria-label={t('phone.previousBoard')} disabled={!previous} onClick={() => void go(-1, previous)} {...stylex.props(ghostStyles.ghost)}>
             <ChevronLeft size={20} />
           </button>
           <span {...stylex.props(styles.dots)}>
@@ -280,7 +281,7 @@ export function PhoneBoard({ id, board, src, siblings, origin, onOpen, onClose }
               <span key={sibling} data-dot={i === index ? 'current' : ''} {...stylex.props(styles.dot, i === index && styles.dotCurrent)} />
             ))}
           </span>
-          <button type="button" aria-label="下一张" disabled={!next} onClick={() => void go(1, next)} {...stylex.props(ghostStyles.ghost)}>
+          <button type="button" aria-label={t('phone.nextBoard')} disabled={!next} onClick={() => void go(1, next)} {...stylex.props(ghostStyles.ghost)}>
             <ChevronRight size={20} />
           </button>
         </div>

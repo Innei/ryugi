@@ -6,6 +6,7 @@ import { shownThreadIds } from './anchor';
 import { CommentCard, type ThreadActions } from './CommentCard';
 import { connectorPath, layoutCards } from './layoutCards';
 import { anchorLinkStart, type ThreadAnchor } from './useAnchors';
+import { t } from '../i18n';
 
 const GAP = 12;
 const BEND = 40;
@@ -91,11 +92,11 @@ export function CommentRail({ narrow, threads, anchors, activeId, actions, onAct
 
   if (narrow) {
     return (
-      <div ref={setRef} role="region" aria-label="评论" {...stylex.props(styles.narrow)}>
+      <div ref={setRef} role="region" aria-label={t('document.commentsLabel')} {...stylex.props(styles.narrow)}>
         {[...placed].sort((a, b) => topOf.get(a.id)! - topOf.get(b.id)!).map((thread) => (
           <div key={thread.id}>{card(thread)}</div>
         ))}
-        {orphaned.length > 0 ? <div {...stylex.props(styles.section)}>原文已删除</div> : null}
+        {orphaned.length > 0 ? <div {...stylex.props(styles.section)}>{t('document.originalDeleted')}</div> : null}
         {orphaned.map((thread) => (
           <div key={thread.id}>{card(thread)}</div>
         ))}
@@ -104,7 +105,7 @@ export function CommentRail({ narrow, threads, anchors, activeId, actions, onAct
   }
 
   return (
-    <aside ref={setRef} aria-label="评论" {...stylex.props(styles.wide)} style={{ minHeight: bottom }}>
+    <aside ref={setRef} aria-label={t('document.commentsLabel')} {...stylex.props(styles.wide)} style={{ minHeight: bottom }}>
       <svg {...stylex.props(styles.links)}>
         {links.map((link) => (
           <path
@@ -126,7 +127,7 @@ export function CommentRail({ narrow, threads, anchors, activeId, actions, onAct
       ))}
       {orphaned.length > 0 ? (
         <div style={{ position: 'absolute', top: bottom + GAP, left: 0, width: '100%' }}>
-          <div {...stylex.props(styles.section)}>原文已删除</div>
+          <div {...stylex.props(styles.section)}>{t('document.originalDeleted')}</div>
           {orphaned.map((thread) => (
             <div key={thread.id} style={{ marginBottom: GAP }}>
               {card(thread)}
