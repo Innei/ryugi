@@ -2,7 +2,7 @@
   "name": "ryugi",
   "displayName": "Ryugi",
   "description": "Core skills library: TDD, debugging, collaboration patterns, and proven techniques",
-  "version": "1.31.5",
+  "version": "1.31.6",
   "author": {
     "name": "Innei",
     "email": "i@innei.dev"
