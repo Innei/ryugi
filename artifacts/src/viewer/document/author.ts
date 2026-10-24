@@ -6,6 +6,7 @@ export type AgentIconKey =
   | 'Codex'
   | 'Cursor'
   | 'GeminiCLI'
+  | 'Grok'
   | 'GithubCopilot'
   | 'KiloCode'
   | 'OpenCode'
@@ -25,6 +26,7 @@ const AGENT_ICONS: Record<string, AgentIconKey> = {
   Codex: 'Codex',
   Cursor: 'Cursor',
   'Gemini CLI': 'GeminiCLI',
+  Grok: 'Grok',
   'GitHub Copilot': 'GithubCopilot',
   'Kilo Code': 'KiloCode',
   OpenCode: 'OpenCode',

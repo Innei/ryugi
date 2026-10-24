@@ -9,6 +9,8 @@ const NAMES: Record<string, string> = {
   'cursor-cli': 'Cursor',
   gemini: 'Gemini CLI',
   'gemini-cli': 'Gemini CLI',
+  grok: 'Grok',
+  'grok-cli': 'Grok',
   'github-copilot': 'GitHub Copilot',
   'github-copilot-cli': 'GitHub Copilot',
   kilo: 'Kilo Code',
@@ -31,9 +33,10 @@ const NAMES: Record<string, string> = {
 export const AGENT_DISPLAY_NAMES = [...new Set(Object.values(NAMES))];
 
 // Order matters: Cowork also sets the Claude Code markers, Kilo is an OpenCode fork that sets OpenCode's,
-// and omp sets CLAUDECODE so Claude-compatible extensions keep loading.
+// and omp and Grok set CLAUDECODE so Claude-compatible extensions keep loading.
 const MARKERS: [string, (env: Env) => boolean][] = [
   ['omp', (env) => !!env.OMPCODE],
+  ['grok', (env) => !!(env.GROK_AGENT || env.GROK_SESSION_ID)],
   ['cowork', (env) => !!env.CLAUDE_CODE_IS_COWORK],
   ['kilo', (env) => !!env.KILO],
   ['codex', (env) => !!(env.CODEX_THREAD_ID || env.CODEX_SANDBOX || env.CODEX_CI)],
@@ -53,6 +56,8 @@ export const AGENT_MARKERS = [
   'AI_AGENT',
   'AGENT',
   'OMPCODE',
+  'GROK_AGENT',
+  'GROK_SESSION_ID',
   'CLAUDE_CODE_IS_COWORK',
   'KILO',
   'CODEX_THREAD_ID',

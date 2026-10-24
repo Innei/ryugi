@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { detectAgent } from '../src/server/agent';
+import { AGENT_MARKERS, detectAgent } from '../src/server/agent';
 
 describe('detectAgent', () => {
   test.each([
@@ -8,6 +8,9 @@ describe('detectAgent', () => {
     [{ OMPCODE: '1', CLAUDECODE: '1', AGENT: '1' }, 'OMP'],
     [{ OMPCODE: '1' }, 'OMP'],
     [{ AI_AGENT: 'oh-my-pi@1', CLAUDECODE: '1' }, 'OMP'],
+    [{ GROK_AGENT: '1', CLAUDECODE: '1', AGENT: '1' }, 'Grok'],
+    [{ GROK_SESSION_ID: 'abc', CLAUDECODE: '1' }, 'Grok'],
+    [{ AI_AGENT: 'grok-cli' }, 'Grok'],
     [{ CLAUDECODE: '1', CLAUDE_CODE_IS_COWORK: '1' }, 'Claude Cowork'],
     [{ CODEX_THREAD_ID: 'abc' }, 'Codex'],
     [{ CODEX_SANDBOX: 'seatbelt' }, 'Codex'],
@@ -43,6 +46,11 @@ describe('detectAgent', () => {
 
   test('AGENT=1 proves an agent without naming it', () => {
     expect(detectAgent({ AGENT: '1' })).toBeUndefined();
+  });
+
+  test('the markers detectAgent reads are the ones the CLI captures', () => {
+    // A marker missing here is dropped from .state/agent, so the harness falls back to Claude Code.
+    for (const key of ['OMPCODE', 'GROK_AGENT', 'GROK_SESSION_ID']) expect(AGENT_MARKERS).toContain(key);
   });
 
   test('nothing detected', () => {
