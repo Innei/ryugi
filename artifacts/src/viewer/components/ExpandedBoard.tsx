@@ -5,6 +5,7 @@ import { X } from 'lucide-react';
 import type { ReactNode, Ref } from 'react';
 import { isMediaBoard, type BoardSpec } from '../../shared/types';
 import { VideoPlayer } from './VideoPlayer';
+import { t } from '../i18n';
 
 const styles = stylex.create({
   overlay: {
@@ -55,7 +56,7 @@ export function ExpandedBoard({ id, board, src, interactive, onClose, parameterA
           {board.title ?? id}
           <span {...stylex.props(styles.id)}>{id}</span>
         </span>
-        {parameterAction}<ActionIcon icon={X} size="small" title="Close (Esc)" aria-label="Close" onClick={onClose} />
+        {parameterAction}<ActionIcon icon={X} size="small" title={t('chrome.closeEsc')} aria-label={t('chrome.close')} onClick={onClose} />
       </div>
       <div {...stylex.props(styles.body)}>
         {board.type === 'video' ? (

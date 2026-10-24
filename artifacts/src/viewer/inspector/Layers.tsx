@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { BoardSpec } from '../../shared/types';
 import type { InspectorNode } from '../../shared/inspector';
 import type { Inspector } from '../hooks/useInspector';
+import { t } from '../i18n';
 
 const icons = { Frame, Column: Columns3, Row: Rows3, Grid: Grid2X2, Title: Type, Text: Type, Image, Button: MousePointer2 };
 const keyOf = (boardId: string, session: string, id: number) => `${encodeURIComponent(boardId)}:${encodeURIComponent(session)}:${id}`;
@@ -38,7 +39,7 @@ export function Layers({ boards, frames, selection, targets, playing, select, ho
         const Icon = icons[kind];
         return {
           key, disabled: paused, icon: <Icon size={14} aria-hidden />,
-          title: <><span className="ri-layer-label" title={`${node.tag} · ${name || node.selector}`}><span className="ri-layer-kind">{kind}</span><span className="ri-layer-name">{name ? `“${name}”` : `<${node.tag}>`}</span></span>{parentKey !== null && <span className="ri-layer-id">#{node.id}</span>}{paused && <span className="ri-playing">Playing</span>}</>,
+          title: <><span className="ri-layer-label" title={`${node.tag} · ${name || node.selector}`}><span className="ri-layer-kind">{t(`inspector.kind.${kind}`)}</span><span className="ri-layer-name">{name ? `“${name}”` : `<${node.tag}>`}</span></span>{parentKey !== null && <span className="ri-layer-id">#{node.id}</span>}{paused && <span className="ri-playing">{t('inspector.playing')}</span>}</>,
           children: node.children.flatMap((id) => { const child = nodes.get(id); return child ? [append(child, key)] : []; }),
         };
       };
@@ -60,8 +61,8 @@ export function Layers({ boards, frames, selection, targets, playing, select, ho
   const count = Object.values(frames).reduce((sum, frame) => sum + frame.nodes.length, 0);
   return (
     <>
-      <div className="ri-layer-heading"><span>LAYERS</span><span>{count ? `${count} elements` : 'Loading…'}</span></div>
-      <div ref={container} className="ri-layers" role="region" aria-label="DOM layers"
+      <div className="ri-layer-heading"><span>{t('inspector.layers')}</span><span>{count ? t('inspector.elements', { count }) : t('common.loading')}</span></div>
+      <div ref={container} className="ri-layers" role="region" aria-label={t('inspector.domLayers')}
         onClickCapture={(event) => { toggle.current = event.shiftKey || event.metaKey || event.ctrlKey; }}
         onKeyDownCapture={(event) => { toggle.current = event.shiftKey || event.metaKey || event.ctrlKey; }}
         onMouseOver={(event) => {
@@ -81,9 +82,9 @@ export function Layers({ boards, frames, selection, targets, playing, select, ho
             setExpanded(keys);
           }}
           onSelect={(_, { node }) => { const entry = byKey.get(node.key); if (entry) { if (toggle.current) select(entry.boardId, entry.node.id, true); else select(entry.boardId, entry.node.id); } }} />
-        {!treeData.length && <p className="ri-hint">Waiting for a ready board…</p>}
+        {!treeData.length && <p className="ri-hint">{t('inspector.waitingBoard')}</p>}
       </div>
-      {Object.values(frames).some((frame) => frame.truncated) && <p className="ri-limit" role="status">Showing up to 2,500 elements per board and 50 levels.</p>}
+      {Object.values(frames).some((frame) => frame.truncated) && <p className="ri-limit" role="status">{t('inspector.truncated')}</p>}
     </>
   );
 }

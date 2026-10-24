@@ -86,6 +86,7 @@ interface TopLeftBarProps {
 }
 
 export function TopLeftBar({ pages, page, onPageChange, tool, onToolChange, commenting = false }: TopLeftBarProps) {
+  const { t } = useTranslation();
   const current = pages.find((p) => p.id === page);
   return (
     <div data-chrome {...stylex.props(styles.bar, styles.left)}>
@@ -98,8 +99,8 @@ export function TopLeftBar({ pages, page, onPageChange, tool, onToolChange, comm
           onClick: () => onPageChange(p.id),
         }))}
       >
-        <button type="button" aria-label="Switch page" {...stylex.props(styles.trigger)}>
-          <span {...stylex.props(styles.pageName)}>{current?.name ?? 'No pages'}</span>
+        <button type="button" aria-label={t('chrome.switchPage')} {...stylex.props(styles.trigger)}>
+          <span {...stylex.props(styles.pageName)}>{current?.name ?? t('chrome.noPages')}</span>
           <ChevronDown size={14} {...stylex.props(styles.chevron)} />
         </button>
       </DropdownMenu>
@@ -108,16 +109,16 @@ export function TopLeftBar({ pages, page, onPageChange, tool, onToolChange, comm
         icon={MousePointer2}
         size="small"
         active={tool === 'select'}
-        title="Select (V)"
-        aria-label="Select"
+        title={t('chrome.selectTitle')}
+        aria-label={t('chrome.select')}
         onClick={() => onToolChange('select')}
       />
       <ActionIcon
         icon={Hand}
         size="small"
         active={tool === 'hand'}
-        title="Hand (H) — or hold Space"
-        aria-label="Hand"
+        title={t('chrome.handTitle')}
+        aria-label={t('chrome.hand')}
         onClick={() => onToolChange('hand')}
       />
       {commenting ? (
@@ -125,8 +126,8 @@ export function TopLeftBar({ pages, page, onPageChange, tool, onToolChange, comm
           icon={MessageCirclePlus}
           size="small"
           active={tool === 'comment'}
-          title="Comment (C)"
-          aria-label="Comment"
+          title={t('chrome.commentTitle')}
+          aria-label={t('chrome.comment')}
           onClick={() => onToolChange('comment')}
         />
       ) : null}
@@ -163,7 +164,7 @@ export function TopRightBar({ artifact, live, warnings, zoom, onZoomIn, onZoomOu
         </>
       )}
       {live === undefined ? null : (
-        <span {...stylex.props(styles.live)} title={live ? 'Live' : 'Reconnecting…'}>
+        <span {...stylex.props(styles.live)} title={live ? t('chrome.live') : t('chrome.reconnecting')}>
           <span {...stylex.props(styles.dot, live && styles.dotOn)} />
         </span>
       )}
@@ -179,22 +180,22 @@ export function TopRightBar({ artifact, live, warnings, zoom, onZoomIn, onZoomOu
           }
         >
           <button type="button" {...stylex.props(styles.warnButton)}>
-            {warnings.length} warning{warnings.length > 1 ? 's' : ''}
+            {t('chrome.warnings', { count: warnings.length })}
           </button>
         </Popover>
       )}
       <span {...stylex.props(styles.divider)} />
-      <ActionIcon icon={PanelRight} size="small" active={inspectorOpen} aria-label="Toggle inspector" aria-pressed={inspectorOpen} title="Inspector" onClick={onToggleInspector} />
+      <ActionIcon icon={PanelRight} size="small" active={inspectorOpen} aria-label={t('chrome.toggleInspector')} aria-pressed={inspectorOpen} title={t('chrome.inspector')} onClick={onToggleInspector} />
       <DropdownMenu
         placement="bottomRight"
         items={[
-          { key: 'in', label: 'Zoom in', extra: hint('⌘ +'), onClick: onZoomIn },
-          { key: 'out', label: 'Zoom out', extra: hint('⌘ −'), onClick: onZoomOut },
-          { key: 'fit', label: 'Zoom to fit', extra: hint('⇧ 1'), onClick: onFit },
-          { key: 'actual', label: 'Zoom to 100%', extra: hint('⇧ 0'), onClick: onActualSize },
+          { key: 'in', label: t('chrome.zoomIn'), extra: hint('⌘ +'), onClick: onZoomIn },
+          { key: 'out', label: t('chrome.zoomOut'), extra: hint('⌘ −'), onClick: onZoomOut },
+          { key: 'fit', label: t('chrome.zoomFit'), extra: hint('⇧ 1'), onClick: onFit },
+          { key: 'actual', label: t('chrome.zoomActual'), extra: hint('⇧ 0'), onClick: onActualSize },
         ]}
       >
-        <button type="button" aria-label="Zoom" {...stylex.props(styles.trigger)}>
+        <button type="button" aria-label={t('chrome.zoom')} {...stylex.props(styles.trigger)}>
           <span {...stylex.props(styles.zoom)}>{Math.round(zoom * 100)}%</span>
           <ChevronDown size={14} {...stylex.props(styles.chevron)} />
         </button>

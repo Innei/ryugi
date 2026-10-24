@@ -102,16 +102,16 @@ export function CommentsPanel({ threads, page, stale, numbers, openId, tab, onTa
   const open = onPage.filter((thread) => thread.status === 'open');
   const shown = (tab === 'open' ? open : onPage).sort((a, b) => (numbers.get(a.id) ?? 0) - (numbers.get(b.id) ?? 0));
   return (
-    <aside className="ryugi-inspector" data-chrome aria-label="Comments">
+    <aside className="ryugi-inspector" data-chrome aria-label={t('chrome.comments')}>
       <div {...stylex.props(styles.head)}>
-        Comments <span {...stylex.props(styles.count)}>{open.length}</span>
-        <button type="button" aria-label="Close comments" title="Close (V)" onClick={onClose} {...stylex.props(styles.close)}>
+        {t('chrome.comments')} <span {...stylex.props(styles.count)}>{open.length}</span>
+        <button type="button" aria-label={t('chrome.closeComments')} title={t('chrome.closeCommentsTitle')} onClick={onClose} {...stylex.props(styles.close)}>
           <X size={14} />
         </button>
       </div>
       <div {...stylex.props(styles.tabs)}>
-        <button type="button" onClick={() => onTab('open')} {...stylex.props(styles.tab, tab === 'open' && styles.tabOn)}>Open {open.length}</button>
-        <button type="button" onClick={() => onTab('all')} {...stylex.props(styles.tab, tab === 'all' && styles.tabOn)}>All {onPage.length}</button>
+        <button type="button" onClick={() => onTab('open')} {...stylex.props(styles.tab, tab === 'open' && styles.tabOn)}>{t('chrome.openTab', { count: open.length })}</button>
+        <button type="button" onClick={() => onTab('all')} {...stylex.props(styles.tab, tab === 'all' && styles.tabOn)}>{t('chrome.allTab', { count: onPage.length })}</button>
       </div>
       <div {...stylex.props(styles.list)}>
         {shown.length === 0 ? (
