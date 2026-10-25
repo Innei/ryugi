@@ -73,7 +73,7 @@
     "@types/ws": "8.18.1",
     "@vitejs/plugin-react": "^6.1.2",
     "esbuild": "^0.28.2",
-    "happy-dom": "20.14.6",
+    "happy-dom": "21.0.4",
     "i18next": "^26.5.6",
     "jotai": "^3.0.1",
     "katex": "^0.19.0",
