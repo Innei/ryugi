@@ -1,23 +1,7 @@
-import './preview.css';
-import type { SerializedEditorState } from 'lexical';
-import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
-import type { ArtifactType, CanvasPayload } from '../../shared/types';
-import { CanvasErrorBoundary } from '../components/CanvasErrorBoundary';
-import { useTranslation } from '../i18n';
+import { useEffect, useMemo, useState } from 'react';
+import type { ArtifactType } from '../../shared/types';
 import { cloudPreviewPayload, type CloudArtifactData } from '../lib/cloud-list';
-import { fitView } from '../lib/view';
-
-const DocumentPreview = lazy(() => import('../document/shims').then(() => import('../document/CloudDocument')));
-const CanvasPreview = lazy(() => import('../components/Canvas').then(({ Canvas }) => ({ default: Canvas })));
-const noRef = () => () => {};
-const noLoad = () => {};
-const none = new Set<string>();
-
-interface Payload extends Partial<CanvasPayload> {
-  title: string;
-  contentBase: string;
-  state?: SerializedEditorState;
-}
+import { PreviewView, type PreviewPayload } from './PreviewView';
 
 function useJson<T>(url: string) {
   const [data, setData] = useState<T | null>(null);
@@ -37,7 +21,7 @@ function useJson<T>(url: string) {
 }
 
 export function PreviewLayout({ type, id }: { type: ArtifactType; id: string }) {
-  const { data, failed } = useJson<Payload>(`/api/preview/${type}/${id}`);
+  const { data, failed } = useJson<PreviewPayload>(`/api/preview/${type}/${id}`);
   return <PreviewView type={type} id={id} data={data} failed={failed} />;
 }
 
@@ -45,56 +29,4 @@ export function CloudPreviewLayout({ id }: { id: string }) {
   const { data, failed } = useJson<CloudArtifactData>(`/api/a/${id}`);
   const payload = useMemo(() => (data ? cloudPreviewPayload(data) : null), [data]);
   return <PreviewView type={data?.type ?? 'html'} id={id} data={payload} failed={failed} />;
-}
-
-function PreviewView({ type, id, data, failed }: { type: ArtifactType; id: string; data: Payload | null; failed: boolean }) {
-  const { t } = useTranslation();
-  const [viewport, setViewport] = useState(() => ({ width: innerWidth, height: innerHeight }));
-  useEffect(() => {
-    const resize = () => setViewport({ width: innerWidth, height: innerHeight });
-    addEventListener('resize', resize);
-    return () => removeEventListener('resize', resize);
-  }, []);
-
-  const message = (text: string) => <div className="artifact-preview-message">{text}</div>;
-  if (failed) return message(t('preview.unavailable'));
-  if (!data) return message(t('preview.loading'));
-  if (type === 'html') {
-    if (data.warnings?.length) return message(t('preview.waitingPage'));
-    return <iframe className="artifact-preview-html" title={data.title} src={`${data.contentBase}index.html`} sandbox="allow-scripts" tabIndex={-1} />;
-  }
-  if (type === 'document') {
-    return data.state ? (
-      <CanvasErrorBoundary resetKey={data.state}>
-        <Suspense fallback={message(t('preview.loading'))}>
-          <DocumentPreview id={id} state={data.state} contentBase={data.contentBase} />
-        </Suspense>
-      </CanvasErrorBoundary>
-    ) : message(t('preview.waitingDocument'));
-  }
-  const canvas = data.canvas;
-  const page = canvas?.activePage ?? canvas?.pages[0]?.id;
-  const bounds = page ? data.layout?.pages[page]?.bounds : null;
-  if (!canvas || !page || !bounds) return message(t('preview.waitingCanvas'));
-  return (
-    <div className="artifact-preview-canvas">
-      <CanvasErrorBoundary resetKey={canvas}>
-        <Suspense fallback={message(t('preview.loading'))}>
-          <CanvasPreview
-            view={fitView(bounds, viewport, { top: 24, right: 24, bottom: 24, left: 24 })}
-            boards={Object.entries(canvas.boards).filter(([, board]) => board.page === page)}
-            notes={Object.entries(canvas.notes ?? {}).filter(([, note]) => note.page === page)}
-            contentBase={data.contentBase}
-            versions={data.versions ?? {}}
-            pending={new Set(data.pending)}
-            playing={none}
-            replays={{}}
-            inspecting={false}
-            frameRef={noRef}
-            frameLoaded={noLoad}
-          />
-        </Suspense>
-      </CanvasErrorBoundary>
-    </div>
-  );
 }

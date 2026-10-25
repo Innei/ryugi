@@ -7,6 +7,21 @@
   "bin": {
     "ryugi-artifacts": "bin/ryugi-artifacts.cjs"
   },
+  "exports": {
+    "./viewer": {
+      "types": "./dist/viewer-lib/types/src/viewer/library/index.d.ts",
+      "default": "./dist/viewer-lib/index.js"
+    },
+    "./viewer/document": {
+      "types": "./dist/viewer-lib/types/src/viewer/library/document.d.ts",
+      "default": "./dist/viewer-lib/document.js"
+    },
+    "./viewer/shims": {
+      "types": "./dist/viewer-lib/types/src/viewer/document/shims.d.ts",
+      "default": "./dist/viewer-lib/shims.js"
+    },
+    "./package.json": "./package.json"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Innei/ryugi.git",
@@ -17,22 +32,60 @@
     "dist/server.cjs",
     "dist/cli.cjs",
     "dist/viewer",
-    "dist/runtime"
+    "dist/runtime",
+    "dist/viewer-lib"
   ],
   "publishConfig": {
     "access": "public",
     "provenance": true
   },
   "scripts": {
-    "build": "pnpm run build:server && pnpm run build:cli && pnpm run build:viewer && pnpm run build:runtime",
+    "build": "pnpm run build:server && pnpm run build:cli && pnpm run build:viewer && pnpm run build:lib && pnpm run build:runtime",
     "build:server": "esbuild src/server/main.ts --bundle --platform=node --target=node18 --format=cjs --alias:loro-crdt=loro-crdt/base64 --outfile=dist/server.cjs && node -e \"const fs=require('node:fs');fs.copyFileSync('dist/server.cjs','../skills/artifacts/app/server.cjs')\"",
     "prepublishOnly": "pnpm build",
     "build:viewer": "NODE_ENV=production vite build && node -e \"const fs=require('node:fs');const to='../skills/artifacts/app/viewer';fs.rmSync(to,{recursive:true,force:true});fs.cpSync('dist/viewer',to,{recursive:true})\"",
+    "build:lib": "NODE_ENV=production vite build -c vite.lib.config.ts && tsc -p tsconfig.lib.json",
     "build:runtime": "NODE_ENV=production vite build -c vite.runtime.config.ts && node scripts/inline-runtime-css.mjs && node scripts/build-icons.mjs",
     "dev": "vite",
     "test": "vitest run",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "build:cli": "node scripts/build-cli.mjs"
+  },
+  "peerDependencies": {
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "@lobehub/ui": "^6.5.1",
+    "@stylexjs/stylex": "^0.19.1",
+    "i18next": "^26.5.6",
+    "react-i18next": "^17.1.3",
+    "motion": "^14.3.0",
+    "lucide-react": "^1.59.0"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    },
+    "react-dom": {
+      "optional": true
+    },
+    "@lobehub/ui": {
+      "optional": true
+    },
+    "@stylexjs/stylex": {
+      "optional": true
+    },
+    "i18next": {
+      "optional": true
+    },
+    "react-i18next": {
+      "optional": true
+    },
+    "motion": {
+      "optional": true
+    },
+    "lucide-react": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@base-ui/react": "^1.9.0",

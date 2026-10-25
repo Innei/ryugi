@@ -2,8 +2,8 @@ import { DropdownMenu } from '@lobehub/ui';
 import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
 import { Check, ChevronDown } from 'lucide-react';
+import type { ReactNode } from 'react';
 import type { PageSpec } from '../../shared/types';
-import { PublishMenu } from './PublishMenu';
 import { t } from '../i18n';
 
 export const PHONE_BAR_HEIGHT = 52;
@@ -68,18 +68,18 @@ export function PageSwitcher({ pages, page, onPageChange }: PageSwitcherProps) {
 
 interface Props extends PageSwitcherProps {
   title: string;
-  artifact: string | null;
+  actions?: ReactNode;
   live?: boolean;
 }
 
-export function PhoneArtboardBar({ title, pages, page, onPageChange, artifact, live }: Props) {
+export function PhoneArtboardBar({ title, pages, page, onPageChange, actions, live }: Props) {
   return (
     <header data-chrome {...stylex.props(styles.bar)}>
       <span {...stylex.props(styles.title)}>{title}</span>
       <PageSwitcher pages={pages} page={page} onPageChange={onPageChange} />
       <span {...stylex.props(styles.spacer)} />
       {live === undefined ? null : <i title={live ? t('chrome.live') : t('chrome.reconnecting')} {...stylex.props(styles.dot, live && styles.dotOn)} />}
-      {artifact ? <PublishMenu artifact={artifact} /> : null}
+      {actions}
     </header>
   );
 }

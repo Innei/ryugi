@@ -49,7 +49,7 @@ interface Props {
   offline?: boolean;
 }
 
-export default function CloudDocument({ id, state, contentBase, comments = emptyComments(), offline = false }: Props) {
+export default function SnapshotDocument({ id, state, contentBase, comments = emptyComments(), offline = false }: Props) {
   const dark = usePrefersDark();
   const [editor, setEditor] = useState<LexicalEditor | null>(null);
   const host = useMemo<DynamicHost>(() => ({ artifact: `cloud/${id}`, contentBase, channel: createChannel(), send: () => undefined }), [id, contentBase]);

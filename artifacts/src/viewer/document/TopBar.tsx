@@ -1,11 +1,11 @@
 import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
 import { Lock } from 'lucide-react';
-import { PublishMenu } from '../components/PublishMenu';
+import type { ReactNode } from 'react';
 import { RailSwitch } from '../components/RailSwitch';
 import { useCloudHeader } from '../hooks/useCloudHeader';
 import { activityLabel, type AgentActivity } from './agentActivity';
-import type { CloudLive } from './DocumentPage';
+import type { CloudLive } from './DocumentView';
 import { t } from '../i18n';
 
 const styles = stylex.create({
@@ -72,10 +72,11 @@ interface Props {
   cloud?: CloudLive;
   compact?: boolean;
   onDone?: () => void;
+  actions?: ReactNode;
   history?: { available: boolean; open: boolean; toggle: () => void; close: () => void };
 }
 
-export function TopBar({ id, title, activity, agentSection, offline, openComments, cloud, compact = false, onDone, agent = 'Agent', history }: Props) {
+export function TopBar({ id, title, activity, agentSection, offline, openComments, cloud, compact = false, onDone, actions, agent = 'Agent', history }: Props) {
   const label = activityLabel(activity, agent, agentSection);
   const framed = useCloudHeader(id, cloud ? {
     ...(title ? { title } : {}),
@@ -117,9 +118,7 @@ export function TopBar({ id, title, activity, agentSection, offline, openComment
         <button type="button" onClick={onDone} {...stylex.props(styles.done)}>
           {t('common.done')}
         </button>
-      ) : cloud || compact ? null : (
-        <PublishMenu artifact={`document/${id}`} />
-      )}
+      ) : cloud || compact ? null : actions}
     </header>
   );
 }

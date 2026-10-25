@@ -3,7 +3,7 @@ import type { SerializedEditorState } from 'lexical';
 import type { CommentsFile } from '../../shared/comments';
 import type { CanvasPayload } from '../../shared/types';
 import { HTML_SANDBOX } from '../hooks/useSandboxFrame';
-import { ArtboardView } from './ArtboardLayout';
+import { ArtboardView } from './ArtboardView';
 import { CloudMessage } from './CloudMessage';
 import { useTranslation } from '../i18n';
 

@@ -7,10 +7,10 @@ import CloudLiveDocument from '../src/viewer/document/CloudLiveDocument';
 
 vi.mock('@stylexjs/stylex', async (original) => ({ ...await original<object>(), create: (value: unknown) => value, props: () => ({}), defineConsts: (value: unknown) => value, defineVars: (value: unknown) => value }));
 vi.mock('@lobehub/ui/stylex/cssVar.stylex', () => ({ cssVar: new Proxy({}, { get: (_, key) => `var(--${String(key)})` }) }));
-vi.mock('../src/viewer/document/CloudDocument', () => ({
+vi.mock('../src/viewer/document/SnapshotDocument', () => ({
   default: (props: { offline?: boolean }) => createElement('div', { 'data-view': 'snapshot', 'data-offline': String(Boolean(props.offline)) }),
 }));
-vi.mock('../src/viewer/document/DocumentPage', () => ({
+vi.mock('../src/viewer/document/DocumentView', () => ({
   DocumentView: (props: { transport: { artifact: string }; cloud: { online: boolean; canEdit: boolean; reason: string | null } }) =>
     createElement('div', {
       'data-view': 'live',

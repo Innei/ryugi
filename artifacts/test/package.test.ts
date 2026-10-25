@@ -19,6 +19,10 @@ test('the published package holds the CLI, the server, the viewer under fixed en
       'dist/viewer/index.css',
       'dist/viewer/index.html',
       'dist/viewer/index.js',
+      'dist/viewer-lib/index.js',
+      'dist/viewer-lib/document.js',
+      'dist/viewer-lib/shims.js',
+      'dist/viewer-lib/types/src/viewer/library/index.d.ts',
       'package.json',
       'LICENSE',
       'README.md',
@@ -28,6 +32,7 @@ test('the published package holds the CLI, the server, the viewer under fixed en
     files.filter(
       (file) =>
         !file.startsWith('dist/viewer/') &&
+        !file.startsWith('dist/viewer-lib/') &&
         !file.startsWith('dist/runtime/') &&
         file !== 'dist/server.cjs' &&
         file !== 'bin/ryugi-artifacts.cjs' &&
@@ -48,6 +53,7 @@ test('the document page is a separate chunk that artboard and html pages never l
 test('the published package installs nothing else: the server bundles its dependencies', () => {
   const pkg = JSON.parse(fs.readFileSync(path.join(pkgDir, 'package.json'), 'utf8'));
   expect(pkg.dependencies ?? {}).toEqual({});
+  for (const peer of Object.keys(pkg.peerDependencies ?? {})) expect(pkg.peerDependenciesMeta?.[peer], `${peer} must stay optional for CLI installs`).toEqual({ optional: true });
 });
 
 test('the viewer is a production build even when built from the test runner', () => {

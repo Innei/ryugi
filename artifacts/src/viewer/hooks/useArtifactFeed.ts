@@ -1,17 +1,9 @@
 import { useCallback, useState } from 'react';
 import type { BoardHumanOp } from '../../shared/board-comments';
+import type { ArtifactFeed } from '../lib/feed';
 import type { ArtifactType } from '../../shared/types';
 import { boardCommentsFromMessage, type BoardCommentsState } from '../lib/board-comments';
 import { useArtifactSocket } from './useArtifactSocket';
-
-export interface ArtifactFeed {
-  live: boolean;
-  revision: number;
-  load(): Promise<{ found: boolean; data: Record<string, unknown> }>;
-  send(message: unknown): void;
-  boardComments?: BoardCommentsState | null;
-  comment?(op: BoardHumanOp): Promise<BoardCommentsState>;
-}
 
 export function useLocalFeed(type: ArtifactType, id: string): ArtifactFeed {
   const [revision, setRevision] = useState(0);

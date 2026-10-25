@@ -6,7 +6,7 @@ import { ConfigProvider } from '@lobehub/ui';
 import { motion } from 'motion/react';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { PhoneBoard } from '../src/viewer/components/PhoneBoard';
-import { ArtboardView } from '../src/viewer/layouts/ArtboardLayout';
+import { ArtboardView } from '../src/viewer/layouts/ArtboardView';
 
 vi.mock('@stylexjs/stylex', async (original) => ({ ...await original<object>(), create: (value: unknown) => value, defineConsts: (value: unknown) => value, defineVars: (value: unknown) => value, props: () => ({}) }));
 vi.mock('@lobehub/ui/stylex/cssVar.stylex', () => ({ cssVar: new Proxy({}, { get: (_, key) => `var(--${String(key)})` }) }));

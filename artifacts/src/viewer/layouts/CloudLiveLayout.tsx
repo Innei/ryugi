@@ -1,11 +1,11 @@
 import { lazy, Suspense } from 'react';
 import { useCanvasData } from '../hooks/useCanvasData';
-import type { ArtifactFeed } from '../hooks/useArtifactFeed';
+import type { ArtifactFeed } from '../lib/feed';
 import { useCloudFeed } from '../hooks/useCloudFeed';
-import { ArtboardView } from './ArtboardLayout';
+import { ArtboardView } from './ArtboardView';
 import { CloudMessage } from './CloudMessage';
 import { CloudSnapshot, type CloudArtifact } from './CloudSnapshot';
-import { HtmlView } from './HtmlLayout';
+import { HtmlView } from './HtmlView';
 import { useTranslation } from '../i18n';
 
 const CloudLiveDocument = lazy(() => import('../document/shims').then(() => import('../document/CloudLiveDocument')));
@@ -14,7 +14,7 @@ type OwnerArtifact = CloudArtifact & { liveContentBase: string };
 
 function LiveArtboard({ id, feed }: { id: string; feed: ArtifactFeed }) {
   const data = useCanvasData(feed);
-  return <ArtboardView id={id} artifact={`artboard/${id}`} {...data} menu={false} />;
+  return <ArtboardView id={id} artifact={`artboard/${id}`} {...data} />;
 }
 
 function LiveFeedArtifact({ id, artifact }: { id: string; artifact: Exclude<OwnerArtifact, { type: 'document' }> }) {

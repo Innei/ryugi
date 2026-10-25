@@ -1,5 +1,11 @@
 export type Visibility = 'private' | 'public';
 
+export interface PlanLimit {
+  kind: 'private' | 'public' | 'total' | 'publishes';
+  used: number;
+  max: number;
+}
+
 export interface Publication {
   phase: 'waiting' | 'preparing' | 'uploading' | 'publishing' | 'not-ready' | 'failed' | 'published';
   publishedAt: string | null;

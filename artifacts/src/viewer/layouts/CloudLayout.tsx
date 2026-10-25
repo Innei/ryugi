@@ -5,7 +5,7 @@ import { CloudMessage } from './CloudMessage';
 import { CloudSnapshot, type CloudArtifact } from './CloudSnapshot';
 import { i18n, useTranslation } from '../i18n';
 
-const CloudDocument = lazy(() => import('../document/shims').then(() => import('../document/CloudDocument')));
+const SnapshotDocument = lazy(() => import('../document/shims').then(() => import('../document/SnapshotDocument')));
 
 type LoadState = { status: 'loading' } | { status: 'missing' } | { status: 'failed'; message: string } | { status: 'ready'; artifact: CloudArtifact };
 
@@ -46,7 +46,7 @@ export function CloudLayout({ id }: { id: string }) {
   if (!artifact.payload || !artifact.contentBase) return <CloudMessage>{t('notFound.title')}</CloudMessage>;
   return (
     <Suspense fallback={null}>
-      <CloudDocument id={id} state={artifact.payload.state} contentBase={artifact.contentBase} comments={artifact.payload.comments} />
+      <SnapshotDocument id={id} state={artifact.payload.state} contentBase={artifact.contentBase} comments={artifact.payload.comments} />
     </Suspense>
   );
 }

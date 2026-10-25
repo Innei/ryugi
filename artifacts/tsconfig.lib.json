@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "rootDir": ".",
+    "outDir": "dist/viewer-lib/types",
+    "types": ["vite/client"]
+  },
+  "include": ["src/viewer/library/index.ts", "src/viewer/library/document.ts", "src/viewer/document/shims.ts"]
+}

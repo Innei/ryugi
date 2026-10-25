@@ -1,4 +1,5 @@
 import { useCallback, useSyncExternalStore } from 'react';
+import { usePageWindow } from '../ViewerContext';
 
 export function pageLink(url: string, page: string | null): string {
   if (page === null) return url;
@@ -7,16 +8,8 @@ export function pageLink(url: string, page: string | null): string {
   return link.href;
 }
 
-function pageWindow(view: Window): Window {
-  try {
-    const cloud = /^\/a\/([^/]+)\/view\/?$/.exec(view.location.pathname);
-    if (cloud && view.parent !== view && view.parent.location.origin === view.location.origin && view.parent.location.pathname.replace(/\/$/, '') === `/a/${cloud[1]}`) return view.parent;
-  } catch {}
-  return view;
-}
-
 export function usePageQuery() {
-  const view = pageWindow(window);
+  const view = usePageWindow();
   const subscribe = useCallback((notify: () => void) => {
     view.addEventListener('popstate', notify);
     view.addEventListener('ryugi:pagechange', notify);

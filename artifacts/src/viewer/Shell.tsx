@@ -3,7 +3,9 @@ import * as stylex from '@stylexjs/stylex';
 import { lazy, Suspense, useEffect, type ReactNode } from 'react';
 import { useLocation } from 'wouter';
 import { t } from './i18n';
+import { shellPageWindow } from './lib/cloud-shell';
 import { parseRoute } from './lib/route';
+import { ViewerProvider } from './ViewerContext';
 
 const AutoPublishBar = lazy(() => import('./components/AutoPublishPrompt').then(({ AutoPublishBar }) => ({ default: AutoPublishBar })));
 const ArtboardLayout = lazy(() => import('./layouts/ArtboardLayout').then(({ ArtboardLayout }) => ({ default: ArtboardLayout })));
@@ -58,7 +60,7 @@ function RouteView() {
   if (route.kind === 'cloud-account') return <CloudDashboard active={null}><CloudAccount /></CloudDashboard>;
   if (route.kind === 'cloud-profile') return <CloudProfile login={route.login} />;
   if (route.kind === 'cloud') return <CloudShell id={route.id} />;
-  if (route.kind === 'cloud-view') return <CloudLayout id={route.id} />;
+  if (route.kind === 'cloud-view') return <ViewerProvider pageWindow={shellPageWindow(route.id)}><CloudLayout id={route.id} /></ViewerProvider>;
   if (route.kind === 'cloud-preview') return <CloudPreviewLayout id={route.id} />;
   if (route.kind === 'unknown') return <div {...stylex.props(styles.unknown)}>No artifact lives at this address.</div>;
   const id = document.documentElement.dataset.ryugiArtifactId ?? route.id;

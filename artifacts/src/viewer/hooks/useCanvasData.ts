@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { boardCommentsFromPayload, type BoardCommentsState } from '../lib/board-comments';
 import { mergePayload, type ViewerPayload } from '../lib/payload';
-import type { ArtifactFeed } from './useArtifactFeed';
+import type { ArtifactFeed } from '../lib/feed';
 
 const EMPTY: ViewerPayload = { canvas: null, warnings: [], pending: [], layout: null, versions: {}, contentBase: '', stale: false };
 

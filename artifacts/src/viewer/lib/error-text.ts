@@ -1,5 +1,5 @@
 import { i18n } from '../i18n';
-import type { PlanLimit } from './cloud-shell';
+import type { PlanLimit } from '../../shared/cloud';
 
 export function errorText(code: unknown, fallback: string): string {
   return typeof code === 'string' && i18n.exists(`errors.${code}`) ? i18n.t(`errors.${code}`) : fallback;

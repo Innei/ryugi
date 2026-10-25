@@ -1,6 +1,6 @@
 import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
-import { useCallback, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import { useCallback, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import type { Bounds, CanvasLayout, CanvasSpec } from '../../shared/types';
 import { Canvas } from '../components/Canvas';
 import { CanvasErrorBoundary } from '../components/CanvasErrorBoundary';
@@ -47,13 +47,13 @@ interface Props {
   live?: boolean;
   loaded: boolean;
   agent?: string;
-  menu?: boolean;
+  actions?: ReactNode;
   comments?: BoardCommentsState | null;
 }
 
 const NO_THREADS: never[] = [];
 
-export function PhoneArtboard({ id, artifact, canvas, layout, warnings, pending, contentBase, versions, live, loaded, agent, comments, menu = true }: Props) {
+export function PhoneArtboard({ id, canvas, layout, warnings, pending, contentBase, versions, live, loaded, agent, comments, actions }: Props) {
   const { viewportRef, view, fit, handlers } = usePanZoom('hand');
   const [current, setCurrent] = useState<string | null>(null);
   const [snap, setSnap] = useState(SHEET_PEEK);
@@ -131,7 +131,7 @@ export function PhoneArtboard({ id, artifact, canvas, layout, warnings, pending,
 
   return (
     <div {...stylex.props(styles.root)}>
-      <PhoneArtboardBar title={canvas?.title || id} pages={canvas?.pages ?? []} page={page} onPageChange={changePage} artifact={menu ? artifact : null} live={live} />
+      <PhoneArtboardBar title={canvas?.title || id} pages={canvas?.pages ?? []} page={page} onPageChange={changePage} actions={actions} live={live} />
       <div
         ref={viewportRef}
         {...stylex.props(styles.viewport)}

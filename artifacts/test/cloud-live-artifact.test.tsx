@@ -7,14 +7,14 @@ import { CloudLiveArtifact } from '../src/viewer/layouts/CloudLiveLayout';
 
 vi.mock('@stylexjs/stylex', async (original) => ({ ...await original<object>(), create: (value: unknown) => value, props: () => ({}), defineConsts: (value: unknown) => value, defineVars: (value: unknown) => value }));
 vi.mock('@lobehub/ui/stylex/cssVar.stylex', () => ({ cssVar: new Proxy({}, { get: (_, key) => `var(--${String(key)})` }) }));
-vi.mock('../src/viewer/layouts/ArtboardLayout', () => ({
-  ArtboardView: (props: { contentBase: string; canvas: { title?: string } | null; artifact: string | null; menu?: boolean; live?: boolean }) =>
+vi.mock('../src/viewer/layouts/ArtboardView', () => ({
+  ArtboardView: (props: { contentBase: string; canvas: { title?: string } | null; artifact: string | null; actions?: unknown; live?: boolean }) =>
     createElement('div', {
       'data-view': 'artboard',
       'data-base': props.contentBase,
       'data-title': props.canvas?.title ?? 'none',
       'data-artifact': props.artifact ?? 'none',
-      'data-menu': String(props.menu ?? true),
+      'data-menu': String(props.actions !== undefined),
       'data-live': String(props.live),
     }),
 }));

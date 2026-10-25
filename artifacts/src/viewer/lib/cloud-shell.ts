@@ -1,8 +1,9 @@
-import { isVisibility, type Visibility } from '../../shared/cloud';
+import { isVisibility, type PlanLimit, type Visibility } from '../../shared/cloud';
 import { ARTIFACT_TYPES, type ArtifactType } from '../../shared/types';
 import { i18n } from '../i18n';
 import { errorText, isPlanLimit } from './error-text';
 
+export type { PlanLimit } from '../../shared/cloud';
 export { planLimitMessage } from './error-text';
 
 export const INSTALL_URL = 'https://github.com/Innei/ryugi#install';
@@ -14,13 +15,14 @@ export type ShellState =
   | { kind: 'missing'; login: string | null }
   | { kind: 'failed'; message: string };
 
-const JSON_HEADERS = { 'Content-Type': 'application/json' };
-
-export interface PlanLimit {
-  kind: 'private' | 'public' | 'total' | 'publishes';
-  used: number;
-  max: number;
+export function shellPageWindow(id: string, view: Window = window): Window | undefined {
+  try {
+    if (view.parent !== view && view.parent.location.origin === view.location.origin && view.parent.location.pathname.replace(/\/$/, '') === `/a/${id}`) return view.parent;
+  } catch {}
+  return undefined;
 }
+
+const JSON_HEADERS = { 'Content-Type': 'application/json' };
 
 export class CloudRequestError extends Error {
   constructor(readonly status: number, message: string, readonly limit?: PlanLimit, readonly upgradeUrl?: string) {

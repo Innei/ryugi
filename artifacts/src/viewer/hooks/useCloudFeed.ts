@@ -6,7 +6,7 @@ import type { RelayConnection } from '../document/relayConnection';
 import { boardCommentsFromMessage, type BoardCommentsState } from '../lib/board-comments';
 import { knownHosts } from '../lib/knownHosts';
 import { createLiveConnection } from '../lib/liveConnection';
-import type { ArtifactFeed } from './useArtifactFeed';
+import type { ArtifactFeed } from '../lib/feed';
 import { connectPublication } from '../lib/cloud-publication';
 import { reportCloudHeader, useCloudHeader } from './useCloudHeader';
 

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { HtmlPayload } from '../../shared/types';
-import type { ArtifactFeed } from './useArtifactFeed';
+import type { ArtifactFeed } from '../lib/feed';
 
 export interface HtmlViewerPayload extends HtmlPayload {
   contentBase: string;

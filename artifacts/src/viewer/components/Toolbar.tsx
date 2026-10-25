@@ -2,9 +2,9 @@ import { ActionIcon, DropdownMenu, Popover } from '@lobehub/ui';
 import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
 import { Check, ChevronDown, Hand, MessageCirclePlus, MousePointer2, PanelRight } from 'lucide-react';
+import type { ReactNode } from 'react';
 import type { PageSpec } from '../../shared/types';
 import type { Tool } from '../hooks/usePanZoom';
-import { PublishMenu } from './PublishMenu';
 import { useTranslation } from '../i18n';
 
 const styles = stylex.create({
@@ -136,7 +136,7 @@ export function TopLeftBar({ pages, page, onPageChange, tool, onToolChange, comm
 }
 
 interface TopRightBarProps {
-  artifact: string | null;
+  actions?: ReactNode;
   live?: boolean;
   warnings: string[];
   zoom: number;
@@ -150,7 +150,7 @@ interface TopRightBarProps {
   onNextVerify?: () => void;
 }
 
-export function TopRightBar({ artifact, live, warnings, zoom, onZoomIn, onZoomOut, onFit, onActualSize, inspectorOpen, onToggleInspector, verify, onNextVerify }: TopRightBarProps) {
+export function TopRightBar({ actions, live, warnings, zoom, onZoomIn, onZoomOut, onFit, onActualSize, inspectorOpen, onToggleInspector, verify, onNextVerify }: TopRightBarProps) {
   const { t } = useTranslation();
   const hint = (text: string) => <span {...stylex.props(styles.hint)}>{text}</span>;
   return (
@@ -200,10 +200,10 @@ export function TopRightBar({ artifact, live, warnings, zoom, onZoomIn, onZoomOu
           <ChevronDown size={14} {...stylex.props(styles.chevron)} />
         </button>
       </DropdownMenu>
-      {artifact ? (
+      {actions ? (
         <>
           <span {...stylex.props(styles.divider)} />
-          <PublishMenu artifact={artifact} />
+          {actions}
         </>
       ) : null}
     </div>
