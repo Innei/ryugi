@@ -1,6 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { ArtifactType } from '../../shared/types';
-import { cloudPreviewPayload, type CloudArtifactData } from '../lib/cloud-list';
 import { PreviewView, type PreviewPayload } from './PreviewView';
 
 function useJson<T>(url: string) {
@@ -23,10 +22,4 @@ function useJson<T>(url: string) {
 export function PreviewLayout({ type, id }: { type: ArtifactType; id: string }) {
   const { data, failed } = useJson<PreviewPayload>(`/api/preview/${type}/${id}`);
   return <PreviewView type={type} id={id} data={data} failed={failed} />;
-}
-
-export function CloudPreviewLayout({ id }: { id: string }) {
-  const { data, failed } = useJson<CloudArtifactData>(`/api/a/${id}`);
-  const payload = useMemo(() => (data ? cloudPreviewPayload(data) : null), [data]);
-  return <PreviewView type={data?.type ?? 'html'} id={id} data={payload} failed={failed} />;
 }

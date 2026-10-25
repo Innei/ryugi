@@ -3,23 +3,13 @@ import * as stylex from '@stylexjs/stylex';
 import { lazy, Suspense, useEffect, type ReactNode } from 'react';
 import { useLocation } from 'wouter';
 import { t } from './i18n';
-import { shellPageWindow } from './lib/cloud-shell';
 import { parseRoute } from './lib/route';
-import { ViewerProvider } from './ViewerContext';
 
 const AutoPublishBar = lazy(() => import('./components/AutoPublishPrompt').then(({ AutoPublishBar }) => ({ default: AutoPublishBar })));
 const ArtboardLayout = lazy(() => import('./layouts/ArtboardLayout').then(({ ArtboardLayout }) => ({ default: ArtboardLayout })));
 const ArtifactList = lazy(() => import('./layouts/ArtifactList').then(({ ArtifactList }) => ({ default: ArtifactList })));
-const CloudLayout = lazy(() => import('./layouts/CloudLayout').then(({ CloudLayout }) => ({ default: CloudLayout })));
-const CloudArtifactList = lazy(() => import('./layouts/CloudArtifactList').then(({ CloudArtifactList }) => ({ default: CloudArtifactList })));
-const CloudOverview = lazy(() => import('./layouts/CloudOverview').then(({ CloudOverview }) => ({ default: CloudOverview })));
-const CloudAccount = lazy(() => import('./layouts/CloudAccount').then(({ CloudAccount }) => ({ default: CloudAccount })));
-const CloudDashboard = lazy(() => import('./layouts/CloudDashboard').then(({ CloudDashboard }) => ({ default: CloudDashboard })));
-const CloudProfile = lazy(() => import('./layouts/CloudProfile').then(({ CloudProfile }) => ({ default: CloudProfile })));
-const CloudShell = lazy(() => import('./layouts/CloudShell').then(({ CloudShell }) => ({ default: CloudShell })));
 const DocumentLayout = lazy(() => import('./layouts/DocumentLayout').then(({ DocumentLayout }) => ({ default: DocumentLayout })));
 const HtmlLayout = lazy(() => import('./layouts/HtmlLayout').then(({ HtmlLayout }) => ({ default: HtmlLayout })));
-const CloudPreviewLayout = lazy(() => import('./layouts/PreviewLayout').then(({ CloudPreviewLayout }) => ({ default: CloudPreviewLayout })));
 const PreviewLayout = lazy(() => import('./layouts/PreviewLayout').then(({ PreviewLayout }) => ({ default: PreviewLayout })));
 
 const styles = stylex.create({
@@ -44,7 +34,7 @@ const local = (page: ReactNode) => (
 
 function RouteView() {
   const [path] = useLocation();
-  const route = parseRoute(path, document.documentElement.dataset.ryugiHost === 'cloud');
+  const route = parseRoute(path);
   useEffect(() => {
     if (!document.documentElement.dataset.ryugiArtifactId) return;
     const canonical = document.querySelector<HTMLLinkElement>('link[rel="canonical"]');
@@ -55,13 +45,6 @@ function RouteView() {
   }, []);
   useEffect(() => { window.scrollTo(0, 0); }, [path]);
   if (route.kind === 'list') return local(<ArtifactList />);
-  if (route.kind === 'cloud-list') return <CloudDashboard active="artifacts" wide><CloudArtifactList /></CloudDashboard>;
-  if (route.kind === 'cloud-overview') return <CloudDashboard active="overview"><CloudOverview /></CloudDashboard>;
-  if (route.kind === 'cloud-account') return <CloudDashboard active={null}><CloudAccount /></CloudDashboard>;
-  if (route.kind === 'cloud-profile') return <CloudProfile login={route.login} />;
-  if (route.kind === 'cloud') return <CloudShell id={route.id} />;
-  if (route.kind === 'cloud-view') return <ViewerProvider pageWindow={shellPageWindow(route.id)}><CloudLayout id={route.id} /></ViewerProvider>;
-  if (route.kind === 'cloud-preview') return <CloudPreviewLayout id={route.id} />;
   if (route.kind === 'unknown') return <div {...stylex.props(styles.unknown)}>No artifact lives at this address.</div>;
   const id = document.documentElement.dataset.ryugiArtifactId ?? route.id;
   if (route.kind === 'preview') return <PreviewLayout type={route.type} id={id} />;

@@ -8,5 +8,5 @@
     "outDir": "dist/viewer-lib/types",
     "types": ["vite/client"]
   },
-  "include": ["src/viewer/library/index.ts", "src/viewer/library/document.ts", "src/viewer/document/shims.ts"]
+  "include": ["src/viewer/library/index.ts", "src/viewer/library/core.ts", "src/viewer/library/document.ts", "src/viewer/document/shims.ts"]
 }

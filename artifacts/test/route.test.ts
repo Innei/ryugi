@@ -7,25 +7,13 @@ describe('parseRoute', () => {
     expect(parseRoute('/index.html')).toEqual({ kind: 'list' });
   });
 
-  test('a cloud preview path opens the thumbnail view', () => {
-    expect(parseRoute('/a/V1StGXR8_Z5jdHi6B-myT/preview')).toEqual({ kind: 'cloud-preview', id: 'V1StGXR8_Z5jdHi6B-myT' });
-  });
-
-  test('on the cloud host the root is the signed-in cloud list', () => {
-    expect(parseRoute('/', true)).toEqual({ kind: 'cloud-list' });
-    expect(parseRoute('/a/abc', true)).toEqual({ kind: 'cloud', id: 'abc' });
-  });
-
   test('an artifact link names its type and id, with or without a trailing slash', () => {
     expect(parseRoute('/html/arrow-tuner')).toEqual({ kind: 'artifact', type: 'html', id: 'arrow-tuner' });
     expect(parseRoute('/artboard/header/')).toEqual({ kind: 'artifact', type: 'artboard', id: 'header' });
   });
 
-  test('a cloud link opens the shell, and its view path opens the framed view', () => {
-    expect(parseRoute('/a/V1StGXR8_Z5jdHi6B-myT')).toEqual({ kind: 'cloud', id: 'V1StGXR8_Z5jdHi6B-myT' });
-    expect(parseRoute('/a/V1StGXR8_Z5jdHi6B-myT/view')).toEqual({ kind: 'cloud-view', id: 'V1StGXR8_Z5jdHi6B-myT' });
-    expect(parseRoute('/a/V1StGXR8_Z5jdHi6B-myT/view/')).toEqual({ kind: 'cloud-view', id: 'V1StGXR8_Z5jdHi6B-myT' });
-    for (const pathname of ['/a/', '/a/x/y', '/a/x/view/y', '/a/bad%20id', '/a/../x']) {
+  test('cloud links are not local routes', () => {
+    for (const pathname of ['/a/V1StGXR8_Z5jdHi6B-myT', '/a/V1StGXR8_Z5jdHi6B-myT/view', '/a/V1StGXR8_Z5jdHi6B-myT/preview', '/overview', '/account', '/innei']) {
       expect(parseRoute(pathname), pathname).toEqual({ kind: 'unknown' });
     }
   });

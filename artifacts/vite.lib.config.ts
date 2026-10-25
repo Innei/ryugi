@@ -2,10 +2,12 @@ import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import stylex from '@stylexjs/unplugin';
 import react from '@vitejs/plugin-react';
-import { defineConfig, type Plugin } from 'vite';
+import { defineConfig, esmExternalRequirePlugin, type Plugin } from 'vite';
 
 const root = fileURLToPath(new URL('.', import.meta.url));
-const PEERS = ['react', 'react-dom', '@lobehub/ui', '@stylexjs/stylex', 'i18next', 'react-i18next', 'motion', 'lucide-react'];
+const PEERS = ['react', 'react-dom', '@lobehub/ui', 'i18next', 'react-i18next', 'motion', 'lucide-react'];
+// StyleX inlines @lobehub/ui's cssVar constants only when it compiles their module, so those stay in the bundle.
+const PEER_IDS = PEERS.map((name) => new RegExp(`^${name.replace(/[/.]/g, '\\$&')}(?!/stylex/)(?:/|$)`));
 const LAZY_CSS = 'lazy-css:';
 const DYNAMIC_CSS = /import\((['"])([^'"]+\.css)\1\)/g;
 const FONT = /url\((["']?)data:(font\/[\w-]+);base64,([A-Za-z0-9+/=]+)\1\)/g;
@@ -38,6 +40,22 @@ function lazyCss(): Plugin {
   };
 }
 
+const STYLEX_SHEET = 'stylex.css';
+
+// StyleX appends every library rule to one existing sheet; a dedicated sheet lets each entry import the rules without another entry's CSS.
+function stylexSheet(): Plugin {
+  return {
+    name: 'viewer-lib-stylex-sheet',
+    apply: 'build',
+    generateBundle: {
+      order: 'pre',
+      handler() {
+        this.emitFile({ type: 'asset', fileName: STYLEX_SHEET, source: '' });
+      },
+    },
+  };
+}
+
 // Library mode inlines every asset and leaves CSS unreferenced; consumers need font files and per-chunk CSS imports so their own bundler can split them.
 function consumableOutput(): Plugin {
   return {
@@ -54,9 +72,12 @@ function consumableOutput(): Plugin {
           return `url(./${name})`;
         });
       }
+      const stylex = Object.keys(bundle).find((name) => /^stylex(?:-[\w-]+)?\.css$/.test(name));
       for (const chunk of Object.values(bundle)) {
         if (chunk.type !== 'chunk') continue;
-        const sheets = [...(chunk.viteMetadata?.importedCss ?? [])].map((name) => `import './${name}';\n`).join('');
+        const css = [...(chunk.viteMetadata?.importedCss ?? [])];
+        if (chunk.isEntry && chunk.name !== 'shims' && stylex && !css.includes(stylex)) css.unshift(stylex);
+        const sheets = css.map((name) => `import './${name}';\n`).join('');
         // StyleX compiles constants into literals but keeps the side-effect import of external .stylex modules.
         chunk.code = sheets + chunk.code.replace(/^import ["'][^"']+\.stylex(?:\.js)?["'];\n/gm, '');
       }
@@ -65,19 +86,19 @@ function consumableOutput(): Plugin {
 }
 
 export default defineConfig({
+  base: './',
   publicDir: false,
-  plugins: [stylex.vite({ useCSSLayers: true, unstable_moduleResolution: { type: 'commonJS', rootDir: root } }), react(), lazyCss(), consumableOutput()],
+  plugins: [stylexSheet(), stylex.vite({ useCSSLayers: true, unstable_moduleResolution: { type: 'commonJS', rootDir: root }, cssInjectionTarget: (fileName) => fileName === STYLEX_SHEET }), react(), lazyCss(), consumableOutput(), esmExternalRequirePlugin({ external: PEER_IDS })],
   resolve: { alias: { 'loro-crdt': 'loro-crdt/base64' } },
   build: {
     outDir: 'dist/viewer-lib',
     emptyOutDir: true,
     cssCodeSplit: true,
     lib: {
-      entry: { index: 'src/viewer/library/index.ts', document: 'src/viewer/library/document.ts', shims: 'src/viewer/document/shims.ts' },
+      entry: { index: 'src/viewer/library/index.ts', core: 'src/viewer/library/core.ts', document: 'src/viewer/library/document.ts', shims: 'src/viewer/document/shims.ts' },
       formats: ['es'],
     },
     rolldownOptions: {
-      external: (id) => PEERS.some((name) => id === name || id.startsWith(`${name}/`)),
       output: { entryFileNames: '[name].js', chunkFileNames: '[name]-[hash].js', assetFileNames: '[name]-[hash][extname]' },
     },
   },

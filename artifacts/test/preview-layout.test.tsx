@@ -2,7 +2,7 @@
 import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeAll, expect, test, vi } from 'vitest';
-import { CloudPreviewLayout, PreviewLayout } from '../src/viewer/layouts/PreviewLayout';
+import { PreviewLayout } from '../src/viewer/layouts/PreviewLayout';
 
 vi.mock('@stylexjs/stylex', async (original) => ({ ...await original<object>(), create: (value: unknown) => value, props: () => ({}), defineConsts: (value: unknown) => value, defineVars: (value: unknown) => value }));
 vi.mock('@lobehub/ui/stylex/cssVar.stylex', () => ({ cssVar: new Proxy({}, { get: (_, key) => `var(--${String(key)})` }) }));
@@ -35,16 +35,4 @@ async function renderWith(element: ReturnType<typeof createElement>, body: unkno
 test('the local preview fetches its artifact once', async () => {
   const { fetch } = await renderWith(createElement(PreviewLayout, { type: 'html', id: 'a' }), { title: 'A', contentBase: '/c/', warnings: ['waiting'] });
   expect(fetch).toHaveBeenCalledTimes(1);
-});
-
-test('the cloud preview fetches its cloud copy once and draws an artboard', async () => {
-  const payload = {
-    canvas: { activePage: 'p', pages: [{ id: 'p' }], boards: {}, notes: {} },
-    layout: { pages: { p: { bounds: { x: 0, y: 0, width: 100, height: 100 } } } },
-    versions: {},
-  };
-  const { fetch, host } = await renderWith(createElement(CloudPreviewLayout, { id: 'a' }), { type: 'artboard', title: 'A', contentBase: '/c/', payload });
-  expect(fetch).toHaveBeenCalledTimes(1);
-  expect(fetch.mock.calls[0]![0]).toBe('/api/a/a');
-  expect(host.querySelector('.artifact-preview-canvas')).not.toBeNull();
 });
