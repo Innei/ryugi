@@ -582,6 +582,7 @@ describe('grid view', () => {
     expect(card(host, 'Loose')!.getAttribute('aria-pressed')).toBe('true');
     expect(details(host)?.classList.contains('is-floating')).toBe(true);
     expect(details(host)?.querySelector('h2')?.textContent).toBe('Loose');
+    expect(details(host)?.querySelector('.library-thumbnail')).toBeNull();
     await press('button[aria-label="Close details"]', host);
     expect(details(host)).toBeNull();
     await act(async () => { card(host, 'Arrow')!.click(); });

@@ -1,21 +1,24 @@
 import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
-import { useEffect, type ReactNode } from 'react';
+import { lazy, Suspense, useEffect, type ReactNode } from 'react';
 import { useLocation } from 'wouter';
-import { AutoPublishBar } from './components/AutoPublishPrompt';
-import { ArtboardLayout } from './layouts/ArtboardLayout';
-import { ArtifactList } from './layouts/ArtifactList';
-import { CloudLayout } from './layouts/CloudLayout';
-import { CloudArtifactList } from './layouts/CloudArtifactList';
-import { CloudOverview } from './layouts/CloudOverview';
-import { CloudAccount } from './layouts/CloudAccount';
-import { CloudDashboard } from './layouts/CloudDashboard';
-import { CloudProfile } from './layouts/CloudProfile';
-import { CloudShell } from './layouts/CloudShell';
-import { DocumentLayout } from './layouts/DocumentLayout';
-import { HtmlLayout } from './layouts/HtmlLayout';
-import { CloudPreviewLayout, PreviewLayout } from './layouts/PreviewLayout';
+import { t } from './i18n';
 import { parseRoute } from './lib/route';
+
+const AutoPublishBar = lazy(() => import('./components/AutoPublishPrompt').then(({ AutoPublishBar }) => ({ default: AutoPublishBar })));
+const ArtboardLayout = lazy(() => import('./layouts/ArtboardLayout').then(({ ArtboardLayout }) => ({ default: ArtboardLayout })));
+const ArtifactList = lazy(() => import('./layouts/ArtifactList').then(({ ArtifactList }) => ({ default: ArtifactList })));
+const CloudLayout = lazy(() => import('./layouts/CloudLayout').then(({ CloudLayout }) => ({ default: CloudLayout })));
+const CloudArtifactList = lazy(() => import('./layouts/CloudArtifactList').then(({ CloudArtifactList }) => ({ default: CloudArtifactList })));
+const CloudOverview = lazy(() => import('./layouts/CloudOverview').then(({ CloudOverview }) => ({ default: CloudOverview })));
+const CloudAccount = lazy(() => import('./layouts/CloudAccount').then(({ CloudAccount }) => ({ default: CloudAccount })));
+const CloudDashboard = lazy(() => import('./layouts/CloudDashboard').then(({ CloudDashboard }) => ({ default: CloudDashboard })));
+const CloudProfile = lazy(() => import('./layouts/CloudProfile').then(({ CloudProfile }) => ({ default: CloudProfile })));
+const CloudShell = lazy(() => import('./layouts/CloudShell').then(({ CloudShell }) => ({ default: CloudShell })));
+const DocumentLayout = lazy(() => import('./layouts/DocumentLayout').then(({ DocumentLayout }) => ({ default: DocumentLayout })));
+const HtmlLayout = lazy(() => import('./layouts/HtmlLayout').then(({ HtmlLayout }) => ({ default: HtmlLayout })));
+const CloudPreviewLayout = lazy(() => import('./layouts/PreviewLayout').then(({ CloudPreviewLayout }) => ({ default: CloudPreviewLayout })));
+const PreviewLayout = lazy(() => import('./layouts/PreviewLayout').then(({ PreviewLayout }) => ({ default: PreviewLayout })));
 
 const styles = stylex.create({
   unknown: {
@@ -37,7 +40,7 @@ const local = (page: ReactNode) => (
   </>
 );
 
-export function Shell() {
+function RouteView() {
   const [path] = useLocation();
   const route = parseRoute(path, document.documentElement.dataset.ryugiHost === 'cloud');
   useEffect(() => {
@@ -63,4 +66,8 @@ export function Shell() {
   if (route.type === 'html') return local(<HtmlLayout id={id} />);
   if (route.type === 'document') return local(<DocumentLayout id={id} />);
   return local(<ArtboardLayout id={id} />);
+}
+
+export function Shell() {
+  return <Suspense fallback={<div {...stylex.props(styles.unknown)} role="status">{t('common.loading')}</div>}><RouteView /></Suspense>;
 }

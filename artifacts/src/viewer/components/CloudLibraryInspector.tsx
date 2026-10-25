@@ -51,9 +51,10 @@ function ProfileListing({ artifact, profilePath, onChange }: { artifact: CloudLi
   );
 }
 
-export function CloudLibraryInspector({ artifact, busy, storageLimit = null, profilePath = null, onProfile, onVisibility, onDelete }: {
+export function CloudLibraryInspector({ artifact, busy, preview = true, storageLimit = null, profilePath = null, onProfile, onVisibility, onDelete }: {
   artifact: CloudListItem;
   busy: boolean;
+  preview?: boolean;
   storageLimit?: number | null;
   profilePath?: string | null;
   onProfile?: (shown: boolean) => void;
@@ -77,9 +78,9 @@ export function CloudLibraryInspector({ artifact, busy, storageLimit = null, pro
         </div>
         <a className="cloud-button" href={`/a/${artifact.id}`}>{t('common.open')}<ArrowUpRight size={13} aria-hidden="true" /></a>
       </div>
-      <div className="cloud-preview">
+      {preview && <div className="cloud-preview">
         <ArtifactThumbnail title={title} src={`/a/${artifact.id}/preview?v=${version}`} version={version} />
-      </div>
+      </div>}
       {share}
       {isPublic && profilePath && onProfile && <ProfileListing artifact={artifact} profilePath={profilePath} onChange={onProfile} />}
       <dl className="cloud-details">

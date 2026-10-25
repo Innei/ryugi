@@ -30,6 +30,7 @@ const respond = (url: string) => {
 };
 
 beforeAll(() => {
+  (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
   MotionGlobalConfig.skipAnimations = true;
 });
 
@@ -54,8 +55,16 @@ async function mount() {
   document.body.append(host);
   root = createRoot(host);
   await act(async () => root!.render(createElement(ConfigProvider, { motion, enableCustomFonts: false, children: createElement(Shell) })));
-  await act(async () => {});
+  await ready(host);
   return host;
+}
+
+async function ready(host: HTMLElement) {
+  const selector = location.pathname === '/' ? '.cloud-library' : location.pathname === '/overview' ? '.cloud-overview-main' : location.pathname === '/account' ? '.account-main' : '.profile-main';
+  await vi.waitFor(async () => {
+    await act(async () => {});
+    expect(host.querySelector(selector), `page ${location.pathname} should finish loading`).not.toBeNull();
+  });
 }
 
 async function follow(host: HTMLElement, selector: string) {
@@ -63,7 +72,7 @@ async function follow(host: HTMLElement, selector: string) {
   expect(link, selector).not.toBeNull();
   const event = new MouseEvent('click', { bubbles: true, cancelable: true, button: 0 });
   await act(async () => { link!.dispatchEvent(event); });
-  await act(async () => {});
+  if (event.defaultPrevented) await ready(host);
   return event;
 }
 
@@ -79,7 +88,7 @@ describe('cloud dashboard navigation', () => {
       history.back();
       await new Promise((resolve) => setTimeout(resolve, 20));
     });
-    await act(async () => {});
+    await ready(host);
     expect(location.pathname).toBe('/');
     expect(host.querySelector('a[aria-current="page"]')?.textContent).toBe('Artifacts');
   });

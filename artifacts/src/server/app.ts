@@ -727,7 +727,8 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
       const csp = preview ? VIEWER_CSP.replace("frame-ancestors 'none'", "frame-ancestors 'self'") : VIEWER_CSP;
       const headers: Record<string, string> = { 'Content-Type': 'text/html; charset=utf-8' };
       if (key !== null) headers['Set-Cookie'] = `${cookieName}=${token}; HttpOnly; SameSite=Strict; Path=/`;
-      void fs.promises.readFile(path.join(viewerDir, 'index.html'), 'utf8')
+      const entry = preview && fs.existsSync(path.join(viewerDir, 'preview.html')) ? 'preview.html' : 'index.html';
+      void fs.promises.readFile(path.join(viewerDir, entry), 'utf8')
         .then((template) => {
           const html = viewerPage(template, { title, description, locale, url: canonical, icon: ref ? typeFaviconHref(ref.type) : undefined, artifactId: resolved?.id });
           send(res, 200, html, { ...headers, 'Content-Security-Policy': allowInlineScripts(csp, html) });

@@ -210,7 +210,7 @@ export function CloudArtifactList() {
                 {floating && <button type="button" className="cloud-icon-button cloud-inspector-close" aria-label={t('cloudLibrary.closeDetails')} title={t('cloudLibrary.closeDetails')} onClick={() => setInspected(null)}><X size={15} aria-hidden="true" /></button>}
                 {selecting && !grid
                   ? <CloudSelectionSummary items={picked} />
-                  : current && <CloudLibraryInspector key={current.id} artifact={current} busy={busy} storageLimit={plan?.limits.storage?.bytes ?? null}
+                  : current && <CloudLibraryInspector key={current.id} artifact={current} busy={busy} preview={!grid} storageLimit={plan?.limits.storage?.bytes ?? null}
                     profilePath={loaded.state === 'ready' ? loaded.profilePath : null} onProfile={(onProfile) => patch(current.id, { onProfile })}
                     onVisibility={(visibility) => { setInspected(current.id); changeVisibility(current.id, visibility); }}
                     onDelete={() => setPending([current])} />}

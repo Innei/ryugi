@@ -1,13 +1,14 @@
+import './preview.css';
 import type { SerializedEditorState } from 'lexical';
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import type { ArtifactType, CanvasPayload } from '../../shared/types';
-import { Canvas } from '../components/Canvas';
 import { CanvasErrorBoundary } from '../components/CanvasErrorBoundary';
 import { useTranslation } from '../i18n';
 import { cloudPreviewPayload, type CloudArtifactData } from '../lib/cloud-list';
 import { fitView } from '../lib/view';
 
 const DocumentPreview = lazy(() => import('../document/shims').then(() => import('../document/CloudDocument')));
+const CanvasPreview = lazy(() => import('../components/Canvas').then(({ Canvas }) => ({ default: Canvas })));
 const noRef = () => () => {};
 const noLoad = () => {};
 const none = new Set<string>();
@@ -78,19 +79,21 @@ function PreviewView({ type, id, data, failed }: { type: ArtifactType; id: strin
   return (
     <div className="artifact-preview-canvas">
       <CanvasErrorBoundary resetKey={canvas}>
-        <Canvas
-          view={fitView(bounds, viewport, { top: 24, right: 24, bottom: 24, left: 24 })}
-          boards={Object.entries(canvas.boards).filter(([, board]) => board.page === page)}
-          notes={Object.entries(canvas.notes ?? {}).filter(([, note]) => note.page === page)}
-          contentBase={data.contentBase}
-          versions={data.versions ?? {}}
-          pending={new Set(data.pending)}
-          playing={none}
-          replays={{}}
-          inspecting={false}
-          frameRef={noRef}
-          frameLoaded={noLoad}
-        />
+        <Suspense fallback={message(t('preview.loading'))}>
+          <CanvasPreview
+            view={fitView(bounds, viewport, { top: 24, right: 24, bottom: 24, left: 24 })}
+            boards={Object.entries(canvas.boards).filter(([, board]) => board.page === page)}
+            notes={Object.entries(canvas.notes ?? {}).filter(([, note]) => note.page === page)}
+            contentBase={data.contentBase}
+            versions={data.versions ?? {}}
+            pending={new Set(data.pending)}
+            playing={none}
+            replays={{}}
+            inspecting={false}
+            frameRef={noRef}
+            frameLoaded={noLoad}
+          />
+        </Suspense>
       </CanvasErrorBoundary>
     </div>
   );

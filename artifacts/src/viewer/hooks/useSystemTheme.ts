@@ -1,4 +1,4 @@
-import { setLobeTheme } from '@lobehub/ui';
+import { setLobeTheme } from '@lobehub/ui/es/styles/theme/scope';
 import { useEffect } from 'react';
 
 export function useSystemTheme() {

@@ -299,6 +299,16 @@ describe('artifact list API', () => {
 });
 
 describe('read-only previews', () => {
+  test('preview pages load the lightweight entry while normal pages keep the application entry', async () => {
+    const { server, viewer } = await start();
+    fs.writeFileSync(path.join(viewer, 'preview.html'), '<!doctype html><head><script type="module" src="/preview.js"></script></head><body><div id="root"></div></body>');
+    const preview = await get(`${base(server)}/preview/html/tuner?key=${server.token}`);
+    expect(preview.body).toContain('src="/preview.js"');
+    expect(preview.headers['content-security-policy']).toContain("frame-ancestors 'self'");
+    const home = await get(`${base(server)}/?key=${server.token}`);
+    expect(home.body).not.toContain('src="/preview.js"');
+  });
+
   test('preview pages require the key and allow embedding only by this viewer', async () => {
     const { server } = await start();
     expect((await get(`${base(server)}/preview/html/tuner`)).status).toBe(403);

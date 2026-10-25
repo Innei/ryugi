@@ -7,6 +7,8 @@ const root = fileURLToPath(new URL('.', import.meta.url));
 
 export default defineConfig({
   base: '/',
+  // Keep lazy preloads beside their chunk when Cloud serves a versioned directory.
+  experimental: { renderBuiltUrl: (_filename, { hostType }) => ({ relative: hostType !== 'html' }) },
   plugins: [
     stylex.vite({
       useCSSLayers: true,
@@ -20,8 +22,9 @@ export default defineConfig({
     emptyOutDir: true,
     assetsDir: '',
     rolldownOptions: {
+      input: { index: fileURLToPath(new URL('index.html', import.meta.url)), preview: fileURLToPath(new URL('preview.html', import.meta.url)) },
       output: {
-        entryFileNames: 'index.js',
+        entryFileNames: '[name].js',
         chunkFileNames: '[name]-[hash].js',
         // StyleX emits an intermediate index.css (with originalFileNames) that is later merged away; naming it too makes the survivor index2.css.
         assetFileNames: (asset) => (asset.names[0]?.endsWith('.css') && asset.originalFileNames.length === 0 ? 'index.css' : '[name]-[hash][extname]'),
