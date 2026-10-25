@@ -3,7 +3,7 @@ import '@lobehub/ui/theme.css';
 import '@lobehub/ui/style.css';
 import '../shared/fonts.css';
 
-import { ConfigProvider, ModalHost } from '@lobehub/ui';
+import { ConfigProvider, ContextMenuHost, ModalHost, ToastHost } from '@lobehub/ui';
 import { motion } from 'motion/react';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -20,6 +20,8 @@ function Root() {
     <ConfigProvider motion={motion} enableCustomFonts={false}>
       <Shell />
       <ModalHost />
+      <ToastHost />
+      <ContextMenuHost />
     </ConfigProvider>
   );
 }

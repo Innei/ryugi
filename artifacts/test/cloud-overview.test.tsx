@@ -4,6 +4,7 @@ import { ConfigProvider } from '@lobehub/ui';
 import { motion } from 'motion/react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, describe, expect, test, vi } from 'vitest';
+import { CloudDashboard } from '../src/viewer/layouts/CloudDashboard';
 import { CloudOverview } from '../src/viewer/layouts/CloudOverview';
 import { parseRoute } from '../src/viewer/lib/route';
 
@@ -34,7 +35,7 @@ async function render(body: unknown, status = 200) {
   const host = document.createElement('div');
   document.body.append(host);
   root = createRoot(host);
-  await act(async () => root!.render(createElement(ConfigProvider, { motion, enableCustomFonts: false, children: createElement(CloudOverview) })));
+  await act(async () => root!.render(createElement(ConfigProvider, { motion, enableCustomFonts: false, children: createElement(CloudDashboard, { active: 'overview', children: createElement(CloudOverview) }) })));
   await act(async () => {});
   return host;
 }

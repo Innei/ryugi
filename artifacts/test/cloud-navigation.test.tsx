@@ -84,6 +84,20 @@ describe('cloud dashboard navigation', () => {
     expect(host.querySelector('a[aria-current="page"]')?.textContent).toBe('Artifacts');
   });
 
+  test('the header stays mounted across the dashboard pages and reads the plan once', async () => {
+    const host = await mount();
+    const header = host.querySelector('header.cloud-topbar');
+    expect(header).not.toBeNull();
+    await follow(host, 'a[href="/overview"]');
+    expect(host.querySelector('header.cloud-topbar')).toBe(header);
+    await follow(host, 'a[href="/account"]');
+    expect(host.querySelector('header.cloud-topbar')).toBe(header);
+    await follow(host, 'a[href="/"]');
+    expect(host.querySelector('header.cloud-topbar')).toBe(header);
+    const billing = vi.mocked(fetch).mock.calls.filter(([input]) => String(input) === '/api/billing');
+    expect(billing).toHaveLength(1);
+  });
+
   test('the account and profile pages are reached in place too', async () => {
     const host = await mount();
     expect((await follow(host, 'a[href="/account"]')).defaultPrevented).toBe(true);

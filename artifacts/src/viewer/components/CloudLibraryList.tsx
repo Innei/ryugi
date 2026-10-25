@@ -1,9 +1,11 @@
 import { Checkbox } from '@lobehub/ui';
 import { LayoutGrid, List, SquareCheckBig } from 'lucide-react';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type MouseEvent, type ReactNode } from 'react';
 import type { ArtifactType } from '../../shared/types';
 import { relativeUpdatedAt } from '../lib/artifact-list';
 import type { CloudFilter, CloudListItem } from '../lib/cloud-list';
+import { artifactMenuKey } from '../lib/cloud-list-menus';
+import { useContextMenuTarget } from '../lib/context-menu';
 import { CloudLibraryGrid } from './CloudLibraryGrid';
 import { TypeIcon } from './TypeIcon';
 import { i18n, useTranslation } from '../i18n';
@@ -49,9 +51,12 @@ interface Props {
   onSelect: (ids: string[], checked: boolean) => void;
   onStartSelecting: () => void;
   onClearFilter: () => void;
+  onMenu: (event: MouseEvent, artifact: CloudListItem) => void;
+  bar?: ReactNode;
 }
 
-export function CloudLibraryList({ items, view, inspected, onInspect, selecting, selected, busy, onSelect, onStartSelecting, onClearFilter }: Props) {
+export function CloudLibraryList({ items, view, inspected, onInspect, selecting, selected, busy, onSelect, onStartSelecting, onClearFilter, onMenu, bar }: Props) {
+  const menuTarget = useContextMenuTarget();
   const { t } = useTranslation();
   const ids = items.map((item) => item.id);
   const all = ids.length > 0 && ids.every((id) => selected.has(id));
@@ -64,7 +69,7 @@ export function CloudLibraryList({ items, view, inspected, onInspect, selecting,
     section.current?.querySelector<HTMLElement>(selecting ? `[aria-label="${i18n.t('cloudLibrary.selectAll')}"]` : `button[aria-label="${i18n.t('cloudLibrary.selectMany')}"]`)?.focus();
   }, [selecting]);
   return (
-    <section ref={section} className="cloud-list" aria-label={t('cloudLibrary.mine')}>
+    <section ref={section} className={selecting ? 'cloud-list is-selecting' : 'cloud-list'} aria-label={t('cloudLibrary.mine')}>
       <div className={view === 'grid' ? 'cloud-columns is-grid' : 'cloud-columns'}>
         <span className="cloud-check-cell">
           {selecting
@@ -75,7 +80,7 @@ export function CloudLibraryList({ items, view, inspected, onInspect, selecting,
         {view === 'grid' && selecting && <span>{t('cloudLibrary.selectAll')}</span>}
       </div>
       {view === 'grid'
-        ? <CloudLibraryGrid items={items} inspected={inspected} onInspect={onInspect} selecting={selecting} selected={selected} busy={busy} onSelect={onSelect} />
+        ? <CloudLibraryGrid items={items} inspected={inspected} onInspect={onInspect} selecting={selecting} selected={selected} busy={busy} onSelect={onSelect} onMenu={onMenu} menuTarget={menuTarget} />
         : <ul className="cloud-rows">
         {items.map((artifact) => {
           const title = artifact.title ?? artifact.id;
@@ -83,12 +88,13 @@ export function CloudLibraryList({ items, view, inspected, onInspect, selecting,
           const isPublic = artifact.visibility === 'public';
           const picked = selected.has(artifact.id);
           return (
-            <li key={artifact.id} className={picked ? 'cloud-row-item is-picked' : 'cloud-row-item'}>
+            <li key={artifact.id} className={`cloud-row-item${picked ? ' is-picked' : ''}${menuTarget === artifactMenuKey(artifact.id) ? ' is-menu-open' : ''}`}>
               <button type="button" className="cloud-row" disabled={selecting && busy}
                 aria-label={selecting ? t('cloudLibrary.toggle', { title }) : undefined}
                 aria-pressed={selecting ? picked : artifact.id === inspected}
                 onClick={() => selecting ? onSelect([artifact.id], !picked) : onInspect(artifact.id)}
-                onDoubleClick={() => { if (!selecting && !busy) location.assign(`/a/${artifact.id}`); }}>
+                onDoubleClick={() => { if (!selecting && !busy) location.assign(`/a/${artifact.id}`); }}
+                onContextMenu={(event) => onMenu(event, artifact)}>
                 <span className="cloud-row-name">
                   <span className="cloud-type-chip"><TypeIcon type={artifact.type} size={13} /></span>
                   <span className="cloud-row-text">
@@ -110,6 +116,7 @@ export function CloudLibraryList({ items, view, inspected, onInspect, selecting,
           <button type="button" className="cloud-button" onClick={onClearFilter}>{t('common.clearFilter')}</button>
         </div>
       )}
+      {bar}
     </section>
   );
 }

@@ -5,8 +5,6 @@ import { Button } from '@lobehub/ui';
 import { useEffect, useState } from 'react';
 import { Link } from 'wouter';
 import type { ArtifactType } from '../../shared/types';
-import { usePlanSummary } from '../components/CloudPlanUsage';
-import { CloudTopBar } from '../components/CloudTopBar';
 import { DayBars } from '../components/DayBars';
 import { RyugiMark } from '../components/RyugiMark';
 import { TypeIcon } from '../components/TypeIcon';
@@ -63,7 +61,6 @@ export function CloudOverview() {
   const { t } = useTranslation();
   const [loaded, setLoaded] = useState<Loaded>({ state: 'loading' });
   const [revision, setRevision] = useState(0);
-  const summary = usePlanSummary(loaded.state === 'ready' ? 'ready' : null);
 
   useEffect(() => {
     let cancelled = false;
@@ -84,8 +81,7 @@ export function CloudOverview() {
   const todayTotal = overview?.today.reduce((sum, item) => sum + item.views, 0) ?? 0;
   const activeDays = overview?.publishes.days.filter((day) => day.publishes > 0).length ?? 0;
   return (
-    <div className="artifact-library cloud-library cloud-overview">
-      <CloudTopBar active="overview" login={overview?.login ?? null} summary={summary} />
+    <>
       {loaded.state === 'loading' && <p className="library-empty" role="status">{t('common.loading')}</p>}
       {loaded.state === 'error' && <div className="library-empty" role="alert"><p>{t('cloudOverview.loadFailed')}</p><Button size="small" onClick={() => setRevision((value) => value + 1)}>{t('cloudLibrary.reload')}</Button></div>}
       {loaded.state === 'signed-out' && (
@@ -126,6 +122,6 @@ export function CloudOverview() {
           <footer className="cloud-overview-foot"><span>{t('cloudOverview.quotaNote')}</span><a href="/billing">{t('cloudOverview.planAndUsage')}</a></footer>
         </main>
       )}
-    </div>
+    </>
   );
 }

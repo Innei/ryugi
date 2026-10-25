@@ -1,6 +1,9 @@
 import { Folder, Globe, LayoutGrid, Lock, type LucideIcon } from 'lucide-react';
+import type { MouseEvent } from 'react';
 import type { Visibility } from '../../shared/cloud';
 import { projectCounts, type CloudFilter, type CloudListItem } from '../lib/cloud-list';
+import { projectMenuKey } from '../lib/cloud-list-menus';
+import { useContextMenuTarget } from '../lib/context-menu';
 import { useTranslation } from '../i18n';
 
 const VISIBILITY: { value: Visibility | undefined; label: string; Icon: LucideIcon; tone?: string }[] = [
@@ -9,23 +12,25 @@ const VISIBILITY: { value: Visibility | undefined; label: string; Icon: LucideIc
   { value: 'private', label: 'visibility.onlyMe', Icon: Lock },
 ];
 
-function SideButton({ pressed, label, count, Icon, tone, onClick }: { pressed: boolean; label: string; count: number; Icon: LucideIcon; tone?: string; onClick: () => void }) {
+function SideButton({ pressed, label, count, Icon, tone, menuOpen = false, onClick, onContextMenu }: { pressed: boolean; label: string; count: number; Icon: LucideIcon; tone?: string; menuOpen?: boolean; onClick: () => void; onContextMenu?: (event: MouseEvent) => void }) {
   return (
-    <button type="button" className="cloud-side-button" aria-pressed={pressed} onClick={onClick}>
+    <button type="button" className={menuOpen ? 'cloud-side-button is-menu-open' : 'cloud-side-button'} aria-pressed={pressed} onClick={onClick} onContextMenu={onContextMenu}>
       <Icon size={14} aria-hidden="true" className={tone} /><span className="cloud-side-label">{label}</span><span className="cloud-count">{count}</span>
     </button>
   );
 }
 
-export function CloudLibrarySidebar({ items, filter, onFilter }: { items: CloudListItem[]; filter: CloudFilter; onFilter: (next: CloudFilter) => void }) {
+export function CloudLibrarySidebar({ items, filter, onFilter, onProjectMenu }: { items: CloudListItem[]; filter: CloudFilter; onFilter: (next: CloudFilter) => void; onProjectMenu: (event: MouseEvent, project: string | null) => void }) {
   const { t } = useTranslation();
+  const menuTarget = useContextMenuTarget();
   return (
     <aside className="cloud-side" aria-label={t('cloudLibrary.filters')}>
       <div className="cloud-side-group">
         <p className="cloud-label">{t('common.project')}</p>
         <SideButton pressed={filter.project === undefined} label={t('type.all')} count={items.length} Icon={Folder} onClick={() => onFilter({ ...filter, project: undefined })} />
         {projectCounts(items).map(({ project, count }) => (
-          <SideButton key={project ?? ''} pressed={filter.project === project} label={project ?? t('common.other')} count={count} Icon={Folder} onClick={() => onFilter({ ...filter, project })} />
+          <SideButton key={project ?? ''} pressed={filter.project === project} label={project ?? t('common.other')} count={count} Icon={Folder} menuOpen={menuTarget === projectMenuKey(project)}
+            onClick={() => onFilter({ ...filter, project })} onContextMenu={(event) => onProjectMenu(event, project)} />
         ))}
       </div>
       <div className="cloud-side-group">

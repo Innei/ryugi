@@ -6,8 +6,6 @@ import { Button, Modal } from '@lobehub/ui';
 import { Globe, Terminal } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link } from 'wouter';
-import { usePlanSummary } from '../components/CloudPlanUsage';
-import { CloudTopBar } from '../components/CloudTopBar';
 import { RyugiMark } from '../components/RyugiMark';
 import { deleteAccount, signOutSession } from '../lib/cloud-shell';
 import { i18n, useTranslation } from '../i18n';
@@ -43,7 +41,6 @@ export function CloudAccount() {
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const summary = usePlanSummary(loaded.state === 'ready' ? 'ready' : null);
 
   useEffect(() => {
     let cancelled = false;
@@ -93,8 +90,7 @@ export function CloudAccount() {
   const matches = !!account && typed.trim().toLowerCase() === account.login.toLowerCase();
 
   return (
-    <div className="artifact-library cloud-library cloud-overview">
-      <CloudTopBar active={null} login={account?.login ?? null} summary={summary} />
+    <>
       {loaded.state === 'loading' && <p className="library-empty" role="status">{t('common.loading')}</p>}
       {loaded.state === 'error' && <p className="library-empty" role="alert">{t('cloudAccount.loadFailed')}</p>}
       {loaded.state === 'signed-out' && <div className="library-empty"><RyugiMark size={28} /><h2>Ryugi Cloud</h2><a href="/auth/login?return=/account">{t('common.signInGithub')}</a></div>}
@@ -152,6 +148,6 @@ export function CloudAccount() {
         </label>
         {error && <p className="cloud-profile-error" role="alert">{error}</p>}
       </Modal>
-    </div>
+    </>
   );
 }

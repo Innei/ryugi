@@ -1,7 +1,9 @@
 import { Checkbox } from '@lobehub/ui';
 import { Globe, Lock } from 'lucide-react';
+import type { MouseEvent } from 'react';
 import { relativeUpdatedAt } from '../lib/artifact-list';
 import type { CloudListItem } from '../lib/cloud-list';
+import { artifactMenuKey } from '../lib/cloud-list-menus';
 import { ArtifactThumbnail } from './ArtifactThumbnail';
 import { TypeIcon } from './TypeIcon';
 import { i18n, useTranslation } from '../i18n';
@@ -14,9 +16,11 @@ interface Props {
   selected: Set<string>;
   busy: boolean;
   onSelect: (ids: string[], checked: boolean) => void;
+  onMenu: (event: MouseEvent, artifact: CloudListItem) => void;
+  menuTarget: string | null;
 }
 
-export function CloudLibraryGrid({ items, inspected, onInspect, selecting, selected, busy, onSelect }: Props) {
+export function CloudLibraryGrid({ items, inspected, onInspect, selecting, selected, busy, onSelect, onMenu, menuTarget }: Props) {
   const { t } = useTranslation();
   const now = Date.now();
   return (
@@ -27,12 +31,13 @@ export function CloudLibraryGrid({ items, inspected, onInspect, selecting, selec
         const isPublic = artifact.visibility === 'public';
         const picked = selected.has(artifact.id);
         return (
-          <li key={artifact.id} className={picked ? 'cloud-card-item is-picked' : 'cloud-card-item'}>
+          <li key={artifact.id} className={`cloud-card-item${picked ? ' is-picked' : ''}${menuTarget === artifactMenuKey(artifact.id) ? ' is-menu-open' : ''}`}>
             <button type="button" className="cloud-card" disabled={selecting && busy}
               aria-label={selecting ? t('cloudLibrary.toggle', { title }) : undefined}
               aria-pressed={selecting ? picked : artifact.id === inspected}
               onClick={() => selecting ? onSelect([artifact.id], !picked) : onInspect(artifact.id)}
-              onDoubleClick={() => { if (!selecting && !busy) location.assign(`/a/${artifact.id}`); }}>
+              onDoubleClick={() => { if (!selecting && !busy) location.assign(`/a/${artifact.id}`); }}
+              onContextMenu={(event) => onMenu(event, artifact)}>
               <ArtifactThumbnail title={title} src={`/a/${artifact.id}/preview?v=${version}`} version={version} />
               <span className="cloud-card-info">
                 <span className="cloud-card-name"><span className="cloud-card-title">{title}</span><TypeIcon type={artifact.type} size={13} /></span>

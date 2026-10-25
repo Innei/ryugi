@@ -1,12 +1,13 @@
 // @vitest-environment happy-dom
 import { act, createElement } from 'react';
-import { ConfigProvider, ModalHost } from '@lobehub/ui';
+import { ConfigProvider, ModalHost, toast, ToastHost } from '@lobehub/ui';
 import { motion, MotionGlobalConfig } from 'motion/react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeAll, describe, expect, test, vi } from 'vitest';
 import { cloudPreviewPayload, filterCloudItems, filterFromSearch, filterSearch, projectCounts, publishedNewestFirst, type CloudArtifactData } from '../src/viewer/lib/cloud-list';
 import { groupByProject, type CloudListItem } from '../src/viewer/lib/cloud-list';
 import { CloudArtifactList } from '../src/viewer/layouts/CloudArtifactList';
+import { CloudDashboard } from '../src/viewer/layouts/CloudDashboard';
 import { CloudHeader } from '../src/viewer/components/CloudBanner';
 import { TYPE_GLYPHS } from '../src/shared/type-icons';
 
@@ -92,6 +93,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
   document.body.innerHTML = '';
   history.replaceState(null, '', startAddress);
+  act(() => { toast.dismiss(); });
 });
 
 async function render(response: { status: number; body: unknown }, fetchImpl?: typeof fetch) {
@@ -99,7 +101,7 @@ async function render(response: { status: number; body: unknown }, fetchImpl?: t
   const host = document.createElement('div');
   document.body.append(host);
   root = createRoot(host);
-  await act(async () => root!.render(createElement(ConfigProvider, { motion, enableCustomFonts: false, children: createElement(CloudArtifactList) })));
+  await act(async () => root!.render(createElement(ConfigProvider, { motion, enableCustomFonts: false, children: [createElement(CloudDashboard, { key: 'page', active: 'artifacts', wide: true, children: createElement(CloudArtifactList) }), createElement(ToastHost, { key: 'toast' })] })));
   await act(async () => {});
   return host;
 }
@@ -163,7 +165,7 @@ describe('cloud library management', () => {
     expect(requests).toEqual(['/api/a/a', '/api/a/b']);
     expect(rows(host)).toHaveLength(0);
     expect(host.textContent).toContain('Nothing published yet');
-    expect(host.querySelector('[role="status"]')?.textContent).toContain('Deleted 2 items');
+    expect(document.body.textContent).toContain('Deleted 2 items');
   });
 
   test('select all picks only what the current filter shows', async () => {
@@ -192,7 +194,7 @@ describe('cloud library management', () => {
     expect(rows(host)).toHaveLength(1);
     expect(row(host, 'Notes')).toBeDefined();
     expect(document.querySelector('[role="checkbox"][aria-label="Select Notes"]')?.getAttribute('aria-checked')).toBe('true');
-    expect(host.querySelector('[role="alert"]')?.textContent).toContain('1');
+    expect(document.body.textContent).toContain('Deleted 1; 1 not deleted');
     fail = false;
     await click('Retry delete');
     expect(requests).toEqual(['/api/a/a', '/api/a/b', '/api/a/b']);
@@ -212,7 +214,7 @@ describe('cloud library management', () => {
     await click('Delete 2 items');
     await click('Delete 2 items', document.querySelector('[role="dialog"]')!);
     expect(rows(host)).toHaveLength(2);
-    expect(host.querySelector('a[href="/auth/login?return=/"]')).not.toBeNull();
+    expect(Array.from(document.querySelectorAll('button')).some((node) => node.textContent === 'Sign in again')).toBe(true);
     expect(requests).toEqual(['/api/a/a']);
   });
 
@@ -228,7 +230,7 @@ describe('cloud library management', () => {
     expect(requests).toEqual(['/api/a/a']);
     expect(rows(host)).toHaveLength(1);
     expect(inspector(host).querySelector('h2')?.textContent).toBe('Notes');
-    expect(Array.from(host.querySelectorAll('[role="status"]')).some((status) => status.textContent?.includes('Deleted 1 item'))).toBe(true);
+    expect(document.body.textContent).toContain('Deleted 1 item');
   });
 
   test('sharing failures preserve visibility and a later success updates the row', async () => {
