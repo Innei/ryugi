@@ -34,6 +34,10 @@ A real integration loads the `using-ryugi` bootstrap at session start. The accep
 
 A working integration auto-triggers `brainstorming` before any code is written. Copying skill files by hand, runtime shims, and per-session opt-ins are not integrations.
 
+## Licensing
+
+Skills, harness integrations and docs are MIT (`LICENSE`). The artifacts application — `artifacts/` and its build outputs, published to npm as `ryugi-artifacts` — is AGPL-3.0-only (`artifacts/LICENSE`). Keep the split: new files under `artifacts/` are AGPL-3.0-only, everything else MIT, and a dependency added to `artifacts/` must be AGPL-compatible.
+
 ## Tests
 
 - Plugin-infrastructure tests live in `tests/`; run the relevant `run-*.sh` or test script for what you changed.

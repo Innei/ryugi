@@ -84,4 +84,10 @@ Updates and caveats: [docs/install.md](docs/install.md).
 
 ## Credits
 
-Fork of [Superpowers](https://github.com/obra/superpowers) v7.0.0 by Jesse Vincent and [Prime Radiant](https://primeradiant.com) ([UPSTREAM.md](UPSTREAM.md)). MIT — see [LICENSE](LICENSE). [Issues](https://github.com/Innei/ryugi/issues) and PRs welcome; [AGENTS.md](AGENTS.md) has the rules.
+Fork of [Superpowers](https://github.com/obra/superpowers) v7.0.0 by Jesse Vincent and [Prime Radiant](https://primeradiant.com) ([UPSTREAM.md](UPSTREAM.md)). [Issues](https://github.com/Innei/ryugi/issues) and PRs welcome; [AGENTS.md](AGENTS.md) has the rules.
+
+## License
+
+Skills, harness integrations and docs: MIT — [LICENSE](LICENSE).
+
+The artifacts application in `artifacts/`, published to npm as [`ryugi-artifacts`](https://www.npmjs.com/package/ryugi-artifacts), and its build outputs: AGPL-3.0-only — [artifacts/LICENSE](artifacts/LICENSE). A modified version run as a network service must offer its source to that service's users.

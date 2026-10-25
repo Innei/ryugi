@@ -32,3 +32,7 @@ The same CLI runs what the skill uses: `npx ryugi-artifacts start`, `stop` and `
 
 Cloud publish failures keep the cloud HTTP status in `publish --json` output. When provided, `code`, `plan`, and `limit` (`kind`, `used`, `max`, and `requested`) are preserved. Account quota failures remain `type: "plan-limit"` with exit code 2; artifact storage exhaustion uses `code: "artifact_storage_limit"`, status 413 and exit code 1. Auto-publish reports the same exhaustion reason immediately.
 
+## License
+
+`ryugi-artifacts` is AGPL-3.0-only — [artifacts/LICENSE](../artifacts/LICENSE) — while Ryugi's skills and harness integrations are MIT. A modified version served to other people over a network must offer them its source.
+

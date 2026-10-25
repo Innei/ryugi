@@ -1,9 +1,9 @@
 {
   "name": "ryugi-artifacts",
-  "version": "1.35.1",
+  "version": "1.36.0",
   "type": "module",
   "description": "Server and viewer for the Ryugi artifacts app",
-  "license": "MIT",
+  "license": "AGPL-3.0-only",
   "bin": {
     "ryugi-artifacts": "bin/ryugi-artifacts.cjs"
   },

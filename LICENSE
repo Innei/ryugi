@@ -21,3 +21,13 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+---
+
+The MIT License above covers Ryugi's skills, harness integrations and
+documentation.
+
+The artifacts application in `artifacts/` — published to npm as
+`ryugi-artifacts`, together with its build outputs (`dist/` and the copies in
+`skills/artifacts/app/`) — is licensed under the GNU Affero General Public
+License version 3; see `artifacts/LICENSE`.
