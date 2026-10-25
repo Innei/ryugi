@@ -35,3 +35,5 @@ minimumReleaseAgeExclude:
   - '@haklex/rich-renderer-mention@0.54.2 || 0.54.3 || 0.54.4 || 0.55.0'
   - '@haklex/rich-renderer-ruby@0.54.2 || 0.54.3 || 0.54.4 || 0.55.0'
   - '@haklex/rich-renderer-video@0.54.2 || 0.54.3 || 0.54.4 || 0.55.0'
+  - '@lobehub/fluent-emoji@5.0.1'
+  - '@lobehub/icons@6.9.1'
