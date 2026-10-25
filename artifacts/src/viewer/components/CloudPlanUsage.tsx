@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from '../i18n';
 
-interface PlanSummary {
+export interface PlanSummary {
   plan: 'free' | 'pro';
-  usage: { private: number; public: number; total: number };
-  limits: { private: number | null; public: number | null; total: number | null };
+  usage: { private: number; public: number; total: number; storage?: { bytes: number; objects: number } };
+  limits: { private: number | null; public: number | null; total: number | null; storage?: { bytes: number; objects: number } };
 }
 
 const isSummary = (value: unknown): value is PlanSummary => {
@@ -12,16 +12,8 @@ const isSummary = (value: unknown): value is PlanSummary => {
   return (summary?.plan === 'free' || summary?.plan === 'pro') && typeof summary.usage === 'object' && typeof summary.limits === 'object';
 };
 
-function Count({ label, used, max }: { label?: string; used: number; max: number | null }) {
-  if (max === null) return null;
-  const text = `${label ? `${label} ` : ''}${used}/${max}`;
-  return <span className={`cloud-plan-count${used >= max ? ' is-full' : ''}`}>{text}</span>;
-}
-
-export function CloudPlanUsage() {
-  const { t } = useTranslation();
+export function usePlanSummary(revision: unknown) {
   const [summary, setSummary] = useState<PlanSummary | null>(null);
-
   useEffect(() => {
     let live = true;
     fetch('/api/billing', { cache: 'no-store', credentials: 'same-origin' })
@@ -31,8 +23,18 @@ export function CloudPlanUsage() {
     return () => {
       live = false;
     };
-  }, []);
+  }, [revision]);
+  return summary;
+}
 
+function Count({ label, used, max }: { label?: string; used: number; max: number | null }) {
+  if (max === null) return null;
+  const text = `${label ? `${label} ` : ''}${used}/${max}`;
+  return <span className={`cloud-plan-count${used >= max ? ' is-full' : ''}`}>{text}</span>;
+}
+
+export function CloudPlanUsage({ summary }: { summary: PlanSummary | null }) {
+  const { t } = useTranslation();
   if (!summary) return null;
   const { usage, limits } = summary;
   if (summary.plan === 'pro') {

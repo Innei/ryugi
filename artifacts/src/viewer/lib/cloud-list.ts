@@ -1,6 +1,7 @@
 import type { SerializedEditorState } from 'lexical';
 import type { ArtifactType, CanvasPayload } from '../../shared/types';
 import type { Visibility } from '../../shared/cloud';
+import { isArtifactType } from '../../shared/ids';
 
 export interface CloudListItem {
   id: string;
@@ -11,6 +12,32 @@ export interface CloudListItem {
   url: string;
   version: number | null;
   updatedAt: string;
+  createdAt?: string;
+  storageBytes?: number;
+  files?: number;
+  versions?: number;
+  onProfile?: boolean;
+}
+
+export interface DailyViews {
+  days: { day: string; views: number }[];
+  total: number;
+}
+
+export const isDailyViews = (value: unknown): value is DailyViews => {
+  const views = value as DailyViews | null;
+  return Array.isArray(views?.days) && typeof views.total === 'number' && views.days.every((day) => typeof day?.views === 'number');
+};
+
+export function formatBytes(bytes: number) {
+  const units = ['B', 'KB', 'MB', 'GB'];
+  let value = bytes;
+  let unit = 0;
+  while (value >= 1024 && unit < units.length - 1) {
+    value /= 1024;
+    unit++;
+  }
+  return `${unit === 0 ? value : Number(value.toFixed(1))} ${units[unit]}`;
 }
 
 export interface CloudListGroup {
@@ -35,6 +62,27 @@ export interface CloudFilter {
   project?: string | null;
   visibility?: Visibility;
   type?: ArtifactType;
+}
+
+export function filterFromSearch(search: string): CloudFilter {
+  const params = new URLSearchParams(search);
+  const filter: CloudFilter = {};
+  const project = params.get('project');
+  if (project !== null) filter.project = project || null;
+  const visibility = params.get('visibility');
+  if (visibility === 'public' || visibility === 'private') filter.visibility = visibility;
+  const type = params.get('type');
+  if (type && isArtifactType(type)) filter.type = type;
+  return filter;
+}
+
+export function filterSearch({ project, visibility, type }: CloudFilter) {
+  const params = new URLSearchParams();
+  if (project !== undefined) params.set('project', project ?? '');
+  if (visibility) params.set('visibility', visibility);
+  if (type) params.set('type', type);
+  const search = params.toString();
+  return search ? `?${search}` : '';
 }
 
 export const publishedNewestFirst = (items: CloudListItem[]) => items.filter((item) => item.version !== null).sort(newestFirst);

@@ -72,3 +72,18 @@ export async function switchAccount(id: string, fetchImpl: typeof fetch = fetch)
   if (!res.ok && res.status !== 401) throw new Error((await requestError(res)).message);
   return `${loginUrl(id)}&switch=1`;
 }
+
+export async function setOnProfile(id: string, shown: boolean) {
+  const res = await fetch(`/api/a/${id}/profile`, { method: 'PUT', headers: JSON_HEADERS, body: JSON.stringify({ shown }), credentials: 'same-origin' });
+  if (!res.ok) throw await requestError(res);
+}
+
+export async function signOutSession(id: string) {
+  const res = await fetch(`/api/account/sessions/${id}`, { method: 'DELETE', headers: JSON_HEADERS, body: '{}', credentials: 'same-origin' });
+  if (!res.ok && res.status !== 404) throw await requestError(res);
+}
+
+export async function deleteAccount(confirm: string) {
+  const res = await fetch('/api/account', { method: 'DELETE', headers: JSON_HEADERS, body: JSON.stringify({ confirm }), credentials: 'same-origin' });
+  if (!res.ok) throw await requestError(res);
+}

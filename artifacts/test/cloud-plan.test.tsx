@@ -2,7 +2,7 @@
 import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, describe, expect, test, vi } from 'vitest';
-import { CloudPlanUsage } from '../src/viewer/components/CloudPlanUsage';
+import { CloudPlanUsage, usePlanSummary } from '../src/viewer/components/CloudPlanUsage';
 import { PlanLimitDialog } from '../src/viewer/components/PlanLimitDialog';
 import { changeVisibility, CloudRequestError, planLimitMessage } from '../src/viewer/lib/cloud-shell';
 
@@ -21,7 +21,7 @@ async function render(body: unknown, status = 200) {
   const host = document.createElement('div');
   document.body.append(host);
   root = createRoot(host);
-  await act(async () => root!.render(createElement(CloudPlanUsage)));
+  await act(async () => root!.render(createElement(function Usage() { return createElement(CloudPlanUsage, { summary: usePlanSummary(0) }); })));
   await act(async () => {});
   return host;
 }

@@ -1,11 +1,15 @@
 import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
 import { useEffect, type ReactNode } from 'react';
+import { useLocation } from 'wouter';
 import { AutoPublishBar } from './components/AutoPublishPrompt';
 import { ArtboardLayout } from './layouts/ArtboardLayout';
 import { ArtifactList } from './layouts/ArtifactList';
 import { CloudLayout } from './layouts/CloudLayout';
 import { CloudArtifactList } from './layouts/CloudArtifactList';
+import { CloudOverview } from './layouts/CloudOverview';
+import { CloudAccount } from './layouts/CloudAccount';
+import { CloudProfile } from './layouts/CloudProfile';
 import { CloudShell } from './layouts/CloudShell';
 import { DocumentLayout } from './layouts/DocumentLayout';
 import { HtmlLayout } from './layouts/HtmlLayout';
@@ -33,7 +37,8 @@ const local = (page: ReactNode) => (
 );
 
 export function Shell() {
-  const route = parseRoute(location.pathname, document.documentElement.dataset.ryugiHost === 'cloud');
+  const [path] = useLocation();
+  const route = parseRoute(path, document.documentElement.dataset.ryugiHost === 'cloud');
   useEffect(() => {
     if (!document.documentElement.dataset.ryugiArtifactId) return;
     const canonical = document.querySelector<HTMLLinkElement>('link[rel="canonical"]');
@@ -42,8 +47,12 @@ export function Shell() {
     url.pathname = new URL(canonical.href).pathname;
     if (url.href !== location.href) history.replaceState(history.state, '', url);
   }, []);
+  useEffect(() => { window.scrollTo(0, 0); }, [path]);
   if (route.kind === 'list') return local(<ArtifactList />);
   if (route.kind === 'cloud-list') return <CloudArtifactList />;
+  if (route.kind === 'cloud-overview') return <CloudOverview />;
+  if (route.kind === 'cloud-account') return <CloudAccount />;
+  if (route.kind === 'cloud-profile') return <CloudProfile login={route.login} />;
   if (route.kind === 'cloud') return <CloudShell id={route.id} />;
   if (route.kind === 'cloud-view') return <CloudLayout id={route.id} />;
   if (route.kind === 'cloud-preview') return <CloudPreviewLayout id={route.id} />;

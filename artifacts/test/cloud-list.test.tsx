@@ -4,7 +4,7 @@ import { ConfigProvider, ModalHost } from '@lobehub/ui';
 import { motion, MotionGlobalConfig } from 'motion/react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeAll, describe, expect, test, vi } from 'vitest';
-import { cloudPreviewPayload, filterCloudItems, projectCounts, publishedNewestFirst, type CloudArtifactData } from '../src/viewer/lib/cloud-list';
+import { cloudPreviewPayload, filterCloudItems, filterFromSearch, filterSearch, projectCounts, publishedNewestFirst, type CloudArtifactData } from '../src/viewer/lib/cloud-list';
 import { groupByProject, type CloudListItem } from '../src/viewer/lib/cloud-list';
 import { CloudArtifactList } from '../src/viewer/layouts/CloudArtifactList';
 import { CloudHeader } from '../src/viewer/components/CloudBanner';
@@ -65,6 +65,16 @@ describe('list filters', () => {
     expect(filterCloudItems(list, { visibility: 'public' }).map((a) => a.id)).toEqual(['c', 'a']);
     expect(filterCloudItems(list, { visibility: 'public', type: 'html' }).map((a) => a.id)).toEqual(['c']);
   });
+
+  test('a filter round-trips through the address, where an empty project means unnamed', () => {
+    expect(filterSearch({})).toBe('');
+    expect(filterSearch({ project: 'ryugi', visibility: 'public', type: 'document' })).toBe('?project=ryugi&visibility=public&type=document');
+    expect(filterSearch({ project: null })).toBe('?project=');
+    expect(filterFromSearch('?project=ryugi&visibility=public&type=document')).toEqual({ project: 'ryugi', visibility: 'public', type: 'document' });
+    expect(filterFromSearch('?project=')).toEqual({ project: null });
+    expect(filterFromSearch('?project=a%20b')).toEqual({ project: 'a b' });
+    expect(filterFromSearch('?visibility=everyone&type=pdf&other=1')).toEqual({});
+  });
 });
 
 let root: Root | null = null;
@@ -74,11 +84,14 @@ beforeAll(() => {
   MotionGlobalConfig.skipAnimations = true;
 });
 
+const startAddress = location.href;
+
 afterEach(() => {
   act(() => root?.unmount());
   root = null;
   vi.unstubAllGlobals();
   document.body.innerHTML = '';
+  history.replaceState(null, '', startAddress);
 });
 
 async function render(response: { status: number; body: unknown }, fetchImpl?: typeof fetch) {
@@ -422,6 +435,30 @@ describe('CloudArtifactList', () => {
     expect(rows(host).map((node) => node.querySelector('.cloud-row-title')?.textContent)).toEqual(['Arrow']);
   });
 
+  test('the filter lives in the address, so coming back to the list keeps it', async () => {
+    const before = location.href;
+    history.replaceState(null, '', '/?project=&type=html');
+    const length = history.length;
+    try {
+      const host = await render({ status: 200, body: { login: 'innei', artifacts: [
+        item('a', 'ryugi', '2026-10-21T08:00:00Z', { title: 'Arrow', type: 'artboard' }),
+        item('b', null, '2026-10-21T07:00:00Z', { title: 'Loose', type: 'html' }),
+        item('c', null, '2026-10-21T06:00:00Z', { title: 'Notes', type: 'document' }),
+      ] } });
+      expect(rows(host).map((node) => node.querySelector('.cloud-row-title')?.textContent)).toEqual(['Loose']);
+      await click('ryugi1');
+      await click('Artboard');
+      expect(location.search).toBe('?project=ryugi&type=artboard');
+      await click('Only me3');
+      expect(location.search).toBe('?project=ryugi&visibility=private&type=artboard');
+      await click('All3');
+      expect(location.search).toBe('?visibility=private&type=artboard');
+      expect(history.length).toBe(length);
+    } finally {
+      history.replaceState(null, '', before);
+    }
+  });
+
   test('signed in with nothing published, it says so', async () => {
     const host = await render({ status: 200, body: { login: 'innei', artifacts: [] } });
     expect(host.textContent).toContain('Nothing published yet');
@@ -463,5 +500,147 @@ describe('cloudPreviewPayload', () => {
     } finally {
       history.replaceState(null, '', before);
     }
+  });
+});
+
+describe('inspector details', () => {
+  const details = { createdAt: '2026-10-12T08:00:00Z', storageBytes: 13_002_342, files: 46, versions: 9 };
+  const billing = { plan: 'free', usage: { private: 1, public: 1, total: 2, storage: { bytes: 23_400_000, objects: 312 } }, limits: { private: 5, public: 10, total: null, storage: { bytes: 100 * 1024 ** 2, objects: 10_000 } } };
+  const days = Array.from({ length: 30 }, (_, i) => ({ day: `2026-10-${String(i + 1).padStart(2, '0')}`, views: i % 5 }));
+  const routes = (artifacts: CloudListItem[], seen: string[] = []) => (async (input: RequestInfo | URL) => {
+    const url = String(input);
+    seen.push(url);
+    if (url === '/api/billing') return Response.json(billing);
+    if (url.endsWith('/views')) return Response.json({ days, total: 60 });
+    return Response.json({ login: 'innei', artifacts });
+  }) as typeof fetch;
+  const field = (host: HTMLElement, label: string) => {
+    const term = Array.from(inspector(host).querySelectorAll('dt')).find((node) => node.textContent === label);
+    return term?.nextElementSibling?.textContent ?? null;
+  };
+
+  test('shows when it was created, how many versions were published and how much it stores', async () => {
+    const host = await render({ status: 200, body: null }, routes([item('a', 'ryugi', '2026-10-21T08:00:00Z', { title: 'Arrow', version: 9, ...details })]));
+    expect(field(host, 'Created')).toBe(new Date('2026-10-12T08:00:00Z').toLocaleDateString('en', { year: 'numeric', month: 'short', day: 'numeric' }));
+    expect(field(host, 'Version')).toBe('v9 · 9 published');
+    expect(field(host, 'Size')).toBe('12.4 MB · 46 files · 12% of 100 MB');
+  });
+
+  test('a share that would round up to 1% reads as under 1%', async () => {
+    const host = await render({ status: 200, body: null }, routes([item('a', 'ryugi', '2026-10-21T08:00:00Z', { ...details, storageBytes: 640_000, files: 23 })]));
+    expect(field(host, 'Size')).toBe('625 KB · 23 files · under 1% of 100 MB');
+  });
+
+  test('a public artifact shows 30 days of page views with a trend line', async () => {
+    const seen: string[] = [];
+    const host = await render({ status: 200, body: null }, routes([item('a', 'ryugi', '2026-10-21T08:00:00Z', { title: 'Arrow', visibility: 'public', ...details })], seen));
+    await act(async () => {});
+    expect(seen).toContain('/api/account/artifacts/a/views');
+    expect(field(host, 'Page views')).toContain('60 in the last 30 days');
+    expect(inspector(host).querySelector('svg[aria-label="Page views, last 30 days"] polyline')?.getAttribute('points')?.split(' ')).toHaveLength(30);
+  });
+
+  test('a private artifact explains that views are not counted and asks for none', async () => {
+    const seen: string[] = [];
+    const host = await render({ status: 200, body: null }, routes([item('a', 'ryugi', '2026-10-21T08:00:00Z', { title: 'Arrow', ...details })], seen));
+    await act(async () => {});
+    expect(seen.some((url) => url.endsWith('/views'))).toBe(false);
+    expect(field(host, 'Page views')).toBe('Counted only while the link is public');
+  });
+});
+
+describe('grid view', () => {
+  const artifacts = [item('a', 'ryugi', '2026-10-21T08:00:00Z', { title: 'Arrow', type: 'artboard' }), item('b', null, '2026-10-21T07:00:00Z', { title: 'Loose', visibility: 'public' })];
+  const body = { login: 'innei', artifacts };
+  const cards = (host: HTMLElement) => Array.from(host.querySelectorAll<HTMLElement>('.cloud-card'));
+  const card = (host: HTMLElement, title: string) => cards(host).find((node) => node.querySelector('.cloud-card-title')?.textContent === title);
+  const details = (host: HTMLElement) => host.querySelector<HTMLElement>('section[aria-label="Details"]');
+
+  afterEach(() => localStorage.clear());
+
+  test('switching to grid shows a card with a thumbnail for each artifact, and the choice is remembered', async () => {
+    let host = await render({ status: 200, body });
+    await press('button[aria-label="Grid view"]', host);
+    expect(rows(host)).toHaveLength(0);
+    expect(cards(host).map((node) => node.querySelector('.cloud-card-title')?.textContent)).toEqual(['Arrow', 'Loose']);
+    expect(card(host, 'Arrow')!.querySelector('.library-thumbnail')?.getAttribute('data-src')).toBe(`/a/a/preview?v=${Date.parse('2026-10-21T08:00:00Z')}`);
+    expect(card(host, 'Loose')!.textContent).toContain('Has link');
+    act(() => root?.unmount());
+    host = await render({ status: 200, body });
+    expect(cards(host)).toHaveLength(2);
+    await press('button[aria-label="List view"]', host);
+    expect(rows(host)).toHaveLength(2);
+  });
+
+  test('details float over the grid only after a card is picked, and close again', async () => {
+    const host = await render({ status: 200, body });
+    await press('button[aria-label="Grid view"]', host);
+    expect(details(host)).toBeNull();
+    await act(async () => { card(host, 'Loose')!.click(); });
+    expect(card(host, 'Loose')!.getAttribute('aria-pressed')).toBe('true');
+    expect(details(host)?.classList.contains('is-floating')).toBe(true);
+    expect(details(host)?.querySelector('h2')?.textContent).toBe('Loose');
+    await press('button[aria-label="Close details"]', host);
+    expect(details(host)).toBeNull();
+    await act(async () => { card(host, 'Arrow')!.click(); });
+    await act(async () => { document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); });
+    expect(details(host)).toBeNull();
+  });
+
+  test('double-clicking a card opens the artifact', async () => {
+    const host = await render({ status: 200, body });
+    await press('button[aria-label="Grid view"]', host);
+    const assign = vi.spyOn(location, 'assign').mockImplementation(() => {});
+    await act(async () => { card(host, 'Arrow')!.dispatchEvent(new MouseEvent('dblclick', { bubbles: true })); });
+    expect(assign).toHaveBeenCalledWith('/a/a');
+    assign.mockRestore();
+  });
+
+  test('in select mode, clicking cards picks them instead of opening details', async () => {
+    const host = await render({ status: 200, body });
+    await press('button[aria-label="Grid view"]', host);
+    await press('button[aria-label="Select multiple"]', host);
+    await act(async () => { card(host, 'Arrow')!.click(); });
+    await act(async () => { card(host, 'Loose')!.click(); });
+    expect(host.textContent).toContain('2 selected');
+    expect(details(host)).toBeNull();
+  });
+});
+
+describe('profile listing in the inspector', () => {
+  test('a public artifact can be kept off the profile', async () => {
+    const calls: { url: string; init?: RequestInit }[] = [];
+    const host = await render({ status: 200, body: null }, (async (input: RequestInfo | URL, init?: RequestInit) => {
+      calls.push({ url: String(input), init });
+      if (init?.method === 'PUT') return Response.json({ id: 'a', onProfile: false });
+      if (String(input).endsWith('/views') || String(input) === '/api/billing') return Response.json(null, { status: 404 });
+      return Response.json({ login: 'innei', profilePath: '/innei', artifacts: [item('a', 'ryugi', '2026-10-21T08:00:00Z', { title: 'Arrow', visibility: 'public', onProfile: true })] });
+    }) as typeof fetch);
+    const box = () => inspector(host).querySelector<HTMLElement>('[role="checkbox"][aria-label="Show on your profile"]')!;
+    expect(box().getAttribute('aria-checked')).toBe('true');
+    expect(inspector(host).textContent).toContain('/innei');
+    await act(async () => { (box().closest('label') ?? box()).click(); });
+    const put = calls.find((call) => call.init?.method === 'PUT')!;
+    expect(put.url).toBe('/api/a/a/profile');
+    expect(JSON.parse(String(put.init!.body))).toEqual({ shown: false });
+    expect(box().getAttribute('aria-checked')).toBe('false');
+  });
+
+  test('a private artifact has no profile option', async () => {
+    const host = await render({ status: 200, body: { login: 'innei', profilePath: '/innei', artifacts: [item('a', 'ryugi', '2026-10-21T08:00:00Z', { title: 'Arrow', onProfile: true })] } });
+    expect(inspector(host).querySelector('[aria-label="Show on your profile"]')).toBeNull();
+  });
+});
+
+describe('toolbar position', () => {
+  test('the toolbar spans list and details, so switching views does not move it', async () => {
+    const host = await render({ status: 200, body: { login: 'innei', artifacts: [item('a', 'ryugi', '2026-10-21T08:00:00Z', { title: 'Arrow' })] } });
+    const toolbar = host.querySelector<HTMLElement>('.cloud-list-head')!;
+    expect(toolbar.closest('section[aria-label="My artifacts"]')).toBeNull();
+    expect(toolbar.parentElement!.querySelector('section[aria-label="My artifacts"]')).not.toBeNull();
+    expect(toolbar.parentElement!.querySelector('section[aria-label="Details"]')).not.toBeNull();
+    await press('button[aria-label="Grid view"]', host);
+    expect(host.querySelector('.cloud-list-head')).toBe(toolbar);
+    localStorage.clear();
   });
 });

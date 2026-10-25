@@ -1,9 +1,10 @@
 import { Checkbox } from '@lobehub/ui';
-import { SquareCheckBig } from 'lucide-react';
+import { LayoutGrid, List, SquareCheckBig } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import type { ArtifactType } from '../../shared/types';
 import { relativeUpdatedAt } from '../lib/artifact-list';
 import type { CloudFilter, CloudListItem } from '../lib/cloud-list';
+import { CloudLibraryGrid } from './CloudLibraryGrid';
 import { TypeIcon } from './TypeIcon';
 import { i18n, useTranslation } from '../i18n';
 
@@ -15,10 +16,31 @@ const TYPES: { value: ArtifactType | undefined; label: string }[] = [
   { value: 'html', label: 'type.html' },
 ];
 
+export type CloudView = 'list' | 'grid';
+
+export function CloudLibraryHead({ count, filter, onFilter, view, onView }: { count: number; filter: CloudFilter; onFilter: (next: CloudFilter) => void; view: CloudView; onView: (view: CloudView) => void }) {
+  const { t } = useTranslation();
+  return (
+    <div className="cloud-list-head">
+      <h1>{t('cloudLibrary.mine')}</h1>
+      <span className="cloud-muted">{t('cloudLibrary.count', { count })}</span>
+      <span className="cloud-grow" />
+      <span className="cloud-segmented" role="group" aria-label={t('cloudLibrary.filterByType')}>
+        {TYPES.map(({ value, label }) => (
+          <button key={label} type="button" aria-pressed={filter.type === value} onClick={() => onFilter({ ...filter, type: value })}>{t(label)}</button>
+        ))}
+      </span>
+      <span className="cloud-segmented" role="group" aria-label={t('cloudLibrary.layout')}>
+        <button type="button" aria-label={t('cloudLibrary.listView')} title={t('cloudLibrary.listView')} aria-pressed={view === 'list'} onClick={() => onView('list')}><List size={14} aria-hidden="true" /></button>
+        <button type="button" aria-label={t('cloudLibrary.gridView')} title={t('cloudLibrary.gridView')} aria-pressed={view === 'grid'} onClick={() => onView('grid')}><LayoutGrid size={14} aria-hidden="true" /></button>
+      </span>
+    </div>
+  );
+}
+
 interface Props {
   items: CloudListItem[];
-  filter: CloudFilter;
-  onFilter: (next: CloudFilter) => void;
+  view: CloudView;
   inspected: string | null;
   onInspect: (id: string) => void;
   selecting: boolean;
@@ -29,7 +51,7 @@ interface Props {
   onClearFilter: () => void;
 }
 
-export function CloudLibraryList({ items, filter, onFilter, inspected, onInspect, selecting, selected, busy, onSelect, onStartSelecting, onClearFilter }: Props) {
+export function CloudLibraryList({ items, view, inspected, onInspect, selecting, selected, busy, onSelect, onStartSelecting, onClearFilter }: Props) {
   const { t } = useTranslation();
   const ids = items.map((item) => item.id);
   const all = ids.length > 0 && ids.every((id) => selected.has(id));
@@ -43,25 +65,18 @@ export function CloudLibraryList({ items, filter, onFilter, inspected, onInspect
   }, [selecting]);
   return (
     <section ref={section} className="cloud-list" aria-label={t('cloudLibrary.mine')}>
-      <div className="cloud-list-head">
-        <h1>{t('cloudLibrary.mine')}</h1>
-        <span className="cloud-muted">{t('cloudLibrary.count', { count: items.length })}</span>
-        <span className="cloud-grow" />
-        <span className="cloud-segmented" role="group" aria-label={t('cloudLibrary.filterByType')}>
-          {TYPES.map(({ value, label }) => (
-            <button key={label} type="button" aria-pressed={filter.type === value} onClick={() => onFilter({ ...filter, type: value })}>{t(label)}</button>
-          ))}
-        </span>
-      </div>
-      <div className="cloud-columns">
+      <div className={view === 'grid' ? 'cloud-columns is-grid' : 'cloud-columns'}>
         <span className="cloud-check-cell">
           {selecting
             ? <Checkbox aria-label={t('cloudLibrary.selectAll')} checked={all} indeterminate={!all && some} disabled={busy || ids.length === 0} onChange={(checked) => onSelect(ids, checked)} />
             : <button type="button" className="cloud-icon-button" aria-label={t('cloudLibrary.selectMany')} title={t('cloudLibrary.selectMany')} onClick={onStartSelecting}><SquareCheckBig size={14} aria-hidden="true" /></button>}
         </span>
-        <span>{t('cloudLibrary.name')}</span><span>{t('cloudLibrary.whoCanSee')}</span><span className="cloud-end">{t('cloudLibrary.updated')}</span>
+        {view === 'list' && <><span>{t('cloudLibrary.name')}</span><span>{t('cloudLibrary.whoCanSee')}</span><span className="cloud-end">{t('cloudLibrary.updated')}</span></>}
+        {view === 'grid' && selecting && <span>{t('cloudLibrary.selectAll')}</span>}
       </div>
-      <ul className="cloud-rows">
+      {view === 'grid'
+        ? <CloudLibraryGrid items={items} inspected={inspected} onInspect={onInspect} selecting={selecting} selected={selected} busy={busy} onSelect={onSelect} />
+        : <ul className="cloud-rows">
         {items.map((artifact) => {
           const title = artifact.title ?? artifact.id;
           const version = Date.parse(artifact.updatedAt);
@@ -88,7 +103,7 @@ export function CloudLibraryList({ items, filter, onFilter, inspected, onInspect
             </li>
           );
         })}
-      </ul>
+      </ul>}
       {items.length === 0 && (
         <div className="cloud-list-empty">
           <p>{t('cloudLibrary.noneInFilter')}</p>
