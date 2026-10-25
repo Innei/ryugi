@@ -7,7 +7,7 @@ const pkgDir = path.resolve(__dirname, '..');
 const repoRoot = path.resolve(pkgDir, '..');
 const localApp = path.join(repoRoot, 'skills/artifacts/app');
 
-test('the published package holds the CLI, the server, the viewer under fixed entry names, and nothing else', () => {
+test('the published package holds the CLI, the server, the viewer under fixed entry names, its license and nothing else', () => {
   const [pack] = JSON.parse(execFileSync('npm', ['pack', '--dry-run', '--json'], { cwd: pkgDir, encoding: 'utf8' }));
   const files = (pack.files as { path: string }[]).map((f) => f.path).sort();
   expect(files).toEqual(
@@ -20,6 +20,8 @@ test('the published package holds the CLI, the server, the viewer under fixed en
       'dist/viewer/index.html',
       'dist/viewer/index.js',
       'package.json',
+      'LICENSE',
+      'README.md',
     ]),
   );
   expect(
@@ -30,7 +32,9 @@ test('the published package holds the CLI, the server, the viewer under fixed en
         file !== 'dist/server.cjs' &&
         file !== 'bin/ryugi-artifacts.cjs' &&
         file !== 'dist/cli.cjs' &&
-        file !== 'package.json',
+        file !== 'package.json' &&
+        file !== 'LICENSE' &&
+        file !== 'README.md',
     ),
   ).toEqual([]);
 }, 60_000);
