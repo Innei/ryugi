@@ -48,6 +48,10 @@ Load the project's design system (tokens, components, type) before the first
 frame; if it has none, say which type, scale and palette you are using. Use
 real copy and data, never lorem ipsum.
 
+For preview icons, read [icons.md](./icons.md). When implementing the
+approved design, map its actions to the app's existing business icons;
+the preview glyphs are visual references.
+
 `html` is one surface: both themes when the product has them, and the states
 the decision touches; a control tunes one dimension.
 

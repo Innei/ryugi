@@ -116,7 +116,7 @@ const RUNTIME_LINE = RUNTIME.split('\n')
 const EMBEDDED_STYLE =
   '<style>:root{color-scheme:light dark;background:transparent}body{margin:0;font-family:var(--lobe-font-family,system-ui,-apple-system,sans-serif)}</style>';
 
-const UI_MARKER = /<ryugi-[a-z0-9-]+(?:\s|>)/i;
+const UI_MARKER = /<ryugi-(?!icon(?:\s|>))[a-z0-9-]+(?:\s|>)/i;
 const UI_META = /<meta[^>]+name=["']ryugi-ui["'][^>]*>/i;
 
 export function injectRuntime(html: string, options: { uiRuntimeUrl?: string; embedded?: boolean; inspector?: boolean } = {}): string {
@@ -126,7 +126,10 @@ export function injectRuntime(html: string, options: { uiRuntimeUrl?: string; em
     options.uiRuntimeUrl && !options.inspector && (UI_MARKER.test(html) || UI_META.test(html))
       ? `<script defer src="${options.uiRuntimeUrl.replace(/"/g, '&quot;')}"></script>`
       : '';
+  const icons = options.uiRuntimeUrl && (ui || /<ryugi-icon(?:\s|>)|<meta[^>]+name=["']ryugi-icons["']/i.test(html))
+    ? `<script defer src="${options.uiRuntimeUrl.replace(/ryugi-ui\.js$/, 'ryugi-icons.js').replace(/"/g, '&quot;')}"></script>`
+    : '';
   const head = HEAD.exec(html);
   const at = head ? head.index + head[0].length : (PROLOGUE.exec(html)?.[0].length ?? 0);
-  return html.slice(0, at) + tag + ui + html.slice(at);
+  return html.slice(0, at) + tag + icons + ui + html.slice(at);
 }

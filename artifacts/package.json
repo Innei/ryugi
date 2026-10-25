@@ -1,6 +1,6 @@
 {
   "name": "ryugi-artifacts",
-  "version": "1.34.5",
+  "version": "1.35.0",
   "type": "module",
   "description": "Server and viewer for the Ryugi artifacts app",
   "license": "MIT",
@@ -28,7 +28,7 @@
     "build:server": "esbuild src/server/main.ts --bundle --platform=node --target=node18 --format=cjs --alias:loro-crdt=loro-crdt/base64 --outfile=dist/server.cjs && node -e \"const fs=require('node:fs');fs.copyFileSync('dist/server.cjs','../skills/artifacts/app/server.cjs')\"",
     "prepublishOnly": "pnpm build",
     "build:viewer": "NODE_ENV=production vite build && node -e \"const fs=require('node:fs');const to='../skills/artifacts/app/viewer';fs.rmSync(to,{recursive:true,force:true});fs.cpSync('dist/viewer',to,{recursive:true})\"",
-    "build:runtime": "NODE_ENV=production vite build -c vite.runtime.config.ts && node scripts/inline-runtime-css.mjs",
+    "build:runtime": "NODE_ENV=production vite build -c vite.runtime.config.ts && node scripts/inline-runtime-css.mjs && node scripts/build-icons.mjs",
     "dev": "vite",
     "test": "vitest run",
     "typecheck": "tsc --noEmit -p tsconfig.json",

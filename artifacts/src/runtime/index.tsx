@@ -9,8 +9,11 @@ import {
   ColorPicker,
   ConfigProvider,
   Divider,
+  DropdownMenu,
   Input,
   InputNumber,
+  IconProvider,
+  Popover,
   Progress,
   RadioGroup,
   Segmented,
@@ -21,58 +24,33 @@ import {
   Tag,
   Text,
   TextArea,
+  Tooltip,
+  ToastHost,
   setLobeTheme,
 } from '@lobehub/ui';
 import '@lobehub/ui/theme.css';
 import '@lobehub/ui/style.css';
 import '../shared/fonts.css';
-import {
-  type LucideIcon,
-  Check,
-  ChevronDown,
-  Copy,
-  Download,
-  ExternalLink,
-  Moon,
-  Pause,
-  Play,
-  Plus,
-  RefreshCw,
-  Search,
-  Settings,
-  Sun,
-  Trash2,
-  Upload,
-  X,
-} from 'lucide-react';
+import { type LucideProps } from 'lucide-react';
 import { motion } from 'motion/react';
-import { type ReactNode } from 'react';
+import { createElement, type ReactNode } from 'react';
 import { type AttributeKind, readAttribute, styleObject } from './attrs';
 import { createHostRoot } from './host';
+import { artifactToast, createToastRoot } from './toast';
 
-const ICONS: Record<string, LucideIcon> = {
-  check: Check,
-  'chevron-down': ChevronDown,
-  copy: Copy,
-  download: Download,
-  'external-link': ExternalLink,
-  moon: Moon,
-  pause: Pause,
-  play: Play,
-  plus: Plus,
-  refresh: RefreshCw,
-  search: Search,
-  settings: Settings,
-  sun: Sun,
-  trash: Trash2,
-  upload: Upload,
-  x: X,
-};
+declare global {
+  interface Window {
+    ryugiToast: typeof artifactToast;
+  }
+}
 
-const iconFor = (name: unknown) => (typeof name === 'string' ? ICONS[name] : undefined);
+const iconFor = (name: unknown) => typeof name === 'string' && name
+  ? ({ size = 16, strokeWidth = 2 }: LucideProps) => createElement('ryugi-icon', { name, size, 'stroke-width': strokeWidth })
+  : undefined;
 
 interface Option {
   disabled?: boolean;
+  icon?: string;
   label: string;
   value: string;
 }
@@ -233,9 +211,10 @@ class RyugiElement extends HTMLElement {
   }
 
   #readOptions(kind: string): Option[] {
-    const tag = kind === 'select' ? 'ryugi-option' : kind === 'segmented' ? 'ryugi-segment' : 'ryugi-radio';
+    const tag = { select: 'ryugi-option', segmented: 'ryugi-segment', menu: 'ryugi-menu-item' }[kind] ?? 'ryugi-radio';
     return Array.from(this.querySelectorAll(`:scope > ${tag}`)).map((option) => ({
       disabled: option.getAttribute('disabled') !== null && option.getAttribute('disabled') !== 'false',
+      icon: option.getAttribute('icon') ?? undefined,
       label: option.textContent?.trim() ?? '',
       value: option.getAttribute('value') ?? option.textContent?.trim() ?? '',
     }));
@@ -277,7 +256,45 @@ const definitions: Spec[] = [
       icon: { kind: 'string', prop: 'icon' },
       size: { kind: 'string', prop: 'size' },
     },
-    view: (_el, p) => <ActionIcon {...buttonProps(p)} icon={iconFor(p.icon) ?? Plus} />,
+    view: (_el, p) => <ActionIcon {...buttonProps(p)} icon={iconFor(p.icon ?? 'plus')} />,
+  },
+  {
+    tag: 'ryugi-tooltip',
+    attrs: {
+      content: { kind: 'string', prop: 'title' },
+      placement: { kind: 'string', prop: 'placement' },
+      open: { kind: 'boolean', prop: 'open' },
+    },
+    view: (_el, p, slot) => <Tooltip title="" {...p}><Button><span ref={slot} style={{ display: 'contents' }} /></Button></Tooltip>,
+  },
+  {
+    tag: 'ryugi-popover',
+    attrs: {
+      content: { kind: 'string', prop: 'content' },
+      placement: { kind: 'string', prop: 'placement' },
+      trigger: { kind: 'string', prop: 'trigger' },
+    },
+    view: (_el, p, slot) => <Popover content="" trigger="click" {...p}><Button><span ref={slot} style={{ display: 'contents' }} /></Button></Popover>,
+  },
+  {
+    tag: 'ryugi-menu',
+    options: 'menu',
+    attrs: {
+      label: { kind: 'string', prop: 'label' },
+      icon: { kind: 'string', prop: 'icon' },
+      placement: { kind: 'string', prop: 'placement' },
+    },
+    view: (el, { label, icon, ...p }) => (
+      <DropdownMenu {...p} items={el.optionList.map((option) => ({
+        key: option.value,
+        label: option.label,
+        disabled: option.disabled,
+        icon: iconFor(option.icon),
+        onClick: () => el.change(option.value),
+      }))}>
+        <Button icon={iconFor(icon)}>{String(label ?? 'More')}</Button>
+      </DropdownMenu>
+    ),
   },
   {
     tag: 'ryugi-input',
@@ -534,7 +551,7 @@ const definitions: Spec[] = [
 ];
 
 const HOST_CSS = `
-ryugi-button,ryugi-action-icon,ryugi-input,ryugi-textarea,ryugi-input-number,ryugi-slider,ryugi-slider-input,ryugi-switch,ryugi-checkbox,ryugi-segmented,ryugi-select,ryugi-radio-group,ryugi-color-picker,ryugi-tag,ryugi-badge,ryugi-avatar{display:inline-block;vertical-align:middle}
+ryugi-button,ryugi-action-icon,ryugi-input,ryugi-textarea,ryugi-input-number,ryugi-slider,ryugi-slider-input,ryugi-switch,ryugi-checkbox,ryugi-segmented,ryugi-select,ryugi-radio-group,ryugi-color-picker,ryugi-tag,ryugi-badge,ryugi-avatar,ryugi-tooltip,ryugi-popover,ryugi-menu{display:inline-block;vertical-align:middle}
 ryugi-card,ryugi-alert,ryugi-progress,ryugi-divider,ryugi-text{display:block}
 `;
 
@@ -543,19 +560,24 @@ const reportError = (error: unknown) => {
   window.dispatchEvent(new ErrorEvent('error', { error, message: String(error) }));
 };
 
-const applyTheme = () =>
-  setLobeTheme({ appearance: matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light' });
-
 if (typeof window !== 'undefined' && !customElements.get('ryugi-button')) {
+  const pageTheme = document.documentElement.dataset.theme;
+  const applyTheme = () => setLobeTheme({
+    appearance: pageTheme === 'light' || pageTheme === 'dark' ? pageTheme : matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light',
+  });
   const style = document.createElement('style');
   style.dataset.ryugiUi = '';
   style.textContent = HOST_CSS;
   document.head.append(style);
   applyTheme();
+  const toastRoot = createToastRoot();
   hosts = createHostRoot({
     wrap: (children) => (
       <ConfigProvider motion={motion} enableCustomFonts={false}>
-        {children}
+        <IconProvider config={{ 'aria-hidden': true }}>
+          {children}
+          <ToastHost root={toastRoot} className="ryugi-toast-viewport" />
+        </IconProvider>
       </ConfigProvider>
     ),
     onError: reportError,
@@ -565,5 +587,6 @@ if (typeof window !== 'undefined' && !customElements.get('ryugi-button')) {
   for (const spec of definitions) {
     if (!customElements.get(spec.tag)) customElements.define(spec.tag, makeElement(spec));
   }
+  window.ryugiToast = artifactToast;
   document.dispatchEvent(new CustomEvent('ryugi-ui:ready'));
 }

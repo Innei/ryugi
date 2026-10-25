@@ -120,6 +120,10 @@ tablet 834×1194, component 640×400.
 
 ## Board HTML
 
+For icons, read [icons.md](./icons.md): `ryugi-icon` works on boards without
+loading Lobe UI. Its glyphs are preview references; implementation uses the
+app's business icons.
+
 Each board is a complete, self-contained HTML page shown in a sandboxed
 iframe at exactly `w`×`h` pixels, with no scrollbars.
 

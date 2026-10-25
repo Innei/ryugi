@@ -24,6 +24,9 @@ controls, cards, alerts, tags, progress and text. They render Lobe UI
 components inside the page and participate in state restoration. Plain HTML
 and CSS remain the right choice for layout.
 
+For standalone icons, use [icons.md](./icons.md). Its preview-to-business
+mapping applies when implementing this page in the app.
+
 ## Controls survive your rewrites
 
 When you rewrite the page, the viewer carries your human partner's settings

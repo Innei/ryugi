@@ -53,9 +53,9 @@ there is no layout wrapper to learn.
   padding on both the host and the card: pick one. For a floating panel,
   either position the host and let the card paint its own surface, or make the
   host the surface and use `variant="borderless"` without `glass`/`shadow`.
-- Components follow `prefers-color-scheme`. The runtime writes `data-theme` on
-  `<html>` at startup and again when the OS theme changes, so a value set
-  before `ryugi-ui:ready` is overwritten; set it afterwards to pin a page.
+- Components follow `prefers-color-scheme`. Set `<html data-theme="light">`
+  or `data-theme="dark"` before the runtime loads to pin the whole page.
+  Without an explicit theme, the runtime follows OS theme changes.
   Lobe tokens such as `--lobe-color-primary` can be overridden on the host or
   page.
 
@@ -70,9 +70,9 @@ there is no layout wrapper to learn.
 
 Attributes: `variant` (`filled`, `outlined`, `borderless`), `size`
 (`small`, `middle`, `large`), `block`, `loading`, `disabled`, `shape`, `type`,
-`icon` (`plus`, `check`, `x`, `search`, `settings`, `trash`, `download`,
-`upload`, `copy`, `external-link`, `play`, `pause`, `refresh`, `sun`, `moon`,
-`chevron-down`).
+`icon` (any Lucide kebab-case name; `refresh` and `trash` remain aliases).
+See [icons.md](./icons.md) for standalone icons and mapping the preview's
+actions to business icons when implementing the app.
 
 Uses the native `click` event.
 
@@ -84,6 +84,37 @@ Uses the native `click` event.
 
 Attributes: `icon` (same set as Button), `size`, `disabled`, `title`,
 `aria-label`. Uses the native `click` event.
+
+### Tooltip and popover
+
+```html
+<ryugi-tooltip content="Copy a private link" placement="top">
+  <ryugi-icon name="copy" size="14"></ryugi-icon> Copy
+</ryugi-tooltip>
+<ryugi-popover id="sharing" content="Only people you invite can open this link.">
+  Sharing details
+</ryugi-popover>
+```
+
+Both provide a native button trigger; children are its label and decorative
+icons, not nested buttons or controls. `content` is plain text, `placement`
+sets the floating position. Tooltip opens on hover/focus; Popover opens on
+click (`trigger="hover"` opts into hover). Tooltip also accepts `open` for
+a controlled preview. Native trigger clicks still reach your handlers.
+
+### Action menu
+
+```html
+<ryugi-menu id="actions" label="More" icon="ellipsis">
+  <ryugi-menu-item value="copy" icon="copy">Copy link</ryugi-menu-item>
+  <ryugi-menu-item value="delete" icon="trash-2" disabled>Delete</ryugi-menu-item>
+</ryugi-menu>
+```
+
+Attributes: `label`, `icon`, `placement`, `disabled`. Items accept `value`,
+`icon`, `disabled`; their text is the label. Selecting an enabled item emits
+`ryugi-change` with its action in `event.detail.value`. Actions are not
+restored as control values on reload.
 
 ### Input
 
@@ -198,6 +229,41 @@ Attributes: `value`, `alpha`, `defaultFormat` (`hex`, `rgb`, `hsl`),
 
 ## Display
 
+### Toast
+
+HTML artifacts can call the bundled Lobe UI toast API as `window.ryugiToast`.
+If the page has no `ryugi-` UI controls, opt in with the meta tag. Wait for
+`ryugi-ui:ready` before calling it:
+
+```html
+<meta name="ryugi-ui" content="1">
+<button id="save" type="button">Save</button>
+<script>
+  document.addEventListener('ryugi-ui:ready', () => {
+    document.getElementById('save').addEventListener('click', async () => {
+      try {
+        await saveDraft(); // the page's own operation
+        window.ryugiToast.success({ id: 'save-result', title: 'Saved' });
+      } catch {
+        window.ryugiToast.error({ id: 'save-result', title: 'Save failed', description: 'Try again.' });
+      }
+    });
+  }, { once: true });
+</script>
+```
+
+Methods: `success`, `error`, `info`, `warning`, `loading`. Each takes a string
+message or `{ title, description, id, duration }`. Text is rendered as text,
+not HTML. A stable `id` refreshes the same notification instead of stacking
+copies. The default duration is 5000ms; `duration: 0` stays until closed.
+`loading` stays until closed by default.
+
+Calls return a handle with `id` and `close()`. Use
+`window.ryugiToast.dismiss(id)` to close one, or `dismiss()` to close all.
+Toasts appear at the bottom right and follow the page's theme. They are
+transient: rewriting the page does not restore them. No `ryugi-toast` tag is
+needed. Artboard pages do not load this UI runtime.
+
 ### Tag
 
 ```html
@@ -310,5 +376,5 @@ Attributes: `type` (`secondary`, `success`, `warning`, `danger`, `info`),
 
 ## Not included in the first version
 
-Tabs, Tooltip, Popover, Modal, Drawer, Table, DatePicker, and layout
+Tabs, Modal, Drawer, Table, DatePicker, and layout
 components. Use plain HTML/CSS or a later component if one is added.

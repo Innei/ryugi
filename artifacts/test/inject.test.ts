@@ -2,6 +2,27 @@ import { describe, expect, test } from 'vitest';
 import { injectRuntime } from '../src/server/inject';
 
 describe('injectRuntime', () => {
+  test('an icon-only HTML page keeps its own theme without loading Lobe UI', () => {
+    const out = injectRuntime('<head></head><ryugi-icon name="copy"></ryugi-icon>', { uiRuntimeUrl: '/runtime/ryugi-ui.js' });
+    expect(out).toContain('src="/runtime/ryugi-icons.js"');
+    expect(out).not.toContain('src="/runtime/ryugi-ui.js"');
+  });
+
+  test('artboard icons get their standalone runtime without loading the UI theme', () => {
+    const out = injectRuntime('<head></head><ryugi-icon name="message-square"></ryugi-icon>', {
+      inspector: true,
+      uiRuntimeUrl: '/runtime/ryugi-ui.js',
+    });
+    expect(out).toContain('/runtime/ryugi-icons.js');
+    expect(out).not.toContain('src="/runtime/ryugi-ui.js"');
+  });
+
+  test('UI pages load icons before the UI runtime, including for dynamically created controls', () => {
+    const out = injectRuntime('<meta name="ryugi-ui" content="1">', { uiRuntimeUrl: '/runtime/ryugi-ui.js' });
+    expect(out.indexOf('src="/runtime/ryugi-icons.js"')).toBeGreaterThan(-1);
+    expect(out.indexOf('ryugi-icons.js')).toBeLessThan(out.indexOf('ryugi-ui.js'));
+  });
+
   test('puts the runtime script first inside <head>, before the page\'s own scripts', () => {
     const out = injectRuntime('<!doctype html><html><HEAD><script>page()</script></HEAD></html>');
     const runtime = out.indexOf('ryugi:snapshot');
