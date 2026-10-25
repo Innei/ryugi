@@ -49,7 +49,7 @@ async function clickText(text: string) {
 }
 
 const art = (id: string, title: string, project: string | null, extra: Record<string, unknown> = {}) => ({ id, title, type: 'html', project, updatedAt: '2026-10-21T08:00:00Z', views: 12, ...extra });
-const PROFILE = { login: 'innei', profilePath: '/innei', avatarUrl: null, joinedAt: '2026-06-18T08:00:00Z', owner: false, artifacts: [art('a', 'Arrow', 'ryugi', { views: 388 }), art('b', 'Notes', null)] };
+const PROFILE = { login: 'innei', profilePath: '/innei', avatarUrl: null, joinedAt: '2026-06-18T08:00:00Z', owner: false, artifacts: [art('a', 'Arrow', 'ryugi', { views: 388, type: 'artboard' }), art('b', 'Notes', null)] };
 const cards = (host: HTMLElement) => Array.from(host.querySelectorAll<HTMLAnchorElement>('a.profile-card'));
 
 describe('public profile', () => {
@@ -62,10 +62,19 @@ describe('public profile', () => {
     expect(host.querySelector('a[href="/auth/login?return=/innei"]')).not.toBeNull();
   });
 
-  test('project tabs narrow the cards', async () => {
+  test('format controls narrow the cards', async () => {
     const { host } = await render(createElement(CloudProfile, { login: 'innei' }), (url) => url === '/api/session' ? Response.json({ login: null }) : Response.json(PROFILE));
-    await clickText('ryugi1');
+    const format = host.querySelector<HTMLButtonElement>('button.profile-format-row[data-type="artboard"]');
+    expect(format).not.toBeNull();
+    await act(async () => { format!.click(); });
     expect(cards(host).map((card) => card.getAttribute('href'))).toEqual(['/a/a']);
+    expect(host.querySelector('.profile-activity')).toBeNull();
+  });
+
+  test('pins the most viewed artifact in each format and draws a contribution grid', async () => {
+    const { host } = await render(createElement(CloudProfile, { login: 'innei' }), (url) => url === '/api/session' ? Response.json({ login: null }) : Response.json(PROFILE));
+    expect(Array.from(host.querySelectorAll<HTMLAnchorElement>('a.profile-pin-row')).map((row) => row.getAttribute('href'))).toEqual(['/a/a', '/a/b']);
+    expect(host.querySelectorAll('.profile-contrib-cell')).toHaveLength(371);
   });
 
   test('the owner can hide an artifact from the profile, and it stays listed for them as hidden', async () => {
