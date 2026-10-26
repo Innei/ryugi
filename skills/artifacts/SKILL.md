@@ -191,8 +191,9 @@ whether it is on.
 - Keep each artifact self-contained: everything it uses lives inside its
   own directory and is referenced relatively. Copy screenshots in; never
   point at absolute paths.
-- `.state/` keeps itself out of git. Whether the artifacts themselves get
-  committed is your human partner's call: leave `.gitignore` alone.
+- `.state/` keeps itself out of git. By default `.ryugi/.gitignore` keeps
+  only documents in git; changing that is your human partner's call: leave
+  `.gitignore` alone.
 
 ## After every change
 

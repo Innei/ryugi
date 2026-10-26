@@ -29,7 +29,7 @@ describe('project config', () => {
   test('starting the server creates config.json and hides it from git', async () => {
     const { configFile, ryugiDir } = await start();
     expect(config(configFile)).toEqual({ version: 1, artifacts: {} });
-    expect(fs.readFileSync(path.join(ryugiDir, '.gitignore'), 'utf8')).toBe('config.json\n');
+    expect(fs.readFileSync(path.join(ryugiDir, '.gitignore'), 'utf8')).toContain('config.json\n');
   });
 });
 

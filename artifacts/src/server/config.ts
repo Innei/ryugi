@@ -63,17 +63,18 @@ export function readConfig(file: string): { config: RyugiConfig; warning?: strin
   }
 }
 
+const IGNORED = ['config.json', 'artifacts/*', '!artifacts/document/', 'artifacts/document/*/.artifact-id'];
+
 function ensureGitignore(dir: string) {
   const file = path.join(dir, '.gitignore');
   let current = '';
   try {
     current = fs.readFileSync(file, 'utf8');
-  } catch {
-    fs.writeFileSync(file, 'config.json\n');
-    return;
-  }
-  if (current.split(/\r?\n/).some((line) => line.trim() === 'config.json')) return;
-  fs.writeFileSync(file, `${current}${current === '' || current.endsWith('\n') ? '' : '\n'}config.json\n`);
+  } catch {}
+  const present = new Set(current.split(/\r?\n/).map((line) => line.trim()));
+  const missing = IGNORED.filter((line) => !present.has(line));
+  if (missing.length === 0) return;
+  fs.writeFileSync(file, `${current}${current === '' || current.endsWith('\n') ? '' : '\n'}${missing.join('\n')}\n`);
 }
 
 export function ensureConfig(file: string) {
