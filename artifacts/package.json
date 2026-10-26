@@ -20,6 +20,10 @@
       "types": "./dist/viewer-lib/types/src/viewer/library/document.d.ts",
       "default": "./dist/viewer-lib/document.js"
     },
+    "./thumbnail": {
+      "types": "./dist/viewer-lib/types/src/shared/thumbnail.d.ts",
+      "default": "./dist/viewer-lib/thumbnail.js"
+    },
     "./viewer/shims": {
       "types": "./dist/viewer-lib/types/src/viewer/document/shims.d.ts",
       "default": "./dist/viewer-lib/shims.js"
@@ -48,7 +52,7 @@
     "build:server": "esbuild src/server/main.ts --bundle --platform=node --target=node18 --format=cjs --alias:loro-crdt=loro-crdt/base64 --outfile=dist/server.cjs && node -e \"const fs=require('node:fs');fs.copyFileSync('dist/server.cjs','../skills/artifacts/app/server.cjs')\"",
     "prepublishOnly": "pnpm build",
     "build:viewer": "NODE_ENV=production vite build && node -e \"const fs=require('node:fs');const to='../skills/artifacts/app/viewer';fs.rmSync(to,{recursive:true,force:true});fs.cpSync('dist/viewer',to,{recursive:true})\"",
-    "build:lib": "NODE_ENV=production vite build -c vite.lib.config.ts && tsc -p tsconfig.lib.json",
+    "build:lib": "NODE_ENV=production vite build -c vite.lib.config.ts && esbuild src/shared/thumbnail.ts --bundle --platform=neutral --format=esm --outfile=dist/viewer-lib/thumbnail.js && tsc -p tsconfig.lib.json",
     "build:runtime": "NODE_ENV=production vite build -c vite.runtime.config.ts && node scripts/inline-runtime-css.mjs && node scripts/build-icons.mjs",
     "dev": "vite",
     "test": "vitest run",

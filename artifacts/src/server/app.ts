@@ -30,6 +30,7 @@ import { DOCUMENT_FEATURES_HEADER } from '../shared/document-features';
 import { typeFaviconHref } from '../shared/type-icons';
 import { commentNames } from './comment-names';
 import { publishPayload } from './publish-payload';
+import { renderThumbnail } from '../shared/thumbnail';
 import { allowInlineScripts, viewerPage } from './viewer-page';
 import { createAutoPublisher } from './auto-publish';
 import { readArtifactFile } from './artifact-file';
@@ -92,6 +93,7 @@ const SHELL_ROUTE = new RegExp(`^/(?:(${ARTIFACT_TYPES.join('|')})/([^/]+)/?)?$`
 const API_ARTIFACT_ROUTE = /^\/api\/artifacts\/([^/]+)\/([^/]+)$/;
 const PREVIEW_ROUTE = /^\/preview\/(artboard|document|html)\/([a-z0-9][a-z0-9-]*)\/?$/;
 const API_PREVIEW_ROUTE = /^\/api\/preview\/([^/]+)\/([^/]+)$/;
+const API_THUMBNAIL_ROUTE = /^\/api\/thumbnail\/([^/]+)\/([^/]+)\.svg$/;
 const API_DOCUMENT_ROUTE = /^\/api\/document\/([^/]+)\/(state|update|comments)$/;
 const MAX_COMMENT_OP = 64 * 1024;
 const API_AGENT_COMMENTS_ROUTE = /^\/api\/agent\/document\/([^/]+)\/comments$/;
@@ -622,6 +624,37 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
         sendJson(res, 200, { ...publishPayload(ref, dir, title, payload), title, warnings: payload.warnings, contentBase: `${contentPrefix}${type}/${id}/` });
       } catch {
         sendJson(res, 422, { error: 'Preview unavailable' });
+      }
+      return;
+    }
+
+    const thumbnailMatch = API_THUMBNAIL_ROUTE.exec(pathname);
+    if (thumbnailMatch) {
+      const requested = artifactKeyOf(`${thumbnailMatch[1]}/${thumbnailMatch[2]}`);
+      let resolved: ReturnType<typeof resolveArtifactAddress> = null;
+      try {
+        resolved = requested && resolveArtifactAddress(root, requested.type, requested.id);
+      } catch {
+        resolved = null;
+      }
+      if (!resolved) {
+        send(res, 404, 'Artifact not found');
+        return;
+      }
+      try {
+        const ref = { type: resolved.type, id: resolved.id };
+        const payload = readArtifact(resolved.dir, ref);
+        const title = titleOf(payload, ref);
+        const project = path.basename(path.dirname(path.dirname(root)));
+        const svg = renderThumbnail({ id: ref.id, type: ref.type, title, project }, ref.type === 'html' ? null : publishPayload(ref, resolved.dir, title, payload));
+        send(res, 200, svg, {
+          'Content-Type': 'image/svg+xml',
+          'Cache-Control': 'private, max-age=31536000, immutable',
+          'Content-Security-Policy': "sandbox; default-src 'none'; style-src 'unsafe-inline'",
+          'X-Content-Type-Options': 'nosniff',
+        });
+      } catch {
+        send(res, 422, 'Thumbnail unavailable');
       }
       return;
     }

@@ -97,7 +97,7 @@ export function ArtifactList() {
             return (
               <li key={`${artifact.type}/${artifact.id}`}>
                 <a className="library-card" href={artifact.url ?? `/${artifact.type}/${artifact.id}`} aria-label={t('library.open', { title: artifact.title })}>
-                  <ArtifactThumbnail title={artifact.title} src={`/preview${artifact.url ?? `/${artifact.type}/${artifact.id}`}?v=${artifact.updatedAt}`} version={artifact.updatedAt} />
+                  <ArtifactThumbnail type={artifact.type} src={`/api/thumbnail${artifact.url ?? `/${artifact.type}/${artifact.id}`}.svg?v=${artifact.updatedAt}`} />
                   <div className="library-card-info">
                     <div className="library-card-title"><span title={artifact.title}>{artifact.title}</span><ArrowUpRight size={13} aria-hidden="true" /></div>
                     <div className="library-card-meta"><span><TypeIcon type={artifact.type} size={12} />{labels[artifact.type]}</span><time dateTime={new Date(artifact.updatedAt).toISOString()} title={new Date(artifact.updatedAt).toLocaleString(i18n.language)}>{relativeUpdatedAt(artifact.updatedAt, now)}</time></div>

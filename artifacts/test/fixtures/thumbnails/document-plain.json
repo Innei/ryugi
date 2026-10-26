@@ -1,0 +1,62 @@
+{
+  "artifact": {
+    "id": "plain",
+    "type": "document",
+    "title": "Plain & simple",
+    "project": null
+  },
+  "payload": {
+    "title": "Plain & simple",
+    "state": {
+      "root": {
+        "type": "root",
+        "children": [
+          {
+            "type": "paragraph",
+            "children": [
+              {
+                "type": "text",
+                "text": "没有标题的文档，第一块就是段落。",
+                "format": 0,
+                "detail": 0,
+                "mode": "normal",
+                "style": "",
+                "version": 1
+              }
+            ],
+            "direction": "ltr",
+            "format": "",
+            "indent": 0,
+            "textFormat": 0,
+            "textStyle": "",
+            "version": 1
+          },
+          {
+            "type": "paragraph",
+            "children": [
+              {
+                "type": "text",
+                "text": "第二段。",
+                "format": 0,
+                "detail": 0,
+                "mode": "normal",
+                "style": "",
+                "version": 1
+              }
+            ],
+            "direction": "ltr",
+            "format": "",
+            "indent": 0,
+            "textFormat": 0,
+            "textStyle": "",
+            "version": 1
+          }
+        ],
+        "direction": "ltr",
+        "format": "",
+        "indent": 0,
+        "version": 1
+      }
+    }
+  }
+}

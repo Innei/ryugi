@@ -3,13 +3,12 @@ import { act, createElement, type ComponentProps } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeAll, expect, test, vi } from 'vitest';
 import { Canvas } from '../src/viewer/components/Canvas';
+import type { BoardRender } from '../src/viewer/lib/board-tiers';
 
 vi.mock('@stylexjs/stylex', async (original) => ({ ...await original<object>(), create: (value: unknown) => value, props: () => ({}) }));
 vi.mock('@lobehub/ui/stylex/cssVar.stylex', () => ({ cssVar: new Proxy({}, { get: (_, key) => `var(--${String(key)})` }) }));
 
 let root: Root | null = null;
-let intersect: IntersectionObserverCallback = () => {};
-const observed = new Set<Element>();
 
 beforeAll(() => {
   (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -19,7 +18,6 @@ afterEach(() => {
   act(() => root?.unmount());
   root = null;
   document.body.innerHTML = '';
-  observed.clear();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
   vi.useRealTimers();
@@ -35,15 +33,10 @@ const frameRef = (id: string) => {
   if (!callbacks.has(id)) callbacks.set(id, (element) => refs.set(id, element));
   return callbacks.get(id)!;
 };
-type Props = Partial<ComponentProps<typeof Canvas>> & { writing?: string; agent?: string; retained?: ReadonlySet<string> };
+type Props = Partial<ComponentProps<typeof Canvas>> & { writing?: string; agent?: string };
 
 async function render(props: Props = {}) {
   if (!root) {
-    vi.stubGlobal('IntersectionObserver', class {
-      constructor(callback: IntersectionObserverCallback) { intersect = callback; }
-      observe(element: Element) { observed.add(element); }
-      disconnect() { observed.clear(); }
-    });
     const host = document.createElement('div');
     document.body.append(host);
     root = createRoot(host);
@@ -51,13 +44,9 @@ async function render(props: Props = {}) {
   await act(async () => root!.render(createElement(Canvas, {
     view: { x: 0, y: 0, k: 1 }, boards, notes: [], contentBase: 'about:blank#',
     versions: { 'pages/a.html': 1, 'pages/b.html': 1 }, pending: new Set<string>(),
-    playing: new Set<string>(), replays: {}, inspecting: true, frameRef, frameLoaded: () => {}, ...props,
+    playing: new Set<string>(), replays: {}, inspecting: true, frameRef, frameLoaded: () => {}, renders: new Map(), ...props,
   })));
   return document.body;
-}
-
-async function visibility(visible: string[]) {
-  await act(async () => intersect([...observed].map((target) => ({ target, isIntersecting: visible.includes(target.getAttribute('data-board')!) }) as IntersectionObserverEntry), {} as IntersectionObserver));
 }
 
 function animationClock(reduced = false) {
@@ -234,42 +223,109 @@ test('respects reduced motion changes and cancels an unfinished flight on comple
   expect(clock.frames.size).toBe(0);
 });
 
-test('keeps every board slot but mounts only nearby frames and releases distant ones', async () => {
-  vi.useFakeTimers();
-  const host = await render();
-  expect(host.querySelectorAll('iframe')).toHaveLength(0);
+const live = (patch: Partial<BoardRender> = {}): BoardRender => ({ tier: 'live', mounted: true, image: null, overlay: false, hidden: false, ...patch });
+const still = (tier: BoardRender['tier'], image: string | null): BoardRender => ({ tier, mounted: false, image, overlay: false, hidden: false });
+
+test('keeps every board slot and mounts frames only for live boards', async () => {
+  const host = await render({ renders: new Map([['a', live()], ['b', still('empty', null)]]) });
   expect(host.querySelectorAll('[data-board]')).toHaveLength(2);
-  await visibility(['a']);
   expect(host.querySelectorAll('iframe')).toHaveLength(1);
   expect(host.querySelector('iframe')?.title).toBe('First');
-  await visibility(['b']);
-  expect(host.querySelectorAll('iframe')).toHaveLength(2);
-  await act(async () => vi.advanceTimersByTime(10_000));
+  expect(host.querySelector('[data-board="b"] img')).toBeNull();
+  await render({ renders: new Map([['a', still('snapshot', 'blob:a')], ['b', live()]]) });
   expect(host.querySelectorAll('iframe')).toHaveLength(1);
   expect(host.querySelector('iframe')?.title).toBe('Second');
   expect(refs.get('a')).toBeNull();
 });
 
-test('returning to the edge cancels unloading instead of restarting a frame', async () => {
-  vi.useFakeTimers();
-  const host = await render();
-  await visibility(['a']);
-  const first = host.querySelector('iframe');
-  await visibility([]);
-  await act(async () => vi.advanceTimersByTime(50));
-  await visibility(['a']);
-  await act(async () => vi.advanceTimersByTime(10_000));
-  expect(host.querySelector('iframe')).toBe(first);
+test('snapshot and placeholder boards show their image instead of a frame', async () => {
+  const host = await render({ renders: new Map([['a', still('snapshot', 'blob:shot')], ['b', still('placeholder', 'data:image/svg+xml,card')]]) });
+  expect(host.querySelector('iframe')).toBeNull();
+  expect(host.querySelector('[data-board="a"] img')?.getAttribute('src')).toBe('blob:shot');
+  expect(host.querySelector('[data-board="b"] img')?.getAttribute('src')).toBe('data:image/svg+xml,card');
 });
 
-test('keeps playing and retained inspector frames alive while offscreen', async () => {
-  vi.useFakeTimers();
-  const host = await render({ playing: new Set(['a']), retained: new Set(['b']) });
-  await visibility([]);
-  await act(async () => vi.advanceTimersByTime(10_000));
-  expect(host.querySelectorAll('iframe')).toHaveLength(2);
-  await render();
-  expect(host.querySelectorAll('iframe')).toHaveLength(0);
+const shown = (host: HTMLElement, id: string) => [...host.querySelectorAll<HTMLImageElement>(`[data-board="${id}"] img`)].filter((img) => img.style.visibility !== 'hidden').map((img) => img.getAttribute('src'));
+const settle = async (img: Element | null | undefined, type: 'load' | 'error') => { await act(async () => { img!.dispatchEvent(new Event(type)); }); };
+
+test('a board image stays hidden until it loads, and the previous image stays until the next one loads', async () => {
+  const host = await render({ renders: new Map([['a', still('snapshot', 'blob:one')]]) });
+  expect(shown(host, 'a')).toEqual([]);
+  await settle(host.querySelector('[data-board="a"] img'), 'load');
+  expect(shown(host, 'a')).toEqual(['blob:one']);
+  await render({ renders: new Map([['a', still('snapshot', 'blob:two')]]) });
+  expect(shown(host, 'a')).toEqual(['blob:one']);
+  await settle(host.querySelector('[data-board="a"] img[src="blob:two"]'), 'load');
+  expect(shown(host, 'a')).toEqual(['blob:two']);
+});
+
+test('a board image that fails to load is never shown and the failure is reported', async () => {
+  const failed = vi.fn();
+  const host = await render({ renders: new Map([['a', still('snapshot', 'blob:gone')]]), onImageError: failed });
+  await settle(host.querySelector('[data-board="a"] img'), 'error');
+  expect(shown(host, 'a')).toEqual([]);
+  expect(failed).toHaveBeenCalledWith('a', 'blob:gone');
+});
+
+test('a loaded snapshot stays the same image element when its board mounts a frame under it', async () => {
+  const host = await render({ renders: new Map([['a', still('snapshot', 'blob:shot')]]) });
+  const image = host.querySelector('[data-board="a"] img')!;
+  await settle(image, 'load');
+  await render({ renders: new Map([['a', live({ image: 'blob:shot', overlay: true })]]) });
+  expect(host.querySelector('[data-board="a"] img')).toBe(image);
+  expect(shown(host, 'a')).toEqual(['blob:shot']);
+});
+
+test('an overlay covers a frame until it is ready, and a zoom hides the frame one frame after its snapshot shows', async () => {
+  const clock = animationClock();
+  const host = await render({ renders: new Map([['a', live({ image: 'data:image/svg+xml,card', overlay: true })]]) });
+  const frame = host.querySelector('iframe')!;
+  await settle(host.querySelector('[data-board="a"] img'), 'load');
+  expect(shown(host, 'a')).toEqual(['data:image/svg+xml,card']);
+  await render({ renders: new Map([['a', live({ image: 'blob:shot' })]]) });
+  await settle(host.querySelector('[data-board="a"] img[src="blob:shot"]'), 'load');
+  clock.step(16); clock.step(32);
+  expect(shown(host, 'a')).toEqual([]);
+  await render({ renders: new Map([['a', live({ image: 'blob:shot', overlay: true, hidden: true })]]) });
+  expect(shown(host, 'a')).toEqual(['blob:shot']);
+  expect(frame.style.visibility).toBe('');
+  clock.step(48);
+  expect(host.querySelector('iframe')).toBe(frame);
+  expect(frame.style.visibility).toBe('hidden');
+});
+
+test('a zoom keeps the frame visible until its snapshot has loaded', async () => {
+  const clock = animationClock();
+  const host = await render({ renders: new Map([['a', live({ image: 'blob:shot', overlay: true, hidden: true })]]) });
+  const frame = host.querySelector('iframe')!;
+  clock.step(16);
+  expect(frame.style.visibility).toBe('');
+  await settle(host.querySelector('[data-board="a"] img'), 'load');
+  expect(shown(host, 'a')).toEqual(['blob:shot']);
+  clock.step(32);
+  expect(frame.style.visibility).toBe('hidden');
+});
+
+test('when a zoom ends the frame shows at once and the snapshot stays over it for two more frames', async () => {
+  const clock = animationClock();
+  const host = await render({ renders: new Map([['a', live({ image: 'blob:shot', overlay: true, hidden: true })]]) });
+  await settle(host.querySelector('[data-board="a"] img'), 'load');
+  clock.step(16);
+  await render({ renders: new Map([['a', live({ image: 'blob:shot' })]]) });
+  expect(host.querySelector('iframe')!.style.visibility).toBe('');
+  expect(shown(host, 'a')).toEqual(['blob:shot']);
+  clock.step(32);
+  expect(shown(host, 'a')).toEqual(['blob:shot']);
+  clock.step(48);
+  expect(shown(host, 'a')).toEqual([]);
+});
+
+test('a live board demoted to its snapshot shows the already loaded image at once', async () => {
+  const host = await render({ renders: new Map([['a', live({ image: 'blob:shot' })]]) });
+  await settle(host.querySelector('[data-board="a"] img'), 'load');
+  await render({ renders: new Map([['a', still('snapshot', 'blob:shot')]]) });
+  expect(host.querySelector('iframe')).toBeNull();
+  expect(shown(host, 'a')).toEqual(['blob:shot']);
 });
 
 test('separates waiting boards from the named active writer and clears activity on completion', async () => {
@@ -285,11 +341,11 @@ test('separates waiting boards from the named active writer and clears activity 
 });
 
 test('marks revisions without replacing the existing iframe or changing its URL', async () => {
-  const host = await render();
-  await visibility(['a']);
+  const renders = new Map([['a', live()]]);
+  const host = await render({ renders });
   const first = host.querySelector('iframe');
   const src = first?.src;
-  await render({ writing: 'a' });
+  await render({ renders, writing: 'a' });
   expect(host.querySelector('iframe')).toBe(first);
   expect(first?.src).toBe(src);
   expect(host.querySelector('[data-board="a"]')?.getAttribute('aria-busy')).toBe('true');
@@ -315,8 +371,7 @@ test('image and video boards render as media, not as iframes', async () => {
     ['shot', { type: 'image', src: 'pages/shot.png', file: 'pages/shot.png', page: 'p', x: 0, y: 0, w: 640, h: 400 }],
     ['flow', { type: 'video', src: 'pages/flow.webm', file: 'pages/flow.webm', page: 'p', x: 1000, y: 0, w: 640, h: 400 }],
   ];
-  const body = await render({ boards: media, versions: { 'pages/shot.png': 3, 'pages/flow.webm': 4 } });
-  await visibility(['shot', 'flow']);
+  const body = await render({ boards: media, versions: { 'pages/shot.png': 3, 'pages/flow.webm': 4 }, renders: new Map([['shot', still('snapshot', null)], ['flow', still('placeholder', null)]]) });
   expect(body.querySelector('iframe')).toBeNull();
   expect(body.querySelector('img')?.getAttribute('src')).toBe('about:blank#pages/shot.png?v=3');
   const video = body.querySelector('video')!;

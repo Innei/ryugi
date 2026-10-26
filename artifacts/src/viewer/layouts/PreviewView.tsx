@@ -4,6 +4,7 @@ import { lazy, Suspense, useEffect, useState } from 'react';
 import type { ArtifactType, CanvasPayload } from '../../shared/types';
 import { CanvasErrorBoundary } from '../components/CanvasErrorBoundary';
 import { useTranslation } from '../i18n';
+import { visibleRenders } from '../lib/board-tiers';
 import { fitView } from '../lib/view';
 
 const DocumentPreview = lazy(() => import('../document/shims').then(() => import('../document/SnapshotDocument')));
@@ -47,13 +48,16 @@ export function PreviewView({ type, id, data, failed }: { type: ArtifactType; id
   const page = canvas?.activePage ?? canvas?.pages[0]?.id;
   const bounds = page ? data.layout?.pages[page]?.bounds : null;
   if (!canvas || !page || !bounds) return message(t('preview.waitingCanvas'));
+  const view = fitView(bounds, viewport, { top: 24, right: 24, bottom: 24, left: 24 });
+  const boards = Object.entries(canvas.boards).filter(([, board]) => board.page === page);
   return (
     <div className="artifact-preview-canvas">
       <CanvasErrorBoundary resetKey={canvas}>
         <Suspense fallback={message(t('preview.loading'))}>
           <CanvasPreview
-            view={fitView(bounds, viewport, { top: 24, right: 24, bottom: 24, left: 24 })}
-            boards={Object.entries(canvas.boards).filter(([, board]) => board.page === page)}
+            view={view}
+            renders={visibleRenders({ boards: boards.map(([id, board]) => ({ id, ...board })), view, viewport })}
+            boards={boards}
             notes={Object.entries(canvas.notes ?? {}).filter(([, note]) => note.page === page)}
             contentBase={data.contentBase}
             versions={data.versions ?? {}}

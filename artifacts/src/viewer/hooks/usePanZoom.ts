@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { COMMENT_CURSOR } from '../../shared/inspector';
 import type { Bounds } from '../../shared/types';
 import { cubicBezier, fitView, pinchView, tweenView, zoomAround, zoomTo, type Insets, type Point, type View } from '../lib/view';
@@ -8,6 +8,8 @@ export type Tool = 'select' | 'hand' | 'comment';
 const INSETS: Insets = { top: 64, right: 24, bottom: 24, left: 24 };
 const WHEEL_ZOOM_SPEED = 0.01;
 const FIT_MS = 420;
+const SCALE_SETTLE_MS = 150;
+const CONTINUOUS_ZOOM_MS = 100;
 const ease = cubicBezier(0.2, 0, 0, 1);
 const reducedMotion = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 export interface WheelInput { deltaX: number; deltaY: number; x: number; y: number; zoom: boolean }
@@ -40,6 +42,35 @@ export function usePanZoom(tool: Tool) {
     animation.current = null;
   }, []);
   useEffect(() => stop, [stop]);
+  const [scaling, setScaling] = useState(false);
+  const scaledK = useRef(view.k);
+  const scaledAt = useRef(-Infinity);
+  const settle = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  // A lone zoom step (a wheel click, ⌘+) re-renders live boards once; swapping them for snapshots and back costs more.
+  useLayoutEffect(() => {
+    if (view.k === scaledK.current) return;
+    scaledK.current = view.k;
+    const now = Date.now();
+    const continuous = now - scaledAt.current < CONTINUOUS_ZOOM_MS;
+    scaledAt.current = now;
+    if (!continuous && settle.current === undefined) return;
+    setScaling(true);
+    clearTimeout(settle.current);
+    settle.current = setTimeout(() => {
+      settle.current = undefined;
+      setScaling(false);
+    }, SCALE_SETTLE_MS);
+  }, [view.k]);
+  useEffect(() => () => clearTimeout(settle.current), []);
+  const [size, setSize] = useState(() => ({ width: typeof innerWidth === 'number' ? innerWidth : 0, height: typeof innerHeight === 'number' ? innerHeight : 0 }));
+  useEffect(() => {
+    const el = viewportRef.current;
+    if (!el || typeof ResizeObserver !== 'function') return;
+    const measure = () => setSize((previous) => previous.width === el.clientWidth && previous.height === el.clientHeight ? previous : { width: el.clientWidth, height: el.clientHeight });
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   const panBy = useCallback((x: number, y: number) => setView((v) => ({ ...v, x: v.x + x, y: v.y + y })), []);
   const wheelAt = useCallback((input: WheelInput) => {
@@ -173,6 +204,8 @@ export function usePanZoom(tool: Tool) {
   return {
     viewportRef,
     view,
+    scaling,
+    size,
     place: setView,
     fit,
     zoomBy,

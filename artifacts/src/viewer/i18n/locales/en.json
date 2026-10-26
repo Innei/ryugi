@@ -69,8 +69,7 @@
     "loading": "Loading preview…",
     "waitingPage": "Waiting for page content…",
     "waitingDocument": "Waiting for document content…",
-    "waitingCanvas": "Waiting for canvas content…",
-    "frameTitle": "{{title}} preview"
+    "waitingCanvas": "Waiting for canvas content…"
   },
   "comments": {
     "waitingYou": "Waiting on you",

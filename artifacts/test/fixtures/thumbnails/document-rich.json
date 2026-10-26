@@ -1,0 +1,712 @@
+{
+  "artifact": {
+    "id": "rich",
+    "type": "document",
+    "title": "协作文档 <测试>",
+    "project": "ryugi"
+  },
+  "payload": {
+    "title": "协作文档 <测试>",
+    "state": {
+      "root": {
+        "type": "root",
+        "children": [
+          {
+            "type": "heading",
+            "tag": "h1",
+            "children": [
+              {
+                "type": "text",
+                "text": "协作文档 <测试> heading",
+                "format": 0,
+                "detail": 0,
+                "mode": "normal",
+                "style": "",
+                "version": 1
+              }
+            ],
+            "direction": "ltr",
+            "format": "",
+            "indent": 0,
+            "textFormat": 0,
+            "textStyle": "",
+            "version": 1
+          },
+          {
+            "type": "paragraph",
+            "children": [
+              {
+                "type": "text",
+                "text": "第一段正文，包含 ",
+                "format": 0,
+                "detail": 0,
+                "mode": "normal",
+                "style": "",
+                "version": 1
+              },
+              {
+                "type": "text",
+                "text": "加粗",
+                "format": 1,
+                "detail": 0,
+                "mode": "normal",
+                "style": "",
+                "version": 1
+              },
+              {
+                "type": "text",
+                "text": " 和 ",
+                "format": 0,
+                "detail": 0,
+                "mode": "normal",
+                "style": "",
+                "version": 1
+              },
+              {
+                "type": "text",
+                "text": "code",
+                "format": 16,
+                "detail": 0,
+                "mode": "normal",
+                "style": "",
+                "version": 1
+              },
+              {
+                "type": "text",
+                "text": "，长度足够长以便换行。The quick brown fox jumps over the lazy dog again and again until the line wraps twice or more.",
+                "format": 0,
+                "detail": 0,
+                "mode": "normal",
+                "style": "",
+                "version": 1
+              }
+            ],
+            "direction": "ltr",
+            "format": "",
+            "indent": 0,
+            "textFormat": 0,
+            "textStyle": "",
+            "version": 1
+          },
+          {
+            "type": "heading",
+            "tag": "h2",
+            "children": [
+              {
+                "type": "text",
+                "text": "二级标题",
+                "format": 0,
+                "detail": 0,
+                "mode": "normal",
+                "style": "",
+                "version": 1
+              }
+            ],
+            "direction": "ltr",
+            "format": "",
+            "indent": 0,
+            "textFormat": 0,
+            "textStyle": "",
+            "version": 1
+          },
+          {
+            "type": "table",
+            "children": [
+              {
+                "type": "tablerow",
+                "children": [
+                  {
+                    "type": "tablecell",
+                    "headerState": 1,
+                    "children": [
+                      {
+                        "type": "paragraph",
+                        "children": [
+                          {
+                            "type": "text",
+                            "text": "名称",
+                            "format": 0,
+                            "detail": 0,
+                            "mode": "normal",
+                            "style": "",
+                            "version": 1
+                          }
+                        ],
+                        "direction": "ltr",
+                        "format": "",
+                        "indent": 0,
+                        "textFormat": 0,
+                        "textStyle": "",
+                        "version": 1
+                      }
+                    ],
+                    "direction": "ltr",
+                    "format": "",
+                    "indent": 0,
+                    "version": 1
+                  },
+                  {
+                    "type": "tablecell",
+                    "headerState": 1,
+                    "children": [
+                      {
+                        "type": "paragraph",
+                        "children": [
+                          {
+                            "type": "text",
+                            "text": "说明",
+                            "format": 0,
+                            "detail": 0,
+                            "mode": "normal",
+                            "style": "",
+                            "version": 1
+                          }
+                        ],
+                        "direction": "ltr",
+                        "format": "",
+                        "indent": 0,
+                        "textFormat": 0,
+                        "textStyle": "",
+                        "version": 1
+                      }
+                    ],
+                    "direction": "ltr",
+                    "format": "",
+                    "indent": 0,
+                    "version": 1
+                  },
+                  {
+                    "type": "tablecell",
+                    "headerState": 1,
+                    "children": [
+                      {
+                        "type": "paragraph",
+                        "children": [
+                          {
+                            "type": "text",
+                            "text": "状态",
+                            "format": 0,
+                            "detail": 0,
+                            "mode": "normal",
+                            "style": "",
+                            "version": 1
+                          }
+                        ],
+                        "direction": "ltr",
+                        "format": "",
+                        "indent": 0,
+                        "textFormat": 0,
+                        "textStyle": "",
+                        "version": 1
+                      }
+                    ],
+                    "direction": "ltr",
+                    "format": "",
+                    "indent": 0,
+                    "version": 1
+                  }
+                ],
+                "direction": "ltr",
+                "format": "",
+                "indent": 0,
+                "version": 1
+              },
+              {
+                "type": "tablerow",
+                "children": [
+                  {
+                    "type": "tablecell",
+                    "headerState": 0,
+                    "children": [
+                      {
+                        "type": "paragraph",
+                        "children": [
+                          {
+                            "type": "text",
+                            "text": "Thumbnail",
+                            "format": 0,
+                            "detail": 0,
+                            "mode": "normal",
+                            "style": "",
+                            "version": 1
+                          }
+                        ],
+                        "direction": "ltr",
+                        "format": "",
+                        "indent": 0,
+                        "textFormat": 0,
+                        "textStyle": "",
+                        "version": 1
+                      }
+                    ],
+                    "direction": "ltr",
+                    "format": "",
+                    "indent": 0,
+                    "version": 1
+                  },
+                  {
+                    "type": "tablecell",
+                    "headerState": 0,
+                    "children": [
+                      {
+                        "type": "paragraph",
+                        "children": [
+                          {
+                            "type": "text",
+                            "text": "共享缩略图 & 占位",
+                            "format": 0,
+                            "detail": 0,
+                            "mode": "normal",
+                            "style": "",
+                            "version": 1
+                          }
+                        ],
+                        "direction": "ltr",
+                        "format": "",
+                        "indent": 0,
+                        "textFormat": 0,
+                        "textStyle": "",
+                        "version": 1
+                      }
+                    ],
+                    "direction": "ltr",
+                    "format": "",
+                    "indent": 0,
+                    "version": 1
+                  },
+                  {
+                    "type": "tablecell",
+                    "headerState": 0,
+                    "children": [
+                      {
+                        "type": "paragraph",
+                        "children": [
+                          {
+                            "type": "text",
+                            "text": "进行中",
+                            "format": 0,
+                            "detail": 0,
+                            "mode": "normal",
+                            "style": "",
+                            "version": 1
+                          }
+                        ],
+                        "direction": "ltr",
+                        "format": "",
+                        "indent": 0,
+                        "textFormat": 0,
+                        "textStyle": "",
+                        "version": 1
+                      }
+                    ],
+                    "direction": "ltr",
+                    "format": "",
+                    "indent": 0,
+                    "version": 1
+                  }
+                ],
+                "direction": "ltr",
+                "format": "",
+                "indent": 0,
+                "version": 1
+              },
+              {
+                "type": "tablerow",
+                "children": [
+                  {
+                    "type": "tablecell",
+                    "headerState": 0,
+                    "children": [
+                      {
+                        "type": "paragraph",
+                        "children": [
+                          {
+                            "type": "text",
+                            "text": "Tiers",
+                            "format": 0,
+                            "detail": 0,
+                            "mode": "normal",
+                            "style": "",
+                            "version": 1
+                          }
+                        ],
+                        "direction": "ltr",
+                        "format": "",
+                        "indent": 0,
+                        "textFormat": 0,
+                        "textStyle": "",
+                        "version": 1
+                      }
+                    ],
+                    "direction": "ltr",
+                    "format": "",
+                    "indent": 0,
+                    "version": 1
+                  },
+                  {
+                    "type": "tablecell",
+                    "headerState": 0,
+                    "children": [
+                      {
+                        "type": "paragraph",
+                        "children": [
+                          {
+                            "type": "text",
+                            "text": "画板分档",
+                            "format": 0,
+                            "detail": 0,
+                            "mode": "normal",
+                            "style": "",
+                            "version": 1
+                          }
+                        ],
+                        "direction": "ltr",
+                        "format": "",
+                        "indent": 0,
+                        "textFormat": 0,
+                        "textStyle": "",
+                        "version": 1
+                      }
+                    ],
+                    "direction": "ltr",
+                    "format": "",
+                    "indent": 0,
+                    "version": 1
+                  },
+                  {
+                    "type": "tablecell",
+                    "headerState": 0,
+                    "children": [
+                      {
+                        "type": "paragraph",
+                        "children": [
+                          {
+                            "type": "text",
+                            "text": "待开始",
+                            "format": 0,
+                            "detail": 0,
+                            "mode": "normal",
+                            "style": "",
+                            "version": 1
+                          }
+                        ],
+                        "direction": "ltr",
+                        "format": "",
+                        "indent": 0,
+                        "textFormat": 0,
+                        "textStyle": "",
+                        "version": 1
+                      }
+                    ],
+                    "direction": "ltr",
+                    "format": "",
+                    "indent": 0,
+                    "version": 1
+                  }
+                ],
+                "direction": "ltr",
+                "format": "",
+                "indent": 0,
+                "version": 1
+              }
+            ],
+            "direction": "ltr",
+            "format": "",
+            "indent": 0,
+            "version": 1
+          },
+          {
+            "type": "list",
+            "listType": "bullet",
+            "tag": "ul",
+            "start": 1,
+            "children": [
+              {
+                "type": "listitem",
+                "children": [
+                  {
+                    "type": "paragraph",
+                    "children": [
+                      {
+                        "type": "text",
+                        "text": "无序一",
+                        "format": 0,
+                        "detail": 0,
+                        "mode": "normal",
+                        "style": "",
+                        "version": 1
+                      }
+                    ],
+                    "direction": "ltr",
+                    "format": "",
+                    "indent": 0,
+                    "textFormat": 0,
+                    "textStyle": "",
+                    "version": 1
+                  }
+                ],
+                "direction": "ltr",
+                "format": "",
+                "indent": 0,
+                "textFormat": 0,
+                "textStyle": "",
+                "version": 1,
+                "value": 1
+              },
+              {
+                "type": "listitem",
+                "children": [
+                  {
+                    "type": "paragraph",
+                    "children": [
+                      {
+                        "type": "text",
+                        "text": "无序二",
+                        "format": 0,
+                        "detail": 0,
+                        "mode": "normal",
+                        "style": "",
+                        "version": 1
+                      }
+                    ],
+                    "direction": "ltr",
+                    "format": "",
+                    "indent": 0,
+                    "textFormat": 0,
+                    "textStyle": "",
+                    "version": 1
+                  }
+                ],
+                "direction": "ltr",
+                "format": "",
+                "indent": 0,
+                "textFormat": 0,
+                "textStyle": "",
+                "version": 1,
+                "value": 1
+              }
+            ],
+            "direction": "ltr",
+            "format": "",
+            "indent": 0,
+            "version": 1
+          },
+          {
+            "type": "list",
+            "listType": "number",
+            "tag": "ol",
+            "start": 1,
+            "children": [
+              {
+                "type": "listitem",
+                "children": [
+                  {
+                    "type": "paragraph",
+                    "children": [
+                      {
+                        "type": "text",
+                        "text": "有序一",
+                        "format": 0,
+                        "detail": 0,
+                        "mode": "normal",
+                        "style": "",
+                        "version": 1
+                      }
+                    ],
+                    "direction": "ltr",
+                    "format": "",
+                    "indent": 0,
+                    "textFormat": 0,
+                    "textStyle": "",
+                    "version": 1
+                  }
+                ],
+                "direction": "ltr",
+                "format": "",
+                "indent": 0,
+                "textFormat": 0,
+                "textStyle": "",
+                "version": 1,
+                "value": 1
+              },
+              {
+                "type": "listitem",
+                "children": [
+                  {
+                    "type": "paragraph",
+                    "children": [
+                      {
+                        "type": "text",
+                        "text": "有序二",
+                        "format": 0,
+                        "detail": 0,
+                        "mode": "normal",
+                        "style": "",
+                        "version": 1
+                      }
+                    ],
+                    "direction": "ltr",
+                    "format": "",
+                    "indent": 0,
+                    "textFormat": 0,
+                    "textStyle": "",
+                    "version": 1
+                  }
+                ],
+                "direction": "ltr",
+                "format": "",
+                "indent": 0,
+                "textFormat": 0,
+                "textStyle": "",
+                "version": 1,
+                "value": 1
+              },
+              {
+                "type": "listitem",
+                "children": [
+                  {
+                    "type": "paragraph",
+                    "children": [
+                      {
+                        "type": "text",
+                        "text": "有序三",
+                        "format": 0,
+                        "detail": 0,
+                        "mode": "normal",
+                        "style": "",
+                        "version": 1
+                      }
+                    ],
+                    "direction": "ltr",
+                    "format": "",
+                    "indent": 0,
+                    "textFormat": 0,
+                    "textStyle": "",
+                    "version": 1
+                  }
+                ],
+                "direction": "ltr",
+                "format": "",
+                "indent": 0,
+                "textFormat": 0,
+                "textStyle": "",
+                "version": 1,
+                "value": 1
+              }
+            ],
+            "direction": "ltr",
+            "format": "",
+            "indent": 0,
+            "version": 1
+          },
+          {
+            "type": "alert-quote",
+            "alertType": "note",
+            "content": {
+              "root": {
+                "type": "root",
+                "children": [
+                  {
+                    "type": "paragraph",
+                    "children": [
+                      {
+                        "type": "text",
+                        "text": "Offline over 7 days falls back to snapshots.",
+                        "format": 0,
+                        "detail": 0,
+                        "mode": "normal",
+                        "style": "",
+                        "version": 1
+                      }
+                    ],
+                    "direction": "ltr",
+                    "format": "",
+                    "indent": 0,
+                    "textFormat": 0,
+                    "textStyle": "",
+                    "version": 1
+                  }
+                ],
+                "direction": "ltr",
+                "format": "",
+                "indent": 0,
+                "version": 1
+              }
+            },
+            "version": 1
+          },
+          {
+            "type": "code-block",
+            "code": "export const a = 1;\nconst b = a + 1;\nconsole.log(b);",
+            "language": "ts",
+            "version": 1
+          },
+          {
+            "type": "quote",
+            "children": [
+              {
+                "type": "paragraph",
+                "children": [
+                  {
+                    "type": "text",
+                    "text": "引用一段话。",
+                    "format": 0,
+                    "detail": 0,
+                    "mode": "normal",
+                    "style": "",
+                    "version": 1
+                  }
+                ],
+                "direction": "ltr",
+                "format": "",
+                "indent": 0,
+                "textFormat": 0,
+                "textStyle": "",
+                "version": 1
+              }
+            ],
+            "direction": "ltr",
+            "format": "",
+            "indent": 0,
+            "textFormat": 0,
+            "textStyle": "",
+            "version": 1
+          },
+          {
+            "type": "mermaid",
+            "diagram": "graph TD; A-->B;",
+            "version": 1
+          },
+          {
+            "type": "horizontalrule",
+            "version": 1
+          },
+          {
+            "type": "paragraph",
+            "children": [
+              {
+                "type": "text",
+                "text": "结尾段落。",
+                "format": 0,
+                "detail": 0,
+                "mode": "normal",
+                "style": "",
+                "version": 1
+              }
+            ],
+            "direction": "ltr",
+            "format": "",
+            "indent": 0,
+            "textFormat": 0,
+            "textStyle": "",
+            "version": 1
+          }
+        ],
+        "direction": "ltr",
+        "format": "",
+        "indent": 0,
+        "version": 1
+      }
+    }
+  }
+}
