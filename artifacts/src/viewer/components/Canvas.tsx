@@ -101,6 +101,8 @@ function stickyColors(color?: string) {
 }
 
 const HIDDEN = { visibility: 'hidden' } as const;
+// Transparent, not hidden: a pinch latches onto the frame it started over, and a hidden frame drops the rest of it.
+const COVERED = { opacity: 0 } as const;
 
 function BoardLayers({ image, showImage, hideFrame, frame, onError }: {
   image: string | null;
@@ -189,7 +191,7 @@ export function Canvas({ view, renders, boards, notes, contentBase, versions, pe
                   <iframe
                     ref={frameRef(id)}
                     onLoad={() => frameLoaded(id)}
-                    style={hidden ? HIDDEN : undefined}
+                    style={hidden ? COVERED : undefined}
                     title={board.title ?? id}
                     src={boardSrc(contentBase, board.file, versions[board.file] ?? 0, replays[id] ?? 0)}
                     sandbox="allow-scripts"

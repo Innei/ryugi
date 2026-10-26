@@ -288,10 +288,11 @@ test('an overlay covers a frame until it is ready, and a zoom hides the frame on
   expect(shown(host, 'a')).toEqual([]);
   await render({ renders: new Map([['a', live({ image: 'blob:shot', overlay: true, hidden: true })]]) });
   expect(shown(host, 'a')).toEqual(['blob:shot']);
-  expect(frame.style.visibility).toBe('');
+  expect(frame.style.opacity).toBe('');
   clock.step(48);
   expect(host.querySelector('iframe')).toBe(frame);
-  expect(frame.style.visibility).toBe('hidden');
+  expect(frame.style.opacity).toBe('0');
+  expect(frame.style.visibility).toBe('');
 });
 
 test('a zoom keeps the frame visible until its snapshot has loaded', async () => {
@@ -299,11 +300,12 @@ test('a zoom keeps the frame visible until its snapshot has loaded', async () =>
   const host = await render({ renders: new Map([['a', live({ image: 'blob:shot', overlay: true, hidden: true })]]) });
   const frame = host.querySelector('iframe')!;
   clock.step(16);
-  expect(frame.style.visibility).toBe('');
+  expect(frame.style.opacity).toBe('');
   await settle(host.querySelector('[data-board="a"] img'), 'load');
   expect(shown(host, 'a')).toEqual(['blob:shot']);
   clock.step(32);
-  expect(frame.style.visibility).toBe('hidden');
+  expect(frame.style.opacity).toBe('0');
+  expect(frame.style.visibility).toBe('');
 });
 
 test('when a zoom ends the frame shows at once and the snapshot stays over it for two more frames', async () => {
@@ -312,7 +314,7 @@ test('when a zoom ends the frame shows at once and the snapshot stays over it fo
   await settle(host.querySelector('[data-board="a"] img'), 'load');
   clock.step(16);
   await render({ renders: new Map([['a', live({ image: 'blob:shot' })]]) });
-  expect(host.querySelector('iframe')!.style.visibility).toBe('');
+  expect(host.querySelector('iframe')!.style.opacity).toBe('');
   expect(shown(host, 'a')).toEqual(['blob:shot']);
   clock.step(32);
   expect(shown(host, 'a')).toEqual(['blob:shot']);

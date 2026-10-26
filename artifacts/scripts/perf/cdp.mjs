@@ -54,7 +54,7 @@ const PROBES = String.raw`(() => {
   }));
   const drawn = (slot, now) => {
     for (const child of slot.children) {
-      if (child.style.visibility === 'hidden') continue;
+      if (child.style.visibility === 'hidden' || child.style.opacity === '0') continue;
       if (child.tagName === 'IMG' && child.complete && child.naturalWidth > 0) return true;
       if (child.tagName === 'IFRAME' && now - (loadedAt.get(child) ?? Infinity) > 34) return true;
       if (child.tagName !== 'IMG' && child.tagName !== 'IFRAME' && child.querySelector('video, img')) return true;
