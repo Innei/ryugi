@@ -6,6 +6,7 @@ import readline from 'node:readline';
 import { AGENT_MARKERS } from '../server/agent';
 import { artifactPath } from '../server/artifact-address';
 import { artifactKeyOf } from '../server/artifacts';
+import { openBrowser } from '../server/browser-focus';
 import { ARTIFACT_ERROR, ARTIFACT_PATTERN, CliError, invocation, projectPaths, type ProjectPaths } from './paths';
 import { alive, hasServerId, parentOf, readText, sleep, waitForExit } from './process';
 
@@ -37,10 +38,8 @@ function withLink(info: Record<string, unknown>, artifact: string | undefined, r
 
 const RESERVE_TIMEOUT_MS = 5000;
 
-const inClaudeCode = () => !!(process.env.CLAUDECODE || process.env.CLAUDE_CODE);
-
 async function withCloudLink(out: Record<string, unknown>, artifact: string | undefined) {
-  if (!artifact || !inClaudeCode() || typeof out.url !== 'string') return out;
+  if (!artifact || typeof out.url !== 'string') return out;
   const server = new URL(out.url);
   if (server.hostname === 'localhost') server.hostname = '127.0.0.1';
   try {
@@ -151,7 +150,14 @@ export async function start(options: StartOptions, emit: Emit): Promise<number> 
       if (!version || readText(paths.version) === version) {
         registerOwner(paths);
         recordAgent(paths);
-        emit(await withCloudLink(withLink(JSON.parse(info), options.artifact, true), options.artifact));
+        const out = await withCloudLink(withLink(JSON.parse(info), options.artifact, true), options.artifact);
+        emit(out);
+        if (process.platform === 'darwin' && options.open && options.artifact && !process.env.ARTIFACTS_OPEN_CMD) {
+          const local = out.link as string;
+          await openBrowser(typeof out.cloudLink === 'string' ? out.cloudLink : local, [local]).catch((error: Error) => {
+            console.error(error.message);
+          });
+        }
         return 0;
       }
       await replace(running, paths);

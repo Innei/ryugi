@@ -520,6 +520,7 @@ export function createCloudRoutes(options: CloudRoutesOptions) {
     match: (pathname: string) => ROUTE.exec(pathname),
 
     autoPublish,
+    reserve: (ref: ArtifactRef) => serialized(`${ref.type}/${ref.id}`, () => reserve(ref)),
     publication,
     changed(key: string) {
       changedDuringPublish.add(key);

@@ -61,8 +61,7 @@ export interface ArtifactsServer {
   contentToken: string;
   url: string;
   linkFor(type: ArtifactType, id: string): string;
-  cloudLinkFor(type: ArtifactType, id: string): string | null;
-  clientCount(): number;
+  cloudLinkFor(type: ArtifactType, id: string): Promise<string | null>;
   onArtifactChange(listener: (ref: ArtifactRef, payload: ArtifactPayload, files: string[]) => void): void;
   onActivity(listener: () => void): void;
   close(): Promise<void>;
@@ -984,12 +983,11 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
     contentToken,
     url,
     linkFor,
-    cloudLinkFor: (type, id) => {
-      if (!options.cloud || !options.configFile || !readCredentials(options.cloud.credentialsFile, options.cloud.origin)) return null;
-      const url = readConfig(options.configFile).config.artifacts[`${type}/${id}`]?.cloud?.url;
+    cloudLinkFor: async (type, id) => {
+      if (!cloud || !options.cloud || !readCredentials(options.cloud.credentialsFile, options.cloud.origin)) return null;
+      const { url } = await cloud.reserve({ type, id });
       return url ? ownLink(url, hostIdFor(options.cloud.credentialsFile)) : null;
     },
-    clientCount: () => clients.size,
     onArtifactChange: (listener) => {
       changeListeners.push(listener);
       for (const change of initialChanges) listener(change.ref, change.payload, change.files);

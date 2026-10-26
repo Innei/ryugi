@@ -68,6 +68,24 @@ describe('ryugi-artifacts start', () => {
     expect(second.reused).toBe(true);
   }, 30000);
 
+  test.skipIf(process.platform !== 'darwin')('reusing a server focuses its existing artifact tab without opening another', () => {
+    const project = newProject();
+    const bin = fs.mkdtempSync(path.join(os.tmpdir(), 'artifacts-browser-bin-'));
+    const checked = path.join(bin, 'checked');
+    const opened = path.join(bin, 'opened');
+    fs.writeFileSync(path.join(bin, 'osascript'), `#!/bin/sh\nprintf 'focus\\n' >> ${JSON.stringify(checked)}\nprintf 'found\\n'\n`, { mode: 0o755 });
+    fs.writeFileSync(path.join(bin, 'open'), `#!/bin/sh\nprintf opened > ${JSON.stringify(opened)}\n`, { mode: 0o755 });
+    const args = ['start', '--project-dir', project, '--artifact', 'document/notes'];
+    run(args);
+    for (let i = 0; i < 2; i++) {
+      const { code, out } = run([...args, '--open'], { PATH: `${bin}:${process.env.PATH}` });
+      expect(code).toBe(0);
+      expect(out.reused).toBe(true);
+    }
+    expect(fs.readFileSync(checked, 'utf8').trim().split('\n')).toEqual(['focus', 'focus']);
+    expect(fs.existsSync(opened)).toBe(false);
+  }, 30000);
+
   test('a start from a subdirectory of the repository reuses the root server', () => {
     const project = newProject();
     fs.mkdirSync(path.join(project, '.git'));
@@ -290,12 +308,52 @@ describe('cloud link on start', () => {
     expect(out.cloudLimit).toEqual({ message: 'The free plan allows 5 private artifacts and you have 5. Upgrade to Pro for 500.', upgradeUrl: 'https://cloud.example/billing' });
   }, 30000);
 
-  test('outside Claude Code no cloud link is reserved', async () => {
+  test.each([{}, { CODEX_THREAD_ID: 'canvas-discussion' }])('auto-publish reserves a cloud link outside Claude Code: %j', async (agent) => {
     const { cloud, env } = await signedIn();
-    const { out } = await runAsync(['start', '--project-dir', newProject(), '--artifact', 'html/arrow'], env);
+    const { out } = await runAsync(['start', '--project-dir', newProject(), '--artifact', 'html/arrow'], { ...env, ...agent });
+    expect(out.cloudLink).toBe(`${cloud.origin}/a/cloud1`);
+    expect(cloud.requests.filter((r) => r.path === '/api/artifacts')).toHaveLength(1);
+  }, 30000);
+
+  test('auto-publish off does not reserve a cloud link', async () => {
+    const { cloud, env } = await signedIn();
+    fs.writeFileSync(path.join(env.XDG_CONFIG_HOME, 'ryugi', 'config.json'), JSON.stringify({ autoPublish: false }));
+    const { out } = await runAsync(['start', '--project-dir', newProject(), '--artifact', 'html/arrow'], { ...env, CODEX_THREAD_ID: 'canvas-discussion' });
     expect(out.cloudLink).toBeUndefined();
     expect(cloud.requests).toEqual([]);
   }, 30000);
+
+  test('terminal output prefers the reserved cloud link', async () => {
+    const { cloud, env } = await signedIn();
+    const project = newProject();
+    const output = await new Promise<string>((resolve, reject) => {
+      const script = `process.stdout.isTTY = true; process.argv.splice(1, 0, ${JSON.stringify(cli)}); require(${JSON.stringify(cli)});`;
+      const child = spawn(process.execPath, ['-e', script, 'start', '--project-dir', project, '--artifact', 'html/arrow'], { env: { ...withoutAgent(), ARTIFACTS_OPEN: '0', ...env } });
+      let stdout = '';
+      child.stdout.on('data', (chunk) => { stdout += chunk; });
+      child.on('error', reject);
+      child.on('close', (code) => code === 0 ? resolve(stdout) : reject(new Error(stdout)));
+    });
+    expect(output.trim()).toBe(`${cloud.origin}/a/cloud1`);
+  }, 30000);
+
+  test('an already-ready document opens its cloud link before the CLI reserves it', async () => {
+    const { cloud, env } = await signedIn();
+    const project = newProject();
+    const document = path.join(project, '.ryugi', 'artifacts', 'document', 'notes');
+    fs.mkdirSync(document, { recursive: true });
+    fs.writeFileSync(path.join(document, 'doc.xml'), '<doc><h1>Canvas CLI</h1></doc>');
+    const bin = fs.mkdtempSync(path.join(os.tmpdir(), 'artifacts-open-bin-'));
+    const log = path.join(bin, 'opened.log');
+    const open = path.join(bin, 'open');
+    fs.writeFileSync(open, `#!/bin/sh\nprintf '%s\\n' "$1" >> ${JSON.stringify(log)}\n`, { mode: 0o755 });
+    const { out } = await runAsync(['start', '--project-dir', project, '--artifact', 'document/notes'], { ...env, CODEX_THREAD_ID: 'canvas-discussion', ARTIFACTS_OPEN: '1', ARTIFACTS_OPEN_CMD: open });
+    await waitFor(() => fs.existsSync(log), 8000);
+    const opened = new URL(fs.readFileSync(log, 'utf8').trim());
+    expect(`${opened.origin}${opened.pathname}`).toBe(`${cloud.origin}/a/cloud1`);
+    expect(out.cloudLink).toBe(`${cloud.origin}/a/cloud1`);
+    expect(cloud.requests.filter((r) => r.path === '/api/artifacts')).toHaveLength(1);
+  }, 20000);
 
   test('the browser opens the cloud link with this computer marked, once the artifact is ready', async () => {
     const { cloud, env } = await signedIn();

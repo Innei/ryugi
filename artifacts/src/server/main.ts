@@ -1,10 +1,11 @@
-import { exec, execFile } from 'node:child_process';
+import { exec } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { startArtifactsServer } from './app';
+import { openBrowser } from './browser-focus';
 import { credentialsFile } from './credentials';
-import { browserLauncher, isLoopback, liveOwners, parseEnv, processAlive, readOwners, shutdownReason } from './lifecycle';
+import { isLoopback, liveOwners, parseEnv, processAlive, readOwners, shutdownReason } from './lifecycle';
 import { openReady } from './ready';
 import { registryDir, removeEntry, touchEntry, writeEntry, type RegistryEntry } from './registry';
 import { writeJsonAtomic } from './state';
@@ -31,19 +32,19 @@ async function main() {
   });
 
   let browserOpened = false;
-  server.onArtifactChange((ref, payload) => {
+  server.onArtifactChange(async (ref, payload) => {
     if (browserOpened || !config.open || !isLoopback(config.host)) return;
     if (config.openArtifact && `${ref.type}/${ref.id}` !== config.openArtifact) return;
     if ('canvas' in payload ? !openReady(payload) : payload.warnings.length > 0) return;
     browserOpened = true;
-    if (server.clientCount() > 0) return;
-    const link = server.cloudLinkFor(ref.type, ref.id) ?? server.linkFor(ref.type, ref.id);
+    const link = await server.cloudLinkFor(ref.type, ref.id) ?? server.linkFor(ref.type, ref.id);
     if (config.openCmd) {
       exec(`${config.openCmd} ${JSON.stringify(link)}`, () => {});
       return;
     }
-    const launcher = browserLauncher(process.platform, link);
-    if (launcher) execFile(launcher.bin, launcher.args, () => {});
+    await openBrowser(link, [server.linkFor(ref.type, ref.id)]).catch((error: Error) => {
+      console.error(JSON.stringify({ type: 'browser-open-error', error: error.message }));
+    });
   });
 
   const registry = registryDir();

@@ -63,7 +63,7 @@ function parse(args: string[], options: Options, positionals = 0) {
 
 function text(value: Record<string, unknown>) {
   if (typeof value.error === 'string') return `Error: ${value.error}`;
-  if (value.type === 'server-started') return `${value.link ?? value.url}${value.reused ? ' (already running)' : ''}`;
+  if (value.type === 'server-started') return `${value.cloudLink ?? value.link ?? value.url}${value.reused ? ' (already running)' : ''}`;
   if (value.type === 'login-required' || value.type === 'login') return `${value.message}\n${value.url}`;
   if (value.type === 'published') return `${value.url} (${value.visibility})`;
   if (value.type === 'auto-publish') return `Auto-publish: ${value.global === null ? 'not decided' : value.global ? 'on' : 'off'} for every project${value.project === null ? '' : `, ${value.project ? 'on' : 'off'} for this project`}.`;

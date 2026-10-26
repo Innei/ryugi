@@ -1,6 +1,6 @@
 {
   "name": "ryugi",
-  "version": "1.39.2",
+  "version": "1.39.3",
   "description": "Ryugi skills and runtime bootstrap for coding agents",
   "license": "MIT",
   "type": "module",

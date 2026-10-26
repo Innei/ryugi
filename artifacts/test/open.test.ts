@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, test } from 'vitest';
-import { readJson, waitFor, writeArtboard, writeDocument } from './helpers';
+import { openWs, readJson, waitFor, writeArtboard, writeDocument } from './helpers';
 
 const repoRoot = path.resolve(__dirname, '../..');
 const serverEntry = path.join(repoRoot, 'skills/artifacts/app/server.cjs');
@@ -40,10 +40,11 @@ function opened(log: string) {
   return fs.existsSync(log) ? fs.readFileSync(log, 'utf8').trim().split('\n').filter(Boolean) : [];
 }
 
-async function startServer(root: string, openCmd: string, openArtifact = 'artboard/header') {
+async function startServer(root: string, openCmd: string, openArtifact = 'artboard/header', env: NodeJS.ProcessEnv = {}) {
   const child = spawn(process.execPath, [serverEntry, '--artifacts-server-id=open-test'], {
     env: {
       ...process.env,
+      ...env,
       ARTIFACTS_ROOT: root,
       ARTIFACTS_HOST: '127.0.0.1',
       ARTIFACTS_URL_HOST: 'localhost',
@@ -61,6 +62,42 @@ async function startServer(root: string, openCmd: string, openArtifact = 'artboa
 }
 
 describe('automatic browser open', () => {
+  test.skipIf(process.platform !== 'darwin').each(['found', 'missing', 'unknown'])('checks for the existing artifact tab before opening a browser: %s', async (status) => {
+    const root = projectRoot();
+    writeDocument(root, 'notes', { 'doc.xml': '<doc><h1>Canvas CLI</h1></doc>' });
+    const bin = fs.mkdtempSync(path.join(os.tmpdir(), 'artifacts-browser-bin-'));
+    const checked = path.join(bin, 'checked');
+    const opened = path.join(bin, 'opened');
+    fs.writeFileSync(path.join(bin, 'osascript'), `#!/bin/sh\nprintf checked > ${JSON.stringify(checked)}\nprintf '${status}\\n'\n`, { mode: 0o755 });
+    fs.writeFileSync(path.join(bin, 'open'), `#!/bin/sh\nprintf opened > ${JSON.stringify(opened)}\n`, { mode: 0o755 });
+    await startServer(root, '', 'document/notes', { PATH: `${bin}:${process.env.PATH}` });
+    await waitFor(() => fs.existsSync(checked), 5000);
+    if (status === 'missing') await waitFor(() => fs.existsSync(opened), 5000);
+    else await new Promise((resolve) => setTimeout(resolve, 100));
+    expect(fs.existsSync(opened)).toBe(status === 'missing');
+  }, 15000);
+
+  test.each([false, true])('opens a newly written document with an existing library connection: %s', async (connected) => {
+    const root = projectRoot();
+    const { bin, log } = fakeOpenCommand();
+    await startServer(root, bin, 'document/notes');
+    const info = readJson(path.join(root, '.state/server-info'));
+    const key = new URL(info.url).searchParams.get('key');
+    const viewer = connected ? await openWs(info.port, {
+      Cookie: `ryugi_artifacts_${info.port}=${key}`,
+      Origin: `http://127.0.0.1:${info.port}`,
+    }) : null;
+    try {
+      if (viewer) expect(viewer.status).toBe(101);
+      writeDocument(root, 'notes', { 'doc.xml': '<doc><h1>Canvas CLI</h1><p>Discuss this proposal.</p></doc>' });
+      await waitFor(() => opened(log).length > 0, 5000);
+      expect(opened(log)).toHaveLength(1);
+      expect(opened(log)[0]).toMatch(/\/document\/[a-f0-9]{32}\?key=/);
+    } finally {
+      viewer?.socket?.destroy();
+    }
+  }, 15000);
+
   test('closes a document session once when Ctrl+C and its forwarded termination signal arrive together', async () => {
     const root = projectRoot();
     writeDocument(root, 'notes', { 'doc.xml': '<doc><p>Keep this document</p></doc>' });
