@@ -8,9 +8,9 @@ could build from without going back to your human partner. Cover:
 - constraints
 - the parts of the how they decided, as they decided them
 - what's left to the builder
-- every artifact the conversation used: type, id, path, and what was
-  decided there, stated in the text too, since `.ryugi/artifacts/` may not
-  be committed
+- every artifact the conversation used: type, id and path or its link,
+  and what was decided there, stated in the text too, since
+  `.ryugi/artifacts/` may not be committed
 
 When your human partner has ADHD, also write `<spec>.tldr.md` beside it for
 them: what gets built, what they'll see as numbered steps, decisions in a

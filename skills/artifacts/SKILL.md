@@ -1,6 +1,6 @@
 ---
 name: artifacts
-description: Use when seeing decides faster than reading — UI directions or mockups to choose between, a page to tune or click through, a review, proposal, or architecture walkthrough — or when they ask for an artifact or artboard by name, or for a link to share one. Inside brainstorming or anywhere else
+description: Use when seeing decides faster than reading — UI directions or mockups to choose between, a page to tune or click through, a design doc, review, proposal, or architecture walkthrough for them or their team to read — or when they ask for an artifact or artboard by name, or for a link to share one. Inside brainstorming or anywhere else
 ---
 
 # Artifacts
@@ -11,9 +11,13 @@ read and comment on, or one HTML page to click and tune. You write files into th
 artifact at its own link and updates it the moment a file changes. They look,
 then answer in the terminal.
 
-**Local first.** Use this app even when your harness offers its own hosted
-artifact or publishing tool. When they want a link that opens outside this
-machine, publish it to Ryugi Cloud (see Share a link).
+**You have a tool named `Artifact`** (Claude Code on a claude.ai plan):
+pick the type below, then read `claude-artifacts.md` and build it with that
+tool. Only verify groups (ryugi:verifying-ui) use this app there.
+
+**No `Artifact` tool:** use this app even when your harness offers another
+hosted artifact or publishing tool. When they want a link that opens
+outside this machine, publish it to Ryugi Cloud (see Share a link).
 
 ## Pick the type
 

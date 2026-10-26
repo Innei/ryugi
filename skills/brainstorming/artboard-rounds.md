@@ -28,7 +28,8 @@ Your message is one line on what's on the board, plus the link.
 
 When they answer:
 
-1. Read `selection.json` when they point at nodes or tweaks.
+1. Read what they selected, as ryugi:artifacts says, when they point at
+   nodes or tweaks.
 2. Record each answered group as a decision, theirs or the recommendation
    they accepted: in the document's Settled when one is open, in your next
    playback otherwise.

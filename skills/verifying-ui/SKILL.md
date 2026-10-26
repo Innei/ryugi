@@ -25,8 +25,9 @@ After the fix there is no honest "before".
 ## The verify page
 
 1. **Where.** The artboard that holds the approved design gets a page
-   `verify` (name "Verify"). No such artboard (a bug, or work that skipped
-   brainstorming): a new artboard `verify-<topic>`.
+   `verify` (name "Verify"). No such artboard (a bug, work that skipped
+   brainstorming, or a design approved on a claude.ai canvas): a new
+   artboard `verify-<topic>`, with the canvas link in each group's sticky.
 2. **One group per module or per bug**, `"verify": true`, titled with the
    module or bug:
    - Built from a spec: the approved board (a board with the same `file`)
