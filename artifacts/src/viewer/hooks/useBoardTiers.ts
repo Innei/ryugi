@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { renderBoardPlaceholder } from '../../shared/thumbnail';
 import { isMediaBoard, type BoardSpec } from '../../shared/types';
-import { chooseTiers, snapshotScale, type BoardRender } from '../lib/board-tiers';
+import { boardsToWarm, chooseTiers, snapshotScale, type BoardRender } from '../lib/board-tiers';
 import { boardReady } from '../lib/play';
 import { createSnapshotStore, snapshotKey, type SnapshotStore } from '../lib/snapshot-store';
 import { createTierController } from '../lib/tier-controller';
@@ -64,10 +64,10 @@ export function useBoardTiers({ artifact, boards, versions, pending, view, scali
   });
 
   const snapshots = new Set([...keys].filter(([, key]) => store.has(key) && !store.isUnsupported(key)).map(([id]) => id));
-  const states = controller.update({
-    boards: html.map(([id, board]) => ({ id, x: board.x, y: board.y, w: board.w, h: board.h })),
-    view, viewport, pinned, snapshots, scaling, hovered, hoverPromotes,
-  });
+  const tierBoards = html.map(([id, board]) => ({ id, x: board.x, y: board.y, w: board.w, h: board.h }));
+  const unsupported = new Set([...keys].filter(([, key]) => store.isUnsupported(key)).map(([id]) => id));
+  const warm = scaling ? [] : boardsToWarm({ boards: tierBoards, view, viewport, snapshots, skip: unsupported });
+  const states = controller.update({ boards: tierBoards, view, viewport, pinned, snapshots, scaling, hovered, hoverPromotes, warm });
   const settledK = useRef(view.k);
   if (!scaling) settledK.current = view.k;
   const scale = snapshotScale(settledK.current, dpr);
@@ -194,8 +194,8 @@ export function useBoardTiers({ artifact, boards, versions, pending, view, scali
       tier: state.tier,
       mounted: state.mounted,
       image,
-      overlay: state.mounted && (!state.ready || (scaling && !!snapshot)),
-      hidden: state.mounted && state.ready && scaling && !!snapshot,
+      overlay: state.mounted && (!state.ready || !!state.warming || (scaling && !!snapshot)),
+      hidden: state.mounted && (!!state.warming || (state.ready && scaling && !!snapshot)),
     });
   }
   return { renders, frameRef, loaded, imageFailed };

@@ -34,7 +34,7 @@ function setup(patch: Partial<ControllerInput> = {}) {
   let changes = 0;
   const controller = createTierController({ now: time.now, schedule: time.schedule, cancel: time.cancel, onChange: () => changes++ });
   let input: ControllerInput = { boards: row, view: { x: 0, y: 0, k: 1 }, viewport, pinned: new Set(), snapshots: new Set(), scaling: false, hovered: null, hoverPromotes: false, ...patch };
-  const run = (next: Partial<ControllerInput> = {}) => { input = { ...input, ...next }; return Object.fromEntries([...controller.update(input)].map(([id, state]) => [id, `${state.tier}${state.mounted ? '+mounted' : ''}${state.ready ? '+ready' : ''}`])); };
+  const run = (next: Partial<ControllerInput> = {}) => { input = { ...input, ...next }; return Object.fromEntries([...controller.update(input)].map(([id, state]) => [id, `${state.tier}${state.mounted ? '+mounted' : ''}${state.ready ? '+ready' : ''}${state.warming ? '+warming' : ''}`])); };
   return { time, controller, run, changes: () => changes };
 }
 
@@ -111,4 +111,17 @@ test('a board that disappears releases its mount slot', () => {
   run();
   const next = run({ boards: boards.filter((b) => b.id !== 'a') });
   expect(next.c).toBe('live+mounted');
+});
+
+test('boards to warm mount after live boards, two at a time, under their placeholder, and leave once captured', () => {
+  const boards = ['a', 'b', 'c', 'd'].map((id, i) => board(id, i * 120, 100, 100));
+  const { controller, run } = setup({ boards, view: { x: 0, y: 0, k: 0.2 }, warm: ['a', 'b', 'c'] });
+  expect(run()).toEqual({ a: 'placeholder+mounted+warming', b: 'placeholder+mounted+warming', c: 'placeholder', d: 'placeholder' });
+  controller.ready('a');
+  expect(run({ snapshots: new Set(['a']), warm: ['b', 'c'] })).toMatchObject({ a: 'snapshot', b: 'placeholder+mounted+warming', c: 'placeholder+mounted+warming' });
+});
+
+test('nothing is warmed while the scale changes', () => {
+  const { run } = setup({ boards: [board('a', 0, 100, 100)], view: { x: 0, y: 0, k: 0.2 }, warm: ['a'], scaling: true });
+  expect(run().a).toBe('placeholder');
 });

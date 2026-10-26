@@ -6,6 +6,7 @@ export type BoardTier = 'live' | 'snapshot' | 'placeholder' | 'empty';
 export const LIVE_MIN_ZOOM = 0.4;
 export const LIVE_MAX = 4;
 const VISIBLE_MARGIN = 240;
+export const WARM_MIN_WIDTH = 120;
 
 export interface TierBoard { id: string; x: number; y: number; w: number; h: number }
 export interface TierInput {
@@ -25,10 +26,14 @@ const screenRect = (board: TierBoard, view: View) => {
   return { left, top, right: left + board.w * view.k, bottom: top + board.h * view.k };
 };
 
+const visibleArea = ({ left, top, right, bottom }: ReturnType<typeof screenRect>, viewport: TierInput['viewport']) =>
+  Math.max(0, Math.min(right, viewport.width) - Math.max(left, 0)) * Math.max(0, Math.min(bottom, viewport.height) - Math.max(top, 0));
+
 export function chooseTiers({ boards, view, viewport, pinned, snapshots }: TierInput): Map<string, BoardTier> {
   const placed = boards.map((board) => {
-    const { left, top, right, bottom } = screenRect(board, view);
-    const area = Math.max(0, Math.min(right, viewport.width) - Math.max(left, 0)) * Math.max(0, Math.min(bottom, viewport.height) - Math.max(top, 0));
+    const rect = screenRect(board, view);
+    const { left, top, right, bottom } = rect;
+    const area = visibleArea(rect, viewport);
     const distance = Math.hypot(Math.max(0, -right, left - viewport.width), Math.max(0, -bottom, top - viewport.height));
     return { id: board.id, area, distance };
   });
@@ -48,4 +53,13 @@ export function visibleRenders({ boards, view, viewport }: Pick<TierInput, 'boar
     const visible = right >= -VISIBLE_MARGIN && bottom >= -VISIBLE_MARGIN && left <= viewport.width + VISIBLE_MARGIN && top <= viewport.height + VISIBLE_MARGIN;
     return [board.id, { tier: visible ? 'live' : 'empty', mounted: visible, image: null, overlay: false, hidden: false }];
   }));
+}
+
+export function boardsToWarm({ boards, view, viewport, snapshots, skip }: Pick<TierInput, 'boards' | 'view' | 'viewport' | 'snapshots'> & { skip: ReadonlySet<string> }) {
+  return boards
+    .filter((board) => !snapshots.has(board.id) && !skip.has(board.id) && board.w * view.k >= WARM_MIN_WIDTH)
+    .map((board) => ({ id: board.id, area: visibleArea(screenRect(board, view), viewport) }))
+    .filter((board) => board.area > 0)
+    .sort((a, b) => b.area - a.area)
+    .map((board) => board.id);
 }

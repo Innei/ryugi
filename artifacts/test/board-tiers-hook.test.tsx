@@ -193,3 +193,20 @@ test('a board whose frame unmounts during its capture is not marked unsupported,
   await act(async () => { vi.advanceTimersByTime(3000); });
   expect(store.isUnsupported(key('a'))).toBe(false);
 });
+
+test('at a moderate overview a board without a snapshot is mounted under its placeholder, captured, then released', async () => {
+  await render({ view: { x: 0, y: 0, k: 0.35 } });
+  expect(state('a')).toMatchObject({ tier: 'placeholder', mounted: true, overlay: true, hidden: true });
+  expect(state('a').image).toMatch(/^data:image\/svg\+xml/);
+  const a = frame('a');
+  await a.post({ type: 'ryugi:board:ready' });
+  const { request } = a.posted.mock.calls[0]![0] as { request: number };
+  await a.post({ type: 'ryugi:board:snapshot', request, blob: blob('warm-a'), width: 400, height: 300 });
+  await act(async () => {});
+  expect(state('a')).toMatchObject({ tier: 'snapshot', mounted: false, image: 'blob:warm-a' });
+});
+
+test('at an extreme overview boards are never mounted just to capture them', async () => {
+  await render({ view: { x: 0, y: 0, k: 0.25 } });
+  expect(state('a')).toMatchObject({ tier: 'placeholder', mounted: false });
+});

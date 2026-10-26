@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { chooseTiers, snapshotScale, visibleRenders, type TierBoard, type TierInput } from '../src/viewer/lib/board-tiers';
+import { boardsToWarm, chooseTiers, snapshotScale, visibleRenders, type TierBoard, type TierInput } from '../src/viewer/lib/board-tiers';
 
 const viewport = { width: 1000, height: 800 };
 const board = (id: string, x: number, y = 0, w = 1000, h = 800): TierBoard => ({ id, x, y, w, h });
@@ -51,4 +51,11 @@ test('outside the artboard, boards within 240 px of the screen mount live and th
   expect(renders.get('inside')).toEqual({ tier: 'live', mounted: true, image: null, overlay: false, hidden: false });
   expect(renders.get('margin')?.mounted).toBe(true);
   expect(renders.get('away')).toEqual({ tier: 'empty', mounted: false, image: null, overlay: false, hidden: false });
+});
+
+test('boards drawn at least 120 px wide without a snapshot are warmed, the biggest first', () => {
+  const boards = [board('small', 0, 0, 1000, 800), board('big', 1100, 0, 2000, 800), board('done', 0, 900, 2000, 800), board('away', 20000, 0, 2000, 800)];
+  expect(boardsToWarm({ boards, view: { x: 0, y: 0, k: 0.13 }, viewport, snapshots: new Set(['done']), skip: new Set() })).toEqual(['big', 'small']);
+  expect(boardsToWarm({ boards, view: { x: 0, y: 0, k: 0.11 }, viewport, snapshots: new Set(['done']), skip: new Set() })).toEqual(['big']);
+  expect(boardsToWarm({ boards, view: { x: 0, y: 0, k: 0.13 }, viewport, snapshots: new Set(), skip: new Set(['big']) })).toEqual(['done', 'small']);
 });

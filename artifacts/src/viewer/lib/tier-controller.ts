@@ -4,12 +4,14 @@ export interface ControllerInput extends TierInput {
   scaling: boolean;
   hovered: string | null;
   hoverPromotes: boolean;
+  warm?: readonly string[];
 }
-export interface BoardState { tier: BoardTier; mounted: boolean; ready: boolean }
+export interface BoardState { tier: BoardTier; mounted: boolean; ready: boolean; warming?: boolean }
 
 const LINGER_MS = 1500;
 const HOVER_MS = 150;
 const MAX_MOUNTING = 2;
+const MAX_WARMING = 2;
 const READY_AFTER_LOAD_MS = 3000;
 const MOUNT_TIMEOUT_MS = 8000;
 
@@ -81,7 +83,9 @@ export function createTierController({
           if (!lingering.has(id)) lingering.set(id, schedule(() => { lingering.delete(id); onChange(); }, LINGER_MS - since));
         }
         live = next;
-        for (const id of [...frames.keys()]) if (!live.has(id)) release(id);
+        const warm = (input.warm ?? []).filter((id) => ids.has(id) && !live.has(id));
+        const wanted = new Set(warm);
+        for (const id of [...frames.keys()]) if (!live.has(id) && !wanted.has(id)) release(id);
         let mounting = [...frames.values()].filter((frame) => !frame.ready).length;
         const waiting = input.boards.map((board) => board.id).filter((id) => live.has(id) && !frames.has(id)).sort((a, b) => Number(pinned.has(b)) - Number(pinned.has(a)));
         for (const id of waiting) {
@@ -91,12 +95,23 @@ export function createTierController({
           frame.timer = schedule(() => markReady(id), MOUNT_TIMEOUT_MS);
           mounting++;
         }
+        let warming = [...frames.keys()].filter((id) => !live.has(id)).length;
+        for (const id of warm) {
+          if (mounting >= MAX_MOUNTING || warming >= MAX_WARMING) break;
+          if (frames.has(id)) continue;
+          const frame: { ready: boolean; timer?: number } = { ready: false };
+          frames.set(id, frame);
+          frame.timer = schedule(() => markReady(id), MOUNT_TIMEOUT_MS);
+          mounting++;
+          warming++;
+        }
       }
 
       const states = new Map<string, BoardState>();
       for (const [id, tier] of tiers) {
         const frame = frames.get(id);
-        if (frame) states.set(id, { tier: 'live', mounted: true, ready: frame.ready });
+        if (frame && live.has(id)) states.set(id, { tier: 'live', mounted: true, ready: frame.ready });
+        else if (frame) states.set(id, { tier: input.snapshots.has(id) ? 'snapshot' : 'placeholder', mounted: true, ready: frame.ready, warming: true });
         else states.set(id, { tier: tier === 'live' ? (input.snapshots.has(id) ? 'snapshot' : 'placeholder') : tier, mounted: false, ready: false });
       }
       return states;
