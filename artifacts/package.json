@@ -1,6 +1,6 @@
 {
   "name": "ryugi-artifacts",
-  "version": "1.41.0",
+  "version": "1.41.1",
   "type": "module",
   "description": "Server and viewer for the Ryugi artifacts app",
   "license": "AGPL-3.0-only",
