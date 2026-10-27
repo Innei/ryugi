@@ -1,6 +1,6 @@
 {
   "name": "ryugi-artifacts",
-  "version": "1.44.0",
+  "version": "1.44.1",
   "description": "Server and viewer for the Ryugi artifacts app",
   "repository": {
     "type": "git",
