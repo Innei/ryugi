@@ -4,7 +4,7 @@ export const SNAPSHOT_SCALES = [0.125, 0.25, 0.5, 1, 2] as const;
 export type SnapshotScale = (typeof SNAPSHOT_SCALES)[number];
 export type BoardTier = 'live' | 'snapshot' | 'placeholder' | 'empty';
 export const LIVE_MIN_ZOOM = 0.4;
-export const LIVE_MAX = 4;
+export const LIVE_MAX = 8;
 const VISIBLE_MARGIN = 240;
 export const WARM_MIN_WIDTH = 120;
 
@@ -35,10 +35,10 @@ export function chooseTiers({ boards, view, viewport, pinned, snapshots }: TierI
     const { left, top, right, bottom } = rect;
     const area = visibleArea(rect, viewport);
     const distance = Math.hypot(Math.max(0, -right, left - viewport.width), Math.max(0, -bottom, top - viewport.height));
-    return { id: board.id, area, distance };
+    return { id: board.id, area, mostlyVisible: area * 2 > Math.min((right - left) * (bottom - top), viewport.width * viewport.height), distance };
   });
   const reading = view.k >= LIVE_MIN_ZOOM
-    ? new Set(placed.filter((board) => board.area > 0).sort((a, b) => b.area - a.area).slice(0, LIVE_MAX).map((board) => board.id))
+    ? new Set(placed.filter((board) => board.mostlyVisible).sort((a, b) => b.area - a.area).slice(0, LIVE_MAX).map((board) => board.id))
     : new Set<string>();
   return new Map(placed.map(({ id, distance }) => {
     if (pinned.has(id) || reading.has(id)) return [id, 'live'];

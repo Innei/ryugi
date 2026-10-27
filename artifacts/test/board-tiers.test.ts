@@ -17,10 +17,22 @@ test('snapshot resolution is the first scale at least zoom times pixel ratio, ca
   expect(snapshotScale(0.5, 1)).toBe(0.5);
 });
 
-test('at a reading zoom the four boards covering the most screen go live', () => {
-  const boards = [board('big', 0, 0, 400, 400), board('mid', 450, 0, 300, 300), board('small', 800, 0, 100, 100), board('tiny', 0, 500, 50, 50), board('least', 100, 500, 20, 20), board('away', 5000)];
-  const result = tiers({ boards, view: { x: 0, y: 0, k: 1 }, snapshots: new Set(['least']) });
-  expect(result).toEqual({ big: 'live', mid: 'live', small: 'live', tiny: 'live', least: 'snapshot', away: 'empty' });
+test('at a reading zoom every board more than half on screen goes live', () => {
+  const six = ['a', 'b', 'c', 'd', 'e', 'f'].map((id, i) => board(id, (i % 3) * 320, Math.floor(i / 3) * 400, 300, 300));
+  const edge = [board('half-in', 850, 0, 300, 100), board('third-in', 900, 200, 300, 100)];
+  expect(tiers({ boards: [...six, ...edge], view: { x: 0, y: 0, k: 1 } })).toEqual({ a: 'live', b: 'live', c: 'live', d: 'live', e: 'live', f: 'live', 'half-in': 'placeholder', 'third-in': 'placeholder' });
+  expect(tiers({ boards: [board('most-in', 800, 0, 300, 100)], view: { x: 0, y: 0, k: 1 } })).toEqual({ 'most-in': 'live' });
+});
+
+test('zoomed in on a board larger than the screen, it goes live when it fills more than half the screen', () => {
+  expect(tiers({ boards: [board('a', 0, 0, 1000, 800)], view: { x: -200, y: -100, k: 2 } })).toEqual({ a: 'live' });
+  expect(tiers({ boards: [board('a', 0, 0, 1000, 800)], view: { x: 700, y: 0, k: 2 } })).toEqual({ a: 'placeholder' });
+});
+
+test('at a reading zoom at most eight boards go live, the ones covering the most screen first', () => {
+  const boards = Array.from({ length: 10 }, (_, i) => board(`b${i}`, (i % 5) * 200, Math.floor(i / 5) * 400, 100 + i * 5, 100 + i * 5));
+  const result = tiers({ boards, view: { x: 0, y: 0, k: 1 } });
+  expect(Object.entries(result).filter(([, tier]) => tier === 'live').map(([id]) => id)).toEqual(['b2', 'b3', 'b4', 'b5', 'b6', 'b7', 'b8', 'b9']);
 });
 
 test('below zoom 0.4 nothing goes live on its own', () => {
