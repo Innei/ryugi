@@ -149,3 +149,12 @@ test('capture requests from anyone but the viewer are ignored', async () => {
   await sleep(50);
   expect(reports('snapshot')).toEqual([]);
 });
+
+test('pressing a pointer or a key inside the board reports an interaction', async () => {
+  expect(reports('interacted')).toHaveLength(0);
+  document.getElementById('copy')!.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+  expect(reports('interacted').length).toBeGreaterThan(0);
+  posted.length = 0;
+  document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true }));
+  expect(reports('interacted').length).toBeGreaterThan(0);
+});

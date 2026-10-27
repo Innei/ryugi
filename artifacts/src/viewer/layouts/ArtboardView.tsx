@@ -22,6 +22,7 @@ import type { BoardCommentsState } from '../lib/board-comments';
 import { useBoardComments } from '../hooks/useBoardComments';
 import { useBoardTiers } from '../hooks/useBoardTiers';
 import { useHoverDwell } from '../hooks/useHoverDwell';
+import { useKeptBoards } from '../hooks/useKeptBoards';
 import { useVerdicts } from '../hooks/useVerdicts';
 import { RejectComposer } from '../verdicts/RejectComposer';
 import { useInspector } from '../hooks/useInspector';
@@ -212,13 +213,15 @@ function DesktopArtboard({ id, artifact, canvas, layout, warnings, pending, cont
     return { board: boardAt(point), x: point.x * view.k, y: point.y * view.k };
   } });
   const marquee = selection.marquee;
+  const kept = useKeptBoards(boards, versions);
   const pinned = useMemo(() => new Set([
+    ...kept,
     ...playing,
     ...[expanded, parameterBoard].filter((board): board is string => !!board),
     ...inspector.selectedTargets.map((target) => target.boardId),
     ...Object.entries(inspector.frames).filter(([, frame]) => frame.tweaks.length > 0).map(([id]) => id),
     ...(marquee ? boards.filter(([, b]) => b.x < marquee.x + marquee.width && b.x + b.w > marquee.x && b.y < marquee.y + marquee.height && b.y + b.h > marquee.y).map(([id]) => id) : []),
-  ]), [playing, expanded, parameterBoard, inspector.selectedTargets, inspector.frames, marquee, boards]);
+  ]), [kept, playing, expanded, parameterBoard, inspector.selectedTargets, inspector.frames, marquee, boards]);
   const persistable = (board: string) => {
     const state = parameters.states[board];
     const tweaked = !!state?.schema && JSON.stringify(state.values) !== JSON.stringify(reconcileTweakValues(state.schema));

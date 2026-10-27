@@ -15,6 +15,9 @@ export function installSnapshot(win: Window & typeof globalThis, serialize: type
   };
   if (doc.readyState === 'complete') void settle();
   else win.addEventListener('load', () => void settle(), { once: true });
+  const interacted = () => post('interacted');
+  win.addEventListener('pointerdown', interacted, true);
+  win.addEventListener('keydown', interacted, true);
 
   const own = (node: Node | null) => !!node && (node.nodeType === 1 ? (node as Element) : node.parentElement)?.closest?.('[data-ryugi-inspector]') != null;
   let changed = 0;
