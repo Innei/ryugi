@@ -48,14 +48,14 @@ commits, so `git log` against `dev` lists old work again. Use `git diff` for `de
 | `docs/superpowers/`, `docs/plans/`, `RELEASE-NOTES.md` | removed (Ryugi specs live in `docs/ryugi/specs/`) |
 
 Closest to upstream, so the easiest to port: `skills/test-driven-development/`,
-`skills/systematic-debugging/` (apart from the hand-offs to `verifying-ui`), `skills/using-git-worktrees/` (apart from
-Cleanup and the Step 0 skip when the calling skill already decided), and the harness integrations (`hooks/`, `.codex-plugin/`,
+`skills/systematic-debugging/` (apart from the hand-offs to `verifying-ui`), and the harness integrations (`hooks/`, `.codex-plugin/`,
 `.opencode/`, `.pi/`, `.hermes-plugin/`, `.kimi-plugin/`, `.devin-plugin/`,
 `.cursor-plugin/`, `.antigravity-plugin/`, `.muse-plugin/`, `gemini-extension.json`).
 
 Rewritten around Ryugi's workflow, so port ideas rather than diffs:
 `skills/brainstorming/` (handoff and Artboard sections), `skills/executing-specs/`,
-`skills/using-ryugi/`, `README.md`, `AGENTS.md`.
+`skills/using-git-worktrees/` (Where to work table; upstream's native-tool rule and
+Cleanup survive), `skills/using-ryugi/`, `README.md`, `AGENTS.md`.
 
 ## Porting a change
 

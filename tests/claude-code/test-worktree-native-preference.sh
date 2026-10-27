@@ -7,13 +7,13 @@
 # and GREEN baselines below are not covered by drill — kept here so the
 # RED-GREEN-REFACTOR validation remains rerunnable end-to-end.
 #
-# RED:   Skill without Step 1a (no native tool preference). Agent should use git worktree add.
-# GREEN: Skill with Step 1a (explicit tool naming + consent bridge). Agent should use EnterWorktree.
+# RED:   Skill without the native-tool rule. Agent should use git worktree add.
+# GREEN: Skill with the native-tool rule in "Create a worktree". Agent should use EnterWorktree.
 # PRESSURE: Same as GREEN but under time pressure with existing .worktrees/ dir.
 #
-# Key insight: the fix is Step 1a's text, not file separation. Three things make it work:
+# Key insight: the fix is the native-tool rule's text, not file separation. Three things make it work:
 #   1. Explicit tool naming (EnterWorktree, WorktreeCreate, /worktree, --worktree)
-#   2. Consent bridge ("user's consent = authorization to use native tool")
+#   2. Consent bridge ("user's consent = authorization to use native tool"); removed with the consent question on 2026-10-27
 #   3. Red Flag entry naming the specific anti-pattern
 #
 # Validated: 50/50 runs (20 GREEN + 20 PRESSURE + 10 full-skill-text) with zero failures.
@@ -86,7 +86,7 @@ run_and_check() {
             # RED: expect git worktree add, no EnterWorktree
             if [ "$mentioned_enter" = "yes" ]; then
                 fail=$((fail + 1))
-                echo "  Run $i: [UNEXPECTED] Agent used EnterWorktree WITHOUT Step 1a"
+                echo "  Run $i: [UNEXPECTED] Agent used EnterWorktree WITHOUT the native-tool rule"
             elif [ "$used_git_worktree_add" = "yes" ] || echo "$output" | grep -qi "git worktree"; then
                 pass=$((pass + 1))
                 [ "$RUNS" -gt 1 ] && echo "  Run $i: PASS (used git worktree)"
@@ -113,13 +113,13 @@ run_and_check() {
 }
 
 if [ "$PHASE" = "red" ]; then
-    echo "--- RED PHASE: Running WITHOUT Step 1a (current skill) ---"
+    echo "--- RED PHASE: Running WITHOUT the native-tool rule (current skill) ---"
     echo "Expected: Agent uses 'git worktree add' (no native tool awareness)"
     echo ""
     run_and_check "RED" "$SCENARIO" "none" "false"
 
 elif [ "$PHASE" = "green" ]; then
-    echo "--- GREEN PHASE: Running WITH Step 1a (updated skill) ---"
+    echo "--- GREEN PHASE: Running WITH the native-tool rule ---"
     echo "Expected: Agent uses EnterWorktree instead of git worktree add"
     echo ""
     run_and_check "GREEN" "$SCENARIO" "none" "true"

@@ -97,25 +97,9 @@ digraph process {
 
 ## Setup
 
-Work where your human partner's instructions say: on main, on a branch,
-or in a worktree. With no stated preference, choose from what the
-checkout shows. Other agents may be working in it at the same time;
-isolation is per file, not per directory.
-
-Run `git rev-parse --git-dir --git-common-dir`, `git branch --show-current`,
-`git status --porcelain` and `cat .ryugi/sdd/*/EXPLORING`, then take the
-first row that matches:
-
-| The checkout shows | Where you work |
-|---|---|
-| `--git-dir` differs from `--git-common-dir` (a linked worktree) | Stay there |
-| A file your spec changes has uncommitted edits you did not make | New worktree, without asking |
-| An `EXPLORING` file lists a path your spec changes | New worktree, without asking |
-| The spec changes state the whole checkout shares: switching branches, rebase, bisect, upgrading dependencies or the lockfile, repo-wide formatting or codegen | New worktree, without asking |
-| HEAD is on a branch that is neither the default branch nor one made for this spec | Ask whether to use a worktree |
-| Anything else, including uncommitted edits in files your spec does not change | In place, no question |
-
-New worktrees come from ryugi:using-git-worktrees.
+**REQUIRED SUB-SKILL:** ryugi:using-git-worktrees decides whether you
+work in place or in a worktree, and creates the worktree. Follow its
+Where to work table before anything else.
 
 **In place**, the checkout is shared:
 
