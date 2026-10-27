@@ -126,8 +126,8 @@ async function getCommand(argv: string[]) {
     if (json) console.log(JSON.stringify(result));
     else process.stdout.write(getText(result, { comments: !values['no-comments'] }));
     return 0;
-  } catch (err) {
-    if (!(err instanceof CliError)) throw err;
+  } catch (caught) {
+    const err = caught instanceof CliError ? caught : new CliError((caught as Error).message);
     const fields = err.message ? { error: err.message, ...err.fields } : err.fields;
     if (json) console.log(JSON.stringify(fields));
     else console.error(err.message ? `Error: ${err.message}` : String(err.fields.message));

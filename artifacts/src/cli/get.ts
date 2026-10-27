@@ -3,6 +3,7 @@ import path from 'node:path';
 import type { SerializedEditorState } from 'lexical';
 import { readCredentials } from '../server/credentials';
 import { serializeDocument } from '../server/document-codec';
+import { stripRuntime } from '../server/strip-runtime';
 import { cloudErrorDetails } from '../shared/cloud-error';
 import type { Thread } from '../shared/comments';
 import { CliError } from './paths';
@@ -48,7 +49,8 @@ async function download(contentBase: string, files: string[], dir: string, fresh
     if (!res.ok) throw new CliError(`Could not download ${file}: HTTP ${res.status}`);
     const target = path.join(dir, ...file.split('/'));
     fs.mkdirSync(path.dirname(target), { recursive: true });
-    fs.writeFileSync(target, Buffer.from(await res.arrayBuffer()));
+    const data = Buffer.from(await res.arrayBuffer());
+    fs.writeFileSync(target, file.endsWith('.html') ? stripRuntime(data.toString('utf8')) : data);
   }
 }
 
@@ -90,7 +92,7 @@ export async function getArtifact({ target, defaultOrigin, credentialsFile, cach
   await download(json.contentBase, files, dir, !out);
   result.dir = dir;
   result.files = files;
-  if (json.type === 'artboard') {
+  if (json.type === 'artboard' && !files.includes('canvas.json')) {
     fs.writeFileSync(path.join(dir, 'canvas.json'), `${JSON.stringify(json.payload.canvas, null, 2)}\n`);
     result.files = ['canvas.json', ...files];
   }

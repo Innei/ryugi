@@ -3,6 +3,7 @@ import { installSnapshot, serializeBoard } from '../inspector/snapshot';
 import { COMMENT_CURSOR, INSPECTOR_PROPERTIES } from '../shared/inspector';
 import { tweakTools } from '../shared/tweaks';
 import { installTweaks } from '../runtime/tweaks';
+import { EMBEDDED_STYLE, injectionPoint } from './strip-runtime';
 
 const RUNTIME = `(() => {
   const post = (message) => parent.postMessage(message, '*');
@@ -106,16 +107,10 @@ const RUNTIME = `(() => {
   });
 })();`;
 
-const HEAD = /<head(\s[^>]*)?>/i;
-const PROLOGUE = /^\s*(<!doctype[^>]*>)?\s*(<html(\s[^>]*)?>)?/i;
-
 // One line, so error line numbers the page reports match the agent's file.
 const RUNTIME_LINE = RUNTIME.split('\n')
   .map((line) => line.trim())
   .join(' ');
-
-const EMBEDDED_STYLE =
-  '<style>:root{color-scheme:light dark;background:transparent}body{margin:0;font-family:var(--lobe-font-family,system-ui,-apple-system,sans-serif)}</style>';
 
 const UI_MARKER = /<ryugi-(?!icon(?:\s|>))[a-z0-9-]+(?:\s|>)/i;
 const UI_META = /<meta[^>]+name=["']ryugi-ui["'][^>]*>/i;
@@ -130,7 +125,6 @@ export function injectRuntime(html: string, options: { uiRuntimeUrl?: string; em
   const icons = options.uiRuntimeUrl && (ui || /<ryugi-icon(?:\s|>)|<meta[^>]+name=["']ryugi-icons["']/i.test(html))
     ? `<script defer src="${options.uiRuntimeUrl.replace(/ryugi-ui\.js$/, 'ryugi-icons.js').replace(/"/g, '&quot;')}"></script>`
     : '';
-  const head = HEAD.exec(html);
-  const at = head ? head.index + head[0].length : (PROLOGUE.exec(html)?.[0].length ?? 0);
+  const at = injectionPoint(html);
   return html.slice(0, at) + tag + icons + ui + html.slice(at);
 }

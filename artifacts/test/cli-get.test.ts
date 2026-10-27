@@ -6,6 +6,8 @@ import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import { parseDocument } from '../src/server/document-codec';
 import { listen } from '../src/server/http';
+import { injectRuntime } from '../src/server/inject';
+import { CLOUD_RUNTIME_URL } from '../src/server/publish-payload';
 
 const cli = path.resolve(__dirname, '../../skills/artifacts/app/cli.cjs');
 
@@ -208,6 +210,41 @@ describe('ryugi-artifacts get', () => {
     expect(code).toBe(0);
     expect(JSON.parse(fs.readFileSync(path.join(out, 'canvas.json'), 'utf8'))).toEqual(canvas);
     expect(JSON.parse(stdout.trim()).files).toEqual(['canvas.json', 'pages/main/a.html']);
+  });
+
+  test('a published artboard lists its own canvas.json once and keeps that file', async () => {
+    signIn();
+    const published_canvas = '{"version":1,"title":"Board","boards":{}}\n';
+    content = { 'canvas.json': published_canvas, 'pages/main/a.html': '<p>A</p>' };
+    reply = () => published({ type: 'artboard', payload: { canvas: { version: 1 }, layout: {}, versions: {}, snapshots: true }, files: ['canvas.json', 'pages/main/a.html'] });
+    const out = fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-get-out-'));
+    const { code, stdout } = await run([`${origin}/a/abc123`, '--out', out]);
+    expect(code).toBe(0);
+    expect(stdout.split('\n').filter(Boolean)).toEqual([out, 'canvas.json', 'pages/main/a.html']);
+    expect(fs.readFileSync(path.join(out, 'canvas.json'), 'utf8')).toBe(published_canvas);
+  });
+
+  test('downloaded pages come back without the runtime Ryugi injected when publishing', async () => {
+    signIn();
+    const authored = '<!doctype html><html><head><title>A</title></head><body><p>A</p></body></html>';
+    content = { 'canvas.json': '{}', 'pages/main/a.html': injectRuntime(authored, { uiRuntimeUrl: CLOUD_RUNTIME_URL, inspector: true }) };
+    reply = () => published({ type: 'artboard', payload: { canvas: {}, layout: {}, versions: {}, snapshots: true }, files: ['canvas.json', 'pages/main/a.html'] });
+    const out = fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-get-out-'));
+    expect((await run([`${origin}/a/abc123`, '--out', out])).code).toBe(0);
+    expect(fs.readFileSync(path.join(out, 'pages/main/a.html'), 'utf8')).toBe(authored);
+  });
+
+  test('an unexpected failure is one plain line on stderr, not JSON on stdout', async () => {
+    signIn();
+    content = { 'index.html': 'ok' };
+    reply = () => published({ type: 'html', payload: { title: 'Arrow' }, files: ['index.html'] });
+    const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-get-out-')), 'plain-file');
+    fs.writeFileSync(file, '');
+    const { code, stdout, stderr } = await run([`${origin}/a/abc123`, '--out', path.join(file, 'x')]);
+    expect(code).toBe(1);
+    expect(stdout).toBe('');
+    expect(stderr.trim().split('\n')).toHaveLength(1);
+    expect(stderr).toMatch(/^Error: .*ENOTDIR/);
   });
 
   test('refuses a file path that leaves the directory and writes nothing', async () => {
