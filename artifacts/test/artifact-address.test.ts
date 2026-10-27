@@ -23,7 +23,7 @@ test('all artifact types expose ID addresses while directories and APIs retain s
   const list = JSON.parse((await request('/api/artifacts')).body);
   expect(list.artifacts).toHaveLength(3);
   for (const item of list.artifacts) {
-    expect(item.url).toMatch(new RegExp(`^/${item.type}/[a-f0-9]{32}$`));
+    expect(item.url).toMatch(new RegExp(`^/${item.type}/[A-Za-z0-9]{21}$`));
     expect(fs.existsSync(path.join(root, item.type, item.id))).toBe(true);
     expect((await request(`/api/artifacts/${item.type}/${item.id}`)).status).toBe(200);
     const page = await request(item.url);
@@ -54,6 +54,36 @@ test('an address survives content edits, a slug directory rename and a server re
   expect(page.body).toContain('<title>After</title>');
   expect(page.body).toContain('data-ryugi-artifact-id="renamed"');
   expect(fs.existsSync(path.join(first.root, 'html', 'original'))).toBe(false);
+});
+
+test('a 32-character hex ID written by an older release still resolves', async () => {
+  const { root, request } = await start();
+  const legacy = '0123456789abcdef0123456789abcdef';
+  const dir = writeHtml(root, 'legacy', { 'index.html': '<title>Legacy</title>', '.artifact-id': `${legacy}\n` });
+  const page = await request(`/html/${legacy}`);
+  expect(page.status).toBe(200);
+  expect(page.body).toContain(`rel="canonical" href="http://localhost:${server!.port}/html/${legacy}"`);
+  expect(new URL(server!.linkFor('html', 'legacy')).pathname).toBe(`/html/${legacy}`);
+  expect(fs.readFileSync(path.join(dir, '.artifact-id'), 'utf8')).toBe(`${legacy}\n`);
+});
+
+test('IDs written before the alphabet changed still resolve', async () => {
+  const { root, request } = await start();
+  const cases = [
+    ['cloud-shaped', 'V1StGXR8_Z5jdHi6B-myT'],
+    ['trailing-underscore', 'V1StGXR8_Z5jdHi6B-my_'],
+  ] as const;
+  for (const [slug, address] of cases) {
+    const dir = writeHtml(root, slug, { 'index.html': `<title>${slug}</title>`, '.artifact-id': `${address}\n` });
+    for (const prefix of ['', '/preview']) {
+      const page = await request(`${prefix}/html/${address}`);
+      expect(page.status, `${prefix}/html/${address}`).toBe(200);
+      expect(page.body).toContain(`rel="canonical" href="http://localhost:${server!.port}${prefix}/html/${address}"`);
+      expect(page.body).toContain(`data-ryugi-artifact-id="${slug}"`);
+    }
+    expect(new URL(server!.linkFor('html', slug)).pathname).toBe(`/html/${address}`);
+    expect(fs.readFileSync(path.join(dir, '.artifact-id'), 'utf8')).toBe(`${address}\n`);
+  }
 });
 
 test('damaged identity metadata is reported without replacing it', async () => {

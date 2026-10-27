@@ -3,7 +3,7 @@ import http from 'node:http';
 import path from 'node:path';
 import type { Duplex } from 'node:stream';
 import { ARTIFACT_TYPES, type ArtifactSummary, type ArtifactType, type CanvasPayload, type DocumentPayload, type HtmlPayload, type ServerMessage } from '../shared/types';
-import { artifactKeyOf, artifactSignature, listArtifacts, resolveArtifactDir, type ArtifactRef } from './artifacts';
+import { artifactKeyOf, artifactSignature, isArtifactLocator, listArtifacts, resolveArtifactDir, type ArtifactRef } from './artifacts';
 import { artifactPath, resolveArtifactAddress } from './artifact-address';
 import { readDocument } from './document';
 import { parseDocument } from './document-codec';
@@ -27,6 +27,7 @@ import { AVATAR_ROUTE, createAvatars } from './avatars';
 import { createCloudRoutes, type CloudOptions } from './cloud';
 import { ownLink } from '../shared/cloud';
 import { DOCUMENT_FEATURES_HEADER } from '../shared/document-features';
+import { ARTIFACT_LOCATOR_SOURCE } from '../shared/ids';
 import { typeFaviconHref } from '../shared/type-icons';
 import { commentNames } from './comment-names';
 import { publishPayload } from './publish-payload';
@@ -91,7 +92,7 @@ const CLOSE_FLUSH_MS = 5000;
 const DIRECT_RELAY_ROUTE = /^\/relay\/a\/([A-Za-z0-9_-]{1,64})$/;
 const SHELL_ROUTE = new RegExp(`^/(?:(${ARTIFACT_TYPES.join('|')})/([^/]+)/?)?$`);
 const API_ARTIFACT_ROUTE = /^\/api\/artifacts\/([^/]+)\/([^/]+)$/;
-const PREVIEW_ROUTE = /^\/preview\/(artboard|document|html)\/([a-z0-9][a-z0-9-]*)\/?$/;
+const PREVIEW_ROUTE = new RegExp(`^/preview/(artboard|document|html)/${ARTIFACT_LOCATOR_SOURCE}/?$`);
 const API_PREVIEW_ROUTE = /^\/api\/preview\/([^/]+)\/([^/]+)$/;
 const API_THUMBNAIL_ROUTE = /^\/api\/thumbnail\/([^/]+)\/([^/]+)\.svg$/;
 const API_DOCUMENT_ROUTE = /^\/api\/document\/([^/]+)\/(state|update|comments)$/;
@@ -630,7 +631,7 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
 
     const thumbnailMatch = API_THUMBNAIL_ROUTE.exec(pathname);
     if (thumbnailMatch) {
-      const requested = artifactKeyOf(`${thumbnailMatch[1]}/${thumbnailMatch[2]}`);
+      const requested = artifactKeyOf(`${thumbnailMatch[1]}/${thumbnailMatch[2]}`, isArtifactLocator);
       let resolved: ReturnType<typeof resolveArtifactAddress> = null;
       try {
         resolved = requested && resolveArtifactAddress(root, requested.type, requested.id);
@@ -742,7 +743,7 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
     }
 
     if (SHELL_ROUTE.test(pathname) || PREVIEW_ROUTE.test(pathname) || pathname === '/index.html') {
-      const requested = artifactKeyOf(pathname.replace(/^\/(?:preview\/)?/, '').replace(/\/$/, ''));
+      const requested = artifactKeyOf(pathname.replace(/^\/(?:preview\/)?/, '').replace(/\/$/, ''), isArtifactLocator);
       const resolved = requested && resolveArtifactAddress(root, requested.type, requested.id);
       const ref = resolved ?? requested;
       const dir = resolved?.dir;

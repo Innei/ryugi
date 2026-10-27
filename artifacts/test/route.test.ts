@@ -12,6 +12,13 @@ describe('parseRoute', () => {
     expect(parseRoute('/artboard/header/')).toEqual({ kind: 'artifact', type: 'artboard', id: 'header' });
   });
 
+  test('a browser address, nanoid or legacy hex, is a local route', () => {
+    for (const id of ['V1StGXR8_Z5jdHi6B-myT', '0123456789abcdef0123456789abcdef']) {
+      expect(parseRoute(`/html/${id}`)).toEqual({ kind: 'artifact', type: 'html', id });
+      expect(parseRoute(`/preview/document/${id}/`)).toEqual({ kind: 'preview', type: 'document', id });
+    }
+  });
+
   test('cloud links are not local routes', () => {
     for (const pathname of ['/a/V1StGXR8_Z5jdHi6B-myT', '/a/V1StGXR8_Z5jdHi6B-myT/view', '/a/V1StGXR8_Z5jdHi6B-myT/preview', '/overview', '/account', '/innei']) {
       expect(parseRoute(pathname), pathname).toEqual({ kind: 'unknown' });

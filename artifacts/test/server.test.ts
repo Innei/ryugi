@@ -131,7 +131,7 @@ describe('session key', () => {
     expect(server.url).toBe(`http://localhost:${server.port}/?key=${server.token}`);
     const link = new URL(server.linkFor('html', 'arrow-tuner'));
     expect(link.origin).toBe(`http://localhost:${server.port}`);
-    expect(link.pathname).toMatch(/^\/html\/[a-f0-9]{32}$/);
+    expect(link.pathname).toMatch(/^\/html\/[A-Za-z0-9]{21}$/);
     expect(link.searchParams.get('key')).toBe(server.token);
   });
 });

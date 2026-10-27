@@ -1,10 +1,10 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-import { isArtifactId, isArtifactType } from '../shared/ids';
+import { isArtifactAddress, isArtifactId, isArtifactLocator, isArtifactType } from '../shared/ids';
 import { ARTIFACT_TYPES, type ArtifactType } from '../shared/types';
 
-export { isArtifactId, isArtifactType };
+export { isArtifactAddress, isArtifactId, isArtifactLocator, isArtifactType };
 
 export interface ArtifactRef {
   type: ArtifactType;
@@ -54,9 +54,9 @@ export function resolveArtifactDir(root: string, type: string, id: string): stri
   }
 }
 
-export function artifactKeyOf(relative: string): ArtifactRef | null {
+export function artifactKeyOf(relative: string, isId: (id: string) => boolean = isArtifactId): ArtifactRef | null {
   const [type, id] = relative.split('/');
-  if (!type || !id || !isArtifactType(type) || !isArtifactId(id)) return null;
+  if (!type || !id || !isArtifactType(type) || !isId(id)) return null;
   return { type, id };
 }
 

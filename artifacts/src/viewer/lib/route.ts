@@ -1,4 +1,4 @@
-import { isArtifactId, isArtifactType } from '../../shared/ids';
+import { isArtifactLocator, isArtifactType } from '../../shared/ids';
 import type { ArtifactType } from '../../shared/types';
 
 export type Route =
@@ -13,6 +13,6 @@ export function parseRoute(pathname: string): Route {
   const match = /^\/([^/]+)\/([^/]+)\/?$/.exec(preview ? pathname.slice('/preview'.length) : pathname);
   if (!match) return { kind: 'unknown' };
   const [, type = '', id = ''] = match;
-  if (!isArtifactType(type) || !isArtifactId(id)) return { kind: 'unknown' };
+  if (!isArtifactType(type) || !isArtifactLocator(id)) return { kind: 'unknown' };
   return { kind: preview ? 'preview' : 'artifact', type, id };
 }

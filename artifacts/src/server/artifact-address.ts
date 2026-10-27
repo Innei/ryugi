@@ -1,8 +1,11 @@
-import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
+import { customAlphabet } from 'nanoid';
 import type { ArtifactType } from '../shared/types';
-import { isArtifactId, isArtifactType, listArtifacts, resolveArtifactDir } from './artifacts';
+import { isArtifactAddress, isArtifactId, isArtifactType, listArtifacts, resolveArtifactDir } from './artifacts';
+
+// Letters and digits only: no `_` or `-` to trip up copied links.
+const newArtifactId = customAlphabet('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz', 21);
 
 function artifactId(dir: string): string {
   const file = path.join(dir, '.artifact-id');
@@ -11,7 +14,7 @@ function artifactId(dir: string): string {
     id = fs.readFileSync(file, 'utf8').trim();
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
-    id = crypto.randomBytes(16).toString('hex');
+    id = newArtifactId();
     try {
       fs.writeFileSync(file, `${id}\n`, { flag: 'wx' });
     } catch (writeError) {
@@ -19,7 +22,7 @@ function artifactId(dir: string): string {
       return artifactId(dir);
     }
   }
-  if (!/^[a-f0-9]{32}$/.test(id)) throw new Error(`Invalid artifact ID in ${file}`);
+  if (!isArtifactAddress(id)) throw new Error(`Invalid artifact ID in ${file}`);
   return id;
 }
 
