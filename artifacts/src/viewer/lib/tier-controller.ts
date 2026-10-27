@@ -20,6 +20,7 @@ interface Clock {
   schedule?: (fn: () => void, ms: number) => number;
   cancel?: (id: number) => void;
   onChange: () => void;
+  onGiveUp?: (id: string) => void;
 }
 
 export function createTierController({
@@ -27,6 +28,7 @@ export function createTierController({
   schedule = (fn, ms) => window.setTimeout(fn, ms),
   cancel = (id) => window.clearTimeout(id),
   onChange,
+  onGiveUp,
 }: Clock) {
   const frames = new Map<string, { ready: boolean; timer?: number }>();
   const wantedAt = new Map<string, number>();
@@ -47,13 +49,20 @@ export function createTierController({
     if (frame?.timer !== undefined) cancel(frame.timer);
     frames.delete(id);
   };
+  const settle = (id: string) => {
+    if (live.has(id)) return markReady(id);
+    if (!frames.has(id)) return;
+    release(id);
+    onGiveUp?.(id);
+    onChange();
+  };
 
   return {
     loaded(id: string) {
       const frame = frames.get(id);
       if (!frame || frame.ready) return;
       if (frame.timer !== undefined) cancel(frame.timer);
-      frame.timer = schedule(() => markReady(id), READY_AFTER_LOAD_MS);
+      frame.timer = schedule(() => settle(id), READY_AFTER_LOAD_MS);
     },
     ready: markReady,
     update(input: ControllerInput): Map<string, BoardState> {
@@ -101,7 +110,7 @@ export function createTierController({
           if (frames.has(id)) continue;
           const frame: { ready: boolean; timer?: number } = { ready: false };
           frames.set(id, frame);
-          frame.timer = schedule(() => markReady(id), MOUNT_TIMEOUT_MS);
+          frame.timer = schedule(() => settle(id), MOUNT_TIMEOUT_MS);
           mounting++;
           warming++;
         }

@@ -38,7 +38,14 @@ export function useBoardTiers({ artifact, boards, versions, pending, view, scali
 }) {
   const store = provided ?? (sharedStore ??= createSnapshotStore());
   const [, bump] = useReducer((count: number) => count + 1, 0);
-  const [controller] = useState(() => createTierController({ onChange: bump }));
+  const failed = useRef(new Set<string>());
+  const [controller] = useState(() => createTierController({
+    onChange: bump,
+    onGiveUp: (id) => {
+      const key = keysRef.current.get(id);
+      if (key) failed.current.add(key);
+    },
+  }));
   const dpr = typeof devicePixelRatio === 'number' && devicePixelRatio > 0 ? devicePixelRatio : 1;
   const scheme = useColorScheme();
   const frames = useRef(new Map<string, HTMLIFrameElement>());
@@ -66,7 +73,7 @@ export function useBoardTiers({ artifact, boards, versions, pending, view, scali
 
   const snapshots = new Set([...keys].filter(([, key]) => store.has(key) && !store.isUnsupported(key)).map(([id]) => id));
   const tierBoards = html.map(([id, board]) => ({ id, x: board.x, y: board.y, w: board.w, h: board.h }));
-  const unsupported = new Set([...keys].filter(([, key]) => store.isUnsupported(key)).map(([id]) => id));
+  const unsupported = new Set([...keys].filter(([, key]) => store.isUnsupported(key) || failed.current.has(key)).map(([id]) => id));
   const warm = scaling ? [] : boardsToWarm({ boards: tierBoards, view, viewport, snapshots, skip: unsupported });
   const states = controller.update({ boards: tierBoards, view, viewport, pinned, snapshots, scaling, hovered, hoverPromotes, warm });
   const settledK = useRef(view.k);

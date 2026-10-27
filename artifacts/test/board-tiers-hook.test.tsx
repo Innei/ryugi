@@ -238,6 +238,17 @@ test('at a moderate overview a board without a snapshot is mounted under its pla
   expect(state('a')).toMatchObject({ tier: 'snapshot', mounted: false, image: 'blob:warm-a' });
 });
 
+test('a board whose warming frame never reports ready is released and not warmed again', async () => {
+  vi.useFakeTimers();
+  await render({ view: { x: 0, y: 0, k: 0.35 } });
+  frame('a');
+  expect(state('a')).toMatchObject({ mounted: true });
+  await act(async () => { vi.advanceTimersByTime(8000); });
+  expect(state('a')).toMatchObject({ tier: 'placeholder', mounted: false });
+  await render({ view: { x: 1, y: 0, k: 0.35 } });
+  expect(state('a')).toMatchObject({ mounted: false });
+});
+
 test('at an extreme overview boards are never mounted just to capture them', async () => {
   await render({ view: { x: 0, y: 0, k: 0.25 } });
   expect(state('a')).toMatchObject({ tier: 'placeholder', mounted: false });

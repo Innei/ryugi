@@ -32,10 +32,11 @@ const row = [board('a', 0), board('b', 450), board('c', 2200), board('d', 9000)]
 function setup(patch: Partial<ControllerInput> = {}) {
   const time = clock();
   let changes = 0;
-  const controller = createTierController({ now: time.now, schedule: time.schedule, cancel: time.cancel, onChange: () => changes++ });
+  const gaveUp: string[] = [];
+  const controller = createTierController({ now: time.now, schedule: time.schedule, cancel: time.cancel, onChange: () => changes++, onGiveUp: (id) => gaveUp.push(id) });
   let input: ControllerInput = { boards: row, view: { x: 0, y: 0, k: 1 }, viewport, pinned: new Set(), snapshots: new Set(), scaling: false, hovered: null, hoverPromotes: false, ...patch };
   const run = (next: Partial<ControllerInput> = {}) => { input = { ...input, ...next }; return Object.fromEntries([...controller.update(input)].map(([id, state]) => [id, `${state.tier}${state.mounted ? '+mounted' : ''}${state.ready ? '+ready' : ''}${state.warming ? '+warming' : ''}`])); };
-  return { time, controller, run, changes: () => changes };
+  return { time, controller, run, changes: () => changes, gaveUp };
 }
 
 test('live boards mount at most two at a time and the queue moves on as boards report ready', () => {
@@ -119,6 +120,24 @@ test('boards to warm mount after live boards, two at a time, under their placeho
   expect(run()).toEqual({ a: 'placeholder+mounted+warming', b: 'placeholder+mounted+warming', c: 'placeholder', d: 'placeholder' });
   controller.ready('a');
   expect(run({ snapshots: new Set(['a']), warm: ['b', 'c'] })).toMatchObject({ a: 'snapshot', b: 'placeholder+mounted+warming', c: 'placeholder+mounted+warming' });
+});
+
+test('a warming board that never reports ready is given up after 8 s and its slot goes to the next board', () => {
+  const boards = ['a', 'b', 'c'].map((id, i) => board(id, i * 120, 100, 100));
+  const { time, run, gaveUp } = setup({ boards, view: { x: 0, y: 0, k: 0.2 }, warm: ['a', 'b', 'c'] });
+  run();
+  time.advance(8000);
+  expect(gaveUp).toEqual(['a', 'b']);
+  expect(run({ warm: ['c'] })).toEqual({ a: 'placeholder', b: 'placeholder', c: 'placeholder+mounted+warming' });
+});
+
+test('a warming board that loads but never reports ready is given up 3 s after load', () => {
+  const { time, controller, run, gaveUp } = setup({ boards: [board('a', 0, 100, 100)], view: { x: 0, y: 0, k: 0.2 }, warm: ['a'] });
+  run();
+  controller.loaded('a');
+  time.advance(3000);
+  expect(gaveUp).toEqual(['a']);
+  expect(run({ warm: [] }).a).toBe('placeholder');
 });
 
 test('nothing is warmed while the scale changes', () => {
