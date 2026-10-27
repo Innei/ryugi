@@ -21,6 +21,7 @@ import { useTypeFavicon } from '../hooks/useTypeFavicon';
 import type { BoardCommentsState } from '../lib/board-comments';
 import { useBoardComments } from '../hooks/useBoardComments';
 import { useBoardTiers } from '../hooks/useBoardTiers';
+import { visibleRenders } from '../lib/board-tiers';
 import { useHoverDwell } from '../hooks/useHoverDwell';
 import { useKeptBoards } from '../hooks/useKeptBoards';
 import { useVerdicts } from '../hooks/useVerdicts';
@@ -75,6 +76,7 @@ export type ArtboardViewProps = Omit<ReturnType<typeof useCanvasData>, 'live' | 
   artifact: string | null;
   live?: boolean;
   actions?: ReactNode;
+  tiers?: boolean;
   send?: (message: SelectionMessage) => void;
   comments?: BoardCommentsState | null;
   comment?: (op: BoardHumanOp) => Promise<BoardCommentsState>;
@@ -85,7 +87,7 @@ export function ArtboardView(props: ArtboardViewProps) {
   return phone ? <PhoneArtboard {...props} /> : <DesktopArtboard {...props} />;
 }
 
-function DesktopArtboard({ id, artifact, canvas, layout, warnings, pending, contentBase, versions, live, loaded, send, agent, comments, comment, actions }: ArtboardViewProps) {
+function DesktopArtboard({ id, artifact, canvas, layout, warnings, pending, contentBase, versions, live, loaded, send, agent, comments, comment, actions, tiers: tiered = true }: ArtboardViewProps) {
   const [tool, setTool] = useState<Tool>('select');
   const { viewportRef, view, scaling, size, fit, zoomBy, zoomTo, cursor, hand, handlers, panBy, wheelAt, panning, setSpaceHeld } = usePanZoom(tool);
   const [inspectorOpen, setInspectorOpen] = useState(false);
@@ -228,9 +230,10 @@ function DesktopArtboard({ id, artifact, canvas, layout, warnings, pending, cont
     return !tweaked && !inspector.frames[board]?.tweaks.length;
   };
   const tiers = useBoardTiers({
-    artifact: artifact ?? id, boards, versions, pending: pendingBoards, view, scaling, viewport: size, pinned,
+    artifact: artifact ?? id, boards: tiered ? boards : [], versions, pending: pendingBoards, view, scaling, viewport: size, pinned,
     hovered: inspector.hover?.boardId ?? hover.hovered, hoverPromotes: tool === 'select' || commentTool, persistable,
   });
+  const renders = tiered ? tiers.renders : visibleRenders({ boards: boards.map(([board, spec]) => ({ id: board, ...spec })), view, viewport: size });
   const frameRef = useMemo(() => {
     const refs = new Map<string, (element: HTMLIFrameElement | null) => void>();
     return (id: string) => {
@@ -261,12 +264,12 @@ function DesktopArtboard({ id, artifact, canvas, layout, warnings, pending, cont
       onPointerLeave={hover.leave}
       onPointerCancel={(event) => { handlers.onPointerCancel(event); selection.reset(); }}>
       <HandCursor viewport={viewportRef} hand={hand} />
-      {debug && <DebugHud renders={tiers.renders} scaling={scaling} />}
+      {debug && <DebugHud renders={renders} scaling={scaling} />}
       {canvas && layout && (
         <CanvasErrorBoundary resetKey={canvas}>
           <Canvas
             view={view}
-            renders={tiers.renders}
+            renders={renders}
             boards={boards}
             notes={notes}
             contentBase={contentBase}

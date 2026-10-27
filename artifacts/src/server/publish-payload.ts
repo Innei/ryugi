@@ -22,7 +22,7 @@ function sharedComments(file: CommentsFile): CommentsFile {
 export function publishPayload(ref: ArtifactRef, dir: string, title: string, payload: unknown, comments = emptyComments()): Record<string, unknown> {
   if (ref.type === 'artboard') {
     const { canvas, layout, versions } = payload as CanvasPayload;
-    return { canvas, layout, versions };
+    return { canvas, layout, versions, snapshots: true };
   }
   if (ref.type === 'document') return { title, state: parseDocument(fs.readFileSync(path.join(dir, 'doc.xml'), 'utf8')), comments: sharedComments(comments) };
   return { title };

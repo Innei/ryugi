@@ -48,3 +48,8 @@ test('a document published without comments carries an empty comment file', () =
   const payload = publishPayload({ type: 'document', id: 'relay' }, documentDir(), 'Title', null) as { comments: CommentsFile };
   expect(payload.comments).toEqual({ version: 1, threads: [] });
 });
+
+test('a published artboard says its boards report ready and capture snapshots', () => {
+  const payload = { canvas: { title: 'Board' }, layout: null, versions: { 'pages/a.html': 1 }, pending: [], warnings: [] };
+  expect(publishPayload({ type: 'artboard', id: 'ideas' }, '/nowhere', 'Board', payload)).toEqual({ canvas: { title: 'Board' }, layout: null, versions: { 'pages/a.html': 1 }, snapshots: true });
+});
