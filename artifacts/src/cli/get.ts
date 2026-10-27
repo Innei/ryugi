@@ -13,7 +13,8 @@ import { CliError } from './paths';
 const ID = /^[A-Za-z0-9_-]{1,64}$/;
 const LINK_PATH = /^\/a\/([A-Za-z0-9_-]{1,64})(?:\/(?:view|preview))?\/?$/;
 const TARGET_ERROR = 'Expected a Ryugi Cloud link (https://<host>/a/<id>) or an artifact id.';
-const LOGIN_MESSAGE = 'Not found, or private and you are not signed in. Sign in once with `ryugi-artifacts start` then `ryugi-artifacts publish --login` in any project, then run this command again.';
+const LOGIN_MESSAGE =
+  'Not found, or private and you are not signed in. Sign in once with `ryugi-artifacts start` then `ryugi-artifacts publish --login` in any project, then run this command again.';
 
 export interface GetOptions {
   target: string;
@@ -37,15 +38,23 @@ export interface GetResult {
 }
 
 const safePath = (file: string) =>
-  !file.includes('\\') && !file.includes('\0') && !path.posix.isAbsolute(file) && file.split('/').every((part) => part !== '' && part !== '.' && part !== '..');
+  !file.includes('\\') &&
+  !file.includes('\0') &&
+  !path.posix.isAbsolute(file) &&
+  file.split('/').every((part) => part !== '' && part !== '.' && part !== '..');
 
 async function download(contentBase: string, files: string[], dir: string, fresh: boolean) {
   const unsafe = files.find((file) => !safePath(file));
-  if (unsafe !== undefined) throw new CliError(`Refusing to write ${unsafe}: it is not a path inside the download directory.`);
+  if (unsafe !== undefined)
+    throw new CliError(
+      `Refusing to write ${unsafe}: it is not a path inside the download directory.`,
+    );
   if (fresh) fs.rmSync(dir, { recursive: true, force: true });
   fs.mkdirSync(dir, { recursive: true });
   for (const file of files) {
-    const res = await fetch(`${contentBase}${file.split('/').map(encodeURIComponent).join('/')}`).catch((err: Error) => {
+    const res = await fetch(
+      `${contentBase}${file.split('/').map(encodeURIComponent).join('/')}`,
+    ).catch((err: Error) => {
       throw new CliError(`Could not download ${file}: ${err.message}`);
     });
     if (!res.ok) throw new CliError(`Could not download ${file}: HTTP ${res.status}`);
@@ -65,26 +74,53 @@ export function parseTarget(target: string, defaultOrigin: string) {
     throw new CliError(TARGET_ERROR);
   }
   const id = LINK_PATH.exec(url.pathname)?.[1];
-  if (!id || (url.protocol !== 'https:' && url.protocol !== 'http:')) throw new CliError(TARGET_ERROR);
+  if (!id || (url.protocol !== 'https:' && url.protocol !== 'http:'))
+    throw new CliError(TARGET_ERROR);
   return { origin: url.origin, id };
 }
 
-export async function getArtifact({ target, defaultOrigin, credentialsFile, cacheRoot, out }: GetOptions): Promise<GetResult> {
+export async function getArtifact({
+  target,
+  defaultOrigin,
+  credentialsFile,
+  cacheRoot,
+  out,
+}: GetOptions): Promise<GetResult> {
   const { origin, id } = parseTarget(target, defaultOrigin);
   const credentials = readCredentials(credentialsFile, origin);
   let res: Response;
   try {
-    res = await fetch(`${origin}/api/a/${id}`, { headers: credentials ? { Authorization: `Bearer ${credentials.token}` } : {} });
+    res = await fetch(`${origin}/api/a/${id}`, {
+      headers: credentials ? { Authorization: `Bearer ${credentials.token}` } : {},
+    });
   } catch (err) {
     throw new CliError(`Could not reach ${origin}: ${(err as Error).message}`);
   }
   const json = (await res.json().catch(() => ({}))) as Record<string, any>;
-  if (res.status === 404 && !credentials) throw new CliError('', { type: 'login-required', message: LOGIN_MESSAGE }, 2);
-  if (res.status === 404) throw new CliError('Artifact not found or no access.', { status: 404, ...cloudErrorDetails(json) });
-  if (!res.ok) throw new CliError(typeof json.error === 'string' ? json.error : `HTTP ${res.status}`, { status: res.status, ...cloudErrorDetails(json) });
+  if (res.status === 404 && !credentials)
+    throw new CliError('', { type: 'login-required', message: LOGIN_MESSAGE }, 2);
+  if (res.status === 404)
+    throw new CliError('Artifact not found or no access.', {
+      status: 404,
+      ...cloudErrorDetails(json),
+    });
+  if (!res.ok)
+    throw new CliError(typeof json.error === 'string' ? json.error : `HTTP ${res.status}`, {
+      status: res.status,
+      ...cloudErrorDetails(json),
+    });
   if (!json.published) throw new CliError('This artifact is not published yet.');
-  const result: GetResult = { type: 'artifact', artifactType: json.type, id, title: json.title ?? null, visibility: json.visibility, updatedAt: json.updatedAt };
-  const files = ((json.files ?? []) as string[]).filter((file) => json.type !== 'document' || file !== 'doc.xml');
+  const result: GetResult = {
+    type: 'artifact',
+    artifactType: json.type,
+    id,
+    title: json.title ?? null,
+    visibility: json.visibility,
+    updatedAt: json.updatedAt,
+  };
+  const files = ((json.files ?? []) as string[]).filter(
+    (file) => json.type !== 'document' || file !== 'doc.xml',
+  );
   const dir = out ? path.resolve(out) : path.join(cacheRoot, id);
   if (json.type === 'document') {
     result.content = serializeDocument(json.payload.state as SerializedEditorState);
@@ -95,7 +131,10 @@ export async function getArtifact({ target, defaultOrigin, credentialsFile, cach
   result.dir = dir;
   result.files = files;
   if (json.type === 'artboard' && !files.includes('canvas.json')) {
-    fs.writeFileSync(path.join(dir, 'canvas.json'), `${JSON.stringify(json.payload.canvas, null, 2)}\n`);
+    fs.writeFileSync(
+      path.join(dir, 'canvas.json'),
+      `${JSON.stringify(json.payload.canvas, null, 2)}\n`,
+    );
     result.files = ['canvas.json', ...files];
   }
   return result;
@@ -105,25 +144,38 @@ function threadText(thread: Thread) {
   const messages = thread.messages.filter((message) => !message.deleted);
   if (!messages.length) return null;
   const head = `[${thread.anchor.blockId}] "${thread.anchor.quote}"${thread.status === 'resolved' ? ' (resolved)' : ''}`;
-  return [head, ...messages.map((message) => `  ${message.name ?? message.author}: ${message.text.replace(/\n/g, '\n    ')}`)].join('\n');
+  return [
+    head,
+    ...messages.map(
+      (message) => `  ${message.name ?? message.author}: ${message.text.replace(/\n/g, '\n    ')}`,
+    ),
+  ].join('\n');
 }
 
 export function getText(result: GetResult, { comments }: { comments: boolean }) {
   if (result.content === undefined) return `${[result.dir, ...(result.files ?? [])].join('\n')}\n`;
   const parts = [result.dir ? `Files: ${result.dir}\n${result.content}` : result.content];
-  const threads = comments ? (result.comments ?? []).map(threadText).filter((text) => text !== null) : [];
+  const threads = comments
+    ? (result.comments ?? []).map(threadText).filter((text) => text !== null)
+    : [];
   if (threads.length) parts.push(`\nComments\n\n${threads.join('\n\n')}\n`);
   return parts.join('');
 }
 
 export const getCommand: CommandSpec = {
   name: 'get',
-  summary: 'Read a published Ryugi Cloud artifact by link or id, signed in as this machine\'s cloud account',
+  summary:
+    "Read a published Ryugi Cloud artifact by link or id, signed in as this machine's cloud account",
   usage: ['<link-or-id> [--out <dir>] [--no-comments] [options]'],
-  details: 'Prints the source (a document\'s LiteXML and comments) unless --json; artboard and HTML files, and files a document uses, are downloaded to --out or ~/.cache/ryugi/get/<id>/.',
+  details:
+    "Prints the source (a document's LiteXML and comments) unless --json; artboard and HTML files, and files a document uses, are downloaded to --out or ~/.cache/ryugi/get/<id>/.",
   options: {
-    out: { type: 'string', value: '<dir>', help: 'Download files here instead of ~/.cache/ryugi/get/<id>/' },
-    'no-comments': { type: 'boolean', help: 'Leave a document\'s comments out' },
+    'out': {
+      type: 'string',
+      value: '<dir>',
+      help: 'Download files here instead of ~/.cache/ryugi/get/<id>/',
+    },
+    'no-comments': { type: 'boolean', help: "Leave a document's comments out" },
   },
   positionals: 1,
   // Agents run commands without a TTY and the signpost's command has no --json, so get prints the source unless --json is explicit.
@@ -134,9 +186,16 @@ export const getCommand: CommandSpec = {
       if (!positionals[0]) throw new CliError('Give a Ryugi Cloud link or artifact id.');
       const result = await getArtifact({
         target: positionals[0],
-        defaultOrigin: (process.env.RYUGI_CLOUD_ORIGIN || 'https://ryugi.innei.dev').replace(/\/+$/, ''),
+        defaultOrigin: (process.env.RYUGI_CLOUD_ORIGIN || 'https://ryugi.innei.dev').replace(
+          /\/+$/,
+          '',
+        ),
         credentialsFile: credentialsFile(process.env, process.platform, os.homedir()),
-        cacheRoot: path.join(process.env.XDG_CACHE_HOME || path.join(os.homedir(), '.cache'), 'ryugi', 'get'),
+        cacheRoot: path.join(
+          process.env.XDG_CACHE_HOME || path.join(os.homedir(), '.cache'),
+          'ryugi',
+          'get',
+        ),
         out: values.out as string | undefined,
       });
       if (json) console.log(JSON.stringify(result));

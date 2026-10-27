@@ -1,6 +1,6 @@
 {
-  "name": "ryugi",
+  "contextFileName": "GEMINI.md",
   "description": "Core skills library: TDD, debugging, collaboration patterns, and proven techniques",
-  "version": "1.44.0",
-  "contextFileName": "GEMINI.md"
+  "name": "ryugi",
+  "version": "1.44.0"
 }

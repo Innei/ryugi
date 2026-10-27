@@ -14,14 +14,14 @@ convention and number of `canvas.json` writes, following the reference.
 
 ## Before and after
 
-| Outcome | Baseline | Updated guide |
-|---|---|---|
-| Initial declaration | All boards plus `building: true` and `writing: "a"` | All boards, layout and initial focus; no runtime state fields |
-| Between board files | Update `writing` to b, then c | Write each HTML document directly |
-| End of initial build | Clear `writing` and set `building: false` | Read fresh warnings and pending state |
-| Revise b | Write `writing: "b"`, edit HTML, clear writing and refresh focus | Edit b's HTML; keep unchanged layout, metadata and focus |
-| Completion marker | Existing, nonempty file | Write closing `</html>` last; trailing whitespace/comments allowed |
-| Total canvas writes | 6 | 1 |
+| Outcome              | Baseline                                                         | Updated guide                                                      |
+| -------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------ |
+| Initial declaration  | All boards plus `building: true` and `writing: "a"`              | All boards, layout and initial focus; no runtime state fields      |
+| Between board files  | Update `writing` to b, then c                                    | Write each HTML document directly                                  |
+| End of initial build | Clear `writing` and set `building: false`                        | Read fresh warnings and pending state                              |
+| Revise b             | Write `writing: "b"`, edit HTML, clear writing and refresh focus | Edit b's HTML; keep unchanged layout, metadata and focus           |
+| Completion marker    | Existing, nonempty file                                          | Write closing `</html>` last; trailing whitespace/comments allowed |
+| Total canvas writes  | 6                                                                | 1                                                                  |
 
 Baseline excerpt: "readiness requires the file to exist and be nonempty.
 No completion marker is specified."

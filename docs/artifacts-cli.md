@@ -37,4 +37,3 @@ Cloud publish failures keep the cloud HTTP status in `publish --json` output. Wh
 ## License
 
 `ryugi-artifacts` is AGPL-3.0-only — [artifacts/LICENSE](../artifacts/LICENSE) — while Ryugi's skills and harness integrations are MIT. A modified version served to other people over a network must offer them its source.
-

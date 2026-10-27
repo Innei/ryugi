@@ -38,7 +38,12 @@ const styles = stylex.create({
   agent: { backgroundColor: brand.accentStrong },
   reject: { backgroundColor: '#e5484d' },
   resolved: { backgroundColor: '#3a3a3a', color: '#aaa' },
-  stale: { backgroundColor: cssVar.colorBgLayout, borderStyle: 'dashed', borderColor: '#e5a54b', color: '#e5a54b' },
+  stale: {
+    backgroundColor: cssVar.colorBgLayout,
+    borderStyle: 'dashed',
+    borderColor: '#e5a54b',
+    color: '#e5a54b',
+  },
   open: { outlineWidth: 3, outlineStyle: 'solid', outlineColor: 'rgb(66 133 238 / .35)' },
   popover: {
     position: 'absolute',
@@ -64,7 +69,13 @@ const styles = stylex.create({
     whiteSpace: 'nowrap',
     textOverflow: 'ellipsis',
   },
-  hint: { paddingInline: 14, paddingBottom: 10, fontSize: 10, color: cssVar.colorTextQuaternary, fontFamily: cssVar.fontFamily },
+  hint: {
+    paddingInline: 14,
+    paddingBottom: 10,
+    fontSize: 10,
+    color: cssVar.colorTextQuaternary,
+    fontFamily: cssVar.fontFamily,
+  },
 });
 
 interface Props {
@@ -85,16 +96,41 @@ interface Props {
   onCancelDraft: () => void;
 }
 
-const screenOf = (view: View, point: { x: number; y: number }) => ({ x: view.x + point.x * view.k, y: view.y + point.y * view.k });
+const screenOf = (view: View, point: { x: number; y: number }) => ({
+  x: view.x + point.x * view.k,
+  y: view.y + point.y * view.k,
+});
 
 function popoverLeft(x: number, width: number) {
   const right = x + PIN + GAP;
   return right + POPOVER > width - 12 ? Math.max(12, x - GAP - POPOVER) : right;
 }
 
-export function CommentLayer({ view, page, boards, width, threads, stale, numbers, showResolved, draft, openId, actions, agent, onOpen, onSubmit, onCancelDraft }: Props) {
+export function CommentLayer({
+  view,
+  page,
+  boards,
+  width,
+  threads,
+  stale,
+  numbers,
+  showResolved,
+  draft,
+  openId,
+  actions,
+  agent,
+  onOpen,
+  onSubmit,
+  onCancelDraft,
+}: Props) {
   const { t } = useTranslation();
-  const visible = threads.filter((thread) => thread.anchor.page === page && thread.anchor.verdict !== 'pass' && thread.messages.some((m) => !m.deleted) && (showResolved || thread.status === 'open' || thread.id === openId));
+  const visible = threads.filter(
+    (thread) =>
+      thread.anchor.page === page &&
+      thread.anchor.verdict !== 'pass' &&
+      thread.messages.some((m) => !m.deleted) &&
+      (showResolved || thread.status === 'open' || thread.id === openId),
+  );
   const open = threads.find((thread) => thread.id === openId);
   const openPoint = open ? pinPoint(open.anchor, boards) : null;
   const draftPoint = draft ? pinPoint(draft, boards) : null;
@@ -112,7 +148,14 @@ export function CommentLayer({ view, page, boards, width, threads, stale, number
             aria-label={t('comments.pin', { number: numbers.get(thread.id) ?? '' })}
             data-verdict={thread.anchor.verdict}
             onClick={() => onOpen(thread.id === openId ? null : thread.id)}
-            {...stylex.props(styles.pin, author === 'agent' && styles.agent, thread.anchor.verdict === 'reject' && styles.reject, thread.status === 'resolved' && styles.resolved, stale.has(thread.id) && styles.stale, thread.id === openId && styles.open)}
+            {...stylex.props(
+              styles.pin,
+              author === 'agent' && styles.agent,
+              thread.anchor.verdict === 'reject' && styles.reject,
+              thread.status === 'resolved' && styles.resolved,
+              stale.has(thread.id) && styles.stale,
+              thread.id === openId && styles.open,
+            )}
             style={{ left: at.x, top: at.y }}
           >
             {numbers.get(thread.id)}
@@ -120,16 +163,48 @@ export function CommentLayer({ view, page, boards, width, threads, stale, number
         );
       })}
       {open ? (
-        <div {...stylex.props(styles.popover)} style={openPoint ? { left: popoverLeft(screenOf(view, openPoint).x, width), top: screenOf(view, openPoint).y - PIN } : { right: 12, top: 64 }}>
-          <ThreadView thread={open} label={`#${numbers.get(open.id)} ${anchorLabel(open.anchor)}${stale.has(open.id) ? ` · ${staleText(open.anchor)}` : ''}`} actions={actions} agent={agent} onClose={() => onOpen(null)} />
+        <div
+          {...stylex.props(styles.popover)}
+          style={
+            openPoint
+              ? {
+                  left: popoverLeft(screenOf(view, openPoint).x, width),
+                  top: screenOf(view, openPoint).y - PIN,
+                }
+              : { right: 12, top: 64 }
+          }
+        >
+          <ThreadView
+            thread={open}
+            label={`#${numbers.get(open.id)} ${anchorLabel(open.anchor)}${stale.has(open.id) ? ` · ${staleText(open.anchor)}` : ''}`}
+            actions={actions}
+            agent={agent}
+            onClose={() => onOpen(null)}
+          />
         </div>
       ) : null}
       {draft && draftPoint ? (
         <>
-          <span {...stylex.props(styles.pin)} style={{ left: screenOf(view, draftPoint).x, top: screenOf(view, draftPoint).y }} />
-          <div {...stylex.props(styles.popover)} style={{ left: popoverLeft(screenOf(view, draftPoint).x, width), top: screenOf(view, draftPoint).y - PIN }}>
-            <div {...stylex.props(styles.draftHead)}>{t('comments.anchoredTo', { label: anchorLabel(draft) })}</div>
-            <Composer autoFocus placeholder={t('comments.addPlaceholder')} onSubmit={onSubmit} onCancel={onCancelDraft} />
+          <span
+            {...stylex.props(styles.pin)}
+            style={{ left: screenOf(view, draftPoint).x, top: screenOf(view, draftPoint).y }}
+          />
+          <div
+            {...stylex.props(styles.popover)}
+            style={{
+              left: popoverLeft(screenOf(view, draftPoint).x, width),
+              top: screenOf(view, draftPoint).y - PIN,
+            }}
+          >
+            <div {...stylex.props(styles.draftHead)}>
+              {t('comments.anchoredTo', { label: anchorLabel(draft) })}
+            </div>
+            <Composer
+              autoFocus
+              placeholder={t('comments.addPlaceholder')}
+              onSubmit={onSubmit}
+              onCancel={onCancelDraft}
+            />
             <div {...stylex.props(styles.hint)}>{t('comments.sendHint')}</div>
           </div>
         </>

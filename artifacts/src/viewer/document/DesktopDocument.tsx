@@ -11,7 +11,10 @@ import { useDraftComment } from './useDraftComment';
 import type { SelectionTarget } from './useSelectionComment';
 
 function columnBounds(article: HTMLElement) {
-  return { left: article.offsetLeft, right: Math.min(article.offsetLeft + article.offsetWidth, window.innerWidth - 16) };
+  return {
+    left: article.offsetLeft,
+    right: Math.min(article.offsetLeft + article.offsetWidth, window.innerWidth - 16),
+  };
 }
 
 interface Props {
@@ -28,7 +31,19 @@ interface Props {
   children: ReactNode;
 }
 
-export function DesktopDocument({ editor, threads, actions, agent, canComment, selection, clearSelection, onCreate, onMain, history, children }: Props) {
+export function DesktopDocument({
+  editor,
+  threads,
+  actions,
+  agent,
+  canComment,
+  selection,
+  clearSelection,
+  onCreate,
+  onMain,
+  history,
+  children,
+}: Props) {
   const composing = useDraftComment(clearSelection);
   const { draft } = composing;
   return (
@@ -44,7 +59,13 @@ export function DesktopDocument({ editor, threads, actions, agent, canComment, s
           {selection && !draft ? (
             <SelectionToolbar
               ref={composing.toolbarRef}
-              {...toolbarPosition(selection, columnBounds(articleEl), TOOLBAR_WIDTH, TOOLBAR_HEIGHT, 8)}
+              {...toolbarPosition(
+                selection,
+                columnBounds(articleEl),
+                TOOLBAR_WIDTH,
+                TOOLBAR_HEIGHT,
+                8,
+              )}
               onComment={canComment ? () => composing.open(selection) : undefined}
               onCopy={() => {
                 void navigator.clipboard?.writeText(selection.quote);

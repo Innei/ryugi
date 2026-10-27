@@ -8,8 +8,15 @@ function clock() {
   let nextId = 0;
   return {
     now: () => now,
-    schedule: (fn: () => void, ms: number) => { const id = ++nextId; timers.push({ at: now + ms, fn, id }); return id; },
-    cancel: (id: number) => { const at = timers.findIndex((timer) => timer.id === id); if (at >= 0) timers.splice(at, 1); },
+    schedule: (fn: () => void, ms: number) => {
+      const id = ++nextId;
+      timers.push({ at: now + ms, fn, id });
+      return id;
+    },
+    cancel: (id: number) => {
+      const at = timers.findIndex((timer) => timer.id === id);
+      if (at >= 0) timers.splice(at, 1);
+    },
     advance(ms: number) {
       const end = now + ms;
       for (;;) {
@@ -33,9 +40,33 @@ function setup(patch: Partial<ControllerInput> = {}) {
   const time = clock();
   let changes = 0;
   const gaveUp: string[] = [];
-  const controller = createTierController({ now: time.now, schedule: time.schedule, cancel: time.cancel, onChange: () => changes++, onGiveUp: (id) => gaveUp.push(id) });
-  let input: ControllerInput = { boards: row, view: { x: 0, y: 0, k: 1 }, viewport, pinned: new Set(), snapshots: new Set(), scaling: false, hovered: null, hoverPromotes: false, ...patch };
-  const run = (next: Partial<ControllerInput> = {}) => { input = { ...input, ...next }; return Object.fromEntries([...controller.update(input)].map(([id, state]) => [id, `${state.tier}${state.mounted ? '+mounted' : ''}${state.ready ? '+ready' : ''}${state.warming ? '+warming' : ''}`])); };
+  const controller = createTierController({
+    now: time.now,
+    schedule: time.schedule,
+    cancel: time.cancel,
+    onChange: () => changes++,
+    onGiveUp: (id) => gaveUp.push(id),
+  });
+  let input: ControllerInput = {
+    boards: row,
+    view: { x: 0, y: 0, k: 1 },
+    viewport,
+    pinned: new Set(),
+    snapshots: new Set(),
+    scaling: false,
+    hovered: null,
+    hoverPromotes: false,
+    ...patch,
+  };
+  const run = (next: Partial<ControllerInput> = {}) => {
+    input = { ...input, ...next };
+    return Object.fromEntries(
+      [...controller.update(input)].map(([id, state]) => [
+        id,
+        `${state.tier}${state.mounted ? '+mounted' : ''}${state.ready ? '+ready' : ''}${state.warming ? '+warming' : ''}`,
+      ]),
+    );
+  };
   return { time, controller, run, changes: () => changes, gaveUp };
 }
 
@@ -47,7 +78,9 @@ test('live boards mount at most two at a time and the queue moves on as boards r
   controller.ready('a');
   const second = run();
   expect(second.a).toBe('live+mounted+ready');
-  expect(Object.values(second).filter((state) => state.includes('mounted') && !state.includes('ready'))).toHaveLength(2);
+  expect(
+    Object.values(second).filter((state) => state.includes('mounted') && !state.includes('ready')),
+  ).toHaveLength(2);
 });
 
 test('a board that loads but never reports ready counts as ready 3 s after load', () => {
@@ -116,23 +149,48 @@ test('a board that disappears releases its mount slot', () => {
 
 test('boards to warm mount after live boards, two at a time, under their placeholder, and leave once captured', () => {
   const boards = ['a', 'b', 'c', 'd'].map((id, i) => board(id, i * 120, 100, 100));
-  const { controller, run } = setup({ boards, view: { x: 0, y: 0, k: 0.2 }, warm: ['a', 'b', 'c'] });
-  expect(run()).toEqual({ a: 'placeholder+mounted+warming', b: 'placeholder+mounted+warming', c: 'placeholder', d: 'placeholder' });
+  const { controller, run } = setup({
+    boards,
+    view: { x: 0, y: 0, k: 0.2 },
+    warm: ['a', 'b', 'c'],
+  });
+  expect(run()).toEqual({
+    a: 'placeholder+mounted+warming',
+    b: 'placeholder+mounted+warming',
+    c: 'placeholder',
+    d: 'placeholder',
+  });
   controller.ready('a');
-  expect(run({ snapshots: new Set(['a']), warm: ['b', 'c'] })).toMatchObject({ a: 'snapshot', b: 'placeholder+mounted+warming', c: 'placeholder+mounted+warming' });
+  expect(run({ snapshots: new Set(['a']), warm: ['b', 'c'] })).toMatchObject({
+    a: 'snapshot',
+    b: 'placeholder+mounted+warming',
+    c: 'placeholder+mounted+warming',
+  });
 });
 
 test('a warming board that never reports ready is given up after 8 s and its slot goes to the next board', () => {
   const boards = ['a', 'b', 'c'].map((id, i) => board(id, i * 120, 100, 100));
-  const { time, run, gaveUp } = setup({ boards, view: { x: 0, y: 0, k: 0.2 }, warm: ['a', 'b', 'c'] });
+  const { time, run, gaveUp } = setup({
+    boards,
+    view: { x: 0, y: 0, k: 0.2 },
+    warm: ['a', 'b', 'c'],
+  });
   run();
   time.advance(8000);
   expect(gaveUp).toEqual(['a', 'b']);
-  expect(run({ warm: ['c'] })).toEqual({ a: 'placeholder', b: 'placeholder', c: 'placeholder+mounted+warming' });
+  expect(run({ warm: ['c'] })).toEqual({
+    a: 'placeholder',
+    b: 'placeholder',
+    c: 'placeholder+mounted+warming',
+  });
 });
 
 test('a warming board that has loaded still has until 8 s after mounting to report ready', () => {
-  const { time, controller, run, gaveUp } = setup({ boards: [board('a', 0, 100, 100)], view: { x: 0, y: 0, k: 0.2 }, warm: ['a'] });
+  const { time, controller, run, gaveUp } = setup({
+    boards: [board('a', 0, 100, 100)],
+    view: { x: 0, y: 0, k: 0.2 },
+    warm: ['a'],
+  });
   run();
   time.advance(500);
   controller.loaded('a');
@@ -166,6 +224,11 @@ test('a live board that reported ready stays mounted to be warmed when it is dem
 });
 
 test('nothing is warmed while the scale changes', () => {
-  const { run } = setup({ boards: [board('a', 0, 100, 100)], view: { x: 0, y: 0, k: 0.2 }, warm: ['a'], scaling: true });
+  const { run } = setup({
+    boards: [board('a', 0, 100, 100)],
+    view: { x: 0, y: 0, k: 0.2 },
+    warm: ['a'],
+    scaling: true,
+  });
   expect(run().a).toBe('placeholder');
 });

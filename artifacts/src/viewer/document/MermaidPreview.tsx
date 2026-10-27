@@ -50,7 +50,12 @@ export function MermaidPreview({ content }: MermaidRendererProps) {
 
   if (!diagram) return <MermaidRenderer content={content} colorScheme={colorScheme} />;
 
-  const open = () => openMermaidViewer({ source: content, diagram, title: headingAbove(ref.current) ?? t('mermaid.diagram') });
+  const open = () =>
+    openMermaidViewer({
+      source: content,
+      diagram,
+      title: headingAbove(ref.current) ?? t('mermaid.diagram'),
+    });
 
   return (
     <div
@@ -72,7 +77,14 @@ export function MermaidPreview({ content }: MermaidRendererProps) {
       onBlur={() => setFocused(false)}
       {...stylex.props(styles.root, hovered && styles.hovered)}
     >
-      <img alt="Mermaid diagram" src={diagram.src} width={diagram.width} height={diagram.height} draggable={false} {...stylex.props(styles.image)} />
+      <img
+        alt="Mermaid diagram"
+        src={diagram.src}
+        width={diagram.width}
+        height={diagram.height}
+        draggable={false}
+        {...stylex.props(styles.image)}
+      />
       <span {...stylex.props(styles.hint, (hovered || focused) && styles.hintShown)}>
         <ZoomIn size={12} />
         {t('mermaid.clickToEnlarge')}

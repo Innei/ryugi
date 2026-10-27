@@ -21,11 +21,11 @@ node scripts/perf/scenario.mjs <artboard dir> --cold --cli ../other/skills/artif
 
 ## What each script measures
 
-| Script | Run | Target |
-|---|---|---|
-| `zoom.mjs` | Focus the first board at zoom 0.6, wait 6 s, then 120 frames of zooming in and out | ≤ 2 frames over 33 ms |
-| `scenario.mjs` | Overview → a board at 0.5 → pan for 3 s → a board at 1 → overview → a far board | ≤ 25 frames over 25 ms; blank ≤ 0.3% |
-| `scenario.mjs` | Renderer + GPU footprint after the overview is held for 10 s, before the run | at least 1 GB under the previous release on 35 boards |
+| Script         | Run                                                                                | Target                                                |
+| -------------- | ---------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| `zoom.mjs`     | Focus the first board at zoom 0.6, wait 6 s, then 120 frames of zooming in and out | ≤ 2 frames over 33 ms                                 |
+| `scenario.mjs` | Overview → a board at 0.5 → pan for 3 s → a board at 1 → overview → a far board    | ≤ 25 frames over 25 ms; blank ≤ 0.3%                  |
+| `scenario.mjs` | Renderer + GPU footprint after the overview is held for 10 s, before the run       | at least 1 GB under the previous release on 35 boards |
 
 Blank is the share of visible board area, summed over every frame, that shows
 none of: a decoded image that is not hidden, a visible iframe that finished

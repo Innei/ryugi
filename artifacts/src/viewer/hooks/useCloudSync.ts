@@ -10,7 +10,8 @@ export function useCloudSync(artifact: string, enabled: boolean) {
   const refresh = useCallback(async () => {
     if (!enabled) return;
     const result = await cloudRequest('GET', `sync/${artifact}`);
-    if (result.ok) setUpToDate(typeof result.json.upToDate === 'boolean' ? result.json.upToDate : null);
+    if (result.ok)
+      setUpToDate(typeof result.json.upToDate === 'boolean' ? result.json.upToDate : null);
   }, [artifact, enabled]);
 
   useEffect(() => {
@@ -21,7 +22,11 @@ export function useCloudSync(artifact: string, enabled: boolean) {
     void refresh();
     let timer: ReturnType<typeof setTimeout> | undefined;
     const unsubscribe = onServerMessage((message) => {
-      if (message.artifact !== artifact || (message.type !== 'change' && message.type !== 'cloud-published')) return;
+      if (
+        message.artifact !== artifact ||
+        (message.type !== 'change' && message.type !== 'cloud-published')
+      )
+        return;
       clearTimeout(timer);
       timer = setTimeout(() => void refresh(), SETTLE_MS);
     });

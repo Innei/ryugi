@@ -26,7 +26,8 @@ export const MIME: Record<string, string> = {
   '.webm': 'video/webm',
 };
 
-export const mimeOf = (file: string) => MIME[path.extname(file).toLowerCase()] ?? 'application/octet-stream';
+export const mimeOf = (file: string) =>
+  MIME[path.extname(file).toLowerCase()] ?? 'application/octet-stream';
 
 export const randomToken = () => crypto.randomBytes(24).toString('base64url');
 
@@ -69,10 +70,20 @@ export function listen(server: http.Server, host: string, port: number) {
   });
 }
 
-export const urlHostForHttp = (host: string) => (host.includes(':') && !host.startsWith('[') ? `[${host}]` : host);
+export const urlHostForHttp = (host: string) =>
+  host.includes(':') && !host.startsWith('[') ? `[${host}]` : host;
 
-export function send(res: http.ServerResponse, status: number, body: string | Buffer, headers: Record<string, string> = {}) {
-  res.writeHead(status, { 'Referrer-Policy': 'no-referrer', 'Cache-Control': 'no-store', ...headers });
+export function send(
+  res: http.ServerResponse,
+  status: number,
+  body: string | Buffer,
+  headers: Record<string, string> = {},
+) {
+  res.writeHead(status, {
+    'Referrer-Policy': 'no-referrer',
+    'Cache-Control': 'no-store',
+    ...headers,
+  });
   res.end(body);
 }
 
@@ -80,7 +91,10 @@ export function sendJson(res: http.ServerResponse, status: number, value: unknow
   send(res, status, JSON.stringify(value), { 'Content-Type': MIME['.json']! });
 }
 
-function byteRange(range: string | undefined, size: number): { start: number; end: number } | 'unsatisfiable' | null {
+function byteRange(
+  range: string | undefined,
+  size: number,
+): { start: number; end: number } | 'unsatisfiable' | null {
   const match = range && /^bytes=(\d*)-(\d*)$/.exec(range.trim());
   if (!match || (!match[1] && !match[2])) return null;
   const start = match[1] ? Number(match[1]) : Math.max(0, size - Number(match[2]));
@@ -88,21 +102,39 @@ function byteRange(range: string | undefined, size: number): { start: number; en
   return start > end || start >= size ? 'unsatisfiable' : { start, end };
 }
 
-export function sendFile(res: http.ServerResponse, file: string, headers: Record<string, string> = {}, range?: string) {
+export function sendFile(
+  res: http.ServerResponse,
+  file: string,
+  headers: Record<string, string> = {},
+  range?: string,
+) {
   fs.stat(file, (err, stat) => {
     if (err || !stat.isFile()) {
       send(res, 404, 'Not found');
       return;
     }
-    const base = { 'Referrer-Policy': 'no-referrer', 'Cache-Control': 'no-store', 'Content-Type': mimeOf(file), 'Accept-Ranges': 'bytes', ...headers };
+    const base = {
+      'Referrer-Policy': 'no-referrer',
+      'Cache-Control': 'no-store',
+      'Content-Type': mimeOf(file),
+      'Accept-Ranges': 'bytes',
+      ...headers,
+    };
     const part = byteRange(range, stat.size);
     if (part === 'unsatisfiable') {
       res.writeHead(416, { ...base, 'Content-Range': `bytes */${stat.size}` });
       res.end();
       return;
     }
-    if (part) res.writeHead(206, { ...base, 'Content-Range': `bytes ${part.start}-${part.end}/${stat.size}`, 'Content-Length': String(part.end - part.start + 1) });
+    if (part)
+      res.writeHead(206, {
+        ...base,
+        'Content-Range': `bytes ${part.start}-${part.end}/${stat.size}`,
+        'Content-Length': String(part.end - part.start + 1),
+      });
     else res.writeHead(200, { ...base, 'Content-Length': String(stat.size) });
-    fs.createReadStream(file, part ?? {}).on('error', () => res.destroy()).pipe(res);
+    fs.createReadStream(file, part ?? {})
+      .on('error', () => res.destroy())
+      .pipe(res);
   });
 }

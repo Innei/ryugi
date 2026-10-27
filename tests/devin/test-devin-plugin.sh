@@ -16,14 +16,17 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 MANIFEST="$REPO_ROOT/.devin-plugin/plugin.json"
 
-fail() { echo "FAIL: $*" >&2; exit 1; }
+fail() {
+  echo "FAIL: $*" >&2
+  exit 1
+}
 
 echo "test-devin-plugin: checking Devin CLI manifest"
 
 # --- Manifest is valid and matches the repo version -------------------------
 [ -f "$MANIFEST" ] || fail "manifest missing at $MANIFEST"
 
-python3 - "$MANIFEST" <<'PY'
+python3 - "$MANIFEST" << 'PY'
 import json
 import sys
 from pathlib import Path

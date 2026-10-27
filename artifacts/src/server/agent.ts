@@ -1,33 +1,33 @@
 type Env = Record<string, string | undefined>;
 
 const NAMES: Record<string, string> = {
-  claude: 'Claude Code',
+  'claude': 'Claude Code',
   'claude-code': 'Claude Code',
-  cowork: 'Claude Cowork',
-  codex: 'Codex',
-  cursor: 'Cursor',
+  'cowork': 'Claude Cowork',
+  'codex': 'Codex',
+  'cursor': 'Cursor',
   'cursor-cli': 'Cursor',
-  gemini: 'Gemini CLI',
+  'gemini': 'Gemini CLI',
   'gemini-cli': 'Gemini CLI',
-  grok: 'Grok',
+  'grok': 'Grok',
   'grok-cli': 'Grok',
   'github-copilot': 'GitHub Copilot',
   'github-copilot-cli': 'GitHub Copilot',
-  kilo: 'Kilo Code',
-  omp: 'OMP',
+  'kilo': 'Kilo Code',
+  'omp': 'OMP',
   'oh-my-pi': 'OMP',
-  opencode: 'OpenCode',
+  'opencode': 'OpenCode',
   'qwen-code': 'Qwen Code',
-  antigravity: 'Antigravity',
-  augment: 'Augment',
+  'antigravity': 'Antigravity',
+  'augment': 'Augment',
   'augment-cli': 'Augment',
-  goose: 'Goose',
-  amp: 'Amp',
-  cline: 'Cline',
-  roo: 'Roo Code',
-  devin: 'Devin',
-  replit: 'Replit',
-  v0: 'v0',
+  'goose': 'Goose',
+  'amp': 'Amp',
+  'cline': 'Cline',
+  'roo': 'Roo Code',
+  'devin': 'Devin',
+  'replit': 'Replit',
+  'v0': 'v0',
 };
 
 export const AGENT_DISPLAY_NAMES = [...new Set(Object.values(NAMES))];
@@ -79,7 +79,8 @@ export const AGENT_MARKERS = [
 ];
 
 // AI_AGENT is either `name@version` (Vercel's proposal) or `name_version_mode` (Claude Code).
-const declaredName = (value: string | undefined) => value?.trim().split(/[@_]/)[0]?.toLowerCase() || undefined;
+const declaredName = (value: string | undefined) =>
+  value?.trim().split(/[@_]/)[0]?.toLowerCase() || undefined;
 
 export function detectAgent(env: Env): string | undefined {
   if (env.CLAUDE_CODE_IS_COWORK) return NAMES.cowork;

@@ -41,10 +41,15 @@ function run(urls) {
 
 export async function openBrowser(url: string, aliases: string[] = []) {
   if (process.platform === 'darwin') {
-    const { stdout, stderr } = await execute('osascript', ['-l', 'JavaScript', '-e', MAC_FOCUS_SCRIPT, url, ...aliases], { timeout: 5000 });
+    const { stdout, stderr } = await execute(
+      'osascript',
+      ['-l', 'JavaScript', '-e', MAC_FOCUS_SCRIPT, url, ...aliases],
+      { timeout: 5000 },
+    );
     if (stderr.trim()) console.error(stderr.trim());
     if (stdout.trim() === 'found') return;
-    if (stdout.trim() !== 'missing') throw new Error('Could not inspect existing browser tabs; open the artifact link manually.');
+    if (stdout.trim() !== 'missing')
+      throw new Error('Could not inspect existing browser tabs; open the artifact link manually.');
   }
   const launcher = browserLauncher(process.platform, url);
   if (launcher) await execute(launcher.bin, launcher.args);

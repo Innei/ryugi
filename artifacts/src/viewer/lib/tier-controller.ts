@@ -6,7 +6,12 @@ export interface ControllerInput extends TierInput {
   hoverPromotes: boolean;
   warm?: readonly string[];
 }
-export interface BoardState { tier: BoardTier; mounted: boolean; ready: boolean; warming?: boolean }
+export interface BoardState {
+  tier: BoardTier;
+  mounted: boolean;
+  ready: boolean;
+  warming?: boolean;
+}
 
 const LINGER_MS = 1500;
 const MAX_MOUNTING = 2;
@@ -14,7 +19,11 @@ const MAX_WARMING = 2;
 const READY_AFTER_LOAD_MS = 3000;
 const MOUNT_TIMEOUT_MS = 8000;
 
-interface Frame { ready: boolean; reported: boolean; timer?: number }
+interface Frame {
+  ready: boolean;
+  reported: boolean;
+  timer?: number;
+}
 
 interface Clock {
   now?: () => number;
@@ -97,7 +106,14 @@ export function createTierController({
           const since = time - (wantedAt.get(id) ?? -Infinity);
           if (since >= LINGER_MS) continue;
           next.add(id);
-          if (!lingering.has(id)) lingering.set(id, schedule(() => { lingering.delete(id); onChange(); }, LINGER_MS - since));
+          if (!lingering.has(id))
+            lingering.set(
+              id,
+              schedule(() => {
+                lingering.delete(id);
+                onChange();
+              }, LINGER_MS - since),
+            );
         }
         live = next;
         const warm = (input.warm ?? []).filter((id) => ids.has(id) && !live.has(id));
@@ -112,7 +128,10 @@ export function createTierController({
           }
         }
         let mounting = [...frames.values()].filter((frame) => !frame.ready).length;
-        const waiting = input.boards.map((board) => board.id).filter((id) => live.has(id) && !frames.has(id)).sort((a, b) => Number(first(b)) - Number(first(a)));
+        const waiting = input.boards
+          .map((board) => board.id)
+          .filter((id) => live.has(id) && !frames.has(id))
+          .sort((a, b) => Number(first(b)) - Number(first(a)));
         for (const id of waiting) {
           if (mounting >= MAX_MOUNTING) break;
           mount(id);
@@ -131,9 +150,21 @@ export function createTierController({
       const states = new Map<string, BoardState>();
       for (const [id, tier] of tiers) {
         const frame = frames.get(id);
-        if (frame && live.has(id)) states.set(id, { tier: 'live', mounted: true, ready: frame.ready });
-        else if (frame) states.set(id, { tier: input.snapshots.has(id) ? 'snapshot' : 'placeholder', mounted: true, ready: frame.ready, warming: true });
-        else states.set(id, { tier: tier === 'live' ? (input.snapshots.has(id) ? 'snapshot' : 'placeholder') : tier, mounted: false, ready: false });
+        if (frame && live.has(id))
+          states.set(id, { tier: 'live', mounted: true, ready: frame.ready });
+        else if (frame)
+          states.set(id, {
+            tier: input.snapshots.has(id) ? 'snapshot' : 'placeholder',
+            mounted: true,
+            ready: frame.ready,
+            warming: true,
+          });
+        else
+          states.set(id, {
+            tier: tier === 'live' ? (input.snapshots.has(id) ? 'snapshot' : 'placeholder') : tier,
+            mounted: false,
+            ready: false,
+          });
       }
       return states;
     },

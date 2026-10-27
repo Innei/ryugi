@@ -31,7 +31,9 @@ describe('fitView', () => {
   });
 
   test('clamps to the minimum zoom for huge pages', () => {
-    expect(fitView({ minX: 0, minY: 0, maxX: 10_000_000, maxY: 10 }, viewport, insets).k).toBe(MIN_ZOOM);
+    expect(fitView({ minX: 0, minY: 0, maxX: 10_000_000, maxY: 10 }, viewport, insets).k).toBe(
+      MIN_ZOOM,
+    );
   });
 });
 
@@ -95,7 +97,11 @@ describe('resolveFocus', () => {
 
 describe('labelRect', () => {
   test('places a board label in screen space at the board top-left', () => {
-    expect(labelRect({ x: 100, y: 200, w: 400 }, { x: 10, y: 20, k: 0.5 })).toEqual({ left: 60, top: 120, width: 200 });
+    expect(labelRect({ x: 100, y: 200, w: 400 }, { x: 10, y: 20, k: 0.5 })).toEqual({
+      left: 60,
+      top: 120,
+      width: 200,
+    });
   });
 
   test('hides the label when the board is too narrow on screen', () => {

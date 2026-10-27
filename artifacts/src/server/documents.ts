@@ -1,12 +1,23 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import type { ServerMessage } from '../shared/types';
-import { unreadThreads, waitingOn, type AgentOp, type CommentsFile, type HumanOp, type Thread } from '../shared/comments';
+import {
+  unreadThreads,
+  waitingOn,
+  type AgentOp,
+  type CommentsFile,
+  type HumanOp,
+  type Thread,
+} from '../shared/comments';
 import { createCommentCursors } from './comment-cursors';
 import type { CommentNames } from './comment-names';
 import { createCommentStore, type CommentStore } from './document-comments';
 import { boxDrawingDiagrams } from './document-codec';
-import { createDocumentSession, type DocumentOutcome, type DocumentSession } from './document-session';
+import {
+  createDocumentSession,
+  type DocumentOutcome,
+  type DocumentSession,
+} from './document-session';
 
 export interface DocumentTiming {
   stepDelayMs?: number;
@@ -19,13 +30,21 @@ export interface DocumentRegistry {
   comments(id: string): CommentsFile;
   commentsChanged(id: string): void;
   applyCommentOp(id: string, op: HumanOp): CommentsFile;
-  applyAgentCommentOp(id: string, op: AgentOp, agent?: string): { threadId: string; messageId?: string };
+  applyAgentCommentOp(
+    id: string,
+    op: AgentOp,
+    agent?: string,
+  ): { threadId: string; messageId?: string };
   listComments(id: string, agent: string, all: boolean): AgentThread[];
   warnings(id: string): string[];
   close(): Promise<void>;
 }
 
-export type AgentThread = Thread & { waitingOn: ReturnType<typeof waitingOn>; changes?: string[]; messageIds?: string[] };
+export type AgentThread = Thread & {
+  waitingOn: ReturnType<typeof waitingOn>;
+  changes?: string[];
+  messageIds?: string[];
+};
 
 const forAgent = <T extends Thread>(thread: T) => ({
   ...thread,
@@ -45,11 +64,13 @@ interface RegistryOptions {
 
 const diagramWarnings = (session: DocumentSession) =>
   boxDrawingDiagrams(session.state()).map(
-    (id) => `block ${id} draws a diagram with box-drawing characters; this document is rendered, not Markdown, so draw it as <mermaid>`,
+    (id) =>
+      `block ${id} draws a diagram with box-drawing characters; this document is rendered, not Markdown, so draw it as <mermaid>`,
   );
 
 function outcomeWarnings(outcome: DocumentOutcome): string[] {
-  if (outcome.kind === 'rejected') return [`agent edit rejected: ${outcome.message} (doc.xml is left as written; fix it)`];
+  if (outcome.kind === 'rejected')
+    return [`agent edit rejected: ${outcome.message} (doc.xml is left as written; fix it)`];
   if (outcome.kind === 'failed') return [`agent edit failed: ${outcome.message}`];
   return [];
 }
@@ -63,13 +84,20 @@ export function createDocumentRegistry(options: RegistryOptions): DocumentRegist
   const commentStore = (id: string) => {
     let store = commentStores.get(id);
     if (!store) {
-      store = createCommentStore(path.join(options.root, 'document', id, 'comments.json'), options.names);
+      store = createCommentStore(
+        path.join(options.root, 'document', id, 'comments.json'),
+        options.names,
+      );
       commentStores.set(id, store);
     }
     return store;
   };
   const pushComments = (id: string) =>
-    options.broadcast({ type: 'doc-comments', artifact: `document/${id}`, comments: commentStore(id).current() });
+    options.broadcast({
+      type: 'doc-comments',
+      artifact: `document/${id}`,
+      comments: commentStore(id).current(),
+    });
   const syncComments = (id: string) => {
     const store = commentStore(id);
     const before = JSON.stringify(store.warnings());
@@ -95,18 +123,31 @@ export function createDocumentRegistry(options: RegistryOptions): DocumentRegist
     const currentWarnings = () => {
       if (session.streaming()) return [];
       const outcome = session.outcome();
-      return outcome.kind === 'rejected' ? outcomeWarnings(outcome) : [...outcomeWarnings(outcome), ...diagramWarnings(session)];
+      return outcome.kind === 'rejected'
+        ? outcomeWarnings(outcome)
+        : [...outcomeWarnings(outcome), ...diagramWarnings(session)];
     };
     setWarnings(currentWarnings());
     session.subscribe((event) => {
       if (event.type === 'update') {
-        options.broadcast({ type: 'doc-update', artifact, bytes: Buffer.from(event.bytes).toString('base64') });
+        options.broadcast({
+          type: 'doc-update',
+          artifact,
+          bytes: Buffer.from(event.bytes).toString('base64'),
+        });
       } else if (event.type === 'cursor') {
         options.broadcast({ type: 'doc-cursor', artifact, cursor: event.cursor });
       } else if (event.type === 'saved') {
         setWarnings(currentWarnings());
       } else {
-        options.broadcast({ type: 'doc-status', artifact, streaming: event.streaming, outcome: event.outcome, agentActiveAt: event.agentActiveAt, now: Date.now() });
+        options.broadcast({
+          type: 'doc-status',
+          artifact,
+          streaming: event.streaming,
+          outcome: event.outcome,
+          agentActiveAt: event.agentActiveAt,
+          now: Date.now(),
+        });
         setWarnings(currentWarnings());
       }
     });

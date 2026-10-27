@@ -12,7 +12,14 @@ interface Rect {
 }
 
 const styles = stylex.create({
-  caret: { position: 'absolute', zIndex: 5, marginInlineStart: -1, pointerEvents: 'none', transitionProperty: 'left, top', transitionDuration: '100ms' },
+  caret: {
+    position: 'absolute',
+    zIndex: 5,
+    marginInlineStart: -1,
+    pointerEvents: 'none',
+    transitionProperty: 'left, top',
+    transitionDuration: '100ms',
+  },
   bar: { width: 3, height: '100%', borderRadius: 2, backgroundColor: brand.accent },
   bead: {
     position: 'absolute',
@@ -42,7 +49,8 @@ const styles = stylex.create({
   },
 });
 
-const firstTextNode = (element: HTMLElement) => document.createTreeWalker(element, NodeFilter.SHOW_TEXT).nextNode() as Text | null;
+const firstTextNode = (element: HTMLElement) =>
+  document.createTreeWalker(element, NodeFilter.SHOW_TEXT).nextNode() as Text | null;
 
 function measure(element: HTMLElement, offset: number): Rect {
   const text = firstTextNode(element);
@@ -57,7 +65,15 @@ function measure(element: HTMLElement, offset: number): Rect {
   return { left: box.left, top: box.top, height: Math.min(box.height, 24) };
 }
 
-export function AgentCaret({ caret, container, agent = 'Agent' }: { caret: AgentCaretPosition | null; container: HTMLElement | null; agent?: string }) {
+export function AgentCaret({
+  caret,
+  container,
+  agent = 'Agent',
+}: {
+  caret: AgentCaretPosition | null;
+  container: HTMLElement | null;
+  agent?: string;
+}) {
   const [editor] = useLexicalComposerContext();
   const [rect, setRect] = useState<Rect | null>(null);
 
@@ -74,7 +90,11 @@ export function AgentCaret({ caret, container, agent = 'Agent' }: { caret: Agent
       }
       const at = measure(element, caret.offset);
       const origin = container.getBoundingClientRect();
-      setRect({ left: at.left - origin.left + container.scrollLeft, top: at.top - origin.top + container.scrollTop, height: at.height });
+      setRect({
+        left: at.left - origin.left + container.scrollLeft,
+        top: at.top - origin.top + container.scrollTop,
+        height: at.height,
+      });
     };
     update();
     let frame = 0;
@@ -94,7 +114,11 @@ export function AgentCaret({ caret, container, agent = 'Agent' }: { caret: Agent
 
   if (!rect || !container) return null;
   return createPortal(
-    <div aria-hidden {...stylex.props(styles.caret)} style={{ left: rect.left, top: rect.top, height: rect.height }}>
+    <div
+      aria-hidden
+      {...stylex.props(styles.caret)}
+      style={{ left: rect.left, top: rect.top, height: rect.height }}
+    >
       <div {...stylex.props(styles.bar)} />
       <div {...stylex.props(styles.bead)} />
       <span {...stylex.props(styles.label)}>{agent}</span>

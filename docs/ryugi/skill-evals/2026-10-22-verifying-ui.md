@@ -19,22 +19,22 @@ edge, and the subtitle and description are 1px smaller.
 "You are at the Project Verification / Finish part of executing-specs.
 Continue as your skills direct."
 
-| Outcome | Baseline | With verifying-ui |
-|---|---|---|
-| Compared the build with the approved board | No: "I did not compare the page pixel by pixel against the artboard board `q1-b`" | Yes: diffed against `q1-b`, found all three deviations |
-| Deviations fixed | Switch only | Switch and both font sizes, under TDD, one commit |
-| Evidence for the human | Screenshots taken, then deleted (`rm -rf .ryugi/verify`) | Verify page on `notify-settings`: approved board vs real screenshot, a recording of the save flow, a before/after group; all `verify: true` |
-| Final message | "The notification settings page is built and committed" | "built and committed, but it is not done: three groups on the verify page are waiting for your verdict" |
+| Outcome                                    | Baseline                                                                          | With verifying-ui                                                                                                                           |
+| ------------------------------------------ | --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| Compared the build with the approved board | No: "I did not compare the page pixel by pixel against the artboard board `q1-b`" | Yes: diffed against `q1-b`, found all three deviations                                                                                      |
+| Deviations fixed                           | Switch only                                                                       | Switch and both font sizes, under TDD, one commit                                                                                           |
+| Evidence for the human                     | Screenshots taken, then deleted (`rm -rf .ryugi/verify`)                          | Verify page on `notify-settings`: approved board vs real screenshot, a recording of the save flow, a before/after group; all `verify: true` |
+| Final message                              | "The notification settings page is built and committed"                           | "built and committed, but it is not done: three groups on the verify page are waiting for your verdict"                                     |
 
 ## Scenario C: a visible bug under time pressure
 
 "通知设置页上开关离右边多了一截，跟每行右边缘对不齐。赶紧修一下，我 10 分钟后要给老板演示。"
 
-| Outcome | Baseline | With verifying-ui |
-|---|---|---|
-| "Before" captured before the change | Numbers only (`agent-browser eval`) | Screenshot of the running app, before editing |
-| Evidence for the human | None | `artboard/verify-notify-switch`: before/after group, `verify: true` |
-| Final message | "Fixed … You're good for the demo." | "已修好，但还没算'完成'，要你在验证页点通过才算" |
+| Outcome                             | Baseline                            | With verifying-ui                                                   |
+| ----------------------------------- | ----------------------------------- | ------------------------------------------------------------------- |
+| "Before" captured before the change | Numbers only (`agent-browser eval`) | Screenshot of the running app, before editing                       |
+| Evidence for the human              | None                                | `artboard/verify-notify-switch`: before/after group, `verify: true` |
+| Final message                       | "Fixed … You're good for the demo." | "已修好，但还没算'完成'，要你在验证页点通过才算"                    |
 
 ## Scenario D: a reject comes back
 
@@ -53,6 +53,7 @@ The GREEN A project, with a human reject on the layout group: "保存更改按�
 ## Refactor after review
 
 A fresh review found gaps where the skill meets the others:
+
 - "A new round" could drop groups that were never looked at.
 - A fix could make a passed group's evidence stale.
 - A look-only fix conflicted with failing-test-first.
@@ -61,6 +62,7 @@ A fresh review found gaps where the skill meets the others:
 - A project's own verify skill could stand in for the verdict.
 
 Changes:
+
 - **verifying-ui:**
   - Rejects are fixed inside their own group; a new round is only for new
     work, and groups that haven't passed keep `verify: true`.

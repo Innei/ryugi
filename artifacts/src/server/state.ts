@@ -38,7 +38,8 @@ function boardVersions(boardDir: string, canvas: CanvasSpec) {
       const html = fs.readFileSync(target, 'utf8');
       // shortcut: fragments have no completion marker, use full HTML documents for streaming.
       const document = /<(?:!doctype|html)\b/i.test(html);
-      const ready = html.trim().length > 0 && (!document || /<\/html>\s*(?:<!--[\s\S]*?-->\s*)*$/i.test(html));
+      const ready =
+        html.trim().length > 0 && (!document || /<\/html>\s*(?:<!--[\s\S]*?-->\s*)*$/i.test(html));
       versions[board.file] = ready ? stat.mtimeMs : 0;
       if (!ready && stat.mtimeMs >= latestWrite) {
         writing = id;
@@ -53,12 +54,19 @@ function boardVersions(boardDir: string, canvas: CanvasSpec) {
 
 export function readCanvas(boardDir: string): CanvasPayload {
   const { raw, warning } = readRaw(boardDir);
-  if (warning) return { canvas: null, warnings: [warning], pending: [], layout: null, versions: {} };
+  if (warning)
+    return { canvas: null, warnings: [warning], pending: [], layout: null, versions: {} };
   try {
     const structural = structuralWarnings(raw);
-    if (structural.length > 0) return { canvas: null, warnings: structural, pending: [], layout: null, versions: {} };
+    if (structural.length > 0)
+      return { canvas: null, warnings: structural, pending: [], layout: null, versions: {} };
     const canvas = { ...(raw as CanvasSpec) };
-    canvas.boards = Object.fromEntries(Object.entries(canvas.boards).map(([id, board]) => [id, isMediaBoard(board) ? { ...board, file: board.src ?? '' } : board]));
+    canvas.boards = Object.fromEntries(
+      Object.entries(canvas.boards).map(([id, board]) => [
+        id,
+        isMediaBoard(board) ? { ...board, file: board.src ?? '' } : board,
+      ]),
+    );
     const { versions, writing } = boardVersions(boardDir, canvas);
     const pending = new Set<string>();
     for (const [id, board] of Object.entries(canvas.boards)) {
@@ -71,7 +79,13 @@ export function readCanvas(boardDir: string): CanvasPayload {
       pending,
       allowPending: true,
     });
-    return { canvas, warnings, pending: [...pending].sort(), layout: computeLayout(canvas), versions };
+    return {
+      canvas,
+      warnings,
+      pending: [...pending].sort(),
+      layout: computeLayout(canvas),
+      versions,
+    };
   } catch (err) {
     return {
       canvas: null,
@@ -99,7 +113,10 @@ export function writeArtifactState(
   const checkedAt = new Date().toISOString();
   const dir = path.join(stateDir, ref.type, ref.id);
   if (ref.type === 'artboard') {
-    writeJsonAtomic(path.join(dir, 'layout.json'), { checkedAt, ...(payload.layout ?? { pages: {} }) });
+    writeJsonAtomic(path.join(dir, 'layout.json'), {
+      checkedAt,
+      ...(payload.layout ?? { pages: {} }),
+    });
   }
   writeJsonAtomic(path.join(dir, 'warnings.json'), {
     checkedAt,

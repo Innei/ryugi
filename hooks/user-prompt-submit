@@ -2,7 +2,7 @@
 set -uo pipefail
 
 case "$0" in
-  */*|*\\*) SCRIPT_DIR="$(cd "${0%[/\\]*}" && pwd)" ;;
+  */* | *\\*) SCRIPT_DIR="$(cd "${0%[/\\]*}" && pwd)" ;;
   *) SCRIPT_DIR="$(pwd)" ;;
 esac
 
@@ -11,7 +11,7 @@ session="$(ryugi_real_dir "${CLAUDE_PROJECT_DIR:-$PWD}")"
 project="$(ryugi_project_root "$session")"
 state="$project/.ryugi/artifacts/.state"
 [ -f "$state/server-info" ] || exit 0
-command -v node >/dev/null 2>&1 || exit 0
+command -v node > /dev/null 2>&1 || exit 0
 
 node "$SCRIPT_DIR/selection-context.cjs" "$project" "$session"
 exit 0

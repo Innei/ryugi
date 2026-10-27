@@ -24,27 +24,30 @@ export type AgentIconKey =
 const AGENT_ICONS: Record<string, AgentIconKey> = {
   'Claude Code': 'ClaudeCode',
   'Claude Cowork': 'Claude',
-  Codex: 'Codex',
-  Cursor: 'Cursor',
+  'Codex': 'Codex',
+  'Cursor': 'Cursor',
   'Gemini CLI': 'GeminiCLI',
-  Grok: 'Grok',
+  'Grok': 'Grok',
   'GitHub Copilot': 'GithubCopilot',
   'Kilo Code': 'KiloCode',
-  OpenCode: 'OpenCode',
+  'OpenCode': 'OpenCode',
   'Qwen Code': 'Qwen',
-  Antigravity: 'Antigravity',
-  Goose: 'Goose',
-  Amp: 'Amp',
-  Cline: 'Cline',
+  'Antigravity': 'Antigravity',
+  'Goose': 'Goose',
+  'Amp': 'Amp',
+  'Cline': 'Cline',
   'Roo Code': 'RooCode',
-  Devin: 'Devin',
-  Replit: 'Replit',
-  v0: 'V0',
+  'Devin': 'Devin',
+  'Replit': 'Replit',
+  'v0': 'V0',
 };
 
 export const agentIconOf = (name: string): AgentIconKey | undefined => AGENT_ICONS[name];
 
-export function authorOf({ author, name }: Pick<Message, 'author' | 'name'>): { label: string; initial: string } {
+export function authorOf({ author, name }: Pick<Message, 'author' | 'name'>): {
+  label: string;
+  initial: string;
+} {
   const label = name ?? (author === 'human' ? i18n.t('common.you') : 'Agent');
   return { label, initial: [...label][0]!.toUpperCase() };
 }

@@ -3,7 +3,8 @@ import { historyClock, historyDay, historyWhen } from '../src/viewer/document/hi
 import { i18n } from '../src/viewer/i18n';
 
 const now = new Date(2026, 9, 24, 15, 30).getTime();
-const at = (...parts: [number, number, number, number, number, number?]) => new Date(...parts).getTime() / 1000;
+const at = (...parts: [number, number, number, number, number, number?]) =>
+  new Date(...parts).getTime() / 1000;
 
 test('timeline days read as today, yesterday, then dates', () => {
   expect(historyDay(at(2026, 9, 24, 0, 1), now)).toBe('Today');

@@ -16,13 +16,13 @@ Full spec (for the agent): `2026-10-20-document-tags-design.md`
 
 ## Decided
 
-| Topic | Decision |
-|---|---|
-| New tags | `details`, `footnote` + `footnote-section`, `dynamic` (`grid` dropped) |
-| Still rejected | `video`, `link-card`, `mention`, `comment`, `poll`, `embed`, … |
-| `dynamic` runs | sandboxed iframe, like an HTML artifact; never inside the viewer's own page |
-| `dynamic` source | only `assets/<name>.html` in the doc; no remote URLs |
-| Release | 1.5.0 |
+| Topic            | Decision                                                                    |
+| ---------------- | --------------------------------------------------------------------------- |
+| New tags         | `details`, `footnote` + `footnote-section`, `dynamic` (`grid` dropped)      |
+| Still rejected   | `video`, `link-card`, `mention`, `comment`, `poll`, `embed`, …              |
+| `dynamic` runs   | sandboxed iframe, like an HTML artifact; never inside the viewer's own page |
+| `dynamic` source | only `assets/<name>.html` in the doc; no remote URLs                        |
+| Release          | 1.5.0                                                                       |
 
 ## Check these (agent's calls, not yours yet)
 

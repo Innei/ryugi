@@ -38,13 +38,13 @@ outside this machine, publish it to Ryugi Cloud (see Share a link).
 
 ## Pick the type
 
-| What is being decided | Type | Read before writing |
-|----------------|------|---------------------|
-| Architecture, engineering design, a review, proposal or flow walkthrough | `document` | `document.md` |
-| One surface or one dimension — a component, type scale, background, motion | `html` | `html.md`, `ui.md` for components |
-| A business space — several screens, dimensions, states or questions at once | `artboard` | `artboard.md`; `artboard-prototype.md` for playable boards or parameters |
-| Whether a built change matches what was approved, when they ask you to verify it | `artboard`, a verify group | `artboard.md` |
-| Nothing to see | text | |
+| What is being decided                                                            | Type                       | Read before writing                                                      |
+| -------------------------------------------------------------------------------- | -------------------------- | ------------------------------------------------------------------------ |
+| Architecture, engineering design, a review, proposal or flow walkthrough         | `document`                 | `document.md`                                                            |
+| One surface or one dimension — a component, type scale, background, motion       | `html`                     | `html.md`, `ui.md` for components                                        |
+| A business space — several screens, dimensions, states or questions at once      | `artboard`                 | `artboard.md`; `artboard-prototype.md` for playable boards or parameters |
+| Whether a built change matches what was approved, when they ask you to verify it | `artboard`, a verify group | `artboard.md`                                                            |
+| Nothing to see                                                                   | text                       |                                                                          |
 
 A control does not make it an artboard: one surface, however tunable, is
 `html`. The artboard is for several dimensions at once; one group is one
@@ -232,6 +232,7 @@ whether it is on.
    the page threw in their browser. They only count once `"ran": true`
    shows the new version has loaded there; until then, an empty list
    means "not run yet", not "no errors".
+
 3. Tell them what changed, give the link, and ask for their answer in the
    terminal. For a document, an `html` page or static boards, send that
    message as soon as `check` is clean; screenshots or browser checks of

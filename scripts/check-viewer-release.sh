@@ -12,13 +12,13 @@ cd "$REPO_ROOT"
 
 version="$(jq -r '.version' artifacts/package.json)"
 
-if [[ "${1:-}" == "--require-tag" ]] && ! git rev-parse -q --verify "refs/tags/v$version" >/dev/null; then
+if [[ "${1:-}" == "--require-tag" ]] && ! git rev-parse -q --verify "refs/tags/v$version" > /dev/null; then
   echo "error: main is at version $version but tag v$version does not exist, so npm has no server or viewer for it." >&2
   echo "Push the tag with the commit: git push --atomic origin main v$version" >&2
   exit 1
 fi
 
-tag="$(git describe --tags --abbrev=0 --match 'v*' 2>/dev/null || true)"
+tag="$(git describe --tags --abbrev=0 --match 'v*' 2> /dev/null || true)"
 if [[ -z "$tag" ]]; then
   echo "No release tag yet; nothing to compare."
   exit 0

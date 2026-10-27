@@ -77,13 +77,13 @@ passed keep it.
 
 ## Red Flags
 
-| Thought | Reality |
-|---------|---------|
-| "I measured it in the browser; it's aligned" | Measurements show what you measured. Put the screenshots up. |
-| "Tests pass, so the UI matches" | Tests don't see font size, spacing or color. Compare against the approved board. |
-| "Screenshots were scratch; delete them" | They are the evidence. They go on the verify page. |
-| "No project verify skill, so I verified it myself" | This skill is the verification. |
-| "The project's verify skill already checked it" | It made evidence. Put it on the verify page; the verdict is theirs. |
-| "They're in a hurry; I'll just say it's fixed" | Before/after takes a minute and is what they show the room. |
-| "I'll mock the result in HTML" | A mockup isn't evidence. Capture the real app or say you can't. |
-| "Pending means fine" | Pending means nobody has looked. |
+| Thought                                            | Reality                                                                          |
+| -------------------------------------------------- | -------------------------------------------------------------------------------- |
+| "I measured it in the browser; it's aligned"       | Measurements show what you measured. Put the screenshots up.                     |
+| "Tests pass, so the UI matches"                    | Tests don't see font size, spacing or color. Compare against the approved board. |
+| "Screenshots were scratch; delete them"            | They are the evidence. They go on the verify page.                               |
+| "No project verify skill, so I verified it myself" | This skill is the verification.                                                  |
+| "The project's verify skill already checked it"    | It made evidence. Put it on the verify page; the verdict is theirs.              |
+| "They're in a hurry; I'll just say it's fixed"     | Before/after takes a minute and is what they show the room.                      |
+| "I'll mock the result in HTML"                     | A mockup isn't evidence. Capture the real app or say you can't.                  |
+| "Pending means fine"                               | Pending means nobody has looked.                                                 |

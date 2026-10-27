@@ -64,21 +64,21 @@ cloud.
 
 ## Decided with the human partner
 
-| Topic | Decision |
-|---|---|
-| Trigger | the agent's turn ends |
-| What is published | artifacts changed during that turn; unchanged ones are not touched |
-| What does not trigger | local file changes by themselves |
-| First publish visibility | private |
-| Finding artifacts on the phone | signed-in list page at ryugi.innei.dev, reusing the local list |
-| Scope | global setting, all projects |
-| Project override | `.ryugi/config.json` |
-| Default | on after sign-in |
-| Existing signed-in users | asked once, off until they confirm |
-| Old, unchanged artifacts | not published |
-| Project override file | existing gitignored `.ryugi/config.json`, personal |
-| Account cap / versions | unchanged on the cloud; tell the agent once when the cap is hit |
-| After unpublish | that artifact stops auto-publishing until published by hand |
+| Topic                          | Decision                                                           |
+| ------------------------------ | ------------------------------------------------------------------ |
+| Trigger                        | the agent's turn ends                                              |
+| What is published              | artifacts changed during that turn; unchanged ones are not touched |
+| What does not trigger          | local file changes by themselves                                   |
+| First publish visibility       | private                                                            |
+| Finding artifacts on the phone | signed-in list page at ryugi.innei.dev, reusing the local list     |
+| Scope                          | global setting, all projects                                       |
+| Project override               | `.ryugi/config.json`                                               |
+| Default                        | on after sign-in                                                   |
+| Existing signed-in users       | asked once, off until they confirm                                 |
+| Old, unchanged artifacts       | not published                                                      |
+| Project override file          | existing gitignored `.ryugi/config.json`, personal                 |
+| Account cap / versions         | unchanged on the cloud; tell the agent once when the cap is hit    |
+| After unpublish                | that artifact stops auto-publishing until published by hand        |
 
 ## How it behaves
 
@@ -110,15 +110,15 @@ cloud.
 The human partner may be on a phone, so a localhost banner alone is not
 enough.
 
-- *(My call.)* The SessionStart hook, when credentials exist for the
+- _(My call.)_ The SessionStart hook, when credentials exist for the
   configured origin and the global config has no `autoPublish` key, adds a
   short instruction for the agent: ask your human partner once whether to
   turn on auto-publish, explaining private copies and the list page, then
   run the CLI with their answer.
-- *(My call.)* A CLI command sets it, for example
+- _(My call.)_ A CLI command sets it, for example
   `ryugi-artifacts config --auto-publish on|off [--project]`. Without
   `--project` it writes the global file; with it, the project file.
-- *(My call.)* The local viewer shows the same question as a banner (next to
+- _(My call.)_ The local viewer shows the same question as a banner (next to
   `CloudBanner`) with Turn on / Not now. "Not now" writes `false`.
 - Once the key exists, neither the hook nor the banner asks again.
 
@@ -131,7 +131,7 @@ enough.
 - Changes made while auto-publish is off do not make an artifact dirty, so
   turning it on does not backfill. An old artifact edited after it is on is
   dirty like any other.
-- *(My call.)* Dirty marks persist in `.state/` so a server restart between
+- _(My call.)_ Dirty marks persist in `.state/` so a server restart between
   the edit and the turn end does not lose them.
 
 ### Turn end
@@ -152,10 +152,10 @@ enough.
 - Network or cloud error: the artifact stays dirty; the next turn end
   retries. Nothing is shown in the turn.
 - Validation warnings (publish returns `reasons`): skip that artifact,
-  leave it dirty, do not report every turn. *(My call: the viewer's existing
-  warnings badge already shows them.)*
+  leave it dirty, do not report every turn. _(My call: the viewer's existing
+  warnings badge already shows them.)_
 - Signed out or token rejected (401): stop flushing until signed in again.
-  *(My call.)* The next UserPromptSubmit hook tells the agent once that
+  _(My call.)_ The next UserPromptSubmit hook tells the agent once that
   auto-publish paused because sign-in expired, with the login command;
   repeat only after a later successful sign-in expires again.
 
@@ -197,12 +197,12 @@ enough.
   route renders the owner's cloud artifacts with the same component as the
   local list (`src/viewer/layouts/ArtifactList.tsx`,
   `ArtifactThumbnail.tsx`). Signed-out visitors get the page they get today,
-  plus a sign-in link. *(My call.)*
+  plus a sign-in link. _(My call.)_
 - Each row links to `/a/<id>` and shows title, type, visibility and last
-  updated time. *(My call.)* No live thumbnails: `ArtifactThumbnail` iframes
+  updated time. _(My call.)_ No live thumbnails: `ArtifactThumbnail` iframes
   the local `/preview/` route, which the cloud does not have. Reuse the list
   layout with a type placeholder instead of the thumbnail.
-- *(My call.)* Sorted by last update, grouped by project. The cloud does not
+- _(My call.)_ Sorted by last update, grouped by project. The cloud does not
   know projects today: `ryugi-cloud` gains a nullable `project` column on
   `artifacts` (D1 migration), set on create and updated on each version
   from the project directory's basename.

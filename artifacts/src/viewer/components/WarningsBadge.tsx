@@ -20,7 +20,14 @@ const styles = stylex.create({
     cursor: 'pointer',
     zIndex: 10,
   },
-  list: { margin: 0, paddingBlock: 4, paddingInlineStart: 18, maxWidth: 420, fontSize: 13, lineHeight: 1.6 },
+  list: {
+    margin: 0,
+    paddingBlock: 4,
+    paddingInlineStart: 18,
+    maxWidth: 420,
+    fontSize: 13,
+    lineHeight: 1.6,
+  },
 });
 
 export function WarningsBadge({ warnings }: { warnings: string[] }) {

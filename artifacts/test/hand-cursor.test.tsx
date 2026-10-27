@@ -4,14 +4,20 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { HandCursor } from '../src/viewer/components/HandCursor';
 
-vi.mock('@stylexjs/stylex', async (original) => ({ ...await original<object>(), create: (value: unknown) => value, props: () => ({}) }));
+vi.mock('@stylexjs/stylex', async (original) => ({
+  ...(await original<object>()),
+  create: (value: unknown) => value,
+  props: () => ({}),
+}));
 
 let root: Root;
 let host: HTMLDivElement;
 
 function Harness({ hand }: { hand: 'open' | 'pinch' | null }) {
   const viewport = useRef<HTMLDivElement>(null);
-  return createElement('div', { ref: viewport, id: 'viewport' },
+  return createElement(
+    'div',
+    { ref: viewport, id: 'viewport' },
     createElement('div', { 'data-chrome': '' }, createElement('button', { id: 'tool' }, 'Zoom')),
     createElement('iframe', { id: 'board' }),
     createElement(HandCursor, { viewport, hand }),
@@ -19,11 +25,15 @@ function Harness({ hand }: { hand: 'open' | 'pinch' | null }) {
 }
 
 function clock(reduced = false) {
-  let now = 0, nextId = 0;
+  let now = 0,
+    nextId = 0;
   const frames = new Map<number, FrameRequestCallback>();
   vi.spyOn(performance, 'now').mockImplementation(() => now);
   vi.stubGlobal('matchMedia', () => ({ matches: reduced }));
-  vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => { frames.set(++nextId, callback); return nextId; });
+  vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
+    frames.set(++nextId, callback);
+    return nextId;
+  });
   vi.stubGlobal('cancelAnimationFrame', (id: number) => frames.delete(id));
   return {
     frames,
@@ -52,12 +62,17 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-const render = (hand: 'open' | 'pinch' | null) => act(() => root.render(createElement(Harness, { hand })));
+const render = (hand: 'open' | 'pinch' | null) =>
+  act(() => root.render(createElement(Harness, { hand })));
 const viewport = () => host.querySelector<HTMLDivElement>('#viewport')!;
 const cursor = () => host.querySelector<HTMLElement>('[data-hand-cursor]');
 const systemCursorHidden = () => viewport().hasAttribute('data-hand-drawn');
 const move = (target: Element, x: number, y: number, pointerType = 'mouse') =>
-  act(() => { target.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, clientX: x, clientY: y, pointerType })); });
+  act(() => {
+    target.dispatchEvent(
+      new PointerEvent('pointermove', { bubbles: true, clientX: x, clientY: y, pointerType }),
+    );
+  });
 const pinch = () => Number(cursor()!.getAttribute('data-pinch'));
 const curl = () => Number(cursor()!.getAttribute('data-curl'));
 
@@ -76,7 +91,13 @@ test('hides the system cursor on the canvas and everything over it only while th
   expect(systemCursorHidden()).toBe(false);
   move(viewport(), 120, 80);
   expect(systemCursorHidden()).toBe(true);
-  expect([...document.querySelectorAll('style')].some((style) => /\[data-hand-drawn\][^{]*\*[^{]*\{[^}]*cursor:\s*none\s*!important/.test(style.textContent ?? ''))).toBe(true);
+  expect(
+    [...document.querySelectorAll('style')].some((style) =>
+      /\[data-hand-drawn\][^{]*\*[^{]*\{[^}]*cursor:\s*none\s*!important/.test(
+        style.textContent ?? '',
+      ),
+    ),
+  ).toBe(true);
   render(null);
   expect(systemCursorHidden()).toBe(false);
 });
@@ -102,7 +123,9 @@ test('gives the pointer back over canvas chrome, to touch, and when the pointer 
   move(viewport(), 120, 80, 'touch');
   expect(cursor()).toBeNull();
   move(viewport(), 120, 80);
-  act(() => { viewport().dispatchEvent(new PointerEvent('pointerleave', { pointerType: 'mouse' })); });
+  act(() => {
+    viewport().dispatchEvent(new PointerEvent('pointerleave', { pointerType: 'mouse' }));
+  });
   expect(cursor()).toBeNull();
   expect(systemCursorHidden()).toBe(false);
 });
@@ -111,7 +134,11 @@ test('gives the pointer back once it crosses into a board frame, whose moves the
   clock();
   render('open');
   move(viewport(), 120, 80);
-  act(() => { host.querySelector('#board')!.dispatchEvent(new PointerEvent('pointerover', { bubbles: true, pointerType: 'mouse' })); });
+  act(() => {
+    host
+      .querySelector('#board')!
+      .dispatchEvent(new PointerEvent('pointerover', { bubbles: true, pointerType: 'mouse' }));
+  });
   expect(cursor()).toBeNull();
   expect(systemCursorHidden()).toBe(false);
   move(viewport(), 300, 200);

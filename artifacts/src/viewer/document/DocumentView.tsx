@@ -27,9 +27,24 @@ import { t } from '../i18n';
 
 const styles = stylex.create({
   root: { minHeight: '100%', backgroundColor: cssVar.colorBgContainer, color: cssVar.colorText },
-  message: { padding: 48, textAlign: 'center', color: cssVar.colorTextSecondary, fontFamily: cssVar.fontFamily, fontSize: 14 },
+  message: {
+    padding: 48,
+    textAlign: 'center',
+    color: cssVar.colorTextSecondary,
+    fontFamily: cssVar.fontFamily,
+    fontSize: 14,
+  },
 });
-const historyNodes = [...allNodes.filter((node) => !extraNodes.some((extra) => extra.getType() === ('getType' in node ? node.getType() : node.replace.getType()))), ...extraNodes];
+const historyNodes = [
+  ...allNodes.filter(
+    (node) =>
+      !extraNodes.some(
+        (extra) =>
+          extra.getType() === ('getType' in node ? node.getType() : node.replace.getType()),
+      ),
+  ),
+  ...extraNodes,
+];
 
 function usePrefersDark() {
   const query = useMemo(() => window.matchMedia('(prefers-color-scheme: dark)'), []);
@@ -58,7 +73,21 @@ export interface CloudLive {
   reason: string | null;
 }
 
-export function DocumentView({ id, transport, live, cloud, fallback, actions: barActions }: { id: string; transport: DocumentTransport; live: boolean; cloud?: CloudLive; fallback?: ReactNode; actions?: ReactNode }) {
+export function DocumentView({
+  id,
+  transport,
+  live,
+  cloud,
+  fallback,
+  actions: barActions,
+}: {
+  id: string;
+  transport: DocumentTransport;
+  live: boolean;
+  cloud?: CloudLive;
+  fallback?: ReactNode;
+  actions?: ReactNode;
+}) {
   const [meta, setMeta] = useState<DocumentMeta | null>(null);
   const [doc, setDoc] = useState<LoroDoc | null>(null);
   const [comments, setComments] = useState<CommentsFile>(emptyComments);
@@ -74,11 +103,19 @@ export function DocumentView({ id, transport, live, cloud, fallback, actions: ba
   const [historyOpen, setHistoryOpen] = useState(false);
   const historyAvailable = !cloud || (cloud.online && !offline);
   const historyVisible = historyOpen && historyAvailable;
-  useEffect(() => { if (!historyAvailable) setHistoryOpen(false); }, [historyAvailable]);
+  useEffect(() => {
+    if (!historyAvailable) setHistoryOpen(false);
+  }, [historyAvailable]);
   useEffect(() => {
     if (!cloud) return;
     const receive = (event: MessageEvent) => {
-      if (event.source !== window.parent || event.origin !== location.origin || event.data?.type !== 'ryugi:document-history' || event.data.id !== id) return;
+      if (
+        event.source !== window.parent ||
+        event.origin !== location.origin ||
+        event.data?.type !== 'ryugi:document-history' ||
+        event.data.id !== id
+      )
+        return;
       if (event.data.action === 'close') setHistoryOpen(false);
       else if (event.data.action === 'toggle' && historyAvailable) setHistoryOpen((open) => !open);
     };
@@ -116,10 +153,15 @@ export function DocumentView({ id, transport, live, cloud, fallback, actions: ba
         setAgentActiveAt(state.agentActiveAt);
         syncClock(state.now);
         setComments(state.comments ?? emptyComments());
-        const scroll = preserveScroll ? { left: window.scrollX, top: window.scrollY, behavior: 'instant' as const } : null;
+        const scroll = preserveScroll
+          ? { left: window.scrollX, top: window.scrollY, behavior: 'instant' as const }
+          : null;
         setDoc(loro);
         // The editor binding fills its initially empty DOM after mounting.
-        if (scroll) requestAnimationFrame(() => { if (!cancelled) window.scrollTo(scroll); });
+        if (scroll)
+          requestAnimationFrame(() => {
+            if (!cancelled) window.scrollTo(scroll);
+          });
       } catch (err) {
         if (!cancelled) setLoadError((err as Error).message);
       }
@@ -137,8 +179,7 @@ export function DocumentView({ id, transport, live, cloud, fallback, actions: ba
           setStreaming(event.streaming);
           setAgentActiveAt(event.agentActiveAt);
           syncClock(event.now);
-        }
-        else if (event.type === 'doc-comments') setComments(event.comments);
+        } else if (event.type === 'doc-comments') setComments(event.comments);
       }),
     [channel, refreshMeta, syncClock],
   );
@@ -149,12 +190,15 @@ export function DocumentView({ id, transport, live, cloud, fallback, actions: ba
   useEffect(() => {
     if (!canEdit) setEditing(false);
   }, [canEdit]);
-  const onState = useCallback((state: DocumentState) => {
-    setStreaming(Boolean(state.streaming));
-    setAgentActiveAt(state.agentActiveAt);
-    syncClock(state.now);
-    if (state.comments) setComments(state.comments);
-  }, [syncClock]);
+  const onState = useCallback(
+    (state: DocumentState) => {
+      setStreaming(Boolean(state.streaming));
+      setAgentActiveAt(state.agentActiveAt);
+      syncClock(state.now);
+      if (state.comments) setComments(state.comments);
+    },
+    [syncClock],
+  );
 
   useAssetBase(meta?.contentBase);
   useDocumentSelectionSync(editor, artifact, live && !historyVisible, transport.send);
@@ -168,7 +212,12 @@ export function DocumentView({ id, transport, live, cloud, fallback, actions: ba
   useTypeFavicon('document');
   const pendingBlocks = usePendingBlocks(editor);
   const now = useNow(pendingBlocks.count > 0 && !streaming);
-  const activity = agentActivity({ streaming, pending: pendingBlocks.count, agentActiveAt, now: now + clockOffset });
+  const activity = agentActivity({
+    streaming,
+    pending: pendingBlocks.count,
+    agentActiveAt,
+    now: now + clockOffset,
+  });
   const agentName = meta?.agent ?? 'Agent';
   const pendingProgress = useMemo<PendingProgress>(
     () => ({ nextKey: pendingBlocks.firstKey, agent: agentName, activity: activity.kind }),
@@ -178,7 +227,15 @@ export function DocumentView({ id, transport, live, cloud, fallback, actions: ba
   const openComments = comments.threads.filter((thread) => thread.status === 'open').length;
   const [selection, clearSelection] = useSelectionComment(editor, mainEl);
   const closeHistory = useCallback(() => setHistoryOpen(false), []);
-  const historyView = useDocumentHistory({ doc, nodes: historyNodes, streaming, theme: dark ? 'dark' : 'light', title: meta?.title || id, open: historyVisible, onClose: closeHistory });
+  const historyView = useDocumentHistory({
+    doc,
+    nodes: historyNodes,
+    streaming,
+    theme: dark ? 'dark' : 'light',
+    title: meta?.title || id,
+    open: historyVisible,
+    onClose: closeHistory,
+  });
 
   const send = useCallback(
     async (op: HumanOp) => {
@@ -203,7 +260,8 @@ export function DocumentView({ id, transport, live, cloud, fallback, actions: ba
   );
 
   const create = useCallback(
-    (target: SelectionTarget, text: string) => send({ op: 'create', blockId: target.blockId, quote: target.quote, text }),
+    (target: SelectionTarget, text: string) =>
+      send({ op: 'create', blockId: target.blockId, quote: target.quote, text }),
     [send],
   );
   const startEditing = useCallback(
@@ -240,7 +298,10 @@ export function DocumentView({ id, transport, live, cloud, fallback, actions: ba
   );
 
   return (
-    <div {...stylex.props(styles.root)} className={`ryugi-doc ${stylex.props(styles.root).className ?? ''}`}>
+    <div
+      {...stylex.props(styles.root)}
+      className={`ryugi-doc ${stylex.props(styles.root).className ?? ''}`}
+    >
       <TopBar
         id={id}
         title={meta?.title || id}
@@ -253,7 +314,12 @@ export function DocumentView({ id, transport, live, cloud, fallback, actions: ba
         compact={phone}
         onDone={phone && editing ? () => setEditing(false) : undefined}
         actions={barActions}
-        history={{ available: historyAvailable, open: historyVisible, toggle: () => setHistoryOpen((open) => !open), close: closeHistory }}
+        history={{
+          available: historyAvailable,
+          open: historyVisible,
+          toggle: () => setHistoryOpen((open) => !open),
+          close: closeHistory,
+        }}
       />
       {phone ? (
         <PhoneLayout

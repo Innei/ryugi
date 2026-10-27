@@ -115,6 +115,7 @@ behavior) and `html` (new).
     a type, lowercase letters, digits and hyphens, never starting with a dot.
   - A type is fixed for an artifact's lifetime; changing type means a new
     artifact and a new link.
+
 - **Git-friendly, not git-tracked by default.** Every server-owned file
   (warnings, layout, port, token, server info, owner list) lives under
   `.ryugi/artifacts/.state/`, which carries its own `.gitignore` ignoring
@@ -137,7 +138,7 @@ behavior) and `html` (new).
   use the artifacts skill.
 
 - **Sandbox for `html` (call):** `sandbox allow-scripts allow-modals
-  allow-forms allow-popups allow-downloads`, and the frame allows
+allow-forms allow-popups allow-downloads`, and the frame allows
   `clipboard-write`, so test benches can alert, export, download and copy
   tuned values. `allow-same-origin` is never granted, so page storage
   (`localStorage`) stays unavailable; the `html.md` guide says so. Board

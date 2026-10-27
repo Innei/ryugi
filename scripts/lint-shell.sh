@@ -20,7 +20,7 @@ die() {
 }
 
 require_tool() {
-  command -v "$1" >/dev/null 2>&1 || die "required tool '$1' is not on PATH"
+  command -v "$1" > /dev/null 2>&1 || die "required tool '$1' is not on PATH"
 }
 
 is_shell_file() {
@@ -35,12 +35,12 @@ is_shell_file() {
       ;;
   esac
 
-  IFS= read -r first_line <"$path" || true
+  IFS= read -r first_line < "$path" || true
   [[ "$first_line" =~ ^#!.*[/[:space:]](bash|dash|ksh|sh)([[:space:]]|$) ]]
 }
 
 ensure_git_work_tree() {
-  git rev-parse --is-inside-work-tree >/dev/null 2>&1 \
+  git rev-parse --is-inside-work-tree > /dev/null 2>&1 \
     || die "run this from inside a git work tree, or pass files explicitly"
 }
 
@@ -79,7 +79,7 @@ collect_changed_shell_files() {
 
   ensure_git_work_tree
 
-  if git rev-parse --verify HEAD >/dev/null 2>&1; then
+  if git rev-parse --verify HEAD > /dev/null 2>&1; then
     while IFS= read -r -d '' path; do
       add_shell_file "$path"
     done < <(git diff --name-only -z --diff-filter=ACMR HEAD)
@@ -108,7 +108,7 @@ syntax_shell_for() {
   local path="$1"
   local first_line=""
 
-  IFS= read -r first_line <"$path" || true
+  IFS= read -r first_line < "$path" || true
 
   case "$first_line" in
     *"/sh"* | *" env sh"* | *"/dash"* | *" env dash"*)

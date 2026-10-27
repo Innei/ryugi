@@ -16,7 +16,10 @@ export function latestMtime(dir: string): number {
     if (entry.name.startsWith('.')) continue;
     const full = path.join(dir, entry.name);
     try {
-      latest = Math.max(latest, entry.isDirectory() ? latestMtime(full) : fs.statSync(full).mtimeMs);
+      latest = Math.max(
+        latest,
+        entry.isDirectory() ? latestMtime(full) : fs.statSync(full).mtimeMs,
+      );
     } catch {
       continue;
     }

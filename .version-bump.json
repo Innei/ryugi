@@ -1,4 +1,15 @@
 {
+  "audit": {
+    "exclude": [
+      "CHANGELOG.md",
+      "RELEASE-NOTES.md",
+      "node_modules",
+      "evals",
+      ".git",
+      ".version-bump.json",
+      "scripts/bump-version.sh"
+    ]
+  },
   "files": [
     { "path": "package.json", "field": "version" },
     { "path": ".hermes-plugin/plugin.yaml", "field": "version" },
@@ -13,16 +24,5 @@
     { "path": ".muse-plugin/marketplace.json", "field": "plugins.0.version" },
     { "path": "gemini-extension.json", "field": "version" },
     { "path": "artifacts/package.json", "field": "version" }
-  ],
-  "audit": {
-    "exclude": [
-      "CHANGELOG.md",
-      "RELEASE-NOTES.md",
-      "node_modules",
-      "evals",
-      ".git",
-      ".version-bump.json",
-      "scripts/bump-version.sh"
-    ]
-  }
+  ]
 }

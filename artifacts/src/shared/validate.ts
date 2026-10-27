@@ -4,7 +4,7 @@ import { BOARD_TYPES, isMediaBoard, type BoardSpec, type CanvasSpec } from './ty
 const BOARD_NUMBERS = ['x', 'y', 'w', 'h'] as const;
 const BOARD_REQUIRED = ['file', 'page', ...BOARD_NUMBERS] as const;
 const MEDIA_REQUIRED = ['src', 'page', ...BOARD_NUMBERS] as const;
-const fileOf = (board: BoardSpec) => (isMediaBoard(board) ? board.src ?? '' : board.file);
+const fileOf = (board: BoardSpec) => (isMediaBoard(board) ? (board.src ?? '') : board.file);
 const fileField = (board: BoardSpec) => (isMediaBoard(board) ? 'src' : 'file');
 
 const isObject = (value: unknown): value is Record<string, unknown> =>
@@ -15,7 +15,8 @@ export function structuralWarnings(raw: unknown): string[] {
   const warnings: string[] = [];
   if (!Array.isArray(raw.pages)) warnings.push('"pages" must be an array');
   if (!isObject(raw.boards)) warnings.push('"boards" must be an object');
-  if (raw.groups !== undefined && !isObject(raw.groups)) warnings.push('"groups" must be an object');
+  if (raw.groups !== undefined && !isObject(raw.groups))
+    warnings.push('"groups" must be an object');
   if (raw.notes !== undefined && !isObject(raw.notes)) warnings.push('"notes" must be an object');
   if (raw.focus !== undefined && (!isObject(raw.focus) || typeof raw.focus.target !== 'string')) {
     warnings.push('"focus" must be { "target": <id>, "at": <time> }');
@@ -28,17 +29,29 @@ export function structuralWarnings(raw: unknown): string[] {
   }
   if (isObject(raw.notes)) {
     for (const [id, note] of Object.entries(raw.notes)) {
-      if (isObject(note) && note.color !== undefined && (typeof note.color !== 'string' || !/^#(?:[\da-f]{3}|[\da-f]{6})$/i.test(note.color))) {
+      if (
+        isObject(note) &&
+        note.color !== undefined &&
+        (typeof note.color !== 'string' || !/^#(?:[\da-f]{3}|[\da-f]{6})$/i.test(note.color))
+      ) {
         warnings.push(`note "${id}" color must be #RGB or #RRGGBB`);
       }
     }
   }
   if (isObject(raw.boards)) {
     for (const [id, board] of Object.entries(raw.boards)) {
-      if (isObject(board) && board.interactive !== undefined && typeof board.interactive !== 'boolean') {
+      if (
+        isObject(board) &&
+        board.interactive !== undefined &&
+        typeof board.interactive !== 'boolean'
+      ) {
         warnings.push(`board "${id}" field "interactive" must be a boolean`);
       }
-      if (isObject(board) && board.type !== undefined && !(BOARD_TYPES as readonly unknown[]).includes(board.type)) {
+      if (
+        isObject(board) &&
+        board.type !== undefined &&
+        !(BOARD_TYPES as readonly unknown[]).includes(board.type)
+      ) {
         warnings.push(`board "${id}" field "type" must be "html", "image" or "video"`);
       }
     }
@@ -78,7 +91,11 @@ export function structuralWarnings(raw: unknown): string[] {
     }
   }
   for (const [id, group] of Object.entries((raw.groups ?? {}) as Record<string, unknown>)) {
-    if (!isObject(group) || !Array.isArray(group.boards) || group.boards.some((b) => typeof b !== 'string')) {
+    if (
+      !isObject(group) ||
+      !Array.isArray(group.boards) ||
+      group.boards.some((b) => typeof b !== 'string')
+    ) {
       warnings.push(`group "${id}" needs a "boards" array`);
     }
   }
@@ -115,7 +132,8 @@ export function validateCanvas(
   for (const [id, board] of boards) {
     if (!pages.has(board.page)) warnings.push(`board "${id}" uses unknown page "${board.page}"`);
     const file = fileOf(board);
-    if (!file.startsWith('pages/')) warnings.push(`board "${id}" ${fileField(board)} must start with "pages/": ${file}`);
+    if (!file.startsWith('pages/'))
+      warnings.push(`board "${id}" ${fileField(board)} must start with "pages/": ${file}`);
     else if (!fileExists(file)) {
       options.pending?.add(id);
       if (!options.allowPending) warnings.push(`board "${id}" file not found: ${file}`);
@@ -126,14 +144,16 @@ export function validateCanvas(
     for (let j = i + 1; j < boards.length; j++) {
       const [ia, a] = boards[i]!;
       const [ib, b] = boards[j]!;
-      if (a.page === b.page && intersects(a, b)) warnings.push(`boards "${ia}" and "${ib}" overlap`);
+      if (a.page === b.page && intersects(a, b))
+        warnings.push(`boards "${ia}" and "${ib}" overlap`);
     }
   }
 
   const frames: [string, ReturnType<typeof groupFrame>][] = [];
   for (const [id, group] of groups) {
     for (const member of group.boards) {
-      if (!canvas.boards[member]) warnings.push(`group "${id}" references unknown board "${member}"`);
+      if (!canvas.boards[member])
+        warnings.push(`group "${id}" references unknown board "${member}"`);
     }
     const memberPages = new Set(group.boards.map((m) => canvas.boards[m]?.page).filter(Boolean));
     if (memberPages.size > 1) warnings.push(`group "${id}" spans several pages`);
@@ -144,7 +164,8 @@ export function validateCanvas(
     for (let j = i + 1; j < frames.length; j++) {
       const [ia, a] = frames[i]!;
       const [ib, b] = frames[j]!;
-      if (a && b && a.page === b.page && intersects(a, b)) warnings.push(`groups "${ia}" and "${ib}" overlap`);
+      if (a && b && a.page === b.page && intersects(a, b))
+        warnings.push(`groups "${ia}" and "${ib}" overlap`);
     }
   }
 
@@ -162,7 +183,8 @@ export function validateCanvas(
       }
     } else {
       for (const [bid, board] of boards) {
-        if (board.page === note.page && intersects(rect, board)) warnings.push(`sticky "${id}" covers board "${bid}"`);
+        if (board.page === note.page && intersects(rect, board))
+          warnings.push(`sticky "${id}" covers board "${bid}"`);
       }
     }
   }
@@ -174,7 +196,12 @@ export function validateCanvas(
   if (canvas.writing !== undefined && !canvas.boards[canvas.writing]) {
     warnings.push(`writing target "${canvas.writing}" is not a board`);
   }
-  if (target !== undefined && !canvas.boards[target] && !canvas.groups?.[target] && !canvas.notes?.[target]) {
+  if (
+    target !== undefined &&
+    !canvas.boards[target] &&
+    !canvas.groups?.[target] &&
+    !canvas.notes?.[target]
+  ) {
     warnings.push(`focus target "${target}" is not a board, group or note`);
   }
   return warnings;

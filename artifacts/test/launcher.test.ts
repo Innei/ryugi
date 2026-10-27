@@ -12,7 +12,7 @@ const version = '9.9.9';
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 const STUBBORN_SERVER = [
-  "const on = process.on.bind(process);",
+  'const on = process.on.bind(process);',
   "on('SIGTERM', () => {});",
   "process.on = (event, listener) => (event === 'SIGTERM' ? process : on(event, listener));",
   "require('./real.cjs');",
@@ -37,21 +37,25 @@ function fakeNpm({ installExit = 0, before = '' } = {}) {
   const installFails = path.join(bin, 'install-fails');
   const stubborn = path.join(bin, 'stubborn');
   fs.writeFileSync(latest, version);
-  fs.writeFileSync(path.join(bin, 'npm'), [
-    '#!/bin/bash',
-    `echo "$*" >> ${JSON.stringify(log)}`,
-    `if [[ "$1" == "view" ]]; then [[ -f ${JSON.stringify(offline)} ]] && exit 1; cat ${JSON.stringify(latest)}; exit 0; fi`,
-    `[[ ${installExit} -eq 0 ]] || exit ${installExit}`,
-    `[[ -f ${JSON.stringify(installFails)} ]] && exit 1`,
-    'while [[ $# -gt 0 ]]; do [[ "$1" == "--prefix" ]] && prefix="$2"; shift; done',
-    before,
-    'dist="$prefix/node_modules/ryugi-artifacts/dist"',
-    'mkdir -p "$dist"',
-    `cp ${JSON.stringify(path.join(appDir, 'cli.cjs'))} "$dist/cli.cjs"`,
-    `cp ${JSON.stringify(path.join(appDir, 'server.cjs'))} "$dist/server.cjs"`,
-    `cp -R ${JSON.stringify(path.join(appDir, 'viewer'))} "$dist/viewer"`,
-    `if [[ -f ${JSON.stringify(stubborn)} ]]; then mv "$dist/server.cjs" "$dist/real.cjs"; printf '%s' ${JSON.stringify(STUBBORN_SERVER)} > "$dist/server.cjs"; fi`,
-  ].join('\n'), { mode: 0o755 });
+  fs.writeFileSync(
+    path.join(bin, 'npm'),
+    [
+      '#!/bin/bash',
+      `echo "$*" >> ${JSON.stringify(log)}`,
+      `if [[ "$1" == "view" ]]; then [[ -f ${JSON.stringify(offline)} ]] && exit 1; cat ${JSON.stringify(latest)}; exit 0; fi`,
+      `[[ ${installExit} -eq 0 ]] || exit ${installExit}`,
+      `[[ -f ${JSON.stringify(installFails)} ]] && exit 1`,
+      'while [[ $# -gt 0 ]]; do [[ "$1" == "--prefix" ]] && prefix="$2"; shift; done',
+      before,
+      'dist="$prefix/node_modules/ryugi-artifacts/dist"',
+      'mkdir -p "$dist"',
+      `cp ${JSON.stringify(path.join(appDir, 'cli.cjs'))} "$dist/cli.cjs"`,
+      `cp ${JSON.stringify(path.join(appDir, 'server.cjs'))} "$dist/server.cjs"`,
+      `cp -R ${JSON.stringify(path.join(appDir, 'viewer'))} "$dist/viewer"`,
+      `if [[ -f ${JSON.stringify(stubborn)} ]]; then mv "$dist/server.cjs" "$dist/real.cjs"; printf '%s' ${JSON.stringify(STUBBORN_SERVER)} > "$dist/server.cjs"; fi`,
+    ].join('\n'),
+    { mode: 0o755 },
+  );
   const calls = () => (fs.existsSync(log) ? fs.readFileSync(log, 'utf8').trim().split('\n') : []);
   return {
     bin,
@@ -68,9 +72,18 @@ function setup(npmOptions?: Parameters<typeof fakeNpm>[0]) {
   const app = installedCopy();
   const npm = fakeNpm(npmOptions);
   const cache = fs.mkdtempSync(path.join(os.tmpdir(), 'artifacts-cache-'));
-  const env = { ...process.env, PATH: `${npm.bin}:${process.env.PATH}`, XDG_CACHE_HOME: cache, ARTIFACTS_OPEN: '0' };
+  const env = {
+    ...process.env,
+    PATH: `${npm.bin}:${process.env.PATH}`,
+    XDG_CACHE_HOME: cache,
+    ARTIFACTS_OPEN: '0',
+  };
   const launch = (args: string[]) => {
-    const result = spawnSync(process.execPath, [path.join(app, launcherName), ...args], { encoding: 'utf8', env, timeout: 20000 });
+    const result = spawnSync(process.execPath, [path.join(app, launcherName), ...args], {
+      encoding: 'utf8',
+      env,
+      timeout: 20000,
+    });
     return { code: result.status, out: JSON.parse(result.stdout.trim().split('\n').pop()!) };
   };
   const project = () => {
@@ -81,13 +94,20 @@ function setup(npmOptions?: Parameters<typeof fakeNpm>[0]) {
   return { app, npm, cache, env, launch, project };
 }
 
-const releases = (cache: string) => fs.readdirSync(path.join(cache, 'ryugi', 'artifacts')).filter((name) => name !== 'latest.json');
-const pidOf = (project: string) => Number(fs.readFileSync(path.join(project, '.ryugi', 'artifacts', '.state', 'server.pid'), 'utf8'));
+const releases = (cache: string) =>
+  fs.readdirSync(path.join(cache, 'ryugi', 'artifacts')).filter((name) => name !== 'latest.json');
+const pidOf = (project: string) =>
+  Number(
+    fs.readFileSync(path.join(project, '.ryugi', 'artifacts', '.state', 'server.pid'), 'utf8'),
+  );
 
 function ageLatestCheck(cache: string, ms: number, next?: string) {
   const file = path.join(cache, 'ryugi', 'artifacts', 'latest.json');
   const latest = JSON.parse(fs.readFileSync(file, 'utf8'));
-  fs.writeFileSync(file, JSON.stringify({ ...latest, ...(next ? { version: next } : {}), checkedAt: Date.now() - ms }));
+  fs.writeFileSync(
+    file,
+    JSON.stringify({ ...latest, ...(next ? { version: next } : {}), checkedAt: Date.now() - ms }),
+  );
 }
 
 describe('launcher with a local build', () => {
@@ -95,34 +115,74 @@ describe('launcher with a local build', () => {
     const npm = fakeNpm();
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'artifacts-project-'));
     const env = { ...process.env, PATH: `${npm.bin}:${process.env.PATH}`, ARTIFACTS_OPEN: '0' };
-    const launch = (args: string[]) => JSON.parse(spawnSync(process.execPath, [path.join(appDir, launcherName), ...args], { encoding: 'utf8', env, timeout: 20000 }).stdout.trim().split('\n').pop()!);
+    const launch = (args: string[]) =>
+      JSON.parse(
+        spawnSync(process.execPath, [path.join(appDir, launcherName), ...args], {
+          encoding: 'utf8',
+          env,
+          timeout: 20000,
+        })
+          .stdout.trim()
+          .split('\n')
+          .pop()!,
+      );
     cleanups.push(() => launch(['stop', '--project-dir', dir]));
     expect(launch(['start', '--project-dir', dir, '--json']).type).toBe('server-started');
     expect(npm.views()).toHaveLength(0);
-    const owners = fs.readFileSync(path.join(dir, '.ryugi', 'artifacts', '.state', 'owners'), 'utf8').trim().split('\n');
+    const owners = fs
+      .readFileSync(path.join(dir, '.ryugi', 'artifacts', '.state', 'owners'), 'utf8')
+      .trim()
+      .split('\n');
     expect(owners).toEqual([String(process.ppid)]);
   });
 
   test('keeps an owner it was handed instead of guessing one', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'artifacts-project-'));
     const env = { ...process.env, ARTIFACTS_OPEN: '0', RYUGI_ARTIFACTS_OWNER: String(process.pid) };
-    const launch = (args: string[]) => JSON.parse(spawnSync(process.execPath, [path.join(appDir, launcherName), ...args], { encoding: 'utf8', env, timeout: 20000 }).stdout.trim().split('\n').pop()!);
+    const launch = (args: string[]) =>
+      JSON.parse(
+        spawnSync(process.execPath, [path.join(appDir, launcherName), ...args], {
+          encoding: 'utf8',
+          env,
+          timeout: 20000,
+        })
+          .stdout.trim()
+          .split('\n')
+          .pop()!,
+      );
     cleanups.push(() => launch(['stop', '--project-dir', dir]));
     expect(launch(['start', '--project-dir', dir, '--json']).type).toBe('server-started');
-    const owners = fs.readFileSync(path.join(dir, '.ryugi', 'artifacts', '.state', 'owners'), 'utf8').trim().split('\n');
+    const owners = fs
+      .readFileSync(path.join(dir, '.ryugi', 'artifacts', '.state', 'owners'), 'utf8')
+      .trim()
+      .split('\n');
     expect(owners).toEqual([String(process.pid)]);
   });
 
   test('records a local source version and replaces the server when it changes', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'artifacts-project-'));
-    const launch = (extraEnv: Record<string, string> = {}) => JSON.parse(spawnSync(process.execPath,
-      [path.join(appDir, launcherName), 'start', '--project-dir', dir, '--json'],
-      { encoding: 'utf8', env: { ...process.env, ARTIFACTS_OPEN: '0', ...extraEnv }, timeout: 20000 }).stdout.trim().split('\n').pop()!);
+    const launch = (extraEnv: Record<string, string> = {}) =>
+      JSON.parse(
+        spawnSync(
+          process.execPath,
+          [path.join(appDir, launcherName), 'start', '--project-dir', dir, '--json'],
+          {
+            encoding: 'utf8',
+            env: { ...process.env, ARTIFACTS_OPEN: '0', ...extraEnv },
+            timeout: 20000,
+          },
+        )
+          .stdout.trim()
+          .split('\n')
+          .pop()!,
+      );
     cleanups.push(() => launch({ RYUGI_ARTIFACTS_COMMAND: '' }));
 
     const first = launch();
     expect(first.type).toBe('server-started');
-    const version = fs.readFileSync(path.join(dir, '.ryugi', 'artifacts', '.state', 'server-version'), 'utf8').trim();
+    const version = fs
+      .readFileSync(path.join(dir, '.ryugi', 'artifacts', '.state', 'server-version'), 'utf8')
+      .trim();
     expect(version).toMatch(/^local-[0-9a-f]{12}$/);
 
     const pid = pidOf(dir);
@@ -145,7 +205,9 @@ describe('launcher without a local build', () => {
     const dir = project();
     const info = launch(['start', '--project-dir', dir]).out;
     expect(info.type).toBe('server-started');
-    expect((await get(info.url.replace('localhost', '127.0.0.1'), { Connection: 'close' })).status).toBe(200);
+    expect(
+      (await get(info.url.replace('localhost', '127.0.0.1'), { Connection: 'close' })).status,
+    ).toBe(200);
     expect(launch(['stop', '--project-dir', dir]).out.status).toBe('stopped');
     expect(launch(['start', '--project-dir', dir]).out.type).toBe('server-started');
     expect(npm.views()).toHaveLength(1);
@@ -281,7 +343,11 @@ describe('launcher without a local build', () => {
     const { npm, app, env, project } = setup({ before: 'sleep 2' });
     const dir = project();
     const lock = path.join(dir, '.ryugi', 'artifacts', '.state', 'start.lock');
-    const child = spawn(process.execPath, [path.join(app, launcherName), 'start', '--project-dir', dir], { env });
+    const child = spawn(
+      process.execPath,
+      [path.join(app, launcherName), 'start', '--project-dir', dir],
+      { env },
+    );
     const done = new Promise((resolve) => child.on('close', resolve));
     while (npm.installs().length === 0) await new Promise((resolve) => setTimeout(resolve, 50));
     expect(fs.existsSync(lock)).toBe(false);
@@ -292,7 +358,10 @@ describe('launcher without a local build', () => {
     const { npm, cache, launch, project } = setup();
     npm.publish('1.42.2');
     fs.mkdirSync(path.join(cache, 'ryugi', 'artifacts'), { recursive: true });
-    fs.writeFileSync(path.join(cache, 'ryugi', 'artifacts', 'latest.json'), JSON.stringify({ version: '1.42.2', checkedAt: Date.now() }));
+    fs.writeFileSync(
+      path.join(cache, 'ryugi', 'artifacts', 'latest.json'),
+      JSON.stringify({ version: '1.42.2', checkedAt: Date.now() }),
+    );
     const { code, out } = launch(['start', '--project-dir', project()]);
     expect(code).toBe(1);
     expect(out.error).toMatch(/ryugi-artifacts 1\.43\.0 or newer/);
@@ -310,14 +379,21 @@ describe('launcher without a local build', () => {
     expect(launch(['stop', '--project-dir', dir]).out.status).toBe('stopped');
     const unpublished = launch(['publish', '--project-dir', dir, '--artifact', 'html/x']);
     expect(unpublished.code).toBe(1);
-    expect(unpublished.out.error).toContain(`node "${fs.realpathSync(path.join(app, launcherName))}" start`);
+    expect(unpublished.out.error).toContain(
+      `node "${fs.realpathSync(path.join(app, launcherName))}" start`,
+    );
     expect(npm.views()).toHaveLength(1);
   }, 30000);
 });
 
 describe('npm on Windows', () => {
   const { npmCommand } = createRequire(__filename)(path.join(appDir, launcherName));
-  const args = ['install', '--prefix', 'C:\\Users\\Jane Doe\\.cache\\ryugi\\artifacts\\1.9.1.install.42', 'ryugi-artifacts@1.9.1'];
+  const args = [
+    'install',
+    '--prefix',
+    'C:\\Users\\Jane Doe\\.cache\\ryugi\\artifacts\\1.9.1.install.42',
+    'ryugi-artifacts@1.9.1',
+  ];
 
   test('runs through cmd with every argument quoted, so a home folder with a space survives', () => {
     expect(npmCommand(args, true)).toEqual({

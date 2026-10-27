@@ -9,11 +9,14 @@ export interface CheckOptions {
 }
 
 export async function check(options: CheckOptions, emit: Emit): Promise<number> {
-  if (!options.artifact || !ARTIFACT_PATTERN.test(options.artifact)) throw new CliError(ARTIFACT_ERROR);
+  if (!options.artifact || !ARTIFACT_PATTERN.test(options.artifact))
+    throw new CliError(ARTIFACT_ERROR);
   const server = serverClient(options.projectDir);
   const { status, json } = await server.call('POST', `/api/agent/${options.artifact}/check`);
   if (status === 404 && typeof json.error !== 'string') {
-    throw new CliError(`The running artifacts server is older than this CLI. Run \`${invocation()} start --project-dir ${server.project}\` to replace it, then run this again.`);
+    throw new CliError(
+      `The running artifacts server is older than this CLI. Run \`${invocation()} start --project-dir ${server.project}\` to replace it, then run this again.`,
+    );
   }
   if (status < 200 || status >= 300) throw new CliError(json.error || `HTTP ${status}`);
   emit({ type: 'checked', artifact: options.artifact, ...json });
@@ -25,7 +28,9 @@ export function checkText(value: Record<string, unknown>): string | null {
   const warnings = (value.warnings as string[] | undefined) ?? [];
   const pending = (value.pending as string[] | undefined) ?? [];
   const dynamic = (value.dynamic as Record<string, { ran?: boolean }> | undefined) ?? {};
-  const unrun = Object.entries(dynamic).filter(([, block]) => block.ran === false).map(([file]) => file);
+  const unrun = Object.entries(dynamic)
+    .filter(([, block]) => block.ran === false)
+    .map(([file]) => file);
   const lines = [
     ...warnings.map((warning) => `warning: ${warning}`),
     ...(pending.length ? [`pending: ${pending.join(', ')}`] : []),
@@ -38,11 +43,13 @@ export function checkText(value: Record<string, unknown>): string | null {
 
 export const checkCommand: CommandSpec = {
   name: 'check',
-  summary: 'Wait until the server has checked the latest write, then print its warnings (needs a running server)',
+  summary:
+    'Wait until the server has checked the latest write, then print its warnings (needs a running server)',
   usage: ['--artifact <type>/<id> [options]'],
   options: {
     artifact: { type: 'string', value: '<type>/<id>', help: 'The artifact to check' },
   },
-  run: ({ values, projectDir }, emit) => check({ projectDir, artifact: values.artifact as string | undefined }, emit),
+  run: ({ values, projectDir }, emit) =>
+    check({ projectDir, artifact: values.artifact as string | undefined }, emit),
   text: checkText,
 };

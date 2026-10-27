@@ -5,7 +5,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 MARKETPLACE="$REPO_ROOT/.agents/plugins/marketplace.json"
 
-python3 - "$MARKETPLACE" "$REPO_ROOT" <<'PY'
+python3 - "$MARKETPLACE" "$REPO_ROOT" << 'PY'
 import json
 import sys
 from pathlib import Path

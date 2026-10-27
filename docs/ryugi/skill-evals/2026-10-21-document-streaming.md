@@ -46,21 +46,21 @@ API. These fixture failures are not counted as model failures.
 
 ## Before and after
 
-| Reference / scenario | First saved draft | Agent finished | Tool calls | Observed behavior |
-|---|---:|---:|---:|---|
-| Baseline / new | 82.1 s | 90.8 s | 10 | First save contained the complete document |
-| Baseline / resume | existing | 115.7 s | 11 | Confirmed text, ids and comment retained |
-| Baseline / concurrent | existing | 82.6 s | 16 | Human update, ids and comment retained |
-| V1 / new | 60.3 s | 124.2 s | 18 | Outline, then six distinct section additions |
-| V1 / resume | existing | 80.1 s | 8 | Confirmed text, ids and comment retained |
-| V1 / concurrent | existing | 60.1 s | 14 | Six edits grouped in one assistant turn; human update retained |
-| V2 / new | 28.1 s | 69.8 s | 9 | Outline, then a whole-file body write; outline ids lost |
-| V2 / resume | existing | 44.6 s | 7 | Confirmed text, ids and comment retained |
-| V2 / concurrent | existing | 70.7 s | 16 | Separate section edits without intervening reads; human update retained |
-| V3 / new | 14.4 s | 46.0 s | 10 | Outline, then body; heading ids retained |
-| V3 / resume | existing | 66.9 s | 8 | Confirmed text, ids and comment retained |
-| V3 / concurrent | existing | 61.3 s | 16 | Human update, ids and comment retained |
-| V3 / new with concurrent edit/comment | outline first | 53.1 s | 13 | Newly stamped ids, human update and live comment anchor/message retained |
+| Reference / scenario                  | First saved draft | Agent finished | Tool calls | Observed behavior                                                        |
+| ------------------------------------- | ----------------: | -------------: | ---------: | ------------------------------------------------------------------------ |
+| Baseline / new                        |            82.1 s |         90.8 s |         10 | First save contained the complete document                               |
+| Baseline / resume                     |          existing |        115.7 s |         11 | Confirmed text, ids and comment retained                                 |
+| Baseline / concurrent                 |          existing |         82.6 s |         16 | Human update, ids and comment retained                                   |
+| V1 / new                              |            60.3 s |        124.2 s |         18 | Outline, then six distinct section additions                             |
+| V1 / resume                           |          existing |         80.1 s |          8 | Confirmed text, ids and comment retained                                 |
+| V1 / concurrent                       |          existing |         60.1 s |         14 | Six edits grouped in one assistant turn; human update retained           |
+| V2 / new                              |            28.1 s |         69.8 s |          9 | Outline, then a whole-file body write; outline ids lost                  |
+| V2 / resume                           |          existing |         44.6 s |          7 | Confirmed text, ids and comment retained                                 |
+| V2 / concurrent                       |          existing |         70.7 s |         16 | Separate section edits without intervening reads; human update retained  |
+| V3 / new                              |            14.4 s |         46.0 s |         10 | Outline, then body; heading ids retained                                 |
+| V3 / resume                           |          existing |         66.9 s |          8 | Confirmed text, ids and comment retained                                 |
+| V3 / concurrent                       |          existing |         61.3 s |         16 | Human update, ids and comment retained                                   |
+| V3 / new with concurrent edit/comment |     outline first |         53.1 s |         13 | Newly stamped ids, human update and live comment anchor/message retained |
 
 V1 added an outline-first sequence and asked for section edits with reads
 and warning checks between them. V2 made that a numbered read/edit/check

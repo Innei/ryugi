@@ -1,6 +1,8 @@
 import { lazy, Suspense } from 'react';
 
-const DocumentPage = lazy(() => import('../document/shims').then(() => import('../document/DocumentPage')));
+const DocumentPage = lazy(() =>
+  import('../document/shims').then(() => import('../document/DocumentPage')),
+);
 
 export function DocumentLayout({ id }: { id: string }) {
   return (

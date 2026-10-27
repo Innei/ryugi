@@ -28,7 +28,15 @@ const styles = stylex.create({
   },
 });
 
-export function HtmlView({ id, feed, actions }: { id: string; feed: ArtifactFeed; actions?: ReactNode }) {
+export function HtmlView({
+  id,
+  feed,
+  actions,
+}: {
+  id: string;
+  feed: ArtifactFeed;
+  actions?: ReactNode;
+}) {
   const { data, send } = useHtmlData(id, feed);
 
   useEffect(() => {
@@ -60,7 +68,9 @@ export function HtmlView({ id, feed, actions }: { id: string; feed: ArtifactFeed
         />
       ) : (
         <div {...stylex.props(styles.message)}>
-          {data ? (data.warnings[0] ?? 'Waiting for the agent to write index.html…') : 'Connecting…'}
+          {data
+            ? (data.warnings[0] ?? 'Waiting for the agent to write index.html…')
+            : 'Connecting…'}
         </div>
       )}
       {actions}

@@ -36,7 +36,9 @@ test('the in-app type icon draws the same glyph in the surrounding text color', 
   const svg = host.querySelector('svg')!;
   expect(svg.getAttribute('width')).toBe('14');
   expect(svg.getAttribute('aria-hidden')).toBe('true');
-  expect([...svg.querySelectorAll('path')].map((p) => p.getAttribute('d'))).toContain(TYPE_GLYPHS.document.stroke);
+  expect([...svg.querySelectorAll('path')].map((p) => p.getAttribute('d'))).toContain(
+    TYPE_GLYPHS.document.stroke,
+  );
   expect(svg.innerHTML).not.toContain('#c65d3b');
   act(() => root.unmount());
 });

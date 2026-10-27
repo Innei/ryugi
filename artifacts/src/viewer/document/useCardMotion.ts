@@ -18,7 +18,14 @@ export function useReplyPresence(open: boolean) {
     const height = box.offsetHeight;
     if (open) {
       void play(box, [{ height: '0px' }, { height: `${height}px` }], OPEN);
-      void play(content, [{ opacity: 0, transform: 'translateY(8px)' }, { opacity: 1, transform: 'none' }], OPEN);
+      void play(
+        content,
+        [
+          { opacity: 0, transform: 'translateY(8px)' },
+          { opacity: 1, transform: 'none' },
+        ],
+        OPEN,
+      );
     } else {
       void Promise.all([
         play(box, [{ height: `${height}px` }, { height: '0px' }], { duration: 140, easing: EXIT }),
@@ -46,10 +53,17 @@ export function useFold(folded: boolean) {
     const to = el.offsetHeight;
     if (from === to) return;
     el.style.overflow = 'hidden';
-    void play(el, [{ height: `${from}px` }, { height: `${to}px` }], { duration: FOLD_MS, easing: EASE }).then(() => {
+    void play(el, [{ height: `${from}px` }, { height: `${to}px` }], {
+      duration: FOLD_MS,
+      easing: EASE,
+    }).then(() => {
       el.style.overflow = '';
     });
-    void play(el.firstElementChild, [{ opacity: 0 }, { opacity: 1 }], { duration: folded ? 140 : 160, delay: FOLD_MS, easing: 'ease-out' });
+    void play(el.firstElementChild, [{ opacity: 0 }, { opacity: 1 }], {
+      duration: folded ? 140 : 160,
+      delay: FOLD_MS,
+      easing: 'ease-out',
+    });
   }, [folded]);
 
   useLayoutEffect(() => {

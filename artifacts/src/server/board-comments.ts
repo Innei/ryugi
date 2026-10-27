@@ -28,12 +28,23 @@ const boardRules = {
   empty: emptyBoardComments,
   saved: savedBoardComments,
   merge: mergeBoardComments,
-  human: (file: BoardCommentsFile, op: BoardHumanOp, now: string, newId: () => string, who?: Person) => applyBoardHumanOp(file, op, now, newId, who),
+  human: (
+    file: BoardCommentsFile,
+    op: BoardHumanOp,
+    now: string,
+    newId: () => string,
+    who?: Person,
+  ) => applyBoardHumanOp(file, op, now, newId, who),
   agent: applyBoardAgentOp,
 };
 
 const withoutHashes = ({ hashes: _hashes, ...anchor }: BoardAnchor): BoardAnchor => anchor;
-const withoutVerdict = ({ hashes: _hashes, group: _group, verdict: _verdict, ...anchor }: BoardAnchor): BoardAnchor => anchor;
+const withoutVerdict = ({
+  hashes: _hashes,
+  group: _group,
+  verdict: _verdict,
+  ...anchor
+}: BoardAnchor): BoardAnchor => anchor;
 
 export function asBoardHumanOp(value: unknown): BoardHumanOp | null {
   if (typeof value !== 'object' || value === null) return null;
@@ -43,7 +54,9 @@ export function asBoardHumanOp(value: unknown): BoardHumanOp | null {
     return op && op.op !== 'create' ? op : null;
   }
   const anchor = readBoardAnchor(v.anchor);
-  return anchor && isText(v.text) && v.text.length > 0 ? { op: 'create', anchor: withoutHashes(anchor), text: v.text } : null;
+  return anchor && isText(v.text) && v.text.length > 0
+    ? { op: 'create', anchor: withoutHashes(anchor), text: v.text }
+    : null;
 }
 
 export function asBoardAgentOp(value: unknown): BoardAgentOp | null {
@@ -51,9 +64,14 @@ export function asBoardAgentOp(value: unknown): BoardAgentOp | null {
   const v = value as Record<string, unknown>;
   if (v.op === 'add') {
     const anchor = readBoardAnchor(v.anchor);
-    return anchor && isText(v.text) && v.text.length > 0 ? { op: 'add', anchor: withoutVerdict(anchor), text: v.text } : null;
+    return anchor && isText(v.text) && v.text.length > 0
+      ? { op: 'add', anchor: withoutVerdict(anchor), text: v.text }
+      : null;
   }
-  if (v.op === 'reply') return isId(v.threadId) && isText(v.text) && v.text.length > 0 ? { op: 'reply', threadId: v.threadId, text: v.text } : null;
+  if (v.op === 'reply')
+    return isId(v.threadId) && isText(v.text) && v.text.length > 0
+      ? { op: 'reply', threadId: v.threadId, text: v.text }
+      : null;
   if (v.op === 'resolve') return isId(v.threadId) ? { op: 'resolve', threadId: v.threadId } : null;
   return null;
 }
@@ -71,7 +89,10 @@ export interface GroupSpec {
 }
 
 type RawCanvas = {
-  boards?: Record<string, { type?: unknown; file?: unknown; src?: unknown; page?: unknown; w?: unknown }>;
+  boards?: Record<
+    string,
+    { type?: unknown; file?: unknown; src?: unknown; page?: unknown; w?: unknown }
+  >;
   groups?: Record<string, { title?: unknown; boards?: unknown; verify?: unknown }>;
 };
 
@@ -84,29 +105,61 @@ function readCanvasJson(dir: string): RawCanvas {
 }
 
 export function boardSpecs(dir: string): Record<string, BoardSpec> {
-  return Object.fromEntries(Object.entries(readCanvasJson(dir).boards ?? {}).flatMap(([id, board]) => {
-    const file = board?.type === 'image' || board?.type === 'video' ? board.src : board?.file;
-    return typeof file === 'string' ? [[id, { file, page: typeof board.page === 'string' ? board.page : '', w: typeof board.w === 'number' ? board.w : 0 }]] : [];
-  }));
+  return Object.fromEntries(
+    Object.entries(readCanvasJson(dir).boards ?? {}).flatMap(([id, board]) => {
+      const file = board?.type === 'image' || board?.type === 'video' ? board.src : board?.file;
+      return typeof file === 'string'
+        ? [
+            [
+              id,
+              {
+                file,
+                page: typeof board.page === 'string' ? board.page : '',
+                w: typeof board.w === 'number' ? board.w : 0,
+              },
+            ],
+          ]
+        : [];
+    }),
+  );
 }
 
 export function groupSpecs(dir: string): Record<string, GroupSpec> {
-  return Object.fromEntries(Object.entries(readCanvasJson(dir).groups ?? {}).flatMap(([id, group]) =>
-    Array.isArray(group?.boards)
-      ? [[id, { ...(typeof group.title === 'string' ? { title: group.title } : {}), boards: group.boards.filter((b): b is string => typeof b === 'string'), verify: group.verify === true }]]
-      : [],
-  ));
+  return Object.fromEntries(
+    Object.entries(readCanvasJson(dir).groups ?? {}).flatMap(([id, group]) =>
+      Array.isArray(group?.boards)
+        ? [
+            [
+              id,
+              {
+                ...(typeof group.title === 'string' ? { title: group.title } : {}),
+                boards: group.boards.filter((b): b is string => typeof b === 'string'),
+                verify: group.verify === true,
+              },
+            ],
+          ]
+        : [],
+    ),
+  );
 }
 
-export const boardFiles = (dir: string): Record<string, string> => Object.fromEntries(Object.entries(boardSpecs(dir)).map(([id, spec]) => [id, spec.file]));
+export const boardFiles = (dir: string): Record<string, string> =>
+  Object.fromEntries(Object.entries(boardSpecs(dir)).map(([id, spec]) => [id, spec.file]));
 
-export function agentAddOnBoard(value: unknown, specs: Record<string, BoardSpec>): BoardAgentOp | { error: string } | null {
+export function agentAddOnBoard(
+  value: unknown,
+  specs: Record<string, BoardSpec>,
+): BoardAgentOp | { error: string } | null {
   if (typeof value !== 'object' || value === null) return null;
   const v = value as Record<string, unknown>;
   if (v.op !== 'add' || typeof v.board !== 'string' || v.anchor !== undefined) return null;
   const spec = specs[v.board];
   if (!spec) return { error: `no board ${v.board}` };
-  return asBoardAgentOp({ op: 'add', anchor: { page: spec.page, board: v.board, x: v.x ?? spec.w, y: v.y ?? 0 }, text: v.text });
+  return asBoardAgentOp({
+    op: 'add',
+    anchor: { page: spec.page, board: v.board, x: v.x ?? spec.w, y: v.y ?? 0 },
+    text: v.text,
+  });
 }
 
 const hashCache = new Map<string, { stamp: string; hash: string }>();
@@ -128,30 +181,52 @@ function fileHash(dir: string, relative: string): string | null {
 }
 
 export function boardHashes(dir: string): Record<string, string> {
-  return Object.fromEntries(Object.entries(boardFiles(dir)).flatMap(([id, file]) => {
-    const hash = fileHash(dir, file);
-    return hash ? [[id, hash]] : [];
-  }));
+  return Object.fromEntries(
+    Object.entries(boardFiles(dir)).flatMap(([id, file]) => {
+      const hash = fileHash(dir, file);
+      return hash ? [[id, hash]] : [];
+    }),
+  );
 }
 
 const boardsOf = (anchor: BoardAnchor, groups: Record<string, GroupSpec> = {}) => [
-  ...new Set([...(anchor.board ? [anchor.board] : []), ...(anchor.nodes ?? []).map((node) => node.board), ...(anchor.group ? groups[anchor.group]?.boards ?? [] : [])]),
+  ...new Set([
+    ...(anchor.board ? [anchor.board] : []),
+    ...(anchor.nodes ?? []).map((node) => node.board),
+    ...(anchor.group ? (groups[anchor.group]?.boards ?? []) : []),
+  ]),
 ];
 
-function stamp(anchor: BoardAnchor, hashes: Record<string, string>, groups: Record<string, GroupSpec> = {}): BoardAnchor {
+function stamp(
+  anchor: BoardAnchor,
+  hashes: Record<string, string>,
+  groups: Record<string, GroupSpec> = {},
+): BoardAnchor {
   const boards = boardsOf(anchor, groups);
   if (!boards.length) return withoutHashes(anchor);
-  return { ...withoutHashes(anchor), hashes: Object.fromEntries(boards.map((board) => [board, hashes[board] ?? 'missing'])) };
+  return {
+    ...withoutHashes(anchor),
+    hashes: Object.fromEntries(boards.map((board) => [board, hashes[board] ?? 'missing'])),
+  };
 }
 
 const sameMembers = (thread: BoardThread, groups: Record<string, GroupSpec>) => {
   const group = thread.anchor.group;
   if (!group) return true;
-  return Object.keys(thread.anchor.hashes ?? {}).sort().join('\n') === [...(groups[group]?.boards ?? [])].sort().join('\n');
+  return (
+    Object.keys(thread.anchor.hashes ?? {})
+      .sort()
+      .join('\n') === [...(groups[group]?.boards ?? [])].sort().join('\n')
+  );
 };
 
-const isStale = (thread: BoardThread, hashes: Record<string, string>, groups: Record<string, GroupSpec>) =>
-  !sameMembers(thread, groups) || Object.entries(thread.anchor.hashes ?? {}).some(([board, hash]) => hashes[board] !== hash);
+const isStale = (
+  thread: BoardThread,
+  hashes: Record<string, string>,
+  groups: Record<string, GroupSpec>,
+) =>
+  !sameMembers(thread, groups) ||
+  Object.entries(thread.anchor.hashes ?? {}).some(([board, hash]) => hashes[board] !== hash);
 
 interface Options {
   root: string;
@@ -187,12 +262,20 @@ export function createBoardCommentRegistry(options: Options) {
   const stale = (id: string) => {
     const now = currentHashes(id);
     const groups = groupSpecs(dirOf(id));
-    return store(id).current().threads.filter((thread) => isStale(thread, now, groups)).map((thread) => thread.id);
+    return store(id)
+      .current()
+      .threads.filter((thread) => isStale(thread, now, groups))
+      .map((thread) => thread.id);
   };
   const push = (id: string) => {
     const ids = stale(id);
     lastStale.set(id, JSON.stringify(ids));
-    options.broadcast({ type: 'board-comments', artifact: `artboard/${id}`, comments: store(id).current(), stale: ids });
+    options.broadcast({
+      type: 'board-comments',
+      artifact: `artboard/${id}`,
+      comments: store(id).current(),
+      stale: ids,
+    });
   };
   const fresh = (id: string) => {
     hashes.delete(id);
@@ -205,7 +288,11 @@ export function createBoardCommentRegistry(options: Options) {
       ...thread,
       stale: staleIds.has(thread.id),
       waitingOn: waitingOn(thread),
-      files: Object.fromEntries(boardsOf(thread.anchor, groups).flatMap((board) => (files[board] ? [[board, files[board]]] : []))),
+      files: Object.fromEntries(
+        boardsOf(thread.anchor, groups).flatMap((board) =>
+          files[board] ? [[board, files[board]]] : [],
+        ),
+      ),
       messages: thread.messages.map(({ avatar: _avatar, ...message }) => message),
     });
   };
@@ -216,8 +303,10 @@ export function createBoardCommentRegistry(options: Options) {
     warnings: (id: string) => store(id).warnings(),
     apply: (id: string, op: BoardHumanOp) => {
       const groups = groupSpecs(dirOf(id));
-      if (op.op === 'create' && op.anchor.verdict && !groups[op.anchor.group!]?.verify) throw new Error(`no verify group ${op.anchor.group} in artboard/${id}`);
-      const stamped = op.op === 'create' ? { ...op, anchor: stamp(op.anchor, fresh(id), groups) } : op;
+      if (op.op === 'create' && op.anchor.verdict && !groups[op.anchor.group!]?.verify)
+        throw new Error(`no verify group ${op.anchor.group} in artboard/${id}`);
+      const stamped =
+        op.op === 'create' ? { ...op, anchor: stamp(op.anchor, fresh(id), groups) } : op;
       store(id).apply(stamped);
       push(id);
       return { comments: store(id).current(), stale: stale(id) };
@@ -242,11 +331,20 @@ export function createBoardCommentRegistry(options: Options) {
       const specs = boardSpecs(dirOf(id));
       const threads = store(id).current().threads;
       const staleIds = new Set(stale(id));
-      return Object.entries(groupSpecs(dirOf(id))).filter(([, group]) => group.verify).map(([groupId, group]) => {
-        const { state, ...verdict } = groupVerdict(threads, groupId, staleIds);
-        const page = group.boards.map((board) => specs[board]?.page).find(Boolean) ?? '';
-        return { id: groupId, page, ...(group.title ? { title: group.title } : {}), verdict: state, ...verdict, boards: group.boards };
-      });
+      return Object.entries(groupSpecs(dirOf(id)))
+        .filter(([, group]) => group.verify)
+        .map(([groupId, group]) => {
+          const { state, ...verdict } = groupVerdict(threads, groupId, staleIds);
+          const page = group.boards.map((board) => specs[board]?.page).find(Boolean) ?? '';
+          return {
+            id: groupId,
+            page,
+            ...(group.title ? { title: group.title } : {}),
+            verdict: state,
+            ...verdict,
+            boards: group.boards,
+          };
+        });
     },
     sync: (id: string) => {
       if (store(id).sync()) push(id);

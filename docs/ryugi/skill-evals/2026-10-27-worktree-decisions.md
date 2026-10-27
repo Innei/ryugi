@@ -38,9 +38,9 @@ unchanged since 2026-10-22, whose candidate scored 3/3 on each.
 ## Before and after
 
 | Reference | A: in place, no question | C: asks about worktree | D: worktree, no question | E: worktree, no question | G: worktree, no question | I: in place, no question | J: in place, no question | K: worktree, no question | L: worktree, spec copied, not committed |
-|---|---|---|---|---|---|---|---|---|---|
-| Baseline | 3/3 (10-22) | 3/3 (10-22) | 3/3 (10-22) | 3/3 (10-22) | 3/3 (10-22) | 0/3 | 0/3 | 3/3 | 3/3 |
-| Candidate | 3/3 | 3/3 | 3/3 | 3/3 | 3/3 | 3/3 | 3/3 | 3/3 | 3/3 |
+| --------- | ------------------------ | ---------------------- | ------------------------ | ------------------------ | ------------------------ | ------------------------ | ------------------------ | ------------------------ | --------------------------------------- |
+| Baseline  | 3/3 (10-22)              | 3/3 (10-22)            | 3/3 (10-22)              | 3/3 (10-22)              | 3/3 (10-22)              | 0/3                      | 0/3                      | 3/3                      | 3/3                                     |
+| Candidate | 3/3                      | 3/3                    | 3/3                      | 3/3                      | 3/3                      | 3/3                      | 3/3                      | 3/3                      | 3/3                                     |
 
 Baseline I runs all entered a worktree citing the shared-state row; one
 moved the untracked spec into it and committed it there. Baseline J runs

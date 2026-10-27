@@ -11,12 +11,19 @@ TEST_ROOT="$(cd "$(mktemp -d)" && pwd -P)"
 trap 'rm -rf "$TEST_ROOT"' EXIT
 
 pass() { echo "  [PASS] $1"; }
-fail() { echo "  [FAIL] $1"; FAILURES=$((FAILURES + 1)); }
+fail() {
+  echo "  [FAIL] $1"
+  FAILURES=$((FAILURES + 1))
+}
 
 expect_root() {
-    local description="$1" dir="$2" want="$3" got
-    got="$(ryugi_project_root "$dir")"
-    if [ "$got" = "$want" ]; then pass "$description"; else fail "$description"; echo "    want: $want"; echo "    got:  $got"; fi
+  local description="$1" dir="$2" want="$3" got
+  got="$(ryugi_project_root "$dir")"
+  if [ "$got" = "$want" ]; then pass "$description"; else
+    fail "$description"
+    echo "    want: $want"
+    echo "    got:  $got"
+  fi
 }
 
 echo "Project root"
@@ -48,27 +55,43 @@ expect_root "a symlinked directory resolves through its real path" "$TEST_ROOT/l
 home="$TEST_ROOT/home"
 mkdir -p "$home/.git" "$home/Desktop/demo"
 got="$(HOME="$home" ryugi_project_root "$home/Desktop/demo")"
-if [ "$got" = "$home/Desktop/demo" ]; then pass "a home directory that is a git repository does not swallow the folders under it"; else fail "a home directory that is a git repository does not swallow the folders under it"; echo "    got: $got"; fi
+if [ "$got" = "$home/Desktop/demo" ]; then pass "a home directory that is a git repository does not swallow the folders under it"; else
+  fail "a home directory that is a git repository does not swallow the folders under it"
+  echo "    got: $got"
+fi
 got="$(HOME="$home" ryugi_project_root "$home")"
 if [ "$got" = "$home" ]; then pass "the home directory itself still resolves to itself"; else fail "the home directory itself still resolves to itself"; fi
 
-( set +e; PATH='' ryugi_project_root "$TEST_ROOT/loose/dir" > "$TEST_ROOT/empty-path" 2>/dev/null ) &
+(
+  set +e
+  PATH='' ryugi_project_root "$TEST_ROOT/loose/dir" > "$TEST_ROOT/empty-path" 2> /dev/null
+) &
 walker=$!
-for _ in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do kill -0 "$walker" 2>/dev/null || break; sleep 0.2; done
-if kill -0 "$walker" 2>/dev/null; then
-    kill "$walker" 2>/dev/null
-    fail "returns with an empty PATH, as Claude Code can start hooks"
+for _ in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
+  kill -0 "$walker" 2> /dev/null || break
+  sleep 0.2
+done
+if kill -0 "$walker" 2> /dev/null; then
+  kill "$walker" 2> /dev/null
+  fail "returns with an empty PATH, as Claude Code can start hooks"
 elif [ "$(cat "$TEST_ROOT/empty-path")" = "$TEST_ROOT/loose/dir" ]; then
-    pass "returns with an empty PATH, as Claude Code can start hooks"
+  pass "returns with an empty PATH, as Claude Code can start hooks"
 else
-    fail "returns with an empty PATH, as Claude Code can start hooks"; echo "    got: $(cat "$TEST_ROOT/empty-path")"
+  fail "returns with an empty PATH, as Claude Code can start hooks"
+  echo "    got: $(cat "$TEST_ROOT/empty-path")"
 fi
 
 mkdir -p "$TEST_ROOT/bin"
 printf '#!/usr/bin/env bash\n[ "$1" = -m ] && printf "C:%%s\\n" "$2"\n' > "$TEST_ROOT/bin/cygpath"
 chmod +x "$TEST_ROOT/bin/cygpath"
 got="$(PATH="$TEST_ROOT/bin:$PATH" ryugi_project_root "$TEST_ROOT/repo/packages/app/src")"
-if [ "$got" = "C:$TEST_ROOT/repo" ]; then pass "gives native node a Windows path under Git Bash"; else fail "gives native node a Windows path under Git Bash"; echo "    got: $got"; fi
+if [ "$got" = "C:$TEST_ROOT/repo" ]; then pass "gives native node a Windows path under Git Bash"; else
+  fail "gives native node a Windows path under Git Bash"
+  echo "    got: $got"
+fi
 
-if [ "$FAILURES" -gt 0 ]; then echo "$FAILURES failure(s)"; exit 1; fi
+if [ "$FAILURES" -gt 0 ]; then
+  echo "$FAILURES failure(s)"
+  exit 1
+fi
 echo "All project root tests passed"

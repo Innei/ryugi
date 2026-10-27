@@ -26,10 +26,10 @@ separate `acme-mobile` repo), and the human partner writes in Chinese.
 ## Before and after
 
 | Reference | A: opened the document | B: opened the document | C: stayed in chat |
-|---|---|---|---|
-| Baseline | 0/3 | 0/3 | 3/3 |
-| V1 | 3/3 | 3/3 | 3/3 |
-| V2 | 2/2 | 3/3 | not rerun |
+| --------- | ---------------------- | ---------------------- | ----------------- |
+| Baseline  | 0/3                    | 0/3                    | 3/3               |
+| V1        | 3/3                    | 3/3                    | 3/3               |
+| V2        | 2/2                    | 3/3                    | not rerun         |
 
 Baseline A runs all called it a project and played it back, then asked one
 more chat question. Baseline B runs all sent the skip line and one opening
@@ -75,10 +75,10 @@ Two new scenarios: **D**, a project worked out in chat, partner says
 "没问题，就这样，写吧"; **E**, the partner describes a settings screen
 layout ("左边一列分类，右边是那一类的选项").
 
-| Reference | A: document | B: document | C: chat | D: spec + builder check | E: mockup offer alone |
-|---|---|---|---|---|---|
-| Before (V2 entry) | 2/2 (V2 above) | 3/3 (V2 above) | 3/3 (V1 above) | 2/2 | 2/2 |
-| Shorter entry | 2/2 | 2/2 | 2/2 | 2/2 | 2/2 |
+| Reference         | A: document    | B: document    | C: chat        | D: spec + builder check | E: mockup offer alone |
+| ----------------- | -------------- | -------------- | -------------- | ----------------------- | --------------------- |
+| Before (V2 entry) | 2/2 (V2 above) | 3/3 (V2 above) | 3/3 (V1 above) | 2/2                     | 2/2                   |
+| Shorter entry     | 2/2            | 2/2            | 2/2            | 2/2                     | 2/2                   |
 
 D runs on the shorter entry read `written-design.md`, named the spec path,
 dispatched the builder check with `builder-check-prompt.md` and told the
@@ -105,11 +105,11 @@ fresh request "给 todo 列表加个标签功能". H was first run from the shar
 scenario file, whose earlier agent turns contain the skip line; agents
 copied it (2/2). H was rerun from a file holding only H.
 
-| Reference | A | B | C | E: artboard opened | F: stops asking | G: builds without asking | H: one question, no skip line |
-|---|---|---|---|---|---|---|---|
-| Before | 2/2 | 2/2 | 2/2 | 0/2 (offer sent) | 2/2 | 0/2 (asked) | 0/2 (skip line) |
-| V1 | 2/2 | 2/2 | 2/2 | 2/2 | 2/2 | 2/2 | 0/5: no skip line, but two or three questions |
-| V2 | | | | | | | 5/5 |
+| Reference | A   | B   | C   | E: artboard opened | F: stops asking | G: builds without asking | H: one question, no skip line                 |
+| --------- | --- | --- | --- | ------------------ | --------------- | ------------------------ | --------------------------------------------- |
+| Before    | 2/2 | 2/2 | 2/2 | 0/2 (offer sent)   | 2/2             | 0/2 (asked)              | 0/2 (skip line)                               |
+| V1        | 2/2 | 2/2 | 2/2 | 2/2                | 2/2             | 2/2                      | 0/5: no skip line, but two or three questions |
+| V2        |     |     |     |                    |                 |                          | 5/5                                           |
 
 E runs on V1 opened an artboard `settings-page` with the round title note,
 the category grouping as the fork group, a recommended board per group and

@@ -63,16 +63,20 @@ const result = {
   secondExistsCount: afterSecond.existsCount,
   v2BootstrapParts: v2Result.bootstrapParts,
   mapsV2SubagentTool: v2Result.text.includes('`subagent` with `agent: "general"`'),
-  mapsV2SessionIDContinuation: v2Result.text.includes('`sessionID` to continue a previous subagent'),
+  mapsV2SessionIDContinuation: v2Result.text.includes(
+    '`sessionID` to continue a previous subagent',
+  ),
   mapsV2NoTodoTool: v2Result.text.includes('no todo tool'),
   mapsV2MutationToPatch: v2Result.text.includes('`patch` with `patchText`'),
   mapsV2Shell: v2Result.text.includes('`shell`'),
-  staleV1ToolsInV2: v2Result.text.includes('`apply_patch`') || v2Result.text.includes('`todowrite`') || v2Result.text.includes('`subagent_type`'),
+  staleV1ToolsInV2:
+    v2Result.text.includes('`apply_patch`') ||
+    v2Result.text.includes('`todowrite`') ||
+    v2Result.text.includes('`subagent_type`'),
 };
 
-const failures = scenario === 'present'
-  ? assertPresentBootstrap(result)
-  : assertMissingBootstrap(result);
+const failures =
+  scenario === 'present' ? assertPresentBootstrap(result) : assertMissingBootstrap(result);
 
 if (scenario === 'present') {
   failures.push(...assertV2Bootstrap(result));
@@ -95,41 +99,53 @@ function isBootstrapSkillPath(filePath) {
 
 function makeOutput(text) {
   return {
-    messages: [{
-      info: { role: 'user' },
-      parts: [{ type: 'text', text }],
-    }],
+    messages: [
+      {
+        info: { role: 'user' },
+        parts: [{ type: 'text', text }],
+      },
+    ],
   };
 }
 
 function countBootstrapParts(output) {
   return output.messages[0].parts.filter(
-    (part) => part.type === 'text' && part.text.includes('EXTREMELY_IMPORTANT')
+    (part) => part.type === 'text' && part.text.includes('EXTREMELY_IMPORTANT'),
   ).length;
 }
 
 function bootstrapText(output) {
-  return output.messages[0].parts.find(
-    (part) => part.type === 'text' && part.text.includes('EXTREMELY_IMPORTANT')
-  )?.text || '';
+  return (
+    output.messages[0].parts.find(
+      (part) => part.type === 'text' && part.text.includes('EXTREMELY_IMPORTANT'),
+    )?.text || ''
+  );
 }
 
 function assertPresentBootstrap(result) {
   const failures = [];
   if (result.firstBootstrapParts !== 1) {
-    failures.push(`expected first transform to inject one bootstrap part, got ${result.firstBootstrapParts}`);
+    failures.push(
+      `expected first transform to inject one bootstrap part, got ${result.firstBootstrapParts}`,
+    );
   }
   if (result.secondBootstrapParts !== 1) {
-    failures.push(`expected second transform to inject one bootstrap part, got ${result.secondBootstrapParts}`);
+    failures.push(
+      `expected second transform to inject one bootstrap part, got ${result.secondBootstrapParts}`,
+    );
   }
   if (result.firstReadCount !== 1) {
     failures.push(`expected first transform to read SKILL.md once, got ${result.firstReadCount}`);
   }
   if (result.secondReadCount !== result.firstReadCount) {
-    failures.push(`expected cached second transform to do no additional reads, got ${result.secondReadCount - result.firstReadCount}`);
+    failures.push(
+      `expected cached second transform to do no additional reads, got ${result.secondReadCount - result.firstReadCount}`,
+    );
   }
   if (result.secondExistsCount !== result.firstExistsCount) {
-    failures.push(`expected cached second transform to do no additional exists checks, got ${result.secondExistsCount - result.firstExistsCount}`);
+    failures.push(
+      `expected cached second transform to do no additional exists checks, got ${result.secondExistsCount - result.firstExistsCount}`,
+    );
   }
   if (result.staleMentionMapping) {
     failures.push('expected OpenCode bootstrap not to teach @mention subagent syntax');
@@ -138,7 +154,9 @@ function assertPresentBootstrap(result) {
     failures.push('expected OpenCode bootstrap not to teach stale Task-tool mapping');
   }
   if (!result.mapsSubagentToTask) {
-    failures.push('expected OpenCode bootstrap to map general-purpose subagents to task with subagent_type');
+    failures.push(
+      'expected OpenCode bootstrap to map general-purpose subagents to task with subagent_type',
+    );
   }
   if (!result.mapsMutationToApplyPatch) {
     failures.push('expected OpenCode bootstrap to map file mutation to apply_patch');
@@ -149,10 +167,14 @@ function assertPresentBootstrap(result) {
 function assertMissingBootstrap(result) {
   const failures = [];
   if (result.firstBootstrapParts !== 0) {
-    failures.push(`expected no bootstrap when SKILL.md is missing, got ${result.firstBootstrapParts}`);
+    failures.push(
+      `expected no bootstrap when SKILL.md is missing, got ${result.firstBootstrapParts}`,
+    );
   }
   if (result.secondBootstrapParts !== 0) {
-    failures.push(`expected no bootstrap on second missing-file transform, got ${result.secondBootstrapParts}`);
+    failures.push(
+      `expected no bootstrap on second missing-file transform, got ${result.secondBootstrapParts}`,
+    );
   }
   if (result.firstReadCount !== 0 || result.secondReadCount !== 0) {
     failures.push(`expected missing file path to avoid reads, got ${result.secondReadCount}`);
@@ -161,7 +183,9 @@ function assertMissingBootstrap(result) {
     failures.push('expected first transform to check whether SKILL.md exists');
   }
   if (result.secondExistsCount !== result.firstExistsCount) {
-    failures.push(`expected missing-file result to be cached, got ${result.secondExistsCount - result.firstExistsCount} extra exists checks`);
+    failures.push(
+      `expected missing-file result to be cached, got ${result.secondExistsCount - result.firstExistsCount} extra exists checks`,
+    );
   }
   return failures;
 }
@@ -172,7 +196,12 @@ function assertMappingConstants(mod) {
     failures.push('expected plugin to export V1_MAPPING and V2_MAPPING string constants');
     return failures;
   }
-  for (const needle of ['`todowrite`', '`task` with `subagent_type: "general"`', '`apply_patch`', '`bash`']) {
+  for (const needle of [
+    '`todowrite`',
+    '`task` with `subagent_type: "general"`',
+    '`apply_patch`',
+    '`bash`',
+  ]) {
     if (!mod.V1_MAPPING.includes(needle)) {
       failures.push(`expected V1_MAPPING to keep the 1.18.x tool name ${needle}`);
     }
@@ -235,7 +264,7 @@ async function runV2ContextHook(mod) {
   };
   await contextHook(event);
   const parts = event.messages[0].content.filter(
-    (part) => part.type === 'text' && part.text.includes('EXTREMELY_IMPORTANT')
+    (part) => part.type === 'text' && part.text.includes('EXTREMELY_IMPORTANT'),
   );
   return { bootstrapParts: parts.length, text: parts[0]?.text || '' };
 }
@@ -243,7 +272,9 @@ async function runV2ContextHook(mod) {
 function assertV2Bootstrap(result) {
   const failures = [];
   if (result.v2BootstrapParts !== 1) {
-    failures.push(`expected V2 context hook to inject one bootstrap part, got ${result.v2BootstrapParts}`);
+    failures.push(
+      `expected V2 context hook to inject one bootstrap part, got ${result.v2BootstrapParts}`,
+    );
     return failures;
   }
   if (!result.mapsV2SubagentTool) {
@@ -262,7 +293,9 @@ function assertV2Bootstrap(result) {
     failures.push('expected V2 bootstrap to map shell commands to the shell tool');
   }
   if (result.staleV1ToolsInV2) {
-    failures.push('expected V2 bootstrap not to teach V1-only tool names (apply_patch/todowrite/subagent_type)');
+    failures.push(
+      'expected V2 bootstrap not to teach V1-only tool names (apply_patch/todowrite/subagent_type)',
+    );
   }
   return failures;
 }

@@ -19,7 +19,14 @@ interface Options {
 
 function gitConfig(cwd: string, key: string): string | undefined {
   try {
-    return execFileSync('git', ['config', key], { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 2000 }).trim() || undefined;
+    return (
+      execFileSync('git', ['config', key], {
+        cwd,
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'ignore'],
+        timeout: 2000,
+      }).trim() || undefined
+    );
   } catch {
     return undefined;
   }
@@ -43,7 +50,9 @@ export function commentNames({ agentFile, projectDir, cloud }: Options): Comment
     },
     agent: () => {
       try {
-        return detectAgent(JSON.parse(fs.readFileSync(agentFile, 'utf8')) as Record<string, string>);
+        return detectAgent(
+          JSON.parse(fs.readFileSync(agentFile, 'utf8')) as Record<string, string>,
+        );
       } catch {
         return undefined;
       }

@@ -2,7 +2,15 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { afterEach, expect, test } from 'vitest';
 import { startArtifactsServer, type ArtifactsServer } from '../src/server/app';
-import { openWs, readJson, sendWsText, tempRoot, waitFor, writeArtboard, writeDocument } from './helpers';
+import {
+  openWs,
+  readJson,
+  sendWsText,
+  tempRoot,
+  waitFor,
+  writeArtboard,
+  writeDocument,
+} from './helpers';
 
 const canvas = {
   version: 1,
@@ -18,18 +26,53 @@ afterEach(async () => {
 
 async function start(root = tempRoot().root) {
   const temp = tempRoot();
-  const server = await startArtifactsServer({ root, viewerDir: temp.viewer, runtimeDir: temp.runtime, host: '127.0.0.1', urlHost: 'localhost' });
+  const server = await startArtifactsServer({
+    root,
+    viewerDir: temp.viewer,
+    runtimeDir: temp.runtime,
+    host: '127.0.0.1',
+    urlHost: 'localhost',
+  });
   running.push(server);
   return { server, root };
 }
-const connect = (server: ArtifactsServer) => openWs(server.port, { Cookie: `ryugi_artifacts_${server.port}=${server.token}`, Origin: `http://127.0.0.1:${server.port}` });
-const node = (n: number) => ({ id: `a#${n}`, board: 'a', file: 'pages/p/a.html', tag: 'div', path: `body > div:nth-of-type(${n})`, name: `Card ${n}` });
-const message = (tab: string, human: boolean, selected: number[], extra: Record<string, unknown> = {}) => JSON.stringify({
-  type: 'selection', artifact: 'artboard/b1', tab, human, more: 0, tweaks: [],
-  selected: selected.map((n) => ({ ...node(n), text: `Card ${n}`, html: `<div>Card ${n}</div>`, tweaks: [] })),
-  nodes: [1, 2, 3].map(node), ...extra,
+const connect = (server: ArtifactsServer) =>
+  openWs(server.port, {
+    Cookie: `ryugi_artifacts_${server.port}=${server.token}`,
+    Origin: `http://127.0.0.1:${server.port}`,
+  });
+const node = (n: number) => ({
+  id: `a#${n}`,
+  board: 'a',
+  file: 'pages/p/a.html',
+  tag: 'div',
+  path: `body > div:nth-of-type(${n})`,
+  name: `Card ${n}`,
 });
-const selectionFile = (root: string) => path.join(root, '.state', 'artboard', 'b1', 'selection.json');
+const message = (
+  tab: string,
+  human: boolean,
+  selected: number[],
+  extra: Record<string, unknown> = {},
+) =>
+  JSON.stringify({
+    type: 'selection',
+    artifact: 'artboard/b1',
+    tab,
+    human,
+    more: 0,
+    tweaks: [],
+    selected: selected.map((n) => ({
+      ...node(n),
+      text: `Card ${n}`,
+      html: `<div>Card ${n}</div>`,
+      tweaks: [],
+    })),
+    nodes: [1, 2, 3].map(node),
+    ...extra,
+  });
+const selectionFile = (root: string) =>
+  path.join(root, '.state', 'artboard', 'b1', 'selection.json');
 
 test('a viewer selection is written to selection.json for its artboard', async () => {
   const { server, root } = await start();
@@ -51,7 +94,10 @@ test('the tab with the latest human change wins; automatic refreshes update only
   const first = await connect(server);
   const second = await connect(server);
   sendWsText(first.socket!, message('t1', true, [1]));
-  await waitFor(() => fs.existsSync(selectionFile(root)) && readJson(selectionFile(root)).selected[0]?.id === 'a#1');
+  await waitFor(
+    () =>
+      fs.existsSync(selectionFile(root)) && readJson(selectionFile(root)).selected[0]?.id === 'a#1',
+  );
   sendWsText(second.socket!, message('t2', true, [2]));
   await waitFor(() => readJson(selectionFile(root)).selected[0]?.id === 'a#2');
   sendWsText(first.socket!, message('t1', false, []));
@@ -60,7 +106,9 @@ test('the tab with the latest human change wins; automatic refreshes update only
   sendWsText(second.socket!, message('t2', false, [3]));
   await waitFor(() => readJson(selectionFile(root)).selected[0]?.id === 'a#3');
   second.socket!.destroy();
-  await waitFor(() => fs.existsSync(selectionFile(root)) && readJson(selectionFile(root)).selected.length === 0);
+  await waitFor(
+    () => fs.existsSync(selectionFile(root)) && readJson(selectionFile(root)).selected.length === 0,
+  );
   first.socket!.destroy();
   await waitFor(() => !fs.existsSync(selectionFile(root)));
 });
@@ -107,10 +155,28 @@ test('a rejected message drops the tab instead of leaving its old selection on d
   ws.socket?.destroy();
 });
 
-const docMessage = (tab: string, human: boolean, quote: string, extra: Record<string, unknown> = {}) =>
-  JSON.stringify({ type: 'selection', artifact: 'document/d1', tab, human, quote, blockIds: quote ? ['b2'] : [], heading: quote ? '同步' : '', ...extra });
-const docSelectionFile = (root: string) => path.join(root, '.state', 'document', 'd1', 'selection.json');
-const withDoc = (root: string) => writeDocument(root, 'd1', { 'doc.xml': '<doc><h2 id="b1">同步</h2><p id="b2">按事件粒度推送</p></doc>' });
+const docMessage = (
+  tab: string,
+  human: boolean,
+  quote: string,
+  extra: Record<string, unknown> = {},
+) =>
+  JSON.stringify({
+    type: 'selection',
+    artifact: 'document/d1',
+    tab,
+    human,
+    quote,
+    blockIds: quote ? ['b2'] : [],
+    heading: quote ? '同步' : '',
+    ...extra,
+  });
+const docSelectionFile = (root: string) =>
+  path.join(root, '.state', 'document', 'd1', 'selection.json');
+const withDoc = (root: string) =>
+  writeDocument(root, 'd1', {
+    'doc.xml': '<doc><h2 id="b1">同步</h2><p id="b2">按事件粒度推送</p></doc>',
+  });
 
 test('a document text selection is written to selection.json for its document', async () => {
   const { server, root } = await start();
@@ -119,7 +185,13 @@ test('a document text selection is written to selection.json for its document', 
   sendWsText(ws.socket!, docMessage('t1', true, '事件粒度'));
   await waitFor(() => fs.existsSync(docSelectionFile(root)));
   const file = readJson(docSelectionFile(root));
-  expect(file).toEqual({ artifact: 'document/d1', updatedAt: expect.any(String), quote: '事件粒度', blockIds: ['b2'], heading: '同步' });
+  expect(file).toEqual({
+    artifact: 'document/d1',
+    updatedAt: expect.any(String),
+    quote: '事件粒度',
+    blockIds: ['b2'],
+    heading: '同步',
+  });
   ws.socket?.destroy();
   await waitFor(() => !fs.existsSync(docSelectionFile(root)));
 });

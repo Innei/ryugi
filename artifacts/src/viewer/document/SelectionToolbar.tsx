@@ -43,7 +43,7 @@ const styles = stylex.create({
     borderWidth: 0,
     borderRadius: 7,
     backgroundColor: {
-      default: 'transparent',
+      'default': 'transparent',
       ':hover': cssVar.colorFillTertiary,
       ':active': cssVar.colorFillSecondary,
     },
@@ -55,11 +55,17 @@ const styles = stylex.create({
     outlineWidth: 2,
     outlineStyle: 'solid',
     outlineOffset: 1,
-    outlineColor: { default: 'transparent', ':focus-visible': brand.accent },
+    outlineColor: { 'default': 'transparent', ':focus-visible': brand.accent },
   },
   secondary: { color: cssVar.colorTextSecondary },
   icon: { flexShrink: 0, color: brand.accent },
-  divider: { flexShrink: 0, width: 1, height: 16, marginInline: 3, backgroundColor: cssVar.colorBorder },
+  divider: {
+    flexShrink: 0,
+    width: 1,
+    height: 16,
+    marginInline: 3,
+    backgroundColor: cssVar.colorBorder,
+  },
 });
 
 interface Props {
@@ -72,7 +78,12 @@ interface Props {
 
 export function SelectionToolbar({ left, top, onComment, onCopy, ref }: Props) {
   return (
-    <div ref={ref} {...stylex.props(styles.bar)} style={{ left, top }} onMouseDown={(event) => event.preventDefault()}>
+    <div
+      ref={ref}
+      {...stylex.props(styles.bar)}
+      style={{ left, top }}
+      onMouseDown={(event) => event.preventDefault()}
+    >
       {onComment ? (
         <>
           <button type="button" onClick={onComment} {...stylex.props(styles.button)}>

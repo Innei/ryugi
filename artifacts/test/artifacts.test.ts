@@ -2,7 +2,13 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { describe, expect, test } from 'vitest';
-import { artifactKeyOf, artifactSignature, isArtifactId, listArtifacts, resolveArtifactDir } from '../src/server/artifacts';
+import {
+  artifactKeyOf,
+  artifactSignature,
+  isArtifactId,
+  listArtifacts,
+  resolveArtifactDir,
+} from '../src/server/artifacts';
 
 function tempRoot(dirs: string[]) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'artifacts-root-'));

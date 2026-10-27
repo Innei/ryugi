@@ -2,18 +2,50 @@ import fs from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
 import type { Duplex } from 'node:stream';
-import { ARTIFACT_TYPES, type ArtifactSummary, type ArtifactType, type CanvasPayload, type DocumentPayload, type HtmlPayload, type ServerMessage } from '../shared/types';
-import { artifactKeyOf, artifactSignature, isArtifactLocator, listArtifacts, resolveArtifactDir, type ArtifactRef } from './artifacts';
+import {
+  ARTIFACT_TYPES,
+  type ArtifactSummary,
+  type ArtifactType,
+  type CanvasPayload,
+  type DocumentPayload,
+  type HtmlPayload,
+  type ServerMessage,
+} from '../shared/types';
+import {
+  artifactKeyOf,
+  artifactSignature,
+  isArtifactLocator,
+  listArtifacts,
+  resolveArtifactDir,
+  type ArtifactRef,
+} from './artifacts';
 import { artifactPath, resolveArtifactAddress } from './artifact-address';
 import { readDocument } from './document';
 import { parseDocument } from './document-codec';
-import { agentAddOnBoard, asBoardAgentOp, asBoardHumanOp, boardFiles, boardSpecs, createBoardCommentRegistry } from './board-comments';
+import {
+  agentAddOnBoard,
+  asBoardAgentOp,
+  asBoardHumanOp,
+  boardFiles,
+  boardSpecs,
+  createBoardCommentRegistry,
+} from './board-comments';
 import { asAgentOp, asHumanOp } from './document-comments';
 import { createDocumentRegistry, type DocumentTiming } from './documents';
 import { OutdatedClient } from './document-session';
 import { latestMtime, readHtml } from './html';
 import { injectRuntime } from './inject';
-import { listen, parseCookies, randomToken, readPersisted, safeEqual, send, sendFile, sendJson, urlHostForHttp } from './http';
+import {
+  listen,
+  parseCookies,
+  randomToken,
+  readPersisted,
+  safeEqual,
+  send,
+  sendFile,
+  sendJson,
+  urlHostForHttp,
+} from './http';
 import { resolveBoardFile, resolveDocumentAsset, resolveHtmlFile, resolveInside } from './paths';
 import { createDynamicBlocks } from './dynamic-blocks';
 import { readCanvas, writeArtifactState, writeJsonAtomic } from './state';
@@ -55,7 +87,9 @@ export interface ServerOptions {
   fetch?: typeof fetch;
 }
 
-export type ArtifactPayload = (CanvasPayload | HtmlPayload | DocumentPayload) & { warnings: string[] };
+export type ArtifactPayload = (CanvasPayload | HtmlPayload | DocumentPayload) & {
+  warnings: string[];
+};
 
 export interface ArtifactsServer {
   port: number;
@@ -64,7 +98,9 @@ export interface ArtifactsServer {
   url: string;
   linkFor(type: ArtifactType, id: string): string;
   cloudLinkFor(type: ArtifactType, id: string): Promise<string | null>;
-  onArtifactChange(listener: (ref: ArtifactRef, payload: ArtifactPayload, files: string[]) => void): void;
+  onArtifactChange(
+    listener: (ref: ArtifactRef, payload: ArtifactPayload, files: string[]) => void,
+  ): void;
   onActivity(listener: () => void): void;
   close(): Promise<void>;
 }
@@ -92,7 +128,9 @@ const CLOSE_FLUSH_MS = 5000;
 const DIRECT_RELAY_ROUTE = /^\/relay\/a\/([A-Za-z0-9_-]{1,64})$/;
 const SHELL_ROUTE = new RegExp(`^/(?:(${ARTIFACT_TYPES.join('|')})/([^/]+)/?)?$`);
 const API_ARTIFACT_ROUTE = /^\/api\/artifacts\/([^/]+)\/([^/]+)$/;
-const PREVIEW_ROUTE = new RegExp(`^/preview/(artboard|document|html)/${ARTIFACT_LOCATOR_SOURCE}/?$`);
+const PREVIEW_ROUTE = new RegExp(
+  `^/preview/(artboard|document|html)/${ARTIFACT_LOCATOR_SOURCE}/?$`,
+);
 const API_PREVIEW_ROUTE = /^\/api\/preview\/([^/]+)\/([^/]+)$/;
 const API_THUMBNAIL_ROUTE = /^\/api\/thumbnail\/([^/]+)\/([^/]+)\.svg$/;
 const API_DOCUMENT_ROUTE = /^\/api\/document\/([^/]+)\/(state|update|comments)$/;
@@ -116,7 +154,10 @@ function readArtifact(dir: string, ref: ArtifactRef, runtime: string[] = []): Ar
     return { ...payload, warnings: [...payload.warnings, ...runtime] };
   }
   const payload = readHtml(dir, ref.id);
-  return { ...payload, warnings: [...payload.warnings, ...runtime.map((message) => `runtime: ${message}`)] };
+  return {
+    ...payload,
+    warnings: [...payload.warnings, ...runtime.map((message) => `runtime: ${message}`)],
+  };
 }
 
 function titleOf(payload: ArtifactPayload, ref: ArtifactRef) {
@@ -148,9 +189,13 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
   const contentPrefix = `/c/${contentToken}/`;
 
   const clients = new Set<Duplex>();
-  const selections = createSelectionStore(stateDir, (kind, id) => resolveArtifactDir(root, kind, id) !== null);
+  const selections = createSelectionStore(
+    stateDir,
+    (kind, id) => resolveArtifactDir(root, kind, id) !== null,
+  );
   selections.clearAll();
-  const changeListeners: ((ref: ArtifactRef, payload: ArtifactPayload, files: string[]) => void)[] = [];
+  const changeListeners: ((ref: ArtifactRef, payload: ArtifactPayload, files: string[]) => void)[] =
+    [];
   const activityListeners: (() => void)[] = [];
   const startedAt = Date.now();
   let lastActivity = startedAt;
@@ -175,7 +220,11 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
     direct.emit(message.artifact, message);
   };
   const avatars = createAvatars(options.fetch);
-  const names = commentNames({ agentFile: path.join(stateDir, 'agent'), projectDir: path.resolve(root, '../..'), cloud: options.cloud });
+  const names = commentNames({
+    agentFile: path.join(stateDir, 'agent'),
+    projectDir: path.resolve(root, '../..'),
+    cloud: options.cloud,
+  });
   const boardComments = createBoardCommentRegistry({ root, stateDir, broadcast, names });
   const documents = createDocumentRegistry({
     root,
@@ -199,8 +248,13 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
     await session?.flush();
     const payload = readArtifact(dir, ref, runtimeOf(ref, dir));
     const reasons = [...payload.warnings];
-    if ('pending' in payload) reasons.push(...payload.pending.map((board) => `board ${board} is still being written`));
-    if ('canvas' in payload && payload.canvas?.writing && !payload.pending.includes(payload.canvas.writing)) {
+    if ('pending' in payload)
+      reasons.push(...payload.pending.map((board) => `board ${board} is still being written`));
+    if (
+      'canvas' in payload &&
+      payload.canvas?.writing &&
+      !payload.pending.includes(payload.canvas.writing)
+    ) {
       reasons.push(`board ${payload.canvas.writing} is still being written`);
     }
     if (session?.streaming()) reasons.push('the document is still being written');
@@ -208,7 +262,13 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
     let published: Record<string, unknown> | null = null;
     if (reasons.length === 0) {
       try {
-        published = publishPayload(ref, dir, title, payload, ref.type === 'document' ? documents.comments(ref.id) : undefined);
+        published = publishPayload(
+          ref,
+          dir,
+          title,
+          payload,
+          ref.type === 'document' ? documents.comments(ref.id) : undefined,
+        );
       } catch (err) {
         reasons.push((err as Error).message);
       }
@@ -217,7 +277,12 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
   };
   const cloud =
     options.cloud && options.configFile
-      ? createCloudRoutes({ ...options.cloud, configFile: options.configFile, project: path.basename(path.resolve(root, '../..')), port: () => port, inspect,
+      ? createCloudRoutes({
+          ...options.cloud,
+          configFile: options.configFile,
+          project: path.basename(path.resolve(root, '../..')),
+          port: () => port,
+          inspect,
           onPublication: (key, publication) => {
             broadcast({ type: 'cloud-publication', artifact: key, publication });
           },
@@ -232,7 +297,9 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
         publish: async (key) => {
           const outcome = await cloud.autoPublish(key);
           if (outcome.kind === 'published') {
-            const frame = textFrame(JSON.stringify({ type: 'cloud-published', artifact: key } satisfies ServerMessage));
+            const frame = textFrame(
+              JSON.stringify({ type: 'cloud-published', artifact: key } satisfies ServerMessage),
+            );
             for (const socket of clients) socket.write(frame);
           }
           return outcome;
@@ -261,7 +328,10 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
     }
   };
 
-  const documentState = (id: string, session: NonNullable<Awaited<ReturnType<typeof documents.open>>>) => ({
+  const documentState = (
+    id: string,
+    session: NonNullable<Awaited<ReturnType<typeof documents.open>>>,
+  ) => ({
     snapshot: Buffer.from(session.snapshot()).toString('base64'),
     lineage: session.lineage(),
     outcome: session.outcome(),
@@ -272,7 +342,12 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
     comments: documents.comments(id),
   });
 
-  const serveDocumentApi = async (req: http.IncomingMessage, res: http.ServerResponse, id: string, action: string) => {
+  const serveDocumentApi = async (
+    req: http.IncomingMessage,
+    res: http.ServerResponse,
+    id: string,
+    action: string,
+  ) => {
     if (action !== 'state' && (req.method !== 'POST' || !sameOrigin(req))) {
       send(res, 403, 'Forbidden');
       return;
@@ -315,7 +390,8 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
       return;
     }
     const header = req.headers[DOCUMENT_FEATURES_HEADER];
-    const features = typeof header === 'string' ? header.split(',').map((feature) => feature.trim()) : [];
+    const features =
+      typeof header === 'string' ? header.split(',').map((feature) => feature.trim()) : [];
     try {
       session.importUpdate(new Uint8Array(Buffer.concat(chunks)), features);
       send(res, 204, '');
@@ -327,25 +403,44 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
   const blockIdsOf = async (id: string, dir: string) => {
     await (await documents.open(id))?.flush();
     const state = parseDocument(fs.readFileSync(path.join(dir, 'doc.xml'), 'utf8'));
-    return new Set((state.root.children as { $?: { blockId?: string } }[]).flatMap((block) => (block.$?.blockId ? [block.$.blockId] : [])));
+    return new Set(
+      (state.root.children as { $?: { blockId?: string } }[]).flatMap((block) =>
+        block.$?.blockId ? [block.$.blockId] : [],
+      ),
+    );
   };
 
-  const serveAgentComments = async (req: http.IncomingMessage, res: http.ServerResponse, id: string) => {
+  const serveAgentComments = async (
+    req: http.IncomingMessage,
+    res: http.ServerResponse,
+    id: string,
+  ) => {
     const dir = resolveArtifactDir(root, 'document', id);
     if (!dir) {
       sendJson(res, 404, { error: `document/${id} not found` });
       return;
     }
     const body = await readCommentBody(req);
-    const fields = typeof body === 'object' && body !== null ? (body as Record<string, unknown>) : {};
-    const agent = typeof fields.agent === 'string' && fields.agent.length > 0 && fields.agent.length <= 100 ? fields.agent : undefined;
+    const fields =
+      typeof body === 'object' && body !== null ? (body as Record<string, unknown>) : {};
+    const agent =
+      typeof fields.agent === 'string' && fields.agent.length > 0 && fields.agent.length <= 100
+        ? fields.agent
+        : undefined;
     if (fields.op === 'list') {
-      sendJson(res, 200, { type: 'comments', artifact: `document/${id}`, threads: documents.listComments(id, agent ?? 'Agent', fields.all === true) });
+      sendJson(res, 200, {
+        type: 'comments',
+        artifact: `document/${id}`,
+        threads: documents.listComments(id, agent ?? 'Agent', fields.all === true),
+      });
       return;
     }
     const op = asAgentOp(body);
     if (!op) {
-      sendJson(res, 400, { error: 'not an agent comment op: use list, add {blockId, text}, reply {threadId, text} or resolve {threadId}; text must not be empty' });
+      sendJson(res, 400, {
+        error:
+          'not an agent comment op: use list, add {blockId, text}, reply {threadId, text} or resolve {threadId}; text must not be empty',
+      });
       return;
     }
     if (op.op === 'add') {
@@ -368,7 +463,11 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
     }
   };
 
-  const serveBoardComments = async (req: http.IncomingMessage, res: http.ServerResponse, id: string) => {
+  const serveBoardComments = async (
+    req: http.IncomingMessage,
+    res: http.ServerResponse,
+    id: string,
+  ) => {
     if (req.method !== 'POST' || !sameOrigin(req)) {
       send(res, 403, 'Forbidden');
       return;
@@ -389,18 +488,31 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
     }
   };
 
-  const serveAgentBoardComments = async (req: http.IncomingMessage, res: http.ServerResponse, id: string) => {
+  const serveAgentBoardComments = async (
+    req: http.IncomingMessage,
+    res: http.ServerResponse,
+    id: string,
+  ) => {
     const dir = resolveArtifactDir(root, 'artboard', id);
     if (!dir) {
       sendJson(res, 404, { error: `artboard/${id} not found` });
       return;
     }
     const body = await readCommentBody(req);
-    const fields = typeof body === 'object' && body !== null ? (body as Record<string, unknown>) : {};
-    const agent = typeof fields.agent === 'string' && fields.agent.length > 0 && fields.agent.length <= 100 ? fields.agent : undefined;
+    const fields =
+      typeof body === 'object' && body !== null ? (body as Record<string, unknown>) : {};
+    const agent =
+      typeof fields.agent === 'string' && fields.agent.length > 0 && fields.agent.length <= 100
+        ? fields.agent
+        : undefined;
     if (fields.op === 'list') {
       const threads = boardComments.list(id, agent ?? 'Agent', fields.all === true);
-      sendJson(res, 200, { type: 'comments', artifact: `artboard/${id}`, threads, groups: boardComments.groups(id) });
+      sendJson(res, 200, {
+        type: 'comments',
+        artifact: `artboard/${id}`,
+        threads,
+        groups: boardComments.groups(id),
+      });
       return;
     }
     const shorthand = agentAddOnBoard(body, boardSpecs(dir));
@@ -410,7 +522,10 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
     }
     const op = shorthand ?? asBoardAgentOp(body);
     if (!op) {
-      sendJson(res, 400, { error: 'not an agent comment op: use list, add {anchor: {page, board, x, y}, text}, reply {threadId, text} or resolve {threadId}; text must not be empty' });
+      sendJson(res, 400, {
+        error:
+          'not an agent comment op: use list, add {anchor: {page, board, x, y}, text}, reply {threadId, text} or resolve {threadId}; text must not be empty',
+      });
       return;
     }
     if (op.op === 'add' && op.anchor.board && !(op.anchor.board in boardFiles(dir))) {
@@ -440,7 +555,10 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
         send(res, 403, 'Forbidden');
         return;
       }
-      sendFile(res, target, { 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'public, max-age=3600' });
+      sendFile(res, target, {
+        'Access-Control-Allow-Origin': '*',
+        'Cache-Control': 'public, max-age=3600',
+      });
       return;
     }
     const [type = '', id = '', ...parts] = rest.split('/');
@@ -455,14 +573,21 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
       send(res, 403, 'Forbidden');
       return;
     }
-    const resolve = { artboard: resolveBoardFile, document: resolveDocumentAsset, html: resolveHtmlFile }[ref.type];
+    const resolve = {
+      artboard: resolveBoardFile,
+      document: resolveDocumentAsset,
+      html: resolveHtmlFile,
+    }[ref.type];
     const target = resolve(dir, relative);
     if (!target) {
       send(res, 404, 'Not found');
       return;
     }
     const page = ref.type === 'html' ? relative === 'index.html' : relative.endsWith('.html');
-    const headers = { 'Content-Security-Policy': CONTENT_CSP[page && ref.type === 'document' ? 'html' : ref.type], 'Access-Control-Allow-Origin': '*' };
+    const headers = {
+      'Content-Security-Policy': CONTENT_CSP[page && ref.type === 'document' ? 'html' : ref.type],
+      'Access-Control-Allow-Origin': '*',
+    };
     if (!page) {
       sendFile(res, target, headers, range);
       return;
@@ -471,7 +596,16 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
       if (err) send(res, 404, 'Not found');
       else {
         const uiRuntimeUrl = runtimeDir ? `${contentPrefix}runtime/ryugi-ui.js` : undefined;
-        send(res, 200, injectRuntime(source, { uiRuntimeUrl, embedded: ref.type === 'document', inspector: ref.type === 'artboard' }), { 'Content-Type': 'text/html; charset=utf-8', ...headers });
+        send(
+          res,
+          200,
+          injectRuntime(source, {
+            uiRuntimeUrl,
+            embedded: ref.type === 'document',
+            inspector: ref.type === 'artboard',
+          }),
+          { 'Content-Type': 'text/html; charset=utf-8', ...headers },
+        );
       }
     });
   };
@@ -479,7 +613,9 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
   const artifactMeta = (ref: ArtifactRef, dir: string, contentOrigin = '') => ({
     ...readArtifact(dir, ref, runtimeOf(ref, dir)),
     ...(ref.type !== 'html' ? { agent: names.agent() } : {}),
-    ...(ref.type === 'artboard' ? { comments: boardComments.comments(ref.id), staleThreads: boardComments.stale(ref.id) } : {}),
+    ...(ref.type === 'artboard'
+      ? { comments: boardComments.comments(ref.id), staleThreads: boardComments.stale(ref.id) }
+      : {}),
     contentBase: `${contentOrigin}${contentPrefix}${ref.type}/${ref.id}/`,
   });
 
@@ -501,7 +637,11 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
       title: titleOf(readArtifact(entry.dir, entry), entry),
       updatedAt: latestMtime(entry.dir),
     }));
-    sendJson(res, 200, { project: path.basename(path.dirname(path.dirname(root))), artifacts: summaries, warnings });
+    sendJson(res, 200, {
+      project: path.basename(path.dirname(path.dirname(root))),
+      artifacts: summaries,
+      warnings,
+    });
   };
 
   function onClientText(socket: Duplex, text: string) {
@@ -519,7 +659,13 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
     acceptReport(message as Record<string, unknown>);
   }
 
-  function acceptReport({ type, artifact, message: detail, version, file }: Record<string, unknown>) {
+  function acceptReport({
+    type,
+    artifact,
+    message: detail,
+    version,
+    file,
+  }: Record<string, unknown>) {
     if (typeof artifact !== 'string') return;
     const ref = artifactKeyOf(artifact);
     if (!ref || ref.type === 'artboard' || artifact !== `${ref.type}/${ref.id}`) return;
@@ -550,7 +696,9 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
     if (list.includes(detail) || list.length >= MAX_RUNTIME_WARNINGS) return;
     runtimeWarnings.set(artifact, [...list, detail]);
     writeState(ref, dir);
-    const frame = textFrame(JSON.stringify({ type: 'change', artifact, files: [] } satisfies ServerMessage));
+    const frame = textFrame(
+      JSON.stringify({ type: 'change', artifact, files: [] } satisfies ServerMessage),
+    );
     for (const socket of clients) socket.write(frame);
   }
 
@@ -559,7 +707,8 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
     const url = new URL(req.url ?? '/', 'http://artifacts.local');
     // The monitor polls this; counting it as activity would keep every watched server from ever going idle.
     if (url.pathname === '/api/status') {
-      if (!isAuthorized(req, url.searchParams.get('key'))) send(res, 403, 'Forbidden: agent calls need ?key=');
+      if (!isAuthorized(req, url.searchParams.get('key')))
+        send(res, 403, 'Forbidden: agent calls need ?key=');
       else sendJson(res, 200, { pid: process.pid, startedAt, lastActivity, clients: clients.size });
       return;
     }
@@ -584,9 +733,15 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
     }
 
     if (cloud && pathname === '/api/cloud/callback') {
-      void cloud.handleCallback(url, res, resolveLocale(parseAcceptLanguage(req.headers['accept-language']))).catch((err) => {
-        if (!res.headersSent) send(res, 500, `Artifacts error: ${(err as Error).message}`);
-      });
+      void cloud
+        .handleCallback(
+          url,
+          res,
+          resolveLocale(parseAcceptLanguage(req.headers['accept-language'])),
+        )
+        .catch((err) => {
+          if (!res.headersSent) send(res, 500, `Artifacts error: ${(err as Error).message}`);
+        });
       return;
     }
 
@@ -604,7 +759,11 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
     const avatarMatch = AVATAR_ROUTE.exec(pathname);
     if (avatarMatch) {
       void avatars.load(avatarMatch[1]!, avatarMatch[2]!).then(({ status, type, body }) => {
-        if (body && type) send(res, status, body, { 'Content-Type': type, 'Cache-Control': 'private, max-age=86400' });
+        if (body && type)
+          send(res, status, body, {
+            'Content-Type': type,
+            'Cache-Control': 'private, max-age=86400',
+          });
         else send(res, status, 'No avatar');
       });
       return;
@@ -622,7 +781,12 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
       try {
         const payload = readArtifact(dir, ref);
         const title = titleOf(payload, ref);
-        sendJson(res, 200, { ...publishPayload(ref, dir, title, payload), title, warnings: payload.warnings, contentBase: `${contentPrefix}${type}/${id}/` });
+        sendJson(res, 200, {
+          ...publishPayload(ref, dir, title, payload),
+          title,
+          warnings: payload.warnings,
+          contentBase: `${contentPrefix}${type}/${id}/`,
+        });
       } catch {
         sendJson(res, 422, { error: 'Preview unavailable' });
       }
@@ -631,7 +795,10 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
 
     const thumbnailMatch = API_THUMBNAIL_ROUTE.exec(pathname);
     if (thumbnailMatch) {
-      const requested = artifactKeyOf(`${thumbnailMatch[1]}/${thumbnailMatch[2]}`, isArtifactLocator);
+      const requested = artifactKeyOf(
+        `${thumbnailMatch[1]}/${thumbnailMatch[2]}`,
+        isArtifactLocator,
+      );
       let resolved: ReturnType<typeof resolveArtifactAddress> = null;
       try {
         resolved = requested && resolveArtifactAddress(root, requested.type, requested.id);
@@ -647,7 +814,10 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
         const payload = readArtifact(resolved.dir, ref);
         const title = titleOf(payload, ref);
         const project = path.basename(path.dirname(path.dirname(root)));
-        const svg = renderThumbnail({ id: ref.id, type: ref.type, title, project }, ref.type === 'html' ? null : publishPayload(ref, resolved.dir, title, payload));
+        const svg = renderThumbnail(
+          { id: ref.id, type: ref.type, title, project },
+          ref.type === 'html' ? null : publishPayload(ref, resolved.dir, title, payload),
+        );
         send(res, 200, svg, {
           'Content-Type': 'image/svg+xml',
           'Cache-Control': 'private, max-age=31536000, immutable',
@@ -666,7 +836,8 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
         return;
       }
       if (!autoPublisher) sendJson(res, 404, { error: 'cloud publishing is not configured' });
-      else if (url.searchParams.get('wait') === '1') void autoPublisher.flush().then(() => sendJson(res, 200, { flushed: true }));
+      else if (url.searchParams.get('wait') === '1')
+        void autoPublisher.flush().then(() => sendJson(res, 200, { flushed: true }));
       else {
         void autoPublisher.flush();
         sendJson(res, 202, { queued: true });
@@ -743,30 +914,65 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
     }
 
     if (SHELL_ROUTE.test(pathname) || PREVIEW_ROUTE.test(pathname) || pathname === '/index.html') {
-      const requested = artifactKeyOf(pathname.replace(/^\/(?:preview\/)?/, '').replace(/\/$/, ''), isArtifactLocator);
+      const requested = artifactKeyOf(
+        pathname.replace(/^\/(?:preview\/)?/, '').replace(/\/$/, ''),
+        isArtifactLocator,
+      );
       const resolved = requested && resolveArtifactAddress(root, requested.type, requested.id);
       const ref = resolved ?? requested;
       const dir = resolved?.dir;
       const project = path.basename(path.dirname(path.dirname(root)));
-      const title = ref ? (dir ? titleOf(readArtifact(dir, ref), ref) : ref.id) : `${project} · Artifacts`;
+      const title = ref
+        ? dir
+          ? titleOf(readArtifact(dir, ref), ref)
+          : ref.id
+        : `${project} · Artifacts`;
       const locale = resolveLocale(parseAcceptLanguage(req.headers['accept-language']));
       const t = serverText(locale);
       const description = ref
-        ? t('meta.artifact', { project, title, type: ref.type === 'artboard' ? 'Artboard' : ref.type === 'document' ? 'Document' : 'HTML' })
+        ? t('meta.artifact', {
+            project,
+            title,
+            type:
+              ref.type === 'artboard' ? 'Artboard' : ref.type === 'document' ? 'Document' : 'HTML',
+          })
         : t('meta.library', { project });
       const preview = PREVIEW_ROUTE.test(pathname);
-      const canonicalPath = ref ? (dir ? artifactPath(root, ref.type, ref.id) : `/${ref.type}/${ref.id}`) : '/';
+      const canonicalPath = ref
+        ? dir
+          ? artifactPath(root, ref.type, ref.id)
+          : `/${ref.type}/${ref.id}`
+        : '/';
       const canonical = `http://${urlHostForHttp(options.urlHost)}:${port}${preview ? '/preview' : ''}${canonicalPath}`;
-      const csp = preview ? VIEWER_CSP.replace("frame-ancestors 'none'", "frame-ancestors 'self'") : VIEWER_CSP;
+      const csp = preview
+        ? VIEWER_CSP.replace("frame-ancestors 'none'", "frame-ancestors 'self'")
+        : VIEWER_CSP;
       const headers: Record<string, string> = { 'Content-Type': 'text/html; charset=utf-8' };
-      if (key !== null) headers['Set-Cookie'] = `${cookieName}=${token}; HttpOnly; SameSite=Strict; Path=/`;
-      const entry = preview && fs.existsSync(path.join(viewerDir, 'preview.html')) ? 'preview.html' : 'index.html';
-      void fs.promises.readFile(path.join(viewerDir, entry), 'utf8')
+      if (key !== null)
+        headers['Set-Cookie'] = `${cookieName}=${token}; HttpOnly; SameSite=Strict; Path=/`;
+      const entry =
+        preview && fs.existsSync(path.join(viewerDir, 'preview.html'))
+          ? 'preview.html'
+          : 'index.html';
+      void fs.promises
+        .readFile(path.join(viewerDir, entry), 'utf8')
         .then((template) => {
-          const html = viewerPage(template, { title, description, locale, url: canonical, icon: ref ? typeFaviconHref(ref.type) : undefined, artifactId: resolved?.id });
-          send(res, 200, html, { ...headers, 'Content-Security-Policy': allowInlineScripts(csp, html) });
+          const html = viewerPage(template, {
+            title,
+            description,
+            locale,
+            url: canonical,
+            icon: ref ? typeFaviconHref(ref.type) : undefined,
+            artifactId: resolved?.id,
+          });
+          send(res, 200, html, {
+            ...headers,
+            'Content-Security-Policy': allowInlineScripts(csp, html),
+          });
         })
-        .catch((err: NodeJS.ErrnoException) => send(res, err.code === 'ENOENT' ? 404 : 500, 'Viewer unavailable'));
+        .catch((err: NodeJS.ErrnoException) =>
+          send(res, err.code === 'ENOENT' ? 404 : 500, 'Viewer unavailable'),
+        );
       return;
     }
 
@@ -809,8 +1015,14 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
     completeHandshake(socket, clientKey);
     clients.add(socket);
     handleClientFrames(socket, (text) => onClientText(socket, text));
-    const forget = () => { clients.delete(socket); selections.drop(socket); };
-    socket.on('end', () => { forget(); socket.end(); });
+    const forget = () => {
+      clients.delete(socket);
+      selections.drop(socket);
+    };
+    socket.on('end', () => {
+      forget();
+      socket.end();
+    });
     socket.on('close', forget);
     socket.on('error', forget);
     touch();
@@ -818,7 +1030,11 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
 
   const previousPort = Number(readPersisted(portFile));
   try {
-    port = await listen(server, options.host, Number.isInteger(previousPort) && previousPort > 0 ? previousPort : 0);
+    port = await listen(
+      server,
+      options.host,
+      Number.isInteger(previousPort) && previousPort > 0 ? previousPort : 0,
+    );
   } catch {
     port = await listen(server, options.host, 0);
   }
@@ -827,7 +1043,8 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
 
   const origin = `http://${urlHostForHttp(options.urlHost)}:${port}`;
   const url = `${origin}/?key=${token}`;
-  const linkFor = (type: ArtifactType, id: string) => `${origin}${artifactPath(root, type, id)}?key=${token}`;
+  const linkFor = (type: ArtifactType, id: string) =>
+    `${origin}${artifactPath(root, type, id)}?key=${token}`;
 
   const signatures = new Map<string, string>();
   const writeState = (ref: ArtifactRef, dir: string) => {
@@ -864,7 +1081,8 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
     if (!options.configFile) return served;
     for (const [key, entry] of Object.entries(readConfig(options.configFile).config.artifacts)) {
       const ref = artifactKeyOf(key);
-      if (entry.cloud && ref && resolveArtifactDir(root, ref.type, ref.id)) served.set(entry.cloud.id, key);
+      if (entry.cloud && ref && resolveArtifactDir(root, ref.type, ref.id))
+        served.set(entry.cloud.id, key);
     }
     return served;
   };
@@ -878,26 +1096,40 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
     const ref = artifactKeyOf(key)!;
     const dir = resolveArtifactDir(root, ref.type, ref.id);
     if (!dir) throw new Error(`${key} not found`);
-    const request = (typeof body === 'object' && body !== null ? body : {}) as Record<string, unknown>;
+    const request = (typeof body === 'object' && body !== null ? body : {}) as Record<
+      string,
+      unknown
+    >;
     if (request.op === 'publication' && cloud) return cloud.publication(key);
     if (request.op === 'publish' && cloud) return cloud.publishNow(key);
     if (request.op === 'meta') return artifactMeta(ref, dir, contentOrigin);
     if (request.op === 'file') {
-      const file = typeof request.path === 'string' ? readArtifactFile(dir, ref.type, request.path, CLOUD_RUNTIME_URL, MAX_RELAY_FILE) : null;
+      const file =
+        typeof request.path === 'string'
+          ? readArtifactFile(dir, ref.type, request.path, CLOUD_RUNTIME_URL, MAX_RELAY_FILE)
+          : null;
       if (!file) throw new Error('not found');
       if (file.data.length > MAX_RELAY_FILE) throw new Error('too large');
       return { contentType: file.contentType, data: file.data.toString('base64') };
     }
     if (request.op === 'client') {
-      if (typeof request.message === 'object' && request.message !== null) acceptReport({ ...(request.message as Record<string, unknown>), artifact: key });
+      if (typeof request.message === 'object' && request.message !== null)
+        acceptReport({ ...(request.message as Record<string, unknown>), artifact: key });
       return null;
     }
     if (request.op === 'comment' && ref.type === 'artboard') {
-      const op = JSON.stringify(request.comment ?? null).length <= MAX_COMMENT_OP ? asBoardHumanOp(request.comment) : null;
+      const op =
+        JSON.stringify(request.comment ?? null).length <= MAX_COMMENT_OP
+          ? asBoardHumanOp(request.comment)
+          : null;
       if (!op) throw new Error('not a comment op');
       return boardComments.apply(ref.id, op);
     }
-    if ((request.op === 'state' || request.op === 'update' || request.op === 'comment') && ref.type !== 'document') throw new Error(`${key} is not a document`);
+    if (
+      (request.op === 'state' || request.op === 'update' || request.op === 'comment') &&
+      ref.type !== 'document'
+    )
+      throw new Error(`${key} is not a document`);
     if (request.op === 'state' || request.op === 'update') {
       const session = await documents.open(ref.id);
       if (!session) throw new Error(`${key} has no doc.xml`);
@@ -905,17 +1137,23 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
       const bytes = typeof request.bytes === 'string' ? Buffer.from(request.bytes, 'base64') : null;
       if (!bytes) throw new Error('update needs bytes');
       if (bytes.length > MAX_DOCUMENT_UPDATE) throw new Error('update too large');
-      const features = Array.isArray(request.features) ? request.features.filter((feature): feature is string => typeof feature === 'string') : [];
+      const features = Array.isArray(request.features)
+        ? request.features.filter((feature): feature is string => typeof feature === 'string')
+        : [];
       session.importUpdate(new Uint8Array(bytes), features);
       return null;
     }
     if (request.op === 'comment') {
-      const op = JSON.stringify(request.comment ?? null).length <= MAX_COMMENT_OP ? asHumanOp(request.comment) : null;
+      const op =
+        JSON.stringify(request.comment ?? null).length <= MAX_COMMENT_OP
+          ? asHumanOp(request.comment)
+          : null;
       if (!op) throw new Error('not a comment op');
       return { comments: documents.applyCommentOp(ref.id, op) };
     }
     if (request.op === 'selection') {
-      if (typeof request.selection !== 'object' || request.selection === null) throw new Error('not a selection');
+      if (typeof request.selection !== 'object' || request.selection === null)
+        throw new Error('not a selection');
       const viewer = relayViewers.get(conn) ?? { key, tab: {} };
       relayViewers.set(conn, viewer);
       selections.accept(viewer.tab, { ...request.selection, artifact: key });
@@ -927,7 +1165,8 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
     options.relay && options.cloud
       ? createRelayClient({
           ...options.relay,
-          token: () => readCredentials(options.cloud!.credentialsFile, options.cloud!.origin)?.token ?? null,
+          token: () =>
+            readCredentials(options.cloud!.credentialsFile, options.cloud!.origin)?.token ?? null,
           served: servedArtifacts,
           local: () => ({ hostId: hostIdFor(options.cloud!.credentialsFile), port, key: token }),
           handle: handleRelay,
@@ -951,7 +1190,11 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
       return;
     }
     const key = `${ref.type}/${ref.id}`;
-    for (let waited = 0; waited < CHECK_WATCH_WAIT_MS && signatures.get(key) !== artifactSignature(dir, ref.type); waited += 50) {
+    for (
+      let waited = 0;
+      waited < CHECK_WATCH_WAIT_MS && signatures.get(key) !== artifactSignature(dir, ref.type);
+      waited += 50
+    ) {
       await new Promise((resolve) => setTimeout(resolve, 50));
     }
     let merging = false;
@@ -960,12 +1203,16 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
       const text = await fs.promises.readFile(path.join(dir, 'doc.xml'), 'utf8').catch(() => null);
       if (session && text !== null) {
         session.onFileText(text);
-        const timeout = new Promise<'timeout'>((resolve) => setTimeout(() => resolve('timeout'), CHECK_MERGE_WAIT_MS).unref());
+        const timeout = new Promise<'timeout'>((resolve) =>
+          setTimeout(() => resolve('timeout'), CHECK_MERGE_WAIT_MS).unref(),
+        );
         merging = (await Promise.race([session.settled(), timeout])) === 'timeout';
       }
     }
     writeState(ref, dir);
-    const state = JSON.parse(await fs.promises.readFile(path.join(stateDir, ref.type, ref.id, 'warnings.json'), 'utf8'));
+    const state = JSON.parse(
+      await fs.promises.readFile(path.join(stateDir, ref.type, ref.id, 'warnings.json'), 'utf8'),
+    );
     sendJson(res, 200, merging ? { ...state, merging: true } : state);
   };
 
@@ -987,19 +1234,34 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
         if (!dir) {
           signatures.delete(key);
           autoPublisher?.removed(key);
-          const frame = textFrame(JSON.stringify({ type: 'change', artifact: key, files: changed } satisfies ServerMessage));
+          const frame = textFrame(
+            JSON.stringify({
+              type: 'change',
+              artifact: key,
+              files: changed,
+            } satisfies ServerMessage),
+          );
           for (const socket of clients) socket.write(frame);
           continue;
         }
-        if (ref.type === 'document' && (changed.includes('doc.xml') || changed.length === 0)) documents.fileChanged(ref.id);
-        if (ref.type === 'document' && changed.includes('comments.json')) documents.commentsChanged(ref.id);
-        if (ref.type === 'artboard' && changed.includes('comments.json')) boardComments.sync(ref.id);
-        if (ref.type === 'artboard' && (changed.some((file) => file !== 'comments.json') || changed.length === 0)) boardComments.boardsChanged(ref.id);
+        if (ref.type === 'document' && (changed.includes('doc.xml') || changed.length === 0))
+          documents.fileChanged(ref.id);
+        if (ref.type === 'document' && changed.includes('comments.json'))
+          documents.commentsChanged(ref.id);
+        if (ref.type === 'artboard' && changed.includes('comments.json'))
+          boardComments.sync(ref.id);
+        if (
+          ref.type === 'artboard' &&
+          (changed.some((file) => file !== 'comments.json') || changed.length === 0)
+        )
+          boardComments.boardsChanged(ref.id);
         if (signatures.get(key) === artifactSignature(dir, ref.type)) continue;
         autoPublisher?.changed(key);
         runtimeWarnings.delete(key);
         const payload = refreshState(ref, dir);
-        const frame = textFrame(JSON.stringify({ type: 'change', artifact: key, files: changed } satisfies ServerMessage));
+        const frame = textFrame(
+          JSON.stringify({ type: 'change', artifact: key, files: changed } satisfies ServerMessage),
+        );
         for (const socket of clients) socket.write(frame);
         relay?.emit(key, { type: 'change', artifact: key, files: changed });
         direct.emit(key, { type: 'change', artifact: key, files: changed });
@@ -1018,7 +1280,12 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
     url,
     linkFor,
     cloudLinkFor: async (type, id) => {
-      if (!cloud || !options.cloud || !readCredentials(options.cloud.credentialsFile, options.cloud.origin)) return null;
+      if (
+        !cloud ||
+        !options.cloud ||
+        !readCredentials(options.cloud.credentialsFile, options.cloud.origin)
+      )
+        return null;
       const { url } = await cloud.reserve({ type, id });
       return url ? ownLink(url, hostIdFor(options.cloud.credentialsFile)) : null;
     },
@@ -1028,7 +1295,10 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
     },
     onActivity: (listener) => activityListeners.push(listener),
     close: async () => {
-      await Promise.race([autoPublisher?.flush(), new Promise((resolve) => setTimeout(resolve, CLOSE_FLUSH_MS).unref())]);
+      await Promise.race([
+        autoPublisher?.flush(),
+        new Promise((resolve) => setTimeout(resolve, CLOSE_FLUSH_MS).unref()),
+      ]);
       await new Promise<void>((resolve) => {
         watcher.close();
         autoPublisher?.close();

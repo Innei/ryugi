@@ -36,12 +36,12 @@ screenshot.
 
 ## Results
 
-| Run | Time | Boards | Read design system | Frame overflow | Flagged clips | Screenshotted own boards |
-|-----|------|--------|--------------------|----------------|---------------|--------------------------|
-| friends-1 | 446 s | 4 | `DESIGN.md`, tokens, cheatsheet, scaffold | 0 | 2, decorative “07” numeral | yes |
-| friends-2 | 373 s | 4 | `DESIGN.md`, design-system `SKILL.md`, tokens reference, cheatsheet | 0 | 0 | no |
-| related-1 | 230 s | 4 | `DESIGN.md`, cheatsheet, `SKILL.md`, tokens | 0 | 2, decorative cover glyphs | no |
-| related-2 | 384 s | 12 | `DESIGN.md`, tokens, cheatsheet, components reference | 0 | 1, horizontal rail labelled “滑动看全部” | yes |
+| Run       | Time  | Boards | Read design system                                                  | Frame overflow | Flagged clips                            | Screenshotted own boards |
+| --------- | ----- | ------ | ------------------------------------------------------------------- | -------------- | ---------------------------------------- | ------------------------ |
+| friends-1 | 446 s | 4      | `DESIGN.md`, tokens, cheatsheet, scaffold                           | 0              | 2, decorative “07” numeral               | yes                      |
+| friends-2 | 373 s | 4      | `DESIGN.md`, design-system `SKILL.md`, tokens reference, cheatsheet | 0              | 0                                        | no                       |
+| related-1 | 230 s | 4      | `DESIGN.md`, cheatsheet, `SKILL.md`, tokens                         | 0              | 2, decorative cover glyphs               | no                       |
+| related-2 | 384 s | 12     | `DESIGN.md`, tokens, cheatsheet, components reference               | 0              | 1, horizontal rail labelled “滑动看全部” | yes                      |
 
 All 24 boards fit their frames. Every flagged clip was intentional. Boards used
 the static design-system palette (`--color-accent: #c56473`, paper

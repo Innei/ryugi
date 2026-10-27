@@ -26,14 +26,22 @@ export function DynamicBlock({ url, componentProps, initialHeight }: Props) {
   useEffect(
     () =>
       host?.channel.subscribe((event) => {
-        if (event.type === 'change' && event.artifact === host.artifact && event.files.includes(url)) setVersion((v) => v + 1);
+        if (
+          event.type === 'change' &&
+          event.artifact === host.artifact &&
+          event.files.includes(url)
+        )
+          setVersion((v) => v + 1);
       }),
     [host, url],
   );
 
-  const target = host?.contentBase ? dynamicFrameSrc(host.contentBase, url, version, componentProps) : null;
+  const target = host?.contentBase
+    ? dynamicFrameSrc(host.contentBase, url, version, componentProps)
+    : null;
   const { frameRef, src, onLoad } = useSandboxFrame(target, {
-    onError: (message) => host?.send({ type: 'runtime-error', artifact: host.artifact, file: url, message }),
+    onError: (message) =>
+      host?.send({ type: 'runtime-error', artifact: host.artifact, file: url, message }),
     onLoaded: () => host?.send({ type: 'loaded', artifact: host.artifact, file: url }),
     onMessage: (data) => {
       if (data.type !== 'ryugi:height') return;

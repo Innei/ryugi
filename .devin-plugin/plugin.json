@@ -1,14 +1,10 @@
 {
-  "name": "ryugi",
-  "version": "1.44.0",
-  "description": "An agentic skills framework & software development methodology that works: planning, TDD, debugging, and collaboration workflows.",
   "author": {
     "name": "Innei",
     "email": "i@innei.dev"
   },
+  "description": "An agentic skills framework & software development methodology that works: planning, TDD, debugging, and collaboration workflows.",
   "homepage": "https://github.com/Innei/ryugi",
-  "repository": "https://github.com/Innei/ryugi",
-  "license": "MIT",
   "keywords": [
     "brainstorming",
     "skills",
@@ -17,5 +13,9 @@
     "debugging",
     "code-review",
     "workflow"
-  ]
+  ],
+  "license": "MIT",
+  "name": "ryugi",
+  "repository": "https://github.com/Innei/ryugi",
+  "version": "1.44.0"
 }

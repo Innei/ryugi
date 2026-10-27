@@ -29,28 +29,53 @@ comments.json in the artboard directory is the server's; never write it.
 
 ```json
 {
-  "version": 1,
-  "title": "settings-page",
   "activePage": "settings",
-  "focus": { "target": "q1", "at": "2026-10-19T08:40:00Z" },
-  "pages": [
-    { "id": "settings", "name": "Settings" }
-  ],
   "boards": {
-    "q1-a": { "file": "pages/settings/q1-a.html", "page": "settings",
-              "x": 0, "y": 0, "w": 1280, "h": 800, "title": "Sidebar nav" },
-    "q1-b": { "file": "pages/settings/q1-b.html", "page": "settings",
-              "x": 1360, "y": 0, "w": 1280, "h": 800, "title": "Top tabs",
-              "interactive": true }
+    "q1-a": {
+      "file": "pages/settings/q1-a.html",
+      "page": "settings",
+      "x": 0,
+      "y": 0,
+      "w": 1280,
+      "h": 800,
+      "title": "Sidebar nav"
+    },
+    "q1-b": {
+      "file": "pages/settings/q1-b.html",
+      "page": "settings",
+      "x": 1360,
+      "y": 0,
+      "w": 1280,
+      "h": 800,
+      "title": "Top tabs",
+      "interactive": true
+    }
   },
+  "focus": { "target": "q1", "at": "2026-10-19T08:40:00Z" },
   "groups": {
     "q1": { "title": "Navigation layout", "boards": ["q1-a", "q1-b"] }
   },
   "notes": {
-    "intro": { "page": "settings", "kind": "title", "x": 0, "y": -300, "text": "Settings — round 1" },
-    "why":   { "page": "settings", "kind": "sticky", "x": 2768, "y": 0, "w": 300,
-               "text": "B keeps the content full width.", "color": "#cce8df" }
-  }
+    "intro": {
+      "page": "settings",
+      "kind": "title",
+      "x": 0,
+      "y": -300,
+      "text": "Settings — round 1"
+    },
+    "why": {
+      "page": "settings",
+      "kind": "sticky",
+      "x": 2768,
+      "y": 0,
+      "w": 300,
+      "text": "B keeps the content full width.",
+      "color": "#cce8df"
+    }
+  },
+  "pages": [{ "id": "settings", "name": "Settings" }],
+  "title": "settings-page",
+  "version": 1
 }
 ```
 
@@ -205,7 +230,7 @@ ones", name an ID, or refer to what they tweaked. Read only what you need:
 tokens.
 
 ```bash
-jq '{selected, more, tweaks}' .ryugi/artifacts/.state/artboard/<id>/selection.json
+jq '{selected, more, tweaks}' .ryugi/artifacts/.state/artboard/ < id > /selection.json
 ```
 
 Look up `nodes` only for an ID they typed:
@@ -269,14 +294,14 @@ boards) in a new group with `"verify": true`.
   (`pending`, `pass` or `reject`), `evidenceUpdated` and `rejectThreads`.
   Read it with the threads whenever you work on the artboard.
 - A reject is a thread on the group (`anchor.group`, `anchor.verdict:
-  "reject"`); its first message is the reason. Pins elsewhere may point at
+"reject"`); its first message is the reason. Pins elsewhere may point at
   the exact spot.
 - Fix what the reason asks for, then replace the evidence: overwrite the
   board's file, or add a board to the group. Any change to a group's board
   files sends the group back to `pending` with an "evidence updated" note;
   that is how your human partner knows to look again.
 - Reply on the reject thread with what changed. Leave it open: `comment
-  resolve` refuses a reject, and passing the group closes it.
+resolve` refuses a reject, and passing the group closes it.
 - `pass` covers the evidence as it was. Don't touch a passed group's files
   unless asked; changing them sends it back to `pending`. Your human partner
   can undo a pass, which returns the group to `pending`.

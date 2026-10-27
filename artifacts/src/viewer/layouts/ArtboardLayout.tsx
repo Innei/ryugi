@@ -5,5 +5,12 @@ import { ArtboardView } from './ArtboardView';
 
 export function ArtboardLayout({ id }: { id: string }) {
   const data = useCanvasData(useLocalFeed('artboard', id));
-  return <ArtboardView id={id} artifact={`artboard/${id}`} {...data} actions={<PublishMenu artifact={`artboard/${id}`} />} />;
+  return (
+    <ArtboardView
+      id={id}
+      artifact={`artboard/${id}`}
+      {...data}
+      actions={<PublishMenu artifact={`artboard/${id}`} />}
+    />
+  );
 }

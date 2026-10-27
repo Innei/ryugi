@@ -13,7 +13,9 @@ function useJson<T>(url: string) {
         return response.json() as Promise<T>;
       })
       .then(setData)
-      .catch(() => { if (!controller.signal.aborted) setFailed(true); });
+      .catch(() => {
+        if (!controller.signal.aborted) setFailed(true);
+      });
     return () => controller.abort();
   }, [url]);
   return { data, failed };

@@ -43,7 +43,8 @@ export function useSandboxFrame(target: string | null, handlers: Handlers) {
       setSrc(target);
     };
     const onMessage = (event: MessageEvent<FrameMessage>) => {
-      if (event.source === frame && event.data?.type === 'ryugi:state') finish(event.data.state ?? null);
+      if (event.source === frame && event.data?.type === 'ryugi:state')
+        finish(event.data.state ?? null);
     };
     window.addEventListener('message', onMessage);
     const timer = setTimeout(() => finish(null), SNAPSHOT_TIMEOUT_MS);

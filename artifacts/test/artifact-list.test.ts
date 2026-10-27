@@ -9,7 +9,11 @@ const artifacts = [
 ];
 
 test('searches titles and ids, combines the type filter and sorts recent work first', () => {
-  expect(filterArtifacts(artifacts, 'all', '').map((a) => a.id)).toEqual(['design-notes', 'easing-lab', 'homepage']);
+  expect(filterArtifacts(artifacts, 'all', '').map((a) => a.id)).toEqual([
+    'design-notes',
+    'easing-lab',
+    'homepage',
+  ]);
   expect(filterArtifacts(artifacts, 'all', '  EASING ')).toEqual([artifacts[0]]);
   expect(filterArtifacts(artifacts, 'document', '设计')).toEqual([artifacts[1]]);
   expect(filterArtifacts(artifacts, 'html', '设计')).toEqual([]);
@@ -36,9 +40,20 @@ test('relative times follow the viewer language', async () => {
 });
 
 test('sorts by oldest update or name while preserving search and type filters', () => {
-  const items = artifacts.map((artifact) => ({ ...artifact, title: artifact.id === 'design-notes' ? 'Alpha notes' : artifact.title }));
-  expect(filterArtifacts(items, 'all', '', 'oldest').map((a) => a.id)).toEqual(['homepage', 'easing-lab', 'design-notes']);
-  expect(filterArtifacts(items, 'all', '', 'name').map((a) => a.id)).toEqual(['design-notes', 'homepage', 'easing-lab']);
+  const items = artifacts.map((artifact) => ({
+    ...artifact,
+    title: artifact.id === 'design-notes' ? 'Alpha notes' : artifact.title,
+  }));
+  expect(filterArtifacts(items, 'all', '', 'oldest').map((a) => a.id)).toEqual([
+    'homepage',
+    'easing-lab',
+    'design-notes',
+  ]);
+  expect(filterArtifacts(items, 'all', '', 'name').map((a) => a.id)).toEqual([
+    'design-notes',
+    'homepage',
+    'easing-lab',
+  ]);
   expect(filterArtifacts(items, 'html', 'study', 'oldest')).toEqual([items[0]]);
   expect(items.map((a) => a.id)).toEqual(['easing-lab', 'design-notes', 'homepage']);
 });

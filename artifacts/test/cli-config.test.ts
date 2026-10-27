@@ -10,27 +10,57 @@ function setup() {
   const project = fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-config-project-'));
   const home = fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-config-home-'));
   const run = (...args: string[]) => {
-    const result = spawnSync(process.execPath, [entry, 'config', '--json', '--project-dir', project, ...args], { encoding: 'utf8', env: { ...process.env, XDG_CONFIG_HOME: home } });
-    return { status: result.status, json: JSON.parse(result.stdout.trim().split('\n').pop() || '{}') };
+    const result = spawnSync(
+      process.execPath,
+      [entry, 'config', '--json', '--project-dir', project, ...args],
+      { encoding: 'utf8', env: { ...process.env, XDG_CONFIG_HOME: home } },
+    );
+    return {
+      status: result.status,
+      json: JSON.parse(result.stdout.trim().split('\n').pop() || '{}'),
+    };
   };
   const globalFile = path.join(home, 'ryugi', 'config.json');
   const projectFile = path.join(project, '.ryugi', 'config.json');
-  return { run, read: (file: string) => JSON.parse(fs.readFileSync(file, 'utf8')), globalFile, projectFile, project };
+  return {
+    run,
+    read: (file: string) => JSON.parse(fs.readFileSync(file, 'utf8')),
+    globalFile,
+    projectFile,
+    project,
+  };
 }
 
 test('turns auto-publish on and off for every project', () => {
   const { run, read, globalFile } = setup();
-  expect(run('--auto-publish', 'off')).toEqual({ status: 0, json: { type: 'auto-publish', global: false, project: null } });
+  expect(run('--auto-publish', 'off')).toEqual({
+    status: 0,
+    json: { type: 'auto-publish', global: false, project: null },
+  });
   expect(read(globalFile).autoPublish).toBe(false);
-  expect(run('--auto-publish', 'on').json).toEqual({ type: 'auto-publish', global: true, project: null });
+  expect(run('--auto-publish', 'on').json).toEqual({
+    type: 'auto-publish',
+    global: true,
+    project: null,
+  });
 });
 
 test('sets and clears the override for one project', () => {
   const { run, read, projectFile } = setup();
-  expect(run('--auto-publish', 'off', '--project').json).toEqual({ type: 'auto-publish', global: null, project: false });
+  expect(run('--auto-publish', 'off', '--project').json).toEqual({
+    type: 'auto-publish',
+    global: null,
+    project: false,
+  });
   expect(read(projectFile)).toMatchObject({ autoPublish: false });
-  expect(fs.readFileSync(path.join(path.dirname(projectFile), '.gitignore'), 'utf8')).toContain('config.json');
-  expect(run('--auto-publish', 'inherit', '--project').json).toEqual({ type: 'auto-publish', global: null, project: null });
+  expect(fs.readFileSync(path.join(path.dirname(projectFile), '.gitignore'), 'utf8')).toContain(
+    'config.json',
+  );
+  expect(run('--auto-publish', 'inherit', '--project').json).toEqual({
+    type: 'auto-publish',
+    global: null,
+    project: null,
+  });
 });
 
 test('prints the current values without --auto-publish', () => {

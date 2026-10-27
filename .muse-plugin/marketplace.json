@@ -1,6 +1,6 @@
 {
-  "name": "ryugi-dev",
   "description": "Development marketplace for Ryugi core skills library",
+  "name": "ryugi-dev",
   "owner": {
     "name": "Innei",
     "email": "i@innei.dev"

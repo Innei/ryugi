@@ -82,7 +82,6 @@ edit inside a cell never reaches `doc.xml` on its own; it is flushed only by
 a later edit outside the grid, and an agent write in between overwrites it.
 `grid` stays rejected until haklex syncs nested editors.
 
-
 A grid cell is a nested editor root. Two things may not work across that
 boundary: comment anchors (they hang on top-level block ids) and Loro sync of
 the cell contents. The builder verifies both in the viewer. If either fails,
@@ -93,15 +92,15 @@ call is the builder's; it does not block the rest.
 
 Add the new tags and these attributes to the LiteXML section:
 
-| Tag | Attributes |
-|---|---|
-| `li` | `checked="true|false"` makes a task item |
-| `math` | inline by default; `display="block"` for a block |
-| `alert` | `type`: `note`, `tip`, `important`, `warning`, `caution` |
-| `img` | `width`, `height`, `caption` |
-| `ol` | `start` |
-| `details` | `summary`, `open` |
-| `dynamic` | `url`, `initial-height`, CDATA JSON props |
+| Tag       | Attributes                                               |
+| --------- | -------------------------------------------------------- |
+| `li`      | `checked="true                                           | false"` makes a task item |
+| `math`    | inline by default; `display="block"` for a block         |
+| `alert`   | `type`: `note`, `tip`, `important`, `warning`, `caution` |
+| `img`     | `width`, `height`, `caption`                             |
+| `ol`      | `start`                                                  |
+| `details` | `summary`, `open`                                        |
+| `dynamic` | `url`, `initial-height`, CDATA JSON props                |
 
 Keep it as terse as the current file. The `dynamic` entry points to `html.md`
 and `ui.md` for how to write the page instead of restating them.
@@ -158,7 +157,7 @@ are the agent's calls, from the builder check:
   rewrites `doc.xml` on every autosave of the human partner's edits, and the
   iframe doesn't reload then, so clearing would lose errors for good.
 - **`ran` per file.** `warnings.json` gets `"dynamic": {"assets/x.html":
-  {"ran": true}}`; `ran` is set by `loaded` for the file's current version
+{"ran": true}}`; `ran` is set by `loaded` for the file's current version
   and reset when the file changes. `document.md` tells the agent to treat a
   block's `runtime:` lines as complete only once its `ran` is true, as
   `html.md` does for pages.

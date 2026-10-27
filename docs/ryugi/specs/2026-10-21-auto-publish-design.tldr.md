@@ -19,15 +19,15 @@ Full spec (for the agent): `2026-10-21-auto-publish-design.md`
 
 ## Decided
 
-| Topic | Decision |
-|---|---|
-| Trigger | agent turn end, changed artifacts only |
-| Visibility | new copies private; existing visibility never changed |
-| Default | on after sign-in; existing sign-ins asked once |
-| Backfill | none |
-| Project override | `.ryugi/config.json`, gitignored, personal |
-| Unpublish | opts that artifact out until a manual publish |
-| Cloud cap | 100 stays; notice once |
+| Topic            | Decision                                              |
+| ---------------- | ----------------------------------------------------- |
+| Trigger          | agent turn end, changed artifacts only                |
+| Visibility       | new copies private; existing visibility never changed |
+| Default          | on after sign-in; existing sign-ins asked once        |
+| Backfill         | none                                                  |
+| Project override | `.ryugi/config.json`, gitignored, personal            |
+| Unpublish        | opts that artifact out until a manual publish         |
+| Cloud cap        | 100 stays; notice once                                |
 
 ## Check these (agent's calls, not yours yet)
 

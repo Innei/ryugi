@@ -2,7 +2,10 @@ import { DecoratorNode, type NodeKey, type SerializedLexicalNode, type Spread } 
 import type { ReactElement } from 'react';
 import { DynamicBlock } from './DynamicBlock';
 
-type SerializedDynamicNode = Spread<{ url: string; props: Record<string, unknown>; initialHeight: number }, SerializedLexicalNode>;
+type SerializedDynamicNode = Spread<
+  { url: string; props: Record<string, unknown>; initialHeight: number },
+  SerializedLexicalNode
+>;
 
 // Replaces @haklex/rich-ext-dynamic's node, which import()s the component into the viewer's own origin; agent-written code must stay in the sandboxed iframe.
 export class DynamicNode extends DecoratorNode<ReactElement> {
@@ -30,7 +33,14 @@ export class DynamicNode extends DecoratorNode<ReactElement> {
   }
 
   exportJSON(): SerializedDynamicNode {
-    return { ...super.exportJSON(), type: 'dynamic', version: 1, url: this.__url, props: this.__props, initialHeight: this.__initialHeight };
+    return {
+      ...super.exportJSON(),
+      type: 'dynamic',
+      version: 1,
+      url: this.__url,
+      props: this.__props,
+      initialHeight: this.__initialHeight,
+    };
   }
 
   createDOM() {
@@ -46,6 +56,12 @@ export class DynamicNode extends DecoratorNode<ReactElement> {
   }
 
   decorate() {
-    return <DynamicBlock url={this.__url} componentProps={this.__props} initialHeight={this.__initialHeight} />;
+    return (
+      <DynamicBlock
+        url={this.__url}
+        componentProps={this.__props}
+        initialHeight={this.__initialHeight}
+      />
+    );
   }
 }

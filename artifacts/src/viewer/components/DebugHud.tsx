@@ -25,11 +25,19 @@ const styles = stylex.create({
   },
 });
 
-export function DebugHud({ renders, scaling }: { renders: ReadonlyMap<string, BoardRender>; scaling: boolean }) {
+export function DebugHud({
+  renders,
+  scaling,
+}: {
+  renders: ReadonlyMap<string, BoardRender>;
+  scaling: boolean;
+}) {
   const [stats, setStats] = useState({ fps: 0, worst: 0, slow: 0 });
   useEffect(() => {
     const deltas: { at: number; ms: number }[] = [];
-    let last = performance.now(), published = last, id = 0;
+    let last = performance.now(),
+      published = last,
+      id = 0;
     const tick = (now: number) => {
       deltas.push({ at: now, ms: now - last });
       last = now;
@@ -48,7 +56,9 @@ export function DebugHud({ renders, scaling }: { renders: ReadonlyMap<string, Bo
     id = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(id);
   }, []);
-  const counts = TIERS.map((tier) => `${tier} ${[...renders.values()].filter((render) => render.tier === tier).length}`);
+  const counts = TIERS.map(
+    (tier) => `${tier} ${[...renders.values()].filter((render) => render.tier === tier).length}`,
+  );
   return (
     <div data-chrome="debug" aria-hidden="true" {...stylex.props(styles.hud)}>
       {`${stats.fps} fps · worst ${stats.worst} ms · ${stats.slow} slow\n${counts.join(' · ')}${scaling ? ' · zooming' : ''}`}

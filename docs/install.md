@@ -38,7 +38,7 @@ following your harness's plugin docs.
 
 ```bash
 devin plugins install Innei/ryugi
-devin plugins update ryugi   # update later
+devin plugins update ryugi # update later
 ```
 
 ## Factory Droid
@@ -52,7 +52,7 @@ droid plugin install ryugi@ryugi
 
 ```bash
 gemini extensions install https://github.com/Innei/ryugi
-gemini extensions update ryugi   # update later
+gemini extensions update ryugi # update later
 ```
 
 ## Kimi Code
@@ -98,7 +98,7 @@ when prompted.
 
 ```bash
 qwen extensions install Innei/ryugi
-qwen extensions update ryugi   # update later
+qwen extensions update ryugi # update later
 ```
 
 ## Hermes Agent
@@ -116,7 +116,7 @@ loses the bootstrap — start a fresh session if skills stop triggering.
 ```bash
 muse plugins install ./
 muse plugins approve ryugi
-muse plugins update ryugi   # update later
+muse plugins update ryugi # update later
 ```
 
 `muse plugins install ./ryugi` after a clone works the same way. Restart any

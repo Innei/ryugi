@@ -1,7 +1,11 @@
 import { blockIdState } from '@haklex/rich-editor';
 import { $getNearestNodeFromDOMNode, $getRoot, $getState, type LexicalEditor } from 'lexical';
 import { useEffect, useRef } from 'react';
-import { DOCUMENT_SELECTION_LIMITS, type DocumentSelectionMessage, type DocumentSelectionState } from '../../shared/selection';
+import {
+  DOCUMENT_SELECTION_LIMITS,
+  type DocumentSelectionMessage,
+  type DocumentSelectionState,
+} from '../../shared/selection';
 import { selectionContext } from './selectionContext';
 
 const TAB = crypto.randomUUID();
@@ -11,7 +15,13 @@ const EMPTY: DocumentSelectionState = { quote: '', blockIds: [], heading: '' };
 function readSelection(editor: LexicalEditor): DocumentSelectionState {
   const selection = window.getSelection();
   const root = editor.getRootElement();
-  if (!selection || selection.isCollapsed || !root?.contains(selection.anchorNode) || !root.contains(selection.focusNode)) return EMPTY;
+  if (
+    !selection ||
+    selection.isCollapsed ||
+    !root?.contains(selection.anchorNode) ||
+    !root.contains(selection.focusNode)
+  )
+    return EMPTY;
   const quote = selection.toString().trim().slice(0, DOCUMENT_SELECTION_LIMITS.quote);
   if (!quote) return EMPTY;
   return editor.read(() => {
@@ -23,12 +33,21 @@ function readSelection(editor: LexicalEditor): DocumentSelectionState {
     const from = indexOf(selection.anchorNode);
     const to = indexOf(selection.focusNode);
     if (from < 0 || to < 0) return { ...EMPTY, quote };
-    const summaries = blocks.map((block) => ({ id: $getState(block, blockIdState) || '', heading: block.getType() === 'heading', text: block.getTextContent().slice(0, DOCUMENT_SELECTION_LIMITS.heading) }));
+    const summaries = blocks.map((block) => ({
+      id: $getState(block, blockIdState) || '',
+      heading: block.getType() === 'heading',
+      text: block.getTextContent().slice(0, DOCUMENT_SELECTION_LIMITS.heading),
+    }));
     return { quote, ...selectionContext(summaries, from, to) };
   });
 }
 
-export function useDocumentSelectionSync(editor: LexicalEditor | null, artifact: string, live: boolean, send: (message: DocumentSelectionMessage) => void) {
+export function useDocumentSelectionSync(
+  editor: LexicalEditor | null,
+  artifact: string,
+  live: boolean,
+  send: (message: DocumentSelectionMessage) => void,
+) {
   const last = useRef<DocumentSelectionState>(EMPTY);
 
   useEffect(() => {
@@ -52,6 +71,7 @@ export function useDocumentSelectionSync(editor: LexicalEditor | null, artifact:
   }, [editor, artifact, send]);
 
   useEffect(() => {
-    if (live && last.current.quote) send({ type: 'selection', artifact, tab: TAB, human: false, ...last.current });
+    if (live && last.current.quote)
+      send({ type: 'selection', artifact, tab: TAB, human: false, ...last.current });
   }, [live, artifact, send]);
 }

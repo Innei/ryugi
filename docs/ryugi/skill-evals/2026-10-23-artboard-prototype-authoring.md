@@ -30,14 +30,14 @@ and explain state lifetime, cross-board links and remaining verification.
 The baseline used the unmodified `skills/artifacts` at `8fae353`. Updated
 runs used the new authoring guide and `examples/today-inbox.html`.
 
-| Outcome | Baseline | Updated guide |
-|---------|----------|---------------|
-| Found a runnable interactive-board example | 0/5; all identified the gap | 5/5; adapted `examples/today-inbox.html` |
-| Retained horizontal scrolling | 3/5; two proposed fitting both cards into the frame | 5/5; scrollable row and nonshrinking cards |
-| Could cite documented Replay and expansion state lifetime | 0/5; Replay was explicitly undocumented | 5/5; fresh state on Replay and independent expansion iframe |
-| Kept shared flow state in one board | 5/5, as an implementation choice | 5/5, supported by the guide and example |
-| Rejected warnings-only interaction acceptance | 5/5 | 5/5 |
-| Rejected borrowed configuration instructions | 5/5 | 5/5 |
+| Outcome                                                   | Baseline                                            | Updated guide                                               |
+| --------------------------------------------------------- | --------------------------------------------------- | ----------------------------------------------------------- |
+| Found a runnable interactive-board example                | 0/5; all identified the gap                         | 5/5; adapted `examples/today-inbox.html`                    |
+| Retained horizontal scrolling                             | 3/5; two proposed fitting both cards into the frame | 5/5; scrollable row and nonshrinking cards                  |
+| Could cite documented Replay and expansion state lifetime | 0/5; Replay was explicitly undocumented             | 5/5; fresh state on Replay and independent expansion iframe |
+| Kept shared flow state in one board                       | 5/5, as an implementation choice                    | 5/5, supported by the guide and example                     |
+| Rejected warnings-only interaction acceptance             | 5/5                                                 | 5/5                                                         |
+| Rejected borrowed configuration instructions              | 5/5                                                 | 5/5                                                         |
 
 Baseline excerpts:
 

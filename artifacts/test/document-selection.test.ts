@@ -20,7 +20,10 @@ test('a selection inside a heading names that heading', () => {
 });
 
 test('a selection made backwards gives the same blocks', () => {
-  expect(selectionContext(blocks, 3, 1)).toEqual({ blockIds: ['p1', 'h2', 'p2'], heading: '同步策略' });
+  expect(selectionContext(blocks, 3, 1)).toEqual({
+    blockIds: ['p1', 'h2', 'p2'],
+    heading: '同步策略',
+  });
 });
 
 test('no heading above means an empty heading', () => {

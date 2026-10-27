@@ -43,7 +43,7 @@ setup_project() {
   mkdir -p "$PROJECT/src/feature" "$PROJECT/bin"
   echo "test('top')" > "$PROJECT/src/top.test.ts"
   echo "test('nested')" > "$PROJECT/src/feature/nested.test.ts"
-  cat > "$PROJECT/bin/npm" <<'EOF'
+  cat > "$PROJECT/bin/npm" << 'EOF'
 #!/usr/bin/env bash
 touch pollution.marker
 EOF

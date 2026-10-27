@@ -8,8 +8,13 @@ export interface Credentials {
   login: string;
 }
 
-export function credentialsFile(env: Record<string, string | undefined>, platform: string, home: string) {
-  if (platform === 'win32' && env.APPDATA) return path.join(env.APPDATA, 'ryugi', 'credentials.json');
+export function credentialsFile(
+  env: Record<string, string | undefined>,
+  platform: string,
+  home: string,
+) {
+  if (platform === 'win32' && env.APPDATA)
+    return path.join(env.APPDATA, 'ryugi', 'credentials.json');
   return path.join(env.XDG_CONFIG_HOME || path.join(home, '.config'), 'ryugi', 'credentials.json');
 }
 
@@ -22,7 +27,8 @@ export function readCredentials(file: string, origin: string): Credentials | nul
   }
   if (typeof raw !== 'object' || raw === null) return null;
   const { origin: savedOrigin, token, login } = raw as Record<string, unknown>;
-  if (typeof savedOrigin !== 'string' || typeof token !== 'string' || typeof login !== 'string') return null;
+  if (typeof savedOrigin !== 'string' || typeof token !== 'string' || typeof login !== 'string')
+    return null;
   if (savedOrigin !== origin) return null;
   return { origin: savedOrigin, token, login };
 }

@@ -1,25 +1,11 @@
 {
-  "name": "ryugi",
-  "version": "1.44.0",
-  "description": "An agentic skills framework & software development methodology that works: planning, TDD, debugging, and collaboration workflows.",
   "author": {
     "name": "Innei",
     "email": "i@innei.dev",
     "url": "https://github.com/Innei"
   },
+  "description": "An agentic skills framework & software development methodology that works: planning, TDD, debugging, and collaboration workflows.",
   "homepage": "https://github.com/Innei/ryugi",
-  "repository": "https://github.com/Innei/ryugi",
-  "license": "MIT",
-  "keywords": [
-    "brainstorming",
-    "skills",
-    "planning",
-    "tdd",
-    "debugging",
-    "code-review",
-    "workflow"
-  ],
-  "skills": "./skills/",
   "hooks": {},
   "interface": {
     "displayName": "Ryugi",
@@ -27,11 +13,7 @@
     "longDescription": "Use Ryugi to guide agent work through brainstorming with Artboard mockups, building an approved spec inline under test-driven development, systematic debugging, and isolated worktrees.",
     "developerName": "Innei",
     "category": "Developer Tools",
-    "capabilities": [
-      "Interactive",
-      "Read",
-      "Write"
-    ],
+    "capabilities": ["Interactive", "Read", "Write"],
     "defaultPrompt": [
       "I've got an idea for something I'd like to build.",
       "Let's add a feature to this project."
@@ -43,5 +25,19 @@
     "composerIcon": "./assets/ryugi-small.svg",
     "logo": "./assets/app-icon.png",
     "screenshots": []
-  }
+  },
+  "keywords": [
+    "brainstorming",
+    "skills",
+    "planning",
+    "tdd",
+    "debugging",
+    "code-review",
+    "workflow"
+  ],
+  "license": "MIT",
+  "name": "ryugi",
+  "repository": "https://github.com/Innei/ryugi",
+  "skills": "./skills/",
+  "version": "1.44.0"
 }

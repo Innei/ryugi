@@ -15,9 +15,13 @@ The runtime loads with `defer`. A page script that needs the components should
 wait for the document event:
 
 ```js
-document.addEventListener('ryugi-ui:ready', () => {
-  // custom elements are defined
-}, { once: true })
+document.addEventListener(
+  'ryugi-ui:ready',
+  () => {
+    // custom elements are defined
+  },
+  { once: true },
+);
 ```
 
 Use these for controls and basic display. Use plain HTML and CSS for layout;
@@ -31,13 +35,14 @@ there is no layout wrapper to learn.
 
   ```js
   document.addEventListener('ryugi-change', (event) => {
-    const { value, checked } = event.detail
-    console.log(event.target.id, value, checked)
-  })
+    const { value, checked } = event.detail;
+    console.log(event.target.id, value, checked);
+  });
   ```
 
   It bubbles. `value` is a string, number, boolean, or `null`; `checked` is
   present for checkboxes and switches.
+
 - `value` / `checked` attributes set the initial state. Read the current state
   from the element's `value` / `checked` property after `ryugi-ui:ready`, and
   listen for `ryugi-change` for later updates.
@@ -236,19 +241,27 @@ If the page has no `ryugi-` UI controls, opt in with the meta tag. Wait for
 `ryugi-ui:ready` before calling it:
 
 ```html
-<meta name="ryugi-ui" content="1">
+<meta name="ryugi-ui" content="1" />
 <button id="save" type="button">Save</button>
 <script>
-  document.addEventListener('ryugi-ui:ready', () => {
-    document.getElementById('save').addEventListener('click', async () => {
-      try {
-        await saveDraft(); // the page's own operation
-        window.ryugiToast.success({ id: 'save-result', title: 'Saved' });
-      } catch {
-        window.ryugiToast.error({ id: 'save-result', title: 'Save failed', description: 'Try again.' });
-      }
-    });
-  }, { once: true });
+  document.addEventListener(
+    'ryugi-ui:ready',
+    () => {
+      document.getElementById('save').addEventListener('click', async () => {
+        try {
+          await saveDraft(); // the page's own operation
+          window.ryugiToast.success({ id: 'save-result', title: 'Saved' });
+        } catch {
+          window.ryugiToast.error({
+            id: 'save-result',
+            title: 'Save failed',
+            description: 'Try again.',
+          });
+        }
+      });
+    },
+    { once: true },
+  );
 </script>
 ```
 
@@ -369,8 +382,8 @@ Attributes: `type` (`secondary`, `success`, `warning`, `danger`, `info`),
 
 <script>
   document.addEventListener('ryugi-change', (event) => {
-    document.body.dataset[event.target.id] = event.detail.value
-  })
+    document.body.dataset[event.target.id] = event.detail.value;
+  });
 </script>
 ```
 

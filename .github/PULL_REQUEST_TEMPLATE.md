@@ -11,29 +11,32 @@ closed. Add your report to that issue instead.
 -->
 
 ## Who is submitting this PR? (required)
+
 <!-- Required. PRs that omit this will be closed. We assume an agent wrote
      this PR — tell us which one, where it ran, and what your human partner
      asked you to do. We weigh contributions by what produced them: content
      reasoned from documentation is held to a different bar than work
      grounded in a real session. -->
 
-| Field | Value |
-|-------|-------|
-| Your model + version | |
-| Harness + version | |
-| All plugins installed | |
-| Human partner who reviewed this diff | |
+| Field                                | Value |
+| ------------------------------------ | ----- |
+| Your model + version                 |       |
+| Harness + version                    |       |
+| All plugins installed                |       |
+| Human partner who reviewed this diff |       |
 
 What your human partner asked you to do, in their words:
 <!-- As close to verbatim as you can get. If you wrote this PR by hand
      with no agent, say so. -->
 
 ## Human-authored summary (required, under 200 words)
+
 <!-- A human writes this section, in their own words: why this PR exists
      and what they checked before approving it. If an agent is submitting,
      that means your human partner, not you. -->
 
 ## What problem are you trying to solve?
+
 <!-- Describe the specific problem you encountered. If this was a session
      issue, include: what you were doing, what went wrong, the model's
      exact failure mode, and ideally a transcript or session log.
@@ -42,9 +45,11 @@ What your human partner asked you to do, in their words:
      failed? What was the user experience that motivated this? -->
 
 ## What does this PR change?
+
 <!-- 1-3 sentences. What, not why — the "why" belongs above. -->
 
 ## Is this change appropriate for the core library?
+
 <!-- Ryugi core contains general-purpose skills and infrastructure
      that benefit all users. Ask yourself:
 
@@ -58,15 +63,18 @@ What your human partner asked you to do, in their words:
      See the plugin development docs for how to publish it separately. -->
 
 ## What alternatives did you consider?
+
 <!-- What other approaches did you try or evaluate before landing on this
      one? Why were they worse? If you didn't consider alternatives, say so
      — but know that's a red flag. -->
 
 ## Does this PR contain multiple unrelated changes?
+
 <!-- If yes: stop. Split it into separate PRs. Bundled PRs will be closed.
      If you believe the changes are related, explain the dependency. -->
 
 ## Existing PRs
+
 - [ ] I have reviewed all open AND closed PRs for duplicates or prior art
 - Related PRs: <!-- #number, #number, or "none found" -->
 
@@ -76,8 +84,8 @@ What your human partner asked you to do, in their words:
 ## Environments tested
 
 | Harness (e.g. Claude Code, Cursor) | Harness version | Model | Model version/ID |
-|-------------------------------------|-----------------|-------|------------------|
-|                                     |                 |       |                  |
+| ---------------------------------- | --------------- | ----- | ---------------- |
+|                                    |                 |       |                  |
 
 ## New harness support (required if this PR adds a new harness)
 
@@ -119,6 +127,7 @@ paste the complete transcript here
 </details>
 
 ## Evaluation
+
 - What was the initial prompt you (or your human partner) used to start
   the session that led to this change?
 - How many eval sessions did you run AFTER making the change?
@@ -140,6 +149,7 @@ paste the complete transcript here
      eval methodology and results. These are not prose — they are code. -->
 
 ## Human review
+
 - [ ] A human has reviewed the COMPLETE proposed diff before submission
 
 <!--

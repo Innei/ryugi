@@ -36,11 +36,17 @@ if [ $# -ne 1 ]; then
 fi
 
 plan=$1
-[ -f "$plan" ] || { echo "no such plan file: $plan" >&2; exit 2; }
+[ -f "$plan" ] || {
+  echo "no such plan file: $plan" >&2
+  exit 2
+}
 
 slug=$(basename "$plan" .md)
 [ -n "$slug" ] && [ "$slug" != "." ] && [ "$slug" != ".." ] \
-  || { echo "cannot derive a workspace name from: $plan" >&2; exit 2; }
+  || {
+    echo "cannot derive a workspace name from: $plan" >&2
+    exit 2
+  }
 
 # Physical path, spelled the way pwd -P spells the plan path below: on Git
 # Bash, rev-parse prints C:/Users/... while pwd prints /c/Users/..., and the
@@ -55,7 +61,7 @@ plan_dir=$(CDPATH='' cd -- "$(dirname "$plan")" && pwd -P)
 plan_abs="$plan_dir/$(basename "$plan")"
 case "$plan_abs" in
   "$root"/*) plan_id=${plan_abs#"$root"/} ;;
-  *)         plan_id=$plan_abs ;;
+  *) plan_id=$plan_abs ;;
 esac
 
 # True when the workspace at $1 is (or becomes) this plan's: an existing

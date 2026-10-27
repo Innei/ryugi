@@ -17,18 +17,18 @@ The full spec, written for the builder: `2026-10-27-agent-readable-links-design.
 
 ## Decisions
 
-| Item | Decision | Whose |
-|------|----------|-------|
-| Signpost in HTML | yes | yours |
-| Anonymous requests | no source URL; CLI instruction for everyone | yours |
-| `get` command using CLI sign-in | yes | yours |
-| Types | document, artboard, html | accepted |
-| Output | source by default, `--json` wraps | accepted |
-| Document format | LiteXML with block ids | accepted |
-| Comments | included, `--no-comments` drops | accepted |
-| Signpost places | head meta + hidden body text | accepted |
-| Signpost command | `npx -y ryugi-artifacts@latest get` | accepted |
-| Skill guidance | SKILL.md section | accepted |
+| Item                            | Decision                                    | Whose    |
+| ------------------------------- | ------------------------------------------- | -------- |
+| Signpost in HTML                | yes                                         | yours    |
+| Anonymous requests              | no source URL; CLI instruction for everyone | yours    |
+| `get` command using CLI sign-in | yes                                         | yours    |
+| Types                           | document, artboard, html                    | accepted |
+| Output                          | source by default, `--json` wraps           | accepted |
+| Document format                 | LiteXML with block ids                      | accepted |
+| Comments                        | included, `--no-comments` drops             | accepted |
+| Signpost places                 | head meta + hidden body text                | accepted |
+| Signpost command                | `npx -y ryugi-artifacts@latest get`         | accepted |
+| Skill guidance                  | SKILL.md section                            | accepted |
 
 ## Check these (my calls)
 

@@ -61,19 +61,19 @@ environment, I need to see it change."
 
 ## Decided with the human partner
 
-| Topic | Decision |
-|---|---|
-| Entry point for published artifacts | the cloud page |
-| Same machine as the local server | cloud page connects to localhost directly, not via the DO |
-| Other machines | through the CF relay |
-| Types live on the cloud page | all: document, artboard, HTML, same as local |
-| Live over CF | yes, for the owner, all types |
-| `localhost` link | kept; same interactions; no redirect |
-| Safari | not handled; falls back to CF |
-| Link the agent gives | the cloud link when one exists |
-| New artifact | `start` creates an empty cloud record for the link; the owner's page renders it live from the host until a version is published |
-| Who can connect directly | only the signed-in owner |
-| How the page finds the port and key | the local server reports them to the relay; the owner's page reads them and tries `127.0.0.1:<port>`, falling back to CF |
+| Topic                               | Decision                                                                                                                        |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| Entry point for published artifacts | the cloud page                                                                                                                  |
+| Same machine as the local server    | cloud page connects to localhost directly, not via the DO                                                                       |
+| Other machines                      | through the CF relay                                                                                                            |
+| Types live on the cloud page        | all: document, artboard, HTML, same as local                                                                                    |
+| Live over CF                        | yes, for the owner, all types                                                                                                   |
+| `localhost` link                    | kept; same interactions; no redirect                                                                                            |
+| Safari                              | not handled; falls back to CF                                                                                                   |
+| Link the agent gives                | the cloud link when one exists                                                                                                  |
+| New artifact                        | `start` creates an empty cloud record for the link; the owner's page renders it live from the host until a version is published |
+| Who can connect directly            | only the signed-in owner                                                                                                        |
+| How the page finds the port and key | the local server reports them to the relay; the owner's page reads them and tries `127.0.0.1:<port>`, falling back to CF        |
 
 ## Current state (2026-10-21)
 
@@ -111,7 +111,7 @@ Worker repo.
   Claude Code turn-end hook calls (`hooks/flush-artifacts.cjs`). `cloud.url`
   is written to `<project>/.ryugi/config.json` after that.
 - **`start` output** (`cli/start.ts`): `{type, url, port, root, link?,
-  reused?}`; `link` is the localhost URL. The skill tells the agent to give
+reused?}`; `link` is the localhost URL. The skill tells the agent to give
   `link`.
 
 ## Design
@@ -130,7 +130,7 @@ Everything above the pipe (the layouts, the live hooks) is the same code for
 both, and the same code the `localhost` page runs. That is what makes the
 pages "the same interactions".
 
-*My call*: reuse the relay protocol for the direct pipe rather than teaching
+_My call_: reuse the relay protocol for the direct pipe rather than teaching
 the cloud page the local HTTP API, so there is one protocol to keep in sync
 and the direct pipe needs no CORS on `/api/*`.
 
@@ -165,14 +165,14 @@ Non-owners never get `local` and never try.
   sends it when it connects; a server restart reconnects with new values.
 - `ryugi-cloud` stores it in the host's `PeerInfo` and adds to the
   `presence` sent to that user's viewers **every** live host serving the id
-  (a list), not only the newest one `hostFor` picks. *My call*: two machines
+  (a list), not only the newest one `hostFor` picks. _My call_: two machines
   can serve the same cloud id, and the page should find its own machine's
   server. Viewers are already owner-only
   (`relay.controller.ts:30-33`: origin check, session, `findOwned`).
 - Older hosts send no `local`; older clouds strip it. Both still work,
   CF-only.
 
-*My call*: send the existing server key. A narrower token is possible but the
+_My call_: send the existing server key. A narrower token is possible but the
 key never leaves the owner's authenticated socket; the builder may introduce
 a scoped token if it stays simple.
 
@@ -203,8 +203,8 @@ a scoped token if it stays simple.
 - **Ops**: `meta` must work for artboard and HTML (it returns the same
   payload the local `/api/artifacts/<type>/:id` returns).
 - **Content over the relay**: on another machine the iframes cannot reach
-  localhost, so artboard pages and HTML files must come through CF. *My
-  call*: a new content route on the cloud content origin that is proxied
+  localhost, so artboard pages and HTML files must come through CF. _My
+  call_: a new content route on the cloud content origin that is proxied
   through the user's DO to the host as a request/reply `file` op, e.g.
   `ryugi-content.innei.dev/<id>/live/<signed owner token>/<path>`, keeping
   relative paths inside the HTML working and staying inside the existing
@@ -219,7 +219,7 @@ a scoped token if it stays simple.
 - **What the page sends back**: "same interactions" includes the signals the
   local page sends the agent: artboard selection and Inspector tweaks
   (`selection.json`), HTML `loaded` (the `ran` flag), and `runtime-error`
-  reports (warnings, `app.ts:401-437`). *My call*: carry all of them on both
+  reports (warnings, `app.ts:401-437`). _My call_: carry all of them on both
   pipes. Only the owner can connect, and the owner steering the agent from a
   phone is the point. The builder may tag remote runtime errors with their
   origin so the agent can tell them apart.
@@ -244,11 +244,11 @@ a scoped token if it stays simple.
 - If creating the record fails or the user is not signed in, `cloudLink` is
   absent and the agent gives `link` as today.
 - "Auto-publish is effective" means what it means today: signed in, enabled,
-  and Claude Code (the only harness whose turn-end hook flushes). *My call*:
+  and Claude Code (the only harness whose turn-end hook flushes). _My call_:
   other harnesses keep `link`, so no cloud snapshot is left frozen at its
   first version.
 - The server's browser auto-open (`server/main.ts`, `linkFor()`) opens
-  `cloudLink` when present, with the same-machine hint. *My call*: the cloud
+  `cloudLink` when present, with the same-machine hint. _My call_: the cloud
   page is the entry point, and one artifact should not open in two tabs.
 - `skills/artifacts/SKILL.md`: give `cloudLink` when present, otherwise
   `link`; the Auto-publish section's "give them `cloud.url` from

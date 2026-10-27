@@ -13,7 +13,13 @@ document.documentElement.lang = HTML_LANG[i18n.language as Locale];
 function Preview() {
   useSystemTheme();
   const route = parseRoute(location.pathname);
-  if (route.kind === 'preview') return <PreviewLayout type={route.type} id={document.documentElement.dataset.ryugiArtifactId ?? route.id} />;
+  if (route.kind === 'preview')
+    return (
+      <PreviewLayout
+        type={route.type}
+        id={document.documentElement.dataset.ryugiArtifactId ?? route.id}
+      />
+    );
   return <div className="artifact-preview-message">{i18n.t('preview.unavailable')}</div>;
 }
 

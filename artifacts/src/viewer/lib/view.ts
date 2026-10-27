@@ -23,7 +23,11 @@ const clampZoom = (k: number) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, k));
 
 const toBounds = (r: Rect): Bounds => ({ minX: r.x, minY: r.y, maxX: r.x + r.w, maxY: r.y + r.h });
 
-export function fitView(bounds: Bounds, viewport: { width: number; height: number }, insets: Insets): View {
+export function fitView(
+  bounds: Bounds,
+  viewport: { width: number; height: number },
+  insets: Insets,
+): View {
   const availW = Math.max(1, viewport.width - insets.left - insets.right);
   const availH = Math.max(1, viewport.height - insets.top - insets.bottom);
   const bw = Math.max(1, bounds.maxX - bounds.minX);
@@ -68,7 +72,10 @@ export function resolveFocus(
 ): { page: string; bounds: Bounds } | null {
   const board = canvas.boards[target];
   if (board) {
-    return { page: board.page, bounds: toBounds({ ...board, y: board.y - NAME_STRIP_H, h: board.h + NAME_STRIP_H }) };
+    return {
+      page: board.page,
+      bounds: toBounds({ ...board, y: board.y - NAME_STRIP_H, h: board.h + NAME_STRIP_H }),
+    };
   }
   for (const [page, pageLayout] of Object.entries(layout.pages)) {
     const rect = pageLayout.groups[target] ?? pageLayout.notes[target];
@@ -91,8 +98,20 @@ export interface LabelRule {
   cap: boolean;
 }
 
-export const GROUP_LABEL_RULE: LabelRule = { base: 27, follow: 0.7, min: 4, hideBelow: 0.05, cap: true };
-export const BOARD_LABEL_RULE: LabelRule = { base: 23, follow: 0.85, min: 0, hideBelow: 0.11, cap: true };
+export const GROUP_LABEL_RULE: LabelRule = {
+  base: 27,
+  follow: 0.7,
+  min: 4,
+  hideBelow: 0.05,
+  cap: true,
+};
+export const BOARD_LABEL_RULE: LabelRule = {
+  base: 23,
+  follow: 0.85,
+  min: 0,
+  hideBelow: 0.11,
+  cap: true,
+};
 const TITLE_RULE: Omit<LabelRule, 'base'> = { follow: 1, min: 24, hideBelow: 0, cap: false };
 
 export function labelSize(rule: LabelRule, k: number) {
@@ -101,11 +120,14 @@ export function labelSize(rule: LabelRule, k: number) {
   return Math.max(rule.cap ? Math.min(size, rule.base) : size, rule.min);
 }
 
-export const titleScale = (size: number, k: number) => labelSize({ ...TITLE_RULE, base: size }, k)! / (size * k);
+export const titleScale = (size: number, k: number) =>
+  labelSize({ ...TITLE_RULE, base: size }, k)! / (size * k);
 
 export function cubicBezier(x1: number, y1: number, x2: number, y2: number) {
-  const at = (t: number, a: number, b: number) => 3 * a * t * (1 - t) ** 2 + 3 * b * t ** 2 * (1 - t) + t ** 3;
-  const slope = (t: number, a: number, b: number) => 3 * a * (1 - t) ** 2 + 6 * (b - a) * t * (1 - t) + 3 * (1 - b) * t ** 2;
+  const at = (t: number, a: number, b: number) =>
+    3 * a * t * (1 - t) ** 2 + 3 * b * t ** 2 * (1 - t) + t ** 3;
+  const slope = (t: number, a: number, b: number) =>
+    3 * a * (1 - t) ** 2 + 6 * (b - a) * t * (1 - t) + 3 * (1 - b) * t ** 2;
   return (x: number) => {
     if (x <= 0 || x >= 1) return Math.min(1, Math.max(0, x));
     let t = x;

@@ -64,19 +64,19 @@ Then send `Let's make a react todo list`. Ryugi starts brainstorming before any 
 <details>
 <summary>Other harnesses</summary>
 
-| Harness | Command |
-|---|---|
-| Antigravity | `agy plugin install https://github.com/Innei/ryugi` |
-| Codex, Cursor | Add this repo as a local plugin source ([detail](docs/install.md#codex-cursor)) |
-| Devin CLI | `devin plugins install Innei/ryugi` |
+| Harness       | Command                                                                                               |
+| ------------- | ----------------------------------------------------------------------------------------------------- |
+| Antigravity   | `agy plugin install https://github.com/Innei/ryugi`                                                   |
+| Codex, Cursor | Add this repo as a local plugin source ([detail](docs/install.md#codex-cursor))                       |
+| Devin CLI     | `devin plugins install Innei/ryugi`                                                                   |
 | Factory Droid | `droid plugin marketplace add https://github.com/Innei/ryugi` then `droid plugin install ryugi@ryugi` |
-| Gemini CLI | `gemini extensions install https://github.com/Innei/ryugi` |
-| Kimi Code | `/plugins install https://github.com/Innei/ryugi` |
-| OpenCode | [.opencode/INSTALL.md](.opencode/INSTALL.md) |
-| Pi | `pi install git:github.com/Innei/ryugi` |
-| Qwen Code | `qwen extensions install Innei/ryugi` |
-| Hermes Agent | `hermes plugins install Innei/ryugi --enable` |
-| Muse | `muse plugins install ./` then `muse plugins approve ryugi` |
+| Gemini CLI    | `gemini extensions install https://github.com/Innei/ryugi`                                            |
+| Kimi Code     | `/plugins install https://github.com/Innei/ryugi`                                                     |
+| OpenCode      | [.opencode/INSTALL.md](.opencode/INSTALL.md)                                                          |
+| Pi            | `pi install git:github.com/Innei/ryugi`                                                               |
+| Qwen Code     | `qwen extensions install Innei/ryugi`                                                                 |
+| Hermes Agent  | `hermes plugins install Innei/ryugi --enable`                                                         |
+| Muse          | `muse plugins install ./` then `muse plugins approve ryugi`                                           |
 
 Updates and caveats: [docs/install.md](docs/install.md).
 

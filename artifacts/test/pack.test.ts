@@ -10,7 +10,13 @@ const tempDir = () => fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-pack-'));
 describe('packArtifact', () => {
   test('collects every file by its relative path, skipping dotfiles and dot directories', () => {
     const dir = tempDir();
-    writeFiles(dir, { 'index.html': '<p>hi</p>', 'img/a.png': 'png', '.DS_Store': 'x', '.cache/b.js': 'x', 'img/.hidden': 'x' });
+    writeFiles(dir, {
+      'index.html': '<p>hi</p>',
+      'img/a.png': 'png',
+      '.DS_Store': 'x',
+      '.cache/b.js': 'x',
+      'img/.hidden': 'x',
+    });
     const files = packArtifact(dir, 'html');
     expect(files.map((f) => f.path).sort()).toEqual(['img/a.png', 'index.html']);
     expect(files.find((f) => f.path === 'index.html')!.data.toString()).toBe('<p>hi</p>');
@@ -19,7 +25,11 @@ describe('packArtifact', () => {
   test('leaves out document comments', () => {
     const dir = tempDir();
     writeFiles(dir, { 'doc.xml': '<doc/>', 'comments.json': '{}', 'assets/comments.json': '{}' });
-    expect(packArtifact(dir, 'document').map((f) => f.path).sort()).toEqual(['assets/comments.json', 'doc.xml']);
+    expect(
+      packArtifact(dir, 'document')
+        .map((f) => f.path)
+        .sort(),
+    ).toEqual(['assets/comments.json', 'doc.xml']);
   });
 
   test('skips symlinks that leave the artifact directory', () => {

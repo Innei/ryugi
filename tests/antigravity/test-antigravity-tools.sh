@@ -14,7 +14,10 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 MAPPING="$REPO_ROOT/skills/using-ryugi/references/antigravity-tools.md"
 SKILL="$REPO_ROOT/skills/using-ryugi/SKILL.md"
 
-fail() { echo "FAIL: $*" >&2; exit 1; }
+fail() {
+  echo "FAIL: $*" >&2
+  exit 1
+}
 
 echo "test-antigravity-tools: checking Antigravity tool mapping"
 

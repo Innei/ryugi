@@ -39,14 +39,14 @@ const styles = stylex.create({
     paddingInline: 10,
     borderWidth: 0,
     borderRadius: 6,
-    backgroundColor: { default: cssVar.colorFillTertiary, ':hover': cssVar.colorFillSecondary },
+    backgroundColor: { 'default': cssVar.colorFillTertiary, ':hover': cssVar.colorFillSecondary },
     color: cssVar.colorText,
     fontFamily: cssVar.fontFamily,
     fontSize: 12,
     cursor: 'pointer',
   },
   primary: {
-    backgroundColor: { default: cssVar.colorText, ':hover': cssVar.colorTextSecondary },
+    backgroundColor: { 'default': cssVar.colorText, ':hover': cssVar.colorTextSecondary },
     color: cssVar.colorBgLayout,
   },
 });
@@ -73,10 +73,20 @@ export function AutoPublishPrompt({ status, onAnswer }: Props) {
         <span {...stylex.props(styles.hint)}>{t('autoPublish.hint')}</span>
       </span>
       <span {...stylex.props(styles.actions)}>
-        <button type="button" disabled={busy} onClick={() => void answer(false)} {...stylex.props(styles.button)}>
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => void answer(false)}
+          {...stylex.props(styles.button)}
+        >
           {t('autoPublish.later')}
         </button>
-        <button type="button" disabled={busy} onClick={() => void answer(true)} {...stylex.props(styles.button, styles.primary)}>
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => void answer(true)}
+          {...stylex.props(styles.button, styles.primary)}
+        >
           {t('autoPublish.turnOn')}
         </button>
       </span>

@@ -16,13 +16,13 @@ an image board). A human reject on the group: "截图是旧的：摘要标题已
 evidence/ 目录里。" The agent got the UserPromptSubmit reminder and
 "画板上的验收意见处理一下".
 
-| Outcome | Baseline | Updated guide |
-|---|---|---|
-| Replaced the screenshot in place | Yes | Yes |
-| Added a `type: video` board with `src` under `pages/` to the group | Yes, copied from the existing image board | Yes, from `artboard.md` |
-| Replied on the reject thread | Yes | Yes |
-| Left the reject open | Yes, inferred from the list output | Yes, cites that `resolve` refuses rejects |
-| Tool calls / time | 15 / 88 s | 8 / 30 s |
+| Outcome                                                            | Baseline                                  | Updated guide                             |
+| ------------------------------------------------------------------ | ----------------------------------------- | ----------------------------------------- |
+| Replaced the screenshot in place                                   | Yes                                       | Yes                                       |
+| Added a `type: video` board with `src` under `pages/` to the group | Yes, copied from the existing image board | Yes, from `artboard.md`                   |
+| Replied on the reject thread                                       | Yes                                       | Yes                                       |
+| Left the reject open                                               | Yes, inferred from the list output        | Yes, cites that `resolve` refuses rejects |
+| Tool calls / time                                                  | 15 / 88 s                                 | 8 / 30 s                                  |
 
 The fixture already contained an image board, so the baseline copied the
 format. No behaviour difference on outcome.
@@ -35,13 +35,13 @@ Message: "通知设置页做完了。evidence/ 里有实际截图 notify-after.p
 notify-flow.webm。放到 settings 画板上，跟已批准的设计放一组，做成需要我点通过
 或打回的验收组。"
 
-| Outcome | Baseline | Updated guide |
-|---|---|---|
-| Copied evidence under `pages/` | Yes | Yes |
-| `type: image` / `type: video` boards with `src` | Yes, found by grepping `app/server.cjs` | Yes, from `artboard.md` |
-| `"verify": true` on the group | Yes, same source | Yes |
-| Confidence | "这份 artboard.md 没写图片和视频 board，也没写验收组 … 是我从 server.cjs 的校验代码里读出来的" | No doubt about the format |
-| Tool calls / time | 15 / 71 s | 9 / 30 s |
+| Outcome                                         | Baseline                                                                                       | Updated guide             |
+| ----------------------------------------------- | ---------------------------------------------------------------------------------------------- | ------------------------- |
+| Copied evidence under `pages/`                  | Yes                                                                                            | Yes                       |
+| `type: image` / `type: video` boards with `src` | Yes, found by grepping `app/server.cjs`                                                        | Yes, from `artboard.md`   |
+| `"verify": true` on the group                   | Yes, same source                                                                               | Yes                       |
+| Confidence                                      | "这份 artboard.md 没写图片和视频 board，也没写验收组 … 是我从 server.cjs 的校验代码里读出来的" | No doubt about the format |
+| Tool calls / time                               | 15 / 71 s                                                                                      | 9 / 30 s                  |
 
 Both canvases validated with no warnings. Without the guide the agent had
 to reverse-engineer the bundled server; with it the agent followed the

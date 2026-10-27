@@ -55,15 +55,15 @@ artboard.
 
 Each HTML board is in exactly one state. The first matching rule wins.
 
-| # | When | State |
-|---|------|-------|
-| 0 | Legacy content (below) | every visible board live; no tiers, no snapshots |
-| 1 | Pinned: selected, playing, expanded, parameters open, tweaked, in the marquee | live, outside the cap |
-| 2 | Kept (below) | mounted, outside the cap |
-| 3 | Hover-activated (below) | live, inside the cap |
-| 4 | Zoom ≥ 0.4 and more than half the board on screen | live, at most 8 including rule 3, largest visible area first |
-| 5 | Within one viewport width of the screen | snapshot if one exists, else title card |
-| 6 | Farther | empty |
+| #   | When                                                                          | State                                                        |
+| --- | ----------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| 0   | Legacy content (below)                                                        | every visible board live; no tiers, no snapshots             |
+| 1   | Pinned: selected, playing, expanded, parameters open, tweaked, in the marquee | live, outside the cap                                        |
+| 2   | Kept (below)                                                                  | mounted, outside the cap                                     |
+| 3   | Hover-activated (below)                                                       | live, inside the cap                                         |
+| 4   | Zoom ≥ 0.4 and more than half the board on screen                             | live, at most 8 including rule 3, largest visible area first |
+| 5   | Within one viewport width of the screen                                       | snapshot if one exists, else title card                      |
+| 6   | Farther                                                                       | empty                                                        |
 
 Unchanged from 1.41: mounting at most two unready frames at a time, the 1.5 s
 linger before a demoted live board unmounts, frames transparent under their

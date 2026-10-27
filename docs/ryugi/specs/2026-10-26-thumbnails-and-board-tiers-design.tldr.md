@@ -23,18 +23,18 @@ The full spec, written for the builder: `2026-10-26-thumbnails-and-board-tiers-d
 
 ## Decided
 
-| Topic | Decision |
-|---|---|
-| Where thumbnail SVGs are made | Server: a new local `/api/thumbnail/...svg`; cloud keeps its route |
-| Package | `ryugi-artifacts/thumbnail` (pure function) plus `ArtifactThumbnail` (`<img>`) in the viewer |
-| HTML thumbnails | Cloud's title cover |
-| Live threshold | zoom ≥ 0.4, top 4 by visible area, plus anything in use |
-| Snapshot resolution | Smallest of 0.125 / 0.25 / 0.5 / 1 / 2 that is ≥ zoom × DPR |
-| Empty beyond | One screen away |
-| Mounts in flight | At most 2 |
-| Boards that can't be snapshotted (video, WebGL, failed fetch) | Same tiers; the placeholder stands in for the snapshot |
-| A board the agent just wrote, seen at overview | Placeholder until it next goes live (yours) |
-| Old cloud publishes | No compatibility code; they show placeholders until republished (yours) |
+| Topic                                                         | Decision                                                                                     |
+| ------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| Where thumbnail SVGs are made                                 | Server: a new local `/api/thumbnail/...svg`; cloud keeps its route                           |
+| Package                                                       | `ryugi-artifacts/thumbnail` (pure function) plus `ArtifactThumbnail` (`<img>`) in the viewer |
+| HTML thumbnails                                               | Cloud's title cover                                                                          |
+| Live threshold                                                | zoom ≥ 0.4, top 4 by visible area, plus anything in use                                      |
+| Snapshot resolution                                           | Smallest of 0.125 / 0.25 / 0.5 / 1 / 2 that is ≥ zoom × DPR                                  |
+| Empty beyond                                                  | One screen away                                                                              |
+| Mounts in flight                                              | At most 2                                                                                    |
+| Boards that can't be snapshotted (video, WebGL, failed fetch) | Same tiers; the placeholder stands in for the snapshot                                       |
+| A board the agent just wrote, seen at overview                | Placeholder until it next goes live (yours)                                                  |
+| Old cloud publishes                                           | No compatibility code; they show placeholders until republished (yours)                      |
 
 ## Check these (my calls)
 
@@ -47,12 +47,12 @@ The full spec, written for the builder: `2026-10-26-thumbnails-and-board-tiers-d
 
 ## Done when
 
-| Check | Target | Today |
-|---|---|---|
-| `real-data` zoom, frames over 33 ms out of 120 | ≤ 2 | 25–56 |
-| 20 s scenario, frames over 25 ms | ≤ 25 | ~80 |
-| Blank board area | ≤ 0.3% | 1.6% |
-| 35-board overview memory | at least 1 GB less | ~2.6 GB |
+| Check                                          | Target             | Today   |
+| ---------------------------------------------- | ------------------ | ------- |
+| `real-data` zoom, frames over 33 ms out of 120 | ≤ 2                | 25–56   |
+| 20 s scenario, frames over 25 ms               | ≤ 25               | ~80     |
+| Blank board area                               | ≤ 0.3%             | 1.6%    |
+| 35-board overview memory                       | at least 1 GB less | ~2.6 GB |
 
 ## Time
 

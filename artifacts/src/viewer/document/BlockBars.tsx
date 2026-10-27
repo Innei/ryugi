@@ -43,7 +43,13 @@ export function BlockBars({ container, anchors, threads, activeId }: Props) {
       if (anchor.kind !== 'block' || !shown.has(anchor.threadId)) continue;
       const [box] = anchorBoxes(anchor);
       if (!box) continue;
-      next.push({ id: anchor.threadId, left: box.left - origin.left, top: box.top - origin.top, width: box.right - box.left, height: box.bottom - box.top });
+      next.push({
+        id: anchor.threadId,
+        left: box.left - origin.left,
+        top: box.top - origin.top,
+        width: box.right - box.left,
+        height: box.bottom - box.top,
+      });
     }
     setBars(next);
   }, [container, anchors, threads, activeId]);

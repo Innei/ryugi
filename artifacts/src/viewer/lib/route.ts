@@ -10,7 +10,9 @@ export type Route =
 export function parseRoute(pathname: string): Route {
   if (pathname === '/' || pathname === '/index.html') return { kind: 'list' };
   const preview = pathname.startsWith('/preview/');
-  const match = /^\/([^/]+)\/([^/]+)\/?$/.exec(preview ? pathname.slice('/preview'.length) : pathname);
+  const match = /^\/([^/]+)\/([^/]+)\/?$/.exec(
+    preview ? pathname.slice('/preview'.length) : pathname,
+  );
   if (!match) return { kind: 'unknown' };
   const [, type = '', id = ''] = match;
   if (!isArtifactType(type) || !isArtifactLocator(id)) return { kind: 'unknown' };

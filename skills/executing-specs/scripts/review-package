@@ -24,7 +24,10 @@ usage() {
 
 [ $# -ge 2 ] || usage
 plan=$1
-[ -f "$plan" ] || { echo "no such plan file: $plan" >&2; exit 2; }
+[ -f "$plan" ] || {
+  echo "no such plan file: $plan" >&2
+  exit 2
+}
 
 workspace() {
   # Invoke via bash rather than direct exec: some extractors (Python zipfile)
@@ -36,12 +39,18 @@ if [ "$2" = "--exploring" ]; then
   [ $# -eq 2 ] || usage
   dir=$(workspace)
   flag="$dir/EXPLORING"
-  [ -f "$flag" ] || { echo "no EXPLORING file in $dir" >&2; exit 2; }
+  [ -f "$flag" ] || {
+    echo "no EXPLORING file in $dir" >&2
+    exit 2
+  }
   paths=()
   while IFS= read -r p; do
     [ -n "$p" ] && paths+=("$p")
   done < <(tail -n +2 "$flag")
-  [ ${#paths[@]} -gt 0 ] || { echo "EXPLORING lists no paths: $flag" >&2; exit 2; }
+  [ ${#paths[@]} -gt 0 ] || {
+    echo "EXPLORING lists no paths: $flag" >&2
+    exit 2
+  }
   out="$dir/review-exploring.diff"
   cd "$(git rev-parse --show-toplevel)"
   {
@@ -53,7 +62,7 @@ if [ "$2" = "--exploring" ]; then
     echo "## Diff"
     git diff -U10 HEAD -- "${paths[@]}"
     for p in "${paths[@]}"; do
-      if [ -f "$p" ] && ! git ls-files --error-unmatch -- "$p" >/dev/null 2>&1; then
+      if [ -f "$p" ] && ! git ls-files --error-unmatch -- "$p" > /dev/null 2>&1; then
         git diff --no-index -U10 -- /dev/null "$p" || true
       fi
     done
@@ -68,7 +77,10 @@ if [ "$2" = "--commits" ]; then
   shift 2
   shas=()
   for c in "$@"; do
-    git rev-parse --verify --quiet "$c^{commit}" >/dev/null || { echo "bad SHA: $c" >&2; exit 2; }
+    git rev-parse --verify --quiet "$c^{commit}" > /dev/null || {
+      echo "bad SHA: $c" >&2
+      exit 2
+    }
     shas+=("$(git rev-parse "$c")")
   done
   # git log --no-walk sorts by commit date, so the package reads oldest first
@@ -103,13 +115,25 @@ fi
 base=$2
 head=$3
 
-git rev-parse --verify --quiet "$base" >/dev/null || { echo "bad BASE: $base" >&2; exit 2; }
-git rev-parse --verify --quiet "$head" >/dev/null || { echo "bad HEAD: $head" >&2; exit 2; }
+git rev-parse --verify --quiet "$base" > /dev/null || {
+  echo "bad BASE: $base" >&2
+  exit 2
+}
+git rev-parse --verify --quiet "$head" > /dev/null || {
+  echo "bad HEAD: $head" >&2
+  exit 2
+}
 
 # Range guards (exit 3): a wrong-branch HEAD yields a range that is empty or
 # not rooted at BASE; either would silently produce a bogus review package.
-git merge-base --is-ancestor "$base" "$head" || { echo "HEAD is not a descendant of BASE: ${base}..${head}" >&2; exit 3; }
-[ "$(git rev-list --count "${base}..${head}")" -gt 0 ] || { echo "empty commit range: ${base}..${head}" >&2; exit 3; }
+git merge-base --is-ancestor "$base" "$head" || {
+  echo "HEAD is not a descendant of BASE: ${base}..${head}" >&2
+  exit 3
+}
+[ "$(git rev-list --count "${base}..${head}")" -gt 0 ] || {
+  echo "empty commit range: ${base}..${head}" >&2
+  exit 3
+}
 
 if [ $# -eq 4 ]; then
   out=$4

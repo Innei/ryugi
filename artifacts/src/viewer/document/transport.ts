@@ -3,7 +3,11 @@ import { DOCUMENT_FEATURES, DOCUMENT_FEATURES_HEADER } from '../../shared/docume
 import type { RelayPresence } from '../../shared/relay';
 import type { DocumentPayload } from '../../shared/types';
 import { createChannel, type Channel } from './channel';
-import { createRelayConnection, type RelayConnection, type RelayConnectionOptions } from './relayConnection';
+import {
+  createRelayConnection,
+  type RelayConnection,
+  type RelayConnectionOptions,
+} from './relayConnection';
 
 export interface DocumentMeta extends DocumentPayload {
   contentBase: string;
@@ -31,11 +35,20 @@ export interface DocumentTransport {
 
 export const encodeBase64 = (bytes: Uint8Array) => {
   let text = '';
-  for (let i = 0; i < bytes.length; i += 0x8000) text += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  for (let i = 0; i < bytes.length; i += 0x8000)
+    text += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
   return btoa(text);
 };
 
-export function createLocalTransport({ id, channel, send }: { id: string; channel: Channel; send: (message: unknown) => void }): DocumentTransport {
+export function createLocalTransport({
+  id,
+  channel,
+  send,
+}: {
+  id: string;
+  channel: Channel;
+  send: (message: unknown) => void;
+}): DocumentTransport {
   const post = (action: string, body: BodyInit, type: string) =>
     fetch(`/api/document/${id}/${action}`, {
       method: 'POST',
@@ -57,7 +70,11 @@ export function createLocalTransport({ id, channel, send }: { id: string; channe
       return state as DocumentState;
     },
     async update(bytes) {
-      const res = await post('update', bytes as Uint8Array<ArrayBuffer>, 'application/octet-stream');
+      const res = await post(
+        'update',
+        bytes as Uint8Array<ArrayBuffer>,
+        'application/octet-stream',
+      );
       if (!res.ok) throw new Error(`update failed (${res.status})`);
     },
     async comment(op) {
@@ -78,7 +95,9 @@ export interface RelayTransportOptions {
   connect?: (options: RelayConnectionOptions) => RelayConnection;
 }
 
-export function createRelayTransport(options: RelayTransportOptions): DocumentTransport & { close(): void } {
+export function createRelayTransport(
+  options: RelayTransportOptions,
+): DocumentTransport & { close(): void } {
   const channel = createChannel();
   const connection = (options.connect ?? createRelayConnection)({
     url: options.url,
@@ -95,19 +114,28 @@ export function createRelayTransport(options: RelayTransportOptions): DocumentTr
     close: connection.close,
     async meta() {
       const meta = await connection.request<DocumentMeta>({ op: 'meta' });
-      return /^https?:\/\//.test(meta.contentBase ?? '') ? meta : { ...meta, contentBase: options.contentBase };
+      return /^https?:\/\//.test(meta.contentBase ?? '')
+        ? meta
+        : { ...meta, contentBase: options.contentBase };
     },
     state: () => connection.request<DocumentState>({ op: 'state' }),
     async update(bytes) {
-      await connection.request({ op: 'update', bytes: encodeBase64(bytes), features: DOCUMENT_FEATURES });
+      await connection.request({
+        op: 'update',
+        bytes: encodeBase64(bytes),
+        features: DOCUMENT_FEATURES,
+      });
     },
     async comment(op) {
-      return (await connection.request<{ comments: CommentsFile }>({ op: 'comment', comment: op })).comments;
+      return (await connection.request<{ comments: CommentsFile }>({ op: 'comment', comment: op }))
+        .comments;
     },
     send(message) {
       const { type } = message as { type?: unknown };
-      if (type === 'selection') connection.request({ op: 'selection', selection: message as never }).catch(() => {});
-      else if (type === 'loaded' || type === 'runtime-error') connection.request({ op: 'client', message }).catch(() => {});
+      if (type === 'selection')
+        connection.request({ op: 'selection', selection: message as never }).catch(() => {});
+      else if (type === 'loaded' || type === 'runtime-error')
+        connection.request({ op: 'client', message }).catch(() => {});
     },
   };
 }

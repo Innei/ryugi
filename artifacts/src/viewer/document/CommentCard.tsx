@@ -33,7 +33,14 @@ const styles = stylex.create({
     paddingInline: 14,
     fontSize: 11,
   },
-  quote: { flex: 1, minWidth: 0, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', color: cssVar.colorWarningText },
+  quote: {
+    flex: 1,
+    minWidth: 0,
+    overflow: 'hidden',
+    whiteSpace: 'nowrap',
+    textOverflow: 'ellipsis',
+    color: cssVar.colorWarningText,
+  },
   icon: {
     flexShrink: 0,
     width: 22,
@@ -43,15 +50,30 @@ const styles = stylex.create({
     padding: 0,
     borderWidth: 0,
     borderRadius: 6,
-    backgroundColor: { default: 'transparent', ':hover': cssVar.colorFillTertiary },
-    color: { default: cssVar.colorTextTertiary, ':hover': cssVar.colorText },
+    backgroundColor: { 'default': 'transparent', ':hover': cssVar.colorFillTertiary },
+    color: { 'default': cssVar.colorTextTertiary, ':hover': cssVar.colorText },
     fontSize: 12,
     cursor: 'pointer',
   },
   body: { paddingBlock: 10, paddingInline: 14 },
-  who: { display: 'flex', alignItems: 'center', gap: 7, fontSize: 11, fontWeight: 600, marginBottom: 2 },
+  who: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 7,
+    fontSize: 11,
+    fontWeight: 600,
+    marginBottom: 2,
+  },
   replyBox: { overflow: 'hidden' },
-  collapsed: { display: 'flex', alignItems: 'center', gap: 8, paddingBlock: 8, paddingInline: 12, color: cssVar.colorTextTertiary, cursor: 'pointer' },
+  collapsed: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    paddingBlock: 8,
+    paddingInline: 12,
+    color: cssVar.colorTextTertiary,
+    cursor: 'pointer',
+  },
 });
 
 export function PanelFrame({ active, children }: { active?: boolean; children: ReactNode }) {
@@ -75,7 +97,19 @@ export type { ThreadActions };
 
 const CONFIRMED = { backgroundColor: '#2ea043', color: '#fff' };
 
-export function CommentCard({ thread, active, actions, onActivate, agent = 'Agent' }: { thread: Thread; active: boolean; actions?: ThreadActions; onActivate: () => void; agent?: string }) {
+export function CommentCard({
+  thread,
+  active,
+  actions,
+  onActivate,
+  agent = 'Agent',
+}: {
+  thread: Thread;
+  active: boolean;
+  actions?: ThreadActions;
+  onActivate: () => void;
+  agent?: string;
+}) {
   const [expanded, setExpanded] = useState(false);
   const [closing, setClosing] = useState(false);
   const [confirming, setConfirming] = useState(false);
@@ -97,11 +131,23 @@ export function CommentCard({ thread, active, actions, onActivate, agent = 'Agen
   const resolve = async (button: HTMLElement) => {
     if (confirming) return;
     setConfirming(true);
-    await play(button, [{ transform: 'scale(1)' }, { transform: 'scale(1.2)', offset: 0.23 }, { transform: 'scale(1)', offset: 0.52 }, { transform: 'scale(1)' }], {
-      duration: 420,
+    await play(
+      button,
+      [
+        { transform: 'scale(1)' },
+        { transform: 'scale(1.2)', offset: 0.23 },
+        { transform: 'scale(1)', offset: 0.52 },
+        { transform: 'scale(1)' },
+      ],
+      {
+        duration: 420,
+        easing: 'ease-out',
+      },
+    );
+    await play(content.current, [{ opacity: 1 }, { opacity: 0 }], {
+      duration: 120,
       easing: 'ease-out',
     });
-    await play(content.current, [{ opacity: 1 }, { opacity: 0 }], { duration: 120, easing: 'ease-out' });
     flushSync(() => {
       setClosing(true);
       setExpanded(false);
@@ -131,7 +177,8 @@ export function CommentCard({ thread, active, actions, onActivate, agent = 'Agen
           onClick={(event) => {
             onActivate();
             const interactive = (event.target as HTMLElement).closest('button, textarea, input, a');
-            if (!interactive && window.getSelection()?.isCollapsed !== false) setFocusReply((n) => n + 1);
+            if (!interactive && window.getSelection()?.isCollapsed !== false)
+              setFocusReply((n) => n + 1);
           }}
         >
           <PanelFrame active={active}>
@@ -139,7 +186,12 @@ export function CommentCard({ thread, active, actions, onActivate, agent = 'Agen
               <span {...stylex.props(styles.quote)}>{quote}</span>
               {actions ? <WaitingText thread={thread} agent={agent} /> : null}
               {!actions ? null : resolved ? (
-                <button type="button" title={t('common.reopen')} onClick={() => actions.reopen(thread.id)} {...stylex.props(styles.icon)}>
+                <button
+                  type="button"
+                  title={t('common.reopen')}
+                  onClick={() => actions.reopen(thread.id)}
+                  {...stylex.props(styles.icon)}
+                >
                   <RotateCcw size={13} strokeWidth={2.2} />
                 </button>
               ) : (
@@ -158,7 +210,11 @@ export function CommentCard({ thread, active, actions, onActivate, agent = 'Agen
             {actions && reply.shown ? (
               <div ref={reply.outer} {...stylex.props(styles.replyBox)}>
                 <div ref={reply.inner}>
-                  <Composer placeholder={t('common.reply')} focusKey={focusReply} onSubmit={(text) => actions.reply(thread.id, text)} />
+                  <Composer
+                    placeholder={t('common.reply')}
+                    focusKey={focusReply}
+                    onSubmit={(text) => actions.reply(thread.id, text)}
+                  />
                 </div>
               </div>
             ) : null}

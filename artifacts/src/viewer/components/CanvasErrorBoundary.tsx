@@ -40,7 +40,11 @@ export class CanvasErrorBoundary extends Component<Props, State> {
 
   render() {
     if (this.state.error) {
-      return <div {...stylex.props(styles.message)}>{t('chrome.canvasFailed', { message: this.state.error.message })}</div>;
+      return (
+        <div {...stylex.props(styles.message)}>
+          {t('chrome.canvasFailed', { message: this.state.error.message })}
+        </div>
+      );
     }
     return this.props.children;
   }

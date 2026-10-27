@@ -24,7 +24,9 @@ describe('commentNames', () => {
   test('the human is the signed-in login, with the GitHub avatar', () => {
     const { dir, agentFile, credentialsFile } = setup('Git Name', 'git@example.com');
     writeCredentials(credentialsFile, { origin, token: 't', login: 'innei' });
-    expect(commentNames({ agentFile, projectDir: dir, cloud: { origin, credentialsFile } }).human()).toEqual({
+    expect(
+      commentNames({ agentFile, projectDir: dir, cloud: { origin, credentialsFile } }).human(),
+    ).toEqual({
       name: 'innei',
       avatar: '/api/avatar/github/innei',
     });
@@ -32,9 +34,12 @@ describe('commentNames', () => {
 
   test('without a sign-in the human is the project git user, with the Gravatar of user.email', () => {
     const { dir, agentFile, credentialsFile } = setup('Git Name', ' Git@Example.com ');
-    expect(commentNames({ agentFile, projectDir: dir, cloud: { origin, credentialsFile } }).human()).toEqual({
+    expect(
+      commentNames({ agentFile, projectDir: dir, cloud: { origin, credentialsFile } }).human(),
+    ).toEqual({
       name: 'Git Name',
-      avatar: '/api/avatar/gravatar/c2695de4a87d7f4470ee32f01c25b264876f4da96e3241dd50f51184381ec8fd',
+      avatar:
+        '/api/avatar/gravatar/c2695de4a87d7f4470ee32f01c25b264876f4da96e3241dd50f51184381ec8fd',
     });
   });
 

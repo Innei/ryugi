@@ -32,18 +32,18 @@ prose blocks, box-drawing code blocks, images) and read by hand.
 
 ## Before and after
 
-| Arm / run | Opening (blocks before 2nd `h2`) | First diagram | Prose chars | Diagrams |
-|---|---|---|---|---|
-| Baseline / arch 1 | h1 p alert · ul p (goals) | §3 | 10771 | 2 |
-| Baseline / arch 2 | h1 p alert · ul p (goals) | §2 | 9189 | 3 |
-| Baseline / arch 3 | h1 p · ul (summary) | §4 | 8477 | 2 |
-| Candidate / arch 1 | h1 p alert · table (decisions) | §1 | 4127 | 3 |
-| Candidate / arch 2 | h1 p alert · table (decisions) | §1 | 5584 | 3 |
-| Candidate / arch 3 | h1 p alert · table (decisions) | §2 | 5176 | 3 |
-| Baseline / memo 1 | h1 p · ul | none | 1067 | 0 |
-| Baseline / memo 2 | h1 p · ul | none | 923 | 0 |
-| Candidate / memo 1 | h1 alert (conclusion) · table | §2, 4-node TTY rule | 1242 | 1 |
-| Candidate / memo 2 | h1 p · table | none | 1157 | 0 |
+| Arm / run          | Opening (blocks before 2nd `h2`) | First diagram       | Prose chars | Diagrams |
+| ------------------ | -------------------------------- | ------------------- | ----------- | -------- |
+| Baseline / arch 1  | h1 p alert · ul p (goals)        | §3                  | 10771       | 2        |
+| Baseline / arch 2  | h1 p alert · ul p (goals)        | §2                  | 9189        | 3        |
+| Baseline / arch 3  | h1 p · ul (summary)              | §4                  | 8477        | 2        |
+| Candidate / arch 1 | h1 p alert · table (decisions)   | §1                  | 4127        | 3        |
+| Candidate / arch 2 | h1 p alert · table (decisions)   | §1                  | 5584        | 3        |
+| Candidate / arch 3 | h1 p alert · table (decisions)   | §2                  | 5176        | 3        |
+| Baseline / memo 1  | h1 p · ul                        | none                | 1067        | 0        |
+| Baseline / memo 2  | h1 p · ul                        | none                | 923         | 0        |
+| Candidate / memo 1 | h1 alert (conclusion) · table    | §2, 4-node TTY rule | 1242        | 1        |
+| Candidate / memo 2 | h1 p · table                     | none                | 1157        | 0        |
 
 Baseline architecture docs did draw mermaid diagrams (Sonnet did not repeat
 Codex's zero-diagram failure), but opened with prose and a goals list, put

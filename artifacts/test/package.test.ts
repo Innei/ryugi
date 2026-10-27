@@ -8,7 +8,9 @@ const repoRoot = path.resolve(pkgDir, '..');
 const localApp = path.join(repoRoot, 'skills/artifacts/app');
 
 test('the published package holds the CLI, the server, the viewer under fixed entry names, its license and nothing else', () => {
-  const [pack] = JSON.parse(execFileSync('npm', ['pack', '--dry-run', '--json'], { cwd: pkgDir, encoding: 'utf8' }));
+  const [pack] = JSON.parse(
+    execFileSync('npm', ['pack', '--dry-run', '--json'], { cwd: pkgDir, encoding: 'utf8' }),
+  );
   const files = (pack.files as { path: string }[]).map((f) => f.path).sort();
   expect(files).toEqual(
     expect.arrayContaining([
@@ -46,23 +48,34 @@ test('the published package holds the CLI, the server, the viewer under fixed en
 
 test('the document page is a separate chunk that artboard and html pages never load', () => {
   const entry = fs.readFileSync(path.join(pkgDir, 'dist/viewer/index.js'), 'utf8');
-  expect(fs.readdirSync(path.join(pkgDir, 'dist/viewer')).some((file) => /^DocumentPage-.*\.js$/.test(file))).toBe(true);
+  expect(
+    fs
+      .readdirSync(path.join(pkgDir, 'dist/viewer'))
+      .some((file) => /^DocumentPage-.*\.js$/.test(file)),
+  ).toBe(true);
   expect(entry.length).toBeLessThan(1_500_000);
 });
 
 test('the published package installs nothing else: the server bundles its dependencies', () => {
   const pkg = JSON.parse(fs.readFileSync(path.join(pkgDir, 'package.json'), 'utf8'));
   expect(pkg.dependencies ?? {}).toEqual({});
-  for (const peer of Object.keys(pkg.peerDependencies ?? {})) expect(pkg.peerDependenciesMeta?.[peer], `${peer} must stay optional for CLI installs`).toEqual({ optional: true });
+  for (const peer of Object.keys(pkg.peerDependencies ?? {}))
+    expect(pkg.peerDependenciesMeta?.[peer], `${peer} must stay optional for CLI installs`).toEqual(
+      { optional: true },
+    );
 });
 
 test('the viewer is a production build even when built from the test runner', () => {
-  expect(fs.readFileSync(path.join(pkgDir, 'dist/viewer/index.js'), 'utf8')).not.toContain('react.dev/link');
+  expect(fs.readFileSync(path.join(pkgDir, 'dist/viewer/index.js'), 'utf8')).not.toContain(
+    'react.dev/link',
+  );
 });
 
 test('the server and viewer builds are mirrored into the plugin for local development', () => {
   expect(fs.existsSync(path.join(localApp, 'server.cjs'))).toBe(true);
-  expect(fs.readdirSync(path.join(localApp, 'viewer')).sort()).toEqual(fs.readdirSync(path.join(pkgDir, 'dist/viewer')).sort());
+  expect(fs.readdirSync(path.join(localApp, 'viewer')).sort()).toEqual(
+    fs.readdirSync(path.join(pkgDir, 'dist/viewer')).sort(),
+  );
   expect(fs.readFileSync(path.join(localApp, 'runtime/ryugi-ui.js'), 'utf8')).toBe(
     fs.readFileSync(path.join(pkgDir, 'dist/runtime/ryugi-ui.js'), 'utf8'),
   );
@@ -77,15 +90,23 @@ test('build output is never committed', () => {
     'artifacts/dist/server.cjs',
     'artifacts/dist/viewer/index.js',
   ]) {
-    expect(() => execFileSync('git', ['check-ignore', '-q', rel], { cwd: repoRoot }), rel).not.toThrow();
+    expect(
+      () => execFileSync('git', ['check-ignore', '-q', rel], { cwd: repoRoot }),
+      rel,
+    ).not.toThrow();
   }
 });
 
 test('the thumbnail entry is one self-contained module a Worker can bundle', async () => {
   const pkg = JSON.parse(fs.readFileSync(path.join(pkgDir, 'package.json'), 'utf8'));
-  expect(pkg.exports['./thumbnail']).toEqual({ types: './dist/viewer-lib/types/src/shared/thumbnail.d.ts', default: './dist/viewer-lib/thumbnail.js' });
+  expect(pkg.exports['./thumbnail']).toEqual({
+    types: './dist/viewer-lib/types/src/shared/thumbnail.d.ts',
+    default: './dist/viewer-lib/thumbnail.js',
+  });
   const file = path.join(pkgDir, 'dist/viewer-lib/thumbnail.js');
-  expect(fs.existsSync(path.join(pkgDir, 'dist/viewer-lib/types/src/shared/thumbnail.d.ts'))).toBe(true);
+  expect(fs.existsSync(path.join(pkgDir, 'dist/viewer-lib/types/src/shared/thumbnail.d.ts'))).toBe(
+    true,
+  );
   const code = fs.readFileSync(file, 'utf8');
   expect(code).not.toMatch(/\bimport\b|\brequire\(|\.css\b/);
   const { renderThumbnail, renderBoardPlaceholder, THUMBNAIL_PATH } = await import(file);

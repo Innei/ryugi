@@ -14,9 +14,22 @@ export function cloudErrorDetails(value: unknown): CloudErrorDetails {
   if (typeof fields.upgradeUrl === 'string') details.upgradeUrl = fields.upgradeUrl;
   if (fields.limit && typeof fields.limit === 'object') {
     const limit = fields.limit as Record<string, unknown>;
-    if (typeof limit.kind === 'string' && typeof limit.used === 'number' && Number.isFinite(limit.used) && limit.used >= 0 && typeof limit.max === 'number' && Number.isFinite(limit.max) && limit.max >= 0) {
+    if (
+      typeof limit.kind === 'string' &&
+      typeof limit.used === 'number' &&
+      Number.isFinite(limit.used) &&
+      limit.used >= 0 &&
+      typeof limit.max === 'number' &&
+      Number.isFinite(limit.max) &&
+      limit.max >= 0
+    ) {
       details.limit = { kind: limit.kind, used: limit.used, max: limit.max };
-      if (typeof limit.requested === 'number' && Number.isFinite(limit.requested) && limit.requested >= 0) details.limit.requested = limit.requested;
+      if (
+        typeof limit.requested === 'number' &&
+        Number.isFinite(limit.requested) &&
+        limit.requested >= 0
+      )
+        details.limit.requested = limit.requested;
     }
   }
   return details;

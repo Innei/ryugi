@@ -11,7 +11,13 @@ interface Options {
   startAtFocus?: boolean;
 }
 
-export function useArtboardPage({ canvas, layout, fitPage, fitFocus, startAtFocus = false }: Options) {
+export function useArtboardPage({
+  canvas,
+  layout,
+  fitPage,
+  fitFocus,
+  startAtFocus = false,
+}: Options) {
   const [page, setPage] = useState<string | null>(null);
   const seenActivePage = useRef<string | undefined>(undefined);
   const seenFocusAt = useRef<string | undefined>(undefined);
@@ -19,24 +25,35 @@ export function useArtboardPage({ canvas, layout, fitPage, fitFocus, startAtFocu
   const initialized = useRef(false);
   const [requested, writePage] = usePageQuery();
   const seenRequested = useRef(requested);
-  const selectPage = useCallback((id: string | null, replace = true) => {
-    setPage(id);
-    pendingFit.current = id;
-    seenRequested.current = id;
-    writePage(id, replace);
-  }, [writePage]);
+  const selectPage = useCallback(
+    (id: string | null, replace = true) => {
+      setPage(id);
+      pendingFit.current = id;
+      seenRequested.current = id;
+      writePage(id, replace);
+    },
+    [writePage],
+  );
 
   useEffect(() => {
     if (!canvas || !layout) return;
     const firstPage = canvas.pages[0]?.id ?? null;
-    const valid = (id: string | null | undefined) => id && canvas.pages.some((p) => p.id === id) ? id : null;
+    const valid = (id: string | null | undefined) =>
+      id && canvas.pages.some((p) => p.id === id) ? id : null;
 
     if (!initialized.current) {
       initialized.current = true;
       seenActivePage.current = canvas.activePage;
       seenFocusAt.current = canvas.focus?.at;
-      const focused = startAtFocus && canvas.focus ? resolveFocus(canvas, layout, canvas.focus.target)?.page : undefined;
-      const start = valid(requested) ?? (requested !== null ? firstPage : valid(focused) ?? valid(canvas.activePage) ?? firstPage);
+      const focused =
+        startAtFocus && canvas.focus
+          ? resolveFocus(canvas, layout, canvas.focus.target)?.page
+          : undefined;
+      const start =
+        valid(requested) ??
+        (requested !== null
+          ? firstPage
+          : (valid(focused) ?? valid(canvas.activePage) ?? firstPage));
       selectPage(start);
       return;
     }

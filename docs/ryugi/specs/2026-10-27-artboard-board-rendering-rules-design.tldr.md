@@ -21,15 +21,15 @@ The full spec, written for the builder: `2026-10-27-artboard-board-rendering-rul
 
 ## Decisions
 
-| Item | Decision | Whose |
-|------|----------|-------|
-| Keep after interaction | focus inside the board, max 6, LRU | accepted recommendation |
-| Hover | 600 ms dwell after zoom stops, < 4 px | yours (rewritten) |
-| When to capture | after `ready`; `changed` after `ready` | accepted |
-| Can't capture | release warming at 8 s, 10 s capture timeout, retry | accepted |
-| Live cap | half visible, max 8 | accepted |
-| Old content | no tiers, live iframes | accepted in chat |
-| Done when | issues fixed, no obvious frame drops | yours |
+| Item                   | Decision                                            | Whose                   |
+| ---------------------- | --------------------------------------------------- | ----------------------- |
+| Keep after interaction | focus inside the board, max 6, LRU                  | accepted recommendation |
+| Hover                  | 600 ms dwell after zoom stops, < 4 px               | yours (rewritten)       |
+| When to capture        | after `ready`; `changed` after `ready`              | accepted                |
+| Can't capture          | release warming at 8 s, 10 s capture timeout, retry | accepted                |
+| Live cap               | half visible, max 8                                 | accepted                |
+| Old content            | no tiers, live iframes                              | accepted in chat        |
+| Done when              | issues fixed, no obvious frame drops                | yours                   |
 
 ## Check these (my calls)
 

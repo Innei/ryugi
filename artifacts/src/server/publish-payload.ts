@@ -15,26 +15,51 @@ function sharedComments(file: CommentsFile): CommentsFile {
     version: 1,
     threads: file.threads
       .filter((thread) => !thread.messages.every((m) => m.deleted))
-      .map((thread) => ({ ...thread, messages: thread.messages.map(({ avatar: _avatar, ...message }) => message) })),
+      .map((thread) => ({
+        ...thread,
+        messages: thread.messages.map(({ avatar: _avatar, ...message }) => message),
+      })),
   };
 }
 
-export function publishPayload(ref: ArtifactRef, dir: string, title: string, payload: unknown, comments = emptyComments()): Record<string, unknown> {
+export function publishPayload(
+  ref: ArtifactRef,
+  dir: string,
+  title: string,
+  payload: unknown,
+  comments = emptyComments(),
+): Record<string, unknown> {
   if (ref.type === 'artboard') {
     const { canvas, layout, versions } = payload as CanvasPayload;
     return { canvas, layout, versions, snapshots: true };
   }
-  if (ref.type === 'document') return { title, state: parseDocument(fs.readFileSync(path.join(dir, 'doc.xml'), 'utf8')), comments: sharedComments(comments) };
+  if (ref.type === 'document')
+    return {
+      title,
+      state: parseDocument(fs.readFileSync(path.join(dir, 'doc.xml'), 'utf8')),
+      comments: sharedComments(comments),
+    };
   return { title };
 }
 
 const isPage = (type: ArtifactRef['type'], file: string) =>
-  type === 'html' ? file === 'index.html' : (type === 'document' || type === 'artboard') && file.endsWith('.html');
+  type === 'html'
+    ? file === 'index.html'
+    : (type === 'document' || type === 'artboard') && file.endsWith('.html');
 
 export function withCloudRuntime(type: ArtifactRef['type'], files: PackedFile[]): PackedFile[] {
   return files.map((file) =>
     isPage(type, file.path)
-      ? { path: file.path, data: Buffer.from(injectRuntime(file.data.toString('utf8'), { uiRuntimeUrl: CLOUD_RUNTIME_URL, embedded: type === 'document', inspector: type === 'artboard' })) }
+      ? {
+          path: file.path,
+          data: Buffer.from(
+            injectRuntime(file.data.toString('utf8'), {
+              uiRuntimeUrl: CLOUD_RUNTIME_URL,
+              embedded: type === 'document',
+              inspector: type === 'artboard',
+            }),
+          ),
+        }
       : file,
   );
 }

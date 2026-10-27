@@ -14,14 +14,14 @@ is false, finish idle, and add a mint sticky. Use documented fields only.
 
 ## Before and after
 
-| Outcome | Baseline | Updated guide |
-|---|---|---|
-| Complete initial skeleton | All three boards declared | All three boards declared |
-| Active writer before HTML | Unsupported; offered `focus` as the closest operation, explicitly saying it only zooms | `writing: "a"`, then `"b"`, then `"c"`, each before writing its file |
-| Pending versus active | All pending boards show `Drawing…`; no distinction | Active board shows `Drawing…` and pointer; others show `Waiting…` |
-| Revise after initial build | `building: false` plus `focus`; cannot report activity before revision | Set `writing: "a"` before editing, keeping `building: false` |
-| Idle or interrupted write | No supported writing state | Remove `writing`; explicitly absent, not `null`, including on failure or stop |
-| Mint sticky | Unsupported; yellow only | `color: "#cce8df"` |
+| Outcome                    | Baseline                                                                               | Updated guide                                                                 |
+| -------------------------- | -------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| Complete initial skeleton  | All three boards declared                                                              | All three boards declared                                                     |
+| Active writer before HTML  | Unsupported; offered `focus` as the closest operation, explicitly saying it only zooms | `writing: "a"`, then `"b"`, then `"c"`, each before writing its file          |
+| Pending versus active      | All pending boards show `Drawing…`; no distinction                                     | Active board shows `Drawing…` and pointer; others show `Waiting…`             |
+| Revise after initial build | `building: false` plus `focus`; cannot report activity before revision                 | Set `writing: "a"` before editing, keeping `building: false`                  |
+| Idle or interrupted write  | No supported writing state                                                             | Remove `writing`; explicitly absent, not `null`, including on failure or stop |
+| Mint sticky                | Unsupported; yellow only                                                               | `color: "#cce8df"`                                                            |
 
 Baseline excerpt: “It does not document a virtual agent pointer, an
 active-writing field, or sticky colors; the full scenario cannot be represented.”

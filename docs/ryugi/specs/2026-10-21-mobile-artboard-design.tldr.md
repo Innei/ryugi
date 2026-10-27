@@ -20,12 +20,12 @@ Full spec (for the agent): `2026-10-21-mobile-artboard-design.md`
 
 ## Decided
 
-| Topic | Decision |
-|---|---|
-| Browsing | canvas + jump panel (`q1-b`), details as drawn in `r2-b1` … `r2-b3` |
-| HTML pages | no change |
-| Inspector / selecting elements on the phone | hidden |
-| Look | no cards; flat bar and rows |
+| Topic                                       | Decision                                                            |
+| ------------------------------------------- | ------------------------------------------------------------------- |
+| Browsing                                    | canvas + jump panel (`q1-b`), details as drawn in `r2-b1` … `r2-b3` |
+| HTML pages                                  | no change                                                           |
+| Inspector / selecting elements on the phone | hidden                                                              |
+| Look                                        | no cards; flat bar and rows                                         |
 
 ## Check these (agent's calls, not yours yet)
 

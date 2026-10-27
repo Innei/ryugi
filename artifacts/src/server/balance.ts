@@ -32,7 +32,8 @@ export function unbalancedTag(xml: string): string | null {
     const name = rawName!.toLowerCase();
     if (closing) {
       const expected = open.pop();
-      if (expected !== name) return expected ? `</${name}> closes <${expected}>` : `</${name}> has no opening tag`;
+      if (expected !== name)
+        return expected ? `</${name}> closes <${expected}>` : `</${name}> has no opening tag`;
     } else if (!selfClosing && !VOID_TAGS.has(name)) {
       open.push(name);
     }

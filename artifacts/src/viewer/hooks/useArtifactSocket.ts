@@ -14,7 +14,10 @@ export function emitServerMessage(message: ServerMessage) {
   for (const listener of listeners) listener(message);
 }
 
-export function useArtifactSocket(onMessage: (message: ServerMessage) => void, onOpen?: () => void) {
+export function useArtifactSocket(
+  onMessage: (message: ServerMessage) => void,
+  onOpen?: () => void,
+) {
   const [live, setLive] = useState(false);
   const handlers = useRef({ onMessage, onOpen });
   const socketRef = useRef<WebSocket | null>(null);
@@ -27,7 +30,9 @@ export function useArtifactSocket(onMessage: (message: ServerMessage) => void, o
     let disposed = false;
 
     const connect = () => {
-      socket = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`);
+      socket = new WebSocket(
+        `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`,
+      );
       socketRef.current = socket;
       socket.onopen = () => {
         setLive(true);

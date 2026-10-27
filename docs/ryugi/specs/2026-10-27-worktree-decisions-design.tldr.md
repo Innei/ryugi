@@ -18,16 +18,16 @@ The full spec, written for the builder: `2026-10-27-worktree-decisions-design.md
 
 ## Decisions
 
-| Item | Decision | Whose |
-|------|----------|-------|
-| Split the shared-state row | HEAD moves → worktree; deps/lockfile/format/codegen → only with another agent present | yours |
-| Simplify the skill | yes, stop following Superpowers text | yours |
-| Where the table lives | `using-git-worktrees`; consent question removed | accepted |
-| Ignoring `.worktrees/` | `info/exclude`, no `.gitignore` commit | accepted |
-| Setup | frozen install by lockfile + one test run | accepted |
-| Uncommitted spec | copied into the worktree, not committed | accepted |
-| Tables | drop Quick Reference, keep 3 red flags | accepted |
-| Tests, eval, UPSTREAM.md | as round 1 item 6 | accepted |
+| Item                       | Decision                                                                              | Whose    |
+| -------------------------- | ------------------------------------------------------------------------------------- | -------- |
+| Split the shared-state row | HEAD moves → worktree; deps/lockfile/format/codegen → only with another agent present | yours    |
+| Simplify the skill         | yes, stop following Superpowers text                                                  | yours    |
+| Where the table lives      | `using-git-worktrees`; consent question removed                                       | accepted |
+| Ignoring `.worktrees/`     | `info/exclude`, no `.gitignore` commit                                                | accepted |
+| Setup                      | frozen install by lockfile + one test run                                             | accepted |
+| Uncommitted spec           | copied into the worktree, not committed                                               | accepted |
+| Tables                     | drop Quick Reference, keep 3 red flags                                                | accepted |
+| Tests, eval, UPSTREAM.md   | as round 1 item 6                                                                     | accepted |
 
 ## Check these (my calls)
 

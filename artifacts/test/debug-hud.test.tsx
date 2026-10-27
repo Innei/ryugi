@@ -5,8 +5,14 @@ import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { DebugHud } from '../src/viewer/components/DebugHud';
 import type { BoardRender } from '../src/viewer/lib/board-tiers';
 
-vi.mock('@stylexjs/stylex', async (original) => ({ ...await original<object>(), create: (value: unknown) => value, props: () => ({}) }));
-vi.mock('@lobehub/ui/stylex/cssVar.stylex', () => ({ cssVar: new Proxy({}, { get: (_, key) => `var(--${String(key)})` }) }));
+vi.mock('@stylexjs/stylex', async (original) => ({
+  ...(await original<object>()),
+  create: (value: unknown) => value,
+  props: () => ({}),
+}));
+vi.mock('@lobehub/ui/stylex/cssVar.stylex', () => ({
+  cssVar: new Proxy({}, { get: (_, key) => `var(--${String(key)})` }),
+}));
 
 let root: Root;
 let now = 0;
@@ -31,16 +37,28 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-const run = (count: number, ms: number) => act(() => {
-  for (let i = 0; i < count; i++) {
-    now += ms;
-    frames.splice(0).forEach((callback) => callback(now));
-  }
+const run = (count: number, ms: number) =>
+  act(() => {
+    for (let i = 0; i < count; i++) {
+      now += ms;
+      frames.splice(0).forEach((callback) => callback(now));
+    }
+  });
+const tier = (value: BoardRender['tier']): BoardRender => ({
+  tier: value,
+  mounted: value === 'live',
+  image: null,
+  overlay: false,
+  hidden: false,
 });
-const tier = (value: BoardRender['tier']): BoardRender => ({ tier: value, mounted: value === 'live', image: null, overlay: false, hidden: false });
 
 test('shows the frame rate, the slowest frame and slow frames over the last second, with board tiers', () => {
-  const renders = new Map([['a', tier('live')], ['b', tier('snapshot')], ['c', tier('snapshot')], ['d', tier('empty')]]);
+  const renders = new Map([
+    ['a', tier('live')],
+    ['b', tier('snapshot')],
+    ['c', tier('snapshot')],
+    ['d', tier('empty')],
+  ]);
   act(() => root.render(createElement(DebugHud, { renders, scaling: true })));
   run(60, 1000 / 60);
   const text = () => document.body.textContent ?? '';

@@ -1,12 +1,35 @@
 import { expect, test } from 'vitest';
-import { createSnapshotStore, indexedDbPersistence, snapshotKey, type SnapshotEntry, type SnapshotPersistence } from '../src/viewer/lib/snapshot-store';
+import {
+  createSnapshotStore,
+  indexedDbPersistence,
+  snapshotKey,
+  type SnapshotEntry,
+  type SnapshotPersistence,
+} from '../src/viewer/lib/snapshot-store';
 
-const parts = { artifact: 'artboard/ideas', file: 'pages/p/a.html', version: 3, scheme: 'light' as const, w: 1280, h: 800 };
-const entry = (label = 'full'): SnapshotEntry => ({ blob: new Blob([label], { type: 'image/png' }), width: 1280, height: 800, scale: 2 });
+const parts = {
+  artifact: 'artboard/ideas',
+  file: 'pages/p/a.html',
+  version: 3,
+  scheme: 'light' as const,
+  w: 1280,
+  h: 800,
+};
+const entry = (label = 'full'): SnapshotEntry => ({
+  blob: new Blob([label], { type: 'image/png' }),
+  width: 1280,
+  height: 800,
+  scale: 2,
+});
 
 function memoryPersistence() {
   const saved = new Map<string, SnapshotEntry>();
-  const persistence: SnapshotPersistence = { get: async (key) => saved.get(key), put: async (key, value) => { saved.set(key, value); } };
+  const persistence: SnapshotPersistence = {
+    get: async (key) => saved.get(key),
+    put: async (key, value) => {
+      saved.set(key, value);
+    },
+  };
   return { saved, persistence };
 }
 
@@ -16,9 +39,19 @@ function store(persistence = memoryPersistence().persistence) {
   const revoked: string[] = [];
   const instance = createSnapshotStore({
     persistence,
-    resize: async (blob, width, height) => { resized.push({ width, height }); return new Blob([`${await blob.text()}@${width}x${height}`]); },
-    createUrl: (blob) => { const url = `blob:${urls.length}`; urls.push(url); void blob; return url; },
-    revokeUrl: (url) => { revoked.push(url); },
+    resize: async (blob, width, height) => {
+      resized.push({ width, height });
+      return new Blob([`${await blob.text()}@${width}x${height}`]);
+    },
+    createUrl: (blob) => {
+      const url = `blob:${urls.length}`;
+      urls.push(url);
+      void blob;
+      return url;
+    },
+    revokeUrl: (url) => {
+      revoked.push(url);
+    },
   });
   return { instance, resized, urls, revoked };
 }

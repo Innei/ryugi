@@ -11,14 +11,14 @@ Boards support ordinary HTML, CSS and JavaScript. Start with the runnable
 `"interactive": true`. It needs no imports or support script. Both dismiss
 buttons update the count and empty state; the loops sheet preserves dismissals.
 
-| What you need | Author it as |
-|---------------|--------------|
-| Copy and layout | Literal HTML and CSS; set the copy's `lang`, a descriptive `<title>`, and accessible control names |
-| An action | A native button with an `addEventListener` handler and a visible result |
-| State and conditional views | Board-local JavaScript state; derive text, classes and `hidden` from it |
-| Repeated content | Literal elements for fixed sample content; create elements for dynamic data and attach their handlers |
-| Horizontal cards | A flex row with `overflow-x: auto` and nonshrinking cards; verify the last card is reachable |
-| A sheet | A labelled native `<dialog>` with working open/close controls and Escape dismissal |
+| What you need               | Author it as                                                                                          |
+| --------------------------- | ----------------------------------------------------------------------------------------------------- |
+| Copy and layout             | Literal HTML and CSS; set the copy's `lang`, a descriptive `<title>`, and accessible control names    |
+| An action                   | A native button with an `addEventListener` handler and a visible result                               |
+| State and conditional views | Board-local JavaScript state; derive text, classes and `hidden` from it                               |
+| Repeated content            | Literal elements for fixed sample content; create elements for dynamic data and attach their handlers |
+| Horizontal cards            | A flex row with `overflow-x: auto` and nonshrinking cards; verify the last card is reachable          |
+| A sheet                     | A labelled native `<dialog>` with working open/close controls and Escape dismissal                    |
 
 Keep fixed copy and layout in the markup so selected nodes can be matched
 back to source. Update the affected nodes when state changes. Inspector CSS
@@ -31,12 +31,12 @@ or transfer JavaScript state. Use links for independent destinations.
 
 ### Prototype state lifetime
 
-| Operation | Board-local state |
-|-----------|-------------------|
-| Open/close a sheet or switch sections in the same document | Preserved by that document's handlers |
-| Move away on the current canvas page | Playing, selected or tweaked frames stay mounted; ordinary previews can unload and restart |
-| Edit the board's HTML, use Replay, switch canvas pages or reload the viewer | The frame reloads or unmounts; initialize state again |
-| Expand a board | Opens a separate iframe; it starts its own state |
+| Operation                                                                   | Board-local state                                                                          |
+| --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| Open/close a sheet or switch sections in the same document                  | Preserved by that document's handlers                                                      |
+| Move away on the current canvas page                                        | Playing, selected or tweaked frames stay mounted; ordinary previews can unload and restart |
+| Edit the board's HTML, use Replay, switch canvas pages or reload the viewer | The frame reloads or unmounts; initialize state again                                      |
+| Expand a board                                                              | Opens a separate iframe; it starts its own state                                           |
 
 Artboard boards do not get the HTML artifact's control restoration. Keep
 prototype state in memory; `localStorage`, `sessionStorage` and cookies are
@@ -57,17 +57,43 @@ Put one JSON declaration in the HTML, before any JS that reads its values:
 
 ```html
 <script type="application/json" data-ryugi-tweaks>
-{"version":1,"controls":{
-  "accent":{"type":"color","label":"Accent","default":"#b45309",
-    "options":["#b45309","#355ecb","#24775a"],"section":"Appearance"},
-  "density":{"type":"enum","label":"Density","default":"comfortable",
-    "options":[{"value":"comfortable","label":"Comfortable"},
-               {"value":"compact","label":"Compact"}],"section":"Appearance"},
-  "count":{"type":"range","label":"Item count","default":2,
-    "min":0,"max":4,"step":1,"section":"Preview data"},
-  "showLoops":{"type":"boolean","label":"Show loops","default":true,
-    "section":"Preview data"}
-}}
+  {
+    "controls": {
+      "accent": {
+        "type": "color",
+        "label": "Accent",
+        "default": "#b45309",
+        "options": ["#b45309", "#355ecb", "#24775a"],
+        "section": "Appearance"
+      },
+      "density": {
+        "type": "enum",
+        "label": "Density",
+        "default": "comfortable",
+        "options": [
+          { "value": "comfortable", "label": "Comfortable" },
+          { "value": "compact", "label": "Compact" }
+        ],
+        "section": "Appearance"
+      },
+      "count": {
+        "type": "range",
+        "label": "Item count",
+        "default": 2,
+        "min": 0,
+        "max": 4,
+        "step": 1,
+        "section": "Preview data"
+      },
+      "showLoops": {
+        "type": "boolean",
+        "label": "Show loops",
+        "default": true,
+        "section": "Preview data"
+      }
+    },
+    "version": 1
+  }
 </script>
 ```
 
@@ -76,14 +102,14 @@ Every control needs `type` and `default`. `label` defaults to its key;
 then letters, digits, underscores or hyphens (at most 64 characters). Keys
 must be unique ignoring case because HTML attribute names ignore case.
 
-| Type | Values and extra fields |
-|------|-------------------------|
-| `color` | Six-digit hex; optional `options` list supplies swatches |
-| `range` | Number; requires `min` and `max`; `step` defaults to 1 |
-| `number` | Finite number; optional `min`, `max`, `step` |
-| `boolean` | `true` or `false` |
-| `enum` | String; `options` is a list of strings or `{value,label}` objects |
-| `text` | String, at most 512 characters |
+| Type      | Values and extra fields                                           |
+| --------- | ----------------------------------------------------------------- |
+| `color`   | Six-digit hex; optional `options` list supplies swatches          |
+| `range`   | Number; requires `min` and `max`; `step` defaults to 1            |
+| `number`  | Finite number; optional `min`, `max`, `step`                      |
+| `boolean` | `true` or `false`                                                 |
+| `enum`    | String; `options` is a list of strings or `{value,label}` objects |
+| `text`    | String, at most 512 characters                                    |
 
 Defaults and updates must match their type, bounds, step and options.
 There are at most 32 controls and 32 choices per control. Malformed JSON,
@@ -95,8 +121,12 @@ Each parameter sets `--tweak-<key>` and `data-tweak-<key>` on `<html>`.
 Numbers stay unitless: use `calc(var(--tweak-radius, 12) * 1px)` for a length.
 
 ```css
-button { background: var(--tweak-accent, #b45309); }
-html[data-tweak-density="compact"] article { padding: 10px; }
+button {
+  background: var(--tweak-accent, #b45309);
+}
+html[data-tweak-density='compact'] article {
+  padding: 10px;
+}
 ```
 
 `window.ryugiTweaks` reads a snapshot of the current typed values. Defaults
@@ -106,7 +136,9 @@ for `ryugi-tweaks`; `event.detail` contains the complete updated values:
 ```js
 function render() {
   const { count, showLoops } = window.ryugiTweaks;
-  cards.forEach((card, index) => { card.hidden = index >= count; });
+  cards.forEach((card, index) => {
+    card.hidden = index >= count;
+  });
   loopsButton.hidden = !showLoops;
 }
 document.addEventListener('ryugi-tweaks', render);

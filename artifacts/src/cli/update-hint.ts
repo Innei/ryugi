@@ -30,21 +30,31 @@ export function newer(a: string, b: string) {
 }
 
 export function updateCheck({ current, cached, now, env, tty, json, argv = [] }: UpdateCheckInput) {
-  if (!tty || json || env.CI || env.NO_UPDATE_NOTIFIER || env.RYUGI_ARTIFACTS_COMMAND) return { hint: null, refresh: false };
+  if (!tty || json || env.CI || env.NO_UPDATE_NOTIFIER || env.RYUGI_ARTIFACTS_COMMAND)
+    return { hint: null, refresh: false };
   const latest = cached?.version ?? '';
   const quiet = argv[0] === 'update' || wantsHelp(argv);
-  const hint = !quiet && RELEASE.test(current) && RELEASE.test(latest) && newer(latest, current)
-    ? `ryugi-artifacts ${latest} is available (you have ${current}). Run \`ryugi-artifacts update\` to install it.`
-    : null;
+  const hint =
+    !quiet && RELEASE.test(current) && RELEASE.test(latest) && newer(latest, current)
+      ? `ryugi-artifacts ${latest} is available (you have ${current}). Run \`ryugi-artifacts update\` to install it.`
+      : null;
   return { hint, refresh: !cached || now - cached.checkedAt >= CHECK_MS };
 }
 
-export const latestFile = (env: NodeJS.ProcessEnv) => path.join(env.XDG_CACHE_HOME || path.join(os.homedir(), '.cache'), 'ryugi', 'artifacts', 'latest.json');
+export const latestFile = (env: NodeJS.ProcessEnv) =>
+  path.join(
+    env.XDG_CACHE_HOME || path.join(os.homedir(), '.cache'),
+    'ryugi',
+    'artifacts',
+    'latest.json',
+  );
 
 export function readLatest(file: string): LatestRecord | null {
   try {
     const { version, checkedAt } = JSON.parse(fs.readFileSync(file, 'utf8'));
-    return typeof version === 'string' && typeof checkedAt === 'number' ? { version, checkedAt } : null;
+    return typeof version === 'string' && typeof checkedAt === 'number'
+      ? { version, checkedAt }
+      : null;
   } catch {
     return null;
   }
@@ -77,14 +87,26 @@ fetch(new URL('ryugi-artifacts/latest', registry), { signal: AbortSignal.timeout
 
 export function refreshLatest(file: string, registry: string) {
   const base = registry.endsWith('/') ? registry : `${registry}/`;
-  const child = spawn(process.execPath, ['-e', REFRESH, file, base], { detached: true, stdio: 'ignore' });
+  const child = spawn(process.execPath, ['-e', REFRESH, file, base], {
+    detached: true,
+    stdio: 'ignore',
+  });
   child.on('error', () => {});
   child.unref();
 }
 
 export function notifyUpdate(current: string, json: boolean, argv: string[]) {
   const file = latestFile(process.env);
-  const { hint, refresh } = updateCheck({ current, cached: readLatest(file), now: Date.now(), env: process.env, tty: !!process.stderr.isTTY, json, argv });
+  const { hint, refresh } = updateCheck({
+    current,
+    cached: readLatest(file),
+    now: Date.now(),
+    env: process.env,
+    tty: !!process.stderr.isTTY,
+    json,
+    argv,
+  });
   if (hint) console.error(hint);
-  if (refresh) refreshLatest(file, process.env.npm_config_registry || 'https://registry.npmjs.org/');
+  if (refresh)
+    refreshLatest(file, process.env.npm_config_registry || 'https://registry.npmjs.org/');
 }

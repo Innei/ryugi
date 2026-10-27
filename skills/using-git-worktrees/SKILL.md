@@ -27,16 +27,16 @@ they never count as edits you did not make.
 
 Take the first row that matches:
 
-| The checkout shows | Where you work |
-|---|---|
-| `--git-dir` differs from `--git-common-dir`, and `--show-superproject-working-tree` printed nothing (a linked worktree, not a submodule) | Stay there |
-| Your human partner's instructions say where to work | Follow them |
-| The work switches branches, rebases or bisects | New worktree, without asking |
-| A file the work changes has uncommitted edits you did not make | New worktree, without asking |
-| An `EXPLORING` file lists a path the work changes | New worktree, without asking |
-| The work changes dependencies or the lockfile, formats the whole repo, or runs codegen, and the checkout has uncommitted edits you did not make or any `EXPLORING` file | New worktree, without asking |
-| HEAD is on a branch that is neither the default branch nor one made for this work | Ask whether to use a worktree |
-| Anything else | In place, no question |
+| The checkout shows                                                                                                                                                      | Where you work                |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- |
+| `--git-dir` differs from `--git-common-dir`, and `--show-superproject-working-tree` printed nothing (a linked worktree, not a submodule)                                | Stay there                    |
+| Your human partner's instructions say where to work                                                                                                                     | Follow them                   |
+| The work switches branches, rebases or bisects                                                                                                                          | New worktree, without asking  |
+| A file the work changes has uncommitted edits you did not make                                                                                                          | New worktree, without asking  |
+| An `EXPLORING` file lists a path the work changes                                                                                                                       | New worktree, without asking  |
+| The work changes dependencies or the lockfile, formats the whole repo, or runs codegen, and the checkout has uncommitted edits you did not make or any `EXPLORING` file | New worktree, without asking  |
+| HEAD is on a branch that is neither the default branch nor one made for this work                                                                                       | Ask whether to use a worktree |
+| Anything else                                                                                                                                                           | In place, no question         |
 
 ## Create a worktree
 
@@ -98,8 +98,8 @@ your platform's workspace-exit tool if it has one.
 
 ## Common Rationalizations
 
-| Excuse | Reality |
-|--------|---------|
-| "I'm obviously not in a worktree — no need to check" | Run the Where to work commands. Harness-created isolation and submodules both fool eyeballing; the commands settle it. |
+| Excuse                                                         | Reality                                                                                                                                                                  |
+| -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| "I'm obviously not in a worktree — no need to check"           | Run the Where to work commands. Harness-created isolation and submodules both fool eyeballing; the commands settle it.                                                   |
 | "`git worktree add` is quicker than hunting for a native tool" | A native tool (e.g. `EnterWorktree`) owns placement, branching, and cleanup. Bypassing it is the #1 mistake — it creates phantom state your harness can't see or manage. |
-| "Removal refused — `--force` is just finishing the cleanup" | The refusal means files exist only in that worktree. `--force` destroys them permanently. Show your human partner and ask. |
+| "Removal refused — `--force` is just finishing the cleanup"    | The refusal means files exist only in that worktree. `--force` destroys them permanently. Show your human partner and ask.                                               |

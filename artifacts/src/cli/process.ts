@@ -16,7 +16,9 @@ function commandLine(pid: number): string[] | null {
   try {
     return fs.readFileSync(`/proc/${pid}/cmdline`, 'utf8').split('\0');
   } catch {}
-  const direct = spawnSync('ps', ['-ww', '-p', String(pid), '-o', 'command='], { encoding: 'utf8' });
+  const direct = spawnSync('ps', ['-ww', '-p', String(pid), '-o', 'command='], {
+    encoding: 'utf8',
+  });
   if (direct.status === 0 && direct.stdout.trim()) return direct.stdout.trim().split(/\s+/);
   const full = spawnSync('ps', ['-f', '-p', String(pid)], { encoding: 'utf8' });
   if (full.status !== 0) return null;
@@ -28,7 +30,10 @@ export const isNodeImage = (tasklistLine: string) => /^"node\.exe"/i.test(taskli
 
 // Windows reuses pids quickly and Node cannot read another process's command line there; a node.exe at our pid is the best check.
 function windowsNodeAt(pid: number) {
-  const result = spawnSync('tasklist', ['/FI', `PID eq ${pid}`, '/FO', 'CSV', '/NH'], { encoding: 'utf8', windowsHide: true });
+  const result = spawnSync('tasklist', ['/FI', `PID eq ${pid}`, '/FO', 'CSV', '/NH'], {
+    encoding: 'utf8',
+    windowsHide: true,
+  });
   return result.status === 0 && isNodeImage(result.stdout);
 }
 

@@ -31,7 +31,8 @@ function verifyDir(dir: string) {
   if (process.platform === 'win32') return;
   for (const target of [path.dirname(dir), dir]) {
     const stat = fs.lstatSync(target);
-    if (!stat.isDirectory() || stat.uid !== process.getuid!() || stat.mode & 0o022) throw new Error(`Unsafe registry directory: ${target}`);
+    if (!stat.isDirectory() || stat.uid !== process.getuid!() || stat.mode & 0o022)
+      throw new Error(`Unsafe registry directory: ${target}`);
   }
 }
 
@@ -51,7 +52,12 @@ export function writeEntry(dir: string, entry: RegistryEntry) {
 function readEntry(file: string): RegistryEntry | null {
   try {
     const value = JSON.parse(fs.readFileSync(file, 'utf8'));
-    if (typeof value.project !== 'string' || typeof value.root !== 'string' || typeof value.serverId !== 'string') return null;
+    if (
+      typeof value.project !== 'string' ||
+      typeof value.root !== 'string' ||
+      typeof value.serverId !== 'string'
+    )
+      return null;
     if (!Number.isInteger(value.pid) || !Number.isFinite(value.startedAt)) return null;
     if (value.root !== path.join(value.project, '.ryugi', 'artifacts')) return null;
     return value as RegistryEntry;
@@ -68,7 +74,9 @@ export function readEntries(dir: string): RegistryEntry[] {
   } catch {
     return [];
   }
-  return names.filter((name) => name.endsWith('.json')).flatMap((name) => readEntry(path.join(dir, name)) ?? []);
+  return names
+    .filter((name) => name.endsWith('.json'))
+    .flatMap((name) => readEntry(path.join(dir, name)) ?? []);
 }
 
 export function removeEntry(dir: string, entry: Pick<RegistryEntry, 'project' | 'serverId'>) {

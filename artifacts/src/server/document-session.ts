@@ -1,6 +1,12 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { $reconcileRoot, createLoroBinding, streamAtVersion, type StreamStep, TREE_NAME } from '@haklex/rich-collab-loro';
+import {
+  $reconcileRoot,
+  createLoroBinding,
+  streamAtVersion,
+  type StreamStep,
+  TREE_NAME,
+} from '@haklex/rich-collab-loro';
 import { $getRoot, type SerializedEditorState } from 'lexical';
 import { LoroDoc, type TreeID } from 'loro-crdt';
 import { DOCUMENT_FEATURES } from '../shared/document-features';
@@ -59,7 +65,8 @@ function lcsLength(a: string[], b: string[]) {
   const table = Array.from({ length: a.length + 1 }, () => new Uint32Array(b.length + 1));
   for (let i = a.length - 1; i >= 0; i--) {
     for (let j = b.length - 1; j >= 0; j--) {
-      table[i]![j] = a[i] === b[j] ? table[i + 1]![j + 1]! + 1 : Math.max(table[i + 1]![j]!, table[i]![j + 1]!);
+      table[i]![j] =
+        a[i] === b[j] ? table[i + 1]![j + 1]! + 1 : Math.max(table[i + 1]![j]!, table[i]![j + 1]!);
     }
   }
   return table[0]![0]!;
@@ -79,7 +86,12 @@ function blockStats(before: SerializedEditorState, after: SerializedEditorState)
 // against the newest text would read every human change since as a deletion. It has seen
 // at least its own previous write, so older copies are not candidates: from those, a
 // block it replaced or removed would look like a human addition and survive the merge.
-function closestBase(written: Map<string, unknown>, text: string, fallback: string, floor: string | null) {
+function closestBase(
+  written: Map<string, unknown>,
+  text: string,
+  fallback: string,
+  floor: string | null,
+) {
   const keys = [...written.keys()];
   const from = floor === null ? -1 : keys.indexOf(floor);
   const wanted = new Set(text.split('\n').map((line) => line.trim()));
@@ -122,7 +134,9 @@ async function writeAtomic(file: string, data: string | Uint8Array) {
   await fs.rename(tmp, file);
 }
 
-export async function createDocumentSession(options: DocumentSessionOptions): Promise<DocumentSession> {
+export async function createDocumentSession(
+  options: DocumentSessionOptions,
+): Promise<DocumentSession> {
   const { file, snapshotFile, log = () => undefined } = options;
   const writeDelayMs = options.writeDelayMs ?? 300;
   const stepDelayMs = options.stepDelayMs ?? 35;
@@ -161,7 +175,8 @@ export async function createDocumentSession(options: DocumentSessionOptions): Pr
   const activityFile = path.join(path.dirname(snapshotFile), 'agent-active');
   let agentActiveAt = await lastAgentWrite(activityFile, file);
   let activitySaved = Promise.resolve();
-  const emitStatus = () => emit({ type: 'status', outcome, streaming: streaming > 0, agentActiveAt });
+  const emitStatus = () =>
+    emit({ type: 'status', outcome, streaming: streaming > 0, agentActiveAt });
   const setOutcome = (next: DocumentOutcome) => {
     outcome = next;
     emitStatus();
@@ -212,7 +227,9 @@ export async function createDocumentSession(options: DocumentSessionOptions): Pr
     lastFileText = text;
     agentActiveAt = Date.now();
     const at = agentActiveAt;
-    activitySaved = activitySaved.then(() => writeAtomic(activityFile, String(at))).catch((err) => log(`agent activity not saved: ${messageOf(err)}`));
+    activitySaved = activitySaved
+      .then(() => writeAtomic(activityFile, String(at)))
+      .catch((err) => log(`agent activity not saved: ${messageOf(err)}`));
     let target: SerializedEditorState;
     try {
       target = parseDocument(text);
@@ -235,7 +252,10 @@ export async function createDocumentSession(options: DocumentSessionOptions): Pr
         const { stats, steps } = prepareAgentEdit(baseText, text, target);
         for (const step of steps) {
           applyStep(step);
-          if (stepDelayMs > 0) await new Promise((resolve) => setTimeout(resolve, stepDelayMs * (0.6 + Math.random() * 0.8)));
+          if (stepDelayMs > 0)
+            await new Promise((resolve) =>
+              setTimeout(resolve, stepDelayMs * (0.6 + Math.random() * 0.8)),
+            );
         }
         log(`agent edit merged: ${stats}`);
         streaming -= 1;
@@ -299,7 +319,10 @@ export async function createDocumentSession(options: DocumentSessionOptions): Pr
   function scheduleWrite() {
     snapshotDirty = true;
     clearTimeout(writeTimer);
-    writeTimer = setTimeout(() => void flush().catch((err) => log(`autosave failed: ${messageOf(err)}`)), writeDelayMs);
+    writeTimer = setTimeout(
+      () => void flush().catch((err) => log(`autosave failed: ${messageOf(err)}`)),
+      writeDelayMs,
+    );
   }
 
   const snapshotTimer = setInterval(
@@ -315,13 +338,26 @@ export async function createDocumentSession(options: DocumentSessionOptions): Pr
     lineage: () => loro.getTree(TREE_NAME).roots()[0]?.id ?? '',
     importUpdate: (bytes, features = []) => {
       const undeclared = DOCUMENT_FEATURES.filter((feature) => !features.includes(feature));
-      const types = undeclared.length ? editor.getEditorState().read(() => new Set($getRoot().getChildren().map((block) => block.getType()))) : new Set<string>();
+      const types = undeclared.length
+        ? editor.getEditorState().read(
+            () =>
+              new Set(
+                $getRoot()
+                  .getChildren()
+                  .map((block) => block.getType()),
+              ),
+          )
+        : new Set<string>();
       const missing = undeclared.filter((feature) => types.has(feature));
       // A viewer that cannot build these nodes reconciles them away and sends that deletion back.
-      if (missing.length) throw new OutdatedClient(`this page cannot show <${missing.join('>, <')}> blocks; reload the page`);
+      if (missing.length)
+        throw new OutdatedClient(
+          `this page cannot show <${missing.join('>, <')}> blocks; reload the page`,
+        );
       const probe = loro.fork();
       probe.import(bytes);
-      if (probe.getTree(TREE_NAME).roots().length > 1) throw new Error('update belongs to a different document; reload the page');
+      if (probe.getTree(TREE_NAME).roots().length > 1)
+        throw new Error('update belongs to a different document; reload the page');
       binding.import(bytes);
       emit({ type: 'update', bytes });
       scheduleWrite();

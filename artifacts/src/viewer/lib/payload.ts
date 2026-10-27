@@ -5,7 +5,10 @@ export interface ViewerPayload extends CanvasPayload {
   stale: boolean;
 }
 
-export function mergePayload(prev: ViewerPayload, next: Omit<ViewerPayload, 'stale'> & { stale?: boolean }): ViewerPayload {
+export function mergePayload(
+  prev: ViewerPayload,
+  next: Omit<ViewerPayload, 'stale'> & { stale?: boolean },
+): ViewerPayload {
   if (next.canvas === null && prev.canvas !== null) {
     return {
       ...prev,

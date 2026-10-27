@@ -23,9 +23,13 @@ const positive = (value: string | undefined, fallback: number) => {
   return Number.isFinite(n) && n > 0 ? n : fallback;
 };
 
-export const isLoopback = (host: string) => host === '127.0.0.1' || host === 'localhost' || host === '::1';
+export const isLoopback = (host: string) =>
+  host === '127.0.0.1' || host === 'localhost' || host === '::1';
 
-export function parseEnv(env: Record<string, string | undefined>, argv: string[] = []): ServerConfig {
+export function parseEnv(
+  env: Record<string, string | undefined>,
+  argv: string[] = [],
+): ServerConfig {
   const root = env.ARTIFACTS_ROOT;
   if (!root) throw new Error('ARTIFACTS_ROOT is required');
   const host = env.ARTIFACTS_HOST || '127.0.0.1';
@@ -61,10 +65,14 @@ export function readOwners(file: string): number[] {
 
 export const liveOwners = (pids: number[], alive: (pid: number) => boolean) => pids.filter(alive);
 
-export function browserLauncher(platform: string, url: string): { bin: string; args: string[] } | null {
+export function browserLauncher(
+  platform: string,
+  url: string,
+): { bin: string; args: string[] } | null {
   if (platform === 'darwin') return { bin: 'open', args: [url] };
   if (platform === 'win32') return { bin: 'cmd', args: ['/c', 'start', '""', url] };
-  if (platform === 'linux' || platform === 'freebsd' || platform === 'openbsd') return { bin: 'xdg-open', args: [url] };
+  if (platform === 'linux' || platform === 'freebsd' || platform === 'openbsd')
+    return { bin: 'xdg-open', args: [url] };
   return null;
 }
 

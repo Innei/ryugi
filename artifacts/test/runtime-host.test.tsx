@@ -31,7 +31,11 @@ describe('single React root for every runtime element', () => {
       els.forEach((el, i) => root.register(el, () => <b>item {i}</b>));
     });
     expect(client.createRoot).toHaveBeenCalledTimes(1);
-    expect(els.map((el) => el.innerHTML)).toEqual(['<b>item 0</b>', '<b>item 1</b>', '<b>item 2</b>']);
+    expect(els.map((el) => el.innerHTML)).toEqual([
+      '<b>item 0</b>',
+      '<b>item 1</b>',
+      '<b>item 2</b>',
+    ]);
   });
 
   test('wraps every element in one shared provider', async () => {
@@ -45,7 +49,10 @@ describe('single React root for every runtime element', () => {
     function Themed() {
       return <i>{useContext(Theme)}</i>;
     }
-    const root = createHostRoot({ wrap: (children) => <Provider>{children}</Provider>, onError: () => {} });
+    const root = createHostRoot({
+      wrap: (children) => <Provider>{children}</Provider>,
+      onError: () => {},
+    });
     const a = host();
     const b = host();
     await act(async () => {
@@ -63,8 +70,8 @@ describe('single React root for every runtime element', () => {
     const a = host();
     const b = host();
     await act(async () => {
-      root.register(a, () => (renders.a++, <span>{label}</span>));
-      root.register(b, () => (renders.b++, <span>static</span>));
+      root.register(a, () => (renders.a++, (<span>{label}</span>)));
+      root.register(b, () => (renders.b++, (<span>static</span>)));
     });
     const before = { ...renders };
     label = 'two';
@@ -102,7 +109,10 @@ describe('errors stay inside the element that threw', () => {
   test('a crashing element reports the error and leaves the others rendered', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
     const errors: unknown[] = [];
-    const root = createHostRoot({ wrap: (children) => children, onError: (error) => errors.push(error) });
+    const root = createHostRoot({
+      wrap: (children) => children,
+      onError: (error) => errors.push(error),
+    });
     function Boom(): ReactNode {
       throw new Error('boom');
     }

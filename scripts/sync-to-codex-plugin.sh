@@ -157,13 +157,31 @@ usage() {
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    -n|--dry-run)  DRY_RUN=1; shift ;;
-    -y|--yes)      YES=1; shift ;;
-    --local)       LOCAL_CHECKOUT="$2"; shift 2 ;;
-    --base)        BASE="$2"; shift 2 ;;
-    --bootstrap)   BOOTSTRAP=1; shift ;;
-    -h|--help)     usage 0 ;;
-    *)             echo "Unknown arg: $1" >&2; usage 2 ;;
+    -n | --dry-run)
+      DRY_RUN=1
+      shift
+      ;;
+    -y | --yes)
+      YES=1
+      shift
+      ;;
+    --local)
+      LOCAL_CHECKOUT="$2"
+      shift 2
+      ;;
+    --base)
+      BASE="$2"
+      shift 2
+      ;;
+    --bootstrap)
+      BOOTSTRAP=1
+      shift
+      ;;
+    -h | --help) usage 0 ;;
+    *)
+      echo "Unknown arg: $1" >&2
+      usage 2
+      ;;
   esac
 done
 
@@ -171,16 +189,19 @@ done
 # Preflight
 # =============================================================================
 
-die() { echo "ERROR: $*" >&2; exit 1; }
+die() {
+  echo "ERROR: $*" >&2
+  exit 1
+}
 
-command -v rsync >/dev/null   || die "rsync not found in PATH"
-command -v git >/dev/null     || die "git not found in PATH"
-command -v gh >/dev/null      || die "gh not found — install GitHub CLI"
-command -v python3 >/dev/null || die "python3 not found in PATH"
+command -v rsync > /dev/null || die "rsync not found in PATH"
+command -v git > /dev/null || die "git not found in PATH"
+command -v gh > /dev/null || die "gh not found — install GitHub CLI"
+command -v python3 > /dev/null || die "python3 not found in PATH"
 
-gh auth status >/dev/null 2>&1 || die "gh not authenticated — run 'gh auth login'"
+gh auth status > /dev/null 2>&1 || die "gh not authenticated — run 'gh auth login'"
 
-[[ -d "$UPSTREAM/.git" ]]         || die "upstream '$UPSTREAM' is not a git checkout"
+[[ -d "$UPSTREAM/.git" ]] || die "upstream '$UPSTREAM' is not a git checkout"
 [[ -f "$UPSTREAM/.codex-plugin/plugin.json" ]] || die "committed Codex manifest missing at $UPSTREAM/.codex-plugin/plugin.json"
 
 # Read the upstream version from the committed Codex manifest.
@@ -229,7 +250,7 @@ else
   echo "Cloning $FORK..."
   CLEANUP_DIR="$(mktemp -d)"
   DEST_REPO="$CLEANUP_DIR/openai-codex-plugins"
-  gh repo clone "$FORK" "$DEST_REPO" >/dev/null
+  gh repo clone "$FORK" "$DEST_REPO" > /dev/null
 fi
 
 DEST="$DEST_REPO/$DEST_REL"
@@ -283,7 +304,7 @@ prepare_preview_checkout() {
     PREVIEW_DEST="$PREVIEW_REPO/$DEST_REL"
   fi
 
-  git -C "$PREVIEW_REPO" checkout -q "$BASE" 2>/dev/null || die "base branch '$BASE' doesn't exist in $FORK"
+  git -C "$PREVIEW_REPO" checkout -q "$BASE" 2> /dev/null || die "base branch '$BASE' doesn't exist in $FORK"
   if [[ -n "$LOCAL_CHECKOUT" ]]; then
     copy_local_destination_overlay
   fi
@@ -293,7 +314,7 @@ prepare_preview_checkout() {
 }
 
 prepare_apply_checkout() {
-  git -C "$DEST_REPO" checkout -q "$BASE" 2>/dev/null || die "base branch '$BASE' doesn't exist in $FORK"
+  git -C "$DEST_REPO" checkout -q "$BASE" 2> /dev/null || die "base branch '$BASE' doesn't exist in $FORK"
   if [[ $BOOTSTRAP -ne 1 ]]; then
     [[ -d "$DEST" ]] || die "base branch '$BASE' has no '$DEST_REL/' — use --bootstrap, or pass --base <branch>"
   fi
@@ -353,7 +374,7 @@ prepare_sync_source() {
   rm -rf "$SYNC_SOURCE"
   mkdir -p "$SYNC_SOURCE"
 
-  rsync "${RSYNC_ARGS[@]}" "$UPSTREAM/" "$SYNC_SOURCE/" >/dev/null
+  rsync "${RSYNC_ARGS[@]}" "$UPSTREAM/" "$SYNC_SOURCE/" > /dev/null
   copy_preserved_destination_metadata "$destination" "$SYNC_SOURCE"
 }
 
@@ -389,7 +410,10 @@ fi
 # =============================================================================
 
 echo ""
-confirm "Apply changes, push branch, and open PR?" || { echo "Aborted."; exit 1; }
+confirm "Apply changes, push branch, and open PR?" || {
+  echo "Aborted."
+  exit 1
+}
 
 echo ""
 if [[ -n "$LOCAL_CHECKOUT" ]]; then

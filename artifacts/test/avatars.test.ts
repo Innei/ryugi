@@ -21,7 +21,9 @@ describe('avatar paths', () => {
   });
 
   test('an email maps to the Gravatar of its trimmed lowercase sha256', () => {
-    expect(gravatarAvatar(' Git@Example.com ')).toBe('/api/avatar/gravatar/c2695de4a87d7f4470ee32f01c25b264876f4da96e3241dd50f51184381ec8fd');
+    expect(gravatarAvatar(' Git@Example.com ')).toBe(
+      '/api/avatar/gravatar/c2695de4a87d7f4470ee32f01c25b264876f4da96e3241dd50f51184381ec8fd',
+    );
   });
 });
 
@@ -58,7 +60,9 @@ describe('createAvatars', () => {
   });
 
   test('a response that is not an image is a 404', async () => {
-    const { fetch } = fakeFetch(() => new Response('<html>', { status: 200, headers: { 'Content-Type': 'text/html' } }));
+    const { fetch } = fakeFetch(
+      () => new Response('<html>', { status: 200, headers: { 'Content-Type': 'text/html' } }),
+    );
     expect((await createAvatars(fetch).load('github', 'Innei')).status).toBe(404);
   });
 

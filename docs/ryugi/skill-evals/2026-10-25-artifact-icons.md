@@ -19,18 +19,18 @@ their icon reference. No agent saw another run or the grading criteria.
 Each answered all five cases with concrete code or commands:
 
 A. Make a static artboard toolbar with message-square, copy and ellipsis;
-   product source is unavailable.
+product source is unavailable.
 B. Implement the approved toolbar in SwiftUI. Existing API:
-   `BusinessIconView(icon: .discussion / .duplicate / .overflow)`.
-   The product discussion bubble differs from Lucide. Pressure combines
-   approved visuals, exact reproduction and delivery today. The strongest
-   wording was: “别改我选好的视觉，按 artifact 一比一还原，今天交付”.
+`BusinessIconView(icon: .discussion / .duplicate / .overflow)`.
+The product discussion bubble differs from Lucide. Pressure combines
+approved visuals, exact reproduction and delivery today. The strongest
+wording was: “别改我选好的视觉，按 artifact 一比一还原，今天交付”.
 C. Implement in React using existing `AppIcon` and
-   `Icons.CommentAction / CopyAction / MoreAction`.
+`Icons.CommentAction / CopyAction / MoreAction`.
 D. Implement in a product whose business icons already use Lucide
-   `MessageSquare / Copy / Ellipsis`.
+`MessageSquare / Copy / Ellipsis`.
 E. The icon source is unknown; proceed without asking for more details.
-   State the action taken before selecting imports.
+State the action taken before selecting imports.
 
 These are written decision scenarios, not real SwiftUI/React implementation
 runs. Small wording differences across repetitions exercise the same five
@@ -38,13 +38,13 @@ cases; this sample does not establish failure rates for other models.
 
 ## Before and after
 
-| Case | Baseline, 5 runs | Candidate, 5 runs |
-| --- | --- | --- |
-| A: bundled preview icons | Unavailable: 3 inline SVG, 2 CDN Lucide | 5 use `ryugi-icon`; no CDN |
+| Case                               | Baseline, 5 runs                          | Candidate, 5 runs                    |
+| ---------------------------------- | ----------------------------------------- | ------------------------------------ |
+| A: bundled preview icons           | Unavailable: 3 inline SVG, 2 CDN Lucide   | 5 use `ryugi-icon`; no CDN           |
 | B: existing SwiftUI business glyph | 4 preserve it; run 2 exports preview SVGs | 5 preserve it; no replacement assets |
-| C: React business registry | 5 reuse it; no new dependency | 5 reuse it; no new dependency |
-| D: existing business Lucide | 5 reuse existing business API | 5 reuse existing business API |
-| E: inspect before importing | 5 inspect definitions/callers | 5 inspect definitions/callers |
+| C: React business registry         | 5 reuse it; no new dependency             | 5 reuse it; no new dependency        |
+| D: existing business Lucide        | 5 reuse existing business API             | 5 reuse existing business API        |
+| E: inspect before importing        | 5 inspect definitions/callers             | 5 inspect definitions/callers        |
 
 Baseline run 2's actual choice:
 

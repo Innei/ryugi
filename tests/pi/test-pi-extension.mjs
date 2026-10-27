@@ -23,7 +23,9 @@ async function loadExtension() {
       handlers.get(event).push(handler);
     },
   };
-  const mod = await import(pathToFileURL(extensionPath).href + `?cachebust=${Date.now()}-${Math.random()}`);
+  const mod = await import(
+    pathToFileURL(extensionPath).href + `?cachebust=${Date.now()}-${Math.random()}`
+  );
   mod.default(pi);
   return { handlers };
 }
@@ -54,7 +56,11 @@ test('package.json declares a pi package with skills and extension resources', a
 test('extension leaves package skill discovery to Pi and registers lifecycle hooks', async () => {
   const { handlers } = await loadExtension();
 
-  assert.equal((handlers.get('resources_discover') ?? []).length, 0, 'extension must not bypass package skill filters');
+  assert.equal(
+    (handlers.get('resources_discover') ?? []).length,
+    0,
+    'extension must not bypass package skill filters',
+  );
   for (const event of ['session_start', 'session_compact', 'context', 'agent_end']) {
     assert.equal((handlers.get(event) ?? []).length, 1, `missing ${event} handler`);
   }
@@ -70,7 +76,11 @@ test('startup context injects the bootstrap as one user message until agent_end'
   await sessionStart({ type: 'session_start', reason: 'startup' }, {});
 
   const originalMessages = [
-    { role: 'user', content: [{ type: 'text', text: 'Let us make a react todo list' }], timestamp: 1 },
+    {
+      role: 'user',
+      content: [{ type: 'text', text: 'Let us make a react todo list' }],
+      timestamp: 1,
+    },
   ];
   const result = await context({ type: 'context', messages: originalMessages }, {});
 
@@ -80,7 +90,10 @@ test('startup context injects the bootstrap as one user message until agent_end'
   assert.match(textOf(result.messages[0]), /Pi tool mapping/);
   assert.equal(result.messages[1], originalMessages[0]);
 
-  const repeatedProviderRequest = await context({ type: 'context', messages: originalMessages }, {});
+  const repeatedProviderRequest = await context(
+    { type: 'context', messages: originalMessages },
+    {},
+  );
   assert.equal(repeatedProviderRequest.messages.length, 2);
   assert.match(textOf(repeatedProviderRequest.messages[0]), /You have Ryugi/);
 
@@ -99,7 +112,12 @@ test('session_compact injects bootstrap after compaction summaries, not before c
 
   await sessionCompact({ type: 'session_compact', compactionEntry: {}, fromExtension: false }, {});
 
-  const summary = { role: 'compactionSummary', summary: 'Prior work summary', tokensBefore: 123, timestamp: 1 };
+  const summary = {
+    role: 'compactionSummary',
+    summary: 'Prior work summary',
+    tokensBefore: 123,
+    timestamp: 1,
+  };
   const user = { role: 'user', content: [{ type: 'text', text: 'Continue' }], timestamp: 2 };
   const result = await context({ type: 'context', messages: [summary, user] }, {});
 

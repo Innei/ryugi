@@ -7,8 +7,14 @@ const TIMEOUT_MS = 5000;
 
 // Only ids that cannot change the upstream URL get through; the server never fetches a URL it was handed.
 const SOURCES: Record<string, { valid: RegExp; url: (id: string) => string }> = {
-  github: { valid: /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$/, url: (id) => `https://avatars.githubusercontent.com/${id}?s=64` },
-  gravatar: { valid: /^[0-9a-f]{64}$/, url: (id) => `https://gravatar.com/avatar/${id}?s=64&d=404` },
+  github: {
+    valid: /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$/,
+    url: (id) => `https://avatars.githubusercontent.com/${id}?s=64`,
+  },
+  gravatar: {
+    valid: /^[0-9a-f]{64}$/,
+    url: (id) => `https://gravatar.com/avatar/${id}?s=64&d=404`,
+  },
 };
 
 export interface AvatarResult {

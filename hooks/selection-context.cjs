@@ -18,14 +18,28 @@ function readJson(file) {
 function selectionFiles(state) {
   const files = [];
   let types = [];
-  try { types = fs.readdirSync(state); } catch { return files; }
+  try {
+    types = fs.readdirSync(state);
+  } catch {
+    return files;
+  }
   for (const type of types) {
     let ids = [];
-    try { ids = fs.readdirSync(path.join(state, type)); } catch { continue; }
+    try {
+      ids = fs.readdirSync(path.join(state, type));
+    } catch {
+      continue;
+    }
     for (const id of ids) {
       const file = path.join(state, type, id, 'selection.json');
       const value = readJson(file);
-      if (value && Array.isArray(value.selected) && Array.isArray(value.tweaks) && Array.isArray(value.nodes)) files.push({ file, value });
+      if (
+        value &&
+        Array.isArray(value.selected) &&
+        Array.isArray(value.tweaks) &&
+        Array.isArray(value.nodes)
+      )
+        files.push({ file, value });
     }
   }
   return files;
@@ -41,7 +55,10 @@ function typedNodes(nodes, prompt) {
   const boards = [...new Set(nodes.map((node) => node.board))];
   const typed = new Set();
   for (const board of boards) {
-    for (const match of prompt.matchAll(new RegExp(`(?<![A-Za-z0-9_-])${escape(board)}#(\\d+)(?!\\d)`, 'g'))) typed.add(`${board}#${match[1]}`);
+    for (const match of prompt.matchAll(
+      new RegExp(`(?<![A-Za-z0-9_-])${escape(board)}#(\\d+)(?!\\d)`, 'g'),
+    ))
+      typed.add(`${board}#${match[1]}`);
   }
   return nodes.filter((node) => typed.has(node.id));
 }
@@ -73,7 +90,10 @@ function describe(session, { file, value }, prompt, budget) {
   const fixed = head.join('\n').length + tail.length + 2;
   const room = Math.max(0, budget - fixed);
   const middle = body.join('\n');
-  const kept = middle.length > room ? `${middle.slice(0, Math.max(0, room - 40))}\n(more in the file below)` : middle;
+  const kept =
+    middle.length > room
+      ? `${middle.slice(0, Math.max(0, room - 40))}\n(more in the file below)`
+      : middle;
   return [head.join('\n'), kept, tail].filter(Boolean).join('\n');
 }
 
@@ -100,14 +120,22 @@ function changedSince(thread, cursor) {
     if (created || stampOf(m) > cursor) changed = true;
     if (created && index === 0) newThread = true;
   });
-  if (!newThread && humanStatus(thread) && thread.statusAt > cursor && messages.some((m) => m.at <= cursor)) changed = true;
+  if (
+    !newThread &&
+    humanStatus(thread) &&
+    thread.statusAt > cursor &&
+    messages.some((m) => m.at <= cursor)
+  )
+    changed = true;
   return changed;
 }
 
 // Mirrors unreadThreads in artifacts/src/shared/comments.ts; artifacts/test/hook-parity.test.ts keeps them in step.
 function unreadThreadCount(file, cursor) {
   const threads = file && Array.isArray(file.threads) ? file.threads : [];
-  return threads.filter((thread) => (cursor === null ? waitingOnAgent(thread) : changedSince(thread, cursor))).length;
+  return threads.filter((thread) =>
+    cursor === null ? waitingOnAgent(thread) : changedSince(thread, cursor),
+  ).length;
 }
 
 const cursorKey = (env) => (env.CLAUDE_CODE_IS_COWORK ? 'Claude Cowork' : 'Claude Code');
@@ -146,7 +174,12 @@ function commentReminders(project, root, key) {
   }
   if (!waiting.length) return '';
   const types = new Set(waiting.map(({ artifact }) => artifact.split('/')[0]));
-  const target = waiting.length === 1 ? waiting[0].artifact : types.size === 1 ? `${[...types][0]}/<id>` : '<type>/<id>';
+  const target =
+    waiting.length === 1
+      ? waiting[0].artifact
+      : types.size === 1
+        ? `${[...types][0]}/<id>`
+        : '<type>/<id>';
   const command = `List them with \`node "${LAUNCHER}" comment list --json --project-dir "${project}" --artifact ${target}\`.`;
   const head = 'Comment threads changed since you last listed: ';
   const named = [];
@@ -154,7 +187,8 @@ function commentReminders(project, root, key) {
     const more = waiting.length - index - 1;
     const next = [...named, `${artifact} (${count})`];
     const tail = more ? `, and ${more} more artifact(s)` : '';
-    if (head.length + next.join(', ').length + tail.length + command.length + 2 > MAX_REMINDERS) break;
+    if (head.length + next.join(', ').length + tail.length + command.length + 2 > MAX_REMINDERS)
+      break;
     named.push(next.at(-1));
   }
   const left = waiting.length - named.length;
@@ -163,7 +197,8 @@ function commentReminders(project, root, key) {
 
 // Mirrors credentialsFile in artifacts/src/server/credentials.ts; artifacts/test/hook-auto-publish.test.ts keeps them in step.
 function credentialsPath(env, platform, home) {
-  if (platform === 'win32' && env.APPDATA) return path.join(env.APPDATA, 'ryugi', 'credentials.json');
+  if (platform === 'win32' && env.APPDATA)
+    return path.join(env.APPDATA, 'ryugi', 'credentials.json');
   return path.join(env.XDG_CONFIG_HOME || path.join(home, '.config'), 'ryugi', 'credentials.json');
 }
 
@@ -176,7 +211,9 @@ function readText(file) {
 }
 
 function remember(file, value) {
-  try { fs.writeFileSync(file, `${value}\n`); } catch {}
+  try {
+    fs.writeFileSync(file, `${value}\n`);
+  } catch {}
 }
 
 function autoPublishContext(project, env, sessionId) {
@@ -198,13 +235,21 @@ function autoPublishContext(project, env, sessionId) {
   if (notice && typeof notice.id === 'string' && readText(notifiedFile) !== notice.id) {
     remember(notifiedFile, notice.id);
     if (notice.kind === 'signed-out') {
-      lines.push(`Ryugi auto-publish paused: the Ryugi Cloud sign-in expired. Tell your human partner and offer to sign in again with \`node "${LAUNCHER}" publish --login --json --project-dir "${project}"\`.`);
+      lines.push(
+        `Ryugi auto-publish paused: the Ryugi Cloud sign-in expired. Tell your human partner and offer to sign in again with \`node "${LAUNCHER}" publish --login --json --project-dir "${project}"\`.`,
+      );
     } else if (notice.kind === 'failing') {
-      lines.push(`Ryugi auto-publish could not publish ${clip(String(notice.message), 200)}. It keeps retrying. Tell your human partner, and fix the artifact's warnings if there are any.`);
+      lines.push(
+        `Ryugi auto-publish could not publish ${clip(String(notice.message), 200)}. It keeps retrying. Tell your human partner, and fix the artifact's warnings if there are any.`,
+      );
     } else if (notice.kind === 'cap' && typeof notice.upgradeUrl === 'string') {
-      lines.push(`Ryugi Cloud refused a new cloud copy: ${clip(String(notice.message), 200)} Existing copies still update. Tell your human partner they can upgrade at ${clip(notice.upgradeUrl, 200)}.`);
+      lines.push(
+        `Ryugi Cloud refused a new cloud copy: ${clip(String(notice.message), 200)} Existing copies still update. Tell your human partner they can upgrade at ${clip(notice.upgradeUrl, 200)}.`,
+      );
     } else if (notice.kind === 'cap') {
-      lines.push(`Ryugi auto-publish could not create a new cloud copy (${clip(String(notice.message), 200)}). Existing copies still update. Tell your human partner; they can delete old copies with \`node "${LAUNCHER}" publish --list --json --project-dir "${project}"\` and \`--delete <cloud-id>\`.`);
+      lines.push(
+        `Ryugi auto-publish could not create a new cloud copy (${clip(String(notice.message), 200)}). Existing copies still update. Tell your human partner; they can delete old copies with \`node "${LAUNCHER}" publish --list --json --project-dir "${project}"\` and \`--delete <cloud-id>\`.`,
+      );
     }
   }
   return lines.join('\n');
@@ -216,14 +261,20 @@ function documentSelections(session, root, budget) {
   for (const id of documentIds(root)) {
     const file = path.join(root, '.state', 'document', id, 'selection.json');
     const value = readJson(file);
-    if (!value || typeof value.quote !== 'string' || !value.quote || !Array.isArray(value.blockIds)) continue;
-    const blocks = value.blockIds.length ? `${value.heading ? ',' : ' in'} blocks ${value.blockIds.join(', ')}` : '';
+    if (!value || typeof value.quote !== 'string' || !value.quote || !Array.isArray(value.blockIds))
+      continue;
+    const blocks = value.blockIds.length
+      ? `${value.heading ? ',' : ' in'} blocks ${value.blockIds.join(', ')}`
+      : '';
     const where = `${value.heading ? ` under "${value.heading}"` : ''}${blocks}`;
     const head = `Document document/${id}, open in the viewer (updated ${value.updatedAt}):\nSelected${where}:`;
     const tail = `Full selection: ${path.relative(session, file)}`;
     const room = left - head.length - tail.length - 4;
     if (room < 40) break;
-    const quote = clip(value.quote, room).split('\n').map((line) => `> ${line}`).join('\n');
+    const quote = clip(value.quote, room)
+      .split('\n')
+      .map((line) => `> ${line}`)
+      .join('\n');
     const section = [head, quote, tail].join('\n');
     sections.push(section);
     left -= section.length + 2;
@@ -235,13 +286,23 @@ function main() {
   const project = process.argv[2];
   const session = process.argv[3] || project;
   let input = {};
-  try { input = JSON.parse(fs.readFileSync(0, 'utf8')); } catch {}
+  try {
+    input = JSON.parse(fs.readFileSync(0, 'utf8'));
+  } catch {}
   const prompt = typeof input.prompt === 'string' ? input.prompt : '';
   const root = path.join(project, '.ryugi', 'artifacts');
   const state = path.join(root, '.state');
-  const autoPublish = autoPublishContext(project, process.env, typeof input.session_id === 'string' ? input.session_id : '');
-  const reminders = [commentReminders(project, root, cursorKey(process.env)), autoPublish].filter(Boolean).join('\n\n');
-  const files = selectionFiles(state).sort((a, b) => String(b.value.updatedAt).localeCompare(String(a.value.updatedAt)));
+  const autoPublish = autoPublishContext(
+    project,
+    process.env,
+    typeof input.session_id === 'string' ? input.session_id : '',
+  );
+  const reminders = [commentReminders(project, root, cursorKey(process.env)), autoPublish]
+    .filter(Boolean)
+    .join('\n\n');
+  const files = selectionFiles(state).sort((a, b) =>
+    String(b.value.updatedAt).localeCompare(String(a.value.updatedAt)),
+  );
   const sections = [];
   // Reminders are capped at MAX_REMINDERS and reserved first so a large artboard selection cannot crowd them out.
   let left = MAX_CONTEXT - (reminders ? reminders.length + 2 : 0);
@@ -258,6 +319,12 @@ function main() {
   process.stdout.write(`${sections.join('\n\n')}\n`);
 }
 
-module.exports = { unreadThreadCount, cursorKey, credentialsPath, autoPublishContext, commentReminders };
+module.exports = {
+  unreadThreadCount,
+  cursorKey,
+  credentialsPath,
+  autoPublishContext,
+  commentReminders,
+};
 
 if (require.main === module) main();

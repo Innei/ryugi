@@ -9,7 +9,16 @@ import { fitView } from '../src/viewer/lib/view';
 
 let root: Root;
 let host: HTMLDivElement;
-let panZoom: ReturnType<typeof usePanZoom> & { panBy?: (x: number, y: number) => void; wheelAt?: (input: { deltaX: number; deltaY: number; x: number; y: number; zoom: boolean }) => void };
+let panZoom: ReturnType<typeof usePanZoom> & {
+  panBy?: (x: number, y: number) => void;
+  wheelAt?: (input: {
+    deltaX: number;
+    deltaY: number;
+    x: number;
+    y: number;
+    zoom: boolean;
+  }) => void;
+};
 
 function Harness({ tool }: { tool: Tool }) {
   panZoom = usePanZoom(tool);
@@ -19,13 +28,45 @@ function Harness({ tool }: { tool: Tool }) {
     { ref: viewportRef, ...handlers, style: { cursor } },
     createElement('output', null, JSON.stringify(view)),
     createElement('button', { 'data-chrome': '' }, 'Toolbar'),
-    createElement('div', { 'data-chrome': 'board-label' }, createElement('span', { id: 'board-title' }, 'Board title')),
-    createElement('div', { 'data-chrome': 'group-label' }, createElement('button', { id: 'verdict' }, '通过')),
-    createElement('div', { 'data-chrome': 'video-controls' }, createElement('span', { id: 'clock' }, '0:00')),
+    createElement(
+      'div',
+      { 'data-chrome': 'board-label' },
+      createElement('span', { id: 'board-title' }, 'Board title'),
+    ),
+    createElement(
+      'div',
+      { 'data-chrome': 'group-label' },
+      createElement('button', { id: 'verdict' }, '通过'),
+    ),
+    createElement(
+      'div',
+      { 'data-chrome': 'video-controls' },
+      createElement('span', { id: 'clock' }, '0:00'),
+    ),
     createElement('div', { 'data-chrome': 'reject' }, createElement('textarea', { id: 'reason' })),
-    createElement('aside', { 'data-chrome': 'parameters' }, createElement('label', { id: 'control' }, 'Accent')),
-    createElement('div', { 'data-chrome': 'comments' }, createElement('div', { id: 'popover', style: { overflowY: 'auto' } }, createElement('p', { id: 'reply' }, 'Reply'))),
-    createElement('div', { 'data-chrome': '' }, createElement('aside', { 'data-chrome': 'parameters' }, createElement('label', { id: 'expanded-control' }, 'Accent'))),
+    createElement(
+      'aside',
+      { 'data-chrome': 'parameters' },
+      createElement('label', { id: 'control' }, 'Accent'),
+    ),
+    createElement(
+      'div',
+      { 'data-chrome': 'comments' },
+      createElement(
+        'div',
+        { id: 'popover', style: { overflowY: 'auto' } },
+        createElement('p', { id: 'reply' }, 'Reply'),
+      ),
+    ),
+    createElement(
+      'div',
+      { 'data-chrome': '' },
+      createElement(
+        'aside',
+        { 'data-chrome': 'parameters' },
+        createElement('label', { id: 'expanded-control' }, 'Accent'),
+      ),
+    ),
     createPortal(createElement('button', { id: 'menu-item' }, 'Zoom in'), document.body),
   );
 }
@@ -54,7 +95,9 @@ function render(tool: Tool, space = false) {
 
 function pointer(target: Element, type: string, button = 0) {
   act(() => {
-    target.dispatchEvent(new PointerEvent(type, { bubbles: true, pointerId: 1, button, clientX: 20, clientY: 10 }));
+    target.dispatchEvent(
+      new PointerEvent(type, { bubbles: true, pointerId: 1, button, clientX: 20, clientY: 10 }),
+    );
   });
 }
 
@@ -62,30 +105,37 @@ test.each([
   { tool: 'hand' as const, button: 0, space: false },
   { tool: 'select' as const, button: 0, space: true },
   { tool: 'select' as const, button: 1, space: false },
-])('portal menu interaction never pans the canvas ($tool, button $button, space $space)', ({ tool, button, space }) => {
-  const viewport = render(tool, space);
-  const before = host.querySelector('output')!.textContent;
-  pointer(document.getElementById('menu-item')!, 'pointerdown', button);
-  act(() => {
-    viewport.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, pointerId: 1, clientX: 40, clientY: 30 }));
-  });
-  expect(host.querySelector('output')!.textContent).toBe(before);
-  expect(viewport.style.cursor).not.toBe('grabbing');
-});
-
-test.each([{ tool: 'hand' as const, button: 0 }, { tool: 'select' as const, button: 1 }])(
-  'canvas drag still pans ($tool, button $button)',
-  ({ tool, button }) => {
-    const viewport = render(tool);
-    pointer(viewport, 'pointerdown', button);
+])(
+  'portal menu interaction never pans the canvas ($tool, button $button, space $space)',
+  ({ tool, button, space }) => {
+    const viewport = render(tool, space);
+    const before = host.querySelector('output')!.textContent;
+    pointer(document.getElementById('menu-item')!, 'pointerdown', button);
     act(() => {
-      viewport.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, pointerId: 1, clientX: 40, clientY: 30 }));
+      viewport.dispatchEvent(
+        new PointerEvent('pointermove', { bubbles: true, pointerId: 1, clientX: 40, clientY: 30 }),
+      );
     });
-    expect(JSON.parse(host.querySelector('output')!.textContent!)).toEqual({ x: 20, y: 20, k: 0.5 });
-    pointer(viewport, 'pointerup', button);
+    expect(host.querySelector('output')!.textContent).toBe(before);
     expect(viewport.style.cursor).not.toBe('grabbing');
   },
 );
+
+test.each([
+  { tool: 'hand' as const, button: 0 },
+  { tool: 'select' as const, button: 1 },
+])('canvas drag still pans ($tool, button $button)', ({ tool, button }) => {
+  const viewport = render(tool);
+  pointer(viewport, 'pointerdown', button);
+  act(() => {
+    viewport.dispatchEvent(
+      new PointerEvent('pointermove', { bubbles: true, pointerId: 1, clientX: 40, clientY: 30 }),
+    );
+  });
+  expect(JSON.parse(host.querySelector('output')!.textContent!)).toEqual({ x: 20, y: 20, k: 0.5 });
+  pointer(viewport, 'pointerup', button);
+  expect(viewport.style.cursor).not.toBe('grabbing');
+});
 
 test('toolbar interaction inside the viewport never starts dragging', () => {
   const viewport = render('hand');
@@ -97,7 +147,9 @@ test('frame input pans and zooms around its translated cursor without resetting 
   render('select');
   act(() => panZoom.panBy?.(40, 20));
   expect(JSON.parse(host.querySelector('output')!.textContent!)).toEqual({ x: 40, y: 20, k: 0.5 });
-  act(() => panZoom.wheelAt?.({ deltaX: 0, deltaY: -Math.log(2) / 0.01, x: 100, y: 100, zoom: true }));
+  act(() =>
+    panZoom.wheelAt?.({ deltaX: 0, deltaY: -Math.log(2) / 0.01, x: 100, y: 100, zoom: true }),
+  );
   expect(JSON.parse(host.querySelector('output')!.textContent!)).toEqual({ x: -20, y: -60, k: 1 });
 });
 
@@ -114,12 +166,13 @@ test('Space on toolbar controls keeps its native keyboard action instead of star
 
 test('trackpad gestures over a board title pan and pinch the canvas, while toolbar scrolling stays local', () => {
   render('select');
-  const wheel = (target: Element, init: WheelEventInit) => act(() => {
-    const event = new WheelEvent('wheel', { bubbles: true, cancelable: true, ...init });
-    // happy-dom's WheelEvent omits modifier keys.
-    Object.defineProperty(event, 'ctrlKey', { value: init.ctrlKey ?? false });
-    target.dispatchEvent(event);
-  });
+  const wheel = (target: Element, init: WheelEventInit) =>
+    act(() => {
+      const event = new WheelEvent('wheel', { bubbles: true, cancelable: true, ...init });
+      // happy-dom's WheelEvent omits modifier keys.
+      Object.defineProperty(event, 'ctrlKey', { value: init.ctrlKey ?? false });
+      target.dispatchEvent(event);
+    });
   wheel(host.querySelector('button')!, { deltaY: 40 });
   expect(panZoom.view).toEqual({ x: 0, y: 0, k: 0.5 });
   wheel(host.querySelector('#board-title')!, { deltaX: 12, deltaY: 40 });
@@ -133,16 +186,21 @@ function wheelAt(target: Element, init: WheelEventInit & { deltaMode?: number })
   // happy-dom's WheelEvent omits modifier keys and deltaMode.
   Object.defineProperty(event, 'ctrlKey', { value: init.ctrlKey ?? false });
   Object.defineProperty(event, 'deltaMode', { value: init.deltaMode ?? 0 });
-  act(() => { target.dispatchEvent(event); });
+  act(() => {
+    target.dispatchEvent(event);
+  });
   return event;
 }
 
-test.each(['#verdict', '#clock', '#reason', '#control', '#reply'])('trackpad gestures over canvas chrome %s pan the canvas', (selector) => {
-  render('select');
-  const event = wheelAt(host.querySelector(selector)!, { deltaX: 12, deltaY: 40 });
-  expect(event.defaultPrevented).toBe(true);
-  expect(panZoom.view).toEqual({ x: -12, y: -40, k: 0.5 });
-});
+test.each(['#verdict', '#clock', '#reason', '#control', '#reply'])(
+  'trackpad gestures over canvas chrome %s pan the canvas',
+  (selector) => {
+    render('select');
+    const event = wheelAt(host.querySelector(selector)!, { deltaX: 12, deltaY: 40 });
+    expect(event.defaultPrevented).toBe(true);
+    expect(panZoom.view).toEqual({ x: -12, y: -40, k: 0.5 });
+  },
+);
 
 test('a pinch over canvas chrome zooms the canvas', () => {
   render('select');
@@ -170,7 +228,9 @@ test('a pinch over fixed chrome or a side panel never zooms the browser page', (
   render('select');
   const side = document.createElement('aside');
   document.body.append(side);
-  expect(wheelAt(host.querySelector('button')!, { deltaY: 10, ctrlKey: true }).defaultPrevented).toBe(true);
+  expect(
+    wheelAt(host.querySelector('button')!, { deltaY: 10, ctrlKey: true }).defaultPrevented,
+  ).toBe(true);
   expect(wheelAt(side, { deltaY: 10, ctrlKey: true }).defaultPrevented).toBe(true);
   expect(wheelAt(side, { deltaY: 10 }).defaultPrevented).toBe(false);
   expect(panZoom.view).toEqual({ x: 0, y: 0, k: 0.5 });
@@ -185,7 +245,16 @@ test('line-based wheel deltas pan by pixels', () => {
 
 function touch(target: Element, type: string, id: number, x: number, y: number) {
   act(() => {
-    target.dispatchEvent(new PointerEvent(type, { bubbles: true, pointerId: id, pointerType: 'touch', button: 0, clientX: x, clientY: y }));
+    target.dispatchEvent(
+      new PointerEvent(type, {
+        bubbles: true,
+        pointerId: id,
+        pointerType: 'touch',
+        button: 0,
+        clientX: x,
+        clientY: y,
+      }),
+    );
   });
 }
 
@@ -265,7 +334,8 @@ function frames() {
       queue.splice(0).forEach((cb) => cb(now));
     });
 }
-const shown = () => JSON.parse(host.querySelector('output')!.textContent!) as { x: number; y: number; k: number };
+const shown = () =>
+  JSON.parse(host.querySelector('output')!.textContent!) as { x: number; y: number; k: number };
 const sized = () => {
   vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(400);
   vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(400);
@@ -312,7 +382,17 @@ test('a finger landing during an animated fit stops it where it is', () => {
   const caught = shown();
   const el = host.firstElementChild as HTMLElement;
   el.setPointerCapture = vi.fn();
-  act(() => el.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: 1, pointerType: 'touch', clientX: 10, clientY: 10 })));
+  act(() =>
+    el.dispatchEvent(
+      new PointerEvent('pointerdown', {
+        bubbles: true,
+        pointerId: 1,
+        pointerType: 'touch',
+        clientX: 10,
+        clientY: 10,
+      }),
+    ),
+  );
   step(400);
   expect(shown()).toEqual(caught);
   vi.restoreAllMocks();
@@ -366,7 +446,9 @@ test('panning by wheel, drag or frame input never marks the canvas as scaling', 
     act(() => panZoom.panBy?.(10, 10));
     pointer(viewport, 'pointerdown');
     act(() => {
-      viewport.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, pointerId: 1, clientX: 60, clientY: 50 }));
+      viewport.dispatchEvent(
+        new PointerEvent('pointermove', { bubbles: true, pointerId: 1, clientX: 60, clientY: 50 }),
+      );
     });
     expect(panZoom.scaling).toBe(false);
   } finally {
@@ -376,12 +458,20 @@ test('panning by wheel, drag or frame input never marks the canvas as scaling', 
 
 test('size follows the viewport element as it resizes', () => {
   const observers: { callback: () => void; target?: Element }[] = [];
-  vi.stubGlobal('ResizeObserver', class {
-    entry: { callback: () => void; target?: Element };
-    constructor(callback: () => void) { this.entry = { callback }; observers.push(this.entry); }
-    observe(target: Element) { this.entry.target = target; }
-    disconnect() {}
-  });
+  vi.stubGlobal(
+    'ResizeObserver',
+    class {
+      entry: { callback: () => void; target?: Element };
+      constructor(callback: () => void) {
+        this.entry = { callback };
+        observers.push(this.entry);
+      }
+      observe(target: Element) {
+        this.entry.target = target;
+      }
+      disconnect() {}
+    },
+  );
   const viewport = render('hand');
   Object.defineProperty(viewport, 'clientWidth', { configurable: true, value: 1280 });
   Object.defineProperty(viewport, 'clientHeight', { configurable: true, value: 720 });

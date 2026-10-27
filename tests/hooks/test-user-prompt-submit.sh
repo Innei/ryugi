@@ -10,17 +10,20 @@ TEST_ROOT="$(mktemp -d)"
 trap 'rm -rf "$TEST_ROOT"' EXIT
 
 pass() { echo "  [PASS] $1"; }
-fail() { echo "  [FAIL] $1"; FAILURES=$((FAILURES + 1)); }
+fail() {
+  echo "  [FAIL] $1"
+  FAILURES=$((FAILURES + 1))
+}
 
 project() {
-    local dir="$TEST_ROOT/$1"
-    mkdir -p "$dir/.ryugi/artifacts/.state/artboard/node-id"
-    printf '{"type":"server-started"}\n' > "$dir/.ryugi/artifacts/.state/server-info"
-    printf '%s\n' "$dir"
+  local dir="$TEST_ROOT/$1"
+  mkdir -p "$dir/.ryugi/artifacts/.state/artboard/node-id"
+  printf '{"type":"server-started"}\n' > "$dir/.ryugi/artifacts/.state/server-info"
+  printf '%s\n' "$dir"
 }
 
 write_selection() {
-    cat > "$1/.ryugi/artifacts/.state/artboard/node-id/selection.json" <<'JSON'
+  cat > "$1/.ryugi/artifacts/.state/artboard/node-id/selection.json" << 'JSON'
 {
   "artifact": "artboard/node-id",
   "updatedAt": "2026-10-20T13:00:00.000Z",
@@ -40,15 +43,19 @@ JSON
 }
 
 run_hook() {
-    local dir="$1" prompt="$2"
-    shift 2
-    printf '{"hook_event_name":"UserPromptSubmit","cwd":"%s","prompt":"%s"}' "$dir" "$prompt" |
-        env -i PATH="${PATH:-}" HOME="$TEST_ROOT" CLAUDE_PROJECT_DIR="$dir" "$@" bash "$HOOK" user-prompt-submit
+  local dir="$1" prompt="$2"
+  shift 2
+  printf '{"hook_event_name":"UserPromptSubmit","cwd":"%s","prompt":"%s"}' "$dir" "$prompt" \
+    | env -i PATH="${PATH:-}" HOME="$TEST_ROOT" CLAUDE_PROJECT_DIR="$dir" "$@" bash "$HOOK" user-prompt-submit
 }
 
 expect() {
-    local description="$1" output="$2" needle="$3"
-    if [[ "$output" == *"$needle"* ]]; then pass "$description"; else fail "$description"; echo "    missing: $needle"; echo "$output" | sed 's/^/      /'; fi
+  local description="$1" output="$2" needle="$3"
+  if [[ "$output" == *"$needle"* ]]; then pass "$description"; else
+    fail "$description"
+    echo "    missing: $needle"
+    echo "$output" | sed 's/^/      /'
+  fi
 }
 
 echo "UserPromptSubmit hook"
@@ -87,12 +94,15 @@ expect "keeps the file pointer when the selection is too large to show" "$out" '
 if [[ "${#out}" -le 8200 ]]; then pass "stays within the context budget"; else fail "stays within the context budget (${#out})"; fi
 
 dir="$(project idle)"
-cat > "$dir/.ryugi/artifacts/.state/artboard/node-id/selection.json" <<'JSON'
+cat > "$dir/.ryugi/artifacts/.state/artboard/node-id/selection.json" << 'JSON'
 { "artifact": "artboard/node-id", "updatedAt": "2026-10-20T13:00:00.000Z", "selected": [], "more": 0, "tweaks": [],
   "nodes": [{ "id": "hero-2#5", "board": "hero-2", "file": "pages/main/hero-2.html", "tag": "span", "path": "body > span", "name": "c2" }] }
 JSON
 out="$(run_hook "$dir" "hello")"
-if [[ -z "$out" ]]; then pass "adds nothing without a selection, tweaks or IDs"; else fail "adds nothing without a selection, tweaks or IDs"; echo "$out" | sed 's/^/      /'; fi
+if [[ -z "$out" ]]; then pass "adds nothing without a selection, tweaks or IDs"; else
+  fail "adds nothing without a selection, tweaks or IDs"
+  echo "$out" | sed 's/^/      /'
+fi
 out="$(run_hook "$dir" "hero-2#5 改红")"
 expect "resolves a typed ID with nothing selected" "$out" 'hero-2#5 <span>'
 out="$(run_hook "$dir" "hero-2#99 改红")"
@@ -117,14 +127,14 @@ expect "points at the file relative to the session directory" "$out" 'Full selec
 echo "Documents"
 
 doc_project() {
-    local dir
-    dir="$(project "$1")"
-    mkdir -p "$dir/.ryugi/artifacts/document/relay" "$dir/.ryugi/artifacts/.state/document/relay"
-    printf '%s\n' "$dir"
+  local dir
+  dir="$(project "$1")"
+  mkdir -p "$dir/.ryugi/artifacts/document/relay" "$dir/.ryugi/artifacts/.state/document/relay"
+  printf '%s\n' "$dir"
 }
 
 write_doc_comments() {
-    cat > "$1/.ryugi/artifacts/document/relay/comments.json" <<'JSON'
+  cat > "$1/.ryugi/artifacts/document/relay/comments.json" << 'JSON'
 { "version": 1, "threads": [
   { "id": "t1", "anchor": { "blockId": "b1", "quote": "事件" }, "status": "open", "statusAt": "2026-10-21T08:00:00.000Z", "statusBy": "human",
     "messages": [{ "id": "m1", "author": "human", "text": "why?", "at": "2026-10-21T08:00:00.000Z" }] },
@@ -142,13 +152,16 @@ expect "gives the command that lists them" "$out" "skills/artifacts/app/ryugi-ar
 
 printf '{"Claude Code":"2026-10-21T08:00:00.000Z"}\n' > "$dir/.ryugi/artifacts/.state/document/relay/comment-cursors.json"
 out="$(run_hook "$dir" "继续")"
-if [[ -z "$out" ]]; then pass "is quiet once the agent has listed past the changes"; else fail "is quiet once the agent has listed past the changes"; echo "$out" | sed 's/^/      /'; fi
+if [[ -z "$out" ]]; then pass "is quiet once the agent has listed past the changes"; else
+  fail "is quiet once the agent has listed past the changes"
+  echo "$out" | sed 's/^/      /'
+fi
 
 out="$(run_hook "$dir" "继续" CLAUDE_CODE_IS_COWORK=1)"
 expect "uses the Claude Cowork cursor under Cowork" "$out" 'document/relay (1)'
 
 dir="$(doc_project doc-selected)"
-cat > "$dir/.ryugi/artifacts/.state/document/relay/selection.json" <<'JSON'
+cat > "$dir/.ryugi/artifacts/.state/document/relay/selection.json" << 'JSON'
 { "artifact": "document/relay", "updatedAt": "2026-10-21T09:00:00.000Z", "quote": "按事件粒度推送\n再说", "blockIds": ["b2", "b3"], "heading": "同步策略" }
 JSON
 out="$(run_hook "$dir" "改一下这段")"
@@ -173,8 +186,8 @@ dir="$(doc_project many-docs)"
 write_selection "$dir"
 write_doc_comments "$dir"
 for n in $(seq 1 60); do
-    mkdir -p "$dir/.ryugi/artifacts/document/waiting-document-number-$n"
-    cp "$dir/.ryugi/artifacts/document/relay/comments.json" "$dir/.ryugi/artifacts/document/waiting-document-number-$n/comments.json"
+  mkdir -p "$dir/.ryugi/artifacts/document/waiting-document-number-$n"
+  cp "$dir/.ryugi/artifacts/document/relay/comments.json" "$dir/.ryugi/artifacts/document/waiting-document-number-$n/comments.json"
 done
 out="$(run_hook "$dir" "看看")"
 expect "keeps the artboard selection when many documents wait on the agent" "$out" 'hero-2#12 <div>'
@@ -184,5 +197,8 @@ if [[ "${#out}" -le 8200 ]]; then pass "stays within the context budget with man
 
 if grep -q '"UserPromptSubmit"' "$REPO_ROOT/hooks/hooks.json"; then pass "is registered in hooks.json"; else fail "is registered in hooks.json"; fi
 
-if [[ "$FAILURES" -gt 0 ]]; then echo "FAILED: $FAILURES"; exit 1; fi
+if [[ "$FAILURES" -gt 0 ]]; then
+  echo "FAILED: $FAILURES"
+  exit 1
+fi
 echo "All passed"

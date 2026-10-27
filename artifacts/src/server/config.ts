@@ -1,6 +1,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { isVisibility, type ArtifactConfig, type CloudRecord, type Visibility } from '../shared/cloud';
+import {
+  isVisibility,
+  type ArtifactConfig,
+  type CloudRecord,
+  type Visibility,
+} from '../shared/cloud';
 import { writeJsonAtomic } from './state';
 
 export type { ArtifactConfig, CloudRecord, Visibility };
@@ -22,11 +27,22 @@ const defaults = (): RyugiConfig => ({ version: 1, artifacts: {} });
 function isCloudRecord(value: unknown): value is CloudRecord {
   if (typeof value !== 'object' || value === null) return false;
   const { id, url, publishedAt, visibility } = value as Record<string, unknown>;
-  return typeof id === 'string' && typeof url === 'string' && (typeof publishedAt === 'string' || publishedAt === null) && isVisibility(visibility);
+  return (
+    typeof id === 'string' &&
+    typeof url === 'string' &&
+    (typeof publishedAt === 'string' || publishedAt === null) &&
+    isVisibility(visibility)
+  );
 }
 
 function cloudRecord({ id, url, publishedAt, visibility, fingerprint }: CloudRecord): CloudRecord {
-  return { id, url, publishedAt, visibility, ...(typeof fingerprint === 'string' ? { fingerprint } : {}) };
+  return {
+    id,
+    url,
+    publishedAt,
+    visibility,
+    ...(typeof fingerprint === 'string' ? { fingerprint } : {}),
+  };
 }
 
 function normalize(raw: unknown): RyugiConfig {
@@ -59,11 +75,19 @@ export function readConfig(file: string): { config: RyugiConfig; warning?: strin
   try {
     return { config: normalize(JSON.parse(text)) };
   } catch (err) {
-    return { config: defaults(), warning: `config.json is not valid JSON: ${(err as Error).message}` };
+    return {
+      config: defaults(),
+      warning: `config.json is not valid JSON: ${(err as Error).message}`,
+    };
   }
 }
 
-const IGNORED = ['config.json', 'artifacts/*', '!artifacts/document/', 'artifacts/document/*/.artifact-id'];
+const IGNORED = [
+  'config.json',
+  'artifacts/*',
+  '!artifacts/document/',
+  'artifacts/document/*/.artifact-id',
+];
 
 function ensureGitignore(dir: string) {
   const file = path.join(dir, '.gitignore');
@@ -74,7 +98,10 @@ function ensureGitignore(dir: string) {
   const present = new Set(current.split(/\r?\n/).map((line) => line.trim()));
   const missing = IGNORED.filter((line) => !present.has(line));
   if (missing.length === 0) return;
-  fs.writeFileSync(file, `${current}${current === '' || current.endsWith('\n') ? '' : '\n'}${missing.join('\n')}\n`);
+  fs.writeFileSync(
+    file,
+    `${current}${current === '' || current.endsWith('\n') ? '' : '\n'}${missing.join('\n')}\n`,
+  );
 }
 
 export function ensureConfig(file: string) {
@@ -83,7 +110,11 @@ export function ensureConfig(file: string) {
   if (!fs.existsSync(file)) writeJsonAtomic(file, defaults());
 }
 
-export function updateArtifactConfig(file: string, key: string, patch: ArtifactConfigPatch): ArtifactConfig {
+export function updateArtifactConfig(
+  file: string,
+  key: string,
+  patch: ArtifactConfigPatch,
+): ArtifactConfig {
   const { config, warning } = readConfig(file);
   if (warning) throw new Error(warning);
   const entry: ArtifactConfig = { ...config.artifacts[key] };

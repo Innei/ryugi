@@ -12,7 +12,9 @@ export type ThreadAnchor =
 const BAR_HIT = 4;
 
 export function anchorBoxes(anchor: ThreadAnchor): Box[] {
-  return anchor.kind === 'text' ? [...anchor.range.getClientRects()] : [blockBar(anchor.element.getBoundingClientRect())];
+  return anchor.kind === 'text'
+    ? [...anchor.range.getClientRects()]
+    : [blockBar(anchor.element.getBoundingClientRect())];
 }
 
 export function anchorLinkStart(anchor: ThreadAnchor): { x: number; y: number } | null {
@@ -43,7 +45,11 @@ function rangeAt(element: HTMLElement, start: number, end: number): Range {
   return range;
 }
 
-export function useAnchors(editor: LexicalEditor | null, threads: Thread[], container: HTMLElement | null) {
+export function useAnchors(
+  editor: LexicalEditor | null,
+  threads: Thread[],
+  container: HTMLElement | null,
+) {
   const [anchors, setAnchors] = useState<ThreadAnchor[]>([]);
 
   useEffect(() => {
@@ -65,7 +71,12 @@ export function useAnchors(editor: LexicalEditor | null, threads: Thread[], cont
         if (!element) continue;
         const at = resolveAnchor(element.textContent ?? '', thread.anchor.quote);
         if (at === 'block') {
-          next.push({ threadId: thread.id, top: element.getBoundingClientRect().top - origin, kind: 'block', element });
+          next.push({
+            threadId: thread.id,
+            top: element.getBoundingClientRect().top - origin,
+            kind: 'block',
+            element,
+          });
           continue;
         }
         const range = rangeAt(element, at.start, at.end);
@@ -100,7 +111,9 @@ export function useHighlights(anchors: ThreadAnchor[], threads: Thread[], active
     if (typeof CSS === 'undefined' || !('highlights' in CSS)) return;
     const shown = shownThreadIds(threads, activeId);
     const text = anchors.filter((a) => a.kind === 'text');
-    const normal = text.filter((a) => shown.has(a.threadId) && a.threadId !== activeId).map((a) => a.range);
+    const normal = text
+      .filter((a) => shown.has(a.threadId) && a.threadId !== activeId)
+      .map((a) => a.range);
     const active = text.filter((a) => a.threadId === activeId).map((a) => a.range);
     CSS.highlights.set('ryugi-comment', new Highlight(...normal));
     CSS.highlights.set('ryugi-comment-active', new Highlight(...active));
@@ -125,7 +138,8 @@ export function threadAtPoint(anchors: ThreadAnchor[], x: number, y: number): st
   for (const anchor of anchors) {
     const pad = anchor.kind === 'block' ? BAR_HIT : 0;
     for (const box of anchorBoxes(anchor)) {
-      if (x >= box.left - pad && x <= box.right + pad && y >= box.top && y <= box.bottom) return anchor.threadId;
+      if (x >= box.left - pad && x <= box.right + pad && y >= box.top && y <= box.bottom)
+        return anchor.threadId;
     }
   }
   return null;

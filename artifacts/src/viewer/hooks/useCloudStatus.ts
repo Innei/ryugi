@@ -11,7 +11,11 @@ export interface CloudResult {
 const LOGIN_POLL_MS = 2000;
 const LOGIN_POLL_LIMIT_MS = 5 * 60 * 1000;
 
-export async function cloudRequest(method: string, path: string, body?: unknown): Promise<CloudResult> {
+export async function cloudRequest(
+  method: string,
+  path: string,
+  body?: unknown,
+): Promise<CloudResult> {
   try {
     const res = await fetch(`/api/cloud/${path}`, {
       method,
@@ -45,7 +49,8 @@ export function useCloudStatus() {
 
   const login = useCallback(
     async (loginUrl?: string) => {
-      const url = loginUrl ?? ((await cloudRequest('POST', 'login')).json.url as string | undefined);
+      const url =
+        loginUrl ?? ((await cloudRequest('POST', 'login')).json.url as string | undefined);
       if (!url) return;
       window.open(url, '_blank', 'noopener');
       stopPolling();
@@ -62,9 +67,13 @@ export function useCloudStatus() {
   useEffect(() => {
     void refresh();
     const unsubscribe = onServerMessage((message) => {
-      if (message.type === 'cloud-publication' || message.type === 'cloud-published') void refresh();
+      if (message.type === 'cloud-publication' || message.type === 'cloud-published')
+        void refresh();
     });
-    return () => { unsubscribe(); stopPolling(); };
+    return () => {
+      unsubscribe();
+      stopPolling();
+    };
   }, [refresh, stopPolling]);
 
   return { status, refresh, login, waitingForLogin };

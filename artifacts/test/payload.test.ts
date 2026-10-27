@@ -20,7 +20,15 @@ describe('mergePayload', () => {
   });
 
   test('a withheld canvas keeps the last good canvas, takes the new warnings and marks it stale', () => {
-    const broken = { canvas: null, layout: null, warnings: ['bad'], pending: ['b'], versions: {}, contentBase: '/b/two/', stale: false };
+    const broken = {
+      canvas: null,
+      layout: null,
+      warnings: ['bad'],
+      pending: ['b'],
+      versions: {},
+      contentBase: '/b/two/',
+      stale: false,
+    };
     expect(mergePayload(good, broken)).toEqual({
       ...good,
       warnings: ['bad'],
@@ -32,7 +40,15 @@ describe('mergePayload', () => {
 
   test('with no previous canvas a withheld canvas stays empty', () => {
     const empty = { ...good, canvas: null, layout: null };
-    const broken = { canvas: null, layout: null, warnings: ['bad'], pending: ['b'], versions: {}, contentBase: '/b/two/', stale: false };
+    const broken = {
+      canvas: null,
+      layout: null,
+      warnings: ['bad'],
+      pending: ['b'],
+      versions: {},
+      contentBase: '/b/two/',
+      stale: false,
+    };
     expect(mergePayload(empty, broken).canvas).toBeNull();
   });
 });

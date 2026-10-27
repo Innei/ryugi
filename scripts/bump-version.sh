@@ -41,7 +41,7 @@ write_json_field() {
 }
 
 require_tool() {
-  command -v "$1" >/dev/null 2>&1 || {
+  command -v "$1" > /dev/null 2>&1 || {
     echo "error: required tool '$1' is not on PATH" >&2
     return 1
   }
@@ -99,7 +99,7 @@ preflight_manifests() {
     fullpath="$REPO_ROOT/$path"
     [[ -f "$fullpath" ]] || continue
 
-    if ! read_manifest_field "$fullpath" "$field" >/dev/null; then
+    if ! read_manifest_field "$fullpath" "$field" > /dev/null; then
       echo "error: cannot read declared manifest: $path ($field)" >&2
       return 1
     fi
@@ -108,7 +108,7 @@ preflight_manifests() {
 
 # Read the audit exclude patterns from config.
 audit_excludes() {
-  jq -r '.audit.exclude[]' "$CONFIG" 2>/dev/null
+  jq -r '.audit.exclude[]' "$CONFIG" 2> /dev/null
 }
 
 # --- commands ---
@@ -214,7 +214,7 @@ cmd_audit() {
       fi
       echo "  $match"
     fi
-  done < <(grep -rnE "${exclude_args[@]}" "$version_pattern" "$REPO_ROOT" 2>/dev/null || true)
+  done < <(grep -rnE "${exclude_args[@]}" "$version_pattern" "$REPO_ROOT" 2> /dev/null || true)
 
   if [[ "$found_undeclared" -eq 0 ]]; then
     echo "No undeclared files contain the version string. All clear."
@@ -266,7 +266,7 @@ case "${1:-}" in
   --audit)
     cmd_audit
     ;;
-  --help|-h|"")
+  --help | -h | "")
     echo "Usage: bump-version.sh <new-version> | --check | --audit"
     echo ""
     echo "  <new-version>  Bump all declared files to the given version"

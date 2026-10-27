@@ -1,8 +1,8 @@
 {
-  "name": "ryugi-dev",
   "interface": {
     "displayName": "Ryugi Dev"
   },
+  "name": "ryugi-dev",
   "plugins": [
     {
       "name": "ryugi",

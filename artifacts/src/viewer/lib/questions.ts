@@ -43,10 +43,12 @@ export function roundsOf(canvas: CanvasSpec, layout: CanvasLayout, page: string)
       .filter((title) => title.rect.y + title.rect.h <= question.bounds.minY)
       .sort((a, b) => b.rect.y - a.rect.y)[0];
     const key = above?.id ?? null;
-    if (!rounds.has(key)) rounds.set(key, { id: key, title: above?.text ?? i18n.t('common.other'), questions: [] });
+    if (!rounds.has(key))
+      rounds.set(key, { id: key, title: above?.text ?? i18n.t('common.other'), questions: [] });
     rounds.get(key)!.questions.push(question);
   }
-  const titleY = (id: string | null) => titles.find((title) => title.id === id)?.rect.y ?? -Infinity;
+  const titleY = (id: string | null) =>
+    titles.find((title) => title.id === id)?.rect.y ?? -Infinity;
   return [...rounds.values()].sort((a, b) => titleY(b.id) - titleY(a.id));
 }
 
@@ -56,13 +58,20 @@ export function openingQuestion(rounds: Round[], target: string | undefined): Qu
   const list = questionList(rounds);
   if (target) {
     const round = rounds.find((r) => r.id === target);
-    const found = round?.questions[0] ?? list.find((q) => q.id === target) ?? list.find((q) => q.boards.includes(target));
+    const found =
+      round?.questions[0] ??
+      list.find((q) => q.id === target) ??
+      list.find((q) => q.boards.includes(target));
     if (found) return found;
   }
   return list[0] ?? null;
 }
 
-export function stepQuestion(list: Question[], current: string, direction: 1 | -1): Question | null {
+export function stepQuestion(
+  list: Question[],
+  current: string,
+  direction: 1 | -1,
+): Question | null {
   const index = list.findIndex((q) => q.id === current);
   return index === -1 ? null : (list[index + direction] ?? null);
 }

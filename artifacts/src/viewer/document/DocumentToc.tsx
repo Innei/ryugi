@@ -12,9 +12,35 @@ interface Entry {
 }
 
 const styles = stylex.create({
-  toc: { position: 'sticky', top: 72, alignSelf: 'start', display: 'flex', flexDirection: 'column', maxHeight: 'calc(100dvh - 96px)', minWidth: 0, fontFamily: cssVar.fontFamily, fontSize: 12, lineHeight: 2.1, color: cssVar.colorTextTertiary },
-  label: { flexShrink: 0, marginBottom: 4, color: cssVar.colorTextSecondary, fontSize: 11, fontWeight: 600, letterSpacing: '0.04em' },
-  list: { minHeight: 0, overflowY: 'auto', overscrollBehaviorY: 'contain', scrollbarWidth: 'thin', marginInlineStart: -12, paddingInlineStart: 12 },
+  toc: {
+    position: 'sticky',
+    top: 72,
+    alignSelf: 'start',
+    display: 'flex',
+    flexDirection: 'column',
+    maxHeight: 'calc(100dvh - 96px)',
+    minWidth: 0,
+    fontFamily: cssVar.fontFamily,
+    fontSize: 12,
+    lineHeight: 2.1,
+    color: cssVar.colorTextTertiary,
+  },
+  label: {
+    flexShrink: 0,
+    marginBottom: 4,
+    color: cssVar.colorTextSecondary,
+    fontSize: 11,
+    fontWeight: 600,
+    letterSpacing: '0.04em',
+  },
+  list: {
+    minHeight: 0,
+    overflowY: 'auto',
+    overscrollBehaviorY: 'contain',
+    scrollbarWidth: 'thin',
+    marginInlineStart: -12,
+    paddingInlineStart: 12,
+  },
   item: {
     display: 'block',
     width: '100%',
@@ -29,7 +55,7 @@ const styles = stylex.create({
     borderInlineStartStyle: 'solid',
     borderInlineStartColor: 'transparent',
     backgroundColor: 'transparent',
-    color: { default: 'inherit', ':hover': cssVar.colorText },
+    color: { 'default': 'inherit', ':hover': cssVar.colorText },
     font: 'inherit',
     textAlign: 'start',
     cursor: 'pointer',
@@ -56,7 +82,11 @@ export function DocumentToc({ editor }: { editor: LexicalEditor | null }) {
         editor.getEditorState().read(() =>
           $getRoot()
             .getChildren()
-            .filter((block) => block.getType() === 'heading' && (block as unknown as { getTag(): string }).getTag() in HEADING_DEPTH)
+            .filter(
+              (block) =>
+                block.getType() === 'heading' &&
+                (block as unknown as { getTag(): string }).getTag() in HEADING_DEPTH,
+            )
             .map((block) => ({
               key: block.getKey(),
               text: block.getTextContent(),
@@ -91,7 +121,10 @@ export function DocumentToc({ editor }: { editor: LexicalEditor | null }) {
       const bounds = list.getBoundingClientRect();
       const rect = item.getBoundingClientRect();
       if (rect.top < bounds.top || rect.bottom > bounds.bottom) {
-        list.scrollTop = Math.max(0, list.scrollTop + rect.top - bounds.top - (list.clientHeight - rect.height) / 2);
+        list.scrollTop = Math.max(
+          0,
+          list.scrollTop + rect.top - bounds.top - (list.clientHeight - rect.height) / 2,
+        );
       }
     };
     keepVisible();
@@ -120,7 +153,11 @@ export function DocumentToc({ editor }: { editor: LexicalEditor | null }) {
               stopScroll.current?.();
               stopScroll.current = springScrollToElement(element);
             }}
-            {...stylex.props(styles.item, entry.depth > 0 && styles.nested, entry.key === activeKey && styles.active)}
+            {...stylex.props(
+              styles.item,
+              entry.depth > 0 && styles.nested,
+              entry.key === activeKey && styles.active,
+            )}
           >
             {entry.text}
           </button>

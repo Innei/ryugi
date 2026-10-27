@@ -15,11 +15,26 @@ const base = (): CanvasSpec => ({
 
 describe('validateCanvas', () => {
   test('rejects malformed colors and writing targets before they reach the viewer', () => {
-    const canvas = { ...base(), writing: 42, notes: { n: { page: 'p', kind: 'sticky', x: 3000, y: 0, text: 'Note', color: 'url(https://example.com)' } } };
+    const canvas = {
+      ...base(),
+      writing: 42,
+      notes: {
+        n: {
+          page: 'p',
+          kind: 'sticky',
+          x: 3000,
+          y: 0,
+          text: 'Note',
+          color: 'url(https://example.com)',
+        },
+      },
+    };
     const warnings = validateCanvas(canvas, exists);
     expect(warnings).toContain('"writing" must be a board id');
     expect(warnings.some((warning) => warning.includes('color'))).toBe(true);
-    expect(validateCanvas({ ...base(), writing: 'missing' }, exists)).toContain('writing target "missing" is not a board');
+    expect(validateCanvas({ ...base(), writing: 'missing' }, exists)).toContain(
+      'writing target "missing" is not a board',
+    );
   });
 
   test('a well-formed canvas has no warnings', () => {
@@ -97,7 +112,9 @@ describe('validateCanvas', () => {
     const canvas = base();
     canvas.notes = { s: { page: 'p', kind: 'sticky', x: 1340, y: -100, w: 200, text: 'x' } };
     expect(validateCanvas(canvas, exists)).not.toContain('sticky "s" covers board "b"');
-    canvas.notes = { s: { page: 'p', kind: 'sticky', x: 1340, y: -100, w: 200, text: 'one\ntwo\nthree' } };
+    canvas.notes = {
+      s: { page: 'p', kind: 'sticky', x: 1340, y: -100, w: 200, text: 'one\ntwo\nthree' },
+    };
     expect(validateCanvas(canvas, exists)).toContain('sticky "s" covers board "b"');
   });
 
@@ -124,7 +141,9 @@ describe('validateCanvas', () => {
   test('reports a board file outside pages/', () => {
     const canvas = base();
     canvas.boards.a!.file = './pages/p/a.html';
-    expect(validateCanvas(canvas, exists)).toContain('board "a" file must start with "pages/": ./pages/p/a.html');
+    expect(validateCanvas(canvas, exists)).toContain(
+      'board "a" file must start with "pages/": ./pages/p/a.html',
+    );
   });
 
   test('reports an unknown activePage and an unknown focus target', () => {
@@ -137,20 +156,40 @@ describe('validateCanvas', () => {
   });
 
   test('a media board takes type and src instead of file', () => {
-    const canvas = { ...base(), boards: { ...base().boards, v: { type: 'video', src: 'pages/p/flow.webm', page: 'p', x: 2720, y: 0, w: 640, h: 400 } } };
+    const canvas = {
+      ...base(),
+      boards: {
+        ...base().boards,
+        v: { type: 'video', src: 'pages/p/flow.webm', page: 'p', x: 2720, y: 0, w: 640, h: 400 },
+      },
+    };
     expect(validateCanvas(canvas, exists)).toEqual([]);
   });
 
   test('a media board needs a src under pages/ and a known type', () => {
     const board = { page: 'p', x: 2720, y: 0, w: 640, h: 400 };
-    expect(validateCanvas({ ...base(), boards: { v: { ...board, type: 'image' } } }, exists)).toContain('board "v" is missing "src"');
-    expect(validateCanvas({ ...base(), boards: { v: { ...board, type: 'image', src: 'evidence/a.png' } } }, exists)).toContain('board "v" src must start with "pages/": evidence/a.png');
-    expect(validateCanvas({ ...base(), boards: { v: { ...board, type: 'gif', file: 'pages/p/a.gif' } } }, exists)).toContain('board "v" field "type" must be "html", "image" or "video"');
+    expect(
+      validateCanvas({ ...base(), boards: { v: { ...board, type: 'image' } } }, exists),
+    ).toContain('board "v" is missing "src"');
+    expect(
+      validateCanvas(
+        { ...base(), boards: { v: { ...board, type: 'image', src: 'evidence/a.png' } } },
+        exists,
+      ),
+    ).toContain('board "v" src must start with "pages/": evidence/a.png');
+    expect(
+      validateCanvas(
+        { ...base(), boards: { v: { ...board, type: 'gif', file: 'pages/p/a.gif' } } },
+        exists,
+      ),
+    ).toContain('board "v" field "type" must be "html", "image" or "video"');
   });
 
   test('a group verify flag must be a boolean', () => {
     const canvas = { ...base(), groups: { g: { boards: ['a', 'b'], verify: 'yes' } } };
     expect(validateCanvas(canvas, exists)).toContain('group "g" field "verify" must be a boolean');
-    expect(validateCanvas({ ...base(), groups: { g: { boards: ['a', 'b'], verify: true } } }, exists)).toEqual([]);
+    expect(
+      validateCanvas({ ...base(), groups: { g: { boards: ['a', 'b'], verify: true } } }, exists),
+    ).toEqual([]);
   });
 });

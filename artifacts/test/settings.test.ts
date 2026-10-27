@@ -3,13 +3,21 @@ import os from 'node:os';
 import path from 'node:path';
 import { describe, expect, test } from 'vitest';
 import { setProjectAutoPublish } from '../src/server/config';
-import { autoPublishEnabled, defaultGlobalAutoPublish, readGlobalAutoPublish, settingsFileFor, writeGlobalAutoPublish } from '../src/server/settings';
+import {
+  autoPublishEnabled,
+  defaultGlobalAutoPublish,
+  readGlobalAutoPublish,
+  settingsFileFor,
+  writeGlobalAutoPublish,
+} from '../src/server/settings';
 
 const tempDir = () => fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-settings-'));
 
 describe('global settings', () => {
   test('live next to the credentials file', () => {
-    expect(settingsFileFor('/home/u/.config/ryugi/credentials.json')).toBe(path.join('/home/u/.config/ryugi', 'config.json'));
+    expect(settingsFileFor('/home/u/.config/ryugi/credentials.json')).toBe(
+      path.join('/home/u/.config/ryugi', 'config.json'),
+    );
   });
 
   test('read as undecided when the file or the key is missing', () => {

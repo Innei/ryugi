@@ -3,9 +3,24 @@ import { boardCommentsFromPayload, type BoardCommentsState } from '../lib/board-
 import { mergePayload, type ViewerPayload } from '../lib/payload';
 import type { ArtifactFeed } from '../lib/feed';
 
-const EMPTY: ViewerPayload = { canvas: null, warnings: [], pending: [], layout: null, versions: {}, contentBase: '', stale: false };
+const EMPTY: ViewerPayload = {
+  canvas: null,
+  warnings: [],
+  pending: [],
+  layout: null,
+  versions: {},
+  contentBase: '',
+  stale: false,
+};
 
-export function useCanvasData({ live, revision, load, send, boardComments, comment }: ArtifactFeed) {
+export function useCanvasData({
+  live,
+  revision,
+  load,
+  send,
+  boardComments,
+  comment,
+}: ArtifactFeed) {
   const [data, setData] = useState<ViewerPayload>(EMPTY);
   const [loaded, setLoaded] = useState(false);
   const [comments, setComments] = useState<BoardCommentsState | null>(null);

@@ -6,12 +6,12 @@ The tool's own instructions say how to create, write and share; this file
 says which of its types each Ryugi type becomes and what changes in the
 rounds.
 
-| Ryugi type | Artifact `quickstart` intent | What it becomes |
-|------------|------------------------------|-----------------|
-| `artboard` | `design` | a Design canvas: artboards, title notes, stickies, tweaks |
-| `document` | `document` | the document type it names, usually a Claude Doc |
-| `html` | `other` | one page |
-| `artboard` with verify groups | — | stays local: ryugi:verifying-ui |
+| Ryugi type                    | Artifact `quickstart` intent | What it becomes                                           |
+| ----------------------------- | ---------------------------- | --------------------------------------------------------- |
+| `artboard`                    | `design`                     | a Design canvas: artboards, title notes, stickies, tweaks |
+| `document`                    | `document`                   | the document type it names, usually a Claude Doc          |
+| `html`                        | `other`                      | one page                                                  |
+| `artboard` with verify groups | —                            | stays local: ryugi:verifying-ui                           |
 
 Verify groups carry pass/reject verdicts the Artifact tool has no
 equivalent for, so they always run on the local server, as the rest of

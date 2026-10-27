@@ -19,7 +19,11 @@ export interface Recorded {
 export interface StoredArtifact {
   visibility: string;
   blobs: Map<string, string>;
-  versions: { title: string; payload: Record<string, any>; files: { path: string; hash: string }[] }[];
+  versions: {
+    title: string;
+    payload: Record<string, any>;
+    files: { path: string; hash: string }[];
+  }[];
 }
 
 export interface FakeCloud {
@@ -41,7 +45,8 @@ export async function closeAll() {
   clouds = [];
 }
 
-export const sha256 = (data: Buffer | string) => crypto.createHash('sha256').update(data).digest('hex');
+export const sha256 = (data: Buffer | string) =>
+  crypto.createHash('sha256').update(data).digest('hex');
 
 export async function fakeCloud(): Promise<FakeCloud> {
   let next = 0;
@@ -63,8 +68,13 @@ export async function fakeCloud(): Promise<FakeCloud> {
     const chunks: Buffer[] = [];
     for await (const chunk of req) chunks.push(chunk as Buffer);
     const body = Buffer.concat(chunks);
-    const recorded: Recorded = { method: req.method ?? '', path: req.url ?? '', auth: req.headers.authorization };
-    if ((req.headers['content-type'] ?? '').startsWith('application/json')) recorded.json = JSON.parse(body.toString());
+    const recorded: Recorded = {
+      method: req.method ?? '',
+      path: req.url ?? '',
+      auth: req.headers.authorization,
+    };
+    if ((req.headers['content-type'] ?? '').startsWith('application/json'))
+      recorded.json = JSON.parse(body.toString());
     else if (body.length > 0) recorded.body = body.toString();
     cloud.requests.push(recorded);
     await cloud.gate(recorded);
@@ -77,7 +87,13 @@ export async function fakeCloud(): Promise<FakeCloud> {
     const artifactJson = (id: string) => {
       const stored = cloud.store.get(id)!;
       const version = stored.versions.length;
-      return { id, url: `${cloud.origin}/a/${id}`, visibility: stored.visibility, version: version || null, updatedAt: `2026-10-20T${String(7 + Math.max(version, 1)).padStart(2, '0')}:00:00.000Z` };
+      return {
+        id,
+        url: `${cloud.origin}/a/${id}`,
+        visibility: stored.visibility,
+        version: version || null,
+        updatedAt: `2026-10-20T${String(7 + Math.max(version, 1)).padStart(2, '0')}:00:00.000Z`,
+      };
     };
     if (req.method === 'POST' && req.url === '/api/artifacts') {
       const id = `cloud${++next}`;
@@ -88,7 +104,8 @@ export async function fakeCloud(): Promise<FakeCloud> {
     if (blob && req.method === 'PUT') {
       const stored = cloud.store.get(blob[1]!);
       if (!stored) return reply(404, { error: 'artifact not found' });
-      if (sha256(body) !== blob[2]) return reply(400, { error: 'the body does not match its hash' });
+      if (sha256(body) !== blob[2])
+        return reply(400, { error: 'the body does not match its hash' });
       stored.blobs.set(blob[2]!, body.toString());
       return reply(204);
     }
@@ -96,8 +113,15 @@ export async function fakeCloud(): Promise<FakeCloud> {
     if (versions && req.method === 'POST') {
       const stored = cloud.store.get(versions[1]!);
       if (!stored) return reply(404, { error: 'artifact not found' });
-      const { title, payload, files, visibility } = recorded.json as { title: string; payload: Record<string, any>; files: { path: string; hash: string }[]; visibility?: string };
-      const missing = [...new Set(files.map((f) => f.hash))].filter((hash) => !stored.blobs.has(hash));
+      const { title, payload, files, visibility } = recorded.json as {
+        title: string;
+        payload: Record<string, any>;
+        files: { path: string; hash: string }[];
+        visibility?: string;
+      };
+      const missing = [...new Set(files.map((f) => f.hash))].filter(
+        (hash) => !stored.blobs.has(hash),
+      );
       if (missing.length > 0) return reply(409, { error: 'missing files', missing });
       stored.versions.push({ title, payload, files });
       if (visibility) stored.visibility = visibility;
@@ -115,7 +139,8 @@ export async function fakeCloud(): Promise<FakeCloud> {
       return reply(204);
     }
     if (req.method === 'GET' && req.url === '/api/artifacts') return reply(200, { artifacts: [] });
-    if (req.method === 'POST' && req.url === '/auth/cli/token') return reply(200, { token: 'new-token', login: 'innei' });
+    if (req.method === 'POST' && req.url === '/auth/cli/token')
+      return reply(200, { token: 'new-token', login: 'innei' });
     if (req.method === 'POST' && req.url === '/api/logout') return reply(204);
     reply(404, { error: 'not found' });
   };
@@ -128,18 +153,30 @@ export async function fakeCloud(): Promise<FakeCloud> {
 export function latest(cloud: FakeCloud, id = 'cloud1') {
   const stored = cloud.store.get(id)!;
   const version = stored.versions.at(-1)!;
-  return { title: version.title, payload: version.payload, files: Object.fromEntries(version.files.map((f) => [f.path, stored.blobs.get(f.hash)!])) };
+  return {
+    title: version.title,
+    payload: version.payload,
+    files: Object.fromEntries(version.files.map((f) => [f.path, stored.blobs.get(f.hash)!])),
+  };
 }
 
-export const requestLines = (cloud: FakeCloud, from = 0) => cloud.requests.slice(from).map((r) => `${r.method} ${r.path.replace(/[0-9a-f]{64}/, '<hash>')}`);
+export const requestLines = (cloud: FakeCloud, from = 0) =>
+  cloud.requests.slice(from).map((r) => `${r.method} ${r.path.replace(/[0-9a-f]{64}/, '<hash>')}`);
 
-export async function start({ signedIn = true, writeDelayMs }: { signedIn?: boolean; writeDelayMs?: number } = {}) {
+export async function start({
+  signedIn = true,
+  writeDelayMs,
+}: { signedIn?: boolean; writeDelayMs?: number } = {}) {
   const temp = tempRoot();
   const ryugiDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-dir-'));
   const configFile = path.join(ryugiDir, 'config.json');
-  const credentialsFile = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-home-')), 'credentials.json');
+  const credentialsFile = path.join(
+    fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-home-')),
+    'credentials.json',
+  );
   const cloud = await fakeCloud();
-  if (signedIn) writeCredentials(credentialsFile, { origin: cloud.origin, token: 'tok', login: 'innei' });
+  if (signedIn)
+    writeCredentials(credentialsFile, { origin: cloud.origin, token: 'tok', login: 'innei' });
   const server = await startArtifactsServer({
     root: temp.root,
     viewerDir: temp.viewer,
@@ -154,14 +191,23 @@ export async function start({ signedIn = true, writeDelayMs }: { signedIn?: bool
   return { server, root: temp.root, configFile, ryugiDir, credentialsFile, cloud };
 }
 
-export async function call(server: ArtifactsServer, method: string, rel: string, body?: unknown, { key = true } = {}) {
+export async function call(
+  server: ArtifactsServer,
+  method: string,
+  rel: string,
+  body?: unknown,
+  { key = true } = {},
+) {
   const sep = rel.includes('?') ? '&' : '?';
-  const res = await fetch(`http://127.0.0.1:${server.port}${rel}${key ? `${sep}key=${server.token}` : ''}`, {
-    method,
-    headers: body === undefined ? {} : { 'Content-Type': 'application/json' },
-    body: body === undefined ? undefined : JSON.stringify(body),
-    redirect: 'manual',
-  });
+  const res = await fetch(
+    `http://127.0.0.1:${server.port}${rel}${key ? `${sep}key=${server.token}` : ''}`,
+    {
+      method,
+      headers: body === undefined ? {} : { 'Content-Type': 'application/json' },
+      body: body === undefined ? undefined : JSON.stringify(body),
+      redirect: 'manual',
+    },
+  );
   const text = await res.text();
   let json: Record<string, unknown> = {};
   try {

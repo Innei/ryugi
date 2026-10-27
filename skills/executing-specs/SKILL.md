@@ -383,21 +383,21 @@ cannot see a squashed branch as merged).
 
 ## Common Rationalizations
 
-| Excuse | Reality |
-|--------|---------|
-| "I'll show the task list first, to be safe" | They approved the spec. The slicing is yours: ledger it and start. |
-| "The spec is small, tasks.md is overhead" | The scripts read tasks from it. A one-task list is fine. |
-| "I remember what Task N says" | You remember a summary. The brief has the exact names. Read it. |
-| "This task is trivial, skip watching the test fail" | A test you never saw fail proves nothing. It is one step. Run it. |
-| "The spec is silent here, I'll just do the right thing" | Do the right thing and ledger the ruling. Unledgered deviation is a decision made in secret. |
-| "I'll write the ledger lines after a few tasks" | Compaction does not wait for a convenient moment. One line per task, in the same message as the commit. |
-| "Let me check in before the next task" | Only the four stops stop you. |
-| "I read my own diff carefully; the final reviewer is redundant" | Same author, same blind spots. The reviewer is the only fresh context this run buys. |
-| "Tests should pass, the change was trivial" | "Should" is not evidence. The contract requires the command and its output. |
-| "The reviewer said Minor, so it's Minor" | The label graded the spec's silence. Grade what the person gets. Re-grade, then gate. |
-| "The fix is obvious, no need for a failing test first" | The failing test is the only proof the finding was real and is now gone. |
-| "I'll fix the minors too while I'm in there" | Every minor you fix is work your partner did not ask for. Ledger them; your partner decides. |
-| "Tests pass, so the app works" | When the project has a skill for checking the running product, run it. Passing tests are not a screen anyone has seen. |
+| Excuse                                                          | Reality                                                                                                                |
+| --------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| "I'll show the task list first, to be safe"                     | They approved the spec. The slicing is yours: ledger it and start.                                                     |
+| "The spec is small, tasks.md is overhead"                       | The scripts read tasks from it. A one-task list is fine.                                                               |
+| "I remember what Task N says"                                   | You remember a summary. The brief has the exact names. Read it.                                                        |
+| "This task is trivial, skip watching the test fail"             | A test you never saw fail proves nothing. It is one step. Run it.                                                      |
+| "The spec is silent here, I'll just do the right thing"         | Do the right thing and ledger the ruling. Unledgered deviation is a decision made in secret.                           |
+| "I'll write the ledger lines after a few tasks"                 | Compaction does not wait for a convenient moment. One line per task, in the same message as the commit.                |
+| "Let me check in before the next task"                          | Only the four stops stop you.                                                                                          |
+| "I read my own diff carefully; the final reviewer is redundant" | Same author, same blind spots. The reviewer is the only fresh context this run buys.                                   |
+| "Tests should pass, the change was trivial"                     | "Should" is not evidence. The contract requires the command and its output.                                            |
+| "The reviewer said Minor, so it's Minor"                        | The label graded the spec's silence. Grade what the person gets. Re-grade, then gate.                                  |
+| "The fix is obvious, no need for a failing test first"          | The failing test is the only proof the finding was real and is now gone.                                               |
+| "I'll fix the minors too while I'm in there"                    | Every minor you fix is work your partner did not ask for. Ledger them; your partner decides.                           |
+| "Tests pass, so the app works"                                  | When the project has a skill for checking the running product, run it. Passing tests are not a screen anyone has seen. |
 
 ## Example Workflow
 

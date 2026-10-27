@@ -25,7 +25,9 @@ export function openReady(payload: CanvasPayload): boolean {
     ? canvas.groups?.[focus]
       ? focus
       : focusBoard
-        ? Object.entries(canvas.groups ?? {}).find(([, group]) => group.boards.includes(focusBoard))?.[0]
+        ? Object.entries(canvas.groups ?? {}).find(([, group]) =>
+            group.boards.includes(focusBoard),
+          )?.[0]
         : undefined
     : undefined;
   const focusGroup = focusGroupId ? canvas.groups?.[focusGroupId] : undefined;

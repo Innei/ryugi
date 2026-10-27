@@ -19,14 +19,14 @@ Full spec (for the agent): `2026-10-21-owner-cloud-editing-design.md`
 
 ## Decided
 
-| Topic | Decision |
-|---|---|
-| Main use | comments; occasional text edits |
-| Offline | fully read-only, nothing queued |
-| Platform | Cloudflare Durable Object, free plan; self-hosting later |
-| Online when | an agent session is open in the project |
+| Topic        | Decision                                                                                 |
+| ------------ | ---------------------------------------------------------------------------------------- |
+| Main use     | comments; occasional text edits                                                          |
+| Offline      | fully read-only, nothing queued                                                          |
+| Platform     | Cloudflare Durable Object, free plan; self-hosting later                                 |
+| Online when  | an agent session is open in the project                                                  |
 | Phone layout | FloatingSheet (q1r3), edit menu (q2r4-a), offline hint in top bar + sheet title (q3r4-b) |
-| 改字 | explicit mode with 完成 |
+| 改字         | explicit mode with 完成                                                                  |
 
 ## Check these (agent's calls, not yours yet)
 

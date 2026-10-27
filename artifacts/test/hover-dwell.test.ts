@@ -8,8 +8,15 @@ function setup(dwellMs = 600) {
   let changes = 0;
   const dwell = createHoverDwell({
     dwellMs,
-    schedule: (fn, ms) => { const id = ++nextId; timers.push({ at: now + ms, fn, id }); return id; },
-    cancel: (id) => { const at = timers.findIndex((timer) => timer.id === id); if (at >= 0) timers.splice(at, 1); },
+    schedule: (fn, ms) => {
+      const id = ++nextId;
+      timers.push({ at: now + ms, fn, id });
+      return id;
+    },
+    cancel: (id) => {
+      const at = timers.findIndex((timer) => timer.id === id);
+      if (at >= 0) timers.splice(at, 1);
+    },
     onChange: () => changes++,
   });
   const advance = (ms: number) => {

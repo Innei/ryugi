@@ -21,15 +21,15 @@ The hook run instead attached the hook's reminder line and the message
 
 ## Before and after
 
-| Reference / run | How comments were written | Agent name on replies | 1%→2% in doc | Change thread | Question thread | Read cursor |
-|---|---|---|---|---|---|---|
-| Baseline / 1 | python appends to `comments.json` | Codex (wrong) | yes | resolved | replied, open | none |
-| Baseline / 2 | python appends to `comments.json` | Codex (wrong) | yes | resolved | replied, open | none |
-| V1 / 1 | `comment list`, `comment reply` | Claude Code | yes | replied, **open** | replied, open | set |
-| V1 / 2 | `comment list`, `comment reply` | Claude Code | yes | replied, **open** | replied, open | set |
-| V1 / hook reminder | ran the reminder's `comment list`, then `reply` | Claude Code | yes | replied, **open** | replied, open | set |
-| V2 / 1 | `comment list`, `reply`, `resolve` | Claude Code | yes | resolved | replied, open | set |
-| V2 / 2 | `comment list`, `reply`, `resolve` | Claude Code | yes | resolved | replied, open | set |
+| Reference / run    | How comments were written                       | Agent name on replies | 1%→2% in doc | Change thread     | Question thread | Read cursor |
+| ------------------ | ----------------------------------------------- | --------------------- | ------------ | ----------------- | --------------- | ----------- |
+| Baseline / 1       | python appends to `comments.json`               | Codex (wrong)         | yes          | resolved          | replied, open   | none        |
+| Baseline / 2       | python appends to `comments.json`               | Codex (wrong)         | yes          | resolved          | replied, open   | none        |
+| V1 / 1             | `comment list`, `comment reply`                 | Claude Code           | yes          | replied, **open** | replied, open   | set         |
+| V1 / 2             | `comment list`, `comment reply`                 | Claude Code           | yes          | replied, **open** | replied, open   | set         |
+| V1 / hook reminder | ran the reminder's `comment list`, then `reply` | Claude Code           | yes          | replied, **open** | replied, open   | set         |
+| V2 / 1             | `comment list`, `reply`, `resolve`              | Claude Code           | yes          | resolved          | replied, open   | set         |
+| V2 / 2             | `comment list`, `reply`, `resolve`              | Claude Code           | yes          | resolved          | replied, open   | set         |
 
 Baseline agents followed the old reference exactly: they wrote the JSON
 file, and the server stamped their replies with the agent that started it.

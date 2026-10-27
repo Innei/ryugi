@@ -19,15 +19,15 @@ Full spec (for the agent): `2026-10-21-cloud-direct-local-design.md`
 
 ## Decided
 
-| Topic | Decision |
-|---|---|
-| Entry point | the cloud page; localhost stays, same interactions, no redirect |
-| Same machine | direct to localhost |
-| Other machines | CF relay, live for the owner, all types |
-| Safari | not handled; uses CF |
-| Who connects directly | the signed-in owner only |
-| Port and key | reported by the local server to the relay, read by the owner's page |
-| New artifact | empty cloud record at `start`, rendered live from the host |
+| Topic                 | Decision                                                            |
+| --------------------- | ------------------------------------------------------------------- |
+| Entry point           | the cloud page; localhost stays, same interactions, no redirect     |
+| Same machine          | direct to localhost                                                 |
+| Other machines        | CF relay, live for the owner, all types                             |
+| Safari                | not handled; uses CF                                                |
+| Who connects directly | the signed-in owner only                                            |
+| Port and key          | reported by the local server to the relay, read by the owner's page |
+| New artifact          | empty cloud record at `start`, rendered live from the host          |
 
 ## My calls (check these)
 

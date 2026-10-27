@@ -9,7 +9,10 @@ const OPCODE_PONG = 0x0a;
 const MAX_CLIENT_FRAME = 8 * 1024 * 1024;
 
 export function acceptKey(clientKey: string) {
-  return crypto.createHash('sha1').update(clientKey + WS_MAGIC).digest('base64');
+  return crypto
+    .createHash('sha1')
+    .update(clientKey + WS_MAGIC)
+    .digest('base64');
 }
 
 export function encodeFrame(opcode: number, payload: Buffer) {

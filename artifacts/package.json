@@ -1,12 +1,14 @@
 {
   "name": "ryugi-artifacts",
   "version": "1.44.0",
-  "type": "module",
   "description": "Server and viewer for the Ryugi artifacts app",
-  "license": "AGPL-3.0-only",
-  "bin": {
-    "ryugi-artifacts": "bin/ryugi-artifacts.cjs"
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Innei/ryugi.git",
+    "directory": "artifacts"
   },
+  "license": "AGPL-3.0-only",
+  "type": "module",
   "exports": {
     "./viewer": {
       "types": "./dist/viewer-lib/types/src/viewer/library/index.d.ts",
@@ -30,10 +32,8 @@
     },
     "./package.json": "./package.json"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/Innei/ryugi.git",
-    "directory": "artifacts"
+  "bin": {
+    "ryugi-artifacts": "bin/ryugi-artifacts.cjs"
   },
   "files": [
     "bin",
@@ -43,53 +43,17 @@
     "dist/runtime",
     "dist/viewer-lib"
   ],
-  "publishConfig": {
-    "access": "public",
-    "provenance": true
-  },
   "scripts": {
     "build": "pnpm run build:server && pnpm run build:cli && pnpm run build:viewer && pnpm run build:lib && pnpm run build:runtime",
-    "build:server": "esbuild src/server/main.ts --bundle --platform=node --target=node18 --format=cjs --alias:loro-crdt=loro-crdt/base64 --outfile=dist/server.cjs && node -e \"const fs=require('node:fs');fs.copyFileSync('dist/server.cjs','../skills/artifacts/app/server.cjs')\"",
-    "prepublishOnly": "pnpm build",
-    "build:viewer": "NODE_ENV=production vite build && node -e \"const fs=require('node:fs');const to='../skills/artifacts/app/viewer';fs.rmSync(to,{recursive:true,force:true});fs.cpSync('dist/viewer',to,{recursive:true})\"",
-    "build:lib": "NODE_ENV=production vite build -c vite.lib.config.ts && esbuild src/shared/thumbnail.ts --bundle --platform=neutral --format=esm --outfile=dist/viewer-lib/thumbnail.js && tsc -p tsconfig.lib.json",
+    "build:cli": "node scripts/build-cli.mjs",
+    "build:lib": "NODE_ENV=production vite build -c vite.lib.config.ts && esbuild src/shared/thumbnail.ts --bundle --platform=neutral --format=esm --outfile=dist/viewer-lib/thumbnail.js && tsrs -p tsconfig.lib.json",
     "build:runtime": "NODE_ENV=production vite build -c vite.runtime.config.ts && node scripts/inline-runtime-css.mjs && node scripts/build-icons.mjs",
+    "build:server": "esbuild src/server/main.ts --bundle --platform=node --target=node18 --format=cjs --alias:loro-crdt=loro-crdt/base64 --outfile=dist/server.cjs && node -e \"const fs=require('node:fs');fs.copyFileSync('dist/server.cjs','../skills/artifacts/app/server.cjs')\"",
+    "build:viewer": "NODE_ENV=production vite build && node -e \"const fs=require('node:fs');const to='../skills/artifacts/app/viewer';fs.rmSync(to,{recursive:true,force:true});fs.cpSync('dist/viewer',to,{recursive:true})\"",
     "dev": "vite",
+    "prepublishOnly": "pnpm build",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit -p tsconfig.json",
-    "build:cli": "node scripts/build-cli.mjs"
-  },
-  "peerDependencies": {
-    "react": "^19.3.1",
-    "react-dom": "^19.3.1",
-    "@lobehub/ui": "^6.5.1",
-    "i18next": "^26.5.6",
-    "react-i18next": "^17.1.3",
-    "motion": "^14.3.0",
-    "lucide-react": "^1.59.0"
-  },
-  "peerDependenciesMeta": {
-    "react": {
-      "optional": true
-    },
-    "react-dom": {
-      "optional": true
-    },
-    "@lobehub/ui": {
-      "optional": true
-    },
-    "i18next": {
-      "optional": true
-    },
-    "react-i18next": {
-      "optional": true
-    },
-    "motion": {
-      "optional": true
-    },
-    "lucide-react": {
-      "optional": true
-    }
+    "typecheck": "tsrs --noEmit -p tsconfig.json"
   },
   "devDependencies": {
     "@base-ui/react": "^1.9.0",
@@ -143,10 +107,46 @@
     "react-dom": "^19.3.1",
     "react-i18next": "^17.1.3",
     "react-zoom-pan-pinch": "4.2.0",
-    "typescript": "~5.9.3",
+    "tsrs": "0.20.0-ts7.1.0-beta",
     "vite": "^8.3.4",
     "vitest": "^5.0.5",
     "wouter": "3.13.0",
     "ws": "8.18.3"
+  },
+  "peerDependencies": {
+    "@lobehub/ui": "^6.5.1",
+    "i18next": "^26.5.6",
+    "lucide-react": "^1.59.0",
+    "motion": "^14.3.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "react-i18next": "^17.1.3"
+  },
+  "peerDependenciesMeta": {
+    "@lobehub/ui": {
+      "optional": true
+    },
+    "i18next": {
+      "optional": true
+    },
+    "lucide-react": {
+      "optional": true
+    },
+    "motion": {
+      "optional": true
+    },
+    "react": {
+      "optional": true
+    },
+    "react-dom": {
+      "optional": true
+    },
+    "react-i18next": {
+      "optional": true
+    }
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
   }
 }

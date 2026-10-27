@@ -30,7 +30,14 @@ export function createRelayConnection(options: RelayConnectionOptions): RelayCon
   const baseRetry = options.retryMs ?? 1000;
   const maxRetry = options.maxRetryMs ?? 30_000;
   const timeoutMs = options.requestTimeoutMs ?? 15_000;
-  const pending = new Map<number, { resolve: (data: unknown) => void; reject: (error: Error) => void; timer: ReturnType<typeof setTimeout> }>();
+  const pending = new Map<
+    number,
+    {
+      resolve: (data: unknown) => void;
+      reject: (error: Error) => void;
+      timer: ReturnType<typeof setTimeout>;
+    }
+  >();
   const queue: string[] = [];
   let socket: WebSocket | null = null;
   let open = false;
@@ -58,10 +65,17 @@ export function createRelayConnection(options: RelayConnectionOptions): RelayCon
       const wasOnline = online;
       online = message.online;
       if (!online) failPending();
-      options.onPresence({ online: message.online, version: message.version, ...(Array.isArray(message.hosts) ? { hosts: message.hosts } : {}) });
+      options.onPresence({
+        online: message.online,
+        version: message.version,
+        ...(Array.isArray(message.hosts) ? { hosts: message.hosts } : {}),
+      });
       if (online && !wasOnline) options.onOnline();
     } else if (message.t === 'reply') {
-      settle(message.rid, message.body.ok ? { data: message.body.data } : { error: message.body.error });
+      settle(
+        message.rid,
+        message.body.ok ? { data: message.body.data } : { error: message.body.error },
+      );
     } else if (message.t === 'error') {
       settle(message.rid, { error: message.error });
     } else if (message.t === 'event') {

@@ -5,8 +5,14 @@ import { afterEach, beforeAll, expect, test, vi } from 'vitest';
 import type { Thread } from '../src/shared/comments';
 import { ThreadView, type ThreadActions } from '../src/viewer/comments/ThreadView';
 
-vi.mock('@stylexjs/stylex', async (original) => ({ ...await original<object>(), create: (value: unknown) => value, props: () => ({}) }));
-vi.mock('@lobehub/ui/stylex/cssVar.stylex', () => ({ cssVar: new Proxy({}, { get: (_, key) => `var(--${String(key)})` }) }));
+vi.mock('@stylexjs/stylex', async (original) => ({
+  ...(await original<object>()),
+  create: (value: unknown) => value,
+  props: () => ({}),
+}));
+vi.mock('@lobehub/ui/stylex/cssVar.stylex', () => ({
+  cssVar: new Proxy({}, { get: (_, key) => `var(--${String(key)})` }),
+}));
 
 let root: Root | null = null;
 
@@ -27,22 +33,51 @@ const thread: Thread<{ page: string }> = {
   status: 'open',
   statusAt: '2026-10-22T10:00:00.000Z',
   messages: [
-    { id: 'm1', author: 'human', name: 'innei', text: '开关离右边多了 18px', at: '2026-10-22T10:00:00.000Z' },
-    { id: 'm2', author: 'agent', name: 'Codex', text: '去掉了多出来的 margin', at: '2026-10-22T10:05:00.000Z' },
+    {
+      id: 'm1',
+      author: 'human',
+      name: 'innei',
+      text: '开关离右边多了 18px',
+      at: '2026-10-22T10:00:00.000Z',
+    },
+    {
+      id: 'm2',
+      author: 'agent',
+      name: 'Codex',
+      text: '去掉了多出来的 margin',
+      at: '2026-10-22T10:05:00.000Z',
+    },
   ],
 };
 
-const actions: ThreadActions = { reply: vi.fn(), edit: vi.fn(), remove: vi.fn(), resolve: vi.fn(), reopen: vi.fn() };
+const actions: ThreadActions = {
+  reply: vi.fn(),
+  edit: vi.fn(),
+  remove: vi.fn(),
+  resolve: vi.fn(),
+  reopen: vi.fn(),
+};
 
 async function render(props: Partial<Parameters<typeof ThreadView>[0]> = {}) {
   const host = document.createElement('div');
   document.body.append(host);
   root = createRoot(host);
-  await act(async () => root!.render(createElement(ThreadView, { thread, actions, label: 'notify-after · 91%, 45%', agent: 'Codex', ...props })));
+  await act(async () =>
+    root!.render(
+      createElement(ThreadView, {
+        thread,
+        actions,
+        label: 'notify-after · 91%, 45%',
+        agent: 'Codex',
+        ...props,
+      }),
+    ),
+  );
   return host;
 }
 
-const button = (host: HTMLElement, text: string) => [...host.querySelectorAll('button')].find((b) => b.textContent === text || b.title === text)!;
+const button = (host: HTMLElement, text: string) =>
+  [...host.querySelectorAll('button')].find((b) => b.textContent === text || b.title === text)!;
 
 test('shows the anchor label, every message and who it waits on', async () => {
   const host = await render();
@@ -54,7 +89,9 @@ test('shows the anchor label, every message and who it waits on', async () => {
 
 test('only human messages can be edited or deleted', async () => {
   const host = await render();
-  expect([...host.querySelectorAll('button')].filter((b) => b.textContent === 'Delete')).toHaveLength(1);
+  expect(
+    [...host.querySelectorAll('button')].filter((b) => b.textContent === 'Delete'),
+  ).toHaveLength(1);
   await act(async () => button(host, 'Delete').click());
   expect(actions.remove).toHaveBeenCalledWith('t1', 'm1');
 });
@@ -67,7 +104,11 @@ test('the reply box sends with ⌘↵', async () => {
     setter.call(reply, '再往左一点');
     reply.dispatchEvent(new Event('input', { bubbles: true }));
   });
-  await act(async () => reply.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', metaKey: true, bubbles: true })));
+  await act(async () =>
+    reply.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Enter', metaKey: true, bubbles: true }),
+    ),
+  );
   expect(actions.reply).toHaveBeenCalledWith('t1', '再往左一点');
 });
 

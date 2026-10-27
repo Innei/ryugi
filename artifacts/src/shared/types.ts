@@ -32,7 +32,8 @@ export interface BoardSpec extends Rect {
   interactive?: boolean;
 }
 
-export const isMediaBoard = (board: { type?: unknown }): board is { type: 'image' | 'video' } => board.type === 'image' || board.type === 'video';
+export const isMediaBoard = (board: { type?: unknown }): board is { type: 'image' | 'video' } =>
+  board.type === 'image' || board.type === 'video';
 
 export interface GroupSpec {
   title?: string;
@@ -123,7 +124,14 @@ export type ServerMessage =
   | { type: 'change'; artifact: string; files: string[] }
   | { type: 'doc-update'; artifact: string; bytes: string }
   | { type: 'doc-cursor'; artifact: string; cursor: { id: string; offset: number } | null }
-  | { type: 'doc-status'; artifact: string; streaming: boolean; outcome: DocumentOutcomeMessage; agentActiveAt: number; now: number }
+  | {
+      type: 'doc-status';
+      artifact: string;
+      streaming: boolean;
+      outcome: DocumentOutcomeMessage;
+      agentActiveAt: number;
+      now: number;
+    }
   | { type: 'doc-comments'; artifact: string; comments: CommentsFile }
   | { type: 'board-comments'; artifact: string; comments: BoardCommentsFile; stale: string[] }
   | { type: 'cloud-published'; artifact: string };

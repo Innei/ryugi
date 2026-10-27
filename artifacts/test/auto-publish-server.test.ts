@@ -27,7 +27,14 @@ async function startEnabled(options: { signedIn?: boolean } = {}) {
     await waitFor(() => dirty().includes(`html/${id}`));
   };
   const flush = () => call(started.server, 'POST', '/api/cloud/flush?wait=1');
-  return { ...started, stateFile, dirty, edit, flush, state: () => readAutoPublishState(stateFile) };
+  return {
+    ...started,
+    stateFile,
+    dirty,
+    edit,
+    flush,
+    state: () => readAutoPublishState(stateFile),
+  };
 }
 
 describe('turn-end flush', () => {
@@ -35,8 +42,15 @@ describe('turn-end flush', () => {
     const { cloud, configFile, edit, flush, dirty } = await startEnabled();
     await edit('a', '<title>A</title>');
     expect((await flush()).status).toBe(200);
-    expect(cloud.requests[0]).toMatchObject({ method: 'POST', path: '/api/artifacts', json: { type: 'html', visibility: 'private' } });
-    expect(config(configFile).artifacts['html/a'].cloud).toMatchObject({ id: 'cloud1', visibility: 'private' });
+    expect(cloud.requests[0]).toMatchObject({
+      method: 'POST',
+      path: '/api/artifacts',
+      json: { type: 'html', visibility: 'private' },
+    });
+    expect(config(configFile).artifacts['html/a'].cloud).toMatchObject({
+      id: 'cloud1',
+      visibility: 'private',
+    });
     expect(dirty()).toEqual([]);
   });
 
@@ -92,17 +106,25 @@ describe('turn-end flush', () => {
 
   test('open local pages hear when an auto-publish reaches the cloud', async () => {
     const { server, edit, flush } = await startEnabled();
-    const ws = await openWs(server.port, { Cookie: `ryugi_artifacts_${server.port}=${server.token}`, Origin: `http://127.0.0.1:${server.port}`, Host: `127.0.0.1:${server.port}` });
+    const ws = await openWs(server.port, {
+      Cookie: `ryugi_artifacts_${server.port}=${server.token}`,
+      Origin: `http://127.0.0.1:${server.port}`,
+      Host: `127.0.0.1:${server.port}`,
+    });
     await edit('a', '<title>A</title>');
     await flush();
     await waitFor(() => ws.messages.some((m) => JSON.parse(m).type === 'cloud-published'));
-    expect(ws.messages.map((m) => JSON.parse(m)).filter((m) => m.type === 'cloud-published')).toEqual([{ type: 'cloud-published', artifact: 'html/a' }]);
+    expect(
+      ws.messages.map((m) => JSON.parse(m)).filter((m) => m.type === 'cloud-published'),
+    ).toEqual([{ type: 'cloud-published', artifact: 'html/a' }]);
     ws.socket?.destroy();
   });
 
   test('without the session key the flush route is refused', async () => {
     const { server } = await startEnabled();
-    expect((await call(server, 'POST', '/api/cloud/flush', undefined, { key: false })).status).toBe(403);
+    expect((await call(server, 'POST', '/api/cloud/flush', undefined, { key: false })).status).toBe(
+      403,
+    );
   });
 
   test('without wait the route answers before publishing', async () => {
@@ -181,16 +203,42 @@ describe('failures', () => {
 
   test('a plan limit on create raises the cap notice with the upgrade link', async () => {
     const { cloud, edit, flush, state } = await startEnabled();
-    cloud.respond = (r) => (r.method === 'POST' && r.path === '/api/artifacts' ? { status: 402, body: { error: 'The free plan allows 5 private artifacts and you have 5. Upgrade to Pro for 500.', code: 'plan_limit', plan: 'free', limit: { kind: 'private', used: 5, max: 5 }, upgradeUrl: 'https://cloud.example/billing' } } : undefined);
+    cloud.respond = (r) =>
+      r.method === 'POST' && r.path === '/api/artifacts'
+        ? {
+            status: 402,
+            body: {
+              error:
+                'The free plan allows 5 private artifacts and you have 5. Upgrade to Pro for 500.',
+              code: 'plan_limit',
+              plan: 'free',
+              limit: { kind: 'private', used: 5, max: 5 },
+              upgradeUrl: 'https://cloud.example/billing',
+            },
+          }
+        : undefined;
     await edit('a', '<title>A</title>');
     await flush();
-    expect(state().notice).toMatchObject({ kind: 'cap', upgradeUrl: 'https://cloud.example/billing' });
+    expect(state().notice).toMatchObject({
+      kind: 'cap',
+      upgradeUrl: 'https://cloud.example/billing',
+    });
     expect(state().notice!.message).toContain('free plan allows 5 private');
   });
 
   test('artifact storage exhaustion raises its reason immediately', async () => {
     const { cloud, edit, flush, state } = await startEnabled();
-    cloud.respond = r => r.path.endsWith('/versions') ? { status: 413, body: { error: 'Artifact history is full.', code: 'artifact_storage_limit', limit: { kind: 'artifact_storage', used: 20971520, max: 20971520 } } } : undefined;
+    cloud.respond = (r) =>
+      r.path.endsWith('/versions')
+        ? {
+            status: 413,
+            body: {
+              error: 'Artifact history is full.',
+              code: 'artifact_storage_limit',
+              limit: { kind: 'artifact_storage', used: 20971520, max: 20971520 },
+            },
+          }
+        : undefined;
     await edit('a', '<title>A</title>');
     await flush();
     expect(state().notice).toMatchObject({ kind: 'cap' });
@@ -201,17 +249,29 @@ describe('failures', () => {
     const { cloud, edit, flush, state, dirty } = await startEnabled();
     await edit('old', '<title>Old</title>');
     await flush();
-    cloud.respond = (r) => (r.method === 'POST' && r.path === '/api/artifacts' ? { status: 403, body: { error: 'limit of 100 published artifacts reached; delete one first' } } : undefined);
+    cloud.respond = (r) =>
+      r.method === 'POST' && r.path === '/api/artifacts'
+        ? {
+            status: 403,
+            body: { error: 'limit of 100 published artifacts reached; delete one first' },
+          }
+        : undefined;
     await edit('new', '<title>New</title>');
     await edit('old', '<title>Old 2</title>');
     await flush();
-    expect(state().notice).toMatchObject({ kind: 'cap', message: 'limit of 100 published artifacts reached; delete one first' });
+    expect(state().notice).toMatchObject({
+      kind: 'cap',
+      message: 'limit of 100 published artifacts reached; delete one first',
+    });
     expect(dirty()).toEqual(['html/new']);
   });
 });
 
 describe('races with manual actions', () => {
-  const hold = (cloud: Awaited<ReturnType<typeof startEnabled>>['cloud'], match: (method: string, path: string) => boolean) => {
+  const hold = (
+    cloud: Awaited<ReturnType<typeof startEnabled>>['cloud'],
+    match: (method: string, path: string) => boolean,
+  ) => {
     let release!: () => void;
     const released = new Promise<void>((resolve) => (release = resolve));
     let seen = false;
@@ -233,7 +293,9 @@ describe('races with manual actions', () => {
     await new Promise((resolve) => setTimeout(resolve, 100));
     gate.release();
     expect((await manual).status).toBe(200);
-    expect(cloud.requests.filter((r) => r.method === 'POST' && r.path === '/api/artifacts')).toHaveLength(1);
+    expect(
+      cloud.requests.filter((r) => r.method === 'POST' && r.path === '/api/artifacts'),
+    ).toHaveLength(1);
   });
 
   test('unpublishing during a flush leaves no cloud copy and keeps the artifact opted out', async () => {
@@ -273,7 +335,9 @@ describe('races with manual actions', () => {
     cloud.store.delete('cloud1');
     await edit('a', '<title>A2</title>');
     await flush();
-    expect(cloud.requests.filter((r) => r.method === 'POST' && r.path === '/api/artifacts')).toHaveLength(1);
+    expect(
+      cloud.requests.filter((r) => r.method === 'POST' && r.path === '/api/artifacts'),
+    ).toHaveLength(1);
     expect(config(configFile).artifacts['html/a']).toMatchObject({ autoPublish: false });
     expect(config(configFile).artifacts['html/a'].cloud).toBeUndefined();
     expect(dirty()).toEqual([]);

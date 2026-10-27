@@ -7,16 +7,23 @@ let root: HTMLElement;
 const onMessage: EventListener[] = [];
 
 beforeEach(() => {
-  document.body.innerHTML = '<main aria-label="Article"><h1>Heading</h1><section id="card" style="color: red !important; padding: 12px"><button>Continue</button></section></main>';
+  document.body.innerHTML =
+    '<main aria-label="Article"><h1>Heading</h1><section id="card" style="color: red !important; padding: 12px"><button>Continue</button></section></main>';
   root = document.getElementById('card')!;
   posted = [];
   vi.spyOn(window.parent, 'postMessage').mockImplementation((message) => posted.push(message));
   const add = window.addEventListener.bind(window);
-  vi.spyOn(window, 'addEventListener').mockImplementation(((type: string, listener: EventListener, options?: boolean | AddEventListenerOptions) => {
+  vi.spyOn(window, 'addEventListener').mockImplementation(((
+    type: string,
+    listener: EventListener,
+    options?: boolean | AddEventListenerOptions,
+  ) => {
     if (type === 'message') onMessage.push(listener);
     add(type, listener, options);
   }) as typeof window.addEventListener);
-  const html = injectRuntime('<p>test</p>', { inspector: true } as Parameters<typeof injectRuntime>[1]);
+  const html = injectRuntime('<p>test</p>', { inspector: true } as Parameters<
+    typeof injectRuntime
+  >[1]);
   const code = html.slice('<script>'.length, html.indexOf('</script>'));
   new Function(code)();
 });
@@ -29,10 +36,22 @@ afterEach(() => {
 });
 
 function command(action: string, fields: Record<string, unknown> = {}, source = window.parent) {
-  window.dispatchEvent(new MessageEvent('message', { source, data: { type: 'ryugi:inspect', action, connection: 'test-connection', session: last('tree')?.session, ...fields } }));
+  window.dispatchEvent(
+    new MessageEvent('message', {
+      source,
+      data: {
+        type: 'ryugi:inspect',
+        action,
+        connection: 'test-connection',
+        session: last('tree')?.session,
+        ...fields,
+      },
+    }),
+  );
 }
 
-const last = (type: string) => posted.filter((message) => message.type === `ryugi:inspect:${type}`).at(-1);
+const last = (type: string) =>
+  posted.filter((message) => message.type === `ryugi:inspect:${type}`).at(-1);
 
 function cardId() {
   command('enable');
@@ -48,7 +67,9 @@ test('inspection is opt-in and reports the live DOM with stable IDs', () => {
   expect(last('tree')).toBeUndefined();
   const id = cardId();
   command('enable');
-  expect(last('tree')!.nodes.find((node: { selector: string }) => node.selector === '#card').id).toBe(id);
+  expect(
+    last('tree')!.nodes.find((node: { selector: string }) => node.selector === '#card').id,
+  ).toBe(id);
   expect(last('tree')!.session).toEqual(expect.any(String));
   expect(last('tree')!.nodes.some((node: { tag: string }) => node.tag === 'script')).toBe(false);
 });
@@ -100,10 +121,17 @@ test('reset preserves a later page-owned change to an overridden property', () =
 });
 
 test('reset restores original shorthand longhands and their priorities', () => {
-  root.style.cssText = 'padding-left: 12px !important; border-top-left-radius: 8px; border-top-style: dashed; row-gap: 3px';
+  root.style.cssText =
+    'padding-left: 12px !important; border-top-left-radius: 8px; border-top-style: dashed; row-gap: 3px';
   const id = cardId();
   command('select', { id });
-  for (const [property, value] of [['padding', '20px'], ['border-radius', '10px'], ['border-style', 'solid'], ['gap', '9px']]) command('style', { id, property, value });
+  for (const [property, value] of [
+    ['padding', '20px'],
+    ['border-radius', '10px'],
+    ['border-style', 'solid'],
+    ['gap', '9px'],
+  ])
+    command('style', { id, property, value });
   root.style.color = 'green';
   command('reset');
   expect(root.style.paddingLeft).toBe('12px');
@@ -125,9 +153,14 @@ test('re-enabling a frame reports remembered selection as a passive update', () 
 
 test('geometry follows selected and hovered nodes without rebuilding the DOM tree', () => {
   const frames: FrameRequestCallback[] = [];
-  vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => { frames.push(callback); return frames.length; });
+  vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
+    frames.push(callback);
+    return frames.length;
+  });
   let x = 0;
-  vi.spyOn(root, 'getBoundingClientRect').mockImplementation(() => ({ x, y: 0, width: 100, height: 50 }) as DOMRect);
+  vi.spyOn(root, 'getBoundingClientRect').mockImplementation(
+    () => ({ x, y: 0, width: 100, height: 50 }) as DOMRect,
+  );
   const id = cardId();
   command('select', { id });
   command('hover', { id });
@@ -160,25 +193,39 @@ test('removing the selected node clears the selection and updates the tree', asy
 
 test('Shift clicking requests a toggle, and tracked selections keep their geometry in sync', () => {
   const frames: FrameRequestCallback[] = [];
-  vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => { frames.push(callback); return frames.length; });
+  vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
+    frames.push(callback);
+    return frames.length;
+  });
   const id = cardId();
   const heading = document.querySelector('h1')!;
   let x = 10;
-  vi.spyOn(heading, 'getBoundingClientRect').mockImplementation(() => ({ x, y: 0, width: 90, height: 30 }) as DOMRect);
+  vi.spyOn(heading, 'getBoundingClientRect').mockImplementation(
+    () => ({ x, y: 0, width: 90, height: 30 }) as DOMRect,
+  );
   heading.dispatchEvent(new MouseEvent('click', { bubbles: true, shiftKey: true }));
   expect(last('selection')?.toggle).toBe(true);
   const headingId = last('selection')!.selection.id;
   command('track', { ids: [headingId, id] });
   x = 25;
   frames.shift()?.(0);
-  expect(posted.some((message) => message.type === 'ryugi:inspect:rect' && message.id === headingId && message.rect.x === 25)).toBe(true);
+  expect(
+    posted.some(
+      (message) =>
+        message.type === 'ryugi:inspect:rect' && message.id === headingId && message.rect.x === 25,
+    ),
+  ).toBe(true);
 });
 
 test('marquee leaves are the outermost visible content nodes with their rects', () => {
   const id = cardId();
   const heading = document.querySelector('h1')!;
   const button = root.querySelector('button')!;
-  for (const [el, x, y, width, height] of [[heading, 10, 10, 80, 20], [root, 10, 50, 100, 100], [button, 20, 60, 50, 30]] as const) {
+  for (const [el, x, y, width, height] of [
+    [heading, 10, 10, 80, 20],
+    [root, 10, 50, 100, 100],
+    [button, 20, 60, 50, 30],
+  ] as const) {
     vi.spyOn(el, 'getBoundingClientRect').mockReturnValue({ x, y, width, height } as DOMRect);
   }
   command('leaves', { request: 1 });
@@ -189,8 +236,16 @@ test('marquee leaves are the outermost visible content nodes with their rects', 
   ]);
   root.prepend('Card ');
   command('leaves', { request: 2 });
-  expect(last('targets')!.targets.map((node: { id: number }) => node.id)).toEqual([expect.any(Number), id]);
-  vi.spyOn(heading, 'getBoundingClientRect').mockReturnValue({ x: 0, y: 0, width: 0, height: 0 } as DOMRect);
+  expect(last('targets')!.targets.map((node: { id: number }) => node.id)).toEqual([
+    expect.any(Number),
+    id,
+  ]);
+  vi.spyOn(heading, 'getBoundingClientRect').mockReturnValue({
+    x: 0,
+    y: 0,
+    width: 0,
+    height: 0,
+  } as DOMRect);
   command('leaves', { request: 3 });
   expect(last('targets')!.targets.map((node: { name: string }) => node.name)).toEqual(['card']);
   const count = posted.length;
@@ -209,14 +264,27 @@ test('select mode shows the default cursor over every node and restores the page
 
 test('a pointer drag forwards marquee coordinates and suppresses the resulting page click', () => {
   cardId();
-  const pointer = (type: string, x: number, y: number) => root.dispatchEvent(new PointerEvent(type, { bubbles: true, pointerId: 1, button: 0, clientX: x, clientY: y, screenX: x, screenY: y }));
+  const pointer = (type: string, x: number, y: number) =>
+    root.dispatchEvent(
+      new PointerEvent(type, {
+        bubbles: true,
+        pointerId: 1,
+        button: 0,
+        clientX: x,
+        clientY: y,
+        screenX: x,
+        screenY: y,
+      }),
+    );
   pointer('pointerdown', 10, 20);
   pointer('pointermove', 100, 120);
   pointer('pointerup', 100, 120);
   expect(last('drag')).toMatchObject({ phase: 'end', x: 100, y: 120, append: false });
   const count = posted.filter((message) => message.type === 'ryugi:inspect:selection').length;
   root.click();
-  expect(posted.filter((message) => message.type === 'ryugi:inspect:selection')).toHaveLength(count);
+  expect(posted.filter((message) => message.type === 'ryugi:inspect:selection')).toHaveLength(
+    count,
+  );
 });
 
 test('every tree node carries a CSS path from body that resolves back to it', () => {
@@ -224,7 +292,9 @@ test('every tree node carries a CSS path from body that resolves back to it', ()
   cardId();
   const nodes = last('tree')!.nodes as { path: string; tag: string }[];
   expect(nodes[0]!.path).toBe('body');
-  expect(nodes.find((node) => node.tag === 'button')!.path).toBe('body > main > section#card > button');
+  expect(nodes.find((node) => node.tag === 'button')!.path).toBe(
+    'body > main > section#card > button',
+  );
   const items = nodes.filter((node) => node.tag === 'li').map((node) => node.path);
   expect(items).toEqual(['body > ul > li:nth-of-type(1)', 'body > ul > li:nth-of-type(2)']);
   expect(items.map((path) => document.querySelector(path)?.textContent)).toEqual(['One', 'Two']);
@@ -251,7 +321,9 @@ test('tweaks report the computed value from before the first change', () => {
   command('select', { id });
   command('style', { id, property: 'padding', value: '20px' });
   command('style', { id, property: 'padding', value: '24px' });
-  expect(last('tweaks')!.tweaks).toEqual([{ id, name: 'card', property: 'padding', from: '12px', value: '24px' }]);
+  expect(last('tweaks')!.tweaks).toEqual([
+    { id, name: 'card', property: 'padding', from: '12px', value: '24px' },
+  ]);
 });
 
 test('hover reports name the hovered tree node, and a new node with the same rect still reports', () => {
@@ -292,12 +364,27 @@ test('comment mode shows the bubble cursor and swallows clicks without selecting
 
 test('C is forwarded to the canvas so the comment tool works with focus in a board', () => {
   cardId();
-  document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'c', code: 'KeyC', bubbles: true }));
+  document.body.dispatchEvent(
+    new KeyboardEvent('keydown', { key: 'c', code: 'KeyC', bubbles: true }),
+  );
   expect(last('key')).toMatchObject({ key: 'c', code: 'KeyC', down: true });
 });
 
 test('the mode can be set right after enabling, before the frame knows its session', () => {
   command('enable');
-  window.dispatchEvent(new MessageEvent('message', { source: window.parent, data: { type: 'ryugi:inspect', action: 'mode', mode: 'comment', connection: 'test-connection', session: null } }));
-  expect(document.querySelector('style[data-ryugi-inspector]')!.textContent).toContain('data:image/svg+xml');
+  window.dispatchEvent(
+    new MessageEvent('message', {
+      source: window.parent,
+      data: {
+        type: 'ryugi:inspect',
+        action: 'mode',
+        mode: 'comment',
+        connection: 'test-connection',
+        session: null,
+      },
+    }),
+  );
+  expect(document.querySelector('style[data-ryugi-inspector]')!.textContent).toContain(
+    'data:image/svg+xml',
+  );
 });

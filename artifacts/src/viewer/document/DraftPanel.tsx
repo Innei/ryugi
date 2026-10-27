@@ -28,9 +28,29 @@ const styles = stylex.create({
     animationTimingFunction: 'cubic-bezier(.2,.8,.2,1)',
     animationFillMode: 'both',
   },
-  leaving: { animationName: fade, animationDuration: `${LEAVE_MS}ms`, animationTimingFunction: 'ease-in', pointerEvents: 'none' },
-  head: { display: 'flex', alignItems: 'baseline', gap: 8, paddingTop: 12, paddingInline: 16, fontFamily: cssVar.fontFamily, fontSize: 11 },
-  quote: { flex: 1, minWidth: 0, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', color: cssVar.colorTextTertiary },
+  leaving: {
+    animationName: fade,
+    animationDuration: `${LEAVE_MS}ms`,
+    animationTimingFunction: 'ease-in',
+    pointerEvents: 'none',
+  },
+  head: {
+    display: 'flex',
+    alignItems: 'baseline',
+    gap: 8,
+    paddingTop: 12,
+    paddingInline: 16,
+    fontFamily: cssVar.fontFamily,
+    fontSize: 11,
+  },
+  quote: {
+    flex: 1,
+    minWidth: 0,
+    overflow: 'hidden',
+    whiteSpace: 'nowrap',
+    textOverflow: 'ellipsis',
+    color: cssVar.colorTextTertiary,
+  },
   restored: { flexShrink: 0, color: cssVar.colorWarningText },
 });
 
@@ -47,15 +67,39 @@ interface Props {
   ref?: Ref<HTMLDivElement>;
 }
 
-export function DraftPanel({ left, top, quote, initial, restored, leaving, onChange, onSubmit, onCancel, ref }: Props) {
+export function DraftPanel({
+  left,
+  top,
+  quote,
+  initial,
+  restored,
+  leaving,
+  onChange,
+  onSubmit,
+  onCancel,
+  ref,
+}: Props) {
   return (
-    <div ref={ref} {...stylex.props(styles.popover, leaving && styles.leaving)} style={{ left, top }}>
+    <div
+      ref={ref}
+      {...stylex.props(styles.popover, leaving && styles.leaving)}
+      style={{ left, top }}
+    >
       <PanelFrame active>
         <div {...stylex.props(styles.head)}>
           <span {...stylex.props(styles.quote)}>“{quote}”</span>
-          {restored ? <span {...stylex.props(styles.restored)}>{t('document.draftRestored')}</span> : null}
+          {restored ? (
+            <span {...stylex.props(styles.restored)}>{t('document.draftRestored')}</span>
+          ) : null}
         </div>
-        <Composer autoFocus initial={initial} placeholder={t('document.draftPlaceholder')} onChange={onChange} onSubmit={onSubmit} onCancel={onCancel} />
+        <Composer
+          autoFocus
+          initial={initial}
+          placeholder={t('document.draftPlaceholder')}
+          onChange={onChange}
+          onSubmit={onSubmit}
+          onCancel={onCancel}
+        />
       </PanelFrame>
     </div>
   );

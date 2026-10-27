@@ -22,15 +22,15 @@ with the human away.
 
 ## Before and after
 
-| Outcome | Baseline | Updated guide |
-|---|---|---|
-| Found the reply/resolve commands | Grepped `app/cli.cjs` source after `comment --help` failed | From `artboard.md` |
-| Toggle fix | Removed `margin-right:18px` | Same |
-| Save button fix | Styled `button.primary` (保存), not the stale path's 取消 | Same |
-| Stale thread | Matched by text; said so only in its report | Matched by text; said what it matched to in the reply |
-| Replies through the CLI | Both threads | Both threads |
-| Resolved | Neither ("留给你确认") | Both |
-| Wrote `comments.json` | No | No |
+| Outcome                          | Baseline                                                   | Updated guide                                         |
+| -------------------------------- | ---------------------------------------------------------- | ----------------------------------------------------- |
+| Found the reply/resolve commands | Grepped `app/cli.cjs` source after `comment --help` failed | From `artboard.md`                                    |
+| Toggle fix                       | Removed `margin-right:18px`                                | Same                                                  |
+| Save button fix                  | Styled `button.primary` (保存), not the stale path's 取消  | Same                                                  |
+| Stale thread                     | Matched by text; said so only in its report                | Matched by text; said what it matched to in the reply |
+| Replies through the CLI          | Both threads                                               | Both threads                                          |
+| Resolved                         | Neither ("留给你确认")                                     | Both                                                  |
+| Wrote `comments.json`            | No                                                         | No                                                    |
 
 Updated excerpt (reply on the stale thread): "这条评论的锚点落在第 2 个按钮
 （取消）上，但内容说的是保存，按钮顺序可能变过，所以我按文字内容处理".

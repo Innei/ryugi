@@ -15,14 +15,14 @@ A third artifact type, `document`: Claude Docs, local. The agent writes, you rea
 
 ## Decided
 
-| Topic | Decision |
-|---|---|
-| Used for | architecture, reviews, reports, proposals, flow explainers |
-| File | `doc.xml` (LiteXML) + `comments.json` |
-| Diagrams | mermaid, Excalidraw |
-| Charts | after haklex ships `rich-ext-chart`; v1 can launch without them |
-| Comments | both sides can open threads; you can edit/delete yours |
-| Not doing | dropdowns, Markdown export, share links, full editor toolbar |
+| Topic     | Decision                                                        |
+| --------- | --------------------------------------------------------------- |
+| Used for  | architecture, reviews, reports, proposals, flow explainers      |
+| File      | `doc.xml` (LiteXML) + `comments.json`                           |
+| Diagrams  | mermaid, Excalidraw                                             |
+| Charts    | after haklex ships `rich-ext-chart`; v1 can launch without them |
+| Comments  | both sides can open threads; you can edit/delete yours          |
+| Not doing | dropdowns, Markdown export, share links, full editor toolbar    |
 
 ## Check these (agent's calls, not yours yet)
 

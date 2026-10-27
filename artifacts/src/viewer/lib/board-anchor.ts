@@ -10,22 +10,42 @@ interface Point {
 const clamp = (value: number) => Math.min(1, Math.max(0, value));
 const round = (value: number) => Math.round(value * 1000) / 1000;
 
-export function clickAnchor(page: string, board: string | null, point: Point, node?: { rect: InspectorRect; path?: string }): BoardAnchor {
+export function clickAnchor(
+  page: string,
+  board: string | null,
+  point: Point,
+  node?: { rect: InspectorRect; path?: string },
+): BoardAnchor {
   const x = Math.round(point.x);
   const y = Math.round(point.y);
   if (!board) return { page, x, y };
   if (!node?.path) return { page, board, x, y };
   const anchor: BoardAnchor = { page, board, x, y, nodes: [{ board, path: node.path }] };
   const { rect } = node;
-  if (rect.width > 0 && rect.height > 0) anchor.offset = { x: round(clamp((point.x - rect.x) / rect.width)), y: round(clamp((point.y - rect.y) / rect.height)) };
+  if (rect.width > 0 && rect.height > 0)
+    anchor.offset = {
+      x: round(clamp((point.x - rect.x) / rect.width)),
+      y: round(clamp((point.y - rect.y) / rect.height)),
+    };
   return anchor;
 }
 
-export function selectionAnchor(page: string, targets: { boardId: string; rect: InspectorRect; path?: string }[]): BoardAnchor | null {
-  const nodes = targets.flatMap((target) => (target.path ? [{ board: target.boardId, path: target.path, rect: target.rect }] : []));
+export function selectionAnchor(
+  page: string,
+  targets: { boardId: string; rect: InspectorRect; path?: string }[],
+): BoardAnchor | null {
+  const nodes = targets.flatMap((target) =>
+    target.path ? [{ board: target.boardId, path: target.path, rect: target.rect }] : [],
+  );
   const first = nodes[0];
   if (!first) return null;
-  return { page, board: first.board, x: Math.round(first.rect.x + first.rect.width), y: Math.round(first.rect.y), nodes: nodes.map(({ board, path }) => ({ board, path })) };
+  return {
+    page,
+    board: first.board,
+    x: Math.round(first.rect.x + first.rect.width),
+    y: Math.round(first.rect.y),
+    nodes: nodes.map(({ board, path }) => ({ board, path })),
+  };
 }
 
 export function pinPoint(anchor: BoardAnchor, boards: Record<string, Point>): Point | null {
@@ -37,20 +57,27 @@ export function pinPoint(anchor: BoardAnchor, boards: Record<string, Point>): Po
 const percent = (value: number) => `${Math.round(value * 100)}%`;
 
 export function anchorLabel(anchor: BoardAnchor): string {
-  if (anchor.group) return anchor.verdict === 'reject' ? i18n.t('anchor.rejected', { group: anchor.group }) : anchor.group;
+  if (anchor.group)
+    return anchor.verdict === 'reject'
+      ? i18n.t('anchor.rejected', { group: anchor.group })
+      : anchor.group;
   if (!anchor.board) return i18n.t('anchor.page', { page: anchor.page });
   const nodes = anchor.nodes ?? [];
-  if (nodes.length > 1) return i18n.t('anchor.elements', { board: anchor.board, count: nodes.length });
+  if (nodes.length > 1)
+    return i18n.t('anchor.elements', { board: anchor.board, count: nodes.length });
   if (!nodes[0]) return anchor.board;
   const offset = anchor.offset ? ` · ${percent(anchor.offset.x)}, ${percent(anchor.offset.y)}` : '';
   return `${anchor.board} · ${nodes[0].path}${offset}`;
 }
 
-export const staleText = (anchor: BoardAnchor) => (anchor.verdict ? i18n.t('anchor.evidenceUpdated') : i18n.t('anchor.stale'));
+export const staleText = (anchor: BoardAnchor) =>
+  anchor.verdict ? i18n.t('anchor.evidenceUpdated') : i18n.t('anchor.stale');
 
 const openedAt = (thread: BoardThread) => thread.messages[0]?.at ?? thread.statusAt;
 
 export function pinNumbers(threads: BoardThread[]): Map<string, number> {
-  const ordered = threads.filter((thread) => thread.anchor?.verdict !== 'pass').sort((a, b) => (openedAt(a) < openedAt(b) ? -1 : openedAt(a) > openedAt(b) ? 1 : 0));
+  const ordered = threads
+    .filter((thread) => thread.anchor?.verdict !== 'pass')
+    .sort((a, b) => (openedAt(a) < openedAt(b) ? -1 : openedAt(a) > openedAt(b) ? 1 : 0));
   return new Map(ordered.map((thread, index) => [thread.id, index + 1]));
 }

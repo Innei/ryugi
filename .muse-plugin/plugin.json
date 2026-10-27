@@ -1,13 +1,4 @@
 {
-  "schemaVersion": 1,
-  "name": "ryugi",
-  "displayName": "Ryugi",
-  "version": "1.44.0",
-  "description": "Core skills library for Muse: TDD, debugging, collaboration patterns, and proven techniques",
-  "compat": {
-    "source": "native",
-    "manifestDir": ".muse-plugin"
-  },
   "capabilities": {
     "skills": [
       {
@@ -48,14 +39,20 @@
       {
         "id": "session-start",
         "event": "SessionStart",
-        "command": [
-          "bash",
-          "hooks/session-start"
-        ],
+        "command": ["bash", "hooks/session-start"],
         "timeoutMs": 5000
       }
     ],
     "mcpServers": [],
     "reminders": []
-  }
+  },
+  "compat": {
+    "source": "native",
+    "manifestDir": ".muse-plugin"
+  },
+  "description": "Core skills library for Muse: TDD, debugging, collaboration patterns, and proven techniques",
+  "displayName": "Ryugi",
+  "name": "ryugi",
+  "schemaVersion": 1,
+  "version": "1.44.0"
 }

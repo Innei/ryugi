@@ -21,7 +21,8 @@ interface Props {
 
 const BATCH_MS = 100;
 
-export const decodeBase64 = (base64: string) => Uint8Array.from(atob(base64), (char) => char.charCodeAt(0));
+export const decodeBase64 = (base64: string) =>
+  Uint8Array.from(atob(base64), (char) => char.charCodeAt(0));
 
 export function LoroSync({ transport, doc, onAgentCaret, onOffline, onState }: Props) {
   const [editor] = useLexicalComposerContext();
@@ -43,7 +44,10 @@ export function LoroSync({ transport, doc, onAgentCaret, onOffline, onState }: P
         const top = $getNodeByKey(key)?.getTopLevelElement();
         const blocks = $getRoot()
           .getChildren()
-          .map((block) => ({ heading: block.getType() === 'heading', text: $isElementNode(block) ? block.getTextContent() : '' }));
+          .map((block) => ({
+            heading: block.getType() === 'heading',
+            text: $isElementNode(block) ? block.getTextContent() : '',
+          }));
         return top ? sectionLabel(blocks, top.getIndexWithinParent()) : null;
       });
       onAgentCaret({ key, offset: caret.offset }, section);
@@ -98,7 +102,8 @@ export function LoroSync({ transport, doc, onAgentCaret, onOffline, onState }: P
     const { artifact } = transport;
     const unsubscribeChannel = transport.channel.subscribe((event) => {
       if (event.type === 'open') void resync(true);
-      else if (event.type === 'doc-update' && event.artifact === artifact) binding.import(decodeBase64(event.bytes));
+      else if (event.type === 'doc-update' && event.artifact === artifact)
+        binding.import(decodeBase64(event.bytes));
       else if (event.type === 'doc-cursor' && event.artifact === artifact) {
         caret = event.cursor;
         showCaret();

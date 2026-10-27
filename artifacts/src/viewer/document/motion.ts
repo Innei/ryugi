@@ -16,14 +16,22 @@ export function spring(stiffness: number, damping: number): { easing: string; du
   const points = [0];
   for (let i = step; i < samples.length; i += step) points.push(Number(samples[i]!.toFixed(4)));
   points.push(1);
-  return { easing: `linear(${points.join(', ')})`, duration: Math.round(samples.length * dt * 1000) };
+  return {
+    easing: `linear(${points.join(', ')})`,
+    duration: Math.round(samples.length * dt * 1000),
+  };
 }
 
 export const SPRING = spring(380, 34);
 
-export const reducedMotion = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+export const reducedMotion = () =>
+  typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-export function play(el: Element | null, keyframes: Keyframe[], options: KeyframeAnimationOptions): Promise<void> {
+export function play(
+  el: Element | null,
+  keyframes: Keyframe[],
+  options: KeyframeAnimationOptions,
+): Promise<void> {
   if (!el || reducedMotion()) return Promise.resolve();
   const animation = el.animate(keyframes, { fill: 'both', ...options });
   return animation.finished.then(

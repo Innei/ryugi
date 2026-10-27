@@ -24,11 +24,11 @@ box-drawing characters, then the mermaid sources of one run were read by hand.
 
 ## Before and after
 
-| Model / harness | Reference | Runs | Used `<mermaid>` | Drew box-drawing art |
-|---|---|---:|---:|---:|
-| Claude Sonnet / Claude Code subagent, rule quoted in the task | Baseline | 3 | 3 / 3 | 0 / 3 |
-| `gpt-6.1-sol` / Codex CLI 0.162.1, rule in `AGENTS.md` | Baseline | 3 | 0 / 3 | 3 / 3 (3 code blocks, 37–42 art lines each) |
-| `gpt-6.1-sol` / Codex CLI 0.162.1, rule in `AGENTS.md` | Candidate | 5 | 5 / 5 (2–3 diagrams each) | 0 / 5 |
+| Model / harness                                               | Reference | Runs |          Used `<mermaid>` |                        Drew box-drawing art |
+| ------------------------------------------------------------- | --------- | ---: | ------------------------: | ------------------------------------------: |
+| Claude Sonnet / Claude Code subagent, rule quoted in the task | Baseline  |    3 |                     3 / 3 |                                       0 / 3 |
+| `gpt-6.1-sol` / Codex CLI 0.162.1, rule in `AGENTS.md`        | Baseline  |    3 |                     0 / 3 | 3 / 3 (3 code blocks, 37–42 art lines each) |
+| `gpt-6.1-sol` / Codex CLI 0.162.1, rule in `AGENTS.md`        | Candidate |    5 | 5 / 5 (2–3 diagrams each) |                                       0 / 5 |
 
 The Sonnet control did not show the failure, so the wording was tested on
 the harness that did. Candidate diagrams were real sequence and flowchart

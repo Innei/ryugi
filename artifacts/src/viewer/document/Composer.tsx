@@ -7,7 +7,12 @@ import { t } from '../i18n';
 
 const styles = stylex.create({
   composer: { position: 'relative', paddingTop: 2, paddingInline: 14, paddingBottom: 12 },
-  unsent: { marginBottom: 6, color: cssVar.colorWarningText, fontFamily: cssVar.fontFamily, fontSize: 11 },
+  unsent: {
+    marginBottom: 6,
+    color: cssVar.colorWarningText,
+    fontFamily: cssVar.fontFamily,
+    fontSize: 11,
+  },
   input: {
     display: 'block',
     width: '100%',
@@ -20,7 +25,7 @@ const styles = stylex.create({
     backgroundColor: 'transparent',
     color: cssVar.colorText,
     fontFamily: cssVar.fontFamily,
-    fontSize: { default: 12, '@media (max-width: 640px)': 16 },
+    fontSize: { 'default': 12, '@media (max-width: 640px)': 16 },
     lineHeight: 1.6,
     resize: 'none',
     fieldSizing: 'content',
@@ -38,8 +43,8 @@ const styles = stylex.create({
     borderRadius: '50%',
     backgroundColor: cssVar.colorText,
     color: cssVar.colorBgContainer,
-    cursor: { default: 'pointer', ':disabled': 'default' },
-    opacity: { default: 1, ':disabled': 0.35 },
+    cursor: { 'default': 'pointer', ':disabled': 'default' },
+    opacity: { 'default': 1, ':disabled': 0.35 },
   },
 });
 
@@ -53,7 +58,15 @@ interface ComposerProps {
   onChange?: (text: string) => void;
 }
 
-export function Composer({ placeholder, initial = '', autoFocus, focusKey, onSubmit, onCancel, onChange }: ComposerProps) {
+export function Composer({
+  placeholder,
+  initial = '',
+  autoFocus,
+  focusKey,
+  onSubmit,
+  onCancel,
+  onChange,
+}: ComposerProps) {
   const [text, setText] = useState(initial);
   const [unsent, setUnsent] = useState(false);
   const input = useRef<HTMLTextAreaElement>(null);
@@ -92,7 +105,14 @@ export function Composer({ placeholder, initial = '', autoFocus, focusKey, onSub
         }}
         {...stylex.props(styles.input)}
       />
-      <button type="button" aria-label={t('common.send')} title={t('common.sendShortcut')} disabled={!text.trim()} onClick={submit} {...stylex.props(styles.send)}>
+      <button
+        type="button"
+        aria-label={t('common.send')}
+        title={t('common.sendShortcut')}
+        disabled={!text.trim()}
+        onClick={submit}
+        {...stylex.props(styles.send)}
+      >
         <ArrowUp size={15} strokeWidth={2.4} />
       </button>
     </div>

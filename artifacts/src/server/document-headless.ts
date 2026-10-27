@@ -1,6 +1,12 @@
 import { allHeadlessNodes } from '@haklex/rich-headless';
 import { createHeadlessEditor } from '@lexical/headless';
-import { DecoratorNode, type LexicalEditor, type NodeKey, type SerializedLexicalNode, type Spread } from 'lexical';
+import {
+  DecoratorNode,
+  type LexicalEditor,
+  type NodeKey,
+  type SerializedLexicalNode,
+  type Spread,
+} from 'lexical';
 
 type SerializedPendingNode = Spread<{ intent: string }, SerializedLexicalNode>;
 

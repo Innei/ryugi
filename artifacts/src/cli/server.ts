@@ -33,7 +33,10 @@ export function serverClient(projectDir: string) {
       } catch {
         throw new CliError(notRunning(paths.project));
       }
-      return { status: res.status, json: (await res.json().catch(() => ({}))) as Record<string, any> };
+      return {
+        status: res.status,
+        json: (await res.json().catch(() => ({}))) as Record<string, any>,
+      };
     },
   };
 }

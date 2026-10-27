@@ -5,8 +5,14 @@ import { afterEach, beforeAll, expect, test, vi } from 'vitest';
 import { Canvas } from '../src/viewer/components/Canvas';
 import type { BoardRender } from '../src/viewer/lib/board-tiers';
 
-vi.mock('@stylexjs/stylex', async (original) => ({ ...await original<object>(), create: (value: unknown) => value, props: () => ({}) }));
-vi.mock('@lobehub/ui/stylex/cssVar.stylex', () => ({ cssVar: new Proxy({}, { get: (_, key) => `var(--${String(key)})` }) }));
+vi.mock('@stylexjs/stylex', async (original) => ({
+  ...(await original<object>()),
+  create: (value: unknown) => value,
+  props: () => ({}),
+}));
+vi.mock('@lobehub/ui/stylex/cssVar.stylex', () => ({
+  cssVar: new Proxy({}, { get: (_, key) => `var(--${String(key)})` }),
+}));
 
 let root: Root | null = null;
 
@@ -41,24 +47,43 @@ async function render(props: Props = {}) {
     document.body.append(host);
     root = createRoot(host);
   }
-  await act(async () => root!.render(createElement(Canvas, {
-    view: { x: 0, y: 0, k: 1 }, boards, notes: [], contentBase: 'about:blank#',
-    versions: { 'pages/a.html': 1, 'pages/b.html': 1 }, pending: new Set<string>(),
-    playing: new Set<string>(), replays: {}, inspecting: true, frameRef, frameLoaded: () => {}, renders: new Map(), ...props,
-  })));
+  await act(async () =>
+    root!.render(
+      createElement(Canvas, {
+        view: { x: 0, y: 0, k: 1 },
+        boards,
+        notes: [],
+        contentBase: 'about:blank#',
+        versions: { 'pages/a.html': 1, 'pages/b.html': 1 },
+        pending: new Set<string>(),
+        playing: new Set<string>(),
+        replays: {},
+        inspecting: true,
+        frameRef,
+        frameLoaded: () => {},
+        renders: new Map(),
+        ...props,
+      }),
+    ),
+  );
   return document.body;
 }
 
 function animationClock(reduced = false) {
-  let now = 0, nextId = 0;
+  let now = 0,
+    nextId = 0;
   const frames = new Map<number, FrameRequestCallback>();
   const media = Object.assign(new EventTarget(), { matches: reduced });
   vi.spyOn(performance, 'now').mockImplementation(() => now);
   vi.stubGlobal('matchMedia', () => media);
-  vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => { frames.set(++nextId, callback); return nextId; });
+  vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
+    frames.set(++nextId, callback);
+    return nextId;
+  });
   vi.stubGlobal('cancelAnimationFrame', (id: number) => frames.delete(id));
   return {
-    frames, media,
+    frames,
+    media,
     step(time: number) {
       now = time;
       const pending = [...frames.values()];
@@ -71,8 +96,17 @@ function animationClock(reduced = false) {
 function cursorPose() {
   const cursor = document.querySelector<HTMLElement>('[role="status"]')!;
   expect(cursor).not.toBeNull();
-  const [x, y] = cursor.style.transform.match(/translate\(([-\d.e]+)px,\s*([-\d.e]+)px\)/)!.slice(1).map(Number);
-  return { x: x!, y: y!, angle: Number(cursor.querySelector('svg')?.style.transform.match(/rotate\(([-\d.e]+)deg\)/)?.[1] ?? 0) };
+  const [x, y] = cursor.style.transform
+    .match(/translate\(([-\d.e]+)px,\s*([-\d.e]+)px\)/)!
+    .slice(1)
+    .map(Number);
+  return {
+    x: x!,
+    y: y!,
+    angle: Number(
+      cursor.querySelector('svg')?.style.transform.match(/rotate\(([-\d.e]+)deg\)/)?.[1] ?? 0,
+    ),
+  };
 }
 
 test('keeps the cursor on a completed HTML board until another complete write arrives', async () => {
@@ -82,7 +116,13 @@ test('keeps the cursor on a completed HTML board until another complete write ar
   expect(document.querySelector('[role="status"]')).not.toBeNull();
   expect(document.querySelector('[role="status"]')?.getAttribute('aria-label')).toContain('First');
   expect(cursorPose()).toMatchObject({ x: 64, y: 80 });
-  await render({ live: true, agent: 'Codex', versions: first, pending: new Set(['b']), writing: 'b' });
+  await render({
+    live: true,
+    agent: 'Codex',
+    versions: first,
+    pending: new Set(['b']),
+    writing: 'b',
+  });
   expect(cursorPose()).toMatchObject({ x: 64, y: 80 });
   expect(clock.frames.size).toBe(0);
   const second = { ...first, 'pages/b.html': 2 };
@@ -107,7 +147,10 @@ test('ignores pending boards and newer media when choosing the last completed HT
   animationClock(true);
   await render({
     live: true,
-    boards: [...boards, ['shot', { file: 'pages/shot.png', type: 'image', page: 'p', x: 2000, y: 0, w: 640, h: 400 }]],
+    boards: [
+      ...boards,
+      ['shot', { file: 'pages/shot.png', type: 'image', page: 'p', x: 2000, y: 0, w: 640, h: 400 }],
+    ],
     versions: { 'pages/a.html': 1, 'pages/b.html': 2, 'pages/shot.png': 3 },
     pending: new Set(['b']),
   });
@@ -141,7 +184,11 @@ test('flies along a curved route, turns the arrow and arrives without animating 
 test('trails three fading dots behind the arrow while flying and drops them on arrival', async () => {
   const clock = animationClock();
   const trail = () => document.querySelector<HTMLElement>('[role="status"] [data-trail]')!;
-  const offset = (dot: Element) => (dot as HTMLElement).style.transform.match(/translate\(([-\d.e]+)px,\s*([-\d.e]+)px\)/)!.slice(1).map(Number) as [number, number];
+  const offset = (dot: Element) =>
+    (dot as HTMLElement).style.transform
+      .match(/translate\(([-\d.e]+)px,\s*([-\d.e]+)px\)/)!
+      .slice(1)
+      .map(Number) as [number, number];
   await render({ writing: 'a' });
   expect(trail().style.opacity).toBe('0');
   await render({ writing: 'b' });
@@ -159,23 +206,35 @@ test('trails three fading dots behind the arrow while flying and drops them on a
   expect(trail().style.opacity).toBe('0');
 });
 
-test.each([-800, 800])('smoothly hooks back into a target with a %spx height difference', async (height) => {
-  const clock = animationClock();
-  const targets = [boards[0]!, ['b', { ...boards[1]![1], x: 600, y: height }] as (typeof boards)[number]];
-  await render({ boards: targets, writing: 'a' });
-  await render({ boards: targets, writing: 'b' });
-  const samples: ReturnType<typeof cursorPose>[] = [];
-  for (let time = 16; time <= 1904; time += 16) {
-    clock.step(time);
-    samples.push(cursorPose());
-  }
-  // Projection beyond the destination proves there is an overshoot and return.
-  expect(Math.max(...samples.map((p) => ((p.x - 64) * 600 + (p.y - 80) * height) / (600 ** 2 + height ** 2)))).toBeGreaterThan(1.01);
-  const turns = samples.slice(1).map((p, i) => Math.abs((p.angle - samples[i]!.angle + 540) % 360 - 180));
-  expect(Math.max(...turns)).toBeLessThan(30);
-  expect(cursorPose()).toMatchObject({ x: 664, y: height + 80 });
-  expect(clock.frames.size).toBe(0);
-});
+test.each([-800, 800])(
+  'smoothly hooks back into a target with a %spx height difference',
+  async (height) => {
+    const clock = animationClock();
+    const targets = [
+      boards[0]!,
+      ['b', { ...boards[1]![1], x: 600, y: height }] as (typeof boards)[number],
+    ];
+    await render({ boards: targets, writing: 'a' });
+    await render({ boards: targets, writing: 'b' });
+    const samples: ReturnType<typeof cursorPose>[] = [];
+    for (let time = 16; time <= 1904; time += 16) {
+      clock.step(time);
+      samples.push(cursorPose());
+    }
+    // Projection beyond the destination proves there is an overshoot and return.
+    expect(
+      Math.max(
+        ...samples.map((p) => ((p.x - 64) * 600 + (p.y - 80) * height) / (600 ** 2 + height ** 2)),
+      ),
+    ).toBeGreaterThan(1.01);
+    const turns = samples
+      .slice(1)
+      .map((p, i) => Math.abs(((p.angle - samples[i]!.angle + 540) % 360) - 180));
+    expect(Math.max(...turns)).toBeLessThan(30);
+    expect(cursorPose()).toMatchObject({ x: 664, y: height + 80 });
+    expect(clock.frames.size).toBe(0);
+  },
+);
 
 test('retargets from the visible cursor and keeps its route when the camera changes', async () => {
   const clock = animationClock();
@@ -185,14 +244,18 @@ test('retargets from the visible cursor and keeps its route when the camera chan
   const before = cursorPose();
   await render({ writing: 'b', view: { x: 200, y: -100, k: 0.5 } });
   expect(cursorPose()).toEqual(before);
-  expect(document.querySelector<HTMLElement>('[role="status"]')!.style.transform).toContain('scale(2)');
+  expect(document.querySelector<HTMLElement>('[role="status"]')!.style.transform).toContain(
+    'scale(2)',
+  );
   clock.step(600);
   expect(cursorPose()).not.toEqual(before);
   const interrupted = cursorPose();
   await render({ writing: 'a' });
   expect(cursorPose()).toEqual(interrupted);
   clock.step(616);
-  expect(Math.hypot(cursorPose().x - interrupted.x, cursorPose().y - interrupted.y)).toBeLessThan(2);
+  expect(Math.hypot(cursorPose().x - interrupted.x, cursorPose().y - interrupted.y)).toBeLessThan(
+    2,
+  );
   clock.step(3000);
   expect(cursorPose()).toMatchObject({ x: 64, y: 80 });
   expect(clock.frames.size).toBe(0);
@@ -207,14 +270,23 @@ test('respects reduced motion changes and cancels an unfinished flight on comple
   await render({ writing: 'b' });
   expect(cursorPose()).toMatchObject({ x: 1064, y: 80 });
   expect(clock.frames.size).toBe(0);
-  act(() => { clock.media.matches = false; clock.media.dispatchEvent(new Event('change')); });
+  act(() => {
+    clock.media.matches = false;
+    clock.media.dispatchEvent(new Event('change'));
+  });
   await render({ writing: 'a' });
   clock.step(400);
   expect(cursorPose().x).not.toBe(64);
-  act(() => { clock.media.matches = true; clock.media.dispatchEvent(new Event('change')); });
+  act(() => {
+    clock.media.matches = true;
+    clock.media.dispatchEvent(new Event('change'));
+  });
   expect(cursorPose()).toMatchObject({ x: 64, y: 80 });
   expect(clock.frames.size).toBe(0);
-  act(() => { clock.media.matches = false; clock.media.dispatchEvent(new Event('change')); });
+  act(() => {
+    clock.media.matches = false;
+    clock.media.dispatchEvent(new Event('change'));
+  });
   await render({ writing: 'b' });
   expect(clock.frames.size).toBe(1);
   await render();
@@ -223,30 +295,67 @@ test('respects reduced motion changes and cancels an unfinished flight on comple
   expect(clock.frames.size).toBe(0);
 });
 
-const live = (patch: Partial<BoardRender> = {}): BoardRender => ({ tier: 'live', mounted: true, image: null, overlay: false, hidden: false, ...patch });
-const still = (tier: BoardRender['tier'], image: string | null): BoardRender => ({ tier, mounted: false, image, overlay: false, hidden: false });
+const live = (patch: Partial<BoardRender> = {}): BoardRender => ({
+  tier: 'live',
+  mounted: true,
+  image: null,
+  overlay: false,
+  hidden: false,
+  ...patch,
+});
+const still = (tier: BoardRender['tier'], image: string | null): BoardRender => ({
+  tier,
+  mounted: false,
+  image,
+  overlay: false,
+  hidden: false,
+});
 
 test('keeps every board slot and mounts frames only for live boards', async () => {
-  const host = await render({ renders: new Map([['a', live()], ['b', still('empty', null)]]) });
+  const host = await render({
+    renders: new Map([
+      ['a', live()],
+      ['b', still('empty', null)],
+    ]),
+  });
   expect(host.querySelectorAll('[data-board]')).toHaveLength(2);
   expect(host.querySelectorAll('iframe')).toHaveLength(1);
   expect(host.querySelector('iframe')?.title).toBe('First');
   expect(host.querySelector('[data-board="b"] img')).toBeNull();
-  await render({ renders: new Map([['a', still('snapshot', 'blob:a')], ['b', live()]]) });
+  await render({
+    renders: new Map([
+      ['a', still('snapshot', 'blob:a')],
+      ['b', live()],
+    ]),
+  });
   expect(host.querySelectorAll('iframe')).toHaveLength(1);
   expect(host.querySelector('iframe')?.title).toBe('Second');
   expect(refs.get('a')).toBeNull();
 });
 
 test('snapshot and placeholder boards show their image instead of a frame', async () => {
-  const host = await render({ renders: new Map([['a', still('snapshot', 'blob:shot')], ['b', still('placeholder', 'data:image/svg+xml,card')]]) });
+  const host = await render({
+    renders: new Map([
+      ['a', still('snapshot', 'blob:shot')],
+      ['b', still('placeholder', 'data:image/svg+xml,card')],
+    ]),
+  });
   expect(host.querySelector('iframe')).toBeNull();
   expect(host.querySelector('[data-board="a"] img')?.getAttribute('src')).toBe('blob:shot');
-  expect(host.querySelector('[data-board="b"] img')?.getAttribute('src')).toBe('data:image/svg+xml,card');
+  expect(host.querySelector('[data-board="b"] img')?.getAttribute('src')).toBe(
+    'data:image/svg+xml,card',
+  );
 });
 
-const shown = (host: HTMLElement, id: string) => [...host.querySelectorAll<HTMLImageElement>(`[data-board="${id}"] img`)].filter((img) => img.style.visibility !== 'hidden').map((img) => img.getAttribute('src'));
-const settle = async (img: Element | null | undefined, type: 'load' | 'error') => { await act(async () => { img!.dispatchEvent(new Event(type)); }); };
+const shown = (host: HTMLElement, id: string) =>
+  [...host.querySelectorAll<HTMLImageElement>(`[data-board="${id}"] img`)]
+    .filter((img) => img.style.visibility !== 'hidden')
+    .map((img) => img.getAttribute('src'));
+const settle = async (img: Element | null | undefined, type: 'load' | 'error') => {
+  await act(async () => {
+    img!.dispatchEvent(new Event(type));
+  });
+};
 
 test('a board image stays hidden until it loads, and the previous image stays until the next one loads', async () => {
   const host = await render({ renders: new Map([['a', still('snapshot', 'blob:one')]]) });
@@ -261,7 +370,10 @@ test('a board image stays hidden until it loads, and the previous image stays un
 
 test('a board image that fails to load is never shown and the failure is reported', async () => {
   const failed = vi.fn();
-  const host = await render({ renders: new Map([['a', still('snapshot', 'blob:gone')]]), onImageError: failed });
+  const host = await render({
+    renders: new Map([['a', still('snapshot', 'blob:gone')]]),
+    onImageError: failed,
+  });
   await settle(host.querySelector('[data-board="a"] img'), 'error');
   expect(shown(host, 'a')).toEqual([]);
   expect(failed).toHaveBeenCalledWith('a', 'blob:gone');
@@ -278,15 +390,20 @@ test('a loaded snapshot stays the same image element when its board mounts a fra
 
 test('an overlay covers a frame until it is ready, and a zoom hides the frame one frame after its snapshot shows', async () => {
   const clock = animationClock();
-  const host = await render({ renders: new Map([['a', live({ image: 'data:image/svg+xml,card', overlay: true })]]) });
+  const host = await render({
+    renders: new Map([['a', live({ image: 'data:image/svg+xml,card', overlay: true })]]),
+  });
   const frame = host.querySelector('iframe')!;
   await settle(host.querySelector('[data-board="a"] img'), 'load');
   expect(shown(host, 'a')).toEqual(['data:image/svg+xml,card']);
   await render({ renders: new Map([['a', live({ image: 'blob:shot' })]]) });
   await settle(host.querySelector('[data-board="a"] img[src="blob:shot"]'), 'load');
-  clock.step(16); clock.step(32);
+  clock.step(16);
+  clock.step(32);
   expect(shown(host, 'a')).toEqual([]);
-  await render({ renders: new Map([['a', live({ image: 'blob:shot', overlay: true, hidden: true })]]) });
+  await render({
+    renders: new Map([['a', live({ image: 'blob:shot', overlay: true, hidden: true })]]),
+  });
   expect(shown(host, 'a')).toEqual(['blob:shot']);
   expect(frame.style.opacity).toBe('');
   clock.step(48);
@@ -297,7 +414,9 @@ test('an overlay covers a frame until it is ready, and a zoom hides the frame on
 
 test('a zoom keeps the frame visible until its snapshot has loaded', async () => {
   const clock = animationClock();
-  const host = await render({ renders: new Map([['a', live({ image: 'blob:shot', overlay: true, hidden: true })]]) });
+  const host = await render({
+    renders: new Map([['a', live({ image: 'blob:shot', overlay: true, hidden: true })]]),
+  });
   const frame = host.querySelector('iframe')!;
   clock.step(16);
   expect(frame.style.opacity).toBe('');
@@ -310,7 +429,9 @@ test('a zoom keeps the frame visible until its snapshot has loaded', async () =>
 
 test('when a zoom ends the frame shows at once and the snapshot stays over it for two more frames', async () => {
   const clock = animationClock();
-  const host = await render({ renders: new Map([['a', live({ image: 'blob:shot', overlay: true, hidden: true })]]) });
+  const host = await render({
+    renders: new Map([['a', live({ image: 'blob:shot', overlay: true, hidden: true })]]),
+  });
   await settle(host.querySelector('[data-board="a"] img'), 'load');
   clock.step(16);
   await render({ renders: new Map([['a', live({ image: 'blob:shot' })]]) });
@@ -362,18 +483,53 @@ test.each([
   ['#777777', '#777777', '#000'],
   [undefined, '#fff6db', '#3d2e00'],
 ])('renders a %s sticky with readable foreground', async (color, background, foreground) => {
-  const host = await render({ notes: [['note', { page: 'p', kind: 'sticky', x: 0, y: 500, text: 'Decision', color }]] });
-  const note = [...host.querySelectorAll('div')].find((el) => el.textContent === 'Decision' && !el.querySelector('div'))!;
+  const host = await render({
+    notes: [['note', { page: 'p', kind: 'sticky', x: 0, y: 500, text: 'Decision', color }]],
+  });
+  const note = [...host.querySelectorAll('div')].find(
+    (el) => el.textContent === 'Decision' && !el.querySelector('div'),
+  )!;
   expect(note.style.backgroundColor).toBe(background);
   expect(note.style.color).toBe(foreground);
 });
 
 test('image and video boards render as media, not as iframes', async () => {
   const media: ComponentProps<typeof Canvas>['boards'] = [
-    ['shot', { type: 'image', src: 'pages/shot.png', file: 'pages/shot.png', page: 'p', x: 0, y: 0, w: 640, h: 400 }],
-    ['flow', { type: 'video', src: 'pages/flow.webm', file: 'pages/flow.webm', page: 'p', x: 1000, y: 0, w: 640, h: 400 }],
+    [
+      'shot',
+      {
+        type: 'image',
+        src: 'pages/shot.png',
+        file: 'pages/shot.png',
+        page: 'p',
+        x: 0,
+        y: 0,
+        w: 640,
+        h: 400,
+      },
+    ],
+    [
+      'flow',
+      {
+        type: 'video',
+        src: 'pages/flow.webm',
+        file: 'pages/flow.webm',
+        page: 'p',
+        x: 1000,
+        y: 0,
+        w: 640,
+        h: 400,
+      },
+    ],
   ];
-  const body = await render({ boards: media, versions: { 'pages/shot.png': 3, 'pages/flow.webm': 4 }, renders: new Map([['shot', still('snapshot', null)], ['flow', still('placeholder', null)]]) });
+  const body = await render({
+    boards: media,
+    versions: { 'pages/shot.png': 3, 'pages/flow.webm': 4 },
+    renders: new Map([
+      ['shot', still('snapshot', null)],
+      ['flow', still('placeholder', null)],
+    ]),
+  });
   expect(body.querySelector('iframe')).toBeNull();
   expect(body.querySelector('img')?.getAttribute('src')).toBe('about:blank#pages/shot.png?v=3');
   const video = body.querySelector('video')!;

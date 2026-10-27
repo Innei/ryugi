@@ -1,6 +1,9 @@
 export const KEPT_MAX = 6;
 
-export interface KeptBoard { id: string; version: number }
+export interface KeptBoard {
+  id: string;
+  version: number;
+}
 
 export function keepBoard(list: readonly KeptBoard[], id: string, version: number): KeptBoard[] {
   const next = [...list.filter((entry) => entry.id !== id), { id, version }];

@@ -17,11 +17,24 @@ const styles = stylex.create({
     color: cssVar.colorText,
     cursor: 'default',
   },
-  head: { display: 'flex', alignItems: 'center', gap: 8, paddingTop: 10, paddingInline: 14, fontSize: 11 },
+  head: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    paddingTop: 10,
+    paddingInline: 14,
+    fontSize: 11,
+  },
   verdict: { color: '#e5484d', fontWeight: 600 },
   group: { fontFamily: cssVar.fontFamilyCode, color: cssVar.colorTextTertiary },
   required: { marginInlineStart: 'auto', color: cssVar.colorTextTertiary },
-  hint: { paddingInline: 14, paddingBottom: 10, fontSize: 10, lineHeight: 1.6, color: cssVar.colorTextQuaternary },
+  hint: {
+    paddingInline: 14,
+    paddingBottom: 10,
+    fontSize: 10,
+    lineHeight: 1.6,
+    color: cssVar.colorTextQuaternary,
+  },
 });
 
 interface Props {
@@ -41,7 +54,12 @@ export function RejectComposer({ group, left, top, onSubmit, onCancel }: Props) 
         <span {...stylex.props(styles.group)}>{group}</span>
         <span {...stylex.props(styles.required)}>{t('verdict.reasonRequired')}</span>
       </div>
-      <Composer autoFocus placeholder={t('verdict.reasonPlaceholder')} onSubmit={onSubmit} onCancel={onCancel} />
+      <Composer
+        autoFocus
+        placeholder={t('verdict.reasonPlaceholder')}
+        onSubmit={onSubmit}
+        onCancel={onCancel}
+      />
       <div {...stylex.props(styles.hint)}>{t('verdict.rejectHint')}</div>
     </div>
   );

@@ -32,20 +32,29 @@ test('a declaration opens a building skeleton without agent-maintained state', (
   expect(payload.canvas?.writing).toBeUndefined();
 });
 
-test.each(['', '   ', '<!doctype', '<html', '<!doctype html>', '<html><body>Half', '<!DOCTYPE HTML><HTML><BODY>Half'])(
-  'withholds an unfinished board and identifies its writer: %j', (html) => {
-    const payload = readCanvas(artboard(spec, { 'pages/p/a.html': html }));
-    expect(payload.warnings).toEqual([]);
-    expect(payload.pending).toEqual(['a']);
-    expect(payload.versions['pages/p/a.html']).toBe(0);
-    expect(payload.canvas?.writing).toBe('a');
-  },
-);
+test.each([
+  '',
+  '   ',
+  '<!doctype',
+  '<html',
+  '<!doctype html>',
+  '<html><body>Half',
+  '<!DOCTYPE HTML><HTML><BODY>Half',
+])('withholds an unfinished board and identifies its writer: %j', (html) => {
+  const payload = readCanvas(artboard(spec, { 'pages/p/a.html': html }));
+  expect(payload.warnings).toEqual([]);
+  expect(payload.pending).toEqual(['a']);
+  expect(payload.versions['pages/p/a.html']).toBe(0);
+  expect(payload.canvas?.writing).toBe('a');
+});
 
 test('finishing the HTML clears derived state without rewriting canvas.json', () => {
-  const dir = artboard({ ...spec, building: true, writing: 'a' }, {
-    'pages/p/a.html': '<!doctype html><html><body>Drawing',
-  });
+  const dir = artboard(
+    { ...spec, building: true, writing: 'a' },
+    {
+      'pages/p/a.html': '<!doctype html><html><body>Drawing',
+    },
+  );
   const source = fs.readFileSync(path.join(dir, 'canvas.json'), 'utf8');
   expect(readCanvas(dir).pending).toEqual(['a']);
 
@@ -60,14 +69,17 @@ test('finishing the HTML clears derived state without rewriting canvas.json', ()
 });
 
 test('a revision infers the latest incomplete writer and clears it when complete', () => {
-  const dir = artboard({
-    ...spec,
-    building: false,
-    boards: { ...spec.boards, b: { ...spec.boards.a, file: 'pages/p/b.html', x: 720 } },
-  }, {
-    'pages/p/a.html': '<html><body>First',
-    'pages/p/b.html': '<html><body>Second',
-  });
+  const dir = artboard(
+    {
+      ...spec,
+      building: false,
+      boards: { ...spec.boards, b: { ...spec.boards.a, file: 'pages/p/b.html', x: 720 } },
+    },
+    {
+      'pages/p/a.html': '<html><body>First',
+      'pages/p/b.html': '<html><body>Second',
+    },
+  );
   fs.utimesSync(path.join(dir, 'pages/p/a.html'), new Date(1000), new Date(1000));
   expect(readCanvas(dir).canvas?.writing).toBe('b');
   fs.appendFileSync(path.join(dir, 'pages/p/b.html'), '</body></html>');
@@ -103,11 +115,12 @@ const media = {
 };
 
 test('a media board is ready once its file has bytes, and reads as file = src', () => {
-  const payload = readCanvas(artboard(media, { 'pages/p/shot.png': '\x89PNG', 'pages/p/flow.webm': '' }));
+  const payload = readCanvas(
+    artboard(media, { 'pages/p/shot.png': '\x89PNG', 'pages/p/flow.webm': '' }),
+  );
   expect(payload.warnings).toEqual([]);
   expect(payload.canvas?.boards.shot?.file).toBe('pages/p/shot.png');
   expect(payload.versions['pages/p/shot.png']).toBeGreaterThan(0);
   expect(payload.pending).toEqual(['flow']);
   expect(payload.canvas?.writing).toBeUndefined();
 });
-

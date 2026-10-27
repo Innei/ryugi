@@ -54,17 +54,17 @@ On a phone today (checked at iPhone 14 width, recorded on the artboard's
 
 ## Decided with the human partner
 
-| Topic | Decision |
-|---|---|
-| How to browse an artboard on the phone | keep the canvas, add a jump panel (`q1-b`), not a list or a swipe deck |
-| Details of that | as drawn in `r2-b1` … `r2-b3` (approved) |
-| HTML pages on the phone | no change |
-| Inspector / element selection on the phone | hidden |
-| Visual style | no cards |
+| Topic                                      | Decision                                                               |
+| ------------------------------------------ | ---------------------------------------------------------------------- |
+| How to browse an artboard on the phone     | keep the canvas, add a jump panel (`q1-b`), not a list or a swipe deck |
+| Details of that                            | as drawn in `r2-b1` … `r2-b3` (approved)                               |
+| HTML pages on the phone                    | no change                                                              |
+| Inspector / element selection on the phone | hidden                                                                 |
+| Visual style                               | no cards                                                               |
 
 ## How it behaves
 
-Phone layout means viewport width ≤ 640px (*my call*, the same breakpoint as
+Phone layout means viewport width ≤ 640px (_my call_, the same breakpoint as
 documents in project 2).
 
 ### Opening (`r2-b1`)
@@ -84,22 +84,22 @@ documents in project 2).
   (`q2r4 怎么开始一条评论`) and `‹ 上一题` / `下一题 ›`.
 - Previous / next follow the jump list order (below) and fit the canvas to
   that question; they stop at the ends of the list rather than wrapping
-  (*my call*). "Current question" is the one last jumped to or opened on;
-  panning by hand does not change it (*my call*).
+  (_my call_). "Current question" is the one last jumped to or opened on;
+  panning by hand does not change it (_my call_).
 
 ### The jump panel (`r2-b2`)
 
 - Dragging the bar up opens it as a sheet (`FloatingSheet`, embedded variant;
-  collapsed = the bar, open = about two thirds of the screen; *my call* on the
+  collapsed = the bar, open = about two thirds of the screen; _my call_ on the
   heights).
 - It lists every question on the current page, grouped under its round, newest
   round first. A round is the title note above a group: each group belongs to
-  the nearest `kind: "title"` note above its frame on the same page (*my
-  call*); groups with no title above them come last under "其他". Within a
+  the nearest `kind: "title"` note above its frame on the same page (_my
+  call_); groups with no title above them come last under "其他". Within a
   round, questions run top to bottom, then left to right. Each row:
   group id, title, number of boards. The current question is highlighted.
 - Boards that belong to no group appear as their own rows under their round,
-  so nothing on the canvas is unreachable (*my call*).
+  so nothing on the canvas is unreachable (_my call_).
 - The sheet header has the page switcher when the artboard has more than one
   page; switching pages lists that page's questions.
 - Tapping a row fits the canvas to that question and collapses the sheet.
@@ -110,12 +110,12 @@ documents in project 2).
   screen: header with the board title, id and a close button; footer with
   `‹ 上一张` / `n / m` / `下一张 ›` through the boards of the same question
   (for a board outside any group, through its neighbours in the jump list;
-  *my call*).
+  _my call_).
 - A phone-width board shows at 1:1. A wider board is scaled to the screen
-  width and scrolls vertically; pinch zooms inside it (*my call*).
+  width and scrolls vertically; pinch zooms inside it (_my call_).
 - `interactive: true` boards are playable in this view, as they are expanded
   on desktop. On the phone canvas a tap always opens the board; there is no
-  separate PLAY step (*my call*).
+  separate PLAY step (_my call_).
 
 ### Top bar on the phone
 
@@ -133,7 +133,7 @@ documents in project 2).
 - Kept (in the phone top bar): page switcher, live indicator, zoom menu,
   publish / share.
 
-### Touch (*my call*)
+### Touch (_my call_)
 
 - Phone layout: one finger pans the canvas anywhere (boards included, since
   selection is off and board frames do not take pointer input there), two

@@ -3,7 +3,8 @@ import { injectRuntime } from '../src/server/inject';
 import { CLOUD_RUNTIME_URL } from '../src/server/publish-payload';
 import { stripRuntime } from '../src/server/strip-runtime';
 
-const page = '<!doctype html><html><head><title>Arrow</title><script>window.mine = 1</script></head><body><ryugi-button>Go</ryugi-button><ryugi-icon name="x"></ryugi-icon></body></html>';
+const page =
+  '<!doctype html><html><head><title>Arrow</title><script>window.mine = 1</script></head><body><ryugi-button>Go</ryugi-button><ryugi-icon name="x"></ryugi-icon></body></html>';
 
 describe('stripRuntime', () => {
   test.each([

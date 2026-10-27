@@ -33,12 +33,17 @@ export function listArtifacts(root: string) {
   for (const type of subdirectories(root)) {
     if (type.startsWith('.')) continue;
     if (!isArtifactType(type)) {
-      warnings.push(`unknown artifact type directory: ${type}/ (known: ${ARTIFACT_TYPES.join(', ')})`);
+      warnings.push(
+        `unknown artifact type directory: ${type}/ (known: ${ARTIFACT_TYPES.join(', ')})`,
+      );
       continue;
     }
     for (const id of subdirectories(path.join(root, type))) {
       if (isArtifactId(id)) artifacts.push({ type, id, dir: path.join(root, type, id) });
-      else warnings.push(`invalid artifact id: ${type}/${id} (use lowercase letters, digits and hyphens)`);
+      else
+        warnings.push(
+          `invalid artifact id: ${type}/${id} (use lowercase letters, digits and hyphens)`,
+        );
     }
   }
   return { artifacts, warnings };
@@ -54,7 +59,10 @@ export function resolveArtifactDir(root: string, type: string, id: string): stri
   }
 }
 
-export function artifactKeyOf(relative: string, isId: (id: string) => boolean = isArtifactId): ArtifactRef | null {
+export function artifactKeyOf(
+  relative: string,
+  isId: (id: string) => boolean = isArtifactId,
+): ArtifactRef | null {
   const [type, id] = relative.split('/');
   if (!type || !id || !isArtifactType(type) || !isId(id)) return null;
   return { type, id };

@@ -10,8 +10,30 @@ const MIN_BAR_WIDTH = 160;
 const RATES = [1, 1.5, 2, 0.5];
 
 const styles = stylex.create({
-  video: { position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block', objectFit: 'contain', backgroundColor: '#000', pointerEvents: 'none' },
-  surface: { position: 'absolute', inset: 0, width: '100%', height: '100%', padding: 0, borderWidth: 0, backgroundColor: 'transparent', cursor: 'pointer', outlineStyle: { default: 'none', ':focus-visible': 'solid' }, outlineWidth: 2, outlineColor: '#fff', outlineOffset: -3 },
+  video: {
+    position: 'absolute',
+    inset: 0,
+    width: '100%',
+    height: '100%',
+    display: 'block',
+    objectFit: 'contain',
+    backgroundColor: '#000',
+    pointerEvents: 'none',
+  },
+  surface: {
+    position: 'absolute',
+    inset: 0,
+    width: '100%',
+    height: '100%',
+    padding: 0,
+    borderWidth: 0,
+    backgroundColor: 'transparent',
+    cursor: 'pointer',
+    outlineStyle: { 'default': 'none', ':focus-visible': 'solid' },
+    outlineWidth: 2,
+    outlineColor: '#fff',
+    outlineOffset: -3,
+  },
   bar: {
     position: 'absolute',
     left: 0,
@@ -41,18 +63,37 @@ const styles = stylex.create({
     padding: 0,
     borderWidth: 0,
     backgroundColor: 'transparent',
-    color: { default: '#ddd', ':hover': '#fff' },
+    color: { 'default': '#ddd', ':hover': '#fff' },
     fontFamily: 'inherit',
     fontSize: 11,
     cursor: 'pointer',
   },
-  off: { color: { default: '#777', ':hover': '#bbb' } },
+  off: { color: { 'default': '#777', ':hover': '#bbb' } },
   time: { flexShrink: 0, fontVariantNumeric: 'tabular-nums' },
-  track: { position: 'relative', flex: 1, height: 14, display: 'flex', alignItems: 'center', cursor: 'pointer' },
+  track: {
+    position: 'relative',
+    flex: 1,
+    height: 14,
+    display: 'flex',
+    alignItems: 'center',
+    cursor: 'pointer',
+  },
   rail: { position: 'absolute', left: 0, right: 0, height: 3, backgroundColor: '#3a3a3a' },
   fill: { position: 'absolute', left: 0, height: 3, backgroundColor: '#fff' },
   rate: { minWidth: 30, fontWeight: 600 },
-  failed: { position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', padding: 16, backgroundColor: '#111', color: '#aaa', fontFamily: cssVar.fontFamily, fontSize: 13, textAlign: 'center', pointerEvents: 'none' },
+  failed: {
+    position: 'absolute',
+    inset: 0,
+    display: 'grid',
+    placeItems: 'center',
+    padding: 16,
+    backgroundColor: '#111',
+    color: '#aaa',
+    fontFamily: cssVar.fontFamily,
+    fontSize: 13,
+    textAlign: 'center',
+    pointerEvents: 'none',
+  },
 });
 
 const clock = (seconds: number) => {
@@ -61,13 +102,32 @@ const clock = (seconds: number) => {
 };
 
 function PlaybackIcon({ playing }: { playing: boolean }) {
-  return <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-    {[false, true].map((pause) => <motion.g key={String(pause)} initial={false}
-      animate={{ opacity: playing === pause ? 1 : 0, scale: playing === pause ? 1 : 0.25, filter: playing === pause ? 'blur(0px)' : 'blur(4px)' }}
-      transition={{ type: 'spring', duration: 0.3, bounce: 0 }} style={{ transformOrigin: '12px 12px' }}>
-      {pause ? <><rect x="6" y="4" width="4" height="16" rx="1" /><rect x="14" y="4" width="4" height="16" rx="1" /></> : <path d="M8 4.6c-.9-.5-2 .1-2 1.1v12.6c0 1 1.1 1.6 2 1.1l11-6.3c.9-.5.9-1.7 0-2.2Z" />}
-    </motion.g>)}
-  </svg>;
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      {[false, true].map((pause) => (
+        <motion.g
+          key={String(pause)}
+          initial={false}
+          animate={{
+            opacity: playing === pause ? 1 : 0,
+            scale: playing === pause ? 1 : 0.25,
+            filter: playing === pause ? 'blur(0px)' : 'blur(4px)',
+          }}
+          transition={{ type: 'spring', duration: 0.3, bounce: 0 }}
+          style={{ transformOrigin: '12px 12px' }}
+        >
+          {pause ? (
+            <>
+              <rect x="6" y="4" width="4" height="16" rx="1" />
+              <rect x="14" y="4" width="4" height="16" rx="1" />
+            </>
+          ) : (
+            <path d="M8 4.6c-.9-.5-2 .1-2 1.1v12.6c0 1 1.1 1.6 2 1.1l11-6.3c.9-.5.9-1.7 0-2.2Z" />
+          )}
+        </motion.g>
+      ))}
+    </svg>
+  );
 }
 
 interface Props {
@@ -127,21 +187,43 @@ export function VideoPlayer({ src, title, barScale, barWidth, onExpand }: Props)
     const el = video.current;
     if (!el || !Number.isFinite(el.duration) || el.duration <= 0) return;
     const rect = event.currentTarget.getBoundingClientRect();
-    el.currentTime = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width)) * el.duration;
+    el.currentTime =
+      Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width)) * el.duration;
     setTime(el.currentTime);
   };
 
   return (
     <>
-      <video ref={video} src={src} title={title} muted playsInline preload="metadata" {...stylex.props(styles.video)} />
-      <button type="button" data-video-surface aria-label={playing ? t('video.pauseTitle', { title }) : t('video.playTitle', { title })}
-        onPointerDown={(event) => { press.current = { x: event.clientX, y: event.clientY }; }}
+      <video
+        ref={video}
+        src={src}
+        title={title}
+        muted
+        playsInline
+        preload="metadata"
+        {...stylex.props(styles.video)}
+      />
+      <button
+        type="button"
+        data-video-surface
+        aria-label={playing ? t('video.pauseTitle', { title }) : t('video.playTitle', { title })}
+        onPointerDown={(event) => {
+          press.current = { x: event.clientX, y: event.clientY };
+        }}
         onClick={(event) => {
-          if (!event.detail || !press.current || Math.hypot(event.clientX - press.current.x, event.clientY - press.current.y) < 4) toggle();
+          if (
+            !event.detail ||
+            !press.current ||
+            Math.hypot(event.clientX - press.current.x, event.clientY - press.current.y) < 4
+          )
+            toggle();
           press.current = null;
         }}
-        onKeyDown={(event) => { if (event.key === ' ' || event.key === 'Enter') event.stopPropagation(); }}
-        {...stylex.props(styles.surface)} />
+        onKeyDown={(event) => {
+          if (event.key === ' ' || event.key === 'Enter') event.stopPropagation();
+        }}
+        {...stylex.props(styles.surface)}
+      />
       {failed && <div {...stylex.props(styles.failed)}>{t('video.failed')}</div>}
       {barWidth >= MIN_BAR_WIDTH && (
         <div
@@ -150,10 +232,17 @@ export function VideoPlayer({ src, title, barScale, barWidth, onExpand }: Props)
           {...stylex.props(styles.bar)}
           style={{ width: barWidth, transform: `scale(${barScale})` }}
         >
-          <button type="button" aria-label={playing ? t('video.pause') : t('video.play')} onClick={toggle} {...stylex.props(styles.icon)}>
+          <button
+            type="button"
+            aria-label={playing ? t('video.pause') : t('video.play')}
+            onClick={toggle}
+            {...stylex.props(styles.icon)}
+          >
             <PlaybackIcon playing={playing} />
           </button>
-          <span {...stylex.props(styles.time)}>{clock(time)} / {clock(duration)}</span>
+          <span {...stylex.props(styles.time)}>
+            {clock(time)} / {clock(duration)}
+          </span>
           <div
             role="slider"
             aria-label={t('video.progress')}
@@ -171,16 +260,35 @@ export function VideoPlayer({ src, title, barScale, barWidth, onExpand }: Props)
             {...stylex.props(styles.track)}
           >
             <span {...stylex.props(styles.rail)} />
-            <span {...stylex.props(styles.fill)} style={{ width: `${duration > 0 ? (time / duration) * 100 : 0}%` }} />
+            <span
+              {...stylex.props(styles.fill)}
+              style={{ width: `${duration > 0 ? (time / duration) * 100 : 0}%` }}
+            />
           </div>
-          <button type="button" aria-label={t('video.speed')} onClick={cycleRate} {...stylex.props(styles.icon, styles.rate)}>
+          <button
+            type="button"
+            aria-label={t('video.speed')}
+            onClick={cycleRate}
+            {...stylex.props(styles.icon, styles.rate)}
+          >
             {rate}×
           </button>
-          <button type="button" aria-label={t('video.loop')} aria-pressed={loop} onClick={toggleLoop} {...stylex.props(styles.icon, !loop && styles.off)}>
+          <button
+            type="button"
+            aria-label={t('video.loop')}
+            aria-pressed={loop}
+            onClick={toggleLoop}
+            {...stylex.props(styles.icon, !loop && styles.off)}
+          >
             <Repeat size={14} />
           </button>
           {onExpand && (
-            <button type="button" aria-label={t('video.expand')} onClick={onExpand} {...stylex.props(styles.icon)}>
+            <button
+              type="button"
+              aria-label={t('video.expand')}
+              onClick={onExpand}
+              {...stylex.props(styles.icon)}
+            >
               <Maximize2 size={13} />
             </button>
           )}

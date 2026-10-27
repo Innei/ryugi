@@ -117,24 +117,42 @@ between projects open at the same time. (Builder-check follow-up; my call.)
 
 ```json
 {
-  "version": 1,
-  "title": "settings-page",
   "activePage": "settings",
-  "focus": { "target": "q3", "at": "2026-10-19T08:40:00Z" },
-  "pages": [{ "id": "settings", "name": "Settings" }],
   "boards": {
-    "q1-a": { "file": "pages/settings/q1-a.html", "page": "settings",
-              "x": 0, "y": 0, "w": 1280, "h": 800, "title": "Sidebar nav" }
+    "q1-a": {
+      "file": "pages/settings/q1-a.html",
+      "page": "settings",
+      "x": 0,
+      "y": 0,
+      "w": 1280,
+      "h": 800,
+      "title": "Sidebar nav"
+    }
   },
+  "focus": { "target": "q3", "at": "2026-10-19T08:40:00Z" },
   "groups": {
     "q1": { "title": "Navigation layout", "boards": ["q1-a", "q1-b"] }
   },
   "notes": {
-    "intro": { "page": "settings", "kind": "title", "x": 0, "y": -420,
-               "text": "Settings — round 1" },
-    "why": { "page": "settings", "kind": "sticky", "x": 2760, "y": 0,
-             "w": 300, "text": "B keeps the content full width." }
-  }
+    "intro": {
+      "page": "settings",
+      "kind": "title",
+      "x": 0,
+      "y": -420,
+      "text": "Settings — round 1"
+    },
+    "why": {
+      "page": "settings",
+      "kind": "sticky",
+      "x": 2760,
+      "y": 0,
+      "w": 300,
+      "text": "B keeps the content full width."
+    }
+  },
+  "pages": [{ "id": "settings", "name": "Settings" }],
+  "title": "settings-page",
+  "version": 1
 }
 ```
 

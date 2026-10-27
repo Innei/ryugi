@@ -102,7 +102,7 @@ Cloud auth needs no change: `GET /api/a/:id` already accepts
 - **Text:** identical for every artifact apart from the link, with no title or
   type, in English since the reader is an agent:
   `This is a Ryugi Cloud artifact. Agents: read its source with
-  \`npx -y ryugi-artifacts@latest get https://ryugi.innei.dev/a/<id>\`.
+\`npx -y ryugi-artifacts@latest get https://ryugi.innei.dev/a/<id>\`.
   Private artifacts need a Ryugi sign-in on this machine; the command says
   how.` (my call)
 - **Check:** the text is absent from the accessibility tree, never flashes
@@ -180,12 +180,12 @@ first step is `get`. Keep the results with the change.
 
 ## Tests
 
-| Where | What |
-|-------|------|
+| Where                                                   | What                                                                                                                                                                                                                                                 |
+| ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `artifacts/test/cli-get.test.ts` (with `fake-cloud.ts`) | link and bare-id parsing; Bearer and anonymous requests; document LiteXML and comments, `--no-comments`, `--json`; document files; artboard/html download, `../` rejected; 404 with and without a token, 429, unpublished; source mode without a TTY |
-| ryugi-cloud viewer tests | meta and body signpost on `/a/:id` and `/a/:id/view`; none on other pages; no title or type for a private artifact |
-| ryugi-cloud artifacts tests | `viewerData.files` equals the current version's paths; absent when unpublished |
-| By hand | `curl` the cloud link shows the body signpost; `get` from another directory returns this design document's LiteXML |
+| ryugi-cloud viewer tests                                | meta and body signpost on `/a/:id` and `/a/:id/view`; none on other pages; no title or type for a private artifact                                                                                                                                   |
+| ryugi-cloud artifacts tests                             | `viewerData.files` equals the current version's paths; absent when unpublished                                                                                                                                                                       |
+| By hand                                                 | `curl` the cloud link shows the body signpost; `get` from another directory returns this design document's LiteXML                                                                                                                                   |
 
 ## Release order
 

@@ -8,11 +8,11 @@ This is where architecture and engineering decisions are argued — design
 docs, reviews, proposals and flow walkthroughs — with diagrams, code and
 tables.
 
-| File | Written by | Holds |
-|------|------------|-------|
-| `doc.xml` | you and the server | the document, in LiteXML |
-| `comments.json` | the server only | comment threads; use the `comment` commands below |
-| `assets/` | you | images and Excalidraw scenes, referenced as `assets/<name>` |
+| File            | Written by         | Holds                                                       |
+| --------------- | ------------------ | ----------------------------------------------------------- |
+| `doc.xml`       | you and the server | the document, in LiteXML                                    |
+| `comments.json` | the server only    | comment threads; use the `comment` commands below           |
+| `assets/`       | you                | images and Excalidraw scenes, referenced as `assets/<name>` |
 
 ## Editing doc.xml
 
@@ -37,12 +37,12 @@ and pick the form that shows it fastest. The first screen says what the
 document is about and what it asks of them; a reader who stops there
 still has the overview.
 
-| The reader needs to grasp | Lead with |
-|---|---|
+| The reader needs to grasp                         | Lead with                                        |
+| ------------------------------------------------- | ------------------------------------------------ |
 | How parts relate: layers, ownership, dependencies | a structure diagram, then a few lines reading it |
-| A decision they must make | the conclusion and a table of the open choices |
-| What changes: a migration or refactor | before and after, side by side |
-| A flow or protocol | one request walked through, as a sequence |
+| A decision they must make                         | the conclusion and a table of the open choices   |
+| What changes: a migration or refactor             | before and after, side by side                   |
+| A flow or protocol                                | one request walked through, as a sequence        |
 
 These are starting points, not a template: mix them, or lead with a
 table, an example or a chart when that says it better. Prose carries

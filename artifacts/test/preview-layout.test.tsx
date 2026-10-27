@@ -4,8 +4,16 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeAll, expect, test, vi } from 'vitest';
 import { PreviewLayout } from '../src/viewer/layouts/PreviewLayout';
 
-vi.mock('@stylexjs/stylex', async (original) => ({ ...await original<object>(), create: (value: unknown) => value, props: () => ({}), defineConsts: (value: unknown) => value, defineVars: (value: unknown) => value }));
-vi.mock('@lobehub/ui/stylex/cssVar.stylex', () => ({ cssVar: new Proxy({}, { get: (_, key) => `var(--${String(key)})` }) }));
+vi.mock('@stylexjs/stylex', async (original) => ({
+  ...(await original<object>()),
+  create: (value: unknown) => value,
+  props: () => ({}),
+  defineConsts: (value: unknown) => value,
+  defineVars: (value: unknown) => value,
+}));
+vi.mock('@lobehub/ui/stylex/cssVar.stylex', () => ({
+  cssVar: new Proxy({}, { get: (_, key) => `var(--${String(key)})` }),
+}));
 vi.mock('../src/viewer/components/Canvas', () => ({ Canvas: () => null }));
 
 let root: Root | null = null;
@@ -33,6 +41,10 @@ async function renderWith(element: ReturnType<typeof createElement>, body: unkno
 }
 
 test('the local preview fetches its artifact once', async () => {
-  const { fetch } = await renderWith(createElement(PreviewLayout, { type: 'html', id: 'a' }), { title: 'A', contentBase: '/c/', warnings: ['waiting'] });
+  const { fetch } = await renderWith(createElement(PreviewLayout, { type: 'html', id: 'a' }), {
+    title: 'A',
+    contentBase: '/c/',
+    warnings: ['waiting'],
+  });
   expect(fetch).toHaveBeenCalledTimes(1);
 });

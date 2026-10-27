@@ -44,9 +44,11 @@ declare global {
   }
 }
 
-const iconFor = (name: unknown) => typeof name === 'string' && name
-  ? ({ size = 16, strokeWidth = 2 }: LucideProps) => createElement('ryugi-icon', { name, size, 'stroke-width': strokeWidth })
-  : undefined;
+const iconFor = (name: unknown) =>
+  typeof name === 'string' && name
+    ? ({ size = 16, strokeWidth = 2 }: LucideProps) =>
+        createElement('ryugi-icon', { name, size, 'stroke-width': strokeWidth })
+    : undefined;
 
 interface Option {
   disabled?: boolean;
@@ -71,12 +73,26 @@ interface Spec {
   tag: string;
   value?: 'number' | 'string';
   valueDefault?: number | string | null;
-  view: (el: RuntimeElement, props: Record<string, unknown>, slot: (node: HTMLSpanElement | null) => void) => ReactNode;
+  view: (
+    el: RuntimeElement,
+    props: Record<string, unknown>,
+    slot: (node: HTMLSpanElement | null) => void,
+  ) => ReactNode;
 }
 
 let hosts: ReturnType<typeof createHostRoot>;
 
-const BASE_ATTRS = ['class', 'style', 'title', 'aria-label', 'disabled', 'name', 'placeholder', 'value', 'checked'];
+const BASE_ATTRS = [
+  'class',
+  'style',
+  'title',
+  'aria-label',
+  'disabled',
+  'name',
+  'placeholder',
+  'value',
+  'checked',
+];
 
 class RyugiElement extends HTMLElement {
   static spec: Spec;
@@ -139,7 +155,9 @@ class RyugiElement extends HTMLElement {
       // A portal appends to its container instead of replacing it the way a root does.
       this.replaceChildren();
     }
-    hosts.register(this, () => spec.view(this as RuntimeElement, this.#props(spec), this.attachSlot));
+    hosts.register(this, () =>
+      spec.view(this as RuntimeElement, this.#props(spec), this.attachSlot),
+    );
   }
 
   disconnectedCallback() {
@@ -206,14 +224,18 @@ class RyugiElement extends HTMLElement {
     if (ariaLabel) props['aria-label'] = ariaLabel;
     const placeholder = this.getAttribute('placeholder');
     if (placeholder) props.placeholder = placeholder;
-    if (this.getAttribute('disabled') !== null && this.getAttribute('disabled') !== 'false') props.disabled = true;
+    if (this.getAttribute('disabled') !== null && this.getAttribute('disabled') !== 'false')
+      props.disabled = true;
     return props;
   }
 
   #readOptions(kind: string): Option[] {
-    const tag = { select: 'ryugi-option', segmented: 'ryugi-segment', menu: 'ryugi-menu-item' }[kind] ?? 'ryugi-radio';
+    const tag =
+      { select: 'ryugi-option', segmented: 'ryugi-segment', menu: 'ryugi-menu-item' }[kind] ??
+      'ryugi-radio';
     return Array.from(this.querySelectorAll(`:scope > ${tag}`)).map((option) => ({
-      disabled: option.getAttribute('disabled') !== null && option.getAttribute('disabled') !== 'false',
+      disabled:
+        option.getAttribute('disabled') !== null && option.getAttribute('disabled') !== 'false',
       icon: option.getAttribute('icon') ?? undefined,
       label: option.textContent?.trim() ?? '',
       value: option.getAttribute('value') ?? option.textContent?.trim() ?? '',
@@ -265,7 +287,13 @@ const definitions: Spec[] = [
       placement: { kind: 'string', prop: 'placement' },
       open: { kind: 'boolean', prop: 'open' },
     },
-    view: (_el, p, slot) => <Tooltip title="" {...p}><Button><span ref={slot} style={{ display: 'contents' }} /></Button></Tooltip>,
+    view: (_el, p, slot) => (
+      <Tooltip title="" {...p}>
+        <Button>
+          <span ref={slot} style={{ display: 'contents' }} />
+        </Button>
+      </Tooltip>
+    ),
   },
   {
     tag: 'ryugi-popover',
@@ -274,7 +302,13 @@ const definitions: Spec[] = [
       placement: { kind: 'string', prop: 'placement' },
       trigger: { kind: 'string', prop: 'trigger' },
     },
-    view: (_el, p, slot) => <Popover content="" trigger="click" {...p}><Button><span ref={slot} style={{ display: 'contents' }} /></Button></Popover>,
+    view: (_el, p, slot) => (
+      <Popover content="" trigger="click" {...p}>
+        <Button>
+          <span ref={slot} style={{ display: 'contents' }} />
+        </Button>
+      </Popover>
+    ),
   },
   {
     tag: 'ryugi-menu',
@@ -285,13 +319,16 @@ const definitions: Spec[] = [
       placement: { kind: 'string', prop: 'placement' },
     },
     view: (el, { label, icon, ...p }) => (
-      <DropdownMenu {...p} items={el.optionList.map((option) => ({
-        key: option.value,
-        label: option.label,
-        disabled: option.disabled,
-        icon: iconFor(option.icon),
-        onClick: () => el.change(option.value),
-      }))}>
+      <DropdownMenu
+        {...p}
+        items={el.optionList.map((option) => ({
+          key: option.value,
+          label: option.label,
+          disabled: option.disabled,
+          icon: iconFor(option.icon),
+          onClick: () => el.change(option.value),
+        }))}
+      >
         <Button icon={iconFor(icon)}>{String(label ?? 'More')}</Button>
       </DropdownMenu>
     ),
@@ -306,7 +343,13 @@ const definitions: Spec[] = [
     },
     control: true,
     value: 'string',
-    view: (el, p) => <Input {...p} value={String(el.value)} onChange={(event) => el.change(event.currentTarget.value)} />,
+    view: (el, p) => (
+      <Input
+        {...p}
+        value={String(el.value)}
+        onChange={(event) => el.change(event.currentTarget.value)}
+      />
+    ),
   },
   {
     tag: 'ryugi-textarea',
@@ -317,7 +360,13 @@ const definitions: Spec[] = [
     },
     control: true,
     value: 'string',
-    view: (el, p) => <TextArea {...p} value={String(el.value)} onChange={(event) => el.change(event.currentTarget.value)} />,
+    view: (el, p) => (
+      <TextArea
+        {...p}
+        value={String(el.value)}
+        onChange={(event) => el.change(event.currentTarget.value)}
+      />
+    ),
   },
   {
     tag: 'ryugi-input-number',
@@ -333,7 +382,13 @@ const definitions: Spec[] = [
     control: true,
     value: 'number',
     valueDefault: null,
-    view: (el, p) => <InputNumber {...p} value={el.value as number | null} onChange={(value) => el.change(value)} />,
+    view: (el, p) => (
+      <InputNumber
+        {...p}
+        value={el.value as number | null}
+        onChange={(value) => el.change(value)}
+      />
+    ),
   },
   {
     tag: 'ryugi-slider',
@@ -344,7 +399,9 @@ const definitions: Spec[] = [
     },
     control: true,
     value: 'number',
-    view: (el, p) => <Slider {...p} value={Number(el.value)} onChange={(value) => el.change(value)} />,
+    view: (el, p) => (
+      <Slider {...p} value={Number(el.value)} onChange={(value) => el.change(value)} />
+    ),
   },
   {
     tag: 'ryugi-slider-input',
@@ -358,7 +415,9 @@ const definitions: Spec[] = [
     },
     control: true,
     value: 'number',
-    view: (el, p) => <SliderWithInput {...p} value={Number(el.value)} onChange={(value) => el.change(value)} />,
+    view: (el, p) => (
+      <SliderWithInput {...p} value={Number(el.value)} onChange={(value) => el.change(value)} />
+    ),
   },
   {
     tag: 'ryugi-switch',
@@ -368,7 +427,9 @@ const definitions: Spec[] = [
     },
     checked: true,
     control: true,
-    view: (el, p) => <Switch {...p} checked={el.checked} onChange={(checked) => el.change(checked, checked)} />,
+    view: (el, p) => (
+      <Switch {...p} checked={el.checked} onChange={(checked) => el.change(checked, checked)} />
+    ),
   },
   {
     tag: 'ryugi-checkbox',
@@ -398,7 +459,12 @@ const definitions: Spec[] = [
     options: 'segmented',
     value: 'string',
     view: (el, p) => (
-      <Segmented {...p} options={el.optionList} value={String(el.value)} onChange={(value) => el.change(value)} />
+      <Segmented
+        {...p}
+        options={el.optionList}
+        value={String(el.value)}
+        onChange={(value) => el.change(value)}
+      />
     ),
   },
   {
@@ -415,7 +481,12 @@ const definitions: Spec[] = [
     options: 'select',
     value: 'string',
     view: (el, p) => (
-      <Select {...p} options={el.optionList} value={String(el.value) || null} onChange={(value) => el.change(value)} />
+      <Select
+        {...p}
+        options={el.optionList}
+        value={String(el.value) || null}
+        onChange={(value) => el.change(value)}
+      />
     ),
   },
   {
@@ -429,7 +500,12 @@ const definitions: Spec[] = [
     options: 'radio',
     value: 'string',
     view: (el, p) => (
-      <RadioGroup {...p} options={el.optionList} value={String(el.value)} onChange={(value) => el.change(value)} />
+      <RadioGroup
+        {...p}
+        options={el.optionList}
+        value={String(el.value)}
+        onChange={(value) => el.change(value)}
+      />
     ),
   },
   {
@@ -443,7 +519,9 @@ const definitions: Spec[] = [
     control: true,
     value: 'string',
     valueDefault: '#000000',
-    view: (el, p) => <ColorPicker {...p} value={String(el.value)} onChange={(value) => el.change(value)} />,
+    view: (el, p) => (
+      <ColorPicker {...p} value={String(el.value)} onChange={(value) => el.change(value)} />
+    ),
   },
   {
     tag: 'ryugi-tag',
@@ -562,9 +640,15 @@ const reportError = (error: unknown) => {
 
 if (typeof window !== 'undefined' && !customElements.get('ryugi-button')) {
   const pageTheme = document.documentElement.dataset.theme;
-  const applyTheme = () => setLobeTheme({
-    appearance: pageTheme === 'light' || pageTheme === 'dark' ? pageTheme : matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light',
-  });
+  const applyTheme = () =>
+    setLobeTheme({
+      appearance:
+        pageTheme === 'light' || pageTheme === 'dark'
+          ? pageTheme
+          : matchMedia('(prefers-color-scheme: dark)').matches
+            ? 'dark'
+            : 'light',
+    });
   const style = document.createElement('style');
   style.dataset.ryugiUi = '';
   style.textContent = HOST_CSS;

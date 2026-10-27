@@ -19,7 +19,16 @@ export function useSelectionSync({ artifact, boards, live, inspector, send }: Op
   const { frames, selectedTargets, details, revision } = inspector;
   const targetKey = JSON.stringify(selectedTargets.map(({ boardId, id }) => [boardId, id]));
   const targets = useMemo(() => JSON.parse(targetKey) as [string, number][], [targetKey]);
-  const state = useMemo(() => buildSelectionState({ boards: boards ?? {}, frames, targets: targets.map(([boardId, id]) => ({ boardId, id })), details }), [boards, frames, targets, details]);
+  const state = useMemo(
+    () =>
+      buildSelectionState({
+        boards: boards ?? {},
+        frames,
+        targets: targets.map(([boardId, id]) => ({ boardId, id })),
+        details,
+      }),
+    [boards, frames, targets, details],
+  );
   useEffect(() => {
     if (!artifact || !send || !live) return;
     const timer = setTimeout(() => {

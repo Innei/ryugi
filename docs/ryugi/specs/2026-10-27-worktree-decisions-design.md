@@ -10,7 +10,7 @@ are mine. Everything decided is restated here so this file stands alone.
 
 `skills/using-git-worktrees/SKILL.md` (197 lines) is the Superpowers text with
 two Ryugi patches (Cleanup, and the Step 0 skip when a caller decided). The
-decision of *when* to open a worktree lives only in `skills/executing-specs/SKILL.md`
+decision of _when_ to open a worktree lives only in `skills/executing-specs/SKILL.md`
 Setup. Everything else that reaches `using-git-worktrees` falls through to
 Step 0, which asks "Would you like me to set up an isolated worktree?" every
 time: the behavior the 2026-10-22 eval
@@ -48,16 +48,16 @@ In `using-git-worktrees`, replacing Step 0's consent question. Run
 `git branch --show-current`, `git status --porcelain` and
 `cat .ryugi/sdd/*/EXPLORING`, then take the first row that matches:
 
-| The checkout shows | Where you work |
-|---|---|
-| `--git-dir` differs from `--git-common-dir`, and not a submodule | Stay there |
-| Your human partner's instructions state where to work | Follow them |
-| The work switches branches, rebases or bisects | New worktree, without asking |
-| A file the work changes has uncommitted edits you did not make | New worktree, without asking |
-| An `EXPLORING` file lists a path the work changes | New worktree, without asking |
-| The work changes dependencies or the lockfile, formats the whole repo, or runs codegen, **and** the checkout has uncommitted edits you did not make or any `EXPLORING` file | New worktree, without asking |
-| HEAD is on a branch that is neither the default branch nor one made for this work | Ask whether to use a worktree |
-| Anything else | In place, no question |
+| The checkout shows                                                                                                                                                          | Where you work                |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- |
+| `--git-dir` differs from `--git-common-dir`, and not a submodule                                                                                                            | Stay there                    |
+| Your human partner's instructions state where to work                                                                                                                       | Follow them                   |
+| The work switches branches, rebases or bisects                                                                                                                              | New worktree, without asking  |
+| A file the work changes has uncommitted edits you did not make                                                                                                              | New worktree, without asking  |
+| An `EXPLORING` file lists a path the work changes                                                                                                                           | New worktree, without asking  |
+| The work changes dependencies or the lockfile, formats the whole repo, or runs codegen, **and** the checkout has uncommitted edits you did not make or any `EXPLORING` file | New worktree, without asking  |
+| HEAD is on a branch that is neither the default branch nor one made for this work                                                                                           | Ask whether to use a worktree |
+| Anything else                                                                                                                                                               | In place, no question         |
 
 The submodule guard keeps its current command
 (`git rev-parse --show-superproject-working-tree` returns a path inside a
@@ -77,15 +77,15 @@ Sections, in order:
 
 1. **Frontmatter.** New description (my call on wording, keep it a trigger,
    not a summary): `Use before the first edit of a feature, bugfix or spec in
-   a git repository, to decide between working in place and an isolated
-   worktree, and to create or clean up that worktree`. Drops "implementation
+a git repository, to decide between working in place and an isolated
+worktree, and to create or clean up that worktree`. Drops "implementation
    plans", which Ryugi does not have.
 2. **Where to work.** The table above. Drop the "Announce at start" line (my
    call: in place is the common answer and needs no announcement).
 3. **Create a worktree.**
    - Native tool first (`EnterWorktree`, `WorktreeCreate`, a `/worktree`
      command, a `--worktree` flag). Keep the reason in one sentence: `git
-     worktree add` beside a native tool creates state the harness cannot see
+worktree add` beside a native tool creates state the harness cannot see
      or clean up. `tests/claude-code/test-worktree-native-preference.sh`
      depends on this text naming those tools.
    - Fallback `git worktree add`: directory from instructions, else an
@@ -116,8 +116,8 @@ Sections, in order:
    - "I'm obviously not in a worktree — no need to check"
    - "`git worktree add` is quicker than hunting for a native tool"
    - "Removal refused — `--force` is just finishing the cleanup"
-   Drop the Quick Reference table and the other four rationalization rows
-   (decided). The first row's "Run Step 0" points at Where to work instead.
+     Drop the Quick Reference table and the other four rationalization rows
+     (decided). The first row's "Run Step 0" points at Where to work instead.
 
 Target length: about a third of today's 197 lines (my call; a guide, not a
 gate).
@@ -145,7 +145,7 @@ Check the rest of executing-specs for references to the removed table rows
   rather than diffs".
 - `tests/claude-code/test-worktree-path-policy.sh`: update the
   `default to \`.worktrees/\` at the project root` assertion if the wording
-  changes; keep the `` `.worktrees/` or `worktrees/` `` assertion and the
+changes; keep the `` `.worktrees/`or`worktrees/` `` assertion and the
   not-contains checks.
 - `tests/claude-code/test-worktree-native-preference.sh`: update comments
   that name "Step 1a" or the "consent bridge"; no behavior change. It runs

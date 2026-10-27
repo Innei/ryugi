@@ -28,11 +28,11 @@ Pass criteria:
 
 ## Before and after
 
-| Reference | Runs | Known before lookup | Intent names the lookup | Complete |
-|---|---:|---:|---:|---:|
-| Baseline (`document.md` before this change) | 2 | 0 / 2 | 0 / 2 | 2 / 2 |
-| V1 ("save what you have" before a lookup) | 5 | 2 / 5 | 5 / 5 | 5 / 5 |
-| V2 (this change) | 3 | 3 / 3 | 3 / 3 | 3 / 3 |
+| Reference                                   | Runs | Known before lookup | Intent names the lookup | Complete |
+| ------------------------------------------- | ---: | ------------------: | ----------------------: | -------: |
+| Baseline (`document.md` before this change) |    2 |               0 / 2 |                   0 / 2 |    2 / 2 |
+| V1 ("save what you have" before a lookup)   |    5 |               2 / 5 |                   5 / 5 |    5 / 5 |
+| V2 (this change)                            |    3 |               3 / 3 |                   3 / 3 |    3 / 3 |
 
 Baseline runs saved an outline, read code five or six times, then wrote
 everything at once. V1 runs that failed treated "save what you have" as the

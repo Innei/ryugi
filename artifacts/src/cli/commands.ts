@@ -9,4 +9,14 @@ import { startCommand } from './start';
 import { stopCommand } from './stop';
 import { updateCommand } from './update';
 
-export const COMMANDS: CommandSpec[] = [startCommand, stopCommand, checkCommand, publishCommand, commentCommand, getCommand, monitorCommand, configCommand, updateCommand];
+export const COMMANDS: CommandSpec[] = [
+  startCommand,
+  stopCommand,
+  checkCommand,
+  publishCommand,
+  commentCommand,
+  getCommand,
+  monitorCommand,
+  configCommand,
+  updateCommand,
+];

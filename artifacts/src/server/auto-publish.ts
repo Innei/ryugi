@@ -42,7 +42,11 @@ const FAILURES_BEFORE_NOTICE = 3;
 function isNotice(value: unknown): value is AutoPublishNotice {
   if (typeof value !== 'object' || value === null) return false;
   const { id, kind, message } = value as Record<string, unknown>;
-  return typeof id === 'string' && (kind === 'signed-out' || kind === 'cap' || kind === 'failing') && typeof message === 'string';
+  return (
+    typeof id === 'string' &&
+    (kind === 'signed-out' || kind === 'cap' || kind === 'failing') &&
+    typeof message === 'string'
+  );
 }
 
 export function readAutoPublishState(file: string): AutoPublishState {
@@ -51,12 +55,17 @@ export function readAutoPublishState(file: string): AutoPublishState {
     const parsed = JSON.parse(fs.readFileSync(file, 'utf8')) as unknown;
     if (typeof parsed === 'object' && parsed !== null) raw = parsed as Record<string, unknown>;
   } catch {}
-  const dirty = Array.isArray(raw.dirty) ? raw.dirty.filter((key): key is string => typeof key === 'string') : [];
+  const dirty = Array.isArray(raw.dirty)
+    ? raw.dirty.filter((key): key is string => typeof key === 'string')
+    : [];
   const paused = raw.paused as { token?: unknown } | null | undefined;
   return {
     dirty,
     notice: isNotice(raw.notice) ? raw.notice : null,
-    paused: paused && (typeof paused.token === 'string' || paused.token === null) ? { token: paused.token } : null,
+    paused:
+      paused && (typeof paused.token === 'string' || paused.token === null)
+        ? { token: paused.token }
+        : null,
   };
 }
 
@@ -67,9 +76,15 @@ export function createAutoPublisher(options: AutoPublisherOptions) {
   let paused = saved.paused;
   const remarked = new Set<string>();
   const failures = new Map<string, number>();
-  const save = () => writeJsonAtomic(options.stateFile, { dirty: [...dirty], notice, paused } satisfies AutoPublishState);
+  const save = () =>
+    writeJsonAtomic(options.stateFile, {
+      dirty: [...dirty],
+      notice,
+      paused,
+    } satisfies AutoPublishState);
   const raise = (kind: AutoPublishNotice['kind'], message: string, upgradeUrl?: string) => {
-    if (notice?.kind !== kind) notice = { id: crypto.randomUUID(), kind, message, ...(upgradeUrl ? { upgradeUrl } : {}) };
+    if (notice?.kind !== kind)
+      notice = { id: crypto.randomUUID(), kind, message, ...(upgradeUrl ? { upgradeUrl } : {}) };
   };
 
   let idleTimer: NodeJS.Timeout | null = null;
@@ -98,11 +113,22 @@ export function createAutoPublisher(options: AutoPublisherOptions) {
     for (const key of [...dirty]) {
       remarked.delete(key);
       const outcome = await options.publish(key);
-      console.error(JSON.stringify({ type: 'auto-publish', key, outcome: outcome.kind, ...('message' in outcome ? { message: outcome.message } : {}) }));
+      console.error(
+        JSON.stringify({
+          type: 'auto-publish',
+          key,
+          outcome: outcome.kind,
+          ...('message' in outcome ? { message: outcome.message } : {}),
+        }),
+      );
       if (outcome.kind === 'failed' || outcome.kind === 'not-ready') {
         const count = (failures.get(key) ?? 0) + 1;
         failures.set(key, count);
-        if (count >= FAILURES_BEFORE_NOTICE) raise('failing', `${key}: ${outcome.kind === 'failed' ? outcome.message : 'not ready to publish; fix its warnings'}`);
+        if (count >= FAILURES_BEFORE_NOTICE)
+          raise(
+            'failing',
+            `${key}: ${outcome.kind === 'failed' ? outcome.message : 'not ready to publish; fix its warnings'}`,
+          );
       } else {
         failures.delete(key);
         if (failures.size === 0 && notice?.kind === 'failing') notice = null;
@@ -133,7 +159,9 @@ export function createAutoPublisher(options: AutoPublisherOptions) {
   const flush = (): Promise<void> => {
     if (!running) {
       running = run()
-        .catch((err: Error) => console.error(JSON.stringify({ type: 'auto-publish-error', error: err.message })))
+        .catch((err: Error) =>
+          console.error(JSON.stringify({ type: 'auto-publish-error', error: err.message })),
+        )
         .finally(() => {
           running = null;
         });

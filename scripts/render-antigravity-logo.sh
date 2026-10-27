@@ -43,7 +43,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-command -v rsvg-convert >/dev/null 2>&1 \
+command -v rsvg-convert > /dev/null 2>&1 \
   || die "rsvg-convert is not on PATH (install librsvg, e.g. 'brew install librsvg')"
 [[ -r "$SOURCE_SVG" ]] || die "source mark not readable: $SOURCE_SVG"
 
@@ -55,7 +55,7 @@ mark="$(sed -E 's/^.*<svg[^>]*>//; s#</svg>.*$##' "$SOURCE_SVG")"
 # 348 units wide; scale 0.905 makes it ~70% of the 450-unit rounded square.
 composed="$(mktemp)"
 trap 'rm -f "$composed"' EXIT
-cat >"$composed" <<EOF
+cat > "$composed" << EOF
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
   <rect x="31" y="31" width="450" height="450" rx="100" ry="100" fill="#ffffff"/>
   <g fill="#1a1a1a" transform="translate(256 256) scale(0.905) translate(-256 -256)">$mark</g>

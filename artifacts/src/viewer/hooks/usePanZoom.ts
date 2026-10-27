@@ -1,7 +1,24 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+} from 'react';
 import { COMMENT_CURSOR } from '../../shared/inspector';
 import type { Bounds } from '../../shared/types';
-import { cubicBezier, fitView, pinchView, tweenView, zoomAround, zoomTo, type Insets, type Point, type View } from '../lib/view';
+import {
+  cubicBezier,
+  fitView,
+  pinchView,
+  tweenView,
+  zoomAround,
+  zoomTo,
+  type Insets,
+  type Point,
+  type View,
+} from '../lib/view';
 
 export type Tool = 'select' | 'hand' | 'comment';
 
@@ -11,11 +28,25 @@ const FIT_MS = 420;
 const SCALE_SETTLE_MS = 150;
 const CONTINUOUS_ZOOM_MS = 100;
 const ease = cubicBezier(0.2, 0, 0, 1);
-const reducedMotion = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
-export interface WheelInput { deltaX: number; deltaY: number; x: number; y: number; zoom: boolean }
+const reducedMotion = () =>
+  typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+export interface WheelInput {
+  deltaX: number;
+  deltaY: number;
+  x: number;
+  y: number;
+  zoom: boolean;
+}
 
 // Chrome positioned in canvas space moves with the boards, so a wheel over it belongs to the canvas.
-const CANVAS_CHROME = ['board-label', 'group-label', 'video-controls', 'comments', 'reject', 'parameters'];
+const CANVAS_CHROME = [
+  'board-label',
+  'group-label',
+  'video-controls',
+  'comments',
+  'reject',
+  'parameters',
+];
 const FIXED_CHROME = `[data-chrome]${CANVAS_CHROME.map((name) => `:not([data-chrome="${name}"])`).join('')}`;
 
 function scrollsItself(target: Element | null, root: Element, dx: number, dy: number) {
@@ -62,21 +93,36 @@ export function usePanZoom(tool: Tool) {
     }, SCALE_SETTLE_MS);
   }, [view.k]);
   useEffect(() => () => clearTimeout(settle.current), []);
-  const [size, setSize] = useState(() => ({ width: typeof innerWidth === 'number' ? innerWidth : 0, height: typeof innerHeight === 'number' ? innerHeight : 0 }));
+  const [size, setSize] = useState(() => ({
+    width: typeof innerWidth === 'number' ? innerWidth : 0,
+    height: typeof innerHeight === 'number' ? innerHeight : 0,
+  }));
   useEffect(() => {
     const el = viewportRef.current;
     if (!el || typeof ResizeObserver !== 'function') return;
-    const measure = () => setSize((previous) => previous.width === el.clientWidth && previous.height === el.clientHeight ? previous : { width: el.clientWidth, height: el.clientHeight });
+    const measure = () =>
+      setSize((previous) =>
+        previous.width === el.clientWidth && previous.height === el.clientHeight
+          ? previous
+          : { width: el.clientWidth, height: el.clientHeight },
+      );
     const observer = new ResizeObserver(measure);
     observer.observe(el);
     return () => observer.disconnect();
   }, []);
 
-  const panBy = useCallback((x: number, y: number) => setView((v) => ({ ...v, x: v.x + x, y: v.y + y })), []);
-  const wheelAt = useCallback((input: WheelInput) => {
-    if (input.zoom) setView((v) => zoomAround(v, Math.exp(-input.deltaY * WHEEL_ZOOM_SPEED), input.x, input.y));
-    else panBy(-input.deltaX, -input.deltaY);
-  }, [panBy]);
+  const panBy = useCallback(
+    (x: number, y: number) => setView((v) => ({ ...v, x: v.x + x, y: v.y + y })),
+    [],
+  );
+  const wheelAt = useCallback(
+    (input: WheelInput) => {
+      if (input.zoom)
+        setView((v) => zoomAround(v, Math.exp(-input.deltaY * WHEEL_ZOOM_SPEED), input.x, input.y));
+      else panBy(-input.deltaX, -input.deltaY);
+    },
+    [panBy],
+  );
 
   useEffect(() => {
     const el = viewportRef.current;
@@ -84,15 +130,27 @@ export function usePanZoom(tool: Tool) {
     const onWheel = (e: WheelEvent) => {
       const target = e.target as Element | null;
       const zoom = e.ctrlKey || e.metaKey;
-      if (target?.closest?.(FIXED_CHROME) || (!zoom && scrollsItself(target, el, e.deltaX, e.deltaY))) return;
+      if (
+        target?.closest?.(FIXED_CHROME) ||
+        (!zoom && scrollsItself(target, el, e.deltaX, e.deltaY))
+      )
+        return;
       e.preventDefault();
       stop();
       const rect = el.getBoundingClientRect();
       const factor = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? el.clientHeight : 1;
-      wheelAt({ deltaX: e.deltaX * factor, deltaY: e.deltaY * factor, x: e.clientX - rect.left, y: e.clientY - rect.top, zoom });
+      wheelAt({
+        deltaX: e.deltaX * factor,
+        deltaY: e.deltaY * factor,
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top,
+        zoom,
+      });
     };
     // A trackpad pinch arrives as a ctrl-wheel; left alone over any panel it zooms the whole page.
-    const blockPageZoom = (e: WheelEvent) => { if (e.ctrlKey) e.preventDefault(); };
+    const blockPageZoom = (e: WheelEvent) => {
+      if (e.ctrlKey) e.preventDefault();
+    };
     el.addEventListener('wheel', onWheel, { passive: false });
     window.addEventListener('wheel', blockPageZoom, { passive: false });
     return () => {
@@ -102,7 +160,10 @@ export function usePanZoom(tool: Tool) {
   }, [wheelAt, stop]);
 
   useEffect(() => {
-    const isTyping = (e: KeyboardEvent) => (e.target as HTMLElement | null)?.closest?.('input, textarea, select, [contenteditable], [data-chrome]');
+    const isTyping = (e: KeyboardEvent) =>
+      (e.target as HTMLElement | null)?.closest?.(
+        'input, textarea, select, [contenteditable], [data-chrome]',
+      );
     const down = (e: KeyboardEvent) => {
       if (e.code === 'Space' && !isTyping(e)) {
         e.preventDefault();
@@ -172,24 +233,31 @@ export function usePanZoom(tool: Tool) {
     return { cx: (el?.clientWidth ?? 0) / 2, cy: (el?.clientHeight ?? 0) / 2 };
   };
 
-  const fit = useCallback((bounds: Bounds | null | undefined, insets: Insets = INSETS, options: { animate?: boolean } = {}) => {
-    const el = viewportRef.current;
-    if (!el || !bounds) return;
-    const target = fitView(bounds, { width: el.clientWidth, height: el.clientHeight }, insets);
-    stop();
-    if (!options.animate || reducedMotion()) {
-      setView(target);
-      return;
-    }
-    const from = current.current;
-    const start = performance.now();
-    const tick = () => {
-      const p = Math.min(1, (performance.now() - start) / FIT_MS);
-      setView(p === 1 ? target : tweenView(from, target, ease(p)));
-      animation.current = p === 1 ? null : requestAnimationFrame(tick);
-    };
-    animation.current = requestAnimationFrame(tick);
-  }, [stop]);
+  const fit = useCallback(
+    (
+      bounds: Bounds | null | undefined,
+      insets: Insets = INSETS,
+      options: { animate?: boolean } = {},
+    ) => {
+      const el = viewportRef.current;
+      if (!el || !bounds) return;
+      const target = fitView(bounds, { width: el.clientWidth, height: el.clientHeight }, insets);
+      stop();
+      if (!options.animate || reducedMotion()) {
+        setView(target);
+        return;
+      }
+      const from = current.current;
+      const start = performance.now();
+      const tick = () => {
+        const p = Math.min(1, (performance.now() - start) / FIT_MS);
+        setView(p === 1 ? target : tweenView(from, target, ease(p)));
+        animation.current = p === 1 ? null : requestAnimationFrame(tick);
+      };
+      animation.current = requestAnimationFrame(tick);
+    },
+    [stop],
+  );
 
   const zoomBy = useCallback((factor: number) => {
     const { cx, cy } = center();
@@ -214,8 +282,14 @@ export function usePanZoom(tool: Tool) {
     wheelAt,
     panning,
     setSpaceHeld,
-    cursor: dragging ? 'grabbing' : panning ? 'grab' : tool === 'comment' ? COMMENT_CURSOR : 'default',
-    hand: dragging ? 'pinch' as const : panning ? 'open' as const : null,
+    cursor: dragging
+      ? 'grabbing'
+      : panning
+        ? 'grab'
+        : tool === 'comment'
+          ? COMMENT_CURSOR
+          : 'default',
+    hand: dragging ? ('pinch' as const) : panning ? ('open' as const) : null,
     handlers: { onPointerDown, onPointerMove, onPointerUp, onPointerCancel: onPointerUp },
   };
 }

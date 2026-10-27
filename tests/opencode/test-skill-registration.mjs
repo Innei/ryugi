@@ -30,7 +30,8 @@ const added = [];
 await mod.default.setup(makeCtx({ add: (skill) => added.push(skill) }));
 
 const expectedIds = fs.existsSync(skillsDir)
-  ? fs.readdirSync(skillsDir, { withFileTypes: true })
+  ? fs
+      .readdirSync(skillsDir, { withFileTypes: true })
       .filter((e) => e.isDirectory() && !e.name.startsWith('.'))
       .filter((e) => fs.existsSync(path.join(skillsDir, e.name, 'SKILL.md')))
       .map((e) => e.name)
@@ -41,14 +42,20 @@ if (added.length === 0) {
   failures.push('expected setup() to register at least one skill via draft.add()');
 }
 if (JSON.stringify(added.map((s) => s.id).sort()) !== JSON.stringify(expectedIds)) {
-  failures.push(`expected draft.add() ids to match skills dir contents, got ${JSON.stringify(added.map((s) => s.id))}`);
+  failures.push(
+    `expected draft.add() ids to match skills dir contents, got ${JSON.stringify(added.map((s) => s.id))}`,
+  );
 }
 
 for (const skill of added) {
   if (typeof skill.path !== 'string' || !path.isAbsolute(skill.path)) {
-    failures.push(`skill "${skill.id}": expected required absolute Skill.Info field "path", got ${JSON.stringify(skill.path)}`);
+    failures.push(
+      `skill "${skill.id}": expected required absolute Skill.Info field "path", got ${JSON.stringify(skill.path)}`,
+    );
   } else if (skill.path !== path.join(skillsDir, skill.id, 'SKILL.md')) {
-    failures.push(`skill "${skill.id}": expected path ${path.join(skillsDir, skill.id, 'SKILL.md')}, got ${skill.path}`);
+    failures.push(
+      `skill "${skill.id}": expected path ${path.join(skillsDir, skill.id, 'SKILL.md')}, got ${skill.path}`,
+    );
   } else if (!fs.existsSync(skill.path)) {
     failures.push(`skill "${skill.id}": path does not exist on disk: ${skill.path}`);
   }
@@ -61,13 +68,18 @@ for (const skill of added) {
   if ('slash' in skill) {
     failures.push(`skill "${skill.id}": payload carries "slash", removed from Skill.Info in 2.0.4`);
   }
-  if (typeof skill.id !== 'string' || skill.id.length === 0) failures.push(`skill payload missing non-empty "id"`);
-  if (typeof skill.name !== 'string' || skill.name.length === 0) failures.push(`skill "${skill.id}" missing non-empty "name"`);
-  if (typeof skill.content !== 'string' || !skill.content.trim()) failures.push(`skill "${skill.id}" missing non-empty "content"`);
+  if (typeof skill.id !== 'string' || skill.id.length === 0)
+    failures.push(`skill payload missing non-empty "id"`);
+  if (typeof skill.name !== 'string' || skill.name.length === 0)
+    failures.push(`skill "${skill.id}" missing non-empty "name"`);
+  if (typeof skill.content !== 'string' || !skill.content.trim())
+    failures.push(`skill "${skill.id}" missing non-empty "content"`);
   if ('description' in skill && typeof skill.description !== 'string') {
     failures.push(`skill "${skill.id}": "description" must be a string when present`);
   } else if ('description' in skill && /["']$/.test(skill.description)) {
-    failures.push(`skill "${skill.id}": description ends with a dangling quote: ${JSON.stringify(skill.description)}`);
+    failures.push(
+      `skill "${skill.id}": description ends with a dangling quote: ${JSON.stringify(skill.description)}`,
+    );
   }
   if (typeof skill.content === 'string' && skill.content.startsWith('---')) {
     failures.push(`skill "${skill.id}": content still starts with the frontmatter delimiter`);
@@ -84,24 +96,30 @@ const survived = [];
 let setupThrew = null;
 let survivingContextHook;
 try {
-  await mod.default.setup(makeCtx({
-    add: (skill) => {
-      if (skill.id === hostileId) throw new Error('Simulated Skill.Info decode failure');
-      survived.push(skill.id);
-    },
-    onHook: (name, callback) => {
-      if (name === 'context') survivingContextHook = callback;
-    },
-  }));
+  await mod.default.setup(
+    makeCtx({
+      add: (skill) => {
+        if (skill.id === hostileId) throw new Error('Simulated Skill.Info decode failure');
+        survived.push(skill.id);
+      },
+      onHook: (name, callback) => {
+        if (name === 'context') survivingContextHook = callback;
+      },
+    }),
+  );
 } catch (err) {
   setupThrew = err;
 }
 if (setupThrew) {
-  failures.push(`expected setup() to contain draft.add() failures, but it threw: ${setupThrew.message}`);
+  failures.push(
+    `expected setup() to contain draft.add() failures, but it threw: ${setupThrew.message}`,
+  );
 } else if (hostileId) {
   const expectedSurvivors = added.map((s) => s.id).filter((id) => id !== hostileId);
   if (JSON.stringify(survived.sort()) !== JSON.stringify(expectedSurvivors.sort())) {
-    failures.push(`expected all non-rejected skills to still register when one draft.add() throws, got ${JSON.stringify(survived)}`);
+    failures.push(
+      `expected all non-rejected skills to still register when one draft.add() throws, got ${JSON.stringify(survived)}`,
+    );
   }
 }
 if (typeof survivingContextHook !== 'function') {
@@ -112,9 +130,12 @@ if (typeof survivingContextHook !== 'function') {
     messages: [{ role: 'user', content: [{ type: 'text', text: 'Continue' }] }],
   };
   await survivingContextHook(event);
-  const count = event.messages.flatMap((message) => message.content).filter(
-    (part) => part.type === 'text' && part.text.startsWith('<EXTREMELY_IMPORTANT>\nYou have Ryugi.')
-  ).length;
+  const count = event.messages
+    .flatMap((message) => message.content)
+    .filter(
+      (part) =>
+        part.type === 'text' && part.text.startsWith('<EXTREMELY_IMPORTANT>\nYou have Ryugi.'),
+    ).length;
   if (count !== 1) failures.push(`expected surviving bootstrap once, got ${count}`);
 }
 
@@ -149,7 +170,10 @@ try {
   for (const [id, { frontmatter }] of Object.entries(frontmatterFixtures)) {
     const skillDir = path.join(fixtureRoot, 'skills', id);
     fs.mkdirSync(skillDir, { recursive: true });
-    fs.writeFileSync(path.join(skillDir, 'SKILL.md'), `---\nname: ${id}\n${frontmatter}\n---\n# Title\n\nBody.\n`);
+    fs.writeFileSync(
+      path.join(skillDir, 'SKILL.md'),
+      `---\nname: ${id}\n${frontmatter}\n---\n# Title\n\nBody.\n`,
+    );
   }
   const fixtureMod = await import(pathToFileURL(fixturePlugin).href);
   const fixtureAdded = [];
@@ -161,7 +185,9 @@ try {
       continue;
     }
     if (skill.description !== expected) {
-      failures.push(`fixture "${id}": expected description ${JSON.stringify(expected)}, got ${JSON.stringify(skill.description)}`);
+      failures.push(
+        `fixture "${id}": expected description ${JSON.stringify(expected)}, got ${JSON.stringify(skill.description)}`,
+      );
     }
     if (skill.content.startsWith('---')) {
       failures.push(`fixture "${id}": content still starts with the frontmatter delimiter`);
@@ -174,10 +200,19 @@ try {
 const result = {
   registered: added.length,
   ids: added.map((s) => s.id),
-  allPathsValid: added.every((s) => s.path === path.join(skillsDir, s.id, 'SKILL.md') && fs.existsSync(s.path)),
+  allPathsValid: added.every(
+    (s) => s.path === path.join(skillsDir, s.id, 'SKILL.md') && fs.existsSync(s.path),
+  ),
   staleLocationField: added.some((s) => 'location' in s),
   hostileRejectedId: hostileId,
-  survivedHostileAdd: JSON.stringify(survived.sort()) === JSON.stringify(added.map((s) => s.id).filter((id) => id !== hostileId).sort()),
+  survivedHostileAdd:
+    JSON.stringify(survived.sort()) ===
+    JSON.stringify(
+      added
+        .map((s) => s.id)
+        .filter((id) => id !== hostileId)
+        .sort(),
+    ),
 };
 
 if (failures.length > 0) {

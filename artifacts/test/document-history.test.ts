@@ -25,21 +25,38 @@ test('a selected causal prefix includes earlier edits from other peers', async (
   expect(middle.getMap('data').toJSON()).toEqual({ base: true, human: 'kept' });
   middle.free();
   const selected = doc.forkAt(history.entries[2]!.frontiers);
-  expect(selected.getMap('data').toJSON()).toEqual({ base: true, human: 'kept', agent: 'kept too' });
+  expect(selected.getMap('data').toJSON()).toEqual({
+    base: true,
+    human: 'kept',
+    agent: 'kept too',
+  });
   expect(doc.frontiers()).toEqual(before);
-  selected.free(); other.free(); doc.free();
+  selected.free();
+  other.free();
+  doc.free();
 });
 
 test('continuous edits group at 60 seconds, but not across gaps or unknown sources', async () => {
   const doc = new LoroDoc();
   doc.setChangeMergeInterval(0);
-  for (const [timestamp, message] of [[100, 'human'], [160, 'human'], [221, 'human'], [222, 'unknown'], [223, 'unknown']] as const) {
+  for (const [timestamp, message] of [
+    [100, 'human'],
+    [160, 'human'],
+    [221, 'human'],
+    [222, 'unknown'],
+    [223, 'unknown'],
+  ] as const) {
     doc.getText('text').insert(0, '.');
     doc.commit({ timestamp, message });
   }
   const history = await readHistory(doc);
   expect(history.groups.map((group) => group.entries.length)).toEqual([1, 1, 1, 2]);
-  expect(history.groups.map((group) => group.source)).toEqual(['unknown', 'unknown', 'human', 'human']);
+  expect(history.groups.map((group) => group.source)).toEqual([
+    'unknown',
+    'unknown',
+    'human',
+    'human',
+  ]);
   doc.free();
 });
 
@@ -61,7 +78,9 @@ test('materializing old rich content never adds operations to the live document'
   doc.setChangeMergeInterval(0);
   const editor = createHeadlessEditor({ nodes: allHeadlessNodes });
   const binding = createLoroBinding(editor, doc, { commitMessage: 'human' });
-  editor.update(() => $getRoot().append($createParagraphNode().append($createTextNode('before'))), { discrete: true });
+  editor.update(() => $getRoot().append($createParagraphNode().append($createTextNode('before'))), {
+    discrete: true,
+  });
   const old = doc.frontiers();
   editor.update(() => $getRoot().getAllTextNodes()[0]!.setTextContent('after'), { discrete: true });
   const current = doc.frontiers();
@@ -71,7 +90,8 @@ test('materializing old rich content never adds operations to the live document'
   expect(JSON.stringify(state)).not.toContain('after');
   expect(doc.frontiers()).toEqual(current);
   expect(doc.opCount()).toBe(count);
-  binding.dispose(); doc.free();
+  binding.dispose();
+  doc.free();
 });
 
 test('retained versions in a shallow snapshot can be projected without touching the live document', async () => {
@@ -79,18 +99,31 @@ test('retained versions in a shallow snapshot can be projected without touching 
   doc.setChangeMergeInterval(0);
   const editor = createHeadlessEditor({ nodes: allHeadlessNodes });
   const binding = createLoroBinding(editor, doc, { commitMessage: 'human' });
-  editor.update(() => $getRoot().append($createParagraphNode().append($createTextNode('retained boundary'))), { discrete: true });
+  editor.update(
+    () => $getRoot().append($createParagraphNode().append($createTextNode('retained boundary'))),
+    { discrete: true },
+  );
   const boundary = doc.frontiers();
-  editor.update(() => $getRoot().getAllTextNodes()[0]!.setTextContent('retained latest'), { discrete: true });
+  editor.update(() => $getRoot().getAllTextNodes()[0]!.setTextContent('retained latest'), {
+    discrete: true,
+  });
   const shallow = new LoroDoc();
   shallow.import(doc.export({ mode: 'shallow-snapshot', frontiers: boundary }));
-  const before = shallow.frontiers(); const count = shallow.opCount();
+  const before = shallow.frontiers();
+  const count = shallow.opCount();
   const history = await readHistory(shallow);
   expect(history.shallow).toBe(true);
-  expect(JSON.stringify(readHistoryState(shallow, boundary, allHeadlessNodes).value)).toContain('retained boundary');
-  expect(JSON.stringify(readHistoryState(shallow, shallow.frontiers(), allHeadlessNodes).value)).toContain('retained latest');
-  expect(shallow.frontiers()).toEqual(before); expect(shallow.opCount()).toBe(count);
-  binding.dispose(); shallow.free(); doc.free();
+  expect(JSON.stringify(readHistoryState(shallow, boundary, allHeadlessNodes).value)).toContain(
+    'retained boundary',
+  );
+  expect(
+    JSON.stringify(readHistoryState(shallow, shallow.frontiers(), allHeadlessNodes).value),
+  ).toContain('retained latest');
+  expect(shallow.frontiers()).toEqual(before);
+  expect(shallow.opCount()).toBe(count);
+  binding.dispose();
+  shallow.free();
+  doc.free();
 });
 
 function authored() {
@@ -102,8 +135,21 @@ function authored() {
     doc.setNextCommitOptions({ timestamp, message });
     editor.update(change, { discrete: true });
   };
-  edit(100, 'session start', () => $getRoot().append(...['one', 'two', 'three'].map((text) => $createParagraphNode().append($createTextNode(text)))));
-  return { doc, edit, dispose: () => { binding.dispose(); doc.free(); } };
+  edit(100, 'session start', () =>
+    $getRoot().append(
+      ...['one', 'two', 'three'].map((text) =>
+        $createParagraphNode().append($createTextNode(text)),
+      ),
+    ),
+  );
+  return {
+    doc,
+    edit,
+    dispose: () => {
+      binding.dispose();
+      doc.free();
+    },
+  };
 }
 
 async function compare(doc: LoroDoc) {
@@ -119,7 +165,9 @@ test('each changed block is attributed to the edit that changed it', async () =>
   const { doc, edit, dispose } = authored();
   edit(200, 'human', () => $getRoot().getAllTextNodes()[0]!.setTextContent('one, revised'));
   edit(300, 'agent:claude-code', () => $getRoot().getChildren()[1]!.remove());
-  edit(400, 'human', () => $getRoot().append($createParagraphNode().append($createTextNode('four'))));
+  edit(400, 'human', () =>
+    $getRoot().append($createParagraphNode().append($createTextNode('four'))),
+  );
   const { before, after, authors } = await compare(doc);
   expect(before.ids).toHaveLength(3);
   expect(after.ids).toHaveLength(3);
@@ -133,7 +181,9 @@ test('each changed block is attributed to the edit that changed it', async () =>
 test('a block edited twice is attributed to its newest edit', async () => {
   const { doc, edit, dispose } = authored();
   edit(200, 'human', () => $getRoot().getAllTextNodes()[0]!.setTextContent('one, revised'));
-  edit(300, 'agent:claude-code', () => $getRoot().getAllTextNodes()[0]!.setTextContent('one, revised again'));
+  edit(300, 'agent:claude-code', () =>
+    $getRoot().getAllTextNodes()[0]!.setTextContent('one, revised again'),
+  );
   const { before, authors } = await compare(doc);
   expect(authors.get(before.ids[0]!)?.change.timestamp).toBe(300);
   dispose();

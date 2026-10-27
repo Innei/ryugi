@@ -2,7 +2,8 @@ import { expect, test } from 'vitest';
 import { handPose } from '../src/viewer/lib/handPose';
 import { stepSpring } from '../src/viewer/lib/spring';
 
-const gap = (a: { x: number; y: number }, b: { x: number; y: number }) => Math.hypot(a.x - b.x, a.y - b.y);
+const gap = (a: { x: number; y: number }, b: { x: number; y: number }) =>
+  Math.hypot(a.x - b.x, a.y - b.y);
 
 test('an open hand keeps the index and thumb tips well apart', () => {
   const { index, thumb } = handPose(0, 0);
@@ -15,7 +16,11 @@ test('a pinched hand brings the index and thumb tips together', () => {
 });
 
 test('both pinching fingers bend instead of staying straight', () => {
-  const straightness = (finger: { from: { x: number; y: number }; control: { x: number; y: number }; tip: { x: number; y: number } }) => {
+  const straightness = (finger: {
+    from: { x: number; y: number };
+    control: { x: number; y: number };
+    tip: { x: number; y: number };
+  }) => {
     const { from, control, tip } = finger;
     const cross = (control.x - from.x) * (tip.y - from.y) - (control.y - from.y) * (tip.x - from.x);
     return Math.abs(cross) / gap(from, tip);
@@ -31,7 +36,8 @@ test('both pinching fingers bend instead of staying straight', () => {
 test('curling shortens the other three fingers and leaves the pinch alone', () => {
   const open = handPose(0, 0);
   const curled = handPose(0, 1);
-  for (const [i, finger] of curled.fingers.entries()) expect(finger.height).toBeLessThan(open.fingers[i]!.height * 0.7);
+  for (const [i, finger] of curled.fingers.entries())
+    expect(finger.height).toBeLessThan(open.fingers[i]!.height * 0.7);
   expect(curled.index).toEqual(open.index);
   expect(curled.thumb).toEqual(open.thumb);
 });

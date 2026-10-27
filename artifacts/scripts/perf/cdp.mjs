@@ -4,12 +4,16 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 const CHROME = process.env.CHROME ?? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
-const DEFAULT_CLI = path.resolve(import.meta.dirname, '../../../skills/artifacts/app/ryugi-artifacts.cjs');
+const DEFAULT_CLI = path.resolve(
+  import.meta.dirname,
+  '../../../skills/artifacts/app/ryugi-artifacts.cjs',
+);
 export const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export function parseArgs(argv) {
   const [dir, ...rest] = argv;
-  if (!dir) throw new Error('usage: <artboard dir> [--cli <ryugi-artifacts.cjs>] [--cold] [--rounds <n>]');
+  if (!dir)
+    throw new Error('usage: <artboard dir> [--cli <ryugi-artifacts.cjs>] [--cold] [--rounds <n>]');
   const flag = (name) => rest.includes(name);
   const value = (name, fallback) => (rest.includes(name) ? rest[rest.indexOf(name) + 1] : fallback);
   const artboard = path.resolve(dir);
@@ -27,8 +31,21 @@ export function parseArgs(argv) {
 
 // A private config dir keeps the server signed out, so it never relays to Ryugi Cloud.
 export function startServer({ project, artifact, cli }) {
-  const env = { ...process.env, XDG_CONFIG_HOME: mkdtempSync(path.join(tmpdir(), 'ryugi-perf-config-')), RYUGI_CLOUD_ORIGIN: 'http://127.0.0.1:9' };
-  const run = (...args) => JSON.parse(execFileSync('node', [cli, ...args, '--json', '--project-dir', project], { env, encoding: 'utf8' }).trim().split('\n').pop());
+  const env = {
+    ...process.env,
+    XDG_CONFIG_HOME: mkdtempSync(path.join(tmpdir(), 'ryugi-perf-config-')),
+    RYUGI_CLOUD_ORIGIN: 'http://127.0.0.1:9',
+  };
+  const run = (...args) =>
+    JSON.parse(
+      execFileSync('node', [cli, ...args, '--json', '--project-dir', project], {
+        env,
+        encoding: 'utf8',
+      })
+        .trim()
+        .split('\n')
+        .pop(),
+    );
   const started = run('start', '--no-open', '--artifact', artifact);
   return { link: started.link, list: started.url, stop: () => run('stop') };
 }
@@ -119,11 +136,30 @@ const PROBES = String.raw`(() => {
 export async function launch({ width = 1440, height = 900, profile } = {}) {
   const dir = profile ?? mkdtempSync(path.join(tmpdir(), 'ryugi-perf-chrome-'));
   const port = 9400 + Math.floor(Math.random() * 500);
-  const proc = spawn(CHROME, [`--remote-debugging-port=${port}`, `--user-data-dir=${dir}`, '--no-first-run', '--no-default-browser-check', '--disable-extensions',
-    '--disable-background-timer-throttling', '--disable-renderer-backgrounding', '--disable-backgrounding-occluded-windows', `--window-size=${width},${height + 87}`, '--window-position=0,0', 'about:blank'], { stdio: 'ignore' });
+  const proc = spawn(
+    CHROME,
+    [
+      `--remote-debugging-port=${port}`,
+      `--user-data-dir=${dir}`,
+      '--no-first-run',
+      '--no-default-browser-check',
+      '--disable-extensions',
+      '--disable-background-timer-throttling',
+      '--disable-renderer-backgrounding',
+      '--disable-backgrounding-occluded-windows',
+      `--window-size=${width},${height + 87}`,
+      '--window-position=0,0',
+      'about:blank',
+    ],
+    { stdio: 'ignore' },
+  );
   let version;
   for (let i = 0; i < 100 && !version; i++) {
-    try { version = await (await fetch(`http://127.0.0.1:${port}/json/version`)).json(); } catch { await sleep(100); }
+    try {
+      version = await (await fetch(`http://127.0.0.1:${port}/json/version`)).json();
+    } catch {
+      await sleep(100);
+    }
   }
   const ws = new WebSocket(version.webSocketDebuggerUrl);
   await new Promise((resolve) => ws.addEventListener('open', resolve, { once: true }));
@@ -139,13 +175,17 @@ export async function launch({ width = 1440, height = 900, profile } = {}) {
     if (data.error) reject(new Error(JSON.stringify(data.error)));
     else resolve(data.result);
   });
-  const send = (method, params = {}, sessionId) => new Promise((resolve, reject) => {
-    const id = ++next;
-    pending.set(id, { resolve, reject });
-    ws.send(JSON.stringify({ id, method, params, ...(sessionId ? { sessionId } : {}) }));
-  });
+  const send = (method, params = {}, sessionId) =>
+    new Promise((resolve, reject) => {
+      const id = ++next;
+      pending.set(id, { resolve, reject });
+      ws.send(JSON.stringify({ id, method, params, ...(sessionId ? { sessionId } : {}) }));
+    });
   const { targetInfos } = await send('Target.getTargets');
-  const { sessionId } = await send('Target.attachToTarget', { targetId: targetInfos.find((target) => target.type === 'page').targetId, flatten: true });
+  const { sessionId } = await send('Target.attachToTarget', {
+    targetId: targetInfos.find((target) => target.type === 'page').targetId,
+    flatten: true,
+  });
   const page = (method, params) => send(method, params, sessionId);
   await page('Page.enable');
   await page('Runtime.enable');
@@ -154,15 +194,24 @@ export async function launch({ width = 1440, height = 900, profile } = {}) {
   const evaluate = async (expression, timeout = 180000) => {
     const result = await Promise.race([
       page('Runtime.evaluate', { expression, awaitPromise: true, returnByValue: true }),
-      sleep(timeout).then(() => { throw new Error('evaluate timed out'); }),
+      sleep(timeout).then(() => {
+        throw new Error('evaluate timed out');
+      }),
     ]);
-    if (result.exceptionDetails) throw new Error(result.exceptionDetails.exception?.description ?? result.exceptionDetails.text);
+    if (result.exceptionDetails)
+      throw new Error(
+        result.exceptionDetails.exception?.description ?? result.exceptionDetails.text,
+      );
     return result.result.value;
   };
   const open = async (url, boards) => {
     await page('Page.navigate', { url });
     for (let i = 0; i < 300; i++) {
-      if (await evaluate(`document.querySelectorAll('[data-board]').length`).catch(() => 0) >= boards) return;
+      if (
+        (await evaluate(`document.querySelectorAll('[data-board]').length`).catch(() => 0)) >=
+        boards
+      )
+        return;
       await sleep(100);
     }
     throw new Error('the artboard never rendered its boards');
@@ -173,24 +222,32 @@ export async function launch({ width = 1440, height = 900, profile } = {}) {
     for (const info of processInfo) {
       if (info.type !== 'renderer' && info.type !== 'GPU') continue;
       try {
-        const match = execFileSync('footprint', ['-p', String(info.id)], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).match(/Footprint:\s+([\d.]+)\s+([KMG]B)/);
+        const match = execFileSync('footprint', ['-p', String(info.id)], {
+          encoding: 'utf8',
+          stdio: ['ignore', 'pipe', 'ignore'],
+        }).match(/Footprint:\s+([\d.]+)\s+([KMG]B)/);
         if (match) total += Number(match[1]) * { KB: 1 / 1024, MB: 1, GB: 1024 }[match[2]];
       } catch {}
     }
     return Math.round(total);
   };
   const close = async () => {
-    try { await send('Browser.close'); } catch {}
+    try {
+      await send('Browser.close');
+    } catch {}
     await sleep(500);
     proc.kill('SIGKILL');
     if (!profile) rmSync(dir, { recursive: true, force: true });
   };
-  const on = (method, listener) => listeners.set(method, [...(listeners.get(method) ?? []), listener]);
+  const on = (method, listener) =>
+    listeners.set(method, [...(listeners.get(method) ?? []), listener]);
   return { evaluate, open, footprint, close, dir, page, on };
 }
 
 export function boardCount({ project, artifact }) {
-  const canvas = JSON.parse(readFileSync(path.join(project, '.ryugi/artifacts', artifact, 'canvas.json'), 'utf8'));
+  const canvas = JSON.parse(
+    readFileSync(path.join(project, '.ryugi/artifacts', artifact, 'canvas.json'), 'utf8'),
+  );
   const page = canvas.activePage ?? canvas.pages[0].id;
   return Object.values(canvas.boards).filter((board) => board.page === page).length;
 }

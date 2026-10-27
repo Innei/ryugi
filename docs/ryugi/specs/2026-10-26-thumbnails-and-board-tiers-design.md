@@ -85,6 +85,7 @@ before**, and **the infinite-canvas zoom problem still being there**.
    - `X-Content-Type-Options: nosniff`
 
    Clients add `?v=<updatedAt>`.
+
 5. **`ArtifactThumbnail`** (exported from `ryugi-artifacts/viewer`) becomes
    cloud's `CloudThumbnail`: an `<img>` (600×360, `loading="lazy"`,
    `decoding="async"`) over a `TypeIcon` fallback, with props
@@ -107,16 +108,16 @@ before**, and **the infinite-canvas zoom problem still being there**.
 
 ### Tiers
 
-k is the canvas zoom and DPR is `devicePixelRatio`. A board is *visible* when
-its screen rect overlaps the viewport. It is *near* when the distance from its
+k is the canvas zoom and DPR is `devicePixelRatio`. A board is _visible_ when
+its screen rect overlaps the viewport. It is _near_ when the distance from its
 screen rect to the viewport rect is at most the viewport's width.
 
-| Tier | When |
-|---|---|
+| Tier        | When                                                                                                                                     |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
 | Live iframe | An interaction state (below) holds, or the board is visible, k ≥ 0.4, and it is among the 4 visible boards with the largest visible area |
-| Snapshot | Near, not live, and a snapshot exists. Resolution is the first of {0.125, 0.25, 0.5, 1, 2} that is ≥ k × DPR |
-| Placeholder | Near, not live, and no snapshot yet |
-| Empty | Not near: nothing in the slot except its background |
+| Snapshot    | Near, not live, and a snapshot exists. Resolution is the first of {0.125, 0.25, 0.5, 1, 2} that is ≥ k × DPR                             |
+| Placeholder | Near, not live, and no snapshot yet                                                                                                      |
+| Empty       | Not near: nothing in the slot except its background                                                                                      |
 
 Interaction states that keep a board live:
 
@@ -210,6 +211,7 @@ iframes and keep today's rendering.
   snapshot: the placeholder stands in for it, and its iframe stays visible
   during zoom gestures. "Unsupported" lasts for the session only and is not
   stored.
+
 - **No legacy compatibility** (the partner's call). There is no
   version detection and no special handling for boards published before
   this release. Their pages lack the new runtime actions, so they land on
@@ -231,12 +233,12 @@ iframes and keep today's rendering.
 All of these are measured with headed Chrome on a Retina Mac (DPR 2) with a
 1440×900 viewport, against the viewer built from this change.
 
-| Check | Target | Today |
-|---|---|---|
-| Zoom in and out across the `real-data` artboard, 120 frames | ≤ 2 frames over 33 ms | 25–56 |
-| 20-second scenario on a 35-board artboard: overview → zoom into a board at k 0.5 → pan → k 1 → overview → a far board | ≤ 25 frames over 25 ms | ~80 |
-| Same scenario, share of visible board area blank (skeleton, or iframe not ready) | ≤ 0.3% | 1.6% |
-| 35-board overview held, renderer + GPU footprint | at least 1 GB less | ~2.6 GB |
+| Check                                                                                                                 | Target                 | Today   |
+| --------------------------------------------------------------------------------------------------------------------- | ---------------------- | ------- |
+| Zoom in and out across the `real-data` artboard, 120 frames                                                           | ≤ 2 frames over 33 ms  | 25–56   |
+| 20-second scenario on a 35-board artboard: overview → zoom into a board at k 0.5 → pan → k 1 → overview → a far board | ≤ 25 frames over 25 ms | ~80     |
+| Same scenario, share of visible board area blank (skeleton, or iframe not ready)                                      | ≤ 0.3%                 | 1.6%    |
+| 35-board overview held, renderer + GPU footprint                                                                      | at least 1 GB less     | ~2.6 GB |
 
 - **Fixture.** The 35-board artboard is the 7 `real-data` boards repeated 5
   times, 7 columns. That data is the partner's, so the fixture is not

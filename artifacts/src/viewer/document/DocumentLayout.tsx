@@ -21,7 +21,12 @@ const styles = stylex.create({
     paddingInline: 24,
   },
   mainNoToc: { gridTemplateColumns: 'minmax(0, 700px) 320px' },
-  mainNarrow: { display: 'flex', flexDirection: 'column', alignItems: 'stretch', paddingInline: 20 },
+  mainNarrow: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'stretch',
+    paddingInline: 20,
+  },
   railWrap: { position: 'relative' },
   column: { position: 'relative', width: '100%', maxWidth: 700, minWidth: 0 },
 });
@@ -37,7 +42,16 @@ interface Props {
   children: ReactNode;
 }
 
-export function DocumentLayout({ editor, threads, actions, agent, onMain, overlay, history, children }: Props) {
+export function DocumentLayout({
+  editor,
+  threads,
+  actions,
+  agent,
+  onMain,
+  overlay,
+  history,
+  children,
+}: Props) {
   const [rail, setRail] = useState<HTMLDivElement | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [articleEl, setArticleEl] = useState<HTMLElement | null>(null);
@@ -47,7 +61,10 @@ export function DocumentLayout({ editor, threads, actions, agent, onMain, overla
   useHighlights(anchors, threads, activeId);
 
   return (
-    <main ref={onMain} {...stylex.props(styles.main, !withToc && styles.mainNoToc, narrow && styles.mainNarrow)}>
+    <main
+      ref={onMain}
+      {...stylex.props(styles.main, !withToc && styles.mainNoToc, narrow && styles.mainNarrow)}
+    >
       {withToc && !narrow ? <DocumentToc editor={editor} /> : null}
       <article
         ref={setArticleEl}
@@ -57,19 +74,30 @@ export function DocumentLayout({ editor, threads, actions, agent, onMain, overla
       >
         {history?.content}
         <div hidden={Boolean(history)}>{children}</div>
-        {history ? null : <BlockBars container={articleEl} anchors={anchors} threads={threads} activeId={activeId} />}
+        {history ? null : (
+          <BlockBars
+            container={articleEl}
+            anchors={anchors}
+            threads={threads}
+            activeId={activeId}
+          />
+        )}
       </article>
       <div {...stylex.props(styles.railWrap)}>
-        {history ? history.panel : <CommentRail
-          agent={agent}
-          narrow={narrow}
-          threads={threads}
-          anchors={anchors}
-          activeId={activeId}
-          actions={actions}
-          onActivate={setActiveId}
-          railRef={setRail}
-        />}
+        {history ? (
+          history.panel
+        ) : (
+          <CommentRail
+            agent={agent}
+            narrow={narrow}
+            threads={threads}
+            anchors={anchors}
+            activeId={activeId}
+            actions={actions}
+            onActivate={setActiveId}
+            railRef={setRail}
+          />
+        )}
       </div>
       {articleEl && overlay && !history ? overlay(articleEl) : null}
     </main>

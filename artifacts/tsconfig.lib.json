@@ -1,5 +1,4 @@
 {
-  "extends": "./tsconfig.json",
   "compilerOptions": {
     "noEmit": false,
     "declaration": true,
@@ -8,5 +7,12 @@
     "outDir": "dist/viewer-lib/types",
     "types": ["vite/client"]
   },
-  "include": ["src/viewer/library/index.ts", "src/viewer/library/core.ts", "src/viewer/library/document.ts", "src/viewer/document/shims.ts", "src/shared/thumbnail.ts"]
+  "extends": "./tsconfig.json",
+  "include": [
+    "src/viewer/library/index.ts",
+    "src/viewer/library/core.ts",
+    "src/viewer/library/document.ts",
+    "src/viewer/document/shims.ts",
+    "src/shared/thumbnail.ts"
+  ]
 }

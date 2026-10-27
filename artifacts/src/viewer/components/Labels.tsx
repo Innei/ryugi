@@ -1,7 +1,15 @@
 import { ActionIcon } from '@lobehub/ui';
 import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
-import { Download, Film, Image as ImageIcon, Maximize2, Play, RotateCcw, SlidersHorizontal } from 'lucide-react';
+import {
+  Download,
+  Film,
+  Image as ImageIcon,
+  Maximize2,
+  Play,
+  RotateCcw,
+  SlidersHorizontal,
+} from 'lucide-react';
 import { isMediaBoard, type BoardSpec, type GroupSpec } from '../../shared/types';
 import type { Verdicts } from '../hooks/useVerdicts';
 import { boardReady, canPlay } from '../lib/play';
@@ -72,7 +80,10 @@ const styles = stylex.create({
     borderStyle: 'solid',
     borderColor: brand.accent,
     borderRadius: 6,
-    backgroundColor: { default: 'transparent', ':hover': `color-mix(in srgb, ${brand.accent} 14%, transparent)` },
+    backgroundColor: {
+      'default': 'transparent',
+      ':hover': `color-mix(in srgb, ${brand.accent} 14%, transparent)`,
+    },
     color: brand.accentStrong,
     fontFamily: cssVar.fontFamily,
     fontSize: 11,
@@ -80,7 +91,10 @@ const styles = stylex.create({
     letterSpacing: '0.04em',
     cursor: 'pointer',
   },
-  playOn: { backgroundColor: { default: brand.accentStrong, ':hover': brand.accentStrong }, color: '#ffffff' },
+  playOn: {
+    backgroundColor: { 'default': brand.accentStrong, ':hover': brand.accentStrong },
+    color: '#ffffff',
+  },
   chip: {
     paddingInline: 5,
     borderRadius: 4,
@@ -108,7 +122,10 @@ interface LabelsProps {
   parameters?: Record<string, number>;
   activeParameters?: string | null;
   onToggleParameters?: (id: string, trigger: HTMLButtonElement) => void;
-  verdicts?: Pick<Verdicts, 'states' | 'evidenceAt' | 'canJudge' | 'pass' | 'startReject' | 'undoPass'>;
+  verdicts?: Pick<
+    Verdicts,
+    'states' | 'evidenceAt' | 'canJudge' | 'pass' | 'startReject' | 'undoPass'
+  >;
 }
 
 export function Labels({
@@ -134,7 +151,9 @@ export function Labels({
     <div {...stylex.props(styles.layer)}>
       {groupScale !== null &&
         groups.map(([id, group]) => {
-          const members = group.boards.map((m) => allBoards[m]).filter((b): b is BoardSpec => Boolean(b));
+          const members = group.boards
+            .map((m) => allBoards[m])
+            .filter((b): b is BoardSpec => Boolean(b));
           if (members.length === 0) return null;
           const x = Math.min(...members.map((b) => b.x));
           const y = Math.min(...members.map((b) => b.y));
@@ -154,7 +173,14 @@ export function Labels({
               <span {...stylex.props(styles.chip)}>{id}</span>
               {group.title}
               {verdict && verdicts && (
-                <GroupVerdict verdict={verdict} evidenceAt={verdicts.evidenceAt(id)} canJudge={verdicts.canJudge} onPass={() => verdicts.pass(id)} onReject={() => verdicts.startReject(id)} onUndo={() => verdicts.undoPass(id)} />
+                <GroupVerdict
+                  verdict={verdict}
+                  evidenceAt={verdicts.evidenceAt(id)}
+                  canJudge={verdicts.canJudge}
+                  onPass={() => verdicts.pass(id)}
+                  onReject={() => verdicts.startReject(id)}
+                  onUndo={() => verdicts.undoPass(id)}
+                />
               )}
             </div>
           );
@@ -171,7 +197,12 @@ export function Labels({
               key={id}
               data-chrome="board-label"
               {...stylex.props(styles.boardLabel)}
-              style={{ left: rect.left, top: rect.top, width, transform: `scale(${boardScale}) translateY(-100%)` }}
+              style={{
+                left: rect.left,
+                top: rect.top,
+                width,
+                transform: `scale(${boardScale}) translateY(-100%)`,
+              }}
             >
               <span {...stylex.props(styles.title)}>
                 {isMediaBoard(board) && (
@@ -180,29 +211,61 @@ export function Labels({
                   </span>
                 )}
                 {board.title ?? id}
-                <span {...stylex.props(styles.id)}>{isMediaBoard(board) ? `${id} · ${board.file.split('/').pop()}` : id}</span>
+                <span {...stylex.props(styles.id)}>
+                  {isMediaBoard(board) ? `${id} · ${board.file.split('/').pop()}` : id}
+                </span>
               </span>
               {ready && width >= ACTIONS_MIN_WIDTH && (
                 <>
-                  <ActionIcon icon={Maximize2} size={{ blockSize: 22, size: 13 }} title={t('chrome.expand')} aria-label={t('chrome.expandBoard', { id })} onClick={() => onExpand(id)} />
+                  <ActionIcon
+                    icon={Maximize2}
+                    size={{ blockSize: 22, size: 13 }}
+                    title={t('chrome.expand')}
+                    aria-label={t('chrome.expandBoard', { id })}
+                    onClick={() => onExpand(id)}
+                  />
                   <ActionIcon
                     icon={Download}
                     size={{ blockSize: 22, size: 13 }}
                     title={t('chrome.download')}
                     aria-label={t('chrome.downloadBoard', { id })}
-                    onClick={() => downloadFile(`${contentBase}${board.file}`, board.file.split('/').pop() ?? `${id}.html`)}
+                    onClick={() =>
+                      downloadFile(
+                        `${contentBase}${board.file}`,
+                        board.file.split('/').pop() ?? `${id}.html`,
+                      )
+                    }
                   />
                 </>
               )}
-              {ready && parameters?.[id] !== undefined && width >= ACTIONS_MIN_WIDTH && <button type="button" aria-label={t('chrome.parametersBoard', { id })} aria-expanded={activeParameters === id} onClick={(event) => onToggleParameters?.(id, event.currentTarget)} {...stylex.props(styles.play, activeParameters === id && styles.playOn)}><SlidersHorizontal size={11} />{t('chrome.parameters')} {parameters[id] || '!'}</button>}
+              {ready && parameters?.[id] !== undefined && width >= ACTIONS_MIN_WIDTH && (
+                <button
+                  type="button"
+                  aria-label={t('chrome.parametersBoard', { id })}
+                  aria-expanded={activeParameters === id}
+                  onClick={(event) => onToggleParameters?.(id, event.currentTarget)}
+                  {...stylex.props(styles.play, activeParameters === id && styles.playOn)}
+                >
+                  <SlidersHorizontal size={11} />
+                  {t('chrome.parameters')} {parameters[id] || '!'}
+                </button>
+              )}
               {interactive && width >= PLAY_MIN_WIDTH && playing.has(id) && (
-                <ActionIcon icon={RotateCcw} size={{ blockSize: 22, size: 13 }} title={t('chrome.replay')} aria-label={t('chrome.replayBoard', { id })} onClick={() => onReplay(id)} />
+                <ActionIcon
+                  icon={RotateCcw}
+                  size={{ blockSize: 22, size: 13 }}
+                  title={t('chrome.replay')}
+                  aria-label={t('chrome.replayBoard', { id })}
+                  onClick={() => onReplay(id)}
+                />
               )}
               {interactive && width >= PLAY_MIN_WIDTH && (
                 <button
                   type="button"
                   aria-pressed={playing.has(id)}
-                  aria-label={playing.has(id) ? t('chrome.stopBoard', { id }) : t('chrome.playBoard', { id })}
+                  aria-label={
+                    playing.has(id) ? t('chrome.stopBoard', { id }) : t('chrome.playBoard', { id })
+                  }
                   onClick={() => onTogglePlay(id)}
                   {...stylex.props(styles.play, playing.has(id) && styles.playOn)}
                 >

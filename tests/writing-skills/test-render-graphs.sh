@@ -55,7 +55,7 @@ assert_not_contains() {
 
 fixture="$TEST_ROOT/fixture-skill"
 mkdir -p "$fixture" "$TEST_ROOT/empty-path"
-cat >"$fixture/SKILL.md" <<'EOF'
+cat > "$fixture/SKILL.md" << 'EOF'
 ---
 name: fixture-skill
 ---

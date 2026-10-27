@@ -24,7 +24,13 @@ const styles = stylex.create({
     fontFamily: cssVar.fontFamily,
     fontSize: 14,
   },
-  title: { minWidth: 0, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', fontWeight: 600 },
+  title: {
+    minWidth: 0,
+    overflow: 'hidden',
+    whiteSpace: 'nowrap',
+    textOverflow: 'ellipsis',
+    fontWeight: 600,
+  },
   trigger: {
     display: 'flex',
     alignItems: 'center',
@@ -40,7 +46,13 @@ const styles = stylex.create({
   },
   pageName: { overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' },
   spacer: { flex: 1 },
-  dot: { width: 7, height: 7, flexShrink: 0, borderRadius: '50%', backgroundColor: cssVar.colorTextQuaternary },
+  dot: {
+    width: 7,
+    height: 7,
+    flexShrink: 0,
+    borderRadius: '50%',
+    backgroundColor: cssVar.colorTextQuaternary,
+  },
   dotOn: { backgroundColor: cssVar.colorSuccess },
 });
 
@@ -56,7 +68,12 @@ export function PageSwitcher({ pages, page, onPageChange }: PageSwitcherProps) {
   return (
     <DropdownMenu
       placement="bottomLeft"
-      items={pages.map((p) => ({ key: p.id, label: p.name, icon: p.id === page ? Check : undefined, onClick: () => onPageChange(p.id) }))}
+      items={pages.map((p) => ({
+        key: p.id,
+        label: p.name,
+        icon: p.id === page ? Check : undefined,
+        onClick: () => onPageChange(p.id),
+      }))}
     >
       <button type="button" aria-label={t('chrome.switchPage')} {...stylex.props(styles.trigger)}>
         <span {...stylex.props(styles.pageName)}>{current?.name ?? page}</span>
@@ -78,7 +95,12 @@ export function PhoneArtboardBar({ title, pages, page, onPageChange, actions, li
       <span {...stylex.props(styles.title)}>{title}</span>
       <PageSwitcher pages={pages} page={page} onPageChange={onPageChange} />
       <span {...stylex.props(styles.spacer)} />
-      {live === undefined ? null : <i title={live ? t('chrome.live') : t('chrome.reconnecting')} {...stylex.props(styles.dot, live && styles.dotOn)} />}
+      {live === undefined ? null : (
+        <i
+          title={live ? t('chrome.live') : t('chrome.reconnecting')}
+          {...stylex.props(styles.dot, live && styles.dotOn)}
+        />
+      )}
       {actions}
     </header>
   );

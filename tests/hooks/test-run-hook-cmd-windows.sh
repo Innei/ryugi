@@ -8,9 +8,9 @@
 # whose Program Files paths point at a directory that doesn't exist.
 set -euo pipefail
 
-if ! command -v cmd >/dev/null 2>&1 || ! command -v cygpath >/dev/null 2>&1; then
-    echo "SKIP: cmd.exe not available (these tests run in Git Bash on Windows)"
-    exit 0
+if ! command -v cmd > /dev/null 2>&1 || ! command -v cygpath > /dev/null 2>&1; then
+  echo "SKIP: cmd.exe not available (these tests run in Git Bash on Windows)"
+  exit 0
 fi
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -20,8 +20,8 @@ PF_GIT='C:\Program Files\Git'
 PF_GIT_UNIX='/c/Program Files/Git'
 
 if [[ ! -e "$PF_GIT_UNIX/bin/bash.exe" ]]; then
-    echo "SKIP: needs Git for Windows in $PF_GIT to stand in for other installs"
-    exit 0
+  echo "SKIP: needs Git for Windows in $PF_GIT to stand in for other installs"
+  exit 0
 fi
 
 FAILURES=0
@@ -29,57 +29,63 @@ TEST_ROOT="$(mktemp -d)"
 JUNCTIONS=()
 
 cleanup() {
-    # Remove junctions with cmd's rmdir first, which never touches the
-    # target, so nothing below can recurse into the real Git install.
-    local j left=0
-    for j in "${JUNCTIONS[@]}"; do
-        cmd //c rmdir "$j" >/dev/null 2>&1 || true
-        if [[ -e "$(cygpath "$j")" ]]; then
-            echo "WARNING: junction $j still exists; not deleting $TEST_ROOT" >&2
-            left=1
-        fi
-    done
-    [[ "$left" -eq 0 ]] && rm -rf "$TEST_ROOT"
+  # Remove junctions with cmd's rmdir first, which never touches the
+  # target, so nothing below can recurse into the real Git install.
+  local j left=0
+  for j in "${JUNCTIONS[@]}"; do
+    cmd //c rmdir "$j" > /dev/null 2>&1 || true
+    if [[ -e "$(cygpath "$j")" ]]; then
+      echo "WARNING: junction $j still exists; not deleting $TEST_ROOT" >&2
+      left=1
+    fi
+  done
+  [[ "$left" -eq 0 ]] && rm -rf "$TEST_ROOT"
 }
 trap cleanup EXIT
 
 pass() { echo "  [PASS] $1"; }
-fail() { echo "  [FAIL] $1"; FAILURES=$((FAILURES + 1)); }
+fail() {
+  echo "  [FAIL] $1"
+  FAILURES=$((FAILURES + 1))
+}
 
 junction() {
-    local link="$1" target="$2"
-    # Keep Git Bash from rewriting /J into a path.
-    MSYS2_ARG_CONV_EXCL="*" cmd /c mklink /J "$link" "$target" >/dev/null
-    JUNCTIONS+=("$link")
+  local link="$1" target="$2"
+  # Keep Git Bash from rewriting /J into a path.
+  MSYS2_ARG_CONV_EXCL="*" cmd /c mklink /J "$link" "$target" > /dev/null
+  JUNCTIONS+=("$link")
 }
 
 # A plugin root with probe hooks. $1 = "real" keeps the wrapper as is;
 # "sandbox" points its Program Files paths at nothing.
 make_plugin() {
-    local dir="$1" mode="$2"
-    mkdir -p "$dir/hooks"
-    if [[ "$mode" == sandbox ]]; then
-        sed -e 's#C:\\Program Files\\Git\\#C:\\no-such-program-files\\Git\\#g' \
-            -e 's#C:\\Program Files (x86)\\Git\\#C:\\no-such-program-files\\Git\\#g' \
-            "$REPO_ROOT/hooks/run-hook.cmd" > "$dir/hooks/run-hook.cmd"
-        if grep -q 'Program Files' "$dir/hooks/run-hook.cmd"; then
-            echo "sandbox wrapper still mentions Program Files" >&2
-            exit 1
-        fi
-    else
-        cp "$REPO_ROOT/hooks/run-hook.cmd" "$dir/hooks/run-hook.cmd"
+  local dir="$1" mode="$2"
+  mkdir -p "$dir/hooks"
+  if [[ "$mode" == sandbox ]]; then
+    sed -e 's#C:\\Program Files\\Git\\#C:\\no-such-program-files\\Git\\#g' \
+      -e 's#C:\\Program Files (x86)\\Git\\#C:\\no-such-program-files\\Git\\#g' \
+      "$REPO_ROOT/hooks/run-hook.cmd" > "$dir/hooks/run-hook.cmd"
+    if grep -q 'Program Files' "$dir/hooks/run-hook.cmd"; then
+      echo "sandbox wrapper still mentions Program Files" >&2
+      exit 1
     fi
-    printf 'echo probe-ran\n' > "$dir/hooks/probe-ok"
-    printf 'echo probe-ran\nexit 7\n' > "$dir/hooks/probe-exit"
+  else
+    cp "$REPO_ROOT/hooks/run-hook.cmd" "$dir/hooks/run-hook.cmd"
+  fi
+  printf 'echo probe-ran\n' > "$dir/hooks/probe-ok"
+  printf 'echo probe-ran\nexit 7\n' > "$dir/hooks/probe-exit"
 }
 
 # run_hook PLUGIN_DIR CWD PROBE [VAR=value...] -> sets OUT and RC
 run_hook() {
-    local plugin="$1" cwd="$2" probe="$3"
-    shift 3
-    RC=0
-    # tr drops the NUL bytes the WSL launcher prints (UTF-16 text).
-    OUT="$(cd "$cwd" && env "$@" cmd //c "$(cygpath -w "$plugin")\\hooks\\run-hook.cmd" "$probe" 2>&1 | tr -d '\000'; exit "${PIPESTATUS[0]}")" || RC=$?
+  local plugin="$1" cwd="$2" probe="$3"
+  shift 3
+  RC=0
+  # tr drops the NUL bytes the WSL launcher prints (UTF-16 text).
+  OUT="$(
+    cd "$cwd" && env "$@" cmd //c "$(cygpath -w "$plugin")\\hooks\\run-hook.cmd" "$probe" 2>&1 | tr -d '\000'
+    exit "${PIPESTATUS[0]}"
+  )" || RC=$?
 }
 
 SYS32_PATH="/c/Windows/System32"
@@ -93,9 +99,9 @@ real="$TEST_ROOT/real"
 make_plugin "$real" real
 run_hook "$real" "$TEST_ROOT" probe-exit
 if [[ "$RC" -eq 7 && "$OUT" == *probe-ran* ]]; then
-    pass "hook exit code propagates through run-hook.cmd"
+  pass "hook exit code propagates through run-hook.cmd"
 else
-    fail "hook exit code propagates through run-hook.cmd (rc=$RC, out=$OUT)"
+  fail "hook exit code propagates through run-hook.cmd (rc=$RC, out=$OUT)"
 fi
 
 sandbox="$TEST_ROOT/sandbox"
@@ -106,20 +112,20 @@ la="$TEST_ROOT/localappdata"
 mkdir -p "$la/Programs"
 junction "$(cygpath -w "$la/Programs/Git")" "$PF_GIT"
 run_hook "$sandbox" "$TEST_ROOT" probe-exit \
-    LOCALAPPDATA="$(cygpath -w "$la")" PATH="$SYS32_PATH"
+  LOCALAPPDATA="$(cygpath -w "$la")" PATH="$SYS32_PATH"
 if [[ "$RC" -eq 7 && "$OUT" == *probe-ran* ]]; then
-    pass "per-user Git install is found and its exit code propagates"
+  pass "per-user Git install is found and its exit code propagates"
 else
-    fail "per-user Git install is found and its exit code propagates (rc=$RC, out=$OUT)"
+  fail "per-user Git install is found and its exit code propagates (rc=$RC, out=$OUT)"
 fi
 
 # --- the System32 WSL launcher on PATH is skipped for a real bash ---
 run_hook "$sandbox" "$TEST_ROOT" probe-ok \
-    LOCALAPPDATA="$NO_LA" PATH="$SYS32_PATH:$GIT_USR_BIN"
+  LOCALAPPDATA="$NO_LA" PATH="$SYS32_PATH:$GIT_USR_BIN"
 if [[ "$RC" -eq 0 && "$OUT" == *probe-ran* ]]; then
-    pass "System32 bash.exe (WSL launcher) is skipped in favor of Git's bash on PATH"
+  pass "System32 bash.exe (WSL launcher) is skipped in favor of Git's bash on PATH"
 else
-    fail "System32 bash.exe (WSL launcher) is skipped in favor of Git's bash on PATH (rc=$RC, out=$OUT)"
+  fail "System32 bash.exe (WSL launcher) is skipped in favor of Git's bash on PATH (rc=$RC, out=$OUT)"
 fi
 
 # --- a bash under a WindowsApps directory (the Store WSL stub) is skipped ---
@@ -129,82 +135,82 @@ mkdir -p "$apps"
 apps_marker="$TEST_ROOT/windowsapps-ran"
 printf '@echo off\r\necho stub> "%s"\r\n' "$(cygpath -w "$apps_marker")" > "$apps/bash.cmd"
 run_hook "$sandbox" "$TEST_ROOT" probe-ok \
-    LOCALAPPDATA="$(cygpath -w "$apps_la")" PATH="$apps:$SYS32_PATH:$GIT_USR_BIN"
+  LOCALAPPDATA="$(cygpath -w "$apps_la")" PATH="$apps:$SYS32_PATH:$GIT_USR_BIN"
 if [[ ! -e "$apps_marker" && "$OUT" == *probe-ran* ]]; then
-    pass "bash under WindowsApps (Store WSL stub) is skipped"
+  pass "bash under WindowsApps (Store WSL stub) is skipped"
 else
-    fail "bash under WindowsApps (Store WSL stub) is skipped (stub ran: $([[ -e $apps_marker ]] && echo yes || echo no), out=$OUT)"
+  fail "bash under WindowsApps (Store WSL stub) is skipped (stub ran: $([[ -e $apps_marker ]] && echo yes || echo no), out=$OUT)"
 fi
 
 # --- nothing in the current directory is run: not bash, not where ---
 plant="$TEST_ROOT/planted-cwd"
 mkdir -p "$plant"
 for name in bash.cmd where.bat; do
-    printf '@echo off\r\necho planted> "%s"\r\n' "$(cygpath -w "$TEST_ROOT/ran-$name")" > "$plant/$name"
+  printf '@echo off\r\necho planted> "%s"\r\n' "$(cygpath -w "$TEST_ROOT/ran-$name")" > "$plant/$name"
 done
 run_hook "$sandbox" "$plant" probe-ok \
-    LOCALAPPDATA="$NO_LA" PATH="$SYS32_PATH:$GIT_USR_BIN"
+  LOCALAPPDATA="$NO_LA" PATH="$SYS32_PATH:$GIT_USR_BIN"
 for name in bash.cmd where.bat; do
-    if [[ ! -e "$TEST_ROOT/ran-$name" && "$OUT" == *probe-ran* ]]; then
-        pass "$name in the current directory is not run"
-    else
-        fail "$name in the current directory is not run (ran: $([[ -e $TEST_ROOT/ran-$name ]] && echo yes || echo no), out=$OUT)"
-    fi
+  if [[ ! -e "$TEST_ROOT/ran-$name" && "$OUT" == *probe-ran* ]]; then
+    pass "$name in the current directory is not run"
+  else
+    fail "$name in the current directory is not run (ran: $([[ -e $TEST_ROOT/ran-$name ]] && echo yes || echo no), out=$OUT)"
+  fi
 done
 
 # --- PATH entries whose names cmd could misparse still work ---
 # fake_bash DIR: a bash.cmd that reports it ran.
 fake_bash() {
-    mkdir -p "$1"
-    printf '@echo off\r\necho fake-bash-ran\r\n' > "$1/bash.cmd"
+  mkdir -p "$1"
+  printf '@echo off\r\necho fake-bash-ran\r\n' > "$1/bash.cmd"
 }
 for dir_name in 'caret^and%OS%percent' $'caf\u00e9-bin' 'extensionless'; do
-    dir="$TEST_ROOT/$dir_name"
-    case "$dir_name" in
-        extensionless)
-            # An extensionless "bash" first on PATH must be skipped.
-            mkdir -p "$dir"
-            printf 'not a program\n' > "$dir/bash"
-            fake_bash "$TEST_ROOT/after-extensionless"
-            path="$dir:$TEST_ROOT/after-extensionless:$SYS32_PATH"
-            ;;
-        *)
-            fake_bash "$dir"
-            path="$dir:$SYS32_PATH"
-            ;;
-    esac
-    run_hook "$sandbox" "$TEST_ROOT" probe-ok LOCALAPPDATA="$NO_LA" PATH="$path"
-    if [[ "$RC" -eq 0 && "$OUT" == *fake-bash-ran* ]]; then
-        pass "bash on PATH is found under $dir_name"
-    else
-        fail "bash on PATH is found under $dir_name (rc=$RC, out=$OUT)"
-    fi
+  dir="$TEST_ROOT/$dir_name"
+  case "$dir_name" in
+    extensionless)
+      # An extensionless "bash" first on PATH must be skipped.
+      mkdir -p "$dir"
+      printf 'not a program\n' > "$dir/bash"
+      fake_bash "$TEST_ROOT/after-extensionless"
+      path="$dir:$TEST_ROOT/after-extensionless:$SYS32_PATH"
+      ;;
+    *)
+      fake_bash "$dir"
+      path="$dir:$SYS32_PATH"
+      ;;
+  esac
+  run_hook "$sandbox" "$TEST_ROOT" probe-ok LOCALAPPDATA="$NO_LA" PATH="$path"
+  if [[ "$RC" -eq 0 && "$OUT" == *fake-bash-ran* ]]; then
+    pass "bash on PATH is found under $dir_name"
+  else
+    fail "bash on PATH is found under $dir_name (rc=$RC, out=$OUT)"
+  fi
 done
 
 # --- unset SystemRoot must not let the WSL launcher through ---
 run_hook "$sandbox" "$TEST_ROOT" probe-ok -u SystemRoot \
-    LOCALAPPDATA="$NO_LA" PATH="$SYS32_PATH:$GIT_USR_BIN"
+  LOCALAPPDATA="$NO_LA" PATH="$SYS32_PATH:$GIT_USR_BIN"
 if [[ "$RC" -eq 0 && "$OUT" != *Subsystem* ]]; then
-    pass "unset SystemRoot does not run the WSL launcher"
+  pass "unset SystemRoot does not run the WSL launcher"
 else
-    fail "unset SystemRoot does not run the WSL launcher (rc=$RC, out=$OUT)"
+  fail "unset SystemRoot does not run the WSL launcher (rc=$RC, out=$OUT)"
 fi
 
 # --- unset LOCALAPPDATA must not probe \Programs\Git on the current drive ---
 drive_programs="/c/Programs"
 if [[ -e "$drive_programs" ]]; then
-    echo "  [SKIP] unset LOCALAPPDATA: C:\\Programs already exists"
+  echo "  [SKIP] unset LOCALAPPDATA: C:\\Programs already exists"
 else
-    mkdir "$drive_programs"
-    junction 'C:\Programs\Git' "$PF_GIT"
-    run_hook "$sandbox" "$TEST_ROOT" probe-ok -u LOCALAPPDATA PATH="$SYS32_PATH"
-    cmd //c rmdir 'C:\Programs\Git' >/dev/null 2>&1 || true
-    rmdir "$drive_programs"
-    if [[ "$RC" -eq 0 && "$OUT" != *probe-ran* ]]; then
-        pass "unset LOCALAPPDATA does not run \\Programs\\Git on the current drive"
-    else
-        fail "unset LOCALAPPDATA does not run \\Programs\\Git on the current drive (rc=$RC, out=$OUT)"
-    fi
+  mkdir "$drive_programs"
+  junction 'C:\Programs\Git' "$PF_GIT"
+  run_hook "$sandbox" "$TEST_ROOT" probe-ok -u LOCALAPPDATA PATH="$SYS32_PATH"
+  cmd //c rmdir 'C:\Programs\Git' > /dev/null 2>&1 || true
+  rmdir "$drive_programs"
+  if [[ "$RC" -eq 0 && "$OUT" != *probe-ran* ]]; then
+    pass "unset LOCALAPPDATA does not run \\Programs\\Git on the current drive"
+  else
+    fail "unset LOCALAPPDATA does not run \\Programs\\Git on the current drive (rc=$RC, out=$OUT)"
+  fi
 fi
 
 # --- the hooks.json powershell form dispatches under PowerShell ---
@@ -221,22 +227,22 @@ ps_command="${ps_command//\$\{CLAUDE_PLUGIN_ROOT\}/$(cygpath -w "$ps_plugin")}"
 RC=0
 OUT="$(cd "$TEST_ROOT" && powershell -NoProfile -NonInteractive -Command "$ps_command" 2>&1)" || RC=$?
 if [[ -n "$ps_command" && "$RC" -eq 0 && "$OUT" == *probe-ran* ]]; then
-    pass "hooks.json powershell command runs session-start under PowerShell"
+  pass "hooks.json powershell command runs session-start under PowerShell"
 else
-    fail "hooks.json powershell command runs session-start under PowerShell (command=$ps_command, rc=$RC, out=$OUT)"
+  fail "hooks.json powershell command runs session-start under PowerShell (command=$ps_command, rc=$RC, out=$OUT)"
 fi
 
 # --- no usable bash: exit 0 quietly, without invoking the WSL launcher ---
 run_hook "$sandbox" "$TEST_ROOT" probe-ok \
-    LOCALAPPDATA="$NO_LA" PATH="$SYS32_PATH"
+  LOCALAPPDATA="$NO_LA" PATH="$SYS32_PATH"
 if [[ "$RC" -eq 0 && -z "$OUT" ]]; then
-    pass "no usable bash exits 0 with no output"
+  pass "no usable bash exits 0 with no output"
 else
-    fail "no usable bash exits 0 with no output (rc=$RC, out=$OUT)"
+  fail "no usable bash exits 0 with no output (rc=$RC, out=$OUT)"
 fi
 
 if [[ "$FAILURES" -gt 0 ]]; then
-    echo "STATUS: FAILED ($FAILURES failure(s))"
-    exit 1
+  echo "STATUS: FAILED ($FAILURES failure(s))"
+  exit 1
 fi
 echo "STATUS: PASSED"

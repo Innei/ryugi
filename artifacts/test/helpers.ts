@@ -22,7 +22,12 @@ export function writeFiles(dir: string, files: Record<string, string>) {
   }
 }
 
-export function writeArtboard(root: string, id: string, canvas: unknown, files: Record<string, string> = {}) {
+export function writeArtboard(
+  root: string,
+  id: string,
+  canvas: unknown,
+  files: Record<string, string> = {},
+) {
   const dir = path.join(root, 'artboard', id);
   writeFiles(dir, files);
   fs.mkdirSync(dir, { recursive: true });
@@ -78,8 +83,8 @@ export function openWs(port: number, headers: Record<string, string>): Promise<W
       port,
       path: '/ws',
       headers: {
-        Connection: 'Upgrade',
-        Upgrade: 'websocket',
+        'Connection': 'Upgrade',
+        'Upgrade': 'websocket',
         'Sec-WebSocket-Version': '13',
         'Sec-WebSocket-Key': Buffer.from('artboard-test-key').toString('base64'),
         ...headers,

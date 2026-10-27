@@ -4,7 +4,7 @@ Use this template when dispatching a code reviewer subagent.
 
 **Purpose:** Review completed work against requirements and code quality standards before it cascades into more work.
 
-```
+````
 Subagent (general-purpose):
   description: "Review code changes"
   prompt: |
@@ -149,9 +149,10 @@ Subagent (general-purpose):
     - Give feedback on code you didn't actually read
     - Be vague ("improve error handling")
     - Avoid giving a clear verdict
-```
+````
 
 **Placeholders:**
+
 - `[DESCRIPTION]` — brief summary of what was built
 - `[PLAN_OR_REQUIREMENTS]` — what it should do (spec path and its task list, plan file, or requirements)
 - `[BASE_SHA]` — starting commit

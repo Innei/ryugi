@@ -27,7 +27,11 @@ await build({
   minify: true,
   format: 'iife',
   target: 'es2022',
-  banner: { js: `/*!\n${fs.readFileSync(path.join(root, 'node_modules/lucide-react/LICENSE'), 'utf8')}\n*/` },
+  banner: {
+    js: `/*!\n${fs.readFileSync(path.join(root, 'node_modules/lucide-react/LICENSE'), 'utf8')}\n*/`,
+  },
 });
 fs.copyFileSync(outfile, path.join(root, '../skills/artifacts/app/runtime/ryugi-icons.js'));
-console.log(JSON.stringify({ icons: Object.keys(glyphs).length, bytes: fs.statSync(outfile).size }));
+console.log(
+  JSON.stringify({ icons: Object.keys(glyphs).length, bytes: fs.statSync(outfile).size }),
+);

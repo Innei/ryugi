@@ -2,11 +2,22 @@ import { describe, expect, test } from 'vitest';
 import type { CanvasLayout, CanvasSpec } from '../src/shared/types';
 import { openingQuestion, questionList, roundsOf, stepQuestion } from '../src/viewer/lib/questions';
 
-const board = (page: string, x: number, y: number, title?: string) => ({ file: `pages/${page}/b.html`, page, x, y, w: 390, h: 844, ...(title ? { title } : {}) });
+const board = (page: string, x: number, y: number, title?: string) => ({
+  file: `pages/${page}/b.html`,
+  page,
+  x,
+  y,
+  w: 390,
+  h: 844,
+  ...(title ? { title } : {}),
+});
 
 const canvas: CanvasSpec = {
   version: 1,
-  pages: [{ id: 'p', name: 'Phone' }, { id: 'q', name: 'Other' }],
+  pages: [
+    { id: 'p', name: 'Phone' },
+    { id: 'q', name: 'Other' },
+  ],
   boards: {
     'q1-a': board('p', 0, 0),
     'q1-b': board('p', 470, 0),
@@ -14,7 +25,7 @@ const canvas: CanvasSpec = {
     'q1r2-a': board('p', 0, 2500),
     'q2r2-a': board('p', 1000, 2500),
     'q3r2-a': board('p', 0, 3600),
-    loose: board('p', 2000, 2500, 'A board on its own'),
+    'loose': board('p', 2000, 2500, 'A board on its own'),
     'other-a': board('q', 0, 0),
   },
   groups: {
@@ -42,7 +53,11 @@ const layout: CanvasLayout = {
         q2r2: { x: 952, y: 2356, w: 486, h: 1036 },
         q3r2: { x: -48, y: 3456, w: 486, h: 1036 },
       },
-      notes: { r1: { x: 0, y: -340, w: 400, h: 110 }, r2: { x: 0, y: 2100, w: 400, h: 110 }, hint: { x: 1500, y: 0, w: 240, h: 80 } },
+      notes: {
+        r1: { x: 0, y: -340, w: 400, h: 110 },
+        r2: { x: 0, y: 2100, w: 400, h: 110 },
+        hint: { x: 1500, y: 0, w: 240, h: 80 },
+      },
       bounds: { minX: -48, minY: -340, maxX: 2390, maxY: 4492 },
     },
     q: { groups: { other: { x: -48, y: -144, w: 486, h: 1036 } }, notes: {}, bounds: null },
@@ -60,7 +75,12 @@ describe('rounds', () => {
 
   test('a question carries its title, boards and where it sits', () => {
     const [newest] = roundsOf(canvas, layout, 'p');
-    expect(newest!.questions[0]).toEqual({ id: 'q1r2', title: '无卡片', boards: ['q1r2-a'], bounds: { minX: -48, minY: 2356, maxX: 438, maxY: 3392 } });
+    expect(newest!.questions[0]).toEqual({
+      id: 'q1r2',
+      title: '无卡片',
+      boards: ['q1r2-a'],
+      bounds: { minX: -48, minY: 2356, maxX: 438, maxY: 3392 },
+    });
   });
 
   test('a board outside every group is a question of its own, titled by the board', () => {
@@ -70,7 +90,9 @@ describe('rounds', () => {
 
   test('questions with no title above them come last under Other', () => {
     const rounds = roundsOf(canvas, layout, 'q');
-    expect(rounds).toEqual([{ id: null, title: 'Other', questions: [expect.objectContaining({ id: 'other' })] }]);
+    expect(rounds).toEqual([
+      { id: null, title: 'Other', questions: [expect.objectContaining({ id: 'other' })] },
+    ]);
   });
 });
 
@@ -104,7 +126,9 @@ describe('opening question and stepping', () => {
 
   test('a page without groups or boards has no questions', () => {
     const empty: CanvasSpec = { version: 1, pages: [{ id: 'p', name: 'P' }], boards: {} };
-    expect(roundsOf(empty, { pages: { p: { groups: {}, notes: {}, bounds: null } } }, 'p')).toEqual([]);
+    expect(roundsOf(empty, { pages: { p: { groups: {}, notes: {}, bounds: null } } }, 'p')).toEqual(
+      [],
+    );
     expect(openingQuestion([], undefined)).toBeNull();
   });
 });

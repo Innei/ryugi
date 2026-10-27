@@ -16,9 +16,14 @@ afterEach(async () => {
 async function start() {
   const temp = tempRoot();
   const configFile = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-dir-')), 'config.json');
-  const credentialsFile = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-home-')), 'credentials.json');
+  const credentialsFile = path.join(
+    fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-home-')),
+    'credentials.json',
+  );
   writeHtml(temp.root, 'page', { 'index.html': '<p>hi</p>' });
-  updateArtifactConfig(configFile, 'html/page', { cloud: { id: 'cloudpage', url: 'u', publishedAt: null, visibility: 'private' } });
+  updateArtifactConfig(configFile, 'html/page', {
+    cloud: { id: 'cloudpage', url: 'u', publishedAt: null, visibility: 'private' },
+  });
   const server = await startArtifactsServer({
     root: temp.root,
     viewerDir: temp.viewer,
@@ -40,8 +45,13 @@ interface Pipe {
   request(body: unknown): Promise<any>;
 }
 
-function connect(server: ArtifactsServer, { id = 'cloudpage', key = server.token, origin = CLOUD } = {}): Promise<Pipe | number> {
-  const ws = new WebSocket(`ws://127.0.0.1:${server.port}/relay/a/${id}?key=${key}`, { headers: { Origin: origin } });
+function connect(
+  server: ArtifactsServer,
+  { id = 'cloudpage', key = server.token, origin = CLOUD } = {},
+): Promise<Pipe | number> {
+  const ws = new WebSocket(`ws://127.0.0.1:${server.port}/relay/a/${id}?key=${key}`, {
+    headers: { Origin: origin },
+  });
   ws.on('error', () => {});
   cleanups.push(() => ws.terminate());
   const messages: any[] = [];
@@ -87,7 +97,9 @@ describe('direct pipe from the cloud page', () => {
     const pipe = (await connect(server)) as Pipe;
     const meta = await pipe.request({ op: 'meta' });
     expect(meta.ok).toBe(true);
-    expect(meta.data.contentBase).toBe(`http://127.0.0.1:${server.port}/c/${server.contentToken}/html/page/`);
+    expect(meta.data.contentBase).toBe(
+      `http://127.0.0.1:${server.port}/c/${server.contentToken}/html/page/`,
+    );
   });
 
   test('a file change reaches the page as an event', async () => {
@@ -95,7 +107,10 @@ describe('direct pipe from the cloud page', () => {
     const pipe = (await connect(server)) as Pipe;
     await pipe.next('presence');
     fs.writeFileSync(path.join(root, 'html/page/index.html'), '<p>changed</p>');
-    expect((await pipe.next('event')).body).toMatchObject({ type: 'change', artifact: 'html/page' });
+    expect((await pipe.next('event')).body).toMatchObject({
+      type: 'change',
+      artifact: 'html/page',
+    });
   });
 
   test('a wrong key, a foreign origin or an artifact this server does not serve is refused', async () => {

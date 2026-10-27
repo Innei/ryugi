@@ -10,7 +10,7 @@ set -euo pipefail
 # PATH (anthropics/claude-code#43127) before any PATH-repairing sibling hook
 # in the same startup batch takes effect.
 case "$0" in
-  */*|*\\*) SCRIPT_DIR="$(cd "${0%[/\\]*}" && pwd)" ;;
+  */* | *\\*) SCRIPT_DIR="$(cd "${0%[/\\]*}" && pwd)" ;;
   *) SCRIPT_DIR="$(pwd)" ;;
 esac
 PLUGIN_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
@@ -19,7 +19,7 @@ PLUGIN_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 # cat, for the same PATH-independence reason.
 skill_md="${PLUGIN_ROOT}/skills/using-ryugi/SKILL.md"
 if [ -r "$skill_md" ]; then
-  using_ryugi_content="$(<"$skill_md")"
+  using_ryugi_content="$(< "$skill_md")"
 else
   using_ryugi_content="Error reading using-ryugi skill"
 fi
@@ -28,13 +28,13 @@ fi
 # Each ${s//old/new} is a single C-level pass - orders of magnitude
 # faster than the character-by-character loop this replaces.
 escape_for_json() {
-    local s="$1"
-    s="${s//\\/\\\\}"
-    s="${s//\"/\\\"}"
-    s="${s//$'\n'/\\n}"
-    s="${s//$'\r'/\\r}"
-    s="${s//$'\t'/\\t}"
-    printf '%s' "$s"
+  local s="$1"
+  s="${s//\\/\\\\}"
+  s="${s//\"/\\\"}"
+  s="${s//$'\n'/\\n}"
+  s="${s//$'\r'/\\r}"
+  s="${s//$'\t'/\\t}"
+  printf '%s' "$s"
 }
 
 using_ryugi_escaped=$(escape_for_json "$using_ryugi_content")
@@ -61,7 +61,7 @@ session_context="<EXTREMELY_IMPORTANT>\nYou have Ryugi.\n\n**Below is the full c
 # gets injected.
 emit_json() {
   # shellcheck disable=SC2059 # every caller passes a literal format string
-  if command -v cat >/dev/null 2>&1; then
+  if command -v cat > /dev/null 2>&1; then
     printf "$@" | cat
   else
     printf "$@"
@@ -77,8 +77,8 @@ if [ -n "$project_dir" ]; then
   project_dir="$(ryugi_project_root "$project_dir")"
 fi
 if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -z "${CURSOR_PLUGIN_ROOT:-}" ] && [ "${OS:-}" != "Windows_NT" ] && [ -n "$project_dir" ] \
-  && [ -f "$project_dir/.ryugi/config.json" ] && command -v node >/dev/null 2>&1; then
-  RYUGI_ARTIFACTS_OWNER="$PPID" node "${SCRIPT_DIR}/start-artifacts.cjs" "$project_dir" </dev/null >/dev/null 2>&1 &
+  && [ -f "$project_dir/.ryugi/config.json" ] && command -v node > /dev/null 2>&1; then
+  RYUGI_ARTIFACTS_OWNER="$PPID" node "${SCRIPT_DIR}/start-artifacts.cjs" "$project_dir" < /dev/null > /dev/null 2>&1 &
 fi
 
 if [ -n "${CURSOR_PLUGIN_ROOT:-}" ]; then

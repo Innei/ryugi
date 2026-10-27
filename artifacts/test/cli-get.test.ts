@@ -29,8 +29,28 @@ const DOC = '<doc><h1 id="t1">Sync design</h1><p id="b1">Events carry a seq.</p>
 const comments = {
   version: 1,
   threads: [
-    { id: 'th1', anchor: { blockId: 'b1', quote: 'carry a seq' }, status: 'open', statusAt: '2026-10-27T08:00:00.000Z', messages: [{ id: 'm1', author: 'human', name: 'Innei', text: 'Why seq and not a timestamp?', at: '2026-10-27T08:00:00.000Z' }] },
-    { id: 'th2', anchor: { blockId: 't1', quote: 'Sync' }, status: 'resolved', statusAt: '2026-10-27T09:00:00.000Z', messages: [{ id: 'm2', author: 'agent', text: 'Renamed.', at: '2026-10-27T09:00:00.000Z' }] },
+    {
+      id: 'th1',
+      anchor: { blockId: 'b1', quote: 'carry a seq' },
+      status: 'open',
+      statusAt: '2026-10-27T08:00:00.000Z',
+      messages: [
+        {
+          id: 'm1',
+          author: 'human',
+          name: 'Innei',
+          text: 'Why seq and not a timestamp?',
+          at: '2026-10-27T08:00:00.000Z',
+        },
+      ],
+    },
+    {
+      id: 'th2',
+      anchor: { blockId: 't1', quote: 'Sync' },
+      status: 'resolved',
+      statusAt: '2026-10-27T09:00:00.000Z',
+      messages: [{ id: 'm2', author: 'agent', text: 'Renamed.', at: '2026-10-27T09:00:00.000Z' }],
+    },
   ],
 };
 
@@ -79,12 +99,22 @@ afterEach(async () => {
 
 function signIn(credentialsOrigin = origin) {
   fs.mkdirSync(path.join(configHome, 'ryugi'), { recursive: true });
-  fs.writeFileSync(path.join(configHome, 'ryugi', 'credentials.json'), JSON.stringify({ origin: credentialsOrigin, token: 'tok', login: 'innei' }));
+  fs.writeFileSync(
+    path.join(configHome, 'ryugi', 'credentials.json'),
+    JSON.stringify({ origin: credentialsOrigin, token: 'tok', login: 'innei' }),
+  );
 }
 
 function run(args: string[]): Promise<{ code: number | null; stdout: string; stderr: string }> {
   return new Promise((resolve) => {
-    const child = spawn(process.execPath, [cli, 'get', ...args], { env: { ...process.env, XDG_CONFIG_HOME: configHome, XDG_CACHE_HOME: cacheHome, RYUGI_CLOUD_ORIGIN: origin } });
+    const child = spawn(process.execPath, [cli, 'get', ...args], {
+      env: {
+        ...process.env,
+        XDG_CONFIG_HOME: configHome,
+        XDG_CACHE_HOME: cacheHome,
+        RYUGI_CLOUD_ORIGIN: origin,
+      },
+    });
     let stdout = '';
     let stderr = '';
     child.stdout.on('data', (chunk) => (stdout += chunk));
@@ -136,14 +166,24 @@ describe('ryugi-artifacts get', () => {
     const { code, stdout } = await run([`${origin}/a/abc123`, '--json']);
     expect(code).toBe(0);
     const out = JSON.parse(stdout.trim());
-    expect(out).toMatchObject({ type: 'artifact', artifactType: 'document', id: 'abc123', title: 'Sync design', visibility: 'private', updatedAt: '2026-10-27T10:00:00.000Z' });
+    expect(out).toMatchObject({
+      type: 'artifact',
+      artifactType: 'document',
+      id: 'abc123',
+      title: 'Sync design',
+      visibility: 'private',
+      updatedAt: '2026-10-27T10:00:00.000Z',
+    });
     expect(out.content).toContain('Events carry a seq.');
     expect(out.comments.map((t: { id: string }) => t.id)).toEqual(['th1', 'th2']);
     expect(out).not.toHaveProperty('dir');
   });
 
   test('not signed in and not found asks for a sign-in on stderr with exit 2', async () => {
-    reply = () => ({ status: 404, body: { error: 'artifact not found', code: 'artifact_not_found' } });
+    reply = () => ({
+      status: 404,
+      body: { error: 'artifact not found', code: 'artifact_not_found' },
+    });
     const { code, stdout, stderr } = await run([`${origin}/a/abc123`]);
     expect(code).toBe(2);
     expect(stdout).toBe('');
@@ -152,25 +192,41 @@ describe('ryugi-artifacts get', () => {
 
   test('signed in and not found says so', async () => {
     signIn();
-    reply = () => ({ status: 404, body: { error: 'artifact not found', code: 'artifact_not_found' } });
+    reply = () => ({
+      status: 404,
+      body: { error: 'artifact not found', code: 'artifact_not_found' },
+    });
     const { code, stderr } = await run([`${origin}/a/abc123`]);
     expect(code).toBe(1);
     expect(stderr).toContain('not found or no access');
   });
 
   test('passes a rate limit through, in the JSON shape with --json', async () => {
-    reply = () => ({ status: 429, body: { error: 'Too many views from this network; try again tomorrow.', code: 'view_rate_limited' } });
+    reply = () => ({
+      status: 429,
+      body: {
+        error: 'Too many views from this network; try again tomorrow.',
+        code: 'view_rate_limited',
+      },
+    });
     const plain = await run([`${origin}/a/abc123`]);
     expect(plain.code).toBe(1);
     expect(plain.stderr).toContain('Too many views from this network');
     const json = await run([`${origin}/a/abc123`, '--json']);
     expect(json.code).toBe(1);
-    expect(JSON.parse(json.stdout.trim())).toMatchObject({ error: 'Too many views from this network; try again tomorrow.', code: 'view_rate_limited', status: 429 });
+    expect(JSON.parse(json.stdout.trim())).toMatchObject({
+      error: 'Too many views from this network; try again tomorrow.',
+      code: 'view_rate_limited',
+      status: 429,
+    });
   });
 
   test('an unpublished artifact is an error', async () => {
     signIn();
-    reply = () => ({ status: 200, body: { type: 'document', title: null, published: false, payload: null } });
+    reply = () => ({
+      status: 200,
+      body: { type: 'document', title: null, published: false, payload: null },
+    });
     const { code, stderr } = await run([`${origin}/a/abc123`]);
     expect(code).toBe(1);
     expect(stderr).toContain('not published yet');
@@ -179,7 +235,13 @@ describe('ryugi-artifacts get', () => {
   test('downloads an html artifact into --out and lists its files', async () => {
     signIn();
     content = { 'index.html': '<title>Arrow</title>', 'css/style.css': 'a{}' };
-    reply = () => published({ type: 'html', title: 'Arrow', payload: { title: 'Arrow' }, files: ['css/style.css', 'index.html'] });
+    reply = () =>
+      published({
+        type: 'html',
+        title: 'Arrow',
+        payload: { title: 'Arrow' },
+        files: ['css/style.css', 'index.html'],
+      });
     const out = fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-get-out-'));
     const { code, stdout } = await run([`${origin}/a/abc123`, '--out', out]);
     expect(code).toBe(0);
@@ -190,13 +252,25 @@ describe('ryugi-artifacts get', () => {
 
   test('without --out an artifact goes to a fresh cache directory', async () => {
     content = { 'index.html': '<title>Arrow</title>' };
-    reply = () => published({ type: 'html', owner: false, visibility: 'public', payload: { title: 'Arrow' }, files: ['index.html'] });
+    reply = () =>
+      published({
+        type: 'html',
+        owner: false,
+        visibility: 'public',
+        payload: { title: 'Arrow' },
+        files: ['index.html'],
+      });
     const dir = path.join(cacheHome, 'ryugi', 'get', 'abc123');
     fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(path.join(dir, 'stale.html'), 'old');
     const { code, stdout } = await run([`${origin}/a/abc123`, '--json']);
     expect(code).toBe(0);
-    expect(JSON.parse(stdout.trim())).toMatchObject({ type: 'artifact', artifactType: 'html', dir, files: ['index.html'] });
+    expect(JSON.parse(stdout.trim())).toMatchObject({
+      type: 'artifact',
+      artifactType: 'html',
+      dir,
+      files: ['index.html'],
+    });
     expect(fs.readdirSync(dir)).toEqual(['index.html']);
   });
 
@@ -204,7 +278,12 @@ describe('ryugi-artifacts get', () => {
     signIn();
     content = { 'pages/main/a.html': '<p>A</p>' };
     const canvas = { version: 1, title: 'Board', boards: { a: { file: 'pages/main/a.html' } } };
-    reply = () => published({ type: 'artboard', payload: { canvas, layout: {}, versions: {}, snapshots: true }, files: ['pages/main/a.html'] });
+    reply = () =>
+      published({
+        type: 'artboard',
+        payload: { canvas, layout: {}, versions: {}, snapshots: true },
+        files: ['pages/main/a.html'],
+      });
     const out = fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-get-out-'));
     const { code, stdout } = await run([`${origin}/a/abc123`, '--out', out, '--json']);
     expect(code).toBe(0);
@@ -216,7 +295,12 @@ describe('ryugi-artifacts get', () => {
     signIn();
     const published_canvas = '{"version":1,"title":"Board","boards":{}}\n';
     content = { 'canvas.json': published_canvas, 'pages/main/a.html': '<p>A</p>' };
-    reply = () => published({ type: 'artboard', payload: { canvas: { version: 1 }, layout: {}, versions: {}, snapshots: true }, files: ['canvas.json', 'pages/main/a.html'] });
+    reply = () =>
+      published({
+        type: 'artboard',
+        payload: { canvas: { version: 1 }, layout: {}, versions: {}, snapshots: true },
+        files: ['canvas.json', 'pages/main/a.html'],
+      });
     const out = fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-get-out-'));
     const { code, stdout } = await run([`${origin}/a/abc123`, '--out', out]);
     expect(code).toBe(0);
@@ -226,9 +310,21 @@ describe('ryugi-artifacts get', () => {
 
   test('downloaded pages come back without the runtime Ryugi injected when publishing', async () => {
     signIn();
-    const authored = '<!doctype html><html><head><title>A</title></head><body><p>A</p></body></html>';
-    content = { 'canvas.json': '{}', 'pages/main/a.html': injectRuntime(authored, { uiRuntimeUrl: CLOUD_RUNTIME_URL, inspector: true }) };
-    reply = () => published({ type: 'artboard', payload: { canvas: {}, layout: {}, versions: {}, snapshots: true }, files: ['canvas.json', 'pages/main/a.html'] });
+    const authored =
+      '<!doctype html><html><head><title>A</title></head><body><p>A</p></body></html>';
+    content = {
+      'canvas.json': '{}',
+      'pages/main/a.html': injectRuntime(authored, {
+        uiRuntimeUrl: CLOUD_RUNTIME_URL,
+        inspector: true,
+      }),
+    };
+    reply = () =>
+      published({
+        type: 'artboard',
+        payload: { canvas: {}, layout: {}, versions: {}, snapshots: true },
+        files: ['canvas.json', 'pages/main/a.html'],
+      });
     const out = fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-get-out-'));
     expect((await run([`${origin}/a/abc123`, '--out', out])).code).toBe(0);
     expect(fs.readFileSync(path.join(out, 'pages/main/a.html'), 'utf8')).toBe(authored);
@@ -240,7 +336,11 @@ describe('ryugi-artifacts get', () => {
     reply = () => published({ type: 'html', payload: { title: 'Arrow' }, files: ['index.html'] });
     const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-get-out-')), 'plain-file');
     fs.writeFileSync(file, '');
-    const { code, stdout, stderr } = await run([`${origin}/a/abc123`, '--out', path.join(file, 'x')]);
+    const { code, stdout, stderr } = await run([
+      `${origin}/a/abc123`,
+      '--out',
+      path.join(file, 'x'),
+    ]);
     expect(code).toBe(1);
     expect(stdout).toBe('');
     expect(stderr.trim().split('\n')).toHaveLength(1);
@@ -250,7 +350,12 @@ describe('ryugi-artifacts get', () => {
   test('refuses a file path that leaves the directory and writes nothing', async () => {
     signIn();
     content = { 'index.html': 'ok' };
-    reply = () => published({ type: 'html', payload: { title: 'Arrow' }, files: ['index.html', '../evil.html'] });
+    reply = () =>
+      published({
+        type: 'html',
+        payload: { title: 'Arrow' },
+        files: ['index.html', '../evil.html'],
+      });
     const parent = fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-get-out-'));
     const out = path.join(parent, 'inner');
     const { code, stderr } = await run([`${origin}/a/abc123`, '--out', out]);

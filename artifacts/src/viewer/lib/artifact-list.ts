@@ -3,12 +3,24 @@ import { i18n } from '../i18n';
 
 export type ArtifactSort = 'recent' | 'oldest' | 'name';
 
-export function filterArtifacts(artifacts: ArtifactSummary[], type: ArtifactType | 'all', query: string, sort: ArtifactSort = 'recent') {
+export function filterArtifacts(
+  artifacts: ArtifactSummary[],
+  type: ArtifactType | 'all',
+  query: string,
+  sort: ArtifactSort = 'recent',
+) {
   const text = query.trim().toLocaleLowerCase();
   return artifacts
-    .filter((artifact) => (type === 'all' || artifact.type === type) && `${artifact.title}\n${artifact.id}`.toLocaleLowerCase().includes(text))
+    .filter(
+      (artifact) =>
+        (type === 'all' || artifact.type === type) &&
+        `${artifact.title}\n${artifact.id}`.toLocaleLowerCase().includes(text),
+    )
     .sort((a, b) => {
-      const order = sort === 'name' ? a.title.localeCompare(b.title) : (sort === 'oldest' ? 1 : -1) * (a.updatedAt - b.updatedAt);
+      const order =
+        sort === 'name'
+          ? a.title.localeCompare(b.title)
+          : (sort === 'oldest' ? 1 : -1) * (a.updatedAt - b.updatedAt);
       return order || `${a.type}/${a.id}`.localeCompare(`${b.type}/${b.id}`);
     });
 }

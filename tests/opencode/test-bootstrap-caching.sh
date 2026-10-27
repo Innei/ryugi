@@ -11,13 +11,13 @@ source "$SCRIPT_DIR/setup.sh"
 trap cleanup_test_env EXIT
 
 run_present_file_check() {
-    node "$SCRIPT_DIR/test-bootstrap-caching.mjs" "$RYUGI_PLUGIN_FILE" present
+  node "$SCRIPT_DIR/test-bootstrap-caching.mjs" "$RYUGI_PLUGIN_FILE" present
 }
 
 run_missing_file_check() {
-    mv "$RYUGI_SKILLS_DIR/using-ryugi/SKILL.md" "$TEST_HOME/using-ryugi.SKILL.md.bak"
+  mv "$RYUGI_SKILLS_DIR/using-ryugi/SKILL.md" "$TEST_HOME/using-ryugi.SKILL.md.bak"
 
-    node "$SCRIPT_DIR/test-bootstrap-caching.mjs" "$RYUGI_PLUGIN_FILE" missing
+  node "$SCRIPT_DIR/test-bootstrap-caching.mjs" "$RYUGI_PLUGIN_FILE" missing
 }
 
 echo "Test 1: Caches bootstrap after the first successful transform..."

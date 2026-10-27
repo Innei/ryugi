@@ -24,7 +24,10 @@ export function usePendingBlocks(editor: LexicalEditor | null): PendingBlocks {
       setBlocks(none);
       return;
     }
-    const apply = (next: PendingBlocks) => setBlocks((prev) => (prev.count === next.count && prev.firstKey === next.firstKey ? prev : next));
+    const apply = (next: PendingBlocks) =>
+      setBlocks((prev) =>
+        prev.count === next.count && prev.firstKey === next.firstKey ? prev : next,
+      );
     apply(read(editor.getEditorState()));
     return editor.registerUpdateListener(({ editorState }) => apply(read(editorState)));
   }, [editor]);

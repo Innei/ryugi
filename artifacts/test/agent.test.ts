@@ -50,7 +50,8 @@ describe('detectAgent', () => {
 
   test('the markers detectAgent reads are the ones the CLI captures', () => {
     // A marker missing here is dropped from .state/agent, so the harness falls back to Claude Code.
-    for (const key of ['OMPCODE', 'GROK_AGENT', 'GROK_SESSION_ID']) expect(AGENT_MARKERS).toContain(key);
+    for (const key of ['OMPCODE', 'GROK_AGENT', 'GROK_SESSION_ID'])
+      expect(AGENT_MARKERS).toContain(key);
   });
 
   test('nothing detected', () => {

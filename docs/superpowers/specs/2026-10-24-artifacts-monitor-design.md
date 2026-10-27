@@ -12,7 +12,7 @@ Agents start artifacts servers in the background, so nobody can see which projec
 
 ### Subdirectories resolve to the repository root (shipped after the monitor)
 
-- Every CLI command resolves `--project-dir` (or cwd) before building `ProjectPaths`: walk up to the nearest `.git` (directory or file, so each worktree is its own project); between the given directory and that root, the nearest directory that already has `.ryugi/artifacts/` wins; no `.git` anywhere means the directory itself. The walk never goes above the git root, and a `.git` in the home directory counts only for the home directory itself, so a dotfiles repository does not merge every folder under `~`. Only launchers from this release on set `RYUGI_ARTIFACTS_RESOLVE_ROOT=1`; an older plugin's launcher, whose hooks still read the given directory, gets it unresolved (a direct `npx` run resolves). No library: JS workspace finders stop at sub-packages and miss non-JS projects. *(Claude's call.)*
+- Every CLI command resolves `--project-dir` (or cwd) before building `ProjectPaths`: walk up to the nearest `.git` (directory or file, so each worktree is its own project); between the given directory and that root, the nearest directory that already has `.ryugi/artifacts/` wins; no `.git` anywhere means the directory itself. The walk never goes above the git root, and a `.git` in the home directory counts only for the home directory itself, so a dotfiles repository does not merge every folder under `~`. Only launchers from this release on set `RYUGI_ARTIFACTS_RESOLVE_ROOT=1`; an older plugin's launcher, whose hooks still read the given directory, gets it unresolved (a direct `npx` run resolves). No library: JS workspace finders stop at sub-packages and miss non-JS projects. _(Claude's call.)_
 - The hooks (`stop`, `user-prompt-submit`, `session-start`) resolve the same way in `hooks/project-root.sh` and pass the resolved root to their node scripts. `selection-context.cjs` also gets the session directory, so the paths it prints stay relative to where the agent works. Under Git Bash the resolved path goes through `cygpath -m`, since native `node.exe` cannot read `/c/...`.
 - Skill: baseline runs (5 scenarios, sonnet and haiku) already wrote under the `root` that `start` prints; only the Windows foreground instruction, which reads `server-info` without seeing that output, failed. Only that paragraph of `SKILL.md` changed.
 
@@ -32,8 +32,8 @@ Agents start artifacts servers in the background, so nobody can see which projec
 
 - In a TTY: full-screen TUI on the alternate screen, refreshed every 2 s. Columns: project (home shortened to `~`), port, pid, uptime, tabs, idle, version, and a state tag (`safe to stop`, `old release`, `no status` when the endpoint is missing or unreachable).
 - Keys: `↑/↓` (`j/k` too) select, `o` open in browser, `c` copy URL (pbcopy / clip / wl-copy / xclip; fall back to showing the URL), `l` log view, `x` stop selected, `X` stop every `safe to stop` server, `q`/Ctrl+C quit. Stop goes through the existing `stop()` for that project.
-- `x`/`X` ask for a one-key confirmation in the footer (`y` to confirm). *(Claude's call: it kills a process another agent session may be using.)*
-- **Safe to stop** = `clients === 0` and idle ≥ 30 minutes. *(Claude's call.)*
+- `x`/`X` ask for a one-key confirmation in the footer (`y` to confirm). _(Claude's call: it kills a process another agent session may be using.)_
+- **Safe to stop** = `clients === 0` and idle ≥ 30 minutes. _(Claude's call.)_
 - Log view: last lines of `.state/server.log`, follows new lines, `Esc`/`q` goes back. A foreground server has no log file (its output is in its own terminal); the view says so.
 - Not a TTY, or `--json`: print the list once and exit. JSON: one line `{ "type": "servers", "servers": [...] }`; text: one line per server.
 - No TUI library: Node `readline.emitKeypressEvents`, raw mode and ANSI escapes. Restore the terminal on exit, crash and SIGTERM.

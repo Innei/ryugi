@@ -15,7 +15,15 @@ const TOP_BAR = 52;
 
 const styles = stylex.create({
   main: { position: 'relative', paddingTop: 20, paddingInline: 20, paddingBottom: 120 },
-  dock: { position: 'fixed', top: TOP_BAR, left: 0, right: 0, bottom: 0, zIndex: 20, pointerEvents: 'none' },
+  dock: {
+    position: 'fixed',
+    top: TOP_BAR,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 20,
+    pointerEvents: 'none',
+  },
 });
 
 interface Props {
@@ -35,7 +43,22 @@ interface Props {
   children: ReactNode;
 }
 
-export function PhoneLayout({ editor, threads, actions, agent, canComment, canEdit, offline, selection, clearSelection, onCreate, onEdit, onMain, history, children }: Props) {
+export function PhoneLayout({
+  editor,
+  threads,
+  actions,
+  agent,
+  canComment,
+  canEdit,
+  offline,
+  selection,
+  clearSelection,
+  onCreate,
+  onEdit,
+  onMain,
+  history,
+  children,
+}: Props) {
   const [main, setMain] = useState<HTMLElement | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [snap, setSnap] = useState(SHEET_PEEK);
@@ -69,11 +92,17 @@ export function PhoneLayout({ editor, threads, actions, agent, canComment, canEd
       </article>
       {selection && !draft && !history ? (
         <PhoneEditMenu
-          {...editMenuPosition(selection, { left: 8, right: (main?.clientWidth ?? 0) - 8 }, EDIT_MENU_WIDTH, EDIT_MENU_HEIGHT, {
-            top: main?.getBoundingClientRect().top ?? 0,
-            height: window.innerHeight,
-            reserved: sheetHeight(snap, window.innerHeight - TOP_BAR),
-          })}
+          {...editMenuPosition(
+            selection,
+            { left: 8, right: (main?.clientWidth ?? 0) - 8 },
+            EDIT_MENU_WIDTH,
+            EDIT_MENU_HEIGHT,
+            {
+              top: main?.getBoundingClientRect().top ?? 0,
+              height: window.innerHeight,
+              reserved: sheetHeight(snap, window.innerHeight - TOP_BAR),
+            },
+          )}
           canComment={canComment}
           canEdit={canEdit}
           onComment={() => {

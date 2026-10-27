@@ -16,7 +16,10 @@ fi
 
 plan=$1
 n=$2
-[ -f "$plan" ] || { echo "no such plan file: $plan" >&2; exit 2; }
+[ -f "$plan" ] || {
+  echo "no such plan file: $plan" >&2
+  exit 2
+}
 
 # Invoke via bash rather than direct exec: some extractors (Python zipfile)
 # strip Unix exec bits when unpacking marketplace packages (#2040).

@@ -84,8 +84,8 @@ Skills that create worktrees or finish branches should detect their
 environment with read-only git commands before proceeding:
 
 ```bash
-GIT_DIR=$(cd "$(git rev-parse --git-dir)" 2>/dev/null && pwd -P)
-GIT_COMMON=$(cd "$(git rev-parse --git-common-dir)" 2>/dev/null && pwd -P)
+GIT_DIR=$(cd "$(git rev-parse --git-dir)" 2> /dev/null && pwd -P)
+GIT_COMMON=$(cd "$(git rev-parse --git-common-dir)" 2> /dev/null && pwd -P)
 BRANCH=$(git branch --show-current)
 ```
 

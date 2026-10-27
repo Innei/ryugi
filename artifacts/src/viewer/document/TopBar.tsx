@@ -41,10 +41,28 @@ const styles = stylex.create({
   dot: { width: 6, height: 6, borderRadius: '50%', backgroundColor: 'currentColor' },
   quiet: { backgroundColor: cssVar.colorFillTertiary, color: cssVar.colorTextSecondary },
   offline: { backgroundColor: cssVar.colorWarningBg, color: cssVar.colorWarningText },
-  host: { display: 'flex', alignItems: 'center', gap: 6, color: cssVar.colorTextSecondary, fontSize: 12, whiteSpace: 'nowrap' },
-  hostDot: { width: 7, height: 7, borderRadius: '50%', backgroundColor: cssVar.colorTextQuaternary },
+  host: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 6,
+    color: cssVar.colorTextSecondary,
+    fontSize: 12,
+    whiteSpace: 'nowrap',
+  },
+  hostDot: {
+    width: 7,
+    height: 7,
+    borderRadius: '50%',
+    backgroundColor: cssVar.colorTextQuaternary,
+  },
   hostOnline: { backgroundColor: cssVar.colorSuccess },
-  reason: { overflow: 'hidden', color: cssVar.colorTextTertiary, fontSize: 12, whiteSpace: 'nowrap', textOverflow: 'ellipsis' },
+  reason: {
+    overflow: 'hidden',
+    color: cssVar.colorTextTertiary,
+    fontSize: 12,
+    whiteSpace: 'nowrap',
+    textOverflow: 'ellipsis',
+  },
   spacer: { flex: 1 },
   compact: { paddingInline: 16, gap: 10 },
   done: {
@@ -76,19 +94,38 @@ interface Props {
   history?: { available: boolean; open: boolean; toggle: () => void; close: () => void };
 }
 
-export function TopBar({ id, title, activity, agentSection, offline, openComments, cloud, compact = false, onDone, actions, agent = 'Agent', history }: Props) {
+export function TopBar({
+  id,
+  title,
+  activity,
+  agentSection,
+  offline,
+  openComments,
+  cloud,
+  compact = false,
+  onDone,
+  actions,
+  agent = 'Agent',
+  history,
+}: Props) {
   const label = activityLabel(activity, agent, agentSection);
-  const framed = useCloudHeader(id, cloud ? {
-    ...(title ? { title } : {}),
-    online: cloud.online,
-    comments: openComments,
-    activity: label,
-    activityTone: activity.kind === 'stale' ? 'warning' : activity.kind === 'working' ? 'quiet' : 'live',
-    retrying: offline,
-    reason: cloud.reason,
-    history: history?.available,
-    historyOpen: history?.open,
-  } : null);
+  const framed = useCloudHeader(
+    id,
+    cloud
+      ? {
+          ...(title ? { title } : {}),
+          online: cloud.online,
+          comments: openComments,
+          activity: label,
+          activityTone:
+            activity.kind === 'stale' ? 'warning' : activity.kind === 'working' ? 'quiet' : 'live',
+          retrying: offline,
+          reason: cloud.reason,
+          history: history?.available,
+          historyOpen: history?.open,
+        }
+      : null,
+  );
   if (framed && !compact) return null;
   return (
     <header {...stylex.props(styles.bar, compact && styles.compact)}>
@@ -98,14 +135,29 @@ export function TopBar({ id, title, activity, agentSection, offline, openComment
         </span>
       )}
       {label ? (
-        <span {...stylex.props(styles.pill, activity.kind === 'working' && styles.quiet, activity.kind === 'stale' && styles.offline)}>
+        <span
+          {...stylex.props(
+            styles.pill,
+            activity.kind === 'working' && styles.quiet,
+            activity.kind === 'stale' && styles.offline,
+          )}
+        >
           {activity.kind === 'stale' ? null : <i {...stylex.props(styles.dot)} />}
           {label}
         </span>
       ) : null}
-      {offline ? <span {...stylex.props(styles.pill, styles.offline)}>{t('document.notSynced')}</span> : null}
-      {history?.open ? <span {...stylex.props(styles.pill, styles.quiet)}><Lock size={11} aria-hidden="true" />{t('document.readOnlyHistory')}</span> : null}
-      {cloud?.reason && !compact ? <span {...stylex.props(styles.reason)}>{cloud.reason}</span> : null}
+      {offline ? (
+        <span {...stylex.props(styles.pill, styles.offline)}>{t('document.notSynced')}</span>
+      ) : null}
+      {history?.open ? (
+        <span {...stylex.props(styles.pill, styles.quiet)}>
+          <Lock size={11} aria-hidden="true" />
+          {t('document.readOnlyHistory')}
+        </span>
+      ) : null}
+      {cloud?.reason && !compact ? (
+        <span {...stylex.props(styles.reason)}>{cloud.reason}</span>
+      ) : null}
       <span {...stylex.props(styles.spacer)} />
       {cloud ? (
         <span {...stylex.props(styles.host)}>
@@ -113,12 +165,22 @@ export function TopBar({ id, title, activity, agentSection, offline, openComment
           {cloud.online ? t('share.computerOnline') : t('share.computerOffline')}
         </span>
       ) : null}
-      {history ? <RailSwitch comments={openComments} open={history.open} available={history.available} onComments={history.close} onHistory={history.toggle} /> : null}
+      {history ? (
+        <RailSwitch
+          comments={openComments}
+          open={history.open}
+          available={history.available}
+          onComments={history.close}
+          onHistory={history.toggle}
+        />
+      ) : null}
       {onDone ? (
         <button type="button" onClick={onDone} {...stylex.props(styles.done)}>
           {t('common.done')}
         </button>
-      ) : cloud || compact ? null : actions}
+      ) : cloud || compact ? null : (
+        actions
+      )}
     </header>
   );
 }

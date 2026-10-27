@@ -31,7 +31,11 @@ function snapshot(root: string, dir = root, out = new Map<string, number>()) {
   return out;
 }
 
-export function pollTree(root: string, onChange: (files: string[]) => void, intervalMs = 400): Watcher {
+export function pollTree(
+  root: string,
+  onChange: (files: string[]) => void,
+  intervalMs = 400,
+): Watcher {
   let previous = snapshot(root);
   const timer = setInterval(() => {
     const current = snapshot(root);
@@ -44,7 +48,12 @@ export function pollTree(root: string, onChange: (files: string[]) => void, inte
   return { close: () => clearInterval(timer) };
 }
 
-export function watchTree(root: string, onChange: (files: string[]) => void, debounceMs = 120, backupPollMs = 1000): Watcher {
+export function watchTree(
+  root: string,
+  onChange: (files: string[]) => void,
+  debounceMs = 120,
+  backupPollMs = 1000,
+): Watcher {
   let pending = new Set<string>();
   let timer: NodeJS.Timeout | undefined;
   const queue = (files: string[]) => {

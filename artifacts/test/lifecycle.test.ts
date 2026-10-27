@@ -2,7 +2,13 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { describe, expect, test } from 'vitest';
-import { browserLauncher, liveOwners, parseEnv, readOwners, shutdownReason } from '../src/server/lifecycle';
+import {
+  browserLauncher,
+  liveOwners,
+  parseEnv,
+  readOwners,
+  shutdownReason,
+} from '../src/server/lifecycle';
 import { pollTree } from '../src/server/watch';
 import { waitFor } from './helpers';
 
@@ -22,17 +28,21 @@ describe('browserLauncher', () => {
 
 describe('shutdownReason', () => {
   test('stops when every owner process is gone', () => {
-    expect(shutdownReason({ now: 10, lastActivity: 10, idleTimeoutMs: 100, ownersAlive: false })).toBe(
-      'all owner processes exited',
-    );
+    expect(
+      shutdownReason({ now: 10, lastActivity: 10, idleTimeoutMs: 100, ownersAlive: false }),
+    ).toBe('all owner processes exited');
   });
 
   test('stops after the idle timeout', () => {
-    expect(shutdownReason({ now: 200, lastActivity: 50, idleTimeoutMs: 100, ownersAlive: true })).toBe('idle timeout');
+    expect(
+      shutdownReason({ now: 200, lastActivity: 50, idleTimeoutMs: 100, ownersAlive: true }),
+    ).toBe('idle timeout');
   });
 
   test('keeps running otherwise', () => {
-    expect(shutdownReason({ now: 100, lastActivity: 50, idleTimeoutMs: 100, ownersAlive: true })).toBeNull();
+    expect(
+      shutdownReason({ now: 100, lastActivity: 50, idleTimeoutMs: 100, ownersAlive: true }),
+    ).toBeNull();
   });
 });
 
@@ -66,7 +76,8 @@ describe('parseEnv', () => {
   test('uses the bind host as the url host for non-loopback binds', () => {
     expect(parseEnv({ ARTIFACTS_ROOT: '/r', ARTIFACTS_HOST: '0.0.0.0' }).urlHost).toBe('0.0.0.0');
     expect(
-      parseEnv({ ARTIFACTS_ROOT: '/r', ARTIFACTS_HOST: '0.0.0.0', ARTIFACTS_URL_HOST: 'dev.box' }).urlHost,
+      parseEnv({ ARTIFACTS_ROOT: '/r', ARTIFACTS_HOST: '0.0.0.0', ARTIFACTS_URL_HOST: 'dev.box' })
+        .urlHost,
     ).toBe('dev.box');
   });
 
@@ -80,12 +91,19 @@ describe('parseEnv', () => {
       },
       ['--artifacts-server-id=abc'],
     );
-    expect(config).toMatchObject({ idleTimeoutMs: 5000, open: true, openArtifact: 'artboard/header', serverId: 'abc' });
+    expect(config).toMatchObject({
+      idleTimeoutMs: 5000,
+      open: true,
+      openArtifact: 'artboard/header',
+      serverId: 'abc',
+    });
   });
 
   test('points at the official cloud unless RYUGI_CLOUD_ORIGIN overrides it', () => {
     expect(parseEnv({ ARTIFACTS_ROOT: '/r' }).cloudOrigin).toBe('https://ryugi.innei.dev');
-    expect(parseEnv({ ARTIFACTS_ROOT: '/r', RYUGI_CLOUD_ORIGIN: 'http://localhost:8787/' }).cloudOrigin).toBe('http://localhost:8787');
+    expect(
+      parseEnv({ ARTIFACTS_ROOT: '/r', RYUGI_CLOUD_ORIGIN: 'http://localhost:8787/' }).cloudOrigin,
+    ).toBe('http://localhost:8787');
   });
 
   test('turns opening off when ARTIFACTS_OPEN is 0', () => {

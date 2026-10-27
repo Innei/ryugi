@@ -30,14 +30,20 @@ done
 shift
 sdd="$(cd "$(dirname "$0")" && pwd)"
 
-git rev-parse --verify --quiet "$base" >/dev/null || { echo "bad BASE: $base" >&2; exit 2; }
+git rev-parse --verify --quiet "$base" > /dev/null || {
+  echo "bad BASE: $base" >&2
+  exit 2
+}
 recorded="commits $(git rev-parse --short=7 "$base")..$(git rev-parse --short=7 HEAD)"
 if [ ${#shas[@]} -eq 1 ] && [ "${shas[0]}" = "--uncommitted" ]; then
   recorded="uncommitted"
 elif [ ${#shas[@]} -gt 0 ]; then
   recorded="commits"
   for c in "${shas[@]}"; do
-    git rev-parse --verify --quiet "$c^{commit}" >/dev/null || { echo "bad SHA: $c" >&2; exit 2; }
+    git rev-parse --verify --quiet "$c^{commit}" > /dev/null || {
+      echo "bad SHA: $c" >&2
+      exit 2
+    }
     recorded="$recorded $(git rev-parse --short=7 "$c")"
   done
 fi

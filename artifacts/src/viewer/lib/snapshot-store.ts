@@ -1,5 +1,17 @@
-export interface SnapshotKeyParts { artifact: string; file: string; version: number; scheme: 'light' | 'dark'; w: number; h: number }
-export interface SnapshotEntry { blob: Blob; width: number; height: number; scale: number }
+export interface SnapshotKeyParts {
+  artifact: string;
+  file: string;
+  version: number;
+  scheme: 'light' | 'dark';
+  w: number;
+  h: number;
+}
+export interface SnapshotEntry {
+  blob: Blob;
+  width: number;
+  height: number;
+  scale: number;
+}
 export interface SnapshotPersistence {
   get(key: string): Promise<SnapshotEntry | undefined>;
   put(key: string, entry: SnapshotEntry): Promise<void>;
@@ -9,31 +21,42 @@ type Resize = (blob: Blob, width: number, height: number) => Promise<Blob>;
 const MAX_URLS = 80;
 const MAX_PERSISTED = 400;
 
-export const snapshotKey = ({ artifact, file, version, scheme, w, h }: SnapshotKeyParts) => `${artifact}|${file}|${version}|${scheme}|${w}x${h}`;
+export const snapshotKey = ({ artifact, file, version, scheme, w, h }: SnapshotKeyParts) =>
+  `${artifact}|${file}|${version}|${scheme}|${w}x${h}`;
 
 export async function bitmapResize(blob: Blob, width: number, height: number) {
-  const bitmap = await createImageBitmap(blob, { resizeWidth: Math.max(1, width), resizeHeight: Math.max(1, height), resizeQuality: 'high' });
+  const bitmap = await createImageBitmap(blob, {
+    resizeWidth: Math.max(1, width),
+    resizeHeight: Math.max(1, height),
+    resizeQuality: 'high',
+  });
   const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
   canvas.getContext('2d')!.drawImage(bitmap, 0, 0);
   bitmap.close();
   return canvas.convertToBlob({ type: 'image/png' });
 }
 
-export function indexedDbPersistence(factory: IDBFactory | undefined = typeof indexedDB === 'undefined' ? undefined : indexedDB): SnapshotPersistence {
+export function indexedDbPersistence(
+  factory: IDBFactory | undefined = typeof indexedDB === 'undefined' ? undefined : indexedDB,
+): SnapshotPersistence {
   let database: Promise<IDBDatabase | null> | null = null;
-  const open = () => (database ??= new Promise((resolve) => {
-    if (!factory) return resolve(null);
-    try {
-      const request = factory.open('ryugi-snapshots', 1);
-      request.onupgradeneeded = () => request.result.createObjectStore('snapshots');
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => resolve(null);
-      request.onblocked = () => resolve(null);
-    } catch {
-      resolve(null);
-    }
-  }));
-  const run = async <T>(mode: IDBTransactionMode, work: (store: IDBObjectStore) => IDBRequest<T>) => {
+  const open = () =>
+    (database ??= new Promise((resolve) => {
+      if (!factory) return resolve(null);
+      try {
+        const request = factory.open('ryugi-snapshots', 1);
+        request.onupgradeneeded = () => request.result.createObjectStore('snapshots');
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => resolve(null);
+        request.onblocked = () => resolve(null);
+      } catch {
+        resolve(null);
+      }
+    }));
+  const run = async <T>(
+    mode: IDBTransactionMode,
+    work: (store: IDBObjectStore) => IDBRequest<T>,
+  ) => {
     const db = await open();
     if (!db) return undefined;
     return new Promise<T | undefined>((resolve) => {
@@ -47,14 +70,25 @@ export function indexedDbPersistence(factory: IDBFactory | undefined = typeof in
     });
   };
   const prune = async () => {
-    const [keys, rows] = await Promise.all([run('readonly', (store) => store.getAllKeys()), run('readonly', (store) => store.getAll() as IDBRequest<{ at: number }[]>)]);
+    const [keys, rows] = await Promise.all([
+      run('readonly', (store) => store.getAllKeys()),
+      run('readonly', (store) => store.getAll() as IDBRequest<{ at: number }[]>),
+    ]);
     if (!keys || !rows || keys.length <= MAX_PERSISTED) return;
-    const oldest = keys.map((key, at) => ({ key, at: rows[at]?.at ?? 0 })).sort((a, b) => a.at - b.at).slice(0, keys.length - MAX_PERSISTED);
+    const oldest = keys
+      .map((key, at) => ({ key, at: rows[at]?.at ?? 0 }))
+      .sort((a, b) => a.at - b.at)
+      .slice(0, keys.length - MAX_PERSISTED);
     for (const { key } of oldest) await run('readwrite', (store) => store.delete(key));
   };
   return {
     async get(key) {
-      return (await run('readonly', (store) => store.get(key) as IDBRequest<{ entry: SnapshotEntry } | undefined>))?.entry;
+      return (
+        await run(
+          'readonly',
+          (store) => store.get(key) as IDBRequest<{ entry: SnapshotEntry } | undefined>,
+        )
+      )?.entry;
     },
     async put(key, entry) {
       await run('readwrite', (store) => store.put({ entry, at: Date.now() }, key));
@@ -68,7 +102,12 @@ export function createSnapshotStore({
   resize = bitmapResize,
   createUrl = (blob: Blob) => URL.createObjectURL(blob),
   revokeUrl = (url: string) => URL.revokeObjectURL(url),
-}: { persistence?: SnapshotPersistence; resize?: Resize; createUrl?: (blob: Blob) => string; revokeUrl?: (url: string) => void } = {}) {
+}: {
+  persistence?: SnapshotPersistence;
+  resize?: Resize;
+  createUrl?: (blob: Blob) => string;
+  revokeUrl?: (url: string) => void;
+} = {}) {
   const entries = new Map<string, SnapshotEntry>();
   const urls = new Map<string, Promise<string>>();
   const unsupported = new Set<string>();
@@ -107,7 +146,14 @@ export function createSnapshotStore({
       const name = `${key}@${full ? 'full' : scale}`;
       let url = urls.get(name);
       if (url) urls.delete(name);
-      else url = full ? Promise.resolve(createUrl(entry.blob)) : resize(entry.blob, Math.round(entry.width * scale), Math.round(entry.height * scale)).then(createUrl);
+      else
+        url = full
+          ? Promise.resolve(createUrl(entry.blob))
+          : resize(
+              entry.blob,
+              Math.round(entry.width * scale),
+              Math.round(entry.height * scale),
+            ).then(createUrl);
       urls.set(name, url);
       while (urls.size > MAX_URLS) {
         const [oldest, stale] = urls.entries().next().value!;

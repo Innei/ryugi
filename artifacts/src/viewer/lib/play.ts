@@ -6,7 +6,8 @@ export function togglePlaying(current: ReadonlySet<string>, id: string): Set<str
   return next;
 }
 
-export const boardReady = (versions: Record<string, number>, file: string) => (versions[file] ?? 0) > 0;
+export const boardReady = (versions: Record<string, number>, file: string) =>
+  (versions[file] ?? 0) > 0;
 
 export const canPlay = (board: BoardSpec, versions: Record<string, number>) =>
   board.interactive === true && boardReady(versions, board.file);

@@ -68,7 +68,9 @@ describe('noteRect', () => {
 
   test('a sticky wraps long text inside its width', () => {
     const text = 'This sticky has a fairly long sentence that must wrap several times';
-    expect(noteRect({ page: 'p', kind: 'sticky', x: 0, y: 0, w: 200, text }).h).toBeGreaterThan(27 * 3);
+    expect(noteRect({ page: 'p', kind: 'sticky', x: 0, y: 0, w: 200, text }).h).toBeGreaterThan(
+      27 * 3,
+    );
   });
 });
 

@@ -14,34 +14,41 @@ This test suite verifies that skills are loaded correctly and Claude follows the
 ## Running Tests
 
 ### Run all fast tests (recommended):
+
 ```bash
 ./run-skill-tests.sh
 ```
 
 ### Run integration tests (slow, 10-30 minutes):
+
 ```bash
 ./run-skill-tests.sh --integration
 ```
 
 ### Run specific test:
+
 ```bash
 ./run-skill-tests.sh --test test-sdd-workspace.sh
 ```
 
 ### Run with verbose output:
+
 ```bash
 ./run-skill-tests.sh --verbose
 ```
 
 ### Set custom timeout:
+
 ```bash
-./run-skill-tests.sh --timeout 1800  # 30 minutes for integration tests
+./run-skill-tests.sh --timeout 1800 # 30 minutes for integration tests
 ```
 
 ## Test Structure
 
 ### test-helpers.sh
+
 Common functions for skills testing:
+
 - `run_claude "prompt" [timeout]` - Run Claude with prompt
 - `assert_contains output pattern name` - Verify pattern exists
 - `assert_not_contains output pattern name` - Verify pattern absent
@@ -53,6 +60,7 @@ Common functions for skills testing:
 ### Test Files
 
 Each test file:
+
 1. Sources `test-helpers.sh`
 2. Runs Claude Code with specific prompts
 3. Verifies expected behavior using assertions
@@ -83,17 +91,21 @@ echo "=== All tests passed ==="
 ### Fast Tests (run by default)
 
 #### test-worktree-path-policy.sh
+
 Checks that new worktrees default to `.worktrees/` and that cleanup only
 touches project-local worktrees.
 
 #### test-sdd-workspace.sh / test-executing-specs-scripts.sh
+
 Exercise the executing-specs scripts: the per-spec workspace, task briefs,
 review packages, and the task-start / task-done ledger lines.
 
 ### Integration Tests (use --integration flag)
 
 #### test-worktree-native-preference.sh
+
 RED-GREEN-REFACTOR validation for the using-git-worktrees skill (~5 minutes):
+
 - RED: skill without the native-tool rule — agent should use `git worktree add`
 - GREEN: skill with the native-tool rule (Create a worktree) — agent should use the native EnterWorktree tool
 - PRESSURE: same as GREEN under urgency framing with pre-existing `.worktrees/`
@@ -117,6 +129,7 @@ RED-GREEN-REFACTOR validation for the using-git-worktrees skill (~5 minutes):
 ## Debugging Failed Tests
 
 With `--verbose`, you'll see full Claude output:
+
 ```bash
 ./run-skill-tests.sh --verbose --test test-sdd-workspace.sh
 ```
@@ -126,6 +139,7 @@ Without verbose, only failures show output.
 ## CI/CD Integration
 
 To run in CI:
+
 ```bash
 # Run with explicit timeout for CI environments
 ./run-skill-tests.sh --timeout 900
@@ -135,7 +149,7 @@ To run in CI:
 
 ## Notes
 
-- Tests verify skill *instructions*, not full execution
+- Tests verify skill _instructions_, not full execution
 - Full workflow tests would be very slow
 - Focus on verifying key skill requirements
 - Tests should be deterministic

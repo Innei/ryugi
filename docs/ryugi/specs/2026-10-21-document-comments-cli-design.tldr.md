@@ -20,14 +20,14 @@ Full spec (for the agent): `2026-10-21-document-comments-cli-design.md`
 
 ## Decided
 
-| Topic | Decision |
-|---|---|
-| Who writes `comments.json` | server only; CLI calls the running server with the key |
-| Name source | CLI process's own env (`detectAgent`); old file writes fall back to today's name |
-| Unread scope | your changes only; agent's own writes never count as news |
-| Cursor | per agent name per document; only `list` moves it, the hook never does |
-| Shared rail | read-only; no badges; human avatars dropped (cloud CSP, email hash) |
-| Release | one release, 1.11.0 |
+| Topic                      | Decision                                                                         |
+| -------------------------- | -------------------------------------------------------------------------------- |
+| Who writes `comments.json` | server only; CLI calls the running server with the key                           |
+| Name source                | CLI process's own env (`detectAgent`); old file writes fall back to today's name |
+| Unread scope               | your changes only; agent's own writes never count as news                        |
+| Cursor                     | per agent name per document; only `list` moves it, the hook never does           |
+| Shared rail                | read-only; no badges; human avatars dropped (cloud CSP, email hash)              |
+| Release                    | one release, 1.11.0                                                              |
 
 ## Check these (agent's calls, not yours yet)
 

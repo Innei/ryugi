@@ -19,13 +19,20 @@ test('a subdirectory of a git repository resolves to the repository root', () =>
 
 test('the nearest directory with saved artifacts wins below the repository root', () => {
   const base = tree('.git', 'packages/app/.ryugi/artifacts', 'packages/app/src');
-  expect(projectPaths(path.join(base, 'packages/app/src')).project).toBe(path.join(base, 'packages/app'));
+  expect(projectPaths(path.join(base, 'packages/app/src')).project).toBe(
+    path.join(base, 'packages/app'),
+  );
 });
 
 test('a git worktree, whose .git is a file, is its own project', () => {
   const base = tree('.git', 'worktrees/feature/src');
-  fs.writeFileSync(path.join(base, 'worktrees/feature/.git'), 'gitdir: ../../.git/worktrees/feature\n');
-  expect(projectPaths(path.join(base, 'worktrees/feature/src')).project).toBe(path.join(base, 'worktrees/feature'));
+  fs.writeFileSync(
+    path.join(base, 'worktrees/feature/.git'),
+    'gitdir: ../../.git/worktrees/feature\n',
+  );
+  expect(projectPaths(path.join(base, 'worktrees/feature/src')).project).toBe(
+    path.join(base, 'worktrees/feature'),
+  );
 });
 
 test('outside any git repository the directory itself is the project', () => {
@@ -42,7 +49,9 @@ function withEnv(env: Record<string, string | undefined>, fn: () => void) {
   const saved = Object.fromEntries(Object.keys(env).map((key) => [key, process.env[key]]));
   Object.assign(process.env, env);
   for (const [key, value] of Object.entries(env)) if (value === undefined) delete process.env[key];
-  try { fn(); } finally {
+  try {
+    fn();
+  } finally {
     for (const [key, value] of Object.entries(saved)) {
       if (value === undefined) delete process.env[key];
       else process.env[key] = value;
@@ -53,7 +62,9 @@ function withEnv(env: Record<string, string | undefined>, fn: () => void) {
 test('a home directory that is a git repository does not swallow the folders under it', () => {
   const home = tree('.git', 'Desktop/demo');
   withEnv({ HOME: home }, () => {
-    expect(projectPaths(path.join(home, 'Desktop/demo')).project).toBe(path.join(home, 'Desktop/demo'));
+    expect(projectPaths(path.join(home, 'Desktop/demo')).project).toBe(
+      path.join(home, 'Desktop/demo'),
+    );
     expect(projectPaths(home).project).toBe(home);
   });
 });
@@ -61,10 +72,22 @@ test('a home directory that is a git repository does not swallow the folders und
 test('an older launcher, whose hooks read the given directory, gets the directory unresolved', () => {
   const base = tree('.git', 'packages/app');
   const app = path.join(base, 'packages/app');
-  withEnv({ RYUGI_ARTIFACTS_COMMAND: 'node "/old/ryugi-artifacts.cjs"', RYUGI_ARTIFACTS_RESOLVE_ROOT: undefined }, () => {
-    expect(projectPaths(app).project).toBe(app);
-  });
-  withEnv({ RYUGI_ARTIFACTS_COMMAND: 'node "/new/ryugi-artifacts.cjs"', RYUGI_ARTIFACTS_RESOLVE_ROOT: '1' }, () => {
-    expect(projectPaths(app).project).toBe(base);
-  });
+  withEnv(
+    {
+      RYUGI_ARTIFACTS_COMMAND: 'node "/old/ryugi-artifacts.cjs"',
+      RYUGI_ARTIFACTS_RESOLVE_ROOT: undefined,
+    },
+    () => {
+      expect(projectPaths(app).project).toBe(app);
+    },
+  );
+  withEnv(
+    {
+      RYUGI_ARTIFACTS_COMMAND: 'node "/new/ryugi-artifacts.cjs"',
+      RYUGI_ARTIFACTS_RESOLVE_ROOT: '1',
+    },
+    () => {
+      expect(projectPaths(app).project).toBe(base);
+    },
+  );
 });

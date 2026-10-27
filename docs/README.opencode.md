@@ -122,11 +122,11 @@ On V2, pin `v6.4.1` or later; `v6.3.0` and earlier releases load only on V1.
 The plugin does two things, using host-flavor-specific APIs:
 
 1. **Registers the skills directory** so OpenCode discovers all ryugi skills without symlinks or manual config.
-    - **V1:** via the `config` hook, injecting into `config.skills.paths`
-    - **V2:** via the `setup()` function using `ctx.skill.transform()` (V2 native API, confirmed active at runtime)
+   - **V1:** via the `config` hook, injecting into `config.skills.paths`
+   - **V2:** via the `setup()` function using `ctx.skill.transform()` (V2 native API, confirmed active at runtime)
 2. **Injects bootstrap context** with a flavor-specific tool mapping: V1 sessions get the V1 tool names below, and V2 sessions get the V2 names.
-    - **V1:** via `experimental.chat.messages.transform` hook
-    - **V2:** via `ctx.session.hook("context")` — the V2 equivalent (confirmed active at runtime)
+   - **V1:** via `experimental.chat.messages.transform` hook
+   - **V2:** via `ctx.session.hook("context")` — the V2 equivalent (confirmed active at runtime)
 
 Controller sessions receive the using-ryugi bootstrap in transient model
 context. Delegated child sessions keep access to native skills but do not receive

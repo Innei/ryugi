@@ -1,23 +1,16 @@
 {
-  "name": "ryugi",
-  "displayName": "Ryugi",
-  "description": "Core skills library: TDD, debugging, collaboration patterns, and proven techniques",
-  "version": "1.44.0",
   "author": {
     "name": "Innei",
     "email": "i@innei.dev"
   },
+  "description": "Core skills library: TDD, debugging, collaboration patterns, and proven techniques",
+  "displayName": "Ryugi",
   "homepage": "https://github.com/Innei/ryugi",
-  "repository": "https://github.com/Innei/ryugi",
+  "hooks": "./hooks/hooks-cursor.json",
+  "keywords": ["skills", "tdd", "debugging", "collaboration", "best-practices", "workflows"],
   "license": "MIT",
-  "keywords": [
-    "skills",
-    "tdd",
-    "debugging",
-    "collaboration",
-    "best-practices",
-    "workflows"
-  ],
+  "name": "ryugi",
+  "repository": "https://github.com/Innei/ryugi",
   "skills": "./skills/",
-  "hooks": "./hooks/hooks-cursor.json"
+  "version": "1.44.0"
 }

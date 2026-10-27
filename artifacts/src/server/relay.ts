@@ -48,27 +48,44 @@ export function createRelayClient(options: RelayClientOptions) {
     options.onWatch?.(new Set());
   };
 
-  const reply = (conn: string, rid: unknown, body: RelayReply) => send({ t: 'reply', conn, rid, body });
+  const reply = (conn: string, rid: unknown, body: RelayReply) =>
+    send({ t: 'reply', conn, rid, body });
 
-  const onRequest = async (message: { conn?: unknown; id?: unknown; rid?: unknown; body?: unknown }) => {
+  const onRequest = async (message: {
+    conn?: unknown;
+    id?: unknown;
+    rid?: unknown;
+    body?: unknown;
+  }) => {
     if (typeof message.conn !== 'string' || typeof message.id !== 'string') return;
     options.onActivity();
     const key = options.served().get(message.id);
     if (!key) return reply(message.conn, message.rid, { ok: false, error: 'not served here' });
     try {
-      reply(message.conn, message.rid, { ok: true, data: await options.handle(key, message.body, message.conn) });
+      reply(message.conn, message.rid, {
+        ok: true,
+        data: await options.handle(key, message.body, message.conn),
+      });
     } catch (err) {
       reply(message.conn, message.rid, { ok: false, error: (err as Error).message });
     }
   };
 
   const connect = (token: string, served: Map<string, string>) => {
-    const ws = new WebSocket(options.url, { headers: { Authorization: `Bearer ${token}` }, handshakeTimeout: options.handshakeTimeoutMs ?? HANDSHAKE_TIMEOUT_MS });
+    const ws = new WebSocket(options.url, {
+      headers: { Authorization: `Bearer ${token}` },
+      handshakeTimeout: options.handshakeTimeoutMs ?? HANDSHAKE_TIMEOUT_MS,
+    });
     socket = ws;
     ws.on('open', () => {
       backoff = 1000;
       announced = idsOf(served).join('\n');
-      send({ t: 'hello', version: options.version, ids: idsOf(served), ...(options.local ? { local: options.local() } : {}) });
+      send({
+        t: 'hello',
+        version: options.version,
+        ids: idsOf(served),
+        ...(options.local ? { local: options.local() } : {}),
+      });
       heartbeat = setInterval(() => {
         if (watched.size > 0) options.onActivity();
         ws.send('ping');
@@ -91,7 +108,9 @@ export function createRelayClient(options: RelayClientOptions) {
       if (message.t === 'watch' && Array.isArray(message.ids)) {
         watched = new Set(message.ids.filter((id): id is string => typeof id === 'string'));
         const served = options.served();
-        options.onWatch?.(new Set([...watched].flatMap((id) => (served.has(id) ? [served.get(id)!] : []))));
+        options.onWatch?.(
+          new Set([...watched].flatMap((id) => (served.has(id) ? [served.get(id)!] : []))),
+        );
       } else if (message.t === 'request') void onRequest(message as never);
     });
     const lost = () => {
@@ -128,7 +147,8 @@ export function createRelayClient(options: RelayClientOptions) {
 
   return {
     emit(key: string, body: unknown) {
-      for (const [id, servedKey] of options.served()) if (servedKey === key && watched.has(id)) send({ t: 'event', id, body });
+      for (const [id, servedKey] of options.served())
+        if (servedKey === key && watched.has(id)) send({ t: 'event', id, body });
     },
     refresh: tick,
     close() {

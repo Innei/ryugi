@@ -5,7 +5,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 MANIFEST="$REPO_ROOT/.kimi-plugin/plugin.json"
 
-python3 - "$MANIFEST" <<'PY'
+python3 - "$MANIFEST" << 'PY'
 import json
 import sys
 from pathlib import Path

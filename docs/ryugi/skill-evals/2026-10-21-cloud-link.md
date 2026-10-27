@@ -17,12 +17,12 @@ ready; write the message to the human partner, then the reply to
 
 ## Before and after
 
-| Reference / run | Link in message 1 | Phone reply |
-|---|---|---|
-| Baseline / 1 | localhost `link` | runs `publish --private`, gives its url |
-| Baseline / 2 | localhost `link` | runs `publish --private`, gives its url |
-| Candidate / 1 | `cloudLink` | same `cloudLink`, no publish |
-| Candidate / 2 | `cloudLink` | same `cloudLink`, no publish |
+| Reference / run | Link in message 1 | Phone reply                             |
+| --------------- | ----------------- | --------------------------------------- |
+| Baseline / 1    | localhost `link`  | runs `publish --private`, gives its url |
+| Baseline / 2    | localhost `link`  | runs `publish --private`, gives its url |
+| Candidate / 1   | `cloudLink`       | same `cloudLink`, no publish            |
+| Candidate / 2   | `cloudLink`       | same `cloudLink`, no publish            |
 
 Both baseline runs ignored `cloudLink` and published a second private copy
 for the phone. Both candidate runs gave only `cloudLink` and reused it.

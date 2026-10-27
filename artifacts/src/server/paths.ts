@@ -4,7 +4,13 @@ import path from 'node:path';
 export function resolveInside(root: string, relative: string): string | null {
   const target = path.resolve(root, `.${path.sep}${relative}`);
   if (!target.startsWith(root + path.sep)) return null;
-  if (path.relative(root, target).split(path.sep).some((segment) => segment.startsWith('.'))) return null;
+  if (
+    path
+      .relative(root, target)
+      .split(path.sep)
+      .some((segment) => segment.startsWith('.'))
+  )
+    return null;
   return target;
 }
 

@@ -12,15 +12,24 @@ import { PendingContext, type PendingProgress } from '../src/viewer/document/Pen
 import { $createPendingNode, PendingNode } from '../src/viewer/document/PendingNode';
 import { usePendingBlocks } from '../src/viewer/document/usePendingBlocks';
 
-vi.mock('@stylexjs/stylex', async (original) => ({ ...await original<object>(), create: (value: unknown) => value, props: () => ({}), keyframes: () => 'k' }));
-vi.mock('@lobehub/ui/stylex/cssVar.stylex', () => ({ cssVar: new Proxy({}, { get: (_, key) => `var(--${String(key)})` }) }));
+vi.mock('@stylexjs/stylex', async (original) => ({
+  ...(await original<object>()),
+  create: (value: unknown) => value,
+  props: () => ({}),
+  keyframes: () => 'k',
+}));
+vi.mock('@lobehub/ui/stylex/cssVar.stylex', () => ({
+  cssVar: new Proxy({}, { get: (_, key) => `var(--${String(key)})` }),
+}));
 
 let root: Root | null = null;
 let host: HTMLElement;
 let editor: LexicalEditor | null = null;
 let progress: ReturnType<typeof usePendingBlocks> | null = null;
 
-beforeAll(() => { (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true; });
+beforeAll(() => {
+  (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+});
 afterEach(() => {
   act(() => root?.unmount());
   root = null;
@@ -32,7 +41,9 @@ afterEach(() => {
 function Probe() {
   const [composer] = useLexicalComposerContext();
   progress = usePendingBlocks(composer);
-  useEffect(() => { editor = composer; }, [composer]);
+  useEffect(() => {
+    editor = composer;
+  }, [composer]);
   return null;
 }
 
@@ -43,7 +54,9 @@ async function render(activity: PendingProgress['activity'], children?: ReactNod
   const initialConfig = {
     namespace: 'pending-test',
     nodes: [PendingNode],
-    onError: (err: Error) => { throw err; },
+    onError: (err: Error) => {
+      throw err;
+    },
     editorState: () => {
       $getRoot().append(
         $createParagraphNode().append($createTextNode('intro')),
@@ -55,13 +68,20 @@ async function render(activity: PendingProgress['activity'], children?: ReactNod
   const Body = () => {
     const [composer] = useLexicalComposerContext();
     const next = usePendingBlocks(composer).firstKey;
-    return createElement(PendingContext.Provider, { value: { nextKey: next, agent: 'Codex', activity } },
-      createElement(RichTextPlugin, { contentEditable: createElement(ContentEditable), ErrorBoundary: LexicalErrorBoundary }),
+    return createElement(
+      PendingContext.Provider,
+      { value: { nextKey: next, agent: 'Codex', activity } },
+      createElement(RichTextPlugin, {
+        contentEditable: createElement(ContentEditable),
+        ErrorBoundary: LexicalErrorBoundary,
+      }),
       createElement(Probe),
       children,
     );
   };
-  await act(async () => root!.render(createElement(LexicalComposer, { initialConfig }, createElement(Body))));
+  await act(async () =>
+    root!.render(createElement(LexicalComposer, { initialConfig }, createElement(Body))),
+  );
 }
 
 const blocks = () => [...host.querySelectorAll<HTMLElement>('[data-pending]')];
@@ -70,12 +90,18 @@ test('every pending block shows its intent as ghost text, and only the next one 
   await render('working');
   expect(blocks().map((block) => block.textContent)).toEqual(['讲清三类存储Codex', '部署顺序']);
   expect(blocks().map((block) => block.dataset.next)).toEqual(['true', undefined]);
-  expect(blocks().map((block) => block.querySelector('[data-caret]') !== null)).toEqual([true, false]);
+  expect(blocks().map((block) => block.querySelector('[data-caret]') !== null)).toEqual([
+    true,
+    false,
+  ]);
 });
 
 test('a stale document marks the blocks unfinished without an agent', async () => {
   await render('stale');
-  expect(blocks().map((block) => block.textContent)).toEqual(['Unfinished讲清三类存储', 'Unfinished部署顺序']);
+  expect(blocks().map((block) => block.textContent)).toEqual([
+    'Unfinished讲清三类存储',
+    'Unfinished部署顺序',
+  ]);
   expect(blocks().every((block) => block.dataset.next === undefined)).toBe(true);
   expect(host.querySelector('[data-caret]')).toBeNull();
 });
@@ -85,10 +111,15 @@ test('counts pending blocks and follows the first as they are filled', async () 
   expect(progress?.count).toBe(2);
   const first = progress?.firstKey;
   await act(async () => {
-    editor!.update(() => {
-      const pending = $getRoot().getChildren().filter((node) => node.getType() === 'pending');
-      pending[0]!.replace($createParagraphNode().append($createTextNode('filled')));
-    }, { discrete: true });
+    editor!.update(
+      () => {
+        const pending = $getRoot()
+          .getChildren()
+          .filter((node) => node.getType() === 'pending');
+        pending[0]!.replace($createParagraphNode().append($createTextNode('filled')));
+      },
+      { discrete: true },
+    );
   });
   expect(progress?.count).toBe(1);
   expect(progress?.firstKey).not.toBe(first);

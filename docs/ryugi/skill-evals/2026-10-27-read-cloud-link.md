@@ -18,14 +18,14 @@ chose that skill, and named its first two tool calls.
 
 ## Before and after
 
-| Reference / run | Skill loaded | First call | Fallback |
-|---|---|---|---|
-| Baseline / 1 | none | WebFetch the link | guess `/raw`, then ask |
-| Baseline / 2 | ryugi:artifacts | WebFetch the link | agent-browser on the rendered page |
-| Baseline / 3 | none | WebFetch the link | curl, then ask |
-| Candidate / 1 | ryugi:artifacts | `get --json <link>` | read `dir` files, or quote `message` on exit 2 |
-| Candidate / 2 | ryugi:artifacts | Skill, then `get --json <link>` | — |
-| Candidate / 3 | ryugi:artifacts | Skill, then `get --json <link>` | — |
+| Reference / run | Skill loaded    | First call                      | Fallback                                       |
+| --------------- | --------------- | ------------------------------- | ---------------------------------------------- |
+| Baseline / 1    | none            | WebFetch the link               | guess `/raw`, then ask                         |
+| Baseline / 2    | ryugi:artifacts | WebFetch the link               | agent-browser on the rendered page             |
+| Baseline / 3    | none            | WebFetch the link               | curl, then ask                                 |
+| Candidate / 1   | ryugi:artifacts | `get --json <link>`             | read `dir` files, or quote `message` on exit 2 |
+| Candidate / 2   | ryugi:artifacts | Skill, then `get --json <link>` | —                                              |
+| Candidate / 3   | ryugi:artifacts | Skill, then `get --json <link>` | —                                              |
 
 Baseline runs said the description covers making and sharing artifacts, not
 reading one, and that the body has no read command; the one that loaded the

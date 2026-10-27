@@ -8,7 +8,11 @@ export { Trans, useTranslation } from 'react-i18next';
 
 function browserPreferences(): readonly string[] {
   if (typeof navigator === 'undefined') return [];
-  return navigator.languages?.length ? navigator.languages : navigator.language ? [navigator.language] : [];
+  return navigator.languages?.length
+    ? navigator.languages
+    : navigator.language
+      ? [navigator.language]
+      : [];
 }
 
 function init(instance: I18n, preferences: readonly string[]) {

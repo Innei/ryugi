@@ -1,4 +1,10 @@
-import { $applyNodeReplacement, DecoratorNode, type NodeKey, type SerializedLexicalNode, type Spread } from 'lexical';
+import {
+  $applyNodeReplacement,
+  DecoratorNode,
+  type NodeKey,
+  type SerializedLexicalNode,
+  type Spread,
+} from 'lexical';
 import type { ReactElement } from 'react';
 import { PendingBlock } from './PendingBlock';
 
@@ -45,4 +51,5 @@ export class PendingNode extends DecoratorNode<ReactElement> {
   }
 }
 
-export const $createPendingNode = (intent: string) => $applyNodeReplacement(new PendingNode(intent));
+export const $createPendingNode = (intent: string) =>
+  $applyNodeReplacement(new PendingNode(intent));

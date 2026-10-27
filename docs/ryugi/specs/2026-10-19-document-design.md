@@ -61,12 +61,12 @@ comments.
 
 Agreed with the human partner; this goes into the artifacts skill as a table.
 
-| Discussion | Type |
-|---|---|
-| Architecture; reviews, reports, proposals, flow explainers | `document` |
-| Creative work (UI design) | `artboard` |
-| Tuning parameters, interactive pages | `html` |
-| Simple tasks | none: discuss in text, write the spec |
+| Discussion                                                 | Type                                  |
+| ---------------------------------------------------------- | ------------------------------------- |
+| Architecture; reviews, reports, proposals, flow explainers | `document`                            |
+| Creative work (UI design)                                  | `artboard`                            |
+| Tuning parameters, interactive pages                       | `html`                                |
+| Simple tasks                                               | none: discuss in text, write the spec |
 
 Reviews, reports and proposals move from `html` to `document` (confirmed by
 the human partner).
@@ -116,18 +116,28 @@ SKILL.md, which documents its observable contract.
 
 ```json
 {
-  "version": 1,
   "threads": [
     {
       "id": "t_8f2k",
       "anchor": { "blockId": "b12", "quote": "按事件粒度推送" },
       "status": "open",
       "messages": [
-        { "id": "m1", "author": "human", "text": "离线超过 7 天的设备怎么办？", "at": "2026-10-19T10:42:00Z" },
-        { "id": "m2", "author": "agent", "text": "超过 7 天回退到快照同步，§4 已补上。", "at": "2026-10-19T10:45:00Z" }
+        {
+          "id": "m1",
+          "author": "human",
+          "text": "离线超过 7 天的设备怎么办？",
+          "at": "2026-10-19T10:42:00Z"
+        },
+        {
+          "id": "m2",
+          "author": "agent",
+          "text": "超过 7 天回退到快照同步，§4 已补上。",
+          "at": "2026-10-19T10:45:00Z"
+        }
       ]
     }
-  ]
+  ],
+  "version": 1
 }
 ```
 
@@ -145,7 +155,7 @@ The exact shape is the builder's; these properties are not:
 - A thread whose last message is the human's is waiting on the agent; its
   card says "Agent 下一轮会读到这条". One whose last message is the
   agent's is waiting on the human partner and is marked so.
-- Anchors follow edits *(my call)*: when the agent rewrites the commented
+- Anchors follow edits _(my call)_: when the agent rewrites the commented
   passage, the thread stays attached to the rewritten text. That is the
   main loop (comment, agent revises, agent replies), so matching the quote
   text alone is not enough; the anchor has to track position through edits
@@ -172,7 +182,7 @@ Chosen on the Artboard: `.ryugi/artifacts/artboard/document-layout/`, q1 → A.
 
 ## Node set
 
-*(My call.)* The server's headless editor and the browser editor register
+_(My call.)_ The server's headless editor and the browser editor register
 the same nodes: paragraphs, headings, lists, quotes, alerts, tables, code
 blocks, mermaid, Excalidraw, images, KaTeX, and the chart node once it
 ships. Mix Space–specific nodes (dynamic widgets, mentions, link cards,

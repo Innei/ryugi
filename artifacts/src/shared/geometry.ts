@@ -1,4 +1,13 @@
-import type { BoardSpec, Bounds, CanvasLayout, CanvasSpec, GroupSpec, NoteSpec, PageLayout, Rect } from './types';
+import type {
+  BoardSpec,
+  Bounds,
+  CanvasLayout,
+  CanvasSpec,
+  GroupSpec,
+  NoteSpec,
+  PageLayout,
+  Rect,
+} from './types';
 
 export const GROUP_PAD = 48;
 export const GROUP_TOP = 144;
@@ -21,7 +30,11 @@ function textWidth(text: string, fontSize: number) {
 function wrappedLines(text: string, fontSize: number, maxWidth: number) {
   return text
     .split('\n')
-    .reduce((lines, paragraph) => lines + Math.max(1, Math.ceil(textWidth(paragraph, fontSize) / maxWidth)), 0);
+    .reduce(
+      (lines, paragraph) =>
+        lines + Math.max(1, Math.ceil(textWidth(paragraph, fontSize) / maxWidth)),
+      0,
+    );
 }
 
 export function groupFrame(
@@ -76,7 +89,11 @@ export function computeLayout(canvas: CanvasSpec): CanvasLayout {
 
   for (const board of Object.values(canvas.boards)) {
     const layout = pageOf(board.page);
-    layout.bounds = extend(layout.bounds, { ...board, y: board.y - NAME_STRIP_H, h: board.h + NAME_STRIP_H });
+    layout.bounds = extend(layout.bounds, {
+      ...board,
+      y: board.y - NAME_STRIP_H,
+      h: board.h + NAME_STRIP_H,
+    });
   }
   for (const [id, group] of Object.entries(canvas.groups ?? {})) {
     const frame = groupFrame(group, canvas.boards);

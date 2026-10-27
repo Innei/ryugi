@@ -5,7 +5,8 @@ export const EMBEDDED_STYLE =
   '<style>:root{color-scheme:light dark;background:transparent}body{margin:0;font-family:var(--lobe-font-family,system-ui,-apple-system,sans-serif)}</style>';
 
 const RUNTIME_SCRIPT = /^<script>([\s\S]*?)<\/script>/;
-const RUNTIME_LOADERS = /^(?:<script defer src="[^"]*\/_ryugi\/runtime\/ryugi-(?:icons|ui)\.js"><\/script>)+/;
+const RUNTIME_LOADERS =
+  /^(?:<script defer src="[^"]*\/_ryugi\/runtime\/ryugi-(?:icons|ui)\.js"><\/script>)+/;
 
 export function injectionPoint(html: string) {
   const head = HEAD.exec(html);

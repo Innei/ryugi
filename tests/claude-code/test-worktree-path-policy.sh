@@ -14,33 +14,33 @@ ROTOTILL_PLAN="$REPO_ROOT/docs/ryugi/plans/2026-04-06-worktree-rototill.md"
 failures=0
 
 assert_contains() {
-    local file="$1"
-    local pattern="$2"
-    local label="$3"
+  local file="$1"
+  local pattern="$2"
+  local label="$3"
 
-    if grep -Fq "$pattern" "$file"; then
-        echo "  [PASS] $label"
-    else
-        echo "  [FAIL] $label"
-        echo "    Expected to find: $pattern"
-        echo "    In file: $file"
-        failures=$((failures + 1))
-    fi
+  if grep -Fq "$pattern" "$file"; then
+    echo "  [PASS] $label"
+  else
+    echo "  [FAIL] $label"
+    echo "    Expected to find: $pattern"
+    echo "    In file: $file"
+    failures=$((failures + 1))
+  fi
 }
 
 assert_not_contains() {
-    local file="$1"
-    local pattern="$2"
-    local label="$3"
+  local file="$1"
+  local pattern="$2"
+  local label="$3"
 
-    if grep -Fq "$pattern" "$file"; then
-        echo "  [FAIL] $label"
-        echo "    Did not expect to find: $pattern"
-        echo "    In file: $file"
-        failures=$((failures + 1))
-    else
-        echo "  [PASS] $label"
-    fi
+  if grep -Fq "$pattern" "$file"; then
+    echo "  [FAIL] $label"
+    echo "    Did not expect to find: $pattern"
+    echo "    In file: $file"
+    failures=$((failures + 1))
+  else
+    echo "  [PASS] $label"
+  fi
 }
 
 echo "=== Worktree Path Policy Test ==="
@@ -66,8 +66,8 @@ assert_not_contains "$ROTOTILL_PLAN" "legacy path compat" "rototill plan does no
 echo ""
 
 if [ "$failures" -gt 0 ]; then
-    echo "STATUS: FAILED ($failures failures)"
-    exit 1
+  echo "STATUS: FAILED ($failures failures)"
+  exit 1
 fi
 
 echo "STATUS: PASSED"

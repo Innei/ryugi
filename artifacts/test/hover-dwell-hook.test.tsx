@@ -12,7 +12,8 @@ let located = 0;
 const board = { x: 0, y: 0, w: 500, h: 500 };
 const locate = (client: { clientX: number; clientY: number }) => {
   located++;
-  const x = (client.clientX - props.view.x) / props.view.k, y = (client.clientY - props.view.y) / props.view.k;
+  const x = (client.clientX - props.view.x) / props.view.k,
+    y = (client.clientY - props.view.y) / props.view.k;
   const inside = x >= board.x && x <= board.x + board.w && y >= board.y && y <= board.y + board.h;
   return { board: inside ? 'a' : null, x: x * props.view.k, y: y * props.view.k };
 };
@@ -25,7 +26,10 @@ const render = async (patch: Partial<typeof props> = {}) => {
   props = { ...props, ...patch };
   await act(async () => root.render(createElement(Harness)));
 };
-const advance = async (ms: number) => act(async () => { vi.advanceTimersByTime(ms); });
+const advance = async (ms: number) =>
+  act(async () => {
+    vi.advanceTimersByTime(ms);
+  });
 
 beforeEach(() => {
   vi.useFakeTimers();

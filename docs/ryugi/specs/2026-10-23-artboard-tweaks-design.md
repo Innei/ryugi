@@ -21,10 +21,13 @@ Before the author logic, put a single declaration in the board HTML:
 
 ```html
 <script type="application/json" data-ryugi-tweaks>
-{"version":1,"controls":{
-  "accent":{"type":"color","label":"强调色","default":"#b45309"},
-  "count":{"type":"range","label":"待办数量","default":2,"min":0,"max":4,"step":1}
-}}
+  {
+    "controls": {
+      "accent": { "type": "color", "label": "强调色", "default": "#b45309" },
+      "count": { "type": "range", "label": "待办数量", "default": 2, "min": 0, "max": 4, "step": 1 }
+    },
+    "version": 1
+  }
 </script>
 ```
 

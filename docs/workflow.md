@@ -39,4 +39,3 @@ Two-hour autonomous stretches without "should I continue?" are normal. Because t
 - **Meta** — `using-ryugi` (bootstrap, plus evidence before claims)
 
 `writing-skills` — creating and testing skills — lives at `.claude/skills/writing-skills/` and loads only when you work on Ryugi itself.
-

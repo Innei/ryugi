@@ -96,7 +96,10 @@ describe('presence and events', () => {
     socket().open();
     socket().receive({ t: 'presence', online: false, version: null });
     socket().receive({ t: 'presence', online: true, version: '1.13.0' });
-    expect(presence).toEqual([{ online: false, version: null }, { online: true, version: '1.13.0' }]);
+    expect(presence).toEqual([
+      { online: false, version: null },
+      { online: true, version: '1.13.0' },
+    ]);
     expect(opened()).toBe(1);
     socket().receive({ t: 'presence', online: true, version: '1.13.0' });
     expect(opened()).toBe(1);
@@ -105,8 +108,17 @@ describe('presence and events', () => {
   test('host events are renamed to this page’s artifact', () => {
     const { socket, events } = connect();
     socket().open();
-    socket().receive({ t: 'event', body: { type: 'doc-comments', artifact: 'document/plan', comments: { version: 1, threads: [] } } });
-    expect(events).toEqual([{ type: 'doc-comments', artifact: 'document/c1', comments: { version: 1, threads: [] } }]);
+    socket().receive({
+      t: 'event',
+      body: {
+        type: 'doc-comments',
+        artifact: 'document/plan',
+        comments: { version: 1, threads: [] },
+      },
+    });
+    expect(events).toEqual([
+      { type: 'doc-comments', artifact: 'document/c1', comments: { version: 1, threads: [] } },
+    ]);
   });
 
   test('losing the socket reports offline and reconnects', async () => {
@@ -155,19 +167,32 @@ describe('relay document transport', () => {
     const meta = relay.meta();
     expect(socket.sent.at(-1).body).toEqual({ op: 'meta' });
     reply({ title: 'Plan', contentBase: '/content/document/plan/', warnings: [] });
-    expect(await meta).toEqual({ title: 'Plan', contentBase: 'https://cloud.example/content/c1/', warnings: [] });
+    expect(await meta).toEqual({
+      title: 'Plan',
+      contentBase: 'https://cloud.example/content/c1/',
+      warnings: [],
+    });
   });
 
   test('a host on this computer keeps its own absolute content base', async () => {
     const { relay, reply } = transport();
     const meta = relay.meta();
-    reply({ title: 'Plan', contentBase: 'http://127.0.0.1:4100/c/token/document/plan/', warnings: [] });
+    reply({
+      title: 'Plan',
+      contentBase: 'http://127.0.0.1:4100/c/token/document/plan/',
+      warnings: [],
+    });
     expect((await meta)!.contentBase).toBe('http://127.0.0.1:4100/c/token/document/plan/');
   });
 
   test('loaded and runtime-error reports from embedded blocks go to the host as client reports', () => {
     const { relay, socket } = transport();
-    const error = { type: 'runtime-error', artifact: 'document/c1', file: 'assets/chart.html', message: 'boom' };
+    const error = {
+      type: 'runtime-error',
+      artifact: 'document/c1',
+      file: 'assets/chart.html',
+      message: 'boom',
+    };
     relay.send(error);
     expect(socket.sent.at(-1).body).toEqual({ op: 'client', message: error });
     const loaded = { type: 'loaded', artifact: 'document/c1', file: 'assets/chart.html' };
@@ -193,7 +218,15 @@ describe('relay document transport', () => {
     const before = socket.sent.length;
     relay.send({ type: 'dynamic', artifact: 'document/c1', payload: 1 });
     expect(socket.sent.length).toBe(before);
-    const selection = { type: 'selection', artifact: 'document/c1', tab: 't', human: true, quote: 'q', blockIds: ['b'], heading: '' };
+    const selection = {
+      type: 'selection',
+      artifact: 'document/c1',
+      tab: 't',
+      human: true,
+      quote: 'q',
+      blockIds: ['b'],
+      heading: '',
+    };
     relay.send(selection);
     expect(socket.sent.at(-1).body).toEqual({ op: 'selection', selection });
   });
@@ -203,9 +236,15 @@ describe('relay document transport', () => {
     const seen: unknown[] = [];
     relay.channel.subscribe((event) => seen.push(event));
     socket.receive({ t: 'presence', online: true, version: '1.13.0' });
-    socket.receive({ t: 'event', body: { type: 'doc-status', artifact: 'document/plan', streaming: true } });
+    socket.receive({
+      t: 'event',
+      body: { type: 'doc-status', artifact: 'document/plan', streaming: true },
+    });
     expect(presence).toEqual([{ online: true, version: '1.13.0' }]);
-    expect(seen).toEqual([{ type: 'open' }, { type: 'doc-status', artifact: 'document/c1', streaming: true }]);
+    expect(seen).toEqual([
+      { type: 'open' },
+      { type: 'doc-status', artifact: 'document/c1', streaming: true },
+    ]);
   });
 });
 
@@ -217,17 +256,26 @@ describe('local document transport', () => {
     vi.stubGlobal('fetch', async (url: string, init?: RequestInit) => {
       calls.push([url, init]);
       if (url.endsWith('/update')) return new Response('no', { status: 500 });
-      if (url.endsWith('/comments')) return Response.json({ comments: { version: 1, threads: [] } });
-      if (url.endsWith('/state')) return Response.json({ snapshot: 'AA==', lineage: 'l', cursor: null });
+      if (url.endsWith('/comments'))
+        return Response.json({ comments: { version: 1, threads: [] } });
+      if (url.endsWith('/state'))
+        return Response.json({ snapshot: 'AA==', lineage: 'l', cursor: null });
       return Response.json({ title: 'Plan', contentBase: '/content/document/plan/' });
     });
     const sent: unknown[] = [];
-    const local = createLocalTransport({ id: 'plan', channel: createChannel(), send: (m) => sent.push(m) });
+    const local = createLocalTransport({
+      id: 'plan',
+      channel: createChannel(),
+      send: (m) => sent.push(m),
+    });
     expect(local.artifact).toBe('document/plan');
     expect(await local.meta()).toEqual({ title: 'Plan', contentBase: '/content/document/plan/' });
     expect(await local.state()).toEqual({ snapshot: 'AA==', lineage: 'l', cursor: null });
     await expect(local.update(new Uint8Array([1]))).rejects.toThrow('update failed (500)');
-    expect(await local.comment({ op: 'resolve', threadId: 't' })).toEqual({ version: 1, threads: [] });
+    expect(await local.comment({ op: 'resolve', threadId: 't' })).toEqual({
+      version: 1,
+      threads: [],
+    });
     local.send({ type: 'selection' });
     expect(sent).toEqual([{ type: 'selection' }]);
     expect(calls.map(([url]) => url)).toEqual([

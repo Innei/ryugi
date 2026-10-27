@@ -4,15 +4,26 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { BottomSheet } from '../src/viewer/components/BottomSheet';
 
-vi.mock('@stylexjs/stylex', async (original) => ({ ...await original<object>(), create: (value: unknown) => value, props: () => ({}) }));
-vi.mock('@lobehub/ui/stylex/cssVar.stylex', () => ({ cssVar: new Proxy({}, { get: (_, key) => `var(--${String(key)})` }) }));
+vi.mock('@stylexjs/stylex', async (original) => ({
+  ...(await original<object>()),
+  create: (value: unknown) => value,
+  props: () => ({}),
+}));
+vi.mock('@lobehub/ui/stylex/cssVar.stylex', () => ({
+  cssVar: new Proxy({}, { get: (_, key) => `var(--${String(key)})` }),
+}));
 
 let root: Root | undefined;
 let host: HTMLDivElement | undefined;
 let now = 0;
 beforeEach(() => {
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
-  vi.stubGlobal('matchMedia', (query: string) => ({ matches: false, media: query, addEventListener() {}, removeEventListener() {} }));
+  vi.stubGlobal('matchMedia', (query: string) => ({
+    matches: false,
+    media: query,
+    addEventListener() {},
+    removeEventListener() {},
+  }));
   vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(844);
   vi.spyOn(performance, 'now').mockImplementation(() => now);
   now = 0;
@@ -36,7 +47,12 @@ async function mount(snap: number, onSnap = vi.fn(), extra: object = {}) {
         snaps: [78, 0.5],
         snap,
         onSnap,
-        header: createElement('div', { 'data-title': '' }, '标题', createElement('button', { type: 'button', 'data-inner': '' }, '下一题')),
+        header: createElement(
+          'div',
+          { 'data-title': '' },
+          '标题',
+          createElement('button', { 'type': 'button', 'data-inner': '' }, '下一题'),
+        ),
         children: createElement('p', null, '列表'),
         ...extra,
       }),
@@ -49,7 +65,17 @@ const sheet = () => host!.querySelector<HTMLElement>('[data-sheet]')!;
 const shown = () => 422 - Number(sheet().style.transform.match(/translateY\(([-\d.]+)px\)/)![1]);
 const touch = (target: Element, type: string, y: number, at: number) => {
   now = at;
-  return act(async () => target.dispatchEvent(new PointerEvent(type, { bubbles: true, pointerId: 3, pointerType: 'touch', clientX: 100, clientY: y })));
+  return act(async () =>
+    target.dispatchEvent(
+      new PointerEvent(type, {
+        bubbles: true,
+        pointerId: 3,
+        pointerType: 'touch',
+        clientX: 100,
+        clientY: y,
+      }),
+    ),
+  );
 };
 
 test('the sheet follows the finger while it drags', async () => {
@@ -135,8 +161,28 @@ test('a second finger tapping during a drag leaves the first finger in charge', 
   await touch(title, 'pointerdown', 800, 0);
   await touch(title, 'pointermove', 760, 20);
   await touch(title, 'pointermove', 650, 60);
-  await act(async () => title.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: 8, pointerType: 'touch', clientX: 200, clientY: 800 })));
-  await act(async () => title.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerId: 8, pointerType: 'touch', clientX: 200, clientY: 800 })));
+  await act(async () =>
+    title.dispatchEvent(
+      new PointerEvent('pointerdown', {
+        bubbles: true,
+        pointerId: 8,
+        pointerType: 'touch',
+        clientX: 200,
+        clientY: 800,
+      }),
+    ),
+  );
+  await act(async () =>
+    title.dispatchEvent(
+      new PointerEvent('pointerup', {
+        bubbles: true,
+        pointerId: 8,
+        pointerType: 'touch',
+        clientX: 200,
+        clientY: 800,
+      }),
+    ),
+  );
   await touch(title, 'pointerup', 650, 70);
   expect(onSnap).toHaveBeenCalled();
   expect(sheet().style.transition).not.toBe('none');
@@ -156,7 +202,9 @@ test('grabbing a sheet mid-spring catches it where it is on screen', async () =>
   await mount(78);
   const title = host!.querySelector('[data-title]')!;
   title.setPointerCapture = vi.fn();
-  vi.spyOn(window, 'getComputedStyle').mockReturnValue({ transform: 'matrix(1, 0, 0, 1, 0, 200)' } as CSSStyleDeclaration);
+  vi.spyOn(window, 'getComputedStyle').mockReturnValue({
+    transform: 'matrix(1, 0, 0, 1, 0, 200)',
+  } as CSSStyleDeclaration);
   await touch(title, 'pointerdown', 800, 0);
   expect(shown()).toBe(222);
   await touch(title, 'pointermove', 780, 50);
@@ -166,7 +214,9 @@ test('grabbing a sheet mid-spring catches it where it is on screen', async () =>
 test('a tap on a sheet caught mid-spring lets it finish where it was going', async () => {
   await mount(78);
   const title = host!.querySelector('[data-title]')!;
-  vi.spyOn(window, 'getComputedStyle').mockReturnValue({ transform: 'matrix(1, 0, 0, 1, 0, 200)' } as CSSStyleDeclaration);
+  vi.spyOn(window, 'getComputedStyle').mockReturnValue({
+    transform: 'matrix(1, 0, 0, 1, 0, 200)',
+  } as CSSStyleDeclaration);
   await touch(title, 'pointerdown', 800, 0);
   await touch(title, 'pointerup', 800, 40);
   expect(shown()).toBe(78);

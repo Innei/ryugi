@@ -6,8 +6,14 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeAll, expect, test, vi } from 'vitest';
 import { MermaidPreview } from '../src/viewer/document/MermaidPreview';
 
-vi.mock('@stylexjs/stylex', async (original) => ({ ...await original<object>(), create: (value: unknown) => value, props: () => ({}) }));
-vi.mock('@lobehub/ui/stylex/cssVar.stylex', () => ({ cssVar: new Proxy({}, { get: (_, key) => `var(--${String(key)})` }) }));
+vi.mock('@stylexjs/stylex', async (original) => ({
+  ...(await original<object>()),
+  create: (value: unknown) => value,
+  props: () => ({}),
+}));
+vi.mock('@lobehub/ui/stylex/cssVar.stylex', () => ({
+  cssVar: new Proxy({}, { get: (_, key) => `var(--${String(key)})` }),
+}));
 
 const source = 'flowchart LR\n  A[Agent 回合结束] --> B{auto-publish 开启?}';
 
@@ -30,15 +36,23 @@ async function renderDocument(heading: string | null) {
   const host = document.createElement('div');
   document.body.append(host);
   root = createRoot(host);
-  const page = createElement('div', null,
+  const page = createElement(
+    'div',
+    null,
     createElement(ModalHost),
-    createElement('div', { 'data-lexical-editor': 'true' },
+    createElement(
+      'div',
+      { 'data-lexical-editor': 'true' },
       heading ? createElement('h2', null, heading) : null,
       createElement('p', null, 'Agent 每轮结束后，改过的 artifact 会同步到云端。'),
       createElement('div', null, createElement(MermaidPreview, { content: source })),
     ),
   );
-  await act(async () => root!.render(createElement(ConfigProvider, { motion, enableCustomFonts: false, children: page })));
+  await act(async () =>
+    root!.render(
+      createElement(ConfigProvider, { motion, enableCustomFonts: false, children: page }),
+    ),
+  );
   return host;
 }
 
@@ -70,7 +84,9 @@ test('the viewer copies the diagram source', async () => {
   vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText } });
   await renderDocument('发布流程');
   const dialog = await openViewer();
-  const copy = [...dialog.querySelectorAll('button')].find((button) => button.textContent?.includes('Copy source'));
+  const copy = [...dialog.querySelectorAll('button')].find((button) =>
+    button.textContent?.includes('Copy source'),
+  );
   expect(copy).toBeDefined();
   await act(async () => copy!.click());
   expect(writeText).toHaveBeenCalledWith(source);

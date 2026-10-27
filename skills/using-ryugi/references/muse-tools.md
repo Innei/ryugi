@@ -2,21 +2,21 @@
 
 Skills speak in actions ("dispatch a subagent", "create a todo", "read a file"). On Muse these resolve to the tools below.
 
-| Action skills request | Muse equivalent |
-|----------------------|----------------|
-| Read a file | `read_file` |
-| Read multiple files | `read_file` (call multiple times) or `search` |
-| Create a new file | `write_file` |
-| Edit a file | `edit_file` |
-| Run a shell command | `bash` |
-| Search file contents | `search` |
-| Find files by name | `search` with `glob` |
-| Fetch a URL | `web_fetch` |
-| Search the web | `web_search` |
-| Invoke a skill | `read_file` on `skills/<name>/SKILL.md` or native skill tool |
-| Dispatch a subagent (`Subagent (general-purpose):` template) | `subagent_spawn` with prompt filling |
-| Task tracking ("create a todo", "mark complete") | `write_todos` or `bash` task file |
-| Ask the user a question | `request_user_input` |
+| Action skills request                                        | Muse equivalent                                              |
+| ------------------------------------------------------------ | ------------------------------------------------------------ |
+| Read a file                                                  | `read_file`                                                  |
+| Read multiple files                                          | `read_file` (call multiple times) or `search`                |
+| Create a new file                                            | `write_file`                                                 |
+| Edit a file                                                  | `edit_file`                                                  |
+| Run a shell command                                          | `bash`                                                       |
+| Search file contents                                         | `search`                                                     |
+| Find files by name                                           | `search` with `glob`                                         |
+| Fetch a URL                                                  | `web_fetch`                                                  |
+| Search the web                                               | `web_search`                                                 |
+| Invoke a skill                                               | `read_file` on `skills/<name>/SKILL.md` or native skill tool |
+| Dispatch a subagent (`Subagent (general-purpose):` template) | `subagent_spawn` with prompt filling                         |
+| Task tracking ("create a todo", "mark complete")             | `write_todos` or `bash` task file                            |
+| Ask the user a question                                      | `request_user_input`                                         |
 
 ## Instructions file
 

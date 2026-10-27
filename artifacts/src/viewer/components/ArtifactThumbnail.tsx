@@ -8,7 +8,19 @@ export function ArtifactThumbnail({ src, type }: { src?: string | null; type: Ar
   return (
     <div className="library-thumbnail" aria-hidden="true">
       <TypeIcon type={type} size={24} />
-      {src && failed !== src && <img key={src} src={src} alt="" width={600} height={360} loading="lazy" decoding="async" referrerPolicy="no-referrer" onError={() => setFailed(src)} />}
+      {src && failed !== src && (
+        <img
+          key={src}
+          src={src}
+          alt=""
+          width={600}
+          height={360}
+          loading="lazy"
+          decoding="async"
+          referrerPolicy="no-referrer"
+          onError={() => setFailed(src)}
+        />
+      )}
     </div>
   );
 }

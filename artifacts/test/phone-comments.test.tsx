@@ -7,11 +7,23 @@ import type { ThreadActions } from '../src/viewer/document/CommentCard';
 import { editMenuPosition } from '../src/viewer/document/layoutCards';
 import { PhoneEditMenu } from '../src/viewer/document/PhoneEditMenu';
 import { PhoneLayout } from '../src/viewer/document/PhoneLayout';
-import { PhoneSheet, raiseSheet, SHEET_FULL, SHEET_HALF, SHEET_PEEK } from '../src/viewer/document/PhoneSheet';
+import {
+  PhoneSheet,
+  raiseSheet,
+  SHEET_FULL,
+  SHEET_HALF,
+  SHEET_PEEK,
+} from '../src/viewer/document/PhoneSheet';
 import { PhoneThread } from '../src/viewer/document/PhoneThread';
 
-vi.mock('@stylexjs/stylex', async (original) => ({ ...await original<object>(), create: (value: unknown) => value, props: () => ({}) }));
-vi.mock('@lobehub/ui/stylex/cssVar.stylex', () => ({ cssVar: new Proxy({}, { get: (_, key) => `var(--${String(key)})` }) }));
+vi.mock('@stylexjs/stylex', async (original) => ({
+  ...(await original<object>()),
+  create: (value: unknown) => value,
+  props: () => ({}),
+}));
+vi.mock('@lobehub/ui/stylex/cssVar.stylex', () => ({
+  cssVar: new Proxy({}, { get: (_, key) => `var(--${String(key)})` }),
+}));
 
 let root: Root | null = null;
 beforeAll(() => {
@@ -37,7 +49,9 @@ async function type(host: HTMLElement, text: string) {
     Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!.call(box, text);
     box.dispatchEvent(new Event('input', { bubbles: true }));
   });
-  await act(async () => host.querySelector<HTMLButtonElement>('button[aria-label="Send"]')!.click());
+  await act(async () =>
+    host.querySelector<HTMLButtonElement>('button[aria-label="Send"]')!.click(),
+  );
 }
 
 const at = '2026-10-21T10:00:00.000Z';
@@ -51,13 +65,24 @@ const waiting: Thread = {
 const answered: Thread = {
   ...waiting,
   id: 't2',
-  messages: [...waiting.messages, { id: 'm2', author: 'agent', name: 'Claude Code', text: '可以，下一轮改。', at }],
+  messages: [
+    ...waiting.messages,
+    { id: 'm2', author: 'agent', name: 'Claude Code', text: '可以，下一轮改。', at },
+  ],
 };
-const actions = (): ThreadActions => ({ reply: vi.fn(async () => true), edit: vi.fn(), remove: vi.fn(), resolve: vi.fn(), reopen: vi.fn() });
+const actions = (): ThreadActions => ({
+  reply: vi.fn(async () => true),
+  edit: vi.fn(),
+  remove: vi.fn(),
+  resolve: vi.fn(),
+  reopen: vi.fn(),
+});
 
 test('a thread is flat: quote, state, every message, and a reply line', async () => {
   const thread = actions();
-  const host = await render(createElement(PhoneThread, { thread: waiting, agent: 'Claude Code', actions: thread }));
+  const host = await render(
+    createElement(PhoneThread, { thread: waiting, agent: 'Claude Code', actions: thread }),
+  );
   expect(host.textContent).toContain('每个入口各自解析参数');
   expect(host.textContent).toContain('Waiting on Claude Code');
   expect(host.textContent).toContain('这里能合并吗？');
@@ -73,25 +98,69 @@ test('a thread the agent answered says so, and offline threads cannot be answere
 
 test('the collapsed sheet counts comments and the ones waiting on the agent', async () => {
   const host = await render(
-    createElement(PhoneSheet, { threads: [waiting, answered], agent: 'Claude Code', actions: actions(), offline: false, draft: null, onCreate: vi.fn(), onCancelDraft: vi.fn(), activeId: null, snap: 78, onSnap: vi.fn() }),
+    createElement(PhoneSheet, {
+      threads: [waiting, answered],
+      agent: 'Claude Code',
+      actions: actions(),
+      offline: false,
+      draft: null,
+      onCreate: vi.fn(),
+      onCancelDraft: vi.fn(),
+      activeId: null,
+      snap: 78,
+      onSnap: vi.fn(),
+    }),
   );
-  expect(host.querySelector('[data-sheet-head]')!.textContent).toBe('Comments 2· 1 waiting on Claude Code');
+  expect(host.querySelector('[data-sheet-head]')!.textContent).toBe(
+    'Comments 2· 1 waiting on Claude Code',
+  );
 });
 
 test('offline, the sheet title says comments wait for the computer', async () => {
   const host = await render(
-    createElement(PhoneSheet, { threads: [waiting], agent: 'Claude Code', offline: true, draft: null, onCreate: vi.fn(), onCancelDraft: vi.fn(), activeId: null, snap: 78, onSnap: vi.fn() }),
+    createElement(PhoneSheet, {
+      threads: [waiting],
+      agent: 'Claude Code',
+      offline: true,
+      draft: null,
+      onCreate: vi.fn(),
+      onCancelDraft: vi.fn(),
+      activeId: null,
+      snap: 78,
+      onSnap: vi.fn(),
+    }),
   );
-  expect(host.querySelector('[data-sheet-head]')!.textContent).toBe('Comments 1· Computer offline; commenting is unavailable');
+  expect(host.querySelector('[data-sheet-head]')!.textContent).toBe(
+    'Comments 1· Computer offline; commenting is unavailable',
+  );
   expect(host.querySelector('textarea')).toBeNull();
 });
 
 test('a new comment quotes the selection and closes once the computer has it', async () => {
   const onCreate = vi.fn(async () => true);
   const onCancelDraft = vi.fn();
-  const draft = { blockId: 'b1', quote: 'skill 目录里有四个脚本', left: 0, top: 0, right: 0, bottom: 0, range: document.createRange() };
+  const draft = {
+    blockId: 'b1',
+    quote: 'skill 目录里有四个脚本',
+    left: 0,
+    top: 0,
+    right: 0,
+    bottom: 0,
+    range: document.createRange(),
+  };
   const host = await render(
-    createElement(PhoneSheet, { threads: [], agent: 'Claude Code', actions: actions(), offline: false, draft, onCreate, onCancelDraft, activeId: null, snap: 0.5, onSnap: vi.fn() }),
+    createElement(PhoneSheet, {
+      threads: [],
+      agent: 'Claude Code',
+      actions: actions(),
+      offline: false,
+      draft,
+      onCreate,
+      onCancelDraft,
+      activeId: null,
+      snap: 0.5,
+      onSnap: vi.fn(),
+    }),
   );
   expect(host.textContent).toContain('skill 目录里有四个脚本');
   await type(host, '这四个能合成一个吗');
@@ -100,30 +169,75 @@ test('a new comment quotes the selection and closes once the computer has it', a
 });
 
 test('the edit menu offers only what the page can do right now, leaving copy to the system menu', async () => {
-  const labels = (host: HTMLElement) => [...host.querySelectorAll('button')].map((b) => b.textContent);
+  const labels = (host: HTMLElement) =>
+    [...host.querySelectorAll('button')].map((b) => b.textContent);
   const handlers = { onComment: vi.fn(), onEdit: vi.fn() };
-  const online = await render(createElement(PhoneEditMenu, { left: 0, top: 0, placement: 'below', canComment: true, canEdit: true, ...handlers }));
+  const online = await render(
+    createElement(PhoneEditMenu, {
+      left: 0,
+      top: 0,
+      placement: 'below',
+      canComment: true,
+      canEdit: true,
+      ...handlers,
+    }),
+  );
   expect(labels(online)).toEqual(['Comment', 'Edit text']);
   await act(async () => online.querySelectorAll('button')[1]!.click());
   expect(handlers.onEdit).toHaveBeenCalled();
   act(() => root?.unmount());
-  const commentsOnly = await render(createElement(PhoneEditMenu, { left: 0, top: 0, placement: 'below', canComment: true, canEdit: false, ...handlers }));
+  const commentsOnly = await render(
+    createElement(PhoneEditMenu, {
+      left: 0,
+      top: 0,
+      placement: 'below',
+      canComment: true,
+      canEdit: false,
+      ...handlers,
+    }),
+  );
   expect(labels(commentsOnly)).toEqual(['Comment']);
 });
 
 test('the edit menu grows in from the selection it points at', async () => {
   const animate = vi.spyOn(HTMLElement.prototype, 'animate');
-  await render(createElement(PhoneEditMenu, { left: 0, top: 0, placement: 'below', canComment: true, canEdit: true, onComment: vi.fn(), onEdit: vi.fn() }));
-  expect(animate.mock.calls.some(([frames]) => JSON.stringify(frames).includes('scale(0.96)'))).toBe(true);
+  await render(
+    createElement(PhoneEditMenu, {
+      left: 0,
+      top: 0,
+      placement: 'below',
+      canComment: true,
+      canEdit: true,
+      onComment: vi.fn(),
+      onEdit: vi.fn(),
+    }),
+  );
+  expect(
+    animate.mock.calls.some(([frames]) => JSON.stringify(frames).includes('scale(0.96)')),
+  ).toBe(true);
   animate.mockRestore();
 });
 
 test('the edit menu sits under the selection, clear of the system menu above it, unless the sheet is in the way', () => {
   const selection = { left: 40, top: 120, bottom: 140 };
   const bounds = { left: 8, right: 382 };
-  expect(editMenuPosition(selection, bounds, 160, 44, { top: 0, height: 844, reserved: 78 })).toEqual({ left: 40, top: 150, placement: 'below' });
-  expect(editMenuPosition({ left: 40, top: 700, bottom: 720 }, bounds, 160, 44, { top: 0, height: 844, reserved: 78 })).toEqual({ left: 40, top: 646, placement: 'above' });
-  expect(editMenuPosition({ left: 300, top: 120, bottom: 140 }, bounds, 160, 44, { top: 0, height: 844, reserved: 78 }).left).toBe(222);
+  expect(
+    editMenuPosition(selection, bounds, 160, 44, { top: 0, height: 844, reserved: 78 }),
+  ).toEqual({ left: 40, top: 150, placement: 'below' });
+  expect(
+    editMenuPosition({ left: 40, top: 700, bottom: 720 }, bounds, 160, 44, {
+      top: 0,
+      height: 844,
+      reserved: 78,
+    }),
+  ).toEqual({ left: 40, top: 646, placement: 'above' });
+  expect(
+    editMenuPosition({ left: 300, top: 120, bottom: 140 }, bounds, 160, 44, {
+      top: 0,
+      height: 844,
+      reserved: 78,
+    }).left,
+  ).toBe(222);
 });
 
 test('locating a thread scrolls only the sheet body, never the page or the sheet itself', async () => {
@@ -131,9 +245,21 @@ test('locating a thread scrolls only the sheet body, never the page or the sheet
   const original = Element.prototype.scrollIntoView;
   Element.prototype.scrollIntoView = intoView;
   const scrollTo = vi.spyOn(HTMLElement.prototype, 'scrollTo').mockImplementation(() => {});
-  const props = { threads: [waiting, answered], agent: 'Claude Code', actions: actions(), offline: false, draft: null, onCreate: vi.fn(), onCancelDraft: vi.fn(), snap: 0.5, onSnap: vi.fn() };
+  const props = {
+    threads: [waiting, answered],
+    agent: 'Claude Code',
+    actions: actions(),
+    offline: false,
+    draft: null,
+    onCreate: vi.fn(),
+    onCancelDraft: vi.fn(),
+    snap: 0.5,
+    onSnap: vi.fn(),
+  };
   const host = await render(createElement(PhoneSheet, { ...props, activeId: null }));
-  await act(async () => root!.render(createElement(PhoneSheet, { ...props, activeId: answered.id })));
+  await act(async () =>
+    root!.render(createElement(PhoneSheet, { ...props, activeId: answered.id })),
+  );
   expect(intoView).not.toHaveBeenCalled();
   expect(scrollTo).toHaveBeenCalled();
   expect((scrollTo.mock.contexts.at(-1) as Element).hasAttribute('data-sheet-body')).toBe(true);
@@ -144,18 +270,42 @@ test('locating a thread scrolls only the sheet body, never the page or the sheet
 
 test('locating a thread flashes it once the sheet scrolls to it', async () => {
   const animate = vi.spyOn(HTMLElement.prototype, 'animate');
-  const props = { threads: [waiting], agent: 'Claude Code', actions: actions(), offline: false, draft: null, onCreate: vi.fn(), onCancelDraft: vi.fn(), snap: 0.5, onSnap: vi.fn() };
+  const props = {
+    threads: [waiting],
+    agent: 'Claude Code',
+    actions: actions(),
+    offline: false,
+    draft: null,
+    onCreate: vi.fn(),
+    onCancelDraft: vi.fn(),
+    snap: 0.5,
+    onSnap: vi.fn(),
+  };
   const host = await render(createElement(PhoneSheet, { ...props, activeId: null }));
-  expect(animate.mock.calls.some(([frames]) => JSON.stringify(frames).includes('backgroundColor'))).toBe(false);
-  await act(async () => root!.render(createElement(PhoneSheet, { ...props, activeId: waiting.id })));
-  const flashed = animate.mock.contexts.find((_, i) => JSON.stringify(animate.mock.calls[i]![0]).includes('backgroundColor')) as Element | undefined;
+  expect(
+    animate.mock.calls.some(([frames]) => JSON.stringify(frames).includes('backgroundColor')),
+  ).toBe(false);
+  await act(async () =>
+    root!.render(createElement(PhoneSheet, { ...props, activeId: waiting.id })),
+  );
+  const flashed = animate.mock.contexts.find((_, i) =>
+    JSON.stringify(animate.mock.calls[i]![0]).includes('backgroundColor'),
+  ) as Element | undefined;
   expect(flashed?.getAttribute('data-thread')).toBe(waiting.id);
   expect(host.contains(flashed!)).toBe(true);
   animate.mockRestore();
 });
 
 describe('phone layout', () => {
-  const selection = { blockId: 'b1', quote: '四个脚本', left: 40, top: 120, right: 120, bottom: 140, range: document.createRange() };
+  const selection = {
+    blockId: 'b1',
+    quote: '四个脚本',
+    left: 40,
+    top: 120,
+    right: 120,
+    bottom: 140,
+    range: document.createRange(),
+  };
   const layout = (props: Partial<Parameters<typeof PhoneLayout>[0]>) =>
     createElement(PhoneLayout, {
       editor: null,
@@ -172,7 +322,8 @@ describe('phone layout', () => {
       children: createElement('p', null, '正文'),
       ...props,
     });
-  const button = (host: HTMLElement, label: string) => [...host.querySelectorAll('button')].find((b) => b.textContent === label)!;
+  const button = (host: HTMLElement, label: string) =>
+    [...host.querySelectorAll('button')].find((b) => b.textContent === label)!;
 
   test('Comment raises the sheet to half with a composer quoting the selection', async () => {
     const host = await render(layout({}));
@@ -201,7 +352,9 @@ describe('phone layout', () => {
   });
 
   test('offline, no edit menu covers the selection', async () => {
-    const host = await render(layout({ canComment: false, canEdit: false, offline: true, actions: undefined }));
+    const host = await render(
+      layout({ canComment: false, canEdit: false, offline: true, actions: undefined }),
+    );
     expect(host.querySelector('[data-edit-menu]')).toBeNull();
   });
 });
@@ -214,13 +367,28 @@ test('opening a thread raises a collapsed sheet to half and leaves a taller one 
 
 describe('going offline keeps what the owner is typing', () => {
   test('a thread keeps its reply box offline but cannot be resolved', async () => {
-    const host = await render(createElement(PhoneThread, { thread: waiting, agent: 'Claude Code', actions: actions(), offline: true }));
+    const host = await render(
+      createElement(PhoneThread, {
+        thread: waiting,
+        agent: 'Claude Code',
+        actions: actions(),
+        offline: true,
+      }),
+    );
     expect(host.querySelector('textarea[placeholder="Reply…"]')).not.toBeNull();
     expect([...host.querySelectorAll('button')].map((b) => b.textContent)).not.toContain('Resolve');
   });
 
   test('a new comment being written survives the computer dropping', async () => {
-    const selection = { blockId: 'b1', quote: '四个脚本', left: 40, top: 120, right: 120, bottom: 140, range: document.createRange() };
+    const selection = {
+      blockId: 'b1',
+      quote: '四个脚本',
+      left: 40,
+      top: 120,
+      right: 120,
+      bottom: 140,
+      range: document.createRange(),
+    };
     const props = {
       editor: null,
       threads: [waiting],
@@ -232,9 +400,23 @@ describe('going offline keeps what the owner is typing', () => {
       onEdit: vi.fn(),
       children: createElement('p', null, '正文'),
     };
-    const host = await render(createElement(PhoneLayout, { ...props, canComment: true, canEdit: true, offline: false }));
-    await act(async () => [...host.querySelectorAll('button')].find((b) => b.textContent === 'Comment')!.click());
-    await act(async () => root!.render(createElement(PhoneLayout, { ...props, selection: null, canComment: false, canEdit: false, offline: true })));
+    const host = await render(
+      createElement(PhoneLayout, { ...props, canComment: true, canEdit: true, offline: false }),
+    );
+    await act(async () =>
+      [...host.querySelectorAll('button')].find((b) => b.textContent === 'Comment')!.click(),
+    );
+    await act(async () =>
+      root!.render(
+        createElement(PhoneLayout, {
+          ...props,
+          selection: null,
+          canComment: false,
+          canEdit: false,
+          offline: true,
+        }),
+      ),
+    );
     expect(host.querySelector('textarea[placeholder="Comment for the agent…"]')).not.toBeNull();
   });
 });
@@ -243,11 +425,33 @@ test('a finger dragging the sheet title moves it between heights', async () => {
   vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(844);
   const onSnap = vi.fn();
   const host = await render(
-    createElement(PhoneSheet, { threads: [waiting], agent: 'Claude Code', actions: actions(), offline: false, draft: null, onCreate: vi.fn(), onCancelDraft: vi.fn(), activeId: null, snap: 78, onSnap }),
+    createElement(PhoneSheet, {
+      threads: [waiting],
+      agent: 'Claude Code',
+      actions: actions(),
+      offline: false,
+      draft: null,
+      onCreate: vi.fn(),
+      onCancelDraft: vi.fn(),
+      activeId: null,
+      snap: 78,
+      onSnap,
+    }),
   );
   const title = host.querySelector('[data-sheet-head]')!;
   title.setPointerCapture = vi.fn();
-  const finger = (type: string, y: number) => act(async () => title.dispatchEvent(new PointerEvent(type, { bubbles: true, pointerId: 5, pointerType: 'touch', clientX: 50, clientY: y })));
+  const finger = (type: string, y: number) =>
+    act(async () =>
+      title.dispatchEvent(
+        new PointerEvent(type, {
+          bubbles: true,
+          pointerId: 5,
+          pointerType: 'touch',
+          clientX: 50,
+          clientY: y,
+        }),
+      ),
+    );
   await finger('pointerdown', 800);
   await finger('pointermove', 700);
   await finger('pointerup', 700);

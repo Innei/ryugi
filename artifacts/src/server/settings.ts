@@ -3,12 +3,15 @@ import path from 'node:path';
 import { readConfig } from './config';
 import { writeJsonAtomic } from './state';
 
-export const settingsFileFor = (credentialsFile: string) => path.join(path.dirname(credentialsFile), 'config.json');
+export const settingsFileFor = (credentialsFile: string) =>
+  path.join(path.dirname(credentialsFile), 'config.json');
 
 function readSettings(file: string): Record<string, unknown> {
   try {
     const raw = JSON.parse(fs.readFileSync(file, 'utf8')) as unknown;
-    return typeof raw === 'object' && raw !== null && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {};
+    return typeof raw === 'object' && raw !== null && !Array.isArray(raw)
+      ? (raw as Record<string, unknown>)
+      : {};
   } catch {
     return {};
   }
@@ -28,6 +31,12 @@ export function defaultGlobalAutoPublish(file: string) {
   if (readGlobalAutoPublish(file) === undefined) writeGlobalAutoPublish(file, true);
 }
 
-export function autoPublishEnabled({ globalFile, projectFile }: { globalFile: string; projectFile: string }) {
+export function autoPublishEnabled({
+  globalFile,
+  projectFile,
+}: {
+  globalFile: string;
+  projectFile: string;
+}) {
   return readConfig(projectFile).config.autoPublish ?? readGlobalAutoPublish(globalFile) ?? false;
 }

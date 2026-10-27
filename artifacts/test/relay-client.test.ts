@@ -51,7 +51,11 @@ async function fakeHub(): Promise<Hub> {
         tick();
       }),
     send: (message) => hub.sockets.at(-1)!.send(JSON.stringify(message)),
-    close: () => new Promise((resolve) => { for (const s of hub.sockets) s.terminate(); server.close(() => resolve()); }),
+    close: () =>
+      new Promise((resolve) => {
+        for (const s of hub.sockets) s.terminate();
+        server.close(() => resolve());
+      }),
   };
   server.on('connection', (socket, req) => {
     hub.headers.push(req.headers);
@@ -66,12 +70,38 @@ async function fakeHub(): Promise<Hub> {
   return hub;
 }
 
-async function start({ signedIn = true, published = true, hub, credentialsFile = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-home-')), 'credentials.json') }: { signedIn?: boolean; published?: boolean; hub: Hub; credentialsFile?: string }) {
+async function start({
+  signedIn = true,
+  published = true,
+  hub,
+  credentialsFile = path.join(
+    fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-home-')),
+    'credentials.json',
+  ),
+}: {
+  signedIn?: boolean;
+  published?: boolean;
+  hub: Hub;
+  credentialsFile?: string;
+}) {
   const temp = tempRoot();
   const configFile = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-dir-')), 'config.json');
-  if (signedIn) writeCredentials(credentialsFile, { origin: 'https://cloud.example', token: 'tok', login: 'innei' });
+  if (signedIn)
+    writeCredentials(credentialsFile, {
+      origin: 'https://cloud.example',
+      token: 'tok',
+      login: 'innei',
+    });
   writeDocument(temp.root, 'plan', { 'doc.xml': '<doc><p>one</p></doc>' });
-  if (published) updateArtifactConfig(configFile, 'document/plan', { cloud: { id: 'cloudplan', url: 'u', publishedAt: '2026-10-21T00:00:00Z', visibility: 'private' } });
+  if (published)
+    updateArtifactConfig(configFile, 'document/plan', {
+      cloud: {
+        id: 'cloudplan',
+        url: 'u',
+        publishedAt: '2026-10-21T00:00:00Z',
+        visibility: 'private',
+      },
+    });
   const server = await startArtifactsServer({
     root: temp.root,
     viewerDir: temp.viewer,
@@ -112,7 +142,11 @@ async function stampedBlockId(root: string) {
 
 function $findText(node: LexicalNode, text: string): TextNode | null {
   if ($isTextNode(node) && node.getTextContent() === text) return node;
-  if ($isElementNode(node)) for (const child of node.getChildren()) { const found = $findText(child, text); if (found) return found; }
+  if ($isElementNode(node))
+    for (const child of node.getChildren()) {
+      const found = $findText(child, text);
+      if (found) return found;
+    }
   return null;
 }
 
@@ -121,7 +155,16 @@ describe('connecting', () => {
     const hub = await fakeHub();
     const { server } = await start({ hub });
     const hello = await hub.next('hello');
-    expect(hello).toEqual({ t: 'hello', version: '1.13.0', ids: ['cloudplan'], local: { hostId: expect.stringMatching(/^[A-Za-z0-9_-]{16,64}$/), port: server.port, key: server.token } });
+    expect(hello).toEqual({
+      t: 'hello',
+      version: '1.13.0',
+      ids: ['cloudplan'],
+      local: {
+        hostId: expect.stringMatching(/^[A-Za-z0-9_-]{16,64}$/),
+        port: server.port,
+        key: server.token,
+      },
+    });
     expect(hub.headers[0]!.authorization).toBe('Bearer tok');
   });
 
@@ -139,8 +182,12 @@ describe('connecting', () => {
     const { root, configFile } = await start({ hub, published: false });
     writeHtml(root, 'page', { 'index.html': '<p>hi</p>' });
     writeArtboard(root, 'board', { title: 'Board', groups: [] });
-    updateArtifactConfig(configFile, 'html/page', { cloud: { id: 'cloudpage', url: 'u', publishedAt: null, visibility: 'private' } });
-    updateArtifactConfig(configFile, 'artboard/board', { cloud: { id: 'cloudboard', url: 'u', publishedAt: null, visibility: 'private' } });
+    updateArtifactConfig(configFile, 'html/page', {
+      cloud: { id: 'cloudpage', url: 'u', publishedAt: null, visibility: 'private' },
+    });
+    updateArtifactConfig(configFile, 'artboard/board', {
+      cloud: { id: 'cloudboard', url: 'u', publishedAt: null, visibility: 'private' },
+    });
     expect((await hub.next('hello')).ids).toEqual(['cloudboard', 'cloudpage']);
   });
 
@@ -149,7 +196,9 @@ describe('connecting', () => {
     const { configFile } = await start({ hub, published: false });
     await new Promise((resolve) => setTimeout(resolve, 200));
     expect(hub.sockets).toHaveLength(0);
-    updateArtifactConfig(configFile, 'document/plan', { cloud: { id: 'cloudplan', url: 'u', publishedAt: 't', visibility: 'private' } });
+    updateArtifactConfig(configFile, 'document/plan', {
+      cloud: { id: 'cloudplan', url: 'u', publishedAt: 't', visibility: 'private' },
+    });
     expect(await hub.next('hello')).toMatchObject({ ids: ['cloudplan'] });
   });
 
@@ -180,7 +229,10 @@ describe('requests', () => {
     await hub.next('hello');
     const reply = await request(hub, { op: 'meta' });
     expect(reply.body.ok).toBe(true);
-    expect(reply.body.data).toMatchObject({ title: 'plan', contentBase: expect.stringContaining('/document/plan/') });
+    expect(reply.body.data).toMatchObject({
+      title: 'plan',
+      contentBase: expect.stringContaining('/document/plan/'),
+    });
   });
 
   test('a comment op lands in comments.json as the human', async () => {
@@ -188,43 +240,89 @@ describe('requests', () => {
     const { root } = await start({ hub });
     await hub.next('hello');
     const blockId = await stampedBlockId(root);
-    const reply = await request(hub, { op: 'comment', comment: { op: 'create', blockId, quote: 'one', text: 'from the phone' } });
+    const reply = await request(hub, {
+      op: 'comment',
+      comment: { op: 'create', blockId, quote: 'one', text: 'from the phone' },
+    });
     expect(reply.body.ok).toBe(true);
-    const file = JSON.parse(fs.readFileSync(path.join(root, 'document/plan/comments.json'), 'utf8'));
+    const file = JSON.parse(
+      fs.readFileSync(path.join(root, 'document/plan/comments.json'), 'utf8'),
+    );
     expect(file.threads[0].messages[0]).toMatchObject({ author: 'human', text: 'from the phone' });
   });
 
   test('a comment op on a published artboard lands in its comments.json and meta carries the threads', async () => {
     const hub = await fakeHub();
     const { root, configFile } = await start({ hub, published: false });
-    writeArtboard(root, 'board', { version: 1, pages: [{ id: 'p', name: 'P' }], boards: { a: { file: 'pages/a.html', page: 'p', x: 0, y: 0, w: 10, h: 10 } } }, { 'pages/a.html': '<html><body></body></html>' });
-    updateArtifactConfig(configFile, 'artboard/board', { cloud: { id: 'cloudboard', url: 'u', publishedAt: null, visibility: 'private' } });
+    writeArtboard(
+      root,
+      'board',
+      {
+        version: 1,
+        pages: [{ id: 'p', name: 'P' }],
+        boards: { a: { file: 'pages/a.html', page: 'p', x: 0, y: 0, w: 10, h: 10 } },
+      },
+      { 'pages/a.html': '<html><body></body></html>' },
+    );
+    updateArtifactConfig(configFile, 'artboard/board', {
+      cloud: { id: 'cloudboard', url: 'u', publishedAt: null, visibility: 'private' },
+    });
     await hub.next('hello');
-    const reply = await request(hub, { op: 'comment', comment: { op: 'create', anchor: { page: 'p', board: 'a', x: 1, y: 1 }, text: 'from the cloud' } }, 'cloudboard');
+    const reply = await request(
+      hub,
+      {
+        op: 'comment',
+        comment: {
+          op: 'create',
+          anchor: { page: 'p', board: 'a', x: 1, y: 1 },
+          text: 'from the cloud',
+        },
+      },
+      'cloudboard',
+    );
     expect(reply.body.ok).toBe(true);
-    expect(reply.body.data.comments.threads[0].messages[0]).toMatchObject({ author: 'human', text: 'from the cloud' });
-    const file = JSON.parse(fs.readFileSync(path.join(root, 'artboard/board/comments.json'), 'utf8'));
+    expect(reply.body.data.comments.threads[0].messages[0]).toMatchObject({
+      author: 'human',
+      text: 'from the cloud',
+    });
+    const file = JSON.parse(
+      fs.readFileSync(path.join(root, 'artboard/board/comments.json'), 'utf8'),
+    );
     expect(file.threads).toHaveLength(1);
     const meta = await request(hub, { op: 'meta' }, 'cloudboard');
-    expect(meta.body.data).toMatchObject({ comments: { threads: [{ anchor: { board: 'a' } }] }, staleThreads: [] });
+    expect(meta.body.data).toMatchObject({
+      comments: { threads: [{ anchor: { board: 'a' } }] },
+      staleThreads: [],
+    });
   });
 
   test('a Loro update from the phone reaches doc.xml', async () => {
     const hub = await fakeHub();
     const { root } = await start({ hub });
     await hub.next('hello');
-    await waitFor(() => fs.readFileSync(path.join(root, 'document/plan/doc.xml'), 'utf8').includes(' id="'));
+    await waitFor(() =>
+      fs.readFileSync(path.join(root, 'document/plan/doc.xml'), 'utf8').includes(' id="'),
+    );
     const state = (await request(hub, { op: 'state' })).body.data;
     const peer = new LoroDoc();
     peer.import(Buffer.from(state.snapshot, 'base64'));
     const editor = createDocumentHeadlessEditor();
     const binding = createLoroBinding(editor, peer);
     const from = peer.oplogVersion();
-    editor.update(() => $findText($getRoot(), 'one')!.setTextContent('one, from the phone'), { discrete: true });
-    const reply = await request(hub, { op: 'update', bytes: Buffer.from(peer.export({ mode: 'update', from })).toString('base64') });
+    editor.update(() => $findText($getRoot(), 'one')!.setTextContent('one, from the phone'), {
+      discrete: true,
+    });
+    const reply = await request(hub, {
+      op: 'update',
+      bytes: Buffer.from(peer.export({ mode: 'update', from })).toString('base64'),
+    });
     binding.dispose();
     expect(reply.body.ok).toBe(true);
-    await waitFor(() => fs.readFileSync(path.join(root, 'document/plan/doc.xml'), 'utf8').includes('one, from the phone'));
+    await waitFor(() =>
+      fs
+        .readFileSync(path.join(root, 'document/plan/doc.xml'), 'utf8')
+        .includes('one, from the phone'),
+    );
   });
 
   test('a phone page that does not declare pending support is refused on a document with pending blocks', async () => {
@@ -233,7 +331,10 @@ describe('requests', () => {
     await hub.next('hello');
     const file = path.join(root, 'document/plan/doc.xml');
     await waitFor(() => fs.readFileSync(file, 'utf8').includes(' id="'));
-    fs.writeFileSync(file, fs.readFileSync(file, 'utf8').replace('</doc>', '<pending intent="later"/></doc>'));
+    fs.writeFileSync(
+      file,
+      fs.readFileSync(file, 'utf8').replace('</doc>', '<pending intent="later"/></doc>'),
+    );
     await waitFor(() => fs.readFileSync(file, 'utf8').includes('<pending id='));
     const state = (await request(hub, { op: 'state' })).body.data;
     const peer = new LoroDoc();
@@ -241,7 +342,9 @@ describe('requests', () => {
     const editor = createDocumentHeadlessEditor();
     const binding = createLoroBinding(editor, peer);
     const from = peer.oplogVersion();
-    editor.update(() => $findText($getRoot(), 'one')!.setTextContent('one, from the phone'), { discrete: true });
+    editor.update(() => $findText($getRoot(), 'one')!.setTextContent('one, from the phone'), {
+      discrete: true,
+    });
     const bytes = Buffer.from(peer.export({ mode: 'update', from })).toString('base64');
     binding.dispose();
     const refused = await request(hub, { op: 'update', bytes });
@@ -255,20 +358,53 @@ describe('requests', () => {
     const hub = await fakeHub();
     const { root } = await start({ hub });
     await hub.next('hello');
-    const reply = await request(hub, { op: 'selection', selection: { type: 'selection', artifact: 'document/cloudplan', tab: 't1', human: true, quote: 'one', blockIds: [], heading: '' } });
+    const reply = await request(hub, {
+      op: 'selection',
+      selection: {
+        type: 'selection',
+        artifact: 'document/cloudplan',
+        tab: 't1',
+        human: true,
+        quote: 'one',
+        blockIds: [],
+        heading: '',
+      },
+    });
     expect(reply.body.ok).toBe(true);
     await waitFor(() => fs.existsSync(path.join(root, '.state/document/plan/selection.json')));
-    expect(JSON.parse(fs.readFileSync(path.join(root, '.state/document/plan/selection.json'), 'utf8'))).toMatchObject({ artifact: 'document/plan', quote: 'one' });
+    expect(
+      JSON.parse(fs.readFileSync(path.join(root, '.state/document/plan/selection.json'), 'utf8')),
+    ).toMatchObject({ artifact: 'document/plan', quote: 'one' });
   });
 
   test('a selection made over the direct pipe survives the relay losing its viewers', async () => {
     const hub = await fakeHub();
     const { root, server } = await start({ hub });
     await hub.next('hello');
-    const ws = new WebSocket(`ws://127.0.0.1:${server.port}/relay/a/cloudplan?key=${server.token}`, { headers: { Origin: 'https://cloud.example' } });
+    const ws = new WebSocket(
+      `ws://127.0.0.1:${server.port}/relay/a/cloudplan?key=${server.token}`,
+      { headers: { Origin: 'https://cloud.example' } },
+    );
     cleanups.push(() => ws.terminate());
     await new Promise((resolve) => ws.on('open', resolve));
-    ws.send(JSON.stringify({ t: 'request', rid: 1, body: { op: 'selection', selection: { type: 'selection', artifact: 'document/cloudplan', tab: 't1', human: true, quote: 'one', blockIds: [], heading: '' } } }));
+    ws.send(
+      JSON.stringify({
+        t: 'request',
+        rid: 1,
+        body: {
+          op: 'selection',
+          selection: {
+            type: 'selection',
+            artifact: 'document/cloudplan',
+            tab: 't1',
+            human: true,
+            quote: 'one',
+            blockIds: [],
+            heading: '',
+          },
+        },
+      }),
+    );
     const file = path.join(root, '.state/document/plan/selection.json');
     await waitFor(() => fs.existsSync(file));
     hub.send({ t: 'watch', ids: [] });
@@ -280,8 +416,14 @@ describe('requests', () => {
     const hub = await fakeHub();
     await start({ hub });
     await hub.next('hello');
-    expect((await request(hub, { op: 'state' }, 'someone-else')).body).toEqual({ ok: false, error: 'not served here' });
-    expect((await request(hub, { op: 'rm -rf' })).body).toEqual({ ok: false, error: 'unknown request' });
+    expect((await request(hub, { op: 'state' }, 'someone-else')).body).toEqual({
+      ok: false,
+      error: 'not served here',
+    });
+    expect((await request(hub, { op: 'rm -rf' })).body).toEqual({
+      ok: false,
+      error: 'unknown request',
+    });
   });
 
   test('a request counts as activity so the idle timer does not stop the server', async () => {
@@ -329,11 +471,17 @@ describe('events', () => {
     const { root } = await start({ hub });
     await hub.next('hello');
     const blockId = await stampedBlockId(root);
-    await request(hub, { op: 'comment', comment: { op: 'create', blockId, quote: 'one', text: 'unwatched' } });
+    await request(hub, {
+      op: 'comment',
+      comment: { op: 'create', blockId, quote: 'one', text: 'unwatched' },
+    });
     await new Promise((resolve) => setTimeout(resolve, 100));
     expect(hub.messages.filter((m) => m.t === 'event')).toEqual([]);
     hub.send({ t: 'watch', ids: ['cloudplan'] });
-    await request(hub, { op: 'comment', comment: { op: 'create', blockId, quote: 'one', text: 'watched' } });
+    await request(hub, {
+      op: 'comment',
+      comment: { op: 'create', blockId, quote: 'one', text: 'watched' },
+    });
     const event = await hub.next('event');
     expect(event).toMatchObject({ t: 'event', id: 'cloudplan', body: { type: 'doc-comments' } });
   });
@@ -352,8 +500,13 @@ describe('edits travel both ways', () => {
     const editor = createDocumentHeadlessEditor();
     const binding = createLoroBinding(editor, peer);
     const from = peer.oplogVersion();
-    editor.update(() => $findText($getRoot(), 'one')!.setTextContent('one, from the phone'), { discrete: true });
-    await request(hub, { op: 'update', bytes: Buffer.from(peer.export({ mode: 'update', from })).toString('base64') });
+    editor.update(() => $findText($getRoot(), 'one')!.setTextContent('one, from the phone'), {
+      discrete: true,
+    });
+    await request(hub, {
+      op: 'update',
+      bytes: Buffer.from(peer.export({ mode: 'update', from })).toString('base64'),
+    });
     binding.dispose();
     await waitFor(() => hub.messages.some((m) => m.t === 'event' && m.body?.type === 'doc-update'));
   });
@@ -362,12 +515,18 @@ describe('edits travel both ways', () => {
 describe('artboards and html over the relay', () => {
   async function startHtml(hub: Hub) {
     const started = await start({ hub, published: false });
-    writeHtml(started.root, 'page', { 'index.html': '<p>hi</p><ryugi-slider></ryugi-slider>', 'logo.svg': '<svg/>' });
-    updateArtifactConfig(started.configFile, 'html/page', { cloud: { id: 'cloudpage', url: 'u', publishedAt: null, visibility: 'private' } });
+    writeHtml(started.root, 'page', {
+      'index.html': '<p>hi</p><ryugi-slider></ryugi-slider>',
+      'logo.svg': '<svg/>',
+    });
+    updateArtifactConfig(started.configFile, 'html/page', {
+      cloud: { id: 'cloudpage', url: 'u', publishedAt: null, visibility: 'private' },
+    });
     await hub.next('hello');
     return started;
   }
-  const stateOf = (root: string) => JSON.parse(fs.readFileSync(path.join(root, '.state/html/page/warnings.json'), 'utf8'));
+  const stateOf = (root: string) =>
+    JSON.parse(fs.readFileSync(path.join(root, '.state/html/page/warnings.json'), 'utf8'));
 
   test('file returns an html page with the cloud runtime, and other files as they are', async () => {
     const hub = await fakeHub();
@@ -386,25 +545,43 @@ describe('artboards and html over the relay', () => {
   test('file refuses paths outside the artifact and files that do not exist', async () => {
     const hub = await fakeHub();
     await startHtml(hub);
-    expect((await request(hub, { op: 'file', path: '../../config.json' }, 'cloudpage')).body).toEqual({ ok: false, error: 'not found' });
-    expect((await request(hub, { op: 'file', path: 'missing.png' }, 'cloudpage')).body).toEqual({ ok: false, error: 'not found' });
-    expect((await request(hub, { op: 'file' }, 'cloudpage')).body).toEqual({ ok: false, error: 'not found' });
+    expect(
+      (await request(hub, { op: 'file', path: '../../config.json' }, 'cloudpage')).body,
+    ).toEqual({ ok: false, error: 'not found' });
+    expect((await request(hub, { op: 'file', path: 'missing.png' }, 'cloudpage')).body).toEqual({
+      ok: false,
+      error: 'not found',
+    });
+    expect((await request(hub, { op: 'file' }, 'cloudpage')).body).toEqual({
+      ok: false,
+      error: 'not found',
+    });
   });
 
   test('a loaded report from the cloud page marks the html as run, a runtime error lands in its warnings', async () => {
     const hub = await fakeHub();
     const { root } = await startHtml(hub);
     const { version } = (await request(hub, { op: 'meta' }, 'cloudpage')).body.data;
-    expect((await request(hub, { op: 'client', message: { type: 'loaded', version } }, 'cloudpage')).body).toEqual({ ok: true, data: null });
+    expect(
+      (await request(hub, { op: 'client', message: { type: 'loaded', version } }, 'cloudpage'))
+        .body,
+    ).toEqual({ ok: true, data: null });
     await waitFor(() => stateOf(root).ran === true);
-    await request(hub, { op: 'client', message: { type: 'runtime-error', message: 'boom' } }, 'cloudpage');
+    await request(
+      hub,
+      { op: 'client', message: { type: 'runtime-error', message: 'boom' } },
+      'cloudpage',
+    );
     await waitFor(() => stateOf(root).warnings.includes('runtime: boom'));
   });
 
   test('document-only ops are refused for html', async () => {
     const hub = await fakeHub();
     await startHtml(hub);
-    expect((await request(hub, { op: 'state' }, 'cloudpage')).body).toEqual({ ok: false, error: 'html/page is not a document' });
+    expect((await request(hub, { op: 'state' }, 'cloudpage')).body).toEqual({
+      ok: false,
+      error: 'html/page is not a document',
+    });
   });
 });
 
@@ -413,17 +590,45 @@ test('a server started by the CLI tells the relay its release version', async ()
   const origin = hub.url.replace(/^ws/, 'http').replace(/\/api\/relay\/host$/, '');
   const project = fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-project-'));
   const home = fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-xdg-'));
-  writeCredentials(path.join(home, 'ryugi', 'credentials.json'), { origin, token: 'tok', login: 'innei' });
-  writeDocument(path.join(project, '.ryugi', 'artifacts'), 'plan', { 'doc.xml': '<doc><p>one</p></doc>' });
+  writeCredentials(path.join(home, 'ryugi', 'credentials.json'), {
+    origin,
+    token: 'tok',
+    login: 'innei',
+  });
+  writeDocument(path.join(project, '.ryugi', 'artifacts'), 'plan', {
+    'doc.xml': '<doc><p>one</p></doc>',
+  });
   updateArtifactConfig(path.join(project, '.ryugi', 'config.json'), 'document/plan', {
-    cloud: { id: 'cloudplan', url: 'u', publishedAt: '2026-10-21T00:00:00Z', visibility: 'private' },
+    cloud: {
+      id: 'cloudplan',
+      url: 'u',
+      publishedAt: '2026-10-21T00:00:00Z',
+      visibility: 'private',
+    },
   });
   const cli = path.resolve(__dirname, '../dist/cli.cjs');
-  const env = { ...process.env, RYUGI_CLOUD_ORIGIN: origin, XDG_CONFIG_HOME: home, RYUGI_ARTIFACTS_OWNER: String(process.pid), RYUGI_ARTIFACTS_VERSION: '0.0.0-launcher' };
-  execFileSync(process.execPath, [cli, 'start', '--json', '--no-open', '--project-dir', project], { env, encoding: 'utf8' });
-  cleanups.push(() => void execFileSync(process.execPath, [cli, 'stop', '--project-dir', project], { env, encoding: 'utf8' }));
+  const env = {
+    ...process.env,
+    RYUGI_CLOUD_ORIGIN: origin,
+    XDG_CONFIG_HOME: home,
+    RYUGI_ARTIFACTS_OWNER: String(process.pid),
+    RYUGI_ARTIFACTS_VERSION: '0.0.0-launcher',
+  };
+  execFileSync(process.execPath, [cli, 'start', '--json', '--no-open', '--project-dir', project], {
+    env,
+    encoding: 'utf8',
+  });
+  cleanups.push(
+    () =>
+      void execFileSync(process.execPath, [cli, 'stop', '--project-dir', project], {
+        env,
+        encoding: 'utf8',
+      }),
+  );
   const hello = await hub.next('hello', 15_000);
-  expect(hello.version).toBe(JSON.parse(fs.readFileSync(path.resolve(__dirname, '../package.json'), 'utf8')).version);
+  expect(hello.version).toBe(
+    JSON.parse(fs.readFileSync(path.resolve(__dirname, '../package.json'), 'utf8')).version,
+  );
   expect(hello.ids).toEqual(['cloudplan']);
 }, 30_000);
 
@@ -432,8 +637,17 @@ describe('a relay that never finishes the handshake', () => {
     const sockets: net.Socket[] = [];
     const server = net.createServer((socket) => sockets.push(socket));
     await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
-    cleanups.push(() => new Promise<void>((resolve) => { for (const s of sockets) s.destroy(); server.close(() => resolve()); }));
-    return { url: `ws://127.0.0.1:${(server.address() as net.AddressInfo).port}/api/relay/host`, sockets };
+    cleanups.push(
+      () =>
+        new Promise<void>((resolve) => {
+          for (const s of sockets) s.destroy();
+          server.close(() => resolve());
+        }),
+    );
+    return {
+      url: `ws://127.0.0.1:${(server.address() as net.AddressInfo).port}/api/relay/host`,
+      sockets,
+    };
   }
 
   test('signing out mid-handshake does not crash the server', async () => {
@@ -443,7 +657,15 @@ describe('a relay that never finishes the handshake', () => {
     process.on('uncaughtException', onError);
     cleanups.push(() => void process.off('uncaughtException', onError));
     let token: string | null = 'tok';
-    const client = createRelayClient({ url: stalled.url, version: 't', pollMs: 20, token: () => token, served: () => new Map([['c1', 'document/plan']]), handle: async () => null, onActivity: () => {} });
+    const client = createRelayClient({
+      url: stalled.url,
+      version: 't',
+      pollMs: 20,
+      token: () => token,
+      served: () => new Map([['c1', 'document/plan']]),
+      handle: async () => null,
+      onActivity: () => {},
+    });
     cleanups.push(() => client.close());
     await waitFor(() => stalled.sockets.length === 1);
     token = null;
@@ -453,7 +675,16 @@ describe('a relay that never finishes the handshake', () => {
 
   test('a stalled handshake gives up and tries again', async () => {
     const stalled = await stalledServer();
-    const client = createRelayClient({ url: stalled.url, version: 't', pollMs: 20, handshakeTimeoutMs: 100, token: () => 'tok', served: () => new Map([['c1', 'document/plan']]), handle: async () => null, onActivity: () => {} });
+    const client = createRelayClient({
+      url: stalled.url,
+      version: 't',
+      pollMs: 20,
+      handshakeTimeoutMs: 100,
+      token: () => 'tok',
+      served: () => new Map([['c1', 'document/plan']]),
+      handle: async () => null,
+      onActivity: () => {},
+    });
     cleanups.push(() => client.close());
     await waitFor(() => stalled.sockets.length >= 2, 3000);
   });

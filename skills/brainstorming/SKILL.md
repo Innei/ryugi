@@ -1,6 +1,6 @@
 ---
 name: brainstorming
-description: "You MUST use this before any creative work - creating features, building components, adding functionality, modifying behavior, or planning anything new, in software or out of it (a talk, a business, a renovation)."
+description: 'You MUST use this before any creative work - creating features, building components, adding functionality, modifying behavior, or planning anything new, in software or out of it (a talk, a business, a renovation).'
 ---
 
 # Brainstorming
@@ -31,11 +31,11 @@ hundred decisions they never mention the way they would have made them.
 Before you reply, ask yourself: what do I know about what they want, and
 why?
 
-| What you know | Do |
-|---------------|----|
-| Everything that matters is in the request ("make the icon cornflower blue") | Do it, and say what you did. |
-| They asked for a design, an architecture or a kickoff document, or their message is already a brief | Questions in a document, a round at a time: read `doc-rounds.md` |
-| Something non-trivial is missing | One question at a time in chat, stepping up to the document when the work outgrows chat: read `chat.md` |
+| What you know                                                                                       | Do                                                                                                      |
+| --------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| Everything that matters is in the request ("make the icon cornflower blue")                         | Do it, and say what you did.                                                                            |
+| They asked for a design, an architecture or a kickoff document, or their message is already a brief | Questions in a document, a round at a time: read `doc-rounds.md`                                        |
+| Something non-trivial is missing                                                                    | One question at a time in chat, stepping up to the document when the work outgrows chat: read `chat.md` |
 
 Read the file before your first message.
 
@@ -109,11 +109,11 @@ instead of describing it:
 - a flow or a sequence of steps
 - options that would look different from each other
 
-| What is being decided | Where |
-|-----------------------|-------|
+| What is being decided                               | Where                                             |
+| --------------------------------------------------- | ------------------------------------------------- |
 | Several screens, states or visual questions at once | an artboard, in rounds: read `artboard-rounds.md` |
-| One surface or one dimension to tune | an `html` page as ryugi:artifacts says |
-| Structure, architecture, tradeoffs | words: chat or the document |
+| One surface or one dimension to tune                | an `html` page as ryugi:artifacts says            |
+| Structure, architecture, tradeoffs                  | words: chat or the document                       |
 
 Requirements, scope, tradeoffs, and conceptual choices stay in words. A
 question about a UI topic isn't automatically a visual question.
@@ -132,11 +132,11 @@ one, check whether the project has its own design skill or design system
 Once you understand what they want, pick a size and say it in plain
 words. They can override it.
 
-| Size | The full description | Then |
-|------|----------------------|------|
-| A quick, clear task | the request itself | do it |
-| A small change | in chat | build it under ryugi:test-driven-development |
-| A project | a written design: read `written-design.md` | the handoff below |
+| Size                | The full description                       | Then                                         |
+| ------------------- | ------------------------------------------ | -------------------------------------------- |
+| A quick, clear task | the request itself                         | do it                                        |
+| A small change      | in chat                                    | build it under ryugi:test-driven-development |
+| A project           | a written design: read `written-design.md` | the handoff below                            |
 
 If it grows mid-task, stop, say so, and step up a size.
 
@@ -170,10 +170,10 @@ report.
 
 ## Red Flags
 
-| Thought | Reality |
-|---------|---------|
-| "I'll offer options to save them effort" | Options steer. Ask them to describe it first. |
-| "I'll fill in sensible defaults" | Good. Say them out loud. A default they never heard is one they couldn't reject. |
-| "I should explain the process first" | Ask your question. The process shows itself. |
-| "They said 'sounds good' to the idea" | Approval covers what you showed them. A description you haven't written isn't approved. |
-| "The spike works, I'll keep building on it" | Keeping it is a new request. Back through the gate. |
+| Thought                                     | Reality                                                                                 |
+| ------------------------------------------- | --------------------------------------------------------------------------------------- |
+| "I'll offer options to save them effort"    | Options steer. Ask them to describe it first.                                           |
+| "I'll fill in sensible defaults"            | Good. Say them out loud. A default they never heard is one they couldn't reject.        |
+| "I should explain the process first"        | Ask your question. The process shows itself.                                            |
+| "They said 'sounds good' to the idea"       | Approval covers what you showed them. A description you haven't written isn't approved. |
+| "The spike works, I'll keep building on it" | Keeping it is a new request. Back through the gate.                                     |

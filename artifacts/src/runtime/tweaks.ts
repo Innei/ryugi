@@ -14,7 +14,10 @@ export function installTweaks(win: Window & typeof globalThis, makeTools: typeof
 
   function apply(next: TweakValues, emit: boolean) {
     for (const key of Object.keys(values)) {
-      if (!(key in next)) { doc.documentElement.style.removeProperty(`--tweak-${key}`); doc.documentElement.removeAttribute(`data-tweak-${key}`); }
+      if (!(key in next)) {
+        doc.documentElement.style.removeProperty(`--tweak-${key}`);
+        doc.documentElement.removeAttribute(`data-tweak-${key}`);
+      }
     }
     values = next;
     for (const [key, value] of Object.entries(next)) {
@@ -34,21 +37,55 @@ export function installTweaks(win: Window & typeof globalThis, makeTools: typeof
       if (scripts.length > 1) throw new Error('Use one data-ryugi-tweaks declaration per board.');
       if (next && next.length > 65536) throw new Error('Parameter declaration is too large.');
       const result = readTweakSchema(next === null ? null : JSON.parse(next));
-      schema = result.schema; error = result.error;
-    } catch (cause) { schema = null; error = cause instanceof SyntaxError ? 'Invalid parameter JSON.' : String((cause as Error).message); }
+      schema = result.schema;
+      error = result.error;
+    } catch (cause) {
+      schema = null;
+      error =
+        cause instanceof SyntaxError ? 'Invalid parameter JSON.' : String((cause as Error).message);
+    }
     apply(schema ? reconcileTweakValues(schema) : {}, false);
   }
 
-  const report = () => win.parent.postMessage({ type: 'ryugi:tweaks:ready', connection, session, schema, error, values: { ...values } }, '*');
-  Object.defineProperty(win, 'ryugiTweaks', { get: () => { read(); return { ...values }; } });
-  doc.addEventListener('DOMContentLoaded', () => { read(); if (connection) report(); }, { once: true });
+  const report = () =>
+    win.parent.postMessage(
+      { type: 'ryugi:tweaks:ready', connection, session, schema, error, values: { ...values } },
+      '*',
+    );
+  Object.defineProperty(win, 'ryugiTweaks', {
+    get: () => {
+      read();
+      return { ...values };
+    },
+  });
+  doc.addEventListener(
+    'DOMContentLoaded',
+    () => {
+      read();
+      if (connection) report();
+    },
+    { once: true },
+  );
   win.addEventListener('message', (event) => {
     if (event.source !== win.parent) return;
     const data = event.data;
     if (!data || data.type !== 'ryugi:tweaks') return;
-    if (data.action === 'connect' && typeof data.connection === 'string' && data.connection.length > 0 && data.connection.length <= 128) {
-      connection = data.connection; read(); report();
-    } else if (data.action === 'set' && data.connection === connection && data.session === session && connection && schema) {
+    if (
+      data.action === 'connect' &&
+      typeof data.connection === 'string' &&
+      data.connection.length > 0 &&
+      data.connection.length <= 128
+    ) {
+      connection = data.connection;
+      read();
+      report();
+    } else if (
+      data.action === 'set' &&
+      data.connection === connection &&
+      data.session === session &&
+      connection &&
+      schema
+    ) {
       const next = readTweakValues(schema, data.values);
       if (next && Object.keys(next).some((key) => next[key] !== values[key])) apply(next, true);
     }

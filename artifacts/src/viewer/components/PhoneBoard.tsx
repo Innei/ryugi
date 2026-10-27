@@ -24,7 +24,15 @@ export interface Rect {
 }
 
 const styles = stylex.create({
-  overlay: { position: 'fixed', inset: 0, zIndex: 30, display: 'flex', flexDirection: 'column', color: cssVar.colorText, fontFamily: cssVar.fontFamily },
+  overlay: {
+    position: 'fixed',
+    inset: 0,
+    zIndex: 30,
+    display: 'flex',
+    flexDirection: 'column',
+    color: cssVar.colorText,
+    fontFamily: cssVar.fontFamily,
+  },
   backdrop: { position: 'absolute', inset: 0, backgroundColor: cssVar.colorBgLayout },
   head: {
     position: 'relative',
@@ -41,9 +49,27 @@ const styles = stylex.create({
     backgroundColor: cssVar.colorBgContainer,
   },
   heading: { flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 1 },
-  title: { overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', fontSize: 15, fontWeight: 600 },
-  id: { overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', color: cssVar.colorTextTertiary, fontFamily: cssVar.fontFamilyCode, fontSize: 11 },
-  count: { flexShrink: 0, color: cssVar.colorTextSecondary, fontSize: 13, fontVariantNumeric: 'tabular-nums' },
+  title: {
+    overflow: 'hidden',
+    whiteSpace: 'nowrap',
+    textOverflow: 'ellipsis',
+    fontSize: 15,
+    fontWeight: 600,
+  },
+  id: {
+    overflow: 'hidden',
+    whiteSpace: 'nowrap',
+    textOverflow: 'ellipsis',
+    color: cssVar.colorTextTertiary,
+    fontFamily: cssVar.fontFamilyCode,
+    fontSize: 11,
+  },
+  count: {
+    flexShrink: 0,
+    color: cssVar.colorTextSecondary,
+    fontSize: 13,
+    fontVariantNumeric: 'tabular-nums',
+  },
   body: { position: 'relative', flex: 1, minHeight: 0, overflow: 'hidden', touchAction: 'none' },
   stage: { position: 'absolute', inset: 0, transformOrigin: '0 0' },
   world: { position: 'absolute', left: 0, top: 0, transformOrigin: '0 0' },
@@ -62,7 +88,14 @@ const styles = stylex.create({
     backgroundColor: cssVar.colorBgContainer,
   },
   dots: { flex: 1, display: 'flex', justifyContent: 'center', gap: 6 },
-  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: cssVar.colorFill, transitionProperty: 'width, background-color', transitionDuration: '200ms' },
+  dot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: cssVar.colorFill,
+    transitionProperty: 'width, background-color',
+    transitionDuration: '200ms',
+  },
   dotCurrent: { width: 18, backgroundColor: cssVar.colorText },
 });
 
@@ -79,7 +112,13 @@ interface Props {
 function hold(el: Element | null, keyframes: Keyframe[], options: KeyframeAnimationOptions) {
   if (!el || reducedMotion()) return { done: Promise.resolve(), cancel: () => {} };
   const animation = el.animate(keyframes, { fill: 'forwards', ...options });
-  return { done: animation.finished.then(() => undefined, () => undefined), cancel: () => animation.cancel() };
+  return {
+    done: animation.finished.then(
+      () => undefined,
+      () => undefined,
+    ),
+    cancel: () => animation.cancel(),
+  };
 }
 
 export function PhoneBoard({ id, board, src, siblings, origin, onOpen, onClose }: Props) {
@@ -89,7 +128,13 @@ export function PhoneBoard({ id, board, src, siblings, origin, onOpen, onClose }
   const head = useRef<HTMLElement>(null);
   const foot = useRef<HTMLDivElement>(null);
   const [drag, setDrag] = useState<{ axis: Axis; dx: number; dy: number } | null>(null);
-  const gesture = useRef<{ id: number; x: number; y: number; mode: 'pending' | 'pan' | 'dismiss' | 'swipe'; track: ReturnType<typeof velocityTracker> } | null>(null);
+  const gesture = useRef<{
+    id: number;
+    x: number;
+    y: number;
+    mode: 'pending' | 'pan' | 'dismiss' | 'swipe';
+    track: ReturnType<typeof velocityTracker>;
+  } | null>(null);
   const placed = useRef(view);
   placed.current = view;
   const opened = useRef(false);
@@ -99,7 +144,10 @@ export function PhoneBoard({ id, board, src, siblings, origin, onOpen, onClose }
   const previous = index > 0 ? siblings[index - 1] : undefined;
   const next = index >= 0 ? siblings[index + 1] : undefined;
 
-  const size = () => ({ width: viewportRef.current?.clientWidth ?? board.w, height: viewportRef.current?.clientHeight ?? board.h });
+  const size = () => ({
+    width: viewportRef.current?.clientWidth ?? board.w,
+    height: viewportRef.current?.clientHeight ?? board.h,
+  });
   const toward = (rect: Rect | undefined) => {
     const v = placed.current;
     const box = viewportRef.current?.getBoundingClientRect();
@@ -111,29 +159,64 @@ export function PhoneBoard({ id, board, src, siblings, origin, onOpen, onClose }
 
   useLayoutEffect(() => {
     const { width, height } = size();
-    const k = board.interactive ? Math.min(1, width / board.w, height / board.h) : Math.min(1, width / board.w);
+    const k = board.interactive
+      ? Math.min(1, width / board.w, height / board.h)
+      : Math.min(1, width / board.w);
     const v = { k, x: (width - board.w * k) / 2, y: 0 };
     place(v);
     placed.current = v;
     if (!opened.current) {
       opened.current = true;
       const from = toward(origin);
-      if (from) void play(stage.current, [{ transform: from }, { transform: 'none' }], { duration: SPRING.duration, easing: SPRING.easing });
-      void play(backdrop.current, [{ opacity: 0 }, { opacity: 1 }], { duration: 200, easing: EASE });
-      chrome().forEach((el, i) => void play(el, [{ opacity: 0, transform: `translateY(${i ? 12 : -8}px)` }, { opacity: 1, transform: 'none' }], { duration: 180, delay: 90, easing: EASE }));
+      if (from)
+        void play(stage.current, [{ transform: from }, { transform: 'none' }], {
+          duration: SPRING.duration,
+          easing: SPRING.easing,
+        });
+      void play(backdrop.current, [{ opacity: 0 }, { opacity: 1 }], {
+        duration: 200,
+        easing: EASE,
+      });
+      chrome().forEach(
+        (el, i) =>
+          void play(
+            el,
+            [
+              { opacity: 0, transform: `translateY(${i ? 12 : -8}px)` },
+              { opacity: 1, transform: 'none' },
+            ],
+            { duration: 180, delay: 90, easing: EASE },
+          ),
+      );
     } else if (entering.current) {
       const { dir, leaving } = entering.current;
       entering.current = null;
       leaving();
-      void play(stage.current, [{ transform: `translateX(${dir * width * 0.35}px)`, opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: SPRING.duration, easing: SPRING.easing });
+      void play(
+        stage.current,
+        [
+          { transform: `translateX(${dir * width * 0.35}px)`, opacity: 0 },
+          { transform: 'none', opacity: 1 },
+        ],
+        { duration: SPRING.duration, easing: SPRING.easing },
+      );
     }
   }, [id, board.w, board.h, board.interactive, place, viewportRef]);
 
   const settleBack = () => {
     const from = stage.current?.style.transform || 'none';
     setDrag(null);
-    void play(stage.current, [{ transform: from }, { transform: 'none' }], { duration: SPRING.duration, easing: SPRING.easing });
-    [backdrop.current, ...chrome()].forEach((el) => void play(el, [{ opacity: Number(el?.style.opacity || 1) }, { opacity: 1 }], { duration: 200, easing: EASE }));
+    void play(stage.current, [{ transform: from }, { transform: 'none' }], {
+      duration: SPRING.duration,
+      easing: SPRING.easing,
+    });
+    [backdrop.current, ...chrome()].forEach(
+      (el) =>
+        void play(el, [{ opacity: Number(el?.style.opacity || 1) }, { opacity: 1 }], {
+          duration: 200,
+          easing: EASE,
+        }),
+    );
   };
 
   const close = async () => {
@@ -143,9 +226,20 @@ export function PhoneBoard({ id, board, src, siblings, origin, onOpen, onClose }
     const to = toward(origin);
     const fade = { duration: 100, easing: EXIT };
     await Promise.all([
-      to ? hold(stage.current, [{ transform: from }, { transform: to }], { duration: 240, easing: EXIT }).done : hold(stage.current, [{ opacity: 1 }, { opacity: 0 }], fade).done,
-      hold(backdrop.current, [{ opacity: Number(backdrop.current?.style.opacity || 1) }, { opacity: 0 }], { duration: 240, easing: EXIT }).done,
-      ...chrome().map((el) => hold(el, [{ opacity: Number(el?.style.opacity || 1) }, { opacity: 0 }], fade).done),
+      to
+        ? hold(stage.current, [{ transform: from }, { transform: to }], {
+            duration: 240,
+            easing: EXIT,
+          }).done
+        : hold(stage.current, [{ opacity: 1 }, { opacity: 0 }], fade).done,
+      hold(
+        backdrop.current,
+        [{ opacity: Number(backdrop.current?.style.opacity || 1) }, { opacity: 0 }],
+        { duration: 240, easing: EXIT },
+      ).done,
+      ...chrome().map(
+        (el) => hold(el, [{ opacity: Number(el?.style.opacity || 1) }, { opacity: 0 }], fade).done,
+      ),
     ]);
     onClose();
   };
@@ -154,7 +248,14 @@ export function PhoneBoard({ id, board, src, siblings, origin, onOpen, onClose }
     if (!target || busy.current) return;
     busy.current = true;
     const from = stage.current?.style.transform || 'none';
-    const exit = hold(stage.current, [{ transform: from, opacity: 1 }, { transform: `translateX(${-dir * size().width}px)`, opacity: 0 }], { duration: 180, easing: EXIT });
+    const exit = hold(
+      stage.current,
+      [
+        { transform: from, opacity: 1 },
+        { transform: `translateX(${-dir * size().width}px)`, opacity: 0 },
+      ],
+      { duration: 180, easing: EXIT },
+    );
     await exit.done;
     entering.current = { dir, leaving: exit.cancel };
     busy.current = false;
@@ -168,10 +269,18 @@ export function PhoneBoard({ id, board, src, siblings, origin, onOpen, onClose }
     if (g) g.mode = 'pan';
     handlers.onPointerDown(event);
     if (g) return;
-    [stage.current, backdrop.current, ...chrome()].forEach((el) => el?.getAnimations().forEach((animation) => animation.cancel()));
+    [stage.current, backdrop.current, ...chrome()].forEach((el) =>
+      el?.getAnimations().forEach((animation) => animation.cancel()),
+    );
     const track = velocityTracker();
     track.add(event.clientX, event.clientY, performance.now());
-    gesture.current = { id: event.pointerId, x: event.clientX, y: event.clientY, mode: 'pending', track };
+    gesture.current = {
+      id: event.pointerId,
+      x: event.clientX,
+      y: event.clientY,
+      mode: 'pending',
+      track,
+    };
   };
   const onPointerMove = (event: PointerEvent<HTMLDivElement>) => {
     const g = gesture.current;
@@ -183,7 +292,12 @@ export function PhoneBoard({ id, board, src, siblings, origin, onOpen, onClose }
       const axis = lockAxis(dx, dy);
       if (!axis) return;
       const fits = board.w * view.k <= size().width + 1;
-      g.mode = axis === 'y' && dy > 0 && view.y >= -0.5 ? 'dismiss' : axis === 'x' && fits && siblings.length > 1 ? 'swipe' : 'pan';
+      g.mode =
+        axis === 'y' && dy > 0 && view.y >= -0.5
+          ? 'dismiss'
+          : axis === 'x' && fits && siblings.length > 1
+            ? 'swipe'
+            : 'pan';
       if (g.mode !== 'pan') handlers.onPointerUp(event);
     }
     if (g.mode === 'pan') handlers.onPointerMove(event);
@@ -197,7 +311,10 @@ export function PhoneBoard({ id, board, src, siblings, origin, onOpen, onClose }
     const velocity = g.track.velocity(performance.now());
     const dx = event.clientX - g.x;
     const dy = event.clientY - g.y;
-    if (g.mode === 'dismiss') return (dy > DISMISS && velocity.y > -FLICK) || velocity.y > DISMISS_SPEED ? void close() : settleBack();
+    if (g.mode === 'dismiss')
+      return (dy > DISMISS && velocity.y > -FLICK) || velocity.y > DISMISS_SPEED
+        ? void close()
+        : settleBack();
     const flick = velocity.x < -PAGE_SPEED ? 1 : velocity.x > PAGE_SPEED ? -1 : 0;
     const far = dx < -PAGE ? 1 : dx > PAGE ? -1 : 0;
     const dir = flick === 0 ? far : far === 0 || far === flick ? flick : 0;
@@ -223,9 +340,22 @@ export function PhoneBoard({ id, board, src, siblings, origin, onOpen, onClose }
 
   return (
     <div data-phone-board {...stylex.props(styles.overlay)}>
-      <div ref={backdrop} {...stylex.props(styles.backdrop)} style={drag ? { opacity: fade } : undefined} />
-      <header ref={head} {...stylex.props(styles.head)} style={drag ? { opacity: chromeFade } : undefined}>
-        <button type="button" aria-label={t('phone.backToCanvas')} onClick={() => void close()} {...stylex.props(ghostStyles.ghost)}>
+      <div
+        ref={backdrop}
+        {...stylex.props(styles.backdrop)}
+        style={drag ? { opacity: fade } : undefined}
+      />
+      <header
+        ref={head}
+        {...stylex.props(styles.head)}
+        style={drag ? { opacity: chromeFade } : undefined}
+      >
+        <button
+          type="button"
+          aria-label={t('phone.backToCanvas')}
+          onClick={() => void close()}
+          {...stylex.props(ghostStyles.ghost)}
+        >
           <ChevronLeft size={22} />
         </button>
         <span {...stylex.props(styles.heading)}>
@@ -254,8 +384,20 @@ export function PhoneBoard({ id, board, src, siblings, origin, onOpen, onClose }
         }}
         {...stylex.props(styles.body)}
       >
-        <div ref={stage} data-board-stage {...stylex.props(styles.stage)} style={stageTransform ? { transform: stageTransform } : undefined}>
-          <div {...stylex.props(styles.world)} style={{ width: board.w, height: board.h, transform: `translate(${view.x}px, ${view.y}px) scale(${view.k})` }}>
+        <div
+          ref={stage}
+          data-board-stage
+          {...stylex.props(styles.stage)}
+          style={stageTransform ? { transform: stageTransform } : undefined}
+        >
+          <div
+            {...stylex.props(styles.world)}
+            style={{
+              width: board.w,
+              height: board.h,
+              transform: `translate(${view.x}px, ${view.y}px) scale(${view.k})`,
+            }}
+          >
             {isMediaBoard(board) ? (
               <MediaBoard key={id} id={id} board={board} src={src} zoom={view.k} />
             ) : (
@@ -265,23 +407,47 @@ export function PhoneBoard({ id, board, src, siblings, origin, onOpen, onClose }
                 src={src}
                 sandbox="allow-scripts"
                 {...stylex.props(styles.frame)}
-                style={{ width: board.w, height: board.h, pointerEvents: board.interactive ? 'auto' : 'none' }}
+                style={{
+                  width: board.w,
+                  height: board.h,
+                  pointerEvents: board.interactive ? 'auto' : 'none',
+                }}
               />
             )}
           </div>
         </div>
       </div>
       {siblings.length > 1 ? (
-        <div ref={foot} {...stylex.props(styles.foot)} style={drag ? { opacity: chromeFade } : undefined}>
-          <button type="button" aria-label={t('phone.previousBoard')} disabled={!previous} onClick={() => void go(-1, previous)} {...stylex.props(ghostStyles.ghost)}>
+        <div
+          ref={foot}
+          {...stylex.props(styles.foot)}
+          style={drag ? { opacity: chromeFade } : undefined}
+        >
+          <button
+            type="button"
+            aria-label={t('phone.previousBoard')}
+            disabled={!previous}
+            onClick={() => void go(-1, previous)}
+            {...stylex.props(ghostStyles.ghost)}
+          >
             <ChevronLeft size={20} />
           </button>
           <span {...stylex.props(styles.dots)}>
             {siblings.map((sibling, i) => (
-              <span key={sibling} data-dot={i === index ? 'current' : ''} {...stylex.props(styles.dot, i === index && styles.dotCurrent)} />
+              <span
+                key={sibling}
+                data-dot={i === index ? 'current' : ''}
+                {...stylex.props(styles.dot, i === index && styles.dotCurrent)}
+              />
             ))}
           </span>
-          <button type="button" aria-label={t('phone.nextBoard')} disabled={!next} onClick={() => void go(1, next)} {...stylex.props(ghostStyles.ghost)}>
+          <button
+            type="button"
+            aria-label={t('phone.nextBoard')}
+            disabled={!next}
+            onClick={() => void go(1, next)}
+            {...stylex.props(ghostStyles.ghost)}
+          >
             <ChevronRight size={20} />
           </button>
         </div>

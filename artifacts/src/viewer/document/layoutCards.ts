@@ -4,7 +4,11 @@ export interface CardBox {
   height: number;
 }
 
-export function layoutCards(cards: CardBox[], gap: number, activeId?: string): Record<string, number> {
+export function layoutCards(
+  cards: CardBox[],
+  gap: number,
+  activeId?: string,
+): Record<string, number> {
   const sorted = [...cards].sort((a, b) => a.anchorTop - b.anchorTop);
   const tops: Record<string, number> = {};
   const pivot = activeId ? sorted.findIndex((card) => card.id === activeId) : -1;
@@ -30,7 +34,11 @@ export function layoutCards(cards: CardBox[], gap: number, activeId?: string): R
   return tops;
 }
 
-export function connectorPath(from: { x: number; y: number }, to: { x: number; y: number }, bend: number): string {
+export function connectorPath(
+  from: { x: number; y: number },
+  to: { x: number; y: number },
+  bend: number,
+): string {
   const start = Math.max(from.x, to.x - bend);
   const mid = (start + to.x) / 2;
   const run = start > from.x ? ` H${start}` : '';
@@ -89,6 +97,7 @@ export function editMenuPosition(
 ): { left: number; top: number; placement: 'below' | 'above' } {
   const left = Math.max(bounds.left, Math.min(selection.left, bounds.right - width));
   const below = selection.bottom + MENU_GAP;
-  if (viewport.top + below + height <= viewport.height - viewport.reserved - 8) return { left, top: below, placement: 'below' };
+  if (viewport.top + below + height <= viewport.height - viewport.reserved - 8)
+    return { left, top: below, placement: 'below' };
   return { left, top: selection.top - height - MENU_GAP, placement: 'above' };
 }

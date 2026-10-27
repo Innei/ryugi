@@ -6,13 +6,18 @@ export const CALLBACK_PAGE_CSP =
   "default-src 'none'; style-src 'unsafe-inline'; img-src data:; script-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'";
 
 const escapeHtml = (value: string) =>
-  value.replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]!);
+  value.replace(
+    /[&<>"']/g,
+    (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]!,
+  );
 
 const lucide = (body: string) =>
   `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`;
 
 const CIRCLE_CHECK = lucide('<circle cx="12" cy="12" r="10"/><path d="m16 9-5.5 5.5L8 12"/>');
-const CIRCLE_ALERT = lucide('<circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/>');
+const CIRCLE_ALERT = lucide(
+  '<circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/>',
+);
 const MARK = `<svg class="logo" width="20" height="20" viewBox="${RYUGI_MARK_VIEWBOX}" fill="currentColor" aria-hidden="true">${RYUGI_MARK_BODY}</svg>`;
 
 const STYLE = `

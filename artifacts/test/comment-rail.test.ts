@@ -1,7 +1,14 @@
 import { describe, expect, test } from 'vitest';
 import { resolveAnchor, shownThreadIds } from '../src/viewer/document/anchor';
 import { createDrafts, draftKey } from '../src/viewer/document/drafts';
-import { barLinkStart, blockBar, connectorPath, layoutCards, popoverPosition, toolbarPosition } from '../src/viewer/document/layoutCards';
+import {
+  barLinkStart,
+  blockBar,
+  connectorPath,
+  layoutCards,
+  popoverPosition,
+  toolbarPosition,
+} from '../src/viewer/document/layoutCards';
 
 describe('layoutCards', () => {
   test('a card sits at its anchor when there is room', () => {
@@ -36,7 +43,10 @@ describe('layoutCards', () => {
 
 describe('resolveAnchor', () => {
   test('finds the quote inside the block text', () => {
-    expect(resolveAnchor('服务端改为按事件粒度推送：每条变更', '按事件粒度推送')).toEqual({ start: 5, end: 12 });
+    expect(resolveAnchor('服务端改为按事件粒度推送：每条变更', '按事件粒度推送')).toEqual({
+      start: 5,
+      end: 12,
+    });
   });
 
   test('falls back to the whole block when the quote is gone', () => {
@@ -50,25 +60,40 @@ describe('resolveAnchor', () => {
 
 describe('connectorPath', () => {
   test('runs along the highlight line, then curves into the panel', () => {
-    expect(connectorPath({ x: -300, y: 40 }, { x: 0, y: 18 }, 40)).toBe('M-300 40 H-40 C-20 40 -20 18 0 18');
+    expect(connectorPath({ x: -300, y: 40 }, { x: 0, y: 18 }, 40)).toBe(
+      'M-300 40 H-40 C-20 40 -20 18 0 18',
+    );
   });
 
   test('curves straight from the highlight when it ends inside the bend', () => {
-    expect(connectorPath({ x: -20, y: 40 }, { x: 0, y: 18 }, 40)).toBe('M-20 40 C-10 40 -10 18 0 18');
+    expect(connectorPath({ x: -20, y: 40 }, { x: 0, y: 18 }, 40)).toBe(
+      'M-20 40 C-10 40 -10 18 0 18',
+    );
   });
 });
 
 describe('blockBar', () => {
   test('sits just outside the right edge of the block, full height', () => {
-    expect(blockBar({ top: 100, right: 700, bottom: 400 })).toEqual({ left: 708, right: 711, top: 100, bottom: 400 });
+    expect(blockBar({ top: 100, right: 700, bottom: 400 })).toEqual({
+      left: 708,
+      right: 711,
+      top: 100,
+      bottom: 400,
+    });
   });
 
   test('links to the panel from near the top of the bar', () => {
-    expect(barLinkStart({ left: 708, right: 711, top: 100, bottom: 400 })).toEqual({ x: 711, y: 118 });
+    expect(barLinkStart({ left: 708, right: 711, top: 100, bottom: 400 })).toEqual({
+      x: 711,
+      y: 118,
+    });
   });
 
   test('links from the middle of a bar shorter than the card offset', () => {
-    expect(barLinkStart({ left: 708, right: 711, top: 100, bottom: 120 })).toEqual({ x: 711, y: 110 });
+    expect(barLinkStart({ left: 708, right: 711, top: 100, bottom: 120 })).toEqual({
+      x: 711,
+      y: 110,
+    });
   });
 });
 
@@ -76,15 +101,24 @@ describe('popoverPosition', () => {
   const bounds = { left: 0, right: 760 };
 
   test('opens under the selection, aligned to its start', () => {
-    expect(popoverPosition({ left: 100, bottom: 200 }, bounds, 340, 8)).toEqual({ left: 100, top: 208 });
+    expect(popoverPosition({ left: 100, bottom: 200 }, bounds, 340, 8)).toEqual({
+      left: 100,
+      top: 208,
+    });
   });
 
   test('shifts left so the panel stays inside the column', () => {
-    expect(popoverPosition({ left: 600, bottom: 200 }, bounds, 340, 8)).toEqual({ left: 420, top: 208 });
+    expect(popoverPosition({ left: 600, bottom: 200 }, bounds, 340, 8)).toEqual({
+      left: 420,
+      top: 208,
+    });
   });
 
   test('never starts before the column', () => {
-    expect(popoverPosition({ left: -30, bottom: 200 }, bounds, 340, 8)).toEqual({ left: 0, top: 208 });
+    expect(popoverPosition({ left: -30, bottom: 200 }, bounds, 340, 8)).toEqual({
+      left: 0,
+      top: 208,
+    });
   });
 });
 
@@ -92,11 +126,17 @@ describe('toolbarPosition', () => {
   const bounds = { left: 0, right: 760 };
 
   test('sits above the start of the selection', () => {
-    expect(toolbarPosition({ left: 120, top: 200 }, bounds, 140, 36, 8)).toEqual({ left: 120, top: 156 });
+    expect(toolbarPosition({ left: 120, top: 200 }, bounds, 140, 36, 8)).toEqual({
+      left: 120,
+      top: 156,
+    });
   });
 
   test('shifts left so the toolbar stays inside the column', () => {
-    expect(toolbarPosition({ left: 700, top: 200 }, bounds, 140, 36, 8)).toEqual({ left: 620, top: 156 });
+    expect(toolbarPosition({ left: 700, top: 200 }, bounds, 140, 36, 8)).toEqual({
+      left: 620,
+      top: 156,
+    });
   });
 });
 

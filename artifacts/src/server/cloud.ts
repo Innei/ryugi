@@ -11,7 +11,13 @@ import { randomToken, send, sendJson } from './http';
 import { packArtifact } from './pack';
 import type { AutoPublishOutcome } from './auto-publish';
 import { withCloudRuntime } from './publish-payload';
-import { autoPublishEnabled, defaultGlobalAutoPublish, readGlobalAutoPublish, settingsFileFor, writeGlobalAutoPublish } from './settings';
+import {
+  autoPublishEnabled,
+  defaultGlobalAutoPublish,
+  readGlobalAutoPublish,
+  settingsFileFor,
+  writeGlobalAutoPublish,
+} from './settings';
 import type { Locale } from '../shared/locale';
 import { serverText } from './locales';
 
@@ -46,7 +52,8 @@ const LOGIN_STATE_TTL_MS = 10 * 60 * 1000;
 const UPLOAD_CONCURRENCY = 6;
 const MAX_JSON_BODY = 4096;
 const CLOUD_ID = /^[A-Za-z0-9_-]{1,64}$/;
-const ROUTE = /^\/api\/cloud\/(status|login|logout|artifacts|publish|publication|reserve|visibility|auto-publish|sync)(?:\/([^/]+)(?:\/([^/]+))?)?$/;
+const ROUTE =
+  /^\/api\/cloud\/(status|login|logout|artifacts|publish|publication|reserve|visibility|auto-publish|sync)(?:\/([^/]+)(?:\/([^/]+))?)?$/;
 
 class SignedOut extends Error {}
 
@@ -102,7 +109,8 @@ async function refuse(res: Response): Promise<never> {
   } catch {}
   const details = cloudErrorDetails(parsed);
   const message = typeof parsed.error === 'string' ? parsed.error : text || res.statusText;
-  if (res.status === 402 && details.code === 'plan_limit' && details.upgradeUrl) throw new PlanLimited(message, details.upgradeUrl, details);
+  if (res.status === 402 && details.code === 'plan_limit' && details.upgradeUrl)
+    throw new PlanLimited(message, details.upgradeUrl, details);
   throw new CloudRefused(res.status, `cloud refused (${res.status}): ${message}`, details);
 }
 
@@ -119,7 +127,12 @@ async function errorMessage(res: Response) {
 function fingerprintPayload(payload: Record<string, unknown>) {
   const versions = payload.versions as Record<string, number> | undefined;
   if (!versions) return payload;
-  return { ...payload, versions: Object.fromEntries(Object.entries(versions).map(([file, version]) => [file, version > 0])) };
+  return {
+    ...payload,
+    versions: Object.fromEntries(
+      Object.entries(versions).map(([file, version]) => [file, version > 0]),
+    ),
+  };
 }
 
 export function createCloudRoutes(options: CloudRoutesOptions) {
@@ -128,13 +141,16 @@ export function createCloudRoutes(options: CloudRoutesOptions) {
   const autoPublishState = () => ({
     global: readGlobalAutoPublish(settingsFile) ?? null,
     project: readConfig(configFile).config.autoPublish ?? null,
-    enabled: !!readCredentials(credentialsFile, origin) && autoPublishEnabled({ globalFile: settingsFile, projectFile: configFile }),
+    enabled:
+      !!readCredentials(credentialsFile, origin) &&
+      autoPublishEnabled({ globalFile: settingsFile, projectFile: configFile }),
   });
   const pendingStates = new Map<string, { expires: number; verifier: string }>();
 
   const loginUrl = () => {
     const now = Date.now();
-    for (const [state, pending] of pendingStates) if (pending.expires < now) pendingStates.delete(state);
+    for (const [state, pending] of pendingStates)
+      if (pending.expires < now) pendingStates.delete(state);
     const state = randomToken();
     const verifier = randomToken();
     pendingStates.set(state, { expires: now + LOGIN_STATE_TTL_MS, verifier });
@@ -142,7 +158,11 @@ export function createCloudRoutes(options: CloudRoutesOptions) {
     return `${origin}/auth/cli?port=${options.port()}&state=${state}&challenge=${challenge}`;
   };
 
-  const cloudFetch = async (method: string, path: string, body?: Uint8Array<ArrayBuffer> | object) => {
+  const cloudFetch = async (
+    method: string,
+    path: string,
+    body?: Uint8Array<ArrayBuffer> | object,
+  ) => {
     const credentials = readCredentials(credentialsFile, origin);
     if (!credentials) throw new SignedOut();
     const headers: Record<string, string> = { Authorization: `Bearer ${credentials.token}` };
@@ -170,14 +190,19 @@ export function createCloudRoutes(options: CloudRoutesOptions) {
   };
 
   const artifactEntry = (key: string) => readConfig(configFile).config.artifacts[key] ?? {};
-  type PublicationState = Pick<Publication, 'phase' | 'reasons' | 'message'> & { autoPublish?: boolean };
+  type PublicationState = Pick<Publication, 'phase' | 'reasons' | 'message'> & {
+    autoPublish?: boolean;
+  };
   const publications = new Map<string, PublicationState>();
   const changedDuringPublish = new Set<string>();
   const snapshot = (key: string): Publication => ({
     phase: artifactEntry(key).cloud?.publishedAt ? 'published' : 'waiting',
     ...publications.get(key),
     publishedAt: artifactEntry(key).cloud?.publishedAt ?? null,
-    autoPublish: autoPublishState().enabled && artifactEntry(key).autoPublish !== false && publications.get(key)?.autoPublish !== false,
+    autoPublish:
+      autoPublishState().enabled &&
+      artifactEntry(key).autoPublish !== false &&
+      publications.get(key)?.autoPublish !== false,
   });
   const setPublication = (key: string, state: PublicationState) => {
     publications.set(key, state);
@@ -195,7 +220,9 @@ export function createCloudRoutes(options: CloudRoutesOptions) {
     return run;
   };
   const keyOfCloudId = (cloudId: string) =>
-    Object.entries(readConfig(configFile).config.artifacts).find(([, entry]) => entry.cloud?.id === cloudId)?.[0] ?? `cloud:${cloudId}`;
+    Object.entries(readConfig(configFile).config.artifacts).find(
+      ([, entry]) => entry.cloud?.id === cloudId,
+    )?.[0] ?? `cloud:${cloudId}`;
 
   const createRecord = async (ref: ArtifactRef, visibility: Visibility) => {
     const res = await cloudFetch('POST', '/api/artifacts', { type: ref.type, visibility, project });
@@ -203,7 +230,12 @@ export function createCloudRoutes(options: CloudRoutesOptions) {
     const created = (await (await expectOk(res)).json()) as CloudArtifact;
     updateArtifactConfig(configFile, `${ref.type}/${ref.id}`, {
       visibility: created.visibility,
-      cloud: { id: created.id, url: created.url, publishedAt: null, visibility: created.visibility },
+      cloud: {
+        id: created.id,
+        url: created.url,
+        publishedAt: null,
+        visibility: created.visibility,
+      },
     });
     return created.id;
   };
@@ -216,7 +248,9 @@ export function createCloudRoutes(options: CloudRoutesOptions) {
     try {
       await createRecord(ref, entry.visibility ?? 'private');
     } catch (err) {
-      return err instanceof PlanLimited ? { url: null, limit: { message: err.message, upgradeUrl: err.upgradeUrl } } : { url: null };
+      return err instanceof PlanLimited
+        ? { url: null, limit: { message: err.message, upgradeUrl: err.upgradeUrl } }
+        : { url: null };
     }
     return { url: artifactEntry(key).cloud?.url ?? null };
   };
@@ -224,7 +258,8 @@ export function createCloudRoutes(options: CloudRoutesOptions) {
   const prepare = async (ref: ArtifactRef) => {
     const inspected = await options.inspect(ref);
     if (!inspected) throw new CloudRefused(404, `${ref.type}/${ref.id} not found`);
-    if (inspected.reasons.length > 0 || !inspected.payload) return { ready: false as const, reasons: inspected.reasons };
+    if (inspected.reasons.length > 0 || !inspected.payload)
+      return { ready: false as const, reasons: inspected.reasons };
     let packed;
     try {
       packed = packArtifact(inspected.dir, ref.type);
@@ -232,16 +267,30 @@ export function createCloudRoutes(options: CloudRoutesOptions) {
       throw new CloudRefused(413, (err as Error).message);
     }
     const sha = (data: Buffer | string) => crypto.createHash('sha256').update(data).digest('hex');
-    const hashed = withCloudRuntime(ref.type, packed).map((file) => ({ ...file, hash: sha(file.data) }));
-    const content = { title: inspected.title, payload: inspected.payload, files: hashed.map(({ path, hash }) => ({ path, hash })) };
-    const fingerprint = sha(JSON.stringify({ title: inspected.title, payload: fingerprintPayload(inspected.payload), files: packed.map((file) => ({ path: file.path, hash: sha(file.data) })) }));
+    const hashed = withCloudRuntime(ref.type, packed).map((file) => ({
+      ...file,
+      hash: sha(file.data),
+    }));
+    const content = {
+      title: inspected.title,
+      payload: inspected.payload,
+      files: hashed.map(({ path, hash }) => ({ path, hash })),
+    };
+    const fingerprint = sha(
+      JSON.stringify({
+        title: inspected.title,
+        payload: fingerprintPayload(inspected.payload),
+        files: packed.map((file) => ({ path: file.path, hash: sha(file.data) })),
+      }),
+    );
     return { ready: true as const, hashed, content, fingerprint };
   };
 
   const upToDate = async (ref: ArtifactRef) => {
     const cloud = artifactEntry(`${ref.type}/${ref.id}`).cloud;
     if (!cloud?.publishedAt) {
-      if (!(await options.inspect(ref))) throw new CloudRefused(404, `${ref.type}/${ref.id} not found`);
+      if (!(await options.inspect(ref)))
+        throw new CloudRefused(404, `${ref.type}/${ref.id} not found`);
       return null;
     }
     const prepared = await prepare(ref);
@@ -257,24 +306,58 @@ export function createCloudRoutes(options: CloudRoutesOptions) {
       const prepared = await prepare(ref);
       if (publications.get(key) !== saved) return snapshot(key);
       const cloud = artifactEntry(key).cloud;
-      return { ...snapshot(key), ...(!prepared.ready ? { phase: 'not-ready', reasons: prepared.reasons } : { phase: cloud?.publishedAt && cloud.fingerprint === prepared.fingerprint ? 'published' : 'waiting' }) };
+      return {
+        ...snapshot(key),
+        ...(!prepared.ready
+          ? { phase: 'not-ready', reasons: prepared.reasons }
+          : {
+              phase:
+                cloud?.publishedAt && cloud.fingerprint === prepared.fingerprint
+                  ? 'published'
+                  : 'waiting',
+            }),
+      };
     } catch (err) {
       return { ...snapshot(key), phase: 'failed', message: (err as Error).message };
     }
   };
 
-  const publishFiles = async (ref: ArtifactRef, requested?: Visibility, { recreate = true, skipUnchanged = false } = {}) => {
+  const publishFiles = async (
+    ref: ArtifactRef,
+    requested?: Visibility,
+    { recreate = true, skipUnchanged = false } = {},
+  ) => {
     const prepared = await prepare(ref);
-    if (!prepared.ready) return { status: 409, body: { error: 'fix these before publishing', code: 'publish_not_ready', reasons: prepared.reasons } };
+    if (!prepared.ready)
+      return {
+        status: 409,
+        body: {
+          error: 'fix these before publishing',
+          code: 'publish_not_ready',
+          reasons: prepared.reasons,
+        },
+      };
     const { hashed, content, fingerprint } = prepared;
     const key = `${ref.type}/${ref.id}`;
     const entry = artifactEntry(key);
     const current = entry.cloud;
     if (skipUnchanged && current?.publishedAt && current.fingerprint === fingerprint) {
-      return { status: 200, body: { id: current.id, url: current.url, visibility: current.visibility, publishedAt: current.publishedAt } };
+      return {
+        status: 200,
+        body: {
+          id: current.id,
+          url: current.url,
+          visibility: current.visibility,
+          publishedAt: current.publishedAt,
+        },
+      };
     }
     const byHash = new Map(hashed.map((file) => [file.hash, file.data]));
-    const version = (visibility: Visibility | undefined) => ({ ...content, project, ...(visibility ? { visibility } : {}) });
+    const version = (visibility: Visibility | undefined) => ({
+      ...content,
+      project,
+      ...(visibility ? { visibility } : {}),
+    });
 
     const create = () => createRecord(ref, requested ?? entry.visibility ?? 'private');
 
@@ -283,8 +366,14 @@ export function createCloudRoutes(options: CloudRoutesOptions) {
         await Promise.all(
           hashes.slice(i, i + UPLOAD_CONCURRENCY).map(async (hash) => {
             const data = byHash.get(hash);
-            if (!data) throw new CloudRefused(502, `cloud asked for a file this artifact does not have (${hash})`);
-            await expectOk(await cloudFetch('PUT', `/api/artifacts/${id}/blobs/${hash}`, new Uint8Array(data)));
+            if (!data)
+              throw new CloudRefused(
+                502,
+                `cloud asked for a file this artifact does not have (${hash})`,
+              );
+            await expectOk(
+              await cloudFetch('PUT', `/api/artifacts/${id}/blobs/${hash}`, new Uint8Array(data)),
+            );
           }),
         );
       }
@@ -294,7 +383,10 @@ export function createCloudRoutes(options: CloudRoutesOptions) {
       setPublication(key, { phase: 'preparing' });
       const res = await cloudFetch('POST', `/api/artifacts/${id}/versions`, version(visibility));
       if (res.status !== 409) return res;
-      const { missing } = (await res.clone().json().catch(() => ({}))) as { missing?: unknown };
+      const { missing } = (await res
+        .clone()
+        .json()
+        .catch(() => ({}))) as { missing?: unknown };
       if (!Array.isArray(missing)) return res;
       setPublication(key, { phase: 'uploading' });
       await upload(id, missing as string[]);
@@ -302,7 +394,9 @@ export function createCloudRoutes(options: CloudRoutesOptions) {
       return cloudFetch('POST', `/api/artifacts/${id}/versions`, version(visibility));
     };
 
-    let res = entry.cloud ? await commit(entry.cloud.id, requested) : await commit(await create(), undefined);
+    let res = entry.cloud
+      ? await commit(entry.cloud.id, requested)
+      : await commit(await create(), undefined);
     if (res.status === 404 && entry.cloud) {
       if (!recreate && entry.cloud.publishedAt) throw new CloudCopyGone();
       res = await commit(await create(), undefined);
@@ -310,27 +404,63 @@ export function createCloudRoutes(options: CloudRoutesOptions) {
     const published = (await (await expectOk(res)).json()) as CloudArtifact;
     updateArtifactConfig(configFile, key, {
       visibility: published.visibility,
-      cloud: { id: published.id, url: published.url, publishedAt: published.updatedAt, visibility: published.visibility, fingerprint },
+      cloud: {
+        id: published.id,
+        url: published.url,
+        publishedAt: published.updatedAt,
+        visibility: published.visibility,
+        fingerprint,
+      },
     });
-    return { status: 200, body: { id: published.id, url: published.url, visibility: published.visibility, publishedAt: published.updatedAt } };
+    return {
+      status: 200,
+      body: {
+        id: published.id,
+        url: published.url,
+        visibility: published.visibility,
+        publishedAt: published.updatedAt,
+      },
+    };
   };
 
-  const publish = async (ref: ArtifactRef, requested?: Visibility, flags?: { recreate?: boolean; skipUnchanged?: boolean }) => {
+  const publish = async (
+    ref: ArtifactRef,
+    requested?: Visibility,
+    flags?: { recreate?: boolean; skipUnchanged?: boolean },
+  ) => {
     const key = `${ref.type}/${ref.id}`;
     changedDuringPublish.delete(key);
     setPublication(key, { phase: 'preparing' });
     try {
       const result = await publishFiles(ref, requested, flags);
-      setPublication(key, result.status === 200 ? { phase: changedDuringPublish.has(key) ? 'waiting' : 'published' } : { phase: 'not-ready', reasons: (result.body as { reasons: string[] }).reasons });
+      setPublication(
+        key,
+        result.status === 200
+          ? { phase: changedDuringPublish.has(key) ? 'waiting' : 'published' }
+          : { phase: 'not-ready', reasons: (result.body as { reasons: string[] }).reasons },
+      );
       return result;
     } catch (err) {
-      setPublication(key, { phase: 'failed', message: err instanceof SignedOut ? 'Sign in to Ryugi Cloud on this computer to publish.' : (err as Error).message.replace(/^cloud refused \(\d+\): /, ''), autoPublish: !(err instanceof SignedOut || err instanceof PlanLimited || err instanceof CreateRefused || (err instanceof CloudRefused && err.status === 413)) });
+      setPublication(key, {
+        phase: 'failed',
+        message:
+          err instanceof SignedOut
+            ? 'Sign in to Ryugi Cloud on this computer to publish.'
+            : (err as Error).message.replace(/^cloud refused \(\d+\): /, ''),
+        autoPublish: !(
+          err instanceof SignedOut ||
+          err instanceof PlanLimited ||
+          err instanceof CreateRefused ||
+          (err instanceof CloudRefused && err.status === 413)
+        ),
+      });
       throw err;
     }
   };
 
   const setVisibility = async (ref: ArtifactRef, visibility: Visibility) => {
-    if (!(await options.inspect(ref))) throw new CloudRefused(404, `${ref.type}/${ref.id} not found`);
+    if (!(await options.inspect(ref)))
+      throw new CloudRefused(404, `${ref.type}/${ref.id} not found`);
     const key = `${ref.type}/${ref.id}`;
     const entry = artifactEntry(key);
     if (entry.cloud) {
@@ -338,7 +468,9 @@ export function createCloudRoutes(options: CloudRoutesOptions) {
       if (res.status === 404) updateArtifactConfig(configFile, key, { cloud: null });
       else {
         const updated = (await (await expectOk(res)).json()) as CloudArtifact;
-        updateArtifactConfig(configFile, key, { cloud: { ...entry.cloud, visibility: updated.visibility } });
+        updateArtifactConfig(configFile, key, {
+          cloud: { ...entry.cloud, visibility: updated.visibility },
+        });
       }
     }
     return updateArtifactConfig(configFile, key, { visibility });
@@ -348,7 +480,12 @@ export function createCloudRoutes(options: CloudRoutesOptions) {
     const current = new Map(artifacts.map((artifact) => [artifact.id, artifact.visibility]));
     for (const [key, entry] of Object.entries(readConfig(configFile).config.artifacts)) {
       const visibility = entry.cloud && current.get(entry.cloud.id);
-      if (!entry.cloud || !visibility || (entry.visibility === visibility && entry.cloud.visibility === visibility)) continue;
+      if (
+        !entry.cloud ||
+        !visibility ||
+        (entry.visibility === visibility && entry.cloud.visibility === visibility)
+      )
+        continue;
       updateArtifactConfig(configFile, key, { visibility, cloud: { ...entry.cloud, visibility } });
     }
   };
@@ -374,22 +511,31 @@ export function createCloudRoutes(options: CloudRoutesOptions) {
     try {
       const result = await publish(ref, undefined, { recreate: false, skipUnchanged: true });
       if (result.status !== 200) return { kind: 'not-ready' };
-      return { kind: 'published', created: (result.body as { id?: unknown }).id !== entry.cloud?.id };
+      return {
+        kind: 'published',
+        created: (result.body as { id?: unknown }).id !== entry.cloud?.id,
+      };
     } catch (err) {
       if (err instanceof CloudCopyGone) {
         updateArtifactConfig(configFile, key, { cloud: null, autoPublish: false });
         return { kind: 'opted-out' };
       }
       if (err instanceof SignedOut) return { kind: 'signed-out' };
-      if (err instanceof PlanLimited) return { kind: 'cannot-create', message: err.message, upgradeUrl: err.upgradeUrl };
+      if (err instanceof PlanLimited)
+        return { kind: 'cannot-create', message: err.message, upgradeUrl: err.upgradeUrl };
       if (err instanceof CreateRefused) return { kind: 'cannot-create', message: err.detail };
       if (err instanceof CloudRefused && err.status === 404) return { kind: 'gone' };
-      if (err instanceof CloudRefused && err.status === 413) return { kind: 'cannot-create', message: err.message };
+      if (err instanceof CloudRefused && err.status === 413)
+        return { kind: 'cannot-create', message: err.message };
       return { kind: 'failed', message: (err as Error).message };
     }
   };
 
-  const route = async (req: http.IncomingMessage, res: http.ServerResponse, match: RegExpExecArray) => {
+  const route = async (
+    req: http.IncomingMessage,
+    res: http.ServerResponse,
+    match: RegExpExecArray,
+  ) => {
     const [, action, first, second] = match;
     const method = req.method ?? 'GET';
     const ref = first && second ? artifactKeyOf(`${first}/${second}`) : null;
@@ -397,7 +543,15 @@ export function createCloudRoutes(options: CloudRoutesOptions) {
     if (action === 'status' && method === 'GET' && !first) {
       const credentials = readCredentials(credentialsFile, origin);
       const { config, warning } = readConfig(configFile);
-      sendJson(res, 200, { signedIn: !!credentials, login: credentials?.login ?? null, origin, hostId: hostIdFor(credentialsFile), artifacts: config.artifacts, autoPublish: autoPublishState(), warning: warning ?? null });
+      sendJson(res, 200, {
+        signedIn: !!credentials,
+        login: credentials?.login ?? null,
+        origin,
+        hostId: hostIdFor(credentialsFile),
+        artifacts: config.artifacts,
+        autoPublish: autoPublishState(),
+        warning: warning ?? null,
+      });
       return;
     }
     if (action === 'login' && method === 'POST' && !first) {
@@ -407,14 +561,19 @@ export function createCloudRoutes(options: CloudRoutesOptions) {
     if (action === 'logout' && method === 'POST' && !first) {
       const credentials = readCredentials(credentialsFile, origin);
       if (credentials) {
-        await fetch(`${origin}/api/logout`, { method: 'POST', headers: { Authorization: `Bearer ${credentials.token}` } }).catch(() => undefined);
+        await fetch(`${origin}/api/logout`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${credentials.token}` },
+        }).catch(() => undefined);
       }
       clearCredentials(credentialsFile);
       sendJson(res, 200, { signedIn: false });
       return;
     }
     if (action === 'artifacts' && method === 'GET' && !first) {
-      const listed = (await (await expectOk(await cloudFetch('GET', '/api/artifacts'))).json()) as { artifacts: CloudArtifact[] };
+      const listed = (await (await expectOk(await cloudFetch('GET', '/api/artifacts'))).json()) as {
+        artifacts: CloudArtifact[];
+      };
       adoptCloudVisibility(listed.artifacts);
       sendJson(res, 200, listed);
       return;
@@ -427,7 +586,8 @@ export function createCloudRoutes(options: CloudRoutesOptions) {
     }
     if (action === 'publish' && ref && method === 'POST') {
       const body = (await readJsonBody(req)) as { visibility?: unknown } | null;
-      if (body?.visibility !== undefined && !isVisibility(body.visibility)) throw new CloudRefused(400, 'visibility must be "public" or "private"');
+      if (body?.visibility !== undefined && !isVisibility(body.visibility))
+        throw new CloudRefused(400, 'visibility must be "public" or "private"');
       const key = `${ref.type}/${ref.id}`;
       const requested = body?.visibility;
       const result = await serialized(key, async () => {
@@ -439,7 +599,9 @@ export function createCloudRoutes(options: CloudRoutesOptions) {
       return;
     }
     if (action === 'sync' && ref && method === 'GET') {
-      sendJson(res, 200, { upToDate: await serialized(`${ref.type}/${ref.id}`, () => upToDate(ref)) });
+      sendJson(res, 200, {
+        upToDate: await serialized(`${ref.type}/${ref.id}`, () => upToDate(ref)),
+      });
       return;
     }
     if (action === 'publication' && ref && method === 'GET') {
@@ -463,16 +625,23 @@ export function createCloudRoutes(options: CloudRoutesOptions) {
     if (action === 'visibility' && ref && method === 'POST') {
       const body = (await readJsonBody(req)) as { visibility?: unknown } | null;
       const visibility = body?.visibility;
-      if (!isVisibility(visibility)) throw new CloudRefused(400, 'visibility must be "public" or "private"');
+      if (!isVisibility(visibility))
+        throw new CloudRefused(400, 'visibility must be "public" or "private"');
       sendJson(res, 200, await setVisibility(ref, visibility));
       return;
     }
     if (action === 'auto-publish' && method === 'POST' && !first) {
       const body = (await readJsonBody(req)) as { scope?: unknown; value?: unknown } | null;
       const value = body?.value;
-      if (body?.scope === 'global' && typeof value === 'boolean') writeGlobalAutoPublish(settingsFile, value);
-      else if (body?.scope === 'project' && (typeof value === 'boolean' || value === null)) setProjectAutoPublish(configFile, value);
-      else throw new CloudRefused(400, 'send {"scope":"global","value":true|false} or {"scope":"project","value":true|false|null}');
+      if (body?.scope === 'global' && typeof value === 'boolean')
+        writeGlobalAutoPublish(settingsFile, value);
+      else if (body?.scope === 'project' && (typeof value === 'boolean' || value === null))
+        setProjectAutoPublish(configFile, value);
+      else
+        throw new CloudRefused(
+          400,
+          'send {"scope":"global","value":true|false} or {"scope":"project","value":true|false|null}',
+        );
       sendJson(res, 200, autoPublishState());
       return;
     }
@@ -482,7 +651,10 @@ export function createCloudRoutes(options: CloudRoutesOptions) {
   return {
     async handleCallback(url: URL, res: http.ServerResponse, locale: Locale = 'en') {
       const t = serverText(locale);
-      const page = (status: number, result: { ok: true; login: string; autoPublish: boolean } | { ok: false; detail: string }) =>
+      const page = (
+        status: number,
+        result: { ok: true; login: string; autoPublish: boolean } | { ok: false; detail: string },
+      ) =>
         send(res, status, callbackPage({ ...result, origin }, locale), {
           'Content-Type': 'text/html; charset=utf-8',
           'Content-Security-Policy': CALLBACK_PAGE_CSP,
@@ -503,10 +675,17 @@ export function createCloudRoutes(options: CloudRoutesOptions) {
           body: JSON.stringify({ code, verifier: pending.verifier }),
         });
       } catch (err) {
-        page(502, { ok: false, detail: t('login.unreachable', { origin, message: (err as Error).message }) });
+        page(502, {
+          ok: false,
+          detail: t('login.unreachable', { origin, message: (err as Error).message }),
+        });
         return;
       }
-      const issued = (await swap.json().catch(() => ({}))) as { token?: unknown; login?: unknown; error?: unknown };
+      const issued = (await swap.json().catch(() => ({}))) as {
+        token?: unknown;
+        login?: unknown;
+        error?: unknown;
+      };
       if (!swap.ok || typeof issued.token !== 'string' || typeof issued.login !== 'string') {
         const reason = typeof issued.error === 'string' ? issued.error : `HTTP ${swap.status}`;
         page(400, { ok: false, detail: t('login.refused', { reason }) });

@@ -18,7 +18,17 @@ export const raiseSheet = (snap: number) => (snap === SHEET_PEEK ? SHEET_HALF : 
 
 const styles = stylex.create({
   body: { paddingInline: 20, paddingBottom: 24 },
-  title: { display: 'flex', alignItems: 'baseline', gap: 6, minHeight: 36, paddingInline: 20, paddingBottom: 8, fontFamily: cssVar.fontFamily, fontSize: 15, fontWeight: 600 },
+  title: {
+    display: 'flex',
+    alignItems: 'baseline',
+    gap: 6,
+    minHeight: 36,
+    paddingInline: 20,
+    paddingBottom: 8,
+    fontFamily: cssVar.fontFamily,
+    fontSize: 15,
+    fontWeight: 600,
+  },
   note: { color: cssVar.colorTextTertiary, fontSize: 12, fontWeight: 400 },
   draft: { paddingBlock: 12, fontFamily: cssVar.fontFamily },
   draftHead: { display: 'flex', alignItems: 'baseline', gap: 8, fontSize: 13 },
@@ -34,9 +44,28 @@ const styles = stylex.create({
     textOverflow: 'ellipsis',
     color: cssVar.colorTextSecondary,
   },
-  cancel: { padding: 0, borderWidth: 0, backgroundColor: 'transparent', color: cssVar.colorTextTertiary, fontSize: 13, cursor: 'pointer' },
-  draftBox: { marginTop: 8, marginInline: -14, borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: cssVar.colorBorder },
-  empty: { paddingBlock: 24, color: cssVar.colorTextTertiary, fontFamily: cssVar.fontFamily, fontSize: 13, textAlign: 'center' },
+  cancel: {
+    padding: 0,
+    borderWidth: 0,
+    backgroundColor: 'transparent',
+    color: cssVar.colorTextTertiary,
+    fontSize: 13,
+    cursor: 'pointer',
+  },
+  draftBox: {
+    marginTop: 8,
+    marginInline: -14,
+    borderBottomWidth: 1,
+    borderBottomStyle: 'solid',
+    borderBottomColor: cssVar.colorBorder,
+  },
+  empty: {
+    paddingBlock: 24,
+    color: cssVar.colorTextTertiary,
+    fontFamily: cssVar.fontFamily,
+    fontSize: 13,
+    textAlign: 'center',
+  },
 });
 
 interface Props {
@@ -52,18 +81,46 @@ interface Props {
   onSnap: (snap: number) => void;
 }
 
-export function PhoneSheet({ threads, agent = 'Agent', actions, offline, draft, onCreate, onCancelDraft, activeId, snap, onSnap }: Props) {
+export function PhoneSheet({
+  threads,
+  agent = 'Agent',
+  actions,
+  offline,
+  draft,
+  onCreate,
+  onCancelDraft,
+  activeId,
+  snap,
+  onSnap,
+}: Props) {
   const body = useRef<HTMLDivElement>(null);
   const shown = threads.filter((thread) => !thread.messages.every((message) => message.deleted));
   const waiting = shown.filter((thread) => waitingOn(thread) === 'agent').length;
-  const note = offline ? t('document.offlineNoComments') : waiting > 0 ? t('document.waitingCount', { count: waiting, agent }) : null;
+  const note = offline
+    ? t('document.offlineNoComments')
+    : waiting > 0
+      ? t('document.waitingCount', { count: waiting, agent })
+      : null;
 
   useEffect(() => {
-    const thread = activeId ? body.current?.querySelector(`[data-thread="${CSS.escape(activeId)}"]`) : null;
+    const thread = activeId
+      ? body.current?.querySelector(`[data-thread="${CSS.escape(activeId)}"]`)
+      : null;
     const scroller = thread?.closest('[data-sheet-body]');
     if (!thread || !scroller) return;
-    scroller.scrollTo({ top: scroller.scrollTop + thread.getBoundingClientRect().top - scroller.getBoundingClientRect().top - 8, behavior: 'smooth' });
-    void play(thread, [{ backgroundColor: 'rgba(232, 194, 74, 0.24)' }, { backgroundColor: 'transparent' }], { duration: 600, delay: 250, easing: EASE });
+    scroller.scrollTo({
+      top:
+        scroller.scrollTop +
+        thread.getBoundingClientRect().top -
+        scroller.getBoundingClientRect().top -
+        8,
+      behavior: 'smooth',
+    });
+    void play(
+      thread,
+      [{ backgroundColor: 'rgba(232, 194, 74, 0.24)' }, { backgroundColor: 'transparent' }],
+      { duration: 600, delay: 250, easing: EASE },
+    );
   }, [activeId]);
 
   return (
@@ -102,9 +159,18 @@ export function PhoneSheet({ threads, agent = 'Agent', actions, offline, draft, 
             </div>
           </div>
         ) : null}
-        {shown.length === 0 && !draft ? <div {...stylex.props(styles.empty)}>{t('document.noComments')}</div> : null}
+        {shown.length === 0 && !draft ? (
+          <div {...stylex.props(styles.empty)}>{t('document.noComments')}</div>
+        ) : null}
         {shown.map((thread) => (
-          <PhoneThread key={thread.id} thread={thread} agent={agent} actions={actions} active={thread.id === activeId} offline={offline} />
+          <PhoneThread
+            key={thread.id}
+            thread={thread}
+            agent={agent}
+            actions={actions}
+            active={thread.id === activeId}
+            offline={offline}
+          />
         ))}
       </div>
     </BottomSheet>

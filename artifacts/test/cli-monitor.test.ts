@@ -10,9 +10,18 @@ import { AGENT_MARKERS } from '../src/server/agent';
 import { readEntries, registryDir, writeEntry } from '../src/server/registry';
 
 const cli = path.resolve(__dirname, '../../skills/artifacts/app/cli.cjs');
-const env = () => ({ ...Object.fromEntries(Object.entries(process.env).filter(([key]) => !AGENT_MARKERS.includes(key))), ARTIFACTS_OPEN: '0' });
+const env = () => ({
+  ...Object.fromEntries(
+    Object.entries(process.env).filter(([key]) => !AGENT_MARKERS.includes(key)),
+  ),
+  ARTIFACTS_OPEN: '0',
+});
 const run = (args: string[]) => {
-  const result = spawnSync(process.execPath, [cli, ...args], { encoding: 'utf8', timeout: 15000, env: env() });
+  const result = spawnSync(process.execPath, [cli, ...args], {
+    encoding: 'utf8',
+    timeout: 15000,
+    env: env(),
+  });
   return { code: result.status, stdout: result.stdout };
 };
 
@@ -38,7 +47,12 @@ test('a server is safe to stop once no tab is open and it has been idle for 30 m
 
 test('monitor --json lists every running server with its address and status', () => {
   const [a, b] = [newProject(), newProject()];
-  const urls = [a, b].map((project) => JSON.parse(run(['start', '--json', '--project-dir', project]).stdout.trim().split('\n').pop()!).url);
+  const urls = [a, b].map(
+    (project) =>
+      JSON.parse(
+        run(['start', '--json', '--project-dir', project]).stdout.trim().split('\n').pop()!,
+      ).url,
+  );
   const { code, stdout } = run(['monitor', '--json']);
   expect(code).toBe(0);
   const out = JSON.parse(stdout.trim());
@@ -55,35 +69,71 @@ test('monitor --json lists every running server with its address and status', ()
 
 test('monitor drops registry entries whose server is gone', () => {
   const ghost = newProject();
-  writeEntry(registryDir(), { project: ghost, root: path.join(ghost, '.ryugi', 'artifacts'), pid: 2147483646, serverId: 'c'.repeat(48), startedAt: 1 });
+  writeEntry(registryDir(), {
+    project: ghost,
+    root: path.join(ghost, '.ryugi', 'artifacts'),
+    pid: 2147483646,
+    serverId: 'c'.repeat(48),
+    startedAt: 1,
+  });
   const out = JSON.parse(run(['monitor', '--json']).stdout.trim());
   expect(out.servers.find((s: { project: string }) => s.project === ghost)).toBeUndefined();
   expect(readEntries(registryDir()).find((e) => e.project === ghost)).toBeUndefined();
 });
 
 test('durations read as minutes, hours and days', () => {
-  expect([0, 59, 60, 61, 24 * 60, 24 * 60 + 61].map((m) => duration(m * 60_000))).toEqual(['0m', '59m', '1h', '1h1m', '1d', '1d1h']);
+  expect([0, 59, 60, 61, 24 * 60, 24 * 60 + 61].map((m) => duration(m * 60_000))).toEqual([
+    '0m',
+    '59m',
+    '1h',
+    '1h1m',
+    '1d',
+    '1d1h',
+  ]);
 });
 
 test('the text list shortens home paths and tags what needs attention', () => {
-  const row = { project: '/home/a/proj', url: 'http://localhost:1/?key=k', pid: 7, clients: 0, lastActivity: 0, safeToStop: true, oldRelease: true, status: 'ok' };
+  const row = {
+    project: '/home/a/proj',
+    url: 'http://localhost:1/?key=k',
+    pid: 7,
+    clients: 0,
+    lastActivity: 0,
+    safeToStop: true,
+    oldRelease: true,
+    status: 'ok',
+  };
   expect(shortPath('/home/a/proj', '/home/a')).toBe('~/proj');
   expect(shortPath('/home/ab', '/home/a')).toBe('/home/ab');
   expect(monitorText({ type: 'servers', servers: [] })).toBe('No artifacts servers are running.');
-  expect(monitorText({ type: 'servers', servers: [row] }, 90 * 60_000)).toMatch(/http:\/\/localhost:1\/\?key=k {2}pid 7 {2}tabs 0 {2}idle 1h30m {2}\[safe to stop\] {2}\[old release\]$/);
+  expect(monitorText({ type: 'servers', servers: [row] }, 90 * 60_000)).toMatch(
+    /http:\/\/localhost:1\/\?key=k {2}pid 7 {2}tabs 0 {2}idle 1h30m {2}\[safe to stop\] {2}\[old release\]$/,
+  );
 });
 
 const started = (project: string) => {
-  const out = JSON.parse(run(['start', '--json', '--project-dir', project]).stdout.trim().split('\n').pop()!);
+  const out = JSON.parse(
+    run(['start', '--json', '--project-dir', project]).stdout.trim().split('\n').pop()!,
+  );
   const state = path.join(project, '.ryugi', 'artifacts', '.state');
-  return { url: out.url as string, pid: Number(fs.readFileSync(path.join(state, 'server.pid'), 'utf8')), serverId: fs.readFileSync(path.join(state, 'server-instance-id'), 'utf8').trim() };
+  return {
+    url: out.url as string,
+    pid: Number(fs.readFileSync(path.join(state, 'server.pid'), 'utf8')),
+    serverId: fs.readFileSync(path.join(state, 'server-instance-id'), 'utf8').trim(),
+  };
 };
 
 const pointAt = (project: string, url: string, from: { pid: number; serverId: string }) => {
   const root = path.join(project, '.ryugi', 'artifacts');
   fs.mkdirSync(path.join(root, '.state'), { recursive: true });
   fs.writeFileSync(path.join(root, '.state', 'server-info'), JSON.stringify({ url }));
-  writeEntry(registryDir(), { project, root, pid: from.pid, serverId: from.serverId, startedAt: 1 });
+  writeEntry(registryDir(), {
+    project,
+    root,
+    pid: from.pid,
+    serverId: from.serverId,
+    startedAt: 1,
+  });
 };
 
 test('an entry whose address answers with another server is not listed', async () => {
@@ -96,6 +146,8 @@ test('an entry whose address answers with another server is not listed', async (
 test('on Windows, where a pid check cannot read the command line, an unreachable server is not listed', async () => {
   const [a, d] = [newProject(), newProject()];
   pointAt(d, 'http://localhost:9/?key=x', started(a));
-  expect((await listServers(Date.now(), 'darwin')).find((s) => s.project === d)?.status).toBe('no-status');
+  expect((await listServers(Date.now(), 'darwin')).find((s) => s.project === d)?.status).toBe(
+    'no-status',
+  );
   expect((await listServers(Date.now(), 'win32')).find((s) => s.project === d)).toBeUndefined();
 }, 30000);

@@ -7,8 +7,12 @@ import { useTranslation } from '../i18n';
 import { visibleRenders } from '../lib/board-tiers';
 import { fitView } from '../lib/view';
 
-const DocumentPreview = lazy(() => import('../document/shims').then(() => import('../document/SnapshotDocument')));
-const CanvasPreview = lazy(() => import('../components/Canvas').then(({ Canvas }) => ({ default: Canvas })));
+const DocumentPreview = lazy(() =>
+  import('../document/shims').then(() => import('../document/SnapshotDocument')),
+);
+const CanvasPreview = lazy(() =>
+  import('../components/Canvas').then(({ Canvas }) => ({ default: Canvas })),
+);
 const noRef = () => () => {};
 const noLoad = () => {};
 const none = new Set<string>();
@@ -19,7 +23,17 @@ export interface PreviewPayload extends Partial<CanvasPayload> {
   state?: SerializedEditorState;
 }
 
-export function PreviewView({ type, id, data, failed }: { type: ArtifactType; id: string; data: PreviewPayload | null; failed: boolean }) {
+export function PreviewView({
+  type,
+  id,
+  data,
+  failed,
+}: {
+  type: ArtifactType;
+  id: string;
+  data: PreviewPayload | null;
+  failed: boolean;
+}) {
   const { t } = useTranslation();
   const [viewport, setViewport] = useState(() => ({ width: innerWidth, height: innerHeight }));
   useEffect(() => {
@@ -33,7 +47,15 @@ export function PreviewView({ type, id, data, failed }: { type: ArtifactType; id
   if (!data) return message(t('preview.loading'));
   if (type === 'html') {
     if (data.warnings?.length) return message(t('preview.waitingPage'));
-    return <iframe className="artifact-preview-html" title={data.title} src={`${data.contentBase}index.html`} sandbox="allow-scripts" tabIndex={-1} />;
+    return (
+      <iframe
+        className="artifact-preview-html"
+        title={data.title}
+        src={`${data.contentBase}index.html`}
+        sandbox="allow-scripts"
+        tabIndex={-1}
+      />
+    );
   }
   if (type === 'document') {
     return data.state ? (
@@ -42,7 +64,9 @@ export function PreviewView({ type, id, data, failed }: { type: ArtifactType; id
           <DocumentPreview id={id} state={data.state} contentBase={data.contentBase} />
         </Suspense>
       </CanvasErrorBoundary>
-    ) : message(t('preview.waitingDocument'));
+    ) : (
+      message(t('preview.waitingDocument'))
+    );
   }
   const canvas = data.canvas;
   const page = canvas?.activePage ?? canvas?.pages[0]?.id;
@@ -56,7 +80,11 @@ export function PreviewView({ type, id, data, failed }: { type: ArtifactType; id
         <Suspense fallback={message(t('preview.loading'))}>
           <CanvasPreview
             view={view}
-            renders={visibleRenders({ boards: boards.map(([id, board]) => ({ id, ...board })), view, viewport })}
+            renders={visibleRenders({
+              boards: boards.map(([id, board]) => ({ id, ...board })),
+              view,
+              viewport,
+            })}
             boards={boards}
             notes={Object.entries(canvas.notes ?? {}).filter(([, note]) => note.page === page)}
             contentBase={data.contentBase}

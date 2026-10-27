@@ -4,7 +4,17 @@ import path from 'node:path';
 import { afterEach, describe, expect, test } from 'vitest';
 import { startArtifactsServer, type ArtifactsServer } from '../src/server/app';
 import { typeFaviconHref } from '../src/shared/type-icons';
-import { get, openWs, readJson, sendWsText, tempRoot, waitFor, writeArtboard, writeDocument, writeHtml } from './helpers';
+import {
+  get,
+  openWs,
+  readJson,
+  sendWsText,
+  tempRoot,
+  waitFor,
+  writeArtboard,
+  writeDocument,
+  writeHtml,
+} from './helpers';
 
 const canvas = {
   version: 1,
@@ -14,7 +24,9 @@ const canvas = {
 
 let running: ArtifactsServer[] = [];
 
-async function start(overrides: { root?: string; viewer?: string; runtime?: string; fetch?: typeof fetch } = {}) {
+async function start(
+  overrides: { root?: string; viewer?: string; runtime?: string; fetch?: typeof fetch } = {},
+) {
   const temp = tempRoot();
   const root = overrides.root ?? temp.root;
   const viewer = overrides.viewer ?? temp.viewer;
@@ -33,7 +45,8 @@ async function start(overrides: { root?: string; viewer?: string; runtime?: stri
 
 const base = (s: ArtifactsServer) => `http://127.0.0.1:${s.port}`;
 const cookie = (s: ArtifactsServer) => `ryugi_artifacts_${s.port}=${s.token}`;
-const api = async (s: ArtifactsServer, rel: string) => JSON.parse((await get(`${base(s)}${rel}`, { Cookie: cookie(s) })).body);
+const api = async (s: ArtifactsServer, rel: string) =>
+  JSON.parse((await get(`${base(s)}${rel}`, { Cookie: cookie(s) })).body);
 const content = (s: ArtifactsServer, rel: string) => get(`${base(s)}/c/${s.contentToken}/${rel}`);
 const stateFile = (root: string, ...rel: string[]) => path.join(root, '.state', ...rel);
 
@@ -55,14 +68,18 @@ describe('session key', () => {
       const res = await get(`${base(server)}${rel}?key=${server.token}`);
       expect(res.status, rel).toBe(200);
       expect(res.headers['content-type']).toBe('text/html; charset=utf-8');
-      expect(String(res.headers['set-cookie'])).toContain(`ryugi_artifacts_${server.port}=${server.token}`);
+      expect(String(res.headers['set-cookie'])).toContain(
+        `ryugi_artifacts_${server.port}=${server.token}`,
+      );
       expect(String(res.headers['set-cookie'])).toContain('HttpOnly');
     }
   });
 
   test('the cookie authorizes viewer assets and the API', async () => {
     const { server } = await start();
-    expect((await get(`${base(server)}/assets/app.js`, { Cookie: cookie(server) })).status).toBe(200);
+    expect((await get(`${base(server)}/assets/app.js`, { Cookie: cookie(server) })).status).toBe(
+      200,
+    );
     expect((await get(`${base(server)}/assets/app.js`)).status).toBe(403);
     expect((await get(`${base(server)}/api/artifacts`)).status).toBe(403);
   });
@@ -75,7 +92,9 @@ describe('session key', () => {
   test('every response sends Referrer-Policy: no-referrer', async () => {
     const { server } = await start();
     expect((await get(`${base(server)}/`)).headers['referrer-policy']).toBe('no-referrer');
-    expect((await get(`${base(server)}/?key=${server.token}`)).headers['referrer-policy']).toBe('no-referrer');
+    expect((await get(`${base(server)}/?key=${server.token}`)).headers['referrer-policy']).toBe(
+      'no-referrer',
+    );
   });
 
   test('avatars go through the server, behind the key, and only for ids it can map', async () => {
@@ -90,20 +109,28 @@ describe('session key', () => {
     expect(ok.headers['content-type']).toBe('image/png');
     expect(upstream).toEqual(['https://avatars.githubusercontent.com/innei?s=64']);
     expect((await get(`${base(server)}/api/avatar/github/innei`)).status).toBe(403);
-    expect((await get(`${base(server)}/api/avatar/github/..%2Fetc?key=${server.token}`)).status).toBe(404);
-    expect((await get(`${base(server)}/api/avatar/elsewhere/innei?key=${server.token}`)).status).toBe(404);
+    expect(
+      (await get(`${base(server)}/api/avatar/github/..%2Fetc?key=${server.token}`)).status,
+    ).toBe(404);
+    expect(
+      (await get(`${base(server)}/api/avatar/elsewhere/innei?key=${server.token}`)).status,
+    ).toBe(404);
   });
 
   test('the shell forbids loading anything from other hosts', async () => {
     const { server } = await start();
-    const csp = String((await get(`${base(server)}/?key=${server.token}`)).headers['content-security-policy']);
+    const csp = String(
+      (await get(`${base(server)}/?key=${server.token}`)).headers['content-security-policy'],
+    );
     expect(csp).toContain("default-src 'self'");
     expect(csp).not.toMatch(/https?:/);
   });
 
   test('the shell lets the viewer compile WebAssembly, which the document CRDT needs, and nothing else eval-like', async () => {
     const { server } = await start();
-    const csp = String((await get(`${base(server)}/?key=${server.token}`)).headers['content-security-policy']);
+    const csp = String(
+      (await get(`${base(server)}/?key=${server.token}`)).headers['content-security-policy'],
+    );
     expect(csp).toContain("script-src 'self' 'wasm-unsafe-eval'");
     expect(csp).not.toContain("'unsafe-eval'");
   });
@@ -111,10 +138,17 @@ describe('session key', () => {
   test('the shell runs its own inline scripts by hash, so the theme is set before the first paint', async () => {
     const { server, viewer } = await start();
     const script = "document.documentElement.dataset.theme = 'dark';";
-    fs.writeFileSync(path.join(viewer, 'index.html'), `<!doctype html><head><script>${script}</script><script type="module" src="/index.js"></script></head>`);
+    fs.writeFileSync(
+      path.join(viewer, 'index.html'),
+      `<!doctype html><head><script>${script}</script><script type="module" src="/index.js"></script></head>`,
+    );
     const hash = createHash('sha256').update(script).digest('base64');
     for (const route of ['/', '/preview/html/tuner']) {
-      const csp = String((await get(`${base(server)}${route}?key=${server.token}`)).headers['content-security-policy']);
+      const csp = String(
+        (await get(`${base(server)}${route}?key=${server.token}`)).headers[
+          'content-security-policy'
+        ],
+      );
       expect(csp).toContain(`script-src 'self' 'wasm-unsafe-eval' 'sha256-${hash}';`);
       expect(csp).not.toContain("'unsafe-inline' ");
     }
@@ -122,7 +156,11 @@ describe('session key', () => {
 
   test('the shell lets a document point <base> at its own content route, so assets/ paths resolve', async () => {
     const { server } = await start();
-    const csp = String((await get(`${base(server)}/document/doc?key=${server.token}`)).headers['content-security-policy']);
+    const csp = String(
+      (await get(`${base(server)}/document/doc?key=${server.token}`)).headers[
+        'content-security-policy'
+      ],
+    );
     expect(csp).toContain("base-uri 'self'");
   });
 
@@ -183,47 +221,83 @@ describe('page metadata', () => {
 
   test('serves each page title and description before JavaScript runs, with key-free canonical and sharing URLs', async () => {
     const temp = tempRoot();
-    const { server, root } = await start({ root: path.join(temp.root, 'test-project/.ryugi/artifacts'), viewer: path.resolve(__dirname, '../dist/viewer') });
-    writeArtboard(root, 'ideas', { ...canvas, title: 'Header ideas' }, { 'pages/p/a.html': '<p>Idea</p>' });
+    const { server, root } = await start({
+      root: path.join(temp.root, 'test-project/.ryugi/artifacts'),
+      viewer: path.resolve(__dirname, '../dist/viewer'),
+    });
+    writeArtboard(
+      root,
+      'ideas',
+      { ...canvas, title: 'Header ideas' },
+      { 'pages/p/a.html': '<p>Idea</p>' },
+    );
     writeDocument(root, 'plan', { 'doc.xml': '<doc><h1>Shipping plan</h1><p>Plan</p></doc>' });
     writeHtml(root, 'tuner', { 'index.html': '<title>Arrow tuner</title><p>Tuner</p>' });
     fs.writeFileSync(path.join(root, 'artboard/ideas/.artifact-id'), 'a'.repeat(32));
     fs.writeFileSync(path.join(root, 'document/plan/.artifact-id'), 'b'.repeat(32));
     fs.writeFileSync(path.join(root, 'html/tuner/.artifact-id'), 'c'.repeat(32));
-    for (const [route, title, canonical] of [['/', 'test-project · Artifacts', '/'], ['/artboard/ideas', 'Header ideas', `/artboard/${'a'.repeat(32)}`], ['/document/plan', 'Shipping plan', `/document/${'b'.repeat(32)}`], ['/html/tuner', 'Arrow tuner', `/html/${'c'.repeat(32)}`]]) {
+    for (const [route, title, canonical] of [
+      ['/', 'test-project · Artifacts', '/'],
+      ['/artboard/ideas', 'Header ideas', `/artboard/${'a'.repeat(32)}`],
+      ['/document/plan', 'Shipping plan', `/document/${'b'.repeat(32)}`],
+      ['/html/tuner', 'Arrow tuner', `/html/${'c'.repeat(32)}`],
+    ]) {
       const response = await get(`${base(server)}${route}?key=${server.token}&tracking=private`);
       expect(response.status).toBe(200);
       expect(response.body).toContain(`<title>${title}</title>`);
-      expect(response.body).toContain(`<meta property="og:title" content="${title}">`);
-      expect(response.body).toContain(`<meta name="twitter:title" content="${title}">`);
-      expect(response.body.match(/<meta name="description"/g)).toHaveLength(1);
-      expect(response.body.match(/<meta name="robots"/g)).toHaveLength(1);
-      expect(response.body).toMatch(/<meta name="description" content="[^"]*test-project[^"]*">/);
-      expect(response.body).toContain(`<link rel="canonical" href="http://localhost:${server.port}${canonical}">`);
-      expect(response.body).toContain(`<meta property="og:url" content="http://localhost:${server.port}${canonical}">`);
+      expect(response.body).toContain(`<meta property="og:title" content="${title}"`);
+      expect(response.body).toContain(`<meta name="twitter:title" content="${title}"`);
+      expect(response.body.match(/<meta\b[^>]*name="description"/g)).toHaveLength(1);
+      expect(response.body.match(/<meta\b[^>]*name="robots"/g)).toHaveLength(1);
+      expect(response.body).toMatch(
+        /<meta\b[^>]*name="description"[^>]*content="[^"]*test-project[^"]*"/,
+      );
+      expect(response.body).toContain(
+        `<link rel="canonical" href="http://localhost:${server.port}${canonical}">`,
+      );
+      expect(response.body).toContain(
+        `<meta property="og:url" content="http://localhost:${server.port}${canonical}">`,
+      );
       expect(response.body).not.toContain(server.token);
       expect(response.body).not.toContain('tracking=private');
       expect(response.headers['x-robots-tag']).toBe('noindex, nofollow');
-      expect(response.body).toContain('<meta name="robots" content="noindex, nofollow">');
+      expect(response.body).toContain('<meta name="robots" content="noindex, nofollow"');
     }
     const response = await get(`${base(server)}/?key=${server.token}`);
     const image = response.body.match(/<meta property="og:image" content="([^"]+)"/)?.[1];
     expect(image).toMatch(new RegExp(`^http://localhost:${server.port}/app-icon-.*\\.png$`));
-    expect((await get(image!.replace('localhost', '127.0.0.1'), { Cookie: cookie(server) })).status).toBe(200);
+    expect(
+      (await get(image!.replace('localhost', '127.0.0.1'), { Cookie: cookie(server) })).status,
+    ).toBe(200);
     const icon = response.body.match(/<link rel="icon"[^>]*href="([^"]+)"/)?.[1];
     expect(icon).toBeTruthy();
-    expect((await get(new URL(icon!, base(server)).href, { Cookie: cookie(server) })).headers['content-type']).toBe('image/svg+xml');
+    expect(
+      (await get(new URL(icon!, base(server)).href, { Cookie: cookie(server) })).headers[
+        'content-type'
+      ],
+    ).toBe('image/svg+xml');
   });
 
   test('page language and description follow Accept-Language', async () => {
     const temp = tempRoot();
-    const { server } = await start({ root: path.join(temp.root, 'test-project/.ryugi/artifacts'), viewer: path.resolve(__dirname, '../dist/viewer') });
-    const english = await get(`${base(server)}/?key=${server.token}`, { 'Accept-Language': 'en-US,en;q=0.9' });
+    const { server } = await start({
+      root: path.join(temp.root, 'test-project/.ryugi/artifacts'),
+      viewer: path.resolve(__dirname, '../dist/viewer'),
+    });
+    const english = await get(`${base(server)}/?key=${server.token}`, {
+      'Accept-Language': 'en-US,en;q=0.9',
+    });
     expect(english.body).toMatch(/<html[^>]* lang="en"/);
-    expect(english.body).toMatch(/<meta name="description" content="Browse every artboard[^"]*test-project/);
-    const chinese = await get(`${base(server)}/?key=${server.token}`, { 'Accept-Language': 'zh-CN,zh;q=0.9' });
+    expect(english.body).toMatch(
+      /<meta\b[^>]*name="description"[^>]*content="Browse every artboard[^"]*test-project/,
+    );
+    const chinese = await get(`${base(server)}/?key=${server.token}`, {
+      'Accept-Language': 'zh-CN,zh;q=0.9',
+    });
     expect(chinese.body).toMatch(/<html[^>]* lang="zh-CN"/);
-    expect(chinese.body).toMatch(/<meta name="description" content="浏览 test-project 项目/);
+    expect(chinese.body).toMatch(
+      /<meta\b[^>]*name="description"[^>]*content="浏览 test-project 项目/,
+    );
   });
 
   test('serves each artifact page with its type favicon before JavaScript runs, and the list with the app icon', async () => {
@@ -231,7 +305,10 @@ describe('page metadata', () => {
     writeArtboard(root, 'ideas', canvas, { 'pages/p/a.html': '<p>Idea</p>' });
     writeDocument(root, 'plan', { 'doc.xml': '<doc><p>Plan</p></doc>' });
     writeHtml(root, 'tuner', { 'index.html': '<p>Tuner</p>' });
-    const iconOf = async (route: string) => (await get(`${base(server)}${route}?key=${server.token}`)).body.match(/<link rel="icon"[^>]*href="([^"]+)"/g)!;
+    const iconOf = async (route: string) =>
+      (await get(`${base(server)}${route}?key=${server.token}`)).body.match(
+        /<link rel="icon"[^>]*href="([^"]+)"/g,
+      )!;
     for (const type of ['artboard', 'document', 'html'] as const) {
       const route = `/${type}/${{ artboard: 'ideas', document: 'plan', html: 'tuner' }[type]}`;
       const links = await iconOf(route);
@@ -245,13 +322,24 @@ describe('page metadata', () => {
 
   test('escapes artifact titles and uses the configured host, including for preview and index aliases', async () => {
     const { server, root } = await start({ viewer: path.resolve(__dirname, '../dist/viewer') });
-    writeArtboard(root, 'unsafe', { ...canvas, title: 'Research "A&B" </title><script>alert(1)</script>' }, { 'pages/p/a.html': '<p>Idea</p>' });
+    writeArtboard(
+      root,
+      'unsafe',
+      { ...canvas, title: 'Research "A&B" </title><script>alert(1)</script>' },
+      { 'pages/p/a.html': '<p>Idea</p>' },
+    );
     fs.writeFileSync(path.join(root, 'artboard/unsafe/.artifact-id'), 'd'.repeat(32));
-    const page = await get(`${base(server)}/preview/artboard/unsafe/?key=${server.token}`, { Host: 'untrusted.example:123' });
-    expect(page.body).toContain('<title>Research &quot;A&amp;B&quot; &lt;/title&gt;&lt;script&gt;alert(1)&lt;/script&gt;</title>');
+    const page = await get(`${base(server)}/preview/artboard/unsafe/?key=${server.token}`, {
+      Host: 'untrusted.example:123',
+    });
+    expect(page.body).toContain(
+      '<title>Research &quot;A&amp;B&quot; &lt;/title&gt;&lt;script&gt;alert(1)&lt;/script&gt;</title>',
+    );
     expect(page.body).not.toContain('<script>alert(1)</script>');
     expect(page.body).not.toContain('untrusted.example');
-    expect(page.body).toContain(`<link rel="canonical" href="http://localhost:${server.port}/preview/artboard/${'d'.repeat(32)}">`);
+    expect(page.body).toContain(
+      `<link rel="canonical" href="http://localhost:${server.port}/preview/artboard/${'d'.repeat(32)}">`,
+    );
     const index = await get(`${base(server)}/index.html?key=${server.token}`);
     expect(index.body).toContain(`<link rel="canonical" href="http://localhost:${server.port}/">`);
   });
@@ -260,24 +348,38 @@ describe('page metadata', () => {
 describe('artifact list API', () => {
   test('lists every artifact with its title', async () => {
     const { server, root } = await start();
-    writeArtboard(root, 'brainstorm', { ...canvas, title: 'Header ideas' }, { 'pages/p/a.html': '<p>a</p>' });
+    writeArtboard(
+      root,
+      'brainstorm',
+      { ...canvas, title: 'Header ideas' },
+      { 'pages/p/a.html': '<p>a</p>' },
+    );
     writeHtml(root, 'arrow-tuner', { 'index.html': '<title>Arrow tuner</title><p>x</p>' });
     writeHtml(root, 'untitled', { 'index.html': '<p>x</p>' });
-    writeDocument(root, 'relay-sync', { 'doc.xml': '<doc><p>intro</p><h1 id="a">Relay <b>sync</b></h1></doc>' });
+    writeDocument(root, 'relay-sync', {
+      'doc.xml': '<doc><p>intro</p><h1 id="a">Relay <b>sync</b></h1></doc>',
+    });
     const list = await api(server, '/api/artifacts');
     expect(list.artifacts).toHaveLength(4);
-    expect(list.artifacts).toEqual(expect.arrayContaining([
-      expect.objectContaining({ type: 'artboard', id: 'brainstorm', title: 'Header ideas' }),
-      expect.objectContaining({ type: 'document', id: 'relay-sync', title: 'Relay sync' }),
-      expect.objectContaining({ type: 'html', id: 'arrow-tuner', title: 'Arrow tuner' }),
-      expect.objectContaining({ type: 'html', id: 'untitled', title: 'untitled' }),
-    ]));
+    expect(list.artifacts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ type: 'artboard', id: 'brainstorm', title: 'Header ideas' }),
+        expect.objectContaining({ type: 'document', id: 'relay-sync', title: 'Relay sync' }),
+        expect.objectContaining({ type: 'html', id: 'arrow-tuner', title: 'Arrow tuner' }),
+        expect.objectContaining({ type: 'html', id: 'untitled', title: 'untitled' }),
+      ]),
+    );
   });
 
   test('names the project and includes asset changes in the update time', async () => {
-    const project = fs.mkdtempSync(path.join((await import('node:os')).tmpdir(), 'library-project-'));
+    const project = fs.mkdtempSync(
+      path.join((await import('node:os')).tmpdir(), 'library-project-'),
+    );
     const { server, root } = await start({ root: path.join(project, '.ryugi/artifacts') });
-    const dir = writeHtml(root, 'tuner', { 'index.html': '<title>Tuner</title>', 'style.css': 'body{}' });
+    const dir = writeHtml(root, 'tuner', {
+      'index.html': '<title>Tuner</title>',
+      'style.css': 'body{}',
+    });
     fs.utimesSync(path.join(dir, 'index.html'), new Date('2026-01-01'), new Date('2026-01-01'));
     fs.utimesSync(path.join(dir, 'style.css'), new Date('2026-02-01'), new Date('2026-02-01'));
     const list = await api(server, '/api/artifacts');
@@ -301,7 +403,10 @@ describe('artifact list API', () => {
 describe('read-only previews', () => {
   test('preview pages load the lightweight entry while normal pages keep the application entry', async () => {
     const { server, viewer } = await start();
-    fs.writeFileSync(path.join(viewer, 'preview.html'), '<!doctype html><head><script type="module" src="/preview.js"></script></head><body><div id="root"></div></body>');
+    fs.writeFileSync(
+      path.join(viewer, 'preview.html'),
+      '<!doctype html><head><script type="module" src="/preview.js"></script></head><body><div id="root"></div></body>',
+    );
     const preview = await get(`${base(server)}/preview/html/tuner?key=${server.token}`);
     expect(preview.body).toContain('src="/preview.js"');
     expect(preview.headers['content-security-policy']).toContain("frame-ancestors 'self'");
@@ -315,12 +420,16 @@ describe('read-only previews', () => {
     const response = await get(`${base(server)}/preview/html/tuner?key=${server.token}`);
     expect(response.status).toBe(200);
     expect(response.headers['content-security-policy']).toContain("frame-ancestors 'self'");
-    expect((await get(`${base(server)}/?key=${server.token}`)).headers['content-security-policy']).toContain("frame-ancestors 'none'");
+    expect(
+      (await get(`${base(server)}/?key=${server.token}`)).headers['content-security-policy'],
+    ).toContain("frame-ancestors 'none'");
   });
 
   test('previews the actual document, canvas and HTML without returning raw document markup', async () => {
     const { server, root } = await start();
-    writeDocument(root, 'spec', { 'doc.xml': '<doc><h1>Actual design</h1><p>Opening paragraph</p></doc>' });
+    writeDocument(root, 'spec', {
+      'doc.xml': '<doc><h1>Actual design</h1><p>Opening paragraph</p></doc>',
+    });
     writeArtboard(root, 'ideas', canvas, { 'pages/p/a.html': '<p>Actual board</p>' });
     writeHtml(root, 'tuner', { 'index.html': '<title>Actual tuner</title>' });
     expect((await get(`${base(server)}/api/preview/document/spec`)).status).toBe(403);
@@ -332,13 +441,17 @@ describe('read-only previews', () => {
     expect(board.canvas.boards.a.file).toBe('pages/p/a.html');
     expect(board.layout.pages.p.bounds.maxX).toBe(640);
     expect((await api(server, '/api/preview/html/tuner')).title).toBe('Actual tuner');
-    expect((await get(`${base(server)}/api/preview/html/missing`, { Cookie: cookie(server) })).status).toBe(404);
+    expect(
+      (await get(`${base(server)}/api/preview/html/missing`, { Cookie: cookie(server) })).status,
+    ).toBe(404);
   });
 
   test('malformed documents return an unavailable preview without breaking the list', async () => {
     const { server, root } = await start();
     writeDocument(root, 'broken', { 'doc.xml': '<doc><script>alert(1)</script></doc>' });
-    expect((await get(`${base(server)}/api/preview/document/broken`, { Cookie: cookie(server) })).status).toBe(422);
+    expect(
+      (await get(`${base(server)}/api/preview/document/broken`, { Cookie: cookie(server) })).status,
+    ).toBe(422);
     expect((await api(server, '/api/artifacts')).artifacts[0].id).toBe('broken');
   });
 });
@@ -347,10 +460,17 @@ describe('artboard API', () => {
   test('identifies the active writer and preserves an optional sticky color', async () => {
     const { server, root } = await start();
     fs.writeFileSync(stateFile(root, 'agent'), JSON.stringify({ AI_AGENT: 'codex' }));
-    writeArtboard(root, 'writing', {
-      ...canvas,
-      notes: { n: { page: 'p', kind: 'sticky', x: 700, y: 0, text: 'Decision', color: '#cce8df' } },
-    }, { 'pages/p/a.html': '<!doctype html><html><body>Drawing' });
+    writeArtboard(
+      root,
+      'writing',
+      {
+        ...canvas,
+        notes: {
+          n: { page: 'p', kind: 'sticky', x: 700, y: 0, text: 'Decision', color: '#cce8df' },
+        },
+      },
+      { 'pages/p/a.html': '<!doctype html><html><body>Drawing' },
+    );
     const payload = await api(server, '/api/artifacts/artboard/writing');
     expect(payload.warnings).toEqual([]);
     expect(payload.agent).toBe('Codex');
@@ -422,12 +542,19 @@ describe('artboard API', () => {
     const { server, root } = await start();
     const dir = writeArtboard(root, 'b1', canvas, { 'pages/p/a.html': '<p>a</p>' });
     const payload = await api(server, '/api/artifacts/artboard/b1');
-    expect(payload.versions['pages/p/a.html']).toBe(fs.statSync(path.join(dir, 'pages/p/a.html')).mtimeMs);
+    expect(payload.versions['pages/p/a.html']).toBe(
+      fs.statSync(path.join(dir, 'pages/p/a.html')).mtimeMs,
+    );
   });
 
   test('withholds a structurally invalid canvas and reports why', async () => {
     const { server, root } = await start();
-    writeArtboard(root, 'b1', { ...canvas, groups: { g: { members: ['a'] } } }, { 'pages/p/a.html': '<p>a</p>' });
+    writeArtboard(
+      root,
+      'b1',
+      { ...canvas, groups: { g: { members: ['a'] } } },
+      { 'pages/p/a.html': '<p>a</p>' },
+    );
     const payload = await api(server, '/api/artifacts/artboard/b1');
     expect(payload.canvas).toBeNull();
     expect(payload.warnings).toContain('group "g" needs a "boards" array');
@@ -438,13 +565,19 @@ describe('artboard API', () => {
     fs.mkdirSync(path.join(root, 'artboard', 'bad'), { recursive: true });
     fs.writeFileSync(path.join(root, 'artboard', 'bad', 'canvas.json'), '{ nope');
     fs.mkdirSync(path.join(root, 'artboard', 'empty'), { recursive: true });
-    expect((await api(server, '/api/artifacts/artboard/bad')).warnings[0]).toMatch(/not valid JSON/);
-    expect((await api(server, '/api/artifacts/artboard/empty')).warnings).toEqual(['canvas.json not found']);
+    expect((await api(server, '/api/artifacts/artboard/bad')).warnings[0]).toMatch(
+      /not valid JSON/,
+    );
+    expect((await api(server, '/api/artifacts/artboard/empty')).warnings).toEqual([
+      'canvas.json not found',
+    ]);
   });
 
   test('an unknown artifact is a 404 with a warning', async () => {
     const { server } = await start();
-    const res = await get(`${base(server)}/api/artifacts/artboard/missing`, { Cookie: cookie(server) });
+    const res = await get(`${base(server)}/api/artifacts/artboard/missing`, {
+      Cookie: cookie(server),
+    });
     expect(res.status).toBe(404);
     expect(JSON.parse(res.body).warnings[0]).toMatch(/not found/);
   });
@@ -464,7 +597,9 @@ describe('html API', () => {
   test('a missing index.html is a warning', async () => {
     const { server, root } = await start();
     writeHtml(root, 'tuner', { 'other.html': '<p>x</p>' });
-    expect((await api(server, '/api/artifacts/html/tuner')).warnings).toEqual(['index.html not found']);
+    expect((await api(server, '/api/artifacts/html/tuner')).warnings).toEqual([
+      'index.html not found',
+    ]);
   });
 
   test('the version changes when any file in the artifact changes', async () => {
@@ -498,7 +633,11 @@ describe('document API', () => {
 
   test('only files under assets/ are served, sandboxed', async () => {
     const { server, root } = await start();
-    writeDocument(root, 'relay-sync', { 'doc.xml': '<doc/>', 'comments.json': '{}', 'assets/flow.excalidraw': '{"a":1}' });
+    writeDocument(root, 'relay-sync', {
+      'doc.xml': '<doc/>',
+      'comments.json': '{}',
+      'assets/flow.excalidraw': '{"a":1}',
+    });
     const asset = await content(server, 'document/relay-sync/assets/flow.excalidraw');
     expect(asset.status).toBe(200);
     expect(asset.body).toBe('{"a":1}');
@@ -509,13 +648,20 @@ describe('document API', () => {
 
   test('an HTML asset is served like an HTML artifact page, with the runtimes injected', async () => {
     const { server, root } = await start();
-    writeDocument(root, 'relay-sync', { 'doc.xml': '<doc/>', 'assets/tuner.html': '<ryugi-slider id="r"></ryugi-slider>' });
+    writeDocument(root, 'relay-sync', {
+      'doc.xml': '<doc/>',
+      'assets/tuner.html': '<ryugi-slider id="r"></ryugi-slider>',
+    });
     const res = await content(server, 'document/relay-sync/assets/tuner.html');
     expect(res.status).toBe(200);
     expect(res.headers['content-type']).toContain('text/html');
-    expect(res.headers['content-security-policy']).toBe('sandbox allow-scripts allow-modals allow-forms allow-popups allow-downloads');
+    expect(res.headers['content-security-policy']).toBe(
+      'sandbox allow-scripts allow-modals allow-forms allow-popups allow-downloads',
+    );
     expect(res.body).toContain('ryugi:snapshot');
-    expect(res.body).toContain(`<script defer src="/c/${server.contentToken}/runtime/ryugi-ui.js"></script>`);
+    expect(res.body).toContain(
+      `<script defer src="/c/${server.contentToken}/runtime/ryugi-ui.js"></script>`,
+    );
     expect(res.body).toContain('color-scheme:light dark');
   });
 });
@@ -534,17 +680,29 @@ describe('artboard content', () => {
 
   test('media files answer byte ranges so Safari can play video', async () => {
     const { server, root } = await start();
-    writeArtboard(root, 'b1', canvas, { 'pages/p/a.html': '<p>a</p>', 'pages/p/flow.webm': '0123456789' });
+    writeArtboard(root, 'b1', canvas, {
+      'pages/p/a.html': '<p>a</p>',
+      'pages/p/flow.webm': '0123456789',
+    });
     const whole = await content(server, 'artboard/b1/pages/p/flow.webm');
     expect(whole.status).toBe(200);
     expect(whole.headers['accept-ranges']).toBe('bytes');
-    const part = await get(`${base(server)}/c/${server.contentToken}/artboard/b1/pages/p/flow.webm`, { Range: 'bytes=2-5' });
+    const part = await get(
+      `${base(server)}/c/${server.contentToken}/artboard/b1/pages/p/flow.webm`,
+      { Range: 'bytes=2-5' },
+    );
     expect(part.status).toBe(206);
     expect(part.body).toBe('2345');
     expect(part.headers['content-range']).toBe('bytes 2-5/10');
-    const tail = await get(`${base(server)}/c/${server.contentToken}/artboard/b1/pages/p/flow.webm`, { Range: 'bytes=-3' });
+    const tail = await get(
+      `${base(server)}/c/${server.contentToken}/artboard/b1/pages/p/flow.webm`,
+      { Range: 'bytes=-3' },
+    );
     expect(tail.body).toBe('789');
-    const beyond = await get(`${base(server)}/c/${server.contentToken}/artboard/b1/pages/p/flow.webm`, { Range: 'bytes=20-' });
+    const beyond = await get(
+      `${base(server)}/c/${server.contentToken}/artboard/b1/pages/p/flow.webm`,
+      { Range: 'bytes=20-' },
+    );
     expect(beyond.status).toBe(416);
   });
 
@@ -585,7 +743,9 @@ describe('UI runtime', () => {
     writeHtml(root, 'ui', { 'index.html': '<title>UI</title><ryugi-button>Go</ryugi-button>' });
     writeHtml(root, 'plain', { 'index.html': '<title>Plain</title><p>plain</p>' });
     const injected = await content(server, 'html/ui/index.html');
-    expect(injected.body).toContain(`<script defer src="/c/${server.contentToken}/runtime/ryugi-ui.js"></script>`);
+    expect(injected.body).toContain(
+      `<script defer src="/c/${server.contentToken}/runtime/ryugi-ui.js"></script>`,
+    );
     expect((await content(server, 'html/plain/index.html')).body).not.toContain('ryugi-ui.js');
   });
 });
@@ -604,9 +764,16 @@ describe('html content', () => {
 
   test('content allows the opaque-origin frame to fetch, import and load fonts from it', async () => {
     const { server, root } = await start();
-    writeHtml(root, 'tuner', { 'index.html': '<p>x</p>', 'app.js': 'export const a = 1;', 'data.json': '{}' });
+    writeHtml(root, 'tuner', {
+      'index.html': '<p>x</p>',
+      'app.js': 'export const a = 1;',
+      'data.json': '{}',
+    });
     for (const rel of ['index.html', 'app.js', 'data.json']) {
-      expect((await content(server, `html/tuner/${rel}`)).headers['access-control-allow-origin'], rel).toBe('*');
+      expect(
+        (await content(server, `html/tuner/${rel}`)).headers['access-control-allow-origin'],
+        rel,
+      ).toBe('*');
     }
   });
 
@@ -652,11 +819,15 @@ describe('state files', () => {
     expect(artboard.warnings).toEqual([]);
     expect(artboard.pending).toEqual([]);
     expect(typeof artboard.checkedAt).toBe('string');
-    expect(readJson(stateFile(temp.root, 'artboard', 'b1', 'layout.json')).pages.p.bounds.maxX).toBe(640);
-    expect(readJson(stateFile(temp.root, 'html', 'tuner', 'warnings.json')).warnings).toEqual(['index.html not found']);
+    expect(
+      readJson(stateFile(temp.root, 'artboard', 'b1', 'layout.json')).pages.p.bounds.maxX,
+    ).toBe(640);
+    expect(readJson(stateFile(temp.root, 'html', 'tuner', 'warnings.json')).warnings).toEqual([
+      'index.html not found',
+    ]);
   });
 
-  test('a change rewrites only that artifact\'s warnings with a newer checkedAt', async () => {
+  test("a change rewrites only that artifact's warnings with a newer checkedAt", async () => {
     const { root } = await start();
     writeArtboard(root, 'b1', canvas, { 'pages/p/a.html': '<p>a</p>' });
     const file = stateFile(root, 'artboard', 'b1', 'warnings.json');
@@ -693,19 +864,29 @@ describe('websocket', () => {
 
   test('is refused without the session cookie', async () => {
     const { server } = await start();
-    const ws = await openWs(server.port, { Origin: origin(server), Host: `127.0.0.1:${server.port}` });
+    const ws = await openWs(server.port, {
+      Origin: origin(server),
+      Host: `127.0.0.1:${server.port}`,
+    });
     expect(ws.status).toBe(403);
   });
 
   test('is refused from a foreign or opaque origin', async () => {
     const { server } = await start();
-    expect((await openWs(server.port, { Cookie: cookie(server), Origin: 'http://evil.test' })).status).toBe(403);
-    expect((await openWs(server.port, { Cookie: cookie(server), Origin: 'null' })).status).toBe(403);
+    expect(
+      (await openWs(server.port, { Cookie: cookie(server), Origin: 'http://evil.test' })).status,
+    ).toBe(403);
+    expect((await openWs(server.port, { Cookie: cookie(server), Origin: 'null' })).status).toBe(
+      403,
+    );
   });
 
   test('accepts an https origin for the same host, as behind a forwarding proxy', async () => {
     const { server } = await start();
-    const ws = await openWs(server.port, { Cookie: cookie(server), Origin: `https://127.0.0.1:${server.port}` });
+    const ws = await openWs(server.port, {
+      Cookie: cookie(server),
+      Origin: `https://127.0.0.1:${server.port}`,
+    });
     expect(ws.status).toBe(101);
     ws.socket?.destroy();
   });
@@ -715,7 +896,9 @@ describe('websocket', () => {
     const ws = await openWs(server.port, { Cookie: cookie(server), Origin: origin(server) });
     expect(ws.status).toBe(101);
     writeHtml(root, 'tuner', { 'index.html': '<p>x</p>' });
-    await waitFor(() => ws.messages.some((m) => m.includes('"html/tuner"') && m.includes('index.html')));
+    await waitFor(() =>
+      ws.messages.some((m) => m.includes('"html/tuner"') && m.includes('index.html')),
+    );
     const message = JSON.parse(ws.messages.find((m) => m.includes('"html/tuner"'))!);
     expect(message).toMatchObject({ type: 'change', artifact: 'html/tuner' });
     expect(message.files).toContain('index.html');
@@ -724,14 +907,22 @@ describe('websocket', () => {
 
   test('an agent check right after a write leaves the change message to the watcher, with the file it wrote', async () => {
     const { server, root } = await start();
-    writeDocument(root, 'plan', { 'doc.xml': '<doc><p id="b1">one</p><dynamic url="assets/backoff.html"><![CDATA[{}]]></dynamic></doc>', 'assets/backoff.html': '<p>v1</p>' });
+    writeDocument(root, 'plan', {
+      'doc.xml':
+        '<doc><p id="b1">one</p><dynamic url="assets/backoff.html"><![CDATA[{}]]></dynamic></doc>',
+      'assets/backoff.html': '<p>v1</p>',
+    });
     await waitFor(() => fs.existsSync(stateFile(root, 'document', 'plan', 'warnings.json')));
     const ws = await openWs(server.port, { Cookie: cookie(server), Origin: origin(server) });
     fs.writeFileSync(path.join(root, 'document', 'plan', 'assets', 'backoff.html'), '<p>v2</p>');
-    const res = await fetch(`${base(server)}/api/agent/document/plan/check?key=${server.token}`, { method: 'POST' });
+    const res = await fetch(`${base(server)}/api/agent/document/plan/check?key=${server.token}`, {
+      method: 'POST',
+    });
     expect(res.status).toBe(200);
     expect(await res.json()).toMatchObject({ warnings: [] });
-    await waitFor(() => ws.messages.some((m) => m.includes('"document/plan"') && m.includes('assets/backoff.html')));
+    await waitFor(() =>
+      ws.messages.some((m) => m.includes('"document/plan"') && m.includes('assets/backoff.html')),
+    );
     ws.socket?.destroy();
   });
 
@@ -779,26 +970,41 @@ describe('websocket', () => {
 
 describe('html runtime', () => {
   const origin = (s: ArtifactsServer) => `http://127.0.0.1:${s.port}`;
-  const runtimeError = (artifact: string, message: string) => JSON.stringify({ type: 'runtime-error', artifact, message });
+  const runtimeError = (artifact: string, message: string) =>
+    JSON.stringify({ type: 'runtime-error', artifact, message });
 
-  test('only an html artifact\'s index.html gets the runtime script', async () => {
+  test("only an html artifact's index.html gets the runtime script", async () => {
     const { server, root } = await start();
-    writeHtml(root, 'tuner', { 'index.html': '<head></head><p>x</p>', 'other.html': '<head></head><p>y</p>' });
+    writeHtml(root, 'tuner', {
+      'index.html': '<head></head><p>x</p>',
+      'other.html': '<head></head><p>y</p>',
+    });
     writeArtboard(root, 'b1', canvas, { 'pages/p/a.html': '<head></head><p>a</p>' });
     expect((await content(server, 'html/tuner/index.html')).body).toContain('ryugi:snapshot');
     expect((await content(server, 'html/tuner/other.html')).body).not.toContain('ryugi:snapshot');
-    expect((await content(server, 'artboard/b1/pages/p/a.html')).body).not.toContain('ryugi:snapshot');
+    expect((await content(server, 'artboard/b1/pages/p/a.html')).body).not.toContain(
+      'ryugi:snapshot',
+    );
   });
 
   test('a runtime error from the viewer becomes a warning for that artifact', async () => {
     const { server, root } = await start();
     writeHtml(root, 'tuner', { 'index.html': '<p>x</p>' });
     const ws = await openWs(server.port, { Cookie: cookie(server), Origin: origin(server) });
-    sendWsText(ws.socket!, runtimeError('html/tuner', 'ReferenceError: slider is not defined (index.html:12)'));
+    sendWsText(
+      ws.socket!,
+      runtimeError('html/tuner', 'ReferenceError: slider is not defined (index.html:12)'),
+    );
     const file = stateFile(root, 'html', 'tuner', 'warnings.json');
-    await waitFor(() => fs.existsSync(file) && readJson(file).warnings.some((w: string) => w.includes('slider is not defined')));
+    await waitFor(
+      () =>
+        fs.existsSync(file) &&
+        readJson(file).warnings.some((w: string) => w.includes('slider is not defined')),
+    );
     const payload = await api(server, '/api/artifacts/html/tuner');
-    expect(payload.warnings.some((w: string) => w.startsWith('runtime: ReferenceError'))).toBe(true);
+    expect(payload.warnings.some((w: string) => w.startsWith('runtime: ReferenceError'))).toBe(
+      true,
+    );
     ws.socket?.destroy();
   });
 
@@ -812,7 +1018,10 @@ describe('html runtime', () => {
     sendWsText(ws.socket!, '{ not json');
     sendWsText(ws.socket!, runtimeError('html/tuner', 'marker'));
     const file = stateFile(root, 'html', 'tuner', 'warnings.json');
-    await waitFor(() => fs.existsSync(file) && readJson(file).warnings.some((w: string) => w.includes('marker')));
+    await waitFor(
+      () =>
+        fs.existsSync(file) && readJson(file).warnings.some((w: string) => w.includes('marker')),
+    );
     expect(readJson(file).warnings).toEqual(['runtime: marker']);
     expect(fs.existsSync(stateFile(root, 'html', 'missing'))).toBe(false);
     ws.socket?.destroy();
@@ -827,7 +1036,9 @@ describe('html runtime', () => {
     await waitFor(() => fs.existsSync(file) && readJson(file).warnings.length === 1);
     fs.writeFileSync(path.join(dir, 'index.html'), '<p>rewritten</p>');
     sendWsText(ws.socket!, runtimeError('html/tuner', 'old error 2'));
-    await waitFor(() => ws.messages.some((m) => m.includes('"html/tuner"') && m.includes('index.html')));
+    await waitFor(() =>
+      ws.messages.some((m) => m.includes('"html/tuner"') && m.includes('index.html')),
+    );
     await waitFor(() => readJson(file).warnings.length === 0);
     ws.socket?.destroy();
   });
@@ -839,7 +1050,8 @@ describe('html runtime', () => {
     await waitFor(() => fs.existsSync(file));
     expect(readJson(file).ran).toBe(false);
     const ws = await openWs(server.port, { Cookie: cookie(server), Origin: origin(server) });
-    const loaded = (version: number) => JSON.stringify({ type: 'loaded', artifact: 'html/tuner', version });
+    const loaded = (version: number) =>
+      JSON.stringify({ type: 'loaded', artifact: 'html/tuner', version });
     sendWsText(ws.socket!, loaded(1));
     const { version } = await api(server, '/api/artifacts/html/tuner');
     sendWsText(ws.socket!, loaded(version));
@@ -874,7 +1086,10 @@ describe('document dynamic blocks', () => {
 
   async function setup() {
     const { server, root } = await start();
-    const dir = writeDocument(root, 'spec', { 'doc.xml': dynamicDoc('assets/tuner.html'), 'assets/tuner.html': '<p>x</p>' });
+    const dir = writeDocument(root, 'spec', {
+      'doc.xml': dynamicDoc('assets/tuner.html'),
+      'assets/tuner.html': '<p>x</p>',
+    });
     const ws = await openWs(server.port, { Cookie: cookie(server), Origin: origin(server) });
     await api(server, '/api/document/spec/state');
     return { server, root, dir, ws, file: stateFile(root, 'document', 'spec', 'warnings.json') };
@@ -882,12 +1097,26 @@ describe('document dynamic blocks', () => {
 
   test('a runtime error names its file and survives a doc.xml rewrite', async () => {
     const { dir, ws, file } = await setup();
-    sendWsText(ws.socket!, report('runtime-error', 'assets/tuner.html', 'ReferenceError: r is not defined'));
-    await waitFor(() => fs.existsSync(file) && readJson(file).warnings.includes('runtime: assets/tuner.html: ReferenceError: r is not defined'));
-    fs.writeFileSync(path.join(dir, 'doc.xml'), dynamicDoc('assets/tuner.html').replace('intro', 'intro, edited'));
+    sendWsText(
+      ws.socket!,
+      report('runtime-error', 'assets/tuner.html', 'ReferenceError: r is not defined'),
+    );
+    await waitFor(
+      () =>
+        fs.existsSync(file) &&
+        readJson(file).warnings.includes(
+          'runtime: assets/tuner.html: ReferenceError: r is not defined',
+        ),
+    );
+    fs.writeFileSync(
+      path.join(dir, 'doc.xml'),
+      dynamicDoc('assets/tuner.html').replace('intro', 'intro, edited'),
+    );
     await waitFor(() => fs.readFileSync(path.join(dir, 'doc.xml'), 'utf8').includes('id="'));
     await new Promise((r) => setTimeout(r, 100));
-    expect(readJson(file).warnings).toContain('runtime: assets/tuner.html: ReferenceError: r is not defined');
+    expect(readJson(file).warnings).toContain(
+      'runtime: assets/tuner.html: ReferenceError: r is not defined',
+    );
     ws.socket?.destroy();
   });
 
@@ -895,7 +1124,12 @@ describe('document dynamic blocks', () => {
     const { dir, ws, file } = await setup();
     sendWsText(ws.socket!, report('runtime-error', 'assets/tuner.html', 'boom'));
     sendWsText(ws.socket!, report('loaded', 'assets/tuner.html'));
-    await waitFor(() => fs.existsSync(file) && readJson(file).dynamic?.['assets/tuner.html']?.ran === true && readJson(file).warnings.length === 1);
+    await waitFor(
+      () =>
+        fs.existsSync(file) &&
+        readJson(file).dynamic?.['assets/tuner.html']?.ran === true &&
+        readJson(file).warnings.length === 1,
+    );
     fs.writeFileSync(path.join(dir, 'assets', 'tuner.html'), '<p>fixed</p>');
     await waitFor(() => readJson(file).warnings.length === 0);
     expect(readJson(file).dynamic['assets/tuner.html'].ran).toBe(false);
@@ -916,14 +1150,19 @@ describe('document dynamic blocks', () => {
     const { root } = await start();
     writeDocument(root, 'spec', { 'doc.xml': dynamicDoc('assets/gone.html') });
     const file = stateFile(root, 'document', 'spec', 'warnings.json');
-    await waitFor(() => fs.existsSync(file) && readJson(file).warnings.includes('assets/gone.html not found'));
+    await waitFor(
+      () => fs.existsSync(file) && readJson(file).warnings.includes('assets/gone.html not found'),
+    );
   });
 
   test('reports for files outside assets/ are ignored', async () => {
     const { ws, file } = await setup();
     sendWsText(ws.socket!, report('runtime-error', '../doc.xml', 'boom'));
     sendWsText(ws.socket!, report('runtime-error', 'assets/tuner.html', 'marker'));
-    await waitFor(() => fs.existsSync(file) && readJson(file).warnings.some((w: string) => w.includes('marker')));
+    await waitFor(
+      () =>
+        fs.existsSync(file) && readJson(file).warnings.some((w: string) => w.includes('marker')),
+    );
     expect(readJson(file).warnings).toEqual(['runtime: assets/tuner.html: marker']);
     ws.socket?.destroy();
   });
@@ -934,8 +1173,14 @@ describe('malformed canvas', () => {
     const { server, root } = await start();
     writeArtboard(root, 'b1', { version: 1, pages: [null], boards: {} });
     const file = stateFile(root, 'artboard', 'b1', 'warnings.json');
-    await waitFor(() => fs.existsSync(file) && readJson(file).warnings.includes('pages[0] needs string "id" and "name"'));
-    expect((await get(`${base(server)}/api/artifacts/artboard/b1`, { Cookie: cookie(server) })).status).toBe(200);
+    await waitFor(
+      () =>
+        fs.existsSync(file) &&
+        readJson(file).warnings.includes('pages[0] needs string "id" and "name"'),
+    );
+    expect(
+      (await get(`${base(server)}/api/artifacts/artboard/b1`, { Cookie: cookie(server) })).status,
+    ).toBe(200);
   });
 });
 

@@ -65,19 +65,19 @@ verify group pending, and which files a static board needs.
 
 ## Before and after
 
-| Question | Baseline (3 runs) | Candidate (3 runs) |
-|---|---|---|
-| 1. `start` before any file | 1/3 (2 wrote `canvas.json` first) | 3/3 |
-| 2. Confirm an edit is clean | 0/3: read `checkedAt`, write, re-read (one with `sleep 1`) | 3/3: one `check` |
-| 3. `start` only before the link | 3/3 | 3/3 |
-| 4. Image under `pages/` | 3/3 | 3/3 |
-| 5. Read the selection | 0/3: `cat selection.json` | 3/3: `jq '{selected, more, tweaks}'` |
-| 6. Codex: `start` alone, then `comment list` | 3/3 | 3/3, all with the 5 s yield |
-| 7. Edit text written as `<strong>` | 0/3: match `<strong>two</strong>` | 3/3: match `<b>two</b>` from a fresh read |
-| 8. OMP `comment list` | 0/3 | 3/3: `\| jq .` |
-| 9. Screenshot pass versus link, static boards | 0/3: screenshots first | 3/3: link first |
-| 10. Verify round over a pending `v1` | 3/3 | 3/3 |
-| 11. Lines read for a static artboard | 625 (SKILL 190 + artboard 435) | 533 (213 + 320) |
+| Question                                      | Baseline (3 runs)                                          | Candidate (3 runs)                        |
+| --------------------------------------------- | ---------------------------------------------------------- | ----------------------------------------- |
+| 1. `start` before any file                    | 1/3 (2 wrote `canvas.json` first)                          | 3/3                                       |
+| 2. Confirm an edit is clean                   | 0/3: read `checkedAt`, write, re-read (one with `sleep 1`) | 3/3: one `check`                          |
+| 3. `start` only before the link               | 3/3                                                        | 3/3                                       |
+| 4. Image under `pages/`                       | 3/3                                                        | 3/3                                       |
+| 5. Read the selection                         | 0/3: `cat selection.json`                                  | 3/3: `jq '{selected, more, tweaks}'`      |
+| 6. Codex: `start` alone, then `comment list`  | 3/3                                                        | 3/3, all with the 5 s yield               |
+| 7. Edit text written as `<strong>`            | 0/3: match `<strong>two</strong>`                          | 3/3: match `<b>two</b>` from a fresh read |
+| 8. OMP `comment list`                         | 0/3                                                        | 3/3: `\| jq .`                            |
+| 9. Screenshot pass versus link, static boards | 0/3: screenshots first                                     | 3/3: link first                           |
+| 10. Verify round over a pending `v1`          | 3/3                                                        | 3/3                                       |
+| 11. Lines read for a static artboard          | 625 (SKILL 190 + artboard 435)                             | 533 (213 + 320)                           |
 
 Questions 3, 4, 6 and 10 already passed on the written scenario. The real
 sessions failed on them under conditions the scenario does not recreate (a

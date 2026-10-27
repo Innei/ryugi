@@ -7,8 +7,19 @@ import { useKeptBoards } from '../src/viewer/hooks/useKeptBoards';
 
 let root: Root;
 let kept: ReadonlySet<string>;
-let props: { boards: [string, BoardSpec][]; versions: Record<string, number>; accepts?: (id: string) => boolean };
-const spec = (id: string): BoardSpec => ({ file: `pages/${id}.html`, page: 'p', x: 0, y: 0, w: 100, h: 100 });
+let props: {
+  boards: [string, BoardSpec][];
+  versions: Record<string, number>;
+  accepts?: (id: string) => boolean;
+};
+const spec = (id: string): BoardSpec => ({
+  file: `pages/${id}.html`,
+  page: 'p',
+  x: 0,
+  y: 0,
+  w: 100,
+  h: 100,
+});
 
 function Harness() {
   kept = useKeptBoards(props.boards, props.versions, props.accepts);
@@ -27,12 +38,22 @@ const frameOf = (id: string) => {
   return frame;
 };
 const interact = async (frame: HTMLIFrameElement, type = 'ryugi:board:interacted') => {
-  await act(async () => { window.dispatchEvent(new MessageEvent('message', { source: frame.contentWindow, data: { type } })); });
+  await act(async () => {
+    window.dispatchEvent(
+      new MessageEvent('message', { source: frame.contentWindow, data: { type } }),
+    );
+  });
 };
 
 beforeEach(() => {
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
-  props = { boards: [['a', spec('a')], ['b', spec('b')]], versions: { 'pages/a.html': 1, 'pages/b.html': 1 } };
+  props = {
+    boards: [
+      ['a', spec('a')],
+      ['b', spec('b')],
+    ],
+    versions: { 'pages/a.html': 1, 'pages/b.html': 1 },
+  };
   root = createRoot(document.createElement('div'));
 });
 

@@ -60,16 +60,11 @@
       "groups": {
         "q1": {
           "title": "Navigation layout",
-          "boards": [
-            "q1-a",
-            "q1-b"
-          ]
+          "boards": ["q1-a", "q1-b"]
         },
         "q2": {
           "title": "手机",
-          "boards": [
-            "q2-a"
-          ]
+          "boards": ["q2-a"]
         }
       },
       "notes": {

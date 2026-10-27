@@ -2,7 +2,13 @@ import { animateValue } from 'motion';
 import { reducedMotion } from './motion';
 
 export function springScrollToElement(element: HTMLElement) {
-  const target = Math.max(0, Math.min(window.scrollY + element.getBoundingClientRect().top - 100, document.documentElement.scrollHeight - window.innerHeight));
+  const target = Math.max(
+    0,
+    Math.min(
+      window.scrollY + element.getBoundingClientRect().top - 100,
+      document.documentElement.scrollHeight - window.innerHeight,
+    ),
+  );
   if (reducedMotion()) {
     window.scrollTo({ top: target, behavior: 'instant' });
     return () => {};
@@ -12,7 +18,10 @@ export function springScrollToElement(element: HTMLElement) {
     window.removeEventListener('wheel', stop);
     window.removeEventListener('touchmove', stop);
   };
-  const stop = () => { animation.stop(); cleanup(); };
+  const stop = () => {
+    animation.stop();
+    cleanup();
+  };
   // Same spring as Yohaku; +1 keeps Motion from dropping a zero starting keyframe.
   const animation = animateValue({
     keyframes: [window.scrollY + 1, target],

@@ -4,15 +4,26 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { PhoneBoard } from '../src/viewer/components/PhoneBoard';
 
-vi.mock('@stylexjs/stylex', async (original) => ({ ...await original<object>(), create: (value: unknown) => value, props: () => ({}) }));
-vi.mock('@lobehub/ui/stylex/cssVar.stylex', () => ({ cssVar: new Proxy({}, { get: (_, key) => `var(--${String(key)})` }) }));
+vi.mock('@stylexjs/stylex', async (original) => ({
+  ...(await original<object>()),
+  create: (value: unknown) => value,
+  props: () => ({}),
+}));
+vi.mock('@lobehub/ui/stylex/cssVar.stylex', () => ({
+  cssVar: new Proxy({}, { get: (_, key) => `var(--${String(key)})` }),
+}));
 
 let root: Root | undefined;
 let host: HTMLDivElement | undefined;
 let now = 0;
 beforeEach(() => {
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
-  vi.stubGlobal('matchMedia', (query: string) => ({ matches: false, media: query, addEventListener() {}, removeEventListener() {} }));
+  vi.stubGlobal('matchMedia', (query: string) => ({
+    matches: false,
+    media: query,
+    addEventListener() {},
+    removeEventListener() {},
+  }));
   vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(390);
   vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(700);
   vi.spyOn(performance, 'now').mockImplementation(() => now);
@@ -26,7 +37,15 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-const board = (title: string, h = 844) => ({ file: `${title}.html`, page: 'p', x: 0, y: 0, w: 390, h, title });
+const board = (title: string, h = 844) => ({
+  file: `${title}.html`,
+  page: 'p',
+  x: 0,
+  y: 0,
+  w: 390,
+  h,
+  title,
+});
 
 async function open(id: string, siblings: string[], extra: object = {}) {
   host = document.createElement('div');
@@ -34,7 +53,19 @@ async function open(id: string, siblings: string[], extra: object = {}) {
   root = createRoot(host);
   const onClose = vi.fn();
   const onOpen = vi.fn();
-  await act(async () => root!.render(createElement(PhoneBoard, { id, board: board(`标题 ${id}`), src: 'about:blank', siblings, onOpen, onClose, ...extra })));
+  await act(async () =>
+    root!.render(
+      createElement(PhoneBoard, {
+        id,
+        board: board(`标题 ${id}`),
+        src: 'about:blank',
+        siblings,
+        onOpen,
+        onClose,
+        ...extra,
+      }),
+    ),
+  );
   return { onClose, onOpen };
 }
 
@@ -43,9 +74,20 @@ const stage = () => host!.querySelector<HTMLElement>('[data-board-stage]')!;
 const finger = async (type: string, x: number, y: number, at: number) => {
   now = at;
   body().setPointerCapture = vi.fn();
-  await act(async () => body().dispatchEvent(new PointerEvent(type, { bubbles: true, pointerId: 4, pointerType: 'touch', clientX: x, clientY: y })));
+  await act(async () =>
+    body().dispatchEvent(
+      new PointerEvent(type, {
+        bubbles: true,
+        pointerId: 4,
+        pointerType: 'touch',
+        clientX: x,
+        clientY: y,
+      }),
+    ),
+  );
 };
-const scaleOf = (el: HTMLElement) => Number(el.style.transform.match(/scale\(([-\d.]+)\)/)?.[1] ?? 1);
+const scaleOf = (el: HTMLElement) =>
+  Number(el.style.transform.match(/scale\(([-\d.]+)\)/)?.[1] ?? 1);
 
 test('the header leads with a back button, the title, the board id and the position', async () => {
   await open('q2-a', ['q2-a', 'q2-b']);
@@ -58,8 +100,12 @@ test('the header leads with a back button, the title, the board id and the posit
 
 test('the footer marks the current board with a dot and steps with icon buttons', async () => {
   const { onOpen } = await open('q2-b', ['q2-a', 'q2-b', 'q2-c']);
-  expect([...host!.querySelectorAll('[data-dot]')].map((dot) => dot.getAttribute('data-dot'))).toEqual(['', 'current', '']);
-  await act(async () => host!.querySelector<HTMLElement>('button[aria-label="Previous board"]')!.click());
+  expect(
+    [...host!.querySelectorAll('[data-dot]')].map((dot) => dot.getAttribute('data-dot')),
+  ).toEqual(['', 'current', '']);
+  await act(async () =>
+    host!.querySelector<HTMLElement>('button[aria-label="Previous board"]')!.click(),
+  );
   await vi.waitFor(() => expect(onOpen).toHaveBeenCalledWith('q2-a'));
 });
 
@@ -119,8 +165,24 @@ test('a tall board scrolled down pans back up instead of closing', async () => {
   document.body.append(host);
   root = createRoot(host);
   const onClose = vi.fn();
-  await act(async () => root!.render(createElement(PhoneBoard, { id: 'tall', board: board('长页', 2000), src: 'about:blank', siblings: ['tall'], onOpen: vi.fn(), onClose })));
-  const world = () => Number(host!.querySelector<HTMLElement>('iframe')!.parentElement!.style.transform.match(/translate\([-\d.]+px, ([-\d.]+)px\)/)![1]);
+  await act(async () =>
+    root!.render(
+      createElement(PhoneBoard, {
+        id: 'tall',
+        board: board('长页', 2000),
+        src: 'about:blank',
+        siblings: ['tall'],
+        onOpen: vi.fn(),
+        onClose,
+      }),
+    ),
+  );
+  const world = () =>
+    Number(
+      host!
+        .querySelector<HTMLElement>('iframe')!
+        .parentElement!.style.transform.match(/translate\([-\d.]+px, ([-\d.]+)px\)/)![1],
+    );
   await finger('pointerdown', 195, 500, 0);
   await finger('pointermove', 195, 300, 100);
   await finger('pointerup', 195, 300, 200);
@@ -136,7 +198,17 @@ test('a tall board scrolled down pans back up instead of closing', async () => {
 const fire = async (type: string, id: number, x: number, y: number, at: number) => {
   now = at;
   body().setPointerCapture = vi.fn();
-  await act(async () => body().dispatchEvent(new PointerEvent(type, { bubbles: true, pointerId: id, pointerType: 'touch', clientX: x, clientY: y })));
+  await act(async () =>
+    body().dispatchEvent(
+      new PointerEvent(type, {
+        bubbles: true,
+        pointerId: id,
+        pointerType: 'touch',
+        clientX: x,
+        clientY: y,
+      }),
+    ),
+  );
 };
 
 test('a vertical pinch zooms the board and never closes it', async () => {

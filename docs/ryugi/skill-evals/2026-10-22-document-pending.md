@@ -29,10 +29,10 @@ Pass criteria:
 
 ## Before and after
 
-| Reference | Runs | Step 1 marks every section | Step 2 replaces only the filled section |
-|---|---:|---:|---:|
-| Baseline (`document.md` before this change) | 2 | 0 / 2 (bare headings) | n/a |
-| Candidate (this change) | 5 | 5 / 5 | 5 / 5 |
+| Reference                                   | Runs | Step 1 marks every section | Step 2 replaces only the filled section |
+| ------------------------------------------- | ---: | -------------------------: | --------------------------------------: |
+| Baseline (`document.md` before this change) |    2 |      0 / 2 (bare headings) |                                     n/a |
+| Candidate (this change)                     |    5 |                      5 / 5 |                                   5 / 5 |
 
 All five candidate runs converged on the same shape: heading, then a
 one-line `intent` naming the section's content; step 2 kept the three other

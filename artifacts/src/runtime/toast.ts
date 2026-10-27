@@ -10,7 +10,8 @@ export function createToastRoot() {
   const styles = document.getElementById('ryugi-ui-style');
   if (styles) root.append(styles.cloneNode(true));
   const overrides = document.createElement('style');
-  overrides.textContent = '.ryugi-toast-viewport:empty{display:none}.ryugi-toast-viewport .lobe-toast__description{color:var(--lobe-color-text-secondary)}';
+  overrides.textContent =
+    '.ryugi-toast-viewport:empty{display:none}.ryugi-toast-viewport .lobe-toast__description{color:var(--lobe-color-text-secondary)}';
   root.append(overrides);
   (document.body ?? document.documentElement).append(host);
   return root;

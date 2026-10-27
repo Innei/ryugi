@@ -66,7 +66,7 @@ list_archive() {
   local archive_path="$1"
 
   case "$archive_path" in
-    *.tar.gz|*.tgz)
+    *.tar.gz | *.tgz)
       tar -tzf "$archive_path"
       ;;
     *.zip)
@@ -88,7 +88,7 @@ extract_archive() {
 
   mkdir -p "$destination"
   case "$archive_path" in
-    *.tar.gz|*.tgz)
+    *.tar.gz | *.tgz)
       tar -xzf "$archive_path" -C "$destination"
       ;;
     *.zip)
@@ -105,7 +105,7 @@ read_archive_file() {
   local file_path="$2"
 
   case "$archive_path" in
-    *.tar.gz|*.tgz)
+    *.tar.gz | *.tgz)
       tar -xOf "$archive_path" "$file_path"
       ;;
     *.zip)
@@ -123,7 +123,7 @@ write_metadata_fixture() {
 
   while IFS= read -r skill; do
     mkdir -p "$destination/skills/$skill/agents"
-    cat >"$destination/skills/$skill/agents/openai.yaml" <<EOF
+    cat > "$destination/skills/$skill/agents/openai.yaml" << EOF
 interface:
   display_name: "$skill"
   short_description: "Fixture metadata for $skill"
@@ -185,7 +185,8 @@ else
   fail "archive preserves executable script mode"
 fi
 
-zip_times="$(python3 - "$archive" <<'PY'
+zip_times="$(
+  python3 - "$archive" << 'PY'
 import sys
 import zipfile
 
@@ -210,7 +211,8 @@ assert_equals "$tar_archive_paths" "$archive_paths" "zip and tar.gz archives con
 tar_task_brief_mode="$(tar -tzvf "$tar_archive" skills/executing-specs/scripts/task-brief | awk '{print $1}')"
 assert_equals "$tar_task_brief_mode" "-rwxr-xr-x" "tar.gz archive preserves executable script mode"
 
-tar_metadata_times="$(python3 - "$tar_archive" <<'PY'
+tar_metadata_times="$(
+  python3 - "$tar_archive" << 'PY'
 import sys, tarfile
 with tarfile.open(sys.argv[1]) as archive:
     print(sorted({member.mtime for member in archive.getmembers()}))
@@ -272,7 +274,7 @@ assert_contains "$missing_output" "ERROR: metadata source is incomplete" "incomp
 
 dirty_repo="$TEST_ROOT/dirty-repo"
 git clone -q --no-local "$REPO_ROOT" "$dirty_repo"
-printf '\n# dirty fixture\n' >>"$dirty_repo/README.md"
+printf '\n# dirty fixture\n' >> "$dirty_repo/README.md"
 set +e
 dirty_output="$(
   cd "$dirty_repo"

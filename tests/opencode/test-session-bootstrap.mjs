@@ -16,16 +16,18 @@ function makeEvent(flavor, sessionID) {
   const text = { type: 'text', text: 'Execute the assigned task' };
   return {
     sessionID,
-    messages: [flavor === 'v1'
-      ? { info: { role: 'user', sessionID }, parts: [text] }
-      : { role: 'user', content: [text] }],
+    messages: [
+      flavor === 'v1'
+        ? { info: { role: 'user', sessionID }, parts: [text] }
+        : { role: 'user', content: [text] },
+    ],
   };
 }
 
 function bootstrapCount(event) {
-  return event.messages.flatMap((message) => message.parts ?? message.content ?? []).filter(
-    (part) => part.type === 'text' && part.text.startsWith(marker)
-  ).length;
+  return event.messages
+    .flatMap((message) => message.parts ?? message.content ?? [])
+    .filter((part) => part.type === 'text' && part.text.startsWith(marker)).length;
 }
 
 async function makeHarness(flavor, fetchSession) {
@@ -45,10 +47,14 @@ async function makeHarness(flavor, fetchSession) {
     invoke = (event) => hooks['experimental.chat.messages.transform']({}, event);
   } else {
     await mod.default.setup({
-      skill: { transform: async (transform) => transform({ add: (skill) => registered.push(skill) }) },
+      skill: {
+        transform: async (transform) => transform({ add: (skill) => registered.push(skill) }),
+      },
       session: {
         get: ({ sessionID }) => get(sessionID),
-        hook: async (name, callback) => { if (name === 'context') invoke = callback; },
+        hook: async (name, callback) => {
+          if (name === 'context') invoke = callback;
+        },
       },
     });
   }
@@ -79,7 +85,12 @@ for (const flavor of ['v1', 'v2']) {
   }
 
   const failures = [
-    ['throws', () => { throw new Error('temporary lookup failure'); }],
+    [
+      'throws',
+      () => {
+        throw new Error('temporary lookup failure');
+      },
+    ],
     ['missing', () => undefined],
     ['null', () => null],
     ['empty', () => reply(flavor, {})],
@@ -87,17 +98,20 @@ for (const flavor of ['v1', 'v2']) {
     ['invalid-parent', (id) => reply(flavor, { id, parentID: 42 })],
   ];
   if (flavor === 'v1') {
-    failures.push(['resolved-http-error', () => ({
-      data: undefined,
-      error: { name: 'UnknownError', data: { message: 'temporary 503' } },
-      response: { ok: false, status: 503 },
-    })]);
+    failures.push([
+      'resolved-http-error',
+      () => ({
+        data: undefined,
+        error: { name: 'UnknownError', data: { message: 'temporary 503' } },
+        response: { ok: false, status: 503 },
+      }),
+    ]);
   }
   for (const [kind, firstResult] of failures) {
     const id = `${flavor}-${kind}`;
-    const h = await makeHarness(flavor, (sessionID, call) => call === 1
-      ? firstResult(sessionID)
-      : reply(flavor, { id: sessionID, parentID: 'parent' }));
+    const h = await makeHarness(flavor, (sessionID, call) =>
+      call === 1 ? firstResult(sessionID) : reply(flavor, { id: sessionID, parentID: 'parent' }),
+    );
     const counts = [];
     for (let step = 0; step < 2; step++) {
       const event = makeEvent(flavor, id);
@@ -108,9 +122,15 @@ for (const flavor of ['v1', 'v2']) {
     assert.deepEqual(h.lookups, [id, id], `${id}: never cache the failure`);
   }
 
-  const isolated = await makeHarness(flavor, (id) => reply(flavor,
-    id === 'child-session' ? { id, parentID: 'parent' } : { id }));
-  for (const [id, expected] of [['root-session', 1], ['child-session', 0], ['root-session', 1], ['child-session', 0]]) {
+  const isolated = await makeHarness(flavor, (id) =>
+    reply(flavor, id === 'child-session' ? { id, parentID: 'parent' } : { id }),
+  );
+  for (const [id, expected] of [
+    ['root-session', 1],
+    ['child-session', 0],
+    ['root-session', 1],
+    ['child-session', 0],
+  ]) {
     const event = makeEvent(flavor, id);
     await isolated.invoke(event);
     assert.equal(bootstrapCount(event), expected);
@@ -134,7 +154,9 @@ for (const flavor of ['v1', 'v2']) {
   assert.equal(bootstrapCount(afterRestart), 0);
   assert.deepEqual(restarted.lookups, ['eviction-0']);
 
-  const unknown = await makeHarness(flavor, () => { throw new Error('must not look up a missing ID'); });
+  const unknown = await makeHarness(flavor, () => {
+    throw new Error('must not look up a missing ID');
+  });
   const noID = makeEvent(flavor, undefined);
   await unknown.invoke(noID);
   assert.equal(bootstrapCount(noID), 1);
@@ -145,10 +167,12 @@ function compactedEvent(sessionID) {
   return {
     sessionID,
     system: [],
-    messages: [{
-      role: 'assistant',
-      content: [{ type: 'compaction', provider: 'fixture', encrypted: 'opaque-checkpoint' }],
-    }],
+    messages: [
+      {
+        role: 'assistant',
+        content: [{ type: 'compaction', provider: 'fixture', encrypted: 'opaque-checkpoint' }],
+      },
+    ],
   };
 }
 
@@ -191,7 +215,10 @@ assert.equal(recoveredChild.messages.length, 1);
 assert.equal(retryChild.lookups.length, 2);
 
 const newPromptAfterCheckpoint = compactedEvent('new-prompt-after-checkpoint-root');
-newPromptAfterCheckpoint.messages.push({ role: 'user', content: [{ type: 'text', text: 'Continue' }] });
+newPromptAfterCheckpoint.messages.push({
+  role: 'user',
+  content: [{ type: 'text', text: 'Continue' }],
+});
 await compactedRoot.invoke(newPromptAfterCheckpoint);
 assert.equal(bootstrapCount(newPromptAfterCheckpoint), 1);
 assert.equal(newPromptAfterCheckpoint.messages.length, 2);
@@ -212,7 +239,10 @@ assert.equal(bootstrapCount(retainedUser), 1);
 assert.equal(retainedUser.messages.length, 2);
 
 const retainedUserChild = compactedEvent('retained-user-child');
-retainedUserChild.messages.unshift({ role: 'user', content: [{ type: 'text', text: 'Keep going' }] });
+retainedUserChild.messages.unshift({
+  role: 'user',
+  content: [{ type: 'text', text: 'Keep going' }],
+});
 const originalRetainedUserChild = structuredClone(retainedUserChild);
 await compactedChild.invoke(retainedUserChild);
 assert.equal(bootstrapCount(retainedUserChild), 0);

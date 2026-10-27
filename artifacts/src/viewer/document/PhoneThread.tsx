@@ -27,7 +27,14 @@ const styles = stylex.create({
     borderLeftColor: '#e8c24a',
     fontSize: 13,
   },
-  quoteText: { flex: 1, minWidth: 0, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', color: cssVar.colorTextSecondary },
+  quoteText: {
+    flex: 1,
+    minWidth: 0,
+    overflow: 'hidden',
+    whiteSpace: 'nowrap',
+    textOverflow: 'ellipsis',
+    color: cssVar.colorTextSecondary,
+  },
   state: { flexShrink: 0, fontSize: 12 },
   waitingAgent: { color: cssVar.colorWarningText },
   answered: { color: cssVar.colorSuccessText },
@@ -35,7 +42,14 @@ const styles = stylex.create({
   message: { marginTop: 12 },
   who: { display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 600 },
   time: { color: cssVar.colorTextTertiary, fontWeight: 400, fontSize: 12 },
-  text: { marginTop: 4, paddingLeft: 28, fontSize: 15, lineHeight: 1.6, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' },
+  text: {
+    marginTop: 4,
+    paddingLeft: 28,
+    fontSize: 15,
+    lineHeight: 1.6,
+    whiteSpace: 'pre-wrap',
+    overflowWrap: 'anywhere',
+  },
   deleted: { color: cssVar.colorTextQuaternary },
   footer: { display: 'flex', alignItems: 'center', gap: 16, marginTop: 10, paddingLeft: 28 },
   reply: {
@@ -61,7 +75,8 @@ const styles = stylex.create({
   },
 });
 
-const timeOf = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+const timeOf = (iso: string) =>
+  new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
 interface Props {
   thread: Thread;
@@ -71,7 +86,13 @@ interface Props {
   offline?: boolean;
 }
 
-export function PhoneThread({ thread, agent = 'Agent', actions, active = false, offline = false }: Props) {
+export function PhoneThread({
+  thread,
+  agent = 'Agent',
+  actions,
+  active = false,
+  offline = false,
+}: Props) {
   const waiting = waitingOn(thread);
   const resolved = thread.status === 'resolved';
   const state = resolved
@@ -85,7 +106,9 @@ export function PhoneThread({ thread, agent = 'Agent', actions, active = false, 
   return (
     <div data-thread={thread.id} {...stylex.props(styles.thread, active && styles.active)}>
       <div {...stylex.props(styles.quote)}>
-        <span {...stylex.props(styles.quoteText)}>{thread.anchor.quote || t('document.wholeBlock')}</span>
+        <span {...stylex.props(styles.quoteText)}>
+          {thread.anchor.quote || t('document.wholeBlock')}
+        </span>
         {state ? <span {...stylex.props(styles.state, state.tone)}>{state.label}</span> : null}
       </div>
       {resolved && !active
@@ -95,11 +118,20 @@ export function PhoneThread({ thread, agent = 'Agent', actions, active = false, 
             return (
               <div key={message.id} {...stylex.props(styles.message)}>
                 <div {...stylex.props(styles.who)}>
-                  <Avatar human={message.author === 'human'} initial={initial} name={message.name} src={message.avatar} />
+                  <Avatar
+                    human={message.author === 'human'}
+                    initial={initial}
+                    name={message.name}
+                    src={message.avatar}
+                  />
                   {label}
-                  <span {...stylex.props(styles.time)}>{timeOf(message.editedAt ?? message.at)}</span>
+                  <span {...stylex.props(styles.time)}>
+                    {timeOf(message.editedAt ?? message.at)}
+                  </span>
                 </div>
-                <div {...stylex.props(styles.text, message.deleted && styles.deleted)}>{message.deleted ? t('common.deleted') : message.text}</div>
+                <div {...stylex.props(styles.text, message.deleted && styles.deleted)}>
+                  {message.deleted ? t('common.deleted') : message.text}
+                </div>
               </div>
             );
           })}
@@ -107,11 +139,18 @@ export function PhoneThread({ thread, agent = 'Agent', actions, active = false, 
         <div {...stylex.props(styles.footer)}>
           {resolved ? null : (
             <div {...stylex.props(styles.reply)}>
-              <Composer placeholder={t('common.reply')} onSubmit={(text) => actions.reply(thread.id, text)} />
+              <Composer
+                placeholder={t('common.reply')}
+                onSubmit={(text) => actions.reply(thread.id, text)}
+              />
             </div>
           )}
           {offline ? null : (
-            <button type="button" onClick={() => (resolved ? actions.reopen(thread.id) : actions.resolve(thread.id))} {...stylex.props(styles.action)}>
+            <button
+              type="button"
+              onClick={() => (resolved ? actions.reopen(thread.id) : actions.resolve(thread.id))}
+              {...stylex.props(styles.action)}
+            >
               {resolved ? t('common.reopen') : t('common.resolve')}
             </button>
           )}

@@ -5,8 +5,14 @@ import { afterEach, beforeAll, expect, test, vi } from 'vitest';
 import type { CloudStatus } from '../src/shared/cloud';
 import { AutoPublishPrompt } from '../src/viewer/components/AutoPublishPrompt';
 
-vi.mock('@stylexjs/stylex', async (original) => ({ ...await original<object>(), create: (value: unknown) => value, props: () => ({}) }));
-vi.mock('@lobehub/ui/stylex/cssVar.stylex', () => ({ cssVar: new Proxy({}, { get: (_, key) => `var(--${String(key)})` }) }));
+vi.mock('@stylexjs/stylex', async (original) => ({
+  ...(await original<object>()),
+  create: (value: unknown) => value,
+  props: () => ({}),
+}));
+vi.mock('@lobehub/ui/stylex/cssVar.stylex', () => ({
+  cssVar: new Proxy({}, { get: (_, key) => `var(--${String(key)})` }),
+}));
 
 let root: Root | null = null;
 
@@ -37,7 +43,8 @@ function render(value: CloudStatus | null, onAnswer = vi.fn(async () => {})) {
   return { host, onAnswer };
 }
 
-const button = (host: HTMLElement, text: string) => [...host.querySelectorAll('button')].find((b) => b.textContent === text)!;
+const button = (host: HTMLElement, text: string) =>
+  [...host.querySelectorAll('button')].find((b) => b.textContent === text)!;
 
 test('asks a signed-in partner who has not decided', () => {
   const { host } = render(status(true, null));

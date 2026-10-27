@@ -18,24 +18,34 @@ export interface ProjectPaths {
 }
 
 export class CliError extends Error {
-  constructor(message: string, readonly fields: Record<string, unknown> = {}, readonly code = 1) {
+  constructor(
+    message: string,
+    readonly fields: Record<string, unknown> = {},
+    readonly code = 1,
+  ) {
     super(message);
   }
 }
 
 // Launchers before this release ship hooks that read the given directory, so only a launcher that says so gets resolution.
-const resolvesRoot = () => !process.env.RYUGI_ARTIFACTS_COMMAND || process.env.RYUGI_ARTIFACTS_RESOLVE_ROOT === '1';
+const resolvesRoot = () =>
+  !process.env.RYUGI_ARTIFACTS_COMMAND || process.env.RYUGI_ARTIFACTS_RESOLVE_ROOT === '1';
 
 function projectRoot(dir: string) {
   let home = '';
-  try { home = fs.realpathSync(os.homedir()); } catch {}
+  try {
+    home = fs.realpathSync(os.homedir());
+  } catch {}
   const chain: string[] = [];
   for (let current = dir; ; current = path.dirname(current)) {
     chain.push(current);
     if (fs.existsSync(path.join(current, '.git')) && (current !== home || dir === home)) break;
     if (path.dirname(current) === current) return dir;
   }
-  return chain.find((candidate) => fs.existsSync(path.join(candidate, '.ryugi', 'artifacts'))) ?? chain[chain.length - 1]!;
+  return (
+    chain.find((candidate) => fs.existsSync(path.join(candidate, '.ryugi', 'artifacts'))) ??
+    chain[chain.length - 1]!
+  );
 }
 
 export function projectPaths(dir: string): ProjectPaths {
@@ -50,7 +60,9 @@ export function projectPaths(dir: string): ProjectPaths {
   const root = path.join(project, '.ryugi', 'artifacts');
   const state = path.join(root, '.state');
   return {
-    project, root, state,
+    project,
+    root,
+    state,
     pid: path.join(state, 'server.pid'),
     log: path.join(state, 'server.log'),
     serverId: path.join(state, 'server-instance-id'),
@@ -67,4 +79,5 @@ export function projectPaths(dir: string): ProjectPaths {
 export const invocation = () => process.env.RYUGI_ARTIFACTS_COMMAND || 'ryugi-artifacts';
 
 export const ARTIFACT_PATTERN = /^(artboard|document|html)\/[a-z0-9][a-z0-9-]*$/;
-export const ARTIFACT_ERROR = '--artifact must be <type>/<id>: type artboard, document or html, id of lowercase letters, digits and hyphens';
+export const ARTIFACT_ERROR =
+  '--artifact must be <type>/<id>: type artboard, document or html, id of lowercase letters, digits and hyphens';

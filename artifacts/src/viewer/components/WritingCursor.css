@@ -15,23 +15,31 @@
   background: conic-gradient(
     from var(--ryugi-label-ring),
     transparent 0deg 140deg,
-    rgba(255, 255, 255, .28) 230deg,
+    rgba(255, 255, 255, 0.28) 230deg,
     #fff 300deg,
-    rgba(255, 255, 255, .4) 340deg,
+    rgba(255, 255, 255, 0.4) 340deg,
     transparent 360deg
   );
-  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
   -webkit-mask-composite: xor;
-  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
   mask-composite: exclude;
   pointer-events: none;
   animation: ryugi-label-ring 2.4s linear infinite;
 }
 
 @keyframes ryugi-label-ring {
-  to { --ryugi-label-ring: 360deg; }
+  to {
+    --ryugi-label-ring: 360deg;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  [data-cursor-ring]::after { animation: none; }
+  [data-cursor-ring]::after {
+    animation: none;
+  }
 }

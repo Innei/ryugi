@@ -18,12 +18,19 @@ export function useLocalFeed(type: ArtifactType, id: string): ArtifactFeed {
     const res = await fetch(`/api/artifacts/${type}/${id}`, { cache: 'no-store' });
     return { found: res.ok, data: (await res.json()) as Record<string, unknown> };
   }, [type, id]);
-  const comment = useCallback(async (op: BoardHumanOp) => {
-    const res = await fetch(`/api/artboard/${id}/comments`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(op) });
-    if (!res.ok) throw new Error(`comment failed (${res.status})`);
-    const next = (await res.json()) as BoardCommentsState;
-    setBoardComments(next);
-    return next;
-  }, [id]);
+  const comment = useCallback(
+    async (op: BoardHumanOp) => {
+      const res = await fetch(`/api/artboard/${id}/comments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(op),
+      });
+      if (!res.ok) throw new Error(`comment failed (${res.status})`);
+      const next = (await res.json()) as BoardCommentsState;
+      setBoardComments(next);
+      return next;
+    },
+    [id],
+  );
   return { live, revision, load, send, ...(type === 'artboard' ? { boardComments, comment } : {}) };
 }

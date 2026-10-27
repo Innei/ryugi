@@ -62,19 +62,19 @@ commenting on a phone is unusable without it.
 
 ## Decided with the human partner
 
-| Topic | Decision |
-|---|---|
-| What the phone does | mainly comments; occasionally edits text |
-| Agent notification | none new; they say so in chat, the existing hook reports unread comments |
-| Computer offline | everything read-only (no comments, no edits); nothing queued |
-| Relay platform | Cloudflare Durable Object on the free plan |
-| Server move | later plan, not now |
-| Comment placement on phone | bottom sheet, `@lobehub/ui` `FloatingSheet`, three snap points (`q1r3`) |
-| Starting a comment | select text → small edit menu: 评论 / 复制 / 改字 (`q2r4-a`) |
-| Offline indication | top bar shows 电脑离线 (grey dot); the sheet title says 电脑离线，暂时不能评论 (`q3r4-b`) |
-| Visual style | no cards anywhere |
-| When the computer counts as online | whenever an agent session is open in the project (see Server lifetime) |
-| 改字 | explicit mode: the article is read-only until 改字; 完成 ends it |
+| Topic                              | Decision                                                                                  |
+| ---------------------------------- | ----------------------------------------------------------------------------------------- |
+| What the phone does                | mainly comments; occasionally edits text                                                  |
+| Agent notification                 | none new; they say so in chat, the existing hook reports unread comments                  |
+| Computer offline                   | everything read-only (no comments, no edits); nothing queued                              |
+| Relay platform                     | Cloudflare Durable Object on the free plan                                                |
+| Server move                        | later plan, not now                                                                       |
+| Comment placement on phone         | bottom sheet, `@lobehub/ui` `FloatingSheet`, three snap points (`q1r3`)                   |
+| Starting a comment                 | select text → small edit menu: 评论 / 复制 / 改字 (`q2r4-a`)                              |
+| Offline indication                 | top bar shows 电脑离线 (grey dot); the sheet title says 电脑离线，暂时不能评论 (`q3r4-b`) |
+| Visual style                       | no cards anywhere                                                                         |
+| When the computer counts as online | whenever an agent session is open in the project (see Server lifetime)                    |
+| 改字                               | explicit mode: the article is read-only until 改字; 完成 ends it                          |
 
 ## How it behaves
 
@@ -89,15 +89,15 @@ commenting on a phone is unusable without it.
 - Offline on a fresh load: the page shows the published snapshot read-only,
   as today. Dropping offline while open: the page keeps the last live state
   (document and comments it already has), read-only, so nothing the human
-  partner just did seems to vanish (*my call*). Top bar
+  partner just did seems to vanish (_my call_). Top bar
   电脑离线 (grey dot); the sheet title (phone) or rail (desktop) says
   电脑离线，暂时不能评论; the edit menu offers only 复制.
 - The page switches between the two without a reload when the computer
   connects or drops. A switch from live to offline mid-edit discards nothing
   already acknowledged by the local server; an unsent change is reported as
-  not saved (*my call*: a one-line notice, the text stays in the composer).
+  not saved (_my call_: a one-line notice, the text stays in the composer).
 
-### Phone layout (width ≤ 640px, *my call* on the breakpoint)
+### Phone layout (width ≤ 640px, _my call_ on the breakpoint)
 
 - Article full width. Comments live in a `FloatingSheet` (`embedded`
   variant): collapsed (title only, "评论 N · M 条等 agent 回复"), half screen,
@@ -118,7 +118,7 @@ commenting on a phone is unusable without it.
   needs a message between the two frames; the local viewer at phone width
   has no shell and gives 完成 its own place at the top of the page.
 - The same narrow layout applies wherever the document view renders,
-  including the local viewer at phone width (*my call*: one component, chosen
+  including the local viewer at phone width (_my call_: one component, chosen
   by width).
 
 ### Desktop
@@ -157,7 +157,7 @@ commenting on a phone is unusable without it.
 
 ## Relay
 
-*Implementation direction, my call; the builder may refine within it.*
+_Implementation direction, my call; the builder may refine within it._
 
 - **One Durable Object per account** (`idFromName(userId)`), SQLite-backed
   class (the free plan requires it), WebSocket Hibernation API with an
@@ -178,14 +178,14 @@ commenting on a phone is unusable without it.
   messages: load state (`state`: Loro snapshot, comments, streaming, cursor),
   send a Loro update, send a comment op, send the human's text selection
   (`useDocumentSelectionSync` → `selection.json`, so the hook attaches it to
-  "改一下这段" from the phone; *my call*), and the server events the page
+  "改一下这段" from the phone; _my call_), and the server events the page
   subscribes to (`doc-update`, `doc-cursor`, `doc-status`, `doc-comments`).
-- **Not relayed** (*my call*): images and dynamic-block files. They load from
+- **Not relayed** (_my call_): images and dynamic-block files. They load from
   the published snapshot's content base, so ones added since the last publish
   appear after the next turn-end publish. The viewer gets a transport abstraction with a local
   implementation (today's fetch + WebSocket) and a relay implementation, so
   `DocumentPage`, `LoroSync` and the comment UI do not fork.
-- **Version drift** (*my call*): the host announces its `ryugi-artifacts`
+- **Version drift** (_my call_): the host announces its `ryugi-artifacts`
   version. Comment ops and selection work across versions (small, validated
   by the local server). Text editing needs the cloud viewer and the host to
   share the same major.minor version; otherwise 改字 is disabled with a

@@ -5,8 +5,8 @@ artboards, documents and HTML pages that a coding agent writes into a project
 and you open in the browser.
 
 ```bash
-npx ryugi-artifacts            # open the library of the current project
-npx ryugi-artifacts monitor    # list running project servers
+npx ryugi-artifacts         # open the library of the current project
+npx ryugi-artifacts monitor # list running project servers
 ```
 
 The server reads `.ryugi/artifacts/` in the selected project. Ryugi's skills

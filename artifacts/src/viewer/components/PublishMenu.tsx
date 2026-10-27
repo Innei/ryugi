@@ -23,16 +23,29 @@ const styles = stylex.create({
     borderStyle: 'solid',
     borderColor: cssVar.colorBorderSecondary,
     borderRadius: 8,
-    backgroundColor: { default: cssVar.colorBgElevated, ':hover': cssVar.colorFillTertiary },
+    backgroundColor: { 'default': cssVar.colorBgElevated, ':hover': cssVar.colorFillTertiary },
     color: cssVar.colorText,
     fontFamily: cssVar.fontFamily,
     fontSize: 12,
     cursor: 'pointer',
     whiteSpace: 'nowrap',
   },
-  floating: { position: 'fixed', top: 12, right: 12, zIndex: 10, boxShadow: cssVar.boxShadowTertiary },
+  floating: {
+    position: 'fixed',
+    top: 12,
+    right: 12,
+    zIndex: 10,
+    boxShadow: cssVar.boxShadowTertiary,
+  },
   dot: { width: 6, height: 6, borderRadius: '50%', backgroundColor: cssVar.colorWarning },
-  panel: { display: 'flex', flexDirection: 'column', gap: 12, width: 320, fontFamily: cssVar.fontFamily, fontSize: 12 },
+  panel: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 12,
+    width: 320,
+    fontFamily: cssVar.fontFamily,
+    fontSize: 12,
+  },
   row: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   muted: { color: cssVar.colorTextSecondary, lineHeight: 1.6 },
   link: {
@@ -77,7 +90,10 @@ export function PublishMenu({ artifact, floating = false }: Props) {
   const [page] = usePageQuery();
   const shareUrl = state.url ? pageLink(state.url, page) : null;
   const sync = useCloudSync(artifact, !!status?.signedIn && state.published);
-  const note = syncNote(sync.upToDate, !!status?.autoPublish?.enabled && entry?.autoPublish !== false);
+  const note = syncNote(
+    sync.upToDate,
+    !!status?.autoPublish?.enabled && entry?.autoPublish !== false,
+  );
 
   const run = async (action: () => Promise<CloudResult>) => {
     setBusy(true);
@@ -86,13 +102,17 @@ export function PublishMenu({ artifact, floating = false }: Props) {
     if (result.status === 401) void login(result.json.loginUrl as string | undefined);
     else if (!result.ok) {
       const reasons = Array.isArray(result.json.reasons) ? (result.json.reasons as string[]) : [];
-      setErrors([responseErrorText(result.json, t('common.requestFailed', { status: result.status })), ...reasons]);
+      setErrors([
+        responseErrorText(result.json, t('common.requestFailed', { status: result.status })),
+        ...reasons,
+      ]);
     }
     await Promise.all([refresh(), sync.refresh()]);
     setBusy(false);
   };
 
-  const setVisibility = (visibility: Visibility) => run(() => cloudRequest('POST', `visibility/${artifact}`, { visibility }));
+  const setVisibility = (visibility: Visibility) =>
+    run(() => cloudRequest('POST', `visibility/${artifact}`, { visibility }));
 
   const adoptCloudVisibility = async (open: boolean) => {
     if (!open || !status?.signedIn || !state.published) return;
@@ -112,12 +132,25 @@ export function PublishMenu({ artifact, floating = false }: Props) {
   ) : (
     <div {...stylex.props(styles.panel)}>
       <div {...stylex.props(styles.row)}>
-        <span {...stylex.props(styles.muted)}>{t('publish.signedInAs', { login: status.login })}</span>
-        <button type="button" {...stylex.props(styles.textButton)} onClick={() => void run(() => cloudRequest('POST', 'logout'))}>
+        <span {...stylex.props(styles.muted)}>
+          {t('publish.signedInAs', { login: status.login })}
+        </span>
+        <button
+          type="button"
+          {...stylex.props(styles.textButton)}
+          onClick={() => void run(() => cloudRequest('POST', 'logout'))}
+        >
           {t('publish.signOut')}
         </button>
       </div>
-      <PublicationStatus publication={publication} published={state.published} publishedAt={entry?.cloud?.publishedAt} online busy={busy} onPublish={() => void run(() => cloudRequest('POST', `publish/${artifact}`))} />
+      <PublicationStatus
+        publication={publication}
+        published={state.published}
+        publishedAt={entry?.cloud?.publishedAt}
+        online
+        busy={busy}
+        onPublish={() => void run(() => cloudRequest('POST', `publish/${artifact}`))}
+      />
       <Segmented
         block
         disabled={busy}
@@ -131,13 +164,22 @@ export function PublishMenu({ artifact, floating = false }: Props) {
       <span {...stylex.props(styles.muted)}>{t(VISIBILITY_HINT[state.visibility])}</span>
       {shareUrl ? (
         <div {...stylex.props(styles.row)}>
-          <a href={ownLink(shareUrl, status.hostId)} target="_blank" rel="noreferrer" {...stylex.props(styles.link)}>
+          <a
+            href={ownLink(shareUrl, status.hostId)}
+            target="_blank"
+            rel="noreferrer"
+            {...stylex.props(styles.link)}
+          >
             {shareUrl}
           </a>
           <CopyButton content={shareUrl} size="small" />
         </div>
       ) : null}
-      {note ? <span {...stylex.props(sync.upToDate ? styles.muted : styles.warning)}>{t(`publish.${note}`)}</span> : null}
+      {note ? (
+        <span {...stylex.props(sync.upToDate ? styles.muted : styles.warning)}>
+          {t(`publish.${note}`)}
+        </span>
+      ) : null}
       {!state.synced ? (
         <div {...stylex.props(styles.row, styles.warning)}>
           <span>{t('publish.visibilityNotSynced')}</span>
@@ -153,9 +195,15 @@ export function PublishMenu({ artifact, floating = false }: Props) {
           ))}
         </ul>
       ) : null}
-      {state.published && (!publication || publication.phase === 'published') ? <Button type="primary" loading={busy || !!uploading} onClick={() => void run(() => cloudRequest('POST', `publish/${artifact}`))}>
-        {t('publish.update')}
-      </Button> : null}
+      {state.published && (!publication || publication.phase === 'published') ? (
+        <Button
+          type="primary"
+          loading={busy || !!uploading}
+          onClick={() => void run(() => cloudRequest('POST', `publish/${artifact}`))}
+        >
+          {t('publish.update')}
+        </Button>
+      ) : null}
       {state.published ? (
         <button
           type="button"
@@ -173,12 +221,30 @@ export function PublishMenu({ artifact, floating = false }: Props) {
   );
 
   return (
-    <Popover placement="bottomRight" trigger="click" content={content} popupProps={{ 'aria-label': t('common.share') }} onOpenChange={(open) => void adoptCloudVisibility(open)}>
-      <button type="button" aria-label="Share" {...stylex.props(styles.trigger, floating && styles.floating)}>
-        {state.published && state.visibility === 'public' ? <Globe size={14} /> : <Lock size={14} />}
+    <Popover
+      placement="bottomRight"
+      trigger="click"
+      content={content}
+      popupProps={{ 'aria-label': t('common.share') }}
+      onOpenChange={(open) => void adoptCloudVisibility(open)}
+    >
+      <button
+        type="button"
+        aria-label="Share"
+        {...stylex.props(styles.trigger, floating && styles.floating)}
+      >
+        {state.published && state.visibility === 'public' ? (
+          <Globe size={14} />
+        ) : (
+          <Lock size={14} />
+        )}
         {state.published ? t('publish.published') : t('common.share')}
-        {publication && publication.phase !== 'published' ? <PublicationStatus compact publication={publication} published={state.published} /> : null}
-        {sync.upToDate === false ? <span aria-label={t('publish.unpublishedChanges')} {...stylex.props(styles.dot)} /> : null}
+        {publication && publication.phase !== 'published' ? (
+          <PublicationStatus compact publication={publication} published={state.published} />
+        ) : null}
+        {sync.upToDate === false ? (
+          <span aria-label={t('publish.unpublishedChanges')} {...stylex.props(styles.dot)} />
+        ) : null}
       </button>
     </Popover>
   );

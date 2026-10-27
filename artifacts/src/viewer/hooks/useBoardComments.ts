@@ -23,58 +23,99 @@ export function useBoardComments({ comments, comment, page, boards, inspector }:
   const threads = useMemo(() => comments?.comments.threads ?? [], [comments]);
   const stale = useMemo(() => new Set(comments?.stale ?? []), [comments]);
   const numbers = useMemo(() => pinNumbers(threads), [threads]);
-  useEffect(() => { setDraft(null); setOpenId(null); }, [page]);
+  useEffect(() => {
+    setDraft(null);
+    setOpenId(null);
+  }, [page]);
 
-  const pathOf = useCallback((boardId: string, id: number | undefined) => (id === undefined ? undefined : inspector.frames[boardId]?.nodes.find((node) => node.id === id)?.path), [inspector.frames]);
+  const pathOf = useCallback(
+    (boardId: string, id: number | undefined) =>
+      id === undefined
+        ? undefined
+        : inspector.frames[boardId]?.nodes.find((node) => node.id === id)?.path,
+    [inspector.frames],
+  );
 
   const startDraft = useCallback((anchor: BoardAnchor) => {
     setOpenId(null);
     setDraft(anchor);
   }, []);
 
-  const onFrameDrag = useCallback((boardId: string, input: DragInput) => {
-    if (!page) return;
-    if (input.phase === 'start') {
-      pending.current = { boardId, id: input.id, x: input.x, y: input.y };
-      return;
-    }
-    const click = pending.current;
-    pending.current = null;
-    if (input.phase !== 'cancel' || !click || click.boardId !== boardId) return;
-    const hover = inspector.hover;
-    const rect = hover && hover.boardId === boardId && hover.id === click.id ? hover.rect : undefined;
-    const path = pathOf(boardId, click.id);
-    startDraft(clickAnchor(page, boardId, click, rect && path ? { rect, path } : undefined));
-  }, [page, inspector.hover, pathOf, startDraft]);
+  const onFrameDrag = useCallback(
+    (boardId: string, input: DragInput) => {
+      if (!page) return;
+      if (input.phase === 'start') {
+        pending.current = { boardId, id: input.id, x: input.x, y: input.y };
+        return;
+      }
+      const click = pending.current;
+      pending.current = null;
+      if (input.phase !== 'cancel' || !click || click.boardId !== boardId) return;
+      const hover = inspector.hover;
+      const rect =
+        hover && hover.boardId === boardId && hover.id === click.id ? hover.rect : undefined;
+      const path = pathOf(boardId, click.id);
+      startDraft(clickAnchor(page, boardId, click, rect && path ? { rect, path } : undefined));
+    },
+    [page, inspector.hover, pathOf, startDraft],
+  );
 
-  const onCanvasClick = useCallback((point: { x: number; y: number }) => {
-    if (!page) return;
-    const inside = Object.entries(boards).find(([, b]) => b.page === page && point.x >= b.x && point.x <= b.x + b.w && point.y >= b.y && point.y <= b.y + b.h);
-    startDraft(inside ? clickAnchor(page, inside[0], { x: point.x - inside[1].x, y: point.y - inside[1].y }) : clickAnchor(page, null, point));
-  }, [page, boards, startDraft]);
+  const onCanvasClick = useCallback(
+    (point: { x: number; y: number }) => {
+      if (!page) return;
+      const inside = Object.entries(boards).find(
+        ([, b]) =>
+          b.page === page &&
+          point.x >= b.x &&
+          point.x <= b.x + b.w &&
+          point.y >= b.y &&
+          point.y <= b.y + b.h,
+      );
+      startDraft(
+        inside
+          ? clickAnchor(page, inside[0], { x: point.x - inside[1].x, y: point.y - inside[1].y })
+          : clickAnchor(page, null, point),
+      );
+    },
+    [page, boards, startDraft],
+  );
 
   const commentSelection = useCallback(() => {
     if (!page) return false;
-    const anchor = selectionAnchor(page, inspector.selectedTargets.map((target) => ({ boardId: target.boardId, rect: target.rect, path: pathOf(target.boardId, target.id) })));
+    const anchor = selectionAnchor(
+      page,
+      inspector.selectedTargets.map((target) => ({
+        boardId: target.boardId,
+        rect: target.rect,
+        path: pathOf(target.boardId, target.id),
+      })),
+    );
     if (!anchor) return false;
     startDraft(anchor);
     return true;
   }, [page, inspector.selectedTargets, pathOf, startDraft]);
 
-  const submit = useCallback(async (text: string) => {
-    if (!draft || !comment) return false;
-    try {
-      await comment({ op: 'create', anchor: draft, text });
-      setDraft(null);
-      return true;
-    } catch {
-      return false;
-    }
-  }, [draft, comment]);
+  const submit = useCallback(
+    async (text: string) => {
+      if (!draft || !comment) return false;
+      try {
+        await comment({ op: 'create', anchor: draft, text });
+        setDraft(null);
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    [draft, comment],
+  );
 
   const actions = useMemo<ThreadActions | undefined>(() => {
     if (!comment) return undefined;
-    const run = (op: BoardHumanOp) => comment(op).then(() => true, () => false);
+    const run = (op: BoardHumanOp) =>
+      comment(op).then(
+        () => true,
+        () => false,
+      );
     return {
       reply: (threadId, text) => run({ op: 'reply', threadId, text }),
       edit: (threadId, messageId, text) => void run({ op: 'edit', threadId, messageId, text }),
@@ -91,7 +132,21 @@ export function useBoardComments({ comments, comment, page, boards, inspector }:
     return had;
   }, [draft, openId]);
 
-  return { threads, stale, numbers, draft, openId, setOpenId, onFrameDrag, onCanvasClick, commentSelection, submit, cancelDraft: () => setDraft(null), actions, close };
+  return {
+    threads,
+    stale,
+    numbers,
+    draft,
+    openId,
+    setOpenId,
+    onFrameDrag,
+    onCanvasClick,
+    commentSelection,
+    submit,
+    cancelDraft: () => setDraft(null),
+    actions,
+    close,
+  };
 }
 
 export type BoardComments = ReturnType<typeof useBoardComments>;

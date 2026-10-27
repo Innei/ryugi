@@ -5,7 +5,14 @@ import path from 'node:path';
 import { startArtifactsServer } from './app';
 import { openBrowser } from './browser-focus';
 import { credentialsFile } from './credentials';
-import { isLoopback, liveOwners, parseEnv, processAlive, readOwners, shutdownReason } from './lifecycle';
+import {
+  isLoopback,
+  liveOwners,
+  parseEnv,
+  processAlive,
+  readOwners,
+  shutdownReason,
+} from './lifecycle';
 import { openReady } from './ready';
 import { registryDir, removeEntry, touchEntry, writeEntry, type RegistryEntry } from './registry';
 import { writeJsonAtomic } from './state';
@@ -22,7 +29,10 @@ async function main() {
     host: config.host,
     urlHost: config.urlHost,
     configFile: path.join(path.dirname(root), 'config.json'),
-    cloud: { origin: config.cloudOrigin, credentialsFile: credentialsFile(process.env, process.platform, os.homedir()) },
+    cloud: {
+      origin: config.cloudOrigin,
+      credentialsFile: credentialsFile(process.env, process.platform, os.homedir()),
+    },
     relay: { url: `${config.cloudOrigin.replace(/^http/, 'ws')}/api/relay/host`, version },
   });
 
@@ -37,7 +47,7 @@ async function main() {
     if (config.openArtifact && `${ref.type}/${ref.id}` !== config.openArtifact) return;
     if ('canvas' in payload ? !openReady(payload) : payload.warnings.length > 0) return;
     browserOpened = true;
-    const link = await server.cloudLinkFor(ref.type, ref.id) ?? server.linkFor(ref.type, ref.id);
+    const link = (await server.cloudLinkFor(ref.type, ref.id)) ?? server.linkFor(ref.type, ref.id);
     if (config.openCmd) {
       exec(`${config.openCmd} ${JSON.stringify(link)}`, () => {});
       return;
@@ -49,10 +59,18 @@ async function main() {
 
   const registry = registryDir();
   const entry: RegistryEntry | null = config.serverId
-    ? { project: path.dirname(path.dirname(root)), root, pid: process.pid, serverId: config.serverId, startedAt: Date.now() }
+    ? {
+        project: path.dirname(path.dirname(root)),
+        root,
+        pid: process.pid,
+        serverId: config.serverId,
+        startedAt: Date.now(),
+      }
     : null;
   const quietly = (fn: () => void) => {
-    try { fn(); } catch {}
+    try {
+      fn();
+    } catch {}
   };
 
   let stopping = false;

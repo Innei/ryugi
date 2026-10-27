@@ -9,13 +9,16 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 LOGO="$REPO_ROOT/assets/antigravity-logo.png"
 
-fail() { echo "FAIL: $*" >&2; exit 1; }
+fail() {
+  echo "FAIL: $*" >&2
+  exit 1
+}
 
 echo "test-logo: checking Antigravity logo"
 
 [ -f "$LOGO" ] || fail "logo missing at $LOGO"
 
-python3 - "$LOGO" <<'PY'
+python3 - "$LOGO" << 'PY'
 import struct
 import sys
 
@@ -31,10 +34,10 @@ if color_type != 6:
     raise SystemExit(f"FAIL: logo is not RGBA (PNG color type {color_type})")
 PY
 
-if command -v rsvg-convert >/dev/null 2>&1; then
+if command -v rsvg-convert > /dev/null 2>&1; then
   tmp="$(mktemp -d)"
   trap 'rm -f "$tmp/logo.png"; rmdir "$tmp"' EXIT
-  bash "$REPO_ROOT/scripts/render-antigravity-logo.sh" --output "$tmp/logo.png" >/dev/null
+  bash "$REPO_ROOT/scripts/render-antigravity-logo.sh" --output "$tmp/logo.png" > /dev/null
   cmp -s "$tmp/logo.png" "$LOGO" \
     || fail "assets/antigravity-logo.png is stale; run scripts/render-antigravity-logo.sh"
 else

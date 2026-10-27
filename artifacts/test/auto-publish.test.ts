@@ -2,10 +2,22 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, test, vi } from 'vitest';
-import { createAutoPublisher, readAutoPublishState, type AutoPublishOutcome } from '../src/server/auto-publish';
+import {
+  createAutoPublisher,
+  readAutoPublishState,
+  type AutoPublishOutcome,
+} from '../src/server/auto-publish';
 
-function setup(outcomes: Record<string, AutoPublishOutcome | (() => AutoPublishOutcome | Promise<AutoPublishOutcome>)> = {}) {
-  const stateFile = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-auto-')), 'auto-publish.json');
+function setup(
+  outcomes: Record<
+    string,
+    AutoPublishOutcome | (() => AutoPublishOutcome | Promise<AutoPublishOutcome>)
+  > = {},
+) {
+  const stateFile = path.join(
+    fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-auto-')),
+    'auto-publish.json',
+  );
   const calls: string[] = [];
   const ctx = { enabled: true, token: 'tok' as string | null, stateFile, calls };
   const publisher = createAutoPublisher({
@@ -47,7 +59,12 @@ describe('dirty tracking', () => {
     const first = setup();
     first.publisher.changed('html/a');
     const calls: string[] = [];
-    const second = createAutoPublisher({ stateFile: first.stateFile, enabled: () => true, token: () => 'tok', publish: async (key) => (calls.push(key), { kind: 'published', created: false }) });
+    const second = createAutoPublisher({
+      stateFile: first.stateFile,
+      enabled: () => true,
+      token: () => 'tok',
+      publish: async (key) => (calls.push(key), { kind: 'published', created: false }),
+    });
     await second.flush();
     expect(calls).toEqual(['html/a']);
   });
@@ -74,7 +91,8 @@ describe('outcomes', () => {
   test('a failure or an artifact that is not ready stays dirty and is retried', async () => {
     let failing = true;
     const { publisher, calls, state } = setup({
-      'html/a': () => (failing ? { kind: 'failed', message: 'offline' } : { kind: 'published', created: false }),
+      'html/a': () =>
+        failing ? { kind: 'failed', message: 'offline' } : { kind: 'published', created: false },
       'html/b': { kind: 'not-ready' },
     });
     publisher.changed('html/a');
@@ -89,7 +107,9 @@ describe('outcomes', () => {
   });
 
   test('three failed runs in a row raise a failing notice naming the artifact', async () => {
-    const { publisher, state } = setup({ 'html/a': { kind: 'failed', message: 'cloud answered 500' } });
+    const { publisher, state } = setup({
+      'html/a': { kind: 'failed', message: 'cloud answered 500' },
+    });
     publisher.changed('html/a');
     await publisher.flush();
     await publisher.flush();
@@ -102,7 +122,9 @@ describe('outcomes', () => {
 
   test('a publish that succeeds clears the failing notice', async () => {
     let failing = true;
-    const { publisher, state } = setup({ 'html/a': () => (failing ? { kind: 'not-ready' } : { kind: 'published', created: false }) });
+    const { publisher, state } = setup({
+      'html/a': () => (failing ? { kind: 'not-ready' } : { kind: 'published', created: false }),
+    });
     publisher.changed('html/a');
     for (let i = 0; i < 3; i++) await publisher.flush();
     expect(state().notice).toMatchObject({ kind: 'failing' });
@@ -126,7 +148,10 @@ describe('outcomes', () => {
   });
 
   test('an opted-out or vanished artifact drops its mark', async () => {
-    const { publisher, state } = setup({ 'html/a': { kind: 'opted-out' }, 'html/b': { kind: 'gone' } });
+    const { publisher, state } = setup({
+      'html/a': { kind: 'opted-out' },
+      'html/b': { kind: 'gone' },
+    });
     publisher.changed('html/a');
     publisher.changed('html/b');
     await publisher.flush();
@@ -164,7 +189,9 @@ describe('flush queue', () => {
 describe('signed out', () => {
   test('pauses with one notice until a different token appears', async () => {
     let signedOut = true;
-    const { ctx, publisher, calls, state } = setup({ 'html/a': () => (signedOut ? { kind: 'signed-out' } : { kind: 'published', created: false }) });
+    const { ctx, publisher, calls, state } = setup({
+      'html/a': () => (signedOut ? { kind: 'signed-out' } : { kind: 'published', created: false }),
+    });
     publisher.changed('html/a');
     await publisher.flush();
     const notice = state().notice;
@@ -185,14 +212,20 @@ describe('account cap', () => {
   test('notifies once per episode, keeps republishing existing copies, and clears after a create succeeds', async () => {
     let capped = true;
     const { publisher, calls, state } = setup({
-      'html/new': () => (capped ? { kind: 'cannot-create', message: 'limit of 100 published artifacts reached' } : { kind: 'published', created: true }),
+      'html/new': () =>
+        capped
+          ? { kind: 'cannot-create', message: 'limit of 100 published artifacts reached' }
+          : { kind: 'published', created: true },
       'html/old': { kind: 'published', created: false },
     });
     publisher.changed('html/new');
     publisher.changed('html/old');
     await publisher.flush();
     const notice = state().notice;
-    expect(notice).toMatchObject({ kind: 'cap', message: 'limit of 100 published artifacts reached' });
+    expect(notice).toMatchObject({
+      kind: 'cap',
+      message: 'limit of 100 published artifacts reached',
+    });
     expect(state().dirty).toEqual(['html/new']);
     publisher.changed('html/old');
     await publisher.flush();
@@ -257,7 +290,10 @@ describe('timed flush', () => {
   test('a failed publish is retried after another quiet period', async () => {
     vi.useFakeTimers();
     let failing = true;
-    const { publisher, calls } = setup({ 'html/a': () => (failing ? { kind: 'failed', message: 'offline' } : { kind: 'published', created: false }) });
+    const { publisher, calls } = setup({
+      'html/a': () =>
+        failing ? { kind: 'failed', message: 'offline' } : { kind: 'published', created: false },
+    });
     publisher.changed('html/a');
     await vi.advanceTimersByTimeAsync(5 * MINUTE);
     failing = false;
@@ -269,7 +305,9 @@ describe('timed flush', () => {
 
   test('an artifact the account cap refuses is not retried on a timer', async () => {
     vi.useFakeTimers();
-    const { publisher, calls } = setup({ 'html/a': { kind: 'cannot-create', message: 'limit reached' } });
+    const { publisher, calls } = setup({
+      'html/a': { kind: 'cannot-create', message: 'limit reached' },
+    });
     publisher.changed('html/a');
     await vi.advanceTimersByTimeAsync(5 * MINUTE);
     await vi.advanceTimersByTimeAsync(60 * MINUTE);
@@ -282,7 +320,12 @@ describe('timed flush', () => {
     first.publisher.close();
     vi.useFakeTimers();
     const calls: string[] = [];
-    createAutoPublisher({ stateFile: first.stateFile, enabled: () => true, token: () => 'tok', publish: async (key) => (calls.push(key), { kind: 'published', created: false }) });
+    createAutoPublisher({
+      stateFile: first.stateFile,
+      enabled: () => true,
+      token: () => 'tok',
+      publish: async (key) => (calls.push(key), { kind: 'published', created: false }),
+    });
     await vi.advanceTimersByTimeAsync(5 * MINUTE);
     expect(calls).toEqual(['html/a']);
   });

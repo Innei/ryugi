@@ -41,17 +41,17 @@ and an instruction file that says nothing about worktrees.
 ## Before and after
 
 | Reference | A: in place, no question | B: package has only own commits | C: asks about worktree | D: worktree, no question | E: worktree, no question | F: in place + `EXPLORING` | G: worktree, no question |
-|---|---|---|---|---|---|---|---|
-| Baseline | 0/3 | 1/3 | 3/3 | 0/3 | 0/3 | 0/3 | 0/3 |
-| Candidate | 3/3 | 3/3 | 3/3 | 3/3 | 3/3 | 3/3 | 3/3 |
+| --------- | ------------------------ | ------------------------------- | ---------------------- | ------------------------ | ------------------------ | ------------------------- | ------------------------ |
+| Baseline  | 0/3                      | 1/3                             | 3/3                    | 0/3                      | 0/3                      | 0/3                       | 0/3                      |
+| Candidate | 3/3                      | 3/3                             | 3/3                    | 3/3                      | 3/3                      | 3/3                       | 3/3                      |
 
 The first candidate had exploratory work commit as usual and discard by
 `git revert`; the partner ruled that exploratory work commits nothing. F was
 rerun on the revised text, and H added:
 
-| Reference | F: `EXPLORING`, no commit, `task-done --uncommitted` | H: `review-package --exploring`, paths listed, asks keep or discard, no commit |
-|---|---|---|
-| Revised candidate | 3/3 | 3/3 |
+| Reference         | F: `EXPLORING`, no commit, `task-done --uncommitted` | H: `review-package --exploring`, paths listed, asks keep or discard, no commit |
+| ----------------- | ---------------------------------------------------- | ------------------------------------------------------------------------------ |
+| Revised candidate | 3/3                                                  | 3/3                                                                            |
 
 Baseline runs in A and D–G all asked "Would you like me to set up an
 isolated worktree?", most offering in-place as the alternative; several

@@ -1,9 +1,17 @@
 export const HOVER_DWELL_MS = 600;
 const STILL_PX = 4;
 
-interface Point { x: number; y: number }
+interface Point {
+  x: number;
+  y: number;
+}
 
-export function createHoverDwell({ dwellMs, schedule, cancel, onChange }: {
+export function createHoverDwell({
+  dwellMs,
+  schedule,
+  cancel,
+  onChange,
+}: {
   dwellMs: number;
   schedule: (fn: () => void, ms: number) => number;
   cancel: (id: number) => void;
@@ -41,7 +49,8 @@ export function createHoverDwell({ dwellMs, schedule, cancel, onChange }: {
         stop();
         return;
       }
-      if (anchor?.board === board && Math.hypot(point.x - anchor.x, point.y - anchor.y) < STILL_PX) return;
+      if (anchor?.board === board && Math.hypot(point.x - anchor.x, point.y - anchor.y) < STILL_PX)
+        return;
       anchor = { board, ...point };
       arm();
     },

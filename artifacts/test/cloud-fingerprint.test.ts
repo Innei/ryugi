@@ -6,7 +6,11 @@ const runtime = vi.hoisted(() => ({ release: 1 }));
 
 vi.mock('../src/server/inject', async (original) => {
   const actual = await original<typeof import('../src/server/inject')>();
-  return { ...actual, injectRuntime: (...args: Parameters<typeof actual.injectRuntime>) => `${actual.injectRuntime(...args)}<!-- runtime ${runtime.release} -->` };
+  return {
+    ...actual,
+    injectRuntime: (...args: Parameters<typeof actual.injectRuntime>) =>
+      `${actual.injectRuntime(...args)}<!-- runtime ${runtime.release} -->`,
+  };
 });
 
 afterEach(closeAll);

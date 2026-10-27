@@ -6,13 +6,22 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeAll, expect, test, vi } from 'vitest';
 import { DocumentToc } from '../src/viewer/document/DocumentToc';
 
-vi.mock('@stylexjs/stylex', async (original) => ({ ...await original<object>(), create: (value: unknown) => value, props: () => ({}) }));
-vi.mock('@lobehub/ui/stylex/cssVar.stylex', () => ({ cssVar: new Proxy({}, { get: (_, key) => `var(--${String(key)})` }) }));
+vi.mock('@stylexjs/stylex', async (original) => ({
+  ...(await original<object>()),
+  create: (value: unknown) => value,
+  props: () => ({}),
+}));
+vi.mock('@lobehub/ui/stylex/cssVar.stylex', () => ({
+  cssVar: new Proxy({}, { get: (_, key) => `var(--${String(key)})` }),
+}));
 
 let root: Root | null = null;
-beforeAll(() => { (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true; });
+beforeAll(() => {
+  (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+});
 afterEach(() => {
-  act(() => root?.unmount()); root = null;
+  act(() => root?.unmount());
+  root = null;
   document.body.innerHTML = '';
   window.scrollTo(0, 0);
   vi.restoreAllMocks();
@@ -23,26 +32,65 @@ async function mount() {
   const host = document.createElement('div');
   const article = document.createElement('article');
   document.body.append(host, article);
-  const editor = createEditor({ nodes: [HeadingNode], onError: (error) => { throw error; } });
+  const editor = createEditor({
+    nodes: [HeadingNode],
+    onError: (error) => {
+      throw error;
+    },
+  });
   editor.setRootElement(article);
-  editor.update(() => $getRoot().append(...['First', 'Middle', 'Last'].map((text) => $createHeadingNode('h2').append($createTextNode(text)))), { discrete: true });
+  editor.update(
+    () =>
+      $getRoot().append(
+        ...['First', 'Middle', 'Last'].map((text) =>
+          $createHeadingNode('h2').append($createTextNode(text)),
+        ),
+      ),
+    { discrete: true },
+  );
   const headings = [...article.querySelectorAll('h2')];
-  headings.forEach((heading, index) => vi.spyOn(heading, 'getBoundingClientRect').mockImplementation(() => new DOMRect(0, [100, 600, 1200][index]! - window.scrollY, 700, 28)));
-  Object.defineProperty(document.documentElement, 'scrollHeight', { configurable: true, value: 5000 });
+  headings.forEach((heading, index) =>
+    vi
+      .spyOn(heading, 'getBoundingClientRect')
+      .mockImplementation(() => new DOMRect(0, [100, 600, 1200][index]! - window.scrollY, 700, 28)),
+  );
+  Object.defineProperty(document.documentElement, 'scrollHeight', {
+    configurable: true,
+    value: 5000,
+  });
   root = createRoot(host);
   await act(async () => root!.render(createElement(DocumentToc, { editor })));
   const buttons = [...host.querySelectorAll('button')];
   const list = buttons[0]!.parentElement!;
   let height = 200;
   Object.defineProperty(list, 'clientHeight', { get: () => height });
-  vi.spyOn(list, 'getBoundingClientRect').mockImplementation(() => new DOMRect(0, 100, 220, height));
-  buttons.forEach((button, index) => vi.spyOn(button, 'getBoundingClientRect').mockImplementation(() => new DOMRect(0, 100 + index * 140 - list.scrollTop, 220, 28)));
-  const scroll = async (top: number) => act(async () => { window.scrollTo(0, top); window.dispatchEvent(new Event('scroll')); });
+  vi.spyOn(list, 'getBoundingClientRect').mockImplementation(
+    () => new DOMRect(0, 100, 220, height),
+  );
+  buttons.forEach((button, index) =>
+    vi
+      .spyOn(button, 'getBoundingClientRect')
+      .mockImplementation(() => new DOMRect(0, 100 + index * 140 - list.scrollTop, 220, 28)),
+  );
+  const scroll = async (top: number) =>
+    act(async () => {
+      window.scrollTo(0, top);
+      window.dispatchEvent(new Event('scroll'));
+    });
   const expectVisible = (button: HTMLElement) => {
     expect(button.getBoundingClientRect().top).toBeGreaterThanOrEqual(100);
     expect(button.getBoundingClientRect().bottom).toBeLessThanOrEqual(100 + height);
   };
-  return { host, list, buttons, scroll, expectVisible, resize: (next: number) => { height = next; } };
+  return {
+    host,
+    list,
+    buttons,
+    scroll,
+    expectVisible,
+    resize: (next: number) => {
+      height = next;
+    },
+  };
 }
 
 test('scrolling the document keeps the active TOC entry visible in both directions without moving the article', async () => {

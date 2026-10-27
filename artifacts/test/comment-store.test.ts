@@ -25,7 +25,9 @@ test('a restarted server keeps every saved message as it was, names included', (
   const { file, before } = savedFile();
   const restarted = createCommentStore(file, names('Claude Code'));
   expect(restarted.current()).toEqual(before);
-  expect(restarted.current().threads[0]!.messages.map((m) => [m.author, m.name, m.deleted ?? false])).toEqual([
+  expect(
+    restarted.current().threads[0]!.messages.map((m) => [m.author, m.name, m.deleted ?? false]),
+  ).toEqual([
     ['human', 'innei', false],
     ['agent', 'Codex', false],
     ['human', 'innei', true],
@@ -37,6 +39,13 @@ test('an agent reply written while the server was down is still filled in', () =
   const raw = JSON.parse(fs.readFileSync(file, 'utf8'));
   raw.threads[0].messages.push({ author: 'agent', text: 'later' });
   fs.writeFileSync(file, JSON.stringify(raw));
-  const message = createCommentStore(file, names('Claude Code')).current().threads[0]!.messages.at(-1)!;
-  expect(message).toMatchObject({ author: 'agent', name: 'Claude Code', text: 'later', id: expect.any(String) });
+  const message = createCommentStore(file, names('Claude Code'))
+    .current()
+    .threads[0]!.messages.at(-1)!;
+  expect(message).toMatchObject({
+    author: 'agent',
+    name: 'Claude Code',
+    text: 'later',
+    id: expect.any(String),
+  });
 });

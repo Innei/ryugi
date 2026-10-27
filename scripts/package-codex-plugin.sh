@@ -20,7 +20,7 @@ ALLOW_DIRTY=0
 KEEP_STAGE=0
 
 usage() {
-  cat <<'EOF'
+  cat << 'EOF'
 Usage:
   scripts/package-codex-plugin.sh [options]
 
@@ -63,7 +63,7 @@ while [[ $# -gt 0 ]]; do
         zip)
           FORMAT="zip"
           ;;
-        tar.gz|tgz)
+        tar.gz | tgz)
           FORMAT="tar.gz"
           ;;
         *)
@@ -90,7 +90,7 @@ while [[ $# -gt 0 ]]; do
       KEEP_STAGE=1
       shift
       ;;
-    -h|--help)
+    -h | --help)
       usage
       exit 0
       ;;
@@ -106,7 +106,7 @@ infer_format_from_output() {
   local output_path="$1"
 
   case "$output_path" in
-    *.tar.gz|*.tgz)
+    *.tar.gz | *.tgz)
       printf '%s\n' "tar.gz"
       ;;
     *.zip)
@@ -130,19 +130,19 @@ else
   fi
 fi
 
-command -v git >/dev/null || die "git not found in PATH"
-command -v jq >/dev/null || die "jq not found in PATH"
-command -v tar >/dev/null || die "tar not found in PATH"
-command -v gzip >/dev/null || die "gzip not found in PATH"
-command -v shasum >/dev/null || die "shasum not found in PATH"
+command -v git > /dev/null || die "git not found in PATH"
+command -v jq > /dev/null || die "jq not found in PATH"
+command -v tar > /dev/null || die "tar not found in PATH"
+command -v gzip > /dev/null || die "gzip not found in PATH"
+command -v shasum > /dev/null || die "shasum not found in PATH"
 if [[ "$FORMAT" == "zip" ]]; then
-  command -v zip >/dev/null || die "zip not found in PATH"
-  command -v unzip >/dev/null || die "unzip not found in PATH"
+  command -v zip > /dev/null || die "zip not found in PATH"
+  command -v unzip > /dev/null || die "unzip not found in PATH"
 fi
 
 [[ -d "$REPO_ROOT/.git" ]] || die "repo root is not a git checkout: $REPO_ROOT"
-git -C "$REPO_ROOT" rev-parse --verify "$REF^{commit}" >/dev/null ||
-  die "git ref does not resolve to a commit: $REF"
+git -C "$REPO_ROOT" rev-parse --verify "$REF^{commit}" > /dev/null \
+  || die "git ref does not resolve to a commit: $REF"
 
 if [[ "$ALLOW_DIRTY" -ne 1 ]]; then
   dirty_status="$(git -C "$REPO_ROOT" status --porcelain --untracked-files=all)"
@@ -207,12 +207,12 @@ prepare_metadata_root() {
     root="$(cd "$source" && pwd)"
   elif [[ -f "$source" ]]; then
     case "$source" in
-      *.tar.gz|*.tgz)
+      *.tar.gz | *.tgz)
         tar -xzf "$source" -C "$METADATA_WORK"
         root="$METADATA_WORK"
         ;;
       *.zip)
-        command -v unzip >/dev/null || die "unzip not found in PATH"
+        command -v unzip > /dev/null || die "unzip not found in PATH"
         unzip -q "$source" -d "$METADATA_WORK"
         root="$METADATA_WORK"
         ;;
@@ -224,8 +224,8 @@ prepare_metadata_root() {
     die "metadata source does not exist: $source"
   fi
 
-  metadata_root_from_dir "$root" ||
-    die "metadata source does not contain a skills/ directory: $source"
+  metadata_root_from_dir "$root" \
+    || die "metadata source does not contain a skills/ directory: $source"
 }
 
 METADATA_ROOT="$(prepare_metadata_root "$METADATA_SOURCE")"
@@ -277,15 +277,15 @@ fi
 
 skill_count="$(find "$STAGE/skills" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')"
 metadata_count="$(find "$STAGE/skills" -path '*/agents/openai.yaml' -type f | wc -l | tr -d ' ')"
-[[ "$skill_count" == "$metadata_count" ]] ||
-  die "metadata count mismatch: $metadata_count metadata files for $skill_count skills"
+[[ "$skill_count" == "$metadata_count" ]] \
+  || die "metadata count mismatch: $metadata_count metadata files for $skill_count skills"
 
 (
   cd "$STAGE"
   {
     find . -mindepth 1 -type d | sed 's#^\./##' | LC_ALL=C sort
     find . -mindepth 1 -type f | sed 's#^\./##' | LC_ALL=C sort
-  } >"$ARCHIVE_LIST"
+  } > "$ARCHIVE_LIST"
 )
 
 case "$FORMAT" in
@@ -295,14 +295,14 @@ case "$FORMAT" in
     (
       cd "$STAGE"
       rm -f "$OUTPUT"
-      COPYFILE_DISABLE=1 zip -X -q - -@ <"$ARCHIVE_LIST" >"$OUTPUT"
+      COPYFILE_DISABLE=1 zip -X -q - -@ < "$ARCHIVE_LIST" > "$OUTPUT"
     )
     ;;
   tar.gz)
     # Match the prior official archive's deterministic tar entry metadata:
     # ustar entries with uid/gid 0 and empty uname/gname. GNU tar and bsdtar
     # (macOS) spell those flags differently.
-    if tar --version 2>/dev/null | grep -q 'GNU tar'; then
+    if tar --version 2> /dev/null | grep -q 'GNU tar'; then
       TAR_METADATA_FLAGS=(--owner=:0 --group=:0 --numeric-owner)
     else
       TAR_METADATA_FLAGS=(--uid 0 --gid 0 --uname '' --gname '')
@@ -311,14 +311,14 @@ case "$FORMAT" in
     (
       cd "$STAGE"
       rm -f "$OUTPUT"
-      COPYFILE_DISABLE=1 tar -cf - --no-recursion --format ustar "${TAR_METADATA_FLAGS[@]}" -T "$ARCHIVE_LIST" |
-        gzip -9n >"$OUTPUT"
+      COPYFILE_DISABLE=1 tar -cf - --no-recursion --format ustar "${TAR_METADATA_FLAGS[@]}" -T "$ARCHIVE_LIST" \
+        | gzip -9n > "$OUTPUT"
     )
     ;;
 esac
 
-if command -v xattr >/dev/null 2>&1; then
-  xattr -c "$OUTPUT" 2>/dev/null || true
+if command -v xattr > /dev/null 2>&1; then
+  xattr -c "$OUTPUT" 2> /dev/null || true
 fi
 
 case "$FORMAT" in
@@ -331,8 +331,8 @@ case "$FORMAT" in
 esac
 
 unexpected_paths="$(
-  printf '%s\n' "$archive_paths" |
-    grep -E '(^ryugi/|^\.agents/|^hooks/|package\.json$|^\.git|^\.pytest_cache|^\.ruff_cache|^scripts/|^tests/|^docs/|^evals/|^lib/|^\.claude|^\.cursor|^\.kimi|^\.opencode|^\.pi|^AGENTS\.md$|^CLAUDE\.md$|^GEMINI\.md$|^RELEASE-NOTES\.md$|^CHANGELOG\.md$)' || true
+  printf '%s\n' "$archive_paths" \
+    | grep -E '(^ryugi/|^\.agents/|^hooks/|package\.json$|^\.git|^\.pytest_cache|^\.ruff_cache|^scripts/|^tests/|^docs/|^evals/|^lib/|^\.claude|^\.cursor|^\.kimi|^\.opencode|^\.pi|^AGENTS\.md$|^CLAUDE\.md$|^GEMINI\.md$|^RELEASE-NOTES\.md$|^CHANGELOG\.md$)' || true
 )"
 if [[ -n "$unexpected_paths" ]]; then
   printf '%s\n' "$unexpected_paths" | sed 's/^/  /' >&2

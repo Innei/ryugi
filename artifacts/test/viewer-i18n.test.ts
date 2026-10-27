@@ -7,7 +7,9 @@ const PLURAL = /_(zero|one|two|few|many|other)$/;
 
 function keys(value: unknown, prefix = ''): string[] {
   if (typeof value !== 'object' || value === null) return [prefix.replace(PLURAL, '')];
-  return Object.entries(value).flatMap(([key, child]) => keys(child, prefix ? `${prefix}.${key}` : key));
+  return Object.entries(value).flatMap(([key, child]) =>
+    keys(child, prefix ? `${prefix}.${key}` : key),
+  );
 }
 
 test('zh and en define the same keys', () => {

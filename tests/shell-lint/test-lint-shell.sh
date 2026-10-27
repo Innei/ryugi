@@ -63,7 +63,7 @@ write_stub_tool() {
   local path="$1"
   local name="$2"
 
-  cat >"$path" <<EOF
+  cat > "$path" << EOF
 #!/usr/bin/env bash
 {
   printf '${name}:'
@@ -84,22 +84,22 @@ make_fixture_repo() {
   configure_git_identity "$repo"
 
   mkdir -p "$repo/hooks"
-  cat >"$repo/tracked.sh" <<'EOF'
+  cat > "$repo/tracked.sh" << 'EOF'
 #!/usr/bin/env bash
 echo "tracked"
 EOF
-  cat >"$repo/hooks/session-start" <<'EOF'
+  cat > "$repo/hooks/session-start" << 'EOF'
 #!/bin/sh
 echo "extensionless"
 EOF
-  cat >"$repo/README.md" <<'EOF'
+  cat > "$repo/README.md" << 'EOF'
 # Fixture
 
 ```bash
 echo "not a shell script"
 ```
 EOF
-  cat >"$repo/untracked.sh" <<'EOF'
+  cat > "$repo/untracked.sh" << 'EOF'
 #!/usr/bin/env bash
 echo "untracked"
 EOF
@@ -107,8 +107,8 @@ EOF
   git -C "$repo" add tracked.sh hooks/session-start README.md
   git -C "$repo" commit -q -m "fixture"
 
-  printf '\necho "changed"\n' >>"$repo/tracked.sh"
-  printf '\necho "changed extensionless"\n' >>"$repo/hooks/session-start"
+  printf '\necho "changed"\n' >> "$repo/tracked.sh"
+  printf '\necho "changed extensionless"\n' >> "$repo/hooks/session-start"
 }
 
 run_lint_shell() {
@@ -131,7 +131,7 @@ fixture="$TEST_ROOT/repo"
 fakebin="$TEST_ROOT/bin"
 log="$TEST_ROOT/tool.log"
 mkdir -p "$fixture" "$fakebin"
-: >"$log"
+: > "$log"
 write_stub_tool "$fakebin/shellcheck" "shellcheck"
 write_stub_tool "$fakebin/shfmt" "shfmt"
 make_fixture_repo "$fixture"
@@ -155,7 +155,7 @@ assert_contains "$tool_log" "<tracked.sh>" "includes changed tracked .sh file"
 assert_contains "$tool_log" "<untracked.sh>" "includes untracked shell files by default"
 assert_not_contains "$tool_log" "README.md" "ignores Markdown with shell snippets"
 
-: >"$log"
+: > "$log"
 if output="$(run_lint_shell "$fixture" "$fakebin" "$log" --all --format 2>&1)"; then
   pass "lint-shell --format exits successfully with stub tools"
 else

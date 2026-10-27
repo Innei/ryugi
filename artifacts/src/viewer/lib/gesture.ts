@@ -7,7 +7,11 @@ const REST = 80;
 export type Axis = 'x' | 'y';
 
 export const rubber = (value: number, min: number, max: number) =>
-  value < min ? min + (value - min) * RESISTANCE : value > max ? max + (value - max) * RESISTANCE : value;
+  value < min
+    ? min + (value - min) * RESISTANCE
+    : value > max
+      ? max + (value - max) * RESISTANCE
+      : value;
 
 export function settle(heights: number[], height: number, velocity: number) {
   if (Math.abs(velocity) > FLICK) {

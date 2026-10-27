@@ -37,12 +37,12 @@ call is observed and nothing is published. One prompt per session:
 
 ## Before and after
 
-| Prompt | HEAD | Candidate |
-|---|---|---|
-| A | 3/3 Ryugi | 3/3 `Artifact` (design) |
-| B | 5/8 Ryugi, 3/8 `Artifact` or Claude Docs | 3/3 `Artifact` (document) |
-| H | 3/3 Ryugi (via brainstorming) | 2/3 `Artifact` (design) via brainstorming; 1/3 asked a chat question first |
-| W | not run | 1/3 Ryugi verify artboard; 2/3 stopped because the fixture PNGs are solid colors, not screenshots; 0/3 `Artifact` |
+| Prompt | HEAD                                     | Candidate                                                                                                         |
+| ------ | ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| A      | 3/3 Ryugi                                | 3/3 `Artifact` (design)                                                                                           |
+| B      | 5/8 Ryugi, 3/8 `Artifact` or Claude Docs | 3/3 `Artifact` (document)                                                                                         |
+| H      | 3/3 Ryugi (via brainstorming)            | 2/3 `Artifact` (design) via brainstorming; 1/3 asked a chat question first                                        |
+| W      | not run                                  | 1/3 Ryugi verify artboard; 2/3 stopped because the fixture PNGs are solid colors, not screenshots; 0/3 `Artifact` |
 
 HEAD's B split is the behavior this change settles: the harness's
 instructions pull shared documents toward `Artifact` and Claude Docs while

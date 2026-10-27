@@ -3,7 +3,17 @@ import fs from 'node:fs';
 import os from 'node:os';
 import readline from 'node:readline';
 import { browserLauncher } from '../server/lifecycle';
-import { handleKey, initialView, REFRESH_SECONDS, renderList, renderLog, shortPath, type Action, type Key, type ViewState } from './monitor-view';
+import {
+  handleKey,
+  initialView,
+  REFRESH_SECONDS,
+  renderList,
+  renderLog,
+  shortPath,
+  type Action,
+  type Key,
+  type ViewState,
+} from './monitor-view';
 import { listServers, type ServerRow } from './servers';
 import { stop } from './stop';
 
@@ -31,7 +41,11 @@ function readTail(file: string): string | null {
 function clipboardCommands(): [string, string[]][] {
   if (process.platform === 'darwin') return [['pbcopy', []]];
   if (process.platform === 'win32') return [['clip', []]];
-  return [['wl-copy', []], ['xclip', ['-selection', 'clipboard']], ['xsel', ['--clipboard', '--input']]];
+  return [
+    ['wl-copy', []],
+    ['xclip', ['-selection', 'clipboard']],
+    ['xsel', ['--clipboard', '--input']],
+  ];
 }
 
 function copy(text: string, commands = clipboardCommands()): Promise<boolean> {
@@ -55,16 +69,26 @@ export async function runMonitorUi(): Promise<number> {
   const restore = () => {
     if (closed) return;
     closed = true;
-    try { stdin.setRawMode(false); } catch {}
+    try {
+      stdin.setRawMode(false);
+    } catch {}
     stdout.write('\x1b[?25h\x1b[?1049l');
   };
   process.on('exit', restore);
 
   const draw = () => {
     if (closed) return;
-    const screen = { width: stdout.columns || 80, height: stdout.rows || 24, now: Date.now(), home: os.homedir() };
+    const screen = {
+      width: stdout.columns || 80,
+      height: stdout.rows || 24,
+      now: Date.now(),
+      home: os.homedir(),
+    };
     const row = rows[state.selected];
-    const lines = state.mode === 'log' && row ? renderLog(row, readTail(row.log), screen) : renderList(rows, state, screen);
+    const lines =
+      state.mode === 'log' && row
+        ? renderLog(row, readTail(row.log), screen)
+        : renderList(rows, state, screen);
     stdout.write(`\x1b[H${lines.join('\x1b[K\n')}\x1b[K\x1b[J`);
   };
 
@@ -78,7 +102,10 @@ export async function runMonitorUi(): Promise<number> {
       busy = false;
     }
     const index = rows.findIndex((row) => row.project === selected);
-    state = { ...state, selected: index >= 0 ? index : Math.min(state.selected, Math.max(0, rows.length - 1)) };
+    state = {
+      ...state,
+      selected: index >= 0 ? index : Math.min(state.selected, Math.max(0, rows.length - 1)),
+    };
     if (state.mode === 'log' && !rows[state.selected]) state = { ...state, mode: 'list' };
     draw();
   };
@@ -96,28 +123,42 @@ export async function runMonitorUi(): Promise<number> {
       return;
     }
     if (action.type === 'copy') {
-      say((await copy(action.row.url!)) ? `Copied ${action.row.url}` : `No clipboard tool found; the URL is ${action.row.url}`);
+      say(
+        (await copy(action.row.url!))
+          ? `Copied ${action.row.url}`
+          : `No clipboard tool found; the URL is ${action.row.url}`,
+      );
       return;
     }
     if (action.type === 'stop') {
-      say(`Stopping ${action.rows.length === 1 ? shortPath(action.rows[0]!.project) : `${action.rows.length} servers`}…`);
+      say(
+        `Stopping ${action.rows.length === 1 ? shortPath(action.rows[0]!.project) : `${action.rows.length} servers`}…`,
+      );
       const failed: string[] = [];
       for (const row of action.rows) {
         let status = 'failed';
         try {
-          await stop(row.project, (value) => { status = String(value.status ?? 'failed'); });
+          await stop(row.project, (value) => {
+            status = String(value.status ?? 'failed');
+          });
         } catch {}
         if (status === 'failed') failed.push(shortPath(row.project));
       }
       await refresh();
-      say(failed.length ? `Could not stop ${failed.join(', ')}` : `Stopped ${action.rows.length === 1 ? shortPath(action.rows[0]!.project) : `${action.rows.length} servers`}`);
+      say(
+        failed.length
+          ? `Could not stop ${failed.join(', ')}`
+          : `Stopped ${action.rows.length === 1 ? shortPath(action.rows[0]!.project) : `${action.rows.length} servers`}`,
+      );
     }
   };
 
   return new Promise<number>((resolve) => {
     const timers = [
       setInterval(() => void refresh(), REFRESH_SECONDS * 1000),
-      setInterval(() => { if (state.mode === 'log') draw(); }, LOG_REFRESH_MS),
+      setInterval(() => {
+        if (state.mode === 'log') draw();
+      }, LOG_REFRESH_MS),
     ];
     const quit = (code: number) => {
       timers.forEach(clearInterval);
@@ -134,7 +175,12 @@ export async function runMonitorUi(): Promise<number> {
       draw();
       if (result.action) void run(result.action);
     };
-    for (const [signal, code] of [['SIGINT', 130], ['SIGTERM', 143], ['SIGHUP', 129]] as const) process.once(signal, () => quit(code));
+    for (const [signal, code] of [
+      ['SIGINT', 130],
+      ['SIGTERM', 143],
+      ['SIGHUP', 129],
+    ] as const)
+      process.once(signal, () => quit(code));
     stdout.write('\x1b[?1049h\x1b[?25l');
     readline.emitKeypressEvents(stdin);
     stdin.setRawMode(true);

@@ -6,7 +6,10 @@ import { cloudRequest } from './useCloudStatus';
 export function usePublication(artifact: string, enabled: boolean) {
   const [publication, setPublication] = useState<Publication | null>(null);
   useEffect(() => {
-    if (!enabled) { setPublication(null); return; }
+    if (!enabled) {
+      setPublication(null);
+      return;
+    }
     let cancelled = false;
     let revision = 0;
     const refresh = async () => {
@@ -18,10 +21,16 @@ export function usePublication(artifact: string, enabled: boolean) {
     void refresh();
     const unsubscribe = onServerMessage((event) => {
       if (event.artifact !== artifact) return;
-      if (event.type === 'cloud-publication') { revision++; setPublication(event.publication); }
+      if (event.type === 'cloud-publication') {
+        revision++;
+        setPublication(event.publication);
+      }
       if (event.type === 'change' || event.type === 'cloud-published') void refresh();
     });
-    return () => { cancelled = true; unsubscribe(); };
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
   }, [artifact, enabled]);
   return publication;
 }

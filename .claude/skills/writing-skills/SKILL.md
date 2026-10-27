@@ -29,30 +29,32 @@ A **skill** is a reference guide for proven techniques, patterns, or tools. Skil
 
 ## TDD Mapping for Skills
 
-| TDD Concept | Skill Creation |
-|-------------|----------------|
-| **Test case** | Pressure scenario with subagent |
-| **Production code** | Skill document (SKILL.md) |
-| **Test fails (RED)** | Agent violates rule without skill (baseline) |
-| **Test passes (GREEN)** | Agent complies with skill present |
-| **Refactor** | Close loopholes while maintaining compliance |
-| **Write test first** | Run baseline scenario BEFORE writing skill |
-| **Watch it fail** | Document exact rationalizations agent uses |
-| **Minimal code** | Write skill addressing those specific violations |
-| **Watch it pass** | Verify agent now complies |
-| **Refactor cycle** | Find new rationalizations → plug → re-verify |
+| TDD Concept             | Skill Creation                                   |
+| ----------------------- | ------------------------------------------------ |
+| **Test case**           | Pressure scenario with subagent                  |
+| **Production code**     | Skill document (SKILL.md)                        |
+| **Test fails (RED)**    | Agent violates rule without skill (baseline)     |
+| **Test passes (GREEN)** | Agent complies with skill present                |
+| **Refactor**            | Close loopholes while maintaining compliance     |
+| **Write test first**    | Run baseline scenario BEFORE writing skill       |
+| **Watch it fail**       | Document exact rationalizations agent uses       |
+| **Minimal code**        | Write skill addressing those specific violations |
+| **Watch it pass**       | Verify agent now complies                        |
+| **Refactor cycle**      | Find new rationalizations → plug → re-verify     |
 
 The entire skill creation process follows RED-GREEN-REFACTOR.
 
 ## When to Create a Skill
 
 **Create when:**
+
 - Technique wasn't intuitively obvious to you
 - You'd reference this again across projects
 - Pattern applies broadly (not project-specific)
 - Others would benefit
 
 **Don't create for:**
+
 - One-off solutions
 - Standard practices well-documented elsewhere
 - Project-specific conventions (put in your instructions file)
@@ -61,16 +63,18 @@ The entire skill creation process follows RED-GREEN-REFACTOR.
 ## Skill Types
 
 ### Technique
+
 Concrete method with steps to follow (condition-based-waiting, root-cause-tracing)
 
 ### Pattern
+
 Way of thinking about problems (flatten-with-flags, test-invariants)
 
 ### Reference
+
 API docs, syntax guides, tool documentation (office docs)
 
 ## Directory Structure
-
 
 ```
 skills/
@@ -82,10 +86,12 @@ skills/
 **Flat namespace** - all skills in one searchable namespace
 
 **Separate files for:**
+
 1. **Heavy reference** (100+ lines) - API docs, comprehensive syntax
 2. **Reusable tools** - Scripts, utilities, templates
 
 **Keep inline:**
+
 - Principles and concepts
 - Code patterns (< 50 lines)
 - Everything else
@@ -93,6 +99,7 @@ skills/
 ## SKILL.md Structure
 
 **Frontmatter (YAML):**
+
 - Two required fields: `name` and `description` (see [agentskills.io/specification](https://agentskills.io/specification) for all supported fields)
 - Max 1024 characters total
 - `name`: Use letters, numbers, and hyphens only (no parentheses, special chars)
@@ -111,31 +118,37 @@ description: Use when [specific triggering conditions and symptoms]
 # Skill Name
 
 ## Overview
+
 What is this? Core principle in 1-2 sentences.
 
 ## When to Use
+
 [Small inline flowchart IF decision non-obvious]
 
 Bullet list with SYMPTOMS and use cases
 When NOT to use
 
 ## Core Pattern (for techniques/patterns)
+
 Before/after code comparison
 
 ## Quick Reference
+
 Table or bullets for scanning common operations
 
 ## Implementation
+
 Inline code for simple patterns
 Link to file for heavy reference or reusable tools
 
 ## Common Mistakes
+
 What goes wrong + fixes
 
 ## Real-World Impact (optional)
+
 Concrete results
 ```
-
 
 ## Skill Discovery Optimization (SDO)
 
@@ -172,8 +185,9 @@ description: Use when implementing any feature or bugfix, before writing impleme
 ```
 
 **Content:**
+
 - Use concrete triggers, symptoms, and situations that signal this skill applies
-- Describe the *problem* (race conditions, inconsistent behavior) not *language-specific symptoms* (setTimeout, sleep)
+- Describe the _problem_ (race conditions, inconsistent behavior) not _language-specific symptoms_ (setTimeout, sleep)
 - Keep triggers technology-agnostic unless the skill itself is technology-specific
 - If skill is technology-specific, make that explicit in the trigger
 - Write in third person (injected into system prompt)
@@ -199,6 +213,7 @@ description: Use when using React Router and handling authentication redirects
 ### 2. Keyword Coverage
 
 Use words an agent would search for:
+
 - Error messages: "Hook timed out", "ENOTEMPTY", "race condition"
 - Symptoms: "flaky", "hanging", "zombie", "pollution"
 - Synonyms: "timeout/hang/freeze", "cleanup/teardown/afterEach"
@@ -207,6 +222,7 @@ Use words an agent would search for:
 ### 3. Descriptive Naming
 
 **Use active voice, verb-first:**
+
 - ✅ `creating-skills` not `skill-creation`
 - ✅ `condition-based-waiting` not `async-test-helpers`
 
@@ -215,6 +231,7 @@ Use words an agent would search for:
 **Problem:** getting-started and frequently-referenced skills load into EVERY conversation. Every token counts.
 
 **Target word counts:**
+
 - getting-started workflows: <150 words each
 - Frequently-loaded skills: <200 words total
 - Other skills: <500 words (still be concise)
@@ -222,6 +239,7 @@ Use words an agent would search for:
 **Techniques:**
 
 **Move details to tool help:**
+
 ```bash
 # ❌ BAD: Document all flags in SKILL.md
 search-conversations supports --text, --both, --after DATE, --before DATE, --limit N
@@ -231,34 +249,42 @@ search-conversations supports multiple modes and filters. Run --help for details
 ```
 
 **Use cross-references:**
+
 ```markdown
 # ❌ BAD: Repeat workflow details
+
 When searching, dispatch subagent with template...
 [20 lines of repeated instructions]
 
 # ✅ GOOD: Reference other skill
+
 Always use subagents (50-100x context savings). REQUIRED: Use [other-skill-name] for workflow.
 ```
 
 **Compress examples:**
+
 ```markdown
 # ❌ BAD: Verbose example (42 words)
+
 your human partner: "How did we handle authentication errors in React Router before?"
 You: I'll search past conversations for React Router authentication patterns.
 [Dispatch subagent with search query: "React Router authentication error handling 401"]
 
 # ✅ GOOD: Minimal example (20 words)
+
 Partner: "How did we handle auth errors in React Router?"
 You: Searching...
 [Dispatch subagent → synthesis]
 ```
 
 **Eliminate redundancy:**
+
 - Don't repeat what's in cross-referenced skills
 - Don't explain what's obvious from command
 - Don't include multiple examples of same pattern
 
 **Verification:**
+
 ```bash
 wc -w skills/path/SKILL.md
 # getting-started workflows: aim for <150 each
@@ -266,12 +292,14 @@ wc -w skills/path/SKILL.md
 ```
 
 **Name by what you DO or core insight:**
+
 - ✅ `condition-based-waiting` > `async-test-helpers`
 - ✅ `using-skills` not `skill-usage`
 - ✅ `flatten-with-flags` > `data-structure-refactoring`
 - ✅ `root-cause-tracing` > `debugging-techniques`
 
 **Gerunds (-ing) work well for processes:**
+
 - `creating-skills`, `testing-skills`, `debugging-with-logs`
 - Active, describes the action you're taking
 
@@ -280,6 +308,7 @@ wc -w skills/path/SKILL.md
 **When writing documentation that references other skills:**
 
 Use skill name only, with explicit requirement markers:
+
 - ✅ Good: `**REQUIRED SUB-SKILL:** Use ryugi:test-driven-development`
 - ✅ Good: `**REQUIRED BACKGROUND:** You MUST understand ryugi:systematic-debugging`
 - ❌ Bad: `See skills/testing/test-driven-development` (unclear if required)
@@ -303,11 +332,13 @@ digraph when_flowchart {
 ```
 
 **Use flowcharts ONLY for:**
+
 - Non-obvious decision points
 - Process loops where you might stop too early
 - "When to use A vs B" decisions
 
 **Never use flowcharts for:**
+
 - Reference material → Tables, lists
 - Code examples → Markdown blocks
 - Linear instructions → Numbered lists
@@ -316,6 +347,7 @@ digraph when_flowchart {
 See `graphviz-conventions.dot` in this directory for graphviz style rules.
 
 **Visualizing for your human partner:** Use `render-graphs.js` in this directory to render a skill's flowcharts to SVG:
+
 ```bash
 node ./render-graphs.js ../some-skill           # Each diagram separately
 node ./render-graphs.js ../some-skill --combine # All diagrams in one SVG
@@ -326,11 +358,13 @@ node ./render-graphs.js ../some-skill --combine # All diagrams in one SVG
 **One excellent example beats many mediocre ones**
 
 Choose most relevant language:
+
 - Testing techniques → TypeScript/JavaScript
 - System debugging → Shell/Python
 - Data processing → Python
 
 **Good example:**
+
 - Complete and runnable
 - Well-commented explaining WHY
 - From real scenario
@@ -338,6 +372,7 @@ Choose most relevant language:
 - Ready to adapt (not generic template)
 
 **Don't:**
+
 - Implement in 5+ languages
 - Create fill-in-the-blank templates
 - Write contrived examples
@@ -347,21 +382,26 @@ You're good at porting - one great example is enough.
 ## File Organization
 
 ### Self-Contained Skill
+
 ```
 defense-in-depth/
   SKILL.md    # Everything inline
 ```
+
 When: All content fits, no heavy reference needed
 
 ### Skill with Reusable Tool
+
 ```
 condition-based-waiting/
   SKILL.md    # Overview + patterns
   example.ts  # Working helpers to adapt
 ```
+
 When: Tool is reusable code, not just narrative
 
 ### Skill with Heavy Reference
+
 ```
 pptx/
   SKILL.md       # Overview + workflows
@@ -369,6 +409,7 @@ pptx/
   ooxml.md       # 500 lines XML structure
   scripts/       # Executable tools
 ```
+
 When: Reference material too large for inline
 
 Invoke bundled scripts through their interpreter in the prose (`bash scripts/tool.sh`, `node scripts/tool.js`), never by bare path: some harness plugin packagers strip executable bits, and a bare `scripts/tool.sh` fails there with `Permission denied`.
@@ -385,6 +426,7 @@ Write skill before testing? Delete it. Start over.
 Edit skill without testing? Same violation.
 
 **No exceptions:**
+
 - Not for "simple additions"
 - Not for "just adding a section"
 - Not for "documentation updates"
@@ -403,6 +445,7 @@ Different skill types need different test approaches:
 **Examples:** TDD, systematic-debugging, designing-before-coding
 
 **Test with:**
+
 - Academic questions: Do they understand the rules?
 - Pressure scenarios: Do they comply under stress?
 - Multiple pressures combined: time + sunk cost + exhaustion
@@ -415,6 +458,7 @@ Different skill types need different test approaches:
 **Examples:** condition-based-waiting, root-cause-tracing, defensive-programming
 
 **Test with:**
+
 - Application scenarios: Can they apply the technique correctly?
 - Variation scenarios: Do they handle edge cases?
 - Missing information tests: Do instructions have gaps?
@@ -426,6 +470,7 @@ Different skill types need different test approaches:
 **Examples:** reducing-complexity, information-hiding concepts
 
 **Test with:**
+
 - Recognition scenarios: Do they recognize when pattern applies?
 - Application scenarios: Can they use the mental model?
 - Counter-examples: Do they know when NOT to apply?
@@ -437,6 +482,7 @@ Different skill types need different test approaches:
 **Examples:** API documentation, command references, library guides
 
 **Test with:**
+
 - Retrieval scenarios: Can they find the right information?
 - Application scenarios: Can they use what they found correctly?
 - Gap testing: Are common use cases covered?
@@ -445,16 +491,16 @@ Different skill types need different test approaches:
 
 ## Common Rationalizations for Skipping Testing
 
-| Excuse | Reality |
-|--------|---------|
-| "Skill is obviously clear" | Clear to you ≠ clear to other agents. Test it. |
-| "It's just a reference" | References can have gaps, unclear sections. Test retrieval. |
-| "Testing is overkill" | Untested skills have issues. Always. 15 min testing saves hours. |
-| "I'll test if problems emerge" | Problems = agents can't use skill. Test BEFORE deploying. |
-| "Too tedious to test" | Testing is less tedious than debugging bad skill in production. |
-| "I'm confident it's good" | Overconfidence guarantees issues. Test anyway. |
-| "Academic review is enough" | Reading ≠ using. Test application scenarios. |
-| "No time to test" | Deploying untested skill wastes more time fixing it later. |
+| Excuse                         | Reality                                                          |
+| ------------------------------ | ---------------------------------------------------------------- |
+| "Skill is obviously clear"     | Clear to you ≠ clear to other agents. Test it.                   |
+| "It's just a reference"        | References can have gaps, unclear sections. Test retrieval.      |
+| "Testing is overkill"          | Untested skills have issues. Always. 15 min testing saves hours. |
+| "I'll test if problems emerge" | Problems = agents can't use skill. Test BEFORE deploying.        |
+| "Too tedious to test"          | Testing is less tedious than debugging bad skill in production.  |
+| "I'm confident it's good"      | Overconfidence guarantees issues. Test anyway.                   |
+| "Academic review is enough"    | Reading ≠ using. Test application scenarios.                     |
+| "No time to test"              | Deploying untested skill wastes more time fixing it later.       |
 
 **All of these mean: Test before deploying. No exceptions.**
 
@@ -462,16 +508,17 @@ Different skill types need different test approaches:
 
 Before writing guidance, classify the baseline failure. The form that bulletproofs one failure type measurably backfires on another.
 
-| Baseline failure | Right form | Wrong form |
-|---|---|---|
-| Skips/violates a rule under pressure (knows better, does it anyway) | Prohibition + rationalization table + red flags (see Bulletproofing below) | Soft guidance ("prefer...", "consider...") |
-| Complies, but output has the wrong shape (bloated prompt, buried verdict, restated spec) | Positive recipe or contract: state what the output IS — its parts, in order | Prohibition list ("don't restate", "never narrate") |
-| Omits a required element from something they already produce | Structural: REQUIRED field or slot in the template they fill in | Prose reminders near the template |
-| Behavior should depend on a condition | Conditional keyed to an observable predicate ("if the brief exists, reference it") | Unconditional rule + exemption clauses |
+| Baseline failure                                                                         | Right form                                                                         | Wrong form                                          |
+| ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- | --------------------------------------------------- |
+| Skips/violates a rule under pressure (knows better, does it anyway)                      | Prohibition + rationalization table + red flags (see Bulletproofing below)         | Soft guidance ("prefer...", "consider...")          |
+| Complies, but output has the wrong shape (bloated prompt, buried verdict, restated spec) | Positive recipe or contract: state what the output IS — its parts, in order        | Prohibition list ("don't restate", "never narrate") |
+| Omits a required element from something they already produce                             | Structural: REQUIRED field or slot in the template they fill in                    | Prose reminders near the template                   |
+| Behavior should depend on a condition                                                    | Conditional keyed to an observable predicate ("if the brief exists, reference it") | Unconditional rule + exemption clauses              |
 
 **Why prohibitions backfire on shaping problems:** under a competing incentive ("make the prompt self-contained"), agents negotiate with "don't X". In head-to-head wording tests on dispatch-prompt guidance, the prohibition arm produced clearly more of the unwanted content than the recipe arm (fully separated distributions), and trended worse than even the no-guidance control — micro-test your own case rather than assuming, but never reach for the prohibition by default. A recipe leaves nothing to negotiate: the output matches the stated shape or it doesn't.
 
 **Rules for whichever form you pick:**
+
 - **No nuance clauses.** "Don't X unless it matters" reopens the negotiation — appending a single nuance clause to a winning recipe degraded it from consistent to noisy in the same wording tests. Express a real exception as its own conditional on an observable predicate.
 - **Exemption clauses don't scope.** "This limit doesn't apply to code blocks" still suppresses code blocks. If part of the output must be exempt, restructure so the rule can't reach it.
 
@@ -498,11 +545,13 @@ Write code before test? Delete it.
 Write code before test? Delete it. Start over.
 
 **No exceptions:**
+
 - Don't keep it as "reference"
 - Don't "adapt" it while writing tests
 - Don't look at it
 - Delete means delete
-```
+
+````
 </Good>
 
 ### Address "Spirit vs Letter" Arguments
@@ -511,7 +560,7 @@ Add foundational principle early:
 
 ```markdown
 **Violating the letter of the rules is violating the spirit of the rules.**
-```
+````
 
 This cuts off entire class of "I'm following the spirit" rationalizations.
 
@@ -520,10 +569,10 @@ This cuts off entire class of "I'm following the spirit" rationalizations.
 Capture rationalizations from baseline testing (see Testing section below). Every excuse agents make goes in the table:
 
 ```markdown
-| Excuse | Reality |
-|--------|---------|
-| "Too simple to test" | Simple code breaks. Test takes 30 seconds. |
-| "I'll test after" | Tests passing immediately prove nothing. |
+| Excuse                           | Reality                                                                 |
+| -------------------------------- | ----------------------------------------------------------------------- |
+| "Too simple to test"             | Simple code breaks. Test takes 30 seconds.                              |
+| "I'll test after"                | Tests passing immediately prove nothing.                                |
 | "Tests after achieve same goals" | Tests-after = "what does this do?" Tests-first = "what should this do?" |
 ```
 
@@ -558,6 +607,7 @@ Follow the TDD cycle:
 ### RED: Write Failing Test (Baseline)
 
 Run pressure scenario with subagent WITHOUT the skill. Document exact behavior:
+
 - What choices did they make?
 - What rationalizations did they use (verbatim)?
 - Which pressures triggered violations?
@@ -587,6 +637,7 @@ Full pressure-scenario runs are the final gate, but they are slow and expensive 
 Micro-tests verify wording; they do not replace pressure scenarios for discipline skills.
 
 **Testing methodology:** See [testing-skills-with-subagents.md](testing-skills-with-subagents.md) for the complete testing methodology:
+
 - How to write pressure scenarios
 - Pressure types (time, sunk cost, authority, exhaustion)
 - Plugging holes systematically
@@ -595,21 +646,26 @@ Micro-tests verify wording; they do not replace pressure scenarios for disciplin
 ## Anti-Patterns
 
 ### ❌ Narrative Example
+
 "In session 2025-10-03, we found empty projectDir caused..."
 **Why bad:** Too specific, not reusable
 
 ### ❌ Multi-Language Dilution
+
 example-js.js, example-py.py, example-go.go
 **Why bad:** Mediocre quality, maintenance burden
 
 ### ❌ Code in Flowcharts
+
 ```dot
 step1 [label="import fs"];
 step2 [label="read file"];
 ```
+
 **Why bad:** Can't copy-paste, hard to read
 
 ### ❌ Generic Labels
+
 helper1, helper2, step3, pattern4
 **Why bad:** Labels should have semantic meaning
 
@@ -618,6 +674,7 @@ helper1, helper2, step3, pattern4
 **After writing ANY skill, you MUST STOP and complete the deployment process.**
 
 **Do NOT:**
+
 - Create multiple skills in batch without testing each
 - Move to next skill before current one is verified
 - Skip testing because "batching is more efficient"
@@ -631,11 +688,13 @@ Deploying untested skills = deploying untested code. It's a violation of quality
 **IMPORTANT: Create a todo for EACH checklist item below.**
 
 **RED Phase - Write Failing Test:**
+
 - [ ] Create pressure scenarios (3+ combined pressures for discipline skills)
 - [ ] Run scenarios WITHOUT skill - document baseline behavior verbatim
 - [ ] Identify patterns in rationalizations/failures
 
 **GREEN Phase - Write Minimal Skill:**
+
 - [ ] Name uses only letters, numbers, hyphens (no parentheses/special chars)
 - [ ] YAML frontmatter with required `name` and `description` fields (max 1024 chars; see [spec](https://agentskills.io/specification))
 - [ ] Description starts with "Use when..." and includes specific triggers/symptoms
@@ -650,6 +709,7 @@ Deploying untested skills = deploying untested code. It's a violation of quality
 - [ ] Run scenarios WITH skill - verify agents now comply
 
 **REFACTOR Phase - Close Loopholes:**
+
 - [ ] Identify NEW rationalizations from testing
 - [ ] Add explicit counters (if discipline skill)
 - [ ] Build rationalization table from all test iterations
@@ -657,6 +717,7 @@ Deploying untested skills = deploying untested code. It's a violation of quality
 - [ ] Re-test until bulletproof
 
 **Quality Checks:**
+
 - [ ] Small flowchart only if decision non-obvious
 - [ ] Quick reference table
 - [ ] Common mistakes section
@@ -664,6 +725,7 @@ Deploying untested skills = deploying untested code. It's a violation of quality
 - [ ] Supporting files only for tools or heavy reference
 
 **Deployment:**
+
 - [ ] Commit skill to git and push to your fork (if configured)
 - [ ] Consider contributing back via PR (if broadly useful)
 

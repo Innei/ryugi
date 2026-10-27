@@ -2,14 +2,14 @@
 set -uo pipefail
 
 case "$0" in
-  */*|*\\*) SCRIPT_DIR="$(cd "${0%[/\\]*}" && pwd)" ;;
+  */* | *\\*) SCRIPT_DIR="$(cd "${0%[/\\]*}" && pwd)" ;;
   *) SCRIPT_DIR="$(pwd)" ;;
 esac
 
 . "$SCRIPT_DIR/project-root.sh"
 project="$(ryugi_project_root "${CLAUDE_PROJECT_DIR:-$PWD}")"
 [ -f "$project/.ryugi/artifacts/.state/server-info" ] || exit 0
-command -v node >/dev/null 2>&1 || exit 0
+command -v node > /dev/null 2>&1 || exit 0
 
-node "$SCRIPT_DIR/flush-artifacts.cjs" "$project" >/dev/null 2>&1
+node "$SCRIPT_DIR/flush-artifacts.cjs" "$project" > /dev/null 2>&1
 exit 0

@@ -12,10 +12,12 @@ afterEach(async () => {
 
 function openExample(injected = false) {
   expect(existsSync(example), 'the documented prototype must be runnable').toBe(true);
-  page = new Window({ settings: {
-    enableJavaScriptEvaluation: true,
-    suppressInsecureJavaScriptEnvironmentWarning: true,
-  } });
+  page = new Window({
+    settings: {
+      enableJavaScriptEvaluation: true,
+      suppressInsecureJavaScriptEnvironmentWarning: true,
+    },
+  });
   const html = readFileSync(example, 'utf8');
   page.document.write(injected ? injectRuntime(html, { inspector: true }) : html);
   return page.document;
@@ -47,11 +49,21 @@ test.each([
 test('host parameter changes update the example while preserving dismissed cards', () => {
   const document = openExample(true);
   let ready: any;
-  page!.parent.postMessage = (data: any) => { if (data.type === 'ryugi:tweaks:ready') ready = data; };
-  const command = (data: object) => page!.eval(`dispatchEvent(new MessageEvent('message',{source:parent,data:${JSON.stringify({ type: 'ryugi:tweaks', connection: 'example', ...data })}}))`);
+  page!.parent.postMessage = (data: any) => {
+    if (data.type === 'ryugi:tweaks:ready') ready = data;
+  };
+  const command = (data: object) =>
+    page!.eval(
+      `dispatchEvent(new MessageEvent('message',{source:parent,data:${JSON.stringify({ type: 'ryugi:tweaks', connection: 'example', ...data })}}))`,
+    );
   command({ action: 'connect' });
   document.querySelector<HTMLElement>('#dismiss-research')!.click();
-  const set = (count: number) => command({ action: 'set', session: ready?.session, values: { accent: '#355ecb', density: 'compact', count, showLoops: false } });
+  const set = (count: number) =>
+    command({
+      action: 'set',
+      session: ready?.session,
+      values: { accent: '#355ecb', density: 'compact', count, showLoops: false },
+    });
   set(1);
   expect(document.querySelector<HTMLElement>('#empty')!.hidden).toBe(false);
   expect(document.querySelector<HTMLElement>('#open-loops')!.hidden).toBe(true);

@@ -9,7 +9,7 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 echo "test-plugin-manifest: checking Antigravity plugin"
 
-python3 - "$REPO_ROOT" <<'PY'
+python3 - "$REPO_ROOT" << 'PY'
 import json
 import re
 import struct
@@ -93,13 +93,25 @@ for stray in ["plugin.json", "hooks.json", "rules"]:
         fail(f"root {stray} must not exist")
 PY
 
-if command -v agy >/dev/null 2>&1; then
+if command -v agy > /dev/null 2>&1; then
   output="$(agy plugin validate "$REPO_ROOT" 2>&1)" \
-    || { echo "$output" >&2; echo "FAIL: agy plugin validate failed" >&2; exit 1; }
-  grep -q '\[ok\]' <<<"$output" \
-    || { echo "$output" >&2; echo "FAIL: agy plugin validate did not report [ok]" >&2; exit 1; }
-  grep -qE 'skills +: [0-9]+ processed' <<<"$output" \
-    || { echo "$output" >&2; echo "FAIL: agy found no skills" >&2; exit 1; }
+    || {
+      echo "$output" >&2
+      echo "FAIL: agy plugin validate failed" >&2
+      exit 1
+    }
+  grep -q '\[ok\]' <<< "$output" \
+    || {
+      echo "$output" >&2
+      echo "FAIL: agy plugin validate did not report [ok]" >&2
+      exit 1
+    }
+  grep -qE 'skills +: [0-9]+ processed' <<< "$output" \
+    || {
+      echo "$output" >&2
+      echo "FAIL: agy found no skills" >&2
+      exit 1
+    }
 else
   echo "SKIP: agy not on PATH; not running agy plugin validate"
 fi

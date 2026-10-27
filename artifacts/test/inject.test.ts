@@ -3,7 +3,9 @@ import { injectRuntime } from '../src/server/inject';
 
 describe('injectRuntime', () => {
   test('an icon-only HTML page keeps its own theme without loading Lobe UI', () => {
-    const out = injectRuntime('<head></head><ryugi-icon name="copy"></ryugi-icon>', { uiRuntimeUrl: '/runtime/ryugi-ui.js' });
+    const out = injectRuntime('<head></head><ryugi-icon name="copy"></ryugi-icon>', {
+      uiRuntimeUrl: '/runtime/ryugi-ui.js',
+    });
     expect(out).toContain('src="/runtime/ryugi-icons.js"');
     expect(out).not.toContain('src="/runtime/ryugi-ui.js"');
   });
@@ -18,12 +20,14 @@ describe('injectRuntime', () => {
   });
 
   test('UI pages load icons before the UI runtime, including for dynamically created controls', () => {
-    const out = injectRuntime('<meta name="ryugi-ui" content="1">', { uiRuntimeUrl: '/runtime/ryugi-ui.js' });
+    const out = injectRuntime('<meta name="ryugi-ui" content="1">', {
+      uiRuntimeUrl: '/runtime/ryugi-ui.js',
+    });
     expect(out.indexOf('src="/runtime/ryugi-icons.js"')).toBeGreaterThan(-1);
     expect(out.indexOf('ryugi-icons.js')).toBeLessThan(out.indexOf('ryugi-ui.js'));
   });
 
-  test('puts the runtime script first inside <head>, before the page\'s own scripts', () => {
+  test("puts the runtime script first inside <head>, before the page's own scripts", () => {
     const out = injectRuntime('<!doctype html><html><HEAD><script>page()</script></HEAD></html>');
     const runtime = out.indexOf('ryugi:snapshot');
     expect(runtime).toBeGreaterThan(out.indexOf('<HEAD>'));
@@ -32,29 +36,36 @@ describe('injectRuntime', () => {
 
   test('injects the UI runtime for custom elements when a runtime URL is given', () => {
     const url = '/c/token/runtime/ryugi-ui.js';
-    const out = injectRuntime('<html><head></head><body><ryugi-button>Go</ryugi-button></body></html>', {
-      uiRuntimeUrl: url,
-    });
+    const out = injectRuntime(
+      '<html><head></head><body><ryugi-button>Go</ryugi-button></body></html>',
+      {
+        uiRuntimeUrl: url,
+      },
+    );
     expect(out).toContain(`<script defer src="${url}"></script>`);
     expect(out.indexOf('ryugi:snapshot')).toBeLessThan(out.indexOf('ryugi-ui.js'));
   });
 
   test('injects the UI runtime for a meta opt-in and not for plain pages', () => {
     const url = '/c/token/runtime/ryugi-ui.js';
-    expect(injectRuntime('<meta name="ryugi-ui" content="1">', { uiRuntimeUrl: url })).toContain('ryugi-ui.js');
+    expect(injectRuntime('<meta name="ryugi-ui" content="1">', { uiRuntimeUrl: url })).toContain(
+      'ryugi-ui.js',
+    );
     expect(injectRuntime('<p>plain</p>', { uiRuntimeUrl: url })).not.toContain('ryugi-ui.js');
     expect(injectRuntime('<ryugi-button>Go</ryugi-button>')).not.toContain('ryugi-ui.js');
   });
 
   test('keeps line numbers when the UI runtime is injected too', () => {
-    const page = '<!doctype html>\n<html>\n<head>\n<title>x</title>\n</head>\n<body>\n<ryugi-button>Go</ryugi-button>\n</body>\n</html>';
+    const page =
+      '<!doctype html>\n<html>\n<head>\n<title>x</title>\n</head>\n<body>\n<ryugi-button>Go</ryugi-button>\n</body>\n</html>';
     const out = injectRuntime(page, { uiRuntimeUrl: '/c/token/runtime/ryugi-ui.js' });
     expect(out.split('\n')).toHaveLength(page.split('\n').length);
     expect(out.split('\n')[6]).toBe('<ryugi-button>Go</ryugi-button>');
   });
 
   test('keeps every line of the page on its original line number', () => {
-    const page = '<!doctype html>\n<html>\n<head>\n<title>x</title>\n</head>\n<body>\n<script>boom()</script>\n</body>\n</html>';
+    const page =
+      '<!doctype html>\n<html>\n<head>\n<title>x</title>\n</head>\n<body>\n<script>boom()</script>\n</body>\n</html>';
     const out = injectRuntime(page);
     expect(out.split('\n')).toHaveLength(page.split('\n').length);
     expect(out.split('\n')[6]).toBe('<script>boom()</script>');
@@ -67,7 +78,8 @@ describe('injectRuntime', () => {
   });
 
   test('artboard inspection keeps original HTML line numbers and produces valid JavaScript', () => {
-    const page = '<!doctype html>\n<html>\n<head></head>\n<body>\n<p>Original line</p>\n</body></html>';
+    const page =
+      '<!doctype html>\n<html>\n<head></head>\n<body>\n<p>Original line</p>\n</body></html>';
     const html = injectRuntime(page, { inspector: true });
     expect(html.split('\n')[4]).toBe('<p>Original line</p>');
     const code = html.slice(html.indexOf('<script>') + 8, html.indexOf('</script>'));
@@ -75,8 +87,16 @@ describe('injectRuntime', () => {
   });
 
   test('without <head>, the script goes after the doctype and <html> so the page stays in standards mode', () => {
-    expect(injectRuntime('<!DOCTYPE html><meta charset=utf-8><title>x</title><p>y').startsWith('<!DOCTYPE html><script>')).toBe(true);
-    expect(injectRuntime('<!doctype html>\n<html lang="en"><body>z').startsWith('<!doctype html>\n<html lang="en"><script>')).toBe(true);
+    expect(
+      injectRuntime('<!DOCTYPE html><meta charset=utf-8><title>x</title><p>y').startsWith(
+        '<!DOCTYPE html><script>',
+      ),
+    ).toBe(true);
+    expect(
+      injectRuntime('<!doctype html>\n<html lang="en"><body>z').startsWith(
+        '<!doctype html>\n<html lang="en"><script>',
+      ),
+    ).toBe(true);
   });
 
   test('an embedded page gets a transparent, theme-following base style before its own styles', () => {
