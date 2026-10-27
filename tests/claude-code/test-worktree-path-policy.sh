@@ -52,6 +52,10 @@ assert_not_contains "$USING_SKILL" "Global path" "using-git-worktrees has no glo
 assert_contains "$USING_SKILL" 'default to `.worktrees/` at the project root' "using-git-worktrees defaults new manual worktrees to .worktrees/"
 
 assert_contains "$USING_SKILL" '`.worktrees/` or `worktrees/`' "using-git-worktrees keeps project-local cleanup ownership"
+assert_contains "$USING_SKILL" '## Where to work' "using-git-worktrees owns the in-place vs worktree decision"
+assert_contains "$USING_SKILL" 'info/exclude' "using-git-worktrees ignores the directory locally instead of committing .gitignore"
+assert_not_contains "$USING_SKILL" 'Would you like me to set up an isolated worktree' "using-git-worktrees does not ask for a worktree by default"
+assert_not_contains "$USING_SKILL" '## Quick Reference' "using-git-worktrees has no Quick Reference table"
 
 assert_not_contains "$ROTOTILL_SPEC" "~/.config/ryugi/worktrees" "rototill spec does not preserve old global path policy"
 assert_not_contains "$ROTOTILL_PLAN" "~/.config/ryugi/worktrees" "rototill plan does not preserve old global path policy"
