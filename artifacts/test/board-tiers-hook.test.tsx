@@ -127,15 +127,20 @@ test('while zooming, a ready board with a snapshot hides its frame under the sna
   expect(state('a')).toMatchObject({ mounted: true, overlay: true, hidden: true, image: 'blob:shot-a' });
 });
 
-test('a capture with no answer within 3 s marks the board unsupported and it is not asked again', async () => {
+test('a capture with no answer within 10 s is not marked unsupported and is retried when the board mounts again', async () => {
   vi.useFakeTimers();
   await render();
   const a = frame('a');
   await a.post({ type: 'ryugi:board:ready' });
-  await act(async () => { vi.advanceTimersByTime(3000); });
-  expect(store.isUnsupported(key('a'))).toBe(true);
+  await act(async () => { vi.advanceTimersByTime(9999); });
   await a.post({ type: 'ryugi:board:changed' });
   expect(a.posted).toHaveBeenCalledTimes(1);
+  await act(async () => { vi.advanceTimersByTime(1); });
+  expect(store.isUnsupported(key('a'))).toBe(false);
+  act(() => result.frameRef('a')(null));
+  const again = frame('a');
+  await again.post({ type: 'ryugi:board:ready' });
+  expect(again.posted).toHaveBeenCalledTimes(1);
 });
 
 test('one capture runs at a time, and a change while zooming waits until the zoom ends', async () => {

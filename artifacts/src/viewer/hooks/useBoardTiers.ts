@@ -7,7 +7,7 @@ import { createSnapshotStore, snapshotKey, type SnapshotStore } from '../lib/sna
 import { createTierController } from '../lib/tier-controller';
 import type { View } from '../lib/view';
 
-const CAPTURE_TIMEOUT_MS = 3000;
+const CAPTURE_TIMEOUT_MS = 10_000;
 let sharedStore: SnapshotStore | null = null;
 
 function useColorScheme() {
@@ -123,7 +123,7 @@ export function useBoardTiers({ artifact, boards, versions, pending, view, scali
       const request = ++nextRequest.current;
       const timer = window.setTimeout(() => {
         if (inflight.current?.request !== request) return;
-        store.markUnsupported(key);
+        failed.current.add(key);
         inflight.current = null;
         bump();
         pump();
