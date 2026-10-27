@@ -1,6 +1,6 @@
 ---
 name: artifacts
-description: Use when seeing decides faster than reading — UI directions or mockups to choose between, a page to tune or click through, a design doc, review, proposal, or architecture walkthrough for them or their team to read — or when they ask for an artifact or artboard by name, or for a link to share one. Inside brainstorming or anywhere else
+description: Use when seeing decides faster than reading — UI directions or mockups to choose between, a page to tune or click through, a design doc, review, proposal, or architecture walkthrough for them or their team to read — or when they ask for an artifact or artboard by name, or for a link to share one, or when they paste a Ryugi Cloud link (…/a/…) to read. Inside brainstorming or anywhere else
 ---
 
 # Artifacts
@@ -10,6 +10,23 @@ work: an artboard of mockups to choose from and comment on, a document to
 read and comment on, or one HTML page to click and tune. You write files into the project; a local server shows each
 artifact at its own link and updates it the moment a file changes. They look,
 then answer in the terminal.
+
+## Read a Ryugi Cloud link
+
+When your human partner pastes a Ryugi Cloud link to read
+(`https://ryugi.innei.dev/a/<id>`, or `/a/<id>` on another Ryugi Cloud
+host), your first step is, with `app/` in this skill's directory:
+
+```bash
+node app/ryugi-artifacts.cjs get --json <link>
+```
+
+The page itself is an app shell with no content, so no page fetch, no
+browser and no `Artifact` tool. `get` reads it with this machine's cloud
+sign-in. A document comes back as `content` (LiteXML with block ids) and
+`comments`; an artboard or HTML artifact as `dir`, the folder its files
+were downloaded to. Exit code 2 means they need to sign in: tell them its
+`message`.
 
 **You have a tool named `Artifact`** (Claude Code on a claude.ai plan):
 pick the type below, then read `claude-artifacts.md` and build it with that
