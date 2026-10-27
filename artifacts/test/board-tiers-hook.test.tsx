@@ -143,6 +143,16 @@ test('a capture with no answer within 10 s is not marked unsupported and is retr
   expect(again.posted).toHaveBeenCalledTimes(1);
 });
 
+test('a board whose capture timed out is not captured again on changes until it mounts again', async () => {
+  vi.useFakeTimers();
+  await render();
+  const a = frame('a');
+  await a.post({ type: 'ryugi:board:ready' });
+  await act(async () => { vi.advanceTimersByTime(10_000); });
+  await a.post({ type: 'ryugi:board:changed' });
+  expect(a.posted).toHaveBeenCalledTimes(1);
+});
+
 test('one capture runs at a time, and a change while zooming waits until the zoom ends', async () => {
   await render();
   const a = frame('a');

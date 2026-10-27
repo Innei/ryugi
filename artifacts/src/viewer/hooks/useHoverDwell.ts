@@ -4,6 +4,8 @@ import type { View } from '../lib/view';
 
 interface Client { clientX: number; clientY: number }
 
+const IN_FRAME = { x: -1e9, y: -1e9 };
+
 const dwellLength = () => {
   if (typeof location === 'undefined') return HOVER_DWELL_MS;
   const params = new URLSearchParams(location.search);
@@ -11,9 +13,10 @@ const dwellLength = () => {
   return params.has('debug') && tuned > 0 ? tuned : HOVER_DWELL_MS;
 };
 
-export function useHoverDwell({ scaling, view, locate }: {
+export function useHoverDwell({ scaling, view, inside = null, locate }: {
   scaling: boolean;
   view: View;
+  inside?: string | null;
   locate: (client: Client) => { board: string | null; x: number; y: number };
 }) {
   const [, bump] = useReducer((count: number) => count + 1, 0);
@@ -40,8 +43,13 @@ export function useHoverDwell({ scaling, view, locate }: {
   useEffect(() => () => dwell.dispose(), [dwell]);
   useEffect(() => dwell.setScaling(scaling), [dwell, scaling]);
   useEffect(() => {
-    if (last.current) track(last.current);
-  }, [view.x, view.y, view.k, track]);
+    if (!inside) return;
+    last.current = null;
+    dwell.move(inside, IN_FRAME);
+  }, [dwell, inside]);
+  useEffect(() => {
+    if (last.current && !scaling) track(last.current);
+  }, [view.x, view.y, view.k, scaling, track]);
 
   return { hovered: dwell.current(), track, leave };
 }

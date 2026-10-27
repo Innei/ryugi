@@ -131,13 +131,38 @@ test('a warming board that never reports ready is given up after 8 s and its slo
   expect(run({ warm: ['c'] })).toEqual({ a: 'placeholder', b: 'placeholder', c: 'placeholder+mounted+warming' });
 });
 
-test('a warming board that loads but never reports ready is given up 3 s after load', () => {
+test('a warming board that has loaded still has until 8 s after mounting to report ready', () => {
   const { time, controller, run, gaveUp } = setup({ boards: [board('a', 0, 100, 100)], view: { x: 0, y: 0, k: 0.2 }, warm: ['a'] });
+  run();
+  time.advance(500);
+  controller.loaded('a');
+  time.advance(3000);
+  expect(gaveUp).toEqual([]);
+  expect(run().a).toBe('placeholder+mounted+warming');
+  time.advance(4500);
+  expect(gaveUp).toEqual(['a']);
+});
+
+test('a live board that only timed into ready is given up once it would stay mounted just to be warmed', () => {
+  const { time, controller, run, gaveUp } = setup({ boards: [board('a', 0)] });
   run();
   controller.loaded('a');
   time.advance(3000);
+  expect(run().a).toBe('live+mounted+ready');
+  run({ view: { x: 0, y: 0, k: 0.3 }, warm: ['a'] });
+  time.advance(1500);
+  expect(run().a).toBe('placeholder');
   expect(gaveUp).toEqual(['a']);
-  expect(run({ warm: [] }).a).toBe('placeholder');
+});
+
+test('a live board that reported ready stays mounted to be warmed when it is demoted', () => {
+  const { time, controller, run, gaveUp } = setup({ boards: [board('a', 0)] });
+  run();
+  controller.ready('a');
+  run({ view: { x: 0, y: 0, k: 0.3 }, warm: ['a'] });
+  time.advance(1500);
+  expect(run().a).toBe('placeholder+mounted+ready+warming');
+  expect(gaveUp).toEqual([]);
 });
 
 test('nothing is warmed while the scale changes', () => {

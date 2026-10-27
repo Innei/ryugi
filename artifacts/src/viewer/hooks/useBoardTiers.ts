@@ -50,6 +50,7 @@ export function useBoardTiers({ artifact, boards, versions, pending, view, scali
   const scheme = useColorScheme();
   const frames = useRef(new Map<string, HTMLIFrameElement>());
   const reported = useRef(new Set<string>());
+  const timedOut = useRef(new Set<string>());
   const refs = useRef(new Map<string, (element: HTMLIFrameElement | null) => void>());
 
   const html = boards.filter(([id, board]) => !isMediaBoard(board) && boardReady(versions, board.file) && !pending.has(id));
@@ -124,6 +125,7 @@ export function useBoardTiers({ artifact, boards, versions, pending, view, scali
       const timer = window.setTimeout(() => {
         if (inflight.current?.request !== request) return;
         failed.current.add(key);
+        timedOut.current.add(id);
         inflight.current = null;
         bump();
         pump();
@@ -140,6 +142,7 @@ export function useBoardTiers({ artifact, boards, versions, pending, view, scali
 
   useEffect(() => {
     const capture = (id: string) => {
+      if (timedOut.current.has(id)) return;
       if (!queue.current.includes(id)) queue.current.push(id);
       pump();
     };
@@ -181,6 +184,7 @@ export function useBoardTiers({ artifact, boards, versions, pending, view, scali
       }
       frames.current.delete(id);
       reported.current.delete(id);
+      timedOut.current.delete(id);
       queue.current = queue.current.filter((queued) => queued !== id);
       if (inflight.current?.id !== id) return;
       window.clearTimeout(inflight.current.timer);
@@ -191,6 +195,7 @@ export function useBoardTiers({ artifact, boards, versions, pending, view, scali
   }, []);
   const loaded = useCallback((id: string) => {
     reported.current.delete(id);
+    timedOut.current.delete(id);
     controller.loaded(id);
   }, [controller]);
 

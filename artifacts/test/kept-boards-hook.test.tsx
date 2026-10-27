@@ -7,11 +7,11 @@ import { useKeptBoards } from '../src/viewer/hooks/useKeptBoards';
 
 let root: Root;
 let kept: ReadonlySet<string>;
-let props: { boards: [string, BoardSpec][]; versions: Record<string, number> };
+let props: { boards: [string, BoardSpec][]; versions: Record<string, number>; accepts?: (id: string) => boolean };
 const spec = (id: string): BoardSpec => ({ file: `pages/${id}.html`, page: 'p', x: 0, y: 0, w: 100, h: 100 });
 
 function Harness() {
-  kept = useKeptBoards(props.boards, props.versions);
+  kept = useKeptBoards(props.boards, props.versions, props.accepts);
   return null;
 }
 const render = async (patch: Partial<typeof props> = {}) => {
@@ -57,4 +57,12 @@ test('a kept board that the agent rewrites stops being kept', async () => {
   await interact(frameOf('a'));
   await render({ versions: { 'pages/a.html': 2, 'pages/b.html': 1 } });
   expect([...kept]).toEqual([]);
+});
+
+test('a press the inspector takes for selecting does not keep the board', async () => {
+  await render({ accepts: (id) => id === 'b' });
+  await interact(frameOf('a'));
+  expect([...kept]).toEqual([]);
+  await interact(frameOf('b'));
+  expect([...kept]).toEqual(['b']);
 });

@@ -121,8 +121,9 @@ function DesktopArtboard({ id, artifact, canvas, layout, warnings, pending, cont
   };
   const selectionEnabled = tool === 'select' && !expanded && !panning;
   const commentTool = tool === 'comment';
+  const inspectorEnabled = !expanded && (tool === 'select' || commentTool || inspectorOpen);
   const inspector = useInspector({
-    enabled: !expanded && (tool === 'select' || commentTool || inspectorOpen),
+    enabled: inspectorEnabled,
     mode: commentTool ? 'comment' : 'select',
     playing,
     onInput: (boardId, input) => {
@@ -210,12 +211,12 @@ function DesktopArtboard({ id, artifact, canvas, layout, warnings, pending, cont
     return { x: (event.clientX - rect.left - view.x) / view.k, y: (event.clientY - rect.top - view.y) / view.k };
   };
   const boardAt = (point: { x: number; y: number }) => boards.find(([, b]) => point.x >= b.x && point.x <= b.x + b.w && point.y >= b.y && point.y <= b.y + b.h)?.[0] ?? null;
-  const hover = useHoverDwell({ scaling, view, locate: (client) => {
+  const hover = useHoverDwell({ scaling, view, inside: inspector.hover?.boardId ?? null, locate: (client) => {
     const point = worldPoint(client);
     return { board: boardAt(point), x: point.x * view.k, y: point.y * view.k };
   } });
   const marquee = selection.marquee;
-  const kept = useKeptBoards(boards, versions);
+  const kept = useKeptBoards(boards, versions, (board) => !inspectorEnabled || playing.has(board));
   const pinned = useMemo(() => new Set([
     ...kept,
     ...playing,
@@ -231,7 +232,7 @@ function DesktopArtboard({ id, artifact, canvas, layout, warnings, pending, cont
   };
   const tiers = useBoardTiers({
     artifact: artifact ?? id, boards: tiered ? boards : [], versions, pending: pendingBoards, view, scaling, viewport: size, pinned,
-    hovered: inspector.hover?.boardId ?? hover.hovered, hoverPromotes: tool === 'select' || commentTool, persistable,
+    hovered: hover.hovered, hoverPromotes: tool === 'select' || commentTool, persistable,
   });
   const renders = tiered ? tiers.renders : visibleRenders({ boards: boards.map(([board, spec]) => ({ id: board, ...spec })), view, viewport: size });
   const frameRef = useMemo(() => {

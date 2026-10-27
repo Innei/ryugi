@@ -14,6 +14,8 @@ const MAX_WARMING = 2;
 const READY_AFTER_LOAD_MS = 3000;
 const MOUNT_TIMEOUT_MS = 8000;
 
+interface Frame { ready: boolean; reported: boolean; timer?: number }
+
 interface Clock {
   now?: () => number;
   schedule?: (fn: () => void, ms: number) => number;
@@ -29,7 +31,7 @@ export function createTierController({
   onChange,
   onGiveUp,
 }: Clock) {
-  const frames = new Map<string, { ready: boolean; timer?: number }>();
+  const frames = new Map<string, Frame>();
   const wantedAt = new Map<string, number>();
   const lingering = new Map<string, number>();
   let live = new Set<string>();
@@ -47,22 +49,34 @@ export function createTierController({
     if (frame?.timer !== undefined) cancel(frame.timer);
     frames.delete(id);
   };
+  const giveUp = (id: string) => {
+    release(id);
+    onGiveUp?.(id);
+  };
   const settle = (id: string) => {
     if (live.has(id)) return markReady(id);
     if (!frames.has(id)) return;
-    release(id);
-    onGiveUp?.(id);
+    giveUp(id);
     onChange();
+  };
+  const mount = (id: string) => {
+    const frame: Frame = { ready: false, reported: false };
+    frames.set(id, frame);
+    frame.timer = schedule(() => settle(id), MOUNT_TIMEOUT_MS);
   };
 
   return {
     loaded(id: string) {
       const frame = frames.get(id);
-      if (!frame || frame.ready) return;
+      if (!frame || frame.ready || !live.has(id)) return;
       if (frame.timer !== undefined) cancel(frame.timer);
       frame.timer = schedule(() => settle(id), READY_AFTER_LOAD_MS);
     },
-    ready: markReady,
+    ready(id: string) {
+      const frame = frames.get(id);
+      if (frame) frame.reported = true;
+      markReady(id);
+    },
     update(input: ControllerInput): Map<string, BoardState> {
       const time = now();
       const ids = new Set(input.boards.map((board) => board.id));
@@ -88,23 +102,27 @@ export function createTierController({
         live = next;
         const warm = (input.warm ?? []).filter((id) => ids.has(id) && !live.has(id));
         const wanted = new Set(warm);
-        for (const id of [...frames.keys()]) if (!live.has(id) && !wanted.has(id)) release(id);
+        const given = new Set<string>();
+        for (const [id, frame] of [...frames]) {
+          if (live.has(id)) continue;
+          if (!wanted.has(id)) release(id);
+          else if (frame.ready && !frame.reported) {
+            giveUp(id);
+            given.add(id);
+          }
+        }
         let mounting = [...frames.values()].filter((frame) => !frame.ready).length;
         const waiting = input.boards.map((board) => board.id).filter((id) => live.has(id) && !frames.has(id)).sort((a, b) => Number(first(b)) - Number(first(a)));
         for (const id of waiting) {
           if (mounting >= MAX_MOUNTING) break;
-          const frame: { ready: boolean; timer?: number } = { ready: false };
-          frames.set(id, frame);
-          frame.timer = schedule(() => markReady(id), MOUNT_TIMEOUT_MS);
+          mount(id);
           mounting++;
         }
         let warming = [...frames.keys()].filter((id) => !live.has(id)).length;
         for (const id of warm) {
           if (mounting >= MAX_MOUNTING || warming >= MAX_WARMING) break;
-          if (frames.has(id)) continue;
-          const frame: { ready: boolean; timer?: number } = { ready: false };
-          frames.set(id, frame);
-          frame.timer = schedule(() => settle(id), MOUNT_TIMEOUT_MS);
+          if (frames.has(id) || given.has(id)) continue;
+          mount(id);
           mounting++;
           warming++;
         }
