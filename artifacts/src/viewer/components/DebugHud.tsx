@@ -1,5 +1,6 @@
 import * as stylex from '@stylexjs/stylex';
 import { useEffect, useState } from 'react';
+
 import type { BoardRender, BoardTier } from '../lib/board-tiers';
 
 const WINDOW_MS = 1000;
@@ -60,7 +61,7 @@ export function DebugHud({
     (tier) => `${tier} ${[...renders.values()].filter((render) => render.tier === tier).length}`,
   );
   return (
-    <div data-chrome="debug" aria-hidden="true" {...stylex.props(styles.hud)}>
+    <div aria-hidden="true" data-chrome="debug" {...stylex.props(styles.hud)}>
       {`${stats.fps} fps · worst ${stats.worst} ms · ${stats.slow} slow\n${counts.join(' · ')}${scaling ? ' · zooming' : ''}`}
     </div>
   );

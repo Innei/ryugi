@@ -5,8 +5,8 @@ export const notRunning = (project: string) =>
   `No artifacts server is running for this project. Start it with \`${invocation()} start --project-dir ${project}\`, then run this again.`;
 
 export interface ServerResponse {
-  status: number;
   json: Record<string, any>;
+  status: number;
 }
 
 export function serverClient(projectDir: string) {

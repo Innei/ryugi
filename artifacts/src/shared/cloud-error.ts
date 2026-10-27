@@ -1,7 +1,7 @@
 export interface CloudErrorDetails {
   code?: string;
-  plan?: 'free' | 'pro';
   limit?: { kind: string; used: number; max: number; requested?: number };
+  plan?: 'free' | 'pro';
   upgradeUrl?: string;
 }
 

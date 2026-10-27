@@ -1,6 +1,7 @@
 import { createDefaultRegistry, deserializeFromXml, serializeToXml } from '@haklex/rich-litexml';
 import type { SerializedEditorState, SerializedLexicalNode } from 'lexical';
 import { nanoid } from 'nanoid';
+
 import { DYNAMIC_URL } from '../shared/dynamic';
 import { stripOpaque, TAG, unbalancedTag } from './balance';
 
@@ -104,7 +105,7 @@ registry.registerWriter('pending', (node) => {
 export class DocumentRejected extends Error {}
 
 export const URL_ATTR = /\surl\s*=\s*(?:"([^"]*)"|'([^']*)')/i;
-const DYNAMIC_BODY = /<dynamic\b[^>]*?(?<!\/)>([\s\S]*?)<\/dynamic>/gi;
+const DYNAMIC_BODY = /<dynamic\b[^>]*(?<!\/)>([\s\S]*?)<\/dynamic>/gi;
 const FOOTNOTE_SECTION = /<footnote-section\b[\s\S]*?<\/footnote-section>/gi;
 const DEF_TAG = /<def[\s>/]/i;
 const CDATA_BODY = /^\s*<!\[CDATA\[([\s\S]*)\]\]>\s*$/;
@@ -120,7 +121,7 @@ function unsupportedTag(xml: string): string | null {
 }
 
 function strayDef(xml: string): string | null {
-  return DEF_TAG.test(stripOpaque(xml).replace(FOOTNOTE_SECTION, ''))
+  return DEF_TAG.test(stripOpaque(xml).replaceAll(FOOTNOTE_SECTION, ''))
     ? '<def> belongs inside <footnote-section>'
     : null;
 }

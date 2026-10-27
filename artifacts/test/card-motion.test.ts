@@ -1,5 +1,6 @@
 // @vitest-environment happy-dom
 import { afterEach, expect, test, vi } from 'vitest';
+
 import { play, spring } from '../src/viewer/document/motion';
 
 afterEach(() => vi.unstubAllGlobals());

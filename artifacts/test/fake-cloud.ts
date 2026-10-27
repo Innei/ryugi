@@ -3,36 +3,37 @@ import fs from 'node:fs';
 import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
-import { startArtifactsServer, type ArtifactsServer } from '../src/server/app';
+
+import { type ArtifactsServer, startArtifactsServer } from '../src/server/app';
 import { writeCredentials } from '../src/server/credentials';
 import { listen } from '../src/server/http';
 import { tempRoot } from './helpers';
 
 export interface Recorded {
+  auth: string | undefined;
+  body?: string;
+  json?: any;
   method: string;
   path: string;
-  auth: string | undefined;
-  json?: any;
-  body?: string;
 }
 
 export interface StoredArtifact {
-  visibility: string;
   blobs: Map<string, string>;
   versions: {
     title: string;
     payload: Record<string, any>;
     files: { path: string; hash: string }[];
   }[];
+  visibility: string;
 }
 
 export interface FakeCloud {
+  close: () => Promise<void>;
+  gate: (req: Recorded) => Promise<void> | undefined;
   origin: string;
   requests: Recorded[];
-  store: Map<string, StoredArtifact>;
   respond: (req: Recorded) => { status: number; body?: unknown } | undefined;
-  gate: (req: Recorded) => Promise<void> | undefined;
-  close(): Promise<void>;
+  store: Map<string, StoredArtifact>;
 }
 
 let running: ArtifactsServer[] = [];
@@ -209,7 +210,7 @@ export async function call(
     },
   );
   const text = await res.text();
-  let json: Record<string, unknown> = {};
+  let json: Record<string, unknown>;
   try {
     json = JSON.parse(text);
   } catch {

@@ -4,12 +4,12 @@ import { useEffect, useState } from 'react';
 
 export interface SelectionTarget {
   blockId: string;
-  quote: string;
-  left: number;
   bottom: number;
-  top: number;
-  right: number;
+  left: number;
+  quote: string;
   range: Range;
+  right: number;
+  top: number;
 }
 
 const SETTLE_MS = 200;

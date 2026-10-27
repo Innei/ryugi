@@ -1,10 +1,12 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
+
 import { createLoroBinding } from '@haklex/rich-collab-loro';
 import { $getRoot, $isElementNode, $isTextNode, type LexicalNode, type TextNode } from 'lexical';
 import { LoroDoc } from 'loro-crdt';
 import { afterEach, describe, expect, test } from 'vitest';
+
 import { updateArtifactConfig } from '../src/server/config';
 import { createDocumentHeadlessEditor } from '../src/server/document-headless';
 import { call, closeAll, config, latest, requestLines, start } from './fake-cloud';
@@ -853,6 +855,6 @@ describe('reserving a cloud link', () => {
   test('status names this computer so the local page can mark its cloud links', async () => {
     const { server } = await start();
     const { json } = await call(server, 'GET', '/api/cloud/status');
-    expect(json.hostId).toMatch(/^[A-Za-z0-9_-]{16,64}$/);
+    expect(json.hostId).toMatch(/^[\w-]{16,64}$/);
   });
 });

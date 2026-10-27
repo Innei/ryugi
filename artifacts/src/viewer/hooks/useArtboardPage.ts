@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+
 import type { Bounds, CanvasLayout, CanvasSpec } from '../../shared/types';
 import { resolveFocus } from '../lib/view';
 import { usePageQuery } from './usePageQuery';
 
 interface Options {
   canvas: CanvasSpec | null | undefined;
-  layout: CanvasLayout | null | undefined;
-  fitPage: (page: string) => boolean;
   fitFocus: (target: string, resolved: { page: string; bounds: Bounds }) => void;
+  fitPage: (page: string) => boolean;
+  layout: CanvasLayout | null | undefined;
   startAtFocus?: boolean;
 }
 

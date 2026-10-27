@@ -1,14 +1,15 @@
 import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
 import { useEffect, useRef } from 'react';
-import { waitingOn, type Thread } from '../../shared/comments';
+
+import { type Thread, waitingOn } from '../../shared/comments';
 import { BottomSheet } from '../components/BottomSheet';
+import { t } from '../i18n';
 import type { ThreadActions } from './CommentCard';
 import { Composer } from './Composer';
 import { EASE, play } from './motion';
 import { PhoneThread } from './PhoneThread';
 import type { SelectionTarget } from './useSelectionComment';
-import { t } from '../i18n';
 
 export const SHEET_PEEK = 78;
 export const SHEET_HALF = 0.5;
@@ -69,16 +70,16 @@ const styles = stylex.create({
 });
 
 interface Props {
-  threads: Thread[];
-  agent?: string;
   actions?: ThreadActions;
-  offline: boolean;
-  draft: SelectionTarget | null;
-  onCreate: (target: SelectionTarget, text: string) => Promise<boolean>;
-  onCancelDraft: () => void;
   activeId: string | null;
-  snap: number;
+  agent?: string;
+  draft: SelectionTarget | null;
+  offline: boolean;
+  onCancelDraft: () => void;
+  onCreate: (target: SelectionTarget, text: string) => Promise<boolean>;
   onSnap: (snap: number) => void;
+  snap: number;
+  threads: Thread[];
 }
 
 export function PhoneSheet({
@@ -125,16 +126,16 @@ export function PhoneSheet({
 
   return (
     <BottomSheet
-      snaps={[SHEET_PEEK, SHEET_HALF, SHEET_FULL]}
       snap={snap}
-      onSnap={onSnap}
-      onScrim={() => onSnap(SHEET_HALF)}
+      snaps={[SHEET_PEEK, SHEET_HALF, SHEET_FULL]}
       header={
         <span {...stylex.props(styles.title)}>
           {t('document.sheetComments', { count: shown.length })}
           {note ? <span {...stylex.props(styles.note)}>· {note}</span> : null}
         </span>
       }
+      onScrim={() => onSnap(SHEET_HALF)}
+      onSnap={onSnap}
     >
       <div ref={body} {...stylex.props(styles.body)}>
         {draft && actions ? (
@@ -164,12 +165,12 @@ export function PhoneSheet({
         ) : null}
         {shown.map((thread) => (
           <PhoneThread
-            key={thread.id}
-            thread={thread}
-            agent={agent}
             actions={actions}
             active={thread.id === activeId}
+            agent={agent}
+            key={thread.id}
             offline={offline}
+            thread={thread}
           />
         ))}
       </div>

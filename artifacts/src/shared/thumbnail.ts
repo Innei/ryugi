@@ -2,9 +2,9 @@ import type { ArtifactType } from './types';
 
 export interface ThumbnailArtifact {
   id: string;
-  type: ArtifactType;
-  title?: string | null;
   project?: string | null;
+  title?: string | null;
+  type: ArtifactType;
 }
 
 // Bump the path when the drawing changes so immutable browser copies are replaced.
@@ -22,7 +22,7 @@ const string = (value: unknown) => (typeof value === 'string' ? value : '');
 const children = (value: unknown): ObjectValue[] =>
   Array.isArray(value) ? value.slice(0, 200).map(object) : [];
 const escape = (value: string) =>
-  value.replace(
+  value.replaceAll(
     /[&<>"']/g,
     (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' })[c]!,
   );
@@ -165,10 +165,10 @@ function documentDrawing(title: string, payload: ObjectValue) {
 }
 
 interface Box {
+  h: number;
+  w: number;
   x: number;
   y: number;
-  w: number;
-  h: number;
 }
 function box(value: unknown): Box | null {
   const b = object(value);

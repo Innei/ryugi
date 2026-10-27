@@ -1,12 +1,14 @@
+import '../inspector/inspector.css';
+
 import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
 import { MessageCirclePlus, X } from 'lucide-react';
+
 import type { BoardThread } from '../../shared/board-comments';
 import { authorOf } from '../document/author';
-import { anchorLabel, staleText } from '../lib/board-anchor';
-import '../inspector/inspector.css';
-import { brand } from '../tokens.stylex';
 import { i18n, useTranslation } from '../i18n';
+import { anchorLabel, staleText } from '../lib/board-anchor';
+import { brand } from '../tokens.stylex';
 
 export type CommentsTab = 'open' | 'all';
 
@@ -139,15 +141,15 @@ const styles = stylex.create({
 });
 
 interface Props {
-  threads: BoardThread[];
+  numbers: Map<string, number>;
+  onClose: () => void;
+  onOpen: (id: string) => void;
+  onTab: (tab: CommentsTab) => void;
+  openId: string | null;
   page: string | null;
   stale: Set<string>;
-  numbers: Map<string, number>;
-  openId: string | null;
   tab: CommentsTab;
-  onTab: (tab: CommentsTab) => void;
-  onOpen: (id: string) => void;
-  onClose: () => void;
+  threads: BoardThread[];
 }
 
 const timeOf = (iso: string) =>
@@ -176,13 +178,13 @@ export function CommentsPanel({
     (a, b) => (numbers.get(a.id) ?? 0) - (numbers.get(b.id) ?? 0),
   );
   return (
-    <aside className="ryugi-inspector" data-chrome aria-label={t('chrome.comments')}>
+    <aside data-chrome aria-label={t('chrome.comments')} className="ryugi-inspector">
       <div {...stylex.props(styles.head)}>
         {t('chrome.comments')} <span {...stylex.props(styles.count)}>{open.length}</span>
         <button
-          type="button"
           aria-label={t('chrome.closeComments')}
           title={t('chrome.closeCommentsTitle')}
+          type="button"
           onClick={onClose}
           {...stylex.props(styles.close)}
         >
@@ -208,7 +210,7 @@ export function CommentsPanel({
       <div {...stylex.props(styles.list)}>
         {shown.length === 0 ? (
           <div {...stylex.props(styles.empty)}>
-            <MessageCirclePlus size={14} aria-hidden />
+            <MessageCirclePlus aria-hidden size={14} />
             {t('comments.emptyCanvas')}
           </div>
         ) : null}
@@ -218,8 +220,8 @@ export function CommentsPanel({
           const isStale = stale.has(thread.id);
           return (
             <div
-              key={thread.id}
               data-thread={thread.id}
+              key={thread.id}
               onClick={() => onOpen(thread.id)}
               {...stylex.props(styles.row, thread.id === openId && styles.rowOn)}
             >

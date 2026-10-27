@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'vitest';
+
 import type { BoardSpec } from '../src/shared/types';
 import { boardReady, canPlay } from '../src/viewer/lib/play';
 

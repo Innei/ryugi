@@ -1,5 +1,5 @@
+export { type CloudLive, DocumentView } from '../document/DocumentView';
 export { default as SnapshotDocument } from '../document/SnapshotDocument';
-export { DocumentView, type CloudLive } from '../document/DocumentView';
 export {
   createRelayTransport,
   type DocumentMeta,

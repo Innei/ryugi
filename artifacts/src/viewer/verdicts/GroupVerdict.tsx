@@ -1,6 +1,7 @@
 import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
 import { Check, X } from 'lucide-react';
+
 import type { GroupVerdict as Verdict } from '../../shared/verdicts';
 import { useTranslation } from '../i18n';
 
@@ -50,12 +51,12 @@ const clock = (time: string | number, locale: string) =>
   new Date(time).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', hour12: false });
 
 interface Props {
-  verdict: Verdict;
-  evidenceAt: number;
   canJudge: boolean;
+  evidenceAt: number;
   onPass: () => void;
   onReject: () => void;
   onUndo: () => void;
+  verdict: Verdict;
 }
 
 export function GroupVerdict({ verdict, evidenceAt, canJudge, onPass, onReject, onUndo }: Props) {

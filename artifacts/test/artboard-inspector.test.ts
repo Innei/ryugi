@@ -1,13 +1,14 @@
 // @vitest-environment happy-dom
-import { act, createElement } from 'react';
-import { createRoot, type Root } from 'react-dom/client';
 import { ConfigProvider } from '@lobehub/ui';
 import { motion } from 'motion/react';
+import { act, createElement } from 'react';
+import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
-import { ArtboardLayout } from '../src/viewer/layouts/ArtboardLayout';
-import { Properties } from '../src/viewer/inspector/Properties';
-import { Layers } from '../src/viewer/inspector/Layers';
+
 import { INSPECTOR_PROPERTIES, type InspectorSelection } from '../src/shared/inspector';
+import { Layers } from '../src/viewer/inspector/Layers';
+import { Properties } from '../src/viewer/inspector/Properties';
+import { ArtboardLayout } from '../src/viewer/layouts/ArtboardLayout';
 
 vi.mock('@stylexjs/stylex', async (original) => ({
   ...(await original<object>()),

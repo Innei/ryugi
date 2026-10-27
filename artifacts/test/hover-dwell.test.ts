@@ -1,4 +1,5 @@
 import { expect, test } from 'vitest';
+
 import { createHoverDwell } from '../src/viewer/lib/hover-dwell';
 
 function setup(dwellMs = 600) {

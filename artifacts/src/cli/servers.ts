@@ -1,27 +1,28 @@
 import path from 'node:path';
+
 import { readEntries, registryDir, removeEntry } from '../server/registry';
 import { hasServerId, readText } from './process';
 
 export interface ServerStatus {
-  pid: number;
   clients: number;
   lastActivity: number;
+  pid: number;
 }
 
 export interface ServerRow {
-  project: string;
-  root: string;
-  pid: number;
-  url: string | null;
-  port: number | null;
-  startedAt: number;
-  version: string | null;
-  oldRelease: boolean;
   clients: number | null;
   lastActivity: number | null;
-  safeToStop: boolean;
-  status: 'ok' | 'no-status';
   log: string;
+  oldRelease: boolean;
+  pid: number;
+  port: number | null;
+  project: string;
+  root: string;
+  safeToStop: boolean;
+  startedAt: number;
+  status: 'ok' | 'no-status';
+  url: string | null;
+  version: string | null;
 }
 
 const SAFE_IDLE_MS = 30 * 60_000;

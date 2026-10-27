@@ -9,10 +9,10 @@ export type AgentActivity =
 export const STALE_MS = 5 * 60_000;
 
 interface ActivityInput {
-  streaming: boolean;
-  pending: number;
   agentActiveAt: number | undefined;
   now: number;
+  pending: number;
+  streaming: boolean;
 }
 
 export function agentActivity({
@@ -42,12 +42,14 @@ export function activityLabel(
   section: string | null,
 ): string | null {
   switch (activity.kind) {
-    case 'editing':
+    case 'editing': {
       return section
         ? i18n.t('activity.editingSection', { agent, section })
         : i18n.t('activity.editing', { agent });
-    case 'idle':
+    }
+    case 'idle': {
       return null;
+    }
     case 'working': {
       const left = i18n.t('activity.pending', { agent, count: activity.pending });
       if (activity.idleMs === null) return left;
@@ -55,11 +57,12 @@ export function activityLabel(
         ? i18n.t('activity.updatedJustNow', { left })
         : i18n.t('activity.updatedAgo', { left, duration: duration(activity.idleMs) });
     }
-    case 'stale':
+    case 'stale': {
       return i18n.t('activity.stale', {
         agent,
         duration: duration(activity.idleMs),
         count: activity.pending,
       });
+    }
   }
 }

@@ -3,6 +3,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import readline from 'node:readline';
+
 import { AGENT_MARKERS } from '../server/agent';
 import { artifactPath } from '../server/artifact-address';
 import { artifactKeyOf } from '../server/artifacts';
@@ -13,20 +14,20 @@ import {
   ARTIFACT_PATTERN,
   CliError,
   invocation,
-  projectPaths,
   type ProjectPaths,
+  projectPaths,
 } from './paths';
 import { alive, hasServerId, parentOf, readText, sleep, waitForExit } from './process';
 
 export interface StartOptions {
-  projectDir: string;
   artifact?: string;
+  background: boolean;
+  foreground: boolean;
   host: string;
-  urlHost?: string;
   idleTimeoutMinutes?: string;
   open: boolean;
-  foreground: boolean;
-  background: boolean;
+  projectDir: string;
+  urlHost?: string;
 }
 
 export type Emit = (value: Record<string, unknown>) => void;

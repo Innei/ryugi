@@ -15,9 +15,9 @@
  * installing @opencode-ai/plugin or effect.
  */
 
-import path from 'path';
-import fs from 'fs';
-import { fileURLToPath } from 'url';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -47,7 +47,7 @@ const extractAndStripFrontmatter = (content) => {
       const value = line.slice(colonIdx + 1).trim();
       // Block scalar markers (>, |, optionally with +/- chomping) carry no
       // value themselves; the indented lines that follow do.
-      frontmatter[key] = /^(>[+-]?|\|[+-]?)$/.test(value) ? '' : value;
+      frontmatter[key] = /^(?:>[+-]?|\|[+-]?)$/.test(value) ? '' : value;
       lastKey = key;
     } else if (lastKey !== null && line.trim() !== '') {
       // Continuation of a multi-line value: append rather than drop so long
@@ -181,7 +181,7 @@ const isChildSession = async (fetchSession, sessionID) => {
   if (!sessionID) return false; // unknown session: keep current behavior
   if (_childSessionCache.has(sessionID)) return _childSessionCache.get(sessionID);
 
-  let isChild = false;
+  let isChild;
   try {
     const result = await fetchSession(sessionID);
     // V1 returns a successful SDK envelope while V2 returns a direct session
@@ -226,7 +226,7 @@ const isChildSession = async (fetchSession, sessionID) => {
  * Provides: config hook (V1 skills registration) + bootstrap injection
  * (experimental.chat.messages.transform).
  */
-export const RyugiPlugin = async ({ client, directory }) => {
+export const RyugiPlugin = async ({ client }) => {
   return {
     // Inject skills path into live config so OpenCode discovers ryugi skills
     // without requiring manual symlinks or config file edits.

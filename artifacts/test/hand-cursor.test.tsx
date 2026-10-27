@@ -2,6 +2,7 @@
 import { act, createElement, useRef } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
+
 import { HandCursor } from '../src/viewer/components/HandCursor';
 
 vi.mock('@stylexjs/stylex', async (original) => ({
@@ -93,7 +94,7 @@ test('hides the system cursor on the canvas and everything over it only while th
   expect(systemCursorHidden()).toBe(true);
   expect(
     [...document.querySelectorAll('style')].some((style) =>
-      /\[data-hand-drawn\][^{]*\*[^{]*\{[^}]*cursor:\s*none\s*!important/.test(
+      /\[data-hand-drawn\][^*{]*\*[^{]*\{[^}]*cursor:\s*none\s*!important/.test(
         style.textContent ?? '',
       ),
     ),

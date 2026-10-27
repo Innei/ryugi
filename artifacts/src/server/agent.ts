@@ -89,6 +89,6 @@ export function detectAgent(env: Env): string | undefined {
   const marked = MARKERS.find(([, test]) => test(env))?.[0];
   if (marked) return NAMES[marked];
   const agent = declaredName(env.AGENT);
-  if (agent && !/^(1|true|yes)$/.test(agent)) return NAMES[agent] ?? agent;
+  if (agent && !/^(?:1|true|yes)$/.test(agent)) return NAMES[agent] ?? agent;
   return undefined;
 }

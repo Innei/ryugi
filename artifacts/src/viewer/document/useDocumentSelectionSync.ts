@@ -1,6 +1,7 @@
 import { blockIdState } from '@haklex/rich-editor';
 import { $getNearestNodeFromDOMNode, $getRoot, $getState, type LexicalEditor } from 'lexical';
 import { useEffect, useRef } from 'react';
+
 import {
   DOCUMENT_SELECTION_LIMITS,
   type DocumentSelectionMessage,

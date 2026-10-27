@@ -1,4 +1,5 @@
 import { expect, test } from 'vitest';
+
 import { AGENT_DISPLAY_NAMES } from '../src/server/agent';
 import { agentIconOf, authorOf } from '../src/viewer/document/author';
 

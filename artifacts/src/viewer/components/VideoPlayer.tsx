@@ -2,7 +2,8 @@ import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
 import { Maximize2, Repeat } from 'lucide-react';
 import { motion } from 'motion/react';
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import { type PointerEvent as ReactPointerEvent, useEffect, useRef, useState } from 'react';
+
 import { useTranslation } from '../i18n';
 
 const BAR_HEIGHT = 36;
@@ -103,23 +104,23 @@ const clock = (seconds: number) => {
 
 function PlaybackIcon({ playing }: { playing: boolean }) {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <svg aria-hidden="true" fill="currentColor" height="16" viewBox="0 0 24 24" width="16">
       {[false, true].map((pause) => (
         <motion.g
-          key={String(pause)}
           initial={false}
+          key={String(pause)}
+          style={{ transformOrigin: '12px 12px' }}
+          transition={{ type: 'spring', duration: 0.3, bounce: 0 }}
           animate={{
             opacity: playing === pause ? 1 : 0,
             scale: playing === pause ? 1 : 0.25,
             filter: playing === pause ? 'blur(0px)' : 'blur(4px)',
           }}
-          transition={{ type: 'spring', duration: 0.3, bounce: 0 }}
-          style={{ transformOrigin: '12px 12px' }}
         >
           {pause ? (
             <>
-              <rect x="6" y="4" width="4" height="16" rx="1" />
-              <rect x="14" y="4" width="4" height="16" rx="1" />
+              <rect height="16" rx="1" width="4" x="6" y="4" />
+              <rect height="16" rx="1" width="4" x="14" y="4" />
             </>
           ) : (
             <path d="M8 4.6c-.9-.5-2 .1-2 1.1v12.6c0 1 1.1 1.6 2 1.1l11-6.3c.9-.5.9-1.7 0-2.2Z" />
@@ -131,11 +132,11 @@ function PlaybackIcon({ playing }: { playing: boolean }) {
 }
 
 interface Props {
-  src: string;
-  title: string;
   barScale: number;
   barWidth: number;
   onExpand?: () => void;
+  src: string;
+  title: string;
 }
 
 export function VideoPlayer({ src, title, barScale, barWidth, onExpand }: Props) {
@@ -195,21 +196,18 @@ export function VideoPlayer({ src, title, barScale, barWidth, onExpand }: Props)
   return (
     <>
       <video
-        ref={video}
-        src={src}
-        title={title}
         muted
         playsInline
         preload="metadata"
+        ref={video}
+        src={src}
+        title={title}
         {...stylex.props(styles.video)}
       />
       <button
-        type="button"
         data-video-surface
         aria-label={playing ? t('video.pauseTitle', { title }) : t('video.playTitle', { title })}
-        onPointerDown={(event) => {
-          press.current = { x: event.clientX, y: event.clientY };
-        }}
+        type="button"
         onClick={(event) => {
           if (
             !event.detail ||
@@ -222,6 +220,9 @@ export function VideoPlayer({ src, title, barScale, barWidth, onExpand }: Props)
         onKeyDown={(event) => {
           if (event.key === ' ' || event.key === 'Enter') event.stopPropagation();
         }}
+        onPointerDown={(event) => {
+          press.current = { x: event.clientX, y: event.clientY };
+        }}
         {...stylex.props(styles.surface)}
       />
       {failed && <div {...stylex.props(styles.failed)}>{t('video.failed')}</div>}
@@ -233,8 +234,8 @@ export function VideoPlayer({ src, title, barScale, barWidth, onExpand }: Props)
           style={{ width: barWidth, transform: `scale(${barScale})` }}
         >
           <button
-            type="button"
             aria-label={playing ? t('video.pause') : t('video.play')}
+            type="button"
             onClick={toggle}
             {...stylex.props(styles.icon)}
           >
@@ -244,11 +245,11 @@ export function VideoPlayer({ src, title, barScale, barWidth, onExpand }: Props)
             {clock(time)} / {clock(duration)}
           </span>
           <div
-            role="slider"
             aria-label={t('video.progress')}
-            aria-valuemin={0}
             aria-valuemax={Math.round(duration || 0)}
+            aria-valuemin={0}
             aria-valuenow={Math.round(time)}
+            role="slider"
             tabIndex={0}
             onPointerDown={(event) => {
               event.currentTarget.setPointerCapture?.(event.pointerId);
@@ -266,17 +267,17 @@ export function VideoPlayer({ src, title, barScale, barWidth, onExpand }: Props)
             />
           </div>
           <button
-            type="button"
             aria-label={t('video.speed')}
+            type="button"
             onClick={cycleRate}
             {...stylex.props(styles.icon, styles.rate)}
           >
             {rate}×
           </button>
           <button
-            type="button"
             aria-label={t('video.loop')}
             aria-pressed={loop}
+            type="button"
             onClick={toggleLoop}
             {...stylex.props(styles.icon, !loop && styles.off)}
           >
@@ -284,8 +285,8 @@ export function VideoPlayer({ src, title, barScale, barWidth, onExpand }: Props)
           </button>
           {onExpand && (
             <button
-              type="button"
               aria-label={t('video.expand')}
+              type="button"
               onClick={onExpand}
               {...stylex.props(styles.icon)}
             >

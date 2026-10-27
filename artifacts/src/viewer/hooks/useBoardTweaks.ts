@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+
 import {
   readTweakSchema,
   readTweakValues,
@@ -13,8 +14,8 @@ export interface BoardTweakState extends TweakDeclaration {
 }
 interface Frame {
   boardId: string;
-  element: HTMLIFrameElement;
   connection: string;
+  element: HTMLIFrameElement;
   session: string | null;
 }
 

@@ -2,6 +2,7 @@
 import { act, createElement, type ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeAll, expect, test, vi } from 'vitest';
+
 import { PhoneArtboard } from '../src/viewer/layouts/PhoneArtboard';
 
 vi.mock('@stylexjs/stylex', async (original) => ({

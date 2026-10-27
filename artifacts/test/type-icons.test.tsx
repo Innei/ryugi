@@ -2,8 +2,9 @@
 import { act, createElement } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, expect, test } from 'vitest';
-import { ARTIFACT_TYPES } from '../src/shared/types';
+
 import { TYPE_GLYPHS, typeFaviconHref } from '../src/shared/type-icons';
+import { ARTIFACT_TYPES } from '../src/shared/types';
 import { TypeIcon } from '../src/viewer/components/TypeIcon';
 import { useTypeFavicon } from '../src/viewer/hooks/useTypeFavicon';
 

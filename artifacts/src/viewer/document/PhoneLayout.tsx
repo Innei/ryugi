@@ -1,8 +1,9 @@
 import * as stylex from '@stylexjs/stylex';
-import { sheetHeight } from '../components/BottomSheet';
 import type { LexicalEditor } from 'lexical';
-import { useState, type ReactNode } from 'react';
+import { type ReactNode, useState } from 'react';
+
 import type { Thread } from '../../shared/comments';
+import { sheetHeight } from '../components/BottomSheet';
 import type { ThreadActions } from './CommentCard';
 import type { DocumentHistoryView } from './DocumentHistory';
 import { editMenuPosition } from './layoutCards';
@@ -27,20 +28,20 @@ const styles = stylex.create({
 });
 
 interface Props {
-  editor: LexicalEditor | null;
-  threads: Thread[];
   actions?: ThreadActions;
   agent?: string;
   canComment: boolean;
   canEdit: boolean;
-  offline: boolean;
-  selection: SelectionTarget | null;
+  children: ReactNode;
   clearSelection: () => void;
+  editor: LexicalEditor | null;
+  history?: DocumentHistoryView | null;
+  offline: boolean;
   onCreate: (target: SelectionTarget, text: string) => Promise<boolean>;
   onEdit: (target: SelectionTarget) => void;
   onMain?: (element: HTMLElement | null) => void;
-  history?: DocumentHistoryView | null;
-  children: ReactNode;
+  selection: SelectionTarget | null;
+  threads: Thread[];
 }
 
 export function PhoneLayout({
@@ -118,15 +119,15 @@ export function PhoneLayout({
       ) : null}
       <div hidden={Boolean(history)} {...stylex.props(styles.dock)}>
         <PhoneSheet
-          threads={threads}
-          agent={agent}
           actions={actions}
-          offline={offline}
-          draft={draft}
-          onCreate={onCreate}
-          onCancelDraft={() => setDraft(null)}
           activeId={activeId}
+          agent={agent}
+          draft={draft}
+          offline={offline}
           snap={snap}
+          threads={threads}
+          onCancelDraft={() => setDraft(null)}
+          onCreate={onCreate}
           onSnap={setSnap}
         />
       </div>

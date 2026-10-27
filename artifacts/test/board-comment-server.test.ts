@@ -1,9 +1,11 @@
 import fs from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
+
 import { afterEach, expect, test } from 'vitest';
-import { startArtifactsServer, type ArtifactsServer } from '../src/server/app';
-import { get, openWs, readJson, tempRoot, waitFor, writeArtboard, type Fetched } from './helpers';
+
+import { type ArtifactsServer, startArtifactsServer } from '../src/server/app';
+import { type Fetched, get, openWs, readJson, tempRoot, waitFor, writeArtboard } from './helpers';
 
 let running: ArtifactsServer[] = [];
 afterEach(async () => {

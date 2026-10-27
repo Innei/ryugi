@@ -4,16 +4,16 @@ import type { GroupSpec } from './types';
 export type VerdictState = 'pending' | 'pass' | 'reject';
 
 export interface GroupVerdict {
-  state: VerdictState;
   at?: string;
   evidenceUpdated: boolean;
   rejectThreads: number;
+  state: VerdictState;
 }
 
 export interface VerdictProgress {
+  next?: string;
   passed: number;
   total: number;
-  next?: string;
 }
 
 const openedAt = (thread: BoardThread) => thread.messages[0]?.at ?? thread.statusAt;

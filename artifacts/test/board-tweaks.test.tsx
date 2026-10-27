@@ -4,8 +4,9 @@ import { motion } from 'motion/react';
 import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
+
 import { useBoardTweaks } from '../src/viewer/hooks/useBoardTweaks';
-import { TweaksPanel, tweakPanelAnchor, revealTweakPanel } from '../src/viewer/tweaks/TweaksPanel';
+import { revealTweakPanel, tweakPanelAnchor, TweaksPanel } from '../src/viewer/tweaks/TweaksPanel';
 
 let current: ReturnType<typeof useBoardTweaks>;
 let root: Root;
@@ -33,30 +34,30 @@ function Harness({
     <>
       {['a', 'b'].map((id) => (
         <iframe
-          key={id}
           data-frame={id}
-          src="about:blank"
+          key={id}
           ref={current.refFor(id)}
+          src="about:blank"
           onLoad={() => current.loaded(id)}
         />
       ))}
       {expanded && (
         <iframe
           data-frame="expanded"
-          src="about:blank"
           ref={current.refFor('a', 'expanded')}
+          src="about:blank"
           onLoad={() => current.loaded('a', 'expanded')}
         />
       )}
       {panel && current.states.a && (
         <TweaksPanel
-          boardId="a"
-          title="First board"
-          state={current.states.a}
           anchor={tweakPanelAnchor({ x: 10, y: 20, w: 400, h: 300 }, { x: 100, y: 50, k: zoom })}
+          boardId="a"
+          state={current.states.a}
+          title="First board"
           onChange={(key, value) => current.change('a', key, value)}
-          onReset={() => current.reset('a')}
           onClose={closed}
+          onReset={() => current.reset('a')}
         />
       )}
     </>

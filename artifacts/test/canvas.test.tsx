@@ -1,7 +1,8 @@
 // @vitest-environment happy-dom
-import { act, createElement, type ComponentProps } from 'react';
+import { act, type ComponentProps, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeAll, expect, test, vi } from 'vitest';
+
 import { Canvas } from '../src/viewer/components/Canvas';
 import type { BoardRender } from '../src/viewer/lib/board-tiers';
 

@@ -2,6 +2,7 @@
 import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeAll, beforeEach, expect, test } from 'vitest';
+
 import { ArtifactThumbnail } from '../src/viewer/components/ArtifactThumbnail';
 
 let root: Root;

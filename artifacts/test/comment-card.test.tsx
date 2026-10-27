@@ -2,6 +2,7 @@
 import { act, createElement, useState } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeAll, beforeEach, expect, test, vi } from 'vitest';
+
 import type { Thread } from '../src/shared/comments';
 import { CommentCard, type ThreadActions } from '../src/viewer/document/CommentCard';
 

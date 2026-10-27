@@ -1,8 +1,9 @@
 import { Tree, type TreeDataNode } from '@lobehub/ui';
 import { Columns3, Frame, Grid2X2, Image, MousePointer2, Rows3, Type } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { BoardSpec } from '../../shared/types';
+
 import type { InspectorNode } from '../../shared/inspector';
+import type { BoardSpec } from '../../shared/types';
 import type { Inspector } from '../hooks/useInspector';
 import { t } from '../i18n';
 
@@ -21,11 +22,11 @@ const keyOf = (boardId: string, session: string, id: number) =>
 interface Props {
   boards: [string, BoardSpec][];
   frames: Inspector['frames'];
-  selection: Inspector['selection'];
-  targets?: Inspector['targets'];
+  hoverNode: Inspector['hoverNode'];
   playing: ReadonlySet<string>;
   select: Inspector['select'];
-  hoverNode: Inspector['hoverNode'];
+  selection: Inspector['selection'];
+  targets?: Inspector['targets'];
 }
 
 export function Layers({ boards, frames, selection, targets, playing, select, hoverNode }: Props) {
@@ -53,7 +54,7 @@ export function Layers({ boards, frames, selection, targets, playing, select, ho
         return {
           key,
           disabled: paused,
-          icon: <Icon size={14} aria-hidden />,
+          icon: <Icon aria-hidden size={14} />,
           title: (
             <>
               <span className="ri-layer-label" title={`${node.tag} · ${name || node.selector}`}>
@@ -115,15 +116,20 @@ export function Layers({ boards, frames, selection, targets, playing, select, ho
         <span>{count ? t('inspector.elements', { count }) : t('common.loading')}</span>
       </div>
       <div
-        ref={container}
-        className="ri-layers"
-        role="region"
         aria-label={t('inspector.domLayers')}
+        className="ri-layers"
+        ref={container}
+        role="region"
         onClickCapture={(event) => {
           toggle.current = event.shiftKey || event.metaKey || event.ctrlKey;
         }}
         onKeyDownCapture={(event) => {
           toggle.current = event.shiftKey || event.metaKey || event.ctrlKey;
+        }}
+        onMouseLeave={() => {
+          const previous = hovered.current ? byKey.get(hovered.current) : null;
+          if (previous) hoverNode(previous.boardId, null);
+          hovered.current = null;
         }}
         onMouseOver={(event) => {
           const key = (event.target as Element).closest<HTMLElement>('[role=treeitem]')?.dataset.id;
@@ -134,22 +140,17 @@ export function Layers({ boards, frames, selection, targets, playing, select, ho
           hovered.current = key;
           if (next) hoverNode(next.boardId, next.node.id);
         }}
-        onMouseLeave={() => {
-          const previous = hovered.current ? byKey.get(hovered.current) : null;
-          if (previous) hoverNode(previous.boardId, null);
-          hovered.current = null;
-        }}
       >
         <Tree
-          treeData={treeData}
-          size="small"
-          multiple
           blockNode
+          multiple
           showIcon
-          indent={14}
-          expandedKeys={expanded}
-          selectedKeys={selectedKeys}
           classNames={{ node: 'ri-layer' }}
+          expandedKeys={expanded}
+          indent={14}
+          selectedKeys={selectedKeys}
+          size="small"
+          treeData={treeData}
           styles={{
             node: { height: 27, fontSize: 12 },
             title: { display: 'flex', alignItems: 'center', gap: 6 },

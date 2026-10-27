@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
+
 import stylex from '@stylexjs/unplugin';
 import react from '@vitejs/plugin-react';
 import { defineConfig, esmExternalRequirePlugin, type Plugin } from 'vite';
@@ -16,7 +17,7 @@ const PEERS = [
 ];
 // StyleX inlines @lobehub/ui's cssVar constants only when it compiles their module, so those stay in the bundle.
 const PEER_IDS = PEERS.map(
-  (name) => new RegExp(`^${name.replace(/[/.]/g, '\\$&')}(?!/stylex/)(?:/|$)`),
+  (name) => new RegExp(`^${name.replaceAll(/[/.]/g, '\\$&')}(?!/stylex/)(?:/|$)`),
 );
 const LAZY_CSS = 'lazy-css:';
 const DYNAMIC_CSS = /import\((['"])([^'"]+\.css)\1\)/g;
@@ -33,7 +34,7 @@ function lazyCss(): Plugin {
     apply: 'build',
     transform(code, id) {
       if (!/\.[cm]?[jt]sx?$/.test(id) || !code.includes('.css')) return null;
-      const next = code.replace(
+      const next = code.replaceAll(
         DYNAMIC_CSS,
         (_match, quote: string, spec: string) => `import(${quote}${LAZY_CSS}${spec}${quote})`,
       );
@@ -83,7 +84,7 @@ function consumableOutput(): Plugin {
     generateBundle(_options, bundle) {
       for (const file of Object.values(bundle)) {
         if (file.type !== 'asset' || !file.fileName.endsWith('.css')) continue;
-        file.source = String(file.source).replace(
+        file.source = String(file.source).replaceAll(
           FONT,
           (_match, _quote, mime: string, data: string) => {
             const bytes = Buffer.from(data, 'base64');
@@ -102,7 +103,7 @@ function consumableOutput(): Plugin {
         const sheets = css.map((name) => `import './${name}';\n`).join('');
         // StyleX compiles constants into literals but keeps the side-effect import of external .stylex modules.
         chunk.code =
-          sheets + chunk.code.replace(/^import ["'][^"']+\.stylex(?:\.js)?["'];\n/gm, '');
+          sheets + chunk.code.replaceAll(/^import ["'][^"']+\.stylex(?:\.js)?["'];\n/gm, '');
       }
     },
   };

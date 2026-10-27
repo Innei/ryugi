@@ -1,18 +1,20 @@
 import './styles';
+
 import { RichEditor } from '@haklex/rich-editor';
 import { ExcalidrawPlugin } from '@haklex/rich-ext-excalidraw';
 import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
 import type { LexicalEditor, SerializedEditorState } from 'lexical';
 import { useEffect, useMemo, useState } from 'react';
-import { emptyComments, type CommentsFile } from '../../shared/comments';
+
+import { type CommentsFile, emptyComments } from '../../shared/comments';
 import { RailSwitch } from '../components/RailSwitch';
 import { useCloudHeader } from '../hooks/useCloudHeader';
+import { t } from '../i18n';
 import { createChannel } from './channel';
 import { extraNodes, rendererConfig } from './DocumentEditor';
 import { DocumentLayout } from './DocumentLayout';
-import { DynamicHostContext, type DynamicHost } from './DynamicBlock';
-import { t } from '../i18n';
+import { type DynamicHost, DynamicHostContext } from './DynamicBlock';
 
 const styles = stylex.create({
   root: { minHeight: '100%', backgroundColor: cssVar.colorBgContainer, color: cssVar.colorText },
@@ -42,11 +44,11 @@ function usePrefersDark() {
 }
 
 interface Props {
-  id: string;
-  state: SerializedEditorState;
-  contentBase: string;
   comments?: CommentsFile;
+  contentBase: string;
+  id: string;
   offline?: boolean;
+  state: SerializedEditorState;
 }
 
 export default function SnapshotDocument({
@@ -92,9 +94,9 @@ export default function SnapshotDocument({
       {!framed ? (
         <div {...stylex.props(styles.offline)}>
           <RailSwitch
+            available={false}
             comments={openComments}
             open={false}
-            available={false}
             onComments={() => {}}
             onHistory={() => {}}
           />
@@ -110,11 +112,11 @@ export default function SnapshotDocument({
       <DocumentLayout editor={editor} threads={comments.threads}>
         <DynamicHostContext.Provider value={host}>
           <RichEditor
-            variant="article"
-            theme={dark ? 'dark' : 'light'}
-            initialValue={state}
             extraNodes={extraNodes}
+            initialValue={state}
             rendererConfig={rendererConfig}
+            theme={dark ? 'dark' : 'light'}
+            variant="article"
             onEditorReady={(ready) => {
               ready?.setEditable(false);
               setEditor(ready ?? null);

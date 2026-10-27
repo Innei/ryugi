@@ -1,9 +1,10 @@
 // @vitest-environment happy-dom
-import { act, createElement } from 'react';
-import { createRoot, type Root } from 'react-dom/client';
 import { ConfigProvider } from '@lobehub/ui';
 import { motion } from 'motion/react';
+import { act, createElement } from 'react';
+import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
+
 import { ArtboardView } from '../src/viewer/layouts/ArtboardView';
 
 vi.mock('@stylexjs/stylex', async (original) => ({

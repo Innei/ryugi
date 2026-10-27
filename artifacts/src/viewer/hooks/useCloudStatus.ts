@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+
 import type { CloudStatus } from '../../shared/cloud';
 import { onServerMessage } from './useArtifactSocket';
 
 export interface CloudResult {
+  json: Record<string, unknown>;
   ok: boolean;
   status: number;
-  json: Record<string, unknown>;
 }
 
 const LOGIN_POLL_MS = 2000;

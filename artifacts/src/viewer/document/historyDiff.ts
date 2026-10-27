@@ -1,13 +1,14 @@
 import { computeDiff, decorateSubtree, diffMergedNode } from '@haklex/rich-diff-core';
 import type { SerializedEditorState, SerializedLexicalNode } from 'lexical';
+
 import { i18n } from '../i18n';
 
 export interface HistoryDiffBlock {
-  kind: 'equal' | 'insert' | 'delete' | 'modify';
-  value: SerializedEditorState;
   before?: SerializedEditorState;
-  oldIndex?: number;
+  kind: 'equal' | 'insert' | 'delete' | 'modify';
   newIndex?: number;
+  oldIndex?: number;
+  value: SerializedEditorState;
 }
 type Node = SerializedLexicalNode & {
   children?: Node[];

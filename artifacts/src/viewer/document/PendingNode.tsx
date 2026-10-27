@@ -6,6 +6,7 @@ import {
   type Spread,
 } from 'lexical';
 import type { ReactElement } from 'react';
+
 import { PendingBlock } from './PendingBlock';
 
 type SerializedPendingNode = Spread<{ intent: string }, SerializedLexicalNode>;
@@ -47,7 +48,7 @@ export class PendingNode extends DecoratorNode<ReactElement> {
   }
 
   decorate() {
-    return <PendingBlock nodeKey={this.getKey()} intent={this.__intent} />;
+    return <PendingBlock intent={this.__intent} nodeKey={this.getKey()} />;
   }
 }
 

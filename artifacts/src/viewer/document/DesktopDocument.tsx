@@ -1,5 +1,6 @@
 import type { LexicalEditor } from 'lexical';
 import type { ReactNode } from 'react';
+
 import type { Thread } from '../../shared/comments';
 import type { ThreadActions } from './CommentCard';
 import type { DocumentHistoryView } from './DocumentHistory';
@@ -18,17 +19,17 @@ function columnBounds(article: HTMLElement) {
 }
 
 interface Props {
-  editor: LexicalEditor | null;
-  threads: Thread[];
   actions: ThreadActions;
   agent?: string;
   canComment: boolean;
-  selection: SelectionTarget | null;
+  children: ReactNode;
   clearSelection: () => void;
+  editor: LexicalEditor | null;
+  history?: DocumentHistoryView | null;
   onCreate: (target: SelectionTarget, text: string) => Promise<boolean>;
   onMain: (element: HTMLElement | null) => void;
-  history?: DocumentHistoryView | null;
-  children: ReactNode;
+  selection: SelectionTarget | null;
+  threads: Thread[];
 }
 
 export function DesktopDocument({
@@ -48,12 +49,11 @@ export function DesktopDocument({
   const { draft } = composing;
   return (
     <DocumentLayout
-      editor={editor}
-      threads={threads}
       actions={actions}
       agent={agent}
-      onMain={onMain}
+      editor={editor}
       history={history}
+      threads={threads}
       overlay={(articleEl) => (
         <>
           {selection && !draft ? (
@@ -76,13 +76,14 @@ export function DesktopDocument({
           ) : null}
           {draft ? (
             <DraftPanel
-              ref={composing.panelRef}
               key={`${draft.target.blockId}:${draft.target.quote}`}
+              ref={composing.panelRef}
               {...popoverPosition(draft.target, columnBounds(articleEl), DRAFT_WIDTH, 8)}
-              quote={draft.target.quote}
               initial={draft.initial}
-              restored={composing.restored}
               leaving={composing.leaving}
+              quote={draft.target.quote}
+              restored={composing.restored}
+              onCancel={() => composing.close(true)}
               onChange={composing.onText}
               onSubmit={(text) =>
                 onCreate(draft.target, text).then((ok) => {
@@ -90,11 +91,11 @@ export function DesktopDocument({
                   return ok;
                 })
               }
-              onCancel={() => composing.close(true)}
             />
           ) : null}
         </>
       )}
+      onMain={onMain}
     >
       {children}
     </DocumentLayout>

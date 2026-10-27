@@ -16,6 +16,7 @@ import { motion, MotionGlobalConfig } from 'motion/react';
 import { act, createElement, useEffect } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeAll, expect, test, vi } from 'vitest';
+
 import { createChannel } from '../src/viewer/document/channel';
 import { DocumentEditor } from '../src/viewer/document/DocumentEditor';
 import { createLocalTransport } from '../src/viewer/document/transport';

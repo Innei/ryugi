@@ -1,4 +1,5 @@
 import { afterEach, expect, test } from 'vitest';
+
 import { i18n } from '../src/viewer/i18n';
 import { errorText, responseErrorText } from '../src/viewer/lib/error-text';
 

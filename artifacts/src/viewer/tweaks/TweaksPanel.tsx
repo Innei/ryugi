@@ -1,3 +1,5 @@
+import './tweaks.css';
+
 import {
   ActionIcon,
   Button,
@@ -12,13 +14,13 @@ import {
 } from '@lobehub/ui';
 import { Code2, RotateCcw, SlidersHorizontal, X } from 'lucide-react';
 import { useId, useRef } from 'react';
+
 import type { TweakControl, TweakValue } from '../../shared/tweaks';
 import type { Rect } from '../../shared/types';
 import type { BoardTweakState } from '../hooks/useBoardTweaks';
+import { t } from '../i18n';
 import { isComposing } from '../lib/keyboard';
 import type { View } from '../lib/view';
-import './tweaks.css';
-import { t } from '../i18n';
 
 export const TWEAK_PANEL_WIDTH = 352;
 export const tweakPanelAnchor = (board: Rect, view: View) => ({
@@ -56,27 +58,27 @@ function Control({
     input = (
       <div className="rt-color">
         {control.options && (
-          <div className="rt-swatches" role="group" aria-label={control.label}>
+          <div aria-label={control.label} className="rt-swatches" role="group">
             {control.options.map((option) => (
               <button
-                key={option.value}
-                type="button"
                 aria-label={`${control.label}: ${option.label}`}
                 aria-pressed={value === option.value}
+                key={option.value}
                 style={{ backgroundColor: option.value }}
+                type="button"
                 onClick={() => change(option.value)}
               />
             ))}
           </div>
         )}
         <ColorPicker
-          size="small"
           alpha={false}
           recent={false}
+          size="small"
           value={value as string}
           onChange={change}
         >
-          <Button id={id} aria-label={control.label} size="small">
+          <Button aria-label={control.label} id={id} size="small">
             <span className="rt-color-chip" style={{ backgroundColor: value as string }} />
             <code>{String(value)}</code>
           </Button>
@@ -85,17 +87,17 @@ function Control({
     );
   else if (control.type === 'boolean')
     input = (
-      <Switch id={id} aria-label={control.label} checked={value as boolean} onChange={change} />
+      <Switch aria-label={control.label} checked={value as boolean} id={id} onChange={change} />
     );
   else if (control.type === 'range')
     input = (
       <div className="rt-range">
         <Slider
           aria-labelledby={`${id}-label`}
-          value={value as number}
-          min={control.min}
           max={control.max}
+          min={control.min}
           step={control.step}
+          value={value as number}
           onChange={change}
         />
         <output>{String(value)}</output>
@@ -104,47 +106,47 @@ function Control({
   else if (control.type === 'number')
     input = (
       <InputNumber
-        id={id}
         aria-label={control.label}
-        size="small"
-        value={value as number}
-        min={control.min}
+        id={id}
         max={control.max}
+        min={control.min}
+        size="small"
         step={control.step}
+        style={{ width: '100%' }}
+        value={value as number}
         onChange={(next) => {
           if (next !== null) change(next);
         }}
-        style={{ width: '100%' }}
       />
     );
   else if (control.type === 'enum')
     input = segmented ? (
       <Segmented
-        size="small"
         block
-        value={value as string}
         options={control.options}
+        size="small"
+        value={value as string}
         onChange={change}
       />
     ) : (
       <Select
         id={id}
-        size="small"
-        value={value as string}
         options={control.options}
+        size="small"
+        style={{ width: '100%' }}
+        value={value as string}
         onChange={(next) => {
           if (typeof next === 'string') change(next);
         }}
-        style={{ width: '100%' }}
       />
     );
   else
     input = (
       <Input
-        id={id}
         aria-label={control.label}
-        size="small"
+        id={id}
         maxLength={512}
+        size="small"
         value={value as string}
         onChange={(event) => change(event.target.value)}
       />
@@ -164,13 +166,13 @@ function Control({
 }
 
 interface Props {
-  boardId: string;
-  title: string;
-  state: BoardTweakState;
   anchor?: { left: number; top: number };
+  boardId: string;
   onChange: (key: string, value: TweakValue) => void;
-  onReset: () => void;
   onClose: () => void;
+  onReset: () => void;
+  state: BoardTweakState;
+  title: string;
 }
 
 export function TweaksPanel({ boardId, title, state, anchor, onChange, onReset, onClose }: Props) {
@@ -187,9 +189,9 @@ export function TweaksPanel({ boardId, title, state, anchor, onChange, onReset, 
   return (
     <IconProvider config={{ 'aria-hidden': true }}>
       <aside
+        aria-label={t('parameters.title')}
         className="ryugi-parameters"
         data-chrome="parameters"
-        aria-label={t('parameters.title')}
         style={{
           position: anchor ? 'absolute' : 'relative',
           ...anchor,
@@ -205,18 +207,18 @@ export function TweaksPanel({ boardId, title, state, anchor, onChange, onReset, 
         }}
       >
         <header className="rt-header">
-          <SlidersHorizontal size={15} aria-hidden />
+          <SlidersHorizontal aria-hidden size={15} />
           <h2>{t('parameters.title')}</h2>
           <ActionIcon
+            aria-label={t('parameters.close')}
             icon={X}
             size="small"
-            aria-label={t('parameters.close')}
             title={t('parameters.close')}
             onClick={onClose}
           />
         </header>
         <div className="rt-board">
-          <Code2 size={17} aria-hidden />
+          <Code2 aria-hidden size={17} />
           <div>
             <strong>{title}</strong>
             <code>{boardId}</code>
@@ -234,10 +236,10 @@ export function TweaksPanel({ boardId, title, state, anchor, onChange, onReset, 
               <h3>{name}</h3>
               {controls.map(([key, control]) => (
                 <Control
-                  key={key}
-                  control={control}
-                  value={state.values[key]!}
                   change={(value) => onChange(key, value)}
+                  control={control}
+                  key={key}
+                  value={state.values[key]!}
                 />
               ))}
             </section>
@@ -246,9 +248,9 @@ export function TweaksPanel({ boardId, title, state, anchor, onChange, onReset, 
             <div className="rt-declaration">
               <span>{t('parameters.declaredBy')}</span>
               <Button
+                icon={Code2}
                 size="small"
                 type="text"
-                icon={Code2}
                 onClick={() => dialog.current?.showModal()}
               >
                 {t('parameters.viewDeclaration')}
@@ -260,23 +262,23 @@ export function TweaksPanel({ boardId, title, state, anchor, onChange, onReset, 
           <span role="status">
             {changed ? t('parameters.changed', { count: changed }) : t('parameters.defaults')}
           </span>
-          <Button size="small" type="text" icon={RotateCcw} disabled={!changed} onClick={onReset}>
+          <Button disabled={!changed} icon={RotateCcw} size="small" type="text" onClick={onReset}>
             {t('parameters.reset')}
           </Button>
         </footer>
       </aside>
       <dialog
-        ref={dialog}
-        className="rt-dialog"
         aria-label={t('parameters.declaration')}
+        className="rt-dialog"
+        ref={dialog}
         onKeyDown={(event) => event.stopPropagation()}
       >
         <header>
           <h2>{t('parameters.declaration')}</h2>
           <ActionIcon
+            aria-label={t('parameters.closeDeclaration')}
             icon={X}
             size="small"
-            aria-label={t('parameters.closeDeclaration')}
             onClick={() => dialog.current?.close()}
           />
         </header>

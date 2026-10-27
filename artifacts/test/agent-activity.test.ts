@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'vitest';
+
 import { activityLabel, agentActivity, STALE_MS } from '../src/viewer/document/agentActivity';
 
 const now = 1_000_000_000;

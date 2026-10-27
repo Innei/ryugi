@@ -1,18 +1,21 @@
+import type { BoardCommentsFile } from './board-comments';
+import type { CommentsFile } from './comments';
+
 export const ARTIFACT_TYPES = ['artboard', 'document', 'html'] as const;
 export type ArtifactType = (typeof ARTIFACT_TYPES)[number];
 
 export interface Rect {
+  h: number;
+  w: number;
   x: number;
   y: number;
-  w: number;
-  h: number;
 }
 
 export interface Bounds {
-  minX: number;
-  minY: number;
   maxX: number;
   maxY: number;
+  minX: number;
+  minY: number;
 }
 
 export interface PageSpec {
@@ -25,55 +28,55 @@ export type BoardType = (typeof BOARD_TYPES)[number];
 
 export interface BoardSpec extends Rect {
   file: string;
+  interactive?: boolean;
   page: string;
-  type?: BoardType;
   src?: string;
   title?: string;
-  interactive?: boolean;
+  type?: BoardType;
 }
 
 export const isMediaBoard = (board: { type?: unknown }): board is { type: 'image' | 'video' } =>
   board.type === 'image' || board.type === 'video';
 
 export interface GroupSpec {
-  title?: string;
   boards: string[];
+  title?: string;
   verify?: boolean;
 }
 
 export interface NoteSpec {
-  page: string;
+  color?: string;
   kind: 'title' | 'sticky';
-  x: number;
-  y: number;
+  page: string;
+  size?: number;
   text: string;
   w?: number;
-  size?: number;
-  color?: string;
+  x: number;
+  y: number;
 }
 
 export interface FocusSpec {
-  target: string;
   at: string;
+  target: string;
 }
 
 export interface CanvasSpec {
-  version: number;
-  title?: string;
   activePage?: string;
-  focus?: FocusSpec;
-  building?: boolean;
-  writing?: string;
-  pages: PageSpec[];
   boards: Record<string, BoardSpec>;
+  building?: boolean;
+  focus?: FocusSpec;
   groups?: Record<string, GroupSpec>;
   notes?: Record<string, NoteSpec>;
+  pages: PageSpec[];
+  title?: string;
+  version: number;
+  writing?: string;
 }
 
 export interface PageLayout {
+  bounds: Bounds | null;
   groups: Record<string, Rect>;
   notes: Record<string, Rect>;
-  bounds: Bounds | null;
 }
 
 export interface CanvasLayout {
@@ -83,35 +86,32 @@ export interface CanvasLayout {
 export interface CanvasPayload {
   agent?: string;
   canvas: CanvasSpec | null;
-  warnings: string[];
-  pending: string[];
   layout: CanvasLayout | null;
+  pending: string[];
   versions: Record<string, number>;
+  warnings: string[];
 }
 
 export interface HtmlPayload {
   title: string;
-  warnings: string[];
   version: number;
+  warnings: string[];
 }
 
 export interface DocumentPayload {
   agent?: string;
   title: string;
-  warnings: string[];
   version: number;
+  warnings: string[];
 }
 
 export interface ArtifactSummary {
-  type: ArtifactType;
   id: string;
-  url?: string;
   title: string;
+  type: ArtifactType;
   updatedAt: number;
+  url?: string;
 }
-
-import type { BoardCommentsFile } from './board-comments';
-import type { CommentsFile } from './comments';
 
 export type DocumentOutcomeMessage =
   | { kind: 'idle' }

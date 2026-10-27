@@ -1,4 +1,5 @@
 import { expect, test } from 'vitest';
+
 import { historyClock, historyDay, historyWhen } from '../src/viewer/document/historyTime';
 import { i18n } from '../src/viewer/i18n';
 

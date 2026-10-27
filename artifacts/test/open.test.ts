@@ -1,8 +1,10 @@
-import { spawn, type ChildProcess } from 'node:child_process';
+import { type ChildProcess, spawn } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+
 import { afterEach, describe, expect, test } from 'vitest';
+
 import { openWs, readJson, waitFor, writeArtboard, writeDocument } from './helpers';
 
 const repoRoot = path.resolve(__dirname, '../..');

@@ -1,11 +1,13 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+
 import { afterEach, describe, expect, test, vi } from 'vitest';
+
 import {
+  type AutoPublishOutcome,
   createAutoPublisher,
   readAutoPublishState,
-  type AutoPublishOutcome,
 } from '../src/server/auto-publish';
 
 function setup(

@@ -4,8 +4,8 @@ import { serverClient } from './server';
 import type { Emit } from './start';
 
 export interface CheckOptions {
-  projectDir: string;
   artifact?: string;
+  projectDir: string;
 }
 
 export async function check(options: CheckOptions, emit: Emit): Promise<number> {

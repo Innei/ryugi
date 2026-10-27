@@ -2,6 +2,7 @@ import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+
 import { expect, test } from 'vitest';
 
 const entry = path.resolve(__dirname, '../bin/ryugi-artifacts.cjs');

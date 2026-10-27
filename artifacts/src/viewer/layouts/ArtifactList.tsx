@@ -1,7 +1,9 @@
 import './artifact-list.css';
+
 import { Button, Input, Segmented, Select } from '@lobehub/ui';
 import { ArrowUpRight, Search } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
+
 import logo from '../../../../assets/ryugi-small.svg';
 import { ARTIFACT_TYPES, type ArtifactSummary, type ArtifactType } from '../../shared/types';
 import { ArtifactThumbnail } from '../components/ArtifactThumbnail';
@@ -10,7 +12,7 @@ import { TypeIcon } from '../components/TypeIcon';
 import { WarningsBadge } from '../components/WarningsBadge';
 import { useArtifactSocket } from '../hooks/useArtifactSocket';
 import { useTranslation } from '../i18n';
-import { filterArtifacts, relativeUpdatedAt, type ArtifactSort } from '../lib/artifact-list';
+import { type ArtifactSort, filterArtifacts, relativeUpdatedAt } from '../lib/artifact-list';
 
 export function ArtifactList() {
   const { t, i18n } = useTranslation();
@@ -103,7 +105,7 @@ export function ArtifactList() {
     <div className="artifact-library">
       <header className="library-topbar">
         <div className="library-breadcrumb">
-          <img className="library-logo" src={logo} alt="" />
+          <img alt="" className="library-logo" src={logo} />
           <strong>ryugi</strong>
           <span>/</span>
           <b>{project || t('common.project')}</b>
@@ -123,33 +125,33 @@ export function ArtifactList() {
         <div className="library-toolbar">
           <Segmented<ArtifactType | 'all'>
             className="library-tabs"
+            options={options}
             size="small"
             styles={{ item: { height: 30, paddingInline: 8 } }}
             value={type}
-            options={options}
             onChange={setType}
           />
           <div className="library-tools">
             <Input
-              ref={searchRef}
-              className="library-search"
-              variant="filled"
-              prefix={<Search size={16} />}
-              suffix={<kbd>/</kbd>}
               aria-label={t('library.searchLabel')}
+              className="library-search"
               placeholder={t('library.searchPlaceholder')}
+              prefix={<Search size={16} />}
+              ref={searchRef}
+              suffix={<kbd>/</kbd>}
               value={query}
+              variant="filled"
               onChange={(event) => setQuery(event.target.value)}
             />
             <label className="library-sr-only" htmlFor="artifact-sort">
               {t('library.sortLabel')}
             </label>
             <Select
-              id="artifact-sort"
               className="library-sort"
-              variant="filled"
-              value={sort}
+              id="artifact-sort"
               options={sortOptions}
+              value={sort}
+              variant="filled"
               onSelect={setSort}
             />
           </div>
@@ -190,27 +192,27 @@ export function ArtifactList() {
             </Button>
           </div>
         )}
-        <ul className="library-grid" aria-label={t('library.listLabel')}>
+        <ul aria-label={t('library.listLabel')} className="library-grid">
           {items.map((artifact) => {
             return (
               <li key={`${artifact.type}/${artifact.id}`}>
                 <a
+                  aria-label={t('library.open', { title: artifact.title })}
                   className="library-card"
                   href={artifact.url ?? `/${artifact.type}/${artifact.id}`}
-                  aria-label={t('library.open', { title: artifact.title })}
                 >
                   <ArtifactThumbnail
-                    type={artifact.type}
                     src={`/api/thumbnail${artifact.url ?? `/${artifact.type}/${artifact.id}`}.svg?v=${artifact.updatedAt}`}
+                    type={artifact.type}
                   />
                   <div className="library-card-info">
                     <div className="library-card-title">
                       <span title={artifact.title}>{artifact.title}</span>
-                      <ArrowUpRight size={13} aria-hidden="true" />
+                      <ArrowUpRight aria-hidden="true" size={13} />
                     </div>
                     <div className="library-card-meta">
                       <span>
-                        <TypeIcon type={artifact.type} size={12} />
+                        <TypeIcon size={12} type={artifact.type} />
                         {labels[artifact.type]}
                       </span>
                       <time
@@ -228,7 +230,7 @@ export function ArtifactList() {
         </ul>
         <footer className="library-footer">
           <span>
-            <img className="library-logo" src={logo} alt="" />
+            <img alt="" className="library-logo" src={logo} />
             {t('library.footer')}
           </span>
           <code>{project ? `${project} / ` : ''}.ryugi / artifacts</code>

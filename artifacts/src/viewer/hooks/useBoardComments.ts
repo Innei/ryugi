@@ -1,19 +1,20 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+
 import type { BoardAnchor, BoardHumanOp } from '../../shared/board-comments';
 import type { BoardSpec } from '../../shared/types';
 import type { ThreadActions } from '../comments/ThreadView';
-import type { BoardCommentsState } from '../lib/board-comments';
 import { clickAnchor, pinNumbers, selectionAnchor } from '../lib/board-anchor';
+import type { BoardCommentsState } from '../lib/board-comments';
 import type { Inspector, InspectorInput } from './useInspector';
 
 type DragInput = Extract<InspectorInput, { type: 'ryugi:inspect:drag' }>;
 
 interface Options {
-  comments: BoardCommentsState | null | undefined;
-  comment: ((op: BoardHumanOp) => Promise<BoardCommentsState>) | undefined;
-  page: string | null;
   boards: Record<string, BoardSpec>;
+  comment: ((op: BoardHumanOp) => Promise<BoardCommentsState>) | undefined;
+  comments: BoardCommentsState | null | undefined;
   inspector: Inspector;
+  page: string | null;
 }
 
 export function useBoardComments({ comments, comment, page, boards, inspector }: Options) {

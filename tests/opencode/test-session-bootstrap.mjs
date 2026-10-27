@@ -251,4 +251,4 @@ const empty = { sessionID: 'empty', messages: [] };
 await compactedRoot.invoke(empty);
 assert.deepEqual(empty.messages, []);
 
-console.log('Session classification, recovery and cache lifetime passed');
+console.info('Session classification, recovery and cache lifetime passed');

@@ -1,17 +1,18 @@
 import { createLoroBinding, TREE_NAME } from '@haklex/rich-collab-loro';
 import { createEditor, type CreateEditorArgs, type SerializedEditorState } from 'lexical';
 import type { Change, LoroDoc, LoroTreeNode, OpId, TreeID } from 'loro-crdt';
+
 import { i18n } from '../i18n';
 
 export interface HistoryEntry {
-  id: string;
   change: Change;
   frontiers: OpId[];
+  id: string;
 }
 export interface HistoryGroup {
+  entries: HistoryEntry[];
   id: string;
   source: 'human' | 'agent' | 'session' | 'unknown';
-  entries: HistoryEntry[];
 }
 export interface History {
   entries: HistoryEntry[];
@@ -19,9 +20,9 @@ export interface History {
   shallow: boolean;
 }
 export interface HistoryState {
-  value: SerializedEditorState;
   ids: TreeID[];
   owners: Map<TreeID, TreeID>;
+  value: SerializedEditorState;
 }
 
 export async function readHistory(doc: LoroDoc): Promise<History> {

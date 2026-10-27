@@ -1,4 +1,5 @@
 import { fileURLToPath } from 'node:url';
+
 import react from '@vitejs/plugin-react';
 import { defineConfig, type Plugin } from 'vite';
 

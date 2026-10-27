@@ -2,7 +2,9 @@ import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+
 import { afterEach, expect, test } from 'vitest';
+
 import { monitorText } from '../src/cli/monitor';
 import { duration, shortPath } from '../src/cli/monitor-view';
 import { listServers, safeToStop } from '../src/cli/servers';

@@ -1,5 +1,6 @@
 // @vitest-environment happy-dom
 import { afterEach, expect, test, vi } from 'vitest';
+
 import { withCloudRuntime } from '../src/server/publish-payload';
 
 afterEach(() => vi.restoreAllMocks());

@@ -2,16 +2,16 @@ import { NAME_STRIP_H } from '../../shared/geometry';
 import type { Bounds, CanvasLayout, CanvasSpec, Rect } from '../../shared/types';
 
 export interface View {
+  k: number;
   x: number;
   y: number;
-  k: number;
 }
 
 export interface Insets {
-  top: number;
-  right: number;
   bottom: number;
   left: number;
+  right: number;
+  top: number;
 }
 
 export const MIN_ZOOM = 0.02;
@@ -92,10 +92,10 @@ export function labelRect(board: { x: number; y: number; w: number }, view: View
 
 export interface LabelRule {
   base: number;
-  follow: number;
-  min: number;
-  hideBelow: number;
   cap: boolean;
+  follow: number;
+  hideBelow: number;
+  min: number;
 }
 
 export const GROUP_LABEL_RULE: LabelRule = {

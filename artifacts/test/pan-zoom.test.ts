@@ -3,8 +3,9 @@ import { act, createElement } from 'react';
 import { createPortal } from 'react-dom';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
+
 import { COMMENT_CURSOR } from '../src/shared/inspector';
-import { usePanZoom, type Tool } from '../src/viewer/hooks/usePanZoom';
+import { type Tool, usePanZoom } from '../src/viewer/hooks/usePanZoom';
 import { fitView } from '../src/viewer/lib/view';
 
 let root: Root;

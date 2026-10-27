@@ -2,8 +2,9 @@ import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
 import { MessageSquare, PenLine } from 'lucide-react';
 import { useLayoutEffect, useRef } from 'react';
-import { EASE, play } from './motion';
+
 import { t } from '../i18n';
+import { EASE, play } from './motion';
 
 export const EDIT_MENU_HEIGHT = 44;
 export const EDIT_MENU_WIDTH = 170;
@@ -53,13 +54,13 @@ const styles = stylex.create({
 });
 
 interface Props {
-  left: number;
-  top: number;
-  placement: 'below' | 'above';
   canComment: boolean;
   canEdit: boolean;
+  left: number;
   onComment: () => void;
   onEdit: () => void;
+  placement: 'below' | 'above';
+  top: number;
 }
 
 export function PhoneEditMenu({
@@ -93,9 +94,9 @@ export function PhoneEditMenu({
   if (items.length === 0) return null;
   return (
     <div
-      ref={ref}
       data-edit-menu
       data-placement={placement}
+      ref={ref}
       {...stylex.props(styles.menu, placement === 'above' && styles.above)}
       style={{ left, top, transformOrigin: placement === 'above' ? '22px 100%' : '22px 0' }}
       onMouseDown={(event) => event.preventDefault()}
@@ -109,7 +110,7 @@ export function PhoneEditMenu({
             onClick={run}
             {...stylex.props(styles.button, primary && styles.primary)}
           >
-            <Icon size={16} aria-hidden />
+            <Icon aria-hidden size={16} />
             {label}
           </button>
         ))}

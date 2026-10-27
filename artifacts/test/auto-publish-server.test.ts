@@ -1,6 +1,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
+
 import { afterEach, describe, expect, test } from 'vitest';
+
 import { readAutoPublishState } from '../src/server/auto-publish';
 import { updateArtifactConfig } from '../src/server/config';
 import { settingsFileFor, writeGlobalAutoPublish } from '../src/server/settings';

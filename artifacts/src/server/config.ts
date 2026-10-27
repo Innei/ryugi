@@ -1,9 +1,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
+
 import {
-  isVisibility,
   type ArtifactConfig,
   type CloudRecord,
+  isVisibility,
   type Visibility,
 } from '../shared/cloud';
 import { writeJsonAtomic } from './state';
@@ -11,15 +12,15 @@ import { writeJsonAtomic } from './state';
 export type { ArtifactConfig, CloudRecord, Visibility };
 
 export interface RyugiConfig {
-  version: 1;
-  autoPublish?: boolean;
   artifacts: Record<string, ArtifactConfig>;
+  autoPublish?: boolean;
+  version: 1;
 }
 
 export interface ArtifactConfigPatch {
-  visibility?: Visibility;
-  cloud?: CloudRecord | null;
   autoPublish?: false | null;
+  cloud?: CloudRecord | null;
+  visibility?: Visibility;
 }
 
 const defaults = (): RyugiConfig => ({ version: 1, artifacts: {} });

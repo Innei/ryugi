@@ -34,7 +34,7 @@ export function translator(
       find(dictionaries[locale], key, locale, values.count) ??
       find(dictionaries.en, key, 'en', values.count) ??
       key;
-    return message.replace(/\{\{(\w+)\}\}/g, (match, name: string) =>
+    return message.replaceAll(/\{\{(\w+)\}\}/g, (match, name: string) =>
       name in values ? String(values[name]) : match,
     );
   };

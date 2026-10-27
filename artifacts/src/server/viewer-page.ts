@@ -1,8 +1,9 @@
 import { createHash } from 'node:crypto';
+
 import { HTML_LANG, type Locale } from '../shared/locale';
 
 const escapeHtml = (value: string) =>
-  value.replace(
+  value.replaceAll(
     /[&<>"']/g,
     (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]!,
   );
@@ -36,12 +37,12 @@ export function viewerPage(
     )
     .replace(/<title\b[^>]*>[\s\S]*?<\/title>/i, () => `<title>${escapeHtml(page.title)}</title>`)
     .replace(
-      /(<link\b[^>]*\brel="icon"[^>]*\bhref=")[^"]*(")/i,
+      /(<link\b[^>]+\brel="icon"[^>]*\bhref=")[^"]*(")/i,
       (tag, prefix: string, suffix: string) =>
         page.icon ? `${prefix}${escapeHtml(page.icon)}${suffix}` : tag,
     )
-    .replace(
-      /(<meta\b[^>]*\b(?:name|property)="([^"]+)"[^>]*\bcontent=")([^"]*)("[^>]*>)/gi,
+    .replaceAll(
+      /(<meta\b[^>]+\b(?:name|property)="([^"]+)"[^>]*\bcontent=")([^"]*)("[^>]*>)/gi,
       (tag, prefix: string, name: string, value: string, suffix: string) => {
         const content =
           values[name] ??
@@ -58,7 +59,7 @@ export function viewerPage(
     );
 }
 
-const INLINE_SCRIPT = /<script\b(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/gi;
+const INLINE_SCRIPT = /<script\b(?![^>]+\bsrc=)[^>]*>([\s\S]*?)<\/script>/gi;
 
 export function allowInlineScripts(csp: string, html: string): string {
   const hashes = [...html.matchAll(INLINE_SCRIPT)].map(

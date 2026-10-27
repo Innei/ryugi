@@ -1,15 +1,16 @@
 import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
 import { Check, RotateCcw } from 'lucide-react';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
+
 import type { Thread } from '../../shared/comments';
-import { ThreadMessages, WaitingText, type ThreadActions } from '../comments/ThreadView';
+import { type ThreadActions, ThreadMessages, WaitingText } from '../comments/ThreadView';
+import { t } from '../i18n';
 import { Avatar } from './Avatar';
 import { Composer } from './Composer';
 import { play } from './motion';
 import { useFold, useReplyPresence } from './useCardMotion';
-import { t } from '../i18n';
 
 const styles = stylex.create({
   panel: {
@@ -148,6 +149,7 @@ export function CommentCard({
       duration: 120,
       easing: 'ease-out',
     });
+    // eslint-disable-next-line @eslint-react/dom-no-flush-sync -- commit before the next frame measures the row
     flushSync(() => {
       setClosing(true);
       setExpanded(false);
@@ -159,6 +161,7 @@ export function CommentCard({
   const unfold = async () => {
     onActivate();
     await play(row.current, [{ opacity: 1 }, { opacity: 0 }], { duration: 100, easing: 'ease-in' });
+    // eslint-disable-next-line @eslint-react/dom-no-flush-sync -- commit before the next frame measures the row
     flushSync(() => setExpanded(true));
   };
 
@@ -184,11 +187,11 @@ export function CommentCard({
           <PanelFrame active={active}>
             <div {...stylex.props(styles.bar)}>
               <span {...stylex.props(styles.quote)}>{quote}</span>
-              {actions ? <WaitingText thread={thread} agent={agent} /> : null}
+              {actions ? <WaitingText agent={agent} thread={thread} /> : null}
               {!actions ? null : resolved ? (
                 <button
-                  type="button"
                   title={t('common.reopen')}
+                  type="button"
                   onClick={() => actions.reopen(thread.id)}
                   {...stylex.props(styles.icon)}
                 >
@@ -196,8 +199,8 @@ export function CommentCard({
                 </button>
               ) : (
                 <button
-                  type="button"
                   title={t('common.markResolved')}
+                  type="button"
                   onClick={(event) => (event.stopPropagation(), void resolve(event.currentTarget))}
                   {...stylex.props(styles.icon)}
                   style={confirming ? CONFIRMED : undefined}
@@ -206,13 +209,13 @@ export function CommentCard({
                 </button>
               )}
             </div>
-            <ThreadMessages thread={thread} actions={actions} />
+            <ThreadMessages actions={actions} thread={thread} />
             {actions && reply.shown ? (
               <div ref={reply.outer} {...stylex.props(styles.replyBox)}>
                 <div ref={reply.inner}>
                   <Composer
-                    placeholder={t('common.reply')}
                     focusKey={focusReply}
+                    placeholder={t('common.reply')}
                     onSubmit={(text) => actions.reply(thread.id, text)}
                   />
                 </div>

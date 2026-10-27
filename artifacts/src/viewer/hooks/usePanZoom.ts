@@ -1,23 +1,24 @@
 import {
+  type PointerEvent as ReactPointerEvent,
   useCallback,
   useEffect,
   useLayoutEffect,
   useRef,
   useState,
-  type PointerEvent as ReactPointerEvent,
 } from 'react';
+
 import { COMMENT_CURSOR } from '../../shared/inspector';
 import type { Bounds } from '../../shared/types';
 import {
   cubicBezier,
   fitView,
+  type Insets,
   pinchView,
+  type Point,
   tweenView,
+  type View,
   zoomAround,
   zoomTo,
-  type Insets,
-  type Point,
-  type View,
 } from '../lib/view';
 
 export type Tool = 'select' | 'hand' | 'comment';

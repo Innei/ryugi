@@ -1,5 +1,6 @@
 import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
+
 import { Composer } from '../document/Composer';
 import { useTranslation } from '../i18n';
 
@@ -40,9 +41,9 @@ const styles = stylex.create({
 interface Props {
   group: string;
   left: number;
-  top: number;
-  onSubmit: (text: string) => Promise<boolean>;
   onCancel: () => void;
+  onSubmit: (text: string) => Promise<boolean>;
+  top: number;
 }
 
 export function RejectComposer({ group, left, top, onSubmit, onCancel }: Props) {
@@ -57,8 +58,8 @@ export function RejectComposer({ group, left, top, onSubmit, onCancel }: Props) 
       <Composer
         autoFocus
         placeholder={t('verdict.reasonPlaceholder')}
-        onSubmit={onSubmit}
         onCancel={onCancel}
+        onSubmit={onSubmit}
       />
       <div {...stylex.props(styles.hint)}>{t('verdict.rejectHint')}</div>
     </div>

@@ -5,9 +5,10 @@ import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
 import { ZoomIn } from 'lucide-react';
 import { useRef, useState } from 'react';
+
+import { t } from '../i18n';
 import { headingAbove, useMermaidDiagram } from './mermaid';
 import { openMermaidViewer } from './MermaidViewer';
-import { t } from '../i18n';
 
 const styles = stylex.create({
   root: {
@@ -48,7 +49,7 @@ export function MermaidPreview({ content }: MermaidRendererProps) {
   const [focused, setFocused] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
-  if (!diagram) return <MermaidRenderer content={content} colorScheme={colorScheme} />;
+  if (!diagram) return <MermaidRenderer colorScheme={colorScheme} content={content} />;
 
   const open = () =>
     openMermaidViewer({
@@ -59,11 +60,15 @@ export function MermaidPreview({ content }: MermaidRendererProps) {
 
   return (
     <div
+      aria-label={t('mermaid.open')}
       ref={ref}
       role="button"
       tabIndex={0}
-      aria-label={t('mermaid.open')}
+      onBlur={() => setFocused(false)}
       onClick={open}
+      onFocus={(event) => setFocused(event.currentTarget.matches(':focus-visible'))}
+      onPointerEnter={() => setHovered(true)}
+      onPointerLeave={() => setHovered(false)}
       onKeyDownCapture={(event) => {
         if (event.key !== 'Enter' && event.key !== ' ') return;
         // Lexical's native keydown listener on the contenteditable would otherwise also see the key and split a paragraph at the last caret.
@@ -71,18 +76,14 @@ export function MermaidPreview({ content }: MermaidRendererProps) {
         event.stopPropagation();
         open();
       }}
-      onPointerEnter={() => setHovered(true)}
-      onPointerLeave={() => setHovered(false)}
-      onFocus={(event) => setFocused(event.currentTarget.matches(':focus-visible'))}
-      onBlur={() => setFocused(false)}
       {...stylex.props(styles.root, hovered && styles.hovered)}
     >
       <img
         alt="Mermaid diagram"
+        draggable={false}
+        height={diagram.height}
         src={diagram.src}
         width={diagram.width}
-        height={diagram.height}
-        draggable={false}
         {...stylex.props(styles.image)}
       />
       <span {...stylex.props(styles.hint, (hovered || focused) && styles.hintShown)}>

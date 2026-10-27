@@ -1,15 +1,15 @@
-import { chooseTiers, type BoardTier, type TierInput } from './board-tiers';
+import { type BoardTier, chooseTiers, type TierInput } from './board-tiers';
 
 export interface ControllerInput extends TierInput {
-  scaling: boolean;
   hovered: string | null;
   hoverPromotes: boolean;
+  scaling: boolean;
   warm?: readonly string[];
 }
 export interface BoardState {
-  tier: BoardTier;
   mounted: boolean;
   ready: boolean;
+  tier: BoardTier;
   warming?: boolean;
 }
 
@@ -26,11 +26,11 @@ interface Frame {
 }
 
 interface Clock {
-  now?: () => number;
-  schedule?: (fn: () => void, ms: number) => number;
   cancel?: (id: number) => void;
+  now?: () => number;
   onChange: () => void;
   onGiveUp?: (id: string) => void;
+  schedule?: (fn: () => void, ms: number) => number;
 }
 
 export function createTierController({
@@ -89,7 +89,7 @@ export function createTierController({
     update(input: ControllerInput): Map<string, BoardState> {
       const time = now();
       const ids = new Set(input.boards.map((board) => board.id));
-      for (const id of [...frames.keys()]) if (!ids.has(id)) release(id);
+      for (const id of frames.keys()) if (!ids.has(id)) release(id);
       const pinned = input.pinned;
       const first = (id: string) => pinned.has(id) || (input.hoverPromotes && id === input.hovered);
       const tiers = chooseTiers({ ...input, hovered: input.hoverPromotes ? input.hovered : null });
@@ -119,7 +119,7 @@ export function createTierController({
         const warm = (input.warm ?? []).filter((id) => ids.has(id) && !live.has(id));
         const wanted = new Set(warm);
         const given = new Set<string>();
-        for (const [id, frame] of [...frames]) {
+        for (const [id, frame] of frames) {
           if (live.has(id)) continue;
           if (!wanted.has(id)) release(id);
           else if (frame.ready && !frame.reported) {

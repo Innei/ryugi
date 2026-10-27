@@ -1,4 +1,4 @@
-import type { TweakSchema, TweakValues, tweakTools } from '../shared/tweaks';
+import type { TweakSchema, tweakTools, TweakValues } from '../shared/tweaks';
 
 export function installTweaks(win: Window & typeof globalThis, makeTools: typeof tweakTools) {
   if (Object.getOwnPropertyDescriptor(win, 'ryugiTweaks')) return;

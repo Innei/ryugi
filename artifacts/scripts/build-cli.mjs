@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+
 import { build } from 'esbuild';
 
 const { version } = JSON.parse(

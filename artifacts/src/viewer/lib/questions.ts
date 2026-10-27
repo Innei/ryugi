@@ -2,16 +2,16 @@ import type { Bounds, CanvasLayout, CanvasSpec, Rect } from '../../shared/types'
 import { i18n } from '../i18n';
 
 export interface Question {
-  id: string;
-  title: string;
   boards: string[];
   bounds: Bounds;
+  id: string;
+  title: string;
 }
 
 export interface Round {
   id: string | null;
-  title: string;
   questions: Question[];
+  title: string;
 }
 
 const toBounds = (r: Rect): Bounds => ({ minX: r.x, minY: r.y, maxX: r.x + r.w, maxY: r.y + r.h });

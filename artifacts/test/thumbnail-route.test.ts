@@ -1,6 +1,8 @@
 import path from 'node:path';
+
 import { afterEach, expect, test } from 'vitest';
-import { startArtifactsServer, type ArtifactsServer } from '../src/server/app';
+
+import { type ArtifactsServer, startArtifactsServer } from '../src/server/app';
 import { renderThumbnail } from '../src/shared/thumbnail';
 import { get, tempRoot, writeArtboard, writeDocument, writeHtml } from './helpers';
 

@@ -17,7 +17,7 @@ export function styleObject(el: HTMLElement): Record<string, string> | undefined
   for (const property of Array.from(el.style)) {
     const key = property.startsWith('--')
       ? property
-      : property.replace(/-([a-z])/g, (_, letter: string) => letter.toUpperCase());
+      : property.replaceAll(/-([a-z])/g, (_, letter: string) => letter.toUpperCase());
     style[key] = el.style.getPropertyValue(property);
   }
   return style;

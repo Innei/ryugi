@@ -1,11 +1,12 @@
 import './styles';
+
 import {
   ALERT_NODE_KEY,
   CODE_BLOCK_NODE_KEY,
   IMAGE_NODE_KEY,
   MERMAID_NODE_KEY,
-  RichEditor,
   type RendererConfig,
+  RichEditor,
 } from '@haklex/rich-editor';
 import { ChartEditNode } from '@haklex/rich-ext-chart';
 import { ExcalidrawEditNode, ExcalidrawPlugin } from '@haklex/rich-ext-excalidraw';
@@ -17,10 +18,11 @@ import { ImageEditRenderer } from '@haklex/rich-renderer-image';
 import { katexEditNodes } from '@haklex/rich-renderer-katex';
 import type { LexicalEditor } from 'lexical';
 import type { LoroDoc } from 'loro-crdt';
-import { useState, type ReactNode } from 'react';
+import { type ReactNode, useState } from 'react';
+
 import { AgentCaret } from './AgentCaret';
 import { DynamicNode } from './DynamicNode';
-import { LoroSync, type AgentCaretPosition } from './LoroSync';
+import { type AgentCaretPosition, LoroSync } from './LoroSync';
 import { MermaidPreview } from './MermaidPreview';
 import { PendingNode } from './PendingNode';
 import type { DocumentState, DocumentTransport } from './transport';
@@ -42,15 +44,15 @@ export const rendererConfig: RendererConfig = {
 };
 
 interface Props {
-  transport: DocumentTransport;
   agent?: string;
+  children?: ReactNode;
   doc: LoroDoc;
-  theme: 'light' | 'dark';
   onAgentSection: (section: string | null) => void;
+  onEditorReady: (editor: LexicalEditor | null) => void;
   onOffline: (offline: boolean) => void;
   onState?: (state: DocumentState) => void;
-  onEditorReady: (editor: LexicalEditor | null) => void;
-  children?: ReactNode;
+  theme: 'light' | 'dark';
+  transport: DocumentTransport;
 }
 
 export function DocumentEditor({
@@ -74,22 +76,22 @@ export function DocumentEditor({
   return (
     <div ref={setContainer} style={{ position: 'relative' }}>
       <RichEditor
-        variant="article"
-        theme={theme}
         extraNodes={extraNodes}
         rendererConfig={rendererConfig}
+        theme={theme}
+        variant="article"
         onEditorReady={onEditorReady}
       >
         <LoroSync
-          transport={transport}
           doc={doc}
+          transport={transport}
           onAgentCaret={onAgentCaret}
           onOffline={onOffline}
           onState={onState}
         />
         <ExcalidrawPlugin />
         <FloatingLinkEditorPlugin />
-        <AgentCaret caret={caret} container={container} agent={agent} />
+        <AgentCaret agent={agent} caret={caret} container={container} />
         {children}
       </RichEditor>
     </div>

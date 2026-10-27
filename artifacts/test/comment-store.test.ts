@@ -1,7 +1,9 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+
 import { expect, test } from 'vitest';
+
 import { createCommentStore } from '../src/server/document-comments';
 
 const names = (agent: string) => ({ human: () => ({ name: 'innei' }), agent: () => agent });

@@ -10,13 +10,14 @@ import {
   RotateCcw,
   SlidersHorizontal,
 } from 'lucide-react';
-import { isMediaBoard, type BoardSpec, type GroupSpec } from '../../shared/types';
+
+import { type BoardSpec, type GroupSpec, isMediaBoard } from '../../shared/types';
 import type { Verdicts } from '../hooks/useVerdicts';
+import { t } from '../i18n';
 import { boardReady, canPlay } from '../lib/play';
-import { GroupVerdict } from '../verdicts/GroupVerdict';
 import { BOARD_LABEL_RULE, GROUP_LABEL_RULE, labelRect, labelSize, type View } from '../lib/view';
 import { brand } from '../tokens.stylex';
-import { t } from '../i18n';
+import { GroupVerdict } from '../verdicts/GroupVerdict';
 
 const ACTIONS_MIN_WIDTH = 150;
 const PLAY_MIN_WIDTH = 240;
@@ -108,24 +109,24 @@ const styles = stylex.create({
 });
 
 interface LabelsProps {
-  view: View;
-  boards: [string, BoardSpec][];
-  groups: [string, GroupSpec][];
+  activeParameters?: string | null;
   allBoards: Record<string, BoardSpec>;
+  boards: [string, BoardSpec][];
   contentBase: string;
-  versions: Record<string, number>;
+  groups: [string, GroupSpec][];
+  onExpand: (id: string) => void;
+  onReplay: (id: string) => void;
+  onToggleParameters?: (id: string, trigger: HTMLButtonElement) => void;
+  onTogglePlay: (id: string) => void;
+  parameters?: Record<string, number>;
   pending: ReadonlySet<string>;
   playing: ReadonlySet<string>;
-  onExpand: (id: string) => void;
-  onTogglePlay: (id: string) => void;
-  onReplay: (id: string) => void;
-  parameters?: Record<string, number>;
-  activeParameters?: string | null;
-  onToggleParameters?: (id: string, trigger: HTMLButtonElement) => void;
   verdicts?: Pick<
     Verdicts,
     'states' | 'evidenceAt' | 'canJudge' | 'pass' | 'startReject' | 'undoPass'
   >;
+  versions: Record<string, number>;
+  view: View;
 }
 
 export function Labels({
@@ -160,9 +161,9 @@ export function Labels({
           const verdict = verdicts?.states[id];
           return (
             <div
-              key={id}
-              data-group-label={id}
               data-chrome={verdict ? 'group-label' : undefined}
+              data-group-label={id}
+              key={id}
               {...stylex.props(styles.groupLabel, verdict && styles.judged)}
               style={{
                 left: view.x + x * view.k,
@@ -174,9 +175,9 @@ export function Labels({
               {group.title}
               {verdict && verdicts && (
                 <GroupVerdict
-                  verdict={verdict}
-                  evidenceAt={verdicts.evidenceAt(id)}
                   canJudge={verdicts.canJudge}
+                  evidenceAt={verdicts.evidenceAt(id)}
+                  verdict={verdict}
                   onPass={() => verdicts.pass(id)}
                   onReject={() => verdicts.startReject(id)}
                   onUndo={() => verdicts.undoPass(id)}
@@ -194,8 +195,8 @@ export function Labels({
           const interactive = ready && canPlay(board, versions);
           return (
             <div
-              key={id}
               data-chrome="board-label"
+              key={id}
               {...stylex.props(styles.boardLabel)}
               style={{
                 left: rect.left,
@@ -218,17 +219,17 @@ export function Labels({
               {ready && width >= ACTIONS_MIN_WIDTH && (
                 <>
                   <ActionIcon
+                    aria-label={t('chrome.expandBoard', { id })}
                     icon={Maximize2}
                     size={{ blockSize: 22, size: 13 }}
                     title={t('chrome.expand')}
-                    aria-label={t('chrome.expandBoard', { id })}
                     onClick={() => onExpand(id)}
                   />
                   <ActionIcon
+                    aria-label={t('chrome.downloadBoard', { id })}
                     icon={Download}
                     size={{ blockSize: 22, size: 13 }}
                     title={t('chrome.download')}
-                    aria-label={t('chrome.downloadBoard', { id })}
                     onClick={() =>
                       downloadFile(
                         `${contentBase}${board.file}`,
@@ -240,9 +241,9 @@ export function Labels({
               )}
               {ready && parameters?.[id] !== undefined && width >= ACTIONS_MIN_WIDTH && (
                 <button
-                  type="button"
-                  aria-label={t('chrome.parametersBoard', { id })}
                   aria-expanded={activeParameters === id}
+                  aria-label={t('chrome.parametersBoard', { id })}
+                  type="button"
                   onClick={(event) => onToggleParameters?.(id, event.currentTarget)}
                   {...stylex.props(styles.play, activeParameters === id && styles.playOn)}
                 >
@@ -252,17 +253,17 @@ export function Labels({
               )}
               {interactive && width >= PLAY_MIN_WIDTH && playing.has(id) && (
                 <ActionIcon
+                  aria-label={t('chrome.replayBoard', { id })}
                   icon={RotateCcw}
                   size={{ blockSize: 22, size: 13 }}
                   title={t('chrome.replay')}
-                  aria-label={t('chrome.replayBoard', { id })}
                   onClick={() => onReplay(id)}
                 />
               )}
               {interactive && width >= PLAY_MIN_WIDTH && (
                 <button
-                  type="button"
                   aria-pressed={playing.has(id)}
+                  type="button"
                   aria-label={
                     playing.has(id) ? t('chrome.stopBoard', { id }) : t('chrome.playBoard', { id })
                   }

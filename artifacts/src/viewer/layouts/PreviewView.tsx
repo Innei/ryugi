@@ -1,6 +1,8 @@
 import './preview.css';
+
 import type { SerializedEditorState } from 'lexical';
 import { lazy, Suspense, useEffect, useState } from 'react';
+
 import type { ArtifactType, CanvasPayload } from '../../shared/types';
 import { CanvasErrorBoundary } from '../components/CanvasErrorBoundary';
 import { useTranslation } from '../i18n';
@@ -18,9 +20,9 @@ const noLoad = () => {};
 const none = new Set<string>();
 
 export interface PreviewPayload extends Partial<CanvasPayload> {
-  title: string;
   contentBase: string;
   state?: SerializedEditorState;
+  title: string;
 }
 
 export function PreviewView({
@@ -50,10 +52,10 @@ export function PreviewView({
     return (
       <iframe
         className="artifact-preview-html"
-        title={data.title}
-        src={`${data.contentBase}index.html`}
         sandbox="allow-scripts"
+        src={`${data.contentBase}index.html`}
         tabIndex={-1}
+        title={data.title}
       />
     );
   }
@@ -61,7 +63,7 @@ export function PreviewView({
     return data.state ? (
       <CanvasErrorBoundary resetKey={data.state}>
         <Suspense fallback={message(t('preview.loading'))}>
-          <DocumentPreview id={id} state={data.state} contentBase={data.contentBase} />
+          <DocumentPreview contentBase={data.contentBase} id={id} state={data.state} />
         </Suspense>
       </CanvasErrorBoundary>
     ) : (
@@ -79,22 +81,22 @@ export function PreviewView({
       <CanvasErrorBoundary resetKey={canvas}>
         <Suspense fallback={message(t('preview.loading'))}>
           <CanvasPreview
+            boards={boards}
+            contentBase={data.contentBase}
+            frameLoaded={noLoad}
+            frameRef={noRef}
+            inspecting={false}
+            notes={Object.entries(canvas.notes ?? {}).filter(([, note]) => note.page === page)}
+            pending={new Set(data.pending)}
+            playing={none}
+            replays={{}}
+            versions={data.versions ?? {}}
             view={view}
             renders={visibleRenders({
               boards: boards.map(([id, board]) => ({ id, ...board })),
               view,
               viewport,
             })}
-            boards={boards}
-            notes={Object.entries(canvas.notes ?? {}).filter(([, note]) => note.page === page)}
-            contentBase={data.contentBase}
-            versions={data.versions ?? {}}
-            pending={new Set(data.pending)}
-            playing={none}
-            replays={{}}
-            inspecting={false}
-            frameRef={noRef}
-            frameLoaded={noLoad}
           />
         </Suspense>
       </CanvasErrorBoundary>

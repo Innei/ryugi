@@ -1,5 +1,6 @@
 import os from 'node:os';
 import path from 'node:path';
+
 import { ensureConfig, readConfig, setProjectAutoPublish } from '../server/config';
 import { credentialsFile } from '../server/credentials';
 import { readGlobalAutoPublish, settingsFileFor, writeGlobalAutoPublish } from '../server/settings';
@@ -8,9 +9,9 @@ import { CliError, projectPaths } from './paths';
 import type { Emit } from './start';
 
 export interface ConfigOptions {
-  projectDir: string;
   autoPublish?: string;
   project: boolean;
+  projectDir: string;
 }
 
 const VALUES: Record<string, boolean | null> = { on: true, off: false, inherit: null };

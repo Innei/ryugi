@@ -1,5 +1,5 @@
-import { i18n } from '../i18n';
 import type { PlanLimit } from '../../shared/cloud';
+import { i18n } from '../i18n';
 
 export function errorText(code: unknown, fallback: string): string {
   return typeof code === 'string' && i18n.exists(`errors.${code}`)

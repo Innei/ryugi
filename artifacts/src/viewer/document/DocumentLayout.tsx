@@ -1,8 +1,9 @@
 import * as stylex from '@stylexjs/stylex';
 import type { LexicalEditor } from 'lexical';
-import { useState, type ReactNode } from 'react';
-import { useMedia } from '../hooks/useMedia';
+import { type ReactNode, useState } from 'react';
+
 import type { Thread } from '../../shared/comments';
+import { useMedia } from '../hooks/useMedia';
 import { BlockBars } from './BlockBars';
 import type { ThreadActions } from './CommentCard';
 import { CommentRail } from './CommentRail';
@@ -32,14 +33,14 @@ const styles = stylex.create({
 });
 
 interface Props {
-  editor: LexicalEditor | null;
-  threads: Thread[];
   actions?: ThreadActions;
   agent?: string;
+  children: ReactNode;
+  editor: LexicalEditor | null;
+  history?: DocumentHistoryView | null;
   onMain?: (element: HTMLElement | null) => void;
   overlay?: (article: HTMLElement) => ReactNode;
-  history?: DocumentHistoryView | null;
-  children: ReactNode;
+  threads: Thread[];
 }
 
 export function DocumentLayout({
@@ -76,10 +77,10 @@ export function DocumentLayout({
         <div hidden={Boolean(history)}>{children}</div>
         {history ? null : (
           <BlockBars
-            container={articleEl}
-            anchors={anchors}
-            threads={threads}
             activeId={activeId}
+            anchors={anchors}
+            container={articleEl}
+            threads={threads}
           />
         )}
       </article>
@@ -88,14 +89,14 @@ export function DocumentLayout({
           history.panel
         ) : (
           <CommentRail
-            agent={agent}
-            narrow={narrow}
-            threads={threads}
-            anchors={anchors}
-            activeId={activeId}
             actions={actions}
-            onActivate={setActiveId}
+            activeId={activeId}
+            agent={agent}
+            anchors={anchors}
+            narrow={narrow}
             railRef={setRail}
+            threads={threads}
+            onActivate={setActiveId}
           />
         )}
       </div>

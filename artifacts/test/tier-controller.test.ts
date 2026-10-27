@@ -1,6 +1,7 @@
 import { expect, test } from 'vitest';
-import { createTierController, type ControllerInput } from '../src/viewer/lib/tier-controller';
+
 import type { TierBoard } from '../src/viewer/lib/board-tiers';
+import { type ControllerInput, createTierController } from '../src/viewer/lib/tier-controller';
 
 function clock() {
   let now = 0;

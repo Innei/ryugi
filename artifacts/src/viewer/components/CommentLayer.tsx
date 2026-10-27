@@ -1,13 +1,14 @@
 import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
+
 import type { BoardAnchor, BoardThread } from '../../shared/board-comments';
 import type { BoardSpec } from '../../shared/types';
-import { ThreadView, type ThreadActions } from '../comments/ThreadView';
+import { type ThreadActions, ThreadView } from '../comments/ThreadView';
 import { Composer } from '../document/Composer';
+import { useTranslation } from '../i18n';
 import { anchorLabel, pinPoint, staleText } from '../lib/board-anchor';
 import type { View } from '../lib/view';
 import { brand } from '../tokens.stylex';
-import { useTranslation } from '../i18n';
 
 const PIN = 28;
 const POPOVER = 300;
@@ -79,21 +80,21 @@ const styles = stylex.create({
 });
 
 interface Props {
-  view: View;
-  page: string | null;
-  boards: Record<string, BoardSpec>;
-  width: number;
-  threads: BoardThread[];
-  stale: Set<string>;
-  numbers: Map<string, number>;
-  showResolved: boolean;
-  draft: BoardAnchor | null;
-  openId: string | null;
   actions?: ThreadActions;
   agent?: string;
+  boards: Record<string, BoardSpec>;
+  draft: BoardAnchor | null;
+  numbers: Map<string, number>;
+  onCancelDraft: () => void;
   onOpen: (id: string | null) => void;
   onSubmit: (text: string) => Promise<boolean>;
-  onCancelDraft: () => void;
+  openId: string | null;
+  page: string | null;
+  showResolved: boolean;
+  stale: Set<string>;
+  threads: BoardThread[];
+  view: View;
+  width: number;
 }
 
 const screenOf = (view: View, point: { x: number; y: number }) => ({
@@ -143,10 +144,10 @@ export function CommentLayer({
         const author = thread.messages[0]?.author;
         return (
           <button
-            key={thread.id}
-            type="button"
             aria-label={t('comments.pin', { number: numbers.get(thread.id) ?? '' })}
             data-verdict={thread.anchor.verdict}
+            key={thread.id}
+            type="button"
             onClick={() => onOpen(thread.id === openId ? null : thread.id)}
             {...stylex.props(
               styles.pin,
@@ -175,10 +176,10 @@ export function CommentLayer({
           }
         >
           <ThreadView
-            thread={open}
-            label={`#${numbers.get(open.id)} ${anchorLabel(open.anchor)}${stale.has(open.id) ? ` · ${staleText(open.anchor)}` : ''}`}
             actions={actions}
             agent={agent}
+            label={`#${numbers.get(open.id)} ${anchorLabel(open.anchor)}${stale.has(open.id) ? ` · ${staleText(open.anchor)}` : ''}`}
+            thread={open}
             onClose={() => onOpen(null)}
           />
         </div>
@@ -202,8 +203,8 @@ export function CommentLayer({
             <Composer
               autoFocus
               placeholder={t('comments.addPlaceholder')}
-              onSubmit={onSubmit}
               onCancel={onCancelDraft}
+              onSubmit={onSubmit}
             />
             <div {...stylex.props(styles.hint)}>{t('comments.sendHint')}</div>
           </div>

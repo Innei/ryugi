@@ -1,16 +1,16 @@
 import fs from 'node:fs';
 
 export interface ServerConfig {
-  root: string;
+  cloudOrigin: string;
   host: string;
-  urlHost: string;
   idleTimeoutMs: number;
   lifecycleCheckMs: number;
   open: boolean;
-  openCmd: string | null;
   openArtifact: string | null;
+  openCmd: string | null;
+  root: string;
   serverId: string | null;
-  cloudOrigin: string;
+  urlHost: string;
 }
 
 const DEFAULT_IDLE_TIMEOUT_MS = 4 * 60 * 60 * 1000;

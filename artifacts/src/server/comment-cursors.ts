@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+
 import { writeJsonAtomic } from './state';
 
 export const cursorsFile = (stateDir: string, id: string, type = 'document') =>

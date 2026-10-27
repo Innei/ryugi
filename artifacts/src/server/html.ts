@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+
 import type { HtmlPayload } from '../shared/types';
 
 const TITLE = /<title[^>]*>([\s\S]*?)<\/title>/i;

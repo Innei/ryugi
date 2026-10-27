@@ -1,8 +1,8 @@
 import fs from 'node:fs';
 import http from 'node:http';
+import type { Socket } from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
-import type { Socket } from 'node:net';
 
 export function tempRoot() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'artifacts-test-'));
@@ -52,9 +52,9 @@ export function writeDocument(root: string, id: string, files: Record<string, st
 export const readJson = (file: string) => JSON.parse(fs.readFileSync(file, 'utf8'));
 
 export interface Fetched {
-  status: number;
-  headers: http.IncomingHttpHeaders;
   body: string;
+  headers: http.IncomingHttpHeaders;
+  status: number;
 }
 
 export function get(url: string, headers: Record<string, string> = {}): Promise<Fetched> {
@@ -71,9 +71,9 @@ export function get(url: string, headers: Record<string, string> = {}): Promise<
 }
 
 export interface WsResult {
-  status: number;
-  socket?: Socket;
   messages: string[];
+  socket?: Socket;
+  status: number;
 }
 
 export function openWs(port: number, headers: Record<string, string>): Promise<WsResult> {

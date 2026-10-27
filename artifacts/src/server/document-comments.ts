@@ -1,18 +1,20 @@
 import fs from 'node:fs';
+
 import { nanoid } from 'nanoid';
+
 import {
+  type AgentOp,
   applyAgentOp,
   applyHumanOp,
-  emptyComments,
-  mergeComments,
-  parseComments,
-  savedComments,
-  type AgentOp,
   type Author,
   type CommentsFile,
+  emptyComments,
   type HumanOp,
   type IncomingComments,
+  mergeComments,
+  parseComments,
   type Person,
+  savedComments,
 } from '../shared/comments';
 import type { CommentNames } from './comment-names';
 import { writeJsonAtomic } from './state';
@@ -27,27 +29,33 @@ export function asHumanOp(value: unknown): HumanOp | null {
   if (typeof value !== 'object' || value === null) return null;
   const v = value as Record<string, unknown>;
   switch (v.op) {
-    case 'create':
+    case 'create': {
       return isId(v.blockId) && isText(v.quote) && isText(v.text) && v.text.length > 0
         ? { op: 'create', blockId: v.blockId, quote: v.quote, text: v.text }
         : null;
-    case 'reply':
+    }
+    case 'reply': {
       return isId(v.threadId) && isText(v.text) && v.text.length > 0
         ? { op: 'reply', threadId: v.threadId, text: v.text }
         : null;
-    case 'edit':
+    }
+    case 'edit': {
       return isId(v.threadId) && isId(v.messageId) && isText(v.text) && v.text.length > 0
         ? { op: 'edit', threadId: v.threadId, messageId: v.messageId, text: v.text }
         : null;
-    case 'delete':
+    }
+    case 'delete': {
       return isId(v.threadId) && isId(v.messageId)
         ? { op: 'delete', threadId: v.threadId, messageId: v.messageId }
         : null;
+    }
     case 'resolve':
-    case 'reopen':
+    case 'reopen': {
       return isId(v.threadId) ? { op: v.op, threadId: v.threadId } : null;
-    default:
+    }
+    default: {
       return null;
+    }
   }
 }
 
@@ -55,7 +63,7 @@ export function asAgentOp(value: unknown): AgentOp | null {
   if (typeof value !== 'object' || value === null) return null;
   const v = value as Record<string, unknown>;
   switch (v.op) {
-    case 'add':
+    case 'add': {
       return isId(v.blockId) &&
         (v.quote === undefined || isText(v.quote)) &&
         isText(v.text) &&
@@ -67,46 +75,50 @@ export function asAgentOp(value: unknown): AgentOp | null {
             text: v.text,
           }
         : null;
-    case 'reply':
+    }
+    case 'reply': {
       return isId(v.threadId) && isText(v.text) && v.text.length > 0
         ? { op: 'reply', threadId: v.threadId, text: v.text }
         : null;
-    case 'resolve':
+    }
+    case 'resolve': {
       return isId(v.threadId) ? { op: 'resolve', threadId: v.threadId } : null;
-    default:
+    }
+    default: {
       return null;
+    }
   }
 }
 
 export interface Store<F, H, G> {
-  current(): F;
-  warnings(): string[];
-  sync(): boolean;
-  apply(op: H): F;
-  applyAgent(op: G, name?: string): { file: F; threadId: string; messageId?: string };
+  apply: (op: H) => F;
+  applyAgent: (op: G, name?: string) => { file: F; threadId: string; messageId?: string };
+  current: () => F;
+  sync: () => boolean;
+  warnings: () => string[];
 }
 
 export type CommentStore = Store<CommentsFile, HumanOp, AgentOp>;
 
 export interface StoreRules<F, H, G> {
-  empty(): F;
-  saved(incoming: IncomingComments): F;
-  merge(
+  agent: (
+    file: F,
+    op: G,
+    now: string,
+    newId: () => string,
+    name?: string,
+  ) => { file: F; threadId: string; messageId?: string };
+  empty: () => F;
+  human: (file: F, op: H, now: string, newId: () => string, who?: Person) => F;
+  merge: (
     base: F,
     incoming: IncomingComments,
     origin: Author,
     now: string,
     newId: () => string,
     name?: string,
-  ): { file: F; warnings: string[] };
-  human(file: F, op: H, now: string, newId: () => string, who?: Person): F;
-  agent(
-    file: F,
-    op: G,
-    now: string,
-    newId: () => string,
-    name?: string,
-  ): { file: F; threadId: string; messageId?: string };
+  ) => { file: F; warnings: string[] };
+  saved: (incoming: IncomingComments) => F;
 }
 
 const documentRules: StoreRules<CommentsFile, HumanOp, AgentOp> = {

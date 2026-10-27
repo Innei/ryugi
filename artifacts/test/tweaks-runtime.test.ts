@@ -1,5 +1,6 @@
 import { Window } from 'happy-dom';
 import { afterEach, expect, test, vi } from 'vitest';
+
 import { injectRuntime } from '../src/server/inject';
 
 const schema = {

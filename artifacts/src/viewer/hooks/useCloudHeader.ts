@@ -1,21 +1,22 @@
 import { useEffect } from 'react';
-import { readPublication, type Publication } from '../../shared/cloud';
+
+import { type Publication, readPublication } from '../../shared/cloud';
 
 export type ActivityTone = 'live' | 'quiet' | 'warning';
 
 const TONES: readonly string[] = ['live', 'quiet', 'warning'];
 
 export interface CloudHeaderState {
-  publication?: Publication | null;
-  title?: string;
-  online?: boolean | null;
-  comments?: number;
   activity?: string | null;
   activityTone?: ActivityTone;
-  retrying?: boolean;
-  reason?: string | null;
+  comments?: number;
   history?: boolean;
   historyOpen?: boolean;
+  online?: boolean | null;
+  publication?: Publication | null;
+  reason?: string | null;
+  retrying?: boolean;
+  title?: string;
 }
 
 export function reportCloudHeader(id: string, state: CloudHeaderState) {

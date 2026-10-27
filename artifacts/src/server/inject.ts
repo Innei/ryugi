@@ -1,8 +1,8 @@
 import { installInspector } from '../inspector/runtime';
 import { installSnapshot, serializeBoard } from '../inspector/snapshot';
+import { installTweaks } from '../runtime/tweaks';
 import { COMMENT_CURSOR, INSPECTOR_PROPERTIES } from '../shared/inspector';
 import { tweakTools } from '../shared/tweaks';
-import { installTweaks } from '../runtime/tweaks';
 import { EMBEDDED_STYLE, injectionPoint } from './strip-runtime';
 
 const RUNTIME = `(() => {
@@ -120,17 +120,17 @@ export function injectRuntime(
   options: { uiRuntimeUrl?: string; embedded?: boolean; inspector?: boolean } = {},
 ): string {
   const inspect = options.inspector
-    ? `;(${installTweaks.toString().replace(/\n/g, ' ')})(window,${tweakTools.toString().replace(/\n/g, ' ')});(${installInspector.toString().replace(/\n/g, ' ')})(window,${JSON.stringify(INSPECTOR_PROPERTIES)},${JSON.stringify(COMMENT_CURSOR)});;(${installSnapshot.toString().replace(/\n/g, ' ')})(window,${serializeBoard.toString().replace(/\n/g, ' ')});`
+    ? `;(${installTweaks.toString().replaceAll('\n', ' ')})(window,${tweakTools.toString().replaceAll('\n', ' ')});(${installInspector.toString().replaceAll('\n', ' ')})(window,${JSON.stringify(INSPECTOR_PROPERTIES)},${JSON.stringify(COMMENT_CURSOR)});;(${installSnapshot.toString().replaceAll('\n', ' ')})(window,${serializeBoard.toString().replaceAll('\n', ' ')});`
     : '';
   const tag = `${options.embedded ? EMBEDDED_STYLE : ''}<script>${inspect || RUNTIME_LINE}</script>`;
   const ui =
     options.uiRuntimeUrl && !options.inspector && (UI_MARKER.test(html) || UI_META.test(html))
-      ? `<script defer src="${options.uiRuntimeUrl.replace(/"/g, '&quot;')}"></script>`
+      ? `<script defer src="${options.uiRuntimeUrl.replaceAll('"', '&quot;')}"></script>`
       : '';
   const icons =
     options.uiRuntimeUrl &&
     (ui || /<ryugi-icon(?:\s|>)|<meta[^>]+name=["']ryugi-icons["']/i.test(html))
-      ? `<script defer src="${options.uiRuntimeUrl.replace(/ryugi-ui\.js$/, 'ryugi-icons.js').replace(/"/g, '&quot;')}"></script>`
+      ? `<script defer src="${options.uiRuntimeUrl.replace(/ryugi-ui\.js$/, 'ryugi-icons.js').replaceAll('"', '&quot;')}"></script>`
       : '';
   const at = injectionPoint(html);
   return html.slice(0, at) + tag + icons + ui + html.slice(at);

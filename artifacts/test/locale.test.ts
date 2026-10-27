@@ -1,4 +1,5 @@
 import { expect, test } from 'vitest';
+
 import { parseAcceptLanguage, resolveLocale } from '../src/shared/locale';
 
 test('picks Chinese for any zh preference', () => {

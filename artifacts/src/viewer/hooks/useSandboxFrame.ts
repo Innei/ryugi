@@ -6,10 +6,10 @@ const SNAPSHOT_TIMEOUT_MS = 300;
 const MAX_ERRORS_PER_LOAD = 10;
 
 export interface FrameMessage {
-  type?: string;
-  state?: unknown;
-  message?: unknown;
   height?: unknown;
+  message?: unknown;
+  state?: unknown;
+  type?: string;
 }
 
 interface Handlers {

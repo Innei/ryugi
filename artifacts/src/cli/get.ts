@@ -1,7 +1,9 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+
 import type { SerializedEditorState } from 'lexical';
+
 import { credentialsFile, readCredentials } from '../server/credentials';
 import { serializeDocument } from '../server/document-codec';
 import { stripRuntime } from '../server/strip-runtime';
@@ -10,31 +12,31 @@ import type { Thread } from '../shared/comments';
 import type { CommandSpec } from './command';
 import { CliError } from './paths';
 
-const ID = /^[A-Za-z0-9_-]{1,64}$/;
-const LINK_PATH = /^\/a\/([A-Za-z0-9_-]{1,64})(?:\/(?:view|preview))?\/?$/;
+const ID = /^[\w-]{1,64}$/;
+const LINK_PATH = /^\/a\/([\w-]{1,64})(?:\/(?:view|preview))?\/?$/;
 const TARGET_ERROR = 'Expected a Ryugi Cloud link (https://<host>/a/<id>) or an artifact id.';
 const LOGIN_MESSAGE =
   'Not found, or private and you are not signed in. Sign in once with `ryugi-artifacts start` then `ryugi-artifacts publish --login` in any project, then run this command again.';
 
 export interface GetOptions {
-  target: string;
-  defaultOrigin: string;
-  credentialsFile: string;
   cacheRoot: string;
+  credentialsFile: string;
+  defaultOrigin: string;
   out?: string;
+  target: string;
 }
 
 export interface GetResult {
-  type: 'artifact';
   artifactType: string;
-  id: string;
-  title: string | null;
-  visibility: string;
-  updatedAt: string;
-  content?: string;
   comments?: Thread[];
+  content?: string;
   dir?: string;
   files?: string[];
+  id: string;
+  title: string | null;
+  type: 'artifact';
+  updatedAt: string;
+  visibility: string;
 }
 
 const safePath = (file: string) =>
@@ -147,7 +149,8 @@ function threadText(thread: Thread) {
   return [
     head,
     ...messages.map(
-      (message) => `  ${message.name ?? message.author}: ${message.text.replace(/\n/g, '\n    ')}`,
+      (message) =>
+        `  ${message.name ?? message.author}: ${message.text.replaceAll('\n', '\n    ')}`,
     ),
   ].join('\n');
 }
@@ -198,13 +201,13 @@ export const getCommand: CommandSpec = {
         ),
         out: values.out as string | undefined,
       });
-      if (json) console.log(JSON.stringify(result));
+      if (json) console.info(JSON.stringify(result));
       else process.stdout.write(getText(result, { comments: !values['no-comments'] }));
       return 0;
     } catch (caught) {
       const err = caught instanceof CliError ? caught : new CliError((caught as Error).message);
       const fields = err.message ? { error: err.message, ...err.fields } : err.fields;
-      if (json) console.log(JSON.stringify(fields));
+      if (json) console.info(JSON.stringify(fields));
       else console.error(err.message ? `Error: ${err.message}` : String(err.fields.message));
       return err.code;
     }

@@ -2,6 +2,7 @@
 import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
+
 import { useHoverDwell } from '../src/viewer/hooks/useHoverDwell';
 import type { View } from '../src/viewer/lib/view';
 

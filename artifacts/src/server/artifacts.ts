@@ -1,14 +1,15 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
+
 import { isArtifactAddress, isArtifactId, isArtifactLocator, isArtifactType } from '../shared/ids';
 import { ARTIFACT_TYPES, type ArtifactType } from '../shared/types';
 
 export { isArtifactAddress, isArtifactId, isArtifactLocator, isArtifactType };
 
 export interface ArtifactRef {
-  type: ArtifactType;
   id: string;
+  type: ArtifactType;
 }
 
 export interface ArtifactEntry extends ArtifactRef {

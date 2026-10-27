@@ -1,18 +1,19 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { stripOpaque, TAG } from './balance';
+
 import { DYNAMIC_URL } from '../shared/dynamic';
+import { stripOpaque, TAG } from './balance';
 import { URL_ATTR } from './document-codec';
 
 interface FileState {
-  mtime: number;
   errors: string[];
+  mtime: number;
   ran: boolean;
 }
 
 export interface DynamicState {
-  warnings: string[];
   dynamic: Record<string, { ran: boolean }>;
+  warnings: string[];
 }
 
 export function dynamicUrls(xml: string): string[] {
@@ -70,7 +71,7 @@ export function createDynamicBlocks(limits: { maxErrors: number }) {
       return true;
     },
     state(id: string, dir: string): DynamicState {
-      let xml = '';
+      let xml: string;
       try {
         xml = fs.readFileSync(path.join(dir, 'doc.xml'), 'utf8');
       } catch {

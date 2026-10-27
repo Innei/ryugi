@@ -7,8 +7,8 @@ export function ArtboardLayout({ id }: { id: string }) {
   const data = useCanvasData(useLocalFeed('artboard', id));
   return (
     <ArtboardView
-      id={id}
       artifact={`artboard/${id}`}
+      id={id}
       {...data}
       actions={<PublishMenu artifact={`artboard/${id}`} />}
     />

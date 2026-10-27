@@ -4,9 +4,9 @@ import os from 'node:os';
 import path from 'node:path';
 
 export interface RegistryEntry {
+  pid: number;
   project: string;
   root: string;
-  pid: number;
   serverId: string;
   startedAt: number;
 }

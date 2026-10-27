@@ -1,6 +1,6 @@
 import type { CommandSpec } from './command';
-import { duration, shortPath, tags } from './monitor-view';
 import { runMonitorUi } from './monitor-ui';
+import { duration, shortPath, tags } from './monitor-view';
 import { listServers, type ServerRow } from './servers';
 import type { Emit } from './start';
 

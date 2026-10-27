@@ -3,7 +3,9 @@ import fs from 'node:fs';
 import { createRequire } from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
+
 import { afterEach, describe, expect, test } from 'vitest';
+
 import { credentialsFile } from '../src/server/credentials';
 import { settingsFileFor, writeGlobalAutoPublish } from '../src/server/settings';
 import { closeAll, start } from './fake-cloud';
@@ -14,12 +16,16 @@ afterEach(closeAll);
 const hook = createRequire(import.meta.url)(
   path.resolve(__dirname, '../../hooks/selection-context.cjs'),
 ) as {
-  credentialsPath(env: Record<string, string | undefined>, platform: string, home: string): string;
-  autoPublishContext(
+  credentialsPath: (
+    env: Record<string, string | undefined>,
+    platform: string,
+    home: string,
+  ) => string;
+  autoPublishContext: (
     project: string,
     env: Record<string, string | undefined>,
     sessionId: string,
-  ): string;
+  ) => string;
 };
 
 function setup({ signedIn = true, decided }: { signedIn?: boolean; decided?: boolean } = {}) {

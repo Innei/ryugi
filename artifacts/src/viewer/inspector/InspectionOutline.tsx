@@ -1,22 +1,23 @@
+import './inspector.css';
+
 import type { InspectorRect } from '../../shared/inspector';
 import type { BoardSpec } from '../../shared/types';
 import type { View } from '../lib/view';
-import './inspector.css';
 
 interface Props {
   board: BoardSpec;
-  rect: InspectorRect;
-  view: View;
   name?: string;
   nodeId?: string;
+  rect: InspectorRect;
   selected?: boolean;
+  view: View;
 }
 export function InspectionOutline({ board, rect, view, name, nodeId, selected }: Props) {
   if (rect.width <= 0 || rect.height <= 0) return null;
   return (
     <div
-      className={`ri-outline${selected ? ' ri-outline-selected' : ''}`}
       aria-hidden="true"
+      className={`ri-outline${selected ? ' ri-outline-selected' : ''}`}
       style={{
         left: view.x + (board.x + rect.x) * view.k,
         top: view.y + (board.y + rect.y) * view.k,

@@ -1,5 +1,5 @@
-import { measure } from './run.mjs';
 import { sleep } from './cdp.mjs';
+import { measure } from './run.mjs';
 
 const HOLD_MS = 10000;
 

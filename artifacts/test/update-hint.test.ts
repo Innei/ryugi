@@ -3,7 +3,9 @@ import http from 'node:http';
 import type { AddressInfo } from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
+
 import { afterEach, expect, test } from 'vitest';
+
 import { latestFile, readLatest, refreshLatest, updateCheck } from '../src/cli/update-hint';
 import { readJson, waitFor } from './helpers';
 

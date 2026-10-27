@@ -1,22 +1,22 @@
 export type TweakValue = string | number | boolean;
 export type TweakValues = Record<string, TweakValue>;
 export interface TweakControl {
-  type: 'color' | 'range' | 'number' | 'boolean' | 'enum' | 'text';
-  label: string;
   default: TweakValue;
-  section?: string;
-  min?: number;
+  label: string;
   max?: number;
-  step?: number;
+  min?: number;
   options?: { value: string; label: string }[];
+  section?: string;
+  step?: number;
+  type: 'color' | 'range' | 'number' | 'boolean' | 'enum' | 'text';
 }
 export interface TweakSchema {
-  version: 1;
   controls: Record<string, TweakControl>;
+  version: 1;
 }
 export interface TweakDeclaration {
-  schema: TweakSchema | null;
   error: string | null;
+  schema: TweakSchema | null;
 }
 
 // Self-contained so the host and serialized iframe runtime use identical validation.
@@ -58,7 +58,7 @@ export function tweakTools() {
     const keys = new Set<string>();
     for (const [key, raw] of entries) {
       const bad = (message: string) => fail(`Parameter ${key.slice(0, 64)}: ${message}`);
-      if (!/^[A-Za-z][\w-]{0,63}$/.test(key) || ['constructor', 'prototype'].includes(key))
+      if (!/^[A-Z][\w-]{0,63}$/i.test(key) || ['constructor', 'prototype'].includes(key))
         return bad('invalid key.');
       if (keys.has(key.toLowerCase())) return bad('duplicate case-insensitive key.');
       keys.add(key.toLowerCase());

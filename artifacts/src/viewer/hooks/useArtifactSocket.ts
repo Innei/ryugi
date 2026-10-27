@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+
 import type { ServerMessage } from '../../shared/types';
 
 const listeners = new Set<(message: ServerMessage) => void>();

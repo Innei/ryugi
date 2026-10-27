@@ -1,5 +1,5 @@
 import { groupFrame, intersects, noteRect } from './geometry';
-import { BOARD_TYPES, isMediaBoard, type BoardSpec, type CanvasSpec } from './types';
+import { BOARD_TYPES, type BoardSpec, type CanvasSpec, isMediaBoard } from './types';
 
 const BOARD_NUMBERS = ['x', 'y', 'w', 'h'] as const;
 const BOARD_REQUIRED = ['file', 'page', ...BOARD_NUMBERS] as const;

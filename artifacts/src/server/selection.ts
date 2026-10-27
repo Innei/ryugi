@@ -1,14 +1,15 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { INSPECTOR_PROPERTIES, type InspectorProperty } from '../shared/inspector';
+
 import { isArtifactId } from '../shared/ids';
+import { INSPECTOR_PROPERTIES, type InspectorProperty } from '../shared/inspector';
 import {
   DOCUMENT_SELECTION_LIMITS as DOC_LIMIT,
+  type DocumentSelectionState,
+  type SelectedNode,
   SELECTION_FULL_NODES,
   SELECTION_LIMITS as LIMIT,
   SELECTION_MAX_NODES as MAX_NODES,
-  type DocumentSelectionState,
-  type SelectedNode,
   type SelectionChange,
   type SelectionNode,
   type SelectionState,
@@ -23,7 +24,7 @@ const text = (value: unknown, max: number): value is string =>
 const list = (value: unknown, max: number): value is unknown[] =>
   Array.isArray(value) && value.length <= max;
 const property = (value: unknown): value is InspectorProperty =>
-  INSPECTOR_PROPERTIES.some((item) => item === value);
+  (INSPECTOR_PROPERTIES as readonly unknown[]).includes(value);
 
 function readNode(value: unknown): SelectionNode | null {
   if (
@@ -149,11 +150,11 @@ export function readDocumentSelectionMessage(
 type Kind = 'artboard' | 'document';
 
 interface Tab {
-  kind: Kind;
-  id: string;
-  state: SelectionState | DocumentSelectionState | null;
   humanAt: number;
+  id: string;
+  kind: Kind;
   seenAt: number;
+  state: SelectionState | DocumentSelectionState | null;
 }
 
 function readAnySelection(value: unknown) {
@@ -230,7 +231,7 @@ export function createSelectionStore(
     clearAll() {
       tabs.clear();
       for (const kind of ['artboard', 'document'] as const) {
-        let ids: string[] = [];
+        let ids: string[];
         try {
           ids = fs.readdirSync(path.join(stateDir, kind));
         } catch {

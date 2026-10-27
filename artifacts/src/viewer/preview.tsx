@@ -1,7 +1,9 @@
 import './layers.css';
 import '@lobehub/ui/theme.css';
 import '../shared/fonts.css';
+
 import { createRoot } from 'react-dom/client';
+
 import { HTML_LANG, type Locale } from '../shared/locale';
 import { useSystemTheme } from './hooks/useSystemTheme';
 import { i18n } from './i18n';
@@ -16,8 +18,8 @@ function Preview() {
   if (route.kind === 'preview')
     return (
       <PreviewLayout
-        type={route.type}
         id={document.documentElement.dataset.ryugiArtifactId ?? route.id}
+        type={route.type}
       />
     );
   return <div className="artifact-preview-message">{i18n.t('preview.unavailable')}</div>;

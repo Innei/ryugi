@@ -1,20 +1,20 @@
 export interface SnapshotKeyParts {
   artifact: string;
   file: string;
-  version: number;
-  scheme: 'light' | 'dark';
-  w: number;
   h: number;
+  scheme: 'light' | 'dark';
+  version: number;
+  w: number;
 }
 export interface SnapshotEntry {
   blob: Blob;
-  width: number;
   height: number;
   scale: number;
+  width: number;
 }
 export interface SnapshotPersistence {
-  get(key: string): Promise<SnapshotEntry | undefined>;
-  put(key: string, entry: SnapshotEntry): Promise<void>;
+  get: (key: string) => Promise<SnapshotEntry | undefined>;
+  put: (key: string, entry: SnapshotEntry) => Promise<void>;
 }
 type Resize = (blob: Blob, width: number, height: number) => Promise<Blob>;
 

@@ -1,14 +1,15 @@
 import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { useLayoutEffect, useRef, useState, type PointerEvent } from 'react';
-import { isMediaBoard, type BoardSpec } from '../../shared/types';
+import { type PointerEvent, useLayoutEffect, useRef, useState } from 'react';
+
+import { type BoardSpec, isMediaBoard } from '../../shared/types';
 import { EASE, EXIT, play, reducedMotion, SPRING } from '../document/motion';
 import { usePanZoom } from '../hooks/usePanZoom';
-import { FLICK, lockAxis, velocityTracker, type Axis } from '../lib/gesture';
+import { t } from '../i18n';
+import { type Axis, FLICK, lockAxis, velocityTracker } from '../lib/gesture';
 import { ghostStyles } from './ghost';
 import { MediaBoard } from './MediaBoard';
-import { t } from '../i18n';
 
 const DISMISS = 120;
 const DISMISS_SPEED = 0.5;
@@ -17,10 +18,10 @@ const PAGE_SPEED = 0.4;
 const EDGE = 0.25;
 
 export interface Rect {
+  h: number;
+  w: number;
   x: number;
   y: number;
-  w: number;
-  h: number;
 }
 
 const styles = stylex.create({
@@ -100,13 +101,13 @@ const styles = stylex.create({
 });
 
 interface Props {
-  id: string;
   board: BoardSpec;
-  src: string;
-  siblings: string[];
-  origin?: Rect;
-  onOpen: (id: string) => void;
+  id: string;
   onClose: () => void;
+  onOpen: (id: string) => void;
+  origin?: Rect;
+  siblings: string[];
+  src: string;
 }
 
 function hold(el: Element | null, keyframes: Keyframe[], options: KeyframeAnimationOptions) {
@@ -351,8 +352,8 @@ export function PhoneBoard({ id, board, src, siblings, origin, onOpen, onClose }
         style={drag ? { opacity: chromeFade } : undefined}
       >
         <button
-          type="button"
           aria-label={t('phone.backToCanvas')}
+          type="button"
           onClick={() => void close()}
           {...stylex.props(ghostStyles.ghost)}
         >
@@ -369,8 +370,8 @@ export function PhoneBoard({ id, board, src, siblings, origin, onOpen, onClose }
         ) : null}
       </header>
       <div
-        ref={viewportRef}
         data-board-body
+        ref={viewportRef}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
@@ -385,8 +386,8 @@ export function PhoneBoard({ id, board, src, siblings, origin, onOpen, onClose }
         {...stylex.props(styles.body)}
       >
         <div
-          ref={stage}
           data-board-stage
+          ref={stage}
           {...stylex.props(styles.stage)}
           style={stageTransform ? { transform: stageTransform } : undefined}
         >
@@ -399,13 +400,13 @@ export function PhoneBoard({ id, board, src, siblings, origin, onOpen, onClose }
             }}
           >
             {isMediaBoard(board) ? (
-              <MediaBoard key={id} id={id} board={board} src={src} zoom={view.k} />
+              <MediaBoard board={board} id={id} key={id} src={src} zoom={view.k} />
             ) : (
               <iframe
                 key={id}
-                title={board.title ?? id}
-                src={src}
                 sandbox="allow-scripts"
+                src={src}
+                title={board.title ?? id}
                 {...stylex.props(styles.frame)}
                 style={{
                   width: board.w,
@@ -424,9 +425,9 @@ export function PhoneBoard({ id, board, src, siblings, origin, onOpen, onClose }
           style={drag ? { opacity: chromeFade } : undefined}
         >
           <button
-            type="button"
             aria-label={t('phone.previousBoard')}
             disabled={!previous}
+            type="button"
             onClick={() => void go(-1, previous)}
             {...stylex.props(ghostStyles.ghost)}
           >
@@ -435,16 +436,16 @@ export function PhoneBoard({ id, board, src, siblings, origin, onOpen, onClose }
           <span {...stylex.props(styles.dots)}>
             {siblings.map((sibling, i) => (
               <span
-                key={sibling}
                 data-dot={i === index ? 'current' : ''}
+                key={sibling}
                 {...stylex.props(styles.dot, i === index && styles.dotCurrent)}
               />
             ))}
           </span>
           <button
-            type="button"
             aria-label={t('phone.nextBoard')}
             disabled={!next}
+            type="button"
             onClick={() => void go(1, next)}
             {...stylex.props(ghostStyles.ghost)}
           >

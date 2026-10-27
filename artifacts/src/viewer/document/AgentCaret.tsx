@@ -2,13 +2,14 @@ import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext
 import * as stylex from '@stylexjs/stylex';
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import type { AgentCaretPosition } from './LoroSync';
+
 import { brand } from '../tokens.stylex';
+import type { AgentCaretPosition } from './LoroSync';
 
 interface Rect {
+  height: number;
   left: number;
   top: number;
-  height: number;
 }
 
 const styles = stylex.create({

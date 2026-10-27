@@ -1,10 +1,11 @@
 import { ChevronDown, ChevronRight, ChevronUp, CircleAlert, RotateCw, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+
 import { BottomSheet } from '../components/BottomSheet';
+import { t } from '../i18n';
 import type { HistoryModel } from './DocumentHistory';
 import type { HistoryGroup } from './history';
 import { historyClock, historyDay, historyWhen } from './historyTime';
-import { t } from '../i18n';
 
 export const SOURCES = {
   human: 'history.sourceHuman',
@@ -28,26 +29,26 @@ export function ChangeNav({ model }: { model: HistoryModel }) {
   const { count, changeIndex, loading } = model;
   return (
     <>
-      <span role="status" aria-live="polite" className="history-count">
+      <span aria-live="polite" className="history-count" role="status">
         {count ? changeIndex + 1 : 0} / {count}
       </span>
       <button
-        type="button"
-        className="history-icon"
         aria-label={t('history.previousChange')}
+        className="history-icon"
         disabled={changeIndex === 0 || loading}
+        type="button"
         onClick={() => model.navigate(-1)}
       >
-        <ChevronUp size={14} aria-hidden="true" />
+        <ChevronUp aria-hidden="true" size={14} />
       </button>
       <button
-        type="button"
-        className="history-icon"
         aria-label={t('history.nextChange')}
+        className="history-icon"
         disabled={changeIndex >= count - 1 || loading}
+        type="button"
         onClick={() => model.navigate(1)}
       >
-        <ChevronDown size={14} aria-hidden="true" />
+        <ChevronDown aria-hidden="true" size={14} />
       </button>
     </>
   );
@@ -56,9 +57,9 @@ export function ChangeNav({ model }: { model: HistoryModel }) {
 export function OnlyChanges({ model }: { model: HistoryModel }) {
   return (
     <button
-      type="button"
-      className="history-filter"
       aria-pressed={model.onlyChanges}
+      className="history-filter"
+      type="button"
       onClick={model.toggleOnly}
     >
       {t('history.onlyChanges')}
@@ -75,8 +76,8 @@ export function UpdateNotice({ model }: { model: HistoryModel }) {
           ? t('history.waitingEdits')
           : t('history.newContent', { time: historyClock(latestTime(model)) })}
       </span>
-      <button type="button" disabled={model.streaming || model.loading} onClick={model.refresh}>
-        <RotateCw size={12} aria-hidden="true" />
+      <button disabled={model.streaming || model.loading} type="button" onClick={model.refresh}>
+        <RotateCw aria-hidden="true" size={12} />
         {t('history.refresh')}
       </button>
     </div>
@@ -89,7 +90,7 @@ function Compare({ model }: { model: HistoryModel }) {
   const plus = blocks.filter((block) => block.kind === 'insert' || block.kind === 'modify').length;
   const minus = blocks.filter((block) => block.kind === 'delete' || block.kind === 'modify').length;
   return (
-    <section className="history-compare" aria-label={t('history.range')}>
+    <section aria-label={t('history.range')} className="history-compare">
       <dl>
         <dt>{t('history.from')}</dt>
         <dd>
@@ -138,7 +139,7 @@ function Timeline({ model }: { model: HistoryModel }) {
     });
   return (
     <>
-      <ol className="history-timeline" aria-label={t('history.timeline')}>
+      <ol aria-label={t('history.timeline')} className="history-timeline">
         {shown.map((group, index) => {
           const end = group.entries.at(-1)!;
           const day = dayOf(group);
@@ -155,20 +156,20 @@ function Timeline({ model }: { model: HistoryModel }) {
           const changed = index < current ? changes.get(group) : undefined;
           return (
             <li
-              key={group.id}
               className="history-node"
+              data-day={newDay ? '' : undefined}
+              data-lower={index < current ? 'in' : 'out'}
               data-state={state}
               data-upper={index <= current ? 'in' : 'out'}
-              data-lower={index < current ? 'in' : 'out'}
-              data-day={newDay ? '' : undefined}
+              key={group.id}
             >
               {newDay ? <div className="history-day">{day}</div> : null}
               <div className="history-row">
-                <span className="history-dot" aria-hidden="true" />
+                <span aria-hidden="true" className="history-dot" />
                 <button
-                  type="button"
-                  className="history-select"
                   aria-current={state === 'selected' ? 'true' : undefined}
+                  className="history-select"
+                  type="button"
                   onClick={() => model.select(end)}
                 >
                   <span className="history-line">
@@ -191,23 +192,23 @@ function Timeline({ model }: { model: HistoryModel }) {
                   </span>
                 </button>
                 <button
-                  type="button"
-                  className="history-icon history-expand"
-                  aria-label={open ? t('history.collapseCommits') : t('history.expandCommits')}
                   aria-expanded={open}
+                  aria-label={open ? t('history.collapseCommits') : t('history.expandCommits')}
+                  className="history-icon history-expand"
+                  type="button"
                   onClick={() => toggle(group.id)}
                 >
-                  <ChevronRight size={14} aria-hidden="true" />
+                  <ChevronRight aria-hidden="true" size={14} />
                 </button>
               </div>
               {open ? (
                 <div className="history-raw">
                   {[...group.entries].reverse().map((entry) => (
                     <button
-                      type="button"
+                      aria-current={entry === selected ? 'true' : undefined}
                       key={entry.id}
                       title={entry.change.message}
-                      aria-current={entry === selected ? 'true' : undefined}
+                      type="button"
                       onClick={() => model.select(entry)}
                     >
                       <span>{historyClock(entry.change.timestamp, true)}</span>
@@ -222,8 +223,8 @@ function Timeline({ model }: { model: HistoryModel }) {
       </ol>
       {visible < groups.length ? (
         <button
-          type="button"
           className="history-more"
+          type="button"
           onClick={() => setVisible((value) => value + 50)}
         >
           {t('history.loadEarlier')}
@@ -256,7 +257,7 @@ function Waiting({ streaming }: { streaming: boolean }) {
           <strong>{t('history.loading')}</strong>
         )}
       </p>
-      <div className="history-skeleton" aria-hidden="true">
+      <div aria-hidden="true" className="history-skeleton">
         {[150, 130, 160, 120].map((width) => (
           <span key={width} style={{ width }} />
         ))}
@@ -267,23 +268,23 @@ function Waiting({ streaming }: { streaming: boolean }) {
 
 function Failure({ model }: { model: HistoryModel }) {
   return (
-    <div role="alert" className="history-failure">
+    <div className="history-failure" role="alert">
       <strong>
-        <CircleAlert size={15} aria-hidden="true" />
+        <CircleAlert aria-hidden="true" size={15} />
         {t('history.failed')}
       </strong>
       <code>{model.error}</code>
       <span>{t('history.failedBody')}</span>
       <span className="history-actions">
         <button
-          type="button"
           className="history-button"
           disabled={model.streaming}
+          type="button"
           onClick={model.refresh}
         >
           {t('common.retry')}
         </button>
-        <button type="button" className="history-quiet" onClick={model.close}>
+        <button className="history-quiet" type="button" onClick={model.close}>
           {t('history.backToComments')}
         </button>
       </span>
@@ -293,16 +294,16 @@ function Failure({ model }: { model: HistoryModel }) {
 
 export function HistoryPanel({ model }: { model: HistoryModel }) {
   return (
-    <aside className="history-panel" aria-label={t('history.title')}>
+    <aside aria-label={t('history.title')} className="history-panel">
       <header className="history-panel-head">
         <h2>{t('history.title')}</h2>
         <button
-          type="button"
-          className="history-icon"
           aria-label={t('history.close')}
+          className="history-icon"
+          type="button"
           onClick={model.close}
         >
-          <X size={14} aria-hidden="true" />
+          <X aria-hidden="true" size={14} />
         </button>
       </header>
       <UpdateNotice model={model} />
@@ -361,20 +362,20 @@ export function HistorySheet({ model, onDismiss }: { model: HistoryModel; onDism
   );
   return (
     <div
-      ref={root}
-      className="history-sheet"
-      role="dialog"
-      aria-modal="true"
       aria-label={t('history.chooseStart')}
+      aria-modal="true"
+      className="history-sheet"
+      ref={root}
+      role="dialog"
     >
       <BottomSheet
-        snaps={[0, 0.85]}
+        header={header}
         snap={0.85}
+        snaps={[0, 0.85]}
+        onScrim={onDismiss}
         onSnap={(next) => {
           if (next === 0) onDismiss();
         }}
-        onScrim={onDismiss}
-        header={header}
       >
         <div className="history-sheet-body">
           <Timeline model={model} />

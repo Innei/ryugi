@@ -3,7 +3,9 @@ import fs from 'node:fs';
 import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
+
 import { afterEach, describe, expect, test } from 'vitest';
+
 import { commentText } from '../src/cli/comment';
 import { AGENT_MARKERS } from '../src/server/agent';
 import { listen } from '../src/server/http';

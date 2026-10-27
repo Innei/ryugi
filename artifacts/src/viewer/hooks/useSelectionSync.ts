@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react';
+
 import type { SelectionMessage } from '../../shared/selection';
 import type { BoardSpec } from '../../shared/types';
 import { buildSelectionState, fitSelectionMessage } from '../lib/selection';
@@ -9,8 +10,8 @@ const TAB = crypto.randomUUID();
 interface Options {
   artifact: string | null;
   boards: Record<string, BoardSpec> | undefined;
-  live: boolean | undefined;
   inspector: Pick<Inspector, 'frames' | 'selectedTargets' | 'details' | 'revision'>;
+  live: boolean | undefined;
   send: ((message: SelectionMessage) => void) | undefined;
 }
 

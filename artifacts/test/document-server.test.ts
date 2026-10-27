@@ -2,15 +2,17 @@ import fs from 'node:fs';
 import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
+
 import { createLoroBinding } from '@haklex/rich-collab-loro';
 import { $getRoot, $isElementNode, $isTextNode, type LexicalNode, type TextNode } from 'lexical';
 import { LoroDoc } from 'loro-crdt';
 import { afterEach, describe, expect, test } from 'vitest';
-import { startArtifactsServer, type ArtifactsServer } from '../src/server/app';
+
+import { type ArtifactsServer, startArtifactsServer } from '../src/server/app';
 import type { CloudOptions } from '../src/server/cloud';
 import { writeCredentials } from '../src/server/credentials';
 import { createDocumentHeadlessEditor } from '../src/server/document-headless';
-import { get, openWs, readJson, tempRoot, waitFor, writeDocument, type Fetched } from './helpers';
+import { type Fetched, get, openWs, readJson, tempRoot, waitFor, writeDocument } from './helpers';
 
 let running: ArtifactsServer[] = [];
 

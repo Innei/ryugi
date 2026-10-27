@@ -1,13 +1,14 @@
 // @vitest-environment happy-dom
 import { LexicalComposer } from '@lexical/react/LexicalComposer';
-import { ContentEditable } from '@lexical/react/LexicalContentEditable';
-import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin';
-import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
+import { ContentEditable } from '@lexical/react/LexicalContentEditable';
+import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary';
+import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin';
 import { $createParagraphNode, $createTextNode, $getRoot, type LexicalEditor } from 'lexical';
-import { act, createElement, useEffect, type ReactNode } from 'react';
+import { act, createElement, type ReactNode, useEffect } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeAll, expect, test, vi } from 'vitest';
+
 import { PendingContext, type PendingProgress } from '../src/viewer/document/PendingBlock';
 import { $createPendingNode, PendingNode } from '../src/viewer/document/PendingNode';
 import { usePendingBlocks } from '../src/viewer/document/usePendingBlocks';
@@ -115,8 +116,8 @@ test('counts pending blocks and follows the first as they are filled', async () 
       () => {
         const pending = $getRoot()
           .getChildren()
-          .filter((node) => node.getType() === 'pending');
-        pending[0]!.replace($createParagraphNode().append($createTextNode('filled')));
+          .find((node) => node.getType() === 'pending');
+        pending!.replace($createParagraphNode().append($createTextNode('filled')));
       },
       { discrete: true },
     );

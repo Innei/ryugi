@@ -1,11 +1,12 @@
 import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
-import { waitingOn, type Thread } from '../../shared/comments';
+
+import { type Thread, waitingOn } from '../../shared/comments';
+import { t } from '../i18n';
 import { authorOf } from './author';
 import { Avatar } from './Avatar';
 import type { ThreadActions } from './CommentCard';
 import { Composer } from './Composer';
-import { t } from '../i18n';
 
 const styles = stylex.create({
   thread: {
@@ -79,11 +80,11 @@ const timeOf = (iso: string) =>
   new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
 interface Props {
-  thread: Thread;
-  agent?: string;
   actions?: ThreadActions;
   active?: boolean;
+  agent?: string;
   offline?: boolean;
+  thread: Thread;
 }
 
 export function PhoneThread({

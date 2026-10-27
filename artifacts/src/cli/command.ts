@@ -1,32 +1,33 @@
 import { parseArgs } from 'node:util';
+
 import { CliError } from './paths';
 import type { Emit } from './start';
 
 export interface OptionSpec {
-  type: 'string' | 'boolean';
-  short?: string;
-  value?: string;
   help?: string;
+  short?: string;
+  type: 'string' | 'boolean';
+  value?: string;
 }
 
 export type Options = Record<string, OptionSpec>;
 
 export interface CommandInput {
-  values: Record<string, string | boolean | undefined>;
   positionals: string[];
   projectDir: string;
+  values: Record<string, string | boolean | undefined>;
 }
 
 export interface CommandSpec {
-  name: string;
-  summary: string;
-  usage?: string[];
   details?: string;
+  explicitJson?: boolean;
+  name: string;
   options: Options;
   positionals?: number;
-  explicitJson?: boolean;
   run: (input: CommandInput, emit: Emit) => Promise<number> | number;
+  summary: string;
   text?: (value: Record<string, unknown>) => string | null;
+  usage?: string[];
 }
 
 const BIN = 'ryugi-artifacts';
@@ -79,7 +80,7 @@ function table(rows: [string, string][]) {
   const width = Math.max(...rows.map(([left]) => left.length)) + 2;
   return rows
     .map(([left, right]) =>
-      `  ${left.padEnd(width)}${right.replace(/\n/g, `\n  ${' '.repeat(width)}`)}`.trimEnd(),
+      `  ${left.padEnd(width)}${right.replaceAll('\n', `\n  ${' '.repeat(width)}`)}`.trimEnd(),
     )
     .join('\n');
 }

@@ -1,29 +1,31 @@
 import './history.css';
+
 import type { CreateEditorArgs } from 'lexical';
 import type { LoroDoc, TreeID } from 'loro-crdt';
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
+
 import { useMedia } from '../hooks/useMedia';
 import {
   blockAuthors,
-  readHistory,
-  readHistoryState,
   type History,
   type HistoryEntry,
   type HistoryGroup,
   type HistoryState,
+  readHistory,
+  readHistoryState,
 } from './history';
-import { historyDiff, type HistoryDiffBlock } from './historyDiff';
 import { HistoryContent } from './HistoryContent';
+import { historyDiff, type HistoryDiffBlock } from './historyDiff';
 import { HistoryPanel, HistorySheet } from './HistoryPanel';
 
 export interface DocumentHistoryOptions {
   doc: LoroDoc | null;
   nodes: CreateEditorArgs['nodes'];
+  onClose: () => void;
+  open: boolean;
   streaming: boolean;
   theme: 'light' | 'dark';
   title: string;
-  open: boolean;
-  onClose: () => void;
 }
 export interface DocumentHistoryView {
   content: ReactNode;
@@ -40,22 +42,22 @@ export interface HistorySession {
 }
 
 export interface HistoryModel {
-  session: HistorySession | null;
-  selected: HistoryEntry | null;
   blocks: HistoryChange[];
-  count: number;
   changeIndex: number;
-  loading: boolean;
-  error: string | null;
-  pending: boolean;
-  streaming: boolean;
-  onlyChanges: boolean;
-  select: (entry: HistoryEntry) => void;
-  navigate: (direction: number) => void;
-  toggleOnly: () => void;
-  showAll: () => void;
-  refresh: () => void;
   close: () => void;
+  count: number;
+  error: string | null;
+  loading: boolean;
+  navigate: (direction: number) => void;
+  onlyChanges: boolean;
+  pending: boolean;
+  refresh: () => void;
+  select: (entry: HistoryEntry) => void;
+  selected: HistoryEntry | null;
+  session: HistorySession | null;
+  showAll: () => void;
+  streaming: boolean;
+  toggleOnly: () => void;
 }
 
 const versionKey = (doc: LoroDoc) => JSON.stringify(doc.frontiers());
@@ -218,9 +220,8 @@ export function useDocumentHistory({
     navigate: (direction) => {
       const next = Math.max(0, Math.min(count - 1, changeIndex + direction));
       setChangeIndex(next);
-      body.current
-        ?.querySelectorAll<HTMLElement>('[data-history-change]')
-        [next]?.scrollIntoView?.({ block: 'center', behavior: 'instant' });
+      const changes = body.current?.querySelectorAll<HTMLElement>('[data-history-change]');
+      changes?.[next]?.scrollIntoView?.({ block: 'center', behavior: 'instant' });
     },
     toggleOnly: () => setOnlyChanges((value) => !value),
     showAll: () => setOnlyChanges(false),
@@ -231,11 +232,11 @@ export function useDocumentHistory({
     content: (
       <>
         <HistoryContent
+          bodyRef={body}
           model={model}
+          narrow={narrow}
           theme={theme}
           title={title}
-          narrow={narrow}
-          bodyRef={body}
           onPick={() => setSheet(true)}
         />
         {narrow && sheet ? <HistorySheet model={model} onDismiss={() => setSheet(false)} /> : null}

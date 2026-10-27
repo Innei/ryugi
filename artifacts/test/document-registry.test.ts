@@ -1,9 +1,11 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+
 import { expect, test } from 'vitest';
-import type { ServerMessage } from '../src/shared/types';
+
 import { createDocumentRegistry } from '../src/server/documents';
+import type { ServerMessage } from '../src/shared/types';
 
 test('a list that picks up an agent file write still pushes it to the page', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-registry-'));

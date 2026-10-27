@@ -3,7 +3,8 @@ import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
 import { CheckCircle2, CircleAlert, Clock3, CloudUpload, LoaderCircle } from 'lucide-react';
 import { useReducedMotion } from 'motion/react';
-import { publishing, type Publication } from '../../shared/cloud';
+
+import { type Publication, publishing } from '../../shared/cloud';
 import { useTranslation } from '../i18n';
 
 const styles = stylex.create({
@@ -54,13 +55,13 @@ const styles = stylex.create({
 });
 
 interface Props {
+  busy?: boolean;
+  compact?: boolean;
+  online?: boolean | null;
+  onPublish?: () => void;
   publication?: Publication | null;
   published: boolean;
   publishedAt?: string | null;
-  online?: boolean | null;
-  onPublish?: () => void;
-  compact?: boolean;
-  busy?: boolean;
 }
 
 export function PublicationStatus({
@@ -89,10 +90,10 @@ export function PublicationStatus({
     phase === 'failed' ? styles.failed : phase === 'published' ? styles.success : undefined;
   const icon = (
     <Icon
-      icon={StatusIcon}
-      spin={active && !reducedMotion}
-      size={compact ? 14 : 16}
       aria-hidden="true"
+      icon={StatusIcon}
+      size={compact ? 14 : 16}
+      spin={active && !reducedMotion}
     />
   );
   if (compact)
@@ -132,8 +133,8 @@ export function PublicationStatus({
         </ul>
       ) : null}
       {canPublish ? (
-        <button type="button" disabled={busy} onClick={onPublish} {...stylex.props(styles.action)}>
-          <CloudUpload size={14} aria-hidden="true" />
+        <button disabled={busy} type="button" onClick={onPublish} {...stylex.props(styles.action)}>
+          <CloudUpload aria-hidden="true" size={14} />
           {t(phase === 'failed' ? 'publication.retry' : 'publication.publishNow')}
         </button>
       ) : null}

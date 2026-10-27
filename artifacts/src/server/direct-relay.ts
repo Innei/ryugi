@@ -1,11 +1,12 @@
 import type { Duplex } from 'node:stream';
+
 import { completeHandshake, handleClientFrames, textFrame } from './ws';
 
 interface DirectRelayOptions {
-  version: string;
   handle: (key: string, body: unknown, conn: string) => Promise<unknown>;
   onActivity: () => void;
   onClose: (conn: string) => void;
+  version: string;
 }
 
 export function createDirectRelay(options: DirectRelayOptions) {

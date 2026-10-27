@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'vitest';
+
 import type { CanvasSpec } from '../src/shared/types';
 import { mergePayload, type ViewerPayload } from '../src/viewer/lib/payload';
 

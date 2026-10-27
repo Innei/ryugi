@@ -1,10 +1,10 @@
 import type { InspectorDetail, InspectorNode, InspectorTweak } from '../../shared/inspector';
 import {
+  type SelectedNode,
   SELECTION_FULL_NODES,
   SELECTION_LIMITS as LIMIT,
   SELECTION_MAX_BYTES,
   SELECTION_MAX_NODES,
-  type SelectedNode,
   type SelectionMessage,
   type SelectionNode,
   type SelectionState,
@@ -13,9 +13,9 @@ import {
 
 interface Input {
   boards: Record<string, { file: string }>;
+  details: Record<string, InspectorDetail>;
   frames: Record<string, { nodes: InspectorNode[]; tweaks: InspectorTweak[] }>;
   targets: { boardId: string; id: number }[];
-  details: Record<string, InspectorDetail>;
 }
 
 export function buildSelectionState({ boards, frames, targets, details }: Input): SelectionState {

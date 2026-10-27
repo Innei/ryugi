@@ -7,20 +7,20 @@ type RelayIncoming =
   | { t: 'error'; rid: number; error: string };
 
 export interface RelayConnectionOptions {
-  url: string;
   artifact: string;
-  WebSocket?: typeof WebSocket;
-  retryMs?: number;
   maxRetryMs?: number;
-  requestTimeoutMs?: number;
-  onPresence: (presence: RelayPresence) => void;
   onEvent: (event: unknown) => void;
   onOnline: () => void;
+  onPresence: (presence: RelayPresence) => void;
+  requestTimeoutMs?: number;
+  retryMs?: number;
+  url: string;
+  WebSocket?: typeof WebSocket;
 }
 
 export interface RelayConnection {
-  request<T = unknown>(body: RelayRequest | { op: string }): Promise<T>;
-  close(): void;
+  close: () => void;
+  request: <T = unknown>(body: RelayRequest | { op: string }) => Promise<T>;
 }
 
 const OFFLINE: RelayPresence = { online: false, version: null };
@@ -57,7 +57,7 @@ export function createRelayConnection(options: RelayConnectionOptions): RelayCon
   };
 
   const failPending = () => {
-    for (const rid of [...pending.keys()]) settle(rid, { error: 'offline' });
+    for (const rid of pending.keys()) settle(rid, { error: 'offline' });
   };
 
   const receive = (message: RelayIncoming) => {

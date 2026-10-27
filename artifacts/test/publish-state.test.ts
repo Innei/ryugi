@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'vitest';
+
 import { ownLink, publishState, syncNote } from '../src/shared/cloud';
 
 const cloud = {

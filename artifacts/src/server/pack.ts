@@ -1,10 +1,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
+
 import type { ArtifactType } from '../shared/types';
 
 export interface PackedFile {
-  path: string;
   data: Buffer;
+  path: string;
 }
 
 export const MAX_ARTIFACT_BYTES = 20 * 1024 * 1024;

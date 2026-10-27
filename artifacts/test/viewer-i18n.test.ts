@@ -1,7 +1,8 @@
 import { expect, test } from 'vitest';
+
+import { createViewerI18n } from '../src/viewer/i18n';
 import en from '../src/viewer/i18n/locales/en.json';
 import zh from '../src/viewer/i18n/locales/zh.json';
-import { createViewerI18n } from '../src/viewer/i18n';
 
 const PLURAL = /_(zero|one|two|few|many|other)$/;
 

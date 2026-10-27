@@ -1,19 +1,20 @@
 import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
 import { Check, RotateCcw, X } from 'lucide-react';
-import { useState, type ReactNode } from 'react';
-import { waitingOn, type Message, type Thread } from '../../shared/comments';
+import { type ReactNode, useState } from 'react';
+
+import { type Message, type Thread, waitingOn } from '../../shared/comments';
 import { authorOf } from '../document/author';
 import { Avatar } from '../document/Avatar';
 import { Composer } from '../document/Composer';
 import { i18n, useTranslation } from '../i18n';
 
 export interface ThreadActions {
-  reply(threadId: string, text: string): void | Promise<boolean>;
-  edit(threadId: string, messageId: string, text: string): void;
-  remove(threadId: string, messageId: string): void;
-  resolve(threadId: string): void;
-  reopen(threadId: string): void;
+  edit: (threadId: string, messageId: string, text: string) => void;
+  remove: (threadId: string, messageId: string) => void;
+  reopen: (threadId: string) => void;
+  reply: (threadId: string, text: string) => void | Promise<boolean>;
+  resolve: (threadId: string) => void;
 }
 
 const styles = stylex.create({
@@ -120,8 +121,8 @@ export function MessageView({
           autoFocus
           initial={message.text}
           placeholder=""
-          onSubmit={(text) => (onEdit?.(text), setEditing(false))}
           onCancel={() => setEditing(false)}
+          onSubmit={(text) => (onEdit?.(text), setEditing(false))}
         />
       ) : (
         <div {...stylex.props(styles.text)}>{message.text}</div>
@@ -169,8 +170,8 @@ export function ThreadMessages({
         <MessageView
           key={message.id}
           message={message}
-          onEdit={actions && ((text) => actions.edit(thread.id, message.id, text))}
           onDelete={actions && (() => actions.remove(thread.id, message.id))}
+          onEdit={actions && ((text) => actions.edit(thread.id, message.id, text))}
         />
       ))}
     </div>
@@ -178,11 +179,11 @@ export function ThreadMessages({
 }
 
 interface Props {
-  thread: Thread<unknown>;
-  label: ReactNode;
   actions?: ThreadActions;
   agent?: string;
+  label: ReactNode;
   onClose?: () => void;
+  thread: Thread<unknown>;
 }
 
 export function ThreadView({ thread, label, actions, agent, onClose }: Props) {
@@ -192,12 +193,12 @@ export function ThreadView({ thread, label, actions, agent, onClose }: Props) {
     <div {...stylex.props(styles.thread)}>
       <div {...stylex.props(styles.head)}>
         <span {...stylex.props(styles.label)}>{label}</span>
-        {actions ? <WaitingText thread={thread} agent={agent} /> : null}
+        {actions ? <WaitingText agent={agent} thread={thread} /> : null}
         {actions ? (
           resolved ? (
             <button
-              type="button"
               title={t('common.reopen')}
+              type="button"
               onClick={() => actions.reopen(thread.id)}
               {...stylex.props(styles.icon)}
             >
@@ -205,8 +206,8 @@ export function ThreadView({ thread, label, actions, agent, onClose }: Props) {
             </button>
           ) : (
             <button
-              type="button"
               title={t('common.markResolved')}
+              type="button"
               onClick={() => actions.resolve(thread.id)}
               {...stylex.props(styles.icon)}
             >
@@ -216,8 +217,8 @@ export function ThreadView({ thread, label, actions, agent, onClose }: Props) {
         ) : null}
         {onClose ? (
           <button
-            type="button"
             title={t('common.close')}
+            type="button"
             onClick={onClose}
             {...stylex.props(styles.icon)}
           >
@@ -225,12 +226,12 @@ export function ThreadView({ thread, label, actions, agent, onClose }: Props) {
           </button>
         ) : null}
       </div>
-      <ThreadMessages thread={thread} actions={actions} />
+      <ThreadMessages actions={actions} thread={thread} />
       {actions && !resolved ? (
         <Composer
           placeholder={t('common.reply')}
-          onSubmit={(text) => actions.reply(thread.id, text)}
           onCancel={onClose}
+          onSubmit={(text) => actions.reply(thread.id, text)}
         />
       ) : null}
     </div>

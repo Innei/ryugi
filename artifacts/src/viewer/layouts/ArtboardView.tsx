@@ -1,46 +1,47 @@
+import { Button, IconProvider } from '@lobehub/ui';
 import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Button, IconProvider } from '@lobehub/ui';
 import { SlidersHorizontal } from 'lucide-react';
-import type { InspectorReport } from '../../shared/inspector';
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+
 import type { BoardHumanOp } from '../../shared/board-comments';
-import { reconcileTweakValues } from '../../shared/tweaks';
+import type { InspectorReport } from '../../shared/inspector';
 import type { SelectionMessage } from '../../shared/selection';
-import { Canvas } from '../components/Canvas';
-import { CommentLayer } from '../components/CommentLayer';
+import { reconcileTweakValues } from '../../shared/tweaks';
+import type { Bounds } from '../../shared/types';
 import { CommentsPanel, type CommentsTab } from '../comments/CommentsPanel';
+import { Canvas } from '../components/Canvas';
 import { CanvasErrorBoundary } from '../components/CanvasErrorBoundary';
+import { CommentLayer } from '../components/CommentLayer';
 import { DebugHud } from '../components/DebugHud';
 import { ExpandedBoard } from '../components/ExpandedBoard';
 import { HandCursor } from '../components/HandCursor';
 import { Labels } from '../components/Labels';
 import { TopLeftBar, TopRightBar } from '../components/Toolbar';
-import { useCanvasData } from '../hooks/useCanvasData';
-import { useTypeFavicon } from '../hooks/useTypeFavicon';
-import type { BoardCommentsState } from '../lib/board-comments';
+import { useArtboardPage } from '../hooks/useArtboardPage';
 import { useBoardComments } from '../hooks/useBoardComments';
 import { useBoardTiers } from '../hooks/useBoardTiers';
-import { visibleRenders } from '../lib/board-tiers';
+import { useBoardTweaks } from '../hooks/useBoardTweaks';
+import type { useCanvasData } from '../hooks/useCanvasData';
 import { useHoverDwell } from '../hooks/useHoverDwell';
-import { useKeptBoards } from '../hooks/useKeptBoards';
-import { useVerdicts } from '../hooks/useVerdicts';
-import { RejectComposer } from '../verdicts/RejectComposer';
 import { useInspector } from '../hooks/useInspector';
+import { useKeptBoards } from '../hooks/useKeptBoards';
 import { useMarqueeSelection } from '../hooks/useMarqueeSelection';
+import { PHONE_QUERY, useMedia } from '../hooks/useMedia';
+import { type Tool, usePanZoom } from '../hooks/usePanZoom';
 import { useSelectionSync } from '../hooks/useSelectionSync';
-import { usePanZoom, type Tool } from '../hooks/usePanZoom';
+import { useTypeFavicon } from '../hooks/useTypeFavicon';
+import { useVerdicts } from '../hooks/useVerdicts';
+import { t } from '../i18n';
 import { InspectionOutline } from '../inspector/InspectionOutline';
 import { InspectorPanel } from '../inspector/InspectorPanel';
 import { pinPoint } from '../lib/board-anchor';
+import type { BoardCommentsState } from '../lib/board-comments';
+import { visibleRenders } from '../lib/board-tiers';
 import { togglePlaying } from '../lib/play';
-import type { Bounds } from '../../shared/types';
-import { useArtboardPage } from '../hooks/useArtboardPage';
-import { PHONE_QUERY, useMedia } from '../hooks/useMedia';
+import { revealTweakPanel, tweakPanelAnchor, TweaksPanel } from '../tweaks/TweaksPanel';
+import { RejectComposer } from '../verdicts/RejectComposer';
 import { PhoneArtboard } from './PhoneArtboard';
-import { useBoardTweaks } from '../hooks/useBoardTweaks';
-import { TweaksPanel, tweakPanelAnchor, revealTweakPanel } from '../tweaks/TweaksPanel';
-import { t } from '../i18n';
 
 const styles = stylex.create({
   layout: { display: 'flex', width: '100%', height: '100%', overflow: 'hidden' },
@@ -317,13 +318,13 @@ function DesktopArtboard({
     parameterSpec &&
     (parameterState.schema || parameterState.error) ? (
       <TweaksPanel
-        boardId={parameterBoard}
-        title={parameterSpec.title ?? parameterBoard}
-        state={parameterState}
         anchor={anchored ? tweakPanelAnchor(parameterSpec, view) : undefined}
+        boardId={parameterBoard}
+        state={parameterState}
+        title={parameterSpec.title ?? parameterBoard}
         onChange={(key, value) => parameters.change(parameterBoard, key, value)}
-        onReset={() => parameters.reset(parameterBoard)}
         onClose={closeParameters}
+        onReset={() => parameters.reset(parameterBoard)}
       />
     ) : null;
   const expandedReady = expandedBoard
@@ -440,6 +441,7 @@ function DesktopArtboard({
         ref={viewportRef}
         {...stylex.props(styles.viewport)}
         style={{ cursor }}
+        onPointerLeave={hover.leave}
         onClickCapture={(event) => {
           if (
             !expanded &&
@@ -447,6 +449,10 @@ function DesktopArtboard({
             (event.target as Element).closest('[data-video-surface]')
           )
             event.stopPropagation();
+        }}
+        onPointerCancel={(event) => {
+          handlers.onPointerCancel(event);
+          selection.reset();
         }}
         onPointerDown={(event) => {
           handlers.onPointerDown(event);
@@ -496,78 +502,73 @@ function DesktopArtboard({
             selection.drag('end', point.x, point.y);
           }
         }}
-        onPointerLeave={hover.leave}
-        onPointerCancel={(event) => {
-          handlers.onPointerCancel(event);
-          selection.reset();
-        }}
       >
-        <HandCursor viewport={viewportRef} hand={hand} />
+        <HandCursor hand={hand} viewport={viewportRef} />
         {debug && <DebugHud renders={renders} scaling={scaling} />}
         {canvas && layout && (
           <CanvasErrorBoundary resetKey={canvas}>
             <Canvas
-              view={view}
-              renders={renders}
+              agent={agent}
               boards={boards}
-              notes={notes}
               contentBase={contentBase}
-              versions={versions}
+              frameLoaded={frameLoaded}
+              frameRef={frameRef}
+              inspecting={selectionEnabled || (commentTool && !expanded && !panning)}
+              live={live}
+              notes={notes}
               pending={pendingBoards}
               playing={playing}
+              renders={renders}
               replays={replays}
-              inspecting={selectionEnabled || (commentTool && !expanded && !panning)}
-              frameRef={frameRef}
-              frameLoaded={frameLoaded}
-              live={live}
+              versions={versions}
+              view={view}
               writing={live ? canvas.writing : undefined}
-              agent={agent}
               onExpand={setExpanded}
               onImageError={tiers.imageFailed}
             />
             <Labels
-              view={view}
-              boards={boards}
-              groups={groups}
+              activeParameters={parameterBoard}
               allBoards={allBoards}
+              boards={boards}
               contentBase={contentBase}
-              versions={versions}
+              groups={groups}
+              parameters={parameterCounts}
               pending={pendingBoards}
               playing={playing}
-              onExpand={setExpanded}
-              onTogglePlay={(id) => setPlaying((current) => togglePlaying(current, id))}
-              onReplay={(id) => setReplays((prev) => ({ ...prev, [id]: (prev[id] ?? 0) + 1 }))}
-              parameters={parameterCounts}
-              activeParameters={parameterBoard}
-              onToggleParameters={toggleParameters}
               verdicts={verdicts}
+              versions={versions}
+              view={view}
+              onExpand={setExpanded}
+              onReplay={(id) => setReplays((prev) => ({ ...prev, [id]: (prev[id] ?? 0) + 1 }))}
+              onToggleParameters={toggleParameters}
+              onTogglePlay={(id) => setPlaying((current) => togglePlaying(current, id))}
             />
             {verdicts.rejecting && rejectAt && (
               <RejectComposer
                 group={verdicts.rejecting}
                 left={view.x + rejectAt.x * view.k}
                 top={view.y + rejectAt.y * view.k + 8}
-                onSubmit={verdicts.submitReject}
                 onCancel={verdicts.cancelReject}
+                onSubmit={verdicts.submitReject}
               />
             )}
             {commentTool && (
               <CommentLayer
-                view={view}
-                page={page}
-                boards={allBoards}
-                width={viewportRef.current?.clientWidth ?? 0}
-                threads={boardComments.threads}
-                stale={boardComments.stale}
-                numbers={boardComments.numbers}
-                showResolved={commentsTab === 'all'}
-                draft={boardComments.draft}
-                openId={boardComments.openId}
                 actions={boardComments.actions}
                 agent={agent}
+                boards={allBoards}
+                draft={boardComments.draft}
+                numbers={boardComments.numbers}
+                openId={boardComments.openId}
+                page={page}
+                showResolved={commentsTab === 'all'}
+                stale={boardComments.stale}
+                threads={boardComments.threads}
+                view={view}
+                width={viewportRef.current?.clientWidth ?? 0}
+                onCancelDraft={boardComments.cancelDraft}
                 onOpen={boardComments.setOpenId}
                 onSubmit={boardComments.submit}
-                onCancelDraft={boardComments.cancelDraft}
               />
             )}
           </CanvasErrorBoundary>
@@ -590,20 +591,20 @@ function DesktopArtboard({
             (target) =>
               allBoards[target.boardId] && (
                 <InspectionOutline
-                  key={`${target.boardId}:${target.id}`}
+                  selected
                   board={allBoards[target.boardId]!}
+                  key={`${target.boardId}:${target.id}`}
+                  name={target.name}
                   rect={target.rect}
                   view={view}
-                  name={target.name}
-                  selected
                 />
               ),
           )}
-        {selection.selecting && <div className="ri-selection-capture" aria-hidden="true" />}
+        {selection.selecting && <div aria-hidden="true" className="ri-selection-capture" />}
         {selection.marquee && (
           <div
-            className="ri-marquee"
             aria-hidden="true"
+            className="ri-marquee"
             style={{
               left: view.x + selection.marquee.x * view.k,
               top: view.y + selection.marquee.y * view.k,
@@ -618,45 +619,44 @@ function DesktopArtboard({
           </div>
         )}
         <TopLeftBar
-          pages={pages}
-          page={page}
-          onPageChange={changePage}
-          tool={tool}
-          onToolChange={changeTool}
           commenting={!!comment}
+          page={page}
+          pages={pages}
+          tool={tool}
+          onPageChange={changePage}
+          onToolChange={changeTool}
         />
         <TopRightBar
           actions={actions}
+          inspectorOpen={inspectorOpen}
           live={live}
+          verify={verdicts.progress}
           warnings={warnings}
           zoom={view.k}
+          onActualSize={() => zoomTo(1)}
+          onFit={() => fit(pageBounds(page))}
+          onNextVerify={nextVerify}
+          onToggleInspector={() => setInspectorOpen((open) => !open)}
           onZoomIn={() => zoomBy(1.25)}
           onZoomOut={() => zoomBy(0.8)}
-          onFit={() => fit(pageBounds(page))}
-          onActualSize={() => zoomTo(1)}
-          inspectorOpen={inspectorOpen}
-          onToggleInspector={() => setInspectorOpen((open) => !open)}
-          verify={verdicts.progress}
-          onNextVerify={nextVerify}
         />
         {!expanded && panel(true)}
         {expanded && expandedBoard && expandedReady && (
           <ExpandedBoard
-            id={expanded}
             board={expandedBoard}
-            src={`${contentBase}${expandedBoard.file}?v=${versions[expandedBoard.file] ?? 0}`}
-            interactive={expandedBoard.interactive === true}
-            onClose={() => setExpanded(null)}
             frameRef={parameters.refFor(expanded, 'expanded')}
-            onFrameLoad={() => parameters.loaded(expanded, 'expanded')}
+            id={expanded}
+            interactive={expandedBoard.interactive === true}
+            parameters={parameterBoard === expanded ? panel(false) : undefined}
+            src={`${contentBase}${expandedBoard.file}?v=${versions[expandedBoard.file] ?? 0}`}
             parameterAction={
               parameterCounts[expanded] !== undefined ? (
                 <IconProvider config={{ 'aria-hidden': true }}>
                   <Button
+                    aria-expanded={parameterBoard === expanded}
                     icon={SlidersHorizontal}
                     size="small"
                     type="text"
-                    aria-expanded={parameterBoard === expanded}
                     onClick={(event) => toggleParameters(expanded, event.currentTarget)}
                   >
                     {t('chrome.parameters')}
@@ -664,35 +664,36 @@ function DesktopArtboard({
                 </IconProvider>
               ) : undefined
             }
-            parameters={parameterBoard === expanded ? panel(false) : undefined}
+            onClose={() => setExpanded(null)}
+            onFrameLoad={() => parameters.loaded(expanded, 'expanded')}
           />
         )}
       </div>
       {commentTool && (
         <CommentsPanel
-          threads={boardComments.threads}
-          page={page}
-          stale={boardComments.stale}
           numbers={boardComments.numbers}
           openId={boardComments.openId}
+          page={page}
+          stale={boardComments.stale}
           tab={commentsTab}
-          onTab={setCommentsTab}
-          onOpen={openThread}
+          threads={boardComments.threads}
           onClose={() => changeTool('select')}
+          onOpen={openThread}
+          onTab={setCommentsTab}
         />
       )}
       {inspectorOpen && !commentTool && (
         <InspectorPanel
           boards={boards}
+          change={inspector.change}
+          enabled={!expanded}
           frames={inspector.frames}
+          hoverNode={inspector.hoverNode}
+          playing={playing}
+          reset={inspector.reset}
+          select={inspector.select}
           selection={inspector.selection}
           targets={inspector.targets}
-          select={inspector.select}
-          hoverNode={inspector.hoverNode}
-          change={inspector.change}
-          reset={inspector.reset}
-          playing={playing}
-          enabled={!expanded}
           onClose={closeInspector}
         />
       )}

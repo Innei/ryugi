@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+
 import type { ArtifactType } from '../shared/types';
 import { mimeOf } from './http';
 import { injectRuntime } from './inject';

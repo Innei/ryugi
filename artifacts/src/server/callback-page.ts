@@ -6,7 +6,7 @@ export const CALLBACK_PAGE_CSP =
   "default-src 'none'; style-src 'unsafe-inline'; img-src data:; script-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'";
 
 const escapeHtml = (value: string) =>
-  value.replace(
+  value.replaceAll(
     /[&<>"']/g,
     (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]!,
   );
@@ -85,15 +85,15 @@ footer code { font: 12px var(--mono); }
 `;
 
 interface SignedIn {
-  ok: true;
-  login: string;
   autoPublish?: boolean;
+  login: string;
+  ok: true;
   origin: string;
 }
 
 interface Failed {
-  ok: false;
   detail: string;
+  ok: false;
   origin: string;
 }
 

@@ -2,6 +2,7 @@
 import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
+
 import { INSPECTOR_PROPERTIES, type InspectorNode } from '../src/shared/inspector';
 import { useInspector } from '../src/viewer/hooks/useInspector';
 import { readInspectorReport } from '../src/viewer/lib/inspector';

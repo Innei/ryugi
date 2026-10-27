@@ -15,11 +15,12 @@ import { ImageRenderer } from '@haklex/rich-renderer-image';
 import type { SerializedEditorState } from 'lexical';
 import { ChevronDown } from 'lucide-react';
 import type { RefObject } from 'react';
+
+import { t } from '../i18n';
 import type { HistoryChange, HistoryModel } from './DocumentHistory';
 import { ChangeNav, OnlyChanges, SOURCES, UpdateNotice } from './HistoryPanel';
 import { historyWhen } from './historyTime';
 import { MermaidPreview } from './MermaidPreview';
-import { t } from '../i18n';
 
 const renderNodes = [ChartNode, ExcalidrawNode, ...stepsNodes];
 const renderers: RendererConfig = {
@@ -35,12 +36,12 @@ const KINDS = {
 } as const;
 
 interface Props {
+  bodyRef: RefObject<HTMLDivElement | null>;
   model: HistoryModel;
+  narrow: boolean;
+  onPick: () => void;
   theme: 'light' | 'dark';
   title: string;
-  narrow: boolean;
-  bodyRef: RefObject<HTMLDivElement | null>;
-  onPick: () => void;
 }
 
 export function HistoryContent({ model, theme, title, narrow, bodyRef, onPick }: Props) {
@@ -48,11 +49,11 @@ export function HistoryContent({ model, theme, title, narrow, bodyRef, onPick }:
     model;
   const render = (value: SerializedEditorState) => (
     <RichRenderer
-      value={value}
-      variant="article"
-      theme={theme}
       extraNodes={renderNodes}
       rendererConfig={renderers}
+      theme={theme}
+      value={value}
+      variant="article"
     />
   );
   let change = -1;
@@ -60,12 +61,12 @@ export function HistoryContent({ model, theme, title, narrow, bodyRef, onPick }:
     if (item.kind === 'equal') {
       if (!onlyChanges)
         return (
-          <section key={index} className="history-hunk history-equal">
+          <section className="history-hunk history-equal" key={index}>
             {render(item.value)}
           </section>
         );
       return (
-        <button type="button" key={index} className="history-fold" onClick={model.showAll}>
+        <button className="history-fold" key={index} type="button" onClick={model.showAll}>
           <span>{t('history.unchanged', { count: item.value.root.children.length })}</span>
         </button>
       );
@@ -80,10 +81,10 @@ export function HistoryContent({ model, theme, title, narrow, bodyRef, onPick }:
           : 'history-merged';
     return (
       <section
-        key={index}
-        data-history-change=""
-        data-current={change === changeIndex ? '' : undefined}
         className={`history-hunk history-${item.kind}`}
+        data-current={change === changeIndex ? '' : undefined}
+        data-history-change=""
+        key={index}
       >
         <div className="history-caption">
           <span className="history-kind">{t(KINDS[item.kind])}</span>
@@ -110,13 +111,13 @@ export function HistoryContent({ model, theme, title, narrow, bodyRef, onPick }:
     <div className="history-view">
       {narrow ? (
         <div className="history-strip">
-          <button type="button" className="history-pick" onClick={onPick}>
+          <button className="history-pick" type="button" onClick={onPick}>
             <span>{t('history.compareFrom')}</span>
             <strong>
               {t('history.toLatest', {
                 from: selected ? historyWhen(selected.change.timestamp) : t('history.pickPoint'),
               })}
-              <ChevronDown size={12} aria-hidden="true" />
+              <ChevronDown aria-hidden="true" size={12} />
             </strong>
           </button>
           <OnlyChanges model={model} />
@@ -126,9 +127,9 @@ export function HistoryContent({ model, theme, title, narrow, bodyRef, onPick }:
       {narrow ? <UpdateNotice model={model} /> : null}
       {error ? (
         narrow ? (
-          <div role="alert" className="history-message">
+          <div className="history-message" role="alert">
             {t('history.readFailed', { error })}
-            <button type="button" disabled={streaming} onClick={model.refresh}>
+            <button disabled={streaming} type="button" onClick={model.refresh}>
               {t('common.retry')}
             </button>
           </div>
@@ -136,18 +137,18 @@ export function HistoryContent({ model, theme, title, narrow, bodyRef, onPick }:
           <p className="history-message">{t('history.unreadable')}</p>
         )
       ) : loading || !session ? (
-        <div role="status" className="history-message">
+        <div className="history-message" role="status">
           {streaming ? t('history.waitingEdits') : t('history.computing')}
         </div>
       ) : (
-        <div ref={bodyRef} aria-label={t('history.diffBody')} className="history-content">
+        <div aria-label={t('history.diffBody')} className="history-content" ref={bodyRef}>
           {session.latest.value.root.children.some(
             (node) => node.type === 'heading' && (node as { tag?: string }).tag === 'h1',
           ) ? null : (
             <h1>{title}</h1>
           )}
           {!count ? (
-            <p role="status" className="history-note">
+            <p className="history-note" role="status">
               {t('history.noDiff')}
             </p>
           ) : null}

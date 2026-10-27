@@ -3,7 +3,9 @@ import fs from 'node:fs';
 import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
+
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
+
 import { parseDocument } from '../src/server/document-codec';
 import { listen } from '../src/server/http';
 import { injectRuntime } from '../src/server/inject';
@@ -12,8 +14,8 @@ import { CLOUD_RUNTIME_URL } from '../src/server/publish-payload';
 const cli = path.resolve(__dirname, '../../skills/artifacts/app/cli.cjs');
 
 interface Seen {
-  path: string;
   auth: string | undefined;
+  path: string;
 }
 
 let cloud: http.Server;

@@ -2,6 +2,13 @@ import fs from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
 import type { Duplex } from 'node:stream';
+
+import { ownLink } from '../shared/cloud';
+import { DOCUMENT_FEATURES_HEADER } from '../shared/document-features';
+import { ARTIFACT_LOCATOR_SOURCE } from '../shared/ids';
+import { parseAcceptLanguage, resolveLocale } from '../shared/locale';
+import { renderThumbnail } from '../shared/thumbnail';
+import { typeFaviconHref } from '../shared/type-icons';
 import {
   ARTIFACT_TYPES,
   type ArtifactSummary,
@@ -11,17 +18,18 @@ import {
   type HtmlPayload,
   type ServerMessage,
 } from '../shared/types';
+import { artifactPath, resolveArtifactAddress } from './artifact-address';
+import { readArtifactFile } from './artifact-file';
 import {
   artifactKeyOf,
+  type ArtifactRef,
   artifactSignature,
   isArtifactLocator,
   listArtifacts,
   resolveArtifactDir,
-  type ArtifactRef,
 } from './artifacts';
-import { artifactPath, resolveArtifactAddress } from './artifact-address';
-import { readDocument } from './document';
-import { parseDocument } from './document-codec';
+import { createAutoPublisher } from './auto-publish';
+import { AVATAR_ROUTE, createAvatars } from './avatars';
 import {
   agentAddOnBoard,
   asBoardAgentOp,
@@ -30,11 +38,19 @@ import {
   boardSpecs,
   createBoardCommentRegistry,
 } from './board-comments';
+import { type CloudOptions, createCloudRoutes } from './cloud';
+import { commentNames } from './comment-names';
+import { ensureConfig, readConfig } from './config';
+import { readCredentials } from './credentials';
+import { createDirectRelay } from './direct-relay';
+import { readDocument } from './document';
+import { parseDocument } from './document-codec';
 import { asAgentOp, asHumanOp } from './document-comments';
-import { createDocumentRegistry, type DocumentTiming } from './documents';
 import { OutdatedClient } from './document-session';
+import { createDocumentRegistry, type DocumentTiming } from './documents';
+import { createDynamicBlocks } from './dynamic-blocks';
+import { hostIdFor } from './host-id';
 import { latestMtime, readHtml } from './html';
-import { injectRuntime } from './inject';
 import {
   listen,
   parseCookies,
@@ -46,45 +62,29 @@ import {
   sendJson,
   urlHostForHttp,
 } from './http';
+import { injectRuntime } from './inject';
+import { serverText } from './locales';
 import { resolveBoardFile, resolveDocumentAsset, resolveHtmlFile, resolveInside } from './paths';
-import { createDynamicBlocks } from './dynamic-blocks';
-import { readCanvas, writeArtifactState, writeJsonAtomic } from './state';
-import { createSelectionStore } from './selection';
-import { ensureConfig, readConfig } from './config';
-import { readCredentials } from './credentials';
+import { CLOUD_RUNTIME_URL, publishPayload } from './publish-payload';
 import { createRelayClient } from './relay';
-import { createDirectRelay } from './direct-relay';
-import { hostIdFor } from './host-id';
-import { AVATAR_ROUTE, createAvatars } from './avatars';
-import { createCloudRoutes, type CloudOptions } from './cloud';
-import { ownLink } from '../shared/cloud';
-import { DOCUMENT_FEATURES_HEADER } from '../shared/document-features';
-import { ARTIFACT_LOCATOR_SOURCE } from '../shared/ids';
-import { typeFaviconHref } from '../shared/type-icons';
-import { commentNames } from './comment-names';
-import { publishPayload } from './publish-payload';
-import { renderThumbnail } from '../shared/thumbnail';
+import { createSelectionStore } from './selection';
+import { readCanvas, writeArtifactState, writeJsonAtomic } from './state';
 import { allowInlineScripts, viewerPage } from './viewer-page';
-import { createAutoPublisher } from './auto-publish';
-import { readArtifactFile } from './artifact-file';
-import { CLOUD_RUNTIME_URL } from './publish-payload';
 import { watchTree } from './watch';
 import { completeHandshake, handleClientFrames, rejectUpgrade, textFrame } from './ws';
-import { parseAcceptLanguage, resolveLocale } from '../shared/locale';
-import { serverText } from './locales';
 
 export interface ServerOptions {
-  root: string;
-  viewerDir: string;
-  runtimeDir?: string;
-  host: string;
-  urlHost: string;
+  cloud?: CloudOptions;
+  configFile?: string;
   debounceMs?: number;
   documentTiming?: DocumentTiming;
-  configFile?: string;
-  cloud?: CloudOptions;
-  relay?: { url: string; version: string; pollMs?: number; heartbeatMs?: number };
   fetch?: typeof fetch;
+  host: string;
+  relay?: { url: string; version: string; pollMs?: number; heartbeatMs?: number };
+  root: string;
+  runtimeDir?: string;
+  urlHost: string;
+  viewerDir: string;
 }
 
 export type ArtifactPayload = (CanvasPayload | HtmlPayload | DocumentPayload) & {
@@ -92,17 +92,17 @@ export type ArtifactPayload = (CanvasPayload | HtmlPayload | DocumentPayload) & 
 };
 
 export interface ArtifactsServer {
+  close: () => Promise<void>;
+  cloudLinkFor: (type: ArtifactType, id: string) => Promise<string | null>;
+  contentToken: string;
+  linkFor: (type: ArtifactType, id: string) => string;
+  onActivity: (listener: () => void) => void;
+  onArtifactChange: (
+    listener: (ref: ArtifactRef, payload: ArtifactPayload, files: string[]) => void,
+  ) => void;
   port: number;
   token: string;
-  contentToken: string;
   url: string;
-  linkFor(type: ArtifactType, id: string): string;
-  cloudLinkFor(type: ArtifactType, id: string): Promise<string | null>;
-  onArtifactChange(
-    listener: (ref: ArtifactRef, payload: ArtifactPayload, files: string[]) => void,
-  ): void;
-  onActivity(listener: () => void): void;
-  close(): Promise<void>;
 }
 
 const VIEWER_CSP = [
@@ -125,7 +125,7 @@ const CONTENT_CSP: Record<ArtifactType, string> = {
 };
 
 const CLOSE_FLUSH_MS = 5000;
-const DIRECT_RELAY_ROUTE = /^\/relay\/a\/([A-Za-z0-9_-]{1,64})$/;
+const DIRECT_RELAY_ROUTE = /^\/relay\/a\/([\w-]{1,64})$/;
 const SHELL_ROUTE = new RegExp(`^/(?:(${ARTIFACT_TYPES.join('|')})/([^/]+)/?)?$`);
 const API_ARTIFACT_ROUTE = /^\/api\/artifacts\/([^/]+)\/([^/]+)$/;
 const PREVIEW_ROUTE = new RegExp(
@@ -238,7 +238,7 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
       writeState({ type: 'document', id }, dir);
       broadcast({ type: 'change', artifact: `document/${id}`, files: [] });
     },
-    log: (line) => console.log(JSON.stringify({ type: 'document-log', line })),
+    log: (line) => console.info(JSON.stringify({ type: 'document-log', line })),
   });
 
   const inspect = async (ref: ArtifactRef) => {
@@ -799,7 +799,7 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
         `${thumbnailMatch[1]}/${thumbnailMatch[2]}`,
         isArtifactLocator,
       );
-      let resolved: ReturnType<typeof resolveArtifactAddress> = null;
+      let resolved: ReturnType<typeof resolveArtifactAddress>;
       try {
         resolved = requested && resolveArtifactAddress(root, requested.type, requested.id);
       } catch {

@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'vitest';
+
 import { injectRuntime } from '../src/server/inject';
 
 describe('injectRuntime', () => {

@@ -1,5 +1,6 @@
 import { expect, test } from 'vitest';
-import { readBoardAnchor, type BoardThread } from '../src/shared/board-comments';
+
+import { type BoardThread, readBoardAnchor } from '../src/shared/board-comments';
 import { groupVerdict, verdictProgress } from '../src/shared/verdicts';
 import { anchorLabel, pinNumbers } from '../src/viewer/lib/board-anchor';
 

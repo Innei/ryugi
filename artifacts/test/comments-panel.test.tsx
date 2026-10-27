@@ -2,6 +2,7 @@
 import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeAll, expect, test, vi } from 'vitest';
+
 import type { BoardThread } from '../src/shared/board-comments';
 import { CommentsPanel } from '../src/viewer/comments/CommentsPanel';
 

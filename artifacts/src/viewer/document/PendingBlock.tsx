@@ -2,14 +2,15 @@ import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
 import type { NodeKey } from 'lexical';
 import { createContext, useContext } from 'react';
-import type { AgentActivity } from './agentActivity';
-import { brand } from '../tokens.stylex';
+
 import { t } from '../i18n';
+import { brand } from '../tokens.stylex';
+import type { AgentActivity } from './agentActivity';
 
 export interface PendingProgress {
-  nextKey: NodeKey | null;
-  agent: string;
   activity: AgentActivity['kind'];
+  agent: string;
+  nextKey: NodeKey | null;
 }
 
 export const PendingContext = createContext<PendingProgress | null>(null);
@@ -102,8 +103,8 @@ export function PendingBlock({ nodeKey, intent }: { nodeKey: NodeKey; intent: st
   const next = progress?.nextKey === nodeKey && kind === 'working';
   return (
     <div
-      data-pending=""
       data-next={next ? 'true' : undefined}
+      data-pending=""
       title={t('document.pending')}
       {...stylex.props(styles.block)}
     >
@@ -115,7 +116,7 @@ export function PendingBlock({ nodeKey, intent }: { nodeKey: NodeKey; intent: st
           {intent || t('document.pending')}
         </span>
         {next ? (
-          <span data-caret="" aria-hidden {...stylex.props(styles.caret)}>
+          <span aria-hidden data-caret="" {...stylex.props(styles.caret)}>
             <span {...stylex.props(styles.bar)} />
             <span {...stylex.props(styles.label)}>{progress!.agent}</span>
           </span>

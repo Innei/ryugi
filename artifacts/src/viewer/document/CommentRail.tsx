@@ -1,12 +1,13 @@
 import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
-import { useCallback, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { type ReactNode, useCallback, useLayoutEffect, useRef, useState } from 'react';
+
 import type { Thread } from '../../shared/comments';
+import { t } from '../i18n';
 import { shownThreadIds } from './anchor';
 import { CommentCard, type ThreadActions } from './CommentCard';
 import { connectorPath, layoutCards } from './layoutCards';
 import { anchorLinkStart, type ThreadAnchor } from './useAnchors';
-import { t } from '../i18n';
 
 const GAP = 12;
 const BEND = 40;
@@ -48,19 +49,19 @@ const styles = stylex.create({
 });
 
 interface Props {
-  agent?: string;
-  narrow: boolean;
-  threads: Thread[];
-  anchors: ThreadAnchor[];
-  activeId: string | null;
   actions?: ThreadActions;
+  activeId: string | null;
+  agent?: string;
+  anchors: ThreadAnchor[];
+  narrow: boolean;
   onActivate: (threadId: string) => void;
   railRef: (element: HTMLDivElement | null) => void;
+  threads: Thread[];
 }
 
 interface Link {
-  id: string;
   d: string;
+  id: string;
 }
 
 function Measured({
@@ -143,20 +144,20 @@ export function CommentRail({
 
   const card = (thread: Thread) => (
     <CommentCard
-      thread={thread}
-      active={thread.id === activeId}
       actions={actions}
-      onActivate={() => onActivate(thread.id)}
+      active={thread.id === activeId}
       agent={agent}
+      thread={thread}
+      onActivate={() => onActivate(thread.id)}
     />
   );
 
   if (narrow) {
     return (
       <div
+        aria-label={t('document.commentsLabel')}
         ref={setRef}
         role="region"
-        aria-label={t('document.commentsLabel')}
         {...stylex.props(styles.narrow)}
       >
         {[...placed]
@@ -176,20 +177,20 @@ export function CommentRail({
 
   return (
     <aside
-      ref={setRef}
       aria-label={t('document.commentsLabel')}
+      ref={setRef}
       {...stylex.props(styles.wide)}
       style={{ minHeight: bottom }}
     >
       <svg {...stylex.props(styles.links)}>
         {links.map((link) => (
           <path
-            key={link.id}
             d={link.d}
             fill="none"
+            key={link.id}
             stroke={link.id === activeId ? '#c9a03a' : 'currentColor'}
-            strokeOpacity={link.id === activeId ? 1 : 0.25}
             strokeDasharray={link.id === activeId ? undefined : '3 3'}
+            strokeOpacity={link.id === activeId ? 1 : 0.25}
           />
         ))}
       </svg>

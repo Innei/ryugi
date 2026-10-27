@@ -1,4 +1,5 @@
 import { expect, test } from 'vitest';
+
 import { lockAxis, rubber, settle, velocityTracker } from '../src/viewer/lib/gesture';
 
 test('rubber passes values inside the range and resists past either end', () => {

@@ -2,13 +2,14 @@
 import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
+
 import type { BoardSpec } from '../src/shared/types';
 import { useBoardTiers } from '../src/viewer/hooks/useBoardTiers';
 import type { BoardRender } from '../src/viewer/lib/board-tiers';
 import {
   createSnapshotStore,
-  snapshotKey,
   type SnapshotEntry,
+  snapshotKey,
 } from '../src/viewer/lib/snapshot-store';
 
 type Params = Parameters<typeof useBoardTiers>[0];

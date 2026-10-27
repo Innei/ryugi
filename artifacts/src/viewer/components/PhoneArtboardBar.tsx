@@ -3,6 +3,7 @@ import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
 import { Check, ChevronDown } from 'lucide-react';
 import type { ReactNode } from 'react';
+
 import type { PageSpec } from '../../shared/types';
 import { t } from '../i18n';
 
@@ -57,9 +58,9 @@ const styles = stylex.create({
 });
 
 interface PageSwitcherProps {
-  pages: PageSpec[];
-  page: string | null;
   onPageChange: (id: string) => void;
+  page: string | null;
+  pages: PageSpec[];
 }
 
 export function PageSwitcher({ pages, page, onPageChange }: PageSwitcherProps) {
@@ -75,7 +76,7 @@ export function PageSwitcher({ pages, page, onPageChange }: PageSwitcherProps) {
         onClick: () => onPageChange(p.id),
       }))}
     >
-      <button type="button" aria-label={t('chrome.switchPage')} {...stylex.props(styles.trigger)}>
+      <button aria-label={t('chrome.switchPage')} type="button" {...stylex.props(styles.trigger)}>
         <span {...stylex.props(styles.pageName)}>{current?.name ?? page}</span>
         <ChevronDown size={13} />
       </button>
@@ -84,16 +85,16 @@ export function PageSwitcher({ pages, page, onPageChange }: PageSwitcherProps) {
 }
 
 interface Props extends PageSwitcherProps {
-  title: string;
   actions?: ReactNode;
   live?: boolean;
+  title: string;
 }
 
 export function PhoneArtboardBar({ title, pages, page, onPageChange, actions, live }: Props) {
   return (
     <header data-chrome {...stylex.props(styles.bar)}>
       <span {...stylex.props(styles.title)}>{title}</span>
-      <PageSwitcher pages={pages} page={page} onPageChange={onPageChange} />
+      <PageSwitcher page={page} pages={pages} onPageChange={onPageChange} />
       <span {...stylex.props(styles.spacer)} />
       {live === undefined ? null : (
         <i

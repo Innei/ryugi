@@ -4,6 +4,7 @@ import { motion } from 'motion/react';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { expect, test, vi } from 'vitest';
+
 import { readTweakSchema, reconcileTweakValues } from '../src/shared/tweaks';
 import { TweaksPanel } from '../src/viewer/tweaks/TweaksPanel';
 
@@ -32,14 +33,14 @@ test('both enum presentations associate the parameter name with their choices', 
   try {
     await act(async () =>
       root.render(
-        <ConfigProvider motion={motion} enableCustomFonts={false}>
+        <ConfigProvider enableCustomFonts={false} motion={motion}>
           <TweaksPanel
             boardId="main"
-            title="Main"
             state={{ schema, error: null, values: reconcileTweakValues(schema) }}
+            title="Main"
             onChange={() => {}}
-            onReset={() => {}}
             onClose={() => {}}
+            onReset={() => {}}
           />
         </ConfigProvider>,
       ),

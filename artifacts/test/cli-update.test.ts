@@ -3,7 +3,9 @@ import http from 'node:http';
 import type { AddressInfo } from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
+
 import { afterEach, expect, test } from 'vitest';
+
 import { CliError } from '../src/cli/paths';
 import { detectInstall, installCommand, update } from '../src/cli/update';
 import { readLatest } from '../src/cli/update-hint';
@@ -19,7 +21,7 @@ test.each([
   [`/opt/homebrew/lib/${PKG}`, { kind: 'global', pm: 'npm' }],
   [`/Users/me/.nvm/versions/node/v24.1.0/lib/${PKG}`, { kind: 'global', pm: 'npm' }],
   [
-    `C:\\Users\\Me\\AppData\\Roaming\\npm\\${PKG.replace(/\//g, '\\')}`,
+    `C:\\Users\\Me\\AppData\\Roaming\\npm\\${PKG.replaceAll('/', '\\')}`,
     { kind: 'global', pm: 'npm' },
   ],
   [

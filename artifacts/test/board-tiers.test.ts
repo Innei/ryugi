@@ -1,11 +1,12 @@
 import { expect, test } from 'vitest';
+
 import {
   boardsToWarm,
   chooseTiers,
   snapshotScale,
-  visibleRenders,
   type TierBoard,
   type TierInput,
+  visibleRenders,
 } from '../src/viewer/lib/board-tiers';
 
 const viewport = { width: 1000, height: 800 };

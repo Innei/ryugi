@@ -1,8 +1,10 @@
+import './WritingCursor.css';
+
 import * as stylex from '@stylexjs/stylex';
 import { useLayoutEffect, useRef } from 'react';
+
 import { cursorPath, type CursorPose } from '../lib/cursorMotion';
 import { brand } from '../tokens.stylex';
-import './WritingCursor.css';
 
 const ARROW =
   'M6.2 3.6C5 2.7 3.4 3.6 3.6 5.1L6 22.7C6.2 24.3 8.2 24.8 9.1 23.5L13 18.3C13.4 17.8 14 17.5 14.6 17.5L21.1 17.3C22.7 17.2 23.4 15.2 22.2 14.3Z';
@@ -145,16 +147,16 @@ export function WritingCursor({
   const initial = pose.current ?? { x, y, angle: 0 };
   return (
     <div
+      aria-label={`${agent} last worked on ${title}`}
       ref={cursor}
       role="status"
-      aria-label={`${agent} last worked on ${title}`}
       {...stylex.props(styles.cursor)}
       style={{ transform: transform(initial) }}
     >
       <div
-        ref={trail}
-        data-trail=""
         aria-hidden="true"
+        data-trail=""
+        ref={trail}
         {...stylex.props(styles.trail)}
         style={{ opacity: 0 }}
       >
@@ -167,19 +169,19 @@ export function WritingCursor({
         ))}
       </div>
       <svg
-        ref={arrow}
-        width="24"
-        height="24"
-        viewBox="0 0 28 28"
         aria-hidden="true"
+        height="24"
+        ref={arrow}
+        viewBox="0 0 28 28"
+        width="24"
         {...stylex.props(styles.arrow)}
         style={{ transform: rotation(initial.angle) }}
       >
-        <path d={ARROW} fill="none" stroke="#fff" strokeWidth="4" strokeLinejoin="round" />
+        <path d={ARROW} fill="none" stroke="#fff" strokeLinejoin="round" strokeWidth="4" />
         <path d={ARROW} {...stylex.props(styles.fill)} />
       </svg>
       <span data-cursor-ring="" {...stylex.props(styles.label)}>
-        <svg width="9" height="9" viewBox="0 0 12 12" aria-hidden="true">
+        <svg aria-hidden="true" height="9" viewBox="0 0 12 12" width="9">
           <path d="M6 1Q6.8 5.2 11 6Q6.8 6.8 6 11Q5.2 6.8 1 6Q5.2 5.2 6 1Z" fill="#fff" />
         </svg>
         {agent}

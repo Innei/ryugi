@@ -2,23 +2,25 @@ import fs from 'node:fs';
 import { createRequire } from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
+
 import { expect, test } from 'vitest';
+
 import { detectAgent } from '../src/server/agent';
 import { applyBoardHumanOp, emptyBoardComments } from '../src/shared/board-comments';
 import {
   applyHumanOp,
+  type CommentsFile,
   emptyComments,
   mergeComments,
   unreadThreads,
-  type CommentsFile,
 } from '../src/shared/comments';
 
 const hook = createRequire(import.meta.url)(
   path.resolve(__dirname, '../../hooks/selection-context.cjs'),
 ) as {
-  unreadThreadCount(file: CommentsFile, cursor: string | null): number;
-  cursorKey(env: Record<string, string | undefined>): string;
-  commentReminders(project: string, root: string, key: string): string;
+  unreadThreadCount: (file: CommentsFile, cursor: string | null) => number;
+  cursorKey: (env: Record<string, string | undefined>) => string;
+  commentReminders: (project: string, root: string, key: string) => string;
 };
 
 let counter = 0;

@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+
 import type { ExtensionAPI } from '@earendil-works/pi-coding-agent';
 
 const EXTREMELY_IMPORTANT_MARKER = '<EXTREMELY_IMPORTANT>';

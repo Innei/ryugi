@@ -3,18 +3,18 @@ import os from 'node:os';
 import path from 'node:path';
 
 export interface ProjectPaths {
+  agent: string;
+  info: string;
+  lock: string;
+  log: string;
+  owners: string;
+  pid: string;
   project: string;
   root: string;
-  state: string;
-  pid: string;
-  log: string;
   serverId: string;
-  info: string;
-  version: string;
-  owners: string;
-  agent: string;
+  state: string;
   stopped: string;
-  lock: string;
+  version: string;
 }
 
 export class CliError extends Error {
@@ -44,7 +44,7 @@ function projectRoot(dir: string) {
   }
   return (
     chain.find((candidate) => fs.existsSync(path.join(candidate, '.ryugi', 'artifacts'))) ??
-    chain[chain.length - 1]!
+    chain.at(-1)!
   );
 }
 
@@ -52,7 +52,7 @@ export function projectPaths(dir: string): ProjectPaths {
   let project: string;
   try {
     project = fs.realpathSync(path.resolve(dir));
-    if (!fs.statSync(project).isDirectory()) throw new Error();
+    if (!fs.statSync(project).isDirectory()) throw new Error('Not a directory');
   } catch {
     throw new CliError(`Project directory not found: ${dir}`);
   }

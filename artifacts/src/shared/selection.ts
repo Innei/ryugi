@@ -17,37 +17,37 @@ export const SELECTION_LIMITS = {
 };
 
 export interface SelectionChange {
-  property: InspectorProperty;
   from: string;
+  property: InspectorProperty;
   value: string;
 }
 export interface SelectionNode {
-  id: string;
   board: string;
   file: string;
-  tag: string;
-  path: string;
+  id: string;
   name: string;
+  path: string;
+  tag: string;
 }
 export interface SelectedNode extends SelectionNode {
-  text: string;
   html: string;
+  text: string;
   tweaks: SelectionChange[];
 }
 export interface SelectionTweak extends SelectionNode, SelectionChange {}
 
 export interface SelectionState {
-  selected: SelectedNode[];
   more: number;
-  tweaks: SelectionTweak[];
   nodes: SelectionNode[];
+  selected: SelectedNode[];
+  tweaks: SelectionTweak[];
 }
 
 export interface SelectionMessage extends SelectionState {
-  type: 'selection';
   artifact: string;
-  tab: string;
   human: boolean;
+  tab: string;
+  type: 'selection';
 }
 
 export interface SelectionFile extends SelectionState {
@@ -58,16 +58,16 @@ export interface SelectionFile extends SelectionState {
 export const DOCUMENT_SELECTION_LIMITS = { quote: 2000, heading: 200, blockId: 100, blockIds: 200 };
 
 export interface DocumentSelectionState {
-  quote: string;
   blockIds: string[];
   heading: string;
+  quote: string;
 }
 
 export interface DocumentSelectionMessage extends DocumentSelectionState {
-  type: 'selection';
   artifact: string;
-  tab: string;
   human: boolean;
+  tab: string;
+  type: 'selection';
 }
 
 export interface DocumentSelectionFile extends DocumentSelectionState {

@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
+
 import { renderBoardPlaceholder } from '../../shared/thumbnail';
-import { isMediaBoard, type BoardSpec } from '../../shared/types';
-import { boardsToWarm, chooseTiers, snapshotScale, type BoardRender } from '../lib/board-tiers';
+import { type BoardSpec, isMediaBoard } from '../../shared/types';
+import { type BoardRender, boardsToWarm, chooseTiers, snapshotScale } from '../lib/board-tiers';
 import { boardReady } from '../lib/play';
 import { createSnapshotStore, snapshotKey, type SnapshotStore } from '../lib/snapshot-store';
 import { createTierController } from '../lib/tier-controller';

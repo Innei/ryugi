@@ -3,8 +3,8 @@ import type { ServerMessage } from '../../shared/types';
 export type ChannelEvent = ServerMessage | { type: 'open' };
 
 export interface Channel {
-  emit(event: ChannelEvent): void;
-  subscribe(listener: (event: ChannelEvent) => void): () => void;
+  emit: (event: ChannelEvent) => void;
+  subscribe: (listener: (event: ChannelEvent) => void) => () => void;
 }
 
 export function createChannel(): Channel {

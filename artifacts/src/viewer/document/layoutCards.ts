@@ -1,7 +1,7 @@
 export interface CardBox {
-  id: string;
   anchorTop: number;
   height: number;
+  id: string;
 }
 
 export function layoutCards(
@@ -46,10 +46,10 @@ export function connectorPath(
 }
 
 export interface Box {
+  bottom: number;
   left: number;
   right: number;
   top: number;
-  bottom: number;
 }
 
 const BAR_GAP = 8;

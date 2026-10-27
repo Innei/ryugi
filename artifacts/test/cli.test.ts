@@ -1,8 +1,10 @@
-import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
+import { type ChildProcess, spawn, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+
 import { afterEach, expect, test } from 'vitest';
+
 import { get, readJson, waitFor, writeHtml } from './helpers';
 
 const entry = path.resolve(__dirname, '../bin/ryugi-artifacts.cjs');

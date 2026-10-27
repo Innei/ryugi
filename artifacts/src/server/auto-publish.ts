@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
+
 import { writeJsonAtomic } from './state';
 
 export type AutoPublishOutcome =
@@ -25,12 +26,12 @@ export interface AutoPublishState {
 }
 
 interface AutoPublisherOptions {
-  stateFile: string;
   enabled: () => boolean;
-  token: () => string | null;
-  publish: (key: string) => Promise<AutoPublishOutcome>;
   idleMs?: number;
   maxWaitMs?: number;
+  publish: (key: string) => Promise<AutoPublishOutcome>;
+  stateFile: string;
+  token: () => string | null;
 }
 
 const IDLE_MS = 5 * 60 * 1000;
@@ -110,7 +111,7 @@ export function createAutoPublisher(options: AutoPublisherOptions) {
       if (notice?.kind === 'signed-out') notice = null;
     }
     let retry = false;
-    for (const key of [...dirty]) {
+    for (const key of dirty) {
       remarked.delete(key);
       const outcome = await options.publish(key);
       console.error(

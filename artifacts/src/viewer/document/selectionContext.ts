@@ -1,8 +1,8 @@
 import { DOCUMENT_SELECTION_LIMITS } from '../../shared/selection';
 
 export interface BlockSummary {
-  id: string;
   heading: boolean;
+  id: string;
   text: string;
 }
 

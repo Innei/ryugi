@@ -13,9 +13,9 @@
  * Requires: graphviz (dot) installed on system
  */
 
-import * as fs from 'fs';
-import * as path from 'path';
-import { execFileSync } from 'child_process';
+import { execFileSync } from 'node:child_process';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 
 function extractDotBlocks(markdown) {
   const blocks = [];
@@ -43,7 +43,7 @@ function extractGraphBody(dotContent) {
   let body = match[1];
 
   // Remove rankdir (we'll set it once at the top level)
-  body = body.replace(/^\s*rankdir\s*=\s*\w+\s*;?\s*$/gm, '');
+  body = body.replaceAll(/^\s*rankdir\s*=\s*\w+\s*(?:;\s*)?$/gm, '');
 
   return body.trim();
 }
@@ -103,7 +103,7 @@ function main() {
 
   const skillDir = path.resolve(skillDirArg);
   const skillFile = path.join(skillDir, 'SKILL.md');
-  const skillName = path.basename(skillDir).replace(/-/g, '_');
+  const skillName = path.basename(skillDir).replaceAll('-', '_');
 
   if (!fs.existsSync(skillFile)) {
     console.error(`Error: ${skillFile} not found`);
@@ -121,15 +121,15 @@ function main() {
     process.exit(1);
   }
 
-  const markdown = fs.readFileSync(skillFile, 'utf-8');
+  const markdown = fs.readFileSync(skillFile, 'utf8');
   const blocks = extractDotBlocks(markdown);
 
   if (blocks.length === 0) {
-    console.log('No ```dot blocks found in', skillFile);
+    console.info('No ```dot blocks found in', skillFile);
     process.exit(0);
   }
 
-  console.log(`Found ${blocks.length} diagram(s) in ${path.basename(skillDir)}/SKILL.md`);
+  console.info(`Found ${blocks.length} diagram(s) in ${path.basename(skillDir)}/SKILL.md`);
 
   const outputDir = path.join(skillDir, 'diagrams');
   if (!fs.existsSync(outputDir)) {
@@ -143,12 +143,12 @@ function main() {
     if (svg) {
       const outputPath = path.join(outputDir, `${skillName}_combined.svg`);
       fs.writeFileSync(outputPath, svg);
-      console.log(`  Rendered: ${skillName}_combined.svg`);
+      console.info(`  Rendered: ${skillName}_combined.svg`);
 
       // Also write the dot source for debugging
       const dotPath = path.join(outputDir, `${skillName}_combined.dot`);
       fs.writeFileSync(dotPath, combined);
-      console.log(`  Source: ${skillName}_combined.dot`);
+      console.info(`  Source: ${skillName}_combined.dot`);
     } else {
       console.error('  Failed to render combined diagram');
     }
@@ -159,14 +159,14 @@ function main() {
       if (svg) {
         const outputPath = path.join(outputDir, `${block.name}.svg`);
         fs.writeFileSync(outputPath, svg);
-        console.log(`  Rendered: ${block.name}.svg`);
+        console.info(`  Rendered: ${block.name}.svg`);
       } else {
         console.error(`  Failed: ${block.name}`);
       }
     }
   }
 
-  console.log(`\nOutput: ${outputDir}/`);
+  console.info(`\nOutput: ${outputDir}/`);
 }
 
 main();

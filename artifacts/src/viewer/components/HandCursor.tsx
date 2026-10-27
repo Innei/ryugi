@@ -1,7 +1,8 @@
 import * as stylex from '@stylexjs/stylex';
-import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react';
+import { type RefObject, useEffect, useLayoutEffect, useRef, useState } from 'react';
+
 import { HAND_PALM, handPose } from '../lib/handPose';
-import { stepSpring, type Spring } from '../lib/spring';
+import { type Spring, stepSpring } from '../lib/spring';
 
 const INK = '#423d38';
 const CURL_DELAY_MS = 30;
@@ -25,8 +26,8 @@ const settled = (spring: Spring, target: number) =>
   Math.abs(spring.value - target) < 5e-4 && Math.abs(spring.velocity) < 5e-3;
 
 interface Props {
-  viewport: RefObject<HTMLElement | null>;
   hand: 'open' | 'pinch' | null;
+  viewport: RefObject<HTMLElement | null>;
 }
 
 export function HandCursor({ viewport, hand }: Props) {
@@ -118,30 +119,30 @@ export function HandCursor({ viewport, hand }: Props) {
   const { index, thumb, fingers, seam } = handPose(pose.pinch, pose.curl);
   const curled = fingers.map((f, i) => (
     <rect
-      key={i}
-      x={f.x}
-      y={f.y}
-      width={f.width}
       height={f.height}
+      key={i}
       rx={f.radius}
       transform={f.transform}
+      width={f.width}
+      x={f.x}
+      y={f.y}
     />
   ));
   return (
     <>
       <style>{HIDE_SYSTEM_CURSOR}</style>
       <svg
+        aria-hidden="true"
+        data-curl={round(pose.curl)}
         data-hand-cursor=""
         data-pinch={round(pose.pinch)}
-        data-curl={round(pose.curl)}
-        width="32"
         height="32"
         viewBox="0 0 32 32"
-        aria-hidden="true"
+        width="32"
         {...stylex.props(styles.cursor)}
         style={{ transform: `translate(${point.x - 16}px, ${point.y - 16}px)` }}
       >
-        <g fill={INK} stroke={INK} strokeWidth="2" strokeLinejoin="round">
+        <g fill={INK} stroke={INK} strokeLinejoin="round" strokeWidth="2">
           {curled}
           <path d={HAND_PALM} />
         </g>
@@ -153,16 +154,16 @@ export function HandCursor({ viewport, hand }: Props) {
           {curled}
           <path d={HAND_PALM} />
         </g>
-        <path d={index.d} fill="none" stroke="#fff" strokeWidth="3.4" strokeLinecap="round" />
+        <path d={index.d} fill="none" stroke="#fff" strokeLinecap="round" strokeWidth="3.4" />
         <path
           d={thumb.d}
           fill="none"
           stroke={INK}
+          strokeLinecap="round"
           strokeOpacity={seam}
           strokeWidth="6"
-          strokeLinecap="round"
         />
-        <path d={thumb.d} fill="none" stroke="#fff" strokeWidth="3.8" strokeLinecap="round" />
+        <path d={thumb.d} fill="none" stroke="#fff" strokeLinecap="round" strokeWidth="3.8" />
         {/* Repainting the palm hides the thumb's own outline where it crosses the palm, so only the seam against the index shows. */}
         <path d={HAND_PALM} fill="#fff" />
       </svg>

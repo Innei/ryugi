@@ -2,7 +2,7 @@ import type { CommentsFile, HumanOp } from '../../shared/comments';
 import { DOCUMENT_FEATURES, DOCUMENT_FEATURES_HEADER } from '../../shared/document-features';
 import type { RelayPresence } from '../../shared/relay';
 import type { DocumentPayload } from '../../shared/types';
-import { createChannel, type Channel } from './channel';
+import { type Channel, createChannel } from './channel';
 import {
   createRelayConnection,
   type RelayConnection,
@@ -14,23 +14,23 @@ export interface DocumentMeta extends DocumentPayload {
 }
 
 export interface DocumentState {
-  snapshot: string;
-  lineage: string;
-  cursor: { id: string; offset: number } | null;
-  streaming?: boolean;
   agentActiveAt?: number;
-  now?: number;
   comments?: CommentsFile;
+  cursor: { id: string; offset: number } | null;
+  lineage: string;
+  now?: number;
+  snapshot: string;
+  streaming?: boolean;
 }
 
 export interface DocumentTransport {
   artifact: string;
   channel: Channel;
-  meta(): Promise<DocumentMeta | null>;
-  state(): Promise<DocumentState>;
-  update(bytes: Uint8Array): Promise<void>;
-  comment(op: HumanOp): Promise<CommentsFile>;
-  send(message: unknown): void;
+  comment: (op: HumanOp) => Promise<CommentsFile>;
+  meta: () => Promise<DocumentMeta | null>;
+  send: (message: unknown) => void;
+  state: () => Promise<DocumentState>;
+  update: (bytes: Uint8Array) => Promise<void>;
 }
 
 export const encodeBase64 = (bytes: Uint8Array) => {
@@ -86,18 +86,18 @@ export function createLocalTransport({
 }
 
 export interface RelayTransportOptions {
-  url: string;
   artifact: string;
-  contentBase: string;
-  WebSocket?: typeof WebSocket;
-  retryMs?: number;
-  onPresence: (presence: RelayPresence) => void;
   connect?: (options: RelayConnectionOptions) => RelayConnection;
+  contentBase: string;
+  onPresence: (presence: RelayPresence) => void;
+  retryMs?: number;
+  url: string;
+  WebSocket?: typeof WebSocket;
 }
 
 export function createRelayTransport(
   options: RelayTransportOptions,
-): DocumentTransport & { close(): void } {
+): DocumentTransport & { close: () => void } {
   const channel = createChannel();
   const connection = (options.connect ?? createRelayConnection)({
     url: options.url,

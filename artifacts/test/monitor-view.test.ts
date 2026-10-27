@@ -1,4 +1,5 @@
 import { expect, test } from 'vitest';
+
 import {
   handleKey,
   initialView,
@@ -8,7 +9,14 @@ import {
 } from '../src/cli/monitor-view';
 import type { ServerRow } from '../src/cli/servers';
 
-const plain = (lines: string[]) => lines.map((line) => line.replace(/\x1b\[[0-9;?]*[A-Za-z]/g, ''));
+const plain = (lines: string[]) =>
+  lines.map((line) =>
+    line.replaceAll(
+      // eslint-disable-next-line no-control-regex -- ANSI CSI sequences start with ESC
+      /\x1B\[[0-9;?]*[A-Z]/gi,
+      '',
+    ),
+  );
 
 const row = (project: string, extra: Partial<ServerRow> = {}): ServerRow => ({
   project,

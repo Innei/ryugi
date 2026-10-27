@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+
 import type { CommandSpec } from './command';
 import { projectPaths } from './paths';
 import { alive, hasServerId, readText, waitForExit } from './process';
@@ -20,12 +21,7 @@ export async function stop(projectDir: string, emit: Emit): Promise<number> {
     return 0;
   }
   const id = readText(paths.serverId) ?? '';
-  if (
-    !Number.isInteger(pid) ||
-    pid <= 0 ||
-    !/^[A-Za-z0-9_-]{32,64}$/.test(id) ||
-    !hasServerId(pid, id)
-  ) {
+  if (!Number.isInteger(pid) || pid <= 0 || !/^[\w-]{32,64}$/.test(id) || !hasServerId(pid, id)) {
     fs.rmSync(paths.pid, { force: true });
     fs.rmSync(paths.serverId, { force: true });
     markStopped('stale_pid');

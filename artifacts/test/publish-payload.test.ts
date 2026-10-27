@@ -1,9 +1,11 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+
 import { expect, test } from 'vitest';
-import type { CommentsFile } from '../src/shared/comments';
+
 import { publishPayload } from '../src/server/publish-payload';
+import type { CommentsFile } from '../src/shared/comments';
 
 const comments: CommentsFile = {
   version: 1,

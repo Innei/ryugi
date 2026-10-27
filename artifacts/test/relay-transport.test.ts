@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, test, vi } from 'vitest';
+
 import { createChannel } from '../src/viewer/document/channel';
 import { createRelayConnection } from '../src/viewer/document/relayConnection';
 import { createLocalTransport, createRelayTransport } from '../src/viewer/document/transport';
@@ -29,7 +30,7 @@ class FakeSocket {
   }
 }
 
-const connections: { close(): void }[] = [];
+const connections: { close: () => void }[] = [];
 
 afterEach(() => {
   for (const connection of connections.splice(0)) connection.close();

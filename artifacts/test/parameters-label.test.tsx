@@ -4,6 +4,7 @@ import { motion } from 'motion/react';
 import { act, createElement } from 'react';
 import { createRoot } from 'react-dom/client';
 import { expect, test, vi } from 'vitest';
+
 import { Labels } from '../src/viewer/components/Labels';
 
 vi.mock('@stylexjs/stylex', async (original) => ({

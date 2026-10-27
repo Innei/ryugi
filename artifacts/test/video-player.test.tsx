@@ -1,8 +1,9 @@
 // @vitest-environment happy-dom
-import { act, createElement, type ComponentProps } from 'react';
 import { MotionGlobalConfig } from 'motion/react';
+import { act, type ComponentProps, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeAll, expect, test, vi } from 'vitest';
+
 import { VideoPlayer } from '../src/viewer/components/VideoPlayer';
 
 vi.mock('@stylexjs/stylex', async (original) => ({

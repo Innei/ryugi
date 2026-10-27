@@ -1,5 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
+
 import {
   $reconcileRoot,
   createLoroBinding,
@@ -9,9 +10,10 @@ import {
 } from '@haklex/rich-collab-loro';
 import { $getRoot, type SerializedEditorState } from 'lexical';
 import { LoroDoc, type TreeID } from 'loro-crdt';
+
 import { DOCUMENT_FEATURES } from '../shared/document-features';
-import { createDocumentHeadlessEditor } from './document-headless';
 import { parseDocument, serializeDocument, stampBlockIds } from './document-codec';
+import { createDocumentHeadlessEditor } from './document-headless';
 
 export interface AgentCursor {
   id: TreeID;
@@ -32,27 +34,27 @@ export type DocumentEvent =
 
 export interface DocumentSessionOptions {
   file: string;
+  log?: (line: string) => void;
   snapshotFile: string;
+  snapshotIntervalMs?: number;
   stepDelayMs?: number;
   writeDelayMs?: number;
-  snapshotIntervalMs?: number;
-  log?: (line: string) => void;
 }
 
 export interface DocumentSession {
-  snapshot(): Uint8Array;
-  state(): SerializedEditorState;
-  lineage(): string;
-  importUpdate(bytes: Uint8Array, features?: readonly string[]): void;
-  onFileText(text: string): void;
-  subscribe(listener: (event: DocumentEvent) => void): () => void;
-  outcome(): DocumentOutcome;
-  streaming(): boolean;
-  agentActiveAt(): number;
-  cursor(): AgentCursor | null;
-  settled(): Promise<void>;
-  flush(): Promise<void>;
-  close(): Promise<void>;
+  agentActiveAt: () => number;
+  close: () => Promise<void>;
+  cursor: () => AgentCursor | null;
+  flush: () => Promise<void>;
+  importUpdate: (bytes: Uint8Array, features?: readonly string[]) => void;
+  lineage: () => string;
+  onFileText: (text: string) => void;
+  outcome: () => DocumentOutcome;
+  settled: () => Promise<void>;
+  snapshot: () => Uint8Array;
+  state: () => SerializedEditorState;
+  streaming: () => boolean;
+  subscribe: (listener: (event: DocumentEvent) => void) => () => void;
 }
 
 const WRITTEN_LIMIT = 50;

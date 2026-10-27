@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+
 import { detectAgent } from '../server/agent';
 import type { CommandSpec } from './command';
 import { CliError, invocation } from './paths';
@@ -9,20 +10,20 @@ export const COMMENT_ACTIONS = ['list', 'add', 'reply', 'resolve'] as const;
 export type CommentAction = (typeof COMMENT_ACTIONS)[number];
 
 export interface CommentOptions {
-  projectDir: string;
   action: string | undefined;
-  artifact?: string;
   all?: boolean;
+  artifact?: string;
   block?: string;
-  quote?: string;
-  thread?: string;
-  text?: string;
   board?: string;
+  projectDir: string;
+  quote?: string;
+  text?: string;
+  thread?: string;
   x?: string;
   y?: string;
 }
 
-const ARTIFACT = /^(document|artboard)\/[a-z0-9][a-z0-9-]*$/;
+const ARTIFACT = /^(?:document|artboard)\/[a-z0-9][a-z0-9-]*$/;
 const WRITTEN = {
   add: 'comment-added',
   reply: 'comment-replied',
@@ -123,37 +124,37 @@ export async function comment(options: CommentOptions, emit: Emit): Promise<numb
 
 interface ListedMessage {
   author: string;
+  deleted?: boolean;
   name?: string;
   text: string;
-  deleted?: boolean;
 }
 
 interface ListedBoardAnchor {
-  page: string;
   board?: string;
-  x: number;
-  y: number;
   nodes?: { board: string; path: string }[];
   offset?: { x: number; y: number };
+  page: string;
+  x: number;
+  y: number;
 }
 
 interface ListedThread {
-  id: string;
-  status: string;
   anchor: { blockId: string; quote: string } | ListedBoardAnchor;
-  waitingOn: string | null;
   changes?: string[];
-  stale?: boolean;
   files?: Record<string, string>;
+  id: string;
   messages: ListedMessage[];
+  stale?: boolean;
+  status: string;
+  waitingOn: string | null;
 }
 
 interface ListedGroup {
+  evidenceUpdated: boolean;
   id: string;
+  rejectThreads: number;
   title?: string;
   verdict: 'pending' | 'pass' | 'reject';
-  evidenceUpdated: boolean;
-  rejectThreads: number;
 }
 
 const VERDICT_TEXT = { pass: 'passed', reject: 'rejected', pending: 'waiting for a verdict' };
@@ -202,7 +203,7 @@ function threadText(thread: ListedThread) {
   for (const message of thread.messages) {
     const who = message.name ? `${message.author} (${message.name})` : message.author;
     lines.push(
-      `  ${who}: ${message.deleted ? '[deleted]' : message.text.replace(/\n/g, '\n    ')}`,
+      `  ${who}: ${message.deleted ? '[deleted]' : message.text.replaceAll('\n', '\n    ')}`,
     );
   }
   return lines.join('\n');

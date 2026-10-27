@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+
 import { LEAVE_MS } from './DraftPanel';
 import { createDrafts, draftKey } from './drafts';
 import { useDraftHighlight } from './useAnchors';
 import type { SelectionTarget } from './useSelectionComment';
 
 interface Draft {
-  target: SelectionTarget;
   initial: string;
+  target: SelectionTarget;
 }
 
 export function useDraftComment(clearSelection: () => void) {

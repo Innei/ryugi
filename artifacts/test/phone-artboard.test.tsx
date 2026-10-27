@@ -1,10 +1,11 @@
 // @vitest-environment happy-dom
+import { ConfigProvider } from '@lobehub/ui';
+import { motion } from 'motion/react';
 import { act, createElement } from 'react';
 import { createPortal } from 'react-dom';
 import { createRoot, type Root } from 'react-dom/client';
-import { ConfigProvider } from '@lobehub/ui';
-import { motion } from 'motion/react';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
+
 import { PhoneBoard } from '../src/viewer/components/PhoneBoard';
 import { ArtboardView } from '../src/viewer/layouts/ArtboardView';
 

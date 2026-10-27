@@ -1,6 +1,7 @@
 import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
 import { History, MessageCircle } from 'lucide-react';
+
 import { t } from '../i18n';
 
 const styles = stylex.create({
@@ -34,38 +35,38 @@ const styles = stylex.create({
 });
 
 interface Props {
-  comments: number;
-  open: boolean;
   available: boolean;
+  comments: number;
   onComments: () => void;
   onHistory: () => void;
+  open: boolean;
 }
 
 export function RailSwitch({ comments, open, available, onComments, onHistory }: Props) {
   return (
-    <div role="group" aria-label={t('document.rail')} {...stylex.props(styles.group)}>
+    <div aria-label={t('document.rail')} role="group" {...stylex.props(styles.group)}>
       <button
-        type="button"
         aria-pressed={!open}
+        type="button"
         onClick={() => {
           if (open) onComments();
         }}
         {...stylex.props(styles.tab, !open && styles.active)}
       >
-        <MessageCircle size={13} aria-hidden="true" />
+        <MessageCircle aria-hidden="true" size={13} />
         {t('document.railComments', { count: comments })}
       </button>
       <button
-        type="button"
         aria-pressed={open}
         disabled={!available}
         title={available ? undefined : t('document.historyOffline')}
+        type="button"
         onClick={() => {
           if (!open) onHistory();
         }}
         {...stylex.props(styles.tab, open && styles.active)}
       >
-        <History size={13} aria-hidden="true" />
+        <History aria-hidden="true" size={13} />
         {t('document.history')}
       </button>
     </div>

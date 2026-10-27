@@ -1,7 +1,7 @@
-import fs from 'fs';
-import os from 'os';
-import path from 'path';
-import { pathToFileURL } from 'url';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 // Verifies the V2 skill registration payload matches OpenCode 2.0.4's
 // Skill.Info contract (packages/schema/src/skill.ts):
@@ -223,7 +223,7 @@ if (failures.length > 0) {
   process.exit(1);
 }
 
-console.log(JSON.stringify(result, null, 2));
+console.info(JSON.stringify(result, null, 2));
 
 function makeCtx({ add, onHook = () => {} }) {
   return {

@@ -1,12 +1,13 @@
 import os from 'node:os';
+
 import type { ServerRow } from './servers';
 
 export interface ViewState {
+  confirm: 'stop' | 'stop-safe' | null;
+  message: string | null;
   mode: 'list' | 'log';
   selected: number;
-  confirm: 'stop' | 'stop-safe' | null;
   target: string | null;
-  message: string | null;
 }
 
 export type Action =
@@ -15,25 +16,25 @@ export type Action =
   | { type: 'stop'; rows: ServerRow[] };
 
 export interface Key {
+  ctrl?: boolean;
   name?: string;
   sequence?: string;
-  ctrl?: boolean;
   shift?: boolean;
 }
 
 export interface Screen {
-  width: number;
   height: number;
-  now: number;
   home: string;
+  now: number;
+  width: number;
 }
 
 export const REFRESH_SECONDS = 2;
 
-const BOLD = '\x1b[1m';
-const DIM = '\x1b[2m';
-const INVERSE = '\x1b[7m';
-const RESET = '\x1b[0m';
+const BOLD = '\x1B[1m';
+const DIM = '\x1B[2m';
+const INVERSE = '\x1B[7m';
+const RESET = '\x1B[0m';
 
 const HELP = '↑↓ select  o open  c copy URL  l logs  x stop  X stop all safe  q quit';
 const COLUMNS = [
@@ -195,26 +196,33 @@ export function handleKey(
     };
   }
   switch (key.name) {
-    case 'q':
+    case 'q': {
       return { state, action: { type: 'quit' } };
+    }
     case 'up':
-    case 'k':
+    case 'k': {
       return { state: { ...next, selected: Math.max(0, state.selected - 1) } };
+    }
     case 'down':
-    case 'j':
+    case 'j': {
       return {
         state: { ...next, selected: Math.min(Math.max(0, rows.length - 1), state.selected + 1) },
       };
+    }
     case 'o':
-    case 'c':
+    case 'c': {
       if (!selected) return { state: next };
       if (!selected.url) return { state: { ...next, message: 'This server has no URL yet.' } };
       return { state: next, action: { type: key.name === 'o' ? 'open' : 'copy', row: selected } };
-    case 'l':
+    }
+    case 'l': {
       return { state: selected ? { ...next, mode: 'log' } : next };
-    case 'x':
+    }
+    case 'x': {
       return { state: selected ? { ...next, confirm: 'stop', target: selected.project } : next };
-    default:
+    }
+    default: {
       return { state: next };
+    }
   }
 }

@@ -1,6 +1,7 @@
 import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
 import { Component, type ReactNode } from 'react';
+
 import { t } from '../i18n';
 
 const styles = stylex.create({
@@ -18,8 +19,8 @@ const styles = stylex.create({
 });
 
 interface Props {
-  resetKey: unknown;
   children: ReactNode;
+  resetKey: unknown;
 }
 
 interface State {

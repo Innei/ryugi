@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'vitest';
+
 import { computeLayout, groupFrame, noteRect } from '../src/shared/geometry';
 import type { CanvasSpec } from '../src/shared/types';
 

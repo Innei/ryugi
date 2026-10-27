@@ -1,5 +1,6 @@
 import { expect, test } from 'vitest';
-import { KEPT_MAX, keepBoard, pruneKept } from '../src/viewer/lib/kept-boards';
+
+import { keepBoard, KEPT_MAX, pruneKept } from '../src/viewer/lib/kept-boards';
 
 const ids = (list: { id: string }[]) => list.map((entry) => entry.id);
 

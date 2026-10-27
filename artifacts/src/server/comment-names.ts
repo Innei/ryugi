@@ -1,5 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
+
 import type { Person } from '../shared/comments';
 import { detectAgent } from './agent';
 import { githubAvatar, gravatarAvatar } from './avatars';
@@ -7,14 +8,14 @@ import type { CloudOptions } from './cloud';
 import { readCredentials } from './credentials';
 
 export interface CommentNames {
-  human(): Person | undefined;
-  agent(): string | undefined;
+  agent: () => string | undefined;
+  human: () => Person | undefined;
 }
 
 interface Options {
   agentFile: string;
-  projectDir: string;
   cloud?: CloudOptions;
+  projectDir: string;
 }
 
 function gitConfig(cwd: string, key: string): string | undefined {

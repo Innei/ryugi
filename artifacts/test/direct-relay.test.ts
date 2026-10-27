@@ -1,9 +1,11 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+
 import { afterEach, describe, expect, test } from 'vitest';
 import WebSocket from 'ws';
-import { startArtifactsServer, type ArtifactsServer } from '../src/server/app';
+
+import { type ArtifactsServer, startArtifactsServer } from '../src/server/app';
 import { updateArtifactConfig } from '../src/server/config';
 import { tempRoot, writeHtml } from './helpers';
 
@@ -41,8 +43,8 @@ async function start() {
 
 interface Pipe {
   messages: any[];
-  next(t: string): Promise<any>;
-  request(body: unknown): Promise<any>;
+  next: (t: string) => Promise<any>;
+  request: (body: unknown) => Promise<any>;
 }
 
 function connect(

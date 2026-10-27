@@ -1,4 +1,5 @@
 import { expect, test } from 'vitest';
+
 import { i18n } from '../src/viewer/i18n';
 import { filterArtifacts, relativeUpdatedAt } from '../src/viewer/lib/artifact-list';
 

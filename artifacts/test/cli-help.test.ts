@@ -1,4 +1,5 @@
 import { expect, test } from 'vitest';
+
 import { commandHelp, rootHelp } from '../src/cli/command';
 import { COMMANDS } from '../src/cli/commands';
 
@@ -7,7 +8,7 @@ test('root help lists every command with its summary and points at per-command h
   for (const command of COMMANDS)
     expect(help).toMatch(
       new RegExp(
-        `^  ${command.name} +${command.summary.slice(0, 20).replace(/[()]/g, '\\$&')}`,
+        `^  ${command.name} +${command.summary.slice(0, 20).replaceAll(/[()]/g, '\\$&')}`,
         'm',
       ),
     );

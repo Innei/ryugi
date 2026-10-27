@@ -1,9 +1,10 @@
 // @vitest-environment happy-dom
-import { HeadingNode, $createHeadingNode } from '@lexical/rich-text';
+import { $createHeadingNode, HeadingNode } from '@lexical/rich-text';
 import { $createTextNode, $getRoot, createEditor } from 'lexical';
 import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeAll, expect, test, vi } from 'vitest';
+
 import { DocumentToc } from '../src/viewer/document/DocumentToc';
 
 vi.mock('@stylexjs/stylex', async (original) => ({

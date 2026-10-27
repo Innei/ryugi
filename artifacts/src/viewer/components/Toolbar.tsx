@@ -10,6 +10,7 @@ import {
   PanelRight,
 } from 'lucide-react';
 import type { ReactNode } from 'react';
+
 import type { PageSpec } from '../../shared/types';
 import type { Tool } from '../hooks/usePanZoom';
 import { useTranslation } from '../i18n';
@@ -96,12 +97,12 @@ const styles = stylex.create({
 });
 
 interface TopLeftBarProps {
-  pages: PageSpec[];
-  page: string | null;
-  onPageChange: (id: string) => void;
-  tool: Tool;
-  onToolChange: (tool: Tool) => void;
   commenting?: boolean;
+  onPageChange: (id: string) => void;
+  onToolChange: (tool: Tool) => void;
+  page: string | null;
+  pages: PageSpec[];
+  tool: Tool;
 }
 
 export function TopLeftBar({
@@ -125,35 +126,35 @@ export function TopLeftBar({
           onClick: () => onPageChange(p.id),
         }))}
       >
-        <button type="button" aria-label={t('chrome.switchPage')} {...stylex.props(styles.trigger)}>
+        <button aria-label={t('chrome.switchPage')} type="button" {...stylex.props(styles.trigger)}>
           <span {...stylex.props(styles.pageName)}>{current?.name ?? t('chrome.noPages')}</span>
           <ChevronDown size={14} {...stylex.props(styles.chevron)} />
         </button>
       </DropdownMenu>
       <span {...stylex.props(styles.divider)} />
       <ActionIcon
+        active={tool === 'select'}
+        aria-label={t('chrome.select')}
         icon={MousePointer2}
         size="small"
-        active={tool === 'select'}
         title={t('chrome.selectTitle')}
-        aria-label={t('chrome.select')}
         onClick={() => onToolChange('select')}
       />
       <ActionIcon
+        active={tool === 'hand'}
+        aria-label={t('chrome.hand')}
         icon={Hand}
         size="small"
-        active={tool === 'hand'}
         title={t('chrome.handTitle')}
-        aria-label={t('chrome.hand')}
         onClick={() => onToolChange('hand')}
       />
       {commenting ? (
         <ActionIcon
+          active={tool === 'comment'}
+          aria-label={t('chrome.comment')}
           icon={MessageCirclePlus}
           size="small"
-          active={tool === 'comment'}
           title={t('chrome.commentTitle')}
-          aria-label={t('chrome.comment')}
           onClick={() => onToolChange('comment')}
         />
       ) : null}
@@ -163,17 +164,17 @@ export function TopLeftBar({
 
 interface TopRightBarProps {
   actions?: ReactNode;
+  inspectorOpen: boolean;
   live?: boolean;
-  warnings: string[];
-  zoom: number;
+  onActualSize: () => void;
+  onFit: () => void;
+  onNextVerify?: () => void;
+  onToggleInspector: () => void;
   onZoomIn: () => void;
   onZoomOut: () => void;
-  onFit: () => void;
-  onActualSize: () => void;
-  inspectorOpen: boolean;
-  onToggleInspector: () => void;
   verify?: { passed: number; total: number };
-  onNextVerify?: () => void;
+  warnings: string[];
+  zoom: number;
 }
 
 export function TopRightBar({
@@ -197,8 +198,8 @@ export function TopRightBar({
       {verify && verify.total > 0 && (
         <>
           <button
-            type="button"
             title={t('verdict.nextPending')}
+            type="button"
             onClick={onNextVerify}
             {...stylex.props(styles.progress)}
           >
@@ -234,11 +235,11 @@ export function TopRightBar({
       )}
       <span {...stylex.props(styles.divider)} />
       <ActionIcon
-        icon={PanelRight}
-        size="small"
         active={inspectorOpen}
         aria-label={t('chrome.toggleInspector')}
         aria-pressed={inspectorOpen}
+        icon={PanelRight}
+        size="small"
         title={t('chrome.inspector')}
         onClick={onToggleInspector}
       />
@@ -256,7 +257,7 @@ export function TopRightBar({
           },
         ]}
       >
-        <button type="button" aria-label={t('chrome.zoom')} {...stylex.props(styles.trigger)}>
+        <button aria-label={t('chrome.zoom')} type="button" {...stylex.props(styles.trigger)}>
           <span {...stylex.props(styles.zoom)}>{Math.round(zoom * 100)}%</span>
           <ChevronDown size={14} {...stylex.props(styles.chevron)} />
         </button>

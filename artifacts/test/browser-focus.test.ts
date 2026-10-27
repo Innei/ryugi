@@ -1,5 +1,7 @@
 import { runInNewContext } from 'node:vm';
+
 import { expect, test } from 'vitest';
+
 import { MAC_FOCUS_SCRIPT } from '../src/server/browser-focus';
 
 const run = (apps: Record<string, unknown>, urls: string[]) =>

@@ -2,10 +2,11 @@ import { createModal, useModalContext } from '@lobehub/ui';
 import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
 import { Check, Copy, Minus, Plus, X } from 'lucide-react';
-import { useState, type ReactNode } from 'react';
+import { type ReactNode, useState } from 'react';
 import { TransformComponent, TransformWrapper } from 'react-zoom-pan-pinch';
-import type { MermaidDiagram } from './mermaid';
+
 import { t } from '../i18n';
+import type { MermaidDiagram } from './mermaid';
 
 const NARROW = '@media (max-width: 640px)';
 
@@ -68,9 +69,9 @@ const styles = stylex.create({
 });
 
 interface ViewerProps {
-  title: string;
-  source: string;
   diagram: MermaidDiagram;
+  source: string;
+  title: string;
 }
 
 function ToolButton({
@@ -84,9 +85,9 @@ function ToolButton({
 }) {
   return (
     <button
-      type="button"
       aria-label={label}
       title={label}
+      type="button"
       onClick={onClick}
       {...stylex.props(styles.button)}
     >
@@ -108,9 +109,9 @@ function MermaidViewer({ title, source, diagram }: ViewerProps) {
 
   return (
     <TransformWrapper
-      minScale={0.05}
-      maxScale={4}
       limitToBounds={false}
+      maxScale={4}
+      minScale={0.05}
       wheel={{ step: 0.002 }}
       onInit={(ref) => void ref.fitToView({ maxScale: 1, animationTime: 0 })}
       onTransform={(_, state) => setScale(state.scale)}
@@ -147,8 +148,8 @@ function MermaidViewer({ title, source, diagram }: ViewerProps) {
               </button>
               <span {...stylex.props(styles.divider)} />
               <button
-                type="button"
                 aria-label={t('mermaid.copySource')}
+                type="button"
                 onClick={() => void copy()}
                 {...stylex.props(styles.button)}
               >
@@ -163,15 +164,15 @@ function MermaidViewer({ title, source, diagram }: ViewerProps) {
             </div>
           </div>
           <TransformComponent
-            wrapperStyle={{ width: '100%', height: '100%', backgroundColor: diagram.background }}
             wrapperClass={stylex.props(styles.stage).className}
+            wrapperStyle={{ width: '100%', height: '100%', backgroundColor: diagram.background }}
           >
             <img
               alt="Mermaid diagram"
+              draggable={false}
+              height={diagram.height}
               src={diagram.src}
               width={diagram.width}
-              height={diagram.height}
-              draggable={false}
             />
           </TransformComponent>
         </div>

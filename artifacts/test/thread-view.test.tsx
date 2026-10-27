@@ -2,8 +2,9 @@
 import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeAll, expect, test, vi } from 'vitest';
+
 import type { Thread } from '../src/shared/comments';
-import { ThreadView, type ThreadActions } from '../src/viewer/comments/ThreadView';
+import { type ThreadActions, ThreadView } from '../src/viewer/comments/ThreadView';
 
 vi.mock('@stylexjs/stylex', async (original) => ({
   ...(await original<object>()),

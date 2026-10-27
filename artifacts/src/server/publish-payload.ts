@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { emptyComments, type CommentsFile } from '../shared/comments';
+
+import { type CommentsFile, emptyComments } from '../shared/comments';
 import type { CanvasPayload } from '../shared/types';
 import type { ArtifactRef } from './artifacts';
 import { parseDocument } from './document-codec';

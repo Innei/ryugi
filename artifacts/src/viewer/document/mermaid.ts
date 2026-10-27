@@ -2,11 +2,11 @@ import { renderMermaid } from '@haklex/rich-renderer-mermaid/utils';
 import { useMemo } from 'react';
 
 export interface MermaidDiagram {
-  src: string;
-  width: number;
-  height: number;
-  type: string;
   background: string;
+  height: number;
+  src: string;
+  type: string;
+  width: number;
 }
 
 const BACKGROUND = { light: '#ffffff', dark: '#171717' };

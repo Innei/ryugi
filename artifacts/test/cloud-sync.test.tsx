@@ -2,6 +2,7 @@
 import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeAll, beforeEach, expect, test, vi } from 'vitest';
+
 import { emitServerMessage } from '../src/viewer/hooks/useArtifactSocket';
 import { useCloudSync } from '../src/viewer/hooks/useCloudSync';
 

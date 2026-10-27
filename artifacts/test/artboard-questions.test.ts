@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'vitest';
+
 import type { CanvasLayout, CanvasSpec } from '../src/shared/types';
 import { openingQuestion, questionList, roundsOf, stepQuestion } from '../src/viewer/lib/questions';
 

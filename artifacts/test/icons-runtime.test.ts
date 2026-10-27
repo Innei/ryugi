@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 import fs from 'node:fs';
 import path from 'node:path';
+
 import { beforeAll, expect, test } from 'vitest';
 
 beforeAll(() => {

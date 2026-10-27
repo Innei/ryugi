@@ -1,16 +1,16 @@
 import {
-  applyAgentThreadOp,
-  applyThreadOp,
-  isObject,
-  mergeComments,
-  openThread,
-  savedComments,
   type AgentThreadOp,
   type AnchorSpec,
+  applyAgentThreadOp,
+  applyThreadOp,
   type Author,
   type CommentsFile,
   type IncomingComments,
+  isObject,
+  mergeComments,
+  openThread,
   type Person,
+  savedComments,
   type Thread,
   type ThreadOp,
 } from './comments';
@@ -21,15 +21,15 @@ export interface BoardNodeRef {
 }
 
 export interface BoardAnchor {
-  page: string;
   board?: string;
   group?: string;
+  hashes?: Record<string, string>;
+  nodes?: BoardNodeRef[];
+  offset?: { x: number; y: number };
+  page: string;
   verdict?: 'pass' | 'reject';
   x: number;
   y: number;
-  nodes?: BoardNodeRef[];
-  offset?: { x: number; y: number };
-  hashes?: Record<string, string>;
 }
 
 export type BoardThread = Thread<BoardAnchor>;

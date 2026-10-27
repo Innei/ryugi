@@ -1,4 +1,5 @@
 import * as stylex from '@stylexjs/stylex';
+
 import type { BoardSpec } from '../../shared/types';
 import { VideoPlayer } from './VideoPlayer';
 
@@ -16,25 +17,25 @@ const styles = stylex.create({
 });
 
 interface Props {
-  id: string;
   board: BoardSpec;
+  id: string;
+  onExpand?: () => void;
   src: string;
   zoom: number;
-  onExpand?: () => void;
 }
 
 export function MediaBoard({ id, board, src, zoom, onExpand }: Props) {
   if (board.type === 'video')
     return (
       <VideoPlayer
-        src={src}
-        title={board.title ?? id}
         barScale={1 / zoom}
         barWidth={board.w * zoom}
+        src={src}
+        title={board.title ?? id}
         onExpand={onExpand}
       />
     );
   return (
-    <img src={src} alt={board.title ?? id} draggable={false} {...stylex.props(styles.image)} />
+    <img alt={board.title ?? id} draggable={false} src={src} {...stylex.props(styles.image)} />
   );
 }

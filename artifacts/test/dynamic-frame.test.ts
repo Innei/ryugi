@@ -1,4 +1,5 @@
 import { expect, test } from 'vitest';
+
 import { clampFrameHeight, dynamicFrameSrc } from '../src/viewer/document/dynamicFrame';
 
 test('the frame src is the asset under the content base, versioned, with props in the hash', () => {

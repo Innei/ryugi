@@ -2,8 +2,9 @@ import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
 import { MessageSquare } from 'lucide-react';
 import type { Ref } from 'react';
-import { brand } from '../tokens.stylex';
+
 import { t } from '../i18n';
+import { brand } from '../tokens.stylex';
 
 export const TOOLBAR_WIDTH = 128;
 export const TOOLBAR_HEIGHT = 36;
@@ -70,10 +71,10 @@ const styles = stylex.create({
 
 interface Props {
   left: number;
-  top: number;
   onComment?: () => void;
   onCopy: () => void;
   ref?: Ref<HTMLDivElement>;
+  top: number;
 }
 
 export function SelectionToolbar({ left, top, onComment, onCopy, ref }: Props) {

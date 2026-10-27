@@ -20,10 +20,10 @@ export const INSPECTOR_PROPERTIES = [
 export type InspectorProperty = (typeof INSPECTOR_PROPERTIES)[number];
 export type LayerKind = 'Frame' | 'Column' | 'Row' | 'Grid' | 'Title' | 'Text' | 'Image' | 'Button';
 export interface InspectorRect {
+  height: number;
+  width: number;
   x: number;
   y: number;
-  width: number;
-  height: number;
 }
 export interface InspectorTarget {
   id: number;
@@ -31,35 +31,35 @@ export interface InspectorTarget {
   rect: InspectorRect;
 }
 export interface InspectorNode {
-  id: number;
-  parentId: number | null;
   children: number[];
-  tag: string;
-  name: string;
+  id: number;
   kind: LayerKind;
-  selector: string;
+  name: string;
+  parentId: number | null;
   path: string;
+  selector: string;
+  tag: string;
 }
 export interface InspectorDetail {
+  html: string;
   id: number;
   text: string;
-  html: string;
 }
 export interface InspectorSelection extends Omit<
   InspectorNode,
   'parentId' | 'children' | 'kind' | 'path'
 > {
-  rect: InspectorRect;
   css: Record<InspectorProperty, string>;
-  html: string;
-  widthMode: 'fixed' | 'fill' | 'hug';
   heightMode: 'fixed' | 'hug';
+  html: string;
+  rect: InspectorRect;
+  widthMode: 'fixed' | 'fill' | 'hug';
 }
 export interface InspectorTweak {
+  from: string;
   id: number;
   name: string;
   property: InspectorProperty;
-  from: string;
   value: string;
 }
 export type InspectorCommand = { type: 'ryugi:inspect'; connection: string; session?: string } & (

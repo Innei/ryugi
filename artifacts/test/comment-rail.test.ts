@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'vitest';
+
 import { resolveAnchor, shownThreadIds } from '../src/viewer/document/anchor';
 import { createDrafts, draftKey } from '../src/viewer/document/drafts';
 import {

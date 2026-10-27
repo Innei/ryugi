@@ -3,6 +3,7 @@ import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext
 import { $getNodeByKey, $getRoot, $isElementNode, type NodeKey } from 'lexical';
 import type { LoroDoc, TreeID, VersionVector } from 'loro-crdt';
 import { useEffect } from 'react';
+
 import { sectionLabel } from '../lib/section';
 import type { DocumentState, DocumentTransport } from './transport';
 
@@ -12,11 +13,11 @@ export interface AgentCaretPosition {
 }
 
 interface Props {
-  transport: DocumentTransport;
   doc: LoroDoc;
   onAgentCaret: (caret: AgentCaretPosition | null, section: string | null) => void;
   onOffline: (offline: boolean) => void;
   onState?: (state: DocumentState) => void;
+  transport: DocumentTransport;
 }
 
 const BATCH_MS = 100;

@@ -1,6 +1,7 @@
 import { blockIdState } from '@haklex/rich-editor';
 import { $getRoot, $getState, type LexicalEditor } from 'lexical';
 import { useEffect, useState } from 'react';
+
 import type { Thread } from '../../shared/comments';
 import { resolveAnchor, shownThreadIds } from './anchor';
 import { barLinkStart, blockBar, type Box } from './layoutCards';
@@ -19,7 +20,7 @@ export function anchorBoxes(anchor: ThreadAnchor): Box[] {
 
 export function anchorLinkStart(anchor: ThreadAnchor): { x: number; y: number } | null {
   const boxes = anchorBoxes(anchor);
-  const last = boxes[boxes.length - 1];
+  const last = boxes.at(-1);
   if (!last) return null;
   return anchor.kind === 'text' ? { x: last.right, y: last.bottom } : barLinkStart(last);
 }

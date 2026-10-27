@@ -1,17 +1,18 @@
 import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
 import {
+  type MouseEvent,
+  type PointerEvent,
+  type ReactNode,
   useEffect,
   useLayoutEffect,
   useRef,
   useState,
-  type MouseEvent,
-  type PointerEvent,
-  type ReactNode,
 } from 'react';
+
 import { reducedMotion, SPRING } from '../document/motion';
-import { lockAxis, rubber, settle, velocityTracker } from '../lib/gesture';
 import { t } from '../i18n';
+import { lockAxis, rubber, settle, velocityTracker } from '../lib/gesture';
 
 const SCRIM = 0.28;
 
@@ -51,13 +52,13 @@ const styles = stylex.create({
 });
 
 interface Props {
-  snaps: number[];
-  snap: number;
-  onSnap: (snap: number) => void;
-  header: ReactNode;
   children: ReactNode;
-  onScrim?: () => void;
   className?: string;
+  header: ReactNode;
+  onScrim?: () => void;
+  onSnap: (snap: number) => void;
+  snap: number;
+  snaps: number[];
 }
 
 export const sheetHeight = (snap: number, container: number) =>
@@ -180,9 +181,9 @@ export function BottomSheet({ snaps, snap, onSnap, header, children, onScrim, cl
         />
       ) : null}
       <section
-        ref={sheetRef}
         data-sheet
         data-snap={String(snap)}
+        ref={sheetRef}
         className={
           [stylex.props(styles.sheet).className, className].filter(Boolean).join(' ') || undefined
         }
@@ -195,23 +196,23 @@ export function BottomSheet({ snaps, snap, onSnap, header, children, onScrim, cl
       >
         <div
           data-sheet-head
+          onClick={onClick}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
+          onClickCapture={(event) => {
+            if (dragged.current) event.stopPropagation();
+          }}
           onPointerCancel={(event) => {
             if (gesture.current?.id !== event.pointerId) return;
             gesture.current = null;
             setDrag(null);
           }}
-          onClickCapture={(event) => {
-            if (dragged.current) event.stopPropagation();
-          }}
-          onClick={onClick}
           {...stylex.props(styles.head)}
         >
           <button
-            type="button"
             aria-label={index === snaps.length - 1 ? t('common.collapse') : t('common.expand')}
+            type="button"
             onClick={step}
             {...stylex.props(styles.handle)}
           >

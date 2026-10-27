@@ -1,12 +1,14 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+
 import { createLoroBinding } from '@haklex/rich-collab-loro';
 import { allHeadlessNodes } from '@haklex/rich-headless';
 import { createHeadlessEditor } from '@lexical/headless';
 import { $getRoot, $isElementNode, $isTextNode, type LexicalNode, type TextNode } from 'lexical';
 import { LoroDoc } from 'loro-crdt';
 import { afterEach, expect, test } from 'vitest';
+
 import { createDocumentHeadlessEditor } from '../src/server/document-headless';
 import {
   createDocumentSession,

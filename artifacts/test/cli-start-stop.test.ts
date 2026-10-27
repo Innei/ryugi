@@ -2,7 +2,9 @@ import { spawn, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+
 import { afterEach, describe, expect, test } from 'vitest';
+
 import { AGENT_MARKERS } from '../src/server/agent';
 import { readEntries, registryDir } from '../src/server/registry';
 import { closeAll, fakeCloud } from './fake-cloud';

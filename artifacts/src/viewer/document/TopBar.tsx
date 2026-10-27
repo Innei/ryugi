@@ -2,11 +2,12 @@ import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
 import { Lock } from 'lucide-react';
 import type { ReactNode } from 'react';
+
 import { RailSwitch } from '../components/RailSwitch';
 import { useCloudHeader } from '../hooks/useCloudHeader';
+import { t } from '../i18n';
 import { activityLabel, type AgentActivity } from './agentActivity';
 import type { CloudLive } from './DocumentView';
-import { t } from '../i18n';
 
 const styles = stylex.create({
   bar: {
@@ -80,18 +81,18 @@ const styles = stylex.create({
 });
 
 interface Props {
-  id: string;
-  title?: string;
-  agent?: string;
+  actions?: ReactNode;
   activity: AgentActivity;
+  agent?: string;
   agentSection: string | null;
-  offline: boolean;
-  openComments: number;
   cloud?: CloudLive;
   compact?: boolean;
-  onDone?: () => void;
-  actions?: ReactNode;
   history?: { available: boolean; open: boolean; toggle: () => void; close: () => void };
+  id: string;
+  offline: boolean;
+  onDone?: () => void;
+  openComments: number;
+  title?: string;
 }
 
 export function TopBar({
@@ -151,7 +152,7 @@ export function TopBar({
       ) : null}
       {history?.open ? (
         <span {...stylex.props(styles.pill, styles.quiet)}>
-          <Lock size={11} aria-hidden="true" />
+          <Lock aria-hidden="true" size={11} />
           {t('document.readOnlyHistory')}
         </span>
       ) : null}
@@ -167,9 +168,9 @@ export function TopBar({
       ) : null}
       {history ? (
         <RailSwitch
+          available={history.available}
           comments={openComments}
           open={history.open}
-          available={history.available}
           onComments={history.close}
           onHistory={history.toggle}
         />

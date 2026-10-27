@@ -1,14 +1,16 @@
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
-import net from 'node:net';
 import type { IncomingHttpHeaders } from 'node:http';
+import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
+
 import { createLoroBinding } from '@haklex/rich-collab-loro';
 import { $getRoot, $isElementNode, $isTextNode, type LexicalNode, type TextNode } from 'lexical';
 import { LoroDoc } from 'loro-crdt';
 import { afterEach, describe, expect, test } from 'vitest';
 import WebSocket, { WebSocketServer } from 'ws';
+
 import { startArtifactsServer } from '../src/server/app';
 import { updateArtifactConfig } from '../src/server/config';
 import { writeCredentials } from '../src/server/credentials';
@@ -17,13 +19,13 @@ import { createRelayClient } from '../src/server/relay';
 import { tempRoot, writeArtboard, writeDocument, writeHtml } from './helpers';
 
 interface Hub {
-  url: string;
+  close: () => Promise<void>;
   headers: IncomingHttpHeaders[];
-  sockets: WebSocket[];
   messages: any[];
-  next(t: string, timeoutMs?: number): Promise<any>;
-  send(message: unknown): void;
-  close(): Promise<void>;
+  next: (t: string, timeoutMs?: number) => Promise<any>;
+  send: (message: unknown) => void;
+  sockets: WebSocket[];
+  url: string;
 }
 
 const cleanups: (() => Promise<void> | void)[] = [];
@@ -160,7 +162,7 @@ describe('connecting', () => {
       version: '1.13.0',
       ids: ['cloudplan'],
       local: {
-        hostId: expect.stringMatching(/^[A-Za-z0-9_-]{16,64}$/),
+        hostId: expect.stringMatching(/^[\w-]{16,64}$/),
         port: server.port,
         key: server.token,
       },

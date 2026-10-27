@@ -1,3 +1,7 @@
+import '@lobehub/ui/theme.css';
+import '@lobehub/ui/style.css';
+import '../shared/fonts.css';
+
 import {
   ActionIcon,
   Alert,
@@ -10,30 +14,28 @@ import {
   ConfigProvider,
   Divider,
   DropdownMenu,
+  IconProvider,
   Input,
   InputNumber,
-  IconProvider,
   Popover,
   Progress,
   RadioGroup,
   Segmented,
   Select,
+  setLobeTheme,
   Slider,
   SliderWithInput,
   Switch,
   Tag,
   Text,
   TextArea,
-  Tooltip,
   ToastHost,
-  setLobeTheme,
+  Tooltip,
 } from '@lobehub/ui';
-import '@lobehub/ui/theme.css';
-import '@lobehub/ui/style.css';
-import '../shared/fonts.css';
 import { type LucideProps } from 'lucide-react';
 import { motion } from 'motion/react';
 import { createElement, type ReactNode } from 'react';
+
 import { type AttributeKind, readAttribute, styleObject } from './attrs';
 import { createHostRoot } from './host';
 import { artifactToast, createToastRoot } from './toast';
@@ -657,10 +659,10 @@ if (typeof window !== 'undefined' && !customElements.get('ryugi-button')) {
   const toastRoot = createToastRoot();
   hosts = createHostRoot({
     wrap: (children) => (
-      <ConfigProvider motion={motion} enableCustomFonts={false}>
+      <ConfigProvider enableCustomFonts={false} motion={motion}>
         <IconProvider config={{ 'aria-hidden': true }}>
           {children}
-          <ToastHost root={toastRoot} className="ryugi-toast-viewport" />
+          <ToastHost className="ryugi-toast-viewport" root={toastRoot} />
         </IconProvider>
       </ConfigProvider>
     ),

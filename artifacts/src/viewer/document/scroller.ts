@@ -1,4 +1,5 @@
 import { animateValue } from 'motion';
+
 import { reducedMotion } from './motion';
 
 export function springScrollToElement(element: HTMLElement) {

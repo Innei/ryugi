@@ -2,16 +2,17 @@ import { execFile, spawn } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import readline from 'node:readline';
+
 import { browserLauncher } from '../server/lifecycle';
 import {
+  type Action,
   handleKey,
   initialView,
+  type Key,
   REFRESH_SECONDS,
   renderList,
   renderLog,
   shortPath,
-  type Action,
-  type Key,
   type ViewState,
 } from './monitor-view';
 import { listServers, type ServerRow } from './servers';
@@ -72,7 +73,7 @@ export async function runMonitorUi(): Promise<number> {
     try {
       stdin.setRawMode(false);
     } catch {}
-    stdout.write('\x1b[?25h\x1b[?1049l');
+    stdout.write('\x1B[?25h\x1B[?1049l');
   };
   process.on('exit', restore);
 
@@ -89,7 +90,7 @@ export async function runMonitorUi(): Promise<number> {
       state.mode === 'log' && row
         ? renderLog(row, readTail(row.log), screen)
         : renderList(rows, state, screen);
-    stdout.write(`\x1b[H${lines.join('\x1b[K\n')}\x1b[K\x1b[J`);
+    stdout.write(`\x1B[H${lines.join('\x1B[K\n')}\x1B[K\x1B[J`);
   };
 
   const refresh = async () => {
@@ -181,7 +182,7 @@ export async function runMonitorUi(): Promise<number> {
       ['SIGHUP', 129],
     ] as const)
       process.once(signal, () => quit(code));
-    stdout.write('\x1b[?1049h\x1b[?25l');
+    stdout.write('\x1B[?1049h\x1B[?25l');
     readline.emitKeypressEvents(stdin);
     stdin.setRawMode(true);
     stdin.resume();

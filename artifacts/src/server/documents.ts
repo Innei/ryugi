@@ -1,18 +1,19 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import type { ServerMessage } from '../shared/types';
+
 import {
-  unreadThreads,
-  waitingOn,
   type AgentOp,
   type CommentsFile,
   type HumanOp,
   type Thread,
+  unreadThreads,
+  waitingOn,
 } from '../shared/comments';
+import type { ServerMessage } from '../shared/types';
 import { createCommentCursors } from './comment-cursors';
 import type { CommentNames } from './comment-names';
-import { createCommentStore, type CommentStore } from './document-comments';
 import { boxDrawingDiagrams } from './document-codec';
+import { type CommentStore, createCommentStore } from './document-comments';
 import {
   createDocumentSession,
   type DocumentOutcome,
@@ -25,19 +26,19 @@ export interface DocumentTiming {
 }
 
 export interface DocumentRegistry {
-  open(id: string): Promise<DocumentSession | null>;
-  fileChanged(id: string): void;
-  comments(id: string): CommentsFile;
-  commentsChanged(id: string): void;
-  applyCommentOp(id: string, op: HumanOp): CommentsFile;
-  applyAgentCommentOp(
+  applyAgentCommentOp: (
     id: string,
     op: AgentOp,
     agent?: string,
-  ): { threadId: string; messageId?: string };
-  listComments(id: string, agent: string, all: boolean): AgentThread[];
-  warnings(id: string): string[];
-  close(): Promise<void>;
+  ) => { threadId: string; messageId?: string };
+  applyCommentOp: (id: string, op: HumanOp) => CommentsFile;
+  close: () => Promise<void>;
+  comments: (id: string) => CommentsFile;
+  commentsChanged: (id: string) => void;
+  fileChanged: (id: string) => void;
+  listComments: (id: string, agent: string, all: boolean) => AgentThread[];
+  open: (id: string) => Promise<DocumentSession | null>;
+  warnings: (id: string) => string[];
 }
 
 export type AgentThread = Thread & {
@@ -53,13 +54,13 @@ const forAgent = <T extends Thread>(thread: T) => ({
 });
 
 interface RegistryOptions {
+  broadcast: (message: ServerMessage) => void;
+  log?: (line: string) => void;
+  names?: CommentNames;
+  onWarningsChange: (id: string) => void;
   root: string;
   stateDir: string;
   timing?: DocumentTiming;
-  broadcast: (message: ServerMessage) => void;
-  onWarningsChange: (id: string) => void;
-  names?: CommentNames;
-  log?: (line: string) => void;
 }
 
 const diagramWarnings = (session: DocumentSession) =>

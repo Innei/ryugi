@@ -1,5 +1,5 @@
-import fs from 'fs';
-import { pathToFileURL } from 'url';
+import fs from 'node:fs';
+import { pathToFileURL } from 'node:url';
 
 const [, , pluginPath, scenario] = process.argv;
 
@@ -91,7 +91,7 @@ if (failures.length > 0) {
   process.exit(1);
 }
 
-console.log(JSON.stringify(result, null, 2));
+console.info(JSON.stringify(result, null, 2));
 
 function isBootstrapSkillPath(filePath) {
   return String(filePath).replaceAll('\\', '/').includes('using-ryugi/SKILL.md');

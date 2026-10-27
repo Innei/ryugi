@@ -2,6 +2,7 @@
 import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeAll, expect, test, vi } from 'vitest';
+
 import type { CloudStatus } from '../src/shared/cloud';
 import { AutoPublishPrompt } from '../src/viewer/components/AutoPublishPrompt';
 

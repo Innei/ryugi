@@ -1,4 +1,5 @@
 import { expect, test } from 'vitest';
+
 import type { InspectorNode } from '../src/shared/inspector';
 import { SELECTION_MAX_NODES } from '../src/shared/selection';
 import { buildSelectionState, fitSelectionMessage } from '../src/viewer/lib/selection';

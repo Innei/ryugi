@@ -2,7 +2,7 @@
 'use strict';
 
 const { spawn, spawnSync } = require('node:child_process');
-const crypto = require('node:crypto');
+const nodeCrypto = require('node:crypto');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
@@ -18,7 +18,7 @@ const RELEASES = path.join(
 const LATEST_FILE = path.join(RELEASES, 'latest.json');
 const win32 = process.platform === 'win32';
 
-const valid = (v) => /^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/.test(v || '');
+const valid = (v) => /^\d+\.\d+\.\d+(?:[-+][0-9A-Z.-]+)?$/i.test(v || '');
 const parts = (v) => v.split(/[-+]/)[0].split('.').map(Number);
 const compare = (a, b) => {
   const x = parts(a),
@@ -33,7 +33,7 @@ const cliOf = (version) =>
 // The local checkout has no release version. Fingerprint the code that affects
 // the running server so start replaces an older process instead of reusing it.
 function localVersion() {
-  const hash = crypto.createHash('sha256');
+  const hash = nodeCrypto.createHash('sha256');
   for (const name of ['cli.cjs', 'server.cjs']) {
     try {
       hash.update(`${name}\0`);
@@ -80,7 +80,7 @@ function newestInstalled() {
 function npmCommand(args, windows) {
   if (!windows) return { file: 'npm', args, shell: false };
   return {
-    file: ['npm', ...args.map((arg) => `"${arg.replace(/"/g, '""')}"`)].join(' '),
+    file: ['npm', ...args.map((arg) => `"${arg.replaceAll('"', '""')}"`)].join(' '),
     args: [],
     shell: true,
   };
@@ -216,7 +216,7 @@ if (require.main === module) {
   try {
     main();
   } catch (err) {
-    console.log(JSON.stringify({ error: err.message }));
+    console.info(JSON.stringify({ error: err.message }));
     process.exitCode = 1;
   }
 }

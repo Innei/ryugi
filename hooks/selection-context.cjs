@@ -1,8 +1,8 @@
 'use strict';
 
-const fs = require('fs');
-const os = require('os');
-const path = require('path');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
 
 const MAX_CONTEXT = 8000;
 const MAX_HTML = 600;
@@ -17,14 +17,14 @@ function readJson(file) {
 
 function selectionFiles(state) {
   const files = [];
-  let types = [];
+  let types;
   try {
     types = fs.readdirSync(state);
   } catch {
     return files;
   }
   for (const type of types) {
-    let ids = [];
+    let ids;
     try {
       ids = fs.readdirSync(path.join(state, type));
     } catch {
@@ -49,14 +49,14 @@ const where = (node) => `${node.id} <${node.tag}> in ${node.file} at \`${node.pa
 const change = (item) => `${item.property}: ${item.from} → ${item.value}`;
 const clip = (text, max) => (text.length > max ? `${text.slice(0, max)}…` : text);
 
-const escape = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const escapeRegExp = (text) => text.replaceAll(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 function typedNodes(nodes, prompt) {
   const boards = [...new Set(nodes.map((node) => node.board))];
   const typed = new Set();
   for (const board of boards) {
     for (const match of prompt.matchAll(
-      new RegExp(`(?<![A-Za-z0-9_-])${escape(board)}#(\\d+)(?!\\d)`, 'g'),
+      new RegExp(`(?<![A-Za-z0-9_-])${escapeRegExp(board)}#(\\d+)(?!\\d)`, 'g'),
     ))
       typed.add(`${board}#${match[1]}`);
   }
@@ -103,7 +103,7 @@ const humanStatus = (thread) => (thread.statusBy || 'human') === 'human';
 function waitingOnAgent(thread) {
   if (thread.status === 'resolved') return false;
   const live = (thread.messages || []).filter((m) => !m.deleted);
-  return live.length > 0 && live[live.length - 1].author === 'human';
+  return live.length > 0 && live.at(-1).author === 'human';
 }
 
 function changedSince(thread, cursor) {

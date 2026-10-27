@@ -1,13 +1,14 @@
 import { describe, expect, test } from 'vitest';
+
 import {
   applyHumanOp,
+  type CommentsFile,
   emptyComments,
   mergeComments,
   parseComments,
   savedComments,
   unreadThreads,
   waitingOn,
-  type CommentsFile,
 } from '../src/shared/comments';
 
 let counter = 0;

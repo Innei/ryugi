@@ -1,5 +1,6 @@
 import * as stylex from '@stylexjs/stylex';
 import { useLayoutEffect, useState } from 'react';
+
 import type { Thread } from '../../shared/comments';
 import { shownThreadIds } from './anchor';
 import { anchorBoxes, type ThreadAnchor } from './useAnchors';
@@ -17,18 +18,18 @@ const styles = stylex.create({
 });
 
 interface Bar {
+  height: number;
   id: string;
   left: number;
   top: number;
   width: number;
-  height: number;
 }
 
 interface Props {
-  container: HTMLElement | null;
-  anchors: ThreadAnchor[];
-  threads: Thread[];
   activeId: string | null;
+  anchors: ThreadAnchor[];
+  container: HTMLElement | null;
+  threads: Thread[];
 }
 
 export function BlockBars({ container, anchors, threads, activeId }: Props) {

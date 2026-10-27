@@ -1,4 +1,5 @@
 import { expect, test } from 'vitest';
+
 import { parseDocument } from '../src/server/document-codec';
 import { historyDiff } from '../src/viewer/document/historyDiff';
 

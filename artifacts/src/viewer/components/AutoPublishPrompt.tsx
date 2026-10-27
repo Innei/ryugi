@@ -2,6 +2,7 @@ import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
 import { CloudUpload } from 'lucide-react';
 import { useState } from 'react';
+
 import type { CloudStatus } from '../../shared/cloud';
 import { cloudRequest, useCloudStatus } from '../hooks/useCloudStatus';
 import { useTranslation } from '../i18n';
@@ -52,8 +53,8 @@ const styles = stylex.create({
 });
 
 interface Props {
-  status: CloudStatus | null;
   onAnswer: (value: boolean) => Promise<void>;
+  status: CloudStatus | null;
 }
 
 export function AutoPublishPrompt({ status, onAnswer }: Props) {
@@ -66,7 +67,7 @@ export function AutoPublishPrompt({ status, onAnswer }: Props) {
     setBusy(false);
   };
   return (
-    <aside role="dialog" aria-label={t('autoPublish.label')} {...stylex.props(styles.card)}>
+    <aside aria-label={t('autoPublish.label')} role="dialog" {...stylex.props(styles.card)}>
       <CloudUpload size={16} />
       <span {...stylex.props(styles.text)}>
         <span {...stylex.props(styles.title)}>{t('autoPublish.title')}</span>
@@ -74,16 +75,16 @@ export function AutoPublishPrompt({ status, onAnswer }: Props) {
       </span>
       <span {...stylex.props(styles.actions)}>
         <button
-          type="button"
           disabled={busy}
+          type="button"
           onClick={() => void answer(false)}
           {...stylex.props(styles.button)}
         >
           {t('autoPublish.later')}
         </button>
         <button
-          type="button"
           disabled={busy}
+          type="button"
           onClick={() => void answer(true)}
           {...stylex.props(styles.button, styles.primary)}
         >

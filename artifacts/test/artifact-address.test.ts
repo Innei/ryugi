@@ -1,7 +1,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
+
 import { afterEach, expect, test } from 'vitest';
-import { startArtifactsServer, type ArtifactsServer } from '../src/server/app';
+
+import { type ArtifactsServer, startArtifactsServer } from '../src/server/app';
 import { get, tempRoot, writeArtboard, writeDocument, writeHtml } from './helpers';
 
 let server: ArtifactsServer | undefined;

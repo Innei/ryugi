@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
+
 import type { ArtifactType } from '../../shared/types';
-import { PreviewView, type PreviewPayload } from './PreviewView';
+import { type PreviewPayload, PreviewView } from './PreviewView';
 
 function useJson<T>(url: string) {
   const [data, setData] = useState<T | null>(null);
@@ -23,5 +24,5 @@ function useJson<T>(url: string) {
 
 export function PreviewLayout({ type, id }: { type: ArtifactType; id: string }) {
   const { data, failed } = useJson<PreviewPayload>(`/api/preview/${type}/${id}`);
-  return <PreviewView type={type} id={id} data={data} failed={failed} />;
+  return <PreviewView data={data} failed={failed} id={id} type={type} />;
 }

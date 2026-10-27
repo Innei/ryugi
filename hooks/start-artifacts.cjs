@@ -1,9 +1,9 @@
 'use strict';
 
-const { spawnSync } = require('child_process');
-const fs = require('fs');
-const os = require('os');
-const path = require('path');
+const { spawnSync } = require('node:child_process');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
 const { credentialsPath } = require('./selection-context.cjs');
 
 const LAUNCHER = path.resolve(__dirname, '..', 'skills', 'artifacts', 'app', 'ryugi-artifacts.cjs');

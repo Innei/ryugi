@@ -1,9 +1,10 @@
 import { expect, test } from 'vitest';
+
 import {
   createSnapshotStore,
   indexedDbPersistence,
-  snapshotKey,
   type SnapshotEntry,
+  snapshotKey,
   type SnapshotPersistence,
 } from '../src/viewer/lib/snapshot-store';
 

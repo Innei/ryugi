@@ -4,6 +4,7 @@ import { motion, MotionGlobalConfig } from 'motion/react';
 import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeAll, expect, test, vi } from 'vitest';
+
 import { MermaidPreview } from '../src/viewer/document/MermaidPreview';
 
 vi.mock('@stylexjs/stylex', async (original) => ({

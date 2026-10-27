@@ -1,7 +1,8 @@
 import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
-import { lazy, Suspense, useEffect, type ReactNode } from 'react';
+import { lazy, type ReactNode, Suspense, useEffect } from 'react';
 import { useLocation } from 'wouter';
+
 import { t } from './i18n';
 import { parseRoute } from './lib/route';
 
@@ -64,7 +65,7 @@ function RouteView() {
   if (route.kind === 'unknown')
     return <div {...stylex.props(styles.unknown)}>No artifact lives at this address.</div>;
   const id = document.documentElement.dataset.ryugiArtifactId ?? route.id;
-  if (route.kind === 'preview') return <PreviewLayout type={route.type} id={id} />;
+  if (route.kind === 'preview') return <PreviewLayout id={id} type={route.type} />;
   if (route.type === 'html') return local(<HtmlLayout id={id} />);
   if (route.type === 'document') return local(<DocumentLayout id={id} />);
   return local(<ArtboardLayout id={id} />);

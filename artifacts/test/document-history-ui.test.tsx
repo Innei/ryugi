@@ -8,12 +8,13 @@ import { LoroDoc } from 'loro-crdt';
 import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeAll, expect, test, vi } from 'vitest';
+
+import { createChannel } from '../src/viewer/document/channel';
 import {
-  useDocumentHistory,
   type DocumentHistoryOptions,
+  useDocumentHistory,
 } from '../src/viewer/document/DocumentHistory';
 import { DocumentView } from '../src/viewer/document/DocumentView';
-import { createChannel } from '../src/viewer/document/channel';
 import type { DocumentTransport } from '../src/viewer/document/transport';
 
 vi.mock('@stylexjs/stylex', async (original) => ({

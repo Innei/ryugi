@@ -1,7 +1,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
+
 import { computeLayout } from '../shared/geometry';
-import { isMediaBoard, type CanvasPayload, type CanvasSpec } from '../shared/types';
+import { type CanvasPayload, type CanvasSpec, isMediaBoard } from '../shared/types';
 import { structuralWarnings, validateCanvas } from '../shared/validate';
 import { resolveBoardFile } from './paths';
 

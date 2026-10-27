@@ -1,5 +1,6 @@
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
+
 import type { CommandSpec } from './command';
 import { CliError } from './paths';
 import type { Emit } from './start';
@@ -37,7 +38,7 @@ export function detectInstall(file: string, env: NodeJS.ProcessEnv): Install {
   try {
     real = fs.realpathSync(file);
   } catch {}
-  const normalized = real.replace(/\\/g, '/').toLowerCase();
+  const normalized = real.replaceAll('\\', '/').toLowerCase();
   const has = (markers: string[]) => markers.some((marker) => normalized.includes(marker));
   for (const [runner, markers] of TRANSIENT) if (has(markers)) return { kind: 'transient', runner };
   for (const [pm, markers] of GLOBAL) if (has(markers)) return { kind: 'global', pm };
@@ -84,12 +85,12 @@ function advice(install: Install, latest: string) {
 }
 
 export interface UpdateOptions {
-  current: string;
-  file: string;
-  env: NodeJS.ProcessEnv;
-  registry: string;
   check: boolean;
+  current: string;
+  env: NodeJS.ProcessEnv;
+  file: string;
   pm?: string;
+  registry: string;
 }
 
 export async function update(options: UpdateOptions, emit: Emit): Promise<number> {

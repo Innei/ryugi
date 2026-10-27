@@ -1,13 +1,14 @@
 import { describe, expect, test } from 'vitest';
+
 import type { CanvasLayout, CanvasSpec } from '../src/shared/types';
 import {
-  MAX_ZOOM,
-  MIN_ZOOM,
-  fitView,
   BOARD_LABEL_RULE,
+  fitView,
   GROUP_LABEL_RULE,
   labelRect,
   labelSize,
+  MAX_ZOOM,
+  MIN_ZOOM,
   resolveFocus,
   titleScale,
   zoomAround,

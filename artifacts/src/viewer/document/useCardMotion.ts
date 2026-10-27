@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef, useState } from 'react';
+
 import { EASE, EXIT, play, spring } from './motion';
 
 const OPEN = spring(260, 28);

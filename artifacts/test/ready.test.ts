@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'vitest';
+
 import { openReady } from '../src/server/ready';
 import type { CanvasPayload, CanvasSpec } from '../src/shared/types';
 

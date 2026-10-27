@@ -1,6 +1,7 @@
-import { build } from 'esbuild';
 import fs from 'node:fs';
 import path from 'node:path';
+
+import { build } from 'esbuild';
 import { expect, test } from 'vitest';
 
 const pkgDir = path.resolve(__dirname, '..');
@@ -89,7 +90,7 @@ test('bundled CommonJS reaches peers through imports, never a runtime require', 
     ).peerDependencies,
   );
   const require = new RegExp(
-    `\\b[\\w$]{1,3}\\(["'](?:${peers.map((name) => name.replace(/[/.]/g, '\\$&')).join('|')})(?:/[^"']*)?["']\\)`,
+    `\\b[\\w$]{1,3}\\(["'](?:${peers.map((name) => name.replaceAll(/[/.]/g, '\\$&')).join('|')})(?:/[^"']*)?["']\\)`,
   );
   const offenders = fs
     .readdirSync(lib)

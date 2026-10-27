@@ -2,21 +2,22 @@ import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+
 import { wantsHelp } from './command';
 
 export interface LatestRecord {
-  version: string;
   checkedAt: number;
+  version: string;
 }
 
 export interface UpdateCheckInput {
-  current: string;
-  cached: LatestRecord | null;
-  now: number;
-  env: NodeJS.ProcessEnv;
-  tty: boolean;
-  json: boolean;
   argv?: string[];
+  cached: LatestRecord | null;
+  current: string;
+  env: NodeJS.ProcessEnv;
+  json: boolean;
+  now: number;
+  tty: boolean;
 }
 
 const CHECK_MS = 24 * 60 * 60 * 1000;

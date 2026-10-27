@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'vitest';
+
 import { AGENT_MARKERS, detectAgent } from '../src/server/agent';
 
 describe('detectAgent', () => {

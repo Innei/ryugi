@@ -9,30 +9,30 @@ const VISIBLE_MARGIN = 240;
 export const WARM_MIN_WIDTH = 120;
 
 export interface TierBoard {
+  h: number;
   id: string;
+  w: number;
   x: number;
   y: number;
-  w: number;
-  h: number;
 }
 export interface TierInput {
   boards: TierBoard[];
-  view: View;
-  viewport: { width: number; height: number };
+  hovered?: string | null;
   pinned: ReadonlySet<string>;
   snapshots: ReadonlySet<string>;
-  hovered?: string | null;
+  view: View;
+  viewport: { width: number; height: number };
 }
 export interface BoardRender {
-  tier: BoardTier;
-  mounted: boolean;
-  image: string | null;
-  overlay: boolean;
   hidden: boolean;
+  image: string | null;
+  mounted: boolean;
+  overlay: boolean;
+  tier: BoardTier;
 }
 
 export const snapshotScale = (k: number, dpr: number): SnapshotScale =>
-  SNAPSHOT_SCALES.find((scale) => scale >= k * dpr) ?? SNAPSHOT_SCALES[SNAPSHOT_SCALES.length - 1]!;
+  SNAPSHOT_SCALES.find((scale) => scale >= k * dpr) ?? SNAPSHOT_SCALES.at(-1)!;
 
 const screenRect = (board: TierBoard, view: View) => {
   const left = view.x + board.x * view.k,

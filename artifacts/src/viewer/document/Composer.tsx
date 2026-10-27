@@ -2,8 +2,9 @@ import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
 import { ArrowUp } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import { isComposing } from '../lib/keyboard';
+
 import { t } from '../i18n';
+import { isComposing } from '../lib/keyboard';
 
 const styles = stylex.create({
   composer: { position: 'relative', paddingTop: 2, paddingInline: 14, paddingBottom: 12 },
@@ -49,13 +50,13 @@ const styles = stylex.create({
 });
 
 interface ComposerProps {
-  placeholder: string;
-  initial?: string;
   autoFocus?: boolean;
   focusKey?: number;
-  onSubmit: (text: string) => void | Promise<boolean>;
+  initial?: string;
   onCancel?: () => void;
   onChange?: (text: string) => void;
+  onSubmit: (text: string) => void | Promise<boolean>;
+  placeholder: string;
 }
 
 export function Composer({
@@ -93,11 +94,11 @@ export function Composer({
     <div {...stylex.props(styles.composer)} onClick={(event) => event.stopPropagation()}>
       {unsent ? <div {...stylex.props(styles.unsent)}>{t('document.unsent')}</div> : null}
       <textarea
-        ref={input}
         autoFocus={autoFocus}
-        value={text}
-        rows={1}
         placeholder={placeholder}
+        ref={input}
+        rows={1}
+        value={text}
         onChange={(event) => update(event.target.value)}
         onKeyDown={(event) => {
           if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) submit();
@@ -106,10 +107,10 @@ export function Composer({
         {...stylex.props(styles.input)}
       />
       <button
-        type="button"
         aria-label={t('common.send')}
-        title={t('common.sendShortcut')}
         disabled={!text.trim()}
+        title={t('common.sendShortcut')}
+        type="button"
         onClick={submit}
         {...stylex.props(styles.send)}
       >

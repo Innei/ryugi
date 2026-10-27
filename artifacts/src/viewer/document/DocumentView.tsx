@@ -1,29 +1,29 @@
+import { allNodes } from '@haklex/rich-editor/static';
 import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
 import type { LexicalEditor } from 'lexical';
 import { LoroDoc } from 'loro-crdt';
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { emptyComments, type CommentsFile, type HumanOp } from '../../shared/comments';
+import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
+
+import { type CommentsFile, emptyComments, type HumanOp } from '../../shared/comments';
 import { WarningsBadge } from '../components/WarningsBadge';
 import { PHONE_QUERY, useMedia } from '../hooks/useMedia';
 import { useTypeFavicon } from '../hooks/useTypeFavicon';
+import { t } from '../i18n';
 import { agentActivity } from './agentActivity';
 import type { ThreadActions } from './CommentCard';
-import { DocumentEditor } from './DocumentEditor';
-import { useDocumentHistory } from './DocumentHistory';
-import { allNodes } from '@haklex/rich-editor/static';
-import { extraNodes } from './DocumentEditor';
 import { DesktopDocument } from './DesktopDocument';
-import { DynamicHostContext, type DynamicHost } from './DynamicBlock';
+import { DocumentEditor, extraNodes } from './DocumentEditor';
+import { useDocumentHistory } from './DocumentHistory';
+import { type DynamicHost, DynamicHostContext } from './DynamicBlock';
 import { decodeBase64 } from './LoroSync';
 import { PendingContext, type PendingProgress } from './PendingBlock';
-import type { DocumentMeta, DocumentState, DocumentTransport } from './transport';
+import { PhoneLayout } from './PhoneLayout';
 import { TopBar } from './TopBar';
+import type { DocumentMeta, DocumentState, DocumentTransport } from './transport';
 import { useDocumentSelectionSync } from './useDocumentSelectionSync';
 import { useNow, usePendingBlocks } from './usePendingBlocks';
-import { PhoneLayout } from './PhoneLayout';
-import { useSelectionComment, type SelectionTarget } from './useSelectionComment';
-import { t } from '../i18n';
+import { type SelectionTarget, useSelectionComment } from './useSelectionComment';
 
 const styles = stylex.create({
   root: { minHeight: '100%', backgroundColor: cssVar.colorBgContainer, color: cssVar.colorText },
@@ -68,8 +68,8 @@ function useAssetBase(contentBase: string | undefined) {
 }
 
 export interface CloudLive {
-  online: boolean;
   canEdit: boolean;
+  online: boolean;
   reason: string | null;
 }
 
@@ -284,14 +284,14 @@ export function DocumentView({
     <DynamicHostContext.Provider value={dynamicHost}>
       <PendingContext.Provider value={pendingProgress}>
         <DocumentEditor
-          transport={transport}
           agent={meta?.agent}
           doc={doc}
           theme={dark ? 'dark' : 'light'}
+          transport={transport}
           onAgentSection={setSection}
+          onEditorReady={setEditor}
           onOffline={setOffline}
           onState={onState}
-          onEditorReady={setEditor}
         />
       </PendingContext.Provider>
     </DynamicHostContext.Provider>
@@ -303,54 +303,54 @@ export function DocumentView({
       className={`ryugi-doc ${stylex.props(styles.root).className ?? ''}`}
     >
       <TopBar
-        id={id}
-        title={meta?.title || id}
-        agent={meta?.agent}
+        actions={barActions}
         activity={activity}
+        agent={meta?.agent}
         agentSection={section}
-        offline={offline}
-        openComments={openComments}
         cloud={cloud}
         compact={phone}
-        onDone={phone && editing ? () => setEditing(false) : undefined}
-        actions={barActions}
+        id={id}
+        offline={offline}
+        openComments={openComments}
+        title={meta?.title || id}
         history={{
           available: historyAvailable,
           open: historyVisible,
           toggle: () => setHistoryOpen((open) => !open),
           close: closeHistory,
         }}
+        onDone={phone && editing ? () => setEditing(false) : undefined}
       />
       {phone ? (
         <PhoneLayout
-          editor={editor}
-          threads={comments.threads}
           actions={actions}
           agent={meta?.agent}
           canComment={canComment}
           canEdit={canEdit}
+          clearSelection={clearSelection}
+          editor={editor}
+          history={historyView}
           offline={Boolean(cloud && !cloud.online)}
           selection={editing ? null : selection}
-          clearSelection={clearSelection}
+          threads={comments.threads}
           onCreate={create}
           onEdit={startEditing}
           onMain={setMainEl}
-          history={historyView}
         >
           {editorView}
         </PhoneLayout>
       ) : (
         <DesktopDocument
-          editor={editor}
-          threads={comments.threads}
           actions={actions}
           agent={meta?.agent}
           canComment={canComment}
-          selection={selection}
           clearSelection={clearSelection}
+          editor={editor}
+          history={historyView}
+          selection={selection}
+          threads={comments.threads}
           onCreate={create}
           onMain={setMainEl}
-          history={historyView}
         >
           {editorView}
         </DesktopDocument>

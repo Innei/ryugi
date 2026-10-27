@@ -3,14 +3,15 @@ import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
 import { Globe, Lock } from 'lucide-react';
 import { useState } from 'react';
+
 import { ownLink, publishing, publishState, syncNote, type Visibility } from '../../shared/cloud';
+import { cloudRequest, type CloudResult, useCloudStatus } from '../hooks/useCloudStatus';
 import { useCloudSync } from '../hooks/useCloudSync';
 import { pageLink, usePageQuery } from '../hooks/usePageQuery';
-import { cloudRequest, useCloudStatus, type CloudResult } from '../hooks/useCloudStatus';
+import { usePublication } from '../hooks/usePublication';
 import { useTranslation } from '../i18n';
 import { responseErrorText } from '../lib/error-text';
 import { PublicationStatus } from './PublicationStatus';
-import { usePublication } from '../hooks/usePublication';
 
 const styles = stylex.create({
   trigger: {
@@ -125,7 +126,7 @@ export function PublishMenu({ artifact, floating = false }: Props) {
   ) : !status.signedIn ? (
     <div {...stylex.props(styles.panel)}>
       <span {...stylex.props(styles.muted)}>{t('publish.signInPrompt')}</span>
-      <Button type="primary" loading={waitingForLogin} onClick={() => void login()}>
+      <Button loading={waitingForLogin} type="primary" onClick={() => void login()}>
         {waitingForLogin ? t('publish.waitingLogin') : t('common.signInGithub')}
       </Button>
     </div>
@@ -144,11 +145,11 @@ export function PublishMenu({ artifact, floating = false }: Props) {
         </button>
       </div>
       <PublicationStatus
+        online
+        busy={busy}
         publication={publication}
         published={state.published}
         publishedAt={entry?.cloud?.publishedAt}
-        online
-        busy={busy}
         onPublish={() => void run(() => cloudRequest('POST', `publish/${artifact}`))}
       />
       <Segmented
@@ -166,8 +167,8 @@ export function PublishMenu({ artifact, floating = false }: Props) {
         <div {...stylex.props(styles.row)}>
           <a
             href={ownLink(shareUrl, status.hostId)}
-            target="_blank"
             rel="noreferrer"
+            target="_blank"
             {...stylex.props(styles.link)}
           >
             {shareUrl}
@@ -183,7 +184,7 @@ export function PublishMenu({ artifact, floating = false }: Props) {
       {!state.synced ? (
         <div {...stylex.props(styles.row, styles.warning)}>
           <span>{t('publish.visibilityNotSynced')}</span>
-          <Button size="small" disabled={busy} onClick={() => void setVisibility(state.visibility)}>
+          <Button disabled={busy} size="small" onClick={() => void setVisibility(state.visibility)}>
             {t('publish.sync')}
           </Button>
         </div>
@@ -197,8 +198,8 @@ export function PublishMenu({ artifact, floating = false }: Props) {
       ) : null}
       {state.published && (!publication || publication.phase === 'published') ? (
         <Button
-          type="primary"
           loading={busy || !!uploading}
+          type="primary"
           onClick={() => void run(() => cloudRequest('POST', `publish/${artifact}`))}
         >
           {t('publish.update')}
@@ -206,8 +207,8 @@ export function PublishMenu({ artifact, floating = false }: Props) {
       ) : null}
       {state.published ? (
         <button
-          type="button"
           disabled={busy}
+          type="button"
           {...stylex.props(styles.textButton, styles.danger)}
           onClick={() => void run(() => cloudRequest('DELETE', `publish/${artifact}`))}
         >
@@ -222,15 +223,15 @@ export function PublishMenu({ artifact, floating = false }: Props) {
 
   return (
     <Popover
-      placement="bottomRight"
-      trigger="click"
       content={content}
+      placement="bottomRight"
       popupProps={{ 'aria-label': t('common.share') }}
+      trigger="click"
       onOpenChange={(open) => void adoptCloudVisibility(open)}
     >
       <button
-        type="button"
         aria-label="Share"
+        type="button"
         {...stylex.props(styles.trigger, floating && styles.floating)}
       >
         {state.published && state.visibility === 'public' ? (

@@ -7,11 +7,11 @@ import type { Emit } from './start';
 export type PublishAction = 'publish' | 'unpublish' | 'list' | 'delete' | 'login' | 'logout';
 
 export interface PublishOptions {
-  projectDir: string;
   action: PublishAction;
   artifact?: string;
-  visibility?: 'public' | 'private';
   cloudId?: string;
+  projectDir: string;
+  visibility?: 'public' | 'private';
 }
 
 export async function publish(options: PublishOptions, emit: Emit): Promise<number> {
@@ -19,7 +19,7 @@ export async function publish(options: PublishOptions, emit: Emit): Promise<numb
     if (!options.artifact) throw new CliError('--artifact <type>/<id> is required');
     if (!ARTIFACT_PATTERN.test(options.artifact)) throw new CliError(ARTIFACT_ERROR);
   }
-  if (options.action === 'delete' && !/^[A-Za-z0-9_-]{1,64}$/.test(options.cloudId ?? ''))
+  if (options.action === 'delete' && !/^[\w-]{1,64}$/.test(options.cloudId ?? ''))
     throw new CliError('--delete needs a cloud artifact id from --list');
   const server = serverClient(options.projectDir);
   const call = async (method: string, route: string, body?: unknown) => {

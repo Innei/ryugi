@@ -1,4 +1,5 @@
 import { expect, test } from 'vitest';
+
 import { DOCUMENT_SELECTION_LIMITS } from '../src/shared/selection';
 import { selectionContext } from '../src/viewer/document/selectionContext';
 

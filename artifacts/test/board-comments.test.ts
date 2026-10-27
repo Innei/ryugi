@@ -1,12 +1,13 @@
 import { describe, expect, test } from 'vitest';
+
 import {
   applyBoardAgentOp,
   applyBoardHumanOp,
+  type BoardAnchor,
   emptyBoardComments,
   mergeBoardComments,
   readBoardAnchor,
   savedBoardComments,
-  type BoardAnchor,
 } from '../src/shared/board-comments';
 import { parseComments, unreadThreads, waitingOn } from '../src/shared/comments';
 

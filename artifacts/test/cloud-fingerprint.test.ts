@@ -1,4 +1,5 @@
 import { afterEach, expect, test, vi } from 'vitest';
+
 import { call, closeAll, start } from './fake-cloud';
 import { writeHtml } from './helpers';
 

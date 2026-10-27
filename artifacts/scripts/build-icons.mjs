@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+
 import { build } from 'esbuild';
 import { icons } from 'lucide-react';
 import { createElement } from 'react';

@@ -1,4 +1,5 @@
 import { expect, test } from 'vitest';
+
 import { translator } from '../src/shared/messages';
 
 const dictionaries = {

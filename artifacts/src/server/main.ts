@@ -2,6 +2,8 @@ import { exec } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+
+import { version } from '../../package.json';
 import { startArtifactsServer } from './app';
 import { openBrowser } from './browser-focus';
 import { credentialsFile } from './credentials';
@@ -14,9 +16,8 @@ import {
   shutdownReason,
 } from './lifecycle';
 import { openReady } from './ready';
-import { registryDir, removeEntry, touchEntry, writeEntry, type RegistryEntry } from './registry';
+import { registryDir, type RegistryEntry, removeEntry, touchEntry, writeEntry } from './registry';
 import { writeJsonAtomic } from './state';
-import { version } from '../../package.json';
 
 async function main() {
   const config = parseEnv(process.env, process.argv.slice(2));
@@ -77,7 +78,7 @@ async function main() {
   const shutdown = async (reason: string) => {
     if (stopping) return;
     stopping = true;
-    console.log(JSON.stringify({ type: 'server-stopped', reason }));
+    console.info(JSON.stringify({ type: 'server-stopped', reason }));
     fs.rmSync(path.join(stateDir, 'server-info'), { force: true });
     writeJsonAtomic(path.join(stateDir, 'server-stopped'), { reason, timestamp: Date.now() });
     if (entry) quietly(() => removeEntry(registry, entry));
@@ -105,10 +106,12 @@ async function main() {
 
   fs.rmSync(path.join(stateDir, 'server-stopped'), { force: true });
   if (entry) quietly(() => writeEntry(registry, entry));
-  console.log(JSON.stringify({ type: 'server-started', url: server.url, port: server.port, root }));
+  console.info(
+    JSON.stringify({ type: 'server-started', url: server.url, port: server.port, root }),
+  );
 }
 
 main().catch((err) => {
-  console.log(JSON.stringify({ type: 'server-error', error: (err as Error).message }));
+  console.info(JSON.stringify({ type: 'server-error', error: (err as Error).message }));
   process.exit(1);
 });

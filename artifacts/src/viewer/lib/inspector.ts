@@ -22,7 +22,7 @@ const rect = (value: unknown) =>
     value.width >= 0 &&
     value.height >= 0);
 const property = (value: unknown): value is InspectorProperty =>
-  INSPECTOR_PROPERTIES.some((item) => item === value);
+  (INSPECTOR_PROPERTIES as readonly unknown[]).includes(value);
 const kinds = new Set(['Frame', 'Column', 'Row', 'Grid', 'Title', 'Text', 'Image', 'Button']);
 
 function validTree(value: unknown) {
@@ -70,15 +70,18 @@ export function readInspectorReport(value: unknown): InspectorReport | null {
     return null;
   let valid = false;
   switch (value.type) {
-    case 'ryugi:inspect:tree':
+    case 'ryugi:inspect:tree': {
       valid = typeof value.truncated === 'boolean' && validTree(value.nodes);
       break;
-    case 'ryugi:inspect:hover':
+    }
+    case 'ryugi:inspect:hover': {
       valid = rect(value.rect) && (value.id === undefined || value.id === null || id(value.id));
       break;
-    case 'ryugi:inspect:rect':
+    }
+    case 'ryugi:inspect:rect': {
       valid = id(value.id) && value.rect !== null && rect(value.rect);
       break;
+    }
     case 'ryugi:inspect:selection': {
       if (
         !['user', 'command', 'update', 'primary'].includes(value.reason as string) ||
@@ -104,7 +107,7 @@ export function readInspectorReport(value: unknown): InspectorReport | null {
           ));
       break;
     }
-    case 'ryugi:inspect:targets':
+    case 'ryugi:inspect:targets': {
       valid =
         id(value.request) &&
         Array.isArray(value.targets) &&
@@ -120,7 +123,8 @@ export function readInspectorReport(value: unknown): InspectorReport | null {
             rect(node.rect),
         );
       break;
-    case 'ryugi:inspect:details':
+    }
+    case 'ryugi:inspect:details': {
       valid =
         id(value.request) &&
         Array.isArray(value.nodes) &&
@@ -129,7 +133,8 @@ export function readInspectorReport(value: unknown): InspectorReport | null {
           (node) => object(node) && id(node.id) && text(node.text, 200) && text(node.html, 2000),
         );
       break;
-    case 'ryugi:inspect:drag':
+    }
+    case 'ryugi:inspect:drag': {
       valid =
         ['start', 'move', 'end', 'cancel'].includes(value.phase as string) &&
         number(value.x) &&
@@ -137,7 +142,8 @@ export function readInspectorReport(value: unknown): InspectorReport | null {
         typeof value.append === 'boolean' &&
         (value.id === undefined || id(value.id));
       break;
-    case 'ryugi:inspect:tweaks':
+    }
+    case 'ryugi:inspect:tweaks': {
       valid =
         Array.isArray(value.tweaks) &&
         value.tweaks.length <= 2500 &&
@@ -151,7 +157,8 @@ export function readInspectorReport(value: unknown): InspectorReport | null {
             text(item.value, 300),
         );
       break;
-    case 'ryugi:inspect:wheel':
+    }
+    case 'ryugi:inspect:wheel': {
       valid =
         number(value.deltaX) &&
         number(value.deltaY) &&
@@ -159,10 +166,12 @@ export function readInspectorReport(value: unknown): InspectorReport | null {
         number(value.y) &&
         typeof value.zoom === 'boolean';
       break;
-    case 'ryugi:inspect:pan':
+    }
+    case 'ryugi:inspect:pan': {
       valid = number(value.deltaX) && number(value.deltaY);
       break;
-    case 'ryugi:inspect:key':
+    }
+    case 'ryugi:inspect:key': {
       valid =
         text(value.code, 32) &&
         text(value.key, 32) &&
@@ -170,6 +179,7 @@ export function readInspectorReport(value: unknown): InspectorReport | null {
           (key) => typeof value[key] === 'boolean',
         );
       break;
+    }
   }
   return valid ? (value as unknown as InspectorReport) : null;
 }

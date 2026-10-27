@@ -2,17 +2,17 @@ export type Visibility = 'private' | 'public';
 
 export interface PlanLimit {
   kind: 'private' | 'public' | 'total' | 'publishes';
-  used: number;
   max: number;
+  used: number;
 }
 
 export interface Publication {
+  autoPublish: boolean;
+  message?: string;
   phase:
     'waiting' | 'preparing' | 'uploading' | 'publishing' | 'not-ready' | 'failed' | 'published';
   publishedAt: string | null;
-  autoPublish: boolean;
   reasons?: string[];
-  message?: string;
 }
 
 export const publishing = (phase: Publication['phase']) =>
@@ -53,40 +53,40 @@ export function readPublication(value: unknown): Publication | null {
 }
 
 export interface CloudRecord {
-  id: string;
-  url: string;
-  publishedAt: string | null;
-  visibility: Visibility;
   fingerprint?: string;
+  id: string;
+  publishedAt: string | null;
+  url: string;
+  visibility: Visibility;
 }
 
 export interface ArtifactConfig {
-  visibility?: Visibility;
-  cloud?: CloudRecord;
   autoPublish?: false;
+  cloud?: CloudRecord;
+  visibility?: Visibility;
 }
 
 export interface AutoPublishStatus {
+  enabled: boolean;
   global: boolean | null;
   project: boolean | null;
-  enabled: boolean;
 }
 
 export interface CloudStatus {
-  signedIn: boolean;
-  login: string | null;
-  origin: string;
   artifacts: Record<string, ArtifactConfig>;
   autoPublish?: AutoPublishStatus;
   hostId?: string;
+  login: string | null;
+  origin: string;
+  signedIn: boolean;
   warning: string | null;
 }
 
 export interface PublishState {
   published: boolean;
-  visibility: Visibility;
-  url: string | null;
   synced: boolean;
+  url: string | null;
+  visibility: Visibility;
 }
 
 export const ownLink = (url: string, hostId?: string | null) =>

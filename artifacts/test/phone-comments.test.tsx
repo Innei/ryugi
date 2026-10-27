@@ -2,6 +2,7 @@
 import { act, createElement, type ReactElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeAll, describe, expect, test, vi } from 'vitest';
+
 import type { Thread } from '../src/shared/comments';
 import type { ThreadActions } from '../src/viewer/document/CommentCard';
 import { editMenuPosition } from '../src/viewer/document/layoutCards';

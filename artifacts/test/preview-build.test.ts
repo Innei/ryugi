@@ -1,7 +1,8 @@
-import { build } from 'esbuild';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { gzipSync } from 'node:zlib';
+
+import { build } from 'esbuild';
 import { expect, test } from 'vitest';
 
 test('the standalone preview ships less than 180 KB gzip before loading a renderer', async () => {

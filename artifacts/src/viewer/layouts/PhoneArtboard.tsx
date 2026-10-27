@@ -1,13 +1,14 @@
 import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
 import {
+  type PointerEvent as ReactPointerEvent,
+  type ReactNode,
   useCallback,
   useMemo,
   useRef,
   useState,
-  type PointerEvent as ReactPointerEvent,
-  type ReactNode,
 } from 'react';
+
 import type { Bounds, CanvasLayout, CanvasSpec } from '../../shared/types';
 import { Canvas } from '../components/Canvas';
 import { CanvasErrorBoundary } from '../components/CanvasErrorBoundary';
@@ -17,15 +18,15 @@ import { PhoneBoard } from '../components/PhoneBoard';
 import { QuestionSheet, SHEET_PEEK } from '../components/QuestionSheet';
 import { useArtboardPage } from '../hooks/useArtboardPage';
 import { usePanZoom } from '../hooks/usePanZoom';
-import { visibleRenders } from '../lib/board-tiers';
 import { useVerdicts } from '../hooks/useVerdicts';
 import type { BoardCommentsState } from '../lib/board-comments';
+import { visibleRenders } from '../lib/board-tiers';
 import {
   openingQuestion,
+  type Question,
   questionList,
   roundsOf,
   stepQuestion,
-  type Question,
 } from '../lib/questions';
 import type { Insets } from '../lib/view';
 
@@ -65,19 +66,19 @@ const styles = stylex.create({
 });
 
 interface Props {
-  id: string;
+  actions?: ReactNode;
+  agent?: string;
   artifact: string | null;
   canvas: CanvasSpec | null;
-  layout: CanvasLayout | null;
-  warnings: string[];
-  pending: string[];
+  comments?: BoardCommentsState | null;
   contentBase: string;
-  versions: Record<string, number>;
+  id: string;
+  layout: CanvasLayout | null;
   live?: boolean;
   loaded: boolean;
-  agent?: string;
-  actions?: ReactNode;
-  comments?: BoardCommentsState | null;
+  pending: string[];
+  versions: Record<string, number>;
+  warnings: string[];
 }
 
 const NO_THREADS: never[] = [];
@@ -236,12 +237,12 @@ export function PhoneArtboard({
   return (
     <div {...stylex.props(styles.root)}>
       <PhoneArtboardBar
-        title={canvas?.title || id}
-        pages={canvas?.pages ?? []}
-        page={page}
-        onPageChange={changePage}
         actions={actions}
         live={live}
+        page={page}
+        pages={canvas?.pages ?? []}
+        title={canvas?.title || id}
+        onPageChange={changePage}
       />
       <div
         ref={viewportRef}
@@ -257,39 +258,39 @@ export function PhoneArtboard({
         {canvas && layout ? (
           <CanvasErrorBoundary resetKey={canvas}>
             <Canvas
+              agent={agent}
+              boards={boards}
+              contentBase={contentBase}
+              frameLoaded={() => {}}
+              frameRef={() => () => {}}
+              inspecting={false}
+              live={live}
+              notes={notes}
+              pending={pendingBoards}
+              playing={NOTHING}
+              replays={{}}
+              versions={versions}
               view={view}
+              writing={live ? canvas.writing : undefined}
               renders={visibleRenders({
                 boards: boards.map(([id, board]) => ({ id, ...board })),
                 view,
                 viewport: size,
               })}
-              boards={boards}
-              notes={notes}
-              contentBase={contentBase}
-              versions={versions}
-              pending={pendingBoards}
-              playing={NOTHING}
-              replays={{}}
-              inspecting={false}
-              frameRef={() => () => {}}
-              frameLoaded={() => {}}
-              live={live}
-              writing={live ? canvas.writing : undefined}
-              agent={agent}
             />
             <Labels
-              view={view}
-              boards={boards}
-              groups={groups}
               allBoards={allBoards}
+              boards={boards}
               contentBase={contentBase}
-              versions={versions}
+              groups={groups}
               pending={pendingBoards}
               playing={NOTHING}
-              onExpand={setOpen}
-              onTogglePlay={setOpen}
-              onReplay={() => {}}
               verdicts={verdicts}
+              versions={versions}
+              view={view}
+              onExpand={setOpen}
+              onReplay={() => {}}
+              onTogglePlay={setOpen}
             />
           </CanvasErrorBoundary>
         ) : (
@@ -302,30 +303,30 @@ export function PhoneArtboard({
         {list.length > 0 ? (
           <div data-chrome {...stylex.props(styles.dock)}>
             <QuestionSheet
-              rounds={rounds}
               current={question}
-              previous={current ? stepQuestion(list, current, -1) : null}
               next={current ? stepQuestion(list, current, 1) : null}
-              pages={canvas?.pages ?? []}
               page={page}
+              pages={canvas?.pages ?? []}
+              previous={current ? stepQuestion(list, current, -1) : null}
+              rounds={rounds}
+              snap={snap}
+              verdicts={verdicts.states}
               onPageChange={changePage}
               onPick={pick}
-              snap={snap}
               onSnap={setSnap}
-              verdicts={verdicts.states}
             />
           </div>
         ) : null}
       </div>
       {open && openBoard ? (
         <PhoneBoard
-          id={open}
           board={openBoard}
-          src={`${contentBase}${openBoard.file}?v=${versions[openBoard.file] ?? 0}`}
-          siblings={siblings}
+          id={open}
           origin={origin}
-          onOpen={setOpen}
+          siblings={siblings}
+          src={`${contentBase}${openBoard.file}?v=${versions[openBoard.file] ?? 0}`}
           onClose={() => setOpen(null)}
+          onOpen={setOpen}
         />
       ) : null}
     </div>

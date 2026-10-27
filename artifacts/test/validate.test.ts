@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest';
-import { validateCanvas } from '../src/shared/validate';
+
 import type { CanvasSpec } from '../src/shared/types';
+import { validateCanvas } from '../src/shared/validate';
 
 const exists = () => true;
 

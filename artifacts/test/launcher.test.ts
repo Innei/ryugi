@@ -1,9 +1,11 @@
 import { spawn, spawnSync } from 'node:child_process';
-import { createRequire } from 'node:module';
 import fs from 'node:fs';
+import { createRequire } from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
+
 import { afterEach, describe, expect, test } from 'vitest';
+
 import { get } from './helpers';
 
 const appDir = path.resolve(__dirname, '../../skills/artifacts/app');
@@ -18,7 +20,7 @@ const STUBBORN_SERVER = [
   "require('./real.cjs');",
 ].join(' ');
 
-let cleanups: (() => void)[] = [];
+const cleanups: (() => void)[] = [];
 afterEach(() => {
   for (const cleanup of cleanups.splice(0).reverse()) cleanup();
 });

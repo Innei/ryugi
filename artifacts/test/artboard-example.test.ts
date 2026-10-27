@@ -1,6 +1,8 @@
 import { existsSync, readFileSync } from 'node:fs';
+
 import { type HTMLElement, Window } from 'happy-dom';
 import { afterEach, expect, test } from 'vitest';
+
 import { injectRuntime } from '../src/server/inject';
 
 const example = new URL('../../skills/artifacts/examples/today-inbox.html', import.meta.url);

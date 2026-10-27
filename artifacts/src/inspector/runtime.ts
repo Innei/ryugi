@@ -96,7 +96,7 @@ export function installInspector(
           ? Array.from(parent.children).filter((child) => child.tagName === node!.tagName)
           : [];
       segments.unshift(
-        node.id && node.id.length <= 64 && /^[A-Za-z][\w-]*$/.test(node.id)
+        node.id && node.id.length <= 64 && /^[A-Z][\w-]*$/i.test(node.id)
           ? `${tag}#${node.id}`
           : same.length > 1
             ? `${tag}:nth-of-type(${same.indexOf(node) + 1})`
@@ -489,7 +489,7 @@ export function installInspector(
         if (el?.isConnected)
           nodes.push({
             id,
-            text: (el.textContent ?? '').replace(/\s+/g, ' ').trim().slice(0, 200),
+            text: (el.textContent ?? '').replaceAll(/\s+/g, ' ').trim().slice(0, 200),
             html: el.outerHTML.slice(0, 2000),
           });
       }

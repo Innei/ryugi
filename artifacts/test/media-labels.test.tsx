@@ -4,6 +4,7 @@ import { motion } from 'motion/react';
 import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeAll, expect, test, vi } from 'vitest';
+
 import type { BoardSpec } from '../src/shared/types';
 import { ExpandedBoard } from '../src/viewer/components/ExpandedBoard';
 import { Labels } from '../src/viewer/components/Labels';

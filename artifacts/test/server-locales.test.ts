@@ -1,4 +1,5 @@
 import { expect, test } from 'vitest';
+
 import en from '../src/server/locales/en.json';
 import zh from '../src/server/locales/zh.json';
 import { viewerPage } from '../src/server/viewer-page';

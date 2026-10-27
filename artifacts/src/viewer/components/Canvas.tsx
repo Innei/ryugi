@@ -1,6 +1,7 @@
 import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
+
 import {
   DEFAULT_TITLE_SIZE,
   STICKY_DEFAULT_W,
@@ -8,14 +9,14 @@ import {
   STICKY_LINE_H,
   STICKY_PAD,
 } from '../../shared/geometry';
-import { isMediaBoard, type BoardSpec, type NoteSpec } from '../../shared/types';
+import { type BoardSpec, isMediaBoard, type NoteSpec } from '../../shared/types';
 import type { Inspector } from '../hooks/useInspector';
 import type { BoardRender } from '../lib/board-tiers';
 import { boardReady, boardSrc, canPlay } from '../lib/play';
 import { titleScale, type View } from '../lib/view';
+import { brand } from '../tokens.stylex';
 import { MediaBoard } from './MediaBoard';
 import { WritingCursor } from './WritingCursor';
-import { brand } from '../tokens.stylex';
 
 const styles = stylex.create({
   world: { position: 'absolute', left: 0, top: 0, transformOrigin: '0 0' },
@@ -83,23 +84,23 @@ const styles = stylex.create({
 });
 
 interface CanvasProps {
-  live?: boolean;
-  writing?: string;
   agent?: string;
-  view: View;
-  renders: ReadonlyMap<string, BoardRender>;
   boards: [string, BoardSpec][];
-  notes: [string, NoteSpec][];
   contentBase: string;
-  versions: Record<string, number>;
-  pending: ReadonlySet<string>;
-  playing: ReadonlySet<string>;
-  replays: Record<string, number>;
-  inspecting: boolean;
-  frameRef: Inspector['refFor'];
   frameLoaded: Inspector['loaded'];
+  frameRef: Inspector['refFor'];
+  inspecting: boolean;
+  live?: boolean;
+  notes: [string, NoteSpec][];
   onExpand?: (id: string) => void;
   onImageError?: (id: string, src: string) => void;
+  pending: ReadonlySet<string>;
+  playing: ReadonlySet<string>;
+  renders: ReadonlyMap<string, BoardRender>;
+  replays: Record<string, number>;
+  versions: Record<string, number>;
+  view: View;
+  writing?: string;
 }
 
 function stickyColors(color?: string) {
@@ -167,11 +168,13 @@ function BoardLayers({
       {frame?.(hideFrame && covered)}
       {sources.map((source) => (
         <img
-          key={source}
           alt=""
-          src={source}
           decoding="async"
           draggable={false}
+          key={source}
+          src={source}
+          style={visible && source === ready ? undefined : HIDDEN}
+          onError={source === image ? () => onError(image) : undefined}
           onLoad={
             source === image
               ? (event) => {
@@ -180,8 +183,6 @@ function BoardLayers({
                 }
               : undefined
           }
-          onError={source === image ? () => onError(image) : undefined}
-          style={visible && source === ready ? undefined : HIDDEN}
           {...stylex.props(styles.image)}
         />
       ))}
@@ -237,16 +238,16 @@ export function Canvas({
         const position = { left: board.x, top: board.y, width: board.w, height: board.h };
         return (
           <div
-            key={id}
-            data-board={id}
             aria-busy={drawing || undefined}
+            data-board={id}
+            key={id}
             {...stylex.props(styles.slot, !mounted && styles.skeleton, drawing && styles.drawing)}
             style={{ ...position, ...(drawing ? { outlineWidth: 2 / view.k } : {}) }}
           >
             {mounted && media ? (
               <MediaBoard
-                id={id}
                 board={board}
+                id={id}
                 src={boardSrc(contentBase, board.file, versions[board.file] ?? 0, 0)}
                 zoom={view.k}
                 onExpand={onExpand && (() => onExpand(id))}
@@ -254,16 +255,15 @@ export function Canvas({
             ) : (
               <>
                 <BoardLayers
+                  hideFrame={!!render?.hidden}
                   image={image}
                   showImage={!mounted || !!render?.overlay}
-                  hideFrame={!!render?.hidden}
-                  onError={(src) => onImageError?.(id, src)}
                   frame={
                     mounted
                       ? (hidden) => (
                           <iframe
                             ref={frameRef(id)}
-                            onLoad={() => frameLoaded(id)}
+                            sandbox="allow-scripts"
                             style={hidden ? COVERED : undefined}
                             title={board.title ?? id}
                             src={boardSrc(
@@ -272,7 +272,7 @@ export function Canvas({
                               versions[board.file] ?? 0,
                               replays[id] ?? 0,
                             )}
-                            sandbox="allow-scripts"
+                            onLoad={() => frameLoaded(id)}
                             {...stylex.props(
                               styles.board,
                               inspecting && styles.inspecting,
@@ -282,6 +282,7 @@ export function Canvas({
                         )
                       : null
                   }
+                  onError={(src) => onImageError?.(id, src)}
                 />
                 {!ready && (
                   <span {...stylex.props(styles.skeletonText)}>
@@ -329,11 +330,11 @@ export function Canvas({
       )}
       {active && (
         <WritingCursor
+          agent={agent ?? 'Agent'}
+          title={active.title ?? cursor!}
           x={active.x + Math.min(64, active.w * 0.15)}
           y={active.y + Math.min(80, active.h * 0.2)}
           zoom={view.k}
-          agent={agent ?? 'Agent'}
-          title={active.title ?? cursor!}
         />
       )}
     </div>

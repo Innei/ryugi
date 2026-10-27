@@ -1,14 +1,15 @@
 import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+
 import type { PageSpec } from '../../shared/types';
 import type { GroupVerdict } from '../../shared/verdicts';
+import { useTranslation } from '../i18n';
+import { type Question, questionList, type Round } from '../lib/questions';
 import { brand } from '../tokens.stylex';
-import { questionList, type Question, type Round } from '../lib/questions';
 import { BottomSheet } from './BottomSheet';
 import { ghostStyles } from './ghost';
 import { PageSwitcher } from './PhoneArtboardBar';
-import { useTranslation } from '../i18n';
 
 export const SHEET_PEEK = 78;
 export const SHEET_OPEN = 0.66;
@@ -87,16 +88,16 @@ const styles = stylex.create({
 });
 
 interface Props {
-  rounds: Round[];
   current: Question | null;
-  previous: Question | null;
   next: Question | null;
-  pages: PageSpec[];
-  page: string | null;
   onPageChange: (id: string) => void;
   onPick: (question: Question) => void;
-  snap: number;
   onSnap: (snap: number) => void;
+  page: string | null;
+  pages: PageSpec[];
+  previous: Question | null;
+  rounds: Round[];
+  snap: number;
   verdicts?: Record<string, GroupVerdict>;
 }
 
@@ -131,16 +132,14 @@ export function QuestionSheet({
   const index = current ? list.findIndex((q) => q.id === current.id) : -1;
   return (
     <BottomSheet
-      snaps={[SHEET_PEEK, SHEET_OPEN]}
       snap={snap}
-      onSnap={onSnap}
-      onScrim={() => onSnap(SHEET_PEEK)}
+      snaps={[SHEET_PEEK, SHEET_OPEN]}
       header={
         <div {...stylex.props(styles.head)}>
           <button
-            type="button"
             aria-label={t('questions.previous')}
             disabled={!previous}
+            type="button"
             onClick={() => previous && onPick(previous)}
             {...stylex.props(ghostStyles.ghost)}
           >
@@ -165,8 +164,8 @@ export function QuestionSheet({
                 const mark = markOf(question, current, verdicts);
                 return (
                   <span
-                    key={question.id}
                     data-mark={mark}
+                    key={question.id}
                     {...stylex.props(
                       styles.mark,
                       mark === 'current' && styles.markCurrent,
@@ -179,9 +178,9 @@ export function QuestionSheet({
             </span>
           </span>
           <button
-            type="button"
             aria-label={t('questions.next')}
             disabled={!next}
+            type="button"
             onClick={() => next && onPick(next)}
             {...stylex.props(ghostStyles.ghost)}
           >
@@ -189,11 +188,13 @@ export function QuestionSheet({
           </button>
         </div>
       }
+      onScrim={() => onSnap(SHEET_PEEK)}
+      onSnap={onSnap}
     >
       <div {...stylex.props(styles.list)}>
         {pages.length > 1 ? (
           <div {...stylex.props(styles.pages)}>
-            <PageSwitcher pages={pages} page={page} onPageChange={onPageChange} />
+            <PageSwitcher page={page} pages={pages} onPageChange={onPageChange} />
           </div>
         ) : null}
         {rounds.map((round) => (
@@ -203,9 +204,9 @@ export function QuestionSheet({
             </div>
             {round.questions.map((question) => (
               <button
+                data-question-row={question.id}
                 key={question.id}
                 type="button"
-                data-question-row={question.id}
                 onClick={() => onPick(question)}
                 {...stylex.props(styles.row, question.id === current?.id && styles.rowCurrent)}
               >

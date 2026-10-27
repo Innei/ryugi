@@ -15,22 +15,27 @@
   "main": ".opencode/plugins/ryugi.js",
   "scripts": {
     "format": "prettier --write .",
+    "lint": "eslint . --fix",
     "prepare": "simple-git-hooks"
   },
   "simple-git-hooks": {
     "pre-commit": "pnpm lint-staged"
   },
   "lint-staged": {
+    "*.{js,jsx,mjs,cjs,ts,tsx,yml,yaml}": "eslint --fix",
     "*": "prettier --write --ignore-unknown"
   },
   "devDependencies": {
+    "@lobehub/eslint-config": "^2.1.7",
     "@lobehub/prettier-config": "^2.1.7",
+    "eslint": "^10.13.0",
     "lint-staged": "^17.6.0",
     "prettier": "^3.9.10",
     "prettier-plugin-packagejson": "^3.0.3",
     "prettier-plugin-sh": "^0.20.2",
     "prettier-plugin-sort-json": "^4.2.0",
-    "simple-git-hooks": "^2.14.0"
+    "simple-git-hooks": "^2.14.0",
+    "typescript": "^6.0.3"
   },
   "pi": {
     "extensions": [

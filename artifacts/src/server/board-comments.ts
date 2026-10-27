@@ -1,22 +1,23 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
+
 import {
   applyBoardAgentOp,
   applyBoardHumanOp,
-  emptyBoardComments,
-  mergeBoardComments,
-  readBoardAnchor,
-  savedBoardComments,
   type BoardAgentOp,
   type BoardAnchor,
   type BoardCommentsFile,
   type BoardHumanOp,
   type BoardThread,
+  emptyBoardComments,
+  mergeBoardComments,
+  readBoardAnchor,
+  savedBoardComments,
 } from '../shared/board-comments';
-import { unreadThreads, waitingOn, type Person } from '../shared/comments';
-import { groupVerdict } from '../shared/verdicts';
+import { type Person, unreadThreads, waitingOn } from '../shared/comments';
 import type { ServerMessage } from '../shared/types';
+import { groupVerdict } from '../shared/verdicts';
 import { createCommentCursors } from './comment-cursors';
 import type { CommentNames } from './comment-names';
 import { asHumanOp, createStore, isId, isText, type Store } from './document-comments';
@@ -83,8 +84,8 @@ export interface BoardSpec {
 }
 
 export interface GroupSpec {
-  title?: string;
   boards: string[];
+  title?: string;
   verify: boolean;
 }
 
@@ -229,10 +230,10 @@ const isStale = (
   Object.entries(thread.anchor.hashes ?? {}).some(([board, hash]) => hashes[board] !== hash);
 
 interface Options {
-  root: string;
-  stateDir: string;
   broadcast: (message: ServerMessage) => void;
   names?: CommentNames;
+  root: string;
+  stateDir: string;
 }
 
 export type BoardCommentRegistry = ReturnType<typeof createBoardCommentRegistry>;

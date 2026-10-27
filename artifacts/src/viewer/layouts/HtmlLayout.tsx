@@ -5,9 +5,9 @@ import { HtmlView } from './HtmlView';
 export function HtmlLayout({ id }: { id: string }) {
   return (
     <HtmlView
-      id={id}
+      actions={<PublishMenu floating artifact={`html/${id}`} />}
       feed={useLocalFeed('html', id)}
-      actions={<PublishMenu artifact={`html/${id}`} floating />}
+      id={id}
     />
   );
 }

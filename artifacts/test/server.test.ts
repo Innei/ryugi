@@ -1,8 +1,10 @@
 import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
+
 import { afterEach, describe, expect, test } from 'vitest';
-import { startArtifactsServer, type ArtifactsServer } from '../src/server/app';
+
+import { type ArtifactsServer, startArtifactsServer } from '../src/server/app';
 import { typeFaviconHref } from '../src/shared/type-icons';
 import {
   get,
@@ -247,10 +249,10 @@ describe('page metadata', () => {
       expect(response.body).toContain(`<title>${title}</title>`);
       expect(response.body).toContain(`<meta property="og:title" content="${title}"`);
       expect(response.body).toContain(`<meta name="twitter:title" content="${title}"`);
-      expect(response.body.match(/<meta\b[^>]*name="description"/g)).toHaveLength(1);
-      expect(response.body.match(/<meta\b[^>]*name="robots"/g)).toHaveLength(1);
+      expect(response.body.match(/<meta\b[^>]+name="description"/g)).toHaveLength(1);
+      expect(response.body.match(/<meta\b[^>]+name="robots"/g)).toHaveLength(1);
       expect(response.body).toMatch(
-        /<meta\b[^>]*name="description"[^>]*content="[^"]*test-project[^"]*"/,
+        /<meta\b[^>]+name="description"[^>]*content="[^"]*test-project[^"]*"/,
       );
       expect(response.body).toContain(
         `<link rel="canonical" href="http://localhost:${server.port}${canonical}">`,
@@ -289,14 +291,14 @@ describe('page metadata', () => {
     });
     expect(english.body).toMatch(/<html[^>]* lang="en"/);
     expect(english.body).toMatch(
-      /<meta\b[^>]*name="description"[^>]*content="Browse every artboard[^"]*test-project/,
+      /<meta\b[^>]+name="description"[^>]*content="Browse every artboard[^"]*test-project/,
     );
     const chinese = await get(`${base(server)}/?key=${server.token}`, {
       'Accept-Language': 'zh-CN,zh;q=0.9',
     });
     expect(chinese.body).toMatch(/<html[^>]* lang="zh-CN"/);
     expect(chinese.body).toMatch(
-      /<meta\b[^>]*name="description"[^>]*content="浏览 test-project 项目/,
+      /<meta\b[^>]+name="description"[^>]*content="浏览 test-project 项目/,
     );
   });
 
@@ -313,7 +315,7 @@ describe('page metadata', () => {
       const route = `/${type}/${{ artboard: 'ideas', document: 'plan', html: 'tuner' }[type]}`;
       const links = await iconOf(route);
       expect(links).toHaveLength(1);
-      expect(links[0]).toContain(`href="${typeFaviconHref(type).replace(/"/g, '&quot;')}"`);
+      expect(links[0]).toContain(`href="${typeFaviconHref(type).replaceAll('"', '&quot;')}"`);
     }
     const list = await iconOf('/');
     expect(list).toHaveLength(1);

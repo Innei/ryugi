@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'vitest';
+
 import { parseRoute } from '../src/viewer/lib/route';
 
 describe('parseRoute', () => {

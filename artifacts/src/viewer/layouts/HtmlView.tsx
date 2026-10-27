@@ -1,11 +1,12 @@
 import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
-import { useEffect, type ReactNode } from 'react';
+import { type ReactNode, useEffect } from 'react';
+
 import { WarningsBadge } from '../components/WarningsBadge';
-import type { ArtifactFeed } from '../lib/feed';
 import { useHtmlData } from '../hooks/useHtmlData';
-import { useTypeFavicon } from '../hooks/useTypeFavicon';
 import { HTML_SANDBOX, useSandboxFrame } from '../hooks/useSandboxFrame';
+import { useTypeFavicon } from '../hooks/useTypeFavicon';
+import type { ArtifactFeed } from '../lib/feed';
 
 const styles = stylex.create({
   root: {
@@ -58,11 +59,11 @@ export function HtmlView({
     <div {...stylex.props(styles.root)}>
       {ready && src ? (
         <iframe
-          ref={frameRef}
-          title={data.title}
-          src={src}
-          sandbox={HTML_SANDBOX}
           allow="clipboard-write"
+          ref={frameRef}
+          sandbox={HTML_SANDBOX}
+          src={src}
+          title={data.title}
           onLoad={onLoad}
           {...stylex.props(styles.frame)}
         />

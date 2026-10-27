@@ -113,15 +113,16 @@ export async function serializeBoard(
     return files.get(url)!.then((response) => response.clone());
   };
   const inline = async (url: string) => dataUrl(await (await load(url)).blob());
-  const CSS_URL = /url\(\s*(['"]?)([^'")]+?)\1\s*\)/g;
-  const IMPORT = /@import\s+(?:url\(\s*)?(['"]?)([^'")\s;]+)\1\s*\)?[^;]*;/g;
+  const CSS_URL = /url\(\s*(?:(['"])([^'")]+)\1|([^'")\s]+))\s*\)/g;
+  const IMPORT =
+    /@import\s+(?:url\(\s*(?:(['"])([^'")\s;]+)\1|([^'")\s;]+))\s*\)|(['"])([^'")\s;]+)\4|(?=([^'")\s;]+))\6)[^;]*;/g;
   const FONT_FACE = /@font-face\s*\{[^}]*\}/g;
   const faceKey = (family: string, weight: string, style: string, range: string) =>
     [
-      family.replace(/["']/g, '').trim().toLowerCase(),
+      family.replaceAll(/["']/g, '').trim().toLowerCase(),
       ({ normal: '400', bold: '700' } as Record<string, string>)[weight.trim()] ?? weight.trim(),
       style.trim() || 'normal',
-      range.replace(/\s/g, '').toLowerCase(),
+      range.replaceAll(/\s/g, '').toLowerCase(),
     ].join('|');
   const faces = new Map<string, boolean>();
   for (const face of (doc.fonts ?? []) as Iterable<FontFace>) {
@@ -141,27 +142,31 @@ export async function serializeBoard(
     ) === false;
   const inlineCss = async (css: string, base: string, depth = 0): Promise<string> => {
     let text = css;
-    for (const match of [...text.matchAll(IMPORT)]) {
-      const href = new URL(match[2]!, base).href;
+    for (const match of text.matchAll(IMPORT)) {
+      const href = new URL((match[2] ?? match[3] ?? match[5] ?? match[6])!, base).href;
       text = text.replace(
         match[0],
         depth < 3 ? await inlineCss(await (await load(href)).text(), href, depth + 1) : '',
       );
     }
-    text = text.replace(FONT_FACE, (block) => (unloaded(block) ? '' : block));
+    text = text.replaceAll(FONT_FACE, (block) => (unloaded(block) ? '' : block));
     const urls = [
       ...new Set(
         [...text.matchAll(CSS_URL)]
-          .map((match) => match[2]!)
+          .map((match) => (match[2] ?? match[3])!)
           .filter((url) => !/^(?:data:|#|about:)/.test(url)),
       ),
     ];
     const inlined = await Promise.all(urls.map((url) => inline(new URL(url, base).href)));
     return text
-      .replace(CSS_URL, (whole, _quote, url: string) =>
-        urls.includes(url) ? `url("${inlined[urls.indexOf(url)]}")` : whole,
+      .replaceAll(
+        CSS_URL,
+        (whole, _quote, quoted: string | undefined, bare: string | undefined) => {
+          const url = quoted ?? bare ?? '';
+          return urls.includes(url) ? `url("${inlined[urls.indexOf(url)]}")` : whole;
+        },
       )
-      .replace(/:root\b/g, 'html');
+      .replaceAll(/:root\b/g, 'html');
   };
   const root = doc.documentElement;
   const clone = root.cloneNode(true) as HTMLElement;
@@ -177,7 +182,7 @@ export async function serializeBoard(
       to.style.display = style.display;
       to.style.verticalAlign = style.verticalAlign;
       to.style.flex = style.flex;
-      to.innerHTML = from.shadowRoot.innerHTML.replace(/<style[\s\S]*?<\/style>/g, '');
+      to.innerHTML = from.shadowRoot.innerHTML.replaceAll(/<style[\s\S]*?<\/style>/g, '');
       const svg = to.querySelector('svg');
       if (svg) {
         svg.style.display = 'block';
@@ -195,7 +200,7 @@ export async function serializeBoard(
         );
     } else if (from instanceof win.HTMLCanvasElement) {
       if (!from.getContext('2d')) throw unsupported('webgl canvas');
-      let url = '';
+      let url: string;
       try {
         url = from.toDataURL();
       } catch {

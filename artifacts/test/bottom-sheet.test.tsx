@@ -2,6 +2,7 @@
 import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
+
 import { BottomSheet } from '../src/viewer/components/BottomSheet';
 
 vi.mock('@stylexjs/stylex', async (original) => ({

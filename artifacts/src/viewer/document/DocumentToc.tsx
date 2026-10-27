@@ -2,13 +2,14 @@ import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
 import { $getRoot, type LexicalEditor } from 'lexical';
 import { useEffect, useRef, useState } from 'react';
-import { springScrollToElement } from './scroller';
+
 import { t } from '../i18n';
+import { springScrollToElement } from './scroller';
 
 interface Entry {
+  depth: number;
   key: string;
   text: string;
-  depth: number;
 }
 
 const styles = stylex.create({
@@ -85,12 +86,12 @@ export function DocumentToc({ editor }: { editor: LexicalEditor | null }) {
             .filter(
               (block) =>
                 block.getType() === 'heading' &&
-                (block as unknown as { getTag(): string }).getTag() in HEADING_DEPTH,
+                (block as unknown as { getTag: () => string }).getTag() in HEADING_DEPTH,
             )
             .map((block) => ({
               key: block.getKey(),
               text: block.getTextContent(),
-              depth: HEADING_DEPTH[(block as unknown as { getTag(): string }).getTag()]!,
+              depth: HEADING_DEPTH[(block as unknown as { getTag: () => string }).getTag()]!,
             })),
         ),
       );
@@ -143,10 +144,10 @@ export function DocumentToc({ editor }: { editor: LexicalEditor | null }) {
       <div ref={listRef} {...stylex.props(styles.list)}>
         {entries.map((entry) => (
           <button
+            aria-current={entry.key === activeKey ? 'location' : undefined}
             key={entry.key}
             ref={entry.key === activeKey ? activeRef : undefined}
             type="button"
-            aria-current={entry.key === activeKey ? 'location' : undefined}
             onClick={() => {
               const element = editor?.getElementByKey(entry.key);
               if (!element) return;

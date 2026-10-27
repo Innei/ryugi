@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+
 import type { BoardSpec } from '../../shared/types';
-import { keepBoard, pruneKept, type KeptBoard } from '../lib/kept-boards';
+import { keepBoard, type KeptBoard, pruneKept } from '../lib/kept-boards';
 
 export function useKeptBoards(
   boards: [string, BoardSpec][],

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+
 import type { InspectorRect } from '../../shared/inspector';
 import type { BoardSpec } from '../../shared/types';
 import type { Inspector } from './useInspector';

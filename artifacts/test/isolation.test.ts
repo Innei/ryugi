@@ -1,6 +1,8 @@
 import fs from 'node:fs';
 import os from 'node:os';
+
 import { expect, test } from 'vitest';
+
 import { credentialsFile } from '../src/server/credentials';
 
 test('tests read credentials from a temporary config directory', () => {

@@ -1,8 +1,9 @@
 import { useCallback, useState } from 'react';
+
 import type { BoardHumanOp } from '../../shared/board-comments';
-import type { ArtifactFeed } from '../lib/feed';
 import type { ArtifactType } from '../../shared/types';
 import { boardCommentsFromMessage, type BoardCommentsState } from '../lib/board-comments';
+import type { ArtifactFeed } from '../lib/feed';
 import { useArtifactSocket } from './useArtifactSocket';
 
 export function useLocalFeed(type: ArtifactType, id: string): ArtifactFeed {

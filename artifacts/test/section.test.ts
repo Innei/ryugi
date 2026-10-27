@@ -1,4 +1,5 @@
 import { expect, test } from 'vitest';
+
 import { sectionLabel } from '../src/viewer/lib/section';
 
 const blocks = [

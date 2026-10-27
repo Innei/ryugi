@@ -1,5 +1,7 @@
 import path from 'node:path';
+
 import { describe, expect, test } from 'vitest';
+
 import { resolveInside } from '../src/server/paths';
 
 const root = path.resolve('/srv/board');

@@ -2,6 +2,7 @@ import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+
 import { afterEach, expect, test } from 'vitest';
 
 const script = path.resolve(__dirname, '../../hooks/start-artifacts.cjs');

@@ -19,10 +19,11 @@ import {
   V0,
 } from '@lobehub/icons';
 import * as stylex from '@stylexjs/stylex';
-import { useState, type ComponentType, type CSSProperties } from 'react';
-import { agentIconOf, type AgentIconKey } from './author';
-import { brand } from '../tokens.stylex';
+import { type ComponentType, type CSSProperties, useState } from 'react';
+
 import { t } from '../i18n';
+import { brand } from '../tokens.stylex';
+import { type AgentIconKey, agentIconOf } from './author';
 
 const SIZE = 20;
 
@@ -81,15 +82,15 @@ export function Avatar({ human, initial, name, src }: Props) {
   const icon = !human && name ? agentIconOf(name) : undefined;
   if (icon) {
     const Icon = ICONS[icon];
-    return <Icon.Avatar size={SIZE} shape="circle" style={{ flexShrink: 0 }} />;
+    return <Icon.Avatar shape="circle" size={SIZE} style={{ flexShrink: 0 }} />;
   }
   if (src && failed !== src) {
     return (
       <img
-        src={src}
         alt=""
-        width={SIZE}
         height={SIZE}
+        src={src}
+        width={SIZE}
         onError={() => setFailed(src)}
         {...stylex.props(styles.image)}
       />

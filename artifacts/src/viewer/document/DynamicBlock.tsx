@@ -1,21 +1,22 @@
 import { createContext, useContext, useEffect, useState } from 'react';
+
 import { HTML_SANDBOX, useSandboxFrame } from '../hooks/useSandboxFrame';
 import type { Channel } from './channel';
 import { clampFrameHeight, dynamicFrameSrc } from './dynamicFrame';
 
 export interface DynamicHost {
   artifact: string;
-  contentBase: string;
   channel: Channel;
+  contentBase: string;
   send: (message: unknown) => void;
 }
 
 export const DynamicHostContext = createContext<DynamicHost | null>(null);
 
 interface Props {
-  url: string;
   componentProps: Record<string, unknown>;
   initialHeight: number;
+  url: string;
 }
 
 export function DynamicBlock({ url, componentProps, initialHeight }: Props) {
@@ -54,13 +55,13 @@ export function DynamicBlock({ url, componentProps, initialHeight }: Props) {
     <div className="ryugi-dynamic" contentEditable={false} style={{ height }}>
       {src ? (
         <iframe
-          ref={frameRef}
-          title={url}
-          src={src}
-          sandbox={HTML_SANDBOX}
           allow="clipboard-write"
-          onLoad={onLoad}
+          ref={frameRef}
+          sandbox={HTML_SANDBOX}
+          src={src}
           style={{ display: 'block', width: '100%', height: '100%', border: 0 }}
+          title={url}
+          onLoad={onLoad}
         />
       ) : null}
     </div>

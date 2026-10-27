@@ -2,6 +2,7 @@
 import { act, createContext, type ReactNode, useContext, useEffect } from 'react';
 import * as client from 'react-dom/client';
 import { afterEach, beforeAll, describe, expect, test, vi } from 'vitest';
+
 import { createHostRoot } from '../src/runtime/host';
 
 vi.mock('react-dom/client', { spy: true });

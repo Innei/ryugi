@@ -1,15 +1,18 @@
 import crypto from 'node:crypto';
 import type http from 'node:http';
+
+import { isVisibility, type Publication, publishing } from '../shared/cloud';
+import { type CloudErrorDetails, cloudErrorDetails } from '../shared/cloud-error';
+import type { Locale } from '../shared/locale';
 import { artifactKeyOf, type ArtifactRef } from './artifacts';
+import type { AutoPublishOutcome } from './auto-publish';
 import { CALLBACK_PAGE_CSP, callbackPage } from './callback-page';
-import { isVisibility, publishing, type Publication } from '../shared/cloud';
-import { cloudErrorDetails, type CloudErrorDetails } from '../shared/cloud-error';
 import { readConfig, setProjectAutoPublish, updateArtifactConfig, type Visibility } from './config';
 import { clearCredentials, readCredentials, writeCredentials } from './credentials';
 import { hostIdFor } from './host-id';
 import { randomToken, send, sendJson } from './http';
+import { serverText } from './locales';
 import { packArtifact } from './pack';
-import type { AutoPublishOutcome } from './auto-publish';
 import { withCloudRuntime } from './publish-payload';
 import {
   autoPublishEnabled,
@@ -18,40 +21,38 @@ import {
   settingsFileFor,
   writeGlobalAutoPublish,
 } from './settings';
-import type { Locale } from '../shared/locale';
-import { serverText } from './locales';
 
 export interface CloudOptions {
-  origin: string;
   credentialsFile: string;
+  origin: string;
 }
 
 export interface InspectedArtifact {
   dir: string;
-  title: string;
-  reasons: string[];
   payload: Record<string, unknown> | null;
+  reasons: string[];
+  title: string;
 }
 
 interface CloudRoutesOptions extends CloudOptions {
   configFile: string;
-  project: string;
-  port: () => number;
   inspect: (ref: ArtifactRef) => Promise<InspectedArtifact | null>;
   onPublication?: (key: string, publication: Publication) => void;
+  port: () => number;
+  project: string;
 }
 
 interface CloudArtifact {
   id: string;
+  updatedAt: string;
   url: string;
   visibility: Visibility;
-  updatedAt: string;
 }
 
 const LOGIN_STATE_TTL_MS = 10 * 60 * 1000;
 const UPLOAD_CONCURRENCY = 6;
 const MAX_JSON_BODY = 4096;
-const CLOUD_ID = /^[A-Za-z0-9_-]{1,64}$/;
+const CLOUD_ID = /^[\w-]{1,64}$/;
 const ROUTE =
   /^\/api\/cloud\/(status|login|logout|artifacts|publish|publication|reserve|visibility|auto-publish|sync)(?:\/([^/]+)(?:\/([^/]+))?)?$/;
 

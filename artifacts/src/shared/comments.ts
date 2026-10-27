@@ -1,14 +1,14 @@
 export type Author = 'human' | 'agent';
 
 export interface Message {
-  id: string;
-  author: Author;
-  name?: string;
-  avatar?: string;
-  text: string;
   at: string;
-  editedAt?: string;
+  author: Author;
+  avatar?: string;
   deleted?: true;
+  editedAt?: string;
+  id: string;
+  name?: string;
+  text: string;
 }
 
 export interface Anchor {
@@ -17,17 +17,17 @@ export interface Anchor {
 }
 
 export interface Thread<A = Anchor> {
-  id: string;
   anchor: A;
+  id: string;
+  messages: Message[];
   status: 'open' | 'resolved';
   statusAt: string;
   statusBy?: Author;
-  messages: Message[];
 }
 
 export interface CommentsFile<A = Anchor> {
-  version: 1;
   threads: Thread<A>[];
+  version: 1;
 }
 
 type Loose<T> = { [K in keyof T]?: T[K] };
@@ -35,8 +35,8 @@ export interface IncomingThread extends Loose<Omit<Thread<unknown>, 'messages'>>
   messages?: Loose<Message>[];
 }
 export interface IncomingComments {
-  version?: number;
   threads: IncomingThread[];
+  version?: number;
 }
 
 export type HumanOp =
@@ -56,9 +56,9 @@ export type ThreadOp = Exclude<HumanOp, { op: 'create' }>;
 export type AgentThreadOp = Exclude<AgentOp, { op: 'add' }>;
 
 export interface AnchorSpec<A> {
-  read(value: unknown): A | null;
-  same(a: A, b: A): boolean;
   missing: string;
+  read: (value: unknown) => A | null;
+  same: (a: A, b: A) => boolean;
 }
 
 export const emptyComments = (): CommentsFile => ({ version: 1, threads: [] });
@@ -149,8 +149,8 @@ function mergeMessage(
 }
 
 export interface Person {
-  name?: string;
   avatar?: string;
+  name?: string;
 }
 
 const personOf = (who: Person | undefined): Person => ({
@@ -327,7 +327,7 @@ export function applyThreadOp<A>(
   who?: Person,
 ): CommentsFile<A> {
   switch (op.op) {
-    case 'reply':
+    case 'reply': {
       return updateThread(file, op.threadId, (t) => ({
         ...t,
         messages: [
@@ -335,11 +335,13 @@ export function applyThreadOp<A>(
           { id: newId(), author: 'human', ...personOf(who), text: op.text, at: now },
         ],
       }));
-    case 'edit':
+    }
+    case 'edit': {
       return updateThread(file, op.threadId, (t) =>
         updateHumanMessage(t, op.messageId, (m) => ({ ...m, text: op.text, editedAt: now })),
       );
-    case 'delete':
+    }
+    case 'delete': {
       return updateThread(file, op.threadId, (t) =>
         updateHumanMessage(t, op.messageId, (m) => ({
           ...m,
@@ -348,14 +350,16 @@ export function applyThreadOp<A>(
           editedAt: now,
         })),
       );
+    }
     case 'resolve':
-    case 'reopen':
+    case 'reopen': {
       return updateThread(file, op.threadId, (t) => ({
         ...t,
         status: op.op === 'resolve' ? 'resolved' : 'open',
         statusAt: now,
         statusBy: 'human',
       }));
+    }
   }
 }
 

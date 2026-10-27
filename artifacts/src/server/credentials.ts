@@ -1,11 +1,12 @@
 import fs from 'node:fs';
 import path from 'node:path';
+
 import { writeJsonAtomic } from './state';
 
 export interface Credentials {
+  login: string;
   origin: string;
   token: string;
-  login: string;
 }
 
 export function credentialsFile(

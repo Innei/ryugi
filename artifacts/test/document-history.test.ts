@@ -4,6 +4,7 @@ import { createHeadlessEditor } from '@lexical/headless';
 import { $createParagraphNode, $createTextNode, $getRoot } from 'lexical';
 import { LoroDoc } from 'loro-crdt';
 import { expect, test } from 'vitest';
+
 import { blockAuthors, readHistory, readHistoryState } from '../src/viewer/document/history';
 
 test('a selected causal prefix includes earlier edits from other peers', async () => {

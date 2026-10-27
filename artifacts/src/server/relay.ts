@@ -1,18 +1,19 @@
 import WebSocket from 'ws';
+
 import type { RelayReply } from '../shared/relay';
 
 export interface RelayClientOptions {
-  url: string;
-  version: string;
-  pollMs?: number;
-  heartbeatMs?: number;
-  handshakeTimeoutMs?: number;
-  token: () => string | null;
-  served: () => Map<string, string>;
   handle: (key: string, body: unknown, conn: string) => Promise<unknown>;
+  handshakeTimeoutMs?: number;
+  heartbeatMs?: number;
+  local?: () => { hostId: string; port: number; key: string };
   onActivity: () => void;
   onWatch?: (keys: Set<string>) => void;
-  local?: () => { hostId: string; port: number; key: string };
+  pollMs?: number;
+  served: () => Map<string, string>;
+  token: () => string | null;
+  url: string;
+  version: string;
 }
 
 const HEARTBEAT_MS = 25_000;

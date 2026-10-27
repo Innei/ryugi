@@ -3,7 +3,9 @@ import fs from 'node:fs';
 import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
+
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
+
 import { listen } from '../src/server/http';
 import { writeHtml } from './helpers';
 

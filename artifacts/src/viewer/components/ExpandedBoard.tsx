@@ -3,9 +3,10 @@ import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
 import { X } from 'lucide-react';
 import type { ReactNode, Ref } from 'react';
-import { isMediaBoard, type BoardSpec } from '../../shared/types';
-import { VideoPlayer } from './VideoPlayer';
+
+import { type BoardSpec, isMediaBoard } from '../../shared/types';
 import { t } from '../i18n';
+import { VideoPlayer } from './VideoPlayer';
 
 const styles = stylex.create({
   overlay: {
@@ -47,15 +48,15 @@ const styles = stylex.create({
 });
 
 interface ExpandedBoardProps {
-  id: string;
   board: BoardSpec;
-  src: string;
+  frameRef?: Ref<HTMLIFrameElement>;
+  id: string;
   interactive: boolean;
   onClose: () => void;
+  onFrameLoad?: () => void;
   parameterAction?: ReactNode;
   parameters?: ReactNode;
-  frameRef?: Ref<HTMLIFrameElement>;
-  onFrameLoad?: () => void;
+  src: string;
 }
 
 export function ExpandedBoard({
@@ -78,10 +79,10 @@ export function ExpandedBoard({
         </span>
         {parameterAction}
         <ActionIcon
+          aria-label={t('chrome.close')}
           icon={X}
           size="small"
           title={t('chrome.closeEsc')}
-          aria-label={t('chrome.close')}
           onClick={onClose}
         />
       </div>
@@ -91,12 +92,12 @@ export function ExpandedBoard({
             {...stylex.props(styles.media)}
             style={{ width: board.w, height: board.h, marginBottom: 36 }}
           >
-            <VideoPlayer src={src} title={board.title ?? id} barScale={1} barWidth={board.w} />
+            <VideoPlayer barScale={1} barWidth={board.w} src={src} title={board.title ?? id} />
           </div>
         ) : isMediaBoard(board) ? (
           <img
-            src={src}
             alt={board.title ?? id}
+            src={src}
             {...stylex.props(styles.image)}
             style={{ width: board.w }}
           />
@@ -112,10 +113,10 @@ export function ExpandedBoard({
           >
             <iframe
               ref={frameRef}
-              onLoad={onFrameLoad}
-              title={board.title ?? id}
-              src={src}
               sandbox="allow-scripts"
+              src={src}
+              title={board.title ?? id}
+              onLoad={onFrameLoad}
               {...stylex.props(styles.frame)}
               style={{
                 width: board.w,

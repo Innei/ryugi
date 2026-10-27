@@ -1,5 +1,6 @@
 import { DecoratorNode, type NodeKey, type SerializedLexicalNode, type Spread } from 'lexical';
 import type { ReactElement } from 'react';
+
 import { DynamicBlock } from './DynamicBlock';
 
 type SerializedDynamicNode = Spread<
@@ -58,9 +59,9 @@ export class DynamicNode extends DecoratorNode<ReactElement> {
   decorate() {
     return (
       <DynamicBlock
-        url={this.__url}
         componentProps={this.__props}
         initialHeight={this.__initialHeight}
+        url={this.__url}
       />
     );
   }

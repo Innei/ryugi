@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+
 import type {
   InspectorCommand,
   InspectorDetail,
@@ -13,8 +14,8 @@ import type {
 import { readInspectorReport } from '../lib/inspector';
 
 export interface InspectedFrame {
-  session: string;
   nodes: InspectorNode[];
+  session: string;
   truncated: boolean;
   tweaks: InspectorTweak[];
 }
@@ -29,12 +30,12 @@ export type InspectorInput = Extract<
 interface Options {
   enabled: boolean;
   mode?: 'select' | 'comment';
-  playing: ReadonlySet<string>;
   onInput: (boardId: string, input: InspectorInput) => void;
+  playing: ReadonlySet<string>;
 }
 interface RegisteredFrame {
-  element: HTMLIFrameElement;
   connection: string;
+  element: HTMLIFrameElement;
   session: string | null;
 }
 interface Target extends InspectorTarget {
@@ -45,18 +46,18 @@ interface BoardArea {
   rect: InspectorRect;
 }
 interface Area {
-  request: number;
   leaves: Map<string, Target[]>;
   query: { areas: BoardArea[]; base: Target[]; append: boolean; preview: boolean } | null;
+  request: number;
 }
 interface State {
+  details: Record<string, InspectorDetail>;
   frames: Record<string, InspectedFrame>;
+  hover: { boardId: string; rect: InspectorRect; id: number | null } | null;
+  previewTargets: Target[] | null;
+  revision: number;
   selection: InspectedSelection | null;
   targets: Target[];
-  previewTargets: Target[] | null;
-  hover: { boardId: string; rect: InspectorRect; id: number | null } | null;
-  details: Record<string, InspectorDetail>;
-  revision: number;
 }
 type Command = InspectorCommand extends infer T
   ? T extends InspectorCommand

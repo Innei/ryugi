@@ -1,4 +1,5 @@
 import { expect, test } from 'vitest';
+
 import { isNodeImage } from '../src/cli/process';
 
 test.each([

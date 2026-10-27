@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+
 import { typeFaviconHref } from '../../shared/type-icons';
 import type { ArtifactType } from '../../shared/types';
 

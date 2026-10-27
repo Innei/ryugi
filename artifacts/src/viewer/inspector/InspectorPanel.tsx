@@ -1,3 +1,5 @@
+import './inspector.css';
+
 import {
   ActionIcon,
   Button,
@@ -10,21 +12,21 @@ import {
 } from '@lobehub/ui';
 import { Circle, Copy, RotateCcw, X } from 'lucide-react';
 import { memo, useState } from 'react';
+
 import type { BoardSpec } from '../../shared/types';
 import type { Inspector } from '../hooks/useInspector';
+import { t } from '../i18n';
 import { Layers } from './Layers';
 import { Properties } from './Properties';
-import './inspector.css';
-import { t } from '../i18n';
 
 interface Props extends Pick<
   Inspector,
   'frames' | 'selection' | 'targets' | 'select' | 'hoverNode' | 'change' | 'reset'
 > {
   boards: [string, BoardSpec][];
-  playing: ReadonlySet<string>;
   enabled: boolean;
   onClose: () => void;
+  playing: ReadonlySet<string>;
 }
 const tabs = ['Properties', 'Code', 'Tweaks'] as const;
 
@@ -62,37 +64,37 @@ export const InspectorPanel = memo(function InspectorPanel({
   };
   return (
     <IconProvider config={{ 'aria-hidden': true }}>
-      <aside className="ryugi-inspector" data-chrome aria-label={t('inspector.label')}>
+      <aside data-chrome aria-label={t('inspector.label')} className="ryugi-inspector">
         <TabsRoot
+          size="small"
+          style={{ display: 'contents' }}
           value={tab}
+          variant="rounded"
           onValueChange={(value) => {
             if (tabs.includes(value as typeof tab)) setTab(value as typeof tab);
           }}
-          size="small"
-          variant="rounded"
-          style={{ display: 'contents' }}
         >
           <header className="ri-header">
             <TabsList
-              className="ri-tabs"
               activateOnFocus
-              style={{ alignSelf: 'center' }}
               aria-label={t('inspector.views')}
+              className="ri-tabs"
+              style={{ alignSelf: 'center' }}
             >
               <TabsIndicator />
               {tabs.map((name) => (
                 <TabsTab key={name} value={name}>
                   {t(`inspector.tab.${name}`)}
                   {name === 'Tweaks' && tweaks.length > 0 && (
-                    <Circle className="ri-change-dot" size={4} fill="currentColor" aria-hidden />
+                    <Circle aria-hidden className="ri-change-dot" fill="currentColor" size={4} />
                   )}
                 </TabsTab>
               ))}
             </TabsList>
             <ActionIcon
+              aria-label={t('inspector.close')}
               icon={X}
               size="small"
-              aria-label={t('inspector.close')}
               title={t('inspector.close')}
               onClick={onClose}
             />
@@ -100,11 +102,11 @@ export const InspectorPanel = memo(function InspectorPanel({
           <Layers
             boards={boards}
             frames={frames}
-            selection={selection}
-            targets={targets}
+            hoverNode={hoverNode}
             playing={playing}
             select={select}
-            hoverNode={hoverNode}
+            selection={selection}
+            targets={targets}
           />
           <div className="ri-node-meta">
             <code>
@@ -118,9 +120,9 @@ export const InspectorPanel = memo(function InspectorPanel({
               <span className="ri-node-id">
                 {`${selection!.boardId}#${node.id}`}
                 <ActionIcon
+                  aria-label={t('inspector.copyNode')}
                   icon={Copy}
                   size={{ blockSize: 16, size: 10 }}
-                  aria-label={t('inspector.copyNode')}
                   title={t('inspector.copyNode')}
                   onClick={() => void copy(`${selection!.boardId}#${node.id}`)}
                 />
@@ -131,7 +133,7 @@ export const InspectorPanel = memo(function InspectorPanel({
             </span>
             {node && (
               <span className="ri-live">
-                <Circle size={6} fill="currentColor" aria-hidden />
+                <Circle aria-hidden fill="currentColor" size={6} />
                 {t('inspector.live')}
               </span>
             )}
@@ -145,9 +147,9 @@ export const InspectorPanel = memo(function InspectorPanel({
             <TabsPanel value="Properties">
               {node && enabled ? (
                 <Properties
+                  change={change}
                   key={`${selection!.boardId}:${frames[selection!.boardId]?.session}:${node.id}`}
                   node={node}
-                  change={change}
                 />
               ) : (
                 <p className="ri-empty">
@@ -160,7 +162,7 @@ export const InspectorPanel = memo(function InspectorPanel({
                 <div className="ri-code">
                   <div className="ri-code-heading">
                     <h2>{t('inspector.computedCss')}</h2>
-                    <Button size="small" type="text" icon={Copy} onClick={() => void copy(css)}>
+                    <Button icon={Copy} size="small" type="text" onClick={() => void copy(css)}>
                       {t('inspector.copy')}
                     </Button>
                   </div>
@@ -168,9 +170,9 @@ export const InspectorPanel = memo(function InspectorPanel({
                   <div className="ri-code-heading">
                     <h2>HTML</h2>
                     <Button
+                      icon={Copy}
                       size="small"
                       type="text"
-                      icon={Copy}
                       onClick={() => void copy(node.html)}
                     >
                       {t('inspector.copy')}
@@ -209,10 +211,10 @@ export const InspectorPanel = memo(function InspectorPanel({
                 </div>
                 {!tweaks.length && <p className="ri-hint">{t('inspector.noChanges')}</p>}
                 <Button
-                  icon={RotateCcw}
-                  size="small"
                   block
                   disabled={!tweaks.length}
+                  icon={RotateCcw}
+                  size="small"
                   onClick={reset}
                 >
                   {t('inspector.resetPreview')}
@@ -221,7 +223,7 @@ export const InspectorPanel = memo(function InspectorPanel({
             </TabsPanel>
           </div>
           <footer className="ri-footer">
-            <Circle className="ri-status-dot" size={5} fill="currentColor" aria-hidden />
+            <Circle aria-hidden className="ri-status-dot" fill="currentColor" size={5} />
             {tweaks.length
               ? t('inspector.previewChanges', { count: tweaks.length })
               : t('inspector.liveInspection')}

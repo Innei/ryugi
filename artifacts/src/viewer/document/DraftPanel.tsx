@@ -1,9 +1,10 @@
 import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
 import type { Ref } from 'react';
+
+import { t } from '../i18n';
 import { PanelFrame } from './CommentCard';
 import { Composer } from './Composer';
-import { t } from '../i18n';
 
 export const DRAFT_WIDTH = 340;
 export const LEAVE_MS = 120;
@@ -55,16 +56,16 @@ const styles = stylex.create({
 });
 
 interface Props {
-  left: number;
-  top: number;
-  quote: string;
   initial: string;
-  restored: boolean;
   leaving: boolean;
+  left: number;
+  onCancel: () => void;
   onChange: (text: string) => void;
   onSubmit: (text: string) => void | Promise<boolean>;
-  onCancel: () => void;
+  quote: string;
   ref?: Ref<HTMLDivElement>;
+  restored: boolean;
+  top: number;
 }
 
 export function DraftPanel({
@@ -96,9 +97,9 @@ export function DraftPanel({
           autoFocus
           initial={initial}
           placeholder={t('document.draftPlaceholder')}
+          onCancel={onCancel}
           onChange={onChange}
           onSubmit={onSubmit}
-          onCancel={onCancel}
         />
       </PanelFrame>
     </div>

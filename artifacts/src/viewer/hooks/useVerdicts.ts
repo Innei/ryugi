@@ -1,20 +1,21 @@
 import { useMemo, useState } from 'react';
+
 import type { BoardHumanOp, BoardThread } from '../../shared/board-comments';
 import type { CanvasSpec } from '../../shared/types';
 import {
+  type GroupVerdict,
   groupVerdict,
   verdictProgress,
   verifyGroupsOn,
-  type GroupVerdict,
 } from '../../shared/verdicts';
 
 interface Options {
   canvas: CanvasSpec | null | undefined;
-  page: string | null;
-  threads: BoardThread[];
-  stale: ReadonlySet<string>;
-  versions: Record<string, number>;
   comment?: (op: BoardHumanOp) => Promise<unknown>;
+  page: string | null;
+  stale: ReadonlySet<string>;
+  threads: BoardThread[];
+  versions: Record<string, number>;
 }
 
 export function useVerdicts({ canvas, page, threads, stale, versions, comment }: Options) {

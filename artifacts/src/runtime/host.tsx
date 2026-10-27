@@ -11,8 +11,8 @@ interface Entry {
 }
 
 interface Options {
-  wrap: (children: ReactNode) => ReactNode;
   onError: (error: unknown) => void;
+  wrap: (children: ReactNode) => ReactNode;
 }
 
 interface BoundaryProps {
@@ -68,8 +68,8 @@ export function createHostRoot({ wrap, onError }: Options) {
     return wrap(
       hosts.map(([el, entry]) =>
         createPortal(
-          <Boundary onError={onError} revision={entry.revision}>
-            <HostView view={entry.view} revision={entry.revision} />
+          <Boundary revision={entry.revision} onError={onError}>
+            <HostView revision={entry.revision} view={entry.view} />
           </Boundary>,
           el,
           entry.key,

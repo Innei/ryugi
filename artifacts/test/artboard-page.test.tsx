@@ -2,6 +2,7 @@
 import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
+
 import type { CanvasLayout, CanvasSpec } from '../src/shared/types';
 import { useArtboardPage } from '../src/viewer/hooks/useArtboardPage';
 

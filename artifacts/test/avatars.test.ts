@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'vitest';
+
 import { createAvatars, githubAvatar, gravatarAvatar } from '../src/server/avatars';
 
 const png = new Uint8Array([137, 80, 78, 71]);

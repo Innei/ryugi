@@ -1,12 +1,13 @@
 import { Accordion, ColorPicker, Input, InputNumber, Segmented, Select } from '@lobehub/ui';
 import { ArrowDown, ArrowRight, Ban, Ellipsis, Minus, SquareDashed } from 'lucide-react';
-import { useEffect, useId, useState, type ReactNode } from 'react';
+import { type ReactNode, useEffect, useId, useState } from 'react';
+
 import type { InspectorProperty, InspectorSelection } from '../../shared/inspector';
 import { t } from '../i18n';
 
 interface Props {
-  node: InspectorSelection;
   change: (property: InspectorProperty, value: string) => void;
+  node: InspectorSelection;
 }
 const numeric = (value: string) =>
   Number.isFinite(parseFloat(value)) ? Math.round(parseFloat(value) * 100) / 100 : 0;
@@ -73,22 +74,22 @@ function NumberField({
   const controlId = useId();
   const input = (
     <InputNumber
-      id={controlId}
-      size="small"
       controls={false}
-      value={numeric(node.css[property])}
-      suffix={unit || undefined}
-      min={min}
+      id={controlId}
       max={max}
+      min={min}
+      size="small"
       step={step}
+      style={{ width: '100%' }}
+      suffix={unit || undefined}
+      value={numeric(node.css[property])}
       onChange={(value) => {
         if (value !== null) change(property, String(value) + unit);
       }}
-      style={{ width: '100%' }}
     />
   );
   return (
-    <Field label={label} controlId={controlId}>
+    <Field controlId={controlId} label={label}>
       {sizing ? (
         <div className="ri-number-sizing">
           <div className="ri-size-input">{input}</div>
@@ -114,16 +115,16 @@ function Choice({
     ? values
     : [...values, [value, value] as [string, string]];
   return (
-    <Field label={label} controlId={controlId}>
+    <Field controlId={controlId} label={label}>
       <Select
-        size="small"
         id={controlId}
-        value={value}
         options={options(available)}
+        size="small"
+        style={{ width: '100%' }}
+        value={value}
         onChange={(next) => {
           if (typeof next === 'string') change(property, next);
         }}
-        style={{ width: '100%' }}
       />
     </Field>
   );
@@ -213,9 +214,9 @@ export function Properties({ node, change }: Props) {
         <NumberField
           {...props}
           label={t('inspector.grow')}
+          max={100}
           property="flex-grow"
           unit=""
-          max={100}
         />
       </section>
       <section className="ri-section">
@@ -237,19 +238,19 @@ export function Properties({ node, change }: Props) {
           <>
             <Field label={t('inspector.direction')}>
               <Segmented
-                size="small"
                 block
+                size="small"
                 value={node.css['flex-direction']}
                 options={[
                   {
                     value: 'row',
-                    icon: <ArrowRight size={14} aria-hidden />,
+                    icon: <ArrowRight aria-hidden size={14} />,
                     label: <span className="ri-sr-only">{t('inspector.horizontal')}</span>,
                     title: t('inspector.horizontal'),
                   },
                   {
                     value: 'column',
-                    icon: <ArrowDown size={14} aria-hidden />,
+                    icon: <ArrowDown aria-hidden size={14} />,
                     label: <span className="ri-sr-only">{t('inspector.vertical')}</span>,
                     title: t('inspector.vertical'),
                   },
@@ -259,9 +260,9 @@ export function Properties({ node, change }: Props) {
             </Field>
             <Field label={t('inspector.align')}>
               <Segmented
-                size="small"
                 block
                 aria-label={t('inspector.align')}
+                size="small"
                 value={node.css['align-items']}
                 options={options([
                   ['flex-start', t('inspector.start')],
@@ -280,10 +281,10 @@ export function Properties({ node, change }: Props) {
         <h2>{t('inspector.appearance')}</h2>
         <Field label={t('inspector.fill')}>
           <ColorPicker
-            size="small"
-            trigger="field"
             alpha
             recent={false}
+            size="small"
+            trigger="field"
             value={pickerColor(node.css['background-color'])}
             onChange={(value) => change('background-color', value)}
           />
@@ -291,10 +292,10 @@ export function Properties({ node, change }: Props) {
         <NumberField
           {...props}
           label={t('inspector.opacity')}
-          property="opacity"
-          unit=""
           max={1}
+          property="opacity"
           step={0.1}
+          unit=""
         />
         <NumberField {...props} label={t('inspector.radius')} property="border-radius" />
         <Choice
@@ -304,29 +305,29 @@ export function Properties({ node, change }: Props) {
           values={[
             [
               'none',
-              <span className="ri-option">
-                <Ban size={13} aria-hidden />
+              <span className="ri-option" key="none">
+                <Ban aria-hidden size={13} />
                 {t('inspector.none')}
               </span>,
             ],
             [
               'solid',
-              <span className="ri-option">
-                <Minus size={13} aria-hidden />
+              <span className="ri-option" key="solid">
+                <Minus aria-hidden size={13} />
                 {t('inspector.solid')}
               </span>,
             ],
             [
               'dashed',
-              <span className="ri-option">
-                <SquareDashed size={13} aria-hidden />
+              <span className="ri-option" key="dashed">
+                <SquareDashed aria-hidden size={13} />
                 {t('inspector.dashed')}
               </span>,
             ],
             [
               'dotted',
-              <span className="ri-option">
-                <Ellipsis size={13} aria-hidden />
+              <span className="ri-option" key="dotted">
+                <Ellipsis aria-hidden size={13} />
                 {t('inspector.dotted')}
               </span>,
             ],
@@ -334,15 +335,10 @@ export function Properties({ node, change }: Props) {
         />
       </section>
       <Accordion
-        indicatorPlacement="end"
-        gap={0}
         keepMounted
         classNames={{ item: 'ri-section' }}
-        styles={{
-          header: { margin: 0 },
-          trigger: { padding: 0, fontSize: 13, fontWeight: 550 },
-          content: { padding: '12px 0 0' },
-        }}
+        gap={0}
+        indicatorPlacement="end"
         items={[
           {
             key: 'typography',
@@ -352,15 +348,15 @@ export function Properties({ node, change }: Props) {
                 <NumberField
                   {...props}
                   label={t('inspector.fontSize')}
-                  property="font-size"
                   min={1}
+                  property="font-size"
                 />
                 <Field label={t('inspector.color')}>
                   <ColorPicker
-                    size="small"
-                    trigger="field"
                     alpha
                     recent={false}
+                    size="small"
+                    trigger="field"
                     value={pickerColor(node.css.color)}
                     onChange={(value) => change('color', value)}
                   />
@@ -377,14 +373,19 @@ export function Properties({ node, change }: Props) {
                   aria-label={t('inspector.shadow')}
                   size="small"
                   value={shadow}
-                  onChange={(event) => setShadow(event.target.value)}
                   onBlur={() => change('box-shadow', shadow)}
+                  onChange={(event) => setShadow(event.target.value)}
                   onPressEnter={(event) => event.currentTarget.blur()}
                 />
               </Field>
             ),
           },
         ]}
+        styles={{
+          header: { margin: 0 },
+          trigger: { padding: 0, fontSize: 13, fontWeight: 550 },
+          content: { padding: '12px 0 0' },
+        }}
       />
     </>
   );

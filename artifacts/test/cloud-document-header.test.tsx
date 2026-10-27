@@ -2,6 +2,7 @@
 import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeAll, expect, test, vi } from 'vitest';
+
 import { TopBar } from '../src/viewer/document/TopBar';
 
 vi.mock('@stylexjs/stylex', async (original) => ({
