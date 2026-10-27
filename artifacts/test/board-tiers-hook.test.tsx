@@ -84,6 +84,38 @@ test('a board that reports ready is captured at the pixel ratio and its snapshot
   expect(state('a')).toMatchObject({ mounted: true, overlay: false, hidden: false });
 });
 
+test('a change reported before the board is ready is not captured', async () => {
+  await render();
+  const a = frame('a');
+  await a.post({ type: 'ryugi:board:changed' });
+  expect(a.posted).not.toHaveBeenCalled();
+  await a.post({ type: 'ryugi:board:ready' });
+  expect(a.posted).toHaveBeenCalledTimes(1);
+});
+
+test('a frame that remounts must report ready again before a change is captured', async () => {
+  await render();
+  const a = frame('a');
+  await a.post({ type: 'ryugi:board:ready' });
+  const { request } = a.posted.mock.calls[0]![0] as { request: number };
+  await a.post({ type: 'ryugi:board:snapshot', request, blob: blob('shot-a'), width: 400, height: 300 });
+  act(() => result.frameRef('a')(null));
+  const again = frame('a');
+  await again.post({ type: 'ryugi:board:changed' });
+  expect(again.posted).not.toHaveBeenCalled();
+});
+
+test('a frame that loads a new document must report ready again before a change is captured', async () => {
+  await render();
+  const a = frame('a');
+  await a.post({ type: 'ryugi:board:ready' });
+  const { request } = a.posted.mock.calls[0]![0] as { request: number };
+  await a.post({ type: 'ryugi:board:snapshot', request, blob: blob('shot-a'), width: 400, height: 300 });
+  act(() => result.loaded('a'));
+  await a.post({ type: 'ryugi:board:changed' });
+  expect(a.posted).toHaveBeenCalledTimes(1);
+});
+
 test('while zooming, a ready board with a snapshot hides its frame under the snapshot', async () => {
   await render();
   const a = frame('a');

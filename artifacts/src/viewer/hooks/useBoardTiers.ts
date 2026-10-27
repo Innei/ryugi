@@ -42,6 +42,7 @@ export function useBoardTiers({ artifact, boards, versions, pending, view, scali
   const dpr = typeof devicePixelRatio === 'number' && devicePixelRatio > 0 ? devicePixelRatio : 1;
   const scheme = useColorScheme();
   const frames = useRef(new Map<string, HTMLIFrameElement>());
+  const reported = useRef(new Set<string>());
   const refs = useRef(new Map<string, (element: HTMLIFrameElement | null) => void>());
 
   const html = boards.filter(([id, board]) => !isMediaBoard(board) && boardReady(versions, board.file) && !pending.has(id));
@@ -141,10 +142,11 @@ export function useBoardTiers({ artifact, boards, versions, pending, view, scali
       const id = [...frames.current].find(([, element]) => element.contentWindow === event.source)?.[0];
       if (!id) return;
       if (type === 'ryugi:board:ready') {
+        reported.current.add(id);
         controller.ready(id);
         capture(id);
       } else if (type === 'ryugi:board:changed') {
-        capture(id);
+        if (reported.current.has(id)) capture(id);
       } else if (type === 'ryugi:board:snapshot') {
         const current = inflight.current;
         if (!current || current.id !== id || event.data.request !== current.request) return;
@@ -171,6 +173,7 @@ export function useBoardTiers({ artifact, boards, versions, pending, view, scali
         return;
       }
       frames.current.delete(id);
+      reported.current.delete(id);
       queue.current = queue.current.filter((queued) => queued !== id);
       if (inflight.current?.id !== id) return;
       window.clearTimeout(inflight.current.timer);
@@ -179,7 +182,10 @@ export function useBoardTiers({ artifact, boards, versions, pending, view, scali
     });
     return refs.current.get(id)!;
   }, []);
-  const loaded = useCallback((id: string) => controller.loaded(id), [controller]);
+  const loaded = useCallback((id: string) => {
+    reported.current.delete(id);
+    controller.loaded(id);
+  }, [controller]);
 
   const media = boards.filter(([, board]) => isMediaBoard(board));
   const mediaTiers = chooseTiers({ boards: media.map(([id, board]) => ({ id, x: board.x, y: board.y, w: board.w, h: board.h })), view, viewport, pinned: new Set(), snapshots: new Set(media.map(([id]) => id)) });
