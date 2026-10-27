@@ -143,25 +143,47 @@ for (const forbiddenText of forbiddenTexts) {
 
 echo "SessionStart hook output tests"
 
-# Registration shape: the hook must declare shell:"bash" so Claude Code on
+# Registration shape: every hook must declare shell:"bash" so Claude Code on
 # Windows dispatches via Git Bash (or fails with an actionable error) instead
 # of PowerShell/cmd.exe, whose parsers break on the quoted command string
 # (PowerShell ParserError; cmd.exe quote-stripping on paths with metacharacters).
+#
+# VS Code Copilot ignores shell:"bash" and runs the `command` string through
+# PowerShell regardless (#2189). The optional `powershell` key supplies a
+# PowerShell-native form of the same dispatch: the `&` call operator makes the
+# quoted plugin-root path parse as a command invocation instead of a string
+# expression followed by a bareword.
 if node -e '
 const hooks = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"));
-const entry = hooks.hooks.SessionStart[0].hooks[0];
-if (entry.shell !== "bash") {
-  console.error(`SessionStart hook shell is ${JSON.stringify(entry.shell)}, expected "bash"`);
-  process.exit(1);
+const failures = [];
+for (const [event, groups] of Object.entries(hooks.hooks)) {
+  for (const group of groups) {
+    for (const entry of group.hooks ?? []) {
+      if (entry.type !== "command") continue;
+      const match = /run-hook\.cmd" (\S+)$/.exec(entry.command ?? "");
+      if (!match) {
+        failures.push(`${event}: unexpected command shape: ${entry.command}`);
+        continue;
+      }
+      if (entry.shell !== "bash") {
+        failures.push(`${event}: shell is ${JSON.stringify(entry.shell)}, expected "bash"`);
+      }
+      if (typeof entry.powershell !== "string") {
+        failures.push(`${event}: missing powershell form for VS Code Copilot (#2189)`);
+      } else if (entry.powershell !== `& ${entry.command}`) {
+        failures.push(`${event}: powershell form is ${entry.powershell}, expected "& " + command`);
+      }
+    }
+  }
 }
-if (!/run-hook\.cmd" session-start$/.test(entry.command)) {
-  console.error(`unexpected SessionStart command shape: ${entry.command}`);
+if (failures.length) {
+  console.error(failures.join("\n"));
   process.exit(1);
 }
 ' "$REPO_ROOT/hooks/hooks.json"; then
-    pass "hooks.json registers SessionStart with shell:bash dispatch"
+    pass "hooks.json dispatches every hook through bash and PowerShell"
 else
-    fail "hooks.json registers SessionStart with shell:bash dispatch"
+    fail "hooks.json dispatches every hook through bash and PowerShell"
 fi
 
 claude_home="$(make_home claude-code)"
@@ -246,6 +268,49 @@ assert_command_output \
     PATH="" \
     CLAUDE_PLUGIN_ROOT="$REPO_ROOT" \
     "$bash_bin" "$WRAPPER_UNDER_TEST" session-start
+
+# On a Unix system with zsh but no bash (#2503), the harness can't honour
+# shell:"bash" and runs run-hook.cmd with zsh or sh. $BASH is unset there, so
+# the wrapper must find zsh, which runs the hook scripts unchanged. sh only
+# counts when it isn't bash (Git Bash's and macOS's sh are bash, which sets
+# $BASH and never reaches the fallback).
+posix_sh="$(command -v sh)"
+if [[ -n "$(env -i "$posix_sh" -c 'echo "${BASH:-}"')" ]]; then
+    posix_sh=""
+fi
+no_bash_bin="$TEST_ROOT/no-bash/bin"
+mkdir -p "$no_bash_bin"
+if zsh_bin="$(command -v zsh)"; then
+    ln -s "$zsh_bin" "$no_bash_bin/zsh"
+    for runner_bin in "$zsh_bin" ${posix_sh:+"$posix_sh"}; do
+        assert_command_output \
+            "run-hook.cmd run by ${runner_bin##*/} without bash dispatches session-start through zsh" \
+            "nested" \
+            "" \
+            "" \
+            "$(make_home "no-bash-${runner_bin##*/}")" \
+            PATH="$no_bash_bin" \
+            CLAUDE_PLUGIN_ROOT="$REPO_ROOT" \
+            "$runner_bin" "$WRAPPER_UNDER_TEST" session-start
+    done
+else
+    echo "  [SKIP] run-hook.cmd without bash: zsh not installed"
+fi
+
+# With neither bash nor zsh, exit 0 quietly like the Windows half: the plugin
+# still works, just without the injected context.
+if [[ -n "$posix_sh" ]]; then
+    no_shell_rc=0
+    no_shell_out="$(env -i PATH="$TEST_ROOT/no-shell" HOME="$TEST_ROOT" CLAUDE_PLUGIN_ROOT="$REPO_ROOT" \
+        "$posix_sh" "$WRAPPER_UNDER_TEST" session-start 2>&1)" || no_shell_rc=$?
+    if [[ "$no_shell_rc" -eq 0 && -z "$no_shell_out" ]]; then
+        pass "run-hook.cmd with neither bash nor zsh exits 0 with no output"
+    else
+        fail "run-hook.cmd with neither bash nor zsh exits 0 with no output (rc=$no_shell_rc, out=$no_shell_out)"
+    fi
+else
+    echo "  [SKIP] run-hook.cmd with neither bash nor zsh: sh is bash here"
+fi
 
 # Run by bare filename from inside hooks/ ($0 has no slash), the plugin root
 # must still resolve.

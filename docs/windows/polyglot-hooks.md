@@ -51,6 +51,7 @@ hooks/
           {
             "type": "command",
             "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook.cmd\" session-start",
+            "powershell": "& \"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook.cmd\" session-start",
             "shell": "bash",
             "async": false
           }
@@ -62,6 +63,15 @@ hooks/
 ```
 
 The path is quoted because `${CLAUDE_PLUGIN_ROOT}` may contain spaces.
+
+### The `powershell` key
+
+GitHub Copilot (the CLI and VS Code) on Windows runs hook commands through
+PowerShell regardless of the `shell` key (#2189), where a leading quoted path
+parses as a string expression and the trailing bareword is an error
+("Unexpected token 'session-start'"). Copilot uses the `powershell` key
+instead of `command` when it is present, and it gives the same dispatch with
+the `&` call operator. Claude Code ignores the key.
 
 ## How `run-hook.cmd` Works at a High Level
 
@@ -98,8 +108,13 @@ afterward.
 
 1. `: << 'CMDBLOCK'` opens a heredoc on a no-op command.
 2. The entire CMD batch block is consumed by the heredoc and ignored.
-3. After `CMDBLOCK`, bash resolves the script directory and `exec`s the named
-   extensionless script directly.
+3. After `CMDBLOCK`, the wrapper cuts `$0` at its last `/` or `\` and keeps the
+   result relative — no `dirname` and no `$(cd … && pwd)` subshell, because
+   the `exec` follows immediately and the working directory has not changed.
+4. It picks a shell: `$BASH` when the harness started this file with bash, else
+   `bash` on `PATH`, else `zsh`, else it exits `0` silently like the Windows
+   half. A harness on a Unix box without bash starts this file with `zsh` or
+   `sh` directly (#2503); the hook scripts run unchanged under `zsh`.
 
 ### Key design decisions
 
@@ -109,6 +124,7 @@ afterward.
 | No `-l` (login shell) | Not needed; hook scripts should be self-contained and not depend on login-shell PATH setup |
 | No `cygpath` | Bash receives the Windows path directly and handles it correctly; `cygpath` was needed by the old `-c "..."` invocation pattern, not by direct exec |
 | Silent exit on no-bash | Avoids breaking the plugin for users who don't have Git for Windows; hook context injection is skipped gracefully |
+| No subshell, no PATH lookup | A fork costs tens of milliseconds under Git Bash on Windows and this runs on every startup, `/clear`, and compaction (#2081); `$BASH` and relative paths need neither |
 
 ## Writing Cross-Platform Hook Scripts
 
