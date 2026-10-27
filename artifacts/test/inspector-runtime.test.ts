@@ -4,7 +4,7 @@ import { injectRuntime } from '../src/server/inject';
 
 let posted: Record<string, any>[];
 let root: HTMLElement;
-let onMessage: ((event: MessageEvent) => void) | undefined;
+const onMessage: EventListener[] = [];
 
 beforeEach(() => {
   document.body.innerHTML = '<main aria-label="Article"><h1>Heading</h1><section id="card" style="color: red !important; padding: 12px"><button>Continue</button></section></main>';
@@ -13,7 +13,7 @@ beforeEach(() => {
   vi.spyOn(window.parent, 'postMessage').mockImplementation((message) => posted.push(message));
   const add = window.addEventListener.bind(window);
   vi.spyOn(window, 'addEventListener').mockImplementation(((type: string, listener: EventListener, options?: boolean | AddEventListenerOptions) => {
-    if (type === 'message') onMessage = listener as (event: MessageEvent) => void;
+    if (type === 'message') onMessage.push(listener);
     add(type, listener, options);
   }) as typeof window.addEventListener);
   const html = injectRuntime('<p>test</p>', { inspector: true } as Parameters<typeof injectRuntime>[1]);
@@ -23,8 +23,7 @@ beforeEach(() => {
 
 afterEach(() => {
   command('disable');
-  if (onMessage) window.removeEventListener('message', onMessage as EventListener);
-  onMessage = undefined;
+  for (const listener of onMessage.splice(0)) window.removeEventListener('message', listener);
   vi.restoreAllMocks();
   document.body.replaceChildren();
 });

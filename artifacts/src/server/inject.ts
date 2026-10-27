@@ -1,4 +1,5 @@
 import { installInspector } from '../inspector/runtime';
+import { installSnapshot, serializeBoard } from '../inspector/snapshot';
 import { COMMENT_CURSOR, INSPECTOR_PROPERTIES } from '../shared/inspector';
 import { tweakTools } from '../shared/tweaks';
 import { installTweaks } from '../runtime/tweaks';
@@ -120,7 +121,7 @@ const UI_MARKER = /<ryugi-(?!icon(?:\s|>))[a-z0-9-]+(?:\s|>)/i;
 const UI_META = /<meta[^>]+name=["']ryugi-ui["'][^>]*>/i;
 
 export function injectRuntime(html: string, options: { uiRuntimeUrl?: string; embedded?: boolean; inspector?: boolean } = {}): string {
-  const inspect = options.inspector ? `;(${installTweaks.toString().replace(/\n/g, ' ')})(window,${tweakTools.toString().replace(/\n/g, ' ')});(${installInspector.toString().replace(/\n/g, ' ')})(window,${JSON.stringify(INSPECTOR_PROPERTIES)},${JSON.stringify(COMMENT_CURSOR)});` : '';
+  const inspect = options.inspector ? `;(${installTweaks.toString().replace(/\n/g, ' ')})(window,${tweakTools.toString().replace(/\n/g, ' ')});(${installInspector.toString().replace(/\n/g, ' ')})(window,${JSON.stringify(INSPECTOR_PROPERTIES)},${JSON.stringify(COMMENT_CURSOR)});;(${installSnapshot.toString().replace(/\n/g, ' ')})(window,${serializeBoard.toString().replace(/\n/g, ' ')});` : '';
   const tag = `${options.embedded ? EMBEDDED_STYLE : ''}<script>${inspect || RUNTIME_LINE}</script>`;
   const ui =
     options.uiRuntimeUrl && !options.inspector && (UI_MARKER.test(html) || UI_META.test(html))

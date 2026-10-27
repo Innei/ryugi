@@ -317,3 +317,74 @@ test('a finger landing during an animated fit stops it where it is', () => {
   expect(shown()).toEqual(caught);
   vi.restoreAllMocks();
 });
+
+test('only a continuous zoom marks the canvas as scaling, until 150 ms after its last step', () => {
+  vi.useFakeTimers();
+  try {
+    render('select');
+    act(() => panZoom.wheelAt?.({ deltaX: 0, deltaY: -10, x: 100, y: 100, zoom: true }));
+    expect(panZoom.scaling).toBe(false);
+    act(() => vi.advanceTimersByTime(120));
+    act(() => panZoom.zoomBy(1.2));
+    expect(panZoom.scaling).toBe(false);
+    act(() => vi.advanceTimersByTime(50));
+    act(() => panZoom.wheelAt?.({ deltaX: 0, deltaY: -10, x: 100, y: 100, zoom: true }));
+    expect(panZoom.scaling).toBe(true);
+    act(() => vi.advanceTimersByTime(149));
+    expect(panZoom.scaling).toBe(true);
+    act(() => vi.advanceTimersByTime(1));
+    expect(panZoom.scaling).toBe(false);
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+test('a slower step during a continuous zoom keeps the canvas scaling', () => {
+  vi.useFakeTimers();
+  try {
+    render('select');
+    act(() => panZoom.zoomBy(1.1));
+    act(() => vi.advanceTimersByTime(16));
+    act(() => panZoom.zoomBy(1.1));
+    expect(panZoom.scaling).toBe(true);
+    act(() => vi.advanceTimersByTime(130));
+    act(() => panZoom.zoomBy(1.1));
+    act(() => vi.advanceTimersByTime(140));
+    expect(panZoom.scaling).toBe(true);
+    act(() => vi.advanceTimersByTime(10));
+    expect(panZoom.scaling).toBe(false);
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+test('panning by wheel, drag or frame input never marks the canvas as scaling', () => {
+  vi.useFakeTimers();
+  try {
+    const viewport = render('hand');
+    act(() => panZoom.wheelAt?.({ deltaX: 30, deltaY: 40, x: 100, y: 100, zoom: false }));
+    act(() => panZoom.panBy?.(10, 10));
+    pointer(viewport, 'pointerdown');
+    act(() => {
+      viewport.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, pointerId: 1, clientX: 60, clientY: 50 }));
+    });
+    expect(panZoom.scaling).toBe(false);
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+test('size follows the viewport element as it resizes', () => {
+  const observers: { callback: () => void; target?: Element }[] = [];
+  vi.stubGlobal('ResizeObserver', class {
+    entry: { callback: () => void; target?: Element };
+    constructor(callback: () => void) { this.entry = { callback }; observers.push(this.entry); }
+    observe(target: Element) { this.entry.target = target; }
+    disconnect() {}
+  });
+  const viewport = render('hand');
+  Object.defineProperty(viewport, 'clientWidth', { configurable: true, value: 1280 });
+  Object.defineProperty(viewport, 'clientHeight', { configurable: true, value: 720 });
+  act(() => observers.find((observer) => observer.target === viewport)!.callback());
+  expect(panZoom.size).toEqual({ width: 1280, height: 720 });
+});

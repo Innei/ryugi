@@ -10,6 +10,7 @@ import { PhoneBoard } from '../components/PhoneBoard';
 import { QuestionSheet, SHEET_PEEK } from '../components/QuestionSheet';
 import { useArtboardPage } from '../hooks/useArtboardPage';
 import { usePanZoom } from '../hooks/usePanZoom';
+import { visibleRenders } from '../lib/board-tiers';
 import { useVerdicts } from '../hooks/useVerdicts';
 import type { BoardCommentsState } from '../lib/board-comments';
 import { openingQuestion, questionList, roundsOf, stepQuestion, type Question } from '../lib/questions';
@@ -54,7 +55,7 @@ interface Props {
 const NO_THREADS: never[] = [];
 
 export function PhoneArtboard({ id, canvas, layout, warnings, pending, contentBase, versions, live, loaded, agent, comments, actions }: Props) {
-  const { viewportRef, view, fit, handlers } = usePanZoom('hand');
+  const { viewportRef, view, size, fit, handlers } = usePanZoom('hand');
   const [current, setCurrent] = useState<string | null>(null);
   const [snap, setSnap] = useState(SHEET_PEEK);
   const [open, setOpen] = useState<string | null>(null);
@@ -147,6 +148,7 @@ export function PhoneArtboard({ id, canvas, layout, warnings, pending, contentBa
           <CanvasErrorBoundary resetKey={canvas}>
             <Canvas
               view={view}
+              renders={visibleRenders({ boards: boards.map(([id, board]) => ({ id, ...board })), view, viewport: size })}
               boards={boards}
               notes={notes}
               contentBase={contentBase}

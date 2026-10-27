@@ -1,0 +1,11 @@
+{
+  "artifact": {
+    "id": "button-states",
+    "type": "html",
+    "title": "Button <states>",
+    "project": "ryugi"
+  },
+  "payload": {
+    "title": "Button <states>"
+  }
+}

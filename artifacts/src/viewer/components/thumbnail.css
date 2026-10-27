@@ -1,3 +1,2 @@
-.library-thumbnail{position:relative;height:140px;overflow:hidden;display:flex;align-items:center;justify-content:center;background:var(--lobe-color-fill-quaternary);border-bottom:1px solid var(--lobe-color-border-secondary);pointer-events:none}
-.library-thumbnail>span{font-size:11px;color:var(--lobe-color-text-secondary)}
-.library-thumbnail>iframe{position:absolute;left:0;top:0;display:block;border:0;transform-origin:0 0;pointer-events:none;background:var(--lobe-color-bg-layout)}
+.library-thumbnail{position:relative;height:140px;overflow:hidden;display:flex;align-items:center;justify-content:center;background:var(--lobe-color-fill-quaternary);border-bottom:1px solid var(--lobe-color-border-secondary);color:var(--lobe-color-text-tertiary);pointer-events:none}
+.library-thumbnail>img{position:absolute;inset:0;display:block;width:100%;height:100%;object-fit:contain}

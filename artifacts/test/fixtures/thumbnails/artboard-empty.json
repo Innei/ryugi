@@ -1,0 +1,18 @@
+{
+  "artifact": {
+    "id": "empty",
+    "type": "artboard",
+    "title": "Empty",
+    "project": null
+  },
+  "payload": {
+    "canvas": {
+      "pages": [
+        {
+          "id": "p"
+        }
+      ],
+      "boards": {}
+    }
+  }
+}

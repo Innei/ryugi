@@ -1,0 +1,151 @@
+{
+  "artifact": {
+    "id": "board",
+    "type": "artboard",
+    "title": "Settings",
+    "project": "ryugi"
+  },
+  "payload": {
+    "canvas": {
+      "version": 1,
+      "activePage": "p",
+      "pages": [
+        {
+          "id": "p",
+          "name": "P"
+        },
+        {
+          "id": "o",
+          "name": "O"
+        }
+      ],
+      "boards": {
+        "q1-a": {
+          "x": 0,
+          "y": 0,
+          "w": 1280,
+          "h": 800,
+          "page": "p",
+          "file": "pages/p/x.html",
+          "title": "Sidebar <nav>"
+        },
+        "q1-b": {
+          "x": 1360,
+          "y": 0,
+          "w": 1280,
+          "h": 800,
+          "page": "p",
+          "file": "pages/p/x.html",
+          "title": "Top tabs"
+        },
+        "q2-a": {
+          "x": 0,
+          "y": 1100,
+          "w": 390,
+          "h": 844,
+          "page": "p",
+          "file": "pages/p/x.html",
+          "title": "手机版"
+        },
+        "other": {
+          "x": 5000,
+          "y": 0,
+          "w": 100,
+          "h": 100,
+          "page": "o",
+          "file": "pages/p/x.html",
+          "title": "Hidden"
+        }
+      },
+      "groups": {
+        "q1": {
+          "title": "Navigation layout",
+          "boards": [
+            "q1-a",
+            "q1-b"
+          ]
+        },
+        "q2": {
+          "title": "手机",
+          "boards": [
+            "q2-a"
+          ]
+        }
+      },
+      "notes": {
+        "intro": {
+          "page": "p",
+          "kind": "title",
+          "x": 0,
+          "y": -300,
+          "text": "Settings — round 1",
+          "size": 96
+        },
+        "why": {
+          "page": "p",
+          "kind": "sticky",
+          "x": 2768,
+          "y": 0,
+          "w": 300,
+          "text": "B keeps the content full width. A longer sticky line that wraps.",
+          "color": "#cce8df"
+        },
+        "plain": {
+          "page": "p",
+          "kind": "sticky",
+          "x": 2768,
+          "y": 400,
+          "w": 300,
+          "text": "default color",
+          "color": "red"
+        }
+      }
+    },
+    "layout": {
+      "pages": {
+        "p": {
+          "bounds": {
+            "minX": -40,
+            "minY": -340,
+            "maxX": 3108,
+            "maxY": 1984
+          },
+          "groups": {
+            "q1": {
+              "x": -40,
+              "y": -60,
+              "w": 2720,
+              "h": 900
+            },
+            "q2": {
+              "x": -40,
+              "y": 1040,
+              "w": 470,
+              "h": 944
+            }
+          },
+          "notes": {
+            "intro": {
+              "x": 0,
+              "y": -300,
+              "w": 900,
+              "h": 110
+            },
+            "why": {
+              "x": 2768,
+              "y": 0,
+              "w": 300,
+              "h": 160
+            },
+            "plain": {
+              "x": 2768,
+              "y": 400,
+              "w": 300,
+              "h": 100
+            }
+          }
+        }
+      }
+    }
+  }
+}

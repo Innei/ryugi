@@ -5,11 +5,13 @@ import { Button, IconProvider } from '@lobehub/ui';
 import { SlidersHorizontal } from 'lucide-react';
 import type { InspectorReport } from '../../shared/inspector';
 import type { BoardHumanOp } from '../../shared/board-comments';
+import { reconcileTweakValues } from '../../shared/tweaks';
 import type { SelectionMessage } from '../../shared/selection';
 import { Canvas } from '../components/Canvas';
 import { CommentLayer } from '../components/CommentLayer';
 import { CommentsPanel, type CommentsTab } from '../comments/CommentsPanel';
 import { CanvasErrorBoundary } from '../components/CanvasErrorBoundary';
+import { DebugHud } from '../components/DebugHud';
 import { ExpandedBoard } from '../components/ExpandedBoard';
 import { HandCursor } from '../components/HandCursor';
 import { Labels } from '../components/Labels';
@@ -18,6 +20,7 @@ import { useCanvasData } from '../hooks/useCanvasData';
 import { useTypeFavicon } from '../hooks/useTypeFavicon';
 import type { BoardCommentsState } from '../lib/board-comments';
 import { useBoardComments } from '../hooks/useBoardComments';
+import { useBoardTiers } from '../hooks/useBoardTiers';
 import { useVerdicts } from '../hooks/useVerdicts';
 import { RejectComposer } from '../verdicts/RejectComposer';
 import { useInspector } from '../hooks/useInspector';
@@ -82,8 +85,9 @@ export function ArtboardView(props: ArtboardViewProps) {
 
 function DesktopArtboard({ id, artifact, canvas, layout, warnings, pending, contentBase, versions, live, loaded, send, agent, comments, comment, actions }: ArtboardViewProps) {
   const [tool, setTool] = useState<Tool>('select');
-  const { viewportRef, view, fit, zoomBy, zoomTo, cursor, hand, handlers, panBy, wheelAt, panning, setSpaceHeld } = usePanZoom(tool);
+  const { viewportRef, view, scaling, size, fit, zoomBy, zoomTo, cursor, hand, handlers, panBy, wheelAt, panning, setSpaceHeld } = usePanZoom(tool);
   const [inspectorOpen, setInspectorOpen] = useState(false);
+  const [debug] = useState(() => new URLSearchParams(location.search).has('debug'));
   const [commentsTab, setCommentsTab] = useState<CommentsTab>('open');
   const pageBounds = (id: string | null) => (id && layout?.pages[id]?.bounds) || null;
   const fitPage = useCallback((id: string) => {
@@ -131,14 +135,6 @@ function DesktopArtboard({ id, artifact, canvas, layout, warnings, pending, cont
     },
   });
   useSelectionSync({ artifact, boards: canvas?.boards, live, inspector, send });
-  const frameRef = useMemo(() => {
-    const refs = new Map<string, (element: HTMLIFrameElement | null) => void>();
-    return (id: string) => {
-      if (!refs.has(id)) refs.set(id, (element) => { parameters.refFor(id)(element); inspector.refFor(id)(element); });
-      return refs.get(id)!;
-    };
-  }, [parameters.refFor, inspector.refFor]);
-  const frameLoaded = useCallback((id: string) => { parameters.loaded(id); inspector.loaded(id); }, [parameters.loaded, inspector.loaded]);
   const boardComments = useBoardComments({ comments, comment, page, boards: canvas?.boards ?? {}, inspector });
   const verdicts = useVerdicts({ canvas, page, threads: boardComments.threads, stale: boardComments.stale, versions, comment });
   const rejectAt = verdicts.rejecting ? verdicts.origin(verdicts.rejecting) : null;
@@ -156,11 +152,6 @@ function DesktopArtboard({ id, artifact, canvas, layout, warnings, pending, cont
     if (point && el) panBy(el.clientWidth / 2 - (view.x + point.x * view.k), el.clientHeight / 2 - (view.y + point.y * view.k));
     boardComments.setOpenId(threadId);
   };
-  const retained = useMemo(() => new Set([
-    ...(parameterBoard ? [parameterBoard] : []),
-    ...inspector.selectedTargets.map((target) => target.boardId),
-    ...Object.entries(inspector.frames).filter(([, frame]) => frame.tweaks.length > 0).map(([id]) => id),
-  ]), [inspector.selectedTargets, inspector.frames, parameterBoard]);
   const closeInspector = useCallback(() => setInspectorOpen(false), []);
   useEffect(() => { if (expanded) setSpaceHeld(false); }, [expanded, setSpaceHeld]);
   const pendingBoards = useMemo(() => new Set(pending), [pending]);
@@ -214,6 +205,33 @@ function DesktopArtboard({ id, artifact, canvas, layout, warnings, pending, cont
     const rect = viewportRef.current!.getBoundingClientRect();
     return { x: (event.clientX - rect.left - view.x) / view.k, y: (event.clientY - rect.top - view.y) / view.k };
   };
+  const [pointerBoard, setPointerBoard] = useState<string | null>(null);
+  const boardAt = (point: { x: number; y: number }) => boards.find(([, b]) => point.x >= b.x && point.x <= b.x + b.w && point.y >= b.y && point.y <= b.y + b.h)?.[0] ?? null;
+  const marquee = selection.marquee;
+  const pinned = useMemo(() => new Set([
+    ...playing,
+    ...[expanded, parameterBoard].filter((board): board is string => !!board),
+    ...inspector.selectedTargets.map((target) => target.boardId),
+    ...Object.entries(inspector.frames).filter(([, frame]) => frame.tweaks.length > 0).map(([id]) => id),
+    ...(marquee ? boards.filter(([, b]) => b.x < marquee.x + marquee.width && b.x + b.w > marquee.x && b.y < marquee.y + marquee.height && b.y + b.h > marquee.y).map(([id]) => id) : []),
+  ]), [playing, expanded, parameterBoard, inspector.selectedTargets, inspector.frames, marquee, boards]);
+  const persistable = (board: string) => {
+    const state = parameters.states[board];
+    const tweaked = !!state?.schema && JSON.stringify(state.values) !== JSON.stringify(reconcileTweakValues(state.schema));
+    return !tweaked && !inspector.frames[board]?.tweaks.length;
+  };
+  const tiers = useBoardTiers({
+    artifact: artifact ?? id, boards, versions, pending: pendingBoards, view, scaling, viewport: size, pinned,
+    hovered: inspector.hover?.boardId ?? pointerBoard, hoverPromotes: tool === 'select' || commentTool, persistable,
+  });
+  const frameRef = useMemo(() => {
+    const refs = new Map<string, (element: HTMLIFrameElement | null) => void>();
+    return (id: string) => {
+      if (!refs.has(id)) refs.set(id, (element) => { parameters.refFor(id)(element); inspector.refFor(id)(element); tiers.frameRef(id)(element); });
+      return refs.get(id)!;
+    };
+  }, [parameters.refFor, inspector.refFor, tiers.frameRef]);
+  const frameLoaded = useCallback((id: string) => { parameters.loaded(id); inspector.loaded(id); tiers.loaded(id); }, [parameters.loaded, inspector.loaded, tiers.loaded]);
 
   return (
     <div {...stylex.props(styles.layout)}>
@@ -231,14 +249,16 @@ function DesktopArtboard({ id, artifact, canvas, layout, warnings, pending, cont
         event.currentTarget.setPointerCapture(event.pointerId);
         selection.drag('start', point.x, point.y, event.shiftKey || event.metaKey || event.ctrlKey);
       }}
-      onPointerMove={(event) => { handlers.onPointerMove(event); if (selection.dragging()) { if (event.buttons === 1) event.currentTarget.setPointerCapture(event.pointerId); const point = worldPoint(event); selection.drag('move', point.x, point.y); } }}
+      onPointerMove={(event) => { handlers.onPointerMove(event); setPointerBoard(boardAt(worldPoint(event))); if (selection.dragging()) { if (event.buttons === 1) event.currentTarget.setPointerCapture(event.pointerId); const point = worldPoint(event); selection.drag('move', point.x, point.y); } }}
       onPointerUp={(event) => { handlers.onPointerUp(event); if (selection.dragging()) { const point = worldPoint(event); selection.drag('end', point.x, point.y); } }}
       onPointerCancel={(event) => { handlers.onPointerCancel(event); selection.reset(); }}>
       <HandCursor viewport={viewportRef} hand={hand} />
+      {debug && <DebugHud renders={tiers.renders} scaling={scaling} />}
       {canvas && layout && (
         <CanvasErrorBoundary resetKey={canvas}>
           <Canvas
             view={view}
+            renders={tiers.renders}
             boards={boards}
             notes={notes}
             contentBase={contentBase}
@@ -252,8 +272,8 @@ function DesktopArtboard({ id, artifact, canvas, layout, warnings, pending, cont
             live={live}
             writing={live ? canvas.writing : undefined}
             agent={agent}
-            retained={retained}
             onExpand={setExpanded}
+            onImageError={tiers.imageFailed}
           />
           <Labels
             view={view}

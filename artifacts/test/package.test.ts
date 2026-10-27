@@ -80,3 +80,16 @@ test('build output is never committed', () => {
     expect(() => execFileSync('git', ['check-ignore', '-q', rel], { cwd: repoRoot }), rel).not.toThrow();
   }
 });
+
+test('the thumbnail entry is one self-contained module a Worker can bundle', async () => {
+  const pkg = JSON.parse(fs.readFileSync(path.join(pkgDir, 'package.json'), 'utf8'));
+  expect(pkg.exports['./thumbnail']).toEqual({ types: './dist/viewer-lib/types/src/shared/thumbnail.d.ts', default: './dist/viewer-lib/thumbnail.js' });
+  const file = path.join(pkgDir, 'dist/viewer-lib/thumbnail.js');
+  expect(fs.existsSync(path.join(pkgDir, 'dist/viewer-lib/types/src/shared/thumbnail.d.ts'))).toBe(true);
+  const code = fs.readFileSync(file, 'utf8');
+  expect(code).not.toMatch(/\bimport\b|\brequire\(|\.css\b/);
+  const { renderThumbnail, renderBoardPlaceholder, THUMBNAIL_PATH } = await import(file);
+  expect(THUMBNAIL_PATH).toBe('_ryugi/thumbnail-v1.svg');
+  expect(renderThumbnail({ id: 'a', type: 'html', title: 'Hi' }, null)).toMatch(/^<svg /);
+  expect(renderBoardPlaceholder({ id: 'a', w: 10, h: 10 })).toMatch(/^<svg /);
+});

@@ -68,8 +68,7 @@
     "loading": "正在加载预览…",
     "waitingPage": "等待页面内容…",
     "waitingDocument": "等待文档内容…",
-    "waitingCanvas": "等待画布内容…",
-    "frameTitle": "{{title}} 预览"
+    "waitingCanvas": "等待画布内容…"
   },
   "comments": {
     "waitingYou": "等你回复",
