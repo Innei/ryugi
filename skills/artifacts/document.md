@@ -30,6 +30,30 @@ tables.
   you wrote it until you fix it. `"merging": true` means a long edit is
   still playing into the document: run `check` again.
 
+## Before writing: choose how to tell it
+
+Before the outline, decide what the reader must come away understanding,
+and pick the form that shows it fastest. The first screen says what the
+document is about and what it asks of them; a reader who stops there
+still has the overview.
+
+| The reader needs to grasp | Lead with |
+|---|---|
+| How parts relate: layers, ownership, dependencies | a structure diagram, then a few lines reading it |
+| A decision they must make | the conclusion and a table of the open choices |
+| What changes: a migration or refactor | before and after, side by side |
+| A flow or protocol | one request walked through, as a sequence |
+
+These are starting points, not a template: mix them, or lead with a
+table, an example or a chart when that says it better. Prose carries
+what diagrams and tables cannot: reasons, trade-offs, constraints. A
+section that is paragraph after paragraph is a sign the form was never
+chosen.
+
+Diagrams are `<mermaid>` or `<excalidraw>` blocks, never pictures of
+text: a PNG of box-drawing art is still a plain-text diagram, harder to
+read and impossible to edit.
+
 ## Show the document early
 
 For a new document, look up only what the structure needs, then save a
