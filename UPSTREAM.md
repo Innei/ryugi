@@ -9,7 +9,7 @@ Ryugi is a fork of [obra/superpowers](https://github.com/obra/superpowers) (MIT)
 | Upstream release | **v7.0.0** |
 | Upstream commit | `bb92a77741419a4ab5f06e711a283343f1ada0c3` |
 | Released | 2026-10-10 (UTC) |
-| Last checked | 2026-10-19 — upstream `main` identical to the baseline; `dev`'s tree identical (its extra commits are pre-release history kept by rebase-merges) |
+| Last checked | 2026-10-28 — upstream `main` is v7.0.1 (`2ce8aa15`); `dev` (`b58deb3b`) adds unreleased hook fixes. Baseline stays v7.0.0 until the remaining skill ports land |
 
 Ryugi's git history was re-initialized and shares no commits with upstream, so
 upstream changes can't be merged. Follow them by diffing upstream against the
@@ -71,3 +71,4 @@ Cleanup survive), `skills/using-ryugi/`, `README.md`, `AGENTS.md`.
 | Date | Upstream ref | Ported | Skipped |
 |---|---|---|---|
 | 2026-10-19 | v7.0.0 (`bb92a77`) | Fork baseline | — |
+| 2026-10-28 | v7.0.1 (`2ce8aa15`), `dev` (`b58deb3b`) | Infra only: PR/issue templates + `AGENTS.md` human-summary and issue-ownership rules; `hooks.json` `powershell` key (all three hooks); `run-hook.cmd` no-subshell Unix half + `zsh`/quiet-exit fallback; `.muse-plugin` hook runs `bash`; Pi drops `resources_discover` in favour of `pi.skills`; docs and tests for each | v7.0.1 skill changes (brainstorming retune, references splits, `executing-plans` trim); `tests/skill-size`; `hooks/session-start` zero-fork rewrite (conflicts with Ryugi's artifacts-server block); upstream version bumps (Ryugi versions independently) |
