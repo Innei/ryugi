@@ -1,3 +1,5 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import type { SerializedEditorState } from 'lexical';
 import { readCredentials } from '../server/credentials';
 import { serializeDocument } from '../server/document-codec';
@@ -14,6 +16,8 @@ export interface GetOptions {
   target: string;
   defaultOrigin: string;
   credentialsFile: string;
+  cacheRoot: string;
+  out?: string;
 }
 
 export interface GetResult {
@@ -25,6 +29,27 @@ export interface GetResult {
   updatedAt: string;
   content?: string;
   comments?: Thread[];
+  dir?: string;
+  files?: string[];
+}
+
+const safePath = (file: string) =>
+  !file.includes('\\') && !file.includes('\0') && !path.posix.isAbsolute(file) && file.split('/').every((part) => part !== '' && part !== '.' && part !== '..');
+
+async function download(contentBase: string, files: string[], dir: string, fresh: boolean) {
+  const unsafe = files.find((file) => !safePath(file));
+  if (unsafe !== undefined) throw new CliError(`Refusing to write ${unsafe}: it is not a path inside the download directory.`);
+  if (fresh) fs.rmSync(dir, { recursive: true, force: true });
+  fs.mkdirSync(dir, { recursive: true });
+  for (const file of files) {
+    const res = await fetch(`${contentBase}${file.split('/').map(encodeURIComponent).join('/')}`).catch((err: Error) => {
+      throw new CliError(`Could not download ${file}: ${err.message}`);
+    });
+    if (!res.ok) throw new CliError(`Could not download ${file}: HTTP ${res.status}`);
+    const target = path.join(dir, ...file.split('/'));
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    fs.writeFileSync(target, Buffer.from(await res.arrayBuffer()));
+  }
 }
 
 export function parseTarget(target: string, defaultOrigin: string) {
@@ -40,7 +65,7 @@ export function parseTarget(target: string, defaultOrigin: string) {
   return { origin: url.origin, id };
 }
 
-export async function getArtifact({ target, defaultOrigin, credentialsFile }: GetOptions): Promise<GetResult> {
+export async function getArtifact({ target, defaultOrigin, credentialsFile, cacheRoot, out }: GetOptions): Promise<GetResult> {
   const { origin, id } = parseTarget(target, defaultOrigin);
   const credentials = readCredentials(credentialsFile, origin);
   let res: Response;
@@ -55,9 +80,19 @@ export async function getArtifact({ target, defaultOrigin, credentialsFile }: Ge
   if (!res.ok) throw new CliError(typeof json.error === 'string' ? json.error : `HTTP ${res.status}`, { status: res.status, ...cloudErrorDetails(json) });
   if (!json.published) throw new CliError('This artifact is not published yet.');
   const result: GetResult = { type: 'artifact', artifactType: json.type, id, title: json.title ?? null, visibility: json.visibility, updatedAt: json.updatedAt };
+  const files = ((json.files ?? []) as string[]).filter((file) => json.type !== 'document' || file !== 'doc.xml');
+  const dir = out ? path.resolve(out) : path.join(cacheRoot, id);
   if (json.type === 'document') {
     result.content = serializeDocument(json.payload.state as SerializedEditorState);
     result.comments = (json.payload.comments?.threads ?? []) as Thread[];
+    if (!files.length) return result;
+  }
+  await download(json.contentBase, files, dir, !out);
+  result.dir = dir;
+  result.files = files;
+  if (json.type === 'artboard') {
+    fs.writeFileSync(path.join(dir, 'canvas.json'), `${JSON.stringify(json.payload.canvas, null, 2)}\n`);
+    result.files = ['canvas.json', ...files];
   }
   return result;
 }
@@ -70,7 +105,8 @@ function threadText(thread: Thread) {
 }
 
 export function getText(result: GetResult, { comments }: { comments: boolean }) {
-  const parts = [result.content ?? ''];
+  if (result.content === undefined) return `${[result.dir, ...(result.files ?? [])].join('\n')}\n`;
+  const parts = [result.dir ? `Files: ${result.dir}\n${result.content}` : result.content];
   const threads = comments ? (result.comments ?? []).map(threadText).filter((text) => text !== null) : [];
   if (threads.length) parts.push(`\nComments\n\n${threads.join('\n\n')}\n`);
   return parts.join('');

@@ -1,5 +1,6 @@
 import { execFile } from 'node:child_process';
 import os from 'node:os';
+import path from 'node:path';
 import { parseArgs, type ParseArgsConfig } from 'node:util';
 import { credentialsFile } from '../server/credentials';
 import { check, checkText } from './check';
@@ -36,8 +37,10 @@ Commands:
               resolve --artifact <document|artboard>/<id> --thread <threadId>
             Without --text, add and reply read the message from stdin.
   get       Read a published Ryugi Cloud artifact by link or id, signed in as this machine's
-            cloud account. Prints the source (a document's LiteXML and comments) unless --json:
-              <link-or-id> [--no-comments]
+            cloud account. Prints the source (a document's LiteXML and comments) unless --json;
+            artboard and HTML files, and files a document uses, are downloaded to --out
+            or ~/.cache/ryugi/get/<id>/:
+              <link-or-id> [--out <dir>] [--no-comments]
   monitor   List every running artifacts server on this machine and manage them. In a terminal it
             opens a live view (open, copy URL, logs, stop); otherwise, or with --json, prints the list once.
   config    Auto-publish changed artifacts as private cloud copies when the agent's turn ends:
@@ -111,12 +114,14 @@ async function browse(argv: string[]) {
 async function getCommand(argv: string[]) {
   const json = argv.includes('--json');
   try {
-    const { values, positionals } = parse(argv, { 'no-comments': { type: 'boolean' } }, 1);
+    const { values, positionals } = parse(argv, { 'no-comments': { type: 'boolean' }, out: { type: 'string' } }, 1);
     if (!positionals[0]) throw new CliError('Give a Ryugi Cloud link or artifact id.');
     const result = await getArtifact({
       target: positionals[0],
       defaultOrigin: (process.env.RYUGI_CLOUD_ORIGIN || 'https://ryugi.innei.dev').replace(/\/+$/, ''),
       credentialsFile: credentialsFile(process.env, process.platform, os.homedir()),
+      cacheRoot: path.join(process.env.XDG_CACHE_HOME || path.join(os.homedir(), '.cache'), 'ryugi', 'get'),
+      out: values.out as string | undefined,
     });
     if (json) console.log(JSON.stringify(result));
     else process.stdout.write(getText(result, { comments: !values['no-comments'] }));

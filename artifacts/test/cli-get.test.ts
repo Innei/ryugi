@@ -19,6 +19,8 @@ let origin = '';
 let seen: Seen[] = [];
 let reply: (req: Seen) => { status: number; body: unknown };
 let configHome = '';
+let cacheHome = '';
+let content: Record<string, string> = {};
 
 const DOC = '<doc><h1 id="t1">Sync design</h1><p id="b1">Events carry a seq.</p></doc>';
 
@@ -51,9 +53,17 @@ beforeEach(async () => {
   seen = [];
   reply = () => published();
   configHome = fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-get-config-'));
+  cacheHome = fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-get-cache-'));
+  content = {};
   cloud = http.createServer((req, res) => {
     const entry = { path: req.url ?? '', auth: req.headers.authorization };
     seen.push(entry);
+    if (entry.path.startsWith('/content/')) {
+      const file = content[decodeURIComponent(entry.path.slice('/content/'.length))];
+      res.writeHead(file === undefined ? 404 : 200);
+      res.end(file ?? '');
+      return;
+    }
     const { status, body } = reply(entry);
     res.writeHead(status, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(body));
@@ -72,7 +82,7 @@ function signIn(credentialsOrigin = origin) {
 
 function run(args: string[]): Promise<{ code: number | null; stdout: string; stderr: string }> {
   return new Promise((resolve) => {
-    const child = spawn(process.execPath, [cli, 'get', ...args], { env: { ...process.env, XDG_CONFIG_HOME: configHome, RYUGI_CLOUD_ORIGIN: origin } });
+    const child = spawn(process.execPath, [cli, 'get', ...args], { env: { ...process.env, XDG_CONFIG_HOME: configHome, XDG_CACHE_HOME: cacheHome, RYUGI_CLOUD_ORIGIN: origin } });
     let stdout = '';
     let stderr = '';
     child.stdout.on('data', (chunk) => (stdout += chunk));
@@ -127,6 +137,7 @@ describe('ryugi-artifacts get', () => {
     expect(out).toMatchObject({ type: 'artifact', artifactType: 'document', id: 'abc123', title: 'Sync design', visibility: 'private', updatedAt: '2026-10-27T10:00:00.000Z' });
     expect(out.content).toContain('Events carry a seq.');
     expect(out.comments.map((t: { id: string }) => t.id)).toEqual(['th1', 'th2']);
+    expect(out).not.toHaveProperty('dir');
   });
 
   test('not signed in and not found asks for a sign-in on stderr with exit 2', async () => {
@@ -161,6 +172,68 @@ describe('ryugi-artifacts get', () => {
     const { code, stderr } = await run([`${origin}/a/abc123`]);
     expect(code).toBe(1);
     expect(stderr).toContain('not published yet');
+  });
+
+  test('downloads an html artifact into --out and lists its files', async () => {
+    signIn();
+    content = { 'index.html': '<title>Arrow</title>', 'css/style.css': 'a{}' };
+    reply = () => published({ type: 'html', title: 'Arrow', payload: { title: 'Arrow' }, files: ['css/style.css', 'index.html'] });
+    const out = fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-get-out-'));
+    const { code, stdout } = await run([`${origin}/a/abc123`, '--out', out]);
+    expect(code).toBe(0);
+    expect(fs.readFileSync(path.join(out, 'index.html'), 'utf8')).toBe('<title>Arrow</title>');
+    expect(fs.readFileSync(path.join(out, 'css/style.css'), 'utf8')).toBe('a{}');
+    expect(stdout.split('\n').filter(Boolean)).toEqual([out, 'css/style.css', 'index.html']);
+  });
+
+  test('without --out an artifact goes to a fresh cache directory', async () => {
+    content = { 'index.html': '<title>Arrow</title>' };
+    reply = () => published({ type: 'html', owner: false, visibility: 'public', payload: { title: 'Arrow' }, files: ['index.html'] });
+    const dir = path.join(cacheHome, 'ryugi', 'get', 'abc123');
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, 'stale.html'), 'old');
+    const { code, stdout } = await run([`${origin}/a/abc123`, '--json']);
+    expect(code).toBe(0);
+    expect(JSON.parse(stdout.trim())).toMatchObject({ type: 'artifact', artifactType: 'html', dir, files: ['index.html'] });
+    expect(fs.readdirSync(dir)).toEqual(['index.html']);
+  });
+
+  test('an artboard also gets its canvas.json', async () => {
+    signIn();
+    content = { 'pages/main/a.html': '<p>A</p>' };
+    const canvas = { version: 1, title: 'Board', boards: { a: { file: 'pages/main/a.html' } } };
+    reply = () => published({ type: 'artboard', payload: { canvas, layout: {}, versions: {}, snapshots: true }, files: ['pages/main/a.html'] });
+    const out = fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-get-out-'));
+    const { code, stdout } = await run([`${origin}/a/abc123`, '--out', out, '--json']);
+    expect(code).toBe(0);
+    expect(JSON.parse(fs.readFileSync(path.join(out, 'canvas.json'), 'utf8'))).toEqual(canvas);
+    expect(JSON.parse(stdout.trim()).files).toEqual(['canvas.json', 'pages/main/a.html']);
+  });
+
+  test('refuses a file path that leaves the directory and writes nothing', async () => {
+    signIn();
+    content = { 'index.html': 'ok' };
+    reply = () => published({ type: 'html', payload: { title: 'Arrow' }, files: ['index.html', '../evil.html'] });
+    const parent = fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-get-out-'));
+    const out = path.join(parent, 'inner');
+    const { code, stderr } = await run([`${origin}/a/abc123`, '--out', out]);
+    expect(code).toBe(1);
+    expect(stderr).toContain('../evil.html');
+    expect(fs.existsSync(path.join(parent, 'evil.html'))).toBe(false);
+    expect(fs.existsSync(path.join(out, 'index.html'))).toBe(false);
+  });
+
+  test('a document that references files downloads them and names the directory first', async () => {
+    signIn();
+    content = { 'assets/flow.png': 'png-bytes' };
+    reply = () => published({ files: ['assets/flow.png', 'doc.xml'] });
+    const out = fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-get-out-'));
+    const { code, stdout } = await run([`${origin}/a/abc123`, '--out', out]);
+    expect(code).toBe(0);
+    expect(stdout.split('\n')[0]).toBe(`Files: ${out}`);
+    expect(stdout.split('\n')[1]!.startsWith('<doc>')).toBe(true);
+    expect(fs.readFileSync(path.join(out, 'assets/flow.png'), 'utf8')).toBe('png-bytes');
+    expect(fs.existsSync(path.join(out, 'doc.xml'))).toBe(false);
   });
 
   test('rejects something that is not a link or id', async () => {
