@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import { detectAgent } from '../server/agent';
+import type { CommandSpec } from './command';
 import { CliError, invocation } from './paths';
 import { serverClient } from './server';
 import type { Emit } from './start';
@@ -162,3 +163,42 @@ export function commentText(value: Record<string, unknown>): string | null {
   if (value.type === 'comment-resolved') return `Resolved thread ${value.threadId}`;
   return null;
 }
+
+export const commentCommand: CommandSpec = {
+  name: 'comment',
+  summary: 'Read and answer comments on a document or artboard (needs a running server)',
+  usage: [
+    'list    --artifact <document|artboard>/<id> [--all]',
+    'add     --artifact document/<id> --block <blockId> [--quote <text>] [--text <text>]',
+    'add     --artifact artboard/<id> --board <boardId> [--x <px> --y <px>] [--text <text>]',
+    'reply   --artifact <document|artboard>/<id> --thread <threadId> [--text <text>]',
+    'resolve --artifact <document|artboard>/<id> --thread <threadId>',
+  ],
+  details: 'list prints what changed since you last listed. Without --text, add and reply read the message from stdin.',
+  options: {
+    artifact: { type: 'string', value: '<type>/<id>', help: 'The document or artboard' },
+    all: { type: 'boolean', help: 'list: every thread, not only what changed' },
+    block: { type: 'string', value: '<blockId>', help: 'add: the document block to comment on' },
+    quote: { type: 'string', value: '<text>', help: 'add: the text in the block the comment is about' },
+    board: { type: 'string', value: '<boardId>', help: 'add: the artboard board to comment on' },
+    x: { type: 'string', value: '<px>', help: 'add: horizontal position on the board' },
+    y: { type: 'string', value: '<px>', help: 'add: vertical position on the board' },
+    thread: { type: 'string', value: '<threadId>', help: 'reply, resolve: the thread' },
+    text: { type: 'string', value: '<text>', help: 'add, reply: the message' },
+  },
+  positionals: 1,
+  run: ({ values, positionals, projectDir }, emit) => comment({
+    projectDir,
+    action: positionals[0],
+    artifact: values.artifact as string | undefined,
+    all: values.all as boolean | undefined,
+    block: values.block as string | undefined,
+    quote: values.quote as string | undefined,
+    thread: values.thread as string | undefined,
+    text: values.text as string | undefined,
+    board: values.board as string | undefined,
+    x: values.x as string | undefined,
+    y: values.y as string | undefined,
+  }, emit),
+  text: commentText,
+};

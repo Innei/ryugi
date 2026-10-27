@@ -7,6 +7,7 @@ import { AGENT_MARKERS } from '../server/agent';
 import { artifactPath } from '../server/artifact-address';
 import { artifactKeyOf } from '../server/artifacts';
 import { openBrowser } from '../server/browser-focus';
+import type { CommandSpec } from './command';
 import { ARTIFACT_ERROR, ARTIFACT_PATTERN, CliError, invocation, projectPaths, type ProjectPaths } from './paths';
 import { alive, hasServerId, parentOf, readText, sleep, waitForExit } from './process';
 
@@ -215,3 +216,31 @@ export async function start(options: StartOptions, emit: Emit): Promise<number> 
     unlock();
   }
 }
+
+export const startCommand: CommandSpec = {
+  name: 'start',
+  summary: 'Start the project\'s artifacts server, or reuse the running one',
+  options: {
+    artifact: { type: 'string', value: '<type>/<id>', help: 'Also print a link that opens this artifact' },
+    host: { type: 'string', value: '<host>', help: 'Interface to listen on (default: 127.0.0.1)' },
+    'url-host': { type: 'string', value: '<host>', help: 'Host in printed URLs (default: localhost for a loopback --host)' },
+    'idle-timeout-minutes': { type: 'string', value: '<n>', help: 'Stop after this many idle minutes (default: 240)' },
+    open: { type: 'boolean', help: 'Open the artifact in a browser even when ARTIFACTS_OPEN=0' },
+    'no-open': { type: 'boolean', help: 'Do not open a browser' },
+    foreground: { type: 'boolean', help: 'Run the server in this process until Ctrl+C' },
+    'no-daemon': { type: 'boolean' },
+    background: { type: 'boolean', help: 'Detach the server even where it would run in the foreground' },
+    daemon: { type: 'boolean' },
+  },
+  run: ({ values, projectDir }, emit) => start({
+    projectDir,
+    artifact: values.artifact as string | undefined,
+    host: (values.host as string | undefined) ?? '127.0.0.1',
+    urlHost: values['url-host'] as string | undefined,
+    idleTimeoutMinutes: values['idle-timeout-minutes'] as string | undefined,
+    open: values['no-open'] ? false : values.open ? true : process.env.ARTIFACTS_OPEN !== '0',
+    foreground: !!(values.foreground || values['no-daemon']),
+    background: !!(values.background || values.daemon),
+  }, emit),
+  text: (value) => value.type === 'server-started' ? `${value.cloudLink ?? value.link ?? value.url}${value.reused ? ' (already running)' : ''}` : null,
+};

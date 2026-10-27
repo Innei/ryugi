@@ -1,11 +1,13 @@
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import type { SerializedEditorState } from 'lexical';
-import { readCredentials } from '../server/credentials';
+import { credentialsFile, readCredentials } from '../server/credentials';
 import { serializeDocument } from '../server/document-codec';
 import { stripRuntime } from '../server/strip-runtime';
 import { cloudErrorDetails } from '../shared/cloud-error';
 import type { Thread } from '../shared/comments';
+import type { CommandSpec } from './command';
 import { CliError } from './paths';
 
 const ID = /^[A-Za-z0-9_-]{1,64}$/;
@@ -113,3 +115,39 @@ export function getText(result: GetResult, { comments }: { comments: boolean }) 
   if (threads.length) parts.push(`\nComments\n\n${threads.join('\n\n')}\n`);
   return parts.join('');
 }
+
+export const getCommand: CommandSpec = {
+  name: 'get',
+  summary: 'Read a published Ryugi Cloud artifact by link or id, signed in as this machine\'s cloud account',
+  usage: ['<link-or-id> [--out <dir>] [--no-comments] [options]'],
+  details: 'Prints the source (a document\'s LiteXML and comments) unless --json; artboard and HTML files, and files a document uses, are downloaded to --out or ~/.cache/ryugi/get/<id>/.',
+  options: {
+    out: { type: 'string', value: '<dir>', help: 'Download files here instead of ~/.cache/ryugi/get/<id>/' },
+    'no-comments': { type: 'boolean', help: 'Leave a document\'s comments out' },
+  },
+  positionals: 1,
+  // Agents run commands without a TTY and the signpost's command has no --json, so get prints the source unless --json is explicit.
+  explicitJson: true,
+  run: async ({ values, positionals }) => {
+    const json = !!values.json;
+    try {
+      if (!positionals[0]) throw new CliError('Give a Ryugi Cloud link or artifact id.');
+      const result = await getArtifact({
+        target: positionals[0],
+        defaultOrigin: (process.env.RYUGI_CLOUD_ORIGIN || 'https://ryugi.innei.dev').replace(/\/+$/, ''),
+        credentialsFile: credentialsFile(process.env, process.platform, os.homedir()),
+        cacheRoot: path.join(process.env.XDG_CACHE_HOME || path.join(os.homedir(), '.cache'), 'ryugi', 'get'),
+        out: values.out as string | undefined,
+      });
+      if (json) console.log(JSON.stringify(result));
+      else process.stdout.write(getText(result, { comments: !values['no-comments'] }));
+      return 0;
+    } catch (caught) {
+      const err = caught instanceof CliError ? caught : new CliError((caught as Error).message);
+      const fields = err.message ? { error: err.message, ...err.fields } : err.fields;
+      if (json) console.log(JSON.stringify(fields));
+      else console.error(err.message ? `Error: ${err.message}` : String(err.fields.message));
+      return err.code;
+    }
+  },
+};

@@ -1,3 +1,4 @@
+import type { CommandSpec } from './command';
 import { duration, shortPath, tags } from './monitor-view';
 import { runMonitorUi } from './monitor-ui';
 import { listServers, type ServerRow } from './servers';
@@ -24,3 +25,12 @@ export async function monitor(options: { json: boolean }, emit: Emit): Promise<n
   }
   return runMonitorUi();
 }
+
+export const monitorCommand: CommandSpec = {
+  name: 'monitor',
+  summary: 'List every running artifacts server on this machine and manage them',
+  details: 'In a terminal it opens a live view (open, copy URL, logs, stop); otherwise, or with --json, prints the list once.',
+  options: {},
+  run: ({ values }, emit) => monitor({ json: !!values.json }, emit),
+  text: (value) => monitorText(value),
+};

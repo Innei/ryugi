@@ -30,6 +30,21 @@ test('help and invalid options exit without starting a server', () => {
   expect(fs.existsSync(path.join(cwd, '.ryugi'))).toBe(false);
 });
 
+test('<command> --help and -h print that command\'s help without starting a server', () => {
+  const cwd = project();
+  for (const flag of ['--help', '-h']) {
+    const result = spawnSync(process.execPath, [entry, 'publish', flag], { cwd, encoding: 'utf8' });
+    expect(result.status).toBe(0);
+    expect(result.stdout).toMatch(/^Usage: ryugi-artifacts publish/);
+    expect(result.stdout).toContain('--unpublish');
+    expect(result.stdout).not.toContain('auto-publish');
+  }
+  const comment = spawnSync(process.execPath, [entry, 'comment', 'add', '--help'], { cwd, encoding: 'utf8' });
+  expect(comment.status).toBe(0);
+  expect(comment.stdout).toContain('ryugi-artifacts comment reply');
+  expect(fs.existsSync(path.join(cwd, '.ryugi'))).toBe(false);
+});
+
 test('--version and -v print the package version without starting a server', () => {
   const cwd = project();
   const version = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../package.json'), 'utf8')).version;

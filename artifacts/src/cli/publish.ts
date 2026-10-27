@@ -1,4 +1,5 @@
 import { cloudErrorDetails } from '../shared/cloud-error';
+import type { CommandSpec } from './command';
 import { ARTIFACT_ERROR, ARTIFACT_PATTERN, CliError } from './paths';
 import { serverClient } from './server';
 import type { Emit } from './start';
@@ -46,3 +47,40 @@ export async function publish(options: PublishOptions, emit: Emit): Promise<numb
   }
   return 0;
 }
+
+const ACTIONS = ['unpublish', 'list', 'delete', 'login', 'logout'] as const;
+
+export const publishCommand: CommandSpec = {
+  name: 'publish',
+  summary: 'Publish an artifact to the Ryugi cloud (needs a running server)',
+  usage: [
+    '--artifact <type>/<id> [--public | --private] [--unpublish] [options]',
+    '--list | --delete <cloud-id> | --login | --logout [options]',
+  ],
+  options: {
+    artifact: { type: 'string', value: '<type>/<id>', help: 'The artifact to publish or unpublish' },
+    public: { type: 'boolean', help: 'Anyone with the link can open it' },
+    private: { type: 'boolean', help: 'Only you can open it' },
+    unpublish: { type: 'boolean', help: 'Remove the artifact\'s cloud copy' },
+    list: { type: 'boolean', help: 'List your cloud artifacts' },
+    delete: { type: 'string', value: '<cloud-id>', help: 'Delete a cloud artifact by its id from --list' },
+    login: { type: 'boolean', help: 'Sign in to the Ryugi cloud' },
+    logout: { type: 'boolean', help: 'Sign out of the Ryugi cloud' },
+  },
+  run: ({ values, projectDir }, emit) => {
+    const actions = ACTIONS.filter((name) => values[name] !== undefined && values[name] !== false);
+    if (actions.length > 1) throw new CliError(`Choose one of --${actions.join(', --')}`);
+    return publish({
+      projectDir,
+      action: actions[0] ?? 'publish',
+      artifact: values.artifact as string | undefined,
+      visibility: values.public ? 'public' : values.private ? 'private' : undefined,
+      cloudId: values.delete as string | undefined,
+    }, emit);
+  },
+  text: (value) => {
+    if (value.type === 'login-required' || value.type === 'login') return `${value.message}\n${value.url}`;
+    if (value.type === 'published') return `${value.url} (${value.visibility})`;
+    return null;
+  },
+};

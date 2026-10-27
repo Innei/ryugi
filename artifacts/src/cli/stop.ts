@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import type { CommandSpec } from './command';
 import { projectPaths } from './paths';
 import { alive, hasServerId, readText, waitForExit } from './process';
 import type { Emit } from './start';
@@ -37,3 +38,12 @@ export async function stop(projectDir: string, emit: Emit): Promise<number> {
   emit({ status: 'stopped' });
   return 0;
 }
+
+export const stopCommand: CommandSpec = {
+  name: 'stop',
+  summary: 'Stop the project\'s artifacts server; the artifacts are kept',
+  usage: ['[project-directory] [options]'],
+  options: {},
+  positionals: 1,
+  run: ({ values, positionals }, emit) => stop((values['project-dir'] as string | undefined) ?? positionals[0] ?? process.cwd(), emit),
+};

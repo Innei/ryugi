@@ -1,3 +1,4 @@
+import type { CommandSpec } from './command';
 import { ARTIFACT_ERROR, ARTIFACT_PATTERN, CliError, invocation } from './paths';
 import { serverClient } from './server';
 import type { Emit } from './start';
@@ -34,3 +35,14 @@ export function checkText(value: Record<string, unknown>): string | null {
   ];
   return lines.length ? `${value.artifact}\n${lines.join('\n')}` : `${value.artifact}: no warnings`;
 }
+
+export const checkCommand: CommandSpec = {
+  name: 'check',
+  summary: 'Wait until the server has checked the latest write, then print its warnings (needs a running server)',
+  usage: ['--artifact <type>/<id> [options]'],
+  options: {
+    artifact: { type: 'string', value: '<type>/<id>', help: 'The artifact to check' },
+  },
+  run: ({ values, projectDir }, emit) => check({ projectDir, artifact: values.artifact as string | undefined }, emit),
+  text: checkText,
+};
