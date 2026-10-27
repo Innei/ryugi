@@ -43,9 +43,3 @@ Skills, harness integrations and docs are MIT (`LICENSE`). The artifacts applica
 - Plugin-infrastructure tests live in `tests/`; run the relevant `run-*.sh` or test script for what you changed.
 - Artifacts app tests: `cd artifacts && pnpm test`.
 - `docs/testing.md` lists what each suite covers.
-
-## Pull Requests
-
-- One problem per PR, against `main`.
-- Fill in every section of `.github/PULL_REQUEST_TEMPLATE.md`.
-- Disclose the model, harness, and plugins that produced the change, or state that it was written by hand.
