@@ -1,6 +1,6 @@
 ---
 name: using-git-worktrees
-description: Use before the first edit of a feature, bugfix or spec in a git repository, when choosing between working in place and an isolated worktree, or when work done in a worktree has landed
+description: Use when ryugi:executing-specs or ryugi:test-driven-development sends you here before the first implementation edit, or when work done in a worktree has landed
 ---
 
 # Using Git Worktrees
@@ -43,7 +43,9 @@ Take the first row that matches:
 **Native tool first.** If you have a tool or command that creates
 worktrees (`EnterWorktree`, `WorktreeCreate`, a `/worktree` command, a
 `--worktree` flag), use it. `git worktree add` beside a native tool creates
-a worktree your harness cannot see or clean up.
+a worktree your harness cannot see or clean up. A "New worktree" row above
+is your human partner's standing instruction to work in a worktree: it is
+the explicit request a native tool's description asks for.
 
 **Otherwise, `git worktree add`:**
 

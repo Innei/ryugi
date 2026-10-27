@@ -56,6 +56,8 @@ assert_contains "$USING_SKILL" '## Where to work' "using-git-worktrees owns the 
 assert_contains "$USING_SKILL" 'info/exclude' "using-git-worktrees ignores the directory locally instead of committing .gitignore"
 assert_not_contains "$USING_SKILL" 'Would you like me to set up an isolated worktree' "using-git-worktrees does not ask for a worktree by default"
 assert_not_contains "$USING_SKILL" '## Quick Reference' "using-git-worktrees has no Quick Reference table"
+assert_contains "$USING_SKILL" 'sends you here' "using-git-worktrees triggers only on a hand-off, not during brainstorming"
+assert_contains "$USING_SKILL" 'standing instruction to work in a worktree' "using-git-worktrees authorizes the native worktree tool"
 
 assert_not_contains "$ROTOTILL_SPEC" "~/.config/ryugi/worktrees" "rototill spec does not preserve old global path policy"
 assert_not_contains "$ROTOTILL_PLAN" "~/.config/ryugi/worktrees" "rototill plan does not preserve old global path policy"

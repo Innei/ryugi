@@ -47,7 +47,8 @@ commits, so `git log` against `dev` lists old work again. Use `git diff` for `de
 | `skills/writing-plans/`, `skills/dispatching-parallel-agents/`, `skills/diagnosing-superpowers/`, `skills/receiving-code-review/` | removed |
 | `docs/superpowers/`, `docs/plans/`, `RELEASE-NOTES.md` | removed (Ryugi specs live in `docs/ryugi/specs/`) |
 
-Closest to upstream, so the easiest to port: `skills/test-driven-development/`,
+Closest to upstream, so the easiest to port: `skills/test-driven-development/` (apart from the
+hand-off to `using-git-worktrees`),
 `skills/systematic-debugging/` (apart from the hand-offs to `verifying-ui`), and the harness integrations (`hooks/`, `.codex-plugin/`,
 `.opencode/`, `.pi/`, `.hermes-plugin/`, `.kimi-plugin/`, `.devin-plugin/`,
 `.cursor-plugin/`, `.antigravity-plugin/`, `.muse-plugin/`, `gemini-extension.json`).

@@ -63,6 +63,32 @@ asked whether to use a worktree or stay on `feat/billing-retry`.
 Quick Reference); all four failed on today's text and pass on the
 candidate.
 
+## Review fix pass
+
+A fresh review and the partner's own session found two more failures.
+
+- **Native tool refused.** With `EnterWorktree`'s real description in the
+  scenario ("ONLY when explicitly instructed to work in a worktree"), D2
+  runs fell back to `git worktree add` (2/2). The skill now says a "New
+  worktree" row is the partner's standing instruction to work in a
+  worktree; D2 then used `EnterWorktree` without asking (3/3).
+- **Fired during brainstorming.** In a real session the description
+  ("before the first edit of a feature, bugfix or spec") loaded the skill
+  right after brainstorming started, and it began checking git. Simulated
+  routing (Q) did not reproduce it on either description (2/2 and 3/3
+  invoke nothing). By the partner's call the description now triggers
+  only when executing-specs or test-driven-development sends the agent
+  there, and test-driven-development gains one line handing off before the
+  first edit. J2 (a small bugfix entering through TDD) reached the table
+  and stayed in place without asking (3/3).
+
+Three review findings did not reproduce and were left unchanged: a resumed
+exploratory run treating its own `EXPLORING` and edits as another agent's
+(M, 2/2 in place), an untracked TL;DR beside the spec counting as another
+agent (N, 2/2 in place), and `EnterWorktree` branching from
+`origin/main` without an unpushed spec (P, 2/2 noticed it from the tool's
+description and copied the spec in).
+
 ## Not covered
 
 Cleanup of a copied spec, the `git worktree add` fallback (every run had a
