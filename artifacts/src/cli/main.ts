@@ -1,8 +1,11 @@
 import { execFile } from 'node:child_process';
+import os from 'node:os';
 import { parseArgs, type ParseArgsConfig } from 'node:util';
+import { credentialsFile } from '../server/credentials';
 import { check, checkText } from './check';
 import { comment, commentText } from './comment';
 import { config } from './config';
+import { getArtifact, getText } from './get';
 import { monitor, monitorText } from './monitor';
 import { CliError } from './paths';
 import { start, type Emit } from './start';
@@ -32,6 +35,9 @@ Commands:
               reply   --artifact <document|artboard>/<id> --thread <threadId> [--text <text>]
               resolve --artifact <document|artboard>/<id> --thread <threadId>
             Without --text, add and reply read the message from stdin.
+  get       Read a published Ryugi Cloud artifact by link or id, signed in as this machine's
+            cloud account. Prints the source (a document's LiteXML and comments) unless --json:
+              <link-or-id> [--no-comments]
   monitor   List every running artifacts server on this machine and manage them. In a terminal it
             opens a live view (open, copy URL, logs, stop); otherwise, or with --json, prints the list once.
   config    Auto-publish changed artifacts as private cloud copies when the agent's turn ends:
@@ -101,8 +107,32 @@ async function browse(argv: string[]) {
   });
 }
 
+// Agents run commands without a TTY and the signpost's command has no --json, so get prints the source unless --json is explicit.
+async function getCommand(argv: string[]) {
+  const json = argv.includes('--json');
+  try {
+    const { values, positionals } = parse(argv, { 'no-comments': { type: 'boolean' } }, 1);
+    if (!positionals[0]) throw new CliError('Give a Ryugi Cloud link or artifact id.');
+    const result = await getArtifact({
+      target: positionals[0],
+      defaultOrigin: (process.env.RYUGI_CLOUD_ORIGIN || 'https://ryugi.innei.dev').replace(/\/+$/, ''),
+      credentialsFile: credentialsFile(process.env, process.platform, os.homedir()),
+    });
+    if (json) console.log(JSON.stringify(result));
+    else process.stdout.write(getText(result, { comments: !values['no-comments'] }));
+    return 0;
+  } catch (err) {
+    if (!(err instanceof CliError)) throw err;
+    const fields = err.message ? { error: err.message, ...err.fields } : err.fields;
+    if (json) console.log(JSON.stringify(fields));
+    else console.error(err.message ? `Error: ${err.message}` : String(err.fields.message));
+    return err.code;
+  }
+}
+
 async function main(argv: string[]) {
   const [command, ...rest] = argv;
+  if (command === 'get') return getCommand(rest);
   const json = argv.includes('--json') || !process.stdout.isTTY;
   const emit: Emit = (value) => {
     const line = json ? JSON.stringify(value) : text(value);
