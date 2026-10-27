@@ -15,6 +15,7 @@ export interface TierInput {
   viewport: { width: number; height: number };
   pinned: ReadonlySet<string>;
   snapshots: ReadonlySet<string>;
+  hovered?: string | null;
 }
 export interface BoardRender { tier: BoardTier; mounted: boolean; image: string | null; overlay: boolean; hidden: boolean }
 
@@ -29,7 +30,7 @@ const screenRect = (board: TierBoard, view: View) => {
 const visibleArea = ({ left, top, right, bottom }: ReturnType<typeof screenRect>, viewport: TierInput['viewport']) =>
   Math.max(0, Math.min(right, viewport.width) - Math.max(left, 0)) * Math.max(0, Math.min(bottom, viewport.height) - Math.max(top, 0));
 
-export function chooseTiers({ boards, view, viewport, pinned, snapshots }: TierInput): Map<string, BoardTier> {
+export function chooseTiers({ boards, view, viewport, pinned, snapshots, hovered }: TierInput): Map<string, BoardTier> {
   const placed = boards.map((board) => {
     const rect = screenRect(board, view);
     const { left, top, right, bottom } = rect;
@@ -37,9 +38,11 @@ export function chooseTiers({ boards, view, viewport, pinned, snapshots }: TierI
     const distance = Math.hypot(Math.max(0, -right, left - viewport.width), Math.max(0, -bottom, top - viewport.height));
     return { id: board.id, area, mostlyVisible: area * 2 > Math.min((right - left) * (bottom - top), viewport.width * viewport.height), distance };
   });
-  const reading = view.k >= LIVE_MIN_ZOOM
-    ? new Set(placed.filter((board) => board.mostlyVisible).sort((a, b) => b.area - a.area).slice(0, LIVE_MAX).map((board) => board.id))
-    : new Set<string>();
+  const hover = hovered && !pinned.has(hovered) && placed.some((board) => board.id === hovered) ? [hovered] : [];
+  const ranked = view.k >= LIVE_MIN_ZOOM
+    ? placed.filter((board) => board.mostlyVisible && !pinned.has(board.id) && board.id !== hovered).sort((a, b) => b.area - a.area).map((board) => board.id)
+    : [];
+  const reading = new Set([...hover, ...ranked].slice(0, LIVE_MAX));
   return new Map(placed.map(({ id, distance }) => {
     if (pinned.has(id) || reading.has(id)) return [id, 'live'];
     if (distance > viewport.width) return [id, 'empty'];

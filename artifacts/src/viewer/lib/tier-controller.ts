@@ -9,7 +9,6 @@ export interface ControllerInput extends TierInput {
 export interface BoardState { tier: BoardTier; mounted: boolean; ready: boolean; warming?: boolean }
 
 const LINGER_MS = 1500;
-const HOVER_MS = 150;
 const MAX_MOUNTING = 2;
 const MAX_WARMING = 2;
 const READY_AFTER_LOAD_MS = 3000;
@@ -34,7 +33,6 @@ export function createTierController({
   const wantedAt = new Map<string, number>();
   const lingering = new Map<string, number>();
   let live = new Set<string>();
-  let hover: { id: string | null; since: number; timer?: number } = { id: null, since: 0 };
 
   const markReady = (id: string) => {
     const frame = frames.get(id);
@@ -69,13 +67,9 @@ export function createTierController({
       const time = now();
       const ids = new Set(input.boards.map((board) => board.id));
       for (const id of [...frames.keys()]) if (!ids.has(id)) release(id);
-      if (input.hovered !== hover.id) {
-        if (hover.timer !== undefined) cancel(hover.timer);
-        hover = { id: input.hovered, since: time, timer: input.hovered ? schedule(onChange, HOVER_MS) : undefined };
-      }
-      const promoted = input.hoverPromotes && hover.id && time - hover.since >= HOVER_MS ? hover.id : null;
-      const pinned = promoted ? new Set([...input.pinned, promoted]) : input.pinned;
-      const tiers = chooseTiers({ ...input, pinned });
+      const pinned = input.pinned;
+      const first = (id: string) => pinned.has(id) || (input.hoverPromotes && id === input.hovered);
+      const tiers = chooseTiers({ ...input, hovered: input.hoverPromotes ? input.hovered : null });
 
       if (!input.scaling) {
         const next = new Set<string>();
@@ -96,7 +90,7 @@ export function createTierController({
         const wanted = new Set(warm);
         for (const id of [...frames.keys()]) if (!live.has(id) && !wanted.has(id)) release(id);
         let mounting = [...frames.values()].filter((frame) => !frame.ready).length;
-        const waiting = input.boards.map((board) => board.id).filter((id) => live.has(id) && !frames.has(id)).sort((a, b) => Number(pinned.has(b)) - Number(pinned.has(a)));
+        const waiting = input.boards.map((board) => board.id).filter((id) => live.has(id) && !frames.has(id)).sort((a, b) => Number(first(b)) - Number(first(a)));
         for (const id of waiting) {
           if (mounting >= MAX_MOUNTING) break;
           const frame: { ready: boolean; timer?: number } = { ready: false };

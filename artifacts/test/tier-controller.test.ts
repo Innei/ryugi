@@ -94,16 +94,16 @@ test('while the scale changes no board mounts or unmounts, but images still foll
   expect(run({ scaling: false }).c).toBe('live+mounted');
 });
 
-test('with the select or comment tool, hovering a board for 150 ms makes it live', () => {
-  const { time, run, changes } = setup({ view: { x: 0, y: 0, k: 0.2 }, hoverPromotes: true });
-  expect(run({ hovered: 'b' }).b).toBe('placeholder');
-  const before = changes();
-  time.advance(150);
-  expect(changes()).toBeGreaterThan(before);
-  expect(run().b).toBe('live+mounted');
+test('with the select or comment tool, a hovered board goes live at once', () => {
+  const { run } = setup({ view: { x: 0, y: 0, k: 0.2 }, hoverPromotes: true });
+  expect(run({ hovered: 'b' }).b).toBe('live+mounted');
   expect(run({ hovered: 'a', hoverPromotes: false }).a).toBe('placeholder');
-  time.advance(1000);
-  expect(run().a).toBe('placeholder');
+});
+
+test('a hovered board mounts ahead of other live boards', () => {
+  const boards = ['a', 'b', 'c', 'd'].map((id, i) => board(id, i * 120, 100, 100));
+  const { run } = setup({ boards, hoverPromotes: true, hovered: 'd' });
+  expect(run().d).toBe('live+mounted');
 });
 
 test('a board that disappears releases its mount slot', () => {

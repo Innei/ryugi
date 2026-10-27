@@ -21,6 +21,7 @@ import { useTypeFavicon } from '../hooks/useTypeFavicon';
 import type { BoardCommentsState } from '../lib/board-comments';
 import { useBoardComments } from '../hooks/useBoardComments';
 import { useBoardTiers } from '../hooks/useBoardTiers';
+import { useHoverDwell } from '../hooks/useHoverDwell';
 import { useVerdicts } from '../hooks/useVerdicts';
 import { RejectComposer } from '../verdicts/RejectComposer';
 import { useInspector } from '../hooks/useInspector';
@@ -205,8 +206,11 @@ function DesktopArtboard({ id, artifact, canvas, layout, warnings, pending, cont
     const rect = viewportRef.current!.getBoundingClientRect();
     return { x: (event.clientX - rect.left - view.x) / view.k, y: (event.clientY - rect.top - view.y) / view.k };
   };
-  const [pointerBoard, setPointerBoard] = useState<string | null>(null);
   const boardAt = (point: { x: number; y: number }) => boards.find(([, b]) => point.x >= b.x && point.x <= b.x + b.w && point.y >= b.y && point.y <= b.y + b.h)?.[0] ?? null;
+  const hover = useHoverDwell({ scaling, view, locate: (client) => {
+    const point = worldPoint(client);
+    return { board: boardAt(point), x: point.x * view.k, y: point.y * view.k };
+  } });
   const marquee = selection.marquee;
   const pinned = useMemo(() => new Set([
     ...playing,
@@ -222,7 +226,7 @@ function DesktopArtboard({ id, artifact, canvas, layout, warnings, pending, cont
   };
   const tiers = useBoardTiers({
     artifact: artifact ?? id, boards, versions, pending: pendingBoards, view, scaling, viewport: size, pinned,
-    hovered: inspector.hover?.boardId ?? pointerBoard, hoverPromotes: tool === 'select' || commentTool, persistable,
+    hovered: inspector.hover?.boardId ?? hover.hovered, hoverPromotes: tool === 'select' || commentTool, persistable,
   });
   const frameRef = useMemo(() => {
     const refs = new Map<string, (element: HTMLIFrameElement | null) => void>();
@@ -249,8 +253,9 @@ function DesktopArtboard({ id, artifact, canvas, layout, warnings, pending, cont
         event.currentTarget.setPointerCapture(event.pointerId);
         selection.drag('start', point.x, point.y, event.shiftKey || event.metaKey || event.ctrlKey);
       }}
-      onPointerMove={(event) => { handlers.onPointerMove(event); setPointerBoard(boardAt(worldPoint(event))); if (selection.dragging()) { if (event.buttons === 1) event.currentTarget.setPointerCapture(event.pointerId); const point = worldPoint(event); selection.drag('move', point.x, point.y); } }}
+      onPointerMove={(event) => { handlers.onPointerMove(event); hover.track(event); if (selection.dragging()) { if (event.buttons === 1) event.currentTarget.setPointerCapture(event.pointerId); const point = worldPoint(event); selection.drag('move', point.x, point.y); } }}
       onPointerUp={(event) => { handlers.onPointerUp(event); if (selection.dragging()) { const point = worldPoint(event); selection.drag('end', point.x, point.y); } }}
+      onPointerLeave={hover.leave}
       onPointerCancel={(event) => { handlers.onPointerCancel(event); selection.reset(); }}>
       <HandCursor viewport={viewportRef} hand={hand} />
       {debug && <DebugHud renders={tiers.renders} scaling={scaling} />}

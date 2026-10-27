@@ -35,6 +35,16 @@ test('at a reading zoom at most eight boards go live, the ones covering the most
   expect(Object.entries(result).filter(([, tier]) => tier === 'live').map(([id]) => id)).toEqual(['b2', 'b3', 'b4', 'b5', 'b6', 'b7', 'b8', 'b9']);
 });
 
+test('a hovered board takes the place of the smallest live board when eight are already live', () => {
+  const boards = Array.from({ length: 10 }, (_, i) => board(`b${i}`, (i % 5) * 200, Math.floor(i / 5) * 400, 100 + i * 5, 100 + i * 5));
+  const result = tiers({ boards, view: { x: 0, y: 0, k: 1 }, hovered: 'b0', pinned: new Set(['b1']) });
+  expect(Object.entries(result).filter(([, tier]) => tier === 'live').map(([id]) => id)).toEqual(['b0', 'b1', 'b3', 'b4', 'b5', 'b6', 'b7', 'b8', 'b9']);
+});
+
+test('a hovered board is live at an overview zoom', () => {
+  expect(tiers({ boards: [board('a', 0, 0, 100, 100), board('b', 200, 0, 100, 100)], view: { x: 0, y: 0, k: 0.2 }, hovered: 'b' })).toEqual({ a: 'placeholder', b: 'live' });
+});
+
 test('below zoom 0.4 nothing goes live on its own', () => {
   const result = tiers({ boards: [board('a', 0), board('b', 1100)], view: { x: 0, y: 0, k: 0.39 }, snapshots: new Set(['a']) });
   expect(result).toEqual({ a: 'snapshot', b: 'placeholder' });
