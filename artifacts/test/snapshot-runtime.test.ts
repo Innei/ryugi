@@ -114,6 +114,14 @@ test('the board is serialized into an SVG with every resource it needs inlined',
   expect(svg).not.toContain('cursor:default');
 });
 
+test('animations are pinned to their end in the snapshot, since an SVG image would show their first keyframe', async () => {
+  const win = page('<style>.card{animation:in 2s both}@keyframes in{from{opacity:0}}</style><div class="card">Card</div>');
+  const { serializeBoard } = await import('../src/inspector/snapshot');
+  const { svg } = await serializeBoard(win);
+  expect(svg).toMatch(/\*,\s*\*::before,\s*\*::after\s*\{[^}]*animation-delay:\s*-\d+s\s*!important;[^}]*animation-play-state:\s*paused\s*!important/);
+  expect(svg).toMatch(/transition:\s*none\s*!important/);
+});
+
 test('only the font faces the board has loaded are inlined, so unused slices are never fetched', async () => {
   const win = page('<link rel="stylesheet" href="cjk.css"><p>汉字</p>');
   Object.defineProperty(win.document, 'fonts', { configurable: true, value: [

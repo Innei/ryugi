@@ -153,6 +153,10 @@ export async function serializeBoard(win: Window & typeof globalThis): Promise<{
   }
   await Promise.all(jobs);
   for (const element of clone.querySelectorAll('script, noscript, link, [data-ryugi-inspector]')) element.remove();
+  /* An SVG image never runs its animations, so each would show its first keyframe; jump them to their end instead. */
+  const settled = doc.createElement('style');
+  settled.textContent = '*, *::before, *::after { animation-delay: -99999s !important; animation-play-state: paused !important; transition: none !important }';
+  clone.append(settled);
   const width = win.innerWidth, height = win.innerHeight;
   const xhtml = new win.XMLSerializer().serializeToString(clone);
   return { svg: `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"><foreignObject x="0" y="0" width="100%" height="100%">${xhtml}</foreignObject></svg>`, width, height };
