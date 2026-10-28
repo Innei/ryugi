@@ -9,6 +9,7 @@ import { artifactPath } from '../server/artifact-address';
 import { artifactKeyOf } from '../server/artifacts';
 import { openBrowser } from '../server/browser-focus';
 import type { CommandSpec } from './command';
+import { takeLoginHint } from './login-hint';
 import {
   ARTIFACT_ERROR,
   ARTIFACT_PATTERN,
@@ -175,6 +176,10 @@ export async function start(options: StartOptions, emit: Emit): Promise<number> 
     options.foreground || (!options.background && (!!process.env.CODEX_CI || windowsLike()));
   process.umask(0o077);
   const paths = projectPaths(options.projectDir);
+  const emitStarted: Emit = (out) => {
+    const loginHint = takeLoginHint(paths.project);
+    emit(loginHint ? { ...out, loginHint } : out);
+  };
   fs.mkdirSync(paths.state, { recursive: true });
   if (!fs.existsSync(path.join(paths.state, '.gitignore')))
     fs.writeFileSync(path.join(paths.state, '.gitignore'), '*\n');
@@ -202,7 +207,7 @@ export async function start(options: StartOptions, emit: Emit): Promise<number> 
           withLink(JSON.parse(info), options.artifact, true),
           options.artifact,
         );
-        emit(out);
+        emitStarted(out);
         if (
           process.platform === 'darwin' &&
           options.open &&
@@ -244,7 +249,9 @@ export async function start(options: StartOptions, emit: Emit): Promise<number> 
         }
         if (value.type !== 'server-started') emit(value);
         else
-          void withCloudLink(withLink(value, options.artifact, false), options.artifact).then(emit);
+          void withCloudLink(withLink(value, options.artifact, false), options.artifact).then(
+            emitStarted,
+          );
       });
       const exited = new Promise<number>((resolve) =>
         child.on('close', (code) => resolve(code ?? 1)),
@@ -275,7 +282,7 @@ export async function start(options: StartOptions, emit: Emit): Promise<number> 
             );
           await sleep(100);
         }
-        emit(
+        emitStarted(
           await withCloudLink(
             withLink(JSON.parse(started), options.artifact, false),
             options.artifact,

@@ -2,6 +2,7 @@ import { execFile } from 'node:child_process';
 
 import { commandHelp, type Options, parse, rootHelp, wantsHelp } from './command';
 import { COMMANDS } from './commands';
+import { loginHintText } from './login-hint';
 import { CliError } from './paths';
 import { type Emit, start } from './start';
 import { notifyUpdate } from './update-hint';
@@ -49,6 +50,8 @@ async function browse(argv: string[]) {
       }
       if (value.type !== 'server-started') return;
       console.info(value.url);
+      const hint = loginHintText(value.loginHint);
+      if (hint) console.info(hint);
       if (!value.reused) console.info('Press Ctrl+C to stop the server.');
       if (!values['no-open']) openBrowser(value.url as string);
     },
@@ -64,6 +67,10 @@ async function main(argv: string[]) {
     const line = json ? JSON.stringify(value) : text(value);
     if (!json && typeof value.error === 'string') console.error(line);
     else console.info(line);
+    if (!json) {
+      const hint = loginHintText(value.loginHint);
+      if (hint) console.info(hint);
+    }
   };
   try {
     if (command) {
