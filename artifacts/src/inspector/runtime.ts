@@ -339,10 +339,8 @@ export function installInspector(
     hoverId = null;
     if (enabled) post('hover', { rect: null, id: null });
   };
-  const wheel = (event: WheelEvent) => {
-    if (!enabled) return;
+  const forwardWheel = (event: WheelEvent) => {
     event.preventDefault();
-    event.stopImmediatePropagation();
     const factor = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? win.innerHeight : 1;
     post('wheel', {
       deltaX: event.deltaX * factor,
@@ -351,6 +349,15 @@ export function installInspector(
       y: event.clientY,
       zoom: event.ctrlKey || event.metaKey,
     });
+  };
+  const wheel = (event: WheelEvent) => {
+    if (!enabled) return;
+    event.stopImmediatePropagation();
+    forwardWheel(event);
+  };
+  /* A trackpad pinch is a ctrl-wheel; one the board leaves unhandled would zoom the whole viewer page. */
+  const pinch = (event: WheelEvent) => {
+    if (event.ctrlKey && !event.defaultPrevented) forwardWheel(event);
   };
   const key = (event: KeyboardEvent) => {
     if (
@@ -572,6 +579,7 @@ export function installInspector(
   doc.addEventListener('pointercancel', endDrag, true);
   doc.addEventListener('pointerleave', leave);
   doc.addEventListener('wheel', wheel, { passive: false, capture: true });
+  win.addEventListener('wheel', pinch, { passive: false });
   doc.addEventListener('keydown', key, true);
   doc.addEventListener('keyup', key, true);
   win.addEventListener('scroll', scroll, true);
@@ -586,6 +594,7 @@ export function installInspector(
     doc.removeEventListener('pointercancel', endDrag, true);
     doc.removeEventListener('pointerleave', leave);
     doc.removeEventListener('wheel', wheel, true);
+    win.removeEventListener('wheel', pinch);
     doc.removeEventListener('keydown', key, true);
     doc.removeEventListener('keyup', key, true);
     win.removeEventListener('scroll', scroll, true);

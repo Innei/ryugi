@@ -389,3 +389,31 @@ test('the mode can be set right after enabling, before the frame knows its sessi
     'data:image/svg+xml',
   );
 });
+
+test('a pinch over an uninspected board zooms the canvas instead of the page, unless the page handles it', () => {
+  const pinch = () => {
+    const event = new WheelEvent('wheel', { deltaY: -4, bubbles: true, cancelable: true });
+    Object.defineProperties(event, {
+      ctrlKey: { value: true },
+      clientX: { value: 10 },
+      clientY: { value: 20 },
+    });
+    return event;
+  };
+  const scroll = new WheelEvent('wheel', { deltaY: 30, bubbles: true, cancelable: true });
+  document.body.dispatchEvent(scroll);
+  expect(scroll.defaultPrevented).toBe(false);
+  expect(last('wheel')).toBeUndefined();
+
+  const event = pinch();
+  document.body.dispatchEvent(event);
+  expect(event.defaultPrevented).toBe(true);
+  expect(last('wheel')).toMatchObject({ deltaY: -4, x: 10, y: 20, zoom: true });
+
+  posted = [];
+  const own = (event: Event) => event.preventDefault();
+  root.addEventListener('wheel', own);
+  root.dispatchEvent(pinch());
+  root.removeEventListener('wheel', own);
+  expect(last('wheel')).toBeUndefined();
+});

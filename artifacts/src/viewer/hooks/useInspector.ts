@@ -178,6 +178,10 @@ export function useInspector(options: Options) {
       if (!match) return;
       const [boardId, entry] = match;
       const data = readInspectorReport(event.data);
+      if (data?.type === 'ryugi:inspect:wheel' && data.zoom) {
+        current.current.options.onInput(boardId, data);
+        return;
+      }
       if (
         !data ||
         data.connection !== entry.connection ||

@@ -24,9 +24,14 @@ let root: Root;
 let inspector: ReturnType<typeof useInspector>;
 let frame: HTMLIFrameElement;
 let sent: any[];
+let inputs: [string, unknown][];
 
-function Harness({ enabled = true }: { enabled?: boolean }) {
-  inspector = useInspector({ enabled, playing: new Set(), onInput: () => {} });
+function Harness({ enabled = true, playing = [] }: { enabled?: boolean; playing?: string[] }) {
+  inspector = useInspector({
+    enabled,
+    playing: new Set(playing),
+    onInput: (boardId, input) => inputs.push([boardId, input]),
+  });
   return createElement('iframe', {
     ref: inspector.refFor('a'),
     onLoad: () => inspector.loaded('a'),
@@ -41,6 +46,7 @@ beforeEach(() => {
   act(() => root.render(createElement(Harness)));
   frame = host.querySelector('iframe')!;
   sent = [];
+  inputs = [];
   vi.spyOn(frame.contentWindow!, 'postMessage').mockImplementation((message) => sent.push(message));
   act(() => inspector.loaded('a'));
 });
@@ -252,6 +258,19 @@ test('closing inspection sends disable without mutating style or resetting the c
   act(() => root.render(createElement(Harness, { enabled: false })));
   expect(sent.at(-1).action).toBe('disable');
   expect(sent.some((message) => message.action === 'reset')).toBe(false);
+});
+
+test('a pinch from a playing or uninspected board still reaches the canvas, plain wheels do not', () => {
+  const pinch = { deltaX: 0, deltaY: -4, x: 10, y: 20, zoom: true, connection: '' };
+  act(() => root.render(createElement(Harness, { playing: ['a'] })));
+  report('wheel', pinch);
+  report('wheel', { ...pinch, zoom: false });
+  act(() => root.render(createElement(Harness, { enabled: false })));
+  report('wheel', pinch);
+  expect(inputs).toEqual([
+    ['a', expect.objectContaining({ type: 'ryugi:inspect:wheel', deltaY: -4, zoom: true })],
+    ['a', expect.objectContaining({ type: 'ryugi:inspect:wheel', deltaY: -4, zoom: true })],
+  ]);
 });
 
 test('geometry reports update only the currently selected node in their frame', () => {

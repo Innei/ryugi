@@ -60,13 +60,7 @@ function validTree(value: unknown) {
 }
 
 export function readInspectorReport(value: unknown): InspectorReport | null {
-  if (
-    !object(value) ||
-    !text(value.session, 128) ||
-    !value.session ||
-    !text(value.connection, 128) ||
-    !value.connection
-  )
+  if (!object(value) || !text(value.session, 128) || !value.session || !text(value.connection, 128))
     return null;
   let valid = false;
   switch (value.type) {
