@@ -3,6 +3,7 @@ import { type BoardTier, chooseTiers, type TierInput } from './board-tiers';
 export interface ControllerInput extends TierInput {
   hovered: string | null;
   hoverPromotes: boolean;
+  maxMounting?: number;
   scaling: boolean;
   warm?: readonly string[];
 }
@@ -128,18 +129,19 @@ export function createTierController({
           }
         }
         let mounting = [...frames.values()].filter((frame) => !frame.ready).length;
+        const mountingCap = input.maxMounting ?? MAX_MOUNTING;
         const waiting = input.boards
           .map((board) => board.id)
           .filter((id) => live.has(id) && !frames.has(id))
           .sort((a, b) => Number(first(b)) - Number(first(a)));
         for (const id of waiting) {
-          if (mounting >= MAX_MOUNTING) break;
+          if (mounting >= mountingCap) break;
           mount(id);
           mounting++;
         }
         let warming = [...frames.keys()].filter((id) => !live.has(id)).length;
         for (const id of warm) {
-          if (mounting >= MAX_MOUNTING || warming >= MAX_WARMING) break;
+          if (mounting >= mountingCap || warming >= MAX_WARMING) break;
           if (frames.has(id) || given.has(id)) continue;
           mount(id);
           mounting++;

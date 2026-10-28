@@ -1,10 +1,10 @@
+import { DEFAULT_LIVE_LIMIT } from './live-limit';
 import type { View } from './view';
 
 export const SNAPSHOT_SCALES = [0.125, 0.25, 0.5, 1, 2] as const;
 export type SnapshotScale = (typeof SNAPSHOT_SCALES)[number];
 export type BoardTier = 'live' | 'snapshot' | 'placeholder' | 'empty';
 export const LIVE_MIN_ZOOM = 0.4;
-export const LIVE_MAX = 8;
 const VISIBLE_MARGIN = 240;
 export const WARM_MIN_WIDTH = 120;
 
@@ -18,8 +18,10 @@ export interface TierBoard {
 export interface TierInput {
   boards: TierBoard[];
   hovered?: string | null;
+  limit?: number;
   pinned: ReadonlySet<string>;
   snapshots: ReadonlySet<string>;
+  untilSnapshot?: boolean;
   view: View;
   viewport: { width: number; height: number };
 }
@@ -54,6 +56,8 @@ export function chooseTiers({
   pinned,
   snapshots,
   hovered,
+  limit = DEFAULT_LIVE_LIMIT,
+  untilSnapshot = false,
 }: TierInput): Map<string, BoardTier> {
   const placed = boards.map((board) => {
     const rect = screenRect(board, view);
@@ -78,11 +82,17 @@ export function chooseTiers({
   const ranked =
     view.k >= LIVE_MIN_ZOOM
       ? placed
-          .filter((board) => board.mostlyVisible && !pinned.has(board.id) && board.id !== hovered)
+          .filter(
+            (board) =>
+              board.mostlyVisible &&
+              !pinned.has(board.id) &&
+              board.id !== hovered &&
+              (!untilSnapshot || !snapshots.has(board.id)),
+          )
           .sort((a, b) => b.area - a.area)
           .map((board) => board.id)
       : [];
-  const reading = new Set([...hover, ...ranked].slice(0, LIVE_MAX));
+  const reading = new Set([...hover, ...ranked].slice(0, Math.max(0, limit)));
   return new Map(
     placed.map(({ id, distance }) => {
       if (pinned.has(id) || reading.has(id)) return [id, 'live'];
@@ -125,11 +135,14 @@ export function boardsToWarm({
   viewport,
   snapshots,
   skip,
-}: Pick<TierInput, 'boards' | 'view' | 'viewport' | 'snapshots'> & { skip: ReadonlySet<string> }) {
+  minWidth = WARM_MIN_WIDTH,
+}: Pick<TierInput, 'boards' | 'view' | 'viewport' | 'snapshots'> & {
+  minWidth?: number;
+  skip: ReadonlySet<string>;
+}) {
   return boards
     .filter(
-      (board) =>
-        !snapshots.has(board.id) && !skip.has(board.id) && board.w * view.k >= WARM_MIN_WIDTH,
+      (board) => !snapshots.has(board.id) && !skip.has(board.id) && board.w * view.k >= minWidth,
     )
     .map((board) => ({ id: board.id, area: visibleArea(screenRect(board, view), viewport) }))
     .filter((board) => board.area > 0)

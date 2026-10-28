@@ -399,21 +399,19 @@ test('a finger landing during an animated fit stops it where it is', () => {
   vi.restoreAllMocks();
 });
 
-test('only a continuous zoom marks the canvas as scaling, until 150 ms after its last step', () => {
+test('every zoom change marks the canvas as scaling, until 150 ms after the last step', () => {
   vi.useFakeTimers();
   try {
     render('select');
-    act(() => panZoom.wheelAt?.({ deltaX: 0, deltaY: -10, x: 100, y: 100, zoom: true }));
-    expect(panZoom.scaling).toBe(false);
-    act(() => vi.advanceTimersByTime(120));
-    act(() => panZoom.zoomBy(1.2));
-    expect(panZoom.scaling).toBe(false);
-    act(() => vi.advanceTimersByTime(50));
     act(() => panZoom.wheelAt?.({ deltaX: 0, deltaY: -10, x: 100, y: 100, zoom: true }));
     expect(panZoom.scaling).toBe(true);
     act(() => vi.advanceTimersByTime(149));
     expect(panZoom.scaling).toBe(true);
     act(() => vi.advanceTimersByTime(1));
+    expect(panZoom.scaling).toBe(false);
+    act(() => panZoom.zoomBy(1.2));
+    expect(panZoom.scaling).toBe(true);
+    act(() => vi.advanceTimersByTime(150));
     expect(panZoom.scaling).toBe(false);
   } finally {
     vi.useRealTimers();

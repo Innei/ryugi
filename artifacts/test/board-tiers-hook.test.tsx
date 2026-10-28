@@ -101,10 +101,21 @@ afterEach(() => {
 });
 
 const blob = (label: string) => Object.assign(new Blob([label], { type: 'image/png' }), { label });
+const requestAt = (posted: ReturnType<typeof vi.fn>, index = 0): number => {
+  const message = posted.mock.calls[index]?.[0];
+  if (
+    !message ||
+    typeof message !== 'object' ||
+    !('request' in message) ||
+    typeof message.request !== 'number'
+  )
+    throw new Error('missing capture request');
+  return message.request;
+};
 
 test('a board that reports ready is captured at the pixel ratio and its snapshot is kept for later', async () => {
   await render();
-  expect(state('a')).toMatchObject({ tier: 'live', mounted: true, overlay: true });
+  expect(state('a')).toMatchObject({ tier: 'live', mounted: true, overlay: false });
   expect(state('a').image).toMatch(/^data:image\/svg\+xml/);
   const a = frame('a');
   await a.post({ type: 'ryugi:board:ready' });
@@ -112,7 +123,7 @@ test('a board that reports ready is captured at the pixel ratio and its snapshot
     { type: 'ryugi:board:capture', request: expect.any(Number), scale: 2 },
     '*',
   );
-  const { request } = a.posted.mock.calls[0]![0] as { request: number };
+  const request = requestAt(a.posted);
   await a.post({
     type: 'ryugi:board:snapshot',
     request,
@@ -137,7 +148,7 @@ test('a frame that remounts must report ready again before a change is captured'
   await render();
   const a = frame('a');
   await a.post({ type: 'ryugi:board:ready' });
-  const { request } = a.posted.mock.calls[0]![0] as { request: number };
+  const request = requestAt(a.posted);
   await a.post({
     type: 'ryugi:board:snapshot',
     request,
@@ -155,7 +166,7 @@ test('a frame that loads a new document must report ready again before a change 
   await render();
   const a = frame('a');
   await a.post({ type: 'ryugi:board:ready' });
-  const { request } = a.posted.mock.calls[0]![0] as { request: number };
+  const request = requestAt(a.posted);
   await a.post({
     type: 'ryugi:board:snapshot',
     request,
@@ -172,7 +183,7 @@ test('while zooming, a ready board with a snapshot hides its frame under the sna
   await render();
   const a = frame('a');
   await a.post({ type: 'ryugi:board:ready' });
-  const { request } = a.posted.mock.calls[0]![0] as { request: number };
+  const request = requestAt(a.posted);
   await a.post({
     type: 'ryugi:board:snapshot',
     request,
@@ -188,6 +199,19 @@ test('while zooming, a ready board with a snapshot hides its frame under the sna
     hidden: true,
     image: 'blob:shot-a',
   });
+});
+
+test('while zooming, a live board without a snapshot is covered by its placeholder instead of scaling its frame', async () => {
+  await render();
+  frame('a');
+  await render({ scaling: true, view: { x: 0, y: 0, k: 1.1 } });
+  expect(state('a')).toMatchObject({
+    tier: 'live',
+    mounted: true,
+    overlay: true,
+    hidden: true,
+  });
+  expect(state('a').image).toMatch(/^data:image\/svg\+xml/);
 });
 
 test('a capture with no answer within 10 s is not marked unsupported and is retried when the board mounts again', async () => {
@@ -222,18 +246,18 @@ test('a board whose capture timed out is not captured again on changes until it 
   expect(a.posted).toHaveBeenCalledTimes(1);
 });
 
-test('one capture runs at a time, and a change while zooming waits until the zoom ends', async () => {
+test('two captures run at a time, and a change while zooming waits until the zoom ends', async () => {
   await render();
   const a = frame('a');
   const b = frame('b');
   await a.post({ type: 'ryugi:board:ready' });
   await b.post({ type: 'ryugi:board:ready' });
-  expect(b.posted).not.toHaveBeenCalled();
-  const first = (a.posted.mock.calls[0]![0] as { request: number }).request;
+  expect(a.posted).toHaveBeenCalledTimes(1);
+  expect(b.posted).toHaveBeenCalledTimes(1);
+  const first = requestAt(a.posted);
   await a.post({ type: 'ryugi:board:snapshot', request: first, error: 'unsupported: video' });
   expect(store.isUnsupported(key('a'))).toBe(true);
-  expect(b.posted).toHaveBeenCalledTimes(1);
-  const second = (b.posted.mock.calls[0]![0] as { request: number }).request;
+  const second = requestAt(b.posted);
   await b.post({
     type: 'ryugi:board:snapshot',
     request: second,
@@ -252,7 +276,7 @@ test('a capture taken with tweaks applied stays in memory only', async () => {
   await render({ persistable: (id) => id !== 'a' });
   const a = frame('a');
   await a.post({ type: 'ryugi:board:ready' });
-  const { request } = a.posted.mock.calls[0]![0] as { request: number };
+  const request = requestAt(a.posted);
   await a.post({
     type: 'ryugi:board:snapshot',
     request,
@@ -309,7 +333,7 @@ test('a recapture of a board replaces the snapshot its overlay shows', async () 
   await a.post({ type: 'ryugi:board:ready' });
   await a.post({
     type: 'ryugi:board:snapshot',
-    request: (a.posted.mock.calls[0]![0] as { request: number }).request,
+    request: requestAt(a.posted),
     blob: blob('shot1'),
     width: 400,
     height: 300,
@@ -317,7 +341,7 @@ test('a recapture of a board replaces the snapshot its overlay shows', async () 
   await a.post({ type: 'ryugi:board:changed' });
   await a.post({
     type: 'ryugi:board:snapshot',
-    request: (a.posted.mock.calls[1]![0] as { request: number }).request,
+    request: requestAt(a.posted, 1),
     blob: blob('shot2'),
     width: 400,
     height: 300,
@@ -343,6 +367,22 @@ test('a board whose frame unmounts during its capture is not marked unsupported,
   expect(store.isUnsupported(key('a'))).toBe(false);
 });
 
+test('preview mode keeps a few unsnapshotted boards live so the first paint has content', async () => {
+  await render({ preview: true });
+  expect(state('a')).toMatchObject({ tier: 'live', mounted: true });
+  const a = frame('a');
+  await a.post({ type: 'ryugi:board:ready' });
+  const request = requestAt(a.posted);
+  await a.post({
+    type: 'ryugi:board:snapshot',
+    request,
+    blob: blob('preview-a'),
+    width: 400,
+    height: 300,
+  });
+  expect(store.has(key('a'))).toBe(true);
+});
+
 test('at a moderate overview a board without a snapshot is mounted under its placeholder, captured, then released', async () => {
   await render({ view: { x: 0, y: 0, k: 0.35 } });
   expect(state('a')).toMatchObject({
@@ -354,7 +394,7 @@ test('at a moderate overview a board without a snapshot is mounted under its pla
   expect(state('a').image).toMatch(/^data:image\/svg\+xml/);
   const a = frame('a');
   await a.post({ type: 'ryugi:board:ready' });
-  const { request } = a.posted.mock.calls[0]![0] as { request: number };
+  const request = requestAt(a.posted);
   await a.post({
     type: 'ryugi:board:snapshot',
     request,

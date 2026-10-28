@@ -4,11 +4,14 @@ export function installSnapshot(win: Window & typeof globalThis, serialize: type
     win.parent.postMessage({ type: `ryugi:board:${type}`, ...data }, '*');
   const frame = () => new Promise<void>((resolve) => win.requestAnimationFrame(() => resolve()));
   const settle = async () => {
-    try {
-      await doc.fonts?.ready;
-    } catch {
-      void 0;
-    }
+    const fonts = doc.fonts?.ready;
+    if (fonts)
+      await Promise.race([
+        fonts.catch(() => undefined),
+        new Promise<void>((resolve) => {
+          win.setTimeout(resolve, 800);
+        }),
+      ]);
     for (let round = 0; round < 20; round++) {
       const running = (doc.getAnimations?.() ?? []).filter(
         (animation) =>
@@ -18,8 +21,12 @@ export function installSnapshot(win: Window & typeof globalThis, serialize: type
       if (!running.length) break;
       await Promise.all(running.map((animation) => animation.finished.catch(() => undefined)));
     }
-    await frame();
-    await frame();
+    await Promise.race([
+      Promise.all([frame(), frame()]),
+      new Promise<void>((resolve) => {
+        win.setTimeout(resolve, 100);
+      }),
+    ]);
     post('ready');
   };
   if (doc.readyState === 'complete') void settle();

@@ -27,7 +27,6 @@ const INSETS: Insets = { top: 64, right: 24, bottom: 24, left: 24 };
 const WHEEL_ZOOM_SPEED = 0.01;
 const FIT_MS = 420;
 const SCALE_SETTLE_MS = 150;
-const CONTINUOUS_ZOOM_MS = 100;
 const ease = cubicBezier(0.2, 0, 0, 1);
 const reducedMotion = () =>
   typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -76,16 +75,11 @@ export function usePanZoom(tool: Tool) {
   useEffect(() => stop, [stop]);
   const [scaling, setScaling] = useState(false);
   const scaledK = useRef(view.k);
-  const scaledAt = useRef(-Infinity);
   const settle = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  // A lone zoom step (a wheel click, ⌘+) re-renders live boards once; swapping them for snapshots and back costs more.
+  // A lone zoom step also re-rasterizes every live frame, so it gets the same cover as a continuous gesture.
   useLayoutEffect(() => {
     if (view.k === scaledK.current) return;
     scaledK.current = view.k;
-    const now = Date.now();
-    const continuous = now - scaledAt.current < CONTINUOUS_ZOOM_MS;
-    scaledAt.current = now;
-    if (!continuous && settle.current === undefined) return;
     setScaling(true);
     clearTimeout(settle.current);
     settle.current = setTimeout(() => {

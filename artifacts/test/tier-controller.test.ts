@@ -84,6 +84,15 @@ test('live boards mount at most two at a time and the queue moves on as boards r
   ).toHaveLength(2);
 });
 
+test('a caller can raise the mounting cap, as phone previews do for three boards', () => {
+  const boards = ['a', 'b', 'c', 'd'].map((id, i) => board(id, i * 120, 100, 100));
+  const { controller, run } = setup({ boards, maxMounting: 3 });
+  const first = run();
+  expect(Object.values(first).filter((state) => state.includes('mounted'))).toHaveLength(3);
+  controller.ready('a');
+  expect(run().d).toBe('live+mounted');
+});
+
 test('a board that loads but never reports ready counts as ready 3 s after load', () => {
   const { time, controller, run } = setup({ boards: [board('a', 0)] });
   expect(run().a).toBe('live+mounted');

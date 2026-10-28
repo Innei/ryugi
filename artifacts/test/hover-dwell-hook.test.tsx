@@ -47,28 +47,28 @@ afterEach(() => {
   history.replaceState(null, '', '/');
 });
 
-test('a pointer resting on a board for 600 ms hovers it', async () => {
+test('a pointer resting on a board for 150 ms hovers it', async () => {
   await render();
   act(() => result.track({ clientX: 100, clientY: 100 }));
-  await advance(600);
+  await advance(150);
   expect(result.hovered).toBe('a');
 });
 
 test('panning the board under a resting pointer restarts the dwell', async () => {
   await render();
   act(() => result.track({ clientX: 100, clientY: 100 }));
-  await advance(400);
+  await advance(100);
   await render({ view: { x: -50, y: 0, k: 1 } });
-  await advance(400);
+  await advance(100);
   expect(result.hovered).toBeNull();
-  await advance(200);
+  await advance(50);
   expect(result.hovered).toBe('a');
 });
 
 test('leaving the canvas ends the hover', async () => {
   await render();
   act(() => result.track({ clientX: 100, clientY: 100 }));
-  await advance(600);
+  await advance(150);
   act(() => result.leave());
   expect(result.hovered).toBeNull();
 });
@@ -83,7 +83,7 @@ test('with ?debug, ?hover sets the dwell length', async () => {
 
 test('a board the pointer is inside, as its frame reports, is hovered only after the same dwell', async () => {
   await render({ inside: 'a' });
-  await advance(599);
+  await advance(149);
   expect(result.hovered).toBeNull();
   await render({ inside: 'a' });
   await advance(1);

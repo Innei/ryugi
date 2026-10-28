@@ -61,11 +61,23 @@ test('zoomed in on a board larger than the screen, it goes live when it fills mo
   });
 });
 
-test('at a reading zoom at most eight boards go live, the ones covering the most screen first', () => {
+test('at a reading zoom the default budget lives every mostly visible board, largest first', () => {
+  const boards = Array.from({ length: 30 }, (_, i) =>
+    board(`b${i}`, (i % 10) * 100, Math.floor(i / 10) * 100, 100, 100),
+  );
+  const result = tiers({ boards, view: { x: 0, y: 0, k: 1 } });
+  expect(
+    Object.entries(result)
+      .filter(([, tier]) => tier === 'live')
+      .map(([id]) => id),
+  ).toEqual(Array.from({ length: 24 }, (_, i) => `b${i}`));
+});
+
+test('a caller-provided limit caps the live set, largest visible area first', () => {
   const boards = Array.from({ length: 10 }, (_, i) =>
     board(`b${i}`, (i % 5) * 200, Math.floor(i / 5) * 400, 100 + i * 5, 100 + i * 5),
   );
-  const result = tiers({ boards, view: { x: 0, y: 0, k: 1 } });
+  const result = tiers({ boards, view: { x: 0, y: 0, k: 1 }, limit: 8 });
   expect(
     Object.entries(result)
       .filter(([, tier]) => tier === 'live')
@@ -73,12 +85,25 @@ test('at a reading zoom at most eight boards go live, the ones covering the most
   ).toEqual(['b2', 'b3', 'b4', 'b5', 'b6', 'b7', 'b8', 'b9']);
 });
 
-test('a hovered board takes the place of the smallest live board when eight are already live', () => {
+test('a preview keeps only unsnapshotted boards live, so captures replace frames', () => {
+  const boards = ['a', 'b', 'c'].map((id, i) => board(id, i * 200, 0, 150, 150));
+  expect(
+    tiers({
+      boards,
+      view: { x: 0, y: 0, k: 1 },
+      snapshots: new Set(['a']),
+      untilSnapshot: true,
+    }),
+  ).toEqual({ a: 'snapshot', b: 'live', c: 'live' });
+});
+
+test('a hovered board takes the place of the smallest live board when the budget is full', () => {
   const boards = Array.from({ length: 10 }, (_, i) =>
     board(`b${i}`, (i % 5) * 200, Math.floor(i / 5) * 400, 100 + i * 5, 100 + i * 5),
   );
   const result = tiers({
     boards,
+    limit: 8,
     view: { x: 0, y: 0, k: 1 },
     hovered: 'b0',
     pinned: new Set(['b1']),
@@ -109,7 +134,7 @@ test('below zoom 0.4 nothing goes live on its own', () => {
   expect(result).toEqual({ a: 'snapshot', b: 'placeholder' });
 });
 
-test('pinned boards stay live at any zoom, off screen and beyond the four', () => {
+test('pinned boards stay live at any zoom, off screen and beyond the budget', () => {
   const boards = [
     board('a', 0, 0, 100, 100),
     board('b', 120, 0, 100, 100),
@@ -172,6 +197,24 @@ test('outside the artboard, boards within 240 px of the screen mount live and th
     overlay: false,
     hidden: false,
   });
+});
+
+test('warming accepts a lower minimum width for previews that draw boards small', () => {
+  const small = board('small', 0, 0, 100, 100);
+  const view = { x: 0, y: 0, k: 0.3 };
+  expect(
+    boardsToWarm({ boards: [small], view, viewport, snapshots: new Set(), skip: new Set() }),
+  ).toEqual([]);
+  expect(
+    boardsToWarm({
+      boards: [small],
+      view,
+      viewport,
+      snapshots: new Set(),
+      skip: new Set(),
+      minWidth: 20,
+    }),
+  ).toEqual(['small']);
 });
 
 test('boards drawn at least 120 px wide without a snapshot are warmed, the biggest first', () => {

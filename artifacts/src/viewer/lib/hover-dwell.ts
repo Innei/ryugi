@@ -1,4 +1,4 @@
-export const HOVER_DWELL_MS = 600;
+export const HOVER_DWELL_MS = 150;
 const STILL_PX = 4;
 
 interface Point {

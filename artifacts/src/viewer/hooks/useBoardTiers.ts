@@ -3,12 +3,15 @@ import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'r
 import { renderBoardPlaceholder } from '../../shared/thumbnail';
 import { type BoardSpec, isMediaBoard } from '../../shared/types';
 import { type BoardRender, boardsToWarm, chooseTiers, snapshotScale } from '../lib/board-tiers';
+import { liveLimit } from '../lib/live-limit';
 import { boardReady } from '../lib/play';
 import { createSnapshotStore, snapshotKey, type SnapshotStore } from '../lib/snapshot-store';
 import { createTierController } from '../lib/tier-controller';
 import type { View } from '../lib/view';
 
 const CAPTURE_TIMEOUT_MS = 10_000;
+const CAPTURE_CONCURRENCY = 2;
+const PREVIEW_LIVE_LIMIT = 4;
 let sharedStore: SnapshotStore | null = null;
 
 function useColorScheme() {
@@ -36,6 +39,7 @@ export function useBoardTiers({
   hovered,
   hoverPromotes,
   persistable,
+  preview = false,
   store: provided,
 }: {
   artifact: string;
@@ -49,6 +53,7 @@ export function useBoardTiers({
   hovered: string | null;
   hoverPromotes: boolean;
   persistable: (id: string) => boolean;
+  preview?: boolean;
   store?: SnapshotStore;
 }) {
   const store = provided ?? (sharedStore ??= createSnapshotStore());
@@ -64,6 +69,8 @@ export function useBoardTiers({
     }),
   );
   const dpr = typeof devicePixelRatio === 'number' && devicePixelRatio > 0 ? devicePixelRatio : 1;
+  // A phone preview is looked at, not pixel-peeped; capping the raster scale roughly halves capture time and memory.
+  const captureScale = preview ? Math.min(dpr, 2) : dpr;
   const scheme = useColorScheme();
   const frames = useRef(new Map<string, HTMLIFrameElement>());
   const reported = useRef(new Set<string>());
@@ -120,9 +127,27 @@ export function useBoardTiers({
   );
   const warm = scaling
     ? []
-    : boardsToWarm({ boards: tierBoards, view, viewport, snapshots, skip: unsupported });
+    : boardsToWarm({
+        boards: tierBoards,
+        view,
+        viewport,
+        snapshots,
+        skip: unsupported,
+        // A phone overview draws boards only tens of pixels wide; still warm them so the page fills in.
+        minWidth: preview ? 32 : undefined,
+      });
+  const nav = globalThis.navigator as (Navigator & { deviceMemory?: number }) | undefined;
+  const limit = preview
+    ? PREVIEW_LIVE_LIMIT
+    : liveLimit({
+        device: { cores: nav?.hardwareConcurrency, memoryGB: nav?.deviceMemory },
+        viewport,
+      });
   const states = controller.update({
     boards: tierBoards,
+    limit,
+    maxMounting: preview ? PREVIEW_LIVE_LIMIT : undefined,
+    untilSnapshot: preview,
     view,
     viewport,
     pinned,
@@ -180,29 +205,30 @@ export function useBoardTiers({
   );
 
   const queue = useRef<string[]>([]);
-  const inflight = useRef<{ id: string; key: string; request: number; timer: number } | null>(null);
+  const inflight = useRef(new Map<string, { key: string; request: number; timer: number }>());
   const nextRequest = useRef(0);
   const pump = useCallback(() => {
-    if (inflight.current || scalingRef.current) return;
-    while (queue.current.length) {
+    if (scalingRef.current) return;
+    while (inflight.current.size < CAPTURE_CONCURRENCY && queue.current.length) {
       const id = queue.current.shift()!;
+      if (inflight.current.has(id)) continue;
       const target = frames.current.get(id)?.contentWindow;
       const key = keysRef.current.get(id);
       if (!target || !key || store.isUnsupported(key)) continue;
       const request = ++nextRequest.current;
       const timer = window.setTimeout(() => {
-        if (inflight.current?.request !== request) return;
+        const current = inflight.current.get(id);
+        if (!current || current.request !== request) return;
+        inflight.current.delete(id);
         failed.current.add(key);
         timedOut.current.add(id);
-        inflight.current = null;
         bump();
         pump();
       }, CAPTURE_TIMEOUT_MS);
-      inflight.current = { id, key, request, timer };
-      target.postMessage({ type: 'ryugi:board:capture', request, scale: dpr }, '*');
-      return;
+      inflight.current.set(id, { key, request, timer });
+      target.postMessage({ type: 'ryugi:board:capture', request, scale: captureScale }, '*');
     }
-  }, [store, dpr]);
+  }, [store, captureScale]);
   const pumpRef = useRef(pump);
   pumpRef.current = pump;
   useEffect(() => {
@@ -210,7 +236,8 @@ export function useBoardTiers({
   }, [scaling, pump]);
   useEffect(
     () => () => {
-      if (inflight.current) window.clearTimeout(inflight.current.timer);
+      for (const { timer } of inflight.current.values()) window.clearTimeout(timer);
+      inflight.current.clear();
     },
     [],
   );
@@ -235,10 +262,10 @@ export function useBoardTiers({
       } else if (type === 'ryugi:board:changed') {
         if (reported.current.has(id)) capture(id);
       } else if (type === 'ryugi:board:snapshot') {
-        const current = inflight.current;
-        if (!current || current.id !== id || event.data.request !== current.request) return;
+        const current = inflight.current.get(id);
+        if (!current || event.data.request !== current.request) return;
         window.clearTimeout(current.timer);
-        inflight.current = null;
+        inflight.current.delete(id);
         const { blob, width, height } = event.data as {
           blob?: unknown;
           width?: unknown;
@@ -247,7 +274,7 @@ export function useBoardTiers({
         if (blob instanceof Blob && typeof width === 'number' && typeof height === 'number') {
           void store.put(
             current.key,
-            { blob, width, height, scale: dpr },
+            { blob, width, height, scale: captureScale },
             { persist: persistableRef.current(id) },
           );
         } else {
@@ -272,9 +299,10 @@ export function useBoardTiers({
         reported.current.delete(id);
         timedOut.current.delete(id);
         queue.current = queue.current.filter((queued) => queued !== id);
-        if (inflight.current?.id !== id) return;
-        window.clearTimeout(inflight.current.timer);
-        inflight.current = null;
+        const current = inflight.current.get(id);
+        if (!current) return;
+        window.clearTimeout(current.timer);
+        inflight.current.delete(id);
         pumpRef.current();
       });
     return refs.current.get(id)!;
@@ -291,6 +319,7 @@ export function useBoardTiers({
   const media = boards.filter(([, board]) => isMediaBoard(board));
   const mediaTiers = chooseTiers({
     boards: media.map(([id, board]) => ({ id, x: board.x, y: board.y, w: board.w, h: board.h })),
+    limit,
     view,
     viewport,
     pinned: new Set(),
@@ -309,8 +338,13 @@ export function useBoardTiers({
       tier: state.tier,
       mounted: state.mounted,
       image,
-      overlay: state.mounted && (!state.ready || !!state.warming || (scaling && !!snapshot)),
-      hidden: state.mounted && (!!state.warming || (state.ready && scaling && !!snapshot)),
+      // Never scale a live iframe: during a gesture the frame is covered by its
+      // snapshot, or its placeholder when no snapshot exists yet. A live frame
+      // that has not reported ready stays visible so an occluding placeholder
+      // cannot throttle its own first paint.
+      overlay:
+        state.mounted && (!!state.warming || scaling || (state.tier !== 'live' && !state.ready)),
+      hidden: state.mounted && (!!state.warming || scaling),
     });
   }
   return { renders, frameRef, loaded, imageFailed };

@@ -17,6 +17,7 @@ import { PhoneArtboardBar } from '../components/PhoneArtboardBar';
 import { PhoneBoard } from '../components/PhoneBoard';
 import { QuestionSheet, SHEET_PEEK } from '../components/QuestionSheet';
 import { useArtboardPage } from '../hooks/useArtboardPage';
+import { useBoardTiers } from '../hooks/useBoardTiers';
 import { usePanZoom } from '../hooks/usePanZoom';
 import { useVerdicts } from '../hooks/useVerdicts';
 import type { BoardCommentsState } from '../lib/board-comments';
@@ -77,6 +78,7 @@ interface Props {
   live?: boolean;
   loaded: boolean;
   pending: string[];
+  tiers?: boolean;
   versions: Record<string, number>;
   warnings: string[];
 }
@@ -85,6 +87,7 @@ const NO_THREADS: never[] = [];
 
 export function PhoneArtboard({
   id,
+  artifact,
   canvas,
   layout,
   warnings,
@@ -96,8 +99,9 @@ export function PhoneArtboard({
   agent,
   comments,
   actions,
+  tiers: tiered = true,
 }: Props) {
-  const { viewportRef, view, size, fit, handlers } = usePanZoom('hand');
+  const { viewportRef, view, size, scaling, fit, handlers } = usePanZoom('hand');
   const [current, setCurrent] = useState<string | null>(null);
   const [snap, setSnap] = useState(SHEET_PEEK);
   const [open, setOpen] = useState<string | null>(null);
@@ -164,6 +168,21 @@ export function PhoneArtboard({
   );
   const notes = Object.entries(canvas?.notes ?? {}).filter(([, n]) => n.page === page);
   const pendingBoards = useMemo(() => new Set(pending), [pending]);
+  const tierState = useBoardTiers({
+    artifact: artifact ?? id,
+    boards: tiered ? boards : [],
+    versions,
+    pending: pendingBoards,
+    view,
+    scaling,
+    viewport: size,
+    pinned: NOTHING,
+    hovered: null,
+    hoverPromotes: false,
+    persistable: () => true,
+    // Inline boards on a phone are previews; the full-screen PhoneBoard is the live one.
+    preview: true,
+  });
   const stale = useMemo(() => new Set(comments?.stale ?? []), [comments]);
   const verdicts = useVerdicts({
     canvas,
@@ -261,8 +280,8 @@ export function PhoneArtboard({
               agent={agent}
               boards={boards}
               contentBase={contentBase}
-              frameLoaded={() => {}}
-              frameRef={() => () => {}}
+              frameLoaded={tiered ? tierState.loaded : () => {}}
+              frameRef={tiered ? tierState.frameRef : () => () => {}}
               inspecting={false}
               live={live}
               notes={notes}
@@ -272,11 +291,16 @@ export function PhoneArtboard({
               versions={versions}
               view={view}
               writing={live ? canvas.writing : undefined}
-              renders={visibleRenders({
-                boards: boards.map(([id, board]) => ({ id, ...board })),
-                view,
-                viewport: size,
-              })}
+              renders={
+                tiered
+                  ? tierState.renders
+                  : visibleRenders({
+                      boards: boards.map(([id, board]) => ({ id, ...board })),
+                      view,
+                      viewport: size,
+                    })
+              }
+              onImageError={tiered ? tierState.imageFailed : undefined}
             />
             <Labels
               allBoards={allBoards}
