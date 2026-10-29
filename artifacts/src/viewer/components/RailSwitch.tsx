@@ -32,42 +32,56 @@ const styles = stylex.create({
     ':focus-visible': { outline: `2px solid ${cssVar.colorInfo}`, outlineOffset: 2 },
   },
   active: { backgroundColor: cssVar.colorBgContainer, color: cssVar.colorText },
+  compact: { gap: 5, minWidth: 32, justifyContent: 'center', paddingInline: 8 },
 });
 
 interface Props {
   available: boolean;
   comments: number;
+  compact?: boolean;
   onComments: () => void;
   onHistory: () => void;
   open: boolean;
 }
 
-export function RailSwitch({ comments, open, available, onComments, onHistory }: Props) {
+export function RailSwitch({
+  comments,
+  open,
+  available,
+  onComments,
+  onHistory,
+  compact = false,
+}: Props) {
+  const commentsLabel = t('document.railComments', { count: comments });
+  const historyLabel = t('document.history');
   return (
     <div aria-label={t('document.rail')} role="group" {...stylex.props(styles.group)}>
       <button
+        aria-label={compact ? commentsLabel : undefined}
         aria-pressed={!open}
+        title={compact ? commentsLabel : undefined}
         type="button"
         onClick={() => {
           if (open) onComments();
         }}
-        {...stylex.props(styles.tab, !open && styles.active)}
+        {...stylex.props(styles.tab, compact && styles.compact, !open && styles.active)}
       >
         <MessageCircle aria-hidden="true" size={13} />
-        {t('document.railComments', { count: comments })}
+        {compact ? comments : commentsLabel}
       </button>
       <button
+        aria-label={compact ? historyLabel : undefined}
         aria-pressed={open}
         disabled={!available}
-        title={available ? undefined : t('document.historyOffline')}
+        title={available ? (compact ? historyLabel : undefined) : t('document.historyOffline')}
         type="button"
         onClick={() => {
           if (!open) onHistory();
         }}
-        {...stylex.props(styles.tab, open && styles.active)}
+        {...stylex.props(styles.tab, compact && styles.compact, open && styles.active)}
       >
         <History aria-hidden="true" size={13} />
-        {t('document.history')}
+        {compact ? null : historyLabel}
       </button>
     </div>
   );
