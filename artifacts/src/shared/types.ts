@@ -32,6 +32,7 @@ export interface BoardSpec extends Rect {
   page: string;
   src?: string;
   title?: string;
+  trim?: boolean;
   type?: BoardType;
 }
 
@@ -88,8 +89,19 @@ export interface CanvasPayload {
   canvas: CanvasSpec | null;
   layout: CanvasLayout | null;
   pending: string[];
+  recordings?: Record<string, RecordingState>;
   versions: Record<string, number>;
   warnings: string[];
+}
+
+export interface RecordingState {
+  duration?: number;
+  end?: number;
+  outcome?: 'trimmed' | 'unchanged' | 'no-motion';
+  removed?: number;
+  start?: number;
+  status: 'processing' | 'ready' | 'original';
+  warning?: string;
 }
 
 export interface HtmlPayload {

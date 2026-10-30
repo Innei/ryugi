@@ -20,9 +20,10 @@ export function readArtifactFile(
   relative: string,
   uiRuntimeUrl: string,
   maxBytes = Infinity,
+  preparedFile?: string | null,
 ) {
   if (!resolveInside(dir, relative)) return null;
-  const target = RESOLVE[type](dir, relative);
+  const target = preparedFile ?? RESOLVE[type](dir, relative);
   if (!target) return null;
   let data: Buffer;
   try {

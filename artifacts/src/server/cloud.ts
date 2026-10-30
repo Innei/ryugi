@@ -29,6 +29,7 @@ export interface CloudOptions {
 
 export interface InspectedArtifact {
   dir: string;
+  fileOverrides?: ReadonlyMap<string, Buffer | null>;
   payload: Record<string, unknown> | null;
   reasons: string[];
   title: string;
@@ -263,7 +264,7 @@ export function createCloudRoutes(options: CloudRoutesOptions) {
       return { ready: false as const, reasons: inspected.reasons };
     let packed;
     try {
-      packed = packArtifact(inspected.dir, ref.type);
+      packed = packArtifact(inspected.dir, ref.type, { overrides: inspected.fileOverrides });
     } catch (err) {
       throw new CloudRefused(413, (err as Error).message);
     }

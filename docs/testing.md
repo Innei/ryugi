@@ -20,6 +20,7 @@ Live in `tests/`. Currently:
 - `tests/claude-code/test-worktree-native-preference.sh` — RED-GREEN-REFACTOR validation for worktree skill (quorum covers the PRESSURE phase; bash also covers RED/GREEN baselines).
 - `tests/explicit-skill-requests/` — skill-name-prompted trigger tests not covered by quorum.
 - `tests/diagnosing-ryugi/test-skill-structure.sh` — structural checks for the diagnosing-ryugi skill (frontmatter, referenced files, leak scan, word budget); behavior-scenario eval records are kept by the maintainer outside the repo.
+- `artifacts/test/recording-trim.test.ts`, `verify-recording-jobs.test.ts`, `verify-recordings.test.ts` — real FFmpeg fixtures and automatic Verify-video processing: idle ends, internal waits, audio, timestamps, immutable captures, cache reuse, fallback, readiness, verdict invalidation, and matching local/cloud evidence. Run through the artifacts suite with `ffmpeg` and `ffprobe` on PATH. Skill before/after behavior results live in `docs/ryugi/skill-evals/`.
 
 Run plugin tests via the relevant directory's `run-*.sh` or `npm test`.
 

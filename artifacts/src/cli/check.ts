@@ -28,11 +28,15 @@ export function checkText(value: Record<string, unknown>): string | null {
   const warnings = (value.warnings as string[] | undefined) ?? [];
   const pending = (value.pending as string[] | undefined) ?? [];
   const dynamic = (value.dynamic as Record<string, { ran?: boolean }> | undefined) ?? {};
+  const recordings = (value.recordings as Record<string, { warning?: string }> | undefined) ?? {};
   const unrun = Object.entries(dynamic)
     .filter(([, block]) => block.ran === false)
     .map(([file]) => file);
   const lines = [
     ...warnings.map((warning) => `warning: ${warning}`),
+    ...Object.entries(recordings).flatMap(([board, state]) =>
+      state.warning ? [`warning: recording ${board}: ${state.warning}`] : [],
+    ),
     ...(pending.length ? [`pending: ${pending.join(', ')}`] : []),
     ...(value.merging ? ['still merging the last edit; check again'] : []),
     ...(value.ran === false ? ['not run in a browser yet'] : []),

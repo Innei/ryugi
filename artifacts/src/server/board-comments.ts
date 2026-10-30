@@ -231,6 +231,7 @@ const isStale = (
 
 interface Options {
   broadcast: (message: ServerMessage) => void;
+  evidenceHash?: (id: string, board: string, source: string) => string;
   names?: CommentNames;
   root: string;
   stateDir: string;
@@ -256,6 +257,14 @@ export function createBoardCommentRegistry(options: Options) {
     let found = hashes.get(id);
     if (!found) {
       found = boardHashes(dirOf(id));
+      if (options.evidenceHash) {
+        found = Object.fromEntries(
+          Object.entries(found).map(([board, hash]) => [
+            board,
+            options.evidenceHash!(id, board, hash),
+          ]),
+        );
+      }
       hashes.set(id, found);
     }
     return found;

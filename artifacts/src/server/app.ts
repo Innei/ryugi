@@ -69,6 +69,7 @@ import { CLOUD_RUNTIME_URL, publishPayload } from './publish-payload';
 import { createRelayClient } from './relay';
 import { createSelectionStore } from './selection';
 import { readCanvas, writeArtifactState, writeJsonAtomic } from './state';
+import { createVerifyRecordings } from './verify-recordings';
 import { allowInlineScripts, viewerPage } from './viewer-page';
 import { watchTree } from './watch';
 import { completeHandshake, handleClientFrames, rejectUpgrade, textFrame } from './ws';
@@ -147,7 +148,11 @@ const CHECK_WATCH_WAIT_MS = 2_000;
 const CHECK_MERGE_WAIT_MS = 60_000;
 const MAX_RUNTIME_WARNINGS = 20;
 
-function readArtifact(dir: string, ref: ArtifactRef, runtime: string[] = []): ArtifactPayload {
+function readArtifactSource(
+  dir: string,
+  ref: ArtifactRef,
+  runtime: string[] = [],
+): ArtifactPayload {
   if (ref.type === 'artboard') return readCanvas(dir);
   if (ref.type === 'document') {
     const payload = readDocument(dir, ref.id);
@@ -225,7 +230,34 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
     projectDir: path.resolve(root, '../..'),
     cloud: options.cloud,
   });
-  const boardComments = createBoardCommentRegistry({ root, stateDir, broadcast, names });
+  const recordings = createVerifyRecordings({
+    stateDir,
+    onChange: (id) => {
+      const ref: ArtifactRef = { type: 'artboard', id };
+      const dir = resolveArtifactDir(root, ref.type, id);
+      if (!dir) return;
+      const payload = refreshState(ref, dir);
+      boardComments.boardsChanged(id);
+      const key = `artboard/${id}`;
+      broadcast({ type: 'change', artifact: key, files: [] });
+      autoPublisher?.changed(key);
+      cloud?.changed(key);
+      changeListeners.forEach((listener) => listener(ref, payload, []));
+    },
+  });
+  const readArtifact = (dir: string, ref: ArtifactRef, runtime: string[] = []): ArtifactPayload => {
+    const payload = readArtifactSource(dir, ref, runtime);
+    return ref.type === 'artboard'
+      ? recordings.project(ref.id, dir, payload as CanvasPayload)
+      : payload;
+  };
+  const boardComments = createBoardCommentRegistry({
+    root,
+    stateDir,
+    broadcast,
+    names,
+    evidenceHash: recordings.evidenceHash,
+  });
   const documents = createDocumentRegistry({
     root,
     stateDir,
@@ -273,7 +305,13 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
         reasons.push((err as Error).message);
       }
     }
-    return { dir, title, reasons, payload: published };
+    return {
+      dir,
+      title,
+      reasons,
+      payload: published,
+      ...('canvas' in payload ? { fileOverrides: recordings.overrides(ref.id, payload) } : {}),
+    };
   };
   const cloud =
     options.cloud && options.configFile
@@ -463,6 +501,15 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
     }
   };
 
+  const verdictPreparing = (id: string, op: NonNullable<ReturnType<typeof asBoardHumanOp>>) => {
+    if (op.op !== 'create' || !op.anchor.verdict) return false;
+    const dir = resolveArtifactDir(root, 'artboard', id);
+    if (!dir) return false;
+    const payload = readArtifact(dir, { type: 'artboard', id }) as CanvasPayload;
+    const members = payload.canvas?.groups?.[op.anchor.group!]?.boards ?? [];
+    return members.some((board) => payload.pending.includes(board));
+  };
+
   const serveBoardComments = async (
     req: http.IncomingMessage,
     res: http.ServerResponse,
@@ -479,6 +526,10 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
     const op = asBoardHumanOp(await readCommentBody(req));
     if (!op) {
       sendJson(res, 400, { error: 'not a comment op' });
+      return;
+    }
+    if (verdictPreparing(id, op)) {
+      sendJson(res, 409, { error: 'The recording evidence is still being prepared' });
       return;
     }
     try {
@@ -578,7 +629,8 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
       document: resolveDocumentAsset,
       html: resolveHtmlFile,
     }[ref.type];
-    const target = resolve(dir, relative);
+    const target =
+      (ref.type === 'artboard' ? recordings.resolve(id, relative) : null) ?? resolve(dir, relative);
     if (!target) {
       send(res, 404, 'Not found');
       return;
@@ -1054,7 +1106,9 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
         ? { dynamic: dynamicBlocks.state(ref.id, dir).dynamic }
         : ref.type === 'html' && 'version' in payload
           ? { ran: ranVersions.get(`${ref.type}/${ref.id}`) === payload.version }
-          : {};
+          : 'recordings' in payload
+            ? { recordings: payload.recordings }
+            : {};
     try {
       writeArtifactState(stateDir, ref, payload, extra);
     } catch (err) {
@@ -1106,7 +1160,14 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
     if (request.op === 'file') {
       const file =
         typeof request.path === 'string'
-          ? readArtifactFile(dir, ref.type, request.path, CLOUD_RUNTIME_URL, MAX_RELAY_FILE)
+          ? readArtifactFile(
+              dir,
+              ref.type,
+              request.path,
+              CLOUD_RUNTIME_URL,
+              MAX_RELAY_FILE,
+              ref.type === 'artboard' ? recordings.resolve(ref.id, request.path) : null,
+            )
           : null;
       if (!file) throw new Error('not found');
       if (file.data.length > MAX_RELAY_FILE) throw new Error('too large');
@@ -1123,6 +1184,8 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
           ? asBoardHumanOp(request.comment)
           : null;
       if (!op) throw new Error('not a comment op');
+      if (verdictPreparing(ref.id, op))
+        throw new Error('The recording evidence is still being prepared');
       return boardComments.apply(ref.id, op);
     }
     if (
@@ -1295,6 +1358,7 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
     },
     onActivity: (listener) => activityListeners.push(listener),
     close: async () => {
+      await recordings.close();
       await Promise.race([
         autoPublisher?.flush(),
         new Promise((resolve) => setTimeout(resolve, CLOSE_FLUSH_MS).unref()),

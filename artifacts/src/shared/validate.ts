@@ -40,6 +40,9 @@ export function structuralWarnings(raw: unknown): string[] {
   }
   if (isObject(raw.boards)) {
     for (const [id, board] of Object.entries(raw.boards)) {
+      if (isObject(board) && board.trim !== undefined && typeof board.trim !== 'boolean') {
+        warnings.push(`board "${id}" field "trim" must be a boolean`);
+      }
       if (
         isObject(board) &&
         board.interactive !== undefined &&

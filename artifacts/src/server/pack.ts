@@ -22,7 +22,10 @@ const excluded = (type: ArtifactType, relative: string) =>
 export function packArtifact(
   dir: string,
   type: ArtifactType,
-  { maxBytes = MAX_ARTIFACT_BYTES } = {},
+  {
+    maxBytes = MAX_ARTIFACT_BYTES,
+    overrides,
+  }: { maxBytes?: number; overrides?: ReadonlyMap<string, Buffer | null> } = {},
 ): PackedFile[] {
   const rootReal = fs.realpathSync(dir);
   const found: { path: string; real: string }[] = [];
@@ -49,13 +52,19 @@ export function packArtifact(
       if (!stat.isFile()) continue;
       const relative = path.relative(dir, full).split(path.sep).join('/');
       if (excluded(type, relative)) continue;
-      total += stat.size;
+      if (!overrides?.has(relative)) total += stat.size;
       found.push({ path: relative, real });
     }
   };
   walk(dir);
+  for (const data of overrides?.values() ?? []) if (data) total += data.length;
   if (total > maxBytes) {
     throw new Error(`artifact is ${formatBytes(total)}; the limit is ${formatBytes(maxBytes)}`);
   }
-  return found.map((file) => ({ path: file.path, data: fs.readFileSync(file.real) }));
+  return [
+    ...found
+      .filter((file) => !overrides?.has(file.path))
+      .map((file) => ({ path: file.path, data: fs.readFileSync(file.real) })),
+    ...[...(overrides ?? [])].flatMap(([file, data]) => (data ? [{ path: file, data }] : [])),
+  ];
 }

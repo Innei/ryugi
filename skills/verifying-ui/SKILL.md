@@ -39,13 +39,21 @@ After the fix there is no honest "before".
 3. **Evidence is real.** Screenshots and recordings come from the running
    app, with whatever tool this environment has — a project skill that
    drives the app is a fine source. Never an HTML board standing in for
-   "actual". Copy files under `pages/verify/`; keep each video under 8MB
+   "actual". Copy evidence under `pages/verify/`; keep each video under 8MB
    and the artboard under 20MB. Over 20MB the cloud copy stops updating:
    say so and shrink or drop the largest recordings.
 4. Set `focus` to the first group, check that `warnings` and `pending` are
    empty, give the link (the cloud link when there is one), say what each
    group shows, and ask them to tell you here when they have decided. End
    your turn; don't poll.
+
+## Prepare each recording
+
+Add the original recording normally; Artifacts prepares Verify videos
+automatically. Replay the video on the Verify page: every action, loading
+or error state, and final result must remain visible. When original timing
+or narration is itself evidence (performance, timeouts), set `"trim": false`
+on that video board.
 
 ## When verdicts come back
 

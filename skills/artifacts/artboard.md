@@ -91,6 +91,13 @@ comments.json in the artboard directory is the server's; never write it.
   plays muted in the viewer's own player, with its controls under the board.
   Keep each file under 8MB (a cloud link can't fetch more) and the whole
   artboard under 20MB; record short clips as mp4 (H.264) or webm.
+- Videos in verify groups automatically lose idle ends, retaining a second
+  of context at either end. Original files stay intact. While preparation
+  runs, their boards are `pending`; local playback and cloud publication use
+  the same prepared clip. Set `"trim": false` on a video board when original
+  timing or narration is evidence. The `check` result's `recordings` reports
+  preparation and any fallback to the original. Internal waits and playback
+  speed are preserved; size limits still apply to the resulting evidence.
 - `interactive: true` is the only way a board becomes playable. Static boards
   (the default) never show PLAY and their iframe stays read-only, including
   when expanded. Use it for prototypes the human partner should click through,
