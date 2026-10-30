@@ -8,6 +8,7 @@ could build from without going back to your human partner. Cover:
 - constraints
 - the parts of the how they decided, as they decided them
 - what's left to the builder
+- selected visual direction for UI work (product, character, world, moments, optional signature), its rationale and accepted visual choices, so implementation can preserve intent without the original Artboard
 - every artifact the conversation used: type, id and path or its link,
   and what was decided there, stated in the text too, since
   `.ryugi/artifacts/` may not be committed

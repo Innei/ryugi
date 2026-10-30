@@ -29,6 +29,8 @@ Two-hour autonomous stretches without "should I continue?" are normal. Because t
 6. **using-git-worktrees** — activates when executing-specs or test-driven-development hands off before the first implementation edit, when uncommitted work has to move to or be committed on another branch, and when worktree work has landed. Follows your stated preference. Without one, it works in place beside other agents, committing only its own files and hunks, and opens a worktree without asking only when the work must run on other content (another branch or commit, a rebase, a bisect) or would collide with another agent: their uncommitted edits on the lines it changes, a path they are exploring, or a dependency, format or codegen change over files they have edited. Work bound for another branch is stash-moved, never copied; a worktree made only to commit is removed right after the push, and every worktree it made is removed once the work lands. It asks only when HEAD is on someone else's branch.
 7. **artifacts** — activates when something is clearer to look at than to read, in brainstorming or anywhere else. Artboards, live HTML pages, and a bundled Web Component kit, each at its own local link.
 
+**Visual design craft** — `interface-craft` is a domain skill for first UI mockups and later critique. It derives a product-specific direction, respects existing design systems, and carries approved visual intent through Artboard rounds into the spec without a separate approval gate.
+
 **Your project's own skills come first at their step** — a design system before mockups, a verify skill before reporting, a ship skill for merging. Ryugi sets the process; your project carries its domain.
 
 ## What's inside
