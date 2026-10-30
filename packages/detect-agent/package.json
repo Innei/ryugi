@@ -1,0 +1,27 @@
+{
+  "name": "ryugi-detect-agent",
+  "version": "0.1.0",
+  "description": "Detect which coding agent (Claude Code, Codex, Cursor, …) a process runs under, from its environment",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Innei/ryugi.git",
+    "directory": "packages/detect-agent"
+  },
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.d.ts",
+      "default": "./src/index.js"
+    }
+  },
+  "files": [
+    "src"
+  ],
+  "scripts": {
+    "test": "node --test test/"
+  },
+  "engines": {
+    "node": ">=20.19"
+  }
+}
