@@ -82,7 +82,8 @@ test('Verify videos prepare automatically before acceptance and publish the same
   expect(response.status).toBe(200);
   expect(response.headers.get('content-type')).toContain('video/mp4');
   const prepared = Buffer.from(await response.arrayBuffer());
-  expect(ready.recordings.save.removed).toBeCloseTo(9, 1);
+  // A 10fps timeline can differ by one frame across FFmpeg versions.
+  expect(Math.abs(ready.recordings.save.removed - 9)).toBeLessThan(0.15);
   expect((await call(server, 'POST', '/api/agent/artboard/save/check')).json.recordings).toEqual(
     ready.recordings,
   );
