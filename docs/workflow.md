@@ -29,6 +29,8 @@ Two-hour autonomous stretches without "should I continue?" are normal. Because t
 6. **using-git-worktrees** — activates when executing-specs or test-driven-development hands off before the first implementation edit, to pick where the work happens. Follows your stated preference. Without one, it works in place beside other agents and opens a worktree without asking only when the work moves HEAD (branch switch, rebase, bisect) or would collide with another agent: a file with their uncommitted edits, a path they are exploring, or a dependency, lockfile, repo-wide format or codegen change while they are present. It asks only when HEAD is on someone else's branch.
 7. **artifacts** — activates when something is clearer to look at than to read, in brainstorming or anywhere else. Artboards, live HTML pages, and a bundled Web Component kit, each at its own local link.
 
+**Visual design craft** — `interface-craft` is a domain skill for first UI mockups and later critique. It derives a product-specific direction, respects existing design systems, and carries approved visual intent through Artboard rounds into the spec without a separate approval gate.
+
 **Your project's own skills come first at their step** — a design system before mockups, a verify skill before reporting, a ship skill for merging. Ryugi sets the process; your project carries its domain.
 
 ## What's inside

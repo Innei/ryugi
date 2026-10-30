@@ -28,6 +28,11 @@ jobs:
 
       - run: tests/viewer-release/test-check-viewer-release.sh
 
+      - name: Interface craft skill contracts and eval runner syntax
+        run: |
+          node tests/interface-craft/test-structure.mjs
+          bash -n tests/interface-craft/run-live-eval.sh
+
   artifacts-tests:
     runs-on: ubuntu-latest
     defaults:
