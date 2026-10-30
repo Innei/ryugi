@@ -152,7 +152,8 @@ seeking with its progress control reached `currentTime: 5.5535` with
 `paused: false`, no media error and no browser errors. The temporary server
 used an isolated fixture, not the developer's existing artifacts server.
 
-The app version is bumped to 1.45.3 under the repository's release rule.
+The app version is bumped to 1.45.5 under the repository's release rule,
+after integrating the intervening 1.45.3 and 1.45.4 dependency releases.
 There are no new npm runtime dependencies; FFmpeg remains an optional local
 backend with fallback to the original capture.
 
