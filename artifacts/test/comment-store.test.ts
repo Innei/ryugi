@@ -4,7 +4,7 @@ import path from 'node:path';
 
 import { expect, test } from 'vitest';
 
-import { createCommentStore } from '../src/server/document-comments';
+import { asHumanOp, createCommentStore } from '../src/server/document-comments';
 
 const names = (agent: string) => ({ human: () => ({ name: 'innei' }), agent: () => agent });
 
@@ -51,3 +51,117 @@ test('an agent reply written while the server was down is still filled in', () =
     id: expect.any(String),
   });
 });
+
+test('a comment on several blocks keeps its complete target after restarting', () => {
+  const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-store-')), 'comments.json');
+  const op = asHumanOp({
+    op: 'create',
+    blockId: 'b1',
+    blockIds: ['b1', 'b3'],
+    quote: '',
+    text: 'Discuss these together',
+  });
+  expect(op).not.toBeNull();
+  createCommentStore(file).apply(op!);
+  const [thread] = createCommentStore(file).current().threads;
+  expect(thread!.anchor).toEqual({ blockId: 'b1', blockIds: ['b1', 'b3'], quote: '' });
+});
+
+test('different multi-block targets do not merge when an agent writes id-less comments', () => {
+  const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-store-')), 'comments.json');
+  fs.writeFileSync(
+    file,
+    JSON.stringify({
+      threads: [
+        {
+          anchor: { blockId: 'b1', blockIds: ['b1', 'b2'], quote: '' },
+          messages: [{ text: 'Together' }],
+        },
+        {
+          anchor: { blockId: 'b1', blockIds: ['b1', 'b3'], quote: '' },
+          messages: [{ text: 'Together' }],
+        },
+      ],
+    }),
+  );
+  const store = createCommentStore(file);
+  expect(store.current().threads).toHaveLength(2);
+  expect(createCommentStore(file).current().threads).toHaveLength(2);
+});
+
+test('cross-paragraph text anchors survive server validation and restarting', () => {
+  const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-store-')), 'comments.json');
+  const anchor = {
+    blockId: 'b1',
+    blockIds: ['b1', 'b2'],
+    quote: 'rst\nUns',
+    textRanges: [
+      { blockId: 'b1', start: 2, quote: 'rst' },
+      { blockId: 'b2', start: 0, quote: 'Uns' },
+    ],
+  };
+  const op = asHumanOp({ op: 'create', ...anchor, text: 'Across paragraphs' });
+  expect(op).not.toBeNull();
+  createCommentStore(file).apply(op!);
+  expect(createCommentStore(file).current().threads[0]!.anchor).toEqual(anchor);
+});
+
+test('comments on repeated text at different offsets are separate discussions', () => {
+  const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-store-')), 'comments.json');
+  fs.writeFileSync(
+    file,
+    JSON.stringify({
+      threads: [0, 5].map((start) => ({
+        anchor: {
+          blockId: 'b1',
+          blockIds: ['b1', 'b2'],
+          quote: 'same\nend',
+          textRanges: [
+            { blockId: 'b1', quote: 'same', start },
+            { blockId: 'b2', quote: 'end', start: 0 },
+          ],
+        },
+        messages: [{ text: 'Discuss' }],
+      })),
+    }),
+  );
+  expect(createCommentStore(file).current().threads).toHaveLength(2);
+});
+
+test.each(
+  [
+    [
+      { blockId: 'b1', start: -1, quote: 'rst' },
+      { blockId: 'b2', start: 0, quote: 'Uns' },
+    ],
+    [
+      { blockId: 'b1', start: 1.5, quote: 'rst' },
+      { blockId: 'b2', start: 0, quote: 'Uns' },
+    ],
+    [
+      { blockId: 'b1', start: 2, quote: 42 },
+      { blockId: 'b2', start: 0, quote: 'Uns' },
+    ],
+    [{ blockId: 'b1', start: 2, quote: 'rst' }],
+  ].map((textRanges) => ({ textRanges })),
+)('rejects invalid text ranges rather than degrading to whole blocks: %j', ({ textRanges }) => {
+  expect(
+    asHumanOp({
+      op: 'create',
+      blockId: 'b1',
+      blockIds: ['b1', 'b2'],
+      quote: 'rst\nUns',
+      textRanges,
+      text: 'Comment',
+    }),
+  ).toBeNull();
+});
+
+test.each([[], ['other', 'b1'], ['b1', 'b1'], ['b1', 42], ['b1', '']])(
+  'rejects a malformed multi-block target %j instead of silently commenting only the first block',
+  (...blockIds) => {
+    expect(
+      asHumanOp({ op: 'create', blockId: 'b1', blockIds, quote: '', text: 'Comment' }),
+    ).toBeNull();
+  },
+);

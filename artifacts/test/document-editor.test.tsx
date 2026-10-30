@@ -116,6 +116,22 @@ async function renderEditor() {
   return host;
 }
 
+test('block handles follow the hovered document block after the editor surface mounts', async () => {
+  const host = await renderEditor();
+  const content = host.querySelector<HTMLElement>('[contenteditable="true"]')!;
+  const paragraph = content.querySelector('p')!;
+  vi.spyOn(content, 'getBoundingClientRect').mockReturnValue(new DOMRect(100, 80, 600, 300));
+  vi.spyOn(paragraph, 'getBoundingClientRect').mockReturnValue(new DOMRect(116, 92, 568, 24));
+  await act(async () => {
+    paragraph.dispatchEvent(
+      new MouseEvent('mousemove', { bubbles: true, clientX: 200, clientY: 100 }),
+    );
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+  });
+  const handle = document.querySelector<HTMLElement>('[aria-label="Block actions"]')!;
+  expect(handle.parentElement!.style.left).toBe('74px');
+});
+
 test('a modifier click opens a link while the document is editable', async () => {
   const open = vi.spyOn(window, 'open').mockImplementation(() => null);
   const host = await renderEditor();

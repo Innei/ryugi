@@ -106,6 +106,7 @@
   },
   "document": {
     "wholeBlock": "整段",
+    "wholeBlocks": "{{count}} 个块",
     "waitingAgentReply": "等 {{agent}} 回复",
     "agentReplied": "{{agent}} 已回复",
     "waitingCount": "{{count}} 条等 {{agent}} 回复",

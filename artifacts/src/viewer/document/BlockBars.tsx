@@ -3,7 +3,8 @@ import { useLayoutEffect, useState } from 'react';
 
 import type { Thread } from '../../shared/comments';
 import { shownThreadIds } from './anchor';
-import { anchorBoxes, type ThreadAnchor } from './useAnchors';
+import { blockBar } from './layoutCards';
+import { anchorBlocks, type ThreadAnchor } from './useAnchors';
 
 const styles = stylex.create({
   bar: {
@@ -20,6 +21,7 @@ const styles = stylex.create({
 interface Bar {
   height: number;
   id: string;
+  key: string;
   left: number;
   top: number;
   width: number;
@@ -41,23 +43,26 @@ export function BlockBars({ container, anchors, threads, activeId }: Props) {
     const shown = shownThreadIds(threads, activeId);
     const next: Bar[] = [];
     for (const anchor of anchors) {
-      if (anchor.kind !== 'block' || !shown.has(anchor.threadId)) continue;
-      const [box] = anchorBoxes(anchor);
-      if (!box) continue;
-      next.push({
-        id: anchor.threadId,
-        left: box.left - origin.left,
-        top: box.top - origin.top,
-        width: box.right - box.left,
-        height: box.bottom - box.top,
-      });
+      if (!shown.has(anchor.threadId)) continue;
+      for (const block of anchorBlocks(anchor)) {
+        const box = blockBar(block.element.getBoundingClientRect());
+        next.push({
+          id: anchor.threadId,
+          key: `${anchor.threadId}:${block.id}`,
+          left: box.left - origin.left,
+          top: box.top - origin.top,
+          width: box.right - box.left,
+          height: box.bottom - box.top,
+        });
+      }
     }
     setBars(next);
   }, [container, anchors, threads, activeId]);
 
   return bars.map((bar) => (
     <div
-      key={bar.id}
+      data-comment-block={bar.id}
+      key={bar.key}
       {...stylex.props(styles.bar, bar.id === activeId && styles.active)}
       style={{ left: bar.left, top: bar.top, width: bar.width, height: bar.height }}
     />

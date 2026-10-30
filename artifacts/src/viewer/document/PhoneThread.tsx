@@ -3,6 +3,7 @@ import * as stylex from '@stylexjs/stylex';
 
 import { type Thread, waitingOn } from '../../shared/comments';
 import { t } from '../i18n';
+import { anchorLabel } from './anchor';
 import { authorOf } from './author';
 import { Avatar } from './Avatar';
 import type { ThreadActions } from './CommentCard';
@@ -107,9 +108,7 @@ export function PhoneThread({
   return (
     <div data-thread={thread.id} {...stylex.props(styles.thread, active && styles.active)}>
       <div {...stylex.props(styles.quote)}>
-        <span {...stylex.props(styles.quoteText)}>
-          {thread.anchor.quote || t('document.wholeBlock')}
-        </span>
+        <span {...stylex.props(styles.quoteText)}>{anchorLabel(thread.anchor)}</span>
         {state ? <span {...stylex.props(styles.state, state.tone)}>{state.label}</span> : null}
       </div>
       {resolved && !active

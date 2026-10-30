@@ -261,7 +261,14 @@ export function DocumentView({
 
   const create = useCallback(
     (target: SelectionTarget, text: string) =>
-      send({ op: 'create', blockId: target.blockId, quote: target.quote, text }),
+      send({
+        op: 'create',
+        blockId: target.blockId,
+        ...(target.blockIds ? { blockIds: target.blockIds } : {}),
+        ...(target.textRanges ? { textRanges: target.textRanges } : {}),
+        quote: target.quote,
+        text,
+      }),
     [send],
   );
   const startEditing = useCallback(

@@ -8,14 +8,17 @@ import {
   type RendererConfig,
   RichEditor,
 } from '@haklex/rich-editor';
+import { EditorSurfacePlugins } from '@haklex/rich-editor/plugins';
 import { ChartEditNode } from '@haklex/rich-ext-chart';
 import { ExcalidrawEditNode, ExcalidrawPlugin } from '@haklex/rich-ext-excalidraw';
 import { stepsEditNodes } from '@haklex/rich-ext-steps/edit';
+import { BlockHandlePlugin } from '@haklex/rich-plugin-block-handle';
 import { FloatingLinkEditorPlugin } from '@haklex/rich-plugin-link-edit';
 import { AlertEditRenderer } from '@haklex/rich-renderer-alert';
 import { CodeBlockEditRenderer } from '@haklex/rich-renderer-codeblock';
 import { ImageEditRenderer } from '@haklex/rich-renderer-image';
 import { katexEditNodes } from '@haklex/rich-renderer-katex';
+import { useLexicalEditable } from '@lexical/react/useLexicalEditable';
 import type { LexicalEditor } from 'lexical';
 import type { LoroDoc } from 'loro-crdt';
 import { type ReactNode, useState } from 'react';
@@ -55,6 +58,11 @@ interface Props {
   transport: DocumentTransport;
 }
 
+function BlockHandles() {
+  const editable = useLexicalEditable();
+  return editable ? <BlockHandlePlugin /> : null;
+}
+
 export function DocumentEditor({
   transport,
   doc,
@@ -91,6 +99,9 @@ export function DocumentEditor({
         />
         <ExcalidrawPlugin />
         <FloatingLinkEditorPlugin />
+        <EditorSurfacePlugins>
+          <BlockHandles />
+        </EditorSurfacePlugins>
         <AgentCaret agent={agent} caret={caret} container={container} />
         {children}
       </RichEditor>

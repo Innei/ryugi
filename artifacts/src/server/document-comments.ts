@@ -8,6 +8,7 @@ import {
   applyHumanOp,
   type Author,
   type CommentsFile,
+  documentAnchors,
   emptyComments,
   type HumanOp,
   type IncomingComments,
@@ -30,8 +31,9 @@ export function asHumanOp(value: unknown): HumanOp | null {
   const v = value as Record<string, unknown>;
   switch (v.op) {
     case 'create': {
-      return isId(v.blockId) && isText(v.quote) && isText(v.text) && v.text.length > 0
-        ? { op: 'create', blockId: v.blockId, quote: v.quote, text: v.text }
+      const anchor = documentAnchors.read(v);
+      return anchor && isId(v.blockId) && isText(v.quote) && isText(v.text) && v.text.length > 0
+        ? { op: 'create', ...anchor, text: v.text }
         : null;
     }
     case 'reply': {
@@ -64,14 +66,15 @@ export function asAgentOp(value: unknown): AgentOp | null {
   const v = value as Record<string, unknown>;
   switch (v.op) {
     case 'add': {
-      return isId(v.blockId) &&
+      const anchor = documentAnchors.read(v);
+      return anchor &&
+        isId(v.blockId) &&
         (v.quote === undefined || isText(v.quote)) &&
         isText(v.text) &&
         v.text.length > 0
         ? {
             op: 'add',
-            blockId: v.blockId,
-            quote: (v.quote as string | undefined) ?? '',
+            ...anchor,
             text: v.text,
           }
         : null;

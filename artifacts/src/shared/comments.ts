@@ -11,10 +11,21 @@ export interface Message {
   text: string;
 }
 
-export interface Anchor {
+export interface TextRangeAnchor {
   blockId: string;
   quote: string;
+  start: number;
 }
+
+export interface Anchor {
+  blockId: string;
+  blockIds?: string[];
+  quote: string;
+  textRanges?: TextRangeAnchor[];
+}
+
+export const anchorBlockIds = (anchor: Pick<Anchor, 'blockId' | 'blockIds'>): string[] =>
+  anchor.blockIds ?? [anchor.blockId];
 
 export interface Thread<A = Anchor> {
   anchor: A;
@@ -40,7 +51,7 @@ export interface IncomingComments {
 }
 
 export type HumanOp =
-  | { op: 'create'; blockId: string; quote: string; text: string }
+  | ({ op: 'create'; text: string } & Anchor)
   | { op: 'reply'; threadId: string; text: string }
   | { op: 'edit'; threadId: string; messageId: string; text: string }
   | { op: 'delete'; threadId: string; messageId: string }
@@ -48,7 +59,7 @@ export type HumanOp =
   | { op: 'reopen'; threadId: string };
 
 export type AgentOp =
-  | { op: 'add'; blockId: string; quote: string; text: string }
+  | ({ op: 'add'; text: string } & Anchor)
   | { op: 'reply'; threadId: string; text: string }
   | { op: 'resolve'; threadId: string };
 
@@ -67,11 +78,64 @@ export const isObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
 
 export const documentAnchors: AnchorSpec<Anchor> = {
-  read: (value) =>
-    isObject(value) && typeof value.blockId === 'string' && value.blockId
-      ? { blockId: value.blockId, quote: typeof value.quote === 'string' ? value.quote : '' }
-      : null,
-  same: (a, b) => a.blockId === b.blockId && a.quote === b.quote,
+  read: (value) => {
+    if (!isObject(value) || typeof value.blockId !== 'string' || !value.blockId) return null;
+    const { blockIds, textRanges } = value;
+    if (
+      blockIds !== undefined &&
+      (!Array.isArray(blockIds) ||
+        !blockIds.length ||
+        blockIds[0] !== value.blockId ||
+        !blockIds.every((id) => typeof id === 'string' && id.length > 0 && id.length <= 100) ||
+        new Set(blockIds).size !== blockIds.length)
+    )
+      return null;
+    const ids = (blockIds as string[] | undefined) ?? [value.blockId];
+    if (
+      textRanges !== undefined &&
+      (!Array.isArray(textRanges) ||
+        textRanges.length !== ids.length ||
+        !textRanges.every(
+          (range, index) =>
+            isObject(range) &&
+            range.blockId === ids[index] &&
+            typeof range.quote === 'string' &&
+            range.quote.length <= 20000 &&
+            typeof range.start === 'number' &&
+            Number.isSafeInteger(range.start) &&
+            range.start >= 0 &&
+            Number.isSafeInteger(range.start + range.quote.length),
+        ))
+    )
+      return null;
+    return {
+      blockId: value.blockId,
+      ...(blockIds ? { blockIds: blockIds as string[] } : {}),
+      quote: typeof value.quote === 'string' ? value.quote : '',
+      ...(textRanges
+        ? {
+            textRanges: (textRanges as TextRangeAnchor[]).map(({ blockId, quote, start }) => ({
+              blockId,
+              quote,
+              start,
+            })),
+          }
+        : {}),
+    };
+  },
+  same: (a, b) =>
+    a.quote === b.quote &&
+    anchorBlockIds(a).length === anchorBlockIds(b).length &&
+    anchorBlockIds(a).every((id, index) => id === anchorBlockIds(b)[index]) &&
+    a.textRanges?.length === b.textRanges?.length &&
+    (a.textRanges ?? []).every((range, index) => {
+      const other = b.textRanges?.[index];
+      return (
+        range.blockId === other?.blockId &&
+        range.quote === other.quote &&
+        range.start === other.start
+      );
+    }),
   missing: 'a new thread needs anchor.blockId; dropped it',
 };
 
@@ -313,7 +377,7 @@ export function applyHumanOp(
       ...file,
       threads: [
         ...file.threads,
-        openThread({ blockId: op.blockId, quote: op.quote }, 'human', op.text, now, newId, who),
+        openThread(documentAnchors.read(op)!, 'human', op.text, now, newId, who),
       ],
     };
   return applyThreadOp(file, op, now, newId, who);
@@ -454,14 +518,7 @@ export function applyAgentOp(
   name?: string,
 ): { file: CommentsFile; threadId: string; messageId?: string } {
   if (op.op === 'add') {
-    const thread = openThread(
-      { blockId: op.blockId, quote: op.quote },
-      'agent',
-      op.text,
-      now,
-      newId,
-      { name },
-    );
+    const thread = openThread(documentAnchors.read(op)!, 'agent', op.text, now, newId, { name });
     return {
       file: { ...file, threads: [...file.threads, thread] },
       threadId: thread.id,

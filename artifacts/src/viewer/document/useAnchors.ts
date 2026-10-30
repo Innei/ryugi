@@ -2,20 +2,46 @@ import { blockIdState } from '@haklex/rich-editor';
 import { $getRoot, $getState, type LexicalEditor } from 'lexical';
 import { useEffect, useState } from 'react';
 
-import type { Thread } from '../../shared/comments';
+import { anchorBlockIds, type Thread } from '../../shared/comments';
 import { resolveAnchor, shownThreadIds } from './anchor';
 import { barLinkStart, blockBar, type Box } from './layoutCards';
 
 export type ThreadAnchor =
-  | { threadId: string; top: number; kind: 'text'; range: Range }
-  | { threadId: string; top: number; kind: 'block'; element: HTMLElement };
+  | {
+      threadId: string;
+      top: number;
+      kind: 'text';
+      range: Range;
+      ranges?: Range[];
+      blocks?: BlockAnchor[];
+    }
+  | {
+      threadId: string;
+      top: number;
+      kind: 'block';
+      element: HTMLElement;
+      blocks?: BlockAnchor[];
+    };
+
+interface BlockAnchor {
+  element: HTMLElement;
+  id: string;
+}
+
+export const anchorBlocks = (anchor: ThreadAnchor): BlockAnchor[] =>
+  anchor.blocks ??
+  (anchor.kind === 'block' ? [{ id: anchor.threadId, element: anchor.element }] : []);
+
+const anchorRanges = (anchor: ThreadAnchor): Range[] =>
+  anchor.kind === 'text' ? (anchor.ranges ?? [anchor.range]) : [];
 
 const BAR_HIT = 4;
 
 export function anchorBoxes(anchor: ThreadAnchor): Box[] {
-  return anchor.kind === 'text'
-    ? [...anchor.range.getClientRects()]
-    : [blockBar(anchor.element.getBoundingClientRect())];
+  return [
+    ...anchorRanges(anchor).flatMap((range) => [...range.getClientRects()]),
+    ...anchorBlocks(anchor).map((block) => blockBar(block.element.getBoundingClientRect())),
+  ].sort((a, b) => a.top - b.top || a.left - b.left);
 }
 
 export function anchorLinkStart(anchor: ThreadAnchor): { x: number; y: number } | null {
@@ -67,16 +93,56 @@ export function useAnchors(
       const origin = container.getBoundingClientRect().top - container.scrollTop;
       const next: ThreadAnchor[] = [];
       for (const thread of threads) {
-        const key = elements.get(thread.anchor.blockId);
-        const element = key ? editor.getElementByKey(key) : null;
+        const blocks = anchorBlockIds(thread.anchor).flatMap((id) => {
+          const key = elements.get(id);
+          const element = key ? editor.getElementByKey(key) : null;
+          return element ? [{ id, element }] : [];
+        });
+        const element = blocks[0]?.element;
         if (!element) continue;
-        const at = resolveAnchor(element.textContent ?? '', thread.anchor.quote);
+        if (thread.anchor.textRanges) {
+          const segments = new Map(thread.anchor.textRanges.map((part) => [part.blockId, part]));
+          const ranges: Range[] = [];
+          const fallback: BlockAnchor[] = [];
+          let top: number | undefined;
+          for (const block of blocks) {
+            const part = segments.get(block.id);
+            const at = part
+              ? resolveAnchor(block.element.textContent ?? '', part.quote, part.start)
+              : 'block';
+            if (at === 'block') {
+              fallback.push(block);
+              top ??= block.element.getBoundingClientRect().top - origin;
+            } else {
+              const range = rangeAt(block.element, at.start, at.end);
+              ranges.push(range);
+              const rect = range.getClientRects()[0] ?? block.element.getBoundingClientRect();
+              top ??= rect.top - origin;
+            }
+          }
+          if (ranges.length)
+            next.push({
+              threadId: thread.id,
+              top: top!,
+              kind: 'text',
+              range: ranges[0]!,
+              ranges,
+              blocks: fallback,
+            });
+          else
+            next.push({ threadId: thread.id, top: top!, kind: 'block', element, blocks: fallback });
+          continue;
+        }
+        const at = thread.anchor.blockIds
+          ? 'block'
+          : resolveAnchor(element.textContent ?? '', thread.anchor.quote);
         if (at === 'block') {
           next.push({
             threadId: thread.id,
             top: element.getBoundingClientRect().top - origin,
             kind: 'block',
             element,
+            blocks,
           });
           continue;
         }
@@ -111,11 +177,10 @@ export function useHighlights(anchors: ThreadAnchor[], threads: Thread[], active
   useEffect(() => {
     if (typeof CSS === 'undefined' || !('highlights' in CSS)) return;
     const shown = shownThreadIds(threads, activeId);
-    const text = anchors.filter((a) => a.kind === 'text');
-    const normal = text
+    const normal = anchors
       .filter((a) => shown.has(a.threadId) && a.threadId !== activeId)
-      .map((a) => a.range);
-    const active = text.filter((a) => a.threadId === activeId).map((a) => a.range);
+      .flatMap(anchorRanges);
+    const active = anchors.filter((a) => a.threadId === activeId).flatMap(anchorRanges);
     CSS.highlights.set('ryugi-comment', new Highlight(...normal));
     CSS.highlights.set('ryugi-comment-active', new Highlight(...active));
     return () => {
@@ -125,19 +190,25 @@ export function useHighlights(anchors: ThreadAnchor[], threads: Thread[], active
   }, [anchors, threads, activeId]);
 }
 
-export function useDraftHighlight(range: Range | null) {
+export function useDraftHighlight(range: Range | null, elements?: HTMLElement[]) {
   useEffect(() => {
+    if (elements?.length) {
+      for (const element of elements) element.setAttribute('data-comment-draft', '');
+      return () => {
+        for (const element of elements) element.removeAttribute('data-comment-draft');
+      };
+    }
     if (!range || typeof CSS === 'undefined' || !('highlights' in CSS)) return;
     CSS.highlights.set('ryugi-comment-draft', new Highlight(range));
     return () => {
       CSS.highlights.delete('ryugi-comment-draft');
     };
-  }, [range]);
+  }, [range, elements]);
 }
 
 export function threadAtPoint(anchors: ThreadAnchor[], x: number, y: number): string | null {
   for (const anchor of anchors) {
-    const pad = anchor.kind === 'block' ? BAR_HIT : 0;
+    const pad = anchor.kind === 'block' || anchorBlocks(anchor).length ? BAR_HIT : 0;
     for (const box of anchorBoxes(anchor)) {
       if (x >= box.left - pad && x <= box.right + pad && y >= box.top && y <= box.bottom)
         return anchor.threadId;

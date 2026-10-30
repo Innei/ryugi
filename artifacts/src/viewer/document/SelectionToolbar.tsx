@@ -60,6 +60,26 @@ const styles = stylex.create({
   },
   secondary: { color: cssVar.colorTextSecondary },
   icon: { flexShrink: 0, color: brand.accent },
+  blockButton: {
+    position: 'absolute',
+    zIndex: 5,
+    display: 'grid',
+    placeItems: 'center',
+    width: 32,
+    height: 32,
+    padding: 0,
+    borderWidth: 1,
+    borderStyle: 'solid',
+    borderColor: cssVar.colorBorder,
+    borderRadius: 8,
+    backgroundColor: { 'default': cssVar.colorBgElevated, ':hover': cssVar.colorFillTertiary },
+    color: brand.accent,
+    boxShadow: cssVar.boxShadowSecondary,
+    cursor: 'pointer',
+    outlineColor: brand.accent,
+    outlineOffset: 2,
+  },
+  blockWrap: { position: 'absolute', zIndex: 5 },
   divider: {
     flexShrink: 0,
     width: 1,
@@ -68,6 +88,33 @@ const styles = stylex.create({
     backgroundColor: cssVar.colorBorder,
   },
 });
+
+export function BlockCommentButton({
+  left,
+  top,
+  onComment,
+  ref,
+}: {
+  left: number;
+  top: number;
+  onComment: () => void;
+  ref?: Ref<HTMLDivElement>;
+}) {
+  return (
+    <div ref={ref} {...stylex.props(styles.blockWrap)} style={{ left, top }}>
+      <button
+        aria-label={t('common.comment')}
+        title={t('common.comment')}
+        type="button"
+        {...stylex.props(styles.blockButton)}
+        onClick={onComment}
+        onPointerDown={(event) => event.preventDefault()}
+      >
+        <MessageSquare aria-hidden="true" size={16} />
+      </button>
+    </div>
+  );
+}
 
 interface Props {
   left: number;

@@ -5,6 +5,7 @@ import { useEffect, useRef } from 'react';
 import { type Thread, waitingOn } from '../../shared/comments';
 import { BottomSheet } from '../components/BottomSheet';
 import { t } from '../i18n';
+import { anchorLabel } from './anchor';
 import type { ThreadActions } from './CommentCard';
 import { Composer } from './Composer';
 import { EASE, play } from './motion';
@@ -141,7 +142,7 @@ export function PhoneSheet({
         {draft && actions ? (
           <div {...stylex.props(styles.draft)}>
             <div {...stylex.props(styles.draftHead)}>
-              <span {...stylex.props(styles.draftQuote)}>{draft.quote}</span>
+              <span {...stylex.props(styles.draftQuote)}>{anchorLabel(draft)}</span>
               <button type="button" onClick={onCancelDraft} {...stylex.props(styles.cancel)}>
                 {t('common.cancel')}
               </button>

@@ -66,12 +66,14 @@ interface Props {
   ref?: Ref<HTMLDivElement>;
   restored: boolean;
   top: number;
+  wholeBlock?: boolean;
 }
 
 export function DraftPanel({
   left,
   top,
   quote,
+  wholeBlock,
   initial,
   restored,
   leaving,
@@ -88,7 +90,7 @@ export function DraftPanel({
     >
       <PanelFrame active>
         <div {...stylex.props(styles.head)}>
-          <span {...stylex.props(styles.quote)}>“{quote}”</span>
+          <span {...stylex.props(styles.quote)}>{wholeBlock ? quote : `“${quote}”`}</span>
           {restored ? (
             <span {...stylex.props(styles.restored)}>{t('document.draftRestored')}</span>
           ) : null}

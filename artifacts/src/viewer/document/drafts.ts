@@ -1,4 +1,11 @@
-export const draftKey = (blockId: string, quote: string) => `${blockId}\n${quote}`;
+import type { TextRangeAnchor } from '../../shared/comments';
+
+export const draftKey = (
+  blockId: string,
+  quote: string,
+  blockIds?: string[],
+  textRanges?: TextRangeAnchor[],
+) => `${JSON.stringify([blockIds ?? [blockId], textRanges ?? null])}\n${quote}`;
 
 export function createDrafts() {
   const texts = new Map<string, string>();

@@ -145,7 +145,7 @@ export async function getArtifact({
 function threadText(thread: Thread) {
   const messages = thread.messages.filter((message) => !message.deleted);
   if (!messages.length) return null;
-  const head = `[${thread.anchor.blockId}] "${thread.anchor.quote}"${thread.status === 'resolved' ? ' (resolved)' : ''}`;
+  const head = `[${(thread.anchor.blockIds ?? [thread.anchor.blockId]).join(', ')}] "${thread.anchor.quote}"${thread.status === 'resolved' ? ' (resolved)' : ''}`;
   return [
     head,
     ...messages.map(

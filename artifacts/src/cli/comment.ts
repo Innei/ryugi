@@ -139,7 +139,7 @@ interface ListedBoardAnchor {
 }
 
 interface ListedThread {
-  anchor: { blockId: string; quote: string } | ListedBoardAnchor;
+  anchor: { blockId: string; blockIds?: string[]; quote: string } | ListedBoardAnchor;
   changes?: string[];
   files?: Record<string, string>;
   id: string;
@@ -174,8 +174,12 @@ const percent = (value: number) => `${Math.round(value * 100)}%`;
 
 function anchorLines(thread: ListedThread): string[] {
   const anchor = thread.anchor;
-  if ('blockId' in anchor)
-    return [`  on block ${anchor.blockId}${anchor.quote ? ` "${clip(anchor.quote, 120)}"` : ''}`];
+  if ('blockId' in anchor) {
+    const ids = anchor.blockIds ?? [anchor.blockId];
+    return [
+      `  on ${ids.length > 1 ? 'blocks' : 'block'} ${ids.join(', ')}${anchor.quote ? ` "${clip(anchor.quote, 120)}"` : ''}`,
+    ];
+  }
   const file = anchor.board ? thread.files?.[anchor.board] : undefined;
   const where = anchor.board ? `, board ${anchor.board}${file ? ` (${file})` : ''}` : '';
   const lines = [`  on page ${anchor.page}${where} at ${anchor.x},${anchor.y}`];

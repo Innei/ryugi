@@ -7,6 +7,7 @@ import { flushSync } from 'react-dom';
 import type { Thread } from '../../shared/comments';
 import { type ThreadActions, ThreadMessages, WaitingText } from '../comments/ThreadView';
 import { t } from '../i18n';
+import { anchorLabel } from './anchor';
 import { Avatar } from './Avatar';
 import { Composer } from './Composer';
 import { play } from './motion';
@@ -119,7 +120,7 @@ export function CommentCard({
   const row = useRef<HTMLDivElement>(null);
   const resolved = thread.status === 'resolved';
   const folded = (resolved || closing) && !expanded;
-  const quote = thread.anchor.quote || t('document.wholeBlock');
+  const quote = anchorLabel(thread.anchor);
   const frame = useFold(folded);
   const reply = useReplyPresence(!!actions && active && !resolved && !closing);
 

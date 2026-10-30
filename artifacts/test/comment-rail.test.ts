@@ -11,6 +11,42 @@ import {
   toolbarPosition,
 } from '../src/viewer/document/layoutCards';
 
+test('unsent comments on different selections starting at the same block stay separate', () => {
+  const drafts = createDrafts();
+  drafts.save(draftKey('b1', '', ['b1', 'b2']), 'First pair');
+  expect(drafts.take(draftKey('b1', '', ['b1', 'b3']))).toBe('');
+  expect(drafts.take(draftKey('b1', '', ['b1', 'b2']))).toBe('First pair');
+});
+
+test('unsent comments on repeated text at different offsets stay separate', () => {
+  const drafts = createDrafts();
+  drafts.save(
+    draftKey(
+      'b1',
+      'same',
+      ['b1', 'b2'],
+      [
+        { blockId: 'b1', quote: 'same', start: 0 },
+        { blockId: 'b2', quote: 'end', start: 0 },
+      ],
+    ),
+    'First occurrence',
+  );
+  expect(
+    drafts.take(
+      draftKey(
+        'b1',
+        'same',
+        ['b1', 'b2'],
+        [
+          { blockId: 'b1', quote: 'same', start: 5 },
+          { blockId: 'b2', quote: 'end', start: 0 },
+        ],
+      ),
+    ),
+  ).toBe('');
+});
+
 describe('layoutCards', () => {
   test('a card sits at its anchor when there is room', () => {
     expect(layoutCards([{ id: 'a', anchorTop: 100, height: 80 }], 12)).toEqual({ a: 100 });
@@ -43,6 +79,9 @@ describe('layoutCards', () => {
 });
 
 describe('resolveAnchor', () => {
+  test('a saved text offset distinguishes a repeated quote in the same paragraph', () => {
+    expect(resolveAnchor('same same', 'same', 5)).toEqual({ start: 5, end: 9 });
+  });
   test('finds the quote inside the block text', () => {
     expect(resolveAnchor('服务端改为按事件粒度推送：每条变更', '按事件粒度推送')).toEqual({
       start: 5,

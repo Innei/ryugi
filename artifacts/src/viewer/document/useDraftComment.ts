@@ -18,12 +18,17 @@ export function useDraftComment(clearSelection: () => void) {
   const timer = useRef(0);
   const panelRef = useRef<HTMLDivElement>(null);
   const toolbarRef = useRef<HTMLDivElement>(null);
-  useDraftHighlight(leaving ? null : (draft?.target.range ?? null));
+  useDraftHighlight(
+    leaving ? null : (draft?.target.range ?? null),
+    leaving ? undefined : draft?.target.elements,
+  );
 
   const open = useCallback(
     (target: SelectionTarget) => {
       window.clearTimeout(timer.current);
-      const initial = drafts.take(draftKey(target.blockId, target.quote));
+      const initial = drafts.take(
+        draftKey(target.blockId, target.quote, target.blockIds, target.textRanges),
+      );
       text.current = initial;
       setLeaving(false);
       setDraft({ target, initial });
@@ -36,7 +41,15 @@ export function useDraftComment(clearSelection: () => void) {
   const close = useCallback(
     (keepText: boolean) => {
       if (!draft) return;
-      drafts.save(draftKey(draft.target.blockId, draft.target.quote), keepText ? text.current : '');
+      drafts.save(
+        draftKey(
+          draft.target.blockId,
+          draft.target.quote,
+          draft.target.blockIds,
+          draft.target.textRanges,
+        ),
+        keepText ? text.current : '',
+      );
       setLeaving(true);
       timer.current = window.setTimeout(() => {
         setDraft(null);

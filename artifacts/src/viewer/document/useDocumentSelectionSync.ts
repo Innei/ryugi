@@ -1,5 +1,5 @@
 import { blockIdState } from '@haklex/rich-editor';
-import { $getNearestNodeFromDOMNode, $getRoot, $getState, type LexicalEditor } from 'lexical';
+import { $getRoot, $getSelection, $getState, $isNodeSelection, type LexicalEditor } from 'lexical';
 import { useEffect, useRef } from 'react';
 
 import {
@@ -8,12 +8,42 @@ import {
   type DocumentSelectionState,
 } from '../../shared/selection';
 import { selectionContext } from './selectionContext';
+import { $getSelectedTextRanges } from './textSelection';
 
 const TAB = crypto.randomUUID();
 const SETTLE_MS = 300;
 const EMPTY: DocumentSelectionState = { quote: '', blockIds: [], heading: '' };
 
 function readSelection(editor: LexicalEditor): DocumentSelectionState {
+  const blockSelection = editor.read(() => {
+    const selection = $getSelection();
+    if (!$isNodeSelection(selection)) return null;
+    const blocks = $getRoot().getChildren();
+    const selected = blocks.filter((block) => selection.has(block.getKey()));
+    if (!selected.length) return null;
+    const first = blocks.indexOf(selected[0]!);
+    const { heading } = selectionContext(
+      blocks.map((block) => ({
+        id: $getState(block, blockIdState),
+        heading: block.getType() === 'heading',
+        text: block.getTextContent(),
+      })),
+      first,
+      first,
+    );
+    return {
+      heading: heading.slice(0, DOCUMENT_SELECTION_LIMITS.heading),
+      blockIds: selected
+        .map((block) => $getState(block, blockIdState))
+        .filter(Boolean)
+        .slice(0, DOCUMENT_SELECTION_LIMITS.blockIds),
+      quote: selected
+        .map((block) => block.getTextContent())
+        .join('\n\n')
+        .slice(0, DOCUMENT_SELECTION_LIMITS.quote),
+    };
+  });
+  if (blockSelection) return blockSelection;
   const selection = window.getSelection();
   const root = editor.getRootElement();
   if (
@@ -27,19 +57,22 @@ function readSelection(editor: LexicalEditor): DocumentSelectionState {
   if (!quote) return EMPTY;
   return editor.read(() => {
     const blocks = $getRoot().getChildren();
-    const indexOf = (node: Node | null) => {
-      const top = node && $getNearestNodeFromDOMNode(node)?.getTopLevelElement();
-      return top ? blocks.findIndex((block) => block.is(top)) : -1;
-    };
-    const from = indexOf(selection.anchorNode);
-    const to = indexOf(selection.focusNode);
-    if (from < 0 || to < 0) return { ...EMPTY, quote };
+    const selected = $getSelectedTextRanges(editor, selection.getRangeAt(0));
+    if (!selected.length) return { ...EMPTY, quote };
+    const from = blocks.findIndex(
+      (block) => $getState(block, blockIdState) === selected[0]!.blockId,
+    );
     const summaries = blocks.map((block) => ({
       id: $getState(block, blockIdState) || '',
       heading: block.getType() === 'heading',
       text: block.getTextContent().slice(0, DOCUMENT_SELECTION_LIMITS.heading),
     }));
-    return { quote, ...selectionContext(summaries, from, to) };
+    const { heading } = selectionContext(summaries, from, from);
+    return {
+      quote,
+      heading,
+      blockIds: selected.map((part) => part.blockId).slice(0, DOCUMENT_SELECTION_LIMITS.blockIds),
+    };
   });
 }
 
@@ -65,14 +98,16 @@ export function useDocumentSelectionSync(
       timer = window.setTimeout(update, SETTLE_MS);
     };
     document.addEventListener('selectionchange', settle);
+    const unregister = editor.registerUpdateListener(settle);
     return () => {
       clearTimeout(timer);
       document.removeEventListener('selectionchange', settle);
+      unregister();
     };
   }, [editor, artifact, send]);
 
   useEffect(() => {
-    if (live && last.current.quote)
+    if (live && (last.current.quote || last.current.blockIds.length))
       send({ type: 'selection', artifact, tab: TAB, human: false, ...last.current });
   }, [live, artifact, send]);
 }

@@ -6,6 +6,11 @@
   --rc-font-size-code: 12px;
   --rc-font-size-caption: 11px;
   --rc-line-height: 1.75;
+  padding-inline: 16px;
+}
+
+.ryugi-doc .rich-editor__content {
+  padding-inline: 0;
 }
 
 ::highlight(ryugi-comment) {
@@ -15,6 +20,11 @@
 ::highlight(ryugi-comment-draft),
 ::highlight(ryugi-comment-active) {
   background-color: rgba(240, 194, 75, 0.6);
+}
+
+.ryugi-doc [data-comment-draft] {
+  background-color: rgba(240, 194, 75, 0.2);
+  border-radius: 4px;
 }
 
 .ryugi-doc .rich-paragraph {

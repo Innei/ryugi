@@ -1,6 +1,6 @@
 {
   "name": "ryugi-artifacts",
-  "version": "1.46.0",
+  "version": "1.46.1",
   "description": "Server and viewer for the Ryugi artifacts app",
   "repository": {
     "type": "git",
@@ -69,6 +69,7 @@
     "@haklex/rich-ext-steps": "0.61.1",
     "@haklex/rich-headless": "0.61.1",
     "@haklex/rich-litexml": "0.61.1",
+    "@haklex/rich-plugin-block-handle": "0.61.1",
     "@haklex/rich-plugin-link-edit": "0.61.1",
     "@haklex/rich-renderer-alert": "0.61.1",
     "@haklex/rich-renderer-codeblock": "0.61.1",

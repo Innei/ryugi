@@ -66,7 +66,7 @@ export function PhoneLayout({
   const [draft, setDraft] = useState<SelectionTarget | null>(null);
   const anchors = useAnchors(editor, threads, main);
   useHighlights(anchors, threads, activeId);
-  useDraftHighlight(draft?.range ?? null);
+  useDraftHighlight(draft?.range ?? null, draft?.elements);
 
   const done = () => {
     window.getSelection()?.removeAllRanges();
@@ -105,7 +105,7 @@ export function PhoneLayout({
             },
           )}
           canComment={canComment}
-          canEdit={canEdit}
+          canEdit={canEdit && selection.kind !== 'block'}
           onComment={() => {
             setDraft(selection);
             setSnap(SHEET_HALF);

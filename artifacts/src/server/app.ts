@@ -489,8 +489,9 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
         sendJson(res, 400, { error: `doc.xml could not be read: ${(err as Error).message}` });
         return;
       }
-      if (!blocks.has(op.blockId)) {
-        sendJson(res, 400, { error: `no block ${op.blockId} in document/${id}` });
+      const missing = (op.blockIds ?? [op.blockId]).find((blockId) => !blocks.has(blockId));
+      if (missing) {
+        sendJson(res, 400, { error: `no block ${missing} in document/${id}` });
         return;
       }
     }

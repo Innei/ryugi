@@ -111,6 +111,7 @@
   },
   "document": {
     "wholeBlock": "Whole block",
+    "wholeBlocks": "{{count}} blocks",
     "waitingAgentReply": "Waiting on {{agent}}",
     "agentReplied": "{{agent}} replied",
     "waitingCount": "{{count}} waiting on {{agent}}",

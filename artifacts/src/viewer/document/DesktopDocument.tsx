@@ -2,12 +2,19 @@ import type { LexicalEditor } from 'lexical';
 import type { ReactNode } from 'react';
 
 import type { Thread } from '../../shared/comments';
+import { anchorLabel } from './anchor';
 import type { ThreadActions } from './CommentCard';
 import type { DocumentHistoryView } from './DocumentHistory';
 import { DocumentLayout } from './DocumentLayout';
 import { DRAFT_WIDTH, DraftPanel } from './DraftPanel';
+import { draftKey } from './drafts';
 import { popoverPosition, toolbarPosition } from './layoutCards';
-import { SelectionToolbar, TOOLBAR_HEIGHT, TOOLBAR_WIDTH } from './SelectionToolbar';
+import {
+  BlockCommentButton,
+  SelectionToolbar,
+  TOOLBAR_HEIGHT,
+  TOOLBAR_WIDTH,
+} from './SelectionToolbar';
 import { useDraftComment } from './useDraftComment';
 import type { SelectionTarget } from './useSelectionComment';
 
@@ -56,7 +63,26 @@ export function DesktopDocument({
       threads={threads}
       overlay={(articleEl) => (
         <>
-          {selection && !draft ? (
+          {selection &&
+          !draft &&
+          (selection.kind === 'block' || (selection.blockIds?.length ?? 0) > 1) &&
+          canComment ? (
+            <BlockCommentButton
+              ref={composing.toolbarRef}
+              top={selection.top}
+              left={Math.min(
+                selection.right + 8,
+                window.innerWidth -
+                  (articleEl.offsetParent?.getBoundingClientRect().left ?? 0) -
+                  40,
+              )}
+              onComment={() => composing.open(selection)}
+            />
+          ) : null}
+          {selection &&
+          !draft &&
+          selection.kind !== 'block' &&
+          (selection.blockIds?.length ?? 0) <= 1 ? (
             <SelectionToolbar
               ref={composing.toolbarRef}
               {...toolbarPosition(
@@ -76,13 +102,19 @@ export function DesktopDocument({
           ) : null}
           {draft ? (
             <DraftPanel
-              key={`${draft.target.blockId}:${draft.target.quote}`}
               ref={composing.panelRef}
+              key={draftKey(
+                draft.target.blockId,
+                draft.target.quote,
+                draft.target.blockIds,
+                draft.target.textRanges,
+              )}
               {...popoverPosition(draft.target, columnBounds(articleEl), DRAFT_WIDTH, 8)}
               initial={draft.initial}
               leaving={composing.leaving}
-              quote={draft.target.quote}
+              quote={anchorLabel(draft.target)}
               restored={composing.restored}
+              wholeBlock={draft.target.kind === 'block'}
               onCancel={() => composing.close(true)}
               onChange={composing.onText}
               onSubmit={(text) =>
