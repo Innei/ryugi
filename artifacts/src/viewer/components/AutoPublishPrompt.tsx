@@ -53,15 +53,16 @@ const styles = stylex.create({
 });
 
 interface Props {
-  onAnswer: (value: boolean) => Promise<void>;
+  onAnswer: (answer: 'on' | 'later') => Promise<void>;
   status: CloudStatus | null;
 }
 
 export function AutoPublishPrompt({ status, onAnswer }: Props) {
   const { t } = useTranslation();
   const [busy, setBusy] = useState(false);
-  if (!status?.signedIn || status.autoPublish?.global !== null) return null;
-  const answer = async (value: boolean) => {
+  if (!status?.signedIn || status.autoPublish?.global !== null || status.autoPublish.postponed)
+    return null;
+  const answer = async (value: 'on' | 'later') => {
     setBusy(true);
     await onAnswer(value);
     setBusy(false);
@@ -77,7 +78,7 @@ export function AutoPublishPrompt({ status, onAnswer }: Props) {
         <button
           disabled={busy}
           type="button"
-          onClick={() => void answer(false)}
+          onClick={() => void answer('later')}
           {...stylex.props(styles.button)}
         >
           {t('autoPublish.later')}
@@ -85,7 +86,7 @@ export function AutoPublishPrompt({ status, onAnswer }: Props) {
         <button
           disabled={busy}
           type="button"
-          onClick={() => void answer(true)}
+          onClick={() => void answer('on')}
           {...stylex.props(styles.button, styles.primary)}
         >
           {t('autoPublish.turnOn')}
@@ -100,8 +101,10 @@ export function AutoPublishBar() {
   return (
     <AutoPublishPrompt
       status={status}
-      onAnswer={async (value) => {
-        await cloudRequest('POST', 'auto-publish', { scope: 'global', value });
+      onAnswer={async (answer) => {
+        await (answer === 'on'
+          ? cloudRequest('POST', 'auto-publish', { scope: 'global', value: true })
+          : cloudRequest('POST', 'auto-publish/later'));
         await refresh();
       }}
     />

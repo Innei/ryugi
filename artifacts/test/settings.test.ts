@@ -8,6 +8,7 @@ import { setProjectAutoPublish } from '../src/server/config';
 import {
   autoPublishEnabled,
   defaultGlobalAutoPublish,
+  postponeGlobalAutoPublish,
   readGlobalAutoPublish,
   settingsFileFor,
   writeGlobalAutoPublish,
@@ -45,6 +46,21 @@ describe('global settings', () => {
     expect(readGlobalAutoPublish(file)).toBe(true);
     writeGlobalAutoPublish(file, false);
     defaultGlobalAutoPublish(file);
+    expect(readGlobalAutoPublish(file)).toBe(false);
+  });
+});
+
+describe('postponing the question', () => {
+  test('the first "Not now" leaves it undecided', () => {
+    const file = path.join(tempDir(), 'config.json');
+    expect(postponeGlobalAutoPublish(file)).toBe('postponed');
+    expect(readGlobalAutoPublish(file)).toBeUndefined();
+  });
+
+  test('a second "Not now" turns it off', () => {
+    const file = path.join(tempDir(), 'config.json');
+    postponeGlobalAutoPublish(file);
+    expect(postponeGlobalAutoPublish(file)).toBe('off');
     expect(readGlobalAutoPublish(file)).toBe(false);
   });
 });

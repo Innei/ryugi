@@ -1,5 +1,6 @@
 'use strict';
 
+const { createHash } = require('node:crypto');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
@@ -179,9 +180,22 @@ function remember(file, value) {
 function autoPublishContext(project, env, sessionId) {
   const state = path.join(project, '.ryugi', 'artifacts', '.state');
   const credentials = credentialsPath(env, process.platform, os.homedir());
-  const signedIn = typeof (readJson(credentials) || {}).token === 'string';
+  const token = (readJson(credentials) || {}).token;
+  const signedIn = typeof token === 'string';
   const settings = readJson(path.join(path.dirname(credentials), 'config.json')) || {};
   const lines = [];
+  const signInFile = path.join(state, 'auto-publish-sign-in');
+  const seen = signedIn
+    ? createHash('sha256').update(token).digest('hex').slice(0, 16)
+    : 'signed-out';
+  const previous = readText(signInFile);
+  if (previous !== seen) {
+    remember(signInFile, seen);
+    if (previous && signedIn && typeof settings.autoPublish === 'boolean')
+      lines.push(
+        `Your human partner just signed in to Ryugi Cloud; auto-publish is ${settings.autoPublish ? 'on: when your turn ends, artifacts changed during it are published as private copies they can open from another device' : 'off'}. Tell them in one line, in their language, and that they can change it any time from Settings (their avatar at the top right of the artifact list) or with \`node "${LAUNCHER}" config --auto-publish on|off\`.`,
+      );
+  }
   const askedFile = path.join(state, 'auto-publish-asked');
   if (signedIn && typeof settings.autoPublish !== 'boolean' && readText(askedFile) !== sessionId) {
     remember(askedFile, sessionId);

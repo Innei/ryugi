@@ -11,6 +11,7 @@ import { pageLink, usePageQuery } from '../hooks/usePageQuery';
 import { usePublication } from '../hooks/usePublication';
 import { useTranslation } from '../i18n';
 import { responseErrorText } from '../lib/error-text';
+import { openSettings } from '../lib/settings-dialog';
 import { PublicationStatus } from './PublicationStatus';
 
 const styles = stylex.create({
@@ -218,6 +219,16 @@ export function PublishMenu({ artifact, floating = false }: Props) {
       {state.published && status.autoPublish?.enabled ? (
         <span {...stylex.props(styles.muted)}>{t('publish.autoPublishNote')}</span>
       ) : null}
+      <div {...stylex.props(styles.row, styles.muted)}>
+        <span>
+          {t('settings.menuStatus', {
+            state: status.autoPublish?.enabled ? t('settings.on') : t('settings.off'),
+          })}
+        </span>
+        <button type="button" {...stylex.props(styles.textButton)} onClick={openSettings}>
+          {t('publish.openSettings')}
+        </button>
+      </div>
     </div>
   );
 

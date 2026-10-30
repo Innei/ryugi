@@ -17,6 +17,7 @@ import { withCloudRuntime } from './publish-payload';
 import {
   autoPublishEnabled,
   defaultGlobalAutoPublish,
+  postponeGlobalAutoPublish,
   readGlobalAutoPublish,
   settingsFileFor,
   writeGlobalAutoPublish,
@@ -51,6 +52,7 @@ interface CloudArtifact {
 }
 
 const LOGIN_STATE_TTL_MS = 10 * 60 * 1000;
+const CALLBACK_TICKET_TTL_MS = 30 * 60 * 1000;
 const UPLOAD_CONCURRENCY = 6;
 const MAX_JSON_BODY = 4096;
 const CLOUD_ID = /^[\w-]{1,64}$/;
@@ -87,7 +89,7 @@ class CreateRefused extends CloudRefused {
   }
 }
 
-async function readJsonBody(req: http.IncomingMessage): Promise<unknown> {
+async function readBodyText(req: http.IncomingMessage) {
   const chunks: Buffer[] = [];
   let size = 0;
   for await (const chunk of req) {
@@ -95,8 +97,12 @@ async function readJsonBody(req: http.IncomingMessage): Promise<unknown> {
     if (size > MAX_JSON_BODY) throw new CloudRefused(413, 'request body too large');
     chunks.push(chunk as Buffer);
   }
+  return Buffer.concat(chunks).toString('utf8');
+}
+
+async function readJsonBody(req: http.IncomingMessage): Promise<unknown> {
   try {
-    return JSON.parse(Buffer.concat(chunks).toString('utf8') || 'null');
+    return JSON.parse((await readBodyText(req)) || 'null');
   } catch {
     return null;
   }
@@ -147,7 +153,38 @@ export function createCloudRoutes(options: CloudRoutesOptions) {
       !!readCredentials(credentialsFile, origin) &&
       autoPublishEnabled({ globalFile: settingsFile, projectFile: configFile }),
   });
+  let postponed = false;
   const pendingStates = new Map<string, { expires: number; verifier: string }>();
+  const callbackTickets = new Map<string, { expires: number; login: string }>();
+  const issueTicket = (login: string) => {
+    const now = Date.now();
+    for (const [ticket, issued] of callbackTickets)
+      if (issued.expires < now) callbackTickets.delete(ticket);
+    const ticket = randomToken();
+    callbackTickets.set(ticket, { expires: now + CALLBACK_TICKET_TTL_MS, login });
+    return ticket;
+  };
+
+  const sendCallbackPage = (
+    res: http.ServerResponse,
+    status: number,
+    result:
+      | { ok: true; login: string; autoPublish: boolean; ticket: string }
+      | { ok: false; detail: string },
+    locale: Locale,
+  ) =>
+    send(res, status, callbackPage({ ...result, origin }, locale), {
+      'Content-Type': 'text/html; charset=utf-8',
+      'Content-Security-Policy': CALLBACK_PAGE_CSP,
+    });
+
+  const signedInPage = (res: http.ServerResponse, ticket: string, login: string, locale: Locale) =>
+    sendCallbackPage(
+      res,
+      200,
+      { ok: true, login, ticket, autoPublish: readGlobalAutoPublish(settingsFile) ?? false },
+      locale,
+    );
 
   const loginUrl = () => {
     const now = Date.now();
@@ -551,7 +588,7 @@ export function createCloudRoutes(options: CloudRoutesOptions) {
         origin,
         hostId: hostIdFor(credentialsFile),
         artifacts: config.artifacts,
-        autoPublish: autoPublishState(),
+        autoPublish: { ...autoPublishState(), postponed },
         warning: warning ?? null,
       });
       return;
@@ -632,6 +669,11 @@ export function createCloudRoutes(options: CloudRoutesOptions) {
       sendJson(res, 200, await setVisibility(ref, visibility));
       return;
     }
+    if (action === 'auto-publish' && method === 'POST' && first === 'later' && !second) {
+      postponed = postponeGlobalAutoPublish(settingsFile) === 'postponed';
+      sendJson(res, 200, { ...autoPublishState(), postponed });
+      return;
+    }
     if (action === 'auto-publish' && method === 'POST' && !first) {
       const body = (await readJsonBody(req)) as { scope?: unknown; value?: unknown } | null;
       const value = body?.value;
@@ -653,14 +695,8 @@ export function createCloudRoutes(options: CloudRoutesOptions) {
   return {
     async handleCallback(url: URL, res: http.ServerResponse, locale: Locale = 'en') {
       const t = serverText(locale);
-      const page = (
-        status: number,
-        result: { ok: true; login: string; autoPublish: boolean } | { ok: false; detail: string },
-      ) =>
-        send(res, status, callbackPage({ ...result, origin }, locale), {
-          'Content-Type': 'text/html; charset=utf-8',
-          'Content-Security-Policy': CALLBACK_PAGE_CSP,
-        });
+      const page = (status: number, result: { ok: false; detail: string }) =>
+        sendCallbackPage(res, status, result, locale);
       const state = url.searchParams.get('state') ?? '';
       const pending = pendingStates.get(state);
       pendingStates.delete(state);
@@ -695,7 +731,32 @@ export function createCloudRoutes(options: CloudRoutesOptions) {
       }
       writeCredentials(credentialsFile, { origin, token: issued.token, login: issued.login });
       defaultGlobalAutoPublish(settingsFile);
-      page(200, { ok: true, login: issued.login, autoPublish: autoPublishState().enabled });
+      signedInPage(res, issueTicket(issued.login), issued.login, locale);
+    },
+
+    async handleCallbackAutoPublish(
+      req: http.IncomingMessage,
+      res: http.ServerResponse,
+      locale: Locale = 'en',
+    ) {
+      if (req.method !== 'POST') {
+        send(res, 405, 'Method not allowed');
+        return;
+      }
+      const form = new URLSearchParams(await readBodyText(req));
+      const ticket = form.get('ticket') ?? '';
+      const issued = callbackTickets.get(ticket);
+      const value = form.get('value');
+      if (!issued || issued.expires < Date.now()) {
+        send(res, 403, 'Forbidden');
+        return;
+      }
+      if (value !== 'on' && value !== 'off') {
+        send(res, 400, 'value must be on or off');
+        return;
+      }
+      writeGlobalAutoPublish(settingsFile, value === 'on');
+      signedInPage(res, ticket, issued.login, locale);
     },
 
     match: (pathname: string) => ROUTE.exec(pathname),

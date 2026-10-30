@@ -69,6 +69,7 @@ export interface ArtifactConfig {
 export interface AutoPublishStatus {
   enabled: boolean;
   global: boolean | null;
+  postponed?: boolean;
   project: boolean | null;
 }
 

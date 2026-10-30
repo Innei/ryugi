@@ -28,6 +28,17 @@ export function writeGlobalAutoPublish(file: string, value: boolean) {
   writeJsonAtomic(file, { ...readSettings(file), autoPublish: value });
 }
 
+export function postponeGlobalAutoPublish(file: string): 'postponed' | 'off' {
+  const settings = readSettings(file);
+  if (settings.autoPublishPostponed === true) {
+    writeGlobalAutoPublish(file, false);
+    return 'off';
+  }
+  fs.mkdirSync(path.dirname(file), { recursive: true, mode: 0o700 });
+  writeJsonAtomic(file, { ...settings, autoPublishPostponed: true });
+  return 'postponed';
+}
+
 export function defaultGlobalAutoPublish(file: string) {
   if (readGlobalAutoPublish(file) === undefined) writeGlobalAutoPublish(file, true);
 }

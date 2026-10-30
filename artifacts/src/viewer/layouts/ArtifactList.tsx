@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import logo from '../../../../assets/ryugi-small.svg';
 import { ARTIFACT_TYPES, type ArtifactSummary, type ArtifactType } from '../../shared/types';
+import { AccountMenu } from '../components/AccountMenu';
 import { ArtifactThumbnail } from '../components/ArtifactThumbnail';
 import { RyugiMark } from '../components/RyugiMark';
 import { TypeIcon } from '../components/TypeIcon';
@@ -96,6 +97,7 @@ const styles = stylex.create({
     backgroundColor: cssVar.colorSuccess,
     boxShadow: `0 0 0 3px ${cssVar.colorSuccessBg}`,
   },
+  topbarEnd: { display: 'flex', alignItems: 'center', gap: 14, minWidth: 0 },
   main: {
     'boxSizing': 'border-box',
     'paddingBlockStart': 24,
@@ -398,10 +400,13 @@ export function ArtifactList() {
           <span {...stylex.props(styles.slashLast)}>/</span>
           <span {...stylex.props(styles.section)}>Artifacts</span>
         </div>
-        <span {...stylex.props(styles.status)}>
-          <i data-live={live} {...stylex.props(styles.statusDot, live && styles.statusDotLive)} />
-          {live ? t('library.localProject') : t('library.reconnecting')}
-        </span>
+        <div {...stylex.props(styles.topbarEnd)}>
+          <span {...stylex.props(styles.status)}>
+            <i data-live={live} {...stylex.props(styles.statusDot, live && styles.statusDotLive)} />
+            {live ? t('library.localProject') : t('library.reconnecting')}
+          </span>
+          <AccountMenu />
+        </div>
       </header>
       <main {...stylex.props(styles.main)}>
         <div {...stylex.props(styles.heading)}>

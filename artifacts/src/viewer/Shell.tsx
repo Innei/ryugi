@@ -11,6 +11,11 @@ const AutoPublishBar = lazy(() =>
     default: AutoPublishBar,
   })),
 );
+const SettingsDialog = lazy(() =>
+  import('./components/SettingsDialog').then(({ SettingsDialog }) => ({
+    default: SettingsDialog,
+  })),
+);
 const ArtboardLayout = lazy(() =>
   import('./layouts/ArtboardLayout').then(({ ArtboardLayout }) => ({ default: ArtboardLayout })),
 );
@@ -44,6 +49,7 @@ const local = (page: ReactNode) => (
   <>
     {page}
     <AutoPublishBar />
+    <SettingsDialog />
   </>
 );
 

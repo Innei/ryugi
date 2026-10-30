@@ -3,7 +3,7 @@ import { HTML_LANG, type Locale } from '../shared/locale';
 import { serverText } from './locales';
 
 export const CALLBACK_PAGE_CSP =
-  "default-src 'none'; style-src 'unsafe-inline'; img-src data:; script-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'";
+  "default-src 'none'; style-src 'unsafe-inline'; img-src data:; script-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'";
 
 const escapeHtml = (value: string) =>
   value.replaceAll(
@@ -80,15 +80,26 @@ h1 em { margin-left: 8px; font-style: normal; color: var(--name); }
 .rows li { padding: 16px 0; border-bottom: 1px solid var(--rule); font-size: 14px; }
 .rows b { display: block; margin-bottom: 3px; font-weight: 600; }
 .rows span { color: var(--soft); font-size: 13px; }
+.auto { margin-top: 28px; padding: 16px 18px; border: 1px solid var(--rule); border-radius: 12px; }
+.auto form { display: flex; align-items: center; gap: 16px; margin: 0; }
+.auto .text { flex: 1; }
+.auto b { display: block; margin-bottom: 4px; font-size: 15px; font-weight: 600; }
+.auto .text span { color: var(--soft); font-size: 13px; line-height: 1.7; }
+.switch { flex-shrink: 0; width: 44px; height: 24px; padding: 2px; border: 0; border-radius: 12px; background: var(--rule); cursor: pointer; display: flex; }
+.switch[aria-checked="true"] { justify-content: flex-end; background: var(--ink); }
+.switch i { width: 20px; height: 20px; border-radius: 50%; background: var(--bg); }
+.switch:focus-visible { outline: 2px solid var(--name); outline-offset: 2px; }
+.auto .where { display: block; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--rule); color: var(--soft); font-size: 12px; }
 footer { display: flex; justify-content: space-between; gap: 16px; margin-top: 20px; font-size: 12px; color: var(--faint); }
 footer code { font: 12px var(--mono); }
 `;
 
 interface SignedIn {
-  autoPublish?: boolean;
+  autoPublish: boolean;
   login: string;
   ok: true;
   origin: string;
+  ticket: string;
 }
 
 interface Failed {
@@ -99,6 +110,13 @@ interface Failed {
 
 const row = (title: string, detail: string) => `<li><b>${title}</b><span>${detail}</span></li>`;
 
+const autoPublishCard = (t: ReturnType<typeof serverText>, on: boolean, ticket: string) =>
+  `<section class="auto"><form method="post" action="/api/cloud/callback/auto-publish">
+        <input type="hidden" name="ticket" value="${escapeHtml(ticket)}">
+        <span class="text"><b>${on ? t('callback.autoPublishOn') : t('callback.autoPublishOff')}</b><span>${t('callback.autoPublishDetail')}</span></span>
+        <button class="switch" type="submit" name="value" value="${on ? 'off' : 'on'}" role="switch" aria-checked="${on}" aria-label="${on ? t('callback.autoPublishTurnOff') : t('callback.autoPublishTurnOn')}"><i></i></button>
+      </form><span class="where">${t('callback.autoPublishWhere')}</span></section>`;
+
 export function callbackPage(result: SignedIn | Failed, locale: Locale = 'en'): string {
   const t = serverText(locale);
   const host = escapeHtml(new URL(result.origin).host);
@@ -107,7 +125,8 @@ export function callbackPage(result: SignedIn | Failed, locale: Locale = 'en'): 
     ? `<p class="status">${CIRCLE_CHECK}${t('callback.connected')}</p>
       <h1>${t('callback.signedIn')}<em>${escapeHtml(result.login)}</em></h1>
       <p class="lead">${t('callback.lead')}</p>
-      <ul class="rows">${row(t('callback.fromPage'), t('callback.fromPageDetail'))}${row(t('callback.fromAgent'), t('callback.fromAgentDetail'))}${result.autoPublish ? row(t('callback.autoPublish'), t('callback.autoPublishDetail')) : ''}</ul>`
+      ${autoPublishCard(t, result.autoPublish, result.ticket)}
+      <ul class="rows">${row(t('callback.fromPage'), t('callback.fromPageDetail'))}${row(t('callback.fromAgent'), t('callback.fromAgentDetail'))}</ul>`
     : `<p class="status">${CIRCLE_ALERT}${t('callback.notConnected')}</p>
       <h1>${t('callback.titleFailed')}</h1>
       <p class="lead">${escapeHtml(result.detail)}</p>

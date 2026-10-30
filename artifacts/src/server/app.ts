@@ -803,6 +803,19 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
       return;
     }
 
+    if (cloud && pathname === '/api/cloud/callback/auto-publish') {
+      void cloud
+        .handleCallbackAutoPublish(
+          req,
+          res,
+          resolveLocale(parseAcceptLanguage(req.headers['accept-language'])),
+        )
+        .catch((err) => {
+          if (!res.headersSent) send(res, 500, `Artifacts error: ${(err as Error).message}`);
+        });
+      return;
+    }
+
     const key = url.searchParams.get('key');
     if (!isAuthorized(req, key)) {
       send(res, 403, 'Forbidden: open the full artifact link including ?key=');

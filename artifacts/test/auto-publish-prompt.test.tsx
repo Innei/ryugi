@@ -27,12 +27,12 @@ afterEach(() => {
   document.body.innerHTML = '';
 });
 
-const status = (signedIn: boolean, global: boolean | null): CloudStatus => ({
+const status = (signedIn: boolean, global: boolean | null, postponed = false): CloudStatus => ({
   signedIn,
   login: signedIn ? 'innei' : null,
   origin: 'https://ryugi.innei.dev',
   artifacts: {},
-  autoPublish: { global, project: null, enabled: false },
+  autoPublish: { global, project: null, enabled: false, postponed },
   warning: null,
 });
 
@@ -53,16 +53,22 @@ test('asks a signed-in partner who has not decided', () => {
   expect(host.textContent).toContain('privately');
 });
 
-test('answers on and off', async () => {
+test('turns it on, or postpones the question', async () => {
   const { host, onAnswer } = render(status(true, null));
   await act(async () => button(host, 'Turn on').click());
-  expect(onAnswer).toHaveBeenCalledWith(true);
+  expect(onAnswer).toHaveBeenCalledWith('on');
   await act(async () => button(host, 'Not now').click());
-  expect(onAnswer).toHaveBeenCalledWith(false);
+  expect(onAnswer).toHaveBeenCalledWith('later');
 });
 
-test('stays hidden when signed out, decided, or still loading', () => {
-  for (const value of [status(false, null), status(true, true), status(true, false), null]) {
+test('stays hidden when signed out, decided, postponed, or still loading', () => {
+  for (const value of [
+    status(false, null),
+    status(true, true),
+    status(true, false),
+    status(true, null, true),
+    null,
+  ]) {
     const { host } = render(value);
     expect(host.textContent).toBe('');
     act(() => root?.unmount());

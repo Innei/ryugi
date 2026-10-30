@@ -76,6 +76,40 @@ describe('asking once', () => {
   });
 });
 
+describe('after a new sign-in', () => {
+  const signIn = (env: Record<string, string>, token: string, autoPublish: boolean) => {
+    const credentials = credentialsFile(env, process.platform, os.homedir());
+    fs.mkdirSync(path.dirname(credentials), { recursive: true });
+    fs.writeFileSync(
+      credentials,
+      JSON.stringify({ origin: 'https://ryugi.innei.dev', token, login: 'innei' }),
+    );
+    writeGlobalAutoPublish(settingsFileFor(credentials), autoPublish);
+  };
+
+  test('tells the agent once whether auto-publish is on and where to change it', () => {
+    const { project, env } = setup({ signedIn: false });
+    expect(hook.autoPublishContext(project, env, 's1')).toBe('');
+    signIn(env, 'fresh', true);
+    const text = hook.autoPublishContext(project, env, 's1');
+    expect(text).toContain('auto-publish is on');
+    expect(text).toContain('Settings');
+    expect(hook.autoPublishContext(project, env, 's1')).toBe('');
+  });
+
+  test('says when auto-publish stayed off', () => {
+    const { project, env } = setup({ signedIn: false });
+    hook.autoPublishContext(project, env, 's1');
+    signIn(env, 'fresh', false);
+    expect(hook.autoPublishContext(project, env, 's1')).toContain('auto-publish is off');
+  });
+
+  test('stays quiet about a sign-in it finds already in place', () => {
+    const { project, env } = setup({ decided: true });
+    expect(hook.autoPublishContext(project, env, 's1')).toBe('');
+  });
+});
+
 describe('notices', () => {
   test('tells the agent about each notice once', () => {
     const { project, env, state } = setup({ decided: true });

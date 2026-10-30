@@ -167,14 +167,14 @@ export const requestLines = (cloud: FakeCloud, from = 0) =>
 export async function start({
   signedIn = true,
   writeDelayMs,
-}: { signedIn?: boolean; writeDelayMs?: number } = {}) {
+  credentialsFile: sharedCredentials,
+}: { signedIn?: boolean; writeDelayMs?: number; credentialsFile?: string } = {}) {
   const temp = tempRoot();
   const ryugiDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-dir-'));
   const configFile = path.join(ryugiDir, 'config.json');
-  const credentialsFile = path.join(
-    fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-home-')),
-    'credentials.json',
-  );
+  const credentialsFile =
+    sharedCredentials ??
+    path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-home-')), 'credentials.json');
   const cloud = await fakeCloud();
   if (signedIn)
     writeCredentials(credentialsFile, { origin: cloud.origin, token: 'tok', login: 'innei' });

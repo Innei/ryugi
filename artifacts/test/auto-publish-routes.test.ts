@@ -58,20 +58,50 @@ describe('sign-in default', () => {
     return res.text();
   };
 
+  const ticketOf = (page: string) => /name="ticket" value="([^"]+)"/.exec(page)?.[1];
+
+  const answer = (server: Awaited<ReturnType<typeof start>>['server'], form: string) =>
+    fetch(`http://127.0.0.1:${server.port}/api/cloud/callback/auto-publish`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: form,
+    });
+
   test('a sign-in turns auto-publish on when undecided and says so', async () => {
     const { server, credentialsFile } = await start({ signedIn: false });
     const page = await signIn(server);
     expect(readGlobalAutoPublish(settingsFileFor(credentialsFile))).toBe(true);
     expect(page).toContain('Auto-publish is on');
-    expect(page).toContain('ryugi-artifacts config --auto-publish off');
+    expect(page).toContain('Settings');
+    expect(page).not.toContain('ryugi-artifacts config');
   });
 
-  test('a sign-in keeps an earlier "off" and does not claim it is on', async () => {
+  test('a sign-in keeps an earlier "off" and offers to turn it on', async () => {
     const { server, credentialsFile } = await start({ signedIn: false });
     writeGlobalAutoPublish(settingsFileFor(credentialsFile), false);
     const page = await signIn(server);
     expect(readGlobalAutoPublish(settingsFileFor(credentialsFile))).toBe(false);
-    expect(page).not.toContain('Auto-publish is on');
+    expect(page).toContain('Auto-publish is off');
+    expect(page).toContain('name="value" value="on"');
+  });
+
+  test('the sign-in page switch turns auto-publish off and back on', async () => {
+    const { server, credentialsFile } = await start({ signedIn: false });
+    const ticket = ticketOf(await signIn(server))!;
+    const off = await answer(server, `ticket=${ticket}&value=off`);
+    expect(off.status).toBe(200);
+    expect(await off.text()).toContain('Auto-publish is off');
+    expect(readGlobalAutoPublish(settingsFileFor(credentialsFile))).toBe(false);
+    await answer(server, `ticket=${ticket}&value=on`);
+    expect(readGlobalAutoPublish(settingsFileFor(credentialsFile))).toBe(true);
+  });
+
+  test('the switch needs the ticket from that sign-in', async () => {
+    const { server, credentialsFile } = await start({ signedIn: false });
+    await signIn(server);
+    const res = await answer(server, 'ticket=forged&value=off');
+    expect(res.status).toBe(403);
+    expect(readGlobalAutoPublish(settingsFileFor(credentialsFile))).toBe(true);
   });
 });
 
@@ -82,7 +112,31 @@ describe('auto-publish setting route', () => {
       global: null,
       project: null,
       enabled: false,
+      postponed: false,
     });
+  });
+
+  test('"Not now" postpones the question for this run only', async () => {
+    const { server, credentialsFile } = await start();
+    const later = await call(server, 'POST', '/api/cloud/auto-publish/later');
+    expect(later.status).toBe(200);
+    expect((await call(server, 'GET', '/api/cloud/status')).json.autoPublish).toMatchObject({
+      global: null,
+      postponed: true,
+    });
+    const next = await start({ credentialsFile });
+    expect((await call(next.server, 'GET', '/api/cloud/status')).json.autoPublish).toMatchObject({
+      global: null,
+      postponed: false,
+    });
+  });
+
+  test('a second "Not now" turns auto-publish off', async () => {
+    const { server, credentialsFile } = await start();
+    await call(server, 'POST', '/api/cloud/auto-publish/later');
+    const next = await start({ credentialsFile });
+    await call(next.server, 'POST', '/api/cloud/auto-publish/later');
+    expect(readGlobalAutoPublish(settingsFileFor(credentialsFile))).toBe(false);
   });
 
   test('sets the global value', async () => {
