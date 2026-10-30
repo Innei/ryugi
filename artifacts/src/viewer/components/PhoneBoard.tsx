@@ -8,6 +8,7 @@ import { EASE, EXIT, play, reducedMotion, SPRING } from '../document/motion';
 import { usePanZoom } from '../hooks/usePanZoom';
 import { t } from '../i18n';
 import { type Axis, FLICK, lockAxis, velocityTracker } from '../lib/gesture';
+import { color } from '../tokens.stylex';
 import { ghostStyles } from './ghost';
 import { MediaBoard } from './MediaBoard';
 
@@ -74,7 +75,7 @@ const styles = stylex.create({
   body: { position: 'relative', flex: 1, minHeight: 0, overflow: 'hidden', touchAction: 'none' },
   stage: { position: 'absolute', inset: 0, transformOrigin: '0 0' },
   world: { position: 'absolute', left: 0, top: 0, transformOrigin: '0 0' },
-  frame: { display: 'block', borderWidth: 0, backgroundColor: '#fff' },
+  frame: { display: 'block', borderWidth: 0, backgroundColor: color.white },
   foot: {
     position: 'relative',
     flexShrink: 0,

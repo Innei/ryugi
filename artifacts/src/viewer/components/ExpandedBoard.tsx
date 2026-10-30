@@ -6,6 +6,7 @@ import type { ReactNode, Ref } from 'react';
 
 import { type BoardSpec, isMediaBoard } from '../../shared/types';
 import { t } from '../i18n';
+import { color } from '../tokens.stylex';
 import { VideoPlayer } from './VideoPlayer';
 
 const styles = stylex.create({
@@ -40,7 +41,7 @@ const styles = stylex.create({
   frame: {
     flexShrink: 0,
     borderWidth: 0,
-    backgroundColor: '#fff',
+    backgroundColor: color.white,
     boxShadow: cssVar.boxShadowSecondary,
   },
   media: { position: 'relative', flexShrink: 0, maxWidth: '100%', marginInline: 'auto' },

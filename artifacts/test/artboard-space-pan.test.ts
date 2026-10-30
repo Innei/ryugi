@@ -18,6 +18,7 @@ vi.mock('@stylexjs/stylex', async (original) => ({
   create: (value: unknown) => value,
   defineConsts: (value: unknown) => value,
   defineVars: (value: unknown) => value,
+  keyframes: (value: unknown) => value,
   props: (...styles: unknown[]) => ({
     style: Object.fromEntries(
       flat(styles)

@@ -7,6 +7,7 @@ import { flushSync } from 'react-dom';
 import type { Thread } from '../../shared/comments';
 import { type ThreadActions, ThreadMessages, WaitingText } from '../comments/ThreadView';
 import { t } from '../i18n';
+import { color } from '../tokens.stylex';
 import { anchorLabel } from './anchor';
 import { Avatar } from './Avatar';
 import { Composer } from './Composer';
@@ -97,7 +98,7 @@ export function PanelWho({ human, label }: { human: boolean; label: string }) {
 
 export type { ThreadActions };
 
-const CONFIRMED = { backgroundColor: '#2ea043', color: '#fff' };
+const CONFIRMED = { backgroundColor: color.success, color: color.white };
 
 export function CommentCard({
   thread,

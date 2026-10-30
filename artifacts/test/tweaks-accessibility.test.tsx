@@ -8,6 +8,17 @@ import { expect, test, vi } from 'vitest';
 import { readTweakSchema, reconcileTweakValues } from '../src/shared/tweaks';
 import { TweaksPanel } from '../src/viewer/tweaks/TweaksPanel';
 
+vi.mock('@stylexjs/stylex', async (original) => ({
+  ...(await original<object>()),
+  create: (value: unknown) => value,
+  defineConsts: (value: unknown) => value,
+  defineVars: (value: unknown) => value,
+  props: () => ({}),
+}));
+vi.mock('@lobehub/ui/stylex/cssVar.stylex', () => ({
+  cssVar: new Proxy({}, { get: (_, key) => `var(--${String(key)})` }),
+}));
+
 test('both enum presentations associate the parameter name with their choices', async () => {
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
   const host = document.createElement('div');

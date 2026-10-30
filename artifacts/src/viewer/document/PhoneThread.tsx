@@ -3,6 +3,7 @@ import * as stylex from '@stylexjs/stylex';
 
 import { type Thread, waitingOn } from '../../shared/comments';
 import { t } from '../i18n';
+import { color } from '../tokens.stylex';
 import { anchorLabel } from './anchor';
 import { authorOf } from './author';
 import { Avatar } from './Avatar';
@@ -26,7 +27,7 @@ const styles = stylex.create({
     paddingLeft: 10,
     borderLeftWidth: 3,
     borderLeftStyle: 'solid',
-    borderLeftColor: '#e8c24a',
+    borderLeftColor: color.warning,
     fontSize: 13,
   },
   quoteText: {

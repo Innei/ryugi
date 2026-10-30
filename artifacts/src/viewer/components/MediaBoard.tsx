@@ -1,6 +1,7 @@
 import * as stylex from '@stylexjs/stylex';
 
 import type { BoardSpec } from '../../shared/types';
+import { color } from '../tokens.stylex';
 import { VideoPlayer } from './VideoPlayer';
 
 const styles = stylex.create({
@@ -11,7 +12,7 @@ const styles = stylex.create({
     height: '100%',
     display: 'block',
     objectFit: 'contain',
-    backgroundColor: '#fff',
+    backgroundColor: color.white,
     pointerEvents: 'none',
   },
 });

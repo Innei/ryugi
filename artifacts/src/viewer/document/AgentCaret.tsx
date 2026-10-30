@@ -3,7 +3,7 @@ import * as stylex from '@stylexjs/stylex';
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 
-import { brand } from '../tokens.stylex';
+import { brand, color } from '../tokens.stylex';
 import type { AgentCaretPosition } from './LoroSync';
 
 interface Rect {
@@ -30,7 +30,7 @@ const styles = stylex.create({
     height: 8,
     borderRadius: '50%',
     backgroundColor: brand.accent,
-    boxShadow: '0 0 0 1.5px #fff',
+    boxShadow: `0 0 0 1.5px ${color.white}`,
   },
   label: {
     position: 'absolute',
@@ -41,12 +41,12 @@ const styles = stylex.create({
     paddingInline: 8,
     borderRadius: '999px 999px 999px 4px',
     backgroundColor: brand.accentStrong,
-    color: '#fff',
+    color: color.white,
     fontSize: 11,
     fontWeight: 700,
     lineHeight: '16px',
     whiteSpace: 'nowrap',
-    boxShadow: '0 2px 6px rgba(0,0,0,0.12)',
+    boxShadow: `0 2px 6px ${color.shadowPanel}`,
   },
 });
 

@@ -1,5 +1,4 @@
-import './preview.css';
-
+import * as stylex from '@stylexjs/stylex';
 import type { SerializedEditorState } from 'lexical';
 import { lazy, Suspense, useEffect, useState } from 'react';
 
@@ -8,6 +7,7 @@ import { CanvasErrorBoundary } from '../components/CanvasErrorBoundary';
 import { useTranslation } from '../i18n';
 import { visibleRenders } from '../lib/board-tiers';
 import { fitView } from '../lib/view';
+import { styles } from './previewStyles';
 
 const DocumentPreview = lazy(() =>
   import('../document/shims').then(() => import('../document/SnapshotDocument')),
@@ -44,14 +44,14 @@ export function PreviewView({
     return () => removeEventListener('resize', resize);
   }, []);
 
-  const message = (text: string) => <div className="artifact-preview-message">{text}</div>;
+  const message = (text: string) => <div {...stylex.props(styles.message)}>{text}</div>;
   if (failed) return message(t('preview.unavailable'));
   if (!data) return message(t('preview.loading'));
   if (type === 'html') {
     if (data.warnings?.length) return message(t('preview.waitingPage'));
     return (
       <iframe
-        className="artifact-preview-html"
+        {...stylex.props(styles.html)}
         sandbox="allow-scripts"
         src={`${data.contentBase}index.html`}
         tabIndex={-1}
@@ -77,7 +77,7 @@ export function PreviewView({
   const view = fitView(bounds, viewport, { top: 24, right: 24, bottom: 24, left: 24 });
   const boards = Object.entries(canvas.boards).filter(([, board]) => board.page === page);
   return (
-    <div className="artifact-preview-canvas">
+    <div {...stylex.props(styles.canvas)}>
       <CanvasErrorBoundary resetKey={canvas}>
         <Suspense fallback={message(t('preview.loading'))}>
           <CanvasPreview

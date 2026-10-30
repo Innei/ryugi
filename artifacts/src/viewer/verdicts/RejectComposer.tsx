@@ -3,6 +3,7 @@ import * as stylex from '@stylexjs/stylex';
 
 import { Composer } from '../document/Composer';
 import { useTranslation } from '../i18n';
+import { color } from '../tokens.stylex';
 
 const styles = stylex.create({
   card: {
@@ -26,7 +27,7 @@ const styles = stylex.create({
     paddingInline: 14,
     fontSize: 11,
   },
-  verdict: { color: '#e5484d', fontWeight: 600 },
+  verdict: { color: color.danger, fontWeight: 600 },
   group: { fontFamily: cssVar.fontFamilyCode, color: cssVar.colorTextTertiary },
   required: { marginInlineStart: 'auto', color: cssVar.colorTextTertiary },
   hint: {

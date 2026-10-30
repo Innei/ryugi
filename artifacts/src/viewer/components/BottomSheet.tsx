@@ -13,12 +13,13 @@ import {
 import { reducedMotion, SPRING } from '../document/motion';
 import { t } from '../i18n';
 import { lockAxis, rubber, settle, velocityTracker } from '../lib/gesture';
+import { color } from '../tokens.stylex';
 
 const SCRIM = 0.28;
 
 const styles = stylex.create({
   root: { position: 'absolute', inset: 0, overflow: 'clip', pointerEvents: 'none' },
-  scrim: { position: 'absolute', inset: 0, backgroundColor: '#18181b' },
+  scrim: { position: 'absolute', inset: 0, backgroundColor: color.overlay },
   sheet: {
     position: 'absolute',
     left: 0,
@@ -30,7 +31,7 @@ const styles = stylex.create({
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
     backgroundColor: cssVar.colorBgContainer,
-    boxShadow: '0 -8px 30px rgba(24, 24, 27, 0.12), 0 0 0 1px rgba(24, 24, 27, 0.05)',
+    boxShadow: `0 -8px 30px ${color.overlayShadowSoft}, 0 0 0 1px ${color.overlayShadowHair}`,
     color: cssVar.colorText,
     fontFamily: cssVar.fontFamily,
     pointerEvents: 'auto',

@@ -5,6 +5,7 @@ import { motion } from 'motion/react';
 import { type PointerEvent as ReactPointerEvent, useEffect, useRef, useState } from 'react';
 
 import { useTranslation } from '../i18n';
+import { color } from '../tokens.stylex';
 
 const BAR_HEIGHT = 36;
 const MIN_BAR_WIDTH = 160;
@@ -18,7 +19,7 @@ const styles = stylex.create({
     height: '100%',
     display: 'block',
     objectFit: 'contain',
-    backgroundColor: '#000',
+    backgroundColor: color.black,
     pointerEvents: 'none',
   },
   surface: {
@@ -32,7 +33,7 @@ const styles = stylex.create({
     cursor: 'pointer',
     outlineStyle: { 'default': 'none', ':focus-visible': 'solid' },
     outlineWidth: 2,
-    outlineColor: '#fff',
+    outlineColor: color.white,
     outlineOffset: -3,
   },
   bar: {
@@ -46,11 +47,11 @@ const styles = stylex.create({
     gap: 12,
     paddingInline: 12,
     transformOrigin: '0 0',
-    backgroundColor: '#111',
+    backgroundColor: color.media,
     borderTopWidth: 1,
     borderTopStyle: 'solid',
-    borderTopColor: '#2a2a2a',
-    color: '#bbb',
+    borderTopColor: color.mediaBorder,
+    color: color.mediaMutedHover,
     fontFamily: cssVar.fontFamilyCode,
     fontSize: 11,
     pointerEvents: 'auto',
@@ -64,12 +65,12 @@ const styles = stylex.create({
     padding: 0,
     borderWidth: 0,
     backgroundColor: 'transparent',
-    color: { 'default': '#ddd', ':hover': '#fff' },
+    color: { 'default': color.mediaHover, ':hover': color.white },
     fontFamily: 'inherit',
     fontSize: 11,
     cursor: 'pointer',
   },
-  off: { color: { 'default': '#777', ':hover': '#bbb' } },
+  off: { color: { 'default': color.mediaOff, ':hover': color.mediaMutedHover } },
   time: { flexShrink: 0, fontVariantNumeric: 'tabular-nums' },
   track: {
     position: 'relative',
@@ -79,8 +80,8 @@ const styles = stylex.create({
     alignItems: 'center',
     cursor: 'pointer',
   },
-  rail: { position: 'absolute', left: 0, right: 0, height: 3, backgroundColor: '#3a3a3a' },
-  fill: { position: 'absolute', left: 0, height: 3, backgroundColor: '#fff' },
+  rail: { position: 'absolute', left: 0, right: 0, height: 3, backgroundColor: color.mediaRail },
+  fill: { position: 'absolute', left: 0, height: 3, backgroundColor: color.white },
   rate: { minWidth: 30, fontWeight: 600 },
   failed: {
     position: 'absolute',
@@ -88,8 +89,8 @@ const styles = stylex.create({
     display: 'grid',
     placeItems: 'center',
     padding: 16,
-    backgroundColor: '#111',
-    color: '#aaa',
+    backgroundColor: color.media,
+    color: color.mediaMuted,
     fontFamily: cssVar.fontFamily,
     fontSize: 13,
     textAlign: 'center',

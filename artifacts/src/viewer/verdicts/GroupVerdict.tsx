@@ -4,9 +4,10 @@ import { Check, X } from 'lucide-react';
 
 import type { GroupVerdict as Verdict } from '../../shared/verdicts';
 import { useTranslation } from '../i18n';
+import { color } from '../tokens.stylex';
 
-const GREEN = '#2ea043';
-const RED = '#e5484d';
+const GREEN = color.success;
+const RED = color.danger;
 
 const styles = stylex.create({
   state: {

@@ -22,7 +22,7 @@ import * as stylex from '@stylexjs/stylex';
 import { type ComponentType, type CSSProperties, useState } from 'react';
 
 import { t } from '../i18n';
-import { brand } from '../tokens.stylex';
+import { brand, color } from '../tokens.stylex';
 import { type AgentIconKey, agentIconOf } from './author';
 
 const SIZE = 20;
@@ -62,11 +62,11 @@ const styles = stylex.create({
     borderRadius: '50%',
     display: 'grid',
     placeItems: 'center',
-    color: '#fff',
+    color: color.white,
     fontSize: 10,
   },
   image: { width: SIZE, height: SIZE, flexShrink: 0, borderRadius: '50%', objectFit: 'cover' },
-  human: { backgroundColor: '#2f6fd6' },
+  human: { backgroundColor: color.human },
   agent: { backgroundColor: brand.accentStrong },
 });
 

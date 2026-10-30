@@ -10,6 +10,17 @@ import { i18n } from '../src/viewer/i18n';
 import { Layers } from '../src/viewer/inspector/Layers';
 import { TweaksPanel } from '../src/viewer/tweaks/TweaksPanel';
 
+vi.mock('@stylexjs/stylex', async (original) => ({
+  ...(await original<object>()),
+  create: (value: unknown) => value,
+  defineConsts: (value: unknown) => value,
+  defineVars: (value: unknown) => value,
+  props: () => ({}),
+}));
+vi.mock('@lobehub/ui/stylex/cssVar.stylex', () => ({
+  cssVar: new Proxy({}, { get: (_, key) => `var(--${String(key)})` }),
+}));
+
 afterEach(() => i18n.changeLanguage('en'));
 
 test('inspector and parameter chrome speak Chinese when the viewer does', async () => {

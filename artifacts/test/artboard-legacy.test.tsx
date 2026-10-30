@@ -12,6 +12,7 @@ vi.mock('@stylexjs/stylex', async (original) => ({
   create: (value: unknown) => value,
   defineConsts: (value: unknown) => value,
   defineVars: (value: unknown) => value,
+  keyframes: (value: unknown) => value,
   props: () => ({}),
 }));
 vi.mock('@lobehub/ui/stylex/cssVar.stylex', () => ({
@@ -150,7 +151,7 @@ test('the parameter entry indicates modified values after closing and clears aft
   );
   expect(modified()).not.toBeNull();
   await act(async () => modified()!.click());
-  const reset = [...host!.querySelectorAll<HTMLButtonElement>('.rt-footer button')].find(
+  const reset = [...host!.querySelectorAll<HTMLButtonElement>('[data-tweaks-footer] button')].find(
     (button) => button.textContent === 'Reset',
   )!;
   await act(async () => reset.click());

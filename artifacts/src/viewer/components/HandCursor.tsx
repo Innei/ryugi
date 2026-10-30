@@ -3,8 +3,9 @@ import { type RefObject, useEffect, useLayoutEffect, useRef, useState } from 're
 
 import { HAND_PALM, handPose } from '../lib/handPose';
 import { type Spring, stepSpring } from '../lib/spring';
+import { color } from '../tokens.stylex';
 
-const INK = '#423d38';
+const INK = color.ink;
 const CURL_DELAY_MS = 30;
 const HIDE_SYSTEM_CURSOR = '[data-hand-drawn], [data-hand-drawn] * { cursor: none !important; }';
 
@@ -15,7 +16,7 @@ const styles = stylex.create({
     top: 0,
     zIndex: 1000,
     pointerEvents: 'none',
-    filter: 'drop-shadow(0 1.5px 2px rgba(0,0,0,0.25))',
+    filter: `drop-shadow(0 1.5px 2px ${color.shadowHeavy})`,
   },
 });
 
@@ -150,11 +151,17 @@ export function HandCursor({ viewport, hand }: Props) {
           <path d={index.d} strokeWidth="5.4" />
           <path d={thumb.d} strokeWidth="5.8" />
         </g>
-        <g fill="#fff">
+        <g fill={color.white}>
           {curled}
           <path d={HAND_PALM} />
         </g>
-        <path d={index.d} fill="none" stroke="#fff" strokeLinecap="round" strokeWidth="3.4" />
+        <path
+          d={index.d}
+          fill="none"
+          stroke={color.white}
+          strokeLinecap="round"
+          strokeWidth="3.4"
+        />
         <path
           d={thumb.d}
           fill="none"
@@ -163,9 +170,15 @@ export function HandCursor({ viewport, hand }: Props) {
           strokeOpacity={seam}
           strokeWidth="6"
         />
-        <path d={thumb.d} fill="none" stroke="#fff" strokeLinecap="round" strokeWidth="3.8" />
+        <path
+          d={thumb.d}
+          fill="none"
+          stroke={color.white}
+          strokeLinecap="round"
+          strokeWidth="3.8"
+        />
         {/* Repainting the palm hides the thumb's own outline where it crosses the palm, so only the seam against the index shows. */}
-        <path d={HAND_PALM} fill="#fff" />
+        <path d={HAND_PALM} fill={color.white} />
       </svg>
     </>
   );

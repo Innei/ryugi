@@ -12,6 +12,7 @@ vi.mock('@stylexjs/stylex', async (original) => ({
   create: (value: unknown) => value,
   defineConsts: (value: unknown) => value,
   defineVars: (value: unknown) => value,
+  keyframes: (value: unknown) => value,
   props: () => ({}),
 }));
 vi.mock('@lobehub/ui/stylex/cssVar.stylex', () => ({
@@ -95,13 +96,13 @@ const press = (target: Element, pointerType: string) =>
 test('a finger on the canvas background pans instead of starting a selection box', async () => {
   const viewport = await mount();
   await press(viewport, 'touch');
-  expect(host!.querySelector('.ri-selection-capture')).toBeNull();
+  expect(host!.querySelector('[data-selection-capture]')).toBeNull();
 });
 
 test('the mouse still starts a selection box there', async () => {
   const viewport = await mount();
   await press(viewport, 'mouse');
-  expect(host!.querySelector('.ri-selection-capture')).not.toBeNull();
+  expect(host!.querySelector('[data-selection-capture]')).not.toBeNull();
 });
 
 test('holding space draws the hand under the mouse and hides the system cursor until space is released', async () => {

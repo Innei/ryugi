@@ -4,6 +4,7 @@ import { type ReactNode, useCallback, useLayoutEffect, useRef, useState } from '
 
 import type { Thread } from '../../shared/comments';
 import { t } from '../i18n';
+import { color } from '../tokens.stylex';
 import { shownThreadIds } from './anchor';
 import { CommentCard, type ThreadActions } from './CommentCard';
 import { connectorPath, layoutCards } from './layoutCards';
@@ -188,7 +189,7 @@ export function CommentRail({
             d={link.d}
             fill="none"
             key={link.id}
-            stroke={link.id === activeId ? '#c9a03a' : 'currentColor'}
+            stroke={link.id === activeId ? color.warningStrong : 'currentColor'}
             strokeDasharray={link.id === activeId ? undefined : '3 3'}
             strokeOpacity={link.id === activeId ? 1 : 0.25}
           />

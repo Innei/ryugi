@@ -2,6 +2,7 @@ import * as stylex from '@stylexjs/stylex';
 import { useEffect, useState } from 'react';
 
 import type { BoardRender, BoardTier } from '../lib/board-tiers';
+import { color } from '../tokens.stylex';
 
 const WINDOW_MS = 1000;
 const PUBLISH_MS = 250;
@@ -16,8 +17,8 @@ const styles = stylex.create({
     zIndex: 20,
     padding: '6px 10px',
     borderRadius: 6,
-    backgroundColor: 'rgba(0, 0, 0, 0.72)',
-    color: '#e8e8e8',
+    backgroundColor: color.debug,
+    color: color.debugText,
     fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
     fontSize: 11,
     lineHeight: 1.6,

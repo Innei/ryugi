@@ -9,7 +9,7 @@ import { Composer } from '../document/Composer';
 import { useTranslation } from '../i18n';
 import { anchorLabel, pinPoint, staleText } from '../lib/board-anchor';
 import type { View } from '../lib/view';
-import { brand } from '../tokens.stylex';
+import { brand, color } from '../tokens.stylex';
 
 const PIN = 28;
 const POPOVER = 300;
@@ -27,9 +27,9 @@ const styles = stylex.create({
     borderRadius: '50% 50% 50% 0',
     borderWidth: 2,
     borderStyle: 'solid',
-    borderColor: '#fff',
-    backgroundColor: '#4285ee',
-    color: '#fff',
+    borderColor: color.white,
+    backgroundColor: color.selection,
+    color: color.white,
     fontFamily: cssVar.fontFamily,
     fontSize: 11,
     fontWeight: 600,
@@ -38,15 +38,15 @@ const styles = stylex.create({
     cursor: 'pointer',
   },
   agent: { backgroundColor: brand.accentStrong },
-  reject: { backgroundColor: '#e5484d' },
-  resolved: { backgroundColor: '#3a3a3a', color: '#aaa' },
+  reject: { backgroundColor: color.danger },
+  resolved: { backgroundColor: color.resolved, color: color.mediaMuted },
   stale: {
     backgroundColor: cssVar.colorBgLayout,
     borderStyle: 'dashed',
-    borderColor: '#e5a54b',
-    color: '#e5a54b',
+    borderColor: color.warningText,
+    color: color.warningText,
   },
-  open: { outlineWidth: 3, outlineStyle: 'solid', outlineColor: 'rgb(66 133 238 / .35)' },
+  open: { outlineWidth: 3, outlineStyle: 'solid', outlineColor: color.selectionLine },
   popover: {
     position: 'absolute',
     width: POPOVER,

@@ -14,6 +14,7 @@ import type { ReactNode } from 'react';
 import type { PageSpec } from '../../shared/types';
 import type { Tool } from '../hooks/usePanZoom';
 import { useTranslation } from '../i18n';
+import { color } from '../tokens.stylex';
 
 const styles = stylex.create({
   bar: {
@@ -67,13 +68,13 @@ const styles = stylex.create({
     fontWeight: 500,
     cursor: 'pointer',
   },
-  progressIcon: { color: '#2ea043' },
+  progressIcon: { color: color.success },
   dot: { width: 7, height: 7, borderRadius: '50%', backgroundColor: cssVar.colorTextTertiary },
   dotOn: {
     backgroundColor: cssVar.colorSuccess,
     outlineWidth: 3,
     outlineStyle: 'solid',
-    outlineColor: 'rgba(0, 160, 63, 0.18)',
+    outlineColor: color.successWash,
   },
   warnButton: {
     height: 26,

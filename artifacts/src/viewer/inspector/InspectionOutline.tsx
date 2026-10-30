@@ -1,8 +1,9 @@
-import './inspector.css';
+import * as stylex from '@stylexjs/stylex';
 
 import type { InspectorRect } from '../../shared/inspector';
 import type { BoardSpec } from '../../shared/types';
 import type { View } from '../lib/view';
+import { styles } from './styles';
 
 interface Props {
   board: BoardSpec;
@@ -17,7 +18,9 @@ export function InspectionOutline({ board, rect, view, name, nodeId, selected }:
   return (
     <div
       aria-hidden="true"
-      className={`ri-outline${selected ? ' ri-outline-selected' : ''}`}
+      data-outline=""
+      data-selected={selected ? '' : undefined}
+      {...stylex.props(styles.outline, selected && styles.outlineSelected)}
       style={{
         left: view.x + (board.x + rect.x) * view.k,
         top: view.y + (board.y + rect.y) * view.k,
@@ -25,15 +28,21 @@ export function InspectionOutline({ board, rect, view, name, nodeId, selected }:
         height: rect.height * view.k,
       }}
     >
-      {nodeId && <span className="ri-outline-id">{nodeId}</span>}
+      {nodeId && (
+        <span data-outline-id="" {...stylex.props(styles.outlineId)}>
+          {nodeId}
+        </span>
+      )}
       {selected && (
         <>
-          <span className="ri-outline-name">{name}</span>
-          <i className="ri-corner ri-tl" />
-          <i className="ri-corner ri-tr" />
-          <i className="ri-corner ri-bl" />
-          <i className="ri-corner ri-br" />
-          <span className="ri-outline-size">
+          <span data-outline-name="" {...stylex.props(styles.outlineName)}>
+            {name}
+          </span>
+          <i {...stylex.props(styles.corner, styles.cornerTl)} />
+          <i {...stylex.props(styles.corner, styles.cornerTr)} />
+          <i {...stylex.props(styles.corner, styles.cornerBl)} />
+          <i {...stylex.props(styles.corner, styles.cornerBr)} />
+          <span {...stylex.props(styles.outlineSize)}>
             {Math.round(rect.width)} × {Math.round(rect.height)}
           </span>
         </>

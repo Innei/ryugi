@@ -2,6 +2,7 @@ import * as stylex from '@stylexjs/stylex';
 import { useLayoutEffect, useState } from 'react';
 
 import type { Thread } from '../../shared/comments';
+import { color } from '../tokens.stylex';
 import { shownThreadIds } from './anchor';
 import { blockBar } from './layoutCards';
 import { anchorBlocks, type ThreadAnchor } from './useAnchors';
@@ -11,11 +12,11 @@ const styles = stylex.create({
     position: 'absolute',
     borderRadius: 2,
     pointerEvents: 'none',
-    backgroundColor: 'rgba(240, 194, 75, 0.45)',
+    backgroundColor: color.warningBar,
     transitionProperty: 'background-color',
     transitionDuration: '150ms',
   },
-  active: { backgroundColor: '#c9a03a' },
+  active: { backgroundColor: color.warningStrong },
 });
 
 interface Bar {

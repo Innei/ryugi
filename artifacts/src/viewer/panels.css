@@ -1,0 +1,12 @@
+/* StyleX cannot prefix a universal reset with its own hashed class, and these
+   panels host @lobehub/ui and BASE UI internals that assume border-box. */
+.ryugi-inspector *,
+.ryugi-parameters *,
+.rt-dialog * {
+  box-sizing: border-box;
+}
+
+.ryugi-inspector .lobe-color-picker > span,
+.ryugi-inspector .lobe-input-number__suffix {
+  color: var(--lobe-color-text-secondary);
+}

@@ -1,4 +1,4 @@
-import '../inspector/inspector.css';
+import '../panels.css';
 
 import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
@@ -7,8 +7,9 @@ import { MessageCirclePlus, X } from 'lucide-react';
 import type { BoardThread } from '../../shared/board-comments';
 import { authorOf } from '../document/author';
 import { i18n, useTranslation } from '../i18n';
+import { styles as inspectorStyles } from '../inspector/styles';
 import { anchorLabel, staleText } from '../lib/board-anchor';
-import { brand } from '../tokens.stylex';
+import { brand, color } from '../tokens.stylex';
 
 export type CommentsTab = 'open' | 'all';
 
@@ -76,7 +77,7 @@ const styles = stylex.create({
     cursor: 'pointer',
     backgroundColor: { 'default': 'transparent', ':hover': cssVar.colorFillQuaternary },
   },
-  rowOn: { borderLeftColor: '#4285ee' },
+  rowOn: { borderLeftColor: color.selection },
   num: {
     width: 22,
     height: 22,
@@ -84,20 +85,20 @@ const styles = stylex.create({
     display: 'grid',
     placeItems: 'center',
     borderRadius: '50% 50% 50% 0',
-    backgroundColor: '#4285ee',
-    color: '#fff',
+    backgroundColor: color.selection,
+    color: color.white,
     fontSize: 10,
     fontWeight: 600,
   },
   numAgent: { backgroundColor: brand.accentStrong },
-  numReject: { backgroundColor: '#e5484d' },
-  numResolved: { backgroundColor: '#3a3a3a', color: '#999' },
+  numReject: { backgroundColor: color.danger },
+  numResolved: { backgroundColor: color.resolved, color: color.resolvedText },
   numStale: {
     backgroundColor: 'transparent',
     borderWidth: 1,
     borderStyle: 'dashed',
-    borderColor: '#e5a54b',
-    color: '#e5a54b',
+    borderColor: color.warningText,
+    color: color.warningText,
   },
   body: { flex: 1, minWidth: 0 },
   meta: {
@@ -118,7 +119,7 @@ const styles = stylex.create({
     whiteSpace: 'nowrap',
     textOverflow: 'ellipsis',
   },
-  stale: { color: '#e5a54b' },
+  stale: { color: color.warningText },
   text: {
     fontSize: 12,
     lineHeight: 1.6,
@@ -177,8 +178,11 @@ export function CommentsPanel({
   const shown = (tab === 'open' ? open : onPage).sort(
     (a, b) => (numbers.get(a.id) ?? 0) - (numbers.get(b.id) ?? 0),
   );
+  const panelClass = [stylex.props(inspectorStyles.panel).className, 'ryugi-inspector']
+    .filter(Boolean)
+    .join(' ');
   return (
-    <aside data-chrome aria-label={t('chrome.comments')} className="ryugi-inspector">
+    <aside data-chrome aria-label={t('chrome.comments')} className={panelClass}>
       <div {...stylex.props(styles.head)}>
         {t('chrome.comments')} <span {...stylex.props(styles.count)}>{open.length}</span>
         <button

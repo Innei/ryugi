@@ -1,4 +1,4 @@
-import './inspector.css';
+import '../panels.css';
 
 import {
   ActionIcon,
@@ -10,6 +10,7 @@ import {
   TabsRoot,
   TabsTab,
 } from '@lobehub/ui';
+import * as stylex from '@stylexjs/stylex';
 import { Circle, Copy, RotateCcw, X } from 'lucide-react';
 import { memo, useState } from 'react';
 
@@ -18,6 +19,7 @@ import type { Inspector } from '../hooks/useInspector';
 import { t } from '../i18n';
 import { Layers } from './Layers';
 import { Properties } from './Properties';
+import { styles } from './styles';
 
 interface Props extends Pick<
   Inspector,
@@ -62,9 +64,12 @@ export const InspectorPanel = memo(function InspectorPanel({
       setCopyStatus(t('inspector.copyFailed'));
     }
   };
+  const panelClass = [stylex.props(styles.panel).className, 'ryugi-inspector']
+    .filter(Boolean)
+    .join(' ');
   return (
     <IconProvider config={{ 'aria-hidden': true }}>
-      <aside data-chrome aria-label={t('inspector.label')} className="ryugi-inspector">
+      <aside data-chrome aria-label={t('inspector.label')} className={panelClass}>
         <TabsRoot
           size="small"
           style={{ display: 'contents' }}
@@ -74,19 +79,24 @@ export const InspectorPanel = memo(function InspectorPanel({
             if (tabs.includes(value as typeof tab)) setTab(value as typeof tab);
           }}
         >
-          <header className="ri-header">
+          <header {...stylex.props(styles.header)}>
             <TabsList
               activateOnFocus
               aria-label={t('inspector.views')}
-              className="ri-tabs"
+              className={stylex.props(styles.tabs).className}
               style={{ alignSelf: 'center' }}
             >
               <TabsIndicator />
               {tabs.map((name) => (
-                <TabsTab key={name} value={name}>
+                <TabsTab key={name} style={{ position: 'relative' }} value={name}>
                   {t(`inspector.tab.${name}`)}
                   {name === 'Tweaks' && tweaks.length > 0 && (
-                    <Circle aria-hidden className="ri-change-dot" fill="currentColor" size={4} />
+                    <Circle
+                      aria-hidden
+                      fill="currentColor"
+                      size={4}
+                      {...stylex.props(styles.changeDot)}
+                    />
                   )}
                 </TabsTab>
               ))}
@@ -108,7 +118,7 @@ export const InspectorPanel = memo(function InspectorPanel({
             selection={selection}
             targets={targets}
           />
-          <div className="ri-node-meta">
+          <div data-node-meta="" {...stylex.props(styles.nodeMeta)}>
             <code>
               {targets.length > 1
                 ? t('inspector.selected', { count: targets.length })
@@ -117,7 +127,7 @@ export const InspectorPanel = memo(function InspectorPanel({
                   : t('inspector.selectElement')}
             </code>
             {node && (
-              <span className="ri-node-id">
+              <span data-node-id="" {...stylex.props(styles.nodeId)}>
                 {`${selection!.boardId}#${node.id}`}
                 <ActionIcon
                   aria-label={t('inspector.copyNode')}
@@ -128,23 +138,23 @@ export const InspectorPanel = memo(function InspectorPanel({
                 />
               </span>
             )}
-            <span className="ri-node-selector" title={node?.selector}>
+            <span title={node?.selector} {...stylex.props(styles.nodeSelector)}>
               {node?.selector}
             </span>
             {node && (
-              <span className="ri-live">
+              <span {...stylex.props(styles.live)}>
                 <Circle aria-hidden fill="currentColor" size={6} />
                 {t('inspector.live')}
               </span>
             )}
           </div>
           {targets.length > 1 && (
-            <p className="ri-hint" style={{ margin: '8px 16px' }}>
+            <p {...stylex.props(styles.hint)} style={{ margin: '8px 16px' }}>
               {t('inspector.lastSelected')}
             </p>
           )}
-          <div className="ri-panel-body">
-            <TabsPanel value="Properties">
+          <div {...stylex.props(styles.panelBody)}>
+            <TabsPanel value="Properties" {...stylex.props(styles.panelBodyPanel)}>
               {node && enabled ? (
                 <Properties
                   change={change}
@@ -152,23 +162,25 @@ export const InspectorPanel = memo(function InspectorPanel({
                   node={node}
                 />
               ) : (
-                <p className="ri-empty">
+                <p {...stylex.props(styles.empty)}>
                   {!enabled ? t('inspector.closeExpanded') : t('inspector.pickElement')}
                 </p>
               )}
             </TabsPanel>
-            <TabsPanel value="Code">
+            <TabsPanel value="Code" {...stylex.props(styles.panelBodyPanel)}>
               {node ? (
-                <div className="ri-code">
-                  <div className="ri-code-heading">
-                    <h2>{t('inspector.computedCss')}</h2>
+                <div {...stylex.props(styles.code)}>
+                  <div {...stylex.props(styles.codeHeading)}>
+                    <h2 {...stylex.props(styles.codeTitle)}>{t('inspector.computedCss')}</h2>
                     <Button icon={Copy} size="small" type="text" onClick={() => void copy(css)}>
                       {t('inspector.copy')}
                     </Button>
                   </div>
-                  <pre tabIndex={0}>{css}</pre>
-                  <div className="ri-code-heading">
-                    <h2>HTML</h2>
+                  <pre tabIndex={0} {...stylex.props(styles.codePre)}>
+                    {css}
+                  </pre>
+                  <div {...stylex.props(styles.codeHeading)}>
+                    <h2 {...stylex.props(styles.codeTitle)}>HTML</h2>
                     <Button
                       icon={Copy}
                       size="small"
@@ -178,38 +190,41 @@ export const InspectorPanel = memo(function InspectorPanel({
                       {t('inspector.copy')}
                     </Button>
                   </div>
-                  <pre tabIndex={0}>{node.html}</pre>
-                  <p className="ri-hint" role="status">
+                  <pre tabIndex={0} {...stylex.props(styles.codePre)}>
+                    {node.html}
+                  </pre>
+                  <p role="status" {...stylex.props(styles.hint)}>
                     {copyStatus || t('inspector.fromDom')}
                   </p>
                 </div>
               ) : (
-                <p className="ri-empty">{t('inspector.selectForCode')}</p>
+                <p {...stylex.props(styles.empty)}>{t('inspector.selectForCode')}</p>
               )}
             </TabsPanel>
-            <TabsPanel value="Tweaks">
-              <section className="ri-section">
-                <h2>
-                  {t('inspector.sessionChanges')} <span className="ri-count">{tweaks.length}</span>
+            <TabsPanel value="Tweaks" {...stylex.props(styles.panelBodyPanel)}>
+              <section {...stylex.props(styles.section)}>
+                <h2 {...stylex.props(styles.sectionTitle)}>
+                  {t('inspector.sessionChanges')}{' '}
+                  <span {...stylex.props(styles.count)}>{tweaks.length}</span>
                 </h2>
-                <p className="ri-hint">{t('inspector.changesApply')}</p>
-                <div className="ri-tweaks">
+                <p {...stylex.props(styles.hint)}>{t('inspector.changesApply')}</p>
+                <div {...stylex.props(styles.tweaks)}>
                   {tweaks.map((tweak) => (
                     <div
-                      className="ri-tweak"
                       key={`${tweak.boardId}:${tweak.id}:${tweak.property}`}
+                      {...stylex.props(styles.tweak)}
                     >
-                      <span>
+                      <span {...stylex.props(styles.tweakLabel)}>
                         {boards.find(([id]) => id === tweak.boardId)?.[1].title || tweak.boardId} ·{' '}
                         {tweak.name}
                       </span>
-                      <code>
+                      <code {...stylex.props(styles.tweakCode)}>
                         {tweak.property}: {tweak.value}
                       </code>
                     </div>
                   ))}
                 </div>
-                {!tweaks.length && <p className="ri-hint">{t('inspector.noChanges')}</p>}
+                {!tweaks.length && <p {...stylex.props(styles.hint)}>{t('inspector.noChanges')}</p>}
                 <Button
                   block
                   disabled={!tweaks.length}
@@ -222,12 +237,12 @@ export const InspectorPanel = memo(function InspectorPanel({
               </section>
             </TabsPanel>
           </div>
-          <footer className="ri-footer">
-            <Circle aria-hidden className="ri-status-dot" fill="currentColor" size={5} />
+          <footer {...stylex.props(styles.footer)}>
+            <Circle aria-hidden fill="currentColor" size={5} {...stylex.props(styles.statusDot)} />
             {tweaks.length
               ? t('inspector.previewChanges', { count: tweaks.length })
               : t('inspector.liveInspection')}
-            <span>{t('inspector.previewOnly')}</span>
+            <span {...stylex.props(styles.footerNote)}>{t('inspector.previewOnly')}</span>
           </footer>
         </TabsRoot>
       </aside>

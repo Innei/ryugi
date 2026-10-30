@@ -4,7 +4,7 @@ import type { NodeKey } from 'lexical';
 import { createContext, useContext } from 'react';
 
 import { t } from '../i18n';
-import { brand } from '../tokens.stylex';
+import { brand, color } from '../tokens.stylex';
 import type { AgentActivity } from './agentActivity';
 
 export interface PendingProgress {
@@ -89,7 +89,7 @@ const styles = stylex.create({
     paddingInline: 4,
     borderRadius: 3,
     backgroundColor: brand.accentStrong,
-    color: '#fff',
+    color: color.white,
     fontSize: 10,
     fontWeight: 600,
     lineHeight: 1.4,

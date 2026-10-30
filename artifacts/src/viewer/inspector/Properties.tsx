@@ -1,9 +1,11 @@
 import { Accordion, ColorPicker, Input, InputNumber, Segmented, Select } from '@lobehub/ui';
+import * as stylex from '@stylexjs/stylex';
 import { ArrowDown, ArrowRight, Ban, Ellipsis, Minus, SquareDashed } from 'lucide-react';
 import { type ReactNode, useEffect, useId, useState } from 'react';
 
 import type { InspectorProperty, InspectorSelection } from '../../shared/inspector';
 import { t } from '../i18n';
+import { styles } from './styles';
 
 interface Props {
   change: (property: InspectorProperty, value: string) => void;
@@ -39,15 +41,15 @@ function Field({
   controlId?: string;
 }) {
   return (
-    <div className="ri-field">
+    <div {...stylex.props(styles.field)}>
       {controlId ? (
-        <label className="ri-field-label" htmlFor={controlId}>
+        <label htmlFor={controlId} {...stylex.props(styles.fieldLabel)}>
           {label}
         </label>
       ) : (
-        <span className="ri-field-label">{label}</span>
+        <span {...stylex.props(styles.fieldLabel)}>{label}</span>
       )}
-      {children}
+      <div {...stylex.props(styles.fieldControl)}>{children}</div>
     </div>
   );
 }
@@ -91,9 +93,9 @@ function NumberField({
   return (
     <Field controlId={controlId} label={label}>
       {sizing ? (
-        <div className="ri-number-sizing">
-          <div className="ri-size-input">{input}</div>
-          <div className="ri-size-mode">{sizing}</div>
+        <div {...stylex.props(styles.numberSizing)}>
+          <div {...stylex.props(styles.sizeInput)}>{input}</div>
+          <div {...stylex.props(styles.sizeMode)}>{sizing}</div>
         </div>
       ) : (
         input
@@ -138,18 +140,19 @@ export function Properties({ node, change }: Props) {
   useEffect(() => setShadow(node.css['box-shadow']), [node.css['box-shadow']]);
   return (
     <>
-      <section className="ri-section">
-        <h2>{t('inspector.size')}</h2>
+      <section {...stylex.props(styles.section)}>
+        <h2 {...stylex.props(styles.sectionTitle)}>{t('inspector.size')}</h2>
         <NumberField
           {...props}
           label={t('inspector.width')}
           property="width"
           sizing={
             <>
-              <label className="ri-sr-only" htmlFor={widthSizing}>
+              <label {...stylex.props(styles.srOnly)} htmlFor={widthSizing}>
                 {t('inspector.widthSizing')}
               </label>
               <Select
+                className={stylex.props(styles.sizeModeChild).className}
                 id={widthSizing}
                 size="small"
                 value={node.widthMode}
@@ -178,10 +181,11 @@ export function Properties({ node, change }: Props) {
           property="height"
           sizing={
             <>
-              <label className="ri-sr-only" htmlFor={heightSizing}>
+              <label {...stylex.props(styles.srOnly)} htmlFor={heightSizing}>
                 {t('inspector.heightSizing')}
               </label>
               <Select
+                className={stylex.props(styles.sizeModeChild).className}
                 id={heightSizing}
                 size="small"
                 value={node.heightMode}
@@ -219,8 +223,8 @@ export function Properties({ node, change }: Props) {
           unit=""
         />
       </section>
-      <section className="ri-section">
-        <h2>{t('inspector.layout')}</h2>
+      <section {...stylex.props(styles.section)}>
+        <h2 {...stylex.props(styles.sectionTitle)}>{t('inspector.layout')}</h2>
         <Choice
           {...props}
           label={t('inspector.layout')}
@@ -245,13 +249,15 @@ export function Properties({ node, change }: Props) {
                   {
                     value: 'row',
                     icon: <ArrowRight aria-hidden size={14} />,
-                    label: <span className="ri-sr-only">{t('inspector.horizontal')}</span>,
+                    label: (
+                      <span {...stylex.props(styles.srOnly)}>{t('inspector.horizontal')}</span>
+                    ),
                     title: t('inspector.horizontal'),
                   },
                   {
                     value: 'column',
                     icon: <ArrowDown aria-hidden size={14} />,
-                    label: <span className="ri-sr-only">{t('inspector.vertical')}</span>,
+                    label: <span {...stylex.props(styles.srOnly)}>{t('inspector.vertical')}</span>,
                     title: t('inspector.vertical'),
                   },
                 ]}
@@ -277,8 +283,8 @@ export function Properties({ node, change }: Props) {
         <NumberField {...props} label={t('inspector.gap')} property="gap" />
         <NumberField {...props} label={t('inspector.padding')} property="padding" />
       </section>
-      <section className="ri-section">
-        <h2>{t('inspector.appearance')}</h2>
+      <section {...stylex.props(styles.section)}>
+        <h2 {...stylex.props(styles.sectionTitle)}>{t('inspector.appearance')}</h2>
         <Field label={t('inspector.fill')}>
           <ColorPicker
             alpha
@@ -305,28 +311,28 @@ export function Properties({ node, change }: Props) {
           values={[
             [
               'none',
-              <span className="ri-option" key="none">
+              <span key="none" {...stylex.props(styles.option)}>
                 <Ban aria-hidden size={13} />
                 {t('inspector.none')}
               </span>,
             ],
             [
               'solid',
-              <span className="ri-option" key="solid">
+              <span key="solid" {...stylex.props(styles.option)}>
                 <Minus aria-hidden size={13} />
                 {t('inspector.solid')}
               </span>,
             ],
             [
               'dashed',
-              <span className="ri-option" key="dashed">
+              <span key="dashed" {...stylex.props(styles.option)}>
                 <SquareDashed aria-hidden size={13} />
                 {t('inspector.dashed')}
               </span>,
             ],
             [
               'dotted',
-              <span className="ri-option" key="dotted">
+              <span key="dotted" {...stylex.props(styles.option)}>
                 <Ellipsis aria-hidden size={13} />
                 {t('inspector.dotted')}
               </span>,
@@ -336,7 +342,7 @@ export function Properties({ node, change }: Props) {
       </section>
       <Accordion
         keepMounted
-        classNames={{ item: 'ri-section' }}
+        classNames={{ item: stylex.props(styles.section).className }}
         gap={0}
         indicatorPlacement="end"
         items={[

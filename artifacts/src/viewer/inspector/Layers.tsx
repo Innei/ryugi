@@ -1,4 +1,5 @@
 import { Tree, type TreeDataNode } from '@lobehub/ui';
+import * as stylex from '@stylexjs/stylex';
 import { Columns3, Frame, Grid2X2, Image, MousePointer2, Rows3, Type } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
@@ -6,6 +7,7 @@ import type { InspectorNode } from '../../shared/inspector';
 import type { BoardSpec } from '../../shared/types';
 import type { Inspector } from '../hooks/useInspector';
 import { t } from '../i18n';
+import { styles } from './styles';
 
 const icons = {
   Frame,
@@ -34,7 +36,23 @@ export function Layers({ boards, frames, selection, targets, playing, select, ho
   const container = useRef<HTMLDivElement>(null);
   const hovered = useRef<string | null>(null);
   const toggle = useRef(false);
+  const selectedKey =
+    selection && frames[selection.boardId]
+      ? keyOf(selection.boardId, frames[selection.boardId]!.session, selection.node.id)
+      : null;
+  const selectedKeys = targets
+    ? targets.flatMap((target) =>
+        frames[target.boardId]
+          ? [keyOf(target.boardId, frames[target.boardId]!.session, target.id)]
+          : [],
+      )
+    : selectedKey
+      ? [selectedKey]
+      : [];
+  // Key segments are URI-encoded, so "|" cannot collide with a real key.
+  const selectedSignature = selectedKeys.join('|');
   const { treeData, byKey } = useMemo(() => {
+    const selected = new Set(selectedSignature ? selectedSignature.split('|') : []);
     const byKey = new Map<
       string,
       { boardId: string; node: InspectorNode; parentKey: string | null }
@@ -57,12 +75,23 @@ export function Layers({ boards, frames, selection, targets, playing, select, ho
           icon: <Icon aria-hidden size={14} />,
           title: (
             <>
-              <span className="ri-layer-label" title={`${node.tag} · ${name || node.selector}`}>
-                <span className="ri-layer-kind">{t(`inspector.kind.${kind}`)}</span>
-                <span className="ri-layer-name">{name ? `“${name}”` : `<${node.tag}>`}</span>
+              <span
+                title={`${node.tag} · ${name || node.selector}`}
+                {...stylex.props(styles.layerLabel)}
+              >
+                <span {...stylex.props(selected.has(key) && styles.layerKindSelected)}>
+                  {t(`inspector.kind.${kind}`)}
+                </span>
+                <span {...stylex.props(styles.layerName)}>
+                  {name ? `“${name}”` : `<${node.tag}>`}
+                </span>
               </span>
-              {parentKey !== null && <span className="ri-layer-id">#{node.id}</span>}
-              {paused && <span className="ri-playing">{t('inspector.playing')}</span>}
+              {parentKey !== null && (
+                <span data-layer-id="" {...stylex.props(styles.layerId)}>
+                  #{node.id}
+                </span>
+              )}
+              {paused && <span {...stylex.props(styles.playing)}>{t('inspector.playing')}</span>}
             </>
           ),
           children: node.children.flatMap((id) => {
@@ -74,20 +103,7 @@ export function Layers({ boards, frames, selection, targets, playing, select, ho
       treeData.push(append(frame.nodes[0], null));
     }
     return { treeData, byKey };
-  }, [boards, frames, playing]);
-  const selectedKey =
-    selection && frames[selection.boardId]
-      ? keyOf(selection.boardId, frames[selection.boardId]!.session, selection.node.id)
-      : null;
-  const selectedKeys = targets
-    ? targets.flatMap((target) =>
-        frames[target.boardId]
-          ? [keyOf(target.boardId, frames[target.boardId]!.session, target.id)]
-          : [],
-      )
-    : selectedKey
-      ? [selectedKey]
-      : [];
+  }, [boards, frames, playing, selectedSignature]);
   const ancestors: string[] = [];
   let parent = selectedKey ? byKey.get(selectedKey)?.parentKey : null;
   while (parent) {
@@ -111,15 +127,17 @@ export function Layers({ boards, frames, selection, targets, playing, select, ho
   const count = Object.values(frames).reduce((sum, frame) => sum + frame.nodes.length, 0);
   return (
     <>
-      <div className="ri-layer-heading">
+      <div {...stylex.props(styles.layerHeading)}>
         <span>{t('inspector.layers')}</span>
-        <span>{count ? t('inspector.elements', { count }) : t('common.loading')}</span>
+        <span {...stylex.props(styles.layerHeadingCount)}>
+          {count ? t('inspector.elements', { count }) : t('common.loading')}
+        </span>
       </div>
       <div
         aria-label={t('inspector.domLayers')}
-        className="ri-layers"
         ref={container}
         role="region"
+        {...stylex.props(styles.layers)}
         onClickCapture={(event) => {
           toggle.current = event.shiftKey || event.metaKey || event.ctrlKey;
         }}
@@ -145,7 +163,7 @@ export function Layers({ boards, frames, selection, targets, playing, select, ho
           blockNode
           multiple
           showIcon
-          classNames={{ node: 'ri-layer' }}
+          classNames={{ node: stylex.props(styles.layer).className }}
           expandedKeys={expanded}
           indent={14}
           selectedKeys={selectedKeys}
@@ -168,10 +186,12 @@ export function Layers({ boards, frames, selection, targets, playing, select, ho
             }
           }}
         />
-        {!treeData.length && <p className="ri-hint">{t('inspector.waitingBoard')}</p>}
+        {!treeData.length && (
+          <p {...stylex.props(styles.hint, styles.hintInLayers)}>{t('inspector.waitingBoard')}</p>
+        )}
       </div>
       {Object.values(frames).some((frame) => frame.truncated) && (
-        <p className="ri-limit" role="status">
+        <p role="status" {...stylex.props(styles.limit)}>
           {t('inspector.truncated')}
         </p>
       )}

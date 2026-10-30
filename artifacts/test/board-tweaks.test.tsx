@@ -8,6 +8,17 @@ import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { useBoardTweaks } from '../src/viewer/hooks/useBoardTweaks';
 import { revealTweakPanel, tweakPanelAnchor, TweaksPanel } from '../src/viewer/tweaks/TweaksPanel';
 
+vi.mock('@stylexjs/stylex', async (original) => ({
+  ...(await original<object>()),
+  create: (value: unknown) => value,
+  defineConsts: (value: unknown) => value,
+  defineVars: (value: unknown) => value,
+  props: () => ({}),
+}));
+vi.mock('@lobehub/ui/stylex/cssVar.stylex', () => ({
+  cssVar: new Proxy({}, { get: (_, key) => `var(--${String(key)})` }),
+}));
+
 let current: ReturnType<typeof useBoardTweaks>;
 let root: Root;
 let host: HTMLDivElement;

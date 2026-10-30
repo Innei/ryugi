@@ -39,6 +39,7 @@ import type { BoardCommentsState } from '../lib/board-comments';
 import { visibleRenders } from '../lib/board-tiers';
 import { isComposing } from '../lib/keyboard';
 import { togglePlaying } from '../lib/play';
+import { color } from '../tokens.stylex';
 import { revealTweakPanel, tweakPanelAnchor, TweaksPanel } from '../tweaks/TweaksPanel';
 import { RejectComposer } from '../verdicts/RejectComposer';
 import { PhoneArtboard } from './PhoneArtboard';
@@ -69,6 +70,25 @@ const styles = stylex.create({
     fontSize: 14,
     textAlign: 'center',
     pointerEvents: 'none',
+  },
+  selectionCapture: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    zIndex: 6,
+    touchAction: 'none',
+  },
+  marquee: {
+    position: 'absolute',
+    pointerEvents: 'none',
+    zIndex: 6,
+    boxSizing: 'border-box',
+    borderWidth: 1,
+    borderStyle: 'solid',
+    borderColor: color.selection,
+    backgroundColor: color.selectionFill,
   },
 });
 
@@ -606,11 +626,18 @@ function DesktopArtboard({
                 />
               ),
           )}
-        {selection.selecting && <div aria-hidden="true" className="ri-selection-capture" />}
+        {selection.selecting && (
+          <div
+            aria-hidden="true"
+            data-selection-capture=""
+            {...stylex.props(styles.selectionCapture)}
+          />
+        )}
         {selection.marquee && (
           <div
             aria-hidden="true"
-            className="ri-marquee"
+            data-marquee=""
+            {...stylex.props(styles.marquee)}
             style={{
               left: view.x + selection.marquee.x * view.k,
               top: view.y + selection.marquee.y * view.k,

@@ -15,6 +15,7 @@ vi.mock('@stylexjs/stylex', async (original) => ({
   create: (value: unknown) => value,
   defineConsts: (value: unknown) => value,
   defineVars: (value: unknown) => value,
+  keyframes: (value: unknown) => value,
   props: () => ({}),
 }));
 vi.mock('@lobehub/ui/stylex/cssVar.stylex', () => ({
@@ -116,14 +117,14 @@ test('the pointer selects nodes with the sidebar closed and keeps all selected o
     selection: { ...node, id: 2, name: 'Second', rect: { ...node.rect, y: 80 } },
   });
   expect(host.querySelector('[aria-label="Inspector"]')).toBeNull();
-  expect(host.querySelectorAll('.ri-outline-selected')).toHaveLength(2);
+  expect(host.querySelectorAll('[data-outline][data-selected]')).toHaveLength(2);
   await act(async () =>
     host!.querySelector<HTMLButtonElement>('[aria-label="Toggle inspector"]')!.click(),
   );
-  expect(host.querySelectorAll('.ri-outline-selected')).toHaveLength(2);
+  expect(host.querySelectorAll('[data-outline][data-selected]')).toHaveLength(2);
   expect(host.querySelector('[aria-label="Inspector"]')?.textContent).toContain('2 selected');
   await report('drag', { phase: 'start', id: 1, x: 0, y: 0, append: false });
-  expect(host.querySelector('.ri-selection-capture')).not.toBeNull();
+  expect(host.querySelector('[data-selection-capture]')).not.toBeNull();
   const leaves = sent.filter((message) => message.action === 'leaves').at(-1);
   expect(leaves).toBeDefined();
   await report('targets', {
@@ -131,25 +132,25 @@ test('the pointer selects nodes with the sidebar closed and keeps all selected o
     targets: [{ id: 3, name: 'Preview hit', rect: node.rect }],
   });
   await report('drag', { phase: 'move', x: 500, y: 500, append: false });
-  expect(host.querySelector('.ri-marquee')).not.toBeNull();
-  expect(host.querySelectorAll('.ri-outline-selected')).toHaveLength(1);
-  expect(host.querySelector('.ri-outline-name')?.textContent).toBe('Preview hit');
+  expect(host.querySelector('[data-marquee]')).not.toBeNull();
+  expect(host.querySelectorAll('[data-outline][data-selected]')).toHaveLength(1);
+  expect(host.querySelector('[data-outline-name]')?.textContent).toBe('Preview hit');
   const viewport = frame.closest('[data-board]')!.parentElement!.parentElement!;
   await act(async () =>
     viewport.dispatchEvent(
       new PointerEvent('pointerup', { bubbles: true, button: 0, clientX: 100, clientY: 100 }),
     ),
   );
-  expect(host.querySelector('.ri-marquee')).toBeNull();
+  expect(host.querySelector('[data-marquee]')).toBeNull();
   await report('drag', { phase: 'start', id: 1, x: 0, y: 0, append: false });
   await report('targets', {
     request: sent.filter((message) => message.action === 'leaves').at(-1).request,
     targets: [{ id: 3, name: 'Preview hit', rect: node.rect }],
   });
   await report('drag', { phase: 'move', x: 500, y: 500, append: false });
-  expect(host.querySelectorAll('.ri-outline-selected')).toHaveLength(1);
+  expect(host.querySelectorAll('[data-outline][data-selected]')).toHaveLength(1);
   await report('drag', { phase: 'move', x: 5, y: 5, append: false });
-  expect(host.querySelectorAll('.ri-outline-selected')).toHaveLength(0);
+  expect(host.querySelectorAll('[data-outline][data-selected]')).toHaveLength(0);
   const commandCount = sent.filter((message) => message.action === 'select').length;
   await report('drag', { phase: 'end', x: 0, y: 0, append: false });
   expect(sent.filter((message) => message.action === 'select')).toHaveLength(commandCount);
@@ -412,12 +413,12 @@ test('layer rows show their node number and board roots show none', async () => 
   );
   const rows = Array.from(host.querySelectorAll<HTMLElement>('[role=treeitem]'));
   expect(
-    rows.find((el) => el.textContent?.includes('Board'))!.querySelector('.ri-layer-id'),
+    rows.find((el) => el.textContent?.includes('Board'))!.querySelector('[data-layer-id]'),
   ).toBeNull();
   const child = Array.from(host.querySelectorAll<HTMLElement>('[role=treeitem]')).find((el) =>
     el.textContent?.includes('Child'),
   )!;
-  expect(child.querySelector('.ri-layer-id')?.textContent).toBe('#12');
+  expect(child.querySelector('[data-layer-id]')?.textContent).toBe('#12');
 });
 
 test('computed RGB colors remain readable in the color picker fields', async () => {
@@ -673,9 +674,9 @@ test('hovering a node shows its ID chip and the Inspector shows the selected ID 
     truncated: false,
   });
   await report('hover', { rect: { x: 10, y: 10, width: 120, height: 40 }, id: 2 });
-  expect(host.querySelector('.ri-outline-id')?.textContent).toBe('a#2');
+  expect(host.querySelector('[data-outline-id]')?.textContent).toBe('a#2');
   await report('hover', { rect: { x: 10, y: 10, width: 120, height: 40 }, id: null });
-  expect(host.querySelector('.ri-outline-id')).toBeNull();
+  expect(host.querySelector('[data-outline-id]')).toBeNull();
   await report('selection', {
     reason: 'user',
     selection: {
@@ -693,8 +694,8 @@ test('hovering a node shows its ID chip and the Inspector shows the selected ID 
   await act(async () =>
     host!.querySelector<HTMLButtonElement>('[aria-label="Toggle inspector"]')!.click(),
   );
-  const meta = host.querySelector('.ri-node-meta')!;
-  expect(meta.querySelector('.ri-node-id')?.textContent).toContain('a#2');
+  const meta = host.querySelector('[data-node-meta]')!;
+  expect(meta.querySelector('[data-node-id]')?.textContent).toContain('a#2');
   await act(async () =>
     meta.querySelector<HTMLButtonElement>('[aria-label="Copy node ID"]')!.click(),
   );

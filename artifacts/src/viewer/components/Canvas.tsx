@@ -14,7 +14,7 @@ import type { Inspector } from '../hooks/useInspector';
 import type { BoardRender } from '../lib/board-tiers';
 import { boardReady, boardSrc, canPlay } from '../lib/play';
 import { titleScale, type View } from '../lib/view';
-import { brand } from '../tokens.stylex';
+import { brand, color } from '../tokens.stylex';
 import { MediaBoard } from './MediaBoard';
 import { WritingCursor } from './WritingCursor';
 
@@ -28,7 +28,7 @@ const styles = stylex.create({
     height: '100%',
     display: 'block',
     borderWidth: 0,
-    backgroundColor: '#fff',
+    backgroundColor: color.white,
     pointerEvents: 'none',
     outlineWidth: 1,
     outlineStyle: 'solid',
@@ -79,7 +79,7 @@ const styles = stylex.create({
     borderRadius: 4,
     whiteSpace: 'pre-wrap',
     overflowWrap: 'anywhere',
-    boxShadow: '0 1px 2px rgba(0,0,0,0.06), 0 2px 4px rgba(0,0,0,0.03)',
+    boxShadow: `0 1px 2px ${color.shadowSoft}, 0 2px 4px ${color.shadowFaint}`,
   },
 });
 
@@ -103,22 +103,22 @@ interface CanvasProps {
   writing?: string;
 }
 
-function stickyColors(color?: string) {
-  if (!color) return { backgroundColor: '#fff6db', color: '#3d2e00' };
+function stickyColors(stickyColor?: string) {
+  if (!stickyColor) return { backgroundColor: color.paperWarm, color: color.inkWarm };
   const hex =
-    color.length === 4
-      ? color
+    stickyColor.length === 4
+      ? stickyColor
           .slice(1)
           .split('')
           .map((c) => c + c)
           .join('')
-      : color.slice(1);
+      : stickyColor.slice(1);
   const [r, g, b] = [0, 2, 4].map((at) => {
     const value = parseInt(hex.slice(at, at + 2), 16) / 255;
     return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
   });
   const luminance = 0.2126 * r! + 0.7152 * g! + 0.0722 * b!;
-  return { backgroundColor: color, color: luminance > 0.179 ? '#000' : '#fff' };
+  return { backgroundColor: stickyColor, color: luminance > 0.179 ? color.black : color.white };
 }
 
 const HIDDEN = { visibility: 'hidden' } as const;

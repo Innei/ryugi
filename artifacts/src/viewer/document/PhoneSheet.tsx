@@ -5,6 +5,7 @@ import { useEffect, useRef } from 'react';
 import { type Thread, waitingOn } from '../../shared/comments';
 import { BottomSheet } from '../components/BottomSheet';
 import { t } from '../i18n';
+import { color } from '../tokens.stylex';
 import { anchorLabel } from './anchor';
 import type { ThreadActions } from './CommentCard';
 import { Composer } from './Composer';
@@ -40,7 +41,7 @@ const styles = stylex.create({
     paddingLeft: 10,
     borderLeftWidth: 3,
     borderLeftStyle: 'solid',
-    borderLeftColor: '#e8c24a',
+    borderLeftColor: color.warning,
     overflow: 'hidden',
     whiteSpace: 'nowrap',
     textOverflow: 'ellipsis',
@@ -120,7 +121,7 @@ export function PhoneSheet({
     });
     void play(
       thread,
-      [{ backgroundColor: 'rgba(232, 194, 74, 0.24)' }, { backgroundColor: 'transparent' }],
+      [{ backgroundColor: color.warningChip }, { backgroundColor: 'transparent' }],
       { duration: 600, delay: 250, easing: EASE },
     );
   }, [activeId]);

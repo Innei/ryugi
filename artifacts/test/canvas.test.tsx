@@ -9,6 +9,7 @@ import type { BoardRender } from '../src/viewer/lib/board-tiers';
 vi.mock('@stylexjs/stylex', async (original) => ({
   ...(await original<object>()),
   create: (value: unknown) => value,
+  keyframes: (value: unknown) => value,
   props: () => ({}),
 }));
 vi.mock('@lobehub/ui/stylex/cssVar.stylex', () => ({
@@ -479,10 +480,10 @@ test('marks revisions without replacing the existing iframe or changing its URL'
 });
 
 test.each([
-  ['#cce8df', '#cce8df', '#000'],
-  ['#123', '#123', '#fff'],
-  ['#777777', '#777777', '#000'],
-  [undefined, '#fff6db', '#3d2e00'],
+  ['#cce8df', '#cce8df', 'var(--color-black)'],
+  ['#123', '#123', 'var(--color-white)'],
+  ['#777777', '#777777', 'var(--color-black)'],
+  [undefined, 'var(--color-paperWarm)', 'var(--color-inkWarm)'],
 ])('renders a %s sticky with readable foreground', async (color, background, foreground) => {
   const host = await render({
     notes: [['note', { page: 'p', kind: 'sticky', x: 0, y: 500, text: 'Decision', color }]],

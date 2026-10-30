@@ -4,6 +4,7 @@ import { MessageSquare, PenLine } from 'lucide-react';
 import { useLayoutEffect, useRef } from 'react';
 
 import { t } from '../i18n';
+import { color } from '../tokens.stylex';
 import { EASE, play } from './motion';
 
 export const EDIT_MENU_HEIGHT = 44;
@@ -24,7 +25,7 @@ const styles = stylex.create({
     marginInlineStart: 16,
     marginBlock: -6,
     borderRadius: 2,
-    backgroundColor: '#18181b',
+    backgroundColor: color.overlay,
     transform: 'rotate(45deg)',
   },
   bar: {
@@ -32,8 +33,8 @@ const styles = stylex.create({
     height: EDIT_MENU_HEIGHT,
     paddingInline: 4,
     borderRadius: 12,
-    backgroundColor: '#18181b',
-    boxShadow: '0 8px 24px rgba(24, 24, 27, 0.24)',
+    backgroundColor: color.overlay,
+    boxShadow: `0 8px 24px ${color.overlayShadow}`,
   },
   button: {
     display: 'flex',
@@ -44,13 +45,13 @@ const styles = stylex.create({
     paddingInline: 12,
     borderWidth: 0,
     borderRadius: 10,
-    backgroundColor: { 'default': 'transparent', ':active': '#3f3f46' },
-    color: '#e4e4e7',
+    backgroundColor: { 'default': 'transparent', ':active': color.overlayActive },
+    color: color.overlayText,
     fontFamily: cssVar.fontFamily,
     fontSize: 14,
     cursor: 'pointer',
   },
-  primary: { color: '#fff', fontWeight: 600 },
+  primary: { color: color.white, fontWeight: 600 },
 });
 
 interface Props {
