@@ -87,7 +87,7 @@
     "@lexical/table": "0.53.0",
     "@lobehub/fluent-emoji": "5.0.1",
     "@lobehub/icons": "6.9.1",
-    "@lobehub/ui": "6.5.1",
+    "@lobehub/ui": "6.10.2",
     "@stylexjs/stylex": "0.19.1",
     "@stylexjs/unplugin": "0.19.1",
     "@types/node": "^22.20.5",
