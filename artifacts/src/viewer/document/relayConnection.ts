@@ -38,7 +38,7 @@ export function createRelayConnection(options: RelayConnectionOptions): RelayCon
       timer: ReturnType<typeof setTimeout>;
     }
   >();
-  const queue: string[] = [];
+  const queue = new Map<number, string>();
   let socket: WebSocket | null = null;
   let open = false;
   let online = false;
@@ -51,6 +51,7 @@ export function createRelayConnection(options: RelayConnectionOptions): RelayCon
     const waiter = pending.get(rid);
     if (!waiter) return;
     pending.delete(rid);
+    queue.delete(rid);
     clearTimeout(waiter.timer);
     if ('error' in outcome) waiter.reject(new Error(outcome.error));
     else waiter.resolve(outcome.data);
@@ -84,50 +85,67 @@ export function createRelayConnection(options: RelayConnectionOptions): RelayCon
     }
   };
 
+  const disconnect = (current: WebSocket) => {
+    if (socket !== current) return;
+    open = false;
+    socket = null;
+    queue.clear();
+    failPending();
+    online = false;
+    options.onPresence(OFFLINE);
+    if (!closed) {
+      retry = setTimeout(connect, delay);
+      delay = Math.min(delay * 2, maxRetry);
+    }
+    // Do not wait for a close handshake on an unresponsive connection.
+    current.close();
+  };
+
   const connect = () => {
+    if (closed) return;
     const current = new Socket(options.url);
     socket = current;
     current.onopen = () => {
+      if (closed || socket !== current) return;
       open = true;
       delay = baseRetry;
-      for (const text of queue.splice(0)) current.send(text);
+      const queued = [...queue.values()];
+      queue.clear();
+      for (const text of queued) current.send(text);
     };
     current.onmessage = (event) => {
+      if (closed || socket !== current) return;
       try {
         receive(JSON.parse(String(event.data)) as RelayIncoming);
       } catch {}
     };
-    current.onclose = () => {
-      if (socket !== current) return;
-      open = false;
-      socket = null;
-      queue.length = 0;
-      failPending();
-      online = false;
-      options.onPresence(OFFLINE);
-      if (closed) return;
-      retry = setTimeout(connect, delay);
-      delay = Math.min(delay * 2, maxRetry);
-    };
+    current.onclose = () => disconnect(current);
+    current.onerror = () => disconnect(current);
   };
 
   connect();
 
   return {
     request<T>(body: RelayRequest | { op: string }) {
+      if (closed) return Promise.reject<T>(new Error('offline'));
       const rid = nextRid++;
       const text = JSON.stringify({ t: 'request', rid, body });
       return new Promise<T>((resolve, reject) => {
-        const timer = setTimeout(() => settle(rid, { error: 'offline' }), timeoutMs);
+        const timer = setTimeout(() => {
+          settle(rid, { error: 'offline' });
+          if (socket) disconnect(socket);
+        }, timeoutMs);
         pending.set(rid, { resolve: resolve as (data: unknown) => void, reject, timer });
         if (open && socket) socket.send(text);
-        else queue.push(text);
+        else queue.set(rid, text);
       });
     },
     close() {
       closed = true;
       clearTimeout(retry);
-      socket?.close();
+      if (socket) disconnect(socket);
+      queue.clear();
+      failPending();
     },
   };
 }

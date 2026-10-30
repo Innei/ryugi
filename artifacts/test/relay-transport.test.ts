@@ -35,6 +35,7 @@ const connections: { close: () => void }[] = [];
 afterEach(() => {
   for (const connection of connections.splice(0)) connection.close();
   FakeSocket.all = [];
+  vi.useRealTimers();
 });
 
 function connect() {
@@ -291,6 +292,70 @@ describe('local document transport', () => {
 });
 
 describe('requests that never get an answer', () => {
+  test('a timeout replaces an unresponsive socket without waiting for its close event', async () => {
+    vi.useFakeTimers();
+    const presence: unknown[] = [];
+    const connection = createRelayConnection({
+      url: 'wss://cloud.example/api/relay/a/c1',
+      artifact: 'document/c1',
+      WebSocket: FakeSocket as never,
+      requestTimeoutMs: 20,
+      retryMs: 10,
+      onPresence: (value) => presence.push(value),
+      onEvent: () => {},
+      onOnline: () => {},
+    });
+    connections.push(connection);
+    const oldSocket = FakeSocket.all.at(-1)!;
+    oldSocket.open();
+    oldSocket.receive({ t: 'presence', online: true, version: '1.46.2' });
+    oldSocket.close = () => {
+      oldSocket.readyState = 2;
+    };
+    const request = expect(connection.request({ op: 'state' })).rejects.toThrow('offline');
+    await vi.advanceTimersByTimeAsync(20);
+    await request;
+    expect(presence.at(-1)).toEqual({ online: false, version: null });
+    await vi.advanceTimersByTimeAsync(10);
+    const nextSocket = FakeSocket.all.at(-1)!;
+    expect(nextSocket).not.toBe(oldSocket);
+    nextSocket.open();
+    nextSocket.receive({ t: 'presence', online: true, version: '1.46.2' });
+    oldSocket.receive({ t: 'presence', online: false, version: null });
+    expect(presence.at(-1)).toEqual({ online: true, version: '1.46.2' });
+    const recovered = connection.request({ op: 'state' });
+    nextSocket.receive({
+      t: 'reply',
+      rid: nextSocket.sent.at(-1).rid,
+      body: { ok: true, data: 'recovered' },
+    });
+    expect(await recovered).toBe('recovered');
+  });
+
+  test('an expired queued request is not replayed when reconnecting later', async () => {
+    vi.useFakeTimers();
+    const connection = createRelayConnection({
+      url: 'wss://cloud.example/api/relay/a/c1',
+      artifact: 'document/c1',
+      WebSocket: FakeSocket as never,
+      requestTimeoutMs: 10,
+      retryMs: 100,
+      onPresence: () => {},
+      onEvent: () => {},
+      onOnline: () => {},
+    });
+    connections.push(connection);
+    FakeSocket.all.at(-1)!.open();
+    FakeSocket.all.at(-1)!.close();
+    const expired = expect(connection.request({ op: 'comment' })).rejects.toThrow('offline');
+    await vi.advanceTimersByTimeAsync(10);
+    await expired;
+    await vi.advanceTimersByTimeAsync(90);
+    const nextSocket = FakeSocket.all.at(-1)!;
+    nextSocket.open();
+    expect(nextSocket.sent).toEqual([]);
+  });
+
   test('a request times out as offline', async () => {
     const connection = createRelayConnection({
       url: 'wss://cloud.example/api/relay/a/c1',
