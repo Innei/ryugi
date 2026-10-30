@@ -111,3 +111,49 @@ test('without tiers every visible board mounts its frame at once, as before snap
   await mount({ tiers: false });
   expect(frames()).toBe(6);
 });
+
+test('the parameter entry indicates modified values after closing and clears after reset', async () => {
+  await mount({ tiers: false });
+  const frame = host!.querySelector<HTMLIFrameElement>('[data-board="a"] iframe')!;
+  const post = vi.spyOn(frame.contentWindow!, 'postMessage');
+  await act(async () => frame.dispatchEvent(new Event('load')));
+  const connection = post.mock.calls.find(([message]) => message.action === 'connect')![0]
+    .connection;
+  await act(async () =>
+    window.dispatchEvent(
+      new MessageEvent('message', {
+        source: frame.contentWindow!,
+        data: {
+          type: 'ryugi:tweaks:ready',
+          connection,
+          session: 'parameters',
+          error: null,
+          schema: {
+            version: 1,
+            controls: { enabled: { type: 'boolean', label: 'Enabled', default: true } },
+          },
+        },
+      }),
+    ),
+  );
+  const entry = () => host!.querySelector<HTMLButtonElement>('[aria-label="Parameters a"]');
+  const modified = () =>
+    host!.querySelector<HTMLButtonElement>('[aria-label="Parameters a (modified)"]');
+  expect(entry()).not.toBeNull();
+  expect(modified()).toBeNull();
+  await act(async () => entry()!.click());
+  expect(modified()).toBeNull();
+  await act(async () => host!.querySelector<HTMLButtonElement>('[role="switch"]')!.click());
+  expect(modified()).not.toBeNull();
+  await act(async () =>
+    host!.querySelector<HTMLButtonElement>('[aria-label="Close parameters"]')!.click(),
+  );
+  expect(modified()).not.toBeNull();
+  await act(async () => modified()!.click());
+  const reset = [...host!.querySelectorAll<HTMLButtonElement>('.rt-footer button')].find(
+    (button) => button.textContent === 'Reset',
+  )!;
+  await act(async () => reset.click());
+  expect(modified()).toBeNull();
+  expect(entry()).not.toBeNull();
+});

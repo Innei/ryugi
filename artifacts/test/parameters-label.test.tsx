@@ -38,7 +38,7 @@ test('a phone-sized HTML board exposes Parameters at 100% zoom', async () => {
             versions: { 'pages/today.html': 1 },
             pending: new Set<string>(),
             playing: new Set<string>(),
-            parameters: { today: 4 },
+            parameters: { today: false },
             onExpand: () => {},
             onTogglePlay: () => {},
             onReplay: () => {},

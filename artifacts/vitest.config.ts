@@ -9,7 +9,7 @@ export default defineConfig({
     include: ['test/**/*.test.{ts,tsx}'],
     environment: 'node',
     globalSetup: ['test/global-setup.ts'],
-    setupFiles: ['test/setup-tokens.ts', 'test/setup-locale.ts'],
+    setupFiles: ['test/setup-tokens.ts', 'test/setup-locale.ts', 'test/setup-text-measurement.ts'],
     hookTimeout: 120000,
     // Spawned CLIs and servers inherit these, so no test can sign in with the developer's real account.
     env: {

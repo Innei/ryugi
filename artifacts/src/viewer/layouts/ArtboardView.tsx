@@ -304,10 +304,13 @@ function DesktopArtboard({
   );
   const notes = Object.entries(canvas?.notes ?? {}).filter(([, n]) => n.page === page);
   const expandedBoard = expanded ? allBoards[expanded] : undefined;
-  const parameterCounts = Object.fromEntries(
+  const parameterEntries = Object.fromEntries(
     Object.entries(parameters.states).flatMap(([id, state]) => {
       const count = Object.keys(state.schema?.controls ?? {}).length;
-      return count || state.error ? [[id, count]] : [];
+      const modified = Object.entries(state.schema?.controls ?? {}).some(
+        ([key, control]) => state.values[key] !== control.default,
+      );
+      return count || state.error ? [[id, modified]] : [];
     }),
   );
   const parameterState = parameterBoard ? parameters.states[parameterBoard] : undefined;
@@ -532,7 +535,7 @@ function DesktopArtboard({
               boards={boards}
               contentBase={contentBase}
               groups={groups}
-              parameters={parameterCounts}
+              parameters={parameterEntries}
               pending={pendingBoards}
               playing={playing}
               verdicts={verdicts}
@@ -558,6 +561,7 @@ function DesktopArtboard({
                 agent={agent}
                 boards={allBoards}
                 draft={boardComments.draft}
+                height={size.height}
                 numbers={boardComments.numbers}
                 openId={boardComments.openId}
                 page={page}
@@ -650,7 +654,7 @@ function DesktopArtboard({
             parameters={parameterBoard === expanded ? panel(false) : undefined}
             src={`${contentBase}${expandedBoard.file}?v=${versions[expandedBoard.file] ?? 0}`}
             parameterAction={
-              parameterCounts[expanded] !== undefined ? (
+              parameterEntries[expanded] !== undefined ? (
                 <IconProvider config={{ 'aria-hidden': true }}>
                   <Button
                     aria-expanded={parameterBoard === expanded}

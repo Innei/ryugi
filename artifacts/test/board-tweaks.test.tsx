@@ -195,6 +195,8 @@ test('the real parameter controls update state and reset while the anchor follow
   expect(panel.style.top).toBe('60px');
   expect(panel.style.width).toBe('352px');
   const slider = panel.querySelector('input[type="range"]')!;
+  const numeric = panel.querySelector<HTMLInputElement>('input[type="text"]')!;
+  expect(numeric.labels?.[0]?.textContent).toBe('Count');
   expect(document.getElementById(slider.getAttribute('aria-labelledby')!)?.textContent).toBe(
     'Count',
   );
@@ -231,6 +233,31 @@ test('Esc closes the panel unless it ends an IME composition', async () => {
     slider.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })),
   );
   expect(closed).toHaveBeenCalledTimes(1);
+});
+
+test('resetting one parameter keeps the other preview overrides and the registered frame', async () => {
+  await render({ panel: true });
+  await report('a', await connect('a'), {
+    version: 1,
+    controls: {
+      count: { type: 'range', label: 'Count', default: 2, min: 0, max: 8 },
+      enabled: { type: 'boolean', label: 'Enabled', default: true },
+    },
+  });
+  const original = frame('a');
+  await act(async () => {
+    current.change('a', 'count', 5);
+    current.change('a', 'enabled', false);
+  });
+  const reset = host.querySelector<HTMLButtonElement>('button[aria-label="Reset Count"]');
+  expect(reset).not.toBeNull();
+  await act(async () => reset!.click());
+  expect(current.states.a!.values).toEqual({ count: 2, enabled: false });
+  expect(frame('a')).toBe(original);
+  expect(messages.get(original)!.at(-1)).toMatchObject({
+    action: 'set',
+    values: { count: 2, enabled: false },
+  });
 });
 
 test('parameter button icons are decorative or have an accessible alternative', async () => {

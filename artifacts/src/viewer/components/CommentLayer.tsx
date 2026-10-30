@@ -1,5 +1,6 @@
 import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
+import { type ReactNode, useLayoutEffect, useRef, useState } from 'react';
 
 import type { BoardAnchor, BoardThread } from '../../shared/board-comments';
 import type { BoardSpec } from '../../shared/types';
@@ -84,6 +85,7 @@ interface Props {
   agent?: string;
   boards: Record<string, BoardSpec>;
   draft: BoardAnchor | null;
+  height: number;
   numbers: Map<string, number>;
   onCancelDraft: () => void;
   onOpen: (id: string | null) => void;
@@ -102,9 +104,61 @@ const screenOf = (view: View, point: { x: number; y: number }) => ({
   y: view.y + point.y * view.k,
 });
 
-function popoverLeft(x: number, width: number) {
+function popoverLeft(x: number, width: number, popupWidth: number) {
   const right = x + PIN + GAP;
-  return right + POPOVER > width - 12 ? Math.max(12, x - GAP - POPOVER) : right;
+  return Math.max(
+    12,
+    Math.min(
+      right + popupWidth > width - 12 ? x - GAP - popupWidth : right,
+      width - popupWidth - 12,
+    ),
+  );
+}
+
+function CommentPopover({
+  point,
+  width,
+  height,
+  children,
+}: {
+  point: { x: number; y: number } | null;
+  width: number;
+  height: number;
+  children: ReactNode;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [measured, setMeasured] = useState(420);
+  useLayoutEffect(() => {
+    const element = ref.current;
+    if (!element) return;
+    const measure = () => setMeasured(element.offsetHeight);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+  const topInset = Math.min(64, Math.max(0, height - 12));
+  const maxHeight = Math.max(0, Math.min(420, height - topInset - 12));
+  const popupWidth = Math.max(0, Math.min(POPOVER, width - 24));
+  return (
+    <div
+      ref={ref}
+      {...stylex.props(styles.popover)}
+      style={{
+        left: point
+          ? popoverLeft(point.x, width, popupWidth)
+          : Math.max(12, width - popupWidth - 12),
+        top: Math.max(
+          topInset,
+          Math.min(point ? point.y - PIN : topInset, height - Math.min(measured, maxHeight) - 12),
+        ),
+        width: popupWidth,
+        maxHeight,
+      }}
+    >
+      {children}
+    </div>
+  );
 }
 
 export function CommentLayer({
@@ -112,6 +166,7 @@ export function CommentLayer({
   page,
   boards,
   width,
+  height,
   threads,
   stale,
   numbers,
@@ -164,16 +219,10 @@ export function CommentLayer({
         );
       })}
       {open ? (
-        <div
-          {...stylex.props(styles.popover)}
-          style={
-            openPoint
-              ? {
-                  left: popoverLeft(screenOf(view, openPoint).x, width),
-                  top: screenOf(view, openPoint).y - PIN,
-                }
-              : { right: 12, top: 64 }
-          }
+        <CommentPopover
+          height={height}
+          point={openPoint ? screenOf(view, openPoint) : null}
+          width={width}
         >
           <ThreadView
             actions={actions}
@@ -182,7 +231,7 @@ export function CommentLayer({
             thread={open}
             onClose={() => onOpen(null)}
           />
-        </div>
+        </CommentPopover>
       ) : null}
       {draft && draftPoint ? (
         <>
@@ -190,13 +239,7 @@ export function CommentLayer({
             {...stylex.props(styles.pin)}
             style={{ left: screenOf(view, draftPoint).x, top: screenOf(view, draftPoint).y }}
           />
-          <div
-            {...stylex.props(styles.popover)}
-            style={{
-              left: popoverLeft(screenOf(view, draftPoint).x, width),
-              top: screenOf(view, draftPoint).y - PIN,
-            }}
-          >
+          <CommentPopover height={height} point={screenOf(view, draftPoint)} width={width}>
             <div {...stylex.props(styles.draftHead)}>
               {t('comments.anchoredTo', { label: anchorLabel(draft) })}
             </div>
@@ -207,7 +250,7 @@ export function CommentLayer({
               onSubmit={onSubmit}
             />
             <div {...stylex.props(styles.hint)}>{t('comments.sendHint')}</div>
-          </div>
+          </CommentPopover>
         </>
       ) : null}
     </div>

@@ -1,19 +1,27 @@
 import './tweaks.css';
 
+import { Field } from '@base-ui/react/field';
 import {
   ActionIcon,
   Button,
   ColorPicker,
+  CopyButton,
   IconProvider,
   Input,
   InputNumber,
+  ModalBackdrop,
+  ModalDescription,
+  ModalPopup,
+  ModalPortal,
+  ModalRoot,
+  ModalTitle,
   Segmented,
   Select,
   Slider,
   Switch,
 } from '@lobehub/ui';
 import { Code2, RotateCcw, SlidersHorizontal, X } from 'lucide-react';
-import { useId, useRef } from 'react';
+import { useId, useRef, useState } from 'react';
 
 import type { TweakControl, TweakValue } from '../../shared/tweaks';
 import type { Rect } from '../../shared/types';
@@ -39,6 +47,39 @@ export function revealTweakPanel(
       anchor.left,
     y: Math.min(Math.max(60, anchor.top), Math.max(60, viewport.height - 604 - 12)) - anchor.top,
   };
+}
+
+function NumericInput({
+  control,
+  value,
+  change,
+  id,
+  width,
+}: {
+  control: TweakControl;
+  value: TweakValue;
+  change: (value: TweakValue) => void;
+  id: string;
+  width?: number;
+}) {
+  return (
+    <Field.Root className="rt-number-field" style={{ width: width ?? '100%', flexShrink: 0 }}>
+      <Field.Label className="rt-sr-only">{control.label}</Field.Label>
+      <InputNumber
+        controls={control.type !== 'range'}
+        id={id}
+        max={control.max}
+        min={control.min}
+        size="small"
+        step={control.step}
+        style={{ width: '100%' }}
+        value={value as number}
+        onChange={(next) => {
+          if (next !== null) change(next);
+        }}
+      />
+    </Field.Root>
+  );
 }
 
 function Control({
@@ -100,25 +141,17 @@ function Control({
           value={value as number}
           onChange={change}
         />
-        <output>{String(value)}</output>
+        <NumericInput
+          change={change}
+          control={control}
+          id={`${id}-number`}
+          value={value}
+          width={48}
+        />
       </div>
     );
   else if (control.type === 'number')
-    input = (
-      <InputNumber
-        aria-label={control.label}
-        id={id}
-        max={control.max}
-        min={control.min}
-        size="small"
-        step={control.step}
-        style={{ width: '100%' }}
-        value={value as number}
-        onChange={(next) => {
-          if (next !== null) change(next);
-        }}
-      />
-    );
+    input = <NumericInput change={change} control={control} id={id} value={value} />;
   else if (control.type === 'enum')
     input = segmented ? (
       <Segmented
@@ -152,7 +185,7 @@ function Control({
       />
     );
   return (
-    <Field className="rt-field">
+    <Field className="rt-field" data-changed={value !== control.default || undefined}>
       {segmented ? (
         <legend>{control.label}</legend>
       ) : control.type === 'range' ? (
@@ -160,7 +193,18 @@ function Control({
       ) : (
         <label htmlFor={id}>{control.label}</label>
       )}
-      {input}
+      <div className="rt-control">
+        <div className="rt-input">{input}</div>
+        <ActionIcon
+          aria-label={t('parameters.resetControl', { label: control.label })}
+          className="rt-field-reset"
+          disabled={value === control.default}
+          icon={RotateCcw}
+          size={{ blockSize: 22, size: 11 }}
+          title={t('parameters.resetControl', { label: control.label })}
+          onClick={() => change(control.default)}
+        />
+      </div>
     </Field>
   );
 }
@@ -176,7 +220,17 @@ interface Props {
 }
 
 export function TweaksPanel({ boardId, title, state, anchor, onChange, onReset, onClose }: Props) {
-  const dialog = useRef<HTMLDialogElement>(null);
+  const declarationTriggerRef = useRef<HTMLButtonElement>(null);
+  const declarationId = useId();
+  const [declarationOpen, setDeclarationOpen] = useState(false);
+  const [declarationTab, setDeclarationTab] = useState<'schema' | 'values'>('schema');
+  const declarationLabel =
+    declarationTab === 'schema' ? t('parameters.schema') : t('parameters.currentValues');
+  const declaration = JSON.stringify(
+    declarationTab === 'schema' ? state.schema : state.values,
+    null,
+    2,
+  );
   const groups = new Map<string, [string, TweakControl][]>();
   for (const entry of Object.entries(state.schema?.controls ?? {})) {
     const name = entry[1].section || t('parameters.controls');
@@ -209,6 +263,7 @@ export function TweaksPanel({ boardId, title, state, anchor, onChange, onReset, 
         <header className="rt-header">
           <SlidersHorizontal aria-hidden size={15} />
           <h2>{t('parameters.title')}</h2>
+          <span className="rt-count">{Object.keys(state.schema?.controls ?? {}).length}</span>
           <ActionIcon
             aria-label={t('parameters.close')}
             icon={X}
@@ -218,11 +273,8 @@ export function TweaksPanel({ boardId, title, state, anchor, onChange, onReset, 
           />
         </header>
         <div className="rt-board">
-          <Code2 aria-hidden size={17} />
-          <div>
-            <strong>{title}</strong>
-            <code>{boardId}</code>
-          </div>
+          <strong title={title}>{title}</strong>
+          <code title={boardId}>{boardId}</code>
           <span>{t('parameters.currentBoard')}</span>
         </div>
         <div className="rt-body">
@@ -244,49 +296,128 @@ export function TweaksPanel({ boardId, title, state, anchor, onChange, onReset, 
               ))}
             </section>
           ))}
-          {state.schema && (
-            <div className="rt-declaration">
-              <span>{t('parameters.declaredBy')}</span>
-              <Button
-                icon={Code2}
-                size="small"
-                type="text"
-                onClick={() => dialog.current?.showModal()}
-              >
-                {t('parameters.viewDeclaration')}
-              </Button>
-            </div>
-          )}
         </div>
         <footer className="rt-footer">
-          <span role="status">
+          <span className={changed ? 'rt-changed' : undefined} role="status">
             {changed ? t('parameters.changed', { count: changed }) : t('parameters.defaults')}
           </span>
           <Button disabled={!changed} icon={RotateCcw} size="small" type="text" onClick={onReset}>
             {t('parameters.reset')}
           </Button>
+          {state.schema && (
+            <Button
+              aria-haspopup="dialog"
+              icon={Code2}
+              ref={declarationTriggerRef}
+              size="small"
+              type="text"
+              onClick={() => {
+                setDeclarationTab('schema');
+                setDeclarationOpen(true);
+              }}
+            >
+              {t('parameters.viewDeclaration')}
+            </Button>
+          )}
         </footer>
       </aside>
-      <dialog
-        aria-label={t('parameters.declaration')}
-        className="rt-dialog"
-        ref={dialog}
-        onKeyDown={(event) => event.stopPropagation()}
+      <ModalRoot
+        open={declarationOpen}
+        onExitComplete={() => declarationTriggerRef.current?.focus()}
+        onOpenChange={setDeclarationOpen}
       >
-        <header>
-          <h2>{t('parameters.declaration')}</h2>
-          <ActionIcon
-            aria-label={t('parameters.closeDeclaration')}
-            icon={X}
-            size="small"
-            onClick={() => dialog.current?.close()}
-          />
-        </header>
-        <pre tabIndex={0}>{JSON.stringify(state.schema, null, 2)}</pre>
-        <h3>{t('parameters.currentValues')}</h3>
-        <pre tabIndex={0}>{JSON.stringify(state.values, null, 2)}</pre>
-        <p>{t('parameters.sessionOnly')}</p>
-      </dialog>
+        <ModalPortal>
+          <ModalBackdrop />
+          <ModalPopup
+            aria-labelledby={`${declarationId}-title`}
+            style={{ height: 'min(580px, calc(100dvh - 96px))', overflow: 'hidden' }}
+            width="min(650px, calc(100vw - 32px))"
+          >
+            <div
+              className="rt-dialog"
+              data-chrome="parameter-declaration"
+              onKeyDown={(event) => {
+                event.stopPropagation();
+                if (
+                  event.key === 'Escape' &&
+                  !event.defaultPrevented &&
+                  !isComposing(event.nativeEvent)
+                )
+                  setDeclarationOpen(false);
+              }}
+            >
+              <header>
+                <Code2 aria-hidden size={17} />
+                <ModalTitle id={`${declarationId}-title`}>{t('parameters.declaration')}</ModalTitle>
+                <code>{boardId}</code>
+                <ActionIcon
+                  aria-label={t('parameters.closeDeclaration')}
+                  icon={X}
+                  size="small"
+                  onClick={() => setDeclarationOpen(false)}
+                />
+              </header>
+              <div className="rt-code-toolbar">
+                <div
+                  aria-label={t('parameters.declaration')}
+                  className="rt-code-tabs"
+                  role="tablist"
+                  onKeyDown={(event) => {
+                    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+                    event.preventDefault();
+                    const next =
+                      event.key === 'Home'
+                        ? 'schema'
+                        : event.key === 'End'
+                          ? 'values'
+                          : declarationTab === 'schema'
+                            ? 'values'
+                            : 'schema';
+                    setDeclarationTab(next);
+                    event.currentTarget
+                      .querySelector<HTMLButtonElement>(`[data-json-tab="${next}"]`)
+                      ?.focus();
+                  }}
+                >
+                  {(['schema', 'values'] as const).map((tab) => (
+                    <button
+                      aria-controls={`${declarationId}-code`}
+                      aria-selected={declarationTab === tab}
+                      data-json-tab={tab}
+                      id={`${declarationId}-${tab}`}
+                      key={tab}
+                      role="tab"
+                      tabIndex={declarationTab === tab ? 0 : -1}
+                      type="button"
+                      onClick={() => setDeclarationTab(tab)}
+                    >
+                      {tab === 'schema' ? t('parameters.schema') : t('parameters.currentValues')}
+                    </button>
+                  ))}
+                </div>
+                <CopyButton
+                  aria-label={t('parameters.copy')}
+                  content={declaration}
+                  size="small"
+                  title={t('parameters.copy')}
+                />
+              </div>
+              <div className="rt-code-content">
+                <pre
+                  aria-label={declarationLabel}
+                  aria-labelledby={`${declarationId}-${declarationTab}`}
+                  id={`${declarationId}-code`}
+                  role="tabpanel"
+                  tabIndex={0}
+                >
+                  {declaration}
+                </pre>
+              </div>
+              <ModalDescription>{t('parameters.sessionOnly')}</ModalDescription>
+            </div>
+          </ModalPopup>
+        </ModalPortal>
+      </ModalRoot>
     </IconProvider>
   );
 }

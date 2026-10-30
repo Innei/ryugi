@@ -1,6 +1,6 @@
 {
   "name": "ryugi-artifacts",
-  "version": "1.45.5",
+  "version": "1.45.6",
   "description": "Server and viewer for the Ryugi artifacts app",
   "repository": {
     "type": "git",
@@ -57,6 +57,7 @@
   },
   "devDependencies": {
     "@base-ui/react": "^1.9.0",
+    "@chenglou/pretext": "1.0.0",
     "@excalidraw/excalidraw": "^0.18.1",
     "@haklex/rich-collab-loro": "0.60.0",
     "@haklex/rich-compose": "0.60.0",
