@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+set -uo pipefail
+
+case "$0" in
+  */* | *\\*) SCRIPT_DIR="$(cd "${0%[/\\]*}" && pwd)" ;;
+  *) SCRIPT_DIR="$(pwd)" ;;
+esac
+
+. "$SCRIPT_DIR/project-root.sh"
+project="$(ryugi_project_root "${CLAUDE_PROJECT_DIR:-$PWD}")"
+command -v node > /dev/null 2>&1 || exit 0
+exec node "$SCRIPT_DIR/watch-comments.cjs" "$project"

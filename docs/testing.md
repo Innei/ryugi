@@ -15,6 +15,7 @@ Live in `tests/`. Currently:
 - `tests/opencode/` — bash tests for OpenCode plugin loading, bootstrap caching, and tool registration.
 - `tests/codex-plugin-sync/` — bash sync verification.
 - `tests/hooks/` — the hook scripts: project-root resolution shared by the hooks (`test-project-root.sh`), `session-start` bootstrap output (and that starting the artifacts server for projects with published documents never delays it), the Windows `run-hook.cmd` wrapper, the `user-prompt-submit` hook that attaches the open Artboard and document selections, unread comment reminders and auto-publish notices, and the `stop` hook that asks the artifacts server to auto-publish what changed.
+- `node --test tests/hooks/test-comment-watch.cjs` — the persistent Claude Code comment monitor: document and Artboard notifications, human updates with unchanged unread counts, CLI read cursors, restart recovery, partial writes, shell-safe paths, ignoring agent replies, and the actual manifest command from a repository subdirectory. Real Claude session results live in `docs/ryugi/skill-evals/`.
 - `tests/kimi/` — bash/Python checks for Kimi plugin manifest wiring.
 - `tests/claude-code/test-helpers.sh`, `analyze-token-usage.py` — utilities used by remaining bash tests.
 - `tests/claude-code/test-worktree-native-preference.sh` — RED-GREEN-REFACTOR validation for worktree skill (quorum covers the PRESSURE phase; bash also covers RED/GREEN baselines).

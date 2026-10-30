@@ -17,6 +17,21 @@ A working install triggers `brainstorming` before any code is written.
 /plugin install ryugi@ryugi-dev
 ```
 
+In interactive sessions, Ryugi watches its document and Artboard comments
+through Claude Code's plugin monitors. New comments reach the current
+session without another terminal message; Claude reads them and applies
+requested changes under the session's permissions. Open `/tasks` to find
+**Ryugi document and Artboard comments** under **Monitors**, or stop it there.
+The watch starts the first time a session loads `ryugi:artifacts`, so sessions
+that never open an artifact run no watcher. It then lasts for the session and
+also notices artifacts created later. A comment you resolve yourself does not
+wake Claude.
+
+This requires a Claude Code release with plugin monitors (tested on
+2.1.314); monitors don't start with `claude -p`. Other harnesses and older
+versions still read comments when asked. Claude's own hosted Artifacts
+keep their built-in comment watches.
+
 ## Antigravity
 
 ```bash
