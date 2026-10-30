@@ -23,6 +23,8 @@ id>"` for your recommended board (the viewer tags it), and a sticky beside
 - Real copy and data from their project, drawn with their design system
   when it has one.
 
+- Use ryugi:interface-craft for UI design judgment. If direction is the open question, compare coherent directions and explain their rationale; once chosen, keep the **selected visual direction** and tokens fixed while comparing one layout or interaction dimension per later group.
+
 Your message is one line on what's on the board, plus the link.
 
 ## Between Rounds

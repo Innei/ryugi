@@ -123,6 +123,8 @@ plus the link. Showing a mockup doesn't send every question to the
 browser. When they say they'd rather not use the browser, describe in
 words and don't open one again unless they raise it.
 
+**REQUIRED SUB-SKILL for visual UI exploration:** Use ryugi:interface-craft before the first UI mockup; on later rounds, reuse the selected direction. It informs design judgment, not another question or approval gate. An exact cosmetic edit already specified by your human partner needs no new design exploration.
+
 **Mockups of their product look like their product.** Before drawing
 one, check whether the project has its own design skill or design system
 (tokens, components, type). If it does, load it first and draw with it.

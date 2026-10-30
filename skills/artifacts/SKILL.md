@@ -65,6 +65,8 @@ intentional levers; the board consumes typed values through CSS and JS.
 
 ## Creative work
 
+For UI mockups, visual direction exploration and interface critique, use ryugi:interface-craft to inform choices; it adds no approval gate. Pure documentation, precise cosmetic edits and non-UI visualizations do not require it.
+
 Load the project's design system (tokens, components, type) before the first
 frame; if it has none, say which type, scale and palette you are using. Use
 real copy and data, never lorem ipsum.
