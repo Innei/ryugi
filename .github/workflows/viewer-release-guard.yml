@@ -28,6 +28,9 @@ jobs:
 
       - run: tests/viewer-release/test-check-viewer-release.sh
 
+      - name: Interface craft skill contracts
+        run: node tests/interface-craft/test-structure.mjs
+
   artifacts-tests:
     runs-on: ubuntu-latest
     defaults:
