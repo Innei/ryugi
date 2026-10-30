@@ -77,6 +77,7 @@ export function readCanvas(boardDir: string): CanvasPayload {
     delete canvas.writing;
     if (writing) canvas.writing = writing;
     const warnings = validateCanvas(canvas, (rel) => resolveBoardFile(boardDir, rel) !== null, {
+      artifact: path.basename(boardDir),
       pending,
       allowPending: true,
     });

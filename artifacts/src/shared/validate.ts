@@ -120,13 +120,20 @@ export function structuralWarnings(raw: unknown): string[] {
 export function validateCanvas(
   raw: unknown,
   fileExists: (file: string) => boolean,
-  options: { pending?: Set<string>; allowPending?: boolean } = {},
+  options: { artifact?: string; pending?: Set<string>; allowPending?: boolean } = {},
 ): string[] {
   const structural = structuralWarnings(raw);
   if (structural.length > 0) return structural;
 
   const canvas = raw as unknown as CanvasSpec;
   const warnings: string[] = [];
+  const artifactTitle = typeof canvas.title === 'string' ? canvas.title.trim() : '';
+  if (
+    options.artifact &&
+    artifactTitle &&
+    artifactTitle.toLowerCase() === options.artifact.toLowerCase()
+  )
+    warnings.push(`"title" must not repeat the artifact slug "${options.artifact}"`);
   const pages = new Set(canvas.pages.map((p) => p.id));
   const boards = Object.entries(canvas.boards);
   const groups = Object.entries(canvas.groups ?? {});

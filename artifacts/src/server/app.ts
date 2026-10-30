@@ -165,9 +165,14 @@ function readArtifactSource(
   };
 }
 
-function titleOf(payload: ArtifactPayload, ref: ArtifactRef) {
-  if ('title' in payload) return payload.title;
-  return payload.canvas?.title || ref.id;
+function titleOf(payload: ArtifactPayload) {
+  if ('title' in payload && typeof payload.title === 'string' && payload.title.trim())
+    return payload.title.trim();
+  if ('canvas' in payload) {
+    const title = payload.canvas?.title;
+    if (typeof title === 'string' && title.trim()) return title.trim();
+  }
+  return 'Untitled artifact';
 }
 
 export async function startArtifactsServer(options: ServerOptions): Promise<ArtifactsServer> {
@@ -290,7 +295,7 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
       reasons.push(`board ${payload.canvas.writing} is still being written`);
     }
     if (session?.streaming()) reasons.push('the document is still being written');
-    const title = titleOf(payload, ref);
+    const title = titleOf(payload);
     let published: Record<string, unknown> | null = null;
     if (reasons.length === 0) {
       try {
@@ -687,7 +692,7 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
       type: entry.type,
       id: entry.id,
       url: artifactPath(root, entry.type, entry.id),
-      title: titleOf(readArtifact(entry.dir, entry), entry),
+      title: titleOf(readArtifact(entry.dir, entry)),
       updatedAt: latestMtime(entry.dir),
     }));
     sendJson(res, 200, {
@@ -833,7 +838,7 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
       }
       try {
         const payload = readArtifact(dir, ref);
-        const title = titleOf(payload, ref);
+        const title = titleOf(payload);
         sendJson(res, 200, {
           ...publishPayload(ref, dir, title, payload),
           title,
@@ -865,7 +870,7 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
       try {
         const ref = { type: resolved.type, id: resolved.id };
         const payload = readArtifact(resolved.dir, ref);
-        const title = titleOf(payload, ref);
+        const title = titleOf(payload);
         const project = path.basename(path.dirname(path.dirname(root)));
         const svg = renderThumbnail(
           { id: ref.id, type: ref.type, title, project },
@@ -977,7 +982,7 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
       const project = path.basename(path.dirname(path.dirname(root)));
       const title = ref
         ? dir
-          ? titleOf(readArtifact(dir, ref), ref)
+          ? titleOf(readArtifact(dir, ref))
           : ref.id
         : `${project} · Artifacts`;
       const locale = resolveLocale(parseAcceptLanguage(req.headers['accept-language']));

@@ -74,11 +74,12 @@ comments.json in the artboard directory is the server's; never write it.
     }
   },
   "pages": [{ "id": "settings", "name": "Settings" }],
-  "title": "settings-page",
+  "title": "Settings page",
   "version": 1
 }
 ```
 
+- `title`: the artifact's display title. It must not equal the artifact id (the slug in `artboard/<id>`); `check` warns and `publish` refuses until it differs. Without a title the viewer shows "Untitled artifact", never the slug.
 - `pages`: separate canvases, each with its own coordinate space.
 - `boards`: keyed by a short, stable id your human partner can say out loud
   (`q1-a`, `hero-2`). Required: `file`, `page`, `x`, `y`, `w`, `h`. Optional:

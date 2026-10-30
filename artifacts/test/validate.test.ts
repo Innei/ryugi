@@ -7,6 +7,7 @@ const exists = () => true;
 
 const base = (): CanvasSpec => ({
   version: 1,
+  title: 'Settings page',
   pages: [{ id: 'p', name: 'P' }],
   boards: {
     a: { file: 'pages/p/a.html', page: 'p', x: 0, y: 0, w: 1280, h: 800 },
@@ -40,6 +41,16 @@ describe('validateCanvas', () => {
 
   test('a well-formed canvas has no warnings', () => {
     expect(validateCanvas(base(), exists)).toEqual([]);
+  });
+
+  test('rejects an artifact title that repeats its slug', () => {
+    expect(
+      validateCanvas({ ...base(), title: 'Settings-Page' }, exists, { artifact: 'settings-page' }),
+    ).toContain('"title" must not repeat the artifact slug "settings-page"');
+    expect(
+      validateCanvas({ ...base(), title: 'Settings page' }, exists, { artifact: 'settings-page' }),
+    ).toEqual([]);
+    expect(validateCanvas(base(), exists, { artifact: 'settings-page' })).toEqual([]);
   });
 
   test('rejects a value that is not an object', () => {
