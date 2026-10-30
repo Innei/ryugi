@@ -10,6 +10,10 @@
         "path": "skills/brainstorming/SKILL.md"
       },
       {
+        "id": "interface-craft",
+        "path": "skills/interface-craft/SKILL.md"
+      },
+      {
         "id": "executing-specs",
         "path": "skills/executing-specs/SKILL.md"
       },
@@ -39,7 +43,10 @@
       {
         "id": "session-start",
         "event": "SessionStart",
-        "command": ["bash", "hooks/session-start"],
+        "command": [
+          "bash",
+          "hooks/session-start"
+        ],
         "timeoutMs": 5000
       }
     ],
@@ -54,5 +61,5 @@
   "displayName": "Ryugi",
   "name": "ryugi",
   "schemaVersion": 1,
-  "version": "1.46.3"
+  "version": "1.47.0"
 }
