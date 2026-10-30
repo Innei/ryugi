@@ -146,7 +146,7 @@ test('pressing Enter on a focused diagram opens the viewer without editing the d
   await act(async () =>
     editor!.update(
       () => {
-        $getRoot().getFirstChildOrThrow<ParagraphNode>().select(2, 2);
+        ($getRoot().getFirstChildOrThrow() as ParagraphNode).select(2, 2);
       },
       { discrete: true },
     ),
