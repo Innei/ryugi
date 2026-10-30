@@ -10,13 +10,13 @@ npx ryugi-artifacts --no-open
 
 The local library shows content previews, type filters and title/id search. Sort by newest update, oldest update or name. Previews load as their cards come into view; opening a card takes you to the full artifact. The server reads `.ryugi/artifacts/` in the selected project and keeps the library in sync with file changes.
 
-The command reuses a running project server. Run from a subdirectory of a git repository, it uses the repository root's `.ryugi/artifacts/`, unless a directory between them already has its own. A new server stays in the terminal; Ctrl+C stops it and keeps your artifacts. Node.js is required.
+The command reuses a running project server. Agent calls to `start --artifact …` return links without activating a browser tab when reusing a server; `--open` explicitly opens or focuses that artifact. Run from a subdirectory of a git repository, it uses the repository root's `.ryugi/artifacts/`, unless a directory between them already has its own. A new server stays in the terminal; Ctrl+C stops it and keeps your artifacts. Node.js is required.
 
 The first successful server start while signed out recommends signing in to Ryugi Cloud for sharing and reviewing artifacts from other devices. Sign-in is optional and local work continues immediately. Run `npx ryugi-artifacts publish --login` in that project to get the sign-in URL. The recommendation appears once across projects on this machine, remembered as `login-hint-shown` beside the cloud credentials in the Ryugi configuration directory. Already signed-in accounts, help and version queries, and failed starts do not show it. With `start --json`, the same response includes `loginHint` with `message`, `command`, `projectDir`, and an `agentInstruction` asking the agent to relay the recommendation without waiting for sign-in; stdout remains one JSON line.
 
 Browser links use a stable random ID, such as `/document/<id>` or `/artboard/<id>?page=review`. The ID is 21 letters and digits, without `_` or `-`; IDs written by earlier releases are 32 hex characters (or carry `_`/`-`) and keep working. Files and CLI locators keep their readable slugs (`document/design-notes`). Each artifact stores its browser ID in `.artifact-id` inside its directory; keep that file when renaming or moving the directory within its type. Existing slug links still open and switch to the ID address. When duplicating an artifact as new work, omit `.artifact-id` from the copy so it receives its own ID; conflicting IDs are reported instead of choosing one copy.
 
-Artboard page links restore the selected page on refresh and support browser back and forward. Page changes also carry into cloud share links.
+Artboard page links restore the selected page on refresh and support browser back and forward. Page changes also carry into cloud share links. Agent updates preserve an open viewer's page, camera and comment draft; `activePage` and `focus` supply opening defaults. If the current page is deleted, the viewer falls back to an existing page.
 
 ## See and stop running servers
 

@@ -44,6 +44,8 @@ vi.mock('@lobehub/ui', async (original) => ({
 
 const state = vi.hoisted(() => ({
   video: false,
+  activePage: 'p',
+  focus: undefined as { target: string; at: string } | undefined,
   comments: { comments: { version: 1, threads: [] }, stale: [] } as {
     comments: BoardCommentsFile;
     stale: string[];
@@ -54,6 +56,8 @@ vi.mock('../src/viewer/hooks/useCanvasData', () => ({
   useCanvasData: () => ({
     canvas: {
       version: 1,
+      activePage: state.activePage,
+      focus: state.focus,
       pages: [
         { id: 'p', name: 'Page' },
         { id: 'q', name: 'Other' },
@@ -116,6 +120,8 @@ beforeEach(() => {
   state.comments = { comments: { version: 1, threads: [] }, stale: [] };
   state.comment = vi.fn(async () => state.comments);
   state.video = false;
+  state.activePage = 'p';
+  state.focus = undefined;
 });
 afterEach(() => {
   if (root) act(() => root!.unmount());
@@ -179,6 +185,100 @@ test('C turns on the comment tool and tells every board', async () => {
   expect(sent.some((message) => message.action === 'mode' && message.mode === 'comment')).toBe(
     true,
   );
+});
+
+test('C opens a node comment with keyboard focus in the layer tree', async () => {
+  const { host, report } = await mount();
+  await act(async () =>
+    host.querySelector<HTMLButtonElement>('[aria-label="Toggle inspector"]')!.click(),
+  );
+  const row = host.querySelector<HTMLElement>('[role="treeitem"]')!;
+  await report('selection', {
+    reason: 'command',
+    selection: {
+      id: 7,
+      name: 'shot',
+      tag: 'img',
+      selector: 'img',
+      rect: { x: 40, y: 60, width: 200, height: 100 },
+      html: '<img>',
+      css: Object.fromEntries(
+        (await import('../src/shared/inspector')).INSPECTOR_PROPERTIES.map((property) => [
+          property,
+          '0',
+        ]),
+      ),
+      widthMode: 'fixed',
+      heightMode: 'fixed',
+    },
+  });
+  await act(async () => {
+    row.focus();
+    row.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'c', code: 'KeyC', bubbles: true, cancelable: true }),
+    );
+  });
+  expect(host.querySelector('textarea[placeholder="Add a comment…"]')).not.toBeNull();
+  expect(host.textContent).toContain('Anchored to a');
+});
+
+test('tool shortcuts reach the canvas from a focused layer without consuming tree navigation', async () => {
+  const { host } = await mount();
+  await act(async () =>
+    host.querySelector<HTMLButtonElement>('[aria-label="Toggle inspector"]')!.click(),
+  );
+  const row = host.querySelector<HTMLElement>('[role="treeitem"]')!;
+  const viewport = host.querySelector('iframe')!.closest('[data-board]')!.parentElement!
+    .parentElement!;
+  row.focus();
+  const press = async (key: string, code: string) => {
+    const event = new KeyboardEvent('keydown', { key, code, bubbles: true, cancelable: true });
+    await act(async () => row.dispatchEvent(event));
+    return event;
+  };
+  expect((await press('h', 'KeyH')).defaultPrevented).toBe(true);
+  expect(viewport.style.cursor).toBe('grab');
+  await press('v', 'KeyV');
+  expect(viewport.style.cursor).toBe('default');
+  expect((await press('ArrowRight', 'ArrowRight')).defaultPrevented).toBe(true);
+  expect(host.querySelector('textarea')).toBeNull();
+});
+
+test.each([
+  ['active page', 'q', undefined],
+  ['focus on another page', 'p', { target: 'b', at: 'new-revision' }],
+  ['focus on the current page', 'p', { target: 'a', at: 'new-revision' }],
+] as const)('%s updates preserve a draft and the current camera', async (_, activePage, focus) => {
+  const { host, report } = await mount();
+  await key('c');
+  await report('drag', { phase: 'start', id: 7, x: 100, y: 100, append: false });
+  await report('drag', { phase: 'cancel', x: 100, y: 100, append: false });
+  const box = host.querySelector<HTMLTextAreaElement>('textarea[placeholder="Add a comment…"]')!;
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!.call(
+      box,
+      'Keep my draft',
+    );
+    box.dispatchEvent(new Event('input', { bubbles: true }));
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: '=', ctrlKey: true }));
+  });
+  const world = host.querySelector('iframe')!.closest('[data-board]')!.parentElement!;
+  const camera = world.style.transform;
+  state.activePage = activePage;
+  state.focus = focus;
+  await act(async () =>
+    root!.render(
+      createElement(ConfigProvider, {
+        motion,
+        enableCustomFonts: false,
+        children: createElement(ArtboardLayout, { id: 'review' }),
+      }),
+    ),
+  );
+  expect(host.querySelector('textarea')).toBe(box);
+  expect(box.value).toBe('Keep my draft');
+  expect(world.style.transform).toBe(camera);
+  expect(new URLSearchParams(location.search).get('page')).toBe('p');
 });
 
 test('the C that opens a draft never lands in it', async () => {

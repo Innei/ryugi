@@ -117,15 +117,17 @@ comments.json in the artboard directory is the server's; never write it.
   - `sticky`: yellow by default, `w` default 240. Optional `color` sets the
     background with `#RGB` or `#RRGGBB`; the viewer chooses readable text.
     Choose colors when useful, or omit the field. Plain text; `\n` starts a new line.
-- `activePage`: when you change it, the viewer switches to that page.
+- `activePage`: the opening page when the link has no `?page=` parameter.
+  Changing it preserves the page an already-open viewer is reading.
 - `focus`: `{ "target": <board, group or note id>, "at": <ISO time> }`.
-  Whenever `at` changes, the viewer switches to the target's page and zooms
-  to it. Set it when you want to direct attention, with a new `at`, so
-  your human partner lands on it — even if the target is the same as last
-  time. HTML updates alone keep the current camera. Any value different
-  from the previous one works; `date -u +%FT%TZ`
-  gives a real one. When a round adds several groups, target the one they
-  should look at first.
+  Chooses the initial question on phones and the group that must be ready
+  before the browser opens. A fresh desktop viewer opens `activePage` and
+  fits that page; a page link takes precedence on both desktop and phone.
+  Updates to `focus`, including a new `at`, preserve an open viewer's page,
+  camera and comment draft. Share a link with `?page=<page-id>` when you
+  want your human partner to visit new work. `date -u +%FT%TZ` gives a real
+  timestamp. When a round adds several groups, target the one they should
+  look at first on opening.
 
 ## Layout
 
@@ -322,11 +324,12 @@ resolve` refuses a reject, and passing the group closes it.
   content (keep earlier rounds; they are the history), add a title note for
   the round and a group for each of its sections.
 - Another area of the same topic (the settings screen after the header): add
-  a page and set `activePage` to it.
+  a page and set `activePage` as its opening default. Share its page link;
+  existing viewers keep their place.
 - A new topic: a new artboard artifact, with its own id and link.
 - Your human partner can override any of these ("put this on a new page").
 - A change to one board: edit its HTML file in place. Update `canvas.json`
-  only if its layout or metadata changes, or you want to redirect focus.
+  only if its layout, metadata or opening focus changes.
 
 ## After every change
 

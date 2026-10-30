@@ -19,10 +19,9 @@ const layout: CanvasLayout = { pages: {} };
 let root: Root | undefined;
 let current: ReturnType<typeof useArtboardPage>;
 const fitPage = vi.fn(() => true);
-const fitFocus = vi.fn();
 
 function Page({ spec }: { spec: CanvasSpec | null }) {
-  current = useArtboardPage({ canvas: spec, layout: spec ? layout : null, fitPage, fitFocus });
+  current = useArtboardPage({ canvas: spec, layout: spec ? layout : null, fitPage });
   return createElement('output', null, current.page);
 }
 async function render(spec: CanvasSpec | null = canvas) {
@@ -33,7 +32,6 @@ beforeEach(() => {
   history.replaceState({ keep: true }, '', '/artboard/abc?key=local-key');
   root = createRoot(document.body.appendChild(document.createElement('div')));
   fitPage.mockClear();
-  fitFocus.mockClear();
 });
 afterEach(() => {
   act(() => root?.unmount());
@@ -82,15 +80,32 @@ test.each(['missing', ''])(
   },
 );
 
-test('agent page changes replace the address while preserving other parameters and fragments', async () => {
+test('agent page changes preserve the current page, camera and address', async () => {
   history.replaceState(null, '', '/artboard/abc?page=first&other=keep#note');
   await render();
   const before = history.length;
+  fitPage.mockClear();
   await render({ ...canvas, activePage: 'review' });
-  expect(current.page).toBe('review');
-  expect(location.search).toBe('?page=review&other=keep');
+  expect(current.page).toBe('first');
+  expect(location.search).toBe('?page=first&other=keep');
   expect(location.hash).toBe('#note');
   expect(history.length).toBe(before);
+  expect(fitPage).not.toHaveBeenCalled();
+});
+
+test('a newly focused board does not navigate away from the current page', async () => {
+  await render();
+  fitPage.mockClear();
+  await render({
+    ...canvas,
+    boards: {
+      revision: { page: 'review', file: 'pages/review/a.html', x: 0, y: 0, w: 600, h: 400 },
+    },
+    focus: { target: 'revision', at: 'new-revision' },
+  });
+  expect(current.page).toBe('first');
+  expect(location.search).toBe('?key=local-key&page=first');
+  expect(fitPage).not.toHaveBeenCalled();
 });
 
 test('clearing the agent active page preserves the page the human partner chose', async () => {

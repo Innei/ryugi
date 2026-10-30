@@ -9,7 +9,7 @@ import {
   useState,
 } from 'react';
 
-import type { Bounds, CanvasLayout, CanvasSpec } from '../../shared/types';
+import type { CanvasLayout, CanvasSpec } from '../../shared/types';
 import { Canvas } from '../components/Canvas';
 import { CanvasErrorBoundary } from '../components/CanvasErrorBoundary';
 import { Labels } from '../components/Labels';
@@ -127,23 +127,10 @@ export function PhoneArtboard({
     },
     [canvas, layout, fit, show],
   );
-  const fitFocus = useCallback(
-    (target: string, resolved: { page: string; bounds: Bounds }) => {
-      if (
-        canvas &&
-        layout &&
-        show(openingQuestion(roundsOf(canvas, layout, resolved.page), target))
-      )
-        return;
-      fit(resolved.bounds, INSETS);
-    },
-    [canvas, layout, fit, show],
-  );
   const { page, changePage } = useArtboardPage({
     canvas,
     layout,
     fitPage,
-    fitFocus,
     startAtFocus: true,
   });
 

@@ -8,7 +8,6 @@ import type { BoardHumanOp } from '../../shared/board-comments';
 import type { InspectorReport } from '../../shared/inspector';
 import type { SelectionMessage } from '../../shared/selection';
 import { reconcileTweakValues } from '../../shared/tweaks';
-import type { Bounds } from '../../shared/types';
 import { CommentsPanel, type CommentsTab } from '../comments/CommentsPanel';
 import { Canvas } from '../components/Canvas';
 import { CanvasErrorBoundary } from '../components/CanvasErrorBoundary';
@@ -38,6 +37,7 @@ import { InspectorPanel } from '../inspector/InspectorPanel';
 import { pinPoint } from '../lib/board-anchor';
 import type { BoardCommentsState } from '../lib/board-comments';
 import { visibleRenders } from '../lib/board-tiers';
+import { isComposing } from '../lib/keyboard';
 import { togglePlaying } from '../lib/play';
 import { revealTweakPanel, tweakPanelAnchor, TweaksPanel } from '../tweaks/TweaksPanel';
 import { RejectComposer } from '../verdicts/RejectComposer';
@@ -139,11 +139,7 @@ function DesktopArtboard({
     },
     [layout, fit],
   );
-  const fitFocus = useCallback(
-    (_target: string, resolved: { bounds: Bounds }) => fit(resolved.bounds),
-    [fit],
-  );
-  const { page, changePage } = useArtboardPage({ canvas, layout, fitPage, fitFocus });
+  const { page, changePage } = useArtboardPage({ canvas, layout, fitPage });
   const [expanded, setExpanded] = useState<string | null>(null);
   const [playing, setPlaying] = useState<ReadonlySet<string>>(() => new Set());
   const [replays, setReplays] = useState<Record<string, number>>({});
@@ -255,9 +251,11 @@ function DesktopArtboard({
   function onKey(e: KeyboardEvent | Extract<InspectorReport, { type: 'ryugi:inspect:key' }>) {
     if (
       'target' in e &&
-      (e.target as HTMLElement | null)?.closest?.(
-        'input, textarea, select, [contenteditable], [role="tree"], [role="treeitem"], [data-chrome="parameters"]',
-      )
+      (e.defaultPrevented ||
+        isComposing(e) ||
+        (e.target as HTMLElement | null)?.closest?.(
+          'input, textarea, select, [contenteditable], [data-chrome="parameters"]',
+        ))
     )
       return;
     const prevent = () => {
@@ -281,9 +279,13 @@ function DesktopArtboard({
       zoomBy(0.8);
     } else if (e.shiftKey && e.code === 'Digit1') fit(pageBounds(page));
     else if (e.shiftKey && e.code === 'Digit0') zoomTo(1);
-    else if (!mod && !e.shiftKey && e.key.toLowerCase() === 'v') changeTool('select');
-    else if (!mod && !e.shiftKey && e.key.toLowerCase() === 'h') changeTool('hand');
-    else if (!mod && !e.shiftKey && e.key.toLowerCase() === 'c') {
+    else if (!mod && !e.shiftKey && e.key.toLowerCase() === 'v') {
+      prevent();
+      changeTool('select');
+    } else if (!mod && !e.shiftKey && e.key.toLowerCase() === 'h') {
+      prevent();
+      changeTool('hand');
+    } else if (!mod && !e.shiftKey && e.key.toLowerCase() === 'c') {
       prevent();
       changeTool('comment');
     }

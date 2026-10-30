@@ -1,27 +1,18 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import type { Bounds, CanvasLayout, CanvasSpec } from '../../shared/types';
+import type { CanvasLayout, CanvasSpec } from '../../shared/types';
 import { resolveFocus } from '../lib/view';
 import { usePageQuery } from './usePageQuery';
 
 interface Options {
   canvas: CanvasSpec | null | undefined;
-  fitFocus: (target: string, resolved: { page: string; bounds: Bounds }) => void;
   fitPage: (page: string) => boolean;
   layout: CanvasLayout | null | undefined;
   startAtFocus?: boolean;
 }
 
-export function useArtboardPage({
-  canvas,
-  layout,
-  fitPage,
-  fitFocus,
-  startAtFocus = false,
-}: Options) {
+export function useArtboardPage({ canvas, layout, fitPage, startAtFocus = false }: Options) {
   const [page, setPage] = useState<string | null>(null);
-  const seenActivePage = useRef<string | undefined>(undefined);
-  const seenFocusAt = useRef<string | undefined>(undefined);
   const pendingFit = useRef<string | null>(null);
   const initialized = useRef(false);
   const [requested, writePage] = usePageQuery();
@@ -44,8 +35,6 @@ export function useArtboardPage({
 
     if (!initialized.current) {
       initialized.current = true;
-      seenActivePage.current = canvas.activePage;
-      seenFocusAt.current = canvas.focus?.at;
       const focused =
         startAtFocus && canvas.focus
           ? resolveFocus(canvas, layout, canvas.focus.target)?.page
@@ -60,39 +49,15 @@ export function useArtboardPage({
     }
 
     if (requested !== seenRequested.current) {
-      seenFocusAt.current = canvas.focus?.at;
-      seenActivePage.current = canvas.activePage;
       selectPage(valid(requested) ?? firstPage);
       return;
     }
 
-    const focus = canvas.focus;
-    if (focus && focus.at !== seenFocusAt.current) {
-      seenFocusAt.current = focus.at;
-      seenActivePage.current = canvas.activePage;
-      const target = resolveFocus(canvas, layout, focus.target);
-      if (target) {
-        setPage(target.page);
-        pendingFit.current = null;
-        seenRequested.current = target.page;
-        writePage(target.page, true);
-        fitFocus(focus.target, target);
-        return;
-      }
-    }
-
-    if (canvas.activePage !== seenActivePage.current) {
-      seenActivePage.current = canvas.activePage;
-      if (canvas.activePage) {
-        selectPage(valid(canvas.activePage) ?? firstPage);
-        return;
-      }
-    }
-
+    // Agent updates supply opening defaults; navigation and the camera belong to this viewer.
     if (!page || !canvas.pages.some((p) => p.id === page)) {
       selectPage(firstPage);
     }
-  }, [canvas, layout, fitFocus, page, startAtFocus, requested, selectPage, writePage]);
+  }, [canvas, layout, page, startAtFocus, requested, selectPage]);
 
   useEffect(() => {
     if (pendingFit.current === null || pendingFit.current !== page) return;

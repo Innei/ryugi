@@ -27,6 +27,7 @@ export interface StartOptions {
   host: string;
   idleTimeoutMinutes?: string;
   open: boolean;
+  openExisting?: boolean;
   projectDir: string;
   urlHost?: string;
 }
@@ -211,6 +212,7 @@ export async function start(options: StartOptions, emit: Emit): Promise<number> 
         if (
           process.platform === 'darwin' &&
           options.open &&
+          options.openExisting &&
           options.artifact &&
           !process.env.ARTIFACTS_OPEN_CMD
         ) {
@@ -327,7 +329,10 @@ export const startCommand: CommandSpec = {
       value: '<n>',
       help: 'Stop after this many idle minutes (default: 240)',
     },
-    'open': { type: 'boolean', help: 'Open the artifact in a browser even when ARTIFACTS_OPEN=0' },
+    'open': {
+      type: 'boolean',
+      help: 'Open or focus the artifact, including when reusing a server',
+    },
     'no-open': { type: 'boolean', help: 'Do not open a browser' },
     'foreground': { type: 'boolean', help: 'Run the server in this process until Ctrl+C' },
     'no-daemon': { type: 'boolean' },
@@ -346,6 +351,7 @@ export const startCommand: CommandSpec = {
         urlHost: values['url-host'] as string | undefined,
         idleTimeoutMinutes: values['idle-timeout-minutes'] as string | undefined,
         open: values['no-open'] ? false : values.open ? true : process.env.ARTIFACTS_OPEN !== '0',
+        openExisting: !!values.open,
         foreground: !!(values.foreground || values['no-daemon']),
         background: !!(values.background || values.daemon),
       },

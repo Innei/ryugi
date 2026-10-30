@@ -80,9 +80,13 @@ describe('ryugi-artifacts start', () => {
     expect(second.reused).toBe(true);
   }, 30000);
 
-  test.skipIf(process.platform !== 'darwin')(
-    'reusing a server focuses its existing artifact tab without opening another',
-    () => {
+  test.skipIf(process.platform !== 'darwin').each([
+    { flags: [], focuses: 0 },
+    { flags: ['--open'], focuses: 2 },
+    { flags: ['--open', '--no-open'], focuses: 0 },
+  ])(
+    'reusing a server only focuses its artifact tab when explicitly requested: $flags',
+    ({ flags, focuses }) => {
       const project = newProject();
       const bin = fs.mkdtempSync(path.join(os.tmpdir(), 'artifacts-browser-bin-'));
       const checked = path.join(bin, 'checked');
@@ -100,11 +104,17 @@ describe('ryugi-artifacts start', () => {
       const args = ['start', '--project-dir', project, '--artifact', 'document/notes'];
       run(args);
       for (let i = 0; i < 2; i++) {
-        const { code, out } = run([...args, '--open'], { PATH: `${bin}:${process.env.PATH}` });
+        const { code, out } = run([...args, ...flags], {
+          ARTIFACTS_OPEN: '1',
+          PATH: `${bin}:${process.env.PATH}`,
+        });
         expect(code).toBe(0);
         expect(out.reused).toBe(true);
       }
-      expect(fs.readFileSync(checked, 'utf8').trim().split('\n')).toEqual(['focus', 'focus']);
+      const activations = fs.existsSync(checked)
+        ? fs.readFileSync(checked, 'utf8').trim().split('\n')
+        : [];
+      expect(activations).toHaveLength(focuses);
       expect(fs.existsSync(opened)).toBe(false);
     },
     30000,
