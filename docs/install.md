@@ -49,6 +49,29 @@ The repository carries the manifests (`.codex-plugin/`,
 either official marketplace. Add this repository as a local plugin source
 following your harness's plugin docs.
 
+In Codex CLI, review and trust Ryugi's new hook definitions in `/hooks`
+after installing or updating. The Codex hooks are separate from the Claude
+Code bootstrap. They start a background comment watcher and stop it when
+the session ends; repeated startup or compaction hooks share one watcher.
+The background hook expires after 24 hours; the next user prompt restarts it.
+
+The artifacts launcher registers each document or Artboard opened by the
+current session. Only those artifacts can send review comments back to it;
+opening the artifact library registers the project. Notifications use
+`codex queue --resume`, so they wake an idle session or wait behind its
+current turn. They appear as queued user messages. Changes that have
+already been resolved are skipped, including during a delivery retry.
+
+This requires a Codex CLI with `queue --resume` and background hooks
+(tested on 0.166.0). A host launched with `--listen` supplies its endpoint
+automatically on macOS and Linux. For another host, including Windows,
+set `RYUGI_CODEX_REMOTE` to its `unix://`, `ws://`, or `wss://` endpoint in
+the hook execution environment; `RYUGI_CODEX_REMOTE_AUTH_TOKEN_ENV` can
+name an environment variable holding its authentication token. A stdio
+host without a reachable endpoint cannot receive queue messages.
+
+These lifecycle hooks apply to Codex; Cursor keeps its own integration.
+
 ## Devin CLI
 
 ```bash

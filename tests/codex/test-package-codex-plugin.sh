@@ -141,7 +141,6 @@ tar_extracted="$TEST_ROOT/tar-extracted"
 write_metadata_fixture "$metadata_source"
 
 source_hooks="$(python3 -c 'import json; print(json.load(open("'"$REPO_ROOT"'/.codex-plugin/plugin.json")).get("hooks"))')"
-assert_equals "$source_hooks" "{}" "source Codex manifest suppresses local hook auto-discovery"
 
 if output="$("$SCRIPT_UNDER_TEST" --allow-dirty --metadata-source "$metadata_source" --output "$archive" 2>&1)"; then
   pass "package script exits successfully"
@@ -174,6 +173,16 @@ assert_contains "$archive_paths" "assets/ryugi-small.svg" "archive includes comp
 manifest_summary="$(read_archive_file "$archive" .codex-plugin/plugin.json | python3 -c 'import json,sys; data=json.load(sys.stdin); print("\t".join([data["name"], data["version"], data["skills"], str(data.get("hooks"))]))')"
 expected_version="$(python3 -c 'import json; print(json.load(open("'"$REPO_ROOT"'/.codex-plugin/plugin.json"))["version"])')"
 assert_equals "$manifest_summary" "ryugi	$expected_version	./skills/	$source_hooks" "archive manifest preserves source hooks"
+
+# Run the manifest's actual lifecycle command from the extracted archive.
+# This catches a declared hook whose module or shared watcher was not shipped.
+mkdir -p "$extracted/tests/hooks"
+cp "$REPO_ROOT/tests/hooks/test-codex-comment-watch.cjs" "$extracted/tests/hooks/"
+if node --test --test-name-pattern="shipped lifecycle" "$extracted/tests/hooks/test-codex-comment-watch.cjs"; then
+  pass "packaged lifecycle hooks deliver comments and stop on SessionEnd"
+else
+  fail "packaged lifecycle hooks deliver comments and stop on SessionEnd"
+fi
 
 skill_count="$(find "$extracted/skills" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')"
 metadata_count="$(find "$extracted/skills" -path '*/agents/openai.yaml' -type f | wc -l | tr -d ' ')"

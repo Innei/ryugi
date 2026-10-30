@@ -188,6 +188,15 @@ function ownerPid() {
 
 function main() {
   const args = process.argv.slice(2);
+  if (process.env.CODEX_THREAD_ID) {
+    try {
+      require('./codex-comment-watch.cjs').register(args);
+    } catch (error) {
+      // Older standalone launcher copies still run normally without the optional integration.
+      if (error.code !== 'MODULE_NOT_FOUND')
+        console.error(JSON.stringify({ type: 'comment-watch-error', message: error.message }));
+    }
+  }
   const local = path.join(__dirname, 'cli.cjs');
   const env = {
     ...process.env,

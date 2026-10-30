@@ -6,7 +6,7 @@
   },
   "description": "An agentic skills framework & software development methodology that works: planning, TDD, debugging, and collaboration workflows.",
   "homepage": "https://github.com/Innei/ryugi",
-  "hooks": {},
+  "hooks": "./skills/artifacts/app/codex-hooks.json",
   "interface": {
     "displayName": "Ryugi",
     "shortDescription": "Brainstorm with mockups, approve a spec, build it under TDD",
