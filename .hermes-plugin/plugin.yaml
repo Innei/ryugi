@@ -1,5 +1,5 @@
 name: ryugi
-version: 1.49.2
+version: 1.49.3
 description: Ryugi skills and workflow bootstrap for Hermes Agent
 author: Innei
 provides_hooks:
