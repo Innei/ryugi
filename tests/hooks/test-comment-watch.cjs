@@ -1,7 +1,8 @@
 'use strict';
 
 const assert = require('node:assert/strict');
-const { execFileSync, spawn } = require('node:child_process');
+const { execFileSync, spawn, spawnSync } = require('node:child_process');
+const { randomUUID } = require('node:crypto');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
@@ -192,44 +193,103 @@ test('notification commands preserve paths with spaces, apostrophes and shell su
   assert.ok(!fs.existsSync(path.join(f.project, 'WRONG')));
 });
 
-test('the declared plugin monitor notices artifacts created later from a repository subdirectory', async (t) => {
-  const f = fixture(t);
-  fs.mkdirSync(path.join(f.project, '.git'));
-  const cwd = path.join(f.project, 'packages/app');
-  fs.mkdirSync(cwd, { recursive: true });
+function monitor(t, cwd, overrides) {
   const config = path.join(repo, 'monitors/monitors.json');
   // A missing declaration is the baseline: Claude has no process to receive events from.
   const entries = fs.existsSync(config) ? JSON.parse(fs.readFileSync(config, 'utf8')) : [];
   const entry = entries.find((item) => item.name === 'artifact-comments');
-  const env = { ...process.env, CLAUDE_PLUGIN_ROOT: repo, CLAUDE_PROJECT_DIR: cwd };
-  let output = '';
-  let errors = '';
+  const env = {
+    ...process.env,
+    CLAUDE_CODE_SESSION_ID: undefined,
+    CLAUDE_PLUGIN_ROOT: repo,
+    CLAUDE_PROJECT_DIR: cwd,
+    ...overrides,
+  };
   const child =
     entry && spawn(entry.command, { cwd, env, shell: true, stdio: ['ignore', 'pipe', 'pipe'] });
-  if (child) {
-    child.stdout.on('data', (data) => {
-      output += data;
+  const state = { output: '', errors: '', child };
+  if (state.child) {
+    state.child.stdout.on('data', (data) => {
+      state.output += data;
     });
-    child.stderr.on('data', (data) => {
-      errors += data;
+    state.child.stderr.on('data', (data) => {
+      state.errors += data;
     });
     t.after(async () => {
+      const { child } = state;
       if (child.exitCode !== null || child.signalCode !== null) return;
       const exited = new Promise((resolve) => child.once('exit', resolve));
       child.kill();
       await exited;
     });
   }
+  return state;
+}
+
+function launcher(t) {
+  const app = fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-comment-launcher-'));
+  t.after(() => fs.rmSync(app, { recursive: true, force: true }));
+  const source = path.join(repo, 'skills/artifacts/app');
+  for (const name of fs.readdirSync(source))
+    if (/\.(?:cjs|json)$/.test(name))
+      fs.copyFileSync(path.join(source, name), path.join(app, name));
+  fs.writeFileSync(path.join(app, 'cli.cjs'), "console.log('{}');\n");
+  return (project, session, ...args) => {
+    const result = spawnSync(
+      process.execPath,
+      [path.join(app, 'ryugi-artifacts.cjs'), ...args, '--json', '--project-dir', project],
+      { env: { ...process.env, CLAUDE_CODE_SESSION_ID: session }, encoding: 'utf8' },
+    );
+    assert.equal(result.status, 0, result.stderr);
+  };
+}
+
+async function until(check, deadlineMs = 3500) {
+  const deadline = Date.now() + deadlineMs;
+  while (!check() && Date.now() < deadline) await delay(30);
+}
+
+test('a Claude Code session hears only comments on artifacts it opened through the launcher', async (t) => {
+  const f = fixture(t);
+  const run = launcher(t);
+  const mine = randomUUID();
+  const other = randomUUID();
+  const watcher = monitor(t, f.project, { CLAUDE_CODE_SESSION_ID: mine });
+  run(f.project, mine, 'start', '--artifact', 'artboard/chat');
+  run(f.project, other, 'start', '--artifact', 'artboard/mac-app-shell');
+  run(f.project, mine, 'start');
   await delay(1200);
-  assert.equal(output, '');
+  f.save('artboard/mac-app-shell', [thread()]);
   f.save('document/plan', [thread()]);
-  const deadline = Date.now() + 3500;
-  while (
-    !output.includes('document/plan') &&
-    Date.now() < deadline &&
-    (!child || child.exitCode === null)
-  )
-    await delay(30);
+  await delay(1500);
+  assert.equal(watcher.output, '', "another session's artifact woke this session");
+  f.save('artboard/chat', [thread()]);
+  await until(() => watcher.output.includes('artboard/chat'));
+  assert.deepEqual(
+    watcher.output
+      .trim()
+      .split('\n')
+      .map((line) => JSON.parse(line).artifact),
+    ['artboard/chat'],
+    watcher.errors,
+  );
+});
+
+test('the declared plugin monitor notices artifacts created later from a repository subdirectory', async (t) => {
+  const f = fixture(t);
+  fs.mkdirSync(path.join(f.project, '.git'));
+  const cwd = path.join(f.project, 'packages/app');
+  fs.mkdirSync(cwd, { recursive: true });
+  const watcher = monitor(t, cwd, {});
+  await delay(1200);
+  assert.equal(watcher.output, '');
+  f.save('document/plan', [thread()]);
+  await until(
+    () =>
+      watcher.output.includes('document/plan') ||
+      (watcher.child && watcher.child.exitCode !== null),
+  );
+  const { output, errors } = watcher;
   assert.ok(output.includes('document/plan'), `No automatic comment notification. ${errors}`);
   const events = output
     .trim()
@@ -238,5 +298,5 @@ test('the declared plugin monitor notices artifacts created later from a reposit
   assert.equal(events[0].artifact, 'document/plan');
   const count = events.length;
   await delay(1200);
-  assert.equal(output.trim().split('\n').length, count);
+  assert.equal(watcher.output.trim().split('\n').length, count);
 });

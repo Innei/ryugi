@@ -3,6 +3,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { unreadThreadCount } = require('./comment-threads.cjs');
+const { sessionOf, subscriptions } = require('./comment-subscriptions.cjs');
 
 const cursorKey = (env) => (env.CLAUDE_CODE_IS_COWORK ? 'Claude Cowork' : 'Claude Code');
 
@@ -95,9 +96,13 @@ function createCommentWatch(project, key = cursorKey(process.env)) {
 }
 
 function main() {
-  const poll = createCommentWatch(process.argv[2] || process.cwd());
+  const project = process.argv[2] || process.cwd();
+  const poll = createCommentWatch(project);
+  // Without a session ID (older Claude Code) there is nothing to route by, so every artifact counts.
+  const session = sessionOf('claude');
   const emit = () => {
-    for (const event of poll()) process.stdout.write(`${JSON.stringify(event)}\n`);
+    const artifacts = session ? subscriptions(project, 'claude', session) : undefined;
+    for (const event of poll(artifacts)) process.stdout.write(`${JSON.stringify(event)}\n`);
   };
   emit();
   const timer = setInterval(emit, 1000);

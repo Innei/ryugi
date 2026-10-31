@@ -3,29 +3,15 @@
 const { execFile, execFileSync } = require('node:child_process');
 const { randomUUID } = require('node:crypto');
 const fs = require('node:fs');
-const os = require('node:os');
 const path = require('node:path');
 const { createCommentWatch, unreadCount } = require('./comment-watch.cjs');
-
-const UUID = /^[\da-f]{8}(?:-[\da-f]{4}){3}-[\da-f]{12}$/i;
-const ARTIFACT = /^(?:document|artboard)\/[a-z0-9][a-z0-9-]*$/;
+const { projectRoot, register, subscriptionFile, UUID } = require('./comment-subscriptions.cjs');
 
 function readJson(file) {
   try {
     return JSON.parse(fs.readFileSync(file, 'utf8'));
   } catch {
     return null;
-  }
-}
-
-function projectRoot(cwd) {
-  const dir = fs.realpathSync(cwd);
-  const chain = [];
-  for (let current = dir; ; current = path.dirname(current)) {
-    chain.push(current);
-    if (fs.existsSync(path.join(current, '.git')) && (current !== os.homedir() || dir === current))
-      return chain.find((item) => fs.existsSync(path.join(item, '.ryugi/artifacts'))) || current;
-    if (path.dirname(current) === current) return dir;
   }
 }
 
@@ -83,37 +69,8 @@ function context(input, env = process.env) {
     session: input.session_id,
     project,
     file: path.join(data, 'codex-comment-watch', 'workers', `${input.session_id}.json`),
-    subscriptions: subscriptionFile(project, input.session_id),
+    subscriptions: subscriptionFile(project, 'codex', input.session_id),
   };
-}
-
-function subscriptionFile(project, session) {
-  return path.join(project, '.ryugi/artifacts/.state/codex-comment-watch', `${session}.json`);
-}
-
-// The launcher knows the real argv and cwd; hook text cannot safely reconstruct shell commands.
-function register(args, env = process.env) {
-  const session = env.CODEX_THREAD_ID;
-  if (!UUID.test(session || '')) return;
-  const option = (name) => {
-    const index = args.indexOf(name);
-    return index >= 0
-      ? args[index + 1]
-      : args.find((arg) => arg.startsWith(`${name}=`))?.slice(name.length + 1);
-  };
-  const artifact = option('--artifact') || (args[0] === 'start' ? '*' : null);
-  if (artifact !== '*' && !ARTIFACT.test(artifact || '')) return;
-  const project = projectRoot(option('--project-dir') || process.cwd());
-  const file = subscriptionFile(project, session);
-  const previous = readJson(file);
-  const artifacts = new Set(Array.isArray(previous?.artifacts) ? previous.artifacts : []);
-  artifacts.add(artifact);
-  fs.mkdirSync(path.dirname(file), { recursive: true });
-  fs.writeFileSync(
-    file,
-    JSON.stringify({ artifacts: [...artifacts], updatedAt: new Date().toISOString() }),
-    { mode: 0o600 },
-  );
 }
 
 function alive(pid) {

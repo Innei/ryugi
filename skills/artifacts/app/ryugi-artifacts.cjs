@@ -188,9 +188,9 @@ function ownerPid() {
 
 function main() {
   const args = process.argv.slice(2);
-  if (process.env.CODEX_THREAD_ID) {
+  if (process.env.CODEX_THREAD_ID || process.env.CLAUDE_CODE_SESSION_ID) {
     try {
-      require('./codex-comment-watch.cjs').register(args);
+      require('./comment-subscriptions.cjs').register(args);
     } catch (error) {
       // Older standalone launcher copies still run normally without the optional integration.
       if (error.code !== 'MODULE_NOT_FOUND')
