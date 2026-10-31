@@ -37,7 +37,7 @@ const styles = stylex.create({
 export function ArtifactThumbnail({ src, type }: { src?: string | null; type: ArtifactType }) {
   const [failed, setFailed] = useState<string | null>(null);
   return (
-    <div aria-hidden="true" {...stylex.props(styles.thumbnail)}>
+    <div data-library-thumbnail aria-hidden="true" {...stylex.props(styles.thumbnail)}>
       <TypeIcon size={24} type={type} />
       {src && failed !== src && (
         <img

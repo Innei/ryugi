@@ -65,3 +65,8 @@ test('without a source only the type icon shows', () => {
   expect(host.querySelector('img')).toBeNull();
   expect(host.querySelector('svg')).not.toBeNull();
 });
+
+test('the thumbnail box carries a stable hook that hosts size it by', () => {
+  render('/api/thumbnail/artboard/ideas.svg?v=1');
+  expect(host.querySelector('[data-library-thumbnail] > img')).not.toBeNull();
+});
