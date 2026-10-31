@@ -221,7 +221,6 @@ test('cloud disconnect closes history while preserving the original editor insta
     state: async () => ({
       snapshot: Buffer.from(doc.export({ mode: 'snapshot' })).toString('base64'),
       lineage: doc.getTree('lexical').roots()[0]!.id,
-      cursor: null,
     }),
     update: async (bytes) => {
       updates.push(bytes);
@@ -280,7 +279,6 @@ function localTransport(doc: LoroDoc): DocumentTransport {
     state: async () => ({
       snapshot: Buffer.from(doc.export({ mode: 'snapshot' })).toString('base64'),
       lineage: doc.getTree('lexical').roots()[0]!.id,
-      cursor: null,
     }),
     update: async () => {},
     comment: async () => ({ version: 1, threads: [] }),

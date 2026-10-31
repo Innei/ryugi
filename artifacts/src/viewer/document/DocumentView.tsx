@@ -11,6 +11,7 @@ import { PHONE_QUERY, useMedia } from '../hooks/useMedia';
 import { useTypeFavicon } from '../hooks/useTypeFavicon';
 import { t } from '../i18n';
 import { agentActivity } from './agentActivity';
+import type { AgentPlaybackState } from './AgentPlayback';
 import type { ThreadActions } from './CommentCard';
 import { DesktopDocument } from './DesktopDocument';
 import { DocumentEditor, extraNodes } from './DocumentEditor';
@@ -67,6 +68,8 @@ function useAssetBase(contentBase: string | undefined) {
   }, [contentBase]);
 }
 
+const IDLE_PLAYBACK: AgentPlaybackState = { playing: false, section: null };
+
 export interface CloudLive {
   canEdit: boolean;
   online: boolean;
@@ -98,7 +101,7 @@ export function DocumentView({
   const syncClock = useCallback((serverNow: number | undefined) => {
     if (serverNow !== undefined) setClockOffset(serverNow - Date.now());
   }, []);
-  const [section, setSection] = useState<string | null>(null);
+  const [playback, setPlayback] = useState<AgentPlaybackState>(IDLE_PLAYBACK);
   const [offline, setOffline] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const historyAvailable = !cloud || (cloud.online && !offline);
@@ -213,7 +216,7 @@ export function DocumentView({
   const pendingBlocks = usePendingBlocks(editor);
   const now = useNow(pendingBlocks.count > 0 && !streaming);
   const activity = agentActivity({
-    streaming,
+    editing: playback.playing || streaming,
     pending: pendingBlocks.count,
     agentActiveAt,
     now: now + clockOffset,
@@ -295,7 +298,7 @@ export function DocumentView({
           doc={doc}
           theme={dark ? 'dark' : 'light'}
           transport={transport}
-          onAgentSection={setSection}
+          onAgentPlayback={setPlayback}
           onEditorReady={setEditor}
           onOffline={setOffline}
           onState={onState}
@@ -313,7 +316,7 @@ export function DocumentView({
         actions={barActions}
         activity={activity}
         agent={meta?.agent}
-        agentSection={section}
+        agentSection={playback.section}
         cloud={cloud}
         compact={phone}
         id={id}

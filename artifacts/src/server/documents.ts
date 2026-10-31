@@ -21,7 +21,6 @@ import {
 } from './document-session';
 
 export interface DocumentTiming {
-  stepDelayMs?: number;
   writeDelayMs?: number;
 }
 
@@ -136,8 +135,6 @@ export function createDocumentRegistry(options: RegistryOptions): DocumentRegist
           artifact,
           bytes: Buffer.from(event.bytes).toString('base64'),
         });
-      } else if (event.type === 'cursor') {
-        options.broadcast({ type: 'doc-cursor', artifact, cursor: event.cursor });
       } else if (event.type === 'saved') {
         setWarnings(currentWarnings());
       } else {

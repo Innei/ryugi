@@ -7,25 +7,25 @@ const now = 1_000_000_000;
 describe('agentActivity', () => {
   test('a write in progress is editing, whatever is left', () => {
     expect(
-      agentActivity({ streaming: true, pending: 0, agentActiveAt: now - STALE_MS * 2, now }),
+      agentActivity({ editing: true, pending: 0, agentActiveAt: now - STALE_MS * 2, now }),
     ).toEqual({ kind: 'editing' });
   });
 
   test('nothing pending is idle', () => {
-    expect(agentActivity({ streaming: false, pending: 0, agentActiveAt: now - 1000, now })).toEqual(
-      { kind: 'idle' },
-    );
+    expect(agentActivity({ editing: false, pending: 0, agentActiveAt: now - 1000, now })).toEqual({
+      kind: 'idle',
+    });
   });
 
   test('pending sections with a recent write are still being worked on', () => {
-    expect(
-      agentActivity({ streaming: false, pending: 3, agentActiveAt: now - 40_000, now }),
-    ).toEqual({ kind: 'working', pending: 3, idleMs: 40_000 });
+    expect(agentActivity({ editing: false, pending: 3, agentActiveAt: now - 40_000, now })).toEqual(
+      { kind: 'working', pending: 3, idleMs: 40_000 },
+    );
   });
 
   test('pending sections with no write for the stale window may be abandoned', () => {
     expect(
-      agentActivity({ streaming: false, pending: 2, agentActiveAt: now - STALE_MS - 1, now }),
+      agentActivity({ editing: false, pending: 2, agentActiveAt: now - STALE_MS - 1, now }),
     ).toEqual({
       kind: 'stale',
       pending: 2,
@@ -34,7 +34,7 @@ describe('agentActivity', () => {
   });
 
   test('without a write time it never turns stale', () => {
-    expect(agentActivity({ streaming: false, pending: 2, agentActiveAt: undefined, now })).toEqual({
+    expect(agentActivity({ editing: false, pending: 2, agentActiveAt: undefined, now })).toEqual({
       kind: 'working',
       pending: 2,
       idleMs: null,

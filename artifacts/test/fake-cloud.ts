@@ -190,7 +190,7 @@ export async function start({
     urlHost: 'localhost',
     configFile,
     cloud: { origin: cloud.origin, credentialsFile },
-    ...(writeDelayMs === undefined ? {} : { documentTiming: { stepDelayMs: 0, writeDelayMs } }),
+    ...(writeDelayMs === undefined ? {} : { documentTiming: { writeDelayMs } }),
   });
   running.push(server);
   return { server, root: temp.root, configFile, ryugiDir, credentialsFile, cloud };

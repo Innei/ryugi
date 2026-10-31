@@ -405,7 +405,6 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
     streaming: session.streaming(),
     agentActiveAt: session.agentActiveAt(),
     now: Date.now(),
-    cursor: session.cursor(),
     comments: documents.comments(id),
   });
 

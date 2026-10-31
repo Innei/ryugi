@@ -10,18 +10,18 @@ export const STALE_MS = 5 * 60_000;
 
 interface ActivityInput {
   agentActiveAt: number | undefined;
+  editing: boolean;
   now: number;
   pending: number;
-  streaming: boolean;
 }
 
 export function agentActivity({
-  streaming,
+  editing,
   pending,
   agentActiveAt,
   now,
 }: ActivityInput): AgentActivity {
-  if (streaming) return { kind: 'editing' };
+  if (editing) return { kind: 'editing' };
   if (pending === 0) return { kind: 'idle' };
   if (agentActiveAt === undefined) return { kind: 'working', pending, idleMs: null };
   const idleMs = Math.max(0, now - agentActiveAt);

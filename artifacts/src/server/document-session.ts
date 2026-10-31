@@ -4,21 +4,15 @@ import path from 'node:path';
 import {
   $reconcileRoot,
   createLoroBinding,
-  streamAtVersion,
-  type StreamStep,
+  editAtVersion,
   TREE_NAME,
 } from '@haklex/rich-collab-loro';
 import { $getRoot, type SerializedEditorState } from 'lexical';
-import { LoroDoc, type TreeID } from 'loro-crdt';
+import { decodeImportBlobMeta, LoroDoc, type OpId } from 'loro-crdt';
 
 import { DOCUMENT_FEATURES } from '../shared/document-features';
 import { parseDocument, serializeDocument, stampBlockIds } from './document-codec';
 import { createDocumentHeadlessEditor } from './document-headless';
-
-export interface AgentCursor {
-  id: TreeID;
-  offset: number;
-}
 
 export type DocumentOutcome =
   | { kind: 'idle' }
@@ -28,7 +22,6 @@ export type DocumentOutcome =
 
 export type DocumentEvent =
   | { type: 'update'; bytes: Uint8Array }
-  | { type: 'cursor'; cursor: AgentCursor | null }
   | { type: 'status'; outcome: DocumentOutcome; streaming: boolean; agentActiveAt: number }
   | { type: 'saved' };
 
@@ -37,14 +30,12 @@ export interface DocumentSessionOptions {
   log?: (line: string) => void;
   snapshotFile: string;
   snapshotIntervalMs?: number;
-  stepDelayMs?: number;
   writeDelayMs?: number;
 }
 
 export interface DocumentSession {
   agentActiveAt: () => number;
   close: () => Promise<void>;
-  cursor: () => AgentCursor | null;
   flush: () => Promise<void>;
   importUpdate: (bytes: Uint8Array, features?: readonly string[]) => void;
   lineage: () => string;
@@ -111,6 +102,11 @@ function closestBase(
   return best;
 }
 
+function headsAfter(base: OpId[], update: Uint8Array): OpId[] {
+  const ends = [...decodeImportBlobMeta(update, false).partialEndVersionVector.toJSON()];
+  return ends.length ? ends.map(([peer, end]) => ({ peer, counter: end - 1 })) : base;
+}
+
 async function lastAgentWrite(activityFile: string, file: string) {
   const recorded = Number(await readText(activityFile));
   if (recorded > 0) return recorded;
@@ -141,7 +137,6 @@ export async function createDocumentSession(
 ): Promise<DocumentSession> {
   const { file, snapshotFile, log = () => undefined } = options;
   const writeDelayMs = options.writeDelayMs ?? 300;
-  const stepDelayMs = options.stepDelayMs ?? 35;
   const listeners = new Set<(event: DocumentEvent) => void>();
   const emit = (event: DocumentEvent) => listeners.forEach((listener) => listener(event));
 
@@ -169,7 +164,6 @@ export async function createDocumentSession(
 
   let outcome: DocumentOutcome = { kind: 'idle' };
   let streaming = 0;
-  let lastCursor: AgentCursor | null = null;
   let lastGoodText: string | null = null;
   let lastAgentText: string | null = null;
   let lastFileText = (await readText(file)) ?? '';
@@ -203,25 +197,16 @@ export async function createDocumentSession(
   const prepareAgentEdit = (baseText: string, text: string, target: SerializedEditorState) => {
     const baseState = parseDocument(baseText);
     const stats = blockStats(baseState, target);
-    const { frontiers, steps } = streamAtVersion(
+    const base = written.get(baseText) ?? loro.frontiers();
+    const update = editAtVersion(
       loro,
-      written.get(baseText) ?? loro.frontiers(),
+      base,
       createDocumentHeadlessEditor,
-      baseState as never,
       target as never,
       `agent: ${stats}`,
     );
-    remember(text, frontiers);
-    return { stats, steps };
-  };
-
-  const applyStep = (step: StreamStep) => {
-    binding.import(step.update);
-    emit({ type: 'update', bytes: step.update });
-    if (step.cursor) {
-      lastCursor = step.cursor;
-      emit({ type: 'cursor', cursor: step.cursor });
-    }
+    remember(text, headsAfter(base, update));
+    return { stats, update };
   };
 
   const onFileText = (text: string) => {
@@ -247,18 +232,13 @@ export async function createDocumentSession(
     lastGoodText = text;
     streaming += 1;
     emitStatus();
-    playing = playing.then(async () => {
+    playing = playing.then(() => {
       try {
         // Autosaves pause during streaming, so queued file edits build on the preceding agent write.
         const baseText = queued ? fallback : closestBase(written, text, fallback, floor);
-        const { stats, steps } = prepareAgentEdit(baseText, text, target);
-        for (const step of steps) {
-          applyStep(step);
-          if (stepDelayMs > 0)
-            await new Promise((resolve) =>
-              setTimeout(resolve, stepDelayMs * (0.6 + Math.random() * 0.8)),
-            );
-        }
+        const { stats, update } = prepareAgentEdit(baseText, text, target);
+        binding.import(update);
+        emit({ type: 'update', bytes: update });
         log(`agent edit merged: ${stats}`);
         streaming -= 1;
         setOutcome({ kind: 'merged', stats });
@@ -267,8 +247,6 @@ export async function createDocumentSession(
         streaming -= 1;
         setOutcome({ kind: 'failed', message: messageOf(err) });
       } finally {
-        lastCursor = null;
-        emit({ type: 'cursor', cursor: null });
         scheduleWrite();
       }
     });
@@ -372,7 +350,6 @@ export async function createDocumentSession(
     outcome: () => outcome,
     streaming: () => streaming > 0,
     agentActiveAt: () => agentActiveAt,
-    cursor: () => lastCursor,
     settled: () => playing,
     flush,
     close: async () => {

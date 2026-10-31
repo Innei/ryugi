@@ -16,7 +16,6 @@ export interface DocumentMeta extends DocumentPayload {
 export interface DocumentState {
   agentActiveAt?: number;
   comments?: CommentsFile;
-  cursor: { id: string; offset: number } | null;
   lineage: string;
   now?: number;
   snapshot: string;

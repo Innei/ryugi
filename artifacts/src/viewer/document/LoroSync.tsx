@@ -1,20 +1,12 @@
 import { createLoroBinding, TREE_NAME } from '@haklex/rich-collab-loro';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
-import { $getNodeByKey, $getRoot, $isElementNode, type NodeKey } from 'lexical';
-import type { LoroDoc, TreeID, VersionVector } from 'loro-crdt';
+import type { LoroDoc, VersionVector } from 'loro-crdt';
 import { useEffect } from 'react';
 
-import { sectionLabel } from '../lib/section';
 import type { DocumentState, DocumentTransport } from './transport';
-
-export interface AgentCaretPosition {
-  key: NodeKey;
-  offset: number;
-}
 
 interface Props {
   doc: LoroDoc;
-  onAgentCaret: (caret: AgentCaretPosition | null, section: string | null) => void;
   onOffline: (offline: boolean) => void;
   onState?: (state: DocumentState) => void;
   transport: DocumentTransport;
@@ -27,7 +19,7 @@ const MAX_RETRY_MS = 30_000;
 export const decodeBase64 = (base64: string) =>
   Uint8Array.from(atob(base64), (char) => char.charCodeAt(0));
 
-export function LoroSync({ transport, doc, onAgentCaret, onOffline, onState }: Props) {
+export function LoroSync({ transport, doc, onOffline, onState }: Props) {
   const [editor] = useLexicalComposerContext();
 
   useEffect(() => {
@@ -41,27 +33,7 @@ export function LoroSync({ transport, doc, onAgentCaret, onOffline, onState }: P
     let needsSend = false;
     let generation = 0;
     let disposed = false;
-    let caret: { id: string; offset: number } | null = null;
     const current = (run: number) => !disposed && run === generation;
-
-    const showCaret = () => {
-      const key = caret ? binding.keyOf(caret.id as TreeID) : undefined;
-      if (!caret || !key) {
-        onAgentCaret(null, null);
-        return;
-      }
-      const section = editor.getEditorState().read(() => {
-        const top = $getNodeByKey(key)?.getTopLevelElement();
-        const blocks = $getRoot()
-          .getChildren()
-          .map((block) => ({
-            heading: block.getType() === 'heading',
-            text: $isElementNode(block) ? block.getTextContent() : '',
-          }));
-        return top ? sectionLabel(blocks, top.getIndexWithinParent()) : null;
-      });
-      onAgentCaret({ key, offset: caret.offset }, section);
-    };
 
     const retrySync = () => {
       clearTimeout(timer);
@@ -124,8 +96,6 @@ export function LoroSync({ transport, doc, onAgentCaret, onOffline, onState }: P
           return;
         }
         binding.import(decodeBase64(state.snapshot));
-        caret = state.cursor;
-        showCaret();
         onState?.(state);
         if (resend) {
           sent = undefined;
@@ -148,10 +118,6 @@ export function LoroSync({ transport, doc, onAgentCaret, onOffline, onState }: P
         void resync(true);
       } else if (event.type === 'doc-update' && event.artifact === artifact)
         binding.import(decodeBase64(event.bytes));
-      else if (event.type === 'doc-cursor' && event.artifact === artifact) {
-        caret = event.cursor;
-        showCaret();
-      }
     });
 
     // The socket may have opened, and updates may have arrived, before this mounted.
@@ -165,7 +131,7 @@ export function LoroSync({ transport, doc, onAgentCaret, onOffline, onState }: P
       unsubscribeLocal();
       binding.dispose();
     };
-  }, [editor, doc, transport, onAgentCaret, onOffline, onState]);
+  }, [editor, doc, transport, onOffline, onState]);
 
   return null;
 }

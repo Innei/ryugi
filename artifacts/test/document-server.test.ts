@@ -29,7 +29,7 @@ async function start(cloud?: CloudOptions) {
     host: '127.0.0.1',
     urlHost: 'localhost',
     debounceMs: 20,
-    documentTiming: { stepDelayMs: 0, writeDelayMs: 5 },
+    documentTiming: { writeDelayMs: 5 },
     cloud,
   });
   running.push(server);

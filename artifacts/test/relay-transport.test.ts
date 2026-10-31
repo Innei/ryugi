@@ -260,8 +260,7 @@ describe('local document transport', () => {
       if (url.endsWith('/update')) return new Response('no', { status: 500 });
       if (url.endsWith('/comments'))
         return Response.json({ comments: { version: 1, threads: [] } });
-      if (url.endsWith('/state'))
-        return Response.json({ snapshot: 'AA==', lineage: 'l', cursor: null });
+      if (url.endsWith('/state')) return Response.json({ snapshot: 'AA==', lineage: 'l' });
       return Response.json({ title: 'Plan', contentBase: '/content/document/plan/' });
     });
     const sent: unknown[] = [];
@@ -272,7 +271,7 @@ describe('local document transport', () => {
     });
     expect(local.artifact).toBe('document/plan');
     expect(await local.meta()).toEqual({ title: 'Plan', contentBase: '/content/document/plan/' });
-    expect(await local.state()).toEqual({ snapshot: 'AA==', lineage: 'l', cursor: null });
+    expect(await local.state()).toEqual({ snapshot: 'AA==', lineage: 'l' });
     await expect(local.update(new Uint8Array([1]))).rejects.toThrow('update failed (500)');
     expect(await local.comment({ op: 'resolve', threadId: 't' })).toEqual({
       version: 1,

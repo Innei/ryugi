@@ -100,7 +100,7 @@ async function renderEditor() {
       transport: createLocalTransport({ id: 'draft', channel: createChannel(), send: () => {} }),
       doc: new LoroDoc(),
       theme: 'light',
-      onAgentSection: () => {},
+      onAgentPlayback: () => {},
       onOffline: () => {},
       onEditorReady: (ready) => {
         editor = ready;

@@ -68,7 +68,6 @@ async function mount({
   const state = (): DocumentState => ({
     snapshot: encodeBase64(hostDoc.export({ mode: 'snapshot' })),
     lineage: hostDoc.getTree(TREE_NAME).roots()[0]!.id,
-    cursor: null,
   });
   const doc = new LoroDoc();
   doc.import(hostDoc.export({ mode: 'snapshot' }));
@@ -87,19 +86,10 @@ async function mount({
   if (pendingState) transport.state.mockReturnValueOnce(pendingState);
   const onOffline = vi.fn();
   const onState = vi.fn();
-  const onAgentCaret = vi.fn();
   let editor!: LexicalEditor;
   function Sync() {
     [editor] = useLexicalComposerContext();
-    return (
-      <LoroSync
-        doc={doc}
-        transport={transport}
-        onAgentCaret={onAgentCaret}
-        onOffline={onOffline}
-        onState={onState}
-      />
-    );
+    return <LoroSync doc={doc} transport={transport} onOffline={onOffline} onState={onState} />;
   }
   root = createRoot(document.createElement('div'));
   await act(async () =>

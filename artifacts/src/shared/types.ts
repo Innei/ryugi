@@ -135,7 +135,6 @@ export type ServerMessage =
   | { type: 'cloud-publication'; artifact: string; publication: import('./cloud').Publication }
   | { type: 'change'; artifact: string; files: string[] }
   | { type: 'doc-update'; artifact: string; bytes: string }
-  | { type: 'doc-cursor'; artifact: string; cursor: { id: string; offset: number } | null }
   | {
       type: 'doc-status';
       artifact: string;

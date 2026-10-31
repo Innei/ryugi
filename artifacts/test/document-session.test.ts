@@ -31,8 +31,8 @@ function setup(xml: string) {
   return { dir, file, snapshotFile };
 }
 
-async function open(file: string, snapshotFile: string, stepDelayMs = 0) {
-  const session = await createDocumentSession({ file, snapshotFile, stepDelayMs, writeDelayMs: 5 });
+async function open(file: string, snapshotFile: string) {
+  const session = await createDocumentSession({ file, snapshotFile, writeDelayMs: 5 });
   sessions.push(session);
   return session;
 }
@@ -128,23 +128,81 @@ test('a rejected agent edit leaves the file alone until a valid one arrives', as
   expect(session.outcome().kind).toBe('merged');
 });
 
-test('streams agent edits as updates', async () => {
+function viewerOf(session: DocumentSession) {
+  const doc = new LoroDoc();
+  doc.import(session.snapshot());
+  const editor = createDocumentHeadlessEditor();
+  const binding = createLoroBinding(editor, doc);
+  const tags: string[][] = [];
+  editor.registerUpdateListener((update) => tags.push([...update.tags]));
+  const blocks = () =>
+    editor.getEditorState().read(() =>
+      $getRoot()
+        .getChildren()
+        .map((block) => [block.getKey(), block.getTextContent()]),
+    );
+  return { doc, binding, tags, blocks };
+}
+
+const AGENT_TEXT = 'A long paragraph the agent writes, which frame stepping used to split up.';
+
+async function agentWrite(session: DocumentSession, file: string) {
+  const viewer = viewerOf(session);
+  const events: DocumentEvent[] = [];
+  session.subscribe((event) => events.push(event));
+  const text = read(file).replace('</doc>', `<h2>Two</h2><p>${AGENT_TEXT}</p></doc>`);
+  fs.writeFileSync(file, text);
+  session.onFileText(text);
+  await session.settled();
+  const updates = () => events.flatMap((event) => (event.type === 'update' ? [event.bytes] : []));
+  return { viewer, events, written: updates(), updates };
+}
+
+test('writes each agent edit once, as a live agent change the viewer plays', async () => {
   const { file, snapshotFile } = setup('<doc><p>one</p></doc>');
   const session = await open(file, snapshotFile);
   await session.flush();
-  const events: DocumentEvent[] = [];
-  session.subscribe((event) => events.push(event));
-  session.onFileText(read(file).replace('</doc>', '<p>two</p></doc>'));
+  const before = Math.floor(Date.now() / 1000);
+  const { viewer, events, written } = await agentWrite(session, file);
+
+  expect(written).toHaveLength(1);
+  expect([...new Set(events.map((event) => event.type))].sort()).toEqual(['status', 'update']);
+  viewer.binding.import(written[0]!);
+  expect(viewer.tags.at(-1)).toContain('agent-write');
+  const change = viewer.doc.getChangeAt(viewer.doc.frontiers()[0]!);
+  expect(change.message).toMatch(/^agent: /);
+  expect(change.timestamp).toBeGreaterThanOrEqual(before);
+  expect(change.timestamp).toBeLessThanOrEqual(Date.now() / 1000 + 1);
+  viewer.binding.dispose();
   await session.flush();
-  expect(events.some((event) => event.type === 'update')).toBe(true);
   expect(events.some((event) => event.type === 'status' && event.outcome.kind === 'merged')).toBe(
     true,
   );
 });
 
+test('the autosave after an agent write keeps the written blocks and their text', async () => {
+  const { file, snapshotFile } = setup('<doc><p>one</p></doc>');
+  const session = await open(file, snapshotFile);
+  await session.flush();
+  const { viewer, written, updates } = await agentWrite(session, file);
+  viewer.binding.import(written[0]!);
+  const played = viewer.blocks();
+  expect(played.map(([, text]) => text)).toEqual(['one', 'Two', AGENT_TEXT]);
+  const tagged = viewer.tags.length;
+
+  await session.flush();
+  expect(blockIds(read(file))).toHaveLength(3);
+  const autosaved = updates().slice(written.length);
+  expect(autosaved.length).toBeGreaterThan(0);
+  for (const update of autosaved) viewer.binding.import(update);
+  expect(viewer.blocks()).toEqual(played);
+  expect(viewer.tags.slice(tagged).flat()).not.toContain('agent-write');
+  viewer.binding.dispose();
+});
+
 test('queued section writes appear once and preserve a concurrent human edit', async () => {
   const { file, snapshotFile } = setup('<doc><p id="intro">one</p></doc>');
-  const session = await open(file, snapshotFile, 1);
+  const session = await open(file, snapshotFile);
   await session.flush();
   const base = read(file);
   const first = base.replace('</doc>', '  <p id="second">two</p>\n</doc>');
@@ -178,7 +236,6 @@ test('queued section writes appear once and preserve a concurrent human edit', a
   ]);
   expect(session.outcome().kind).toBe('merged');
   expect(session.streaming()).toBe(false);
-  expect(session.cursor()).toBeNull();
 });
 
 test('reopens from the snapshot and takes a file written while it was closed', async () => {

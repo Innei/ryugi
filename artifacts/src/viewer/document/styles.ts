@@ -10,5 +10,6 @@ import '@haklex/rich-ext-chart/style.css';
 import '@haklex/rich-ext-steps/style.css';
 import '@haklex/rich-plugin-link-edit/style.css';
 import '@haklex/rich-plugin-block-handle/style.css';
+import '@haklex/rich-plugin-agent-stream/style.css';
 import 'katex/dist/katex.min.css';
 import './document.css';
