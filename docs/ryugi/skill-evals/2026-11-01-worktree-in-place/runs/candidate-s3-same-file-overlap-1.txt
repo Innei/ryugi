@@ -1,0 +1,94 @@
+Reading the table top to bottom, the first matching row is the fourth: **"Your change would touch lines that already have edits you did not make."** `git diff` shows the uncommitted edits sit on exactly `home.empty.title` and `home.empty.subtitle`, the two values I need to change. The checkout is not a linked worktree, I have no instructions on where to work, and I'm not developing on other content, so no earlier row applies. The result is a new worktree, no question asked. I won't stash or move the other edits, because they aren't mine.
+
+## Tool calls
+
+**1. EnterWorktree** (native tool first, as the skill says)
+```
+EnterWorktree(name: "home-empty-copy")
+```
+Assumed result: the worktree is created at `/Users/p/git/lody-ios/.claude/worktrees/home-empty-copy` on a new branch from HEAD of `main`, and the session switches into it. Because it starts from HEAD, it holds the committed values ("Empty", "No sessions"), not the other agent's edits.
+
+**2. Bash**, to pick the setup step
+```bash
+ls -d *.xcodeproj *.xcworkspace Package.resolved Podfile.lock 2>/dev/null; git status --porcelain
+```
+Assumed output: `Lody.xcodeproj` and `Package.resolved` (committed, SPM), and clean status.
+
+**3. Bash**, setup with a frozen lockfile and no copied build caches
+```bash
+xcodebuild -resolvePackageDependencies -project Lody.xcodeproj -scheme Lody -onlyUsePackageVersionsFromResolvedFile
+```
+Assumed: succeeds.
+
+**4. Bash**, the project's test command, run once
+```bash
+xcodebuild test -project Lody.xcodeproj -scheme Lody -destination 'platform=iOS Simulator,name=iPhone 16'
+```
+Assumed: passes, so I go on.
+
+**5. Read**, in the worktree
+- `App/Resources/Localizable.xcstrings`, around line 1826
+- `App/Home/HomeView.swift`
+
+Assumed: the xcstrings holds `"Empty"` and `"No sessions"` as at HEAD, and `HomeView` doesn't yet reference the two keys.
+
+**6. Write** a failing test first (TDD), `LodyTests/HomeEmptyStringsTests.swift`
+```swift
+import XCTest
+@testable import Lody
+
+final class HomeEmptyStringsTests: XCTestCase {
+    func testEmptyStateCopy() {
+        XCTAssertEqual(String(localized: "home.empty.title"), "Nothing here yet")
+        XCTAssertEqual(String(localized: "home.empty.subtitle"), "Start a session to see it here")
+    }
+}
+```
+
+**7. Bash**, confirm red
+```bash
+xcodebuild test -project Lody.xcodeproj -scheme Lody -destination 'platform=iOS Simulator,name=iPhone 16' -only-testing:LodyTests/HomeEmptyStringsTests
+```
+Assumed: fails with `"Empty" != "Nothing here yet"`.
+
+**8. Edit**, `App/Resources/Localizable.xcstrings` (two edits, HEAD values as `old_string`)
+- `"value" : "No sessions"` → `"value" : "Start a session to see it here"`, in the `home.empty.subtitle` block
+- `"value" : "Empty"` → `"value" : "Nothing here yet"`, in the `home.empty.title` block
+
+**9. Edit**, `App/Home/HomeView.swift`: in the empty-state view, use both keys.
+```swift
+Text("home.empty.title")
+Text("home.empty.subtitle")
+```
+This replaces whatever hard-coded or other text is there. I'll read the surrounding lines first to match the existing style.
+
+**10. Bash**, confirm green, then the full suite
+```bash
+xcodebuild test -project Lody.xcodeproj -scheme Lody -destination 'platform=iOS Simulator,name=iPhone 16'
+```
+Assumed: all pass.
+
+**11. Bash**, check what I left, and that the shared checkout is untouched
+```bash
+git status --porcelain
+git -C /Users/p/git/lody-ios status --porcelain
+```
+Assumed output:
+- worktree: ` M App/Resources/Localizable.xcstrings`, ` M App/Home/HomeView.swift`, `?? LodyTests/HomeEmptyStringsTests.swift`
+- main checkout: ` M App/Resources/Localizable.xcstrings`, which is still the other agent's edit and unchanged by me
+
+I don't commit, push or remove the worktree. Committing wasn't requested, and the work hasn't landed, so cleanup doesn't apply yet.
+
+## Message to my human partner
+
+> Done in a separate worktree, because `Localizable.xcstrings` in the main checkout already had someone else's uncommitted edits on the very same two keys (`home.empty.title` → "It's quiet here", `home.empty.subtitle` → "No sessions yet — create one"). I left those untouched.
+>
+> Worktree: `/Users/p/git/lody-ios/.claude/worktrees/home-empty-copy` (branch created from `main`).
+> - `home.empty.title` = "Nothing here yet", `home.empty.subtitle` = "Start a session to see it here", both used in `App/Home/HomeView.swift`.
+> - Added `LodyTests/HomeEmptyStringsTests.swift`. It failed first and now passes, and the full suite passes.
+>
+> **Left uncommitted and unpushed in that worktree:** `Localizable.xcstrings`, `HomeView.swift`, and the new test file.
+>
+> **Decision for you:** the other copy edit in the main checkout conflicts with mine on those two keys. Which wording should win? I can commit this branch, or drop my wording if theirs is the intended one. I'll remove the worktree once the work lands or you tell me to discard it.
+
+SUMMARY: Work happens in a new native worktree (`EnterWorktree`, `home-empty-copy`) because the main checkout already has someone else's uncommitted edits on the exact `home.empty.title` and `home.empty.subtitle` lines I must change, and the skill says that case gets a worktree without asking.

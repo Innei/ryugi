@@ -1,0 +1,3 @@
+Repo: /Users/p/git/lobe-chat (pnpm monorepo). The work is a fix that must be developed and tested on the release branch `release/1.2`, while the checkout is on canary with other agents' uncommitted edits. Following the skill, you created a worktree with EnterWorktree("release-fix") from release/1.2 and are now inside it. You are at the skill's "Set up" step.
+
+Facts about the repo: `pnpm-workspace.yaml` contains `lockfile: false`, and `pnpm-lock.yaml` is listed in `.gitignore`, so no lockfile is committed. The main checkout at /Users/p/git/lobe-chat already has a full `node_modules` (about 1.3 million files).

@@ -1,0 +1,41 @@
+**Reading the table (no tools needed):**
+- Row 1 does not match. `--git-dir` equals `--git-common-dir` (both `/Users/p/git/lody-ios/.git`), so this is the main checkout, not a linked worktree.
+- Row 2 does not match. My partner gave no instruction on where to work.
+- Row 3 does not match. The work doesn't switch branches, rebase or bisect.
+- Row 4 matches. `App/Resources/Localizable.xcstrings` has uncommitted edits I didn't make (the diff rewrites the same two keys I'm about to change), and the work changes that file. The skill says new worktree, without asking.
+
+**Message to partner (before the tool call):**
+> `App/Resources/Localizable.xcstrings` has uncommitted edits I didn't make, on the same two keys I need to change (`home.empty.title` and `home.empty.subtitle`). To avoid overwriting someone else's work in progress, I'm doing this in a separate worktree.
+
+**Tool call 1:** the native tool, not `git worktree add`:
+```
+EnterWorktree(name: "home-empty-copy")
+```
+Assumed result: the worktree is created at `/Users/p/git/lody-ios/.claude/worktrees/home-empty-copy` on a new branch from HEAD, and the session's cwd is now there.
+
+**No spec to copy.** The task has no spec file. I'm deliberately not copying the modified `Localizable.xcstrings` into the worktree, because those uncommitted edits belong to another agent or session. I'll start from HEAD's version of the file.
+
+**Tool call 2 (Set up, since this worktree is newly created):** find the lockfile and test command.
+```bash
+ls -a && ls *.xcodeproj/project.xcworkspace/xcshareddata/swiftpm 2>/dev/null; xcodebuild -list
+```
+Assumed output: `Lody.xcodeproj`, a `Package.resolved` under `xcshareddata/swiftpm`, and a scheme `Lody`. No other package manager's lockfile is present.
+
+**Tool call 3:** frozen-mode dependency resolution, using the `Package.resolved` lockfile:
+```bash
+xcodebuild -resolvePackageDependencies -disableAutomaticPackageResolution -project Lody.xcodeproj -scheme Lody
+```
+Assumed result: the dependencies resolve and `Package.resolved` is unchanged.
+
+**Tool call 4:** run the project's test command once.
+```bash
+xcodebuild test -project Lody.xcodeproj -scheme Lody -destination 'platform=iOS Simulator,name=iPhone 16'
+```
+Assumed result: `** TEST SUCCEEDED **`, so there is nothing to report or ask about.
+
+**Message to partner:**
+> I'm working in the worktree `.claude/worktrees/home-empty-copy`. Dependencies are resolved from `Package.resolved` and the baseline tests pass. When this lands, merging will conflict with the uncommitted edits in the main checkout's `Localizable.xcstrings` (they set title to "It's quiet here" and subtitle to "No sessions yet — create one"; I'm setting "Nothing here yet" and "Start a session to see it here"). Let me know which copy should win then.
+
+I then return to test-driven-development to write the failing test first. I make the `Localizable.xcstrings` and `HomeView.swift` edits inside the worktree, using absolute paths under `.claude/worktrees/home-empty-copy/`. I leave cleanup (`ExitWorktree`) until the work has landed or my partner says it's done. The branch stays until then.
+
+SUMMARY: The work happens in a new native worktree (`EnterWorktree` → `home-empty-copy`) because `Localizable.xcstrings` has uncommitted edits I didn't make on the same keys I'm changing, and I did not copy those edits into it.

@@ -1,0 +1,50 @@
+No worktree decision to make: the skill says the answer from the start of the session holds. I'm on main in `/Users/p/git/search-app`, and tasks 1 and 2 are committed. I don't re-run the Where-to-work commands, I don't create a worktree, and I don't ask. I go straight to task 3.
+
+**Tool call 1: Read** `/Users/p/git/search-app/src/search/input.ts`
+Assumed result: a small module that calls `onQuery(value)` on every input event, with no debounce.
+
+**Tool call 2: Read** `/Users/p/git/search-app/src/search/input.test.ts`
+Assumed result: the file exists with tests from earlier tasks. I'll add to it.
+
+**Tool call 3: Edit** `/Users/p/git/search-app/src/search/input.test.ts`
+Adds a failing test using `vi.useFakeTimers()`:
+- Fire three input events 50 ms apart, then advance 300 ms.
+- Expect `onQuery` to have been called once, with the last value.
+
+**Tool call 4: Bash**
+```bash
+cd /Users/p/git/search-app && pnpm vitest run src/search/input.test.ts
+```
+Assumed result: the new test fails because `onQuery` was called 3 times. That is the expected red.
+
+**Tool call 5: Edit** `/Users/p/git/search-app/src/search/input.ts`
+Adds a debounce (300 ms default, trailing edge) around the `onQuery` call. It clears the pending timer on each new input.
+
+**Tool call 6: Bash**
+```bash
+cd /Users/p/git/search-app && pnpm vitest run src/search/input.test.ts
+```
+Assumed result: all tests pass, including the new one.
+
+**Tool call 7: Bash**
+```bash
+cd /Users/p/git/search-app && pnpm vitest run && pnpm tsc --noEmit
+```
+Assumed result: the full suite and the typecheck pass.
+
+**Tool call 8: Bash** (stage my own paths by name, never `-A`, `.` or `-a`)
+```bash
+cd /Users/p/git/search-app && git add src/search/input.ts src/search/input.test.ts && git diff --cached --stat
+```
+Assumed result: only those two files are staged. Nobody else has touched them, so I don't need `git add -p`.
+
+**Tool call 9: Bash**
+```bash
+cd /Users/p/git/search-app && git commit -m "feat(search): debounce query input"
+```
+Assumed result: the commit succeeds on main. The spec file stays untracked, as before.
+
+**Message to my human partner:**
+Task 3 is done and committed on main: a 300 ms trailing debounce in `src/search/input.ts`, with a fake-timer test that failed first and now passes. The full test suite and `tsc` pass. I'm continuing with task 4 in the same checkout.
+
+SUMMARY: The work happened in place on main in /Users/p/git/search-app, because the session's earlier Where-to-work decision still holds and the skill says not to reopen it for each task or TDD cycle. I staged only my two files by name.

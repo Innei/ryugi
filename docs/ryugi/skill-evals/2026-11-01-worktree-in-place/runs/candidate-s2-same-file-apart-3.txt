@@ -1,0 +1,55 @@
+**Decision:** I work in place, with no worktree and no question. Walking the table:
+- `--git-dir` equals `--git-common-dir` and the superproject output is empty, so this is not a linked worktree.
+- No instruction says where to work.
+- I am on `main`, the default branch, and nothing needs another branch, commit, rebase or bisect.
+- My `Localizable.xcstrings` hunk goes near line 1830 and the foreign hunk is at line 4118, so we touch different lines.
+- `HomeView.swift` has no foreign edits, and `SettingsView.swift` is not in my work.
+- No `EXPLORING` file exists, and I change no dependencies, run no codegen and do no repo-wide formatting.
+- That leaves the last row: edits in other hunks and other files mean in place, no question.
+
+I do not re-run the Where-to-work commands for the rest of the session.
+
+**Message to partner:**
+> Working in place on `main`. `Localizable.xcstrings` and `SettingsView.swift` already have uncommitted edits (a `settings.sync.title` entry) that aren't mine. My `home.empty.title` entry goes ~2,300 lines away from theirs, so I'll leave their hunk alone and stage only mine.
+
+**Tool calls**
+
+1. `Read` `App/Resources/Localizable.xcstrings`, offset 1815, limit 40, to find the alphabetical slot for `home.empty.title`.
+   - Assumed output: `"home.card.subtitle" : { ... },` is followed by `"home.header.title" : { ... },`, so the new key goes between them.
+2. `Edit` `App/Resources/Localizable.xcstrings`.
+   - `old_string` is the unique opening of the `"home.header.title" : {` entry.
+   - `new_string` is the same text with this block inserted before it:
+   ```
+       "home.empty.title" : {
+         "localizations" : {
+           "en" : { "stringUnit" : { "state" : "translated", "value" : "Nothing here yet" } }
+         }
+       },
+   ```
+   - Assumed result: success. The edit is a string replacement, so the foreign hunk at 4118 is untouched.
+3. `Read` `App/Home/HomeView.swift`.
+   - Assumed: it has a `List(items)` inside `body`, with `items` as a `[Item]` property.
+4. `Edit` `App/Home/HomeView.swift`. Wrap the list so that when `items.isEmpty` it shows `Text("home.empty.title")` and otherwise shows the existing `List`.
+   - This is a minimal change that keeps the existing rows untouched.
+5. `Bash`: `xcodebuild test -scheme lody-ios -destination 'platform=iOS Simulator,name=iPhone 16' -only-testing:lody-iosTests/HomeViewTests`
+   - Assumed: the TDD skill already wrote a failing empty-state test, and it now passes.
+6. `Bash`: `git diff -- App/Resources/Localizable.xcstrings App/Home/HomeView.swift`
+   - This confirms my hunks are the `home.empty.title` block and the `HomeView` change, alongside the foreign `settings.sync.title` hunk.
+
+**Not committing.** You didn't ask for a commit, and the skill's rule is to stage only my own paths and hunks if one is made. If you want one, I would run:
+- `git add -p App/Resources/Localizable.xcstrings`, answering `y` only for the `home.empty.title` hunk and `n` for `settings.sync.title`
+- `git add App/Home/HomeView.swift`
+- `git commit -m "feat(home): show localized empty state"`
+
+I would never use `git add -A`, `git add .` or `git commit -a`.
+
+**Final message to partner:**
+> Done: added `home.empty.title` = "Nothing here yet" to `App/Resources/Localizable.xcstrings` (in the `home.*` block) and `HomeView` now shows it when the list is empty. The empty-state test passes.
+>
+> Left uncommitted in `/Users/p/git/lody-ios` on `main`, not pushed:
+> - `App/Home/HomeView.swift` (mine)
+> - `App/Resources/Localizable.xcstrings`, my `home.empty.title` hunk only
+>
+> Not mine and untouched: the `settings.sync.title` hunk in `Localizable.xcstrings` and `App/Settings/SettingsView.swift`. If you want a commit, I'll stage just my hunks with `git add -p`.
+
+SUMMARY: Worked in place on `main` in `/Users/p/git/lody-ios`, because the other agent's edits sit in a different hunk and file from mine and no worktree row of the table applied.

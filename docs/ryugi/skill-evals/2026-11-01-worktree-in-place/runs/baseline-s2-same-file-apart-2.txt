@@ -1,0 +1,68 @@
+## Decision
+
+I'm applying the Where-to-work table to the command output:
+
+- `--git-dir` equals `--git-common-dir` and the superproject output is empty, so this is the main checkout, not a linked worktree. Row 1 doesn't match.
+- My partner gave no instruction about where to work. Row 2 doesn't match.
+- The work doesn't switch branches, rebase, or bisect. Row 3 doesn't match.
+- **Row 4 matches.** The work changes `App/Resources/Localizable.xcstrings`, which has uncommitted edits I didn't make (`settings.sync.title`, in another agent's change alongside `SettingsView.swift`). So I use a new worktree without asking.
+
+`EnterWorktree` is available, so I use it and not `git worktree add`.
+
+## Message to partner
+
+> `Localizable.xcstrings` already has someone else's uncommitted edits (`settings.sync.title`), and I need to change the same file. I'm making an isolated worktree so our edits don't collide. I'll leave the main checkout untouched.
+
+## Tool calls
+
+**1.** `EnterWorktree(name: "home-empty-title")`
+Assumed result: the worktree is created at `/Users/p/git/lody-ios/.claude/worktrees/home-empty-title` on a new branch from `main` HEAD, and the session is switched into it.
+
+I don't copy `Localizable.xcstrings` or `SettingsView.swift` into the worktree. There is no uncommitted spec. The tracked HEAD version of the xcstrings file is all I need, and copying would drag the other agent's half-finished `settings.sync.title` into my branch.
+
+**2.** Set up (new worktree only). First find the dependency manager:
+```bash
+ls Package.resolved Podfile.lock Gemfile.lock *.xcworkspace/xcshareddata/swiftpm/Package.resolved 2>/dev/null; ls -d *.xcodeproj *.xcworkspace 2>/dev/null
+```
+Assumed output: `lody-ios.xcodeproj` and `lody-ios.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved`. This is SPM only, with no Podfile.
+
+**3.** Frozen-mode install, which uses the lockfile as is and doesn't update it:
+```bash
+xcodebuild -resolvePackageDependencies -project lody-ios.xcodeproj -scheme lody-ios -disableAutomaticPackageResolution
+```
+Assumed result: packages are resolved from `Package.resolved` and it is unchanged.
+
+**4.** Run the test command once as a baseline:
+```bash
+xcodebuild test -project lody-ios.xcodeproj -scheme lody-ios -destination 'platform=iOS Simulator,name=iPhone 16'
+```
+Assumed result: `** TEST SUCCEEDED **`. If it had failed, I would report the failures and ask whether to go on.
+
+**5.** Return to the TDD skill. Its first step is a failing test for the empty state. Then:
+
+- `Read App/Resources/Localizable.xcstrings`, around line 1830, to find the alphabetical slot for `home.empty.title`. This is the HEAD version, without `settings.sync.title`.
+- `Edit App/Resources/Localizable.xcstrings`, inserting this between the neighbouring `home.*` keys (neighbours assumed):
+  ```json
+  "home.empty.title" : {
+    "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Nothing here yet" } }
+    }
+  },
+  ```
+- `Read App/Home/HomeView.swift`.
+- `Edit App/Home/HomeView.swift`, showing `Text("home.empty.title")` when the items collection is empty. The exact edit depends on the view's structure, which I haven't seen. I'd add a branch like `if items.isEmpty { Text("home.empty.title") } else { <existing list> }`.
+- Re-run the step 4 test command and confirm the new test passes.
+
+**6.** Verify isolation:
+```bash
+git status --porcelain
+```
+Assumed output: only `M App/Resources/Localizable.xcstrings` and `M App/Home/HomeView.swift`, with nothing from Settings.
+
+## Final message to partner
+
+> `home.empty.title` ("Nothing here yet") is added to `Localizable.xcstrings`, and `HomeView` shows it when the list is empty. The new test and the existing suite pass. The work is in the worktree `.claude/worktrees/home-empty-title`, uncommitted, so your main checkout and the other agent's Settings edits are untouched. I'll keep the worktree until this has landed, then remove it. Do you want me to commit it?
+
+I stop here to wait for an answer. Cleanup waits until the work lands or my partner says it's done.
+
+SUMMARY: The work happened in a new worktree, `.claude/worktrees/home-empty-title`, made with `EnterWorktree`, because `Localizable.xcstrings` had uncommitted edits from another agent and the Where-to-work table sends that case to a new worktree without asking.

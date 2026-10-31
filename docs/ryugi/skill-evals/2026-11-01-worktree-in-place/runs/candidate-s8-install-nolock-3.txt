@@ -1,0 +1,36 @@
+**Tool call 1: Bash** (confirm location; the Where-to-work answer already holds, so this only checks the cwd)
+```bash
+pwd && git branch --show-current
+```
+Assumed output: `/Users/p/git/lobe-chat/.claude/worktrees/release-fix` and a branch name for the new worktree (EnterWorktree created it from `release/1.2`).
+
+**Tool call 2: Bash** (install in the worktree)
+```bash
+pnpm install
+```
+- Plain install, not `--frozen-lockfile`, because `lockfile: false` means no lockfile is committed.
+- I do not symlink or copy `node_modules` from /Users/p/git/lobe-chat. Workspace packages would then resolve to the canary checkout's source, which is the wrong content for a `release/1.2` fix.
+- Assumed output: the install completes successfully (a few minutes, a fresh store-linked `node_modules`, exit 0).
+
+**Tool call 3: Bash** (find the project's test command)
+```bash
+grep -n '"test' package.json
+```
+Assumed output: `"test": "vitest run"` (plus `test:coverage` and similar variants).
+
+**Tool call 4: Bash** (run the project's test command once, as a baseline)
+```bash
+pnpm test
+```
+Assumed output: all test files pass, exit 0.
+
+**Message to my human partner:**
+
+> The worktree is set up at `.claude/worktrees/release-fix`, created from `release/1.2`. The canary checkout and the other agents' uncommitted edits there are untouched.
+>
+> - **Install:** I ran `pnpm install` without `--frozen-lockfile`, since `lockfile: false` means no lockfile is committed. I did not reuse the main checkout's `node_modules`, so workspace packages resolve to this branch's source.
+> - **Baseline:** `pnpm test` passes on `release/1.2` before any edits, so later failures will come from the fix.
+>
+> I'm starting on the fix in this worktree now. When it has landed, or you tell me to discard it, I'll remove the worktree with `ExitWorktree` (`remove`). If removal reports uncommitted changes, I'll ask you before discarding anything.
+
+SUMMARY: The work happens in the native worktree `.claude/worktrees/release-fix` (from `release/1.2`), because the fix must be developed and tested on a different branch than the shared canary checkout, which has other agents' edits. Dependencies were freshly installed with plain `pnpm install` because no lockfile is committed, not by copying `node_modules`, and the baseline tests passed.

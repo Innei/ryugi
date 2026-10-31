@@ -1,0 +1,46 @@
+No worktree is needed. The checkout is not a linked worktree (`--git-dir` equals `--git-common-dir`). My partner gave no instruction about where to work, and I'm on `main`, the default branch. The only dirty path is `.vitest/`, a cache nobody edited, and there is no `EXPLORING` file. The dependency-change row doesn't apply either, because `package.json`, `web/package.json` and `pnpm-lock.yaml` have no edits from anyone else. That leaves "anything else": work in place, no question. I won't re-run the checks.
+
+**Tool calls, in order**
+
+1. `Bash`: `cd /Users/p/git/cloud && grep -rn "ryugi-artifacts" --include=package.json --exclude-dir=node_modules . && git log -5 --oneline`
+   - Assumed output: `./package.json:  "ryugi-artifacts": "^1.48.0"` and `./web/package.json:  "ryugi-artifacts": "^1.48.0"`. No other workspace package or override mentions it. The log shows plain imperative messages like `Bump foo to 2.1.0`.
+
+2. `Read`: `/Users/p/git/cloud/package.json` and `Read`: `/Users/p/git/cloud/web/package.json`, in parallel. Both files are needed before editing.
+
+3. `Edit`: `/Users/p/git/cloud/package.json`, replacing `"ryugi-artifacts": "^1.48.0"` with `"ryugi-artifacts": "1.49.3"`.
+
+4. `Edit`: `/Users/p/git/cloud/web/package.json`, making the same replacement.
+
+5. `Bash`: `cd /Users/p/git/cloud && pnpm install --no-frozen-lockfile`
+   - This is a plain install that rewrites the lockfile, since the change is meant to update it.
+   - Assumed result: it succeeds and only the `ryugi-artifacts` entries in `pnpm-lock.yaml` change.
+
+6. `Bash`: `cd /Users/p/git/cloud && git status --porcelain && git diff --stat`
+   - Assumed output:
+     ```
+      M package.json
+      M web/package.json
+      M pnpm-lock.yaml
+     ?? .vitest/
+     ```
+   - The diff stat shows small changes in just those three files, so everything modified is mine.
+
+7. `Bash`: `cd /Users/p/git/cloud && pnpm test`
+   - Assumed result: all tests pass.
+   - If anything failed, I would stop and report the output instead of committing.
+
+8. `Bash`: `cd /Users/p/git/cloud && git add package.json web/package.json pnpm-lock.yaml && git commit -m "Pin ryugi-artifacts to 1.49.3" && git push origin main`
+   - Paths are staged by name, never `-A`, `.` or `-a`, so `.vitest/` stays out.
+   - My partner explicitly asked to push to main, so no confirmation is needed.
+   - Assumed result: the commit is created and the push succeeds.
+
+9. `Bash`: `cd /Users/p/git/cloud && git status --porcelain`
+   - Assumed output: `?? .vitest/` only, which confirms none of my changes are left uncommitted.
+
+**Message to my partner**
+
+> Pinned `ryugi-artifacts` to `1.49.3`, with no caret, in `package.json` and `web/package.json`. I updated `pnpm-lock.yaml` with `pnpm install --no-frozen-lockfile`, and `pnpm test` passed. I committed those three files as "Pin ryugi-artifacts to 1.49.3" and pushed to `main`.
+>
+> I worked directly in `/Users/p/git/cloud` with no worktree, because nobody else had edits in the files I touched. The only thing left in the checkout is the untracked `.vitest/` cache, which isn't mine and wasn't committed.
+
+SUMMARY: Worked in place in /Users/p/git/cloud on `main`, with no worktree, because the checkout isn't a linked worktree and the only dirty path was the `.vitest/` cache, so no table row required isolation. I staged only the three files I changed and pushed to `main` as my partner asked.

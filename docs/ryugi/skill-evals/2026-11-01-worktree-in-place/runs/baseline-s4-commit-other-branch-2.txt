@@ -1,0 +1,99 @@
+Nothing below is executed. Where a tool output is needed, I state what I assumed.
+
+## 1. Re-check where to work
+
+The request involves a new branch and a commit, so I rerun the skill's checks rather than trusting the earlier "in place" result.
+
+```bash
+cd /Users/p/git/lobe-chat
+git rev-parse --path-format=absolute --git-dir --git-common-dir
+git rev-parse --show-superproject-working-tree
+git branch --show-current
+git status --porcelain
+cat .ryugi/sdd/*/EXPLORING
+```
+
+Assumed output:
+- `--git-dir` and `--git-common-dir` are both `/Users/p/git/lobe-chat/.git`, so this is not a linked worktree.
+- The superproject output is empty.
+- The branch is `canary`.
+- Status shows ` M src/features/Scroll/index.tsx`, `?? src/features/Scroll/index.test.tsx` and ` M src/store/chat.ts`.
+- `cat` fails with "No such file", so there are no `EXPLORING` files.
+
+**Decision:** The partner didn't say where to work, but the work creates and switches to a new branch. That matches the "switches branches" row, so I use a new worktree without asking.
+
+A plain `git switch -c fix/message-scroll` here would move the other agent's HEAD onto my branch while their `src/store/chat.ts` edit is still pending. Their next commit would then land on my PR branch.
+
+## 2. Create the worktree with the native tool
+
+```
+EnterWorktree(name="fix-message-scroll")
+```
+
+Assumed result: the worktree is at `/Users/p/git/lobe-chat/.claude/worktrees/fix-message-scroll`, on a new branch from HEAD (canary), and the session is now inside it.
+
+## 3. Copy in my uncommitted work
+
+A new worktree starts from HEAD, so my two files aren't in it. I copy only those two files and not `src/store/chat.ts`, which belongs to the other agent.
+
+```bash
+W=/Users/p/git/lobe-chat/.claude/worktrees/fix-message-scroll
+cp /Users/p/git/lobe-chat/src/features/Scroll/index.tsx      "$W/src/features/Scroll/index.tsx"
+cp /Users/p/git/lobe-chat/src/features/Scroll/index.test.tsx "$W/src/features/Scroll/index.test.tsx"
+cd "$W" && git status --porcelain
+```
+
+Assumed output:
+```
+ M src/features/Scroll/index.tsx
+?? src/features/Scroll/index.test.tsx
+```
+
+## 4. Set up (new worktree only)
+
+```bash
+pnpm install --frozen-lockfile
+pnpm test
+```
+
+Assumed result: the install succeeds and the tests pass. If they failed, I would show the failures and ask whether to continue.
+
+## 5. Name the branch, commit, push
+
+```bash
+git branch -m fix/message-scroll
+git merge-base --is-ancestor canary HEAD && echo based-on-canary
+git add src/features/Scroll/index.tsx src/features/Scroll/index.test.tsx
+git status --porcelain
+git commit -m "🐛 fix: message list scroll bug"
+git push -u origin fix/message-scroll
+```
+
+- The merge-base check prints `based-on-canary`.
+- The status after `git add` shows `M ` and `A ` for exactly those two files.
+- The push is covered by the partner's request to open a PR.
+
+## 6. Open the PR
+
+```bash
+gh pr create --base canary --head fix/message-scroll \
+  --title "🐛 fix: message list scroll bug" \
+  --body "Fixes the scroll bug in src/features/Scroll. Adds tests in src/features/Scroll/index.test.tsx."
+```
+
+Assumed output: `https://github.com/lobehub/lobe-chat/pull/1234`
+
+## 7. Message to my partner
+
+> PR is open: https://github.com/lobehub/lobe-chat/pull/1234 (`fix/message-scroll` → `canary`).
+>
+> - I made the branch in a separate worktree at `.claude/worktrees/fix-message-scroll`. Another agent has an uncommitted edit to `src/store/chat.ts` in the main checkout. Switching branches there would have moved their HEAD onto this PR's branch.
+> - The commit contains only `src/features/Scroll/index.tsx` and `src/features/Scroll/index.test.tsx`. `src/store/chat.ts` is untouched.
+> - After `pnpm install --frozen-lockfile`, `pnpm test` passes in the worktree.
+> - The main checkout still holds my uncommitted copies of those two files. I left them alone. Once the PR merges, I'll remove the worktree and clear those copies, or you can tell me when to.
+>
+> I'm keeping the worktree because the PR is open and review feedback will be fixed there.
+
+I stop here and wait for the partner. Cleanup happens only after the PR lands.
+
+SUMMARY: The work happened in a new worktree (`.claude/worktrees/fix-message-scroll`, created with `EnterWorktree`). The branch switch would have moved the other agent's HEAD in the shared checkout, which has their uncommitted `src/store/chat.ts` edit. I committed only my two files, pushed `fix/message-scroll`, and opened the PR against canary.

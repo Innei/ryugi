@@ -1,0 +1,72 @@
+Nothing below was run. This is the simulated sequence, with assumed outputs marked.
+
+I don't re-run the "Where to work" checks, since the answer holds for the session. This is a move case: my uncommitted work has to be committed on a new branch off canary. I won't switch branches in the shared checkout, because another agent has `src/store/chat.ts` modified there. I'll stash only my paths and commit them in a worktree.
+
+**Message to partner:** "Moving my two Scroll files into a short-lived worktree so I can commit them on `fix/message-scroll` off canary. I'm leaving the other agent's `src/store/chat.ts` edit where it is."
+
+**Tool call 1: Bash** (cwd `/Users/p/git/lobe-chat`)
+```bash
+git stash push --include-untracked -- src/features/Scroll/index.tsx src/features/Scroll/index.test.tsx
+```
+Assumed output: `Saved working directory and index state WIP on canary: <sha> <msg>`. Only my two paths are stashed, and `src/store/chat.ts` stays modified.
+
+**Tool call 2: EnterWorktree**, `name: "fix-message-scroll"`
+This is the native tool. The "move" in the skill is the standing instruction to use it. I use a slash-free name for the directory. Assumed result: the worktree is at `/Users/p/git/lobe-chat/.claude/worktrees/fix-message-scroll` on a new branch (assumed `worktree-fix-message-scroll`) from HEAD, which is canary. The session is now inside it.
+
+**Tool call 3: Bash** (in the worktree)
+```bash
+git branch -m fix/message-scroll && git branch --show-current
+```
+Assumed output: `fix/message-scroll`.
+
+**Tool call 4: Bash** (in the worktree)
+```bash
+git stash pop
+```
+Assumed output: clean pop. It shows ` M src/features/Scroll/index.tsx` and `?? src/features/Scroll/index.test.tsx`, then `Dropped refs/stash@{0}`. There is no conflict. If there were one, I would stop and show my partner.
+
+**Tool call 5: Bash** (verify the original checkout is clean of my paths)
+```bash
+git -C /Users/p/git/lobe-chat status --porcelain -- src/features/Scroll/index.tsx src/features/Scroll/index.test.tsx
+```
+Assumed output: empty.
+
+I skip the install and test run. The worktree exists only for the commit, and the tests already passed on the shared tree.
+
+**Tool call 6: Bash** (in the worktree, paths staged by name)
+```bash
+git add src/features/Scroll/index.tsx src/features/Scroll/index.test.tsx
+git commit -m "🐛 fix: message list scroll bug"
+```
+Assumed output: one commit with 2 files changed. (The commit subject is a guess at the repo's convention and the bug's wording. I would match `git log` style if I had checked it.)
+
+**Tool call 7: Bash**
+```bash
+git push -u origin fix/message-scroll
+```
+Assumed output: branch pushed, tracking set up. Pushing is part of the PR my partner asked for.
+
+**Tool call 8: Bash**
+```bash
+gh pr create --base canary --head fix/message-scroll --title "🐛 fix: message list scroll bug" --body "Fixes the scroll bug in src/features/Scroll. Adds tests in src/features/Scroll/index.test.tsx."
+```
+Assumed output: `https://github.com/<org>/lobe-chat/pull/<N>`.
+
+**Tool call 9: Bash** (confirm the worktree is clean before removal)
+```bash
+git status --porcelain -uall
+```
+Assumed output: empty.
+
+**Tool call 10: ExitWorktree**, `action: "remove"` (no `discard_changes`)
+The worktree only existed for the commit, and the pushed branch carries any later fixes. So I remove it now instead of keeping it for the open PR. The tool returns the session to `/Users/p/git/lobe-chat`. Assumed result: the worktree directory and the local branch are removed. The remote branch and PR are unaffected. No spec was copied in, so there is nothing else to delete.
+
+**Tool call 11: Bash** (from the main repo root)
+```bash
+git worktree prune && git status --porcelain
+```
+Assumed output: ` M src/store/chat.ts`. That is the other agent's change and is untouched.
+
+**Final message to partner:** "PR opened: <URL> (`fix/message-scroll` → `canary`), with the Scroll fix and its test. I committed only `src/features/Scroll/index.tsx` and `index.test.tsx`. I didn't re-run tests in the worktree, since they passed earlier on the same code. The temporary worktree and its local branch are removed. The branch is on origin, so follow-up fixes can be checked out from there. Nothing of mine is left uncommitted. The checkout still has the other agent's `src/store/chat.ts` edit, which I left alone."
+
+SUMMARY: The commit and PR happened in a short-lived native worktree (`EnterWorktree`), because uncommitted work had to move to a new branch off canary without switching branches in the shared checkout, where another agent's `src/store/chat.ts` edit sits. I stash-moved only my two paths, committed them by name, pushed, opened the PR, and removed the worktree.

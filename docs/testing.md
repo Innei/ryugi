@@ -28,6 +28,17 @@ Run plugin tests via the relevant directory's `run-*.sh` or `npm test`.
 
 ## Skill behavior evals
 
+The focused native Claude Code bootstrap ablation lives in
+[`tests/skill-bootstrap-eval/`](../tests/skill-bootstrap-eval/README.md).
+It compares full startup injection, discoverable-only `using-ryugi`, and
+removing that entry while retaining the other skills. The
+[2026-10-31 report](./ryugi/skill-evals/2026-10-31-using-ryugi-bootstrap.md)
+keeps all 75 small-model samples and the observable evidence.
+The [follow-up router comparison](./ryugi/skill-evals/2026-10-31-using-ryugi-router.md)
+adds a frozen short candidate and direct/resumed execution boundaries:
+105 native Haiku sessions, with skill selection and actual behavior scored
+separately.
+
 Live in `evals/` (the [superpowers-evals](https://github.com/prime-radiant-inc/superpowers-evals/) eval lab, since renamed from Drill). Quorum is the harness CLI — one part of the system: it drives real coding-agent CLIs through a Gauntlet QA agent and grades them against each scenario's acceptance criteria plus deterministic post-checks. Scenarios live at `evals/scenarios/<name>/`. See `evals/README.md` for setup, the container runtime, and the safety model. Quick start (local break-glass run):
 
 ```bash

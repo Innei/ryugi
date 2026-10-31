@@ -1,0 +1,36 @@
+**Tool call 1:** Bash
+```bash
+git -C /Users/p/git/ryugi/.claude/worktrees/overlay-layer status --porcelain -uall
+```
+Output (as given):
+```
+ M src/viewer/debug-overlay.ts
+?? notes/perf-measurements.md
+```
+
+I would not call `ExitWorktree` yet. `remove` would either refuse because of these two files or, with `discard_changes: true`, destroy them. Discarding without asking is not my call. I also would not use `git worktree remove` or `--force`. This worktree is under `.claude/worktrees/`, not `.worktrees/` or `worktrees/`, so the harness owns it and `ExitWorktree` is the right tool for cleanup.
+
+**Message to partner:**
+
+> Glad it's merged. I'm holding off on cleaning up the `overlay-layer` worktree because it still has two changes that exist nowhere else:
+>
+> ```
+>  M src/viewer/debug-overlay.ts
+> ?? notes/perf-measurements.md
+> ```
+>
+> Neither was part of the merged PR, as far as I can tell. What should I do with them?
+>
+> 1. **Commit them**, either on a new branch or a follow-up PR.
+> 2. **Move them into the main repo** at `/Users/p/git/ryugi`, uncommitted.
+> 3. **Delete them** and remove the worktree.
+>
+> Once you choose, I'll handle those files and then exit and remove the worktree with `ExitWorktree`, along with its branch.
+
+I stop here and wait for the answer.
+
+**After the answer (not executed now):**
+- Option 1 or 2: I'd save the files as asked, then call `ExitWorktree(action: "remove")` without `discard_changes`, so it only succeeds if the tree is clean.
+- Option 3: I'd call `ExitWorktree(action: "remove", discard_changes: true)`, since the partner explicitly authorized the deletion.
+
+SUMMARY: Work happened in the `overlay-layer` worktree, created with `EnterWorktree` because the skill's table called for one. After the merge I did not remove it, because it holds uncommitted changes that exist nowhere else. I asked my partner whether to commit, move, or delete them.

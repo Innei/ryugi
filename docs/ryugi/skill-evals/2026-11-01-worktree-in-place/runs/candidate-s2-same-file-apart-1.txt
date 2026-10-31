@@ -1,0 +1,76 @@
+The skill's table applies like this:
+
+- `--git-dir` equals `--git-common-dir`, so this is not a linked worktree.
+- Nobody has said where to work, and I need no other branch or commit.
+- `EXPLORING` doesn't exist.
+- The work is not a dependency, format or codegen step.
+- HEAD is on `main`, the default branch.
+- The foreign edit in `Localizable.xcstrings` is at line 4118. My insertion goes near line 1830, so we touch different hunks. `SettingsView.swift` isn't a file I change.
+
+That lands on the last row, **work in place with no question**. I won't re-run the checks. I'll stage by hunk if I commit.
+
+## Tool calls
+
+**1. Read** `App/Resources/Localizable.xcstrings`, offset 1815, limit 40, to find the alphabetical slot.
+
+Assumed output: `"home.list.title"` begins at line 1828, and the entry before it is `"home.header.title"`. So `home.empty.title` sorts between `home.*` keys that come before `home.header.title` and after any `home.a*..home.d*` keys. I assume `home.empty.title` goes directly before `"home.header.title"`, at line 1822.
+
+**2. Edit** `App/Resources/Localizable.xcstrings`
+- `old_string`: `    "home.header.title" : {`
+- `new_string`:
+```
+    "home.empty.title" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Nothing here yet" } }
+      }
+    },
+    "home.header.title" : {
+```
+(Assumed: `old_string` is unique, so the edit succeeds.)
+
+**3. Read** `App/Home/HomeView.swift`
+
+Assumed: it has `@State var items: [Item]` and a body with `List(items) { ... }`.
+
+**4. Edit** `App/Home/HomeView.swift`
+
+I wrap the list so the empty state shows when `items.isEmpty`:
+```swift
+Group {
+    if items.isEmpty {
+        Text("home.empty.title")
+    } else {
+        List(items) { ... }
+    }
+}
+```
+(Assumed: the edit applies cleanly. TDD's red/green cycle for this runs around these edits, in this same checkout.)
+
+**5. Bash** `git diff App/Resources/Localizable.xcstrings App/Home/HomeView.swift`
+
+Assumed: the xcstrings diff shows two hunks, my `home.empty.title` at about line 1822 and the foreign `settings.sync.title` at 4118. HomeView shows only my change.
+
+**6. Bash** `xcodebuild test -scheme lody-ios -destination 'platform=iOS Simulator,name=iPhone 16'`
+
+Assumed: it passes. The scheme name and simulator are guesses. The tree includes the other agent's uncommitted `SettingsView.swift` change, and I assume that doesn't break the build.
+
+I won't commit, since nobody asked me to. If asked, I would run:
+- `git add App/Home/HomeView.swift`
+- `git add -p App/Resources/Localizable.xcstrings`, answering `y` only for the `home.empty.title` hunk and `n` for `settings.sync.title`
+- `git commit`
+
+I would never use `-A`, `.` or `-a`.
+
+## Message to my human partner
+
+> Added `home.empty.title` ("Nothing here yet") to `Localizable.xcstrings` and show it in `HomeView.swift` when the list is empty. Tests pass.
+>
+> I worked in place on `main`, in the shared checkout. `Localizable.xcstrings` and `SettingsView.swift` already had uncommitted edits that aren't mine (a `settings.sync.title` entry and a change in the settings view). My edit is in a different hunk, so I left theirs alone.
+>
+> Still uncommitted in this checkout, not pushed:
+> - `App/Home/HomeView.swift` (mine)
+> - `App/Resources/Localizable.xcstrings` (my `home.empty.title` hunk, mixed with the other `settings.sync.title` hunk)
+>
+> If you want a commit, I'll stage only my hunks with `git add -p` and leave the other agent's changes unstaged.
+
+SUMMARY: Worked in place in /Users/p/git/lody-ios on `main`, with no worktree, because the foreign edits sit in other hunks or files than the one I change (line 4118 vs. my insertion near line 1830), and no other table row applied.

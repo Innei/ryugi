@@ -1,0 +1,65 @@
+**Decision from the table:**
+- Row 1 doesn't match. `--git-dir` equals `--git-common-dir`, so this is the main checkout.
+- Row 2 doesn't match. "Push to main" names a branch, not a place to work.
+- Rows 3-5 don't match. There are no branch switches or rebases, `package.json`, `web/package.json` and `pnpm-lock.yaml` are clean, and there is no `EXPLORING` file.
+- Row 6 matches. The work changes the lockfile and dependencies, and the checkout has an uncommitted entry I didn't make (`.vitest/`). So I use a new worktree without asking. This also keeps my test runs from colliding with whoever is writing `.vitest/`.
+
+**Message to partner:**
+> This bumps a dependency and the lockfile, and the main checkout has an untracked `.vitest/` I didn't create, so another session may be active. I'm doing the work in an isolated worktree and will push the result to main from there.
+
+**Tool call 1:** `EnterWorktree(name: "pin-ryugi-artifacts")`
+- Assumed result: `/Users/p/git/cloud/.claude/worktrees/pin-ryugi-artifacts` on new branch `worktree-pin-ryugi-artifacts` from HEAD, and the session is switched into it.
+- I use the native tool rather than `git worktree add`.
+- No spec or modified file needs copying in, because the files I'll change are clean at HEAD.
+
+**Tool call 2 (set up, frozen mode because the lockfile is pnpm):**
+`pnpm install --frozen-lockfile`
+- Assumed: succeeds.
+
+**Tool call 3 (baseline test run, once):**
+`pnpm test`
+- Assumed: passes. If it failed, I would report the failures and ask whether to go on.
+
+**Tool calls 4-5 (parallel reads):**
+- `Read(.claude/worktrees/pin-ryugi-artifacts/package.json)`
+- `Read(.claude/worktrees/pin-ryugi-artifacts/web/package.json)`
+- Assumed: both contain `"ryugi-artifacts": "^1.48.0"`.
+
+**Tool calls 6-7 (parallel edits):**
+- `Edit(package.json, old: "ryugi-artifacts": "^1.48.0", new: "ryugi-artifacts": "1.49.3")`
+- `Edit(web/package.json, same replacement)`
+
+**Tool call 8 (update lockfile, not frozen this time):**
+`pnpm install`
+- Assumed: succeeds and rewrites `pnpm-lock.yaml`.
+
+**Tool call 9 (check scope):**
+`git status --porcelain && git diff --stat`
+- Assumed: shows only `package.json`, `web/package.json` and `pnpm-lock.yaml` modified. If anything else had changed, I would investigate before committing.
+
+**Tool call 10 (run the tests on the pinned version):**
+`pnpm test`
+- Assumed: passes.
+
+**Tool call 11 (commit only the three files):**
+`git add package.json web/package.json pnpm-lock.yaml && git commit -m "chore: pin ryugi-artifacts to 1.49.3"`
+
+**Tool call 12 (push to main, as explicitly requested):**
+`git push origin HEAD:main`
+- Assumed: fast-forwards cleanly. If it were rejected, I would report that and ask, not force-push.
+
+**Cleanup.** The work has landed on main, so I clean up. I look at the target first.
+
+**Tool call 13:** `git -C /Users/p/git/cloud/.claude/worktrees/pin-ryugi-artifacts status --porcelain -uall`
+- Assumed output: `?? .vitest/results.json`. This is the cache my own test runs wrote in the worktree. It is untracked, so removal would be refused.
+
+I don't pass `discard_changes: true` on my own initiative.
+
+**Message to partner (then I stop and wait):**
+> `ryugi-artifacts` is pinned to 1.49.3 in `package.json` and `web/package.json`, the lockfile is updated, tests pass, and the commit is pushed to `origin/main`.
+>
+> The worktree `.claude/worktrees/pin-ryugi-artifacts` still contains an untracked `.vitest/results.json`, which is vitest's cache from my test runs. It exists nowhere else, so removal would discard it. Do you want me to remove the worktree and discard it (`ExitWorktree remove` with `discard_changes`), or keep the worktree?
+>
+> Your main checkout is untouched. Its local `main` is one commit behind `origin/main`, so run `git pull` there when you want it.
+
+SUMMARY: The work happened in a new worktree (`EnterWorktree`, `.claude/worktrees/pin-ryugi-artifacts`) because it changes the lockfile and dependencies while the main checkout has an untracked `.vitest/` I didn't make. I pushed with `HEAD:main` and stopped to ask before discarding the worktree's untracked cache.

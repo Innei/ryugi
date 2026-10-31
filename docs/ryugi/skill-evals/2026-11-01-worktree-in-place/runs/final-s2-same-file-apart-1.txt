@@ -1,0 +1,65 @@
+No worktree is needed. Checking the table in order:
+
+- `--git-dir` equals `--git-common-dir`, so this is the main checkout, and the superproject output is empty.
+- No partner instruction says where to work, I'm not developing on other content, and there is no `EXPLORING` file.
+- I'm not changing dependencies or running codegen.
+- HEAD is on `main`, the default branch.
+- The other edits are in `SettingsView.swift`, which I won't touch, and in the `xcstrings` hunk at line 4118. I'll insert near line 1830, so the hunks don't overlap.
+
+That lands on "Anything else": work in place, no question. I won't re-run the checks.
+
+**Message to partner:**
+"`Localizable.xcstrings` and `SettingsView.swift` already have uncommitted edits that aren't mine (the `settings.sync.title` entry). My `home.empty.title` entry goes in a different part of the file, so I'm working in place and will stage only my own hunk."
+
+**Tool calls**
+
+1. `Grep` pattern `"home\.` in `App/Resources/Localizable.xcstrings`, with line numbers.
+   Assumed result: `home.*` keys around lines 1830–1860, with `home.empty.title` absent. The neighbours are `"home.header.title"` at 1842 and `"home.diff.label"` before it.
+
+2. `Read` `App/Resources/Localizable.xcstrings`, offset 1825, limit 30, to see the exact formatting and the alphabetical insertion point. `home.empty.title` sorts after `home.diff.label` and before `home.header.title`.
+
+3. `Read` `App/Home/HomeView.swift` to find the list and its empty state.
+   Assumed result: a `List(items)` inside `body` with no empty-state handling.
+
+4. TDD step, as the skill that sent me here requires. `Write` or `Edit` a failing test in the existing HomeView test file. It asserts that the empty state shows the string for `home.empty.title`. Then run:
+   `xcodebuild test -scheme lody-ios -destination 'platform=iOS Simulator,name=iPhone 16' -only-testing:LodyTests/HomeViewTests`
+   Assumed result: the test fails because the key is missing.
+
+5. `Edit` `App/Resources/Localizable.xcstrings`.
+   `old_string` is the line `"home.header.title" : {` plus a unique line of context. `new_string` is the following block placed before it:
+   ```
+       "home.empty.title" : {
+         "localizations" : {
+           "en" : { "stringUnit" : { "state" : "translated", "value" : "Nothing here yet" } }
+         }
+       },
+   ```
+   The `settings.sync.title` hunk at line 4118 stays untouched.
+
+6. `Edit` `App/Home/HomeView.swift`. Wrap the list so that an empty `items` shows `Text("home.empty.title")` and otherwise shows the existing `List`.
+
+7. Re-run the same `xcodebuild test` command.
+   Assumed result: the test passes.
+
+8. Stage my paths. `HomeView.swift` is entirely mine, so I stage it by name:
+   `git add App/Home/HomeView.swift` plus the test file, by name.
+
+   `Localizable.xcstrings` also holds the other edit, so I stage only my hunk:
+   ```bash
+   git diff App/Resources/Localizable.xcstrings > /tmp/home-empty.patch
+   ```
+   Then `Edit` `/tmp/home-empty.patch` to delete the `@@ -4118 ...` hunk (the `settings.sync.title` block), leaving only the `home.empty.title` hunk. Then:
+   ```bash
+   git apply --cached --recount /tmp/home-empty.patch
+   ```
+   I never use `git add -A`, `git add .` or `git commit -a`.
+
+9. `git diff --cached --stat` and `git status --porcelain`.
+   Assumed result: staged are `HomeView.swift`, the test file, and the `xcstrings` file with only my hunk. Unstaged are the `settings.sync.title` hunk in `Localizable.xcstrings` and `SettingsView.swift`, both still the other agent's.
+
+10. `git commit -m "Show empty-state title on Home"` with only the staged content, since you didn't ask me to commit elsewhere.
+
+**Final message to partner:**
+"Added `home.empty.title` = "Nothing here yet" and showed it in `HomeView` when the list is empty. The new test passes. I committed only my hunks. The `settings.sync.title` edit in `Localizable.xcstrings` and the `SettingsView.swift` changes are still uncommitted in the working tree and are not mine. I created no worktrees, and nothing of mine is left uncommitted."
+
+SUMMARY: Worked in place in the main checkout on `main`, because the other agent's edits are in a different file and a different hunk of `Localizable.xcstrings`, so I staged only my own hunks by patch.

@@ -1,0 +1,39 @@
+**Step 1: re-run the Where-to-work check before the first edit.** The decision I made 40 minutes ago may be stale, because other agents can work in this checkout and may have touched `src/search/input.ts` or added an `EXPLORING` file since.
+
+Tool call: Bash
+```bash
+cd /Users/p/git/search-app && git rev-parse --path-format=absolute --git-dir --git-common-dir && git rev-parse --show-superproject-working-tree && git branch --show-current && git status --porcelain && cat .ryugi/sdd/*/EXPLORING 2>/dev/null
+```
+
+Assumed output:
+```
+/Users/p/git/search-app/.git
+/Users/p/git/search-app/.git
+main
+?? .ryugi/sdd/search-debounce/spec.md
+```
+- `--git-dir` equals `--git-common-dir`, so this is not a linked worktree.
+- The superproject output is empty, so it is not a submodule.
+- The branch is `main`, the default branch.
+- The only change is my own untracked spec, which doesn't count as an edit I didn't make.
+- There is no `EXPLORING` file, so `cat` prints nothing.
+
+**Step 2: walk the table.**
+- Linked worktree: no.
+- Partner instructions on where to work: none.
+- Branch switch, rebase or bisect: no, this is a debounce edit.
+- Uncommitted edits by others in files the work changes: no, `src/search/input.ts` is clean.
+- `EXPLORING` lists a path the work changes: no `EXPLORING` file exists.
+- Dependencies, lockfile, repo-wide format or codegen: no.
+- HEAD on a non-default, non-work branch: no, it's `main`.
+- Last row: **in place, no question.**
+
+I won't create a worktree, so `EnterWorktree` is not called. I send no message to my partner, because nothing needs asking.
+
+**Step 3: continue task 3 in place, following test-driven-development.**
+
+Tool call: Read `/Users/p/git/search-app/src/search/input.ts`
+
+Next I write the failing debounce test first, then implement. If a later `git status` shows someone else's uncommitted edits in `src/search/input.ts`, I'll re-evaluate then.
+
+SUMMARY: Work happened in place on `main` in /Users/p/git/search-app, because the re-run check showed a clean `input.ts`, no `EXPLORING` file and only my own spec untracked, so no table row called for a worktree.

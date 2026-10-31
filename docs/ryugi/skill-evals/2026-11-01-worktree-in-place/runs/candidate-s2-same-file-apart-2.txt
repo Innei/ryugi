@@ -1,0 +1,72 @@
+Applying the table to what the commands showed:
+
+- `--git-dir` equals `--git-common-dir`, so this is the main checkout and not a linked worktree.
+- My partner gave no instruction about where to work.
+- I'm not building on another branch or commit.
+- There is no `EXPLORING` file.
+- HEAD is on `main`, the default branch.
+- My change adds `home.*` near line 1830. The foreign edit is the `settings.sync.title` hunk at line 4118, so the hunks don't overlap. `SettingsView.swift` isn't a file I touch.
+- I'm hand-editing a strings file, not changing dependencies, running codegen, or formatting the repo.
+
+That lands on "Anything else", so I work in place with no question and no worktree. I won't re-run the checks later in the session.
+
+## Tool calls
+
+**1.** `Grep` pattern `"home\.` in `App/Resources/Localizable.xcstrings`, with line numbers. I'm looking for the alphabetical insertion point. Assumed result: `home.empty.*` has no entries, `home.header.title` is at line 1832, and the key before it is `home.cta.start` ending near line 1829.
+
+**2.** `Read` `App/Resources/Localizable.xcstrings`, offset 1815, limit 30. Assumed result: it confirms `home.cta.start` closes at line 1829 with `},` and `home.header.title` starts at 1830.
+
+**3.** `Read` `App/Home/HomeView.swift`. Assumed result: `HomeView` has a `List(items)` inside a `body` with `@State var items`, and no empty state.
+
+**4.** `Grep` `HomeView` in `AppTests/` to find existing tests. Assumed result: `AppTests/HomeViewTests.swift` exists.
+
+**5.** `Edit` `AppTests/HomeViewTests.swift` (TDD, failing test first). Add a test asserting `String(localized: "home.empty.title") == "Nothing here yet"`, plus a test that `HomeView(items: [])` exposes the empty state. Assumed: the second test uses an existing `HomeView` inspection helper already used in that file.
+
+**6.** `Bash`: `xcodebuild test -scheme Lody -destination 'platform=iOS Simulator,name=iPhone 16' -only-testing:AppTests/HomeViewTests`
+Assumed result: the new tests fail, because the key is missing and the view has no empty state. That is the expected red.
+
+**7.** `Edit` `App/Resources/Localizable.xcstrings`. `old_string` is the `"home.header.title" : {` line with its unique context. `new_string` is the new entry inserted before it, in alphabetical order (`home.cta.start` < `home.empty.title` < `home.header.title`):
+```
+    "home.empty.title" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Nothing here yet" } }
+      }
+    },
+    "home.header.title" : {
+```
+I don't touch the `settings.sync.title` hunk at line 4118.
+
+**8.** `Edit` `App/Home/HomeView.swift`. Wrap the list so an empty array shows the text:
+```swift
+if items.isEmpty {
+    Text("home.empty.title")
+} else {
+    List(items) { ... }
+}
+```
+The `List` body is kept as it was.
+
+**9.** `Bash`: same `xcodebuild test` command as step 6. Assumed result: green.
+
+**10.** `Bash`: `git diff App/Resources/Localizable.xcstrings`. The diff should show two hunks: mine near 1830 and the foreign `settings.sync.title` hunk at about 4118. Assumed result: that is what it shows.
+
+**11.** Stage only my hunks, by path and never with `-A`, `.` or `-a`:
+`printf 'y\nn\n' | git add -p App/Resources/Localizable.xcstrings`
+(`y` for my hunk, `n` for the foreign one.) Then:
+`git add App/Home/HomeView.swift AppTests/HomeViewTests.swift`
+
+**12.** `Bash`: `git diff --cached --stat && git status --porcelain`
+Assumed result: the staged files are the xcstrings file (one hunk), `HomeView.swift` and `HomeViewTests.swift`. `M` remains unstaged on the xcstrings file for the foreign hunk, and `SettingsView.swift` is still ` M`.
+
+**13.** `Bash`: `git commit -m "feat(home): show empty-state title when list is empty"`
+Assumed success. The commit stays local, with no push.
+
+## Message to my partner
+
+> Added `home.empty.title` ("Nothing here yet") and the empty state in `HomeView`, test-first. The new tests pass.
+>
+> I worked in place on `main`. The checkout already had someone else's uncommitted edits, a `settings.sync.title` hunk in `Localizable.xcstrings` and changes in `SettingsView.swift`. They don't overlap with my lines, so I didn't need a worktree. I committed only my hunks, one commit, not pushed.
+>
+> Still uncommitted in the checkout, and not mine: the `settings.sync.title` hunk in `App/Resources/Localizable.xcstrings` and `App/Settings/SettingsView.swift`. I left both untouched.
+
+SUMMARY: Worked in place in the main checkout on `main`, with no worktree, because the foreign edits (`settings.sync.title` at line 4118 and `SettingsView.swift`) don't overlap my hunks near line 1830, and I committed only my own hunks with `git add -p`.

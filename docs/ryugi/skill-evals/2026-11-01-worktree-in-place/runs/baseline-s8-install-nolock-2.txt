@@ -1,0 +1,41 @@
+I'm in the `release-fix` worktree, at Set up. I'd make these calls in order.
+
+**Call 1: confirm location and what the package manager is**
+```bash
+pwd && git branch --show-current && ls pnpm-lock.yaml package-lock.json yarn.lock 2>&1; grep -n '"packageManager"' package.json; grep -n lockfile pnpm-workspace.yaml
+```
+Assumed output: the path is `/Users/p/git/lobe-chat/.claude/worktrees/release-fix`, and the branch is the worktree branch cut from `release/1.2`. No lockfile of any kind exists ("No such file" for all three). `packageManager` is `pnpm@…`, and `pnpm-workspace.yaml` has `lockfile: false`.
+
+The skill says to install in frozen mode with the package manager the lockfile names. Here no lockfile is committed, so `pnpm install --frozen-lockfile` would fail with `ERR_PNPM_NO_LOCKFILE`. I'd run a plain `pnpm install`. pnpm is confirmed by `packageManager` and the workspace file. With `lockfile: false` the install can't change any tracked file.
+
+I would not copy or symlink `node_modules` from `/Users/p/git/lobe-chat`. That tree belongs to the main checkout and the other agents using it, and the release branch's dependencies may differ from canary's. pnpm hardlinks from its global store, so the install should be much cheaper than 1.3M fresh files.
+
+**Call 2: install**
+```bash
+pnpm install
+```
+Assumed output: it resolves, links from the store, and finishes with exit 0 and only peer-dependency warnings.
+
+**Call 3: find the project's test command**
+```
+Read: package.json   (the "scripts" section)
+```
+Assumed result: `"test": "vitest run"`.
+
+**Call 4: run the test command once**
+```bash
+pnpm test
+```
+Assumed output: all test files pass, exit 0 (for example, "Test Files 212 passed").
+
+**Message to my human partner**
+> The `release-fix` worktree is ready, branched from `release/1.2`. Your canary checkout and the other agents' uncommitted edits are untouched.
+>
+> - **Install:** I ran `pnpm install` without `--frozen-lockfile`. The repo sets `lockfile: false` and has no committed lockfile, so frozen mode would error out. I didn't reuse the main checkout's `node_modules`.
+> - **Baseline:** `pnpm test` passes on the unmodified release branch, so any later failure comes from the fix.
+>
+> I'm starting the fix now, working only inside the worktree. I'll leave it in place until the fix lands or you tell me to discard it.
+
+I'd carry on into the implementation from here. The fix itself isn't specified, so I stop the simulation at this point.
+
+SUMMARY: The work happens in the `release-fix` worktree created with EnterWorktree from `release/1.2`, because the main checkout is on canary with other agents' uncommitted edits. Dependencies were installed with plain `pnpm install`, since no lockfile exists to freeze against, and the baseline tests were run once.

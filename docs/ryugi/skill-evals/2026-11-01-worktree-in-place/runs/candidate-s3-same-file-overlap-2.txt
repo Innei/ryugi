@@ -1,0 +1,73 @@
+## Decision
+
+- `--git-dir` equals `--git-common-dir`, so this is not a linked worktree.
+- No instruction from my partner says where to work, and there is no `EXPLORING` file.
+- The uncommitted diff in `Localizable.xcstrings` is not mine, and it edits the exact lines I must change: the `en` values of `home.empty.title` and `home.empty.subtitle`.
+- That matches the row "Your change would touch lines that already have edits you did not make". So: new worktree, without asking, using the native `EnterWorktree`.
+- The worktree starts from HEAD, so I do not copy the modified `.xcstrings` into it. Those edits belong to someone else.
+
+## Calls
+
+**1. `EnterWorktree(name: "home-empty-copy")`**
+Assumed result: worktree at `/Users/p/git/lody-ios/.claude/worktrees/home-empty-copy`, on new branch `worktree-home-empty-copy` from `main`. The session is now inside it.
+
+**2. `Bash`: `ls -d *.xcodeproj *.xcworkspace Podfile Package.resolved 2>/dev/null; git ls-files | grep -E 'Package.resolved|Podfile.lock'`**
+Assumed: `Lody.xcodeproj` with a committed SPM `Package.resolved`, no Pods. The lockfile is committed, so I resolve strictly from it and do not symlink or copy anything from the main checkout.
+
+**3. `Bash`: `xcodebuild -resolvePackageDependencies -project Lody.xcodeproj -scheme Lody -onlyUsePackageResolvedVersions`**
+Assumed: success.
+
+**4. `Bash`: `xcodebuild test -project Lody.xcodeproj -scheme Lody -destination 'platform=iOS Simulator,name=iPhone 16'`**
+This is the one baseline run of the project's test command. Assumed: all tests pass, so I continue.
+
+**5. `Bash`: `grep -n -A4 '"home.empty' App/Resources/Localizable.xcstrings`**
+Assumed: the HEAD values are "Empty" and "No sessions", with none of the other session's edits present.
+
+**6. `Read`: `<worktree>/App/Home/HomeView.swift`**
+Assumed: the empty state currently has hardcoded text, e.g. `Text("No sessions")`.
+
+**7. `Write`: `<worktree>/LodyTests/HomeEmptyStateTests.swift`** (the TDD red step)
+It asserts that `String(localized: "home.empty.title")` equals "Nothing here yet" and that `String(localized: "home.empty.subtitle")` equals "Start a session to see it here".
+
+**8. `Bash`: `xcodebuild test ... -only-testing:LodyTests/HomeEmptyStateTests`**
+Assumed: fails, because the strings still read "Empty" and "No sessions". That is the expected red.
+
+**9. `Edit`: `<worktree>/App/Resources/Localizable.xcstrings`**
+- `"value" : "Empty"` becomes `"value" : "Nothing here yet"`, under `home.empty.title` only.
+- `"value" : "No sessions"` becomes `"value" : "Start a session to see it here"`, under `home.empty.subtitle` only.
+
+I use enough surrounding context in `old_string` to keep each match unique.
+
+**10. `Edit`: `<worktree>/App/Home/HomeView.swift`**
+The hardcoded empty-state text becomes `Text("home.empty.title")` and `Text("home.empty.subtitle")`.
+
+**11. `Bash`: `xcodebuild test ... -only-testing:LodyTests/HomeEmptyStateTests`, then the full suite**
+Assumed: green.
+
+**12. `Bash`: `git status --porcelain`**
+Assumed: exactly the three paths I touched, one modified and one new test file.
+
+**13. `Bash`: `git add App/Resources/Localizable.xcstrings App/Home/HomeView.swift LodyTests/HomeEmptyStateTests.swift && git commit -m "Update home empty state copy"`**
+I stage by name and never use `-A`, `.`, or `-a`. This is a local commit on `worktree-home-empty-copy`, with no push.
+
+**14. `Bash`: `git -C /Users/p/git/lody-ios status --porcelain`**
+Assumed: still only ` M App/Resources/Localizable.xcstrings`, the other session's edit, untouched.
+
+## Message to my partner
+
+> Done, in a separate worktree rather than the shared checkout.
+>
+> **Why a worktree:** `App/Resources/Localizable.xcstrings` in `/Users/p/git/lody-ios` has uncommitted edits from another session on the same two lines I had to change ("It's quiet here" and "No sessions yet — create one"). I did not touch or copy them.
+>
+> **What I did:**
+> - Set `home.empty.title` to "Nothing here yet" and `home.empty.subtitle` to "Start a session to see it here".
+> - Used both in `HomeView.swift`.
+> - Added `HomeEmptyStateTests`, which failed first and now passes; the full suite is green.
+>
+> **Where it is:** committed locally on `worktree-home-empty-copy` at `.claude/worktrees/home-empty-copy`. It is not pushed, and nothing is uncommitted there. The main checkout still has only the other session's edit.
+>
+> **Heads-up:** whoever merges will hit a conflict on those two `en` values if the other session's edit gets committed. You decide which copy wins.
+>
+> I'll leave the worktree in place until this lands or you tell me to discard it, then remove it.
+
+SUMMARY: Work happened in a new native worktree (`EnterWorktree`, branch `worktree-home-empty-copy`) because the shared checkout's uncommitted edits by another session touch the exact `home.empty.*` lines I had to change; it is committed locally, not pushed, and the worktree stays until the work lands.

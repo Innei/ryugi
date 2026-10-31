@@ -1,0 +1,55 @@
+Not running anything; this is the simulated sequence. I'm not re-running the "Where to work" commands, since that answer holds for the session. Working on top of another branch is a "New worktree, without asking" row, so I move my changes instead of switching branches in the shared checkout.
+
+**Message to partner:** "Understood. I'll move my two files (`src/search/query.ts`, `src/search/query.test.ts`) into a worktree on top of `feat/search-v2`. I'm leaving `docs/notes.md` alone, since it isn't mine."
+
+**1. Bash**: check the branch exists and isn't checked out elsewhere.
+```bash
+git branch --list feat/search-v2 && git worktree list
+```
+*Assumed:* `feat/search-v2` is listed and no other worktree has it checked out.
+
+**2. Bash**: stash only my paths.
+```bash
+git stash push --include-untracked -- src/search/query.ts src/search/query.test.ts
+```
+*Assumed:* `Saved working directory and index state WIP on main: ...`. `docs/notes.md` stays modified in place.
+
+**3. EnterWorktree**(name: `search-v2-work`)
+
+The skill's "New worktree" row is the explicit request this tool needs. The tool branches from HEAD (main) and switches the session into `.claude/worktrees/search-v2-work`. *Assumed:* success, on an auto-named branch at main's HEAD with nothing of mine on it.
+
+**4. Bash** (in the worktree): put it on top of `feat/search-v2`.
+```bash
+git switch feat/search-v2
+```
+*Assumed:* success. The auto-named branch has no commits of its own and is removed with the worktree at cleanup. If the switch were refused because the branch is checked out elsewhere, I'd run `git reset --hard feat/search-v2` on the empty auto-named branch instead. That's safe because nothing is on it yet.
+
+**5. Bash** (in the worktree): pop the stash.
+```bash
+git stash pop
+```
+*Assumed:* applies cleanly. If it conflicted, I'd stop and show you.
+
+**6. Bash**: verify the original checkout no longer holds my changes.
+```bash
+git -C /Users/p/git/search-app status --porcelain -- src/search/query.ts src/search/query.test.ts
+```
+*Assumed:* prints nothing. `docs/notes.md` is outside these paths and is untouched.
+
+**7. Bash** (in the worktree): set up, since I created this worktree to develop in.
+```bash
+pnpm install --frozen-lockfile
+```
+*Assumed:* the lockfile is committed on `feat/search-v2` and the install succeeds. I don't symlink or copy `node_modules`.
+
+**8. Bash**: run the project's test command once.
+```bash
+pnpm test
+```
+*Assumed:* passes, including my `query.test.ts`. If it failed, I'd report the failures and ask whether to go on.
+
+**Message to partner:** "I'm now working in `.claude/worktrees/search-v2-work` on `feat/search-v2`. My two files moved there and the main checkout no longer has them. Install and tests pass. `docs/notes.md` is still modified in the main checkout and I haven't touched it. I'll continue implementing here and commit only my own paths by name. The worktree stays until the work lands, then I'll remove it."
+
+I would then keep implementing in the worktree. I wouldn't need to stop for you unless the stash pop conflicts or the tests fail.
+
+SUMMARY: The work moves into a new native worktree (`EnterWorktree`) on top of `feat/search-v2`, because it must be developed on another branch's content; my two files go over by `git stash push --include-untracked -- <paths>` and `pop`, and `docs/notes.md` stays untouched in the main checkout.

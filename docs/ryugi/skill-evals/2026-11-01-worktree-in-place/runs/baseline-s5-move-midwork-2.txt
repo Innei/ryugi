@@ -1,0 +1,84 @@
+I'd treat this as a branch switch, which means a worktree. The partner's instruction names the branch, not the checkout, and switching branches in the shared checkout would disturb `docs/notes.md` and any other agent. I would not ask first.
+
+**Step 1: Re-check the checkout (parallel calls)**
+```bash
+git rev-parse --path-format=absolute --git-dir --git-common-dir
+git rev-parse --show-superproject-working-tree
+git branch --show-current
+git status --porcelain
+git branch --list feat/search-v2
+git worktree list
+```
+Assumed output:
+- `--git-dir` and `--git-common-dir` are both `/Users/p/git/search-app/.git`, so this is not a linked worktree.
+- No superproject.
+- Branch is `main`.
+- Status is ` M docs/notes.md`, ` M src/search/query.ts`, `?? src/search/query.test.ts`.
+- `feat/search-v2` exists and is not checked out in any other worktree.
+
+**Step 2: Save my work outside the repo**
+```bash
+mkdir -p /tmp/search-handoff
+git -C /Users/p/git/search-app diff -- src/search/query.ts > /tmp/search-handoff/query.patch
+cp /Users/p/git/search-app/src/search/query.test.ts /tmp/search-handoff/query.test.ts
+```
+The patch covers only my file, not `docs/notes.md`.
+
+**Step 3: Create the worktree with the native tool**
+```
+EnterWorktree(name: "search-v2")
+```
+Assumed result: `/Users/p/git/search-app/.claude/worktrees/search-v2`, on a new branch from `main`, and the session is now inside it.
+
+**Step 4: Move onto the existing branch**
+```bash
+git switch feat/search-v2
+git branch --show-current
+git status --porcelain
+```
+Assumed result: the branch is `feat/search-v2` and the tree is clean. The throwaway branch from Step 3 has no commits of its own and gets removed during cleanup.
+
+**Step 5: Set up (freshly created worktree) and take a baseline**
+```bash
+pnpm install --frozen-lockfile
+pnpm test
+```
+Assumed result: both succeed. If tests had failed, I would report the failures and ask whether to go on.
+
+**Step 6: Bring my work over**
+```bash
+git apply --3way /tmp/search-handoff/query.patch
+cp /tmp/search-handoff/query.test.ts src/search/query.test.ts
+git status --porcelain
+pnpm test
+```
+Assumed result: the patch applies cleanly, status shows ` M src/search/query.ts` and `?? src/search/query.test.ts`, and tests pass. If `--3way` conflicted, I would stop and show the conflict rather than guess.
+
+**Step 7: Remove my edits from the main checkout**
+
+I check the target first:
+```bash
+git -C /Users/p/git/search-app status --porcelain
+```
+This shows the same three entries. I revert only my own two files and leave `docs/notes.md` alone:
+```bash
+git -C /Users/p/git/search-app checkout -- src/search/query.ts
+rm /Users/p/git/search-app/src/search/query.test.ts
+git -C /Users/p/git/search-app status --porcelain
+```
+Result: only ` M docs/notes.md` remains.
+
+**Message to my partner**
+
+> Switched. This is a branch change, so I did it in a worktree instead of flipping the shared checkout. That keeps the uncommitted `docs/notes.md` edit, which isn't mine, untouched.
+>
+> - Worktree: `.claude/worktrees/search-v2`, on `feat/search-v2`
+> - My `src/search/query.ts` changes and the new `src/search/query.test.ts` were moved there. The patch applied cleanly and the tests pass.
+> - I removed those two files' changes from the main checkout, so `main` now only has your `docs/notes.md` edit.
+> - Nothing is committed. A copy of my patch is in `/tmp/search-handoff/`.
+>
+> I'll continue implementing there. Once the work lands, I'll clean up the worktree and the leftover throwaway branch.
+
+Then I continue implementing in the worktree. Cleanup happens only after the work lands or the partner says it's done.
+
+SUMMARY: Work moved to a new worktree (`EnterWorktree`, `.claude/worktrees/search-v2`) switched onto `feat/search-v2`, because the work now switches branches and the main checkout holds someone else's uncommitted `docs/notes.md` edit.

@@ -1,0 +1,62 @@
+Nothing is run here. This is the simulated sequence.
+
+**Why a worktree:** the checkout is on `canary`, and my uncommitted work has to be committed on a different branch (`fix/message-scroll`). The skill says to move the changes, not switch branches in the shared checkout. Another agent has `src/store/chat.ts` modified there, and I won't touch it. Your instruction to open the PR is the explicit request that `EnterWorktree` requires.
+
+**Call 1: Bash, stash only my paths**
+```bash
+git stash push --include-untracked -- src/features/Scroll/index.tsx src/features/Scroll/index.test.tsx
+```
+Assumed output: `Saved working directory and index state WIP on canary: <sha> <msg>`. `src/store/chat.ts` stays modified in place.
+
+**Call 2: EnterWorktree**
+```
+EnterWorktree(name: "message-scroll")
+```
+Assumed result: a worktree at `.claude/worktrees/message-scroll` on a new branch from HEAD (canary), and the session switches into it. I use a slash-free name because the tool may not accept `fix/...` as a directory name. I rename the branch in the next call.
+
+**Call 3: Bash (inside the worktree), rename the branch and pop the stash**
+```bash
+git branch -m fix/message-scroll && git stash pop
+```
+Assumed output: the branch is renamed, and the pop applies cleanly with `M src/features/Scroll/index.tsx` and `?? src/features/Scroll/index.test.tsx`. If the pop conflicted, I would stop and show you.
+
+**Call 4: Bash, verify the original checkout no longer has my changes**
+```bash
+git -C /Users/p/git/lobe-chat status --porcelain -- src/features/Scroll/index.tsx src/features/Scroll/index.test.tsx
+```
+Assumed output: empty. A plain `git -C /Users/p/git/lobe-chat status --porcelain` would still show ` M src/store/chat.ts` for the other agent.
+
+**Call 5: Bash, commit only my paths by name**
+```bash
+git add src/features/Scroll/index.tsx src/features/Scroll/index.test.tsx && git commit -m "🐛 fix: message list scroll bug"
+```
+I run no install and no test run. The worktree exists only for this commit, and the tests already passed on the shared tree. I never use `git add -A`, `git add .` or `git commit -a`.
+
+**Call 6: Bash, push**
+```bash
+git push -u origin fix/message-scroll
+```
+Assumed output: the branch is pushed with upstream tracking.
+
+**Call 7: Bash, open the PR**
+```bash
+gh pr create --base canary --head fix/message-scroll --title "🐛 fix: message list scroll bug" --body "Fixes the scroll bug in src/features/Scroll. Adds a regression test in src/features/Scroll/index.test.tsx."
+```
+Assumed output: `https://github.com/<org>/lobe-chat/pull/<n>`.
+
+**Call 8: ExitWorktree, remove at once**
+```
+ExitWorktree(action: "remove")
+```
+The worktree is clean and the commit is pushed, so I don't set `discard_changes`. Assumed result: the worktree directory and the local branch are removed, and the session returns to `/Users/p/git/lobe-chat`. The remote branch `fix/message-scroll` and the PR stay, so later review fixes go on that pushed branch. The skill says a worktree created only for a commit is removed immediately.
+
+**Call 9: Bash, final check**
+```bash
+git status --porcelain
+```
+Assumed output: ` M src/store/chat.ts` only, which is the other agent's change.
+
+**Message to you:**
+> PR opened: <PR URL> (`fix/message-scroll` → `canary`). It contains only `src/features/Scroll/index.tsx` and the new `index.test.tsx`. I made the commit in a temporary worktree and removed it afterwards, so nothing of mine is left uncommitted anywhere. I didn't run tests in the worktree, since they passed on the shared tree. `src/store/chat.ts` still has another agent's uncommitted edit in the main checkout. I didn't touch it and it isn't in the PR.
+
+SUMMARY: The PR commit was made in a temporary `EnterWorktree` worktree, which was removed after pushing, because my uncommitted changes had to land on a new branch off canary and the shared canary checkout must not be switched, with the other agent's `chat.ts` edit left untouched.

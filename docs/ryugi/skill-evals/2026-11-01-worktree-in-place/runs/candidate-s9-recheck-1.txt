@@ -1,0 +1,44 @@
+No worktree decision to make. The skill says the answer holds for the session, and nothing I know of has changed, so I don't re-run the Where-to-work commands. I keep working in place on main.
+
+**Tool call 1: Read** `/Users/p/git/search-app/src/search/input.ts`
+Assumed: it exports `onSearchInput(handler)`, which calls the handler on every keystroke.
+
+**Tool call 2: Read** `/Users/p/git/search-app/src/search/input.test.ts`
+Assumed: it exists from earlier work, with no debounce tests.
+
+**Tool call 3: Edit** `src/search/input.test.ts` (RED step)
+Add a test using `vi.useFakeTimers()`. It fires 3 inputs within 100 ms, advances 300 ms, and expects the handler to be called once with the last value.
+
+**Tool call 4: Bash**
+`cd /Users/p/git/search-app && pnpm vitest run src/search/input.test.ts`
+Assumed: the new test fails (handler called 3 times, expected 1) and the older tests pass.
+
+**Tool call 5: Edit** `src/search/input.ts` (GREEN step)
+Wrap the handler in a trailing-edge debounce with a 300 ms default delay (a `setTimeout` that is cleared on each new input).
+
+**Tool call 6: Bash**
+`pnpm vitest run src/search/input.test.ts`
+Assumed: all tests pass.
+
+**Tool call 7: Bash**
+`pnpm tsc --noEmit`
+Assumed: clean.
+
+**Tool call 8: Bash**
+`git status --porcelain && git diff src/search/input.ts src/search/input.test.ts`
+Assumed: only my two files are modified, plus my untracked spec, so every hunk is mine. If another agent's hunks showed up, I'd use `git add -p` for those files instead.
+
+**Tool call 9: Bash** (commit only my paths, by name)
+`git add src/search/input.ts src/search/input.test.ts && git commit -m "feat(search): debounce search input"`
+Assumed: the commit succeeds. I don't use `git add -A`, `git add .` or `git commit -a`.
+
+**Tool call 10: Bash**
+`git status --porcelain`
+Assumed: only the untracked spec remains, which is not an uncommitted change of mine to anything but the spec itself.
+
+**Message to my partner:**
+"Task 3 is done and committed on main: a 300 ms trailing debounce in `src/search/input.ts`, with a fake-timer test in `input.test.ts`. The test failed before the change and passes now. `tsc` is clean. I staged only those two files by name. Starting task 4."
+
+Then I continue to task 4 in the same checkout.
+
+SUMMARY: The work happened in place on main, with no worktree, because the session's earlier decision still holds (no foreign edits, no EXPLORING file) and the skill says not to re-check. I committed only my own paths by name.

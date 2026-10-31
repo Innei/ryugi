@@ -1,0 +1,21 @@
+Simulated sequence, nothing actually run.
+
+**Reasoning:** The partner confirmed the PR is merged, so the work has landed and cleanup applies. The worktree is at `.claude/worktrees/overlay-layer`, which is not under `.worktrees/` or `worktrees/`, so Ryugi doesn't own it. The host does, and the skill says to use the platform's workspace-exit tool rather than `git worktree remove`. `git status --porcelain -uall` printed nothing, so no files exist only in this worktree. I copied no spec into it, so there is nothing to `cmp` or delete first. I won't pass `discard_changes`, so the tool's own refusal still protects any uncommitted files.
+
+**Tool call 1**
+
+```
+ExitWorktree(action: "remove")
+```
+
+Assumed output: the session returns to `/Users/p/git/ryugi`, the worktree directory `.claude/worktrees/overlay-layer` is deleted, and the branch `overlay-layer` is removed.
+
+If the tool had refused because of modified or untracked files, I would not retry with `discard_changes: true`. I would show the partner the output of `git -C /Users/p/git/ryugi/.claude/worktrees/overlay-layer status --porcelain -uall` and ask whether to commit, move, or delete those files.
+
+**Message to partner**
+
+> Thanks for merging. I removed the `overlay-layer` worktree and its branch. It had no uncommitted changes, so nothing was lost. I'm back in `/Users/p/git/ryugi`. I didn't touch the main checkout's branch or pull, so run `git pull` when you want the merge locally.
+
+Then I stop and wait.
+
+SUMMARY: The work happened in the `overlay-layer` worktree, created with EnterWorktree because the skill's table required a new worktree. After the merge I removed it with ExitWorktree(remove) because the host owns that path and the worktree was clean.

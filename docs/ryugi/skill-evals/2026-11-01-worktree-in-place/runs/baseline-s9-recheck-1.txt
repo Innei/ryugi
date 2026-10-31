@@ -1,0 +1,31 @@
+I re-run the Where-to-work check instead of reusing the decision from 40 minutes ago. Other agents share this checkout, and the check is only valid for the state it observed. Task 3 will edit `src/search/input.ts`, which someone else may have touched since.
+
+**Tool call 1: Bash**
+```bash
+cd /Users/p/git/search-app && git rev-parse --path-format=absolute --git-dir --git-common-dir && git rev-parse --show-superproject-working-tree && git branch --show-current && git status --porcelain && cat .ryugi/sdd/*/EXPLORING
+```
+Assumed output:
+```
+/Users/p/git/search-app/.git
+/Users/p/git/search-app/.git
+(empty: no superproject)
+main
+?? .ryugi/sdd/search-debounce/spec.md
+zsh: no match: .ryugi/sdd/*/EXPLORING
+```
+My reading of that output, row by row:
+- `--git-dir` equals `--git-common-dir`, so this is not a linked worktree. The first row does not apply.
+- My partner has given no instructions on where to work. The second row does not apply.
+- The work does not switch branches, rebase or bisect.
+- The only dirty path is my own spec, which never counts as someone else's edit. `src/search/input.ts` has no uncommitted edits.
+- No `EXPLORING` file exists (the glob matched nothing), so no path is claimed.
+- The task changes no dependencies, lockfile or codegen.
+- HEAD is on `main`, the default branch.
+
+Result: the "Anything else" row applies, so I work in place on main with no question and no worktree. Nothing has changed since the first check.
+
+**Tool call 2: Read** `/Users/p/git/search-app/src/search/input.ts`, to see the current code before writing the failing debounce test first, as TDD requires.
+
+I would then continue task 3 in place: write the failing test, watch it fail, add the debounce, and commit. I send no message to my partner, since no decision needed their input.
+
+SUMMARY: Task 3 happens in place on `main` in `/Users/p/git/search-app`, because the re-run check showed the default branch, only my own spec untracked, no `EXPLORING` file, and no uncommitted edits to `src/search/input.ts`.

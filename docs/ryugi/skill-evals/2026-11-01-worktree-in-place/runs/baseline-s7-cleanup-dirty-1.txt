@@ -1,0 +1,23 @@
+**Tool calls:** none. The status output is already in hand, and the cleanup step says that when a worktree holds uncommitted files, I show them to my partner and ask before removing anything. I would not call `ExitWorktree(action: "remove", discard_changes: true)` on my own, because that would permanently delete files that exist nowhere else. I also would not call a plain `remove`, since it would be refused for the same reason. And I would not use `git worktree remove --force`.
+
+**Message to my partner:**
+
+> Glad it's merged. Before I clean up the `overlay-layer` worktree, there are two things in it that aren't in the merged PR:
+>
+> ```
+>  M src/viewer/debug-overlay.ts
+> ?? notes/perf-measurements.md
+> ```
+>
+> Removing the worktree would delete both permanently. What should I do?
+>
+> 1. **Commit** them. I'd put them on a new branch, or you could tell me where they belong.
+> 2. **Move** them into the main checkout at `/Users/p/git/ryugi`. I'd copy `notes/perf-measurements.md` over, and I'd carry the `debug-overlay.ts` change over as a patch, since it's a modification.
+> 3. **Discard** them. I'd then remove the worktree and its branch.
+> 4. **Keep** the worktree as it is for now, and I'd exit it without removing anything.
+>
+> I can show you the `debug-overlay.ts` diff first if that helps you decide.
+
+Then I stop and wait for the reply.
+
+SUMMARY: The work happened in the `overlay-layer` worktree, created via `EnterWorktree` because the skill's table called for a new worktree. Now that the PR has merged, I'm holding off on removal and asking my partner what to do with the uncommitted `debug-overlay.ts` change and the untracked `perf-measurements.md`, since removing the worktree would destroy them.

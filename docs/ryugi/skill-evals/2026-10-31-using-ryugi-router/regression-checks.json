@@ -1,0 +1,107 @@
+[
+  {
+    "name": "bug-absent-1",
+    "arm": "absent",
+    "catches_original_bug": false,
+    "exit_code": 0,
+    "output": "✔ keeps prices inside the range (0.564167ms)\nℹ tests 1\nℹ suites 0\nℹ pass 1\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 48.57175\n"
+  },
+  {
+    "name": "bug-absent-2",
+    "arm": "absent",
+    "catches_original_bug": false,
+    "exit_code": 0,
+    "output": "✔ keeps prices inside the range (0.553625ms)\nℹ tests 1\nℹ suites 0\nℹ pass 1\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 41.327292\n"
+  },
+  {
+    "name": "bug-absent-3",
+    "arm": "absent",
+    "catches_original_bug": true,
+    "exit_code": 1,
+    "output": "✔ keeps prices inside the range (0.614792ms)\n✖ includes prices equal to the maximum (0.710083ms)\nℹ tests 2\nℹ suites 0\nℹ pass 1\nℹ fail 1\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 49.734541\n\n✖ failing tests:\n\ntest at filter.test.cjs:8:1\n✖ includes prices equal to the maximum (0.710083ms)\n  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:\n  + actual - expected\n  \n  + []\n  - [\n  -   {\n  -     price: 10\n  -   }\n  - ]\n  \n      at TestContext.<anonymous> (/private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-regression-check-dhlby1_r/filter.test.cjs:9:10)\n      at Test.runInAsyncScope (node:async_hooks:226:14)\n      at Test.run (node:internal/test_runner/test:1402:25)\n      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)\n      at Test.postRun (node:internal/test_runner/test:1542:19)\n      at Test.run (node:internal/test_runner/test:1467:12)\n      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {\n    generatedMessage: true,\n    code: 'ERR_ASSERTION',\n    actual: [],\n    expected: [ { price: 10 } ],\n    operator: 'deepStrictEqual',\n    diff: 'simple'\n  }\n"
+  },
+  {
+    "name": "bug-absent-4",
+    "arm": "absent",
+    "catches_original_bug": true,
+    "exit_code": 1,
+    "output": "✔ keeps prices inside the range (0.88825ms)\n✖ includes prices equal to the maximum (0.657959ms)\nℹ tests 2\nℹ suites 0\nℹ pass 1\nℹ fail 1\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 43.241458\n\n✖ failing tests:\n\ntest at filter.test.cjs:8:1\n✖ includes prices equal to the maximum (0.657959ms)\n  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:\n  + actual - expected\n  \n    [\n      {\n        price: 5\n      },\n  -   {\n  -     price: 10\n  -   }\n    ]\n  \n      at TestContext.<anonymous> (/private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-regression-check-01yu7san/filter.test.cjs:9:10)\n      at Test.runInAsyncScope (node:async_hooks:226:14)\n      at Test.run (node:internal/test_runner/test:1402:25)\n      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)\n      at Test.postRun (node:internal/test_runner/test:1542:19)\n      at Test.run (node:internal/test_runner/test:1467:12)\n      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {\n    generatedMessage: true,\n    code: 'ERR_ASSERTION',\n    actual: [ { price: 5 } ],\n    expected: [ { price: 5 }, { price: 10 } ],\n    operator: 'deepStrictEqual',\n    diff: 'simple'\n  }\n"
+  },
+  {
+    "name": "bug-absent-5",
+    "arm": "absent",
+    "catches_original_bug": false,
+    "exit_code": 0,
+    "output": "✔ keeps prices inside the range (0.638792ms)\nℹ tests 1\nℹ suites 0\nℹ pass 1\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 51.44875\n"
+  },
+  {
+    "name": "bug-full-1",
+    "arm": "full",
+    "catches_original_bug": true,
+    "exit_code": 1,
+    "output": "✔ keeps prices inside the range (0.589708ms)\n✖ includes prices equal to the maximum (0.595ms)\nℹ tests 2\nℹ suites 0\nℹ pass 1\nℹ fail 1\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 43.2365\n\n✖ failing tests:\n\ntest at filter.test.cjs:8:1\n✖ includes prices equal to the maximum (0.595ms)\n  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:\n  + actual - expected\n  \n    [\n      {\n        price: 2\n      },\n  -   {\n  -     price: 10\n  -   }\n    ]\n  \n      at TestContext.<anonymous> (/private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-regression-check-9kcjky_p/filter.test.cjs:9:10)\n      at Test.runInAsyncScope (node:async_hooks:226:14)\n      at Test.run (node:internal/test_runner/test:1402:25)\n      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)\n      at Test.postRun (node:internal/test_runner/test:1542:19)\n      at Test.run (node:internal/test_runner/test:1467:12)\n      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {\n    generatedMessage: true,\n    code: 'ERR_ASSERTION',\n    actual: [ { price: 2 } ],\n    expected: [ { price: 2 }, { price: 10 } ],\n    operator: 'deepStrictEqual',\n    diff: 'simple'\n  }\n"
+  },
+  {
+    "name": "bug-full-2",
+    "arm": "full",
+    "catches_original_bug": true,
+    "exit_code": 1,
+    "output": "✔ keeps prices inside the range (0.586041ms)\n✖ includes prices exactly at the maximum (0.640125ms)\nℹ tests 2\nℹ suites 0\nℹ pass 1\nℹ fail 1\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 46.827125\n\n✖ failing tests:\n\ntest at filter.test.cjs:8:1\n✖ includes prices exactly at the maximum (0.640125ms)\n  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:\n  + actual - expected\n  \n    [\n      {\n        price: 2\n      },\n  -   {\n  -     price: 10\n  -   }\n    ]\n  \n      at TestContext.<anonymous> (/private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-regression-check-17xazb5u/filter.test.cjs:9:10)\n      at Test.runInAsyncScope (node:async_hooks:226:14)\n      at Test.run (node:internal/test_runner/test:1402:25)\n      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)\n      at Test.postRun (node:internal/test_runner/test:1542:19)\n      at Test.run (node:internal/test_runner/test:1467:12)\n      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {\n    generatedMessage: true,\n    code: 'ERR_ASSERTION',\n    actual: [ { price: 2 } ],\n    expected: [ { price: 2 }, { price: 10 } ],\n    operator: 'deepStrictEqual',\n    diff: 'simple'\n  }\n"
+  },
+  {
+    "name": "bug-full-3",
+    "arm": "full",
+    "catches_original_bug": true,
+    "exit_code": 1,
+    "output": "✔ keeps prices inside the range (0.682042ms)\n✖ includes prices equal to the maximum (0.651208ms)\nℹ tests 2\nℹ suites 0\nℹ pass 1\nℹ fail 1\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 47.368875\n\n✖ failing tests:\n\ntest at filter.test.cjs:8:1\n✖ includes prices equal to the maximum (0.651208ms)\n  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:\n  + actual - expected\n  \n    [\n      {\n        price: 2\n      },\n  -   {\n  -     price: 10\n  -   }\n    ]\n  \n      at TestContext.<anonymous> (/private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-regression-check-543zv96n/filter.test.cjs:9:10)\n      at Test.runInAsyncScope (node:async_hooks:226:14)\n      at Test.run (node:internal/test_runner/test:1402:25)\n      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)\n      at Test.postRun (node:internal/test_runner/test:1542:19)\n      at Test.run (node:internal/test_runner/test:1467:12)\n      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {\n    generatedMessage: true,\n    code: 'ERR_ASSERTION',\n    actual: [ { price: 2 } ],\n    expected: [ { price: 2 }, { price: 10 } ],\n    operator: 'deepStrictEqual',\n    diff: 'simple'\n  }\n"
+  },
+  {
+    "name": "bug-full-4",
+    "arm": "full",
+    "catches_original_bug": true,
+    "exit_code": 1,
+    "output": "✔ keeps prices inside the range (0.579916ms)\n✖ keeps items priced exactly at the maximum (0.573625ms)\nℹ tests 2\nℹ suites 0\nℹ pass 1\nℹ fail 1\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 42.038209\n\n✖ failing tests:\n\ntest at filter.test.cjs:8:1\n✖ keeps items priced exactly at the maximum (0.573625ms)\n  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:\n  + actual - expected\n  \n    [\n      {\n        price: 2\n      },\n  -   {\n  -     price: 10\n  -   }\n    ]\n  \n      at TestContext.<anonymous> (/private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-regression-check-ujegsno_/filter.test.cjs:9:10)\n      at Test.runInAsyncScope (node:async_hooks:226:14)\n      at Test.run (node:internal/test_runner/test:1402:25)\n      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)\n      at Test.postRun (node:internal/test_runner/test:1542:19)\n      at Test.run (node:internal/test_runner/test:1467:12)\n      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {\n    generatedMessage: true,\n    code: 'ERR_ASSERTION',\n    actual: [ { price: 2 } ],\n    expected: [ { price: 2 }, { price: 10 } ],\n    operator: 'deepStrictEqual',\n    diff: 'simple'\n  }\n"
+  },
+  {
+    "name": "bug-full-5",
+    "arm": "full",
+    "catches_original_bug": true,
+    "exit_code": 1,
+    "output": "✔ keeps prices inside the range (0.571458ms)\n✖ includes prices equal to the maximum (0.520208ms)\nℹ tests 2\nℹ suites 0\nℹ pass 1\nℹ fail 1\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 42.150334\n\n✖ failing tests:\n\ntest at filter.test.cjs:8:1\n✖ includes prices equal to the maximum (0.520208ms)\n  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:\n  + actual - expected\n  \n    [\n      {\n        price: 2\n      },\n  -   {\n  -     price: 10\n  -   }\n    ]\n  \n      at TestContext.<anonymous> (/private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-regression-check-vtk6y9sb/filter.test.cjs:9:10)\n      at Test.runInAsyncScope (node:async_hooks:226:14)\n      at Test.run (node:internal/test_runner/test:1402:25)\n      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)\n      at Test.postRun (node:internal/test_runner/test:1542:19)\n      at Test.run (node:internal/test_runner/test:1467:12)\n      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {\n    generatedMessage: true,\n    code: 'ERR_ASSERTION',\n    actual: [ { price: 2 } ],\n    expected: [ { price: 2 }, { price: 10 } ],\n    operator: 'deepStrictEqual',\n    diff: 'simple'\n  }\n"
+  },
+  {
+    "name": "bug-short-1",
+    "arm": "short",
+    "catches_original_bug": true,
+    "exit_code": 1,
+    "output": "✔ keeps prices inside the range (0.55075ms)\n✖ keeps prices equal to the maximum (0.528458ms)\nℹ tests 2\nℹ suites 0\nℹ pass 1\nℹ fail 1\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 44.825583\n\n✖ failing tests:\n\ntest at filter.test.cjs:8:1\n✖ keeps prices equal to the maximum (0.528458ms)\n  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:\n  + actual - expected\n  \n    [\n      {\n        price: 3\n      },\n  -   {\n  -     price: 10\n  -   }\n    ]\n  \n      at TestContext.<anonymous> (/private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-regression-check-t8vh87zm/filter.test.cjs:9:10)\n      at Test.runInAsyncScope (node:async_hooks:226:14)\n      at Test.run (node:internal/test_runner/test:1402:25)\n      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)\n      at Test.postRun (node:internal/test_runner/test:1542:19)\n      at Test.run (node:internal/test_runner/test:1467:12)\n      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {\n    generatedMessage: true,\n    code: 'ERR_ASSERTION',\n    actual: [ { price: 3 } ],\n    expected: [ { price: 3 }, { price: 10 } ],\n    operator: 'deepStrictEqual',\n    diff: 'simple'\n  }\n"
+  },
+  {
+    "name": "bug-short-2",
+    "arm": "short",
+    "catches_original_bug": true,
+    "exit_code": 1,
+    "output": "✔ keeps prices inside the range (0.544917ms)\n✖ includes prices equal to the maximum (0.539708ms)\nℹ tests 2\nℹ suites 0\nℹ pass 1\nℹ fail 1\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 41.771917\n\n✖ failing tests:\n\ntest at filter.test.cjs:8:1\n✖ includes prices equal to the maximum (0.539708ms)\n  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:\n  + actual - expected\n  \n    [\n      {\n        price: 2\n      },\n  -   {\n  -     price: 10\n  -   }\n    ]\n  \n      at TestContext.<anonymous> (/private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-regression-check-hgrytak1/filter.test.cjs:9:10)\n      at Test.runInAsyncScope (node:async_hooks:226:14)\n      at Test.run (node:internal/test_runner/test:1402:25)\n      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)\n      at Test.postRun (node:internal/test_runner/test:1542:19)\n      at Test.run (node:internal/test_runner/test:1467:12)\n      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {\n    generatedMessage: true,\n    code: 'ERR_ASSERTION',\n    actual: [ { price: 2 } ],\n    expected: [ { price: 2 }, { price: 10 } ],\n    operator: 'deepStrictEqual',\n    diff: 'simple'\n  }\n"
+  },
+  {
+    "name": "bug-short-3",
+    "arm": "short",
+    "catches_original_bug": true,
+    "exit_code": 1,
+    "output": "✔ keeps prices inside the range (0.584833ms)\n✖ includes prices exactly at the maximum (0.561334ms)\nℹ tests 2\nℹ suites 0\nℹ pass 1\nℹ fail 1\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 45.23675\n\n✖ failing tests:\n\ntest at filter.test.cjs:8:1\n✖ includes prices exactly at the maximum (0.561334ms)\n  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:\n  + actual - expected\n  \n    [\n      {\n        price: 2\n      },\n  -   {\n  -     price: 10\n  -   }\n    ]\n  \n      at TestContext.<anonymous> (/private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-regression-check-nkzx4di2/filter.test.cjs:9:10)\n      at Test.runInAsyncScope (node:async_hooks:226:14)\n      at Test.run (node:internal/test_runner/test:1402:25)\n      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)\n      at Test.postRun (node:internal/test_runner/test:1542:19)\n      at Test.run (node:internal/test_runner/test:1467:12)\n      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {\n    generatedMessage: true,\n    code: 'ERR_ASSERTION',\n    actual: [ { price: 2 } ],\n    expected: [ { price: 2 }, { price: 10 } ],\n    operator: 'deepStrictEqual',\n    diff: 'simple'\n  }\n"
+  },
+  {
+    "name": "bug-short-4",
+    "arm": "short",
+    "catches_original_bug": true,
+    "exit_code": 1,
+    "output": "✔ keeps prices inside the range (0.564708ms)\n✖ includes prices equal to the maximum (0.562042ms)\nℹ tests 2\nℹ suites 0\nℹ pass 1\nℹ fail 1\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 48.655334\n\n✖ failing tests:\n\ntest at filter.test.cjs:8:1\n✖ includes prices equal to the maximum (0.562042ms)\n  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:\n  + actual - expected\n  \n    [\n      {\n        price: 2\n      },\n  -   {\n  -     price: 10\n  -   }\n    ]\n  \n      at TestContext.<anonymous> (/private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-regression-check-z0hrc8e_/filter.test.cjs:9:10)\n      at Test.runInAsyncScope (node:async_hooks:226:14)\n      at Test.run (node:internal/test_runner/test:1402:25)\n      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)\n      at Test.postRun (node:internal/test_runner/test:1542:19)\n      at Test.run (node:internal/test_runner/test:1467:12)\n      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {\n    generatedMessage: true,\n    code: 'ERR_ASSERTION',\n    actual: [ { price: 2 } ],\n    expected: [ { price: 2 }, { price: 10 } ],\n    operator: 'deepStrictEqual',\n    diff: 'simple'\n  }\n"
+  },
+  {
+    "name": "bug-short-5",
+    "arm": "short",
+    "catches_original_bug": true,
+    "exit_code": 1,
+    "output": "✔ keeps prices inside the range (0.546958ms)\n✖ includes prices exactly equal to the maximum (0.542833ms)\nℹ tests 2\nℹ suites 0\nℹ pass 1\nℹ fail 1\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 43.61725\n\n✖ failing tests:\n\ntest at filter.test.cjs:9:1\n✖ includes prices exactly equal to the maximum (0.542833ms)\n  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:\n  + actual - expected\n  \n    [\n      {\n        price: 2\n      },\n  -   {\n  -     price: 10\n  -   }\n    ]\n  \n      at TestContext.<anonymous> (/private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-regression-check-_97d5mkx/filter.test.cjs:10:10)\n      at Test.runInAsyncScope (node:async_hooks:226:14)\n      at Test.run (node:internal/test_runner/test:1402:25)\n      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)\n      at Test.postRun (node:internal/test_runner/test:1542:19)\n      at Test.run (node:internal/test_runner/test:1467:12)\n      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {\n    generatedMessage: true,\n    code: 'ERR_ASSERTION',\n    actual: [ { price: 2 } ],\n    expected: [ { price: 2 }, { price: 10 } ],\n    operator: 'deepStrictEqual',\n    diff: 'simple'\n  }\n"
+  }
+]

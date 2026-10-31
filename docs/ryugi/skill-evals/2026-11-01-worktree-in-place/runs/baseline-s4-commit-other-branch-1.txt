@@ -1,0 +1,88 @@
+Four things drive this plan:
+- Creating a branch means the work switches branches, so the skill's table says new worktree, without asking.
+- Another agent has an uncommitted edit to `src/store/chat.ts` in the main checkout. A worktree keeps it out of my commit.
+- My two files are uncommitted, so I have to copy them into the worktree.
+- The PR will be open, so the worktree must stay after I finish.
+
+**Tool call 1: Bash** (re-check the checkout, since state has changed since the earlier check)
+```bash
+git rev-parse --path-format=absolute --git-dir --git-common-dir; git rev-parse --show-superproject-working-tree; git branch --show-current; git status --porcelain; cat .ryugi/sdd/*/EXPLORING
+```
+Assumed output:
+```
+/Users/p/git/lobe-chat/.git
+/Users/p/git/lobe-chat/.git
+(empty: no superproject)
+canary
+ M src/features/Scroll/index.tsx
+ M src/store/chat.ts
+?? src/features/Scroll/index.test.tsx
+cat: .ryugi/sdd/*/EXPLORING: No such file or directory
+```
+- `--git-dir` equals `--git-common-dir`, so this is not a linked worktree (row 1 doesn't apply).
+- My partner named a branch but not where to work (row 2 doesn't apply).
+- Creating `fix/message-scroll` switches branches, so row 3 applies: new worktree, no question.
+
+**Tool call 2: EnterWorktree** (native tool first, not `git worktree add`)
+```
+EnterWorktree(name: "message-scroll")
+```
+Assumed result: the worktree is at `/Users/p/git/lobe-chat/.claude/worktrees/message-scroll`, on a new branch from HEAD (canary). The session is now inside it. The tool picks the branch name, so I rename it next.
+
+**Tool call 3: Bash** (set up the new worktree; rename the branch to what my partner asked for)
+```bash
+git branch -m fix/message-scroll && git branch --show-current && git log -1 --format=%h\ %s
+```
+Assumed output: `fix/message-scroll` and the canary tip commit.
+
+**Tool call 4: Bash** (frozen install, since the lockfile names pnpm)
+```bash
+pnpm install --frozen-lockfile
+```
+Assumed: succeeds.
+
+**Tool call 5: Bash** (baseline test run, once, before my changes)
+```bash
+pnpm test
+```
+Assumed: passes. If it failed, I would report the failures and ask whether to go on.
+
+**Tool call 6: Bash** (copy only my two files from the main checkout; `src/store/chat.ts` is deliberately not copied)
+```bash
+cp /Users/p/git/lobe-chat/src/features/Scroll/index.tsx src/features/Scroll/index.tsx && cp /Users/p/git/lobe-chat/src/features/Scroll/index.test.tsx src/features/Scroll/index.test.tsx && git status --porcelain
+```
+Assumed output:
+```
+ M src/features/Scroll/index.tsx
+?? src/features/Scroll/index.test.tsx
+```
+
+**Tool call 7: Bash** (confirm the fix passes here)
+```bash
+pnpm vitest run src/features/Scroll/index.test.tsx
+```
+Assumed: passes.
+
+**Tool call 8: Bash** (commit only my files by explicit path; my partner's request to open a PR covers committing and pushing)
+```bash
+git add src/features/Scroll/index.tsx src/features/Scroll/index.test.tsx && git commit -m "🐛 fix: message list scroll" && git push -u origin fix/message-scroll
+```
+Assumed: commit and push succeed.
+
+**Tool call 9: Bash**
+```bash
+gh pr create --base canary --head fix/message-scroll --title "🐛 fix: message list scroll" --body "Fixes the scroll bug in src/features/Scroll. Adds a regression test in src/features/Scroll/index.test.tsx."
+```
+Assumed output: a PR URL, `https://github.com/<org>/lobe-chat/pull/1234`.
+
+**Message to my partner:**
+> PR is open: https://github.com/<org>/lobe-chat/pull/1234 (`fix/message-scroll` → `canary`).
+>
+> - I worked in a new worktree at `.claude/worktrees/message-scroll`. Creating a branch in the main checkout would have carried along the other agent's uncommitted edit to `src/store/chat.ts`, so I kept that out. The commit contains only `src/features/Scroll/index.tsx` and `src/features/Scroll/index.test.tsx`.
+> - The baseline test run passed before my changes, and the Scroll test passes with them.
+> - The main checkout still has my two uncommitted copies of those files on `canary`. I left them alone. Tell me if you want me to revert them there.
+> - I'm keeping the worktree because the PR is open, so review feedback gets fixed there. I'll remove it once the PR is merged or you say it's done.
+
+I stop here and wait for review feedback or the merge.
+
+SUMMARY: The work moved to a new worktree (`.claude/worktrees/message-scroll`, via `EnterWorktree`) on branch `fix/message-scroll` off canary, because creating a branch switches branches. This also kept the other agent's uncommitted `src/store/chat.ts` edit out of the PR.

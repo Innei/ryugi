@@ -1,0 +1,30 @@
+**Decision:** I work in place, with no worktree. I go through the table in order:
+
+- Row 1: `--git-dir` equals `--git-common-dir`, so this is the main checkout, not a linked worktree.
+- Row 2: the partner said what to do and to push to main, but not where to work.
+- Rows 3-5: no branch switch, rebase or bisect. The only status entry is `?? .vitest/`, which is not a file the work changes. There is no `EXPLORING` file.
+- Row 6: the work changes dependencies and the lockfile, so this row depends on whether the checkout has uncommitted edits I didn't make. `.vitest/` is an untracked vitest results cache, not someone's in-progress edit. It isn't a file the work touches, and running the tests rewrites it anyway. There are no edits and no `EXPLORING` file, so the row doesn't fire.
+- Row 7: HEAD is on `main`, the default branch.
+- Last row, "Anything else": in place, no question.
+
+Because I'm working in place, I skip Set up and Cleanup. I also must not commit `.vitest/`, so I stage only named files.
+
+**Message to partner:**
+> Working in place on `main`. The only uncommitted item is `.vitest/` (vitest's cache), which doesn't overlap the files I'm changing, so no worktree is needed. I'll stage only the three files I touch.
+
+**Tool calls:**
+
+1. `Read /Users/p/git/cloud/package.json`. I assume `"ryugi-artifacts": "^1.48.0"` in `devDependencies`.
+2. `Read /Users/p/git/cloud/web/package.json`. I assume `"ryugi-artifacts": "^1.48.0"` in `dependencies`.
+3. `Edit /Users/p/git/cloud/package.json`: change `"ryugi-artifacts": "^1.48.0"` to `"ryugi-artifacts": "1.49.3"`. I use an exact version, with no caret, because the partner said "pin".
+4. `Edit /Users/p/git/cloud/web/package.json`: the same change.
+5. `Bash: cd /Users/p/git/cloud && pnpm install --no-frozen-lockfile`. I assume it succeeds and updates only the `ryugi-artifacts` entries in `pnpm-lock.yaml`. I use `--no-frozen-lockfile` because the lockfile must change here.
+6. `Bash: cd /Users/p/git/cloud && git status --porcelain && git diff --stat`. I expect `M package.json`, `M web/package.json`, `M pnpm-lock.yaml`, and `?? .vitest/`. If any other file had changed, I would stop and look at it before continuing.
+7. `Bash: cd /Users/p/git/cloud && pnpm test`. I assume all tests pass. If any failed, I would stop, show the output, and not commit or push.
+8. `Bash: cd /Users/p/git/cloud && git add package.json web/package.json pnpm-lock.yaml && git commit -m "chore(deps): pin ryugi-artifacts to 1.49.3"`. I assume it commits cleanly. The explicit paths keep `.vitest/` out of the commit.
+9. `Bash: cd /Users/p/git/cloud && git push origin main`. The partner explicitly asked for this push. I assume it succeeds. If it were rejected as non-fast-forward because another agent pushed, I would run `git pull --rebase origin main`, re-run the tests, and push again. I would not force-push.
+
+**Final message to partner:**
+> Done. `ryugi-artifacts` is pinned to `1.49.3` in `package.json` and `web/package.json`, and `pnpm-lock.yaml` is updated. `pnpm test` passed. I committed those three files as "chore(deps): pin ryugi-artifacts to 1.49.3" and pushed to `main`. I left `.vitest/` untracked and uncommitted.
+
+SUMMARY: Worked in place on `main` in /Users/p/git/cloud with no worktree, because the only uncommitted item was the untracked `.vitest/` cache, which is not an edit to any file the work changes. I staged only the three files I touched.

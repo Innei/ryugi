@@ -1,0 +1,65 @@
+Simulation. Nothing below was actually run.
+
+**Where to work:** `--git-dir` equals `--git-common-dir`, so this is not a linked worktree. My partner didn't say where to work. I'm not developing on another branch or commit. The only entry in status is `.vitest/`, a cache nobody edited, so no one else's edits overlap my files. There is no `EXPLORING` file. HEAD is on `main`, the default branch. The "Anything else" row applies: **work in place, no question, no worktree.** I won't call `EnterWorktree`.
+
+**Tool call 1: Read** `/Users/p/git/cloud/package.json`
+**Tool call 2: Read** `/Users/p/git/cloud/web/package.json`
+(Independent, so they run in parallel.)
+Assumed: both contain `"ryugi-artifacts": "^1.48.0"` in `dependencies`.
+
+**Tool call 3: Edit** `/Users/p/git/cloud/package.json`
+- old_string: `"ryugi-artifacts": "^1.48.0"`
+- new_string: `"ryugi-artifacts": "1.49.3"`
+
+**Tool call 4: Edit** `/Users/p/git/cloud/web/package.json`
+- old_string: `"ryugi-artifacts": "^1.48.0"`
+- new_string: `"ryugi-artifacts": "1.49.3"`
+
+Neither file had edits from anyone else, so no `git diff` check was needed first.
+
+**Tool call 5: Bash** (update the lockfile; a plain install, since the lockfile has to change)
+```bash
+cd /Users/p/git/cloud && pnpm install --no-frozen-lockfile
+```
+Assumed: succeeds and rewrites `pnpm-lock.yaml`.
+
+**Tool call 6: Bash** (run the tests)
+```bash
+cd /Users/p/git/cloud && pnpm test
+```
+Assumed: all tests pass. If any failed, I would stop here and show my partner the output instead of committing.
+
+**Tool call 7: Bash** (confirm what changed)
+```bash
+cd /Users/p/git/cloud && git status --porcelain && git diff --stat
+```
+Assumed output:
+```
+ M package.json
+ M pnpm-lock.yaml
+ M web/package.json
+?? .vitest/
+```
+
+**Tool call 8: Bash** (stage by name, never `-A`, `.` or `-a`; `.vitest/` is left out)
+```bash
+cd /Users/p/git/cloud && git add package.json web/package.json pnpm-lock.yaml && git commit -m "chore: pin ryugi-artifacts to 1.49.3"
+```
+Assumed: the commit is created.
+
+**Tool call 9: Bash** (push; my partner explicitly asked for a push to main)
+```bash
+cd /Users/p/git/cloud && git push origin main
+```
+Assumed: succeeds. If it were rejected because another agent pushed first, I would report that and not force-push.
+
+**Tool call 10: Bash** (check nothing of mine is left uncommitted)
+```bash
+cd /Users/p/git/cloud && git status --porcelain
+```
+Assumed output: `?? .vitest/` only.
+
+**Message to my partner:**
+> Pinned `ryugi-artifacts` to `1.49.3` in `package.json` and `web/package.json`, updated `pnpm-lock.yaml` with `pnpm install`, ran `pnpm test` (all passing), and pushed commit "chore: pin ryugi-artifacts to 1.49.3" to `main`. I worked in place in `/Users/p/git/cloud`, with no worktree. I staged only those three files. The only thing left in the checkout is the untracked `.vitest/` cache, which I didn't create and didn't commit.
+
+SUMMARY: Worked in place in /Users/p/git/cloud on `main`, with no worktree, because the checkout wasn't a linked worktree, nothing but an untracked vitest cache was dirty (so no one else's edits overlapped the manifests or lockfile), no `EXPLORING` file existed, and HEAD was on the default branch, so the table's "Anything else" row applied.

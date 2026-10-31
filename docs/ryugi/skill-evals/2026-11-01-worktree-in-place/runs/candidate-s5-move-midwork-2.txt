@@ -1,0 +1,60 @@
+Nothing below was actually run. Outputs are assumed where I say so.
+
+**Why a worktree:** the work now has to be developed and tested on other content (`feat/search-v2`). The skill says to use a new worktree for that without asking, and the partner's message is the explicit request `EnterWorktree` needs.
+
+### Call 1: Bash, in `/Users/p/git/search-app`
+```bash
+git worktree list && git branch --list feat/search-v2 && git status --porcelain
+```
+Assumed output: one worktree (main), `  feat/search-v2` exists and is not checked out anywhere, and status is still ` M docs/notes.md`, ` M src/search/query.ts`, `?? src/search/query.test.ts`.
+
+### Call 2: Bash, move my changes out of the shared checkout
+```bash
+git stash push --include-untracked -- src/search/query.ts src/search/query.test.ts
+```
+Assumed result: `Saved working directory and index state WIP on main: <sha> ...`. Only my two paths are stashed. `docs/notes.md` stays as the other agent left it.
+
+### Call 3: EnterWorktree
+```
+EnterWorktree(name: "search-v2")
+```
+Assumed result: the session is now in `/Users/p/git/search-app/.claude/worktrees/search-v2`, on a new branch `worktree-search-v2` cut from main's HEAD. The tool can only branch from HEAD, so the next call puts the worktree on `feat/search-v2`.
+
+### Call 4: Bash, inside the worktree
+```bash
+git switch feat/search-v2 && git branch --show-current
+```
+Assumed output: `feat/search-v2`. The worktree is clean, so the switch succeeds.
+
+### Call 5: Bash, inside the worktree
+```bash
+git stash pop
+```
+Assumed result: applies cleanly, with ` M src/search/query.ts` and `?? src/search/query.test.ts`. If it had conflicted, I would stop and show my partner.
+
+### Call 6: Bash, verify the original checkout is clean of my changes
+```bash
+git -C /Users/p/git/search-app status --porcelain -- src/search/query.ts src/search/query.test.ts
+```
+Assumed output: empty. Nothing of mine is left behind, and `docs/notes.md` was never touched.
+
+### Call 7: Bash, set up the worktree
+```bash
+pnpm install --frozen-lockfile
+```
+Assumed result: success. `node_modules` is not symlinked or copied.
+
+### Call 8: Bash, run the project's tests once
+```bash
+pnpm test
+```
+Assumed result: all pass, including my `query.test.ts`. If anything failed, I would report the failures and ask whether to continue.
+
+### Message to my partner
+> Moved. The work is now in a worktree at `.claude/worktrees/search-v2`, checked out on `feat/search-v2`. My two files, `src/search/query.ts` and `src/search/query.test.ts`, were stash-moved there. The main checkout no longer has them, and `docs/notes.md` (someone else's edit) is untouched. Dependencies are installed and the test suite passes. I'm continuing the implementation there, committing only my own paths by name.
+>
+> Once this has landed, or if you tell me to discard it, I'll remove the worktree. The leftover `worktree-search-v2` branch the tool created goes with it.
+
+After this message I carry on implementing in the worktree. I would stop to wait only if a conflict or test failure came up.
+
+SUMMARY: Work moved to a new native worktree (`EnterWorktree`) on `feat/search-v2`, because the work must be developed on another branch. My two files were stash-moved there and the main checkout was left clean of them.

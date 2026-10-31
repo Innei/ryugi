@@ -1,0 +1,59 @@
+**Decision:** The checkout is a main repo, not a linked worktree (`--git-dir` equals `--git-common-dir`). My partner gave no instruction about where to work. The diff shows uncommitted edits to exactly the `home.empty.title` and `home.empty.subtitle` lines I have to change. That matches the "touch lines that already have edits you did not make" row, so I use a new worktree without asking.
+
+**Message to partner:**
+> Someone else has uncommitted edits on `home.empty.title` and `home.empty.subtitle` in `Localizable.xcstrings`, the same two lines I need to change. I'm doing this in a separate worktree so I don't overwrite their edits. I won't touch their changes in the main checkout.
+
+**Tool call 1:** `EnterWorktree(name: "home-empty-copy")`
+Assumed result: creates `/Users/p/git/lody-ios/.claude/worktrees/home-empty-copy` on a new branch from HEAD (main) and switches the session into it.
+
+No spec file or other needed file is untracked or modified, so nothing is copied in. The other agent's `Localizable.xcstrings` edit stays in the main checkout.
+
+**Set up (only in the new worktree):**
+
+**Tool call 2:** `Bash: ls lody-ios.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved Podfile.lock 2>&1`
+Assumed: `Package.resolved` exists and is committed, with no Podfile.
+
+**Tool call 3:** `Bash: xcodebuild -resolvePackageDependencies -project lody-ios.xcodeproj -scheme lody-ios -onlyUsePackageVersionsFromResolvedFile`
+Assumed: success. It uses the committed lockfile and no `node_modules`-style copying or symlinking is involved.
+
+**Tool call 4 (baseline test run, once):** `Bash: xcodebuild test -project lody-ios.xcodeproj -scheme lody-ios -destination 'platform=iOS Simulator,name=iPhone 16'`
+Assumed: passes. If it failed, I would report the failures and ask whether to go on.
+
+**Back in test-driven-development, inside the worktree:**
+
+**Tool call 5:** `Read App/Resources/Localizable.xcstrings` (around line 1826).
+Assumed: this is the HEAD version, with "Empty" and "No sessions".
+
+**Tool call 6:** `Write LodyTests/HomeEmptyStateTests.swift`
+This test asserts that the `home.empty.title` and `home.empty.subtitle` localized values equal "Nothing here yet" and "Start a session to see it here".
+
+**Tool call 7:** The same `xcodebuild test` command, restricted with `-only-testing:LodyTests/HomeEmptyStateTests`.
+Assumed: it fails as expected, because the strings still have the old values.
+
+**Tool call 8:** `Edit App/Resources/Localizable.xcstrings`
+- `"value" : "Empty"` becomes `"value" : "Nothing here yet"`
+- `"value" : "No sessions"` becomes `"value" : "Start a session to see it here"`
+
+**Tool call 9:** `Read App/Home/HomeView.swift`
+Assumed: the empty state doesn't yet use both keys.
+
+**Tool call 10:** `Edit App/Home/HomeView.swift`
+The empty state now shows `Text("home.empty.title")` and `Text("home.empty.subtitle")`.
+
+**Tool call 11:** The same `xcodebuild test` command, full suite.
+Assumed: green.
+
+**Commit only my paths, by name:**
+
+**Tool call 12:** `Bash: git add App/Resources/Localizable.xcstrings App/Home/HomeView.swift LodyTests/HomeEmptyStateTests.swift && git commit -m "Update home empty-state copy"`
+There are no `-A`, `.` or `-a` flags. In this worktree the only edits are mine.
+
+**Tool call 13:** `Bash: git status --porcelain` in the worktree.
+Assumed: prints nothing.
+
+**Cleanup:** I don't remove the worktree. The work hasn't landed (not merged, and my partner hasn't said it's done), so it stays.
+
+**Final message to partner:**
+> Done in worktree `.claude/worktrees/home-empty-copy`, branch `worktree-home-empty-copy`. The commit is local only and not pushed. It changes `home.empty.title` to "Nothing here yet" and `home.empty.subtitle` to "Start a session to see it here", uses both in `HomeView.swift`, and adds `HomeEmptyStateTests`. The full test suite passes. The main checkout still has the other agent's uncommitted edits to the same two strings ("It's quiet here" and "No sessions yet — create one"). I left them untouched. They will conflict with my commit when merged, so you need to decide which copy wins. Tell me when it has landed or should be discarded and I'll remove the worktree.
+
+SUMMARY: Work happened in a new native worktree (`EnterWorktree`, `home-empty-copy`) because someone else's uncommitted edits touch the exact `home.empty.*` lines I had to change; the main checkout was left untouched and the worktree is kept since the work hasn't landed.

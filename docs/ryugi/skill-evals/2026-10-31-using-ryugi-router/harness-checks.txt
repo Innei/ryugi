@@ -1,0 +1,21 @@
+test_explicit_direct_request_is_not_satisfied_by_a_design_question (test_harness.ObservationTests.test_explicit_direct_request_is_not_satisfied_by_a_design_question) ... ok
+test_file_tool_writes_stop_observation (test_harness.ObservationTests.test_file_tool_writes_stop_observation) ... ok
+test_node_spec_reporter_failure_is_red (test_harness.ObservationTests.test_node_spec_reporter_failure_is_red) ... ok
+test_node_spec_reporter_success_is_green (test_harness.ObservationTests.test_node_spec_reporter_success_is_green) ... ok
+test_observer_stop_after_resuming_task_two_is_a_successful_boundary (test_harness.ObservationTests.test_observer_stop_after_resuming_task_two_is_a_successful_boundary) ... ok
+test_read_commands_with_stderr_redirect_do_not_stop_the_agent (test_harness.ObservationTests.test_read_commands_with_stderr_redirect_do_not_stop_the_agent) ... ok
+test_redirecting_diagnostics_to_null_is_read_only (test_harness.ObservationTests.test_redirecting_diagnostics_to_null_is_read_only) ... ok
+test_resume_bookkeeping_does_not_end_the_probe (test_harness.ObservationTests.test_resume_bookkeeping_does_not_end_the_probe) ... ok
+test_resume_detects_rewriting_a_completed_task (test_harness.ObservationTests.test_resume_detects_rewriting_a_completed_task) ... ok
+test_resume_starts_when_the_remaining_tasks_test_is_written (test_harness.ObservationTests.test_resume_starts_when_the_remaining_tasks_test_is_written) ... ok
+test_scaffolding_through_npx_is_observed (test_harness.ObservationTests.test_scaffolding_through_npx_is_observed) ... ok
+test_spaced_diagnostic_redirect_is_read_only (test_harness.ObservationTests.test_spaced_diagnostic_redirect_is_read_only) ... ok
+test_starting_a_scaffold_stops_startup_observation (test_harness.ObservationTests.test_starting_a_scaffold_stops_startup_observation) ... ok
+test_truncated_boundary_assertion_is_still_red (test_harness.ObservationTests.test_truncated_boundary_assertion_is_still_red) ... ok
+test_truncated_missing_export_failure_is_red (test_harness.ObservationTests.test_truncated_missing_export_failure_is_red) ... ok
+test_writing_source_through_shell_stops_observation (test_harness.ObservationTests.test_writing_source_through_shell_stops_observation) ... ok
+
+----------------------------------------------------------------------
+Ran 16 tests in 0.001s
+
+OK

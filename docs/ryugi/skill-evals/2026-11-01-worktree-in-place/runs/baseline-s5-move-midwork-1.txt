@@ -1,0 +1,64 @@
+I'm following your instruction on where to work (row 2 of the table). Switching branches in the shared checkout would also trip the "work switches branches" row, and `docs/notes.md` has someone else's edit. So this goes in a new worktree, created with the native `EnterWorktree` tool, without asking.
+
+**Message to partner:**
+> Understood. Moving the work onto feat/search-v2. I'll do it in a separate worktree so the main checkout, and the uncommitted edit to docs/notes.md that isn't mine, stay untouched. I'll carry over my two files.
+
+**Call 1: Bash** (in `/Users/p/git/search-app`, check before moving)
+```bash
+git worktree list && git branch --list feat/search-v2 && git status --porcelain
+```
+Assumed output: only the main checkout is listed, `feat/search-v2` exists and is not checked out anywhere, and status shows ` M docs/notes.md`, ` M src/search/query.ts`, and `?? src/search/query.test.ts`.
+
+**Call 2: Bash** (save my change as a patch outside the repo)
+```bash
+git diff -- src/search/query.ts > /tmp/search-query.patch
+```
+
+**Call 3: EnterWorktree**
+```
+EnterWorktree(name: "search-v2")
+```
+Assumed result: `/Users/p/git/search-app/.claude/worktrees/search-v2`, on the new branch `worktree-search-v2` cut from main's HEAD. The tool can only branch from HEAD, so the next step moves it onto the real branch.
+
+**Call 4: Bash** (in the worktree)
+```bash
+git switch feat/search-v2
+```
+Assumed result: switched to `feat/search-v2`. This works because no other worktree has it checked out. The empty `worktree-search-v2` branch is left over and goes away when the worktree is removed.
+
+**Call 5: Bash** (in the worktree, carry my changes over)
+```bash
+git apply --3way /tmp/search-query.patch && cp /Users/p/git/search-app/src/search/query.test.ts src/search/query.test.ts
+```
+Assumed result: the patch applies cleanly.
+
+**Call 6: Bash** (in the worktree, verify)
+```bash
+git status --porcelain
+```
+Assumed output: ` M src/search/query.ts` and `?? src/search/query.test.ts`, with nothing from `docs/notes.md`.
+
+**Call 7: Bash** (back in the main checkout, remove only my own files once the copy is confirmed)
+```bash
+cd /Users/p/git/search-app && cmp src/search/query.test.ts .claude/worktrees/search-v2/src/search/query.test.ts && rm src/search/query.test.ts && git checkout -- src/search/query.ts && git status --porcelain
+```
+Assumed output: ` M docs/notes.md` only. That edit is not mine and I did not touch it. The patch in `/tmp/search-query.patch` stays as a backup.
+
+**Call 8: Bash** (in the worktree, setup, since I just created it)
+```bash
+pnpm install --frozen-lockfile
+```
+Assumed result: the install succeeds.
+
+**Call 9: Bash** (in the worktree, run the project's test command once)
+```bash
+pnpm test
+```
+Assumed result: tests pass, including my `query.test.ts`. If anything had failed, I would report the failures and ask whether to continue.
+
+**Message to partner:**
+> The work is now in the worktree `.claude/worktrees/search-v2` on feat/search-v2, with my `query.ts` edit and `query.test.ts` carried over. I removed them from the main checkout and left docs/notes.md alone. Install and tests pass on the branch. I'm continuing the implementation there. The worktree stays until the work lands or you tell me to discard it.
+
+Then I carry on with the implementation edits inside the worktree. Cleanup via `ExitWorktree` waits until the work lands or you say it is done.
+
+SUMMARY: Work moved to a new native worktree (`.claude/worktrees/search-v2`) on feat/search-v2, because you named the branch and switching branches in the shared checkout would disturb the other person's `docs/notes.md` edit.

@@ -1,0 +1,51 @@
+I'm working in a new worktree, because the table's fourth row applies. The checkout is not a linked worktree (`--git-dir` equals `--git-common-dir`, no superproject), and no instruction says where to work. `App/Resources/Localizable.xcstrings` has uncommitted edits I didn't make, and the work changes that file. The edits touch the same two keys, so working in place would overwrite or mix with the other agent's changes.
+
+**1. Message to partner**
+> Someone else has uncommitted edits to `Localizable.xcstrings` in this checkout, on the same `home.empty.*` keys I need to change. I'm moving to a separate worktree so we don't collide.
+
+**2. Tool call: `EnterWorktree(name: "home-empty-copy")`**
+I'm using the native tool, not `git worktree add`. Assumed result: worktree at `/Users/p/git/lody-ios/.claude/worktrees/home-empty-copy` on new branch `home-empty-copy` from HEAD, and the session is now inside it.
+
+I'm not copying the modified `Localizable.xcstrings` in. It isn't my spec, and its edits aren't mine to carry over. The worktree gets the HEAD version, where the strings are "Empty" and "No sessions".
+
+**3. Set up (new worktree only)**
+```bash
+ls -a; ls *.xcodeproj/project.xcworkspace/xcshareddata/swiftpm 2>/dev/null; xcodebuild -list
+```
+Assumed output: no Podfile, SwiftPM `Package.resolved` present, scheme `Lody`.
+
+```bash
+xcodebuild -resolvePackageDependencies -disableAutomaticPackageResolution -scheme Lody
+```
+This is the frozen equivalent: it uses `Package.resolved` as-is. Assumed result: success.
+
+```bash
+xcodebuild test -scheme Lody -destination 'platform=iOS Simulator,name=iPhone 16'
+```
+Assumed result: all tests pass, so I continue.
+
+**4. Back to test-driven-development: failing test first**
+`Read` of `App/Home/HomeView.swift`. Assumed content: the title is `Text("home.empty.title")` and the subtitle is a hard-coded `Text("No sessions")`.
+
+`Write` of `Tests/HomeEmptyStringsTests.swift`, which asserts that `String(localized: "home.empty.title")` equals "Nothing here yet" and that `home.empty.subtitle` equals "Start a session to see it here".
+
+```bash
+xcodebuild test -scheme Lody -destination 'platform=iOS Simulator,name=iPhone 16' -only-testing:LodyTests/HomeEmptyStringsTests
+```
+Assumed result: fails with "Empty" != "Nothing here yet", as expected.
+
+**5. Edits (in the worktree)**
+- `Edit` on `<worktree>/App/Resources/Localizable.xcstrings`, with the key line included in `old_string` for uniqueness:
+  - `home.empty.subtitle`: `"value" : "No sessions"` becomes `"value" : "Start a session to see it here"`
+  - `home.empty.title`: `"value" : "Empty"` becomes `"value" : "Nothing here yet"`
+- `Edit` on `<worktree>/App/Home/HomeView.swift`: replace `Text("No sessions")` with `Text("home.empty.subtitle")`. The title already uses `home.empty.title`.
+
+Then I re-run the same `xcodebuild test` command. Assumed result: it passes, and the full suite passes too.
+
+**6. Message to partner (stop and wait)**
+> Done in worktree `.claude/worktrees/home-empty-copy` (branch `home-empty-copy`), tests passing.
+> - `home.empty.title` is now "Nothing here yet" and `home.empty.subtitle` is "Start a session to see it here". `HomeView.swift` uses both keys.
+> - The main checkout still has someone else's uncommitted edit to the same two keys ("It's quiet here" and "No sessions yet — create one"). I left it alone. Merging my branch will conflict there. Which copy should win?
+> - I haven't committed anything. The worktree stays until this lands, and I'll remove it then.
+
+SUMMARY: Work happened in a new worktree (`home-empty-copy`, via `EnterWorktree`) because `Localizable.xcstrings`, which the work changes, had uncommitted edits I didn't make.
