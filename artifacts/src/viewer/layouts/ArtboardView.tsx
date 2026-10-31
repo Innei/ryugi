@@ -58,6 +58,9 @@ const styles = stylex.create({
     fontFamily: cssVar.fontFamily,
     color: cssVar.colorText,
   },
+  anchor: { position: 'absolute', left: 0, top: 0, width: 0, height: 0 },
+  rejectAnchor: { zIndex: 9 },
+  panelAnchor: { zIndex: 15 },
   empty: {
     position: 'absolute',
     inset: 0,
@@ -132,7 +135,9 @@ function DesktopArtboard({
   const {
     viewportRef,
     worldRef,
+    overlayRef,
     view,
+    viewNow,
     gesturing,
     size,
     fit,
@@ -176,7 +181,7 @@ function DesktopArtboard({
     const board = canvas?.boards[id],
       viewport = viewportRef.current;
     if (parameterBoard !== id && !expanded && board && viewport) {
-      const offset = revealTweakPanel(board, view, {
+      const offset = revealTweakPanel(board, viewNow(), {
         width: viewport.clientWidth,
         height: viewport.clientHeight,
       });
@@ -194,13 +199,14 @@ function DesktopArtboard({
     onInput: (boardId, input) => {
       const board = canvas?.boards[boardId];
       if (!board) return;
-      if (input.type === 'ryugi:inspect:wheel')
+      if (input.type === 'ryugi:inspect:wheel') {
+        const now = viewNow();
         wheelAt({
           ...input,
-          x: view.x + (board.x + input.x) * view.k,
-          y: view.y + (board.y + input.y) * view.k,
+          x: now.x + (board.x + input.x) * now.k,
+          y: now.y + (board.y + input.y) * now.k,
         });
-      else if (input.type === 'ryugi:inspect:pan') panBy(input.deltaX, input.deltaY);
+      } else if (input.type === 'ryugi:inspect:pan') panBy(input.deltaX, input.deltaY);
       else if (input.type === 'ryugi:inspect:drag') {
         if (commentTool) boardComments.onFrameDrag(boardId, input);
         else if (selectionEnabled)
@@ -249,10 +255,11 @@ function DesktopArtboard({
     const thread = boardComments.threads.find((t) => t.id === threadId);
     const point = thread && pinPoint(thread.anchor, canvas?.boards ?? {});
     const el = viewportRef.current;
+    const now = viewNow();
     if (point && el)
       panBy(
-        el.clientWidth / 2 - (view.x + point.x * view.k),
-        el.clientHeight / 2 - (view.y + point.y * view.k),
+        el.clientWidth / 2 - (now.x + point.x * now.k),
+        el.clientHeight / 2 - (now.y + point.y * now.k),
       );
     boardComments.setOpenId(threadId);
   };
@@ -359,9 +366,10 @@ function DesktopArtboard({
   const selection = useMarqueeSelection(boards, inspector, view.k, [tool, expanded, page, panning]);
   const worldPoint = (event: { clientX: number; clientY: number }) => {
     const rect = viewportRef.current!.getBoundingClientRect();
+    const now = viewNow();
     return {
-      x: (event.clientX - rect.left - view.x) / view.k,
-      y: (event.clientY - rect.top - view.y) / view.k,
+      x: (event.clientX - rect.left - now.x) / now.k,
+      y: (event.clientY - rect.top - now.y) / now.k,
     };
   };
   const marquee = selection.marquee;
@@ -531,6 +539,7 @@ function DesktopArtboard({
               boards={boards}
               contentBase={contentBase}
               groups={groups}
+              overlayRef={overlayRef}
               parameters={parameterEntries}
               pending={pendingBoards}
               playing={playing}
@@ -543,13 +552,15 @@ function DesktopArtboard({
               onTogglePlay={(id) => setPlaying((current) => togglePlaying(current, id))}
             />
             {verdicts.rejecting && rejectAt && (
-              <RejectComposer
-                group={verdicts.rejecting}
-                left={view.x + rejectAt.x * view.k}
-                top={view.y + rejectAt.y * view.k + 8}
-                onCancel={verdicts.cancelReject}
-                onSubmit={verdicts.submitReject}
-              />
+              <div ref={overlayRef} {...stylex.props(styles.anchor, styles.rejectAnchor)}>
+                <RejectComposer
+                  group={verdicts.rejecting}
+                  left={view.x + rejectAt.x * view.k}
+                  top={view.y + rejectAt.y * view.k + 8}
+                  onCancel={verdicts.cancelReject}
+                  onSubmit={verdicts.submitReject}
+                />
+              </div>
             )}
             {commentTool && (
               <CommentLayer
@@ -560,6 +571,7 @@ function DesktopArtboard({
                 height={size.height}
                 numbers={boardComments.numbers}
                 openId={boardComments.openId}
+                overlayRef={overlayRef}
                 page={page}
                 showResolved={commentsTab === 'all'}
                 stale={boardComments.stale}
@@ -573,33 +585,37 @@ function DesktopArtboard({
             )}
           </CanvasErrorBoundary>
         )}
-        {(selectionEnabled || commentTool) &&
-          !selection.marquee &&
-          inspector.hover &&
-          allBoards[inspector.hover.boardId] && (
-            <InspectionOutline
-              board={allBoards[inspector.hover.boardId]!}
-              rect={inspector.hover.rect}
-              view={view}
-              nodeId={
-                inspector.hover.id ? `${inspector.hover.boardId}#${inspector.hover.id}` : undefined
-              }
-            />
-          )}
-        {!expanded &&
-          inspector.targets.map(
-            (target) =>
-              allBoards[target.boardId] && (
-                <InspectionOutline
-                  selected
-                  board={allBoards[target.boardId]!}
-                  key={`${target.boardId}:${target.id}`}
-                  name={target.name}
-                  rect={target.rect}
-                  view={view}
-                />
-              ),
-          )}
+        <div ref={overlayRef} {...stylex.props(styles.anchor)}>
+          {(selectionEnabled || commentTool) &&
+            !selection.marquee &&
+            inspector.hover &&
+            allBoards[inspector.hover.boardId] && (
+              <InspectionOutline
+                board={allBoards[inspector.hover.boardId]!}
+                rect={inspector.hover.rect}
+                view={view}
+                nodeId={
+                  inspector.hover.id
+                    ? `${inspector.hover.boardId}#${inspector.hover.id}`
+                    : undefined
+                }
+              />
+            )}
+          {!expanded &&
+            inspector.targets.map(
+              (target) =>
+                allBoards[target.boardId] && (
+                  <InspectionOutline
+                    selected
+                    board={allBoards[target.boardId]!}
+                    key={`${target.boardId}:${target.id}`}
+                    name={target.name}
+                    rect={target.rect}
+                    view={view}
+                  />
+                ),
+            )}
+        </div>
         {selection.selecting && (
           <div
             aria-hidden="true"
@@ -647,7 +663,11 @@ function DesktopArtboard({
           onZoomIn={() => zoomBy(1.25)}
           onZoomOut={() => zoomBy(0.8)}
         />
-        {!expanded && panel(true)}
+        {!expanded && parameterBoard && (
+          <div ref={overlayRef} {...stylex.props(styles.anchor, styles.panelAnchor)}>
+            {panel(true)}
+          </div>
+        )}
         {expanded && expandedBoard && expandedReady && (
           <ExpandedBoard
             board={expandedBoard}

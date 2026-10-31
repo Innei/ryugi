@@ -12,7 +12,7 @@ import {
   RotateCcw,
   SlidersHorizontal,
 } from 'lucide-react';
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { type Ref, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 import { type BoardSpec, type GroupSpec, isMediaBoard } from '../../shared/types';
 import type { Verdicts } from '../hooks/useVerdicts';
@@ -37,6 +37,7 @@ function downloadFile(href: string, name: string) {
 
 const styles = stylex.create({
   layer: { position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden' },
+  overlay: { position: 'absolute', inset: 0 },
   boardLabel: {
     position: 'absolute',
     display: 'flex',
@@ -122,6 +123,7 @@ interface LabelsProps {
   onReplay: (id: string) => void;
   onToggleParameters?: (id: string, trigger: HTMLButtonElement) => void;
   onTogglePlay: (id: string) => void;
+  overlayRef?: Ref<HTMLDivElement>;
   parameters?: Record<string, boolean>;
   pending: ReadonlySet<string>;
   playing: ReadonlySet<string>;
@@ -406,6 +408,7 @@ export function Labels({
   activeParameters,
   onToggleParameters,
   verdicts,
+  overlayRef,
 }: LabelsProps) {
   const fontsVersion = useLabelFonts();
   const [stackedBoards, setStackedBoards] = useState<ReadonlySet<string>>(() => new Set());
@@ -422,74 +425,76 @@ export function Labels({
   const boardScale = scaleOf(labelSize(BOARD_LABEL_RULE, view.k), BOARD_LABEL_FONT);
   return (
     <div {...stylex.props(styles.layer)}>
-      {groupScale !== null &&
-        groups.map(([id, group]) => {
-          const members = group.boards
-            .map((m) => allBoards[m])
-            .filter((b): b is BoardSpec => Boolean(b));
-          if (members.length === 0) return null;
-          const x = Math.min(...members.map((b) => b.x));
-          const y = Math.min(...members.map((b) => b.y));
-          const verdict = verdicts?.states[id];
-          return (
-            <div
-              data-chrome={verdict ? 'group-label' : undefined}
-              data-group-label={id}
-              key={id}
-              {...stylex.props(styles.groupLabel, verdict && styles.judged)}
-              style={{
-                left: view.x + x * view.k,
-                top:
-                  view.y +
-                  y * view.k -
-                  (boardScale !== null && group.boards.some((board) => stackedBoards.has(board))
-                    ? 24 * boardScale
-                    : 0),
-                transform: `scale(${groupScale}) translateY(calc(-100% - ${GROUP_LABEL_GAP}px))`,
-              }}
-            >
-              <span {...stylex.props(styles.chip)}>{id}</span>
-              {group.title}
-              {verdict && verdicts && (
-                <GroupVerdict
-                  canJudge={verdicts.canJudge}
-                  evidenceAt={verdicts.evidenceAt(id)}
-                  verdict={verdict}
-                  onPass={() => verdicts.pass(id)}
-                  onReject={() => verdicts.startReject(id)}
-                  onUndo={() => verdicts.undoPass(id)}
-                />
-              )}
-            </div>
-          );
-        })}
-      {boardScale !== null &&
-        boards.map(([id, board]) => {
-          const rect = labelRect(board, view);
-          if (!rect) return null;
-          const ready = boardReady(versions, board.file) && !pending.has(id);
-          return (
-            <BoardLabel
-              active={activeParameters === id}
-              board={board}
-              contentBase={contentBase}
-              fontsVersion={fontsVersion}
-              id={id}
-              interactive={ready && canPlay(board, versions)}
-              key={id}
-              modified={parameters?.[id]}
-              playing={playing.has(id)}
-              ready={ready}
-              rect={rect}
-              scale={boardScale}
-              onExpand={onExpand}
-              onReplay={onReplay}
-              onStacked={onStacked}
-              onToggleParameters={onToggleParameters}
-              onTogglePlay={onTogglePlay}
-            />
-          );
-        })}
+      <div ref={overlayRef} {...stylex.props(styles.overlay)}>
+        {groupScale !== null &&
+          groups.map(([id, group]) => {
+            const members = group.boards
+              .map((m) => allBoards[m])
+              .filter((b): b is BoardSpec => Boolean(b));
+            if (members.length === 0) return null;
+            const x = Math.min(...members.map((b) => b.x));
+            const y = Math.min(...members.map((b) => b.y));
+            const verdict = verdicts?.states[id];
+            return (
+              <div
+                data-chrome={verdict ? 'group-label' : undefined}
+                data-group-label={id}
+                key={id}
+                {...stylex.props(styles.groupLabel, verdict && styles.judged)}
+                style={{
+                  left: view.x + x * view.k,
+                  top:
+                    view.y +
+                    y * view.k -
+                    (boardScale !== null && group.boards.some((board) => stackedBoards.has(board))
+                      ? 24 * boardScale
+                      : 0),
+                  transform: `scale(${groupScale}) translateY(calc(-100% - ${GROUP_LABEL_GAP}px))`,
+                }}
+              >
+                <span {...stylex.props(styles.chip)}>{id}</span>
+                {group.title}
+                {verdict && verdicts && (
+                  <GroupVerdict
+                    canJudge={verdicts.canJudge}
+                    evidenceAt={verdicts.evidenceAt(id)}
+                    verdict={verdict}
+                    onPass={() => verdicts.pass(id)}
+                    onReject={() => verdicts.startReject(id)}
+                    onUndo={() => verdicts.undoPass(id)}
+                  />
+                )}
+              </div>
+            );
+          })}
+        {boardScale !== null &&
+          boards.map(([id, board]) => {
+            const rect = labelRect(board, view);
+            if (!rect) return null;
+            const ready = boardReady(versions, board.file) && !pending.has(id);
+            return (
+              <BoardLabel
+                active={activeParameters === id}
+                board={board}
+                contentBase={contentBase}
+                fontsVersion={fontsVersion}
+                id={id}
+                interactive={ready && canPlay(board, versions)}
+                key={id}
+                modified={parameters?.[id]}
+                playing={playing.has(id)}
+                ready={ready}
+                rect={rect}
+                scale={boardScale}
+                onExpand={onExpand}
+                onReplay={onReplay}
+                onStacked={onStacked}
+                onToggleParameters={onToggleParameters}
+                onTogglePlay={onTogglePlay}
+              />
+            );
+          })}
+      </div>
     </div>
   );
 }

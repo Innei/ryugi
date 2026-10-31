@@ -137,7 +137,7 @@ test.each([
       new PointerEvent('pointermove', { bubbles: true, pointerId: 1, clientX: 40, clientY: 30 }),
     );
   });
-  expect(JSON.parse(host.querySelector('output')!.textContent!)).toEqual({ x: 20, y: 20, k: 0.5 });
+  expect(panZoom.viewNow()).toEqual({ x: 20, y: 20, k: 0.5 });
   pointer(viewport, 'pointerup', button);
   expect(viewport.style.cursor).not.toBe('grabbing');
 });
@@ -151,11 +151,11 @@ test('toolbar interaction inside the viewport never starts dragging', () => {
 test('frame input pans and zooms around its translated cursor without resetting the view', () => {
   render('select');
   act(() => panZoom.panBy?.(40, 20));
-  expect(JSON.parse(host.querySelector('output')!.textContent!)).toEqual({ x: 40, y: 20, k: 0.5 });
+  expect(panZoom.viewNow()).toEqual({ x: 40, y: 20, k: 0.5 });
   act(() =>
     panZoom.wheelAt?.({ deltaX: 0, deltaY: -Math.log(2) / 0.01, x: 100, y: 100, zoom: true }),
   );
-  expect(JSON.parse(host.querySelector('output')!.textContent!)).toEqual({ x: -20, y: -60, k: 1 });
+  expect(panZoom.viewNow()).toEqual({ x: -20, y: -60, k: 1 });
 });
 
 test('Space on toolbar controls keeps its native keyboard action instead of starting canvas pan', () => {
@@ -179,11 +179,11 @@ test('trackpad gestures over a board title pan and pinch the canvas, while toolb
       target.dispatchEvent(event);
     });
   wheel(host.querySelector('button')!, { deltaY: 40 });
-  expect(panZoom.view).toEqual({ x: 0, y: 0, k: 0.5 });
+  expect(panZoom.viewNow()).toEqual({ x: 0, y: 0, k: 0.5 });
   wheel(host.querySelector('#board-title')!, { deltaX: 12, deltaY: 40 });
-  expect(panZoom.view).toEqual({ x: -12, y: -40, k: 0.5 });
+  expect(panZoom.viewNow()).toEqual({ x: -12, y: -40, k: 0.5 });
   wheel(host.querySelector('#board-title')!, { deltaY: -Math.log(2) / 0.01, ctrlKey: true });
-  expect(panZoom.view.k).toBe(1);
+  expect(panZoom.viewNow().k).toBe(1);
 });
 
 function wheelAt(target: Element, init: WheelEventInit & { deltaMode?: number }) {
@@ -203,14 +203,14 @@ test.each(['#verdict', '#clock', '#reason', '#control', '#reply'])(
     render('select');
     const event = wheelAt(host.querySelector(selector)!, { deltaX: 12, deltaY: 40 });
     expect(event.defaultPrevented).toBe(true);
-    expect(panZoom.view).toEqual({ x: -12, y: -40, k: 0.5 });
+    expect(panZoom.viewNow()).toEqual({ x: -12, y: -40, k: 0.5 });
   },
 );
 
 test('a pinch over canvas chrome zooms the canvas', () => {
   render('select');
   wheelAt(host.querySelector('#verdict')!, { deltaY: -Math.log(2) / 0.01, ctrlKey: true });
-  expect(panZoom.view.k).toBe(1);
+  expect(panZoom.viewNow().k).toBe(1);
 });
 
 test('canvas chrome that overflows scrolls itself instead of panning', () => {
@@ -220,13 +220,13 @@ test('canvas chrome that overflows scrolls itself instead of panning', () => {
   Object.defineProperty(popover, 'clientHeight', { value: 400 });
   const event = wheelAt(host.querySelector('#reply')!, { deltaY: 40 });
   expect(event.defaultPrevented).toBe(false);
-  expect(panZoom.view).toEqual({ x: 0, y: 0, k: 0.5 });
+  expect(panZoom.viewNow()).toEqual({ x: 0, y: 0, k: 0.5 });
 });
 
 test('a panel inside fixed chrome keeps its wheel even though it can sit on the canvas', () => {
   render('select');
   wheelAt(host.querySelector('#expanded-control')!, { deltaY: 40 });
-  expect(panZoom.view).toEqual({ x: 0, y: 0, k: 0.5 });
+  expect(panZoom.viewNow()).toEqual({ x: 0, y: 0, k: 0.5 });
 });
 
 test('a pinch over fixed chrome or a side panel never zooms the browser page', () => {
@@ -238,14 +238,14 @@ test('a pinch over fixed chrome or a side panel never zooms the browser page', (
   ).toBe(true);
   expect(wheelAt(side, { deltaY: 10, ctrlKey: true }).defaultPrevented).toBe(true);
   expect(wheelAt(side, { deltaY: 10 }).defaultPrevented).toBe(false);
-  expect(panZoom.view).toEqual({ x: 0, y: 0, k: 0.5 });
+  expect(panZoom.viewNow()).toEqual({ x: 0, y: 0, k: 0.5 });
   side.remove();
 });
 
 test('line-based wheel deltas pan by pixels', () => {
   render('select');
   wheelAt(host.querySelector('#board-title')!, { deltaY: 3, deltaMode: 1 });
-  expect(panZoom.view).toEqual({ x: 0, y: -48, k: 0.5 });
+  expect(panZoom.viewNow()).toEqual({ x: 0, y: -48, k: 0.5 });
 });
 
 function touch(target: Element, type: string, id: number, x: number, y: number) {
@@ -268,7 +268,7 @@ test('one finger pans the canvas whatever the tool', () => {
   touch(viewport, 'pointerdown', 7, 100, 100);
   touch(viewport, 'pointermove', 7, 130, 80);
   touch(viewport, 'pointerup', 7, 130, 80);
-  expect(panZoom.view).toEqual({ x: 30, y: -20, k: 0.5 });
+  expect(panZoom.viewNow()).toEqual({ x: 30, y: -20, k: 0.5 });
 });
 
 test('two fingers pinch around their midpoint and pan with it', () => {
@@ -276,17 +276,17 @@ test('two fingers pinch around their midpoint and pan with it', () => {
   touch(viewport, 'pointerdown', 1, 100, 100);
   touch(viewport, 'pointerdown', 2, 200, 100);
   touch(viewport, 'pointermove', 2, 300, 100);
-  expect(panZoom.view).toEqual({ x: -100, y: -100, k: 1 });
+  expect(panZoom.viewNow()).toEqual({ x: -100, y: -100, k: 1 });
   touch(viewport, 'pointerup', 2, 300, 100);
   touch(viewport, 'pointermove', 1, 110, 100);
-  expect(panZoom.view).toEqual({ x: -90, y: -100, k: 1 });
+  expect(panZoom.viewNow()).toEqual({ x: -90, y: -100, k: 1 });
 });
 
 test('a finger on the toolbar never moves the canvas', () => {
   const viewport = render('select');
   touch(host.querySelector('button')!, 'pointerdown', 3, 10, 10);
   touch(viewport, 'pointermove', 3, 60, 60);
-  expect(panZoom.view).toEqual({ x: 0, y: 0, k: 0.5 });
+  expect(panZoom.viewNow()).toEqual({ x: 0, y: 0, k: 0.5 });
 });
 
 test('a finger that started on the toolbar never moves the canvas while another finger is down', () => {
@@ -294,7 +294,7 @@ test('a finger that started on the toolbar never moves the canvas while another 
   touch(viewport, 'pointerdown', 1, 100, 100);
   touch(host.querySelector('button')!, 'pointerdown', 2, 300, 300);
   touch(viewport, 'pointermove', 2, 310, 310);
-  expect(panZoom.view).toEqual({ x: 0, y: 0, k: 0.5 });
+  expect(panZoom.viewNow()).toEqual({ x: 0, y: 0, k: 0.5 });
 });
 
 test('the comment tool shows the bubble cursor and does not pan', () => {

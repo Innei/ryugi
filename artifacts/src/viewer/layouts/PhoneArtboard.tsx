@@ -104,7 +104,8 @@ export function PhoneArtboard({
   comments,
   actions,
 }: Props) {
-  const { viewportRef, worldRef, view, size, gesturing, fit, handlers } = usePanZoom('hand');
+  const { viewportRef, worldRef, overlayRef, view, viewNow, size, gesturing, fit, handlers } =
+    usePanZoom('hand');
   const [current, setCurrent] = useState<string | null>(null);
   const [snap, setSnap] = useState(SHEET_PEEK);
   const [open, setOpen] = useState<string | null>(null);
@@ -184,8 +185,9 @@ export function PhoneArtboard({
 
   const boardAt = (event: { clientX: number; clientY: number }) => {
     const rect = viewportRef.current!.getBoundingClientRect();
-    const x = (event.clientX - rect.left - view.x) / view.k;
-    const y = (event.clientY - rect.top - view.y) / view.k;
+    const now = viewNow();
+    const x = (event.clientX - rect.left - now.x) / now.k;
+    const y = (event.clientY - rect.top - now.y) / now.k;
     return (
       boards.find(([, b]) => x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h)?.[0] ?? null
     );
@@ -294,6 +296,7 @@ export function PhoneArtboard({
               boards={boards}
               contentBase={contentBase}
               groups={groups}
+              overlayRef={overlayRef}
               pending={pendingBoards}
               playing={NOTHING}
               verdicts={verdicts}

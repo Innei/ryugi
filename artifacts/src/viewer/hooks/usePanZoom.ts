@@ -2,6 +2,7 @@ import {
   type PointerEvent as ReactPointerEvent,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
 } from 'react';
@@ -26,6 +27,9 @@ const INSETS: Insets = { top: 64, right: 24, bottom: 24, left: 24 };
 const WHEEL_ZOOM_SPEED = 0.01;
 const FIT_MS = 420;
 export const GESTURE_SETTLE_MS = 150;
+// Below CULL_MARGIN: culling reads the rendered view, so boards must be mounted before they scroll in.
+export const OVERLAY_DRIFT_PX = 160;
+const OVERLAY_DRIFT_ZOOM = 1.1;
 const ease = cubicBezier(0.2, 0, 0, 1);
 const reducedMotion = () =>
   typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -47,6 +51,22 @@ const CANVAS_CHROME = [
   'parameters',
 ];
 const FIXED_CHROME = `[data-chrome]${CANVAS_CHROME.map((name) => `:not([data-chrome="${name}"])`).join('')}`;
+
+function overlayShift(from: View, to: View) {
+  const scale = to.k / from.k;
+  return { x: to.x - from.x * scale, y: to.y - from.y * scale, scale };
+}
+
+function drifted(from: View, to: View, viewport: { width: number; height: number }) {
+  const { x, y, scale } = overlayShift(from, to);
+  const reach = Math.max(
+    Math.abs(x),
+    Math.abs(y),
+    Math.abs(viewport.width * (scale - 1) + x),
+    Math.abs(viewport.height * (scale - 1) + y),
+  );
+  return reach > OVERLAY_DRIFT_PX || scale > OVERLAY_DRIFT_ZOOM || scale < 1 / OVERLAY_DRIFT_ZOOM;
+}
 
 function scrollsItself(target: Element | null, root: Element, dx: number, dy: number) {
   for (let el = target; el && el !== root; el = el.parentElement) {
@@ -70,12 +90,22 @@ export function usePanZoom(tool: Tool) {
   const framePending = useRef(false);
   const [gesturing, setGesturing] = useState(false);
   const gesture = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const rendered = useRef(view);
+  const overlays = useRef(new Set<HTMLElement>());
+  const viewportSize = useRef({ width: 0, height: 0 });
   const writeWorld = useCallback(() => {
-    const el = worldEl.current;
-    if (!el) return;
     const { x, y, k } = current.current;
-    el.style.transform = `translate(${x}px, ${y}px) scale(${k})`;
-    el.style.setProperty('--zoom', String(k));
+    const el = worldEl.current;
+    if (el) {
+      el.style.transform = `translate(${x}px, ${y}px) scale(${k})`;
+      el.style.setProperty('--zoom', String(k));
+    }
+    const shift = overlayShift(rendered.current, current.current);
+    const transform =
+      shift.x === 0 && shift.y === 0 && shift.scale === 1
+        ? ''
+        : `translate(${shift.x}px, ${shift.y}px) scale(${shift.scale})`;
+    for (const overlay of overlays.current) overlay.style.transform = transform;
   }, []);
   const worldRef = useCallback(
     (el: HTMLDivElement | null) => {
@@ -84,18 +114,47 @@ export function usePanZoom(tool: Tool) {
     },
     [writeWorld],
   );
+  const overlayRef = useCallback(
+    (el: HTMLElement | null) => {
+      if (!el) return;
+      el.style.transformOrigin = '0 0';
+      overlays.current.add(el);
+      writeWorld();
+      return () => {
+        overlays.current.delete(el);
+      };
+    },
+    [writeWorld],
+  );
+  useLayoutEffect(() => {
+    rendered.current = view;
+    writeWorld();
+  }, [view, writeWorld]);
+  const setWillChange = useCallback((value: string) => {
+    if (worldEl.current) worldEl.current.style.willChange = value;
+    for (const overlay of overlays.current) overlay.style.willChange = value;
+  }, []);
   const markGesture = useCallback(() => {
     if (gesture.current === undefined) {
       setGesturing(true);
-      if (worldEl.current) worldEl.current.style.willChange = 'transform';
+      setWillChange('transform');
     }
     clearTimeout(gesture.current);
     gesture.current = setTimeout(() => {
       gesture.current = undefined;
-      if (worldEl.current) worldEl.current.style.willChange = '';
+      setWillChange('');
       setGesturing(false);
+      setViewState(current.current);
     }, GESTURE_SETTLE_MS);
-  }, []);
+  }, [setWillChange]);
+  const showFrame = useCallback(
+    (next: View) => {
+      current.current = next;
+      writeWorld();
+      if (drifted(rendered.current, next, viewportSize.current)) setViewState(next);
+    },
+    [writeWorld],
+  );
   const setView = useCallback(
     (next: View | ((previous: View) => View)) => {
       current.current = typeof next === 'function' ? next(current.current) : next;
@@ -105,11 +164,10 @@ export function usePanZoom(tool: Tool) {
       frame.current = requestAnimationFrame(() => {
         framePending.current = false;
         frame.current = null;
-        writeWorld();
-        setViewState(current.current);
+        showFrame(current.current);
       });
     },
-    [markGesture, writeWorld],
+    [markGesture, showFrame],
   );
   const setViewNow = useCallback(
     (next: View, gesture = false) => {
@@ -154,6 +212,9 @@ export function usePanZoom(tool: Tool) {
     observer.observe(el);
     return () => observer.disconnect();
   }, []);
+  useLayoutEffect(() => {
+    viewportSize.current = size;
+  }, [size]);
 
   const panBy = useCallback(
     (x: number, y: number) => setView((v) => ({ ...v, x: v.x + x, y: v.y + y })),
@@ -298,12 +359,16 @@ export function usePanZoom(tool: Tool) {
       const start = performance.now();
       const tick = () => {
         const p = Math.min(1, (performance.now() - start) / FIT_MS);
-        setViewNow(p === 1 ? target : tweenView(from, target, ease(p)), true);
+        if (p === 1) setViewNow(target, true);
+        else {
+          markGesture();
+          showFrame(tweenView(from, target, ease(p)));
+        }
         animation.current = p === 1 ? null : requestAnimationFrame(tick);
       };
       animation.current = requestAnimationFrame(tick);
     },
-    [stop, setViewNow],
+    [stop, setViewNow, markGesture, showFrame],
   );
 
   const zoomBy = useCallback(
@@ -325,7 +390,9 @@ export function usePanZoom(tool: Tool) {
   return {
     viewportRef,
     worldRef,
+    overlayRef,
     view,
+    viewNow: useCallback(() => current.current, []),
     gesturing,
     scaling: gesturing,
     size,

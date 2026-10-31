@@ -1,6 +1,6 @@
 import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
-import { type ReactNode, useLayoutEffect, useRef, useState } from 'react';
+import { type ReactNode, type Ref, useLayoutEffect, useRef, useState } from 'react';
 
 import type { BoardAnchor, BoardThread } from '../../shared/board-comments';
 import type { BoardSpec } from '../../shared/types';
@@ -16,6 +16,7 @@ const POPOVER = 300;
 const GAP = 14;
 
 const styles = stylex.create({
+  overlay: { position: 'absolute', inset: 0 },
   layer: { position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden', zIndex: 8 },
   pin: {
     position: 'absolute',
@@ -91,6 +92,7 @@ interface Props {
   onOpen: (id: string | null) => void;
   onSubmit: (text: string) => Promise<boolean>;
   openId: string | null;
+  overlayRef?: Ref<HTMLDivElement>;
   page: string | null;
   showResolved: boolean;
   stale: Set<string>;
@@ -163,6 +165,7 @@ function CommentPopover({
 
 export function CommentLayer({
   view,
+  overlayRef,
   page,
   boards,
   width,
@@ -192,67 +195,69 @@ export function CommentLayer({
   const draftPoint = draft ? pinPoint(draft, boards) : null;
   return (
     <div data-chrome="comments" {...stylex.props(styles.layer)}>
-      {visible.map((thread) => {
-        const point = pinPoint(thread.anchor, boards);
-        if (!point) return null;
-        const at = screenOf(view, point);
-        const author = thread.messages[0]?.author;
-        return (
-          <button
-            aria-label={t('comments.pin', { number: numbers.get(thread.id) ?? '' })}
-            data-verdict={thread.anchor.verdict}
-            key={thread.id}
-            type="button"
-            onClick={() => onOpen(thread.id === openId ? null : thread.id)}
-            {...stylex.props(
-              styles.pin,
-              author === 'agent' && styles.agent,
-              thread.anchor.verdict === 'reject' && styles.reject,
-              thread.status === 'resolved' && styles.resolved,
-              stale.has(thread.id) && styles.stale,
-              thread.id === openId && styles.open,
-            )}
-            style={{ left: at.x, top: at.y }}
+      <div ref={overlayRef} {...stylex.props(styles.overlay)}>
+        {visible.map((thread) => {
+          const point = pinPoint(thread.anchor, boards);
+          if (!point) return null;
+          const at = screenOf(view, point);
+          const author = thread.messages[0]?.author;
+          return (
+            <button
+              aria-label={t('comments.pin', { number: numbers.get(thread.id) ?? '' })}
+              data-verdict={thread.anchor.verdict}
+              key={thread.id}
+              type="button"
+              onClick={() => onOpen(thread.id === openId ? null : thread.id)}
+              {...stylex.props(
+                styles.pin,
+                author === 'agent' && styles.agent,
+                thread.anchor.verdict === 'reject' && styles.reject,
+                thread.status === 'resolved' && styles.resolved,
+                stale.has(thread.id) && styles.stale,
+                thread.id === openId && styles.open,
+              )}
+              style={{ left: at.x, top: at.y }}
+            >
+              {numbers.get(thread.id)}
+            </button>
+          );
+        })}
+        {open ? (
+          <CommentPopover
+            height={height}
+            point={openPoint ? screenOf(view, openPoint) : null}
+            width={width}
           >
-            {numbers.get(thread.id)}
-          </button>
-        );
-      })}
-      {open ? (
-        <CommentPopover
-          height={height}
-          point={openPoint ? screenOf(view, openPoint) : null}
-          width={width}
-        >
-          <ThreadView
-            actions={actions}
-            agent={agent}
-            label={`#${numbers.get(open.id)} ${anchorLabel(open.anchor)}${stale.has(open.id) ? ` · ${staleText(open.anchor)}` : ''}`}
-            thread={open}
-            onClose={() => onOpen(null)}
-          />
-        </CommentPopover>
-      ) : null}
-      {draft && draftPoint ? (
-        <>
-          <span
-            {...stylex.props(styles.pin)}
-            style={{ left: screenOf(view, draftPoint).x, top: screenOf(view, draftPoint).y }}
-          />
-          <CommentPopover height={height} point={screenOf(view, draftPoint)} width={width}>
-            <div {...stylex.props(styles.draftHead)}>
-              {t('comments.anchoredTo', { label: anchorLabel(draft) })}
-            </div>
-            <Composer
-              autoFocus
-              placeholder={t('comments.addPlaceholder')}
-              onCancel={onCancelDraft}
-              onSubmit={onSubmit}
+            <ThreadView
+              actions={actions}
+              agent={agent}
+              label={`#${numbers.get(open.id)} ${anchorLabel(open.anchor)}${stale.has(open.id) ? ` · ${staleText(open.anchor)}` : ''}`}
+              thread={open}
+              onClose={() => onOpen(null)}
             />
-            <div {...stylex.props(styles.hint)}>{t('comments.sendHint')}</div>
           </CommentPopover>
-        </>
-      ) : null}
+        ) : null}
+        {draft && draftPoint ? (
+          <>
+            <span
+              {...stylex.props(styles.pin)}
+              style={{ left: screenOf(view, draftPoint).x, top: screenOf(view, draftPoint).y }}
+            />
+            <CommentPopover height={height} point={screenOf(view, draftPoint)} width={width}>
+              <div {...stylex.props(styles.draftHead)}>
+                {t('comments.anchoredTo', { label: anchorLabel(draft) })}
+              </div>
+              <Composer
+                autoFocus
+                placeholder={t('comments.addPlaceholder')}
+                onCancel={onCancelDraft}
+                onSubmit={onSubmit}
+              />
+              <div {...stylex.props(styles.hint)}>{t('comments.sendHint')}</div>
+            </CommentPopover>
+          </>
+        ) : null}
+      </div>
     </div>
   );
 }

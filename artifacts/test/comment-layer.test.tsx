@@ -75,7 +75,7 @@ async function render({ height = 800, width = 928, y = 0, draft = false } = {}) 
       />,
     ),
   );
-  return host.querySelector<HTMLElement>('[data-chrome="comments"] > div')!;
+  return host.querySelector<HTMLElement>('[data-chrome="comments"] > div > div')!;
 }
 
 test('a thread near the bottom stays inside the canvas instead of being clipped by its layer', async () => {
