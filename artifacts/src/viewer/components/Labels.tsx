@@ -69,7 +69,7 @@ const styles = stylex.create({
   },
   actions: { display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0, marginInlineStart: 8 },
   stackedActions: { marginInlineStart: 'auto' },
-  parameterChanged: {
+  actionActive: {
     backgroundColor: {
       'default': `color-mix(in srgb, ${brand.accent} 16%, transparent)`,
       ':hover': `color-mix(in srgb, ${brand.accent} 24%, transparent)`,
@@ -311,7 +311,7 @@ function BoardLabel({
               id,
             })}
             onClick={(event) => onToggleParameters?.(id, event.currentTarget)}
-            {...stylex.props(styles.more, modified && styles.parameterChanged)}
+            {...stylex.props(styles.more, modified && styles.actionActive)}
           >
             <SlidersHorizontal aria-hidden size={13} />
           </button>
@@ -330,10 +330,12 @@ function BoardLabel({
             active={playing}
             aria-label={playing ? t('chrome.stopBoard', { id }) : t('chrome.playBoard', { id })}
             aria-pressed={playing}
+            fill={playing ? 'currentColor' : 'none'}
             icon={Play}
             size={{ blockSize: 22, size: 13 }}
             title={playing ? t('chrome.playing') : t('chrome.play')}
             onClick={() => onTogglePlay(id)}
+            {...stylex.props(playing && styles.actionActive)}
           />
         )}
         {ready && compact && (
