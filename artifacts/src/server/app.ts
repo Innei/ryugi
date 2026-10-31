@@ -143,7 +143,7 @@ const PREVIEW_ROUTE = new RegExp(
   `^/preview/(artboard|document|html)/${ARTIFACT_LOCATOR_SOURCE}/?$`,
 );
 const API_PREVIEW_ROUTE = /^\/api\/preview\/([^/]+)\/([^/]+)$/;
-const EMBED_ROUTE = /^\/embed\/artboard\/([\w-]{1,64})\/?$/;
+const EMBED_ROUTE = /^\/embed\/(artboard|document)\/([\w-]{1,64})\/?$/;
 const API_THUMBNAIL_ROUTE = /^\/api\/thumbnail\/([^/]+)\/([^/]+)\.svg$/;
 const API_DOCUMENT_ROUTE = /^\/api\/document\/([^/]+)\/(state|update|comments)$/;
 const MAX_COMMENT_OP = 64 * 1024;
@@ -1036,7 +1036,8 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
 
     const embedMatch = EMBED_ROUTE.exec(pathname);
     const embed = !!embedMatch;
-    const embedded = embedMatch && embedTarget(embedMatch[1]!);
+    const embedded =
+      embedMatch && embedTarget(embedMatch[1] as 'artboard' | 'document', embedMatch[2]!);
     if (pathname.startsWith('/embed/') && (!embedded || !options.cloud)) {
       send(res, 404, 'Not found');
       return;
@@ -1289,11 +1290,10 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
   });
 
   const relayViewers = new Map<string, { key: string; tab: object }>();
-  const embedTarget = (id: string): ArtifactRef | null => {
-    if (isArtifactLocator(id) && resolveArtifactAddress(root, 'artboard', id))
-      return { type: 'artboard', id };
+  const embedTarget = (type: 'artboard' | 'document', id: string): ArtifactRef | null => {
+    if (isArtifactLocator(id) && resolveArtifactAddress(root, type, id)) return { type, id };
     const served = artifactKeyOf(servedArtifacts().get(id) ?? '');
-    return served?.type === 'artboard' ? served : null;
+    return served?.type === type ? served : null;
   };
   const servedArtifacts = () => {
     const served = new Map<string, string>();
@@ -1399,7 +1399,7 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
           local: () => ({
             hostId: hostIdFor(options.cloud!.credentialsFile),
             port,
-            ...(loopback ? { embed: true } : { key: token }),
+            ...(loopback ? { embed: true, embedDocument: true } : { key: token }),
           }),
           handle: handleRelay,
           onActivity: touch,

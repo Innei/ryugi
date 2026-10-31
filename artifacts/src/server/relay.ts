@@ -1,12 +1,12 @@
 import WebSocket from 'ws';
 
-import type { RelayReply } from '../shared/relay';
+import type { LiveHost, RelayReply } from '../shared/relay';
 
 export interface RelayClientOptions {
   handle: (key: string, body: unknown, conn: string) => Promise<unknown>;
   handshakeTimeoutMs?: number;
   heartbeatMs?: number;
-  local?: () => { hostId: string; port: number; key?: string; embed?: boolean };
+  local?: () => LiveHost;
   onActivity: () => void;
   onWatch?: (keys: Set<string>) => void;
   pollMs?: number;

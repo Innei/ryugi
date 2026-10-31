@@ -5,13 +5,13 @@ export type Route =
   | { kind: 'list' }
   | { kind: 'artifact'; type: ArtifactType; id: string }
   | { kind: 'preview'; type: ArtifactType; id: string }
-  | { kind: 'embed'; type: 'artboard'; id: string }
+  | { kind: 'embed'; type: 'artboard' | 'document'; id: string }
   | { kind: 'unknown' };
 
 export function parseRoute(pathname: string): Route {
   if (pathname === '/' || pathname === '/index.html') return { kind: 'list' };
-  const embed = /^\/embed\/artboard\/([\w-]{1,64})\/?$/.exec(pathname);
-  if (embed) return { kind: 'embed', type: 'artboard', id: embed[1]! };
+  const embed = /^\/embed\/(artboard|document)\/([\w-]{1,64})\/?$/.exec(pathname);
+  if (embed) return { kind: 'embed', type: embed[1] as 'artboard' | 'document', id: embed[2]! };
   if (pathname.startsWith('/embed/')) return { kind: 'unknown' };
   const preview = pathname.startsWith('/preview/');
   const match = /^\/([^/]+)\/([^/]+)\/?$/.exec(

@@ -14,6 +14,12 @@ export type RelayRequest =
 
 export type RelayReply<T = unknown> = { ok: true; data: T } | { ok: false; error: string };
 
-export type LiveHost = { hostId: string; port: number; key?: string; embed?: boolean };
+export type LiveHost = {
+  hostId: string;
+  port: number;
+  key?: string;
+  embed?: boolean;
+  embedDocument?: boolean;
+};
 
 export type RelayPresence = { online: boolean; version: string | null; hosts?: LiveHost[] };

@@ -167,6 +167,7 @@ describe('connecting', () => {
         hostId: expect.stringMatching(/^[\w-]{16,64}$/),
         port: server.port,
         embed: true,
+        embedDocument: true,
       },
     });
     expect(hub.headers[0]!.authorization).toBe('Bearer tok');

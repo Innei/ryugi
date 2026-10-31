@@ -54,9 +54,9 @@ const local = (page: ReactNode) => (
   </>
 );
 
-function EmbeddedArtboard({ id }: { id: string }) {
+function Embedded({ id, type }: { id: string; type: 'artboard' | 'document' }) {
   useEffect(() => startEmbedChild()?.close, []);
-  return <ArtboardLayout id={id} />;
+  return type === 'document' ? <DocumentLayout id={id} /> : <ArtboardLayout id={id} />;
 }
 
 function RouteView() {
@@ -78,7 +78,7 @@ function RouteView() {
     return <div {...stylex.props(styles.unknown)}>No artifact lives at this address.</div>;
   const id = document.documentElement.dataset.ryugiArtifactId ?? route.id;
   if (route.kind === 'preview') return <PreviewLayout id={id} type={route.type} />;
-  if (route.kind === 'embed') return <EmbeddedArtboard id={id} />;
+  if (route.kind === 'embed') return <Embedded id={id} type={route.type} />;
   if (route.type === 'html') return local(<HtmlLayout id={id} />);
   if (route.type === 'document') return local(<DocumentLayout id={id} />);
   return local(<ArtboardLayout id={id} />);
