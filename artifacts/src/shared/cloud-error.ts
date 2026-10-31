@@ -1,7 +1,7 @@
 export interface CloudErrorDetails {
   code?: string;
   limit?: { kind: string; used: number; max: number; requested?: number };
-  plan?: 'free' | 'pro';
+  plan?: 'free' | 'pro' | 'max';
   upgradeUrl?: string;
 }
 
@@ -10,7 +10,8 @@ export function cloudErrorDetails(value: unknown): CloudErrorDetails {
   const fields = value as Record<string, unknown>;
   const details: CloudErrorDetails = {};
   if (typeof fields.code === 'string') details.code = fields.code;
-  if (fields.plan === 'free' || fields.plan === 'pro') details.plan = fields.plan;
+  if (fields.plan === 'free' || fields.plan === 'pro' || fields.plan === 'max')
+    details.plan = fields.plan;
   if (typeof fields.upgradeUrl === 'string') details.upgradeUrl = fields.upgradeUrl;
   if (fields.limit && typeof fields.limit === 'object') {
     const limit = fields.limit as Record<string, unknown>;

@@ -890,3 +890,62 @@ describe('reserving a cloud link', () => {
     expect(json.hostId).toMatch(/^[\w-]{16,64}$/);
   });
 });
+
+describe('per-artifact size limit', () => {
+  const MB = 1024 * 1024;
+  const big = (root: string, bytes: number) => {
+    writeHtml(root, 'a', { 'index.html': '<title>A</title>' });
+    fs.writeFileSync(path.join(root, 'html', 'a', 'big.bin'), Buffer.alloc(bytes, 1));
+  };
+  const reports =
+    (artifactBytes?: number, fileBytes?: number) => (r: { method: string; path: string }) =>
+      r.method === 'GET' && r.path === '/api/billing'
+        ? artifactBytes === undefined
+          ? { status: 404, body: { error: 'not found' } }
+          : { status: 200, body: { plan: 'max', limits: { artifactBytes, fileBytes } } }
+        : undefined;
+
+  test('an artifact under 20 MB publishes without asking for the plan', async () => {
+    const { server, root, cloud } = await start();
+    writeHtml(root, 'a', { 'index.html': '<title>A</title>' });
+    expect((await call(server, 'POST', '/api/cloud/publish/html/a')).status).toBe(200);
+    expect(cloud.requests.some((r) => r.path === '/api/billing')).toBe(false);
+  });
+
+  test('an artifact over 20 MB publishes when the cloud reports a larger limit', async () => {
+    const { server, root, cloud } = await start();
+    big(root, 25 * MB);
+    cloud.respond = reports(100 * MB);
+    expect((await call(server, 'POST', '/api/cloud/publish/html/a')).status).toBe(200);
+    expect(cloud.requests.filter((r) => r.path === '/api/billing')).toHaveLength(1);
+  });
+
+  test('an artifact over the reported limit is refused before anything is uploaded', async () => {
+    const { server, root, cloud } = await start();
+    big(root, 25 * MB);
+    cloud.respond = reports(20 * MB);
+    const { status, json } = await call(server, 'POST', '/api/cloud/publish/html/a');
+    expect(status).toBe(413);
+    expect(json.error).toMatch(/limit is 20\.0 MB/);
+    expect(cloud.requests.filter((r) => r.method !== 'GET')).toEqual([]);
+  });
+
+  test('a single file over the reported per-file limit is refused before anything is uploaded', async () => {
+    const { server, root, cloud } = await start();
+    big(root, 60 * MB);
+    cloud.respond = reports(100 * MB, 50 * MB);
+    const { status, json } = await call(server, 'POST', '/api/cloud/publish/html/a');
+    expect(status).toBe(413);
+    expect(json.error).toBe('big.bin is 60.0 MB; each file can be at most 50.0 MB');
+    expect(cloud.requests.filter((r) => r.method !== 'GET')).toEqual([]);
+  });
+
+  test('when the cloud does not report a limit, 20 MB still applies', async () => {
+    const { server, root, cloud } = await start();
+    big(root, 25 * MB);
+    cloud.respond = reports();
+    const { status, json } = await call(server, 'POST', '/api/cloud/publish/html/a');
+    expect(status).toBe(413);
+    expect(json.error).toMatch(/limit is 20\.0 MB/);
+  });
+});

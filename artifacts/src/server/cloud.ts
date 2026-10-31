@@ -13,7 +13,7 @@ import { clearCredentials, readCredentials, writeCredentials } from './credentia
 import { hostIdFor } from './host-id';
 import { randomToken, send, sendJson } from './http';
 import { serverText } from './locales';
-import { packArtifact } from './pack';
+import { ArtifactTooLarge, formatBytes, MAX_ARTIFACT_BYTES, packArtifact } from './pack';
 import { withCloudRuntime } from './publish-payload';
 import {
   autoPublishEnabled,
@@ -225,6 +225,27 @@ export function createCloudRoutes(options: CloudRoutesOptions) {
     return res;
   };
 
+  const planLimits = async () => {
+    const fallback = { artifactBytes: MAX_ARTIFACT_BYTES, fileBytes: MAX_ARTIFACT_BYTES };
+    const positive = (value: unknown) =>
+      typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : MAX_ARTIFACT_BYTES;
+    try {
+      const res = await cloudFetch('GET', '/api/billing');
+      if (!res.ok) return fallback;
+      const limits = (
+        (await res.json()) as { limits?: { artifactBytes?: unknown; fileBytes?: unknown } }
+      ).limits;
+      const artifactBytes = positive(limits?.artifactBytes);
+      return {
+        artifactBytes,
+        fileBytes: limits?.fileBytes === undefined ? artifactBytes : positive(limits.fileBytes),
+      };
+    } catch (err) {
+      if (err instanceof SignedOut) throw err;
+      return fallback;
+    }
+  };
+
   const expectOk = async (res: Response) => {
     if (!res.ok) await refuse(res);
     return res;
@@ -308,11 +329,26 @@ export function createCloudRoutes(options: CloudRoutesOptions) {
     if (!inspected) throw new CloudRefused(404, `${ref.type}/${ref.id} not found`);
     if (inspected.reasons.length > 0 || !inspected.payload)
       return { ready: false as const, reasons: inspected.reasons };
+    const pack = (maxBytes = MAX_ARTIFACT_BYTES) =>
+      packArtifact(inspected.dir, ref.type, { overrides: inspected.fileOverrides, maxBytes });
     let packed;
     try {
-      packed = packArtifact(inspected.dir, ref.type, { overrides: inspected.fileOverrides });
+      packed = pack();
     } catch (err) {
-      throw new CloudRefused(413, (err as Error).message);
+      if (!(err instanceof ArtifactTooLarge)) throw new CloudRefused(413, (err as Error).message);
+      const limits = await planLimits();
+      if (limits.artifactBytes <= MAX_ARTIFACT_BYTES) throw new CloudRefused(413, err.message);
+      try {
+        packed = pack(limits.artifactBytes);
+      } catch (retry) {
+        throw new CloudRefused(413, (retry as Error).message);
+      }
+      const oversized = packed.find((file) => file.data.length > limits.fileBytes);
+      if (oversized)
+        throw new CloudRefused(
+          413,
+          `${oversized.path} is ${formatBytes(oversized.data.length)}; each file can be at most ${formatBytes(limits.fileBytes)}`,
+        );
     }
     const sha = (data: Buffer | string) => crypto.createHash('sha256').update(data).digest('hex');
     const hashed = withCloudRuntime(ref.type, packed).map((file) => ({
