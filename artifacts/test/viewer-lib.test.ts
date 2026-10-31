@@ -99,3 +99,18 @@ test('bundled CommonJS reaches peers through imports, never a runtime require', 
     );
   expect(offenders).toEqual([]);
 });
+
+test('the embedded canvas frame has no border once compiled', () => {
+  const files = fs.readdirSync(lib);
+  const code = fs.readFileSync(path.join(lib, 'index.js'), 'utf8');
+  const region = code.slice(code.indexOf('//#region src/viewer/components/EmbeddedCanvas.tsx'));
+  const classes = /className: "([^"]+)"/.exec(region)![1]!.split(' ');
+  const css = files
+    .filter((file) => /^stylex(?:-[\w-]+)?\.css$/.test(file))
+    .map((file) => fs.readFileSync(path.join(lib, file), 'utf8'))
+    .join('');
+  const rules = classes.map(
+    (name) => new RegExp(`\\.${name}[^{]*\\{([^}]*)\\}`).exec(css)?.[1] ?? '',
+  );
+  expect(rules.some((rule) => /border(?:-width)?:\s*0/.test(rule))).toBe(true);
+});
