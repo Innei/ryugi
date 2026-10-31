@@ -103,13 +103,8 @@ async function mount(extra: object = {}) {
 
 const frames = () => host!.querySelectorAll('[data-board] iframe').length;
 
-test('boards mount a couple at a time under their tiers', async () => {
+test('every ready board mounts its frame at once', async () => {
   await mount();
-  expect(frames()).toBe(2);
-});
-
-test('without tiers every visible board mounts its frame at once, as before snapshots existed', async () => {
-  await mount({ tiers: false });
   expect(frames()).toBe(6);
 });
 

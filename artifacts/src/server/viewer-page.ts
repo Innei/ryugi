@@ -17,6 +17,7 @@ export function viewerPage(
     locale?: Locale;
     icon?: string;
     artifactId?: string;
+    embedParent?: string;
   },
 ): string {
   const locale = page.locale ?? 'en';
@@ -33,7 +34,7 @@ export function viewerPage(
     .replace(
       /<html\b([^>]*)>/i,
       (_tag, attributes: string) =>
-        `<html${attributes.replace(/\slang="[^"]*"/i, '')} lang="${HTML_LANG[locale]}"${page.artifactId ? ` data-ryugi-artifact-id="${escapeHtml(page.artifactId)}"` : ''}>`,
+        `<html${attributes.replace(/\slang="[^"]*"/i, '')} lang="${HTML_LANG[locale]}"${page.artifactId ? ` data-ryugi-artifact-id="${escapeHtml(page.artifactId)}"` : ''}${page.embedParent ? ` data-ryugi-embed-parent="${escapeHtml(page.embedParent)}"` : ''}>`,
     )
     .replace(/<title\b[^>]*>[\s\S]*?<\/title>/i, () => `<title>${escapeHtml(page.title)}</title>`)
     .replace(

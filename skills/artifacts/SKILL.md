@@ -101,8 +101,8 @@ launcher `app/ryugi-artifacts.cjs` with `--json`; it runs the newest
 
 ```bash
 node app/ryugi-artifacts.cjs start --json --project-dir /path/to/project --artifact html/arrow-tuner
-# {"type":"server-started","url":"http://localhost:52341/?key=…","port":52341,
-#  "root":"/path/to/project/.ryugi/artifacts","link":"http://localhost:52341/html/arrow-tuner?key=…",
+# {"type":"server-started","url":"http://localhost:52341/","port":52341,
+#  "root":"/path/to/project/.ryugi/artifacts","link":"http://localhost:52341/html/arrow-tuner",
 #  "cloudLink":"https://ryugi.innei.dev/a/…"}
 ```
 
@@ -110,15 +110,14 @@ node app/ryugi-artifacts.cjs start --json --project-dir /path/to/project --artif
   same live page, on this computer and on any other, published or not.
 - `cloudLimit` instead of `cloudLink`: their Ryugi Cloud plan is full. Tell
   them its `message` and give them `upgradeUrl`, then the local `link`.
-- No `cloudLink`: give them the complete `link`, including `?key=`. The
-  server refuses requests without the key. `url` opens a list of every
-  artifact.
+- No `cloudLink`: give them `link` exactly as printed. `url` opens a list
+  of every artifact.
 - Run `start` before you write a new artifact's first file, so the page is
   open while you write it.
 - Run it again only right before a message that gives a link, with the
   artifact you're about to mention; edits in between need no `start`. It
   prints `"reused": true` while the server is up, and otherwise starts it on
-  the same port and key, so open tabs reconnect.
+  the same port, so open tabs reconnect.
 - Every run registers your session. The server stops when every session
   that used it has exited, or after 4 hours idle.
 - The browser opens when the first artifact is ready enough: for an artboard,
@@ -134,7 +133,8 @@ node app/ryugi-artifacts.cjs start --json --project-dir /path/to/project --artif
 - Claude Code: run the command as is; it backgrounds the server. On
   Windows it stays in the foreground: use `run_in_background: true` and
   read `.ryugi/artifacts/.state/server-info` on the next turn, then build
-  the link as `<origin>/<type>/<id>?key=<key>` from its `url`. Inside a git
+  the link as `<origin>/<type>/<id>` from its `url`, keeping its `?key=`
+  when it has one. Inside a git
   repository that file sits at the repository root
   (`git rev-parse --show-toplevel`), not under a subdirectory you passed as
   `--project-dir`, unless that subdirectory already has `.ryugi/artifacts/`.
@@ -151,7 +151,9 @@ node app/ryugi-artifacts.cjs start --json --project-dir /path/to/project --artif
 
 **Remote or containerized setups:** if the link is unreachable from their
 browser, bind a non-loopback host and name the host they reach it by:
-`--host 0.0.0.0 --url-host localhost`.
+`--host 0.0.0.0 --url-host localhost`. A server bound that way refuses
+requests without its key: its `link` carries `?key=`, so give it to them
+complete.
 
 ## Share a link
 

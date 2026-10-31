@@ -122,11 +122,16 @@ describe('turn-end flush', () => {
     ws.socket?.destroy();
   });
 
-  test('without the session key the flush route is refused', async () => {
+  test('a foreign page cannot trigger the flush route', async () => {
     const { server } = await startEnabled();
-    expect((await call(server, 'POST', '/api/cloud/flush', undefined, { key: false })).status).toBe(
-      403,
-    );
+    expect(
+      (
+        await call(server, 'POST', '/api/cloud/flush', undefined, {
+          key: false,
+          origin: 'https://evil.test',
+        })
+      ).status,
+    ).toBe(403);
   });
 
   test('without wait the route answers before publishing', async () => {

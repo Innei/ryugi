@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=720">
+<title>B · 24px 玻璃</title>
+<link rel="stylesheet" href="./kit.css">
+</head>
+<body>
+<div class="board">
+  <div class="specbar"><span class="tag">B</span><span class="vals">24px · 白面 + 品牌色描边 + 磨砂标签</span><span class="right">Q2 · 尺寸与样式</span></div>
+  <div class="stage">
+    <section class="paper">
+      <p class="caption">正文 · 14px / 1.75</p>
+      <h3>谁在写这一段</h3>
+      <p class="body">文档编辑时，光标停在哪一段，就说明 agent 正在改哪一段；名字写在箭头的胶囊里，不用猜。</p>
+      <p class="body">移动时后面拖三个渐隐的点，停下就收起；箭头跟着画板缩放，不跟着正文滚动。</p>
+      <p class="body">停下超过两秒，尾巴和光效都收起来，只留箭头和名字；下一次写入再亮起。</p>
+      <p class="body">名字来自 agent 的署名，改一次就跟着改，不在客户端写死。</p>
+      <div class="cur-slot situ" data-cursor='{"size":24,"style":"glass"}'></div>
+    </section>
+    <aside class="detail">
+      <div class="zoombox">
+        <p class="caption">细节 · 2.5×</p>
+        <div class="zoom"><div class="cur-slot" data-cursor='{"size":24,"style":"glass"}'></div></div>
+      </div>
+      <dl class="spec">
+        <dt>箭头</dt><dd>24px · 白面 + 品牌色 2.2 描边</dd>
+        <dt>标签</dt><dd>磨砂白 + 墨字 · 背景模糊 6px</dd>
+        <dt>尾巴</dt><dd>品牌色圆点，不改色</dd>
+        <dt>适合</dt><dd>亮底、暗底同一套，不压正文</dd>
+      </dl>
+    </aside>
+  </div>
+</div>
+<script src="./kit.js"></script>
+</body>
+</html>

@@ -4,7 +4,6 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 
 import { DebugHud } from '../src/viewer/components/DebugHud';
-import type { BoardRender } from '../src/viewer/lib/board-tiers';
 
 vi.mock('@stylexjs/stylex', async (original) => ({
   ...(await original<object>()),
@@ -45,30 +44,18 @@ const run = (count: number, ms: number) =>
       frames.splice(0).forEach((callback) => callback(now));
     }
   });
-const tier = (value: BoardRender['tier']): BoardRender => ({
-  tier: value,
-  mounted: value === 'live',
-  image: null,
-  overlay: false,
-  hidden: false,
-});
-
-test('shows the frame rate, the slowest frame and slow frames over the last second, with board tiers', () => {
-  const renders = new Map([
-    ['a', tier('live')],
-    ['b', tier('snapshot')],
-    ['c', tier('snapshot')],
-    ['d', tier('empty')],
-  ]);
-  act(() => root.render(createElement(DebugHud, { renders, scaling: true })));
+test('shows the frame rate, the slowest frame and slow frames over the last second, with board states', () => {
+  const counts = { mounted: 3, capturing: 1, unloaded: 2, restoring: 0, uncapturable: 1 };
+  act(() => root.render(createElement(DebugHud, { counts, culled: 4, gesturing: true })));
   run(60, 1000 / 60);
   const text = () => document.body.textContent ?? '';
   expect(text()).toMatch(/60 fps/);
   expect(text()).toMatch(/0 slow/);
-  expect(text()).toContain('live 1');
-  expect(text()).toContain('snapshot 2');
-  expect(text()).toContain('empty 1');
-  expect(text()).toContain('zooming');
+  expect(text()).toContain('mounted 3');
+  expect(text()).toContain('unloaded 2');
+  expect(text()).toContain('culled 4');
+  expect(text()).toContain('uncapturable 1');
+  expect(text()).toContain('gesture');
   run(5, 50);
   run(20, 1000 / 60);
   expect(text()).toMatch(/worst 50 ms/);

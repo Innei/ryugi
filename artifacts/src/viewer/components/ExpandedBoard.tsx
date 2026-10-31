@@ -57,12 +57,14 @@ interface ExpandedBoardProps {
   onFrameLoad?: () => void;
   parameterAction?: ReactNode;
   parameters?: ReactNode;
+  sandbox?: string;
   src: string;
 }
 
 export function ExpandedBoard({
   id,
   board,
+  sandbox = 'allow-scripts',
   src,
   interactive,
   onClose,
@@ -114,7 +116,7 @@ export function ExpandedBoard({
           >
             <iframe
               ref={frameRef}
-              sandbox="allow-scripts"
+              sandbox={sandbox}
               src={src}
               title={board.title ?? id}
               onLoad={onFrameLoad}

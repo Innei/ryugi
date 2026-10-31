@@ -7,7 +7,7 @@ import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } fro
 import type { BoardHumanOp } from '../../shared/board-comments';
 import type { InspectorReport } from '../../shared/inspector';
 import type { SelectionMessage } from '../../shared/selection';
-import { reconcileTweakValues } from '../../shared/tweaks';
+import { isMediaBoard } from '../../shared/types';
 import { CommentsPanel, type CommentsTab } from '../comments/CommentsPanel';
 import { Canvas } from '../components/Canvas';
 import { CanvasErrorBoundary } from '../components/CanvasErrorBoundary';
@@ -19,12 +19,12 @@ import { Labels } from '../components/Labels';
 import { TopLeftBar, TopRightBar } from '../components/Toolbar';
 import { useArtboardPage } from '../hooks/useArtboardPage';
 import { useBoardComments } from '../hooks/useBoardComments';
-import { useBoardTiers } from '../hooks/useBoardTiers';
+import { useBoardLifecycle } from '../hooks/useBoardLifecycle';
+import { useBoardOrigin } from '../hooks/useBoardOrigin';
 import { useBoardTweaks } from '../hooks/useBoardTweaks';
 import type { useCanvasData } from '../hooks/useCanvasData';
-import { useHoverDwell } from '../hooks/useHoverDwell';
+import { useCulledBoards } from '../hooks/useCulledBoards';
 import { useInspector } from '../hooks/useInspector';
-import { useKeptBoards } from '../hooks/useKeptBoards';
 import { useMarqueeSelection } from '../hooks/useMarqueeSelection';
 import { PHONE_QUERY, useMedia } from '../hooks/useMedia';
 import { type Tool, usePanZoom } from '../hooks/usePanZoom';
@@ -36,7 +36,6 @@ import { InspectionOutline } from '../inspector/InspectionOutline';
 import { InspectorPanel } from '../inspector/InspectorPanel';
 import { pinPoint } from '../lib/board-anchor';
 import type { BoardCommentsState } from '../lib/board-comments';
-import { visibleRenders } from '../lib/board-tiers';
 import { isComposing } from '../lib/keyboard';
 import { togglePlaying } from '../lib/play';
 import { color } from '../tokens.stylex';
@@ -100,7 +99,6 @@ export type ArtboardViewProps = Omit<
   artifact: string | null;
   live?: boolean;
   actions?: ReactNode;
-  tiers?: boolean;
   send?: (message: SelectionMessage) => void;
   comments?: BoardCommentsState | null;
   comment?: (op: BoardHumanOp) => Promise<BoardCommentsState>;
@@ -119,6 +117,8 @@ function DesktopArtboard({
   warnings,
   pending,
   contentBase,
+  boardPort,
+  boardPath,
   versions,
   live,
   loaded,
@@ -127,13 +127,13 @@ function DesktopArtboard({
   comments,
   comment,
   actions,
-  tiers: tiered = true,
 }: ArtboardViewProps) {
   const [tool, setTool] = useState<Tool>('select');
   const {
     viewportRef,
+    worldRef,
     view,
-    scaling,
+    gesturing,
     size,
     fit,
     zoomBy,
@@ -364,25 +364,10 @@ function DesktopArtboard({
       y: (event.clientY - rect.top - view.y) / view.k,
     };
   };
-  const boardAt = (point: { x: number; y: number }) =>
-    boards.find(
-      ([, b]) => point.x >= b.x && point.x <= b.x + b.w && point.y >= b.y && point.y <= b.y + b.h,
-    )?.[0] ?? null;
-  const hover = useHoverDwell({
-    scaling,
-    view,
-    inside: inspector.hover?.boardId ?? null,
-    locate: (client) => {
-      const point = worldPoint(client);
-      return { board: boardAt(point), x: point.x * view.k, y: point.y * view.k };
-    },
-  });
   const marquee = selection.marquee;
-  const kept = useKeptBoards(boards, versions, (board) => !inspectorEnabled || playing.has(board));
-  const pinned = useMemo(
+  const active = useMemo(
     () =>
       new Set([
-        ...kept,
         ...playing,
         ...[expanded, parameterBoard].filter((board): board is string => !!board),
         ...inspector.selectedTargets.map((target) => target.boardId),
@@ -402,7 +387,6 @@ function DesktopArtboard({
           : []),
       ]),
     [
-      kept,
       playing,
       expanded,
       parameterBoard,
@@ -412,33 +396,21 @@ function DesktopArtboard({
       boards,
     ],
   );
-  const persistable = (board: string) => {
-    const state = parameters.states[board];
-    const tweaked =
-      !!state?.schema &&
-      JSON.stringify(state.values) !== JSON.stringify(reconcileTweakValues(state.schema));
-    return !tweaked && !inspector.frames[board]?.tweaks.length;
-  };
-  const tiers = useBoardTiers({
-    artifact: artifact ?? id,
-    boards: tiered ? boards : [],
+  const source = useBoardOrigin({ contentBase, boardPort, boardPath });
+  const waiting = useMemo(
+    () => (source ? pendingBoards : new Set(boards.map(([board]) => board))),
+    [source, pendingBoards, boards],
+  );
+  const lifecycle = useBoardLifecycle({
+    boards,
     versions,
-    pending: pendingBoards,
+    pending: waiting,
     view,
-    scaling,
     viewport: size,
-    pinned,
-    hovered: hover.hovered,
-    hoverPromotes: tool === 'select' || commentTool,
-    persistable,
+    active,
+    gesturing,
   });
-  const renders = tiered
-    ? tiers.renders
-    : visibleRenders({
-        boards: boards.map(([board, spec]) => ({ id: board, ...spec })),
-        view,
-        viewport: size,
-      });
+  const culled = useCulledBoards(boards, view, size);
   const frameRef = useMemo(() => {
     const refs = new Map<string, (element: HTMLIFrameElement | null) => void>();
     return (id: string) => {
@@ -446,18 +418,17 @@ function DesktopArtboard({
         refs.set(id, (element) => {
           parameters.refFor(id)(element);
           inspector.refFor(id)(element);
-          tiers.frameRef(id)(element);
+          lifecycle.frameRef(id)(element);
         });
       return refs.get(id)!;
     };
-  }, [parameters.refFor, inspector.refFor, tiers.frameRef]);
+  }, [parameters.refFor, inspector.refFor, lifecycle.frameRef]);
   const frameLoaded = useCallback(
     (id: string) => {
       parameters.loaded(id);
       inspector.loaded(id);
-      tiers.loaded(id);
     },
-    [parameters.loaded, inspector.loaded, tiers.loaded],
+    [parameters.loaded, inspector.loaded],
   );
 
   return (
@@ -466,7 +437,6 @@ function DesktopArtboard({
         ref={viewportRef}
         {...stylex.props(styles.viewport)}
         style={{ cursor }}
-        onPointerLeave={hover.leave}
         onClickCapture={(event) => {
           if (
             !expanded &&
@@ -513,7 +483,6 @@ function DesktopArtboard({
         }}
         onPointerMove={(event) => {
           handlers.onPointerMove(event);
-          hover.track(event);
           if (selection.dragging()) {
             if (event.buttons === 1) event.currentTarget.setPointerCapture(event.pointerId);
             const point = worldPoint(event);
@@ -529,27 +498,32 @@ function DesktopArtboard({
         }}
       >
         <HandCursor hand={hand} viewport={viewportRef} />
-        {debug && <DebugHud renders={renders} scaling={scaling} />}
+        {debug && <DebugHud counts={lifecycle.counts} culled={culled.size} gesturing={gesturing} />}
         {canvas && layout && (
           <CanvasErrorBoundary resetKey={canvas}>
             <Canvas
               agent={agent}
+              boardBase={source?.base}
+              boardSandbox={source?.sandbox}
               boards={boards}
               contentBase={contentBase}
+              culled={culled}
               frameLoaded={frameLoaded}
               frameRef={frameRef}
+              gesturing={gesturing}
+              images={lifecycle.images}
               inspecting={selectionEnabled || (commentTool && !expanded && !panning)}
               live={live}
               notes={notes}
-              pending={pendingBoards}
+              pending={waiting}
+              phases={lifecycle.phases}
               playing={playing}
-              renders={renders}
               replays={replays}
               versions={versions}
               view={view}
+              worldRef={worldRef}
               writing={live ? canvas.writing : undefined}
               onExpand={setExpanded}
-              onImageError={tiers.imageFailed}
             />
             <Labels
               activeParameters={parameterBoard}
@@ -681,7 +655,8 @@ function DesktopArtboard({
             id={expanded}
             interactive={expandedBoard.interactive === true}
             parameters={parameterBoard === expanded ? panel(false) : undefined}
-            src={`${contentBase}${expandedBoard.file}?v=${versions[expandedBoard.file] ?? 0}`}
+            sandbox={isMediaBoard(expandedBoard) ? undefined : source?.sandbox}
+            src={`${isMediaBoard(expandedBoard) ? contentBase : (source?.base ?? contentBase)}${expandedBoard.file}?v=${versions[expandedBoard.file] ?? 0}`}
             parameterAction={
               parameterEntries[expanded] !== undefined ? (
                 <IconProvider config={{ 'aria-hidden': true }}>

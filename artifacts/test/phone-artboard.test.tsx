@@ -465,3 +465,9 @@ test('stepping to another question glides the canvas there instead of jumping', 
   );
   expect(frame.mock.calls.length).toBeGreaterThan(before);
 });
+
+test('inline boards on the phone canvas mount their frames through the board lifecycle', async () => {
+  await mount();
+  expect(host!.querySelectorAll('[data-board] iframe').length).toBeGreaterThan(0);
+  expect(host!.querySelector('[data-board] img')).toBeNull();
+});

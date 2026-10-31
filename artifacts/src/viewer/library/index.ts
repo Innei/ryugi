@@ -11,6 +11,7 @@ export * from '../../shared/type-icons';
 export * from '../../shared/types';
 export { ArtifactThumbnail } from '../components/ArtifactThumbnail';
 export { CanvasErrorBoundary } from '../components/CanvasErrorBoundary';
+export { EmbeddedCanvas } from '../components/EmbeddedCanvas';
 export { PublicationStatus } from '../components/PublicationStatus';
 export { RailSwitch } from '../components/RailSwitch';
 export { RyugiMark } from '../components/RyugiMark';

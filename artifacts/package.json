@@ -1,6 +1,6 @@
 {
   "name": "ryugi-artifacts",
-  "version": "1.47.0",
+  "version": "1.48.0",
   "description": "Server and viewer for the Ryugi artifacts app",
   "repository": {
     "type": "git",
@@ -21,6 +21,10 @@
     "./viewer/document": {
       "types": "./dist/viewer-lib/types/src/viewer/library/document.d.ts",
       "default": "./dist/viewer-lib/document.js"
+    },
+    "./ids": {
+      "types": "./dist/viewer-lib/types/src/shared/ids.d.ts",
+      "default": "./dist/viewer-lib/ids.js"
     },
     "./thumbnail": {
       "types": "./dist/viewer-lib/types/src/shared/thumbnail.d.ts",
@@ -44,9 +48,10 @@
     "dist/viewer-lib"
   ],
   "scripts": {
+    "bench:zoom": "node bench/zoom/run.mjs",
     "build": "pnpm run build:server && pnpm run build:cli && pnpm run build:viewer && pnpm run build:lib && pnpm run build:runtime",
     "build:cli": "node scripts/build-cli.mjs",
-    "build:lib": "NODE_ENV=production vite build -c vite.lib.config.ts && esbuild src/shared/thumbnail.ts --bundle --platform=neutral --format=esm --outfile=dist/viewer-lib/thumbnail.js && tsrs -p tsconfig.lib.json",
+    "build:lib": "NODE_ENV=production vite build -c vite.lib.config.ts && esbuild src/shared/thumbnail.ts --bundle --platform=neutral --format=esm --outfile=dist/viewer-lib/thumbnail.js && esbuild src/shared/ids.ts --bundle --platform=neutral --format=esm --outfile=dist/viewer-lib/ids.js && tsrs -p tsconfig.lib.json",
     "build:runtime": "NODE_ENV=production vite build -c vite.runtime.config.ts && node scripts/inline-runtime-css.mjs && node scripts/build-icons.mjs",
     "build:server": "esbuild src/server/main.ts --bundle --platform=node --target=node18 --format=cjs --alias:loro-crdt=loro-crdt/base64 --outfile=dist/server.cjs && node -e \"const fs=require('node:fs');fs.copyFileSync('dist/server.cjs','../skills/artifacts/app/server.cjs')\"",
     "build:viewer": "NODE_ENV=production vite build && node -e \"const fs=require('node:fs');const to='../skills/artifacts/app/viewer';fs.rmSync(to,{recursive:true,force:true});fs.cpSync('dist/viewer',to,{recursive:true})\"",

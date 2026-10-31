@@ -27,7 +27,13 @@ const canvas = {
 let running: ArtifactsServer[] = [];
 
 async function start(
-  overrides: { root?: string; viewer?: string; runtime?: string; fetch?: typeof fetch } = {},
+  overrides: {
+    root?: string;
+    viewer?: string;
+    runtime?: string;
+    fetch?: typeof fetch;
+    host?: string;
+  } = {},
 ) {
   const temp = tempRoot();
   const root = overrides.root ?? temp.root;
@@ -37,7 +43,7 @@ async function start(
     root,
     viewerDir: viewer,
     runtimeDir: runtime,
-    host: '127.0.0.1',
+    host: overrides.host ?? '0.0.0.0',
     urlHost: 'localhost',
     fetch: overrides.fetch,
   });
@@ -119,13 +125,21 @@ describe('session key', () => {
     ).toBe(404);
   });
 
-  test('the shell forbids loading anything from other hosts', async () => {
-    const { server } = await start();
-    const csp = String(
-      (await get(`${base(server)}/?key=${server.token}`)).headers['content-security-policy'],
-    );
+  test('the shell forbids loading anything from other hosts but its own board port', async () => {
+    const { server } = await start({ host: '127.0.0.1' });
+    const csp = String((await get(`${base(server)}/`)).headers['content-security-policy']);
     expect(csp).toContain("default-src 'self'");
-    expect(csp).not.toMatch(/https?:/);
+    const directives = csp.split('; ');
+    const boards = ['localhost', '127.0.0.1'].map((host) => `http://${host}:${server.boardPort}`);
+    const reachesBoards = (name: string) => {
+      const directive = directives.find((entry) => entry.startsWith(`${name} `))!;
+      return directive.split(' ').filter((source) => /^https?:/.test(source));
+    };
+    expect(reachesBoards('frame-src')).toEqual(boards);
+    expect(reachesBoards('connect-src')).toEqual(boards);
+    expect(
+      directives.filter((entry) => !/^(?:frame|connect)-src /.test(entry)).join('; '),
+    ).not.toMatch(/https?:/);
   });
 
   test('the shell lets the viewer compile WebAssembly, which the document CRDT needs, and nothing else eval-like', async () => {

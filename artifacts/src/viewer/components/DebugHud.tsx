@@ -1,13 +1,11 @@
 import * as stylex from '@stylexjs/stylex';
 import { useEffect, useState } from 'react';
 
-import type { BoardRender, BoardTier } from '../lib/board-tiers';
 import { color } from '../tokens.stylex';
 
 const WINDOW_MS = 1000;
 const PUBLISH_MS = 250;
 const SLOW_MS = 33;
-const TIERS: BoardTier[] = ['live', 'snapshot', 'placeholder', 'empty'];
 
 const styles = stylex.create({
   hud: {
@@ -27,12 +25,22 @@ const styles = stylex.create({
   },
 });
 
+interface BoardCounts {
+  capturing: number;
+  mounted: number;
+  restoring: number;
+  uncapturable: number;
+  unloaded: number;
+}
+
 export function DebugHud({
-  renders,
-  scaling,
+  counts,
+  culled,
+  gesturing,
 }: {
-  renders: ReadonlyMap<string, BoardRender>;
-  scaling: boolean;
+  counts: BoardCounts;
+  culled: number;
+  gesturing: boolean;
 }) {
   const [stats, setStats] = useState({ fps: 0, worst: 0, slow: 0 });
   useEffect(() => {
@@ -58,12 +66,17 @@ export function DebugHud({
     id = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(id);
   }, []);
-  const counts = TIERS.map(
-    (tier) => `${tier} ${[...renders.values()].filter((render) => render.tier === tier).length}`,
-  );
+  const states = [
+    `mounted ${counts.mounted}`,
+    `capturing ${counts.capturing}`,
+    `unloaded ${counts.unloaded}`,
+    `restoring ${counts.restoring}`,
+    `culled ${culled}`,
+    `uncapturable ${counts.uncapturable}`,
+  ];
   return (
     <div aria-hidden="true" data-chrome="debug" {...stylex.props(styles.hud)}>
-      {`${stats.fps} fps · worst ${stats.worst} ms · ${stats.slow} slow\n${counts.join(' · ')}${scaling ? ' · zooming' : ''}`}
+      {`${stats.fps} fps · worst ${stats.worst} ms · ${stats.slow} slow\n${states.join(' · ')}${gesturing ? ' · gesture' : ''}`}
     </div>
   );
 }

@@ -28,6 +28,7 @@ export interface StoredArtifact {
 }
 
 export interface FakeCloud {
+  acceptIds: boolean;
   close: () => Promise<void>;
   gate: (req: Recorded) => Promise<void> | undefined;
   origin: string;
@@ -52,6 +53,7 @@ export const sha256 = (data: Buffer | string) =>
 export async function fakeCloud(): Promise<FakeCloud> {
   let next = 0;
   const cloud: FakeCloud = {
+    acceptIds: false,
     origin: '',
     requests: [],
     store: new Map(),
@@ -97,7 +99,9 @@ export async function fakeCloud(): Promise<FakeCloud> {
       };
     };
     if (req.method === 'POST' && req.url === '/api/artifacts') {
-      const id = `cloud${++next}`;
+      const wanted = cloud.acceptIds ? (recorded.json.id as string | undefined) : undefined;
+      if (wanted && cloud.store.has(wanted)) return reply(409, { error: 'id taken' });
+      const id = wanted ?? `cloud${++next}`;
       cloud.store.set(id, { visibility: recorded.json.visibility, blobs: new Map(), versions: [] });
       return reply(200, artifactJson(id));
     }
@@ -197,14 +201,17 @@ export async function call(
   method: string,
   rel: string,
   body?: unknown,
-  { key = true } = {},
+  { key = true, origin }: { key?: boolean; origin?: string } = {},
 ) {
   const sep = rel.includes('?') ? '&' : '?';
   const res = await fetch(
     `http://127.0.0.1:${server.port}${rel}${key ? `${sep}key=${server.token}` : ''}`,
     {
       method,
-      headers: body === undefined ? {} : { 'Content-Type': 'application/json' },
+      headers: {
+        ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
+        ...(origin ? { Origin: origin } : {}),
+      },
       body: body === undefined ? undefined : JSON.stringify(body),
       redirect: 'manual',
     },

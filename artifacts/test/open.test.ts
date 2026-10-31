@@ -119,7 +119,7 @@ describe('automatic browser open', () => {
         });
         await waitFor(() => opened(log).length > 0, 5000);
         expect(opened(log)).toHaveLength(1);
-        expect(opened(log)[0]).toMatch(/\/document\/[A-Za-z0-9]{21}\?key=/);
+        expect(opened(log)[0]).toMatch(/\/document\/[A-Za-z0-9]{21}$/);
       } finally {
         viewer?.socket?.destroy();
       }
@@ -153,7 +153,7 @@ describe('automatic browser open', () => {
     await startServer(root, bin);
 
     await waitFor(() => opened(log).length > 0, 5000);
-    expect(opened(log)[0]).toMatch(/\/artboard\/[A-Za-z0-9]{21}\?key=/);
+    expect(opened(log)[0]).toMatch(/\/artboard\/[A-Za-z0-9]{21}$/);
   }, 15000);
 
   test('opens a target artboard skeleton from its declaration alone', async () => {
@@ -170,7 +170,7 @@ describe('automatic browser open', () => {
     );
     expect(readJson(warningsFile).warnings).toEqual([]);
     await waitFor(() => opened(log).length > 0, 5000);
-    expect(opened(log)[0]).toMatch(/\/artboard\/[A-Za-z0-9]{21}\?key=/);
+    expect(opened(log)[0]).toMatch(/\/artboard\/[A-Za-z0-9]{21}$/);
     expect(fs.existsSync(path.join(root, 'artboard/header/pages/p/a.html'))).toBe(false);
   }, 15000);
 
@@ -199,7 +199,7 @@ describe('automatic browser open', () => {
     expect(readJson(warningsFile).warnings).toEqual([]);
     await waitFor(() => opened(log).length > 0, 5000);
     expect(opened(log)).toHaveLength(1);
-    expect(opened(log)[0]).toMatch(/\/artboard\/[A-Za-z0-9]{21}\?key=/);
+    expect(opened(log)[0]).toMatch(/\/artboard\/[A-Za-z0-9]{21}$/);
 
     for (const [id, remaining] of [
       ['a', 2],

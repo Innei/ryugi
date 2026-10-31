@@ -1,8 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { customAlphabet } from 'nanoid';
-
+import { mintArtifactId } from '../shared/ids';
 import type { ArtifactType } from '../shared/types';
 import {
   isArtifactAddress,
@@ -12,12 +11,6 @@ import {
   resolveArtifactDir,
 } from './artifacts';
 
-// Letters and digits only: no `_` or `-` to trip up copied links.
-const newArtifactId = customAlphabet(
-  '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz',
-  21,
-);
-
 function artifactId(dir: string): string {
   const file = path.join(dir, '.artifact-id');
   let id: string;
@@ -25,7 +18,7 @@ function artifactId(dir: string): string {
     id = fs.readFileSync(file, 'utf8').trim();
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
-    id = newArtifactId();
+    id = mintArtifactId();
     try {
       fs.writeFileSync(file, `${id}\n`, { flag: 'wx' });
     } catch (writeError) {

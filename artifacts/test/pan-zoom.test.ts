@@ -74,6 +74,10 @@ function Harness({ tool }: { tool: Tool }) {
 
 beforeEach(() => {
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
+  vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
+    callback(performance.now());
+    return 0;
+  });
   host = document.createElement('div');
   document.body.append(host);
   root = createRoot(host);
@@ -437,7 +441,7 @@ test('a slower step during a continuous zoom keeps the canvas scaling', () => {
   }
 });
 
-test('panning by wheel, drag or frame input never marks the canvas as scaling', () => {
+test('panning by wheel, drag or frame input marks the canvas as gesturing until it settles', () => {
   vi.useFakeTimers();
   try {
     const viewport = render('hand');
@@ -449,7 +453,9 @@ test('panning by wheel, drag or frame input never marks the canvas as scaling', 
         new PointerEvent('pointermove', { bubbles: true, pointerId: 1, clientX: 60, clientY: 50 }),
       );
     });
-    expect(panZoom.scaling).toBe(false);
+    expect(panZoom.gesturing).toBe(true);
+    act(() => vi.advanceTimersByTime(150));
+    expect(panZoom.gesturing).toBe(false);
   } finally {
     vi.useRealTimers();
   }

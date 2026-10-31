@@ -84,10 +84,13 @@ test('each artifact type is drawn from the payload publish would send', async ()
   expect((await thumbnail(server, '/document/spec')).body).toContain('Opening paragraph');
 });
 
-test('thumbnails need the session key and a real artifact', async () => {
+test('thumbnails refuse foreign pages and need a real artifact', async () => {
   const { server, root } = await start();
   writeHtml(root, 'tuner', { 'index.html': '<title>Actual tuner</title>' });
-  expect((await get(`${base(server)}/api/thumbnail/html/tuner.svg`)).status).toBe(403);
+  expect(
+    (await get(`${base(server)}/api/thumbnail/html/tuner.svg`, { Origin: 'https://evil.test' }))
+      .status,
+  ).toBe(403);
   expect((await thumbnail(server, '/html/missing')).status).toBe(404);
   expect((await thumbnail(server, '/html/..%2F..%2Fetc')).status).toBe(404);
   expect((await thumbnail(server, '/nope/tuner')).status).toBe(404);

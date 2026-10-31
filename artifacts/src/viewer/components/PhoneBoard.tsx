@@ -107,6 +107,7 @@ interface Props {
   onClose: () => void;
   onOpen: (id: string) => void;
   origin?: Rect;
+  sandbox?: string;
   siblings: string[];
   src: string;
 }
@@ -123,7 +124,16 @@ function hold(el: Element | null, keyframes: Keyframe[], options: KeyframeAnimat
   };
 }
 
-export function PhoneBoard({ id, board, src, siblings, origin, onOpen, onClose }: Props) {
+export function PhoneBoard({
+  id,
+  board,
+  sandbox = 'allow-scripts',
+  src,
+  siblings,
+  origin,
+  onOpen,
+  onClose,
+}: Props) {
   const { viewportRef, view, place, handlers } = usePanZoom('hand');
   const stage = useRef<HTMLDivElement>(null);
   const backdrop = useRef<HTMLDivElement>(null);
@@ -405,7 +415,7 @@ export function PhoneBoard({ id, board, src, siblings, origin, onOpen, onClose }
             ) : (
               <iframe
                 key={id}
-                sandbox="allow-scripts"
+                sandbox={sandbox}
                 src={src}
                 title={board.title ?? id}
                 {...stylex.props(styles.frame)}

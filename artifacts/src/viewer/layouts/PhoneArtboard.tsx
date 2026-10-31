@@ -9,7 +9,7 @@ import {
   useState,
 } from 'react';
 
-import type { CanvasLayout, CanvasSpec } from '../../shared/types';
+import { type CanvasLayout, type CanvasSpec, isMediaBoard } from '../../shared/types';
 import { Canvas } from '../components/Canvas';
 import { CanvasErrorBoundary } from '../components/CanvasErrorBoundary';
 import { Labels } from '../components/Labels';
@@ -17,11 +17,12 @@ import { PhoneArtboardBar } from '../components/PhoneArtboardBar';
 import { PhoneBoard } from '../components/PhoneBoard';
 import { QuestionSheet, SHEET_PEEK } from '../components/QuestionSheet';
 import { useArtboardPage } from '../hooks/useArtboardPage';
-import { useBoardTiers } from '../hooks/useBoardTiers';
+import { useBoardLifecycle } from '../hooks/useBoardLifecycle';
+import { useBoardOrigin } from '../hooks/useBoardOrigin';
+import { useCulledBoards } from '../hooks/useCulledBoards';
 import { usePanZoom } from '../hooks/usePanZoom';
 import { useVerdicts } from '../hooks/useVerdicts';
 import type { BoardCommentsState } from '../lib/board-comments';
-import { visibleRenders } from '../lib/board-tiers';
 import {
   openingQuestion,
   type Question,
@@ -34,6 +35,7 @@ import type { Insets } from '../lib/view';
 const INSETS: Insets = { top: 16, right: 16, bottom: SHEET_PEEK + 16, left: 16 };
 const TAP_SLOP = 8;
 const NOTHING = new Set<string>();
+const noLoad = () => {};
 
 const styles = stylex.create({
   root: {
@@ -70,6 +72,8 @@ interface Props {
   actions?: ReactNode;
   agent?: string;
   artifact: string | null;
+  boardPath?: string;
+  boardPort?: number;
   canvas: CanvasSpec | null;
   comments?: BoardCommentsState | null;
   contentBase: string;
@@ -78,7 +82,6 @@ interface Props {
   live?: boolean;
   loaded: boolean;
   pending: string[];
-  tiers?: boolean;
   versions: Record<string, number>;
   warnings: string[];
 }
@@ -87,21 +90,21 @@ const NO_THREADS: never[] = [];
 
 export function PhoneArtboard({
   id,
-  artifact,
   canvas,
   layout,
   warnings,
   pending,
   contentBase,
+  boardPort,
+  boardPath,
   versions,
   live,
   loaded,
   agent,
   comments,
   actions,
-  tiers: tiered = true,
 }: Props) {
-  const { viewportRef, view, size, scaling, fit, handlers } = usePanZoom('hand');
+  const { viewportRef, worldRef, view, size, gesturing, fit, handlers } = usePanZoom('hand');
   const [current, setCurrent] = useState<string | null>(null);
   const [snap, setSnap] = useState(SHEET_PEEK);
   const [open, setOpen] = useState<string | null>(null);
@@ -155,21 +158,21 @@ export function PhoneArtboard({
   );
   const notes = Object.entries(canvas?.notes ?? {}).filter(([, n]) => n.page === page);
   const pendingBoards = useMemo(() => new Set(pending), [pending]);
-  const tierState = useBoardTiers({
-    artifact: artifact ?? id,
-    boards: tiered ? boards : [],
+  const source = useBoardOrigin({ contentBase, boardPort, boardPath });
+  const waiting = useMemo(
+    () => (source ? pendingBoards : new Set(boards.map(([board]) => board))),
+    [source, pendingBoards, boards],
+  );
+  const lifecycle = useBoardLifecycle({
+    boards,
     versions,
-    pending: pendingBoards,
+    pending: waiting,
     view,
-    scaling,
     viewport: size,
-    pinned: NOTHING,
-    hovered: null,
-    hoverPromotes: false,
-    persistable: () => true,
-    // Inline boards on a phone are previews; the full-screen PhoneBoard is the live one.
-    preview: true,
+    active: NOTHING,
+    gesturing,
   });
+  const culled = useCulledBoards(boards, view, size);
   const stale = useMemo(() => new Set(comments?.stale ?? []), [comments]);
   const verdicts = useVerdicts({
     canvas,
@@ -265,29 +268,26 @@ export function PhoneArtboard({
           <CanvasErrorBoundary resetKey={canvas}>
             <Canvas
               agent={agent}
+              boardBase={source?.base}
+              boardSandbox={source?.sandbox}
               boards={boards}
               contentBase={contentBase}
-              frameLoaded={tiered ? tierState.loaded : () => {}}
-              frameRef={tiered ? tierState.frameRef : () => () => {}}
+              culled={culled}
+              frameLoaded={noLoad}
+              frameRef={lifecycle.frameRef}
+              gesturing={gesturing}
+              images={lifecycle.images}
               inspecting={false}
               live={live}
               notes={notes}
-              pending={pendingBoards}
+              pending={waiting}
+              phases={lifecycle.phases}
               playing={NOTHING}
               replays={{}}
               versions={versions}
               view={view}
+              worldRef={worldRef}
               writing={live ? canvas.writing : undefined}
-              renders={
-                tiered
-                  ? tierState.renders
-                  : visibleRenders({
-                      boards: boards.map(([id, board]) => ({ id, ...board })),
-                      view,
-                      viewport: size,
-                    })
-              }
-              onImageError={tiered ? tierState.imageFailed : undefined}
             />
             <Labels
               allBoards={allBoards}
@@ -334,8 +334,9 @@ export function PhoneArtboard({
           board={openBoard}
           id={open}
           origin={origin}
+          sandbox={isMediaBoard(openBoard) ? undefined : source?.sandbox}
           siblings={siblings}
-          src={`${contentBase}${openBoard.file}?v=${versions[openBoard.file] ?? 0}`}
+          src={`${isMediaBoard(openBoard) ? contentBase : (source?.base ?? contentBase)}${openBoard.file}?v=${versions[openBoard.file] ?? 0}`}
           onClose={() => setOpen(null)}
           onOpen={setOpen}
         />

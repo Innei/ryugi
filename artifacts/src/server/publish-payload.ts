@@ -32,7 +32,7 @@ export function publishPayload(
 ): Record<string, unknown> {
   if (ref.type === 'artboard') {
     const { canvas, layout, versions } = payload as CanvasPayload;
-    return { canvas, layout, versions, snapshots: true };
+    return { canvas, layout, versions };
   }
   if (ref.type === 'document')
     return {

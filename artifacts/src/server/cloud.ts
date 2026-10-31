@@ -3,6 +3,7 @@ import type http from 'node:http';
 
 import { isVisibility, type Publication, publishing } from '../shared/cloud';
 import { type CloudErrorDetails, cloudErrorDetails } from '../shared/cloud-error';
+import { isMintedArtifactId } from '../shared/ids';
 import type { Locale } from '../shared/locale';
 import { artifactKeyOf, type ArtifactRef } from './artifacts';
 import type { AutoPublishOutcome } from './auto-publish';
@@ -37,6 +38,7 @@ export interface InspectedArtifact {
 }
 
 interface CloudRoutesOptions extends CloudOptions {
+  address?: (ref: ArtifactRef) => string;
   configFile: string;
   inspect: (ref: ArtifactRef) => Promise<InspectedArtifact | null>;
   onPublication?: (key: string, publication: Publication) => void;
@@ -264,7 +266,14 @@ export function createCloudRoutes(options: CloudRoutesOptions) {
     )?.[0] ?? `cloud:${cloudId}`;
 
   const createRecord = async (ref: ArtifactRef, visibility: Visibility) => {
-    const res = await cloudFetch('POST', '/api/artifacts', { type: ref.type, visibility, project });
+    const body = { type: ref.type, visibility, project };
+    const id = options.address?.(ref);
+    let res = await cloudFetch(
+      'POST',
+      '/api/artifacts',
+      id && isMintedArtifactId(id) ? { ...body, id } : body,
+    );
+    if (res.status === 409) res = await cloudFetch('POST', '/api/artifacts', body);
     if (res.status === 403) throw new CreateRefused(await errorMessage(res));
     const created = (await (await expectOk(res)).json()) as CloudArtifact;
     updateArtifactConfig(configFile, `${ref.type}/${ref.id}`, {

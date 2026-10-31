@@ -115,9 +115,9 @@ describe('direct pipe from the cloud page', () => {
     });
   });
 
-  test('a wrong key, a foreign origin or an artifact this server does not serve is refused', async () => {
+  test('a foreign origin or an artifact this server does not serve is refused; no key is needed on loopback', async () => {
     const { server } = await start();
-    expect(await connect(server, { key: 'nope' })).toBe(403);
+    expect(typeof (await connect(server, { key: '' }))).toBe('object');
     expect(await connect(server, { origin: 'https://evil.example' })).toBe(403);
     expect(await connect(server, { id: 'someone-else' })).toBe(404);
   });

@@ -7,6 +7,7 @@ import { $getRoot, $isElementNode, $isTextNode, type LexicalNode, type TextNode 
 import { LoroDoc } from 'loro-crdt';
 import { afterEach, describe, expect, test } from 'vitest';
 
+import { artifactPath } from '../src/server/artifact-address';
 import { updateArtifactConfig } from '../src/server/config';
 import { createDocumentHeadlessEditor } from '../src/server/document-headless';
 import { call, closeAll, config, latest, requestLines, start } from './fake-cloud';
@@ -225,13 +226,12 @@ describe('cloud sign-in', () => {
     expect(config(configFile).artifacts['html/a']).toBeUndefined();
   });
 
-  test('cloud routes other than the callback still need the session key', async () => {
+  test('cloud routes other than the callback refuse foreign pages', async () => {
     const { server } = await start();
-    expect((await call(server, 'GET', '/api/cloud/status', undefined, { key: false })).status).toBe(
-      403,
-    );
+    const foreign = { key: false, origin: 'https://evil.test' };
+    expect((await call(server, 'GET', '/api/cloud/status', undefined, foreign)).status).toBe(403);
     expect(
-      (await call(server, 'POST', '/api/cloud/publish/html/a', undefined, { key: false })).status,
+      (await call(server, 'POST', '/api/cloud/publish/html/a', undefined, foreign)).status,
     ).toBe(403);
   });
 });
@@ -244,6 +244,33 @@ describe('publishing', () => {
     expect(status).toBe(401);
     expect(String(json.loginUrl)).toContain(`${cloud.origin}/auth/cli`);
     expect(cloud.requests).toEqual([]);
+  });
+
+  test('the cloud record takes the local address as its id', async () => {
+    const { server, root, cloud, configFile } = await start();
+    cloud.acceptIds = true;
+    writeHtml(root, 'a', { 'index.html': '<title>Arrow</title>' });
+    const address = artifactPath(root, 'html', 'a').split('/').pop()!;
+    const { json } = await call(server, 'POST', '/api/cloud/publish/html/a');
+    expect(cloud.requests[0]!.json).toMatchObject({ id: address });
+    expect(json).toMatchObject({ id: address, url: `${cloud.origin}/a/${address}` });
+    expect(config(configFile).artifacts['html/a'].cloud.id).toBe(address);
+  });
+
+  test('an address the cloud already holds falls back to an id the cloud mints', async () => {
+    const { server, root, cloud, configFile } = await start();
+    cloud.acceptIds = true;
+    writeHtml(root, 'a', { 'index.html': '<title>Arrow</title>' });
+    const address = artifactPath(root, 'html', 'a').split('/').pop()!;
+    cloud.store.set(address, { visibility: 'private', blobs: new Map(), versions: [] });
+    const { status, json } = await call(server, 'POST', '/api/cloud/publish/html/a');
+    expect(status).toBe(200);
+    const creates = cloud.requests.filter(
+      (r) => r.method === 'POST' && r.path === '/api/artifacts',
+    );
+    expect(creates.map((r) => r.json.id)).toEqual([address, undefined]);
+    expect(json).toMatchObject({ id: 'cloud1' });
+    expect(config(configFile).artifacts['html/a'].cloud.id).toBe('cloud1');
   });
 
   test('first publish creates the artifact privately, uploads its files and records the link', async () => {
@@ -845,10 +872,15 @@ describe('reserving a cloud link', () => {
     expect(optedOut.cloud.requests).toHaveLength(before);
   });
 
-  test('reserving is an agent call and needs the key', async () => {
+  test('reserving is an agent call a foreign page cannot make', async () => {
     const { server } = await start();
     expect(
-      (await call(server, 'POST', '/api/cloud/reserve/html/a', undefined, { key: false })).status,
+      (
+        await call(server, 'POST', '/api/cloud/reserve/html/a', undefined, {
+          key: false,
+          origin: 'https://evil.test',
+        })
+      ).status,
     ).toBe(403);
   });
 

@@ -1,0 +1,37 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Cross-site shell</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        overflow: hidden;
+      }
+      header {
+        height: 48px;
+        display: flex;
+        align-items: center;
+        padding: 0 12px;
+        background: #222;
+        color: #eee;
+        font: 13px system-ui;
+      }
+      iframe {
+        display: block;
+        width: 100%;
+        height: calc(100% - 48px);
+        border: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <header>Cross-site shell</header>
+    <iframe allow="local-network-access; loopback-network"></iframe>
+    <script>
+      document.querySelector('iframe').src = new URLSearchParams(location.search).get('inner');
+    </script>
+  </body>
+</html>

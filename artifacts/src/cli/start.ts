@@ -42,7 +42,8 @@ function withLink(info: Record<string, unknown>, artifact: string | undefined, r
   if (artifact && typeof out.url === 'string') {
     const url = new URL(out.url);
     const ref = artifactKeyOf(artifact)!;
-    out.link = `${url.origin}${artifactPath(String(out.root), ref.type, ref.id)}?key=${url.searchParams.get('key')}`;
+    const key = url.searchParams.get('key');
+    out.link = `${url.origin}${artifactPath(String(out.root), ref.type, ref.id)}${key ? `?key=${key}` : ''}`;
   }
   return out;
 }

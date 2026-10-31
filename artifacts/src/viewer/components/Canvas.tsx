@@ -1,6 +1,6 @@
 import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
-import { type ReactNode, useEffect, useRef, useState } from 'react';
+import { memo, type Ref } from 'react';
 
 import {
   DEFAULT_TITLE_SIZE,
@@ -11,7 +11,7 @@ import {
 } from '../../shared/geometry';
 import { type BoardSpec, isMediaBoard, type NoteSpec } from '../../shared/types';
 import type { Inspector } from '../hooks/useInspector';
-import type { BoardRender } from '../lib/board-tiers';
+import type { BoardPhase } from '../lib/board-lifecycle';
 import { boardReady, boardSrc, canPlay } from '../lib/play';
 import { titleScale, type View } from '../lib/view';
 import { brand, color } from '../tokens.stylex';
@@ -44,6 +44,7 @@ const styles = stylex.create({
     pointerEvents: 'none',
   },
   inspecting: { pointerEvents: 'auto' },
+  gesturing: { pointerEvents: 'none' },
   skeleton: {
     display: 'flex',
     alignItems: 'center',
@@ -83,24 +84,32 @@ const styles = stylex.create({
   },
 });
 
-interface CanvasProps {
-  agent?: string;
+interface BoardsProps {
+  boardBase?: string;
   boards: [string, BoardSpec][];
+  boardSandbox?: string;
   contentBase: string;
+  culled?: ReadonlySet<string>;
   frameLoaded: Inspector['loaded'];
   frameRef: Inspector['refFor'];
+  gesturing?: boolean;
+  images?: ReadonlyMap<string, string>;
   inspecting: boolean;
-  live?: boolean;
-  notes: [string, NoteSpec][];
   onExpand?: (id: string) => void;
-  onImageError?: (id: string, src: string) => void;
   pending: ReadonlySet<string>;
+  phases?: ReadonlyMap<string, BoardPhase>;
   playing: ReadonlySet<string>;
-  renders: ReadonlyMap<string, BoardRender>;
   replays: Record<string, number>;
   versions: Record<string, number>;
-  view: View;
   writing?: string;
+}
+
+interface CanvasProps extends BoardsProps {
+  agent?: string;
+  live?: boolean;
+  notes: [string, NoteSpec][];
+  view: View;
+  worldRef?: Ref<HTMLDivElement>;
 }
 
 function stickyColors(stickyColor?: string) {
@@ -121,78 +130,143 @@ function stickyColors(stickyColor?: string) {
   return { backgroundColor: stickyColor, color: luminance > 0.179 ? color.black : color.white };
 }
 
-const HIDDEN = { visibility: 'hidden' } as const;
-// Transparent, not hidden: a pinch latches onto the frame it started over, and a hidden frame drops the rest of it.
-const COVERED = { opacity: 0 } as const;
+const NO_PHASES: ReadonlyMap<string, BoardPhase> = new Map();
+const NO_IMAGES: ReadonlyMap<string, string> = new Map();
+const NO_IDS: ReadonlySet<string> = new Set();
 
-function BoardLayers({
-  image,
-  showImage,
-  hideFrame,
-  frame,
-  onError,
-}: {
-  image: string | null;
-  showImage: boolean;
-  hideFrame: boolean;
-  frame: ((hidden: boolean) => ReactNode) | null;
-  onError: (src: string) => void;
-}) {
-  const [ready, setReady] = useState<string | null>(null);
-  const [covered, setCovered] = useState(false);
-  const [holding, setHolding] = useState(false);
-  const showing = useRef(showImage);
-  useEffect(() => {
-    if (!showImage || !ready) {
-      setCovered(false);
-      return;
-    }
-    const id = requestAnimationFrame(() => setCovered(true));
-    return () => cancelAnimationFrame(id);
-  }, [showImage, ready]);
-  // A frame hidden through a zoom repaints at the new scale over a frame or two, so its snapshot stays on top until then.
-  useEffect(() => {
-    const was = showing.current;
-    showing.current = showImage;
-    if (showImage || !was) return;
-    setHolding(true);
-    let id = requestAnimationFrame(() => {
-      id = requestAnimationFrame(() => setHolding(false));
-    });
-    return () => cancelAnimationFrame(id);
-  }, [showImage]);
-  const visible = showImage || holding;
-  const sources = !image ? [] : ready && ready !== image ? [ready, image] : [image];
-  return (
-    <>
-      {frame?.(hideFrame && covered)}
-      {sources.map((source) => (
-        <img
-          alt=""
-          decoding="async"
-          draggable={false}
-          key={source}
-          src={source}
-          style={visible && source === ready ? undefined : HIDDEN}
-          onError={source === image ? () => onError(image) : undefined}
-          onLoad={
-            source === image
-              ? (event) => {
-                  const decoded = event.currentTarget.decode?.() ?? Promise.resolve();
-                  void decoded.catch(() => undefined).then(() => setReady(image));
-                }
-              : undefined
-          }
-          {...stylex.props(styles.image)}
-        />
-      ))}
-    </>
-  );
+function slotStyle(board: BoardSpec, drawing: boolean, culled: boolean, capturing = false) {
+  return {
+    left: board.x,
+    top: board.y,
+    width: board.w,
+    height: board.h,
+    ...(drawing ? { outlineWidth: 'calc(2px / var(--zoom, 1))' } : {}),
+    ...(culled ? (capturing ? { visibility: 'hidden' as const } : { display: 'none' }) : {}),
+  };
+}
+
+const Boards = memo(function Boards({
+  boardBase,
+  boards,
+  boardSandbox = 'allow-scripts',
+  contentBase,
+  culled = NO_IDS,
+  frameLoaded,
+  frameRef,
+  gesturing = false,
+  images = NO_IMAGES,
+  inspecting,
+  pending,
+  phases = NO_PHASES,
+  playing,
+  replays,
+  versions,
+  writing,
+}: BoardsProps) {
+  return boards.map(([id, board]) => {
+    if (isMediaBoard(board)) return null;
+    const ready = boardReady(versions, board.file) && !pending.has(id);
+    const phase = phases.get(id) ?? 'mounted';
+    const image = images.get(id) ?? null;
+    const showImage = !!image && (phase === 'unloaded' || phase === 'restoring');
+    const mountFrame = ready && (phase !== 'unloaded' || !image);
+    const drawing = id === writing;
+    return (
+      <div
+        aria-busy={drawing || undefined}
+        data-board={id}
+        key={id}
+        {...stylex.props(styles.slot, !ready && styles.skeleton, drawing && styles.drawing)}
+        style={slotStyle(board, drawing, culled.has(id), phase === 'capturing')}
+      >
+        {mountFrame && (
+          <iframe
+            ref={frameRef(id)}
+            sandbox={boardSandbox}
+            style={gesturing ? { pointerEvents: 'none' } : undefined}
+            title={board.title ?? id}
+            src={boardSrc(
+              boardBase ?? contentBase,
+              board.file,
+              versions[board.file] ?? 0,
+              replays[id] ?? 0,
+            )}
+            onLoad={() => frameLoaded(id)}
+            {...stylex.props(
+              styles.board,
+              inspecting && styles.inspecting,
+              canPlay(board, versions) && playing.has(id) && styles.playing,
+              gesturing && styles.gesturing,
+            )}
+          />
+        )}
+        {showImage && (
+          <img
+            alt=""
+            decoding="async"
+            draggable={false}
+            src={image!}
+            {...stylex.props(styles.image)}
+          />
+        )}
+        {!ready && (
+          <span {...stylex.props(styles.skeletonText)}>{drawing ? 'Drawing…' : 'Waiting…'}</span>
+        )}
+      </div>
+    );
+  });
+});
+
+function MediaBoards({
+  boards,
+  contentBase,
+  culled = NO_IDS,
+  pending,
+  versions,
+  writing,
+  zoom,
+  onExpand,
+}: Pick<
+  BoardsProps,
+  'boards' | 'contentBase' | 'culled' | 'pending' | 'versions' | 'writing' | 'onExpand'
+> & { zoom: number }) {
+  return boards.map(([id, board]) => {
+    if (!isMediaBoard(board)) return null;
+    const ready = boardReady(versions, board.file) && !pending.has(id);
+    const drawing = id === writing;
+    return (
+      <div
+        aria-busy={drawing || undefined}
+        data-board={id}
+        key={id}
+        {...stylex.props(styles.slot, !ready && styles.skeleton, drawing && styles.drawing)}
+        style={slotStyle(board, drawing, culled.has(id))}
+      >
+        {ready ? (
+          <MediaBoard
+            board={board}
+            id={id}
+            src={boardSrc(contentBase, board.file, versions[board.file] ?? 0, 0)}
+            zoom={zoom}
+            onExpand={onExpand && (() => onExpand(id))}
+          />
+        ) : (
+          <span {...stylex.props(styles.skeletonText)}>{drawing ? 'Drawing…' : 'Waiting…'}</span>
+        )}
+      </div>
+    );
+  });
 }
 
 export function Canvas({
+  boardBase,
+  boardSandbox,
   view,
-  renders,
+  worldRef,
+  phases,
+  images,
+  culled,
+  gesturing,
   boards,
   notes,
   contentBase,
@@ -207,7 +281,6 @@ export function Canvas({
   writing,
   agent,
   onExpand,
-  onImageError,
 }: CanvasProps) {
   let cursor = writing;
   if (live) {
@@ -223,77 +296,46 @@ export function Canvas({
   const active = boards.find(([id]) => id === cursor)?.[1];
   return (
     <div
+      ref={worldRef}
       {...stylex.props(styles.world)}
-      style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.k})` }}
+      style={
+        worldRef
+          ? undefined
+          : {
+              transform: `translate(${view.x}px, ${view.y}px) scale(${view.k})`,
+              ['--zoom' as string]: view.k,
+            }
+      }
     >
-      {boards.map(([id, board]) => {
-        const ready = boardReady(versions, board.file) && !pending.has(id);
-        const render = ready ? renders.get(id) : undefined;
-        const media = isMediaBoard(board);
-        const mounted = media
-          ? !!render && (render.tier !== 'empty' || playing.has(id))
-          : !!render?.mounted;
-        const image = !media ? (render?.image ?? null) : null;
-        const drawing = id === writing;
-        const position = { left: board.x, top: board.y, width: board.w, height: board.h };
-        return (
-          <div
-            aria-busy={drawing || undefined}
-            data-board={id}
-            key={id}
-            {...stylex.props(styles.slot, !mounted && styles.skeleton, drawing && styles.drawing)}
-            style={{ ...position, ...(drawing ? { outlineWidth: 2 / view.k } : {}) }}
-          >
-            {mounted && media ? (
-              <MediaBoard
-                board={board}
-                id={id}
-                src={boardSrc(contentBase, board.file, versions[board.file] ?? 0, 0)}
-                zoom={view.k}
-                onExpand={onExpand && (() => onExpand(id))}
-              />
-            ) : (
-              <>
-                <BoardLayers
-                  hideFrame={!!render?.hidden}
-                  image={image}
-                  showImage={!mounted || !!render?.overlay}
-                  frame={
-                    mounted
-                      ? (hidden) => (
-                          <iframe
-                            ref={frameRef(id)}
-                            sandbox="allow-scripts"
-                            style={hidden ? COVERED : undefined}
-                            title={board.title ?? id}
-                            src={boardSrc(
-                              contentBase,
-                              board.file,
-                              versions[board.file] ?? 0,
-                              replays[id] ?? 0,
-                            )}
-                            onLoad={() => frameLoaded(id)}
-                            {...stylex.props(
-                              styles.board,
-                              inspecting && styles.inspecting,
-                              canPlay(board, versions) && playing.has(id) && styles.playing,
-                            )}
-                          />
-                        )
-                      : null
-                  }
-                  onError={(src) => onImageError?.(id, src)}
-                />
-                {!ready && (
-                  <span {...stylex.props(styles.skeletonText)}>
-                    {drawing ? 'Drawing…' : 'Waiting…'}
-                  </span>
-                )}
-              </>
-            )}
-          </div>
-        );
-      })}
+      <Boards
+        boardBase={boardBase}
+        boardSandbox={boardSandbox}
+        boards={boards}
+        contentBase={contentBase}
+        culled={culled}
+        frameLoaded={frameLoaded}
+        frameRef={frameRef}
+        gesturing={gesturing}
+        images={images}
+        inspecting={inspecting}
+        pending={pending}
+        phases={phases}
+        playing={playing}
+        replays={replays}
+        versions={versions}
+        writing={writing}
+        onExpand={onExpand}
+      />
+      <MediaBoards
+        boards={boards}
+        contentBase={contentBase}
+        culled={culled}
+        pending={pending}
+        versions={versions}
+        writing={writing}
+        zoom={view.k}
+        onExpand={onExpand}
+      />
       {notes.map(([id, note]) =>
         note.kind === 'title' ? (
           <h2

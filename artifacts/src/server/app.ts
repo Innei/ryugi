@@ -18,6 +18,13 @@ import {
   type HtmlPayload,
   type ServerMessage,
 } from '../shared/types';
+import {
+  accessPolicy,
+  hostAllowed,
+  isLoopbackHost,
+  navigationAllowed,
+  originAllowed,
+} from './access';
 import { artifactPath, resolveArtifactAddress } from './artifact-address';
 import { readArtifactFile } from './artifact-file';
 import {
@@ -38,6 +45,7 @@ import {
   boardSpecs,
   createBoardCommentRegistry,
 } from './board-comments';
+import { BOARD_PORT_FILE, boardCsp, originsFor, routeBoardRequest } from './board-port';
 import { type CloudOptions, createCloudRoutes } from './cloud';
 import { commentNames } from './comment-names';
 import { ensureConfig, readConfig } from './config';
@@ -93,6 +101,7 @@ export type ArtifactPayload = (CanvasPayload | HtmlPayload | DocumentPayload) & 
 };
 
 export interface ArtifactsServer {
+  boardPort: number;
   close: () => Promise<void>;
   cloudLinkFor: (type: ArtifactType, id: string) => Promise<string | null>;
   contentToken: string;
@@ -106,18 +115,19 @@ export interface ArtifactsServer {
   url: string;
 }
 
-const VIEWER_CSP = [
-  "default-src 'self'",
-  "script-src 'self' 'wasm-unsafe-eval'",
-  "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob:",
-  "font-src 'self' data:",
-  "connect-src 'self'",
-  "frame-src 'self'",
-  "base-uri 'self'",
-  "form-action 'none'",
-  "frame-ancestors 'none'",
-].join('; ');
+const viewerCsp = (boardOrigins: string[]) =>
+  [
+    "default-src 'self'",
+    "script-src 'self' 'wasm-unsafe-eval'",
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: blob:",
+    "font-src 'self' data:",
+    `connect-src 'self' ${boardOrigins.join(' ')}`,
+    `frame-src 'self' ${boardOrigins.join(' ')}`,
+    "base-uri 'self'",
+    "form-action 'none'",
+    "frame-ancestors 'none'",
+  ].join('; ');
 
 const CONTENT_CSP: Record<ArtifactType, string> = {
   artboard: 'sandbox allow-scripts',
@@ -133,6 +143,7 @@ const PREVIEW_ROUTE = new RegExp(
   `^/preview/(artboard|document|html)/${ARTIFACT_LOCATOR_SOURCE}/?$`,
 );
 const API_PREVIEW_ROUTE = /^\/api\/preview\/([^/]+)\/([^/]+)$/;
+const EMBED_ROUTE = /^\/embed\/artboard\/([\w-]{1,64})\/?$/;
 const API_THUMBNAIL_ROUTE = /^\/api\/thumbnail\/([^/]+)\/([^/]+)\.svg$/;
 const API_DOCUMENT_ROUTE = /^\/api\/document\/([^/]+)\/(state|update|comments)$/;
 const MAX_COMMENT_OP = 64 * 1024;
@@ -189,6 +200,16 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
   const token = readPersisted(tokenFile) || randomToken();
   fs.writeFileSync(tokenFile, `${token}\n`, { mode: 0o600 });
   const contentToken = randomToken();
+  const loopback = isLoopbackHost(options.host);
+  const keyOk = (key: string | null) => loopback || (key !== null && safeEqual(key, token));
+  const agentOk = (req: http.IncomingMessage, key: string | null) =>
+    loopback ? req.headers.origin === undefined : key !== null && safeEqual(key, token);
+  let policy = accessPolicy({
+    host: options.host,
+    urlHost: options.urlHost,
+    ports: [],
+    cloudOrigin: options.cloud?.origin,
+  });
   const runtimeWarnings = new Map<string, string[]>();
   const ranVersions = new Map<string, number>();
   const dynamicBlocks = createDynamicBlocks({ maxErrors: MAX_RUNTIME_WARNINGS });
@@ -214,6 +235,8 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
     activityListeners.forEach((listener) => listener());
   };
   let port = 0;
+  let boardPort = 0;
+  const boardOrigins = () => (boardPort ? originsFor(options.urlHost, boardPort) : []);
   let cookieName = '';
 
   let relay: ReturnType<typeof createRelayClient> | null = null;
@@ -324,6 +347,7 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
           ...options.cloud,
           configFile: options.configFile,
           project: path.basename(path.resolve(root, '../..')),
+          address: (ref) => artifactPath(root, ref.type, ref.id).split('/').pop()!,
           port: () => port,
           inspect,
           onPublication: (key, publication) => {
@@ -597,10 +621,16 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
   };
 
   const isAuthorized = (req: http.IncomingMessage, keyFromQuery: string | null) =>
+    loopback ||
     (keyFromQuery !== null && safeEqual(keyFromQuery, token)) ||
     safeEqual(parseCookies(req.headers.cookie)[cookieName] ?? '', token);
 
-  const serveContent = (res: http.ServerResponse, rest: string, range?: string) => {
+  const serveContent = (
+    res: http.ServerResponse,
+    rest: string,
+    range?: string,
+    mode: 'main' | 'board' = 'main',
+  ) => {
     if (rest.startsWith('runtime/')) {
       if (!runtimeDir) {
         send(res, 404, 'Not found');
@@ -643,8 +673,11 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
     }
     const page = ref.type === 'html' ? relative === 'index.html' : relative.endsWith('.html');
     const headers = {
-      'Content-Security-Policy': CONTENT_CSP[page && ref.type === 'document' ? 'html' : ref.type],
-      'Access-Control-Allow-Origin': '*',
+      'Content-Security-Policy':
+        mode === 'board'
+          ? boardCsp(options.urlHost, port, options.cloud?.origin)
+          : CONTENT_CSP[page && ref.type === 'document' ? 'html' : ref.type],
+      ...(mode === 'board' ? {} : { 'Access-Control-Allow-Origin': '*' }),
     };
     if (!page) {
       sendFile(res, target, headers, range);
@@ -653,7 +686,9 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
     fs.readFile(target, 'utf8', (err, source) => {
       if (err) send(res, 404, 'Not found');
       else {
-        const uiRuntimeUrl = runtimeDir ? `${contentPrefix}runtime/ryugi-ui.js` : undefined;
+        const uiRuntimeUrl = runtimeDir
+          ? `${mode === 'board' ? '/c/' : contentPrefix}runtime/ryugi-ui.js`
+          : undefined;
         send(
           res,
           200,
@@ -683,7 +718,13 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
       sendJson(res, 404, { warnings: [`artifact ${type}/${id} not found`] });
       return;
     }
-    sendJson(res, 200, artifactMeta(artifactKeyOf(`${type}/${id}`)!, dir));
+    const ref = artifactKeyOf(`${type}/${id}`)!;
+    sendJson(res, 200, {
+      ...artifactMeta(ref, dir),
+      ...(ref.type === 'artboard' && boardPort
+        ? { boardPort, boardPath: `/c${artifactPath(root, 'artboard', ref.id)}/` }
+        : {}),
+    });
   };
 
   const serveList = (res: http.ServerResponse) => {
@@ -762,6 +803,10 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
 
   const handleRequest = (req: http.IncomingMessage, res: http.ServerResponse) => {
     res.setHeader('X-Robots-Tag', 'noindex, nofollow');
+    if (!hostAllowed(policy, req.headers.host)) {
+      send(res, 403, 'Forbidden host');
+      return;
+    }
     const url = new URL(req.url ?? '/', 'http://artifacts.local');
     // The monitor polls this; counting it as activity would keep every watched server from ever going idle.
     if (url.pathname === '/api/status') {
@@ -813,6 +858,11 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
         .catch((err) => {
           if (!res.headersSent) send(res, 500, `Artifacts error: ${(err as Error).message}`);
         });
+      return;
+    }
+
+    if (loopback && !originAllowed(policy, req.headers.origin)) {
+      send(res, 403, 'Forbidden origin');
       return;
     }
 
@@ -902,7 +952,7 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
     }
 
     if (pathname === '/api/cloud/flush') {
-      if (req.method !== 'POST' || key === null || !safeEqual(key, token)) {
+      if (req.method !== 'POST' || !agentOk(req, key)) {
         send(res, 403, 'Forbidden: agent calls need ?key=');
         return;
       }
@@ -918,7 +968,7 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
 
     const cloudMatch = cloud?.match(pathname);
     if (cloud && cloudMatch) {
-      if (req.method !== 'GET' && !(key !== null && safeEqual(key, token)) && !sameOrigin(req)) {
+      if (req.method !== 'GET' && !keyOk(key) && !sameOrigin(req)) {
         send(res, 403, 'Forbidden');
         return;
       }
@@ -928,7 +978,7 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
 
     const agentCommentsMatch = API_AGENT_COMMENTS_ROUTE.exec(pathname);
     if (agentCommentsMatch) {
-      if (req.method !== 'POST' || key === null || !safeEqual(key, token)) {
+      if (req.method !== 'POST' || !agentOk(req, key)) {
         send(res, 403, 'Forbidden: agent calls need ?key=');
         return;
       }
@@ -940,7 +990,7 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
 
     const agentBoardMatch = API_AGENT_BOARD_COMMENTS_ROUTE.exec(pathname);
     if (agentBoardMatch) {
-      if (req.method !== 'POST' || key === null || !safeEqual(key, token)) {
+      if (req.method !== 'POST' || !agentOk(req, key)) {
         send(res, 403, 'Forbidden: agent calls need ?key=');
         return;
       }
@@ -952,7 +1002,7 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
 
     const agentCheckMatch = API_AGENT_CHECK_ROUTE.exec(pathname);
     if (agentCheckMatch) {
-      if (req.method !== 'POST' || key === null || !safeEqual(key, token)) {
+      if (req.method !== 'POST' || !agentOk(req, key)) {
         send(res, 403, 'Forbidden: agent calls need ?key=');
         return;
       }
@@ -984,11 +1034,33 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
       return;
     }
 
-    if (SHELL_ROUTE.test(pathname) || PREVIEW_ROUTE.test(pathname) || pathname === '/index.html') {
-      const requested = artifactKeyOf(
-        pathname.replace(/^\/(?:preview\/)?/, '').replace(/\/$/, ''),
-        isArtifactLocator,
-      );
+    const embedMatch = EMBED_ROUTE.exec(pathname);
+    const embed = !!embedMatch;
+    const embedded = embedMatch && embedTarget(embedMatch[1]!);
+    if (pathname.startsWith('/embed/') && (!embedded || !options.cloud)) {
+      send(res, 404, 'Not found');
+      return;
+    }
+    if (
+      SHELL_ROUTE.test(pathname) ||
+      PREVIEW_ROUTE.test(pathname) ||
+      embed ||
+      pathname === '/index.html'
+    ) {
+      if (
+        loopback &&
+        (pathname === '/' || pathname === '/index.html') &&
+        !navigationAllowed(req.headers['sec-fetch-site'] as string | undefined)
+      ) {
+        send(res, 403, 'Forbidden');
+        return;
+      }
+      const requested =
+        embedded ||
+        artifactKeyOf(
+          pathname.replace(/^\/(?:preview\/)?/, '').replace(/\/$/, ''),
+          isArtifactLocator,
+        );
       const resolved = requested && resolveArtifactAddress(root, requested.type, requested.id);
       const ref = resolved ?? requested;
       const dir = resolved?.dir;
@@ -1015,11 +1087,16 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
           : `/${ref.type}/${ref.id}`
         : '/';
       const canonical = `http://${urlHostForHttp(options.urlHost)}:${port}${preview ? '/preview' : ''}${canonicalPath}`;
-      const csp = preview
-        ? VIEWER_CSP.replace("frame-ancestors 'none'", "frame-ancestors 'self'")
-        : VIEWER_CSP;
+      const csp = embed
+        ? viewerCsp(boardOrigins()).replace(
+            "frame-ancestors 'none'",
+            `frame-ancestors ${options.cloud!.origin}`,
+          )
+        : preview
+          ? viewerCsp(boardOrigins()).replace("frame-ancestors 'none'", "frame-ancestors 'self'")
+          : viewerCsp(boardOrigins());
       const headers: Record<string, string> = { 'Content-Type': 'text/html; charset=utf-8' };
-      if (key !== null)
+      if (key !== null && !loopback)
         headers['Set-Cookie'] = `${cookieName}=${token}; HttpOnly; SameSite=Strict; Path=/`;
       const entry =
         preview && fs.existsSync(path.join(viewerDir, 'preview.html'))
@@ -1035,6 +1112,7 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
             url: canonical,
             icon: ref ? typeFaviconHref(ref.type) : undefined,
             artifactId: resolved?.id,
+            embedParent: embed ? options.cloud!.origin : undefined,
           });
           send(res, 200, html, {
             ...headers,
@@ -1049,7 +1127,10 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
 
     const target = resolveInside(viewerDir, pathname.slice(1));
     if (!target) send(res, 404, 'Not found');
-    else sendFile(res, target, { 'Content-Security-Policy': VIEWER_CSP });
+    else
+      sendFile(res, target, {
+        'Content-Security-Policy': viewerCsp(boardOrigins()),
+      });
   };
 
   const server = http.createServer((req, res) => {
@@ -1061,12 +1142,16 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
   });
 
   server.on('upgrade', (req: http.IncomingMessage, socket: Duplex) => {
+    if (!hostAllowed(policy, req.headers.host)) {
+      rejectUpgrade(socket, 403, 'Forbidden');
+      return;
+    }
     const url = new URL(req.url ?? '/', 'http://artifacts.local');
     const clientKey = req.headers['sec-websocket-key'];
     const directMatch = DIRECT_RELAY_ROUTE.exec(url.pathname);
     if (directMatch && typeof clientKey === 'string') {
       const fromCloud = options.cloud !== undefined && req.headers.origin === options.cloud.origin;
-      if (!safeEqual(url.searchParams.get('key') ?? '', token) || !(fromCloud || sameOrigin(req))) {
+      if (!keyOk(url.searchParams.get('key')) || !(fromCloud || sameOrigin(req))) {
         rejectUpgrade(socket, 403, 'Forbidden');
         return;
       }
@@ -1112,10 +1197,59 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
   cookieName = `ryugi_artifacts_${port}`;
   fs.writeFileSync(portFile, `${port}\n`, { mode: 0o600 });
 
+  const boardServer = http.createServer((req, res) => {
+    if (!hostAllowed(policy, req.headers.host)) {
+      send(res, 403, 'Forbidden host');
+      return;
+    }
+    let pathname: string;
+    try {
+      pathname = decodeURIComponent(new URL(req.url ?? '/', 'http://board.local').pathname);
+    } catch {
+      send(res, 400, 'Bad request');
+      return;
+    }
+    try {
+      const route = routeBoardRequest(req, pathname);
+      if (route.kind === 'robots') send(res, 200, 'User-agent: *\nDisallow: /\n');
+      else if (route.kind === 'runtime') serveContent(res, route.rest, req.headers.range, 'board');
+      else if (route.kind === 'board') {
+        const resolved = resolveArtifactAddress(root, 'artboard', route.address);
+        if (!resolved || resolved.id === route.address) send(res, 404, 'Not found');
+        else serveContent(res, `artboard/${resolved.id}/${route.rest}`, req.headers.range, 'board');
+      } else send(res, 404, 'Not found');
+    } catch (err) {
+      if (!res.headersSent) send(res, 500, (err as Error).message);
+      else res.destroy();
+    }
+  });
+  if (loopback) {
+    const boardPortFile = path.join(stateDir, BOARD_PORT_FILE);
+    const previousBoardPort = Number(readPersisted(boardPortFile));
+    try {
+      boardPort = await listen(
+        boardServer,
+        options.host,
+        Number.isInteger(previousBoardPort) && previousBoardPort > 0 && previousBoardPort !== port
+          ? previousBoardPort
+          : 0,
+      );
+    } catch {
+      boardPort = await listen(boardServer, options.host, 0);
+    }
+    fs.writeFileSync(boardPortFile, `${boardPort}\n`, { mode: 0o600 });
+  }
+  policy = accessPolicy({
+    host: options.host,
+    urlHost: options.urlHost,
+    ports: boardPort ? [port, boardPort] : [port],
+    cloudOrigin: options.cloud?.origin,
+  });
+
   const origin = `http://${urlHostForHttp(options.urlHost)}:${port}`;
-  const url = `${origin}/?key=${token}`;
+  const url = loopback ? `${origin}/` : `${origin}/?key=${token}`;
   const linkFor = (type: ArtifactType, id: string) =>
-    `${origin}${artifactPath(root, type, id)}?key=${token}`;
+    `${origin}${artifactPath(root, type, id)}${loopback ? '' : `?key=${token}`}`;
 
   const signatures = new Map<string, string>();
   const writeState = (ref: ArtifactRef, dir: string) => {
@@ -1146,9 +1280,21 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
     initialChanges.push({ ref: entry, payload, files: [] });
     if (entry.type === 'document') void documents.open(entry.id);
   }
-  writeJsonAtomic(path.join(stateDir, 'server-info'), { type: 'server-started', url, port, root });
+  writeJsonAtomic(path.join(stateDir, 'server-info'), {
+    type: 'server-started',
+    url,
+    port,
+    boardPort,
+    root,
+  });
 
   const relayViewers = new Map<string, { key: string; tab: object }>();
+  const embedTarget = (id: string): ArtifactRef | null => {
+    if (isArtifactLocator(id) && resolveArtifactAddress(root, 'artboard', id))
+      return { type: 'artboard', id };
+    const served = artifactKeyOf(servedArtifacts().get(id) ?? '');
+    return served?.type === 'artboard' ? served : null;
+  };
   const servedArtifacts = () => {
     const served = new Map<string, string>();
     if (!options.configFile) return served;
@@ -1250,7 +1396,11 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
           token: () =>
             readCredentials(options.cloud!.credentialsFile, options.cloud!.origin)?.token ?? null,
           served: servedArtifacts,
-          local: () => ({ hostId: hostIdFor(options.cloud!.credentialsFile), port, key: token }),
+          local: () => ({
+            hostId: hostIdFor(options.cloud!.credentialsFile),
+            port,
+            ...(loopback ? { embed: true } : { key: token }),
+          }),
           handle: handleRelay,
           onActivity: touch,
           onWatch: (keys) => {
@@ -1357,6 +1507,7 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
 
   return {
     port,
+    boardPort,
     token,
     contentToken,
     url,
@@ -1389,6 +1540,8 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
         direct.close();
         selections.clearAll();
         for (const socket of clients) socket.destroy();
+        boardServer.close();
+        boardServer.closeAllConnections();
         server.close(() => resolve());
         server.closeAllConnections();
       });

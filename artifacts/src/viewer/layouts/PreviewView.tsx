@@ -5,7 +5,7 @@ import { lazy, Suspense, useEffect, useState } from 'react';
 import type { ArtifactType, CanvasPayload } from '../../shared/types';
 import { CanvasErrorBoundary } from '../components/CanvasErrorBoundary';
 import { useTranslation } from '../i18n';
-import { visibleRenders } from '../lib/board-tiers';
+import { culledBoards } from '../lib/cull';
 import { fitView } from '../lib/view';
 import { styles } from './previewStyles';
 
@@ -92,11 +92,11 @@ export function PreviewView({
             replays={{}}
             versions={data.versions ?? {}}
             view={view}
-            renders={visibleRenders({
-              boards: boards.map(([id, board]) => ({ id, ...board })),
+            culled={culledBoards(
+              boards.map(([board, spec]) => ({ id: board, ...spec })),
               view,
               viewport,
-            })}
+            )}
           />
         </Suspense>
       </CanvasErrorBoundary>

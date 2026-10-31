@@ -87,7 +87,7 @@ test('a document published without comments carries an empty comment file', () =
   expect(payload.comments).toEqual({ version: 1, threads: [] });
 });
 
-test('a published artboard says its boards report ready and capture snapshots', () => {
+test('a published artboard carries its canvas, layout and versions only', () => {
   const payload = {
     canvas: { title: 'Board' },
     layout: null,
@@ -99,6 +99,5 @@ test('a published artboard says its boards report ready and capture snapshots', 
     canvas: { title: 'Board' },
     layout: null,
     versions: { 'pages/a.html': 1 },
-    snapshots: true,
   });
 });

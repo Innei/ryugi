@@ -1,0 +1,285 @@
+{
+  "version": 1,
+  "title": "Zoom bench",
+  "activePage": "cursor",
+  "pages": [
+    {
+      "id": "cursor",
+      "name": "Cursor"
+    }
+  ],
+  "boards": {
+    "q1-a-0": {
+      "file": "pages/cursor/q1-a.html",
+      "page": "cursor",
+      "x": 0,
+      "y": 0,
+      "w": 720,
+      "h": 460,
+      "title": "A · 流光扫过 · 1"
+    },
+    "q1-b-0": {
+      "file": "pages/cursor/q1-b.html",
+      "page": "cursor",
+      "x": 840,
+      "y": 0,
+      "w": 720,
+      "h": 460,
+      "title": "B · 虹彩流动 · 1"
+    },
+    "q1-c-0": {
+      "file": "pages/cursor/q1-c.html",
+      "page": "cursor",
+      "x": 1680,
+      "y": 0,
+      "w": 720,
+      "h": 460,
+      "title": "C · 呼吸光晕 · 1"
+    },
+    "q1-d-0": {
+      "file": "pages/cursor/q1-d.html",
+      "page": "cursor",
+      "x": 2520,
+      "y": 0,
+      "w": 720,
+      "h": 460,
+      "title": "D · 笔尖星火 · 1"
+    },
+    "q2-a-0": {
+      "file": "pages/cursor/q2-a.html",
+      "page": "cursor",
+      "x": 3360,
+      "y": 0,
+      "w": 720,
+      "h": 460,
+      "title": "A · 20px 小巧 · 1"
+    },
+    "q2-b-0": {
+      "file": "pages/cursor/q2-b.html",
+      "page": "cursor",
+      "x": 0,
+      "y": 660,
+      "w": 720,
+      "h": 460,
+      "title": "B · 24px 玻璃 · 1"
+    },
+    "q2-c-0": {
+      "file": "pages/cursor/q2-c.html",
+      "page": "cursor",
+      "x": 840,
+      "y": 660,
+      "w": 720,
+      "h": 460,
+      "title": "C · 28px 现状 · 1"
+    },
+    "q2-d-0": {
+      "file": "pages/cursor/q2-d.html",
+      "page": "cursor",
+      "x": 1680,
+      "y": 660,
+      "w": 720,
+      "h": 460,
+      "title": "D · 36px 手绘 · 1"
+    },
+    "q3-light-0": {
+      "file": "pages/cursor/q3-light.html",
+      "page": "cursor",
+      "x": 2520,
+      "y": 660,
+      "w": 720,
+      "h": 460,
+      "title": "亮色文档 · 24px 玻璃 + label 扫光 · 1"
+    },
+    "q3-dark-0": {
+      "file": "pages/cursor/q3-dark.html",
+      "page": "cursor",
+      "x": 3360,
+      "y": 660,
+      "w": 720,
+      "h": 460,
+      "title": "暗色画板 · 同一套样式 · 1"
+    },
+    "q4-a-0": {
+      "file": "pages/cursor/q4-a.html",
+      "page": "cursor",
+      "x": 0,
+      "y": 1320,
+      "w": 720,
+      "h": 460,
+      "title": "A · 光带扫过胶囊 · 1"
+    },
+    "q4-b-0": {
+      "file": "pages/cursor/q4-b.html",
+      "page": "cursor",
+      "x": 840,
+      "y": 1320,
+      "w": 720,
+      "h": 460,
+      "title": "B · 底色渐变流动 · 1"
+    },
+    "q4-c-0": {
+      "file": "pages/cursor/q4-c.html",
+      "page": "cursor",
+      "x": 1680,
+      "y": 1320,
+      "w": 720,
+      "h": 460,
+      "title": "C · 描边流转 · 1"
+    },
+    "q4-d-0": {
+      "file": "pages/cursor/q4-d.html",
+      "page": "cursor",
+      "x": 2520,
+      "y": 1320,
+      "w": 720,
+      "h": 460,
+      "title": "D · 文字高光 · 1"
+    },
+    "shipped-0": {
+      "file": "pages/cursor/shipped.html",
+      "page": "cursor",
+      "x": 3360,
+      "y": 1320,
+      "w": 720,
+      "h": 460,
+      "title": "已落地 · 24px 实心 + 描边光环 · 1"
+    },
+    "q1-a-1": {
+      "file": "pages/cursor/q1-a.html",
+      "page": "cursor",
+      "x": 0,
+      "y": 1980,
+      "w": 720,
+      "h": 460,
+      "title": "A · 流光扫过 · 2"
+    },
+    "q1-b-1": {
+      "file": "pages/cursor/q1-b.html",
+      "page": "cursor",
+      "x": 840,
+      "y": 1980,
+      "w": 720,
+      "h": 460,
+      "title": "B · 虹彩流动 · 2"
+    },
+    "q1-c-1": {
+      "file": "pages/cursor/q1-c.html",
+      "page": "cursor",
+      "x": 1680,
+      "y": 1980,
+      "w": 720,
+      "h": 460,
+      "title": "C · 呼吸光晕 · 2"
+    },
+    "q1-d-1": {
+      "file": "pages/cursor/q1-d.html",
+      "page": "cursor",
+      "x": 2520,
+      "y": 1980,
+      "w": 720,
+      "h": 460,
+      "title": "D · 笔尖星火 · 2"
+    },
+    "q2-a-1": {
+      "file": "pages/cursor/q2-a.html",
+      "page": "cursor",
+      "x": 3360,
+      "y": 1980,
+      "w": 720,
+      "h": 460,
+      "title": "A · 20px 小巧 · 2"
+    },
+    "q2-b-1": {
+      "file": "pages/cursor/q2-b.html",
+      "page": "cursor",
+      "x": 0,
+      "y": 2640,
+      "w": 720,
+      "h": 460,
+      "title": "B · 24px 玻璃 · 2"
+    },
+    "q2-c-1": {
+      "file": "pages/cursor/q2-c.html",
+      "page": "cursor",
+      "x": 840,
+      "y": 2640,
+      "w": 720,
+      "h": 460,
+      "title": "C · 28px 现状 · 2"
+    },
+    "q2-d-1": {
+      "file": "pages/cursor/q2-d.html",
+      "page": "cursor",
+      "x": 1680,
+      "y": 2640,
+      "w": 720,
+      "h": 460,
+      "title": "D · 36px 手绘 · 2"
+    },
+    "q3-light-1": {
+      "file": "pages/cursor/q3-light.html",
+      "page": "cursor",
+      "x": 2520,
+      "y": 2640,
+      "w": 720,
+      "h": 460,
+      "title": "亮色文档 · 24px 玻璃 + label 扫光 · 2"
+    },
+    "q3-dark-1": {
+      "file": "pages/cursor/q3-dark.html",
+      "page": "cursor",
+      "x": 3360,
+      "y": 2640,
+      "w": 720,
+      "h": 460,
+      "title": "暗色画板 · 同一套样式 · 2"
+    },
+    "q4-a-1": {
+      "file": "pages/cursor/q4-a.html",
+      "page": "cursor",
+      "x": 0,
+      "y": 3300,
+      "w": 720,
+      "h": 460,
+      "title": "A · 光带扫过胶囊 · 2"
+    },
+    "q4-b-1": {
+      "file": "pages/cursor/q4-b.html",
+      "page": "cursor",
+      "x": 840,
+      "y": 3300,
+      "w": 720,
+      "h": 460,
+      "title": "B · 底色渐变流动 · 2"
+    },
+    "q4-c-1": {
+      "file": "pages/cursor/q4-c.html",
+      "page": "cursor",
+      "x": 1680,
+      "y": 3300,
+      "w": 720,
+      "h": 460,
+      "title": "C · 描边流转 · 2"
+    },
+    "q4-d-1": {
+      "file": "pages/cursor/q4-d.html",
+      "page": "cursor",
+      "x": 2520,
+      "y": 3300,
+      "w": 720,
+      "h": 460,
+      "title": "D · 文字高光 · 2"
+    },
+    "shipped-1": {
+      "file": "pages/cursor/shipped.html",
+      "page": "cursor",
+      "x": 3360,
+      "y": 3300,
+      "w": 720,
+      "h": 460,
+      "title": "已落地 · 24px 实心 + 描边光环 · 2"
+    }
+  },
+  "groups": {},
+  "notes": {}
+}

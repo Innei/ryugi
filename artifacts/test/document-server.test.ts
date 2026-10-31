@@ -669,9 +669,9 @@ describe('agent comments', () => {
     ).toHaveLength(1);
   });
 
-  test('needs the key in the URL; the browser cookie is not enough', async () => {
+  test('only a local process can call it; a browser page, even the viewer, cannot', async () => {
     const { server } = await relay();
-    expect((await agentCall(server, 'relay', { op: 'list' }, null)).status).toBe(403);
+    expect((await agentCall(server, 'relay', { op: 'list' }, null)).status).toBe(200);
     expect(
       (
         await agentCall(server, 'relay', { op: 'list' }, null, {
@@ -680,7 +680,6 @@ describe('agent comments', () => {
         })
       ).status,
     ).toBe(403);
-    expect((await agentCall(server, 'relay', { op: 'list' }, 'wrong')).status).toBe(403);
   });
 
   test('refuses human ops, bad ids and empty text', async () => {

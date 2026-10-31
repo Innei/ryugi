@@ -6,6 +6,7 @@ export default defineConfig(
       '**/pnpm-lock.yaml',
       '.ryugi/**',
       'evals/**',
+      'artifacts/bench/zoom/fixture/**',
       '.worktrees/**',
       'skills/artifacts/app/viewer/**',
       'skills/artifacts/app/runtime/**',

@@ -2,7 +2,6 @@ import {
   type PointerEvent as ReactPointerEvent,
   useCallback,
   useEffect,
-  useLayoutEffect,
   useRef,
   useState,
 } from 'react';
@@ -26,7 +25,7 @@ export type Tool = 'select' | 'hand' | 'comment';
 const INSETS: Insets = { top: 64, right: 24, bottom: 24, left: 24 };
 const WHEEL_ZOOM_SPEED = 0.01;
 const FIT_MS = 420;
-const SCALE_SETTLE_MS = 150;
+export const GESTURE_SETTLE_MS = 150;
 const ease = cubicBezier(0.2, 0, 0, 1);
 const reducedMotion = () =>
   typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -60,34 +59,84 @@ function scrollsItself(target: Element | null, root: Element, dx: number, dy: nu
 
 export function usePanZoom(tool: Tool) {
   const viewportRef = useRef<HTMLDivElement>(null);
-  const [view, setView] = useState<View>({ x: 0, y: 0, k: 0.5 });
+  const worldEl = useRef<HTMLDivElement | null>(null);
+  const [view, setViewState] = useState<View>({ x: 0, y: 0, k: 0.5 });
   const [spaceHeld, setSpaceHeld] = useState(false);
   const [dragging, setDragging] = useState(false);
   const last = useRef<{ x: number; y: number } | null>(null);
   const touches = useRef(new Map<number, Point>());
   const current = useRef(view);
-  current.current = view;
+  const frame = useRef<number | null>(null);
+  const framePending = useRef(false);
+  const [gesturing, setGesturing] = useState(false);
+  const gesture = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const writeWorld = useCallback(() => {
+    const el = worldEl.current;
+    if (!el) return;
+    const { x, y, k } = current.current;
+    el.style.transform = `translate(${x}px, ${y}px) scale(${k})`;
+    el.style.setProperty('--zoom', String(k));
+  }, []);
+  const worldRef = useCallback(
+    (el: HTMLDivElement | null) => {
+      worldEl.current = el;
+      writeWorld();
+    },
+    [writeWorld],
+  );
+  const markGesture = useCallback(() => {
+    if (gesture.current === undefined) {
+      setGesturing(true);
+      if (worldEl.current) worldEl.current.style.willChange = 'transform';
+    }
+    clearTimeout(gesture.current);
+    gesture.current = setTimeout(() => {
+      gesture.current = undefined;
+      if (worldEl.current) worldEl.current.style.willChange = '';
+      setGesturing(false);
+    }, GESTURE_SETTLE_MS);
+  }, []);
+  const setView = useCallback(
+    (next: View | ((previous: View) => View)) => {
+      current.current = typeof next === 'function' ? next(current.current) : next;
+      markGesture();
+      if (framePending.current) return;
+      framePending.current = true;
+      frame.current = requestAnimationFrame(() => {
+        framePending.current = false;
+        frame.current = null;
+        writeWorld();
+        setViewState(current.current);
+      });
+    },
+    [markGesture, writeWorld],
+  );
+  const setViewNow = useCallback(
+    (next: View, gesture = false) => {
+      if (frame.current !== null) cancelAnimationFrame(frame.current);
+      frame.current = null;
+      framePending.current = false;
+      current.current = next;
+      if (gesture) markGesture();
+      writeWorld();
+      setViewState(next);
+    },
+    [markGesture, writeWorld],
+  );
+  useEffect(
+    () => () => {
+      if (frame.current !== null) cancelAnimationFrame(frame.current);
+      clearTimeout(gesture.current);
+    },
+    [],
+  );
+  const place = useCallback((next: View) => setViewNow(next), [setViewNow]);
   const animation = useRef<number | null>(null);
   const stop = useCallback(() => {
     if (animation.current !== null) cancelAnimationFrame(animation.current);
     animation.current = null;
   }, []);
   useEffect(() => stop, [stop]);
-  const [scaling, setScaling] = useState(false);
-  const scaledK = useRef(view.k);
-  const settle = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  // A lone zoom step also re-rasterizes every live frame, so it gets the same cover as a continuous gesture.
-  useLayoutEffect(() => {
-    if (view.k === scaledK.current) return;
-    scaledK.current = view.k;
-    setScaling(true);
-    clearTimeout(settle.current);
-    settle.current = setTimeout(() => {
-      settle.current = undefined;
-      setScaling(false);
-    }, SCALE_SETTLE_MS);
-  }, [view.k]);
-  useEffect(() => () => clearTimeout(settle.current), []);
   const [size, setSize] = useState(() => ({
     width: typeof innerWidth === 'number' ? innerWidth : 0,
     height: typeof innerHeight === 'number' ? innerHeight : 0,
@@ -108,7 +157,7 @@ export function usePanZoom(tool: Tool) {
 
   const panBy = useCallback(
     (x: number, y: number) => setView((v) => ({ ...v, x: v.x + x, y: v.y + y })),
-    [],
+    [setView],
   );
   const wheelAt = useCallback(
     (input: WheelInput) => {
@@ -116,7 +165,7 @@ export function usePanZoom(tool: Tool) {
         setView((v) => zoomAround(v, Math.exp(-input.deltaY * WHEEL_ZOOM_SPEED), input.x, input.y));
       else panBy(-input.deltaX, -input.deltaY);
     },
-    [panBy],
+    [panBy, setView],
   );
 
   useEffect(() => {
@@ -198,22 +247,25 @@ export function usePanZoom(tool: Tool) {
     [panning, stop],
   );
 
-  const onPointerMove = useCallback((e: ReactPointerEvent<HTMLDivElement>) => {
-    if (e.pointerType === 'touch' && !touches.current.has(e.pointerId)) return;
-    if (touches.current.has(e.pointerId)) {
-      const before = [...touches.current.values()];
-      touches.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
-      const after = [...touches.current.values()];
-      if (before.length >= 2) {
-        setView((v) => pinchView(v, [before[0]!, before[1]!], [after[0]!, after[1]!]));
-        return;
+  const onPointerMove = useCallback(
+    (e: ReactPointerEvent<HTMLDivElement>) => {
+      if (e.pointerType === 'touch' && !touches.current.has(e.pointerId)) return;
+      if (touches.current.has(e.pointerId)) {
+        const before = [...touches.current.values()];
+        touches.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+        const after = [...touches.current.values()];
+        if (before.length >= 2) {
+          setView((v) => pinchView(v, [before[0]!, before[1]!], [after[0]!, after[1]!]));
+          return;
+        }
       }
-    }
-    const prev = last.current;
-    if (!prev) return;
-    last.current = { x: e.clientX, y: e.clientY };
-    setView((v) => ({ ...v, x: v.x + e.clientX - prev.x, y: v.y + e.clientY - prev.y }));
-  }, []);
+      const prev = last.current;
+      if (!prev) return;
+      last.current = { x: e.clientX, y: e.clientY };
+      setView((v) => ({ ...v, x: v.x + e.clientX - prev.x, y: v.y + e.clientY - prev.y }));
+    },
+    [setView],
+  );
 
   const onPointerUp = useCallback((e?: { pointerId: number }) => {
     if (e) touches.current.delete(e.pointerId);
@@ -239,37 +291,45 @@ export function usePanZoom(tool: Tool) {
       const target = fitView(bounds, { width: el.clientWidth, height: el.clientHeight }, insets);
       stop();
       if (!options.animate || reducedMotion()) {
-        setView(target);
+        setViewNow(target);
         return;
       }
       const from = current.current;
       const start = performance.now();
       const tick = () => {
         const p = Math.min(1, (performance.now() - start) / FIT_MS);
-        setView(p === 1 ? target : tweenView(from, target, ease(p)));
+        setViewNow(p === 1 ? target : tweenView(from, target, ease(p)), true);
         animation.current = p === 1 ? null : requestAnimationFrame(tick);
       };
       animation.current = requestAnimationFrame(tick);
     },
-    [stop],
+    [stop, setViewNow],
   );
 
-  const zoomBy = useCallback((factor: number) => {
-    const { cx, cy } = center();
-    setView((v) => zoomAround(v, factor, cx, cy));
-  }, []);
+  const zoomBy = useCallback(
+    (factor: number) => {
+      const { cx, cy } = center();
+      setView((v) => zoomAround(v, factor, cx, cy));
+    },
+    [setView],
+  );
 
-  const zoomToLevel = useCallback((k: number) => {
-    const { cx, cy } = center();
-    setView((v) => zoomTo(v, k, cx, cy));
-  }, []);
+  const zoomToLevel = useCallback(
+    (k: number) => {
+      const { cx, cy } = center();
+      setView((v) => zoomTo(v, k, cx, cy));
+    },
+    [setView],
+  );
 
   return {
     viewportRef,
+    worldRef,
     view,
-    scaling,
+    gesturing,
+    scaling: gesturing,
     size,
-    place: setView,
+    place,
     fit,
     zoomBy,
     zoomTo: zoomToLevel,

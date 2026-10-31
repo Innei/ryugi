@@ -76,6 +76,7 @@ async function start({
   signedIn = true,
   published = true,
   hub,
+  host = '127.0.0.1',
   credentialsFile = path.join(
     fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-home-')),
     'credentials.json',
@@ -85,6 +86,7 @@ async function start({
   published?: boolean;
   hub: Hub;
   credentialsFile?: string;
+  host?: string;
 }) {
   const temp = tempRoot();
   const configFile = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-dir-')), 'config.json');
@@ -108,7 +110,7 @@ async function start({
     root: temp.root,
     viewerDir: temp.viewer,
     runtimeDir: temp.runtime,
-    host: '127.0.0.1',
+    host,
     urlHost: 'localhost',
     configFile,
     cloud: { origin: 'https://cloud.example', credentialsFile },
@@ -153,7 +155,7 @@ function $findText(node: LexicalNode, text: string): TextNode | null {
 }
 
 describe('connecting', () => {
-  test('a signed-in server with a published document announces it with its token and where it listens', async () => {
+  test('a signed-in loopback server announces where it listens and that it embeds, without a key', async () => {
     const hub = await fakeHub();
     const { server } = await start({ hub });
     const hello = await hub.next('hello');
@@ -164,10 +166,21 @@ describe('connecting', () => {
       local: {
         hostId: expect.stringMatching(/^[\w-]{16,64}$/),
         port: server.port,
-        key: server.token,
+        embed: true,
       },
     });
     expect(hub.headers[0]!.authorization).toBe('Bearer tok');
+  });
+
+  test('a server bound beyond loopback announces its key and does not offer an embed', async () => {
+    const hub = await fakeHub();
+    const { server } = await start({ hub, host: '0.0.0.0' });
+    const hello = await hub.next('hello');
+    expect(hello.local).toEqual({
+      hostId: expect.any(String),
+      port: server.port,
+      key: server.token,
+    });
   });
 
   test('every server on this computer reports the same host id', async () => {

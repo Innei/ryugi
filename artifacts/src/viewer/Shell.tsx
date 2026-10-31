@@ -4,7 +4,8 @@ import { lazy, type ReactNode, Suspense, useEffect } from 'react';
 import { useLocation } from 'wouter';
 
 import { t } from './i18n';
-import { parseRoute } from './lib/route';
+import { startEmbedChild } from './lib/embed-bridge';
+import { canonicalPath, parseRoute } from './lib/route';
 
 const AutoPublishBar = lazy(() =>
   import('./components/AutoPublishPrompt').then(({ AutoPublishBar }) => ({
@@ -53,6 +54,11 @@ const local = (page: ReactNode) => (
   </>
 );
 
+function EmbeddedArtboard({ id }: { id: string }) {
+  useEffect(() => startEmbedChild()?.close, []);
+  return <ArtboardLayout id={id} />;
+}
+
 function RouteView() {
   const [path] = useLocation();
   const route = parseRoute(path);
@@ -61,7 +67,7 @@ function RouteView() {
     const canonical = document.querySelector<HTMLLinkElement>('link[rel="canonical"]');
     if (!canonical) return;
     const url = new URL(location.href);
-    url.pathname = new URL(canonical.href).pathname;
+    url.pathname = canonicalPath(url.pathname, new URL(canonical.href).pathname);
     if (url.href !== location.href) history.replaceState(history.state, '', url);
   }, []);
   useEffect(() => {
@@ -72,6 +78,7 @@ function RouteView() {
     return <div {...stylex.props(styles.unknown)}>No artifact lives at this address.</div>;
   const id = document.documentElement.dataset.ryugiArtifactId ?? route.id;
   if (route.kind === 'preview') return <PreviewLayout id={id} type={route.type} />;
+  if (route.kind === 'embed') return <EmbeddedArtboard id={id} />;
   if (route.type === 'html') return local(<HtmlLayout id={id} />);
   if (route.type === 'document') return local(<DocumentLayout id={id} />);
   return local(<ArtboardLayout id={id} />);

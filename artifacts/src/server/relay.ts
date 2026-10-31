@@ -6,7 +6,7 @@ export interface RelayClientOptions {
   handle: (key: string, body: unknown, conn: string) => Promise<unknown>;
   handshakeTimeoutMs?: number;
   heartbeatMs?: number;
-  local?: () => { hostId: string; port: number; key: string };
+  local?: () => { hostId: string; port: number; key?: string; embed?: boolean };
   onActivity: () => void;
   onWatch?: (keys: Set<string>) => void;
   pollMs?: number;
