@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 
 import { injectRuntime } from '../src/server/inject';
+import { COMMENT_CURSOR, POINTER_CURSOR } from '../src/shared/inspector';
 
 let posted: Record<string, any>[];
 let root: HTMLElement;
@@ -254,10 +255,10 @@ test('marquee leaves are the outermost visible content nodes with their rects', 
   expect(posted).toHaveLength(count);
 });
 
-test('select mode shows the default cursor over every node and restores the page cursor when disabled', () => {
+test('select mode shows the blue pointer over every node and restores the page cursor when disabled', () => {
   cardId();
   const style = document.querySelector('style[data-ryugi-inspector]');
-  expect(style?.textContent).toContain('cursor:default!important');
+  expect(style?.textContent).toBe(`*{cursor:${POINTER_CURSOR}!important}`);
   expect(last('tree')!.nodes.some((node: { tag: string }) => node.tag === 'style')).toBe(false);
   command('disable');
   expect(document.querySelector('style[data-ryugi-inspector]')).toBeNull();
@@ -345,11 +346,11 @@ test('tree paths and tweak origins are clipped to what the viewer accepts', () =
   expect(card.path.length).toBeLessThanOrEqual(4000);
 });
 
-test('comment mode shows the bubble cursor and swallows clicks without selecting', () => {
+test('comment mode shows the pin cursor and swallows clicks without selecting', () => {
   cardId();
   command('mode', { mode: 'comment' });
   const style = document.querySelector('style[data-ryugi-inspector]')!;
-  expect(style.textContent).toContain('data:image/svg+xml');
+  expect(style.textContent).toBe(`*{cursor:${COMMENT_CURSOR}!important}`);
   const button = root.querySelector('button')!;
   const action = vi.fn();
   button.addEventListener('click', action);
@@ -358,7 +359,7 @@ test('comment mode shows the bubble cursor and swallows clicks without selecting
   expect(action).not.toHaveBeenCalled();
   expect(posted.filter((m) => m.type === 'ryugi:inspect:selection')).toHaveLength(before);
   command('mode', { mode: 'select' });
-  expect(style.textContent).toBe('*{cursor:default!important}');
+  expect(style.textContent).toBe(`*{cursor:${POINTER_CURSOR}!important}`);
   button.click();
   expect(last('selection')!.selection.tag).toBe('button');
 });

@@ -11,6 +11,7 @@ export function installInspector(
   win: Window & typeof globalThis,
   properties: readonly string[],
   commentCursor = 'crosshair',
+  pointerCursor = 'default',
 ) {
   const doc = win.document;
   const session = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
@@ -53,7 +54,7 @@ export function installInspector(
   const tracked = new Map<number, InspectorRect>();
   const cursor = doc.createElement('style');
   cursor.setAttribute('data-ryugi-inspector', '');
-  cursor.textContent = '*{cursor:default!important}';
+  cursor.textContent = `*{cursor:${pointerCursor}!important}`;
   const post = (type: string, data: Record<string, unknown>) =>
     win.parent.postMessage({ type: `ryugi:inspect:${type}`, session, connection, ...data }, '*');
   const idOf = (el: Element) => {
@@ -435,7 +436,7 @@ export function installInspector(
     }
     if (data.action === 'mode' && (data.mode === 'select' || data.mode === 'comment')) {
       mode = data.mode;
-      cursor.textContent = `*{cursor:${mode === 'comment' ? commentCursor : 'default'}!important}`;
+      cursor.textContent = `*{cursor:${mode === 'comment' ? commentCursor : pointerCursor}!important}`;
       return;
     }
     if (!enabled && data.action !== 'reset') return;

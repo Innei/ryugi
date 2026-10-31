@@ -5,14 +5,12 @@ export const brand = stylex.defineVars({
   accentStrong: '#b4512f',
 });
 
-export const motion = stylex.defineVars({
-  ringAngle: stylex.types.angle('0deg'),
-});
 export const color = stylex.defineVars({
-  selection: '#2f6fd6',
-  selectionFill: 'rgb(47 111 214 / 0.12)',
-  selectionWash: 'rgb(47 111 214 / 0.13)',
-  selectionLine: 'rgb(47 111 214 / 0.35)',
+  selection: '#0D99FF',
+  selectionFill: 'rgb(13 153 255 / 0.12)',
+  selectionWash: 'rgb(13 153 255 / 0.13)',
+  selectionLine: 'rgb(13 153 255 / 0.35)',
+  agent: '#7B61FF',
 
   success: '#2ea043',
   successWash: 'rgba(0, 160, 63, 0.18)',
@@ -62,7 +60,4 @@ export const color = stylex.defineVars({
   shadowPanel: 'rgba(0, 0, 0, 0.12)',
   shadowStrong: 'rgba(0, 0, 0, 0.22)',
   shadowHeavy: 'rgba(0, 0, 0, 0.25)',
-  halo: 'rgba(255, 255, 255, 0.28)',
-  haloStrong: 'rgba(255, 255, 255, 0.4)',
-  mask: '#000',
 });

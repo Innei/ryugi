@@ -9,7 +9,7 @@ import { Composer } from '../document/Composer';
 import { useTranslation } from '../i18n';
 import { anchorLabel, pinPoint, staleText } from '../lib/board-anchor';
 import type { View } from '../lib/view';
-import { brand, color } from '../tokens.stylex';
+import { color } from '../tokens.stylex';
 
 const PIN = 28;
 const POPOVER = 300;
@@ -38,7 +38,6 @@ const styles = stylex.create({
     pointerEvents: 'auto',
     cursor: 'pointer',
   },
-  agent: { backgroundColor: brand.accentStrong },
   reject: { backgroundColor: color.danger },
   resolved: { backgroundColor: color.resolved, color: color.mediaMuted },
   stale: {
@@ -200,7 +199,6 @@ export function CommentLayer({
           const point = pinPoint(thread.anchor, boards);
           if (!point) return null;
           const at = screenOf(view, point);
-          const author = thread.messages[0]?.author;
           return (
             <button
               aria-label={t('comments.pin', { number: numbers.get(thread.id) ?? '' })}
@@ -210,7 +208,6 @@ export function CommentLayer({
               onClick={() => onOpen(thread.id === openId ? null : thread.id)}
               {...stylex.props(
                 styles.pin,
-                author === 'agent' && styles.agent,
                 thread.anchor.verdict === 'reject' && styles.reject,
                 thread.status === 'resolved' && styles.resolved,
                 stale.has(thread.id) && styles.stale,

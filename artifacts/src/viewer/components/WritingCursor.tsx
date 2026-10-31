@@ -1,23 +1,9 @@
 import * as stylex from '@stylexjs/stylex';
-import { useLayoutEffect, useRef } from 'react';
+import { useId, useLayoutEffect, useRef } from 'react';
 
+import { CURSOR_ARROW } from '../../shared/inspector';
 import { cursorPath, type CursorPose } from '../lib/cursorMotion';
-import { brand, color, motion } from '../tokens.stylex';
-
-const ARROW =
-  'M6.2 3.6C5 2.7 3.4 3.6 3.6 5.1L6 22.7C6.2 24.3 8.2 24.8 9.1 23.5L13 18.3C13.4 17.8 14 17.5 14.6 17.5L21.1 17.3C22.7 17.2 23.4 15.2 22.2 14.3Z';
-// 24px arrow (was 28): the label, its offsets and the trail scale with it.
-const TRAIL = [
-  { distance: 22, size: 6, opacity: 0.5 },
-  { distance: 29, size: 4.3, opacity: 0.3 },
-  { distance: 35, size: 3, opacity: 0.15 },
-];
-
-// A 2px light arc travelling around the agent label, so the cursor reads as
-// "still working" without changing its colour or size.
-const ring = stylex.keyframes({
-  to: { [motion.ringAngle]: '360deg' },
-});
+import { color } from '../tokens.stylex';
 
 const styles = stylex.create({
   cursor: {
@@ -28,66 +14,32 @@ const styles = stylex.create({
     pointerEvents: 'none',
     transformOrigin: '0 0',
   },
-  trail: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    transitionProperty: 'opacity',
-    transitionDuration: '200ms',
-  },
-  dot: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    borderRadius: '50%',
-    backgroundColor: brand.accent,
-  },
   arrow: {
     display: 'block',
     transformOrigin: '3.43px 3.43px',
     filter: `drop-shadow(0 1.5px 2px ${color.shadowStrong})`,
   },
-  fill: { fill: brand.accent },
   label: {
-    'position': 'absolute',
-    'left': 14,
-    'top': 17,
-    'display': 'flex',
-    'alignItems': 'center',
-    'gap': 3.5,
-    'paddingBlock': 2.5,
-    'paddingInlineStart': 6,
-    'paddingInlineEnd': 8.5,
-    'borderRadius': 999,
-    'backgroundColor': brand.accentStrong,
-    'color': color.white,
-    'fontSize': 11,
-    'fontWeight': 700,
-    'lineHeight': '15px',
-    'whiteSpace': 'nowrap',
-    'boxShadow': `0 2px 5px ${color.shadow}, 0 0 0 2px ${color.white}`,
-    '::after': {
-      'content': '',
-      'position': 'absolute',
-      'top': 0,
-      'right': 0,
-      'bottom': 0,
-      'left': 0,
-      'boxSizing': 'border-box',
-      'borderRadius': 'inherit',
-      'padding': 2,
-      'backgroundImage': `conic-gradient(from ${motion.ringAngle}, transparent 0deg 140deg, ${color.halo} 230deg, ${color.white} 300deg, ${color.haloStrong} 340deg, transparent 360deg)`,
-      'maskImage': `linear-gradient(${color.mask} 0 0) content-box, linear-gradient(${color.mask} 0 0)`,
-      'maskComposite': 'exclude',
-      'WebkitMaskImage': `linear-gradient(${color.mask} 0 0) content-box, linear-gradient(${color.mask} 0 0)`,
-      'WebkitMaskComposite': 'xor',
-      'pointerEvents': 'none',
-      'animationName': ring,
-      'animationDuration': '2.4s',
-      'animationTimingFunction': 'linear',
-      'animationIterationCount': 'infinite',
-      '@media (prefers-reduced-motion: reduce)': { animationName: 'none' },
-    },
+    position: 'absolute',
+    left: 14,
+    top: 17,
+    display: 'flex',
+    alignItems: 'center',
+    gap: 3.5,
+    paddingBlock: 2.5,
+    paddingInlineStart: 6,
+    paddingInlineEnd: 7,
+    borderTopLeftRadius: 2,
+    borderTopRightRadius: 6,
+    borderBottomRightRadius: 6,
+    borderBottomLeftRadius: 6,
+    backgroundImage: `linear-gradient(135deg, ${color.selection}, ${color.agent})`,
+    color: color.white,
+    fontSize: 11,
+    fontWeight: 600,
+    lineHeight: '15px',
+    whiteSpace: 'nowrap',
+    boxShadow: `0 2px 5px ${color.shadow}`,
   },
 });
 
@@ -104,9 +56,9 @@ export function WritingCursor({
   agent: string;
   title: string;
 }) {
+  const gradient = `agent-${useId().replaceAll(/[^\w-]/g, '')}`;
   const cursor = useRef<HTMLDivElement>(null);
   const arrow = useRef<SVGSVGElement>(null);
-  const trail = useRef<HTMLDivElement>(null);
   const pose = useRef<CursorPose | null>(null);
   const moving = useRef(false);
   const scale = useRef(zoom);
@@ -116,13 +68,6 @@ export function WritingCursor({
     pose.current = p;
     if (cursor.current) cursor.current.style.transform = transform(p);
     if (arrow.current) arrow.current.style.transform = rotation(p.angle);
-    if (!trail.current) return;
-    trail.current.style.opacity = moving.current ? '1' : '0';
-    const heading = ((p.angle - 135) * Math.PI) / 180;
-    TRAIL.forEach(({ distance, size }, i) => {
-      const dot = trail.current!.children[i] as HTMLElement;
-      dot.style.transform = `translate(${-Math.cos(heading) * distance - size / 2}px, ${-Math.sin(heading) * distance - size / 2}px)`;
-    });
   };
 
   useLayoutEffect(() => {
@@ -179,21 +124,6 @@ export function WritingCursor({
       {...stylex.props(styles.cursor)}
       style={{ transform: transform(initial) }}
     >
-      <div
-        aria-hidden="true"
-        data-trail=""
-        ref={trail}
-        {...stylex.props(styles.trail)}
-        style={{ opacity: 0 }}
-      >
-        {TRAIL.map(({ size, opacity }) => (
-          <div
-            key={size}
-            {...stylex.props(styles.dot)}
-            style={{ width: size, height: size, opacity }}
-          />
-        ))}
-      </div>
       <svg
         aria-hidden="true"
         height="24"
@@ -203,15 +133,22 @@ export function WritingCursor({
         {...stylex.props(styles.arrow)}
         style={{ transform: rotation(initial.angle) }}
       >
-        <path d={ARROW} fill="none" stroke={color.white} strokeLinejoin="round" strokeWidth="4" />
-        <path d={ARROW} {...stylex.props(styles.fill)} />
+        <path
+          d={CURSOR_ARROW}
+          fill="none"
+          stroke={color.white}
+          strokeLinejoin="round"
+          strokeWidth="4"
+        />
+        <defs>
+          <linearGradient id={gradient} x1="0" x2="1" y1="0" y2="1">
+            <stop offset="0" stopColor={color.selection} />
+            <stop offset="1" stopColor={color.agent} />
+          </linearGradient>
+        </defs>
+        <path d={CURSOR_ARROW} fill={`url(#${gradient})`} />
       </svg>
-      <span {...stylex.props(styles.label)}>
-        <svg aria-hidden="true" height="9" viewBox="0 0 12 12" width="9">
-          <path d="M6 1Q6.8 5.2 11 6Q6.8 6.8 6 11Q5.2 6.8 1 6Q5.2 5.2 6 1Z" fill={color.white} />
-        </svg>
-        {agent}
-      </span>
+      <span {...stylex.props(styles.label)}>{agent}</span>
     </div>
   );
 }

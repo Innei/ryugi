@@ -1,7 +1,7 @@
 import { installInspector } from '../inspector/runtime';
 import { installSnapshot, serializeBoard } from '../inspector/snapshot';
 import { installTweaks } from '../runtime/tweaks';
-import { COMMENT_CURSOR, INSPECTOR_PROPERTIES } from '../shared/inspector';
+import { COMMENT_CURSOR, INSPECTOR_PROPERTIES, POINTER_CURSOR } from '../shared/inspector';
 import { tweakTools } from '../shared/tweaks';
 import { EMBEDDED_STYLE, injectionPoint } from './strip-runtime';
 
@@ -120,7 +120,7 @@ export function injectRuntime(
   options: { uiRuntimeUrl?: string; embedded?: boolean; inspector?: boolean } = {},
 ): string {
   const inspect = options.inspector
-    ? `;(${installTweaks.toString().replaceAll('\n', ' ')})(window,${tweakTools.toString().replaceAll('\n', ' ')});(${installInspector.toString().replaceAll('\n', ' ')})(window,${JSON.stringify(INSPECTOR_PROPERTIES)},${JSON.stringify(COMMENT_CURSOR)});;(${installSnapshot.toString().replaceAll('\n', ' ')})(window,${serializeBoard.toString().replaceAll('\n', ' ')});`
+    ? `;(${installTweaks.toString().replaceAll('\n', ' ')})(window,${tweakTools.toString().replaceAll('\n', ' ')});(${installInspector.toString().replaceAll('\n', ' ')})(window,${JSON.stringify(INSPECTOR_PROPERTIES)},${JSON.stringify(COMMENT_CURSOR)},${JSON.stringify(POINTER_CURSOR)});;(${installSnapshot.toString().replaceAll('\n', ' ')})(window,${serializeBoard.toString().replaceAll('\n', ' ')});`
     : '';
   const tag = `${options.embedded ? EMBEDDED_STYLE : ''}<script>${inspect || RUNTIME_LINE}</script>`;
   const ui =

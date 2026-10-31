@@ -4,7 +4,9 @@ import * as stylex from '@stylexjs/stylex';
 import {
   Check,
   ChevronDown,
+  ChevronsUpDown,
   Hand,
+  Layers,
   MessageCirclePlus,
   MousePointer2,
   PanelRight,
@@ -23,13 +25,13 @@ const styles = stylex.create({
     display: 'flex',
     alignItems: 'center',
     gap: 2,
-    height: 40,
+    height: 44,
     paddingInline: 4,
     backgroundColor: cssVar.colorBgElevated,
     borderWidth: 1,
     borderStyle: 'solid',
     borderColor: cssVar.colorBorderSecondary,
-    borderRadius: 10,
+    borderRadius: 12,
     boxShadow: cssVar.boxShadowTertiary,
     fontSize: 13,
     color: cssVar.colorText,
@@ -37,7 +39,7 @@ const styles = stylex.create({
   },
   left: { left: 10 },
   right: { right: 10 },
-  divider: { width: 1, height: 16, marginInline: 4, backgroundColor: cssVar.colorBorderSecondary },
+  divider: { width: 1, height: 18, marginInline: 4, backgroundColor: cssVar.colorBorderSecondary },
   trigger: {
     display: 'flex',
     alignItems: 'center',
@@ -50,7 +52,27 @@ const styles = stylex.create({
     cursor: 'pointer',
     whiteSpace: 'nowrap',
   },
-  pageName: { fontWeight: 600, maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis' },
+  pageTrigger: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    height: 34,
+    paddingInlineStart: 10,
+    paddingInlineEnd: 8,
+    borderWidth: 0,
+    borderRadius: 8,
+    backgroundColor: { 'default': 'transparent', ':hover': cssVar.colorFillTertiary },
+    color: cssVar.colorText,
+    cursor: 'pointer',
+    whiteSpace: 'nowrap',
+  },
+  pageName: {
+    fontSize: 14,
+    fontWeight: 600,
+    maxWidth: 220,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+  },
   chevron: { color: cssVar.colorTextTertiary },
   zoom: { fontVariantNumeric: 'tabular-nums', minWidth: 36, textAlign: 'right' },
   live: { display: 'flex', alignItems: 'center', justifyContent: 'center', width: 26, height: 30 },
@@ -97,6 +119,8 @@ const styles = stylex.create({
   hint: { color: cssVar.colorTextTertiary, fontFamily: cssVar.fontFamilyCode, fontSize: 12 },
 });
 
+const TOOL_SIZE = { blockSize: 34, borderRadius: 8, size: 18, strokeWidth: 1.75 };
+
 interface TopLeftBarProps {
   commenting?: boolean;
   onPageChange: (id: string) => void;
@@ -127,9 +151,14 @@ export function TopLeftBar({
           onClick: () => onPageChange(p.id),
         }))}
       >
-        <button aria-label={t('chrome.switchPage')} type="button" {...stylex.props(styles.trigger)}>
+        <button
+          aria-label={t('chrome.switchPage')}
+          type="button"
+          {...stylex.props(styles.pageTrigger)}
+        >
+          <Layers size={16} {...stylex.props(styles.chevron)} />
           <span {...stylex.props(styles.pageName)}>{current?.name ?? t('chrome.noPages')}</span>
-          <ChevronDown size={14} {...stylex.props(styles.chevron)} />
+          <ChevronsUpDown size={14} {...stylex.props(styles.chevron)} />
         </button>
       </DropdownMenu>
       <span {...stylex.props(styles.divider)} />
@@ -137,7 +166,7 @@ export function TopLeftBar({
         active={tool === 'select'}
         aria-label={t('chrome.select')}
         icon={MousePointer2}
-        size="small"
+        size={TOOL_SIZE}
         title={t('chrome.selectTitle')}
         onClick={() => onToolChange('select')}
       />
@@ -145,7 +174,7 @@ export function TopLeftBar({
         active={tool === 'hand'}
         aria-label={t('chrome.hand')}
         icon={Hand}
-        size="small"
+        size={TOOL_SIZE}
         title={t('chrome.handTitle')}
         onClick={() => onToolChange('hand')}
       />
@@ -154,7 +183,7 @@ export function TopLeftBar({
           active={tool === 'comment'}
           aria-label={t('chrome.comment')}
           icon={MessageCirclePlus}
-          size="small"
+          size={TOOL_SIZE}
           title={t('chrome.commentTitle')}
           onClick={() => onToolChange('comment')}
         />

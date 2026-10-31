@@ -7,7 +7,7 @@ import {
   useState,
 } from 'react';
 
-import { COMMENT_CURSOR } from '../../shared/inspector';
+import { COMMENT_CURSOR, POINTER_CURSOR } from '../../shared/inspector';
 import type { Bounds } from '../../shared/types';
 import {
   cubicBezier,
@@ -410,7 +410,7 @@ export function usePanZoom(tool: Tool) {
         ? 'grab'
         : tool === 'comment'
           ? COMMENT_CURSOR
-          : 'default',
+          : POINTER_CURSOR,
     hand: dragging ? ('pinch' as const) : panning ? ('open' as const) : null,
     handlers: { onPointerDown, onPointerMove, onPointerUp, onPointerCancel: onPointerUp },
   };

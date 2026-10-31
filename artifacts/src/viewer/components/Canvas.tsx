@@ -14,7 +14,7 @@ import type { Inspector } from '../hooks/useInspector';
 import type { BoardPhase } from '../lib/board-lifecycle';
 import { boardReady, boardSrc, canPlay } from '../lib/play';
 import { titleScale, type View } from '../lib/view';
-import { brand, color } from '../tokens.stylex';
+import { color } from '../tokens.stylex';
 import { MediaBoard } from './MediaBoard';
 import { WritingCursor } from './WritingCursor';
 
@@ -34,7 +34,7 @@ const styles = stylex.create({
     outlineStyle: 'solid',
     outlineColor: cssVar.colorBorderSecondary,
   },
-  playing: { pointerEvents: 'auto', outlineWidth: 2, outlineColor: brand.accent },
+  playing: { pointerEvents: 'auto', outlineWidth: 2, outlineColor: color.selection },
   image: {
     position: 'absolute',
     inset: 0,
@@ -58,8 +58,8 @@ const styles = stylex.create({
   },
   drawing: {
     outlineStyle: 'solid',
-    outlineColor: brand.accent,
-    backgroundImage: `linear-gradient(110deg, transparent, color-mix(in srgb, ${brand.accent} 10%, transparent), transparent)`,
+    outlineColor: color.selection,
+    backgroundImage: `linear-gradient(110deg, transparent, color-mix(in srgb, ${color.selection} 10%, transparent), transparent)`,
   },
   skeletonText: {
     color: cssVar.colorTextSecondary,

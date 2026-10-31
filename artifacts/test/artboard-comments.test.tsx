@@ -7,6 +7,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 
 import type { BoardCommentsFile } from '../src/shared/board-comments';
+import { POINTER_CURSOR } from '../src/shared/inspector';
 import { ArtboardLayout } from '../src/viewer/layouts/ArtboardLayout';
 
 vi.mock('@stylexjs/stylex', async (original) => ({
@@ -240,7 +241,7 @@ test('tool shortcuts reach the canvas from a focused layer without consuming tre
   expect((await press('h', 'KeyH')).defaultPrevented).toBe(true);
   expect(viewport.style.cursor).toBe('grab');
   await press('v', 'KeyV');
-  expect(viewport.style.cursor).toBe('default');
+  expect(viewport.style.cursor).toBe(POINTER_CURSOR);
   expect((await press('ArrowRight', 'ArrowRight')).defaultPrevented).toBe(true);
   expect(host.querySelector('textarea')).toBeNull();
 });

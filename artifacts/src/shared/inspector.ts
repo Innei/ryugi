@@ -114,7 +114,21 @@ export type InspectorReport = { session: string; connection: string } & (
     }
 );
 
-const COMMENT_BUBBLE =
-  'M14.5 3a10.5 10.5 0 1 1-4.2 20.1l-5 1.6c-.9.3-1.7-.5-1.4-1.4l1.6-5A10.5 10.5 0 0 1 14.5 3z';
-const COMMENT_CURSOR_SVG = `<svg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 28 28'><path d='${COMMENT_BUBBLE}' fill='none' stroke='white' stroke-width='4' stroke-linejoin='round'/><path d='${COMMENT_BUBBLE}' fill='#c65d3b'/><path d='M14.5 9.3v8.4M10.3 13.5h8.4' stroke='white' stroke-width='2.4' stroke-linecap='round'/></svg>`;
-export const COMMENT_CURSOR = `url("data:image/svg+xml,${encodeURIComponent(COMMENT_CURSOR_SVG)}") 4 24, crosshair`;
+export const CURSOR_BLUE = '#0D99FF';
+export const CURSOR_ARROW =
+  'M6.2 3.6C5 2.7 3.4 3.6 3.6 5.1L6 22.7C6.2 24.3 8.2 24.8 9.1 23.5L13 18.3C13.4 17.8 14 17.5 14.6 17.5L21.1 17.3C22.7 17.2 23.4 15.2 22.2 14.3Z';
+const COMMENT_PIN = 'M13 3a9 9 0 0 1 0 18H4.5A1.5 1.5 0 0 1 3 19.5V13A10 10 0 0 1 13 3z';
+
+const svgCursor = (svg: string, hotspot: string, fallback: string) =>
+  `url("data:image/svg+xml,${encodeURIComponent(svg)}") ${hotspot}, ${fallback}`;
+
+export const POINTER_CURSOR = svgCursor(
+  `<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 28 28'><path d='${CURSOR_ARROW}' fill='none' stroke='white' stroke-width='4' stroke-linejoin='round'/><path d='${CURSOR_ARROW}' fill='${CURSOR_BLUE}'/></svg>`,
+  '3 3',
+  'default',
+);
+export const COMMENT_CURSOR = svgCursor(
+  `<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'><path d='${COMMENT_PIN}' fill='none' stroke='white' stroke-width='3' stroke-linejoin='round'/><path d='${COMMENT_PIN}' fill='${CURSOR_BLUE}'/><path d='M13 8.2v7.6M9.2 12h7.6' stroke='white' stroke-width='2.2' stroke-linecap='round'/></svg>`,
+  '3 21',
+  'crosshair',
+);

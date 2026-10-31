@@ -182,29 +182,27 @@ test('flies along a curved route, turns the arrow and arrives without animating 
   expect(clock.frames.size).toBe(0);
 });
 
-test('trails three fading dots behind the arrow while flying and drops them on arrival', async () => {
-  const clock = animationClock();
-  const trail = () => document.querySelector<HTMLElement>('[role="status"] [data-trail]')!;
-  const offset = (dot: Element) =>
-    (dot as HTMLElement).style.transform
-      .match(/translate\(([-\d.e]+)px,\s*([-\d.e]+)px\)/)!
-      .slice(1)
-      .map(Number) as [number, number];
+test('fills the agent arrow with its own blue-to-purple gradient so it never reads as the human pointer', async () => {
   await render({ writing: 'a' });
-  expect(trail().style.opacity).toBe('0');
+  const cursor = document.querySelector<HTMLElement>('[role="status"]')!;
+  const gradient = cursor.querySelector('linearGradient')!;
+  expect(gradient).not.toBeNull();
+  expect(gradient.querySelectorAll('stop')).toHaveLength(2);
+  const filled = [...cursor.querySelectorAll('path')].filter((path) =>
+    path.getAttribute('fill')?.startsWith('url(#'),
+  );
+  expect(filled).toHaveLength(1);
+  expect(filled[0]!.getAttribute('fill')).toBe(`url(#${gradient.id})`);
+});
+
+test('flies the agent arrow without a trail and labels it with the agent name alone', async () => {
+  const clock = animationClock();
+  await render({ writing: 'a' });
   await render({ writing: 'b' });
   clock.step(500);
-  const before = cursorPose();
-  clock.step(516);
-  const after = cursorPose();
-  expect(trail().style.opacity).toBe('1');
-  const dots = [...trail().children];
-  expect(dots).toHaveLength(3);
-  const [dx, dy] = offset(dots[2]!);
-  expect(dx * (after.x - before.x) + dy * (after.y - before.y)).toBeLessThan(0);
-  expect(Math.hypot(...offset(dots[2]!))).toBeGreaterThan(Math.hypot(...offset(dots[0]!)));
-  clock.step(3000);
-  expect(trail().style.opacity).toBe('0');
+  const cursor = document.querySelector<HTMLElement>('[role="status"]')!;
+  expect(cursor.querySelector('[data-trail]')).toBeNull();
+  expect(cursor.querySelectorAll('svg')).toHaveLength(1);
 });
 
 test.each([-800, 800])(

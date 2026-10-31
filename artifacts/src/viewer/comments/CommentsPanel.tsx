@@ -9,7 +9,7 @@ import { authorOf } from '../document/author';
 import { i18n, useTranslation } from '../i18n';
 import { styles as inspectorStyles } from '../inspector/styles';
 import { anchorLabel, staleText } from '../lib/board-anchor';
-import { brand, color } from '../tokens.stylex';
+import { color } from '../tokens.stylex';
 
 export type CommentsTab = 'open' | 'all';
 
@@ -90,7 +90,6 @@ const styles = stylex.create({
     fontSize: 10,
     fontWeight: 600,
   },
-  numAgent: { backgroundColor: brand.accentStrong },
   numReject: { backgroundColor: color.danger },
   numResolved: { backgroundColor: color.resolved, color: color.resolvedText },
   numStale: {
@@ -232,7 +231,6 @@ export function CommentsPanel({
               <span
                 {...stylex.props(
                   styles.num,
-                  first?.author === 'agent' && styles.numAgent,
                   thread.anchor.verdict === 'reject' && styles.numReject,
                   thread.status === 'resolved' && styles.numResolved,
                   isStale && styles.numStale,

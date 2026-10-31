@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 
-import { COMMENT_CURSOR } from '../src/shared/inspector';
+import { COMMENT_CURSOR, POINTER_CURSOR } from '../src/shared/inspector';
 import { type Tool, usePanZoom } from '../src/viewer/hooks/usePanZoom';
 import { fitView } from '../src/viewer/lib/view';
 
@@ -166,7 +166,7 @@ test('Space on toolbar controls keeps its native keyboard action instead of star
     host.querySelector('button')!.dispatchEvent(event);
   });
   expect(event!.defaultPrevented).toBe(false);
-  expect(viewport.style.cursor).toBe('default');
+  expect(viewport.style.cursor).not.toBe('grab');
 });
 
 test('trackpad gestures over a board title pan and pinch the canvas, while toolbar scrolling stays local', () => {
@@ -297,7 +297,12 @@ test('a finger that started on the toolbar never moves the canvas while another 
   expect(panZoom.viewNow()).toEqual({ x: 0, y: 0, k: 0.5 });
 });
 
-test('the comment tool shows the bubble cursor and does not pan', () => {
+test('the select tool shows the blue pointer', () => {
+  render('select');
+  expect(panZoom.cursor).toBe(POINTER_CURSOR);
+});
+
+test('the comment tool shows the pin cursor and does not pan', () => {
   const viewport = render('comment');
   expect(panZoom.cursor).toBe(COMMENT_CURSOR);
   expect(panZoom.panning).toBe(false);
