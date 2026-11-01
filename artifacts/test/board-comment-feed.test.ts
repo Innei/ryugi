@@ -22,6 +22,7 @@ test('the artboard payload carries comments and the stale thread ids', () => {
   expect(boardCommentsFromPayload({ canvas: null, comments, staleThreads: ['t1'] })).toEqual({
     comments,
     stale: ['t1'],
+    listening: false,
   });
 });
 
@@ -36,7 +37,19 @@ test('a board-comments message for this artboard replaces the state', () => {
       { type: 'board-comments', artifact: 'artboard/review', comments, stale: [] },
       'artboard/review',
     ),
-  ).toEqual({ comments, stale: [] });
+  ).toEqual({ comments, stale: [], listening: false });
+});
+
+test('the listening flag passes through from the payload and from messages', () => {
+  expect(boardCommentsFromPayload({ comments, staleThreads: [], listening: true })?.listening).toBe(
+    true,
+  );
+  expect(
+    boardCommentsFromMessage(
+      { type: 'board-comments', artifact: 'artboard/review', comments, stale: [], listening: true },
+      'artboard/review',
+    )?.listening,
+  ).toBe(true);
 });
 
 test('messages for another artifact or of another type are ignored', () => {
@@ -60,5 +73,5 @@ test('the relay names an artboard by its cloud id, so any board-comments message
       { type: 'board-comments', artifact: 'artboard/review', comments, stale: [] },
       null,
     ),
-  ).toEqual({ comments, stale: [] });
+  ).toEqual({ comments, stale: [], listening: false });
 });
