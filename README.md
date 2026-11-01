@@ -1,65 +1,89 @@
 <p align="center">
-  <img src="assets/logo/ryugi.png" width="120" alt="Ryugi">
+  <img src="assets/logo/ryugi-mark.svg" width="112" alt="Ryugi">
 </p>
 
 <h1 align="center">Ryugi 流儀</h1>
 
 <p align="center"><b>Your coding agent stops describing UI and starts showing it.</b></p>
 
-<p align="center">
-  <img src="docs/images/hero.webp" alt="An agent's terminal flowing into live artifacts: a mockup canvas, a commented document and a tuning panel">
-</p>
-
-<p align="center">
-  <a href="#install">Install</a> · <a href="docs/workflow.md">Workflow</a> · <a href="docs/artifacts-cli.md">CLI</a>
-</p>
-
-<img src="docs/images/flow.webp" alt="Brainstorm, Mockups, Spec, TDD, Verify">
-
-Skills fire on their own. Nothing to invoke. [How it works →](docs/workflow.md)
-
-## Artboard: pick a direction, don't read about one
-
-<img src="docs/images/artboard.webp" alt="Artboard with three desktop hero directions, three phone variants, sticky notes and the agent's live cursor">
-
-Every option side by side, drawn live while you watch. Comment on any pixel; answer in the terminal (`q1 → b`).
-
-## Document: design docs you can argue with
-
-<img src="docs/images/document.webp" alt="Design document with a sequence diagram and a comment thread in the margin">
-
-Diagrams, charts, code, tables. Comment on a sentence, edit in place; your edits and the agent's merge live.
-
-## HTML: tune it with real controls
-
-<img src="docs/images/html.webp" alt="Spring animation test bench with sliders, a segmented control and a live curve">
-
-A one-page test bench. Sliders keep their values when the agent rewrites the page.
-
-## Verify: you pass or reject
-
-<img src="docs/images/verify.webp" alt="Verify group comparing the approved design with the built page, with pass and reject buttons">
-
-Built screenshots next to the approved design. Reject one, and it comes back fixed.
-
-## Library
-
-<img src="docs/images/library.webp" alt="Artifact library listing an HTML page, an artboard and a document">
-
-```bash
-npx ryugi-artifacts
-```
-
-Local first, no subscription. One command shares a link to [Ryugi Cloud](https://ryugi.innei.dev).
-
-## Install
-
 ```text
 /plugin marketplace add Innei/ryugi
 /plugin install ryugi@ryugi-dev
 ```
 
-Then send `Let's make a react todo list`. Ryugi starts brainstorming before any code.
+Then send `Let's make a react todo list`. Ryugi starts brainstorming before any code, draws the
+options instead of describing them, and builds what you approve under TDD.
+
+<p align="center">
+  <a href="docs/install.md">Harnesses</a> · <a href="docs/workflow.md">Workflow</a> · <a href="docs/artifacts-cli.md">CLI</a>
+</p>
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/hero-dark.webp">
+  <img src="docs/images/hero-light.webp" alt="The Ryugi artboard: three desktop hero directions and three phone variants side by side, three sticky notes from the brief, and a bar reading 2/2 chosen with a Submit button">
+</picture>
+
+**Artboard.** Every option side by side, drawn live while you watch. Two of them are chosen here;
+Submit sends the round back with the brief. Comment on any pixel and answer in the terminal
+(`q1 → b`).
+
+## How it works
+
+```mermaid
+flowchart LR
+  I[Idea] --> B[Brainstorm] --> S[Spec] --> T[Build · TDD] --> V[Verify] --> L[Land]
+```
+
+Skills fire on their own; there is nothing to invoke. After you sign off, the agent slices the
+spec into tasks, proves each one red-green, keeps a ledger of judgment calls across compaction,
+gets one fresh review of the branch, and reports how to land it.
+[How it works →](docs/workflow.md)
+
+## Document — design docs you can argue with
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/document-dark.webp">
+  <img src="docs/images/document-light.webp" alt="A design document with a contents rail, a flow diagram, a code block and two comment threads in the margin marked waiting on you">
+</picture>
+
+Diagrams, charts, code, tables. Comment on a sentence, edit in place; your edits and the agent's
+merge live.
+
+## HTML — tune it with real controls
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/html-dark.webp">
+  <img src="docs/images/html-light.webp" alt="A spring test bench: sliders for stiffness, damping and mass beside a plotted displacement curve with settle time and overshoot">
+</picture>
+
+A one-page test bench. Sliders keep their values when the agent rewrites the page.
+
+## Verify — you pass or reject
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/verify-dark.webp">
+  <img src="docs/images/verify-light.webp" alt="A verify group on the artboard: the approved settings design next to the built page, with Pass and Reject buttons on the group label">
+</picture>
+
+Built work next to the approved design, in the same canvas. Pass a group, or reject it and say
+what is off; it comes back fixed.
+
+## Library — one server, every project
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/library-dark.webp">
+  <img src="docs/images/library-light.webp" alt="The artifact library: a project rail, type filters, title search and a grid of artboard, document and HTML cards">
+</picture>
+
+```bash
+npx ryugi-artifacts
+```
+
+Local first, no subscription. One server serves every project on the machine: recent work across
+all of them, ⌘K to jump, artifact links that survive a restart and a new release. `publish` shares
+one to [Ryugi Cloud](https://ryugi.innei.dev).
+
+## Work with your harness
 
 <details>
 <summary>Other harnesses</summary>

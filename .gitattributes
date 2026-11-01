@@ -18,3 +18,4 @@ hooks/user-prompt-submit text eol=lf
 *.png binary
 *.jpg binary
 *.gif binary
+*.webp binary
