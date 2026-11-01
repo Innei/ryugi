@@ -47,6 +47,18 @@ After the fix there is no honest "before".
    group shows, and ask them to tell you here when they have decided. End
    your turn; don't poll.
 
+## Running the checks
+
+Before the first run, read how the project says to verify (its agent
+instructions, acceptance or verification docs) and follow its commands and
+output conventions over your own habits.
+
+Each check has one output location. A retry or rerun writes over the
+previous result; never create numbered copies (`-1`, `-2`, `-final`) of
+the same check. Keep two runs side by side only when the point is comparing
+two builds, and name them for the builds. Delete scratch output you created
+once the evidence you need is copied to the verify page.
+
 ## Prepare each recording
 
 Add the original recording normally; Artifacts prepares Verify videos
