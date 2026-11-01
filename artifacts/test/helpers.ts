@@ -76,12 +76,16 @@ export interface WsResult {
   status: number;
 }
 
-export function openWs(port: number, headers: Record<string, string>): Promise<WsResult> {
+export function openWs(
+  port: number,
+  headers: Record<string, string>,
+  wsPath = '/ws',
+): Promise<WsResult> {
   return new Promise((resolve, reject) => {
     const req = http.request({
       host: '127.0.0.1',
       port,
-      path: '/ws',
+      path: wsPath,
       headers: {
         'Connection': 'Upgrade',
         'Upgrade': 'websocket',
