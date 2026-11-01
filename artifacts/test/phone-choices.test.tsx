@@ -241,3 +241,13 @@ test('a submitted round disables Choose this', async () => {
   const choose = await openBoard('q2-a');
   expect(choose?.disabled).toBe(true);
 });
+
+test('the full-screen header tags the recommended board', async () => {
+  await mount(choiceCanvas, choiceLayout, {
+    comments: state([]),
+    comment: vi.fn(async () => state([])),
+    live: true,
+  });
+  await openBoard('q2-b');
+  expect(host!.querySelector('[data-phone-board] header')!.textContent).toContain('Recommended');
+});

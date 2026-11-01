@@ -115,6 +115,18 @@ const styles = stylex.create({
   },
   chosen: { backgroundColor: brand.accent, color: color.onStrong },
   locked: { opacity: 0.5, cursor: 'default' },
+  recommended: {
+    flexShrink: 0,
+    marginInlineEnd: 8,
+    paddingInline: 6,
+    borderWidth: 1,
+    borderStyle: 'solid',
+    borderColor: `color-mix(in srgb, ${brand.accent} 35%, transparent)`,
+    borderRadius: 5,
+    color: brand.accentStrong,
+    fontSize: 12,
+    lineHeight: '18px',
+  },
   dot: {
     width: 6,
     height: 6,
@@ -403,6 +415,9 @@ export function PhoneBoard({
           <span {...stylex.props(styles.title)}>{board.title ?? id}</span>
           <code {...stylex.props(styles.id)}>{id}</code>
         </span>
+        {choice?.recommended ? (
+          <span {...stylex.props(styles.recommended)}>{t('choices.recommended')}</span>
+        ) : null}
         {siblings.length > 1 ? (
           <span {...stylex.props(styles.count)}>
             {index + 1} / {siblings.length}
