@@ -1,0 +1,8 @@
+1. `node app/ryugi-artifacts.cjs comment list --json --project-dir /work/app --artifact artboard/settings-page`
+2. `jq '.' /work/app/.ryugi/artifacts/.state/artboard/settings-page/layout.json`
+
+I would skip `selection.json`. "q1 → b" names a group and a board, not nodes or tweaks.
+
+I would not run `start` first. The server is already showing round 1. I'd run it again only if a command reports the server is older than the CLI. The guide defers the exact `start` syntax to `SKILL.md`, which I wasn't allowed to read.
+
+Recording: I'd log q1 as theirs (q1-b) and q2 as the accepted recommendation (q2-b) in my next playback, since no design document is open, so there is no Settled section to write to. Round 2 would then be appended below `bounds.maxY`, with round 1 kept as history.

@@ -11,13 +11,14 @@ canvas, the boards and reading what they selected. Name it after the topic
 ## A Round
 
 - A title note for the round, with one line on how to answer, in their
-  language, such as: "Say q1 → b to pick; anything you don't mention I'll
-  take as the recommendation."
+  language, such as: "Pick on the board and submit; anything you don't pick
+  I'll take as the recommendation."
 - Up to five groups. Group 1 is the fork: the visual choice that decides
   which other questions exist (the navigation layout before the contents of
   each pane). Leave out what depends on it until it is answered.
 - Two to four boards per group, differing only in what that group asks.
-  Put "recommended" in your recommended board's title, and a sticky beside
+  Every group is a choice group: `"choose": true` and `"recommend": "<board
+id>"` for your recommended board (the viewer tags it), and a sticky beside
   the group with one line of why.
 - Real copy and data from their project, drawn with their design system
   when it has one.
@@ -28,8 +29,10 @@ Your message is one line on what's on the board, plus the link.
 
 When they answer:
 
-1. Read what they selected, as ryugi:artifacts says, when they point at
-   nodes or tweaks.
+1. Read their answers from `comment list --json` (`groups` and `rounds`,
+   plus the threads), as ryugi:artifacts says under Choice groups. When they
+   answered in the terminal instead, record it on the board first. Read what
+   they selected when they point at nodes or tweaks.
 2. Record each answered group as a decision, theirs or the recommendation
    they accepted: in the document's Settled when one is open, in your next
    playback otherwise.

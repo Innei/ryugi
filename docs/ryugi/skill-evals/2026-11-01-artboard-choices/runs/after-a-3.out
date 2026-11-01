@@ -1,0 +1,96 @@
+1. canvas.json
+
+```json
+{
+  "activePage": "settings",
+  "title": "Settings page",
+  "version": 1,
+  "pages": [{ "id": "settings", "name": "Settings" }],
+  "boards": {
+    "q1-a": {
+      "file": "pages/settings/q1-a.html",
+      "page": "settings",
+      "x": 0,
+      "y": 0,
+      "w": 1280,
+      "h": 800,
+      "title": "Sidebar nav"
+    },
+    "q1-b": {
+      "file": "pages/settings/q1-b.html",
+      "page": "settings",
+      "x": 1360,
+      "y": 0,
+      "w": 1280,
+      "h": 800,
+      "title": "Top tabs"
+    },
+    "q2-a": {
+      "file": "pages/settings/q2-a.html",
+      "page": "settings",
+      "x": 0,
+      "y": 1088,
+      "w": 1280,
+      "h": 800,
+      "title": "Compact list"
+    },
+    "q2-b": {
+      "file": "pages/settings/q2-b.html",
+      "page": "settings",
+      "x": 1360,
+      "y": 1088,
+      "w": 1280,
+      "h": 800,
+      "title": "Comfortable list"
+    }
+  },
+  "groups": {
+    "q1": {
+      "title": "Navigation layout",
+      "boards": ["q1-a", "q1-b"],
+      "choose": true,
+      "recommend": "q1-a"
+    },
+    "q2": {
+      "title": "List density",
+      "boards": ["q2-a", "q2-b"],
+      "choose": true,
+      "recommend": "q2-b"
+    }
+  },
+  "notes": {
+    "intro": {
+      "page": "settings",
+      "kind": "title",
+      "x": 0,
+      "y": -300,
+      "size": 40,
+      "w": 2640,
+      "text": "Settings page, round 1: pick on the board and submit; anything you don't pick I'll take as the recommendation."
+    },
+    "q1-why": {
+      "page": "settings",
+      "kind": "sticky",
+      "x": 2768,
+      "y": 0,
+      "w": 300,
+      "text": "Recommend A: a sidebar keeps every settings section visible and has room to add more sections as the app grows.",
+      "color": "#cce8df"
+    },
+    "q2-why": {
+      "page": "settings",
+      "kind": "sticky",
+      "x": 2768,
+      "y": 1088,
+      "w": 300,
+      "text": "Recommend B: comfortable rows are easier to scan and tap, and a settings list is short enough that the extra height costs little.",
+      "color": "#cce8df"
+    }
+  },
+  "focus": { "target": "q1", "at": "2026-11-01T09:00:00Z" }
+}
+```
+
+2. Terminal message
+
+Round 1 of the settings page is up: q1 sidebar vs top tabs (I recommend a), q2 compact vs comfortable list (I recommend b). Pick and submit here: <artboard link>?page=settings

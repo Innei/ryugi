@@ -1,0 +1,13 @@
+Ahead of round 2, run these three in order:
+
+```bash
+node app/ryugi-artifacts.cjs comment list --json --project-dir /work/app --artifact artboard/settings-page
+node app/ryugi-artifacts.cjs comment choose --json --project-dir /work/app --artifact artboard/settings-page --group q1 --board q1-b
+node app/ryugi-artifacts.cjs comment submit --json --project-dir /work/app --artifact artboard/settings-page --round r1
+```
+
+- **Step 1** reads the round `id` from `rounds`. I'm assuming it is `r1`, matching the title note, and I'd swap in the real id if the output differs. It also shows whether any threads on the groups are part of the answer.
+- **Step 2** records q1 → q1-b.
+- **Step 3** submits the round. q2 isn't mentioned, so it keeps my recommendation, q2-b, and needs no `choose` call.
+
+I record this round's answers as decisions: q1 is your pick (q1-b, which differs from my q1-a recommendation) and q2 is the recommendation you accepted (q2-b). They go in the Settled section if a document is open, or in my next playback if not. Round 1 stays on the board as history.

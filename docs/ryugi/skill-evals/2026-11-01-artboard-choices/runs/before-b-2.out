@@ -1,0 +1,9 @@
+1. `node app/ryugi-artifacts.cjs comment list --json --project-dir /work/app --artifact artboard/settings-page`
+2. `jq . /work/app/.ryugi/artifacts/.state/artboard/settings-page/layout.json`
+
+- **Comments:** the guide says to run `comment list` whenever I work on the artboard. It also returns the verify-group state.
+- **Layout:** I need the page `bounds.maxY` so round 2 goes below round 1, with its title at `maxY + 120`.
+- **Skipped:** reading `selection.json`. They answered in the terminal and pointed at no nodes.
+- **Skipped:** `start`. The board is already open, and I can't see `SKILL.md`'s exact form.
+
+**Recording:** I record q1 → q1-b as their decision and q2 → q2-b as the recommendation they accepted by default. Both go in the document's Settled if one is open, otherwise in my next playback. Round 1 stays on the board as history.

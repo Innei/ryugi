@@ -1,0 +1,85 @@
+1. canvas.json
+
+```json
+{
+  "activePage": "settings",
+  "title": "Settings page",
+  "version": 1,
+  "pages": [{ "id": "settings", "name": "Settings" }],
+  "focus": { "target": "q1", "at": "2026-11-01T09:00:00Z" },
+  "boards": {
+    "q1-a": {
+      "file": "pages/settings/q1-a.html",
+      "page": "settings",
+      "x": 0,
+      "y": 0,
+      "w": 1280,
+      "h": 800,
+      "title": "Sidebar nav (recommended)"
+    },
+    "q1-b": {
+      "file": "pages/settings/q1-b.html",
+      "page": "settings",
+      "x": 1360,
+      "y": 0,
+      "w": 1280,
+      "h": 800,
+      "title": "Top tabs"
+    },
+    "q2-a": {
+      "file": "pages/settings/q2-a.html",
+      "page": "settings",
+      "x": 0,
+      "y": 1040,
+      "w": 1280,
+      "h": 800,
+      "title": "Compact list"
+    },
+    "q2-b": {
+      "file": "pages/settings/q2-b.html",
+      "page": "settings",
+      "x": 1360,
+      "y": 1040,
+      "w": 1280,
+      "h": 800,
+      "title": "Comfortable list (recommended)"
+    }
+  },
+  "groups": {
+    "q1": { "title": "Navigation layout", "boards": ["q1-a", "q1-b"] },
+    "q2": { "title": "List density", "boards": ["q2-a", "q2-b"] }
+  },
+  "notes": {
+    "intro": {
+      "page": "settings",
+      "kind": "title",
+      "x": 0,
+      "y": -340,
+      "size": 48,
+      "text": "Settings — round 1 · Say q1 → b to pick; anything you don't mention I'll take as the recommendation."
+    },
+    "why-q1": {
+      "page": "settings",
+      "kind": "sticky",
+      "x": 2768,
+      "y": 0,
+      "w": 300,
+      "text": "Recommend A: a sidebar scales as settings sections grow and keeps the note app's content area steady.",
+      "color": "#cce8df"
+    },
+    "why-q2": {
+      "page": "settings",
+      "kind": "sticky",
+      "x": 2768,
+      "y": 1040,
+      "w": 300,
+      "text": "Recommend B: comfortable rows are easier to scan and tap, and settings lists are short enough that density gains little.",
+      "color": "#cce8df"
+    }
+  }
+}
+```
+
+2. Terminal message
+
+Round 1 is on the board: q1 navigation layout (sidebar vs top tabs) and q2 list density (compact vs comfortable). I recommend q1 → a and q2 → b, so say "q1 → b" if you want to change one: <artboard link>

@@ -1,0 +1,92 @@
+1. `canvas.json`
+
+```json
+{
+  "activePage": "settings",
+  "title": "Settings page",
+  "version": 1,
+  "pages": [{ "id": "settings", "name": "Settings" }],
+  "boards": {
+    "q1-a": {
+      "file": "pages/settings/q1-a.html",
+      "page": "settings",
+      "x": 0,
+      "y": 0,
+      "w": 1280,
+      "h": 800,
+      "title": "Sidebar nav (recommended)"
+    },
+    "q1-b": {
+      "file": "pages/settings/q1-b.html",
+      "page": "settings",
+      "x": 1360,
+      "y": 0,
+      "w": 1280,
+      "h": 800,
+      "title": "Top tabs"
+    },
+    "q2-a": {
+      "file": "pages/settings/q2-a.html",
+      "page": "settings",
+      "x": 0,
+      "y": 1040,
+      "w": 1280,
+      "h": 800,
+      "title": "Compact list"
+    },
+    "q2-b": {
+      "file": "pages/settings/q2-b.html",
+      "page": "settings",
+      "x": 1360,
+      "y": 1040,
+      "w": 1280,
+      "h": 800,
+      "title": "Comfortable list (recommended)"
+    }
+  },
+  "groups": {
+    "q1": { "title": "Navigation layout", "boards": ["q1-a", "q1-b"] },
+    "q2": { "title": "List density", "boards": ["q2-a", "q2-b"] }
+  },
+  "notes": {
+    "intro": {
+      "page": "settings",
+      "kind": "title",
+      "x": 0,
+      "y": -480,
+      "text": "Settings — round 1"
+    },
+    "how": {
+      "page": "settings",
+      "kind": "title",
+      "size": 40,
+      "x": 0,
+      "y": -340,
+      "text": "Say q1 → b to pick; anything you don't mention I'll take as the recommendation."
+    },
+    "why-q1": {
+      "page": "settings",
+      "kind": "sticky",
+      "x": 2768,
+      "y": 0,
+      "w": 300,
+      "text": "Sidebar keeps every section visible and scales as settings grow; tabs run out of room past about six sections.",
+      "color": "#cce8df"
+    },
+    "why-q2": {
+      "page": "settings",
+      "kind": "sticky",
+      "x": 2768,
+      "y": 1040,
+      "w": 300,
+      "text": "Comfortable rows are easier to scan and hit; notes and settings lists are short enough that the extra height costs little.",
+      "color": "#cce8df"
+    }
+  },
+  "focus": { "target": "q1", "at": "2026-11-01T09:00:00Z" }
+}
+```
+
+2. Terminal message:
+
+Round 1 is up: q1 navigation layout (I recommend a, sidebar) and q2 list density (I recommend b, comfortable). Reply like "q1 → b", and I'll take anything you skip as the recommendation. Link: `<artboard link with ?page=settings>`

@@ -1,0 +1,103 @@
+1. canvas.json
+
+```json
+{
+  "activePage": "settings",
+  "title": "Note-taking app settings",
+  "version": 1,
+  "pages": [{ "id": "settings", "name": "Settings" }],
+  "boards": {
+    "q1-a": {
+      "file": "pages/settings/q1-a.html",
+      "page": "settings",
+      "x": 0,
+      "y": 0,
+      "w": 1280,
+      "h": 800,
+      "title": "Sidebar nav"
+    },
+    "q1-b": {
+      "file": "pages/settings/q1-b.html",
+      "page": "settings",
+      "x": 1360,
+      "y": 0,
+      "w": 1280,
+      "h": 800,
+      "title": "Top tabs"
+    },
+    "q2-a": {
+      "file": "pages/settings/q2-a.html",
+      "page": "settings",
+      "x": 0,
+      "y": 1040,
+      "w": 1280,
+      "h": 800,
+      "title": "Compact list"
+    },
+    "q2-b": {
+      "file": "pages/settings/q2-b.html",
+      "page": "settings",
+      "x": 1360,
+      "y": 1040,
+      "w": 1280,
+      "h": 800,
+      "title": "Comfortable list"
+    }
+  },
+  "groups": {
+    "q1": {
+      "title": "Navigation layout",
+      "boards": ["q1-a", "q1-b"],
+      "choose": true,
+      "recommend": "q1-a"
+    },
+    "q2": {
+      "title": "List density",
+      "boards": ["q2-a", "q2-b"],
+      "choose": true,
+      "recommend": "q2-b"
+    }
+  },
+  "notes": {
+    "intro": {
+      "page": "settings",
+      "kind": "title",
+      "x": 0,
+      "y": -340,
+      "text": "Settings page — round 1"
+    },
+    "intro-how": {
+      "page": "settings",
+      "kind": "sticky",
+      "x": 1360,
+      "y": -340,
+      "w": 420,
+      "text": "Pick a board in each group and submit. Anything you don't pick, I'll take as my recommendation.",
+      "color": "#fff3b0"
+    },
+    "q1-why": {
+      "page": "settings",
+      "kind": "sticky",
+      "x": 2768,
+      "y": 0,
+      "w": 300,
+      "text": "Recommend A: a sidebar scales as settings sections grow and keeps every section one click away.",
+      "color": "#cce8df"
+    },
+    "q2-why": {
+      "page": "settings",
+      "kind": "sticky",
+      "x": 2768,
+      "y": 1040,
+      "w": 300,
+      "text": "Recommend B: comfortable rows are easier to scan and tap, and settings lists are short enough to afford the space.",
+      "color": "#cce8df"
+    }
+  },
+  "focus": { "target": "q1", "at": "2026-11-01T09:00:00Z" }
+}
+```
+
+2. Terminal message
+
+Round 1 of the settings page is up with two questions, nav layout (I recommend the sidebar) and list density (I recommend comfortable): `<artboard link>?page=settings`

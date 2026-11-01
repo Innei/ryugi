@@ -1,0 +1,7 @@
+1. `node app/ryugi-artifacts.cjs comment list --json --project-dir /work/app --artifact artboard/settings-page`
+2. `node app/ryugi-artifacts.cjs comment choose --json --project-dir /work/app --artifact artboard/settings-page --group q1 --board q1-b`
+3. `node app/ryugi-artifacts.cjs comment submit --json --project-dir /work/app --artifact artboard/settings-page --round <round id from step 1's rounds>`
+
+The round id is probably `r1`, but I'd read it from the `rounds` output in step 1 rather than assume it. Step 1 also shows any threads on q1 or q2 that are part of the answer.
+
+I skip `choose` for q2 because the guide says groups they didn't mention keep my recommendation (q2-b). I'd record q1 as their pick (q1-b) and q2 as the accepted recommendation (q2-b) in my next playback, since no document with a Settled section is open. I'd do that after the submit succeeds and before appending round 2 in a single `canvas.json` write.

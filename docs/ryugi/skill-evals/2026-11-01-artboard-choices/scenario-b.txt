@@ -1,0 +1,5 @@
+You are the agent in a brainstorming session. Read these guides first, completely: GUIDE_DIR/artboard-rounds.md and GUIDE_DIR/artboard.md. Do not read any other skill file.
+
+Situation: artboard "settings-page" in project /work/app shows round 1 (title note id "r1") with choice groups q1 (boards q1-a, q1-b; recommend q1-a) and q2 (boards q2-a, q2-b; recommend q2-b). Nothing has been picked or submitted on the board. Your human partner now types in the terminal: "q1 → b, the rest as you recommend".
+
+Do not run anything. List, in order, the exact shell commands you would run before drawing round 2 (use node app/ryugi-artifacts.cjs as the launcher), then one sentence on how you record this round's answers.

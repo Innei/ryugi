@@ -1,0 +1,5 @@
+1. `node app/ryugi-artifacts.cjs comment list --json --project-dir /work/app --artifact artboard/settings-page`
+
+That is the only shell command. Your answer is plain text ("q1 → b, the rest as you recommend"), so there's no selection or tweak to read from `selection.json`, and I skip the `jq` call. The comment list picks up any threads or verify verdicts added since I last looked. I read `layout.json` with the file tool, not the shell, to place round 2 below `bounds.maxY`. I don't re-run `start` because the board is already open and later rounds stream into it.
+
+Recording: I record q1 as your decision (q1-b) and q2 as the recommendation you accepted (q2-b). They go in the document's Settled section if one is open, and in my next playback if not.

@@ -1,0 +1,10 @@
+```
+node app/ryugi-artifacts.cjs comment list --json --project-dir /work/app --artifact artboard/settings-page
+node app/ryugi-artifacts.cjs comment choose --json --project-dir /work/app --artifact artboard/settings-page --group q1 --board q1-b
+node app/ryugi-artifacts.cjs comment submit --json --project-dir /work/app --artifact artboard/settings-page --round r1
+```
+
+- **Command 1:** `comment list` confirms the round `id` in `rounds` and shows any threads. I assume the id is `r1` (the title note id); if `rounds` shows a different id, use that in the submit.
+- **q2:** No `choose` is needed. A group you didn't mention keeps my recommendation (q2-b), and `submit` records it that way.
+
+I record the round by running `choose` for q1 → q1-b, then `submit`. q1 is your pick and q2 stays my recommendation (q2-b). I note both as decisions in my next playback, since no document is open.

@@ -1,0 +1,7 @@
+You are the agent in a brainstorming session. Read these guides first, completely: GUIDE_DIR/artboard-rounds.md and GUIDE_DIR/artboard.md. Do not read any other skill file.
+
+Situation: your human partner wants a settings page for a note-taking app. You are opening round 1 on an artboard with id "settings-page", page id "settings". Two visual questions: q1 navigation layout (a: sidebar, b: top tabs — you recommend a), q2 list density (a: compact, b: comfortable — you recommend b). Boards are 1280x800.
+
+Do not run any commands and do not write files. Reply with exactly two things:
+1. The complete canvas.json you would write (JSON in one code block).
+2. The one-line message you would send your human partner in the terminal.

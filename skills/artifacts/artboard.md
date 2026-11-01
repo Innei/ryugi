@@ -3,9 +3,9 @@
 An artboard is the space of a business requirement: boards are options,
 groups are questions, pages are areas. You put design explorations on it by
 writing files into the artboard's directory; the canvas updates the moment a
-file changes. Your human partner cannot move boards or pick options in the
-browser: they look, then tell you in the terminal what they want
-("q1 → b", "make q3-a's header lighter").
+file changes. Your human partner cannot move boards in the browser. In a
+choice group they pick a board and submit the round there; anything else
+they tell you in the terminal ("make q3-a's header lighter").
 
 Start the server and get the link as `SKILL.md` describes, with
 `--artifact artboard/<id>`.
@@ -111,7 +111,9 @@ comments.json in the artboard directory is the server's; never write it.
   for a question, the states of a component, or the parts of a review. List
   member board ids only; all members on one page. The viewer labels the group
   with its id and title above the boards. `"verify": true` turns a group into
-  something your human partner passes or rejects (see Verify groups).
+  something your human partner passes or rejects (see Verify groups);
+  `"choose": true` with `"recommend": "<board id>"` turns it into a question
+  they answer by picking a board (see Choice groups).
 - `notes`: `kind` is `title` or `sticky`; `x`/`y` is the top-left corner.
   - `title`: bold text, `size` px (default 96), one line tall (about
     1.15 × `size`). Without `w` it stays on one line; with `w` it wraps.
@@ -318,6 +320,36 @@ resolve` refuses a reject, and passing the group closes it.
 - A new verify round goes below the last one on the same page, with new
   groups; remove `"verify": true` from the previous round's groups so only
   the current round counts.
+
+## Choice groups
+
+A group with `"choose": true` is a question answered on the board: each
+board label gets a radio, the `recommend` board gets a tag, and a bar at the
+bottom submits the round. A round is the groups under one title note.
+
+- Comments on an open round stay quiet until it is submitted. The submit
+  arrives as a `ryugi-choices` message (or they say done in the terminal):
+  run its command.
+- `comment list --json` returns each choice group in `groups` (`kind:
+"choose"`, `choice`, `byRecommendation`, `threads`) and each round in
+  `rounds` (`id`, `state`: `open`, `submitted` or `closed`). `choice` is the
+  answer; `byRecommendation: true` means they kept your recommendation; a
+  `null` choice has no answer. Comments on any board of the group are part
+  of the answer: read the threads too.
+- They answered in the terminal instead ("q1 → b", "done"): record their
+  picks and submit the round, with the round `id` from `rounds`, before you
+  draw the next one. Groups they did not mention keep your recommendation.
+
+  ```bash
+  node app/ryugi-artifacts.cjs comment choose --json --project-dir /path/to/project --artifact artboard/<id> --group q1 --board q1-b
+  node app/ryugi-artifacts.cjs comment submit --json --project-dir /path/to/project --artifact artboard/<id> --round <round id>
+  ```
+
+- A `ryugi-choices` message with `"withdrawn": true`, before you wrote the
+  next round: stop, and wait for the next submit.
+- The next round goes below, its title note and groups in one `canvas.json`
+  write; that closes the round above.
+- A group is never both `choose` and `verify`.
 
 ## Rounds and pages
 
