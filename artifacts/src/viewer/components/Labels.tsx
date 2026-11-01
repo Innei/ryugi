@@ -1,94 +1,23 @@
-import { clearCache, measureNaturalWidth, prepare } from '@chenglou/pretext';
-import { ActionIcon, DropdownMenu } from '@lobehub/ui';
+import { clearCache } from '@chenglou/pretext';
 import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
-import {
-  Download,
-  Ellipsis,
-  Film,
-  Image as ImageIcon,
-  Maximize2,
-  Play,
-  RotateCcw,
-  SlidersHorizontal,
-} from 'lucide-react';
-import { type Ref, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { type Ref, useCallback, useEffect, useState } from 'react';
 
-import { type BoardSpec, type GroupSpec, isMediaBoard } from '../../shared/types';
+import type { BoardSpec, GroupSpec } from '../../shared/types';
 import type { Verdicts } from '../hooks/useVerdicts';
-import { t } from '../i18n';
-import { boardLabelLayout, type BoardLabelMetrics } from '../lib/board-label';
+import { BOARD_LABEL_HEIGHT } from '../lib/board-label';
 import { boardReady, canPlay } from '../lib/play';
 import { BOARD_LABEL_RULE, GROUP_LABEL_RULE, labelRect, labelSize, type View } from '../lib/view';
-import { brand } from '../tokens.stylex';
 import { GroupVerdict } from '../verdicts/GroupVerdict';
+import { BOARD_LABEL_FONT, BoardLabel } from './BoardLabel';
 
-const BOARD_LABEL_FONT = 12;
 const GROUP_LABEL_FONT = 13;
 const GROUP_LABEL_GAP = 26;
 const scaleOf = (size: number | null, font: number) => (size === null ? null : size / font);
 
-function downloadFile(href: string, name: string) {
-  const link = document.createElement('a');
-  link.href = href;
-  link.download = name;
-  link.click();
-}
-
 const styles = stylex.create({
   layer: { position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden' },
   overlay: { position: 'absolute', inset: 0 },
-  boardLabel: {
-    position: 'absolute',
-    display: 'flex',
-    alignItems: 'center',
-    height: 24,
-    transformOrigin: '0 0',
-    paddingBottom: 2,
-    color: cssVar.colorTextSecondary,
-    pointerEvents: 'auto',
-  },
-  title: {
-    flex: 1,
-    display: 'flex',
-    alignItems: 'baseline',
-    gap: 6,
-    minWidth: 0,
-    overflow: 'hidden',
-    fontSize: BOARD_LABEL_FONT,
-    fontFamily: cssVar.fontFamily,
-    whiteSpace: 'nowrap',
-    textOverflow: 'ellipsis',
-  },
-  name: { minWidth: 0, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' },
-  id: {
-    flexShrink: 0,
-    fontFamily: cssVar.fontFamilyCode,
-    fontSize: 11,
-    color: cssVar.colorTextSecondary,
-  },
-  actions: { display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0, marginInlineStart: 8 },
-  stackedActions: { marginInlineStart: 'auto' },
-  actionActive: {
-    backgroundColor: {
-      'default': `color-mix(in srgb, ${brand.accent} 16%, transparent)`,
-      ':hover': `color-mix(in srgb, ${brand.accent} 24%, transparent)`,
-    },
-    color: brand.accentStrong,
-  },
-  more: {
-    display: 'grid',
-    placeItems: 'center',
-    width: 22,
-    height: 22,
-    borderWidth: 0,
-    borderRadius: 5,
-    backgroundColor: 'transparent',
-    color: cssVar.colorTextSecondary,
-    cursor: 'pointer',
-    padding: 0,
-  },
-  kind: { flexShrink: 0, alignSelf: 'center', display: 'flex', color: cssVar.colorTextTertiary },
   groupLabel: {
     position: 'absolute',
     display: 'flex',
@@ -155,245 +84,6 @@ function useLabelFonts() {
   return version;
 }
 
-function naturalWidth(element: HTMLElement, text: string) {
-  const style = getComputedStyle(element);
-  const font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
-  return measureNaturalWidth(
-    prepare(text, font, { letterSpacing: Number.parseFloat(style.letterSpacing) || 0 }),
-  );
-}
-
-interface BoardLabelProps extends Pick<
-  LabelsProps,
-  'contentBase' | 'onExpand' | 'onReplay' | 'onTogglePlay' | 'onToggleParameters'
-> {
-  active: boolean;
-  board: BoardSpec;
-  fontsVersion: number;
-  id: string;
-  interactive: boolean;
-  modified?: boolean;
-  onStacked: (id: string, stacked: boolean) => void;
-  playing: boolean;
-  ready: boolean;
-  rect: { left: number; top: number; width: number };
-  scale: number;
-}
-
-function BoardLabel({
-  active,
-  board,
-  contentBase,
-  fontsVersion,
-  id,
-  interactive,
-  modified,
-  playing,
-  ready,
-  rect,
-  scale,
-  onExpand,
-  onReplay,
-  onTogglePlay,
-  onToggleParameters,
-  onStacked,
-}: BoardLabelProps) {
-  const titleRef = useRef<HTMLSpanElement>(null);
-  const idRef = useRef<HTMLSpanElement>(null);
-  const actionsRef = useRef<HTMLDivElement>(null);
-  const moreRef = useRef<HTMLButtonElement>(null);
-  const [metrics, setMetrics] = useState<BoardLabelMetrics>({ title: 0, id: 0, actions: 0 });
-  const width = rect.width / scale;
-  const compact = width < 160;
-  const tiny = width < 90;
-  const directParameters = modified !== undefined && width >= 60;
-  const media = isMediaBoard(board);
-  const title = board.title ?? id;
-  const identifier = media ? `${id} · ${board.file.split('/').pop()}` : id;
-  useLayoutEffect(() => {
-    const name = titleRef.current;
-    const code = idRef.current;
-    const actions = actionsRef.current;
-    if (!name || !code || !actions) return;
-    const titleWidth = naturalWidth(name, title) + (media ? 18 : 0);
-    const idWidth = naturalWidth(code, identifier);
-    const measure = () => {
-      const next = { title: titleWidth, id: idWidth, actions: actions.offsetWidth };
-      setMetrics((current) =>
-        current.title === next.title && current.id === next.id && current.actions === next.actions
-          ? current
-          : next,
-      );
-    };
-    measure();
-    if (typeof ResizeObserver !== 'function') return;
-    const observer = new ResizeObserver(measure);
-    observer.observe(actions);
-    return () => observer.disconnect();
-  }, [
-    title,
-    identifier,
-    media,
-    fontsVersion,
-    compact,
-    tiny,
-    directParameters,
-    ready,
-    interactive,
-    playing,
-  ]);
-  const { stacked, showId } = boardLabelLayout(metrics, rect.width, scale);
-  useLayoutEffect(() => {
-    onStacked(id, stacked);
-    return () => onStacked(id, false);
-  }, [id, stacked, onStacked]);
-  const download = () =>
-    downloadFile(`${contentBase}${board.file}`, board.file.split('/').pop() ?? `${id}.html`);
-  return (
-    <div
-      data-board-label={id}
-      data-chrome="board-label"
-      {...stylex.props(styles.boardLabel)}
-      style={{
-        left: rect.left,
-        top: rect.top,
-        width,
-        height: stacked ? 48 : 24,
-        flexDirection: stacked ? 'column' : 'row',
-        alignItems: stacked ? 'stretch' : 'center',
-        transform: `scale(${scale}) translateY(-100%)`,
-      }}
-    >
-      <span {...stylex.props(styles.title)} title={title}>
-        {media && (
-          <span data-board-type={board.type} {...stylex.props(styles.kind)}>
-            {board.type === 'video' ? (
-              <Film aria-hidden size={12} />
-            ) : (
-              <ImageIcon aria-hidden size={12} />
-            )}
-          </span>
-        )}
-        <span ref={titleRef} {...stylex.props(styles.name)}>
-          {title}
-        </span>
-        <span hidden={!showId} ref={idRef} {...stylex.props(styles.id)}>
-          {identifier}
-        </span>
-      </span>
-      <div ref={actionsRef} {...stylex.props(styles.actions, stacked && styles.stackedActions)}>
-        {ready && !compact && (
-          <>
-            <ActionIcon
-              aria-label={t('chrome.expandBoard', { id })}
-              icon={Maximize2}
-              size={{ blockSize: 22, size: 13 }}
-              title={t('chrome.expand')}
-              onClick={() => onExpand(id)}
-            />
-            <ActionIcon
-              aria-label={t('chrome.downloadBoard', { id })}
-              icon={Download}
-              size={{ blockSize: 22, size: 13 }}
-              title={t('chrome.download')}
-              onClick={download}
-            />
-          </>
-        )}
-        {ready && directParameters && (
-          <button
-            aria-expanded={active}
-            type="button"
-            aria-label={t(modified ? 'chrome.modifiedParametersBoard' : 'chrome.parametersBoard', {
-              id,
-            })}
-            title={t(modified ? 'chrome.modifiedParametersBoard' : 'chrome.parametersBoard', {
-              id,
-            })}
-            onClick={(event) => onToggleParameters?.(id, event.currentTarget)}
-            {...stylex.props(styles.more, modified && styles.actionActive)}
-          >
-            <SlidersHorizontal aria-hidden size={13} />
-          </button>
-        )}
-        {interactive && playing && !compact && (
-          <ActionIcon
-            aria-label={t('chrome.replayBoard', { id })}
-            icon={RotateCcw}
-            size={{ blockSize: 22, size: 13 }}
-            title={t('chrome.replay')}
-            onClick={() => onReplay(id)}
-          />
-        )}
-        {interactive && !tiny && (
-          <ActionIcon
-            active={playing}
-            aria-label={playing ? t('chrome.stopBoard', { id }) : t('chrome.playBoard', { id })}
-            aria-pressed={playing}
-            fill={playing ? 'currentColor' : 'none'}
-            icon={Play}
-            size={{ blockSize: 22, size: 13 }}
-            title={playing ? t('chrome.playing') : t('chrome.play')}
-            onClick={() => onTogglePlay(id)}
-            {...stylex.props(playing && styles.actionActive)}
-          />
-        )}
-        {ready && compact && (
-          <DropdownMenu
-            items={[
-              {
-                key: 'expand',
-                icon: Maximize2,
-                label: t('chrome.expand'),
-                onClick: () => onExpand(id),
-              },
-              { key: 'download', icon: Download, label: t('chrome.download'), onClick: download },
-              modified !== undefined && !directParameters
-                ? {
-                    key: 'parameters',
-                    icon: SlidersHorizontal,
-                    label: t(
-                      modified ? 'chrome.modifiedParametersBoard' : 'chrome.parametersBoard',
-                      { id },
-                    ),
-                    onClick: () => {
-                      if (moreRef.current) onToggleParameters?.(id, moreRef.current);
-                    },
-                  }
-                : null,
-              interactive && tiny
-                ? {
-                    key: 'play',
-                    icon: Play,
-                    label: playing ? t('chrome.playing') : t('chrome.play'),
-                    onClick: () => onTogglePlay(id),
-                  }
-                : null,
-              interactive && playing
-                ? {
-                    key: 'replay',
-                    icon: RotateCcw,
-                    label: t('chrome.replay'),
-                    onClick: () => onReplay(id),
-                  }
-                : null,
-            ]}
-          >
-            <button
-              aria-label={t('chrome.moreBoard', { id })}
-              ref={moreRef}
-              type="button"
-              {...stylex.props(styles.more)}
-            >
-              <Ellipsis aria-hidden size={13} />
-            </button>
-          </DropdownMenu>
-        )}
-      </div>
-    </div>
-  );
-}
-
 export function Labels({
   view,
   boards,
@@ -413,12 +103,13 @@ export function Labels({
   overlayRef,
 }: LabelsProps) {
   const fontsVersion = useLabelFonts();
-  const [stackedBoards, setStackedBoards] = useState<ReadonlySet<string>>(() => new Set());
-  const onStacked = useCallback((id: string, stacked: boolean) => {
-    setStackedBoards((current) => {
-      if (current.has(id) === stacked) return current;
+  const [wrappedBoards, setWrappedBoards] = useState<ReadonlySet<string>>(() => new Set());
+  const onLines = useCallback((id: string, lines: 1 | 2) => {
+    setWrappedBoards((current) => {
+      const wrapped = lines === 2;
+      if (current.has(id) === wrapped) return current;
       const next = new Set(current);
-      if (stacked) next.add(id);
+      if (wrapped) next.add(id);
       else next.delete(id);
       return next;
     });
@@ -448,8 +139,8 @@ export function Labels({
                   top:
                     view.y +
                     y * view.k -
-                    (boardScale !== null && group.boards.some((board) => stackedBoards.has(board))
-                      ? 24 * boardScale
+                    (boardScale !== null && group.boards.some((board) => wrappedBoards.has(board))
+                      ? (BOARD_LABEL_HEIGHT[2] - BOARD_LABEL_HEIGHT[1]) * boardScale
                       : 0),
                   transform: `scale(${groupScale}) translateY(calc(-100% - ${GROUP_LABEL_GAP}px))`,
                 }}
@@ -489,8 +180,8 @@ export function Labels({
                 rect={rect}
                 scale={boardScale}
                 onExpand={onExpand}
+                onLines={onLines}
                 onReplay={onReplay}
-                onStacked={onStacked}
                 onToggleParameters={onToggleParameters}
                 onTogglePlay={onTogglePlay}
               />
