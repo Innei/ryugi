@@ -15,6 +15,11 @@ test('root help lists every command with its summary and points at per-command h
   expect(help).toContain('ryugi-artifacts <command> --help');
 });
 
+test('monitor is gone: the machine runs one server, managed from its home page', () => {
+  expect(COMMANDS.map((command) => command.name)).not.toContain('monitor');
+  expect(rootHelp(COMMANDS)).not.toMatch(/monitor/);
+});
+
 test.each(COMMANDS.map((command) => [command.name, command] as const))(
   '%s help documents every visible option it parses',
   (_name, command) => {

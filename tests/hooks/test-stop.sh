@@ -46,6 +46,35 @@ printf '{"hook_event_name":"Stop"}' \
   | env -i PATH="$TEST_ROOT/bin:${PATH:-}" HOME="$TEST_ROOT" CLAUDE_PROJECT_DIR="$dir/packages/app" bash "$HOOK" stop > /dev/null || true
 if [ "$(tail -n 1 "$TEST_ROOT/node-args" 2> /dev/null)" = "$(cd "$dir" && pwd -P)" ]; then pass "flushes the repository's server from a session in a subdirectory"; else fail "flushes the repository's server from a session in a subdirectory"; fi
 
+dir="$TEST_ROOT/shared"
+mkdir -p "$dir/.ryugi/artifacts/.state"
+seen="$TEST_ROOT/seen-project"
+port_file="$TEST_ROOT/port"
+node -e '
+  const http = require("node:http");
+  const fs = require("node:fs");
+  const server = http.createServer((req, res) => {
+    fs.writeFileSync(process.argv[1], `${req.method} ${req.url.split("?")[0]} ${decodeURIComponent(req.headers["x-ryugi-project"] || "")}`);
+    res.end("{}");
+    server.close();
+  });
+  server.listen(0, "127.0.0.1", () => fs.writeFileSync(process.argv[2], String(server.address().port)));
+  setTimeout(() => process.exit(0), 5000);
+' "$seen" "$port_file" &
+server_pid=$!
+for _ in $(seq 1 50); do
+  [ -s "$port_file" ] && break
+  sleep 0.1
+done
+printf '{"type":"server-started","url":"http://localhost:%s/"}\n' "$(cat "$port_file")" > "$dir/.ryugi/artifacts/.state/server-info"
+node "$REPO_ROOT/hooks/flush-artifacts.cjs" "$dir"
+for _ in $(seq 1 30); do
+  [ -s "$seen" ] && break
+  sleep 0.1
+done
+wait "$server_pid" 2> /dev/null || true
+if [ "$(cat "$seen" 2> /dev/null)" = "POST /api/cloud/flush $dir" ]; then pass "names its project to the shared server when it flushes"; else fail "names its project to the shared server when it flushes ($(cat "$seen" 2> /dev/null))"; fi
+
 if [ "$FAILURES" -gt 0 ]; then
   echo "$FAILURES failure(s)"
   exit 1

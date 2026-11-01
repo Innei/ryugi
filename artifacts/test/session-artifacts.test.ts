@@ -49,13 +49,14 @@ function project({ signedIn, published }: { signedIn: boolean; published: boolea
   return { dir, run, info };
 }
 
-test('starts the artifacts server for a signed-in project with a published document, owned by the session', () => {
+test('starts the artifacts server for a signed-in project with a published document and registers it', () => {
   const { dir, run, info } = project({ signedIn: true, published: true });
   expect(run().status).toBe(0);
   expect(fs.existsSync(info)).toBe(true);
-  expect(
-    fs.readFileSync(path.join(dir, '.ryugi', 'artifacts', '.state', 'owners'), 'utf8').trim(),
-  ).toBe(String(process.pid));
+  const registry = JSON.parse(
+    fs.readFileSync(path.join(process.env.RYUGI_SERVER_HOME!, 'projects.json'), 'utf8'),
+  ) as { projects: { dir: string }[] };
+  expect(registry.projects.map((entry) => entry.dir)).toContain(fs.realpathSync(dir));
 });
 
 test('does nothing when signed out', () => {

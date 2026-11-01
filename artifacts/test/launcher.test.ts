@@ -70,12 +70,33 @@ function fakeNpm({ installExit = 0, before = '' } = {}) {
   };
 }
 
+const freePort = () =>
+  Number(
+    spawnSync(
+      process.execPath,
+      [
+        '-e',
+        "const s=require('node:net').createServer();s.listen(0,'127.0.0.1',()=>{process.stdout.write(String(s.address().port));s.close()})",
+      ],
+      { encoding: 'utf8' },
+    ).stdout,
+  );
+
+function ownServer() {
+  const home = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'artifacts-launcher-home-')), 's');
+  return { RYUGI_SERVER_HOME: home, RYUGI_ARTIFACTS_PORTS: String(freePort()) };
+}
+
+const machineFile = (env: { RYUGI_SERVER_HOME: string }, name: string) =>
+  path.join(env.RYUGI_SERVER_HOME, name);
+
 function setup(npmOptions?: Parameters<typeof fakeNpm>[0]) {
   const app = installedCopy();
   const npm = fakeNpm(npmOptions);
   const cache = fs.mkdtempSync(path.join(os.tmpdir(), 'artifacts-cache-'));
   const env = {
     ...process.env,
+    ...ownServer(),
     PATH: `${npm.bin}:${process.env.PATH}`,
     XDG_CACHE_HOME: cache,
     ARTIFACTS_OPEN: '0',
@@ -93,15 +114,12 @@ function setup(npmOptions?: Parameters<typeof fakeNpm>[0]) {
     cleanups.push(() => launch(['stop', '--project-dir', dir]));
     return dir;
   };
-  return { app, npm, cache, env, launch, project };
+  const pid = () => Number(fs.readFileSync(machineFile(env, 'server.pid'), 'utf8'));
+  return { app, npm, cache, env, launch, project, pid };
 }
 
 const releases = (cache: string) =>
   fs.readdirSync(path.join(cache, 'ryugi', 'artifacts')).filter((name) => name !== 'latest.json');
-const pidOf = (project: string) =>
-  Number(
-    fs.readFileSync(path.join(project, '.ryugi', 'artifacts', '.state', 'server.pid'), 'utf8'),
-  );
 
 function ageLatestCheck(cache: string, ms: number, next?: string) {
   const file = path.join(cache, 'ryugi', 'artifacts', 'latest.json');
@@ -113,91 +131,53 @@ function ageLatestCheck(cache: string, ms: number, next?: string) {
 }
 
 describe('launcher with a local build', () => {
+  const localLaunch = (server: ReturnType<typeof ownServer>, env: NodeJS.ProcessEnv) => {
+    const launch = (args: string[], extraEnv: Record<string, string> = {}) =>
+      JSON.parse(
+        spawnSync(process.execPath, [path.join(appDir, launcherName), ...args], {
+          encoding: 'utf8',
+          env: { ...process.env, ...server, ARTIFACTS_OPEN: '0', ...env, ...extraEnv },
+          timeout: 20000,
+        })
+          .stdout.trim()
+          .split('\n')
+          .pop()!,
+      );
+    cleanups.push(() => launch(['stop']));
+    return launch;
+  };
+
   test('runs the CLI beside it without asking npm', () => {
     const npm = fakeNpm();
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'artifacts-project-'));
-    const env = { ...process.env, PATH: `${npm.bin}:${process.env.PATH}`, ARTIFACTS_OPEN: '0' };
-    const launch = (args: string[]) =>
-      JSON.parse(
-        spawnSync(process.execPath, [path.join(appDir, launcherName), ...args], {
-          encoding: 'utf8',
-          env,
-          timeout: 20000,
-        })
-          .stdout.trim()
-          .split('\n')
-          .pop()!,
-      );
-    cleanups.push(() => launch(['stop', '--project-dir', dir]));
+    const launch = localLaunch(ownServer(), { PATH: `${npm.bin}:${process.env.PATH}` });
     expect(launch(['start', '--project-dir', dir, '--json']).type).toBe('server-started');
     expect(npm.views()).toHaveLength(0);
-    const owners = fs
-      .readFileSync(path.join(dir, '.ryugi', 'artifacts', '.state', 'owners'), 'utf8')
-      .trim()
-      .split('\n');
-    expect(owners).toEqual([String(process.ppid)]);
-  });
-
-  test('keeps an owner it was handed instead of guessing one', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'artifacts-project-'));
-    const env = { ...process.env, ARTIFACTS_OPEN: '0', RYUGI_ARTIFACTS_OWNER: String(process.pid) };
-    const launch = (args: string[]) =>
-      JSON.parse(
-        spawnSync(process.execPath, [path.join(appDir, launcherName), ...args], {
-          encoding: 'utf8',
-          env,
-          timeout: 20000,
-        })
-          .stdout.trim()
-          .split('\n')
-          .pop()!,
-      );
-    cleanups.push(() => launch(['stop', '--project-dir', dir]));
-    expect(launch(['start', '--project-dir', dir, '--json']).type).toBe('server-started');
-    const owners = fs
-      .readFileSync(path.join(dir, '.ryugi', 'artifacts', '.state', 'owners'), 'utf8')
-      .trim()
-      .split('\n');
-    expect(owners).toEqual([String(process.pid)]);
   });
 
   test('records a local source version and replaces the server when it changes', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'artifacts-project-'));
-    const launch = (extraEnv: Record<string, string> = {}) =>
-      JSON.parse(
-        spawnSync(
-          process.execPath,
-          [path.join(appDir, launcherName), 'start', '--project-dir', dir, '--json'],
-          {
-            encoding: 'utf8',
-            env: { ...process.env, ARTIFACTS_OPEN: '0', ...extraEnv },
-            timeout: 20000,
-          },
-        )
-          .stdout.trim()
-          .split('\n')
-          .pop()!,
-      );
-    cleanups.push(() => launch({ RYUGI_ARTIFACTS_COMMAND: '' }));
+    const server = ownServer();
+    const launch = localLaunch(server, {});
+    const start = (extraEnv: Record<string, string> = {}) =>
+      launch(['start', '--project-dir', dir, '--json'], extraEnv);
+    const pidOf = () => Number(fs.readFileSync(machineFile(server, 'server.pid'), 'utf8'));
 
-    const first = launch();
-    expect(first.type).toBe('server-started');
-    const version = fs
-      .readFileSync(path.join(dir, '.ryugi', 'artifacts', '.state', 'server-version'), 'utf8')
-      .trim();
+    expect(start().type).toBe('server-started');
+    const version = fs.readFileSync(machineFile(server, 'server-version'), 'utf8').trim();
     expect(version).toMatch(/^local-[0-9a-f]{12}$/);
 
-    const pid = pidOf(dir);
-    expect(launch().reused).toBe(true);
-    expect(pidOf(dir)).toBe(pid);
+    const pid = pidOf();
+    expect(start().reused).toBe(true);
+    expect(pidOf()).toBe(pid);
 
-    expect(launch({ RYUGI_ARTIFACTS_VERSION: 'local-forced' }).reused).not.toBe(true);
-    expect(pidOf(dir)).not.toBe(pid);
+    expect(start({ RYUGI_ARTIFACTS_VERSION: 'local-forced' }).reused).not.toBe(true);
+    expect(pidOf()).not.toBe(pid);
 
-    expect(launch({ RYUGI_ARTIFACTS_VERSION: version }).reused).not.toBe(true);
-    const restored = pidOf(dir);
-    expect(launch({ RYUGI_ARTIFACTS_VERSION: version }).reused).toBe(true);
-    expect(pidOf(dir)).toBe(restored);
+    expect(start({ RYUGI_ARTIFACTS_VERSION: version }).reused).not.toBe(true);
+    const restored = pidOf();
+    expect(start({ RYUGI_ARTIFACTS_VERSION: version }).reused).toBe(true);
+    expect(pidOf()).toBe(restored);
   }, 30000);
 });
 
@@ -274,10 +254,10 @@ describe('launcher without a local build', () => {
   }, 30000);
 
   test('reuses a running server on the latest release and replaces one from another release, keeping its link', () => {
-    const { npm, cache, launch, project } = setup();
+    const { npm, cache, launch, project, pid } = setup();
     const dir = project();
     const first = launch(['start', '--project-dir', dir]).out;
-    const oldPid = pidOf(dir);
+    const oldPid = pid();
     expect(launch(['start', '--project-dir', dir]).out.reused).toBe(true);
     npm.publish('9.9.10');
     ageLatestCheck(cache, DAY_MS + 60_000);
@@ -304,17 +284,17 @@ describe('launcher without a local build', () => {
   }, 30000);
 
   test('an old server that ignores SIGTERM is killed so the new one keeps the link', () => {
-    const { npm, cache, launch, project } = setup();
+    const { npm, cache, launch, project, pid } = setup();
     npm.installStubbornServers();
     const dir = project();
     const first = launch(['start', '--project-dir', dir]).out;
-    const oldPid = pidOf(dir);
+    const oldPid = pid();
     npm.publish('9.9.10');
     ageLatestCheck(cache, DAY_MS + 60_000);
     const second = launch(['start', '--project-dir', dir]).out;
     expect(second.url).toBe(first.url);
     expect(() => process.kill(oldPid, 0)).toThrow();
-    process.kill(pidOf(dir), 'SIGKILL');
+    process.kill(pid(), 'SIGKILL');
   }, 30000);
 
   test('reports the release it could not install', () => {

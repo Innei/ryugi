@@ -144,6 +144,34 @@ describe('ryugi-artifacts check', () => {
     expect(out.error).toMatch(/No artifacts server is running/);
   });
 
+  test('checks the artifact of the --project-dir project when two projects share a slug', async () => {
+    const good = await project((root) =>
+      writeHtml(root, 'tuner', { 'index.html': '<html><body>ok</body></html>' }),
+    );
+    const broken = await project((root) => writeHtml(root, 'tuner', { 'style.css': 'a{}' }));
+    const fromGood = await run(['check', '--project-dir', good, '--artifact', 'html/tuner']);
+    const fromBroken = await run(['check', '--project-dir', broken, '--artifact', 'html/tuner']);
+    expect(fromGood.out.warnings).toEqual([]);
+    expect(fromBroken.out.warnings.length).toBeGreaterThan(0);
+  });
+
+  test('a project the running server does not know yet is told to start first', async () => {
+    await project((root) => writeHtml(root, 'tuner', { 'index.html': '<html></html>' }));
+    const stranger = fs.mkdtempSync(path.join(os.tmpdir(), 'check-project-'));
+    writeHtml(path.join(stranger, '.ryugi', 'artifacts'), 'tuner', {
+      'index.html': '<html></html>',
+    });
+    const { code, out } = await run([
+      'check',
+      '--project-dir',
+      stranger,
+      '--artifact',
+      'html/tuner',
+    ]);
+    expect(code).toBe(1);
+    expect(out.error).toMatch(/start --project-dir/);
+  });
+
   test('fails for an artifact that does not exist', async () => {
     const dir = await project((root) =>
       writeHtml(root, 'tuner', { 'index.html': '<html></html>' }),

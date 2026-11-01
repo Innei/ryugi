@@ -1,29 +1,36 @@
 import fs from 'node:fs';
+import path from 'node:path';
 
+import { artifactsRootOf, machinePaths, readProjects } from '../server/machine';
 import type { CommandSpec } from './command';
-import { projectPaths } from './paths';
 import { alive, hasServerId, readText, waitForExit } from './process';
 import type { Emit } from './start';
 
-export async function stop(projectDir: string, emit: Emit): Promise<number> {
-  const paths = projectPaths(projectDir);
+function clearCompatInfo(projectsFile: string) {
+  for (const entry of readProjects(projectsFile))
+    fs.rmSync(path.join(artifactsRootOf(entry.dir), '.state', 'server-info'), { force: true });
+}
+
+export async function stop(emit: Emit): Promise<number> {
+  const machine = machinePaths();
   const markStopped = (reason: string) => {
-    fs.rmSync(paths.info, { force: true });
-    fs.mkdirSync(paths.state, { recursive: true });
+    fs.rmSync(machine.info, { force: true });
+    clearCompatInfo(machine.projects);
+    fs.mkdirSync(machine.home, { recursive: true, mode: 0o700 });
     fs.writeFileSync(
-      paths.stopped,
+      machine.stopped,
       `${JSON.stringify({ reason, timestamp: Math.floor(Date.now() / 1000) })}\n`,
     );
   };
-  const pid = Number(readText(paths.pid));
-  if (readText(paths.pid) === null) {
+  if (readText(machine.pid) === null) {
     emit({ status: 'not_running' });
     return 0;
   }
-  const id = readText(paths.serverId) ?? '';
+  const pid = Number(readText(machine.pid));
+  const id = readText(machine.serverId) ?? '';
   if (!Number.isInteger(pid) || pid <= 0 || !/^[\w-]{32,64}$/.test(id) || !hasServerId(pid, id)) {
-    fs.rmSync(paths.pid, { force: true });
-    fs.rmSync(paths.serverId, { force: true });
+    fs.rmSync(machine.pid, { force: true });
+    fs.rmSync(machine.serverId, { force: true });
     markStopped('stale_pid');
     emit({ status: 'stale_pid' });
     return 0;
@@ -31,7 +38,7 @@ export async function stop(projectDir: string, emit: Emit): Promise<number> {
   try {
     process.kill(pid, 'SIGTERM');
   } catch {}
-  if (!(await waitForExit(pid, 2000))) {
+  if (!(await waitForExit(pid, 7000))) {
     try {
       process.kill(pid, 'SIGKILL');
     } catch {}
@@ -41,8 +48,7 @@ export async function stop(projectDir: string, emit: Emit): Promise<number> {
     emit({ status: 'failed', error: 'process still running' });
     return 1;
   }
-  for (const file of [paths.pid, paths.serverId, paths.log, paths.owners])
-    fs.rmSync(file, { force: true });
+  for (const file of [machine.pid, machine.serverId]) fs.rmSync(file, { force: true });
   markStopped('stop');
   emit({ status: 'stopped' });
   return 0;
@@ -50,10 +56,9 @@ export async function stop(projectDir: string, emit: Emit): Promise<number> {
 
 export const stopCommand: CommandSpec = {
   name: 'stop',
-  summary: "Stop the project's artifacts server; the artifacts are kept",
-  usage: ['[project-directory] [options]'],
+  summary: "Stop this machine's artifacts server; the artifacts are kept",
+  usage: ['[options]'],
   options: {},
   positionals: 1,
-  run: ({ values, positionals }, emit) =>
-    stop((values['project-dir'] as string | undefined) ?? positionals[0] ?? process.cwd(), emit),
+  run: (_args, emit) => stop(emit),
 };

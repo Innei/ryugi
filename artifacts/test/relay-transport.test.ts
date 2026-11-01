@@ -379,3 +379,63 @@ describe('requests that never get an answer', () => {
     await expect(pending).rejects.toThrow('offline');
   });
 });
+
+describe('a full relay', () => {
+  const rejectWith = (socket: FakeSocket, code: number, reason: string) => {
+    socket.readyState = 3;
+    (socket.onclose as unknown as (event: { code: number; reason: string }) => void)?.({
+      code,
+      reason,
+    });
+  };
+
+  test('4429 is final: it reports why and does not retry', async () => {
+    vi.useFakeTimers();
+    const { socket, presence } = connect();
+    socket().open();
+    rejectWith(socket(), 4429, 'connections full');
+    await vi.advanceTimersByTimeAsync(200);
+    expect(FakeSocket.all).toHaveLength(1);
+    expect(presence.at(-1)).toEqual({
+      online: false,
+      version: null,
+      rejected: 'full',
+      reason: 'connections full',
+    });
+  });
+
+  test('the daily limit reads as paused', () => {
+    const { socket, presence } = connect();
+    rejectWith(socket(), 4429, 'daily limit');
+    expect(presence.at(-1)).toMatchObject({ rejected: 'paused' });
+  });
+
+  test('reconnect tries again after a rejection', () => {
+    const { connection, socket } = connect();
+    rejectWith(socket(), 4429, 'connections full');
+    connection.reconnect();
+    expect(FakeSocket.all).toHaveLength(2);
+  });
+
+  test('the relay transport reconnects on request', () => {
+    const transport = createRelayTransport({
+      url: 'wss://cloud.example/api/relay/a/c1',
+      artifact: 'document/c1',
+      contentBase: '/c/',
+      WebSocket: FakeSocket as never,
+      onPresence: () => {},
+    });
+    connections.push(transport);
+    rejectWith(FakeSocket.all.at(-1)!, 4429, 'connections full');
+    transport.reconnect();
+    expect(FakeSocket.all).toHaveLength(2);
+  });
+
+  test('another close still retries', async () => {
+    vi.useFakeTimers();
+    const { socket } = connect();
+    rejectWith(socket(), 1006, '');
+    await vi.advanceTimersByTimeAsync(20);
+    expect(FakeSocket.all).toHaveLength(2);
+  });
+});

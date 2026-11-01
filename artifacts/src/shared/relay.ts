@@ -22,4 +22,17 @@ export type LiveHost = {
   embedDocument?: boolean;
 };
 
-export type RelayPresence = { online: boolean; version: string | null; hosts?: LiveHost[] };
+export const RELAY_REJECTED_CODE = 4429;
+
+export type RelayRejection = 'full' | 'paused';
+
+export type RelayPresence = {
+  online: boolean;
+  version: string | null;
+  hosts?: LiveHost[];
+  rejected?: RelayRejection;
+  reason?: string;
+};
+
+export const relayRejection = (reason: string): RelayRejection =>
+  /daily/i.test(reason) ? 'paused' : 'full';

@@ -107,7 +107,7 @@ test('opens the library root and reuses its server for the next invocation', asy
   await waitFor(() => fs.existsSync(log), 5000);
   const info = readJson(path.join(dir, '.ryugi/artifacts/.state/server-info'));
   expect(fs.readFileSync(log, 'utf8').trim()).toBe(info.url);
-  const pidFile = path.join(dir, '.ryugi/artifacts/.state/server.pid');
+  const pidFile = path.join(process.env.RYUGI_SERVER_HOME!, 'server.pid');
   const pid = fs.readFileSync(pidFile, 'utf8');
   const again = spawnSync(process.execPath, [entry, '--project-dir', dir, '--no-open'], {
     encoding: 'utf8',

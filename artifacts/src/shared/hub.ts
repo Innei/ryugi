@@ -1,3 +1,16 @@
+import type { ArtifactSummary } from './types';
+
+export interface HubArtifact extends ArtifactSummary {
+  project: string;
+  url: string;
+}
+
+export interface HubArtifactList {
+  artifacts: HubArtifact[];
+  projects: HubProjectStatus[];
+  warnings: string[];
+}
+
 export interface HubProjectStatus {
   artifacts: number;
   dir: string;

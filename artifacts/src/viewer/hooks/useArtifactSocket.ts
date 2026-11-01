@@ -15,6 +15,11 @@ export function emitServerMessage(message: ServerMessage) {
   for (const listener of listeners) listener(message);
 }
 
+export function artifactSocketUrl(at: Pick<Location, 'protocol' | 'host' | 'pathname'>) {
+  const scheme = at.protocol === 'https:' ? 'wss' : 'ws';
+  return `${scheme}://${at.host}/ws?at=${encodeURIComponent(at.pathname)}`;
+}
+
 export function useArtifactSocket(
   onMessage: (message: ServerMessage) => void,
   onOpen?: () => void,
@@ -31,9 +36,7 @@ export function useArtifactSocket(
     let disposed = false;
 
     const connect = () => {
-      socket = new WebSocket(
-        `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`,
-      );
+      socket = new WebSocket(artifactSocketUrl(location));
       socketRef.current = socket;
       socket.onopen = () => {
         setLive(true);

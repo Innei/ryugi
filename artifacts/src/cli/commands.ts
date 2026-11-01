@@ -3,7 +3,6 @@ import type { CommandSpec } from './command';
 import { commentCommand } from './comment';
 import { configCommand } from './config';
 import { getCommand } from './get';
-import { monitorCommand } from './monitor';
 import { publishCommand } from './publish';
 import { startCommand } from './start';
 import { stopCommand } from './stop';
@@ -16,7 +15,6 @@ export const COMMANDS: CommandSpec[] = [
   publishCommand,
   commentCommand,
   getCommand,
-  monitorCommand,
   configCommand,
   updateCommand,
 ];

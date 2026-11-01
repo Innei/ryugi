@@ -28,6 +28,7 @@ function main() {
       port: base.port,
       method: 'POST',
       path: `/api/cloud/flush?key=${encodeURIComponent(key)}`,
+      headers: { 'X-Ryugi-Project': encodeURIComponent(project) },
       timeout: 2000,
     },
     (res) => res.resume(),

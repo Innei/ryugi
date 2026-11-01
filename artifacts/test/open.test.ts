@@ -54,11 +54,9 @@ async function startServer(
     env: {
       ...process.env,
       ...env,
-      ARTIFACTS_ROOT: root,
+      RYUGI_SERVER_HOME: fs.mkdtempSync(path.join(os.tmpdir(), 'artifacts-open-home-')),
       ARTIFACTS_HOST: '127.0.0.1',
       ARTIFACTS_URL_HOST: 'localhost',
-      ARTIFACTS_OPEN_CMD: openCmd,
-      ARTIFACTS_OPEN_ARTIFACT: openArtifact,
     },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
@@ -67,6 +65,15 @@ async function startServer(
   child.stdout!.on('data', (chunk) => (output += chunk));
   child.stderr!.on('data', (chunk) => (output += chunk));
   await waitFor(() => output.includes('server-started'), 5000);
+  const started = JSON.parse(
+    output.split('\n').find((line) => line.includes('server-started'))!,
+  ) as { port: number };
+  const res = await fetch(`http://127.0.0.1:${started.port}/api/hub/projects`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ dir: path.dirname(path.dirname(root)), open: openArtifact, openCmd }),
+  });
+  if (!res.ok) throw new Error(await res.text());
   return child;
 }
 

@@ -96,7 +96,7 @@ export interface RelayTransportOptions {
 
 export function createRelayTransport(
   options: RelayTransportOptions,
-): DocumentTransport & { close: () => void } {
+): DocumentTransport & { close: () => void; reconnect: () => void } {
   const channel = createChannel();
   const connection = (options.connect ?? createRelayConnection)({
     url: options.url,
@@ -111,6 +111,7 @@ export function createRelayTransport(
     artifact: options.artifact,
     channel,
     close: connection.close,
+    reconnect: connection.reconnect,
     async meta() {
       const meta = await connection.request<DocumentMeta>({ op: 'meta' });
       return /^https?:\/\//.test(meta.contentBase ?? '')

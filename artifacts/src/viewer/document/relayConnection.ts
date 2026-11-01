@@ -1,4 +1,11 @@
-import type { LiveHost, RelayPresence, RelayReply, RelayRequest } from '../../shared/relay';
+import {
+  type LiveHost,
+  RELAY_REJECTED_CODE,
+  type RelayPresence,
+  relayRejection,
+  type RelayReply,
+  type RelayRequest,
+} from '../../shared/relay';
 
 type RelayIncoming =
   | { t: 'presence'; online: boolean; version: string | null; hosts?: LiveHost[] }
@@ -20,6 +27,7 @@ export interface RelayConnectionOptions {
 
 export interface RelayConnection {
   close: () => void;
+  reconnect: () => void;
   request: <T = unknown>(body: RelayRequest | { op: string }) => Promise<T>;
 }
 
@@ -85,15 +93,19 @@ export function createRelayConnection(options: RelayConnectionOptions): RelayCon
     }
   };
 
-  const disconnect = (current: WebSocket) => {
+  const disconnect = (current: WebSocket, event?: { code?: number; reason?: string }) => {
     if (socket !== current) return;
     open = false;
     socket = null;
     queue.clear();
     failPending();
     online = false;
-    options.onPresence(OFFLINE);
-    if (!closed) {
+    const rejected = event?.code === RELAY_REJECTED_CODE;
+    const reason = event?.reason ?? '';
+    options.onPresence(
+      rejected ? { ...OFFLINE, rejected: relayRejection(reason), reason } : OFFLINE,
+    );
+    if (!closed && !rejected) {
       retry = setTimeout(connect, delay);
       delay = Math.min(delay * 2, maxRetry);
     }
@@ -119,7 +131,7 @@ export function createRelayConnection(options: RelayConnectionOptions): RelayCon
         receive(JSON.parse(String(event.data)) as RelayIncoming);
       } catch {}
     };
-    current.onclose = () => disconnect(current);
+    current.onclose = (event) => disconnect(current, event);
     current.onerror = () => disconnect(current);
   };
 
@@ -139,6 +151,12 @@ export function createRelayConnection(options: RelayConnectionOptions): RelayCon
         if (open && socket) socket.send(text);
         else queue.set(rid, text);
       });
+    },
+    reconnect() {
+      if (closed || socket) return;
+      clearTimeout(retry);
+      delay = baseRetry;
+      connect();
     },
     close() {
       closed = true;

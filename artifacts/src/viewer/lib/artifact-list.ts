@@ -3,8 +3,8 @@ import { i18n } from '../i18n';
 
 export type ArtifactSort = 'recent' | 'oldest' | 'name';
 
-export function filterArtifacts(
-  artifacts: ArtifactSummary[],
+export function filterArtifacts<T extends ArtifactSummary>(
+  artifacts: T[],
   type: ArtifactType | 'all',
   query: string,
   sort: ArtifactSort = 'recent',

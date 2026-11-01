@@ -73,8 +73,8 @@ export function createArtifactIndex(
       }
       return found ? { project: found.project, id: found.id } : null;
     },
-    list(): IndexedArtifact[] {
-      scan();
+    list(maxAgeMs = 0): IndexedArtifact[] {
+      if (now() - scannedAt >= maxAgeMs) scan();
       return entries;
     },
     rescan: scan,

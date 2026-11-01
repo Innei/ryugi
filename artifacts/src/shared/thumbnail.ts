@@ -8,7 +8,7 @@ export interface ThumbnailArtifact {
 }
 
 // Bump the path when the drawing changes so immutable browser copies are replaced.
-export const THUMBNAIL_PATH = '_ryugi/thumbnail-v1.svg';
+export const THUMBNAIL_PATH = '_ryugi/thumbnail-v2.svg';
 
 const STYLE =
   '<style>:root{--ink:#333;--muted:#85817c;--paper:#fff;--bg:#f3f2f0;--border:#dedcd7;--block:#f2f1ee;--alert:#f7eee4}@media (prefers-color-scheme: dark){:root{--ink:#e5e5e5;--muted:#a0a0a0;--paper:#292929;--bg:#1c1c1c;--border:#424242;--block:#353535;--alert:#3b342e}}text{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,PingFang SC,sans-serif}rect{stroke-width:.8;vector-effect:non-scaling-stroke}</style>';
@@ -71,8 +71,7 @@ function nodeText(node: ObjectValue) {
 function documentDrawing(title: string, payload: ObjectValue) {
   const blocks = children(object(object(payload.state).root).children);
   const parts = [
-    rect(0, 0, 600, 360, 'var(--bg)'),
-    rect(78, 18, 444, 540, 'var(--paper)', 'var(--border)'),
+    '<rect x="78" y="18" width="444" height="540" fill="var(--paper)" stroke="var(--edge)" filter="url(#lift)"/>',
   ];
   let y = 47;
   const lines = (value: string, size: number, count: number, indent = 0, weight = 400) => {
@@ -161,7 +160,7 @@ function documentDrawing(title: string, payload: ObjectValue) {
       y += 40;
     }
   }
-  return parts.join('');
+  return `<style>:root{--desk:#eaeef0;--edge:none}@media (prefers-color-scheme: dark){:root{--desk:#202427;--edge:#3a3a3a}}</style>${rect(0, 0, 600, 360, 'var(--desk)')}<defs><filter id="lift" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="8" stdDeviation="14" flood-color="#1d3540" flood-opacity=".12"/></filter></defs><g transform="rotate(-3 300 288)"><g transform="translate(0 22)">${parts.join('')}</g></g>`;
 }
 
 interface Box {

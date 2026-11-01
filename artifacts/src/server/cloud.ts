@@ -145,6 +145,10 @@ function fingerprintPayload(payload: Record<string, unknown>) {
   };
 }
 
+// One process serves every project, and the cloud redirects the sign-in back without naming one.
+const pendingStates = new Map<string, { expires: number; verifier: string }>();
+const callbackTickets = new Map<string, { expires: number; login: string }>();
+
 export function createCloudRoutes(options: CloudRoutesOptions) {
   const { origin, credentialsFile, configFile, project } = options;
   const settingsFile = settingsFileFor(credentialsFile);
@@ -156,8 +160,6 @@ export function createCloudRoutes(options: CloudRoutesOptions) {
       autoPublishEnabled({ globalFile: settingsFile, projectFile: configFile }),
   });
   let postponed = false;
-  const pendingStates = new Map<string, { expires: number; verifier: string }>();
-  const callbackTickets = new Map<string, { expires: number; login: string }>();
   const issueTicket = (login: string) => {
     const now = Date.now();
     for (const [ticket, issued] of callbackTickets)

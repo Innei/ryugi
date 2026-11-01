@@ -152,6 +152,11 @@ export function createRelayClient(options: RelayClientOptions) {
         if (servedKey === key && watched.has(id)) send({ t: 'event', id, body });
     },
     refresh: tick,
+    state: () => ({
+      connected: socket?.readyState === WebSocket.OPEN,
+      announced: announced ? announced.split('\n').length : 0,
+      watched: watched.size,
+    }),
     close() {
       closed = true;
       clearInterval(poll);

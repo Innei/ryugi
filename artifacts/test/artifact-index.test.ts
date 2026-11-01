@@ -68,3 +68,22 @@ test('lists every artifact with its project and modification time', () => {
   ]);
   expect(typeof listed[0]!.mtimeMs).toBe('number');
 });
+
+test('a list that allows an age reuses a recent scan instead of reading the disk again', () => {
+  const one = project({ 'artboard/flow': A });
+  let scans = 0;
+  let clock = 0;
+  const index = createArtifactIndex(
+    () => {
+      scans += 1;
+      return [one];
+    },
+    { now: () => clock },
+  );
+  index.list(10_000);
+  index.list(10_000);
+  expect(scans).toBe(1);
+  clock = 10_000;
+  index.list(10_000);
+  expect(scans).toBe(2);
+});

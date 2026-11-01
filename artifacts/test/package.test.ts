@@ -111,7 +111,7 @@ test('the thumbnail entry is one self-contained module a Worker can bundle', asy
   const code = fs.readFileSync(file, 'utf8');
   expect(code).not.toMatch(/\bimport\b|\brequire\(|\.css\b/);
   const { renderThumbnail, renderBoardPlaceholder, THUMBNAIL_PATH } = await import(file);
-  expect(THUMBNAIL_PATH).toBe('_ryugi/thumbnail-v1.svg');
+  expect(THUMBNAIL_PATH).toBe('_ryugi/thumbnail-v2.svg');
   expect(renderThumbnail({ id: 'a', type: 'html', title: 'Hi' }, null)).toMatch(/^<svg /);
   expect(renderBoardPlaceholder({ id: 'a', w: 10, h: 10 })).toMatch(/^<svg /);
 });

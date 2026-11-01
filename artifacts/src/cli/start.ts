@@ -8,6 +8,8 @@ import { AGENT_MARKERS } from '../server/agent';
 import { artifactPath } from '../server/artifact-address';
 import { artifactKeyOf } from '../server/artifacts';
 import { openBrowser } from '../server/browser-focus';
+import { ensureHome, type MachinePaths, machinePaths, readProjects } from '../server/machine';
+import { readEntries, registryDir, removeEntry } from '../server/registry';
 import type { CommandSpec } from './command';
 import { takeLoginHint } from './login-hint';
 import {
@@ -18,50 +20,87 @@ import {
   type ProjectPaths,
   projectPaths,
 } from './paths';
-import { alive, hasServerId, parentOf, readText, sleep, waitForExit } from './process';
+import { alive, hasServerId, readText, sleep, waitForExit } from './process';
+import { replaceDecision } from './upgrade-rule';
+
+declare const CLI_VERSION: string | undefined;
 
 export interface StartOptions {
   artifact?: string;
   background: boolean;
   foreground: boolean;
   host: string;
-  idleTimeoutMinutes?: string;
   open: boolean;
   openExisting?: boolean;
+  port?: string;
   projectDir: string;
   urlHost?: string;
 }
 
 export type Emit = (value: Record<string, unknown>) => void;
 
-const windowsLike = () => process.platform === 'win32';
+interface ServerInfo {
+  cloudOrigin?: string;
+  host?: string;
+  port: number;
+  url: string;
+  urlHost?: string;
+  version?: string;
+}
 
-function withLink(info: Record<string, unknown>, artifact: string | undefined, reused: boolean) {
-  const out = { ...info };
-  if (reused) out.reused = true;
-  if (artifact && typeof out.url === 'string') {
-    const url = new URL(out.url);
+const DEFAULT_CLOUD_ORIGIN = 'https://ryugi.innei.dev';
+const RESERVE_TIMEOUT_MS = 5000;
+const REGISTER_TIMEOUT_MS = 15000;
+const STATUS_TIMEOUT_MS = 1000;
+const START_TIMEOUT_MS = 10000;
+const SETTLE_MS = 6000;
+
+const cloudOriginOf = (env: NodeJS.ProcessEnv) =>
+  (env.RYUGI_CLOUD_ORIGIN || DEFAULT_CLOUD_ORIGIN).replace(/\/+$/, '');
+
+const loopbackUrl = (url: string) => {
+  const parsed = new URL(url);
+  if (parsed.hostname === 'localhost') parsed.hostname = '127.0.0.1';
+  return parsed;
+};
+
+const apiUrl = (info: ServerInfo, pathname: string) => {
+  const base = loopbackUrl(info.url);
+  const target = new URL(pathname, base.origin);
+  const key = base.searchParams.get('key');
+  if (key) target.searchParams.set('key', key);
+  return target.toString();
+};
+
+function withLink(info: ServerInfo, paths: ProjectPaths, artifact: string | undefined) {
+  const out: Record<string, unknown> = {
+    type: 'server-started',
+    url: info.url,
+    port: info.port,
+    root: paths.root,
+  };
+  if (artifact) {
+    const url = new URL(info.url);
     const ref = artifactKeyOf(artifact)!;
     const key = url.searchParams.get('key');
-    out.link = `${url.origin}${artifactPath(String(out.root), ref.type, ref.id)}${key ? `?key=${key}` : ''}`;
+    out.link = `${url.origin}${artifactPath(paths.root, ref.type, ref.id)}${key ? `?key=${key}` : ''}`;
   }
   return out;
 }
 
-const RESERVE_TIMEOUT_MS = 5000;
-
-async function withCloudLink(out: Record<string, unknown>, artifact: string | undefined) {
-  if (!artifact || typeof out.url !== 'string') return out;
-  const server = new URL(out.url);
-  if (server.hostname === 'localhost') server.hostname = '127.0.0.1';
+async function withCloudLink(
+  out: Record<string, unknown>,
+  info: ServerInfo,
+  paths: ProjectPaths,
+  artifact: string | undefined,
+) {
+  if (!artifact) return out;
   try {
-    const res = await fetch(
-      `${server.origin}/api/cloud/reserve/${artifact}?key=${encodeURIComponent(server.searchParams.get('key') ?? '')}`,
-      {
-        method: 'POST',
-        signal: AbortSignal.timeout(RESERVE_TIMEOUT_MS),
-      },
-    );
+    const res = await fetch(apiUrl(info, `/api/cloud/reserve/${artifact}`), {
+      method: 'POST',
+      headers: { 'X-Ryugi-Project': encodeURIComponent(paths.project) },
+      signal: AbortSignal.timeout(RESERVE_TIMEOUT_MS),
+    });
     const { url, limit } = (await res.json()) as {
       url?: unknown;
       limit?: { message?: unknown; upgradeUrl?: unknown };
@@ -92,37 +131,60 @@ async function acquireLock(lock: string) {
   return false;
 }
 
-function runningPid(paths: ProjectPaths) {
-  const pid = Number(readText(paths.pid));
-  const id = readText(paths.serverId);
+function runningPid(machine: MachinePaths) {
+  const pid = Number(readText(machine.pid));
+  const id = readText(machine.serverId);
   if (!Number.isInteger(pid) || pid <= 0 || !id) return null;
   return hasServerId(pid, id) ? pid : null;
 }
 
-function ownerPid() {
-  if (windowsLike()) return null;
-  const given = Number(process.env.RYUGI_ARTIFACTS_OWNER);
-  if (Number.isInteger(given) && given > 1) return given;
-  return parentOf(process.ppid) ?? process.ppid;
+function readInfo(machine: MachinePaths): ServerInfo | null {
+  try {
+    const info = JSON.parse(readText(machine.info) ?? '') as ServerInfo;
+    return typeof info.url === 'string' && Number.isInteger(info.port) ? info : null;
+  } catch {
+    return null;
+  }
 }
 
-function registerOwner(paths: ProjectPaths) {
-  const owners = new Set<number>();
-  for (const line of (readText(paths.owners) ?? '').split('\n')) {
-    const pid = Number(line.trim());
-    if (Number.isInteger(pid) && pid > 1 && alive(pid)) owners.add(pid);
+async function answers(info: ServerInfo) {
+  try {
+    const res = await fetch(apiUrl(info, '/api/status'), {
+      signal: AbortSignal.timeout(STATUS_TIMEOUT_MS),
+    });
+    return res.ok;
+  } catch {
+    return false;
   }
-  const owner = ownerPid();
-  if (owner) owners.add(owner);
-  const tmp = `${paths.owners}.${process.pid}`;
-  fs.writeFileSync(
-    tmp,
-    [...owners]
-      .sort((a, b) => a - b)
-      .map((pid) => `${pid}\n`)
-      .join(''),
+}
+
+async function stopPid(pid: number, what: string) {
+  try {
+    process.kill(pid, 'SIGTERM');
+  } catch {}
+  if (await waitForExit(pid, 7000)) return;
+  try {
+    process.kill(pid, 'SIGKILL');
+  } catch {}
+  if (await waitForExit(pid, 2000)) return;
+  throw new CliError(
+    `The ${what} (pid ${pid}) did not stop; stop it with \`${invocation()} stop\` and retry`,
   );
-  fs.renameSync(tmp, paths.owners);
+}
+
+async function stopOldProjectServers() {
+  const dir = registryDir();
+  for (const entry of readEntries(dir)) {
+    if (hasServerId(entry.pid, entry.serverId)) {
+      try {
+        process.kill(entry.pid, 'SIGTERM');
+      } catch {}
+      await waitForExit(entry.pid, 5000);
+    }
+    try {
+      removeEntry(dir, entry);
+    } catch {}
+  }
 }
 
 // The server names agent comments after the latest session that started it; a start outside any agent keeps the last name.
@@ -133,115 +195,162 @@ function recordAgent(paths: ProjectPaths) {
   if (Object.keys(markers).length) fs.writeFileSync(paths.agent, `${JSON.stringify(markers)}\n`);
 }
 
-async function replace(pid: number, paths: ProjectPaths) {
-  try {
-    process.kill(pid, 'SIGTERM');
-  } catch {}
-  if (await waitForExit(pid, 5000)) return;
-  try {
-    process.kill(pid, 'SIGKILL');
-  } catch {}
-  if (await waitForExit(pid, 2000)) return;
-  throw new CliError(
-    `The running server (pid ${pid}) is on another release and did not stop; stop it with \`${invocation()} stop --project-dir ${paths.project}\` and retry`,
-  );
-}
-
-function serverEnv(paths: ProjectPaths, options: StartOptions) {
+function serverEnv(options: StartOptions) {
   const env: NodeJS.ProcessEnv = {
     ...process.env,
-    ARTIFACTS_ROOT: paths.root,
     ARTIFACTS_HOST: options.host,
     ARTIFACTS_URL_HOST: options.urlHost!,
-    ARTIFACTS_OPEN: options.open ? '1' : '0',
   };
-  if (options.artifact) env.ARTIFACTS_OPEN_ARTIFACT = options.artifact;
-  if (options.idleTimeoutMinutes)
-    env.ARTIFACTS_IDLE_TIMEOUT_MS = String(Number(options.idleTimeoutMinutes) * 60_000);
-  delete env.RYUGI_ARTIFACTS_OWNER;
-  delete env.RYUGI_ARTIFACTS_VERSION;
-  delete env.RYUGI_ARTIFACTS_COMMAND;
+  if (process.env.RYUGI_ARTIFACTS_COMMAND)
+    env.RYUGI_ARTIFACTS_LAUNCHER = process.env.RYUGI_ARTIFACTS_COMMAND;
+  for (const key of [
+    'RYUGI_ARTIFACTS_OWNER',
+    'RYUGI_ARTIFACTS_VERSION',
+    'RYUGI_ARTIFACTS_COMMAND',
+    'ARTIFACTS_OPEN_CMD',
+    'ARTIFACTS_ROOT',
+  ])
+    delete env[key];
   return env;
+}
+
+const startedLine = (text: string) =>
+  text.split('\n').find((line) => line.includes('"server-started"'));
+const errorLine = (text: string) =>
+  text.split('\n').find((line) => line.includes('"server-error"'));
+
+async function register(
+  info: ServerInfo,
+  paths: ProjectPaths,
+  open: string | true | undefined,
+): Promise<void> {
+  const res = await fetch(apiUrl(info, '/api/hub/projects'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      dir: paths.project,
+      ...(open ? { open } : {}),
+      ...(open && process.env.ARTIFACTS_OPEN_CMD
+        ? { openCmd: process.env.ARTIFACTS_OPEN_CMD }
+        : {}),
+    }),
+    signal: AbortSignal.timeout(REGISTER_TIMEOUT_MS),
+  });
+  if (!res.ok) throw new CliError(`The artifacts server refused this project: ${await res.text()}`);
 }
 
 export async function start(options: StartOptions, emit: Emit): Promise<number> {
   if (options.artifact !== undefined && !ARTIFACT_PATTERN.test(options.artifact))
     throw new CliError(ARTIFACT_ERROR);
   if (
-    options.idleTimeoutMinutes !== undefined &&
-    (!/^\d+$/.test(options.idleTimeoutMinutes) || Number(options.idleTimeoutMinutes) < 1)
+    options.port !== undefined &&
+    (!/^\d+$/.test(options.port) || Number(options.port) < 1 || Number(options.port) > 65535)
   )
-    throw new CliError('--idle-timeout-minutes must be a positive integer');
+    throw new CliError('--port must be a port number');
   options.urlHost ||=
     options.host === '127.0.0.1' || options.host === 'localhost' ? 'localhost' : options.host;
-  const foreground =
-    options.foreground || (!options.background && (!!process.env.CODEX_CI || windowsLike()));
   process.umask(0o077);
   const paths = projectPaths(options.projectDir);
-  const emitStarted: Emit = (out) => {
-    const loginHint = takeLoginHint(paths.project);
-    emit(loginHint ? { ...out, loginHint } : out);
-  };
+  const machine = machinePaths();
+  ensureHome(machine.home);
   fs.mkdirSync(paths.state, { recursive: true });
   if (!fs.existsSync(path.join(paths.state, '.gitignore')))
     fs.writeFileSync(path.join(paths.state, '.gitignore'), '*\n');
-  const server = path.join(__dirname, 'server.cjs');
-  const version = process.env.RYUGI_ARTIFACTS_VERSION ?? '';
+  const cliVersion =
+    process.env.RYUGI_ARTIFACTS_VERSION || (typeof CLI_VERSION === 'string' ? CLI_VERSION : '');
+  const known = readProjects(machine.projects).some((entry) => entry.dir === paths.project);
 
-  if (!(await acquireLock(paths.lock)))
-    throw new CliError('Another start for this project is still starting; retry in a moment');
+  const finish = async (info: ServerInfo, reused: boolean, hint?: string) => {
+    recordAgent(paths);
+    const wantsOpen = options.open && (!reused || !known);
+    await register(info, paths, wantsOpen ? (options.artifact ?? true) : undefined);
+    const base = withLink(info, paths, options.artifact);
+    if (reused) base.reused = true;
+    if (hint) base.hint = hint;
+    const out = await withCloudLink(base, info, paths, options.artifact);
+    const loginHint = takeLoginHint(paths.project);
+    emit(loginHint ? { ...out, loginHint } : out);
+    if (
+      reused &&
+      known &&
+      process.platform === 'darwin' &&
+      options.open &&
+      options.openExisting &&
+      options.artifact &&
+      !process.env.ARTIFACTS_OPEN_CMD
+    ) {
+      const local = out.link as string;
+      await openBrowser(typeof out.cloudLink === 'string' ? out.cloudLink : local, [local]).catch(
+        (error: Error) => console.error(error.message),
+      );
+    }
+  };
+
+  if (!(await acquireLock(machine.lock)))
+    throw new CliError('Another start is still starting the artifacts server; retry in a moment');
   let locked = true;
   const unlock = () => {
     if (!locked) return;
     locked = false;
     try {
-      fs.rmdirSync(paths.lock);
+      fs.rmdirSync(machine.lock);
     } catch {}
   };
   try {
-    const running = runningPid(paths);
-    const info = readText(paths.info);
+    const running = runningPid(machine);
+    let info = readInfo(machine);
+    if (running && !info) {
+      for (let waited = 0; waited < SETTLE_MS && alive(running) && !info; waited += 100) {
+        await sleep(100);
+        info = readInfo(machine);
+      }
+      if (!info && alive(running)) await stopPid(running, 'stopping artifacts server');
+    }
     if (running && info) {
-      if (!version || readText(paths.version) === version) {
-        registerOwner(paths);
-        recordAgent(paths);
-        const out = await withCloudLink(
-          withLink(JSON.parse(info), options.artifact, true),
-          options.artifact,
+      const runningVersion = readText(machine.version) ?? '';
+      const decision = replaceDecision(runningVersion, cliVersion);
+      const mismatch =
+        (info.host ?? '127.0.0.1') !== options.host ||
+        (info.urlHost ?? 'localhost') !== options.urlHost ||
+        (info.cloudOrigin ?? DEFAULT_CLOUD_ORIGIN) !== cloudOriginOf(process.env) ||
+        (options.port !== undefined && String(info.port) !== options.port);
+      if (decision !== 'replace' && !mismatch && (await answers(info))) {
+        unlock();
+        await finish(
+          info,
+          true,
+          decision === 'keep-older-cli'
+            ? `The running server is ${runningVersion}, newer than this CLI (${cliVersion}); kept it`
+            : undefined,
         );
-        emitStarted(out);
-        if (
-          process.platform === 'darwin' &&
-          options.open &&
-          options.openExisting &&
-          options.artifact &&
-          !process.env.ARTIFACTS_OPEN_CMD
-        ) {
-          const local = out.link as string;
-          await openBrowser(typeof out.cloudLink === 'string' ? out.cloudLink : local, [
-            local,
-          ]).catch((error: Error) => {
-            console.error(error.message);
-          });
-        }
         return 0;
       }
-      await replace(running, paths);
+      await stopPid(running, 'running artifacts server');
     }
-    registerOwner(paths);
-    recordAgent(paths);
-    fs.rmSync(paths.info, { force: true });
+    await stopOldProjectServers();
+
+    fs.rmSync(machine.info, { force: true });
     const id = crypto.randomBytes(24).toString('hex');
-    fs.writeFileSync(paths.serverId, `${id}\n`);
-    fs.writeFileSync(paths.version, `${version}\n`);
-    const env = serverEnv(paths, options);
-    const args = [server, `--artifacts-server-id=${id}`];
+    fs.writeFileSync(machine.serverId, `${id}\n`);
+    fs.writeFileSync(machine.version, `${cliVersion}\n`);
+    const server = path.join(__dirname, 'server.cjs');
+    const args = [
+      server,
+      `--artifacts-server-id=${id}`,
+      ...(options.port ? [`--port=${options.port}`] : []),
+    ];
+    const env = serverEnv(options);
+    const foreground = options.foreground || (!options.background && !!process.env.CODEX_CI);
 
     if (foreground) {
       const child = spawn(process.execPath, args, { env, stdio: ['ignore', 'pipe', 'inherit'] });
-      fs.writeFileSync(paths.pid, `${child.pid}\n`);
+      fs.writeFileSync(machine.pid, `${child.pid}\n`);
       for (const signal of ['SIGINT', 'SIGTERM'] as const)
         process.on(signal, () => child.kill('SIGTERM'));
+      const exited = new Promise<number>((resolve) =>
+        child.on('close', (code) => resolve(code ?? 1)),
+      );
+      let announced = false;
       readline.createInterface({ input: child.stdout! }).on('line', (line) => {
         let value: Record<string, unknown>;
         try {
@@ -250,57 +359,52 @@ export async function start(options: StartOptions, emit: Emit): Promise<number> 
           process.stdout.write(`${line}\n`);
           return;
         }
-        if (value.type !== 'server-started') emit(value);
-        else
-          void withCloudLink(withLink(value, options.artifact, false), options.artifact).then(
-            emitStarted,
-          );
+        if (value.type !== 'server-started' || announced) {
+          emit(value);
+          return;
+        }
+        announced = true;
+        unlock();
+        void finish(value as unknown as ServerInfo, false).catch((error: Error) =>
+          emit({ type: 'error', error: error.message }),
+        );
       });
-      const exited = new Promise<number>((resolve) =>
-        child.on('close', (code) => resolve(code ?? 1)),
-      );
-      for (let waited = 0; waited < 5000 && !fs.existsSync(paths.info); waited += 100)
-        await sleep(100);
-      unlock();
       return await exited;
     }
 
-    const log = fs.openSync(paths.log, 'w');
+    const log = fs.openSync(machine.log, 'w');
     const child = spawn(process.execPath, args, {
       env,
       detached: true,
+      windowsHide: true,
       stdio: ['ignore', log, log],
     });
     fs.closeSync(log);
     child.unref();
-    fs.writeFileSync(paths.pid, `${child.pid}\n`);
-    for (let waited = 0; waited < 5000; waited += 100) {
-      const lines = (readText(paths.log) ?? '').split('\n');
-      const started = lines.find((line) => line.includes('"server-started"'));
+    fs.writeFileSync(machine.pid, `${child.pid}\n`);
+    for (let waited = 0; waited < START_TIMEOUT_MS; waited += 100) {
+      const text = readText(machine.log) ?? '';
+      const started = startedLine(text);
       if (started) {
-        for (let check = 0; check < 20; check++) {
+        for (let check = 0; check < 10; check++) {
           if (!alive(child.pid!))
             throw new CliError(
               `Server started but was killed. Retry in a persistent terminal with: ${invocation()} start --project-dir ${paths.project}${options.artifact ? ` --artifact ${options.artifact}` : ''} --host ${options.host} --url-host ${options.urlHost} --foreground`,
             );
           await sleep(100);
         }
-        emitStarted(
-          await withCloudLink(
-            withLink(JSON.parse(started), options.artifact, false),
-            options.artifact,
-          ),
-        );
+        unlock();
+        await finish(JSON.parse(started) as ServerInfo, false);
         return 0;
       }
-      const failed = lines.find((line) => line.includes('"server-error"'));
+      const failed = errorLine(text);
       if (failed) {
         emit(JSON.parse(failed));
         return 1;
       }
       await sleep(100);
     }
-    throw new CliError('Server failed to start within 5 seconds');
+    throw new CliError(`Server failed to start within ${START_TIMEOUT_MS / 1000} seconds`);
   } finally {
     unlock();
   }
@@ -308,7 +412,7 @@ export async function start(options: StartOptions, emit: Emit): Promise<number> 
 
 export const startCommand: CommandSpec = {
   name: 'start',
-  summary: "Start the project's artifacts server, or reuse the running one",
+  summary: "Start this machine's artifacts server if needed and register the project with it",
   options: {
     'artifact': {
       type: 'string',
@@ -325,10 +429,10 @@ export const startCommand: CommandSpec = {
       value: '<host>',
       help: 'Host in printed URLs (default: localhost for a loopback --host)',
     },
-    'idle-timeout-minutes': {
+    'port': {
       type: 'string',
       value: '<n>',
-      help: 'Stop after this many idle minutes (default: 240)',
+      help: 'Port to listen on (default: the first free of 27319-27321)',
     },
     'open': {
       type: 'boolean',
@@ -350,7 +454,7 @@ export const startCommand: CommandSpec = {
         artifact: values.artifact as string | undefined,
         host: (values.host as string | undefined) ?? '127.0.0.1',
         urlHost: values['url-host'] as string | undefined,
-        idleTimeoutMinutes: values['idle-timeout-minutes'] as string | undefined,
+        port: values.port as string | undefined,
         open: values['no-open'] ? false : values.open ? true : process.env.ARTIFACTS_OPEN !== '0',
         openExisting: !!values.open,
         foreground: !!(values.foreground || values['no-daemon']),

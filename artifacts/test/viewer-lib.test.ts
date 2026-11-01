@@ -10,7 +10,7 @@ const pkg = JSON.parse(fs.readFileSync(path.join(pkgDir, 'package.json'), 'utf8'
   exports: Record<string, string | { types: string; default: string }>;
 };
 const LOCAL_APP =
-  /(?:^|\/)(?:PublishMenu|AutoPublishPrompt|PlanLimitDialog|useArtifactSocket|useArtifactFeed|useCloudSync|usePublication|useCloudStatus|useDocumentTransport|ArtifactList|Shell|route|main|preview)\.tsx?$/;
+  /(?:^|\/)(?:PublishMenu|AutoPublishPrompt|PlanLimitDialog|useArtifactSocket|useArtifactFeed|useCloudSync|usePublication|useCloudStatus|useHubStatus|useDocumentTransport|ArtifactList|Shell|route|main|preview)\.tsx?$/;
 const CLOUD =
   /(?:^|\/)(?:Cloud[A-Z]\w*|cloud-(?:list|list-menus|shell|publication)|cloudLive|liveConnection|knownHosts|useRelayTransport|useDailyViews|context-menu)\.tsx?$/;
 

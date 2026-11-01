@@ -16,8 +16,15 @@ const names = fs
   .filter((file) => file.endsWith('.json'))
   .map((file) => file.slice(0, -'.json'.length));
 
-test('the thumbnail path keeps the version Ryugi Cloud already caches', () => {
-  expect(THUMBNAIL_PATH).toBe('_ryugi/thumbnail-v1.svg');
+test('the thumbnail path moves to v2 so cached v1 drawings are replaced', () => {
+  expect(THUMBNAIL_PATH).toBe('_ryugi/thumbnail-v2.svg');
+});
+
+test('a document thumbnail lays the page at a slant with a soft shadow', () => {
+  const svg = renderThumbnail({ id: 'd', title: 'Spec', type: 'document' }, { state: {} });
+  expect(svg).toMatch(/<g transform="rotate\(-3 [\d.]+ [\d.]+\)">/);
+  expect(svg).toContain('feDropShadow');
+  expect(svg).toContain('Spec');
 });
 
 test.each(names)('%s renders byte for byte what Ryugi Cloud rendered before the move', (name) => {

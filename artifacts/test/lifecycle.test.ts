@@ -4,13 +4,7 @@ import path from 'node:path';
 
 import { describe, expect, test } from 'vitest';
 
-import {
-  browserLauncher,
-  liveOwners,
-  parseEnv,
-  readOwners,
-  shutdownReason,
-} from '../src/server/lifecycle';
+import { browserLauncher, parseEnv } from '../src/server/lifecycle';
 import { pollTree } from '../src/server/watch';
 import { waitFor } from './helpers';
 
@@ -28,92 +22,49 @@ describe('browserLauncher', () => {
   });
 });
 
-describe('shutdownReason', () => {
-  test('stops when every owner process is gone', () => {
-    expect(
-      shutdownReason({ now: 10, lastActivity: 10, idleTimeoutMs: 100, ownersAlive: false }),
-    ).toBe('all owner processes exited');
-  });
-
-  test('stops after the idle timeout', () => {
-    expect(
-      shutdownReason({ now: 200, lastActivity: 50, idleTimeoutMs: 100, ownersAlive: true }),
-    ).toBe('idle timeout');
-  });
-
-  test('keeps running otherwise', () => {
-    expect(
-      shutdownReason({ now: 100, lastActivity: 50, idleTimeoutMs: 100, ownersAlive: true }),
-    ).toBeNull();
-  });
-});
-
-describe('owners', () => {
-  test('readOwners parses one pid per line and skips junk', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'artifacts-owners-'));
-    const file = path.join(dir, 'owners');
-    fs.writeFileSync(file, '123\n\nabc\n1\n456\n123\n');
-    expect(readOwners(file)).toEqual([123, 456]);
-    expect(readOwners(path.join(dir, 'missing'))).toEqual([]);
-  });
-
-  test('liveOwners keeps only the pids that are still alive', () => {
-    expect(liveOwners([10, 20, 30], (pid) => pid !== 20)).toEqual([10, 30]);
+describe('lifecycle', () => {
+  test('has no idle or owner exit any more', async () => {
+    const lifecycle = await import('../src/server/lifecycle');
+    expect('shutdownReason' in lifecycle).toBe(false);
+    expect('readOwners' in lifecycle).toBe(false);
   });
 });
 
 describe('parseEnv', () => {
-  test('reads the artifacts root, hosts and options with defaults', () => {
-    const config = parseEnv({ ARTIFACTS_ROOT: '/r' });
-    expect(config).toMatchObject({
-      root: '/r',
+  test('needs no project root and defaults to loopback and the fixed ports', () => {
+    expect(parseEnv({})).toMatchObject({
       host: '127.0.0.1',
       urlHost: 'localhost',
-      idleTimeoutMs: 4 * 60 * 60 * 1000,
-      open: true,
-      openArtifact: null,
+      ports: [27319, 27320, 27321],
+      boardPorts: [27329, 27330, 27331],
+      serverId: null,
     });
   });
 
   test('uses the bind host as the url host for non-loopback binds', () => {
-    expect(parseEnv({ ARTIFACTS_ROOT: '/r', ARTIFACTS_HOST: '0.0.0.0' }).urlHost).toBe('0.0.0.0');
-    expect(
-      parseEnv({ ARTIFACTS_ROOT: '/r', ARTIFACTS_HOST: '0.0.0.0', ARTIFACTS_URL_HOST: 'dev.box' })
-        .urlHost,
-    ).toBe('dev.box');
+    expect(parseEnv({ ARTIFACTS_HOST: '0.0.0.0' }).urlHost).toBe('0.0.0.0');
+    expect(parseEnv({ ARTIFACTS_HOST: '0.0.0.0', ARTIFACTS_URL_HOST: 'dev.box' }).urlHost).toBe(
+      'dev.box',
+    );
   });
 
-  test('parses idle timeout, open flag and the server id argument', () => {
-    const config = parseEnv(
-      {
-        ARTIFACTS_ROOT: '/r',
-        ARTIFACTS_IDLE_TIMEOUT_MS: '5000',
-        ARTIFACTS_OPEN: '1',
-        ARTIFACTS_OPEN_ARTIFACT: 'artboard/header',
-      },
-      ['--artifacts-server-id=abc'],
-    );
-    expect(config).toMatchObject({
-      idleTimeoutMs: 5000,
-      open: true,
-      openArtifact: 'artboard/header',
+  test('a --port argument replaces the main port list', () => {
+    expect(parseEnv({}, ['--port=4100']).ports).toEqual([4100]);
+    expect(parseEnv({ RYUGI_ARTIFACTS_PORTS: '0' }).ports).toEqual([0]);
+  });
+
+  test('reads the server id argument and the open command', () => {
+    expect(parseEnv({ ARTIFACTS_OPEN_CMD: 'echo' }, ['--artifacts-server-id=abc'])).toMatchObject({
       serverId: 'abc',
+      openCmd: 'echo',
     });
   });
 
   test('points at the official cloud unless RYUGI_CLOUD_ORIGIN overrides it', () => {
-    expect(parseEnv({ ARTIFACTS_ROOT: '/r' }).cloudOrigin).toBe('https://ryugi.innei.dev');
-    expect(
-      parseEnv({ ARTIFACTS_ROOT: '/r', RYUGI_CLOUD_ORIGIN: 'http://localhost:8787/' }).cloudOrigin,
-    ).toBe('http://localhost:8787');
-  });
-
-  test('turns opening off when ARTIFACTS_OPEN is 0', () => {
-    expect(parseEnv({ ARTIFACTS_ROOT: '/r', ARTIFACTS_OPEN: '0' }).open).toBe(false);
-  });
-
-  test('requires an artifacts root', () => {
-    expect(() => parseEnv({})).toThrow(/ARTIFACTS_ROOT/);
+    expect(parseEnv({}).cloudOrigin).toBe('https://ryugi.innei.dev');
+    expect(parseEnv({ RYUGI_CLOUD_ORIGIN: 'http://localhost:8787/' }).cloudOrigin).toBe(
+      'http://localhost:8787',
+    );
   });
 });
 

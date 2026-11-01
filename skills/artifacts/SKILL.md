@@ -101,8 +101,8 @@ launcher `app/ryugi-artifacts.cjs` with `--json`; it runs the newest
 
 ```bash
 node app/ryugi-artifacts.cjs start --json --project-dir /path/to/project --artifact html/arrow-tuner
-# {"type":"server-started","url":"http://localhost:52341/","port":52341,
-#  "root":"/path/to/project/.ryugi/artifacts","link":"http://localhost:52341/html/arrow-tuner",
+# {"type":"server-started","url":"http://localhost:27319/","port":27319,
+#  "root":"/path/to/project/.ryugi/artifacts","link":"http://localhost:27319/html/arrow-tuner",
 #  "cloudLink":"https://ryugi.innei.dev/a/…"}
 ```
 
@@ -118,30 +118,25 @@ node app/ryugi-artifacts.cjs start --json --project-dir /path/to/project --artif
   artifact you're about to mention; edits in between need no `start`. It
   prints `"reused": true` while the server is up, and otherwise starts it on
   the same port, so open tabs reconnect.
-- Every run registers your session. The server stops when every session
-  that used it has exited, or after 4 hours idle.
+- One server serves every project on this machine and keeps running
+  between sessions. Every run registers your project with it.
 - The browser opens when the first artifact is ready enough: for an artboard,
   once its focus group is complete (or two boards when there are no groups),
   even while later boards are still drawing. Pass `--no-open` only for
   headless or scripted use. Still share the link; remote setups can't
   auto-open. Read `artboard.md` for the streaming write order.
-- Stop it with `node app/ryugi-artifacts.cjs stop --json --project-dir /path/to/project`.
-  The artifacts stay.
+- Stop it with `node app/ryugi-artifacts.cjs stop --json`.
+  It stops the server for every project; the artifacts stay.
 
 **Launching by harness.** The server must survive across turns.
 
-- Claude Code: run the command as is; it backgrounds the server. On
-  Windows it stays in the foreground: use `run_in_background: true` and
-  read `.ryugi/artifacts/.state/server-info` on the next turn, then build
-  the link as `<origin>/<type>/<id>` from its `url`, keeping its `?key=`
-  when it has one. Inside a git
-  repository that file sits at the repository root
-  (`git rev-parse --show-toplevel`), not under a subdirectory you passed as
-  `--project-dir`, unless that subdirectory already has `.ryugi/artifacts/`.
-- Codex: run it as is; it detects `CODEX_CI` and stays in the foreground.
-  Give it its own tool call with a yield of at least 5 seconds (a first run
-  may install a release). When it starts a new server it does not return,
-  so anything chained after it with `;` or `&&` runs only once the server
+- Claude Code: run the command as is; it backgrounds the server, on
+  Windows too.
+- Codex: run it as is. With the server already running it returns at
+  once. Otherwise it detects `CODEX_CI` and stays in the foreground: give
+  it its own tool call with a yield of at least 5 seconds (a first run may
+  install a release). When it starts a new server it does not return, so
+  anything chained after it with `;` or `&&` runs only once the server
   stops.
 - OMP (oh-my-pi): run it as is. OMP cuts output lines longer than 768
   bytes, so pipe `comment list --json` and `check --json` through `jq .`.
