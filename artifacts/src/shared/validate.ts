@@ -64,6 +64,9 @@ export function structuralWarnings(raw: unknown): string[] {
       if (isObject(group) && group.verify !== undefined && typeof group.verify !== 'boolean') {
         warnings.push(`group "${id}" field "verify" must be a boolean`);
       }
+      if (isObject(group) && group.choose !== undefined && typeof group.choose !== 'boolean') {
+        warnings.push(`group "${id}" field "choose" must be a boolean`);
+      }
     }
   }
   if (warnings.length > 0) return warnings;
@@ -100,6 +103,15 @@ export function structuralWarnings(raw: unknown): string[] {
       group.boards.some((b) => typeof b !== 'string')
     ) {
       warnings.push(`group "${id}" needs a "boards" array`);
+      continue;
+    }
+    if (group.recommend !== undefined && !group.boards.includes(group.recommend)) {
+      warnings.push(
+        `group "${id}" recommends "${String(group.recommend)}", which is not one of its boards`,
+      );
+    }
+    if (group.choose === true && group.verify === true) {
+      warnings.push(`group "${id}" cannot be both "choose" and "verify"`);
     }
   }
   for (const [id, note] of Object.entries((raw.notes ?? {}) as Record<string, unknown>)) {

@@ -204,4 +204,20 @@ describe('validateCanvas', () => {
       validateCanvas({ ...base(), groups: { g: { boards: ['a', 'b'], verify: true } } }, exists),
     ).toEqual([]);
   });
+
+  test('a choice group needs a boolean flag and a recommendation from its own boards', () => {
+    const group = (fields: Record<string, unknown>) =>
+      validateCanvas(
+        { ...base(), groups: { g: { boards: ['a', 'b'], ...fields } } } as CanvasSpec,
+        exists,
+      );
+    expect(group({ choose: 'yes' })).toContain('group "g" field "choose" must be a boolean');
+    expect(group({ choose: true, recommend: 'zz' })).toContain(
+      'group "g" recommends "zz", which is not one of its boards',
+    );
+    expect(group({ choose: true, verify: true })).toContain(
+      'group "g" cannot be both "choose" and "verify"',
+    );
+    expect(group({ choose: true, recommend: 'b' })).toEqual([]);
+  });
 });

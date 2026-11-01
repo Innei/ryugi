@@ -41,6 +41,8 @@ export const isMediaBoard = (board: { type?: unknown }): board is { type: 'image
 
 export interface GroupSpec {
   boards: string[];
+  choose?: boolean;
+  recommend?: string;
   title?: string;
   verify?: boolean;
 }
