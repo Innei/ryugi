@@ -15,6 +15,9 @@ import {
   type ThreadOp,
 } from './comments';
 
+export const isChoiceRecord = (thread: { anchor: BoardAnchor }) =>
+  thread.anchor.choice !== undefined || thread.anchor.submit !== undefined;
+
 export interface BoardNodeRef {
   board: string;
   path: string;
@@ -22,11 +25,14 @@ export interface BoardNodeRef {
 
 export interface BoardAnchor {
   board?: string;
+  choice?: string | null;
   group?: string;
   hashes?: Record<string, string>;
   nodes?: BoardNodeRef[];
   offset?: { x: number; y: number };
   page: string;
+  round?: string;
+  submit?: boolean;
   verdict?: 'pass' | 'reject';
   x: number;
   y: number;
@@ -90,6 +96,18 @@ export function readBoardAnchor(value: unknown): BoardAnchor | null {
     if (!anchor.group || (value.verdict !== 'pass' && value.verdict !== 'reject')) return null;
     anchor.verdict = value.verdict;
   }
+  if (value.choice !== undefined) {
+    if (!anchor.group || (value.choice !== null && !isName(value.choice))) return null;
+    anchor.choice = value.choice;
+  }
+  if (value.round !== undefined) {
+    if (!isName(value.round)) return null;
+    anchor.round = value.round;
+  }
+  if (value.submit !== undefined) {
+    if (!anchor.round || typeof value.submit !== 'boolean') return null;
+    anchor.submit = value.submit;
+  }
   if (value.nodes !== undefined) {
     const nodes = readNodes(value.nodes);
     if (!nodes) return null;
@@ -116,6 +134,9 @@ export const boardAnchors: AnchorSpec<BoardAnchor> = {
     a.board === b.board &&
     a.group === b.group &&
     a.verdict === b.verdict &&
+    a.choice === b.choice &&
+    a.round === b.round &&
+    a.submit === b.submit &&
     a.x === b.x &&
     a.y === b.y,
   missing: 'a new thread needs a board anchor (page, x, y); dropped it',
@@ -144,8 +165,10 @@ export function applyBoardHumanOp(
 ): BoardCommentsFile {
   if (op.op !== 'create') return applyThreadOp(file, op, now, newId, who);
   const thread = openThread(op.anchor, 'human', op.text, now, newId, who);
-  if (op.anchor.verdict !== 'pass') return { ...file, threads: [...file.threads, thread] };
   const closed = { status: 'resolved' as const, statusAt: now, statusBy: 'human' as const };
+  if (isChoiceRecord(thread))
+    return { ...file, threads: [...file.threads, { ...thread, ...closed }] };
+  if (op.anchor.verdict !== 'pass') return { ...file, threads: [...file.threads, thread] };
   const rejected = (t: BoardThread) =>
     t.anchor.group === op.anchor.group && t.anchor.verdict === 'reject' && t.status === 'open';
   return {
