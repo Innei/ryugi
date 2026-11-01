@@ -161,6 +161,7 @@ test('pushes tell the viewer whether a watcher is listening, and a heartbeat cha
   expect(messages.at(-1)).toMatchObject({ listening: true });
   registry.refreshListening();
   expect(messages.length).toBe(before + 1);
+  expect(registry.apply('pick', human({ board: 'x' }, 'again'))).toMatchObject({ listening: true });
 });
 
 test('a canvas.json mid-rewrite keeps the last rounds.json', () => {

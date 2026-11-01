@@ -367,7 +367,7 @@ export function createBoardCommentRegistry(options: Options) {
       store(id).apply(stamped);
       push(id);
       writeRounds(id);
-      return { comments: store(id).current(), stale: stale(id) };
+      return { comments: store(id).current(), stale: stale(id), listening: listening(id) };
     },
     applyAgent: (id: string, op: BoardAgentOp, agent?: string) => {
       const stamped = op.op === 'add' ? { ...op, anchor: stamp(op.anchor, fresh(id)) } : op;
