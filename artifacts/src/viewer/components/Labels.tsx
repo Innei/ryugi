@@ -34,6 +34,7 @@ const styles = stylex.create({
   judged: { pointerEvents: 'auto' },
   chosen: {
     position: 'absolute',
+    boxSizing: 'border-box',
     borderWidth: 3,
     borderStyle: 'solid',
     borderColor: brand.accent,
@@ -180,10 +181,10 @@ export function Labels({
                 key={`chosen-${id}`}
                 {...stylex.props(styles.chosen)}
                 style={{
-                  left: view.x + board.x * view.k - 7,
-                  top: view.y + board.y * view.k - 7,
-                  width: board.w * view.k + 14,
-                  height: board.h * view.k + 14,
+                  left: view.x + board.x * view.k,
+                  top: view.y + board.y * view.k,
+                  width: board.w * view.k,
+                  height: board.h * view.k,
                 }}
               />
             ) : null,
