@@ -202,6 +202,7 @@ test('a verdict on a group that is not a verify group is refused, and list repor
   expect(listed.groups).toEqual([
     {
       id: 'g',
+      kind: 'verify',
       page: 'p',
       title: '验收',
       verdict: 'reject',
@@ -211,4 +212,43 @@ test('a verdict on a group that is not a verify group is refused, and list repor
       boards: ['a'],
     },
   ]);
+});
+
+test('the agent records a terminal answer and the list reports rounds', async () => {
+  const { root, viewer } = tempRoot();
+  writeArtboard(
+    root,
+    'review',
+    {
+      ...canvas,
+      boards: {
+        ...canvas.boards,
+        b: { file: 'pages/b.html', page: 'p', x: 200, y: 0, w: 100, h: 100 },
+      },
+      groups: { q1: { boards: ['a', 'b'], choose: true, recommend: 'a' } },
+    },
+    {
+      'pages/a.html': '<html><body>a</body></html>',
+      'pages/b.html': '<html><body>b</body></html>',
+    },
+  );
+  const server = await startArtifactsServer({
+    root,
+    viewerDir: viewer,
+    host: '127.0.0.1',
+    urlHost: 'localhost',
+    debounceMs: 20,
+  });
+  running.push(server);
+  expect((await agent(server, { op: 'choose', group: 'q1', board: 'b' })).status).toBe(200);
+  expect((await agent(server, { op: 'submit', round: 'page:p', submit: true })).status).toBe(200);
+  expect((await agent(server, { op: 'choose', group: 'q1', board: 'zz' })).status).toBe(400);
+  const listed = JSON.parse((await agent(server, { op: 'list', all: true })).body);
+  expect(listed.groups).toEqual([
+    expect.objectContaining({ id: 'q1', kind: 'choose', choice: 'b', byRecommendation: false }),
+  ]);
+  expect(listed.rounds).toEqual([
+    expect.objectContaining({ id: 'page:p', state: 'submitted', groups: ['q1'] }),
+  ]);
+  expect(listed.threads).toEqual([]);
 });

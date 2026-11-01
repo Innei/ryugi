@@ -194,7 +194,10 @@ export function applyBoardAgentOp(
     throw new Error('a reject closes only when your human partner passes the group');
   }
   if (op.op === 'add') {
-    const thread = openThread(op.anchor, 'agent', op.text, now, newId, { name });
+    const opened = openThread(op.anchor, 'agent', op.text, now, newId, { name });
+    const thread = isChoiceRecord(opened)
+      ? { ...opened, status: 'resolved' as const, statusAt: now, statusBy: 'agent' as const }
+      : opened;
     return {
       file: { ...file, threads: [...file.threads, thread] },
       threadId: thread.id,

@@ -108,6 +108,7 @@ test('list reports each verify group with its verdict', () => {
   expect(registry.groups('review')).toEqual([
     {
       id: 'notify',
+      kind: 'verify',
       page: 'p',
       title: '通知设置',
       verdict: 'pending',

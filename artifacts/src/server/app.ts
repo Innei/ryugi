@@ -53,7 +53,7 @@ import { readCredentials } from './credentials';
 import { createDirectRelay } from './direct-relay';
 import { readDocument } from './document';
 import { parseDocument } from './document-codec';
-import { asAgentOp, asHumanOp } from './document-comments';
+import { asAgentOp, asHumanOp, isId } from './document-comments';
 import { OutdatedClient } from './document-session';
 import { createDocumentRegistry, type DocumentTiming } from './documents';
 import { createDynamicBlocks } from './dynamic-blocks';
@@ -592,7 +592,24 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
         artifact: `artboard/${id}`,
         threads,
         groups: boardComments.groups(id),
+        rounds: boardComments.rounds(id),
       });
+      return;
+    }
+    if (fields.op === 'choose' || fields.op === 'submit') {
+      try {
+        if (fields.op === 'choose') {
+          if (!isId(fields.group) || (fields.board !== null && !isId(fields.board)))
+            throw new Error('choose needs {group, board} with board a board id or null');
+          sendJson(res, 200, boardComments.agentChoose(id, fields.group, fields.board, agent));
+        } else {
+          if (!isId(fields.round) || typeof fields.submit !== 'boolean')
+            throw new Error('submit needs {round, submit: true | false}');
+          sendJson(res, 200, boardComments.agentSubmit(id, fields.round, fields.submit, agent));
+        }
+      } catch (err) {
+        sendJson(res, 400, { error: (err as Error).message });
+      }
       return;
     }
     const shorthand = agentAddOnBoard(body, boardSpecs(dir));

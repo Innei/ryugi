@@ -15,13 +15,24 @@ import {
   readBoardAnchor,
   savedBoardComments,
 } from '../shared/board-comments';
+import { isChoiceRecord } from '../shared/choices';
 import { type Person, unreadThreads, waitingOn } from '../shared/comments';
 import type { ServerMessage } from '../shared/types';
 import { groupVerdict } from '../shared/verdicts';
+import {
+  agentChoiceAnchor,
+  agentSubmitAnchor,
+  checkHumanRecord,
+  choiceContext,
+  choiceGroups,
+  isDraft,
+  roundViews,
+} from './board-choices';
 import { createCommentCursors } from './comment-cursors';
 import type { CommentNames } from './comment-names';
 import { asHumanOp, createStore, isId, isText, type Store } from './document-comments';
 import { resolveBoardFile } from './paths';
+import { writeJsonAtomic } from './state';
 
 type BoardStore = Store<BoardCommentsFile, BoardHumanOp, BoardAgentOp>;
 
@@ -44,6 +55,9 @@ const withoutVerdict = ({
   hashes: _hashes,
   group: _group,
   verdict: _verdict,
+  choice: _choice,
+  round: _round,
+  submit: _submit,
   ...anchor
 }: BoardAnchor): BoardAnchor => anchor;
 
@@ -291,11 +305,20 @@ export function createBoardCommentRegistry(options: Options) {
     hashes.delete(id);
     return currentHashes(id);
   };
+  const roundsFile = (id: string) => path.join(options.stateDir, 'artboard', id, 'rounds.json');
+  const writeRounds = (id: string) => {
+    const rounds = roundViews(choiceContext(dirOf(id)), store(id).current().threads);
+    if (rounds.length === 0 && !fs.existsSync(roundsFile(id))) return;
+    writeJsonAtomic(roundsFile(id), { rounds });
+  };
   const forAgent = (id: string, staleIds: Set<string>) => {
     const files = boardFiles(dirOf(id));
     const groups = groupSpecs(dirOf(id));
+    const context = choiceContext(dirOf(id));
+    const threads = store(id).current().threads;
     return <T extends BoardThread>(thread: T) => ({
       ...thread,
+      draft: isDraft(context, thread, threads),
       stale: staleIds.has(thread.id),
       waitingOn: waitingOn(thread),
       files: Object.fromEntries(
@@ -315,10 +338,14 @@ export function createBoardCommentRegistry(options: Options) {
       const groups = groupSpecs(dirOf(id));
       if (op.op === 'create' && op.anchor.verdict && !groups[op.anchor.group!]?.verify)
         throw new Error(`no verify group ${op.anchor.group} in artboard/${id}`);
+      const record = op.op === 'create' && isChoiceRecord(op);
+      if (record)
+        checkHumanRecord(choiceContext(dirOf(id)), op.anchor, store(id).current().threads);
       const stamped =
-        op.op === 'create' ? { ...op, anchor: stamp(op.anchor, fresh(id), groups) } : op;
+        op.op === 'create' && !record ? { ...op, anchor: stamp(op.anchor, fresh(id), groups) } : op;
       store(id).apply(stamped);
       push(id);
+      writeRounds(id);
       return { comments: store(id).current(), stale: stale(id) };
     },
     applyAgent: (id: string, op: BoardAgentOp, agent?: string) => {
@@ -327,27 +354,52 @@ export function createBoardCommentRegistry(options: Options) {
       push(id);
       return { threadId, ...(messageId ? { messageId } : {}) };
     },
+    agentChoose: (id: string, group: string, board: string | null, agent?: string) => {
+      const anchor = agentChoiceAnchor(choiceContext(dirOf(id)), group, board);
+      const text = board ? `Chose ${board}` : `Cleared the choice in ${group}`;
+      const { threadId } = store(id).applyAgent({ op: 'add', anchor, text }, agent);
+      push(id);
+      writeRounds(id);
+      return { threadId };
+    },
+    agentSubmit: (id: string, round: string, submit: boolean, agent?: string) => {
+      const anchor = agentSubmitAnchor(choiceContext(dirOf(id)), round, submit);
+      const text = submit ? `Submitted ${round}` : `Withdrew ${round}`;
+      const { threadId } = store(id).applyAgent({ op: 'add', anchor, text }, agent);
+      push(id);
+      writeRounds(id);
+      return { threadId };
+    },
+    rounds: (id: string) =>
+      roundViews(choiceContext(dirOf(id)), store(id).current().threads).map(
+        ({ boards: _boards, ...round }) => round,
+      ),
     list: (id: string, agent: string, all: boolean) => {
       const changed = store(id).sync();
       if (changed) push(id);
       const file = store(id).current();
       const format = forAgent(id, new Set(stale(id)));
-      if (all) return file.threads.filter((t) => !t.messages.every((m) => m.deleted)).map(format);
+      const comment = (t: BoardThread) => !isChoiceRecord(t);
+      if (all)
+        return file.threads
+          .filter((t) => comment(t) && !t.messages.every((m) => m.deleted))
+          .map(format);
       const { threads, newest } = unreadThreads(file, cursors.get(id, agent));
       if (newest) cursors.set(id, agent, newest);
-      return threads.map(format);
+      return threads.filter(comment).map(format);
     },
     groups: (id: string) => {
       const specs = boardSpecs(dirOf(id));
       const threads = store(id).current().threads;
       const staleIds = new Set(stale(id));
-      return Object.entries(groupSpecs(dirOf(id)))
+      const verify = Object.entries(groupSpecs(dirOf(id)))
         .filter(([, group]) => group.verify)
         .map(([groupId, group]) => {
           const { state, ...verdict } = groupVerdict(threads, groupId, staleIds);
           const page = group.boards.map((board) => specs[board]?.page).find(Boolean) ?? '';
           return {
             id: groupId,
+            kind: 'verify' as const,
             page,
             ...(group.title ? { title: group.title } : {}),
             verdict: state,
@@ -355,12 +407,15 @@ export function createBoardCommentRegistry(options: Options) {
             boards: group.boards,
           };
         });
+      return [...verify, ...choiceGroups(choiceContext(dirOf(id)), threads)];
     },
     sync: (id: string) => {
       if (store(id).sync()) push(id);
+      writeRounds(id);
     },
     boardsChanged: (id: string) => {
       fresh(id);
+      writeRounds(id);
       if (!stores.has(id) && !fs.existsSync(path.join(dirOf(id), 'comments.json'))) return;
       if (JSON.stringify(stale(id)) !== (lastStale.get(id) ?? '[]')) push(id);
     },
