@@ -50,6 +50,8 @@ const styles = stylex.create({
   markCurrent: { backgroundColor: brand.accent },
   markPass: { backgroundColor: cssVar.colorSuccess },
   markReject: { backgroundColor: cssVar.colorWarning },
+  markChosen: { backgroundColor: `color-mix(in srgb, ${brand.accent} 45%, transparent)` },
+  chose: { flexShrink: 0, color: brand.accentStrong, fontSize: 12, fontWeight: 600 },
   list: { paddingBottom: 24, fontFamily: cssVar.fontFamily },
   pages: { display: 'flex', justifyContent: 'flex-end', paddingInline: 16, paddingBlock: 4 },
   round: {
@@ -88,6 +90,7 @@ const styles = stylex.create({
 });
 
 interface Props {
+  chose?: Record<string, string>;
   current: Question | null;
   next: Question | null;
   onPageChange: (id: string) => void;
@@ -126,6 +129,7 @@ export function QuestionSheet({
   snap,
   onSnap,
   verdicts = {},
+  chose = {},
 }: Props) {
   const { t } = useTranslation();
   const list = questionList(rounds);
@@ -151,6 +155,11 @@ export function QuestionSheet({
                 <>
                   <code {...stylex.props(styles.id, styles.currentId)}>{current.id}</code>
                   <span {...stylex.props(styles.name, styles.currentName)}>{current.title}</span>
+                  {chose[current.id] && (
+                    <span {...stylex.props(styles.chose)}>
+                      {t('choices.chose', { id: chose[current.id] })}
+                    </span>
+                  )}
                   <span {...stylex.props(styles.position)}>
                     {index + 1} / {list.length}
                   </span>
@@ -171,6 +180,7 @@ export function QuestionSheet({
                       mark === 'current' && styles.markCurrent,
                       mark === 'pass' && styles.markPass,
                       mark === 'reject' && styles.markReject,
+                      mark === 'open' && !!chose[question.id] && styles.markChosen,
                     )}
                   />
                 );

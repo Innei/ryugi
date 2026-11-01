@@ -9,7 +9,9 @@ import {
   useState,
 } from 'react';
 
+import type { BoardHumanOp } from '../../shared/board-comments';
 import { type CanvasLayout, type CanvasSpec, isMediaBoard } from '../../shared/types';
+import { SubmitBar } from '../choices/SubmitBar';
 import { Canvas } from '../components/Canvas';
 import { CanvasErrorBoundary } from '../components/CanvasErrorBoundary';
 import { Labels } from '../components/Labels';
@@ -19,6 +21,7 @@ import { QuestionSheet, SHEET_PEEK } from '../components/QuestionSheet';
 import { useArtboardPage } from '../hooks/useArtboardPage';
 import { useBoardLifecycle } from '../hooks/useBoardLifecycle';
 import { useBoardOrigin } from '../hooks/useBoardOrigin';
+import { useChoices } from '../hooks/useChoices';
 import { useCulledBoards } from '../hooks/useCulledBoards';
 import { usePanZoom } from '../hooks/usePanZoom';
 import { useVerdicts } from '../hooks/useVerdicts';
@@ -75,6 +78,7 @@ interface Props {
   boardPath?: string;
   boardPort?: number;
   canvas: CanvasSpec | null;
+  comment?: (op: BoardHumanOp) => Promise<unknown>;
   comments?: BoardCommentsState | null;
   contentBase: string;
   id: string;
@@ -101,6 +105,7 @@ export function PhoneArtboard({
   live,
   loaded,
   agent,
+  comment,
   comments,
   actions,
 }: Props) {
@@ -182,6 +187,20 @@ export function PhoneArtboard({
     stale,
     versions,
   });
+  const choices = useChoices({
+    canvas,
+    layout,
+    page,
+    threads: comments?.comments.threads ?? NO_THREADS,
+    listening: comments?.listening === true,
+    comment: live === false ? undefined : comment,
+  });
+  const chose = Object.fromEntries(
+    list.flatMap((q) => {
+      const found = choices.choiceOf(q.id);
+      return found?.choice && !found.byRecommendation ? [[q.id, found.choice]] : [];
+    }),
+  );
 
   const boardAt = (event: { clientX: number; clientY: number }) => {
     const rect = viewportRef.current!.getBoundingClientRect();
@@ -294,6 +313,7 @@ export function PhoneArtboard({
             <Labels
               allBoards={allBoards}
               boards={boards}
+              choices={choices.active ? choices : undefined}
               contentBase={contentBase}
               groups={groups}
               overlayRef={overlayRef}
@@ -316,7 +336,19 @@ export function PhoneArtboard({
         )}
         {list.length > 0 ? (
           <div data-chrome {...stylex.props(styles.dock)}>
+            {choices.current && (
+              <SubmitBar
+                agent={agent}
+                bottom={SHEET_PEEK + 12}
+                canAct={choices.canAct}
+                listening={choices.listening}
+                summary={choices.current}
+                onSubmit={choices.submit}
+                onWithdraw={choices.withdraw}
+              />
+            )}
             <QuestionSheet
+              chose={chose}
               current={question}
               next={current ? stepQuestion(list, current, 1) : null}
               page={page}
@@ -335,11 +367,13 @@ export function PhoneArtboard({
       {open && openBoard ? (
         <PhoneBoard
           board={openBoard}
+          choice={choices.boardChoice(open)}
           id={open}
           origin={origin}
           sandbox={isMediaBoard(openBoard) ? undefined : source?.sandbox}
           siblings={siblings}
           src={`${isMediaBoard(openBoard) ? contentBase : (source?.base ?? contentBase)}${openBoard.file}?v=${versions[openBoard.file] ?? 0}`}
+          onChoose={() => choices.choose(open)}
           onClose={() => setOpen(null)}
           onOpen={setOpen}
         />

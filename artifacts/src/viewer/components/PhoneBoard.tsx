@@ -5,10 +5,11 @@ import { type PointerEvent, useLayoutEffect, useRef, useState } from 'react';
 
 import { type BoardSpec, isMediaBoard } from '../../shared/types';
 import { EASE, EXIT, play, reducedMotion, SPRING } from '../document/motion';
+import type { BoardChoice } from '../hooks/useChoices';
 import { usePanZoom } from '../hooks/usePanZoom';
 import { t } from '../i18n';
 import { type Axis, FLICK, lockAxis, velocityTracker } from '../lib/gesture';
-import { color } from '../tokens.stylex';
+import { brand, color } from '../tokens.stylex';
 import { ghostStyles } from './ghost';
 import { MediaBoard } from './MediaBoard';
 
@@ -90,6 +91,30 @@ const styles = stylex.create({
     backgroundColor: cssVar.colorBgContainer,
   },
   dots: { flex: 1, display: 'flex', justifyContent: 'center', gap: 6 },
+  pick: {
+    position: 'relative',
+    flexShrink: 0,
+    paddingInline: 16,
+    paddingTop: 10,
+    paddingBottom: 6,
+    backgroundColor: cssVar.colorBgContainer,
+  },
+  choose: {
+    width: '100%',
+    height: 46,
+    borderWidth: 1.5,
+    borderStyle: 'solid',
+    borderColor: brand.accent,
+    borderRadius: 12,
+    backgroundColor: 'transparent',
+    color: brand.accentStrong,
+    fontFamily: 'inherit',
+    fontSize: 15,
+    fontWeight: 600,
+    cursor: 'pointer',
+  },
+  chosen: { backgroundColor: brand.accent, color: color.onStrong },
+  locked: { opacity: 0.5, cursor: 'default' },
   dot: {
     width: 6,
     height: 6,
@@ -103,7 +128,9 @@ const styles = stylex.create({
 
 interface Props {
   board: BoardSpec;
+  choice?: BoardChoice | null;
   id: string;
+  onChoose?: () => void;
   onClose: () => void;
   onOpen: (id: string) => void;
   origin?: Rect;
@@ -131,6 +158,8 @@ export function PhoneBoard({
   src,
   siblings,
   origin,
+  choice,
+  onChoose,
   onOpen,
   onClose,
 }: Props) {
@@ -429,6 +458,24 @@ export function PhoneBoard({
           </div>
         </div>
       </div>
+      {choice && onChoose ? (
+        <div {...stylex.props(styles.pick)} style={drag ? { opacity: chromeFade } : undefined}>
+          <button
+            aria-pressed={choice.chosen}
+            data-choose-board={id}
+            disabled={choice.disabled}
+            type="button"
+            onClick={onChoose}
+            {...stylex.props(
+              styles.choose,
+              choice.chosen && styles.chosen,
+              choice.disabled && styles.locked,
+            )}
+          >
+            {choice.chosen ? `✓ ${t('choices.chosenThis')}` : t('choices.chooseThis')}
+          </button>
+        </div>
+      ) : null}
       {siblings.length > 1 ? (
         <div
           ref={foot}

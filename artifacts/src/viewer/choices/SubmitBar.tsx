@@ -67,6 +67,7 @@ const clock = (time: string, locale: string) =>
 
 interface Props {
   agent?: string;
+  bottom?: number;
   canAct: boolean;
   listening: boolean;
   onSubmit: () => void;
@@ -74,12 +75,21 @@ interface Props {
   summary: RoundSummary;
 }
 
-export function SubmitBar({ summary, listening, agent, canAct, onSubmit, onWithdraw }: Props) {
+export function SubmitBar({
+  summary,
+  listening,
+  agent,
+  bottom,
+  canAct,
+  onSubmit,
+  onWithdraw,
+}: Props) {
   const { t, i18n } = useTranslation();
+  const place = bottom === undefined ? undefined : { bottom, pointerEvents: 'auto' as const };
   const list = (groups: string[]) => groups.join(', ');
   if (summary.state === 'submitted')
     return (
-      <div data-submit-bar data-chrome="submit-bar" {...stylex.props(styles.bar)}>
+      <div data-submit-bar data-chrome="submit-bar" {...stylex.props(styles.bar)} style={place}>
         {listening && <span {...stylex.props(styles.dot)} />}
         <span>
           {summary.submittedAt
@@ -106,7 +116,7 @@ export function SubmitBar({ summary, listening, agent, canAct, onSubmit, onWithd
     summary.unanswered.length ? t('choices.unanswered', { groups: list(summary.unanswered) }) : '',
   ].filter(Boolean);
   return (
-    <div data-submit-bar data-chrome="submit-bar" {...stylex.props(styles.bar)}>
+    <div data-submit-bar data-chrome="submit-bar" {...stylex.props(styles.bar)} style={place}>
       {summary.round.title && <span {...stylex.props(styles.title)}>{summary.round.title}</span>}
       {summary.round.title && <span {...stylex.props(styles.rule)} />}
       <span>{t('choices.chosen', { count: summary.chosen, total: summary.total })}</span>
