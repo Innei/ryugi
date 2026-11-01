@@ -245,7 +245,7 @@ function DesktopArtboard({
     page,
     threads: boardComments.threads,
     listening: comments?.listening === true,
-    comment,
+    comment: live === false ? undefined : comment,
   });
   const rejectAt = verdicts.rejecting ? verdicts.origin(verdicts.rejecting) : null;
   const nextVerify = () => {
@@ -655,7 +655,7 @@ function DesktopArtboard({
         {choices.current && !expanded && (
           <SubmitBar
             agent={agent}
-            canAct={choices.canAct && live !== false}
+            canAct={choices.canAct}
             listening={choices.listening}
             summary={choices.current}
             onSubmit={choices.submit}

@@ -38,7 +38,7 @@ function fixture(t) {
   // Substitute only the external CLI transport; the watcher, hooks and filesystem are real.
   fs.writeFileSync(
     fake,
-    `#!/usr/bin/env node\nconst fs=require('node:fs');fs.appendFileSync(${JSON.stringify(log)},JSON.stringify(process.argv.slice(2))+'\\n');if(fs.existsSync(${JSON.stringify(fail)})){process.stderr.write('transport unavailable');process.exit(1);}console.log('Queued message test-receipt');\n`,
+    `#!/usr/bin/env node\nconst fs=require('node:fs');fs.appendFileSync(${JSON.stringify(log)},JSON.stringify(process.argv.slice(2))+'\\n');if(fs.existsSync(${JSON.stringify(fail)})){process.stderr.write('transport unavailable');process.exit(1);}if(fs.existsSync(${JSON.stringify(fail)}+'.slow')){Atomics.wait(new Int32Array(new SharedArrayBuffer(4)),0,0,4000);}console.log('Queued message test-receipt');\n`,
     { mode: 0o755 },
   );
   const env = {
@@ -318,4 +318,17 @@ test('a submitted round is queued even with no unread comments, and the watcher 
   const message = args[args.indexOf('--message') + 1];
   assert.ok(message.includes('artboard/settings'));
   assert.ok(message.includes('submitted'));
+});
+
+test('the heartbeat keeps beating while a queue call is in flight', async (t) => {
+  const f = fixture(t);
+  fs.writeFileSync(`${f.fail}.slow`, '');
+  f.start();
+  const alive = path.join(f.project, '.ryugi/artifacts/.state/codex-comment-watch', `${id}.alive`);
+  await until(() => fs.existsSync(alive), 'codex watcher never wrote a heartbeat');
+  f.write('document/plan', f.comments());
+  await until(() => f.read().length > 0, 'comment never reached codex queue');
+  const during = Number(fs.readFileSync(alive, 'utf8'));
+  await delay(2500);
+  assert.ok(Number(fs.readFileSync(alive, 'utf8')) > during, 'heartbeat stopped while queueing');
 });

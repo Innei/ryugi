@@ -162,3 +162,32 @@ test('pushes tell the viewer whether a watcher is listening, and a heartbeat cha
   registry.refreshListening();
   expect(messages.length).toBe(before + 1);
 });
+
+test('a canvas.json mid-rewrite keeps the last rounds.json', () => {
+  const { registry, dir, stateDir } = project();
+  registry.apply('pick', human({ round: 'r1', submit: true }));
+  const file = path.join(stateDir, 'artboard', 'pick', 'rounds.json');
+  const before = fs.readFileSync(file, 'utf8');
+  fs.writeFileSync(path.join(dir, 'canvas.json'), '{"version": 1, "pages": [');
+  registry.boardsChanged('pick');
+  expect(fs.readFileSync(file, 'utf8')).toBe(before);
+});
+
+test('choice records are never stale', () => {
+  const { registry } = project();
+  registry.apply('pick', human({ group: 'q1', choice: 'q1-a' }));
+  registry.apply('pick', human({ round: 'r1', submit: true }));
+  expect(registry.stale('pick')).toEqual([]);
+});
+
+test('a human cannot delete, reopen or resolve a choice record', () => {
+  const { registry } = project();
+  const { comments } = registry.apply('pick', human({ group: 'q1', choice: 'q1-a' }));
+  const thread = comments.threads[0]!;
+  const ops = [
+    { op: 'delete', threadId: thread.id, messageId: thread.messages[0]!.id },
+    { op: 'reopen', threadId: thread.id },
+  ];
+  for (const op of ops)
+    expect(() => registry.apply('pick', asBoardHumanOp(op)!)).toThrow(/choice record/);
+});

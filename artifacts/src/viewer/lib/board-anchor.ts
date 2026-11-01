@@ -1,4 +1,5 @@
 import type { BoardAnchor, BoardThread } from '../../shared/board-comments';
+import { isChoiceRecord } from '../../shared/choices';
 import type { InspectorRect } from '../../shared/inspector';
 import { i18n } from '../i18n';
 
@@ -75,9 +76,12 @@ export const staleText = (anchor: BoardAnchor) =>
 
 const openedAt = (thread: BoardThread) => thread.messages[0]?.at ?? thread.statusAt;
 
+export const isCommentThread = (thread: BoardThread) =>
+  thread.anchor?.verdict !== 'pass' && !(thread.anchor && isChoiceRecord(thread));
+
 export function pinNumbers(threads: BoardThread[]): Map<string, number> {
   const ordered = threads
-    .filter((thread) => thread.anchor?.verdict !== 'pass')
+    .filter(isCommentThread)
     .sort((a, b) => (openedAt(a) < openedAt(b) ? -1 : openedAt(a) > openedAt(b) ? 1 : 0));
   return new Map(ordered.map((thread, index) => [thread.id, index + 1]));
 }

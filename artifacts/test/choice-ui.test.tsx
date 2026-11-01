@@ -30,6 +30,7 @@ const state = vi.hoisted(() => ({
   },
   comment: null as unknown as ReturnType<typeof vi.fn> | undefined,
   canvas: null as unknown as CanvasSpec,
+  live: true,
 }));
 
 const box = (x: number, y: number) => ({ page: 'p', x, y, w: 600, h: 400 });
@@ -62,7 +63,7 @@ vi.mock('../src/viewer/hooks/useCanvasData', () => ({
     },
     contentBase: 'about:blank#',
     warnings: [],
-    live: true,
+    live: state.live,
     loaded: true,
     send: vi.fn(),
     comments: state.comments,
@@ -88,6 +89,7 @@ beforeEach(() => {
   );
   state.comments = { comments: { version: 1, threads: [] }, stale: [], listening: false };
   state.comment = vi.fn(async () => state.comments);
+  state.live = true;
   vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(1400);
   vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(900);
 });
@@ -188,4 +190,11 @@ test('an artboard without choice groups shows no radios and no bar', async () =>
   expect(radio(view, 'q1-a')).toBeNull();
   expect(bar(view)).toBeNull();
   state.canvas = saved;
+});
+
+test('a page that is not live, like a published copy with no server, is read-only', async () => {
+  state.live = false;
+  const view = await mount();
+  expect(radio(view, 'q1-a').disabled).toBe(true);
+  expect(button(bar(view)!, 'Submit')).toBeUndefined();
 });

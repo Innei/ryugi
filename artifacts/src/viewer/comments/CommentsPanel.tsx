@@ -8,7 +8,7 @@ import type { BoardThread } from '../../shared/board-comments';
 import { authorOf } from '../document/author';
 import { i18n, useTranslation } from '../i18n';
 import { styles as inspectorStyles } from '../inspector/styles';
-import { anchorLabel, staleText } from '../lib/board-anchor';
+import { anchorLabel, isCommentThread, staleText } from '../lib/board-anchor';
 import { color } from '../tokens.stylex';
 
 export type CommentsTab = 'open' | 'all';
@@ -170,7 +170,7 @@ export function CommentsPanel({
   const onPage = threads.filter(
     (thread) =>
       thread.anchor.page === page &&
-      thread.anchor.verdict !== 'pass' &&
+      isCommentThread(thread) &&
       thread.messages.some((m) => !m.deleted),
   );
   const open = onPage.filter((thread) => thread.status === 'open');

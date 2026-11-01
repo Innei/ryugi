@@ -307,6 +307,7 @@ function choiceFixture(t) {
     f.write('.state/artboard/pick/rounds.json', {
       rounds: [{ id: 'r1', page: 'p', state, groups: ['q1'], boards: ['q1-a', 'q1-b'] }],
     });
+  f.save('artboard/pick', []);
   const comment = (id, n, board) => ({
     ...thread(id),
     anchor: { page: 'p', board, x: 1, y: 2 },
@@ -368,4 +369,37 @@ test('a running watcher keeps a heartbeat beside its subscription', async (t) =>
   assert.ok(Math.abs(Date.now() - stamp) < 5000);
   const { aliveFile } = require(path.join(repo, 'skills/artifacts/app/comment-subscriptions.cjs'));
   assert.equal(aliveFile(f.project, 'claude', session), alive);
+});
+
+test('a submitted round closed by the next round wakes nobody', (t) => {
+  const f = choiceFixture(t);
+  f.rounds('submitted');
+  const poll = watch(f.project);
+  assert.deepEqual(poll(), []);
+  f.rounds('closed');
+  assert.deepEqual(poll(), []);
+});
+
+test('a canvas that briefly yields no rounds does not replay the submit', (t) => {
+  const f = choiceFixture(t);
+  f.rounds('submitted');
+  const poll = watch(f.project);
+  assert.deepEqual(poll(), []);
+  f.write('.state/artboard/pick/rounds.json', { rounds: [] });
+  assert.deepEqual(poll(), []);
+  f.rounds('submitted');
+  assert.deepEqual(poll(), []);
+});
+
+test('a last comment and the submit in one tick wake once', (t) => {
+  const f = choiceFixture(t);
+  f.rounds('open');
+  const poll = watch(f.project);
+  assert.deepEqual(poll(), []);
+  f.save('artboard/pick', [f.comment('t1', 1, 'q1-a')]);
+  f.rounds('submitted');
+  assert.deepEqual(
+    poll().map((event) => event.type),
+    ['ryugi-choices'],
+  );
 });

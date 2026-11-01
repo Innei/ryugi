@@ -241,8 +241,9 @@ const isStale = (
   hashes: Record<string, string>,
   groups: Record<string, GroupSpec>,
 ) =>
-  !sameMembers(thread, groups) ||
-  Object.entries(thread.anchor.hashes ?? {}).some(([board, hash]) => hashes[board] !== hash);
+  !isChoiceRecord(thread) &&
+  (!sameMembers(thread, groups) ||
+    Object.entries(thread.anchor.hashes ?? {}).some(([board, hash]) => hashes[board] !== hash));
 
 interface Options {
   broadcast: (message: ServerMessage) => void;
@@ -313,7 +314,9 @@ export function createBoardCommentRegistry(options: Options) {
   };
   const roundsFile = (id: string) => path.join(options.stateDir, 'artboard', id, 'rounds.json');
   const writeRounds = (id: string) => {
-    const rounds = roundViews(choiceContext(dirOf(id)), store(id).current().threads);
+    const context = choiceContext(dirOf(id));
+    if (!context.canvas) return;
+    const rounds = roundViews(context, store(id).current().threads);
     if (rounds.length === 0 && !fs.existsSync(roundsFile(id))) return;
     writeJsonAtomic(roundsFile(id), { rounds });
   };
@@ -348,6 +351,14 @@ export function createBoardCommentRegistry(options: Options) {
       const groups = groupSpecs(dirOf(id));
       if (op.op === 'create' && op.anchor.verdict && !groups[op.anchor.group!]?.verify)
         throw new Error(`no verify group ${op.anchor.group} in artboard/${id}`);
+      const target =
+        op.op !== 'create'
+          ? store(id)
+              .current()
+              .threads.find((t) => t.id === op.threadId)
+          : null;
+      if (target && isChoiceRecord(target))
+        throw new Error('a choice record changes only through the radios and the submit bar');
       const record = op.op === 'create' && isChoiceRecord(op);
       if (record)
         checkHumanRecord(choiceContext(dirOf(id)), op.anchor, store(id).current().threads);

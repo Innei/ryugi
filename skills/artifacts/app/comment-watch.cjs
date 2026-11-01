@@ -96,12 +96,16 @@ function createCommentWatch(project, key = cursorKey(process.env)) {
         const rounds = type === 'artboard' ? choiceRounds(root, artifact) : [];
         const known = roundStates.get(artifact);
         const states = new Map(rounds.map((round) => [round.id, round.state]));
-        roundStates.set(artifact, states);
+        // An empty list is a canvas being rewritten; keeping the last states stops a replayed submit.
+        if (states.size > 0 || !known) roundStates.set(artifact, states);
+        const wasOpen = new Set(
+          [...(known ?? [])].filter(([, state]) => state === 'open').map(([id]) => id),
+        );
         for (const [round, state] of states) {
           const before = known?.get(round);
-          if (!known || before === state) continue;
+          if (!known || before === undefined || before === state) continue;
           const submitted = state === 'submitted';
-          if (!submitted && before !== 'submitted') continue;
+          if (!submitted && !(before === 'submitted' && state === 'open')) continue;
           events.push({
             type: 'ryugi-choices',
             artifact,
@@ -114,7 +118,10 @@ function createCommentWatch(project, key = cursorKey(process.env)) {
           });
         }
         const file = readJson(path.join(root, artifact, 'comments.json'));
-        const changes = humanChanges(file, draftCheck(rounds));
+        const changes = humanChanges(
+          file,
+          draftCheck(rounds.map((r) => (wasOpen.has(r.id) ? { ...r, state: 'open' } : r))),
+        );
         if (!changes) continue; // A partial save is retried on the next poll.
         const previous = seen.get(artifact) || new Map();
         let changed = false;

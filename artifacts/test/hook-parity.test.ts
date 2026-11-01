@@ -7,6 +7,7 @@ import { expect, test } from 'vitest';
 
 import { detectAgent } from '../src/server/agent';
 import { applyBoardHumanOp, emptyBoardComments } from '../src/shared/board-comments';
+import { isChoiceRecord } from '../src/shared/choices';
 import {
   applyHumanOp,
   type CommentsFile,
@@ -96,6 +97,33 @@ test('the hook counts the same unread threads as the server for every cursor', (
         unreadThreads(file, cursor).threads.length,
       ]);
   }
+});
+
+test('choice and submit records never count as unread, matching what comment list returns', () => {
+  const point = { page: 'p', x: 0, y: 0 };
+  let file = applyBoardHumanOp(
+    emptyBoardComments(),
+    { op: 'create', anchor: { ...point, board: 'q1-a' }, text: 'too long' },
+    at(3),
+    ids,
+  );
+  file = applyBoardHumanOp(
+    file,
+    { op: 'create', anchor: { ...point, group: 'q1', choice: 'q1-a' }, text: 'q1-a' },
+    at(4),
+    ids,
+  );
+  file = applyBoardHumanOp(
+    file,
+    { op: 'create', anchor: { ...point, round: 'r1', submit: true }, text: 'Submit r1' },
+    at(5),
+    ids,
+  );
+  for (const cursor of [null, at(1), at(3), at(4)])
+    expect([cursor, hook.unreadThreadCount(file as never, cursor)]).toEqual([
+      cursor,
+      unreadThreads(file, cursor).threads.filter((t) => !isChoiceRecord(t)).length,
+    ]);
 });
 
 test('the hook reads the cursor the CLI writes for the same harness', () => {

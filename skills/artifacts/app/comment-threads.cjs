@@ -3,6 +3,9 @@
 const stampOf = (m) => m.editedAt || m.at;
 const humanStatus = (thread) => (thread.statusBy || 'human') === 'human';
 
+const isChoiceRecord = (thread) =>
+  thread.anchor?.choice !== undefined || thread.anchor?.submit !== undefined;
+
 function waitingOnAgent(thread) {
   if (thread.status === 'resolved') return false;
   const live = (thread.messages || []).filter((m) => !m.deleted);
@@ -36,8 +39,10 @@ function changedSince(thread, cursor) {
 // Mirrors unreadThreads in artifacts/src/shared/comments.ts; artifacts/test/hook-parity.test.ts keeps them in step.
 function unreadThreadCount(file, cursor) {
   const threads = file && Array.isArray(file.threads) ? file.threads : [];
-  return threads.filter((thread) =>
-    cursor === null ? waitingOnAgent(thread) : changedSince(thread, cursor),
+  return threads.filter(
+    (thread) =>
+      !isChoiceRecord(thread) &&
+      (cursor === null ? waitingOnAgent(thread) : changedSince(thread, cursor)),
   ).length;
 }
 

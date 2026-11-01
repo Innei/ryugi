@@ -3,6 +3,7 @@ import { expect, test } from 'vitest';
 import {
   anchorLabel,
   clickAnchor,
+  isCommentThread,
   pinNumbers,
   pinPoint,
   selectionAnchor,
@@ -137,4 +138,25 @@ test('pins are numbered in the order threads were opened', () => {
       ['a', 2],
     ]),
   );
+});
+
+test('choice and submit records are not comments: no pin, no number, no panel row', () => {
+  const at = (n: number) => [{ at: `2026-11-01T08:00:0${n}Z` }];
+  const comment = { id: 'c', anchor: { page: 'p', x: 0, y: 0 }, statusAt: '1', messages: at(3) };
+  const choice = {
+    id: 'k',
+    anchor: { page: 'p', x: 0, y: 0, group: 'q1', choice: 'q1-a' },
+    statusAt: '1',
+    messages: at(1),
+  };
+  const submit = {
+    id: 's',
+    anchor: { page: 'p', x: 0, y: 0, round: 'r1', submit: true },
+    statusAt: '1',
+    messages: at(2),
+  };
+  expect(pinNumbers([choice, submit, comment] as never)).toEqual(new Map([['c', 1]]));
+  expect(
+    [choice, submit, comment].filter((t) => isCommentThread(t as never)).map((t) => t.id),
+  ).toEqual(['c']);
 });

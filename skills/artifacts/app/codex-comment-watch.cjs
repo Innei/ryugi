@@ -205,8 +205,8 @@ function watch(ctx, input) {
   };
   const tick = async () => {
     if (readJson(ctx.file)?.token !== state.token) return stop();
-    if (running) return;
     beat(ctx.project, 'codex', ctx.session);
+    if (running) return;
     const subscriptions = new Set(readJson(ctx.subscriptions)?.artifacts || []);
     for (const event of poll(subscriptions))
       pending.set(

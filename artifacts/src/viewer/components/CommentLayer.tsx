@@ -7,7 +7,7 @@ import type { BoardSpec } from '../../shared/types';
 import { type ThreadActions, ThreadView } from '../comments/ThreadView';
 import { Composer } from '../document/Composer';
 import { useTranslation } from '../i18n';
-import { anchorLabel, pinPoint, staleText } from '../lib/board-anchor';
+import { anchorLabel, isCommentThread, pinPoint, staleText } from '../lib/board-anchor';
 import type { View } from '../lib/view';
 import { color } from '../tokens.stylex';
 
@@ -185,7 +185,7 @@ export function CommentLayer({
   const visible = threads.filter(
     (thread) =>
       thread.anchor.page === page &&
-      thread.anchor.verdict !== 'pass' &&
+      isCommentThread(thread) &&
       thread.messages.some((m) => !m.deleted) &&
       (showResolved || thread.status === 'open' || thread.id === openId),
   );
