@@ -296,3 +296,26 @@ test('the shipped lifecycle hooks invoke the portable watcher and stop it on ses
     'the manifest cleanup command did not stop the watcher',
   );
 });
+
+test('a submitted round is queued even with no unread comments, and the watcher beats', async (t) => {
+  const f = fixture(t);
+  const rounds = (state) => {
+    const file = path.join(f.project, '.ryugi/artifacts/.state/artboard/settings/rounds.json');
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(
+      file,
+      JSON.stringify({ rounds: [{ id: 'r1', page: 'p', state, groups: ['q1'], boards: ['a'] }] }),
+    );
+  };
+  f.write('artboard/settings', { version: 1, threads: [] });
+  rounds('open');
+  f.start();
+  const alive = path.join(f.project, '.ryugi/artifacts/.state/codex-comment-watch', `${id}.alive`);
+  await until(() => fs.existsSync(alive), 'codex watcher never wrote a heartbeat');
+  rounds('submitted');
+  await until(() => f.read().length > 0, 'submitted round never reached codex queue');
+  const args = f.read()[0];
+  const message = args[args.indexOf('--message') + 1];
+  assert.ok(message.includes('artboard/settings'));
+  assert.ok(message.includes('submitted'));
+});

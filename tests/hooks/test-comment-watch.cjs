@@ -300,3 +300,72 @@ test('the declared plugin monitor notices artifacts created later from a reposit
   await delay(1200);
   assert.equal(watcher.output.trim().split('\n').length, count);
 });
+
+function choiceFixture(t) {
+  const f = fixture(t);
+  const rounds = (state) =>
+    f.write('.state/artboard/pick/rounds.json', {
+      rounds: [{ id: 'r1', page: 'p', state, groups: ['q1'], boards: ['q1-a', 'q1-b'] }],
+    });
+  const comment = (id, n, board) => ({
+    ...thread(id),
+    anchor: { page: 'p', board, x: 1, y: 2 },
+    messages: [human(`m${id}`, n)],
+  });
+  return { ...f, rounds, comment };
+}
+
+test('comments on an open choice round stay silent until the round is submitted', (t) => {
+  const f = choiceFixture(t);
+  f.rounds('open');
+  const poll = watch(f.project);
+  assert.deepEqual(poll(), []);
+  f.save('artboard/pick', [f.comment('t1', 1, 'q1-a')]);
+  assert.deepEqual(poll(), []);
+  f.rounds('submitted');
+  const [event, ...rest] = poll();
+  assert.deepEqual(rest, []);
+  assert.equal(event.type, 'ryugi-choices');
+  assert.equal(event.artifact, 'artboard/pick');
+  assert.equal(event.round, 'r1');
+  assert.ok(event.command.includes('comment list --json'));
+  assert.ok(!event.withdrawn);
+  assert.deepEqual(poll(), []);
+});
+
+test('a withdrawal wakes once, and a comment after submit wakes as usual', (t) => {
+  const f = choiceFixture(t);
+  f.rounds('submitted');
+  const poll = watch(f.project);
+  assert.deepEqual(poll(), []);
+  f.save('artboard/pick', [f.comment('t1', 1, 'q1-a')]);
+  assert.equal(poll()[0].type, 'ryugi-comments');
+  f.rounds('open');
+  const events = poll();
+  assert.equal(events.length, 1);
+  assert.equal(events[0].withdrawn, true);
+});
+
+test('without rounds.json every board comment wakes, never silence', (t) => {
+  const f = choiceFixture(t);
+  const poll = watch(f.project);
+  f.save('artboard/pick', [f.comment('t1', 1, 'q1-a')]);
+  assert.equal(poll()[0].type, 'ryugi-comments');
+});
+
+test('a running watcher keeps a heartbeat beside its subscription', async (t) => {
+  const f = fixture(t);
+  const session = randomUUID();
+  const child = spawn(process.execPath, [watcher, f.project], {
+    env: { ...process.env, CLAUDE_CODE_SESSION_ID: session },
+    stdio: 'ignore',
+  });
+  t.after(() => child.kill());
+  const alive = path.join(f.root, '.state/claude-comment-watch', `${session}.alive`);
+  const deadline = Date.now() + 5000;
+  while (!fs.existsSync(alive) && Date.now() < deadline) await delay(100);
+  const stamp = Number(fs.readFileSync(alive, 'utf8'));
+  assert.ok(Math.abs(Date.now() - stamp) < 5000);
+  const { aliveFile } = require(path.join(repo, 'skills/artifacts/app/comment-subscriptions.cjs'));
+  assert.equal(aliveFile(f.project, 'claude', session), alive);
+});

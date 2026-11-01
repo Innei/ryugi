@@ -34,6 +34,20 @@ function subscriptionFile(project, host, session) {
   return path.join(project, '.ryugi/artifacts/.state', HOSTS[host].dir, `${session}.json`);
 }
 
+function aliveFile(project, host, session) {
+  return path.join(project, '.ryugi/artifacts/.state', HOSTS[host].dir, `${session}.alive`);
+}
+
+function beat(project, host, session, now = Date.now()) {
+  try {
+    const file = aliveFile(project, host, session);
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, String(now));
+  } catch {
+    // A missing heartbeat only makes the viewer say "tell the terminal"; never fail the watch.
+  }
+}
+
 function sessionOf(host, env = process.env) {
   const session = env[HOSTS[host].env];
   return UUID.test(session || '') ? session : null;
@@ -70,4 +84,13 @@ function register(args, env = process.env) {
   );
 }
 
-module.exports = { projectRoot, register, sessionOf, subscriptionFile, subscriptions, UUID };
+module.exports = {
+  aliveFile,
+  beat,
+  projectRoot,
+  register,
+  sessionOf,
+  subscriptionFile,
+  subscriptions,
+  UUID,
+};

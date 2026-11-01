@@ -5,7 +5,13 @@ const { randomUUID } = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
 const { createCommentWatch, unreadCount } = require('./comment-watch.cjs');
-const { projectRoot, register, subscriptionFile, UUID } = require('./comment-subscriptions.cjs');
+const {
+  beat,
+  projectRoot,
+  register,
+  subscriptionFile,
+  UUID,
+} = require('./comment-subscriptions.cjs');
 
 function readJson(file) {
   try {
@@ -119,7 +125,11 @@ function claim(ctx) {
 function queueComment(ctx, remote, event, signal) {
   const skill = path.join(__dirname, '..', 'SKILL.md');
   const guide = path.join(__dirname, '..', `${event.artifact.split('/')[0]}.md`);
-  const message = `Ryugi review comments changed. Local skill: ${JSON.stringify(skill)}; guide: ${JSON.stringify(guide)}. ${event.instruction}\nRun: ${event.command}`;
+  const what =
+    event.type === 'ryugi-choices'
+      ? `Ryugi choices for round ${event.round} on ${event.artifact} were ${event.withdrawn ? 'withdrawn' : 'submitted'}.`
+      : 'Ryugi review comments changed.';
+  const message = `${what} Local skill: ${JSON.stringify(skill)}; guide: ${JSON.stringify(guide)}. ${event.instruction}\nRun: ${event.command}`;
   const args = [
     'queue',
     '--remote',
@@ -196,24 +206,31 @@ function watch(ctx, input) {
   const tick = async () => {
     if (readJson(ctx.file)?.token !== state.token) return stop();
     if (running) return;
+    beat(ctx.project, 'codex', ctx.session);
     const subscriptions = new Set(readJson(ctx.subscriptions)?.artifacts || []);
-    for (const event of poll(subscriptions)) pending.set(event.artifact, event);
+    for (const event of poll(subscriptions))
+      pending.set(
+        event.type === 'ryugi-choices' ? `${event.artifact}#choices` : event.artifact,
+        event,
+      );
     if (!pending.size || Date.now() < nextAttempt) return;
-    const event = pending.values().next().value;
+    const [key, event] = pending.entries().next().value;
     if (!subscriptions.has('*') && !subscriptions.has(event.artifact)) {
-      pending.delete(event.artifact);
+      pending.delete(key);
       return;
     }
-    const unread = unreadCount(ctx.project, event.artifact, 'Codex');
-    if (unread === null) return;
-    if (!unread) {
-      pending.delete(event.artifact);
-      return;
+    if (event.type !== 'ryugi-choices') {
+      const unread = unreadCount(ctx.project, event.artifact, 'Codex');
+      if (unread === null) return;
+      if (!unread) {
+        pending.delete(key);
+        return;
+      }
     }
     running = true;
     try {
       const { receipt, warning } = await queueComment(ctx, remote, event, controller.signal);
-      pending.delete(event.artifact);
+      pending.delete(key);
       failures = 0;
       update({ artifact: event.artifact, receipt, warning, queuedAt: new Date().toISOString() });
     } catch (error) {
