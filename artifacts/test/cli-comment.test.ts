@@ -164,7 +164,7 @@ describe('ryugi-artifacts comment', () => {
       (await run(['comment', 'list', '--project-dir', dir, '--artifact', 'html/x'])).out.error,
     ).toContain('document/<id>');
     expect((await run(['comment', 'erase', ...doc(dir)])).out.error).toContain(
-      'list, add, reply or resolve',
+      'list, add, reply, resolve, choose or submit',
     );
     expect((await run(['comment', 'reply', ...doc(dir), '--text', 'x'])).out.error).toContain(
       '--thread',
@@ -318,6 +318,7 @@ describe('artboard comments', () => {
     expect(listed.groups).toEqual([
       {
         id: 'g',
+        kind: 'verify',
         page: 'p',
         title: '验收',
         verdict: 'pending',
@@ -361,6 +362,85 @@ describe('artboard comments', () => {
     expect(
       (await run(['comment', 'add', ...board(dir), '--board', 'zz', '--text', 'x'])).out.error,
     ).toContain('no board zz');
+  });
+
+  test('choose and submit record a terminal answer on the board', async () => {
+    const dir = await artboardProject({
+      boards: {
+        a: { file: 'pages/a.html', page: 'p', x: 0, y: 0, w: 640, h: 400 },
+        b: { file: 'pages/a.html', page: 'p', x: 720, y: 0, w: 640, h: 400 },
+      },
+      groups: { q1: { boards: ['a', 'b'], choose: true, recommend: 'a' } },
+    });
+    expect((await run(['comment', 'choose', ...board(dir), '--board', 'b'])).out.error).toContain(
+      '--group',
+    );
+    expect(
+      (await run(['comment', 'choose', ...board(dir), '--group', 'q1', '--board', 'b'])).out,
+    ).toMatchObject({ type: 'choice-recorded', artifact: 'artboard/review', group: 'q1' });
+    expect(
+      (await run(['comment', 'submit', ...board(dir), '--round', 'page:p'])).out,
+    ).toMatchObject({ type: 'round-submitted', round: 'page:p', submitted: true });
+    const listed = (await run(['comment', 'list', ...board(dir), '--all'])).out;
+    expect(listed.groups).toEqual([expect.objectContaining({ id: 'q1', choice: 'b' })]);
+    expect(listed.rounds).toEqual([expect.objectContaining({ id: 'page:p', state: 'submitted' })]);
+  });
+
+  test('text output prints one line per choice group and per round', () => {
+    const text = commentText({
+      type: 'comments',
+      artifact: 'artboard/review',
+      threads: [],
+      all: true,
+      groups: [
+        {
+          id: 'q1',
+          kind: 'choose',
+          round: 'r1',
+          choice: 'q1-b',
+          byRecommendation: false,
+          threads: 1,
+        },
+        {
+          id: 'q2',
+          kind: 'choose',
+          round: 'r1',
+          choice: null,
+          byRecommendation: false,
+          threads: 0,
+        },
+        {
+          id: 'q3',
+          kind: 'choose',
+          round: 'r1',
+          choice: 'q3-a',
+          byRecommendation: true,
+          threads: 2,
+        },
+      ],
+      rounds: [
+        {
+          id: 'r1',
+          page: 'p',
+          title: 'Round 1',
+          state: 'submitted',
+          submitted: '2026-11-01T08:04:00.000Z',
+        },
+      ],
+    });
+    expect(text).toBe(
+      [
+        'No comments on artboard/review.',
+        '',
+        'Choice groups:',
+        '  q1 → q1-b (1 comment)',
+        '  q2 → no choice',
+        '  q3 → q3-a by recommendation (2 comments)',
+        '',
+        'Rounds:',
+        '  r1 (Round 1): submitted 2026-11-01T08:04:00.000Z',
+      ].join('\n'),
+    );
   });
 
   test('text output names the page, board file, nodes, offset and staleness', () => {

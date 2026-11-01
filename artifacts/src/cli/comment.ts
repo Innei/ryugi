@@ -6,7 +6,7 @@ import { CliError, invocation } from './paths';
 import { serverClient } from './server';
 import type { Emit } from './start';
 
-export const COMMENT_ACTIONS = ['list', 'add', 'reply', 'resolve'] as const;
+export const COMMENT_ACTIONS = ['list', 'add', 'reply', 'resolve', 'choose', 'submit'] as const;
 export type CommentAction = (typeof COMMENT_ACTIONS)[number];
 
 export interface CommentOptions {
@@ -15,10 +15,14 @@ export interface CommentOptions {
   artifact?: string;
   block?: string;
   board?: string;
+  clear?: boolean;
+  group?: string;
   projectDir: string;
   quote?: string;
+  round?: string;
   text?: string;
   thread?: string;
+  withdraw?: boolean;
   x?: string;
   y?: string;
 }
@@ -29,6 +33,7 @@ const WRITTEN = {
   reply: 'comment-replied',
   resolve: 'comment-resolved',
 } as const;
+const RECORDED = { choose: 'choice-recorded', submit: 'round-submitted' } as const;
 
 function readStdin(): string {
   if (process.stdin.isTTY) return '';
@@ -58,6 +63,18 @@ function requestOf(
   type: string,
 ): Record<string, unknown> {
   if (action === 'list') return { op: 'list', all: !!options.all };
+  if ((action === 'choose' || action === 'submit') && type !== 'artboard')
+    throw new CliError(`comment ${action} works on artboards only`);
+  if (action === 'choose') {
+    if (!options.group) throw new CliError('comment choose needs --group <groupId>');
+    if (!options.clear && !options.board)
+      throw new CliError('comment choose needs --board <boardId>, or --clear');
+    return { op: 'choose', group: options.group, board: options.clear ? null : options.board };
+  }
+  if (action === 'submit') {
+    if (!options.round) throw new CliError('comment submit needs --round <roundId>');
+    return { op: 'submit', round: options.round, submit: !options.withdraw };
+  }
   if (action === 'add' && type === 'artboard') {
     if (!options.board) throw new CliError('comment add on an artboard needs --board <boardId>');
     const x = coordinate(options.x, '--x');
@@ -87,7 +104,8 @@ function requestOf(
 
 export async function comment(options: CommentOptions, emit: Emit): Promise<number> {
   const action = COMMENT_ACTIONS.find((name) => name === options.action);
-  if (!action) throw new CliError('comment needs an action: list, add, reply or resolve');
+  if (!action)
+    throw new CliError('comment needs an action: list, add, reply, resolve, choose or submit');
   if (!options.artifact || !ARTIFACT.test(options.artifact))
     throw new CliError('--artifact must be document/<id> or artboard/<id>');
   const [type, id] = options.artifact.split('/') as [string, string];
@@ -110,7 +128,24 @@ export async function comment(options: CommentOptions, emit: Emit): Promise<numb
       artifact: options.artifact,
       threads: json.threads,
       ...(json.groups ? { groups: json.groups } : {}),
+      ...(json.rounds ? { rounds: json.rounds } : {}),
       ...(options.all ? { all: true } : {}),
+    });
+  else if (action === 'choose')
+    emit({
+      type: RECORDED.choose,
+      artifact: options.artifact,
+      group: request.group,
+      board: request.board,
+      threadId: json.threadId,
+    });
+  else if (action === 'submit')
+    emit({
+      type: RECORDED.submit,
+      artifact: options.artifact,
+      round: request.round,
+      submitted: request.submit,
+      threadId: json.threadId,
     });
   else
     emit({
@@ -152,9 +187,39 @@ interface ListedThread {
 interface ListedGroup {
   evidenceUpdated: boolean;
   id: string;
+  kind?: 'verify';
   rejectThreads: number;
   title?: string;
   verdict: 'pending' | 'pass' | 'reject';
+}
+
+interface ListedChoice {
+  byRecommendation: boolean;
+  choice: string | null;
+  id: string;
+  kind: 'choose';
+  threads: number;
+}
+
+interface ListedRound {
+  id: string;
+  state: 'open' | 'submitted' | 'closed';
+  submitted?: string;
+  title?: string;
+}
+
+function choiceText(group: ListedChoice) {
+  const answer = group.choice
+    ? `${group.choice}${group.byRecommendation ? ' by recommendation' : ''}`
+    : 'no choice';
+  const comments = group.threads ? ` (${plural(group.threads, 'comment')})` : '';
+  return `  ${group.id} → ${answer}${comments}`;
+}
+
+function roundText(round: ListedRound) {
+  const state =
+    round.state === 'submitted' && round.submitted ? `submitted ${round.submitted}` : round.state;
+  return `  ${round.id}${round.title ? ` (${round.title})` : ''}: ${state}`;
 }
 
 const VERDICT_TEXT = { pass: 'passed', reject: 'rejected', pending: 'waiting for a verdict' };
@@ -216,19 +281,35 @@ function threadText(thread: ListedThread) {
 export function commentText(value: Record<string, unknown>): string | null {
   if (value.type === 'comments') {
     const threads = (value.threads as ListedThread[] | undefined) ?? [];
-    const groups = (value.groups as ListedGroup[] | undefined) ?? [];
+    const all = (value.groups as (ListedGroup | ListedChoice)[] | undefined) ?? [];
+    const groups = all.filter((g): g is ListedGroup => g.kind !== 'choose');
+    const choices = all.filter((g): g is ListedChoice => g.kind === 'choose');
+    const rounds = (value.rounds as ListedRound[] | undefined) ?? [];
     const head = threads.length
       ? threads.map(threadText).join('\n\n')
       : value.all
         ? `No comments on ${value.artifact}.`
         : `No new comments on ${value.artifact}.`;
-    return groups.length ? `${head}\n\nVerify groups:\n${groups.map(groupText).join('\n')}` : head;
+    return [
+      head,
+      groups.length ? `Verify groups:\n${groups.map(groupText).join('\n')}` : '',
+      choices.length ? `Choice groups:\n${choices.map(choiceText).join('\n')}` : '',
+      rounds.length ? `Rounds:\n${rounds.map(roundText).join('\n')}` : '',
+    ]
+      .filter(Boolean)
+      .join('\n\n');
   }
   if (value.type === 'comment-added')
     return `Added thread ${value.threadId} (message ${value.messageId})`;
   if (value.type === 'comment-replied')
     return `Replied in thread ${value.threadId} (message ${value.messageId})`;
   if (value.type === 'comment-resolved') return `Resolved thread ${value.threadId}`;
+  if (value.type === 'choice-recorded')
+    return value.board
+      ? `Recorded ${value.board} for ${value.group}`
+      : `Cleared the choice in ${value.group}`;
+  if (value.type === 'round-submitted')
+    return `${value.submitted ? 'Submitted' : 'Withdrew'} round ${value.round}`;
   return null;
 }
 
@@ -241,6 +322,8 @@ export const commentCommand: CommandSpec = {
     'add     --artifact artboard/<id> --board <boardId> [--x <px> --y <px>] [--text <text>]',
     'reply   --artifact <document|artboard>/<id> --thread <threadId> [--text <text>]',
     'resolve --artifact <document|artboard>/<id> --thread <threadId>',
+    'choose  --artifact artboard/<id> --group <groupId> (--board <boardId> | --clear)',
+    'submit  --artifact artboard/<id> --round <roundId> [--withdraw]',
   ],
   details:
     'list prints what changed since you last listed. Without --text, add and reply read the message from stdin.',
@@ -258,6 +341,10 @@ export const commentCommand: CommandSpec = {
     y: { type: 'string', value: '<px>', help: 'add: vertical position on the board' },
     thread: { type: 'string', value: '<threadId>', help: 'reply, resolve: the thread' },
     text: { type: 'string', value: '<text>', help: 'add, reply: the message' },
+    group: { type: 'string', value: '<groupId>', help: 'choose: the choice group' },
+    clear: { type: 'boolean', help: 'choose: clear the choice instead of naming a board' },
+    round: { type: 'string', value: '<roundId>', help: 'submit: the round' },
+    withdraw: { type: 'boolean', help: 'submit: withdraw the submission' },
   },
   positionals: 1,
   run: ({ values, positionals, projectDir }, emit) =>
@@ -272,6 +359,10 @@ export const commentCommand: CommandSpec = {
         thread: values.thread as string | undefined,
         text: values.text as string | undefined,
         board: values.board as string | undefined,
+        group: values.group as string | undefined,
+        clear: values.clear as boolean | undefined,
+        round: values.round as string | undefined,
+        withdraw: values.withdraw as boolean | undefined,
         x: values.x as string | undefined,
         y: values.y as string | undefined,
       },
