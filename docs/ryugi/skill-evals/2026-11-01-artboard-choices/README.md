@@ -24,16 +24,16 @@ written; the agent replied with what it would do.
 
 ## Results
 
-| Check                                                                | Before                    | After |
-| -------------------------------------------------------------------- | ------------------------- | ----- |
-| A: every group has `"choose": true`                                  | 0/3                       | 3/3   |
-| A: every group has `"recommend"`                                     | 0/3                       | 3/3   |
-| A: "recommended" written into a board title                          | 0/3                       | 0/3   |
-| A: title note / message says to pick on the board and submit         | 0/3 (all: reply "q1 → b") | 3/3   |
-| B: records q1 with `comment choose --group q1 --board q1-b`          | 0/3                       | 3/3   |
-| B: submits the round with `comment submit`                           | 0/3                       | 3/3   |
-| B: leaves q2 to the recommendation (no `choose` for it)              | n/a                       | 3/3   |
-| B: reads the round id from `comment list` `rounds` before submitting | n/a                       | 3/3   |
+| Check                                                                | Before                     | After |
+| -------------------------------------------------------------------- | -------------------------- | ----- |
+| A: every group has `"choose": true`                                  | 0/3                        | 3/3   |
+| A: every group has `"recommend"`                                     | 0/3                        | 3/3   |
+| A: "recommended" written into a board title                          | 3/3 (as the old text says) | 0/3   |
+| A: title note / message says to pick on the board and submit         | 0/3 (all: reply "q1 → b")  | 3/3   |
+| B: records q1 with `comment choose --group q1 --board q1-b`          | 0/3                        | 3/3   |
+| B: submits the round with `comment submit`                           | 0/3                        | 3/3   |
+| B: leaves q2 to the recommendation (no `choose` for it)              | n/a                        | 3/3   |
+| B: reads the round id from `comment list` `rounds` before submitting | n/a                        | 3/3   |
 
 Before, B runs recorded the answer only in their playback, so the board kept
 showing an unanswered round. After, every run read `rounds` first; two then
