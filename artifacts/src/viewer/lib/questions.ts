@@ -1,3 +1,4 @@
+import { pageTitles, titleAbove } from '../../shared/rounds';
 import type { Bounds, CanvasLayout, CanvasSpec, Rect } from '../../shared/types';
 import { i18n } from '../i18n';
 
@@ -34,14 +35,10 @@ export function roundsOf(canvas: CanvasSpec, layout: CanvasLayout, page: string)
   }
   questions.sort((a, b) => a.bounds.minY - b.bounds.minY || a.bounds.minX - b.bounds.minX);
 
-  const titles = Object.entries(canvas.notes ?? {})
-    .filter(([id, note]) => note.page === page && note.kind === 'title' && pageLayout.notes[id])
-    .map(([id, note]) => ({ id, text: note.text, rect: pageLayout.notes[id]! }));
+  const titles = pageTitles(canvas, layout, page);
   const rounds = new Map<string | null, Round>();
   for (const question of questions) {
-    const above = titles
-      .filter((title) => title.rect.y + title.rect.h <= question.bounds.minY)
-      .sort((a, b) => b.rect.y - a.rect.y)[0];
+    const above = titleAbove(titles, question.bounds.minY);
     const key = above?.id ?? null;
     if (!rounds.has(key))
       rounds.set(key, { id: key, title: above?.text ?? i18n.t('common.other'), questions: [] });
