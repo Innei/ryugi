@@ -15,11 +15,15 @@ import {
 import { useLayoutEffect, useRef, useState } from 'react';
 
 import { type BoardSpec, isMediaBoard } from '../../shared/types';
+import { ChoiceRadio } from '../choices/ChoiceRadio';
+import type { BoardChoice } from '../hooks/useChoices';
 import { t } from '../i18n';
 import { BOARD_LABEL_HEIGHT, boardLabelLayout, type BoardLabelMetrics } from '../lib/board-label';
 import { brand } from '../tokens.stylex';
 
 export const BOARD_LABEL_FONT = 12;
+const RADIO_WIDTH = 20;
+const TAG_CHROME = 16;
 
 function downloadFile(href: string, name: string) {
   const link = document.createElement('a');
@@ -51,6 +55,19 @@ const styles = stylex.create({
     overflowWrap: 'anywhere',
   },
   name: {},
+  tag: {
+    display: 'inline-block',
+    marginInlineStart: 6,
+    paddingInline: 4,
+    borderWidth: 1,
+    borderStyle: 'solid',
+    borderColor: `color-mix(in srgb, ${brand.accent} 35%, transparent)`,
+    borderRadius: 4,
+    color: brand.accentStrong,
+    fontSize: 10,
+    lineHeight: '13px',
+    verticalAlign: '1px',
+  },
   id: {
     marginInlineStart: 6,
     fontFamily: cssVar.fontFamilyCode,
@@ -103,11 +120,13 @@ function naturalWidth(element: HTMLElement, text: string) {
 export interface BoardLabelProps {
   active: boolean;
   board: BoardSpec;
+  choice?: BoardChoice | null;
   contentBase: string;
   fontsVersion: number;
   id: string;
   interactive: boolean;
   modified?: boolean;
+  onChoose?: (board: string) => void;
   onExpand: (id: string) => void;
   onLines: (id: string, lines: 1 | 2) => void;
   onReplay: (id: string) => void;
@@ -121,6 +140,8 @@ export interface BoardLabelProps {
 
 export function BoardLabel({
   active,
+  choice,
+  onChoose,
   board,
   contentBase,
   fontsVersion,
@@ -139,6 +160,7 @@ export function BoardLabel({
 }: BoardLabelProps) {
   const titleRef = useRef<HTMLSpanElement>(null);
   const idRef = useRef<HTMLSpanElement>(null);
+  const tagRef = useRef<HTMLSpanElement>(null);
   const actionsRef = useRef<HTMLDivElement>(null);
   const moreRef = useRef<HTMLButtonElement>(null);
   const [metrics, setMetrics] = useState<BoardLabelMetrics>({
@@ -162,16 +184,17 @@ export function BoardLabel({
     if (!name || !code || !actions) return;
     const titleWidth = naturalWidth(name, title) + (media ? 18 : 0);
     const idWidth = naturalWidth(code, identifier);
+    const tag = tagRef.current;
+    const tail = tag ? naturalWidth(tag, tag.textContent ?? '') + TAG_CHROME : 0;
+    const lead = choice ? RADIO_WIDTH : 0;
     const measure = () => {
-      const next = {
-        title: titleWidth,
-        id: idWidth,
-        actions: actions.offsetWidth,
-        lead: 0,
-        tail: 0,
-      };
+      const next = { title: titleWidth, id: idWidth, actions: actions.offsetWidth, lead, tail };
       setMetrics((current) =>
-        current.title === next.title && current.id === next.id && current.actions === next.actions
+        current.title === next.title &&
+        current.id === next.id &&
+        current.actions === next.actions &&
+        current.lead === next.lead &&
+        current.tail === next.tail
           ? current
           : next,
       );
@@ -192,6 +215,8 @@ export function BoardLabel({
     ready,
     interactive,
     playing,
+    choice?.recommended,
+    !!choice,
   ]);
   const { lines, showId } = boardLabelLayout(metrics, rect.width, scale);
   useLayoutEffect(() => {
@@ -213,6 +238,14 @@ export function BoardLabel({
         transform: `scale(${scale}) translateY(-100%)`,
       }}
     >
+      {choice && onChoose && (
+        <ChoiceRadio
+          board={id}
+          checked={choice.chosen}
+          disabled={choice.disabled}
+          onChoose={onChoose}
+        />
+      )}
       <span {...stylex.props(styles.title)} style={{ WebkitLineClamp: lines }} title={title}>
         {media && (
           <span data-board-type={board.type} {...stylex.props(styles.kind)}>
@@ -226,6 +259,11 @@ export function BoardLabel({
         <span ref={titleRef} {...stylex.props(styles.name)}>
           {title}
         </span>
+        {choice?.recommended && (
+          <span ref={tagRef} {...stylex.props(styles.tag)}>
+            {t('choices.recommended')}
+          </span>
+        )}
         <span hidden={!showId} ref={idRef} {...stylex.props(styles.id)}>
           {identifier}
         </span>

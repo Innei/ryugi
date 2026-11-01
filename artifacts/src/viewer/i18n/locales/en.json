@@ -24,6 +24,25 @@
     "later": "Not now",
     "turnOn": "Turn on"
   },
+  "choices": {
+    "agent": "The agent",
+    "byRecommendation": "{{groups}} by recommendation",
+    "chooseBoard": "Choose {{id}}",
+    "chooseThis": "Choose this",
+    "chose": "chose {{id}}",
+    "chosen": "{{count}}/{{total}} chosen",
+    "chosenThis": "Chosen",
+    "comments_one": "{{count}} comment",
+    "comments_other": "{{count}} comments",
+    "drawing": "{{agent}} is drawing the next round",
+    "recommended": "Recommended",
+    "sayDone": "Say done in the terminal",
+    "submit": "Submit",
+    "submitted": "Submitted",
+    "submittedAt": "Submitted {{time}}",
+    "unanswered": "{{groups}} unanswered",
+    "withdraw": "Withdraw"
+  },
   "chrome": {
     "switchPage": "Switch page",
     "noPages": "No pages",

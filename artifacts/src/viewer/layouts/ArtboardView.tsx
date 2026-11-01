@@ -8,6 +8,7 @@ import type { BoardHumanOp } from '../../shared/board-comments';
 import type { InspectorReport } from '../../shared/inspector';
 import type { SelectionMessage } from '../../shared/selection';
 import { isMediaBoard } from '../../shared/types';
+import { SubmitBar } from '../choices/SubmitBar';
 import { CommentsPanel, type CommentsTab } from '../comments/CommentsPanel';
 import { Canvas } from '../components/Canvas';
 import { CanvasErrorBoundary } from '../components/CanvasErrorBoundary';
@@ -23,6 +24,7 @@ import { useBoardLifecycle } from '../hooks/useBoardLifecycle';
 import { useBoardOrigin } from '../hooks/useBoardOrigin';
 import { useBoardTweaks } from '../hooks/useBoardTweaks';
 import type { useCanvasData } from '../hooks/useCanvasData';
+import { useChoices } from '../hooks/useChoices';
 import { useCulledBoards } from '../hooks/useCulledBoards';
 import { useInspector } from '../hooks/useInspector';
 import { useMarqueeSelection } from '../hooks/useMarqueeSelection';
@@ -235,6 +237,14 @@ function DesktopArtboard({
     threads: boardComments.threads,
     stale: boardComments.stale,
     versions,
+    comment,
+  });
+  const choices = useChoices({
+    canvas,
+    layout,
+    page,
+    threads: boardComments.threads,
+    listening: comments?.listening === true,
     comment,
   });
   const rejectAt = verdicts.rejecting ? verdicts.origin(verdicts.rejecting) : null;
@@ -537,6 +547,7 @@ function DesktopArtboard({
               activeParameters={parameterBoard}
               allBoards={allBoards}
               boards={boards}
+              choices={choices.active ? choices : undefined}
               contentBase={contentBase}
               groups={groups}
               overlayRef={overlayRef}
@@ -640,6 +651,16 @@ function DesktopArtboard({
           <div {...stylex.props(styles.empty)}>
             {loaded ? (warnings[0] ?? t('chrome.waitingCanvas')) : t('common.connecting')}
           </div>
+        )}
+        {choices.current && !expanded && (
+          <SubmitBar
+            agent={agent}
+            canAct={choices.canAct && live !== false}
+            listening={choices.listening}
+            summary={choices.current}
+            onSubmit={choices.submit}
+            onWithdraw={choices.withdraw}
+          />
         )}
         <TopLeftBar
           commenting={!!comment}

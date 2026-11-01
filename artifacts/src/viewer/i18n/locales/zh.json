@@ -21,6 +21,24 @@
     "later": "以后再说",
     "turnOn": "打开"
   },
+  "choices": {
+    "agent": "Agent",
+    "byRecommendation": "{{groups}} 按推荐",
+    "chooseBoard": "选择 {{id}}",
+    "chooseThis": "选这个",
+    "chose": "选了 {{id}}",
+    "chosen": "已选 {{count}}/{{total}}",
+    "chosenThis": "已选这个",
+    "comments_other": "{{count}} 条评论",
+    "drawing": "{{agent}} 在画下一轮",
+    "recommended": "推荐",
+    "sayDone": "回终端说一声 选好了",
+    "submit": "提交",
+    "submitted": "已提交",
+    "submittedAt": "已提交 {{time}}",
+    "unanswered": "{{groups}} 未选",
+    "withdraw": "撤回"
+  },
   "chrome": {
     "switchPage": "切换页面",
     "noPages": "没有页面",

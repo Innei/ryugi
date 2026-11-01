@@ -4,10 +4,12 @@ import * as stylex from '@stylexjs/stylex';
 import { type Ref, useCallback, useEffect, useState } from 'react';
 
 import type { BoardSpec, GroupSpec } from '../../shared/types';
+import type { Choices } from '../hooks/useChoices';
 import type { Verdicts } from '../hooks/useVerdicts';
 import { BOARD_LABEL_HEIGHT } from '../lib/board-label';
 import { boardReady, canPlay } from '../lib/play';
 import { BOARD_LABEL_RULE, GROUP_LABEL_RULE, labelRect, labelSize, type View } from '../lib/view';
+import { brand } from '../tokens.stylex';
 import { GroupVerdict } from '../verdicts/GroupVerdict';
 import { BOARD_LABEL_FONT, BoardLabel } from './BoardLabel';
 
@@ -30,6 +32,14 @@ const styles = stylex.create({
     whiteSpace: 'nowrap',
   },
   judged: { pointerEvents: 'auto' },
+  chosen: {
+    position: 'absolute',
+    borderWidth: 3,
+    borderStyle: 'solid',
+    borderColor: brand.accent,
+    borderRadius: 2,
+    pointerEvents: 'none',
+  },
   chip: {
     paddingInline: 5,
     borderRadius: 4,
@@ -46,6 +56,7 @@ interface LabelsProps {
   activeParameters?: string | null;
   allBoards: Record<string, BoardSpec>;
   boards: [string, BoardSpec][];
+  choices?: Pick<Choices, 'boardChoice' | 'choose' | 'chosenBoards'>;
   contentBase: string;
   groups: [string, GroupSpec][];
   onExpand: (id: string) => void;
@@ -100,6 +111,7 @@ export function Labels({
   activeParameters,
   onToggleParameters,
   verdicts,
+  choices,
   overlayRef,
 }: LabelsProps) {
   const fontsVersion = useLabelFonts();
@@ -160,6 +172,22 @@ export function Labels({
               </div>
             );
           })}
+        {choices &&
+          boards.map(([id, board]) =>
+            choices.chosenBoards.has(id) ? (
+              <div
+                data-chosen-board={id}
+                key={`chosen-${id}`}
+                {...stylex.props(styles.chosen)}
+                style={{
+                  left: view.x + board.x * view.k - 7,
+                  top: view.y + board.y * view.k - 7,
+                  width: board.w * view.k + 14,
+                  height: board.h * view.k + 14,
+                }}
+              />
+            ) : null,
+          )}
         {boardScale !== null &&
           boards.map(([id, board]) => {
             const rect = labelRect(board, view);
@@ -169,6 +197,7 @@ export function Labels({
               <BoardLabel
                 active={activeParameters === id}
                 board={board}
+                choice={choices?.boardChoice(id)}
                 contentBase={contentBase}
                 fontsVersion={fontsVersion}
                 id={id}
@@ -179,6 +208,7 @@ export function Labels({
                 ready={ready}
                 rect={rect}
                 scale={boardScale}
+                onChoose={choices?.choose}
                 onExpand={onExpand}
                 onLines={onLines}
                 onReplay={onReplay}
