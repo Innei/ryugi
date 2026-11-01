@@ -355,11 +355,48 @@ test('a culled board being captured is laid out, unseen, so it captures at its s
   expect(slot.style.visibility).toBe('hidden');
 });
 
+const load = (frame: HTMLIFrameElement) => act(() => frame.dispatchEvent(new Event('load')));
+
 test('frames take no pointer events during a gesture, even while inspecting', async () => {
   const host = await render({ inspecting: true, gesturing: true });
+  load(frameOf(host, 'a')!);
   expect(frameOf(host, 'a')!.style.pointerEvents).toBe('none');
   await render({ inspecting: true, gesturing: false });
-  expect(frameOf(host, 'a')!.style.pointerEvents).toBe('');
+  expect(frameOf(host, 'a')!.style.pointerEvents).toBe('auto');
+});
+
+test('a loaded frame takes pointer events only while inspecting or playing', async () => {
+  const playable: Props['boards'] = boards.map(([id, board]) => [
+    id,
+    { ...board, interactive: true },
+  ]);
+  const host = await render({ boards: playable, inspecting: false });
+  load(frameOf(host, 'a')!);
+  load(frameOf(host, 'b')!);
+  expect(frameOf(host, 'a')!.style.pointerEvents).toBe('none');
+  await render({ boards: playable, inspecting: false, playing: new Set(['a']) });
+  expect(frameOf(host, 'a')!.style.pointerEvents).toBe('auto');
+  expect(frameOf(host, 'b')!.style.pointerEvents).toBe('none');
+  await render({ boards: playable, inspecting: false, playing: new Set(['a']), gesturing: true });
+  expect(frameOf(host, 'a')!.style.pointerEvents).toBe('none');
+});
+
+test('a frame still loading lets gestures and keys reach the canvas and shows no white page', async () => {
+  const loaded = vi.fn();
+  const props = { inspecting: true, frameLoaded: loaded, boardBase: 'http://127.0.0.1:9/' };
+  const host = await render(props);
+  const frame = frameOf(host, 'a')!;
+  expect(loaded).not.toHaveBeenCalled();
+  expect(frame.style.pointerEvents).toBe('none');
+  expect(frame.style.backgroundColor).toBe('var(--colorFillTertiary)');
+  load(frame);
+  expect(loaded).toHaveBeenCalledWith('a');
+  expect(frame.style.pointerEvents).toBe('auto');
+  expect(frame.style.backgroundColor).toBe('');
+  await render({ ...props, versions: { 'pages/a.html': 2, 'pages/b.html': 1 } });
+  expect(frameOf(host, 'a')).toBe(frame);
+  expect(frame.style.pointerEvents).toBe('none');
+  expect(frame.style.backgroundColor).toBe('var(--colorFillTertiary)');
 });
 
 test('the world element is handed to the caller instead of styled from the view', async () => {

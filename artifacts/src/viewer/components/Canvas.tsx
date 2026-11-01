@@ -1,6 +1,6 @@
 import { cssVar } from '@lobehub/ui/stylex/cssVar.stylex';
 import * as stylex from '@stylexjs/stylex';
-import { memo, type Ref } from 'react';
+import { memo, type Ref, useState } from 'react';
 
 import {
   DEFAULT_TITLE_SIZE,
@@ -29,12 +29,11 @@ const styles = stylex.create({
     display: 'block',
     borderWidth: 0,
     backgroundColor: color.white,
-    pointerEvents: 'none',
     outlineWidth: 1,
     outlineStyle: 'solid',
     outlineColor: cssVar.colorBorderSecondary,
   },
-  playing: { pointerEvents: 'auto', outlineWidth: 2, outlineColor: color.selection },
+  playing: { outlineWidth: 2, outlineColor: color.selection },
   image: {
     position: 'absolute',
     inset: 0,
@@ -43,8 +42,6 @@ const styles = stylex.create({
     display: 'block',
     pointerEvents: 'none',
   },
-  inspecting: { pointerEvents: 'auto' },
-  gesturing: { pointerEvents: 'none' },
   skeleton: {
     display: 'flex',
     alignItems: 'center',
@@ -145,6 +142,47 @@ function slotStyle(board: BoardSpec, drawing: boolean, culled: boolean, capturin
   };
 }
 
+function BoardFrame({
+  frameLoaded,
+  frameRef,
+  gesturing,
+  id,
+  inspecting,
+  playing,
+  sandbox,
+  src,
+  title,
+}: Pick<BoardsProps, 'frameLoaded' | 'frameRef' | 'inspecting'> & {
+  gesturing: boolean;
+  id: string;
+  playing: boolean;
+  sandbox: string;
+  src: string;
+  title: string;
+}) {
+  const [loadedSrc, setLoadedSrc] = useState<string | null>(null);
+  /* Until the board's inspector is enabled on load, nothing forwards wheel or keys out of the frame. */
+  const loading = loadedSrc !== src;
+  const interactive = !loading && !gesturing && (inspecting || playing);
+  return (
+    <iframe
+      {...stylex.props(styles.board, playing && styles.playing)}
+      ref={frameRef(id)}
+      sandbox={sandbox}
+      src={src}
+      title={title}
+      style={{
+        pointerEvents: interactive ? 'auto' : 'none',
+        backgroundColor: loading ? cssVar.colorFillTertiary : undefined,
+      }}
+      onLoad={() => {
+        setLoadedSrc(src);
+        frameLoaded(id);
+      }}
+    />
+  );
+}
+
 const Boards = memo(function Boards({
   boardBase,
   boards,
@@ -180,23 +218,20 @@ const Boards = memo(function Boards({
         style={slotStyle(board, drawing, culled.has(id), phase === 'capturing')}
       >
         {mountFrame && (
-          <iframe
-            ref={frameRef(id)}
+          <BoardFrame
+            frameLoaded={frameLoaded}
+            frameRef={frameRef}
+            gesturing={gesturing}
+            id={id}
+            inspecting={inspecting}
+            playing={canPlay(board, versions) && playing.has(id)}
             sandbox={boardSandbox}
-            style={gesturing ? { pointerEvents: 'none' } : undefined}
             title={board.title ?? id}
             src={boardSrc(
               boardBase ?? contentBase,
               board.file,
               versions[board.file] ?? 0,
               replays[id] ?? 0,
-            )}
-            onLoad={() => frameLoaded(id)}
-            {...stylex.props(
-              styles.board,
-              inspecting && styles.inspecting,
-              canPlay(board, versions) && playing.has(id) && styles.playing,
-              gesturing && styles.gesturing,
             )}
           />
         )}
