@@ -286,6 +286,8 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
     names,
     evidenceHash: recordings.evidenceHash,
   });
+  const listeningTimer = setInterval(() => boardComments.refreshListening(), 3000);
+  listeningTimer.unref();
   const documents = createDocumentRegistry({
     root,
     stateDir,
@@ -723,7 +725,11 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
     ...readArtifact(dir, ref, runtimeOf(ref, dir)),
     ...(ref.type !== 'html' ? { agent: names.agent() } : {}),
     ...(ref.type === 'artboard'
-      ? { comments: boardComments.comments(ref.id), staleThreads: boardComments.stale(ref.id) }
+      ? {
+          comments: boardComments.comments(ref.id),
+          staleThreads: boardComments.stale(ref.id),
+          listening: boardComments.listening(ref.id),
+        }
       : {}),
     contentBase: `${contentOrigin}${contentPrefix}${ref.type}/${ref.id}/`,
   });
@@ -1544,6 +1550,7 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
     },
     onActivity: (listener) => activityListeners.push(listener),
     close: async () => {
+      clearInterval(listeningTimer);
       await recordings.close();
       await Promise.race([
         autoPublisher?.flush(),

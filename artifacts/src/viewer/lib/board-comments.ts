@@ -2,6 +2,7 @@ import type { BoardCommentsFile } from '../../shared/board-comments';
 
 export interface BoardCommentsState {
   comments: BoardCommentsFile;
+  listening?: boolean;
   stale: string[];
 }
 
@@ -17,7 +18,11 @@ export function boardCommentsFromPayload(
   payload: Record<string, unknown>,
 ): BoardCommentsState | null {
   return isFile(payload.comments)
-    ? { comments: payload.comments, stale: ids(payload.staleThreads) }
+    ? {
+        comments: payload.comments,
+        stale: ids(payload.staleThreads),
+        listening: payload.listening === true,
+      }
     : null;
 }
 
@@ -33,5 +38,5 @@ export function boardCommentsFromMessage(
     !isFile(m.comments)
   )
     return null;
-  return { comments: m.comments, stale: ids(m.stale) };
+  return { comments: m.comments, stale: ids(m.stale), listening: m.listening === true };
 }

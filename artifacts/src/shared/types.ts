@@ -146,5 +146,11 @@ export type ServerMessage =
       now: number;
     }
   | { type: 'doc-comments'; artifact: string; comments: CommentsFile }
-  | { type: 'board-comments'; artifact: string; comments: BoardCommentsFile; stale: string[] }
+  | {
+      type: 'board-comments';
+      artifact: string;
+      comments: BoardCommentsFile;
+      stale: string[];
+      listening?: boolean;
+    }
   | { type: 'cloud-published'; artifact: string };

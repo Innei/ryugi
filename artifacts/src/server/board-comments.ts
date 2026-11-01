@@ -31,6 +31,7 @@ import {
 import { createCommentCursors } from './comment-cursors';
 import type { CommentNames } from './comment-names';
 import { asHumanOp, createStore, isId, isText, type Store } from './document-comments';
+import { listeningOn } from './listening';
 import { resolveBoardFile } from './paths';
 import { writeJsonAtomic } from './state';
 
@@ -257,6 +258,8 @@ export function createBoardCommentRegistry(options: Options) {
   const stores = new Map<string, BoardStore>();
   const hashes = new Map<string, Record<string, string>>();
   const lastStale = new Map<string, string>();
+  const lastListening = new Map<string, boolean>();
+  const listening = (id: string) => listeningOn(options.stateDir, `artboard/${id}`);
   const cursors = createCommentCursors(options.stateDir, 'artboard');
   const dirOf = (id: string) => path.join(options.root, 'artboard', id);
   const store = (id: string) => {
@@ -294,11 +297,14 @@ export function createBoardCommentRegistry(options: Options) {
   const push = (id: string) => {
     const ids = stale(id);
     lastStale.set(id, JSON.stringify(ids));
+    const heard = listening(id);
+    lastListening.set(id, heard);
     options.broadcast({
       type: 'board-comments',
       artifact: `artboard/${id}`,
       comments: store(id).current(),
       stale: ids,
+      listening: heard,
     });
   };
   const fresh = (id: string) => {
@@ -332,6 +338,10 @@ export function createBoardCommentRegistry(options: Options) {
 
   return {
     comments: (id: string) => store(id).current(),
+    listening,
+    refreshListening: () => {
+      for (const id of stores.keys()) if (listening(id) !== lastListening.get(id)) push(id);
+    },
     stale,
     warnings: (id: string) => store(id).warnings(),
     apply: (id: string, op: BoardHumanOp) => {

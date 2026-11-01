@@ -128,3 +128,37 @@ test('choice records carry no board hashes, so editing a board never resets a ch
   const { comments } = registry.apply('pick', human({ group: 'q1', choice: 'q1-a' }));
   expect(comments.threads[0]!.anchor.hashes).toBeUndefined();
 });
+
+test('pushes tell the viewer whether a watcher is listening, and a heartbeat change pushes again', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-choices-listen-'));
+  const dir = path.join(root, 'artboard', 'pick');
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(
+    path.join(dir, 'canvas.json'),
+    JSON.stringify({ version: 1, pages: [{ id: 'p', name: 'P' }], boards: {} }),
+  );
+  const stateDir = path.join(root, '.state');
+  const messages: Record<string, unknown>[] = [];
+  const registry = createBoardCommentRegistry({
+    root,
+    stateDir,
+    broadcast: (message) => messages.push(message as unknown as Record<string, unknown>),
+  });
+  registry.apply('pick', human({ board: 'x' }, 'hello'));
+  expect(messages.at(-1)).toMatchObject({ type: 'board-comments', listening: false });
+  expect(registry.listening('pick')).toBe(false);
+  const watch = path.join(stateDir, 'claude-comment-watch');
+  fs.mkdirSync(watch, { recursive: true });
+  const session = '00000000-0000-4000-8000-000000000000';
+  fs.writeFileSync(
+    path.join(watch, `${session}.json`),
+    JSON.stringify({ artifacts: ['artboard/pick'] }),
+  );
+  fs.writeFileSync(path.join(watch, `${session}.alive`), String(Date.now()));
+  const before = messages.length;
+  registry.refreshListening();
+  expect(messages.length).toBe(before + 1);
+  expect(messages.at(-1)).toMatchObject({ listening: true });
+  registry.refreshListening();
+  expect(messages.length).toBe(before + 1);
+});

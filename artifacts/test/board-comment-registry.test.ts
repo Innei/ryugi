@@ -91,6 +91,7 @@ test('rewriting a board file makes its threads stale and pushes the change once'
       artifact: 'artboard/review',
       comments: registry.comments('review'),
       stale: [comments.threads[0]!.id],
+      listening: false,
     },
   ]);
 });
