@@ -360,9 +360,12 @@ process.exitCode = r.status ?? 1;
     const res = await fetch(`http://127.0.0.1:${port}/api/hub/upgrade`, { method: 'POST' });
     expect(res.status).toBe(202);
     await waitFor(() => fs.existsSync(launched), 15000);
-    await waitFor(() => (readText(machine().version) ?? '') === '99.0.0', 15000);
+    await waitFor(() => {
+      const pid = Number(readText(machine().pid));
+      return (readText(machine().version) ?? '') === '99.0.0' && pid > 0 && pid !== oldPid;
+    }, 15000);
     expect(fs.readFileSync(launched, 'utf8').trim()).toBe('99.0.0');
-    expect(serverPid()).not.toBe(oldPid);
+    expect(() => process.kill(serverPid(), 0)).not.toThrow();
   }, 40000);
 
   test('only a newer release replaces the running server, which comes back on the same port', async () => {
