@@ -1,6 +1,6 @@
 {
   "name": "ryugi",
-  "version": "1.51.0",
+  "version": "1.51.1",
   "description": "Ryugi skills and runtime bootstrap for coding agents",
   "keywords": [
     "pi-package",

@@ -24,7 +24,11 @@ test.each([
 
 test('every agent the server can name has an icon, except the ones lobe-icons lacks', () => {
   const missing = AGENT_DISPLAY_NAMES.filter((name) => !agentIconOf(name));
-  expect(missing).toEqual(['OMP', 'Augment']);
+  expect(missing).toEqual(['Augment']);
+});
+
+test('omp is a pi fork, so it borrows the pi icon', () => {
+  expect(agentIconOf('OMP')).toBe('Pi');
 });
 
 test('an unknown agent has no icon', () => {

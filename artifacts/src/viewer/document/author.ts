@@ -11,6 +11,7 @@ export type AgentIconKey =
   | 'GithubCopilot'
   | 'KiloCode'
   | 'OpenCode'
+  | 'Pi'
   | 'Qwen'
   | 'Antigravity'
   | 'Goose'
@@ -30,6 +31,7 @@ const AGENT_ICONS: Record<string, AgentIconKey> = {
   'Grok': 'Grok',
   'GitHub Copilot': 'GithubCopilot',
   'Kilo Code': 'KiloCode',
+  'OMP': 'Pi',
   'OpenCode': 'OpenCode',
   'Qwen Code': 'Qwen',
   'Antigravity': 'Antigravity',
