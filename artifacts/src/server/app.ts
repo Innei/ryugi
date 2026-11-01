@@ -89,11 +89,19 @@ export interface ServerOptions {
   documentTiming?: DocumentTiming;
   fetch?: typeof fetch;
   host: string;
+  mount?: MountSettings;
   relay?: { url: string; version: string; pollMs?: number; heartbeatMs?: number };
   root: string;
   runtimeDir?: string;
   urlHost: string;
   viewerDir: string;
+}
+
+export interface MountSettings {
+  boardPort: number;
+  port: number;
+  token: string;
+  version: string;
 }
 
 export type ArtifactPayload = (CanvasPayload | HtmlPayload | DocumentPayload) & {
@@ -105,15 +113,26 @@ export interface ArtifactsServer {
   close: () => Promise<void>;
   cloudLinkFor: (type: ArtifactType, id: string) => Promise<string | null>;
   contentToken: string;
+  dropRelayViewer: (conn: string) => void;
+  handleBoardRequest: (req: http.IncomingMessage, res: http.ServerResponse) => void;
+  handleRelay: (key: string, body: unknown, conn: string) => Promise<unknown>;
+  handleRequest: (req: http.IncomingMessage, res: http.ServerResponse) => void;
+  handleUpgrade: (req: http.IncomingMessage, socket: Duplex, head?: Buffer) => void;
   linkFor: (type: ArtifactType, id: string) => string;
   onActivity: (listener: () => void) => void;
   onArtifactChange: (
     listener: (ref: ArtifactRef, payload: ArtifactPayload, files: string[]) => void,
   ) => void;
+  onRelayEvent: (listener: (key: string, message: unknown) => void) => void;
   port: number;
+  resolve: (type: ArtifactType, idOrAddress: string) => string | null;
+  root: string;
+  served: () => Map<string, string>;
   token: string;
   url: string;
 }
+
+export type MountedProject = ArtifactsServer;
 
 const viewerCsp = (boardOrigins: string[]) =>
   [
@@ -197,8 +216,9 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
 
   const portFile = path.join(stateDir, '.last-port');
   const tokenFile = path.join(stateDir, '.last-token');
-  const token = readPersisted(tokenFile) || randomToken();
-  fs.writeFileSync(tokenFile, `${token}\n`, { mode: 0o600 });
+  const mount = options.mount;
+  const token = mount?.token ?? (readPersisted(tokenFile) || randomToken());
+  if (!mount) fs.writeFileSync(tokenFile, `${token}\n`, { mode: 0o600 });
   const contentToken = randomToken();
   const loopback = isLoopbackHost(options.host);
   const keyOk = (key: string | null) => loopback || (key !== null && safeEqual(key, token));
@@ -239,9 +259,10 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
   const boardOrigins = () => (boardPort ? originsFor(options.urlHost, boardPort) : []);
   let cookieName = '';
 
-  let relay: ReturnType<typeof createRelayClient> | null = null;
+  let relay: Pick<ReturnType<typeof createRelayClient>, 'emit' | 'close'> | null = null;
+  const relayListeners: ((key: string, message: unknown) => void)[] = [];
   const direct = createDirectRelay({
-    version: options.relay?.version ?? '',
+    version: mount?.version ?? options.relay?.version ?? '',
     handle: (key, body, conn) => handleRelay(key, body, conn, `http://127.0.0.1:${port}`),
     onActivity: () => touch(),
     onClose: (conn) => dropRelayViewer(conn),
@@ -1164,7 +1185,7 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
     }
   });
 
-  server.on('upgrade', (req: http.IncomingMessage, socket: Duplex) => {
+  const handleUpgrade = (req: http.IncomingMessage, socket: Duplex) => {
     if (!hostAllowed(policy, req.headers.host)) {
       rejectUpgrade(socket, 403, 'Forbidden');
       return;
@@ -1205,22 +1226,26 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
     socket.on('close', forget);
     socket.on('error', forget);
     touch();
-  });
+  };
+  server.on('upgrade', handleUpgrade);
 
-  const previousPort = Number(readPersisted(portFile));
-  try {
-    port = await listen(
-      server,
-      options.host,
-      Number.isInteger(previousPort) && previousPort > 0 ? previousPort : 0,
-    );
-  } catch {
-    port = await listen(server, options.host, 0);
+  if (mount) port = mount.port;
+  else {
+    const previousPort = Number(readPersisted(portFile));
+    try {
+      port = await listen(
+        server,
+        options.host,
+        Number.isInteger(previousPort) && previousPort > 0 ? previousPort : 0,
+      );
+    } catch {
+      port = await listen(server, options.host, 0);
+    }
+    fs.writeFileSync(portFile, `${port}\n`, { mode: 0o600 });
   }
   cookieName = `ryugi_artifacts_${port}`;
-  fs.writeFileSync(portFile, `${port}\n`, { mode: 0o600 });
 
-  const boardServer = http.createServer((req, res) => {
+  const handleBoardRequest = (req: http.IncomingMessage, res: http.ServerResponse) => {
     if (!hostAllowed(policy, req.headers.host)) {
       send(res, 403, 'Forbidden host');
       return;
@@ -1245,8 +1270,10 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
       if (!res.headersSent) send(res, 500, (err as Error).message);
       else res.destroy();
     }
-  });
-  if (loopback) {
+  };
+  const boardServer = http.createServer(handleBoardRequest);
+  if (mount) boardPort = mount.boardPort;
+  else if (loopback) {
     const boardPortFile = path.join(stateDir, BOARD_PORT_FILE);
     const previousBoardPort = Number(readPersisted(boardPortFile));
     try {
@@ -1411,8 +1438,13 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
     }
     throw new Error('unknown request');
   };
-  relay =
-    options.relay && options.cloud
+  relay = mount
+    ? {
+        emit: (key: string, message: unknown) =>
+          relayListeners.forEach((listener) => listener(key, message)),
+        close: () => {},
+      }
+    : options.relay && options.cloud
       ? createRelayClient({
           ...options.relay,
           token: () =>
@@ -1533,7 +1565,25 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
     token,
     contentToken,
     url,
+    root,
     linkFor,
+    handleRequest: (req, res) => {
+      try {
+        handleRequest(req, res);
+      } catch (err) {
+        if (!res.headersSent) send(res, 500, `Artifacts error: ${(err as Error).message}`);
+      }
+    },
+    handleUpgrade,
+    handleBoardRequest,
+    handleRelay: (key, body, conn) => handleRelay(key, body, conn, `http://127.0.0.1:${port}`),
+    dropRelayViewer,
+    served: servedArtifacts,
+    onRelayEvent: (listener) => relayListeners.push(listener),
+    resolve: (type, idOrAddress) => {
+      if (!isArtifactLocator(idOrAddress)) return null;
+      return resolveArtifactAddress(root, type, idOrAddress)?.id ?? null;
+    },
     cloudLinkFor: async (type, id) => {
       if (
         !cloud ||
@@ -1569,6 +1619,11 @@ export async function startArtifactsServer(options: ServerOptions): Promise<Arti
         server.closeAllConnections();
       });
       await documents.close().catch(() => undefined);
+      if (mount) fs.rmSync(path.join(stateDir, 'server-info'), { force: true });
     },
   };
 }
+
+export const mountArtifactsProject = (
+  options: ServerOptions & { mount: MountSettings },
+): Promise<MountedProject> => startArtifactsServer(options);
