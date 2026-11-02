@@ -298,9 +298,16 @@ node app/ryugi-artifacts.cjs comment list --json --project-dir /path/to/project 
 ## Verify groups
 
 A group with `"verify": true` gets pass and reject buttons next to its title.
-Your human partner decides; you cannot pass or reject. When they ask you to
+Your human partner decides. When they ask you to
 verify or show a built change, put the evidence (screenshots, recordings,
 boards) in a new group with `"verify": true`.
+
+- Record a verdict only when your human partner tells you the verdict ("mark
+  all as passed", "reject v3, the button covers the text"):
+  `comment pass … --group <id>`, `comment pass … --all` (every group not yet
+  passed), or `comment reject … --group <id> --text <reason>`. The board
+  labels it as recorded by the agent, and they can undo a pass. Never pass a
+  group on your own judgment.
 
 - `comment list --json` returns `groups`: each verify group with `verdict`
   (`pending`, `pass` or `reject`), `evidenceUpdated` and `rejectThreads`.
