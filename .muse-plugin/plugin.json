@@ -43,10 +43,7 @@
       {
         "id": "session-start",
         "event": "SessionStart",
-        "command": [
-          "bash",
-          "hooks/session-start"
-        ],
+        "command": ["bash", "hooks/session-start"],
         "timeoutMs": 5000
       }
     ],
@@ -61,5 +58,5 @@
   "displayName": "Ryugi",
   "name": "ryugi",
   "schemaVersion": 1,
-  "version": "1.51.2"
+  "version": "1.52.0"
 }
