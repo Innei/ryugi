@@ -22,22 +22,27 @@ hundred decisions they never mention the way they would have made them.
 3. **Design what they'll see** on an artboard or page, when there is
    something to see (below).
 4. **Size the work** and say the size.
-5. **Get approval** of the full description: in chat for a small change,
-   the written design for a project.
+5. **Describe it in full**: in chat for a small change, then build; the
+   written design for a project, then wait for approval.
 6. **Hand off** to building.
 
 ## Pick the Path
 
 Before you reply, ask yourself: what do I know about what they want, and
-why?
+why? Everything said earlier in the conversation counts, not only the
+latest message. What their project already shows counts too: read the
+code, files or data before you ask about them.
 
-| What you know                                                                                       | Do                                                                                                      |
-| --------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| Everything that matters is in the request ("make the icon cornflower blue")                         | Do it, and say what you did.                                                                            |
-| They asked for a design, an architecture or a kickoff document, or their message is already a brief | Questions in a document, a round at a time: read `doc-rounds.md`                                        |
-| Something non-trivial is missing                                                                    | One question at a time in chat, stepping up to the document when the work outgrows chat: read `chat.md` |
+| What you know                                                                                       | Do                                                                                              |
+| --------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| Everything that matters is in the request ("make the icon cornflower blue")                         | Do it, and say what you did.                                                                    |
+| Earlier turns already settled what and why (you proposed an approach and they agreed)               | No questions. Size the work and give the full description, your calls marked.                   |
+| They asked for a design, an architecture or a kickoff document, or their message is already a brief | Questions in a document, a round at a time: read `doc-rounds.md` first.                         |
+| Enough to make a good guess                                                                         | Say what you'd build, your calls marked, and ask the one question that would change it, if any. |
+| Too little to guess: what it's for or who it's for is unknown                                       | One open question that gets them describing a real moment or a concrete picture.                |
 
-Read the file before your first message.
+When what they asked for is a plan or a proposal, not the change itself,
+the description is the deliverable: send it and end your turn.
 
 Whenever they say to just start, stop asking: state any significant
 how-it-gets-made choice (platform, language, medium) in one plain line,
@@ -45,51 +50,48 @@ then do what they asked through the normal workflow. This skill is done.
 
 ## Talking It Through
 
-These hold on both paths.
+These hold on every path.
 
-Be clear and concise. Lead with what matters. Avoid jargon. When you
-report what you found, give them the most important findings and offer
-the rest.
+Be clear and concise. Lead with what matters. Avoid jargon, match their
+vocabulary.
 
-**Get them describing.** Open questions come first. Their own words carry
-intent that your options can't. Offer a short menu only when they're
-stuck. When they say "just guess" or "what do you think?", propose
-something concrete.
+**Ask only what changes what gets built.** Before each question, ask
+yourself: would a different answer change what I build? If not, or if a
+sensible default exists, pick it and say it as your call. What only they
+can answer is the why, what success looks like, and what would make this
+a failure.
 
-**How it gets made.** Every project rests on choices about medium, tools,
-materials, and resources: the platform, programming language, and
-libraries for an app; the medium for a piece of art. Find out early which
-of those choices they want to make, which they're handing to you, and what
-they already have to work with. Someone with strong views or skills will
-want to talk it through. Someone counting on you needs sensible defaults,
-said in plain words. When there's existing work, build on what it already
-uses. Any choice you make goes in the design as your call, never as
-something they agreed to.
+**Guess before you ask.** A guess they can correct ("I'm guessing this is
+because X keeps biting you?") beats a question. When you can't guess yet,
+ask about a real moment: "What's the moment you find yourself wishing
+this existed?" Offer a short menu only when they're stuck. When they say
+"just guess" or "what do you think?", propose something concrete.
 
-**Ground to cover.** This is territory, not a script. Never read these
-out as questions:
+**One question per message.** A follow-up waits for their answer.
 
-- what kind of thing this is, and what makes it special
-- why now, and what success looks like to them
-- goals, non-goals, and anti-goals (what would make this a failure even
-  if it technically works)
-- prior art: what they've seen elsewhere, loved or hated
-- current state: what exists now, what they've tried
-- the details they care about
+**Your calls, marked.** Every default you pick goes in the description as
+your call, never as something they agreed to.
 
-**Questions that work** anchor in specifics: "Walk me through the last
-time...", "If it could only do one of these well, which?", "What would
-make you wince if I got it wrong?" A guess they can correct ("I'm
-guessing this is because X keeps biting you?") often beats a question.
+**How it gets made.** Platform, language, libraries, medium: find out
+early which of these choices they want to make and which they hand to
+you. Someone counting on you needs sensible defaults, said in plain
+words. When there's existing work, build on what it already uses.
 
-**Offer recon.** Once you have a bit of grounding and looking would help,
-offer to go look: their codebase or project, their own files and data,
-or the web. Say what you'd look for. They decide whether you go.
+**Look before you ask.** What exists now (code, services, config, their
+files) is for you to read, not for them to answer. Read their project
+without asking. Offer before going outside it, to the web or their
+accounts.
 
 **Think wide privately.** Before you propose anything, come up with
 several ideas and drop the weak ones, including any that fight what
 they've told you about why. Show the comparison only when it helps them
 decide.
+
+**Play it back.** Once you understand a part well enough to describe it
+(what it's for and who it serves, say, or how one piece behaves),
+describe it back in a few short paragraphs, guesses marked as yours, and
+ask what's wrong or missing. For a small change, the full description is
+the only playback.
 
 **Spike to feel things out.** Agentic work is waterfall, but very, very
 fast. A quick throwaway build is often the cheapest way to learn what
@@ -98,6 +100,24 @@ When they just want to spike, get out of the way. Spikes get no tests
 or minimal ones, aren't bulletproof, and skip the spec, execution, and
 review process. Bring what the spike taught you back into the
 conversation.
+
+## Step Up to the Document
+
+Before every playback in chat, check what you now know. Step up when any
+of these is true:
+
+- it spans several modules, services or repos that each need decisions of
+  their own (one field carried from the screen to the database is one
+  change, not several)
+- it changes the architecture: how parts talk to each other, where data
+  lives, how it deploys
+- more than five decisions are still open
+- one open answer decides whether other questions exist at all
+
+When one is true, the playback goes into a document instead of chat:
+follow `doc-rounds.md`, starting at "Coming From Chat". Open it without
+asking first. Your message is one line on why the conversation moved,
+plus the link.
 
 ## Designing What They'll See
 
@@ -134,11 +154,11 @@ one, check whether the project has its own design skill or design system
 Once you understand what they want, pick a size and say it in plain
 words. They can override it.
 
-| Size                | The full description                       | Then                                         |
-| ------------------- | ------------------------------------------ | -------------------------------------------- |
-| A quick, clear task | the request itself                         | do it                                        |
-| A small change      | in chat                                    | build it under ryugi:test-driven-development |
-| A project           | a written design: read `written-design.md` | the handoff below                            |
+| Size                | The full description                       | Then                                                                                 |
+| ------------------- | ------------------------------------------ | ------------------------------------------------------------------------------------ |
+| A quick, clear task | the request itself                         | do it                                                                                |
+| A small change      | in chat, your calls marked                 | build it in the same turn; under ryugi:test-driven-development when behavior changes |
+| A project           | a written design: read `written-design.md` | wait for approval, then the handoff below                                            |
 
 If it grows mid-task, stop, say so, and step up a size.
 
@@ -146,16 +166,19 @@ If this is really several independent projects, say so, agree on an
 order, and brainstorm them one at a time.
 
 <HARD-GATE>
-Nothing gets built until your human partner approves the full
-description: in chat for a small change, the document for a project.
-Building includes writing product code, scaffolding, installing
-dependencies, creating projects, and invoking an implementation skill.
-Reading and exploring are fine.
+Nothing gets built for a project until your human partner approves the
+written design. Building includes writing product code, scaffolding,
+installing dependencies, creating projects, and invoking an
+implementation skill. Reading and exploring are fine.
 
-Two exceptions. If they opted out of the questions, the skill is done
-and the gate goes with it. A spike they said yes to may be built; it
-stays labeled throwaway, and keeping what it produced is a new request
-that comes back through this gate.
+A small change has no approval round: send its full description with
+your calls marked, then build it in the same turn. When they push back,
+stop and change course.
+
+If they opted out of the questions, the skill is done and the gate goes
+with it. A spike they said yes to may be built; it stays labeled
+throwaway, and keeping what it produced is a new request that comes back
+through this gate.
 
 </HARD-GATE>
 
@@ -172,10 +195,12 @@ report.
 
 ## Red Flags
 
-| Thought                                     | Reality                                                                                 |
-| ------------------------------------------- | --------------------------------------------------------------------------------------- |
-| "I'll offer options to save them effort"    | Options steer. Ask them to describe it first.                                           |
-| "I'll fill in sensible defaults"            | Good. Say them out loud. A default they never heard is one they couldn't reject.        |
-| "I should explain the process first"        | Ask your question. The process shows itself.                                            |
-| "They said 'sounds good' to the idea"       | Approval covers what you showed them. A description you haven't written isn't approved. |
-| "The spike works, I'll keep building on it" | Keeping it is a new request. Back through the gate.                                     |
+| Thought                                      | Reality                                                                                               |
+| -------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| "I just loaded the skill, so I start asking" | The conversation so far counts. If what and why are settled, give the full description.               |
+| "I'll ask so they get describing"            | Ask only when a different answer would change what you build. Otherwise guess and say so.             |
+| "I'll offer recon instead of looking"        | Reading their project needs no permission. Look, then ask what the code can't tell you.               |
+| "I'll offer options to save them effort"     | Options steer. Guess one thing, or ask them to describe it.                                           |
+| "I'll fill in sensible defaults"             | Good. Say them out loud, marked as your call. A default they never heard is one they couldn't reject. |
+| "They said 'sounds good' to the idea"        | For a project, approval covers what you showed them. A design you haven't written isn't approved.     |
+| "The spike works, I'll keep building on it"  | Keeping it is a new request. Back through the gate.                                                   |
