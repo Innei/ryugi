@@ -17,6 +17,7 @@ const rounds = read('skills/brainstorming/artboard-rounds.md');
 const spec = read('skills/brainstorming/written-design.md');
 const artifacts = read('skills/artifacts/SKILL.md');
 const muse = JSON.parse(read('.muse-plugin/plugin.json'));
+const rubric = read('tests/interface-craft/eval-rubric.md');
 const passes = [
   'spacing',
   'color',
@@ -102,6 +103,18 @@ const checks = [
     muse.capabilities.skills.some(
       (item) => item.id === 'interface-craft' && item.path === skillPath,
     ),
+  ],
+  [
+    'external agent CLI harness retired',
+    !existsSync(path.resolve(root, 'tests/interface-craft/run-live-eval.sh')),
+  ],
+  [
+    'rubric isolates evaluation',
+    rubric.includes('must not drive an external') && rubric.includes('must not publish'),
+  ],
+  [
+    'measurement tool present',
+    existsSync(path.resolve(root, 'tests/interface-craft/measure-boards.mjs')),
   ],
 ];
 let failed = 0;
