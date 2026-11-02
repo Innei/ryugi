@@ -50,7 +50,7 @@
     "source": "native",
     "manifestDir": ".muse-plugin"
   },
-  "description": "Core skills library for Muse: TDD, debugging, collaboration patterns, and proven techniques",
+  "description": "Ryugi skills for coding agents, plus the artifacts workbench they design in: brainstorming, artboards, documents and TDD.",
   "displayName": "Ryugi",
   "name": "ryugi",
   "schemaVersion": 1,

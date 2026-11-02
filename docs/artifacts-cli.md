@@ -30,7 +30,7 @@ The status pill in the top bar shows the version, the cloud relay and an "Update
 
 The server keeps its state in `~/.ryugi/server/` (`RYUGI_SERVER_HOME` moves it): `projects.json`, the key, the log and `server-info`. Each registered project also gets `.ryugi/artifacts/.state/server-info` pointing at it. The first `start` of this release stops per-project servers from earlier releases; reload their open tabs once, because the port changes.
 
-The same CLI runs what the skill uses: `npx ryugi-artifacts start`, `stop` and `publish` (`<command> --help` lists a command's options; add `--json` for one JSON line). `npx ryugi-artifacts get <link>` reads a published Ryugi Cloud artifact with this machine's cloud sign-in and prints its source (a document's LiteXML and comments) even when piped; only `--json` makes it print JSON. For development, run `cd artifacts && pnpm build`, then `node artifacts/bin/ryugi-artifacts.cjs /path/to/project` from the repository root.
+The same CLI runs what the skill uses: `npx ryugi-artifacts start`, `stop` and `publish` (`<command> --help` lists a command's options; add `--json` for one JSON line). `npx ryugi-artifacts get <link>` reads a published Ryugi Cloud artifact with this machine's cloud sign-in and prints its source (a document's LiteXML and comments) even when piped; only `--json` makes it print JSON. A local build of `ryugi-artifacts` can write gitignored copies to `skills/artifacts/app/`; the skill's launcher prefers a local `cli.cjs` over the npm release.
 
 Run directly from a terminal, the CLI prints a line on stderr when a newer release is out. It reads the version from `~/.cache/ryugi/artifacts/latest.json`, the launcher's cache, and refreshes that file at most once a day in a detached process, so no command waits on npm. It stays quiet under the skill's launcher, with `--json`, outside a terminal, in CI, and with `NO_UPDATE_NOTIFIER` set. `ryugi-artifacts update` installs the newest release with the package manager that installed this one (npm, pnpm, yarn or bun, detected from the install path; `--pm` overrides it, `--check` only compares). For an npx, pnpm dlx or bunx run, a local build, or the launcher, it says how to update instead.
 
@@ -38,4 +38,4 @@ Cloud publish failures keep the cloud HTTP status in `publish --json` output. Wh
 
 ## License
 
-`ryugi-artifacts` is AGPL-3.0-only — [artifacts/LICENSE](../artifacts/LICENSE) — while Ryugi's skills and harness integrations are MIT. A modified version served to other people over a network must offer them its source.
+Ryugi's skills, harness integrations and docs are MIT. `ryugi-artifacts` is proprietary and not part of this repository; releases up to 1.51.2 were published under AGPL-3.0-only.

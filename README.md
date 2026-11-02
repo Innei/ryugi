@@ -4,7 +4,7 @@
 
 <h1 align="center">Ryugi 流儀</h1>
 
-<p align="center"><b>Your coding agent stops describing UI and starts showing it.</b></p>
+<p align="center"><b>A skills collection for coding agents — and the artifacts workbench they think in.</b></p>
 
 ```text
 /plugin marketplace add Innei/ryugi
@@ -27,11 +27,21 @@ options instead of describing them, and builds what you approve under TDD.
 Submit sends the round back with the brief. Comment on any pixel and answer in the terminal
 (`q1 → b`).
 
+## Two parts, one install
+
+**Skills** — the agent's development workflow: brainstorm, spec, TDD, debug, verify, worktrees.
+
+**Artifacts workbench** — the surface they work on: an artboard for choosing between options,
+documents to comment on, live HTML pages to tune, and a library across every project. It is not
+limited to mockups or to brainstorming; architecture, reviews, proposals, test benches and
+verification share the same canvas. The skills use it, and `npx ryugi-artifacts` opens it without
+an agent.
+
 ## How it works
 
 ```mermaid
 flowchart LR
-  I[Idea] --> B[Brainstorm] --> S[Spec] --> T[Build · TDD] --> V[Verify] --> L[Land]
+  I[Idea] --> B[Brainstorm] --> A[Artifacts] --> S[Spec] --> T[Build · TDD] --> V[Verify] --> L[Land]
 ```
 
 Skills fire on their own; there is nothing to invoke. After you sign off, the agent slices the
@@ -46,8 +56,8 @@ gets one fresh review of the branch, and reports how to land it.
   <img src="docs/images/document-light.webp" alt="A design document with a contents rail, a flow diagram, a code block and two comment threads in the margin marked waiting on you">
 </picture>
 
-Diagrams, charts, code, tables. Comment on a sentence, edit in place; your edits and the agent's
-merge live.
+Diagrams, charts, code, tables. A design document, a review, a proposal, a walkthrough of a flow:
+comment on a sentence, edit in place; your edits and the agent's merge live.
 
 ## HTML — tune it with real controls
 
@@ -56,7 +66,8 @@ merge live.
   <img src="docs/images/html-light.webp" alt="A spring test bench: sliders for stiffness, damping and mass beside a plotted displacement curve with settle time and overshoot">
 </picture>
 
-A one-page test bench. Sliders keep their values when the agent rewrites the page.
+One surface, one dimension: a component, a type scale, a background, a motion. A one-page test
+bench with sliders that keep their values when the agent rewrites the page.
 
 ## Verify — you pass or reject
 
@@ -79,9 +90,9 @@ what is off; it comes back fixed.
 npx ryugi-artifacts
 ```
 
-Local first, no subscription. One server serves every project on the machine: recent work across
-all of them, ⌘K to jump, artifact links that survive a restart and a new release. `publish` shares
-one to [Ryugi Cloud](https://ryugi.innei.dev).
+Local first, no subscription, no agent session needed. One server serves every project on the
+machine: recent work across all of them, ⌘K to jump, artifact links that survive a restart and a
+new release. `publish` shares one to [Ryugi Cloud](https://ryugi.innei.dev).
 
 ## Work with your harness
 

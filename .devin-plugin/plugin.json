@@ -3,7 +3,7 @@
     "name": "Innei",
     "email": "i@innei.dev"
   },
-  "description": "An agentic skills framework & software development methodology that works: planning, TDD, debugging, and collaboration workflows.",
+  "description": "Ryugi skills for coding agents, plus the artifacts workbench they design in: brainstorming, artboards, documents and TDD.",
   "homepage": "https://github.com/Innei/ryugi",
   "keywords": [
     "brainstorming",

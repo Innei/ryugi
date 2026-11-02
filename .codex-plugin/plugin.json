@@ -4,13 +4,13 @@
     "email": "i@innei.dev",
     "url": "https://github.com/Innei"
   },
-  "description": "An agentic skills framework & software development methodology that works: planning, TDD, debugging, and collaboration workflows.",
+  "description": "Ryugi skills for coding agents, plus the artifacts workbench they design in: brainstorming, artboards, documents and TDD.",
   "homepage": "https://github.com/Innei/ryugi",
   "hooks": "./skills/artifacts/app/codex-hooks.json",
   "interface": {
     "displayName": "Ryugi",
-    "shortDescription": "Brainstorm with mockups, approve a spec, build it under TDD",
-    "longDescription": "Use Ryugi to guide agent work through brainstorming with Artboard mockups, building an approved spec inline under test-driven development, systematic debugging, and isolated worktrees.",
+    "shortDescription": "Brainstorm on a live artboard, build the approved spec under TDD",
+    "longDescription": "Use Ryugi to guide agent work through brainstorming on the Artboard, documents and HTML pages you can comment on, building an approved spec inline under test-driven development, systematic debugging, and isolated worktrees.",
     "developerName": "Innei",
     "category": "Developer Tools",
     "capabilities": ["Interactive", "Read", "Write"],

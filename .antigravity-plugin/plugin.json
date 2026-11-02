@@ -4,7 +4,7 @@
     "email": "i@innei.dev"
   },
   "category": "Developer Tools",
-  "description": "Make your coding agent a better engineer",
+  "description": "Make your coding agent a better engineer, and show the work in an artifacts workbench",
   "displayName": "Ryugi",
   "homepage": "https://github.com/Innei/ryugi",
   "keywords": ["skills", "tdd", "debugging", "collaboration", "best-practices", "workflows"],

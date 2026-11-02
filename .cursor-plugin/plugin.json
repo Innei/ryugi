@@ -3,7 +3,7 @@
     "name": "Innei",
     "email": "i@innei.dev"
   },
-  "description": "Core skills library: TDD, debugging, collaboration patterns, and proven techniques",
+  "description": "Ryugi skills for coding agents, plus the artifacts workbench they design in: brainstorming, artboards, documents and TDD.",
   "displayName": "Ryugi",
   "homepage": "https://github.com/Innei/ryugi",
   "hooks": "./hooks/hooks-cursor.json",

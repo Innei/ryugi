@@ -1,5 +1,5 @@
 {
-  "description": "Development marketplace for Ryugi core skills library",
+  "description": "Development marketplace for the Ryugi skills and artifacts workbench",
   "name": "ryugi-dev",
   "owner": {
     "name": "Innei",
@@ -8,7 +8,7 @@
   "plugins": [
     {
       "name": "ryugi",
-      "description": "Core skills library for Muse: TDD, debugging, collaboration patterns, and proven techniques",
+      "description": "Ryugi skills for coding agents, plus the artifacts workbench they design in: brainstorming, artboards, documents and TDD.",
       "version": "1.51.2",
       "source": "./",
       "author": {

@@ -1,7 +1,7 @@
 {
   "name": "ryugi",
   "version": "1.51.2",
-  "description": "Ryugi skills and runtime bootstrap for coding agents",
+  "description": "Ryugi skills and the artifacts workbench for coding agents",
   "keywords": [
     "pi-package",
     "skills",

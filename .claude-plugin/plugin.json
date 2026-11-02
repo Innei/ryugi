@@ -3,7 +3,7 @@
     "name": "Innei",
     "email": "i@innei.dev"
   },
-  "description": "Core skills library for Claude Code: TDD, debugging, collaboration patterns, and proven techniques",
+  "description": "Ryugi skills for coding agents, plus the artifacts workbench they design in: brainstorming, artboards, documents and TDD.",
   "homepage": "https://github.com/Innei/ryugi",
   "keywords": ["skills", "tdd", "debugging", "collaboration", "best-practices", "workflows"],
   "license": "MIT",
