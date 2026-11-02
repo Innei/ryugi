@@ -3,6 +3,7 @@
 const assert = require('node:assert/strict');
 const { spawn, spawnSync } = require('node:child_process');
 const fs = require('node:fs');
+const net = require('node:net');
 const os = require('node:os');
 const path = require('node:path');
 const { test } = require('node:test');
@@ -49,6 +50,10 @@ function fixture(t) {
     RYUGI_CODEX_REMOTE: 'unix:///tmp/ryugi-test.sock',
     PATH: `${bin}${path.delimiter}${process.env.PATH}`,
   };
+  // Fixture hooks must never contact the real desktop app inherited by the test runner.
+  delete env.CODEX_APP_TOOLS_PIPE_PATH;
+  delete env.CODEX_MCP_NODE_PATH;
+  delete env.CODEX_APP_TOOLS_CALLER_HOST_ID;
   const input = {
     session_id: id,
     cwd: project,
@@ -135,7 +140,68 @@ function fixture(t) {
     }
     fs.rmSync(root, { recursive: true, force: true });
   });
-  return { root, project, data, env, input, read, write, comments, start, fail, open };
+  const state = () => {
+    try {
+      return JSON.parse(
+        fs.readFileSync(path.join(data, 'codex-comment-watch/workers', `${id}.json`), 'utf8'),
+      );
+    } catch {
+      return null;
+    }
+  };
+  return { root, project, data, env, input, read, write, comments, start, fail, open, state };
+}
+
+async function desktop(t, f) {
+  const calls = [];
+  const sockets = new Set();
+  let failure = true;
+  const server = net.createServer((socket) => {
+    sockets.add(socket);
+    socket.on('close', () => sockets.delete(socket));
+    let pending = Buffer.alloc(0);
+    socket.on('data', (chunk) => {
+      pending = Buffer.concat([pending, chunk]);
+      while (pending.length >= 4 && pending.length >= pending.readUInt32LE(0) + 4) {
+        const length = pending.readUInt32LE(0);
+        const request = JSON.parse(pending.subarray(4, length + 4));
+        pending = pending.subarray(length + 4);
+        let result;
+        if (request.method === 'tools/list') {
+          result = { tools: [{ name: 'send_message_to_thread', namespace: 'test_desktop' }] };
+        } else {
+          calls.push(request.params);
+          result = failure
+            ? { success: false, contentItems: [{ type: 'inputText', text: 'desktop offline' }] }
+            : {
+                success: true,
+                contentItems: [{ type: 'inputText', text: JSON.stringify({ threadId: id }) }],
+              };
+        }
+        const payload = Buffer.from(JSON.stringify({ jsonrpc: '2.0', id: request.id, result }));
+        const header = Buffer.alloc(4);
+        header.writeUInt32LE(payload.length);
+        socket.write(Buffer.concat([header, payload]));
+      }
+    });
+  });
+  const pipe =
+    process.platform === 'win32'
+      ? `\\\\.\\pipe\\ryugi-test-${path.basename(f.root)}`
+      : path.join(f.root, 'desktop.sock');
+  await new Promise((resolve) => server.listen(pipe, resolve));
+  t.after(async () => {
+    for (const socket of sockets) socket.destroy();
+    await new Promise((resolve) => server.close(resolve));
+  });
+  f.env.CODEX_APP_TOOLS_PIPE_PATH = pipe;
+  f.env.CODEX_MCP_NODE_PATH = process.execPath;
+  return {
+    calls,
+    recover: () => {
+      failure = false;
+    },
+  };
 }
 
 function hooks() {
@@ -239,7 +305,8 @@ test('SessionEnd stops delivery and leaves other sessions alone', async (t) => {
   const other = f.start({ session_id: inherited });
   await delay(250);
   const end = spawnSync(process.execPath, [adapter, 'stop'], {
-    env: f.env,
+    // Cleanup must still work when the desktop runtime/pipe has gone away.
+    env: { ...f.env, CODEX_APP_TOOLS_PIPE_PATH: 'unavailable', CODEX_MCP_NODE_PATH: 'missing' },
     input: JSON.stringify({ ...f.input, hook_event_name: 'SessionEnd' }),
     encoding: 'utf8',
   });
@@ -332,3 +399,126 @@ test('the heartbeat keeps beating while a queue call is in flight', async (t) =>
   await delay(2500);
   assert.ok(Number(fs.readFileSync(alive, 'utf8')) > during, 'heartbeat stopped while queueing');
 });
+
+test('desktop comments retry through the app pipe and acknowledge the hook session without a CLI fallback', async (t) => {
+  const f = fixture(t);
+  const app = await desktop(t, f);
+  f.start();
+  f.write('document/plan', f.comments());
+  await until(() => app.calls.length > 0, 'desktop comment never reached the app pipe');
+  await until(
+    () => f.state()?.lastError?.includes('desktop offline'),
+    'app failure was not recorded',
+  );
+  app.recover();
+  await until(() => Boolean(f.state()?.queuedAt), 'pending desktop comment was not retried');
+  const call = app.calls.at(-1);
+  assert.equal(call.threadId, id);
+  assert.equal(call.arguments.threadId, id);
+  assert.equal(call.hostId, 'local');
+  assert.equal(call.arguments.hostId, 'local');
+  assert.equal(call.namespace, 'test_desktop');
+  assert.ok(call.arguments.prompt.includes('comment list --json'));
+  assert.ok(!call.arguments.prompt.includes('Change it'));
+  assert.equal(JSON.parse(f.state().receipt).threadId, id);
+  assert.equal(f.read().length, 0);
+});
+
+test('desktop choice submissions use the existing artifact subscription and round notification', async (t) => {
+  const f = fixture(t);
+  const app = await desktop(t, f);
+  app.recover();
+  f.write('artboard/settings', { version: 1, threads: [] });
+  const file = path.join(f.project, '.ryugi/artifacts/.state/artboard/settings/rounds.json');
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  const round = { id: 'r1', page: 'p', state: 'open', groups: ['q1'], boards: ['a'] };
+  fs.writeFileSync(file, JSON.stringify({ rounds: [round] }));
+  f.start();
+  await until(() => Boolean(f.state()), 'desktop watcher never started');
+  fs.writeFileSync(file, JSON.stringify({ rounds: [{ ...round, state: 'submitted' }] }));
+  await until(() => app.calls.length > 0, 'desktop choice never reached the app pipe');
+  assert.ok(app.calls[0].arguments.prompt.includes('round r1 on artboard/settings were submitted'));
+  assert.equal(f.read().length, 0);
+});
+
+test('a nonlocal desktop host is rejected without trying the CLI endpoint', async (t) => {
+  const f = fixture(t);
+  const app = await desktop(t, f);
+  f.env.CODEX_APP_TOOLS_CALLER_HOST_ID = 'durable';
+  f.start();
+  f.write('document/plan', f.comments());
+  await until(
+    () => /local host/i.test(f.state()?.lastError || ''),
+    'nonlocal host was not rejected',
+  );
+  assert.equal(app.calls.length, 0);
+  assert.equal(f.read().length, 0);
+});
+
+test(
+  'macOS startup replaces the whole watcher runtime before reading hook stdin',
+  { skip: process.platform !== 'darwin' || typeof process.execve !== 'function' },
+  async (t) => {
+    const f = fixture(t);
+    const runtime = path.join(f.root, 'runtime/bin/node');
+    const preload = path.join(f.root, 'startup.cjs');
+    const log = path.join(f.root, 'startup.jsonl');
+    fs.mkdirSync(path.dirname(runtime), { recursive: true });
+    // Homebrew Node locates libnode relative to its executable; standalone Node needs no library.
+    const lib = path.resolve(path.dirname(process.execPath), '../lib');
+    if (fs.existsSync(lib)) fs.symlinkSync(lib, path.join(f.root, 'runtime/lib'), 'dir');
+    fs.copyFileSync(process.execPath, runtime);
+    fs.chmodSync(runtime, 0o755);
+    fs.writeFileSync(
+      preload,
+      `require('node:fs').appendFileSync(${JSON.stringify(log)}, JSON.stringify({runtime:process.execPath,pid:process.pid,ppid:process.ppid,argv:process.argv,cwd:process.cwd()})+'\\n');`,
+    );
+    f.env.CODEX_APP_TOOLS_PIPE_PATH = path.join(f.root, 'unused.sock');
+    f.env.CODEX_MCP_NODE_PATH = runtime;
+    f.env.NODE_OPTIONS = `${f.env.NODE_OPTIONS || ''} --require=${preload}`.trim();
+    const child = f.start({}, false);
+    await until(() => Boolean(f.state()), 'replaced watcher lost the hook stdin context');
+    const starts = fs
+      .readFileSync(log, 'utf8')
+      .trim()
+      .split('\n')
+      .map((line) => JSON.parse(line));
+    assert.equal(starts.length, 2);
+    assert.equal(starts[0].runtime, process.execPath);
+    assert.equal(starts[1].runtime, runtime);
+    assert.equal(starts[1].pid, child.pid);
+    assert.equal(starts[1].pid, starts[0].pid);
+    assert.equal(starts[1].ppid, process.pid);
+    assert.deepEqual(
+      starts[1].argv,
+      starts[0].argv.map((arg, i) => (i === 0 ? runtime : arg)),
+    );
+    assert.equal(starts[1].cwd, f.project);
+    assert.equal(f.state().session, id);
+  },
+);
+
+test(
+  'macOS startup diagnoses a missing inherited runtime or unavailable execve',
+  { skip: process.platform !== 'darwin' },
+  (t) => {
+    const f = fixture(t);
+    const preload = path.join(f.root, 'older-node.cjs');
+    fs.writeFileSync(preload, 'process.execve = undefined;');
+    const runtime = path.join(f.root, 'desktop-node');
+    fs.writeFileSync(runtime, '#!/bin/sh\nexit 99\n', { mode: 0o755 });
+    for (const [node, expected] of [
+      ['relative-node', /absolute CODEX_MCP_NODE_PATH/],
+      [runtime, /Node.js 22\.15.*process\.execve/],
+    ]) {
+      const result = spawnSync(process.execPath, ['--require', preload, adapter, 'watch'], {
+        env: { ...f.env, CODEX_APP_TOOLS_PIPE_PATH: 'unused', CODEX_MCP_NODE_PATH: node },
+        input: JSON.stringify(f.input),
+        encoding: 'utf8',
+      });
+      assert.equal(result.status, 1);
+      assert.match(result.stderr, expected);
+    }
+    assert.equal(f.state(), null);
+  },
+);

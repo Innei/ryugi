@@ -4,6 +4,11 @@ const { execFile, execFileSync } = require('node:child_process');
 const { randomUUID } = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
+const {
+  ensureDesktopRuntime,
+  hasDesktopPipe,
+  sendDesktop,
+} = require('./codex-desktop-transport.cjs');
 const { createCommentWatch, unreadCount } = require('./comment-watch.cjs');
 const {
   beat,
@@ -130,6 +135,7 @@ function queueComment(ctx, remote, event, signal) {
       ? `Ryugi choices for round ${event.round} on ${event.artifact} were ${event.withdrawn ? 'withdrawn' : 'submitted'}.`
       : 'Ryugi review comments changed.';
   const message = `${what} Local skill: ${JSON.stringify(skill)}; guide: ${JSON.stringify(guide)}. ${event.instruction}\nRun: ${event.command}`;
+  if (hasDesktopPipe()) return sendDesktop(ctx, message, signal);
   const args = [
     'queue',
     '--remote',
@@ -174,8 +180,9 @@ function notice(input, message) {
 }
 
 function watch(ctx, input) {
-  const remote = endpoint(process.env.RYUGI_CODEX_REMOTE) || hostEndpoint();
-  if (!remote) {
+  const desktop = hasDesktopPipe();
+  const remote = desktop ? null : endpoint(process.env.RYUGI_CODEX_REMOTE) || hostEndpoint();
+  if (!desktop && !remote) {
     notice(
       input,
       'Ryugi comment watch needs the current Codex App Server endpoint. Set RYUGI_CODEX_REMOTE for a host that does not expose --listen.',
@@ -184,7 +191,8 @@ function watch(ctx, input) {
   }
   const state = claim(ctx);
   if (!state) return;
-  state.remote = remote;
+  if (desktop) state.transport = 'desktop';
+  else state.remote = remote;
   fs.writeFileSync(ctx.file, JSON.stringify(state), { mode: 0o600 });
   const poll = createCommentWatch(ctx.project, 'Codex');
   const pending = new Map();
@@ -260,4 +268,12 @@ function main() {
 }
 
 module.exports = { context, endpoint, hostEndpoint, projectRoot, register };
-if (require.main === module) main();
+if (require.main === module) {
+  try {
+    if (process.argv[2] === 'watch') ensureDesktopRuntime();
+    main();
+  } catch (error) {
+    process.stderr.write(`${error.message}\n`);
+    process.exitCode = 1;
+  }
+}
