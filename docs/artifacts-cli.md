@@ -38,4 +38,4 @@ Cloud publish failures keep the cloud HTTP status in `publish --json` output. Wh
 
 ## License
 
-Ryugi's skills, harness integrations and docs are MIT. `ryugi-artifacts` is proprietary and not part of this repository; releases up to 1.51.2 were published under AGPL-3.0-only.
+Ryugi's skills, harness integrations and docs are MIT. `ryugi-artifacts` is proprietary (npm `license`: `UNLICENSED`) and not part of this repository; releases up to 1.51.2 were published under AGPL-3.0-only.

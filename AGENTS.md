@@ -36,7 +36,7 @@ A working integration auto-triggers `brainstorming` before any code is written. 
 
 ## Licensing
 
-Skills, harness integrations and docs are MIT (`LICENSE`). The `ryugi-artifacts` package the launcher installs is proprietary and is not part of this repository.
+Skills, harness integrations and docs are MIT (`LICENSE`). The `ryugi-artifacts` package the launcher installs is proprietary (npm `license`: `UNLICENSED`) and is not part of this repository.
 
 ## Tests
 

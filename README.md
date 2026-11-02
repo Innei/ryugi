@@ -125,4 +125,4 @@ Fork of [Superpowers](https://github.com/obra/superpowers) v7.0.0 by Jesse Vince
 
 Skills, harness integrations and docs: MIT — [LICENSE](LICENSE).
 
-The artifacts application, published to npm as [`ryugi-artifacts`](https://www.npmjs.com/package/ryugi-artifacts), is proprietary and not part of this repository. Releases up to 1.51.2 were published under AGPL-3.0-only.
+The artifacts application, published to npm as [`ryugi-artifacts`](https://www.npmjs.com/package/ryugi-artifacts), is proprietary (npm `license`: `UNLICENSED`) and not part of this repository. Releases up to 1.51.2 were published under AGPL-3.0-only.
