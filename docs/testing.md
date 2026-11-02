@@ -11,6 +11,7 @@ Live in `tests/`. Currently:
 
 - The `ryugi-artifacts` suite (server, CLI, viewer and the hook and launcher parity tests against this repository's `hooks/` and `skills/artifacts/app/`) lives with the package, outside this repository.
 - `tests/version-bump/` — `bump-version.sh` behavior and that every declared version file stays in sync.
+- `tests/interface-craft/` — static contracts for the interface-craft skill (`test-structure.mjs`: frontmatter, modes, audit list, tokens, ordered passes, checklist, integration lines) and `measure-boards.mjs`, which renders fixture HTML in headless Chrome and prints overlap, clipping, 4px-grid, tabular-figure and invented-claim counts. Evaluation is run by the agent in an isolated temp directory with no artifacts server or publishing; the procedure and cases are in `eval-rubric.md`.
 - `tests/opencode/` — bash tests for OpenCode plugin loading, bootstrap caching, and tool registration.
 - `tests/codex-plugin-sync/` — bash sync verification.
 - `tests/hooks/` — the hook scripts: project-root resolution shared by the hooks (`test-project-root.sh`), `session-start` bootstrap output (and that starting the artifacts server for projects with published documents never delays it), the Windows `run-hook.cmd` wrapper, the `user-prompt-submit` hook that attaches the open Artboard and document selections, unread comment reminders and auto-publish notices, and the `stop` hook that asks the artifacts server to auto-publish what changed.

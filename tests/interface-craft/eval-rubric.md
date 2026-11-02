@@ -1,44 +1,58 @@
-# Interface Craft — live baseline vs candidate rubric
+# Interface Craft — evaluation rubric
 
-Run on a local machine with a signed-in Claude Code CLI, Git and Node:
+Evaluation is run by the agent that owns the change, inside an isolated workspace. It must not drive an external
+agent CLI, must not start the artifacts server, and must not publish anything.
 
-```bash
-git fetch origin
-git switch feat/interface-craft-skill
-node tests/interface-craft/test-structure.mjs
-bash tests/interface-craft/run-live-eval.sh
-```
+## Isolation rules
 
-Defaults: `main` vs `HEAD`, Claude Sonnet, four scenarios, one fresh run per scenario per arm (eight agent runs), an estimated USD $2 cap **per run**. Recommended follow-up: `RYUGI_EVAL_REPEATS=3` for less noisy comparisons, and `RYUGI_EVAL_BASE=$(git merge-base main HEAD)` when the branch is behind `main`. `RYUGI_EVAL_SCENARIOS="landing"` runs a subset. Override `RYUGI_EVAL_BASE`, `RYUGI_EVAL_HEAD`, `RYUGI_EVAL_MODEL`, `RYUGI_EVAL_BUDGET_USD` and `RYUGI_EVAL_DIR` as needed.
+- Work in a fresh temporary directory; never in the repository, and never in a worktree of it.
+- Never call the artifacts CLI (`start`, `publish`, `comment`). Fixtures produce plain HTML files.
+- Never open a browser window; measurements run headless.
+- Two arms, same fixture, same model, same prompt. The only difference is whether the arm receives the skill.
+- Keep the raw outputs. Do not "fix" the losing arm afterwards.
 
-Each arm uses an isolated plugin checkout and workspace. All workspaces, transcripts and diffs remain under the printed eval directory. No merge or push occurs. Runs invoke real agents with `--permission-mode auto --permission-prompts none` (not blanket permission bypass); permission denials, artifact startup failures and CLI errors must be reported, not scored as design failures. Do this on a disposable development environment if you do not trust the tools an agent may invoke. Model usage may incur charges; the budget flag uses estimates and may overshoot.
+## Cases
 
-## Blind scoring
+| Case                      | Fixture                                                                                                                                              | Prompt                                                                                                           |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| A. New dashboard          | README: on-call incident monitoring; no design system                                                                                                | "Design a desktop incident monitoring dashboard UI. Show three distinct visual directions. Skip questions."      |
+| B. Existing UI            | `index.html` with deliberate gradient/translucency plus a clipped status label and a 13px even-row indent; `DESIGN.md` says the brand is intentional | "Review this UI for observable defects. Preserve the brand, fix only confirmed clipping and alignment problems." |
+| C. Precise edit           | One button at `border-radius: 8px`                                                                                                                   | "Change only the border radius to 12px."                                                                         |
+| D. Landing page, no brand | README: Ledgerly, a CLI that reconciles invoices for freelance designers; terminal-only, no brand                                                    | "Design a landing page mockup. Skip questions."                                                                  |
 
-Inspect generated artifact files, screenshots where available, `agent.jsonl` and diffs. Grade each arm without knowing its name before comparing. A second person should review visual quality if possible. Keep the same model, fixture and environment for both arms.
+Case D exists because the first three are saturated: a competent model already passes them without the skill. D is
+where a generic, name-swappable SaaS page is the likely failure.
 
-Use 0 = fail, 1 = partial, 2 = satisfies criterion. Do not score quality from self-reported rationale alone.
+## Scoring
 
-| Case                      | Criterion                  | What counts                                                                                                    |
-| ------------------------- | -------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| A. New dashboard          | Design rooted in user task | Clear on-call workflow, real incident content, hierarchy focused on triage                                     |
-| A                         | Distinct visual concepts   | Coherent different directions, not three palette-swapped templates                                             |
-| A                         | Artboard evidence          | Real Artboard boards produced; no production app implemented                                                   |
-| A                         | Process discipline         | Honors skip-questions request, does not add a new approval gate                                                |
-| B. Existing UI            | Finds real defects         | Spots clipped `Requires attention` and 13px left-pad inconsistency                                             |
-| B                         | Brand preservation         | Leaves deliberate gradient/translucency and core meaning intact                                                |
-| B                         | Scoped edits + proof       | Fixes only demonstrated issues, shows file changes and checks result                                           |
-| C. Precise edit           | Exactly scoped             | Only changes `border-radius:8px` to `12px`                                                                     |
-| C                         | No unnecessary process     | No redesign, speculative changes or five-question interview                                                    |
-| D. Landing page, no brand | Product-specific direction | Composition, type, palette and copy could only belong to an invoice-reconciliation tool; survives no name swap |
-| D                         | Objective defects          | No text covered, clipped or overlapping; headings and bodies measurable and intact                             |
-| D                         | Values are deliberate      | Spacing on one scale, radius nesting consistent, figures tabular and in one format                             |
-| D                         | No invented claims         | No fabricated prices, customer names or metrics beyond the supplied product facts                              |
+0 = fail, 1 = partial, 2 = satisfies. Score artifacts and measurements, never the agent's self-report.
 
-Score D with measurements, not impressions: element rectangles for overlap, computed spacing values, `font-variant-numeric`, and a diff of copy against the fixture `README.md`. The previous version of this eval could not separate the arms on D; that measurement is the point of the case.
+| Case | Criterion                        | Evidence                                                                                  |
+| ---- | -------------------------------- | ----------------------------------------------------------------------------------------- |
+| A    | Design rooted in the user's task | Real incident content, hierarchy that supports triage                                     |
+| A    | Distinct concepts                | Three coherent directions, not palette swaps                                              |
+| A    | Process discipline               | Honors "skip questions", no invented approval gate                                        |
+| B    | Finds the real defects           | Clipped `Requires attention` and the 13px indent, both named with location                |
+| B    | Brand preserved                  | Gradient and translucency intact                                                          |
+| B    | Scoped edits                     | Diff touches only those two rules                                                         |
+| C    | Exactly scoped                   | Diff changes only `8px` → `12px`                                                          |
+| D    | Product-specific direction       | Could not survive a name swap: composition, type, palette and copy come from this product |
+| D    | No objective defects             | `occludedPoints` 0, `clippedText` 0                                                       |
+| D    | Deliberate values                | `offGridShare` low, nested radii consistent                                               |
+| D    | No invented claims               | No fabricated prices, customer names or metrics                                           |
 
-Also record token/cost totals from the JSONL result events, tool permission denials, timeouts, and artifact generation failures. Summarize mean scores and variance per criterion **only after multiple runs**. Do not call the new skill an improvement without inspecting the visual results and behavior logs.
+Measure with `node tests/interface-craft/measure-boards.mjs <dir>`:
 
-## Existing repository behavior baseline
+- `occludedPoints` — text sampled where a floating element covers it.
+- `clippedText` — leaf text whose content exceeds its box.
+- `offGridShare` — share of padding/margin/gap/radius values off the 4px grid.
+- `tabular` — share of digit-bearing elements using tabular figures.
+- `dollarAmounts`, `trustClaims` — invented prices and social proof.
 
-The PR's initial baseline checked only missing structural integration, not behavior. The previous `docs/ryugi/skill-evals/2026-10-31-interface-craft.md` records scenarios and explicitly notes this limitation. The live comparison above is the missing evidence.
+A difference is only reportable when it survives repeats and shows in the measurements or in the rendered screens.
+
+## Recording
+
+Write the result next to the change in `docs/ryugi/skill-evals/`: what was run, per-case scores, the measured
+numbers, the cost, and what the evaluation cannot show. Do not call the skill an improvement without a measured or
+visibly inspected difference.
