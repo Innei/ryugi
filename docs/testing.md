@@ -9,9 +9,8 @@ Ryugi has two distinct kinds of tests, each in its own directory:
 
 Live in `tests/`. Currently:
 
-- `artifacts/test/` — vitest suite for the artifacts server, scripts, viewer logic, the document LiteXML codec, Loro merge session and comment store, the agent comment route and `comment` command, the `check` command, the machine server (project registry, fixed ports, routing by address, token and project header, upgrade rule, restart and stop from the home page), the home page (sidebar, scope search, ⌘K palette, status pill), unread-comment parity between the server and the hook, installing the newest release and the published package contents (`cd artifacts && pnpm test`, which builds first).
-- `tests/viewer-release/` — the guard that fails when `artifacts/src/` changed since the last release tag without a version bump.
-- `tests/version-bump/` — `bump-version.sh` behavior and that every declared version file, including the viewer's, stays in sync.
+- The `ryugi-artifacts` suite (server, CLI, viewer and the hook and launcher parity tests against this repository's `hooks/` and `skills/artifacts/app/`) lives with the package, outside this repository.
+- `tests/version-bump/` — `bump-version.sh` behavior and that every declared version file stays in sync.
 - `tests/opencode/` — bash tests for OpenCode plugin loading, bootstrap caching, and tool registration.
 - `tests/codex-plugin-sync/` — bash sync verification.
 - `tests/hooks/` — the hook scripts: project-root resolution shared by the hooks (`test-project-root.sh`), `session-start` bootstrap output (and that starting the artifacts server for projects with published documents never delays it), the Windows `run-hook.cmd` wrapper, the `user-prompt-submit` hook that attaches the open Artboard and document selections, unread comment reminders and auto-publish notices, and the `stop` hook that asks the artifacts server to auto-publish what changed.
@@ -23,7 +22,6 @@ Live in `tests/`. Currently:
 - `tests/claude-code/test-worktree-native-preference.sh` — RED-GREEN-REFACTOR validation for worktree skill (quorum covers the PRESSURE phase; bash also covers RED/GREEN baselines).
 - `tests/explicit-skill-requests/` — skill-name-prompted trigger tests not covered by quorum.
 - `tests/diagnosing-ryugi/test-skill-structure.sh` — structural checks for the diagnosing-ryugi skill (frontmatter, referenced files, leak scan, word budget); behavior-scenario eval records are kept by the maintainer outside the repo.
-- `artifacts/test/recording-trim.test.ts`, `verify-recording-jobs.test.ts`, `verify-recordings.test.ts` — real FFmpeg fixtures and automatic Verify-video processing: idle ends, internal waits, audio, timestamps, immutable captures, cache reuse, fallback, readiness, verdict invalidation, and matching local/cloud evidence. Run through the artifacts suite with `ffmpeg` and `ffprobe` on PATH. Skill before/after behavior results live in `docs/ryugi/skill-evals/`.
 
 Run plugin tests via the relevant directory's `run-*.sh` or `npm test`.
 

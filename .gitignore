@@ -19,9 +19,7 @@ __pycache__/
 *.pyo
 .pytest_cache/
 
-# Built artifacts CLI, server and viewer; CI publishes them to npm and the skill's launcher installs the newest release
-artifacts/dist/
-artifacts/.vitest/
+# Local builds of the artifacts CLI, server and viewer; the skill's launcher otherwise installs the newest npm release
 skills/artifacts/app/server.cjs
 skills/artifacts/app/viewer/
 skills/artifacts/app/runtime/

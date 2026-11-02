@@ -58,12 +58,6 @@ jq -e '
 ' "$REPO_ROOT/.version-bump.json" > /dev/null \
   || fail "Hermes manifest is not registered"
 
-for viewer_file in artifacts/package.json; do
-  jq -e --arg path "$viewer_file" '
-    any(.files[]; .path == $path and .field == "version")
-  ' "$REPO_ROOT/.version-bump.json" > /dev/null \
-    || fail "$viewer_file is not registered"
-done
 /bin/bash "$REPO_ROOT/scripts/bump-version.sh" --check > "$TEST_ROOT/repo-check.out" 2>&1 \
   || fail "repo versions drift: $(cat "$TEST_ROOT/repo-check.out")"
 
