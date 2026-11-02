@@ -9,7 +9,7 @@ node tests/interface-craft/test-structure.mjs
 bash tests/interface-craft/run-live-eval.sh
 ```
 
-Defaults: `main` vs `HEAD`, Claude Sonnet, three scenarios, one fresh run per scenario per arm (six agent runs), an estimated USD $2 cap **per run**. Recommended follow-up: `RYUGI_EVAL_REPEATS=3` for less noisy comparisons. Override `RYUGI_EVAL_BASE`, `RYUGI_EVAL_HEAD`, `RYUGI_EVAL_MODEL`, `RYUGI_EVAL_BUDGET_USD` and `RYUGI_EVAL_DIR` as needed.
+Defaults: `main` vs `HEAD`, Claude Sonnet, four scenarios, one fresh run per scenario per arm (eight agent runs), an estimated USD $2 cap **per run**. Recommended follow-up: `RYUGI_EVAL_REPEATS=3` for less noisy comparisons, and `RYUGI_EVAL_BASE=$(git merge-base main HEAD)` when the branch is behind `main`. Override `RYUGI_EVAL_BASE`, `RYUGI_EVAL_HEAD`, `RYUGI_EVAL_MODEL`, `RYUGI_EVAL_BUDGET_USD` and `RYUGI_EVAL_DIR` as needed.
 
 Each arm uses an isolated plugin checkout and workspace. All workspaces, transcripts and diffs remain under the printed eval directory. No merge or push occurs. Runs invoke real agents with `--permission-mode auto --permission-prompts none` (not blanket permission bypass); permission denials, artifact startup failures and CLI errors must be reported, not scored as design failures. Do this on a disposable development environment if you do not trust the tools an agent may invoke. Model usage may incur charges; the budget flag uses estimates and may overshoot.
 
@@ -19,17 +19,23 @@ Inspect generated artifact files, screenshots where available, `agent.jsonl` and
 
 Use 0 = fail, 1 = partial, 2 = satisfies criterion. Do not score quality from self-reported rationale alone.
 
-| Case | Criterion | What counts |
-| --- | --- | --- |
-| A. New dashboard | Design rooted in user task | Clear on-call workflow, real incident content, hierarchy focused on triage |
-| A | Distinct visual concepts | Coherent different directions, not three palette-swapped templates |
-| A | Artboard evidence | Real Artboard boards produced; no production app implemented |
-| A | Process discipline | Honors skip-questions request, does not add a new approval gate |
-| B. Existing UI | Finds real defects | Spots clipped `Requires attention` and 13px left-pad inconsistency |
-| B | Brand preservation | Leaves deliberate gradient/translucency and core meaning intact |
-| B | Scoped edits + proof | Fixes only demonstrated issues, shows file changes and checks result |
-| C. Precise edit | Exactly scoped | Only changes `border-radius:8px` to `12px` |
-| C | No unnecessary process | No redesign, speculative changes or five-question interview |
+| Case                      | Criterion                  | What counts                                                                                                    |
+| ------------------------- | -------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| A. New dashboard          | Design rooted in user task | Clear on-call workflow, real incident content, hierarchy focused on triage                                     |
+| A                         | Distinct visual concepts   | Coherent different directions, not three palette-swapped templates                                             |
+| A                         | Artboard evidence          | Real Artboard boards produced; no production app implemented                                                   |
+| A                         | Process discipline         | Honors skip-questions request, does not add a new approval gate                                                |
+| B. Existing UI            | Finds real defects         | Spots clipped `Requires attention` and 13px left-pad inconsistency                                             |
+| B                         | Brand preservation         | Leaves deliberate gradient/translucency and core meaning intact                                                |
+| B                         | Scoped edits + proof       | Fixes only demonstrated issues, shows file changes and checks result                                           |
+| C. Precise edit           | Exactly scoped             | Only changes `border-radius:8px` to `12px`                                                                     |
+| C                         | No unnecessary process     | No redesign, speculative changes or five-question interview                                                    |
+| D. Landing page, no brand | Product-specific direction | Composition, type, palette and copy could only belong to an invoice-reconciliation tool; survives no name swap |
+| D                         | Objective defects          | No text covered, clipped or overlapping; headings and bodies measurable and intact                             |
+| D                         | Values are deliberate      | Spacing on one scale, radius nesting consistent, figures tabular and in one format                             |
+| D                         | No invented claims         | No fabricated prices, customer names or metrics beyond the supplied product facts                              |
+
+Score D with measurements, not impressions: element rectangles for overlap, computed spacing values, `font-variant-numeric`, and a diff of copy against the fixture `README.md`. The previous version of this eval could not separate the arms on D; that measurement is the point of the case.
 
 Also record token/cost totals from the JSONL result events, tool permission denials, timeouts, and artifact generation failures. Summarize mean scores and variance per criterion **only after multiple runs**. Do not call the new skill an improvement without inspecting the visual results and behavior logs.
 

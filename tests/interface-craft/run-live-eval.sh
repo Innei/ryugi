@@ -16,7 +16,7 @@ REPEATS="${RYUGI_EVAL_REPEATS:-1}"
 BUDGET="${RYUGI_EVAL_BUDGET_USD:-2}"
 RESULTS="${RYUGI_EVAL_DIR:-$(mktemp -d "${TMPDIR:-/tmp}/ryugi-interface-craft-XXXXXX")}"
 
-if ! command -v claude >/dev/null 2>&1; then
+if ! command -v claude > /dev/null 2>&1; then
   echo "ERROR: 'claude' CLI is not installed. Install/sign in before live eval." >&2
   exit 2
 fi
@@ -28,20 +28,20 @@ if ! [[ "$REPEATS" =~ ^[1-9][0-9]*$ ]]; then
   echo "ERROR: RYUGI_EVAL_REPEATS must be a positive integer." >&2
   exit 2
 fi
-git -C "$ROOT" rev-parse --verify "$BASE_REF^{commit}" >/dev/null
-git -C "$ROOT" rev-parse --verify "$HEAD_REF^{commit}" >/dev/null
+git -C "$ROOT" rev-parse --verify "$BASE_REF^{commit}" > /dev/null
+git -C "$ROOT" rev-parse --verify "$HEAD_REF^{commit}" > /dev/null
 mkdir -p "$RESULTS"
 
 # Keep the generated workspaces and logs for independent inspection;
 # remove only the temporary plugin checkouts.
 cleanup() {
   for arm in baseline candidate; do
-    git -C "$ROOT" worktree remove --force "$RESULTS/plugin-$arm" >/dev/null 2>&1 || true
+    git -C "$ROOT" worktree remove --force "$RESULTS/plugin-$arm" > /dev/null 2>&1 || true
   done
 }
 trap cleanup EXIT
 
-cat > "$RESULTS/README.txt" <<EOF
+cat > "$RESULTS/README.txt" << EOF
 Interface Craft Eval: baseline=$BASE_REF, candidate=$HEAD_REF
 Model: $MODEL; repeats: $REPEATS; per-run budget: USD $BUDGET
 Each arm uses a fresh git worktree as its Claude Code plugin source.
@@ -53,7 +53,7 @@ EOF
 for arm in baseline candidate; do
   ref="$BASE_REF"
   if [ "$arm" = candidate ]; then ref="$HEAD_REF"; fi
-  git -C "$ROOT" worktree add --detach "$RESULTS/plugin-$arm" "$ref" >/dev/null
+  git -C "$ROOT" worktree add --detach "$RESULTS/plugin-$arm" "$ref" > /dev/null
 done
 
 seed_case() {
@@ -61,7 +61,7 @@ seed_case() {
   mkdir -p "$project"
   case "$scenario" in
     create)
-      cat > "$project/README.md" <<'EOF'
+      cat > "$project/README.md" << 'EOF'
 # RelayOps
 A dashboard for on-call engineers to notice, triage and investigate production incidents.
 Primary jobs: find active incidents, understand customer impact and follow a timeline.
@@ -70,12 +70,12 @@ EOF
       PROMPT='Design a desktop incident monitoring dashboard UI for RelayOps. Give me distinct visual directions on a Ryugi Artboard so I can compare them. Skip questions and show the mockups now. Do not implement the production application.'
       ;;
     review)
-      cat > "$project/DESIGN.md" <<'EOF'
+      cat > "$project/DESIGN.md" << 'EOF'
 # Established brand
 The violet/teal gradient and translucent navigation are deliberate parts of the existing brand. Preserve them.
 Compact controls are intentional. The long status label must remain readable and repeated rows must align.
 EOF
-      cat > "$project/index.html" <<'EOF'
+      cat > "$project/index.html" << 'EOF'
 <!doctype html><html lang="en"><head><meta charset="utf-8"><title>RelayOps settings</title>
 <style>
 body{font:14px system-ui;background:#10131c;color:white;margin:0;padding:32px}
@@ -90,8 +90,16 @@ nav{margin-top:18px;padding:14px;background:rgba(255,255,255,.13);backdrop-filte
 EOF
       PROMPT='Review this existing UI for observable usability and visual defects. Preserve the intentional gradient, translucency and brand. You may directly fix confirmed clipping/alignment problems in index.html, but do not redesign it. Inspect the product files and explain exactly what you fixed.'
       ;;
+    landing)
+      cat > "$project/README.md" << 'EOF'
+# Ledgerly
+A CLI that reconciles invoices and payouts for freelance designers. Users are solo designers who invoice 3-10 clients, chase late payments and hate accounting. The current product is terminal-only: `ledgerly sync`, `ledgerly chase`, `ledgerly report`.
+No brand, no design system, no web presence yet.
+EOF
+      PROMPT='Design a landing page mockup for Ledgerly and show it on a Ryugi Artboard so I can look at it. Skip questions, show the mockup now. Do not implement a production site.'
+      ;;
     exact)
-      cat > "$project/index.html" <<'EOF'
+      cat > "$project/index.html" << 'EOF'
 <!doctype html><html lang="en"><head><style>
 button{border-radius:8px;background:#205abc;color:white;padding:12px 20px}
 </style></head><body><button>Save</button></body></html>
@@ -105,11 +113,11 @@ EOF
 }
 
 printf 'Eval directory: %s\n' "$RESULTS"
-printf 'Runs: %s per arm × 2 arms × 3 scenarios\n' "$REPEATS"
+printf 'Runs: %s per arm × 2 arms × 4 scenarios\n' "$REPEATS"
 
-for scenario in create review exact; do
+for scenario in create review exact landing; do
   for arm in baseline candidate; do
-    for ((i=1; i<=REPEATS; i++)); do
+    for ((i = 1; i <= REPEATS; i++)); do
       run="$RESULTS/$scenario/$arm-$i"
       project="$run/project"
       mkdir -p "$run"
@@ -131,7 +139,7 @@ for scenario in create review exact; do
       printf '%s\n' "$code" > "$run/exit-code.txt"
       git -C "$project" status --short > "$run/git-status.txt"
       git -C "$project" diff HEAD > "$run/working-diff.patch" || true
-      find "$project/.ryugi/artifacts" -name canvas.json -print > "$run/artboards.txt" 2>/dev/null || true
+      find "$project/.ryugi/artifacts" -name canvas.json -print > "$run/artboards.txt" 2> /dev/null || true
       echo "  exit=$code, artboards=$(wc -l < "$run/artboards.txt" | tr -d ' '), log=$run/agent.jsonl"
     done
   done

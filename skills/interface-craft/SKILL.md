@@ -5,39 +5,61 @@ description: Use when a visible product interface needs design judgment, includi
 
 # Interface Craft
 
-A design technique, not a mandatory extra phase. Derive design choices from the product, not a house style. Apply it before the first relevant mockup **or** while reviewing/refining an existing interface.
+A design technique, not a mandatory extra phase. Two halves, in order: set a direction from the product, then check the screen against things that can fail. Nothing here is a house style; the project's system and accepted decisions outrank every default below.
 
 **Integration:** Project design system and explicit decisions take priority. Ryugi:brainstorming owns requirements and approval; ryugi:artifacts owns visual presentation; ryugi:verifying-ui owns the human verdict for built UI. This skill adds **no new approval gate**.
 
-## Choose the task
+## Pick the mode
 
-- **Create / explore:** Establish or reuse direction *before* producing visual alternatives. Do not invent a new direction when the product already has one.
-- **Review / refine:** Inspect the actual rendered result when possible and identify evidenced issues. Read [evaluation](references/evaluation.md) before proposing changes.
-- **Precise edit:** When an exact visual change is specified (e.g. one button's color), do it without initiating five questions, a fresh design exploration or unrelated modifications.
-- **Not UI:** Do not use this skill for backend work, architecture diagrams, pure copy or generic documents just because they have a visual format.
+| Mode       | When                                                                      | What to do                                                                                             |
+| ---------- | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| **Create** | A new surface or a new visual direction, especially with no design system | Write the five direction lines, then apply [tokens](references/tokens.md) and the passes while drawing |
+| **Repair** | An existing screen, with defects or with a request to improve it          | Audit with [signs](references/signs.md), report findings with locations, fix only the agreed scope     |
+| **Edit**   | One exact visual change is specified                                      | Make that change. No audit, no direction, no questions                                                 |
+
+Not a UI task: backend work, architecture diagrams, pure copy, generic documents that happen to have a visual format.
 
 ## The five lenses
 
-Infer from the product, brief, current screen and user decisions. Read [direction](references/direction.md) when deriving a new direction.
+Infer from the product, brief, current screen and user decisions. Read [direction](references/direction.md) when deriving a new direction; it contains the shape of the answer and one worked example.
 
 1. **Product:** Who uses this interface, for which job, under what conditions?
-2. **Character:** Which two or three specific qualities should it communicate? Avoid empty labels such as modern, clean, premium or sleek.
-3. **World:** What relevant materials, objects, contexts and metaphors actually belong to this product?
-4. **Moments:** Where should attention or visual richness concentrate? One or two intentional moments, if appropriate; not a mandatory hero.
-5. **Signature:** What small repeatable detail could be meaningful and distinctive? Omit it if forced.
+2. **Character:** Which two or three specific qualities should it communicate? Reject _modern_, _clean_, _premium_, _sleek_: they describe every template.
+3. **World:** What materials, places, objects or metaphors actually belong to this product? This sets the tint of the neutrals, the accent and the visual.
+4. **Moments:** Where does richness concentrate? One or two places where the product itself is shown well; not a mandatory hero.
+5. **Signature:** One small repeatable detail only this product would have. Omit it rather than invent one.
 
-Translate those answers into decisions about information hierarchy, density, spacing, typography, copy, color, content, motion and states. Read [craft principles](references/craft.md) selectively. No blanket bans on gradients, glass, expressive typography or animation.
+Write these five lines before drawing or editing. They are decisions, not questions for your human partner.
 
-## Apply without adding a new process
+## Values only where nothing exists
 
-- **Brainstorming → Artboard:** Derive or reuse direction internally before drawing. Let mockups demonstrate it, not five paragraphs in chat. When direction itself is undecided, make it *one* Artboard question. After a direction is chosen, hold it constant for later comparisons of layout, interactions and states.
-- **Next Artboard rounds:** Honor already accepted choices, project tokens and real product content. A group compares one question; avoid changing a whole aesthetic when evaluating one navigation alternative.
-- **Written design:** Capture the selected direction and approved board decisions in the written spec, so implementation can preserve them without the original Artboard files.
-- **Review:** Distinguish measurable problems from design hypotheses and taste. Provide locations and evidence; if already good, say so and stop. Respect the requested edit scope.
-- **Build / verify:** Do not silently reinterpret approved designs. Use ryugi:verifying-ui for the real-app visual comparison and final human verdict.
+The project's tokens, brand and accepted direction win. When they do not exist, [tokens](references/tokens.md) gives starting values: a 4px spacing grid, nested radius math, a type scale, three text roles, one accent, one easing curve. Adapt the tint and accent from the **World**; never copy an example palette verbatim.
 
-## Final check
+## Audit before judging
 
-Does each important visual choice serve this product's task? Is the rationale specific rather than fashionable? Does the design respect constraints, accessibility, responsiveness and the accepted brand? Are the alternatives meaningfully different *only in the dimension being compared*? If the answer is no, revisit the appropriate lens instead of polishing everything.
+Read [signs](references/signs.md) and list what you find, one line each, as `location — sign — fix`. Classify each finding:
 
-Inspired by [Unslop by Damir Sokolovsky](https://github.com/heydamir/unslop) (CC BY 4.0). This adaptation extends its five-part direction method to design creation and critique.
+- **Objective defect** — clipped or covered text, overlap, broken alignment, contrast below 4.5:1, a control that does not work.
+- **Design hypothesis** — hierarchy, density, or a missing moment. Worth proposing, not fixing unasked.
+- **Preference** — taste. Never a bug.
+
+If the screen is already effective, say so and stop, with at most two or three exact refinements. Do not redesign to justify the skill.
+
+## Fix in ordered passes
+
+Read [evaluation](references/evaluation.md). Apply one pass across the whole screen before starting the next, in this order: **spacing → color → icons → copy → type → layout → details → visuals → motion.** Spacing first because it changes how everything reads; copy before type and layout because headline length decides size and position; visuals and motion last because they must fit a screen that already works.
+
+## Check what can fail
+
+Render the result when the screen is code that can be rendered, at least at desktop width and one narrow width. At most three renders per run. Compare the render with the audit list and with the direction; a claim about visual quality without a render is unverified, so say so.
+
+- [ ] Every audit finding is answered, and each fix names its location
+- [ ] No text is covered, clipped or overlapped at either width
+- [ ] Spacing values sit on the scale, and equal things have equal sizes
+- [ ] One neutral ramp, three text roles, one accent with readable contrast
+- [ ] Figures use tabular numbers and one format across the screen
+- [ ] No prices, logos, customer names or claims that the user did not supply
+- [ ] Nothing from the signs list survives in the touched area
+- [ ] **Name-swap test:** if another product's name replaced this one, would the screen still fit? If yes, push the copy, visual and signature detail harder
+
+Adapted from [Unslop by Damir Sokolovsky](https://github.com/heydamir/unslop) (CC BY 4.0): the audit signs and token tables derive from it, generalized to creation, review and design-system-aware workflows.
