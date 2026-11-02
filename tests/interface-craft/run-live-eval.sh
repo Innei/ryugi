@@ -33,27 +33,37 @@ git -C "$ROOT" rev-parse --verify "$HEAD_REF^{commit}" > /dev/null
 mkdir -p "$RESULTS"
 
 # Keep the generated workspaces and logs for independent inspection;
-# remove only the temporary plugin checkouts.
+# remove only the temporary plugin checkouts and the clone they came from.
 cleanup() {
   for arm in baseline candidate; do
-    git -C "$ROOT" worktree remove --force "$RESULTS/plugin-$arm" > /dev/null 2>&1 || true
+    git -C "$RESULTS/repo" worktree remove --force "$RESULTS/plugin-$arm" > /dev/null 2>&1 || true
   done
 }
 trap cleanup EXIT
 
+# Never touch the invoking checkout: clone it and take both arms from the clone.
+BASE_SHA="$(git -C "$ROOT" rev-parse "$BASE_REF^{commit}")"
+HEAD_SHA="$(git -C "$ROOT" rev-parse "$HEAD_REF^{commit}")"
+git clone --quiet --no-hardlinks "$ROOT" "$RESULTS/repo"
+for sha in "$BASE_SHA" "$HEAD_SHA"; do
+  git -C "$RESULTS/repo" cat-file -e "$sha^{commit}" 2> /dev/null \
+    || git -C "$RESULTS/repo" fetch --quiet "$ROOT" "$sha"
+done
+
 cat > "$RESULTS/README.txt" << EOF
-Interface Craft Eval: baseline=$BASE_REF, candidate=$HEAD_REF
+Interface Craft Eval: baseline=$BASE_REF ($BASE_SHA), candidate=$HEAD_REF ($HEAD_SHA)
 Model: $MODEL; repeats: $REPEATS; per-run budget: USD $BUDGET
-Each arm uses a fresh git worktree as its Claude Code plugin source.
-Each scenario has an isolated work project, raw JSONL log, exit-code.txt and git-status.txt.
+Each arm uses a git worktree of a temporary clone in this directory, never the invoking checkout.
+Each scenario has an isolated work project with auto-publish disabled, raw JSONL log, exit-code.txt and git-status.txt.
+Cloud publishing is off per project; a run that prints a ryugi.innei.dev link invalidates isolation for that run.
 Evaluate actual artifacts and tool traces against the rubric in tests/interface-craft/eval-rubric.md.
 A zero exit code is NOT proof of design quality.
 EOF
 
 for arm in baseline candidate; do
-  ref="$BASE_REF"
-  if [ "$arm" = candidate ]; then ref="$HEAD_REF"; fi
-  git -C "$ROOT" worktree add --detach "$RESULTS/plugin-$arm" "$ref" > /dev/null
+  ref="$BASE_SHA"
+  if [ "$arm" = candidate ]; then ref="$HEAD_SHA"; fi
+  git -C "$RESULTS/repo" worktree add --detach "$RESULTS/plugin-$arm" "$ref" > /dev/null
 done
 
 seed_case() {
@@ -110,6 +120,9 @@ EOF
   git -C "$project" init -q
   git -C "$project" add .
   git -C "$project" -c user.name='Ryugi Eval' -c user.email='eval@example.invalid' commit -qm 'fixture'
+  # Isolation: the fixture must never publish its mockups to the user's cloud.
+  node "$RESULTS/plugin-candidate/skills/artifacts/app/ryugi-artifacts.cjs" config \
+    --auto-publish off --project --project-dir "$project" --json > /dev/null 2>&1 || true
 }
 
 SCENARIOS="${RYUGI_EVAL_SCENARIOS:-create review exact landing}"
@@ -143,6 +156,9 @@ for scenario in $SCENARIOS; do
       git -C "$project" diff HEAD > "$run/working-diff.patch" || true
       find "$project/.ryugi/artifacts" -name canvas.json -print > "$run/artboards.txt" 2> /dev/null || true
       echo "  exit=$code, artboards=$(wc -l < "$run/artboards.txt" | tr -d ' '), log=$run/agent.jsonl"
+      if grep -q 'ryugi\.innei\.dev/a/' "$run/agent.jsonl" 2> /dev/null; then
+        echo "  WARNING: $scenario/$arm-$i printed a cloud link; per-project auto-publish did not hold." >&2
+      fi
     done
   done
 done
