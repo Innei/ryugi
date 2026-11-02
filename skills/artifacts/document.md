@@ -151,6 +151,25 @@ props reloads it with the values reset.
 Its errors land in `warnings.json` as `runtime: assets/<name>.html: …`,
 complete only once `dynamic["assets/<name>.html"].ran` is `true`.
 
+## What your human partner changed
+
+When your human partner says they edited the document and asks you to look
+("我改了，你看一下", "I changed section 3, take a look"), read only what
+they changed:
+
+```bash
+node app/ryugi-artifacts.cjs changes --json --project-dir /path/to/project --artifact document/<id>
+```
+
+- It prints a unified diff of `doc.xml` from what you have already seen to
+  now, then marks it as seen: the next run shows only newer edits. Your own
+  writes never appear. `"empty": true` means nothing changed.
+- Read the diff, not the whole document. Answer about the changed blocks:
+  confirm them, or ask about a specific block by its `id`.
+- `--all` shows everything changed since your last write, without marking
+  it as seen.
+- Run it only when asked. Their edits are theirs to point out.
+
 ## Comments
 
 Read and answer comments through the CLI, never through `comments.json`.
