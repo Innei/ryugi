@@ -9,7 +9,7 @@ node tests/interface-craft/test-structure.mjs
 bash tests/interface-craft/run-live-eval.sh
 ```
 
-Defaults: `main` vs `HEAD`, Claude Sonnet, four scenarios, one fresh run per scenario per arm (eight agent runs), an estimated USD $2 cap **per run**. Recommended follow-up: `RYUGI_EVAL_REPEATS=3` for less noisy comparisons, and `RYUGI_EVAL_BASE=$(git merge-base main HEAD)` when the branch is behind `main`. Override `RYUGI_EVAL_BASE`, `RYUGI_EVAL_HEAD`, `RYUGI_EVAL_MODEL`, `RYUGI_EVAL_BUDGET_USD` and `RYUGI_EVAL_DIR` as needed.
+Defaults: `main` vs `HEAD`, Claude Sonnet, four scenarios, one fresh run per scenario per arm (eight agent runs), an estimated USD $2 cap **per run**. Recommended follow-up: `RYUGI_EVAL_REPEATS=3` for less noisy comparisons, and `RYUGI_EVAL_BASE=$(git merge-base main HEAD)` when the branch is behind `main`. `RYUGI_EVAL_SCENARIOS="landing"` runs a subset. Override `RYUGI_EVAL_BASE`, `RYUGI_EVAL_HEAD`, `RYUGI_EVAL_MODEL`, `RYUGI_EVAL_BUDGET_USD` and `RYUGI_EVAL_DIR` as needed.
 
 Each arm uses an isolated plugin checkout and workspace. All workspaces, transcripts and diffs remain under the printed eval directory. No merge or push occurs. Runs invoke real agents with `--permission-mode auto --permission-prompts none` (not blanket permission bypass); permission denials, artifact startup failures and CLI errors must be reported, not scored as design failures. Do this on a disposable development environment if you do not trust the tools an agent may invoke. Model usage may incur charges; the budget flag uses estimates and may overshoot.
 
