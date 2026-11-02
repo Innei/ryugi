@@ -112,10 +112,12 @@ EOF
   git -C "$project" -c user.name='Ryugi Eval' -c user.email='eval@example.invalid' commit -qm 'fixture'
 }
 
-printf 'Eval directory: %s\n' "$RESULTS"
-printf 'Runs: %s per arm × 2 arms × 4 scenarios\n' "$REPEATS"
+SCENARIOS="${RYUGI_EVAL_SCENARIOS:-create review exact landing}"
 
-for scenario in create review exact landing; do
+printf 'Eval directory: %s\n' "$RESULTS"
+printf 'Runs: %s per arm × 2 arms × scenarios: %s\n' "$REPEATS" "$SCENARIOS"
+
+for scenario in $SCENARIOS; do
   for arm in baseline candidate; do
     for ((i = 1; i <= REPEATS; i++)); do
       run="$RESULTS/$scenario/$arm-$i"

@@ -1,6 +1,6 @@
 ---
 name: interface-craft
-description: Use when a visible product interface needs design judgment, including UI mockups during brainstorming, visual direction exploration, reviewing an existing screen, or refining a prototype that feels generic or inconsistent.
+description: Use when a visible product interface needs design judgment, including UI mockups during brainstorming, landing and marketing pages, visual direction exploration, reviewing an existing screen, or refining a prototype that feels generic or inconsistent.
 ---
 
 # Interface Craft
@@ -18,6 +18,8 @@ A design technique, not a mandatory extra phase. Two halves, in order: set a dir
 | **Edit**   | One exact visual change is specified                                      | Make that change. No audit, no direction, no questions                                                 |
 
 Not a UI task: backend work, architecture diagrams, pure copy, generic documents that happen to have a visual format.
+
+Landing pages, marketing and pricing pages, onboarding, empty states, settings and emails are product interfaces too; use this skill for them.
 
 ## The five lenses
 
