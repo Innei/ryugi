@@ -40,7 +40,7 @@ outside this machine, publish it to Ryugi Cloud (see Share a link).
 
 | What is being decided                                                            | Type                       | Read before writing                                                      |
 | -------------------------------------------------------------------------------- | -------------------------- | ------------------------------------------------------------------------ |
-| Architecture, engineering design, a review, proposal or flow walkthrough         | `document`                 | `document.md`                                                            |
+| Architecture, engineering design, a review, report, proposal or walkthrough      | `document`                 | `document.md`                                                            |
 | One surface or one dimension — a component, type scale, background, motion       | `html`                     | `html.md`, `ui.md` for components                                        |
 | A business space — several screens, dimensions, states or questions at once      | `artboard`                 | `artboard.md`; `artboard-prototype.md` for playable boards or parameters |
 | Whether a built change matches what was approved, when they ask you to verify it | `artboard`, a verify group | `artboard.md`                                                            |
@@ -81,8 +81,9 @@ the decision touches; a control tunes one dimension.
 `artboard` is the space of a requirement: one group per question, its
 variants differing in that one dimension; everything else stays still.
 
-`document` is where architecture and engineering decisions are argued, with
-diagrams and code — not a gallery of screens.
+`document` is where architecture and engineering decisions are argued and
+results reported, in whichever of its blocks shows each part best — not a
+gallery of screens.
 
 ## Pick the artifact
 

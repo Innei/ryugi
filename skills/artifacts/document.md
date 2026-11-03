@@ -4,9 +4,9 @@ A living doc at `.ryugi/artifacts/document/<id>/`. You write it; your human
 partner reads it in their browser, comments on passages, and can fix text in
 place. Their edits and yours merge live.
 
-This is where architecture and engineering decisions are argued — design
-docs, reviews, proposals and flow walkthroughs — with diagrams, code and
-tables.
+This is where architecture and engineering decisions are argued and
+results reported — design docs, reviews, reports, proposals and flow
+walkthroughs.
 
 | File            | Written by         | Holds                                                       |
 | --------------- | ------------------ | ----------------------------------------------------------- |
@@ -32,23 +32,34 @@ tables.
 
 ## Before writing: choose how to tell it
 
-Before the outline, decide what the reader must come away understanding,
-and pick the form that shows it fastest. The first screen says what the
-document is about and what it asks of them; a reader who stops there
-still has the overview.
+Before the outline, decide what the reader must come away understanding.
+The first screen says what the document is about and what it asks of
+them; a reader who stops there still has the overview.
 
-| The reader needs to grasp                         | Lead with                                        |
-| ------------------------------------------------- | ------------------------------------------------ |
-| How parts relate: layers, ownership, dependencies | a structure diagram, then a few lines reading it |
-| A decision they must make                         | the conclusion and a table of the open choices   |
-| What changes: a migration or refactor             | before and after, side by side                   |
-| A flow or protocol                                | one request walked through, as a sequence        |
+Then picture the page that would make each section obvious at a glance,
+and build it from the whole block set, not from the two or three blocks
+you reached for last time. Nothing maps a kind of content to a block;
+the choice is yours, section by section, and a section can combine
+several.
 
-These are starting points, not a template: mix them, or lead with a
-table, an example or a chart when that says it better. Prose carries
-what diagrams and tables cannot: reasons, trade-offs, constraints. A
-section that is paragraph after paragraph is a sign the form was never
-chosen.
+| Block                                | Can carry                                                    |
+| ------------------------------------ | ------------------------------------------------------------ |
+| `<mermaid>`                          | flows, sequences, states, dependencies, laid out for you     |
+| `<excalidraw>`                       | a hand-placed picture: layout, space, a sketch they can edit |
+| `<chart>`                            | numbers whose comparison, trend or split is the point        |
+| `<table>`                            | exact values and attributes a reader checks one by one       |
+| `<alert>`                            | the rare line a reader must not miss: a verdict, a risk      |
+| `<steps>`                            | a procedure followed one step at a time                      |
+| `<codeblock>`, `<math>`              | code, config, payloads; formulas                             |
+| `<details>`                          | depth most readers skip: evidence, alternatives, raw data    |
+| `<dynamic>`                          | something they tune or play with, live                       |
+| `<ask>`, `<ref>`, `<img>`, footnotes | decisions to confirm, artboard links, real images, citations |
+
+Prose carries what blocks cannot: reasons, trade-offs, constraints.
+Choose for the reader, not for variety: a block that shows nothing the
+text did not is noise, and emphasis spent on every line marks none. A
+section that is paragraph after paragraph, or a document built only from
+paragraphs, tables and one diagram, is a sign the form was never chosen.
 
 Diagrams are `<mermaid>` or `<excalidraw>` blocks, never pictures of
 text: a PNG of box-drawing art is still a plain-text diagram, harder to
@@ -81,8 +92,8 @@ completion only then.
 ## Diagrams
 
 This document is a rendered page, not Markdown and not a code comment. Draw
-every flow, sequence, state or architecture diagram as a `<mermaid>` block:
-the viewer renders it as a diagram readers can open and zoom. Diagram rules
+every diagram as a `<mermaid>` or `<excalidraw>` block: the viewer renders
+it as a diagram readers can open and zoom. Diagram rules
 written for code comments or Markdown files, such as box-drawing art in a
 monospaced block, are for plain text and do not apply here. A code block
 drawn with box-drawing characters is reported in `warnings.json`.
