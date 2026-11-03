@@ -94,6 +94,19 @@ function unreadCount(project, artifact, key) {
 const command = (project, artifact) =>
   `node ${quote(LAUNCHER)} comment list --json --project-dir ${quote(project)} --artifact ${artifact}`;
 
+// The prompt a host injects into its own session for one watch event.
+function wakeMessage(event) {
+  const skill = path.join(__dirname, '..', 'SKILL.md');
+  const guide = path.join(__dirname, '..', `${event.artifact.split('/')[0]}.md`);
+  const what =
+    event.type === 'ryugi-choices'
+      ? `Ryugi choices for round ${event.round} on ${event.artifact} were ${event.withdrawn ? 'withdrawn' : 'submitted'}.`
+      : event.type === 'ryugi-answers'
+        ? `Ryugi answers on ${event.artifact} were ${event.withdrawn ? 'withdrawn' : 'submitted'}.`
+        : 'Ryugi review comments changed.';
+  return `${what} Local skill: ${JSON.stringify(skill)}; guide: ${JSON.stringify(guide)}. ${event.instruction}\nRun: ${event.command}`;
+}
+
 // Notification state is separate from the CLI's read cursor: only comment list consumes comments.
 function createCommentWatch(project, key = cursorKey(process.env)) {
   const root = path.join(project, '.ryugi/artifacts');
@@ -204,5 +217,5 @@ function main() {
   process.on('SIGTERM', stop);
 }
 
-module.exports = { createCommentWatch, main, unreadCount };
+module.exports = { createCommentWatch, main, unreadCount, wakeMessage };
 if (require.main === module) main();

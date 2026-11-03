@@ -4,7 +4,7 @@ const { execFile, execFileSync } = require('node:child_process');
 const { randomUUID } = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
-const { createCommentWatch, unreadCount } = require('./comment-watch.cjs');
+const { createCommentWatch, unreadCount, wakeMessage } = require('./comment-watch.cjs');
 const {
   beat,
   projectRoot,
@@ -123,15 +123,6 @@ function claim(ctx) {
 }
 
 function queueComment(ctx, remote, event, signal) {
-  const skill = path.join(__dirname, '..', 'SKILL.md');
-  const guide = path.join(__dirname, '..', `${event.artifact.split('/')[0]}.md`);
-  const what =
-    event.type === 'ryugi-choices'
-      ? `Ryugi choices for round ${event.round} on ${event.artifact} were ${event.withdrawn ? 'withdrawn' : 'submitted'}.`
-      : event.type === 'ryugi-answers'
-        ? `Ryugi answers on ${event.artifact} were ${event.withdrawn ? 'withdrawn' : 'submitted'}.`
-        : 'Ryugi review comments changed.';
-  const message = `${what} Local skill: ${JSON.stringify(skill)}; guide: ${JSON.stringify(guide)}. ${event.instruction}\nRun: ${event.command}`;
   const args = [
     'queue',
     '--remote',
@@ -139,7 +130,7 @@ function queueComment(ctx, remote, event, signal) {
     '--thread',
     ctx.session,
     '--message',
-    message,
+    wakeMessage(event),
     '--resume',
   ];
   const tokenEnv = process.env.RYUGI_CODEX_REMOTE_AUTH_TOKEN_ENV;

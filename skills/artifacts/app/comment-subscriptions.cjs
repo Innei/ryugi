@@ -9,6 +9,7 @@ const ARTIFACT = /^(?:document|artboard)\/[a-z0-9][a-z0-9-]*$/;
 const HOSTS = {
   codex: { env: 'CODEX_THREAD_ID', dir: 'codex-comment-watch' },
   claude: { env: 'CLAUDE_CODE_SESSION_ID', dir: 'claude-comment-watch' },
+  pi: { env: 'PI_SESSION_ID', dir: 'pi-comment-watch' },
 };
 
 function readJson(file) {
@@ -60,7 +61,7 @@ function subscriptions(project, host, session) {
 
 // The launcher knows the real argv and cwd; hook text cannot safely reconstruct shell commands.
 function register(args, env = process.env) {
-  const host = sessionOf('codex', env) ? 'codex' : sessionOf('claude', env) ? 'claude' : null;
+  const host = ['codex', 'claude', 'pi'].find((name) => sessionOf(name, env));
   if (!host) return;
   const session = sessionOf(host, env);
   const option = (name) => {

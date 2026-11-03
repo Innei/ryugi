@@ -2,7 +2,10 @@ import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import type { ExtensionAPI } from '@earendil-works/pi-coding-agent';
+import type { ExtensionAPI, ExtensionContext } from '@earendil-works/pi-coding-agent';
+
+import { projectRoot, subscriptions } from '../../skills/artifacts/app/comment-subscriptions.cjs';
+import { createCommentWatch, wakeMessage } from '../../skills/artifacts/app/comment-watch.cjs';
 
 const EXTREMELY_IMPORTANT_MARKER = '<EXTREMELY_IMPORTANT>';
 const BOOTSTRAP_MARKER = 'ryugi:using-ryugi bootstrap for pi';
@@ -12,13 +15,27 @@ const packageRoot = resolve(extensionDir, '../..');
 const skillsDir = resolve(packageRoot, 'skills');
 const bootstrapSkillPath = resolve(skillsDir, 'using-ryugi', 'SKILL.md');
 
+const COMMENT_POLL_MS = 1000;
+
 let cachedBootstrap: string | null | undefined;
 
 export default function ryugiPiExtension(pi: ExtensionAPI) {
   let injectBootstrap = true;
+  let commentTimer: ReturnType<typeof setInterval> | undefined;
 
-  pi.on('session_start', async () => {
+  const stopCommentWatch = () => {
+    clearInterval(commentTimer);
+    commentTimer = undefined;
+  };
+
+  pi.on('session_start', async (_event, ctx) => {
     injectBootstrap = true;
+    stopCommentWatch();
+    commentTimer = watchComments(pi, ctx, projectRoot(ctx.cwd), ctx.sessionManager.getSessionId());
+  });
+
+  pi.on('session_shutdown', async () => {
+    stopCommentWatch();
   });
 
   pi.on('session_compact', async () => {
@@ -51,6 +68,48 @@ export default function ryugiPiExtension(pi: ExtensionAPI) {
       ],
     };
   });
+}
+
+// Wakes this session for human comments and choice rounds on the artifacts it opened through the
+// launcher. A busy session gets them as a follow-up after its current turn instead of a steer.
+function watchComments(pi: ExtensionAPI, ctx: ExtensionContext, project: string, session: string) {
+  const poll = createCommentWatch(project, 'pi');
+  // An error thrown from a timer is an uncaughtException, which exits Pi. Report each distinct
+  // failure once instead, because the same one usually repeats on every poll.
+  let reported: string | undefined;
+  const report = (error: unknown) => {
+    const message = `Ryugi comment watch: ${error instanceof Error ? error.message : String(error)}`;
+    if (message === reported) return;
+    reported = message;
+    try {
+      ctx.ui.notify(message, 'warning');
+    } catch {
+      console.error(message);
+    }
+  };
+  const deliver = (event: { type: string }) => {
+    try {
+      // Typed as void, but a host may hand back a promise; its rejection must not escape either.
+      Promise.resolve(
+        pi.sendMessage(
+          { customType: event.type, content: wakeMessage(event), display: true },
+          { triggerTurn: true, deliverAs: 'followUp' },
+        ),
+      ).catch(report);
+    } catch (error) {
+      report(error);
+    }
+  };
+  const timer = setInterval(() => {
+    try {
+      const artifacts = subscriptions(project, 'pi', session);
+      if (artifacts.size) for (const event of poll(artifacts)) deliver(event);
+    } catch (error) {
+      report(error);
+    }
+  }, COMMENT_POLL_MS);
+  timer.unref();
+  return timer;
 }
 
 function getBootstrapContent(): string | null {
