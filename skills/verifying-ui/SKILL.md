@@ -42,7 +42,13 @@ After the fix there is no honest "before".
    "actual". Copy evidence under `pages/verify/`; keep each video under 8MB
    and the artboard under 20MB. Over 20MB the cloud copy stops updating:
    say so and shrink or drop the largest recordings.
-4. Set `focus` to the first group, check that `warnings` and `pending` are
+4. **Link back.** When the spec lists the document where this was
+   discussed and it still exists, add `<ref artboard="<id>" group="<verify
+group>" />` to the section that discussed each module, as ryugi:artifacts
+   says under Artboard references in document.md. The reference shows the
+   verdict, and it is the only way back from the verify page to that
+   discussion.
+5. Set `focus` to the first group, check that `warnings` and `pending` are
    empty, give the link (the cloud link when there is one), say what each
    group shows, and ask them to tell you here when they have decided. End
    your turn; don't poll.
