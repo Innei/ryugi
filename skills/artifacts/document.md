@@ -131,7 +131,8 @@ Optional: `title`, `subtitle`, `note`, `source`, `xLabel`, `stacked`,
 `donut`, `highlight` (a series key), `format` `{unit, compact, decimals,
 signed}`, `y` `{min, max}`, `refs` `[{y, label}]`.
 
-Also `h1`–`h6`, `ol`, `blockquote`, `hr`, and inline `b i u s sub sup mark br`.
+Also `h1`–`h6`, `ol`, `blockquote`, `hr`, and inline `b i u s sub sup mark br`,
+and `<ask>` (see Questions).
 `strong`, `em` and `del` are read as `b`, `i` and `s`. Any other tag is
 rejected.
 
@@ -150,6 +151,51 @@ props reloads it with the values reset.
 
 Its errors land in `warnings.json` as `runtime: assets/<name>.html: …`,
 complete only once `dynamic["assets/<name>.html"].ran` is `true`.
+
+## Questions
+
+When an item has a default answer your human partner should confirm (a
+"my recommendation / to confirm" column, the open questions at the end),
+write it as an `<ask>` instead of asking them to comment:
+
+```xml
+<li><b>Add characterization tests before a pure move?</b>
+  <ask id="pre-test" recommend="report"><option value="tests">Add them first</option><option value="report">Only say so in the report</option></ask>
+  Moved code without tests can get a layer of tests first.</li>
+<li><b>Any other cases?</b><ask id="more" placeholder="Describe them" /></li>
+```
+
+- `<ask>` sits inline in a paragraph, list item or table cell
+  (`<td><p><ask …/></p></td>`); `<option>` only inside it, plain text.
+- `id`: lowercase letters, digits and hyphens, unique in the document.
+  Answers follow the id: reword a question freely, but a new question gets
+  a new id. Never reuse one.
+- `recommend` names the option they get when they leave it alone. No
+  options makes an open question they answer in their own words.
+- Open discussion stays in comments; an `<ask>` is for a decision with a
+  default.
+
+They pick or write on each question and submit once, at the bottom of the
+page. With a comment monitor the submit arrives as a `ryugi-answers`
+message; otherwise they say done in the terminal. Then run `comment list`:
+
+- `asks` holds every question: `state` (`draft`, `submitted`, `settled`,
+  `orphan`), `choice` (an option value), `text` (their own words) and
+  `byRecommendation`. `choice` and `text` both null means no answer.
+- For each submitted question, change the document to match the answer,
+  then settle it with one line on what changed, on stdin:
+  `comment note … --ask <id>`. The note shows under the question, which
+  then locks. Every submitted question gets a note, answered or not: one
+  left without a note keeps the page waiting on you, and they can no
+  longer answer it. With no answer, say what you assumed or left as is;
+  if you still need one, ask it again as a new question with a new id.
+- They answered in the terminal instead: record each answer with
+  `comment answer … --ask <id> (--choice <value> | --text <answer>)`, then
+  `comment submit …`, before you act on it.
+- A `ryugi-answers` message with `"withdrawn": true`, before you acted:
+  stop, and wait for the next submit.
+- A settled answer changes only after a comment asks for it: record it
+  with `comment answer`, then write a new `comment note`.
 
 ## What your human partner changed
 

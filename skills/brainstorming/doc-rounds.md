@@ -13,16 +13,18 @@ topic (`mention-notifications`, `queue-redis-streams`).
 
 Write it in their language. Top to bottom:
 
-1. **Title**, and one line on how to answer, such as: "Change any
-   recommendation that's wrong, or comment on it; anything untouched I'll
-   take as agreed. Tell me in the terminal when this round is done."
+1. **Title**, and one line on how to answer, such as: "Pick on each
+   question, or comment on it; anything untouched I'll take as agreed.
+   Submit at the bottom of the page when this round is done."
 2. **What I understand so far**: the playback, 200-300 words. Mark each
    guess as your guess; only what they said goes in as theirs.
 3. **Settled**: decisions already made, each one line, marked theirs or
    your call. On a fresh start, what their request already decided.
 4. **Round N**: five to seven items. Each item is a heading with the
-   question, then your recommendation, then one line of why. They edit the
-   recommendation in place or comment on it.
+   question, then your recommendation, then one line of why. When the item
+   has options, the recommendation is an `<ask>` holding them, with
+   `recommend` on yours (ryugi:artifacts, Questions); an open item is an
+   `<ask>` with no options. They pick or write on it, or comment.
 
 ## Building a Round
 
@@ -59,11 +61,13 @@ they already answered in chat.
 
 ## Between Rounds
 
-When they say the round is done, or a comment lands:
+When they submit or say the round is done, or a comment lands:
 
-1. Re-read the document and its comments, as ryugi:artifacts says.
-2. Move every answered item to Settled as one line: edited or commented
-   ones as theirs, untouched recommendations as accepted.
+1. Re-read the document, its comments and its `asks`, as ryugi:artifacts
+   says.
+2. Move every answered item to Settled as one line: changed, written or
+   commented ones as theirs, untouched recommendations as accepted. Write
+   a `comment note` on each question you settled.
 3. Drop the questions their answers made moot. Answer each comment, then
    resolve it.
 4. Write the next round from what you now know.
