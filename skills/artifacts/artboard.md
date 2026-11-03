@@ -114,6 +114,12 @@ comments.json in the artboard directory is the server's; never write it.
   something your human partner passes or rejects (see Verify groups);
   `"choose": true` with `"recommend": "<board id>"` turns it into a question
   they answer by picking a board (see Choice groups).
+- Documents reference groups and boards by key with `<ref>` (document.md,
+  Artboard references); the viewer marks each referenced one with an "N in
+  docs" badge. A referenced key is a public name: don't rename or remove it.
+  `check` warns `document <id> block <id> references <key>, which this
+artboard no longer has`. When a key has to change, change the document's
+  `<ref>` in the same turn.
 - `notes`: `kind` is `title` or `sticky`; `x`/`y` is the top-left corner.
   - `title`: bold text, `size` px (default 96), one line tall (about
     1.15 × `size`). Without `w` it stays on one line; with `w` it wraps.

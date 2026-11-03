@@ -94,7 +94,6 @@ function unreadCount(project, artifact, key) {
 const command = (project, artifact) =>
   `node ${quote(LAUNCHER)} comment list --json --project-dir ${quote(project)} --artifact ${artifact}`;
 
-// The prompt a host injects into its own session for one watch event.
 function wakeMessage(event) {
   const skill = path.join(__dirname, '..', 'SKILL.md');
   const guide = path.join(__dirname, '..', `${event.artifact.split('/')[0]}.md`);

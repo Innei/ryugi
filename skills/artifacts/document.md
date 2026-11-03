@@ -132,7 +132,7 @@ Optional: `title`, `subtitle`, `note`, `source`, `xLabel`, `stacked`,
 signed}`, `y` `{min, max}`, `refs` `[{y, label}]`.
 
 Also `h1`–`h6`, `ol`, `blockquote`, `hr`, and inline `b i u s sub sup mark br`,
-and `<ask>` (see Questions).
+`<ask>` (see Questions) and `<ref>` (see Artboard references).
 `strong`, `em` and `del` are read as `b`, `i` and `s`. Any other tag is
 rejected.
 
@@ -196,6 +196,46 @@ message; otherwise they say done in the terminal. Then run `comment list`:
   stop, and wait for the next submit.
 - A settled answer changes only after a comment asks for it: record it
   with `comment answer`, then write a new `comment note`.
+
+## Artboard references
+
+When part of the document is decided on an artboard, point at it with an
+inline `<ref>`. Clicking it opens the artboard beside the document, framed
+on what the reference names; selecting that group or board on the artboard
+scrolls the document back to the paragraph.
+
+```xml
+<h2>1. Navigation layout</h2>
+<p><ref artboard="settings-nav" group="q1" /></p>
+<p>The sidebar <ref artboard="settings-nav" board="q1-a">sidebar nav</ref> fits all 14 sections.</p>
+<p>The narrow-screen options are on <ref artboard="settings-narrow" />.</p>
+```
+
+- `artboard`: the slug of an artboard in this project, the `<id>` of
+  `artboard/<id>`. `group` or `board`, at most one, names a key from its
+  `canvas.json`; with neither, the reference is the whole artboard.
+- The label is optional plain text. Without one the page shows the board's
+  or group's title.
+- Inline in a paragraph, list item or table cell, like `<ask>`. A `<ref>`
+  directly under `<doc>`, without `artboard`, with a slug other than
+  lowercase letters, digits and hyphens, or with both `group` and `board`
+  is refused.
+- The server adds `to="<artifact id>"` once the slug resolves. Never write
+  it, and never remove it unless `check` says the slug now names another
+  artboard: then delete `to=` and the server points it again.
+- A missing artboard, group or board is a `check` warning, not an error, so
+  you can write the reference before you draw. Clear those warnings before
+  you hand the document over.
+- The reference shows live state: a choice group reads "not picked yet"
+  until its round is submitted, then the board they chose; a verify group
+  shows its verdict. Don't write that state into the text.
+
+When to write one:
+
+- Opening an artboard for a section: in the same change, put a group
+  reference on its own line under that section's heading.
+- Writing a decision made on the artboard into the prose: reference the
+  chosen board instead of writing "artboard q1 → q1-c".
 
 ## What your human partner changed
 

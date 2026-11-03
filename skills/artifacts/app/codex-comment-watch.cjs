@@ -4,6 +4,11 @@ const { execFile, execFileSync } = require('node:child_process');
 const { randomUUID } = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
+const {
+  ensureDesktopRuntime,
+  hasDesktopPipe,
+  sendDesktop,
+} = require('./codex-desktop-transport.cjs');
 const { createCommentWatch, unreadCount, wakeMessage } = require('./comment-watch.cjs');
 const {
   beat,
@@ -65,6 +70,10 @@ function hostEndpoint() {
   return null;
 }
 
+function cliEndpoint() {
+  return endpoint(process.env.RYUGI_CODEX_REMOTE) || hostEndpoint();
+}
+
 function context(input, env = process.env) {
   // CODEX_THREAD_ID can be inherited from the process that launched this Codex session.
   if (!UUID.test(input.session_id || '') || typeof input.cwd !== 'string') return null;
@@ -123,6 +132,8 @@ function claim(ctx) {
 }
 
 function queueComment(ctx, remote, event, signal) {
+  const message = wakeMessage(event);
+  if (!remote) return sendDesktop(ctx, message, signal);
   const args = [
     'queue',
     '--remote',
@@ -130,7 +141,7 @@ function queueComment(ctx, remote, event, signal) {
     '--thread',
     ctx.session,
     '--message',
-    wakeMessage(event),
+    message,
     '--resume',
   ];
   const tokenEnv = process.env.RYUGI_CODEX_REMOTE_AUTH_TOKEN_ENV;
@@ -166,9 +177,9 @@ function notice(input, message) {
   );
 }
 
-function watch(ctx, input) {
-  const remote = endpoint(process.env.RYUGI_CODEX_REMOTE) || hostEndpoint();
-  if (!remote) {
+function watch(ctx, input, remote) {
+  const desktop = !remote && hasDesktopPipe();
+  if (!desktop && !remote) {
     notice(
       input,
       'Ryugi comment watch needs the current Codex App Server endpoint. Set RYUGI_CODEX_REMOTE for a host that does not expose --listen.',
@@ -177,7 +188,8 @@ function watch(ctx, input) {
   }
   const state = claim(ctx);
   if (!state) return;
-  state.remote = remote;
+  if (desktop) state.transport = 'desktop';
+  else state.remote = remote;
   fs.writeFileSync(ctx.file, JSON.stringify(state), { mode: 0o600 });
   const poll = createCommentWatch(ctx.project, 'Codex');
   const pending = new Map();
@@ -244,6 +256,14 @@ function watch(ctx, input) {
 }
 
 function main() {
+  const remote = process.argv[2] === 'watch' ? cliEndpoint() : null;
+  let failure = null;
+  if (process.argv[2] === 'watch' && !remote)
+    try {
+      ensureDesktopRuntime();
+    } catch (error) {
+      failure = error.message;
+    }
   let input;
   try {
     input = JSON.parse(fs.readFileSync(0, 'utf8'));
@@ -253,7 +273,10 @@ function main() {
   const ctx = context(input);
   if (!ctx) return;
   if (process.argv[2] === 'stop') fs.rmSync(ctx.file, { force: true });
-  else if (process.argv[2] === 'watch') watch(ctx, input);
+  else if (process.argv[2] === 'watch') {
+    if (failure) notice(input, failure);
+    else watch(ctx, input, remote);
+  }
 }
 
 module.exports = { context, endpoint, hostEndpoint, projectRoot, register };

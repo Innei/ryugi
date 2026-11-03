@@ -39,8 +39,10 @@ Write it in their language. Top to bottom:
   is for you to look up, not for them to answer. Make it one item: "Shall I
   read X and Y first?", recommending yes, and look before the next round.
 - Mockups don't go in the document. When an item is about something they'll
-  look at, put it on the artboard (`artboard-rounds.md`) or an `html` page
-  and link it from the item; their answer there settles the item.
+  look at, put it on the artboard (`artboard-rounds.md`) or an `html` page.
+  For an artboard, write a group `<ref>` under the section's heading in the
+  same change (ryugi:artifacts, document.md, Artboard references); for an
+  `html` page, link it from the item. Their answer there settles the item.
 
 ## Starting Fresh
 
@@ -67,7 +69,8 @@ When they submit or say the round is done, or a comment lands:
    says.
 2. Move every answered item to Settled as one line: changed, written or
    commented ones as theirs, untouched recommendations as accepted. Write
-   a `comment note` on each question you settled.
+   a `comment note` on each question you settled. An item settled on the
+   artboard names the chosen board with a `<ref>`, not as plain text.
 3. Drop the questions their answers made moot. Answer each comment, then
    resolve it.
 4. Write the next round from what you now know.

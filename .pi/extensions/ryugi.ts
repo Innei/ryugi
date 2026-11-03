@@ -70,8 +70,6 @@ export default function ryugiPiExtension(pi: ExtensionAPI) {
   });
 }
 
-// Wakes this session for human comments and choice rounds on the artifacts it opened through the
-// launcher. A busy session gets them as a follow-up after its current turn instead of a steer.
 function watchComments(pi: ExtensionAPI, ctx: ExtensionContext, project: string, session: string) {
   const poll = createCommentWatch(project, 'pi');
   // An error thrown from a timer is an uncaughtException, which exits Pi. Report each distinct

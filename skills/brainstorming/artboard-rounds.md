@@ -37,7 +37,9 @@ When they answer:
    they selected when they point at nodes or tweaks.
 2. Record each answered group as a decision, theirs or the recommendation
    they accepted: in the document's Settled when one is open, in your next
-   playback otherwise.
+   playback otherwise. In the document, name the chosen board with a
+   `<ref artboard=… board=…>` (ryugi:artifacts, document.md), not as plain
+   text.
 3. Append the next round below the last one, as ryugi:artifacts says.
    Earlier rounds stay as history.
 4. In the terminal, one line: what changed, and what the new round asks.
