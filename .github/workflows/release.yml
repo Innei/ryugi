@@ -22,6 +22,14 @@ jobs:
           fi
           scripts/bump-version.sh --check
 
+      - name: ryugi-artifacts with the same version is on npm
+        run: |
+          version="$(jq -r '.version' package.json)"
+          if ! npm view "ryugi-artifacts@$version" version >/dev/null 2>&1; then
+            echo "::error::ryugi-artifacts@$version is not on npm yet; release it from ryugi-cloud first (tag artifacts-v$version)"
+            exit 1
+          fi
+
       - name: Create GitHub Release
         run: gh release create "$GITHUB_REF_NAME" --verify-tag --generate-notes
         env:
