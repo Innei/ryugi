@@ -28,9 +28,10 @@ also notices artifacts created later. A comment you resolve yourself does not
 wake Claude.
 
 This requires a Claude Code release with plugin monitors (tested on
-2.1.314); monitors don't start with `claude -p`. Other harnesses and older
-versions still read comments when asked. Claude's own hosted Artifacts
-keep their built-in comment watches.
+2.1.314); monitors don't start with `claude -p`. Codex and Pi have their own
+watches, described in their sections; other harnesses and older versions
+read comments when asked. Claude's own hosted Artifacts keep their built-in
+comment watches.
 
 ## Antigravity
 
@@ -159,6 +160,37 @@ The Pi package loads the Ryugi skills and a small extension that injects the
 `using-ryugi` bootstrap at session startup and again after compaction. Pi has
 native skills, so no compatibility `Skill` tool is required. Subagent and
 task-list tools remain optional Pi companion packages.
+
+The extension also watches review comments. The artifacts launcher records
+each document or Artboard the session opens, keyed by Pi's session ID; a
+human comment or a submitted choice round on one of them reaches that
+session as a custom message. An idle session starts a turn; a busy one
+gets it after its current turn, without interrupting a running tool. The
+watch follows the session through `/reload`, stops when the session ends,
+and a delivery failure shows a warning instead of stopping Pi. Tested on
+Pi 1.4.0.
+
+Known limits:
+
+- A Pi started inside a Codex or Claude Code session inherits their session
+  variable, so the launcher registers the artifact with the outer host and
+  Pi is not woken.
+- Only artifacts in the session's own project are watched; opening one with
+  `--project-dir` pointing elsewhere registers it there, where this session
+  does not look.
+- `/fork` and `/new` start a session that watches nothing until it opens an
+  artifact itself; unread comments then arrive at once.
+- A choice round submitted while no session watched it is not replayed;
+  comments are, until read.
+- The watch records a round's new state before delivering the event, so a
+  choice event whose delivery fails is not sent again.
+- A failure warning is shown once per distinct message and is not reset when
+  deliveries recover, so the same error later in the session shows no new
+  warning.
+- All Pi sessions in a project share one read position, so a session that
+  lists the comments marks them read for the others.
+- The viewer's "terminal is listening" hint stays off for Pi.
+- A session's list of opened artifacts only grows.
 
 ## Qwen Code
 

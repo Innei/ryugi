@@ -188,7 +188,11 @@ function ownerPid() {
 
 function main() {
   const args = process.argv.slice(2);
-  if (process.env.CODEX_THREAD_ID || process.env.CLAUDE_CODE_SESSION_ID) {
+  if (
+    process.env.CODEX_THREAD_ID ||
+    process.env.CLAUDE_CODE_SESSION_ID ||
+    process.env.PI_SESSION_ID
+  ) {
     try {
       require('./comment-subscriptions.cjs').register(args);
     } catch (error) {
