@@ -10,6 +10,12 @@ canvas, the boards and reading what they selected. Name it after the topic
 
 ## A Round
 
+- When a document section sent you here, write the group references first:
+  before `canvas.json`, put one `<ref artboard="…" group="…" />` per group,
+  each in its own `<p>`, under that section's heading (Artboard references
+  in ryugi:artifacts' `document.md`). A missing artboard is only a warning,
+  so the reference can come before the drawing. Tell them the section now
+  links to the board.
 - A title note for the round, with one line on how to answer, in their
   language, such as: "Pick on the board and submit; anything you don't pick
   I'll take as the recommendation."

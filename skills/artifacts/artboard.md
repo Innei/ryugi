@@ -209,14 +209,20 @@ Write a new artboard in this order:
 
 1. Run `start` (as `SKILL.md` describes) before writing any file, so the
    browser is open when the skeleton appears.
-2. Write `canvas.json` once with every board, group and note. Set `focus` to
+2. If a document section is why this artboard exists, write its group
+   references now, each `<ref artboard="…" group="…" />` in its own `<p>`
+   under that section's heading (see Artboard references in
+   [`document.md`](./document.md)). The artboard doesn't exist yet; that is
+   only a warning until it does. `check` on the artboard prints a `hint` for
+   every choice group no document references.
+3. Write `canvas.json` once with every board, group and note. Set `focus` to
    the first group (or board). The browser opens once the layout is valid,
    before any HTML exists, showing the complete skeleton.
-3. Write one full HTML document per board, starting with the focus group.
+4. Write one full HTML document per board, starting with the focus group.
    The server watches creation and edits, keeps unfinished documents pending,
    and loads each board when its closing `</html>` arrives. An atomic write
    can go straight from `Waiting…` to the preview.
-4. Run `check`: `pending` and `warnings` must both be empty before you tell
+5. Run `check`: `pending` and `warnings` must both be empty before you tell
    your human partner it is ready. No final `canvas.json` write is
    needed. Change it only for layout, metadata or deliberate focus changes.
 
