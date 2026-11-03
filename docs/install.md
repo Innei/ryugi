@@ -57,10 +57,41 @@ The background hook expires after 24 hours; the next user prompt restarts it.
 
 The artifacts launcher registers each document or Artboard opened by the
 current session. Only those artifacts can send review comments back to it;
-opening the artifact library registers the project. Notifications use
-`codex queue --resume`, so they wake an idle session or wait behind its
-current turn. They appear as queued user messages. Changes that have
-already been resolved are skipped, including during a delivery retry.
+opening the artifact library registers the project. Changes that have already
+been resolved are skipped, including during a delivery retry.
+
+### Codex desktop
+
+For local desktop chats, the watcher uses the app-tools pipe and Node runtime
+provided by Codex (`CODEX_APP_TOOLS_PIPE_PATH` and `CODEX_MCP_NODE_PATH`). It
+sends artifact notifications through `send_message_to_thread` to the originating
+hook session on the local host. This works when the desktop App Server uses
+stdio and exposes no external `--listen` endpoint. No socket address, separate
+server, or additional installation is needed. An explicit `RYUGI_CODEX_REMOTE`
+or a host launched with `--listen` takes precedence and keeps the CLI route.
+
+On macOS the watcher must itself run under the app-provided runtime: the desktop
+checks the connecting process and its ancestry. The hook's Node must support
+`process.execve` (Node 22.15 or newer) so the watcher can replace its runtime
+before reading hook input, preserving its parent process and standard input.
+An unsupported runtime is reported to the chat; permission checks are never
+disabled. The stop hook does not require this runtime handoff.
+
+Desktop delivery uses a private app interface and may need adaptation after
+an app update. It requires the inherited pipe/runtime and the desktop's
+`send_message_to_thread` tool. Remote and cloud chats are not supported by this
+route. A desktop delivery error is retained for retry and never falls back to
+an unrelated CLI daemon. Existing subscription, retry and cleanup behavior
+is preserved; a lost acknowledgment can still produce a duplicate notification.
+
+This path was exercised on macOS with desktop build 26.1027.51404 and bundled
+Codex 0.166.0-alpha.5.1. Other desktop platforms are not live verified.
+
+### Codex CLI
+
+With an App Server endpoint, or without a desktop pipe, notifications continue
+to use `codex queue --resume`, so they wake an idle session or wait behind its
+current turn. They appear as queued user messages.
 
 This requires a Codex CLI with `queue --resume` and background hooks
 (tested on 0.166.0). A host launched with `--listen` supplies its endpoint
