@@ -403,3 +403,59 @@ test('a last comment and the submit in one tick wake once', (t) => {
     ['ryugi-choices'],
   );
 });
+
+const answer = (id, n, ask) => ({
+  id,
+  anchor: { blockId: 'b1', quote: '', ask, choice: 'yes', answer: null },
+  status: 'open',
+  statusAt: at(n),
+  statusBy: 'human',
+  messages: [human(`${id}m`, n, 'yes')],
+});
+const latest = (id, withdrawn = false) => ({ latest: { id, at: at(9), withdrawn } });
+
+test('answers to document questions stay silent until they are submitted', (t) => {
+  const f = fixture(t);
+  const poll = watch(f.project);
+  f.save('document/plan', []);
+  f.write('.state/document/plan/asks.json', { latest: null });
+  assert.deepEqual(poll(), []);
+  f.save('document/plan', [answer('a1', 2, 'pre-test')]);
+  assert.deepEqual(poll(), []);
+  f.save('document/plan', [
+    answer('a1', 2, 'pre-test'),
+    { ...answer('s1', 3), anchor: { blockId: '*', quote: '', submit: true, asks: ['pre-test'] } },
+  ]);
+  f.write('.state/document/plan/asks.json', latest('s1'));
+  const [event, ...rest] = poll();
+  assert.deepEqual(rest, []);
+  assert.equal(event.type, 'ryugi-answers');
+  assert.equal(event.artifact, 'document/plan');
+  assert.ok(event.command.includes('comment list --json'));
+  assert.ok(event.instruction.includes('asks'));
+  assert.deepEqual(poll(), []);
+});
+
+test('a withdrawn submit wakes once, a second submit wakes again', (t) => {
+  const f = fixture(t);
+  const poll = watch(f.project);
+  f.write('.state/document/plan/asks.json', latest('s1'));
+  f.save('document/plan', []);
+  assert.deepEqual(poll(), []);
+  f.write('.state/document/plan/asks.json', latest('s1', true));
+  const [withdrawn] = poll();
+  assert.equal(withdrawn.type, 'ryugi-answers');
+  assert.equal(withdrawn.withdrawn, true);
+  assert.deepEqual(poll(), []);
+  f.write('.state/document/plan/asks.json', latest('s2'));
+  const [again] = poll();
+  assert.equal(again.type, 'ryugi-answers');
+  assert.equal(again.withdrawn, undefined);
+});
+
+test('answer records never count as unread comments', (t) => {
+  const f = fixture(t);
+  f.save('document/plan', [answer('a1', 2, 'pre-test'), thread('t2')]);
+  const { unreadCount } = require(path.join(repo, 'skills/artifacts/app/comment-watch.cjs'));
+  assert.equal(unreadCount(f.project, 'document/plan', 'Claude Code'), 1);
+});

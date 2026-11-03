@@ -56,6 +56,16 @@ function choiceRounds(root, artifact) {
     : [];
 }
 
+const isAnswerRecord = (thread) =>
+  thread?.anchor?.ask !== undefined || thread?.anchor?.submit !== undefined;
+
+function latestSubmit(root, artifact) {
+  const latest = readJson(path.join(root, '.state', artifact, 'asks.json'))?.latest;
+  return latest && typeof latest.id === 'string'
+    ? { id: latest.id, withdrawn: latest.withdrawn === true }
+    : null;
+}
+
 function draftCheck(rounds) {
   const open = rounds.filter((round) => round.state === 'open');
   const boards = new Set(open.flatMap((round) => round.boards || []));
@@ -75,7 +85,9 @@ function unreadCount(project, artifact, key) {
   if (!humanChanges(file)) return null;
   const cursors = readJson(path.join(root, '.state', artifact, 'comment-cursors.json'));
   const cursor = typeof cursors?.[key] === 'string' ? cursors[key] : null;
-  const open = file.threads.filter((thread) => thread.status !== 'resolved');
+  const open = file.threads.filter(
+    (thread) => thread.status !== 'resolved' && !isAnswerRecord(thread),
+  );
   return unreadThreadCount({ threads: open }, cursor);
 }
 
@@ -87,6 +99,7 @@ function createCommentWatch(project, key = cursorKey(process.env)) {
   const root = path.join(project, '.ryugi/artifacts');
   const seen = new Map();
   const roundStates = new Map();
+  const submits = new Map();
   return (artifacts) => {
     const events = [];
     for (const type of ['document', 'artboard']) {
@@ -117,10 +130,31 @@ function createCommentWatch(project, key = cursorKey(process.env)) {
               : 'Your human partner withdrew this round. If you have not written the next round, stop and wait for a new submit.',
           });
         }
+        if (type === 'document') {
+          const submit = latestSubmit(root, artifact);
+          const before = submits.get(artifact);
+          submits.set(artifact, submit);
+          const fresh = submit && before !== undefined && submit.id !== before?.id;
+          const withdrawn =
+            submit?.withdrawn && before?.id === submit.id && before.withdrawn === false;
+          if ((fresh && !submit.withdrawn) || withdrawn)
+            events.push({
+              type: 'ryugi-answers',
+              artifact,
+              ...(withdrawn ? { withdrawn: true } : {}),
+              command: command(project, artifact),
+              instruction: withdrawn
+                ? 'Your human partner withdrew the submitted answers. If you have not acted on them, stop and wait for a new submit.'
+                : 'Read ryugi:artifacts and its document guide, then run command: asks holds each question and its answer. Apply each answer to the document, then write a note on it with comment note.',
+            });
+        }
         const file = readJson(path.join(root, artifact, 'comments.json'));
+        const roundDraft = draftCheck(
+          rounds.map((r) => (wasOpen.has(r.id) ? { ...r, state: 'open' } : r)),
+        );
         const changes = humanChanges(
           file,
-          draftCheck(rounds.map((r) => (wasOpen.has(r.id) ? { ...r, state: 'open' } : r))),
+          (thread) => isAnswerRecord(thread) || roundDraft(thread),
         );
         if (!changes) continue; // A partial save is retried on the next poll.
         const previous = seen.get(artifact) || new Map();

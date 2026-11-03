@@ -332,3 +332,23 @@ test('the heartbeat keeps beating while a queue call is in flight', async (t) =>
   await delay(2500);
   assert.ok(Number(fs.readFileSync(alive, 'utf8')) > during, 'heartbeat stopped while queueing');
 });
+
+test('submitted document answers are queued even with no unread comments', async (t) => {
+  const f = fixture(t);
+  const asks = (latest) => {
+    const file = path.join(f.project, '.ryugi/artifacts/.state/document/plan/asks.json');
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, JSON.stringify({ latest }));
+  };
+  f.write('document/plan', { version: 1, threads: [] });
+  asks(null);
+  f.start();
+  const alive = path.join(f.project, '.ryugi/artifacts/.state/codex-comment-watch', `${id}.alive`);
+  await until(() => fs.existsSync(alive), 'codex watcher never wrote a heartbeat');
+  asks({ id: 's1', at: '2026-11-03T00:00:00.000Z', withdrawn: false });
+  await until(() => f.read().length > 0, 'submitted answers never reached codex queue');
+  const args = f.read()[0];
+  const message = args[args.indexOf('--message') + 1];
+  assert.ok(message.includes('document/plan'));
+  assert.ok(message.includes('answers'));
+});

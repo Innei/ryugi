@@ -128,7 +128,9 @@ function queueComment(ctx, remote, event, signal) {
   const what =
     event.type === 'ryugi-choices'
       ? `Ryugi choices for round ${event.round} on ${event.artifact} were ${event.withdrawn ? 'withdrawn' : 'submitted'}.`
-      : 'Ryugi review comments changed.';
+      : event.type === 'ryugi-answers'
+        ? `Ryugi answers on ${event.artifact} were ${event.withdrawn ? 'withdrawn' : 'submitted'}.`
+        : 'Ryugi review comments changed.';
   const message = `${what} Local skill: ${JSON.stringify(skill)}; guide: ${JSON.stringify(guide)}. ${event.instruction}\nRun: ${event.command}`;
   const args = [
     'queue',
@@ -210,7 +212,11 @@ function watch(ctx, input) {
     const subscriptions = new Set(readJson(ctx.subscriptions)?.artifacts || []);
     for (const event of poll(subscriptions))
       pending.set(
-        event.type === 'ryugi-choices' ? `${event.artifact}#choices` : event.artifact,
+        event.type === 'ryugi-choices'
+          ? `${event.artifact}#choices`
+          : event.type === 'ryugi-answers'
+            ? `${event.artifact}#answers`
+            : event.artifact,
         event,
       );
     if (!pending.size || Date.now() < nextAttempt) return;
@@ -219,7 +225,7 @@ function watch(ctx, input) {
       pending.delete(key);
       return;
     }
-    if (event.type !== 'ryugi-choices') {
+    if (event.type === 'ryugi-comments') {
       const unread = unreadCount(ctx.project, event.artifact, 'Codex');
       if (unread === null) return;
       if (!unread) {
