@@ -123,6 +123,13 @@ Fork of [Superpowers](https://github.com/obra/superpowers) v7.0.0 by Jesse Vince
 
 ## License
 
-Skills, harness integrations and docs: MIT — [LICENSE](LICENSE).
+Skills, harness integrations and docs: [Ryugi License 1.0](LICENSE) — free to
+use, modify and redistribute, with two exceptions. The Restricted Parties in
+Schedule A (Tencent, Alibaba, ByteDance, Baidu, Huawei, Xiaomi, Meituan, JD,
+PDD, NetEase, Kuaishou, Didi, Ant Group, iFlytek, SenseTime, and products such
+as WorkBuddy, Qwen, Qoder and Trae) receive no rights at all, and nobody may
+scrape the skills into a marketplace. This is source-available, not an open
+source license; material derived from Superpowers and contributions made before
+2026-11-04 stay MIT (Exhibit B).
 
 The artifacts application, published to npm as [`ryugi-artifacts`](https://www.npmjs.com/package/ryugi-artifacts), is proprietary (npm `license`: `UNLICENSED`) and not part of this repository. Releases up to 1.51.2 were published under AGPL-3.0-only.

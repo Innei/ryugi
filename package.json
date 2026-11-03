@@ -10,7 +10,7 @@
     "collaboration",
     "workflow"
   ],
-  "license": "MIT",
+  "license": "SEE LICENSE IN LICENSE",
   "type": "module",
   "main": ".opencode/plugins/ryugi.js",
   "scripts": {

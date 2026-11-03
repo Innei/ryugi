@@ -6,7 +6,7 @@
   "description": "Ryugi skills for coding agents, plus the artifacts workbench they design in: brainstorming, artboards, documents and TDD.",
   "homepage": "https://github.com/Innei/ryugi",
   "keywords": ["skills", "tdd", "debugging", "collaboration", "best-practices", "workflows"],
-  "license": "MIT",
+  "license": "SEE LICENSE IN LICENSE",
   "name": "ryugi",
   "repository": "https://github.com/Innei/ryugi",
   "version": "1.58.0"

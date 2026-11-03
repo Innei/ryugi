@@ -1,7 +1,228 @@
+Ryugi License 1.0
+=================
+
+Copyright (c) 2026 Innei <i@innei.in>
+
+This license governs the Ryugi skills, harness integrations, hooks, scripts and
+documentation in this repository (the "Software"), except the material listed in
+Exhibit B. It replaces the MIT License used by earlier releases, and it applies
+to this and every later release. It is not an open source license: Section 3
+withholds rights that the MIT License granted.
+
+The artifacts application — the published `ryugi-artifacts` npm package, its
+`dist/` output and the copies under `skills/artifacts/app/` — is not covered by
+this license. It is proprietary and not part of this repository; releases up to
+1.51.2 were published under AGPL-3.0-only.
+
+1. Definitions
+--------------
+
+1.1 "Software" means the contents of this repository other than the `artifacts/`
+    directory and the files listed in Exhibit B, in source or built form,
+    together with any later release of those contents.
+
+1.2 "Restricted Party" means every entity listed in Schedule A, including its
+    Affiliates, and every product, service, agent, model, dataset, IDE,
+    marketplace or internal tool that such an entity operates, brands, funds or
+    distributes, under its listed name or any current or future name.
+
+1.3 "Affiliate" means any entity that controls, is controlled by, or is under
+    common control with another entity, and any entity formed to hold all or
+    part of another entity's business, including through merger, acquisition,
+    rebranding or a change of legal name.
+
+1.4 "Marketplace" means any public or private channel for distributing skills,
+    prompts, plugins, agents, workflow templates or comparable material to
+    third parties, whether a plugin store, skill registry, model marketplace,
+    package index, model context source, or a directory that feeds one.
+
+1.5 "Marketplace Ingestion" means collecting the Software by automated means —
+    scraping, crawling, bulk downloading, mirroring, indexing, spidering — and
+    republishing it, or substantial parts of it, in a Marketplace. Ordinary
+    cloning, forking, and installing or building the Software for your own use
+    is not Marketplace Ingestion.
+
+1.6 "you" means the individual or entity exercising rights under this license.
+
+2. Grant
+--------
+
+Subject to Sections 3 and 4, and to Exhibit B, the copyright holder grants you a
+worldwide, royalty-free, non-exclusive license to:
+
+  (a) use, run and execute the Software;
+  (b) copy, modify, translate and create derivative works of the Software;
+  (c) distribute, sublicense and sell the Software and derivative works;
+  (d) do the above commercially or privately, for any lawful purpose.
+
+3. Conditions
+-------------
+
+3.1 Restricted Parties. A Restricted Party receives none of the rights granted
+    in Section 2. Without limiting that, no Restricted Party may:
+
+  (a) use, run, execute, evaluate, benchmark, test, train on, fine-tune,
+      embed, index, or otherwise incorporate the Software or any part of it,
+      including its text, structure or examples, into any product, service,
+      agent, IDE, marketplace, model, dataset or internal tool;
+  (b) copy, reproduce, modify, translate, adapt, or create derivative works of
+      the Software;
+  (c) distribute, publish, sublicense, host, mirror, fork for republication, or
+      otherwise make the Software or any derivative work available to anyone;
+  (d) bundle, link, reference or ship the Software with a product or service;
+  (e) obtain the Software, or rights this license withholds, through an
+      Affiliate, subsidiary, intermediary, reseller, contractor, shell entity,
+      open-source mirror, another legal name, or a license of a different
+      version.
+
+    The restrictions in this section apply to the Restricted Party's own use and
+    to use on its behalf by employees, contractors, partners or automated
+    systems.
+
+3.2 No Marketplace Ingestion. You may not perform Marketplace Ingestion of the
+    Software. Publishing your own lawful derivative work of the Software in a
+    Marketplace is permitted, provided you are not a Restricted Party and you
+    do not do so by scraping or bulk-collecting this repository or a
+    distribution of it. Any ingestion of the Software by, for, or on behalf of a
+    Restricted Party is prohibited outright.
+
+3.3 Notices. You must include this license, the copyright notice above and
+    Exhibit B in all copies and substantial portions of the Software you
+    distribute. If the distributed form cannot carry text — a single bundled
+    file, a generated artifact, a compiled archive — the notice must appear in
+    the accompanying documentation or a README, and this license must be
+    available at a URL named there.
+
+3.4 No trademark rights. This license grants no rights to the "Ryugi" name, its
+    logo, or any other trademark or service mark of the copyright holder.
+
+4. Termination
+--------------
+
+4.1 Any breach of Section 3 terminates your rights under this license
+    automatically, without notice.
+
+4.2 If the copyright holder notifies you in writing of a breach and you cure it
+    within 30 days of receiving that notice — and do not breach Section 3
+    again — your rights are reinstated as of the date of cure.
+
+4.3 Termination of your rights does not terminate the rights of anyone who
+    received the Software from you and remains in compliance with this license.
+
+4.4 Failure to enforce this license is not a waiver of it.
+
+5. Disclaimer of Warranty
+-------------------------
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN
+AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+6. Limitation of Liability
+--------------------------
+
+TO THE MAXIMUM EXTENT PERMITTED BY LAW, THE COPYRIGHT HOLDER'S TOTAL LIABILITY
+UNDER THIS LICENSE IS LIMITED TO THE AMOUNT YOU PAID FOR THE SOFTWARE, WHICH IS
+ZERO FOR COPIES OBTAINED FREE OF CHARGE.
+
+7. General
+----------
+
+7.1 If a provision of this license is unenforceable against a party, the
+    remaining provisions stay in force against that party. If Section 3.1 is
+    unenforceable against a Restricted Party in a jurisdiction, this license
+    grants that party no rights in that jurisdiction.
+
+7.2 This license is the entire agreement about the Software and supersedes any
+    earlier license the copyright holder published for it.
+
+7.3 A version of the Software is governed by the license text shipped with that
+    version. Schedule A may gain entries for Affiliates, successors and
+    renamed or rebranded products of a listed entity without a new license
+    version; entries beyond that require a new version. The copyright holder
+    may also publish later versions of this license with additional
+    restrictions, which apply to releases made under them.
+
+7.4 This license is governed by the laws of the People's Republic of China,
+    excluding its conflict-of-law rules. The courts at the copyright holder's
+    domicile have exclusive jurisdiction, without prejudice to the copyright
+    holder's right to seek relief anywhere the Software is used or distributed.
+
+Schedule A — Restricted Parties
+--------------------------------
+
+Each entry includes the named entity, its Affiliates, and any product listed
+under it, whether shipped today or later under that or another name.
+
+A.1 Tencent — 腾讯控股有限公司 (Tencent Holdings Limited); 深圳市腾讯计算机系统
+    有限公司; 腾讯科技（深圳）有限公司; 腾讯云 (Tencent Cloud). Products include
+    元宝 (Yuanbao), 混元 (Hunyuan), WorkBuddy, CodeBuddy, CodeBuddy IDE, ima,
+    腾讯文档 AI, 企业微信 AI (WeCom AI), and 腾讯云智能体开发平台 (Tencent Cloud
+    Agent Development Platform).
+
+A.2 Alibaba — 阿里巴巴集团控股有限公司 (Alibaba Group Holding Limited); 阿里云
+    (Alibaba Cloud); 通义实验室 (Tongyi Lab). Products include 通义千问 (Qwen),
+    Qoder, 通义灵码 (Lingma), 百炼 (Model Studio / Bailian), 夸克 (Quark),
+    钉钉 AI (DingTalk AI).
+
+A.3 ByteDance — 字节跳动有限公司 (ByteDance Ltd.); 北京字节跳动科技有限公司;
+    火山引擎 (Volcano Engine). Products include Trae and Trae CN, 豆包 (Doubao),
+    MarsCode / 豆包 MarsCode, 扣子 (Coze), 飞书 AI (Feishu / Lark AI), Seed.
+
+A.4 Baidu — 百度在线网络技术（北京）有限公司; Baidu, Inc.; 百度智能云. Products
+    include 文心一言 (ERNIE), 文心快码 (Comate), 千帆 (Qianfan).
+
+A.5 Huawei — 华为技术有限公司 (Huawei Technologies Co., Ltd.). Products include
+    盘古 (Pangu), CodeArts, 小艺 (Celia).
+
+A.6 Xiaomi — 小米科技有限责任公司 (Xiaomi Corporation). Products include 小爱
+    (XiaoAI), MiMo.
+
+A.7 Meituan — 北京三快在线科技有限公司; Meituan (美团). Products include
+    LongCat.
+
+A.8 JD — 北京京东世纪贸易有限公司; JD.com (京东). Products include 言犀
+    (Yanxi), JoyAI.
+
+A.9 PDD — 上海寻梦信息技术有限公司; PDD Holdings (拼多多).
+
+A.10 NetEase — 网易（杭州）网络有限公司; NetEase, Inc. (网易). Products include
+     网易伏羲 (Fuxi), 有道 AI (Youdao AI), 子曰.
+
+A.11 Kuaishou — 北京快手科技有限公司; Kuaishou Technology (快手). Products
+     include 可灵 (Kling).
+
+A.12 Didi — 滴滴出行 (Didi Global Inc.).
+
+A.13 Ant Group — 蚂蚁科技集团股份有限公司. Products include 百灵 (Ling), 支付宝
+     AI (Alipay AI).
+
+A.14 iFlytek — 科大讯飞股份有限公司 (iFlytek). Products include 星火 (Spark).
+
+A.15 SenseTime — 商汤科技 (SenseTime Group Inc.). Products include 日日新
+     (SenseNova).
+
+Exhibit B — Material under the MIT License
+-------------------------------------------
+
+The following material remains available under the MIT License and is not
+subject to Section 3:
+
+  (a) material derived from Superpowers (https://github.com/obra/superpowers),
+      copyright (c) 2025 Jesse Vincent, as identified in `UPSTREAM.md`;
+  (b) contributions to this repository made under the MIT License before
+      2026-11-04, by their respective authors.
+
+For that material the MIT License below governs, and nothing in this license
+narrows the rights the MIT License grants in it. For the rest of the Software,
+the copyright holder grants no rights beyond those in Sections 2 and 3.
+
 MIT License
 
 Copyright (c) 2025 Jesse Vincent
-Copyright (c) 2026 Innei
 Copyright (c) 2026 Innei
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -21,13 +242,3 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
----
-
-The MIT License above covers Ryugi's skills, harness integrations and
-documentation.
-
-The artifacts application in `artifacts/` — published to npm as
-`ryugi-artifacts`, together with its build outputs (`dist/` and the copies in
-`skills/artifacts/app/`) — is licensed under the GNU Affero General Public
-License version 3; see `artifacts/LICENSE`.

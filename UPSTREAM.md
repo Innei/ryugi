@@ -1,6 +1,6 @@
 # Upstream
 
-Ryugi is a fork of [obra/superpowers](https://github.com/obra/superpowers) (MIT).
+Ryugi is a fork of [obra/superpowers](https://github.com/obra/superpowers) (MIT). Upstream material keeps its MIT license under Exhibit B of `LICENSE`; Ryugi's own skills, harness integrations and docs are licensed under Ryugi License 1.0.
 
 ## Baseline
 
