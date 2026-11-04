@@ -65,9 +65,9 @@ they already answered in chat.
 
 When they submit or say the round is done, or a comment lands:
 
-1. Re-read the document. Read Brief from `comment list --section asks --detail`
-   and `--section threads` for this project and document. Follow `More`
-   and complete thread `Read` commands; use the evidence before its exact
+1. Re-read the document. Read Brief from `comment list --sections threads,asks --detail`
+   for this project and document. Follow each collection's `More`;
+   complete thread messages are included on the delivered page. Use the evidence before its exact
    `Acknowledge`, as ryugi:artifacts says.
 2. Process each `submitted` question and write its `comment note` after
    applying it. Move answered items to Settled as one line: changed, written

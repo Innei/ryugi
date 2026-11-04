@@ -76,9 +76,9 @@ on that video board.
 ## When verdicts come back
 
 On their next message, use the artifacts launcher to read
-`comment list --section groups --kind verify --detail` and
-`comment list --section threads` for this project and artboard in Brief.
-Follow printed `More` and complete thread `Read` commands; use the evidence
+`comment list --sections groups,threads --detail` for this project and artboard in Brief.
+Inspect groups with `kind=verify`. Follow each collection's printed `More`;
+the delivered thread page includes complete messages. Use the evidence
 before its exact `Acknowledge`. Verify groups use the human's `verdict`,
 independently of choice-round submission.
 

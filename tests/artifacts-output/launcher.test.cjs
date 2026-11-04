@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
+
 function setup(t) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'output-launcher-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
@@ -50,7 +51,7 @@ test('offline cache is selected by its output contract rather than a version flo
   fs.mkdirSync(old, { recursive: true });
   fs.writeFileSync(
     path.join(old, 'cli.cjs'),
-    'process.stdout.write(JSON.stringify({schema:"ryugi.cli/v1",command:process.argv.includes("--version")?"version":"get",outcome:"success",data:{cached:true}}))',
+    'process.stdout.write(JSON.stringify({schema:"ryugi.cli/v1",command:process.argv.includes("--version")?"version":"get",outcome:"success",data:{cached:true,capabilities:["reviewBundlesV1"]}}))',
   );
   const out = spawnSync(
     process.execPath,
@@ -89,6 +90,33 @@ test('a cached CLI with the old JSON protocol cannot execute the requested comma
   assert.equal(fs.existsSync(marker), false);
 });
 
+test('a unified-envelope CLI without combined-review support cannot execute a requested command', (t) => {
+  const f = setup(t);
+  const dist = path.join(f.root, 'cache/ryugi/artifacts/1.60.0/node_modules/ryugi-artifacts/dist');
+  fs.mkdirSync(dist, { recursive: true });
+  const marker = path.join(f.root, 'requested-command-ran');
+  fs.writeFileSync(
+    path.join(dist, 'cli.cjs'),
+    `if (!process.argv.includes('--version')) require('node:fs').writeFileSync(${JSON.stringify(marker)}, 'ran'); process.stdout.write(JSON.stringify({schema:'ryugi.cli/v1',command:'version',outcome:'success',data:{version:'1.60.0'}}));`,
+  );
+  const out = spawnSync(
+    process.execPath,
+    [
+      path.join(f.app, 'ryugi-artifacts.cjs'),
+      'comment',
+      'list',
+      '--sections',
+      'all',
+      '--format',
+      'json',
+    ],
+    { env: f.env, encoding: 'utf8' },
+  );
+  assert.equal(out.status, 1);
+  assert.equal(fs.existsSync(marker), false);
+  assert.equal(JSON.parse(out.stdout).error.code, 'E_BOOTSTRAP_FAILED');
+});
+
 test('a fresh latest pointer to an unusable CLI still permits a working offline cache', (t) => {
   const f = setup(t);
   const releases = path.join(f.root, 'cache/ryugi/artifacts');
@@ -96,7 +124,7 @@ test('a fresh latest pointer to an unusable CLI still permits a working offline 
     ['1.52.0', 'console.log(JSON.stringify({type:"auto-publish"}))'],
     [
       '1.59.1',
-      'console.log(JSON.stringify({schema:"ryugi.cli/v1",command:process.argv.includes("--version")?"version":"config",outcome:"success",data:{cached:true}}))',
+      'console.log(JSON.stringify({schema:"ryugi.cli/v1",command:process.argv.includes("--version")?"version":"config",outcome:"success",data:{cached:true,capabilities:["reviewBundlesV1"]}}))',
     ],
   ]) {
     const dist = path.join(releases, version, 'node_modules/ryugi-artifacts/dist');

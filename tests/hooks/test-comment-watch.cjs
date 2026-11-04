@@ -251,7 +251,7 @@ function launcher(t) {
       fs.copyFileSync(path.join(source, name), path.join(app, name));
   fs.writeFileSync(
     path.join(app, 'cli.cjs'),
-    `console.log(JSON.stringify({schema:'ryugi.cli/v1', command:process.argv.includes('--version')?'version':'start', outcome:'success', data:{status:'running'}}));\n`,
+    `console.log(JSON.stringify({schema:'ryugi.cli/v1', command:process.argv.includes('--version')?'version':'start', outcome:'success', data:{status:'running',capabilities:['reviewBundlesV1']}}));\n`,
   );
   return (project, session, ...args) => {
     const result = spawnSync(
