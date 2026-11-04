@@ -68,7 +68,11 @@ function eventFrom(input, host, at = Date.now()) {
   if (!input || typeof input.session_id !== 'string' || typeof input.hook_event_name !== 'string')
     return null;
   const event = { host, session: input.session_id, event: input.hook_event_name, at };
-  if (input.hook_event_name === 'PreToolUse') event.paths = pathsOf(input);
+  if (input.hook_event_name === 'PreToolUse') {
+    event.paths = pathsOf(input).slice(0, 64);
+    if (typeof input.tool_name === 'string' && input.tool_name.length <= 64)
+      event.tool = input.tool_name;
+  }
   return event;
 }
 

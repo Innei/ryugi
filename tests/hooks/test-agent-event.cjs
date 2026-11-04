@@ -111,6 +111,7 @@ test('the Codex PreToolUse hook reports apply_patch files as absolute paths', as
       session: SESSION,
       event: 'PreToolUse',
       at: undefined,
+      tool: 'apply_patch',
       paths: [
         path.join(dir, '.ryugi/artifacts/html/page/index.html'),
         path.join(cwd, 'src/new.ts'),
@@ -140,7 +141,14 @@ test('the Claude Code PreToolUse hook reports the edited file', async (t) => {
   await until(() => seen.length === 1);
   assert.deepEqual(
     { ...seen[0].body, at: undefined },
-    { host: 'claude', session: 's1', event: 'PreToolUse', at: undefined, paths: [file] },
+    {
+      host: 'claude',
+      session: 's1',
+      event: 'PreToolUse',
+      at: undefined,
+      paths: [file],
+      tool: 'Edit',
+    },
   );
 });
 
