@@ -164,16 +164,15 @@ function normalize(command, result2, options, policy) {
   const omitted = [...result2.coverage.omitted ?? []];
   let data = result2.data;
   if (options.fields) {
+    const keys = [.../* @__PURE__ */ new Set([...options.fields, ...policy.requiredFields ?? []])];
     if (policy.collection && data && typeof data === "object") {
       const record = data;
       const rows = record[policy.collection];
       data = {
         ...record,
-        [policy.collection]: Array.isArray(rows) ? rows.map(
-          (row, i) => project(row, options.fields, `data.${policy.collection}.${i}`, omitted)
-        ) : rows
+        [policy.collection]: Array.isArray(rows) ? rows.map((row, i) => project(row, keys, `data.${policy.collection}.${i}`, omitted)) : rows
       };
-    } else data = project(data, options.fields, "data", omitted);
+    } else data = project(data, keys, "data", omitted);
   }
   return {
     schema: "ryugi.cli/v1",
