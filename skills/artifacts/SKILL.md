@@ -9,7 +9,7 @@ Artifacts are pages your human partner opens in their browser while you
 work: an artboard of mockups to choose from and comment on, a document to
 read and comment on, or one HTML page to click and tune. You write files into the project; a local server shows each
 artifact at its own link and updates it the moment a file changes. They look,
-then answer in the terminal.
+then answer on the page or in the terminal.
 
 ## Read a Ryugi Cloud link
 
@@ -47,7 +47,8 @@ add `--format brief` for that call.
   saves it with empty stdout. Existing download/save targets are never overwritten.
 - `comment list` shows an overview. Select `--section threads|asks|groups|rounds`
   to inspect one collection. Thread previews contain resource IDs and an executable
-  `Read` command. Follow `More` for later pages; the scope line states what is shown.
+  `Read` command. Threads default to unread evidence; `--all` reads history.
+  Follow `More` for later pages; the scope line states what is shown.
 - Follow the printed `Read` command for complete thread messages, or use
   `comment read --thread ID`. Read and use all delivered evidence, then run the
   printed `Acknowledge` command with its exact receipt. A preview has no receipt;
@@ -57,9 +58,10 @@ add `--format brief` for that call.
   use the captured snapshot with `--save NEW_FILE`, read the entire file, then ack.
   Historical `--all` and projected `--fields` reads have no receipt.
 - Asks, groups and rounds are independent, repeatable state reads without receipts.
-  Apply answers only when their state is `submitted`; keep withdrawn, staleChoice,
-  orphan and byRecommendation context. Read verify groups, choice groups and
-  round submission separately.
+  Apply asks with `state: submitted`, and choices whose associated round is
+  `submitted`. Verify groups use the human's `verdict: pending|pass|reject`.
+  Preserve withdrawn, staleChoice, orphan and byRecommendation context where
+  present. Read verify groups, choice groups and round submission separately.
 - Exit codes: 0 success, 1 failure, 2 human action, 3 validation issues, 4 incomplete
   evidence, 5 partial completion, 130/143 interrupted. Inspect the reported effects
   before retrying an unknown write. Complete reads can be repeated after interruption.
@@ -253,8 +255,9 @@ whether it is on.
    shows the new version has loaded there; until then, an empty list
    means "not run yet", not "no errors".
 
-3. Tell them what changed, give the link, and ask for their answer in the
-   terminal. For a document, an `html` page or static boards, send that
+3. Tell them what changed and give the link. Questions, choice groups and verify
+   groups use their page controls; discussion can continue in the terminal.
+   For a document, an `html` page or static boards, send that
    message as soon as `check` is clean; screenshots or browser checks of
    your own come after it, reported in the next message. Playable boards
    follow `artboard.md`.

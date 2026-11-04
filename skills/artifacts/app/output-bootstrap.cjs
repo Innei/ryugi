@@ -43,8 +43,8 @@ var import_node_fs2 = __toESM(require("node:fs"), 1);
 var import_node_os2 = __toESM(require("node:os"), 1);
 var import_node_path4 = __toESM(require("node:path"), 1);
 
-// src/server/credentials.ts
-var import_node_path = __toESM(require("node:path"), 1);
+// src/shared/cloud.ts
+var MAX_ARTIFACT_BYTES = 20 * 1024 * 1024;
 
 // src/shared/validate.ts
 var BOARD_NUMBERS = ["x", "y", "w", "h"];
@@ -52,6 +52,7 @@ var BOARD_REQUIRED = ["file", "page", ...BOARD_NUMBERS];
 var MEDIA_REQUIRED = ["src", "page", ...BOARD_NUMBERS];
 
 // src/server/credentials.ts
+var import_node_path = __toESM(require("node:path"), 1);
 function credentialsFile(env, platform, home) {
   if (platform === "win32" && env.APPDATA)
     return import_node_path.default.join(env.APPDATA, "ryugi", "credentials.json");
@@ -60,11 +61,6 @@ function credentialsFile(env, platform, home) {
 
 // src/server/settings.ts
 var import_node_path2 = __toESM(require("node:path"), 1);
-
-// src/shared/cloud.ts
-var MAX_ARTIFACT_BYTES = 20 * 1024 * 1024;
-
-// src/server/settings.ts
 var settingsFileFor = (credentialsFile2) => import_node_path2.default.join(import_node_path2.default.dirname(credentialsFile2), "config.json");
 
 // src/cli/paths.ts
@@ -304,8 +300,17 @@ function result(data, completion = { kind: "succeeded" }, extra = {}) {
   return { data, completion, coverage: {}, effects: [], warnings: [], actions: [], ...extra };
 }
 
+// src/cli/output/view.ts
+function recoveryActions(error, subject) {
+  const details = error.details;
+  if (!details || typeof details !== "object" || Array.isArray(details)) return [];
+  return Object.entries(details).flatMap(
+    ([key, url]) => typeof url === "string" && /^https?:\/\/\S+$/i.test(url) ? [{ kind: "url", label: subject ? `${subject} ${key}` : key, url }] : []
+  );
+}
+
 // src/cli/output/render.ts
-var clean = (text) => text.replace(/[\x00-\x1f\x7f-\x9f]/g, " ");
+var clean = (text) => text.replaceAll(new RegExp("\\p{Cc}", "gu"), " ");
 function clip(text, size = 160) {
   const segments = [...new Intl.Segmenter(void 0, { granularity: "grapheme" }).segment(text)];
   return segments.length > size ? `${segments.slice(0, size).map((s) => s.segment).join("")}\u2026` : text;
@@ -338,16 +343,15 @@ function renderText(view, wire, options, collection, requiredFields = []) {
         );
   };
   facts(view.facts);
-  const errorActions = [];
+  const errorActions = wire.error ? recoveryActions(wire.error) : [];
   if (wire.error) {
     lines.push(`${clean(wire.error.code)}: ${clean(wire.error.message)}`);
     if (wire.error.httpStatus !== void 0) lines.push(`HTTP: ${wire.error.httpStatus}`);
     const details = wire.error.details;
     if (details && typeof details === "object" && !Array.isArray(details)) {
       for (const [key, detail] of Object.entries(details)) {
-        if (typeof detail === "string" && /^https?:\/\/\S+$/i.test(detail))
-          errorActions.push({ kind: "url", label: clean(key), url: detail });
-        else facts([{ label: key, binding: { key, value: detail }, required: true }]);
+        if (!errorActions.some((action) => action.label === key))
+          facts([{ label: key, binding: { key, value: detail }, required: true }]);
       }
     } else if (details !== void 0)
       facts([{ label: "Details", binding: { key: "details", value: details }, required: true }]);
@@ -379,7 +383,10 @@ function renderText(view, wire, options, collection, requiredFields = []) {
       );
       const rows = section.rows.map(
         (row, i) => columns.map(
-          (column) => value(row[column.key] ?? "", `data.${section.key}.${i}.${column.key}`)
+          (column) => value(
+            row[column.key] === void 0 ? "" : row[column.key],
+            `data.${section.key}.${i}.${column.key}`
+          )
         )
       );
       if (options.format === "table") {
@@ -392,7 +399,14 @@ function renderText(view, wire, options, collection, requiredFields = []) {
             (row) => row.map((cell, i) => cell.padEnd(widths[i] ?? cell.length)).join("  ").trimEnd()
           )
         );
-      } else for (const row of rows) lines.push(`  ${row.join(" \xB7 ")}`);
+      } else
+        for (const row of rows)
+          lines.push(
+            `  ${columns.flatMap((column, i) => {
+              const cell = row[i];
+              return cell === void 0 || cell === "" ? [] : [`${clean(column.label)}=${cell}`];
+            }).join(" \xB7 ")}`
+          );
       if (!rows.length) lines.push("No records.");
     } else if (section.kind === "diagnostics") {
       const limit = options.detail ? section.items.length : section.preview ?? 3;
@@ -409,7 +423,9 @@ function renderText(view, wire, options, collection, requiredFields = []) {
     } else {
       if (section.title) lines.push(`${clean(section.title)}:`);
       lines.push(
-        ...section.text.trimEnd().split("\n").map((line) => `  ${line.replace(/[\x00-\x08\x0b-\x1f\x7f-\x9f]/g, "")}`)
+        ...section.text.trimEnd().split("\n").map(
+          (line) => `  ${line.replaceAll(new RegExp("\\p{Cc}", "gu"), (char) => char === "	" || char === "\n" ? char : "")}`
+        )
       );
     }
   }
@@ -424,7 +440,7 @@ function renderText(view, wire, options, collection, requiredFields = []) {
       `Omitted: ${omissions.map((item) => `${item.count === void 0 ? "" : `${item.count} `}${item.path} (${item.reason})`).join(", ")}`
     );
   for (const action of [...view.actions ?? wire.next ?? [], ...errorActions])
-    lines.push(`${action.label ?? "Next"}: ${actionText(action)}`);
+    lines.push(`${clean(action.label ?? "Next")}: ${actionText(action)}`);
   return `${lines.join("\n")}
 `;
 }

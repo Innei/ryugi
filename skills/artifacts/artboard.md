@@ -338,8 +338,8 @@ resolve` refuses a reject, and passing the group closes it.
   unless asked; changing them sends it back to `pending`. Your human partner
   can undo a pass, which returns the group to `pending`.
 - A new verify round goes below the last one on the same page, with new
-  groups; remove `"verify": true` from the previous round's groups so only
-  the current round counts.
+  groups. Previously passed groups drop `"verify": true`; pending and
+  rejected groups keep it and continue to count until they pass.
 
 ## Choice groups
 
@@ -351,9 +351,10 @@ bottom submits the round. A round is the groups under one title note.
   arrives as a `ryugi-choices` message (or they say done in the terminal):
   run its command.
 - `comment list --section groups --kind choose --detail` returns
-  choice groups (`kind: "choose"`, `choice`, `byRecommendation`, `threads`).
+  choice groups (`kind: "choose"`, `choice`, `byRecommendation`, `round`, `threads`).
   `comment list --section rounds --detail` independently shows each round's
-  `id` and `state` (`open`, `submitted` or `closed`). `choice` is the
+  `id`, member `groups` and `state` (`open`, `submitted` or `closed`).
+  Match the group's `round` to a `submitted` round before acting. `choice` is the
   answer; `byRecommendation: true` means they kept your recommendation; a
   `null` choice has no answer. Comments on any board of the group are part
   of the answer: read the threads too.
@@ -405,7 +406,8 @@ bottom submits the round. A round is the groups under one title note.
    readiness, not
    working handlers, unclipped content or passing interaction checks. If you
    cannot run the prototype, report which checks remain instead of calling
-   it verified. Then give the link and ask for their answer in the terminal.
+   it verified. Give the link: choice and verify groups use their page controls;
+   discussion can continue in the terminal.
    Static boards need nothing more: give the link as soon as `check` is
    clean. A screenshot pass of your own comes after that message, while they
    look; report what it finds in the next one.

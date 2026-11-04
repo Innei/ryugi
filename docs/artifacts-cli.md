@@ -53,9 +53,20 @@ all evidence has been used, the printed `Acknowledge` command consumes its exact
 receipt; later edits and replies remain unread. Asks, groups and rounds are
 independent current-state collections without receipts.
 
+Brief record rows use labelled `name=value` cells. False and zero remain visible;
+an explicit null is `none`, and absent optional cells are omitted. This also
+applies to `--detail`, so recommendation and submission context remain readable.
+
 Cloud `get` downloads nothing by default. Use `--source` for LiteXML or explicit
 `--download --out NEW_DIRECTORY` for assets; save/download targets are never
 silently overwritten.
+Its printed Details action pins the version and preserves explicit section,
+limit, field selection and comment exclusions.
+
+Partial publication retains the successful URL and each target's effects.
+Provided login or upgrade links for failed references are printed in full as
+target-labelled actions. Resolve the affected target after inspecting those
+effects; exit 5 does not mean that the main publication was rolled back.
 
 ## Machine consumers
 
@@ -77,3 +88,60 @@ In JSON, complete thread reads return `data.items` and `data.receipt`; complete
 diffs return `data.diff` and `data.receipt`. Preview, historical --all, projected
 --fields and state reads have no receipt. JSON is available on demand; the skill's
 ordinary decision-and-action flow reads Brief.
+
+### JSONL records and foreground ownership
+
+Stdout contains UTF-8 JSON records separated by newlines. Buffer partial lines
+across pipe chunks; parse each complete line independently. Stderr is diagnostic
+output and can itself contain JSON-looking server logs; keep it separate.
+
+Every stdout record has `schema: "ryugi.cli/v1"`, `kind` and `seq`.
+The `command` identity is carried by meta, ready and result; progress and item
+records belong to that same invocation and do not repeat `command`.
+Sequence numbers start at 0 and increase within one invocation; they are not
+reconnect or replay cursors. Dispatch on `kind`:
+
+| kind | Meaning |
+| --- | --- |
+| `meta` | Invocation identity; no domain result or readiness claim. |
+| `progress` | Optional `phase`, `current` and `total`; no terminal outcome. |
+| `item` | A finite collection's `collection` and one record in `data`. The terminal result omits that streamed collection. |
+| `ready` | Foreground startup is ready. Read `data.status`, `data.reused`, `data.url`, `data.localUrl` and `data.cloud`, plus warnings and effects. Continue reading. |
+| `result` | The invocation's terminal envelope: `outcome`, `data`, effects, errors and next actions. A failure can arrive before any ready event. |
+
+A new foreground server may produce the following sequence (example paths and URLs):
+
+```jsonl
+{"schema":"ryugi.cli/v1","command":"start","seq":0,"kind":"meta"}
+{"schema":"ryugi.cli/v1","command":"start","outcome":"success","data":{"status":"running","scope":"machine","project":"/tmp/demo","reused":false,"url":"http://localhost:27319/document/example","localUrl":"http://localhost:27319/document/example","artifact":"document/demo","cloud":"local_only"},"effects":[{"operation":"start","target":"/tmp/demo","state":"confirmed"}],"seq":1,"kind":"ready"}
+{"schema":"ryugi.cli/v1","command":"start","outcome":"error","data":{"status":"stopped","scope":"machine","project":"/tmp/demo","reused":false,"url":"http://localhost:27319/document/example","localUrl":"http://localhost:27319/document/example","artifact":"document/demo","cloud":"local_only"},"effects":[{"operation":"start","target":"/tmp/demo","state":"confirmed"}],"error":{"code":"E_INTERRUPTED","message":"Command interrupted by SIGTERM.","details":{"signal":"SIGTERM"}},"seq":2,"kind":"result"}
+```
+
+`data.url` is the shareable Open link, including any key; `data.localUrl` is
+the local fallback. `data.cloud: live_link_reserved` describes a reservation,
+not a completed publication. A ready envelope can have `outcome: attention`
+when local startup succeeded with an optional sign-in warning.
+
+The stream describes this invocation's lifecycle:
+
+- If it starts a new server (`data.reused: false`), the foreground process owns
+  that server and remains running. SIGINT or SIGTERM stops its child server,
+  preserves artifact files, and normally emits a terminal
+  `E_INTERRUPTED` with `error.details.signal`; process exits are 130 and 143.
+  Cancellation is shutdown of this owned server, not a detach operation.
+- If a matching server already runs, startup emits ready with
+  `data.reused: true`, then a successful result with
+  `data.status: running`, and exits 0. It does not attach a persistent
+  subscription or take ownership of that server. EOF here does not mean the
+  shared server stopped. Inspect the terminal status rather than treating every
+  process exit as server shutdown.
+- To keep a newly started server running after the caller exits, use
+  `start --background` and consume its finite startup result. There is no
+  foreground detach or replay API. Global `stop` is a separate action affecting
+  every project; it is not subscription cleanup.
+
+A consumer retains ready and terminal state separately, processes result even
+when ready was never observed, and checks the process exit along with effects.
+EOF without a terminal record leaves the invocation incomplete; inspect the
+server/effects before retrying. Parse failures are not successful readiness.
+Early argument/bootstrap errors may emit a result directly without meta.

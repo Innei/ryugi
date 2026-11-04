@@ -37,10 +37,14 @@ Your message is one line on what's on the board, plus the link.
 
 When they answer:
 
-1. Read their answers from `comment list --json` (`groups` and `rounds`,
-   plus the threads), as ryugi:artifacts says under Choice groups. When they
-   answered in the terminal instead, record it on the board first. Read what
-   they selected when they point at nodes or tweaks.
+1. Read Brief from `comment list --section groups --kind choose --detail`,
+   then independently read `--section rounds --detail` and `--section threads`
+   for this project and artboard, as ryugi:artifacts says under Choice groups.
+   Match each group's `round` to a `submitted` round. Follow printed
+   `More` and complete thread `Read` commands; use the evidence before its
+   exact `Acknowledge`. When they answered in the terminal instead, record
+   it on the board first. A page submit is already recorded: read it before
+   continuing. Read what they selected when they point at nodes or tweaks.
 2. Record each answered group as a decision, theirs or the recommendation
    they accepted: in the document's Settled when one is open, in your next
    playback otherwise. In the document, name the chosen board with a

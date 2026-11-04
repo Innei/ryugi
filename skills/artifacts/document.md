@@ -188,11 +188,16 @@ write it as an `<ask>` instead of asking them to comment:
 
 They pick or write on each question and submit once, at the bottom of the
 page. With a comment monitor the submit arrives as a `ryugi-answers`
-message; otherwise they say done in the terminal. Then run `comment list`:
+message; otherwise they say done in the terminal. Read the questions in Brief:
 
-- `asks` holds every question: `state` (`draft`, `submitted`, `settled`,
+```bash
+node app/ryugi-artifacts.cjs comment list --section asks --detail --project-dir /path/to/project --artifact document/<id>
+```
+
+- This state collection holds every question: `state` (`draft`, `submitted`, `settled`,
   `orphan`), `choice` (an option value), `text` (their own words) and
-  `byRecommendation`. `choice` and `text` both null means no answer.
+  `byRecommendation`. Follow `More` for every submitted question; this state
+  read has no receipt. `choice` and `text` both null means no answer.
 - For each submitted question, change the document to match the answer,
   then settle it with one line on what changed, on stdin:
   `comment note … --ask <id>`. The note shows under the question, which

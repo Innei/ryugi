@@ -65,12 +65,17 @@ they already answered in chat.
 
 When they submit or say the round is done, or a comment lands:
 
-1. Re-read the document, its comments and its `asks`, as ryugi:artifacts
-   says.
-2. Move every answered item to Settled as one line: changed, written or
-   commented ones as theirs, untouched recommendations as accepted. Write
-   a `comment note` on each question you settled. An item settled on the
-   artboard names the chosen board with a `<ref>`, not as plain text.
+1. Re-read the document. Read Brief from `comment list --section asks --detail`
+   and `--section threads` for this project and document. Follow `More`
+   and complete thread `Read` commands; use the evidence before its exact
+   `Acknowledge`, as ryugi:artifacts says.
+2. Process each `submitted` question and write its `comment note` after
+   applying it. Move answered items to Settled as one line: changed, written
+   or commented ones as theirs, submitted recommendations as accepted.
+   A submitted question with no answer also gets a note stating the assumption
+   or what stayed unchanged; a question still needed uses a new id. Page
+   submission is already recorded. An item settled on the artboard names the
+   chosen board with a `<ref>`, not as plain text.
 3. Drop the questions their answers made moot. Answer each comment, then
    resolve it.
 4. Write the next round from what you now know.
