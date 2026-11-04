@@ -203,3 +203,17 @@ test('the Codex Stop hook stays silent without a running server', async (t) => {
   assert.deepEqual(await run(command, input), { code: 0, out: '' });
   assert.ok(Date.now() - started < 5000);
 });
+
+test('the turn-end flush never waits on a stdin that stays open', async (t) => {
+  const dir = project(t);
+  const seen = await hub(t, dir);
+  const child = spawn(process.execPath, [path.join(repo, 'hooks/flush-artifacts.cjs'), dir], {
+    stdio: ['pipe', 'pipe', 'pipe'],
+  });
+  t.after(() => child.kill());
+  const started = Date.now();
+  const code = await new Promise((resolve) => child.on('exit', resolve));
+  assert.equal(code, 0);
+  assert.ok(Date.now() - started < 3000, `took ${Date.now() - started} ms`);
+  await until(() => seen.some((r) => r.path === '/api/cloud/flush'));
+});

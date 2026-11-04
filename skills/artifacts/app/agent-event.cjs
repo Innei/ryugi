@@ -72,12 +72,30 @@ function eventFrom(input, host, at = Date.now()) {
   return event;
 }
 
-function readStdin() {
-  try {
-    return JSON.parse(fs.readFileSync(0, 'utf8'));
-  } catch {
-    return null;
-  }
+function readStdin(timeoutMs = 1000) {
+  return new Promise((resolve) => {
+    if (process.stdin.isTTY) {
+      resolve(null);
+      return;
+    }
+    const chunks = [];
+    const finish = (value) => {
+      clearTimeout(timer);
+      process.stdin.removeAllListeners();
+      process.stdin.destroy();
+      resolve(value);
+    };
+    const timer = setTimeout(() => finish(null), timeoutMs);
+    process.stdin.on('data', (chunk) => chunks.push(chunk));
+    process.stdin.on('error', () => finish(null));
+    process.stdin.on('end', () => {
+      try {
+        finish(JSON.parse(Buffer.concat(chunks).toString('utf8')));
+      } catch {
+        finish(null);
+      }
+    });
+  });
 }
 
 function projectOf(cwd) {
@@ -91,11 +109,12 @@ function projectOf(cwd) {
 if (require.main === module) {
   const at = Date.now();
   const host = process.argv[2] === 'claude' ? 'claude' : 'codex';
-  const input = readStdin();
-  const event = eventFrom(input, host, at);
-  const project =
-    process.argv[3] || (input && typeof input.cwd === 'string' ? projectOf(input.cwd) : null);
-  if (event && project) void postToServer(project, '/api/agent/event', event);
+  void readStdin().then((input) => {
+    const event = eventFrom(input, host, at);
+    const project =
+      process.argv[3] || (input && typeof input.cwd === 'string' ? projectOf(input.cwd) : null);
+    if (event && project) void postToServer(project, '/api/agent/event', event);
+  });
 }
 
 module.exports = { eventFrom, pathsOf, postToServer, readStdin };

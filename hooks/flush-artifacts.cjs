@@ -5,7 +5,9 @@ const { eventFrom, postToServer, readStdin } = require('../skills/artifacts/app/
 const at = Date.now();
 const project = process.argv[2];
 if (project) {
-  const event = eventFrom(readStdin(), 'claude', at);
-  if (event) void postToServer(project, '/api/agent/event', event);
   void postToServer(project, '/api/cloud/flush');
+  void readStdin().then((input) => {
+    const event = eventFrom(input, 'claude', at);
+    if (event) void postToServer(project, '/api/agent/event', event);
+  });
 }
