@@ -123,13 +123,15 @@ function projectPaths(dir) {
 
 // src/cli/output/normalize.ts
 var OutputError = class extends Error {
-  constructor(error, kind = "failed") {
+  constructor(error, kind = "failed", raw) {
     super(error.message);
     this.error = error;
     this.kind = kind;
+    this.raw = raw;
   }
   error;
   kind;
+  raw;
 };
 function completionState(completion, warning = false) {
   switch (completion.kind) {
@@ -183,7 +185,13 @@ function normalize(command, result2, options, policy) {
     ...result2.effects.length ? { effects: result2.effects } : {},
     ...result2.warnings.length ? { warnings: result2.warnings } : {},
     ...result2.actions.length ? { next: result2.actions } : {},
-    ...result2.completion.kind === "failed" ? { error: result2.completion.error } : {}
+    ...result2.completion.kind === "failed" ? { error: result2.completion.error } : result2.completion.kind === "interrupted" ? {
+      error: {
+        code: "E_INTERRUPTED",
+        message: `Command interrupted by ${result2.completion.signal}.`,
+        details: { signal: result2.completion.signal }
+      }
+    } : {}
   };
 }
 

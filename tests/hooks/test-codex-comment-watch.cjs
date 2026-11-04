@@ -64,12 +64,24 @@ function fixture(t) {
   const app = path.join(root, 'app');
   fs.mkdirSync(app);
   for (const name of fs.readdirSync(path.dirname(adapter)))
-    if (/\.(?:cjs|json)$/.test(name)) fs.copyFileSync(path.join(path.dirname(adapter), name), path.join(app, name));
-  fs.writeFileSync(path.join(app, 'cli.cjs'), "console.log(JSON.stringify({type:'server-started'}));\n");
+    if (/\.(?:cjs|json)$/.test(name))
+      fs.copyFileSync(path.join(path.dirname(adapter), name), path.join(app, name));
+  fs.writeFileSync(
+    path.join(app, 'cli.cjs'),
+    `console.log(JSON.stringify({schema:'ryugi.cli/v1', command:process.argv.includes('--version')?'version':'start', outcome:'success', data:{status:'running'}}));\n`,
+  );
   const open = (artifact, session = id) => {
     const result = spawnSync(
       process.execPath,
-      [path.join(app, 'ryugi-artifacts.cjs'), 'start', '--json', '--project-dir', project, '--artifact', artifact],
+      [
+        path.join(app, 'ryugi-artifacts.cjs'),
+        'start',
+        '--json',
+        '--project-dir',
+        project,
+        '--artifact',
+        artifact,
+      ],
       {
         env: { ...env, CODEX_THREAD_ID: session },
         encoding: 'utf8',
@@ -106,7 +118,8 @@ function fixture(t) {
   });
   const start = (overrides = {}, activate = true) => {
     if (activate)
-      for (const artifact of ['document/plan', 'artboard/settings']) open(artifact, overrides.session_id ?? id);
+      for (const artifact of ['document/plan', 'artboard/settings'])
+        open(artifact, overrides.session_id ?? id);
     const child = spawn(process.execPath, [adapter, 'watch'], {
       cwd: project,
       env,
@@ -129,7 +142,9 @@ function fixture(t) {
   });
   const state = () => {
     try {
-      return JSON.parse(fs.readFileSync(path.join(data, 'codex-comment-watch/workers', `${id}.json`), 'utf8'));
+      return JSON.parse(
+        fs.readFileSync(path.join(data, 'codex-comment-watch/workers', `${id}.json`), 'utf8'),
+      );
     } catch {
       return null;
     }
@@ -191,7 +206,9 @@ async function desktop(t, f) {
 }
 
 function hooks() {
-  const manifest = JSON.parse(fs.readFileSync(path.join(repo, '.codex-plugin/plugin.json'), 'utf8'));
+  const manifest = JSON.parse(
+    fs.readFileSync(path.join(repo, '.codex-plugin/plugin.json'), 'utf8'),
+  );
   if (typeof manifest.hooks !== 'string') return {};
   return JSON.parse(fs.readFileSync(path.resolve(repo, manifest.hooks), 'utf8')).hooks;
 }
@@ -210,7 +227,11 @@ test('a new comment is queued to the hook session rather than an inherited paren
   assert.ok(message.includes('document/plan'));
   assert.ok(message.includes('comment list --section threads --format json'));
   assert.ok(!message.includes('Change it'));
-  assert.ok(!fs.existsSync(path.join(f.project, '.ryugi/artifacts/.state/document/plan/comment-cursors.json')));
+  assert.ok(
+    !fs.existsSync(
+      path.join(f.project, '.ryugi/artifacts/.state/document/plan/comment-cursors.json'),
+    ),
+  );
   await delay(1200);
   assert.equal(f.read().length, 1);
 });
@@ -291,7 +312,10 @@ test('SessionEnd stops delivery and leaves other sessions alone', async (t) => {
     encoding: 'utf8',
   });
   assert.equal(end.status, 0);
-  await until(() => first.exitCode !== null || first.signalCode !== null, 'ended session kept watching');
+  await until(
+    () => first.exitCode !== null || first.signalCode !== null,
+    'ended session kept watching',
+  );
   assert.equal(other.exitCode, null);
   f.write('document/plan', f.comments());
   await until(() => f.read().length > 0, 'other session stopped too');
@@ -335,7 +359,10 @@ test('the shipped lifecycle hooks invoke the portable watcher and stop it on ses
     encoding: 'utf8',
   });
   assert.equal(result.status, 0);
-  await until(() => child.exitCode !== null, 'the manifest cleanup command did not stop the watcher');
+  await until(
+    () => child.exitCode !== null,
+    'the manifest cleanup command did not stop the watcher',
+  );
 });
 
 test('a submitted round is queued even with no unread comments, and the watcher beats', async (t) => {
@@ -343,7 +370,10 @@ test('a submitted round is queued even with no unread comments, and the watcher 
   const rounds = (state) => {
     const file = path.join(f.project, '.ryugi/artifacts/.state/artboard/settings/rounds.json');
     fs.mkdirSync(path.dirname(file), { recursive: true });
-    fs.writeFileSync(file, JSON.stringify({ rounds: [{ id: 'r1', page: 'p', state, groups: ['q1'], boards: ['a'] }] }));
+    fs.writeFileSync(
+      file,
+      JSON.stringify({ rounds: [{ id: 'r1', page: 'p', state, groups: ['q1'], boards: ['a'] }] }),
+    );
   };
   f.write('artboard/settings', { version: 1, threads: [] });
   rounds('open');
@@ -397,7 +427,10 @@ test('desktop comments retry through the app pipe and acknowledge the hook sessi
   f.start();
   f.write('document/plan', f.comments());
   await until(() => app.calls.length > 0, 'desktop comment never reached the app pipe');
-  await until(() => f.state()?.lastError?.includes('desktop offline'), 'app failure was not recorded');
+  await until(
+    () => f.state()?.lastError?.includes('desktop offline'),
+    'app failure was not recorded',
+  );
   app.recover();
   await until(() => Boolean(f.state()?.queuedAt), 'pending desktop comment was not retried');
   const call = app.calls.at(-1);
@@ -448,7 +481,10 @@ test('a nonlocal desktop host is rejected without trying the CLI endpoint', asyn
   f.env.CODEX_APP_TOOLS_CALLER_HOST_ID = 'durable';
   f.start();
   f.write('document/plan', f.comments());
-  await until(() => /local host/i.test(f.state()?.lastError || ''), 'nonlocal host was not rejected');
+  await until(
+    () => /local host/i.test(f.state()?.lastError || ''),
+    'nonlocal host was not rejected',
+  );
   assert.equal(app.calls.length, 0);
   assert.equal(f.read().length, 0);
 });

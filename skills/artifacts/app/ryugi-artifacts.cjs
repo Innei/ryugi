@@ -10,7 +10,11 @@ const path = require('node:path');
 const outputBootstrap = require('./output-bootstrap.cjs');
 const LATEST_CHECK_MS = 24 * 60 * 60 * 1000;
 const RETRY_CHECK_MS = 60 * 60 * 1000;
-const RELEASES = path.join(process.env.XDG_CACHE_HOME || path.join(os.homedir(), '.cache'), 'ryugi', 'artifacts');
+const RELEASES = path.join(
+  process.env.XDG_CACHE_HOME || path.join(os.homedir(), '.cache'),
+  'ryugi',
+  'artifacts',
+);
 const LATEST_FILE = path.join(RELEASES, 'latest.json');
 const win32 = process.platform === 'win32';
 
@@ -22,8 +26,35 @@ const compare = (a, b) => {
   for (let i = 0; i < 3; i++) if (x[i] !== y[i]) return x[i] - y[i];
   return 0;
 };
-const supported = valid;
-const cliOf = (version) => path.join(RELEASES, version, 'node_modules', 'ryugi-artifacts', 'dist', 'cli.cjs');
+const cliOf = (version) =>
+  path.join(RELEASES, version, 'node_modules', 'ryugi-artifacts', 'dist', 'cli.cjs');
+const protocolChecks = new Map();
+function usesOutputProtocol(cli) {
+  if (protocolChecks.has(cli)) return protocolChecks.get(cli);
+  const probe = spawnSync(process.execPath, [cli, '--version', '--format', 'json'], {
+    env: { ...process.env, RYUGI_NO_UPDATE_CHECK: '1' },
+    encoding: 'utf8',
+    timeout: 5000,
+    maxBuffer: 64 * 1024,
+  });
+  let accepted = false;
+  try {
+    const value = JSON.parse(probe.stdout);
+    accepted =
+      probe.status === 0 &&
+      value.schema === 'ryugi.cli/v1' &&
+      value.command === 'version' &&
+      value.outcome === 'success';
+  } catch {}
+  protocolChecks.set(cli, accepted);
+  return accepted;
+}
+function requireOutputProtocol(cli) {
+  if (!usesOutputProtocol(cli))
+    throw new LaunchError(
+      `The installed CLI does not provide ryugi.cli/v1. Install a current ryugi-artifacts release or rebuild the local CLI.`,
+    );
+}
 
 // The local checkout has no release version. Fingerprint the code that affects
 // the running server so start replaces an older process instead of reusing it.
@@ -53,7 +84,12 @@ function record(version, checkedAt) {
 function cachedLatest() {
   try {
     const { version, checkedAt } = JSON.parse(fs.readFileSync(LATEST_FILE, 'utf8'));
-    if (supported(version) && Date.now() - checkedAt < LATEST_CHECK_MS) return version;
+    if (
+      valid(version) &&
+      Date.now() - checkedAt < LATEST_CHECK_MS &&
+      (!fs.existsSync(cliOf(version)) || usesOutputProtocol(cliOf(version)))
+    )
+      return version;
   } catch {}
   return null;
 }
@@ -65,7 +101,7 @@ function newestInstalled() {
   } catch {}
   return (
     names
-      .filter((v) => supported(v) && fs.existsSync(cliOf(v)))
+      .filter((v) => valid(v) && fs.existsSync(cliOf(v)) && usesOutputProtocol(cliOf(v)))
       .sort(compare)
       .pop() || null
   );
@@ -103,13 +139,16 @@ function askNpm() {
 
 function fallback(reason) {
   const installed = newestInstalled();
-  if (!installed) throw new LaunchError(reason);
+  if (!installed) throw new LaunchError(`${reason} No cached CLI provides ryugi.cli/v1.`);
   record(installed, Date.now() - LATEST_CHECK_MS + RETRY_CHECK_MS);
   return installed;
 }
 
 function install(version) {
-  if (fs.existsSync(cliOf(version))) return version;
+  if (fs.existsSync(cliOf(version))) {
+    requireOutputProtocol(cliOf(version));
+    return version;
+  }
   const target = path.join(RELEASES, version);
   const staging = `${target}.install.${process.pid}`;
   try {
@@ -131,7 +170,10 @@ function install(version) {
     '--loglevel=error',
     `ryugi-artifacts@${version}`,
   ]);
-  if (result.status !== 0 || !fs.existsSync(path.join(staging, 'node_modules', 'ryugi-artifacts', 'dist', 'cli.cjs'))) {
+  if (
+    result.status !== 0 ||
+    !fs.existsSync(path.join(staging, 'node_modules', 'ryugi-artifacts', 'dist', 'cli.cjs'))
+  ) {
     fs.rmSync(staging, { recursive: true, force: true });
     return fallback(
       `Could not install ryugi-artifacts@${version} from npm; the first start of each version needs ${NEEDS_NETWORK}. npm said: ${(result.stderr || result.stdout || '').trim()}`,
@@ -142,7 +184,10 @@ function install(version) {
   } catch {}
   fs.rmSync(staging, { recursive: true, force: true });
   if (!fs.existsSync(cliOf(version)))
-    throw new LaunchError(`Installed ryugi-artifacts@${version} but could not move it into ${target}`);
+    throw new LaunchError(
+      `Installed ryugi-artifacts@${version} but could not move it into ${target}`,
+    );
+  requireOutputProtocol(cliOf(version));
   return version;
 }
 
@@ -151,7 +196,9 @@ function resolveRelease() {
   if (cached) return install(cached);
   const latest = askNpm();
   if (!latest)
-    return fallback(`Could not reach npm for the latest ryugi-artifacts; the first start needs ${NEEDS_NETWORK}.`);
+    return fallback(
+      `Could not reach npm for the latest ryugi-artifacts; the first start needs ${NEEDS_NETWORK}.`,
+    );
   record(latest, Date.now());
   return install(latest);
 }
@@ -170,15 +217,6 @@ function main() {
     outputBootstrap.reportFailure(args, selection.error, selection);
     return;
   }
-  if (process.env.CODEX_THREAD_ID || process.env.CLAUDE_CODE_SESSION_ID || process.env.PI_SESSION_ID) {
-    try {
-      require('./comment-subscriptions.cjs').register(args);
-    } catch (error) {
-      // Older standalone launcher copies still run normally without the optional integration.
-      if (error.code !== 'MODULE_NOT_FOUND')
-        console.error(JSON.stringify({ type: 'comment-watch-error', message: error.message }));
-    }
-  }
   const local = path.join(__dirname, 'cli.cjs');
   const env = {
     ...process.env,
@@ -191,6 +229,19 @@ function main() {
     env.RYUGI_ARTIFACTS_VERSION = version;
   } else if (!env.RYUGI_ARTIFACTS_VERSION) {
     env.RYUGI_ARTIFACTS_VERSION = localVersion();
+  }
+  requireOutputProtocol(cli);
+  if (
+    process.env.CODEX_THREAD_ID ||
+    process.env.CLAUDE_CODE_SESSION_ID ||
+    process.env.PI_SESSION_ID
+  ) {
+    try {
+      require('./comment-subscriptions.cjs').register(args);
+    } catch (error) {
+      if (error.code !== 'MODULE_NOT_FOUND')
+        console.error(JSON.stringify({ type: 'comment-watch-error', message: error.message }));
+    }
   }
   const given = Number(env.RYUGI_ARTIFACTS_OWNER);
   const owner = Number.isInteger(given) && given > 1 ? given : ownerPid();

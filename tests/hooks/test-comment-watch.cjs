@@ -12,7 +12,9 @@ const { setTimeout: delay } = require('node:timers/promises');
 const repo = path.resolve(__dirname, '../..');
 const watcher = path.join(repo, 'hooks/watch-comments.cjs');
 const at = (n) => `2026-10-30T10:00:${String(n).padStart(2, '0')}.000Z`;
-const { humanTokens, reviewStateKey } = require(path.join(repo, 'skills/artifacts/app/comment-threads.cjs'));
+const { humanTokens, reviewStateKey } = require(
+  path.join(repo, 'skills/artifacts/app/comment-threads.cjs'),
+);
 function acknowledged(f, artifact, at, key = 'Claude Code') {
   const file = JSON.parse(fs.readFileSync(path.join(f.root, artifact, 'comments.json'), 'utf8'));
   const consumed = file.threads
@@ -60,7 +62,10 @@ test('new document and artboard comments produce actionable notifications withou
   f.save('document/plan', [thread()]);
   f.save('artboard/settings', [{ ...thread(), anchor: { page: 'p', board: 'a', x: 1, y: 2 } }]);
   const events = poll();
-  assert.deepEqual(events.map((event) => event.artifact).sort(), ['artboard/settings', 'document/plan']);
+  assert.deepEqual(events.map((event) => event.artifact).sort(), [
+    'artboard/settings',
+    'document/plan',
+  ]);
   for (const event of events) {
     assert.equal(event.unread, 1);
     assert.ok(event.command.includes('comment list --section threads --format json'));
@@ -216,7 +221,8 @@ function monitor(t, cwd, overrides) {
     CLAUDE_PROJECT_DIR: cwd,
     ...overrides,
   };
-  const child = entry && spawn(entry.command, { cwd, env, shell: true, stdio: ['ignore', 'pipe', 'pipe'] });
+  const child =
+    entry && spawn(entry.command, { cwd, env, shell: true, stdio: ['ignore', 'pipe', 'pipe'] });
   const state = { output: '', errors: '', child };
   if (state.child) {
     state.child.stdout.on('data', (data) => {
@@ -241,14 +247,23 @@ function launcher(t) {
   t.after(() => fs.rmSync(app, { recursive: true, force: true }));
   const source = path.join(repo, 'skills/artifacts/app');
   for (const name of fs.readdirSync(source))
-    if (/\.(?:cjs|json)$/.test(name)) fs.copyFileSync(path.join(source, name), path.join(app, name));
-  fs.writeFileSync(path.join(app, 'cli.cjs'), "console.log('{}');\n");
+    if (/\.(?:cjs|json)$/.test(name))
+      fs.copyFileSync(path.join(source, name), path.join(app, name));
+  fs.writeFileSync(
+    path.join(app, 'cli.cjs'),
+    `console.log(JSON.stringify({schema:'ryugi.cli/v1', command:process.argv.includes('--version')?'version':'start', outcome:'success', data:{status:'running'}}));\n`,
+  );
   return (project, session, ...args) => {
     const result = spawnSync(
       process.execPath,
       [path.join(app, 'ryugi-artifacts.cjs'), ...args, '--json', '--project-dir', project],
       {
-        env: { ...process.env, CODEX_THREAD_ID: undefined, PI_SESSION_ID: undefined, CLAUDE_CODE_SESSION_ID: session },
+        env: {
+          ...process.env,
+          CODEX_THREAD_ID: undefined,
+          PI_SESSION_ID: undefined,
+          CLAUDE_CODE_SESSION_ID: session,
+        },
         encoding: 'utf8',
       },
     );
@@ -296,7 +311,11 @@ test('the declared plugin monitor notices artifacts created later from a reposit
   await delay(1200);
   assert.equal(watcher.output, '');
   f.save('document/plan', [thread()]);
-  await until(() => watcher.output.includes('document/plan') || (watcher.child && watcher.child.exitCode !== null));
+  await until(
+    () =>
+      watcher.output.includes('document/plan') ||
+      (watcher.child && watcher.child.exitCode !== null),
+  );
   const { output, errors } = watcher;
   assert.ok(output.includes('document/plan'), `No automatic comment notification. ${errors}`);
   const events = output
@@ -337,7 +356,9 @@ test('comments on an open choice round stay silent until the round is submitted'
   assert.equal(event.type, 'ryugi-choices');
   assert.equal(event.artifact, 'artboard/pick');
   assert.equal(event.round, 'r1');
-  assert.ok(event.command.includes('comment list --section groups --kind choose --detail --format json'));
+  assert.ok(
+    event.command.includes('comment list --section groups --kind choose --detail --format json'),
+  );
   assert.ok(!event.withdrawn);
   assert.deepEqual(poll(), []);
 });
@@ -366,7 +387,12 @@ test('a running watcher keeps a heartbeat beside its subscription', async (t) =>
   const f = fixture(t);
   const session = randomUUID();
   const child = spawn(process.execPath, [watcher, f.project], {
-    env: { ...process.env, CODEX_THREAD_ID: undefined, PI_SESSION_ID: undefined, CLAUDE_CODE_SESSION_ID: session },
+    env: {
+      ...process.env,
+      CODEX_THREAD_ID: undefined,
+      PI_SESSION_ID: undefined,
+      CLAUDE_CODE_SESSION_ID: session,
+    },
     stdio: 'ignore',
   });
   t.after(() => child.kill());
