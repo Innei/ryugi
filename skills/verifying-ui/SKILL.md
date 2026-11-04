@@ -75,7 +75,12 @@ on that video board.
 
 ## When verdicts come back
 
-On their next message, run `comment list` and read `groups`.
+On their next message, use the artifacts launcher to read
+`comment list --section groups --kind verify --detail` and
+`comment list --section threads` for this project and artboard in Brief.
+Follow printed `More` and complete thread `Read` commands; use the evidence
+before its exact `Acknowledge`. Verify groups use the human's `verdict`,
+independently of choice-round submission.
 
 - `pass`: done for that group. Leave its files alone.
 - `reject`: read the reason and any pins on its boards, and fix it inside

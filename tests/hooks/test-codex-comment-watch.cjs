@@ -24,6 +24,18 @@ async function until(check, explanation, timeout = 5000) {
   assert.fail(explanation);
 }
 
+async function initialScan(f) {
+  const file = path.join(f.project, '.ryugi/artifacts/.state/codex-comment-watch', `${id}.alive`);
+  await until(() => fs.existsSync(file), 'codex watcher never wrote a heartbeat');
+  const first = fs.readFileSync(file, 'utf8');
+  // A heartbeat starts each synchronous scan. The next one proves the initial
+  // snapshot finished before this test submits a new answer or round.
+  await until(
+    () => fs.readFileSync(file, 'utf8') !== first,
+    'codex watcher never finished its initial scan',
+  );
+}
+
 function fixture(t) {
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-codex-watch-')));
   const project = path.join(root, "project with ' quote");
@@ -378,8 +390,7 @@ test('a submitted round is queued even with no unread comments, and the watcher 
   f.write('artboard/settings', { version: 1, threads: [] });
   rounds('open');
   f.start();
-  const alive = path.join(f.project, '.ryugi/artifacts/.state/codex-comment-watch', `${id}.alive`);
-  await until(() => fs.existsSync(alive), 'codex watcher never wrote a heartbeat');
+  await initialScan(f);
   rounds('submitted');
   await until(() => f.read().length > 0, 'submitted round never reached codex queue');
   const args = f.read()[0];
@@ -411,8 +422,7 @@ test('submitted document answers are queued even with no unread comments', async
   f.write('document/plan', { version: 1, threads: [] });
   asks(null);
   f.start();
-  const alive = path.join(f.project, '.ryugi/artifacts/.state/codex-comment-watch', `${id}.alive`);
-  await until(() => fs.existsSync(alive), 'codex watcher never wrote a heartbeat');
+  await initialScan(f);
   asks({ id: 's1', at: '2026-11-03T00:00:00.000Z', withdrawn: false });
   await until(() => f.read().length > 0, 'submitted answers never reached codex queue');
   const args = f.read()[0];
