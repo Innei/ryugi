@@ -288,8 +288,10 @@ node app/ryugi-artifacts.cjs comment list --section threads --project-dir /path/
   not resolve a thread or consume a reply that arrived after the read.
 - Each thread has `id`, `anchor` (`blockId`, `quote`) and `waitingOn`; preview rows
   omit `messages`. A complete read includes them. `--all` has no receipt.
-- Read answers independently with `comment list --section asks --detail`.
-  This state collection has no receipts. Apply only answers whose state is
+- To review answers and comments together, use
+  `comment list --sections threads,asks --detail` once. Follow each collection's
+  `More`; the delivered thread page contains complete messages. The asks state
+  collection has no receipts. Apply only answers whose state is
   `submitted`, retaining stale, orphan and recommendation context.
 - A comment asking for a change: edit `doc.xml`, reply with what changed,
   then resolve the thread.

@@ -1,2 +1,4 @@
 pnpm-lock.yaml
 artifacts/bench/zoom/fixture/
+# Preserve the generated bootstrap byte-for-byte with the core build.
+skills/artifacts/app/output-bootstrap.cjs
