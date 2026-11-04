@@ -53,10 +53,14 @@ port_file="$TEST_ROOT/port"
 node -e '
   const http = require("node:http");
   const fs = require("node:fs");
+  const seen = [];
   const server = http.createServer((req, res) => {
-    fs.writeFileSync(process.argv[1], `${req.method} ${req.url.split("?")[0]} ${decodeURIComponent(req.headers["x-ryugi-project"] || "")}`);
+    seen.push(`${req.method} ${req.url.split("?")[0]} ${decodeURIComponent(req.headers["x-ryugi-project"] || "")}`);
     res.end("{}");
-    server.close();
+    if (seen.length === 2) {
+      fs.writeFileSync(process.argv[1], seen.sort().join("\n"));
+      server.close();
+    }
   });
   server.listen(0, "127.0.0.1", () => fs.writeFileSync(process.argv[2], String(server.address().port)));
   setTimeout(() => process.exit(0), 5000);
@@ -73,7 +77,8 @@ for _ in $(seq 1 30); do
   sleep 0.1
 done
 wait "$server_pid" 2> /dev/null || true
-if [ "$(cat "$seen" 2> /dev/null)" = "POST /api/cloud/flush $dir" ]; then pass "names its project to the shared server when it flushes"; else fail "names its project to the shared server when it flushes ($(cat "$seen" 2> /dev/null))"; fi
+expected="$(printf 'POST /api/agent/stop %s\nPOST /api/cloud/flush %s' "$dir" "$dir")"
+if [ "$(cat "$seen" 2> /dev/null)" = "$expected" ]; then pass "tells its project's server the turn ended and flushes it"; else fail "tells its project's server the turn ended and flushes it ($(cat "$seen" 2> /dev/null))"; fi
 
 if [ "$FAILURES" -gt 0 ]; then
   echo "$FAILURES failure(s)"

@@ -35,6 +35,17 @@
           }
         ]
       }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${PLUGIN_ROOT}/skills/artifacts/app/agent-stop.cjs\"",
+            "timeout": 5
+          }
+        ]
+      }
     ]
   }
 }
