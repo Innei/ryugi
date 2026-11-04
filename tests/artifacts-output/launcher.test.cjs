@@ -40,19 +40,21 @@ test('installation failures use the shared JSONL terminal schema', (t) => {
   assert.equal(events[0].kind, 'result');
   assert.equal(events[0].error.code, 'E_BOOTSTRAP_FAILED');
 });
-test('semantic requests never execute an older cached CLI', (t) => {
+test('offline cached CLI is used without a separate protocol version gate', (t) => {
   const f = setup(t);
   const old = path.join(f.root, 'cache/ryugi/artifacts/1.43.0/node_modules/ryugi-artifacts/dist');
   fs.mkdirSync(old, { recursive: true });
-  fs.writeFileSync(path.join(old, 'cli.cjs'), 'process.stdout.write("OLD CLI RAN")');
+  fs.writeFileSync(
+    path.join(old, 'cli.cjs'),
+    'process.stdout.write(JSON.stringify({schema:"ryugi.cli/v1",data:{cached:true}}))',
+  );
   const out = spawnSync(
     process.execPath,
     [path.join(f.app, 'ryugi-artifacts.cjs'), 'get', 'cloud', '--format', 'json'],
     { env: f.env, encoding: 'utf8' },
   );
-  assert.equal(out.status, 1);
-  assert.equal(JSON.parse(out.stdout).schema, 'ryugi.cli/v1');
-  assert.equal(out.stdout.includes('OLD CLI RAN'), false);
+  assert.equal(out.status, 0);
+  assert.equal(JSON.parse(out.stdout).data.cached, true);
 });
 
 test('output conflicts fail before installer or subscription work', (t) => {

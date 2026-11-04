@@ -208,7 +208,7 @@ need it.
 Write a new artboard in this order:
 
 1. Run `start` (as `SKILL.md` describes) before writing any file, so the
-   browser is open when the skeleton appears.
+   server is ready while you write; opening waits for complete focus evidence.
 2. If a document section is why this artboard exists, write its group
    references now, each `<ref artboard="…" group="…" />` in its own `<p>`
    under that section's heading (see Artboard references in
@@ -216,8 +216,8 @@ Write a new artboard in this order:
    only a warning until it does. `check` on the artboard prints a `hint` for
    every choice group no document references.
 3. Write `canvas.json` once with every board, group and note. Set `focus` to
-   the first group (or board). The browser opens once the layout is valid,
-   before any HTML exists, showing the complete skeleton.
+   the first group (or board). The viewer can show the skeleton once layout is valid. Automatic opening waits
+   for the focus group to be ready (or two complete boards without groups).
 4. Write one full HTML document per board, starting with the focus group.
    The server watches creation and edits, keeps unfinished documents pending,
    and loads each board when its closing `</html>` arrives. An atomic write
@@ -275,14 +275,14 @@ selected nodes, on a spot inside a board, or on empty canvas. Read and
 answer through the CLI, never through `comments.json`.
 
 ```bash
-node app/ryugi-artifacts.cjs comment list --json --project-dir /path/to/project --artifact artboard/<id>
+node app/ryugi-artifacts.cjs comment list --section threads --format json --project-dir /path/to/project --artifact artboard/<id>
 ```
 
-- `list` prints what changed since you last ran it: new threads, replies,
-  edits, resolves. Run it whenever you work on the artboard, and when a
-  message says comment threads changed. `--all` prints every thread without
-  marking anything as read.
-- Each thread has an `id`, `waitingOn`, `messages` and an `anchor`: `page`
+- Thread pages are read-only previews in `data.items`. Read complete evidence
+  with `comment read --thread ID --snapshot TOKEN --detail --format json`, then
+  explicitly `comment ack --receipt RECEIPT` after using it. Later replies remain
+  unread. `--all` has no receipt; ack never resolves or decides a group.
+- Complete thread reads have an `id`, `waitingOn`, `messages` and an `anchor`: `page`
   and `x`/`y`. With a `board`, `x`/`y` are inside that board, and `nodes`
   (`board` + CSS `path` from `body`) and `offset` (where inside the node,
   as fractions of its width and height) say what was hit. No `board`: it
@@ -295,7 +295,7 @@ node app/ryugi-artifacts.cjs comment list --json --project-dir /path/to/project 
 - Reply, with the message on stdin:
 
   ```bash
-  node app/ryugi-artifacts.cjs comment reply --json --project-dir /path/to/project --artifact artboard/<id> --thread <thread-id> <<'EOF'
+  node app/ryugi-artifacts.cjs comment reply --format json --project-dir /path/to/project --artifact artboard/<id> --thread <thread-id> <<'EOF'
   Moved the input 8px right; it no longer overlaps the pin.
   EOF
   ```
@@ -321,7 +321,8 @@ boards) in a new group with `"verify": true`.
   labels it as recorded by the agent, and they can undo a pass. Never pass a
   group on your own judgment.
 
-- `comment list --json` returns `groups`: each verify group with `verdict`
+- `comment list --section groups --kind verify --detail --format json` returns
+  `data.items`: each verify group with `verdict`
   (`pending`, `pass` or `reject`), `evidenceUpdated` and `rejectThreads`.
   Read it with the threads whenever you work on the artboard.
 - A reject is a thread on the group (`anchor.group`, `anchor.verdict:
@@ -349,9 +350,10 @@ bottom submits the round. A round is the groups under one title note.
 - Comments on an open round stay quiet until it is submitted. The submit
   arrives as a `ryugi-choices` message (or they say done in the terminal):
   run its command.
-- `comment list --json` returns each choice group in `groups` (`kind:
-"choose"`, `choice`, `byRecommendation`, `threads`) and each round in
-  `rounds` (`id`, `state`: `open`, `submitted` or `closed`). `choice` is the
+- `comment list --section groups --kind choose --detail --format json` returns
+  choice groups in `data.items` (`kind:
+"choose"`, `choice`, `byRecommendation`, `threads`) and `comment list --section rounds --detail --format json` independently returns
+  round `data.items` (`id`, `state`: `open`, `submitted` or `closed`). `choice` is the
   answer; `byRecommendation: true` means they kept your recommendation; a
   `null` choice has no answer. Comments on any board of the group are part
   of the answer: read the threads too.
@@ -360,8 +362,8 @@ bottom submits the round. A round is the groups under one title note.
   draw the next one. Groups they did not mention keep your recommendation.
 
   ```bash
-  node app/ryugi-artifacts.cjs comment choose --json --project-dir /path/to/project --artifact artboard/<id> --group q1 --board q1-b
-  node app/ryugi-artifacts.cjs comment submit --json --project-dir /path/to/project --artifact artboard/<id> --round <round id>
+  node app/ryugi-artifacts.cjs comment choose --format json --project-dir /path/to/project --artifact artboard/<id> --group q1 --board q1-b
+  node app/ryugi-artifacts.cjs comment submit --format json --project-dir /path/to/project --artifact artboard/<id> --round <round id>
   ```
 
 - A `ryugi-choices` message with `"withdrawn": true`, before you wrote the
@@ -390,16 +392,16 @@ bottom submits the round. A round is the groups under one title note.
    The server derives readiness and the active incomplete writer from files;
    a completed file stays visible while an in-place edit keeps its closing tag.
 2. Run `check` after your last write (`SKILL.md`, After every change).
-   `warnings` lists invalid JSON, missing fields, unknown pages, overlapping
+   `data.issues` lists invalid JSON, missing fields, unknown pages, overlapping
    boards, groups and titles, stickies covering boards, and unknown `focus`
-   targets. `pending` lists missing or unfinished boards.
+   targets. `data.pending` lists missing or unfinished boards.
 3. For interactive boards, exercise the promised flow in PLAY or the expanded
    view at the declared dimensions: actions, derived counts, empty states,
    sheet open/close, keyboard access and scrolling to the last item. Check
    both action orders and a fresh Replay. Give each visible action a working
    result, or visibly disable it and label the prototype's scope.
 4. Before telling your human partner the board is ready, confirm both
-   `warnings` and `pending` are empty. They prove file/layout readiness, not
+   `data.issues` and `data.pending` are empty. They prove file/layout readiness, not
    working handlers, unclipped content or passing interaction checks. If you
    cannot run the prototype, report which checks remain instead of calling
    it verified. Then give the link and ask for their answer in the terminal.

@@ -7,10 +7,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 
-const MIN_VERSION = '1.43.0';
-const SEMANTIC_MIN_VERSION = '2.0.0';
 const outputBootstrap = require('./output-bootstrap.cjs');
-let requestedMinimum = MIN_VERSION;
 const LATEST_CHECK_MS = 24 * 60 * 60 * 1000;
 const RETRY_CHECK_MS = 60 * 60 * 1000;
 const RELEASES = path.join(process.env.XDG_CACHE_HOME || path.join(os.homedir(), '.cache'), 'ryugi', 'artifacts');
@@ -25,7 +22,7 @@ const compare = (a, b) => {
   for (let i = 0; i < 3; i++) if (x[i] !== y[i]) return x[i] - y[i];
   return 0;
 };
-const supported = (v) => valid(v) && compare(v, requestedMinimum) >= 0;
+const supported = valid;
 const cliOf = (version) => path.join(RELEASES, version, 'node_modules', 'ryugi-artifacts', 'dist', 'cli.cjs');
 
 // The local checkout has no release version. Fingerprint the code that affects
@@ -149,23 +146,12 @@ function install(version) {
   return version;
 }
 
-function resolveRelease(command) {
-  if (command !== 'start') {
-    const installed = newestInstalled();
-    if (installed) return installed;
-  }
+function resolveRelease() {
   const cached = cachedLatest();
   if (cached) return install(cached);
   const latest = askNpm();
   if (!latest)
     return fallback(`Could not reach npm for the latest ryugi-artifacts; the first start needs ${NEEDS_NETWORK}.`);
-  if (!supported(latest)) {
-    const installed = newestInstalled();
-    if (installed) return installed;
-    throw new LaunchError(
-      `This skill needs ryugi-artifacts ${requestedMinimum} or newer, and npm still serves ${latest}. A new release may still be processing on npm; retry in a few minutes.`,
-    );
-  }
   record(latest, Date.now());
   return install(latest);
 }
@@ -180,12 +166,9 @@ function ownerPid() {
 function main() {
   const args = process.argv.slice(2);
   const selection = outputBootstrap.resolveSelection(args);
-  if (selection.protocol === 'v1') {
-    if (selection.error) {
-      outputBootstrap.reportFailure(args, selection.error, selection);
-      return;
-    }
-    requestedMinimum = SEMANTIC_MIN_VERSION;
+  if (selection.error) {
+    outputBootstrap.reportFailure(args, selection.error, selection);
+    return;
   }
   if (process.env.CODEX_THREAD_ID || process.env.CLAUDE_CODE_SESSION_ID || process.env.PI_SESSION_ID) {
     try {
@@ -200,11 +183,10 @@ function main() {
   const env = {
     ...process.env,
     RYUGI_ARTIFACTS_COMMAND: `node "${__filename}"`,
-    RYUGI_ARTIFACTS_RESOLVE_ROOT: '1',
   };
   let cli = local;
   if (!fs.existsSync(local)) {
-    const version = resolveRelease(args[0]);
+    const version = resolveRelease();
     cli = cliOf(version);
     env.RYUGI_ARTIFACTS_VERSION = version;
   } else if (!env.RYUGI_ARTIFACTS_VERSION) {

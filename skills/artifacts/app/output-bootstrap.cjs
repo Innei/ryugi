@@ -36,7 +36,7 @@ __export(index_exports, {
 module.exports = __toCommonJS(index_exports);
 
 // <define:BOOTSTRAP_OPTIONS>
-var define_BOOTSTRAP_OPTIONS_default = { format: { type: "string" }, detail: { type: "boolean" }, fields: { type: "string" }, quiet: { type: "boolean" }, verbose: { type: "boolean" }, "project-dir": { type: "string" }, json: { type: "boolean" }, artifact: { type: "string" }, host: { type: "string" }, "url-host": { type: "string" }, port: { type: "string" }, open: { type: "boolean" }, "no-open": { type: "boolean" }, foreground: { type: "boolean" }, "no-daemon": { type: "boolean" }, background: { type: "boolean" }, daemon: { type: "boolean" }, visibility: { type: "string" }, type: { type: "string" }, project: { type: "boolean" }, limit: { type: "string" }, cursor: { type: "string" }, public: { type: "boolean" }, private: { type: "boolean" }, unpublish: { type: "boolean" }, list: { type: "boolean" }, delete: { type: "string" }, "with-boards": { type: "boolean" }, login: { type: "boolean" }, logout: { type: "boolean" }, section: { type: "string" }, snapshot: { type: "string" }, receipt: { type: "string" }, status: { type: "string" }, "waiting-on": { type: "string" }, kind: { type: "string" }, "choice-state": { type: "string" }, all: { type: "boolean" }, block: { type: "string" }, quote: { type: "string" }, board: { type: "string" }, x: { type: "string" }, y: { type: "string" }, thread: { type: "string" }, text: { type: "string" }, group: { type: "string" }, clear: { type: "boolean" }, ask: { type: "string" }, choice: { type: "string" }, round: { type: "string" }, withdraw: { type: "boolean" }, save: { type: "string" }, source: { type: "boolean" }, download: { type: "boolean" }, out: { type: "string" }, "no-comments": { type: "boolean" }, "output-format": { type: "string" }, "auto-publish": { type: "string" }, check: { type: "boolean" }, pm: { type: "string" } };
+var define_BOOTSTRAP_OPTIONS_default = { format: { type: "string" }, json: { type: "boolean" }, detail: { type: "boolean" }, fields: { type: "string" }, quiet: { type: "boolean" }, verbose: { type: "boolean" }, "project-dir": { type: "string" }, artifact: { type: "string" }, host: { type: "string" }, "url-host": { type: "string" }, port: { type: "string" }, open: { type: "boolean" }, "no-open": { type: "boolean" }, foreground: { type: "boolean" }, background: { type: "boolean" }, visibility: { type: "string" }, type: { type: "string" }, project: { type: "boolean" }, limit: { type: "string" }, cursor: { type: "string" }, public: { type: "boolean" }, private: { type: "boolean" }, unpublish: { type: "boolean" }, list: { type: "boolean" }, delete: { type: "string" }, "with-boards": { type: "boolean" }, login: { type: "boolean" }, logout: { type: "boolean" }, section: { type: "string" }, snapshot: { type: "string" }, receipt: { type: "string" }, status: { type: "string" }, "waiting-on": { type: "string" }, kind: { type: "string" }, "choice-state": { type: "string" }, all: { type: "boolean" }, block: { type: "string" }, quote: { type: "string" }, board: { type: "string" }, x: { type: "string" }, y: { type: "string" }, thread: { type: "string" }, text: { type: "string" }, group: { type: "string" }, clear: { type: "boolean" }, ask: { type: "string" }, choice: { type: "string" }, round: { type: "string" }, withdraw: { type: "boolean" }, save: { type: "string" }, source: { type: "boolean" }, download: { type: "boolean" }, out: { type: "string" }, "no-comments": { type: "boolean" }, "output-format": { type: "string" }, "auto-publish": { type: "string" }, check: { type: "boolean" }, pm: { type: "string" } };
 
 // src/cli/output/configuration.ts
 var import_node_fs2 = __toESM(require("node:fs"), 1);
@@ -80,7 +80,6 @@ var CliError = class extends Error {
   fields;
   code;
 };
-var resolvesRoot = () => !process.env.RYUGI_ARTIFACTS_COMMAND || process.env.RYUGI_ARTIFACTS_RESOLVE_ROOT === "1";
 function projectRoot(dir) {
   let home = "";
   try {
@@ -103,7 +102,7 @@ function projectPaths(dir) {
   } catch {
     throw new CliError(`Project directory not found: ${dir}`);
   }
-  if (resolvesRoot()) project2 = projectRoot(project2);
+  project2 = projectRoot(project2);
   const root = import_node_path3.default.join(project2, ".ryugi", "artifacts");
   const state = import_node_path3.default.join(root, ".state");
   return {
@@ -206,11 +205,8 @@ function scanOptions(argv, optionSpecs) {
 function selectOutput(argv, optionSpecs, env = process.env) {
   const values = scanOptions(argv, optionSpecs);
   const explicit = ["format", "json", "quiet", "source"].filter((key) => values[key] !== void 0);
-  const configured = env.RYUGI_ARTIFACTS_FORMAT ?? "legacy";
-  if (explicit.length === 1 && values.json) return { protocol: "legacy" };
-  if (!explicit.length && configured === "legacy" && !values.detail && !values.fields)
-    return { protocol: "legacy" };
-  const requested = values.format ?? (values.quiet ? "quiet" : values.source ? "source" : configured === "legacy" ? "brief" : configured);
+  const configured = env.RYUGI_ARTIFACTS_FORMAT ?? "brief";
+  const requested = values.format ?? (values.json ? "json" : values.quiet ? "quiet" : values.source ? "source" : configured);
   const formats = ["brief", "table", "json", "jsonl", "raw", "source", "quiet"];
   const valid = formats.includes(requested);
   const options = {
@@ -224,7 +220,7 @@ function selectOutput(argv, optionSpecs, env = process.env) {
       code: "E_OPTION_CONFLICT",
       message: "Choose one of --format, --json, --quiet or --source."
     });
-  else if (!valid || !explicit.length && !["brief", "json", "jsonl", "legacy"].includes(configured))
+  else if (!valid || !explicit.length && !["brief", "json", "jsonl"].includes(configured))
     error = new OutputError({
       code: "E_FORMAT_UNSUPPORTED",
       message: `Unknown output format: ${String(requested)}`
@@ -237,11 +233,11 @@ function selectOutput(argv, optionSpecs, env = process.env) {
         message: "--fields requires comma-separated field names."
       });
   }
-  return { protocol: "v1", options, ...error ? { error } : {} };
+  return { options, ...error ? { error } : {} };
 }
 
 // src/cli/output/configuration.ts
-var PERSISTED_FORMATS = ["brief", "json", "jsonl", "legacy"];
+var PERSISTED_FORMATS = ["brief", "json", "jsonl"];
 function outputFiles(projectDir) {
   return {
     global: settingsFileFor(credentialsFile(process.env, process.platform, import_node_os2.default.homedir())),
@@ -251,8 +247,7 @@ function outputFiles(projectDir) {
 function read(file) {
   try {
     const raw = JSON.parse(import_node_fs2.default.readFileSync(file, "utf8"));
-    if (!raw || typeof raw !== "object" || Array.isArray(raw))
-      throw new Error("Expected an object");
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) throw new Error("Expected an object");
     return raw;
   } catch (error) {
     if (error.code === "ENOENT") return {};
@@ -266,19 +261,25 @@ function outputValues(projectDir) {
   const files = outputFiles(projectDir);
   const get = (file) => {
     const output = read(file).output;
+    if (output?.format !== void 0 && !PERSISTED_FORMATS.includes(output.format))
+      throw new OutputError({
+        code: "E_FORMAT_UNSUPPORTED",
+        message: `Unsupported output format in ${file}: ${String(output.format)}`
+      });
     return output && PERSISTED_FORMATS.includes(output.format) ? output.format : null;
   };
   const global = get(files.global), project2 = get(files.project);
   return {
     global,
     project: project2,
-    effective: project2 ?? global ?? "legacy",
+    effective: project2 ?? global ?? "brief",
     source: project2 ? "project" : global ? "global" : "default"
   };
 }
 function configuredEnvironment(argv, specs, env = process.env) {
   if (env.RYUGI_ARTIFACTS_FORMAT !== void 0) return env;
   const values = scanOptions(argv, specs);
+  if (["format", "json", "quiet", "source"].some((key) => values[key] !== void 0)) return env;
   let project2 = typeof values["project-dir"] === "string" ? values["project-dir"] : process.cwd();
   if (!values["project-dir"] && argv[0] && !argv[0].startsWith("-")) {
     try {
@@ -297,23 +298,17 @@ function result(data, completion = { kind: "succeeded" }, extra = {}) {
 
 // src/cli/output/bootstrap/index.ts
 function resolveSelection(argv) {
-  let environment = process.env;
-  try {
-    environment = configuredEnvironment(argv, define_BOOTSTRAP_OPTIONS_default);
-  } catch {
-  }
-  return selectOutput(argv, define_BOOTSTRAP_OPTIONS_default, environment);
+  return selectOutput(argv, define_BOOTSTRAP_OPTIONS_default, configuredEnvironment(argv, define_BOOTSTRAP_OPTIONS_default));
 }
 function reportFailure(argv, error, selection) {
-  const selected = selection ?? resolveSelection(argv);
-  const message = error instanceof Error ? error.message : String(error);
-  if (selected.protocol === "legacy") {
-    process.stdout.write(`${JSON.stringify({ error: message })}
-`);
-    process.exitCode = 1;
-    return;
+  let selected;
+  try {
+    selected = selection ?? resolveSelection(argv);
+  } catch {
+    selected = selectOutput(argv, define_BOOTSTRAP_OPTIONS_default);
   }
-  const detail = selected.error?.error ?? { code: "E_BOOTSTRAP_FAILED", message };
+  const message = error instanceof Error ? error.message : String(error);
+  const detail = selected.error?.error ?? (error instanceof OutputError ? error.error : { code: "E_BOOTSTRAP_FAILED", message });
   const failure = result(null, { kind: "failed", error: detail });
   const wire = {
     ...normalize(

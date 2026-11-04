@@ -147,18 +147,20 @@ JSON
 dir="$(doc_project doc-unread)"
 write_doc_comments "$dir"
 out="$(run_hook "$dir" "继续")"
-expect "reminds about a document with unread comments" "$out" 'Comment threads changed since you last listed: document/relay (1).'
-expect "gives the command that lists them" "$out" "skills/artifacts/app/ryugi-artifacts.cjs\" comment list --json --project-dir \"$(cd "$dir" && pwd -P)\" --artifact document/relay"
+expect "reminds about a document with unread comments" "$out" 'Unread comment evidence: document/relay (1).'
+expect "gives the command that lists them" "$out" "skills/artifacts/app/ryugi-artifacts.cjs\" comment list --section threads --format json --project-dir \"$(cd "$dir" && pwd -P)\" --artifact document/relay"
 
-printf '{"Claude Code":"2026-10-21T08:00:00.000Z"}\n' > "$dir/.ryugi/artifacts/.state/document/relay/comment-cursors.json"
+node - "$REPO_ROOT/skills/artifacts/app/comment-threads.cjs" "$dir" <<'NODE'
+const fs=require('node:fs'),path=require('node:path');const {humanTokens,reviewStateKey}=require(process.argv[2]);const root=path.join(process.argv[3],'.ryugi/artifacts');const artifact='document/relay',agent='Claude Code';const file=JSON.parse(fs.readFileSync(path.join(root,artifact,'comments.json'),'utf8'));const target=path.join(root,'.state','agent-review',`agent-${reviewStateKey(artifact,agent)}.json`);fs.mkdirSync(path.dirname(target),{recursive:true});fs.writeFileSync(target,JSON.stringify({artifact,agent,consumed:file.threads.flatMap(humanTokens).map(event=>event.token),frontiers:null}));
+NODE
 out="$(run_hook "$dir" "继续")"
-if [[ -z "$out" ]]; then pass "is quiet once the agent has listed past the changes"; else
-  fail "is quiet once the agent has listed past the changes"
+if [[ -z "$out" ]]; then pass "is quiet once the receipt has been acknowledged"; else
+  fail "is quiet once the receipt has been acknowledged"
   echo "$out" | sed 's/^/      /'
 fi
 
 out="$(run_hook "$dir" "继续" CLAUDE_CODE_IS_COWORK=1)"
-expect "uses the Claude Cowork cursor under Cowork" "$out" 'document/relay (1)'
+expect "uses the Claude Cowork receipt state under Cowork" "$out" 'document/relay (1)'
 
 dir="$(doc_project doc-selected)"
 cat > "$dir/.ryugi/artifacts/.state/document/relay/selection.json" << 'JSON'

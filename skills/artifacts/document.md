@@ -250,43 +250,50 @@ When to write one:
 
 ## What your human partner changed
 
-When your human partner says they edited the document and asks you to look
-("我改了，你看一下", "I changed section 3, take a look"), read only what
-they changed:
+When asked to inspect edits, start with a read-only block summary:
 
 ```bash
-node app/ryugi-artifacts.cjs changes --json --project-dir /path/to/project --artifact document/<id>
+node app/ryugi-artifacts.cjs changes --format json --project-dir /path/to/project --artifact document/<id>
+node app/ryugi-artifacts.cjs changes --snapshot <data.snapshot> --detail --format json --project-dir /path/to/project --artifact document/<id>
 ```
 
-- It prints a unified diff of `doc.xml` from what you have already seen to
-  now, then marks it as seen: the next run shows only newer edits. Your own
-  writes never appear. `"empty": true` means nothing changed.
-- Read the diff, not the whole document. Answer about the changed blocks:
-  confirm them, or ask about a specific block by its `id`.
-- `--all` shows everything changed since your last write, without marking
-  it as seen.
-- Run it only when asked. Their edits are theirs to point out.
+The first result has `data.blocks` and a snapshot; it does not consume edits.
+The complete read returns `data.diff` and `data.receipt`. Read and use the entire
+captured diff, then acknowledge that exact receipt:
+
+```bash
+node app/ryugi-artifacts.cjs changes ack --receipt <receipt> --format json --project-dir /path/to/project --artifact document/<id>
+```
+
+Changes arriving later remain unread. `--all` is historical and has no receipt.
+For a large diff, use `changes --snapshot TOKEN --save NEW_FILE --format json`,
+read the complete saved file, then ack. Never ack from a partial block preview.
+Run it only when asked; answer about the changed block IDs.
 
 ## Comments
 
 Read and answer comments through the CLI, never through `comments.json`.
 
 ```bash
-node app/ryugi-artifacts.cjs comment list --json --project-dir /path/to/project --artifact document/<id>
+node app/ryugi-artifacts.cjs comment list --section threads --format json --project-dir /path/to/project --artifact document/<id>
 ```
 
-- `list` prints what your human partner changed since you last ran it: new
-  threads, replies, edits, resolves. Run it whenever you work on the
-  document, and when a message says the document has new comments. `--all`
-  prints every thread without marking anything as read.
-- Each thread has an `id`, an `anchor` (`blockId`, `quote`), `waitingOn`
-  and its `messages`. `"waitingOn": "agent"` means it is waiting on you.
+- `list --section threads` is a read-only preview. JSON rows are `data.items`;
+  it never marks a thread read. Use `comment read --thread ID --snapshot TOKEN
+--detail --format json` for complete messages, then explicitly `comment ack
+--receipt RECEIPT` after using the evidence. Ack does not resolve a thread and
+  cannot consume a reply that arrived after the read.
+- Each thread has `id`, `anchor` (`blockId`, `quote`) and `waitingOn`; preview rows
+  omit `messages`. A complete read includes them. `--all` has no receipt.
+- Read answers independently with `comment list --section asks --detail --format
+json`. They are `data.items`, not a field mixed into a thread page; no state
+  collection issues receipts. Only submitted answers may be applied.
 - A comment asking for a change: edit `doc.xml`, reply with what changed,
   then resolve the thread.
 - Reply, with the message on stdin:
 
   ```bash
-  node app/ryugi-artifacts.cjs comment reply --json --project-dir /path/to/project --artifact document/<id> --thread <thread-id> <<'EOF'
+  node app/ryugi-artifacts.cjs comment reply --format json --project-dir /path/to/project --artifact document/<id> --thread <thread-id> <<'EOF'
   Changed to 2% and updated the body to match.
   EOF
   ```

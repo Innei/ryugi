@@ -18,15 +18,17 @@ When your human partner pastes a Ryugi Cloud link to read
 host), your first step is, with `app/` in this skill's directory:
 
 ```bash
-node app/ryugi-artifacts.cjs get --json <link>
+node app/ryugi-artifacts.cjs get --format json <link>
 ```
 
 The page itself is an app shell with no content, so no page fetch, no
 browser and no `Artifact` tool. `get` reads it with this machine's cloud
-sign-in. A document comes back as `content` (LiteXML with block ids) and
-`comments`; an artboard or HTML artifact as `dir`, the folder its files
-were downloaded to. Exit code 2 means they need to sign in: tell them its
-`message`.
+sign-in. The first result is a bounded summary in `data`, with `data.snapshot`
+and an outline or manifest; no files are downloaded. Follow with `get --detail
+--snapshot TOKEN --format json` for document `data.content` and published comments,
+or `get --source` for pure LiteXML. Artboard/HTML files require explicit
+`--download` or `--out NEW_DIRECTORY`. Exit code 2 requires user action; inspect
+`error.message`, `error.details` and `next`.
 
 **You have a tool named `Artifact`** (Claude Code on a claude.ai plan):
 pick the type below, then read `claude-artifacts.md` and build it with that
@@ -35,6 +37,41 @@ tool. Only verify groups (ryugi:verifying-ui) use this app there.
 **No `Artifact` tool:** use this app even when your harness offers another
 hosted artifact or publishing tool. When they want a link that opens
 outside this machine, publish it to Ryugi Cloud (see Share a link).
+
+## Reading evidence with the CLI
+
+- `get <link> --format json` returns a published summary, outline or file manifest,
+  without downloading files or returning complete content. Use `--detail --snapshot
+TOKEN` for complete document content and published-snapshot comments, `--block
+ID` for one complete block, or `--source` for pure LiteXML. Source has no envelope;
+  `--source --save NEW_FILE` leaves stdout empty. Assets require explicit `--download`
+  or `--out NEW_DIRECTORY`; existing files/directories are never overwritten.
+- `comment list` is a read-only overview. Select independent collections with
+  `--section threads|asks|groups|rounds`; JSON records are `data.items`. Default
+  thread rows contain previews, not complete messages. Follow `page.nextCursor`
+  or the returned executable `next` action; pages describe only their own scope.
+- To use thread evidence, run `comment read --thread ID --snapshot TOKEN --detail
+--format json` (or `comment list --section threads --detail` for a complete page).
+  Complete threads are in `data.items` (one item for a single-thread read); the
+  receipt is `data.receipt`. Read and use all delivered messages, then
+  `comment ack --receipt RECEIPT`.
+  Ack covers exactly those events; later replies remain unread. Never ack a preview.
+- `changes` previews changed blocks. Read `changes --snapshot TOKEN --detail --format
+json`, or save the complete diff with `changes --snapshot TOKEN --save NEW_FILE
+--format json`. After reading and using the entire diff, acknowledge its
+  `data.receipt` with `changes ack --receipt RECEIPT`. Never acknowledge from a
+  block preview. `--all` and `--fields` do not generate receipts.
+- Asks, groups and rounds are repeatable current-state collections with no receipt.
+  Apply document answers only when `state` is `submitted`; retain withdrawn,
+  staleChoice, orphan and byRecommendation context. Inspect verify groups and
+  choice groups independently, and inspect round submission separately. Thread
+  ack never resolves, submits, settles, passes or rejects anything.
+- Exit codes: 0 success, 1 failure, 2 user action, 3 validation issues, 4 incomplete
+  evidence, 5 partial completion, 130/143 interrupted. Check effects before retrying
+  writes whose result is unknown. Complete reads can be repeated after interruption.
+
+All commands below use the same output pipeline; there is no legacy mode or
+release gate. Keep the `data` envelope in mind when following examples.
 
 ## Pick the type
 
@@ -99,58 +136,52 @@ lowercase letters, digits and hyphens, named after the topic
 
 Paths below are relative to this skill's directory: resolve `app/` to its
 absolute path before you run them. Every artifacts command goes through the
-launcher `app/ryugi-artifacts.cjs` with `--json`; it runs the newest
-`ryugi-artifacts` CLI and prints one JSON line.
+launcher `app/ryugi-artifacts.cjs`. Brief is the default, including in a non-TTY shell.
+Use `--format json` when consuming fields programmatically. Every JSON command
+returns one `ryugi.cli/v1` envelope: domain facts are under `data`, with `outcome`,
+`effects`, `page`, `omitted`, `warnings`, `next`, and `error` alongside it. `--json`
+is exactly a shorthand for `--format json`; there is no old output protocol or
+version-based selection. Formatting never changes visibility or acknowledges reads.
 
 ```bash
-node app/ryugi-artifacts.cjs start --json --project-dir /path/to/project --artifact html/arrow-tuner
-# {"type":"server-started","url":"http://localhost:27319/","port":27319,
-#  "root":"/path/to/project/.ryugi/artifacts","link":"http://localhost:27319/html/arrow-tuner",
-#  "cloudLink":"https://ryugi.innei.dev/a/…"}
+node app/ryugi-artifacts.cjs start --background --format json --project-dir /path/to/project --artifact html/arrow-tuner
+# {"schema":"ryugi.cli/v1","command":"start","outcome":"success", "data":{
+#   "status":"running","scope":"machine","project":"/path/to/project",
+#   "url":"https://ryugi.innei.dev/a/…","localUrl":"http://localhost:27319/html/…",
+#   "cloud":"live_link_reserved","reused":false}}
 ```
 
-- Give them `cloudLink` when it is printed, and only that link. It is the
-  same live page, on this computer and on any other, published or not.
-- `cloudLimit` instead of `cloudLink`: their Ryugi Cloud plan is full. Tell
-  them its `message` and give them `upgradeUrl`, then the local `link`.
-- No `cloudLink`: give them `link` exactly as printed. `url` opens a list
-  of every artifact.
+- Give them `data.url` exactly as returned. `data.cloud` distinguishes a reserved
+  live Cloud link from `local_only`; `data.localUrl` is the local fallback.
+- Inspect `warnings` and `next` for quota, sign-in or upgrade actions. A reserved
+  live link does not mean a publication has completed.
 - Run `start` before you write a new artifact's first file, so the page is
   open while you write it.
 - Run it again only right before a message that gives a link, with the
   artifact you're about to mention; edits in between need no `start`. It
-  prints `"reused": true` while the server is up, and otherwise starts it on
+  prints `data.reused: true` while the server is up, and otherwise starts it on
   the same port, so open tabs reconnect.
 - One server serves every project on this machine and keeps running
   between sessions. Every run registers your project with it.
 - The browser opens when the first artifact is ready enough: for an artboard,
   once its focus group is complete (or two boards when there are no groups),
   even while later boards are still drawing. Pass `--no-open` only for
-  headless or scripted use. Still share the link; remote setups can't
+  headless or scripted use. Still share `data.url`; remote setups can't
   auto-open. Read `artboard.md` for the streaming write order.
-- Stop it with `node app/ryugi-artifacts.cjs stop --json`.
+- Stop it with `node app/ryugi-artifacts.cjs stop --format json`.
   It stops the server for every project; the artifacts stay.
 
-**Launching by harness.** The server must survive across turns.
-
-- Claude Code: run the command as is; it backgrounds the server, on
-  Windows too.
-- Codex: run it as is. With the server already running it returns at
-  once. Otherwise it detects `CODEX_CI` and stays in the foreground: give
-  it its own tool call with a yield of at least 5 seconds (a first run may
-  install a release). When it starts a new server it does not return, so
-  anything chained after it with `;` or `&&` runs only once the server
-  stops.
-- OMP (oh-my-pi): run it as is. OMP cuts output lines longer than 768
-  bytes, so pipe `comment list --json` and `check --json` through `jq .`.
-  Don't pipe `start`.
-- Gemini CLI, Copilot CLI and others that reap detached processes: add
-  `--foreground` and start it with the harness's background-shell mechanism.
+**Launching by harness.** Use `--background --format json` for one terminal
+result in Claude Code, Codex and normal shells. Do not depend on TTY or CODEX_CI
+for output selection. A foreground server requires `--foreground --format jsonl`
+and the harness's background-shell mechanism; consume its `ready` event before
+using the link. Single JSON is rejected for foreground services. `--no-open`
+suppresses opening a browser, not the result or link.
 
 **Remote or containerized setups:** if the link is unreachable from their
 browser, bind a non-loopback host and name the host they reach it by:
 `--host 0.0.0.0 --url-host localhost`. A server bound that way refuses
-requests without its key: its `link` carries `?key=`, so give it to them
+requests without its key: its `data.localUrl` carries `?key=`, so give it to them
 complete.
 
 ## Share a link
@@ -159,8 +190,9 @@ Publish when they want a link that works outside this machine. The server
 must be running.
 
 ```bash
-node app/ryugi-artifacts.cjs publish --json --project-dir /path/to/project --artifact html/arrow-tuner --public
-# {"type":"published","artifact":"html/arrow-tuner","url":"https://ryugi.innei.dev/a/…","visibility":"public"}
+node app/ryugi-artifacts.cjs publish --format json --project-dir /path/to/project --artifact html/arrow-tuner --public
+# {"schema":"ryugi.cli/v1","command":"publish.publish","outcome":"success",
+#  "data":{"status":"published","artifact":"html/arrow-tuner","url":"https://ryugi.innei.dev/a/…","visibility":"public"}}
 ```
 
 - First publish of an artifact: someone else will open it (a teammate, a
@@ -170,24 +202,25 @@ node app/ryugi-artifacts.cjs publish --json --project-dir /path/to/project --art
   whoever can see it now, which they may have changed on the web page since
   your last command. Add a flag only when they ask to change who can see it.
 - Publishing again replaces what the same link shows.
-- Exit code 2 prints `{"type":"login-required","url":…}`: give them `url`,
-  wait until they say they signed in, then run the same command again.
-- `--unpublish` deletes the cloud copy and the link stops working. `--list`
-  and `--delete <cloud-id>` clean up copies published from other machines.
-- Exit code 2 with `{"type":"plan-limit",…}`: their plan is full. Tell them
-  its `message` and give them `upgradeUrl`.
-- Exit code 1 with `reasons`: fix those warnings, then publish again.
+- Exit code 2 with `error.code: E_LOGIN_REQUIRED`: give them the login URL in
+  `error.details.loginUrl` or `next`, wait for sign-in, then run it again.
+- `--unpublish` deletes the Cloud copy. `--list` gives a bounded `data.artifacts`
+  page; `--delete <cloud-id>` removes the named copy.
+- Exit code 2 with `error.code: E_PLAN_LIMIT`: give them `error.message` and
+  `error.details.upgradeUrl`. Exit code 1 includes classified failure details in
+  `error`; fix the reported causes before retrying. Exit code 5 is partial: inspect
+  the retained URL and per-target effects before any retry.
 
 ## Auto-publish
 
 When your human partner is signed in and auto-publish is on, every artifact
 changed during your turn is published as a private copy when the turn ends
-(Claude Code only; elsewhere, publish when asked). `config --json` prints
+(Claude Code only; elsewhere, publish when asked). `config --format json` prints
 whether it is on.
 
 - Do not run `publish` to keep a private copy current; the turn end does it.
 - They want to look from their phone or another machine: give them
-  `cloudLink` from `start`. It is live while this computer is on, and shows
+  `data.url` from `start`. It is live while this computer is on, and shows
   the last published copy when it is off. Or ryugi.innei.dev, which lists
   every copy once they sign in there.
 - Someone else will open it: `--public`, as in Share a link.
@@ -220,16 +253,17 @@ whether it is on.
 
 1. Write the files with your file-writing tool.
 2. Run `check` after your last write. It waits until the server has checked
-   that write, then prints `warnings` (and `pending` for an artboard); no
+   that write, then reports `data.issues`, `data.pending` and runtime evidence; no
    sleep or `checkedAt` comparison is needed.
 
    ```bash
-   node app/ryugi-artifacts.cjs check --json --project-dir /path/to/project --artifact artboard/settings-nav
-   # {"type":"checked","artifact":"artboard/settings-nav","checkedAt":"…","warnings":[],"pending":[]}
+   node app/ryugi-artifacts.cjs check --format json --project-dir /path/to/project --artifact artboard/settings-nav
+   # {"schema":"ryugi.cli/v1","command":"check","outcome":"pending",
+   #  "data":{"artifact":"artboard/settings-nav","status":"pending","runtime":"not_run","issues":[],"pending":["browser_not_run"]}}
    ```
 
    Fix every warning. For `html` this includes `runtime: …` lines: errors
-   the page threw in their browser. They only count once `"ran": true`
+   the page threw in their browser. They only count once `data.runtime: clean`
    shows the new version has loaded there; until then, an empty list
    means "not run yet", not "no errors".
 

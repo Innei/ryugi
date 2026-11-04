@@ -12,7 +12,7 @@ The local library shows content previews, type filters and title/id search acros
 
 The command reuses the machine's running server. Agent calls to `start --artifact …` return links without activating a browser tab when reusing a server; `--open` explicitly opens or focuses that artifact. Run from a subdirectory of a git repository, it uses the repository root's `.ryugi/artifacts/`, unless a directory between them already has its own. A new server stays in the terminal; Ctrl+C stops it and keeps your artifacts. Node.js is required.
 
-The first successful server start while signed out recommends signing in to Ryugi Cloud for sharing and reviewing artifacts from other devices. Sign-in is optional and local work continues immediately. Run `npx ryugi-artifacts publish --login` in that project to get the sign-in URL. The recommendation appears once across projects on this machine, remembered as `login-hint-shown` beside the cloud credentials in the Ryugi configuration directory. Already signed-in accounts, help and version queries, and failed starts do not show it. With `start --json`, the same response includes `loginHint` with `message`, `command`, `projectDir`, and an `agentInstruction` asking the agent to relay the recommendation without waiting for sign-in; stdout remains one JSON line.
+The first successful server start while signed out recommends signing in to Ryugi Cloud for sharing and reviewing artifacts from other devices. Sign-in is optional and local work continues immediately. Run `npx ryugi-artifacts publish --login` in that project to get the sign-in URL. The recommendation appears once across projects on this machine, remembered as `login-hint-shown` beside the cloud credentials in the Ryugi configuration directory. Already signed-in accounts, help and version queries, and failed starts do not show it. With `start --format json`, the same response includes `loginHint` with `message`, `command`, `projectDir`, and an `agentInstruction` asking the agent to relay the recommendation without waiting for sign-in; stdout remains one JSON line.
 
 Browser links use a stable random ID, such as `/document/<id>` or `/artboard/<id>?page=review`. The ID is 21 letters and digits, without `_` or `-`; IDs written by earlier releases are 32 hex characters (or carry `_`/`-`) and keep working. Files and CLI locators keep their readable slugs (`document/design-notes`). Each artifact stores its browser ID in `.artifact-id` inside its directory; keep that file when renaming or moving the directory within its type. Existing slug links still open and switch to the ID address. When duplicating an artifact as new work, omit `.artifact-id` from the copy so it receives its own ID; conflicting IDs are reported instead of choosing one copy.
 
@@ -30,47 +30,40 @@ The status pill in the top bar shows the version, the cloud relay and an "Update
 
 The server keeps its state in `~/.ryugi/server/` (`RYUGI_SERVER_HOME` moves it): `projects.json`, the key, the log and `server-info`. Each registered project also gets `.ryugi/artifacts/.state/server-info` pointing at it. The first `start` of this release stops per-project servers from earlier releases; reload their open tabs once, because the port changes.
 
-The same CLI runs what the skill uses: `npx ryugi-artifacts start`, `stop` and `publish` (`<command> --help` lists a command's options; add `--json` for one JSON line). `npx ryugi-artifacts get <link>` reads a published Ryugi Cloud artifact with this machine's cloud sign-in and prints its source (a document's LiteXML and comments) even when piped; only `--json` makes it print JSON. A local build of `ryugi-artifacts` can write gitignored copies to `skills/artifacts/app/`; the skill's launcher prefers a local `cli.cjs` over the npm release.
+The same CLI runs what the skill uses: `npx ryugi-artifacts start`, `stop` and `publish` (`<command> --help` lists a command's options; add `--format json` for one JSON line). `npx ryugi-artifacts get <link>` reads a published Ryugi Cloud artifact with this machine's cloud sign-in and prints its source (a document's LiteXML and comments) even when piped; only `--format json` makes it print JSON. A local build of `ryugi-artifacts` can write gitignored copies to `skills/artifacts/app/`; the skill's launcher prefers a local `cli.cjs` over the npm release.
 
-Run directly from a terminal, the CLI prints a line on stderr when a newer release is out. It reads the version from `~/.cache/ryugi/artifacts/latest.json`, the launcher's cache, and refreshes that file at most once a day in a detached process, so no command waits on npm. It stays quiet under the skill's launcher, with `--json`, outside a terminal, in CI, and with `NO_UPDATE_NOTIFIER` set. `ryugi-artifacts update` installs the newest release with the package manager that installed this one (npm, pnpm, yarn or bun, detected from the install path; `--pm` overrides it, `--check` only compares). For an npx, pnpm dlx or bunx run, a local build, or the launcher, it says how to update instead.
+Run directly from a terminal, the CLI prints a line on stderr when a newer release is out. It reads the version from `~/.cache/ryugi/artifacts/latest.json`, the launcher's cache, and refreshes that file at most once a day in a detached process, so no command waits on npm. It stays quiet under the skill's launcher, with `--format json`, outside a terminal, in CI, and with `NO_UPDATE_NOTIFIER` set. `ryugi-artifacts update` installs the newest release with the package manager that installed this one (npm, pnpm, yarn or bun, detected from the install path; `--pm` overrides it, `--check` only compares). For an npx, pnpm dlx or bunx run, a local build, or the launcher, it says how to update instead.
 
-Cloud publish failures keep the cloud HTTP status in `publish --json` output. When provided, `code`, `plan`, and `limit` (`kind`, `used`, `max`, and `requested`) are preserved. Account quota failures remain `type: "plan-limit"` with exit code 2; artifact storage exhaustion uses `code: "artifact_storage_limit"`, status 413 and exit code 1. Auto-publish reports the same exhaustion reason immediately.
+Cloud publish failures keep the cloud HTTP status in `publish --format json` output. When provided, `code`, `plan`, and `limit` (`kind`, `used`, `max`, and `requested`) are preserved. Account quota failures remain `type: "plan-limit"` with exit code 2; artifact storage exhaustion uses `code: "artifact_storage_limit"`, status 413 and exit code 1. Auto-publish reports the same exhaustion reason immediately.
 
 ## License
 
 Ryugi's skills, harness integrations and docs are under Ryugi License 1.0, which withholds all rights from the Restricted Parties in Schedule A and prohibits scraping them into a marketplace. `ryugi-artifacts` is proprietary (npm `license`: `UNLICENSED`) and not part of this repository; releases up to 1.51.2 were published under AGPL-3.0-only.
 
-## Semantic output preview and rollout
+## One output pipeline
 
-The local development CLI now supports `--format brief|table|json|jsonl|raw`
-according to operation capability, `--quiet`, and pure `get --source`. The 1.x
-release default and `--json` remain compatible. Semantic requests through the
-launcher require the local development bundle or the forthcoming 2.0 release;
-the launcher refuses older cached releases for these requests. Its early
-installation failures use the generated shared `ryugi.cli/v1` bootstrap protocol.
+Brief is the default in terminals and non-TTY shells. `--json` is an exact
+shorthand for `--format json`, returning one `ryugi.cli/v1` envelope. Facts are
+under `data`; `outcome`, `effects`, `page`, `omitted`, `warnings`, `next` and `error`
+share the result envelope. There is no legacy mode or protocol release gate.
 
-Select the protocol explicitly while evaluating it. `--format json` returns one
-versioned result; foreground `start` uses `--format jsonl`, or choose
-`start --background --format json`. Selection order is flags, environment
-`RYUGI_ARTIFACTS_FORMAT`, project output.format, global output.format, and the
-release default. `config --output-format brief|json|jsonl|legacy` persists it;
-`--project --output-format inherit` removes a project override. Configuration
-writes use the protocol selected before the write.
+`--format brief|table|json|jsonl|raw` selects an operation-supported renderer;
+`--quiet` selects its declared scalar. Use `start --background --format json`
+for one result, or `start --foreground --format jsonl` and consume `ready`.
+Formats are selected by flags, RYUGI_ARTIFACTS_FORMAT, project output.format,
+global output.format, then Brief. Persist brief/json/jsonl with
+`config --output-format MODE`; project inherit removes its override. A write
+uses the output selection made before that write.
 
-For semantic review, use `comment list --section threads` to preview,
-`comment read --thread ID --detail` for complete evidence, and
-`comment ack --receipt TOKEN` only after using it. The same separation applies to
-`changes --detail` and `changes ack --receipt TOKEN`. Add `--format brief` or
-`--format json` to each command. Pages and previews never consume unread events;
-`--all`, projected reads, and asks/groups/rounds state collections have no receipt.
-The legacy `--json` endpoints retain their earlier cursor behavior.
+Review overview, threads, asks, groups and rounds are independent collections.
+`comment list --section threads` previews without consumption; a complete
+`comment read --thread ID --detail --format json` issues `data.receipt`. Use all
+returned evidence, then `comment ack --receipt TOKEN`. Later replies remain
+unread. State collections, historical --all and projected --fields reads have
+no receipt. `changes --detail --snapshot TOKEN` follows the same explicit ack
+contract; `changes --save NEW_FILE --snapshot TOKEN` saves full evidence safely.
 
-Cloud `get --format brief` gives an outline or manifest without downloading.
-Use its snapshot for `--detail`, `--block ID`, `--source`, or
-`--download --out NEW_DIRECTORY`. Document file pages use `--section files`.
-Source and diff limits fail before emitting partial content; `--source --save
-NEW_FILE` or `changes --save NEW_FILE --snapshot TOKEN` save complete evidence
-without overwriting existing files. Cloud reads require the corresponding server
-release and migration. Existing skills and hook consumers retain legacy calls
-until the coordinated 2.0 rollout; do not mechanically replace their `--json`
-flags before that release is available.
+Cloud get defaults to a bounded summary with no file download. Use its snapshot
+for detail, block, pure --source, or explicit --download --out NEW_DIRECTORY.
+Existing targets are never overwritten. Cloud progressive API deployment and its
+database migration are required; a mismatched response schema is rejected.

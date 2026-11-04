@@ -216,7 +216,7 @@ test('a human comment on an artboard this Pi session opened wakes the session', 
   assert.equal(sent[0].message.customType, 'ryugi-comments');
   assert.deepEqual(sent[0].options, { triggerTurn: true, deliverAs: 'followUp' });
   assert.match(sent[0].message.content, /artboard\/home/);
-  assert.match(sent[0].message.content, /comment list --json/);
+  assert.match(sent[0].message.content, /comment list --section threads --format json/);
   assert.doesNotMatch(sent[0].message.content, /Make the header smaller/);
 
   p.write('.state/artboard/home/rounds.json', { rounds: [{ id: 'r1', state: 'submitted' }] });

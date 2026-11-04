@@ -56,18 +56,16 @@ function main() {
   const project = process.argv[2];
   if (!project) return;
   const config = readJson(path.join(project, '.ryugi', 'config.json'));
-  const artifacts =
-    config && typeof config.artifacts === 'object' && config.artifacts ? config.artifacts : {};
+  const artifacts = config && typeof config.artifacts === 'object' && config.artifacts ? config.artifacts : {};
   const published = Object.entries(artifacts).some(
-    ([key, entry]) =>
-      key.startsWith('document/') && entry && entry.cloud && typeof entry.cloud.id === 'string',
+    ([key, entry]) => key.startsWith('document/') && entry && entry.cloud && typeof entry.cloud.id === 'string',
   );
   const credentials = readJson(credentialsPath(process.env, process.platform, os.homedir()));
   const signedIn = credentials && typeof credentials.token === 'string';
   if (!published || !signedIn) return registerWithRunningServer(project);
   spawnSync(
     process.execPath,
-    [LAUNCHER, 'start', '--json', '--no-open', '--project-dir', project],
+    [LAUNCHER, 'start', '--background', '--format', 'json', '--no-open', '--project-dir', project],
     { env: process.env, stdio: 'ignore', timeout: 60000 },
   );
 }
