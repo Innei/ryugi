@@ -376,7 +376,9 @@ function renderText(view, wire, options, collection, requiredFields = []) {
     }
     if (!collection && !selected(section.key)) continue;
     if (section.page)
-      lines.push(`${clean("title" in section && section.title || section.key)}: ${section.status ? `${clean(section.status)} \xB7 ` : ""}${scopeText(section.page)}`);
+      lines.push(
+        `${clean("title" in section && section.title || section.key)}: ${section.status ? `${clean(section.status)} \xB7 ` : ""}${scopeText(section.page)}`
+      );
     if (section.kind === "records") {
       if (section.title && !section.page) lines.push(clean(section.title));
       const declared = new Set(section.columns.map((column) => column.key));
@@ -418,7 +420,11 @@ function renderText(view, wire, options, collection, requiredFields = []) {
         lines.push(`  ${metadata(group.facts)}`);
         for (const message of group.messages) {
           lines.push(`    ${metadata(message.facts)}`);
-          lines.push(...message.text.split("\n").map((line) => `      ${line.replaceAll(new RegExp("\\p{Cc}", "gu"), (char) => char === "	" ? char : "")}`));
+          lines.push(
+            ...message.text.split("\n").map(
+              (line) => `      ${line.replaceAll(new RegExp("\\p{Cc}", "gu"), (char) => char === "	" ? char : "")}`
+            )
+          );
         }
       }
       if (!section.groups.length && !section.page) lines.push("No messages.");
@@ -443,8 +449,7 @@ function renderText(view, wire, options, collection, requiredFields = []) {
       );
     }
   }
-  if (wire.page)
-    lines.push(`Scope: ${scopeText(wire.page)}`);
+  if (wire.page) lines.push(`Scope: ${scopeText(wire.page)}`);
   lines.push(...effectLines(wire.effects ?? []));
   for (const warning of wire.warnings ?? []) lines.push(`Warning: ${clean(warning.message)}`);
   if (omissions.length)
