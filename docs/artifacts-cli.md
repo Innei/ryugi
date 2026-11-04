@@ -89,6 +89,41 @@ diffs return `data.diff` and `data.receipt`. Preview, historical --all, projecte
 --fields and state reads have no receipt. JSON is available on demand; the skill's
 ordinary decision-and-action flow reads Brief.
 
+### Combined review reads
+
+`comment list --sections all --detail` reads the applicable collections in one
+CLI invocation and one server request: document threads/asks or artboard
+threads/groups/rounds. Use a comma-separated selection to read fewer collections.
+Each collection retains its own snapshot, bounded page, scope and continuation.
+This does not claim a single atomic snapshot shared by all collections.
+
+In JSON, the collections are under `data.sections.<name>`, with `items`,
+`evidence`, `snapshot`, `page`, and an optional thread `receipt`. `next` contains
+collection-labelled actions. Follow each `More` action as printed: it selects
+one `--section` and its cursor, preserving limit/detail/history. A thread receipt
+only acknowledges human evidence actually delivered on that complete page;
+asks/groups/rounds, previews and historical reads have none. Reading never
+acknowledges evidence automatically.
+
+Command actions in `next` have `{kind: "command", label: string, argv: string[]}`.
+Execute `argv[0]` with `argv.slice(1)` as separate arguments; labels are display
+text. To continue manually, use `comment list --section NAME --cursor TOKEN`
+with that collection's `page.nextCursor`, preserving the original `--detail`,
+`--all`, and `--limit`. Acknowledge a consumed thread page with
+`comment ack --artifact TYPE/ID --receipt RECEIPT`; other sections have no ack.
+For a targeted group query use `--section groups --kind verify --detail`;
+`--kind` and other filters are single-collection options.
+
+Brief prints the artifact header once, per-collection coverage, labelled state
+rows, and compact message metadata plus full multiline text. It preserves IDs,
+authors, timestamps, anchors and other returned metadata without pretty JSON.
+Filters, fields, thread IDs and existing cursors/snapshots require a single
+`--section`; they are rejected on combined reads before network access.
+
+The launcher probes the read-only version response for `ryugi.cli/v1` and
+`data.capabilities` containing `reviewBundlesV1`. An older envelope alone does
+not satisfy this contract; unsupported cached CLIs cannot execute the command.
+
 ### JSONL records and foreground ownership
 
 Stdout contains UTF-8 JSON records separated by newlines. Buffer partial lines
@@ -101,13 +136,13 @@ records belong to that same invocation and do not repeat `command`.
 Sequence numbers start at 0 and increase within one invocation; they are not
 reconnect or replay cursors. Dispatch on `kind`:
 
-| kind | Meaning |
-| --- | --- |
-| `meta` | Invocation identity; no domain result or readiness claim. |
-| `progress` | Optional `phase`, `current` and `total`; no terminal outcome. |
-| `item` | A finite collection's `collection` and one record in `data`. The terminal result omits that streamed collection. |
-| `ready` | Foreground startup is ready. Read `data.status`, `data.reused`, `data.url`, `data.localUrl` and `data.cloud`, plus warnings and effects. Continue reading. |
-| `result` | The invocation's terminal envelope: `outcome`, `data`, effects, errors and next actions. A failure can arrive before any ready event. |
+| kind       | Meaning                                                                                                                                                    |
+| ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `meta`     | Invocation identity; no domain result or readiness claim.                                                                                                  |
+| `progress` | Optional `phase`, `current` and `total`; no terminal outcome.                                                                                              |
+| `item`     | A finite collection's `collection` and one record in `data`. The terminal result omits that streamed collection.                                           |
+| `ready`    | Foreground startup is ready. Read `data.status`, `data.reused`, `data.url`, `data.localUrl` and `data.cloud`, plus warnings and effects. Continue reading. |
+| `result`   | The invocation's terminal envelope: `outcome`, `data`, effects, errors and next actions. A failure can arrive before any ready event.                      |
 
 A new foreground server may produce the following sequence (example paths and URLs):
 

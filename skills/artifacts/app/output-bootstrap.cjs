@@ -36,7 +36,7 @@ __export(index_exports, {
 module.exports = __toCommonJS(index_exports);
 
 // <define:BOOTSTRAP_OPTIONS>
-var define_BOOTSTRAP_OPTIONS_default = { format: { type: "string" }, json: { type: "boolean" }, detail: { type: "boolean" }, fields: { type: "string" }, quiet: { type: "boolean" }, verbose: { type: "boolean" }, "project-dir": { type: "string" }, artifact: { type: "string" }, host: { type: "string" }, "url-host": { type: "string" }, port: { type: "string" }, open: { type: "boolean" }, "no-open": { type: "boolean" }, foreground: { type: "boolean" }, background: { type: "boolean" }, visibility: { type: "string" }, type: { type: "string" }, project: { type: "boolean" }, limit: { type: "string" }, cursor: { type: "string" }, public: { type: "boolean" }, private: { type: "boolean" }, unpublish: { type: "boolean" }, list: { type: "boolean" }, delete: { type: "string" }, "with-boards": { type: "boolean" }, login: { type: "boolean" }, logout: { type: "boolean" }, section: { type: "string" }, snapshot: { type: "string" }, receipt: { type: "string" }, status: { type: "string" }, "waiting-on": { type: "string" }, kind: { type: "string" }, "choice-state": { type: "string" }, all: { type: "boolean" }, block: { type: "string" }, quote: { type: "string" }, board: { type: "string" }, x: { type: "string" }, y: { type: "string" }, thread: { type: "string" }, text: { type: "string" }, group: { type: "string" }, clear: { type: "boolean" }, ask: { type: "string" }, choice: { type: "string" }, round: { type: "string" }, withdraw: { type: "boolean" }, save: { type: "string" }, source: { type: "boolean" }, download: { type: "boolean" }, out: { type: "string" }, "no-comments": { type: "boolean" }, "output-format": { type: "string" }, "auto-publish": { type: "string" }, check: { type: "boolean" }, pm: { type: "string" } };
+var define_BOOTSTRAP_OPTIONS_default = { format: { type: "string" }, json: { type: "boolean" }, detail: { type: "boolean" }, fields: { type: "string" }, quiet: { type: "boolean" }, verbose: { type: "boolean" }, "project-dir": { type: "string" }, artifact: { type: "string" }, host: { type: "string" }, "url-host": { type: "string" }, port: { type: "string" }, open: { type: "boolean" }, "no-open": { type: "boolean" }, foreground: { type: "boolean" }, background: { type: "boolean" }, visibility: { type: "string" }, type: { type: "string" }, project: { type: "boolean" }, limit: { type: "string" }, cursor: { type: "string" }, public: { type: "boolean" }, private: { type: "boolean" }, unpublish: { type: "boolean" }, list: { type: "boolean" }, delete: { type: "string" }, "with-boards": { type: "boolean" }, login: { type: "boolean" }, logout: { type: "boolean" }, sections: { type: "string" }, section: { type: "string" }, snapshot: { type: "string" }, receipt: { type: "string" }, status: { type: "string" }, "waiting-on": { type: "string" }, kind: { type: "string" }, "choice-state": { type: "string" }, all: { type: "boolean" }, block: { type: "string" }, quote: { type: "string" }, board: { type: "string" }, x: { type: "string" }, y: { type: "string" }, thread: { type: "string" }, text: { type: "string" }, group: { type: "string" }, clear: { type: "boolean" }, ask: { type: "string" }, choice: { type: "string" }, round: { type: "string" }, withdraw: { type: "boolean" }, save: { type: "string" }, source: { type: "boolean" }, download: { type: "boolean" }, out: { type: "string" }, "no-comments": { type: "boolean" }, "output-format": { type: "string" }, "auto-publish": { type: "string" }, check: { type: "boolean" }, pm: { type: "string" } };
 
 // src/cli/output/configuration.ts
 var import_node_fs2 = __toESM(require("node:fs"), 1);
@@ -316,6 +316,7 @@ function clip(text, size = 160) {
   return segments.length > size ? `${segments.slice(0, size).map((s) => s.segment).join("")}\u2026` : text;
 }
 var scalar = (value) => value === null ? "none" : typeof value === "object" ? JSON.stringify(value) : String(value);
+var scopeText = (page) => `${clean(page.scope)} \xB7 ${page.returned} shown${page.total === null ? "" : ` / ${page.total} matched`}${page.hasMore ? " \xB7 more available" : ""}`;
 var quote = (value) => /^[\w./:@=+-]+$/.test(value) ? value : `'${value.replaceAll("'", "'\\''")}'`;
 function actionText(action) {
   return action.kind === "command" ? action.argv.map(quote).join(" ") : action.url;
@@ -374,8 +375,10 @@ function renderText(view, wire, options, collection, requiredFields = []) {
       continue;
     }
     if (!collection && !selected(section.key)) continue;
+    if (section.page)
+      lines.push(`${clean("title" in section && section.title || section.key)}: ${section.status ? `${clean(section.status)} \xB7 ` : ""}${scopeText(section.page)}`);
     if (section.kind === "records") {
-      if (section.title) lines.push(clean(section.title));
+      if (section.title && !section.page) lines.push(clean(section.title));
       const declared = new Set(section.columns.map((column) => column.key));
       const extra = section.key === collection ? [.../* @__PURE__ */ new Set([...options.fields ?? [], ...requiredFields])].filter((key) => !declared.has(key)).map((key) => ({ key, label: key })) : [];
       const columns = [...section.columns, ...extra].filter(
@@ -407,7 +410,18 @@ function renderText(view, wire, options, collection, requiredFields = []) {
               return cell === void 0 || cell === "" ? [] : [`${clean(column.label)}=${cell}`];
             }).join(" \xB7 ")}`
           );
-      if (!rows.length) lines.push("No records.");
+      if (!rows.length && !section.page) lines.push("No records.");
+    } else if (section.kind === "messages") {
+      if (section.title && !section.page) lines.push(`${clean(section.title)}:`);
+      const metadata = (items) => items.map((item) => `${clean(item.label)}=${clean(scalar(item.binding.value))}`).join(" \xB7 ");
+      for (const group of section.groups) {
+        lines.push(`  ${metadata(group.facts)}`);
+        for (const message of group.messages) {
+          lines.push(`    ${metadata(message.facts)}`);
+          lines.push(...message.text.split("\n").map((line) => `      ${line.replaceAll(new RegExp("\\p{Cc}", "gu"), (char) => char === "	" ? char : "")}`));
+        }
+      }
+      if (!section.groups.length && !section.page) lines.push("No messages.");
     } else if (section.kind === "diagnostics") {
       const limit = options.detail ? section.items.length : section.preview ?? 3;
       for (const item of section.items.slice(0, limit))
@@ -421,7 +435,7 @@ function renderText(view, wire, options, collection, requiredFields = []) {
           count: section.items.length - limit
         });
     } else {
-      if (section.title) lines.push(`${clean(section.title)}:`);
+      if (section.title && !section.page) lines.push(`${clean(section.title)}:`);
       lines.push(
         ...section.text.trimEnd().split("\n").map(
           (line) => `  ${line.replaceAll(new RegExp("\\p{Cc}", "gu"), (char) => char === "	" || char === "\n" ? char : "")}`
@@ -430,9 +444,7 @@ function renderText(view, wire, options, collection, requiredFields = []) {
     }
   }
   if (wire.page)
-    lines.push(
-      `Scope: ${clean(wire.page.scope)} \xB7 ${wire.page.returned} shown${wire.page.total === null ? "" : ` / ${wire.page.total} matched`}${wire.page.hasMore ? " \xB7 more available" : ""}`
-    );
+    lines.push(`Scope: ${scopeText(wire.page)}`);
   lines.push(...effectLines(wire.effects ?? []));
   for (const warning of wire.warnings ?? []) lines.push(`Warning: ${clean(warning.message)}`);
   if (omissions.length)

@@ -321,10 +321,11 @@ boards) in a new group with `"verify": true`.
   labels it as recorded by the agent, and they can undo a pass. Never pass a
   group on your own judgment.
 
-- `comment list --section groups --kind verify --detail` returns
+- `comment list --sections groups,threads --detail` reads verdicts and comments
+  together. Inspect groups with `kind=verify`; each has
   each verify group with `verdict`
   (`pending`, `pass` or `reject`), `evidenceUpdated` and `rejectThreads`.
-  Read it with the threads whenever you work on the artboard.
+  Follow each collection's continuation whenever more pages remain.
 - A reject is a thread on the group (`anchor.group`, `anchor.verdict:
 "reject"`); its first message is the reason. Pins elsewhere may point at
   the exact spot.
@@ -350,9 +351,10 @@ bottom submits the round. A round is the groups under one title note.
 - Comments on an open round stay quiet until it is submitted. The submit
   arrives as a `ryugi-choices` message (or they say done in the terminal):
   run its command.
-- `comment list --section groups --kind choose --detail` returns
-  choice groups (`kind: "choose"`, `choice`, `byRecommendation`, `round`, `threads`).
-  `comment list --section rounds --detail` independently shows each round's
+- `comment list --sections threads,groups,rounds --detail` returns
+  groups and their comments together. Inspect choice groups with `kind: "choose"`
+  (`choice`, `byRecommendation`, `round`, `threads`).
+  The independent rounds collection shows each round's
   `id`, member `groups` and `state` (`open`, `submitted` or `closed`).
   Match the group's `round` to a `submitted` round before acting. `choice` is the
   answer; `byRecommendation: true` means they kept your recommendation; a

@@ -8,6 +8,7 @@ const os = require('node:os');
 const path = require('node:path');
 
 const outputBootstrap = require('./output-bootstrap.cjs');
+
 const LATEST_CHECK_MS = 24 * 60 * 60 * 1000;
 const RETRY_CHECK_MS = 60 * 60 * 1000;
 const RELEASES = path.join(
@@ -44,7 +45,9 @@ function usesOutputProtocol(cli) {
       probe.status === 0 &&
       value.schema === 'ryugi.cli/v1' &&
       value.command === 'version' &&
-      value.outcome === 'success';
+      value.outcome === 'success' &&
+      Array.isArray(value.data?.capabilities) &&
+      value.data.capabilities.includes('reviewBundlesV1');
   } catch {}
   protocolChecks.set(cli, accepted);
   return accepted;
@@ -52,7 +55,7 @@ function usesOutputProtocol(cli) {
 function requireOutputProtocol(cli) {
   if (!usesOutputProtocol(cli))
     throw new LaunchError(
-      `The installed CLI does not provide ryugi.cli/v1. Install a current ryugi-artifacts release or rebuild the local CLI.`,
+      `The installed CLI does not provide ryugi.cli/v1 with reviewBundlesV1. Install a current ryugi-artifacts release or rebuild the local CLI.`,
     );
 }
 

@@ -37,11 +37,11 @@ Your message is one line on what's on the board, plus the link.
 
 When they answer:
 
-1. Read Brief from `comment list --section groups --kind choose --detail`,
-   then independently read `--section rounds --detail` and `--section threads`
+1. Read Brief from `comment list --sections threads,groups,rounds --detail`
    for this project and artboard, as ryugi:artifacts says under Choice groups.
    Match each group's `round` to a `submitted` round. Follow printed
-   `More` and complete thread `Read` commands; use the evidence before its
+   `More` for each collection; complete thread messages are included on each
+   delivered page. A preview instead requires its printed `Read`. Use the evidence before its
    exact `Acknowledge`. When they answered in the terminal instead, record
    it on the board first. A page submit is already recorded: read it before
    continuing. Read what they selected when they point at nodes or tweaks.

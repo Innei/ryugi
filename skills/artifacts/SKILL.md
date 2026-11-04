@@ -49,6 +49,13 @@ add `--format brief` for that call.
   to inspect one collection. Thread previews contain resource IDs and an executable
   `Read` command. Threads default to unread evidence; `--all` reads history.
   Follow `More` for later pages; the scope line states what is shown.
+- For a complete review, use `comment list --sections all --detail` once,
+  or select `--sections threads,asks` for a document and
+  `--sections threads,groups,rounds` for an artboard. Each collection has its own
+  coverage and continuation; follow all relevant `More` actions. Complete messages
+  are included on each delivered thread page. Only that page can have a receipt.
+  For filters, field projection or an existing cursor/snapshot, select one
+  `--section`; these options cannot be applied indiscriminately to a bundle.
 - Follow the printed `Read` command for complete thread messages, or use
   `comment read --thread ID`. Read and use all delivered evidence, then run the
   printed `Acknowledge` command with its exact receipt. A preview has no receipt;
@@ -61,7 +68,8 @@ add `--format brief` for that call.
   Apply asks with `state: submitted`, and choices whose associated round is
   `submitted`. Verify groups use the human's `verdict: pending|pass|reject`.
   Preserve withdrawn, staleChoice, orphan and byRecommendation context where
-  present. Read verify groups, choice groups and round submission separately.
+  present. Interpret verify verdicts, choices and round submission independently,
+  even when one combined read delivers them together.
 - Exit codes: 0 success, 1 failure, 2 human action, 3 validation issues, 4 incomplete
   evidence, 5 partial completion, 130/143 interrupted. Inspect the reported effects
   before retrying an unknown write. Complete reads can be repeated after interruption.
