@@ -4,7 +4,10 @@ const { createHash } = require('node:crypto');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { unreadThreadCount, reviewStateKey } = require('../skills/artifacts/app/comment-threads.cjs');
+const {
+  unreadThreadCount,
+  reviewStateKey,
+} = require('../skills/artifacts/app/comment-threads.cjs');
 
 const MAX_CONTEXT = 8000;
 const MAX_HTML = 600;
@@ -35,7 +38,12 @@ function selectionFiles(state) {
     for (const id of ids) {
       const file = path.join(state, type, id, 'selection.json');
       const value = readJson(file);
-      if (value && Array.isArray(value.selected) && Array.isArray(value.tweaks) && Array.isArray(value.nodes))
+      if (
+        value &&
+        Array.isArray(value.selected) &&
+        Array.isArray(value.tweaks) &&
+        Array.isArray(value.nodes)
+      )
         files.push({ file, value });
     }
   }
@@ -52,7 +60,9 @@ function typedNodes(nodes, prompt) {
   const boards = [...new Set(nodes.map((node) => node.board))];
   const typed = new Set();
   for (const board of boards) {
-    for (const match of prompt.matchAll(new RegExp(`(?<![A-Za-z0-9_-])${escapeRegExp(board)}#(\\d+)(?!\\d)`, 'g')))
+    for (const match of prompt.matchAll(
+      new RegExp(`(?<![A-Za-z0-9_-])${escapeRegExp(board)}#(\\d+)(?!\\d)`, 'g'),
+    ))
       typed.add(`${board}#${match[1]}`);
   }
   return nodes.filter((node) => typed.has(node.id));
@@ -85,7 +95,10 @@ function describe(session, { file, value }, prompt, budget) {
   const fixed = head.join('\n').length + tail.length + 2;
   const room = Math.max(0, budget - fixed);
   const middle = body.join('\n');
-  const kept = middle.length > room ? `${middle.slice(0, Math.max(0, room - 40))}\n(more in the file below)` : middle;
+  const kept =
+    middle.length > room
+      ? `${middle.slice(0, Math.max(0, room - 40))}\n(more in the file below)`
+      : middle;
   return [head.join('\n'), kept, tail].filter(Boolean).join('\n');
 }
 
@@ -131,15 +144,20 @@ function commentReminders(project, root, key) {
   if (!waiting.length) return '';
   const types = new Set(waiting.map(({ artifact }) => artifact.split('/')[0]));
   const target =
-    waiting.length === 1 ? waiting[0].artifact : types.size === 1 ? `${[...types][0]}/<id>` : '<type>/<id>';
-  const command = `List them with \`node "${LAUNCHER}" comment list --section threads --format json --project-dir "${project}" --artifact ${target}\`.`;
+    waiting.length === 1
+      ? waiting[0].artifact
+      : types.size === 1
+        ? `${[...types][0]}/<id>`
+        : '<type>/<id>';
+  const command = `List them with \`node "${LAUNCHER}" comment list --section threads --format brief --project-dir "${project}" --artifact ${target}\`.`;
   const head = 'Unread comment evidence: ';
   const named = [];
   for (const [index, { artifact, count }] of waiting.entries()) {
     const more = waiting.length - index - 1;
     const next = [...named, `${artifact} (${count})`];
     const tail = more ? `, and ${more} more artifact(s)` : '';
-    if (head.length + next.join(', ').length + tail.length + command.length + 2 > MAX_REMINDERS) break;
+    if (head.length + next.join(', ').length + tail.length + command.length + 2 > MAX_REMINDERS)
+      break;
     named.push(next.at(-1));
   }
   const left = waiting.length - named.length;
@@ -148,7 +166,8 @@ function commentReminders(project, root, key) {
 
 // Mirrors credentialsFile in artifacts/src/server/credentials.ts; artifacts/test/hook-auto-publish.test.ts keeps them in step.
 function credentialsPath(env, platform, home) {
-  if (platform === 'win32' && env.APPDATA) return path.join(env.APPDATA, 'ryugi', 'credentials.json');
+  if (platform === 'win32' && env.APPDATA)
+    return path.join(env.APPDATA, 'ryugi', 'credentials.json');
   return path.join(env.XDG_CONFIG_HOME || path.join(home, '.config'), 'ryugi', 'credentials.json');
 }
 
@@ -174,7 +193,9 @@ function autoPublishContext(project, env, sessionId) {
   const settings = readJson(path.join(path.dirname(credentials), 'config.json')) || {};
   const lines = [];
   const signInFile = path.join(state, 'auto-publish-sign-in');
-  const seen = signedIn ? createHash('sha256').update(token).digest('hex').slice(0, 16) : 'signed-out';
+  const seen = signedIn
+    ? createHash('sha256').update(token).digest('hex').slice(0, 16)
+    : 'signed-out';
   const previous = readText(signInFile);
   if (previous !== seen) {
     remember(signInFile, seen);
@@ -197,7 +218,7 @@ function autoPublishContext(project, env, sessionId) {
     remember(notifiedFile, notice.id);
     if (notice.kind === 'signed-out') {
       lines.push(
-        `Ryugi auto-publish paused: the Ryugi Cloud sign-in expired. Tell your human partner and offer to sign in again with \`node "${LAUNCHER}" publish --login --format json --project-dir "${project}"\`.`,
+        `Ryugi auto-publish paused: the Ryugi Cloud sign-in expired. Tell your human partner and offer to sign in again with \`node "${LAUNCHER}" publish --login --format brief --project-dir "${project}"\`.`,
       );
     } else if (notice.kind === 'failing') {
       lines.push(
@@ -209,7 +230,7 @@ function autoPublishContext(project, env, sessionId) {
       );
     } else if (notice.kind === 'cap') {
       lines.push(
-        `Ryugi auto-publish could not create a new cloud copy (${clip(String(notice.message), 200)}). Existing copies still update. Tell your human partner; they can delete old copies with \`node "${LAUNCHER}" publish --list --format json --project-dir "${project}"\` and \`--delete <cloud-id>\`.`,
+        `Ryugi auto-publish could not create a new cloud copy (${clip(String(notice.message), 200)}). Existing copies still update. Tell your human partner; they can delete old copies with \`node "${LAUNCHER}" publish --list --format brief --project-dir "${project}"\` and \`--delete <cloud-id>\`.`,
       );
     }
   }
@@ -222,8 +243,11 @@ function documentSelections(session, root, budget) {
   for (const id of documentIds(root)) {
     const file = path.join(root, '.state', 'document', id, 'selection.json');
     const value = readJson(file);
-    if (!value || typeof value.quote !== 'string' || !value.quote || !Array.isArray(value.blockIds)) continue;
-    const blocks = value.blockIds.length ? `${value.heading ? ',' : ' in'} blocks ${value.blockIds.join(', ')}` : '';
+    if (!value || typeof value.quote !== 'string' || !value.quote || !Array.isArray(value.blockIds))
+      continue;
+    const blocks = value.blockIds.length
+      ? `${value.heading ? ',' : ' in'} blocks ${value.blockIds.join(', ')}`
+      : '';
     const where = `${value.heading ? ` under "${value.heading}"` : ''}${blocks}`;
     const head = `Document document/${id}, open in the viewer (updated ${value.updatedAt}):\nSelected${where}:`;
     const tail = `Full selection: ${path.relative(session, file)}`;
@@ -255,7 +279,9 @@ function main() {
     process.env,
     typeof input.session_id === 'string' ? input.session_id : '',
   );
-  const reminders = [commentReminders(project, root, cursorKey(process.env)), autoPublish].filter(Boolean).join('\n\n');
+  const reminders = [commentReminders(project, root, cursorKey(process.env)), autoPublish]
+    .filter(Boolean)
+    .join('\n\n');
   const files = selectionFiles(state).sort((a, b) =>
     String(b.value.updatedAt).localeCompare(String(a.value.updatedAt)),
   );

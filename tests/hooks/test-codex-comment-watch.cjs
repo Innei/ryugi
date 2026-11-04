@@ -225,7 +225,7 @@ test('a new comment is queued to the hook session rather than an inherited paren
   assert.equal(args[args.indexOf('--remote') + 1], f.env.RYUGI_CODEX_REMOTE);
   const message = args[args.indexOf('--message') + 1];
   assert.ok(message.includes('document/plan'));
-  assert.ok(message.includes('comment list --section threads --format json'));
+  assert.ok(message.includes('comment list --section threads --format brief'));
   assert.ok(!message.includes('Change it'));
   assert.ok(
     !fs.existsSync(
@@ -439,7 +439,7 @@ test('desktop comments retry through the app pipe and acknowledge the hook sessi
   assert.equal(call.hostId, 'local');
   assert.equal(call.arguments.hostId, 'local');
   assert.equal(call.namespace, 'test_desktop');
-  assert.ok(call.arguments.prompt.includes('comment list --section threads --format json'));
+  assert.ok(call.arguments.prompt.includes('comment list --section threads --format brief'));
   assert.ok(!call.arguments.prompt.includes('Change it'));
   assert.equal(JSON.parse(f.state().receipt).threadId, id);
   assert.equal(f.read().length, 0);

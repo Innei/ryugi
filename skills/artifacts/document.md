@@ -253,47 +253,45 @@ When to write one:
 When asked to inspect edits, start with a read-only block summary:
 
 ```bash
-node app/ryugi-artifacts.cjs changes --format json --project-dir /path/to/project --artifact document/<id>
-node app/ryugi-artifacts.cjs changes --snapshot <data.snapshot> --detail --format json --project-dir /path/to/project --artifact document/<id>
+node app/ryugi-artifacts.cjs changes --project-dir /path/to/project --artifact document/<id>
 ```
 
-The first result has `data.blocks` and a snapshot; it does not consume edits.
-The complete read returns `data.diff` and `data.receipt`. Read and use the entire
-captured diff, then acknowledge that exact receipt:
+Read the changed block IDs and follow the printed `Read` command for the captured
+complete diff. Use the entire diff, then run the printed `Acknowledge` command;
+its receipt covers exactly that evidence. To enter it manually:
 
 ```bash
-node app/ryugi-artifacts.cjs changes ack --receipt <receipt> --format json --project-dir /path/to/project --artifact document/<id>
+node app/ryugi-artifacts.cjs changes ack --receipt <receipt> --project-dir /path/to/project --artifact document/<id>
 ```
 
-Changes arriving later remain unread. `--all` is historical and has no receipt.
-For a large diff, use `changes --snapshot TOKEN --save NEW_FILE --format json`,
-read the complete saved file, then ack. Never ack from a partial block preview.
-Run it only when asked; answer about the changed block IDs.
+Later changes remain unread. `--all` is historical and has no receipt.
+For a large diff, add `--save NEW_FILE` to the captured `Read` command, read the
+entire saved file, then ack. Never ack from a partial preview. Run changes only
+when asked, and answer about the changed block IDs.
 
 ## Comments
 
 Read and answer comments through the CLI, never through `comments.json`.
 
 ```bash
-node app/ryugi-artifacts.cjs comment list --section threads --format json --project-dir /path/to/project --artifact document/<id>
+node app/ryugi-artifacts.cjs comment list --section threads --project-dir /path/to/project --artifact document/<id>
 ```
 
-- `list --section threads` is a read-only preview. JSON rows are `data.items`;
-  it never marks a thread read. Use `comment read --thread ID --snapshot TOKEN
---detail --format json` for complete messages, then explicitly `comment ack
---receipt RECEIPT` after using the evidence. Ack does not resolve a thread and
-  cannot consume a reply that arrived after the read.
+- `list --section threads` is a read-only preview; it never marks a thread read.
+  Follow its printed `Read` command to read the captured complete messages.
+  Use all evidence, then follow `Acknowledge` with its exact receipt. Ack does
+  not resolve a thread or consume a reply that arrived after the read.
 - Each thread has `id`, `anchor` (`blockId`, `quote`) and `waitingOn`; preview rows
   omit `messages`. A complete read includes them. `--all` has no receipt.
-- Read answers independently with `comment list --section asks --detail --format
-json`. They are `data.items`, not a field mixed into a thread page; no state
-  collection issues receipts. Only submitted answers may be applied.
+- Read answers independently with `comment list --section asks --detail`.
+  This state collection has no receipts. Apply only answers whose state is
+  `submitted`, retaining stale, orphan and recommendation context.
 - A comment asking for a change: edit `doc.xml`, reply with what changed,
   then resolve the thread.
 - Reply, with the message on stdin:
 
   ```bash
-  node app/ryugi-artifacts.cjs comment reply --format json --project-dir /path/to/project --artifact document/<id> --thread <thread-id> <<'EOF'
+  node app/ryugi-artifacts.cjs comment reply --project-dir /path/to/project --artifact document/<id> --thread <thread-id> <<'EOF'
   Changed to 2% and updated the body to match.
   EOF
   ```

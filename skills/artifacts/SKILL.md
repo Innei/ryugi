@@ -13,22 +13,18 @@ then answer in the terminal.
 
 ## Read a Ryugi Cloud link
 
-When your human partner pastes a Ryugi Cloud link to read
-(`https://ryugi.innei.dev/a/<id>`, or `/a/<id>` on another Ryugi Cloud
-host), your first step is, with `app/` in this skill's directory:
+When your human partner pastes a Ryugi Cloud link (`https://ryugi.innei.dev/a/<id>`,
+or `/a/<id>` on another Ryugi Cloud host), run this with `app/` in this skill's directory:
 
 ```bash
-node app/ryugi-artifacts.cjs get --format json <link>
+node app/ryugi-artifacts.cjs get <link>
 ```
 
-The page itself is an app shell with no content, so no page fetch, no
-browser and no `Artifact` tool. `get` reads it with this machine's cloud
-sign-in. The first result is a bounded summary in `data`, with `data.snapshot`
-and an outline or manifest; no files are downloaded. Follow with `get --detail
---snapshot TOKEN --format json` for document `data.content` and published comments,
-or `get --source` for pure LiteXML. Artboard/HTML files require explicit
-`--download` or `--out NEW_DIRECTORY`. Exit code 2 requires user action; inspect
-`error.message`, `error.details` and `next`.
+The page is an app shell; `get` reads its content with this machine's Cloud sign-in.
+Read the bounded summary and follow the printed `Details` or `More` command.
+Those commands preserve the captured version and page scope. For pure LiteXML,
+use `get <link> --source`; files require explicit `--download --out NEW_DIRECTORY`.
+Exit code 2 requires human action: follow the printed login or upgrade link.
 
 **You have a tool named `Artifact`** (Claude Code on a claude.ai plan):
 pick the type below, then read `claude-artifacts.md` and build it with that
@@ -40,38 +36,39 @@ outside this machine, publish it to Ryugi Cloud (see Share a link).
 
 ## Reading evidence with the CLI
 
-- `get <link> --format json` returns a published summary, outline or file manifest,
-  without downloading files or returning complete content. Use `--detail --snapshot
-TOKEN` for complete document content and published-snapshot comments, `--block
-ID` for one complete block, or `--source` for pure LiteXML. Source has no envelope;
-  `--source --save NEW_FILE` leaves stdout empty. Assets require explicit `--download`
-  or `--out NEW_DIRECTORY`; existing files/directories are never overwritten.
-- `comment list` is a read-only overview. Select independent collections with
-  `--section threads|asks|groups|rounds`; JSON records are `data.items`. Default
-  thread rows contain previews, not complete messages. Follow `page.nextCursor`
-  or the returned executable `next` action; pages describe only their own scope.
-- To use thread evidence, run `comment read --thread ID --snapshot TOKEN --detail
---format json` (or `comment list --section threads --detail` for a complete page).
-  Complete threads are in `data.items` (one item for a single-thread read); the
-  receipt is `data.receipt`. Read and use all delivered messages, then
-  `comment ack --receipt RECEIPT`.
-  Ack covers exactly those events; later replies remain unread. Never ack a preview.
-- `changes` previews changed blocks. Read `changes --snapshot TOKEN --detail --format
-json`, or save the complete diff with `changes --snapshot TOKEN --save NEW_FILE
---format json`. After reading and using the entire diff, acknowledge its
-  `data.receipt` with `changes ack --receipt RECEIPT`. Never acknowledge from a
-  block preview. `--all` and `--fields` do not generate receipts.
-- Asks, groups and rounds are repeatable current-state collections with no receipt.
-  Apply document answers only when `state` is `submitted`; retain withdrawn,
-  staleChoice, orphan and byRecommendation context. Inspect verify groups and
-  choice groups independently, and inspect round submission separately. Thread
-  ack never resolves, submits, settles, passes or rejects anything.
-- Exit codes: 0 success, 1 failure, 2 user action, 3 validation issues, 4 incomplete
-  evidence, 5 partial completion, 130/143 interrupted. Check effects before retrying
-  writes whose result is unknown. Complete reads can be repeated after interruption.
+Read the default **Brief** output directly. It contains the decision, resource IDs,
+coverage, warnings and executable next steps. The command examples in this skill
+are for an agent reading shell output. If a format configuration overrides Brief,
+add `--format brief` for that call.
 
-All commands below use the same output pipeline; there is no legacy mode or
-release gate. Keep the `data` envelope in mind when following examples.
+- `get <link>` returns an outline or file manifest without downloading files.
+  Follow `Details` for document content and published comments, or use `--block ID`
+  for one complete block. `--source` prints pure LiteXML; `--source --save NEW_FILE`
+  saves it with empty stdout. Existing download/save targets are never overwritten.
+- `comment list` shows an overview. Select `--section threads|asks|groups|rounds`
+  to inspect one collection. Thread previews contain resource IDs and an executable
+  `Read` command. Follow `More` for later pages; the scope line states what is shown.
+- Follow the printed `Read` command for complete thread messages, or use
+  `comment read --thread ID`. Read and use all delivered evidence, then run the
+  printed `Acknowledge` command with its exact receipt. A preview has no receipt;
+  later replies remain unread. Ack never resolves or decides anything.
+- `changes` previews changed blocks. Follow its `Read` command for the captured
+  complete diff, use the evidence, then follow `Acknowledge`. For a large diff,
+  use the captured snapshot with `--save NEW_FILE`, read the entire file, then ack.
+  Historical `--all` and projected `--fields` reads have no receipt.
+- Asks, groups and rounds are independent, repeatable state reads without receipts.
+  Apply answers only when their state is `submitted`; keep withdrawn, staleChoice,
+  orphan and byRecommendation context. Read verify groups, choice groups and
+  round submission separately.
+- Exit codes: 0 success, 1 failure, 2 human action, 3 validation issues, 4 incomplete
+  evidence, 5 partial completion, 130/143 interrupted. Inspect the reported effects
+  before retrying an unknown write. Complete reads can be repeated after interruption.
+
+When a command feeds an actual parser such as `jq` or `JSON.parse`, select
+`--format json` and read the `data` envelope (for example, `.data.url`); use JSONL
+for code consuming live events. That is an integration
+choice, not a requirement for an agent reading the output. The machine protocol is
+in `docs/artifacts-cli.md` in the plugin repository.
 
 ## Pick the type
 
@@ -135,92 +132,79 @@ lowercase letters, digits and hyphens, named after the topic
 ## Start the server and get the link
 
 Paths below are relative to this skill's directory: resolve `app/` to its
-absolute path before you run them. Every artifacts command goes through the
-launcher `app/ryugi-artifacts.cjs`. Brief is the default, including in a non-TTY shell.
-Use `--format json` when consuming fields programmatically. Every JSON command
-returns one `ryugi.cli/v1` envelope: domain facts are under `data`, with `outcome`,
-`effects`, `page`, `omitted`, `warnings`, `next`, and `error` alongside it. `--json`
-is exactly a shorthand for `--format json`; there is no old output protocol or
-version-based selection. Formatting never changes visibility or acknowledges reads.
+absolute path before running them. Every artifacts command uses the launcher.
 
 ```bash
-node app/ryugi-artifacts.cjs start --background --format json --project-dir /path/to/project --artifact html/arrow-tuner
-# {"schema":"ryugi.cli/v1","command":"start","outcome":"success", "data":{
-#   "status":"running","scope":"machine","project":"/path/to/project",
-#   "url":"https://ryugi.innei.dev/a/…","localUrl":"http://localhost:27319/html/…",
-#   "cloud":"live_link_reserved","reused":false}}
+node app/ryugi-artifacts.cjs start --background --project-dir /path/to/project --artifact html/arrow-tuner
+# Server: RUNNING
+# Scope: machine
+# Project: /path/to/project
+# Artifact: html/arrow-tuner
+# Open: https://ryugi.innei.dev/a/…
+# Local: http://localhost:27319/html/…
+# Cloud: live_link_reserved
 ```
 
-- Give them `data.url` exactly as returned. `data.cloud` distinguishes a reserved
-  live Cloud link from `local_only`; `data.localUrl` is the local fallback.
-- Inspect `warnings` and `next` for quota, sign-in or upgrade actions. A reserved
-  live link does not mean a publication has completed.
-- Run `start` before you write a new artifact's first file, so the page is
-  open while you write it.
-- Run it again only right before a message that gives a link, with the
-  artifact you're about to mention; edits in between need no `start`. It
-  prints `data.reused: true` while the server is up, and otherwise starts it on
-  the same port, so open tabs reconnect.
-- One server serves every project on this machine and keeps running
-  between sessions. Every run registers your project with it.
+- Give them the `Open` URL exactly as printed. `Cloud: live_link_reserved` is a
+  live link reservation, not a completed publication; `local_only` is a local link.
+  A separate `Local` URL is the fallback. Keep the full URL, including `?key=`.
+- Follow printed warnings and actions for quota, sign-in or upgrades.
+- Run `start` before the first file of a new artifact, so the page is open while
+  you write. Run it again only right before sharing a link, for that artifact.
+  `Server: RUNNING · reused` means it reused the running server and its port.
+- One server serves all projects and remains running between sessions. Each run
+  registers your project.
 - The browser opens when the first artifact is ready enough: for an artboard,
   once its focus group is complete (or two boards when there are no groups),
-  even while later boards are still drawing. Pass `--no-open` only for
-  headless or scripted use. Still share `data.url`; remote setups can't
-  auto-open. Read `artboard.md` for the streaming write order.
-- Stop it with `node app/ryugi-artifacts.cjs stop --format json`.
-  It stops the server for every project; the artifacts stay.
+  while later boards may still be drawing. Use `--no-open` for headless use and
+  still share the `Open` URL. Read `artboard.md` for streaming write order.
+- `node app/ryugi-artifacts.cjs stop` stops the server for every project; files stay.
 
-**Launching by harness.** Use `--background --format json` for one terminal
-result in Claude Code, Codex and normal shells. Do not depend on TTY or CODEX_CI
-for output selection. A foreground server requires `--foreground --format jsonl`
-and the harness's background-shell mechanism; consume its `ready` event before
-using the link. Single JSON is rejected for foreground services. `--no-open`
-suppresses opening a browser, not the result or link.
+**Launching by harness.** Use `--background` for a completed startup result in
+Claude Code, Codex and ordinary shells. A foreground server uses `--foreground`
+with the harness's background-shell mechanism; wait for `Server: RUNNING` and
+`Open` before sharing the link. Brief works in both modes without TTY detection.
+Code subscribing to lifecycle events can explicitly select `--format jsonl`.
 
-**Remote or containerized setups:** if the link is unreachable from their
-browser, bind a non-loopback host and name the host they reach it by:
-`--host 0.0.0.0 --url-host localhost`. A server bound that way refuses
-requests without its key: its `data.localUrl` carries `?key=`, so give it to them
-complete.
+**Remote or containerized setups:** use `--host 0.0.0.0 --url-host HOST` with
+an address the human partner's browser can reach. Non-loopback local links
+require the full printed key-bearing URL.
 
 ## Share a link
 
-Publish when they want a link that works outside this machine. The server
-must be running.
+Publish when they want a link that works outside this machine. The server must
+be running.
 
 ```bash
-node app/ryugi-artifacts.cjs publish --format json --project-dir /path/to/project --artifact html/arrow-tuner --public
-# {"schema":"ryugi.cli/v1","command":"publish.publish","outcome":"success",
-#  "data":{"status":"published","artifact":"html/arrow-tuner","url":"https://ryugi.innei.dev/a/…","visibility":"public"}}
+node app/ryugi-artifacts.cjs publish --project-dir /path/to/project --artifact html/arrow-tuner --public
+# Publish: PUBLISHED · html/arrow-tuner
+# ID: …
+# URL: https://ryugi.innei.dev/a/…
+# Visibility: public
 ```
 
-- First publish of an artifact: someone else will open it (a teammate, a
-  reviewer): `--public`. Only they will look: `--private`, which needs their
-  sign-in.
-- Publishing an artifact again: no `--public` or `--private`. The link keeps
-  whoever can see it now, which they may have changed on the web page since
-  your last command. Add a flag only when they ask to change who can see it.
-- Publishing again replaces what the same link shows.
-- Exit code 2 with `error.code: E_LOGIN_REQUIRED`: give them the login URL in
-  `error.details.loginUrl` or `next`, wait for sign-in, then run it again.
-- `--unpublish` deletes the Cloud copy. `--list` gives a bounded `data.artifacts`
-  page; `--delete <cloud-id>` removes the named copy.
-- Exit code 2 with `error.code: E_PLAN_LIMIT`: give them `error.message` and
-  `error.details.upgradeUrl`. Exit code 1 includes classified failure details in
-  `error`; fix the reported causes before retrying. Exit code 5 is partial: inspect
-  the retained URL and per-target effects before any retry.
+- First publication: use `--public` for someone else to open it; use `--private`
+  for only the signed-in owner.
+- To update the same publication, omit both visibility flags. Explicit flags
+  change access only when your human partner requests that change.
+- Share the printed `URL`. Publishing again replaces what the same link shows.
+- Exit code 2 with `E_LOGIN_REQUIRED`: give them the printed login link, wait for
+  sign-in, then retry. `E_PLAN_LIMIT` gives the reason and an upgrade link.
+- Exit code 1: fix the reported cause. Exit code 5: inspect the retained URL and
+  per-target effects before retrying a partial publication.
+- `--unpublish` deletes the Cloud copy, `--list` shows a bounded account page,
+  and `--delete <cloud-id>` removes the named copy.
 
 ## Auto-publish
 
 When your human partner is signed in and auto-publish is on, every artifact
 changed during your turn is published as a private copy when the turn ends
-(Claude Code only; elsewhere, publish when asked). `config --format json` prints
+(Claude Code only; elsewhere, publish when asked). `config` prints
 whether it is on.
 
 - Do not run `publish` to keep a private copy current; the turn end does it.
 - They want to look from their phone or another machine: give them
-  `data.url` from `start`. It is live while this computer is on, and shows
+  the `Open` URL from `start`. It is live while this computer is on, and shows
   the last published copy when it is off. Or ryugi.innei.dev, which lists
   every copy once they sign in there.
 - Someone else will open it: `--public`, as in Share a link.
@@ -253,17 +237,19 @@ whether it is on.
 
 1. Write the files with your file-writing tool.
 2. Run `check` after your last write. It waits until the server has checked
-   that write, then reports `data.issues`, `data.pending` and runtime evidence; no
+   that write, then reports warnings, pending work and browser evidence; no
    sleep or `checkedAt` comparison is needed.
 
    ```bash
-   node app/ryugi-artifacts.cjs check --format json --project-dir /path/to/project --artifact artboard/settings-nav
-   # {"schema":"ryugi.cli/v1","command":"check","outcome":"pending",
-   #  "data":{"artifact":"artboard/settings-nav","status":"pending","runtime":"not_run","issues":[],"pending":["browser_not_run"]}}
+   node app/ryugi-artifacts.cjs check --project-dir /path/to/project --artifact artboard/settings-nav
+   # Check: PENDING · artboard/settings-nav
+   # Static: clean
+   # Browser: not_run
+   # Pending: ["browser_not_run"]
    ```
 
    Fix every warning. For `html` this includes `runtime: …` lines: errors
-   the page threw in their browser. They only count once `data.runtime: clean`
+   the page threw in their browser. They only count once `Browser: clean`
    shows the new version has loaded there; until then, an empty list
    means "not run yet", not "no errors".
 

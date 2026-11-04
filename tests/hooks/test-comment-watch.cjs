@@ -68,7 +68,7 @@ test('new document and artboard comments produce actionable notifications withou
   ]);
   for (const event of events) {
     assert.equal(event.unread, 1);
-    assert.ok(event.command.includes('comment list --section threads --format json'));
+    assert.ok(event.command.includes('comment list --section threads --format brief'));
     assert.ok(event.command.includes(`--artifact ${event.artifact}`));
     assert.ok(event.instruction.includes('reply'));
     assert.ok(!fs.existsSync(path.join(f.root, '.state', event.artifact, 'comment-cursors.json')));
@@ -357,7 +357,7 @@ test('comments on an open choice round stay silent until the round is submitted'
   assert.equal(event.artifact, 'artboard/pick');
   assert.equal(event.round, 'r1');
   assert.ok(
-    event.command.includes('comment list --section groups --kind choose --detail --format json'),
+    event.command.includes('comment list --section groups --kind choose --detail --format brief'),
   );
   assert.ok(!event.withdrawn);
   assert.deepEqual(poll(), []);
@@ -465,7 +465,7 @@ test('answers to document questions stay silent until they are submitted', (t) =
   assert.deepEqual(rest, []);
   assert.equal(event.type, 'ryugi-answers');
   assert.equal(event.artifact, 'document/plan');
-  assert.ok(event.command.includes('comment list --section asks --detail --format json'));
+  assert.ok(event.command.includes('comment list --section asks --detail --format brief'));
   assert.ok(event.instruction.includes('asks'));
   assert.deepEqual(poll(), []);
 });

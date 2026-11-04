@@ -304,6 +304,141 @@ function result(data, completion = { kind: "succeeded" }, extra = {}) {
   return { data, completion, coverage: {}, effects: [], warnings: [], actions: [], ...extra };
 }
 
+// src/cli/output/render.ts
+var clean = (text) => text.replace(/[\x00-\x1f\x7f-\x9f]/g, " ");
+function clip(text, size = 160) {
+  const segments = [...new Intl.Segmenter(void 0, { granularity: "grapheme" }).segment(text)];
+  return segments.length > size ? `${segments.slice(0, size).map((s) => s.segment).join("")}\u2026` : text;
+}
+var scalar = (value) => value === null ? "none" : typeof value === "object" ? JSON.stringify(value) : String(value);
+var quote = (value) => /^[\w./:@=+-]+$/.test(value) ? value : `'${value.replaceAll("'", "'\\''")}'`;
+function actionText(action) {
+  return action.kind === "command" ? action.argv.map(quote).join(" ") : action.url;
+}
+var effectLines = (effects) => effects.map(
+  (effect) => `Effect: ${clean(effect.operation)} ${clean(effect.target)} \xB7 ${effect.state}`
+);
+function renderText(view, wire, options, collection, requiredFields = []) {
+  const lines = [
+    `${clean(view.heading)}: ${clean(view.status).toUpperCase()}${view.subject ? ` \xB7 ${clean(view.subject)}` : ""}`
+  ];
+  const omissions = [...wire.omitted ?? []];
+  const selected = (key, required = false) => required || requiredFields.includes(key) || !options.fields || options.fields.includes(key);
+  const value = (input, path5) => {
+    const text = clean(scalar(input));
+    const shown = options.detail ? text : clip(text);
+    if (shown !== text) omissions.push({ path: path5, reason: "preview" });
+    return shown;
+  };
+  const facts = (items) => {
+    for (const item of items)
+      if (collection || selected(item.binding.key, item.required))
+        lines.push(
+          `${clean(item.label)}: ${value(item.binding.value, `data.${item.binding.key}`)}`
+        );
+  };
+  facts(view.facts);
+  const errorActions = [];
+  if (wire.error) {
+    lines.push(`${clean(wire.error.code)}: ${clean(wire.error.message)}`);
+    if (wire.error.httpStatus !== void 0) lines.push(`HTTP: ${wire.error.httpStatus}`);
+    const details = wire.error.details;
+    if (details && typeof details === "object" && !Array.isArray(details)) {
+      for (const [key, detail] of Object.entries(details)) {
+        if (typeof detail === "string" && /^https?:\/\/\S+$/i.test(detail))
+          errorActions.push({ kind: "url", label: clean(key), url: detail });
+        else facts([{ label: key, binding: { key, value: detail }, required: true }]);
+      }
+    } else if (details !== void 0)
+      facts([{ label: "Details", binding: { key: "details", value: details }, required: true }]);
+  }
+  if (!collection && options.fields && wire.data && typeof wire.data === "object") {
+    const bound = /* @__PURE__ */ new Set([
+      ...view.facts.map((item) => item.binding.key),
+      ...view.sections.flatMap(
+        (section) => section.kind === "fields" ? section.facts.map((item) => item.binding.key) : [section.key]
+      )
+    ]);
+    const data = wire.data;
+    facts(
+      [.../* @__PURE__ */ new Set([...options.fields, ...requiredFields])].filter((key) => !bound.has(key) && Object.hasOwn(data, key)).map((key) => ({ label: key, binding: { key, value: data[key] } }))
+    );
+  }
+  for (const section of view.sections) {
+    if (section.kind === "fields") {
+      facts(section.facts);
+      continue;
+    }
+    if (!collection && !selected(section.key)) continue;
+    if (section.kind === "records") {
+      if (section.title) lines.push(clean(section.title));
+      const declared = new Set(section.columns.map((column) => column.key));
+      const extra = section.key === collection ? [.../* @__PURE__ */ new Set([...options.fields ?? [], ...requiredFields])].filter((key) => !declared.has(key)).map((key) => ({ key, label: key })) : [];
+      const columns = [...section.columns, ...extra].filter(
+        (column) => section.key !== collection || selected(column.key, column.required)
+      );
+      const rows = section.rows.map(
+        (row, i) => columns.map(
+          (column) => value(row[column.key] ?? "", `data.${section.key}.${i}.${column.key}`)
+        )
+      );
+      if (options.format === "table") {
+        const labels = columns.map((column) => column.label);
+        const widths = labels.map(
+          (label, i) => Math.max(label.length, ...rows.map((row) => row[i]?.length ?? 0))
+        );
+        lines.push(
+          ...[labels, ...rows].map(
+            (row) => row.map((cell, i) => cell.padEnd(widths[i] ?? cell.length)).join("  ").trimEnd()
+          )
+        );
+      } else for (const row of rows) lines.push(`  ${row.join(" \xB7 ")}`);
+      if (!rows.length) lines.push("No records.");
+    } else if (section.kind === "diagnostics") {
+      const limit = options.detail ? section.items.length : section.preview ?? 3;
+      for (const item of section.items.slice(0, limit))
+        lines.push(
+          `  ${item.location ? `${clean(item.location)}  ` : ""}${clean(item.code)}: ${value(item.message, `data.${section.key}`)}`
+        );
+      if (limit < section.items.length)
+        omissions.push({
+          path: `data.${section.key}`,
+          reason: "preview",
+          count: section.items.length - limit
+        });
+    } else {
+      if (section.title) lines.push(`${clean(section.title)}:`);
+      lines.push(
+        ...section.text.trimEnd().split("\n").map((line) => `  ${line.replace(/[\x00-\x08\x0b-\x1f\x7f-\x9f]/g, "")}`)
+      );
+    }
+  }
+  if (wire.page)
+    lines.push(
+      `Scope: ${clean(wire.page.scope)} \xB7 ${wire.page.returned} shown${wire.page.total === null ? "" : ` / ${wire.page.total} matched`}${wire.page.hasMore ? " \xB7 more available" : ""}`
+    );
+  lines.push(...effectLines(wire.effects ?? []));
+  for (const warning of wire.warnings ?? []) lines.push(`Warning: ${clean(warning.message)}`);
+  if (omissions.length)
+    lines.push(
+      `Omitted: ${omissions.map((item) => `${item.count === void 0 ? "" : `${item.count} `}${item.path} (${item.reason})`).join(", ")}`
+    );
+  for (const action of [...view.actions ?? wire.next ?? [], ...errorActions])
+    lines.push(`${action.label ?? "Next"}: ${actionText(action)}`);
+  return `${lines.join("\n")}
+`;
+}
+function renderFailure(wire, options) {
+  return renderText(
+    { heading: wire.command, status: wire.outcome, facts: [], sections: [] },
+    wire,
+    {
+      ...options,
+      fields: void 0
+    }
+  );
+}
+
 // src/cli/output/bootstrap/index.ts
 function resolveSelection(argv) {
   return selectOutput(argv, define_BOOTSTRAP_OPTIONS_default, configuredEnvironment(argv, define_BOOTSTRAP_OPTIONS_default));
@@ -332,8 +467,7 @@ function reportFailure(argv, error, selection) {
   else if (selected.options.format === "jsonl")
     process.stdout.write(`${JSON.stringify({ ...wire, seq: 0, kind: "result" })}
 `);
-  else process.stderr.write(`${detail.code}: ${detail.message}
-`);
+  else process.stderr.write(renderFailure(wire, selected.options));
   process.exitCode = 1;
 }
 // Annotate the CommonJS export names for ESM import in node:

@@ -148,7 +148,7 @@ dir="$(doc_project doc-unread)"
 write_doc_comments "$dir"
 out="$(run_hook "$dir" "继续")"
 expect "reminds about a document with unread comments" "$out" 'Unread comment evidence: document/relay (1).'
-expect "gives the command that lists them" "$out" "skills/artifacts/app/ryugi-artifacts.cjs\" comment list --section threads --format json --project-dir \"$(cd "$dir" && pwd -P)\" --artifact document/relay"
+expect "gives the command that lists them" "$out" "skills/artifacts/app/ryugi-artifacts.cjs\" comment list --section threads --format brief --project-dir \"$(cd "$dir" && pwd -P)\" --artifact document/relay"
 
 node - "$REPO_ROOT/skills/artifacts/app/comment-threads.cjs" "$dir" <<'NODE'
 const fs=require('node:fs'),path=require('node:path');const {humanTokens,reviewStateKey}=require(process.argv[2]);const root=path.join(process.argv[3],'.ryugi/artifacts');const artifact='document/relay',agent='Claude Code';const file=JSON.parse(fs.readFileSync(path.join(root,artifact,'comments.json'),'utf8'));const target=path.join(root,'.state','agent-review',`agent-${reviewStateKey(artifact,agent)}.json`);fs.mkdirSync(path.dirname(target),{recursive:true});fs.writeFileSync(target,JSON.stringify({artifact,agent,consumed:file.threads.flatMap(humanTokens).map(event=>event.token),frontiers:null}));
