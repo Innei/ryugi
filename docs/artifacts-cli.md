@@ -39,3 +39,38 @@ Cloud publish failures keep the cloud HTTP status in `publish --json` output. Wh
 ## License
 
 Ryugi's skills, harness integrations and docs are under Ryugi License 1.0, which withholds all rights from the Restricted Parties in Schedule A and prohibits scraping them into a marketplace. `ryugi-artifacts` is proprietary (npm `license`: `UNLICENSED`) and not part of this repository; releases up to 1.51.2 were published under AGPL-3.0-only.
+
+## Semantic output preview and rollout
+
+The local development CLI now supports `--format brief|table|json|jsonl|raw`
+according to operation capability, `--quiet`, and pure `get --source`. The 1.x
+release default and `--json` remain compatible. Semantic requests through the
+launcher require the local development bundle or the forthcoming 2.0 release;
+the launcher refuses older cached releases for these requests. Its early
+installation failures use the generated shared `ryugi.cli/v1` bootstrap protocol.
+
+Select the protocol explicitly while evaluating it. `--format json` returns one
+versioned result; foreground `start` uses `--format jsonl`, or choose
+`start --background --format json`. Selection order is flags, environment
+`RYUGI_ARTIFACTS_FORMAT`, project output.format, global output.format, and the
+release default. `config --output-format brief|json|jsonl|legacy` persists it;
+`--project --output-format inherit` removes a project override. Configuration
+writes use the protocol selected before the write.
+
+For semantic review, use `comment list --section threads` to preview,
+`comment read --thread ID --detail` for complete evidence, and
+`comment ack --receipt TOKEN` only after using it. The same separation applies to
+`changes --detail` and `changes ack --receipt TOKEN`. Add `--format brief` or
+`--format json` to each command. Pages and previews never consume unread events;
+`--all`, projected reads, and asks/groups/rounds state collections have no receipt.
+The legacy `--json` endpoints retain their earlier cursor behavior.
+
+Cloud `get --format brief` gives an outline or manifest without downloading.
+Use its snapshot for `--detail`, `--block ID`, `--source`, or
+`--download --out NEW_DIRECTORY`. Document file pages use `--section files`.
+Source and diff limits fail before emitting partial content; `--source --save
+NEW_FILE` or `changes --save NEW_FILE --snapshot TOKEN` save complete evidence
+without overwriting existing files. Cloud reads require the corresponding server
+release and migration. Existing skills and hook consumers retain legacy calls
+until the coordinated 2.0 rollout; do not mechanically replace their `--json`
+flags before that release is available.

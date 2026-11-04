@@ -8,13 +8,12 @@ const os = require('node:os');
 const path = require('node:path');
 
 const MIN_VERSION = '1.43.0';
+const SEMANTIC_MIN_VERSION = '2.0.0';
+const outputBootstrap = require('./output-bootstrap.cjs');
+let requestedMinimum = MIN_VERSION;
 const LATEST_CHECK_MS = 24 * 60 * 60 * 1000;
 const RETRY_CHECK_MS = 60 * 60 * 1000;
-const RELEASES = path.join(
-  process.env.XDG_CACHE_HOME || path.join(os.homedir(), '.cache'),
-  'ryugi',
-  'artifacts',
-);
+const RELEASES = path.join(process.env.XDG_CACHE_HOME || path.join(os.homedir(), '.cache'), 'ryugi', 'artifacts');
 const LATEST_FILE = path.join(RELEASES, 'latest.json');
 const win32 = process.platform === 'win32';
 
@@ -26,9 +25,8 @@ const compare = (a, b) => {
   for (let i = 0; i < 3; i++) if (x[i] !== y[i]) return x[i] - y[i];
   return 0;
 };
-const supported = (v) => valid(v) && compare(v, MIN_VERSION) >= 0;
-const cliOf = (version) =>
-  path.join(RELEASES, version, 'node_modules', 'ryugi-artifacts', 'dist', 'cli.cjs');
+const supported = (v) => valid(v) && compare(v, requestedMinimum) >= 0;
+const cliOf = (version) => path.join(RELEASES, version, 'node_modules', 'ryugi-artifacts', 'dist', 'cli.cjs');
 
 // The local checkout has no release version. Fingerprint the code that affects
 // the running server so start replaces an older process instead of reusing it.
@@ -136,10 +134,7 @@ function install(version) {
     '--loglevel=error',
     `ryugi-artifacts@${version}`,
   ]);
-  if (
-    result.status !== 0 ||
-    !fs.existsSync(path.join(staging, 'node_modules', 'ryugi-artifacts', 'dist', 'cli.cjs'))
-  ) {
+  if (result.status !== 0 || !fs.existsSync(path.join(staging, 'node_modules', 'ryugi-artifacts', 'dist', 'cli.cjs'))) {
     fs.rmSync(staging, { recursive: true, force: true });
     return fallback(
       `Could not install ryugi-artifacts@${version} from npm; the first start of each version needs ${NEEDS_NETWORK}. npm said: ${(result.stderr || result.stdout || '').trim()}`,
@@ -150,9 +145,7 @@ function install(version) {
   } catch {}
   fs.rmSync(staging, { recursive: true, force: true });
   if (!fs.existsSync(cliOf(version)))
-    throw new LaunchError(
-      `Installed ryugi-artifacts@${version} but could not move it into ${target}`,
-    );
+    throw new LaunchError(`Installed ryugi-artifacts@${version} but could not move it into ${target}`);
   return version;
 }
 
@@ -165,14 +158,12 @@ function resolveRelease(command) {
   if (cached) return install(cached);
   const latest = askNpm();
   if (!latest)
-    return fallback(
-      `Could not reach npm for the latest ryugi-artifacts; the first start needs ${NEEDS_NETWORK}.`,
-    );
+    return fallback(`Could not reach npm for the latest ryugi-artifacts; the first start needs ${NEEDS_NETWORK}.`);
   if (!supported(latest)) {
     const installed = newestInstalled();
     if (installed) return installed;
     throw new LaunchError(
-      `This skill needs ryugi-artifacts ${MIN_VERSION} or newer, and npm still serves ${latest}. A new release may still be processing on npm; retry in a few minutes.`,
+      `This skill needs ryugi-artifacts ${requestedMinimum} or newer, and npm still serves ${latest}. A new release may still be processing on npm; retry in a few minutes.`,
     );
   }
   record(latest, Date.now());
@@ -188,11 +179,15 @@ function ownerPid() {
 
 function main() {
   const args = process.argv.slice(2);
-  if (
-    process.env.CODEX_THREAD_ID ||
-    process.env.CLAUDE_CODE_SESSION_ID ||
-    process.env.PI_SESSION_ID
-  ) {
+  const selection = outputBootstrap.resolveSelection(args);
+  if (selection.protocol === 'v1') {
+    if (selection.error) {
+      outputBootstrap.reportFailure(args, selection.error, selection);
+      return;
+    }
+    requestedMinimum = SEMANTIC_MIN_VERSION;
+  }
+  if (process.env.CODEX_THREAD_ID || process.env.CLAUDE_CODE_SESSION_ID || process.env.PI_SESSION_ID) {
     try {
       require('./comment-subscriptions.cjs').register(args);
     } catch (error) {
@@ -229,8 +224,7 @@ if (require.main === module) {
   try {
     main();
   } catch (err) {
-    console.info(JSON.stringify({ error: err.message }));
-    process.exitCode = 1;
+    outputBootstrap.reportFailure(process.argv.slice(2), err);
   }
 }
 
