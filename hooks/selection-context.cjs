@@ -126,7 +126,7 @@ function artifactIds(root, type) {
 
 function commentReminders(project, root, key) {
   const waiting = [];
-  for (const type of ['document', 'artboard']) {
+  for (const type of ['document', 'artboard', 'whiteboard']) {
     for (const id of artifactIds(root, type)) {
       const file = readJson(path.join(root, type, id, 'comments.json'));
       if (!file) continue;
@@ -264,6 +264,27 @@ function documentSelections(session, root, budget) {
   return sections;
 }
 
+const element = (item) =>
+  `- ${item.id} ${item.type}${item.text ? ` "${clip(item.text, 120)}"` : ''}${item.frameId ? ` in frame ${item.frameId}` : ''}${item.author ? ` · ${item.author}` : ''}`;
+
+function whiteboardSelections(session, root, budget) {
+  const sections = [];
+  let left = budget;
+  for (const id of artifactIds(path.join(root, '.state'), 'whiteboard')) {
+    const file = path.join(root, '.state', 'whiteboard', id, 'selection.json');
+    const value = readJson(file);
+    if (!value || !Array.isArray(value.selected) || !value.selected.length) continue;
+    const head = `Whiteboard whiteboard/${id}, open in the viewer (updated ${value.updatedAt}):\nSelected elements:`;
+    const tail = `Full selection: ${path.relative(session, file)}`;
+    const room = left - head.length - tail.length - 4;
+    if (room < 40) break;
+    const section = [head, clip(value.selected.map(element).join('\n'), room), tail].join('\n');
+    sections.push(section);
+    left -= section.length + 2;
+  }
+  return sections;
+}
+
 function main() {
   const project = process.argv[2];
   const session = process.argv[3] || project;
@@ -295,7 +316,10 @@ function main() {
     sections.push(section);
     left -= section.length + 2;
   }
-  sections.push(...documentSelections(session, root, left));
+  const documents = documentSelections(session, root, left);
+  sections.push(...documents);
+  for (const section of documents) left -= section.length + 2;
+  sections.push(...whiteboardSelections(session, root, left));
   if (reminders) sections.push(reminders);
   if (!sections.length) return;
   process.stdout.write(`${sections.join('\n\n')}\n`);

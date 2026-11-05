@@ -233,7 +233,7 @@ scrolls the document back to the paragraph.
 - The label is optional plain text. Without one the page shows the board's
   or group's title.
 - Inline in a paragraph, list item or table cell, like `<ask>`. A `<ref>`
-  directly under `<doc>`, without `artboard`, with a slug other than
+  directly under `<doc>`, without `artboard` or `whiteboard`, with a slug other than
   lowercase letters, digits and hyphens, or with both `group` and `board`
   is refused.
 - The server adds `to="<artifact id>"` once the slug resolves. Never write
@@ -252,6 +252,23 @@ When to write one:
   reference on its own line under that section's heading.
 - Writing a decision made on the artboard into the prose: reference the
   chosen board instead of writing "artboard q1 → q1-c".
+
+## Whiteboard references
+
+Point at part of a whiteboard the same way:
+
+```xml
+<p>Refunds start at the payment step (<ref whiteboard="checkout-map" frame="f-payment">payment</ref>).</p>
+<p><ref whiteboard="checkout-map" /></p>
+```
+
+- `whiteboard`: the slug of a whiteboard in this project. `frame`, optional,
+  is the id of a `frame` element in its `scene.excalidraw` (`scene` prints
+  them). `group` and `board` are refused on a whiteboard reference.
+- A `<ref>` has `artboard` or `whiteboard`, never both. Everything else under
+  Artboard references holds: inline, optional label, `to=` is the server's,
+  a missing whiteboard or frame is a `check` warning.
+- Clicking it opens the whiteboard beside the document, zoomed to the frame.
 
 ## What your human partner changed
 

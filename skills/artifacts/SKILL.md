@@ -82,13 +82,20 @@ in `docs/artifacts-cli.md` in the plugin repository.
 
 ## Pick the type
 
-| What is being decided                                                            | Type                       | Read before writing                                                      |
-| -------------------------------------------------------------------------------- | -------------------------- | ------------------------------------------------------------------------ |
-| Architecture, engineering design, a review, report, proposal or walkthrough      | `document`                 | `document.md`                                                            |
-| One surface or one dimension — a component, type scale, background, motion       | `html`                     | `html.md`, `ui.md` for components                                        |
-| A business space — several screens, dimensions, states or questions at once      | `artboard`                 | `artboard.md`; `artboard-prototype.md` for playable boards or parameters |
-| Whether a built change matches what was approved, when they ask you to verify it | `artboard`, a verify group | `artboard.md`                                                            |
-| Nothing to see                                                                   | text                       |                                                                          |
+| What is being decided                                                                                        | Type                       | Read before writing                                                      |
+| ------------------------------------------------------------------------------------------------------------ | -------------------------- | ------------------------------------------------------------------------ |
+| Architecture, engineering design, a review, report, proposal or walkthrough                                  | `document`                 | `document.md`                                                            |
+| Structure still taking shape — parts, modules, roles, who talks to whom — or they want to draw it themselves | `whiteboard`               | `whiteboard.md`                                                          |
+| One surface or one dimension — a component, type scale, background, motion                                   | `html`                     | `html.md`, `ui.md` for components                                        |
+| A business space — several screens, dimensions, states or questions at once                                  | `artboard`                 | `artboard.md`; `artboard-prototype.md` for playable boards or parameters |
+| Whether a built change matches what was approved, when they ask you to verify it                             | `artboard`, a verify group | `artboard.md`                                                            |
+| Nothing to see                                                                                               | text                       |                                                                          |
+
+Draw on a whiteboard while the parts and arrows are themselves the question;
+once the structure is settled and the reasons need writing, it is a document
+that references the whiteboard. Explaining a structure that already exists is
+a document; working one out together, even starting from existing code, is a
+whiteboard. UI screens and user flows stay on an artboard.
 
 A control does not make it an artboard: one surface, however tunable, is
 `html`. The artboard is for several dimensions at once; one group is one
@@ -231,6 +238,7 @@ whether it is on.
   artboard/<id>/       canvas.json + pages/ (you write); comments.json (server only)
   document/<id>/       doc.xml + assets/ (you write); comments.json (server only)
   html/<id>/           index.html + its files        (you write)
+  whiteboard/<id>/     scene.excalidraw (you and the server); comments.json (server only)
   .state/              the server writes; never edit
     <type>/<id>/warnings.json   warnings + pending; `check` prints it
     artboard/<id>/layout.json   computed geometry

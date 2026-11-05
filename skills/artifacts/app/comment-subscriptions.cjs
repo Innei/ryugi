@@ -5,7 +5,7 @@ const os = require('node:os');
 const path = require('node:path');
 
 const UUID = /^[\da-f]{8}(?:-[\da-f]{4}){3}-[\da-f]{12}$/i;
-const ARTIFACT = /^(?:document|artboard)\/[a-z0-9][a-z0-9-]*$/;
+const ARTIFACT = /^(?:document|artboard|whiteboard)\/[a-z0-9][a-z0-9-]*$/;
 const HOSTS = {
   codex: { env: 'CODEX_THREAD_ID', dir: 'codex-comment-watch' },
   claude: { env: 'CLAUDE_CODE_SESSION_ID', dir: 'claude-comment-watch' },

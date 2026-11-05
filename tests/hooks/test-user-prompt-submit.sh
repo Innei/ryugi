@@ -150,7 +150,7 @@ out="$(run_hook "$dir" "继续")"
 expect "reminds about a document with unread comments" "$out" 'Unread comment evidence: document/relay (1).'
 expect "gives the command that lists them" "$out" "skills/artifacts/app/ryugi-artifacts.cjs\" comment list --section threads --format brief --project-dir \"$(cd "$dir" && pwd -P)\" --artifact document/relay"
 
-node - "$REPO_ROOT/skills/artifacts/app/comment-threads.cjs" "$dir" <<'NODE'
+node - "$REPO_ROOT/skills/artifacts/app/comment-threads.cjs" "$dir" << 'NODE'
 const fs=require('node:fs'),path=require('node:path');const {humanTokens,reviewStateKey}=require(process.argv[2]);const root=path.join(process.argv[3],'.ryugi/artifacts');const artifact='document/relay',agent='Claude Code';const file=JSON.parse(fs.readFileSync(path.join(root,artifact,'comments.json'),'utf8'));const target=path.join(root,'.state','agent-review',`agent-${reviewStateKey(artifact,agent)}.json`);fs.mkdirSync(path.dirname(target),{recursive:true});fs.writeFileSync(target,JSON.stringify({artifact,agent,consumed:file.threads.flatMap(humanTokens).map(event=>event.token),frontiers:null}));
 NODE
 out="$(run_hook "$dir" "继续")"
@@ -196,6 +196,30 @@ expect "keeps the artboard selection when many documents wait on the agent" "$ou
 expect "summarizes documents that do not fit" "$out" 'more artifact(s)'
 expect "names the command once for many documents" "$out" '--artifact document/<id>'
 if [[ "${#out}" -le 8200 ]]; then pass "stays within the context budget with many documents"; else fail "stays within the context budget with many documents (${#out})"; fi
+
+dir="$(project whiteboard-selection)"
+mkdir -p "$dir/.ryugi/artifacts/whiteboard/sync" "$dir/.ryugi/artifacts/.state/whiteboard/sync"
+cat > "$dir/.ryugi/artifacts/.state/whiteboard/sync/selection.json" << 'JSON'
+{ "artifact": "whiteboard/sync", "updatedAt": "2026-11-05T08:00:00.000Z",
+  "selected": [
+    { "id": "n-hub", "type": "rectangle", "text": "本机 hub", "frameId": "f-local", "author": "agent" },
+    { "id": "s-1", "type": "rectangle", "text": null, "frameId": null, "author": "human" }
+  ] }
+JSON
+out="$(run_hook "$dir" "这里改一下")"
+expect "names the whiteboard the selection is on" "$out" 'Whiteboard whiteboard/sync, open in the viewer (updated 2026-11-05T08:00:00.000Z):'
+expect "lists each selected element with its frame and author" "$out" '- n-hub rectangle "本机 hub" in frame f-local · agent'
+expect "lists an element outside frames" "$out" '- s-1 rectangle · human'
+expect "points at the whiteboard selection file" "$out" 'Full selection: .ryugi/artifacts/.state/whiteboard/sync/selection.json'
+
+cat > "$dir/.ryugi/artifacts/whiteboard/sync/comments.json" << 'JSON'
+{ "version": 1, "threads": [
+  { "id": "w1", "anchor": { "x": 10, "y": 20, "elements": ["n-hub"] }, "status": "open", "statusAt": "2026-11-05T08:00:00.000Z", "statusBy": "human",
+    "messages": [{ "id": "m1", "author": "human", "text": "draw the reconnect", "at": "2026-11-05T08:00:00.000Z" }] }
+] }
+JSON
+out="$(run_hook "$dir" "继续")"
+expect "reminds about a whiteboard with unread comments" "$out" 'whiteboard/sync (1)'
 
 if grep -q '"UserPromptSubmit"' "$REPO_ROOT/hooks/hooks.json"; then pass "is registered in hooks.json"; else fail "is registered in hooks.json"; fi
 
