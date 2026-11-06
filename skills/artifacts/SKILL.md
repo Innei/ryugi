@@ -195,7 +195,7 @@ whether it is on.
   artboard/<id>/       canvas.json + pages/ (you write); comments.json (server only)
   document/<id>/       doc.xml + assets/ (you write); comments.json (server only)
   html/<id>/           index.html + its files        (you write)
-  whiteboard/<id>/     scene.excalidraw (you and the server); comments.json (server only)
+  whiteboard/<id>/     scene.excalidraw, pages.json + pages/ (you and the server); comments.json (server only)
   .state/              the server writes; never edit
 ```
 

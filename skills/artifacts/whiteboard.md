@@ -15,15 +15,17 @@ Start the server and get the link as `SKILL.md` describes, with
 
 ```
 <project>/.ryugi/artifacts/whiteboard/<id>/
-  scene.excalidraw    ← you and the server both write it
-  comments.json       ← the server's; never write it
+  scene.excalidraw              ← the first page, `main`; you and the server both write it
+  pages.json                    ← the page list: order, names, deleted (on a board with pages)
+  pages/<page-id>.excalidraw    ← every other page, same format as scene.excalidraw
+  comments.json                 ← the server's; never write it
 
 <project>/.ryugi/artifacts/.state/whiteboard/<id>/   ← the server writes; never edit it
-  render.png          the browser's render of the whole board
-  warnings.json       warnings + pending — `check` prints it
-  geometry.json       each element's measured bounds
-  selection.json      what your human partner has selected
-  backlinks.json      which documents reference which frames
+  pages/<page-id>/render.png    the browser's render of that page (main too)
+  pages/<page-id>/geometry.json each element's measured bounds on that page
+  warnings.json                 warnings + pending — `check` prints it
+  selection.json                what your human partner has selected, and on which page
+  backlinks.json                which documents reference which frames and pages
 ```
 
 ## scene.excalidraw
@@ -91,6 +93,45 @@ pending.
 - **Images** go in `files` as Excalidraw does it, a `dataURL` per file. Keep
   the scene under 5 MB.
 
+## Pages
+
+A board starts with one page, `main`, in `scene.excalidraw`. Put one area of
+the topic on each page: when a page gets crowded, or a part needs its own
+detail, open a new page for it and keep the overall structure on `main`.
+Pages are areas, not versions of the same drawing.
+
+To add pages, write `pages.json` and one file per page:
+
+```json
+{
+  "pages": [
+    { "id": "main", "name": "Overview" },
+    { "id": "p-runtime", "name": "Runtime" },
+    { "id": "p-old", "name": "First try", "deleted": true }
+  ]
+}
+```
+
+- Page ids are lowercase letters, digits and hyphens; give them readable ids
+  (`p-runtime`). `main` is always the first page and can't be deleted. A
+  page's name lives only in `pages.json`; `appState.name` in
+  `scene.excalidraw` stays the board's title.
+- Each listed page is `pages/<id>.excalidraw`, written like
+  `scene.excalidraw`. A listed page without a file is an empty page. Your
+  human partner adds, renames, reorders and deletes pages in the browser too:
+  read `pages.json` again before you edit it, and keep the pages you didn't
+  write. A page missing from your file is not deleted.
+- To delete a page, set `"deleted": true` on it. Its file stays and it can be
+  restored. A deleted page takes part in nothing: no check, no render, no
+  publish, and comments on it read as orphans.
+- Element ids are unique across the whole board. The same live id on two
+  pages is a `check` warning.
+- Arrows can't cross pages: an arrow bound to a shape on another page is a
+  `check` warning. Draw the relation between areas on `main` instead.
+- To move an element to another page, copy it as it is, `customData`
+  included, into the new page's file, and set `"isDeleted": true` on it in the
+  old one. Its comments and references follow it.
+
 ## Before every change
 
 Your human partner may have drawn since you last looked. Read
@@ -118,10 +159,14 @@ node app/ryugi-artifacts.cjs scene --project-dir /path/to/project --artifact whi
 - It prints the scene version, whether `render.png` shows the current scene,
   then each frame with its elements, elements outside frames, and each arrow
   as `n-cart → n-payment ("pay")`, with who drew it: `agent`, `human`, or
-  `agent, human edited`. `--frame <id>` reads one frame.
+  `agent, human edited`. `--frame <id>` reads one frame, on whichever page
+  holds it.
+- On a board with pages, `scene` lists the pages instead: each page's id,
+  name, frames, element count and render state. Read one with
+  `scene --page <id>`. Work on the page you change; leave the others.
 - The summary has text and connections, not shape. Whenever they drew
-  something, look at `.ryugi/artifacts/.state/whiteboard/<id>/render.png`
-  too: freehand lines, crossings-out and placement only show there.
+  something, look at that page's render too, at the `Image` path `scene`
+  prints (`.ryugi/artifacts/.state/whiteboard/<id>/pages/<page>/render.png`): freehand lines, crossings-out and placement only show there.
 - `Render: stale` or `none` means no browser has drawn the current scene;
   say so instead of guessing what it looks like.
 
@@ -132,9 +177,15 @@ so `check` reports `browser_not_run` until a tab has the board open. Right
 after you create a board, run `check` again in a few seconds; if it stays
 there, no tab is open: open the `Open` link from `start`.
 
+On a board with pages, `check` covers every page and starts each page's
+warnings with it, like `[p-runtime] …`; a pending skeleton reads
+`skeleton_not_completed:p-runtime`. `check --page <id>` shows only that page
+and the board-wide warnings. The open browser tab completes and renders every
+page, not only the one on screen.
+
 Fix every warning: conflicts, arrows or labels pointing at missing
 elements, text overflowing its shape, your shapes overlapping each other
-or sticking out of their frame, duplicate ids. Then look at `render.png`
+or sticking out of their frame, duplicate ids. Then look at the render of the page you changed
 once `Render: current`: a board that checks clean can still read badly.
 
 ## Comments and "Ask agent"
@@ -171,4 +222,5 @@ open on Ryugi Cloud. Auto-publish keeps both current once both are
 published.
 
 To ask them about part of the board: `comment add … --element <id>` (or
-`--x --y` in scene coordinates), message on stdin.
+`--x --y` in scene coordinates, with `--page <id>` for a page other than
+`main`), message on stdin.

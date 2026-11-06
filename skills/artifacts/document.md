@@ -272,15 +272,20 @@ Point at part of a whiteboard the same way:
 ```xml
 <p>Refunds start at the payment step (<ref whiteboard="checkout-map" frame="f-payment">payment</ref>).</p>
 <p><ref whiteboard="checkout-map" /></p>
+<p>The retry details are on their own page: <ref whiteboard="checkout-map" page="p-retry" />.</p>
 ```
 
 - `whiteboard`: the slug of a whiteboard in this project. `frame`, optional,
-  is the id of a `frame` element in its `scene.excalidraw` (`scene` prints
-  them). `group` and `board` are refused on a whiteboard reference.
+  is the id of a `frame` element on any of its pages (`scene` prints them).
+  `page`, optional, is the id of one of its pages. A reference names a
+  `frame` or a `page`, not both. `group` and `board` are refused on a
+  whiteboard reference.
 - A `<ref>` has `artboard` or `whiteboard`, never both. Everything else under
   Artboard references holds: inline, optional label, `to=` is the server's,
-  a missing whiteboard or frame is a `check` warning.
-- Clicking it opens the whiteboard beside the document, zoomed to the frame.
+  a missing whiteboard, page or frame, or one on a deleted page, is a `check`
+  warning.
+- Clicking it opens the whiteboard beside the document on the right page,
+  zoomed to the frame.
 
 ## What your human partner changed
 
