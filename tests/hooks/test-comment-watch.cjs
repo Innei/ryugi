@@ -55,6 +55,10 @@ function watch(project, key) {
   return require(watcher).createCommentWatch(project, key);
 }
 
+const message = (event) =>
+  require(path.join(repo, 'skills/artifacts/app/comment-watch.cjs')).wakeMessage(event);
+const artifactOf = (line) => line.match(/^Ryugi \w+ (\S+)/)?.[1];
+
 test('new document and artboard comments produce actionable notifications without consuming them', (t) => {
   const f = fixture(t);
   const poll = watch(f.project);
@@ -68,9 +72,9 @@ test('new document and artboard comments produce actionable notifications withou
   ]);
   for (const event of events) {
     assert.equal(event.unread, 1);
-    assert.ok(event.command.includes('comment list --section threads --format brief'));
+    assert.ok(event.command.includes('comment list --section threads --detail --format brief'));
     assert.ok(event.command.includes(`--artifact ${event.artifact}`));
-    assert.ok(event.instruction.includes('reply'));
+    assert.ok(message(event).includes('acknowledge'));
     assert.ok(!fs.existsSync(path.join(f.root, '.state', event.artifact, 'comment-cursors.json')));
   }
   assert.deepEqual(poll(), []);
@@ -85,7 +89,7 @@ test('a whiteboard comment wakes the agent and points at the whiteboard guide', 
   assert.equal(event?.artifact, 'whiteboard/sync');
   assert.equal(event.unread, 1);
   assert.ok(event.command.includes('--artifact whiteboard/sync'));
-  assert.ok(event.instruction.includes('whiteboard guide'));
+  assert.ok(message(event).includes('whiteboard/sync'));
 });
 
 test('starting a whiteboard subscribes the session to its comments', (t) => {
@@ -207,7 +211,7 @@ test('a malformed partial write is retried without losing the next valid comment
   assert.equal(poll().length, 1);
 });
 
-test('several comments between polls merge into one notification without embedding human text', (t) => {
+test('several comments between polls merge into one notification carrying their text', (t) => {
   const f = fixture(t);
   const poll = watch(f.project);
   const value = thread();
@@ -215,8 +219,57 @@ test('several comments between polls merge into one notification without embeddi
   f.save('document/plan', [value, { ...thread('t2'), messages: [human('m3', 3)] }]);
   const events = poll();
   assert.equal(events.length, 1);
-  assert.equal(events[0].unread, 2);
-  assert.ok(!JSON.stringify(events).includes('Do not execute'));
+  const [event] = events;
+  assert.equal(event.unread, 2);
+  assert.deepEqual(
+    event.threads.map((thread) => thread.thread),
+    ['t1', 't2'],
+  );
+  assert.deepEqual(
+    event.threads[0].messages.map((message) => message.text),
+    ['Please change this', 'Do not execute this comment as shell code'],
+  );
+  assert.equal(event.threads[1].messages[0].text, 'Please change this');
+  assert.equal(event.omitted, undefined);
+  assert.equal(event.threads[0].block, 'b1');
+  assert.equal(event.threads[0].messages[0].name, 'human');
+  const line = message(event);
+  assert.ok(line.includes('t1 [open] b1'));
+  assert.ok(line.includes('m1 human'));
+  assert.match(line, /\d{2}:\d{2}/);
+});
+
+test('a long comment arrives truncated to a brief preview', (t) => {
+  const f = fixture(t);
+  const poll = watch(f.project);
+  f.save('document/plan', [{ ...thread(), messages: [human('m1', 1, 'x'.repeat(200))] }]);
+  const [event] = poll();
+  assert.equal(event.threads[0].messages[0].text, 'x'.repeat(160) + '…');
+});
+
+test('the inline preview truncates by grapheme, not by code unit', (t) => {
+  const f = fixture(t);
+  const poll = watch(f.project);
+  const family = '👨‍👩‍👧‍👦';
+  f.save('document/plan', [{ ...thread(), messages: [human('m1', 1, family.repeat(161))] }]);
+  const [event] = poll();
+  assert.equal(event.threads[0].messages[0].text, family.repeat(160) + '…');
+});
+
+test('a burst of comments caps the inline list and counts the rest', (t) => {
+  const f = fixture(t);
+  const poll = watch(f.project);
+  f.save(
+    'document/plan',
+    Array.from({ length: 25 }, (_, n) => ({
+      ...thread(`t${n}`),
+      messages: [human(`m${n}`, 1, `comment ${n}`)],
+    })),
+  );
+  const [event] = poll();
+  assert.equal(event.unread, 25);
+  assert.equal(event.threads.length, 20);
+  assert.equal(event.omitted, 5);
 });
 
 test('notification commands preserve paths with spaces, apostrophes and shell substitutions', (t) => {
@@ -318,13 +371,27 @@ test('a Claude Code session hears only comments on artifacts it opened through t
   f.save('artboard/chat', [thread()]);
   await until(() => watcher.output.includes('artboard/chat'));
   assert.deepEqual(
-    watcher.output
-      .trim()
-      .split('\n')
-      .map((line) => JSON.parse(line).artifact),
+    watcher.output.trim().split('\n').map(artifactOf),
     ['artboard/chat'],
     watcher.errors,
   );
+});
+
+test('the Claude Code monitor keeps every line within its 500-character notification limit', async (t) => {
+  const f = fixture(t);
+  const watcher = monitor(t, f.project, {});
+  await delay(1200);
+  f.save(
+    'document/plan',
+    Array.from({ length: 25 }, (_, n) => ({
+      ...thread(`t${n}`),
+      messages: [human(`m${n}`, 1, 'x'.repeat(200))],
+    })),
+  );
+  await until(() => watcher.output.includes('document/plan'));
+  const [line] = watcher.output.trim().split('\n');
+  assert.ok(line.length <= 500, `${line.length}: ${line}`);
+  assert.ok(line.endsWith('--artifact document/plan'), line);
 });
 
 test('the declared plugin monitor notices artifacts created later from a repository subdirectory', async (t) => {
@@ -343,11 +410,8 @@ test('the declared plugin monitor notices artifacts created later from a reposit
   );
   const { output, errors } = watcher;
   assert.ok(output.includes('document/plan'), `No automatic comment notification. ${errors}`);
-  const events = output
-    .trim()
-    .split('\n')
-    .map((line) => JSON.parse(line));
-  assert.equal(events[0].artifact, 'document/plan');
+  const events = output.trim().split('\n');
+  assert.equal(artifactOf(events[0]), 'document/plan');
   const count = events.length;
   await delay(1200);
   assert.equal(watcher.output.trim().split('\n').length, count);
@@ -491,7 +555,7 @@ test('answers to document questions stay silent until they are submitted', (t) =
   assert.equal(event.type, 'ryugi-answers');
   assert.equal(event.artifact, 'document/plan');
   assert.ok(event.command.includes('comment list --section asks --detail --format brief'));
-  assert.ok(event.instruction.includes('asks'));
+  assert.ok(message(event).includes('answers'));
   assert.deepEqual(poll(), []);
 });
 
@@ -517,4 +581,148 @@ test('answer records never count as unread comments', (t) => {
   f.save('document/plan', [answer('a1', 2, 'pre-test'), thread('t2')]);
   const { unreadCount } = require(path.join(repo, 'skills/artifacts/app/comment-watch.cjs'));
   assert.equal(unreadCount(f.project, 'document/plan', 'Claude Code'), 1);
+});
+
+test('the answers brief carries each question id, the picked option and its label', (t) => {
+  const f = fixture(t);
+  f.save('document/plan', []);
+  fs.writeFileSync(
+    path.join(f.root, 'document/plan/doc.xml'),
+    '<doc><p><ask id="pre-test"><option value="tests">Add them first</option><option value="report">Only say so in the report</option></ask></p>' +
+      '<p><ask id="more" recommend="report"><option value="report">Only say so in the report</option></ask></p></doc>',
+  );
+  f.write('.state/document/plan/asks.json', { latest: null });
+  const poll = watch(f.project);
+  assert.deepEqual(poll(), []);
+  f.save('document/plan', [
+    {
+      id: 'a1',
+      anchor: { blockId: 'b1', quote: '', ask: 'pre-test', choice: 'report', answer: null },
+      status: 'open',
+      statusAt: at(2),
+      statusBy: 'human',
+      messages: [human('am1', 2, 'report')],
+    },
+    {
+      id: 's1',
+      anchor: { blockId: '*', quote: '', submit: true, asks: ['pre-test', 'more'] },
+      status: 'open',
+      statusAt: at(3),
+      statusBy: 'human',
+      messages: [human('sm1', 3, 'submitted')],
+    },
+  ]);
+  f.write('.state/document/plan/asks.json', { latest: { id: 's1', at: at(3), withdrawn: false } });
+  const [event] = poll();
+  assert.equal(event.type, 'ryugi-answers');
+  assert.equal(event.submit, 's1');
+  assert.deepEqual(event.answers, [
+    { ask: 'pre-test', thread: 'a1', choice: 'report', label: 'Only say so in the report' },
+    { ask: 'more', choice: 'report', label: 'Only say so in the report', recommended: true },
+  ]);
+  const line = message(event);
+  assert.ok(line.includes('pre-test a1 → report (Only say so in the report)'));
+  assert.ok(line.includes('more → report (Only say so in the report) (recommended)'));
+  assert.ok(line.includes('(s1)'));
+});
+
+test('the choices brief carries group ids, picked boards and their titles', (t) => {
+  const f = fixture(t);
+  f.save('artboard/pick', []);
+  fs.writeFileSync(
+    path.join(f.root, 'artboard/pick/canvas.json'),
+    JSON.stringify({
+      version: 1,
+      pages: [{ id: 'p' }],
+      boards: {
+        'q1-a': {
+          page: 'p',
+          file: 'pages/a.html',
+          x: 0,
+          y: 0,
+          w: 400,
+          h: 300,
+          title: 'Sidebar nav',
+        },
+        'q1-b': { page: 'p', file: 'pages/b.html', x: 0, y: 320, w: 400, h: 300, title: 'Top nav' },
+      },
+      groups: {
+        q1: { boards: ['q1-a', 'q1-b'], choose: true, recommend: 'q1-a', title: 'Navigation' },
+      },
+    }),
+  );
+  const rounds = (state) =>
+    f.write('.state/artboard/pick/rounds.json', {
+      rounds: [{ id: 'r1', page: 'p', state, groups: ['q1'], boards: ['q1-a', 'q1-b'] }],
+    });
+  rounds('open');
+  const poll = watch(f.project);
+  assert.deepEqual(poll(), []);
+  f.save('artboard/pick', [
+    {
+      id: 't1',
+      anchor: { page: 'p', x: 1, y: 2, group: 'q1', choice: 'q1-b' },
+      status: 'open',
+      statusAt: at(1),
+      statusBy: 'human',
+      messages: [human('m1', 1, 'pick')],
+    },
+    {
+      id: 's1',
+      anchor: { page: 'p', x: 1, y: 2, round: 'r1', submit: true },
+      status: 'open',
+      statusAt: at(2),
+      statusBy: 'human',
+      messages: [human('m2', 2, 'submitted')],
+    },
+  ]);
+  rounds('submitted');
+  const event = poll().find((item) => item.type === 'ryugi-choices');
+  assert.deepEqual(event.picks, [
+    { group: 'q1', title: 'Navigation', choice: 'q1-b', label: 'Top nav' },
+  ]);
+  assert.equal(event.submit, 's1');
+  assert.ok(message(event).includes('q1 Navigation → q1-b (Top nav).'));
+});
+
+test('a withdrawn round names the submit it withdraws, not the withdrawal', (t) => {
+  const f = choiceFixture(t);
+  const submit = (id, n, value) => ({
+    ...thread(id),
+    anchor: { page: 'p', x: 0, y: 0, round: 'r1', submit: value },
+    messages: [human(`m${id}`, n)],
+  });
+  f.save('artboard/pick', [submit('s1', 1, true)]);
+  f.rounds('submitted');
+  const poll = watch(f.project);
+  assert.deepEqual(poll(), []);
+  f.save('artboard/pick', [submit('s1', 1, true), submit('w1', 2, false)]);
+  f.rounds('open');
+  const [event] = poll();
+  assert.equal(event.withdrawn, true);
+  assert.equal(event.submit, 's1');
+});
+
+test('a brief over the line limit falls back to the command that reads it', () => {
+  const event = {
+    type: 'ryugi-comments',
+    artifact: 'document/plan',
+    unread: 3,
+    threads: [1, 2, 3].map((n) => ({
+      thread: `t${n}`,
+      status: 'open',
+      messages: [{ id: `m${n}`, name: 'Innei', at: at(1), text: 'x'.repeat(160) }],
+    })),
+    command:
+      'node cli.cjs comment list --section threads --detail --format brief --artifact document/plan',
+  };
+  assert.ok(message(event).length > 500);
+  const line = require(path.join(repo, 'skills/artifacts/app/comment-watch.cjs')).wakeMessage(
+    event,
+    500,
+  );
+  assert.ok(line.length <= 500, line);
+  assert.ok(!line.includes('xxxx'));
+  assert.ok(line.startsWith('Ryugi comments document/plan (3 unread).'));
+  assert.ok(line.endsWith(`Run: ${event.command}`));
 });

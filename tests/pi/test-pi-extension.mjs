@@ -216,13 +216,13 @@ test('a human comment on an artboard this Pi session opened wakes the session', 
   assert.equal(sent[0].message.customType, 'ryugi-comments');
   assert.deepEqual(sent[0].options, { triggerTurn: true, deliverAs: 'followUp' });
   assert.match(sent[0].message.content, /artboard\/home/);
-  assert.match(sent[0].message.content, /comment list --section threads --format brief/);
-  assert.doesNotMatch(sent[0].message.content, /Make the header smaller/);
+  assert.match(sent[0].message.content, /comment list --section threads --detail --format brief/);
+  assert.match(sent[0].message.content, /Make the header smaller/);
 
   p.write('.state/artboard/home/rounds.json', { rounds: [{ id: 'r1', state: 'submitted' }] });
   await until(() => sent.length === 2, 'a submitted choice round wakes Pi');
   assert.equal(sent[1].message.customType, 'ryugi-choices');
-  assert.match(sent[1].message.content, /round r1 on artboard\/home were submitted/);
+  assert.match(sent[1].message.content, /Ryugi choices artboard\/home round r1 submitted/);
 
   await firstHandler(handlers, 'session_shutdown')({ type: 'session_shutdown' }, ctx);
   p.write('artboard/home/comments.json', { threads: [p.human(4), p.human(5)] });

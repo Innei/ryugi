@@ -101,7 +101,7 @@ human writes; the agent's submit closes the round out.
   `createCommentWatch` emits no event for them.
 - **On submit:** the watcher emits
   `{"type":"ryugi-choices","artifact":…,"round":…,"command":…}`, where command
-  is `comment list --json …`. A withdrawal emits one too, with
+  is `comment list --format brief …`. A withdrawal emits one too, with
   `"withdrawn": true`.
 - Comments written after submit are ordinary comments and wake at once.
   Comments elsewhere (older rounds, empty canvas, non-choice groups) always

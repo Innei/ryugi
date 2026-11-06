@@ -237,8 +237,8 @@ test('a new comment is queued to the hook session rather than an inherited paren
   assert.equal(args[args.indexOf('--remote') + 1], f.env.RYUGI_CODEX_REMOTE);
   const message = args[args.indexOf('--message') + 1];
   assert.ok(message.includes('document/plan'));
-  assert.ok(message.includes('comment list --section threads --format brief'));
-  assert.ok(!message.includes('Change it'));
+  assert.ok(message.includes('comment list --section threads --detail --format brief'));
+  assert.ok(message.includes('Change it'));
   assert.ok(
     !fs.existsSync(
       path.join(f.project, '.ryugi/artifacts/.state/document/plan/comment-cursors.json'),
@@ -449,8 +449,10 @@ test('desktop comments retry through the app pipe and acknowledge the hook sessi
   assert.equal(call.hostId, 'local');
   assert.equal(call.arguments.hostId, 'local');
   assert.equal(call.namespace, 'test_desktop');
-  assert.ok(call.arguments.prompt.includes('comment list --section threads --format brief'));
-  assert.ok(!call.arguments.prompt.includes('Change it'));
+  assert.ok(
+    call.arguments.prompt.includes('comment list --section threads --detail --format brief'),
+  );
+  assert.ok(call.arguments.prompt.includes('Change it'));
   assert.equal(JSON.parse(f.state().receipt).threadId, id);
   assert.equal(f.read().length, 0);
 });
@@ -468,7 +470,9 @@ test('desktop choice submissions use the existing artifact subscription and roun
   await until(() => Boolean(f.state()), 'desktop watcher never started');
   fs.writeFileSync(file, JSON.stringify({ rounds: [{ ...round, state: 'submitted' }] }));
   await until(() => app.calls.length > 0, 'desktop choice never reached the app pipe');
-  assert.ok(app.calls[0].arguments.prompt.includes('round r1 on artboard/settings were submitted'));
+  assert.ok(
+    app.calls[0].arguments.prompt.includes('Ryugi choices artboard/settings round r1 submitted'),
+  );
   assert.equal(f.read().length, 0);
 });
 

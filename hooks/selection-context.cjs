@@ -149,7 +149,7 @@ function commentReminders(project, root, key) {
       : types.size === 1
         ? `${[...types][0]}/<id>`
         : '<type>/<id>';
-  const command = `List them with \`node "${LAUNCHER}" comment list --section threads --format brief --project-dir "${project}" --artifact ${target}\`.`;
+  const command = `List them with \`node "${LAUNCHER}" comment list --section threads --detail --format brief --project-dir "${project}" --artifact ${target}\`.`;
   const head = 'Unread comment evidence: ';
   const named = [];
   for (const [index, { artifact, count }] of waiting.entries()) {
