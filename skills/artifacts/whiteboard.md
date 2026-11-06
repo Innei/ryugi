@@ -32,7 +32,7 @@ A standard Excalidraw file:
 
 ```json
 {
-  "appState": { "viewBackgroundColor": "#ffffff" },
+  "appState": { "name": "Sync flow sketch", "viewBackgroundColor": "#ffffff" },
   "elements": [],
   "files": {},
   "source": "ryugi",
@@ -40,6 +40,9 @@ A standard Excalidraw file:
   "version": 2
 }
 ```
+
+`appState.name` is the whiteboard's title. Give it a readable name, not the
+slug; `check` warns when it is missing or repeats the slug.
 
 Write new elements as Excalidraw's skeleton shorthand: `id`, `type`, `x`,
 `y`, `width`, `height`, plus `label` for text inside a shape or on an
