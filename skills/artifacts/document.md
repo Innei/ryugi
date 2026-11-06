@@ -23,8 +23,8 @@ walkthroughs.
   blocks, adds ids, writes `<strong>` as `<b>`, `<em>` as `<i>`, `<del>` as
   `<s>`, and `/>` as ` />`. Copy the text you match from that fresh read,
   never from what you wrote earlier.
-- Keep the `id` on every top-level block; comments hang on it. The server
-  adds ids to blocks you write without one.
+- Write new blocks without an `id`; the server assigns one. Keep the `id`
+  on every existing block; comments hang on it.
 - Then run `check` as `SKILL.md` says; it is the validation, so don't
   parse `doc.xml` yourself. A rejected edit names the tag; the file stays as
   you wrote it until you fix it. `"merging": true` means a long edit is

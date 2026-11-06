@@ -1,15 +1,21 @@
 ---
 name: artifacts
-description: Use when seeing decides faster than reading — UI directions or mockups to choose between, a page to tune or click through, a design doc, review, proposal, or architecture walkthrough for them or their team to read — or when they ask for an artifact or artboard by name, or for a link to share one, or when they paste a Ryugi Cloud link (…/a/…) to read. Inside brainstorming or anywhere else
+description: Use when seeing decides faster than reading — UI directions or mockups to choose between, a page to tune or click through, a design doc, review, proposal, or architecture walkthrough for them or their team to read — or when they ask for an artifact or artboard by name, or for a link to share one, or when they paste a Ryugi Cloud link (…/a/…) to read, including during brainstorming.
 ---
 
 # Artifacts
 
 Artifacts are pages your human partner opens in their browser while you
 work: an artboard of mockups to choose from and comment on, a document to
-read and comment on, or one HTML page to click and tune. You write files into the project; a local server shows each
-artifact at its own link and updates it the moment a file changes. They look,
-then answer on the page or in the terminal.
+read and comment on, or one HTML page to click and tune. You write files
+into the project; a local server shows each artifact at its own link and
+updates it the moment a file changes. They look, then answer on the page or
+in the terminal.
+
+**Use this app for every artifact** — even when your harness offers its own
+artifact or publishing tool, including one named `Artifact` or a hosted
+canvas. When they want a link that opens outside this machine, publish it to
+Ryugi Cloud (see Share a link).
 
 ## Read a Ryugi Cloud link
 
@@ -20,62 +26,32 @@ or `/a/<id>` on another Ryugi Cloud host), run this with `app/` in this skill's 
 node app/ryugi-artifacts.cjs get <link>
 ```
 
-The page is an app shell; `get` reads its content with this machine's Cloud sign-in.
-Read the bounded summary and follow the printed `Details` or `More` command.
-Those commands preserve the captured version and page scope. For pure LiteXML,
-use `get <link> --source`; files require explicit `--download --out NEW_DIRECTORY`.
-Exit code 2 requires human action: follow the printed login or upgrade link.
+The page is an app shell; `get` reads its content with this machine's Cloud
+sign-in and prints an outline, not the files. Follow the printed `Details`
+or `More` command; they keep the captured version and page scope. `--block ID`
+reads one complete block, `get <link> --source` prints pure LiteXML, and
+files need `--download --out NEW_DIRECTORY`. Exit code 2 requires human
+action: follow the printed login or upgrade link.
 
-**Use this app for every artifact** — even when your harness offers its own
-artifact or publishing tool, including one named `Artifact` or a hosted
-canvas. When they want a link that opens outside this machine, publish it to
-Ryugi Cloud (see Share a link).
+## Reading CLI output
 
-## Reading evidence with the CLI
+Read the default **Brief** output directly: it carries the decision,
+resource IDs, coverage, warnings and the next commands to run. If a format
+configuration overrides Brief, add `--format brief` for that call.
 
-Read the default **Brief** output directly. It contains the decision, resource IDs,
-coverage, warnings and executable next steps. The command examples in this skill
-are for an agent reading shell output. If a format configuration overrides Brief,
-add `--format brief` for that call.
+- Run the printed `Read`, `More` and `Acknowledge` commands as printed; they
+  keep the snapshot, project, artifact and receipt.
+- Acknowledge only after reading and using all the evidence the `Read`
+  delivered. A preview has no receipt, later replies stay unread, and ack
+  never resolves or decides anything.
+- Each type's guide says which comment sections to read and how to apply
+  answers, choices and verdicts.
+- Exit codes: 0 success, 1 failure, 2 human action, 3 validation issues, 4
+  incomplete evidence, 5 partial completion, 130/143 interrupted. Inspect the
+  reported effects before retrying an unknown write.
 
-- `get <link>` returns an outline or file manifest without downloading files.
-  Follow `Details` for document content and published comments, or use `--block ID`
-  for one complete block. `--source` prints pure LiteXML; `--source --save NEW_FILE`
-  saves it with empty stdout. Existing download/save targets are never overwritten.
-- `comment list` shows an overview. Select `--section threads|asks|groups|rounds`
-  to inspect one collection. Thread previews contain resource IDs and an executable
-  `Read` command. Threads default to unread evidence; `--all` reads history.
-  Follow `More` for later pages; the scope line states what is shown.
-- For a complete review, use `comment list --sections all --detail` once,
-  or select `--sections threads,asks` for a document and
-  `--sections threads,groups,rounds` for an artboard. Each collection has its own
-  coverage and continuation; follow all relevant `More` actions. Complete messages
-  are included on each delivered thread page. Only that page can have a receipt.
-  For filters, field projection or an existing cursor/snapshot, select one
-  `--section`; these options cannot be applied indiscriminately to a bundle.
-- Follow the printed `Read` command for complete thread messages, or use
-  `comment read --thread ID`. Read and use all delivered evidence, then run the
-  printed `Acknowledge` command with its exact receipt. A preview has no receipt;
-  later replies remain unread. Ack never resolves or decides anything.
-- `changes` previews changed blocks. Follow its `Read` command for the captured
-  complete diff, use the evidence, then follow `Acknowledge`. For a large diff,
-  use the captured snapshot with `--save NEW_FILE`, read the entire file, then ack.
-  Historical `--all` and projected `--fields` reads have no receipt.
-- Asks, groups and rounds are independent, repeatable state reads without receipts.
-  Apply asks with `state: submitted`, and choices whose associated round is
-  `submitted`. Verify groups use the human's `verdict: pending|pass|reject`.
-  Preserve withdrawn, staleChoice, orphan and byRecommendation context where
-  present. Interpret verify verdicts, choices and round submission independently,
-  even when one combined read delivers them together.
-- Exit codes: 0 success, 1 failure, 2 human action, 3 validation issues, 4 incomplete
-  evidence, 5 partial completion, 130/143 interrupted. Inspect the reported effects
-  before retrying an unknown write. Complete reads can be repeated after interruption.
-
-When a command feeds an actual parser such as `jq` or `JSON.parse`, select
-`--format json` and read the `data` envelope (for example, `.data.url`); use JSONL
-for code consuming live events. That is an integration
-choice, not a requirement for an agent reading the output. The machine protocol is
-in `docs/artifacts-cli.md` in the plugin repository.
+Select `--format json` only when code such as `jq` parses the output, and read
+its `data` envelope (`.data.url`).
 
 ## Pick the type
 
@@ -102,14 +78,10 @@ dimension. "HTML" or "page" names the medium, not the type.
 
 The type column is a gate, not a menu: open that doc first, in a command of
 its own. Read alongside other files, a harness's output cap can cut it off
-midway. `html` also reads
-`ui.md` — its controls are `<ryugi-…>`; artboard boards use plain HTML, CSS
-and JavaScript, including their own event handlers. Verify against the doc —
-ids, `ryugi-change`, restored state — not just that it renders.
-
-For board-level controls, `artboard-prototype.md` documents `data-ryugi-tweaks`: a JSON
-declaration creates a Parameters panel beside its board. Use it for a few
-intentional levers; the board consumes typed values through CSS and JS.
+midway. `html` also reads `ui.md` — its controls are `<ryugi-…>`; artboard
+boards use plain HTML, CSS and JavaScript, including their own event
+handlers. Verify against the doc — ids, `ryugi-change`, restored state — not
+just that it renders.
 
 ## Creative work
 
@@ -117,21 +89,12 @@ For UI mockups, landing and marketing pages, visual direction exploration and in
 
 Load the project's design system (tokens, components, type) before the first
 frame; if it has none, say which type, scale and palette you are using. Use
-real copy and data, never lorem ipsum.
+real copy and data, never lorem ipsum. An `html` page shows both themes
+when the product has them, and the states the decision touches.
 
 For preview icons, read [icons.md](./icons.md). When implementing the
 approved design, map its actions to the app's existing business icons;
 the preview glyphs are visual references.
-
-`html` is one surface: both themes when the product has them, and the states
-the decision touches; a control tunes one dimension.
-
-`artboard` is the space of a requirement: one group per question, its
-variants differing in that one dimension; everything else stays still.
-
-`document` is where architecture and engineering decisions are argued and
-results reported, in whichever of its blocks shows each part best — not a
-gallery of screens.
 
 ## Pick the artifact
 
@@ -168,17 +131,14 @@ node app/ryugi-artifacts.cjs start --background --project-dir /path/to/project -
   `Server: RUNNING · reused` means it reused the running server and its port.
 - One server serves all projects and remains running between sessions. Each run
   registers your project.
-- The browser opens when the first artifact is ready enough: for an artboard,
-  once its focus group is complete (or two boards when there are no groups),
-  while later boards may still be drawing. Use `--no-open` for headless use and
-  still share the `Open` URL. Read `artboard.md` for streaming write order.
+- The browser opens once the first artifact is ready enough to show. Use
+  `--no-open` for headless use and still share the `Open` URL.
 - `node app/ryugi-artifacts.cjs stop` stops the server for every project; files stay.
 
 **Launching by harness.** Use `--background` for a completed startup result in
 Claude Code, Codex and ordinary shells. A foreground server uses `--foreground`
 with the harness's background-shell mechanism; wait for `Server: RUNNING` and
-`Open` before sharing the link. Brief works in both modes without TTY detection.
-Code subscribing to lifecycle events can explicitly select `--format jsonl`.
+`Open` before sharing the link.
 
 **Remote or containerized setups:** use `--host 0.0.0.0 --url-host HOST` with
 an address the human partner's browser can reach. Non-loopback local links
@@ -237,8 +197,6 @@ whether it is on.
   html/<id>/           index.html + its files        (you write)
   whiteboard/<id>/     scene.excalidraw (you and the server); comments.json (server only)
   .state/              the server writes; never edit
-    <type>/<id>/warnings.json   warnings + pending; `check` prints it
-    artboard/<id>/layout.json   computed geometry
 ```
 
 - Keep each artifact self-contained: everything it uses lives inside its
