@@ -142,6 +142,18 @@ Optional: `title`, `subtitle`, `note`, `source`, `xLabel`, `stacked`,
 `donut`, `highlight` (a series key), `format` `{unit, compact, decimals,
 signed}`, `y` `{min, max}`, `refs` `[{y, label}]`.
 
+The viewer refuses a chart that breaks its limits and shows an error card
+instead. Keep to them as you write:
+
+- At most 6 `series`, and a pie has at most 6 rows. Merge the smallest into
+  one named "Other", or split the data into several charts.
+- `x` and every series `key` name a field that rows in `data` carry.
+- Series values are bare numbers or `null`: `12`, not `"12ms"`. Put the
+  unit in `format.unit`. Pie values are ≥ 0.
+
+`check` reports a chart, `<mermaid>` or `<math>` that would show an error
+in the page, naming the block and the fix. Fix it and run `check` again.
+
 Also `h1`–`h6`, `ol`, `blockquote`, `hr`, and inline `b i u s sub sup mark br`,
 `<ask>` (see Questions) and `<ref>` (see Artboard references).
 `strong`, `em` and `del` are read as `b`, `i` and `s`. Any other tag is
