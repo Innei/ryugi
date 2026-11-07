@@ -8,7 +8,7 @@ acceptance test is the same everywhere: open a clean session and send
 
 > Let's make a react todo list
 
-A working install triggers `brainstorming` before any code is written.
+A working install starts `brainstorming` before any code is written; where artifacts can run, the first reply opens an artboard of directions.
 
 ## Claude Code
 

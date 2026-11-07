@@ -17,7 +17,9 @@ import time
 
 
 BASE_ARMS = ("full", "discoverable", "absent")
-ARMS = (*BASE_ARMS, "short")
+FROZEN_ARMS = {"baseline": ("using-ryugi", "brainstorming"), "bs-only": ("using-ryugi",), "candidate": ()}
+ARMS = (*BASE_ARMS, "short", *FROZEN_ARMS)
+BASELINE_REV = "984c6891"
 CASES = {
     "todo": "Let's make a react todo list",
     "bug": (
@@ -44,15 +46,39 @@ CASES["resume"] = (
     "Continue from the recorded progress: Task 1 is complete, so resume Task 2. "
     "Do not ask me to approve the design again."
 )
+CASES["style-small"] = "Make the icon cornflower blue."
+CASES["cli-build"] = "Write a CLI that parses CSV."
+CASE_TIMEOUTS = {"todo": 600, "style-small": 420, "cli-build": 300}
+PROBED_CASES = ("todo", "cli-build", "resume")
 TOOLS = "Read,Glob,Grep,Edit,Write,Bash,Skill,AskUserQuestion"
+
+
+REDIRECT = re.compile(r"(?<![0-9&=>\-])>{1,2}(?![=&])\s*([^\s;&|<>()]+)")
+HEREDOC = re.compile(r"<<-?\s*(['\"]?)(\w+)\1")
+INSTALL = re.compile(r"\b(npm|pnpm|yarn|bun)\s+(i|install|add|create|init)\b|\b(npx|bunx)\b|\b(pnpm|yarn|bun)\s+(dlx|x)\b")
+
+
+def strip_heredocs(command):
+    lines, kept, i = command.split("\n"), [], 0
+    while i < len(lines):
+        kept.append(lines[i])
+        opener = HEREDOC.search(lines[i])
+        i += 1
+        if opener:
+            while i < len(lines) and lines[i].strip() != opener.group(2):
+                i += 1
+            i += 1
+    return "\n".join(kept)
 
 
 def is_mutation(tool, args):
     if tool in ("Write", "Edit"):
         return True
     command = re.sub(r"\d*>{1,2}\s*(?:/dev/null|&\d+)", "", args.get("command", ""))
+    if tool == "Bash" and REDIRECT.search(strip_heredocs(command)):
+        return True
     return tool == "Bash" and bool(re.search(
-        r"\b(mkdir|touch)\b|\b(npm|pnpm|yarn|bun)\s+(install|add|create|init)\b|"
+        r"\b(mkdir|touch|cp|mv)\b|\b(npm|pnpm|yarn|bun)\s+(i|install|add|create|init)\b|"
         r"\b(npx|bunx)\b[^\n;&|]*\bcreate[-\w]*|"
         r"\b(pnpm|yarn|bun)\s+(dlx|x)\b[^\n;&|]*\bcreate[-\w]*|"
         r"\bcat\s*>\s*(?!/dev/null)|\btee\s+(?!/dev/null)|"
@@ -61,13 +87,62 @@ def is_mutation(tool, args):
     ))
 
 
+def mutates_outside_ryugi(tool, args):
+    if tool in ("Write", "Edit"):
+        path = args.get("file_path", "")
+        return "/.ryugi/" not in path and not path.startswith(".ryugi/")
+    command = re.sub(r"\d*>{1,2}\s*(?:/dev/null|&\d+)", "", args.get("command", ""))
+    for part in re.split(r"&&|\|\||;|\||\n", strip_heredocs(command)):
+        if not is_mutation("Bash", {"command": part}):
+            continue
+        if INSTALL.search(part):
+            return True
+        targets = write_targets(part)
+        if not targets or any(not in_ryugi(target) for target in targets):
+            return True
+    return False
+
+
+def in_ryugi(path):
+    return path.startswith(".ryugi") or "/.ryugi/" in path
+
+
+def write_targets(part):
+    targets = REDIRECT.findall(part)
+    words = HEREDOC.sub("", REDIRECT.sub("", part)).split()
+    args = [w.strip("'\"") for w in words[1:] if not w.startswith("-")]
+    if words and words[0] in ("mkdir", "touch", "tee"):
+        targets += args
+    if words and words[0] in ("cp", "mv") and args:
+        targets.append(args[-1])
+    if words and words[0] == "sed" and "-i" in words:
+        targets += args[1:]
+    return targets
+
+
+def collect_artifacts(project):
+    root = project / ".ryugi/artifacts"
+    found = {"artboards": {}, "documents": [], "html": []}
+    for board in sorted((root / "artboard").glob("*/")):
+        try:
+            canvas = json.loads((board / "canvas.json").read_text())
+        except (OSError, json.JSONDecodeError):
+            canvas = None
+        files = sorted(str(p.relative_to(board)) for p in board.rglob("*") if p.is_file() and p.name != "canvas.json")
+        found["artboards"][board.name] = {"canvas": canvas, "files": files}
+    found["documents"] = sorted(p.name for p in (root / "document").glob("*/"))
+    found["html"] = sorted(p.name for p in (root / "html").glob("*/"))
+    return found
+
+
 def observation_stop(case, block):
     tool, args = block.get("name"), block.get("input", {})
     if not is_mutation(tool, args):
         return None
     reason = None
-    if case == "todo":
-        reason = "first_project_mutation"
+    if case in ("todo", "cli-build"):
+        if mutates_outside_ryugi(tool, args):
+            reason = "first_project_mutation"
     elif case == "resume":
         target = args.get("file_path", args.get("command", ""))
         if re.search(r"\bcompleted(?:\.test)?\.cjs\b", target):
@@ -81,7 +156,55 @@ def write_json(path, value):
     path.write_text(json.dumps(value, indent=2, ensure_ascii=False) + "\n")
 
 
-def make_plugin(repo, root, arm, router_file=None):
+PORT_SHIM = """'use strict';
+const args = process.argv.slice(2);
+if (args[0] === 'start') {
+  for (let i = args.length - 1; i > 0; i--) {
+    if (args[i] === '--port') args.splice(i, 2);
+    else if (args[i].startsWith('--port=') || args[i] === '--open' || args[i] === '--no-open') args.splice(i, 1);
+  }
+  args.push('--port', process.env.RYUGI_EVAL_PORT, '--no-open');
+}
+process.argv = [process.argv[0], process.argv[1], ...args];
+require(%s);
+"""
+
+
+def session_env(base_env, session_dir, port, shim_dir):
+    env = dict(base_env)
+    env["RYUGI_SERVER_HOME"] = str(session_dir / "ryugi-server")
+    env["RYUGI_RUNTIME_DIR"] = str(session_dir / "ryugi-runtime")
+    env["RYUGI_EVAL_PORT"] = str(port)
+    env["XDG_CONFIG_HOME"] = str(session_dir / "xdg-config")
+    env["PATH"] = f"{shim_dir}:{env.get('PATH', '')}"
+    return env
+
+
+def write_open_shims(shim_dir):
+    shim_dir.mkdir(parents=True, exist_ok=True)
+    for name in ("open", "xdg-open"):
+        shim = shim_dir / name
+        shim.write_text("#!/bin/sh\nexit 0\n")
+        shim.chmod(0o755)
+
+
+def write_port_shim(plugin, real_cli):
+    (plugin / "skills/artifacts/app/cli.cjs").write_text(PORT_SHIM % json.dumps(str(real_cli)))
+
+
+def install_artifacts(root, version):
+    prefix = root / "artifacts-release"
+    subprocess.run(["npm", "install", "--prefix", str(prefix), "--no-save", "--no-audit", "--no-fund",
+                    f"ryugi-artifacts@{version}"], check=True, capture_output=True)
+    return prefix / "node_modules/ryugi-artifacts/dist/cli.cjs"
+
+
+def stop_server(plugin, env):
+    subprocess.run(["node", str(plugin / "skills/artifacts/app/ryugi-artifacts.cjs"), "stop"],
+                   env=env, capture_output=True, timeout=30)
+
+
+def make_plugin(repo, root, arm, router_file=None, baseline_rev=BASELINE_REV):
     plugin = root / "plugins" / arm
     (plugin / ".claude-plugin").mkdir(parents=True)
     shutil.copy2(repo / ".claude-plugin/plugin.json", plugin / ".claude-plugin/plugin.json")
@@ -94,7 +217,11 @@ def make_plugin(repo, root, arm, router_file=None):
     if arm == "short":
         router_file = router_file or repo / "tests/skill-bootstrap-eval/fixtures/short-router.md"
         shutil.copy2(router_file, plugin / "skills/using-ryugi/SKILL.md")
-    if arm in ("full", "short"):
+    for skill in FROZEN_ARMS.get(arm, ()):
+        frozen = subprocess.check_output(
+            ["git", "show", f"{baseline_rev}:skills/{skill}/SKILL.md"], cwd=repo, text=True)
+        (plugin / "skills" / skill / "SKILL.md").write_text(frozen)
+    if arm in ("full", "short", *FROZEN_ARMS):
         (plugin / "hooks").mkdir()
         for name in ("session-start", "project-root.sh"):
             shutil.copy2(repo / "hooks" / name, plugin / "hooks" / name)
@@ -140,6 +267,17 @@ def make_project(path, case):
             "test('includes the upper boundary', () => {\n"
             "  assert.deepEqual(filterByPrice([{price: 10}], 0, 10), [{price: 10}]);\n"
             "});\n"
+        )
+    if case == "style-small":
+        (path / "index.html").write_text(
+            "<!doctype html>\n<html>\n<head><link rel=\"stylesheet\" href=\"styles.css\"></head>\n<body>\n"
+            "  <header class=\"bar\">\n"
+            "    <svg class=\"icon\" viewBox=\"0 0 24 24\" width=\"24\" height=\"24\" aria-hidden=\"true\">"
+            "<path d=\"M12 2l3 7h7l-5.5 4 2 7-6.5-4.5L5.5 20l2-7L2 9h7z\"/></svg>\n"
+            "    <h1>Starboard</h1>\n  </header>\n</body>\n</html>\n"
+        )
+        (path / "styles.css").write_text(
+            ".bar { display: flex; gap: 8px; align-items: center; }\n.icon { fill: #555; }\n"
         )
     if case == "resume":
         (path / "completed.cjs").write_text("exports.completed = () => 21;\n")
@@ -191,7 +329,7 @@ def make_project(path, case):
         )
 
 
-def run_one(repo, root, plugin, arm, case, rep, settings, timeout, model):
+def run_one(repo, root, plugin, arm, case, rep, settings, timeout, model, port):
     name = f"{case}-{arm}-{rep}"
     out = root / "runs" / name
     out.mkdir(parents=True)
@@ -199,7 +337,7 @@ def run_one(repo, root, plugin, arm, case, rep, settings, timeout, model):
     make_project(project, case)
     config_dir = root / "configs" / name
     config_dir.mkdir(parents=True)
-    env = os.environ.copy()
+    env = session_env(os.environ, root / "sessions" / name, port, root / "shims")
     # Each process has a private skill/config directory. Keep the caller's
     # authentication in its environment; never write credentials into evidence.
     env["CLAUDE_CONFIG_DIR"] = str(config_dir)
@@ -223,7 +361,7 @@ def run_one(repo, root, plugin, arm, case, rep, settings, timeout, model):
         proc = subprocess.Popen(cmd, cwd=project, env=env, stdin=subprocess.DEVNULL,
                                 stdout=stdout, stderr=stderr, start_new_session=True)
         while proc.poll() is None:
-            if case in ("todo", "resume"):
+            if case in PROBED_CASES:
                 for line in (out / "raw.jsonl").read_text().splitlines():
                     try:
                         event = json.loads(line)
@@ -252,6 +390,7 @@ def run_one(repo, root, plugin, arm, case, rep, settings, timeout, model):
                 os.killpg(proc.pid, signal.SIGKILL)
                 proc.wait()
         code = proc.returncode
+    stop_server(plugin, env)
     elapsed = round(time.monotonic() - start, 3)
     events = []
     for line in (out / "raw.jsonl").read_text().splitlines():
@@ -278,6 +417,11 @@ def run_one(repo, root, plugin, arm, case, rep, settings, timeout, model):
             )}
     status = subprocess.run(["git", "status", "--porcelain"], cwd=project, capture_output=True, text=True).stdout
     checks = {}
+    artifacts = collect_artifacts(project)
+    if case == "style-small":
+        styled = "".join(p.read_text(errors="replace") for p in project.rglob("*")
+                         if p.is_file() and p.suffix in (".css", ".html") and ".ryugi" not in p.parts)
+        checks["recolored"] = bool(re.search(r"cornflowerblue|#6495ed", styled, re.I))
     if case == "resume":
         checks["completed_task_preserved"] = (project / "completed.cjs").read_text() == "exports.completed = () => 21;\n"
     if case in ("bug", "clamp", "direct"):
@@ -300,6 +444,7 @@ def run_one(repo, root, plugin, arm, case, rep, settings, timeout, model):
         "elapsed_seconds": elapsed, "exit_code": code, "timed_out": timed_out,
         "observer_stop": observer_stop, "hooks": hooks,
         "init": init, "result": result, "trace": trace, "git_status": status, "checks": checks,
+        "artifacts": artifacts,
     }
     write_json(out / "record.json", record)
     print(json.dumps({
@@ -318,6 +463,8 @@ def main():
     parser.add_argument("--timeout", type=int, default=180)
     parser.add_argument("--model", default="haiku")
     parser.add_argument("--router-file", type=Path)
+    parser.add_argument("--baseline-rev", default=BASELINE_REV)
+    parser.add_argument("--artifacts-version", default="1.63.0")
     parser.add_argument("--cases", nargs="+", choices=CASES, default=list(BASE_CASES))
     parser.add_argument("--arms", nargs="+", choices=ARMS, default=list(BASE_ARMS))
     args = parser.parse_args()
@@ -330,11 +477,16 @@ def main():
     write_json(settings, {k: user_settings[k] for k in ("model", "effortLevel") if k in user_settings})
     if not (os.environ.get("CLAUDE_CODE_OAUTH_TOKEN") or os.environ.get("ANTHROPIC_API_KEY")):
         parser.error("Supply CLAUDE_CODE_OAUTH_TOKEN or ANTHROPIC_API_KEY for the isolated CLI sessions")
-    plugins = {arm: make_plugin(repo, root, arm, args.router_file) for arm in args.arms}
+    plugins = {arm: make_plugin(repo, root, arm, args.router_file, args.baseline_rev) for arm in args.arms}
+    real_cli = install_artifacts(root, args.artifacts_version)
+    for plugin in plugins.values():
+        write_port_shim(plugin, real_cli)
+    write_open_shims(root / "shims")
     source = repo / "skills/using-ryugi/SKILL.md"
     write_json(root / "manifest.json", {
         "repo_head": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=repo, text=True).strip(),
         "bootstrap_sha256": hashlib.sha256(source.read_bytes()).hexdigest(),
+        "artifacts_version": args.artifacts_version,
         "cli": subprocess.check_output(["claude", "--version"], text=True).strip(),
         "settings": json.loads(settings.read_text()), "cases": CASES, "arms": args.arms,
         "model": args.model,
@@ -342,14 +494,18 @@ def main():
         "arm_bootstraps": {arm: (plugin / "skills/using-ryugi/SKILL.md").read_text()
                            if (plugin / "skills/using-ryugi/SKILL.md").exists() else None
                            for arm, plugin in plugins.items()},
+        "baseline_rev": args.baseline_rev,
+        "arm_brainstorming": {arm: (plugin / "skills/brainstorming/SKILL.md").read_text()
+                              for arm, plugin in plugins.items()},
         "reps": args.reps, "workers": args.workers, "timeout": args.timeout,
     })
     jobs = [(a, c, r) for r in range(1, args.reps + 1) for c in args.cases for a in args.arms]
     random.Random(20261031).shuffle(jobs)
     print(json.dumps({"output": str(root), "runs": len(jobs)}), flush=True)
     with concurrent.futures.ThreadPoolExecutor(max_workers=args.workers) as executor:
-        futures = [executor.submit(run_one, repo, root, plugins[a], a, c, r, settings, args.timeout, args.model)
-                   for a, c, r in jobs]
+        futures = [executor.submit(run_one, repo, root, plugins[a], a, c, r, settings,
+                                   CASE_TIMEOUTS.get(c, args.timeout), args.model, 27400 + i)
+                   for i, (a, c, r) in enumerate(jobs)]
         records = [future.result() for future in concurrent.futures.as_completed(futures)]
     write_json(root / "records.json", sorted(records, key=lambda x: x["name"]))
 

@@ -33,13 +33,14 @@ why? Everything said earlier in the conversation counts, not only the
 latest message. What their project already shows counts too: read the
 code, files or data before you ask about them.
 
-| What you know                                                                                       | Do                                                                                              |
-| --------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| Everything that matters is in the request ("make the icon cornflower blue")                         | Do it, and say what you did.                                                                    |
-| Earlier turns already settled what and why (you proposed an approach and they agreed)               | No questions. Size the work and give the full description, your calls marked.                   |
-| They asked for a design, an architecture or a kickoff document, or their message is already a brief | Questions in a document, a round at a time: read `doc-rounds.md` first.                         |
-| Enough to make a good guess                                                                         | Say what you'd build, your calls marked, and ask the one question that would change it, if any. |
-| Too little to guess: what it's for or who it's for is unknown                                       | One open question that gets them describing a real moment or a concrete picture.                |
+| What you know                                                                                                                 | Do                                                                                                                                                    |
+| ----------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Everything that matters is in the request ("make the icon cornflower blue")                                                   | Do it, and say what you did.                                                                                                                          |
+| Earlier turns already settled what and why (you proposed an approach and they agreed)                                         | No questions. Size the work and give the full description, your calls marked.                                                                         |
+| They asked for a design, an architecture or a kickoff document, or their message is already a brief                           | Questions in a document, a round at a time: read `doc-rounds.md` first.                                                                               |
+| Something with an interface is to be built, and both what it's for and how it looks are open ("let's make a react todo list") | Open an artboard round: 2–3 directions, each a different use drawn as that use would look. Picking one answers both. Read `artboard-rounds.md` first. |
+| Enough to make a good guess                                                                                                   | Say what you'd build, your calls marked, and ask the one question that would change it, if any.                                                       |
+| Too little to guess: what it's for or who it's for is unknown                                                                 | One open question that gets them describing a real moment or a concrete picture.                                                                      |
 
 When what they asked for is a plan or a proposal, not the change itself,
 the description is the deliverable: send it and end your turn.
@@ -136,7 +137,11 @@ instead of describing it:
 | Structure, architecture, tradeoffs                  | words: chat or the document                       |
 
 Requirements, scope, tradeoffs, and conceptual choices stay in words. A
-question about a UI topic isn't automatically a visual question.
+question about a UI topic isn't automatically a visual question. One
+exception: when something with an interface is being built and both its
+purpose and its look are open, the directions carry the purpose. A todo
+list becomes a quick list, a daily planner with due dates, and a list
+shared with others, each drawn as that use would look.
 
 Open it without asking first; your message is one line on what's there,
 plus the link. Showing a mockup doesn't send every question to the

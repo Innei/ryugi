@@ -145,7 +145,8 @@ A port is finished when **all** of these are true:
 
    > Let's make a react todo list
 
-   auto-triggers the `brainstorming` skill _before any code is written_. Capture
+   starts the `brainstorming` skill _before any code is written_; where artifacts
+   can run (node and a browser), the first reply opens an artboard of directions. Capture
    the full transcript — the PR requires it.
 
 5. Tests cover the integration (Part 5) and pass.

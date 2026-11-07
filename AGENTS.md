@@ -32,7 +32,7 @@ A real integration loads the `using-ryugi` bootstrap at session start. The accep
 
 > Let's make a react todo list
 
-A working integration auto-triggers `brainstorming` before any code is written. Copying skill files by hand, runtime shims, and per-session opt-ins are not integrations.
+A working integration starts `brainstorming` before any code is written; where artifacts can run (node and a browser), the first reply opens an artboard of directions. Copying skill files by hand, runtime shims, and per-session opt-ins are not integrations.
 
 ## Licensing
 

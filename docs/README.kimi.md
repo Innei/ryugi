@@ -85,4 +85,4 @@ Kimi Code installs the latest GitHub release for a bare repository URL when one 
 
 1. Confirm `/plugins info ryugi` shows the plugin enabled.
 2. Start a fresh session with `/new`.
-3. Try the acceptance prompt: `Let's make a react todo list`. A working install should load `brainstorming` before writing code.
+3. Try the acceptance prompt: `Let's make a react todo list`. A working install should start `brainstorming` before writing code, opening an artboard of directions where artifacts can run.

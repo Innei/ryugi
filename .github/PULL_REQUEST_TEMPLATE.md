@@ -103,8 +103,9 @@ What your human partner asked you to do, in their words:
 
          Let's make a react todo list
 
-     A working integration auto-triggers the `brainstorming` skill before
-     any code is written. Paste the complete transcript below.
+     A working integration starts the `brainstorming` skill before any
+     code is written; where artifacts can run, the first reply opens an
+     artboard of directions. Paste the complete transcript below.
 
      These are NOT real integrations and PRs that ship them will be closed:
 

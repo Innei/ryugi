@@ -3,12 +3,15 @@
 Compare installations using fresh Claude Code processes and disposable
 Git projects. The production skills and integrations are unchanged.
 
-| Arm            | `using-ryugi` available                                       | SessionStart injects its body                            |
-| -------------- | ------------------------------------------------------------- | -------------------------------------------------------- |
-| `full`         | Yes                                                           | Yes, through the repository's real `hooks/session-start` |
-| `discoverable` | Yes, with its current description                             | No                                                       |
-| `absent`       | No                                                            | No                                                       |
-| `short`        | Yes, using the frozen candidate in `fixtures/short-router.md` | Yes, through the same real hook                          |
+| Arm            | `using-ryugi` available                                                | SessionStart injects its body                            |
+| -------------- | ---------------------------------------------------------------------- | -------------------------------------------------------- |
+| `full`         | Yes                                                                    | Yes, through the repository's real `hooks/session-start` |
+| `discoverable` | Yes, with its current description                                      | No                                                       |
+| `absent`       | No                                                                     | No                                                       |
+| `short`        | Yes, using the frozen candidate in `fixtures/short-router.md`          | Yes, through the same real hook                          |
+| `baseline`     | Yes, `using-ryugi` and `brainstorming` from `--baseline-rev`           | Yes, through the same real hook                          |
+| `bs-only`      | Yes, `using-ryugi` from `--baseline-rev`, working-tree `brainstorming` | Yes, through the same real hook                          |
+| `candidate`    | Yes, the working tree                                                  | Yes, through the same real hook                          |
 
 All other Ryugi skills are identical. Each process gets a private
 `CLAUDE_CONFIG_DIR`, the same built-in tools, no external MCP servers, and
@@ -36,6 +39,13 @@ plugin copy is changed; the production `using-ryugi` file is preserved.
 The original five-case, three-arm defaults remain available for repeating
 the initial ablation.
 
+Each session gets its own artifacts server: `RYUGI_SERVER_HOME`,
+`RYUGI_RUNTIME_DIR` and `XDG_CONFIG_HOME` point inside the session, so the
+partner's server and Cloud sign-in stay untouched, and a `cli.cjs` shim in
+the plugin copy pins `start` to the session's port with `--no-open`. The
+pinned `ryugi-artifacts` release (`--artifacts-version`) is installed into
+the run directory.
+
 `haiku` is the default because the human partner requested a small model.
 The init event records the resolved model. The caller's configured effort
 is preserved. A fixed shuffle interleaves arms and scenarios. Each process
@@ -44,9 +54,15 @@ has a 150-second limit in the recorded run; the script default is 180.
 ## Cases and observable signals
 
 - **todo:** the exact installation acceptance prompt, `Let's make a react
-todo list`. Look for brainstorming discovery and a clarifying question
-  before implementation. Observation stops at the first recognized mutation
-  request; this is a recorded decision boundary, not a CLI crash or timeout.
+todo list`. Passes when the first reply starts the artifacts server and
+  writes a choice group of 2–3 boards, with no product code, scaffold or
+  install. Writes under `.ryugi/` are not implementation; observation stops
+  at the first other mutation. Up to 600 seconds.
+- **style-small:** "Make the icon cornflower blue." in a fixture with one
+  SVG icon. Passes when the colour changes with no choice group and no
+  question first; a verifying-ui verify group is allowed.
+- **cli-build:** "Write a CLI that parses CSV." Passes when no artboard is
+  opened.
 - **bug:** fix an upper-bound exclusion before a demo in ten minutes.
   Independent assertions check the resulting function. Separately inspect
   debugging discovery, regression-test edits, observed failure before the

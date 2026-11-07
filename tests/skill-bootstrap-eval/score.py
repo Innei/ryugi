@@ -8,7 +8,7 @@ from pathlib import Path
 import re
 import statistics
 
-from run import is_mutation
+from run import is_mutation, mutates_outside_ryugi
 
 
 def test_state(output):
@@ -28,6 +28,13 @@ def flatten(value):
     if isinstance(value, dict):
         return flatten(value.get("text", value.get("content", "")))
     return ""
+
+
+def groups_of(record):
+    for item in record.get("artifacts", {}).get("artboards", {}).values():
+        canvas = item.get("canvas")
+        if isinstance(canvas, dict) and isinstance(canvas.get("groups"), dict):
+            yield from (g for g in canvas["groups"].values() if isinstance(g, dict))
 
 
 def score(record):
@@ -66,6 +73,18 @@ def score(record):
                           "test": bool(re.search(r"(?:\.test\.|test_)", command)),
                           "production": bool(re.search(r"(?:filter|clamp)\.cjs", command)),
                           "shell": True})
+    product_edits = [call["i"] for call in calls
+                     if call["tool"] in ("Write", "Edit", "Bash")
+                     and is_mutation(call["tool"], trace[call["i"]].get("input", {}))
+                     and mutates_outside_ryugi(call["tool"], trace[call["i"]].get("input", {}))]
+    left_behind = [line[3:] for line in record.get("git_status", "").splitlines()
+                   if line[3:] and not line[3:].startswith(".ryugi")]
+    if record["case"] == "todo" and left_behind:
+        product_edits.append(len(trace))
+    started_artifacts = any(call["tool"] == "Bash" and re.search(r"ryugi-artifacts\.cjs\S*\s+start\b", call["detail"])
+                            for call in calls)
+    choice_groups = [len(g.get("boards", [])) for g in groups_of(record) if g.get("choose")]
+    opened_artboard = bool(record.get("artifacts", {}).get("artboards"))
     first_prod = min((edit["i"] for edit in edits if edit["production"]), default=None)
     first_test = min((edit["i"] for edit in edits if edit["test"]), default=None)
     red = [call["i"] for call in test_calls if call["state"] == "red"]
@@ -78,6 +97,8 @@ def score(record):
     final = record["result"].get("result") or text
     completed = record["exit_code"] == 0 and not record["timed_out"] and not record["result"].get("is_error")
     case = record["case"]
+    if case == "style-small":
+        first_prod = min(product_edits, default=None)
     before_implementation = first_prod if first_prod is not None else len(trace)
     asked = any(
         i < before_implementation and block.get("role") == "assistant" and (
@@ -86,7 +107,12 @@ def score(record):
         ) for i, block in enumerate(trace)
     )
     if case == "todo":
-        outcome = completed and not edits and not record.get("observer_stop") and "?" in text
+        outcome = (started_artifacts and not product_edits and not record.get("observer_stop")
+                   and any(2 <= n <= 3 for n in choice_groups))
+    elif case == "style-small":
+        outcome = record["checks"].get("recolored", False) and not choice_groups and not asked
+    elif case == "cli-build":
+        outcome = not opened_artboard
     elif case in ("bug", "clamp"):
         outcome = completed and record["checks"].get("behavior_pass", False)
     elif case == "direct":
@@ -117,7 +143,8 @@ def score(record):
     return {
         "name": record["name"], "arm": record["arm"], "case": case, "rep": record["rep"],
         "outcome_pass": bool(outcome), "tdd": tdd, "completed": bool(completed),
-        "route_pass": route_pass, "asked_before_implementation": asked,
+        "route_pass": route_pass, "choice_groups": choice_groups, "opened_artboard": opened_artboard,
+        "started_artifacts": started_artifacts, "product_edits": len(product_edits), "asked_before_implementation": asked,
         "timed_out": record["timed_out"], "observer_stop": bool(record.get("observer_stop")),
         "skills": skills, "first_production_edit": first_prod, "first_test_edit": first_test,
         "tests": [{k: v for k, v in call.items() if k != "output"} for call in test_calls],
@@ -146,6 +173,8 @@ def main():
             "outcome_pass": sum(item["outcome_pass"] for item in items),
             "route_pass": sum(item["route_pass"] for item in items),
             "tdd": sum(item["tdd"] for item in items),
+            "opened_artboard": sum(item["opened_artboard"] for item in items),
+            "choice_group_runs": sum(bool(item["choice_groups"]) for item in items),
             "timeouts": sum(item["timed_out"] for item in items),
             "observer_stops": sum(item["observer_stop"] for item in items),
             "skill_loads": dict(collections.Counter(s["skill"] for item in items for s in item["skills"])),

@@ -1,76 +1,31 @@
 ---
 name: using-ryugi
-description: Use when starting any conversation - establishes how to find and use skills, requiring skill invocation before ANY response including clarifying questions
+description: Use when starting any conversation - routes each task to the Ryugi workflow for its stage
 ---
 
 <SUBAGENT-STOP>
 If you were dispatched as a subagent to execute a specific task, ignore this skill.
 </SUBAGENT-STOP>
 
-<EXTREMELY-IMPORTANT>
-If you think there is even a 1% chance a skill might apply to what you are doing, you ABSOLUTELY MUST invoke the skill.
+# Ryugi Workflows
 
-IF A SKILL APPLIES TO YOUR TASK, YOU DO NOT HAVE A CHOICE. YOU MUST USE IT.
+Before you read project files or write code for a task, load the skill for its stage with the `Skill` tool and follow it:
 
-This is not negotiable. You cannot rationalize your way out of this.
-</EXTREMELY-IMPORTANT>
+- Building or changing behavior ("let's build X", plan mode): `ryugi:brainstorming`
+- An approved spec to implement or resume: `ryugi:executing-specs`
+- A bug, failing test or unexpected behavior: `ryugi:systematic-debugging`
+- Writing implementation code: `ryugi:test-driven-development`, also when your human partner says to skip discussion
+- UI built, or a visible bug to fix: `ryugi:verifying-ui`, before calling it done
+- Something to show (mockups, a design doc, a share link): `ryugi:artifacts`
 
-## The Rule
+Plain questions and read-only checks need no skill. Your human partner's instructions override skills. A project's own skill for a step (its design system, checking the running app, shipping) does that step.
 
-**Invoke relevant or requested skills BEFORE any response or action** — including clarifying questions, exploring the codebase, or checking files. If it turns out wrong for the situation, you don't have to use it.
-
-**Before entering plan mode:** if you haven't already brainstormed, invoke the brainstorming skill first.
-
-Then announce "Using [skill] to [purpose]" and follow the skill exactly. If it has a checklist, create a todo per item.
-
-**A change of output format re-opens the contract.** When the deliverable
-changes (document → html, code → spec, …), re-read the skill's docs before
-writing. "Already read once" does not carry over.
-
-## Skill Priority
-
-When multiple skills apply, process skills come first — they set the approach, then implementation skills (frontend-design, etc.) carry it out. Brainstorming and systematic-debugging are Ryugi' most common process skills, but the rule holds for any of them.
-
-- "Let's build X" → ryugi:brainstorming first, then implementation skills.
-- "Fix this bug" → ryugi:systematic-debugging first, then domain skills.
-- UI built, or a visible bug to fix → ryugi:verifying-ui before calling it done; the project's own app-checking skill can make the evidence, not the verdict.
-
-When the project has its own skill for a step — its design system, checking the running app, shipping — that skill does that step. Ryugi sets the process; the project's skills carry its domain.
+**A change of output format re-opens the contract.** When the deliverable changes (document → html, code → spec), re-read the skill's docs before writing; "already read once" does not carry over.
 
 ## Evidence Before Claims
 
 Before saying anything is done, fixed, or passing — and before committing, pushing, or opening a PR — run the command that proves it in this session, read its full output, and state the result with that evidence. A previous run, "should pass", a subagent's success report, or a diff that looks right is not evidence. If the check fails, report the actual state.
 
-## Red Flags
-
-These thoughts mean STOP—you're rationalizing:
-
-| Thought                             | Reality                                                |
-| ----------------------------------- | ------------------------------------------------------ |
-| "This is just a simple question"    | Questions are tasks. Check for skills.                 |
-| "I need more context first"         | Skill check comes BEFORE clarifying questions.         |
-| "Let me explore the codebase first" | Skills tell you HOW to explore. Check first.           |
-| "I can check git/files quickly"     | Files lack conversation context. Check for skills.     |
-| "Let me gather information first"   | Skills tell you HOW to gather information.             |
-| "This doesn't need a formal skill"  | If a skill exists, use it.                             |
-| "I remember this skill"             | Skills evolve. Read current version.                   |
-| "This doesn't count as a task"      | Action = task. Check for skills.                       |
-| "The skill is overkill"             | Simple things become complex. Use it.                  |
-| "I'll just do this one thing first" | Check BEFORE doing anything.                           |
-| "This feels productive"             | Undisciplined action wastes time. Skills prevent this. |
-| "I know what that means"            | Knowing the concept ≠ using the skill. Invoke it.      |
-
 ## Platform Adaptation
 
-If your harness appears here, read its reference file for special instructions:
-
-- Claude Code: `references/claude-code-tools.md`
-- Codex: `references/codex-tools.md`
-- Pi: `references/pi-tools.md`
-- Antigravity: `references/antigravity-tools.md`
-- Hermes Agent: `references/hermes-tools.md`
-- Muse: `references/muse-tools.md`
-
-## User Instructions
-
-User instructions (CLAUDE.md, AGENTS.md, GEMINI.md, etc, direct requests) take precedence over skills, which in turn override default behavior. Only skip skill workflows or instructions when your human partner has explicitly told you to.
+Read your harness's file first: Codex `references/codex-tools.md`, Pi `references/pi-tools.md`, Antigravity `references/antigravity-tools.md`, Hermes Agent `references/hermes-tools.md`, Muse `references/muse-tools.md`.
