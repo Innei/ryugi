@@ -16,7 +16,7 @@
   "scripts": {
     "format": "prettier --write .",
     "lint": "eslint . --fix",
-    "prepare": "simple-git-hooks"
+    "prepare": "simple-git-hooks || true"
   },
   "simple-git-hooks": {
     "pre-commit": "pnpm lint-staged"
