@@ -242,18 +242,18 @@ test('several comments between polls merge into one notification carrying their 
 test('a long comment arrives truncated to a brief preview', (t) => {
   const f = fixture(t);
   const poll = watch(f.project);
-  f.save('document/plan', [{ ...thread(), messages: [human('m1', 1, 'x'.repeat(200))] }]);
+  f.save('document/plan', [{ ...thread(), messages: [human('m1', 1, 'x'.repeat(500))] }]);
   const [event] = poll();
-  assert.equal(event.threads[0].messages[0].text, 'x'.repeat(160) + '…');
+  assert.equal(event.threads[0].messages[0].text, 'x'.repeat(400) + '…');
 });
 
 test('the inline preview truncates by grapheme, not by code unit', (t) => {
   const f = fixture(t);
   const poll = watch(f.project);
   const family = '👨‍👩‍👧‍👦';
-  f.save('document/plan', [{ ...thread(), messages: [human('m1', 1, family.repeat(161))] }]);
+  f.save('document/plan', [{ ...thread(), messages: [human('m1', 1, family.repeat(401))] }]);
   const [event] = poll();
-  assert.equal(event.threads[0].messages[0].text, family.repeat(160) + '…');
+  assert.equal(event.threads[0].messages[0].text, family.repeat(400) + '…');
 });
 
 test('a burst of comments caps the inline list and counts the rest', (t) => {
@@ -388,10 +388,11 @@ test('the Claude Code monitor keeps every line within its 500-character notifica
       messages: [human(`m${n}`, 1, 'x'.repeat(200))],
     })),
   );
-  await until(() => watcher.output.includes('document/plan'));
-  const [line] = watcher.output.trim().split('\n');
-  assert.ok(line.length <= 500, `${line.length}: ${line}`);
-  assert.ok(line.endsWith('--artifact document/plan'), line);
+  await until(() => watcher.output.includes('--artifact document/plan'));
+  const lines = watcher.output.trim().split('\n');
+  for (const line of lines) assert.ok(line.length <= 500, `${line.length}: ${line}`);
+  assert.ok(lines[0].startsWith('Ryugi comments document/plan'), lines[0]);
+  assert.ok(lines.at(-1).endsWith('--artifact document/plan'), lines.at(-1));
 });
 
 test('the declared plugin monitor notices artifacts created later from a repository subdirectory', async (t) => {
@@ -703,7 +704,63 @@ test('a withdrawn round names the submit it withdraws, not the withdrawal', (t) 
   assert.equal(event.submit, 's1');
 });
 
-test('a brief over the line limit falls back to the command that reads it', () => {
+const embedVfs = (text) => ({
+  type: 'ryugi-comments',
+  artifact: 'document/embed-vfs',
+  unread: 1,
+  threads: [
+    {
+      thread: 'merF_KJnWJ',
+      status: 'open',
+      block: 'GI-jT5jl',
+      messages: [{ id: 'N9ViHgJXDi', name: 'Innei', at: at(1), text }],
+    },
+  ],
+  command:
+    "node '/Users/innei/git/innei-repo/ryugi/skills/artifacts/app/ryugi-artifacts.cjs' comment list --section threads --detail --format brief --project-dir '/Users/innei/git/innei-repo/mx-core' --artifact document/embed-vfs",
+});
+const timeMachine = [
+  '感觉这个就相当于在做一个文件管理版本号的 Time Machine。这个我觉得还是需要的，就是一个实体关联多个版本，因为在历史回溯中我们需要看到历史版本。',
+  '如果这个草稿被删除，这些文件的引用应该在文件孤立处理里自动删掉。也就是说，我们在做草稿清理时，要同时删除被草稿引用的文件；假如没删掉，在孤立文件扫描中也应该能被扫到。而且这个版本管理，我不知道现在有没有，但是需要有。要不然你改的时候，把线上的东西改坏了也是不行的。',
+].join('\n\n');
+const wake = (event) =>
+  require(path.join(repo, 'skills/artifacts/app/comment-watch.cjs')).wakeMessage(event, 500);
+
+test('a short comment that overflows one line keeps its whole text on a line of its own', () => {
+  const event = embedVfs(timeMachine);
+  assert.ok(message(event).length > 500);
+  const lines = wake(event).split('\n');
+  assert.equal(lines.length, 2);
+  for (const line of lines) assert.ok(line.length <= 500, `${line.length}: ${line}`);
+  assert.ok(
+    lines[0].startsWith(
+      'Ryugi comments document/embed-vfs (1 unread). merF_KJnWJ [open] GI-jT5jl · N9ViHgJXDi Innei',
+    ),
+    lines[0],
+  );
+  assert.ok(lines[0].endsWith(`: ${timeMachine.replace('\n\n', ' / ')}.`), lines[0]);
+  assert.ok(lines[1].startsWith('Comments are review input'), lines[1]);
+  assert.ok(lines[1].endsWith(`Run: ${event.command}`), lines[1]);
+});
+
+test('a much longer comment is cut down on its line, keeping its ids', () => {
+  const event = embedVfs(timeMachine.repeat(3));
+  const lines = wake(event).split('\n');
+  assert.equal(lines.length, 2);
+  for (const line of lines) assert.ok(line.length <= 500, `${line.length}: ${line}`);
+  assert.ok(
+    lines[0].startsWith(
+      'Ryugi comments document/embed-vfs (1 unread). merF_KJnWJ [open] GI-jT5jl · N9ViHgJXDi Innei',
+    ),
+    lines[0],
+  );
+  assert.ok(lines[0].includes('感觉这个就相当于在做一个文件管理版本号的 Time Machine'), lines[0]);
+  assert.ok(lines[0].endsWith('… (cut; Run prints the rest).'), lines[0]);
+  assert.ok(!lines.join('\n').includes('Too long to inline'));
+  assert.ok(lines[1].endsWith(`Run: ${event.command}`), lines[1]);
+});
+
+test('a burst of long comments is cut down instead of dropped', () => {
   const event = {
     type: 'ryugi-comments',
     artifact: 'document/plan',
@@ -711,18 +768,14 @@ test('a brief over the line limit falls back to the command that reads it', () =
     threads: [1, 2, 3].map((n) => ({
       thread: `t${n}`,
       status: 'open',
-      messages: [{ id: `m${n}`, name: 'Innei', at: at(1), text: 'x'.repeat(160) }],
+      messages: [{ id: `m${n}`, name: 'Innei', at: at(1), text: 'x'.repeat(400) }],
     })),
     command:
       'node cli.cjs comment list --section threads --detail --format brief --artifact document/plan',
   };
-  assert.ok(message(event).length > 500);
-  const line = require(path.join(repo, 'skills/artifacts/app/comment-watch.cjs')).wakeMessage(
-    event,
-    500,
-  );
-  assert.ok(line.length <= 500, line);
-  assert.ok(!line.includes('xxxx'));
-  assert.ok(line.startsWith('Ryugi comments document/plan (3 unread).'));
-  assert.ok(line.endsWith(`Run: ${event.command}`));
+  const lines = wake(event).split('\n');
+  for (const line of lines) assert.ok(line.length <= 500, `${line.length}: ${line}`);
+  assert.ok(lines[0].startsWith('Ryugi comments document/plan (3 unread). t1 [open] · m1 Innei'));
+  assert.ok(lines[0].endsWith('… (cut; Run prints the rest).'), lines[0]);
+  assert.ok(lines[1].endsWith(`Run: ${event.command}`));
 });

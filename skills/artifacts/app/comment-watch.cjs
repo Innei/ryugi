@@ -11,7 +11,7 @@ const LAUNCHER = path.resolve(__dirname, 'ryugi-artifacts.cjs');
 const quote = (text) => `'${text.replaceAll("'", "'\"'\"'")}'`;
 
 // The notification carries the changed human text itself: one line, truncated per message and capped in total.
-const PREVIEW_LIMIT = 160;
+const PREVIEW_LIMIT = 400;
 const MESSAGE_LIMIT = 20;
 const graphemes = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
 const preview = (text) => {
@@ -260,7 +260,7 @@ const command = (project, artifact, section = 'threads') =>
 
 const flatten = (text) => text.replaceAll(/\s*\n\s*/g, ' / ').trim();
 
-// Claude Code cuts each monitor stdout line at 500 UTF-16 units, which would drop the Run command.
+// Claude Code cuts each monitor stdout line at 500 UTF-16 units; lines from one write arrive as one notification.
 const NOTIFICATION_LIMIT = 500;
 
 function wakeParts(event) {
@@ -319,13 +319,28 @@ function wakeParts(event) {
   };
 }
 
-// One stdout line is one notification: the brief carries the ids needed to reply or settle.
+const CUT_MARK = '… (cut; Run prints the rest)';
+
+const cutTo = (text, room) => {
+  let out = '';
+  for (const { segment } of graphemes.segment(text)) {
+    if (out.length + segment.length > room) break;
+    out += segment;
+  }
+  return out.trimEnd();
+};
+
+// The brief carries the ids needed to reply or settle; over the limit it takes a line of its own.
 function wakeMessage(event, limit = Infinity) {
   const { head, brief, next } = wakeParts(event);
-  const run = `Run: ${event.command}`;
-  const full = `${head}.${brief ? ` ${brief}.` : ''} ${next} ${run}`;
+  const tail = `${next} Run: ${event.command}`;
+  const full = `${head}.${brief ? ` ${brief}.` : ''} ${tail}`;
   if (full.length <= limit) return full;
-  return `${head}. Too long to inline; the Run command prints it. ${next} ${run}`;
+  if (!brief) return `${head}.\n${tail}`;
+  const room = limit - `${head}. .`.length;
+  const inline =
+    brief.length <= room ? brief : `${cutTo(brief, room - CUT_MARK.length)}${CUT_MARK}`;
+  return `${head}. ${inline}.\n${tail}`;
 }
 
 // Notification delivery is separate from evidence acknowledgement; reads never consume comments.
