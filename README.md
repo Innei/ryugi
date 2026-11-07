@@ -4,95 +4,119 @@
 
 <h1 align="center">Ryugi 流儀</h1>
 
-<p align="center"><b>A skills collection for coding agents — and the artifacts workbench they think in.</b></p>
+<p align="center"><b>Your coding agent draws its options instead of describing them.<br>You pick, comment and pass — then it builds.</b></p>
+
+<p align="center">
+  <img src="docs/images/hero.webp" alt="A terminal asks Claude Code to mock up notification settings; three layouts stream onto the Ryugi artboard, the user picks the recommended one and submits, the terminal receives q1 → b, and the built page appears next to the approved design, where the user presses Pass">
+</p>
+
+Ask an agent for a feature and you get a wall of text in the terminal. You approve a plan you have
+never seen, and find out what it meant after the code is written.
+
+Ryugi puts that work on pages you can open: mockups side by side, design docs you can comment on,
+pages with real sliders, and the built result next to what you approved. Your picks and comments go
+straight back to the agent.
 
 ```text
 /plugin marketplace add Innei/ryugi
 /plugin install ryugi@ryugi-dev
 ```
 
-Then send `Let's make a react todo list`. Ryugi starts brainstorming before any code, draws the
-options instead of describing them, and builds what you approve under TDD.
+Then send `Let's make a react todo list`. There is nothing to invoke: the agent opens an artboard,
+asks what matters, and builds only what you approve.
 
 <p align="center">
   <a href="docs/install.md">Harnesses</a> · <a href="docs/workflow.md">Workflow</a> · <a href="docs/artifacts-cli.md">CLI</a>
 </p>
 
+## Artboard — choose instead of imagine
+
+**Use it when** there is more than one way it could look.
+
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/images/hero-dark.webp">
-  <img src="docs/images/hero-light.webp" alt="The Ryugi artboard: three desktop hero directions and three phone variants side by side, three sticky notes from the brief, and a bar reading 2/2 chosen with a Submit button">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/artboard-dark.webp">
+  <img src="docs/images/artboard-light.webp" alt="A choice group of three notification settings layouts on the artboard, the per-event grid marked Recommended and chosen, a sticky note with the reason, and the round bar reading 1/1 chosen with a Submit button">
 </picture>
 
-**Artboard.** Every option side by side, drawn live while you watch. Two of them are chosen here;
-Submit sends the round back with the brief. Comment on any pixel and answer in the terminal
-(`q1 → b`).
-
-## Two parts, one install
-
-**Skills** — the agent's development workflow: brainstorm, spec, TDD, debug, verify, worktrees.
-
-**Artifacts workbench** — the surface they work on: an artboard for choosing between options,
-documents to comment on, live HTML pages to tune, and a library across every project. It is not
-limited to mockups or to brainstorming; architecture, reviews, proposals, test benches and
-verification share the same canvas. The skills use it, and `npx ryugi-artifacts` opens it without
-an agent.
-
-## How it works
-
-```mermaid
-flowchart LR
-  I[Idea] --> B[Brainstorm] --> A[Artifacts] --> S[Spec] --> T[Build · TDD] --> V[Verify] --> L[Land]
-```
-
-Skills fire on their own; there is nothing to invoke. After you sign off, the agent slices the
-spec into tasks, proves each one red-green, keeps a ledger of judgment calls across compaction,
-gets one fresh review of the branch, and reports how to land it.
-[How it works →](docs/workflow.md)
+The agent draws every option side by side and marks the one it recommends. Pick, comment on any
+pixel, and Submit sends your answer back.
 
 ## Document — design docs you can argue with
 
+**Use it when** the decision is structure, architecture or tradeoffs.
+
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/images/document-dark.webp">
-  <img src="docs/images/document-light.webp" alt="A design document with a contents rail, a flow diagram, a code block and two comment threads in the margin marked waiting on you">
+  <img src="docs/images/document-light.webp" alt="A design document for notification settings: an inline question answered with “a daily digest”, a link to the chosen board, and a margin comment from Claude Code marked Waiting on you">
 </picture>
 
-Diagrams, charts, code, tables. A design document, a review, a proposal, a walkthrough of a flow:
-comment on a sentence, edit in place; your edits and the agent's merge live.
+The agent asks its questions inside the doc and links the boards it drew. Comment on a sentence or
+edit in place; your edits and the agent's merge live.
+
+## Whiteboard — sketch the structure together
+
+**Use it when** the parts and arrows are still the question.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/whiteboard-dark.webp">
+  <img src="docs/images/whiteboard-light.webp" alt="A whiteboard with the agent's delivery flow — Event, Queue, then Email digest, Push and In-app — and a box the user drew asking “Rate limiter?” with the agent's answer beside it">
+</picture>
+
+You both draw on it. Select what you drew, ask about it, and the answer lands next to your sketch.
 
 ## HTML — tune it with real controls
 
+**Use it when** one thing needs tuning: a component, a type scale, a motion.
+
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/images/html-dark.webp">
-  <img src="docs/images/html-light.webp" alt="A spring test bench: sliders for stiffness, damping and mass beside a plotted displacement curve with settle time and overshoot">
+  <img src="docs/images/html-light.webp" alt="A test bench for the toggle switch spring: stiffness, damping and mass inputs, two toggles and a plotted settle curve with settle time and overshoot">
 </picture>
 
-One surface, one dimension: a component, a type scale, a background, a motion. A one-page test
-bench with sliders that keep their values when the agent rewrites the page.
+A one-page bench whose sliders keep their values when the agent rewrites the page.
 
 ## Verify — you pass or reject
 
+**Use it when** the work is built and you decide whether it matches.
+
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/images/verify-dark.webp">
-  <img src="docs/images/verify-light.webp" alt="A verify group on the artboard: the approved settings design next to the built page, with Pass and Reject buttons on the group label">
+  <img src="docs/images/verify-light.webp" alt="A verify group with the approved per-event grid next to the built settings page, and Pass and Reject on the group label">
 </picture>
 
-Built work next to the approved design, in the same canvas. Pass a group, or reject it and say
-what is off; it comes back fixed.
+The built page sits next to the design you approved. Pass it, or reject it and say what is off; it
+comes back fixed.
 
-## Library — one server, every project
+## Library — every artifact, one server
+
+**Use it when** you want last week's mockup back, or a link to share.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/images/library-dark.webp">
-  <img src="docs/images/library-light.webp" alt="The artifact library: a project rail, type filters, title search and a grid of artboard, document and HTML cards">
+  <img src="docs/images/library-light.webp" alt="The artifact library for one project: type filters, search, and cards for an artboard, a document, a whiteboard and an HTML bench">
 </picture>
 
 ```bash
 npx ryugi-artifacts
 ```
 
-Local first, no subscription, no agent session needed. One server serves every project on the
-machine: recent work across all of them, ⌘K to jump, artifact links that survive a restart and a
-new release. `publish` shares one to [Ryugi Cloud](https://ryugi.innei.dev).
+Local first, no subscription, no agent session needed. One server covers every project on the
+machine, with ⌘K to jump and links that survive a restart. `publish` shares one to
+[Ryugi Cloud](https://ryugi.innei.dev).
+
+## The skills behind it
+
+The artifacts are what you see; the skills make the agent reach for them at the right moment. They
+fire on their own:
+
+```mermaid
+flowchart LR
+  I[Idea] --> B[Brainstorm] --> A[Artifacts] --> S[Spec] --> T[Build · TDD] --> V[Verify] --> L[Land]
+```
+
+After you sign off, the agent slices the spec into tasks, proves each one red-green, keeps a ledger
+of judgment calls across compaction, gets one fresh review of the branch, and reports how to land
+it. Debugging and worktrees are covered too. [How it works →](docs/workflow.md)
 
 ## Work with your harness
 
