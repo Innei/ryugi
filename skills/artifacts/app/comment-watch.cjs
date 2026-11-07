@@ -32,43 +32,6 @@ function readJson(file) {
   }
 }
 
-const ENTITIES = [
-  ['&lt;', '<'],
-  ['&gt;', '>'],
-  ['&quot;', '"'],
-  ['&#39;', "'"],
-  ['&amp;', '&'],
-];
-const decode = (text) =>
-  ENTITIES.reduce((value, [entity, raw]) => value.replaceAll(entity, raw), text);
-
-// Questions live in doc.xml; the notification needs their option ids and labels.
-function askCatalog(project, artifact) {
-  const asks = new Map();
-  let xml;
-  try {
-    xml = fs.readFileSync(path.join(project, '.ryugi/artifacts', artifact, 'doc.xml'), 'utf8');
-  } catch {
-    return asks;
-  }
-  for (const ask of xml.matchAll(/<ask\b([^>]*?)(?:\/>|>([\s\S]*?)<\/ask>)/g)) {
-    const id = ask[1].match(/\bid="([^"]*)"/)?.[1];
-    if (!id) continue;
-    const options = new Map();
-    for (const option of (ask[2] ?? '').matchAll(/<option\b([^>]*)>([\s\S]*?)<\/option>/g)) {
-      const value = option[1].match(/\bvalue="([^"]*)"/)?.[1];
-      if (value) options.set(decode(value), decode(option[2].replaceAll(/<[^>]+>/g, '')).trim());
-    }
-    asks.set(id, { recommend: ask[1].match(/\brecommend="([^"]*)"/)?.[1] ?? null, options });
-  }
-  return asks;
-}
-
-function canvasOf(root, artifact) {
-  const canvas = readJson(path.join(root, artifact, 'canvas.json'));
-  return { boards: canvas?.boards ?? {}, groups: canvas?.groups ?? {} };
-}
-
 const clock = (at) => {
   const date = new Date(at);
   return Number.isNaN(date.getTime())
@@ -173,61 +136,29 @@ function newest(threads, match) {
   return found?.thread;
 }
 
-// The submitted answers and the ids to settle them: the submit thread names the questions it covers.
-function submittedAnswers(file, asks, submit) {
+function submittedCount(file, submit) {
   const threads = Array.isArray(file?.threads) ? file.threads : [];
-  const answers = new Map();
-  for (const thread of threads) {
-    const anchor = thread?.anchor;
-    if (!anchor || typeof anchor.ask !== 'string' || anchor.note === true) continue;
-    if (anchor.submit !== undefined) continue;
-    const at = thread.messages?.[0]?.at ?? '';
-    const before = answers.get(anchor.ask);
-    if (!before || at >= before.at) answers.set(anchor.ask, { thread, at });
-  }
-  const submission = threads.find((thread) => thread.id === submit?.id);
-  const covered = Array.isArray(submission?.anchor?.asks) ? submission.anchor.asks : [];
-  return (covered.length ? covered : [...answers.keys()]).map((ask) => {
-    const found = answers.get(ask);
-    const known = asks.get(ask);
-    const chosen = found?.thread?.anchor?.choice ?? null;
-    const text = found?.thread?.anchor?.answer ?? null;
-    const value = chosen ?? known?.recommend ?? null;
-    return {
-      ask,
-      ...(found ? { thread: found.thread.id } : {}),
-      ...(value ? { choice: value } : {}),
-      ...(value && known?.options?.get(value) ? { label: known.options.get(value) } : {}),
-      ...(text ? { text } : {}),
-      ...(!chosen && value ? { recommended: true } : {}),
-    };
-  });
+  const covered = threads.find((thread) => thread.id === submit?.id)?.anchor?.asks;
+  if (Array.isArray(covered) && covered.length) return covered.length;
+  return new Set(
+    threads
+      .map((thread) => thread?.anchor)
+      .filter(
+        (anchor) =>
+          anchor &&
+          typeof anchor.ask === 'string' &&
+          anchor.submit === undefined &&
+          anchor.note !== true,
+      )
+      .map((anchor) => anchor.ask),
+  ).size;
 }
 
-// Group ids come from the round spec; choice threads carry no round, and a group belongs to one round.
-function roundPicks(file, canvas, round) {
-  const threads = Array.isArray(file?.threads) ? file.threads : [];
-  const groups = (round.groups ?? []).map((group) => {
-    const found = newest(
-      threads,
-      (thread) => thread.anchor?.group === group && thread.anchor?.choice !== undefined,
-    );
-    const chosen = found?.anchor?.choice ?? null;
-    const value = chosen ?? canvas.groups?.[group]?.recommend ?? null;
-    return {
-      group,
-      ...(canvas.groups?.[group]?.title ? { title: canvas.groups[group].title } : {}),
-      ...(value ? { choice: value } : {}),
-      ...(value && canvas.boards?.[value]?.title ? { label: canvas.boards[value].title } : {}),
-      ...(!chosen && value ? { recommended: true } : {}),
-    };
-  });
-  const submission = newest(
-    threads,
-    (thread) => thread.anchor?.round === round.id && thread.anchor?.submit === true,
-  );
-  return { picks: groups, submit: submission?.id ?? null };
-}
+const roundSubmit = (file, round) =>
+  newest(
+    Array.isArray(file?.threads) ? file.threads : [],
+    (thread) => thread.anchor?.round === round && thread.anchor?.submit === true,
+  )?.id ?? null;
 
 function draftCheck(rounds) {
   const open = rounds.filter((round) => round.state === 'open');
@@ -256,7 +187,7 @@ function unreadCount(project, artifact, key) {
 }
 
 const command = (project, artifact, section = 'threads') =>
-  `node ${quote(LAUNCHER)} comment list --section ${section}${section === 'groups' ? ' --kind choose' : ''} --detail --format brief --project-dir ${quote(project)} --artifact ${artifact}`;
+  `node ${quote(LAUNCHER)} comment list --section ${section}${section === 'groups' ? ' --kind choose' : section === 'asks' ? ' --status submitted' : ''} --detail --format brief --project-dir ${quote(project)} --artifact ${artifact}`;
 
 const flatten = (text) => text.replaceAll(/\s*\n\s*/g, ' / ').trim();
 
@@ -264,42 +195,23 @@ const flatten = (text) => text.replaceAll(/\s*\n\s*/g, ' / ').trim();
 const NOTIFICATION_LIMIT = 500;
 
 function wakeParts(event) {
-  if (event.type === 'ryugi-choices') {
-    const brief = (event.picks ?? [])
-      .map((pick) => {
-        const head = pick.title ? `${pick.group} ${pick.title}` : pick.group;
-        if (!pick.choice) return `${head} → none`;
-        const label = pick.label ? ` (${pick.label})` : '';
-        return `${head} → ${pick.choice}${label}${pick.recommended ? ' (recommended)' : ''}`;
-      })
-      .join(' · ');
+  const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+  const tag = (count, word) =>
+    [event.submit, event.withdrawn ? '' : plural(count ?? 0, word)].filter(Boolean).join(', ');
+  if (event.type === 'ryugi-choices')
     return {
-      head: `Ryugi choices ${event.artifact} round ${event.round} ${event.withdrawn ? 'withdrawn' : 'submitted'}${event.submit ? ` (${event.submit})` : ''}`,
-      brief,
+      head: `Ryugi choices ${event.artifact} round ${event.round} ${event.withdrawn ? 'withdrawn' : 'submitted'} (${tag(event.groups, 'group')})`,
       next: event.withdrawn
         ? 'If you have not written the next round, stop and wait for a new submit.'
         : 'Draw the next round from these choices and the threads.',
     };
-  }
-  if (event.type === 'ryugi-answers') {
-    const brief = (event.answers ?? [])
-      .map((answer) => {
-        const value = answer.choice
-          ? `${answer.choice}${answer.label ? ` (${answer.label})` : ''}${answer.recommended ? ' (recommended)' : ''}`
-          : answer.text
-            ? JSON.stringify(answer.text)
-            : 'no answer';
-        return `${answer.ask}${answer.thread ? ` ${answer.thread}` : ''} → ${value}`;
-      })
-      .join(' · ');
+  if (event.type === 'ryugi-answers')
     return {
-      head: `Ryugi answers ${event.artifact} ${event.withdrawn ? 'withdrawn' : 'submitted'}${event.submit ? ` (${event.submit})` : ''}`,
-      brief,
+      head: `Ryugi answers ${event.artifact} ${event.withdrawn ? 'withdrawn' : 'submitted'} (${tag(event.questions, 'question')})`,
       next: event.withdrawn
         ? 'If you have not acted on them, stop and wait for a new submit.'
         : 'Apply each answer, then settle it with comment note --ask <id>.',
     };
-  }
   const inline = (event.threads ?? [])
     .map((thread) => {
       const head = `${thread.thread} [${thread.status}]${thread.block ? ` ${thread.block}` : ''}`;
@@ -370,13 +282,13 @@ function createCommentWatch(project, key = cursorKey(process.env)) {
           const submitted = state === 'submitted';
           if (!submitted && !(before === 'submitted' && state === 'open')) continue;
           const spec = rounds.find((item) => item.id === round) ?? { id: round, groups: [] };
-          const { picks, submit } = roundPicks(file, canvasOf(root, artifact), spec);
+          const submit = roundSubmit(file, round);
           events.push({
             type: 'ryugi-choices',
             artifact,
             round,
             ...(submitted ? {} : { withdrawn: true }),
-            picks,
+            groups: Array.isArray(spec.groups) ? spec.groups.length : 0,
             ...(submit ? { submit } : {}),
             command: command(project, artifact, 'groups'),
           });
@@ -394,7 +306,7 @@ function createCommentWatch(project, key = cursorKey(process.env)) {
               artifact,
               ...(withdrawn ? { withdrawn: true } : {}),
               ...(submit ? { submit: submit.id } : {}),
-              answers: submittedAnswers(file, askCatalog(project, artifact), submit),
+              questions: submittedCount(file, submit),
               command: command(project, artifact, 'asks'),
             });
         }

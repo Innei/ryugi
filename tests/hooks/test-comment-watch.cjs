@@ -555,7 +555,11 @@ test('answers to document questions stay silent until they are submitted', (t) =
   assert.deepEqual(rest, []);
   assert.equal(event.type, 'ryugi-answers');
   assert.equal(event.artifact, 'document/plan');
-  assert.ok(event.command.includes('comment list --section asks --detail --format brief'));
+  assert.ok(
+    event.command.includes(
+      'comment list --section asks --status submitted --detail --format brief',
+    ),
+  );
   assert.ok(message(event).includes('answers'));
   assert.deepEqual(poll(), []);
 });
@@ -584,14 +588,9 @@ test('answer records never count as unread comments', (t) => {
   assert.equal(unreadCount(f.project, 'document/plan', 'Claude Code'), 1);
 });
 
-test('the answers brief carries each question id, the picked option and its label', (t) => {
+test('an answers message counts the submitted questions and leaves the answers to the CLI', (t) => {
   const f = fixture(t);
   f.save('document/plan', []);
-  fs.writeFileSync(
-    path.join(f.root, 'document/plan/doc.xml'),
-    '<doc><p><ask id="pre-test"><option value="tests">Add them first</option><option value="report">Only say so in the report</option></ask></p>' +
-      '<p><ask id="more" recommend="report"><option value="report">Only say so in the report</option></ask></p></doc>',
-  );
   f.write('.state/document/plan/asks.json', { latest: null });
   const poll = watch(f.project);
   assert.deepEqual(poll(), []);
@@ -617,44 +616,26 @@ test('the answers brief carries each question id, the picked option and its labe
   const [event] = poll();
   assert.equal(event.type, 'ryugi-answers');
   assert.equal(event.submit, 's1');
-  assert.deepEqual(event.answers, [
-    { ask: 'pre-test', thread: 'a1', choice: 'report', label: 'Only say so in the report' },
-    { ask: 'more', choice: 'report', label: 'Only say so in the report', recommended: true },
-  ]);
-  const line = message(event);
-  assert.ok(line.includes('pre-test a1 → report (Only say so in the report)'));
-  assert.ok(line.includes('more → report (Only say so in the report) (recommended)'));
-  assert.ok(line.includes('(s1)'));
+  assert.equal(event.questions, 2);
+  assert.equal(event.answers, undefined);
+  assert.ok(
+    event.command.includes(
+      'comment list --section asks --status submitted --detail --format brief',
+    ),
+  );
+  assert.equal(
+    message(event),
+    `Ryugi answers document/plan submitted (s1, 2 questions). Apply each answer, then settle it with comment note --ask <id>. Run: ${event.command}`,
+  );
+  assert.ok(!message(event).includes('pre-test'));
 });
 
-test('the choices brief carries group ids, picked boards and their titles', (t) => {
+test('a choices message counts the round groups and leaves the picks to the CLI', (t) => {
   const f = fixture(t);
   f.save('artboard/pick', []);
-  fs.writeFileSync(
-    path.join(f.root, 'artboard/pick/canvas.json'),
-    JSON.stringify({
-      version: 1,
-      pages: [{ id: 'p' }],
-      boards: {
-        'q1-a': {
-          page: 'p',
-          file: 'pages/a.html',
-          x: 0,
-          y: 0,
-          w: 400,
-          h: 300,
-          title: 'Sidebar nav',
-        },
-        'q1-b': { page: 'p', file: 'pages/b.html', x: 0, y: 320, w: 400, h: 300, title: 'Top nav' },
-      },
-      groups: {
-        q1: { boards: ['q1-a', 'q1-b'], choose: true, recommend: 'q1-a', title: 'Navigation' },
-      },
-    }),
-  );
   const rounds = (state) =>
     f.write('.state/artboard/pick/rounds.json', {
-      rounds: [{ id: 'r1', page: 'p', state, groups: ['q1'], boards: ['q1-a', 'q1-b'] }],
+      rounds: [{ id: 'r1', page: 'p', state, groups: ['q1', 'q2'], boards: ['q1-a', 'q1-b'] }],
     });
   rounds('open');
   const poll = watch(f.project);
@@ -679,11 +660,13 @@ test('the choices brief carries group ids, picked boards and their titles', (t) 
   ]);
   rounds('submitted');
   const event = poll().find((item) => item.type === 'ryugi-choices');
-  assert.deepEqual(event.picks, [
-    { group: 'q1', title: 'Navigation', choice: 'q1-b', label: 'Top nav' },
-  ]);
   assert.equal(event.submit, 's1');
-  assert.ok(message(event).includes('q1 Navigation → q1-b (Top nav).'));
+  assert.equal(event.groups, 2);
+  assert.equal(event.picks, undefined);
+  assert.equal(
+    message(event),
+    `Ryugi choices artboard/pick round r1 submitted (s1, 2 groups). Draw the next round from these choices and the threads. Run: ${event.command}`,
+  );
 });
 
 test('a withdrawn round names the submit it withdraws, not the withdrawal', (t) => {
