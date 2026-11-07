@@ -120,6 +120,20 @@ it. Debugging and worktrees are covered too. [How it works →](docs/workflow.md
 
 ## Work with your harness
 
+### Claude Code settings
+
+Ryugi replaces Claude's hosted Artifacts with the Artboard, documents, whiteboards and HTML
+benches. Turn the hosted ones off by adding this key to the top level of `~/.claude/settings.json` —
+keep your other settings:
+
+```json
+{
+  "disableArtifact": true
+}
+```
+
+That is the only flag Ryugi needs; leave the rest of your Claude Code settings alone.
+
 <details>
 <summary>Other harnesses</summary>
 
