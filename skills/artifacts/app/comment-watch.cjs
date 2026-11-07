@@ -196,18 +196,22 @@ const NOTIFICATION_LIMIT = 500;
 
 function wakeParts(event) {
   const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
-  const tag = (count, word) =>
-    [event.submit, event.withdrawn ? '' : plural(count ?? 0, word)].filter(Boolean).join(', ');
+  const tag = (count, word) => {
+    const parts = [event.submit, !event.withdrawn && count ? plural(count, word) : ''].filter(
+      Boolean,
+    );
+    return parts.length ? ` (${parts.join(', ')})` : '';
+  };
   if (event.type === 'ryugi-choices')
     return {
-      head: `Ryugi choices ${event.artifact} round ${event.round} ${event.withdrawn ? 'withdrawn' : 'submitted'} (${tag(event.groups, 'group')})`,
+      head: `Ryugi choices ${event.artifact} round ${event.round} ${event.withdrawn ? 'withdrawn' : 'submitted'}${tag(event.groups, 'group')}`,
       next: event.withdrawn
         ? 'If you have not written the next round, stop and wait for a new submit.'
         : 'Draw the next round from these choices and the threads.',
     };
   if (event.type === 'ryugi-answers')
     return {
-      head: `Ryugi answers ${event.artifact} ${event.withdrawn ? 'withdrawn' : 'submitted'} (${tag(event.questions, 'question')})`,
+      head: `Ryugi answers ${event.artifact} ${event.withdrawn ? 'withdrawn' : 'submitted'}${tag(event.questions, 'question')}`,
       next: event.withdrawn
         ? 'If you have not acted on them, stop and wait for a new submit.'
         : 'Apply each answer, then settle it with comment note --ask <id>.',

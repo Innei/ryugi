@@ -564,7 +564,7 @@ function renderText(view, wire, options, collection, requiredFields = [], code =
       lines.push(`${more} \xB7 Details: ${actionText(details)}`);
     } else lines.push(more);
   }
-  if (!actions.length && omissions.some((item) => item.reason === "preview" && item.count === void 0))
+  if (!details && !options.detail && omissions.some((item) => item.reason === "preview" && item.count === void 0))
     lines.push("Some values are clipped; add --detail to see them in full.");
   for (const action of actions)
     if (!used.has(action))

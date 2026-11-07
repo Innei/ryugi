@@ -427,8 +427,15 @@ test('submitted document answers are queued even with no unread comments', async
   await until(() => f.read().length > 0, 'submitted answers never reached codex queue');
   const args = f.read()[0];
   const message = args[args.indexOf('--message') + 1];
-  assert.ok(message.includes('document/plan'));
-  assert.ok(message.includes('answers'));
+  assert.ok(
+    message.startsWith(
+      'Ryugi answers document/plan submitted (s1). Apply each answer, then settle it with comment note --ask <id>. Run: node ',
+    ),
+    message,
+  );
+  assert.ok(
+    message.includes('comment list --section asks --status submitted --detail --format brief'),
+  );
 });
 
 test('desktop comments retry through the app pipe and acknowledge the hook session without a CLI fallback', async (t) => {

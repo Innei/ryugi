@@ -359,8 +359,9 @@ bottom submits the round. A round is the groups under one title note.
   the rest are counted, and `--all` lists them. A choice group line reads
   `q1 · choose · round r2 → q1-b`: `→` names the picked board, `(recommended)`
   means they kept yours, `no pick` means no answer. The rounds section shows
-  each open or submitted round with its member groups. Comments on any board
-  of the group are part of the answer: read the threads too.
+  each open or submitted round with its member groups; act on a choice group
+  only when its round is `submitted`. Comments on any board of the group are
+  part of the answer: read the threads too.
 - They answered in the terminal instead ("q1 → b", "done"): record their
   picks and submit the round, with the round `id` from `rounds`, before you
   draw the next one. Groups they did not mention keep your recommendation.

@@ -328,7 +328,7 @@ node app/ryugi-artifacts.cjs comment list --section threads --project-dir /path/
 - To review answers and comments together, use
   `comment list --sections threads,asks --detail` once. Follow each collection's
   `More`; the delivered thread page contains complete messages. The asks
-  section lists only submitted questions and has no receipt: apply each one.
+  section has no receipt: apply each question whose state is `submitted`.
 - A comment asking for a change: edit `doc.xml`, reply with what changed,
   then resolve the thread.
 - Reply, with the message on stdin:
