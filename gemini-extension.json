@@ -2,5 +2,5 @@
   "contextFileName": "GEMINI.md",
   "description": "Ryugi skills for coding agents, plus the artifacts workbench they design in: brainstorming, artboards, documents and TDD.",
   "name": "ryugi",
-  "version": "1.59.0"
+  "version": "1.64.0"
 }
