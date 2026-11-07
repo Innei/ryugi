@@ -69,8 +69,8 @@ When they submit or say the round is done, or a comment lands:
    for this project and document. Follow each collection's `More`;
    complete thread messages are included on the delivered page. Use the evidence before its exact
    `Acknowledge`, as ryugi:artifacts says.
-2. Process each `submitted` question and write its `comment note` after
-   applying it. Move answered items to Settled as one line: changed, written
+2. Process each question the asks section lists (they are the submitted
+   ones) and write its `comment note` after applying it. Move answered items to Settled as one line: changed, written
    or commented ones as theirs, submitted recommendations as accepted.
    A submitted question with no answer also gets a note stating the assumption
    or what stayed unchanged; a question still needed uses a new id. Page

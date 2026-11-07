@@ -35,9 +35,15 @@ action: follow the printed login or upgrade link.
 
 ## Reading CLI output
 
-Read the default **Brief** output directly: it carries the decision,
-resource IDs, coverage, warnings and the next commands to run. If a format
-configuration overrides Brief, add `--format brief` for that call.
+Read the default **Brief** output directly. The first line names the
+command, the artifact and what needs doing
+(`Comment list: document/plan · 3 to apply`). Each collection follows as a
+title line with its counts, then one line per record that needs action: the
+id first, then its state and value in words
+(`days · submitted → 45 (recommended)`). Records that need nothing are only
+counted; `--all` lists them. The last lines are the commands to run next:
+`Next`, `Read`, `More`, `Acknowledge`, `Details`. If a format configuration
+overrides Brief, add `--format brief` for that call.
 
 - Run the printed `Read`, `More` and `Acknowledge` commands as printed; they
   keep the snapshot, project, artifact and receipt.
@@ -114,7 +120,6 @@ absolute path before running them. Every artifacts command uses the launcher.
 ```bash
 node app/ryugi-artifacts.cjs start --background --project-dir /path/to/project --artifact html/arrow-tuner
 # Server: RUNNING
-# Scope: machine
 # Project: /path/to/project
 # Artifact: html/arrow-tuner
 # Open: https://ryugi.innei.dev/a/…
@@ -154,7 +159,7 @@ node app/ryugi-artifacts.cjs publish --project-dir /path/to/project --artifact h
 # Publish: PUBLISHED · html/arrow-tuner
 # ID: …
 # URL: https://ryugi.innei.dev/a/…
-# Visibility: public
+# Visibility: public (requested)
 ```
 
 - First publication: use `--public` for someone else to open it; use `--private`
@@ -215,16 +220,15 @@ whether it is on.
 
    ```bash
    node app/ryugi-artifacts.cjs check --project-dir /path/to/project --artifact artboard/settings-nav
-   # Check: PENDING · artboard/settings-nav
-   # Static: clean
-   # Browser: not_run
-   # Pending: ["browser_not_run"]
+   # Check: INCOMPLETE · artboard/settings-nav
+   # Browser: not run
+   # Pending: browser_not_run
    ```
 
    Fix every warning. For `html` this includes `runtime: …` lines: errors
-   the page threw in their browser. They only count once `Browser: clean`
-   shows the new version has loaded there; until then, an empty list
-   means "not run yet", not "no errors".
+   the page threw in their browser. They only count once the new version
+   has loaded there: while a `Browser: not run` or `Browser: unknown` line
+   shows, an empty list means "not run yet", not "no errors".
 
 3. Tell them what changed and give the link. Questions, choice groups and verify
    groups use their page controls; discussion can continue in the terminal.

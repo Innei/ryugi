@@ -206,10 +206,11 @@ message; otherwise they say done in the terminal. Read the questions in Brief:
 node app/ryugi-artifacts.cjs comment list --section asks --detail --project-dir /path/to/project --artifact document/<id>
 ```
 
-- This state collection holds every question: `state` (`draft`, `submitted`, `settled`,
-  `orphan`), `choice` (an option value), `text` (their own words) and
-  `byRecommendation`. Follow `More` for every submitted question; this state
-  read has no receipt. `choice` and `text` both null means no answer.
+- It lists the submitted questions, one line each: the id, then `→ value`
+  for a picked option (`(recommended)` when they kept yours), their own words
+  in quotes, or `no answer`. Settled, draft and orphan questions are only
+  counted on the `Asks` line; `--all` lists them with their notes. This state
+  read has no receipt.
 - For each submitted question, change the document to match the answer,
   then settle it with one line on what changed, on stdin:
   `comment note … --ask <id>`. The note shows under the question, which
@@ -220,8 +221,8 @@ node app/ryugi-artifacts.cjs comment list --section asks --detail --project-dir 
 - They answered in the terminal instead: record each answer with
   `comment answer … --ask <id> (--choice <value> | --text <answer>)`, then
   `comment submit …`, before you act on it.
-- A `ryugi-answers` message with `"withdrawn": true`, before you acted:
-  stop, and wait for the next submit.
+- A `Ryugi answers … withdrawn` message, before you acted: stop, and wait
+  for the next submit.
 - A settled answer changes only after a comment asks for it: record it
   with `comment answer`, then write a new `comment note`.
 
@@ -320,13 +321,14 @@ node app/ryugi-artifacts.cjs comment list --section threads --project-dir /path/
   Follow its printed `Read` command to read the captured complete messages.
   Use all evidence, then follow `Acknowledge` with its exact receipt. Ack does
   not resolve a thread or consume a reply that arrived after the read.
-- Each thread has `id`, `anchor` (`blockId`, `quote`) and `waitingOn`; preview rows
-  omit `messages`. A complete read includes them. `--all` has no receipt.
+- Each thread line has its id, `open` or `resolved`, who it is waiting on and
+  where it sits (`block <id> "quote"`); a preview adds the message count and
+  the last message. A complete read lists every message under its thread.
+  `--all` lists every thread, read or not, and has no receipt.
 - To review answers and comments together, use
   `comment list --sections threads,asks --detail` once. Follow each collection's
-  `More`; the delivered thread page contains complete messages. The asks state
-  collection has no receipts. Apply only answers whose state is
-  `submitted`, retaining stale, orphan and recommendation context.
+  `More`; the delivered thread page contains complete messages. The asks
+  section lists only submitted questions and has no receipt: apply each one.
 - A comment asking for a change: edit `doc.xml`, reply with what changed,
   then resolve the thread.
 - Reply, with the message on stdin:

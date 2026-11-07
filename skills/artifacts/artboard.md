@@ -282,13 +282,15 @@ node app/ryugi-artifacts.cjs comment list --section threads --project-dir /path/
   complete captured evidence, use it, then follow `Acknowledge` with the exact
   receipt. Later replies remain unread. `--all` has no receipt; ack never
   resolves or decides a group.
-- Complete thread reads have an `id`, `waitingOn`, `messages` and an `anchor`: `page`
-  and `x`/`y`. With a `board`, `x`/`y` are inside that board, and `nodes`
-  (`board` + CSS `path` from `body`) and `offset` (where inside the node,
-  as fractions of its width and height) say what was hit. No `board`: it
-  is about the page or the space between boards, at canvas `x`/`y`.
-- `"stale": true` means that board's HTML changed after the comment was
-  made: the node at `path` may have moved or gone. Check the board before
+- Each thread line names where it sits: `page <id> board <id>` for a comment
+  on a board, `page <id> x,y` for one on the page or between boards. A
+  complete read lists every message under its thread.
+- The element that was hit is in the JSON anchor: run the printed `Read`
+  command with `--format json` and use `nodes` (`board` + CSS `path` from
+  `body`) and `offset` (where inside the node, as fractions of its width and
+  height).
+- `stale` on a thread line means that board's HTML changed after the comment
+  was made: the node at `path` may have moved or gone. Check the board before
   editing by path, and say what you matched it to when you reply.
 - A comment asking for a change: edit the board's HTML, reply with what
   changed, then resolve the thread.
@@ -352,14 +354,13 @@ bottom submits the round. A round is the groups under one title note.
   arrives as a `ryugi-choices` message (or they say done in the terminal):
   run its command.
 - `comment list --sections threads,groups,rounds --detail` returns
-  groups and their comments together. Inspect choice groups with `kind: "choose"`
-  (`choice`, `byRecommendation`, `round`, `threads`).
-  The independent rounds collection shows each round's
-  `id`, member `groups` and `state` (`open`, `submitted` or `closed`).
-  Match the group's `round` to a `submitted` round before acting. `choice` is the
-  answer; `byRecommendation: true` means they kept your recommendation; a
-  `null` choice has no answer. Comments on any board of the group are part
-  of the answer: read the threads too.
+  groups and their comments together. By default the groups section lists
+  only the choice groups of submitted rounds and the rejected verify groups;
+  the rest are counted, and `--all` lists them. A choice group line reads
+  `q1 · choose · round r2 → q1-b`: `→` names the picked board, `(recommended)`
+  means they kept yours, `no pick` means no answer. The rounds section shows
+  each open or submitted round with its member groups. Comments on any board
+  of the group are part of the answer: read the threads too.
 - They answered in the terminal instead ("q1 → b", "done"): record their
   picks and submit the round, with the round `id` from `rounds`, before you
   draw the next one. Groups they did not mention keep your recommendation.
@@ -369,8 +370,8 @@ bottom submits the round. A round is the groups under one title note.
   node app/ryugi-artifacts.cjs comment submit --project-dir /path/to/project --artifact artboard/<id> --round <round id>
   ```
 
-- A `ryugi-choices` message with `"withdrawn": true`, before you wrote the
-  next round: stop, and wait for the next submit.
+- A `Ryugi choices … withdrawn` message, before you wrote the next round:
+  stop, and wait for the next submit.
 - The next round goes below, its title note and groups in one `canvas.json`
   write; that closes the round above.
 - A group is never both `choose` and `verify`.

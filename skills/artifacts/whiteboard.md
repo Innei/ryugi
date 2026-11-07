@@ -197,8 +197,8 @@ posts a comment anchored on the selection with the render saved first.
 node app/ryugi-artifacts.cjs comment list --section threads --project-dir /path/to/project --artifact whiteboard/<id>
 ```
 
-1. Follow the printed `Read` command. The thread's anchor lists the
-   element ids it points at (`elements`) and the spot (`x`, `y`).
+1. Follow the printed `Read` command. The thread line names the elements
+   it points at (`element <id>, <id>`) or the spot (`page <id> x,y`).
    `stale` means those elements changed after the comment was written;
    `orphan`, that one was deleted. Read the comment against the current
    board, not the one it was written on.

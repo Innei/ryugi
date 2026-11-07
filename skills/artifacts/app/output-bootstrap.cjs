@@ -300,6 +300,20 @@ function result(data, completion = { kind: "succeeded" }, extra = {}) {
   return { data, completion, coverage: {}, effects: [], warnings: [], actions: [], ...extra };
 }
 
+// src/cli/output/time.ts
+var ISO = /^\d{4}-\d\d-\d\dT\d\d:\d\d(?::\d\d(?:\.\d+)?)?(?:Z|[+-]\d\d:?\d\d)$/;
+var two = (n) => String(n).padStart(2, "0");
+var isIsoTime = (value) => typeof value === "string" && ISO.test(value) && !Number.isNaN(Date.parse(value));
+function formatTime(iso, now = /* @__PURE__ */ new Date()) {
+  const at = new Date(iso);
+  if (Number.isNaN(at.getTime())) return iso;
+  const clock = `${two(at.getHours())}:${two(at.getMinutes())}`;
+  if (at.getFullYear() !== now.getFullYear())
+    return `${at.getFullYear()}-${two(at.getMonth() + 1)}-${two(at.getDate())}`;
+  if (at.getMonth() === now.getMonth() && at.getDate() === now.getDate()) return clock;
+  return `${two(at.getMonth() + 1)}-${two(at.getDate())} ${clock}`;
+}
+
 // src/cli/output/view.ts
 function recoveryActions(error, subject) {
   const details = error.details;
@@ -315,8 +329,52 @@ function clip(text, size = 160) {
   const segments = [...new Intl.Segmenter(void 0, { granularity: "grapheme" }).segment(text)];
   return segments.length > size ? `${segments.slice(0, size).map((s) => s.segment).join("")}\u2026` : text;
 }
-var scalar = (value) => value === null ? "none" : typeof value === "object" ? JSON.stringify(value) : String(value);
-var scopeText = (page) => `${clean(page.scope)} \xB7 ${page.returned} shown${page.total === null ? "" : ` / ${page.total} matched`}${page.hasMore ? " \xB7 more available" : ""}`;
+function flatten(value, nested = false) {
+  if (value === null || value === void 0) return "";
+  if (Array.isArray(value)) return value.map((item) => flatten(item, true)).join(", ");
+  if (typeof value === "object") {
+    const text = Object.entries(value).filter(([, item]) => !absent(item)).map(([key, item]) => `${key} ${flatten(item, true)}`).join(nested ? ", " : " \xB7 ");
+    return nested ? `(${text})` : text;
+  }
+  return isIsoTime(value) ? formatTime(value) : String(value);
+}
+var scalar = (value, path5, loose) => {
+  if (value !== null && typeof value === "object") {
+    if (!loose)
+      throw new Error(`Brief cannot print the object at ${path5}; flatten it in the view.`);
+    return flatten(value);
+  }
+  return flatten(value);
+};
+var absent = (value, fallback) => value === void 0 || value === null || value === "" || value === false || fallback !== void 0 && value === fallback;
+var EXIT_WORDS = {
+  1: "FAILED",
+  2: "NEEDS YOU",
+  3: "ISSUES",
+  4: "INCOMPLETE",
+  5: "PARTIAL",
+  130: "INTERRUPTED",
+  143: "INTERRUPTED"
+};
+var RECOVERY = {
+  E_ARTIFACT_NOT_FOUND: "check --artifact and --project-dir; artifacts live in <project>/.ryugi/artifacts/<type>/<id>/",
+  E_ARGUMENT_INVALID: "run the command with --help for its options",
+  E_CURSOR_EXPIRED: "run the read again without --cursor or --snapshot",
+  E_CURSOR_MISMATCH: "run the read again without --cursor or --snapshot"
+};
+var statusWord = (status, code) => code ? EXIT_WORDS[code] ?? "FAILED" : clean(status).replaceAll("_", " ").toUpperCase();
+var commandName = (id) => {
+  const words = id.replaceAll(/[._]/g, " ").trim();
+  return words ? words[0].toUpperCase() + words.slice(1) : "Command";
+};
+function pageText(page) {
+  const offset = page.offset ?? 0;
+  if (!page.hasMore && offset === 0) return null;
+  const of = page.total === null ? "" : ` of ${page.total}`;
+  if (page.offset === void 0)
+    return `${page.returned}${of} shown${page.total === null && page.hasMore ? " \xB7 more available" : ""}`;
+  return `${page.returned ? `${offset + 1}\u2013${offset + page.returned}` : "none"}${of}`;
+}
 var quote = (value) => /^[\w./:@=+-]+$/.test(value) ? value : `'${value.replaceAll("'", "'\\''")}'`;
 function actionText(action) {
   return action.kind === "command" ? action.argv.map(quote).join(" ") : action.url;
@@ -324,38 +382,72 @@ function actionText(action) {
 var effectLines = (effects) => effects.map(
   (effect) => `Effect: ${clean(effect.operation)} ${clean(effect.target)} \xB7 ${effect.state}`
 );
-function renderText(view, wire, options, collection, requiredFields = []) {
-  const lines = [
-    `${clean(view.heading)}: ${clean(view.status).toUpperCase()}${view.subject ? ` \xB7 ${clean(view.subject)}` : ""}`
-  ];
+var lastSegment = (path5) => path5.split(".").filter(Boolean).at(-1) ?? path5;
+function renderText(view, wire, options, collection, requiredFields = [], code = 0) {
+  const head = [
+    statusWord(view.status, code),
+    view.subject && clean(view.subject),
+    view.summary && clean(view.summary)
+  ].filter(Boolean);
+  const lines = [head.length ? `${clean(view.heading)}: ${head.join(" \xB7 ")}` : clean(view.heading)];
   const omissions = [...wire.omitted ?? []];
   const selected = (key, required = false) => required || requiredFields.includes(key) || !options.fields || options.fields.includes(key);
-  const value = (input, path5) => {
-    const text = clean(scalar(input));
+  const value = (input, path5, loose = false) => {
+    const text = clean(scalar(input, path5, loose));
     const shown = options.detail ? text : clip(text);
     if (shown !== text) omissions.push({ path: path5, reason: "preview" });
     return shown;
   };
-  const facts = (items) => {
-    for (const item of items)
-      if (collection || selected(item.binding.key, item.required))
-        lines.push(
-          `${clean(item.label)}: ${value(item.binding.value, `data.${item.binding.key}`)}`
-        );
+  const cell = (label, key, input, path5, positional, fallback, loose = false) => {
+    if (absent(input, fallback)) return null;
+    const name = clean(label ?? key);
+    if (input === true) return name;
+    const text = value(input, path5, loose);
+    return positional ? text : `${name} ${text}`;
+  };
+  const facts = (items, loose = false) => {
+    for (const item of items) {
+      if (!collection && !selected(item.binding.key, item.required)) continue;
+      if (absent(item.binding.value)) continue;
+      const text = item.binding.value === true ? "yes" : value(item.binding.value, `data.${item.binding.key}`, loose);
+      lines.push(`${clean(item.label)}: ${text}`);
+    }
+  };
+  const metadata = (items, path5) => items.map(
+    (item) => cell(
+      item.label,
+      item.binding.key,
+      item.binding.value,
+      `${path5}.${item.binding.key}`,
+      item.positional
+    )
+  ).filter((text) => text !== null).join(" \xB7 ");
+  const title = (text, summary) => {
+    if (text) lines.push(summary ? `${clean(text)} \xB7 ${clean(summary)}` : clean(text));
+  };
+  const pageLine = (page) => {
+    const text = page && pageText(page);
+    if (text) lines.push(text);
   };
   facts(view.facts);
   const errorActions = wire.error ? recoveryActions(wire.error) : [];
   if (wire.error) {
     lines.push(`${clean(wire.error.code)}: ${clean(wire.error.message)}`);
-    if (wire.error.httpStatus !== void 0) lines.push(`HTTP: ${wire.error.httpStatus}`);
-    const details = wire.error.details;
-    if (details && typeof details === "object" && !Array.isArray(details)) {
-      for (const [key, detail] of Object.entries(details)) {
+    if (wire.error.httpStatus !== void 0 && wire.error.httpStatus >= 500)
+      lines.push(`HTTP: ${wire.error.httpStatus}`);
+    const hint = RECOVERY[wire.error.code];
+    if (hint) lines.push(`Next: ${hint}`);
+    const details2 = wire.error.details;
+    if (details2 && typeof details2 === "object" && !Array.isArray(details2)) {
+      for (const [key, detail] of Object.entries(details2)) {
         if (!errorActions.some((action) => action.label === key))
-          facts([{ label: key, binding: { key, value: detail }, required: true }]);
+          facts([{ label: key, binding: { key, value: detail }, required: true }], true);
       }
-    } else if (details !== void 0)
-      facts([{ label: "Details", binding: { key: "details", value: details }, required: true }]);
+    } else if (details2 !== void 0)
+      facts(
+        [{ label: "Details", binding: { key: "details", value: details2 }, required: true }],
+        true
+      );
   }
   if (!collection && options.fields && wire.data && typeof wire.data === "object") {
     const bound = /* @__PURE__ */ new Set([
@@ -366,7 +458,8 @@ function renderText(view, wire, options, collection, requiredFields = []) {
     ]);
     const data = wire.data;
     facts(
-      [.../* @__PURE__ */ new Set([...options.fields, ...requiredFields])].filter((key) => !bound.has(key) && Object.hasOwn(data, key)).map((key) => ({ label: key, binding: { key, value: data[key] } }))
+      [.../* @__PURE__ */ new Set([...options.fields, ...requiredFields])].filter((key) => !bound.has(key) && Object.hasOwn(data, key)).map((key) => ({ label: key, binding: { key, value: data[key] } })),
+      true
     );
   }
   for (const section of view.sections) {
@@ -375,51 +468,57 @@ function renderText(view, wire, options, collection, requiredFields = []) {
       continue;
     }
     if (!collection && !selected(section.key)) continue;
-    if (section.page)
-      lines.push(
-        `${clean("title" in section && section.title || section.key)}: ${section.status ? `${clean(section.status)} \xB7 ` : ""}${scopeText(section.page)}`
-      );
+    const named = "title" in section && section.title ? section.title : void 0;
     if (section.kind === "records") {
-      if (section.title && !section.page) lines.push(clean(section.title));
+      title(named ?? (section.page ? section.key : void 0), section.summary);
       const declared = new Set(section.columns.map((column) => column.key));
-      const extra = section.key === collection ? [.../* @__PURE__ */ new Set([...options.fields ?? [], ...requiredFields])].filter((key) => !declared.has(key)).map((key) => ({ key, label: key })) : [];
+      const extra = section.key === collection ? [.../* @__PURE__ */ new Set([...options.fields ?? [], ...options.fields ? requiredFields : []])].filter((key) => !declared.has(key)).map((key) => ({ key, label: key })) : [];
+      const loose = new Set(extra.map((column) => column.key));
       const columns = [...section.columns, ...extra].filter(
         (column) => section.key !== collection || selected(column.key, column.required)
       );
-      const rows = section.rows.map(
-        (row, i) => columns.map(
-          (column) => value(
-            row[column.key] === void 0 ? "" : row[column.key],
-            `data.${section.key}.${i}.${column.key}`
-          )
-        )
-      );
       if (options.format === "table") {
-        const labels = columns.map((column) => column.label);
+        const labels = columns.map((column) => column.label ?? column.key);
+        const rows = section.rows.map(
+          (row, i) => columns.map(
+            (column) => absent(row[column.key], column.default) ? "" : value(
+              row[column.key],
+              `data.${section.key}.${i}.${column.key}`,
+              loose.has(column.key)
+            )
+          )
+        );
         const widths = labels.map(
           (label, i) => Math.max(label.length, ...rows.map((row) => row[i]?.length ?? 0))
         );
         lines.push(
           ...[labels, ...rows].map(
-            (row) => row.map((cell, i) => cell.padEnd(widths[i] ?? cell.length)).join("  ").trimEnd()
+            (row) => row.map((text, i) => text.padEnd(widths[i] ?? text.length)).join("  ").trimEnd()
           )
         );
       } else
-        for (const row of rows)
+        for (const [i, row] of section.rows.entries())
           lines.push(
-            `  ${columns.flatMap((column, i) => {
-              const cell = row[i];
-              return cell === void 0 || cell === "" ? [] : [`${clean(column.label)}=${cell}`];
-            }).join(" \xB7 ")}`
+            `  ${columns.map(
+              (column) => cell(
+                column.label,
+                column.key,
+                row[column.key],
+                `data.${section.key}.${i}.${column.key}`,
+                column.positional,
+                column.default,
+                loose.has(column.key)
+              )
+            ).filter((text) => text !== null).join(" \xB7 ")}`
           );
-      if (!rows.length && !section.page) lines.push("No records.");
+      if (!section.rows.length && !named && !section.page) lines.push("No records.");
+      pageLine(section.page);
     } else if (section.kind === "messages") {
-      if (section.title && !section.page) lines.push(`${clean(section.title)}:`);
-      const metadata = (items) => items.map((item) => `${clean(item.label)}=${clean(scalar(item.binding.value))}`).join(" \xB7 ");
-      for (const group of section.groups) {
-        lines.push(`  ${metadata(group.facts)}`);
-        for (const message of group.messages) {
-          lines.push(`    ${metadata(message.facts)}`);
+      title(named, section.summary);
+      for (const [g, group] of section.groups.entries()) {
+        lines.push(`  ${metadata(group.facts, `data.${section.key}.${g}`)}`);
+        for (const [m, message] of group.messages.entries()) {
+          lines.push(`    ${metadata(message.facts, `data.${section.key}.${g}.messages.${m}`)}`);
           lines.push(
             ...message.text.split("\n").map(
               (line) => `      ${line.replaceAll(new RegExp("\\p{Cc}", "gu"), (char) => char === "	" ? char : "")}`
@@ -427,7 +526,8 @@ function renderText(view, wire, options, collection, requiredFields = []) {
           );
         }
       }
-      if (!section.groups.length && !section.page) lines.push("No messages.");
+      if (!section.groups.length && !named && !section.page) lines.push("No messages.");
+      pageLine(section.page);
     } else if (section.kind === "diagnostics") {
       const limit = options.detail ? section.items.length : section.preview ?? 3;
       for (const item of section.items.slice(0, limit))
@@ -441,7 +541,7 @@ function renderText(view, wire, options, collection, requiredFields = []) {
           count: section.items.length - limit
         });
     } else {
-      if (section.title && !section.page) lines.push(`${clean(section.title)}:`);
+      title(named && `${named}:`, section.summary);
       lines.push(
         ...section.text.trimEnd().split("\n").map(
           (line) => `  ${line.replaceAll(new RegExp("\\p{Cc}", "gu"), (char) => char === "	" || char === "\n" ? char : "")}`
@@ -449,26 +549,42 @@ function renderText(view, wire, options, collection, requiredFields = []) {
       );
     }
   }
-  if (wire.page) lines.push(`Scope: ${scopeText(wire.page)}`);
-  lines.push(...effectLines(wire.effects ?? []));
+  if (wire.page) pageLine(wire.page);
+  if (code || (wire.effects ?? []).some((effect) => effect.state !== "confirmed"))
+    lines.push(...effectLines(wire.effects ?? []));
   for (const warning of wire.warnings ?? []) lines.push(`Warning: ${clean(warning.message)}`);
-  if (omissions.length)
-    lines.push(
-      `Omitted: ${omissions.map((item) => `${item.count === void 0 ? "" : `${item.count} `}${item.path} (${item.reason})`).join(", ")}`
-    );
-  for (const action of [...view.actions ?? wire.next ?? [], ...errorActions])
-    lines.push(`${clean(action.label ?? "Next")}: ${actionText(action)}`);
+  const actions = [...view.actions ?? wire.next ?? [], ...errorActions];
+  const used = /* @__PURE__ */ new Set();
+  const details = actions.find((action) => action.label === "Details");
+  for (const omission of omissions) {
+    if (omission.count === void 0) continue;
+    const more = `${omission.count} more ${lastSegment(omission.path)}`;
+    if (details && !used.has(details)) {
+      used.add(details);
+      lines.push(`${more} \xB7 Details: ${actionText(details)}`);
+    } else lines.push(more);
+  }
+  if (!actions.length && omissions.some((item) => item.reason === "preview" && item.count === void 0))
+    lines.push("Some values are clipped; add --detail to see them in full.");
+  for (const action of actions)
+    if (!used.has(action))
+      lines.push(
+        `${clean(action.label ?? "Next")}: ${action.reason ? `${clean(action.reason)} \xB7 ` : ""}${actionText(action)}`
+      );
   return `${lines.join("\n")}
 `;
 }
-function renderFailure(wire, options) {
+function renderFailure(wire, options, code = 1) {
   return renderText(
-    { heading: wire.command, status: wire.outcome, facts: [], sections: [] },
+    { heading: commandName(wire.command), status: "", facts: [], sections: [] },
     wire,
     {
       ...options,
       fields: void 0
-    }
+    },
+    void 0,
+    [],
+    code
   );
 }
 
