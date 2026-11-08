@@ -1,0 +1,104 @@
+I'd treat this as a stash-move into a short-lived worktree. No install, no test run, and the worktree is removed as soon as the PR is open.
+
+## Step 1: Where to work (once per session)
+
+**Tool call 1 (Bash):**
+```bash
+git rev-parse --path-format=absolute --git-dir --git-common-dir
+git rev-parse --show-superproject-working-tree
+git branch --show-current
+git status --porcelain
+cat .ryugi/sdd/*/EXPLORING
+```
+Assumed output:
+```
+/Users/p/git/notes-app/.git
+/Users/p/git/notes-app/.git
+(empty: not a submodule)
+feat/offline
+ M src/date/format.ts
+?? src/date/format.test.ts
+cat: .ryugi/sdd/*/EXPLORING: No such file or directory
+```
+
+The two git dirs are equal, so this is the main checkout. The partner's instruction names a branch off main, so the work has to be committed on other content. That is a "New worktree, without asking" row. Both changed files are mine, so I move them with a stash. I don't switch branches in the shared checkout.
+
+## Step 2: Move the changes out
+
+**Tool call 2 (Bash):**
+```bash
+git stash push --include-untracked -- src/date/format.ts src/date/format.test.ts
+```
+Assumed: `Saved working directory and index state WIP on feat/offline: <sha> ...`
+
+## Step 3: Create the worktree with the native tool
+
+**Tool call 3:** `EnterWorktree(name: "fix-date-format")`
+
+Assumed: it creates `.claude/worktrees/fix-date-format` on branch `worktree-fix-date-format`, cut from HEAD, and the session switches into it. HEAD is `feat/offline`, so that branch carries the 2 unpushed offline commits. The PR must not include them, so I rebase the work onto main in the next step.
+
+**Tool call 4 (Bash, in the worktree):**
+```bash
+git switch -c fix/date-format main
+git log --oneline main..HEAD
+git status --porcelain
+```
+Assumed: the switch succeeds, `main..HEAD` is empty, and status is clean. The tool's own `worktree-fix-date-format` branch is empty and is deleted when I remove the worktree.
+
+**Tool call 5 (Bash, in the worktree):**
+```bash
+git stash pop
+```
+Assumed: it applies cleanly, with ` M src/date/format.ts` and `?? src/date/format.test.ts`. If it conflicted, I would stop and show my partner.
+
+**Tool call 6 (Bash):** verify the original checkout is clean.
+```bash
+git -C /Users/p/git/notes-app status --porcelain -- src/date/format.ts src/date/format.test.ts
+```
+Assumed: it prints nothing.
+
+## Step 4: Commit, push, PR
+
+I don't run an install or the tests here. They already ran on the shared tree. I stage by path, never with `-A`.
+
+**Tool call 7 (Bash, in the worktree):**
+```bash
+git add src/date/format.ts src/date/format.test.ts
+git commit -m "fix(date): correct date formatting" -m "Includes regression test."
+git push -u origin fix/date-format
+```
+Assumed: the commit and push succeed. My partner asked for the PR, so pushing is authorized.
+
+**Tool call 8 (Bash, in the worktree):**
+```bash
+gh pr create --base main --head fix/date-format \
+  --title "fix(date): correct date formatting" \
+  --body "Standalone fix for a date-format bug, split out of feat/offline. Adds a regression test."
+```
+Assumed: it prints `https://github.com/p/notes-app/pull/NN`.
+
+## Step 5: Clean up at once
+
+The branch is pushed and the worktree has no uncommitted changes. The skill says a commit-only worktree is removed right away, and the pushed branch carries any later fixes.
+
+**Tool call 9:** `ExitWorktree(action: "remove")`
+
+Assumed: it returns to `/Users/p/git/notes-app`, deletes the worktree and its empty `worktree-fix-date-format` branch, and does not refuse because nothing is uncommitted. I don't pass `discard_changes`.
+
+**Tool call 10 (Bash, from the main repo root):**
+```bash
+git worktree list
+git status --porcelain
+git branch --show-current
+```
+Assumed: only the main checkout is listed, status is empty, and the branch is `feat/offline`.
+
+## Message to my partner
+
+> Opened the date fix as a standalone PR: https://github.com/p/notes-app/pull/NN (`fix/date-format`, based on `main`, one commit with `src/date/format.ts` and the new `format.test.ts`).
+>
+> - I moved the changes with a stash, so your `feat/offline` checkout is clean and still on `feat/offline`. Its PR and 2 unpushed commits are untouched.
+> - I didn't re-run the tests in the new branch. They passed on the shared tree, and CI will check the commit on its own.
+> - The temporary worktree is removed. Nothing uncommitted is left in any checkout.
+
+SUMMARY: The work happened in a short-lived native worktree (`EnterWorktree`), after stash-moving my two files out of the shared `feat/offline` checkout, because the fix had to be committed on a new branch off `main`. I committed, pushed, opened the PR, and removed the worktree immediately.

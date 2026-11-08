@@ -1,0 +1,90 @@
+I'm simulating this from the stated situation. Any output I assume is marked as assumed.
+
+## 1. Where to work (once per session)
+
+**Tool call (Bash):**
+```bash
+git rev-parse --path-format=absolute --git-dir --git-common-dir
+git rev-parse --show-superproject-working-tree
+git branch --show-current
+git status --porcelain
+cat .ryugi/sdd/*/EXPLORING
+```
+Assumed output:
+- `--git-dir` and `--git-common-dir` both print `/Users/p/git/notes-app/.git`, so this is not a linked worktree.
+- The superproject line prints nothing.
+- The branch is `feat/offline`.
+- Status shows ` M src/date/format.ts` and `?? src/date/format.test.ts`, both mine.
+- `cat` reports no such file, so there is no `EXPLORING`.
+
+**Decision:** nobody else is working in the checkout. The task is "move uncommitted work to a new branch off another base, nobody else". `feat/offline` is finished, so I switch in place and no worktree is needed.
+
+## 2. Record the unpushed commits
+
+**Tool call (Bash):**
+```bash
+git log feat/offline --not --remotes --oneline
+```
+Assumed output (2 commits, as stated):
+```
+a1b2c3d feat(offline): sync queue
+e4f5a6b feat(offline): cache layer
+```
+I will name these in the final message and will not push them.
+
+## 3. Switch base and create the branch
+
+**Tool call (Bash):**
+```bash
+git switch main
+git pull --ff-only
+git switch -c fix/date-format
+```
+Assumed: all three succeed. `main` has not touched `src/date/format.ts`, so git does not refuse and my changes come along. If git had refused because my changes would be overwritten, I would stop and ask whether to stack the PR on `feat/offline` or wait for it to merge.
+
+## 4. Test on the new base
+
+**Tool call (Bash):**
+```bash
+pnpm test
+```
+Assumed: all tests pass on `main` plus the date fix, so the fix does not depend on `feat/offline`. If they had failed, I would say so and not commit.
+
+## 5. Commit only my paths
+
+**Tool call (Bash):**
+```bash
+git add src/date/format.ts src/date/format.test.ts
+git commit -m "fix(date): correct date formatting"
+git log -1 --stat
+```
+Assumed: the commit contains exactly those two files.
+
+## 6. Push and open the PR
+
+You explicitly asked for a PR, so pushing is authorized.
+
+**Tool call (Bash):**
+```bash
+git push -u origin fix/date-format
+gh pr create --base main --head fix/date-format \
+  --title "fix(date): correct date formatting" \
+  --body "Standalone fix for a date-format bug found while working on offline support. Includes a regression test (src/date/format.test.ts)."
+```
+Assumed: the push succeeds and `gh` prints `https://github.com/p/notes-app/pull/NN`.
+
+## 7. Verify nothing of mine is left behind
+
+**Tool call (Bash):**
+```bash
+git status --porcelain
+```
+Assumed: empty output.
+
+## Message to my partner
+
+> Opened https://github.com/p/notes-app/pull/NN from `fix/date-format` off `main`. It contains only `src/date/format.ts` and the new `src/date/format.test.ts`. I ran the tests on the new base and they pass. I worked in place, so there is no worktree to clean up, and the checkout is clean.
+>
+> I'm now on `fix/date-format`. `feat/offline` has 2 commits that are not on any remote: `a1b2c3d feat(offline): sync queue` and `e4f5a6b feat(offline): cache layer`. I did not push them. Do you want me to push them, or switch back to `feat/offline`?
+
+SUMMARY: Worked in place in /Users/p/git/notes-app, with no worktree. Nobody else had edits in the checkout, `feat/offline` was finished, and `git switch main` plus `git switch -c fix/date-format` carries uncommitted changes along without a copy or stash.

@@ -1,0 +1,74 @@
+Not running anything. This is the simulated sequence.
+
+**Decision:** `EXPLORING` lists `src/sync/queue.ts`, so another session is working in this checkout. I can't `git switch -c` here. The skill says to move the changes into a worktree, never copy them. The worktree exists only for the commit, so there's no install and no test run. I'll commit, push, open the PR and remove it.
+
+**1. Tool call: Bash**
+```bash
+git -C /Users/p/git/notes-app stash push --include-untracked -- src/date/format.ts src/date/format.test.ts
+```
+Assumed output: `Saved working directory and index state WIP on main: <sha> <subject>`. Only my two paths are stashed. The other session's files are untouched.
+
+**2. Tool call: EnterWorktree**
+```
+EnterWorktree(name: "fix-date-format")
+```
+Assumed result: the worktree is created at `/Users/p/git/notes-app/.claude/worktrees/fix-date-format` on a new branch from HEAD (main), and the session switches into it. The partner's "new branch off main" is the explicit request the tool needs.
+
+**3. Tool call: Bash** (inside the worktree)
+```bash
+git stash pop
+```
+Assumed output: a clean pop with ` M src/date/format.ts` and `?? src/date/format.test.ts`, no conflicts.
+
+**4. Tool call: Bash** (check the original checkout is clean of my changes)
+```bash
+git -C /Users/p/git/notes-app status --porcelain -- src/date/format.ts src/date/format.test.ts
+```
+Assumed output: empty, so the changes were moved, not copied.
+
+**5. Tool call: Bash** (the native tool picked its own branch name, so rename it to the requested one)
+```bash
+git branch -m fix/date-format
+```
+
+**6. Tool call: Bash** (stage my paths by name, never `-A`)
+```bash
+git add src/date/format.ts src/date/format.test.ts
+git commit -m "fix(date): correct date formatting bug"
+```
+Assumed result: one commit containing exactly those two files.
+
+**7. Tool call: Bash**
+```bash
+git push -u origin fix/date-format
+```
+Assumed result: the branch is pushed and tracking is set up. The partner asked for a PR, which covers the push.
+
+**8. Tool call: Bash**
+```bash
+gh pr create --base main --head fix/date-format \
+  --title "fix(date): correct date formatting bug" \
+  --body "Fixes the date-format bug in src/date/format.ts. Adds regression tests in src/date/format.test.ts."
+```
+Assumed output: `https://github.com/<owner>/notes-app/pull/123`.
+
+**9. Tool call: ExitWorktree** (the worktree was only for the commit, and the pushed branch carries any later fixes, so remove it at once; the tree is clean, so no `discard_changes`)
+```
+ExitWorktree(action: "remove")
+```
+Assumed result: returns to `/Users/p/git/notes-app`, and the worktree directory and local branch are deleted. `origin/fix/date-format` remains.
+
+**10. Tool call: Bash** (confirm nothing of mine is left behind)
+```bash
+git -C /Users/p/git/notes-app status --porcelain
+git -C /Users/p/git/notes-app stash list
+git -C /Users/p/git/notes-app worktree list
+```
+Assumed output: no entries for my files, no leftover stash from me, and only the main worktree listed.
+
+**Message to partner:**
+> PR is open: https://github.com/<owner>/notes-app/pull/123 (`fix/date-format` → `main`), containing only `src/date/format.ts` and `src/date/format.test.ts`.
+>
+> Another session is exploring `src/sync/queue.ts` in this checkout, so I didn't switch branches here. I moved my changes into a temporary worktree, committed and pushed from there, then removed it. The checkout is still on `main`, and my changes are no longer in it. I didn't re-run the tests in the worktree. They passed earlier on the same content. Nothing of mine is left uncommitted anywhere.
+
+SUMMARY: The commit, push and PR happened in a temporary native worktree (`EnterWorktree`, removed afterwards), because `EXPLORING` showed another session in the shared checkout and the skill forbids switching branches there.

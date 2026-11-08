@@ -1,0 +1,60 @@
+Simulated sequence. The session already settled where to work (in place on canary), so I don't re-run the checks. The request is a new branch from HEAD, to commit, and another agent has edits in the checkout, so the skill says to run `git switch -c`, commit my paths, `git switch -` right away, then push.
+
+**Tool call 1 (Bash): create the branch in place.** This changes no files, so the other agent's `src/store/chat.ts` edit stays as it is.
+```bash
+cd /Users/p/git/lobe-chat && git switch -c fix/message-scroll
+```
+Assumed output: `Switched to a new branch 'fix/message-scroll'`
+
+**Tool call 2 (Bash): stage my two paths by name.**
+```bash
+cd /Users/p/git/lobe-chat && git add src/features/Scroll/index.tsx src/features/Scroll/index.test.tsx && git diff --cached --name-only
+```
+Assumed output:
+```
+src/features/Scroll/index.test.tsx
+src/features/Scroll/index.tsx
+```
+Only my files are staged, and `src/store/chat.ts` is not.
+
+**Tool call 3 (Bash): commit and switch straight back.**
+```bash
+cd /Users/p/git/lobe-chat && git commit -m "🐛 fix: message list scroll position" && git switch -
+```
+Assumed output: a commit `a1b2c3d` with 2 files changed, then `Switched to branch 'canary'`.
+
+**Tool call 4 (Bash): confirm the branch tip is my commit and the other agent's edit is intact.**
+```bash
+cd /Users/p/git/lobe-chat && git log -1 --format='%h %s' fix/message-scroll && git status --porcelain
+```
+Assumed output:
+```
+a1b2c3d 🐛 fix: message list scroll position
+ M src/store/chat.ts
+```
+The tip is my commit, so nobody committed onto the branch in between. The working tree holds only the other agent's `chat.ts` change.
+
+**Tool call 5 (Bash): push.** You asked for a PR, so pushing is covered.
+```bash
+cd /Users/p/git/lobe-chat && git push -u origin fix/message-scroll
+```
+Assumed output: the branch is pushed and set to track `origin/fix/message-scroll`.
+
+**Tool call 6 (Bash): open the PR.**
+```bash
+cd /Users/p/git/lobe-chat && gh pr create --base canary --head fix/message-scroll --title "🐛 fix: message list scroll position" --body "Fixes the scroll bug in \`src/features/Scroll\`. Adds a regression test in \`index.test.tsx\`."
+```
+Assumed output: `https://github.com/lobehub/lobe-chat/pull/1234`
+
+**Message to my partner:**
+
+> PR is open: https://github.com/lobehub/lobe-chat/pull/1234 (`fix/message-scroll` → `canary`).
+>
+> - It contains one commit with `src/features/Scroll/index.tsx` and `src/features/Scroll/index.test.tsx`.
+> - I ran the tests on the shared checkout, which also has another agent's uncommitted edit to `src/store/chat.ts`. CI will check my commit without that edit.
+> - That edit is not in the PR. I never touched it, and the checkout is back on `canary` with it still uncommitted.
+> - No worktree was created, so there's nothing to clean up. When the PR merges, there's nothing local to remove beyond the branch.
+
+I then stop and wait.
+
+SUMMARY: Worked in place in /Users/p/git/lobe-chat: I ran `git switch -c` to commit only my two Scroll files, switched back to canary immediately because another agent's `src/store/chat.ts` edit shares the checkout, then pushed and opened the PR, with no worktree needed.

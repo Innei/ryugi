@@ -1,0 +1,96 @@
+Facts taken from the situation, so I don't re-run the "Where to work" commands: I'm in the main checkout (not a linked worktree) on `feat/offline`, only my two files are dirty, and there is no `.ryugi/sdd/`.
+
+The new branch must start from `main`, not from HEAD (`feat/offline`). The skill treats that as "another base", so I won't switch branches in the shared checkout. I'll move the changes with a stash into a worktree that exists only for the commit.
+
+**Message to partner:**
+"Shipping the date fix separately means a branch off `main`, while this checkout is on `feat/offline`. I'll move the two changed files (not copy them) into a short-lived worktree, commit and push there, open the PR, then remove the worktree."
+
+**Tool call 1: Bash (stash my paths)**
+```bash
+git stash push --include-untracked -- src/date/format.ts src/date/format.test.ts
+```
+Assumed output: `Saved working directory and index state WIP on feat/offline: <sha> <msg>`
+
+**Tool call 2: Bash (confirm the checkout is clean of my changes)**
+```bash
+git status --porcelain
+```
+Assumed output: empty.
+
+**Tool call 3: EnterWorktree** (the native tool, as the skill requires. The "move" rule is the explicit request its description asks for.)
+```
+EnterWorktree(name: "fix-date-format")
+```
+Assumed result: worktree at `/Users/p/git/notes-app/.claude/worktrees/fix-date-format` on an auto-created branch from HEAD. The session is now inside it.
+
+**Tool call 4: Bash (rebase the working base onto main by switching to the right branch)**
+
+The tool branches from HEAD (`feat/offline`), so I put the worktree on a new branch from `main` before applying anything:
+```bash
+git switch -c fix/date-format main
+```
+Assumed output: `Switched to a new branch 'fix/date-format'`
+
+**Tool call 5: Bash (pop the stash here)**
+```bash
+git stash pop
+```
+Assumed output: clean pop, no conflicts, listing ` M src/date/format.ts` and `?? src/date/format.test.ts`.
+
+**Tool call 6: Bash (verify the original checkout no longer holds my changes)**
+```bash
+git -C /Users/p/git/notes-app status --porcelain -- src/date/format.ts src/date/format.test.ts
+```
+Assumed output: empty.
+
+**Tool call 7: Bash (check what I'm committing)**
+```bash
+git diff src/date/format.ts && git status --porcelain
+```
+Assumed output: only the date-format hunk, and the same two paths. No install and no test run, per the skill. The tests already passed on this content.
+
+**Tool call 8: Bash (stage by name, commit)**
+```bash
+git add src/date/format.ts src/date/format.test.ts
+git commit -m "fix(date): correct date formatting bug" -m "Adds a regression test in src/date/format.test.ts."
+```
+Assumed output: `[fix/date-format <sha>] fix(date): correct date formatting bug, 2 files changed`
+
+**Tool call 9: Bash (push; you asked for a PR, so publishing the branch is authorized)**
+```bash
+git push -u origin fix/date-format
+```
+Assumed output: branch pushed, upstream set.
+
+**Tool call 10: Bash (open the PR)**
+```bash
+gh pr create --base main --head fix/date-format \
+  --title "fix(date): correct date formatting bug" \
+  --body "Fixes a date-format bug in src/date/format.ts, with a regression test in src/date/format.test.ts. Split out of feat/offline so it can ship on its own."
+```
+Assumed output: `https://github.com/<owner>/notes-app/pull/<N>`
+
+**Tool call 11: Bash (confirm the worktree is clean before removal)**
+```bash
+git status --porcelain -uall
+```
+Assumed output: empty.
+
+**Tool call 12: ExitWorktree** (the skill says that when I only needed the worktree for the commit, I remove it at once. The pushed branch carries any later fixes.)
+```
+ExitWorktree(action: "remove")
+```
+Assumed result: the session is back in `/Users/p/git/notes-app`, the worktree and its auto-created branch are deleted, and `fix/date-format` remains locally and on origin. There were no uncommitted changes, so `discard_changes` is not needed.
+
+**Tool call 13: Bash (final check from the main checkout)**
+```bash
+git worktree list && git stash list && git branch --show-current && git status --porcelain
+```
+Assumed output: one worktree, an empty stash list (the pop consumed it), `feat/offline`, and an empty status.
+
+**Final message to partner:**
+"The PR is open: https://github.com/<owner>/notes-app/pull/<N> (`fix/date-format` → `main`). It has one commit with `src/date/format.ts` and `src/date/format.test.ts`. I did not re-run the tests in the worktree. They passed on the same content before the move.
+
+I moved the fix rather than copied it. Your `feat/offline` checkout no longer has those two edits, so that branch won't have the fix until the PR merges and you merge `main` back in. The temporary worktree is removed, the stash is empty, and nothing is left uncommitted in either checkout."
+
+SUMMARY: The work happened in a short-lived native worktree (`EnterWorktree`) holding only the stash-moved fix, because the new branch had to start from `main` rather than HEAD (`feat/offline`) and I don't switch branches in the shared checkout. I committed, pushed and opened the PR from `fix/date-format`, then removed the worktree.

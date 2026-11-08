@@ -1,0 +1,69 @@
+## Simulated run
+
+**Step 1: where to work (once per session)**
+```bash
+git rev-parse --path-format=absolute --git-dir --git-common-dir
+git rev-parse --show-superproject-working-tree
+git branch --show-current
+git status --porcelain
+cat .ryugi/sdd/*/EXPLORING
+```
+Assumed output:
+- `--git-dir` and `--git-common-dir` are both `/Users/p/git/notes-app/.git`, so this is the main checkout, not a linked worktree.
+- The superproject output is empty.
+- The branch is `feat/offline`.
+- Status shows ` M src/date/format.ts` and `?? src/date/format.test.ts`.
+- `cat` fails because there is no `.ryugi/sdd/`.
+
+Row match: the fix must be committed on content other than the checked-out branch (main), and my changes are uncommitted. That means a new worktree without asking, and a stash-move. I will not run `git switch main` / `git switch -c` here. That would switch branches in a checkout other agents share and drag my changes along.
+
+**Step 2: look at what I'm moving**
+```bash
+git diff src/date/format.ts
+```
+Assumed output: the diff adds `import { now } from '../offline/clock'`. This matters later.
+
+**Step 3: move the changes out of the shared checkout**
+```bash
+git stash push --include-untracked -- src/date/format.ts src/date/format.test.ts
+```
+Assumed: `Saved working directory and index state WIP on feat/offline`.
+
+**Step 4: create the worktree with the native tool**
+```
+EnterWorktree(name: "fix-date-format")
+```
+Assumed: it creates `.claude/worktrees/fix-date-format` on a new branch and switches the session into it. The tool branches from HEAD, which is feat/offline, not main. I fix the base inside the worktree, which is still clean:
+```bash
+git fetch origin main
+git reset --hard origin/main
+git branch -m fix/date-format
+```
+Assumed: the worktree is now at `origin/main` on branch `fix/date-format`. I did not touch the shared checkout's `main`.
+
+**Step 5: pop the stash here and verify the original is clean**
+```bash
+git stash pop
+git -C /Users/p/git/notes-app status --porcelain -- src/date/format.ts src/date/format.test.ts
+```
+Assumed: the pop succeeds with no conflicts, and the second command prints nothing. If the pop had conflicted, I would have stopped and shown you.
+
+**Step 6: check that the commit stands on its own**
+```bash
+grep -n "offline" src/date/format.ts
+git ls-tree origin/main src/offline/clock.ts
+```
+Assumed: the first prints `1:import { now } from '../offline/clock'`, and the second prints nothing. So `src/offline/clock.ts` does not exist on main.
+
+I stop here. I don't commit or push, because this commit would break the build on main. My earlier passing tests ran on the feat/offline tree, which has `clock.ts`; CI checks the commit alone.
+
+**Message to partner:**
+> The date fix is moved onto `fix/date-format`, based on `origin/main`, in the worktree `.claude/worktrees/fix-date-format`. It is uncommitted and nothing is pushed. Your original checkout no longer has those edits.
+>
+> The fix can't ship alone as written. `src/date/format.ts` imports `../offline/clock`, and that file exists only on `feat/offline`, so a PR off main fails with `Cannot find module '../offline/clock'`. Two options:
+> 1. **Recommended:** I rework the fix so it doesn't use the offline clock (for example, take the date as a parameter or use `Date.now()` directly), run `pnpm install --frozen-lockfile` and the tests here, then commit, push and open the PR against main.
+> 2. Stack the PR on `feat/offline`, so it can only merge after that PR does. That isn't the standalone PR you asked for.
+>
+> Which one?
+
+SUMMARY: The work happened in a native worktree (`fix-date-format`, branch `fix/date-format` off `origin/main`) with the changes stash-moved from the shared feat/offline checkout; I stopped before committing because the fix imports `../offline/clock`, which exists only on feat/offline.

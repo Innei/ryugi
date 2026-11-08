@@ -1,0 +1,71 @@
+Assumptions: the stash, worktree, push and `gh` calls all succeed. My earlier work is on main in `/Users/p/git/notes-app`, and I don't re-run the where-to-work checks because that answer holds for the session. The work now has to be committed on a different branch, so the skill says to move the changes with a stash and not to switch branches in the shared checkout. Because the partner explicitly asked for the PR, I treat the push and PR creation as authorized.
+
+**1. Stash only my paths**
+```bash
+git stash push --include-untracked -- src/date/format.ts src/date/format.test.ts
+```
+Assumed output: `Saved working directory and index state WIP on main: <sha> <subject>`.
+
+**2. Create the worktree with the native tool**
+```
+EnterWorktree(name: "fix-date-format")
+```
+Assumed result: a worktree at `/Users/p/git/notes-app/.claude/worktrees/fix-date-format`, on a new branch from HEAD (main) named `worktree-fix-date-format`, and the session is now inside it.
+
+**3. Rename the branch to the one my partner asked for**
+```bash
+git branch -m fix/date-format
+```
+
+**4. Pop the stash inside the worktree**
+```bash
+git stash pop
+```
+Assumed result: no conflicts, `M src/date/format.ts` and `?? src/date/format.test.ts` restored.
+
+**5. Check that the original checkout is clean for my paths**
+```bash
+git -C /Users/p/git/notes-app status --porcelain -- src/date/format.ts src/date/format.test.ts
+```
+Assumed output: empty. If the pop had conflicted, I would stop and show my partner.
+
+**6. Commit only my paths, with no install and no test run**
+```bash
+git add src/date/format.ts src/date/format.test.ts
+git commit -m "fix(date): correct date formatting bug"
+```
+I would use a more specific message based on the actual fix.
+
+**7. Push**
+```bash
+git push -u origin fix/date-format
+```
+
+**8. Open the PR**
+```bash
+gh pr create --base main --head fix/date-format \
+  --title "fix(date): correct date formatting bug" \
+  --body "Fixes the date-format bug in src/date/format.ts and adds regression tests in src/date/format.test.ts."
+```
+Assumed output: a PR URL, `https://github.com/<owner>/notes-app/pull/<n>`.
+
+**9. Remove the worktree at once**
+This worktree existed only for the commit, and the pushed branch carries any later fixes. It is clean, so no `discard_changes` is needed. I copied no spec into it, so there is nothing to delete first.
+```
+ExitWorktree(action: "remove")
+```
+Assumed result: back in `/Users/p/git/notes-app`, and the worktree directory and local branch are removed. `origin/fix/date-format` stays on the remote.
+
+**10. Confirm nothing is left behind**
+```bash
+git -C /Users/p/git/notes-app status --porcelain
+git -C /Users/p/git/notes-app stash list
+```
+Assumed output: both empty.
+
+**Message to my partner:**
+> PR is open: https://github.com/<owner>/notes-app/pull/<n> (`fix/date-format` → `main`). It contains `src/date/format.ts` and `src/date/format.test.ts`, and nothing else.
+>
+> I moved the changes with a stash into a short-lived worktree instead of switching branches in the shared checkout. I didn't re-run the tests or reinstall there, since the tests had already passed on this same code. The worktree is removed, and main has none of my uncommitted changes. Nothing is left uncommitted anywhere. Any review fixes can be made on the pushed branch.
+
+SUMMARY: The fix was developed in place on main because nothing required isolation. The commit and PR happened in a short-lived native worktree (`EnterWorktree`), because the uncommitted changes had to be committed on a new branch (`fix/date-format`) without switching branches in the shared checkout. The worktree was removed right after the push and PR.

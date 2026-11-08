@@ -1,0 +1,44 @@
+I'm not running anything. This is the simulated sequence.
+
+**Decision:** The skill's "new branch from HEAD, to commit" case applies. HEAD is on main, and `git status --porcelain` shows only my two paths, with no `EXPLORING` file, so nobody else is in the checkout. `git switch -c` changes no files, so I stay in place with no worktree. I don't re-run the "Where to work" checks, since that answer holds for the session. Because nobody else is here, I push and stay on the new branch.
+
+**Tool call 1: Bash**
+```bash
+git switch -c fix/date-format
+```
+Assumed output: `Switched to a new branch 'fix/date-format'`. The uncommitted changes come along.
+
+**Tool call 2: Bash** (stage my paths by name, never `-A`, `.` or `-a`)
+```bash
+git add src/date/format.ts src/date/format.test.ts
+```
+Assumed output: none.
+
+**Tool call 3: Bash**
+```bash
+git commit -m "fix(date): correct date formatting bug" -m "Fix the date-format bug in src/date/format.ts and add regression tests in src/date/format.test.ts."
+```
+Assumed output: `[fix/date-format abc1234] fix(date): correct date formatting bug`, with 2 files changed.
+
+**Tool call 4: Bash** (your partner asked for a PR, so pushing is authorized)
+```bash
+git push -u origin fix/date-format
+```
+Assumed output: the branch is pushed and tracking is set up on `origin/fix/date-format`.
+
+**Tool call 5: Bash**
+```bash
+gh pr create --base main --head fix/date-format \
+  --title "fix(date): correct date formatting bug" \
+  --body "Fixes the date-format bug in \`src/date/format.ts\`. Adds regression tests in \`src/date/format.test.ts\`. Tests pass locally."
+```
+Assumed output: `https://github.com/p/notes-app/pull/42`.
+
+**Message to my partner:**
+> PR is open: https://github.com/p/notes-app/pull/42 (`fix/date-format` → `main`).
+>
+> - I worked in place, with no worktree. Only my two files were changed: `src/date/format.ts` and `src/date/format.test.ts`. I committed just those and pushed.
+> - The checkout is now on `fix/date-format`. Local `main` has no new commits.
+> - Nothing uncommitted is left in the checkout.
+
+SUMMARY: The work stayed in place in /Users/p/git/notes-app, with no worktree, because only my own edits were present and nobody else was in the checkout. `git switch -c fix/date-format` carried them to the new branch, where I committed my two paths by name, pushed, and opened the PR.

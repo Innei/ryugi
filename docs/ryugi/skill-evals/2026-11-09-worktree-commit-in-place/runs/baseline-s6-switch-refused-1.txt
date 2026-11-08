@@ -1,0 +1,90 @@
+I'm not running anything; this is the simulated sequence.
+
+**Step 1: check where to work (once per session)**
+
+```bash
+git rev-parse --path-format=absolute --git-dir --git-common-dir
+git rev-parse --show-superproject-working-tree
+git branch --show-current
+git status --porcelain
+cat .ryugi/sdd/*/EXPLORING
+```
+Assumed output:
+- `--git-dir` and `--git-common-dir` are both `/Users/p/git/notes-app/.git`, so this is not a linked worktree.
+- The superproject check prints nothing.
+- The branch is `feat/offline`.
+- Status shows ` M src/date/format.ts` and `?? src/date/format.test.ts`.
+- `cat` fails with "no matches found", since there is no `.ryugi/sdd/`.
+
+The table row that matches is "work must be developed on other content (a branch off main)", so I use a new worktree without asking. Your request is the explicit instruction `EnterWorktree` asks for. I do **not** run `git switch main` in the shared checkout. It would abort anyway, and the fix would be copied rather than moved.
+
+**Step 2: move my changes out of the shared checkout**
+
+```bash
+git stash push --include-untracked -- src/date/format.ts src/date/format.test.ts
+```
+Assumed: `Saved working directory and index state WIP on feat/offline: <sha> ...`
+
+**Step 3: create the worktree with the native tool**
+
+`EnterWorktree(name: "fix-date-format")`
+
+Assumed: it creates `.claude/worktrees/fix-date-format` on a new branch from HEAD (feat/offline) and switches the session into it.
+
+The tool branches from HEAD, not main, and I need main as the base. The worktree is clean and has no commits of its own, so I rebase it safely:
+
+```bash
+git switch -c fix/date-format main
+```
+Assumed: `Switched to a new branch 'fix/date-format'`. The tool's empty branch stays behind, and the worktree removal in step 8 will take care of it.
+
+**Step 4: pop the stash inside the worktree**
+
+```bash
+git stash pop
+```
+Assumed: it applies cleanly, with no conflicts. If it conflicted, I would stop and show you.
+
+**Step 5: verify the original checkout is clean of my paths**
+
+```bash
+git -C /Users/p/git/notes-app status --porcelain -- src/date/format.ts src/date/format.test.ts
+```
+Assumed: it prints nothing.
+
+**Step 6: commit only my paths (no install, no test run, since the worktree exists only for this commit)**
+
+```bash
+git add src/date/format.ts src/date/format.test.ts
+git commit -m "fix(date): correct date formatting bug"
+```
+Assumed: the commit succeeds. The tests already passed on this same content in the shared tree.
+
+**Step 7: push and open the PR (you asked for the PR)**
+
+```bash
+git push -u origin fix/date-format
+gh pr create --base main --head fix/date-format --title "fix(date): correct date formatting bug" --body "Standalone fix for the date-format bug, split out from feat/offline. Includes a regression test in src/date/format.test.ts."
+```
+Assumed: the PR is created at `https://github.com/p/notes-app/pull/NN`.
+
+**Step 8: remove the worktree now**
+
+The skill says to remove the worktree at once when it existed only for the commit, and the pushed branch carries any later fixes. The status is clean, so no `discard_changes`.
+
+`ExitWorktree(action: "remove")`
+
+Assumed: it returns to `/Users/p/git/notes-app` and removes the worktree directory.
+
+```bash
+git -C /Users/p/git/notes-app status --porcelain
+```
+Assumed: it prints nothing, so the feat/offline checkout holds none of my changes.
+
+**Message to you:**
+
+> The date fix is up as a standalone PR: https://github.com/p/notes-app/pull/NN (`fix/date-format` → `main`). It contains `src/date/format.ts` and the new `src/date/format.test.ts`.
+>
+> I moved the changes with a stash instead of switching branches, so your `feat/offline` checkout is untouched and no longer has the date-fix edits. The temporary worktree is removed. I did not re-run the tests in the worktree. They passed earlier on this same content, and CI will check the commit on its own.
+
+SUMMARY: The work happened in a new native worktree (`EnterWorktree`, rebased onto a `fix/date-format` branch off main), because the fix had to be built on main while the shared checkout sat on feat/offline. I moved the changes by stash rather than switching branches, committed only my two paths, pushed, opened the PR, and removed the worktree.

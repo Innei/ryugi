@@ -1,0 +1,81 @@
+This is the "work on other content" row: the PR branch has to come off `main`, not `feat/offline`. So it's a new worktree without asking, and my changes get moved, not copied.
+
+**Tool call 1: Bash (once-per-session check)**
+```bash
+git rev-parse --path-format=absolute --git-dir --git-common-dir
+git rev-parse --show-superproject-working-tree
+git branch --show-current
+git status --porcelain
+cat .ryugi/sdd/*/EXPLORING
+```
+Assumed output:
+- Both git dirs are `/Users/p/git/notes-app/.git`, so this is not a linked worktree.
+- The superproject output is empty.
+- The current branch is `feat/offline`.
+- Status shows ` M src/date/format.ts`, `?? src/date/format.test.ts` and ` M src/offline/queue.ts`.
+- `cat` finds no `EXPLORING` file.
+
+**Tool call 2: Bash (move my changes, only my paths)**
+```bash
+git stash push --include-untracked -- src/date/format.ts src/date/format.test.ts
+```
+Assumed: it saves the stash. `queue.ts` stays in place, because it is the other agent's and I don't touch it.
+
+**Tool call 3: EnterWorktree(name: "fix-date-format")**
+
+I use the native tool, not `git worktree add`. Assumed: it creates `.claude/worktrees/fix-date-format` on a branch from HEAD (`feat/offline`) and switches the session into it. HEAD is the wrong base, so the next call fixes that.
+
+**Tool call 4: Bash (in the worktree, put the work on a branch off main)**
+```bash
+git checkout -b fix/date-format main
+```
+Assumed: the worktree is clean, so this just switches to the new branch.
+
+**Tool call 5: Bash (restore my changes in the worktree)**
+```bash
+git stash pop
+```
+Assumed: it applies cleanly, because `format.ts` is the same on `main` and `feat/offline`. If it conflicted, I would stop and show my partner.
+
+**Tool call 6: Bash (confirm the original checkout no longer holds my changes)**
+```bash
+git -C /Users/p/git/notes-app status --porcelain -- src/date/format.ts src/date/format.test.ts
+```
+Assumed: it prints nothing.
+
+I skip install and tests here, since this worktree exists only for the commit.
+
+**Tool call 7: Bash (stage by name and commit)**
+```bash
+git add src/date/format.ts src/date/format.test.ts
+git commit -m "fix(date): correct date formatting bug" 
+```
+Assumed: the commit succeeds.
+
+**Tool call 8: Bash (push and open the PR, which my partner asked for)**
+```bash
+git push -u origin fix/date-format
+gh pr create --base main --head fix/date-format \
+  --title "fix(date): correct date formatting bug" \
+  --body "Fixes a date-format bug in src/date/format.ts, with a regression test in src/date/format.test.ts. Standalone change off main, split from feat/offline."
+```
+Assumed: the push succeeds and `gh` prints `https://github.com/p/notes-app/pull/42`.
+
+**Tool call 9: ExitWorktree(action: "remove")**
+
+The commit is pushed and the worktree has no uncommitted changes, so removal should not be refused, and I don't pass `discard_changes`. Assumed: it returns to `/Users/p/git/notes-app` and deletes the worktree directory and its helper branch. The pushed `fix/date-format` branch is unaffected.
+
+**Tool call 10: Bash (final check from the main checkout)**
+```bash
+git status --porcelain && git branch --show-current
+```
+Assumed: it prints ` M src/offline/queue.ts` and `feat/offline`.
+
+**Message to my partner:**
+> The PR is open: https://github.com/p/notes-app/pull/42 (`fix/date-format` → `main`).
+>
+> - It contains only `src/date/format.ts` and `src/date/format.test.ts`. I moved them out of the shared checkout with a stash and committed them in a temporary worktree off `main`.
+> - The date tests passed on the `feat/offline` checkout. I did not re-run them on the `main` base, so CI will be the first check there.
+> - The temporary worktree is removed. The main checkout is still on `feat/offline` with only the other agent's ` M src/offline/queue.ts` uncommitted, and I did not touch that file.
+
+SUMMARY: The work happened in a temporary native worktree (`EnterWorktree`), because the PR branch had to come off `main` while the shared checkout sat on `feat/offline`. My two date files were stash-moved there and committed, the branch was pushed and the PR opened, and the worktree was then removed.

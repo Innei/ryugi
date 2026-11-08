@@ -1,0 +1,124 @@
+**Step 1: Where to work (once per session)**
+
+```bash
+cd /Users/p/git/notes-app
+git rev-parse --path-format=absolute --git-dir --git-common-dir
+git rev-parse --show-superproject-working-tree
+git branch --show-current
+git status --porcelain
+cat .ryugi/sdd/*/EXPLORING
+```
+
+Assumed output:
+- `--git-dir` and `--git-common-dir` are both `/Users/p/git/notes-app/.git`, so this is the main checkout, not a linked worktree.
+- The superproject check prints nothing.
+- The branch is `feat/offline`.
+- Status shows ` M src/date/format.ts`, `?? src/date/format.test.ts` and ` M src/offline/queue.ts`.
+- `cat` fails with "No such file" because there is no EXPLORING file.
+
+This case falls under "Move your changes", **someone else, and another base**. The other agent's `queue.ts` edit is in the checkout. I must not switch branches here, so I'll move my changes through a stash into a worktree.
+
+**Message to partner:**
+> The date fix is on feat/offline's checkout, and another agent has an uncommitted edit in `src/offline/queue.ts`. I won't switch branches there. I'll stash only my two date files, move them into a short-lived worktree based on main, commit them on `fix/date-format`, push, and open the PR.
+
+**Step 2: Stash only my paths**
+
+```bash
+git stash push --include-untracked -- src/date/format.ts src/date/format.test.ts
+```
+
+Assumed: "Saved working directory and index state WIP on feat/offline".
+
+```bash
+git status --porcelain
+```
+
+Assumed: only ` M src/offline/queue.ts` remains, so the other agent's edit is untouched.
+
+**Step 3: Create the worktree with the native tool**
+
+```
+EnterWorktree(name: "fix-date-format")
+```
+
+Assumed: it creates `.claude/worktrees/fix-date-format` on a new branch from HEAD (feat/offline) and the session switches into it. That is the wrong base, so I rebase onto main below.
+
+**Step 4: Put the worktree on main**
+
+```bash
+git fetch origin main
+git switch -c fix/date-format origin/main
+```
+
+Assumed: the fetch succeeds and the new branch tracks nothing yet. The worktree has no changes, so nothing can be overwritten.
+
+**Step 5: Pop the stash inside the worktree**
+
+```bash
+git stash pop
+```
+
+Assumed: it applies cleanly, with ` M src/date/format.ts` and `?? src/date/format.test.ts`. If it conflicted I would stop and show you.
+
+Then verify the original checkout no longer has my files:
+
+```bash
+git -C /Users/p/git/notes-app status --porcelain -- src/date/format.ts src/date/format.test.ts
+```
+
+Assumed: it prints nothing.
+
+**Step 6: Commit my paths by name, with no install and no test run**
+
+The worktree exists only for this commit, so the skill says to skip the install and tests.
+
+```bash
+git add src/date/format.ts src/date/format.test.ts
+git commit -m "fix(date): correct date formatting bug"
+git log -1 --format='%H %s' fix/date-format
+```
+
+Assumed: the last command shows my commit.
+
+**Step 7: Push and open the PR (you asked for both)**
+
+```bash
+git push -u origin fix/date-format
+gh pr create --base main --head fix/date-format \
+  --title "fix(date): correct date formatting bug" \
+  --body "Fixes a date-format bug in src/date/format.ts, with a regression test in src/date/format.test.ts. Standalone change off main, separate from feat/offline."
+```
+
+Assumed: the PR URL is `https://github.com/p/notes-app/pull/NN`.
+
+**Step 8: Remove the worktree now**
+
+The skill says a commit-only worktree goes away at once, and the pushed branch carries any later fixes. The tree is clean, so removal won't need `discard_changes`.
+
+```
+ExitWorktree(action: "remove")
+```
+
+Assumed: it returns the session to `/Users/p/git/notes-app` and deletes the worktree and its auto-created branch. It never needs `discard_changes`.
+
+```bash
+git worktree list
+git branch --list 'worktree-*' 'fix-date-format'
+git status --porcelain
+git stash list
+```
+
+Assumed:
+- Only the main checkout is listed.
+- No leftover helper branch exists.
+- Status shows only ` M src/offline/queue.ts`.
+- The stash list is empty.
+
+**Final message to partner:**
+> The PR is open: https://github.com/p/notes-app/pull/NN (`fix/date-format` → `main`). It contains `src/date/format.ts` and `src/date/format.test.ts`.
+>
+> - I did not run tests on the main-based branch. They passed earlier on feat/offline, so CI will be the first check on main.
+> - The other agent's `src/offline/queue.ts` edit is untouched, and the checkout is still on feat/offline.
+> - The temporary worktree is removed and the stash is empty. Nothing of mine is left uncommitted in any checkout.
+
+SUMMARY: The work happened in a short-lived native worktree (`EnterWorktree`) on `fix/date-format` off `origin/main`, because another agent's uncommitted `queue.ts` edit meant I could not switch branches in the shared checkout. I moved my two date files there by stash, committed, pushed, opened the PR, and removed the worktree.

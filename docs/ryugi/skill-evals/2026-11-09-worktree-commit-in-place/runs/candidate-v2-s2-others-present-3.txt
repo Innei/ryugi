@@ -1,0 +1,64 @@
+Simulation only; nothing is run. I'm not re-running the "Where to work" checks. The earlier answer was in place on canary, and this is the "new branch from HEAD, to commit" case. Another agent's edit to `src/store/chat.ts` is in the checkout, so after committing I switch back to canary.
+
+**Tool call 1: Bash**
+```bash
+git log --oneline -5
+```
+Assumed output: five commits in the repo's gitmoji + conventional style, e.g. `a1b2c3d 🐛 fix: ...`.
+
+**Tool call 2: Bash**
+```bash
+git switch -c fix/message-scroll
+```
+Assumed: `Switched to a new branch 'fix/message-scroll'`. No files change, so the other agent's `chat.ts` edit stays put.
+
+**Tool call 3: Bash**
+```bash
+git add src/features/Scroll/index.tsx src/features/Scroll/index.test.tsx
+git commit -m "🐛 fix: keep message list scrolled to bottom on new messages" -- src/features/Scroll/index.tsx src/features/Scroll/index.test.tsx
+```
+I stage my two paths by name and pass the same pathspec to `commit`, so nothing else can land in it, even if the other agent has staged `chat.ts`. Assumed: `[fix/message-scroll 4e5f6a7] ... 2 files changed`.
+
+**Tool call 4: Bash**
+```bash
+git switch -
+```
+Assumed: `Switched to branch 'canary'`. This is right after the commit, so the other agent's branch isn't left for longer than a commit.
+
+**Tool call 5: Bash**
+```bash
+git log -1 fix/message-scroll --format='%h %an %s'
+```
+Assumed: `4e5f6a7 ... 🐛 fix: keep message list scrolled to bottom on new messages`. This is my commit, so nobody committed onto the branch in between. If it weren't mine, I would stop and show my partner.
+
+**Tool call 6: Bash**
+```bash
+git push -u origin fix/message-scroll
+```
+Assumed: the push succeeds and sets up tracking.
+
+**Tool call 7: Bash**
+```bash
+gh pr create --base canary --head fix/message-scroll \
+  --title "🐛 fix: keep message list scrolled to bottom on new messages" \
+  --body "Fixes the message list scroll bug in \`src/features/Scroll\`.
+
+- Fix in \`src/features/Scroll/index.tsx\`
+- Added \`src/features/Scroll/index.test.tsx\`
+
+Tests: the new Scroll tests pass locally."
+```
+Assumed output: a PR URL, e.g. `https://github.com/lobehub/lobe-chat/pull/1234`.
+
+**Tool call 8: Bash**
+```bash
+git status --porcelain
+```
+Assumed: ` M src/store/chat.ts` only. My changes are all committed and the other agent's edit is untouched.
+
+**Message to my partner:**
+> PR is open: https://github.com/lobehub/lobe-chat/pull/1234 (`fix/message-scroll` → `canary`).
+> It contains only `src/features/Scroll/index.tsx` and the new `index.test.tsx`, in one commit. The tests passed on canary before I committed. I did not re-run them on the branch, but it is the same content as canary plus my commit.
+> The checkout is back on `canary`. The uncommitted ` M src/store/chat.ts` there belongs to another agent, and I left it alone. I created no worktrees, so there is nothing to clean up. I have no uncommitted changes left.
+
+SUMMARY: Worked in place in /Users/p/git/lobe-chat. I made the branch with `git switch -c`, committed only my two paths, and switched back to canary because another agent's `chat.ts` edit is in the shared checkout. No worktree was needed, since this was a new branch from HEAD with nothing to move.

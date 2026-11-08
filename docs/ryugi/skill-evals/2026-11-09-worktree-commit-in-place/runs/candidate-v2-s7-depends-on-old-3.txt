@@ -1,0 +1,58 @@
+**Tool call 1: Bash**, the once-per-session check (in the repo, `/Users/p/git/notes-app`):
+```bash
+cd /Users/p/git/notes-app && git rev-parse --path-format=absolute --git-dir --git-common-dir && git rev-parse --show-superproject-working-tree && git branch --show-current && git status --porcelain && cat .ryugi/sdd/*/EXPLORING
+```
+Assumed output:
+```
+/Users/p/git/notes-app/.git
+/Users/p/git/notes-app/.git
+(empty: not a submodule)
+feat/offline
+ M src/date/format.ts
+?? src/date/format.test.ts
+zsh: no matches found: .ryugi/sdd/*/EXPLORING
+```
+Reading it:
+- It is not a linked worktree, because git-dir equals git-common-dir.
+- Only my own edits are present, and there is no `EXPLORING` file, so nobody else is in this checkout.
+- The work has to be developed and tested on `main`, which is other content. That is the "another base, nobody else" case.
+- feat/offline is finished, so I switch in place and the uncommitted changes come along. No worktree is needed.
+
+**Tool call 2: Bash**
+```bash
+git switch main
+```
+Succeeds. The two changed files carry over.
+
+**Tool call 3: Bash**
+```bash
+git pull --ff-only
+```
+Succeeds.
+
+**Tool call 4: Bash**
+```bash
+git switch -c fix/date-format
+```
+Succeeds. I'm now on `fix/date-format` with the changes uncommitted.
+
+**Tool call 5: Bash**, running the change's tests on the new base:
+```bash
+pnpm test src/date
+```
+Output (given): fails with `src/date/format.ts: Cannot find module '../offline/clock'`. `src/offline/clock.ts` exists only on feat/offline.
+
+The fix depends on the old branch, so I do not commit, push or open a PR. I stop here and message my partner:
+
+> I can't ship the date fix on its own yet. I switched to `main`, pulled, and created `fix/date-format` with the fix on top. `pnpm test src/date` fails there with `Cannot find module '../offline/clock'`. `src/offline/clock.ts` exists only on `feat/offline`, and my `format.ts` change imports it.
+>
+> Current state: I'm on `fix/date-format` with `src/date/format.ts` (modified) and `src/date/format.test.ts` (new) uncommitted. Nothing is committed or pushed, and `feat/offline` is untouched with its PR still open.
+>
+> Options:
+> 1. **Decouple the fix from `offline/clock`** so it works on `main` alone. This is what I recommend, since you want it to ship independently. If the clock use is small, I'd inline or inject the time source, rerun the tests on `main`, then commit, push and open the PR.
+> 2. **Stack the PR on `feat/offline`.** It would target that branch, and the fix would land after the offline PR merges.
+> 3. **Wait for `feat/offline` to merge**, then open the PR off `main`.
+>
+> Which do you want? I'll go with option 1 if you say go.
+
+SUMMARY: Worked in place in /Users/p/git/notes-app (no worktree): feat/offline was finished and only my own edits were present, so I switched to main and created fix/date-format with the uncommitted changes. Tests failed there because the fix depends on feat/offline code, so I did not commit and stopped to ask my partner.

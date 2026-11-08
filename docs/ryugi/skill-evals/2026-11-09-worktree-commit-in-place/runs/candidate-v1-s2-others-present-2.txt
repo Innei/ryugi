@@ -1,0 +1,89 @@
+I would not run `git switch -c` in the shared checkout, because another agent has an uncommitted change in `src/store/chat.ts`. I'd move my two files into a worktree, commit them there, push, open the PR, and remove the worktree. I would not rerun the "Where to work" checks, since that question was settled earlier in the session.
+
+**1. Stash only my paths (original checkout, `/Users/p/git/lobe-chat`)**
+
+```bash
+git -C /Users/p/git/lobe-chat stash push --include-untracked -- src/features/Scroll/index.tsx src/features/Scroll/index.test.tsx
+```
+Assumed output: `Saved working directory and index state WIP on canary: <sha> <subject>`. `src/store/chat.ts` stays modified in place.
+
+**2. Create the worktree with the native tool**
+
+```
+EnterWorktree(name: "fix-message-scroll")
+```
+Assumed result: a worktree at `/Users/p/git/lobe-chat/.claude/worktrees/fix-message-scroll` on a new branch from HEAD (canary), and the session is now inside it. I use a slash-free directory name and rename the branch in step 4.
+
+**3. Pop the stash inside the worktree**
+
+```bash
+git stash pop
+```
+Assumed output: no conflicts, with ` M src/features/Scroll/index.tsx` and `?? src/features/Scroll/index.test.tsx` restored.
+
+**4. Rename the branch to the requested name and confirm the base**
+
+```bash
+git branch -m fix/message-scroll
+git branch --show-current
+git merge-base --is-ancestor canary HEAD && echo based-on-canary
+```
+Assumed output: `fix/message-scroll` and `based-on-canary`.
+
+**5. Check the move left nothing behind in the original checkout**
+
+```bash
+git -C /Users/p/git/lobe-chat status --porcelain -- src/features/Scroll/index.tsx src/features/Scroll/index.test.tsx
+```
+Assumed output: empty. If the pop had conflicted or this had printed anything, I would stop and show my partner.
+
+I would skip the install and test run, because this worktree only exists for the commit. The tests already passed on the identical content.
+
+**6. Commit only my paths by name**
+
+```bash
+git add src/features/Scroll/index.tsx src/features/Scroll/index.test.tsx
+git commit -m "🐛 fix: fix message list scroll bug"
+```
+Assumed result: one commit with 2 files changed.
+
+**7. Push, then open the PR (the PR request covers the push)**
+
+```bash
+git push -u origin fix/message-scroll
+gh pr create --base canary --head fix/message-scroll \
+  --title "🐛 fix: fix message list scroll bug" \
+  --body "Fixes the scroll bug in the message list (src/features/Scroll). Adds a regression test in src/features/Scroll/index.test.tsx. Tests pass locally."
+```
+Assumed output: the branch is pushed and `https://github.com/lobehub/lobe-chat/pull/12345` is printed.
+
+**8. Remove the worktree now, as the move rule says, since the pushed branch carries any later fixes**
+
+```
+ExitWorktree(action: "remove")
+```
+The worktree is clean because everything is committed, so no `discard_changes` is needed. Assumed result: the session returns to `/Users/p/git/lobe-chat` and the worktree directory is removed.
+
+**9. Verify the end state from the main repo root**
+
+```bash
+git worktree list
+git stash list
+git status --porcelain
+git branch --show-current
+```
+Assumed output:
+- `git worktree list` shows only the main checkout.
+- `git stash list` is empty.
+- `git status --porcelain` shows only ` M src/store/chat.ts`, the other agent's change.
+- The current branch is still `canary`.
+
+**Message to my partner:**
+
+> The PR is open: https://github.com/lobehub/lobe-chat/pull/12345 (`fix/message-scroll` → `canary`).
+>
+> - I moved only my two files (`src/features/Scroll/index.tsx` and `index.test.tsx`) into a temporary worktree and committed them there. I did this because another agent has an uncommitted change in `src/store/chat.ts`, so I didn't switch branches in the shared checkout.
+> - I didn't rerun tests in the worktree, since the content is identical to what passed earlier.
+> - The worktree is removed. The main checkout is still on `canary` and holds none of my changes. The only uncommitted file there is the other agent's `src/store/chat.ts`, which I left alone.
+
+SUMMARY: The PR work happened in a temporary native worktree (`EnterWorktree`, branch `fix/message-scroll` off canary), because another agent's uncommitted `src/store/chat.ts` change meant I couldn't switch branches in the shared checkout; I moved my files by stash, committed, pushed, opened the PR, and removed the worktree.

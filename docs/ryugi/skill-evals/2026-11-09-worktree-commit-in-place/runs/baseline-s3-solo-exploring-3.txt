@@ -1,0 +1,80 @@
+Simulated sequence. Nothing below is actually run.
+
+The earlier "work in place" answer stands for the date-format fix. Committing it on a new branch is a different case: the skill says to move the changes, not switch branches in the shared checkout. Another session is exploring `src/sync/queue.ts`, so I won't touch that file or switch branches.
+
+**Tool call 1: Bash** (cwd `/Users/p/git/notes-app`)
+```bash
+git stash push --include-untracked -- src/date/format.ts src/date/format.test.ts
+```
+Assumed output: `Saved working directory and index state WIP on main: <sha> <subject>`. Only my two paths are stashed.
+
+**Tool call 2: EnterWorktree**
+```
+EnterWorktree(name: "fix/date-format")
+```
+The skill's "move" rule is the explicit worktree request this tool requires. Assumed result: a worktree at `.claude/worktrees/fix/date-format`, created from HEAD (main), with the session switched into it. The branch name might be prefixed or mangled by the tool.
+
+**Tool call 3: Bash** (in the worktree)
+```bash
+git branch --show-current
+```
+Assumed output: `worktree-fix-date-format`. That is not the name my partner asked for, so:
+
+**Tool call 4: Bash**
+```bash
+git branch -m fix/date-format
+```
+If the tool had already produced `fix/date-format`, I would skip this step.
+
+**Tool call 5: Bash** (in the worktree)
+```bash
+git stash pop
+```
+Assumed result: clean pop, restoring ` M src/date/format.ts` and `?? src/date/format.test.ts`. If it conflicted, I would stop and show my partner.
+
+**Tool call 6: Bash**
+```bash
+git -C /Users/p/git/notes-app status --porcelain -- src/date/format.ts src/date/format.test.ts
+```
+Assumed output: nothing, so the changes were moved, not copied.
+
+No install and no test run here, since the skill says the worktree lives only for the commit. The tests already passed on this exact content.
+
+**Tool call 7: Bash** (in the worktree)
+```bash
+git add src/date/format.ts src/date/format.test.ts && git commit -m "fix(date): correct date formatting" && git status --porcelain
+```
+Paths are staged by name, never `-A`. Assumed result: one commit, and status prints nothing.
+
+**Tool call 8: Bash**
+```bash
+git push -u origin fix/date-format
+```
+My partner asked for the PR, so pushing is authorized. Assumed result: branch pushed.
+
+**Tool call 9: Bash**
+```bash
+gh pr create --base main --head fix/date-format \
+  --title "fix(date): correct date formatting" \
+  --body "Fixes the date-format bug in src/date/format.ts. Adds src/date/format.test.ts covering the fix. Tests pass locally."
+```
+Assumed output: `https://github.com/<owner>/notes-app/pull/123`.
+
+**Tool call 10: ExitWorktree**
+```
+ExitWorktree(action: "remove")
+```
+The skill removes a commit-only worktree at once. The commit is pushed and the PR is open, so the remote branch carries any later fixes. I did not copy a spec in, so there is nothing to delete first. The status is clean, so removal succeeds without `discard_changes`. The session returns to `/Users/p/git/notes-app`, and the local `fix/date-format` branch is deleted along with the worktree.
+
+**Tool call 11: Bash** (from the main repo root)
+```bash
+git worktree prune && git status --porcelain
+```
+Assumed output: nothing. The shared checkout holds none of my changes.
+
+**Message to my partner:**
+> PR opened: https://github.com/<owner>/notes-app/pull/123 (`fix/date-format` → `main`).
+>
+> I moved the two date-format files (`src/date/format.ts`, `src/date/format.test.ts`) out of the shared main checkout with a stash. I committed them in a temporary worktree and pushed the branch. The worktree is removed, and nothing of mine is left uncommitted in `/Users/p/git/notes-app`. I did not touch `src/sync/queue.ts`, which another session is exploring. I didn't re-run the tests in the worktree, since the content is the same as when they passed.
+
+SUMMARY: The PR commit was made in a temporary native worktree (`EnterWorktree`) because the change had to be committed on a new branch while the shared main checkout stayed untouched. I moved my changes there with a stash, pushed, opened the PR, and removed the worktree.

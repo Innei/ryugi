@@ -1,0 +1,88 @@
+I would not run `git switch main`. Switching branches in the shared checkout is what the skill forbids, and the abort you described is the symptom. I would move the changes instead.
+
+## 1. Where to work (once per session, in `/Users/p/git/notes-app`)
+
+```bash
+cd /Users/p/git/notes-app
+git rev-parse --path-format=absolute --git-dir --git-common-dir
+git rev-parse --show-superproject-working-tree
+git branch --show-current
+git status --porcelain
+cat .ryugi/sdd/*/EXPLORING
+```
+
+Assumed output:
+- `--git-dir` and `--git-common-dir` are both `/Users/p/git/notes-app/.git`, so this is the main checkout, not a linked worktree.
+- No superproject is printed, so it is not a submodule.
+- Branch is `feat/offline`.
+- Status shows ` M src/date/format.ts` and `?? src/date/format.test.ts`.
+- `cat` fails with "No such file or directory", so no EXPLORING file exists.
+
+Applying the table:
+- The checkout is not a linked worktree.
+- You named a branch but not a place to work.
+- The fix has to be committed on content based on `main`, not on `feat/offline`. That matches "New worktree, without asking", and your request counts as the explicit request `EnterWorktree` needs.
+
+## 2. Move the changes out of the shared checkout
+
+```bash
+git stash push --include-untracked -- src/date/format.ts src/date/format.test.ts
+```
+
+Assumed: it prints `Saved working directory and index state WIP on feat/offline: ...`.
+
+## 3. Create the worktree with the native tool
+
+`EnterWorktree(name: "fix-date-format")`
+
+Assumed: it creates `.claude/worktrees/fix-date-format` on an auto-named branch and switches the session into it. That branch starts from HEAD, which is `feat/offline`, so it would carry the offline commits. I rebase it onto `main` by naming the branch I want. The worktree is clean, so nothing is at risk:
+
+```bash
+git switch -c fix/date-format main
+```
+
+Assumed: it prints `Switched to a new branch 'fix/date-format'`. I would not run an install or the test suite, because this worktree exists only to commit.
+
+## 4. Apply the changes in the worktree
+
+```bash
+git stash pop
+```
+
+Assumed: it applies cleanly. If it conflicted, I would stop and show you the conflict.
+
+```bash
+git -C /Users/p/git/notes-app status --porcelain -- src/date/format.ts src/date/format.test.ts
+```
+
+Assumed: it prints nothing, so the original checkout no longer holds my edits.
+
+## 5. Commit only my paths
+
+```bash
+git status --porcelain
+git add src/date/format.ts src/date/format.test.ts
+git commit -m "fix(date): correct date formatting"
+git push -u origin fix/date-format
+gh pr create --base main --head fix/date-format --title "fix(date): correct date formatting" --body "Standalone fix for the date-format bug, split out from feat/offline."
+```
+
+Assumed: `git status` shows exactly those two paths, the push succeeds, and `gh` prints a PR URL.
+
+## 6. Clean up
+
+I created this worktree only to commit, so it goes away now. The pushed branch carries any later fixes.
+
+`ExitWorktree(action: "remove")`
+
+The worktree is clean after the commit, so I would not pass `discard_changes`. Assumed: removal succeeds and the session returns to `/Users/p/git/notes-app`.
+
+## Message to my partner
+
+> The date fix is up as a standalone PR: <PR URL>, from `fix/date-format` off `main`. It contains only `src/date/format.ts` and `src/date/format.test.ts`.
+>
+> - **How I did it:** I stashed those two files, made a temporary worktree based on `main`, committed and pushed there, then removed it. I didn't switch branches in your checkout, because that was aborting on the local changes.
+> - **Checkout state:** `feat/offline` is still checked out. It no longer has the date fix as a local change, and I left no uncommitted changes in either checkout.
+> - **Tests:** I didn't re-run them on the `main`-based branch. They passed earlier on `feat/offline`, so CI will be the first run on the isolated commit.
+
+SUMMARY: The work happened in a temporary native worktree off `main`, because the date fix had to be committed on `main`-based content without switching branches in the shared checkout. I moved the changes there with stash, committed only my two files, pushed, opened the PR, and removed the worktree.

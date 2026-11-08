@@ -1,0 +1,45 @@
+**Step 1: check where I'm working (once per session)**
+
+```bash
+git rev-parse --path-format=absolute --git-dir --git-common-dir
+git rev-parse --show-superproject-working-tree
+git branch --show-current
+git status --porcelain
+cat .ryugi/sdd/*/EXPLORING
+```
+
+Assumed output:
+- `--git-dir` and `--git-common-dir` are both `/Users/p/git/notes-app/.git`, so this is not a linked worktree.
+- The superproject line is empty.
+- The branch is `feat/offline`.
+- Status is the given ` M src/date/format.ts` and `?? src/date/format.test.ts`, both mine.
+- `cat` fails with `No such file or directory`, so there is no `EXPLORING` file.
+
+Nobody else is working in this checkout. The date fix has to move to a new branch off `main`, so I follow "Move your changes", not the table. `feat/offline` is finished, so I switch in place and the uncommitted changes come along.
+
+**Step 2: switch to main**
+
+```bash
+git switch main
+```
+
+Given output:
+```
+error: Your local changes to the following files would be overwritten by checkout:
+        src/date/format.ts
+Aborting
+```
+
+The skill says to stop here. My `format.ts` edit is built on `feat/offline`'s version of that file. I won't stash, force the switch, or branch from HEAD, because that would silently pull the `feat/offline` content into a PR meant to be based on `main`. I also won't create a worktree, since the skill only does that in the case where someone else is working in the checkout. Nothing was changed by the failed switch.
+
+**Message to my partner:**
+
+> I can't cleanly base `fix/date-format` on `main`. `git switch main` aborted because my uncommitted change to `src/date/format.ts` was written on top of `feat/offline`'s version of that file, so the fix depends on code that isn't in `main` yet. Nothing was changed. I'm still on `feat/offline` with the fix uncommitted.
+>
+> Which do you prefer?
+> 1. **Stack it.** I create `fix/date-format` from `feat/offline` and open the PR against `feat/offline`. It ships after that PR merges, or gets retargeted to `main` then.
+> 2. **Wait.** I hold the fix uncommitted until the `feat/offline` PR merges. Then I switch to `main`, pull, create `fix/date-format`, run the tests on the new base, and open the PR.
+
+I then wait for the answer.
+
+SUMMARY: No work done beyond checking state; the fix stays uncommitted in the main checkout on feat/offline, because `git switch main` aborted (the edit depends on feat/offline's version of format.ts), so I'm asking whether to stack the PR on feat/offline or wait for it to merge.

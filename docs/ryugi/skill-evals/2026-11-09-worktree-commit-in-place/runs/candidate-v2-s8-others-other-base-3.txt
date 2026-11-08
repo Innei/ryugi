@@ -1,0 +1,68 @@
+I'm not re-running the "Where to work" commands because the session already has those answers:
+- The checkout is `/Users/p/git/notes-app`, a normal checkout (not a linked worktree), with HEAD on `feat/offline`.
+- Another agent has an uncommitted edit in `src/offline/queue.ts`, so someone else is working here.
+- The target base is `main`, not HEAD.
+
+That combination falls under "Someone else, and another base": I don't switch branches in the shared checkout. I move my two paths by stash into a worktree, and since I only need it to commit, it lives just for the commit. The "New worktree" row is the standing instruction `EnterWorktree` asks for.
+
+**Message to partner:**
+> Moving the date fix to a fresh worktree off `main` so I don't take `feat/offline` away from the other agent. I'll push `fix/date-format` and open the PR.
+
+**Tool calls, in order**
+
+1. Bash: `git -C /Users/p/git/notes-app stash list`
+   - Assumed output: empty. Stashes are shared across worktrees, so I confirm mine will be the top one.
+
+2. Bash: `git -C /Users/p/git/notes-app stash push --include-untracked -m "date-fix move" -- src/date/format.ts src/date/format.test.ts`
+   - Assumed output: `Saved working directory and index state On feat/offline: date-fix move`.
+
+3. Bash: `git -C /Users/p/git/notes-app status --porcelain`
+   - Assumed output: ` M src/offline/queue.ts` only. My paths are gone and the other agent's edit is untouched.
+
+4. EnterWorktree(name: "fix-date-format")
+   - Assumed result: worktree at `/Users/p/git/notes-app/.claude/worktrees/fix-date-format` on a new branch cut from HEAD (`feat/offline`), session switched into it.
+   - It branches from HEAD, not `main`, and the worktree is still clean, so I re-base it by creating the right branch.
+
+5. Bash: `git switch -c fix/date-format main`
+   - Assumed output: `Switched to a new branch 'fix/date-format'`. There are no changes to carry, so nothing can be overwritten.
+
+6. Bash: `git stash pop`
+   - Assumed output: clean apply, with ` M src/date/format.ts` and `?? src/date/format.test.ts`. If it conflicted, I'd stop and show you.
+
+7. Bash: `git -C /Users/p/git/notes-app status --porcelain -- src/date/format.ts src/date/format.test.ts`
+   - Assumed output: nothing, so the move is complete and nothing is left in the original checkout.
+
+8. Bash: `git status --porcelain`
+   - Assumed output: only my two paths, with no queue.ts.
+
+9. Bash: `git add src/date/format.ts src/date/format.test.ts`
+   - I stage by name, never `-A`.
+
+10. Bash: `git commit -m "fix(date): correct date formatting"`
+    - Assumed output: a commit with 2 files changed.
+    - I do no install and no test run here, since the worktree only exists for this commit.
+
+11. Bash: `git push -u origin fix/date-format`
+    - Assumed output: branch pushed. You asked for the PR, so this is authorized.
+
+12. Bash: `gh pr create --base main --head fix/date-format --title "fix(date): correct date formatting" --body "Fixes a date-format bug. Split out from feat/offline so it can ship on its own. Tests added in src/date/format.test.ts; they passed on the feat/offline checkout and were not re-run on main."`
+    - Assumed output: a PR URL, `https://github.com/<owner>/notes-app/pull/NN`.
+
+13. ExitWorktree(action: "remove")
+    - The worktree is clean after the commit, so no `discard_changes`. The pushed branch carries any later fixes, so I remove it at once. This also returns the session to `/Users/p/git/notes-app`, so removal doesn't run from inside the worktree.
+    - Assumed result: worktree removed and its tool-created branch deleted.
+
+14. Bash: `git -C /Users/p/git/notes-app status --porcelain && git -C /Users/p/git/notes-app branch --show-current && git -C /Users/p/git/notes-app ls-remote --heads origin fix/date-format`
+    - Assumed output:
+      - ` M src/offline/queue.ts` (the other agent's edit, untouched)
+      - `feat/offline`
+      - the remote head for `fix/date-format`
+    - So the PR branch survives and the shared checkout is as I found it.
+
+**Final message to partner:**
+> PR opened: <URL> (`fix/date-format` → `main`), containing only `src/date/format.ts` and `src/date/format.test.ts`.
+> - I didn't switch branches in the shared checkout. The other agent's `src/offline/queue.ts` edit is untouched and HEAD is still `feat/offline`.
+> - The tests passed on the `feat/offline` checkout. I did not re-run them on `main`, so CI will be the first check on the PR as it stands.
+> - The temporary worktree is removed, and none of my uncommitted changes remain in any checkout.
+
+SUMMARY: Worked in a temporary native worktree (`EnterWorktree`) with `fix/date-format` cut from `main`, because another agent has uncommitted edits in the shared checkout, so I stash-moved my two date files there instead of switching branches. I committed and pushed them, opened the PR, and removed the worktree.

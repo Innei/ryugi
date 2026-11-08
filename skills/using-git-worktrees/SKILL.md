@@ -59,8 +59,40 @@ shared tree; CI checks the commit on its own.
 
 When uncommitted work has to go to another branch, either to keep
 developing there or just to commit it there (a PR branch off the default
-branch, for example), do not switch branches in the shared checkout. Move
-the changes:
+branch, for example), this section decides how, not the table above.
+Someone else is working in the checkout when `git status --porcelain`
+lists edits you did not make, or an `EXPLORING` file exists.
+
+**A new branch from HEAD, to commit.** `git switch -c <branch>` changes no
+files: run it in place and commit your paths there.
+
+- Nobody else: push and stay on the new branch.
+- Someone else: run `git switch -` right after the commit, then push.
+  If `git log -1 <branch>` is not your commit, someone committed onto
+  your branch in between: stop and show your human partner.
+
+**Another base or an existing branch, nobody else.** The branch HEAD is
+on is finished. Switch in place; your uncommitted changes come along:
+
+```bash
+git switch <base>
+git pull --ff-only
+git switch -c <branch>   # or: git switch <existing branch>
+```
+
+- If git refuses a step because your changes would be overwritten, they
+  are built on the old branch's version of those files: stop and ask your
+  human partner whether to stack the PR on the old branch or wait for it
+  to merge.
+- Run your change's tests on the new base. If they fail, your change
+  depends on the old branch: say so and do not commit.
+- Commit your paths, push, and stay there. If
+  `git log <old branch> --not --remotes` lists commits, name them in your
+  final message; do not push them.
+
+**Someone else, and another base or an existing branch.** HEAD would leave
+their branch for longer than a commit. Do not switch branches in the
+shared checkout. Move the changes:
 
 ```bash
 git stash push --include-untracked -- <your paths>

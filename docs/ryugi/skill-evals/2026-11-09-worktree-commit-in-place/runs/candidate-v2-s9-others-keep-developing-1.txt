@@ -1,0 +1,75 @@
+**Step 1: confirm the target branch exists and is free** (Bash, in /Users/p/git/search-app)
+
+```bash
+git branch --list feat/search-v2 && git worktree list
+```
+Assumed output: `  feat/search-v2` is listed, and no worktree has it checked out.
+
+The checkout also holds someone else's edit (` M docs/notes.md`). Per the skill, I don't switch branches in the shared checkout. I move my changes into a worktree instead.
+
+**Step 2: stash only my paths** (Bash)
+
+```bash
+git stash push --include-untracked -- src/search/query.ts src/search/query.test.ts
+```
+Assumed output: `Saved working directory and index state WIP on main: <sha> ...`
+
+**Step 3: confirm the shared checkout kept only the other person's edit** (Bash)
+
+```bash
+git status --porcelain
+```
+Assumed output: ` M docs/notes.md`
+
+**Step 4: create the worktree with the native tool**
+
+`EnterWorktree(name: "search-v2")`
+
+Your instruction to work on feat/search-v2 and the skill's "move" rule count as the explicit request this tool needs. It creates `.claude/worktrees/search-v2` on a new branch from main, and the session switches into it. Assumed result: success.
+
+**Step 5: put the worktree on the existing branch** (Bash, inside the worktree)
+
+```bash
+git switch feat/search-v2
+```
+Assumed output: `Switched to branch 'feat/search-v2'`. The worktree is clean, so nothing blocks the switch. The tool's throwaway branch is now empty and is deleted when I remove the worktree.
+
+**Step 6: check the stash is mine, then pop it** (Bash, inside the worktree)
+
+```bash
+git stash list
+git stash pop
+```
+Assumed output: `stash@{0}: WIP on main: ...` is the top entry, then the pop applies cleanly:
+```
+ M src/search/query.ts
+?? src/search/query.test.ts
+```
+If the pop conflicted, I would stop and show you.
+
+**Step 7: verify nothing of mine is left in the original checkout** (Bash)
+
+```bash
+git -C /Users/p/git/search-app status --porcelain -- src/search/query.ts src/search/query.test.ts
+```
+Assumed output: empty, as required. `docs/notes.md` is untouched there.
+
+**Step 8: set up the worktree** (Bash, inside the worktree)
+
+The lockfile is committed, so I use a frozen install.
+
+```bash
+pnpm install --frozen-lockfile
+pnpm test
+```
+Assumed output: the install succeeds. For the test run I'm assuming the suite passes on top of feat/search-v2, including `src/search/query.test.ts`. If my change had failed on this base, I would tell you and not commit, because it would depend on main.
+
+**Message to you:**
+
+> Moved. Your change is on `feat/search-v2` in the worktree `.claude/worktrees/search-v2`. I stashed only `src/search/query.ts` and `src/search/query.test.ts`, popped them there, and confirmed the original checkout no longer has them. I didn't switch branches in the shared checkout because `docs/notes.md` has someone else's uncommitted edit; I left it alone. Dependencies are installed and the tests pass on the new base. I'm continuing the implementation here.
+
+I then continue the implementation in the worktree. When it is time to commit, I stage the two paths by name and never use `git add -A`.
+
+I do not remove the worktree yet. Cleanup happens once the work has landed or you say it is done, and it happens from the main repo root. If removal is refused, I show you `git status` and ask before using `discard_changes`.
+
+SUMMARY: The work moved to a native worktree (`.claude/worktrees/search-v2`) switched to the existing `feat/search-v2`, because someone else's edit in the shared checkout ruled out switching branches there, and my two paths were stash-moved, not copied.

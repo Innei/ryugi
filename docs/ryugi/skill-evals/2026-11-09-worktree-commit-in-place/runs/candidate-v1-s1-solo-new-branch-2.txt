@@ -1,0 +1,51 @@
+Nothing is run here; this is the simulated sequence.
+
+The skill's "Move your changes" rule applies. Nobody else is in the checkout: the new branch starts from HEAD, status lists only my two paths, and there is no `EXPLORING` file. So I run `git switch -c` in place, without a worktree or stash.
+
+**Tool call 1: Bash**
+```bash
+git branch --show-current && git status --porcelain
+```
+Assumed output:
+```
+main
+ M src/date/format.ts
+?? src/date/format.test.ts
+```
+This confirms I'm still on main and the status still lists only my changes.
+
+**Tool call 2: Bash**
+```bash
+git switch -c fix/date-format
+```
+Assumed output: `Switched to a new branch 'fix/date-format'`. No files change.
+
+**Tool call 3: Bash** (stage by name, never `-A`, `.` or `-a`)
+```bash
+git add src/date/format.ts src/date/format.test.ts && git commit -m "fix(date): correct date formatting bug" -m "Adds regression tests in src/date/format.test.ts."
+```
+Assumed output: `[fix/date-format abc1234] fix(date): correct date formatting bug` with 2 files changed.
+
+**Tool call 4: Bash**
+```bash
+git push -u origin fix/date-format
+```
+Assumed output: the branch is pushed and tracking is set up. Your request to open a PR covers the push.
+
+**Tool call 5: Bash**
+```bash
+gh pr create --base main --head fix/date-format --title "fix(date): correct date formatting bug" --body "Fixes a date-format bug in src/date/format.ts. Adds regression tests in src/date/format.test.ts. Tests pass locally."
+```
+Assumed output: `https://github.com/p/notes-app/pull/42`
+
+**Tool call 6: Bash**
+```bash
+git status --porcelain
+```
+Assumed output: empty, so no uncommitted changes are left.
+
+**Message to partner:**
+> PR is open: https://github.com/p/notes-app/pull/42 (`fix/date-format` → `main`).
+> I committed only `src/date/format.ts` and `src/date/format.test.ts`. The checkout is now on `fix/date-format` with a clean tree, and everything is pushed. No worktree was created, since nobody else had changes in the checkout and the new branch started from main's HEAD.
+
+SUMMARY: Worked in place in /Users/p/git/notes-app (`git switch -c fix/date-format`, then committed, pushed and opened the PR), because only my own changes were in the checkout, the branch started from HEAD, and no `EXPLORING` file existed, so no worktree was needed.

@@ -1,0 +1,46 @@
+**Tool call 1: Bash**, the once-per-session check (run in `/Users/p/git/notes-app`):
+```bash
+cd /Users/p/git/notes-app && git rev-parse --path-format=absolute --git-dir --git-common-dir && git rev-parse --show-superproject-working-tree && git branch --show-current && git status --porcelain && cat .ryugi/sdd/*/EXPLORING
+```
+Assumed output:
+```
+/Users/p/git/notes-app/.git
+/Users/p/git/notes-app/.git
+feat/offline
+ M src/date/format.ts
+?? src/date/format.test.ts
+cat: .ryugi/sdd/*/EXPLORING: No such file or directory
+```
+- `--git-dir` equals `--git-common-dir`, so this is not a linked worktree.
+- The superproject output is empty, so this is not a submodule.
+- The only edits are mine, and there is no `EXPLORING` file, so nobody else is working in this checkout.
+
+**Decision.** My partner's instruction names a new branch off `main`, which is the "another base, nobody else" case. The skill says `feat/offline` is finished, so I switch in place and my uncommitted changes come along. No worktree and no stash are needed.
+
+**Tool call 2: Bash**
+```bash
+cd /Users/p/git/notes-app && git switch main
+```
+Output (given):
+```
+error: Your local changes to the following files would be overwritten by checkout:
+	src/date/format.ts
+Aborting
+```
+This means my `format.ts` edit is built on the `feat/offline` version of that file. `feat/offline` has committed changes to it that `main` lacks. The skill says to stop here and ask. I will not stash, force the switch, or copy files around. I also will not commit or push anything, because it is unclear which base is right.
+
+**Message to my partner:**
+
+> I can't move the date fix onto `main` yet. `git switch main` was refused because `src/date/format.ts` differs between `main` and `feat/offline`. My date-fix edit is built on top of `feat/offline`'s version of that file, so it depends on that branch's changes.
+>
+> Nothing was changed: I'm still on `feat/offline`, and the edits to `src/date/format.ts` and `src/date/format.test.ts` are intact and uncommitted.
+>
+> Which do you want?
+> 1. **Stack it:** create `fix/date-format` from `feat/offline` and open the PR against `feat/offline`. It ships after that PR merges, or retargets to `main` once it does.
+> 2. **Wait:** hold the fix until the `feat/offline` PR merges, then branch off the updated `main`.
+>
+> If you want it independent of `feat/offline`, I'd need to re-apply the fix on top of `main`'s version of `format.ts`. I'd do that only with your go-ahead, and I'd run the tests on `main` before committing.
+
+I stop here and wait for my partner's answer.
+
+SUMMARY: Worked in place in `/Users/p/git/notes-app` (nobody else was in the checkout, so no worktree) on `feat/offline`; the switch to `main` was refused because my fix depends on that branch's version of `format.ts`, so I stopped to ask whether to stack the PR or wait for the merge.

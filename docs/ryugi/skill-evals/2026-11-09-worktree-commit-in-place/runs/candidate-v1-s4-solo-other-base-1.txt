@@ -1,0 +1,98 @@
+Simulated sequence, nothing actually run.
+
+**Decision:** The PR branch must start from `main`, not from HEAD (`feat/offline`). That is "another base", so I don't `git switch -c` in the shared checkout. I stash-move the two files into a native worktree, commit and push there, and remove it at once with no install or test run. My partner's request counts as the explicit worktree request that `EnterWorktree` asks for.
+
+**Tool call 1: Bash** (the once-per-session check, in `/Users/p/git/notes-app`)
+```bash
+git rev-parse --path-format=absolute --git-dir --git-common-dir
+git rev-parse --show-superproject-working-tree
+git branch --show-current
+git status --porcelain
+cat .ryugi/sdd/*/EXPLORING
+```
+Assumed output:
+- Both git dirs are `/Users/p/git/notes-app/.git`, so this is not a linked worktree.
+- No superproject.
+- Branch is `feat/offline`.
+- Status shows ` M src/date/format.ts` and `?? src/date/format.test.ts`.
+- `cat` fails with "no such file", so there is no `EXPLORING`.
+
+**Tool call 2: Bash** (move my changes out of the checkout)
+```bash
+git stash push --include-untracked -- src/date/format.ts src/date/format.test.ts
+```
+Assumed: "Saved working directory and index state". The checkout is now clean.
+
+**Tool call 3: EnterWorktree**
+```
+EnterWorktree(name: "fix-date-format")
+```
+Assumed: the worktree is created at `.claude/worktrees/fix-date-format` on a new branch from HEAD, and the session switches into it.
+
+**Tool call 4: Bash** (inside the worktree: rebase onto `main`, since the tool branches from `feat/offline`)
+```bash
+git switch -c fix/date-format main
+```
+The tree is clean, so this is safe. Assumed success. The auto-created branch is left behind with no unique commits, and I clean it up later.
+
+**Tool call 5: Bash** (inside the worktree)
+```bash
+git stash pop
+```
+Assumed: it applies cleanly, with no conflict against `main`. If it conflicted, I would stop and show my partner.
+
+**Tool call 6: Bash** (confirm the move; this checks the original checkout, so the path is absolute)
+```bash
+git -C /Users/p/git/notes-app status --porcelain -- src/date/format.ts src/date/format.test.ts
+```
+Assumed: it prints nothing, so the changes were moved and not copied.
+
+**Tool call 7: Bash** (inside the worktree: stage by name, then commit)
+```bash
+git add src/date/format.ts src/date/format.test.ts
+git commit -m "fix(date): correct date formatting bug"
+```
+Assumed: the commit succeeds with 2 files changed.
+
+**Tool call 8: Bash** (my partner asked for a PR, so pushing is authorized)
+```bash
+git push -u origin fix/date-format
+```
+Assumed success.
+
+**Tool call 9: Bash**
+```bash
+gh pr create --base main --head fix/date-format \
+  --title "fix(date): correct date formatting bug" \
+  --body "Standalone fix for the date-format bug in src/date/format.ts, with a regression test in src/date/format.test.ts. Split out from feat/offline so it can ship independently."
+```
+Assumed output: `https://github.com/p/notes-app/pull/NN`.
+
+**Tool call 10: ExitWorktree** (the worktree was only for the commit, and the pushed branch carries any later fixes)
+```
+ExitWorktree(action: "remove")
+```
+The worktree is clean and everything is committed, so `discard_changes` is not needed. Assumed: it returns to `/Users/p/git/notes-app` and removes the directory.
+
+**Tool call 11: Bash** (from the main repo root; remove the leftover auto-created branch)
+```bash
+git branch --list 'fix/date-format' 'worktree-fix-date-format'
+git branch -d worktree-fix-date-format
+git status --porcelain
+```
+Assumed:
+- `fix/date-format` is still listed.
+- The leftover branch is deleted. It has no unique commits, so `-d` works. If the tool already removed it, this is a no-op.
+- Status is empty.
+
+**Message to my partner:**
+
+> The date fix is up as a PR: https://github.com/p/notes-app/pull/NN (`fix/date-format` → `main`).
+>
+> - It contains only `src/date/format.ts` and `src/date/format.test.ts`.
+> - I moved the changes out of your `feat/offline` checkout and committed them on a temporary worktree, which I've removed.
+> - I did not re-run the tests on the `main` base. They passed on `feat/offline`, so CI on the PR will be the first check against `main`.
+> - Your `feat/offline` checkout no longer contains the fix. If that branch needs it, rebase or merge once the PR lands.
+> - Nothing uncommitted is left in any checkout or worktree I touched.
+
+SUMMARY: The work was committed in a temporary native worktree (`EnterWorktree`) on `fix/date-format` off `main`, then pushed and removed, because the PR base differs from the shared checkout's `feat/offline` HEAD, so the changes were stash-moved and not branch-switched in place.

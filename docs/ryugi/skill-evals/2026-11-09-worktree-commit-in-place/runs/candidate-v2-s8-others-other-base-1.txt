@@ -1,0 +1,107 @@
+I'm not in a linked worktree and `feat/offline` is shared with another agent, so I'd move the date fix into a worktree instead of switching branches in place.
+
+## 1. Check the checkout (once per session)
+
+```bash
+git rev-parse --path-format=absolute --git-dir --git-common-dir
+git rev-parse --show-superproject-working-tree
+git branch --show-current
+git status --porcelain
+cat .ryugi/sdd/*/EXPLORING
+```
+
+Assumed output:
+- `--git-dir` and `--git-common-dir` are both `/Users/p/git/notes-app/.git`, so this is not a linked worktree.
+- The superproject check prints nothing.
+- The branch is `feat/offline`.
+- Status lists ` M src/date/format.ts`, `?? src/date/format.test.ts` and ` M src/offline/queue.ts`.
+- `cat` fails with no such file, so there is no `EXPLORING` file.
+
+The first row of the table that matches is none of the worktree rows. But the PR needs a new branch off `main`, and someone else has edits in the checkout. The "Move your changes" section covers this case: I don't switch branches in the shared checkout, I stash-move my paths into a worktree.
+
+## 2. Stash only my paths (original checkout)
+
+```bash
+git stash push --include-untracked -- src/date/format.ts src/date/format.test.ts
+```
+
+Assumed result: `Saved working directory and index state WIP on feat/offline: <sha> ...`. `src/offline/queue.ts` stays modified in the checkout.
+
+## 3. Create the worktree with the native tool
+
+```
+EnterWorktree(name: "fix-date-format")
+```
+
+Assumed result: a worktree at `.claude/worktrees/fix-date-format` on a new branch from HEAD, and the session is switched into it.
+
+The tool bases the branch on HEAD (`feat/offline`), so I rebase the work onto `main` while the worktree is still clean:
+
+```bash
+git fetch origin main
+git switch -c fix/date-format --no-track origin/main
+```
+
+Assumed result: switched to the new branch `fix/date-format` with no conflicts, because the tree is clean.
+
+## 4. Pop the stash in the worktree
+
+```bash
+git stash pop
+```
+
+Assumed result: it applies cleanly, with ` M src/date/format.ts` and `?? src/date/format.test.ts`.
+
+## 5. Verify nothing of mine is left in the original checkout
+
+```bash
+git -C /Users/p/git/notes-app status --porcelain -- src/date/format.ts src/date/format.test.ts
+```
+
+Assumed result: empty output. I would not install dependencies or run tests, because the worktree only exists for this commit.
+
+## 6. Commit only my paths, push, and open the PR
+
+```bash
+git add src/date/format.ts src/date/format.test.ts
+git commit -m "fix(date): correct date formatting bug"
+git push -u origin fix/date-format
+gh pr create --base main --head fix/date-format \
+  --title "fix(date): correct date formatting bug" \
+  --body "Fixes a date-format bug in src/date/format.ts. Adds regression tests in src/date/format.test.ts."
+```
+
+Assumed result: the push succeeds and `gh` prints `https://github.com/<owner>/notes-app/pull/123`.
+
+## 7. Remove the worktree right away
+
+The pushed branch carries any later fixes, so I don't need to keep the worktree.
+
+```
+ExitWorktree(action: "remove")
+```
+
+The worktree is clean, so I don't pass `discard_changes`. Assumed result: removed, with the session back in `/Users/p/git/notes-app`. This deletes only the tool's own temporary branch, not `fix/date-format`.
+
+## 8. Final checks (original checkout)
+
+```bash
+git status --porcelain
+git branch --show-current
+git stash list
+```
+
+Assumed output:
+- Status shows only ` M src/offline/queue.ts`.
+- The branch is `feat/offline`.
+- The stash list is empty.
+
+## Message to my partner
+
+> The date fix is up as a PR: https://github.com/<owner>/notes-app/pull/123 (`fix/date-format`, based on `origin/main`). It contains only `src/date/format.ts` and `src/date/format.test.ts`.
+>
+> Another agent has an uncommitted edit to `src/offline/queue.ts` on `feat/offline`, so I didn't switch branches in the shared checkout. I moved my two files into a temporary worktree, committed and pushed from there, then removed it. The checkout is still on `feat/offline` with only the other agent's edit left, and no stash remains.
+>
+> I didn't run the tests in the worktree. They passed on the shared tree before the move, and CI will run them on the PR branch.
+
+SUMMARY: The work happened in a temporary native worktree (`EnterWorktree`) based on `origin/main`, because another agent's uncommitted edit in the shared `feat/offline` checkout meant I couldn't switch branches there. I stash-moved only my two date-fix paths, committed, pushed `fix/date-format`, opened the PR, and removed the worktree.

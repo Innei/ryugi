@@ -1,0 +1,71 @@
+Nothing below was run. Outputs are assumed where noted.
+
+The "Where to work" commands already ran this session, so I don't repeat them. Committing on a new branch off canary while the shared checkout stays on canary matches the "move your changes" case. The partner's request is the standing instruction to use a worktree, and the PR request authorizes the push.
+
+**1. Move my changes out of the shared checkout** (Bash, cwd `/Users/p/git/lobe-chat`)
+```bash
+git stash push --include-untracked -- src/features/Scroll/index.tsx src/features/Scroll/index.test.tsx
+```
+Assumed output: `Saved working directory and index state WIP on canary: <sha> ...`. `src/store/chat.ts` is not in the pathspec, so it stays in place.
+
+**2. Create the worktree with the native tool**
+```
+EnterWorktree(name: "fix-message-scroll")
+```
+Assumed result: the session is now in `/Users/p/git/lobe-chat/.claude/worktrees/fix-message-scroll` on a new branch (say `worktree-fix-message-scroll`) from HEAD, which is canary.
+
+**3. Rename the branch to the requested name** (Bash, in the worktree)
+```bash
+git branch -m fix/message-scroll
+```
+
+**4. Pop the stash in the worktree** (Bash)
+```bash
+git stash pop
+```
+Assumed output: clean pop, ` M src/features/Scroll/index.tsx` and `?? src/features/Scroll/index.test.tsx`. If it had conflicted, I would stop and show my partner.
+
+**5. Verify the original checkout no longer has my files** (Bash)
+```bash
+git -C /Users/p/git/lobe-chat status --porcelain -- src/features/Scroll/index.tsx src/features/Scroll/index.test.tsx
+```
+Assumed output: nothing.
+
+**6. Stage by name and commit** (Bash, in the worktree)
+```bash
+git add src/features/Scroll/index.tsx src/features/Scroll/index.test.tsx
+git status --porcelain
+git commit -m "🐛 fix: message list scroll bug"
+```
+Assumed status output is just `M  src/features/Scroll/index.tsx` and `A  src/features/Scroll/index.test.tsx`. I skip install and tests, since the worktree exists only for this commit.
+
+**7. Push** (Bash)
+```bash
+git push -u origin fix/message-scroll
+```
+Assumed output: the branch is pushed and tracking is set.
+
+**8. Open the PR** (Bash)
+```bash
+gh pr create --base canary --head fix/message-scroll \
+  --title "🐛 fix: message list scroll bug" \
+  --body "Fixes the scroll bug in src/features/Scroll. Adds a regression test in src/features/Scroll/index.test.tsx."
+```
+Assumed output: `https://github.com/lobehub/lobe-chat/pull/1234`.
+
+**9. Remove the worktree at once.** It is clean and the branch is pushed, so later fixes go on the pushed branch.
+```
+ExitWorktree(action: "remove")
+```
+Assumed result: back in `/Users/p/git/lobe-chat`, worktree directory and local branch deleted. The remote branch and PR are unaffected, and no `discard_changes` is needed.
+
+**10. Final check that nothing of mine is left** (Bash, in the main repo)
+```bash
+git status --porcelain
+```
+Assumed output: ` M src/store/chat.ts` only. That belongs to the other agent.
+
+**Message to my partner:**
+> PR is open: https://github.com/lobehub/lobe-chat/pull/1234 (`fix/message-scroll` → `canary`). It contains only `src/features/Scroll/index.tsx` and its new test file. I moved them into a temporary worktree for the commit, then removed it. The tests passed earlier on the shared checkout, but I did not re-run them on a clean canary checkout, so CI will be the first run there. The other agent's uncommitted `src/store/chat.ts` change is still in the main checkout, untouched and not in the PR. Nothing of mine is left uncommitted anywhere.
+
+SUMMARY: The commit and PR were made in a temporary native worktree (`EnterWorktree`) on `fix/message-scroll` off canary, because my uncommitted changes had to be committed on a different branch than the shared canary checkout. The changes were stash-moved, only my two paths were staged, and the worktree was removed after the push and PR.

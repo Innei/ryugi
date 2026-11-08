@@ -1,0 +1,74 @@
+**Where I work:** in place, no worktree. The checkout holds only my own edits and there is no `EXPLORING` file, so the rule is "switch in place; uncommitted changes come along".
+
+### Tool calls
+
+**1. Check the checkout (first time this session)**
+```bash
+git rev-parse --path-format=absolute --git-dir --git-common-dir
+git rev-parse --show-superproject-working-tree
+git branch --show-current
+git status --porcelain
+cat .ryugi/sdd/*/EXPLORING
+```
+Assumed output:
+- `--git-dir` and `--git-common-dir` are both `/Users/p/git/notes-app/.git`, so this is not a linked worktree.
+- The superproject query prints nothing.
+- Current branch is `feat/offline`.
+- Status is ` M src/date/format.ts` and `?? src/date/format.test.ts`.
+- `cat` fails with "No such file or directory", so nobody else is exploring.
+
+**2. Record the old branch's unpushed commits**
+```bash
+git log feat/offline --not --remotes --oneline
+```
+Assumed output: 2 commits, `a1b2c3d …` and `d4e5f6a …`.
+
+**3. Move to main in place (uncommitted changes come along)**
+```bash
+git switch main
+git pull --ff-only
+git switch -c fix/date-format
+```
+Assumed result: all three succeed, because `main` has no conflicting changes to those two files. If git had refused with "would be overwritten", I would stop and ask whether to stack the PR on `feat/offline` or wait for it to merge.
+
+**4. Run the change's tests on the new base**
+```bash
+pnpm test src/date
+```
+Assumed result: passes. If it failed, I would say the fix depends on `feat/offline` and not commit.
+
+**5. Commit only my paths, by name**
+```bash
+git add src/date/format.ts src/date/format.test.ts
+git commit -m "fix(date): correct date formatting"
+```
+Assumed result: one commit created.
+
+**6. Push**
+```bash
+git push -u origin fix/date-format
+```
+
+**7. Open the PR (your request)**
+```bash
+gh pr create --base main --head fix/date-format \
+  --title "fix(date): correct date formatting" \
+  --body "Fixes a date-format bug in src/date/format.ts, with regression tests in src/date/format.test.ts. Independent of feat/offline."
+```
+Assumed output: a PR URL such as `https://github.com/p/notes-app/pull/NN`.
+
+**8. Confirm nothing of mine is left uncommitted**
+```bash
+git status --porcelain
+```
+Assumed output: empty.
+
+### Message to my human partner
+
+The date fix is up as a separate PR: <PR URL>, from `fix/date-format` off `main`. It contains only `src/date/format.ts` and the new `src/date/format.test.ts`. I ran the date tests on the `main` base and they pass.
+
+I worked in place, with no worktree. My changes are all committed and pushed, and the checkout is clean. It is now on `fix/date-format`, not `feat/offline`.
+
+`feat/offline` has 2 commits that are not on any remote: `a1b2c3d` and `d4e5f6a`. I did not push them. Its PR is still open, and you may want to push that branch.
+
+SUMMARY: Worked in place in the main checkout (no worktree), because only my own edits were present and no one else was active; I switched to main, branched `fix/date-format`, committed my two files, pushed, and opened the PR, flagging the 2 unpushed commits on `feat/offline`.

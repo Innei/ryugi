@@ -1,0 +1,82 @@
+I would not do the `git switch main` path. It changes the branch of a checkout other agents may share, and the date fix would be left on feat/offline.
+
+## 1. Where to work (once per session)
+
+```bash
+git rev-parse --path-format=absolute --git-dir --git-common-dir
+git rev-parse --show-superproject-working-tree
+git branch --show-current
+git status --porcelain
+cat .ryugi/sdd/*/EXPLORING
+```
+
+Assumed output:
+- `--git-dir` and `--git-common-dir` are both `/Users/p/git/notes-app/.git`, so this is the main checkout and not a linked worktree.
+- The superproject output is empty.
+- The branch is `feat/offline`.
+- The status is ` M src/date/format.ts` and `?? src/date/format.test.ts`.
+- `cat` fails because `.ryugi/sdd/` doesn't exist, so there is no EXPLORING file.
+
+The PR must be built on `main`, which is other content than the checked-out branch. That matches the "New worktree, without asking" row, and it counts as the explicit request `EnterWorktree` asks for.
+
+## 2. Move the changes, don't copy them
+
+```bash
+git stash push --include-untracked -- src/date/format.ts src/date/format.test.ts
+```
+
+Assumed result: it saves the working directory state and the two paths are clean.
+
+## 3. Create the worktree with the native tool
+
+`EnterWorktree(name: "fix-date-format")`
+
+Assumed result: the session is now in `/Users/p/git/notes-app/.claude/worktrees/fix-date-format`. The tool branches from HEAD, which is feat/offline, so the branch is the wrong base. The worktree is fresh and empty, so I rebase it onto main:
+
+```bash
+git fetch origin main
+git switch -c fix/date-format origin/main
+```
+
+Assumed result: both succeed.
+
+```bash
+git stash pop
+```
+
+Assumed result: it applies cleanly, with ` M src/date/format.ts` and `?? src/date/format.test.ts`.
+
+## 4. Verify the original checkout is clean
+
+```bash
+git -C /Users/p/git/notes-app status --porcelain -- src/date/format.ts src/date/format.test.ts
+```
+
+Assumed result: it prints nothing.
+
+## 5. Check the fix against main
+
+The earlier test failure was `Cannot find module '../offline/clock'`, and `src/offline/clock.ts` exists only on feat/offline. I check where the import comes from:
+
+```bash
+git diff src/date/format.ts
+```
+
+Assumed result: the diff adds `import … from '../offline/clock'` to format.ts. Committing this on main would break main's build, so I will not commit, push, or open the PR yet. I have not installed dependencies in the worktree.
+
+## 6. Message to my partner
+
+> The date fix can't ship on its own as written. `src/date/format.ts` imports `../offline/clock`, which exists only on feat/offline. On a branch off main, `pnpm test src/date` fails with `Cannot find module '../offline/clock'`.
+>
+> I've moved the fix out of your feat/offline checkout, which is now clean of it, into a worktree at `.claude/worktrees/fix-date-format`. The branch `fix/date-format` is based on `origin/main` there. Nothing is committed or pushed.
+>
+> Options:
+> 1. **Recommended:** I rewrite the fix so it doesn't use `offline/clock`, then test and open the PR against main.
+> 2. Open the PR with feat/offline as its base, stacked on that PR.
+> 3. Wait until feat/offline merges.
+>
+> Which do you want?
+
+I stop here and wait for the answer.
+
+SUMMARY: The work moved by stash into a native `EnterWorktree` worktree (`fix/date-format` off `origin/main`) so the shared feat/offline checkout is never switched; I stopped before committing because the fix depends on `offline/clock`, which is not on main.

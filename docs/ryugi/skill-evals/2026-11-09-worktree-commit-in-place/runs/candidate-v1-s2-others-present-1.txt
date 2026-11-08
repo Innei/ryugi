@@ -1,0 +1,82 @@
+Nothing below is actually run. Outputs marked "assumed" are plausible results.
+
+**Decision:** The checkout is shared (another agent has ` M src/store/chat.ts`), so I won't `git switch -c` there. I'll move my two files into a worktree with stash and pop, using the native `EnterWorktree` tool. The worktree exists only for the commit, so there's no install and no test run. The session's "where to work" check already ran earlier and I won't repeat it.
+
+### 1. Stash only my paths
+```bash
+git stash push --include-untracked -- src/features/Scroll/index.tsx src/features/Scroll/index.test.tsx
+```
+Assumed output: `Saved working directory and index state WIP on canary: <sha> <subject>`. `src/store/chat.ts` stays in place.
+
+### 2. Create the worktree with the native tool
+```
+EnterWorktree(name: "fix-message-scroll")
+```
+Assumed result: `.claude/worktrees/fix-message-scroll` on a new branch `worktree-fix-message-scroll` from HEAD (canary). The session is now inside it.
+
+### 3. Pop the stash inside the worktree
+```bash
+git stash pop
+```
+Assumed output: clean pop, `modified: src/features/Scroll/index.tsx`, `new file: src/features/Scroll/index.test.tsx`. If it had conflicted, I would stop and show my partner.
+
+### 4. Confirm the original checkout no longer has my changes
+```bash
+git -C /Users/p/git/lobe-chat status --porcelain -- src/features/Scroll/index.tsx src/features/Scroll/index.test.tsx
+```
+Assumed: prints nothing.
+
+### 5. Name the branch as requested
+```bash
+git branch -m fix/message-scroll
+```
+
+### 6. Stage my paths by name and commit
+```bash
+git add src/features/Scroll/index.tsx src/features/Scroll/index.test.tsx
+git status --porcelain
+git commit -m "🐛 fix: fix message list scroll behavior"
+```
+Assumed `status` output:
+```
+M  src/features/Scroll/index.tsx
+A  src/features/Scroll/index.test.tsx
+```
+Assumed: the commit succeeds.
+
+### 7. Push
+My partner asked for a PR, so the push is covered.
+```bash
+git push -u origin fix/message-scroll
+```
+Assumed: the branch is created on origin.
+
+### 8. Open the PR against canary
+```bash
+gh pr create --base canary --head fix/message-scroll \
+  --title "🐛 fix: fix message list scroll behavior" \
+  --body "Fixes the message scroll bug in \`src/features/Scroll\`. Adds a test in \`index.test.tsx\`."
+```
+Assumed output: `https://github.com/lobehub/lobe-chat/pull/NNNN`
+
+### 9. Remove the worktree at once
+It was only for the commit, and the pushed branch carries any later fixes. The tree is clean, so no `discard_changes`. I didn't copy a spec in, so there's nothing to `cmp` or delete first.
+```
+ExitWorktree(action: "remove")
+```
+Assumed: the tool returns the session to `/Users/p/git/lobe-chat` and deletes the worktree directory and its local branch. The remote `fix/message-scroll` and the PR are unaffected.
+
+### 10. Check the original checkout
+```bash
+git -C /Users/p/git/lobe-chat status --porcelain
+```
+Assumed output: ` M src/store/chat.ts`. That's only the other agent's change.
+
+### Message to my partner
+> PR is open: https://github.com/lobehub/lobe-chat/pull/NNNN (`fix/message-scroll` → `canary`), with one commit containing `src/features/Scroll/index.tsx` and `index.test.tsx`.
+>
+> Because another agent has uncommitted edits in `src/store/chat.ts`, I didn't switch branches in the shared checkout. I moved my two files through a temporary worktree, committed and pushed from there, then removed it. Tests were passing before the move and I didn't re-run them in the worktree.
+>
+> Left in the main checkout: only the other agent's ` M src/store/chat.ts`, which I didn't touch. Because my changes moved out, the local canary no longer contains the scroll fix until the PR merges. Nothing of mine is uncommitted anywhere.
+
+SUMMARY: The work was committed in a temporary native worktree (`EnterWorktree`), not the shared checkout, because another agent's uncommitted `src/store/chat.ts` edit meant I couldn't switch branches there. I stash-moved my two files in, pushed `fix/message-scroll`, opened the PR, and removed the worktree.

@@ -1,0 +1,80 @@
+Here is the simulated sequence. The skill says uncommitted work that must be committed on another branch gets moved, not copied, and the checkout is never switched. That counts as a standing instruction to use a worktree, so I don't ask first.
+
+**Tool call 1: Bash** (in /Users/p/git/notes-app, the shared checkout)
+```bash
+git stash push --include-untracked -- src/date/format.ts src/date/format.test.ts
+```
+Assumed output: `Saved working directory and index state WIP on main: <sha> <subject>`. The working tree no longer has my two files.
+
+**Tool call 2: EnterWorktree**
+```
+EnterWorktree(name: "fix-date-format")
+```
+I use a slash-free name because the name becomes a directory under `.claude/worktrees/`. Assumed result: worktree at `/Users/p/git/notes-app/.claude/worktrees/fix-date-format`, on a new branch from HEAD (main), and the session is now inside it.
+
+**Tool call 3: Bash** (inside the worktree)
+```bash
+git branch --show-current
+```
+Assumed output: `worktree-fix-date-format`. This is not the name my partner asked for.
+
+**Tool call 4: Bash**
+```bash
+git branch -m fix/date-format
+```
+The branch has never been pushed, so renaming it is safe. Assumed: no output.
+
+**Tool call 5: Bash** (pop the stash inside the worktree; stashes are shared across worktrees)
+```bash
+git stash pop
+```
+Assumed: no conflicts. It prints the status showing ` M src/date/format.ts` and `?? src/date/format.test.ts`, then `Dropped refs/stash@{0}`.
+
+**Tool call 6: Bash** (confirm the original checkout no longer holds my changes)
+```bash
+git -C /Users/p/git/notes-app status --porcelain -- src/date/format.ts src/date/format.test.ts
+```
+Assumed output: empty. If it printed anything, or if the pop had conflicted, I would stop and show my partner.
+
+**Tool call 7: Bash** (check commit message style)
+```bash
+git log --oneline -5
+```
+Assumed output: conventional-commit style subjects such as `fix(search): ...`.
+
+**Tool call 8: Bash** (stage by name, never `-A`, `.` or `-a`)
+```bash
+git add src/date/format.ts src/date/format.test.ts && git commit -m "fix(date): correct date formatting bug"
+```
+Assumed: the commit succeeds. I don't run install or tests here because the worktree exists only for the commit. The tests already passed on the shared tree.
+
+**Tool call 9: Bash**
+```bash
+git push -u origin fix/date-format
+```
+Assumed: the branch is pushed and set to track origin. Pushing is covered by my partner's request to open a PR.
+
+**Tool call 10: Bash**
+```bash
+gh pr create --base main --head fix/date-format --title "fix(date): correct date formatting bug" --body "Fixes a bug in src/date/format.ts. Adds src/date/format.test.ts covering the fixed behavior."
+```
+Assumed output: `https://github.com/p/notes-app/pull/123`.
+
+**Tool call 11: ExitWorktree** (the commit is pushed, so the worktree is removed at once; the pushed branch carries any later fixes)
+```
+ExitWorktree(action: "remove")
+```
+Assumed: the worktree has no uncommitted changes and the commit is on origin, so removal succeeds. The session returns to /Users/p/git/notes-app. I would not pass `discard_changes`. If removal were refused, I would run `git -C <worktree> status --porcelain -uall`, show it to my partner and ask.
+
+**Tool call 12: Bash** (final check of the shared checkout)
+```bash
+git status --porcelain && git worktree list
+```
+Assumed: the status is empty, since my changes were the only ones, and the list shows only the main checkout.
+
+**Message to my partner:**
+> PR opened: https://github.com/p/notes-app/pull/123 (`fix/date-format` → `main`).
+>
+> I moved the two changed files (`src/date/format.ts`, `src/date/format.test.ts`) into a temporary worktree so I wouldn't switch branches in the shared checkout, committed only those two paths, and pushed. The worktree is removed, and the main checkout is on `main` with none of my changes left in it. I didn't re-run the tests on the new branch. They passed earlier on the same content.
+
+SUMMARY: The commit and PR were made in a temporary native worktree (`EnterWorktree`) on `fix/date-format`, with the changes stash-moved from the shared main checkout, because the skill says never to switch branches in a shared checkout. The worktree was removed after the push.

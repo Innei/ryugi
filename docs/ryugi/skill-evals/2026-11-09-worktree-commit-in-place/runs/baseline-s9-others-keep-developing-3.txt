@@ -1,0 +1,52 @@
+I'm on main with my two files uncommitted, and the skill's "New worktree, without asking" row covers this (the work must be developed on other content). I'd skip re-running the "Where to work" checks, since that answer holds for the session. I'd also leave `docs/notes.md` alone: it isn't mine, so it stays in the main checkout.
+
+**1. Check that the branch exists and isn't checked out elsewhere**
+```bash
+git -C /Users/p/git/search-app rev-parse --verify feat/search-v2
+git -C /Users/p/git/search-app worktree list
+```
+Assumed output: a commit hash, and a worktree list showing only `/Users/p/git/search-app  [main]`.
+
+**2. Move my changes out of the shared checkout (my paths only)**
+```bash
+git -C /Users/p/git/search-app stash push --include-untracked -- src/search/query.ts src/search/query.test.ts
+```
+Assumed: `Saved working directory and index state WIP on main: ...`
+
+**3. Create the worktree with the native tool**
+```
+EnterWorktree(name: "search-v2")
+```
+Assumed result: the session is now in `/Users/p/git/search-app/.claude/worktrees/search-v2` on a new branch `worktree-search-v2` cut from main's HEAD.
+
+That branch starts from the wrong base. It is empty, with nothing uncommitted and no commits of mine, so I'd point it at feat/search-v2 before popping:
+```bash
+git reset --hard feat/search-v2
+```
+This is safe because the new branch holds nothing but the HEAD it was created from. Assumed: `HEAD is now at <sha> ...`.
+
+**4. Pop the stash inside the worktree**
+```bash
+git stash pop
+```
+Assumed: it applies cleanly, with ` M src/search/query.ts` and `?? src/search/query.test.ts`. If it had conflicted, I'd stop here and show my partner the conflict.
+
+**5. Confirm nothing of mine is left in the original checkout**
+```bash
+git -C /Users/p/git/search-app status --porcelain -- src/search/query.ts src/search/query.test.ts
+```
+Assumed: empty output. `docs/notes.md` is still modified there, untouched, because it isn't mine.
+
+**6. Set up the worktree**
+```bash
+pnpm install --frozen-lockfile
+pnpm test
+```
+Assumed: the install succeeds and the tests pass. If they had failed, I'd report the failures and ask whether to go on.
+
+**Message to my partner:**
+> Moved over. I stashed only my two files (`src/search/query.ts`, `src/search/query.test.ts`) and popped them in a new worktree at `.claude/worktrees/search-v2`. Its branch `worktree-search-v2` is reset to `feat/search-v2`, so my work sits on top of it. The original checkout no longer has my changes. `docs/notes.md` is still modified there and I left it alone. Dependencies are installed and the tests pass on this base. I'm continuing the implementation here. The branch name is a temporary one from the tool; tell me if you'd rather I commit directly on `feat/search-v2` or rename it.
+
+I'd then keep implementing in the worktree, staging my paths by name when I commit. I would not remove the worktree, since the work hasn't landed.
+
+SUMMARY: The work moved to a new native worktree (`.claude/worktrees/search-v2`, reset to feat/search-v2) because the partner said it must be built on another branch, and only my two files were stash-moved there, leaving `docs/notes.md` in the main checkout.

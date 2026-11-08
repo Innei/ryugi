@@ -1,0 +1,82 @@
+Simulated from here. Nothing is actually run.
+
+**Decision:** the `EXPLORING` file lists `src/sync/queue.ts`, so another session is active in this checkout. The skill's rule is not to switch branches in a shared checkout but to move the changes. Because I only need to commit, the worktree exists just for the commit: no install, no tests, removed right after. The partner's request to open a PR from a new branch covers using a native worktree.
+
+**Tool call 1: Bash** (in /Users/p/git/notes-app, stash only my paths)
+```bash
+git stash push --include-untracked -- src/date/format.ts src/date/format.test.ts
+```
+Assumed output: `Saved working directory and index state WIP on main: <sha> <msg>`.
+
+**Tool call 2: Bash** (check the stash took both files and left nothing of mine behind)
+```bash
+git status --porcelain
+```
+Assumed output: empty (the other session has no edits in this checkout).
+
+**Tool call 3: EnterWorktree**
+```
+EnterWorktree(name: "fix-date-format")
+```
+Assumed result: worktree at `/Users/p/git/notes-app/.claude/worktrees/fix-date-format`, on a new branch (assumed `worktree-fix-date-format`) from HEAD (main). The session is now inside it.
+
+**Tool call 4: Bash** (in the worktree, put the branch under the name the partner asked for)
+```bash
+git branch --show-current
+git branch -m fix/date-format
+git branch --show-current
+```
+Assumed output: `worktree-fix-date-format`, then `fix/date-format`.
+
+**Tool call 5: Bash** (move the changes in; stashes are shared across worktrees)
+```bash
+git stash pop
+```
+Assumed output: clean pop, no conflicts, listing ` M src/date/format.ts` and `?? src/date/format.test.ts`.
+
+**Tool call 6: Bash** (confirm the original checkout no longer holds my changes)
+```bash
+git -C /Users/p/git/notes-app status --porcelain -- src/date/format.ts src/date/format.test.ts
+```
+Assumed output: empty. If the pop had conflicted, I would stop and show the partner.
+
+**Tool call 7: Bash** (stage by name, never `-A`, `.` or `-a`)
+```bash
+git add src/date/format.ts src/date/format.test.ts
+git status --porcelain
+git commit -m "fix(date): correct date formatting bug"
+```
+Assumed output: `M  src/date/format.ts`, `A  src/date/format.test.ts`, then a commit created.
+
+**Tool call 8: Bash** (the partner explicitly asked for a PR, so pushing is authorized)
+```bash
+git push -u origin fix/date-format
+```
+Assumed output: the branch is pushed and tracking is set up.
+
+**Tool call 9: Bash**
+```bash
+gh pr create --base main --head fix/date-format --title "fix(date): correct date formatting bug" --body "Fixes the date-format bug in src/date/format.ts. Adds regression tests in src/date/format.test.ts."
+```
+Assumed output: `https://github.com/<owner>/notes-app/pull/123`.
+
+**Tool call 10: Bash** (nothing was copied in at creation, so there is no spec to delete; confirm the worktree is clean before removal)
+```bash
+git status --porcelain -uall
+```
+Assumed output: empty.
+
+**Tool call 11: ExitWorktree**
+```
+ExitWorktree(action: "remove")
+```
+Assumed result: the session is back in /Users/p/git/notes-app, and the worktree directory and its local branch are deleted. No `discard_changes` is needed because the tree is clean and the commit is pushed. The remote branch `fix/date-format` carries any later fixes.
+
+**Message to partner:**
+> PR is open: https://github.com/<owner>/notes-app/pull/123 (`fix/date-format` → `main`), with one commit containing `src/date/format.ts` and `src/date/format.test.ts`.
+>
+> Another session has `src/sync/queue.ts` marked as being explored in this checkout, so I didn't switch branches here. I moved my two files into a temporary worktree, committed and pushed from there, then removed the worktree. I didn't install dependencies or re-run tests there. The tests passed earlier on the shared tree.
+>
+> Nothing of mine is left uncommitted in the main checkout, which is still on `main`. The local `main` doesn't contain the fix until the PR merges.
+
+SUMMARY: The commit, push and PR happened in a temporary native worktree (`EnterWorktree`) on `fix/date-format`, because the `EXPLORING` file showed another session in the shared checkout, so my changes were stash-moved there instead of switching branches in place; the worktree was removed right after the PR was opened.

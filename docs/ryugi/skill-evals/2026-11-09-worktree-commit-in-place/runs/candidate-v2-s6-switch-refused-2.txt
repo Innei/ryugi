@@ -1,0 +1,44 @@
+### 1. Where to work (once per session)
+
+**Tool call:** Bash
+```bash
+cd /Users/p/git/notes-app && git rev-parse --path-format=absolute --git-dir --git-common-dir && git rev-parse --show-superproject-working-tree && git branch --show-current && git status --porcelain && cat .ryugi/sdd/*/EXPLORING
+```
+Assumed output:
+```
+/Users/p/git/notes-app/.git
+/Users/p/git/notes-app/.git
+(empty: not a submodule)
+feat/offline
+ M src/date/format.ts
+?? src/date/format.test.ts
+cat: .ryugi/sdd/*/EXPLORING: No such file or directory
+```
+Reading it: this is the main checkout, not a linked worktree. The only edits are mine and there is no `EXPLORING` file, so nobody else is working here. No "new worktree" row applies. This is a move of uncommitted work to another base (main) with nobody else present, so the skill says to switch in place.
+
+### 2. Switch to the base in place
+
+**Tool call:** Bash
+```bash
+cd /Users/p/git/notes-app && git switch main
+```
+Output (given):
+```
+error: Your local changes to the following files would be overwritten by checkout:
+	src/date/format.ts
+Aborting
+```
+
+The skill says to stop here. The refusal means my change to `src/date/format.ts` is built on feat/offline's version of that file, not main's. I will not stash, force, copy files by hand, or create a worktree to get around it. Nothing was changed, and the edits are still in place on feat/offline.
+
+### 3. Message to my human partner
+
+> I can't branch the date fix off `main` directly yet. `git switch main` was refused because my edit to `src/date/format.ts` would be overwritten. That means the fix is built on the version of `format.ts` that `feat/offline` has, which `main` doesn't have yet. Nothing has been changed: the fix (`src/date/format.ts` and the new `src/date/format.test.ts`) is still uncommitted on `feat/offline`, and its tests pass there.
+>
+> Which do you want?
+> 1. **Wait for the `feat/offline` PR to merge** (my recommendation). I'd then switch to `main`, pull, create `fix/date-format`, and run the tests on the new base. The fix would then ship on its own.
+> 2. **Stack the PR on `feat/offline`**. I'd create `fix/date-format` from the current HEAD and open the PR against `feat/offline`. This can go now, but it can't merge before the offline PR does.
+>
+> I'll wait for your answer before touching anything.
+
+SUMMARY: The work stayed in place in the main checkout /Users/p/git/notes-app on feat/offline, with no worktree. `git switch main` was refused because the fix depends on feat/offline's version of `format.ts`, so I stopped to ask whether to stack the PR on feat/offline or wait for it to merge.

@@ -1,0 +1,104 @@
+Nothing below is run; it is a simulation. I assume the repo is at `/Users/p/git/notes-app`, so I run git there.
+
+## 1. Where to work (once per session)
+
+```bash
+cd /Users/p/git/notes-app && git rev-parse --path-format=absolute --git-dir --git-common-dir && git rev-parse --show-superproject-working-tree && git branch --show-current && git status --porcelain && cat .ryugi/sdd/*/EXPLORING
+```
+
+Assumed output:
+```
+/Users/p/git/notes-app/.git
+/Users/p/git/notes-app/.git
+(empty: not a submodule)
+feat/offline
+ M src/date/format.ts
+ M src/offline/queue.ts
+?? src/date/format.test.ts
+(cat: no such file, so no EXPLORING entries)
+```
+
+- The git-dir equals the common dir, so this is not a linked worktree.
+- The partner named a branch and base but not where to work.
+- The fix has to be committed on content from `main`, not `feat/offline`. That is the "other branch" row: **new worktree, without asking**.
+- `queue.ts` belongs to the other agent and stays out of this.
+
+## 2. Move my changes (stash only my paths)
+
+```bash
+git stash push --include-untracked -- src/date/format.ts src/date/format.test.ts
+```
+Assumed: `Saved working directory and index state WIP on feat/offline: ...`
+
+## 3. Create the worktree with the native tool
+
+```
+EnterWorktree(name: "fix-date-format")
+```
+Assumed: creates `.claude/worktrees/fix-date-format` on a new branch from HEAD (`feat/offline`) and switches the session into it.
+
+The tool can only branch from HEAD, so I re-base the work onto `main` in the clean worktree:
+
+```bash
+git fetch origin main && git switch -c fix/date-format origin/main
+```
+Assumed: switched to the new branch `fix/date-format`, tracking nothing yet.
+
+## 4. Pop the stash inside the worktree
+
+```bash
+git stash pop
+```
+Assumed: applies cleanly. If it conflicted, I would stop and show my partner.
+
+```bash
+git status --porcelain
+git -C /Users/p/git/notes-app status --porcelain -- src/date/format.ts src/date/format.test.ts
+```
+Assumed output:
+```
+ M src/date/format.ts
+?? src/date/format.test.ts
+```
+and nothing from the second command, so my paths are gone from the original checkout. `queue.ts` is still modified there, untouched.
+
+## 5. Commit, push, PR (no install, no test run)
+
+```bash
+git add src/date/format.ts src/date/format.test.ts
+git commit -m "fix(date): correct date formatting bug" -m "Adds a regression test in src/date/format.test.ts."
+git push -u origin fix/date-format
+gh pr create --base main --head fix/date-format --title "fix(date): correct date formatting bug" --body "Fixes the date-format bug. Includes a regression test (passed locally before the move)."
+```
+Assumed: the commit succeeds, the push succeeds, and `gh` prints a PR URL such as `https://github.com/<owner>/notes-app/pull/NN`.
+
+## 6. Remove the worktree at once
+
+I created it only to commit, and the pushed branch carries any later fixes. The worktree is clean, so removal will not be refused.
+
+```
+ExitWorktree(action: "remove")
+```
+Assumed: returns to `/Users/p/git/notes-app` and removes the worktree directory.
+
+```bash
+git -C /Users/p/git/notes-app status --porcelain && git -C /Users/p/git/notes-app stash list && git -C /Users/p/git/notes-app branch --list 'fix/date-format'
+```
+Assumed output:
+```
+ M src/offline/queue.ts
+(empty stash list)
+  fix/date-format
+```
+The only change left in the original checkout is the other agent's `queue.ts`.
+
+## Message to my partner
+
+> The date fix is up as a PR from `fix/date-format` off `main`: <PR URL>.
+>
+> - I moved only `src/date/format.ts` and `src/date/format.test.ts` into a temporary worktree to commit them. I didn't run tests there; they passed earlier on the shared tree.
+> - I removed the worktree afterward. The pushed branch carries any follow-ups.
+> - Your `feat/offline` checkout is unchanged. The only uncommitted change left is the other agent's `src/offline/queue.ts`, which I didn't touch.
+> - Native `EnterWorktree` can only branch from HEAD, so I switched the branch to `origin/main` inside the worktree. A leftover auto-named worktree branch may exist locally; I can delete it if you'd like.
+
+SUMMARY: I made the commit in a temporary native worktree (`fix-date-format`, based on `origin/main`) because the PR had to be built on `main` while the shared checkout was on `feat/offline` with another agent's edits. Only my two date files moved via stash, and I removed the worktree after pushing and opening the PR.

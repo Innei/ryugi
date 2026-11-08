@@ -1,0 +1,79 @@
+Simulated transcript, in order.
+
+**Tool call 1: Bash** (the once-per-session "Where to work" checks)
+```bash
+cd /Users/p/git/notes-app && git rev-parse --path-format=absolute --git-dir --git-common-dir && git rev-parse --show-superproject-working-tree && git branch --show-current && git status --porcelain && cat .ryugi/sdd/*/EXPLORING
+```
+Assumed output:
+```
+/Users/p/git/notes-app/.git
+/Users/p/git/notes-app/.git
+feat/offline
+ M src/date/format.ts
+?? src/date/format.test.ts
+cat: .ryugi/sdd/*/EXPLORING: No such file or directory
+```
+- `--git-dir` equals `--git-common-dir`, so this is the main checkout, not a linked worktree.
+- The superproject output is empty.
+- The status lists only my two paths, and there is no `EXPLORING` file, so nobody else is working here.
+
+**Decision (no worktree).** Partner's instruction names a branch and base, not a place to work. The uncommitted work has to move to a new base (main), so the "Move your changes" section decides how. Nobody else is in the checkout, and feat/offline is finished, so I switch in place and my changes come along. No worktree and no stash.
+
+**Tool call 2: Bash**
+```bash
+cd /Users/p/git/notes-app && git switch main
+```
+Succeeds. The uncommitted changes carry over.
+
+**Tool call 3: Bash**
+```bash
+cd /Users/p/git/notes-app && git pull --ff-only
+```
+Succeeds.
+
+**Tool call 4: Bash**
+```bash
+cd /Users/p/git/notes-app && git switch -c fix/date-format
+```
+Succeeds. `git status --porcelain` is still ` M src/date/format.ts` and `?? src/date/format.test.ts`.
+
+**Tool call 5: Bash** (run the change's tests on the new base)
+```bash
+cd /Users/p/git/notes-app && pnpm test src/date
+```
+Output (given):
+```
+src/date/format.ts: Cannot find module '../offline/clock'
+```
+Tests fail.
+
+**Tool call 6: Grep** (to tell my partner exactly what the dependency is)
+- pattern: `offline/clock`
+- path: `/Users/p/git/notes-app/src/date`
+
+Assumed result: one match, an import in `src/date/format.ts`, which is my uncommitted edit.
+
+**Decision.** The skill says: if the tests fail on the new base, the change depends on the old branch. Say so and do not commit. I therefore don't commit, push, or open the PR.
+
+**Message to my partner:**
+
+> I couldn't open the PR yet. The date fix doesn't stand on its own.
+>
+> I moved the fix onto a new `fix/date-format` branch off an up-to-date `main`. There, `pnpm test src/date` fails with `Cannot find module '../offline/clock'`. My change in `src/date/format.ts` imports `src/offline/clock.ts`, which exists only on `feat/offline`. Because of that, I did not commit or push anything.
+>
+> Current state:
+> - The checkout is on `fix/date-format` (at `main`'s tip, no commits).
+> - `src/date/format.ts` (modified) and `src/date/format.test.ts` (new) are uncommitted here.
+> - Nothing was pushed, and no worktree was created.
+> - `feat/offline` is untouched, and its PR is still open.
+>
+> Options:
+> 1. **Rework the fix so it doesn't use `offline/clock`** (my recommendation). It would ship alone off `main`, as you asked. I'd need to replace the clock use with something local, such as `Date.now()` or an injected `now` parameter in the format code and test.
+> 2. **Stack the PR on `feat/offline`.** The diff stays small, but it can't merge before the offline PR does.
+> 3. **Wait for `feat/offline` to merge,** then branch off `main`.
+>
+> Which one do you want?
+
+I stop here and wait for the answer.
+
+SUMMARY: Worked in place in the main checkout (no worktree), switching from feat/offline to a new fix/date-format branch off an updated main, because nobody else was in the checkout; the tests failed on main (the fix depends on `offline/clock` from feat/offline), so I did not commit or push and asked my partner how to proceed.
