@@ -167,6 +167,12 @@ node app/ryugi-artifacts.cjs publish --project-dir /path/to/project --artifact h
 - To update the same publication, omit both visibility flags. Explicit flags
   change access only when your human partner requests that change.
 - Share the printed `URL`. Publishing again replaces what the same link shows.
+- Publishing also publishes what the artifact references, following references
+  of references: everything never published goes out at the same visibility,
+  and everything already published but changed here is updated. `References`
+  lists each one with its state. A private one stays private and visitors see
+  a locked label; its `Next` line is the command that makes it public, for
+  your human partner to decide. `--no-refs` publishes only this artifact.
 - Exit code 2 with `E_LOGIN_REQUIRED`: give them the printed login link, wait for
   sign-in, then retry. `E_PLAN_LIMIT` gives the reason and an upgrade link.
 - Exit code 1: fix the reported cause. Exit code 5: inspect the retained URL and

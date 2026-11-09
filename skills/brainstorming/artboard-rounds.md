@@ -12,7 +12,7 @@ canvas, the boards and reading what they selected. Name it after the topic
 
 - When a document section sent you here, write the group references first:
   before `canvas.json`, put one `<ref artboard="…" group="…" />` per group,
-  each in its own `<p>`, under that section's heading (Artboard references
+  each in its own `<p>`, under that section's heading (References
   in ryugi:artifacts' `document.md`). A missing artboard is only a warning,
   so the reference can come before the drawing. Tell them the section now
   links to the board.

@@ -115,8 +115,8 @@ comments.json in the artboard directory is the server's; never write it.
   `"choose": true` with `"recommend": "<board id>"` turns it into a question
   they answer by picking a board (see Choice groups).
 - Documents reference groups and boards by key with `<ref>` (document.md,
-  Artboard references); the viewer marks each referenced one with an "N in
-  docs" badge. A referenced key is a public name: don't rename or remove it.
+  References); the viewer marks each referenced one with an "N
+  references" badge. A referenced key is a public name: don't rename or remove it.
   `check` warns `document <id> block <id> references <key>, which this
 artboard no longer has`. When a key has to change, change the document's
   `<ref>` in the same turn.
@@ -211,7 +211,7 @@ Write a new artboard in this order:
    server is ready while you write; opening waits for complete focus evidence.
 2. If a document section is why this artboard exists, write its group
    references now, each `<ref artboard="…" group="…" />` in its own `<p>`
-   under that section's heading (see Artboard references in
+   under that section's heading (see References in
    [`document.md`](./document.md)). The artboard doesn't exist yet; that is
    only a warning until it does. `check` on the artboard prints a `hint` for
    every choice group no document references.

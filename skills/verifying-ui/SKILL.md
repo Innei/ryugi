@@ -45,7 +45,7 @@ After the fix there is no honest "before".
 4. **Link back.** When the spec lists the document where this was
    discussed and it still exists, add `<ref artboard="<id>" group="<verify
 group>" />` to the section that discussed each module, as ryugi:artifacts
-   says under Artboard references in document.md. The reference shows the
+   says under References in document.md. The reference shows the
    verdict, and it is the only way back from the verify page to that
    discussion.
 5. Set `focus` to the first group, check that `warnings` and `pending` are

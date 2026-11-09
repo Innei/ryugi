@@ -42,18 +42,18 @@ you reached for last time. Nothing maps a kind of content to a block;
 the choice is yours, section by section, and a section can combine
 several.
 
-| Block                                | Can carry                                                    |
-| ------------------------------------ | ------------------------------------------------------------ |
-| `<mermaid>`                          | flows, sequences, states, dependencies, laid out for you     |
-| `<excalidraw>`                       | a hand-placed picture: layout, space, a sketch they can edit |
-| `<chart>`                            | numbers whose comparison, trend or split is the point        |
-| `<table>`                            | exact values and attributes a reader checks one by one       |
-| `<alert>`                            | the rare line a reader must not miss: a verdict, a risk      |
-| `<steps>`                            | a procedure followed one step at a time                      |
-| `<codeblock>`, `<math>`              | code, config, payloads; formulas                             |
-| `<details>`                          | depth most readers skip: evidence, alternatives, raw data    |
-| `<dynamic>`                          | something they tune or play with, live                       |
-| `<ask>`, `<ref>`, `<img>`, footnotes | decisions to confirm, artboard links, real images, citations |
+| Block                                | Can carry                                                              |
+| ------------------------------------ | ---------------------------------------------------------------------- |
+| `<mermaid>`                          | flows, sequences, states, dependencies, laid out for you               |
+| `<excalidraw>`                       | a hand-placed picture: layout, space, a sketch they can edit           |
+| `<chart>`                            | numbers whose comparison, trend or split is the point                  |
+| `<table>`                            | exact values and attributes a reader checks one by one                 |
+| `<alert>`                            | the rare line a reader must not miss: a verdict, a risk                |
+| `<steps>`                            | a procedure followed one step at a time                                |
+| `<codeblock>`, `<math>`              | code, config, payloads; formulas                                       |
+| `<details>`                          | depth most readers skip: evidence, alternatives, raw data              |
+| `<dynamic>`                          | something they tune or play with, live                                 |
+| `<ask>`, `<ref>`, `<img>`, footnotes | decisions to confirm, links to other artifacts, real images, citations |
 
 Prose carries what blocks cannot: reasons, trade-offs, constraints.
 Choose for the reader, not for variety: a block that shows nothing the
@@ -155,7 +155,7 @@ instead. Keep to them as you write:
 in the page, naming the block and the fix. Fix it and run `check` again.
 
 Also `h1`–`h6`, `ol`, `blockquote`, `hr`, and inline `b i u s sub sup mark br`,
-`<ask>` (see Questions) and `<ref>` (see Artboard references).
+`<ask>` (see Questions) and `<ref>` (see References).
 `strong`, `em` and `del` are read as `b`, `i` and `s`. Any other tag is
 rejected.
 
@@ -226,38 +226,50 @@ node app/ryugi-artifacts.cjs comment list --section asks --detail --project-dir 
 - A settled answer changes only after a comment asks for it: record it
   with `comment answer`, then write a new `comment note`.
 
-## Artboard references
+## References
 
-When part of the document is decided on an artboard, point at it with an
-inline `<ref>`. Clicking it opens the artboard beside the document, framed
-on what the reference names; selecting that group or board on the artboard
-scrolls the document back to the paragraph.
+When part of the document lives in another artifact, point at it with an
+inline `<ref>`. Clicking it opens that artifact beside the document. The page
+never shows more than two panes: a reference clicked in one pane opens in the
+other, replacing what was there.
 
 ```xml
 <h2>1. Navigation layout</h2>
 <p><ref artboard="settings-nav" group="q1" /></p>
 <p>The sidebar <ref artboard="settings-nav" board="q1-a">sidebar nav</ref> fits all 14 sections.</p>
-<p>The narrow-screen options are on <ref artboard="settings-narrow" />.</p>
+<p>Refunds start at the payment step (<ref whiteboard="checkout-map" frame="f-payment">payment</ref>).</p>
+<p>The data side is in <ref document="link-migration" />; tune the curve in <ref html="arrow-tuner" />.</p>
 ```
 
-- `artboard`: the slug of an artboard in this project, the `<id>` of
-  `artboard/<id>`. `group` or `board`, at most one, names a key from its
-  `canvas.json`; with neither, the reference is the whole artboard.
-- The label is optional plain text. Without one the page shows the board's
-  or group's title.
+One attribute names the target: the kind of artifact, set to its slug (the
+`<id>` of `<kind>/<id>` in this project). Some kinds take one sub-target:
+
+| Attribute    | Sub-target, at most one                                                            |
+| ------------ | ---------------------------------------------------------------------------------- |
+| `artboard`   | `group` or `board`: a key from its `canvas.json`                                   |
+| `whiteboard` | `frame` (a `frame` element on any page; `scene` prints them) or `page` (a page id) |
+| `document`   | none: the whole document                                                           |
+| `html`       | none: the whole page                                                               |
+
+- The label is optional plain text. Without one the page shows the target's
+  title.
 - Inline in a paragraph, list item or table cell, like `<ask>`. A `<ref>`
-  directly under `<doc>`, without `artboard` or `whiteboard`, with a slug other than
-  lowercase letters, digits and hyphens, or with both `group` and `board`
-  is refused.
+  directly under `<doc>`, with no kind or two kinds, with a slug other than
+  lowercase letters, digits and hyphens, with a sub-target its kind doesn't
+  take, or with two sub-targets is refused.
 - The server adds `to="<artifact id>"` once the slug resolves. Never write
   it, and never remove it unless `check` says the slug now names another
-  artboard: then delete `to=` and the server points it again.
-- A missing artboard, group or board is a `check` warning, not an error, so
-  you can write the reference before you draw. Clear those warnings before
-  you hand the document over.
-- The reference shows live state: a choice group reads "not picked yet"
-  until its round is submitted, then the board they chose; a verify group
-  shows its verdict. Don't write that state into the text.
+  artifact: then delete `to=` and the server points it again.
+- A missing target or sub-target (a group, board, page or frame, or one on a
+  deleted page) is a `check` warning, not an error, so you can write the
+  reference before the target exists. Clear those warnings before you hand
+  the document over; a document with them can't be published.
+- An artboard reference shows live state: a choice group reads "not picked
+  yet" until its round is submitted, then the board they chose; a verify
+  group shows its verdict. Don't write that state into the text.
+- Clicking an artboard or whiteboard reference frames what it names, and
+  selecting that group, board or frame scrolls the document back to the
+  paragraph.
 
 When to write one:
 
@@ -265,28 +277,6 @@ When to write one:
   reference on its own line under that section's heading.
 - Writing a decision made on the artboard into the prose: reference the
   chosen board instead of writing "artboard q1 → q1-c".
-
-## Whiteboard references
-
-Point at part of a whiteboard the same way:
-
-```xml
-<p>Refunds start at the payment step (<ref whiteboard="checkout-map" frame="f-payment">payment</ref>).</p>
-<p><ref whiteboard="checkout-map" /></p>
-<p>The retry details are on their own page: <ref whiteboard="checkout-map" page="p-retry" />.</p>
-```
-
-- `whiteboard`: the slug of a whiteboard in this project. `frame`, optional,
-  is the id of a `frame` element on any of its pages (`scene` prints them).
-  `page`, optional, is the id of one of its pages. A reference names a
-  `frame` or a `page`, not both. `group` and `board` are refused on a
-  whiteboard reference.
-- A `<ref>` has `artboard` or `whiteboard`, never both. Everything else under
-  Artboard references holds: inline, optional label, `to=` is the server's,
-  a missing whiteboard, page or frame, or one on a deleted page, is a `check`
-  warning.
-- Clicking it opens the whiteboard beside the document on the right page,
-  zoomed to the frame.
 
 ## What your human partner changed
 

@@ -6,7 +6,7 @@ side sees the other's change within a second. Use it while the structure is
 still moving: which parts exist, who talks to whom, where a piece belongs.
 The positions and arrows are what is being discussed. Once the structure is
 settled and the reasons need writing down, write a document and reference
-the whiteboard's frames from it (`document.md`, Whiteboard references).
+the whiteboard's frames from it (`document.md`, References).
 
 Start the server and get the link as `SKILL.md` describes, with
 `--artifact whiteboard/<id>`.
