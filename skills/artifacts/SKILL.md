@@ -23,7 +23,7 @@ When your human partner pastes a Ryugi Cloud link (`https://ryugi.innei.dev/a/<i
 or `/a/<id>` on another Ryugi Cloud host), run this with `app/` in this skill's directory:
 
 ```bash
-node app/ryugi-artifacts.cjs get <link>
+node app/ryugi.cjs get <link>
 ```
 
 The page is an app shell; `get` reads its content with this machine's Cloud
@@ -118,7 +118,7 @@ Paths below are relative to this skill's directory: resolve `app/` to its
 absolute path before running them. Every artifacts command uses the launcher.
 
 ```bash
-node app/ryugi-artifacts.cjs start --background --project-dir /path/to/project --artifact html/arrow-tuner
+node app/ryugi.cjs start --background --project-dir /path/to/project --artifact html/arrow-tuner
 # Server: RUNNING
 # Project: /path/to/project
 # Artifact: html/arrow-tuner
@@ -138,7 +138,7 @@ node app/ryugi-artifacts.cjs start --background --project-dir /path/to/project -
   registers your project.
 - The browser opens once the first artifact is ready enough to show. Use
   `--no-open` for headless use and still share the `Open` URL.
-- `node app/ryugi-artifacts.cjs stop` stops the server for every project; files stay.
+- `node app/ryugi.cjs stop` stops the server for every project; files stay.
 
 **Launching by harness.** Use `--background` for a completed startup result in
 Claude Code, Codex and ordinary shells. A foreground server uses `--foreground`
@@ -155,7 +155,7 @@ Publish when they want a link that works outside this machine. The server must
 be running.
 
 ```bash
-node app/ryugi-artifacts.cjs publish --project-dir /path/to/project --artifact html/arrow-tuner --public
+node app/ryugi.cjs publish --project-dir /path/to/project --artifact html/arrow-tuner --public
 # Publish: PUBLISHED · html/arrow-tuner
 # ID: …
 # URL: https://ryugi.innei.dev/a/…
@@ -225,7 +225,7 @@ whether it is on.
    sleep or `checkedAt` comparison is needed.
 
    ```bash
-   node app/ryugi-artifacts.cjs check --project-dir /path/to/project --artifact artboard/settings-nav
+   node app/ryugi.cjs check --project-dir /path/to/project --artifact artboard/settings-nav
    # Check: INCOMPLETE · artboard/settings-nav
    # Browser: not run
    # Pending: browser_not_run

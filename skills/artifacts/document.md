@@ -203,7 +203,7 @@ page. With a comment monitor the submit arrives as a `ryugi-answers`
 message; otherwise they say done in the terminal. Read the questions in Brief:
 
 ```bash
-node app/ryugi-artifacts.cjs comment list --section asks --detail --project-dir /path/to/project --artifact document/<id>
+node app/ryugi.cjs comment list --section asks --detail --project-dir /path/to/project --artifact document/<id>
 ```
 
 - It lists the submitted questions, one line each: the id, then `→ value`
@@ -283,7 +283,7 @@ When to write one:
 When asked to inspect edits, start with a read-only block summary:
 
 ```bash
-node app/ryugi-artifacts.cjs changes --project-dir /path/to/project --artifact document/<id>
+node app/ryugi.cjs changes --project-dir /path/to/project --artifact document/<id>
 ```
 
 Read the changed block IDs and follow the printed `Read` command for the captured
@@ -291,7 +291,7 @@ complete diff. Use the entire diff, then run the printed `Acknowledge` command;
 its receipt covers exactly that evidence. To enter it manually:
 
 ```bash
-node app/ryugi-artifacts.cjs changes ack --receipt <receipt> --project-dir /path/to/project --artifact document/<id>
+node app/ryugi.cjs changes ack --receipt <receipt> --project-dir /path/to/project --artifact document/<id>
 ```
 
 Later changes remain unread. `--all` is historical and has no receipt.
@@ -304,7 +304,7 @@ when asked, and answer about the changed block IDs.
 Read and answer comments through the CLI, never through `comments.json`.
 
 ```bash
-node app/ryugi-artifacts.cjs comment list --section threads --project-dir /path/to/project --artifact document/<id>
+node app/ryugi.cjs comment list --section threads --project-dir /path/to/project --artifact document/<id>
 ```
 
 - `list --section threads` is a read-only preview; it never marks a thread read.
@@ -324,7 +324,7 @@ node app/ryugi-artifacts.cjs comment list --section threads --project-dir /path/
 - Reply, with the message on stdin:
 
   ```bash
-  node app/ryugi-artifacts.cjs comment reply --project-dir /path/to/project --artifact document/<id> --thread <thread-id> <<'EOF'
+  node app/ryugi.cjs comment reply --project-dir /path/to/project --artifact document/<id> --thread <thread-id> <<'EOF'
   Changed to 2% and updated the body to match.
   EOF
   ```

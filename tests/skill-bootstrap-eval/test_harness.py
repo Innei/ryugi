@@ -241,7 +241,7 @@ def record(case, trace, artboards=None, checks=None, observer_stop=None):
 
 
 START = {"role": "assistant", "type": "tool_use", "name": "Bash", "id": "b",
-         "input": {"command": "node /x/skills/artifacts/app/ryugi-artifacts.cjs start --background --artifact artboard/todo"}}
+         "input": {"command": "node /x/skills/artifacts/app/ryugi.cjs start --background --artifact artboard/todo"}}
 CANVAS = {"role": "assistant", "type": "tool_use", "name": "Write", "id": "w",
           "input": {"file_path": "/p/.ryugi/artifacts/artboard/todo/canvas.json"}}
 

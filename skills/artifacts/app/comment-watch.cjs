@@ -7,7 +7,7 @@ const { beat, sessionOf, subscriptions } = require('./comment-subscriptions.cjs'
 
 const cursorKey = (env) => (env.CLAUDE_CODE_IS_COWORK ? 'Claude Cowork' : 'Claude Code');
 
-const LAUNCHER = path.resolve(__dirname, 'ryugi-artifacts.cjs');
+const LAUNCHER = path.resolve(__dirname, 'ryugi.cjs');
 const quote = (text) => `'${text.replaceAll("'", "'\"'\"'")}'`;
 
 // The notification carries the changed human text itself: one line, truncated per message and capped in total.

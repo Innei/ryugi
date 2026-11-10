@@ -8,6 +8,8 @@ npx ryugi-artifacts /path/to/project
 npx ryugi-artifacts --no-open
 ```
 
+Installed globally (`npm install -g ryugi-artifacts`), the command is `ryugi`; `ryugi-artifacts` stays as an alias. npx needs the package name, so `npx ryugi-artifacts` is the npx form.
+
 The local library shows content previews, type filters and title/id search across every registered project. Sort by newest update, oldest update or name. Previews load as their cards come into view; opening a card takes you to the full artifact. The server reads `.ryugi/artifacts/` in each registered project and keeps the library in sync with file changes.
 
 The command reuses the machine's running server. Agent calls to `start --artifact …` return links without activating a browser tab when reusing a server; `--open` explicitly opens or focuses that artifact. Run from a subdirectory of a git repository, it uses the repository root's `.ryugi/artifacts/`, unless a directory between them already has its own. A new server stays in the terminal; Ctrl+C stops it and keeps your artifacts. Node.js is required.
@@ -32,7 +34,7 @@ The server keeps its state in `~/.ryugi/server/` (`RYUGI_SERVER_HOME` moves it):
 
 The same CLI runs what the skill uses: `npx ryugi-artifacts start`, `stop` and `publish` (`<command> --help` lists a command's options; add `--format json` for one JSON line). `npx ryugi-artifacts get <link>` reads a published Ryugi Cloud artifact with this machine's cloud sign-in and prints a bounded summary, including when piped. Follow its `Details` action for complete document content, or use `--source` for LiteXML. A local build of `ryugi-artifacts` can write gitignored copies to `skills/artifacts/app/`; the skill's launcher prefers a local `cli.cjs` over the npm release.
 
-`ryugi-artifacts update` installs the newest release with the package manager that installed this one (npm, pnpm, yarn or bun, detected from the install path; `--pm` overrides it, `--check` only compares). For an npx, pnpm dlx or bunx run, a local build, or the launcher, it says how to update instead.
+`ryugi update` installs the newest release with the package manager that installed this one (npm, pnpm, yarn or bun, detected from the install path; `--pm` overrides it, `--check` only compares). For an npx, pnpm dlx or bunx run, a local build, or the launcher, it says how to update instead.
 
 Cloud publish failures print their classified cause and any login or upgrade link in Brief. Machine JSON retains the HTTP status in `error.httpStatus` and quota facts in `error.details`. Account quota failures use `E_PLAN_LIMIT` and exit code 2; artifact storage exhaustion uses `E_ARTIFACT_STORAGE_LIMIT`, HTTP 413 and exit code 1. Auto-publish reports the same exhaustion reason immediately.
 

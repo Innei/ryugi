@@ -275,7 +275,7 @@ selected nodes, on a spot inside a board, or on empty canvas. Read and
 answer through the CLI, never through `comments.json`.
 
 ```bash
-node app/ryugi-artifacts.cjs comment list --section threads --project-dir /path/to/project --artifact artboard/<id>
+node app/ryugi.cjs comment list --section threads --project-dir /path/to/project --artifact artboard/<id>
 ```
 
 - Thread pages are read-only previews. Follow the printed `Read` command for
@@ -297,7 +297,7 @@ node app/ryugi-artifacts.cjs comment list --section threads --project-dir /path/
 - Reply, with the message on stdin:
 
   ```bash
-  node app/ryugi-artifacts.cjs comment reply --project-dir /path/to/project --artifact artboard/<id> --thread <thread-id> <<'EOF'
+  node app/ryugi.cjs comment reply --project-dir /path/to/project --artifact artboard/<id> --thread <thread-id> <<'EOF'
   Moved the input 8px right; it no longer overlaps the pin.
   EOF
   ```
@@ -367,8 +367,8 @@ bottom submits the round. A round is the groups under one title note.
   draw the next one. Groups they did not mention keep your recommendation.
 
   ```bash
-  node app/ryugi-artifacts.cjs comment choose --project-dir /path/to/project --artifact artboard/<id> --group q1 --board q1-b
-  node app/ryugi-artifacts.cjs comment submit --project-dir /path/to/project --artifact artboard/<id> --round <round id>
+  node app/ryugi.cjs comment choose --project-dir /path/to/project --artifact artboard/<id> --group q1 --board q1-b
+  node app/ryugi.cjs comment submit --project-dir /path/to/project --artifact artboard/<id> --round <round id>
   ```
 
 - A `Ryugi choices … withdrawn` message, before you wrote the next round:

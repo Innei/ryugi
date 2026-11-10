@@ -86,7 +86,7 @@ function fixture(t) {
     const result = spawnSync(
       process.execPath,
       [
-        path.join(app, 'ryugi-artifacts.cjs'),
+        path.join(app, 'ryugi.cjs'),
         'start',
         '--json',
         '--project-dir',

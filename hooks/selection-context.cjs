@@ -104,7 +104,7 @@ function describe(session, { file, value }, prompt, budget) {
 
 const cursorKey = (env) => (env.CLAUDE_CODE_IS_COWORK ? 'Claude Cowork' : 'Claude Code');
 
-const LAUNCHER = path.resolve(__dirname, '..', 'skills', 'artifacts', 'app', 'ryugi-artifacts.cjs');
+const LAUNCHER = path.resolve(__dirname, '..', 'skills', 'artifacts', 'app', 'ryugi.cjs');
 
 function documentIds(root) {
   try {

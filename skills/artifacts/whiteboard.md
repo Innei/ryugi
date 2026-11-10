@@ -153,7 +153,7 @@ Your human partner may have drawn since you last looked. Read
 ## Reading what they drew
 
 ```bash
-node app/ryugi-artifacts.cjs scene --project-dir /path/to/project --artifact whiteboard/<id>
+node app/ryugi.cjs scene --project-dir /path/to/project --artifact whiteboard/<id>
 ```
 
 - It prints the scene version, whether `render.png` shows the current scene,
@@ -194,7 +194,7 @@ They comment on elements, or select some and press **Ask agent**, which
 posts a comment anchored on the selection with the render saved first.
 
 ```bash
-node app/ryugi-artifacts.cjs comment list --section threads --project-dir /path/to/project --artifact whiteboard/<id>
+node app/ryugi.cjs comment list --section threads --project-dir /path/to/project --artifact whiteboard/<id>
 ```
 
 1. Follow the printed `Read` command. The thread line names the elements
@@ -210,10 +210,10 @@ node app/ryugi-artifacts.cjs comment list --section threads --project-dir /path/
    asked something back.
 
 ```bash
-node app/ryugi-artifacts.cjs comment reply --project-dir /path/to/project --artifact whiteboard/<id> --thread <thread-id> <<'EOF'
+node app/ryugi.cjs comment reply --project-dir /path/to/project --artifact whiteboard/<id> --thread <thread-id> <<'EOF'
 Split payment into card and wallet (n-card, n-wallet) inside f-checkout.
 EOF
-node app/ryugi-artifacts.cjs comment resolve --project-dir /path/to/project --artifact whiteboard/<id> --thread <thread-id>
+node app/ryugi.cjs comment resolve --project-dir /path/to/project --artifact whiteboard/<id> --thread <thread-id>
 ```
 
 When you `publish` a document that references a whiteboard, publish the

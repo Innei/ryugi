@@ -81,7 +81,7 @@ def score(record):
                    if line[3:] and not line[3:].startswith(".ryugi")]
     if record["case"] == "todo" and left_behind:
         product_edits.append(len(trace))
-    started_artifacts = any(call["tool"] == "Bash" and re.search(r"ryugi-artifacts\.cjs\S*\s+start\b", call["detail"])
+    started_artifacts = any(call["tool"] == "Bash" and re.search(r"ryugi(?:-artifacts)?\.cjs\S*\s+start\b", call["detail"])
                             for call in calls)
     choice_groups = [len(g.get("boards", [])) for g in groups_of(record) if g.get("choose")]
     opened_artboard = bool(record.get("artifacts", {}).get("artboards"))

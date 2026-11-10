@@ -12,7 +12,7 @@ function setup(t) {
     bin = path.join(root, 'bin');
   fs.mkdirSync(app);
   fs.mkdirSync(bin);
-  for (const file of ['ryugi-artifacts.cjs', 'output-bootstrap.cjs']) {
+  for (const file of ['ryugi.cjs', 'ryugi-artifacts.cjs', 'output-bootstrap.cjs']) {
     const source = path.join(__dirname, '../../skills/artifacts/app', file);
     if (fs.existsSync(source)) fs.copyFileSync(source, path.join(app, file));
   }
@@ -32,7 +32,7 @@ test('installation failures use the shared JSONL terminal schema', (t) => {
   const f = setup(t);
   const out = spawnSync(
     process.execPath,
-    [path.join(f.app, 'ryugi-artifacts.cjs'), 'start', '--format', 'jsonl'],
+    [path.join(f.app, 'ryugi.cjs'), 'start', '--format', 'jsonl'],
     {
       env: f.env,
       encoding: 'utf8',
@@ -55,7 +55,7 @@ test('offline cache is selected by its output contract rather than a version flo
   );
   const out = spawnSync(
     process.execPath,
-    [path.join(f.app, 'ryugi-artifacts.cjs'), 'get', 'cloud', '--format', 'json'],
+    [path.join(f.app, 'ryugi.cjs'), 'get', 'cloud', '--format', 'json'],
     { env: f.env, encoding: 'utf8' },
   );
   assert.equal(out.status, 0);
@@ -75,14 +75,10 @@ test('a cached CLI with the old JSON protocol cannot execute the requested comma
       'process.stdout.write(JSON.stringify({type:"auto-publish",global:null,project:null}));',
     ].join('\n'),
   );
-  const out = spawnSync(
-    process.execPath,
-    [path.join(f.app, 'ryugi-artifacts.cjs'), 'config', '--json'],
-    {
-      env: f.env,
-      encoding: 'utf8',
-    },
-  );
+  const out = spawnSync(process.execPath, [path.join(f.app, 'ryugi.cjs'), 'config', '--json'], {
+    env: f.env,
+    encoding: 'utf8',
+  });
   assert.equal(out.status, 1);
   const result = JSON.parse(out.stdout);
   assert.equal(result.schema, 'ryugi.cli/v1');
@@ -101,15 +97,7 @@ test('a unified-envelope CLI without combined-review support cannot execute a re
   );
   const out = spawnSync(
     process.execPath,
-    [
-      path.join(f.app, 'ryugi-artifacts.cjs'),
-      'comment',
-      'list',
-      '--sections',
-      'all',
-      '--format',
-      'json',
-    ],
+    [path.join(f.app, 'ryugi.cjs'), 'comment', 'list', '--sections', 'all', '--format', 'json'],
     { env: f.env, encoding: 'utf8' },
   );
   assert.equal(out.status, 1);
@@ -135,11 +123,10 @@ test('a fresh latest pointer to an unusable CLI still permits a working offline 
     path.join(releases, 'latest.json'),
     JSON.stringify({ version: '1.52.0', checkedAt: Date.now() }),
   );
-  const out = spawnSync(
-    process.execPath,
-    [path.join(f.app, 'ryugi-artifacts.cjs'), 'config', '--json'],
-    { env: f.env, encoding: 'utf8' },
-  );
+  const out = spawnSync(process.execPath, [path.join(f.app, 'ryugi.cjs'), 'config', '--json'], {
+    env: f.env,
+    encoding: 'utf8',
+  });
   assert.equal(out.status, 0, out.stdout);
   assert.equal(JSON.parse(out.stdout).data.cached, true);
 });
@@ -148,10 +135,28 @@ test('output conflicts fail before installer or subscription work', (t) => {
   const f = setup(t);
   const out = spawnSync(
     process.execPath,
-    [path.join(f.app, 'ryugi-artifacts.cjs'), 'start', '--format', 'json', '--json'],
+    [path.join(f.app, 'ryugi.cjs'), 'start', '--format', 'json', '--json'],
     { env: f.env, encoding: 'utf8' },
   );
   assert.equal(out.status, 1);
   assert.equal(JSON.parse(out.stdout).error.code, 'E_OPTION_CONFLICT');
   assert.equal(fs.existsSync(path.join(f.root, 'cache')), false);
+});
+
+test('the ryugi-artifacts.cjs alias runs the ryugi launcher', (t) => {
+  const f = setup(t);
+  fs.writeFileSync(
+    path.join(f.app, 'cli.cjs'),
+    'process.stdout.write(JSON.stringify({schema:"ryugi.cli/v1",command:process.argv.includes("--version")?"version":"get",outcome:"success",data:{command:process.env.RYUGI_ARTIFACTS_COMMAND,capabilities:["reviewBundlesV1"]}}))',
+  );
+  const out = spawnSync(
+    process.execPath,
+    [path.join(f.app, 'ryugi-artifacts.cjs'), 'get', 'cloud', '--format', 'json'],
+    { env: f.env, encoding: 'utf8' },
+  );
+  assert.equal(out.status, 0, out.stderr);
+  assert.equal(
+    JSON.parse(out.stdout).data.command,
+    `node "${path.join(fs.realpathSync(f.app), 'ryugi.cjs')}"`,
+  );
 });

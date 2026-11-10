@@ -334,7 +334,7 @@ function launcher(t) {
   return (project, session, ...args) => {
     const result = spawnSync(
       process.execPath,
-      [path.join(app, 'ryugi-artifacts.cjs'), ...args, '--json', '--project-dir', project],
+      [path.join(app, 'ryugi.cjs'), ...args, '--json', '--project-dir', project],
       {
         env: {
           ...process.env,
@@ -700,7 +700,7 @@ const embedVfs = (text) => ({
     },
   ],
   command:
-    "node '/Users/innei/git/innei-repo/ryugi/skills/artifacts/app/ryugi-artifacts.cjs' comment list --section threads --detail --format brief --project-dir '/Users/innei/git/innei-repo/mx-core' --artifact document/embed-vfs",
+    "node '/Users/innei/git/innei-repo/ryugi/skills/artifacts/app/ryugi.cjs' comment list --section threads --detail --format brief --project-dir '/Users/innei/git/innei-repo/mx-core' --artifact document/embed-vfs",
 });
 const timeMachine = [
   '感觉这个就相当于在做一个文件管理版本号的 Time Machine。这个我觉得还是需要的，就是一个实体关联多个版本，因为在历史回溯中我们需要看到历史版本。',

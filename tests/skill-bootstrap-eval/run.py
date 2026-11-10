@@ -200,7 +200,7 @@ def install_artifacts(root, version):
 
 
 def stop_server(plugin, env):
-    subprocess.run(["node", str(plugin / "skills/artifacts/app/ryugi-artifacts.cjs"), "stop"],
+    subprocess.run(["node", str(plugin / "skills/artifacts/app/ryugi.cjs"), "stop"],
                    env=env, capture_output=True, timeout=30)
 
 
