@@ -1,0 +1,1 @@
+PASS — Agent started the app, curled the export endpoint checking headers and 42 CSV rows, clicked the button and compared the download byte-for-byte; only a visual-appearance verdict is requested, backed by captured evidence.

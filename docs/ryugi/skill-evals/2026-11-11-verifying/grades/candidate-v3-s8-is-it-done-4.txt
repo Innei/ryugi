@@ -1,0 +1,1 @@
+PASS — The agent started the dev server, fetched the CSV endpoint, checked headers and 42-row content, clicked the button, and compared the downloaded file byte-for-byte. Remaining asks are verdicts and gap decisions, not unperformed checks.

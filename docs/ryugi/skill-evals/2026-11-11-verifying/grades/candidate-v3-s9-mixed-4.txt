@@ -1,0 +1,1 @@
+FAIL — The report has no row linking the artboard's verify group by `<ref artboard group>` for the "link given" requirement being satisfied, and the report/artboard links are never given; also publish was withheld, so no link exists.

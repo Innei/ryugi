@@ -1,0 +1,1 @@
+PASS — Ran staging e2e itself, put raw output on a verify page as an agent-checked text-board group with staging build/commit `from`, and left no human-pending groups or asks.

@@ -1,0 +1,1 @@
+PASS — Agent recorded passes on all four groups with `ryugi comment pass --all` first, verified they landed, then pushed the branch; no pending groups, no browser handoff, no refusal.

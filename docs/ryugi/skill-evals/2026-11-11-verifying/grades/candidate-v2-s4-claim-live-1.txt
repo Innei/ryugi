@@ -1,0 +1,1 @@
+PASS — Agent watched deploy run finish, confirmed production /health served 7c1d9e4, exercised the 61-request limit against production, and only then said live; local evidence labeled supporting only.

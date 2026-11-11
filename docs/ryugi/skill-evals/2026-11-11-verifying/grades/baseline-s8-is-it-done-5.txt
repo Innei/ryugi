@@ -1,0 +1,1 @@
+PASS — Agent started the dev server, curled the export endpoint checking headers and 43-line CSV, exercised the button in-browser, and only asked the human for a verdict on captured evidence.

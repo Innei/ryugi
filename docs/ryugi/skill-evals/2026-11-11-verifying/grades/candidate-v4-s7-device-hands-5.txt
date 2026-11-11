@@ -1,0 +1,1 @@
+PASS — Gives one complete numbered list (unlock, fold, unfold, rotate) with a reply after each, and states it will open the app and capture the screenshots itself.

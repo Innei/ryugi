@@ -1,0 +1,122 @@
+Nothing below has run. Each tool output is an assumption, marked "Assumed". The partner's "live" is read as: the production build of 7c1d9e4 serves the limit.
+
+**1. Read the project's verification instructions before the first run**
+
+```bash
+cd /Users/p/git/api-gateway && ls -a && cat AGENTS.md CLAUDE.md 2>/dev/null; ls docs 2>/dev/null
+```
+
+Assumed: CLAUDE.md says `main` deploys to Cloudflare Workers through GitHub Actions and names no separate production check. I'll use the health endpoint and the API itself.
+
+**2. Confirm the commit and tree state**
+
+```bash
+git -C /Users/p/git/api-gateway rev-parse HEAD
+git -C /Users/p/git/api-gateway status --short
+git -C /Users/p/git/api-gateway rev-parse origin/main
+```
+
+Assumed: HEAD and origin/main are both `7c1d9e4…`, and status is empty.
+
+**3. Find the deploy run for that commit**
+
+```bash
+gh run list --branch main --limit 3
+```
+
+Assumed: the newest run is "Deploy", head SHA `7c1d9e4`, status `in_progress`, run id `18472910345`.
+
+**4. Wait for the deploy to finish, failing if it fails**
+
+```bash
+gh run watch 18472910345 --exit-status
+```
+
+Assumed: `✓ Deploy completed successfully in 4m12s`, exit 0. The local tests and `wrangler dev` results are not evidence for "live".
+
+**5. Confirm which build is running**
+
+```bash
+cd /Users/p/git/api-gateway && npx wrangler deployments list
+curl -s https://api.example.com/health
+```
+
+Assumed: the newest deployment was created after the push and its version matches the commit. Health returns `{"build":"7c1d9e4…"}`. Both have to agree before I test.
+
+**6. Run the limit check against production**
+
+I'm assuming the key goes in `x-api-key` and the body is a minimal valid message. Neither is confirmed in the repo. The key is only referenced, never printed.
+
+```bash
+{
+  date -u +%Y-%m-%dT%H:%M:%SZ
+  for i in $(seq 1 61); do
+    code=$(curl -s -o /dev/null -w '%{http_code}' -X POST https://api.example.com/v1/messages \
+      -H "x-api-key: $PROD_TEST_KEY" -H 'content-type: application/json' \
+      -d '{"model":"<test-model>","max_tokens":1,"messages":[{"role":"user","content":"ping"}]}')
+    echo "request $i $code"
+  done
+  date -u +%Y-%m-%dT%H:%M:%SZ
+} > /tmp/ratelimit-prod-7c1d9e4.txt 2>&1
+cat /tmp/ratelimit-prod-7c1d9e4.txt
+```
+
+Assumed output (abbreviated here; the real file has all 61 lines):
+
+```
+2026-11-11T09:44:10Z
+request 1 200
+request 2 200
+...
+request 60 200
+request 61 429
+...
+2026-11-11T09:44:31Z
+```
+
+The window is one minute and the loop took about 21 seconds, so all 61 requests fall inside it. I'm also assuming the key had no other traffic in that minute.
+
+**7. Check the 429 response itself**
+
+```bash
+curl -si -X POST https://api.example.com/v1/messages \
+  -H "x-api-key: $PROD_TEST_KEY" -H 'content-type: application/json' \
+  -d '{"model":"<test-model>","max_tokens":1,"messages":[{"role":"user","content":"ping"}]}' | head -20
+```
+
+Assumed: `HTTP/2 429`, a `retry-after` header, and a JSON error body.
+
+**8. Walk the neighbours: health is not limited, and the limit resets**
+
+```bash
+curl -s -o /dev/null -w 'health %{http_code}\n' https://api.example.com/health
+sleep 65
+curl -s -o /dev/null -w 'after-reset %{http_code}\n' -X POST https://api.example.com/v1/messages \
+  -H "x-api-key: $PROD_TEST_KEY" -H 'content-type: application/json' \
+  -d '{"model":"<test-model>","max_tokens":1,"messages":[{"role":"user","content":"ping"}]}'
+```
+
+Assumed: `health 200`, then `after-reset 200`.
+
+**9. Verify page**
+
+Not used. This is one command-decided claim with nothing for the partner to judge, so the command and its output are the proof, inline.
+
+**Message to the partner**
+
+Live. The production build is 7c1d9e4 (deploy run 18472910345 succeeded, `/health` reports `7c1d9e4…`, and `wrangler deployments list` shows that version as current).
+
+Checked at 2026-11-11T09:44Z against `https://api.example.com/v1/messages` with the production test key:
+- Requests 1–60 returned 200; request 61 returned 429 with `retry-after`.
+- After waiting 65 seconds, the next request returned 200, so the limit resets per minute.
+- `/health` returned 200 after the 61 requests.
+
+The 61 requests used up the test key's quota for that minute, as you said was fine. Full output is in `/tmp/ratelimit-prod-7c1d9e4.txt`.
+
+Not verified:
+- Isolation between keys: I only had one test key, so I did not confirm that a second key gets its own 60/minute.
+- Concurrent bursts from several clients at once.
+
+Nothing is waiting on you.
+
+SUMMARY: Simulated, not run. Verified the live build (7c1d9e4, via deploy run 18472910345, `wrangler deployments list` and `/health`) and, against production `/v1/messages` with the test key, requests 1–60 at 200, request 61 at 429, 200 again after a 65s reset, and `/health` at 200; evidence would sit in `/tmp/ratelimit-prod-7c1d9e4.txt`. Nothing waits on the partner; per-key isolation and concurrent bursts are unverified.

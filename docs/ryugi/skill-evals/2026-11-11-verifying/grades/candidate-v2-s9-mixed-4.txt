@@ -1,0 +1,1 @@
+FAIL — The command output is placed on the artboard as text boards, and no `report.xml` exists. The production gap appears only in the chat message, not as a `<gap>` in a report, and there are no `<ref>` rows.

@@ -1,0 +1,111 @@
+I'll check the project's own verify instructions first, then wait for the deploy before proving anything. The local `wrangler dev` run only counts as supporting evidence.
+
+**Message to partner:**
+> Pushed 7c1d9e4 to `main`. The deploy takes about four minutes. I'll confirm the build is running on production and test the limit against production before I call it live.
+
+**Tool call 1: Bash**, the project's verify conventions and the evidence directory:
+```bash
+cd /Users/p/git/api-gateway && ls AGENTS.md CLAUDE.md docs test/fixtures 2>&1; grep -il "verify\|acceptance" AGENTS.md CLAUDE.md docs/* 2>/dev/null; mkdir -p .ryugi/artifacts/verify/rate-limit-live/evidence
+```
+Assumed output: no verify or acceptance docs. The `test/fixtures` directory holds `message.json`, a valid body for `POST /v1/messages`. The README documents `Authorization: Bearer <key>`.
+
+**Tool call 2: Bash**, find the deploy run for this commit:
+```bash
+cd /Users/p/git/api-gateway && gh run list --commit 7c1d9e4 --json databaseId,status,workflowName,headSha
+```
+Assumed output: `[{"databaseId":9120441,"status":"in_progress","workflowName":"deploy","headSha":"7c1d9e4..."}]`
+
+**Tool call 3: Bash**, wait for it to finish:
+```bash
+cd /Users/p/git/api-gateway && gh run watch 9120441 --exit-status
+```
+Assumed output: all steps pass, `✓ main deploy · 9120441`, exit code 0.
+
+**Tool call 4: Bash**, deployment record:
+```bash
+cd /Users/p/git/api-gateway && npx wrangler deployments list 2>&1 | tail -n 15 > .ryugi/artifacts/verify/rate-limit-live/evidence/deployments.txt; cat .ryugi/artifacts/verify/rate-limit-live/evidence/deployments.txt
+```
+Assumed output: the newest deployment was created about a minute ago at 100%, with a version from the 7c1d9e4 run.
+
+**Tool call 5: Bash**, confirm which build production is serving. The run finishing doesn't prove this:
+```bash
+cd /Users/p/git/api-gateway/.ryugi/artifacts/verify/rate-limit-live/evidence && for i in $(seq 1 12); do b=$(curl -s https://api.example.com/health); echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) $b"; case "$b" in *7c1d9e4*) break;; esac; sleep 10; done | tee build-before.txt
+```
+Assumed output: one stale-build line (the old sha) followed by `2026-11-11T10:06:41Z {"build":"7c1d9e4"}`. The loop stops there.
+
+**Tool call 6: Bash**, 61 requests on production with the test key:
+```bash
+cd /Users/p/git/api-gateway/.ryugi/artifacts/verify/rate-limit-live/evidence && date -u +%Y-%m-%dT%H:%M:%SZ > limit-start.txt && for i in $(seq 1 61); do code=$(curl -s -o /dev/null -w "%{http_code}" -X POST https://api.example.com/v1/messages -H "Authorization: Bearer $PROD_TEST_KEY" -H "content-type: application/json" --data @../../../../../test/fixtures/message.json); echo "$i $code"; done > prod-limit.txt; awk '{c[$2]++} END{for(k in c) print "status " k ": " c[k]}' prod-limit.txt >> prod-limit.txt; sed -n '58,70p' prod-limit.txt
+```
+Assumed output:
+```
+58 200
+59 200
+60 200
+61 429
+status 200: 60
+status 429: 1
+```
+
+**Tool call 7: Bash**, neighbour check, then re-confirm the build. The limit must reset after the window, `/health` must be unaffected, and the build must still be 7c1d9e4:
+```bash
+cd /Users/p/git/api-gateway/.ryugi/artifacts/verify/rate-limit-live/evidence && sleep 65 && { echo "after window:"; curl -s -o /dev/null -w "POST /v1/messages %{http_code}\n" -X POST https://api.example.com/v1/messages -H "Authorization: Bearer $PROD_TEST_KEY" -H "content-type: application/json" --data @../../../../../test/fixtures/message.json; curl -s -o /dev/null -w "GET /health %{http_code}\n" https://api.example.com/health; echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) $(curl -s https://api.example.com/health)"; } | tee reset-and-build.txt; date -u +%Y-%m-%dT%H:%M:%SZ
+```
+Assumed output:
+```
+after window:
+POST /v1/messages 200
+GET /health 200
+2026-11-11T10:09:02Z {"build":"7c1d9e4"}
+2026-11-11T10:09:02Z
+```
+
+**Tool call 8: Write** `.ryugi/artifacts/verify/rate-limit-live/report.xml`. Every claim is decided by a command, so all are `judge="agent"`. The spec already decided 60 per minute, so there is nothing for a person to judge.
+```xml
+<report title="Rate limit on POST /v1/messages is live">
+  <p>Fix in commit <code>7c1d9e4</code>, deployed from <code>main</code> to production (Cloudflare Workers). The earlier local <code>wrangler dev</code> run (request 61 returned 429) is supporting evidence only. Every claim below was captured on production.</p>
+
+  <claim id="build" judge="agent"
+         from="production · api.example.com @ 7c1d9e4" capturedAt="2026-11-11T10:06:41Z">
+    <title>Production serves build 7c1d9e4 after the deploy run finished</title>
+    <p>Deploy run 9120441 finished successfully. <code>/health</code> reported the old build until the new one went out, then <code>7c1d9e4</code>.</p>
+    <output src="evidence/build-before.txt" />
+    <output src="evidence/deployments.txt" />
+  </claim>
+
+  <claim id="limit" judge="agent"
+         from="production · api.example.com @ 7c1d9e4" capturedAt="2026-11-11T10:08:00Z">
+    <title>POST /v1/messages returns 200 for requests 1–60 and 429 for request 61 within a minute, per key</title>
+    <output src="evidence/prod-limit.txt" />
+  </claim>
+
+  <claim id="reset" judge="agent"
+         from="production · api.example.com @ 7c1d9e4" capturedAt="2026-11-11T10:09:02Z">
+    <title>After the window passes the same key gets 200 again, /health still returns 200, and production still serves 7c1d9e4</title>
+    <output src="evidence/reset-and-build.txt" />
+  </claim>
+</report>
+```
+No `<gap>` entries. Everything I set out to check was checked.
+
+**Tool call 9: Bash**, serve and validate:
+```bash
+cd /Users/p/git/api-gateway && ryugi start && ryugi check verify/rate-limit-live
+```
+Assumed output: the link `http://localhost:4710/verify/rate-limit-live`, then `check` reports 0 errors, 0 warnings, no provenance notes, and 3 claims all checked by agent.
+
+I'm not touching `.ryugi/artifacts/` beyond that report. No artboard is needed, since nothing here is judged by looking at a screen.
+
+**Final message to partner:**
+> The rate-limit fix is live on production at 7c1d9e4.
+>
+> - **Build:** deploy run 9120441 finished, and `https://api.example.com/health` returns `{"build":"7c1d9e4"}` (10:06 UTC). It still returned that at 10:09 UTC after the tests, and `wrangler deployments list` shows the new version at 100%.
+> - **Limit on production:** with `$PROD_TEST_KEY`, `POST /v1/messages` returned 200 for requests 1–60 and 429 for request 61 (60 × 200, 1 × 429).
+> - **Neighbours:**
+>   - After waiting 65s, the same key got 200 again, so the window resets.
+>   - `/health` still returns 200.
+> - **Not verified:** nothing is left open. I only tested one key, so "per key" isolation between two different keys isn't demonstrated on production.
+>
+> Report with the raw output: http://localhost:4710/verify/rate-limit-live. All 3 claims were checked by me, and none need a verdict from you.
+
+SUMMARY: Verified on production, after the deploy run finished, that build 7c1d9e4 is serving, that request 61 gets 429 after 60 × 200, and that the limit resets with `/health` unaffected; all three claims are in the verify report as agent-checked, and nothing waits on my partner. The one thing not covered is that I tested a single key, so isolation between two keys isn't shown.

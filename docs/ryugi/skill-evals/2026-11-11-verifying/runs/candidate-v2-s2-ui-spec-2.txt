@@ -1,0 +1,216 @@
+Simulated session. Tool outputs marked *(assumed)* are not real.
+
+## 1. Read how the project verifies
+
+**Tool: Bash**
+```
+cd /Users/p/git/notes-app && ls AGENTS.md CLAUDE.md docs 2>/dev/null; cat AGENTS.md
+```
+*(assumed output: AGENTS.md says "Verify with `pnpm typecheck && pnpm test`. The dev server runs with a seeded demo session, so no sign-in is needed. Settings live at /settings.")*
+
+## 2. Confirm which build is running
+
+**Tool: Bash**
+```
+cd /Users/p/git/notes-app && git rev-parse --short HEAD && git status --short && curl -s -o /dev/null -w "%{http_code}\n" http://localhost:5173/settings && lsof -nP -iTCP:5173 -sTCP:LISTEN
+```
+*(assumed output: `a1b2c3d`, empty status, `200`, and a node/vite process listening on 5173. The process cwd is /Users/p/git/notes-app.)*
+
+The tree is clean and the server serves a1b2c3d.
+
+## 3. Fresh typecheck and tests (supporting evidence only)
+
+**Tool: Bash**
+```
+cd /Users/p/git/notes-app && pnpm typecheck 2>&1 | tail -n 5; echo "typecheck exit=${pipestatus[1]}"; pnpm test 2>&1 | tail -n 15; echo "test exit=${pipestatus[1]}"
+```
+*(assumed output: typecheck is clean with exit=0, "Tests 142 passed (142)", test exit=0)*
+
+## 4. Persistence check, run against the dev server
+
+I write the pass threshold down before running: the PATCH status is 200 and the following GET returns the new value.
+
+**Tool: Bash**
+```
+cd /Users/p/git/notes-app
+A=.ryugi/artifacts/settings-redesign
+mkdir -p $A/pages/verify
+OUT=$A/pages/verify/prefs-api.txt
+B=http://localhost:5173/api/prefs
+{
+echo "# $(date -u +%Y-%m-%dT%H:%M:%SZ)  $B  dev server @ $(git rev-parse --short HEAD)"
+echo '$ curl -s GET /api/prefs   (before)'
+BEFORE=$(curl -s $B); echo "$BEFORE"
+OLD=$(echo "$BEFORE" | jq -r .emailDigest)
+NEW=$([ "$OLD" = true ] && echo false || echo true)
+echo "\$ curl -s -X PATCH /api/prefs -d '{\"emailDigest\":$NEW}'"
+CODE=$(curl -s -o /dev/stderr -w "%{http_code}" -X PATCH -H 'Content-Type: application/json' -d "{\"emailDigest\":$NEW}" $B 2>&1 >/dev/null | tail -n1)
+echo "PATCH status: $CODE"
+echo '$ curl -s GET /api/prefs   (after)'
+AFTER=$(curl -s $B); echo "$AFTER"
+GOT=$(echo "$AFTER" | jq -r .emailDigest)
+echo "expected emailDigest=$NEW got=$GOT"
+[ "$CODE" = 200 ] && [ "$GOT" = "$NEW" ] && echo "RESULT: PASS" || echo "RESULT: FAIL"
+echo "# restoring original value"
+curl -s -o /dev/null -w "restore PATCH status: %{http_code}\n" -X PATCH -H 'Content-Type: application/json' -d "{\"emailDigest\":$OLD}" $B
+} > $OUT 2>&1
+cat $OUT
+```
+*(assumed output: before `{"emailDigest":true,...}`, PATCH status 200, after `{"emailDigest":false,...}`, `expected emailDigest=false got=false`, `RESULT: PASS`, restore status 200)*
+
+## 5. Browser evidence from the running app
+
+**Tool: browser** open `http://localhost:5173/settings` and set the viewport to 1280×800.
+
+**Tool: browser** scroll to the Notification settings section and take a screenshot. Save it to `.ryugi/artifacts/settings-redesign/pages/verify/notify-actual.png`. This is the "before" capture for nothing, since this is new work, so it only goes to the right side of the comparison.
+
+**Tool: browser** start a recording, click the "Email digest" toggle on, wait 1s, click it off, wait 1s, click "Push alerts" on, stop. Save it to a scratch path `$TMPDIR/toggle-raw.mp4`.
+
+**Tool: Bash**
+```
+cd /Users/p/git/notes-app/.ryugi/artifacts/settings-redesign && cp $TMPDIR/toggle-raw.mp4 pages/verify/toggle.mp4 && ls -l pages/verify && ffprobe -v error -show_entries format=duration -of csv=p=0 pages/verify/toggle.mp4
+```
+*(assumed output: toggle.mp4 is 0.9MB with a duration of 6.4s, the PNG is 210KB, and the text file is under 1KB. All are under the 8MB limit.)*
+
+**Tool: browser** run the following in the page. The threshold is 160ms, written down before the run.
+```
+[...document.querySelectorAll('[data-testid^="notify-toggle"] [data-thumb]')].map(e => { const s = getComputedStyle(e); return `${e.closest('[data-testid]').dataset.testid}: transition-property=${s.transitionProperty} transition-duration=${s.transitionDuration}` }).join('\n')
+```
+*(assumed output: three lines, each with `transition-property=transform transition-duration=0.16s`)*
+
+**Tool: Bash**
+```
+cd /Users/p/git/notes-app/.ryugi/artifacts/settings-redesign && { echo "# $(date -u +%Y-%m-%dT%H:%M:%SZ) http://localhost:5173/settings dev server @ a1b2c3d, expected 0.16s"; cat <<'EOF'
+notify-toggle-email: transition-property=transform transition-duration=0.16s
+notify-toggle-push: transition-property=transform transition-duration=0.16s
+notify-toggle-weekly: transition-property=transform transition-duration=0.16s
+EOF
+} > pages/verify/toggle-css.txt
+```
+The three lines in that `EOF` block are the browser's output copied verbatim. I assume the browser tool offers no direct file output.
+
+## 6. Walk the neighbours
+
+I check the other flows on the same screen, which share the toggle component and `/api/prefs`.
+
+**Tool: browser**
+1. Reload `/settings`. The Email digest toggle shows off and Push alerts shows on, so the saved values survive a reload.
+2. Switch the Appearance section's "Compact mode" toggle, which uses the same component. It animates and a reload keeps it.
+3. Open Profile and save a display-name edit. It returns 200 and renders the new name.
+4. Check the console for errors. *(assumed: none)*
+
+Then I restore the prefs I flipped:
+
+**Tool: Bash**
+```
+for k in pushAlerts compactMode; do curl -s -o /dev/null -w "$k restore %{http_code}\n" -X PATCH -H 'Content-Type: application/json' -d "{\"$k\":$( [ $k = pushAlerts ] && echo false || echo false )}" http://localhost:5173/api/prefs; done
+```
+*(assumed output: both return 200)*
+
+## 7. Build the verify page
+
+The artboard `settings-redesign` holds the approved design, so it gets a page `verify`.
+
+**Tool: Read** `.ryugi/artifacts/settings-redesign/canvas.json`
+
+I assume it has `pages`, `boards` and `groups` maps, and that the `notify-a` board sits on the page `settings`.
+
+**Tool: Bash**
+```
+date -u +%Y-%m-%dT%H:%M:%SZ
+```
+*(assumed output: `2026-11-11T09:42:10Z`. The evidence was captured in the last few minutes, after the last code change, which was a1b2c3d.)*
+
+**Tool: Edit** `canvas.json`. Add the page, with `"focus": "v1"`, the boards and the groups below.
+
+```json
+"pages": {
+  "verify": { "name": "Verify", "focus": "v1" }
+},
+"boards": {
+  "v1-design": { "file": "pages/settings/notify-a.html", "page": "verify", "x": 0, "y": 0, "w": 1280, "h": 800 },
+  "v1-actual": { "type": "image", "src": "pages/verify/notify-actual.png", "page": "verify", "x": 1340, "y": 0, "w": 1280, "h": 800 },
+  "v1-ask": { "type": "sticky", "text": "Compare spacing, type, colour and order of rows with the approved board on the left. Wrong if any row, label or alignment differs.", "page": "verify", "x": 0, "y": -140, "w": 520, "h": 110 },
+  "v2-recording": { "type": "video", "src": "pages/verify/toggle.mp4", "page": "verify", "x": 0, "y": 900, "w": 900, "h": 560 },
+  "v2-ask": { "type": "sticky", "text": "Does the thumb slide smoothly in about 160ms, not jump or stutter? To feel it yourself: pnpm dev in /Users/p/git/notes-app (commit a1b2c3d), open http://localhost:5173/settings, switch the toggles.", "page": "verify", "x": 0, "y": 760, "w": 620, "h": 120 },
+  "v3-run": { "type": "text", "src": "pages/verify/prefs-api.txt", "page": "verify", "x": 0, "y": 1560, "w": 900, "h": 420 },
+  "v4-run": { "type": "text", "src": "pages/verify/toggle-css.txt", "page": "verify", "x": 1000, "y": 1560, "w": 900, "h": 240 }
+},
+"groups": {
+  "v1": {
+    "title": "Notification settings layout matches the approved board notify-a",
+    "boards": ["v1-ask", "v1-design", "v1-actual"],
+    "verify": true,
+    "from": "local dev server http://localhost:5173 @ a1b2c3d",
+    "capturedAt": "2026-11-11T09:42:10Z"
+  },
+  "v2": {
+    "title": "Toggle motion: does the thumb slide, not jump?",
+    "boards": ["v2-ask", "v2-recording"],
+    "verify": true,
+    "from": "local dev server http://localhost:5173 @ a1b2c3d",
+    "capturedAt": "2026-11-11T09:42:10Z"
+  },
+  "v3": {
+    "title": "A changed preference persists: PATCH /api/prefs returns 200 and GET returns the new value",
+    "boards": ["v3-run"],
+    "verify": "agent",
+    "from": "local dev server http://localhost:5173 @ a1b2c3d",
+    "capturedAt": "2026-11-11T09:42:10Z"
+  },
+  "v4": {
+    "title": "Toggle thumb transition-duration is 160ms (computed style)",
+    "boards": ["v4-run"],
+    "verify": "agent",
+    "from": "local dev server http://localhost:5173 @ a1b2c3d",
+    "capturedAt": "2026-11-11T09:42:10Z"
+  }
+}
+```
+
+I assume the sticky board schema (`type: "sticky"`, `text`). If `check` rejects it, I change it to whatever the schema is.
+
+## 8. Check and serve
+
+**Tool: Bash**
+```
+cd /Users/p/git/notes-app && ryugi check settings-redesign && ryugi start settings-redesign
+```
+*(assumed output: `check` is clean, with no warnings, provenance notes or pending. `start` prints `http://localhost:4747/settings-redesign#verify`.)*
+
+**Tool: browser** open that link and play `v2-recording` on the Verify page. All three toggle actions, the on and off states and the final state are visible, so no `"trim": false` is needed. Then confirm `v1-actual` renders next to `v1-design`.
+
+## 9. Clean up scratch
+
+**Tool: Bash**
+```
+rm -f $TMPDIR/toggle-raw.mp4
+```
+
+## 10. Message to my partner
+
+> The Notification settings section is built and I checked it on the running dev server (http://localhost:5173, commit a1b2c3d, clean tree). Two things need your eyes, so they are on the Verify page: http://localhost:4747/settings-redesign#verify
+>
+> **Waiting on you (2 groups):**
+> 1. **Layout vs `notify-a`**: the approved board is on the left and a screenshot of the real app on the right. It is wrong if any row, label, spacing or alignment differs.
+> 2. **Toggle motion**: a recording of three toggle switches. Does the thumb slide smoothly rather than jump? To feel it yourself, run `pnpm dev` and open /settings.
+>
+> **Checked by me (2 groups, nothing waits on them):**
+> - Persistence: PATCH `/api/prefs` returned 200 and the following GET returned the new value (`emailDigest` true to false). I restored the original value afterwards.
+> - Toggle thumb `transition-duration` is 0.16s on all three toggles (computed style in the running page).
+>
+> **Neighbours I walked**, since they share the toggle component and `/api/prefs`:
+> - The saved values survive a reload.
+> - Appearance → Compact mode animates and persists.
+> - Profile name save returns 200.
+> - No console errors.
+>
+> **Supporting only (not the proof):** `pnpm typecheck` is clean and `pnpm test` shows 142 passed, both run just now.
+>
+> **Not verified:** only Chromium via the browser tool. I did not publish a cloud copy, so the link above is local only. Say if you want it published.
+>
+> Tell me here when you've decided on the two groups. I won't commit or push until then.
+
+I end my turn here and do not poll.
+
+SUMMARY: I verified persistence (PATCH 200 and GET returns the new value) and the 160ms thumb transition on the dev server at a1b2c3d, ran typecheck and tests as supporting evidence, and walked the neighbouring flows; the layout-vs-`notify-a` and toggle-motion groups are on the Verify page waiting on my partner's verdicts, and landing the work waits for them.

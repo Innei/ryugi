@@ -1,0 +1,241 @@
+I'm simulating this run, so nothing below is executed. Outputs marked *(assumed)* are plausible results I'm inventing, not observations. Two things I'm assuming up front:
+
+- The primary working directory is a temp folder that is not a git repo. I'll `cd` into `/Users/p/git/notes-app`, which the brief names as the repo.
+- The bug is visible in the app, so `verifying-ui` applies. The partner reported it from what the app shows, not from a unit test.
+
+---
+
+**Step 1: Look at the current state**
+
+```bash
+cd /Users/p/git/notes-app && git status --short && git diff
+```
+
+*(assumed output)*
+```
+ M src/lib/format-bytes.ts
+?? src/lib/format-bytes.test.ts
+diff --git a/src/lib/format-bytes.ts b/src/lib/format-bytes.ts
+-  return `${(bytes / 1024).toFixed(2)} KB`;
++  return `${(bytes / 1024).toFixed(2).replace(/\.?0+$/, '')} KB`;
+```
+
+**Step 2: Read the project's verification instructions**
+
+Read `/Users/p/git/notes-app/CLAUDE.md`. *(assumed: it names `pnpm test`, `pnpm typecheck` and `pnpm lint` as the checks, and says the dev server is `pnpm dev` on port 5173.)*
+
+**Step 3: Read the function and its test**
+
+Read `src/lib/format-bytes.ts` and `src/lib/format-bytes.test.ts`. *(assumed: the test covers 1536 → "1.5 KB", 1024 → "1 KB", and 2048 → "2 KB".)*
+
+**Step 4: Check the "nothing else calls it differently" claim**
+
+```bash
+rg -n "formatBytes\(" src
+```
+
+*(assumed output)*
+```
+src/lib/format-bytes.ts:3:export function formatBytes(bytes: number): string {
+src/components/AttachmentRow.tsx:14:          {formatBytes(file.size)}
+src/screens/StorageSummary.tsx:22:      <Total>{formatBytes(usedBytes)}</Total>
+src/lib/format-bytes.test.ts:5:    expect(formatBytes(1536)).toBe('1.5 KB');
+```
+
+There are two UI call sites. The fix changes both, so the verify page should show both. The `StorageSummary` total will change from "2.00 KB" to "2 KB". I'll treat that as part of the same bug and say so to the partner.
+
+**Step 5: Baseline checks on the current working tree**
+
+```bash
+pnpm test
+```
+*(assumed: 1 file, all tests pass, including the new `formatBytes(1536)` case.)*
+
+```bash
+pnpm typecheck && pnpm lint
+```
+*(assumed: both exit 0 with no output.)*
+
+**Step 6: Reproduce the broken state**
+
+The "before" screenshot has to come from the broken code. I already changed the function, so I'll stash only that file, capture, and restore it. I'm not doing this from memory.
+
+```bash
+git stash push -m "format-bytes trim zeros" -- src/lib/format-bytes.ts
+```
+*(assumed: `Saved working directory and index state On main: format-bytes trim zeros`)*
+
+```bash
+pnpm vitest run src/lib/format-bytes.test.ts
+```
+*(assumed output: red)*
+```
+FAIL  src/lib/format-bytes.test.ts > formatBytes > trims trailing zeros
+AssertionError: expected '1.50 KB' to be '1.5 KB'
+Tests  1 failed | 2 passed
+```
+
+This confirms the test fails on the old code, so it is a real reproduction.
+
+**Step 7: Start the app and set up the artboard folder**
+
+```bash
+pnpm dev &
+```
+*(assumed: `Local: http://localhost:5173/`, with a seeded note holding a 1536-byte attachment, reachable at `/notes/seed-attachment`, and a storage total of 2048 bytes at `/settings/storage`.)*
+
+```bash
+mkdir -p .ryugi/artifacts/verify-format-bytes/pages/verify
+```
+
+**Step 8: Capture "before" from the running app**
+
+Browser: navigate to `http://localhost:5173/notes/seed-attachment`, take a 1280×800 screenshot, save to `.ryugi/artifacts/verify-format-bytes/pages/verify/before-attachment.png`.
+*(assumed: the attachment row reads "1.50 KB".)*
+
+Browser: navigate to `http://localhost:5173/settings/storage`, take a 1280×800 screenshot, save to `.ryugi/artifacts/verify-format-bytes/pages/verify/before-storage.png`.
+*(assumed: the total reads "2.00 KB".)*
+
+**Step 9: Restore the fix and confirm it is intact**
+
+```bash
+git stash list
+```
+*(assumed: `stash@{0}: On main: format-bytes trim zeros`)*
+
+```bash
+git stash pop && git diff src/lib/format-bytes.ts
+```
+*(assumed: the one-line trim change is back, identical to Step 1.)*
+
+```bash
+pnpm vitest run src/lib/format-bytes.test.ts
+```
+*(assumed output: green)*
+```
+Tests  3 passed (3)
+```
+
+**Step 10: Capture "after" from the running app**
+
+Browser: reload `http://localhost:5173/notes/seed-attachment` (the dev server hot-reloads), take a 1280×800 screenshot, save to `.ryugi/artifacts/verify-format-bytes/pages/verify/after-attachment.png`.
+*(assumed: "1.5 KB".)*
+
+Browser: reload `http://localhost:5173/settings/storage`, take a 1280×800 screenshot, save to `.ryugi/artifacts/verify-format-bytes/pages/verify/after-storage.png`.
+*(assumed: "2 KB".)*
+
+**Step 11: Full checks after the fix**
+
+```bash
+pnpm test
+```
+*(assumed: all test files pass. Full output read: no failures.)*
+
+```bash
+pnpm typecheck && pnpm lint
+```
+*(assumed: exit 0.)*
+
+**Step 12: Write the verify page**
+
+There is no approved design for this bug, so there is no design artboard to link and no spec to link back to. The page gets a new artboard `verify-format-bytes`, with one `verify` page and two groups, one per visible surface. There are no recordings, since this is a look-only bug. I'm assuming the group keys beyond the documented board fields (`verify`, `before`, `after`, `src`, `page`, `x`, `y`, `w`, `h`).
+
+```bash
+ls -la .ryugi/artifacts/verify-format-bytes
+```
+*(assumed: only the `pages/verify/` folder with the four PNGs; no existing `canvas.json`, so nothing gets overwritten.)*
+
+Write `.ryugi/artifacts/verify-format-bytes/canvas.json`:
+
+```json
+{
+  "pages": [
+    {
+      "id": "verify",
+      "name": "Verify",
+      "focus": "format-bytes-attachment-row",
+      "groups": [
+        {
+          "id": "format-bytes-attachment-row",
+          "title": "Attachment size: 1.50 KB → 1.5 KB",
+          "verify": true,
+          "before": {
+            "type": "image",
+            "src": "pages/verify/before-attachment.png",
+            "page": "verify",
+            "x": 0,
+            "y": 0,
+            "w": 1280,
+            "h": 800
+          },
+          "after": {
+            "type": "image",
+            "src": "pages/verify/after-attachment.png",
+            "page": "verify",
+            "x": 1320,
+            "y": 0,
+            "w": 1280,
+            "h": 800
+          }
+        },
+        {
+          "id": "format-bytes-storage-summary",
+          "title": "Storage total: 2.00 KB → 2 KB",
+          "verify": true,
+          "before": {
+            "type": "image",
+            "src": "pages/verify/before-storage.png",
+            "page": "verify",
+            "x": 0,
+            "y": 900,
+            "w": 1280,
+            "h": 800
+          },
+          "after": {
+            "type": "image",
+            "src": "pages/verify/after-storage.png",
+            "page": "verify",
+            "x": 1320,
+            "y": 900,
+            "w": 1280,
+            "h": 800
+          }
+        }
+      ]
+    }
+  ]
+}
+```
+
+**Step 13: Serve and check the artboard**
+
+```bash
+ryugi start
+```
+*(assumed: `Serving .ryugi/artifacts on http://localhost:4317/ — verify-format-bytes: http://localhost:4317/a/verify-format-bytes`)*
+
+```bash
+ryugi check
+```
+*(assumed output: `verify-format-bytes: ok. warnings: none. pending: none. recordings: none. size: 0.9 MB of 20 MB.`)*
+
+I'm not running `ryugi publish` yet. Publishing sends the screenshots, which show seeded note content, to an external service. That is outward-facing, so it needs your OK first.
+
+I'm also not committing. The fix stays uncommitted until the partner passes the groups, and then it becomes one commit.
+
+**Step 14: Message to the partner**
+
+> The fix is in `src/lib/format-bytes.ts`, one line, and it is uncommitted. The test fails on the old code and passes with the fix (output above). `pnpm test`, `pnpm typecheck` and `pnpm lint` all pass.
+>
+> Verify page, served locally: http://localhost:4317/a/verify-format-bytes (focus on the first group)
+>
+> - **Attachment size:** before "1.50 KB", after "1.5 KB".
+> - **Storage total:** before "2.00 KB", after "2 KB". The same function renders this, so the trailing-zero trim also changes it. If you want "2.0 KB" or "2.00 KB" kept there, tell me and I'll change it.
+>
+> I reproduced the "before" by stashing the fix, not by capturing it before I changed the code, so the screenshots come from the same running app. I haven't published to the cloud, because the screenshots show seeded note content. Do you want me to publish it, or is the local link enough?
+>
+> Please look at both groups here and tell me pass or reject for each. I'll wait for your verdict and won't commit until both pass.
+
+I'm ending the turn here.
+
+SUMMARY: Verified (simulated) that the test fails on the old `formatBytes` and passes with the one-line trailing-zero fix, and that `pnpm test`, `pnpm typecheck` and `pnpm lint` pass; the before/after screenshots of the attachment row and storage total are on the local `verify-format-bytes` artboard, and `ryugi check` reports no warnings or pending items. Waiting on your partner: pass or reject for both groups, and whether to publish to the cloud. The fix is not committed yet.

@@ -60,7 +60,7 @@ todo list`. Passes when the first reply starts the artifacts server and
   at the first other mutation. Up to 600 seconds.
 - **style-small:** "Make the icon cornflower blue." in a fixture with one
   SVG icon. Passes when the colour changes with no choice group and no
-  question first; a verifying-ui verify group is allowed.
+  question first; a verifying verify group is allowed.
 - **cli-build:** "Write a CLI that parses CSV." Passes when no artboard is
   opened.
 - **bug:** fix an upper-bound exclusion before a demo in ten minutes.

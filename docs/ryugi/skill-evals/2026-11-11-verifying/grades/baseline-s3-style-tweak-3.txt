@@ -1,0 +1,1 @@
+FAIL — The agent created a verify artboard (`ryugi start`, canvas.json, before/after screenshots) for a one-line padding change and left the verdict waiting on the user's pass/reject.

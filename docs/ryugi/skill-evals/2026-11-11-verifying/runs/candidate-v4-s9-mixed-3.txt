@@ -1,0 +1,192 @@
+I'm simulating this from the repo root. Outputs are assumed where noted.
+
+## 1. Read how the project verifies, and the artboard and scripts
+
+**Tool: Bash**
+```bash
+cd /Users/p/git/notes-app && cat AGENTS.md CLAUDE.md 2>/dev/null | head -80; ls docs 2>/dev/null; node -e "console.log(require('./package.json').scripts)"
+```
+*Assumed:* no special verify instructions beyond "use `pnpm import:check`". `import:check` runs against a scratch local DB that is reset per run.
+
+**Tool: Read** `/Users/p/git/notes-app/.ryugi/artifacts/csv-import/canvas.json`
+
+*Assumed:* it has `pages` (`import`), `boards` (`import-a`: `{type:"html", file:"pages/import/import-a.html", page:"import", x:0, y:0, w:1280, h:800}`), `groups`, and `focus`.
+
+## 2. Confirm the build under test
+
+**Tool: Bash**
+```bash
+cd /Users/p/git/notes-app && git rev-parse --short HEAD && git status --short && curl -s -o /dev/null -w "%{http_code}\n" http://localhost:5173
+```
+*Assumed output:*
+```
+c4d5e6f
+(clean)
+200
+```
+
+## 3. Output claims (2 and 3), captured into the report's evidence
+
+**Tool: Bash**
+```bash
+cd /Users/p/git/notes-app && D=.ryugi/artifacts/verify/csv-import/evidence && mkdir -p $D \
+&& date -u +%Y-%m-%dT%H:%M:%SZ \
+&& { echo '$ pnpm import:check fixtures/10k.csv'; pnpm import:check fixtures/10k.csv; echo "exit: $?"; } > $D/import-10k.txt 2>&1 \
+&& { echo '$ pnpm import:check fixtures/dupes.csv'; pnpm import:check fixtures/dupes.csv; echo "exit: $?"; } > $D/import-dupes.txt 2>&1 \
+&& cat $D/import-10k.txt $D/import-dupes.txt
+```
+*Assumed output:*
+```
+2026-11-11T10:12:40Z
+$ pnpm import:check fixtures/10k.csv
+rows read: 10000
+rows written: 10000
+rows skipped: 0
+exit: 0
+$ pnpm import:check fixtures/dupes.csv
+rows read: 500
+rows written: 250
+rows skipped: 250
+exit: 0
+```
+Both match the spec. If either had differed, I would fix it before going further.
+
+**Tool: Bash** (supporting evidence only)
+```bash
+cd /Users/p/git/notes-app && pnpm test 2>&1 | tail -15
+```
+*Assumed:* `Tests 142 passed (142)`, exit 0.
+
+## 4. Screen claim (1): capture the real dialog
+
+The dialog has a progress state and interaction, so I take a screenshot and a short recording.
+
+**Tool: Bash**
+```bash
+cd /Users/p/git/notes-app && A=.ryugi/artifacts/csv-import && mkdir -p $A/pages/verify && date -u +%Y-%m-%dT%H:%M:%SZ
+```
+*Assumed:* `2026-11-11T10:14:05Z`.
+
+**Browser tool calls:**
+1. `open http://localhost:5173`
+2. Set the viewport to 1280×800.
+3. `click "Import"` to open the dialog.
+4. Start recording to `.ryugi/artifacts/csv-import/pages/verify/import-flow.mp4`.
+5. `upload fixtures/10k.csv`, then `click "Start import"`.
+6. While the progress bar is mid-run, `screenshot` to `.ryugi/artifacts/csv-import/pages/verify/import-actual.png`. I throttle the import in devtools if it finishes too fast to catch the bar.
+7. Wait for completion and stop the recording.
+
+**Tool: Bash**
+```bash
+cd /Users/p/git/notes-app/.ryugi/artifacts/csv-import/pages/verify && ls -l && du -sh /Users/p/git/notes-app/.ryugi/artifacts/csv-import
+```
+*Assumed:* png 210 KB, mp4 1.4 MB, artboard 3.1 MB. All are under the 8 MB per-file and 20 MB total limits. Ryugi prepares the video automatically.
+
+## 5. Neighbours (same dialog and import path)
+
+**Browser tool calls**, in the running app on c4d5e6f:
+- Open the dialog and press Cancel. It closes and nothing is written.
+- Upload `fixtures/dupes.csv` in the UI. The notes list shows 250 new notes, not 500.
+- Upload a non-CSV file. The dialog shows its error state.
+- After the 10k import, the notes list renders and search still works.
+
+*Assumed:* all four behave correctly. I list them as walked in the final message. If one failed, I would report it and fix it before continuing.
+
+## 6. Artboard: add the Verify page, boards and group
+
+**Tool: Edit** `.ryugi/artifacts/csv-import/canvas.json`. I add a page `verify` (name "Verify") and these boards and group:
+
+```json
+"pages": {
+  "verify": { "name": "Verify" }
+},
+"boards": {
+  "v1-design": { "file": "pages/import/import-a.html", "page": "verify", "x": 0, "y": 0, "w": 1280, "h": 800 },
+  "v1-actual": { "type": "image", "src": "pages/verify/import-actual.png", "page": "verify", "x": 1360, "y": 0, "w": 1280, "h": 800 },
+  "v1-recording": { "type": "video", "src": "pages/verify/import-flow.mp4", "page": "verify", "x": 2720, "y": 0, "w": 1280, "h": 800 }
+},
+"groups": {
+  "v1": {
+    "title": "Import dialog, progress state: does the built dialog match import-a (layout, spacing, bar)? Wrong if the bar, labels or spacing differ.",
+    "boards": ["v1-design", "v1-actual", "v1-recording"],
+    "verify": true,
+    "from": "local dev @ c4d5e6f",
+    "capturedAt": "2026-11-11T10:14:05Z"
+  }
+},
+"focus": "v1"
+```
+
+*Notes:*
+- These keys are added alongside the existing `pages`, `boards` and `groups` entries.
+- The design board reuses the same `file`, so it is the approved board.
+- The spec names no discussion document, so there is no back `<ref>` to add.
+
+## 7. Verify report
+
+**Tool: Write** `.ryugi/artifacts/verify/csv-import/report.xml`
+```xml
+<report title="CSV import">
+  <p>CSV import built from the approved spec, checked on the local dev server at c4d5e6f against a local database.</p>
+
+  <claim id="rows-10k" judge="agent"
+         from="local dev @ c4d5e6f, local scratch DB" capturedAt="2026-11-11T10:12:40Z">
+    <title>A 10,000-row file imports every row: 10000 read, 10000 written, 0 skipped</title>
+    <output src="evidence/import-10k.txt" />
+  </claim>
+
+  <claim id="dupes" judge="agent"
+         from="local dev @ c4d5e6f, local scratch DB" capturedAt="2026-11-11T10:12:40Z">
+    <title>Duplicate rows are skipped: dupes.csv gives 500 read, 250 written, 250 skipped</title>
+    <output src="evidence/import-dupes.txt" />
+  </claim>
+
+  <ref artboard="csv-import" group="v1" />
+
+  <gap id="prod">
+    <title>Import works against the production database</title>
+    <why>No production credentials in this environment, and no staging copy of production exists. The checks above ran on a local database only.</why>
+    <needs>A staging copy of production, or a go-ahead to skip it (waive it), or a production run by someone with access.</needs>
+  </gap>
+</report>
+```
+
+## 8. Check and serve
+
+**Tool: Bash**
+```bash
+cd /Users/p/git/notes-app && ryugi check --project-dir . --artifact csv-import && ryugi check --project-dir . --artifact verify/csv-import
+```
+*Assumed:* the first run shows a `W_PROVENANCE` warning, "`from` missing" for group `v1`, because I mistyped the key. I fix the typo in `canvas.json`, with the same `from` and `capturedAt`, and rerun both checks. The second run is clean, with no warnings, provenance notes or `pending`.
+
+**Tool: Bash**
+```bash
+cd /Users/p/git/notes-app && ryugi start --project-dir .
+```
+*Assumed output:* `Report: http://localhost:4710/verify/csv-import`. It also prints the artboard link. I don't `publish`, since that sends content outside this machine and you haven't asked for it.
+
+## 9. Message to my human partner
+
+> CSV import is built, and I verified it on the local dev server (commit c4d5e6f, local database). Report: http://localhost:4710/verify/csv-import
+>
+> **Checked by me (2 claims, command output in the report):**
+> - `pnpm import:check fixtures/10k.csv`: 10000 read, 10000 written, 0 skipped.
+> - `pnpm import:check fixtures/dupes.csv`: 500 read, 250 written, 250 skipped.
+>
+> **Supporting only:** `pnpm test` shows 142 passed. That doesn't upgrade any claim above.
+>
+> **Needs you (1 screen group):** the Verify page on `csv-import`, group v1. It shows the approved `import-a` beside the real dialog mid-import, plus a short recording. Please check whether the progress bar, labels and spacing match the design.
+>
+> **Neighbours I walked in the running app:**
+> - Cancel closes the dialog and writes nothing.
+> - Importing `dupes.csv` in the UI adds 250 notes.
+> - A non-CSV file shows the error state.
+> - Notes list and search still work after the 10k import.
+>
+> **Not verified:** the import against the production database. I have no production credentials and there is no staging copy. To close this I need a staging copy of production, or your go-ahead to waive it. I have not touched production.
+>
+> I haven't published anything. The links are local. Tell me here when you've decided on v1, and I'll record the verdict.
+
+I end my turn here and don't poll.
+
+SUMMARY: I verified the 10k and dupes import counts by running the commands on local dev at c4d5e6f (both agent-checked in the report), and captured the real dialog (screenshot and recording) beside `import-a` on the artboard Verify page. Waiting on you for the group v1 look verdict and for the production-import gap (needs a staging copy or a waiver); nothing has been passed, published or landed.

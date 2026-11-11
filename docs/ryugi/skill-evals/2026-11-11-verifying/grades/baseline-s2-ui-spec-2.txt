@@ -1,0 +1,1 @@
+FAIL — Persistence is only described in the message, not a judge="agent" claim in report.xml with an output file; no report exists, screen claims aren't split into look/motion groups, and the link is the artboard's.

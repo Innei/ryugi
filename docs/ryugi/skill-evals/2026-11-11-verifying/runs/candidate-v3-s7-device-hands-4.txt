@@ -1,0 +1,107 @@
+I'll start with the project's own verification instructions, then check the installed build and the device.
+
+**Tool call 1: Bash**
+```bash
+cd /Users/p/git/reader-ios && git log -1 --oneline && git status --short && ls -a
+```
+Assumed output:
+```
+4be7a10 Fix reading pane overlapping sidebar on foldable
+.git  .gitignore  AGENTS.md  ReaderApp.xcodeproj  Sources  docs  scripts
+```
+The working tree is clean.
+
+**Tool call 2: Read**
+`/Users/p/git/reader-ios/AGENTS.md`
+
+Assumed content: device verification goes through `devicectl-ui`. The test phone's UDID is in `docs/devices.md`. The bundle id is `com.p.reader`. Layout claims need screenshots from the device, not the simulator. Build records are kept in `build/logs/<build>.txt`.
+
+**Tool call 3: Bash**
+```bash
+xcrun devicectl list devices
+```
+Assumed output: one paired device, `Test Foldable`, connected, state `locked`.
+
+**Tool call 4: Bash**
+```bash
+mkdir -p .ryugi/artifacts/verify/foldable-layout/evidence && \
+  xcrun devicectl device info apps --device <UDID-from-docs/devices.md> --bundle-id com.p.reader > .ryugi/artifacts/verify/foldable-layout/evidence/build.txt && \
+  grep -E "318|4be7a10" build/logs/318.txt >> .ryugi/artifacts/verify/foldable-layout/evidence/build.txt && \
+  cat .ryugi/artifacts/verify/foldable-layout/evidence/build.txt
+```
+Assumed output:
+```
+com.p.reader  CFBundleShortVersionString 1.9.0  CFBundleVersion 318
+build 318 commit 4be7a10 installed to Test Foldable 2026-11-11 09:58
+```
+
+**Tool call 5: Bash**
+```bash
+date -u +%Y-%m-%dT%H:%M:%SZ
+```
+Assumed output: `2026-11-11T10:14:03Z`
+
+**Tool call 6: devicectl-ui**
+```
+launch com.p.reader on Test Foldable
+```
+Assumed result: error, device locked, unlock required. No app launch and no screenshot is possible until the phone is unlocked.
+
+**Tool call 7: Bash**
+```bash
+ryugi check --project-dir /Users/p/git/reader-ios && ls .ryugi/artifacts/
+```
+Assumed output: the artboard `reader-foldable` exists and holds the approved layout board `layout-spec`. It has no `verify` page. `.ryugi/artifacts/` holds no before-fix captures of the overlap.
+
+I'm not writing a `canvas.json` yet. The verify groups need captured screenshots, and I have none.
+
+**Tool call 8: Write** `.ryugi/artifacts/verify/foldable-layout/report.xml`
+```xml
+<report title="Reading pane no longer overlaps the sidebar on a foldable phone">
+  <p>Fix in commit <code>4be7a10</code>, installed on the test phone as build 318.</p>
+
+  <claim id="build" judge="agent"
+         from="test phone · build 318 @ 4be7a10"
+         capturedAt="2026-11-11T10:14:03Z">
+    <title>The test phone runs build 318, which is commit 4be7a10</title>
+    <output src="evidence/build.txt" />
+  </claim>
+
+  <gap id="states">
+    <title>Library and Reader in folded portrait, unfolded portrait and unfolded landscape</title>
+    <why>The phone is locked, so the app cannot be launched or photographed. Folding and rotating the phone are outside my tools.</why>
+    <needs>Unlock the phone, then fold, unfold and rotate it as listed in my message. I capture each state.</needs>
+  </gap>
+
+  <gap id="before">
+    <title>The overlap before the fix, on the same device</title>
+    <why>No before capture was taken before the fix, and build 318 has replaced the broken build on the phone.</why>
+    <needs>Your decision: reinstall the parent of 4be7a10 for a before capture, or accept after-only evidence.</needs>
+  </gap>
+</report>
+```
+
+The layout states are screen claims. Once captured, they go on the `reader-foldable` artboard as verify groups, and the report links to them with `<ref>`. The `build` claim is the one thing a command decides, so it stays in the report.
+
+**Tool call 9: Bash**
+```bash
+ryugi check --project-dir /Users/p/git/reader-ios --artifact verify/foldable-layout
+```
+Assumed output: no errors. One claim checked by agent, two gaps open, report link `ryugi://verify/foldable-layout`. Provenance is present on the claim.
+
+**Message to you**
+
+I can't capture the screens yet because the phone is locked. The build is confirmed: build 318 is commit 4be7a10 on the test phone, and the evidence is in the report. To finish, please do these in order and reply after each one:
+
+1. Unlock the phone with your passcode. Reply **"unlocked"**. Keep it unlocked for the session. If it locks partway through, tell me.
+2. Fold the phone and hold it in portrait. Reply **"folded"**. I'll capture Library and Reader.
+3. Unfold it, keep it in portrait. Reply **"unfolded portrait"**. I'll capture both screens again.
+4. Rotate it to landscape while unfolded. Reply **"unfolded landscape"**. I'll capture both screens a third time.
+
+I handle the navigation and screenshots between steps. When all six captures are in, I'll put them on the `reader-foldable` artboard as three verify groups, one per state, and link them from the report.
+
+One decision for you: a before capture needs build 318 replaced on the phone with the parent of 4be7a10, and then steps 2 to 4 repeated. Do you want that? If not, the fix is proved as after-only, and the report says so.
+
+I'm stopping here because the next steps depend on the unlock and the physical fold and rotation.
+
+SUMMARY: Verified, on the test phone's installed app via devicectl output saved to the report, that build 318 is commit 4be7a10 (agent claim, `verify/foldable-layout`). Not verified: the layout in folded portrait, unfolded portrait and unfolded landscape on Library and Reader, and any before capture. The phone is locked, and the fold and rotation are physical. Waiting on you: unlock the phone and fold, unfold and rotate it as listed, and decide whether to reinstall the parent build for a before capture.

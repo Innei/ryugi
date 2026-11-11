@@ -1,0 +1,1 @@
+PASS — Dialog and progress are a verify group with real screenshot, recording and question; both command claims are `judge="agent"` with output; production is a `<gap>`; report has the `<ref>` row and one link.

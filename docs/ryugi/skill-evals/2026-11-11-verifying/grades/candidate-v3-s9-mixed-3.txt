@@ -1,0 +1,1 @@
+PASS — Dialog group is verify:true with real screenshot and design board; claims 2–3 have judge="agent", output, from; production is a gap; report refs v1; one link given; asks for pass/reject.

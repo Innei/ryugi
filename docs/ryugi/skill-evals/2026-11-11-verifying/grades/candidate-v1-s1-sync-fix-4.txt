@@ -1,0 +1,1 @@
+FAIL — The agent ran the e2e itself, but put the output on an artboard with `"verify": "agent"` groups instead of writing `verify/<id>/report.xml` with judge="agent" claims.

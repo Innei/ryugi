@@ -1,0 +1,1 @@
+PASS — No artboard or verify page created; reported inline with commands and outputs, including failing-then-passing tests and the `1.5 KB` result, without waiting on a human verdict.

@@ -1,0 +1,1 @@
+PASS — Dialog and progress state are verify groups with real screenshots beside the approved board; claims 2 and 3 are agent-judged with output files; production is a `<gap>`; report has ref rows and the link.

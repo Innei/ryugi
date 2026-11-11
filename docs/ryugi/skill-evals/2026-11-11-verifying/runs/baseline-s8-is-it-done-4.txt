@@ -1,0 +1,158 @@
+This is a simulated run, so nothing below has executed. Every output marked "assumed" is my guess, not a result.
+
+**1. Read the project's verification instructions**
+
+```
+Read CLAUDE.md
+Read AGENTS.md
+```
+Assumed: neither file names a project verify skill or extra verification steps. Both mention the seed script and the dev server port.
+
+**2. Re-run the unit tests in this session**
+
+```
+cd /Users/p/git/notes-app && pnpm test
+```
+Assumed output:
+```
+ Test Files  2 passed (2)
+      Tests  9 passed (9)
+```
+
+**3. Seed and start the app**
+
+```
+cd /Users/p/git/notes-app && pnpm db:seed
+```
+Assumed: `Seeded 42 notes`.
+
+```
+SCRATCH=$(mktemp -d)
+cd /Users/p/git/notes-app && pnpm dev > "$SCRATCH/dev.log" 2>&1 &
+curl -s -o /dev/null -w '%{http_code}\n' --retry 10 --retry-delay 1 --retry-all-errors http://localhost:5173/notes
+```
+Assumed: `200`. The dev server stays running so your partner can use it.
+
+**4. Check the endpoint directly**
+
+```
+curl -si http://localhost:5173/api/notes/export.csv -o "$SCRATCH/export.csv" -D "$SCRATCH/headers.txt"
+cat "$SCRATCH/headers.txt"
+python3 -I -c "import csv,sys; r=list(csv.reader(open(sys.argv[1]))); print('data rows:', len(r)-1); print('header:', r[0])" "$SCRATCH/export.csv"
+```
+Assumed headers: `HTTP/1.1 200 OK`, `Content-Type: text/csv; charset=utf-8`, `Content-Disposition: attachment; filename="notes.csv"`.
+Assumed output: `data rows: 42`, `header: ['id', 'title', 'body', 'createdAt']`.
+
+This is a backend check, so it is not a verify group.
+
+**5. Drive the real button in the browser**
+
+```
+browser.open http://localhost:5173/notes
+browser.screenshot  -> $SCRATCH/notes-page.png
+browser.record.start
+browser.click "Export CSV"
+browser.wait_for_download  -> $SCRATCH/downloads/notes.csv
+browser.record.stop -> $SCRATCH/export-click.mp4
+```
+Assumed: the Notes list shows 42 rows with the Export CSV button top right. The click starts a download named `notes.csv` (about 2 KB). The recording is about 6 s at 1280×800, about 1.4 MB.
+
+```
+cmp "$SCRATCH/downloads/notes.csv" "$SCRATCH/export.csv" && echo "downloaded file identical to endpoint output"
+```
+Assumed: `downloaded file identical to endpoint output`.
+
+**6. Copy evidence onto the verify page**
+
+There is no approved design for this feature, so there is no "before" board. The group is the screenshot plus the recording of the interaction. No bug is being fixed, so there is no before/after pair either.
+
+```
+ART=/Users/p/git/notes-app/.ryugi/artifacts/verify-csv-export
+mkdir -p "$ART/pages/verify"
+cp "$SCRATCH/notes-page.png" "$ART/pages/verify/notes-page.png"
+cp "$SCRATCH/export-click.mp4" "$ART/pages/verify/export-click.mp4"
+du -h "$ART/pages/verify/"*
+```
+Assumed sizes: about 180K and 1.4M, both under the 8 MB file limit.
+
+**7. Write the verify artboard**
+
+```
+Write /Users/p/git/notes-app/.ryugi/artifacts/verify-csv-export/canvas.json
+```
+Contents (the key names follow the artboard reference; I'm assuming the group wrapper, and `check` will reveal any schema mismatch):
+```json
+{
+  "focus": "csv-export-button",
+  "pages": [
+    {
+      "id": "verify",
+      "name": "Verify",
+      "groups": [
+        {
+          "id": "csv-export-button",
+          "title": "Export CSV on the Notes page downloads all notes as CSV",
+          "verify": true,
+          "after": {
+            "type": "image",
+            "src": "pages/verify/notes-page.png",
+            "page": "verify",
+            "x": 0, "y": 0, "w": 1280, "h": 800
+          },
+          "recording": {
+            "type": "video",
+            "src": "pages/verify/export-click.mp4",
+            "page": "verify",
+            "x": 1320, "y": 0, "w": 1280, "h": 800,
+            "trim": true
+          }
+        }
+      ]
+    }
+  ]
+}
+```
+There is no `<ref>` link-back because no spec or discussion document exists for this feature. Trimming stays on because the recording is an interaction, not timing evidence.
+
+**8. Check the artboard**
+
+```
+ryugi check verify-csv-export
+```
+Assumed output:
+- Group `csv-export-button`: verify `pending`
+- Recording `export-click.mp4`: prepared, idle ends trimmed, original kept
+- `warnings`: none
+- `pending`: none
+- Artboard size about 1.6 MB of 20 MB
+
+If preparation were still running, I would wait and run `check` again, not write a second copy.
+
+**9. Start the local viewer (no publish)**
+
+```
+ryugi start verify-csv-export
+```
+Assumed link: `http://localhost:4317/verify-csv-export`.
+
+I am not running `ryugi publish`. It puts the content on an external service, and you have not authorized that.
+
+**10. Clean up scratch files**
+
+```
+rm -rf "$SCRATCH"
+```
+The evidence is now under `pages/verify/`. The dev server is still running.
+
+**11. Message to your partner**
+
+> Not done yet. The feature works in the running app, but it's waiting on your verdict.
+>
+> - Tests: `pnpm test` 9/9 passed, run this session.
+> - Endpoint: `GET /api/notes/export.csv` returns 200 with 42 data rows, and the browser's download is byte-identical to it.
+> - Verify page (local): http://localhost:4317/verify-csv-export
+>   - Group "Export CSV on the Notes page downloads all notes as CSV": the Notes page screenshot, plus a recording of clicking Export CSV through the download.
+>
+> Please look at that group and tell me here whether it passes or is rejected, and why if rejected. Nothing is committed yet. I'll commit after you pass it. I haven't published the page; say if you want a cloud link.
+
+SUMMARY: Simulated: verified `pnpm test` (9/9), the endpoint (200, 42 data rows), and the browser download (identical to the endpoint output), with evidence on the local verify artboard `verify-csv-export` (group `csv-export-button`, screenshot plus recording). Nothing published or committed. Waiting on your pass/reject verdict for that group.

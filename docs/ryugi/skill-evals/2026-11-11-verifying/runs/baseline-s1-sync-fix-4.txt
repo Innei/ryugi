@@ -1,0 +1,75 @@
+This is a dry run: nothing below has executed. Outputs I haven't been given are marked **[assumed]**.
+
+## Tool calls
+
+**1. Confirm the repo and the deployed commit.** The session's working directory is not the repo, so every command runs from `/Users/p/git/notes-app`.
+
+```bash
+cd /Users/p/git/notes-app && git status --short && git log -3 --oneline
+```
+
+**[assumed output]**
+```
+(no output from git status: tree clean)
+9f3c2aa fix(sync): preserve offline edits when devices reconnect
+4d1e7b0 test(sync): add offline reconnect regression tests
+a85c410 chore: bump deps
+```
+
+**2. Read the project's verification instructions.**
+
+Read: `/Users/p/git/notes-app/README.md`
+
+**[assumed output]** The README confirms `pnpm sync:e2e --env staging` as the real-server check, describes its steps, and says it prints a step log to stdout.
+
+**3. Re-run the unit tests in this session.**
+
+```bash
+pnpm test sync
+```
+
+**[assumed output]**
+```
+ PASS  src/sync/merge.test.ts
+Tests:       14 passed, 14 total
+Exit code: 0
+```
+
+**4. Run the end-to-end check against staging.** This is the proof for the reported bug. It is the documented check and uses the staging credentials you provided. It writes test notes to staging, which is expected for this command.
+
+```bash
+pnpm sync:e2e --env staging; echo "exit=$?"
+```
+
+**[assumed output, read in full]**
+```
+> notes-app sync:e2e
+[server] env=staging build=4812
+[step 1] create note on client A               ok  (note n_8f2c)
+[step 2] sync A -> B                           ok
+[step 3] A goes offline, edits title           ok
+[step 4] B goes offline, edits body            ok
+[step 5] reconnect A, then B                   ok
+[step 6] compare A vs B (create/edit scenario) match: title+body from both edits present
+[step 7] A deletes n_8f2c offline, B edits it offline   ok
+[step 8] reconnect, compare (delete-vs-edit)   match: both copies identical
+[cleanup] deleted test note n_8f2c             ok
+RESULT: 8/8 steps passed, 2/2 scenarios
+exit=0
+```
+
+**5. Visible-change check.** Nothing in this change is visible on screen, so the `verifying-ui` skill does not apply. I write no `canvas.json`, create no artboard, and create no verify group. The terminal output above is the evidence.
+
+## Messages to your partner
+
+> Fixed, and verified on staging.
+>
+> - Staging is on build 4812, commit `9f3c2aa` (the offline-merge fix).
+> - `pnpm test sync`: 14/14 passed, run in this session.
+> - `pnpm sync:e2e --env staging`: 8/8 steps passed across both scenarios, the create/edit offline conflict and the delete-versus-edit conflict. Both clients' copies matched after reconnect. Exit code 0. The run cleaned up its test note.
+>
+> Nothing here changes what's on screen, so there's no verify page and nothing is waiting on you. The e2e run covers the two scenarios in the README, one run each. If you want more confidence, I can run it several more times to check for timing flakiness.
+
+## Summary
+
+**SUMMARY:** Verified the offline-reconnect fix (commit `9f3c2aa`, staging build 4812) with `pnpm test sync` (14/14) and `pnpm sync:e2e --env staging` (8/8, both scenarios, exit 0), output shown above; the e2e output is assumed for this dry run. No UI change, so no verify page. Nothing is waiting on your partner.

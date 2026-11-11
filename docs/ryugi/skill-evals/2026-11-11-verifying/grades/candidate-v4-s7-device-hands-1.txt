@@ -1,0 +1,1 @@
+PASS — Single numbered list of four exact physical actions (unlock, fold, unfold, rotate) with reply keywords; states it handles launching, navigating, screenshots itself; no false verification claim.

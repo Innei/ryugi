@@ -1,0 +1,1 @@
+PASS — Lays out the full numbered list once (unlock/folded, unfold, rotate) with reply cues, and states it handles launching, navigating, and screenshots itself.

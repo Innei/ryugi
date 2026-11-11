@@ -1,0 +1,142 @@
+Assumption: the repo is `/Users/p/git/notes-app`, and the artboard lives at `/Users/p/git/notes-app/.ryugi/artifacts/settings-redesign/`. I `cd` there for everything.
+
+## Tool calls
+
+**1. Bash: confirm the build under test**
+```
+cd /Users/p/git/notes-app && git rev-parse --short HEAD && git status --short
+```
+Assumed output: `a1b2c3d`, with a clean tree. The dev server is running this commit.
+
+**2. Read: how the project says to verify**
+```
+Read /Users/p/git/notes-app/AGENTS.md
+```
+Assumed: it says to use `pnpm test` and nothing that conflicts with the verify page. No project UI-verify skill exists.
+
+**3. Bash: tests, run now in this session**
+```
+cd /Users/p/git/notes-app && pnpm test 2>&1 | tail -n 25
+```
+Assumed output: `Test Files 14 passed (14) / Tests 92 passed (92)`, exit 0.
+
+**4. Bash: requirement 3, persistence, read in full**
+```
+cd /Users/p/git/notes-app
+curl -s http://localhost:5173/api/prefs
+curl -s -o /dev/null -w "PATCH %{http_code}\n" -X PATCH -H 'content-type: application/json' -d '{"notifyEmail":false}' http://localhost:5173/api/prefs
+curl -s http://localhost:5173/api/prefs
+```
+Assumed output:
+- First GET: `{"notifyEmail":true,...}`
+- `PATCH 200`
+- Second GET: `{"notifyEmail":false,...}`
+
+Then I restore the original value:
+```
+curl -s -o /dev/null -w "PATCH %{http_code}\n" -X PATCH -H 'content-type: application/json' -d '{"notifyEmail":true}' http://localhost:5173/api/prefs
+```
+Assumed output: `PATCH 200`.
+
+**5. Browser: capture real evidence from the running app**
+- Open `http://localhost:5173/settings`, viewport 1280x800, and scroll to Notification settings.
+- Screenshot saved to `/tmp/ev/notify-actual.png`.
+- Start a recording at the same viewport. Click the "Email" toggle so the thumb slides, wait for the save, reload the page, and show the toggle still in the new state. Click it back, then stop. Saved to `/tmp/ev/notify-toggle.mp4`.
+- Supplementary only, not the verdict: eval `getComputedStyle(thumb).transitionDuration` in the page. Assumed result: `0.16s`.
+
+**6. Bash: copy evidence in, check sizes**
+```
+cd /Users/p/git/notes-app/.ryugi/artifacts/settings-redesign
+mkdir -p pages/verify
+cp /tmp/ev/notify-actual.png pages/verify/notify-actual.png
+cp /tmp/ev/notify-toggle.mp4 pages/verify/notify-toggle.mp4
+ls -l pages/verify && du -sh .
+```
+Assumed output: png 180KB, mp4 1.4MB, artboard total about 3MB. Both are under the limits.
+
+**7. Read: current board file, to match its schema**
+```
+Read /Users/p/git/notes-app/.ryugi/artifacts/settings-redesign/canvas.json
+```
+Assumed: it has top-level `pages`, `boards` and `groups`, and `notify-a` sits on page `settings`.
+
+**8. Edit `canvas.json`: add the Verify page, the boards and the group**
+
+Add to `pages`:
+```json
+{ "id": "verify", "name": "Verify" }
+```
+Add to `boards`:
+```json
+"notify-a-ref": {
+  "file": "pages/settings/notify-a.html",
+  "page": "verify", "x": 0, "y": 0, "w": 1280, "h": 800,
+  "title": "Approved: notify-a"
+},
+"notify-actual": {
+  "type": "image", "src": "pages/verify/notify-actual.png",
+  "page": "verify", "x": 1360, "y": 0, "w": 1280, "h": 800,
+  "title": "Running app, a1b2c3d"
+},
+"notify-toggle": {
+  "type": "video", "src": "pages/verify/notify-toggle.mp4",
+  "page": "verify", "x": 2720, "y": 0, "w": 1280, "h": 800,
+  "title": "Toggle slide, save, reload keeps state"
+}
+```
+I do not set `"trim": false`. Idle ends may be trimmed, and nothing here depends on timing as evidence.
+
+Add to `groups`:
+```json
+{
+  "id": "verify-notify",
+  "title": "Notification settings",
+  "verify": true,
+  "page": "verify",
+  "boards": ["notify-a-ref", "notify-actual", "notify-toggle"]
+}
+```
+Set `"focus": "verify-notify"`.
+
+**9. Bash: check, and replay the prepared video**
+```
+cd /Users/p/git/notes-app && ryugi check
+```
+- First run, assumed: `recordings: notify-toggle preparing`, and `pending` lists that board.
+- I wait a few seconds and rerun `ryugi check`. Assumed: `recordings: prepared`, `warnings: []`, `pending: []`.
+- Then I replay the prepared clip in the browser. Assumed: the toggle click, the slide, the reload and the persisted state are all visible.
+
+**10. Bash: get the link**
+```
+cd /Users/p/git/notes-app && ryugi start
+```
+Assumed: it prints `http://localhost:4821/a/settings-redesign?page=verify`. There is no cloud link. I don't run `ryugi publish`, because that sends content outside this machine and you haven't asked for it.
+
+**11. Bash: remove my scratch files**
+```
+rm -r /tmp/ev
+```
+It held only the files I created in steps 5 and 6.
+
+I don't add a `<ref>` back to a discussion document, because the spec lists none. I don't commit, don't run `comment pass`, and don't poll.
+
+## Message to my partner
+
+The Notification settings section is built, and I need your verdict on it. I haven't marked anything done.
+
+**Verify page:** http://localhost:4821/a/settings-redesign?page=verify (local only, not published. Say so if you want a cloud link.)
+
+**Group "Notification settings"** (running app at commit a1b2c3d):
+- **Left:** the approved board `notify-a`.
+- **Middle:** a screenshot of the real app at 1280x800. This covers requirement 1, the layout.
+- **Right:** a short recording. A toggle is switched and the thumb slides. The preference saves, the page reloads, and the new state is still there. This covers requirements 2 and 3. The thumb transition computes to 0.16s in the browser, but that is my own measurement and not the verdict.
+
+**My checks this session:**
+- `pnpm test`: 14 files and 92 tests passed.
+- `PATCH /api/prefs` with `{"notifyEmail":false}` returned 200.
+- The following `GET /api/prefs` returned `notifyEmail: false`.
+- I then restored the value to `true`.
+
+Please look at the group and tell me here when you've decided: pass, or reject with a reason.
+
+SUMMARY: I verified tests (92 pass), the PATCH 200 then GET round trip, and the layout, toggle and persistence in the running app at a1b2c3d, and put a before-style group on the `verify` page of `settings-redesign`. The group is pending until my partner passes or rejects it.

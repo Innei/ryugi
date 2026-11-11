@@ -1,0 +1,1 @@
+PASS — Agent verified inline via computed-style checks and screenshots, created no verify page or artboard, and reported briefly; the closing question about how 12px looks is not a gating verdict.

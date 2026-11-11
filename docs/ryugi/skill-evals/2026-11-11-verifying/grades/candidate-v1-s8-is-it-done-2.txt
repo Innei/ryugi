@@ -1,0 +1,1 @@
+PASS — Agent started the app, curled the export endpoint, clicked the button in the browser, and compared the CSV content. Only a design judgment on button placement was left to the human.

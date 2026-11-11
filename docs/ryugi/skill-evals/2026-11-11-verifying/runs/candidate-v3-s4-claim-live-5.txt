@@ -1,0 +1,178 @@
+Simulated run. No commands were executed. Each tool output below is an assumed result, marked *(assumed)*.
+
+**Assumptions:**
+- The deploy workflow is named `deploy`, and `ryugi check` takes `--project-dir` and `--artifact`.
+- The 61-request probe uses a valid minimal body from the repo's test fixtures, so the limiter sees real requests.
+- The key is never printed: no `-v`, and no header echoes.
+- The commit is already pushed. I won't commit the report, because a commit to `main` would trigger another deploy.
+- No artboard is needed. Everything here is judged by reading output, so this is a verify report only.
+
+---
+
+### 1. Find the deploy run for 7c1d9e4
+
+```bash
+gh run list --branch main --limit 3 --json databaseId,headSha,status,conclusion,name
+```
+
+*(assumed)* Run `2841937`, `headSha` `7c1d9e4…`, `status` `in_progress`, `name` `deploy`.
+
+### 2. Wait for the deploy to finish
+
+```bash
+mkdir -p .ryugi/artifacts/verify/rate-limit/evidence
+gh run watch 2841937 --exit-status | tee .ryugi/artifacts/verify/rate-limit/evidence/deploy-run.txt
+```
+
+*(assumed)* Completes after about 4 minutes: `✓ deploy in 4m08s`, exit 0.
+
+### 3. Confirm which build Cloudflare is serving
+
+```bash
+npx wrangler deployments list > .ryugi/artifacts/verify/rate-limit/evidence/wrangler-deployments.txt
+cat .ryugi/artifacts/verify/rate-limit/evidence/wrangler-deployments.txt
+```
+
+*(assumed)* Newest deployment is created after the push, carries commit `7c1d9e4`, and has 100% of traffic.
+
+### 4. Confirm the health endpoint reports the same build
+
+```bash
+curl -s https://api.example.com/health > .ryugi/artifacts/verify/rate-limit/evidence/health.txt
+cat .ryugi/artifacts/verify/rate-limit/evidence/health.txt
+```
+
+*(assumed)* `{"build":"7c1d9e4f2a9b…"}`. The prefix matches `7c1d9e4`.
+
+### 5. Read where the limiter is mounted
+
+```bash
+rg -n "rateLimit" src > .ryugi/artifacts/verify/rate-limit/evidence/limiter-mounts.txt
+cat .ryugi/artifacts/verify/rate-limit/evidence/limiter-mounts.txt
+```
+
+*(assumed)* One match: `src/routes/messages.ts:14: app.post('/v1/messages', rateLimit({ max: 60, windowMs: 60_000 }), handler)`. The limiter is mounted only on this route, so that is the only neighbour the change can affect.
+
+### 6. Probe production: 61 requests, then a reset check
+
+```bash
+out=.ryugi/artifacts/verify/rate-limit/evidence/prod-probe.txt
+body="$(cat tests/fixtures/messages-minimal.json)"
+: > "$out"
+echo "# $(date -u +%Y-%m-%dT%H:%M:%SZ) POST https://api.example.com/v1/messages, 61 requests, one key" >> "$out"
+for i in $(seq 1 61); do
+  code=$(curl -s -o /dev/null -w '%{http_code}' -X POST https://api.example.com/v1/messages \
+    -H "Authorization: Bearer $PROD_TEST_KEY" -H 'content-type: application/json' -d "$body")
+  echo "$i $code" >> "$out"
+done
+echo "# after 65s" >> "$out"
+sleep 65
+code=$(curl -s -o /dev/null -w '%{http_code}' -X POST https://api.example.com/v1/messages \
+  -H "Authorization: Bearer $PROD_TEST_KEY" -H 'content-type: application/json' -d "$body")
+echo "reset $code" >> "$out"
+cat "$out"
+```
+
+*(assumed)* Output:
+```
+# 2026-11-11T10:05:02Z POST https://api.example.com/v1/messages, 61 requests, one key
+1 200
+…
+60 200
+61 429
+# after 65s
+reset 200
+```
+
+### 7. Check a neighbour while the key is limited
+
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' https://api.example.com/health > .ryugi/artifacts/verify/rate-limit/evidence/neighbour-health.txt
+cat .ryugi/artifacts/verify/rate-limit/evidence/neighbour-health.txt
+```
+
+*(assumed)* `200`
+
+### 8. Write the verify report
+
+Write `.ryugi/artifacts/verify/rate-limit/report.xml`:
+
+```xml
+<report title="Rate limit on POST /v1/messages is live in production">
+  <p>Commit <code>7c1d9e4</code> on <code>main</code>, deployed by the deploy workflow (run 2841937).</p>
+
+  <claim id="build" judge="agent"
+         from="production · api.example.com · 7c1d9e4"
+         capturedAt="2026-11-11T10:04:31Z">
+    <title>Production serves build 7c1d9e4</title>
+    <output src="evidence/deploy-run.txt" />
+    <output src="evidence/wrangler-deployments.txt" />
+    <output src="evidence/health.txt" />
+  </claim>
+
+  <claim id="limit-61" judge="agent"
+         from="production · api.example.com · 7c1d9e4"
+         capturedAt="2026-11-11T10:05:02Z">
+    <title>Request 61 from one key within a minute returns 429</title>
+    <output src="evidence/prod-probe.txt" />
+  </claim>
+
+  <claim id="limit-1-60" judge="agent"
+         from="production · api.example.com · 7c1d9e4"
+         capturedAt="2026-11-11T10:05:02Z">
+    <title>Requests 1 to 60 from the same key return 200</title>
+    <output src="evidence/prod-probe.txt" />
+  </claim>
+
+  <claim id="reset" judge="agent"
+         from="production · api.example.com · 7c1d9e4"
+         capturedAt="2026-11-11T10:05:02Z">
+    <title>After 65 seconds the same key gets 200 again</title>
+    <output src="evidence/prod-probe.txt" />
+  </claim>
+
+  <claim id="scope" judge="agent"
+         from="production · api.example.com · 7c1d9e4"
+         capturedAt="2026-11-11T10:04:31Z">
+    <title>The limiter is mounted only on POST /v1/messages</title>
+    <output src="evidence/limiter-mounts.txt" />
+  </claim>
+
+  <claim id="neighbour-health" judge="agent"
+         from="production · api.example.com · 7c1d9e4"
+         capturedAt="2026-11-11T10:05:02Z">
+    <title>/health still returns 200 while the key is limited</title>
+    <output src="evidence/neighbour-health.txt" />
+  </claim>
+
+  <gap id="second-key">
+    <title>The limit is per key: a second key is not limited at 60</title>
+    <why>Only one production test key is available in this environment.</why>
+    <needs>A second production test key, or your go-ahead to skip this check.</needs>
+  </gap>
+</report>
+```
+
+### 9. Run the artifact check
+
+```bash
+ryugi check --project-dir "$PWD" --artifact verify/rate-limit
+```
+
+*(assumed)* No errors or warnings. Six claims checked by agent, one gap open, and a local link printed: `http://127.0.0.1:4317/artifacts/verify/rate-limit`.
+
+### 10. Repo state
+
+No code changes and no commit. The evidence lives under `.ryugi/artifacts/`. I'm not committing it, because that would trigger another deploy from `main`.
+
+---
+
+**Message to you (what I would send):**
+
+It's live. Build `7c1d9e4` is serving on `api.example.com` (deploy run 2841937, Cloudflare deployment confirmed, `/health` reports the same build). Against production with the test key, requests 1–60 returned 200, request 61 returned 429, and the key was accepted again after 65 seconds. `/health` still returned 200 while the key was limited. The limiter is mounted only on `POST /v1/messages`.
+
+Evidence: `http://127.0.0.1:4317/artifacts/verify/rate-limit` (assumed link).
+
+One thing is not verified: that the limit is per key, not global. I only have one production test key. I need either a second production test key, or your go-ahead to skip that check. Until one of those happens, the report stays open on that gap. Nothing else is waiting on you.
+
+SUMMARY: Verified on production (api.example.com, build 7c1d9e4, deploy run 2841937, with assumed outputs): build served and matches, request 61 → 429, requests 1–60 → 200, reset after 65s → 200, `/health` unaffected, limiter mounted only on `/v1/messages`; evidence in verify/rate-limit report; waiting on you: the per-key gap (a second production test key, or waive it).

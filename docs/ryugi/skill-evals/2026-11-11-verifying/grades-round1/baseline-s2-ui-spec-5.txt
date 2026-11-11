@@ -1,0 +1,1 @@
+FAIL — Persistence is only in the human-verify group (`"verify": true`) with a recording; no `"verify": "agent"` group with raw PATCH/GET output board. Also no stated question per group and no `from`/`capturedAt`.

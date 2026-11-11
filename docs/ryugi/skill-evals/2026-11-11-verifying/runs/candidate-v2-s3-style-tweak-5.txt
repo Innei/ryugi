@@ -1,0 +1,100 @@
+I'll simulate the run without executing anything. Where a tool would return output, I state the assumed result. The repo is at `/Users/p/git/notes-app` per your brief, though the session's working directory is a non-git temp folder, so I'll `cd` there first.
+
+## Simulated run
+
+**Step 1: read the project's verification instructions before the first check**
+
+```
+Bash: cd /Users/p/git/notes-app && ls -a && cat AGENTS.md CLAUDE.md 2>/dev/null; cat package.json
+```
+Assumed output: no AGENTS.md; CLAUDE.md says "verify UI changes in the dev server at :5173 with the browser; screenshots go in `.ryugi/evidence/`." `package.json` scripts: `dev`, `build`, `typecheck`, `test`, `lint`.
+
+**Step 2: read the changed file and find every user of the component**
+
+```
+Read: src/settings/SaveButton.css
+Bash: rg -n "SaveButton|padding-inline" src
+```
+Assumed output:
+```
+src/settings/SaveButton.css:3:  padding-inline: 12px;
+src/settings/SaveButton.tsx:1:import './SaveButton.css';
+src/settings/SettingsPage.tsx:4:import { SaveButton } from './SaveButton';
+src/settings/SettingsPage.tsx:61:      <SaveButton onClick={save}>Save</SaveButton>
+src/profile/ProfileDialog.tsx:9:import { SaveButton } from '../settings/SaveButton';
+src/profile/ProfileDialog.tsx:44:      <SaveButton onClick={submit}>Save</SaveButton>
+```
+
+The change touches a shared component used on two screens, so both get walked.
+
+**Step 3: capture the "before" state**
+
+The edit is already applied, so I restore the old value briefly to capture the baseline. This is a local file I changed myself, and I'll put it back right after.
+
+```
+Edit: src/settings/SaveButton.css  padding-inline: 12px;  →  padding-inline: 8px;
+Bash: sleep 2   # let HMR apply
+browser: open http://localhost:5173/settings
+browser: screenshot → .ryugi/evidence/save-button-padding-before.png  (clip: Save button)
+browser: evaluate → const b=[...document.querySelectorAll('button')].find(x=>x.textContent.trim()==='Save'); const s=getComputedStyle(b); [s.paddingLeft, s.paddingRight, b.getBoundingClientRect().width].join(' ')
+```
+Assumed output: `8px 8px 84`
+
+**Step 4: restore the change and capture "after"**
+
+```
+Edit: src/settings/SaveButton.css  padding-inline: 8px;  →  padding-inline: 12px;
+Bash: sleep 2
+Bash: rg -n "padding-inline" src/settings/SaveButton.css
+browser: reload http://localhost:5173/settings
+browser: screenshot → .ryugi/evidence/save-button-padding-after.png  (clip: Save button)
+browser: evaluate → (same script as above)
+```
+Assumed outputs:
+```
+src/settings/SaveButton.css:3:  padding-inline: 12px;
+12px 12px 92
+```
+
+The computed padding is 12px on both sides, and the button width grew from 84 to 92px, consistent with 4px added per side.
+
+**Step 5: walk the neighbour, the profile dialog**
+
+```
+browser: open http://localhost:5173/profile → click "Edit profile" → screenshot → .ryugi/evidence/save-button-profile-dialog.png
+browser: evaluate → (same computed-style script) 
+```
+Assumed output: `12px 12px 92`, dialog Save button visible and not clipped at 1280×800.
+
+**Step 6: no test or typecheck covers this**
+
+The change is CSS. `typecheck` and `test` don't see padding, so I won't cite them as evidence and won't run them for this claim. Check the CSS is still parsed in the build:
+
+```
+Bash: pnpm -s build
+```
+Assumed output: `✓ built in 3.1s`, exit 0.
+
+This is a build check, not evidence of the look.
+
+## Messages to your partner
+
+Done for the 12px horizontal padding on the Save button. I changed `src/settings/SaveButton.css` from `padding-inline: 8px` to `padding-inline: 12px`.
+
+**Proof** (local dev server at http://localhost:5173, working tree, this session):
+- Computed padding on Settings → Save: before `8px 8px` (width 84px), after `12px 12px` (width 92px).
+- Profile dialog Save, same component: `12px 12px`, width 92px, not clipped at 1280×800.
+- `pnpm build` exits 0.
+- Screenshots:
+  - `.ryugi/evidence/save-button-padding-before.png`
+  - `.ryugi/evidence/save-button-padding-after.png`
+  - `.ryugi/evidence/save-button-profile-dialog.png`
+
+**Not verified:**
+- Other viewport widths and dark mode. I checked 1280×800 only.
+- The deployed build. This is the local dev server, not production.
+- Nothing is committed. This isn't a git repo, so there's nothing to commit to.
+
+**One question for you:** does 12px look right to you in the after screenshot? That's a judgment about how it looks, so it's yours to decide. If it's still tight or too loose, tell me the value you want and I'll change it and recapture.
+
+SUMMARY: Verified in the local dev server at localhost:5173 that the Save button's computed horizontal padding is 12px on the Settings page and the profile dialog, against 8px before, with screenshots and `pnpm build` passing (all assumed outputs, as this was a simulation). Waiting on you to judge whether 12px looks right.

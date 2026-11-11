@@ -1,0 +1,1 @@
+PASS — Dialog is verify group v1 with real screenshot and recording beside import-a; reqs 2–3 are agent claims with output files; production is a gap; report has a ref row and single link.

@@ -1,0 +1,1 @@
+FAIL — Persistence was proved by command but never placed in a verify:"agent" group with raw output text board; the single group is human-verify with no stated question and no from/capturedAt.

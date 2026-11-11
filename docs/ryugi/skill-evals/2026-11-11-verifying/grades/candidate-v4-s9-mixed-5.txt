@@ -1,0 +1,1 @@
+PASS — Verify groups carry real captures beside import-a with stated questions; the 10k and dupes claims are agent-judged with output files; production is a `<gap>`; refs link the artboard; the message asks only for verdicts and gap needs.

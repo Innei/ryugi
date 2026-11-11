@@ -1,0 +1,131 @@
+Simulated run: nothing below has been executed. Outputs marked **ASSUMED** are my guesses, not results.
+
+**1. Confirm the repo state**
+```bash
+cd /Users/p/git/notes-app && git status --short && git rev-parse --short HEAD
+```
+ASSUMED: CSV import files show as modified; HEAD is `c4d5e6f`.
+
+**2. Read the project's verification conventions**
+```
+Read /Users/p/git/notes-app/CLAUDE.md
+```
+ASSUMED: no verify-specific rules beyond "run `pnpm test` before claiming done."
+
+**3. Run the unit tests (the earlier pass doesn't count)**
+```bash
+pnpm test
+```
+ASSUMED: `Tests: 84 passed, 84 total`.
+
+**4. Requirement 2: 10k-row import**
+```bash
+pnpm import:check fixtures/10k.csv
+```
+ASSUMED output:
+```
+rows read:    10000
+rows written: 10000
+rows skipped: 0
+```
+
+**5. Requirement 3: duplicates**
+```bash
+pnpm import:check fixtures/dupes.csv
+```
+ASSUMED output:
+```
+rows read:    500
+rows written: 250
+rows skipped: 250
+```
+
+**6. Requirement 4: production database.** No tool call. I have no production credentials and no staging copy, and the checks above ran against the local database. Nothing I can run here shows the import works on production, so I will not claim it. I will not point an import at production, since it would write to real customer notes.
+
+**7. Capture the live app for the verify page**
+```bash
+mkdir -p .ryugi/artifacts/csv-import/pages/verify
+```
+Assumed artboard root: `.ryugi/artifacts/csv-import/`.
+
+Browser calls (the browser tool's signatures are assumed):
+```
+browser.open("http://localhost:5173/")
+browser.click("Import CSV")                       # open the import dialog
+browser.screenshot(".ryugi/artifacts/csv-import/pages/verify/import-dialog-live.png")
+browser.upload("fixtures/10k.csv")
+browser.click("Import")
+browser.screenshot(".ryugi/artifacts/csv-import/pages/verify/import-progress-live.png")  # mid-progress, to match import-a's progress state
+browser.record(".ryugi/artifacts/csv-import/pages/verify/import-flow.mp4", until="import complete")
+```
+ASSUMED: all four files are written. The progress screenshot is taken around 40%, which I'll compare against import-a's progress state.
+
+**8. Check file sizes against the limits (8MB per video, 20MB per artboard)**
+```bash
+ls -l .ryugi/artifacts/csv-import/pages/verify && du -sh .ryugi/artifacts/csv-import
+```
+ASSUMED: `import-flow.mp4` is 3.1MB; artboard total is 6.4MB.
+
+**9. Read the artboard file**
+```
+Read .ryugi/artifacts/canvas.json
+```
+ASSUMED: artboard `csv-import` has page `main` with board `import-a` and no `verify` page.
+
+**10. Add a `verify` page with one verify group**
+
+Edit `.ryugi/artifacts/canvas.json` to add this page below `main`:
+```json
+{
+  "id": "verify",
+  "name": "Verify",
+  "focus": "verify-import-dialog",
+  "groups": [
+    {
+      "id": "verify-import-dialog",
+      "title": "CSV import dialog: matches import-a, including progress",
+      "verify": true,
+      "boards": [
+        { "id": "approved", "label": "Approved: import-a", "type": "html", "file": "pages/import/import-a.html", "x": 0, "y": 0, "w": 1280, "h": 800 },
+        { "id": "live-dialog", "label": "Live: dialog", "type": "image", "src": "pages/verify/import-dialog-live.png", "x": 1320, "y": 0, "w": 1280, "h": 800 },
+        { "id": "live-progress", "label": "Live: progress", "type": "image", "src": "pages/verify/import-progress-live.png", "x": 2640, "y": 0, "w": 1280, "h": 800 },
+        { "id": "live-flow", "label": "Live: import flow recording", "type": "video", "src": "pages/verify/import-flow.mp4", "x": 0, "y": 860, "w": 1280, "h": 720 }
+      ]
+    }
+  ]
+}
+```
+Rows 2 and 3 are CLI output with no visible change, so they stay out of the verify page. They are proven by the command output in steps 4–5.
+
+**11. Check the artboard**
+```bash
+ryugi check csv-import
+```
+ASSUMED: `warnings: []`, the video is prepared with no fallback to the original, and no group is pending evidence processing.
+
+**12. Start the local preview to get the link**
+```bash
+ryugi start csv-import
+```
+ASSUMED: prints `http://localhost:4411/csv-import#verify`.
+
+I will not run `ryugi publish`. It sends the artboard to an external service, so I'll ask first.
+
+**13. Messages to my partner (sent now, then I stop and wait)**
+
+> The CSV import dialog is ready for your verdict. The verify page is at http://localhost:4411/csv-import#verify. The group "CSV import dialog: matches import-a, including progress" shows the approved import-a board next to a live screenshot of the dialog and a live screenshot mid-progress, plus a recording of the 10k-file import.
+>
+> What I ran in this session:
+> - `pnpm test`: 84 passed.
+> - `pnpm import:check fixtures/10k.csv`: 10000 read, 10000 written, 0 skipped.
+> - `pnpm import:check fixtures/dupes.csv`: 500 read, 250 written, 250 skipped.
+>
+> Not verified: requirement 4, the production database. I have no production credentials and no staging copy, and the checks above ran against the local DB. Nothing here shows the import works on production, so I have not claimed it. Options: (a) you run `pnpm import:check` against a production snapshot or a read-only copy and send me the output; (b) you give me a staging database with production-shaped data. Which do you want? I'd also like to know how you handle duplicates in production data, since real notes may match fixture rows differently.
+>
+> Decisions for you:
+> 1. Is the verify page ready to publish to the cloud link? I have not published it yet, because that sends content outside this machine.
+> 2. Once you've looked, tell me here whether the group passes or what to reject.
+>
+> Waiting on you for the verdict and for the production route. I won't call this done until the group passes.
+
+**SUMMARY:** Verified locally: unit tests (84 passed), 10k import (10000/10000 written, 0 skipped), duplicates (500 read, 250 written, 250 skipped), and the live dialog against `import-a` on the `verify` page of artboard `csv-import` at http://localhost:4411/csv-import#verify. Not verified: production import (requirement 4), which needs a production snapshot or staging access. Now waiting on you for the verdict on the verify group, and on the production route.

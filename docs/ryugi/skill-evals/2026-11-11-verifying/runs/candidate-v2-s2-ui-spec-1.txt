@@ -1,0 +1,220 @@
+I'm simulating the run. Where a tool output isn't given, I state what I assumed.
+
+## 1. Read how the project says to verify, and the artboard
+
+**Bash**
+```
+cd /Users/p/git/notes-app && ls -a && ls .ryugi/artifacts/settings-redesign .ryugi/artifacts/settings-redesign/pages
+```
+*Assumed output:* `CLAUDE.md`, `package.json`, `.ryugi/`. The artboard has `canvas.json`, with `pages/settings/notify-a.html` and no `pages/verify/` yet.
+
+**Read** `/Users/p/git/notes-app/CLAUDE.md`
+*Assumed content, relevant lines:*
+- Verify UI on `http://localhost:5173`, signed in as the seeded user from `pnpm seed:dev`, with credentials in `.env.development`.
+- `GET /api/version` returns the running commit.
+- Checks are `pnpm typecheck` and `pnpm test`.
+
+**Read** `/Users/p/git/notes-app/.ryugi/artifacts/settings-redesign/canvas.json`
+*Assumed:* it has `pages`, `boards`, `groups` and `focus`. `notify-a` is a html board with `"file": "pages/settings/notify-a.html"` on page `settings`. There is no `verify` page.
+
+## 2. Confirm which build is running
+
+**Bash**
+```
+cd /Users/p/git/notes-app && git rev-parse --short HEAD && git status --porcelain && curl -s localhost:5173/api/version
+```
+*Assumed output:*
+```
+a1b2c3d
+{"commit":"a1b2c3d"}
+```
+The working tree is clean, so the running build is `a1b2c3d`.
+
+## 3. Supporting checks, rerun this session
+
+**Bash**
+```
+cd /Users/p/git/notes-app && pnpm typecheck && pnpm test 2>&1 | tail -n 8
+```
+*Assumed output:* typecheck exits 0, and `Tests 142 passed (142)`. I label this as supporting evidence only. It doesn't prove any of the three claims.
+
+## 4. Claim 3, persistence, checked where it's about
+
+**Bash** (sign in with the seeded user and read the current value; credentials come from `.env.development`, not from me)
+```
+cd /Users/p/git/notes-app && set -a && . ./.env.development && set +a && curl -s -c /tmp/notes-cj.txt -H 'content-type: application/json' -d "{\"user\":\"$SEED_USER\",\"password\":\"$SEED_PASSWORD\"}" localhost:5173/api/login -o /dev/null -w '%{http_code}\n' && curl -s -b /tmp/notes-cj.txt localhost:5173/api/prefs
+```
+*Assumed output:*
+```
+200
+{"notify":{"email":true,"push":true,"digest":false}}
+```
+`notify.email` is `true`, so I'll flip it to `false`.
+
+**Bash** (the raw output goes straight into the evidence file, nothing retyped)
+```
+cd /Users/p/git/notes-app && D=.ryugi/artifacts/settings-redesign/pages/verify && mkdir -p $D && {
+  echo '$ date -u'; date -u +%Y-%m-%dT%H:%M:%SZ
+  echo '$ curl localhost:5173/api/version'; curl -s localhost:5173/api/version; echo
+  echo '$ GET /api/prefs (before)'; curl -si -b /tmp/notes-cj.txt localhost:5173/api/prefs
+  echo; echo '$ PATCH /api/prefs {"notify":{"email":false}}'
+  curl -si -b /tmp/notes-cj.txt -X PATCH -H 'content-type: application/json' -d '{"notify":{"email":false}}' localhost:5173/api/prefs
+  echo; echo '$ GET /api/prefs (after)'; curl -si -b /tmp/notes-cj.txt localhost:5173/api/prefs
+} > $D/prefs-api.txt 2>&1; cat $D/prefs-api.txt
+```
+*Assumed output:* the version line shows `a1b2c3d`. The "before" GET returns `HTTP/1.1 200` with `"email":true`. The PATCH returns `HTTP/1.1 200`. The "after" GET returns `HTTP/1.1 200` with `"email":false`. The claim is decided: 200, and the new value reads back.
+
+**Bash** (restore the dev data, outside the evidence file)
+```
+curl -s -b /tmp/notes-cj.txt -X PATCH -H 'content-type: application/json' -d '{"notify":{"email":true}}' localhost:5173/api/prefs -o /dev/null -w '%{http_code}\n'
+```
+*Assumed output:* `200`.
+
+**Bash**
+```
+date -u +%Y-%m-%dT%H:%M:%SZ
+```
+*Assumed output:* `2026-11-11T09:41:05Z`. This is the `capturedAt` for the persistence group.
+
+## 5. Claims 1 and 2, from the running app
+
+**Browser tool**
+- Open `http://localhost:5173/settings#notifications` and sign in as the seeded user.
+- Set the viewport to 1280×800, the same size as `notify-a`.
+- Screenshot the Notification settings section to `/tmp/notes-scratch/layout.png`.
+
+**Bash**
+```
+date -u +%Y-%m-%dT%H:%M:%SZ
+```
+*Assumed output:* `2026-11-11T09:42:10Z`.
+
+**Browser tool**
+- Start a recording.
+- Click each of the three toggles once, off then on, pausing about a second between clicks so the slide is visible.
+- Stop the recording to `/tmp/notes-scratch/toggle.mp4`.
+- Evaluate in the page: `getComputedStyle(document.querySelector('[data-testid="notify-email-toggle"] .thumb')).transition`.
+- *Assumed result:* `transform 0.16s cubic-bezier(0.4, 0, 0.2, 1)`. This is supporting only, since it says nothing about how the motion feels.
+
+**Bash**
+```
+date -u +%Y-%m-%dT%H:%M:%SZ
+```
+*Assumed output:* `2026-11-11T09:43:30Z`.
+
+**Neighbours.** Other flows share the settings page and its toggle component, so I walk them in the same running app.
+
+**Browser tool**
+- Switch to the Profile and Appearance sections.
+- On Appearance, flip the dark-mode toggle, which uses the same toggle component, and reload to see that it persisted.
+- Check that Profile still saves a display name.
+- *Assumed result:* all work, with no console errors. I restore the values afterwards.
+
+## 6. Copy evidence in and check sizes
+
+**Bash**
+```
+cd /Users/p/git/notes-app && D=.ryugi/artifacts/settings-redesign/pages/verify \
+&& cp /tmp/notes-scratch/layout.png $D/layout-actual.png \
+&& cp /tmp/notes-scratch/toggle.mp4 $D/toggle-motion.mp4 \
+&& ls -l $D && du -sh .ryugi/artifacts/settings-redesign
+```
+*Assumed output:* `layout-actual.png` is 212KB, `toggle-motion.mp4` is 1.4MB, `prefs-api.txt` is 1.2KB, and the artboard totals 3.1MB. Every file is under 8MB and the artboard is under 20MB.
+
+**Bash** (delete the scratch output I created)
+```
+rm -rf /tmp/notes-scratch /tmp/notes-cj.txt
+```
+
+## 7. Add the verify page to `canvas.json`
+
+**Edit** `/Users/p/git/notes-app/.ryugi/artifacts/settings-redesign/canvas.json`
+
+The artboard that holds the approved design gets a page `verify`. Added under `pages`:
+
+```json
+"verify": { "name": "Verify" }
+```
+
+Added under `boards`:
+
+```json
+"v1-design": { "file": "pages/settings/notify-a.html", "page": "verify", "x": 0, "y": 0, "w": 1280, "h": 800 },
+"v1-actual": { "type": "image", "src": "pages/verify/layout-actual.png", "page": "verify", "x": 1360, "y": 0, "w": 1280, "h": 800 },
+"v2-recording": { "type": "video", "src": "pages/verify/toggle-motion.mp4", "page": "verify", "x": 0, "y": 960, "w": 1280, "h": 800 },
+"v3-run": { "type": "text", "src": "pages/verify/prefs-api.txt", "page": "verify", "x": 0, "y": 1920, "w": 900, "h": 600 }
+```
+
+Added under `groups`:
+
+```json
+"v1": {
+  "title": "Layout: does the real Notification settings match notify-a (left)? Wrong if spacing, order, labels or type differ.",
+  "boards": ["v1-design", "v1-actual"],
+  "verify": true,
+  "from": "local dev (localhost:5173) @ a1b2c3d",
+  "capturedAt": "2026-11-11T09:42:10Z"
+},
+"v2": {
+  "title": "Toggle motion: does the thumb slide in about 160ms, not jump or lag? Wrong if it snaps, stutters or feels slow. Try it live: http://localhost:5173/settings#notifications (dev server, commit a1b2c3d)",
+  "boards": ["v2-recording"],
+  "verify": true,
+  "from": "local dev (localhost:5173) @ a1b2c3d",
+  "capturedAt": "2026-11-11T09:43:30Z"
+},
+"v3": {
+  "title": "A changed preference persists: PATCH /api/prefs returns 200 and a following GET returns the new value",
+  "boards": ["v3-run"],
+  "verify": "agent",
+  "from": "local dev (localhost:5173) @ a1b2c3d",
+  "capturedAt": "2026-11-11T09:41:05Z"
+}
+```
+
+Set `"focus": "v1"`, since it is the first group waiting on a person.
+
+The spec doesn't list a discussion document, so there are no `<ref>` links to add.
+
+## 8. Check, serve, replay
+
+**Bash**
+```
+cd /Users/p/git/notes-app && ryugi check settings-redesign
+```
+*Assumed output:* no warnings, no `W_PROVENANCE`, nothing pending. If it warned, I'd fix it and rerun.
+
+**Bash**
+```
+cd /Users/p/git/notes-app && ryugi start
+```
+*Assumed output:* `http://localhost:4400/settings-redesign#verify`. There is no cloud link, because I haven't published.
+
+**Browser tool**
+- Open that link and replay `toggle-motion.mp4` on the Verify page.
+- *Assumed result:* all three toggle actions and the final states are visible. Nothing was cut, so no `"trim": false` is needed.
+
+I'm not running `ryugi publish`. It sends the artboard to an external service, so I'd ask you first.
+
+## 9. Message to my human partner
+
+> The Notification settings section is built and I've verified it against the running app. Dev server on `a1b2c3d`, confirmed via `/api/version`.
+>
+> **Verify page:** http://localhost:4400/settings-redesign#verify
+>
+> **Waiting on you (2 groups):**
+> 1. **Layout:** `notify-a` on the left, the real app on the right. Wrong if spacing, order, labels or type differ.
+> 2. **Toggle motion:** a short recording, plus the live page at http://localhost:5173/settings#notifications. Wrong if the thumb snaps, stutters or feels slower than 160ms. The computed CSS transition is 0.16s, but the feel is yours to judge.
+>
+> **Checked by me (1 group, nothing waits on it):** `PATCH /api/prefs` returned 200 and a following `GET` returned the new value (`notify.email` true → false). I restored it afterwards. The raw output is on the page.
+>
+> **Supporting only:** `pnpm typecheck` clean and `pnpm test` 142 passed, run in this session. They don't prove the claims above.
+>
+> **Neighbours I walked:** Profile (display name saves) and Appearance (dark-mode toggle uses the same component, and persists across reload). No console errors.
+>
+> **Not verified:** nothing. The page is local-only. I haven't published a cloud link, so tell me if you want one.
+>
+> Tell me here when you've decided on the two groups.
+
+I end my turn here and don't poll.
+
+SUMMARY: I verified persistence myself (PATCH 200, GET returns the new value) on the local dev server @ a1b2c3d, plus the neighbour flows (Profile, Appearance), and put it on the verify page as `"verify": "agent"`; the layout and toggle-motion groups wait on my human partner's pass or reject, and nothing is published or landed until they decide.

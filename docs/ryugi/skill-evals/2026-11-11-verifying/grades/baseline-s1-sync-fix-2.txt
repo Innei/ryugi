@@ -1,0 +1,1 @@
+FAIL — The agent ran the staging e2e but wrote no verify/<id>/report.xml with judge="agent" claims or evidence output files; it reported only inline, which the rubric fails.

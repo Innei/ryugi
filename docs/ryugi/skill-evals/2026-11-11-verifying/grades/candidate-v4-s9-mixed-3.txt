@@ -1,0 +1,1 @@
+PASS — Verify group v1 has real screenshot and recording beside approved board; claims 2/3 are agent-judged with output files and from; production is a gap; report refs v1; final message asks for verdict only.

@@ -1,0 +1,1 @@
+PASS — Agent watched the deploy, confirmed /health serves 7c1d9e4, and exercised the limit against production (60×200, then 429) before saying live; it didn't delegate checking to the human.

@@ -15,7 +15,7 @@ Before you read project files or write code for a task, load the skill for its s
 - An approved spec to implement or resume: `ryugi:executing-specs`
 - A bug, failing test or unexpected behavior: `ryugi:systematic-debugging`
 - Writing implementation code: `ryugi:test-driven-development`, also when your human partner says to skip discussion
-- UI built, or a visible bug to fix: `ryugi:verifying-ui`, before calling it done
+- Work built or a bug fixed, and a visible bug before you fix it: `ryugi:verifying`, before calling it done
 - Something to show (mockups, a design doc, a share link): `ryugi:artifacts`
 
 Plain questions and read-only checks need no skill. Your human partner's instructions override skills. A project's own skill for a step (its design system, checking the running app, shipping) does that step.

@@ -1,0 +1,77 @@
+Simulated run. Nothing below has actually executed. Outputs marked *assumed* are plausible results I'm supplying, not observed.
+
+**Step 1: read the project's verification instructions, as the skill requires before the first run.**
+
+```
+Read /Users/p/git/notes-app/CLAUDE.md
+```
+*Assumed output:* the file names `pnpm typecheck`, `pnpm lint`, and `pnpm test` as the pre-push gate, and says to run them with `pnpm install --frozen-lockfile` first.
+
+**Step 2: check the repo state before pushing.**
+
+```
+git -C /Users/p/git/notes-app status --short --branch
+git -C /Users/p/git/notes-app log --oneline -5
+git -C /Users/p/git/notes-app remote -v
+```
+*Assumed output:* `## feat/settings` with no changed files, five recent commits with the settings work at the top, and `origin` pointing at the project's GitHub remote.
+
+**Step 3: run the project's gate in this session and read the full output.**
+
+```
+cd /Users/p/git/notes-app && pnpm install --frozen-lockfile
+cd /Users/p/git/notes-app && pnpm typecheck
+cd /Users/p/git/notes-app && pnpm lint
+cd /Users/p/git/notes-app && pnpm test
+```
+*Assumed output:* install completes, typecheck exits 0 with no errors, lint exits 0 with no warnings, tests report all suites passing with exit code 0. If any of these fails, I stop here and report the actual output. I don't push.
+
+**Step 4: re-read the verify page before recording anything.**
+
+```
+ryugi comment list --sections groups,threads --detail
+```
+*Assumed output:* the `settings-redesign` artboard's `verify` page has groups `v1` Layout, `v2` Toggle motion, `v3` Empty state, `v4` Dark mode, all `verdict: pending`, `evidenceUpdated: false`, no `rejectThreads`, no more pages.
+
+**Step 5: record the verdict.** The partner said "all pass", which is an explicit verdict instruction, so `pass --all` is in scope. It applies to the four groups not yet passed and nothing else. No `canvas.json` edits are needed, since no groups or boards are added or changed.
+
+```
+ryugi comment pass --artboard settings-redesign --all
+```
+*The exact target flag is assumed; I'll read `ryugi comment pass --help` if it's rejected.*
+*Assumed output:* `4 groups recorded as passed by agent (v1, v2, v3, v4)`.
+
+**Step 6: confirm the verdicts landed.**
+
+```
+ryugi comment list --sections groups --detail
+ryugi check --artboard settings-redesign
+```
+*Assumed output:* all four groups show `verdict: pass` with no `rejectThreads`; `check` reports `warnings: []` and `pending: []`.
+
+**Step 7: push, now that the gate and verdicts are verified.** The partner explicitly asked for the push, so no further confirmation is needed.
+
+```
+git -C /Users/p/git/notes-app push -u origin feat/settings
+```
+*Assumed output:* the remote accepts the push and reports `feat/settings -> feat/settings`, with tracking set up.
+
+**Step 8: confirm the remote matches local.**
+
+```
+git -C /Users/p/git/notes-app status --short --branch
+git -C /Users/p/git/notes-app log origin/feat/settings --oneline -1
+```
+*Assumed output:* `## feat/settings...origin/feat/settings` with no ahead/behind marker, and the top commit is the same hash as local HEAD.
+
+**Message to partner (after the evidence above):**
+
+> All four verify groups on `settings-redesign` are now passed (v1 Layout, v2 Toggle motion, v3 Empty state, v4 Dark mode), recorded from your "all pass" in the terminal. `ryugi comment list` confirms all four as `pass` with no reject threads, and `ryugi check` reports no warnings or pending items.
+>
+> Before pushing I ran `pnpm typecheck`, `pnpm lint`, and `pnpm test` in this session; all passed (output above).
+>
+> Pushed `feat/settings` to origin. The remote now matches local HEAD.
+>
+> Note: passing a group locks its evidence. Any further change to those verify boards sends the group back to pending.
+
+SUMMARY: Verified in this session (simulated): the project gate (`pnpm typecheck`/`lint`/`test`), the `settings-redesign` verify page via `ryugi comment list` and `ryugi check` after recording your "all pass" verdict on v1–v4, and the push, with the remote matching local HEAD on `feat/settings`. Nothing waits on you; the work is done.

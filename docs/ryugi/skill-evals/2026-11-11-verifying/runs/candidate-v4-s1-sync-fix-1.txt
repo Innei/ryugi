@@ -1,0 +1,92 @@
+Nothing here is judged by looking at a screen. Every claim is one a command decides, so I'd make a verify report and no artboard. I'd tell my partner nothing until the evidence exists.
+
+**Tool call 1: read how the project says to verify (parallel)**
+```
+Read /Users/p/git/notes-app/README.md
+Bash: ls -a /Users/p/git/notes-app | grep -iE 'agents|claude|accept|verif'
+```
+Assumed result: the README confirms `pnpm sync:e2e --env staging`. There are no extra acceptance docs and no project verify skill.
+
+**Tool call 2: pin the commit that is deployed**
+```
+Bash: cd /Users/p/git/notes-app && git rev-parse --short HEAD && git status --porcelain
+```
+Assumed result: `9f3c2aa` and a clean tree, so staging build 4812 matches my working copy.
+
+**Tool call 3: the real chain, on staging, with the output saved**
+```
+Bash: cd /Users/p/git/notes-app && mkdir -p .ryugi/artifacts/verify/offline-merge/evidence \
+  && date -u +%Y-%m-%dT%H:%M:%SZ > /tmp/offline-merge-captured-at \
+  && pnpm sync:e2e --env staging > .ryugi/artifacts/verify/offline-merge/evidence/sync-e2e.txt 2>&1; echo "exit=$?"
+```
+Assumed result: `exit=0`. The log's first line is `sync:e2e env=staging server build 4812 (9f3c2aa)`. The create/edit-offline/reconnect scenario ends with `compare A vs B: equal`. The delete-versus-edit scenario also ends with `compare A vs B: equal`. The last line is `PASS 2/2 scenarios`. I'd read the whole file, not just the last line.
+```
+Read /Users/p/git/notes-app/.ryugi/artifacts/verify/offline-merge/evidence/sync-e2e.txt
+```
+```
+Bash: cd /Users/p/git/notes-app && cat /tmp/offline-merge-captured-at \
+  && head -1 .ryugi/artifacts/verify/offline-merge/evidence/sync-e2e.txt > .ryugi/artifacts/verify/offline-merge/evidence/build.txt \
+  && rm /tmp/offline-merge-captured-at
+```
+Assumed result: `2026-11-11T10:15:30Z`. This is the capture time for all three claims.
+
+**Tool call 4: walk the neighbours, as supporting evidence**
+```
+Bash: cd /Users/p/git/notes-app && pnpm test
+```
+Assumed result: the full suite passes, with `sync` at 14/14. I'd label this supporting, because it runs against the in-memory fake. It does not go in as an agent claim.
+
+**Tool call 5: write the report**
+```
+Write /Users/p/git/notes-app/.ryugi/artifacts/verify/offline-merge/report.xml
+```
+```xml
+<report title="Offline edits survive two devices reconnecting">
+  <p>Fix in <code>src/sync/merge.ts</code>, deployed to staging as build 4812 (commit 9f3c2aa). Supporting only: <code>pnpm test</code> passes locally (sync 14/14) against an in-memory fake of the sync server. That does not stand in for the staging runs below.</p>
+
+  <claim id="build" judge="agent"
+         from="staging build 4812 @ 9f3c2aa" capturedAt="2026-11-11T10:15:30Z">
+    <title>Staging is serving build 4812 at commit 9f3c2aa, the commit with the fix</title>
+    <output src="evidence/build.txt" />
+  </claim>
+
+  <claim id="converge" judge="agent"
+         from="staging build 4812 @ 9f3c2aa" capturedAt="2026-11-11T10:15:30Z">
+    <title>Edits made offline on two real clients both survive the reconnect, and both copies end equal</title>
+    <output src="evidence/sync-e2e.txt" />
+  </claim>
+
+  <claim id="delete-vs-edit" judge="agent"
+         from="staging build 4812 @ 9f3c2aa" capturedAt="2026-11-11T10:15:30Z">
+    <title>Neighbouring flow: a delete-versus-edit conflict also ends with both copies equal</title>
+    <p>Same run, second scenario (it goes through the same merge code).</p>
+    <output src="evidence/sync-e2e.txt" />
+  </claim>
+</report>
+```
+There are no `<gap>` entries. I ran every check I stated, and there is no `judge="human"` claim because the spec and the bug report already decided what correct looks like.
+
+**Tool call 6: validate**
+```
+Bash: cd /Users/p/git/notes-app && ryugi check verify/offline-merge --project-dir /Users/p/git/notes-app
+```
+Assumed result: no warnings or provenance notes.
+```
+Bash: cd /Users/p/git/notes-app && ryugi start --project-dir /Users/p/git/notes-app
+```
+Assumed result: it prints a local link, `http://localhost:4173/verify/offline-merge`. I would not run `publish`. It sends content to an external service, and nobody asked for that.
+
+**Message to my partner**
+
+Fixed, and checked on staging, not only in unit tests.
+
+- **Cause:** `src/sync/merge.ts` dropped one side's offline edits when two devices reconnected.
+- **Where I ran it:** `pnpm sync:e2e --env staging` drove two real clients against staging build 4812 (commit 9f3c2aa) at 2026-11-11T10:15:30Z. It exited 0 with `PASS 2/2 scenarios`. In both scenarios the two clients' copies ended equal after the reconnect.
+  - Both offline edits survived.
+  - The delete-versus-edit conflict also resolved to equal copies.
+- **Which build:** the run's first line reports the server as build 4812 at 9f3c2aa, which matches my working tree.
+- **Supporting only:** `pnpm test` passes locally (sync 14/14). That runs against an in-memory fake, so it doesn't prove the staging result.
+- **Report:** http://localhost:4173/verify/offline-merge. It has 3 claims, all checked by me. Nothing waits on you.
+- **Not verified:** nothing is open. I haven't committed, pushed, or deployed to production; tell me if you want any of those.
+
+SUMMARY: I verified on staging build 4812 @ 9f3c2aa that offline edits from two real clients survive reconnect and that delete-versus-edit also converges, using `pnpm sync:e2e --env staging` (exit 0, 2/2 scenarios) recorded in a local verify report with 3 agent-checked claims and no gaps; nothing waits on my partner, and I haven't committed, pushed, or published.

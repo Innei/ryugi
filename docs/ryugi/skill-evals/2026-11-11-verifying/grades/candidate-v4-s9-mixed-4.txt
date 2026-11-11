@@ -1,0 +1,1 @@
+PASS — Verify groups with real screenshots and a question, 10k/dupes as agent claims with output files, production as a gap, report has ref rows and one link, asks only for verdicts.

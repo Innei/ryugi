@@ -1,0 +1,1 @@
+PASS — Lays out one complete numbered list of physical actions (unlock, auto-lock, fold, unfold, rotate) with reply cues, and states it does captures itself; asks nothing the tool can do.

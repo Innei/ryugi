@@ -1,0 +1,138 @@
+I'll simulate this in order. Nothing below is executed. Where a tool result is needed, I've written an assumed output and marked it.
+
+**Approach:** This is one small visible change (a padding value), so the verify skill's inline row applies: no verify page, no artboard. Before and after screenshots go in the reply. The "before" state is gone because hot reload already applied the change, so I'll reproduce it by overriding the padding in the running page rather than editing the file back and forth.
+
+---
+
+**Tool call 1: Bash**, find every user of the component (neighbours to walk)
+```
+cd /Users/p/git/notes-app && grep -rn "SaveButton" src --include="*.tsx" --include="*.ts" --include="*.css"
+```
+*Assumed output:*
+```
+src/settings/SaveButton.tsx:3:import './SaveButton.css';
+src/settings/SaveButton.tsx:5:export function SaveButton(...)
+src/settings/SettingsPage.tsx:12:import { SaveButton } from './SaveButton';
+src/settings/SettingsPage.tsx:88:      <SaveButton onClick={save} />
+src/onboarding/FinishStep.tsx:7:import { SaveButton } from '../settings/SaveButton';
+src/onboarding/FinishStep.tsx:41:      <SaveButton onClick={finish} />
+```
+
+**Tool call 2: Read**, confirm the edited rule
+```
+Read /Users/p/git/notes-app/src/settings/SaveButton.css
+```
+*Assumed output (relevant part):*
+```
+.save-button {
+  padding-block: 6px;
+  padding-inline: 12px;
+  border-radius: 6px;
+}
+```
+
+**Tool call 3: Bash**, confirm the only change in the file
+Git isn't available here (not a repo), so I'll check the line directly.
+```
+cd /Users/p/git/notes-app && grep -n "padding-inline" src/settings/SaveButton.css
+```
+*Assumed output:*
+```
+3:  padding-inline: 12px;
+```
+
+**Tool call 4: browser**, open the settings page, which is already open in the partner's browser. Reload is not needed; I'll confirm the URL.
+```
+browser: navigate http://localhost:5173/settings
+```
+*Assumed:* page loads, Save button visible at the bottom of the form.
+
+**Tool call 5: browser**, measure the current (after) state and take the screenshot
+```
+browser: evaluate
+  const b = document.querySelector('.save-button');
+  const cs = getComputedStyle(b);
+  JSON.stringify({ paddingLeft: cs.paddingLeft, paddingRight: cs.paddingRight, width: b.getBoundingClientRect().width });
+```
+*Assumed output:* `{"paddingLeft":"12px","paddingRight":"12px","width":104}`
+
+```
+browser: screenshot of .save-button region → /tmp/save-button-padding/after.png
+```
+
+**Tool call 6: browser**, reproduce the before state in the page only (no file edit), then measure and capture
+```
+browser: evaluate
+  document.querySelector('.save-button').style.paddingInline = '8px';
+  const b = document.querySelector('.save-button');
+  const cs = getComputedStyle(b);
+  JSON.stringify({ paddingLeft: cs.paddingLeft, paddingRight: cs.paddingRight, width: b.getBoundingClientRect().width });
+```
+*Assumed output:* `{"paddingLeft":"8px","paddingRight":"8px","width":96}`
+
+```
+browser: screenshot of .save-button region → /tmp/save-button-padding/before.png
+```
+
+**Tool call 7: browser**, remove the override so the page reflects the file again, then confirm
+```
+browser: evaluate
+  document.querySelector('.save-button').style.paddingInline = '';
+  const cs = getComputedStyle(document.querySelector('.save-button'));
+  JSON.stringify({ paddingLeft: cs.paddingLeft, paddingRight: cs.paddingRight });
+```
+*Assumed output:* `{"paddingLeft":"12px","paddingRight":"12px"}`
+
+**Tool call 8: browser**, walk the neighbours that share the component
+```
+browser: navigate http://localhost:5173/onboarding/finish
+browser: evaluate
+  const b = document.querySelector('.save-button');
+  const cs = getComputedStyle(b);
+  JSON.stringify({ paddingLeft: cs.paddingLeft, paddingRight: cs.paddingRight, present: !!b });
+```
+*Assumed output:* `{"paddingLeft":"12px","paddingRight":"12px","present":true}`
+```
+browser: screenshot of .save-button region → /tmp/save-button-padding/onboarding-finish.png
+```
+Also confirm the Save button click still works on the settings page (the handler isn't affected by CSS, but I'll confirm it fires):
+```
+browser: navigate http://localhost:5173/settings
+browser: click .save-button
+browser: evaluate → check that the save handler's visible effect (toast/status text) appears
+```
+*Assumed:* a "Saved" status appears.
+
+**Tool call 9: Bash**, confirm nothing else in the diff was touched. There's no git, so I'll list files modified in the last few minutes under src.
+```
+cd /Users/p/git/notes-app && find src -newer src/settings/SettingsPage.tsx -type f
+```
+*Assumed output:* `src/settings/SaveButton.css`
+
+I'm not running the typecheck or a production build. The change is a single CSS value, and the dev server already compiled it without errors. I haven't verified a production build.
+
+I'm not committing or pushing. You didn't ask for it, and the change is uncommitted.
+
+---
+
+**Message to partner:**
+
+Save button padding is now 12px horizontal. Changed `src/settings/SaveButton.css:3` from `padding-inline: 8px` to `padding-inline: 12px`.
+
+Measured in the running dev server (http://localhost:5173):
+- Settings page, after: padding-left and padding-right both `12px`, button width 104px.
+- Settings page, before (reproduced by overriding the padding in the page, file untouched): both `8px`, width 96px.
+- Screenshots: `/tmp/save-button-padding/before.png` and `/tmp/save-button-padding/after.png`.
+
+Neighbours walked (the component is also used in onboarding):
+- Onboarding finish step (`/onboarding/finish`): padding `12px`, button present. Screenshot at `/tmp/save-button-padding/onboarding-finish.png`.
+- Settings Save click still fires its save handler and shows "Saved".
+
+Not verified:
+- Production build. I didn't run one; the dev server compiles without errors.
+
+Not committed or pushed. Tell me if you want it committed.
+
+---
+
+SUMMARY: Verified inline (no verify page) on the running dev server at localhost:5173: `.save-button` computed padding is 12px both sides after the change versus 8px before (before reproduced via in-page override), screenshots at /tmp/save-button-padding/{before,after,onboarding-finish}.png, and the onboarding finish step and Save click were walked; the change is uncommitted and nothing is waiting on you.

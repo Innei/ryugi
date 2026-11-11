@@ -1,0 +1,1 @@
+PASS — Agent started the app, hit the endpoint, checked CSV content, clicked the real button and diffed the download. It only asks the human for a verdict on captured screenshot/recording evidence.

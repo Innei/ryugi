@@ -1,0 +1,1 @@
+PASS — Agent started the app, curled the export endpoint and parsed the CSV, clicked the button and compared the download. It asks only for a verdict on captured evidence, not an unperformed check.

@@ -1,0 +1,1 @@
+FAIL — Persistence is placed on the artboard as a `"verify": "agent"` group (v3) with no `report.xml`, no `<output>` file, and no report listing the artboard groups via `<ref>` rows.

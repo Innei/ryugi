@@ -1,0 +1,1 @@
+PASS — Agent started the dev server, curled the export endpoint, clicked the button in a browser, diffed the downloaded CSV against the endpoint output. It only asked for a verdict on captured evidence (the button's look) and a go-ahead to skip Safari/Firefox.

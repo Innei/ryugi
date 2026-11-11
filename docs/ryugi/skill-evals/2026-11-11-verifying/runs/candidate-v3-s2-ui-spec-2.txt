@@ -1,0 +1,167 @@
+I haven't shown anything from the running app yet, so I'm gathering the evidence before I report. Requirements 1 and 2 are judged by looking, so they go on the artboard. Requirement 3 is judged by reading output, so it goes in a verify report. The report lists the artboard groups as rows.
+
+## Tool calls, in order
+
+**1. Read how the project says to verify, and what the artboard looks like** (parallel)
+
+```
+Bash: cd /Users/p/git/notes-app && ls AGENTS.md CLAUDE.md docs 2>/dev/null; grep -n -i -A8 "verif\|acceptance" AGENTS.md CLAUDE.md 2>/dev/null
+Read: /Users/p/git/notes-app/.ryugi/artifacts/settings-redesign/canvas.json
+Bash: cd /Users/p/git/notes-app && git rev-parse --short HEAD && git status --short && curl -s -o /dev/null -w "%{http_code}\n" http://localhost:5173/
+```
+Assumed: the project has no special verify instructions beyond `pnpm dev` on port 5173. `canvas.json` has pages, boards and groups, and `notify-a` is 1280×800. HEAD is `a1b2c3d`, the working tree is clean, and the server returns `200`. That confirms the running build is `a1b2c3d`.
+
+**2. Capture the layout screenshot from the running app**
+
+```
+Browser: set viewport 1280x800; open http://localhost:5173/settings/notifications; wait for the section to render
+Browser: screenshot -> /Users/p/git/notes-app/.ryugi/artifacts/settings-redesign/pages/verify/notify-actual.png
+Bash: date -u +%Y-%m-%dT%H:%M:%SZ
+```
+Assumed: the timestamp is `2026-11-11T10:14:30Z`.
+
+**3. Record the toggle motion**
+
+```
+Browser: start recording; click each toggle in the Notification settings section once on and once off, pausing 1s between clicks; stop recording -> /tmp/toggle-rec.mp4
+Bash: cd /Users/p/git/notes-app/.ryugi/artifacts/settings-redesign && mkdir -p pages/verify && cp /tmp/toggle-rec.mp4 pages/verify/toggle.mp4 && rm /tmp/toggle-rec.mp4 && ls -l pages/verify/ && du -sh .
+```
+Assumed: `toggle.mp4` is about 1.2MB, the PNG is about 180KB, and the artboard totals under 20MB. Both are under 8MB each.
+
+**4. Output claims: persistence and the transition duration** (parallel)
+
+```
+Bash: mkdir -p /Users/p/git/notes-app/.ryugi/artifacts/verify/notify-settings/evidence && cd /Users/p/git/notes-app/.ryugi/artifacts/verify/notify-settings/evidence && {
+  echo '$ curl -sS -i http://localhost:5173/api/prefs   # before'
+  curl -sS -i http://localhost:5173/api/prefs; echo
+  echo '$ curl -sS -i -X PATCH -H "content-type: application/json" -d "{\"notifyEmail\":false}" http://localhost:5173/api/prefs'
+  curl -sS -i -X PATCH -H 'content-type: application/json' -d '{"notifyEmail":false}' http://localhost:5173/api/prefs; echo
+  echo '$ curl -sS -i http://localhost:5173/api/prefs   # after'
+  curl -sS -i http://localhost:5173/api/prefs; echo
+  echo '$ restore the original value'
+  curl -sS -i -X PATCH -H 'content-type: application/json' -d '{"notifyEmail":true}' http://localhost:5173/api/prefs; echo
+  curl -sS http://localhost:5173/api/prefs; echo
+} > prefs-e2e.txt 2>&1; cat prefs-e2e.txt
+Browser: on http://localhost:5173/settings/notifications, evaluate getComputedStyle of each toggle thumb and write transition-property and transition-duration to /Users/p/git/notes-app/.ryugi/artifacts/verify/notify-settings/evidence/toggle-transition.txt
+```
+Assumed: `prefs-e2e.txt` shows:
+- the before `GET` returns `200` with `"notifyEmail":true`
+- the `PATCH` returns `200`
+- the after `GET` returns `200` with `"notifyEmail":false`
+- the restore returns `200` and the final `GET` shows `true` again
+
+Assumed: `toggle-transition.txt` shows `transform 0.16s` for every thumb.
+
+**5. Walk the neighbours**
+
+The change touches the settings screen and `/api/prefs`, so I check the other flows on them.
+
+```
+Browser: on http://localhost:5173/settings, open the other sections (Profile, Appearance), change one value in each, reload, confirm it persisted and the Notification section still renders
+Bash: curl -sS http://localhost:5173/api/prefs
+```
+Assumed: the other sections work as before, and `/api/prefs` still returns their keys unchanged.
+
+**6. Write the verify page on the artboard**
+
+```
+Edit: /Users/p/git/notes-app/.ryugi/artifacts/settings-redesign/canvas.json
+```
+Adds the page, three boards and two groups, and sets `focus` to the first group:
+```json
+"pages": {
+  "verify": { "name": "Verify" }
+},
+"boards": {
+  "v1-design": { "file": "pages/settings/notify-a.html", "page": "verify", "x": 0, "y": 0, "w": 1280, "h": 800 },
+  "v1-actual": { "type": "image", "src": "pages/verify/notify-actual.png", "page": "verify", "x": 1340, "y": 0, "w": 1280, "h": 800 },
+  "v2-recording": { "type": "video", "src": "pages/verify/toggle.mp4", "page": "verify", "x": 0, "y": 900, "w": 1280, "h": 800 }
+},
+"groups": {
+  "v1": {
+    "title": "Notification settings layout: does the built screen (right) match notify-a (left)? Wrong if spacing, type, colour or toggle placement differ.",
+    "boards": ["v1-design", "v1-actual"],
+    "verify": true,
+    "from": "local dev (localhost:5173) @ a1b2c3d",
+    "capturedAt": "2026-11-11T10:14:30Z"
+  },
+  "v2": {
+    "title": "Toggle motion: does the thumb slide (about 160ms) instead of jumping? Open it yourself: pnpm dev, then http://localhost:5173/settings/notifications",
+    "boards": ["v2-recording"],
+    "verify": true,
+    "from": "local dev (localhost:5173) @ a1b2c3d",
+    "capturedAt": "2026-11-11T10:14:30Z"
+  }
+},
+"focus": "v1"
+```
+The spec does not list a discussion document, so there are no back-link `<ref>`s to add.
+
+**7. Write the verify report**
+
+```
+Write: /Users/p/git/notes-app/.ryugi/artifacts/verify/notify-settings/report.xml
+```
+```xml
+<report title="Notification settings: layout, toggle motion, persistence">
+  <p>Notification settings section built from the approved <code>notify-a</code> board, checked on the local dev server at a1b2c3d.</p>
+
+  <claim id="persist" judge="agent"
+         from="local dev (localhost:5173) @ a1b2c3d" capturedAt="2026-11-11T10:16:02Z">
+    <title>PATCH /api/prefs returns 200 and a following GET returns the new value</title>
+    <output src="evidence/prefs-e2e.txt" />
+  </claim>
+
+  <claim id="duration" judge="agent"
+         from="local dev (localhost:5173) @ a1b2c3d" capturedAt="2026-11-11T10:16:40Z">
+    <title>Every toggle thumb has a computed transition of 160ms</title>
+    <output src="evidence/toggle-transition.txt" />
+  </claim>
+
+  <ref artboard="settings-redesign" group="v1" />
+  <ref artboard="settings-redesign" group="v2" />
+</report>
+```
+I set `capturedAt` for each claim from `date -u` when I captured it. The values above are the assumed ones.
+
+**8. Serve and check**
+
+```
+Bash: cd /Users/p/git/notes-app && ryugi start && ryugi check
+```
+Assumed: `check` reports no warnings, provenance notes or `pending`, and prints the link `http://localhost:4873/verify/notify-settings`.
+
+**9. Replay the video on the Verify page**
+
+```
+Browser: open the artboard's verify page, play v2-recording, confirm every toggle change and the final state are visible
+```
+Assumed: the prepared clip plays through with every click and result visible, so no `"trim": false` is needed.
+
+**10. Clean up scratch output**
+
+`/tmp/toggle-rec.mp4` was already removed in step 3. No other scratch files exist.
+
+## Message to my partner
+
+> The Notification settings section is built and checked on the local dev server (`localhost:5173`, commit `a1b2c3d`, clean tree). I need your judgement on two screen items.
+>
+> **Report:** http://localhost:4873/verify/notify-settings
+>
+> **Needs you (2 groups on the `settings-redesign` Verify page):**
+> 1. **v1, layout:** the built screen next to `notify-a`. Wrong if spacing, type, colour or toggle placement differ.
+> 2. **v2, toggle motion:** a recording of every toggle switching. Wrong if the thumb jumps or feels too fast or slow. To feel it yourself, run `pnpm dev` and open http://localhost:5173/settings/notifications.
+>
+> **Checked by me (nothing waits on these):**
+> - `PATCH /api/prefs` returned 200, and the following `GET` returned the new value. I restored the original value afterwards. The raw output is in the report.
+> - The computed transition on every toggle thumb is 160ms.
+>
+> **Neighbours I walked:** the Profile and Appearance sections on the same settings screen, plus `GET /api/prefs`. I changed a value in each, reloaded, and they persisted. The Notification section still renders.
+>
+> **Not verified:** nothing is open. This was all on the local dev server, because the spec doesn't mention a deploy. The unit and component tests I ran earlier are supporting evidence only.
+>
+> Tell me here when you've decided on v1 and v2. I haven't committed or pushed anything, and landing waits on your verdicts.
+
+I'd end my turn here and not poll.
+
+SUMMARY: I verified persistence (PATCH 200 then GET returns the new value) and the 160ms computed transition against the local dev server at a1b2c3d, with raw output in the verify report `verify/notify-settings`. I also walked the neighbouring settings sections and `/api/prefs`. Layout match (v1) and toggle motion (v2) are on the `settings-redesign` Verify page as pending verify groups, so landing now waits on my partner's verdicts on those two.

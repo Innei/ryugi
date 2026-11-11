@@ -1,0 +1,201 @@
+I'm simulating this, so nothing below was run. Where a tool result is needed I state my assumption. The work has both screen claims (layout, motion) and output claims (persistence), so I'd make both an artboard verify page and a verify report.
+
+## 1. Read how the project verifies, and confirm the build (parallel)
+
+**Read** `/Users/p/git/notes-app/AGENTS.md`
+Assumed: it says to sign in with `POST /api/dev-login` (sets a cookie), use `pnpm seed` fixtures, and take screenshots at a 1280x800 viewport.
+
+**Read** `/Users/p/git/notes-app/.ryugi/artifacts/settings-redesign/canvas.json`
+Assumed: it has top-level `pages`, `boards`, `groups` and `focus`. `notify-a` is on page `settings` at 1280x800, and no `verify` page exists yet.
+
+**Bash**
+```
+cd /Users/p/git/notes-app && git rev-parse --short HEAD && git status --short && curl -s http://localhost:5173/api/health
+```
+Assumed output: `a1b2c3d`, an empty status, and `{"ok":true,"commit":"a1b2c3d"}`. So the dev server runs the committed build and the tree is clean.
+
+**Bash**
+```
+cd /Users/p/git/notes-app && pnpm test 2>&1 | tail -8
+```
+Assumed: all test files pass. I'll label this as supporting evidence only, since it ran against stand-ins.
+
+## 2. Persistence, run against the running server (requirement 3)
+
+**Bash** (login and look at the current state)
+```
+mkdir -p /tmp/verify-notify && cd /Users/p/git/notes-app && curl -s -c /tmp/verify-notify/cj -X POST http://localhost:5173/api/dev-login -o /dev/null -w 'login %{http_code}\n' && curl -s -b /tmp/verify-notify/cj http://localhost:5173/api/prefs
+```
+Assumed output: `login 204` and `{"notifyEmail":true,"notifyPush":true,"notifyDigest":"daily","theme":"light"}`.
+
+**Bash** (the proof. It flips `notifyEmail` to false, and the raw output goes straight into evidence)
+```
+cd /Users/p/git/notes-app && B=http://localhost:5173 && J=/tmp/verify-notify/cj && E=.ryugi/artifacts/verify/notify-settings/evidence && mkdir -p $E && {
+echo "# $(date -u +%Y-%m-%dT%H:%M:%SZ)  local dev $B @ $(git rev-parse --short HEAD)"
+echo '$ GET /api/prefs   (before)'
+curl -s -b $J -w '\nstatus %{http_code}\n' $B/api/prefs | tee /tmp/verify-notify/before.txt
+echo '$ PATCH /api/prefs {"notifyEmail":false}'
+curl -s -b $J -X PATCH -H 'content-type: application/json' -d '{"notifyEmail":false}' -w '\nstatus %{http_code}\n' $B/api/prefs
+echo '$ GET /api/prefs   (after)'
+curl -s -b $J -w '\nstatus %{http_code}\n' $B/api/prefs | tee /tmp/verify-notify/after.txt
+echo '# cleanup: restore original value'
+curl -s -b $J -X PATCH -H 'content-type: application/json' -d '{"notifyEmail":true}' -w '\nstatus %{http_code}\n' $B/api/prefs
+} > $E/prefs-persist.txt 2>&1; cat $E/prefs-persist.txt
+```
+Assumed output: the before GET returns `notifyEmail:true` with status 200, the PATCH returns status 200, the after GET returns `notifyEmail:false` with status 200, and the restore returns status 200.
+
+**Bash** (neighbours on the endpoint: did the PATCH change only the intended key?)
+```
+cd /Users/p/git/notes-app && E=.ryugi/artifacts/verify/notify-settings/evidence && { echo '$ diff before after   (GET /api/prefs bodies)'; diff <(head -1 /tmp/verify-notify/before.txt | tr ',' '\n') <(head -1 /tmp/verify-notify/after.txt | tr ',' '\n'); echo "exit $?"; } > $E/prefs-neighbours.txt 2>&1; cat $E/prefs-neighbours.txt
+```
+Assumed output: the only differing line is `notifyEmail` going from true to false. The `diff` exit code of 1 just means "differences found", so it isn't a failure.
+
+## 3. Screens from the running app
+
+**Browser** (viewport 1280x800, after the dev-login cookie)
+- Open `http://localhost:5173/settings`.
+- Scroll to "Notifications".
+- Screenshot to `/tmp/verify-notify/notify-actual.png`.
+
+**Browser** (record the motion, about 5s, to `/tmp/verify-notify/toggle.mp4`)
+- Start the recording.
+- Click the "Email" toggle off, then on.
+- Click the "Push" toggle off, then on.
+- Stop the recording.
+- Net state is unchanged.
+
+**Browser** (neighbours that share the screen and endpoint)
+- Click the "Email" toggle off and reload. The UI shows it off, so the saved value is read back into the screen.
+- Click it on again and reload to restore.
+- Open the other settings sections on the same page (Profile, Appearance) and click through their controls.
+- Assumed: they render as before, nothing else on the page moved, and there are no console errors.
+
+**Bash**
+```
+date -u +%Y-%m-%dT%H:%M:%SZ
+```
+Assumed output: `2026-11-11T10:14:07Z`. This is the capture time for both screen groups.
+
+## 4. Put the evidence on the artboard
+
+**Bash**
+```
+cd /Users/p/git/notes-app/.ryugi/artifacts/settings-redesign && mkdir -p pages/verify && cp /tmp/verify-notify/notify-actual.png /tmp/verify-notify/toggle.mp4 pages/verify/ && ls -l pages/verify && du -sh .
+```
+Assumed: the png is about 310KB, the mp4 is about 1.4MB, and the artboard totals about 3MB. That is under 8MB per file and 20MB overall.
+
+**Replay the video**
+I'd open `pages/verify/toggle.mp4` in the browser tool and replay it. The two toggle flips and the end state must stay visible. The 160ms timing is the claim, so I'd set `"trim": false` on that board.
+
+**Edit** `.ryugi/artifacts/settings-redesign/canvas.json`
+This adds a `verify` page to `pages`, three boards to `boards`, two groups to `groups`, and sets `focus`.
+
+```json
+"pages": {
+  "verify": { "name": "Verify" }
+},
+"boards": {
+  "v1-design": {
+    "file": "pages/settings/notify-a.html",
+    "page": "verify", "x": 0, "y": 0, "w": 1280, "h": 800
+  },
+  "v1-actual": {
+    "type": "image", "src": "pages/verify/notify-actual.png",
+    "page": "verify", "x": 1360, "y": 0, "w": 1280, "h": 800
+  },
+  "v2-recording": {
+    "type": "video", "src": "pages/verify/toggle.mp4", "trim": false,
+    "page": "verify", "x": 0, "y": 960, "w": 1280, "h": 800
+  }
+},
+"groups": {
+  "v1": {
+    "title": "Notification settings layout: does the built screen (right) match notify-a (left)? Wrong if spacing, type, or toggle placement differ.",
+    "boards": ["v1-design", "v1-actual"],
+    "verify": true,
+    "from": "local dev (localhost:5173) @ a1b2c3d",
+    "capturedAt": "2026-11-11T10:14:07Z"
+  },
+  "v2": {
+    "title": "Toggle motion (160ms): does the thumb slide rather than jump, and does it feel right? Wrong if it jumps, lags, or overshoots.",
+    "boards": ["v2-recording"],
+    "verify": true,
+    "from": "local dev (localhost:5173) @ a1b2c3d",
+    "capturedAt": "2026-11-11T10:14:07Z"
+  }
+},
+"focus": "v1"
+```
+The spec lists no discussion document, so there is no `<ref>` to add back into one.
+
+## 5. Write the verify report
+
+**Write** `.ryugi/artifacts/verify/notify-settings/report.xml`
+```xml
+<report title="Notification settings: built from the settings-redesign spec">
+  <p>Notification settings section, checked on the local dev server at commit a1b2c3d. It is not deployed, and nothing here claims it is live.</p>
+
+  <claim id="persist" judge="agent"
+         from="local dev localhost:5173 @ a1b2c3d" capturedAt="2026-11-11T10:09:22Z">
+    <title>PATCH /api/prefs returns 200 and the following GET /api/prefs returns the new value</title>
+    <output src="evidence/prefs-persist.txt" />
+  </claim>
+
+  <claim id="neighbours" judge="agent"
+         from="local dev localhost:5173 @ a1b2c3d" capturedAt="2026-11-11T10:09:23Z">
+    <title>The PATCH changes only notifyEmail; the other preferences are unchanged</title>
+    <output src="evidence/prefs-neighbours.txt" />
+    <p>Also walked in the browser: the saved value shows after a reload, and the Profile and Appearance sections on the same page still work.</p>
+  </claim>
+
+  <ref artboard="settings-redesign" group="v1" />
+  <ref artboard="settings-redesign" group="v2" />
+</report>
+```
+- The `from` and `capturedAt` values come from the evidence header written in step 2, assumed to be 10:09:22Z.
+- The `neighbours` claim is `judge="agent"` because a diff decides it. The browser walk is only a note.
+- The gaps section is empty. Everything the spec asks for was checked here, and I have not claimed anything about staging or production.
+
+## 6. Check and serve
+
+**Bash**
+```
+cd /Users/p/git/notes-app && ryugi check
+```
+Assumed output: no warnings, no `W_PROVENANCE`, nothing `pending` that I could clear. Both verify groups have `from` and `capturedAt`, and both report claims have output and `from`.
+
+**Bash**
+```
+cd /Users/p/git/notes-app && ryugi start
+```
+Assumed output: `http://localhost:4801/verify/notify-settings`. I would not run `ryugi publish`. That sends the screenshots, which show the seeded notes, to a cloud copy, and publishing is outward-facing, so I'd confirm first.
+
+**Bash** (scratch cleanup, after looking at what's there)
+```
+ls -la /tmp/verify-notify && rm -rf /tmp/verify-notify
+```
+The evidence is already copied into the artboard and the report. The prefs were restored to `notifyEmail:true`, as the last lines of `prefs-persist.txt` show.
+
+## 7. Message to my human partner
+
+> The Notification settings section is built and checked against the dev server running commit `a1b2c3d`. This is the local dev build, not a deploy.
+>
+> **Link:** http://localhost:4801/verify/notify-settings
+>
+> **What I checked (the report lists these as "Checked by agent"; nothing waits on you for them):**
+> - `PATCH /api/prefs` returned 200 and the next `GET /api/prefs` returned the new value. The raw output is in the report.
+> - The PATCH changed only `notifyEmail`. A diff of the before and after bodies shows no other key moved.
+> - Neighbours I walked: a reload shows the saved toggle state, and the Profile and Appearance sections on the same page still work. I set the preference back to its original value afterwards.
+> - `pnpm test` passes. It ran against stand-ins, so it is supporting evidence only.
+>
+> **What needs you (2 screen groups on the `settings-redesign` artboard, page "Verify"):**
+> 1. **v1, layout:** `notify-a` on the left, the real app at 1280x800 on the right. It is wrong if the spacing, type, or toggle placement differ.
+> 2. **v2, toggle motion:** a short recording of the toggles switching. It is wrong if the thumb jumps, lags, or overshoots. A recording alone doesn't carry feel, so to try it yourself, run `cd /Users/p/git/notes-app && pnpm dev` and open http://localhost:5173/settings. The Notifications toggles are at the bottom of the page.
+>
+> **Not verified:** nothing from the spec. I have not published a cloud copy. Say if you want one.
+>
+> Tell me here when you've decided on v1 and v2. I'll record your verdicts and fix whatever you reject.
+
+I stop here and don't poll.
+
+SUMMARY: I verified the PATCH-then-GET persistence and that no other pref changed, plus the neighbouring flows, on the local dev server at a1b2c3d, and put the layout and toggle motion on the artboard verify page; the two screen groups (v1 layout, v2 motion) now wait on my human partner, and no cloud copy was published.

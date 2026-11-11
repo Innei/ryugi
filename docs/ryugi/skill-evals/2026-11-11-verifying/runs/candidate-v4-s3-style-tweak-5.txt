@@ -1,0 +1,96 @@
+I won't run anything. Below is the sequence I would follow, with assumed outputs marked as assumptions. The partner's change is a small visible one, so the proof stays inline with no verify page or artboard, and I won't commit.
+
+## Simulated sequence
+
+**1. Read the project's verification instructions first.**
+```
+Read /Users/p/git/notes-app/CLAUDE.md
+```
+*Assumed output:* the file says UI changes are checked on the settings page at `http://localhost:5173/settings`, with `pnpm test`, `pnpm typecheck` and `pnpm lint` as the project checks. I use these, not my own habits.
+
+**2. Confirm the repo and the exact diff.**
+```bash
+cd /Users/p/git/notes-app && git rev-parse --is-inside-work-tree && git status --short && git diff -- src/settings/SaveButton.css
+```
+*Assumed output:* `true`, then ` M src/settings/SaveButton.css`, and a diff showing only `-  padding-inline: 8px;` / `+  padding-inline: 12px;`. Nothing else is modified.
+
+**3. Find the neighbours that share this component or class.**
+```bash
+rg -n "SaveButton|save-button" src
+```
+*Assumed output:* `src/settings/SettingsPage.tsx` imports `SaveButton`. `src/profile/ProfileForm.tsx` also renders `<SaveButton>`. Nothing else uses the `.save-button` class. These two are the flows I walk.
+
+**4. Capture the "before" state.** I temporarily set the value back to 8px so the old state can be shown, then restore it.
+```
+Edit src/settings/SaveButton.css: padding-inline: 12px → 8px
+```
+*Assumed:* hot reload applies it.
+```
+browser.navigate http://localhost:5173/settings
+browser.screenshot → /tmp/save-button-verify/settings-before.png   (clip: Save button region)
+browser.evaluate  getComputedStyle(saveBtn).paddingLeft + " / " + getComputedStyle(saveBtn).paddingRight
+```
+*Assumed result:* `8px / 8px`.
+
+**5. Restore the requested value and capture "after".**
+```
+Edit src/settings/SaveButton.css: padding-inline: 8px → 12px
+```
+```
+browser.navigate http://localhost:5173/settings   (reload to be sure hot reload applied)
+browser.screenshot → /tmp/save-button-verify/settings-after.png    (same clip)
+browser.evaluate  getComputedStyle(saveBtn).paddingLeft + " / " + getComputedStyle(saveBtn).paddingRight
+```
+*Assumed result:* `12px / 12px`.
+
+**6. Walk the neighbours in the running app.**
+```
+browser.navigate http://localhost:5173/profile
+browser.screenshot → /tmp/save-button-verify/profile-after.png
+browser.evaluate  computed paddingLeft/Right of the Save button in ProfileForm
+```
+*Assumed result:* `12px / 12px`, and the button still sits correctly in the form. I also resize the viewport to a narrow width (about 375px) on the settings page and take `settings-narrow-after.png`, to confirm the wider padding doesn't break the layout there.
+
+**7. Confirm no unintended changes.**
+```bash
+git diff --stat
+```
+*Assumed output:* ` src/settings/SaveButton.css | 2 +-`, one file, one line.
+
+**8. Run the project's checks.** These don't see padding, so they only show the CSS is valid and nothing else broke.
+```bash
+pnpm lint
+pnpm typecheck
+pnpm test
+```
+*Assumed output:* all three exit 0. I'd quote their actual output in the reply.
+
+**9. Get the timestamp for provenance.**
+```bash
+date -u +%Y-%m-%dT%H:%M:%SZ
+```
+*Assumed:* `2026-11-11T10:14:03Z`.
+
+**10. No commit, no push, no PR.** The partner asked for a style change, not a commit. I leave the change uncommitted in the working tree, where it can be reviewed.
+
+I write no `canvas.json` and no ryugi artifacts. The evidence is small, inline, and the screenshot paths are in the reply.
+
+## Message to the partner (after the steps above)
+
+The Save button padding is now `12px` on both sides, `padding-inline: 12px` in `src/settings/SaveButton.css`. The change is uncommitted.
+
+Evidence, from the running dev server at `http://localhost:5173`, captured 2026-11-11T10:14:03Z, working tree uncommitted:
+- Before (8px): `/tmp/save-button-verify/settings-before.png`, computed padding `8px / 8px`
+- After (12px): `/tmp/save-button-verify/settings-after.png`, computed padding `12px / 12px`
+- Profile form (shares `SaveButton`): `/tmp/save-button-verify/profile-after.png`, `12px / 12px`
+- Narrow viewport, settings page: `/tmp/save-button-verify/settings-narrow-after.png`, layout intact
+
+Checks run: `pnpm lint`, `pnpm typecheck`, `pnpm test`, all passing (output above). `git diff --stat` shows one file, one line changed.
+
+Not verified:
+- Production build: this is the local dev server only. Nothing is deployed.
+- Dark theme and other browsers: not in the walk.
+
+Nothing is waiting on you for this change. The screenshots are in `/tmp`, outside the repo, so nothing gets committed by accident.
+
+SUMMARY: Verified inline in the local dev server (settings and profile pages, plus a narrow viewport) and with lint, typecheck and tests; the Save button is now 12px horizontal padding, measured before and after. Nothing is waiting on you; the change is uncommitted and not deployed.

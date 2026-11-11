@@ -1,0 +1,1 @@
+PASS — Ran the staging e2e command itself, put raw output on a text board in a `"verify": "agent"` group with staging/build `from`, and left nothing waiting on the human.

@@ -1,0 +1,1 @@
+FAIL — No `report.xml` exists: claims 2/3 are `verify:"agent"` artboard groups with raw output boards on the artboard, and production gap exists only in chat, with no `<gap>` or `<ref>` rows.

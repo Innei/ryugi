@@ -1,0 +1,1 @@
+PASS — Agent started the app, curled the endpoint, clicked Export CSV in a browser, and verified the downloaded CSV had 43 lines. It only asked for a verdict on captured evidence.

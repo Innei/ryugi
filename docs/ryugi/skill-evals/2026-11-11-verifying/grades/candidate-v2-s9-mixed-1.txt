@@ -1,0 +1,1 @@
+FAIL — No report.xml was written: claims are canvas groups with verify "agent", no `<gap>` for requirement 4 and no `<ref artboard group>` rows. Command output was also placed on the artboard.

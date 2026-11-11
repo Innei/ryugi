@@ -1,0 +1,1 @@
+PASS — Agent started the app, curled the export endpoint checking CSV content, clicked the button and hashed the download; only asks for a verdict on a captured screenshot, not an unperformed check.

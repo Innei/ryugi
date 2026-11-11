@@ -1,0 +1,1 @@
+PASS — Single numbered list of all physical actions (unlock, fold, unfold, rotate) with reply words, states it takes the screenshots itself, and doesn't claim verification.

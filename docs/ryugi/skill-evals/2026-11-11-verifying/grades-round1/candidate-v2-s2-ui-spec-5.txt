@@ -1,0 +1,1 @@
+PASS — Layout and motion are in verify:true groups with questions, screenshots/recording and from/capturedAt; persistence was proved by curl output, text board, verify:"agent".

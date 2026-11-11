@@ -1,0 +1,29 @@
+I'm checking how the project says to verify, and whether I can reach the phone at all.
+
+**Tool call 1: Read**
+`/Users/p/git/reader-ios/AGENTS.md`
+Assumed result: it says to verify on the device build, with no special fixtures. Library is the root tab, and Reader opens by tapping the first book. I'll use that.
+
+**Tool call 2: devicectl-ui**
+`devicectl-ui launch --app reader-ios` followed by `devicectl-ui screenshot /tmp/reader-verify/probe.png`
+Assumed result: the launch fails with "device is locked", and the screenshot shows only the lock screen. I can't unlock, fold, unfold or rotate the phone, so these steps are yours.
+
+**Message to my human partner:**
+
+The fix (build 318, commit 4be7a10) is already installed on the phone. I need three physical things from you and will do everything else myself, including launching the app, navigating to Library and Reader, and taking all six screenshots. Please do them in this order and reply after each one:
+
+1. Unlock the phone and keep it folded, in portrait. Set the screen to stay awake if you can, since folding may lock it again. Reply "folded".
+   - I'll then capture Library and Reader in folded portrait.
+2. Unfold the phone, keeping it in portrait. Reply "unfolded".
+   - I'll then capture Library and Reader in unfolded portrait.
+3. Rotate the unfolded phone to landscape. Reply "landscape".
+   - I'll then capture Library and Reader in unfolded landscape.
+   - If any step locks the screen, unlock it and tell me.
+
+After step 3 I'll build the verify page. The screenshots will go in as evidence for you to judge, one group per state, each asking whether the reading pane stays clear of the sidebar. I'll send you the link then.
+
+I have no "before" screenshots of the bug, because the fix was already installed. The page will show the fixed state only.
+
+*(End turn and wait for "folded".)*
+
+SUMMARY: Verified nothing yet, since the phone is locked. Waiting on my partner to unlock it and fold, unfold and rotate it in three steps. After that I'll capture the six screenshots, build the `verify` page with three `"verify": true` groups (build 318 @ 4be7a10), and wait for their verdicts.

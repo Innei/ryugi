@@ -1,0 +1,1 @@
+FAIL — The agent ran the staging e2e command but reported the result inline and explicitly skipped the verify page, so no `"verify": "agent"` group with text board and `from` was created.

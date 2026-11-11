@@ -1,0 +1,124 @@
+Nothing below has been run. Commands are written out as I would issue them, and outputs are assumed where none was given.
+
+## Step 1: Confirm the repo and the commit
+
+```bash
+cd /Users/p/git/reader-ios && git rev-parse --short HEAD && git status --short
+```
+
+Assumed output: `4be7a10` and an empty status. The session's working directory is not a git repo, so I'm using the project path from the task.
+
+## Step 2: Clock for provenance
+
+```bash
+date -u +%Y-%m-%dT%H:%M:%SZ
+```
+
+Assumed output: `2026-11-11T10:02:14Z`
+
+## Step 3: Read the project's verification instructions
+
+Read `AGENTS.md` and any verify or acceptance docs before the first run. Assumed: they say to drive the app with `devicectl-ui`, that the Library fixture is seeded on launch, and that evidence goes under `pages/verify/`.
+
+## Step 4: Prove which build is installed (works while locked)
+
+```bash
+devicectl-ui apps info --device <foldable-udid> --bundle-id <bundle-id from project.pbxproj>
+```
+
+Assumed output: `CFBundleVersion 318`. The build log maps 318 to `4be7a10`; I'm taking that mapping from the log, not from the binary.
+
+## Step 5: Look for an existing "before" capture
+
+```bash
+ls .ryugi/artifacts/*/pages/verify/ 2>/dev/null
+```
+
+Assumed output: nothing. The fix is already in build 318, and I did not capture the broken state before fixing. The rule for visible bugs was missed, and the before state cannot be recovered from the running app now.
+
+## Step 6: Locate the artboard and the page
+
+```bash
+ryugi check
+```
+
+Assumed output: artboard `foldable-layout` holds the approved design (page `Design`, board `layout-spec`). There is no `verify` page yet, so I'll add one to that artboard.
+
+## Step 7: Stop and ask
+
+The phone is locked. `devicectl-ui` cannot unlock it, fold it, or rotate it, so I can't capture any of the six states yet. I'm sending this message now:
+
+> The build on the test phone is 318 (`4be7a10`), confirmed. I can't unlock, fold or rotate the phone, so I need these actions from you, in order. After each one, reply with the word in quotes. I'll take the screenshots on Library and Reader myself between steps.
+>
+> 1. Unlock the phone with your passcode, leave it on the Library screen, and set Settings > Display & Brightness > Auto-Lock to Never. Reply **"unlocked"**.
+> 2. Fold the phone closed (folded, portrait, outer screen). Reply **"folded"**.
+> 3. Unfold it, still portrait. Reply **"unfolded"**.
+> 4. Turn it to landscape, still unfolded. Reply **"landscape"**.
+>
+> If it locks again, unlock it and reply **"relocked"**.
+>
+> Not verified: the before state. I did not capture it before the fix. Reproducing it would mean installing the pre-fix build over 318 on this phone. I'll do that only if you say so.
+
+## Planned canvas (written after the captures, not now)
+
+Once the captures exist, I'll write `.ryugi/artifacts/foldable-layout/canvas.json` with a `verify` page and six groups, one per claim. Each group asks a person to judge the screenshot, so each is `"verify": true`. The `capturedAt` values will come from `date -u` at each capture.
+
+```json
+{
+  "pages": {
+    "verify": {
+      "name": "Verify",
+      "groups": {
+        "fold-p-lib": {
+          "title": "Folded portrait, Library: is the sidebar fully visible with no reading pane over it? Wrong if any part of it is covered.",
+          "boards": ["fold-p-lib-img"],
+          "verify": true,
+          "from": "devicectl-ui · foldable test phone · build 318 @ 4be7a10",
+          "capturedAt": "<from date -u at capture>"
+        },
+        "fold-p-reader": {
+          "title": "Folded portrait, Reader: does the text fill the pane with no overlap onto the sidebar edge?",
+          "boards": ["fold-p-reader-img"],
+          "verify": true,
+          "from": "devicectl-ui · foldable test phone · build 318 @ 4be7a10",
+          "capturedAt": "<from date -u at capture>"
+        },
+        "unf-p-lib": {
+          "title": "Unfolded portrait, Library: are sidebar and content side by side with no overlap?",
+          "boards": ["unf-p-lib-img"],
+          "verify": true,
+          "from": "devicectl-ui · foldable test phone · build 318 @ 4be7a10",
+          "capturedAt": "<from date -u at capture>"
+        },
+        "unf-p-reader": {
+          "title": "Unfolded portrait, Reader: is the reading pane clear of the sidebar?",
+          "boards": ["unf-p-reader-img"],
+          "verify": true,
+          "from": "devicectl-ui · foldable test phone · build 318 @ 4be7a10",
+          "capturedAt": "<from date -u at capture>"
+        },
+        "unf-l-lib": {
+          "title": "Unfolded landscape, Library: are sidebar and content side by side with no overlap?",
+          "boards": ["unf-l-lib-img"],
+          "verify": true,
+          "from": "devicectl-ui · foldable test phone · build 318 @ 4be7a10",
+          "capturedAt": "<from date -u at capture>"
+        },
+        "unf-l-reader": {
+          "title": "Unfolded landscape, Reader: is the reading pane clear of the sidebar?",
+          "boards": ["unf-l-reader-img"],
+          "verify": true,
+          "from": "devicectl-ui · foldable test phone · build 318 @ 4be7a10",
+          "capturedAt": "<from date -u at capture>"
+        }
+      }
+    }
+  }
+}
+```
+
+Each board id above (for example `fold-p-lib-img`) would be an image board of the form `{ "after": { "type": "image", "src": "pages/verify/<name>.png", "page": "verify", "x": 0, "y": 0, "w": <captured width>, "h": <captured height> } }`, with dimensions taken from the captured file.
+
+Neighbour walks, to run after the six captures: open a book from Library and return to Library, check the empty-library state, and check search results. I'll record each one with a screenshot in `pages/verify/` and say which ones I walked.
+
+SUMMARY: Verified (simulated, nothing run): build 318 at 4be7a10 is installed on the test phone, and the repo is clean at 4be7a10. Not verified: the fix in all six state and screen combinations, and any before state (not captured before the fix). Waiting on your partner: unlock the phone, then fold, unfold and rotate it, replying after each step.

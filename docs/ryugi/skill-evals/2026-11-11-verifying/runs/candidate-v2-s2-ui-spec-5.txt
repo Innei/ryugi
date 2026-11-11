@@ -1,0 +1,169 @@
+**Simulated run: nothing below was executed.** Outputs marked *(assumed)* are guesses for this walkthrough.
+
+## 1. Orient
+
+The session's working directory is a non-git temp directory, so I'll use the repo path from the task.
+
+```sh
+cd /Users/p/git/notes-app && git rev-parse --short HEAD && git status --short
+```
+*(assumed)* `a1b2c3d`, and no status output (clean tree).
+
+```sh
+sed -n '1,120p' AGENTS.md; sed -n '1,120p' CLAUDE.md
+```
+*(assumed)* The project's verification notes say to drive the app on `:5173` with the seeded dev user and to use the project's test commands.
+
+```sh
+curl -sS -o /dev/null -w '%{http_code}\n' http://localhost:5173/
+```
+*(assumed)* `200`
+
+```sh
+ryugi start
+```
+*(assumed)* Artifacts server up at `http://127.0.0.1:7788`.
+
+## 2. Baseline prefs, before anything changes
+
+```sh
+curl -sS -i http://localhost:5173/api/prefs
+```
+*(assumed)* `200`, body `{"emailDigest":true,"mentions":true,"marketing":false}`
+
+**Threshold, written before measuring:** PATCH must return `200`. The following GET must show the new value. The neighbouring key `mentions` must be unaffected.
+
+## 3. Layout screenshot (baseline state)
+
+Browser: open `http://localhost:5173/settings/notifications`, set viewport 1280×800, wait for network idle, screenshot.
+
+```
+screenshot → .ryugi/artifacts/settings-redesign/pages/verify/notify-layout-app.png
+```
+*(assumed)* Saved.
+
+## 4. Toggle motion recording
+
+Browser: on the same page, record about 2 seconds while clicking the "Email digest" switch (true → false). Then reload and screenshot to check the UI change persisted.
+
+```
+record → .ryugi/artifacts/settings-redesign/pages/verify/toggle-motion.mp4   (H.264, ~1.4 MB, assumed)
+reload → screenshot shows "Email digest" off   (assumed)
+```
+
+## 5. Persistence run (agent-decidable), written to one fixed output file
+
+```sh
+ART=.ryugi/artifacts/settings-redesign
+mkdir -p "$ART/pages/verify"
+OUT="$ART/pages/verify/prefs-persist.txt"
+{
+  echo "# captured $(date -u +%Y-%m-%dT%H:%M:%SZ) @ a1b2c3d, http://localhost:5173"
+  echo '$ curl -sS -i http://localhost:5173/api/prefs'
+  curl -sS -i http://localhost:5173/api/prefs; echo
+  echo '$ curl -sS -i -X PATCH http://localhost:5173/api/prefs -H "Content-Type: application/json" -d {"emailDigest":true}'
+  curl -sS -i -X PATCH http://localhost:5173/api/prefs -H 'Content-Type: application/json' -d '{"emailDigest":true}'; echo
+  echo '$ curl -sS -i http://localhost:5173/api/prefs'
+  curl -sS -i http://localhost:5173/api/prefs; echo
+  echo '$ curl -sS -i -X PATCH http://localhost:5173/api/prefs -H "Content-Type: application/json" -d {"mentions":false}'
+  curl -sS -i -X PATCH http://localhost:5173/api/prefs -H 'Content-Type: application/json' -d '{"mentions":false}'; echo
+  echo '$ curl -sS -i http://localhost:5173/api/prefs'
+  curl -sS -i http://localhost:5173/api/prefs; echo
+} > "$OUT" 2>&1
+cat "$OUT"
+```
+
+*(assumed output, read in full)*
+- Post-UI GET: `200`, `emailDigest:false` (the value the UI toggle wrote in step 4).
+- PATCH emailDigest true: `HTTP/1.1 200 OK`, body `{"emailDigest":true,"mentions":true,"marketing":false}`.
+- GET: `200`, `emailDigest:true`. Changed value came back.
+- PATCH mentions false: `200`, body shows `mentions:false`.
+- GET: `200`, `emailDigest:true`, `mentions:false`. Neighbour unaffected by the other key.
+
+Restore the dev store to baseline, outside the evidence file:
+
+```sh
+curl -sS -o /dev/null -w '%{http_code}\n' -X PATCH http://localhost:5173/api/prefs -H 'Content-Type: application/json' -d '{"mentions":true}'
+```
+*(assumed)* `200`. `emailDigest` was already set to `true` by the run above.
+
+## 6. Copy evidence and read the canvas
+
+Evidence is already under `pages/verify/` inside the artboard. Read the current canvas:
+
+```
+Read .ryugi/artifacts/settings-redesign/canvas.json
+```
+*(assumed)* There is a `design` page holding board `notify-a` and no `verify` page or groups yet. This is round 1.
+
+## 7. Write the Verify page
+
+I'll write the full file with the existing keys kept. These are the additions. The `focus` key placement follows the artboard reference's example layout, which I'm assuming.
+
+```json
+{
+  "focus": "layout-r1",
+  "pages": {
+    "verify": { "name": "Verify" }
+  },
+  "boards": {
+    "approved-notify-a": { "file": "pages/settings/notify-a.html", "page": "verify", "x": 0, "y": 0, "w": 1280, "h": 800 },
+    "app-layout": { "type": "image", "src": "pages/verify/notify-layout-app.png", "page": "verify", "x": 1360, "y": 0, "w": 1280, "h": 800 },
+    "toggle-motion": { "type": "video", "src": "pages/verify/toggle-motion.mp4", "page": "verify", "x": 0, "y": 900, "w": 1280, "h": 720 },
+    "prefs-persist-run": { "type": "text", "src": "pages/verify/prefs-persist.txt", "page": "verify", "x": 1360, "y": 900, "w": 900, "h": 600 }
+  },
+  "groups": {
+    "layout-r1": {
+      "title": "Layout: does Notification settings match approved board notify-a? Wrong if row order, spacing, labels, toggle position or colours differ from the left.",
+      "boards": ["approved-notify-a", "app-layout"],
+      "verify": true,
+      "from": "local dev @ a1b2c3d, 1280×800 viewport",
+      "capturedAt": "2026-11-11T10:04:12Z"
+    },
+    "toggle-motion-r1": {
+      "title": "Toggle motion: does the thumb slide over ~160ms rather than jump? Wrong if it jumps, lags visibly or overshoots. Running thing: http://localhost:5173/settings/notifications (click \"Email digest\").",
+      "boards": ["toggle-motion"],
+      "verify": true,
+      "from": "local dev @ a1b2c3d, 1280×800 viewport",
+      "capturedAt": "2026-11-11T10:05:03Z"
+    },
+    "prefs-persist-r1": {
+      "title": "PATCH /api/prefs returns 200 and a following GET returns the new value (emailDigest, and mentions as a neighbour)",
+      "boards": ["prefs-persist-run"],
+      "verify": "agent",
+      "from": "local dev @ a1b2c3d, http://localhost:5173",
+      "capturedAt": "2026-11-11T10:05:40Z"
+    }
+  }
+}
+```
+
+## 8. Check the page
+
+```sh
+ryugi check settings-redesign
+```
+*(assumed)* `verify: 1 page, 4 boards, 3 groups: 2 pending, 1 checked by agent, 0 warnings, 0 provenance notes.`
+
+I'm not running `ryugi publish`. It sends the evidence to an external service, so it needs your confirmation first.
+
+---
+
+## Message to you
+
+The Verify page is up on `settings-redesign`, round 1. Local link: `http://127.0.0.1:7788/settings-redesign#verify`. It is not published.
+
+**Waiting on you:**
+1. **Layout** (`layout-r1`): does the section match notify-a? The approved board is on the left and the running app at 1280×800 is on the right. Wrong if row order, spacing, labels, toggle position or colours differ.
+2. **Toggle motion** (`toggle-motion-r1`): does the thumb slide over about 160ms rather than jump? The recording shows clicking Email digest. The running app is at `http://localhost:5173/settings/notifications`.
+
+**Checked by me:**
+3. **Persistence** (`prefs-persist-r1`): PATCH returned 200 and the following GET returned the new value. The mentions neighbour was unaffected. Evidence: `pages/verify/prefs-persist.txt`, at `a1b2c3d`, 10:05:40Z. It sits under "Checked by agent" and you can reject it.
+
+**Walked neighbours:** the mentions toggle (via curl) and the Email digest toggle (click, then reload, which showed it off). I did not walk other settings screens, since the diff didn't touch them.
+
+**Not verified:** the exact 160ms duration. I read it from the source only, and nothing here measures frame timing. The recording is for your judgement on the motion.
+
+**State:** I restored the dev prefs to baseline (`emailDigest: true`, `mentions: true`). Nothing is committed or pushed. Tell me here when you've decided on layout and motion, and I'll record the verdicts. Do you want the cloud link published? That sends the evidence outside this machine, so I haven't done it.
+
+SUMMARY: Verified persistence (PATCH 200, GET returned new value, mentions neighbour unaffected) on the local dev server at a1b2c3d, captured in `pages/verify/prefs-persist.txt` as an agent check; layout and toggle motion are captured on the local Verify page of `settings-redesign` and wait on your verdict; nothing published or committed.

@@ -1,0 +1,160 @@
+This is a simulation: nothing below has run. Outputs marked **[assumed]** are placeholders I invented for the walkthrough.
+
+## Step 1: Read the project's verification instructions
+
+```
+Read /Users/p/git/reader-ios/CLAUDE.md
+```
+
+**[assumed]** It names no project-specific verify command or fixture, so I use the default chain: device, real navigation, real screenshots.
+
+## Step 2: Confirm the commit and clean tree
+
+```bash
+cd /Users/p/git/reader-ios && git log -1 --format='%h %s' && git status --short
+```
+
+**[assumed output]**
+```
+4be7a10 Fix reader pane overlapping sidebar on foldable
+```
+(empty status, so no uncommitted changes)
+
+## Step 3: Read the bundle ID and the files the fix touched
+
+```bash
+cd /Users/p/git/reader-ios && grep -m1 PRODUCT_BUNDLE_IDENTIFIER *.xcodeproj/project.pbxproj && git show --stat --format= 4be7a10
+```
+
+**[assumed output]**
+```
+PRODUCT_BUNDLE_IDENTIFIER = com.example.reader;
+ Sources/Layout/ReaderSplitView.swift | 41 ++++---
+ Sources/Layout/SidebarContainer.swift | 12 +-
+ Sources/Library/LibraryView.swift     |  3 +-
+```
+The second and third files are the neighbours: any screen that uses the split container gets walked too.
+
+## Step 4: Check what is on the phone
+
+```bash
+devicectl-ui devices
+devicectl-ui app info --device <udid> --bundle com.example.reader
+```
+
+**[assumed output]** The device is connected and reports `state: locked`. `app info` reports `CFBundleVersion 318`, matching the installed build. I can't read the device's build past the lock screen, so this is the value the device reports to the install layer.
+
+## Step 5: Capture the clock for provenance
+
+```bash
+date -u +%Y-%m-%dT%H:%M:%SZ
+```
+
+**[assumed output]** `2026-11-11T10:14:03Z`
+
+## Step 6: Supporting evidence: unit tests on the simulator
+
+This is supporting evidence only. It runs on a simulator, not the phone, so it does not prove the fix on the device.
+
+```bash
+cd /Users/p/git/reader-ios && mkdir -p .ryugi/artifacts/verify/foldable-overlap/evidence && xcodebuild test -project Reader.xcodeproj -scheme Reader -destination 'platform=iOS Simulator,name=iPhone 17' > .ryugi/artifacts/verify/foldable-overlap/evidence/unit-tests.txt 2>&1; echo "exit $?"
+```
+
+**[assumed output]** `exit 0`. Then I read the whole file:
+
+```
+Read .ryugi/artifacts/verify/foldable-overlap/evidence/unit-tests.txt
+```
+
+**[assumed content]** `Test Suite 'All tests' passed … Executed 42 tests, with 0 failures (0 unexpected) in 9.8 seconds` and `** TEST SUCCEEDED **`.
+
+## Step 7: Prepare the evidence folders for the verify page
+
+Bug, no spec artboard, so a new artboard `verify-foldable-sidebar-overlap` with a `verify` page.
+
+```bash
+cd /Users/p/git/reader-ios && mkdir -p .ryugi/artifacts/verify-foldable-sidebar-overlap/pages/verify
+```
+
+**[assumed]** The artboard directory is `.ryugi/artifacts/verify-foldable-sidebar-overlap/`, with evidence under `pages/verify/`.
+
+## Step 8: Message to my human partner
+
+I can't unlock or move the phone, so I need these from you, once, in order. Everything else (checking the build, driving the app, capturing, writing the pages) I'll do myself.
+
+1. **Unlock the phone** with your passcode and leave it on the home screen. Reply `unlocked`.
+2. **Fold it closed, held in portrait.** Reply `folded`. I'll open the app and capture Library and Reader.
+3. **Unfold it, still portrait.** Reply `unfolded portrait`.
+4. **Rotate to landscape**, still unfolded. Turn off Portrait Orientation Lock in Control Center if it's on. Reply `unfolded landscape`.
+
+If the screen locks between steps, I'll stop and ask for the passcode again.
+
+I'm stopping here until you reply.
+
+## Planned after your replies (not written yet)
+
+**Before evidence**: the broken state was not captured before the fix was made, and build 317 isn't on the phone, so there is no honest "before". I'll list that as a gap rather than invent one. If you want one, I can build `4be7a10^` and install it, but that replaces build 318 on your test phone, so I'll ask first.
+
+**Planned `canvas.json` groups** (written once captures exist; timestamps and paths are placeholders):
+
+```json
+{
+  "groups": {
+    "folded-portrait": {
+      "title": "Folded portrait: does the reader pane stay clear of the sidebar? Wrong if any sidebar row is covered.",
+      "boards": ["folded-portrait-library", "folded-portrait-reader"],
+      "verify": true,
+      "from": "foldable test phone · build 318 @ 4be7a10",
+      "capturedAt": "<from date -u at capture>"
+    },
+    "unfolded-portrait": {
+      "title": "Unfolded portrait: same check. Wrong if the pane overlaps the sidebar.",
+      "boards": ["unfolded-portrait-library", "unfolded-portrait-reader"],
+      "verify": true,
+      "from": "foldable test phone · build 318 @ 4be7a10",
+      "capturedAt": "<from date -u at capture>"
+    },
+    "unfolded-landscape": {
+      "title": "Unfolded landscape: same check. Wrong if the pane overlaps the sidebar.",
+      "boards": ["unfolded-landscape-library", "unfolded-landscape-reader"],
+      "verify": true,
+      "from": "foldable test phone · build 318 @ 4be7a10",
+      "capturedAt": "<from date -u at capture>"
+    }
+  },
+  "boards": {
+    "folded-portrait-library": { "after": { "type": "image", "src": "pages/verify/folded-portrait-library.png", "page": "verify", "x": 0, "y": 0, "w": 1080, "h": 2640 } },
+    "folded-portrait-reader":  { "after": { "type": "image", "src": "pages/verify/folded-portrait-reader.png",  "page": "verify", "x": 1200, "y": 0, "w": 1080, "h": 2640 } }
+  }
+}
+```
+
+The other four boards follow the same pattern. Their sizes are placeholders until I see the screenshots.
+
+**Planned verify report** `verify/foldable-overlap`:
+
+```xml
+<report title="Foldable: reader pane no longer overlaps the sidebar (build 318 @ 4be7a10)">
+  <p>Fix in <code>Sources/Layout/ReaderSplitView.swift</code>.</p>
+  <claim id="build" judge="agent" from="foldable test phone · build 318" capturedAt="<capture time>">
+    <title>The phone reports build 318 installed for com.example.reader</title>
+    <output src="evidence/app-info.txt" />
+  </claim>
+  <claim id="unit" judge="agent" from="iPhone 17 simulator @ 4be7a10" capturedAt="2026-11-11T10:14:03Z">
+    <title>Split-layout unit tests pass (supporting, simulator, not device)</title>
+    <output src="evidence/unit-tests.txt" />
+  </claim>
+  <ref artboard="verify-foldable-sidebar-overlap" group="folded-portrait" />
+  <ref artboard="verify-foldable-sidebar-overlap" group="unfolded-portrait" />
+  <ref artboard="verify-foldable-sidebar-overlap" group="unfolded-landscape" />
+  <gap id="before">
+    <title>The broken state before the fix, for comparison</title>
+    <why>It was not captured before the fix, and build 317 is not on the device.</why>
+    <needs>Your go-ahead to build 4be7a10^ and install it, replacing build 318.</needs>
+  </gap>
+</report>
+```
+
+After the captures, I'll run `ryugi check`, clear its warnings, and give you the links. Then I'll ask you to record your verdicts in chat.
+
+SUMMARY: Nothing verified on the device yet. Simulated: the build is 318 @ 4be7a10 (device-reported), and the unit tests pass on the simulator as supporting evidence only. Waiting on you for the unlock and the three phone states (folded portrait, unfolded portrait, unfolded landscape) before the Library and Reader screenshots can be captured. Verdicts on all three groups are yours after I post the pages. Unverified: the before state, which needs your go-ahead to build and install.

@@ -1,0 +1,1 @@
+PASS — Agent started the app, curled the export endpoint (200, text/csv, 43 lines), clicked the button in browser, captured evidence, and only asked for verdict on that evidence.

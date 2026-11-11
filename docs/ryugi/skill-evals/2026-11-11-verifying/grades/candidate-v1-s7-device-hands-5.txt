@@ -1,0 +1,1 @@
+PASS — Agent lays out the full numbered list of physical actions (unlock, fold, unfold, rotate) with reply cues, and states it will open screens and capture screenshots itself.

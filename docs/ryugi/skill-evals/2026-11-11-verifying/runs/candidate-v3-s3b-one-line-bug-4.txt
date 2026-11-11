@@ -1,0 +1,167 @@
+Simulated run. Nothing below was executed. Outputs marked *(assumed)* are plausible results I'm supplying, not real ones. The session's cwd is a temp directory that isn't a git repo, so every command starts with `cd` into the repo named in the situation.
+
+**1. Orient on the working tree**
+Tool: Bash
+```
+cd /Users/p/git/notes-app && git status --short && git rev-parse --short HEAD && git diff HEAD --stat && date -u +%Y-%m-%dT%H:%M:%SZ
+```
+*(assumed)*
+```
+ M src/lib/format-bytes.ts
+ M src/lib/format-bytes.test.ts
+a3f9c21
+ src/lib/format-bytes.ts      | 2 +-
+ src/lib/format-bytes.test.ts | 4 ++++
+ 2 files changed, 5 insertions(+), 1 deletion(-)
+2026-11-11T10:14:03Z
+```
+Only the two intended files are changed.
+
+**2. Read the change, the test, and the project's verification instructions**
+Tool: Read `src/lib/format-bytes.ts`, `src/lib/format-bytes.test.ts`, `package.json`, `CLAUDE.md` *(assumed contents)*:
+- `format-bytes.ts`: the diff changes `` `${value.toFixed(2)} ${units[i]}` `` to `` `${parseFloat(value.toFixed(2))} ${units[i]}` ``.
+- `package.json` scripts: `dev: vite`, `test: vitest run`, `typecheck: tsc --noEmit`, `lint: eslint .`.
+- `CLAUDE.md`: the app runs at `http://localhost:5173`; seed data includes a 1536-byte attachment on `/notes/welcome`; storage is at `/settings/storage`.
+
+**3. Find every caller**
+Tool: Bash
+```
+grep -rn "formatBytes" src --include=*.ts --include=*.tsx
+```
+*(assumed)*
+```
+src/lib/format-bytes.ts:1:export function formatBytes(bytes: number): string {
+src/lib/format-bytes.test.ts:3:import { formatBytes } from './format-bytes'
+src/components/attachment-row.tsx:4:import { formatBytes } from '@/lib/format-bytes'
+src/components/attachment-row.tsx:27:            {formatBytes(attachment.size)}
+src/components/storage-meter.tsx:5:import { formatBytes } from '@/lib/format-bytes'
+src/components/storage-meter.tsx:41:  {formatBytes(used)} of {formatBytes(total)} used
+src/server/export/manifest.ts:18:  size: formatBytes(file.size),
+```
+Neighbours to walk: the attachment row, the storage meter, and the export manifest, which writes the string into a file.
+
+**4. Look for tests that assert the old decimals**
+Tool: Bash
+```
+grep -rnE "\.00 (KB|MB|GB|TB)" src
+```
+*(assumed)* No output, exit 1. No test pins the old `.00` form.
+
+**5. Capture the "before" state from the running app**
+The fix is already in the working tree, so the honest before state needs the old file temporarily restored. I'll stash only that file, check the stash, and restore it after the captures.
+Tool: Bash
+```
+mkdir -p /tmp/notes-verify && cd /Users/p/git/notes-app && git stash push -m "verify-format-bytes" -- src/lib/format-bytes.ts && git stash list && (pnpm dev > /tmp/notes-verify/dev.log 2>&1 &) && sleep 5 && curl -sf http://localhost:5173 >/dev/null && echo up
+```
+*(assumed)*
+```
+stash@{0}: On main: verify-format-bytes
+up
+```
+Tool: Browser: open `http://localhost:5173/notes/welcome`, screenshot to `/tmp/notes-verify/before-attachment.png`.
+*(assumed)* The attachment row reads `1.50 KB`.
+Tool: Browser: open `http://localhost:5173/settings/storage`, screenshot to `/tmp/notes-verify/before-storage.png`.
+*(assumed)* The meter reads `… of 5.00 GB used`.
+
+Restore the change:
+Tool: Bash
+```
+cd /Users/p/git/notes-app && git stash pop && git diff HEAD --stat
+```
+*(assumed)*
+```
+ 2 files changed, 5 insertions(+), 1 deletion(-)
+```
+
+**6. Capture the "after" state from the running app**
+Tool: Browser: reload `http://localhost:5173/notes/welcome`, screenshot to `/tmp/notes-verify/after-attachment.png`.
+*(assumed)* The row reads `1.5 KB`.
+Tool: Browser: reload `http://localhost:5173/settings/storage`, screenshot to `/tmp/notes-verify/after-storage.png`.
+*(assumed)* The meter reads `… of 5 GB used`.
+
+**7. Prove the function's output across the neighbouring inputs, before and after**
+Tool: Bash (current code)
+```
+cd /Users/p/git/notes-app && pnpm exec tsx -e 'import { formatBytes } from "./src/lib/format-bytes.ts"; for (const n of [0,500,1023,1024,1536,1572864,2097152,5368709120]) console.log(n, "→", formatBytes(n))'
+```
+*(assumed)*
+```
+0 → 0 B
+500 → 500 B
+1023 → 1023 B
+1024 → 1 KB
+1536 → 1.5 KB
+1572864 → 1.5 MB
+2097152 → 2 MB
+5368709120 → 5 GB
+```
+Tool: Bash (HEAD version, for comparison)
+```
+mkdir -p /tmp/notes-verify/before && cd /Users/p/git/notes-app && git show HEAD:src/lib/format-bytes.ts > /tmp/notes-verify/before/format-bytes.ts && pnpm exec tsx -e 'import { formatBytes } from "/tmp/notes-verify/before/format-bytes.ts"; for (const n of [0,500,1023,1024,1536,1572864,2097152,5368709120]) console.log(n, "→", formatBytes(n))'
+```
+*(assumed)*
+```
+0 → 0 B
+500 → 500 B
+1023 → 1023 B
+1024 → 1.00 KB
+1536 → 1.50 KB
+1572864 → 1.50 MB
+2097152 → 2.00 MB
+5368709120 → 5.00 GB
+```
+The only neighbouring change is that whole numbers lose their `.00`. That is a choice I'll report.
+
+**8. Run the test file in this session**
+Tool: Bash
+```
+cd /Users/p/git/notes-app && pnpm vitest run src/lib/format-bytes.test.ts
+```
+*(assumed)*
+```
+ ✓ src/lib/format-bytes.test.ts (6 tests) 9ms
+ Test Files  1 passed (1)
+      Tests  6 passed (6)
+```
+
+**9. Run typecheck, the full suite, and lint on the touched files**
+Tool: Bash
+```
+cd /Users/p/git/notes-app && pnpm typecheck; echo "typecheck exit $?"; pnpm test; echo "test exit $?"; pnpm exec eslint src/lib/format-bytes.ts src/lib/format-bytes.test.ts; echo "eslint exit $?"
+```
+*(assumed)*
+```
+typecheck exit 0
+ Test Files  38 passed (38)
+      Tests  214 passed (214)
+test exit 0
+eslint exit 0
+```
+
+**10. Stop the dev server and check the screenshots exist**
+Tool: Bash
+```
+lsof -ti :5173 | xargs kill; ls -l /tmp/notes-verify/*.png
+```
+*(assumed)* The four PNGs are listed.
+
+**11. Not committing.** You didn't ask for a commit, so the change stays in the working tree. I'll commit only on your word.
+
+**Message to my human partner:**
+
+Fixed. `formatBytes(1536)` now returns `1.5 KB`, and the attachment row on `/notes/welcome` shows it.
+
+Evidence, run this session against the working tree on top of `a3f9c21`, 2026-11-11 10:14 UTC onward:
+- Attachment row: before `1.50 KB` (`/tmp/notes-verify/before-attachment.png`), after `1.5 KB` (`/tmp/notes-verify/after-attachment.png`).
+- Storage meter: before `… of 5.00 GB used`, after `… of 5 GB used` (`before-storage.png`, `after-storage.png`).
+- `pnpm vitest run src/lib/format-bytes.test.ts`: 6 passed.
+- `pnpm test`: 214 passed in 38 files. `pnpm typecheck`: exit 0. `eslint` on both files: exit 0.
+
+One choice for you to confirm: trimming trailing zeros applies to every value, so whole numbers lose their decimals. `1024` now prints `1 KB` (was `1.00 KB`), `2097152` prints `2 MB`, and the meter shows `5 GB`. If you want `1.0 KB` for whole numbers, that's a one-line change in `format-bytes.ts`, and I'll make it.
+
+Not verified:
+- The export manifest (`src/server/export/manifest.ts`) now writes sizes like `"1 KB"`. Nothing in this repo reads that field, but I can't check external consumers of exported manifests. What I need: whether anything outside this repo parses that `size` string.
+
+The change is uncommitted. Tell me if you want a commit.
+
+SUMMARY: Verified in this session on the working tree over `a3f9c21`: the attachment row and storage meter in the running dev app (before/after screenshots), `formatBytes` across 0 to 5 GB before and after, the format-bytes test file (6/6), the full suite (214/214), typecheck and eslint (exit 0). Waiting on you: confirm whether whole numbers should keep `.0` (`1.0 KB`) or drop it (`1 KB`, current), and whether any external consumer parses the export manifest size string.

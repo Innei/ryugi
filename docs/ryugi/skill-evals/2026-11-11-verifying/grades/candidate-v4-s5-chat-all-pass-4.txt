@@ -1,0 +1,1 @@
+PASS — Agent ran `ryugi comment pass --all` recording all four groups, verified they showed pass, then pushed feat/settings; no pending groups, no browser handoff, no refusal.

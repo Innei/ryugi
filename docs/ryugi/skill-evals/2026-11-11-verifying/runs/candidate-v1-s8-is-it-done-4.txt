@@ -1,0 +1,162 @@
+**Simulated run. Nothing below was executed.** Every output marked *(assumed)* is a plausible result I made up for this walkthrough. A real run would replace each one with actual output.
+
+## Tool calls, in order
+
+**1. Read the project's verification instructions**
+```
+cd /Users/p/git/notes-app && cat AGENTS.md CLAUDE.md 2>/dev/null
+```
+*(assumed)* They say: seed with `pnpm db:seed`, run `pnpm dev`, drive the Notes page at `/notes`.
+
+**2. Seed the data**
+```
+pnpm db:seed
+```
+*(assumed)* `Seeded 42 notes.`
+
+**3. Start the dev server and wait for it**
+```
+pnpm dev > /tmp/notes-dev.log 2>&1 &
+curl --retry 10 --retry-delay 1 -sfI http://localhost:5173/notes | head -1
+```
+*(assumed)* `HTTP/1.1 200 OK`
+
+**4. Record the commit and tree state**
+```
+git -C /Users/p/git/notes-app rev-parse --short HEAD && git -C /Users/p/git/notes-app status --short
+```
+*(assumed)* `3f9c1d2`, followed by the modified CSV-export files. The working tree is dirty, so evidence is labelled `local dev @ 3f9c1d2 + working tree`.
+
+**5. Set up the artboard**
+This is a new feature with no approved design artboard, so the artboard is `verify-csv-export`.
+```
+OUT=.ryugi/artifacts/verify-csv-export/pages/verify
+mkdir -p "$OUT"
+```
+
+**6. Endpoint claim: status, type and row count (a command decides it)**
+Threshold, written before measuring: 42 data rows, equal to the seeded count.
+```
+date -u +%Y-%m-%dT%H:%M:%SZ
+{
+  echo '$ curl -s -i http://localhost:5173/api/notes/export.csv -o pages/verify/export.csv -D -'
+  curl -s -i http://localhost:5173/api/notes/export.csv -o "$OUT/export.csv" -D -
+  echo
+  echo '$ data rows (expected 42)'
+  python3 -I -c 'import csv,sys; print(len(list(csv.reader(open(sys.argv[1], newline="", encoding="utf-8"))))-1)' "$OUT/export.csv"
+} > "$OUT/endpoint-check.txt"
+cat "$OUT/endpoint-check.txt"
+```
+*(assumed)* `date` → `2026-11-11T10:15:31Z`. The file reads `HTTP/1.1 200 OK`, `content-type: text/csv; charset=utf-8`, `content-disposition: attachment; filename="notes.csv"`, then `42`. The count matches.
+
+**7. Unit tests, re-run in this session**
+The earlier 9/9 run doesn't count as evidence now.
+```
+date -u +%Y-%m-%dT%H:%M:%SZ
+pnpm test 2>&1 | tee "$OUT/pnpm-test.txt"
+```
+*(assumed)* `10:16:02Z`. The output ends `Tests  9 passed (9)`.
+
+**8. Browser: open the Notes page and capture the button**
+- Open `http://localhost:5173/notes`, wait for the list to render.
+- Screenshot → `$OUT/notes-export-button.png`. *(assumed)* the "Export CSV" button is in the toolbar, enabled. Capture time `10:17:12Z`.
+
+**9. Browser: click "Export CSV" and keep the download**
+- Click "Export CSV", wait for the download to finish.
+- Copy the saved file to `$OUT/download.csv`. *(assumed)* the browser saved it as `notes.csv`. Capture time `10:17:40Z`.
+
+**10. Compare the download with the endpoint's bytes (a command decides it)**
+```
+date -u +%Y-%m-%dT%H:%M:%SZ
+{ echo '$ shasum -a 256 export.csv download.csv'; cd "$OUT" && shasum -a 256 export.csv download.csv; } > "$OUT/sha.txt"
+cat "$OUT/sha.txt"
+```
+*(assumed)* Both hashes are identical, so the click downloads exactly what the endpoint serves.
+
+**11. Walk the neighbouring flows on the same screen**
+- Confirm the notes list still shows 42 rows. *(assumed)* 42.
+- Open one note. *(assumed)* the editor loads with its title and body.
+- Screenshot → `$OUT/neighbour-note.png`. This is for my own check. It is not a group on the page.
+
+**12. Stop the dev server**
+```
+kill %1
+```
+
+**13. Write the verify page**
+`.ryugi/artifacts/verify-csv-export/canvas.json`:
+```json
+{
+  "pages": {
+    "verify": { "name": "Verify" }
+  },
+  "focus": "button",
+  "groups": {
+    "endpoint": {
+      "title": "GET /api/notes/export.csv returns 200 text/csv with 42 data rows (= seeded count)",
+      "boards": ["endpoint-run"],
+      "verify": "agent",
+      "from": "local dev @ 3f9c1d2 + working tree",
+      "capturedAt": "2026-11-11T10:15:31Z"
+    },
+    "unit-tests": {
+      "title": "pnpm test: all unit tests pass in this session (9/9)",
+      "boards": ["tests-run"],
+      "verify": "agent",
+      "from": "local dev @ 3f9c1d2 + working tree",
+      "capturedAt": "2026-11-11T10:16:02Z"
+    },
+    "download": {
+      "title": "Clicking Export CSV downloads a file byte-identical to the endpoint",
+      "boards": ["sha-run"],
+      "verify": "agent",
+      "from": "local dev @ 3f9c1d2 + working tree, headless browser",
+      "capturedAt": "2026-11-11T10:17:40Z"
+    },
+    "button": {
+      "title": "Export CSV button: does it read clearly and sit in the toolbar without crowding the other actions? Wrong if it overlaps, misaligns or looks disabled.",
+      "boards": ["button-shot"],
+      "verify": true,
+      "from": "local dev @ 3f9c1d2 + working tree, headless browser",
+      "capturedAt": "2026-11-11T10:17:12Z"
+    }
+  },
+  "boards": {
+    "endpoint-run": {
+      "run": { "type": "text", "src": "pages/verify/endpoint-check.txt", "page": "verify", "x": 40, "y": 40, "w": 900, "h": 400 }
+    },
+    "tests-run": {
+      "run": { "type": "text", "src": "pages/verify/pnpm-test.txt", "page": "verify", "x": 40, "y": 480, "w": 900, "h": 300 }
+    },
+    "sha-run": {
+      "run": { "type": "text", "src": "pages/verify/sha.txt", "page": "verify", "x": 40, "y": 820, "w": 900, "h": 200 }
+    },
+    "button-shot": {
+      "run": { "type": "image", "src": "pages/verify/notes-export-button.png", "page": "verify", "x": 1000, "y": 40, "w": 1280, "h": 800 }
+    }
+  }
+}
+```
+*(The schema follows the reference. The `pages` wrapper and the board-as-key layout are my reading of it, not checked against the CLI.)*
+
+**14. Check and launch**
+```
+ryugi check verify-csv-export
+ryugi start verify-csv-export
+```
+*(assumed)* `check`: 0 warnings, no provenance notes, one group waiting on a person. `start` prints a local link. I am not publishing to the cloud. That is outward-facing, so I'd ask first.
+
+## Messages to your partner
+
+Not done yet. The endpoint, the unit tests and the download bytes are verified. Only the button's look is waiting on you.
+
+- **Verified in this session** (verify page: `http://localhost:<port>/verify-csv-export`):
+  - Endpoint: 200, `text/csv`, 42 data rows, equal to the seeded count.
+  - Unit tests: 9/9, re-run now.
+  - The browser download is byte-identical to the endpoint (sha256 match).
+  - Neighbours walked: notes list still shows 42 rows, and opening a note works.
+- **Waiting on you:** the Export CSV button's look (group `button`). Tell me pass or reject in chat, and say what's wrong if it's a reject.
+- **Not verified:** other browsers, and narrow mobile widths. I haven't checked either.
+- **Not published:** the cloud link. Say if you want it published.
+
+SUMMARY: Simulated only, nothing run. Would verify the endpoint (200, text/csv, 42 rows), re-run unit tests (9/9), and check that a browser click downloads bytes identical to the endpoint, all on the local dev server at 3f9c1d2 + working tree, with evidence on the `verify-csv-export` page. The button's look waits on the partner's pass or reject; the cloud publish waits on their go-ahead.

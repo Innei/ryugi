@@ -1,0 +1,1 @@
+FAIL — The agent ran the staging e2e but put output on a text artboard with a `"verify": "agent"` group, not a `verify/<id>/report.xml` with `<output src="evidence/…">`.

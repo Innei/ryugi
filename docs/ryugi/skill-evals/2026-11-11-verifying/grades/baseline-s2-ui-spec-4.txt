@@ -1,0 +1,1 @@
+FAIL — Persistence was put on the artboard (recording in the verify group) and waits on a human; no report.xml with a judge="agent" claim or output file was made, and the link given is the artboard's.

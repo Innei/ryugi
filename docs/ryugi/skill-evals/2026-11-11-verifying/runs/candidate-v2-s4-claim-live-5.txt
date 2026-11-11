@@ -1,0 +1,173 @@
+**Simulation: nothing below has been run.** Every tool output is an assumed result, marked *assumed*. The final "live" message depends on those assumptions, so it is conditional on them.
+
+Two setup notes first. The repo is `/Users/p/git/api-gateway`, not the current working directory, so every command below starts with `cd`. The working directory is also not a git repo, so I'll use the repo path throughout.
+
+---
+
+### 1. Confirm what was pushed
+
+```bash
+cd /Users/p/git/api-gateway && git fetch origin main && git status --short && git rev-parse --short origin/main && git log -1 --format='%H%n%s' origin/main
+```
+*Assumed output:* empty status (clean tree); `7c1d9e4`; full sha `7c1d9e4a0b3f…`; subject "fix: rate-limit POST /v1/messages to 60/min per key".
+
+### 2. Find the deploy run and wait for it
+
+```bash
+gh run list --branch main --limit 1 --json databaseId,headSha,status,workflowName
+```
+*Assumed output:* `databaseId: 18342117`, `headSha: 7c1d9e4a0b3f…`, `status: in_progress`, workflow "Deploy".
+
+```bash
+gh run watch 18342117 --exit-status
+```
+*Assumed output:* the run completes successfully after about four minutes.
+
+### 3. Confirm which build is deployed
+
+```bash
+npx wrangler deployments list
+```
+*Assumed output:* the newest deployment was created after the push, during run 18342117. Wrangler does not print the commit sha here, so I match by time.
+
+```bash
+date -u +%Y-%m-%dT%H:%M:%SZ && curl -s https://api.example.com/health
+```
+*Assumed output:* `2026-11-11T10:07:52Z`, then `{"build":"7c1d9e4a0b3f…"}`. The build is confirmed as 7c1d9e4.
+
+### 4. Check the limiter's reach before probing it
+
+```bash
+rg -n "rateLimit|rate-limit" src
+```
+*Assumed output:* the middleware is defined in `src/middleware/rate-limit.ts` and applied only in `src/routes/messages.ts`. So the neighbours I need to walk are `GET /health` and other callers of the same middleware, if any.
+
+### 5. Supporting evidence: local tests, run in this session
+
+```bash
+pnpm test
+```
+*Assumed output:* "Tests: 214 passed, 214 total". This is supporting evidence only. It does not prove the claim on production.
+
+### 6. Check the artboard name is free, then create the evidence folder
+
+```bash
+ls .ryugi/artifacts/ && mkdir -p .ryugi/artifacts/verify-rate-limit/pages/verify
+```
+*Assumed output:* no existing `verify-rate-limit`. This is a new artboard because no design artboard applies to an API fix.
+
+Threshold, written before measuring: requests 1–60 are not 429, and request 61 is 429.
+
+### 7. Probe production with the test key (61 requests)
+
+I'll write the probe script outside the artboard, in a separate scratch directory.
+
+```bash
+mkdir -p "$TMPDIR/ratelimit-probe" && cat > "$TMPDIR/ratelimit-probe/probe.sh" <<'EOF'
+#!/bin/bash
+OUT="$1"
+{
+  echo "# POST https://api.example.com/v1/messages · production · build 7c1d9e4a0b3f… · $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  echo "# 61 sequential requests, one production test key; threshold: 1-60 not 429, 61 is 429"
+  for i in $(seq 1 61); do
+    code=$(curl -s -o /dev/null -w '%{http_code}' -X POST https://api.example.com/v1/messages \
+      -H "Authorization: Bearer $PROD_TEST_KEY" -H 'content-type: application/json' \
+      -d '{"model":"<model-id>","max_tokens":1,"messages":[{"role":"user","content":"ping"}]}')
+    echo "request $i: $code"
+  done
+} > "$OUT"
+EOF
+chmod +x "$TMPDIR/ratelimit-probe/probe.sh" && "$TMPDIR/ratelimit-probe/probe.sh" .ryugi/artifacts/verify-rate-limit/pages/verify/ratelimit-prod.txt && tail -3 .ryugi/artifacts/verify-rate-limit/pages/verify/ratelimit-prod.txt
+```
+*Assumptions:* the request body and model ID are placeholders I would replace with the project's real values. The key is never echoed into the log. The window for this key is fresh.
+
+*Assumed output (tail):*
+```
+request 59: 200
+request 60: 200
+request 61: 429
+```
+
+### 8. Walk the neighbour: health is still reachable after the limit
+
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' https://api.example.com/health
+```
+*Assumed output:* `200`. I'll save this to a second text file so it has its own group.
+
+```bash
+curl -s -w '\nHTTP %{http_code}\n' https://api.example.com/health > .ryugi/artifacts/verify-rate-limit/pages/verify/health-after.txt && cat .ryugi/artifacts/verify-rate-limit/pages/verify/health-after.txt
+```
+*Assumed output:* `{"build":"7c1d9e4a0b3f…"}` then `HTTP 200`.
+
+### 9. Write the verify page
+
+```bash
+date -u +%Y-%m-%dT%H:%M:%SZ
+```
+*Assumed output:* `2026-11-11T10:09:31Z`. I'll use this as `capturedAt` for both groups.
+
+I'm writing `.ryugi/artifacts/verify-rate-limit/canvas.json` with these groups and boards. The layout keys follow the reference; the exact canvas schema is assumed.
+
+```json
+{
+  "groups": {
+    "ratelimit-prod": {
+      "title": "Production: key request 61 in a minute gets 429 (1-60 not 429)",
+      "boards": ["ratelimit-prod-run"],
+      "verify": "agent",
+      "from": "production · 7c1d9e4",
+      "capturedAt": "2026-11-11T10:09:31Z"
+    },
+    "ratelimit-neighbour-health": {
+      "title": "Production: GET /health still 200 after the limit is hit",
+      "boards": ["health-after-run"],
+      "verify": "agent",
+      "from": "production · 7c1d9e4",
+      "capturedAt": "2026-11-11T10:09:31Z"
+    }
+  },
+  "boards": {
+    "ratelimit-prod-run": {
+      "run": { "type": "text", "src": "pages/verify/ratelimit-prod.txt", "page": "verify", "x": 40, "y": 40, "w": 900, "h": 600 }
+    },
+    "health-after-run": {
+      "run": { "type": "text", "src": "pages/verify/health-after.txt", "page": "verify", "x": 40, "y": 700, "w": 900, "h": 200 }
+    }
+  }
+}
+```
+
+Both groups are `"verify": "agent"` because each is a count or status a command decides, the command ran on production, the raw output is a text board, and nothing is about look, motion or wording. Neither needs a person's verdict.
+
+### 10. Check, and get the local link
+
+```bash
+ryugi check
+```
+*Assumed output:* no warnings, no provenance notes, no pending groups.
+
+```bash
+ryugi start
+```
+*Assumed output:* a local link to `verify-rate-limit`.
+
+I'm not publishing to the cloud. Publishing sends the page to an external service, and you asked for "live", not for a cloud link. I'll offer it instead.
+
+---
+
+### Message to your partner (conditional on the assumed outputs above)
+
+> **Live.** The rate limit is on production. Deploy run 18342117 succeeded, and `api.example.com/health` reports build `7c1d9e4`.
+>
+> With the production test key, requests 1–60 returned 200 and request 61 returned 429. `GET /health` still returns 200 afterward. Local tests: 214 passed (supporting only).
+>
+> Evidence: local link to the `verify-rate-limit` artboard (`ryugi start`). Both groups are checked by me, and nothing is waiting on you.
+>
+> **Not verified:** per-key isolation on production (I only have one production key), and the `Retry-After` header on the 429, which I did not capture.
+>
+> Should I publish the cloud link as well? It would send the log to an external service, so I haven't done it.
+
+---
+
+SUMMARY: With the assumed outputs, I verified that origin/main is 7c1d9e4, deploy run 18342117 succeeded, production `/health` reports build 7c1d9e4, and on production with the test key requests 1–60 are non-429 and request 61 is 429, with `/health` still 200 afterward (evidence in `.ryugi/artifacts/verify-rate-limit/pages/verify/`, local link only). Not verified: per-key isolation on production and the `Retry-After` header. Nothing is waiting on your partner; publishing the cloud link waits on their go-ahead.

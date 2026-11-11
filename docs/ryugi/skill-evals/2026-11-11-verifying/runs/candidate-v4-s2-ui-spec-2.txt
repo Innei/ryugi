@@ -1,0 +1,152 @@
+Simulated session. Tool output is assumed where noted.
+
+## 1. Read how the project verifies, and confirm which build is running
+
+**Bash**
+```bash
+cd /Users/p/git/notes-app && cat AGENTS.md CLAUDE.md 2>/dev/null | head -80; echo ---; git rev-parse --short HEAD; git status --porcelain; echo ---; ls .ryugi/artifacts .ryugi/artifacts/settings-redesign .ryugi/artifacts/settings-redesign/pages
+```
+*Assumed output:* AGENTS.md says to use `pnpm test` and that the dev server needs no auth locally. HEAD is `a1b2c3d` and the tree is clean, so the running dev server serves that build. `settings-redesign/` holds `canvas.json` and `pages/settings/notify-a.html`. There is no `pages/verify/` yet and no discussion document is listed in the spec, so there is no back-`<ref>` to add.
+
+**Read** `/Users/p/git/notes-app/.ryugi/artifacts/settings-redesign/canvas.json`
+
+*Assumed:* it has top-level `pages`, `boards`, `groups` and `focus`. Boards carry `page`, `x`, `y`, `w`, `h`, and `notify-a` is 1280×800.
+
+## 2. Supporting check: tests
+
+**Bash**
+```bash
+cd /Users/p/git/notes-app && pnpm test 2>&1 | tail -15
+```
+*Assumed output:* `Test Files 14 passed (14) · Tests 87 passed (87)`. This is supporting evidence only. It does not prove the claims below.
+
+## 3. Output claim: persistence on the running dev server
+
+**Bash**
+```bash
+cd /Users/p/git/notes-app
+EV=.ryugi/artifacts/verify/notification-settings/evidence; mkdir -p $EV
+B=http://localhost:5173/api/prefs
+H='content-type: application/json'
+{
+  echo "from: local dev $B @ $(git rev-parse --short HEAD)"; date -u +%Y-%m-%dT%H:%M:%SZ
+  echo; echo '$ GET (before)'; curl -s $B | tee /tmp/prefs-before.json; echo
+  echo; echo '$ PATCH {"notifications":{"email":false}}'
+  curl -s -o /dev/null -w 'HTTP %{http_code}\n' -X PATCH -H "$H" -d '{"notifications":{"email":false}}' $B
+  echo; echo '$ GET (after)'; curl -s $B | tee /tmp/prefs-after.json; echo
+  echo; echo '$ diff before after (other keys must be unchanged)'; diff <(jq -S . /tmp/prefs-before.json) <(jq -S . /tmp/prefs-after.json)
+  echo; echo '$ restore original value'
+  curl -s -o /dev/null -w 'HTTP %{http_code}\n' -X PATCH -H "$H" -d "{\"notifications\":{\"email\":$(jq .notifications.email /tmp/prefs-before.json)}}" $B
+  curl -s $B | jq -S . | diff - <(jq -S . /tmp/prefs-before.json) && echo "restored: identical to before"
+} > $EV/prefs-persist.txt 2>&1; cat $EV/prefs-persist.txt
+```
+*Assumed output:* PATCH returns `HTTP 200`. The after-GET shows `notifications.email: false`. The diff shows only that one line changed. The restore returns `HTTP 200` and prints `restored: identical to before`.
+
+## 4. Screen evidence from the running app
+
+**Browser** (scratch output goes to `/tmp/notify-verify/`, deleted in step 6)
+1. Open `http://localhost:5173/settings/notifications` at a 1280×800 viewport and take a screenshot to `/tmp/notify-verify/actual.png`.
+2. Start a recording. Click each of the three notification toggles on, then off, then on again. Reload the page and show the toggles in their saved state. Stop the recording and save it to `/tmp/notify-verify/toggle.mp4`.
+
+*Assumed:* the thumbs slide, the reload keeps the last-clicked states, and the layout renders.
+
+**Neighbours.** In the browser, walk the flows that share what I touched: the same page, the shared `Toggle` component and `/api/prefs`.
+- Open `/settings/appearance` and click its dark-mode toggle (it uses the same `Toggle`). *Assumed: it switches and persists after reload.*
+- Open `/settings/profile`. *Assumed: it loads and saves normally.*
+
+**Bash**
+```bash
+ffprobe -v error -show_entries format=duration,size -of default=nw=1 /tmp/notify-verify/toggle.mp4; ls -l /tmp/notify-verify
+```
+*Assumed output:* duration 11.4s and size about 1.1MB, so under the 8MB limit.
+
+## 5. Put the evidence on the artboard
+
+**Bash**
+```bash
+cd /Users/p/git/notes-app/.ryugi/artifacts/settings-redesign
+mkdir -p pages/verify && cp /tmp/notify-verify/actual.png /tmp/notify-verify/toggle.mp4 pages/verify/
+TS=$(date -u +%Y-%m-%dT%H:%M:%SZ); echo $TS
+git -C /Users/p/git/notes-app rev-parse --short HEAD; git -C /Users/p/git/notes-app status --porcelain
+du -sh .
+```
+*Assumed output:* `2026-11-11T10:16:30Z`, HEAD still `a1b2c3d`, clean tree (so the evidence is not stale), artboard about 2.4MB (under 20MB).
+
+**Replay the video.** Open the artboard's Verify page in the browser tool and play `toggle.mp4`. *Assumed:* every click, the slide and the reload state stay visible, so no `trim:false` is needed.
+
+**Edit** `canvas.json`. I add one page, four boards and one group, and set `focus`:
+```json
+"pages": {
+  "verify": { "name": "Verify" }
+},
+"boards": {
+  "v1-design": { "page": "verify", "file": "pages/settings/notify-a.html", "x": 0, "y": 0, "w": 1280, "h": 800 },
+  "v1-actual": { "type": "image", "src": "pages/verify/actual.png", "page": "verify", "x": 1360, "y": 0, "w": 1280, "h": 800 },
+  "v1-motion": { "type": "video", "src": "pages/verify/toggle.mp4", "page": "verify", "x": 2720, "y": 0, "w": 1280, "h": 800 },
+  "v1-note": { "type": "sticky", "page": "verify", "x": 2720, "y": 840, "text": "Feel the motion yourself: http://localhost:5173/settings/notifications (dev server running; or `pnpm dev` in /Users/p/git/notes-app). Wrong if the thumb jumps instead of sliding, or the layout differs from the left board." }
+},
+"groups": {
+  "v1": {
+    "title": "Notification settings: does the layout match notify-a (left), and does each toggle thumb slide rather than jump?",
+    "boards": ["v1-design", "v1-actual", "v1-motion", "v1-note"],
+    "verify": true,
+    "from": "local dev (localhost:5173) @ a1b2c3d",
+    "capturedAt": "2026-11-11T10:16:30Z"
+  }
+},
+"focus": "v1"
+```
+*Assumed:* the sticky board shape matches the stickies already in the file I read.
+
+## 6. Write the verify report (it has output claims and a screen group)
+
+**Write** `/Users/p/git/notes-app/.ryugi/artifacts/verify/notification-settings/report.xml`
+```xml
+<report title="Notification settings section">
+  <p>Notification settings built from the approved spec (board <code>notify-a</code>), checked on the local dev server at a1b2c3d.</p>
+
+  <claim id="persist" judge="agent"
+         from="local dev (localhost:5173) @ a1b2c3d" capturedAt="2026-11-11T10:12:08Z">
+    <title>PATCH /api/prefs returns 200 and the following GET /api/prefs returns the new value</title>
+    <output src="evidence/prefs-persist.txt" />
+  </claim>
+
+  <ref artboard="settings-redesign" group="v1" />
+
+  <gap id="duration">
+    <title>The thumb transition lasts exactly 160ms in the running app</title>
+    <why>The browser tool gives screenshots and recordings but no computed-style readout, so I could only watch the motion, not measure it.</why>
+    <needs>Your go-ahead to skip the exact number, or your OK to add a Playwright check to the repo.</needs>
+  </gap>
+</report>
+```
+
+**Bash**
+```bash
+rm -rf /tmp/notify-verify /tmp/prefs-before.json /tmp/prefs-after.json
+ryugi check --project-dir /Users/p/git/notes-app --artifact settings-redesign
+ryugi check --project-dir /Users/p/git/notes-app --artifact verify/notification-settings
+ryugi start --project-dir /Users/p/git/notes-app
+```
+*Assumed output:* both checks are clean, with no `W_PROVENANCE`, no provenance notes and nothing pending. `start` prints the report link `http://localhost:4600/verify/notification-settings`.
+
+I did not run `ryugi publish`. It sends content to an external service, so it needs your go-ahead first.
+
+## 7. Message to my partner
+
+> The Notification settings section is built and checked on the local dev server (a1b2c3d, clean tree).
+>
+> **Checked by me, nothing for you to do:**
+> - `PATCH /api/prefs` returned 200, and the following `GET` returned `notifications.email: false` with no other key changed. I restored the original value afterwards. Raw output is in the report.
+> - Supporting only: `pnpm test` gives 87 passed.
+> - Neighbours I walked: all three notification toggles, the dark-mode toggle on Appearance (it shares the `Toggle` component) and the Profile page. All behave normally.
+>
+> **Needs your eyes** (1 group, 0 of 1 judged by you so far): group `v1` puts the approved `notify-a` beside a screenshot of the real app, plus a short recording. Please check two things:
+> 1. Does the layout match `notify-a`?
+> 2. Does each thumb slide rather than jump? To feel it yourself, open http://localhost:5173/settings/notifications.
+>
+> **Not verified:** the exact 160ms duration, which I could watch but not measure here. I need either your go-ahead to skip it or your OK to add a Playwright check.
+>
+> Report: http://localhost:4600/verify/notification-settings (local link, not published to the cloud). Tell me here when you've decided. I'll record your verdict and wait on it before landing anything.
+
+SUMMARY: I verified persistence (PATCH 200, then GET shows the new value) on local dev @ a1b2c3d, and walked the neighbouring flows. Layout and slide motion are on artboard verify group `v1` for the human to judge. The exact 160ms duration is an open gap. The human partner now holds the verdict on `v1` and the decision on the gap, and landing waits on both.

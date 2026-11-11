@@ -1,0 +1,196 @@
+I'm simulating this run. Nothing is executed, and every tool output below is an assumption, marked as such. Where I quote a file, it's the file I would write.
+
+## 1. Confirm the code under test
+
+```bash
+cd /Users/p/git/notes-app && git rev-parse --short HEAD && git status --short
+```
+Assumed output: `a1b2c3d`, with no changes. The evidence will be about this commit.
+
+## 2. Read the project's verification instructions
+
+```bash
+cd /Users/p/git/notes-app && ls && sed -n '1,200p' CLAUDE.md
+```
+Assumed output: `CLAUDE.md` says to run `pnpm test` for unit and component tests, start the app with `pnpm dev` (port 5173), and check the API with `curl` against the dev server. It needs no fixtures. I'll use those commands.
+
+## 3. Read the artboard
+
+```bash
+Read /Users/p/git/notes-app/.ryugi/artifacts/settings-redesign/canvas.json
+```
+Assumed content: page `design` holds `notify-a` (file `pages/settings/notify-a.html`, 1280×800). There is no `verify` page and no verify groups yet.
+
+## 4. Run the unit and component tests (supporting evidence only)
+
+```bash
+cd /Users/p/git/notes-app && mkdir -p .ryugi/artifacts/verify/notify-settings/evidence && pnpm test > .ryugi/artifacts/verify/notify-settings/evidence/tests.txt 2>&1; echo "exit $?"; tail -n 8 .ryugi/artifacts/verify/notify-settings/evidence/tests.txt
+```
+Assumed output:
+```
+exit 0
+ Test Files  9 passed (9)
+      Tests  63 passed (63)
+   Duration  4.12s
+```
+These results don't prove layout, motion, or persistence. They go in the report as a supporting claim, labelled that way.
+
+## 5. Capture the layout from the running app
+
+```
+browser.open("http://localhost:5173/settings/notifications", viewport 1280x800)
+browser.screenshot(save: .ryugi/artifacts/settings-redesign/pages/verify/notify-layout-app.png)
+```
+Assumed result: the page loads with the Notifications section visible. Screenshot saved, captured 2026-11-11T09:41:30Z.
+
+## 6. Capture the toggle motion
+
+```
+browser.record(start, save: .ryugi/artifacts/settings-redesign/pages/verify/toggle-app.mp4)
+browser.click("Product updates toggle")
+browser.wait(600ms)
+browser.record(stop)
+browser.evaluate("getComputedStyle(document.querySelector('[data-toggle=\"productUpdates\"] .thumb')).transitionDuration + ' ' + getComputedStyle(...).transitionProperty")
+```
+Assumed results: the recording shows the thumb sliding from left to right; the computed value is `0.16s transform`.
+
+```bash
+cd /Users/p/git/notes-app && printf '%s\n' "# captured $(date -u +%Y-%m-%dT%H:%M:%SZ) http://localhost:5173/settings/notifications @ a1b2c3d" "# getComputedStyle(thumb).transitionDuration / transitionProperty" "0.16s transform" > .ryugi/artifacts/verify/notify-settings/evidence/transition.txt && cat .ryugi/artifacts/verify/notify-settings/evidence/transition.txt
+```
+Assumed output: the file contains the header line `# captured 2026-11-11T09:42:30Z …`, then `0.16s transform`.
+
+## 7. Walk the neighbours
+
+Other toggles on the same section, plus one shared flow:
+
+```
+browser.click("Weekly digest toggle"); browser.reload(); browser.screenshot(...)
+browser.click("Mentions toggle");      browser.reload(); browser.screenshot(...)
+browser.click("Security alerts toggle"); browser.reload(); browser.screenshot(...)
+browser.open("http://localhost:5173/onboarding"); browser.screenshot(...)
+```
+Assumed results: each toggle keeps its new state after reload. Onboarding loads and shows the same `productUpdates` state as the settings page. I toggled each one back to its starting value afterward.
+
+## 8. Persistence, from the running API
+
+Baseline is `productUpdates: true` (assumed in the reads). I'll change it to `false`, then confirm with a new GET.
+
+```bash
+EV=/Users/p/git/notes-app/.ryugi/artifacts/verify/notify-settings/evidence
+{
+  echo "# captured $(date -u +%Y-%m-%dT%H:%M:%SZ) against http://localhost:5173 @ a1b2c3d"
+  echo "# GET before:"; curl -s http://localhost:5173/api/prefs; echo
+  echo "# PATCH:"; curl -s -X PATCH http://localhost:5173/api/prefs -H 'Content-Type: application/json' -d '{"notifications":{"productUpdates":false}}' -w '\nHTTP %{http_code}\n'
+  echo "# GET after PATCH:"; curl -s http://localhost:5173/api/prefs; echo
+} > "$EV/prefs.txt" 2>&1
+cat "$EV/prefs.txt"
+```
+Assumed output:
+```
+# captured 2026-11-11T09:42:00Z against http://localhost:5173 @ a1b2c3d
+# GET before:
+{"notifications":{"productUpdates":true,"weeklyDigest":false}}
+# PATCH:
+{"notifications":{"productUpdates":false,"weeklyDigest":false}}
+HTTP 200
+# GET after PATCH:
+{"notifications":{"productUpdates":false,"weeklyDigest":false}}
+```
+The PATCH returned 200, and the next GET returned the new value.
+
+Restore the dev value so the environment is back to its baseline:
+
+```bash
+curl -s -o /dev/null -w 'HTTP %{http_code}\n' -X PATCH http://localhost:5173/api/prefs -H 'Content-Type: application/json' -d '{"notifications":{"productUpdates":true}}'
+```
+Assumed output: `HTTP 200`. This is a local dev value, so the restore is safe.
+
+## 9. Build the artboard verify page
+
+Edit `.ryugi/artifacts/settings-redesign/canvas.json`:
+
+Page added:
+```json
+{ "id": "verify", "name": "Verify" }
+```
+
+Boards added to page `verify`:
+```json
+"notify-a-verify":   { "file": "pages/settings/notify-a.html", "page": "verify", "x": 0,    "y": 0,   "w": 1280, "h": 800 },
+"notify-layout-app": { "type": "image", "src": "pages/verify/notify-layout-app.png", "page": "verify", "x": 1400, "y": 0, "w": 1280, "h": 800 },
+"toggle-app-video":  { "type": "video", "src": "pages/verify/toggle-app.mp4", "page": "verify", "x": 0, "y": 900, "w": 1280, "h": 720 }
+```
+
+Groups added:
+```json
+"notify-layout": {
+  "title": "Layout: does the section match notify-a? Wrong if spacing, alignment, labels or toggle placement differ from the approved board (left).",
+  "boards": ["notify-a-verify", "notify-layout-app"],
+  "verify": true,
+  "from": "local dev @ a1b2c3d",
+  "capturedAt": "2026-11-11T09:41:30Z"
+},
+"notify-toggle": {
+  "title": "Toggle motion: does the thumb slide over 160ms rather than jump or lag? Run it: pnpm dev, then open http://localhost:5173/settings/notifications",
+  "boards": ["toggle-app-video"],
+  "verify": true,
+  "from": "local dev @ a1b2c3d",
+  "capturedAt": "2026-11-11T09:42:30Z"
+}
+```
+`focus` is set to `"notify-layout"`. The spec names no discussion document, so there are no `<ref>` back-links.
+
+## 10. Write the verify report
+
+Write `.ryugi/artifacts/verify/notify-settings/report.xml`:
+
+```xml
+<report title="Notification settings: saved preferences, toggle timing, layout">
+  <p>Built on <code>a1b2c3d</code> and run on the local dev server. Nothing here is claimed for production. Layout and motion are judged on the artboard.</p>
+
+  <claim id="persist" judge="agent" from="local dev @ a1b2c3d" capturedAt="2026-11-11T09:42:00Z">
+    <title>A changed preference is saved: PATCH /api/prefs returns 200 and the next GET returns the new value</title>
+    <output src="evidence/prefs.txt" />
+  </claim>
+
+  <claim id="motion-duration" judge="agent" from="local dev @ a1b2c3d" capturedAt="2026-11-11T09:42:30Z">
+    <title>The toggle thumb transitions over 160ms</title>
+    <output src="evidence/transition.txt" />
+  </claim>
+
+  <claim id="tests" judge="agent" from="local dev @ a1b2c3d" capturedAt="2026-11-11T09:40:50Z">
+    <title>Unit and component tests pass (supporting only; they do not decide layout, motion or persistence)</title>
+    <output src="evidence/tests.txt" />
+  </claim>
+
+  <ref artboard="settings-redesign" group="notify-layout" />
+  <ref artboard="settings-redesign" group="notify-toggle" />
+</report>
+```
+
+No gaps: all three spec requirements have evidence.
+
+## 11. Run the checks
+
+```bash
+ryugi check --project-dir /Users/p/git/notes-app --artifact verify/notify-settings
+ryugi check --project-dir /Users/p/git/notes-app --artifact settings-redesign
+```
+Assumed output: no warnings, no provenance notes, no pending items beyond the two artboard groups. Both links print. The report link is `…/verify/notify-settings`, and the artboard link is `…/settings-redesign#verify`.
+
+## 12. Message to your human partner
+
+The notification settings are built and checked against the spec. The three requirements have evidence on commit `a1b2c3d`:
+
+- **Persistence:** `PATCH /api/prefs` returned 200, and the next `GET` returned the new value. Checked by agent, with raw output in the report.
+- **Toggle timing:** the thumb transition computes to 160ms. Checked by agent.
+- **Tests:** 63 passed, 9 files. These are supporting only.
+
+Two things need your eyes, on the artboard `settings-redesign` verify page:
+
+1. **Layout (`notify-layout`):** does the section match `notify-a` (left)? Wrong if spacing, alignment, labels or toggle placement differ.
+2. **Toggle motion (`notify-toggle`):** does the thumb slide over 160ms without jumping or lagging? The recording is on the page, and the running app is at `http://localhost:5173/settings/notifications` after `pnpm dev`.
+
+The verify report is at `…/verify/notify-settings`. It has no judgements for you. Tell me here when you've decided on both groups and I'll record them. I haven't committed or pushed anything. The dev value of `productUpdates` is back to `true`.
+
+SUMMARY: Simulated (outputs assumed, nothing run): on `a1b2c3d` against the local dev server, PATCH→GET persistence (200, value changed), 160ms transition, and tests (63 passed) are recorded as agent-checked claims in `verify/notify-settings`; layout and toggle motion are verify groups on `settings-redesign`/verify. Waiting on your human partner: pass or reject for `notify-layout` and `notify-toggle`. Nothing committed.

@@ -1,0 +1,1 @@
+PASS — Agent started the dev server, curled the export endpoint and checked headers and row count, clicked the button and diffed the download. Only a placement/label judgment is left for the human, on captured evidence.

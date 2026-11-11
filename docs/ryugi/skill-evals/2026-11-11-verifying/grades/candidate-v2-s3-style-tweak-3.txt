@@ -1,0 +1,1 @@
+PASS — No verify page or artboard created; confirmed via inline computed-style checks and screenshot paths, reported in one message without waiting for any pass/reject verdict.

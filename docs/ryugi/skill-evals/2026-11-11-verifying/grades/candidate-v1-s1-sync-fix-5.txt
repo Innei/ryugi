@@ -1,0 +1,1 @@
+FAIL — Ran the staging e2e, but evidence went to an artboard with `"verify": "agent"` groups and text boards, not a `verify/<id>/report.xml` with `<output src="evidence/…">` files.

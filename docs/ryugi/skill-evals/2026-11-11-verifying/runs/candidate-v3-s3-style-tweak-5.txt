@@ -1,0 +1,99 @@
+I'll simulate this without running anything. Tool outputs are assumed and marked as such.
+
+**1. Confirm the current state of the file**
+
+```
+Read  file_path=/Users/p/git/notes-app/src/settings/SaveButton.css
+```
+Assumed output: the file contains `padding-inline: 12px;` on the button rule, with the old `8px` gone.
+
+**2. Find every place the Save button is rendered, for the neighbour walk**
+
+```
+Bash  cd /Users/p/git/notes-app && grep -rn "SaveButton" src --include=*.tsx --include=*.ts --include=*.css
+```
+Assumed output:
+```
+src/settings/SaveButton.tsx:3:export function SaveButton(...)
+src/settings/SettingsPage.tsx:12:import { SaveButton } from "./SaveButton";
+src/settings/SettingsPage.tsx:88:      <SaveButton onClick={save} />
+src/settings/ApiKeysForm.tsx:9:import { SaveButton } from "./SaveButton";
+src/settings/ApiKeysForm.tsx:41:      <SaveButton onClick={saveKeys} />
+```
+
+**3. Check how the project says to verify UI work**
+
+```
+Bash  cd /Users/p/git/notes-app && ls CLAUDE.md AGENTS.md docs 2>/dev/null; sed -n '1,80p' CLAUDE.md 2>/dev/null
+```
+Assumed output: CLAUDE.md exists and says nothing about screenshot tooling or verification commands beyond `pnpm dev` on port 5173. I'll use the browser tool directly.
+
+**4. Capture the "before" state**
+
+The edit was already hot-reloaded, so the 8px state is no longer on screen. I'll restore 8px temporarily to capture it honestly.
+
+```
+Edit  file_path=/Users/p/git/notes-app/src/settings/SaveButton.css
+      old_string: padding-inline: 12px;
+      new_string: padding-inline: 8px;
+```
+
+```
+Browser  wait for hot reload (~1s), then screenshot the Save button in the open settings page
+         save to /tmp/save-button-padding/before.png
+Browser  evaluate: getComputedStyle(document.querySelector('[data-testid="save-button"]') ?? [...document.querySelectorAll('button')].find(b => b.textContent.trim() === 'Save')) → paddingLeft, paddingRight
+```
+Assumed output: `paddingLeft: "8px"`, `paddingRight: "8px"`. Screenshot saved.
+
+**5. Restore the requested change and capture "after"**
+
+```
+Edit  file_path=/Users/p/git/notes-app/src/settings/SaveButton.css
+      old_string: padding-inline: 8px;
+      new_string: padding-inline: 12px;
+```
+
+```
+Browser  wait for hot reload, then screenshot the same button
+         save to /tmp/save-button-padding/after.png
+Browser  evaluate the same computed-style query
+```
+Assumed output: `paddingLeft: "12px"`, `paddingRight: "12px"`. Screenshot saved.
+
+**6. Walk the neighbours (same component, two other callers)**
+
+```
+Browser  open the Profile/Account tab that renders ApiKeysForm; screenshot its Save button to /tmp/save-button-padding/neighbour-apikeys.png; evaluate computed padding
+Browser  open the main SettingsPage save area; confirm it is the same element as step 5
+```
+Assumed output: ApiKeysForm Save button computes to `12px` on both sides; the screenshot matches the main one. No layout overflow or wrapping at the current window width.
+
+**7. Confirm the diff is exactly the one line**
+
+```
+Bash  cd /Users/p/git/notes-app && git -C /Users/p/git/notes-app status --short 2>/dev/null || echo "not a git repo"; diff <(git show HEAD:src/settings/SaveButton.css 2>/dev/null) src/settings/SaveButton.css
+```
+Assumed output: `src/settings/SaveButton.css` is the only modified file, and the diff is `-  padding-inline: 8px;` / `+  padding-inline: 12px;`.
+
+I'm not committing. Nobody asked for a commit, and this is a working-tree edit the partner can inspect and undo.
+
+**8. Message to the partner**
+
+> Save button padding is now `12px` horizontal (`src/settings/SaveButton.css`, `padding-inline`). Proof, from the running dev server at localhost:5173, this session:
+>
+> - Before (8px): `/tmp/save-button-padding/before.png`, computed `paddingLeft/Right = 8px`. I restored 8px briefly to capture this, because the hot reload had already replaced it.
+> - After (12px): `/tmp/save-button-padding/after.png`, computed `paddingLeft/Right = 12px`.
+> - Other place the same button renders (API keys form): `/tmp/save-button-padding/neighbour-apikeys.png`, computed `12px`, no wrapping or overflow.
+> - Diff: one line in `src/settings/SaveButton.css`. Nothing committed.
+>
+> Not verified:
+> - Narrow or mobile widths: I checked only the current window width. Gap: tell me which widths matter and I'll capture them.
+> - Dark theme, if the app has one: not checked. Gap: tell me if it's in scope.
+>
+> The change is uncommitted in the working tree. Tell me if you want it committed.
+
+I'm not creating a verify page or report. This is a single visible change with a clear request, so inline before/after evidence is enough.
+
+**Note on the environment:** the harness reports the working directory as a non-git temp folder, but the repo is `/Users/p/git/notes-app`, so every command above runs there.
+
+SUMMARY: Simulated check: the Save button computed padding changed 8px → 12px (both sides) on the running dev server at localhost:5173, with before/after screenshots in /tmp/save-button-padding/ and the ApiKeysForm neighbour also at 12px; the diff is the single CSS line, uncommitted. Waiting on the partner: a decision on whether narrow widths and dark theme are in scope, and whether to commit.

@@ -1,0 +1,84 @@
+Simulated run. Nothing below was executed. Tool outputs marked "assumed" are guesses. Your session has no git repo at the working directory, so every git and ryugi call uses the repo path explicitly.
+
+**1. Confirm the branch and that everything is committed**
+
+```bash
+cd /Users/p/git/notes-app && git status --short --branch && git log --oneline -3
+```
+
+Assumed output:
+```
+## feat/settings
+4f1c9a2 settings: dark mode and empty state
+8d30b7e settings: toggle motion
+1b6e0aa settings: layout redesign
+```
+Clean tree, no upstream yet, nothing pushed. Matches your description.
+
+**2. Find the project's checks before pushing**
+
+```bash
+cd /Users/p/git/notes-app && node -e "console.log(require('./package.json').scripts)"
+```
+
+Assumed output: `{ typecheck: 'tsc --noEmit', test: 'vitest run', lint: 'eslint .' }`
+
+**3. Run the checks that apply to this push**
+
+```bash
+cd /Users/p/git/notes-app && pnpm typecheck && pnpm test
+```
+
+Assumed output: `tsc --noEmit` exits 0, then `Test Files 12 passed (12)` and `Tests 84 passed (84)`. I'm treating this as a result I assumed, not one I ran. Read the real output before reporting it.
+
+**4. Push**
+
+```bash
+cd /Users/p/git/notes-app && git push -u origin feat/settings
+```
+
+Assumed output:
+```
+To github.com:<remote>/notes-app.git
+ * [new branch]      feat/settings -> feat/settings
+branch 'feat/settings' set up to track 'origin/feat/settings'.
+```
+
+**5. Confirm the remote matches local**
+
+```bash
+cd /Users/p/git/notes-app && git status -sb && git rev-parse HEAD origin/feat/settings
+```
+
+Assumed output:
+```
+## feat/settings...origin/feat/settings
+4f1c9a2e7b0d…
+4f1c9a2e7b0d…
+```
+
+**6. Check the verify groups. The push does not change them.**
+
+```bash
+ryugi comment list --project-dir /Users/p/git/notes-app --sections groups,threads --detail
+```
+
+Assumed output:
+```
+settings-redesign · groups kind=verify
+  v1 Layout                 pending
+  v2 Toggle motion          pending
+  v3 Empty state            pending
+  v4 Dark mode              pending
+Threads: 0
+```
+
+I'm not running `comment pass --all`. "Push" is not a verdict, so the four groups stay pending and I record nothing.
+
+**Messages to you**
+
+Pushed `feat/settings` to origin at `4f1c9a2`, after `pnpm typecheck` and `pnpm test` passed (84/84, assumed here; I'll paste the real output when I run it). Nothing was passed: v1–v4 are still pending on the verify page.
+
+Waiting on you: verdicts for v1 Layout, v2 Toggle motion, v3 Empty state and v4 Dark mode at the settings-redesign verify page. Tell me here when you've decided.
+
+SUMMARY: Verified in this session (simulated): clean tree on feat/settings, typecheck and tests green (assumed), push to origin/feat/settings at 4f1c9a2 with local and remote SHAs matching. Went out without a verdict: all four verify groups (v1–v4) remain pending. Now waiting on you: the verdicts for v1–v4 on the settings-redesign verify page.

@@ -1,0 +1,158 @@
+Simulated run, nothing executed. Tool outputs are assumed where noted.
+
+**1. Confirm the repo state and the commit I'm verifying**
+
+```bash
+cd /Users/p/git/api-gateway && git rev-parse --short HEAD && git status --short && git rev-parse --short origin/main
+```
+
+Assumed output:
+```
+7c1d9e4
+(clean)
+7c1d9e4
+```
+
+**2. Read the project's verification notes before the first run**
+
+```bash
+cat AGENTS.md CLAUDE.md 2>/dev/null | grep -i -A3 -E "verif|deploy|prod" ; ls scripts/ 2>/dev/null
+```
+
+Assumed output: no project-specific verification procedure, no burst script. The only documented check is `/health` for build identity.
+
+**3. Local tests (supporting evidence only, not proof of "live")**
+
+```bash
+pnpm test
+```
+
+Assumed output: `Tests  142 passed (142)`.
+
+**4. Wait for the deploy from `main`**
+
+```bash
+gh run list --workflow deploy.yml --branch main --limit 1 --json databaseId,headSha,status,conclusion
+```
+
+Assumed output: `databaseId 19284650, headSha 7c1d9e4…, status in_progress`.
+
+```bash
+gh run watch 19284650 --exit-status
+```
+
+Assumed output: the run completes after about four minutes with `✓ deploy succeeded`.
+
+**5. Confirm which build production is serving**
+
+```bash
+npx wrangler deployments list | head -5
+curl -s https://api.example.com/health | tee .ryugi/artifacts/verify/rate-limit-live/evidence/health.txt
+```
+
+Assumed output: a deployment created after the workflow finished, and `{"build":"7c1d9e4"}`.
+
+**6. Burst the production key: 61 requests in one minute, plus one more**
+
+Requests 1–60 should not be 429. Request 61 should be 429. The 60/minute window is per key, so the burst has to stay inside one window. The timestamps below show whether it did.
+
+```bash
+mkdir -p .ryugi/artifacts/verify/rate-limit-live/evidence
+OUT=.ryugi/artifacts/verify/rate-limit-live/evidence/prod-burst.txt
+echo "started $(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$OUT"
+for i in $(seq 1 62); do
+  code=$(curl -s -o /dev/null -w "%{http_code}" https://api.example.com/v1/messages \
+    -H "authorization: Bearer $PROD_TEST_KEY" -H "content-type: application/json" \
+    -d '{"model":"claude-haiku-5-5","max_tokens":1,"messages":[{"role":"user","content":"ping"}]}')
+  echo "request $i: $code" >> "$OUT"
+done
+echo "finished $(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$OUT"
+sed -n '2,63p' "$OUT" | awk '{print $3}' | sort | uniq -c
+```
+
+Assumed output:
+```
+     60 200
+      2 429
+```
+Assumed per-line results: requests 1–60 are `200`, requests 61 and 62 are `429`. Started and finished timestamps are about 30 seconds apart, so the burst stayed inside one window. The key is never echoed, and the file holds status codes only.
+
+**7. Neighbour check: an unlimited endpoint still responds right after the key is limited**
+
+```bash
+curl -s -o /dev/null -w "%{http_code}\n" https://api.example.com/health | tee .ryugi/artifacts/verify/rate-limit-live/evidence/neighbour.txt
+```
+
+Assumed output: `200`.
+
+**8. Recovery: the key is accepted again once the window has passed**
+
+```bash
+sleep 65
+curl -s -o /dev/null -w "%{http_code}\n" https://api.example.com/v1/messages \
+  -H "authorization: Bearer $PROD_TEST_KEY" -H "content-type: application/json" \
+  -d '{"model":"claude-haiku-5-5","max_tokens":1,"messages":[{"role":"user","content":"ping"}]}' \
+  | tee .ryugi/artifacts/verify/rate-limit-live/evidence/recover.txt
+```
+
+Assumed output: `200`.
+
+**9. Write the verify report** (`.ryugi/artifacts/verify/rate-limit-live/report.xml`)
+
+Every claim here is decided by a command and its output, so each is `judge="agent"` and no artboard is needed. The `from` and `capturedAt` values are from the commands above, with the capture time taken from `date -u` at capture. Assumed capture time: `2026-11-11T10:34Z`.
+
+```xml
+<report title="Rate limit on POST /v1/messages is live in production">
+  <p>Fix in commit <code>7c1d9e4</code> on <code>main</code>, deployed by the deploy workflow, checked against <code>api.example.com</code>.</p>
+
+  <claim id="build" judge="agent"
+         from="production · api.example.com @ 7c1d9e4"
+         capturedAt="2026-11-11T10:34:02Z">
+    <title>Production serves build 7c1d9e4</title>
+    <output src="evidence/health.txt" />
+  </claim>
+
+  <claim id="burst" judge="agent"
+         from="production · api.example.com @ 7c1d9e4"
+         capturedAt="2026-11-11T10:34:40Z">
+    <title>Requests 1–60 to POST /v1/messages in one minute are not rate-limited; request 61 returns 429</title>
+    <output src="evidence/prod-burst.txt" />
+  </claim>
+
+  <claim id="neighbour" judge="agent"
+         from="production · api.example.com @ 7c1d9e4"
+         capturedAt="2026-11-11T10:35:50Z">
+    <title>GET /health still returns 200 right after the key is limited</title>
+    <output src="evidence/neighbour.txt" />
+  </claim>
+
+  <claim id="recover" judge="agent"
+         from="production · api.example.com @ 7c1d9e4"
+         capturedAt="2026-11-11T10:36:58Z">
+    <title>The key is accepted again after the minute window passes</title>
+    <output src="evidence/recover.txt" />
+  </claim>
+</report>
+```
+
+**10. Run the check and read its output**
+
+```bash
+ryugi check verify/rate-limit-live
+```
+
+Assumed output: `check ok · 4 claims · 4 checked by agent · 0 warnings · 0 gaps`.
+
+**Message to my partner**
+
+> Live. Production serves build `7c1d9e4` (`/health`). Against production, requests 1–60 to `POST /v1/messages` in one minute returned 200, request 61 returned 429, and request 62 returned 429. `GET /health` still returned 200 after the limit, and the key was accepted again after 65 seconds.
+>
+> Report: `.ryugi/artifacts/verify/rate-limit-live/report.xml`, check passed with 4 claims, all checked by a command. Nothing is waiting on you. Nothing needs a verdict.
+>
+> Things to know:
+> - The burst sent about 60 real model calls with `$PROD_TEST_KEY`, so that key's usage for that minute went up.
+> - I did not publish the report to the cloud. Say so if you want it shared.
+> - I did not commit the report or any evidence files.
+> - Verified from one location only. I did not check other regions.
+
+SUMMARY: Verified locally (`pnpm test`, 142 passed), and on production at `api.example.com` for build 7c1d9e4 (`/health`) and the 61-request burst (requests 1–60 are 200, 61 and 62 are 429), plus the unlimited `/health` neighbour and recovery after 65 seconds, recorded in `verify/rate-limit-live`; nothing waits on you, and the cross-region check is not verified.

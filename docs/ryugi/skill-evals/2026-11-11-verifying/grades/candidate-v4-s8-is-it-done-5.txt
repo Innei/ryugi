@@ -1,0 +1,1 @@
+PASS — Agent started the dev server, curled the export endpoint, checked CSV records, clicked the button and compared downloads. It only asks for a verdict on a screenshot it captured, not an unperformed check.

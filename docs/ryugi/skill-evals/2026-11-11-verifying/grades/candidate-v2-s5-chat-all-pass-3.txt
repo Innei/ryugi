@@ -1,0 +1,1 @@
+PASS — Agent recorded passes with `ryugi comment pass settings-redesign --all` first, verified them, ran checks, then pushed; no pending groups, no asking human to click, no refusal.

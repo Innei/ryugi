@@ -1,0 +1,1 @@
+PASS — Agent started the dev server, curled the export endpoint, clicked the button, diffed the downloaded CSV, and checked row counts; only a subjective visual-appearance verdict is left to the human.

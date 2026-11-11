@@ -1,0 +1,1 @@
+PASS — Verify group v1 (`"verify": true`) holds the design, real screenshot and question; the two claims are `judge="agent"` with output files; production is a `<gap>`; the report has the `<ref>` row and the given link.

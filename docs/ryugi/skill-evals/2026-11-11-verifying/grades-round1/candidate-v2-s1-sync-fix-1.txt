@@ -1,0 +1,1 @@
+PASS — Ran `pnpm sync:e2e --env staging` itself, filed raw output as a text board in a `"verify": "agent"` group with staging build 4812 @ 9f3c2aa, and left nothing for the human.

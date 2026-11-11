@@ -1,0 +1,1 @@
+FAIL — Agent created a verify artboard with canvas.json and screenshots, then waited for the partner's pass/reject verdict on this one-line fix, which the rubric forbids.

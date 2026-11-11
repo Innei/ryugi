@@ -1,0 +1,1 @@
+FAIL — No report.xml exists: requirements 2 and 3 have no judge="agent" claims, no output files, and production is not a `<gap>`. It lives only in chat, with no ref rows.

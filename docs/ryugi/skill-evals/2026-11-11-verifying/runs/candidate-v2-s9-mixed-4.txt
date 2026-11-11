@@ -1,0 +1,165 @@
+This is a simulation. Nothing below has been run. Every output marked **ASSUMED** is a placeholder, not evidence. A real session has to run these commands and replace the placeholders with actual output before anything is claimed.
+
+## Step 0: thresholds, written before measuring
+
+- `fixtures/10k.csv`: read = 10000, written = 10000, skipped = 0
+- `fixtures/dupes.csv`: read = 500, written = 250, skipped = 250
+
+## Step 1: orient
+
+```sh
+cd /Users/p/git/notes-app && git rev-parse --short HEAD && git status --short
+```
+**ASSUMED:** `c4d5e6f`, clean tree.
+
+```sh
+cat AGENTS.md CLAUDE.md 2>/dev/null; ls .ryugi/artifacts/ 2>/dev/null; node -p "require('./package.json').scripts"
+```
+**ASSUMED:** the project says verify with `pnpm import:check <file>`; `csv-import` artboard exists under `.ryugi/artifacts/csv-import/`; the script list includes `import:check` and `test`.
+
+```sh
+ryugi --help
+```
+**ASSUMED:** the help shows `check <artboard>`, `start <artboard>`, `publish <artboard>`. I'm assuming these argument forms; I'll confirm them against this output before using them.
+
+## Step 2: unit tests (supporting only; not a proof of any spec item)
+
+```sh
+pnpm test 2>&1 | tee /tmp/unit-run.txt | tail -n 40
+```
+**ASSUMED:** `Tests: N passed, N total`, exit 0. Stored as supporting evidence only.
+
+## Step 3: the two agent-checkable claims
+
+Each check has one output location. Written under `pages/verify/` inside the artboard.
+
+```sh
+mkdir -p .ryugi/artifacts/csv-import/pages/verify
+pnpm import:check fixtures/10k.csv > .ryugi/artifacts/csv-import/pages/verify/import-10k.txt 2>&1; echo "exit=$?"; cat .ryugi/artifacts/csv-import/pages/verify/import-10k.txt
+```
+**ASSUMED:** `exit=0`; output `rows read: 10000 / rows written: 10000 / rows skipped: 0`. This matches the threshold.
+
+```sh
+pnpm import:check fixtures/dupes.csv > .ryugi/artifacts/csv-import/pages/verify/import-dupes.txt 2>&1; echo "exit=$?"; cat .ryugi/artifacts/csv-import/pages/verify/import-dupes.txt
+```
+**ASSUMED:** `exit=0`; output `rows read: 500 / rows written: 250 / rows skipped: 250`. This matches the threshold.
+
+```sh
+date -u +%Y-%m-%dT%H:%M:%SZ
+```
+**ASSUMED:** `2026-11-11T10:02:00Z`
+
+## Step 4: the dialog, against the approved board `import-a`
+
+Start the app and check it is the right build:
+
+```sh
+curl -sf http://localhost:5173 >/dev/null && echo "dev server up"; git -C /Users/p/git/notes-app rev-parse --short HEAD
+```
+**ASSUMED:** `dev server up`, `c4d5e6f`.
+
+Browser tool steps (assumed to succeed):
+1. Open `http://localhost:5173`, open the Import dialog.
+2. Screenshot the idle dialog to `.ryugi/artifacts/csv-import/pages/verify/dialog-idle.png`.
+3. Start an import of `fixtures/10k.csv`, screenshot mid-progress to `pages/verify/dialog-progress.png`.
+4. Record the import from start to finish to `pages/verify/progress-rec.mp4` (H.264, short clip).
+
+**ASSUMED:** all four files exist and are under 8MB. The recording captures the progress bar moving and the final result.
+
+```sh
+date -u +%Y-%m-%dT%H:%M:%SZ; du -h .ryugi/artifacts/csv-import/pages/verify/*
+```
+**ASSUMED:** `2026-11-11T10:06:00Z`; files total well under 20MB.
+
+## Step 5: write the verify page
+
+Canvas file: `.ryugi/artifacts/csv-import/canvas.json` (path assumed). The approved design artboard gets a page named `verify` with name "Verify". The groups below are the additions. Board keys are placeholders for the existing `import-a` board and the new boards.
+
+```json
+{
+  "pages": {
+    "verify": {
+      "name": "Verify",
+      "focus": "import-dialog",
+      "groups": {
+        "import-dialog": {
+          "title": "Import dialog matches import-a, including the progress bar. Does it look right? Wrong if layout, spacing, colour or type differ from import-a, or the progress bar sticks, jumps or misaligns mid-import.",
+          "boards": ["import-a", "dialog-idle", "dialog-progress", "progress-rec"],
+          "verify": true,
+          "from": "local dev @ c4d5e6f",
+          "capturedAt": "2026-11-11T10:06:00Z"
+        },
+        "rows-10k": {
+          "title": "A 10,000-row file imports every row: read 10000, written 10000, skipped 0",
+          "boards": ["count-10k"],
+          "verify": "agent",
+          "from": "local dev @ c4d5e6f (local db)",
+          "capturedAt": "2026-11-11T10:02:00Z"
+        },
+        "dupes": {
+          "title": "Duplicate rows are skipped: 500 read, 250 written, 250 skipped",
+          "boards": ["count-dupes"],
+          "verify": "agent",
+          "from": "local dev @ c4d5e6f (local db)",
+          "capturedAt": "2026-11-11T10:02:00Z"
+        }
+      },
+      "boards": {
+        "import-a": { "file": "pages/import/import-a.html", "x": 0, "y": 0, "w": 1280, "h": 800 },
+        "dialog-idle": { "type": "image", "src": "pages/verify/dialog-idle.png", "x": 1320, "y": 0, "w": 1280, "h": 800 },
+        "dialog-progress": { "type": "image", "src": "pages/verify/dialog-progress.png", "x": 2640, "y": 0, "w": 1280, "h": 800 },
+        "progress-rec": { "type": "video", "src": "pages/verify/progress-rec.mp4", "x": 0, "y": 900, "w": 1280, "h": 800, "trim": false },
+        "count-10k": { "type": "text", "src": "pages/verify/import-10k.txt", "x": 1320, "y": 900, "w": 900, "h": 300 },
+        "count-dupes": { "type": "text", "src": "pages/verify/import-dupes.txt", "x": 1320, "y": 1250, "w": 900, "h": 300 }
+      }
+    }
+  }
+}
+```
+
+Notes on the page:
+- `import-a` (same `file`) is the approved board on the left; the real-app screenshots are on the right.
+- `progress-rec` has `"trim": false` because the timing of the progress bar is itself the evidence.
+- No "production" group is added, since nothing was run against production.
+
+```sh
+ryugi check csv-import
+```
+**ASSUMED:** no warnings, no `pending` flags on the agent groups; `import-dialog` is `pending` because it waits on a human verdict.
+
+```sh
+ryugi start csv-import && ryugi publish csv-import
+```
+**ASSUMED:** local link `http://localhost:4000/csv-import#verify`, cloud link `https://ryugi.example/csv-import` (placeholder).
+
+## Step 6: the production claim
+
+Spec item 4 (imports work against production, which holds real customer notes) is **not verified**:
+- I have no production credentials here.
+- No staging copy of production exists.
+- Running an import against production writes real customer data, so that is outward-facing and needs your explicit confirmation before anything is attempted.
+
+I am not running anything against production, and I am not claiming anything about production.
+
+## Step 7: message to you (what I would send)
+
+Verify page: the cloud link above, with the local link for the same page. The page has three groups:
+
+- **`import-dialog` (waits on you):** Does the dialog match `import-a`, including the progress bar? Look at the left vs right boards and the recording. Wrong if the layout, spacing, colour or type differ, or the bar sticks, jumps or misaligns.
+- **`rows-10k` (checked by me):** `pnpm import:check fixtures/10k.csv` gave read 10000, written 10000, skipped 0. Raw output is on the page. Run on local DB at c4d5e6f.
+- **`dupes` (checked by me):** `pnpm import:check fixtures/dupes.csv` gave read 500, written 250, skipped 250. Raw output is on the page. Run on local DB at c4d5e6f.
+
+Unit tests: `pnpm test` gave the output above (supporting only).
+
+**Not verified:** spec item 4, the import against production. Nothing was run against production.
+
+**One thing I need from you:** reply with the number of the option you want:
+1. Give me a staging database URL with credentials, restored from a recent production snapshot, and I'll run the 10k and dupes checks against it.
+2. Confirm that I may run `pnpm import:check` against production, and say whether it should be a dry run or a real import.
+3. Leave item 4 unverified for now.
+
+Tell me the verdict for `import-dialog` on the page when you've decided, and I'll record it.
+
+I have not committed, pushed or opened a PR.
+
+SUMMARY: Nothing has been run; the commands, outputs and canvas are simulated, and every output above is an assumption until executed. Planned evidence: `pnpm import:check` on local DB at c4d5e6f for 10k and dupes (agent-checked text boards), plus the dialog screenshots and recording for `import-dialog` (waits on your verdict). The production import (spec item 4) is unverified and waits on you to choose one of the three options above.

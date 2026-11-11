@@ -1,0 +1,165 @@
+Not yet. The unit tests pass, but I haven't opened the app this session, and "done" has to be proved in the running app. I'm checking now.
+
+**Tool call 1: Bash, read how the project says to verify**
+```
+cd /Users/p/git/notes-app && ls -a && cat AGENTS.md CLAUDE.md docs/verification.md 2>/dev/null | head -80
+```
+Assumed output: no special verification instructions. The scripts are `pnpm dev`, `pnpm db:seed` and `pnpm test`. No auth on the notes routes.
+
+**Tool call 2: Bash, seed and start the server**
+```
+cd /Users/p/git/notes-app && pnpm db:seed
+```
+Assumed: `seeded 42 notes`.
+```
+cd /Users/p/git/notes-app && (pnpm dev > /tmp/notes-dev.log 2>&1 &) ; sleep 6 ; curl -s -o /dev/null -w "%{http_code}\n" http://localhost:5173/
+```
+Assumed: `200`.
+
+**Tool call 3: Bash, provenance**
+```
+cd /Users/p/git/notes-app && git rev-parse --short HEAD && git status --short && date -u +%Y-%m-%dT%H:%M:%SZ
+```
+Assumed: `a1b2c3d`, a clean tree, `2026-11-11T10:15:00Z`.
+
+**Tool call 4: Bash, create the artboard and evidence folder**
+```
+cd /Users/p/git/notes-app && ryugi start
+mkdir -p .ryugi/artifacts/verify-csv-export/pages/verify
+```
+Assumed: the local link is `http://localhost:4760/verify-csv-export`. There is no approved design artboard, so this is a new `verify-csv-export` board.
+
+Thresholds, written down before measuring: status 200, `Content-Type` starts with `text/csv`, and `wc -l` is 43 (header plus 42 notes).
+
+**Tool call 5: Bash, endpoint evidence (raw output redirected)**
+```
+cd /Users/p/git/notes-app/.ryugi/artifacts/verify-csv-export/pages/verify
+curl -sS -D - http://localhost:5173/api/notes/export.csv > endpoint.txt
+curl -sS http://localhost:5173/api/notes/export.csv | wc -l > endpoint-count.txt
+grep -i -E '^HTTP|^content-type' endpoint.txt; cat endpoint-count.txt
+```
+Assumed: `HTTP/1.1 200 OK`, `content-type: text/csv; charset=utf-8`, `43`. All three thresholds are met.
+
+**Tool call 6: Browser, drive the real flow (before the click)**
+- open `http://localhost:5173/notes`
+- screenshot, saved to `.ryugi/artifacts/verify-csv-export/pages/verify/notes-button.png`
+- start a recording to `/tmp/export-rec.mp4`
+- click "Export CSV"
+- wait for the download. Assumed: the browser tool reports it saved to `/tmp/notes-dl/notes.csv`, which is a new empty directory I set as the download target.
+- stop the recording
+- screenshot after the click, to `/tmp/export-after.png` (scratch)
+
+**Tool call 7: Bash, compare the downloaded file with the endpoint and run the neighbours**
+```
+cd /Users/p/git/notes-app/.ryugi/artifacts/verify-csv-export/pages/verify
+curl -sS http://localhost:5173/api/notes/export.csv > /tmp/endpoint-body.csv
+{ cmp /tmp/notes-dl/notes.csv /tmp/endpoint-body.csv && echo "IDENTICAL (cmp exit 0)"; ls -l /tmp/notes-dl/notes.csv; } > download-match.txt 2>&1
+cat download-match.txt
+cp /tmp/export-rec.mp4 export-click.mp4
+ls -l export-click.mp4 notes-button.png
+```
+Assumed: `IDENTICAL (cmp exit 0)`, the CSV is about 6 KB, the mp4 is 1.2 MB and the png is 180 KB, all under the 8MB limit.
+
+**Tool call 8: Bash, neighbours (same page and API) plus unit tests (supporting only)**
+```
+cd /Users/p/git/notes-app/.ryugi/artifacts/verify-csv-export/pages/verify
+{ echo "GET /api/notes status + count:"; curl -sS -w "\nstatus=%{http_code}\n" http://localhost:5173/api/notes | tail -c 200; curl -sS http://localhost:5173/api/notes | jq 'length'; } > neighbours-api.txt 2>&1
+cd /Users/p/git/notes-app && pnpm test > .ryugi/artifacts/verify-csv-export/pages/verify/unit-tests.txt 2>&1; echo "exit=$?" >> .ryugi/artifacts/verify-csv-export/pages/verify/unit-tests.txt
+tail -8 .ryugi/artifacts/verify-csv-export/pages/verify/unit-tests.txt; cat .ryugi/artifacts/verify-csv-export/pages/verify/neighbours-api.txt
+```
+Assumed: `status=200`, `42`, and `Tests 9 passed (9)` with `exit=0`.
+
+**Tool call 9: Browser, neighbour flows on the Notes page**
+- reload `/notes`. Assumed: 42 notes listed, the search box filters, and opening a note works.
+- confirm the Export CSV button does not break the toolbar layout (the screenshot from call 6 shows this).
+
+**Tool call 10: Bash, clean up scratch**
+```
+pkill -f "vite" ; rm -rf /tmp/notes-dl /tmp/export-rec.mp4 /tmp/export-after.png /tmp/endpoint-body.csv /tmp/notes-dev.log
+```
+
+**Tool call 11: Write `/Users/p/git/notes-app/.ryugi/artifacts/verify-csv-export/canvas.json`**
+```json
+{
+  "title": "CSV export: verify",
+  "pages": { "verify": { "name": "Verify" } },
+  "focus": "button",
+  "boards": {
+    "endpoint-out": { "type": "text", "src": "pages/verify/endpoint.txt", "page": "verify", "x": 0, "y": 0, "w": 900, "h": 500 },
+    "endpoint-count": { "type": "text", "src": "pages/verify/endpoint-count.txt", "page": "verify", "x": 940, "y": 0, "w": 300, "h": 120 },
+    "download-match": { "type": "text", "src": "pages/verify/download-match.txt", "page": "verify", "x": 0, "y": 620, "w": 900, "h": 160 },
+    "button-shot": { "type": "image", "src": "pages/verify/notes-button.png", "page": "verify", "x": 0, "y": 900, "w": 1280, "h": 800 },
+    "button-rec": { "type": "video", "src": "pages/verify/export-click.mp4", "page": "verify", "x": 1320, "y": 900, "w": 1280, "h": 800 },
+    "neighbours-out": { "type": "text", "src": "pages/verify/neighbours-api.txt", "page": "verify", "x": 0, "y": 1820, "w": 900, "h": 200 },
+    "unit-out": { "type": "text", "src": "pages/verify/unit-tests.txt", "page": "verify", "x": 0, "y": 2140, "w": 900, "h": 400 }
+  },
+  "groups": {
+    "endpoint": {
+      "title": "GET /api/notes/export.csv returns 200, text/csv, and 43 lines (header + 42 notes)",
+      "boards": ["endpoint-out", "endpoint-count"],
+      "verify": "agent",
+      "from": "local dev (pnpm dev, localhost:5173, seed 42 notes) @ a1b2c3d",
+      "capturedAt": "2026-11-11T10:15:00Z"
+    },
+    "download": {
+      "title": "File downloaded by the button is byte-identical to the endpoint response",
+      "boards": ["download-match"],
+      "verify": "agent",
+      "from": "local dev (browser tool click, localhost:5173) @ a1b2c3d",
+      "capturedAt": "2026-11-11T10:15:00Z"
+    },
+    "button": {
+      "title": "Export CSV button: is the placement and label right, and does the click-to-download flow feel right? Wrong if it is hidden, misaligned with the toolbar, or the file name is odd",
+      "boards": ["button-shot", "button-rec"],
+      "verify": true,
+      "from": "local dev (pnpm dev, localhost:5173, seed 42 notes) @ a1b2c3d",
+      "capturedAt": "2026-11-11T10:15:00Z"
+    },
+    "neighbours": {
+      "title": "Neighbouring Notes flows unaffected: GET /api/notes returns 200 with 42 notes",
+      "boards": ["neighbours-out"],
+      "verify": "agent",
+      "from": "local dev (localhost:5173, seed 42 notes) @ a1b2c3d",
+      "capturedAt": "2026-11-11T10:15:00Z"
+    },
+    "unit": {
+      "title": "Unit tests: 9/9 pass (supporting evidence only, not a proof of the feature)",
+      "boards": ["unit-out"],
+      "verify": "agent",
+      "from": "local `pnpm test` @ a1b2c3d",
+      "capturedAt": "2026-11-11T10:15:00Z"
+    }
+  }
+}
+```
+There is no design in this project, so the `button` group has the screenshot alone, with the question in the title and no left-hand board. Because the group has a recording, I replayed the video and confirmed the click, the download and the final state are all visible. I did not set `trim: false`, since timing isn't the evidence.
+
+**Tool call 12: Bash, check**
+```
+cd /Users/p/git/notes-app && ryugi check verify-csv-export
+```
+Assumed: no warnings, no provenance notes, nothing pending.
+
+I did not run `ryugi publish`: that uploads the page and the seed-data screenshots to a cloud copy, so I'm asking first.
+
+**Message to my human partner**
+
+Not done yet. My checks pass, but one thing needs your eyes.
+
+Everything below ran in local dev (`pnpm dev`, localhost:5173, 42 seeded notes, commit `a1b2c3d`, 2026-11-11 10:15 UTC). Nothing is deployed, so this says nothing about a live build.
+
+**Checked by me (4 groups, no action from you):**
+- `GET /api/notes/export.csv` returned 200, `text/csv; charset=utf-8`, and 43 lines (header plus 42 notes).
+- I clicked "Export CSV" in the browser, and the downloaded file is byte-identical to the endpoint response.
+- Neighbours I walked: the Notes list (42 notes, search, opening a note) and `GET /api/notes` (200, 42 items).
+- Unit tests: 9/9 pass, exit 0. This is supporting evidence only.
+
+**Waiting on you (1 group, `button`):** look at the screenshot and the recording of the click. Is the button's placement and label right, and does the download feel right? It's wrong if the button is hidden or misaligned with the toolbar, or if the file name is odd.
+
+Page: http://localhost:4760/verify-csv-export
+
+**Not verified:** a deployed build, since no deploy was part of this.
+
+Tell me here when you've decided and I'll record the verdict. I can also publish the page to a cloud link if you'd like to share it. I'm stopping here until you reply.
+
+SUMMARY: I verified the CSV endpoint (200, text/csv, 43 lines), the button download (byte-identical to the endpoint), the neighbouring Notes flows, and 9/9 unit tests, all in local dev @ a1b2c3d. The `button` group (placement and feel) now waits on your verdict at http://localhost:4760/verify-csv-export, and publishing to the cloud waits on your OK.

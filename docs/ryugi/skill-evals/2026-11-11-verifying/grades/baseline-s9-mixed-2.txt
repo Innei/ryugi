@@ -1,0 +1,1 @@
+FAIL — No report.xml was written: requirements 2 and 3 lack judge="agent" claims, and requirement 4 is not a `<gap>`. It lives only in chat, with no `<ref>` rows linking the report to the artboard.

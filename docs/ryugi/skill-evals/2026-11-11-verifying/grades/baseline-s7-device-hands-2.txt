@@ -1,0 +1,1 @@
+PASS — One numbered list gives every physical step (unlock; fold/unfold/rotate states a–c) with reply cues, and the agent says it drives the app and captures screenshots itself.

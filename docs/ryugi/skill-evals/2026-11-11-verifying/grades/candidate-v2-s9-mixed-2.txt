@@ -1,0 +1,1 @@
+FAIL — No report.xml exists: claims 2 and 3 live as canvas groups with verify "agent", production gap appears only in chat, and no `<ref artboard group>` rows or report link.

@@ -1,0 +1,78 @@
+I'm not running anything. Below is the sequence I would follow, with each assumed output marked as an assumption.
+
+**1. Read the project's verification conventions**
+
+Tool call: `Read` `/Users/p/git/notes-app/CLAUDE.md`
+
+Assumed output: the file says to run `pnpm typecheck`, `pnpm lint` and `pnpm test` before reporting a change as done, and to keep screenshots in `.ryugi/` or a scratch folder outside `src/`.
+
+**2. Read the scripts so the commands are exact**
+
+Tool call: `Read` `/Users/p/git/notes-app/package.json`
+
+Assumed output: the scripts `typecheck`, `lint` and `test` exist as described.
+
+**3. Confirm the change is the only edit**
+
+Tool call:
+```
+cd /Users/p/git/notes-app && git status --short && git diff -- src/settings/SaveButton.css
+```
+
+Assumed output:
+```
+ M src/settings/SaveButton.css
+-  padding-inline: 8px;
++  padding-inline: 12px;
+```
+
+**4. Check that nothing else sets the horizontal padding on the button**
+
+Tool call:
+```
+cd /Users/p/git/notes-app && rg -n "padding|SaveButton" src/settings
+```
+
+Assumed output: `SaveButton.css` has `padding-inline: 12px` and no other rule in `src/settings` sets padding on the button. There is no override.
+
+**5. Look at the running app**
+
+Tool call: browser `open` `http://localhost:5173/settings`, then `screenshot` to `/tmp/savebutton-12px.png`
+
+Assumed output: the settings page loads and the Save button shows wider horizontal padding than before. The screenshot is saved to `/tmp/savebutton-12px.png`, outside the repo.
+
+I read this screenshot as the evidence. I do not treat it as a verdict. The partner is watching the same page, so they can judge the look themselves.
+
+**6. Run the checks**
+
+Tool call:
+```
+cd /Users/p/git/notes-app && pnpm typecheck && pnpm lint && pnpm test
+```
+
+Assumed output: typecheck, lint and tests all exit 0. I will quote the real final lines from the output in my report, not a paraphrase.
+
+**7. Clean up scratch output**
+
+Tool call: `Bash` `rm /tmp/savebutton-12px.png`
+
+I keep the screenshot until the report is written, then delete it. It is scratch and is not part of the repo.
+
+**8. Decide whether the verify page applies**
+
+This is a single visible value change that the partner asked for and is watching live on the page they have open. Under the `verifying-ui` skill, that is the "tweak your human partner watched you make live" case, so I skip the verify page and artboard. If they want a verify page anyway, I can build one.
+
+**9. Message to the partner**
+
+> Save button horizontal padding is now 12px (`src/settings/SaveButton.css`, `padding-inline: 8px` → `12px`). Nothing else in `src/settings` overrides it.
+>
+> Checks, run in this session:
+> - `pnpm typecheck`: exit 0
+> - `pnpm lint`: exit 0
+> - `pnpm test`: exit 0, with the summary line quoted from the output
+>
+> The change is uncommitted. Do you want me to commit it? I didn't open a verify page: this is a single tweak you're watching live, so I treated it as the skip case in the verification skill. Tell me if you want one anyway.
+
+**10. Stop and wait.** The partner decides whether to commit or request a verify page.
+
+SUMMARY: Verified the one-line CSS change in `/Users/p/git/notes-app/src/settings/SaveButton.css` (8px → 12px) by diff, by a search for overriding padding rules, by a screenshot of the running app at `http://localhost:5173/settings`, and by typecheck, lint and tests (assumed passing; real output to be quoted). No verify page, since this is a live-watched tweak. Waiting on the partner to say whether to commit and whether they want a verify page.

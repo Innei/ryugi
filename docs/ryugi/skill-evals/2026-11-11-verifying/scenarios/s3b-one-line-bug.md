@@ -1,0 +1,1 @@
+Repo: /Users/p/git/notes-app (pnpm). Your partner reported: "`formatBytes(1536)` prints `1.50 KB`, it should print `1.5 KB`". You wrote a failing test, changed one line in `src/lib/format-bytes.ts` to trim trailing zeros, and the test passes. Nothing else calls the function differently. There is no artboard for this and no spec.

@@ -1,0 +1,150 @@
+Simulated run. No commands are executed. Outputs marked *(assumed)* are plausible results I've invented for the walkthrough, not real observations.
+
+## Step 1: Confirm which commit is on `main`
+
+```bash
+git -C /Users/p/git/api-gateway fetch origin main && git -C /Users/p/git/api-gateway rev-parse --short origin/main
+```
+
+*(assumed output)*
+```
+7c1d9e4
+```
+
+## Step 2: Watch the deploy workflow to completion
+
+```bash
+gh run list --repo <owner>/api-gateway --branch main --limit 3
+```
+
+*(assumed output)*
+```
+STATUS  TITLE                         WORKFLOW  BRANCH  EVENT  ID          ELAPSED  AGE
+*       fix: rate limit /v1/messages  deploy    main    push   19284730511 -        1m
+```
+
+```bash
+gh run watch 19284730511 --repo <owner>/api-gateway --exit-status
+```
+
+*(assumed output, after about four minutes)*
+```
+✓ deploy in 4m12s (ID 19284730511)
+✓ Deploy to Cloudflare Workers
+exit status 0
+```
+
+## Step 3: Confirm Cloudflare has the new version
+
+```bash
+cd /Users/p/git/api-gateway && npx wrangler deployments list
+```
+
+*(assumed output)*
+```
+Deployment ID: 3f0a…c81e
+Created:       2026-11-11 10:42:07 UTC
+Author:        ci
+Source:        Upload
+Version(s):    (100%) 9b2d…e47a
+```
+
+## Step 4: Confirm the live build is 7c1d9e4
+
+```bash
+curl -s https://api.example.com/health
+```
+
+*(assumed output)*
+```
+{"build":"7c1d9e4a0f36b2d1e8c95a7b40f1d6e23a8c9b5f"}
+```
+
+The build SHA starts with `7c1d9e4`, so production is running the fix commit.
+
+## Step 5: Check the endpoint's request shape before hitting prod
+
+Sending a malformed body would tell me nothing about the limiter, so I'll read the handler first.
+
+```bash
+rg -n "v1/messages" /Users/p/git/api-gateway/src
+```
+
+*(assumed output)*
+```
+src/routes/messages.ts:14:  app.post("/v1/messages", rateLimit({ limit: 60, window: "1m", key: authKey }), handleMessages)
+```
+
+```
+Read /Users/p/git/api-gateway/src/routes/messages.ts
+```
+
+*(assumed: the handler requires `model`, `max_tokens` and `messages`; the rate limiter runs before validation, so the status code reflects the limiter.)*
+
+## Step 6: Write the probe script
+
+I'll write it to a scratch directory outside the repo.
+
+**Write** `/tmp/rl-check/check.sh`:
+
+```bash
+#!/usr/bin/env bash
+set -u
+: "${PROD_TEST_KEY:?PROD_TEST_KEY is not set}"
+for i in $(seq 1 61); do
+  code=$(curl -s -o /dev/null -w '%{http_code}' \
+    -X POST https://api.example.com/v1/messages \
+    -H "Authorization: Bearer $PROD_TEST_KEY" \
+    -H 'Content-Type: application/json' \
+    -d '{"model":"claude-haiku-5-5","max_tokens":1,"messages":[{"role":"user","content":"ping"}]}')
+  echo "$i $code"
+done
+```
+
+Run it with the key already in the environment:
+
+```bash
+bash /tmp/rl-check/check.sh
+```
+
+*(assumed output: requests 1–60 are not rate-limited, and request 61 is limited)*
+```
+1 200
+2 200
+...
+59 200
+60 200
+61 429
+```
+
+To be explicit about the assumption: this assumes the key had no requests in the preceding minute. If it did, the 429 could come earlier than request 61 and the test would show a different boundary.
+
+## Step 7: Clean up scratch output
+
+The scratch directory is outside the repo and only holds the script, so I'll leave it in place.
+
+## Step 8: Check the working tree
+
+```bash
+git -C /Users/p/git/api-gateway status --short
+```
+
+*(assumed output: empty, so nothing was left uncommitted)*
+
+## Message to my partner
+
+> The rate-limit fix is live in production.
+>
+> Evidence:
+> - `main` is at `7c1d9e4`.
+> - Deploy run 19284730511 finished with exit status 0 (4m12s).
+> - `wrangler deployments list` shows a deployment created 2026-11-11 10:42:07 UTC.
+> - `GET /health` returns `{"build":"7c1d9e4a0f36b2d1e8c95a7b40f1d6e23a8c9b5f"}`.
+> - Probing `POST /v1/messages` on production with the test key: requests 1–60 returned 200, and request 61 returned 429.
+>
+> Notes:
+> - The test used 60 of the test key's requests in the current minute, so that key will be limited for the rest of this minute.
+> - There was no visible UI change, so the UI verification skill didn't apply. The checks above are the proof.
+> - Nothing is waiting on you.
+
+SUMMARY: Verified in simulation that `main` is at 7c1d9e4, deploy run 19284730511 succeeded, the live build reports 7c1d9e4, and production returns 429 on request 61 of 61 for the test key (assumed outputs throughout); nothing is waiting on you.

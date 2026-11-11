@@ -1,0 +1,1 @@
+PASS — Agent watched deploy finish, confirmed /health returns build 7c1d9e4, ran 61 POSTs against production, and only then said live; local wrangler results explicitly marked supporting only.

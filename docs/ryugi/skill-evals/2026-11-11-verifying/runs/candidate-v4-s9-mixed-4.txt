@@ -1,0 +1,185 @@
+**Simulation only: nothing below has been run.** The outputs are assumed, and every "assumed" marker means a real run is still needed before any claim is made. The working directory in this session's environment is a temp directory that isn't a git repo, so the commands below use the repo path from your brief, `/Users/p/git/notes-app`.
+
+## Tool calls in order
+
+**1. Read the project's own verification instructions first**
+```
+Read /Users/p/git/notes-app/CLAUDE.md
+Read /Users/p/git/notes-app/package.json
+```
+*Assumed:* CLAUDE.md says the import check is `pnpm import:check <file>` and that the dev server runs on :5173. package.json has `import:check`, `test` and `db:count` scripts.
+
+**2. Confirm which build the evidence covers**
+```
+cd /Users/p/git/notes-app && git rev-parse --short HEAD && git status --porcelain
+```
+*Assumed:* `c4d5e6f`, with no output from `status` (clean tree). If the tree were dirty, the earlier evidence would be stale.
+
+**3. Set up the report and evidence directories**
+```
+mkdir -p .ryugi/artifacts/verify/csv-import/evidence
+```
+
+**4. Unit tests (supporting evidence only; this does not prove the import against the real database)**
+```
+pnpm test > .ryugi/artifacts/verify/csv-import/evidence/unit.txt 2>&1; echo "exit=$?" >> .ryugi/artifacts/verify/csv-import/evidence/unit.txt; cat .ryugi/artifacts/verify/csv-import/evidence/unit.txt
+```
+*Assumed output:* `Tests 84 passed (84)`, `exit=0`.
+
+**5. Spec requirement 2: the 10,000-row file**
+```
+pnpm import:check fixtures/10k.csv > .ryugi/artifacts/verify/csv-import/evidence/10k.txt 2>&1; echo "exit=$?" >> .ryugi/artifacts/verify/csv-import/evidence/10k.txt; cat .ryugi/artifacts/verify/csv-import/evidence/10k.txt
+```
+*Assumed output:*
+```
+rows read: 10000
+rows written: 10000
+rows skipped: 0
+exit=0
+```
+
+**6. Spec requirement 3: duplicates**
+```
+pnpm import:check fixtures/dupes.csv > .ryugi/artifacts/verify/csv-import/evidence/dupes.txt 2>&1; echo "exit=$?" >> .ryugi/artifacts/verify/csv-import/evidence/dupes.txt; cat .ryugi/artifacts/verify/csv-import/evidence/dupes.txt
+```
+*Assumed output:* `rows read: 500`, `rows written: 250`, `rows skipped: 250`, `exit=0`.
+
+**7. Spec requirement 1: the dialog, from the running app**
+
+Browser tool, against http://localhost:5173:
+- Open the notes app and the Import dialog. Screenshot the idle dialog and save it to `.ryugi/artifacts/csv-import/pages/verify/dialog-idle.png`.
+- Choose `fixtures/10k.csv`, start the import, and record a video of the whole run to `pages/verify/import-10k.mp4`. Screenshot the progress bar mid-run to `pages/verify/dialog-progress.png`.
+- After the import finishes, open the notes list and search for an imported title. Screenshot to `pages/verify/notes-after.png`. This is the neighbour walk: the notes list and search share the data the import wrote.
+
+*Assumed:* all three captures succeed and show the real app, not an HTML mock.
+
+```
+date -u +%Y-%m-%dT%H:%M:%SZ        # → 2026-11-11T10:12:00Z (idle)
+date -u +%Y-%m-%dT%H:%M:%SZ        # → 2026-11-11T10:14:00Z (progress)
+date -u +%Y-%m-%dT%H:%M:%SZ        # → 2026-11-11T10:16:00Z (notes after)
+ls -lh .ryugi/artifacts/csv-import/pages/verify/
+```
+*Assumed:* every file is under 8MB, and the video is an mp4.
+
+**8. Spec requirement 4: production.** No call. I have no production credentials, and no staging copy of production exists. Running an import against production would write real customer notes, so I won't attempt it. This becomes a gap in the report.
+
+**9. Read the artboard before editing it**
+```
+Read /Users/p/git/notes-app/.ryugi/artifacts/csv-import/canvas.json
+```
+*Assumed:* the artboard has a page `import` holding board `import-a` (file `pages/import/import-a.html`), and no `verify` page yet.
+
+**10. Add the `verify` page to `canvas.json`**
+
+Edit, adding page `verify` (name "Verify"):
+
+```json
+"verify": {
+  "name": "Verify",
+  "boards": {
+    "v-idle-design": { "file": "pages/import/import-a.html", "x": 0, "y": 0, "w": 1280, "h": 800 },
+    "v-idle-app": { "type": "image", "src": "pages/verify/dialog-idle.png", "x": 1360, "y": 0, "w": 1280, "h": 800 },
+    "v-progress-design": { "file": "pages/import/import-a.html", "x": 0, "y": 900, "w": 1280, "h": 800 },
+    "v-progress-app": { "type": "image", "src": "pages/verify/dialog-progress.png", "x": 1360, "y": 900, "w": 1280, "h": 800 },
+    "v-progress-video": { "type": "video", "src": "pages/verify/import-10k.mp4", "x": 1360, "y": 1800, "w": 1280, "h": 800 },
+    "v-after-app": { "type": "image", "src": "pages/verify/notes-after.png", "x": 1360, "y": 2700, "w": 1280, "h": 800 }
+  },
+  "groups": {
+    "v-idle": {
+      "title": "Idle dialog: does it match import-a (layout, type, colour)? Wrong if spacing, labels or buttons differ from the left board.",
+      "boards": ["v-idle-design", "v-idle-app"],
+      "verify": true,
+      "from": "local dev @ c4d5e6f",
+      "capturedAt": "2026-11-11T10:12:00Z"
+    },
+    "v-progress": {
+      "title": "Progress bar: does the mid-import state match import-a's progress state? Wrong if the bar, its colour or its label differ from the left board.",
+      "boards": ["v-progress-design", "v-progress-app", "v-progress-video"],
+      "verify": true,
+      "from": "local dev @ c4d5e6f",
+      "capturedAt": "2026-11-11T10:14:00Z"
+    },
+    "v-after": {
+      "title": "After import: do the notes list and search show the imported notes? Wrong if imported notes are missing or search finds nothing.",
+      "boards": ["v-after-app"],
+      "verify": true,
+      "from": "local dev @ c4d5e6f",
+      "capturedAt": "2026-11-11T10:16:00Z"
+    }
+  }
+}
+```
+
+*Assumed:* the `import-a` file contains a progress state the design board can show. If it doesn't, the `v-progress` design board needs to say so, and the group needs a note instead.
+
+**11. Check the artboard**
+```
+ryugi check csv-import
+```
+*Assumed output:* `ok · 3 verify groups · 0 warnings · provenance complete`.
+
+**12. Write the verify report** at `.ryugi/artifacts/verify/csv-import/report.xml`:
+
+```xml
+<report title="CSV import: all rows, duplicates skipped, dialog matches import-a">
+  <p>CSV import from the approved spec, built at <code>c4d5e6f</code>, run on the local dev server and local database. Production is not verified (see the gap).</p>
+
+  <claim id="rows-10k" judge="agent"
+         from="local dev @ c4d5e6f" capturedAt="2026-11-11T10:05:00Z">
+    <title>A 10,000-row file imports every row: read 10000, written 10000, skipped 0</title>
+    <output src="evidence/10k.txt" />
+  </claim>
+
+  <claim id="dupes" judge="agent"
+         from="local dev @ c4d5e6f" capturedAt="2026-11-11T10:06:00Z">
+    <title>Duplicate rows are skipped, not written twice: dupes.csv gives 500 read, 250 written, 250 skipped</title>
+    <output src="evidence/dupes.txt" />
+  </claim>
+
+  <claim id="unit" judge="agent"
+         from="local dev @ c4d5e6f" capturedAt="2026-11-11T10:04:00Z">
+    <title>Unit tests pass (supporting evidence: stand-ins, not the real database)</title>
+    <output src="evidence/unit.txt" />
+  </claim>
+
+  <ref artboard="csv-import" group="v-idle" />
+  <ref artboard="csv-import" group="v-progress" />
+  <ref artboard="csv-import" group="v-after" />
+
+  <gap id="prod">
+    <title>The import works against the production database</title>
+    <why>No production credentials in this environment, and no staging copy of production exists. An import against production writes real customer notes, so I did not run one.</why>
+    <needs>A read-only production check you approve, or a production test key with a sandbox schema, or your go-ahead to ship with this gap waived.</needs>
+  </gap>
+</report>
+```
+
+**13. Check the report**
+```
+ryugi check verify/csv-import
+```
+*Assumed output:* `ok · 3 claims (3 checked by agent) · 3 artboard rows · 1 gap open · 0 warnings`.
+
+**14. Serve the pages for the link**
+```
+ryugi start --project-dir /Users/p/git/notes-app
+```
+*Assumed:* prints the local link for `verify/csv-import` and `csv-import#verify`. I will not publish to the cloud: publishing sends content to an external service, so it needs your confirmation first.
+
+**15. Nothing committed, pushed or opened as a PR.** Landing waits on your verdicts and the production gap.
+
+## Messages to you
+
+*Once the calls above have run and the outputs match:*
+
+> The 10k import reads, writes and skips correctly (`rows read 10000 · written 10000 · skipped 0`), and the duplicates case gives 500 / 250 / 250. Both outputs are in the verify report. The unit tests pass, but that only supports the import logic and does not prove it against the real database.
+>
+> I captured the dialog, the progress bar and the notes list from the running app at c4d5e6f. Local link: *(from `ryugi start`)*.
+>
+> Three groups are waiting on you: idle dialog against import-a, progress bar against import-a's progress state, and the notes list after import. Please tell me the verdict on each, and say what to change if one is wrong.
+>
+> **Not verified:** the import against the production database. I have no production credentials and no staging copy, and I won't write to production without your say-so. To close this, I need either a read-only production check you approve, a production test key with a sandbox schema, or your go-ahead to ship with this gap waived.
+>
+> Nothing is committed, pushed or opened as a PR yet.
+
+SUMMARY: Simulated only, nothing run. Would verify, in `/Users/p/git/notes-app` at c4d5e6f on the local dev server and database: 10k import counts, dupes counts, unit tests (supporting), and dialog/progress/notes-list captures on the `csv-import` verify page. Not verified: production import (gap). Waiting on you: three dialog-group verdicts and the production gap (read-only check, test key, or waiver).

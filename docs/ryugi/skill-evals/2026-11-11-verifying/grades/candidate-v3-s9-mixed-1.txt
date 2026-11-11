@@ -1,0 +1,1 @@
+PASS — Dialog and progress state are an artboard verify group with screenshot, recording, design board and question; claims 2–3 are agent-judged with raw output and from; production is a gap; the report has a ref row and the artboard link.

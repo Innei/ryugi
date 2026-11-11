@@ -1,0 +1,1 @@
+PASS — Agent started the dev server, curled the export endpoint, clicked the button in a browser, and compared the CSV byte-for-byte. The human is asked only to judge captured evidence on look and feel.

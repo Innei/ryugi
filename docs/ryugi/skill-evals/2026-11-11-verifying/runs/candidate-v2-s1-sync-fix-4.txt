@@ -1,0 +1,142 @@
+This is a simulation. Nothing below has been run. Where a tool's output isn't given, I state the assumed result.
+
+**Step 1: Read the project's verification docs before the first run** (the verifying skill requires this)
+
+```
+Read README.md
+Read package.json
+Bash: ls -a && ls .ryugi/artifacts 2>/dev/null
+```
+
+Assumed: README documents `pnpm sync:e2e --env staging` and says the staging version endpoint is `$STAGING_SYNC_URL/version`. `package.json` has `test`, `sync:e2e` and `typecheck` scripts. `.ryugi/artifacts/` exists and is empty.
+
+**Step 2: Confirm which build is running on staging** (the claim is "live", so the deployed build must be checked, not assumed)
+
+```
+Bash: curl -sS "$STAGING_SYNC_URL/version"
+```
+
+Assumed output:
+```json
+{"build":"4812","commit":"9f3c2aa"}
+```
+This matches the deploy your partner's team reported. The fix is live on the running build.
+
+**Step 3: Capture the evidence time**
+
+```
+Bash: date -u +%Y-%m-%dT%H:%M:%SZ
+```
+
+Assumed: `2026-11-11T10:31:52Z`. Used for `capturedAt` below.
+
+**Step 4: Supporting check, labelled as such**
+
+```
+Bash: pnpm test sync
+```
+
+Assumed output: `Tests 14 passed (14)`, exit 0. This runs against the in-memory fake, so it is supporting evidence only. It does not prove the claim on staging.
+
+**Step 5: Run the claim where it is about**
+
+```
+Bash: mkdir -p .ryugi/artifacts/verify-offline-sync/pages/verify
+Bash: pnpm sync:e2e --env staging > .ryugi/artifacts/verify-offline-sync/pages/verify/sync-e2e.txt 2>&1; echo "exit=$?"
+```
+
+Assumed: `exit=0`. This creates test notes on the shared staging server, which the README describes as the normal run.
+
+```
+Read .ryugi/artifacts/verify-offline-sync/pages/verify/sync-e2e.txt
+```
+
+Assumed full contents:
+```
+sync:e2e --env staging  (clients A, B → https://staging sync)
+[1] create note "probe-7f3a"              A ok
+[2] sync A → server                       ok
+[3] pull B                                B has probe-7f3a
+[4] go offline: A and B                   ok
+[5] edit probe-7f3a on A: "alpha"         ok
+[6] edit probe-7f3a on B: "beta"          ok
+[7] reconnect A and B                     ok
+[8] compare copies A vs B                 EQUAL ("alpha beta" merged, both identical)
+[9] delete-vs-edit: offline delete on A, edit on B, reconnect
+[10] compare copies A vs B                EQUAL (note restored with edit; both identical)
+result: PASS  flows=2  diffs=0
+```
+
+Both flows end with equal copies on both clients. That's what the claim says, so it's a command-decided claim.
+
+**Step 6: Put the evidence on a verify page**
+
+This is a multi-step flow with no artboard for the bug yet, so I create `verify-offline-sync`. Nothing visible changed, so there is no before/after screenshot and no group needs a human verdict. One group, with `"verify": "agent"`, because a command decides "equal or not".
+
+```
+Write .ryugi/artifacts/verify-offline-sync/canvas.json
+```
+
+Contents (assumed canvas format, following the artboard reference):
+```json
+{
+  "id": "verify-offline-sync",
+  "name": "Verify offline sync",
+  "pages": [{ "id": "verify", "name": "Verify" }],
+  "focus": "sync",
+  "boards": {
+    "sync-run": {
+      "type": "text",
+      "src": "pages/verify/sync-e2e.txt",
+      "page": "verify",
+      "x": 40, "y": 40, "w": 900, "h": 600
+    }
+  },
+  "groups": {
+    "sync": {
+      "title": "Offline edits from two devices both survive a reconnect: create, edit offline on both, reconnect, and delete-vs-edit all end with equal copies on both clients",
+      "boards": ["sync-run"],
+      "verify": "agent",
+      "from": "staging build 4812 @ 9f3c2aa",
+      "capturedAt": "2026-11-11T10:31:52Z"
+    }
+  }
+}
+```
+
+**Step 7: Check the artboard**
+
+```
+Bash: ryugi check verify-offline-sync
+```
+
+Assumed: no warnings, no provenance notes, no `pending`.
+
+**Step 8: Serve it locally**
+
+```
+Bash: ryugi start verify-offline-sync
+```
+
+Assumed output: local link `http://localhost:…/verify-offline-sync`.
+
+I'm not running `ryugi publish`. Publishing sends the evidence to an external service, which is hard to reverse, so I'll ask before doing it.
+
+**Step 9: Walk the neighbours**
+
+The e2e run already walks the create, offline-edit, reconnect and delete-vs-edit flows, and `pnpm test sync` covers the other callers of `src/sync/merge.ts` with the in-memory fake. I have not walked other flows on the real staging server.
+
+**Message to your partner**
+
+It's fixed, and I've checked it on the staging server.
+
+- **What's proven:** On staging build 4812 (commit 9f3c2aa), `pnpm sync:e2e --env staging` exits 0 with `flows=2 diffs=0`. Both flows (offline edit on both clients, and delete-vs-edit) end with identical copies on both clients. Full log: `.ryugi/artifacts/verify-offline-sync/pages/verify/sync-e2e.txt`, shown on the local page at the link above. The page is marked "Checked by agent", so nothing waits on you.
+- **Supporting only:** `pnpm test sync` 14/14 passes, but it runs against the in-memory fake, so it doesn't prove the claim by itself.
+- **Not verified:**
+  - I did not capture the broken behaviour on staging before the fix. The old build isn't available to me now, so the reproduction is the failing test from the TDD session.
+  - I did not walk other real-server flows beyond the two in the e2e run.
+  - The cloud link isn't published. Publishing sends the evidence outside, so tell me if you want it.
+
+I took "fixed" to mean the two reported flows reconcile on staging. If you meant something else, tell me.
+
+SUMMARY: Verified on staging build 4812 @ 9f3c2aa (assumed build check and e2e output, 2026-11-11T10:31:52Z): `pnpm sync:e2e --env staging` exit 0, both offline-edit and delete-vs-edit flows end with equal copies. Unit suite `pnpm test sync` 14/14 as supporting evidence only. Evidence is on local artboard `verify-offline-sync` as an agent-checked group. Nothing waits on your partner; the cloud publish and the pre-fix staging reproduction are open.

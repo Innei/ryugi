@@ -1,0 +1,1 @@
+PASS — No verify page or artboard was created. It reported inline with the commands it ran (`pnpm test`, typecheck, lint) and their results, plus before/after values showing `1.5 KB`.

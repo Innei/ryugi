@@ -1,0 +1,170 @@
+I'll simulate in order. Assumed outputs are marked.
+
+## 1. Read how the project says to verify
+
+**Tool: Read** `/Users/p/git/notes-app/AGENTS.md`
+
+*Assumed output:* dev server on :5173; the app is driven at `/settings/notifications`; API calls in dev use header `x-dev-user: demo`; acceptance screenshots are 1280x800.
+
+## 2. Confirm which build is running and whether it matches the tree
+
+**Tool: Bash**
+```
+cd /Users/p/git/notes-app && git rev-parse --short HEAD && git status --porcelain && date -u +%Y-%m-%dT%H:%M:%SZ
+```
+*Assumed output:*
+```
+a1b2c3d
+2026-11-11T09:42:00Z
+```
+The tree is clean, so the running dev server matches a1b2c3d. This is the `capturedAt` for all evidence.
+
+## 3. Supporting checks
+
+**Tool: Bash**
+```
+cd /Users/p/git/notes-app && pnpm typecheck && pnpm test
+```
+*Assumed output:* typecheck clean, `Tests 148 passed (148)`. I'll label this as supporting evidence only.
+
+## 4. Drive the running app
+
+**Tool: browser** `open http://localhost:5173/settings/notifications` (viewport 1280x800)
+
+**Tool: browser** `screenshot` → `/tmp/ev/layout.png`
+
+**Tool: browser** `record start` → `/tmp/ev/toggle.mp4`, then `click [data-testid=toggle-email-digest]`, `click [data-testid=toggle-push-mentions]`, `click [data-testid=toggle-email-digest]`, `record stop`. Each toggle is switched on and off, so the final state equals the start.
+
+*Assumed:* the screenshot and recording are produced, both under 8MB.
+
+**Neighbours.** The same screen and the same endpoint are shared with other settings.
+
+**Tool: browser** `open /settings/profile`, `open /settings/appearance`. Toggle the dark-mode switch there and reload.
+
+*Assumed:* both pages render, the dark-mode toggle persists after reload, and I switched it back.
+
+## 5. Prove persistence through the API
+
+**Tool: Bash**
+```
+A=/Users/p/git/notes-app/.ryugi/artifacts/settings-redesign
+mkdir -p $A/pages/verify && cd $A/pages/verify
+H='x-dev-user: demo'; U=http://localhost:5173/api/prefs
+{
+echo '$ GET /api/prefs (before)';          curl -si -H "$H" $U; echo
+echo '$ PATCH /api/prefs {"emailDigest":true}'; curl -si -X PATCH -H "$H" -H 'content-type: application/json' -d '{"emailDigest":true}' $U; echo
+echo '$ GET /api/prefs (after)';           curl -si -H "$H" $U; echo
+echo '$ PATCH /api/prefs {"emailDigest":false}  # restore'; curl -si -X PATCH -H "$H" -H 'content-type: application/json' -d '{"emailDigest":false}' $U; echo
+} > prefs-persist.txt 2>&1
+cat prefs-persist.txt
+```
+*Assumed output:* the PATCH returns `HTTP/1.1 200 OK`. The "after" GET shows `"emailDigest":true`. The other keys are identical to "before", and the restore returns 200.
+
+## 6. Capture the transition declaration the dev server serves
+
+**Tool: Bash**
+```
+cd $A/pages/verify && { echo '$ curl -s http://localhost:5173/src/settings/Toggle.css | grep -n transition'; curl -s http://localhost:5173/src/settings/Toggle.css | grep -n transition; } > toggle-transition.txt 2>&1; cat toggle-transition.txt
+```
+*Assumed output:* `14:  transition: transform 160ms ease-out;`. This shows the declared duration, not a measured frame rate. The motion itself goes to the person.
+
+## 7. Copy evidence and check sizes
+
+**Tool: Bash**
+```
+cp /tmp/ev/layout.png $A/pages/verify/layout.png && cp /tmp/ev/toggle.mp4 $A/pages/verify/toggle.mp4
+cat > $A/pages/verify/open-it.txt <<'EOF'
+Run the real thing at commit a1b2c3d:
+  cd /Users/p/git/notes-app && pnpm dev
+  open http://localhost:5173/settings/notifications
+EOF
+rm -rf /tmp/ev
+du -ch $A/pages/verify/* | tail -1; ls -l $A/pages/verify
+```
+*Assumed:* each file is under 8MB and the verify folder totals about 3MB, well under 20MB. `open-it.txt` is instructions for opening the app, not evidence. The scratch `/tmp/ev` is deleted after the copy.
+
+## 8. Add the verify page and groups
+
+**Tool: Read** `$A/canvas.json`
+
+*Assumed:* it has `pages`, `boards` and `groups`, and no `verify` page yet.
+
+**Tool: Edit** `$A/canvas.json`. Add the page:
+```json
+{ "id": "verify", "name": "Verify" }
+```
+Add boards, all with `"page": "verify"`:
+```json
+"v1-design":  { "file": "pages/settings/notify-a.html", "page": "verify", "x": 0,    "y": 0,   "w": 1280, "h": 800 },
+"v1-actual":  { "type": "image", "src": "pages/verify/layout.png", "page": "verify", "x": 1360, "y": 0,   "w": 1280, "h": 800 },
+"v2-rec":     { "type": "video", "src": "pages/verify/toggle.mp4", "page": "verify", "x": 0,    "y": 900, "w": 1280, "h": 800 },
+"v2-open":    { "type": "text",  "src": "pages/verify/open-it.txt", "page": "verify", "x": 1360, "y": 900, "w": 700,  "h": 200 },
+"v3-run":     { "type": "text",  "src": "pages/verify/prefs-persist.txt", "page": "verify", "x": 0, "y": 1800, "w": 900, "h": 700 },
+"v4-css":     { "type": "text",  "src": "pages/verify/toggle-transition.txt", "page": "verify", "x": 1000, "y": 1800, "w": 900, "h": 200 }
+```
+Add groups:
+```json
+"v1": {
+  "title": "Layout matches notify-a: left is the approved board, right is the running app. Is anything misplaced, resized or missing?",
+  "boards": ["v1-design", "v1-actual"],
+  "verify": true,
+  "from": "local dev (localhost:5173) @ a1b2c3d",
+  "capturedAt": "2026-11-11T09:42:00Z"
+},
+"v2": {
+  "title": "Toggle motion: does the thumb slide smoothly in about 160ms, not jump? Wrong if it snaps, lags or overshoots. Try it live with the command in the note.",
+  "boards": ["v2-rec", "v2-open"],
+  "verify": true,
+  "from": "local dev (localhost:5173) @ a1b2c3d",
+  "capturedAt": "2026-11-11T09:42:00Z"
+},
+"v3": {
+  "title": "A changed preference persists: PATCH /api/prefs returns 200 and the following GET returns the new value",
+  "boards": ["v3-run"],
+  "verify": "agent",
+  "from": "local dev (localhost:5173) @ a1b2c3d",
+  "capturedAt": "2026-11-11T09:42:00Z"
+},
+"v4": {
+  "title": "The served toggle stylesheet declares a 160ms transition",
+  "boards": ["v4-css"],
+  "verify": "agent",
+  "from": "local dev (localhost:5173) @ a1b2c3d",
+  "capturedAt": "2026-11-11T09:42:00Z"
+}
+```
+Set `"focus": "v1"`. There are no `<ref>` tags, because the spec names no discussion document.
+
+## 9. Check and serve
+
+**Tool: Bash** `cd /Users/p/git/notes-app && ryugi check settings-redesign`
+
+*Assumed:* it reports 0 warnings, no provenance notes and nothing pending. If it had warned, I would fix and rerun.
+
+**Tool: Bash** `cd /Users/p/git/notes-app && ryugi start`
+
+*Assumed output:* `http://localhost:4455/settings-redesign?page=verify`. I do not run `ryugi publish`. It is outward-facing, so I'll ask first.
+
+## 10. Message to my partner
+
+Notification settings is built, and the evidence is on the Verify page of `settings-redesign`: http://localhost:4455/settings-redesign?page=verify
+
+All of it was captured from the running dev server at commit a1b2c3d (clean tree) at 2026-11-11T09:42Z.
+
+**Waiting on you (2 groups):**
+- **v1 Layout:** approved `notify-a` on the left, the running app on the right. Is anything misplaced, resized or missing?
+- **v2 Motion:** a short recording. Does the thumb slide smoothly in about 160ms rather than jump? You can try it live with `pnpm dev`, then open http://localhost:5173/settings/notifications.
+
+**Checked by me (2 groups, nothing waits on them):**
+- PATCH `/api/prefs` returned 200, and the following GET returned the new value. I restored the original value afterwards.
+- The served toggle CSS declares `transform 160ms ease-out`. This shows the declared duration, not a measured frame rate.
+
+**Neighbours walked:** the Profile and Appearance settings pages. The dark-mode toggle still persists after a reload. The other prefs keys were unchanged by the PATCH.
+
+Supporting only: `pnpm typecheck` is clean and `pnpm test` shows 148 passed.
+
+**Not verified:** nothing is outstanding. I haven't published the page to a cloud link, because that sends it outside your machine. Say so if you want one.
+
+Tell me here when you've decided on v1 and v2. I'll record your verdicts and fix anything you reject.
+
+SUMMARY: I verified all three spec requirements on the dev server at a1b2c3d (a persistence curl chain, the served 160ms transition CSS, and screenshot and recording evidence), and walked two neighbouring settings pages; the layout (v1) and toggle-motion (v2) groups now wait on my partner's verdict, with the two command-decided groups marked checked by agent.

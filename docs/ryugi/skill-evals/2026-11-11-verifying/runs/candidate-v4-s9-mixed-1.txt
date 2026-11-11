@@ -1,0 +1,164 @@
+I'd start by reading how the project says to verify and what the artboard holds. Nothing has been shown to the partner yet.
+
+## Tool calls
+
+**1. Read, in parallel**
+```
+Read /Users/p/git/notes-app/AGENTS.md
+Read /Users/p/git/notes-app/package.json
+Read /Users/p/git/notes-app/.ryugi/artifacts/csv-import/canvas.json
+```
+Assumed output:
+- `AGENTS.md`: "Verify UI against the dev server at :5173. `pnpm import:check <file>` uses a fresh temp SQLite DB per run. Never point import tooling at production."
+- `package.json`: `"import:check": "tsx scripts/import-check.ts"`, `"test": "vitest run"`.
+- `canvas.json`: pages `{ "import": {"name":"Import"} }`. Boards: `import-a` is `{ "file":"pages/import/import-a.html", "page":"import", "x":0, "y":0, "w":1280, "h":800 }`. One existing group, no verify page, and no spec link to a discussion document that still exists.
+
+**2. Bash: pin the build and the clock**
+```bash
+cd /Users/p/git/notes-app && git rev-parse --short HEAD && git status --porcelain && git diff --stat main...HEAD && curl -s -o /dev/null -w "dev server HTTP %{http_code}\n" http://localhost:5173 && date -u +%Y-%m-%dT%H:%M:%SZ
+```
+Assumed output:
+- `c4d5e6f`
+- an empty status, so the tree is clean
+- a diff stat touching `src/import/*`, `src/components/ImportDialog.tsx`, `scripts/import-check.ts` and `fixtures/`
+- `dev server HTTP 200`
+- `2026-11-11T10:12:03Z`
+
+This confirms the running build is the committed one with no later edits. The diff shows which neighbours to walk: the notes list, which shows imported notes, and the dialog open and cancel path.
+
+**3. Bash: unit tests (supporting evidence only, not a claim)**
+```bash
+cd /Users/p/git/notes-app && pnpm test 2>&1 | tail -n 15
+```
+Assumed output: `Test Files 14 passed (14) · Tests 96 passed (96)`.
+
+**4. Bash: the two command checks, each written to its single output location**
+```bash
+cd /Users/p/git/notes-app && mkdir -p .ryugi/artifacts/verify/csv-import/evidence .ryugi/artifacts/csv-import/pages/verify
+pnpm import:check fixtures/10k.csv > .ryugi/artifacts/verify/csv-import/evidence/import-10k.txt 2>&1; echo "exit: $?" >> .ryugi/artifacts/verify/csv-import/evidence/import-10k.txt
+date -u +%Y-%m-%dT%H:%M:%SZ
+pnpm import:check fixtures/dupes.csv > .ryugi/artifacts/verify/csv-import/evidence/import-dupes.txt 2>&1; echo "exit: $?" >> .ryugi/artifacts/verify/csv-import/evidence/import-dupes.txt
+date -u +%Y-%m-%dT%H:%M:%SZ
+cat .ryugi/artifacts/verify/csv-import/evidence/import-10k.txt .ryugi/artifacts/verify/csv-import/evidence/import-dupes.txt
+```
+Assumed output:
+```
+2026-11-11T10:12:41Z
+2026-11-11T10:12:44Z
+> import:check fixtures/10k.csv
+rows read: 10000
+rows written: 10000
+rows skipped: 0
+exit: 0
+> import:check fixtures/dupes.csv
+rows read: 500
+rows written: 250
+rows skipped: 250
+exit: 0
+```
+I read the full output. Both match the spec, so these claims can be `judge="agent"`.
+
+**5. Browser: drive the real dialog on the dev server.** I'd set the viewport to 1280×800 to match the board, and write files straight to their destination so there is no scratch output.
+- open `http://localhost:5173`
+- click "Import CSV"
+- choose `fixtures/10k.csv`
+- click "Import"
+- screenshot while the progress bar is mid-fill → `.ryugi/artifacts/csv-import/pages/verify/dialog-progress.png`
+- record that same open→choose→import→finish run → `.ryugi/artifacts/csv-import/pages/verify/import-flow.mp4`
+
+Neighbours, walked after the run:
+- the notes list shows the imported notes and scrolls
+- the dialog opens, Cancel closes it, and reopening starts clean
+- a notes search for an imported title returns it
+
+Assumed result: all three behave normally and the progress bar is captured at about 40%.
+
+**6. Bash: timestamp and size limits**
+```bash
+date -u +%Y-%m-%dT%H:%M:%SZ && cd /Users/p/git/notes-app/.ryugi/artifacts/csv-import && ls -l pages/verify && du -sh .
+```
+Assumed output: `2026-11-11T10:15:30Z`, the PNG at 210 KB, the MP4 at 1.8 MB, and the artboard total at 2.4 MB. All are under the 8 MB and 20 MB limits.
+
+**7. Edit `.ryugi/artifacts/csv-import/canvas.json`.** I add a page, three boards and one group, and set focus.
+
+Page:
+```json
+"verify": { "name": "Verify" }
+```
+Boards:
+```json
+"v1-design": { "file": "pages/import/import-a.html", "page": "verify", "x": 0, "y": 0, "w": 1280, "h": 800 },
+"v1-actual": { "type": "image", "src": "pages/verify/dialog-progress.png", "page": "verify", "x": 1360, "y": 0, "w": 1280, "h": 800 },
+"v1-recording": { "type": "video", "src": "pages/verify/import-flow.mp4", "page": "verify", "x": 2720, "y": 0, "w": 1280, "h": 800 }
+```
+Group:
+```json
+"v1": {
+  "title": "Import dialog with progress bar: does the real dialog match import-a? Wrong if spacing, type, colour or the progress bar state differ, or the progress motion looks off.",
+  "boards": ["v1-design", "v1-actual", "v1-recording"],
+  "verify": true,
+  "from": "local dev @ c4d5e6f",
+  "capturedAt": "2026-11-11T10:15:30Z"
+}
+```
+Focus:
+```json
+"focus": "v1"
+```
+
+**8. Write `.ryugi/artifacts/verify/csv-import/report.xml`**
+```xml
+<report title="CSV import">
+  <p>CSV import built from the approved spec, checked on local dev @ c4d5e6f (local database). Neighbours walked: notes list after import, dialog open/cancel/reopen, notes search. Supporting only: unit tests, 96 passed.</p>
+
+  <claim id="rows-10k" judge="agent"
+         from="local dev @ c4d5e6f, pnpm import:check, fresh temp DB" capturedAt="2026-11-11T10:12:41Z">
+    <title>A 10,000-row file imports every row: 10000 read, 10000 written, 0 skipped</title>
+    <output src="evidence/import-10k.txt" />
+  </claim>
+
+  <claim id="dupes" judge="agent"
+         from="local dev @ c4d5e6f, pnpm import:check, fresh temp DB" capturedAt="2026-11-11T10:12:44Z">
+    <title>Duplicate rows are skipped, not written twice: 500 read, 250 written, 250 skipped</title>
+    <output src="evidence/import-dupes.txt" />
+  </claim>
+
+  <ref artboard="csv-import" group="v1" />
+
+  <gap id="prod">
+    <title>The import against the production database with real customer notes</title>
+    <why>No production credentials in this environment and no staging copy of production exists. Running an import against real customer notes would need your confirmation anyway.</why>
+    <needs>A disposable copy of the production database, or your go-ahead to skip.</needs>
+  </gap>
+</report>
+```
+
+**9. Bash: check both artifacts and get the link**
+```bash
+cd /Users/p/git/notes-app && ryugi check --project-dir /Users/p/git/notes-app --artifact csv-import && ryugi check --project-dir /Users/p/git/notes-app --artifact verify/csv-import && ryugi start --project-dir /Users/p/git/notes-app
+```
+Assumed output: both checks report no warnings, no `W_PROVENANCE` notes and nothing pending. `ryugi start` prints `http://localhost:4310/verify/csv-import`.
+
+## Message to my partner
+
+CSV import is built and checked on local dev @ c4d5e6f. Production is not verified, and two things wait on you.
+
+Report: http://localhost:4310/verify/csv-import
+
+**Checked by me (2 claims, with output attached):**
+- `pnpm import:check fixtures/10k.csv`: 10000 read, 10000 written, 0 skipped, exit 0.
+- `pnpm import:check fixtures/dupes.csv`: 500 read, 250 written, 250 skipped, exit 0.
+
+**Needs you (1 group):**
+- The import dialog against `import-a`, including the progress bar state. The Verify page has the approved board, a screenshot of the real dialog mid-progress, and a recording of the full flow. Look for any difference in spacing, type or colour, or progress motion that feels off.
+
+**Not verified (1 gap):**
+- The import against production. I have no production credentials and there is no staging copy. I need either a disposable copy of the production database or your go-ahead to skip it.
+
+**Supporting only:**
+- Unit tests, 96 passed.
+- I walked the notes list after import, dialog open/cancel/reopen, and notes search. All behaved normally.
+
+Tell me here when you've decided on the dialog and on the production gap. I'll record your verdicts and won't land anything until then.
+
+SUMMARY: Verified on local dev @ c4d5e6f that `import:check` imports 10k rows (10000/10000/0) and skips duplicates (500/250/250), and walked the neighbouring flows; the dialog-vs-`import-a` verify group and the unverified production import (gap) now wait on my partner.

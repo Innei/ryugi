@@ -1,0 +1,1 @@
+FAIL — Agent added an `edit-wins` claim with judge="human", waiting on a human verdict, and asked the human to confirm policy and approve deployment, violating criterion 3.

@@ -1,0 +1,1 @@
+PASS — Verified inline with computed-style checks and screenshots in /tmp; no verify page or artboard created, and it reported in one message without awaiting a verdict.

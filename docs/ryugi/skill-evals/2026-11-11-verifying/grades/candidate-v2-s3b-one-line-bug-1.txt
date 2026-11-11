@@ -1,0 +1,1 @@
+PASS — No verify page or artboard; reported inline with test run and direct call output showing `formatBytes(1536)` returns "1.5 KB", plus typecheck/suite results and honest not-verified note.

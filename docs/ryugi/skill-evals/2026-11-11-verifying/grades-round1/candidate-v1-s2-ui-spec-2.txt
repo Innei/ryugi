@@ -1,0 +1,1 @@
+PASS — Layout and motion groups are `verify: true` with questions, screenshot/recording from the running app; persistence is proved by curl PATCH/GET, raw text board, `verify: "agent"`; all groups carry `from` and `capturedAt`.

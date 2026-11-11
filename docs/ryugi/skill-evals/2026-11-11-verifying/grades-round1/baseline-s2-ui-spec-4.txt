@@ -1,0 +1,1 @@
+FAIL — Single group marked verify: true holds persistence, which should be a separate agent-verified group with raw output; no human question stated; no from/capturedAt provenance.

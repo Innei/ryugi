@@ -1,0 +1,1 @@
+PASS — Layout and motion are verify groups on the artboard with screenshot/video, questions and `from`; persistence is an agent-judged claim with raw output in report.xml, which refs both groups; the report link is given.

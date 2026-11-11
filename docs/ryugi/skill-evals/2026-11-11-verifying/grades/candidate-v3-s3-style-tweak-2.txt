@@ -1,0 +1,1 @@
+PASS — No artboard or verify page created; change proved inline with computed-style checks and screenshots in /tmp, reported in one message, no waiting for a verdict.

@@ -1,0 +1,177 @@
+**Simulation only: nothing below was executed.** Outputs marked *(assumed)* are placeholders I chose, not results.
+
+## 1. Read the project's verification instructions
+
+```
+Read /Users/p/git/notes-app/AGENTS.md
+Read /Users/p/git/notes-app/package.json
+```
+
+*(assumed)* AGENTS.md says the import checks run through `pnpm import:check <file>` and the UI is driven at `http://localhost:5173`. `package.json` has `test`, `typecheck`, `import:check`, and `dev` scripts. The `import:check` script's target database is not shown, so I'll read it before running anything that writes.
+
+```
+Read /Users/p/git/notes-app/scripts/import-check.ts
+```
+
+*(assumed)* It runs the importer against the local database named in `.env.local` and prints `read / written / skipped` counts. It does not reset the database. Rerunning the same file would add rows, so I will run each check once.
+
+## 2. Confirm which build the evidence covers
+
+```
+git -C /Users/p/git/notes-app rev-parse --short HEAD
+git -C /Users/p/git/notes-app status --short
+```
+
+*(assumed)* `c4d5e6f`, with no output from `status`, so the working tree matches the dev server's build.
+
+## 3. Unit tests and typecheck, in this session
+
+```
+cd /Users/p/git/notes-app && pnpm test
+cd /Users/p/git/notes-app && pnpm typecheck
+```
+
+*(assumed)* `Tests: 142 passed, 142 total`. `typecheck` exits 0 with no errors.
+
+## 4. Set the thresholds before measuring
+
+- `fixtures/10k.csv`: 10000 read, 10000 written, 0 skipped.
+- `fixtures/dupes.csv`: 500 read, 250 written, 250 skipped.
+
+## 5. Command-decided checks (requirements 2 and 3)
+
+```
+cd /Users/p/git/notes-app && date -u +%Y-%m-%dT%H:%M:%SZ
+cd /Users/p/git/notes-app && pnpm import:check fixtures/10k.csv 2>&1 | tee .ryugi/artifacts/csv-import/pages/verify/import-10k.txt
+```
+
+*(assumed output)*
+```
+read 10000 · written 10000 · skipped 0
+```
+*(assumed capture time)* `2026-11-11T10:02:14Z`
+
+```
+cd /Users/p/git/notes-app && date -u +%Y-%m-%dT%H:%M:%SZ
+cd /Users/p/git/notes-app && pnpm import:check fixtures/dupes.csv 2>&1 | tee .ryugi/artifacts/csv-import/pages/verify/import-dupes.txt
+```
+
+*(assumed output)*
+```
+read 500 · written 250 · skipped 250
+```
+*(assumed capture time)* `2026-11-11T10:03:01Z`
+
+Both match the thresholds, so both can be `"verify": "agent"`. They ran against the local database, not production, and the groups will say so.
+
+## 6. Capture the import dialog and progress bar (requirement 1)
+
+Browser tool, against the running dev server:
+
+1. Open `http://localhost:5173`.
+2. Click **Import**, choose `fixtures/10k.csv`, click **Start**.
+3. Take a screenshot of the dialog before the import starts, saved as `dialog-live.png`.
+4. Take a screenshot while the progress bar is mid-run, saved as `progress-live.png`.
+5. Record the whole import from click to completion, saved as `import-progress.webm`.
+6. Neighbours walked in the same session: cancel the dialog mid-import and confirm the list is unchanged; after completion, confirm the notes list shows the imported notes and the count matches the 10000 read.
+
+*(assumed)* All captures succeed. The progress bar advances smoothly. Cancel leaves the list unchanged. The list shows the imported notes.
+
+```
+cd /Users/p/git/notes-app && date -u +%Y-%m-%dT%H:%M:%SZ
+mkdir -p .ryugi/artifacts/csv-import/pages/verify
+cp ~/Downloads/dialog-live.png ~/Downloads/progress-live.png ~/Downloads/import-progress.webm .ryugi/artifacts/csv-import/pages/verify/
+ls -la .ryugi/artifacts/csv-import/pages/verify/
+```
+
+*(assumed)* Sizes: `dialog-live.png` ~310 KB, `progress-live.png` ~305 KB, `import-progress.webm` ~4.2 MB (under the 8 MB limit). The artboard total is well under 20 MB. The capture time is `2026-11-11T10:05:40Z`.
+
+## 7. Add the verify page to the artboard
+
+```
+Read /Users/p/git/notes-app/.ryugi/artifacts/csv-import/canvas.json
+```
+
+*(assumed)* It contains the page `design` with board `import-a` (file `pages/import/import-a.html`). There is no `verify` page yet, so I'll add one. The approved board is the left side of the dialog group. The schema below follows the shapes in the artboard reference; I'm assuming the boards map and page keys match the existing file.
+
+```
+Edit .ryugi/artifacts/csv-import/canvas.json
+```
+```json
+{
+  "pages": {
+    "verify": {
+      "name": "Verify",
+      "focus": "dialog-match",
+      "boards": {
+        "design-import-a": { "file": "pages/import/import-a.html", "page": "verify", "x": 0, "y": 0, "w": 1280, "h": 800 },
+        "dialog-live": { "type": "image", "src": "pages/verify/dialog-live.png", "page": "verify", "x": 1360, "y": 0, "w": 1280, "h": 800 },
+        "progress-live": { "type": "image", "src": "pages/verify/progress-live.png", "page": "verify", "x": 2720, "y": 0, "w": 1280, "h": 800 },
+        "import-recording": { "type": "video", "src": "pages/verify/import-progress.webm", "page": "verify", "x": 0, "y": 900, "w": 1280, "h": 720 },
+        "import-10k-output": { "run": { "type": "text", "src": "pages/verify/import-10k.txt", "page": "verify", "x": 1360, "y": 900, "w": 900, "h": 600 } },
+        "import-dupes-output": { "run": { "type": "text", "src": "pages/verify/import-dupes.txt", "page": "verify", "x": 2340, "y": 900, "w": 900, "h": 600 } }
+      },
+      "groups": {
+        "dialog-match": {
+          "title": "Import dialog matches import-a, progress bar state included. Look for drift in spacing, colour or type, and for a progress bar that jumps instead of advancing. Run: pnpm dev, open http://localhost:5173, Import, choose fixtures/10k.csv",
+          "boards": ["design-import-a", "dialog-live", "progress-live", "import-recording"],
+          "verify": true,
+          "from": "local dev @ c4d5e6f (local database)",
+          "capturedAt": "2026-11-11T10:05:40Z"
+        },
+        "import-10k": {
+          "title": "A 10,000-row file imports every row: 10000 read, 10000 written, 0 skipped",
+          "boards": ["import-10k-output"],
+          "verify": "agent",
+          "from": "local dev @ c4d5e6f (local database)",
+          "capturedAt": "2026-11-11T10:02:14Z"
+        },
+        "import-dupes": {
+          "title": "Duplicate rows are skipped: fixtures/dupes.csv gives 500 read, 250 written, 250 skipped",
+          "boards": ["import-dupes-output"],
+          "verify": "agent",
+          "from": "local dev @ c4d5e6f (local database)",
+          "capturedAt": "2026-11-11T10:03:01Z"
+        }
+      }
+    }
+  }
+}
+```
+
+Requirement 4 gets no group. It is not verified (see below), and a group would imply a result I don't have.
+
+## 8. Check the artboard
+
+```
+ryugi check csv-import
+```
+
+*(assumed)* No warnings, no provenance notes, no `pending` problems. The page reports one group waiting on a verdict (`dialog-match`).
+
+```
+ryugi start
+```
+
+*(assumed)* Prints the local link: `http://localhost:4173/csv-import`. I am not running `ryugi publish`. It sends the artboard to an external service, so it needs your go-ahead first.
+
+## 9. Message to my partner
+
+Requirements 2 and 3 are proved. Requirement 1 is waiting on your judgement. Requirement 4 is not verified.
+
+**Proved, in this session, at `c4d5e6f` (local database):**
+- `pnpm test`: 142 passed, 142 total. `pnpm typecheck`: clean.
+- `pnpm import:check fixtures/10k.csv`: read 10000 · written 10000 · skipped 0.
+- `pnpm import:check fixtures/dupes.csv`: read 500 · written 250 · skipped 250.
+- Neighbours walked in the running app: cancel mid-import leaves the list unchanged, and the notes list after import matches the 10000 read.
+
+**Waiting on you:**
+- Group `dialog-match` (verify page on `csv-import`): does the dialog match `import-a`, and does the progress bar look and move right? Compare the left (approved board) with the right (live screenshot and recording). Open the running app at `http://localhost:5173` if the recording isn't enough. Reply here with pass or reject, and say what is wrong if it's a reject.
+- Local link: `http://localhost:4173/csv-import`. I haven't published to the cloud. Tell me if you want the cloud link.
+
+**Not verified:**
+- **Requirement 4, production database.** I have no production credentials, and there is no staging copy of production. I have not touched production. To check it, I need one of: (1) a read-only connection to production, or (2) a restored staging copy of production data. If you want me to run the import against production, say so explicitly. That writes customer notes, so I won't do it without your go-ahead.
+
+I did not commit or push. The working tree is unchanged apart from the new artboard files.
+
+SUMMARY: Nothing was run; this is a simulation. Simulated proof at c4d5e6f on the local database: tests and typecheck clean, 10k import 10000/10000/0, dupes import 500/250/250, neighbours walked. Waiting on you: the `dialog-match` verdict on the csv-import verify page. Not verified: requirement 4 (production), which needs read-only production access or a staging copy, plus your explicit go-ahead before any write.

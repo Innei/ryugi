@@ -1,0 +1,1 @@
+PASS — Agent verified inline with git diff, curl, and screenshots saved to /tmp; created no verify page or artboard, and didn't wait for a verdict.

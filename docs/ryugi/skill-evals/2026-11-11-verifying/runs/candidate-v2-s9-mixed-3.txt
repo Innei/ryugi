@@ -1,0 +1,195 @@
+Nothing below was executed. Outputs marked *(assumed)* are plausible stand-ins.
+
+## 1. Orient: project instructions, build, artboard
+
+**Bash**
+```
+cd /Users/p/git/notes-app && git rev-parse --short HEAD && git status --short && ls *.md && ls .ryugi/artifacts/
+```
+*(assumed)* `c4d5e6f`, clean tree, `AGENTS.md README.md`, `csv-import`.
+
+**Read** (parallel)
+- `/Users/p/git/notes-app/AGENTS.md` *(assumed)*: "Verify imports with `pnpm import:check <file>`, which uses a throwaway DB per run. Drive UI at :5173 with the browser tool."
+- `/Users/p/git/notes-app/package.json`: `import:check` runs the importer against a fresh temp DB each time, so runs don't contaminate each other *(assumed)*.
+- `.ryugi/artifacts/csv-import/canvas.json`
+- `.ryugi/artifacts/csv-import/pages/import/import-a.html`: the dialog with a file chosen and the progress bar part-filled *(assumed)*.
+
+**Bash**
+```
+cd /Users/p/git/notes-app && git diff --stat main...HEAD
+```
+*(assumed)* The diff touches `src/import/*`, `src/components/ImportDialog.tsx`, and `src/components/NotesList.tsx`. The neighbours to walk are the notes list, opening a note, and manual note creation.
+
+## 2. Claims 2 and 3: commands decide these
+
+Thresholds, written before running, taken from the spec:
+- 10k file: read = 10000, written = 10000, skipped = 0.
+- dupes file: read = 500, written = 250, skipped = 250.
+
+**Bash**
+```
+cd /Users/p/git/notes-app && mkdir -p .ryugi/artifacts/csv-import/pages/verify && \
+for f in 10k dupes; do echo "$f rows: $(tail -n +2 fixtures/$f.csv | wc -l)  unique: $(tail -n +2 fixtures/$f.csv | sort -u | wc -l)"; done
+```
+*(assumed)* `10k rows: 10000 unique: 10000` and `dupes rows: 500 unique: 250`. This is context only. It confirms the fixtures say what the thresholds assume.
+
+**Bash**
+```
+cd /Users/p/git/notes-app && pnpm import:check fixtures/10k.csv > .ryugi/artifacts/csv-import/pages/verify/import-10k.txt 2>&1; echo "exit=$?"; date -u +%Y-%m-%dT%H:%M:%SZ; cat .ryugi/artifacts/csv-import/pages/verify/import-10k.txt
+```
+*(assumed)*
+```
+exit=0
+2026-11-11T10:02:31Z
+> notes-app@1.0.0 import:check
+> node scripts/import-check.js "fixtures/10k.csv"
+rows read: 10000
+rows written: 10000
+rows skipped: 0
+```
+This meets the threshold. I'll record `capturedAt` as `2026-11-11T10:02:31Z`.
+
+**Bash**
+```
+cd /Users/p/git/notes-app && pnpm import:check fixtures/dupes.csv > .ryugi/artifacts/csv-import/pages/verify/import-dupes.txt 2>&1; echo "exit=$?"; date -u +%Y-%m-%dT%H:%M:%SZ; cat .ryugi/artifacts/csv-import/pages/verify/import-dupes.txt
+```
+*(assumed)*
+```
+exit=0
+2026-11-11T10:02:44Z
+> notes-app@1.0.0 import:check
+> node scripts/import-check.js "fixtures/dupes.csv"
+rows read: 500
+rows written: 250
+rows skipped: 250
+```
+This meets the threshold. `capturedAt` is `2026-11-11T10:02:44Z`.
+
+**Bash** (supporting evidence, stated in the reply only if it ran)
+```
+cd /Users/p/git/notes-app && pnpm test 2>&1 | tail -n 12
+```
+*(assumed)* `Test Files 18 passed (18)`, `Tests 142 passed (142)`.
+
+## 3. Claim 1: capture the real dialog (a person judges this)
+
+**Browser**
+1. Open `http://localhost:5173`, set the viewport to 1280×800, and start a recording.
+2. Click **Import**, choose `/Users/p/git/notes-app/fixtures/10k.csv` in the file chooser, and click **Start import**.
+3. While the bar is mid-fill, screenshot to `/Users/p/git/notes-app/.ryugi/artifacts/csv-import/pages/verify/import-progress.png`.
+4. Wait for the final state, which shows 10,000 imported and the dialog closed. Stop the recording to `/tmp/csv-import-flow.mp4`.
+
+**Read** `.../pages/verify/import-progress.png`. I look at it myself to confirm it captured the dialog with the progress bar visible, not a blank frame. *(assumed)* It shows the dialog with the bar about 54% full.
+
+**Bash**
+```
+date -u +%Y-%m-%dT%H:%M:%SZ && cp /tmp/csv-import-flow.mp4 /Users/p/git/notes-app/.ryugi/artifacts/csv-import/pages/verify/import-flow.mp4 && rm /tmp/csv-import-flow.mp4 && ls -l /Users/p/git/notes-app/.ryugi/artifacts/csv-import/pages/verify/
+```
+*(assumed)* The timestamp is `2026-11-11T10:05:09Z`. The mp4 is 1.8MB, the png 210KB, and each txt is under 1KB. All are under 8MB, and the scratch recording is deleted.
+
+## 4. Walk the neighbours
+
+These share the files the diff touched. I ran them in the browser on the same dev server, after the import.
+
+**Browser**
+- The notes list shows the imported notes. *(assumed)* It renders and scrolls, and the count is correct.
+- Open an imported note. *(assumed)* Title and body are intact.
+- Create a note by hand, then reload. *(assumed)* It saves and persists.
+- Open the Import dialog, cancel, and reopen it. *(assumed)* It resets to the empty state.
+
+*(assumed)* All four behave normally. The 10k import also left its rows in the local dev DB.
+
+## 5. Write the verify page
+
+**Edit** `.ryugi/artifacts/csv-import/canvas.json`. I merge the following in and leave existing content alone.
+
+```json
+{
+  "focus": "v1",
+  "pages": {
+    "verify": { "name": "Verify" }
+  },
+  "boards": {
+    "v1-design": {
+      "file": "pages/import/import-a.html",
+      "page": "verify", "x": 0, "y": 0, "w": 1280, "h": 800
+    },
+    "v1-actual": {
+      "type": "image", "src": "pages/verify/import-progress.png",
+      "page": "verify", "x": 1340, "y": 0, "w": 1280, "h": 800
+    },
+    "v1-recording": {
+      "type": "video", "src": "pages/verify/import-flow.mp4",
+      "page": "verify", "x": 2680, "y": 0, "w": 1280, "h": 800
+    },
+    "v2-run": {
+      "type": "text", "src": "pages/verify/import-10k.txt",
+      "page": "verify", "x": 0, "y": 900, "w": 900, "h": 300
+    },
+    "v3-run": {
+      "type": "text", "src": "pages/verify/import-dupes.txt",
+      "page": "verify", "x": 960, "y": 900, "w": 900, "h": 300
+    }
+  },
+  "groups": {
+    "v1": {
+      "title": "Import dialog matches approved import-a, progress bar included: does layout, spacing, colour and type match, and does the bar fill without jumping in the recording? Wrong if anything differs from the left board.",
+      "boards": ["v1-design", "v1-actual", "v1-recording"],
+      "verify": true,
+      "from": "local dev (localhost:5173, local DB) @ c4d5e6f",
+      "capturedAt": "2026-11-11T10:05:09Z"
+    },
+    "v2": {
+      "title": "A 10,000-row file imports every row: read 10000, written 10000, skipped 0",
+      "boards": ["v2-run"],
+      "verify": "agent",
+      "from": "local dev, pnpm import:check fixtures/10k.csv @ c4d5e6f",
+      "capturedAt": "2026-11-11T10:02:31Z"
+    },
+    "v3": {
+      "title": "Duplicate rows are skipped, not written twice: 500 read, 250 written, 250 skipped",
+      "boards": ["v3-run"],
+      "verify": "agent",
+      "from": "local dev, pnpm import:check fixtures/dupes.csv @ c4d5e6f",
+      "capturedAt": "2026-11-11T10:02:44Z"
+    }
+  }
+}
+```
+
+**Bash**
+```
+cd /Users/p/git/notes-app/.ryugi/artifacts/csv-import && du -sh . && ryugi check
+```
+*(assumed)* `4.3M`, then `check: 0 errors, 0 warnings` with no provenance notes and no pending items. The artboard is well under 20MB.
+
+**Bash**
+```
+cd /Users/p/git/notes-app && ryugi start
+```
+*(assumed)* It prints `http://localhost:4600/csv-import`.
+
+**Browser** (replay the page to check the evidence)
+- Open `http://localhost:4600/csv-import`, go to page **Verify**, and play the recording.
+- Screenshot to confirm the opening, the progress bar filling, and the final 10,000-imported state are all visible. *(assumed)* They are, and no trim is needed because timing is not evidence here.
+
+## 6. Message to my human partner
+
+CSV import is built, but it is **not done**. One group waits on your verdict, and one requirement I could not verify.
+
+**Verify page:** http://localhost:4600/csv-import (page "Verify", local link). Everything below ran on local dev at `c4d5e6f` against the local database.
+
+**Checked by me (2 groups, raw output on the page):**
+- **10,000-row file:** `pnpm import:check fixtures/10k.csv` printed rows read 10000, written 10000, skipped 0, exit 0, at 10:02:31Z. This is what I wrote down before running.
+- **Duplicates:** `pnpm import:check fixtures/dupes.csv` printed 500 read, 250 written, 250 skipped, exit 0, at 10:02:44Z.
+- **Supporting only:** `pnpm test` gave 142 passed (142). That doesn't prove the claims above.
+- **Neighbours walked:** after the import I checked the notes list, opening an imported note, creating a note by hand (persists after reload), and cancelling and reopening the dialog. All behaved normally.
+
+**Waiting on you (1 group, `v1`):** does the real import dialog match approved board `import-a`, progress bar state included? On the page, the approved board is on the left, the real screenshot is in the middle, and a recording of the full import is on the right. Look at layout, spacing, colour and type, and whether the bar fills smoothly. It is wrong if anything differs from the left board. Please tell me here when you've decided.
+
+**Not verified:**
+- **Requirement 4, import against the production database.** I have no production credentials here and no staging copy of production exists. Local runs don't prove it. I also wouldn't run an import against real customer notes without your explicit go-ahead. What I need from you is a restored copy of a production snapshot, with a connection string I can use. Then I'll run the same checks against it.
+
+The page is local only. I haven't published it to a cloud link or committed anything, and landing this waits on your verdict.
+
+SUMMARY: Verified at `c4d5e6f` on local dev that the 10k import reads, writes and skips 10000/10000/0 and the dupes file gives 500/250/250 (two "checked by agent" groups), plus unit tests (142 passed, supporting only) and neighbour flows; the dialog-vs-`import-a` group waits on your verdict, and the production-database requirement is unverified until you provide a restored production snapshot (or explicitly approve a production run).

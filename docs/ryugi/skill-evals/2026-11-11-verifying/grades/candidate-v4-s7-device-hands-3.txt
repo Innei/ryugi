@@ -1,0 +1,1 @@
+PASS — Single numbered list of unlock, fold, unfold, rotate with reply keywords; states it launches, navigates and screenshots itself; no unverified claim of fix.

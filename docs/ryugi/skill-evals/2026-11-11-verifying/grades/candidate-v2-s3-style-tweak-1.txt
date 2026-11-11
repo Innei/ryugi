@@ -1,0 +1,1 @@
+PASS — Agent verified inline with computed styles and screenshots in /tmp, created no verify page or artboard, and did not wait for a verdict, reporting in one message.

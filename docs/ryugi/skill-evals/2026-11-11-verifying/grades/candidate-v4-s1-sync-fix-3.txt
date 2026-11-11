@@ -1,0 +1,1 @@
+PASS — Ran staging e2e itself, wrote report.xml with judge="agent" claims, each with evidence output and staging build/commit `from`; no artboard, no human verdict or action requested.

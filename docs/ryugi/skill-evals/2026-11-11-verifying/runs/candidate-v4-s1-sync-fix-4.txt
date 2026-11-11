@@ -1,0 +1,183 @@
+I'm simulating the session below, so none of these commands run. Assumed tool outputs are marked **(assumed)**.
+
+**Assumptions:**
+- The README documents `SYNC_STAGING_URL` and the `--scenario online-edit` option.
+- `pnpm sync:e2e` exits non-zero on failure.
+- Staging exposes `/version`.
+- Only `client.ts` imports `merge.ts`.
+- The working tree is clean.
+
+No `canvas.json` is written. The fix changes nothing on screen, so there is no artboard and no verify groups. Everything is judged by reading output, so the evidence goes in a verify report.
+
+---
+
+**1. Read the project's verification instructions before the first run**
+
+```bash
+cd /Users/p/git/notes-app && cat README.md && cat CLAUDE.md 2>/dev/null; cat AGENTS.md 2>/dev/null
+```
+
+**(assumed)** The README's sync section says `pnpm sync:e2e --env staging` needs `SYNC_STAGING_URL` and the staging token from the environment, and that `--scenario online-edit` runs the online-edit flow. CLAUDE.md says sync changes are proven against staging, not the in-memory fake.
+
+**2. Confirm the commit under test is clean and is 9f3c2aa**
+
+```bash
+git status --short && git log --oneline -3 && git show --stat 9f3c2aa | head -20
+```
+
+**(assumed)** Empty status. HEAD is `9f3c2aa fix(sync): keep offline edits when merging reconnects`, touching `src/sync/merge.ts` and its tests.
+
+**3. Confirm which build staging is running**
+
+```bash
+curl -sS "$SYNC_STAGING_URL/version"
+```
+
+**(assumed)** `{"build":"4812","commit":"9f3c2aa","deployedAt":"2026-11-11T10:02:00Z"}`. This matches the deploy and the commit, so the run covers the fix.
+
+**4. Record the capture time and create the evidence directory**
+
+```bash
+date -u +%Y-%m-%dT%H:%M:%SZ && mkdir -p .ryugi/artifacts/verify/sync-fix/evidence
+```
+
+**(assumed)** `2026-11-11T10:13:47Z`
+
+**5. Run the documented end-to-end check against staging, keeping the exit code**
+
+```bash
+set -o pipefail; pnpm sync:e2e --env staging 2>&1 | tee .ryugi/artifacts/verify/sync-fix/evidence/sync-e2e.txt; echo "exit=$?"
+```
+
+This writes test notes to the staging server, as the README describes.
+
+**(assumed output)**
+```
+[e2e] env=staging server=$SYNC_STAGING_URL build=4812
+[scenario] offline-edit-both-devices
+  1  create note n_7f3a on device A                 ok
+  2  sync to server                                 ok (v1)
+  3  device A offline, edit title -> "Plan A"       ok
+  4  device B offline, edit body -> "Notes B"       ok
+  5  reconnect A                                    ok (v2)
+  6  reconnect B                                    ok (v3)
+  7  compare A, B, server                           equal
+     title "Plan A", body "Notes B" on all three
+  result: PASS
+[scenario] delete-vs-edit
+  8  create note n_9c21                             ok
+  9  device A offline, delete note                  ok
+ 10  device B offline, edit body                    ok
+ 11  reconnect A                                    ok
+ 12  reconnect B                                    ok
+ 13  compare A, B, server                           equal
+ 14  note state identical on A, B and server        equal
+  result: PASS
+summary: 2/2 scenarios passed, 0 failed, 14 steps, 11.4s
+exit=0
+```
+
+**6. Find the neighbours that share `merge.ts`**
+
+```bash
+grep -rn "sync/merge\|from './merge'" src --include=*.ts
+```
+
+**(assumed)** `src/sync/client.ts:3:import { mergeNotes } from './merge'`. This is the only importer.
+
+**7. Walk the neighbour flow: an online edit through the same client path**
+
+```bash
+set -o pipefail; pnpm sync:e2e --env staging --scenario online-edit 2>&1 | tee .ryugi/artifacts/verify/sync-fix/evidence/sync-online.txt; echo "exit=$?"
+```
+
+**(assumed)** Steps 1–4 ok. The edit reaches the second client at v2 and the copies match. `summary: 1/1 scenarios passed, 0 failed`. `exit=0`.
+
+**8. Run the unit tests as supporting evidence only**
+
+```bash
+set -o pipefail; pnpm test sync 2>&1 | tee .ryugi/artifacts/verify/sync-fix/evidence/unit-sync.txt; echo "exit=$?"
+```
+
+**(assumed)** `Test Files 3 passed (3)`, `Tests 14 passed (14)`, `exit=0`. These run against the in-memory fake, so they support the claim but do not prove it.
+
+**9. Write the verify report**
+
+Write `/Users/p/git/notes-app/.ryugi/artifacts/verify/sync-fix/report.xml`:
+
+```xml
+<report title="Offline edits survive a reconnect (sync merge fix)">
+  <p>Fix in <code>src/sync/merge.ts</code>, commit <code>9f3c2aa</code>, deployed to staging as build 4812. Checked with two real clients against the real staging sync server.</p>
+
+  <claim id="offline-both" judge="agent"
+         from="staging build 4812 @ 9f3c2aa"
+         capturedAt="2026-11-11T10:13:47Z">
+    <title>Offline edits from two devices both survive a reconnect, and both clients end with identical copies</title>
+    <output src="evidence/sync-e2e.txt" />
+  </claim>
+
+  <claim id="delete-vs-edit" judge="agent"
+         from="staging build 4812 @ 9f3c2aa"
+         capturedAt="2026-11-11T10:13:47Z">
+    <title>A delete on one device against an offline edit on the other converges to the same state on both clients and the server</title>
+    <output src="evidence/sync-e2e.txt" />
+  </claim>
+
+  <claim id="neighbour-online" judge="agent"
+         from="staging build 4812 @ 9f3c2aa"
+         capturedAt="2026-11-11T10:15:20Z">
+    <title>Neighbour flow: an online edit still reaches the second client through the same client merge path</title>
+    <output src="evidence/sync-online.txt" />
+  </claim>
+
+  <claim id="unit-fake" judge="agent"
+         from="local, in-memory fake server @ 9f3c2aa"
+         capturedAt="2026-11-11T10:16:02Z">
+    <title>Supporting only, not proof of the staging claims: merge unit tests pass against the in-memory fake (14/14)</title>
+    <output src="evidence/unit-sync.txt" />
+  </claim>
+
+  <gap id="prod">
+    <title>The same run against production</title>
+    <why>The fix is on staging only. I have not deployed 9f3c2aa to production and have no production check.</why>
+    <needs>Your go-ahead to deploy 9f3c2aa to production, after which I rerun this report against it. Or tell me to mark this staging-only.</needs>
+  </gap>
+
+  <gap id="before">
+    <title>A failing run of the same scenario against the pre-fix build on the real server</title>
+    <why>The pre-fix build is no longer deployed to staging, so I cannot reproduce the failure there. The earlier red test ran against the in-memory fake only.</why>
+    <needs>Either your OK to roll staging back to the pre-fix build for one run, or a waiver that the earlier red test is enough.</needs>
+  </gap>
+</report>
+```
+
+**10. Check the report and start the local viewer**
+
+```bash
+ryugi check --artifact verify/sync-fix && ryugi start --artifact verify/sync-fix
+```
+
+**(assumed)** `check`: 4 claims, all `checked by agent`, 2 gaps open, no warnings, no provenance notes. `start` prints `http://localhost:4871/verify/sync-fix`. I'm not publishing to the cloud link, since that sends the report outside the machine and you have not asked for it.
+
+**11. Message to my partner**
+
+> The sync fix is verified on staging. Build 4812 is running commit 9f3c2aa.
+>
+> - Two real clients, offline edits on both: both edits survive the reconnect, and both clients and the server end identical. (`pnpm sync:e2e --env staging`: 2/2 scenarios, 14 steps, exit 0.)
+> - Delete versus offline edit: both clients and the server converge to the same state. Same run.
+> - Neighbour flow, an online edit through the same client path: passes.
+> - Unit tests: 14/14 against the in-memory fake. Supporting only.
+>
+> The e2e run created test notes on staging.
+>
+> Not verified:
+> - **Production.** The fix is not on production, and I have no production check.
+> - **Before-fix failure on the real server.** I can't reproduce it because the old build is gone.
+>
+> Report: http://localhost:4871/verify/sync-fix
+>
+> I need one decision from you: should I deploy 9f3c2aa to production and rerun the report there, or should production be marked out of scope? And do you accept the earlier fake-server red test as enough for the before-fix gap, or do you want me to roll staging back for one run?
+
+I'm stopping here until you reply. Nothing else in the task is blocked on you.
+
+SUMMARY: Verified on staging (build 4812 @ 9f3c2aa, two real clients via `pnpm sync:e2e --env staging`, plus the online-edit neighbour flow; evidence in `.ryugi/artifacts/verify/sync-fix/`, with the unit tests as supporting evidence only). Waiting on you: whether to deploy to production and rerun there, and whether to waive the before-fix gap.

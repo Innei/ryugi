@@ -1,0 +1,203 @@
+**Simulated run. Nothing below was executed.** Tool outputs are assumed, and assumptions are marked.
+
+## Step 1: Read the project's verification instructions
+
+```bash
+cd /Users/p/git/notes-app && ls && cat AGENTS.md
+```
+
+Assumed output: AGENTS.md says "Verify with `pnpm test`, `pnpm typecheck`; seed with `pnpm db:seed`; run `pnpm dev` (port 5173) and drive the app in the browser for UI changes."
+
+## Step 2: Run the static checks in this session
+
+```bash
+cd /Users/p/git/notes-app && pnpm test 2>&1 | tail -n 20
+```
+
+Assumed output:
+```
+ Test Files  3 passed (3)
+      Tests  9 passed (9)
+```
+
+```bash
+cd /Users/p/git/notes-app && pnpm typecheck 2>&1; echo "exit=$?"
+```
+
+Assumed output: no errors, `exit=0`.
+
+## Step 3: Seed and start the app
+
+```bash
+cd /Users/p/git/notes-app && pnpm db:seed 2>&1 | tail -n 3
+```
+
+Assumed output: `seeded 42 notes`.
+
+```bash
+cd /Users/p/git/notes-app && (pnpm dev > /tmp/notes-dev.log 2>&1 &) && sleep 5 && curl -sS -o /dev/null -w '%{http_code}\n' http://localhost:5173/
+```
+
+Assumed output: `200`.
+
+## Step 4: Capture the endpoint, the claim is about the running app
+
+```bash
+cd /Users/p/git/notes-app && mkdir -p .ryugi/artifacts/verify-csv-export/pages/verify && curl -sSi http://localhost:5173/api/notes/export.csv > .ryugi/artifacts/verify-csv-export/pages/verify/export-response.txt; echo "exit=$?"; head -c 600 .ryugi/artifacts/verify-csv-export/pages/verify/export-response.txt
+```
+
+Assumed output (headers, then body start):
+```
+HTTP/1.1 200 OK
+content-type: text/csv; charset=utf-8
+content-disposition: attachment; filename="notes.csv"
+exit=0
+id,title,body,created_at,updated_at
+1,...
+```
+
+Count the records with a CSV parser, because a note body can contain newlines:
+
+```bash
+cd /Users/p/git/notes-app && python3 -I -c "import csv; rows=list(csv.reader(open('.ryugi/artifacts/verify-csv-export/pages/verify/export-response.txt'))); print('records:', len(rows)-1, 'header:', rows[0] if False else '')" 
+```
+
+Simpler and correct for this file, since the headers come first. I'll strip them with `sed` and count again:
+
+```bash
+cd /Users/p/git/notes-app && sed -n '/^\r\?$/,$p' .ryugi/artifacts/verify-csv-export/pages/verify/export-response.txt > .ryugi/artifacts/verify-csv-export/pages/verify/export.csv && python3 -I -c "import csv; rows=list(csv.reader(open('.ryugi/artifacts/verify-csv-export/pages/verify/export.csv'))); print('header:', rows[0]); print('notes:', len(rows)-1)"
+```
+
+Assumed output:
+```
+header: ['id', 'title', 'body', 'created_at', 'updated_at']
+notes: 42
+```
+
+Write the count result as a text board, using the same command the claim is decided by:
+
+```bash
+cd /Users/p/git/notes-app/.ryugi/artifacts/verify-csv-export && python3 -I -c "import csv; rows=list(csv.reader(open('pages/verify/export.csv'))); print('header:', rows[0]); print('notes:', len(rows)-1)" > pages/verify/export-count.txt && cat pages/verify/export-count.txt
+```
+
+## Step 5: The browser run (the button the partner clicks)
+
+Open the Notes page and take the toolbar screenshot:
+
+- Open `http://localhost:5173/notes` (assumed route).
+- Screenshot the toolbar to `.ryugi/artifacts/verify-csv-export/pages/verify/notes-toolbar.png`, 1280×800.
+- Start a short recording. Click **Export CSV**, wait for the download to finish, save the downloaded file to `pages/verify/downloaded-notes.csv`, and stop the recording to `pages/verify/export-click.webm`.
+
+Assumed: the download completes, the toolbar shows the button between "Sort" and "New note", and the recording is about 2 MB.
+
+Compare the downloaded file with the endpoint output, byte for byte, with the result as a text board:
+
+```bash
+cd /Users/p/git/notes-app/.ryugi/artifacts/verify-csv-export && (cmp pages/verify/downloaded-notes.csv pages/verify/export.csv && echo "identical: downloaded file == endpoint body") > pages/verify/download-vs-api.txt 2>&1; cat pages/verify/download-vs-api.txt
+```
+
+Assumed output: `identical: downloaded file == endpoint body`
+
+## Step 6: Walk the neighbours
+
+These share the notes query and toolbar that the diff touched. The create-note form is not in the diff, so I won't walk it.
+
+Read-only, through the endpoint:
+
+```bash
+cd /Users/p/git/notes-app/.ryugi/artifacts/verify-csv-export && curl -sS http://localhost:5173/api/notes | python3 -I -c "import json,sys; print('notes listed:', len(json.load(sys.stdin)))" > pages/verify/notes-list-api.txt; cat pages/verify/notes-list-api.txt
+```
+
+Assumed output: `notes listed: 42`
+
+In the browser, on `/notes`: the list shows 42 rows, and the Sort and New note buttons still work. The screenshot is `notes-list.png`.
+
+## Step 7: Write the verify page
+
+The artboard is new (no approved design was given for this work), so it's `verify-csv-export`. Two groups use `"verify": "agent"`, because a command decides them and the output is in a text board. The button group uses `"verify": true`, because a person has to judge how it looks and reads.
+
+Assumed capture time: `date -u +%Y-%m-%dT%H:%M:%SZ` → `2026-11-11T10:04:37Z`. Assumed build: `git -C /Users/p/git/notes-app rev-parse --short HEAD` → `a1f3c9e`, with the change uncommitted on top, so `from` is `local dev @ a1f3c9e + uncommitted`.
+
+`.ryugi/artifacts/verify-csv-export/canvas.json` (written in full):
+
+```json
+{
+  "title": "CSV export",
+  "page": "verify",
+  "groups": {
+    "csv-api": {
+      "title": "GET /api/notes/export.csv returns 200, text/csv, attachment, header + 42 notes",
+      "boards": ["api-response", "api-count"],
+      "verify": "agent",
+      "from": "local dev @ a1f3c9e + uncommitted",
+      "capturedAt": "2026-11-11T10:04:37Z"
+    },
+    "csv-matches-download": {
+      "title": "Downloaded file is byte-identical to the endpoint body",
+      "boards": ["download-vs-api"],
+      "verify": "agent",
+      "from": "local dev @ a1f3c9e + uncommitted",
+      "capturedAt": "2026-11-11T10:06:12Z"
+    },
+    "csv-button": {
+      "title": "Export CSV button: does it read as export and sit with the other toolbar actions? Wrong if it is hidden, wraps, or looks like a primary action.",
+      "boards": ["toolbar-shot", "click-recording"],
+      "verify": true,
+      "from": "local dev @ a1f3c9e + uncommitted",
+      "capturedAt": "2026-11-11T10:06:40Z"
+    },
+    "neighbours": {
+      "title": "Notes list still shows 42 notes after the change",
+      "boards": ["notes-list-api"],
+      "verify": "agent",
+      "from": "local dev @ a1f3c9e + uncommitted",
+      "capturedAt": "2026-11-11T10:07:05Z"
+    }
+  },
+  "boards": {
+    "api-response": { "type": "text", "src": "pages/verify/export-response.txt", "page": "verify", "x": 0, "y": 0, "w": 900, "h": 600 },
+    "api-count": { "type": "text", "src": "pages/verify/export-count.txt", "page": "verify", "x": 940, "y": 0, "w": 600, "h": 200 },
+    "download-vs-api": { "type": "text", "src": "pages/verify/download-vs-api.txt", "page": "verify", "x": 0, "y": 640, "w": 600, "h": 120 },
+    "toolbar-shot": { "type": "image", "src": "pages/verify/notes-toolbar.png", "page": "verify", "x": 0, "y": 800, "w": 1280, "h": 800 },
+    "click-recording": { "type": "video", "src": "pages/verify/export-click.webm", "page": "verify", "x": 1320, "y": 800, "w": 800, "h": 500 },
+    "notes-list-api": { "type": "text", "src": "pages/verify/notes-list-api.txt", "page": "verify", "x": 0, "y": 1640, "w": 600, "h": 120 }
+  },
+  "focus": "csv-button"
+}
+```
+
+Then the checks on the artboard:
+
+```bash
+cd /Users/p/git/notes-app && ryugi check verify-csv-export
+```
+
+Assumed output: no warnings, no provenance notes, `pending: 1` (the button group).
+
+```bash
+cd /Users/p/git/notes-app && ryugi start verify-csv-export
+```
+
+Assumed output: `http://localhost:4321/verify-csv-export`. I haven't published to the cloud. That sends the page and its evidence outside the machine, so I'll ask first.
+
+Clean-up: the scratch file is `/tmp/notes-dev.log`, which is not evidence, so I'll leave it. I'll also leave the dev server running, so the partner can open it.
+
+## Messages to the partner
+
+No, it isn't done yet. The code checks pass. The one thing that needs you is how the button looks and reads.
+
+**Proved in this session:**
+- `pnpm test`: 9 of 9 pass.
+- `pnpm typecheck`: exit 0.
+- `GET /api/notes/export.csv` on the running dev server at `localhost:5173`: 200, `text/csv`, attachment header, header plus 42 notes.
+- The downloaded file from the **Export CSV** button is byte-identical to the endpoint body.
+- The notes list still shows 42 notes.
+
+**Waiting on you:** Open `http://localhost:4321/verify-csv-export` and look at the **Export CSV** button group. Tell me here whether the button reads as export and sits with the other toolbar actions. Once you've decided, I'll record the verdict.
+
+**Not verified:**
+- The cloud link. I haven't published it. Say so and I will.
+- The create-note flow. The diff doesn't touch it, so I didn't walk it.
+- Nothing is committed or pushed.
+
+SUMMARY: Verified in this session on the running dev server at localhost:5173 (after `pnpm db:seed`): `pnpm test` 9/9, `pnpm typecheck` exit 0, the export endpoint returns 200 with 42 notes, the button's download is byte-identical to the endpoint, and the notes list still shows 42. Evidence is on the local `verify-csv-export` page. The Export CSV button's look and placement is waiting on you; the other groups are settled by commands.

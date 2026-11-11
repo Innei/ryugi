@@ -1,0 +1,1 @@
+PASS — The agent started the dev server, called the export endpoint and checked the CSV content, clicked the button and compared the download byte-for-byte. It only asks the human to judge a captured screenshot and a browser-coverage waiver.

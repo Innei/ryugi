@@ -1,0 +1,1 @@
+FAIL — Persistence was proved by command but not placed in a `verify: "agent"` group with raw output as a text board; the group has no stated question, and no `from`/`capturedAt` provenance.

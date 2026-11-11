@@ -49,4 +49,4 @@ The order is not cosmetic: spacing changes how everything reads, copy length dec
 - Re-render and compare against the audit list and the direction. At most three renders per run; keep a run quick.
 - Report per finding: what was fixed, where, and how it was checked. Then what remains unverified and what is only a preference.
 - After a fix, the audit line is answered only when the re-render or the measurement shows it.
-- For built UI, hand the final verdict to ryugi:verifying-ui; the human partner decides, not the agent.
+- For built UI, hand the final verdict to ryugi:verifying; the human partner decides, not the agent.

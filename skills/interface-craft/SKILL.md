@@ -7,7 +7,7 @@ description: Use when a visible product interface needs design judgment, includi
 
 A design technique, not a mandatory extra phase. Two halves, in order: set a direction from the product, then check the screen against things that can fail. Nothing here is a house style; the project's system and accepted decisions outrank every default below.
 
-**Integration:** Project design system and explicit decisions take priority. Ryugi:brainstorming owns requirements and approval; ryugi:artifacts owns visual presentation; ryugi:verifying-ui owns the human verdict for built UI. This skill adds **no new approval gate**.
+**Integration:** Project design system and explicit decisions take priority. Ryugi:brainstorming owns requirements and approval; ryugi:artifacts owns visual presentation; ryugi:verifying owns the human verdict for built UI. This skill adds **no new approval gate**.
 
 ## Pick the mode
 

@@ -11,7 +11,7 @@ flowchart LR
   A --> S[Approved spec]
   S --> E[executing-specs]
   E --> T[per-task TDD]
-  T --> R[one fresh review] --> V[verifying-ui<br/>UI changed: you pass or reject]
+  T --> R[one fresh review] --> V[verifying<br/>proved where it runs: you judge what needs a person]
   V --> L[you land it]
 ```
 
@@ -25,7 +25,7 @@ Two-hour autonomous stretches without "should I continue?" are normal. Because t
 2. **executing-specs** — activates when you approve the spec and choose inline. Slices the spec into tasks, implements each under TDD with a ledger that survives compaction, records every judgment call as a ruling, gets one fresh review, then stops and reports.
 3. **test-driven-development** — activates during implementation. RED-GREEN-REFACTOR: failing test, watch it fail, minimal code, watch it pass, commit.
 4. **systematic-debugging** — activates on a bug or unexpected behavior. Root cause before fixes.
-5. **verifying-ui** — activates when built work or a bug fix changes what you see. Puts real screenshots and recordings next to the approved design (or before next to after) on the Artboard; you pass or reject each group in the browser, and rejected ones come back fixed until all pass.
+5. **verifying** — activates before work is called done, fixed, live or ready. The agent runs the whole chain where the claim is about (the device, the deploy, real data) and says where each piece of evidence came from. What a command can decide goes in a verify report, collapsed, as checked by the agent, with what was not verified listed beside it. What needs a person — look, motion, feel — is put next to the approved design (or before next to after); you pass or reject those in the browser or just say so in chat, and rejected ones come back fixed until all pass. A one-line change is proved inline, with no page.
 6. **using-git-worktrees** — activates when executing-specs or test-driven-development hands off before the first implementation edit, when uncommitted work has to move to or be committed on another branch, and when worktree work has landed. Follows your stated preference. Without one, it works in place beside other agents, committing only its own files and hunks, and opens a worktree without asking only when the work must run on other content (another branch or commit, a rebase, a bisect) or would collide with another agent: their uncommitted edits on the lines it changes, a path they are exploring, or a dependency, format or codegen change over files they have edited. Work bound for another branch moves in place when it can: a new branch from HEAD is made with `git switch -c` (switching straight back when someone else is in the checkout), and with nobody else there it switches off a finished branch to the new base, stopping if git refuses or the tests fail there. Only when someone else is there and HEAD would leave their branch for longer is it stash-moved into a worktree, never copied; a worktree made only to commit is removed right after the push, and every worktree it made is removed once the work lands. It asks only when HEAD is on someone else's branch.
 7. **artifacts** — activates when something is clearer to look at than to read, in brainstorming or anywhere else. Artboards, live HTML pages, and a bundled Web Component kit, each at its own local link.
 
@@ -35,7 +35,7 @@ Two-hour autonomous stretches without "should I continue?" are normal. Because t
 
 ## What's inside
 
-- **Process** — `brainstorming`, `artifacts`, `executing-specs`, `verifying-ui`
+- **Process** — `brainstorming`, `artifacts`, `executing-specs`, `verifying`
 - **Discipline** — `test-driven-development`, `systematic-debugging`
 - **Workspace** — `using-git-worktrees`
 - **Meta** — `using-ryugi` (bootstrap, plus evidence before claims)

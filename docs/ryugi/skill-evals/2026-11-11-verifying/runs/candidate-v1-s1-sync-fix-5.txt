@@ -1,0 +1,159 @@
+**Simulated run. Nothing below was executed.** Every output is an assumption, marked as such.
+
+## 1. Read the project's verification instructions
+
+```
+Read /Users/p/git/notes-app/README.md
+Read /Users/p/git/notes-app/AGENTS.md   (assumed present; fall back to CLAUDE.md)
+```
+
+Assumed: the README names `pnpm sync:e2e --env staging` as the verification command and needs no extra fixtures.
+
+Before running, I'd write the expected outcomes into the plan, so the thresholds are fixed before measuring:
+- Offline edits on both devices: both copies byte-equal after reconnect.
+- Delete on A versus offline edit on B: both copies equal, and the note survives with B's edit.
+
+## 2. Confirm the commit and the working tree
+
+The session's working directory is a non-git temp directory, so I'll run from the repo path given in the situation.
+
+```
+cd /Users/p/git/notes-app && git status --short && git rev-parse --short HEAD && date -u +%Y-%m-%dT%H:%M:%SZ
+```
+
+Assumed output:
+```
+9f3c2aa
+2026-11-11T10:27:43Z
+```
+
+The tree is clean, and HEAD matches the deployed commit. The timestamp is the `capturedAt` for this evidence.
+
+## 3. Check the e2e options, for neighbouring flows
+
+```
+pnpm sync:e2e --help
+```
+
+Assumed: `--env <name>` and `--scenario <name>`, with scenarios `offline-edit`, `delete-vs-edit` and `online-edit`.
+
+## 4. Real run against staging, output captured to a file
+
+```
+mkdir -p .ryugi/artifacts/pages/verify && pnpm sync:e2e --env staging > .ryugi/artifacts/pages/verify/sync-e2e.txt 2>&1; echo "exit=$?"
+```
+
+Assumed output: `exit=0`
+
+Assumed content of `pages/verify/sync-e2e.txt` (I do not retype it; it is the redirected file):
+```
+[env] staging  server build 4812 @ 9f3c2aa
+[1] create note n-17 on device A                  ok
+[2] device A offline: edit title -> "draft"       ok
+[3] device B offline: edit body -> "v2"           ok
+[4] reconnect A and B                             ok
+[5] compare copies: A == B (sha 3f9a…)            EQUAL
+[6] device A offline: delete n-17                 ok
+[7] device B offline: edit n-17 body -> "v3"      ok
+[8] reconnect A and B                             ok
+[9] compare copies: A == B, n-17 present, body "v3"  EQUAL
+result: 2/2 scenarios converged
+```
+
+## 5. Neighbour walk: the online path shares `merge.ts`
+
+```
+pnpm sync:e2e --env staging --scenario online-edit > .ryugi/artifacts/pages/verify/sync-e2e-online.txt 2>&1; echo "exit=$?"
+```
+
+Assumed output: `exit=0`, and the file ends with `online edit on A appears on B: EQUAL`.
+
+## 6. Supporting evidence only (in-memory fake)
+
+```
+pnpm test sync
+```
+
+Assumed: `Tests 14 passed (14)`. This runs against the in-memory fake, so it stays out of the verify page as an agent group and is reported only as supporting evidence.
+
+## 7. Write the verify artboard
+
+No artboard exists for this bug, so I create `verify-offline-merge`. Nothing visible changed, so no group needs a human verdict. All three groups are `"verify": "agent"`: each claim is "equal or not", decided by a command on the real staging server, with its raw output as a text board. The canvas shape follows the reference; `ryugi check` will confirm it.
+
+`.ryugi/artifacts/verify-offline-merge/canvas.json`:
+
+```json
+{
+  "pages": { "verify": { "name": "Verify" } },
+  "boards": {
+    "e2e-run": {
+      "run": { "type": "text", "src": "pages/verify/sync-e2e.txt", "page": "verify", "x": 40, "y": 120, "w": 900, "h": 600 }
+    },
+    "e2e-online": {
+      "run": { "type": "text", "src": "pages/verify/sync-e2e-online.txt", "page": "verify", "x": 40, "y": 760, "w": 900, "h": 300 }
+    }
+  },
+  "groups": {
+    "sync-offline-both": {
+      "title": "Offline edits on both devices: copies equal after reconnect (staging)",
+      "boards": ["e2e-run"],
+      "verify": "agent",
+      "from": "staging build 4812 @ 9f3c2aa",
+      "capturedAt": "2026-11-11T10:27:43Z"
+    },
+    "sync-delete-vs-edit": {
+      "title": "Delete on A vs offline edit on B: copies equal and the edit is kept (staging)",
+      "boards": ["e2e-run"],
+      "verify": "agent",
+      "from": "staging build 4812 @ 9f3c2aa",
+      "capturedAt": "2026-11-11T10:27:43Z"
+    },
+    "sync-online-neighbour": {
+      "title": "Online edit on A appears on B: same merge path (staging)",
+      "boards": ["e2e-online"],
+      "verify": "agent",
+      "from": "staging build 4812 @ 9f3c2aa",
+      "capturedAt": "2026-11-11T10:27:43Z"
+    }
+  }
+}
+```
+
+## 8. Check the artboard
+
+```
+ryugi check verify-offline-merge
+```
+
+Assumed output: `0 warnings · 0 provenance notes · 0 pending · 3 checked by agent`
+
+## 9. Serve it locally
+
+```
+ryugi start verify-offline-merge
+```
+
+Assumed output: `local: http://localhost:4173/verify-offline-merge`
+
+I won't run `ryugi publish`. It sends the artboard to an external service, and that needs your partner's approval.
+
+## 10. Message to your partner
+
+> Fixed, and proved on staging. The fix is live as build 4812 @ 9f3c2aa.
+>
+> I ran `pnpm sync:e2e --env staging` against the real staging server (exit 0):
+> - Offline edits on both devices: copies equal after reconnect.
+> - Delete on one device vs. offline edit on the other: copies equal, and the edit is kept.
+> - Neighbour, online edit on one device: appears on the other (`pnpm sync:e2e --env staging --scenario online-edit`, exit 0).
+>
+> Nothing in this change is visible, so there is nothing for you to judge. The evidence is at `http://localhost:4173/verify-offline-merge`, with the raw output of each run.
+>
+> The 14/14 `pnpm test sync` run is supporting only; it uses the in-memory fake.
+>
+> Not verified: I could not capture the bug reproducing on staging before the fix, because the pre-fix build is no longer deployed. The reproduction exists only as the failing test from the TDD step.
+>
+> I have not committed or pushed anything in this step. Do you want the artboard published to the cloud link? That sends it outside, so I'll wait for your go-ahead.
+
+No group is waiting on a verdict, so the work is done apart from that publish decision.
+
+SUMMARY: Simulated: verified the offline-merge fix on staging build 4812 @ 9f3c2aa via `pnpm sync:e2e --env staging` (both scenarios equal, online neighbour equal; in-memory 14/14 as supporting only), evidence in `.ryugi/artifacts/verify-offline-merge`; nothing waits on your partner except the go-ahead to publish to the cloud.

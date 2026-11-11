@@ -1,0 +1,1 @@
+PASS — Agent created no artboard or verify page; it reported inline with commands run (unit test, full suite, direct before/after call showing `1.5 KB`) and their outputs.

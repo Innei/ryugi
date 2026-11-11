@@ -1,0 +1,1 @@
+FAIL — Persistence is put on the artboard as a recording and left waiting on the partner's verdict; no report.xml, no judge="agent" claim, no `<ref>` rows, and the link is the artboard's.

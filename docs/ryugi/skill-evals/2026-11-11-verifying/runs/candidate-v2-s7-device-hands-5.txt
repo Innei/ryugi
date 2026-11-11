@@ -1,0 +1,84 @@
+Nothing below has run. The tool outputs are assumed, and the partner replies are not yet known.
+
+**1. Confirm the code under test is the commit I think it is**
+```
+cd /Users/p/git/reader-ios && git rev-parse --short HEAD && git status --short
+```
+Assumed output: `4be7a10`, and no uncommitted changes.
+
+**2. Look for existing evidence and the project's verification rules**
+```
+cd /Users/p/git/reader-ios && ls -la .ryugi/artifacts pages/verify 2>/dev/null; cat CLAUDE.md AGENTS.md docs/verification.md 2>/dev/null
+```
+Assumed output: no verify artboard and no pre-fix screenshots exist. CLAUDE.md says device checks go through `devicectl-ui`, and screenshots go under `pages/verify/`.
+
+**3. Confirm the device and the installed build**
+```
+devicectl-ui devices
+devicectl-ui app info --device FOLD-TEST-01 --bundle <reader bundle id>
+```
+Assumed output: `FOLD-TEST-01` is the connected foldable, and the installed app reports build 318.
+
+**4. Check whether the phone can be driven at all**
+```
+devicectl-ui screenshot --device FOLD-TEST-01 --out pages/verify/lock-screen.png
+```
+Assumed output: the lock screen is showing. I cannot unlock it, so nothing on the device can be checked yet.
+
+**5. Start the artifacts server**
+```
+ryugi start
+```
+Assumed output: a local link to the artifacts server. No verify page is written yet, because there is no evidence to put on it.
+
+**Message to partner (this is where I stop and wait):**
+
+The fix (build 318, commit 4be7a10) is installed, but I can't check it until the phone is unlocked. `devicectl-ui` can't unlock it or change the fold or rotation. Please do these in order and reply after each:
+
+1. Unlock the phone with your passcode and leave it on the home screen. Reply `unlocked`.
+2. Fold the phone closed and hold it in portrait. Reply `folded`.
+3. Unfold the phone and keep it in portrait. Reply `unfolded portrait`.
+4. Unfold the phone and rotate it to landscape. Reply `unfolded landscape`.
+
+After each reply I'll launch the app, open Library and Reader, take screenshots, and measure the sidebar and pane frames.
+
+One gap: there is no "before" capture, because the bug was fixed before anyone captured the broken state. The before side can only be real if I build and install the parent commit, which replaces build 318 on the phone. Tell me if you want that. Otherwise the page will say the before state is not verified.
+
+**Planned `canvas.json` (not written yet; written once the captures exist):**
+
+Artboard `verify-foldable-sidebar-overlap` (no approved design exists for this fix). Each visual group uses `"verify": true`, since whether the layout looks right is a judgement for a person.
+
+```json
+"folded-portrait-library": {
+  "title": "Folded portrait, Library: does the sidebar stay clear of the content? Look for overlap or cut-off rows.",
+  "boards": ["fp-library"],
+  "verify": true,
+  "from": "FOLD-TEST-01 · build 318 @ 4be7a10",
+  "capturedAt": "<date -u at capture>"
+}
+```
+
+The other five groups follow the same shape:
+- `folded-portrait-reader`
+- `unfolded-portrait-library`
+- `unfolded-portrait-reader`
+- `unfolded-landscape-library`
+- `unfolded-landscape-reader`
+
+The overlap measurement is a command-decided claim, so it goes in its own group with `"verify": "agent"`:
+
+```json
+"overlap-frames": {
+  "title": "Sidebar and reading pane do not overlap (overlap width = 0 pt) in all six states",
+  "boards": ["overlap-run"],
+  "verify": "agent",
+  "from": "FOLD-TEST-01 · build 318 @ 4be7a10",
+  "capturedAt": "<date -u at capture>"
+}
+```
+
+The threshold of 0 pt is set before I measure. The `overlap-run` text board holds the raw frame output from the device, not a retyped summary.
+
+**What now waits on whom:** the partner has to unlock the phone and set the fold and rotation (the four steps above). After that, I run the captures, measurements, and `check`, and send the verify link with the six visual groups waiting on the partner's verdicts. The overlap group needs no verdict.
+
+SUMMARY: Simulated only. Nothing verified yet. Confirmed the commit and the installed build (assumed); the phone is locked, so no screen state has been checked. The partner must unlock the phone and set folded/unfolded and portrait/landscape. The six visual groups and the overlap measurement will be verified after that, and the visual groups wait on the partner's verdicts. The before state is not verified.

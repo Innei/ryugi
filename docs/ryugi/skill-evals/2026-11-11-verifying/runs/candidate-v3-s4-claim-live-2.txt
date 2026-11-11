@@ -1,0 +1,107 @@
+I'll start by reading how the project says to verify, since the claim "live" is about production and not about my local run.
+
+**Tool call 1: Read**
+`/Users/p/git/api-gateway/AGENTS.md`
+Assumed result: deploys come from the `main` workflow. The API takes the key in an `x-api-key` header. There is no project-specific production check.
+
+**Tool call 2: Bash** (find the deploy run for my commit)
+```
+cd /Users/p/git/api-gateway && mkdir -p .ryugi/artifacts/verify/rate-limit-live/evidence && gh run list --branch main --commit 7c1d9e4 --limit 1 --json databaseId,status,conclusion,headSha,workflowName
+```
+Assumed output: `[{"databaseId":9876543,"status":"in_progress","conclusion":"","headSha":"7c1d9e4…","workflowName":"deploy"}]`
+
+**Tool call 3: Bash** (wait for the deploy, timeout 600000 ms)
+```
+cd /Users/p/git/api-gateway && gh run watch 9876543 --exit-status
+```
+Assumed output: all steps pass, exit 0 after about 3 minutes.
+
+**Tool call 4: Bash** (confirm which build is running, with the deploy evidence kept)
+```
+cd /Users/p/git/api-gateway && E=.ryugi/artifacts/verify/rate-limit-live/evidence && { echo "## gh run view"; gh run view 9876543 --json status,conclusion,headSha,updatedAt; echo; echo "## wrangler deployments"; npx wrangler deployments list; echo; echo "## health (poll until build matches)"; for i in $(seq 1 20); do date -u +%Y-%m-%dT%H:%M:%SZ; B=$(curl -s https://api.example.com/health); echo "$B"; case "$B" in *7c1d9e4*) break;; esac; sleep 10; done; } > $E/deploy.txt 2>&1; cat $E/deploy.txt
+```
+Assumed output: the run is `completed` / `success` with headSha `7c1d9e4…`. The newest wrangler deployment is a minute old. `/health` returns `{"build":"7c1d9e4"}` on the first poll.
+
+The running build is mine, so I can exercise production now.
+
+**Tool call 5: Bash** (61 real requests with the production test key)
+```
+cd /Users/p/git/api-gateway && E=.ryugi/artifacts/verify/rate-limit-live/evidence && date -u +%Y-%m-%dT%H:%M:%SZ > $E/limit-61.txt && for i in $(seq 1 61); do printf '%s ' "$i"; curl -s -o /dev/null -w '%{http_code}\n' -X POST https://api.example.com/v1/messages -H "x-api-key: $PROD_TEST_KEY" -H 'content-type: application/json' -d '{"messages":[{"role":"user","content":"ping"}]}'; done >> $E/limit-61.txt; echo "--- status counts, requests 1-60"; sed -n '2,61p' $E/limit-61.txt | awk '{c[$2]++} END{for(k in c) print k, c[k]}'; echo "--- request 61"; sed -n '62p' $E/limit-61.txt
+```
+Assumed output:
+```
+--- status counts, requests 1-60
+200 60
+--- request 61
+61 429
+```
+The key is never printed.
+
+**Tool call 6: Bash** (neighbours: the window resets and `/health` still answers)
+```
+cd /Users/p/git/api-gateway && E=.ryugi/artifacts/verify/rate-limit-live/evidence && { date -u +%Y-%m-%dT%H:%M:%SZ; echo "## /health right after the burst"; curl -s -o /dev/null -w '%{http_code}\n' https://api.example.com/health; echo "## sleeping 65s for the window to pass"; sleep 65; echo "## POST /v1/messages, same key, after the window"; curl -s -o /dev/null -w '%{http_code}\n' -X POST https://api.example.com/v1/messages -H "x-api-key: $PROD_TEST_KEY" -H 'content-type: application/json' -d '{"messages":[{"role":"user","content":"ping"}]}'; date -u +%Y-%m-%dT%H:%M:%SZ; } > $E/after-window.txt; cat $E/after-window.txt
+```
+Assumed output: `/health` returns 200. After the sleep, the POST returns 200.
+
+**Tool call 7: Bash** (timestamps for provenance)
+```
+date -u +%Y-%m-%dT%H:%M:%SZ
+```
+Assumed output: `2026-11-11T10:21:30Z`. The evidence was captured between about 10:17 and 10:21, after the last code change and after the deploy finished.
+
+**Tool call 8: Write** `/Users/p/git/api-gateway/.ryugi/artifacts/verify/rate-limit-live/report.xml`
+```xml
+<report title="POST /v1/messages rate limit is live in production">
+  <p>Per-key limit of 60 requests a minute on <code>POST /v1/messages</code>, commit 7c1d9e4, deployed from <code>main</code>. Local tests and a <code>wrangler dev</code> run passed earlier. That is supporting evidence only; every claim below was run against production.</p>
+
+  <claim id="deployed" judge="agent"
+         from="production · api.example.com · build 7c1d9e4" capturedAt="2026-11-11T10:17:40Z">
+    <title>Production serves build 7c1d9e4 after the deploy workflow succeeded</title>
+    <output src="evidence/deploy.txt" />
+  </claim>
+
+  <claim id="limit" judge="agent"
+         from="production · api.example.com · build 7c1d9e4" capturedAt="2026-11-11T10:19:05Z">
+    <title>One key gets 200 on requests 1-60 and 429 on request 61 within a minute</title>
+    <output src="evidence/limit-61.txt" />
+  </claim>
+
+  <claim id="recovers" judge="agent"
+         from="production · api.example.com · build 7c1d9e4" capturedAt="2026-11-11T10:21:20Z">
+    <title>After the window passes the same key is accepted again, and /health still returns 200</title>
+    <output src="evidence/after-window.txt" />
+  </claim>
+
+  <gap id="per-key">
+    <title>A second key is unaffected by the first key's 429</title>
+    <why>I have one production test key, so I could not show that the limit is per key and not global.</why>
+    <needs>A second production test key, or your go-ahead to skip it.</needs>
+  </gap>
+</report>
+```
+
+**Tool call 9: Bash**
+```
+cd /Users/p/git/api-gateway && ryugi check verify/rate-limit-live
+```
+Assumed output: no warnings, no provenance notes. 3 claims, all `judge="agent"` with output and `from`. 1 gap.
+
+**Tool call 10: Bash**
+```
+cd /Users/p/git/api-gateway && ryugi start
+```
+Assumed output: the link `http://localhost:4173/verify/rate-limit-live`.
+
+**Message to my partner:**
+
+The rate-limit fix is live in production and I tested it there. I did not run any of this from my local run.
+
+- **Build:** the deploy workflow (run 9876543) succeeded, and `https://api.example.com/health` returns `{"build":"7c1d9e4"}`, which is my commit.
+- **Limit:** with the production test key, requests 1-60 to `POST /v1/messages` returned 200 and request 61 returned 429, all inside one minute.
+- **Neighbours:** `/health` still returns 200. After about 65 seconds the same key was accepted again, so the window resets.
+
+The evidence is in the report: http://localhost:4173/verify/rate-limit-live
+
+All 3 claims were decided by commands I ran, so nothing waits on you for them. One thing is not verified: that a second key is unaffected by the first key's 429. I only have one production test key. Send me a second one, or tell me to skip it. I have recorded no verdicts.
+
+SUMMARY: I verified on production that build 7c1d9e4 is deployed, that request 61 on one key returns 429 after 60 returned 200, and that the window resets with `/health` still returning 200. The report is at verify/rate-limit-live. It is not finished: the per-key isolation gap now waits on you for a second test key or a waiver.

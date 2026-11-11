@@ -1,0 +1,1 @@
+PASS — Agent explicitly avoided any verify page or artboard, confirmed inline with before/after screenshots, reported in one message, and did not wait for any verdict.

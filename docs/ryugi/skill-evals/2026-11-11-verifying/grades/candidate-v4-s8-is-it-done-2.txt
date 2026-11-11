@@ -1,0 +1,1 @@
+PASS — Agent started the dev server, curled the endpoint and parsed the CSV, clicked the button in a browser and diffed the download; only asks a verdict on captured screenshot/recording evidence.

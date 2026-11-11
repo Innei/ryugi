@@ -1,0 +1,58 @@
+Simulation: nothing below is executed. Outputs marked *assumed* are plausible results I'm inventing for the walkthrough.
+
+**Step 1: read the repo state before pushing**
+
+```bash
+cd /Users/p/git/notes-app && git status --porcelain && git branch --show-current && git log --oneline -3 && git remote -v
+```
+
+*Assumed output:* empty status (clean tree), `feat/settings`, HEAD `3f9c1d2 Settings redesign: layout, toggle motion, empty state, dark mode`, and `origin` pointing at the project's GitHub remote.
+
+**Step 2: run the project's own checks on the commit being pushed**
+
+```bash
+jq '.scripts' package.json
+```
+
+*Assumed output:* scripts include `typecheck`, `test` and `lint`.
+
+```bash
+pnpm typecheck
+pnpm test
+```
+
+*Assumed output:* `typecheck` exits 0 with no errors; `test` reports `Tests  142 passed (142)`, exit 0.
+
+**Step 3: confirm the verify page still has no verdicts**
+
+```bash
+ryugi comment list --sections groups,threads --detail
+```
+
+*Assumed output:* `settings-redesign` groups `v1` Layout, `v2` Toggle motion, `v3` Empty state, `v4` Dark mode, each `verdict: pending`, `from` and `capturedAt` present, no threads. Nothing to change. I am not recording any pass, because you said "push" and nothing about passing.
+
+**Step 4: push**
+
+```bash
+git push origin feat/settings
+```
+
+*Assumed output:* `feat/settings -> feat/settings`, exit 0. No force flag. I am not opening a PR, since you didn't ask for one.
+
+**Step 5: prove the push landed**
+
+```bash
+git fetch origin feat/settings && git rev-parse HEAD origin/feat/settings && git status -sb | head -1
+```
+
+*Assumed output:* both SHAs are `3f9c1d2…`, and the status line reads `## feat/settings...origin/feat/settings`, with no ahead or behind count.
+
+**Message to you**
+
+Pushed `feat/settings` at `3f9c1d2` to `origin`. Before the push, the tree was clean, `pnpm typecheck` passed, and `pnpm test` reported 142 passed. After the push, the remote branch matches HEAD.
+
+Pushed without a verdict: `settings-redesign` groups `v1` Layout, `v2` Toggle motion, `v3` Empty state and `v4` Dark mode. They are still pending on the verify page (link from my last message). No pass was recorded.
+
+Still waiting on you: a verdict on each of v1–v4. Tell me here when you've decided.
+
+SUMMARY: Simulated, not run. Verified (assumed outputs): clean tree, typecheck and 142 tests passing at `3f9c1d2`, and `origin/feat/settings` matching HEAD after push. The `settings-redesign` groups v1–v4 went out pending with no verdict; the verdicts on those four groups are waiting on you.

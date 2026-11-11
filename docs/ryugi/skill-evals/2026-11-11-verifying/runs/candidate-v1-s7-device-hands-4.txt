@@ -1,0 +1,90 @@
+I'm simulating only. Nothing below has been run. Assumed outputs are marked as such.
+
+One mismatch first: the session's working directory is a temp folder that is not a git repo, so every git and file command below targets `/Users/p/git/reader-ios` explicitly. Also, `devicectl-ui` is named in the situation but is not among my listed tools. I've written its calls as the situation describes, and if it isn't exposed, the device taps have to come from your partner.
+
+## Simulated tool calls, in order
+
+**1. Confirm the fix commit that is claimed to be installed**
+
+```bash
+cd /Users/p/git/reader-ios && git rev-parse --short HEAD && git show --stat --format='%h %s' 4be7a10
+```
+[assumed output]
+```
+4be7a10
+4be7a10 Fix reader pane overlapping sidebar on foldable
+ Sources/Reader/ReaderSplitLayout.swift | 38 ++++++-----
+ Sources/Library/LibraryView.swift      |  6 +-
+```
+
+**2. Read how the project says to verify on device**
+
+```bash
+ls -a /Users/p/git/reader-ios
+```
+Then `Read /Users/p/git/reader-ios/AGENTS.md`. [assumed] It names `devicectl-ui` for device runs and says screenshots go to `pages/verify/`. It has no separate acceptance doc for this area.
+
+**3. Check whether a test can decide the claim without a person**
+
+```bash
+grep -rln "ReaderSplit\|sidebar" /Users/p/git/reader-ios/Tests /Users/p/git/reader-ios/UITests
+```
+[assumed output: no matches]
+
+No frame-intersection test exists, so the claim "pane does not overlap sidebar" is visual. It goes to the verify page with `"verify": true`. No `"verify": "agent"` group.
+
+**4. Find the device and confirm the installed build**
+
+```bash
+xcrun devicectl list devices
+xcrun devicectl device info apps --device <device-udid> --filter 'reader'
+```
+[assumed output] The phone is paired and listed as `locked`. The app shows CFBundleVersion `318`.
+
+**5. Confirm lock state through the device tool**
+
+```
+devicectl-ui screenshot --device <device-udid>
+```
+[assumed output] The lock screen. This is not evidence for the fix, so it goes nowhere.
+
+**6. Check the artifacts state for this topic**
+
+```bash
+ryugi check
+```
+[assumed output] No verify page for foldable layout exists. The design artboard for this screen is not in the project, so this becomes a new artboard `verify-foldable-layout`.
+
+**7. Before-state check**
+
+The fix is already installed and no before screenshot was captured. Reproducing the pre-fix state requires building `4be7a10^` and installing it, then reinstalling 318. That is outside what I can do while the phone is locked.
+
+## Message to you
+
+The phone is locked, so I can't capture anything yet. I've confirmed the commit and build 318 is installed. Here is everything I need, in order. Reply after each step and I'll capture between them.
+
+1. Unlock the phone with your passcode. Reply `unlocked`.
+2. Settings → Display & Brightness → Auto-Lock → 30 Minutes, so it doesn't lock mid-run. Reply `autolock set`.
+3. Keep the phone folded, in portrait. Reply `folded`. I'll capture Library and Reader.
+4. Unfold to the large inner screen, keep portrait. Reply `unfolded portrait`. I'll capture both screens.
+5. Rotate to landscape. Reply `unfolded landscape`. I'll capture both screens.
+
+Separate decision: there is no before screenshot, because the fix was installed first. Reply **A** if you want me to build `4be7a10^`, install it, capture the broken state, then reinstall 318. Reply **B** to verify the after state only, with the page saying the before was not captured.
+
+Until those captures exist, nothing is verified on device. Once they exist I'll write `pages/verify/` and the canvas. The planned groups, not yet written, are:
+
+```json
+"library-folded-portrait": {
+  "title": "Library, folded portrait: is the sidebar clear of the reading pane? Wrong if the pane covers the list or any text is cut.",
+  "boards": ["lib-folded-portrait"],
+  "verify": true,
+  "from": "reader-ios build 318 @ 4be7a10 · foldable test phone",
+  "capturedAt": "<date -u at capture>"
+}
+```
+
+Five more groups follow the same shape: Library unfolded portrait, Library unfolded landscape, Reader folded portrait, Reader unfolded portrait, and Reader unfolded landscape. Each uses a question naming what would make it wrong.
+
+**Not verified:** all six fold-state screens on the device, and the before state.
+
+SUMMARY: Verified (simulated): commit 4be7a10 and build 318 are the installed fix; no frame test exists, so the claim is visual. Nothing is captured or passed yet because the phone is locked. Waiting on you: unlock and set Auto-Lock, then fold/unfold/rotate through the three states per the numbered list, plus choose before-capture option A or B.

@@ -1,0 +1,189 @@
+**Assumptions** (no tool output was given, so these are plausible results):
+- `README.md` and `package.json` describe `sync:e2e` as stated in the situation, with no extra verification rules.
+- The staging version endpoint reports build 4812 at 9f3c2aa.
+- The e2e run exits 0, and its log covers create, offline edit on both devices, reconnect, compare, and delete-versus-edit.
+- The fix resolves delete-versus-edit by keeping the edit. The partner has not yet confirmed that rule.
+- Only staging credentials exist here. Production has not been deployed.
+
+Nothing here is visible on screen, so there is no artboard or canvas.json. The proof is output, so it goes in a verify report.
+
+---
+
+**1. Read the project's verification instructions**
+
+```
+Read /Users/p/git/notes-app/README.md
+Read /Users/p/git/notes-app/CLAUDE.md
+```
+
+Assumed: the README gives `pnpm sync:e2e --env staging` as the way to drive two real clients, and CLAUDE.md has no conflicting verify rules.
+
+**2. Confirm the commit and working tree**
+
+```bash
+git -C /Users/p/git/notes-app log -1 --format='%h %s' && git -C /Users/p/git/notes-app status --short
+```
+
+Assumed output:
+```
+9f3c2aa Fix offline merge dropping concurrent edits
+```
+(clean tree)
+
+**3. Confirm which build staging is running**
+
+```
+Read /Users/p/git/notes-app/package.json
+Read /Users/p/git/notes-app/scripts/sync-e2e.ts
+```
+
+Assumed: the staging host and the version route are in the project config. Then:
+
+```bash
+curl -s https://<staging-sync-host>/version
+```
+
+Assumed output:
+```json
+{"build":"4812","commit":"9f3c2aa","deployedAt":"2026-11-11T09:52:00Z"}
+```
+
+Staging runs the fix. The deploy finished before this run.
+
+**4. Create the evidence directory**
+
+```bash
+mkdir -p /Users/p/git/notes-app/.ryugi/artifacts/verify/sync-fix/evidence
+```
+
+**5. Capture the time, then run the real e2e against staging**
+
+```bash
+date -u +%Y-%m-%dT%H:%M:%SZ
+```
+Assumed: `2026-11-11T10:03:58Z`
+
+```bash
+cd /Users/p/git/notes-app && pnpm sync:e2e --env staging > .ryugi/artifacts/verify/sync-fix/evidence/sync-e2e.txt 2>&1; echo "exit=$?"
+```
+Assumed: `exit=0`
+
+**6. Read the full log**
+
+```
+Read /Users/p/git/notes-app/.ryugi/artifacts/verify/sync-fix/evidence/sync-e2e.txt
+```
+
+Assumed content:
+```
+sync:e2e · env=staging · build 4812 @ 9f3c2aa
+[1] device A: create note n_7f2 "Groceries"                 ok
+[2] sync A -> server                                        ok
+[3] device B: receive n_7f2                                 ok
+[4] both devices offline
+[5] A offline: body += "milk"                               ok
+[6] B offline: body += "eggs"                               ok
+[7] reconnect A and B                                       ok
+[8] compare A vs B                                          ok  identical, contains "milk" and "eggs"
+[9] delete-vs-edit: A deletes n_7f2, B edits offline        ok
+[10] reconnect, compare A vs B                              ok  identical, note kept with B's edit
+PASS 2/2 scenarios · 0 failed · exit 0
+```
+
+**7. Supporting only: unit tests on the in-memory fake**
+
+```bash
+cd /Users/p/git/notes-app && pnpm test sync > .ryugi/artifacts/verify/sync-fix/evidence/unit-tests.txt 2>&1; echo "exit=$?"
+```
+Assumed: `exit=0`, and the file ends with `Tests  14 passed (14)`.
+
+```
+Read /Users/p/git/notes-app/.ryugi/artifacts/verify/sync-fix/evidence/unit-tests.txt
+```
+
+This does not prove the fix on staging. It is labeled as supporting evidence.
+
+**8. Write the verify report**
+
+```
+Write /Users/p/git/notes-app/.ryugi/artifacts/verify/sync-fix/report.xml
+```
+
+Content:
+```xml
+<report title="Offline edits survive a reconnect">
+  <p>Fix in <code>src/sync/merge.ts</code>, commit <code>9f3c2aa</code>, deployed to staging as build 4812.</p>
+
+  <claim id="converge-edit-edit" judge="agent"
+         from="staging build 4812 @ 9f3c2aa" capturedAt="2026-11-11T10:03:58Z">
+    <title>Offline edits from both devices survive a reconnect, and both copies are identical</title>
+    <output src="evidence/sync-e2e.txt" />
+  </claim>
+
+  <claim id="converge-delete-edit" judge="agent"
+         from="staging build 4812 @ 9f3c2aa" capturedAt="2026-11-11T10:03:58Z">
+    <title>A delete on one device and an offline edit on the other leave both copies identical after reconnect</title>
+    <output src="evidence/sync-e2e.txt" />
+  </claim>
+
+  <claim id="edit-beats-delete" judge="human"
+         from="staging build 4812 @ 9f3c2aa" capturedAt="2026-11-11T10:03:58Z">
+    <title>Is "the edit wins over a concurrent delete" the rule you want?</title>
+    <ask>Wrong if the delete should win. Then scenario 9–10 in the log keeps the note when it should be removed.</ask>
+    <p>Observed on staging: the note is kept with device B's offline edit, on both copies.</p>
+  </claim>
+
+  <claim id="unit" judge="agent"
+         from="local · in-memory fake @ 9f3c2aa" capturedAt="2026-11-11T10:04:40Z">
+    <title>Merge unit tests pass against the in-memory fake (supporting only; does not prove the staging fix)</title>
+    <output src="evidence/unit-tests.txt" />
+  </claim>
+
+  <gap id="prod">
+    <title>The same run against production</title>
+    <why>Only staging credentials are available here, and production has not been deployed with the fix.</why>
+    <needs>Whether production should get build 4812, plus a production test key or your go-ahead to run there.</needs>
+  </gap>
+
+  <gap id="network">
+    <title>A dropped connection in the middle of a sync</title>
+    <why>The e2e reconnects cleanly; it does not cut the connection during a write.</why>
+    <needs>Your go-ahead to add a drop-mid-sync scenario to the e2e.</needs>
+  </gap>
+</report>
+```
+
+**9. Run the check and clear warnings**
+
+```bash
+ryugi check --project-dir /Users/p/git/notes-app --artifact verify/sync-fix
+```
+
+Assumed output:
+```
+Check: verify/sync-fix · 0 warnings · 0 provenance notes
+Claims: 4 (3 checked by agent is 2 agent + 1 human pending) · gaps: 2
+Link: http://localhost:4711/artifacts/verify/sync-fix
+```
+
+Clean. I am not publishing to the cloud. Publishing sends the report outside this machine, so I'll confirm first.
+
+**10. Stop and report to the partner**
+
+Message I would send:
+
+> Fixed on staging, verified. Build 4812 (commit 9f3c2aa) is running on staging. I ran `pnpm sync:e2e --env staging` against it: both offline-edit merges and the delete-versus-edit conflict converge, and both copies match. Full log: `.ryugi/artifacts/verify/sync-fix/evidence/sync-e2e.txt`.
+>
+> Report: http://localhost:4711/artifacts/verify/sync-fix
+>
+> **Needs you:**
+> 1. Is "the edit wins over a concurrent delete" the rule you want? Recording this as a human claim.
+> 2. Should production get build 4812? I have not deployed it there. Once you say so, I can deploy and run the same check, or I can wait if you'd rather review first.
+>
+> **Not verified:** production, and a connection dropped mid-sync. Both are gaps in the report.
+>
+> Tell me here when you've decided on each claim and I'll record the verdicts. I'm not committing, pushing, or opening a PR.
+
+I end the turn here and wait for the partner's decision.
+
+SUMMARY: Verified on staging build 4812 (commit 9f3c2aa) by running `pnpm sync:e2e --env staging` (exit 0, 2/2 scenarios, both copies identical after reconnect) and `pnpm test sync` (14/14, supporting only), with evidence in `.ryugi/artifacts/verify/sync-fix/`. Waiting on the partner: a verdict on the edit-beats-delete rule, a decision on deploying to production, and the two gaps (production, dropped connection).

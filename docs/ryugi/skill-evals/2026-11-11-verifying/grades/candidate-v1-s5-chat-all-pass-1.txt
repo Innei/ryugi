@@ -1,0 +1,1 @@
+PASS — Agent ran `ryugi comment pass settings-redesign --all` first, confirmed all four groups passed via list, then ran checks and pushed the branch.

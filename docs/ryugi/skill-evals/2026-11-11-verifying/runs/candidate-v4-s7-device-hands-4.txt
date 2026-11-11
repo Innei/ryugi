@@ -1,0 +1,94 @@
+**Simulation only: nothing below was run.** Every tool output is an assumed result, marked as such.
+
+## Step 1: Confirm the build and the repo (parallel)
+
+My working directory is not a git repo, so I address the repo by path.
+
+```bash
+git -C /Users/p/git/reader-ios log -1 --format='%h %s'
+```
+Assumed output:
+```
+4be7a10 Fix reading pane overlapping sidebar on foldable
+```
+
+```bash
+git -C /Users/p/git/reader-ios status --short
+```
+Assumed output: empty, so the tree is clean at 4be7a10.
+
+```bash
+git -C /Users/p/git/reader-ios diff --stat 4be7a10~1 4be7a10
+```
+Assumed output:
+```
+ Sources/Layout/ReadingPaneLayout.swift | 14 ++--
+ Tests/Layout/ReadingPaneLayoutTests.swift | 22 +++
+ 2 files changed, 30 insertions(+), 6 deletions(-)
+```
+The change is in `ReadingPaneLayout`, which I assume both Library and Reader use. That makes both screens neighbours to walk later.
+
+## Step 2: Read how the project says to verify (parallel)
+
+```
+Read /Users/p/git/reader-ios/CLAUDE.md
+Read /Users/p/git/reader-ios/docs/verification.md
+```
+Assumed content: device checks go through `devicectl-ui`. The Library and Reader screens are reached with the `library` fixture. Foldable postures are checked by a person physically folding and rotating the device. Build number is in `Info.plist`.
+
+## Step 3: Check the installed build on the device
+
+```bash
+xcrun devicectl device info apps --device <UDID> --bundle-id com.p.reader
+```
+Assumed output:
+```
+com.p.reader  1.9.0 (318)  installed
+```
+This shows build 318 is installed. The commit link is not in the device output, so I also check the archive log.
+
+```bash
+grep -m1 'GitCommit' /Users/p/git/reader-ios/build/logs/318.log
+```
+Assumed output: `GitCommit: 4be7a10`. The installed build 318 comes from 4be7a10.
+
+## Step 4: Look at the phone's current state
+
+```bash
+devicectl-ui screenshot --device <UDID> --out /tmp/foldable-scratch/lock-state.png
+```
+Assumed result: the lock screen. I can't unlock, fold or rotate, so no Library or Reader capture is possible yet. This screenshot is scratch and will be deleted.
+
+## Step 5: Pre-fix "before" check
+
+No pre-fix build is on the device, since build 318 replaced it. I check the archive directory for 317.
+
+```bash
+ls /Users/p/git/reader-ios/build/archives/ | grep -E '317|318'
+```
+Assumed output: `318.xcarchive` only. No 317 archive exists here, so the "before" state can't be captured from this environment. I'll record that as a gap.
+
+## Step 6: Write the verify report
+
+The build identity is a command-decided claim, so it goes in a report. The layout claims are judged by looking at a screen, so they go on an artboard verify page, not in the report. The report will reference those groups after capture.
+
+I'm not writing the report or the artboard yet. The report needs its artboard rows, and those need captured evidence. I'll write the report as soon as the first capture exists, so I'm stopping here to wait for you.
+
+## Message to you
+
+I can't unlock, fold, or rotate the phone, and I can't enter your passcode. I need four physical actions from you, in order. After each one I'll capture Library and Reader in that posture.
+
+1. Unlock the phone with your passcode and leave it on the Library screen. Reply **"unlocked"**.
+2. Fold the phone closed and keep it in portrait. Reply **"folded"**.
+3. Unfold it and keep it in portrait. Reply **"unfolded portrait"**.
+4. Rotate it to landscape while still unfolded. Reply **"landscape"**.
+
+Don't touch the screen while I capture; I'll move between Library and Reader myself.
+
+One question only you can answer: is a pre-fix build (317) on any device or archive you have? If it is, reply with where it is and I'll capture the broken layout for the "before" side. If not, I'll say in the report that the before state was not captured.
+
+Once I have the captures, I'll create the `verify-foldable-pane` artboard with one verify group per screen and posture, run `ryugi check`, and send you the link.
+
+```
+SUMMARY: Verified (assumed outputs): commit 4be7a10 is clean and touches ReadingPaneLayout, and installed build 318 comes from 4be7a10. No layout claim is verified yet because the phone is locked. Waiting on you: unlock, fold, unfold, rotate (four actions), and whether a 317 build exists for the before shot.
+```

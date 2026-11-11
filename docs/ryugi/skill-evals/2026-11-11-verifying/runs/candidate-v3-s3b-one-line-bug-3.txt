@@ -1,0 +1,65 @@
+I'm treating this as the one-claim, inline-proof case: a line of output decides it and there's nothing visual to judge. So there's no verify page or report. I'd run these calls in order.
+
+**Call 1: Bash, the diff under test**
+```
+cd /Users/p/git/notes-app && git diff -- src/lib/format-bytes.ts src/lib/format-bytes.test.ts
+```
+Assumed output: a one-line change in `format-bytes.ts` (`toFixed(2)` becomes `Number(x.toFixed(2)).toString()`) and a new test case for `formatBytes(1536) === "1.5 KB"`.
+
+**Call 2: Bash, the new test, run again now**
+```
+cd /Users/p/git/notes-app && pnpm vitest run src/lib/format-bytes.test.ts
+```
+Assumed output:
+```
+ ✓ src/lib/format-bytes.test.ts (6)
+ Test Files  1 passed (1)
+      Tests  6 passed (6)
+```
+
+**Call 3: Bash, the actual call from the bug report, plus neighbouring values**
+```
+cd /Users/p/git/notes-app && pnpm exec tsx -e 'import { formatBytes as f } from "./src/lib/format-bytes"; for (const n of [0, 1023, 1024, 1536, 1500, 2048, 1048576, 1572864]) console.log(n, "=>", JSON.stringify(f(n)))'
+```
+Assumed output:
+```
+0 => "0 B"
+1023 => "1023 B"
+1024 => "1 KB"
+1536 => "1.5 KB"
+1500 => "1.46 KB"
+2048 => "2 KB"
+1048576 => "1 MB"
+1572864 => "1.5 MB"
+```
+
+**Call 4: Grep, who else calls it**
+Pattern `formatBytes`, path `/Users/p/git/notes-app/src`.
+Assumed result: the definition, the test file, and two call sites (`src/components/AttachmentRow.tsx` and `src/components/StorageMeter.tsx`). Both use the return value as display text only, with no parsing and no string comparison.
+
+**Call 5: Bash, the suites I'm going to mention (full tests and typecheck)**
+```
+cd /Users/p/git/notes-app && pnpm test --run && pnpm exec tsc --noEmit
+```
+Assumed output:
+```
+ Test Files  48 passed (48)
+      Tests  311 passed (311)
+(tsc: no output, exit 0)
+```
+
+**Final message to my partner**
+> Fixed: `formatBytes(1536)` now returns `1.5 KB`. The change is one line in `src/lib/format-bytes.ts`: it drops trailing zeros after rounding to 2 decimals.
+>
+> Evidence, all run just now in `/Users/p/git/notes-app` on the working tree with the uncommitted change. There's no git hash to cite because the change isn't committed:
+> - `pnpm vitest run src/lib/format-bytes.test.ts` passes, 6 of 6, including the new `1536 → "1.5 KB"` case. The test failed before the change, with `"1.50 KB"`.
+> - Calling the function directly gives `1536 => "1.5 KB"`.
+> - Neighbouring values still format correctly: `0 => "0 B"`, `1024 => "1 KB"`, `2048 => "2 KB"`, `1572864 => "1.5 MB"`. `1500 => "1.46 KB"` keeps its real second decimal.
+> - The only other callers are `AttachmentRow.tsx` and `StorageMeter.tsx`. Both show the string as text, so I didn't rerun them in the UI. They'll display `1.5 KB` instead of `1.50 KB`.
+> - The full suite passes, 311 of 311, and `tsc --noEmit` is clean.
+>
+> Not verified: I didn't open the running app to look at the attachment row or the storage meter. The only thing that could differ there is the shorter text.
+>
+> I haven't committed anything. Tell me if you want it committed.
+
+SUMMARY: Verified `formatBytes(1536)` returns `1.5 KB`, with the new test passing, edge values correct, callers inspected, the full suite (311) passing and typecheck clean, all run in this session on the local working tree in /Users/p/git/notes-app; no page or report was made because it was a one-claim inline proof; nothing waits on my partner except an optional go-ahead to commit, and the in-app render is listed as not verified.

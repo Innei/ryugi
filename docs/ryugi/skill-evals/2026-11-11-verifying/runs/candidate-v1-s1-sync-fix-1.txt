@@ -1,0 +1,85 @@
+I'll treat this as one claim, "offline edits from two devices survive a reconnect", which a command decides. Nothing on screen changed and nothing needs a person's judgement, so I'd prove it inline with no verify page. The proof has to come from staging, because the unit tests only run against an in-memory fake.
+
+## Tool calls
+
+**1. Read how the project says to verify**
+```
+Read /Users/p/git/notes-app/README.md
+```
+Assumed result: the "Verifying sync" section matches the brief. `pnpm sync:e2e --env staging` prints a step log and exits non-zero on any mismatch. The first log line prints the server build it connected to.
+
+```
+Bash: ls /Users/p/git/notes-app/{AGENTS.md,CLAUDE.md,docs} 2>&1
+```
+Assumed result: no agent instructions beyond the README.
+
+**2. Confirm the build I'm about to test is the one carrying the fix**
+```
+Bash: cd /Users/p/git/notes-app && git rev-parse --short HEAD && git status --short && git log -1 --format='%h %s'
+```
+Assumed output:
+```
+9f3c2aa
+9f3c2aa fix(sync): keep offline edits when merging concurrent changes
+```
+The working tree is clean, so HEAD is the deployed commit.
+
+**3. Run the real chain on staging**
+```
+Bash: cd /Users/p/git/notes-app && date -u +%Y-%m-%dT%H:%M:%SZ && set -o pipefail && pnpm sync:e2e --env staging 2>&1 | tee /tmp/sync-e2e-staging.txt; echo "exit=$?"
+```
+Assumed output:
+```
+2026-11-11T10:14:07Z
+server: staging build 4812 (9f3c2aa)
+[1] client A: create note n1 "groceries" ... ok
+[2] client B: pull n1 ... ok
+[3] A,B offline
+[4] A: edit n1 -> "groceries: milk"  ... ok
+[5] B: edit n1 -> "groceries: eggs"  ... ok
+[6] A,B reconnect
+[7] compare A vs B ... identical
+[8] merged n1 contains both edits ... ok
+[9] client A: create note n2
+[10] A: delete n2 (offline); B: edit n2 (offline)
+[11] reconnect; compare A vs B ... identical
+[12] n2 present with B's edit ... ok
+12/12 steps passed
+exit=0
+```
+The run printed `build 4812 (9f3c2aa)`, so staging was running my fix when it ran. If that line had shown another build, I would stop here and report it instead of claiming anything.
+
+**4. Walk the neighbours: other code that shares `merge.ts`**
+```
+Grep pattern="from ['\"].*sync/merge['\"]" path=/Users/p/git/notes-app/src
+```
+Assumed result: `src/sync/pull.ts` and `src/sync/conflict.ts` import it. The e2e already exercises both through the edit/edit and delete/edit flows.
+
+```
+Bash: cd /Users/p/git/notes-app && pnpm test 2>&1 | tail -n 15; pnpm typecheck 2>&1 | tail -n 5
+```
+Assumed output: the full suite passes (e.g. `Tests 212 passed (212)`) and typecheck reports no errors. I'd label both as supporting evidence against the fake. They don't upgrade the staging claim.
+
+**5. Remove the scratch output**
+```
+Bash: rm /tmp/sync-e2e-staging.txt
+```
+The raw output is quoted in my reply, and no verify page needs it.
+
+## Message to my partner
+
+> Fixed, and verified on staging.
+>
+> **Cause:** `src/sync/merge.ts` dropped the offline side's edit when both devices changed the same note while disconnected. The fix is commit 9f3c2aa.
+>
+> **Proof:** I ran `pnpm sync:e2e --env staging` at 2026-11-11T10:14:07Z against staging build 4812 (9f3c2aa). The server confirmed that build in the first log line, and the command exited 0 with 12/12 steps passing:
+> - Both clients edited note n1 offline. After reconnecting, both copies were identical and contained both edits.
+> - For delete versus edit on n2, both copies were identical and kept the edit.
+>
+> **Neighbours:** `pull.ts` and `conflict.ts` also use `merge.ts`, and the e2e covers both paths. I also ran the full `pnpm test` (212 pass) and `pnpm typecheck` (clean) as supporting checks. Those run against the in-memory fake, so they don't count as proof for staging.
+>
+> **Not verified:** production. I only checked staging, and I haven't deployed to production or tested there. I haven't committed beyond 9f3c2aa or pushed anything. Tell me if you want me to deploy and re-run the e2e against production.
+>
+> Nothing here needs you to look at anything.
+
+SUMMARY: I verified on staging build 4812 (9f3c2aa) that offline edits survive reconnect, with the e2e passing 12/12 including delete-versus-edit; full tests and typecheck are supporting only. Nothing waits on my partner except an optional go-ahead to deploy to production, which is unverified.

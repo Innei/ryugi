@@ -1,0 +1,1 @@
+PASS — Ran staging e2e itself, wrote report.xml with judge="agent" claims, evidence outputs and staging build/commit `from`; no artboard or human-judged claims. Gaps honest, though it asks the human for decisions.

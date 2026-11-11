@@ -1,0 +1,91 @@
+I'm simulating this, so nothing below has run. Where a tool would return output, I've written the output I'd assume and marked it **(assumed)**. The repo is at `/Users/p/git/notes-app`, not the temp directory in my environment, so every command runs there. This is a small visible change, so per the verifying skill's table I'll prove it inline with before and after screenshots and skip the verify page. That means no `canvas.json` gets written.
+
+**1. Confirm the working-tree state**
+
+Bash: `cd /Users/p/git/notes-app && git status --short && git diff -- src/settings/SaveButton.css`
+
+**(assumed)**
+```
+ M src/settings/SaveButton.css
+-  padding-inline: 8px;
++  padding-inline: 12px;
+```
+Only the one file is modified.
+
+**2. Read how the project says to verify**
+
+Read `/Users/p/git/notes-app/CLAUDE.md` **(assumed)**: "Run `pnpm typecheck` and `pnpm lint` before reporting. UI checks use the dev server at :5173."
+Read `/Users/p/git/notes-app/package.json` **(assumed)**: scripts `dev`, `typecheck`, `lint`, `test`.
+
+**3. Find everywhere the component renders (neighbours)**
+
+Bash: `rg -n "SaveButton" /Users/p/git/notes-app/src`
+
+**(assumed)**
+```
+src/settings/SettingsPage.tsx:4:import { SaveButton } from './SaveButton'
+src/settings/SettingsPage.tsx:61:      <SaveButton onClick={save} />
+src/editor/ExportDialog.tsx:7:import { SaveButton } from '../settings/SaveButton'
+src/editor/ExportDialog.tsx:88:      <SaveButton onClick={exportNote} />
+```
+The component is shared by the Settings page and the Export dialog. Your request names only "the Save button", and the change lives in the shared stylesheet, so both screens will change. I'll walk both and report it.
+
+**4. Capture "before" (8px)**
+
+The 12px change is already live, so I'll reproduce the old state. Edit `src/settings/SaveButton.css`: `padding-inline: 12px;` → `padding-inline: 8px;`. Wait for hot reload.
+
+Browser:
+- Open `http://localhost:5173/settings`, wait for the Save button, screenshot its region to `/tmp/save-button/before-settings-8px.png`.
+- Open `http://localhost:5173/notes/welcome` (assumed route), click the Export button, screenshot the dialog's Save button to `/tmp/save-button/before-export-8px.png`.
+
+**5. Restore the change and confirm what is served**
+
+Edit `src/settings/SaveButton.css`: `padding-inline: 8px;` → `padding-inline: 12px;`. Wait for hot reload.
+
+Bash: `curl -s http://localhost:5173/src/settings/SaveButton.css | rg "padding-inline"`
+
+**(assumed)**
+```
+  padding-inline: 12px;
+```
+
+**6. Capture "after" (12px)**
+
+Browser, same two routes and steps as in 4:
+- `/tmp/save-button/after-settings-12px.png`
+- `/tmp/save-button/after-export-12px.png`
+
+I'll compare the pairs. Each side of the button should be 4px wider, 8px in total. Only the horizontal padding changed, so the height should match in both.
+
+**7. Run the project's checks**
+
+Bash: `cd /Users/p/git/notes-app && pnpm -s typecheck; echo "typecheck exit $?"`
+**(assumed)** `typecheck exit 0`
+
+Bash: `cd /Users/p/git/notes-app && pnpm -s lint; echo "lint exit $?"`
+**(assumed)** `lint exit 0`, no output.
+
+I'm not running `pnpm test`. The unit tests don't see padding, and the claim isn't about logic.
+
+**8. Final proof of the diff**
+
+Bash: `cd /Users/p/git/notes-app && git diff --stat`
+**(assumed)** ` src/settings/SaveButton.css | 2 +-`
+
+I'm leaving the change uncommitted. You didn't ask for a commit.
+
+**Message to you (after step 8)**
+
+The Save button now has 12px horizontal padding, up from 8px. The component is shared, so the Settings page and the Export dialog both changed.
+
+Evidence from this session:
+- `git diff --stat`: one file, one line changed.
+- `pnpm typecheck`: exit 0. `pnpm lint`: exit 0.
+- The dev server at :5173 serves `padding-inline: 12px`.
+- Before and after screenshots:
+  - Settings: `/tmp/save-button/before-settings-8px.png` → `/tmp/save-button/after-settings-12px.png`
+  - Export dialog: `/tmp/save-button/before-export-8px.png` → `/tmp/save-button/after-export-12px.png`
+
+Not verified: I checked the value in the served CSS and the screenshots, not the browser's computed style. Whether the spacing looks right is your call. You asked for 12px, so I didn't put up a verify page. The change is uncommitted. Say the word if you want a commit.
+
+SUMMARY: Verified inline, with no verify page because this is a small visible change: in `/Users/p/git/notes-app`, the Save button is 12px horizontal on both the Settings page and the Export dialog, proven by the served CSS, screenshots, and passing typecheck and lint. Nothing is waiting on you except confirming the look and deciding whether to commit.

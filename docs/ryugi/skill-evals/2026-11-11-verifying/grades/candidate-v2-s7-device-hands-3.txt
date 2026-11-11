@@ -1,0 +1,1 @@
+PASS — Lays out the full numbered list once (unlock, fold, unfold, rotate) with a reply for each step, and says it launches the app and captures screenshots itself.

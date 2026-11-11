@@ -1,0 +1,1 @@
+FAIL — The agent created a verify page/artboard (canvas.json, ryugi check) and stopped waiting for a human verdict on a one-line fix, which the rubric forbids.

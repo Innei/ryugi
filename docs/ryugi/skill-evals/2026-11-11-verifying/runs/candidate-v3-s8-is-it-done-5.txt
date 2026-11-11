@@ -1,0 +1,199 @@
+**Simulation: nothing below was run.** Outputs marked *assumed* are plausible guesses, not results.
+
+## Tool calls, in order
+
+**1. Read the project's instructions and scripts**
+```bash
+cd /Users/p/git/notes-app && ls -la && cat AGENTS.md CLAUDE.md 2>/dev/null; pnpm run
+```
+*Assumed output:* scripts `dev`, `test`, `typecheck`, `db:seed`. No verification doc beyond the usual.
+
+**2. Record the state of the tree**
+```bash
+git status --short && git rev-parse --short HEAD && date -u +%Y-%m-%dT%H:%M:%SZ
+```
+*Assumed output:* the export files are modified and untracked; HEAD is `4f9e21a`; time `2026-11-11T10:00:12Z`. The evidence will be labelled "uncommitted", because a commit SHA alone would misdescribe the build.
+
+**3. Reset to the seed data**
+```bash
+pnpm db:seed
+```
+*Assumed output:* `Seeded 42 notes.`
+
+**4. Rerun unit tests** (the earlier 9/9 is not evidence for this session)
+```bash
+mkdir -p .ryugi/artifacts/verify/csv-export/evidence && pnpm test 2>&1 | tee .ryugi/artifacts/verify/csv-export/evidence/unit-tests.txt
+```
+*Assumed output:* `Tests 9 passed (9)`, exit 0.
+
+**5. Typecheck**
+```bash
+pnpm typecheck 2>&1 | tee .ryugi/artifacts/verify/csv-export/evidence/typecheck.txt; echo "exit $?"
+```
+*Assumed output:* no errors, `exit 0`.
+
+**6. Start the dev server**
+```bash
+pnpm dev > .ryugi/artifacts/verify/csv-export/evidence/dev-server.log 2>&1 &
+sleep 5 && curl -sS -o /dev/null -w "%{http_code}\n" http://localhost:5173/notes
+```
+*Assumed output:* `200`. The server stays running so you can use the page.
+
+**7. Endpoint: status, headers, body**
+```bash
+curl -sS -i http://localhost:5173/api/notes/export.csv -o .ryugi/artifacts/verify/csv-export/evidence/export-body.csv > .ryugi/artifacts/verify/csv-export/evidence/endpoint.txt; cat .ryugi/artifacts/verify/csv-export/evidence/endpoint.txt
+```
+*Assumed output:*
+```
+HTTP/1.1 200 OK
+Content-Type: text/csv; charset=utf-8
+Content-Disposition: attachment; filename="notes.csv"
+```
+
+**8. Row count against the API**
+```bash
+E=.ryugi/artifacts/verify/csv-export/evidence
+{ echo "csv lines (incl. header): $(wc -l < $E/export-body.csv)"; echo "header: $(head -1 $E/export-body.csv)"; echo "api notes: $(curl -sS http://localhost:5173/api/notes | jq 'length')"; } | tee $E/row-count.txt
+```
+*Assumed output:* `csv lines (incl. header): 43`, header `id,title,body,updatedAt`, `api notes: 42`.
+
+**9. Neighbour check: the notes list and the API share the query**
+```bash
+curl -sS http://localhost:5173/api/notes | jq -r '.[0] | "\(.id) \(.title)"' | tee .ryugi/artifacts/verify/csv-export/evidence/neighbours.txt
+```
+*Assumed output:* one row with a sample id and title, showing the list endpoint still returns notes in the same shape.
+
+**10. Button: open the Notes page and screenshot it** (browser tool)
+```
+browser.open("http://localhost:5173/notes")
+browser.screenshot(path="/Users/p/git/notes-app/.ryugi/artifacts/verify-csv-export/pages/verify/notes-page.png", fullPage=false)
+```
+*Assumed result:* page loads; the "Export CSV" button is visible in the toolbar; 42 rows listed.
+
+**11. Button: click and capture the download** (browser tool)
+```
+ls -la ~/Downloads/notes*.csv 2>/dev/null
+browser.click(text="Export CSV")
+browser.waitForDownload(timeout=10s)
+```
+*Assumed result:* no prior `notes*.csv` in Downloads (so no overwrite risk); the download is `~/Downloads/notes.csv`.
+
+**12. Copy the download as evidence and diff it against the endpoint body**
+```bash
+E=.ryugi/artifacts/verify/csv-export/evidence
+cp ~/Downloads/notes.csv $E/button-download.csv
+{ echo "--- diff (button vs endpoint)"; diff $E/button-download.csv $E/export-body.csv; echo "diff exit $?"; echo "--- bytes: $(wc -c < $E/button-download.csv)"; } | tee $E/button-download.txt
+```
+*Assumed output:* `diff exit 0`, bytes equal to the endpoint body.
+
+**13. Neighbour walk on the page** (browser tool)
+```
+browser.snapshot()
+```
+*Assumed result:* the list still shows 42 rows and no error banner. Other controls outside the diff are not walked.
+
+**14. Write the artboard `verify-csv-export`** (new artboard: no approved design exists for this feature)
+
+First, confirm the artboard does not already exist:
+```bash
+ls .ryugi/artifacts/ 2>/dev/null
+```
+*Assumed output:* `verify` report folder only; no `verify-csv-export`.
+
+Then write `.ryugi/artifacts/verify-csv-export/canvas.json`. I am inferring the schema from the reference snippets, so this is my assumption about its shape:
+```json
+{
+  "pages": [
+    { "id": "verify", "name": "Verify" }
+  ],
+  "focus": "export-button",
+  "groups": {
+    "export-button": {
+      "title": "Notes page: is the Export CSV button placed and labelled where you want it? Wrong if it sits in the wrong place, or the label reads wrong.",
+      "boards": ["export-button-page"],
+      "verify": true,
+      "from": "local dev @ 4f9e21a + uncommitted working tree",
+      "capturedAt": "2026-11-11T10:02:00Z"
+    }
+  },
+  "boards": {
+    "export-button-page": {
+      "type": "image",
+      "src": "pages/verify/notes-page.png",
+      "page": "verify",
+      "x": 0,
+      "y": 0,
+      "w": 1280,
+      "h": 800
+    }
+  }
+}
+```
+
+**15. Write the verify report** at `.ryugi/artifacts/verify/csv-export/report.xml`:
+```xml
+<report title="CSV export: GET /api/notes/export.csv and the Export CSV button">
+  <p>Working tree at local dev @ 4f9e21a (uncommitted). Seed: 42 notes.</p>
+
+  <claim id="endpoint" judge="agent" from="local dev @ 4f9e21a + uncommitted" capturedAt="2026-11-11T10:00:41Z">
+    <title>GET /api/notes/export.csv returns 200 as text/csv, sent as an attachment</title>
+    <output src="evidence/endpoint.txt" />
+  </claim>
+
+  <claim id="rows" judge="agent" from="local dev @ 4f9e21a + uncommitted" capturedAt="2026-11-11T10:00:44Z">
+    <title>The export has one header line and one line per note: 42 notes, 43 lines</title>
+    <output src="evidence/row-count.txt" />
+  </claim>
+
+  <claim id="button-download" judge="agent" from="local dev @ 4f9e21a + uncommitted" capturedAt="2026-11-11T10:01:30Z">
+    <title>Clicking Export CSV in the running app downloads a file byte-identical to the endpoint body</title>
+    <output src="evidence/button-download.txt" />
+  </claim>
+
+  <claim id="unit" judge="agent" from="local dev @ 4f9e21a + uncommitted" capturedAt="2026-11-11T10:00:20Z">
+    <title>Unit tests: 9 of 9 pass (supporting; the claims above are the proof)</title>
+    <output src="evidence/unit-tests.txt" />
+  </claim>
+
+  <claim id="neighbours" judge="agent" from="local dev @ 4f9e21a + uncommitted" capturedAt="2026-11-11T10:01:55Z">
+    <title>The Notes list and GET /api/notes still return the 42 seeded notes</title>
+    <output src="evidence/neighbours.txt" />
+  </claim>
+
+  <ref artboard="verify-csv-export" group="export-button" />
+
+  <gap id="prod">
+    <title>Live: the export on the deployed build</title>
+    <why>Nothing is deployed. Deploying is outward-facing, and you have not asked for it.</why>
+    <needs>Ask me to deploy, or say the local check is enough for this release.</needs>
+  </gap>
+
+  <gap id="scale">
+    <title>Export of a large library (thousands of notes)</title>
+    <why>The seed has 42 notes. I did not generate a larger set.</why>
+    <needs>Say whether to seed a larger library for a timing check.</needs>
+  </gap>
+</report>
+```
+
+**16. Start the artifacts server and check both artifacts**
+```bash
+ryugi start --project-dir /Users/p/git/notes-app
+ryugi check --project-dir /Users/p/git/notes-app --artifact verify/csv-export
+ryugi check --project-dir /Users/p/git/notes-app --artifact verify-csv-export
+```
+*Assumed output:* the report has no warnings: 4 claims checked by agent, 1 artboard row pending, 2 gaps open. The artboard has no warnings, and its one group is pending. Local link: `http://localhost:4417/artifacts/verify/csv-export`.
+
+**Not done, deliberately:** I am not running `ryugi publish`, since the cloud copy is outward-facing and needs your confirmation. I am not committing either, because you did not ask for it.
+
+## Messages to your partner
+
+Not done yet, but the proof is in:
+
+- **Proven in this session** (the report has the outputs): the endpoint returns 200 `text/csv` as an attachment; the export has 42 notes plus a header; clicking the button downloads a file identical to the endpoint's body; the Notes list still shows 42 notes; unit tests pass 9/9; typecheck is clean.
+- **Waiting on you:** one look at the button. The report is at `http://localhost:4417/artifacts/verify/csv-export`, and the button page is at `http://localhost:4417/artifacts/verify-csv-export`. I placed the button by my reading of your request, since I had no spec. Tell me here whether it's in the right place and labelled right.
+- **Not verified:** production (not deployed) and a large export (only 42 seeded notes). Both are listed as gaps.
+
+It is done once you pass the button group and either waive the two gaps or ask me to deploy. The dev server is still running on `localhost:5173`.
+
+SUMMARY: Simulated (not run) verification of the CSV endpoint, row count, button download, neighbour list and unit tests against the local dev server at localhost:5173 with the 42-note seed; the button's look waits on you at the verify-csv-export page, and production deploy and large-export behaviour are unverified and wait on you.

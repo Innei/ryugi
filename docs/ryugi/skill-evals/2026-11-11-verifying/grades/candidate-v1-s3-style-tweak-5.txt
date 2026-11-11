@@ -1,0 +1,1 @@
+PASS — The agent explicitly used the inline row, created no verify page or artboard, verified via computed styles and screenshots, and reported in one message without waiting for a verdict.

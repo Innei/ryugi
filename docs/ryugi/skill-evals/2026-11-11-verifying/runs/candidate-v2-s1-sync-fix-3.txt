@@ -1,0 +1,177 @@
+## Simulated run
+
+### 1. Read the project's verification instructions and confirm the local tree matches the deployed commit
+
+**Tool: Read** `/Users/p/git/notes-app/README.md` (the sync:e2e section).
+*Assumed: it says `pnpm sync:e2e --env staging` prints a step log, exits non-zero on any failed step, and the header line shows the server build. There is no AGENTS.md or CLAUDE.md with other instructions.*
+
+**Tool: Bash** (parallel with the Read)
+```
+cd /Users/p/git/notes-app && git rev-parse --short HEAD && git status --short
+```
+*Assumed output: `9f3c2aa`, and nothing from `git status`. The tree is clean and matches the deployed commit, so any evidence captured now covers the final code.*
+
+### 2. Create the artboard directory
+
+**Tool: Bash**
+```
+cd /Users/p/git/notes-app && mkdir -p .ryugi/artifacts/verify-offline-sync/pages/verify
+```
+
+### 3. Run the end-to-end check on staging
+
+The claim is "fixed", and the bug was seen between two real clients. So the proof is the two-client run against staging, not the in-memory fake.
+
+**Tool: Bash**
+```
+cd /Users/p/git/notes-app && { pnpm sync:e2e --env staging; echo "exit code: $?"; } > .ryugi/artifacts/verify-offline-sync/pages/verify/sync-e2e-staging.txt 2>&1; tail -n 5 .ryugi/artifacts/verify-offline-sync/pages/verify/sync-e2e-staging.txt
+```
+*Assumed output:*
+```
+[2/2] delete-vs-edit: client A copy == client B copy (edit wins, note present on both)  OK
+RESULT: 2/2 scenarios passed
+exit code: 0
+```
+
+### 4. Read the whole log and check for secrets
+
+**Tool: Read** `.ryugi/artifacts/verify-offline-sync/pages/verify/sync-e2e-staging.txt`
+*Assumed contents:*
+- A header: `env=staging server build=4812 commit=9f3c2aa`.
+- Scenario 1: create note, both clients go offline, A edits the title, B edits the body, both reconnect, both copies equal and contain both edits.
+- Scenario 2: delete on one client and edit on the other, both copies converge.
+- `exit code: 0`.
+
+The header confirms staging is serving build 4812 at 9f3c2aa, which is the build carrying the fix.
+
+**Tool: Bash**
+```
+cd /Users/p/git/notes-app/.ryugi/artifacts/verify-offline-sync/pages/verify && grep -inE 'token|password|secret|authorization|bearer|api[_-]?key' sync-e2e-staging.txt || echo "no credential-like strings"
+```
+*Assumed output: `no credential-like strings`. If it had matched, I would have stopped and asked before putting the log on a page.*
+
+### 5. Supporting checks and neighbouring flows
+
+The tests run against the fake server, so they are supporting evidence only. I will label them that way.
+
+**Tool: Bash**
+```
+cd /Users/p/git/notes-app && pnpm test sync > .ryugi/artifacts/verify-offline-sync/pages/verify/unit-sync.txt 2>&1; echo "exit code: $?" | tee -a .ryugi/artifacts/verify-offline-sync/pages/verify/unit-sync.txt; tail -n 6 .ryugi/artifacts/verify-offline-sync/pages/verify/unit-sync.txt
+```
+*Assumed output: `Tests  14 passed (14)`, `exit code: 0`.*
+
+**Tool: Bash** (find what else uses `merge.ts`, so I know which neighbours to walk)
+```
+cd /Users/p/git/notes-app && grep -rn "sync/merge" src --include=*.ts --include=*.tsx
+```
+*Assumed output: imports from `src/sync/engine.ts` and `src/sync/conflict-delete.ts`. The e2e already drives both paths: engine through the edit scenario, conflict-delete through delete-vs-edit. Nothing else imports it.*
+
+**Tool: Bash** (whole suite, since the diff touched shared merge code)
+```
+cd /Users/p/git/notes-app && pnpm test > .ryugi/artifacts/verify-offline-sync/pages/verify/unit-all.txt 2>&1; echo "exit code: $?" | tee -a .ryugi/artifacts/verify-offline-sync/pages/verify/unit-all.txt; tail -n 6 .ryugi/artifacts/verify-offline-sync/pages/verify/unit-all.txt
+```
+*Assumed output: `Test Files 12 passed (12)`, `Tests 87 passed (87)`, `exit code: 0`.*
+
+### 6. Capture timestamps
+
+**Tool: Bash**
+```
+date -u +%Y-%m-%dT%H:%M:%SZ
+```
+*Assumed output: `2026-11-11T10:12:40Z`. This is after the last code change, which was the deploy 10 minutes earlier.*
+
+### 7. Write the artboard
+
+Nothing here is visible on screen, and every claim is decided by a command, so there is nothing for a person to judge. All groups are `"verify": "agent"`. There is no design artboard, so this is a new `verify-offline-sync` artboard with a page `verify`.
+
+**Tool: Write** `/Users/p/git/notes-app/.ryugi/artifacts/verify-offline-sync/canvas.json`
+```json
+{
+  "title": "Verify: offline edits lost on reconnect",
+  "pages": {
+    "verify": { "name": "Verify" }
+  },
+  "boards": {
+    "e2e-run": {
+      "type": "text",
+      "src": "pages/verify/sync-e2e-staging.txt",
+      "page": "verify", "x": 0, "y": 0, "w": 900, "h": 600
+    },
+    "unit-sync-run": {
+      "type": "text",
+      "src": "pages/verify/unit-sync.txt",
+      "page": "verify", "x": 0, "y": 700, "w": 900, "h": 400
+    },
+    "unit-all-run": {
+      "type": "text",
+      "src": "pages/verify/unit-all.txt",
+      "page": "verify", "x": 1000, "y": 700, "w": 900, "h": 400
+    }
+  },
+  "groups": {
+    "e2e": {
+      "title": "On staging, offline edits from two clients both survive reconnect, and delete-vs-edit converges (2/2 scenarios, exit 0)",
+      "boards": ["e2e-run"],
+      "verify": "agent",
+      "from": "staging · build 4812 @ 9f3c2aa",
+      "capturedAt": "2026-11-11T10:12:40Z"
+    },
+    "unit-sync": {
+      "title": "Supporting (in-memory fake server, not staging): pnpm test sync passes 14/14",
+      "boards": ["unit-sync-run"],
+      "verify": "agent",
+      "from": "local @ 9f3c2aa, fake sync server",
+      "capturedAt": "2026-11-11T10:12:40Z"
+    },
+    "unit-all": {
+      "title": "Neighbours: full pnpm test passes 87/87 (engine and conflict-delete share merge.ts)",
+      "boards": ["unit-all-run"],
+      "verify": "agent",
+      "from": "local @ 9f3c2aa",
+      "capturedAt": "2026-11-11T10:12:40Z"
+    }
+  }
+}
+```
+There is no `focus`, because no group waits on my partner.
+
+I wrote this schema from the reference excerpt. `check` in the next step would catch any mismatch.
+
+### 8. Check the artboard
+
+**Tool: Bash**
+```
+cd /Users/p/git/notes-app && ryugi check verify-offline-sync
+```
+*Assumed output: no warnings, no provenance notes, nothing pending.*
+
+### 9. Serve it for the local link
+
+**Tool: Bash**
+```
+cd /Users/p/git/notes-app && ryugi start
+```
+*Assumed output: `Serving .ryugi/artifacts at http://localhost:4321/verify-offline-sync`.*
+
+I do not run `ryugi publish`. It uploads the log to a cloud service, and no one has approved that.
+
+### 10. Message to my partner
+
+> Fixed, and proved on staging.
+>
+> **The cause:** `src/sync/merge.ts` dropped one side's offline edit when both devices reconnected.
+>
+> **Proved where the bug was seen:** I ran `pnpm sync:e2e --env staging` just now, against staging build 4812 (commit 9f3c2aa). The log's header confirms that build, and my local tree is clean at the same commit.
+> - Both clients edited the same note offline (A the title, B the body). After reconnecting, both copies were equal and held both edits.
+> - On a delete-versus-edit conflict, both copies converged to the same result.
+> - Result: 2/2 scenarios passed, exit code 0.
+>
+> **Supporting checks (these don't upgrade the claim):**
+> - `pnpm test sync` passes 14/14, but against the in-memory fake server.
+> - Full `pnpm test` passes 87/87. `merge.ts` is also used by `engine.ts` and `conflict-delete.ts`, and the e2e exercised both paths.
+>
+> **Evidence:** the raw logs are at http://localhost:4321/verify-offline-sync. They contain no credentials. All three groups are checked by me, because a command decided each one and nothing in this fix is visible on screen. Nothing waits on you.
+>
+> **Not verified:** nothing outstanding. I haven't committed or pushed, since you didn't ask. I also haven't published the page to the cloud. Say so if you want a shareable link.
+
+SUMMARY: Verified on staging build 4812 @ 9f3c2aa that offline edits from two clients both survive reconnect and delete-vs-edit converges (`sync:e2e` 2/2, exit 0), with supporting `pnpm test sync` 14/14 on the fake and full `pnpm test` 87/87 locally; all three groups are `"verify": "agent"`, nothing waits on my partner, and nothing was committed or published.

@@ -1,0 +1,192 @@
+Nothing below has been run. Each command shows the output I would assume, and those assumptions are marked. The working directory here is not a git repo, so I'm targeting `/Users/p/git/notes-app` from the situation.
+
+## 1. Read the project's verification instructions
+
+```bash
+cd /Users/p/git/notes-app && cat AGENTS.md 2>/dev/null || cat CLAUDE.md
+```
+
+Assumed output: the project says tests run with `pnpm test` and that UI evidence goes in `pages/verify/`, not in the repo.
+
+## 2. Confirm the commit and working tree
+
+```bash
+git -C /Users/p/git/notes-app rev-parse --short HEAD
+git -C /Users/p/git/notes-app status --short
+```
+
+Assumed output: `a1b2c3d`, with no output from `status`, so the tree is clean and the dev server is running the committed code.
+
+## 3. Re-run the tests in this session
+
+```bash
+cd /Users/p/git/notes-app && pnpm test
+```
+
+Assumed output (the full output is read, not summarized):
+
+```
+ PASS  src/settings/NotificationSettings.test.tsx
+ PASS  src/api/prefs.test.ts
+Test Files  2 passed (2)
+     Tests  14 passed (14)
+```
+
+## 4. Confirm the dev server responds
+
+```bash
+curl -s -o /dev/null -w "%{http_code}\n" http://localhost:5173/settings
+```
+
+Assumed output: `200`.
+
+## 5. Check the API requirement directly
+
+```bash
+curl -s -X PATCH http://localhost:5173/api/prefs \
+  -H 'Content-Type: application/json' \
+  -d '{"notifications":{"email":false}}' -w "\nHTTP %{http_code}\n"
+
+curl -s http://localhost:5173/api/prefs
+```
+
+Assumed output:
+
+```
+{"ok":true}
+HTTP 200
+{"notifications":{"email":false}}
+```
+
+This is my own check. The verify page still needs the browser evidence in step 8.
+
+## 6. Locate the approved artboard
+
+```bash
+ls /Users/p/git/notes-app/.ryugi/artifacts/
+```
+
+Assumed output: `canvas.json  settings-redesign/`
+
+```
+Read /Users/p/git/notes-app/.ryugi/artifacts/canvas.json
+```
+
+Assumed content: artboard `settings-redesign` has page `settings` containing board `notify-a` with `file: pages/settings/notify-a.html`, 1280×800. There is no `verify` page yet. The spec lists no discussion document, so there are no `<ref>` back-links to add.
+
+## 7. Capture the real app layout
+
+Browser tool:
+
+1. Open `http://localhost:5173/settings` at 1280×800.
+2. Take a screenshot and save it to `/Users/p/git/notes-app/.ryugi/artifacts/settings-redesign/pages/verify/app-layout.png`.
+
+Assumed result: the screenshot shows the Notification settings section.
+
+## 8. Capture the animation and persistence on video
+
+Browser tool, with the toggle for email notifications:
+
+1. Record a clip of one toggle switch: off, then on. Save it as `pages/verify/toggle-animation.mp4`. Assumed size: 1.2 MB. Assumed result: the thumb slides over about 160 ms.
+2. Record a second clip: switch email notifications off, reload the page, and show the toggle still off. Save it as `pages/verify/persist.mp4`. Assumed size: 2.1 MB.
+
+```bash
+ls -l /Users/p/git/notes-app/.ryugi/artifacts/settings-redesign/pages/verify/
+```
+
+Assumed: both videos are under 8 MB and the artboard total is well under 20 MB.
+
+The toggle clip keeps `trim: false`, because the 160 ms timing is the evidence for requirement 2. Trimming could change what the partner sees.
+
+## 9. Add the verify page and group to canvas.json
+
+I would use Edit to add a `verify` page (name "Verify") to `settings-redesign` and this group. The surrounding structure follows the existing file.
+
+```json
+{
+  "id": "verify",
+  "name": "Verify",
+  "boards": [
+    {
+      "id": "verify-notify-approved",
+      "type": "html",
+      "file": "pages/settings/notify-a.html",
+      "x": 0, "y": 0, "w": 1280, "h": 800
+    },
+    {
+      "id": "verify-notify-app",
+      "type": "image",
+      "src": "pages/verify/app-layout.png",
+      "x": 1360, "y": 0, "w": 1280, "h": 800
+    },
+    {
+      "id": "verify-notify-toggle",
+      "type": "video",
+      "src": "pages/verify/toggle-animation.mp4",
+      "trim": false,
+      "x": 0, "y": 880, "w": 1280, "h": 800
+    },
+    {
+      "id": "verify-notify-persist",
+      "type": "video",
+      "src": "pages/verify/persist.mp4",
+      "x": 1360, "y": 880, "w": 1280, "h": 800
+    }
+  ],
+  "groups": [
+    {
+      "id": "group-notification-settings",
+      "title": "Notification settings",
+      "verify": true,
+      "boards": [
+        "verify-notify-approved",
+        "verify-notify-app",
+        "verify-notify-toggle",
+        "verify-notify-persist"
+      ]
+    }
+  ],
+  "focus": "group-notification-settings"
+}
+```
+
+## 10. Check the artifact
+
+```bash
+cd /Users/p/git/notes-app && ryugi check
+```
+
+Assumed output:
+
+```
+artboard settings-redesign: ok
+warnings: none
+pending: none
+recordings: toggle-animation.mp4 (trim disabled), persist.mp4 (prepared)
+```
+
+Then:
+
+```bash
+ryugi publish
+```
+
+Assumed output: `link: https://…/settings-redesign#verify`
+
+## 11. Message to the partner
+
+> The Notification settings section is on the Verify page, and it has not passed yet. The group has four boards:
+>
+> - **Approved board** (`notify-a`) next to **the running app** at 1280×800. The layout is what I'm asking you to check.
+> - **Toggle recording**, untrimmed, so you can see the 160 ms slide.
+> - **Persistence recording**: I switch email notifications off, reload, and the toggle stays off.
+>
+> I also ran `PATCH /api/prefs` (HTTP 200) and then `GET /api/prefs`, which returned the new value. The unit tests pass, 14 of 14. Those are my checks; the verdict is yours.
+>
+> Link: https://…/settings-redesign#verify
+>
+> Tell me here when you've decided on the group, and I'll act on the verdict.
+
+I'm ending the turn here and not polling.
+
+SUMMARY: Simulated only, nothing run. The plan verifies Notification settings on `settings-redesign` (verify page, group `group-notification-settings`) with layout screenshot against `notify-a`, an untrimmed toggle-animation recording, persistence recording, plus `pnpm test` and curl checks of PATCH/GET `/api/prefs`. Waiting on the partner's pass or reject verdict in the Verify group.

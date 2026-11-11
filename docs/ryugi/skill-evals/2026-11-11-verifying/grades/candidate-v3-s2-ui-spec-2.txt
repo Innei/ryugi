@@ -1,0 +1,1 @@
+PASS — Look and motion are artboard verify groups with screenshot/recording, questions and `from`; persistence is an agent-judged report claim with raw output, and the report refs both groups and supplies the report link.

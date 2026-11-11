@@ -1,0 +1,1 @@
+PASS — One numbered list gives all three physical steps (unlock/fold, unfold, rotate) with a reply word each, and the agent says it will launch, navigate and screenshot itself.

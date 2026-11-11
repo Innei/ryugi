@@ -1,0 +1,109 @@
+I can't run anything here, so every output below is a placeholder I assumed, not evidence. The real checks have to run in your session before anything is reported as fixed.
+
+## Simulated run
+
+**1. Locate the project and its scripts**
+
+```bash
+cd /Users/p/git/notes-app && git status --short && node -p "JSON.stringify(require('./package.json').scripts, null, 2)"
+```
+[assumed output] `git status` is clean apart from `src/lib/format-bytes.ts` and `src/lib/format-bytes.test.ts`. Scripts include `test`, `typecheck`, `lint`, `dev`.
+
+**2. Read the function and its test**
+
+Read `src/lib/format-bytes.ts`
+[assumed output] The line I changed is now:
+```ts
+return `${parseFloat((bytes / 1024).toFixed(2))} KB`
+```
+(It was `${(bytes / 1024).toFixed(2)} KB`.)
+
+Read `src/lib/format-bytes.test.ts`
+[assumed output] The new case is `expect(formatBytes(1536)).toBe("1.5 KB")`, next to the existing cases for `0`, `1024`, `1048576`.
+
+**3. Run the function's own tests, the proof for the claim**
+
+```bash
+pnpm test -- src/lib/format-bytes
+```
+[assumed output]
+```
+ ✓ src/lib/format-bytes.test.ts (6)
+ Test Files  1 passed (1)
+      Tests  6 passed (6)
+```
+
+**4. Find every caller, since the output format is shared**
+
+```bash
+rg -n "formatBytes" src
+```
+[assumed output]
+```
+src/lib/format-bytes.ts:3:export function formatBytes(bytes: number): string {
+src/lib/format-bytes.test.ts:2:import { formatBytes } from "./format-bytes"
+src/components/AttachmentRow.tsx:8:import { formatBytes } from "@/lib/format-bytes"
+src/components/AttachmentRow.tsx:31:        <span className="size">{formatBytes(file.size)}</span>
+src/server/export.ts:14:const label = formatBytes(total)
+```
+
+Read `src/components/AttachmentRow.tsx` and `src/server/export.ts`
+[assumed output] `AttachmentRow` renders the size in the attachment list. `export.ts` puts the value in a label in an export manifest. Neither parses the string back into a number, so the change is safe for both.
+
+**5. Full test suite, typecheck and lint**
+
+```bash
+pnpm test
+```
+[assumed output] `Test Files 14 passed (14)`, `Tests 97 passed (97)`.
+
+```bash
+pnpm typecheck
+```
+[assumed output] exits 0, no output.
+
+```bash
+pnpm lint
+```
+[assumed output] `✔ No ESLint warnings or errors`.
+
+**6. Look at where the partner saw it: the attachment list in the running app**
+
+```bash
+pnpm dev
+```
+[assumed output] `Local: http://localhost:5173/`, running in the background.
+
+Browser: open `http://localhost:5173/notes/attachments` with the project's seeded fixture `attachments-fixture` (the 1536-byte file is in it), then take a screenshot.
+[assumed output] The row reads `notes-draft.txt   1.5 KB`. Screenshot saved to `/tmp/notes-app-evidence/attachments-after.png` (outside the repo, scratch).
+
+**7. Timestamp the evidence**
+
+```bash
+date -u +%Y-%m-%dT%H:%M:%SZ
+```
+[assumed output] `2026-11-11T10:14:03Z`
+
+**8. Leave the change uncommitted**
+
+I'm not committing or opening a PR, since you haven't asked for that. Committing would need the same evidence first, which is the list above.
+
+## Message to your partner (simulated)
+
+`formatBytes(1536)` now returns `1.5 KB`. The change is one line in `src/lib/format-bytes.ts`, plus a new test case.
+
+Evidence, with the commands and outputs above:
+- `pnpm test -- src/lib/format-bytes`: 6 passed.
+- `pnpm test`: 97 passed across 14 files.
+- `pnpm typecheck`: exit 0.
+- `pnpm lint`: clean.
+- Attachment list in the running dev app (fixture `attachments-fixture`) shows `1.5 KB`. Screenshot: `/tmp/notes-app-evidence/attachments-after.png`, captured 2026-11-11T10:14:03Z.
+- Neighbours: `AttachmentRow.tsx` and `export.ts` both use the output as display text only; I checked both.
+
+Not verified:
+- A before screenshot of the attachment list. The fix is already in the working tree, so I can't capture the broken state honestly now. The failing test output from before the fix is the only before-evidence.
+- Output in the production build. I only ran the dev server.
+
+The change is uncommitted. Do you want me to commit it?
+
+SUMMARY: Nothing was run; all outputs above are assumed, so the fix is not yet verified. Once the commands are run here, the evidence is the unit tests, full suite, typecheck and lint in the repo, plus the attachment list in the dev app. Waiting on: your go-ahead to run these for real, and your decision on committing.

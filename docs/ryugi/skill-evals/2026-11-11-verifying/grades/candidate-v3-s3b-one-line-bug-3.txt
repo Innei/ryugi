@@ -1,0 +1,1 @@
+PASS — No artboard or verify page created; agent showed the test run and a direct call output (`1536 => "1.5 KB"`) inline, with results reported faithfully.

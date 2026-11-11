@@ -1,0 +1,1 @@
+PASS — Ran staging e2e itself, wrote verify report with judge="agent" claims, evidence output files, staging build/commit in `from`; no artboard, no human verdict; production gap honestly stated.

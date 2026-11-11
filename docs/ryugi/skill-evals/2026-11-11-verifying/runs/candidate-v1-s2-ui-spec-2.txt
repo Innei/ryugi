@@ -1,0 +1,182 @@
+I'll simulate this in order. Where a tool result is needed I state what I assume.
+
+## 1. Orient: project's verify instructions, artboard state, build under test
+
+**Read** `/Users/p/git/notes-app/AGENTS.md`
+*Assumed:* it says to verify UI against the dev server at :5173, which has a seeded, already signed-in user and no auth on `/api/*` locally. It names `pnpm typecheck` and `pnpm test` as the checks.
+
+**Read** `/Users/p/git/notes-app/.ryugi/artifacts/settings-redesign/canvas.json`
+*Assumed:* it has `boards.notify-a` on page `settings` and no `verify` page. `document.md` has a "## Notification settings" section.
+
+**Bash**
+```
+cd /Users/p/git/notes-app && git rev-parse --short HEAD && git status --short && date -u +%Y-%m-%dT%H:%M:%SZ
+```
+*Assumed output:* `a1b2c3d`, an empty status (clean tree, so the dev server is serving exactly that commit), then `2026-11-11T09:40:00Z`.
+
+## 2. Supporting checks (stated in the reply only because I ran them)
+
+**Bash**
+```
+cd /Users/p/git/notes-app && pnpm typecheck 2>&1 | tail -5; pnpm test 2>&1 | tail -15
+```
+*Assumed:* typecheck exits clean, and the tests report `Tests 142 passed (142)`. I'll label these as supporting, not as proof of the three claims.
+
+## 3. Claim 3 first: persistence on the running server
+
+**Bash**
+```
+curl -sS -w '\nHTTP %{http_code}\n' http://localhost:5173/api/prefs
+```
+*Assumed:* `{"notifyEmail":true,"notifyPush":true}` with HTTP 200. I'll flip `notifyEmail` and restore it afterwards, so the dev data ends as I found it.
+
+**Bash**
+```
+D=/Users/p/git/notes-app/.ryugi/artifacts/settings-redesign/pages/verify; mkdir -p $D && cd $D && {
+  echo "# http://localhost:5173 @ $(git -C /Users/p/git/notes-app rev-parse --short HEAD), $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  echo "# pass criteria (written before running): PATCH status 200 AND next GET shows notifyEmail=false"
+  echo '$ PATCH /api/prefs {"notifyEmail":false}'
+  curl -sS -X PATCH -H 'content-type: application/json' -d '{"notifyEmail":false}' -w '\nHTTP %{http_code}\n' http://localhost:5173/api/prefs
+  echo '$ GET /api/prefs'
+  curl -sS -w '\nHTTP %{http_code}\n' http://localhost:5173/api/prefs
+  echo '$ PATCH /api/prefs {"notifyEmail":true}   (restore)'
+  curl -sS -X PATCH -H 'content-type: application/json' -d '{"notifyEmail":true}' -w '\nHTTP %{http_code}\n' http://localhost:5173/api/prefs
+  echo '$ GET /api/prefs'
+  curl -sS -w '\nHTTP %{http_code}\n' http://localhost:5173/api/prefs
+} > prefs-persist.txt 2>&1; cat prefs-persist.txt
+```
+*Assumed output:* PATCH returns `HTTP 200`. The GET returns `"notifyEmail":false`. The restore returns 200 and the final GET shows `true`. The criteria are met, so this is a command-decided claim.
+
+## 4. Claim 1: screenshot of the real app
+
+**Browser:** open `http://localhost:5173/settings/notifications` with a 1280x800 viewport and wait for it to load. Screenshot to `$D/notify-actual.png`.
+
+**Read** `$D/notify-actual.png` to confirm the capture is the real section and not a loading or error state.
+*Assumed:* the section is rendered, with all toggles visible.
+
+## 5. Claim 2: short recording of the toggle, plus a neighbour walk
+
+**Browser:** start a recording to `$D/toggle.webm` and click the "Email" toggle off, then on, with a pause between clicks. Stop the recording.
+
+**Browser (neighbours, same screen and same endpoint):**
+- Click the "Push" toggle off, then reload the page. It stays off.
+- Click it back on.
+- Open the Appearance section on the same settings page and change a pref. Its toggles still work and `/api/prefs` still persists the change after a reload.
+- Confirm the Email toggle ends on.
+
+*Assumed:* all of these work. I'll list the three flows I walked in the reply.
+
+**Bash**
+```
+cd $D && ls -l && du -sh /Users/p/git/notes-app/.ryugi/artifacts/settings-redesign && date -u +%Y-%m-%dT%H:%M:%SZ
+```
+*Assumed:* `notify-actual.png` is 180KB, `toggle.webm` is 1.1MB, `prefs-persist.txt` is 1KB, and the artboard totals 3.4MB, all under the limits. The time is `2026-11-11T09:43:10Z`. The screenshot was captured around 09:41 and the recording around 09:42, and both are after the last code change.
+
+## 6. Build the verify page
+
+**Edit** `.ryugi/artifacts/settings-redesign/canvas.json`, adding the following. I keep the existing content and set `focus` to `v1`.
+
+```json
+{
+  "focus": "v1",
+  "pages": {
+    "verify": { "name": "Verify" }
+  },
+  "boards": {
+    "v1-design": {
+      "file": "pages/settings/notify-a.html",
+      "page": "verify", "x": 0, "y": 0, "w": 1280, "h": 800
+    },
+    "v1-actual": {
+      "type": "image", "src": "pages/verify/notify-actual.png",
+      "page": "verify", "x": 1360, "y": 0, "w": 1280, "h": 800
+    },
+    "v2-recording": {
+      "type": "video", "src": "pages/verify/toggle.webm", "trim": false,
+      "page": "verify", "x": 0, "y": 900, "w": 1280, "h": 800
+    },
+    "v3-run": {
+      "type": "text", "src": "pages/verify/prefs-persist.txt",
+      "page": "verify", "x": 0, "y": 1800, "w": 900, "h": 600
+    }
+  },
+  "groups": {
+    "v1": {
+      "title": "Layout: does the real Notification settings match the approved notify-a? Look for spacing, type, colour or ordering that differs.",
+      "boards": ["v1-design", "v1-actual"],
+      "verify": true,
+      "from": "local dev server @ a1b2c3d",
+      "capturedAt": "2026-11-11T09:41:08Z"
+    },
+    "v2": {
+      "title": "Toggle motion: does the thumb slide smoothly in about 160ms, not jump or lag? Try it yourself at http://localhost:5173/settings/notifications.",
+      "boards": ["v2-recording"],
+      "verify": true,
+      "from": "local dev server @ a1b2c3d",
+      "capturedAt": "2026-11-11T09:42:30Z"
+    },
+    "v3": {
+      "title": "A changed preference persists: PATCH /api/prefs returns 200 and the next GET returns the new value",
+      "boards": ["v3-run"],
+      "verify": "agent",
+      "from": "local dev server @ a1b2c3d",
+      "capturedAt": "2026-11-11T09:40:12Z"
+    }
+  },
+  "stickies": {
+    "v2-try": {
+      "text": "Try it live: http://localhost:5173/settings/notifications (dev server on a1b2c3d; to start it yourself, run `pnpm dev` in /Users/p/git/notes-app). A recording can't carry how 160ms feels.",
+      "page": "verify", "x": 1360, "y": 900, "w": 420, "h": 160
+    }
+  }
+}
+```
+v3 is `"agent"` because a status and a value decided it, it ran on the server the claim is about, its raw output is a text board, and nothing in it is about look or feel. v1 and v2 are `true` because layout and motion are for a person to judge.
+
+**Edit** `.ryugi/artifacts/settings-redesign/document.md`, adding under "## Notification settings":
+```
+<ref artboard="settings-redesign" group="v1" />
+<ref artboard="settings-redesign" group="v2" />
+<ref artboard="settings-redesign" group="v3" />
+```
+This is how the verdicts show up back in the discussion.
+
+**Bash**
+```
+cd /Users/p/git/notes-app && ryugi check settings-redesign
+```
+*Assumed:* the first run warns that `stickies.v2-try` is missing a field. I fix it and re-run. The second run is clean, with no `W_PROVENANCE`, no provenance notes and nothing `pending`.
+
+**Bash**
+```
+cd /Users/p/git/notes-app && ryugi start settings-redesign
+```
+*Assumed:* it prints the local link `http://localhost:4400/settings-redesign#verify`. I don't run `ryugi publish`: that would send the page and screenshots to an external service, so I'll offer it instead.
+
+## 7. Message to my partner
+
+> The Notification settings section is built, and I've checked it against the running app. Two groups need your eye. I can't judge them for you.
+>
+> **Verify page:** http://localhost:4400/settings-redesign#verify (local link; I haven't published a cloud copy, tell me if you want one)
+>
+> **Waiting on you (2):**
+> 1. **v1, Layout:** the approved `notify-a` is on the left and the real app on the right. Look for any spacing, type, colour or ordering that differs.
+> 2. **v2, Toggle motion:** a short recording, plus the live page at http://localhost:5173/settings/notifications. Does the thumb slide smoothly in about 160ms, without jumping or lagging? A recording can't carry the feel, so please try it live.
+>
+> **Checked by me (1):**
+> - **v3, Persistence:** `PATCH /api/prefs {"notifyEmail":false}` returned 200 and the next `GET` returned `false`. I then restored the value to `true` and confirmed it with another GET. The raw output is in the group. It ran against the dev server on `a1b2c3d` with a clean tree.
+>
+> **Also run this session (supporting only):** `pnpm typecheck` was clean and `pnpm test` passed 142 of 142. Both ran against the code, not the running page, so they don't prove the three claims.
+>
+> **Neighbours I walked on the same page:**
+> - The Push toggle persisted across a reload.
+> - An Appearance toggle still works and persists.
+> - Email ended in its original on state.
+>
+> **Not verified:** everything ran on the local dev server in one browser. Nothing has been checked on a deployed build or on other browsers.
+>
+> Tell me here when you've decided on v1 and v2, for example "pass both" or "reject v2, the thumb jumps". I'll record it on the page and carry on. I'm not landing this work until then.
+
+I then stop and wait. I don't poll.
+
+SUMMARY: I verified all three claims on the dev server at a1b2c3d (clean tree), and ran typecheck and tests as supporting checks. Persistence (v3) is checked by me with raw curl output on the page. Layout (v1) and toggle motion (v2) are on the verify page as `"verify": true` groups, and landing waits on your verdicts.

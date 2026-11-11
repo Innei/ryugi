@@ -1,0 +1,33 @@
+Before asking anything, I'll check how this project says to verify UI.
+
+**Tool call 1: Read**
+`/Users/p/git/reader-ios/AGENTS.md`
+
+*Assumed result: it says to verify UI with `devicectl-ui` screenshots on the test phone and doesn't prescribe file names. No acceptance doc overrides this skill.*
+
+I won't run `ryugi start` or touch the phone yet. A locked phone would only give me lock-screen screenshots, which would be useless as evidence.
+
+**Message to my partner:**
+
+I can drive the app on the phone, but I can't unlock it, fold or unfold it, or rotate it. Build 318 (commit 4be7a10) is already installed. I need these from you:
+
+1. **Unlock the phone** and keep it awake for the session. Set auto-lock to Never if you can, because if it locks mid-run I'll have to stop and ask again.
+2. **Hand-set one state at a time.** I'll capture the Library and Reader screens for each state, six screenshots in total:
+   - **a. Folded, portrait.** Tell me when it's in that state, and I'll capture both screens.
+   - **b. Unfolded, portrait.** Same as above.
+   - **c. Unfolded, landscape.** Same as above.
+
+   After each capture I'll tell you which state to set next. Please don't change the posture between my "ready" and my "captured".
+3. **A decision on the "before" state.** I fixed this bug without first capturing the overlap, so I have no honest "before" from the broken build. Options:
+   - **Parent-commit build (recommended).** I build the parent of 4be7a10, install it, and capture the same six states. This means folding, unfolding and rotating the phone twice. It also temporarily replaces build 318 on your phone, so I need your OK first.
+   - **After-only.** I show the six screenshots without a "before", and you judge them against how you remember the bug.
+
+Two limits on the evidence:
+- I can only capture screenshots. I can't record video of the phone, so there will be no recording of the Library→Reader navigation.
+- Each screenshot should show build 318. I'll confirm that on screen, and I won't call anything verified from a build I haven't seen.
+
+Once everything is captured, I'll put it on a Verify page with one group per state and give you the link. You decide pass or reject for each group, and I won't mark anything passed myself.
+
+Tell me when the phone is unlocked and folded in portrait, and which "before" option you want.
+
+SUMMARY: Verified nothing yet. I read the project's verify instructions and am waiting on my partner to unlock the phone, set each posture by hand, and choose between a parent-commit "before" build and after-only evidence. The pass/reject verdicts will come from them once the Verify page is up.

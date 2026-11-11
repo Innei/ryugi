@@ -1,0 +1,1 @@
+PASS — Agent started the app, curl-checked export endpoint (text/csv, 43 lines), clicked the button and captured the download; final message asks only for pass/reject verdict on its evidence.

@@ -1,0 +1,156 @@
+I'll simulate the wrap-up in order. Nothing below has been run. Each tool output is an assumed result, marked as such. Requirement 4 can't be verified from this environment, so the plan includes that gap.
+
+## 1. Confirm the repo and the project's verification rules
+
+```bash
+cd /Users/p/git/notes-app && git rev-parse --short HEAD && git status --short && cat AGENTS.md CLAUDE.md 2>/dev/null
+```
+
+Assumed output:
+- `c4d5e6f`
+- clean working tree (no output from `git status --short`)
+- AGENTS.md says data checks use `pnpm import:check <file>` and UI evidence comes from the running app.
+
+The session's primary working directory is a temp directory that isn't a git repo, so every command below runs from `/Users/p/git/notes-app`.
+
+## 2. Rerun the unit tests (a previous pass isn't evidence)
+
+```bash
+cd /Users/p/git/notes-app && pnpm test
+```
+
+Assumed output: `Test Files 42 passed (42)`, `Tests 318 passed (318)`, exit 0.
+
+## 3. Run the two data requirements
+
+```bash
+cd /Users/p/git/notes-app && pnpm import:check fixtures/10k.csv
+```
+
+Assumed output: `rows read: 10000  rows written: 10000  rows skipped: 0`
+
+```bash
+cd /Users/p/git/notes-app && pnpm import:check fixtures/dupes.csv
+```
+
+Assumed output: `rows read: 500  rows written: 250  rows skipped: 250`
+
+Both match the spec. These run against the local database only.
+
+## 4. Check the artifacts state
+
+```bash
+ryugi check csv-import
+```
+
+Assumed output: the artboard exists, has no `verify` page yet, `warnings: none`.
+
+## 5. Capture the real app (dev server at http://localhost:5173)
+
+Browser tool actions, in order (the route `/import` is assumed):
+1. Open `http://localhost:5173/import`.
+2. Click "Import CSV", choose `fixtures/10k.csv`.
+3. Screenshot the idle dialog → `pages/verify/import-dialog.png` (assumed 1280×800).
+4. Start the import, screenshot once the progress bar is mid-run → `pages/verify/import-progress.png`.
+5. Record the whole flow from open to the final result → `pages/verify/import-flow.mp4`.
+
+The files go under the artboard's `pages/verify/` directory. I'm assuming the artboard lives at `.ryugi/artifacts/csv-import/`.
+
+```bash
+cd /Users/p/git/notes-app/.ryugi/artifacts/csv-import && mkdir -p pages/verify && du -h pages/verify/*
+```
+
+Assumed output: the video is about 3.1MB (under 8MB), the screenshots are under 1MB each, the artboard is well under 20MB.
+
+## 6. Add the verify page to the approved artboard
+
+The approved design is on `csv-import`, so the verify page goes there. Assumed `canvas.json` addition, following the reference's board shape:
+
+```json
+{
+  "pages": [
+    {
+      "id": "verify",
+      "name": "Verify",
+      "focus": "import-dialog",
+      "groups": [
+        {
+          "id": "import-dialog",
+          "title": "CSV import dialog (spec req. 1: matches import-a, incl. progress bar)",
+          "verify": true,
+          "boards": [
+            {
+              "id": "approved",
+              "file": "pages/import/import-a.html",
+              "page": "verify",
+              "x": 0, "y": 0, "w": 1280, "h": 800
+            },
+            {
+              "id": "app-idle",
+              "after": {
+                "type": "image",
+                "src": "pages/verify/import-dialog.png",
+                "page": "verify",
+                "x": 1360, "y": 0, "w": 1280, "h": 800
+              }
+            },
+            {
+              "id": "app-progress",
+              "after": {
+                "type": "image",
+                "src": "pages/verify/import-progress.png",
+                "page": "verify",
+                "x": 1360, "y": 860, "w": 1280, "h": 800
+              }
+            },
+            {
+              "id": "app-flow",
+              "after": {
+                "type": "video",
+                "src": "pages/verify/import-flow.mp4",
+                "page": "verify",
+                "x": 0, "y": 860, "w": 1280, "h": 800
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+```
+
+Notes:
+- The data requirements (2 and 3) are terminal output, not a visible change, so they get no verify group. Their output goes in the final message.
+- The spec names no discussion document that I can see, so there are no `<ref>` back-links. I'll add them if the spec lists one.
+- The video keeps the default trim, since its timing isn't evidence.
+
+## 7. Validate and publish
+
+```bash
+ryugi check csv-import
+```
+
+Assumed output: `warnings: none`, `pending: none`, one verify group `import-dialog` with `verdict: pending`.
+
+```bash
+ryugi publish csv-import
+```
+
+Assumed output: a cloud link, for example `https://ryugi.example/csv-import`.
+
+I'm not committing or pushing. You didn't ask for that, and there are no code changes in this step.
+
+## 8. Message to you
+
+Here's where it stands:
+
+- **Req. 2 and 3 pass** on the local database:
+  - `fixtures/10k.csv`: read 10000, written 10000, skipped 0
+  - `fixtures/dupes.csv`: read 500, written 250, skipped 250
+- **Req. 1 is ready for your verdict.** The verify page is at the link above. The group "CSV import dialog" shows the approved `import-a` board beside the real app's idle dialog, the progress state, and a recording of the full flow. Please check the progress bar in particular. Tell me here when you've decided. I won't record a verdict myself.
+- **Req. 4 is not verified, and I can't verify it from here.** I have no production credentials and there's no staging copy. I have not run anything against production. To close this, you could run `pnpm import:check` against production yourself, give me a read-only or staging database, or tell me another way you want it checked.
+
+This isn't done yet. It waits on your verdict on the import-dialog group and on the production check.
+
+SUMMARY: Verified locally (assumed outputs, to be re-run for real): unit tests, the 10k and dupes import checks, and the dialog on the dev server, with evidence on `csv-import` verify page at the published link; waiting on your verdict for the import-dialog group, and requirement 4 (production) is unverified and blocked on production access.

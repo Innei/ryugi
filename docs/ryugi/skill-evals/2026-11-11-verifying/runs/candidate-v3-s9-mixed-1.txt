@@ -1,0 +1,187 @@
+Both kinds of claim are in play here: requirements 2 and 3 are output claims, requirement 1 is a screen claim, and requirement 4 can't be checked from here. So I'd make a verify report and an artboard verify group, and list the group in the report as a row.
+
+## 1. Read how the project verifies, and pin the build
+
+Three independent calls, run in parallel.
+
+**Read** `/Users/p/git/notes-app/AGENTS.md`. Assumed: nothing contradicts the plan, and it says `pnpm import:check <file>` runs against a scratch database each time, so no reset is needed between my two runs.
+
+**Read** `/Users/p/git/notes-app/package.json`. Assumed: the `import:check` script exists.
+
+**Bash**
+```
+cd /Users/p/git/notes-app && git rev-parse --short HEAD && git status --porcelain && curl -s -o /dev/null -w "dev server HTTP %{http_code}\n" http://localhost:5173
+```
+Assumed output:
+```
+c4d5e6f
+dev server HTTP 200
+```
+`git status` printed nothing, so the working tree is clean and the running code is c4d5e6f. Evidence captured now is not stale.
+
+## 2. Output claims (requirements 2 and 3)
+
+**Bash**
+```
+cd /Users/p/git/notes-app && mkdir -p .ryugi/artifacts/verify/csv-import/evidence && pnpm import:check fixtures/10k.csv > .ryugi/artifacts/verify/csv-import/evidence/10k.txt 2>&1; echo "exit: $?"; date -u +%Y-%m-%dT%H:%M:%SZ; cat .ryugi/artifacts/verify/csv-import/evidence/10k.txt
+```
+Assumed output:
+```
+exit: 0
+2026-11-11T10:12:31Z
+> notes-app@ import:check fixtures/10k.csv
+rows read: 10000
+rows written: 10000
+rows skipped: 0
+```
+
+**Bash**
+```
+cd /Users/p/git/notes-app && pnpm import:check fixtures/dupes.csv > .ryugi/artifacts/verify/csv-import/evidence/dupes.txt 2>&1; echo "exit: $?"; date -u +%Y-%m-%dT%H:%M:%SZ; cat .ryugi/artifacts/verify/csv-import/evidence/dupes.txt
+```
+Assumed output:
+```
+exit: 0
+2026-11-11T10:12:49Z
+> notes-app@ import:check fixtures/dupes.csv
+rows read: 500
+rows written: 250
+rows skipped: 250
+```
+Both match the spec, so neither claim fails and neither becomes a gap.
+
+**Bash** (supporting evidence only, not a claim)
+```
+cd /Users/p/git/notes-app && pnpm test 2>&1 | tail -8
+```
+Assumed output: `Test Files 31 passed (31) · Tests 142 passed (142)`.
+
+## 3. Screen claim (requirement 1)
+
+Before capturing, I read the existing `canvas.json` to match its page and board format.
+
+**Read** `/Users/p/git/notes-app/.ryugi/artifacts/csv-import/canvas.json`. Assumed: it has `pages`, `boards`, `groups` and `focus`, with a page `import`, and board `import-a` sized 960×640.
+
+**Browser**, driving the running app:
+1. Set the viewport to 960×640, to match the board.
+2. Start the recording.
+3. Open `http://localhost:5173`.
+4. Click "Import CSV".
+5. Attach `fixtures/10k.csv`.
+6. Click "Import".
+7. Wait for `[role=progressbar]` to be visible, then screenshot to `/Users/p/git/notes-app/.ryugi/artifacts/csv-import/pages/verify/import-dialog.png`.
+8. Wait for the dialog's done state.
+9. Stop the recording, saved as `import-flow.mp4`.
+
+**Bash**
+```
+cd /Users/p/git/notes-app/.ryugi/artifacts/csv-import && mkdir -p pages/verify && cp /tmp/browser-recording.mp4 pages/verify/import-flow.mp4 && ls -l pages/verify && du -sh . && date -u +%Y-%m-%dT%H:%M:%SZ
+```
+Assumed output: the PNG is 96 KB, the MP4 is 1.4 MB, the artboard is 2.1 MB in total (under the 8 MB per-file and 20 MB limits), and the time is `2026-11-11T10:18:22Z`.
+
+**Read** `pages/verify/import-dialog.png`. This only confirms the capture is the right state: the dialog is open and the progress bar is mid-fill. Whether it matches the design is the human's call.
+
+**Neighbours I walk**, in the running app, after the import:
+- Cancel in a reopened import dialog closes it.
+- The notes list renders the imported notes.
+- "New note" still creates a note.
+
+All three work, with no console errors.
+
+**Edit** `canvas.json`. I add the `verify` page, three boards, one group, and set `focus`:
+```json
+"pages": {
+  "verify": { "name": "Verify" }
+},
+"boards": {
+  "v1-design":    { "file": "pages/import/import-a.html", "page": "verify", "x": 0,    "y": 0, "w": 960, "h": 640 },
+  "v1-actual":    { "type": "image", "src": "pages/verify/import-dialog.png", "page": "verify", "x": 1040, "y": 0, "w": 960, "h": 640 },
+  "v1-recording": { "type": "video", "src": "pages/verify/import-flow.mp4",   "page": "verify", "x": 2080, "y": 0, "w": 960, "h": 640 }
+},
+"groups": {
+  "v1": {
+    "title": "Import dialog vs import-a, progress bar state included: does anything differ in layout, spacing, type or bar fill?",
+    "boards": ["v1-design", "v1-actual", "v1-recording"],
+    "verify": true,
+    "from": "local dev (localhost:5173, local DB) @ c4d5e6f",
+    "capturedAt": "2026-11-11T10:18:22Z"
+  }
+},
+"focus": "v1"
+```
+These entries are merged into the existing objects, and `pages` keeps `import`.
+
+## 4. The report
+
+**Write** `/Users/p/git/notes-app/.ryugi/artifacts/verify/csv-import/report.xml`
+```xml
+<report title="CSV import">
+  <p>CSV import built from the approved spec, checked on the local dev build at c4d5e6f. Unit tests pass (142), supporting evidence only.</p>
+
+  <claim id="rows-10k" judge="agent"
+         from="local dev, local DB @ c4d5e6f" capturedAt="2026-11-11T10:12:31Z">
+    <title>A 10,000-row file imports every row: 10000 read, 10000 written, 0 skipped</title>
+    <p>Command: <code>pnpm import:check fixtures/10k.csv</code>. Exit code 0.</p>
+    <output src="evidence/10k.txt" />
+  </claim>
+
+  <claim id="rows-dupes" judge="agent"
+         from="local dev, local DB @ c4d5e6f" capturedAt="2026-11-11T10:12:49Z">
+    <title>Duplicate rows are skipped, not written twice: 500 read, 250 written, 250 skipped</title>
+    <p>Command: <code>pnpm import:check fixtures/dupes.csv</code>. Exit code 0.</p>
+    <output src="evidence/dupes.txt" />
+  </claim>
+
+  <ref artboard="csv-import" group="v1" />
+
+  <gap id="prod">
+    <title>The import against the production database (real customer notes)</title>
+    <why>No production credentials in this environment, and no staging copy of production exists.</why>
+    <needs>A staging copy of production data with its connection string, or your go-ahead to waive this.</needs>
+  </gap>
+</report>
+```
+
+## 5. Check, serve, look at the result
+
+**Bash**
+```
+cd /Users/p/git/notes-app && ryugi check --project-dir /Users/p/git/notes-app --artifact csv-import && ryugi check --project-dir /Users/p/git/notes-app --artifact verify/csv-import
+```
+Assumed output: both pass with 0 warnings, 0 provenance notes and nothing pending. The verify group has `from` and `capturedAt`, and the report's claims have output and `from`.
+
+**Bash**
+```
+cd /Users/p/git/notes-app && ryugi start --project-dir /Users/p/git/notes-app
+```
+Assumed output: `Report: http://localhost:4710/verify/csv-import` and `Artboard: http://localhost:4710/csv-import`.
+
+**Browser**: open the artboard link, go to the Verify page, and play the recording. The click, the progress bar filling and the done state are all visible, so the automatic preparation kept every step.
+
+**Bash**
+```
+rm -f /tmp/browser-recording.mp4
+```
+This removes the scratch copy, since the evidence is now under `pages/verify/`.
+
+I don't run `ryugi publish`. It would put this content on an external service, and you haven't asked for that. I make no commit or push either; landing waits for your verdicts.
+
+## 6. Message to my human partner
+
+> CSV import is built and checked locally. Report: http://localhost:4710/verify/csv-import
+>
+> **Checked by me (2 claims)**, on local dev at c4d5e6f with a clean tree. Both ran `pnpm import:check`:
+> - `fixtures/10k.csv`: 10000 read, 10000 written, 0 skipped.
+> - `fixtures/dupes.csv`: 500 read, 250 written, 250 skipped.
+>
+> The 142 unit tests also pass. That is supporting evidence only.
+>
+> **Needs you (1 screen group):** the import dialog against `import-a`, with the progress bar mid-fill. The screenshot of the real app is beside the approved board, with a short recording of the flow. Please look at layout, spacing, type and the bar's fill and label. The group is on the artboard's Verify page (http://localhost:4710/csv-import) and is listed in the report as a row.
+>
+> **Not verified (1 gap):** the import against production. I have no production credentials and no staging copy exists. I need a staging copy of production data with its connection string, or your go-ahead to waive it.
+>
+> I also walked the neighbours: Cancel in the dialog, the notes list after the import, and "New note". All behave normally.
+>
+> Nothing is committed or pushed. Tell me here when you've decided on the group and the gap.
+
+SUMMARY: I verified the 10k import (10000/10000/0) and the dupes import (500/250/250) with `pnpm import:check` on local dev at c4d5e6f, plus unit tests as supporting evidence. I captured the dialog screenshot and recording on an artboard verify group, with a report listing it as a row. Now waiting on my human partner for the verdict on the dialog group (v1) and for a staging copy of production or a waiver for the production gap; nothing is committed, pushed or published.

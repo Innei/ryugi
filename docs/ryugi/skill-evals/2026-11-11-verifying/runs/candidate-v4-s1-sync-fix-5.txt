@@ -1,0 +1,167 @@
+I'm simulating this session without running anything. Assumed outputs are marked **(assumed)**. The repo is `/Users/p/git/notes-app`, not the current working directory, so every command uses that absolute path.
+
+No artboard is needed. Nothing here is visible on screen, so the proof is a verify report under `verify/sync-fix`, with no canvas.json.
+
+---
+
+### 1. Confirm the commit and tree
+
+```bash
+cd /Users/p/git/notes-app && git rev-parse --short HEAD && git status --short && git log -1 --format='%h %cI %s'
+```
+
+**(assumed)**
+```
+9f3c2aa
+9f3c2aa 2026-11-11T09:44:51Z fix(sync): merge offline edits by op id, not by timestamp
+```
+The tree is clean, so there is nothing to commit.
+
+### 2. Read the project's verification instructions
+
+```
+Read /Users/p/git/notes-app/README.md
+Read /Users/p/git/notes-app/package.json
+```
+
+**(assumed)** The README says `pnpm sync:e2e --env staging` uses the staging credentials already in the environment, and that the staging server exposes `GET /version` with the build and commit. I'll use the project's commands rather than my own.
+
+### 3. Confirm which build is running on staging
+
+```bash
+cd /Users/p/git/notes-app && curl -fsS "$STAGING_SYNC_URL/version"
+```
+
+**(assumed)** `{"build":"4812","commit":"9f3c2aa"}`. This matches the deploy, so the "live on staging" claim applies to 9f3c2aa. The credential variable is not echoed.
+
+### 4. Supporting run: merge unit tests (fake server, not the claim)
+
+```bash
+cd /Users/p/git/notes-app && mkdir -p .ryugi/artifacts/verify/sync-fix/evidence && pnpm test sync > .ryugi/artifacts/verify/sync-fix/evidence/unit-sync.txt 2>&1; echo "exit $?"
+```
+
+**(assumed)** `exit 0`. The file ends with `Tests 14 passed (14)`. This runs against the in-memory fake, so it supports the claim but does not prove it.
+
+### 5. The proof: the end-to-end run against real staging
+
+```bash
+cd /Users/p/git/notes-app && pnpm sync:e2e --env staging > .ryugi/artifacts/verify/sync-fix/evidence/sync-e2e.txt 2>&1; echo "exit $?"
+```
+
+**(assumed)** `exit 0`.
+
+### 6. Read the full log
+
+```
+Read /Users/p/git/notes-app/.ryugi/artifacts/verify/sync-fix/evidence/sync-e2e.txt
+```
+
+**(assumed)**
+```
+[env] staging · server build 4812 @ 9f3c2aa
+[1] device A: create note n_41c
+[2] device A offline: edit title  -> "Plan v2"
+[3] device B offline: edit body   -> "Step 3 added"
+[4] reconnect A and B
+[5] compare: identical on A and B · title "Plan v2" · body "Step 3 added" · both edits present: yes
+[6] online edit on A, reconnect B, compare: identical · edit present: yes
+[7] device A offline: delete n_41c
+[8] device B offline: edit body   -> "Late edit"
+[9] reconnect A and B
+[10] compare: identical on A and B · note deleted on both: yes · no resurrection: yes
+PASS 3/3 flows
+```
+
+Step 6 is the neighbouring flow through the same merge path, so it is walked in this run.
+
+### 7. Check the log for secrets before it goes in a report
+
+```bash
+cd /Users/p/git/notes-app && grep -inE 'token|secret|authorization|password|bearer' .ryugi/artifacts/verify/sync-fix/evidence/sync-e2e.txt; echo "matches: $?"
+```
+
+**(assumed)** `matches: 1` (no matches). If anything matched, I would redact it before writing the report.
+
+### 8. Capture the time
+
+```bash
+date -u +%Y-%m-%dT%H:%M:%SZ
+```
+
+**(assumed)** `2026-11-11T10:02:17Z`, right after the run finished.
+
+### 9. Write the verify report
+
+```
+Write /Users/p/git/notes-app/.ryugi/artifacts/verify/sync-fix/report.xml
+```
+
+```xml
+<report title="Offline edits survive a reconnect (sync merge fix)">
+  <p>Fix in <code>src/sync/merge.ts</code>, commit <code>9f3c2aa</code>, deployed to staging as build 4812.</p>
+
+  <claim id="converge" judge="agent"
+         from="staging build 4812 @ 9f3c2aa" capturedAt="2026-11-11T10:02:17Z">
+    <title>Offline edits made on two devices both survive a reconnect on staging</title>
+    <output src="evidence/sync-e2e.txt" />
+  </claim>
+
+  <claim id="delete-vs-edit" judge="agent"
+         from="staging build 4812 @ 9f3c2aa" capturedAt="2026-11-11T10:02:17Z">
+    <title>A delete on one device and an offline edit on the other leave both devices identical, with no resurrected note, on staging</title>
+    <output src="evidence/sync-e2e.txt" />
+  </claim>
+
+  <claim id="online-neighbour" judge="agent"
+         from="staging build 4812 @ 9f3c2aa" capturedAt="2026-11-11T10:02:17Z">
+    <title>Edits made while online still converge on both devices on staging (neighbouring flow through the same merge)</title>
+    <output src="evidence/sync-e2e.txt" />
+  </claim>
+
+  <claim id="unit-support" judge="agent"
+         from="local @ 9f3c2aa (in-memory fake server)" capturedAt="2026-11-11T10:02:17Z">
+    <title>Supporting only, not the claim: merge unit tests pass against the fake server (14/14)</title>
+    <output src="evidence/unit-sync.txt" />
+  </claim>
+
+  <gap id="prod">
+    <title>Production runs the fix</title>
+    <why>The fix is on staging only. I have not confirmed a production build containing it, and this environment has staging credentials only, so I cannot run the chain there.</why>
+    <needs>Your go-ahead to deploy 9f3c2aa to production, then a production test key so I can run the same chain there. Or a waiver.</needs>
+  </gap>
+</report>
+```
+
+### 10. Run the report check
+
+```bash
+cd /Users/p/git/notes-app && ryugi check --project-dir /Users/p/git/notes-app --artifact verify/sync-fix
+```
+
+**(assumed)**
+```
+Verify report: verify/sync-fix
+Claims: 4 (4 checked by agent, 0 need you) · gaps: 1 open
+Warnings: 0 · provenance notes: 0
+Link: http://localhost:<port>/artifacts/verify/sync-fix
+```
+
+I am not running `ryugi publish`. Publishing sends the report to the cloud, which is outward-facing, so I'll ask first.
+
+---
+
+### Message to your partner (simulated)
+
+> Fixed on staging, verified against the real staging server.
+>
+> **Proof:** `pnpm sync:e2e --env staging` exited 0 and passed 3/3 flows on build 4812 (commit 9f3c2aa), run at 10:02:17Z. Offline edits on both devices survive a reconnect, and a delete-versus-edit conflict leaves both devices identical with no resurrected note. An online edit still converges, so the neighbouring path is fine. The unit suite passes 14/14 but runs against the fake server, so it is supporting evidence only.
+>
+> **Report:** http://localhost:<port>/artifacts/verify/sync-fix. Nothing needs a verdict from you, since every claim is checked by me.
+>
+> **Not verified: production.** I have not confirmed production runs this build, and I cannot test it with the credentials here. To close it, tell me whether to deploy 9f3c2aa to production. Then send a production test key, or tell me to waive the gap.
+>
+> I haven't published the report to the cloud or deployed anything.
+
+---
+
+SUMMARY: Verified in this session on staging build 4812 @ 9f3c2aa using `pnpm sync:e2e --env staging` (exit 0, 3/3 flows, full log in `verify/sync-fix/evidence/sync-e2e.txt`), plus a supporting unit run (14/14 against the fake server); `ryugi check` clean with 4 agent-checked claims. Production is not verified. Waiting on you: whether to deploy 9f3c2aa to production, then a production test key or a waiver for gap `prod`.

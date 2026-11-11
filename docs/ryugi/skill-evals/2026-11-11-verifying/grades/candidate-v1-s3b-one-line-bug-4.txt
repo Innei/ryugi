@@ -1,0 +1,1 @@
+PASS — No artboard or verify page created; reported inline with before/after test commands, direct call output showing `1.5 KB`, and full check results.

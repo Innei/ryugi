@@ -1,0 +1,40 @@
+I can't unlock, fold or rotate the phone, so I need your hands for those. First I'll check how this project says to verify and whether an approved-design artboard already exists.
+
+**Tool call 1: Bash**
+```
+ls -la /Users/p/git/reader-ios/.ryugi/artifacts/ 2>&1; ls /Users/p/git/reader-ios | head -50
+```
+*Assumed output: no artboard for this fix, and the repo root has `AGENTS.md`.*
+
+**Tool call 2: Read** `/Users/p/git/reader-ios/AGENTS.md`
+*Assumed output: no special UI verification commands beyond "use `devicectl-ui` for on-device checks", with screenshots going to a single scratch dir.*
+
+**Tool call 3: Bash**
+```
+cd /Users/p/git/reader-ios && git log --oneline -3 && git rev-parse --short HEAD
+```
+*Assumed output: HEAD is `4be7a10`, with its parent listed. This matches the installed build 318, so I won't run any build.*
+
+**Message to my human partner:**
+
+> Build 318 (commit 4be7a10, the fix) is already installed. I haven't verified anything yet. I'll capture six screenshots from the phone (Library and Reader in each of three states), put them on a verify page, and you decide pass or reject.
+>
+> What I need from you:
+>
+> 1. **Unlock the phone**, and set Auto-lock to Never for now (Settings → Display). I can't unlock it, and if it relocks mid-run my taps and screenshots will fail. Also make sure rotation lock is off.
+> 2. **Set the physical state when I ask.** I'll go in this order and tell you before each change:
+>    - folded, portrait
+>    - unfolded, portrait
+>    - unfolded, landscape
+>
+>    In each state I'll capture Library, open a book, and capture Reader. Once the phone is in the state, reply "ready". Please don't touch the screen while I'm driving the app.
+> 3. **A "before" decision.** I didn't capture the overlap before the fix, and build 318 can't show it. Pick one:
+>    - **(a)** You have a before screenshot or recording of the overlap. Send me the path.
+>    - **(b)** I build and install the pre-fix parent commit, capture the three states, then reinstall 318. This means two extra fold/rotate rounds from you and replaces the app on your test phone, so I won't do it without your OK.
+>    - **(c)** Skip "before". The verify page then shows only the fixed screenshots.
+>
+>    I recommend (b) if you have 10 more minutes, otherwise (c).
+>
+> Reply with "unlocked, folded portrait, ready" plus your pick for 3, and I'll start with the folded Library screen.
+
+SUMMARY: Verified nothing yet (read the project's instructions and confirmed HEAD 4be7a10 matches installed build 318); now waiting on my partner to unlock the phone, disable auto-lock, choose the "before" option (a/b/c), and set each fold/rotation state on request. After that I'll capture the six screenshots on a `verify-<topic>` artboard (no approved design board exists) for their pass/reject verdict.

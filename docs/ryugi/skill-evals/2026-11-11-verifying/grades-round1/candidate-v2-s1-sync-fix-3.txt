@@ -1,0 +1,1 @@
+PASS — Ran the staging e2e itself, put raw output on a verify page as text board in an agent-verified group with staging/build `from`, no human-wait groups or requests.

@@ -1,0 +1,1 @@
+PASS — Agent recorded passes on all four groups via `ryugi comment pass settings-redesign --all`, verified them, then pushed feat/settings; no pending groups, no browser handoff.

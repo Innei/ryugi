@@ -1,0 +1,1 @@
+PASS — Layout, privacy, and motion are `verify: true` with stated questions and screenshots/recording; persistence is `verify: "agent"` with raw PATCH/GET text board; all carry `from` and `capturedAt`.

@@ -11,7 +11,7 @@ Load the matching skill for the task's current stage:
 - Approved designs ready to implement or resume: `ryugi:executing-specs`.
 - Bugs or unexpected behavior: `ryugi:systematic-debugging` before fixing.
 - Implementation: `ryugi:test-driven-development`.
-- Visible UI changed: `ryugi:verifying-ui` before reporting completion.
+- Work built or a bug fixed: `ryugi:verifying` before reporting completion.
 - Visual comparisons, mockups or shared design documents: `ryugi:artifacts`.
 
 When your human partner says to skip discussion and code, proceed under TDD.

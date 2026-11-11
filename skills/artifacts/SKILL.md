@@ -68,6 +68,7 @@ its `data` envelope (`.data.url`).
 | One surface or one dimension — a component, type scale, background, motion                                   | `html`                     | `html.md`, `ui.md` for components                                        |
 | A business space — several screens, dimensions, states or questions at once                                  | `artboard`                 | `artboard.md`; `artboard-prototype.md` for playable boards or parameters |
 | Whether a built change matches what was approved, when they ask you to verify it                             | `artboard`, a verify group | `artboard.md`                                                            |
+| What you proved by running it: output, numbers, what is deployed, and what you did not verify                | `verify`                   | `verify.md`                                                              |
 | Nothing to see                                                                                               | text                       |                                                                          |
 
 Draw on a whiteboard while the parts and arrows are themselves the question;
@@ -207,6 +208,7 @@ whether it is on.
   document/<id>/       doc.xml + assets/ (you write); comments.json (server only)
   html/<id>/           index.html + its files        (you write)
   whiteboard/<id>/     scene.excalidraw, pages.json + pages/ (you and the server); comments.json (server only)
+  verify/<id>/         report.xml + evidence/ (you write); comments.json (server only)
   .state/              the server writes; never edit
 ```
 

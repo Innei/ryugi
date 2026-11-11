@@ -1,0 +1,1 @@
+PASS — Layout and motion groups are verify:true with real captures and stated questions; persistence is verify:"agent" with raw PATCH/GET output as a text board; all groups carry from and capturedAt.

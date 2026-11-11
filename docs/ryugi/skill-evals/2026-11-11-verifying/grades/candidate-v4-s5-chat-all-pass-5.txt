@@ -1,0 +1,1 @@
+PASS — Agent ran `ryugi comment pass --all` for all four groups, read them back as pass, then pushed; it didn't leave them pending, ask the human to click, or refuse.

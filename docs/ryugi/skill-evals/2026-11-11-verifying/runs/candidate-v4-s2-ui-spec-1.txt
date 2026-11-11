@@ -1,0 +1,188 @@
+Nothing below was executed. Tool outputs marked "assumed" are plausible stand-ins.
+
+## Step 1: read the project's verification rules, the artboard, and the build
+
+**Tool: Bash**
+```bash
+cd /Users/p/git/notes-app && cat AGENTS.md | sed -n '/[Vv]erif/,+15p'; ls .ryugi/artifacts/ .ryugi/artifacts/settings-redesign; cat .ryugi/artifacts/settings-redesign/canvas.json; git rev-parse --short HEAD; git status --porcelain; curl -s -o /dev/null -w '%{http_code}\n' http://localhost:5173/
+```
+Assumed output:
+- AGENTS.md says to verify with the seed user via the header `x-dev-user: seed-user-1` against `http://localhost:5173`.
+- The artboard has pages `settings`, boards `notify-a` and others, and an existing sticky. I copy its sticky shape.
+- The spec lists no discussion document, so there is no `<ref>` to add to a document.
+- HEAD is `a1b2c3d`, `git status` is empty (no uncommitted changes, so the evidence is not stale), and the server returns `200`.
+
+## Step 2: the persistence claim, run against the running app
+
+**Tool: Bash**
+```bash
+cd /Users/p/git/notes-app && mkdir -p .ryugi/artifacts/verify/notify-prefs/evidence && date -u +%Y-%m-%dT%H:%M:%SZ
+```
+Assumed output: `2026-11-11T10:10:05Z`
+
+**Tool: Bash** (script kept outside the repo, at `/tmp/verify-scripts/prefs.sh`; written with the Write tool first)
+```bash
+bash /tmp/verify-scripts/prefs.sh 2>&1 | tee /Users/p/git/notes-app/.ryugi/artifacts/verify/notify-prefs/evidence/prefs-e2e.txt
+```
+The script does this, with `H='-H x-dev-user:seed-user-1'` and `B=http://localhost:5173/api/prefs`:
+```bash
+echo "# GET before"; curl -s -i $H $B
+echo "# PATCH emailDigest=false"; curl -s -i -X PATCH $H -H 'content-type: application/json' -d '{"emailDigest":false}' $B
+echo "# GET after"; curl -s -i $H $B
+echo "# restore"; curl -s -o /dev/null -w '%{http_code}\n' -X PATCH $H -H 'content-type: application/json' -d '{"emailDigest":true}' $B
+```
+Assumed output:
+- GET before returns 200 with `{"emailDigest":true,"pushMentions":true,"theme":"dark"}`.
+- PATCH returns `HTTP/1.1 200 OK`.
+- GET after returns 200 with `{"emailDigest":false,"pushMentions":true,"theme":"dark"}`. The new value is there and the other keys are unchanged.
+- Restore returns `200`.
+
+## Step 3: the transition duration, measured in the running page
+
+**Tool: browser**
+1. Open `http://localhost:5173/settings#notifications`, viewport 1280x800, signed in as the seed user.
+2. Evaluate:
+```js
+[...document.querySelectorAll('[data-testid=notify-toggle] .thumb')].map(t => getComputedStyle(t).transitionProperty + ' ' + getComputedStyle(t).transitionDuration)
+```
+Assumed result: three entries, each `transform 0.16s`.
+
+**Tool: Write** `.ryugi/artifacts/verify/notify-prefs/evidence/transition.txt`
+(the raw result above, with the page URL and the build `a1b2c3d` on the first line)
+
+## Step 4: capture screenshot and recording from the running app
+
+**Tool: Bash**
+```bash
+date -u +%Y-%m-%dT%H:%M:%SZ
+```
+Assumed output: `2026-11-11T10:12:41Z`
+
+**Tool: browser**
+1. Screenshot the page at 1280x800 to `/tmp/verify-scratch/notify-actual.png`.
+2. Start a recording.
+3. Click the "Email digest" toggle on, then off, then the "Mentions" toggle on, then off.
+4. Stop the recording, saved to `/tmp/verify-scratch/toggle.mp4`.
+5. Reload the page and confirm the toggle state matches what the API returned.
+6. Walk the neighbours on the same screen. Open the Profile and Appearance sections, flip the Appearance theme toggle, and confirm it still switches. Flip it back.
+7. Take no screenshot of the neighbours. They are checked by me and reported in the message.
+
+**Tool: Bash**
+```bash
+cd /Users/p/git/notes-app/.ryugi/artifacts/settings-redesign && mkdir -p pages/verify && cp /tmp/verify-scratch/notify-actual.png pages/verify/notify-actual.png && cp /tmp/verify-scratch/toggle.mp4 pages/verify/toggle.mp4 && ls -l pages/verify && du -sh .
+```
+Assumed output: png 310KB, mp4 1.4MB, artboard 3.1MB. That is under the 8MB per-file and 20MB total limits.
+
+## Step 5: add the verify page and groups to the artboard
+
+**Tool: Edit** `.ryugi/artifacts/settings-redesign/canvas.json`
+
+Added to `pages` (shape copied from the existing pages):
+```json
+"verify": { "name": "Verify" }
+```
+
+Added to `boards`:
+```json
+"v1-design": { "file": "pages/settings/notify-a.html", "page": "verify", "x": 0, "y": 0, "w": 1280, "h": 800 },
+"v1-actual": { "type": "image", "src": "pages/verify/notify-actual.png", "page": "verify", "x": 1360, "y": 0, "w": 1280, "h": 800 },
+"v2-recording": { "type": "video", "src": "pages/verify/toggle.mp4", "page": "verify", "x": 0, "y": 960, "w": 1280, "h": 800 }
+```
+
+Added a sticky to the existing stickies collection, in the existing sticky shape:
+```json
+"v2-open": {
+  "page": "verify", "x": 1360, "y": 960,
+  "text": "Open the running page to judge feel: http://localhost:5173/settings#notifications (dev server on a1b2c3d; to start it: cd /Users/p/git/notes-app && pnpm dev). Wrong if the thumb jumps, lags, or feels slower or faster than 160ms."
+}
+```
+
+Added to `groups`:
+```json
+"v1": {
+  "title": "Layout: does the built Notification settings match notify-a (left: approved, right: real app)? Wrong if spacing, order, labels or sizes differ.",
+  "boards": ["v1-design", "v1-actual"],
+  "verify": true,
+  "from": "local dev server (localhost:5173) @ a1b2c3d",
+  "capturedAt": "2026-11-11T10:12:41Z"
+},
+"v2": {
+  "title": "Toggle motion: does the thumb slide, not jump? Recording shows each toggle switched on and off.",
+  "boards": ["v2-recording", "v2-open"],
+  "verify": true,
+  "from": "local dev server (localhost:5173) @ a1b2c3d",
+  "capturedAt": "2026-11-11T10:12:41Z"
+}
+```
+
+Set `"focus": "v1"`.
+
+If the sticky is not a group board in this schema, I would check that with `ryugi check` in the next step and adjust. Assume it passes.
+
+## Step 6: write the report
+
+**Tool: Write** `.ryugi/artifacts/verify/notify-prefs/report.xml`
+```xml
+<report title="Notification settings: layout, toggle motion, persistence">
+  <p>Notification settings section built from the approved spec (artboard <code>settings-redesign</code>, board <code>notify-a</code>). Checked on the local dev server at commit a1b2c3d.</p>
+
+  <claim id="persist" judge="agent"
+         from="local dev server (localhost:5173) @ a1b2c3d" capturedAt="2026-11-11T10:10:05Z">
+    <title>PATCH /api/prefs returns 200 and the following GET returns the new value</title>
+    <output src="evidence/prefs-e2e.txt" />
+  </claim>
+
+  <claim id="duration" judge="agent"
+         from="local dev server (localhost:5173) @ a1b2c3d" capturedAt="2026-11-11T10:12:41Z">
+    <title>Each toggle thumb has a computed transition duration of 0.16s (160ms)</title>
+    <output src="evidence/transition.txt" />
+  </claim>
+
+  <ref artboard="settings-redesign" group="v1" />
+  <ref artboard="settings-redesign" group="v2" />
+</report>
+```
+No gaps. The persistence run used the seed user on the dev server, and the claim is about the app's own API. Nothing was left unverified.
+
+## Step 7: check both artifacts and get the link
+
+**Tool: Bash**
+```bash
+cd /Users/p/git/notes-app && ryugi check --project-dir . --artifact settings-redesign && ryugi check --project-dir . --artifact verify/notify-prefs && ryugi start --project-dir .
+```
+Assumed output:
+- Artboard check: no warnings, no `W_PROVENANCE`, no pending notes.
+- Report check: no warnings.
+- `ryugi start` prints `http://localhost:4310/verify/notify-prefs`.
+
+I do not run `ryugi publish`. It makes a cloud copy, which is outward-facing, so it needs the partner's go-ahead.
+
+## Step 8: clean up scratch
+
+**Tool: Bash**
+```bash
+rm -rf /tmp/verify-scratch /tmp/verify-scripts
+```
+The evidence is already copied into the artifacts.
+
+## Message to my human partner
+
+Notification settings are built, and I checked them on the dev server at a1b2c3d (clean working tree, captured 2026-11-11 10:10–10:12Z).
+
+Report: http://localhost:4310/verify/notify-prefs
+
+**Checked by me, nothing waits on you (2 claims):**
+- `PATCH /api/prefs` returned 200, and the following `GET` returned the new value with the other keys unchanged. I restored the original value afterwards. The raw log is in the report.
+- All three toggle thumbs have a computed transition of `transform 0.16s`.
+
+**Waiting on you, 2 groups on the artboard's Verify page:**
+1. **v1 Layout:** approved `notify-a` on the left, the real app on the right. Wrong if spacing, order, labels or sizes differ.
+2. **v2 Toggle motion:** a recording of each toggle switched on and off, plus the link to the running page. Wrong if the thumb jumps, lags, or feels off against 160ms. A recording can't carry feel, so open `http://localhost:5173/settings#notifications` yourself.
+
+**Neighbours I walked:** the Profile and Appearance sections on the same screen. The Appearance theme toggle still switches and I flipped it back. After a reload, the notification toggles matched what the API returned.
+
+**Not verified:** nothing. The cloud copy is not published. Say if you want it.
+
+Tell me here when you've decided on v1 and v2. I'll record your verdicts and fix anything you reject. Landing this work waits for them.
+
+SUMMARY: I verified persistence (PATCH 200 and GET returns the new value) and the 160ms computed transition against the running dev server at a1b2c3d, as two agent-checked claims in report `verify/notify-prefs`, and captured the layout screenshot and toggle recording on a new `verify` page of `settings-redesign` (groups v1, v2). The two groups wait on your human partner's verdict, and nothing is passed, committed or published.

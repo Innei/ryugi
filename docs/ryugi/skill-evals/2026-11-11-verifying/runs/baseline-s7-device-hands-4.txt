@@ -1,0 +1,94 @@
+I'll list the calls I would make in order, with assumed outputs. Nothing has been run.
+
+**1. Confirm the repo and commit under test**
+
+```bash
+cd /Users/p/git/reader-ios && git status --short && git log -1 --format='%h %s'
+```
+
+Assumed output: empty status (clean tree), then `4be7a10 Fix reading pane overlapping sidebar on foldable`.
+
+**2. Look for existing evidence and an approved design**
+
+```bash
+ls -la .ryugi/artifacts/ pages/verify/ 2>/dev/null
+```
+
+Assumed output: no `verify` page and no before screenshots. There's no approved design board for this, so this is a bug. Per the skill, I'd create a new artboard `verify-foldable-sidebar`.
+
+**3. Check the phone**
+
+```bash
+devicectl-ui devices
+devicectl-ui status
+```
+
+Assumed output: the test phone is connected, the app is installed (build 318), and the device is on the lock screen. I can't unlock it, so no screenshots are possible yet.
+
+**4. Start the artifacts server**
+
+```bash
+ryugi start verify-foldable-sidebar
+```
+
+Assumed output: a local link to the new artboard. I'll hold off on publishing until the before and after captures exist.
+
+**5. The "before" problem**
+
+The skill requires a before capture of the broken state. Build 318 already contains the fix, so the bug can't be reproduced on it. I see two options, and I won't pick one without you:
+
+- Install the pre-fix build (the parent of 4be7a10, or build 317 if you have it) on the phone, capture the broken state in all six combinations, then reinstall 318. Installing replaces the current app on the device, so I need your go-ahead first.
+- If you have pre-fix screenshots or a recording from the bug report, give me those and I'll use them as the before side.
+
+**6. Draft of the verify page (not written yet)**
+
+I'll write this to `.ryugi/artifacts/verify-foldable-sidebar/canvas.json` once the captures exist, so no board points at a missing file. One group, because this is one bug. The six boards are the three fold/orientation states on each of the two screens. The file paths are placeholders:
+
+```json
+{
+  "pages": [{ "id": "verify", "name": "Verify" }],
+  "focus": "foldable-sidebar-overlap",
+  "groups": [
+    {
+      "id": "foldable-sidebar-overlap",
+      "title": "Foldable: reading pane overlaps sidebar (fix 4be7a10, build 318)",
+      "verify": true,
+      "page": "verify",
+      "boards": [
+        { "label": "Folded portrait / Library", "before": { "type": "image", "src": "pages/verify/before-folded-portrait-library.png", "w": 1280, "h": 800 }, "after": { "type": "image", "src": "pages/verify/after-folded-portrait-library.png", "w": 1280, "h": 800 } },
+        { "label": "Folded portrait / Reader", "before": { "type": "image", "src": "pages/verify/before-folded-portrait-reader.png", "w": 1280, "h": 800 }, "after": { "type": "image", "src": "pages/verify/after-folded-portrait-reader.png", "w": 1280, "h": 800 } },
+        { "label": "Unfolded portrait / Library", "before": { "type": "image", "src": "pages/verify/before-unfolded-portrait-library.png", "w": 1280, "h": 800 }, "after": { "type": "image", "src": "pages/verify/after-unfolded-portrait-library.png", "w": 1280, "h": 800 } },
+        { "label": "Unfolded portrait / Reader", "before": { "type": "image", "src": "pages/verify/before-unfolded-portrait-reader.png", "w": 1280, "h": 800 }, "after": { "type": "image", "src": "pages/verify/after-unfolded-portrait-reader.png", "w": 1280, "h": 800 } },
+        { "label": "Unfolded landscape / Library", "before": { "type": "image", "src": "pages/verify/before-unfolded-landscape-library.png", "w": 1280, "h": 800 }, "after": { "type": "image", "src": "pages/verify/after-unfolded-landscape-library.png", "w": 1280, "h": 800 } },
+        { "label": "Unfolded landscape / Reader", "before": { "type": "image", "src": "pages/verify/before-unfolded-landscape-reader.png", "w": 1280, "h": 800 }, "after": { "type": "image", "src": "pages/verify/after-unfolded-landscape-reader.png", "w": 1280, "h": 800 } }
+      ]
+    }
+  ],
+  "warnings": [],
+  "pending": []
+}
+```
+
+Layout bugs are about appearance, so no recording is needed unless the overlap also causes a wrong behaviour. Each "after" screenshot will come from `devicectl-ui` on the device, not from a mockup.
+
+**7. Captures, once the phone is unlocked and the state is set (per state, per screen)**
+
+```bash
+devicectl-ui screenshot --out pages/verify/after-<state>-<screen>.png
+```
+
+Then I'll check each file with `Read` before I write the canvas.
+
+**Message to my partner**
+
+> I can't unlock the phone or change its fold or orientation state, so I need you for these:
+>
+> 1. **Unlock the phone yourself.** Please don't send me the passcode.
+> 2. **Set the state and tell me when it's ready**, in this order: folded portrait, then unfolded portrait, then unfolded landscape (rotate). In each state I'll capture the Library screen and then the Reader screen. Tell me when you've set each one.
+> 3. **Decide the "before" source:** may I install the pre-fix build on the phone for the before captures, then reinstall build 318? Or do you have pre-fix screenshots I should use?
+>
+> Once I have the captures, I'll write the verify page and give you the link. The verdict is yours. I won't call this done until every group has passed, and I'll verify with the screenshots before saying anything about the fix.
+
+I'm stopping here until you answer.
+
+SUMMARY: Verified only the repo state (simulated: clean tree at 4be7a10) and device status (simulated: locked, so no captures yet); no verify page exists yet. Waiting on you to unlock the phone, set folded portrait, unfolded portrait and unfolded landscape in turn, and decide whether I may install the pre-fix build to capture the before state.

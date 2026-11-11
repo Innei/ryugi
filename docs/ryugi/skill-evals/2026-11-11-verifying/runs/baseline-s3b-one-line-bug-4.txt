@@ -1,0 +1,213 @@
+Simulated run. Outputs marked **ASSUMED** are not real results.
+
+## 1. Orient in the repo
+
+```bash
+cd /Users/p/git/notes-app && git status --short && git diff && cat CLAUDE.md AGENTS.md 2>/dev/null; ls .claude/skills 2>/dev/null
+```
+
+**ASSUMED output:**
+```
+ M src/lib/format-bytes.ts
+ ?? src/lib/format-bytes.test.ts
+-  return `${(bytes / 1024).toFixed(2)} KB`
++  return `${parseFloat((bytes / 1024).toFixed(2))} KB`
+```
+CLAUDE.md says: "Verify with `pnpm test` and `pnpm typecheck`. Dev server: `pnpm dev` on :5173." No project verify skill.
+
+The fix is uncommitted in the working tree, so `git stash` can capture the broken state without touching history.
+
+## 2. Find where the value is visible
+
+```bash
+grep -rn "formatBytes" src --include=*.ts --include=*.tsx
+```
+
+**ASSUMED output:**
+```
+src/lib/format-bytes.ts:3:export function formatBytes(bytes: number) {
+src/lib/format-bytes.test.ts:4:import { formatBytes } from './format-bytes'
+src/pages/settings/storage.tsx:42:  <span>{formatBytes(att.size)}</span>
+```
+The visible surface is `/settings/storage`. Assumed: the dev database has an attachment of 1536 bytes, so that page shows it.
+
+## 3. Start the app and the artifacts server
+
+```bash
+pnpm install --frozen-lockfile && pnpm dev &
+ryugi start
+```
+
+**ASSUMED output:**
+```
+VITE ready on http://localhost:5173
+ryugi: serving .ryugi/artifacts/ at http://127.0.0.1:4417
+```
+
+## 4. Capture the broken state (before the fix is visible again)
+
+Temporarily set the lib file back to HEAD. This is reversible with `git stash pop`.
+
+```bash
+git stash push -- src/lib/format-bytes.ts && git stash list
+```
+
+**ASSUMED output:** `Saved working directory and index state on main: stash@{0}`
+
+Run the new test against the old code. It must fail:
+
+```bash
+pnpm test -- format-bytes
+```
+
+**ASSUMED output (red):**
+```
+FAIL src/lib/format-bytes.test.ts
+  × formats 1536 bytes as "1.5 KB"
+    AssertionError: expected '1.50 KB' to be '1.5 KB'
+Tests  1 failed | 3 passed (4)
+```
+
+Open the running app and capture the broken state:
+
+```
+browser: open http://localhost:5173/settings/storage
+browser: screenshot → /tmp/scratch/before-full.png
+```
+
+**ASSUMED:** the page shows the attachment row reading `1.50 KB`. Crop it to the row:
+
+```bash
+mkdir -p .ryugi/artifacts/verify-format-bytes/pages/verify
+cp /tmp/scratch/before-full.png .ryugi/artifacts/verify-format-bytes/pages/verify/before.png
+```
+
+Restore the fix:
+
+```bash
+git stash pop && git diff --stat
+```
+
+**ASSUMED output:**
+```
+ src/lib/format-bytes.ts | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+```
+
+## 5. Capture the fixed state
+
+Reload the page, then:
+
+```
+browser: open http://localhost:5173/settings/storage
+browser: screenshot → /tmp/scratch/after-full.png
+```
+
+**ASSUMED:** the row now reads `1.5 KB`.
+
+```bash
+cp /tmp/scratch/after-full.png .ryugi/artifacts/verify-format-bytes/pages/verify/after.png
+rm -rf /tmp/scratch
+```
+
+No recording. This is a formatting bug, not a behaviour bug, so the skill does not call for video.
+
+## 6. Run the checks that prove the fix
+
+```bash
+pnpm test -- format-bytes
+pnpm test
+pnpm typecheck
+```
+
+**ASSUMED output:**
+```
+Tests  4 passed (4)            # format-bytes
+Tests  212 passed (212)        # full suite
+tsc --noEmit: 0 errors
+```
+
+Full suite and typecheck are included because the function is shared. The full run shows no other test expected the old `1.00 KB` format.
+
+## 7. Write the verify page
+
+Write `.ryugi/artifacts/verify-format-bytes/canvas.json`. There is no approved design, so this is a bug artboard with no design link in the sticky. Before is on the left, after on the right.
+
+```json
+{
+  "focus": "format-bytes-trailing-zeros",
+  "pages": [
+    {
+      "id": "verify",
+      "name": "Verify",
+      "groups": [
+        {
+          "id": "format-bytes-trailing-zeros",
+          "title": "formatBytes: trailing zeros (1536 bytes shows 1.50 KB, should be 1.5 KB)",
+          "sticky": "Bug, no approved design. Left: before the fix (1.50 KB). Right: after the fix (1.5 KB). Source: /settings/storage.",
+          "verify": true,
+          "boards": [
+            {
+              "before": {
+                "type": "image",
+                "src": "pages/verify/before.png",
+                "page": "verify",
+                "x": 0,
+                "y": 0,
+                "w": 1280,
+                "h": 800
+              },
+              "after": {
+                "type": "image",
+                "src": "pages/verify/after.png",
+                "page": "verify",
+                "x": 1360,
+                "y": 0,
+                "w": 1280,
+                "h": 800
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+```
+
+Assumed: the exact key layout matches ryugi:artifacts. This is the one part of the file I cannot confirm without the artboard reference.
+
+Check the artboard:
+
+```bash
+ryugi check verify-format-bytes
+```
+
+**ASSUMED output:**
+```
+artboard verify-format-bytes: ok
+  groups: 1 (verify: 1, pending verdict)
+  warnings: none
+  pending: none
+  recordings: none
+  size: 0.9 MB (limit 20 MB)
+```
+
+Pending here means the group awaits your verdict, not that the check is unfinished. Publishing to the cloud would upload your app screenshots to an outside service, so I am not publishing without your go-ahead. The local link is enough to review.
+
+## 8. Message to you
+
+> The bug is fixed in the working tree (`src/lib/format-bytes.ts`, one line). It is not committed.
+>
+> Evidence:
+> - The new test fails on the old code (`expected '1.50 KB' to be '1.5 KB'`) and passes with the fix.
+> - Full suite: 212 passed. Typecheck: 0 errors.
+> - Before/after screenshots of `/settings/storage` are on the verify page: http://127.0.0.1:4417/a/verify-format-bytes
+>
+> Waiting on you: please open the verify page and mark the group pass or reject. Local link only; I haven't published to the cloud.
+>
+> One question: the trim applies to every value, so 1024 bytes now shows `1 KB` (it was `1.00 KB`), and 2048 shows `2 KB`. Is that what you want, or should only values with a fractional part be trimmed?
+
+I am stopping here. The group is `pending` until you decide, and I will not commit until you say so.
+
+SUMMARY: Verified in simulation: the new test fails on the old code and passes with the fix, the full suite passes (212), typecheck is clean, and before/after screenshots of /settings/storage are on the local verify page `verify-format-bytes`. Waiting on you: the pass/reject verdict on that group, and whether values like 1024 should print `1 KB`.

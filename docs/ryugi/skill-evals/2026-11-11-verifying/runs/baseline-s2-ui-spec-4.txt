@@ -1,0 +1,224 @@
+This is a simulation. I have not run anything. Every tool result below is an assumed output, marked `[assumed]`.
+
+## 0. Go to the repo and confirm the state
+
+```bash
+cd /Users/p/git/notes-app && git status --short && git log --oneline -1
+```
+
+`[assumed]`
+```
+a1b2c3d feat(settings): notification settings section
+```
+
+Empty status, so no uncommitted changes.
+
+```bash
+curl -sI http://localhost:5173 | head -1
+```
+
+`[assumed]` `HTTP/1.1 200 OK`
+
+## 1. Read the approved board
+
+```
+Read .ryugi/artifacts/settings-redesign/pages/settings/notify-a.html
+```
+
+`[assumed]` Three toggle rows (Email digest, Mentions, Product updates), with the layout and spacing the spec describes.
+
+## 2. Run the tests in this session
+
+```bash
+pnpm test --run
+```
+
+`[assumed]`
+```
+ Test Files  12 passed (12)
+      Tests  42 passed (42)
+   Duration  3.9s
+```
+
+## 3. Start the artboard server
+
+```bash
+ryugi start
+```
+
+`[assumed]` `Serving .ryugi/artifacts/ at http://localhost:4417`
+
+## 4. Capture the running app
+
+Browser tool, in order:
+
+- Open `http://localhost:5173/settings#notifications`
+- Set the viewport to 1280×800
+- Wait for the section to render
+- Screenshot to `.ryugi/artifacts/settings-redesign/pages/verify/notify-app.png`
+
+```bash
+mkdir -p .ryugi/artifacts/settings-redesign/pages/verify
+```
+
+`[assumed]` Screenshot saved, 1280×800, about 310KB.
+
+## 5. Record the interaction and the persistence
+
+Browser tool:
+
+- Open the same page
+- Start recording
+- Click the "Email digest" toggle, wait 1s, so the thumb slides and the value turns off
+- Reload the page, wait for the section to render
+- Stop recording, save to `.ryugi/artifacts/settings-redesign/pages/verify/notify-toggle-persist.webm`
+
+`[assumed]` Recording of about 6s, 2.1MB, under the 8MB limit. After reload, the "Email digest" toggle is still off.
+
+## 6. Measure the animation duration
+
+Browser tool, evaluate in page:
+```js
+getComputedStyle(document.querySelector('[data-testid="notify-email"] .thumb')).transitionDuration
+```
+
+`[assumed]` `"0.16s"`
+
+This is a supplement. The recording is the evidence.
+
+## 7. Check the API contract
+
+```bash
+curl -s -o /dev/null -w "%{http_code}\n" -X PATCH http://localhost:5173/api/prefs \
+  -H 'Content-Type: application/json' -d '{"emailDigest": false}'
+curl -s http://localhost:5173/api/prefs
+```
+
+`[assumed]`
+```
+200
+{"emailDigest":false,"mentions":true,"productUpdates":false}
+```
+
+Then restore the original value so the dev data is left as found:
+
+```bash
+curl -s -o /dev/null -w "%{http_code}\n" -X PATCH http://localhost:5173/api/prefs \
+  -H 'Content-Type: application/json' -d '{"emailDigest": true}'
+```
+
+`[assumed]` `200`
+
+Assumption: the field name `emailDigest` is what the app uses. I did not read the handler to confirm it.
+
+## 8. Build the verify page
+
+The spec does not list a discussion document, so there is no `<ref>` step. There is also no existing `verify` page on `settings-redesign`, so I create one. I read the current canvas first:
+
+```
+Read .ryugi/artifacts/settings-redesign/canvas.json
+```
+
+`[assumed]` Has pages `settings` (with the `notify-a` board) and no `verify` page.
+
+I add a `verify` page with one group. Field names beyond those shown in the reference are my assumption.
+
+```json
+{
+  "pages": [
+    {
+      "id": "verify",
+      "name": "Verify",
+      "groups": [
+        {
+          "id": "verify-notification-settings",
+          "title": "Notification settings",
+          "verify": true,
+          "boards": [
+            {
+              "id": "approved",
+              "file": "pages/settings/notify-a.html",
+              "x": 0, "y": 0, "w": 1280, "h": 800
+            },
+            {
+              "id": "app-screenshot",
+              "type": "image",
+              "src": "pages/verify/notify-app.png",
+              "x": 1360, "y": 0, "w": 1280, "h": 800
+            },
+            {
+              "id": "toggle-persist",
+              "type": "video",
+              "src": "pages/verify/notify-toggle-persist.webm",
+              "x": 0, "y": 880, "w": 1280, "h": 800
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "focus": "verify-notification-settings"
+}
+```
+
+Left column: the approved board. Right column: the real app. Below: the recording of toggling and persistence.
+
+## 9. Check the artboard
+
+```bash
+ryugi check settings-redesign
+```
+
+`[assumed, first run]`
+```
+warnings: none
+pending: notify-toggle-persist.webm (preparing)
+recordings: notify-toggle-persist.webm — preparing, will use trimmed clip
+```
+
+Wait, then run it again:
+
+```bash
+ryugi check settings-redesign
+```
+
+`[assumed, second run]`
+```
+warnings: none
+pending: none (group verdict: pending, awaiting partner)
+recordings: notify-toggle-persist.webm — prepared
+size: artboard 3.4MB (limit 20MB)
+```
+
+The group's verdict is pending by design. It is the partner's decision.
+
+## 10. Message to your partner
+
+Not sent yet. This is what I would send:
+
+> The notification settings section is ready for review: http://localhost:4417/artboards/settings-redesign#verify
+>
+> The group "Notification settings" shows three things:
+> - **Left:** the approved board `notify-a`.
+> - **Right:** a screenshot of the running app at commit a1b2c3d, at 1280×800.
+> - **Bottom:** a recording that toggles "Email digest" off, reloads, and shows the value still off.
+>
+> Checks I ran in this session:
+> - `pnpm test --run`: 42 of 42 tests pass.
+> - `PATCH /api/prefs` returns 200, and `GET /api/prefs` returns the new value.
+> - The toggle thumb transition is 0.16s.
+>
+> I have not published to the cloud. Say the word if you want a cloud link instead of the local one.
+>
+> Please mark the group as pass or reject here when you have looked. I'll wait.
+
+Then I end my turn. I do not poll, and I do not pass the group myself.
+
+## What I did not do
+
+- No commit. This step changed no code, only the artboard files.
+- No `ryugi publish`. Publishing sends the content to an external service, so it needs your confirmation first.
+- No pass or reject verdict. Only the partner records that.
+- The working directory I was started in is not a git repo. I used `/Users/p/git/notes-app`, which the situation names.
+
+SUMMARY: Verified in this session (simulated): tests 42/42 pass, dev server 200, real-app screenshot and toggle/reload recording captured at `.ryugi/artifacts/settings-redesign/pages/verify/`, `PATCH`/`GET /api/prefs` returns 200 and the new value, and the `verify` page passes `ryugi check` with no warnings. Waiting on your partner to pass or reject the "Notification settings" verify group at the local artboard link.

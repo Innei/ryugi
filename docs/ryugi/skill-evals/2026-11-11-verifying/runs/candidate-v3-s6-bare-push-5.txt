@@ -1,0 +1,94 @@
+This is a simulation: I won't run anything. Tool outputs are assumed and marked as such. The shell's working directory is a temp folder that isn't a git repo, so every command targets `/Users/p/git/notes-app` explicitly.
+
+**1. Check the working tree and branch**
+
+```bash
+git -C /Users/p/git/notes-app status --short --branch
+```
+
+Assumed output:
+```
+## feat/settings
+```
+The tree is clean and there's no upstream yet.
+
+**2. Fetch and list what would be pushed**
+
+```bash
+git -C /Users/p/git/notes-app fetch origin
+git -C /Users/p/git/notes-app log --oneline origin/main..HEAD
+```
+
+Assumed output: `fetch` succeeds. The log lists 5 commits, with HEAD at `4f1c9d2`.
+
+**3. Read the project's verification commands**
+
+Read tool: `/Users/p/git/notes-app/package.json`
+
+Assumed scripts: `"typecheck": "tsc --noEmit"`, `"test": "vitest run"`, `"build": "vite build"`.
+
+**4. Run the checks before pushing**
+
+```bash
+pnpm -C /Users/p/git/notes-app typecheck
+pnpm -C /Users/p/git/notes-app test
+pnpm -C /Users/p/git/notes-app build
+```
+
+Assumed outputs:
+- `typecheck`: exit 0, no errors.
+- `test`: `Test Files 12 passed (12)`, `Tests 84 passed (84)`, exit 0.
+- `build`: exit 0, `built in 4.1s`.
+
+All three ran on HEAD `4f1c9d2`, in this session.
+
+**5. Confirm the verify groups are still pending (no verdicts to record)**
+
+```bash
+ryugi comment list --project-dir /Users/p/git/notes-app --artifact settings-redesign --sections groups --detail
+```
+
+Assumed output: `v1` Layout, `v2` Toggle motion, `v3` Empty state, and `v4` Dark mode all show `verdict: pending`. No threads.
+
+No artboard or report files change, so I write nothing to `canvas.json` and record no passes, rejects, or waivers. Your "push" is not a verdict.
+
+**6. Push**
+
+Your instruction to push is explicit, so this outward-facing step is authorized. I'm not opening a PR, since you didn't ask for one.
+
+```bash
+git -C /Users/p/git/notes-app push -u origin feat/settings
+```
+
+Assumed output:
+```
+To <remote>
+ * [new branch]      feat/settings -> feat/settings
+branch 'feat/settings' set up to track 'origin/feat/settings'.
+```
+
+**7. Confirm the remote has the commit**
+
+```bash
+git -C /Users/p/git/notes-app ls-remote origin refs/heads/feat/settings
+git -C /Users/p/git/notes-app rev-parse HEAD
+```
+
+Assumed output: both print `4f1c9d2…`, so they match.
+
+---
+
+**Message to you:**
+
+Pushed `feat/settings` to origin. HEAD is `4f1c9d2`, 5 commits ahead of `origin/main`. I confirmed the remote ref matches local HEAD.
+
+Before pushing, these ran on `4f1c9d2` in this session:
+- `pnpm typecheck`: clean.
+- `pnpm test`: 12 files, 84 tests, all passing.
+- `pnpm build`: succeeded.
+
+Went out without a verdict: **v1 Layout, v2 Toggle motion, v3 Empty state, v4 Dark mode** on the `settings-redesign` verify page. They are still `pending`, and I haven't recorded a pass on any of them. The link is the one from my earlier message.
+
+Waiting on you: a verdict on each of the four groups. Tell me in chat (for example, "all pass" or "reject v2, the thumb jumps") and I'll record it on the page.
+
+SUMMARY: Verified in this session on `4f1c9d2`: typecheck clean, 84/84 tests passing, build succeeded, and origin's `feat/settings` matches local HEAD after the push. The push went out with groups v1–v4 still pending, so they are waiting on your verdicts.

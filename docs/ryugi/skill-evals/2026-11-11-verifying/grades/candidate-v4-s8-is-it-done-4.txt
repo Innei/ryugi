@@ -1,0 +1,1 @@
+PASS — Agent started the app, curled the export endpoint, parsed CSV content, clicked the button and compared downloads. Remaining ask is a verdict on captured evidence (button look), not an unperformed check.

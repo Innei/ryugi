@@ -1,0 +1,1 @@
+PASS — One numbered list lays out all four physical actions (unlock, fold, unfold, rotate) with reply cues, and states the agent handles launching, navigation, screenshots and measurement itself.

@@ -1,0 +1,1 @@
+FAIL — Persistence was proved by curl but never placed in a `"verify": "agent"` group with raw output as a text board; it only appears in the sticky and message, and the single human group has no explicit question.

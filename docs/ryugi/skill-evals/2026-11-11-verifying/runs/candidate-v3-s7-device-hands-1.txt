@@ -1,0 +1,33 @@
+I'll start with how this project says to verify, then see what the device tool can do while the phone is locked.
+
+**Tool call 1: Read**
+`/Users/p/git/reader-ios/AGENTS.md`
+
+Assumed result: it says to verify UI on the physical test device with `devicectl-ui`, using the Library and Reader screens. Screenshots are scratch until they're copied into the artboard. There is no project verify skill.
+
+**Tool call 2: Bash**
+```
+cd /Users/p/git/reader-ios && ls .ryugi/artifacts/ 2>/dev/null; git log -1 --format=%h
+```
+Assumed output: `4be7a10`, and no existing artboard for this fix. I'll create `verify-foldable-overlap` once I have evidence.
+
+**Tool call 3: Bash** (try the device before asking for anything)
+```
+devicectl-ui launch --bundle-id com.example.reader
+```
+Assumed output: `error: device is locked; cannot launch or capture. Unlock the device first.`
+
+None of my tools can unlock the phone, fold it or rotate it, so those steps are yours. I won't capture anything until you've done them, because screenshots of the wrong state would be false evidence. The fix needs six captures: Library and Reader in each of three states. I'll do all the app navigation and screenshots myself.
+
+Please do these in order. Don't tell me the passcode.
+
+1. Unlock the phone and leave it on the home screen. If you can, set Auto-Lock to Never for this session so it doesn't relock mid-run. **Reply "unlocked".**
+2. Fold it to **folded portrait** and hold it upright. **Reply "folded portrait".** If the screen locks when you fold, reply "locked" and unlock it again.
+3. Unfold it, still **portrait**. **Reply "unfolded portrait".**
+4. Keep it unfolded and turn it to **landscape**, with rotation lock off. **Reply "unfolded landscape".**
+
+After each reply I'll launch build 318, capture Library and Reader, and tell you when to move to the next state. After the last one I'll put everything on a verify page for you to judge.
+
+Not available: a "before" screenshot of the bug. Only the fixed build 318 is on the phone, and I didn't capture the broken state before fixing it. The page will show the "after" evidence alone, with the requirement in the title, unless you want me to install the previous build for a before shot.
+
+SUMMARY: Verified nothing yet. I checked the project's verify instructions and confirmed the device is locked. Waiting on my partner for four physical actions (unlock, fold, unfold portrait, landscape), after which I'll capture six screenshots from build 318 @ 4be7a10 for a verify page.

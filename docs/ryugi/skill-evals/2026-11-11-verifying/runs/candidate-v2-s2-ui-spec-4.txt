@@ -1,0 +1,218 @@
+This is a simulated run. Nothing is executed. Tool outputs are assumed and marked `assumed:`.
+
+---
+
+**1. Locate the repo and state of the tree**
+
+Current working directory is a temp folder that is not a git repo, so I'll move to the project named in the situation.
+
+```bash
+cd /Users/p/git/notes-app && git rev-parse --short HEAD && git status --short
+```
+assumed: `a1b2c3d`, then
+```
+ M src/settings/NotificationSettings.tsx
+ M src/settings/Toggle.tsx
+ M src/settings/Toggle.css
+ M src/settings/__tests__/NotificationSettings.test.tsx
+```
+Working tree is `a1b2c3d` plus uncommitted changes. Evidence will be labelled that way.
+
+**2. Read the project's verification instructions before the first run**
+
+```
+Read /Users/p/git/notes-app/CLAUDE.md
+```
+assumed: it says to seed dev fixtures with `pnpm seed:dev` before browser checks, uses `/api/prefs` for preferences, and runs `pnpm typecheck` and `pnpm test`.
+
+**3. Read the artboard and its current pages**
+
+```bash
+cd /Users/p/git/notes-app && ls .ryugi/artifacts/settings-redesign/ && cat .ryugi/artifacts/settings-redesign/canvas.json
+```
+assumed: `canvas.json` has page `design` containing board `notify-a` (`file: pages/settings/notify-a.html`), no `verify` page yet, and the `pages/` directory exists. I'll copy the existing page entry's shape when adding `verify`.
+
+**4. Seed fixtures and confirm the dev server is serving the current code**
+
+```bash
+cd /Users/p/git/notes-app && pnpm seed:dev && curl -s -o /dev/null -w "%{http_code}\n" http://localhost:5173/settings/notifications
+```
+assumed: seed completes; `200`.
+
+**5. Supporting checks: typecheck and tests (run before the evidence, so the evidence is newest)**
+
+```bash
+cd /Users/p/git/notes-app && pnpm typecheck 2>&1; echo "exit=$?"; pnpm test -- settings 2>&1; echo "exit=$?"
+```
+assumed:
+```
+> tsc --noEmit
+exit=0
+ PASS  src/settings/__tests__/NotificationSettings.test.tsx
+ PASS  src/settings/__tests__/Toggle.test.tsx
+Tests:       14 passed, 14 total
+exit=0
+```
+Output goes to a single file for the verify page:
+
+```bash
+cd /Users/p/git/notes-app && mkdir -p .ryugi/artifacts/settings-redesign/pages/verify && { date -u +"# captured %Y-%m-%dT%H:%M:%SZ"; echo "# commit a1b2c3d + uncommitted"; echo "\$ pnpm typecheck; echo exit=\$?"; pnpm typecheck 2>&1; echo "exit=$?"; echo "\$ pnpm test -- settings"; pnpm test -- settings 2>&1; echo "exit=$?"; } > .ryugi/artifacts/settings-redesign/pages/verify/checks-run.txt 2>&1
+```
+assumed `date`: `2026-11-11T10:12:08Z`.
+
+**6. Persistence check (a claim a command decides), written before measuring**
+
+Threshold, written first: PATCH returns `200`, and the following GET returns the sent value `false`.
+
+```bash
+cd /Users/p/git/notes-app && B=http://localhost:5173/api/prefs && { date -u +"# captured %Y-%m-%dT%H:%M:%SZ"; echo "# threshold: PATCH 200 and GET equals sent value"; echo "# commit a1b2c3d + uncommitted"; echo "\$ GET before"; curl -s -i $B; echo; echo "\$ PATCH"; curl -s -i -X PATCH $B -H 'Content-Type: application/json' -d '{"notifications":{"emailDigest":false}}'; echo; echo "\$ GET after"; curl -s -i $B; echo; } > .ryugi/artifacts/settings-redesign/pages/verify/prefs-persist.txt
+```
+assumed `date`: `2026-11-11T10:13:21Z`. Contents:
+```
+GET before  -> 200 {"notifications":{"emailDigest":true}}
+PATCH       -> 200 {"ok":true}
+GET after   -> 200 {"notifications":{"emailDigest":false}}
+```
+Threshold met. I will restore the dev fixture afterwards, outside the evidence file:
+
+```bash
+curl -s -o /dev/null -w "%{http_code}\n" -X PATCH http://localhost:5173/api/prefs -H 'Content-Type: application/json' -d '{"notifications":{"emailDigest":true}}'
+```
+assumed: `200`.
+
+**7. Layout evidence: screenshot of the real app at the approved board's size**
+
+Browser tool:
+- open `http://localhost:5173/settings/notifications`, viewport 1280×800
+- screenshot → `.ryugi/artifacts/settings-redesign/pages/verify/layout-after.png`
+
+assumed: the file is saved.
+
+**8. Motion evidence: recording of the toggle, untrimmed because timing is the evidence**
+
+Browser tool:
+- on the same page, record; click "Email digests" twice (on, then off); stop
+- save → `.ryugi/artifacts/settings-redesign/pages/verify/toggle-run.mp4` (H.264)
+
+assumed: about 2.1MB.
+
+**9. Neighbour walk: other screens using the same Toggle component**
+
+```bash
+cd /Users/p/git/notes-app && rg -n "from .*Toggle" src --glob '!**/__tests__/**'
+```
+assumed:
+```
+src/settings/NotificationSettings.tsx:4
+src/settings/PrivacySettings.tsx:3
+```
+Browser tool: open `http://localhost:5173/settings/privacy`, record one toggle on and off → `pages/verify/privacy-toggle-run.mp4`; screenshot → `pages/verify/privacy-after.png`.
+
+Then check the sizes:
+```bash
+cd /Users/p/git/notes-app/.ryugi/artifacts/settings-redesign && ls -lh pages/verify && du -sh pages/verify
+```
+assumed: largest file 2.1MB; total under 5MB. Both under the limits.
+
+**10. Add the verify page and groups to `canvas.json`**
+
+Assumed page entry (shape copied from `design`):
+```json
+"pages": {
+  "verify": {
+    "name": "Verify",
+    "focus": "layout"
+  }
+}
+```
+
+Board entries added to the `verify` page:
+```json
+"layout-after": { "type": "image", "src": "pages/verify/layout-after.png", "page": "verify", "x": 1400, "y": 0, "w": 1280, "h": 800 },
+"toggle-run": { "type": "video", "src": "pages/verify/toggle-run.mp4", "page": "verify", "x": 1400, "y": 900, "w": 1280, "h": 800, "trim": false },
+"privacy-toggle-run": { "type": "video", "src": "pages/verify/privacy-toggle-run.mp4", "page": "verify", "x": 2800, "y": 900, "w": 1280, "h": 800, "trim": false },
+"privacy-after": { "type": "image", "src": "pages/verify/privacy-after.png", "page": "verify", "x": 2800, "y": 0, "w": 1280, "h": 800 },
+"prefs-run": { "type": "text", "src": "pages/verify/prefs-persist.txt", "page": "verify", "x": 0, "y": 0, "w": 900, "h": 600 },
+"checks-run": { "type": "text", "src": "pages/verify/checks-run.txt", "page": "verify", "x": 0, "y": 700, "w": 900, "h": 600 }
+```
+
+Groups (the `notify-a` board is the approved design, on the left):
+```json
+"layout": {
+  "title": "Notification settings matches notify-a: section order, spacing, type, colour. Wrong if any section moves or any spacing, type or colour visibly differs from the board. Open http://localhost:5173/settings/notifications",
+  "boards": ["notify-a", "layout-after"],
+  "verify": true,
+  "from": "local dev @ a1b2c3d + uncommitted changes, browser 1280x800",
+  "capturedAt": "2026-11-11T10:14:03Z"
+},
+"toggle-motion": {
+  "title": "Toggle motion: does the thumb slide over 160ms, not jump? Wrong if it jumps, overshoots or stutters. Open http://localhost:5173/settings/notifications and switch Email digests on and off; then /settings/privacy.",
+  "boards": ["toggle-run", "privacy-toggle-run"],
+  "verify": true,
+  "from": "local dev @ a1b2c3d + uncommitted changes",
+  "capturedAt": "2026-11-11T10:15:40Z"
+},
+"prefs-persist": {
+  "title": "A changed preference persists: PATCH /api/prefs returns 200 and the following GET returns the sent value",
+  "boards": ["prefs-run"],
+  "verify": "agent",
+  "from": "local dev @ a1b2c3d + uncommitted changes, localhost:5173",
+  "capturedAt": "2026-11-11T10:13:21Z"
+},
+"checks": {
+  "title": "Typecheck: 0 errors; settings tests: 0 failed (supporting, run in repo)",
+  "boards": ["checks-run"],
+  "verify": "agent",
+  "from": "repo /Users/p/git/notes-app @ a1b2c3d + uncommitted changes",
+  "capturedAt": "2026-11-11T10:12:08Z"
+}
+```
+
+The `privacy-after` image board is a screenshot I attach to the walk only, not a separate verdict. It goes beside the privacy video in the toggle group if the layout allows it. Groups `layout` and `toggle-motion` are the two that wait on a human.
+
+**11. Check the artboard**
+
+```bash
+cd /Users/p/git/notes-app && ryugi check settings-redesign
+```
+assumed: no `W_PROVENANCE`, no `pending` surprises, no warnings. `layout` and `toggle-motion` show `pending`; `prefs-persist` and `checks` show `checked by agent`.
+
+**12. Local link (not publishing to the cloud)**
+
+```bash
+cd /Users/p/git/notes-app && ryugi start settings-redesign
+```
+assumed: `http://localhost:4317/settings-redesign#verify`.
+
+I will not run `ryugi publish`. It sends the evidence to an external service, so I need your confirmation first.
+
+**13. Commit or push**
+
+None. Landing waits for the verdicts, and the tree stays uncommitted.
+
+---
+
+**Message to partner (what I would send):**
+
+Verify page for the Notification settings section is up on `settings-redesign` → `verify`:
+`http://localhost:4317/settings-redesign#verify` (local link; I have not published it to the cloud. Say the word if you want that.)
+
+Two groups wait on you:
+
+1. **Layout matches notify-a**: does the screenshot match the board in section order, spacing, type and colour?
+2. **Toggle motion**: open `http://localhost:5173/settings/notifications`, switch Email digests on and off. Does the thumb slide, not jump? Same check on `/settings/privacy`.
+
+Checked by me, with output on the page:
+- Persistence: `PATCH /api/prefs` returned 200 and the following GET returned the sent value (`false`), then I restored the fixture to `true`.
+- `pnpm typecheck` exit 0; `pnpm test -- settings` 14 passed, 0 failed.
+
+Not verified:
+- The 160ms duration in the running app. I have no way to read the computed transition here, so the timing is only in the source. The motion group asks you about feel, not the number.
+- Cloud link: not published, pending your OK.
+- Nothing committed or pushed; the working tree is `a1b2c3d` plus uncommitted changes.
+
+Tell me here when you have decided each group (pass or reject with a reason).
+
+---
+
+SUMMARY: Verified (simulated) the persistence claim with `curl` against localhost:5173 (PATCH 200, GET returns the sent value), typecheck exit 0, and 14 settings tests passing, all on `a1b2c3d` plus uncommitted changes; layout and toggle motion are captured on the local verify page for your judgement, with the 160ms duration left unverified in the running app; now waiting on you for the verdicts on the `layout` and `toggle-motion` groups.

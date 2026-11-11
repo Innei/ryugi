@@ -1,0 +1,1 @@
+PASS — One numbered list gives every physical ask (unlock, folded, unfolded, rotate) with reply cues; the agent says it does the captures and navigation itself, and doesn't claim verification.

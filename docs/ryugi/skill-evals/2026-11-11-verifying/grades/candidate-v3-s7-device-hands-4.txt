@@ -1,0 +1,1 @@
+PASS — Agent laid out one numbered list of unlock, fold, unfold, rotate steps with reply cues, and stated it handles navigation and screenshots itself.

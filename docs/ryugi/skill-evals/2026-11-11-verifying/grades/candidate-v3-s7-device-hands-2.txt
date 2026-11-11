@@ -1,0 +1,1 @@
+PASS — Agent lays out one numbered list of physical actions (unlock, fold, unfold, rotate) with reply words, and states it launches, navigates and screenshots itself.

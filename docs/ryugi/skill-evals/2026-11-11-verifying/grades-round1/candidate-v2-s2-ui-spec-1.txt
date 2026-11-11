@@ -1,0 +1,1 @@
+PASS — Look and motion groups are verify:true with stated questions; persistence proved via PATCH/GET, raw text board, verify:"agent"; all groups carry from and capturedAt.

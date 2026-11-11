@@ -1,0 +1,175 @@
+This is a simulation. Nothing below has been run. Outputs marked *(assumed)* are plausible results, not evidence. The repo path comes from your brief; the environment header lists a non-git tmp directory, so I'm treating `/Users/p/git/notes-app` as the target.
+
+## Step 1: Read the project's verification instructions and confirm the state
+
+```bash
+cd /Users/p/git/notes-app && cat AGENTS.md CLAUDE.md 2>/dev/null; jq '.scripts' package.json
+```
+*(assumed)* No import-specific verification steps beyond the scripts. `import:check` is defined as `tsx scripts/import-check.ts`.
+
+```bash
+git rev-parse --short HEAD && git status --short
+```
+*(assumed)* `c4d5e6f`, with my CSV import changes uncommitted. The dev server reflects the working tree, so evidence `from` will read "local dev @ c4d5e6f + working tree".
+
+## Step 2: Prove requirement 2 (10k rows), capturing output straight to the evidence file
+
+```bash
+V=.ryugi/artifacts/verify/csv-import; mkdir -p $V/evidence
+date -u +%Y-%m-%dT%H:%M:%SZ
+pnpm import:check fixtures/10k.csv > $V/evidence/import-10k.txt 2>&1; echo "exit=$?" >> $V/evidence/import-10k.txt
+cat $V/evidence/import-10k.txt
+```
+*(assumed)* `2026-11-11T10:02:14Z`; output:
+```
+read 10000 rows
+written 10000 rows
+skipped 0 rows
+exit=0
+```
+
+## Step 3: Prove requirement 3 (duplicates)
+
+```bash
+date -u +%Y-%m-%dT%H:%M:%SZ
+pnpm import:check fixtures/dupes.csv > $V/evidence/import-dupes.txt 2>&1; echo "exit=$?" >> $V/evidence/import-dupes.txt
+cat $V/evidence/import-dupes.txt
+```
+*(assumed)* `2026-11-11T10:02:31Z`; output: `read 500 rows` / `written 250 rows` / `skipped 250 rows` / `exit=0`. Both numbers match the spec.
+
+## Step 4: Supporting check only (does not prove the claims)
+
+```bash
+pnpm test > $V/evidence/unit-tests.txt 2>&1; echo "exit=$?" >> $V/evidence/unit-tests.txt; tail -n 8 $V/evidence/unit-tests.txt
+```
+*(assumed)* `Tests: 84 passed, 84 total` / `exit=0`. I'll label this as supporting evidence in the report and not as proof of the import behaviour.
+
+## Step 5: Requirement 1 (dialog matches `import-a`), captured from the running app
+
+Browser tool: open http://localhost:5173, navigate to Import, and open the dialog. Then:
+- Screenshot the idle dialog to `.ryugi/artifacts/csv-import/pages/verify/import-built.png`.
+- Choose `fixtures/10k.csv`, wait until the progress bar is mid-run, and screenshot again to `pages/verify/import-built-progress.png`.
+- Record a short clip of the whole import (every action, loading state and final result visible) to `pages/verify/import-run.mp4`.
+
+*(assumed)* Screenshots saved at 1280×800. The recording is 3.1 MB, under the 8 MB limit.
+
+```bash
+ls -l .ryugi/artifacts/csv-import/pages/verify/ && du -sh .ryugi/artifacts/csv-import
+date -u +%Y-%m-%dT%H:%M:%SZ
+```
+*(assumed)* `10:06:40Z`; artboard total 6.4 MB, under 20 MB.
+
+I'll also walk the neighbours that share the dialog and parser: a small valid CSV, cancelling mid-import, and an invalid header. Each gets a one-line result in the report's notes if they pass. *(assumed)* All three behave as expected.
+
+## Step 6: Add the verify page and group to the approved artboard
+
+```bash
+cat .ryugi/artifacts/csv-import/canvas.json
+```
+*(assumed)* The file has `pages` and `boards` keyed by id, and `import-a` is on page `design`.
+
+I'll add page `verify` and this group to `canvas.json`:
+
+```json
+"pages": { "verify": { "name": "Verify" } }
+```
+
+```json
+"groups": {
+  "import-progress": {
+    "title": "Does the import dialog match import-a, including the progress bar mid-import? Wrong if spacing, labels, the bar fill or its colour differ from the board.",
+    "boards": ["import-a", "import-built", "import-built-progress", "import-run"],
+    "verify": true,
+    "from": "local dev @ c4d5e6f + working tree",
+    "capturedAt": "2026-11-11T10:06:40Z"
+  }
+}
+```
+
+```json
+"boards": {
+  "import-built": {
+    "type": "image", "src": "pages/verify/import-built.png",
+    "page": "verify", "x": 1400, "y": 0, "w": 1280, "h": 800
+  },
+  "import-built-progress": {
+    "type": "image", "src": "pages/verify/import-built-progress.png",
+    "page": "verify", "x": 2800, "y": 0, "w": 1280, "h": 800
+  },
+  "import-run": {
+    "type": "video", "src": "pages/verify/import-run.mp4",
+    "page": "verify", "x": 1400, "y": 900, "w": 1280, "h": 800
+  }
+}
+```
+
+Board `import-a` stays on the left as the approved design. `focus` is set to `import-progress`. The "link back" step doesn't apply because the spec does not list a discussion document.
+
+## Step 7: Write the verify report `verify/csv-import`
+
+Written to `$V/report.xml`:
+
+```xml
+<report title="CSV import: all rows, duplicates skipped, dialog matches the design">
+  <p>Import is implemented; evidence is from the local dev server on c4d5e6f plus the working tree. Production is not verified.</p>
+
+  <claim id="rows-10k" judge="agent" from="local dev @ c4d5e6f + working tree" capturedAt="2026-11-11T10:02:14Z">
+    <title>A 10,000-row file reads and writes all 10,000 rows, skipping none</title>
+    <output src="evidence/import-10k.txt" />
+  </claim>
+
+  <claim id="dupes" judge="agent" from="local dev @ c4d5e6f + working tree" capturedAt="2026-11-11T10:02:31Z">
+    <title>Duplicate rows are skipped: 500 read, 250 written, 250 skipped</title>
+    <output src="evidence/import-dupes.txt" />
+  </claim>
+
+  <claim id="unit" judge="agent" from="local dev @ c4d5e6f + working tree" capturedAt="2026-11-11T10:03:05Z">
+    <title>Unit tests pass (supporting only; they do not prove the import against real files)</title>
+    <output src="evidence/unit-tests.txt" />
+  </claim>
+
+  <ref artboard="csv-import" group="import-progress" />
+
+  <gap id="prod">
+    <title>The import works against the production database</title>
+    <why>No production credentials here, and no staging copy of production exists. Running an import against production would write to real customer notes, so I have not tried it.</why>
+    <needs>A production test key and your go-ahead for a write against it, or a staging copy of production with a test key. Otherwise this stays open.</needs>
+  </gap>
+</report>
+```
+
+The three `judge="agent"` claims have their raw output and a `from`, so nothing waits on them. The dialog match is judged by a person on the artboard. The production claim is a gap, not a check.
+
+## Step 8: Run `check` on both artifacts and clear warnings
+
+```bash
+ryugi check --project-dir /Users/p/git/notes-app --artifact verify/csv-import
+ryugi check --project-dir /Users/p/git/notes-app --artifact csv-import
+```
+*(assumed)* The report passes with no warnings. The artboard shows one warning: `W_PROVENANCE` on the `import-progress` group because I'd left `from` off one board. I fix that and re-run. The second `check` is then clean with no pending items beyond the verify group.
+
+```bash
+ryugi publish --project-dir /Users/p/git/notes-app --artifact verify/csv-import
+```
+I am **not** running `publish`. It sends the report and screenshots to the cloud, which is outward-facing. I'll ask first.
+
+I'm also not committing, pushing or opening a PR. Landing waits for the verdicts.
+
+## Message to you
+
+**Verified in this session (local dev, c4d5e6f + working tree):**
+- `pnpm import:check fixtures/10k.csv`: 10000 read, 10000 written, 0 skipped (exit 0).
+- `pnpm import:check fixtures/dupes.csv`: 500 read, 250 written, 250 skipped (exit 0).
+- `pnpm test`: 84 passed (supporting only).
+- Dialog and progress bar captured from the running app, with a recording of a full import. Neighbour flows walked: small file, cancel mid-import, invalid header.
+
+**Waiting on you:**
+1. **Verify group `import-progress`** on the `csv-import` artboard: does the dialog and mid-import progress bar match `import-a`? Reply pass or reject, and say what is wrong if you reject.
+2. **Verify report `csv-import`** (the two row-count claims are checked by agent; no verdict needed unless you want to reject them).
+
+**Not verified:**
+- Requirement 4, the import against the production database. I need a production test key and your explicit go-ahead for a write against real customer notes, or you can accept it as open.
+
+**Left for your decision:** whether to publish the report and artboard to the cloud link, and whether to commit once the verdicts are in.
+
+SUMMARY: Simulated only; nothing was run. Row counts (10k, dupes) and tests are to be proved by pnpm import:check and pnpm test against local dev c4d5e6f + working tree; dialog match by browser screenshots and recording on the csv-import verify group; production write is an open gap. Waiting on you: pass/reject the import-progress verify group and the verify/csv-import report, and a production test key or your decision to leave production open.

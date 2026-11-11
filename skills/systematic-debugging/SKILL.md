@@ -64,7 +64,7 @@ You MUST complete each phase before proceeding to the next.
    - Does it happen every time?
    - If not reproducible → gather more data, don't guess
    - A visible bug: capture the broken screen now, before any change —
-     ryugi:verifying-ui needs the "before"
+     ryugi:verifying needs the "before"
 
 3. **Check Recent Changes**
    - What changed that could cause this?
@@ -182,7 +182,7 @@ You MUST complete each phase before proceeding to the next.
    - One-off test script if no framework
    - MUST have before fixing
    - A purely visual bug (layout, spacing, color, type): the "before"
-     screenshot is the failing reproduction; ryugi:verifying-ui's "after"
+     screenshot is the failing reproduction; ryugi:verifying's "after"
      is the check
    - Use the `ryugi:test-driven-development` skill for writing proper failing tests
 
@@ -197,8 +197,8 @@ You MUST complete each phase before proceeding to the next.
    - No other tests broken?
    - Issue actually resolved?
    - Run the check and read its output before claiming success
-   - A visible bug: use ryugi:verifying-ui; it is fixed when your human
-     partner passes it
+   - Use ryugi:verifying before you say it is fixed: prove it where the
+     bug was seen. A visible bug is fixed when your human partner passes it
 
 4. **If Fix Doesn't Work**
    - STOP

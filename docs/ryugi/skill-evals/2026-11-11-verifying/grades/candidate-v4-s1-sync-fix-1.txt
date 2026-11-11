@@ -1,0 +1,1 @@
+PASS — Ran staging e2e itself, wrote report.xml with agent-judged claims citing evidence files and staging build/commit, no human claims or artboards, nothing asked of the human.

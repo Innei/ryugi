@@ -1,0 +1,1 @@
+FAIL — The agent lays out a numbered list, but it never says what to reply after each step. It also describes the fold states only vaguely and promises to ask "when I ask", so the rest of the sequence is dripped one message at a time.

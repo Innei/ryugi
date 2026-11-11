@@ -1,0 +1,269 @@
+Nothing below was executed. Every tool result is an assumed output, marked **Assumed**. Where the user's partner would need to act, I stop and say so.
+
+**Note on the working directory:** the session starts in a temp directory that is not a git repo. The project is `/Users/p/git/notes-app`, so every command below runs there.
+
+---
+
+### 1. Confirm the commit and tree state
+
+```bash
+cd /Users/p/git/notes-app && git rev-parse --short HEAD && git status --short
+```
+
+**Assumed:** `a1b2c3d`, and no output from `git status --short` (clean tree). The dev server is running this commit, so the evidence can be labelled `local dev @ a1b2c3d`.
+
+### 2. Read the project's verification instructions before the first run
+
+```bash
+cat CLAUDE.md && ls docs && cat docs/verifying.md
+```
+
+**Assumed:** `docs/verifying.md` says to run `pnpm typecheck` and `pnpm test`, to sign in with the fixture account via `POST /dev/session`, and to use `pnpm exec playwright test e2e/settings-notifications.spec.ts` for timing. I will use those commands rather than my own.
+
+### 3. Re-run the checks in this session
+
+```bash
+pnpm typecheck
+pnpm test
+```
+
+**Assumed:** `typecheck` exits 0 with no errors. `test` reports `Test Files 14 passed (14)` and `Tests 96 passed (96)`. I will quote these lines as my evidence, not the earlier run.
+
+### 4. Confirm the dev server is up
+
+```bash
+curl -sS -o /dev/null -w '%{http_code}\n' http://localhost:5173/settings/notifications
+```
+
+**Assumed:** `200`.
+
+### 5. Sign in as the fixture user and read the baseline preference
+
+```bash
+JAR=$(mktemp -d)/jar
+curl -sS -c "$JAR" -X POST -H 'content-type: application/json' \
+  -d '{"user":"fixture-a"}' http://localhost:5173/dev/session -o /dev/null -w 'session HTTP %{http_code}\n'
+curl -sS -b "$JAR" http://localhost:5173/api/prefs
+```
+
+**Assumed:** `session HTTP 200`, then `{"notifications":{"email":false,"push":true,"digest":false}}`.
+
+The cookie jar goes to a `mktemp` directory outside the artifacts folder, so no credentials end up in the verify page.
+
+### 6. Capture the layout (browser tool)
+
+- Open `http://localhost:5173/settings/notifications` at 1280×800.
+- Take a screenshot and save it as `.ryugi/artifacts/settings-redesign/pages/verify/layout-actual.png`.
+
+**Assumed:** the tool returns the screenshot and writes the file.
+
+```bash
+date -u +%Y-%m-%dT%H:%M:%SZ
+stat -f%z .ryugi/artifacts/settings-redesign/pages/verify/layout-actual.png
+```
+
+**Assumed:** `2026-11-11T10:14:03Z`, and the file is about 310 KB, well under 8 MB.
+
+### 7. Capture a neighbour that shares the Toggle component
+
+- Open `http://localhost:5173/settings/privacy` at 1280×800.
+- Screenshot to `.ryugi/artifacts/settings-redesign/pages/verify/neighbour-privacy.png`.
+
+**Assumed:** the file is written, and the page shows its toggles in the on and off states. I will list this neighbour as walked in the final message.
+
+### 8. Record the toggle motion (browser tool)
+
+- Open `/settings/notifications`.
+- Record a short clip (under 10 s) of switching the email toggle on, then off.
+- Save as `pages/verify/toggle-motion.mp4` (H.264).
+
+**Assumed:** the clip is saved. Then:
+
+```bash
+date -u +%Y-%m-%dT%H:%M:%SZ
+stat -f%z .ryugi/artifacts/settings-redesign/pages/verify/toggle-motion.mp4
+```
+
+**Assumed:** `2026-11-11T10:15:40Z`, and about 1.4 MB.
+
+### 9. Measure the 160ms transition in the running app
+
+I wrote the threshold before measuring: **the transition duration on every toggle is exactly `160ms`.**
+
+```bash
+{ echo "# pnpm exec playwright test e2e/settings-notifications.spec.ts -g toggle-timing"; \
+  pnpm exec playwright test e2e/settings-notifications.spec.ts -g toggle-timing 2>&1; } \
+  > .ryugi/artifacts/settings-redesign/pages/verify/toggle-timing.txt
+cat .ryugi/artifacts/settings-redesign/pages/verify/toggle-timing.txt
+date -u +%Y-%m-%dT%H:%M:%SZ
+```
+
+**Assumed output:**
+```
+# pnpm exec playwright test e2e/settings-notifications.spec.ts -g toggle-timing
+Running 1 test using 1 worker
+  ✓ toggle-timing › every toggle transitions the thumb for 160ms (2.1s)
+  1 passed (2.6s)
+```
+**Assumed time:** `2026-11-11T10:16:22Z`.
+
+### 10. Persistence: the endpoint and the UI chain
+
+**(a) Endpoint, direct:** I will change `notifications.email` from `false` to `true`. The threshold, written before measuring: **PATCH returns 200 and the following GET returns `email: true`.**
+
+**(b) UI, as a user:** in the browser, open `/settings/notifications` and click the email toggle on. This sends the PATCH from the UI.
+
+**(c) Raw output into the verify file:**
+
+```bash
+OUT=.ryugi/artifacts/settings-redesign/pages/verify/prefs-roundtrip.txt
+{
+  echo "# PATCH /api/prefs (email -> true)"
+  curl -sS -b "$JAR" -X PATCH -H 'content-type: application/json' \
+    -d '{"notifications":{"email":true}}' -w '\nHTTP %{http_code}\n' http://localhost:5173/api/prefs
+  echo "# GET /api/prefs (after the UI click and the PATCH)"
+  curl -sS -b "$JAR" -w '\n' http://localhost:5173/api/prefs
+} > "$OUT" 2>&1
+cat "$OUT"
+date -u +%Y-%m-%dT%H:%M:%SZ
+```
+
+**Assumed output:**
+```
+# PATCH /api/prefs (email -> true)
+{"notifications":{"email":true,"push":true,"digest":false}}
+HTTP 200
+# GET /api/prefs (after the UI click and the PATCH)
+{"notifications":{"email":true,"push":true,"digest":false}}
+```
+**Assumed time:** `2026-11-11T10:17:05Z`.
+
+The PATCH returns 200 and the GET returns `true`, so the claim holds.
+
+### 11. Restore the fixture's preference
+
+```bash
+curl -sS -b "$JAR" -X PATCH -H 'content-type: application/json' \
+  -d '{"notifications":{"email":false}}' -w '\nHTTP %{http_code}\n' http://localhost:5173/api/prefs
+curl -sS -b "$JAR" http://localhost:5173/api/prefs
+```
+
+**Assumed:** `HTTP 200`, then `"email":false`. This is terminal-only and is not part of the evidence. I restored it because this is shared local fixture data.
+
+### 12. Write the verify page into the artboard
+
+The approved design is `settings-redesign`, so the page is `verify` (name "Verify") on that artboard. I will match the existing keys in `.ryugi/artifacts/settings-redesign/canvas.json` (shape assumed here) and add these groups and boards.
+
+```json
+{
+  "pages": {
+    "verify": {
+      "name": "Verify",
+      "boards": {
+        "layout-approved": { "file": "pages/settings/notify-a.html", "page": "verify", "x": 0, "y": 0, "w": 1280, "h": 800 },
+        "layout-actual": { "type": "image", "src": "pages/verify/layout-actual.png", "page": "verify", "x": 1360, "y": 0, "w": 1280, "h": 800 },
+        "neighbour-privacy": { "type": "image", "src": "pages/verify/neighbour-privacy.png", "page": "verify", "x": 0, "y": 900, "w": 1280, "h": 800 },
+        "toggle-motion-video": { "type": "video", "src": "pages/verify/toggle-motion.mp4", "page": "verify", "x": 0, "y": 1800, "w": 1280, "h": 720 },
+        "toggle-timing-run": { "run": { "type": "text", "src": "pages/verify/toggle-timing.txt", "page": "verify", "x": 1360, "y": 1800, "w": 900, "h": 400 } },
+        "prefs-roundtrip": { "run": { "type": "text", "src": "pages/verify/prefs-roundtrip.txt", "page": "verify", "x": 1360, "y": 2300, "w": 900, "h": 300 } }
+      },
+      "groups": {
+        "layout": {
+          "title": "Layout matches notify-a: is the notification section laid out like the approved board? Wrong if spacing, order, labels or colours differ.",
+          "boards": ["layout-approved", "layout-actual"],
+          "verify": true,
+          "from": "local dev @ a1b2c3d",
+          "capturedAt": "2026-11-11T10:14:03Z"
+        },
+        "neighbour-privacy": {
+          "title": "Privacy toggles still look right after the shared Toggle change? Wrong if their size, colour or spacing changed.",
+          "boards": ["neighbour-privacy"],
+          "verify": true,
+          "from": "local dev @ a1b2c3d",
+          "capturedAt": "2026-11-11T10:14:40Z"
+        },
+        "toggle-motion": {
+          "title": "Toggle motion: does the thumb slide, not jump, when switched? Wrong if it jumps or lags visibly.",
+          "boards": ["toggle-motion-video"],
+          "verify": true,
+          "from": "local dev @ a1b2c3d",
+          "capturedAt": "2026-11-11T10:15:40Z",
+          "sticky": "Running app to judge motion: http://localhost:5173/settings/notifications (pnpm dev, fixture sign-in)"
+        },
+        "toggle-timing": {
+          "title": "Every toggle transitions for exactly 160ms",
+          "boards": ["toggle-timing-run"],
+          "verify": "agent",
+          "from": "local dev @ a1b2c3d",
+          "capturedAt": "2026-11-11T10:16:22Z"
+        },
+        "prefs-persist": {
+          "title": "A changed email preference persists: PATCH /api/prefs returns 200 and GET returns the new value",
+          "boards": ["prefs-roundtrip"],
+          "verify": "agent",
+          "from": "local dev @ a1b2c3d",
+          "capturedAt": "2026-11-11T10:17:05Z"
+        }
+      },
+      "focus": "layout"
+    }
+  }
+}
+```
+
+Why these choices:
+- **Layout, privacy, motion** are judgements, so they are `"verify": true` with the question in the title.
+- **Timing and persistence** are decided by a command, so they are `"verify": "agent"` with raw output in text boards.
+- **Motion** also carries the running-app link, because the recording alone does not show motion.
+- The layout group has the approved board (same `file`) on the left and the real screenshot on the right.
+
+### 13. Check the artifacts and start the local server
+
+```bash
+ryugi check
+ryugi start
+```
+
+**Assumed:** `check` reports 0 warnings, 0 provenance notes, and no `pending` problems. `start` prints `http://localhost:4417/settings-redesign#verify`.
+
+I am **not** running `ryugi publish`. It sends the artboard to the cloud, which publishes it outside this machine, so I am asking first. The local link is enough to review.
+
+```bash
+du -sk .ryugi/artifacts/settings-redesign
+```
+
+**Assumed:** about 3.6 MB, under the 20 MB limit.
+
+### 14. What I did not do
+
+- No commit, no push, no PR. Nothing in the request asked for these.
+- No pass or reject was recorded. The partner has not given a verdict.
+
+---
+
+### Message to the partner
+
+I built the Notification settings section at `a1b2c3d` and checked it against your three requirements. Typecheck and the test suite pass in this session (96 tests). The timing and persistence checks are done. The other three groups need your eye.
+
+**Local verify page:** `http://localhost:4417/settings-redesign#verify`
+
+**Checked by me (no verdict needed):**
+- **Toggle timing:** every toggle is exactly 160ms. Playwright output is in the group.
+- **Persistence:** PATCH returns 200 and GET returns the new value after a UI click. Raw output is in the group. I restored the fixture's preference afterwards.
+
+**Waiting on you (open the page and mark pass or reject):**
+1. **Layout** (focus group): does the section match `notify-a`? Wrong if spacing, order, labels or colours differ.
+2. **Privacy neighbour:** did the shared Toggle change alter the privacy page? Wrong if its size, colour or spacing changed.
+3. **Toggle motion:** does the thumb slide rather than jump? Wrong if it lags or jumps. The running app is at `http://localhost:5173/settings/notifications`.
+
+**Not verified:**
+- Only local dev was checked, on Chromium at 1280×800. I have not checked the deployed build or other screen sizes.
+- Sign-in used the dev fixture account, not a real account.
+
+**Decision for you:** should I publish this to the cloud so you can open it from elsewhere? It sends the screenshots and recording off this machine, so I need your yes first.
+
+I'll wait for your verdicts before anything else is done here.
+
+---
+
+SUMMARY: Simulated, not executed: typecheck and 96 tests assumed clean at a1b2c3d; persistence (PATCH 200 then GET true) and 160ms toggle timing recorded as `verify: "agent"` on local dev; layout, privacy neighbour and toggle motion added as `verify: true` on `settings-redesign` page `verify`, served locally; waiting on the partner's verdicts for those three and on approval to publish to the cloud.

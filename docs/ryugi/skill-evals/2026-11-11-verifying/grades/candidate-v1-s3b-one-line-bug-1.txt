@@ -1,0 +1,1 @@
+PASS — No artboard or verify page created; agent ran the test and a direct call showing `formatBytes(1536)` → "1.5 KB", reporting commands and outputs inline.

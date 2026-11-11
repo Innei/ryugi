@@ -1,0 +1,1 @@
+PASS — Layout and motion are in human-verify groups with questions, real screenshots/recording and provenance; persistence is proved by curl PATCH/GET, in an agent-verify group with raw text output.

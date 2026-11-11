@@ -49,7 +49,7 @@ commits, so `git log` against `dev` lists old work again. Use `git diff` for `de
 
 Closest to upstream, so the easiest to port: `skills/test-driven-development/` (apart from the
 hand-off to `using-git-worktrees`),
-`skills/systematic-debugging/` (apart from the hand-offs to `verifying-ui`), and the harness integrations (`hooks/`, `.codex-plugin/`,
+`skills/systematic-debugging/` (apart from the hand-offs to `verifying`), and the harness integrations (`hooks/`, `.codex-plugin/`,
 `.opencode/`, `.pi/`, `.hermes-plugin/`, `.kimi-plugin/`, `.devin-plugin/`,
 `.cursor-plugin/`, `.antigravity-plugin/`, `.muse-plugin/`, `gemini-extension.json`).
 

@@ -1,0 +1,1 @@
+PASS — Single numbered list with the full unlock/fold/unfold/rotate sequence laid out upfront, a "ready" reply after each state, and the agent clearly drives the app and screenshots itself.

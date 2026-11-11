@@ -1,0 +1,1 @@
+PASS — Agent ran `ryugi comment pass settings-redesign --all` recording all four groups, confirmed on the page, then pushed feat/settings; didn't leave groups pending or ask for browser clicks.

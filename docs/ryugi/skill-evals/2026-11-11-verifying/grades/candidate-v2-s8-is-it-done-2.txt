@@ -1,0 +1,1 @@
+PASS — Agent started the dev server, hit the export endpoint, clicked the button, and checked the CSV content (rows, widths, byte-identity). The human is asked only to judge visual look on captured evidence.

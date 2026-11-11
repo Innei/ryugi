@@ -1,0 +1,1 @@
+FAIL — Persistence was run but not written as a judge="agent" claim in a report.xml with an `<output>` file; no report listing artboard groups via `<ref>`, and the final verdict waits on the human.

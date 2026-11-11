@@ -1,0 +1,82 @@
+**Simulated run. Nothing below was executed. Outputs marked "(assumed)" are my guesses.**
+
+### 1. Read the project's verification instructions
+
+```
+Read /Users/p/git/reader-ios/CLAUDE.md
+```
+
+Assumed output: the file says to test on the physical foldable through `devicectl-ui`, that the simulator can't reproduce hinge posture, and that the bundle id is in `project.pbxproj`.
+
+### 2. Confirm the commit and working tree
+
+The shell's cwd isn't the repo, so I use `-C`.
+
+```
+git -C /Users/p/git/reader-ios log -1 --format='%h %s'
+git -C /Users/p/git/reader-ios status --short
+```
+
+Assumed output:
+```
+4be7a10 Fix reading pane overlapping sidebar when folded
+(no output from status: tree clean)
+```
+
+### 3. Confirm which build the phone is running
+
+```
+xcrun devicectl list devices
+xcrun devicectl device info apps --device <DEVICE_ID> --bundle-id <BUNDLE_ID>
+```
+
+Assumed output: the device is connected and locked; the app is at version 1.x, build 318.
+
+The build-to-commit mapping (318 = 4be7a10) comes from the build record, not from the binary itself. I'll state that in the report.
+
+### 4. Look at the phone
+
+```
+devicectl-ui screenshot --device <DEVICE_ID> --out "$TMPDIR/verify-foldable/lock.png"
+```
+
+Assumed output: the lock screen. I can't get past it, so no Library or Reader screen can be captured yet.
+
+### 5. Find the approved design and any existing verify page
+
+```
+ls /Users/p/git/reader-ios/.ryugi/artifacts/
+Read /Users/p/git/reader-ios/.ryugi/artifacts/sidebar-split/canvas.json
+```
+
+Assumed output: an approved artboard `sidebar-split` with a "Design" page and no "verify" page. So I'll add a `verify` page to it, since it holds the approved design.
+
+### 6. The before-state
+
+I haven't captured the broken state. The fix is already installed, and the pre-fix build isn't on the phone. Capturing a before means installing the parent commit (4be7a10^) and another fold/unfold pass from your partner. I won't replace the installed build without asking, so this goes in "Not verified" unless they say yes.
+
+### 7. Message to your partner
+
+> The phone is locked and running build 318 (4be7a10). I can't unlock, fold or rotate it, so I need these from you, one at a time. Reply after each.
+>
+> 1. Unlock the phone and leave it on the home screen. Reply `unlocked`, and tell me whether it is currently folded or unfolded, and portrait or landscape.
+> 2. Fold it, hold it in portrait, keep auto-rotate on. Reply `folded portrait`. I'll open the app and capture Library and Reader.
+> 3. Unfold it, keep portrait. Reply `unfolded portrait`. I'll capture both screens.
+> 4. Rotate to landscape, still unfolded. Reply `unfolded landscape`. I'll capture both screens.
+>
+> I'll check each capture's pixel size to confirm the posture, not just trust your reply.
+>
+> The before-state isn't captured. To get it I'd install the build from 4be7a10^, which replaces 318, and then you'd do one more fold/unfold pass. Do you want that? If not, I'll list the before as not verified.
+
+I'm stopping here because I need the unlock before I can capture anything.
+
+### What I'll do after the replies (planned, not written)
+
+- For each posture, copy the Library and Reader screenshots into `.ryugi/artifacts/sidebar-split/pages/verify/`, and check their pixel sizes.
+- Add six verify groups to the `verify` page: one per screen × posture. Each has `"verify": true`, `from: "device, build 318 @ 4be7a10"`, the capture's `capturedAt`, and a title asking whether the reading pane sits beside the sidebar, not over it. I'll write the JSON once the screenshots exist.
+- Run `ryugi check`, clear its warnings, and give the link.
+- No verify report: the build identity is one line of output, so I'll state it inline. The rest is screen claims only.
+
+No canvas.json has been written this turn.
+
+**SUMMARY:** Simulated: the phone is locked and running build 318 from commit 4be7a10 with a clean working tree (build-to-commit mapping taken from the build record). Not verified: the six Library/Reader × posture captures and the pre-fix before-state. Waiting on your partner to unlock the phone and then set each fold or rotation, one reply each.

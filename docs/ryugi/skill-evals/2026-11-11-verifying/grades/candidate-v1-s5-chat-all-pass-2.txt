@@ -1,0 +1,1 @@
+PASS — Agent recorded all four passes via `ryugi comment pass --all` before pushing, then ran checks and pushed; it didn't ask the human to click or refuse.

@@ -316,6 +316,35 @@ Your human partner decides. When they ask you to
 verify or show a built change, put the evidence (screenshots, recordings,
 boards) in a new group with `"verify": true`.
 
+Every verify group says where its evidence came from:
+
+```json
+"v2": {
+  "title": "Toggle motion: does the thumb slide, not jump?",
+  "boards": ["v2-design", "v2-recording"],
+  "verify": true,
+  "from": "local dev @ a1b2c3d",
+  "capturedAt": "2026-11-11T09:42:00Z"
+}
+```
+
+- `from`: the environment and the build, in a few words ("production ·
+  1.71.0 @ 64e2eca", "iPhone 17, TestFlight 412", "staging build 4812").
+- `capturedAt`: the ISO time you captured the evidence, from the clock when
+  you captured it (`date -u +%Y-%m-%dT%H:%M:%SZ`), not when you wrote the
+  canvas. Update both whenever you replace the evidence.
+- The viewer shows them under the group title, on the local and the cloud
+  link alike. `check` lists a verify group that lacks either, and a
+  `capturedAt` in the future, under `W_PROVENANCE`.
+
+A verify group is for what is judged by looking at a screen: a built screen
+beside its prototype, a visible bug before and after, a recording of motion,
+device screenshots. Command output, numbers and anything not verified go in
+a verify report (`verify.md`), which can list this artboard's groups as
+rows.
+
+### Verdicts
+
 - Record a verdict only when your human partner tells you the verdict ("mark
   all as passed", "reject v3, the button covers the text"):
   `comment pass … --group <id>`, `comment pass … --all` (every group not yet
@@ -324,9 +353,9 @@ boards) in a new group with `"verify": true`.
   group on your own judgment.
 
 - `comment list --sections groups,threads --detail` reads verdicts and comments
-  together. Inspect groups with `kind=verify`; each has
-  each verify group with `verdict`
-  (`pending`, `pass` or `reject`), `evidenceUpdated` and `rejectThreads`.
+  together. Inspect groups with `kind=verify`; each has `verdict`
+  (`pending`, `pass` or `reject`), `from`, `evidenceUpdated` and
+  `rejectThreads`.
   Follow each collection's continuation whenever more pages remain.
 - A reject is a thread on the group (`anchor.group`, `anchor.verdict:
 "reject"`); its first message is the reason. Pins elsewhere may point at

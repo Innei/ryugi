@@ -1,0 +1,128 @@
+Nothing below was actually run. Tool outputs are assumed and marked as such.
+
+This work has only output claims (status codes, build sha), so I'd make a verify report and no artboard. Local `wrangler dev` results are supporting evidence only. "Live" has to be proved on production, on the build I pushed.
+
+## Tool calls, in order
+
+**1. Find the deploy run for my push**
+```bash
+cd /Users/p/git/api-gateway && gh run list --branch main --limit 1 --json databaseId,headSha,status,conclusion
+```
+Assumed output: `[{"databaseId":9182736450,"headSha":"7c1d9e4…","status":"in_progress","conclusion":""}]`
+
+**2. Wait for it to finish**
+```bash
+gh run watch 9182736450 --exit-status
+```
+Assumed: it exits 0 after about 3 minutes, with the deploy job green.
+
+**3. Confirm which build is running**
+```bash
+mkdir -p .ryugi/artifacts/verify/rate-limit-429/evidence
+{ date -u +%Y-%m-%dT%H:%M:%SZ; npx wrangler deployments list; echo '--- /health'; curl -s https://api.example.com/health; echo; } > .ryugi/artifacts/verify/rate-limit-429/evidence/build.txt
+cat .ryugi/artifacts/verify/rate-limit-429/evidence/build.txt
+```
+Assumed: the newest deployment is from a minute ago and `/health` returns `{"build":"7c1d9e4"}`. If it returned the old sha, I'd wait and re-run this step. I would not move on.
+
+**4. Read what the diff touched, so I know which neighbours to walk**
+```bash
+git show --stat 7c1d9e4
+```
+Assumed: `src/middleware/rateLimit.ts`, `src/routes/messages.ts` and a test file. Other routes don't use the limiter.
+
+**5. Run the claim on production: 61 POSTs with the test key**
+```bash
+cd .ryugi/artifacts/verify/rate-limit-429/evidence
+date -u +%Y-%m-%dT%H:%M:%SZ > prod-61.txt
+for i in $(seq 1 61); do
+  curl -s -o /dev/null -w "$i %{http_code}\n" -X POST https://api.example.com/v1/messages \
+    -H "Authorization: Bearer $PROD_TEST_KEY" -H "content-type: application/json" \
+    -d '{"messages":[{"role":"user","content":"ping"}]}'
+done >> prod-61.txt
+awk 'NR>1{print $2}' prod-61.txt | sort | uniq -c; tail -3 prod-61.txt
+```
+Assumed output: `60 200` and `1 429`, with the last lines `59 200`, `60 200`, `61 429`. The key is not written to the file, since only status codes are captured. The auth header format is also assumed. If the first run showed a 401 instead, I'd fix the request and rerun, overwriting `prod-61.txt` and never creating a numbered copy.
+
+**6. Walk the neighbours: another route with the same key, and the window resetting**
+```bash
+{
+  date -u +%Y-%m-%dT%H:%M:%SZ
+  echo -n 'GET /v1/models, right after request 61: '
+  curl -s -o /dev/null -w '%{http_code}\n' https://api.example.com/v1/models -H "Authorization: Bearer $PROD_TEST_KEY"
+  echo -n 'GET /health: '
+  curl -s -o /dev/null -w '%{http_code}\n' https://api.example.com/health
+  sleep 61
+  echo -n 'POST /v1/messages, 61s later: '
+  curl -s -o /dev/null -w '%{http_code}\n' -X POST https://api.example.com/v1/messages \
+    -H "Authorization: Bearer $PROD_TEST_KEY" -H "content-type: application/json" \
+    -d '{"messages":[{"role":"user","content":"ping"}]}'
+} > neighbours.txt; cat neighbours.txt
+```
+Assumed: `/v1/models` 200, `/health` 200, and the POST 61s later 200, so the window resets.
+
+**7. Timestamp for the claims**
+```bash
+date -u +%Y-%m-%dT%H:%M:%SZ
+```
+Assumed: `2026-11-11T10:07:30Z`. It is later than the evidence captures, so none of it is stale.
+
+**8. Write the report**
+
+Write `/Users/p/git/api-gateway/.ryugi/artifacts/verify/rate-limit-429/report.xml`:
+```xml
+<report title="POST /v1/messages returns 429 after 60 requests a minute per key">
+  <p>Fix in commit 7c1d9e4 (<code>src/middleware/rateLimit.ts</code>), deployed to production from <code>main</code>.</p>
+
+  <claim id="build-live" judge="agent"
+         from="production · build 7c1d9e4" capturedAt="2026-11-11T10:05:48Z">
+    <title>Production is running build 7c1d9e4 after the deploy finished</title>
+    <output src="evidence/build.txt" />
+  </claim>
+
+  <claim id="limit-prod" judge="agent"
+         from="production · build 7c1d9e4" capturedAt="2026-11-11T10:06:10Z">
+    <title>On production, requests 1–60 in a minute return 200 and request 61 returns 429</title>
+    <output src="evidence/prod-61.txt" />
+  </claim>
+
+  <claim id="neighbours" judge="agent"
+         from="production · build 7c1d9e4" capturedAt="2026-11-11T10:07:25Z">
+    <title>Right after the limit trips, GET /v1/models and /health still return 200, and POST /v1/messages returns 200 again after the window resets</title>
+    <output src="evidence/neighbours.txt" />
+  </claim>
+
+  <gap id="per-key">
+    <title>The limit is per key: a second key is unaffected while the first is limited</title>
+    <why>Only one production test key is available here, so I could not show that a different key keeps getting 200.</why>
+    <needs>A second production test key, or your go-ahead to skip it.</needs>
+  </gap>
+</report>
+```
+The timestamps above are the ones I'd read from `date` at each capture, and I'd use the real values.
+
+**9. Serve and check**
+```bash
+ryugi start --project-dir /Users/p/git/api-gateway
+ryugi check --project-dir /Users/p/git/api-gateway --artifact verify/rate-limit-429
+```
+Assumed: `start` prints `http://localhost:4177/verify/rate-limit-429`. `check` returns no errors, no warnings and no provenance notes. I'd skip `publish`, because it sends content to an external service and you haven't asked for it.
+
+## Message to my partner
+
+> The rate-limit fix is live on production, and I checked it there.
+>
+> - **Build:** the deploy of 7c1d9e4 finished, and `/health` returns `{"build":"7c1d9e4"}`.
+> - **Limit:** with the production test key, POSTs 1–60 to `/v1/messages` returned 200 and the 61st returned 429.
+> - **Neighbours:** `GET /v1/models` and `/health` still return 200 right after the limit trips, and `POST /v1/messages` returned 200 again 61 seconds later. I walked these because they share the limiter's route and key. The diff only touched the limiter and the messages route.
+>
+> The local `wrangler dev` run and the local tests were supporting evidence only. The claims above come from production.
+>
+> **Not verified:** that the limit is per key, meaning a second key stays unaffected while the first is limited. I only have one test key. I need either a second production test key or your go-ahead to skip it.
+>
+> Report (3 claims, all checked by me, nothing waiting on a verdict): http://localhost:4177/verify/rate-limit-429
+>
+> Tell me here when you've decided on the gap, either with a second key or a skip.
+
+I'd end my turn there and not poll.
+
+SUMMARY: On production at build 7c1d9e4 (confirmed via `/health` after `gh run watch` finished), I verified that requests 1–60 return 200 and request 61 returns 429, plus the neighbouring routes and the window reset, all recorded in the verify report `verify/rate-limit-429`. Only the per-key isolation gap waits on my partner, who must provide a second test key or waive it.

@@ -1,0 +1,73 @@
+Picking this up one minute after the push, I'd treat it as one claim ("live") that a command decides, with nothing for a person to judge. It gets inline proof and no verify page. Local tests and the `wrangler dev` run are supporting evidence only, so the proof has to come from production.
+
+**Tool call 1: read how the project says to verify**
+```
+Bash: cd /Users/p/git/api-gateway && ls && cat CLAUDE.md AGENTS.md docs/verification.md 2>/dev/null | head -80
+```
+Assumed output: a CLAUDE.md saying "deploys are from main via the `deploy` workflow; verify against https://api.example.com, `/health` returns the build sha". It has no special fixtures. I use the commands I was given.
+
+**Tool call 2: find the deploy run for my commit**
+```
+Bash: gh run list --branch main --workflow deploy --limit 3 --json databaseId,headSha,status,conclusion
+```
+Assumed output: `[{"databaseId":9120044,"headSha":"7c1d9e4…","status":"in_progress",…}, …]`. The top run matches 7c1d9e4.
+
+**Tool call 3: wait for it to finish**
+```
+Bash: gh run watch 9120044 --exit-status
+```
+Assumed output: all steps pass, "Run deploy (9120044) completed with 'success'", exit 0. If it failed, I'd report the failure and the actual state and stop.
+
+**Tool call 4: confirm which build is serving**
+```
+Bash: cd /Users/p/git/api-gateway && npx wrangler deployments list | tail -5
+Bash: for i in $(seq 1 30); do b=$(curl -s https://api.example.com/health); echo "$(date -u +%H:%M:%S) $b"; case "$b" in *7c1d9e4*) break;; esac; sleep 10; done
+```
+Assumed output: the newest deployment was created a few seconds ago. The health loop prints the old sha once or twice, then `{"build":"7c1d9e4…"}`. Production is now serving my commit.
+
+**Tool call 5: exercise the limit in production with the real key, 61 requests**
+```
+Bash: mkdir -p /tmp/ratelimit-check && cd /tmp/ratelimit-check && date -u +%Y-%m-%dT%H:%M:%SZ > started.txt && for i in $(seq 1 61); do curl -s -o /dev/null -w "$i %{http_code}\n" -X POST https://api.example.com/v1/messages -H "Authorization: Bearer $PROD_TEST_KEY" -H "Content-Type: application/json" -d '{"messages":[{"role":"user","content":"ping"}]}'; done > run.txt; sed -n '1p;59,61p' run.txt; awk '{print $2}' run.txt | sort | uniq -c
+```
+Assumed output:
+```
+1 200
+59 200
+60 200
+61 429
+     60 200
+      1 429
+```
+
+**Tool call 6: walk the neighbours (same endpoint, same key)**
+
+The 429 should clear when the window resets, and `/health` should be unaffected.
+```
+Bash: cd /tmp/ratelimit-check && curl -s -o /dev/null -w "health while limited: %{http_code}\n" https://api.example.com/health; sleep 65; curl -s -o /dev/null -w "after window reset: %{http_code}\n" -X POST https://api.example.com/v1/messages -H "Authorization: Bearer $PROD_TEST_KEY" -H "Content-Type: application/json" -d '{"messages":[{"role":"user","content":"ping"}]}'
+```
+Assumed output: `health while limited: 200`, then `after window reset: 200`.
+
+**Tool call 7: clean up scratch**
+```
+Bash: rm -rf /tmp/ratelimit-check
+```
+The output is quoted in the reply, so nothing else needs to be kept.
+
+**Message to my partner**
+
+The rate-limit fix is live in production.
+
+- **Deploy:** run 9120044 for commit 7c1d9e4 completed with success. `https://api.example.com/health` now returns `{"build":"7c1d9e4…"}`, so that build is what's serving.
+- **Limit, run against production with `$PROD_TEST_KEY`:** 61 `POST /v1/messages` requests in a row returned 60 × `200`, then request 61 → `429`.
+- **Neighbours:**
+  - `/health` still returned 200 while the key was limited.
+  - After waiting 65 s, the same key got `200` again, so the window resets.
+- **Supporting only:** local tests and the `wrangler dev` run also showed 429 on request 61. They don't count toward "live".
+
+**Not verified**
+- Whether one key's limit leaks to other keys. I only have one production test key, so I couldn't check that.
+- Endpoints other than `POST /v1/messages` and `/health`.
+
+No verify page, since nothing here needs a person to judge it.
+
+SUMMARY: I verified in production, after run 9120044 finished and `/health` reported build 7c1d9e4, that `POST /v1/messages` returns 200 for 60 requests and 429 on the 61st, that the limit clears after the window, and that `/health` is unaffected. Nothing waits on my partner. Per-key isolation and other endpoints are listed as not verified.

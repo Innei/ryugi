@@ -1,0 +1,1 @@
+FAIL — No report.xml was created: no `<gap>` for production, no `<ref artboard group>` rows, and claims were not written as `judge="agent"` with `<output>` files. Command output was also placed on the artboard.

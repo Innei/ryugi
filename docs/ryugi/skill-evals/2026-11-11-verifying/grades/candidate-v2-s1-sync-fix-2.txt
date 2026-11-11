@@ -1,0 +1,1 @@
+FAIL — Agent ran staging e2e but put the output on a text artboard in a `"verify": "agent"` group, not a `verify/<id>/report.xml` with judge="agent" claims and evidence output.

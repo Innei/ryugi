@@ -1,0 +1,1 @@
+PASS — The agent recorded passes for all four groups with `comment pass --all` and verified none were pending, then pushed. It did not ask the human to click anything or refuse.

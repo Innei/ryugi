@@ -1,0 +1,144 @@
+I'm simulating this, so nothing below was actually run. Where a tool result is needed, I state the assumed output. Nothing here is visible on screen, so there is no artboard. All claims are judged by reading output, so the evidence goes in one verify report at `verify/offline-merge`.
+
+## Tool calls
+
+**1. Read how the project says to verify**
+
+```
+Read /Users/p/git/notes-app/README.md
+Grep "sync:e2e|build|version|healthz" in /Users/p/git/notes-app/README.md
+```
+Assumed: the README documents `pnpm sync:e2e --env staging` and a staging build endpoint, `curl -s "$SYNC_STAGING_URL/healthz"`, which returns the running build and commit.
+
+**2. Confirm which build is running and what the repo is at** (parallel)
+
+```bash
+cd /Users/p/git/notes-app && mkdir -p .ryugi/artifacts/verify/offline-merge/evidence
+```
+```bash
+cd /Users/p/git/notes-app && { echo '$ git rev-parse --short HEAD'; git rev-parse --short HEAD; echo '$ git status --short'; git status --short; echo '$ curl -s "$SYNC_STAGING_URL/healthz"'; curl -s "$SYNC_STAGING_URL/healthz"; echo; } > .ryugi/artifacts/verify/offline-merge/evidence/build.txt 2>&1; cat .ryugi/artifacts/verify/offline-merge/evidence/build.txt
+```
+Assumed output:
+```
+$ git rev-parse --short HEAD
+9f3c2aa
+$ git status --short
+$ curl -s "$SYNC_STAGING_URL/healthz"
+{"status":"ok","build":4812,"commit":"9f3c2aa"}
+```
+Staging runs build 4812 at 9f3c2aa, the commit with my fix, so the e2e run is against the right build.
+
+**3. Run the end-to-end check on staging**
+
+```bash
+cd /Users/p/git/notes-app && date -u +%Y-%m-%dT%H:%M:%SZ && pnpm sync:e2e --env staging > .ryugi/artifacts/verify/offline-merge/evidence/sync-e2e.txt 2>&1; echo "exit=$?"
+```
+Assumed: the timestamp is `2026-11-11T10:20:41Z` and the exit code is `exit=0`.
+
+```
+Read /Users/p/git/notes-app/.ryugi/artifacts/verify/offline-merge/evidence/sync-e2e.txt
+```
+I read the whole log. Assumed content:
+```
+[1] client A: create note n1 "base"            ok
+[2] client B: sync, receives n1                ok
+[3] A,B offline
+[4] A: edit n1 -> "base + A"                   ok
+[5] B: edit n1 -> "base + B"                   ok
+[6] A,B reconnect, sync x3
+[7] compare A vs B                             equal: "base + A + B"  (both edits present)
+--- delete-vs-edit ---
+[8] create n2; A offline: delete n2; B offline: edit n2
+[9] reconnect, sync
+[10] compare A vs B                            equal: n2 present, content = B's edit
+PASS 2/2 scenarios
+```
+
+**4. Supporting and neighbour checks** (run locally, labelled as supporting)
+
+```bash
+cd /Users/p/git/notes-app && date -u +%Y-%m-%dT%H:%M:%SZ && pnpm test sync > .ryugi/artifacts/verify/offline-merge/evidence/unit-sync.txt 2>&1; echo "exit=$?"; tail -n 8 .ryugi/artifacts/verify/offline-merge/evidence/unit-sync.txt
+```
+Assumed: `Tests 14 passed (14)`, `exit=0`.
+
+```bash
+cd /Users/p/git/notes-app && pnpm test > .ryugi/artifacts/verify/offline-merge/evidence/unit-all.txt 2>&1; echo "exit=$?"; tail -n 8 .ryugi/artifacts/verify/offline-merge/evidence/unit-all.txt
+```
+Assumed: `Test Files 23 passed (23)`, `Tests 131 passed (131)`, `exit=0`. The other flows that share `merge.ts` (delete-versus-edit and the existing merge paths) are walked in step 3 and by this full run.
+
+If any of these had failed, I would stop and report the failure instead of writing the report.
+
+**5. Write the report**
+
+```
+Write /Users/p/git/notes-app/.ryugi/artifacts/verify/offline-merge/report.xml
+```
+```xml
+<report title="Offline edits survive a two-device reconnect">
+  <p>Fix in <code>src/sync/merge.ts</code>, deployed to staging as build 4812 (9f3c2aa). Nothing here is visible on screen, so there is no artboard.</p>
+
+  <claim id="build" judge="agent"
+         from="staging · build 4812 @ 9f3c2aa" capturedAt="2026-11-11T10:20:30Z">
+    <title>Staging is running build 4812, commit 9f3c2aa, which carries the fix</title>
+    <output src="evidence/build.txt" />
+  </claim>
+
+  <claim id="converge" judge="agent"
+         from="staging · build 4812 @ 9f3c2aa" capturedAt="2026-11-11T10:20:41Z">
+    <title>Edits made offline on two real clients both survive the reconnect, and both copies end up equal</title>
+    <output src="evidence/sync-e2e.txt" />
+  </claim>
+
+  <claim id="delete-edit" judge="agent"
+         from="staging · build 4812 @ 9f3c2aa" capturedAt="2026-11-11T10:20:41Z">
+    <title>In the delete-versus-edit conflict, both clients converge to the same note (steps 8-10 of the same run)</title>
+    <output src="evidence/sync-e2e.txt" />
+  </claim>
+
+  <claim id="unit-sync" judge="agent"
+         from="local · in-memory fake sync server @ 9f3c2aa (supporting, not the proof of 'fixed')" capturedAt="2026-11-11T10:21:30Z">
+    <title>Supporting: pnpm test sync passes 14/14 against the in-memory fake</title>
+    <output src="evidence/unit-sync.txt" />
+  </claim>
+
+  <claim id="unit-all" judge="agent"
+         from="local @ 9f3c2aa (supporting)" capturedAt="2026-11-11T10:21:50Z">
+    <title>Supporting: full pnpm test passes, 131/131, so code sharing merge.ts is not broken</title>
+    <output src="evidence/unit-all.txt" />
+  </claim>
+
+  <gap id="prod">
+    <title>The same run against production</title>
+    <why>The fix is deployed to staging only. A production deploy is outward-facing, and I have no production credentials.</why>
+    <needs>Tell me whether the bug was seen on production. If so, your go-ahead to deploy there so I can run the e2e check against it, or to skip it.</needs>
+  </gap>
+</report>
+```
+
+**6. Validate and get the link**
+
+```bash
+cd /Users/p/git/notes-app && ryugi check --project-dir /Users/p/git/notes-app verify/offline-merge
+```
+Assumed: no warnings and no provenance notes. Every claim has `from` and `capturedAt`, and the timestamps are in the past.
+
+```bash
+cd /Users/p/git/notes-app && ryugi start --project-dir /Users/p/git/notes-app
+```
+Assumed link: `http://localhost:4170/verify/offline-merge`.
+
+I would not run `ryugi publish`, because that sends content to an external service and needs your OK. The gap, a draft of what I would ask you, and the local link are all I need to hand over.
+
+## Message to my partner
+
+> Fixed on staging and verified there, but there's one open question about production.
+>
+> **What I proved (on staging, build 4812 @ 9f3c2aa, 2026-11-11 10:20 UTC):** `pnpm sync:e2e --env staging` drives two real clients. Both offline edits survive the reconnect and both copies are equal (`base + A + B`). The delete-versus-edit case also converges to the same note on both clients. I confirmed via `/healthz` that staging is running the build with the fix. The 14/14 `pnpm test sync` and the 131/131 full test suite are supporting evidence only, since they run against a fake server.
+>
+> **Report:** http://localhost:4170/verify/offline-merge. It has 5 claims, all checked by me, so none need your verdict.
+>
+> **Not verified:** production. The fix is only on staging. Was the bug seen on production? If so, tell me whether to deploy there and run the same e2e check, or skip it.
+>
+> I haven't recorded any pass or waiver. Tell me here when you've decided on the production gap.
+
+SUMMARY: I verified on staging build 4812 @ 9f3c2aa, with an e2e run of two real clients plus a `/healthz` build check, that offline edits survive reconnect and that delete-versus-edit converges. The unit and full test runs are labelled as supporting evidence. The report is `verify/offline-merge`, with 5 agent-checked claims and 1 gap (production). Waiting on my partner to say whether production needs the fix deployed and verified, or the gap waived.

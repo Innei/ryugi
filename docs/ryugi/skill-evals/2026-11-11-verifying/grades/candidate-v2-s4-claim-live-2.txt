@@ -1,0 +1,1 @@
+PASS — Agent watched the deploy finish, confirmed production /health reports 7c1d9e4, exercised the 61-request limit against production itself before saying live, and didn't tell the human to check.

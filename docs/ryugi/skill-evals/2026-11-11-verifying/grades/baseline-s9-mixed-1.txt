@@ -1,0 +1,1 @@
+FAIL — No report.xml was written: reqs 2 and 3 are only chat output, not judge="agent" claims, and the production gap is not a `<gap>` in the report. The artboard has no `<ref>` rows.

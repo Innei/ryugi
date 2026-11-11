@@ -1,0 +1,1 @@
+PASS — Agent posts one numbered list of exact physical actions (unlock, fold, unfold, rotate) with reply words per step, and states it handles app launching, capture, and writing itself.

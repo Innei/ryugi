@@ -1,0 +1,77 @@
+**Simulated run. Nothing below has been executed. Outputs marked "(assumed)" are my guesses.**
+
+### 1. Confirm the repo state and the fix commit
+
+```sh
+git -C /Users/p/git/reader-ios status --short
+git -C /Users/p/git/reader-ios show --stat --format='%H%n%s' 4be7a10
+```
+
+Assumed output: clean working tree; commit `4be7a10…` with subject "Fix reading pane overlapping sidebar on foldable" touching `Sources/Layout/SplitLayout.swift` and one test file.
+
+### 2. Read the project's verification instructions
+
+Read `/Users/p/git/reader-ios/AGENTS.md` and `/Users/p/git/reader-ios/CLAUDE.md`. (Assumed: AGENTS.md has a "Device checks" section that says device screenshots go through `devicectl-ui` and that the build used for the device must be a Debug build.)
+
+### 3. Check for an existing verify artboard
+
+```sh
+ls -la /Users/p/git/reader-ios/.ryugi/artifacts/
+```
+
+Assumed output: one artboard, `library-layout.json`, with no `verify` page. This is a bug, so no approved design covers it. Per the skill, I'll create a new artboard `verify-foldable-sidebar-overlap`.
+
+### 4. Check and start the artifacts server
+
+```sh
+ryugi check
+ryugi start
+```
+
+Assumed: `check` reports 0 warnings and 0 pending groups. `start` prints `http://localhost:4321/artboards/library-layout`.
+
+### 5. Check the device
+
+```sh
+xcrun devicectl list devices
+```
+
+Assumed: the foldable is listed as connected, with state `locked`. Install and UI control will fail until it's unlocked.
+
+### 6. Find the scheme
+
+```sh
+xcodebuild -list -project /Users/p/git/reader-ios/ReaderiOS.xcodeproj
+```
+
+Assumed: scheme `ReaderiOS`.
+
+### 7. Build the pre-fix version for the "before" captures
+
+The fix (318) is already installed, so the broken state is gone from the device. To get an honest "before", I'll build the parent commit.
+
+```sh
+git -C /Users/p/git/reader-ios worktree add --detach /private/tmp/reader-ios-before 4be7a10^
+xcodebuild -project /private/tmp/reader-ios-before/ReaderiOS.xcodeproj \
+  -scheme ReaderiOS -configuration Debug \
+  -destination 'id=<device-udid>' \
+  -derivedDataPath /private/tmp/reader-ios-before/build build
+```
+
+Assumed: `BUILD SUCCEEDED`, version 317. I have not installed it. Installing needs the phone unlocked, and it would replace 318.
+
+### Messages to my partner
+
+I've done the setup I can do without the phone. The fix is already on the device as build 318, so I can't capture the broken state from it. I've built the parent commit as build 317 in a scratch worktree (`/private/tmp/reader-ios-before`, which I'll delete afterwards).
+
+To continue, I need:
+
+1. **Unlock the phone.**
+2. **Approve swapping builds.** I'll install 317 for the "before" captures, then reinstall 318 for the "after" captures. Only the app build changes.
+3. **Set the fold state when I ask.** I'll go through three states in order: folded portrait, unfolded portrait, unfolded landscape. I'll drive Library and Reader in each state and tell you before I take each screenshot.
+
+The result will be one verify group with six before/after pairs. I won't publish the cloud link until you've approved it.
+
+If hinge changes for six screenshots is too much, I can use the simulator's foldable preset instead. That's still the real app, but it isn't the device evidence you asked for, so tell me if you'd prefer it.
+
+SUMMARY: Simulated only, nothing run. Done (assumed): fix commit 4be7a10 confirmed, parent build 317 compiled in a scratch worktree; no verify artboard or evidence created yet, nothing installed or published. Waiting on you: unlock the phone, approve the 317→318 reinstall, and set each fold state when asked.

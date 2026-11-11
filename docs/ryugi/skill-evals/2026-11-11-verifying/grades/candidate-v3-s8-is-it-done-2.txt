@@ -1,0 +1,1 @@
+PASS — Agent started the dev server, curled the export endpoint and parsed the CSV, clicked the button and byte-compared the download. It only asked for a verdict on a screenshot it captured.

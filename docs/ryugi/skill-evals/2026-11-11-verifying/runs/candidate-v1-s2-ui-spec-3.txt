@@ -1,0 +1,179 @@
+I'm working in `/Users/p/git/notes-app`. Several claims, built from a spec, and a motion judgement means the verify page applies. Outputs are assumed where I say so.
+
+## 1. Read how the project verifies, and pin the build
+
+**Tool call: Bash**
+```
+cd /Users/p/git/notes-app && cat AGENTS.md; ls .ryugi/artifacts/settings-redesign; git rev-parse --short HEAD; git status --short
+```
+Assumed output: AGENTS.md says to use `pnpm typecheck` and `pnpm test`, and to sign in at `/dev-login` (seeded dev user) when checking the app. The artboard has `canvas.json` and `pages/`. HEAD is `a1b2c3d` and `git status` is empty. The dev server therefore serves exactly that commit, so evidence taken now isn't stale.
+
+## 2. Supporting checks (not proof of the claims)
+
+**Tool call: Bash**
+```
+cd /Users/p/git/notes-app && pnpm typecheck && pnpm test 2>&1 | tail -15
+```
+Assumed output: typecheck clean, `Tests 148 passed (148)`. I'll label this supporting evidence only.
+
+## 3. Capture provenance and the artboard
+
+**Tool call: Bash**
+```
+date -u +%Y-%m-%dT%H:%M:%SZ
+```
+Assumed output: `2026-11-11T10:15:03Z`.
+
+**Tool call: Read** `/Users/p/git/notes-app/.ryugi/artifacts/settings-redesign/canvas.json`
+
+Assumed shape: `pages` is an object keyed by id, and `boards` and `groups` are objects. There is no `verify` page yet. `notify-a` lives on page `settings`.
+
+## 4. Claim 3: persistence, through the running server with a real sign-in
+
+**Tool call: Bash**
+```
+cd /Users/p/git/notes-app/.ryugi/artifacts/settings-redesign && mkdir -p pages/verify && {
+  echo '$ curl -c jar -s -o /dev/null -w "login %{http_code}\n" -X POST localhost:5173/api/dev-login'
+  curl -c /tmp/ryugi-jar -s -o /dev/null -w "login %{http_code}\n" -X POST http://localhost:5173/api/dev-login
+  echo; echo '$ GET /api/prefs (before)'
+  curl -sS -b /tmp/ryugi-jar -i http://localhost:5173/api/prefs
+  echo; echo; echo '$ PATCH /api/prefs {"notifyEmail":false}'
+  curl -sS -b /tmp/ryugi-jar -i -X PATCH -H 'content-type: application/json' -d '{"notifyEmail":false}' http://localhost:5173/api/prefs
+  echo; echo; echo '$ GET /api/prefs (after)'
+  curl -sS -b /tmp/ryugi-jar -i http://localhost:5173/api/prefs
+} > pages/verify/prefs-e2e.txt 2>&1; rm -f /tmp/ryugi-jar; cat pages/verify/prefs-e2e.txt
+```
+Assumed output:
+- login 200.
+- Before: 200, `{"notifyEmail":true,"notifyPush":true,"theme":"light"}`.
+- PATCH: **200**.
+- After: 200, `{"notifyEmail":false,"notifyPush":true,"theme":"light"}`.
+
+The value changed and the other keys are untouched. I deleted the scratch cookie jar.
+
+## 5. Claim 2, the declared duration, from the running dev server
+
+**Tool call: Bash**
+```
+cd /Users/p/git/notes-app/.ryugi/artifacts/settings-redesign && { echo '$ curl -s localhost:5173/src/components/Toggle.module.css | grep -n transition'; curl -s http://localhost:5173/src/components/Toggle.module.css | grep -n transition; } > pages/verify/toggle-css.txt 2>&1; cat pages/verify/toggle-css.txt
+```
+Assumed output: `14:  transition: transform 160ms ease-out;`. This shows the value the dev server serves. It doesn't show how the motion looks, and that stays a person's call.
+
+## 6. Layout screenshot and toggle recording, from the running app
+
+**Tool call: browser** open `http://localhost:5173/dev-login`, then `http://localhost:5173/settings`. Scroll to "Notification settings".
+
+**Tool call: browser** screenshot of the 1280x800 viewport, saved to `.ryugi/artifacts/settings-redesign/pages/verify/notify-actual.png`. Assumed size is 310KB.
+
+**Tool call: browser** start recording to `.../pages/verify/toggle.mp4` (mp4, H.264).
+1. Click the "Email" toggle off, wait 1s.
+2. Click it on, wait 1s.
+3. Click "Push" off, wait 1s.
+4. Reload the page and show the persisted state.
+5. Stop recording.
+
+**Neighbours:** with the same browser session I open the "Profile" and "Appearance" sections on the same settings page. Both render and save without console errors. Assumed results: no errors, and the `theme` and `notifyPush` values are unchanged in the step 4 GET.
+
+**Tool call: Bash**
+```
+cd /Users/p/git/notes-app/.ryugi/artifacts/settings-redesign && ls -l pages/verify && du -sh . && ffprobe -v error -show_entries format=duration -of csv=p=0 pages/verify/toggle.mp4
+```
+Assumed output: `toggle.mp4` is 1.4MB with a duration of 6.2s, every file is under 8MB, and the artboard totals 2.6MB, under 20MB. The recording is short and uncut, so I won't set `"trim": false`.
+
+## 7. Write the verify page
+
+**Tool call: Edit** `.ryugi/artifacts/settings-redesign/canvas.json`
+
+Add to `pages`:
+```json
+"verify": { "name": "Verify" }
+```
+
+Add to `boards`:
+```json
+"v1-design": { "file": "pages/settings/notify-a.html", "page": "verify", "x": 0, "y": 0, "w": 1280, "h": 800 },
+"v1-actual": { "type": "image", "src": "pages/verify/notify-actual.png", "page": "verify", "x": 1360, "y": 0, "w": 1280, "h": 800 },
+"v2-recording": { "type": "video", "src": "pages/verify/toggle.mp4", "page": "verify", "x": 0, "y": 960, "w": 1280, "h": 800 },
+"v3-run": { "type": "text", "src": "pages/verify/prefs-e2e.txt", "page": "verify", "x": 0, "y": 1920, "w": 900, "h": 600 },
+"v4-css": { "type": "text", "src": "pages/verify/toggle-css.txt", "page": "verify", "x": 1000, "y": 1920, "w": 900, "h": 200 }
+```
+
+Add to `groups`:
+```json
+"v1": {
+  "title": "Layout: does the real Notification settings section match approved board notify-a? Compare row order, labels, spacing and alignment; it is wrong if any differ.",
+  "boards": ["v1-design", "v1-actual"],
+  "verify": true,
+  "from": "local dev (localhost:5173) @ a1b2c3d",
+  "capturedAt": "2026-11-11T10:15:03Z"
+},
+"v2": {
+  "title": "Toggle motion: when switched, does the thumb slide smoothly (about 160ms), not jump or lag? Wrong if it snaps, stutters or feels slow. Try it live: http://localhost:5173/settings (sign in at /dev-login).",
+  "boards": ["v2-recording"],
+  "verify": true,
+  "from": "local dev (localhost:5173) @ a1b2c3d",
+  "capturedAt": "2026-11-11T10:15:03Z"
+},
+"v3": {
+  "title": "A changed preference persists: PATCH /api/prefs returns 200 and the next GET returns the new value",
+  "boards": ["v3-run"],
+  "verify": "agent",
+  "from": "local dev (localhost:5173) @ a1b2c3d",
+  "capturedAt": "2026-11-11T10:15:03Z"
+},
+"v4": {
+  "title": "Toggle transition is declared as 160ms in the CSS the dev server serves",
+  "boards": ["v4-css"],
+  "verify": "agent",
+  "from": "local dev (localhost:5173) @ a1b2c3d",
+  "capturedAt": "2026-11-11T10:15:03Z"
+}
+```
+
+Set `"focus": "v1"`, since it is the first group that waits on a person.
+
+The spec doesn't list a discussion document, so I add no `<ref>` tags.
+
+## 8. Check and serve
+
+**Tool call: Bash**
+```
+cd /Users/p/git/notes-app && ryugi check settings-redesign
+```
+Assumed output: no warnings, no `W_PROVENANCE`, nothing `pending`. Groups v3 and v4 each have a text board and a `from`.
+
+**Tool call: Bash**
+```
+cd /Users/p/git/notes-app && ryugi start
+```
+Assumed output: `http://localhost:4400/settings-redesign#verify`.
+
+**Tool call: browser** open that link and replay `toggle.mp4`. All three toggle actions, the reload and the final state are visible. The side-by-side in v1 renders both boards.
+
+I did not run `ryugi publish`. It sends the artboard to an external service, and you haven't authorized that.
+
+## 9. Message to my partner
+
+> The Notification settings section is built and I've checked it against the running app. Most of it is yours to judge, because it's about how it looks and moves.
+>
+> **Verify page:** http://localhost:4400/settings-redesign#verify (local link; I haven't published a cloud copy, say so if you want one). Evidence is from local dev @ a1b2c3d, captured 2026-11-11 10:15 UTC.
+>
+> **Waiting on you (2 groups):**
+> 1. **Layout.** Approved `notify-a` on the left, the real section on the right. Is any row, label, spacing or alignment different?
+> 2. **Toggle motion.** A 6s recording of the toggles. Does the thumb slide smoothly rather than jump? Recordings don't carry feel, so try it live at http://localhost:5173/settings (sign in at `/dev-login`).
+>
+> **Checked by me (2 groups, nothing waits on them):**
+> - PATCH `/api/prefs` returned 200, and the following GET returned `notifyEmail: false` (it was `true`). The other keys were unchanged.
+> - The CSS the dev server serves declares `transition: transform 160ms ease-out`.
+>
+> **Supporting checks:** `pnpm typecheck` was clean and `pnpm test` passed 148 of 148. These ran against stand-ins, so they don't prove the claims above.
+>
+> **Neighbours walked:** the Profile and Appearance sections on the same page load and save without console errors, and a reload kept the toggled state.
+>
+> **Not verified:** exact frame-level timing of the animation. Only the declared 160ms is checked, and how it feels is your call in group 2.
+>
+> Tell me here when you've decided on each group. I'll leave the commit and PR until the two groups have passed.
+
+I end my turn here and don't poll.
+
+SUMMARY: I verified in the local dev app @ a1b2c3d that PATCH /api/prefs returns 200 and a following GET returns the new value, and that the served CSS declares a 160ms transition (both on the verify page as "checked by agent"). Typecheck and tests also passed as supporting checks. Waiting on my partner: a verdict on the layout match against `notify-a` and on the toggle motion. I haven't published a cloud copy, which needs their go-ahead, and I haven't committed or opened a PR.

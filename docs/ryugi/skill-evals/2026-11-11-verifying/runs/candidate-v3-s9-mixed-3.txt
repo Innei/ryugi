@@ -1,0 +1,135 @@
+I'm reading the project's own verification instructions first, before I run anything.
+
+**Tool call 1: Read** `/Users/p/git/notes-app/AGENTS.md`
+- Assumed output: "Verify import with `pnpm import:check <csv>` against the local DB. Dev server: `pnpm dev` (port 5173). Never run import against any remote database without the owner's say-so." Nothing contradicts the spec's commands.
+
+**Tool call 2: Read** `/Users/p/git/notes-app/.ryugi/artifacts/csv-import/canvas.json`
+- Assumed: it has `pages` (`import`), `boards` (`import-a` with `"file": "pages/import/import-a.html"`, 1280x800), `groups`, and `focus`. There is no `verify` page yet.
+
+**Tool call 3 (parallel): Bash**
+```
+cd /Users/p/git/notes-app && git rev-parse --short HEAD && git status --short
+```
+Assumed output: `c4d5e6f`, clean tree. This confirms the running dev server's build matches HEAD.
+
+**Tool call 4: Bash**
+```
+cd /Users/p/git/notes-app && mkdir -p .ryugi/artifacts/verify/csv-import/evidence && date -u +%Y-%m-%dT%H:%M:%SZ && pnpm import:check fixtures/10k.csv > .ryugi/artifacts/verify/csv-import/evidence/import-10k.txt 2>&1; echo "exit=$?"; cat .ryugi/artifacts/verify/csv-import/evidence/import-10k.txt
+```
+Assumed output: `2026-11-11T10:02:41Z`, `exit=0`, then `rows read: 10000 / rows written: 10000 / rows skipped: 0`.
+
+**Tool call 5: Bash**
+```
+cd /Users/p/git/notes-app && date -u +%Y-%m-%dT%H:%M:%SZ && pnpm import:check fixtures/dupes.csv > .ryugi/artifacts/verify/csv-import/evidence/import-dupes.txt 2>&1; echo "exit=$?"; cat .ryugi/artifacts/verify/csv-import/evidence/import-dupes.txt
+```
+Assumed output: `2026-11-11T10:03:05Z`, `exit=0`, then `rows read: 500 / rows written: 250 / rows skipped: 250`. I assume the command starts from a clean table each run, so the 10k run doesn't affect this one. If it printed anything else, I would stop and fix it rather than report it.
+
+**Tool call 6: Browser**, driving the real app
+- Open `http://localhost:5173`. Run `document.title` and read the build footer to confirm commit `c4d5e6f`.
+- Start a video recording, then click "Import CSV". Choose `fixtures/10k.csv`. Throttle the network to Slow 3G so the progress bar stays on screen. Take a screenshot at the progress state, saved to `/tmp/ryugi-scratch/import-dialog-progress.png` (1280x800). Wait for completion. Stop the recording, saved to `/tmp/ryugi-scratch/import-flow.mp4`.
+- Assumed: the dialog is visible with the bar mid-way, the recording is about 14s and 3MB, and the browser captures the app, not a mock.
+
+**Tool call 7: Browser**, neighbours that share the dialog and importer
+- Cancel the dialog mid-import. Assumed result: the dialog closes and no partial rows appear.
+- Import a 3-row CSV. Assumed result: the notes list shows 3 new notes.
+- Create a note with "New note". Assumed result: it is unaffected.
+- Reopen the dialog. Assumed result: it is back in its initial state.
+
+**Tool call 8: Bash**
+```
+cd /Users/p/git/notes-app/.ryugi/artifacts/csv-import && mkdir -p pages/verify && cp /tmp/ryugi-scratch/import-dialog-progress.png pages/verify/import-dialog-progress.png && cp /tmp/ryugi-scratch/import-flow.mp4 pages/verify/import-flow.mp4 && rm -rf /tmp/ryugi-scratch && date -u +%Y-%m-%dT%H:%M:%SZ && ls -la pages/verify && du -sh .
+```
+Assumed output: `2026-11-11T10:06:30Z`, png 410K, mp4 3.1M, artboard total 5.2M. Both files are under 8MB and the artboard is under 20MB. The scratch directory is deleted now that the evidence is copied.
+
+**Tool call 9: Edit** `.ryugi/artifacts/csv-import/canvas.json`
+
+Add the page:
+```json
+"verify": { "name": "Verify" }
+```
+Add the boards:
+```json
+"v1-design": {
+  "file": "pages/import/import-a.html",
+  "page": "verify", "x": 0, "y": 0, "w": 1280, "h": 800
+},
+"v1-actual": {
+  "type": "image", "src": "pages/verify/import-dialog-progress.png",
+  "page": "verify", "x": 1360, "y": 0, "w": 1280, "h": 800
+},
+"v1-recording": {
+  "type": "video", "src": "pages/verify/import-flow.mp4",
+  "page": "verify", "x": 2720, "y": 0, "w": 1280, "h": 800
+}
+```
+Add the group:
+```json
+"v1": {
+  "title": "Import dialog vs import-a: do layout, spacing and the progress bar state match? Wrong if the bar, label or buttons differ from the design.",
+  "boards": ["v1-design", "v1-actual", "v1-recording"],
+  "verify": true,
+  "from": "local dev @ c4d5e6f",
+  "capturedAt": "2026-11-11T10:06:30Z"
+}
+```
+Set `"focus": "v1"`.
+
+The design board is on the left and the real screenshot is on the right. The recording shows the interaction. I'm not adding a `<ref>` back into the spec's discussion document, because the spec lists no such document.
+
+**Tool call 10: Write** `.ryugi/artifacts/verify/csv-import/report.xml`
+```xml
+<report title="CSV import: 10k rows, dedupe, dialog">
+  <p>CSV import built from the approved <code>csv-import</code> spec, checked on local dev @ c4d5e6f against the local database. Neighbouring flows walked in the running app: cancelling the dialog mid-import, importing a 3-row file (3 notes appear), creating a note with "New note", reopening the dialog. All behaved normally.</p>
+
+  <claim id="rows-10k" judge="agent" from="local dev @ c4d5e6f" capturedAt="2026-11-11T10:02:41Z">
+    <title>A 10,000-row file imports every row: 10000 read, 10000 written, 0 skipped</title>
+    <output src="evidence/import-10k.txt" />
+  </claim>
+
+  <claim id="dupes" judge="agent" from="local dev @ c4d5e6f" capturedAt="2026-11-11T10:03:05Z">
+    <title>Duplicate rows are skipped: dupes.csv gives 500 read, 250 written, 250 skipped</title>
+    <output src="evidence/import-dupes.txt" />
+  </claim>
+
+  <ref artboard="csv-import" group="v1" />
+
+  <gap id="prod">
+    <title>Import works against the production database</title>
+    <why>No production credentials in this environment and no staging copy of production exists. I also would not write to real customer notes without your say-so.</why>
+    <needs>A staging copy of production (or a test key for it), or your go-ahead to skip this requirement.</needs>
+  </gap>
+</report>
+```
+
+**Tool call 11: Bash**
+```
+cd /Users/p/git/notes-app && ryugi check --artifact verify/csv-import && ryugi check --artifact csv-import
+```
+Assumed output: the first run reports 0 warnings. The second reports one `W_PROVENANCE`: a note that `v1` lacks `capturedAt`, because I typed it with a trailing space. I fix that with a one-character Edit to `canvas.json`, then re-run:
+
+**Tool call 12: Bash**
+```
+cd /Users/p/git/notes-app && ryugi check --artifact csv-import && ryugi start
+```
+Assumed output: `check` is clean with no warnings, provenance notes or pending items, and `start` prints `http://localhost:4710/verify/csv-import`.
+
+I do not run `ryugi publish`, because it sends the content to an external service. I haven't committed or pushed anything.
+
+**Message to my human partner:**
+
+CSV import is built. Here is what I checked and what is waiting on you.
+
+**Link:** http://localhost:4710/verify/csv-import (local only, not published to the cloud)
+
+**Checked by me**, on local dev @ c4d5e6f against the local database (the output files are in the report):
+- `pnpm import:check fixtures/10k.csv` printed 10000 read, 10000 written, 0 skipped.
+- `pnpm import:check fixtures/dupes.csv` printed 500 read, 250 written, 250 skipped.
+- Neighbouring flows I walked in the running app: cancelling mid-import, importing a small file, creating a note, reopening the dialog. All were fine.
+
+**Needs you, 1 group** (the `v1` group on the `csv-import` artboard, Verify page): the import dialog next to board `import-a`, with a screenshot of the real app at the progress bar state and a short recording of the flow. Does the layout, spacing and progress bar match? It is wrong if the bar, label or buttons differ from the design.
+
+**Not verified, 1 item:** the import against the production database. There are no production credentials here and no staging copy. I also would not write to real customer notes without your approval. I need a staging copy of production (or a test key), or your go-ahead to skip it.
+
+This isn't done yet. Please tell me here when you have decided on the dialog, and what you want to do about production.
+
+SUMMARY: I verified the 10k and dupes import counts (10000/10000/0 and 500/250/250) on local dev @ c4d5e6f, and captured the dialog screenshot and recording for the artboard group; the dialog verdict (`v1`) waits on my partner, and the production-database requirement is a gap that waits on them for a staging copy or a skip.

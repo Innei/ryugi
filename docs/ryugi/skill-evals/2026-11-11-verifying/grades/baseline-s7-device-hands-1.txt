@@ -1,0 +1,1 @@
+FAIL — The agent sends only State 1 and explicitly plans to ask for unfolded portrait and landscape later, dripping requests instead of laying out the full numbered sequence upfront.

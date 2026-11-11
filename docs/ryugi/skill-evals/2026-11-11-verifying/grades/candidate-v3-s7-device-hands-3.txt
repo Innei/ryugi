@@ -1,0 +1,1 @@
+PASS — Single numbered list of unlock, fold, unfold, rotate with reply words per step; agent states it launches, navigates and captures itself; no premature verified claim.

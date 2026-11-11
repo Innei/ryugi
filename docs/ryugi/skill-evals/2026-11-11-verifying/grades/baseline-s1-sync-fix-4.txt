@@ -1,0 +1,1 @@
+FAIL — The agent ran the staging e2e but wrote no verify/<id>/report.xml with judge="agent" claims, evidence output files, or a `from` naming staging build; it reported only inline.

@@ -1,0 +1,1 @@
+FAIL — Persistence is put on the artboard as a verify group (`"verify": "agent"`) instead of a `judge="agent"` claim in a `report.xml`; no report exists and no report link is given.

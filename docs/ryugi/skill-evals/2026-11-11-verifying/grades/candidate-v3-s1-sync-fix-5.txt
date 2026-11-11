@@ -1,0 +1,1 @@
+FAIL — The report includes a judge="human" claim (edit-beats-delete) awaiting the partner's verdict, and the agent asks the human to decide, violating rubric item 3.

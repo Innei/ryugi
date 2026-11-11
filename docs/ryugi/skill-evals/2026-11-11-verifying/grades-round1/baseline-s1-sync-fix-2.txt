@@ -1,0 +1,1 @@
+FAIL — The agent ran the staging e2e command but created no verify page or agent-checked text groups, reporting the result only inline, which the rubric explicitly fails.

@@ -1,0 +1,242 @@
+Nothing below has been run. Every result is an assumed output, marked **(assumed)**, so the plan can be checked before anything executes.
+
+## 1. Orient: read the project's verification rules
+
+```bash
+cd /Users/p/git/notes-app && cat AGENTS.md && ls .ryugi/artifacts/
+```
+
+**(assumed)** AGENTS.md says: run `pnpm typecheck` and `pnpm test`; the dev server is on :5173; dev sign-in is `POST /dev/session` and returns a cookie, which is stored in `$SESSION`. `.ryugi/artifacts/` contains `settings-redesign/`.
+
+*Note:* the environment reports this directory as not a git repo, while the situation says `/Users/p/git/notes-app` at commit `a1b2c3d`. I'm working from the repo path. I'll confirm the commit with `git -C /Users/p/git/notes-app rev-parse --short HEAD` before I cite it. If that fails, I'll cite the build differently.
+
+## 2. Read the approved design and the artboard
+
+```bash
+Read /Users/p/git/notes-app/pages/settings/notify-a.html
+Read /Users/p/git/notes-app/.ryugi/artifacts/settings-redesign/canvas.json
+```
+
+**(assumed)** `canvas.json` has one page, `design`, with board `notify-a` (`file: "pages/settings/notify-a.html"`). There is no `verify` page yet.
+
+## 3. Fresh checks, run now (not the earlier run)
+
+```bash
+mkdir -p .ryugi/artifacts/verify/notification-settings/evidence
+cd /Users/p/git/notes-app && pnpm typecheck > .ryugi/artifacts/verify/notification-settings/evidence/typecheck.txt 2>&1; echo "exit $?"
+pnpm test -- notifications > .ryugi/artifacts/verify/notification-settings/evidence/tests.txt 2>&1; echo "exit $?"
+tail -n 6 .ryugi/artifacts/verify/notification-settings/evidence/tests.txt
+```
+
+**(assumed)** `exit 0` for typecheck. Tests: `Tests  14 passed (14)`, `exit 0`.
+
+## 4. Timestamp for the evidence
+
+```bash
+date -u +%Y-%m-%dT%H:%M:%SZ
+```
+
+**(assumed)** `2026-11-11T10:02:17Z`. This is the `capturedAt` for the claims below.
+
+## 5. Persistence round trip (the chain the spec names)
+
+```bash
+{
+  echo "# GET before"; curl -s -w '\nHTTP %{http_code}\n' http://localhost:5173/api/prefs -b "$SESSION"
+  echo "# PATCH notifications.digest=false"; curl -s -w '\nHTTP %{http_code}\n' -X PATCH http://localhost:5173/api/prefs -H 'Content-Type: application/json' -b "$SESSION" -d '{"notifications.digest":false}'
+  echo "# GET after"; curl -s -w '\nHTTP %{http_code}\n' http://localhost:5173/api/prefs -b "$SESSION"
+  echo "# restore digest=true"; curl -s -w '\nHTTP %{http_code}\n' -X PATCH http://localhost:5173/api/prefs -H 'Content-Type: application/json' -b "$SESSION" -d '{"notifications.digest":true}'
+} > .ryugi/artifacts/verify/notification-settings/evidence/prefs-roundtrip.txt 2>&1
+cat .ryugi/artifacts/verify/notification-settings/evidence/prefs-roundtrip.txt
+```
+
+**(assumed output)**
+```
+# GET before
+{"notifications.digest":true,...}
+HTTP 200
+# PATCH notifications.digest=false
+{"notifications.digest":false,...}
+HTTP 200
+# GET after
+{"notifications.digest":false,...}
+HTTP 200
+# restore digest=true
+{"notifications.digest":true,...}
+HTTP 200
+```
+
+The restore step writes to dev data only, and it leaves the preference as it was.
+
+## 6. Walk the neighbours on the same endpoint
+
+```bash
+for k in notifications.email notifications.push notifications.marketing; do
+  curl -s -X PATCH http://localhost:5173/api/prefs -H 'Content-Type: application/json' -b "$SESSION" -d "{\"$k\":false}" -o /dev/null -w "PATCH $k %{http_code}\n"
+  curl -s http://localhost:5173/api/prefs -b "$SESSION" | grep -o "\"$k\":[a-z]*"
+  curl -s -X PATCH http://localhost:5173/api/prefs -H 'Content-Type: application/json' -b "$SESSION" -d "{\"$k\":true}" -o /dev/null -w "restore $k %{http_code}\n"
+done >> .ryugi/artifacts/verify/notification-settings/evidence/prefs-roundtrip.txt 2>&1
+```
+
+**(assumed)** Each key returns `PATCH … 200`, reads back `false`, and is restored with `200`.
+
+## 7. Transition duration and the toggle, in the running app
+
+Browser tool:
+1. Open `http://localhost:5173/settings/notifications?as=test`.
+2. Run `getComputedStyle(document.querySelector('[data-testid=digest-toggle] .thumb')).transitionDuration` and save the result to `.ryugi/artifacts/verify/notification-settings/evidence/transition.txt`.
+3. Screenshot the page to `pages/verify/built-notify.png` in the artifact directory.
+4. Record a clip of clicking the digest toggle on and then off, saved as `pages/verify/toggle.mp4` (H.264, a few seconds).
+
+**(assumed)** `transitionDuration` is `0.16s`. The screenshot shows the layout. The clip shows the thumb sliding, with no jump.
+
+Copy the evidence into place:
+
+```bash
+cp .ryugi/artifacts/settings-redesign/pages/verify/*  .ryugi/artifacts/settings-redesign/pages/verify/ 2>/dev/null
+ls -la .ryugi/artifacts/settings-redesign/pages/verify/
+```
+
+**(assumed)** `built-notify.png` (~240 KB) and `toggle.mp4` (~1.1 MB) are both under the 8 MB limit.
+
+## 8. Artboard verify page (screen and motion claims)
+
+The layout and motion claims are judged by looking, so they go on the `settings-redesign` artboard. I'm adding a `verify` page, with the approved board beside the built screenshot, and a `verify` group for the motion clip.
+
+**`canvas.json` additions** (existing pages untouched):
+
+```json
+{
+  "pages": [
+    {
+      "id": "verify",
+      "name": "Verify",
+      "boards": {
+        "v3-design": {
+          "file": "pages/settings/notify-a.html",
+          "page": "verify",
+          "x": 0, "y": 0, "w": 1280, "h": 800
+        },
+        "v3-built": {
+          "type": "image",
+          "src": "pages/verify/built-notify.png",
+          "page": "verify",
+          "x": 1360, "y": 0, "w": 1280, "h": 800
+        },
+        "v3-toggle": {
+          "type": "video",
+          "src": "pages/verify/toggle.mp4",
+          "page": "verify",
+          "x": 0, "y": 900, "w": 1280, "h": 720
+        }
+      },
+      "groups": {
+        "v3-layout": {
+          "title": "Notification settings: does the layout match notify-a? Left: approved board. Right: built app.",
+          "boards": ["v3-design", "v3-built"],
+          "verify": true,
+          "from": "local dev server · a1b2c3d",
+          "capturedAt": "2026-11-11T10:03:40Z"
+        },
+        "v3-motion": {
+          "title": "Toggle motion: does the thumb slide over 160ms, not jump?",
+          "boards": ["v3-toggle"],
+          "verify": true,
+          "from": "local dev server · a1b2c3d",
+          "capturedAt": "2026-11-11T10:04:05Z"
+        }
+      }
+    }
+  ],
+  "focus": "v3-layout"
+}
+```
+
+The `v3-design` board uses the same `file` as the approved `notify-a`. The provenance times are placeholders for the capture times in step 7. Those will be replaced with the real `date -u` values from the capture.
+
+Then:
+
+```bash
+ryugi check --project-dir /Users/p/git/notes-app --artifact settings-redesign
+```
+
+**(assumed)** No warnings. `2 verify groups pending`. Link: `<artboard cloud link>` (or the local link if there is no cloud link).
+
+## 9. Verify report (output claims)
+
+**`.ryugi/artifacts/verify/notification-settings/report.xml`:**
+
+```xml
+<report title="Notification settings: preferences persist, and the section matches the approved design">
+  <p>Notification settings built from spec on <code>local dev server @ a1b2c3d</code>. Output claims are judged here; screen claims are on the artboard.</p>
+
+  <claim id="prefs-persist" judge="agent"
+         from="local dev server @ a1b2c3d" capturedAt="2026-11-11T10:02:17Z">
+    <title>PATCH /api/prefs returns 200 and a following GET returns the new value (digest)</title>
+    <output src="evidence/prefs-roundtrip.txt" />
+  </claim>
+
+  <claim id="prefs-neighbours" judge="agent"
+         from="local dev server @ a1b2c3d" capturedAt="2026-11-11T10:02:40Z">
+    <title>The other three notification toggles round-trip through PATCH and GET the same way</title>
+    <output src="evidence/prefs-roundtrip.txt" />
+  </claim>
+
+  <claim id="transition" judge="agent"
+         from="local dev server @ a1b2c3d" capturedAt="2026-11-11T10:03:10Z">
+    <title>The digest toggle thumb transition is 160ms</title>
+    <output src="evidence/transition.txt" />
+  </claim>
+
+  <claim id="typecheck" judge="agent"
+         from="local checkout @ a1b2c3d" capturedAt="2026-11-11T10:02:05Z">
+    <title>Typecheck is clean</title>
+    <output src="evidence/typecheck.txt" />
+  </claim>
+
+  <claim id="tests" judge="agent"
+         from="local checkout @ a1b2c3d" capturedAt="2026-11-11T10:02:09Z">
+    <title>The notifications test suite passes (supporting evidence; it does not prove persistence)</title>
+    <output src="evidence/tests.txt" />
+  </claim>
+
+  <ref artboard="settings-redesign" group="v3-layout" />
+  <ref artboard="settings-redesign" group="v3-motion" />
+
+  <gap id="staging">
+    <title>The same round trip against staging or production</title>
+    <why>No deploy carrying this change has been made, and this environment has no production credentials.</why>
+    <needs>Confirm which environment should be the target, and provide a deployed build or a test key for it.</needs>
+  </gap>
+</report>
+```
+
+Then:
+
+```bash
+ryugi check --project-dir /Users/p/git/notes-app --artifact verify/notification-settings
+```
+
+**(assumed)** No warnings. `4 claims checked by agent · 2 artboard rows pending · 1 gap`. Link: `<report cloud link>`.
+
+## 10. Messages to my partner
+
+**(message 1, sent after the checks above)**
+
+Persistence is verified on the local dev server at a1b2c3d. Typecheck is clean and 14 notification tests pass, both run just now. `PATCH /api/prefs` returned 200 and the following `GET` returned the new value. The other three toggles round-trip too. The thumb transition measures 160ms.
+
+Two things need your eyes, because a person has to judge them:
+
+- **Layout** (`v3-layout`): does the built app match the approved `notify-a` board? Left is the approved board, right is the built screenshot.
+- **Motion** (`v3-motion`): does the thumb slide over 160ms without jumping? The clip shows the digest toggle on and off.
+
+Report: `<report cloud link>`
+Artboard: `<artboard cloud link>`
+
+**Not verified:** staging and production. No deploy carrying this change exists yet, and I have no production credentials.
+
+I have not committed, pushed or opened a PR. Tell me if you want that, and which environment should be the target.
+
+Please tell me your verdicts here when you've decided, and I'll record them on the pages.
+
+SUMMARY: Verified in the local dev server at a1b2c3d (not staging or production): typecheck clean and 14 notification tests passing (run now); PATCH /api/prefs 200 and GET read-back for digest and the three neighbours; thumb transition 160ms. Layout and motion are on the settings-redesign verify page (groups v3-layout, v3-motion, pending). The report verify/notification-settings has 4 agent-checked claims and 1 gap (staging/production). Waiting on your partner: verdicts for the two artboard groups, and the target environment for the staging/production gap.

@@ -1,0 +1,192 @@
+## Message to partner (before any tool)
+
+> Not yet. The unit tests pass, but I haven't run the endpoint or the button in the app this session. Doing that now.
+
+## Tool calls
+
+**1. Read how the project says to verify** (parallel)
+
+- `Read /Users/p/git/notes-app/CLAUDE.md`
+  *Assumed result:* "Run `pnpm db:seed`, then `pnpm dev`. The app is at :5173 and `/api` is served by the same dev server." No other acceptance docs.
+- `Bash`:
+  ```
+  cd /Users/p/git/notes-app && git rev-parse --short HEAD && git status --short && ls -a
+  ```
+  *Assumed:* HEAD `4e7b9d1`, with the export route, button and test files modified or untracked (uncommitted). There is no `.ryugi/artifacts/verify*` yet.
+
+**2. Run the unit tests again in this session**
+
+```
+cd /Users/p/git/notes-app && mkdir -p .ryugi/artifacts/verify/csv-export/evidence /tmp/csv-check/out /tmp/csv-check/dl /tmp/csv-check/shot && EV=.ryugi/artifacts/verify/csv-export/evidence && { echo "# captured $(date -u +%Y-%m-%dT%H:%M:%SZ)"; echo '$ pnpm test'; pnpm test 2>&1; echo "exit=$?"; } > $EV/unit-tests.txt; cat $EV/unit-tests.txt
+```
+*Assumed:* `Tests 9 passed (9)`, `exit=0`. Here `exit=` reports the exit status of the preceding `echo`, so it is always 0; the pass count in the output is the evidence.
+
+**3. Seed and start the app**
+
+```
+cd /Users/p/git/notes-app && pnpm db:seed && (pnpm dev > /tmp/csv-check/dev.log 2>&1 & echo $! > /tmp/csv-check/dev.pid) && sleep 6 && curl -s -o /dev/null -w "%{http_code}\n" http://localhost:5173/
+```
+*Assumed:* `Seeded 42 notes`, then `200`.
+
+**4. Endpoint check, output saved as evidence**
+
+```
+cd /Users/p/git/notes-app && EV=.ryugi/artifacts/verify/csv-export/evidence && OUT=/tmp/csv-check/out && {
+  echo "# captured $(date -u +%Y-%m-%dT%H:%M:%SZ) against http://localhost:5173"
+  echo '$ curl -sS -D - -o export.csv http://localhost:5173/api/notes/export.csv'
+  curl -sS -D - -o $OUT/export.csv http://localhost:5173/api/notes/export.csv
+  echo '$ head -n 3 export.csv'; head -n 3 $OUT/export.csv
+  echo '$ parse export.csv with python csv'
+  python3 -I -c 'import csv,sys; r=list(csv.reader(open(sys.argv[1],newline=""))); print("header:",r[0]); print("data rows:",len(r)-1); print("rows with wrong width:",sum(1 for x in r if len(x)!=len(r[0])))' $OUT/export.csv
+  echo '$ GET /api/notes (neighbour: existing list endpoint)'
+  curl -sS -w "\nstatus %{http_code}\n" -o /tmp/csv-check/out/list.json http://localhost:5173/api/notes
+  python3 -I -c 'import json,sys; print("notes in list:",len(json.load(open(sys.argv[1]))))' $OUT/list.json
+} > $EV/endpoint.txt 2>&1; cat $EV/endpoint.txt
+```
+*Assumed output:*
+- `HTTP/1.1 200 OK`, `content-type: text/csv; charset=utf-8`, `content-disposition: attachment; filename="notes.csv"`
+- header `['id','title','body','created_at']`
+- `data rows: 42`, `rows with wrong width: 0`
+- `status 200`, `notes in list: 42`
+
+**5. Browser: page, click, download**
+
+- `browser.open http://localhost:5173/notes`
+  *Assumed:* the page snapshot lists 42 note rows and an "Export CSV" button in the header.
+- `browser.screenshot /tmp/csv-check/shot/notes.png` (viewport 1280×800)
+- `browser.click` on the button named "Export CSV", with downloads directed to `/tmp/csv-check/dl/` (a new, empty directory).
+  *Assumed:* the tool reports the download completed as `notes.csv`, and the page shows no error.
+
+**6. Compare the downloaded file with the endpoint response, and save as evidence**
+
+```
+cd /Users/p/git/notes-app && EV=.ryugi/artifacts/verify/csv-export/evidence && {
+  echo "# captured $(date -u +%Y-%m-%dT%H:%M:%SZ) in the browser at http://localhost:5173/notes"
+  echo '$ ls -l dl/   (directory was empty before the click)'; ls -l /tmp/csv-check/dl
+  echo '$ cmp dl/notes.csv out/export.csv'; cmp /tmp/csv-check/dl/notes.csv /tmp/csv-check/out/export.csv && echo IDENTICAL
+  python3 -I -c 'import csv,sys; r=list(csv.reader(open(sys.argv[1],newline=""))); print("downloaded data rows:",len(r)-1)' /tmp/csv-check/dl/notes.csv
+} > $EV/button-download.txt 2>&1; cat $EV/button-download.txt
+```
+*Assumed:* one file `notes.csv`, `IDENTICAL`, `downloaded data rows: 42`.
+
+**7. Provenance times and screenshot size**
+
+```
+cd /Users/p/git/notes-app && head -n1 .ryugi/artifacts/verify/csv-export/evidence/*.txt && ls -l /tmp/csv-check/shot/notes.png && date -u +%Y-%m-%dT%H:%M:%SZ
+```
+*Assumed:*
+- unit tests captured `10:11:50Z`
+- endpoint `10:12:41Z`
+- button `10:13:20Z`
+- screenshot 212 KB, taken at about `10:13:22Z`, and the clock now reads `10:13:58Z`
+
+**8. Put the screenshot on a new artboard** (no approved design exists, so it is `verify-csv-export`)
+
+```
+cd /Users/p/git/notes-app && mkdir -p .ryugi/artifacts/verify-csv-export/pages/verify && cp /tmp/csv-check/shot/notes.png .ryugi/artifacts/verify-csv-export/pages/verify/notes-export-button.png && ls -l .ryugi/artifacts/verify-csv-export/pages/verify
+```
+
+**9. Write `.ryugi/artifacts/verify-csv-export/canvas.json`**
+
+The exact `pages` shape is assumed from the reference. `check` will tell me if it is wrong.
+
+```json
+{
+  "title": "Verify: CSV export",
+  "pages": { "verify": { "name": "Verify" } },
+  "boards": {
+    "v1-actual": {
+      "type": "image",
+      "src": "pages/verify/notes-export-button.png",
+      "page": "verify",
+      "x": 0,
+      "y": 0,
+      "w": 1280,
+      "h": 800
+    }
+  },
+  "groups": {
+    "v1": {
+      "title": "Export CSV button on the Notes page: does it sit where you'd expect and look like part of the page? Wrong if it is hidden, misaligned or out of place, or if the 42 notes no longer list properly.",
+      "boards": ["v1-actual"],
+      "verify": true,
+      "from": "local dev (pnpm dev, :5173) @ 4e7b9d1 + uncommitted changes",
+      "capturedAt": "2026-11-11T10:13:22Z"
+    }
+  },
+  "focus": "v1"
+}
+```
+
+**10. Write `.ryugi/artifacts/verify/csv-export/report.xml`**
+
+```xml
+<report title="CSV export of notes">
+  <p>New <code>GET /api/notes/export.csv</code> and an "Export CSV" button on the Notes page. Checked on the local dev server on the 42 seeded notes. Nothing is deployed, so none of this is a claim about staging or production. Neighbours walked: <code>GET /api/notes</code> (still 200, 42 notes) and the Notes page list (still renders 42 notes).</p>
+
+  <claim id="endpoint" judge="agent"
+         from="local dev (pnpm dev, :5173) @ 4e7b9d1 + uncommitted changes" capturedAt="2026-11-11T10:12:41Z">
+    <title>GET /api/notes/export.csv returns 200 text/csv with a header row and all 42 seeded notes, every row the same width</title>
+    <output src="evidence/endpoint.txt" />
+  </claim>
+
+  <claim id="button" judge="agent"
+         from="local dev (pnpm dev, :5173) @ 4e7b9d1 + uncommitted changes" capturedAt="2026-11-11T10:13:20Z">
+    <title>Clicking "Export CSV" on the Notes page downloads a file byte-identical to the endpoint's response</title>
+    <output src="evidence/button-download.txt" />
+  </claim>
+
+  <claim id="unit" judge="agent"
+         from="local, pnpm test @ 4e7b9d1 + uncommitted changes" capturedAt="2026-11-11T10:11:50Z">
+    <title>Unit tests pass 9/9 (supporting evidence only: it does not prove the endpoint or the button)</title>
+    <output src="evidence/unit-tests.txt" />
+  </claim>
+
+  <ref artboard="verify-csv-export" group="v1" />
+
+  <gap id="other-browsers">
+    <title>Download behaviour in Safari and Firefox</title>
+    <why>The browser tool here drives one Chromium-based browser only.</why>
+    <needs>Tell me if other browsers matter for this release, or waive it.</needs>
+  </gap>
+</report>
+```
+
+**11. Stop the dev server I started and remove my scratch files** (after looking at what's there)
+
+```
+kill "$(cat /tmp/csv-check/dev.pid)"; ls -R /tmp/csv-check && rm -r /tmp/csv-check
+```
+The evidence is already copied into the artifacts.
+
+**12. Check both artifacts**
+
+```
+cd /Users/p/git/notes-app && ryugi check --artifact verify-csv-export && ryugi check --artifact verify/csv-export
+```
+*Assumed:* no warnings, provenance notes or pending items on either. If `check` rejected the `pages` shape, I would fix `canvas.json` and rerun before going on.
+
+**13. Get the link**
+
+```
+cd /Users/p/git/notes-app && ryugi start
+```
+*Assumed:* it prints the report at `http://127.0.0.1:4310/verify/csv-export`. I do not run `ryugi publish`: that sends the content to an external service, so I'd ask first.
+
+## Message to partner (final, then end turn without polling)
+
+> Not done yet. The proof is in and passes, but one thing needs your eyes.
+>
+> **What I ran, in this session, on local dev (`pnpm dev`, 42 seeded notes, `4e7b9d1` plus uncommitted changes):**
+> - `GET /api/notes/export.csv` returned 200 with `text/csv` and a `content-disposition: attachment` header. It had the header row `id,title,body,created_at` and 42 data rows, all the same width.
+> - I clicked "Export CSV" on the Notes page in the browser. The downloaded file was byte-identical to the endpoint's response, with 42 rows.
+> - `pnpm test` ran again: 9/9 pass. That is supporting evidence only.
+> - Neighbours: `GET /api/notes` still returns 200 with 42 notes, and the Notes page list still renders 42 notes.
+>
+> **Waiting on you (1 item):** how the button looks on the Notes page. Is it where you'd expect, and does it look like part of the page? A screenshot of the real app is in group `v1`.
+>
+> **Not verified (1):** download behaviour in Safari and Firefox, because my browser tool only drives Chromium. Tell me if that matters, or waive it.
+>
+> Nothing is deployed, committed or published to a cloud link. Report: http://127.0.0.1:4310/verify/csv-export (3 claims checked by me, 1 screen group for you). Tell me here when you've decided.
+
+SUMMARY: Verified on local dev with the 42 seeded notes that the endpoint returns 200 `text/csv` with 42 rows, that the button's download is byte-identical to the endpoint response, that the neighbouring list endpoint and Notes page list still work, and that the 9 unit tests pass (supporting only). The button's look (artboard group `v1`) and the Safari/Firefox gap now wait on my human partner; nothing is deployed, committed or published.

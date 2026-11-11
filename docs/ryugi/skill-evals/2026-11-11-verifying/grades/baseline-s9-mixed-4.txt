@@ -1,0 +1,1 @@
+FAIL — No report.xml was produced: requirements 2 and 3 were not written as judge="agent" claims with output files, and production is not a `<gap>` in a report. It lives only in the chat message.
