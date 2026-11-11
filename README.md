@@ -19,7 +19,8 @@ Ryugi gives the agent pages to put that work on, and gives you a way to answer o
 - **Document** — a design doc with the agent's questions inline; comment on any sentence.
 - **Whiteboard** — boxes and arrows you both draw on.
 - **HTML** — one page with real sliders to tune a component or a motion.
-- **Verify** — the built screen next to what you approved; pass or reject.
+- **Verify** — the built screen next to what you approved, and a report of what the agent proved
+  by running it; pass or reject.
 
 Your picks, comments and verdicts go straight back to the agent session that made the page. Every
 artifact lives in your project, opens from one local server, and becomes a link when you want to
@@ -96,6 +97,12 @@ A one-page bench whose sliders keep their values when the agent rewrites the pag
 
 The built page sits next to the design you approved. Pass it, or reject it and say what is off; it
 comes back fixed.
+
+What a screen can't show goes in a **verify report**: one line per claim the agent checked by
+running something — a test run, an API response, a migration count, which build is deployed — with
+the raw output one click away, and a "Not verified" list of what it couldn't check and why. You read
+it top to bottom and pass, reject or waive; screens still get judged on the artboard, and the
+report links to them.
 
 ## Comments go back to the agent
 
