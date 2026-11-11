@@ -161,11 +161,22 @@ function submittedCount(file, submit) {
   ).size;
 }
 
-const roundSubmit = (file, round) =>
+const roundRecord = (file, round, submit) =>
   newest(
     Array.isArray(file?.threads) ? file.threads : [],
-    (thread) => thread.anchor?.round === round && thread.anchor?.submit === true,
-  )?.id ?? null;
+    (thread) => thread.anchor?.round === round && thread.anchor?.submit === submit,
+  );
+
+const roundSubmit = (file, round) => roundRecord(file, round, true)?.id ?? null;
+
+const firstAt = (thread) => thread?.messages?.[0]?.at ?? '';
+
+// rounds.json is derived state another server can rewrite; while a submit record stands, only a later withdrawal record withdraws it.
+function standingSubmit(file, round) {
+  const submit = roundRecord(file, round, true);
+  const withdrawal = roundRecord(file, round, false);
+  return submit && !(withdrawal && firstAt(withdrawal) >= firstAt(submit)) ? submit.id : null;
+}
 
 function draftCheck(rounds) {
   const open = rounds.filter((round) => round.state === 'open');
@@ -272,6 +283,7 @@ function createCommentWatch(project, key = cursorKey(process.env)) {
   const seen = new Map();
   const roundStates = new Map();
   const submits = new Map();
+  const notifiedSubmits = new Map();
   return (artifacts) => {
     const events = [];
     for (const type of ['document', 'artboard', 'whiteboard']) {
@@ -292,6 +304,11 @@ function createCommentWatch(project, key = cursorKey(process.env)) {
           if (!known || before === undefined || before === state) continue;
           const submitted = state === 'submitted';
           if (!submitted && !(before === 'submitted' && state === 'open')) continue;
+          const standing = standingSubmit(file, round);
+          const notifiedKey = `${artifact}#${round}`;
+          if (submitted ? standing && notifiedSubmits.get(notifiedKey) === standing : standing)
+            continue;
+          if (submitted && standing) notifiedSubmits.set(notifiedKey, standing);
           const spec = rounds.find((item) => item.id === round) ?? { id: round, groups: [] };
           const submit = roundSubmit(file, round);
           events.push({

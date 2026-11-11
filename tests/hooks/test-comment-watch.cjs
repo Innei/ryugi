@@ -777,6 +777,56 @@ test('a withdrawn round names the submit it withdraws, not the withdrawal', (t) 
   assert.equal(event.submit, 's1');
 });
 
+test('a round state that flaps under one submit record wakes once, never as a withdrawal', (t) => {
+  const f = choiceFixture(t);
+  const submit = {
+    ...thread('s1'),
+    anchor: { page: 'p', x: 0, y: 0, round: 'r1', submit: true },
+    messages: [human('ms1', 1)],
+  };
+  f.rounds('open');
+  const poll = watch(f.project);
+  assert.deepEqual(poll(), []);
+  f.save('artboard/pick', [submit]);
+  f.rounds('submitted');
+  const events = poll();
+  for (const state of ['open', 'submitted', 'open', 'submitted']) {
+    f.rounds(state);
+    events.push(...poll());
+  }
+  assert.deepEqual(
+    events.map((event) => [event.type, event.submit, event.withdrawn ?? false]),
+    [['ryugi-choices', 's1', false]],
+  );
+});
+
+test('a new withdrawal record after an already-notified submit still wakes', (t) => {
+  const f = choiceFixture(t);
+  const record = (id, n, value) => ({
+    ...thread(id),
+    anchor: { page: 'p', x: 0, y: 0, round: 'r1', submit: value },
+    messages: [human(`m${id}`, n)],
+  });
+  f.rounds('open');
+  const poll = watch(f.project);
+  poll();
+  f.save('artboard/pick', [record('s1', 1, true)]);
+  f.rounds('submitted');
+  assert.equal(poll().length, 1);
+  f.save('artboard/pick', [record('s1', 1, true), record('w1', 2, false)]);
+  f.rounds('open');
+  assert.deepEqual(
+    poll().map((event) => event.withdrawn),
+    [true],
+  );
+  f.save('artboard/pick', [record('s1', 1, true), record('w1', 2, false), record('s2', 3, true)]);
+  f.rounds('submitted');
+  assert.deepEqual(
+    poll().map((event) => [event.submit, event.withdrawn ?? false]),
+    [['s2', false]],
+  );
+});
+
 const embedVfs = (text) => ({
   type: 'ryugi-comments',
   artifact: 'document/embed-vfs',
