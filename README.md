@@ -4,18 +4,26 @@
 
 <h1 align="center">Ryugi 流儀</h1>
 
-<p align="center"><b>Your coding agent draws its options instead of describing them.<br>You pick, comment and pass.</b></p>
+<p align="center"><b>Artifacts for coding agents.</b><br>Your agent draws its options instead of describing them. You pick, comment and pass.</p>
 
 <p align="center">
   <img src="docs/images/hero.webp" alt="A terminal asks Claude Code to mock up notification settings; three layouts stream onto the Ryugi artboard, the user picks the recommended one and submits, the terminal receives q1 → b, and the built page appears next to the approved design, where the user presses Pass">
 </p>
 
-Ask an agent for a feature and you get a wall of text in the terminal. You approve a plan you have
-never seen, and find out what it meant after the code is written.
+Ask an agent for a settings page and you get three paragraphs describing three layouts. Ask for a
+design and you get a wall of Markdown you can't point at.
 
-Ryugi puts that work on pages you can open: mockups side by side, design docs you can comment on,
-pages with real sliders, and the built result next to what you approved. Your picks and comments go
-straight back to the agent.
+Ryugi gives the agent pages to put that work on, and gives you a way to answer on them:
+
+- **Artboard** — every option drawn side by side; pick one.
+- **Document** — a design doc with the agent's questions inline; comment on any sentence.
+- **Whiteboard** — boxes and arrows you both draw on.
+- **HTML** — one page with real sliders to tune a component or a motion.
+- **Verify** — the built screen next to what you approved; pass or reject.
+
+Your picks, comments and verdicts go straight back to the agent session that made the page. Every
+artifact lives in your project, opens from one local server, and becomes a link when you want to
+share it.
 
 ```bash
 npx ryugi-artifacts install
@@ -24,18 +32,11 @@ npx ryugi-artifacts install
 It asks one question and installs Ryugi into Claude Code:
 
 - **Artifacts only** — send `Show me three directions for a settings page` and an artboard opens.
-- **The full workflow** — send `Let's make a react todo list`; the agent opens an artboard, asks
-  what matters, and builds only what you approve.
-
-Other harnesses and manual install: [Harnesses](docs/install.md).
-
-Have Node.js and npm available in the agent's environment. The plugin calls its own launcher,
-which downloads `ryugi-artifacts` on first use and caches each release under
-`~/.cache/ryugi/artifacts/` by default. It checks for updates at most once a day and can reuse a
-compatible cached release offline. The first run needs network access and a writable cache.
+- **The full workflow** — artifacts plus skills that brainstorm, spec, build under TDD and verify.
+  Send `Let's make a react todo list` and the agent opens an artboard before it writes code.
 
 <p align="center">
-  <a href="docs/install.md">Harnesses</a> · <a href="docs/workflow.md">Workflow</a> · <a href="docs/artifacts-cli.md">CLI</a>
+  <a href="docs/install.md">Harnesses</a> · <a href="docs/artifacts-cli.md">CLI</a> · <a href="docs/workflow.md">Full workflow</a> · <a href="https://ryugi.innei.dev">Ryugi Cloud</a>
 </p>
 
 ## Artboard — choose instead of imagine
@@ -96,6 +97,15 @@ A one-page bench whose sliders keep their values when the agent rewrites the pag
 The built page sits next to the design you approved. Pass it, or reject it and say what is off; it
 comes back fixed.
 
+## Comments go back to the agent
+
+**Use it when** you'd rather point at the thing than describe it in the terminal.
+
+Pin a comment on a board, a sentence or a sketch, and it reaches the agent session that opened the
+page. In Claude Code it arrives on its own, with no message from you; the agent applies it, replies
+under your comment and updates the page while you watch. Questions, picks and verdicts travel the
+same way.
+
 ## Library — every artifact, one server
 
 **Use it when** you want last week's mockup back, or a link to share.
@@ -125,11 +135,11 @@ ryugi /path/to/project
 the agent uses the plugin's launcher. The global CLI is optional and updates separately with
 `ryugi update`. See the [CLI guide](docs/artifacts-cli.md) for commands and options.
 
-## The full workflow
+## Add the full workflow
 
-Want the agent to build from what you approved, not only show it? Pick the full workflow at
-install. Its skills make the agent reach for the artifacts at the right moment, and they fire on
-their own:
+Artifacts work on their own. If you also want the agent to build from what you approved, pick the
+full workflow at install (or run `npx ryugi-artifacts install --mode full` later). Its skills make
+the agent reach for the artifacts at the right moment, and they fire on their own:
 
 ```mermaid
 flowchart LR
@@ -141,6 +151,11 @@ of judgment calls across compaction, gets one fresh review of the branch, and re
 it. Debugging and worktrees are covered too. [How it works →](docs/workflow.md)
 
 ## Work with your harness
+
+Have Node.js and npm available in the agent's environment. The plugin calls its own launcher,
+which downloads `ryugi-artifacts` on first use and caches each release under
+`~/.cache/ryugi/artifacts/` by default. It checks for updates at most once a day and can reuse a
+compatible cached release offline. The first run needs network access and a writable cache.
 
 ### Claude Code settings
 
