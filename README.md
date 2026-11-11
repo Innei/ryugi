@@ -4,6 +4,8 @@
 
 <h1 align="center">Ryugi 流儀</h1>
 
+<p align="center"><i>ryoo-ghee</i> · /ˈrjuːɡi/ · Japanese for “a school's own way of doing things”</p>
+
 <p align="center"><b>Artifacts for coding agents.</b><br>Your agent draws its options instead of describing them. You pick, comment and pass.</p>
 
 <p align="center">
