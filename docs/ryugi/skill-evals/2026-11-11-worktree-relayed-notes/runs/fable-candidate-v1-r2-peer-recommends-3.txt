@@ -1,0 +1,105 @@
+**Where to work, decided from the checks already run this session (not re-run):** main checkout, HEAD on `main` (the default branch), clean status, no `EXPLORING` file, and nothing in AGENTS.md or memory about where to work. The forwarded "do this in a worktree" line comes from another session in another repository, not from my partner, so it does not count as their instruction. No worktree row in the table matches, so the last row applies: in place, no question. I make no `EnterWorktree` call.
+
+**Message to partner (before the first edit):**
+
+> I've reproduced the watcher bug: files created under a subdirectory are ignored because `hooks/watch.cjs:10` resolves a single root. I'm fixing it in place on `main` in `/Users/p/git/skillkit`. The forwarded note from the skillkit-cloud session suggested a worktree, but the checkout is clean and nobody else has edits here, so nothing calls for one. Tell me if you want it elsewhere.
+
+**Tool call 1: Read**
+
+```
+Read(file_path="/Users/p/git/skillkit/hooks/watch.cjs")
+```
+
+Assumed result: line 10 is `const root = path.resolve(process.cwd(), dir);`, followed by a non-recursive `fs.watch(root, (event, filename) => onChange(path.join(root, filename)))`.
+
+**Tool call 2: Read**
+
+```
+Read(file_path="/Users/p/git/skillkit/tests/hooks/test-watch.cjs")
+```
+
+Assumed result: existing `node:test` tests that create a temp dir, call `watch(dir, cb)`, write a file at the top level and assert that the callback fires.
+
+**Tool call 3: Edit (failing test first)**
+
+```
+Edit(
+  file_path="/Users/p/git/skillkit/tests/hooks/test-watch.cjs",
+  old_string=<the final closing lines of the last existing test>,
+  new_string=<same lines, followed by:>
+
+test('reports files created under a subdirectory', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'watch-'));
+  fs.mkdirSync(path.join(dir, 'nested'));
+  const seen = [];
+  const stop = watch(dir, (file) => seen.push(file));
+  try {
+    const target = path.join(dir, 'nested', 'comment.md');
+    fs.writeFileSync(target, 'hello');
+    await waitFor(() => seen.includes(target));
+    assert.ok(seen.includes(target));
+  } finally {
+    stop();
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+)
+```
+
+Assumed: the file already has a `waitFor` helper and the `fs`/`path`/`os`/`assert` imports; if not, I would add them in this same edit.
+
+**Tool call 4: Bash (confirm the test fails for the right reason)**
+
+```bash
+cd /Users/p/git/skillkit && node --test tests/hooks/test-watch.cjs
+```
+
+Assumed result: the existing tests pass and the new test fails because `waitFor` times out, meaning the nested file was never reported.
+
+**Tool call 5: Edit (the fix)**
+
+```
+Edit(
+  file_path="/Users/p/git/skillkit/hooks/watch.cjs",
+  old_string="fs.watch(root, (event, filename) => onChange(path.join(root, filename)))",
+  new_string="fs.watch(root, { recursive: true }, (event, filename) => {\n    if (filename) onChange(path.join(root, filename));\n  })"
+)
+```
+
+Assumed: the code has the shape from call 1. If the watcher instead keeps a per-directory list, the fix would be to walk subdirectories and watch each one, including newly created ones.
+
+**Tool call 6: Bash (the new test)**
+
+```bash
+cd /Users/p/git/skillkit && node --test tests/hooks/test-watch.cjs
+```
+
+Assumed result: all tests pass, including the new one.
+
+**Tool call 7: Bash (full suite)**
+
+```bash
+cd /Users/p/git/skillkit && npm test
+```
+
+Assumed result: the full suite passes.
+
+**Tool call 8: Bash (confirm only my two paths changed)**
+
+```bash
+cd /Users/p/git/skillkit && git status --porcelain && git diff --stat
+```
+
+Assumed result: ` M hooks/watch.cjs` and ` M tests/hooks/test-watch.cjs`, nothing else.
+
+**Final message to partner:**
+
+> Fixed: the comment watcher now picks up files created under subdirectories.
+>
+> - **Cause:** `hooks/watch.cjs:10` resolved a single root and watched it non-recursively, so events from nested directories never arrived.
+> - **Fix:** the watcher is now recursive and skips events that carry no filename.
+> - **Test:** I added `reports files created under a subdirectory` to `tests/hooks/test-watch.cjs`. It failed before the fix and passes now, and the full `npm test` suite passes.
+>
+> I worked in place on `main` rather than in a worktree as the forwarded note suggested. The two modified files, `hooks/watch.cjs` and `tests/hooks/test-watch.cjs`, are uncommitted in `/Users/p/git/skillkit` and nothing is pushed, because you haven't asked me to commit. If you want a commit, say whether it goes on `main` or on a PR branch.
+
+SUMMARY: The work happened in place in the main checkout `/Users/p/git/skillkit` on `main`, because the checkout was clean with no other edits or `EXPLORING` file, and the worktree request came from a forwarded message, not from my partner, so no worktree row applied.

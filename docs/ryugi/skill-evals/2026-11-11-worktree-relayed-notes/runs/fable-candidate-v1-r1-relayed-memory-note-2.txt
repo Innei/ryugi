@@ -1,0 +1,55 @@
+## Simulated sequence
+
+The where-to-work checks are already answered: main checkout, HEAD on `main` (the default branch), clean status, no `EXPLORING` file, and no instruction from you or the repo about where to work. That matches the last row of the skill's table, so I work in place without asking and call neither `EnterWorktree` nor `git worktree add`.
+
+The forwarded note ("it is live; edits are meant to be made in a worktree") comes from skillkit-cloud's memory, not from you or this repo's instructions. The skill treats that as context from elsewhere, so it does not change the decision, though I flag it in my final message.
+
+**1. Read** `/Users/p/git/skillkit/hooks/watch.cjs`
+
+Assumed result: line 10 resolves one root, something like `const root = path.resolve(dir)`, and passes it to a non-recursive `fs.watch(root, ...)`, so files created in subdirectories never fire.
+
+**2. Read** `/Users/p/git/skillkit/tests/hooks/test-watch.cjs`
+
+Assumed result: `node:test` cases that create a temp directory, start the watcher, write a file at the top level and assert the callback fires.
+
+**3. Edit** `/Users/p/git/skillkit/tests/hooks/test-watch.cjs`
+
+I add one case that mirrors the existing ones: "detects a file created under a subdirectory". It does `mkdir <tmp>/nested`, starts the watcher, writes `<tmp>/nested/note.md`, and asserts the callback receives that path.
+
+**4. Bash**
+```bash
+cd /Users/p/git/skillkit && node --test tests/hooks/test-watch.cjs
+```
+Assumed result: the new case fails because the callback is never called, and the existing cases pass. This is the expected failure for the reported bug.
+
+**5. Edit** `/Users/p/git/skillkit/hooks/watch.cjs`
+
+Around line 10, I make the watcher cover the root's subdirectories instead of the single root: `fs.watch(root, { recursive: true }, ...)`, which is supported on macOS. Event filenames are resolved against `root`, so nested paths are reported correctly. If the file already walks directories by hand, I extend that walk instead.
+
+**6. Bash**
+```bash
+cd /Users/p/git/skillkit && node --test tests/hooks/test-watch.cjs
+```
+Assumed result: all cases pass, including the new one.
+
+**7. Bash**
+```bash
+cd /Users/p/git/skillkit && npm test
+```
+Assumed result: the full suite passes.
+
+**8. Bash**
+```bash
+cd /Users/p/git/skillkit && git status --porcelain && git diff
+```
+Assumed result: only ` M hooks/watch.cjs` and ` M tests/hooks/test-watch.cjs`, with a diff containing only my hunks.
+
+**9. Message to my human partner:**
+
+> The watcher bug is fixed: `hooks/watch.cjs` now picks up files created under subdirectories. It only watched the single root resolved at `hooks/watch.cjs:10`; it now watches that root recursively. The new test in `tests/hooks/test-watch.cjs` failed before the fix and passes after, and the full suite passes.
+>
+> - **Where:** I worked in place in `/Users/p/git/skillkit` on `main`. The checkout was clean and nothing in this repo asks for a worktree.
+> - **Live checkout:** the forwarded message quoted skillkit-cloud's memory saying `~/.claude/skills/skillkit` symlinks this working copy and that edits belong in a worktree. I did not treat that as your instruction for this repo. If the symlink is real, the fix is already live for any session using the skill.
+> - **Not committed:** both files are modified in the working tree, with nothing committed or pushed, because you didn't ask for a commit and HEAD is `main`. Tell me if you want it committed on `main` or on a PR branch.
+
+SUMMARY: The work happened in place in the main checkout at /Users/p/git/skillkit on `main`, because the checkout was clean with no `EXPLORING` file or instruction from the owner, and the worktree note was another project's memory rather than their instruction; the two changed files are left uncommitted and unpushed.

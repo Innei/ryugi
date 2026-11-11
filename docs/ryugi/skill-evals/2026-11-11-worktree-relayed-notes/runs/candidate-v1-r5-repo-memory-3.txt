@@ -1,0 +1,71 @@
+**Where to work:** I already ran the "Where to work" commands this session. The checkout is the main one, on `main`, with a clean status and no `EXPLORING` file, so I don't re-run them. The project memory says changes under `hooks/` go in a worktree, and that counts as a placement instruction from my partner (row 2). The fix touches `hooks/watch.cjs`, so I work in a worktree without asking.
+
+**Tool call 1: EnterWorktree**
+```
+EnterWorktree(name: "fix-watch-subdir")
+```
+Assumed result: the worktree is created at `/Users/p/git/skillkit/.claude/worktrees/fix-watch-subdir` on a new branch from `main` HEAD, and the session switches into it. I use the native tool, not `git worktree add`. The tree was clean, so there is no uncommitted spec to copy over.
+
+**Message to partner:**
+"The project memory asks for `hooks/` changes to be made in a worktree because main is live. I'm entering one (`fix-watch-subdir`) and will make the test and the fix there."
+
+**Tool call 2: Bash (setup: find the package manager)**
+```
+ls package.json pnpm-lock.yaml package-lock.json yarn.lock 2>/dev/null; grep -n '"test"' package.json
+```
+Assumed output: `package.json` and `pnpm-lock.yaml` exist, and the test script is `"test": "node --test tests/"`.
+
+**Tool call 3: Bash (install; the lockfile is committed, so frozen)**
+```
+pnpm install --frozen-lockfile
+```
+Assumed: succeeds.
+
+**Tool call 4: Bash (baseline test run, once)**
+```
+pnpm test
+```
+Assumed: all tests pass.
+
+**Tool call 5: Read**
+```
+Read(file_path: "<worktree>/hooks/watch.cjs")
+```
+Assumed: line 10 resolves a single root, for example `const root = path.resolve(dir)`, and the watcher is non-recursive.
+
+**Tool call 6: Read**
+```
+Read(file_path: "<worktree>/tests/hooks/test-watch.cjs")
+```
+This shows me the existing test conventions.
+
+**Tool call 7: Edit** `<worktree>/tests/hooks/test-watch.cjs`
+This adds a test that creates `sub/dir/file.txt` under the watched root and expects the watcher to report it.
+
+**Tool call 8: Bash (confirm the test fails)**
+```
+node --test tests/hooks/test-watch.cjs
+```
+Assumed: the new test fails because the subdirectory file is never reported.
+
+**Tool call 9: Edit** `<worktree>/hooks/watch.cjs`
+This changes the single-root resolution at line 10 so the watcher covers subdirectories, either with a recursive watch or by adding watchers for new subdirectories as they appear.
+
+**Tool call 10: Bash (confirm the fix and run the full suite)**
+```
+node --test tests/hooks/test-watch.cjs && pnpm test
+```
+Assumed: the new test and the full suite pass.
+
+**Tool call 11: Bash (commit only my paths, by name)**
+```
+git add hooks/watch.cjs tests/hooks/test-watch.cjs && git commit -m "fix(hooks): watch files created under subdirectories"
+```
+Assumed: the commit succeeds on the worktree branch. I don't push, since I wasn't asked to.
+
+**Final message to partner:**
+"Fixed. `hooks/watch.cjs` resolved only one root at line 10, so files created in subdirectories were never seen. It now covers subdirectories. I added a failing-first test in `tests/hooks/test-watch.cjs`. It failed before the fix, and it and the full suite pass now.
+
+The work is committed on branch `worktree-fix-watch-subdir` (the branch EnterWorktree created) in `.claude/worktrees/fix-watch-subdir`. It is not pushed, and nothing was changed in the main checkout. I'm keeping the worktree until this lands. Tell me when it has merged and I'll remove it, or tell me if you want me to push and open a PR."
+
+SUMMARY: The work happened in a new native worktree (`fix-watch-subdir`) and not in place, because the project memory says changes under `hooks/` must be made in a worktree. That is a placement instruction from my partner, so I used it without asking.

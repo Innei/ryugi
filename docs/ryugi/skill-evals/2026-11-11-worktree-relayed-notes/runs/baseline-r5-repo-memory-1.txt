@@ -1,0 +1,68 @@
+**Where to work.** The `Where to work` commands already ran at session start, and their results are in the situation: main checkout, HEAD on `main`, clean tree, no `EXPLORING` file. Per the skill I don't re-run them. Row 1 doesn't match, because this isn't a linked worktree. Row 2 does match. The project memory records the owner's standing instruction that changes under `hooks/` are made in a worktree because main is live. That instruction says where to work, so I follow it without asking. The skill treats it as the explicit request `EnterWorktree` requires, and I use the native tool, not `git worktree add`.
+
+**Message to partner:**
+> Project memory says you want changes under `hooks/` made in a worktree, because main is live. I'm creating one for this fix and will work there.
+
+**Tool call 1**
+```
+EnterWorktree(name: "fix-watch-subdir")
+```
+Assumed result: the worktree is created at `/Users/p/git/skillkit/.claude/worktrees/fix-watch-subdir` on a new branch from `main`, and the session's cwd switches to it.
+
+**Tool call 2: set up (Bash, in the worktree)**
+```
+ls package.json pnpm-lock.yaml package-lock.json yarn.lock 2>/dev/null; grep -n '"test"' package.json
+```
+Assumed result: `package.json` and `pnpm-lock.yaml` exist, and `"test": "node --test tests/"`.
+
+**Tool call 3: install (Bash)**
+```
+pnpm install --frozen-lockfile
+```
+Assumed result: success. I don't symlink or copy `node_modules` from the main checkout.
+
+**Tool call 4: baseline test run (Bash)**
+```
+pnpm test
+```
+Assumed result: all tests pass. If any had failed, I would report the failures and ask whether to go on.
+
+**Tool call 5: read the code (Read)**
+```
+Read(hooks/watch.cjs)
+Read(tests/hooks/test-watch.cjs)
+```
+Assumed result: line 10 is `const root = path.resolve(dir);`, followed by a non-recursive `fs.watch(root, ...)`. The test file has helpers for creating a temp dir and waiting for events.
+
+**Tool call 6: failing test first (Edit on `tests/hooks/test-watch.cjs`)**
+
+I append a test, "detects files created under a subdirectory". It makes a temp dir with `sub/`, starts the watcher, writes `sub/new.txt`, and asserts the watcher reports it.
+
+**Tool call 7: confirm it fails (Bash)**
+```
+node --test tests/hooks/test-watch.cjs
+```
+Assumed result: the new test fails because no event arrives for `sub/new.txt`, and the others pass.
+
+**Tool call 8: fix (Edit on `hooks/watch.cjs`)**
+
+The edit replaces the single-root watch at line 10 with a watch over the root and every subdirectory, including directories created later. It uses `fs.watch(root, { recursive: true }, ...)`, with a fallback that walks and watches each directory where `recursive` isn't supported. I'm assuming the existing event handler is reused unchanged.
+
+**Tool call 9: verify (Bash)**
+```
+pnpm test
+```
+Assumed result: all tests pass, including the new one.
+
+**Tool call 10: check what changed (Bash)**
+```
+git status --porcelain
+```
+Assumed result: only `M hooks/watch.cjs` and `M tests/hooks/test-watch.cjs`.
+
+**Final message to partner:**
+> Fixed in the worktree `.claude/worktrees/fix-watch-subdir` (branch `worktree-fix-watch-subdir`). The watcher at `hooks/watch.cjs:10` resolved a single root and watched it non-recursively, so files created in subdirectories were missed. It now watches the root and its subdirectories, including ones created later. I added a regression test in `tests/hooks/test-watch.cjs`. It failed before the fix, and the full suite passes after it.
+>
+> Left uncommitted in the worktree: `hooks/watch.cjs` and `tests/hooks/test-watch.cjs`. Nothing is pushed, and the main checkout is untouched. Tell me if you want me to commit and push, or open a PR. I'll remove the worktree once the change has landed.
+
+SUMMARY: The work happened in a new native worktree (`EnterWorktree`, `fix-watch-subdir`), not in place on main, because the project memory records the owner's instruction that `hooks/` changes go in a worktree while main is live.

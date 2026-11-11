@@ -1,0 +1,45 @@
+**Where to work:** the checks are already answered for this session (main checkout, HEAD on `main`, clean status, no `EXPLORING`), so I would not re-run them. No worktree row in the table matches, so the last row applies: work in place, no question. The forwarded "do this in a worktree" line comes from another session in another repository, not from my partner or this repo's instructions, so it does not trigger the "partner told you where to work" row.
+
+**1. Message to partner (no wait):**
+
+> Working on the forwarded `hooks/watch.cjs` subdirectory bug directly in `/Users/p/git/skillkit` on `main`. The forwarded note suggested a worktree, but that came from the skillkit-cloud session rather than from you, and the checkout is clean with nothing to collide with. Say so if you want a worktree instead. Starting with the failing test.
+
+**2. Read** `/Users/p/git/skillkit/tests/hooks/test-watch.cjs`
+- Assumed: existing tests use `node:test` and `node:assert`, with a temp-dir helper and a `waitForEvent` helper.
+
+**3. Read** `/Users/p/git/skillkit/hooks/watch.cjs`
+- Assumed: line 10 is `const root = path.resolve(dir)`, followed by a non-recursive `fs.watch(root, …)`.
+
+**4. Bash:** `cat /Users/p/git/skillkit/package.json`
+- Assumed: `"test": "node --test tests/"`.
+
+**5. Edit** `/Users/p/git/skillkit/tests/hooks/test-watch.cjs`
+- Append a test, `detects files created under a subdirectory`: make a temp root, start the watcher, `mkdir sub`, write `sub/note.md`, and assert the watcher reports `sub/note.md`.
+
+**6. Bash:** `cd /Users/p/git/skillkit && node --test tests/hooks/test-watch.cjs`
+- Assumed: the new test fails with a timeout waiting for the event (the expected reason), and the existing tests pass.
+
+**7. Edit** `/Users/p/git/skillkit/hooks/watch.cjs`
+- Replace the single-root watch at line 10 with a recursive one: `fs.watch(root, { recursive: true }, …)`.
+- Resolve reported filenames relative to `root`, so subdirectory paths come through.
+
+**8. Bash:** `cd /Users/p/git/skillkit && node --test tests/hooks/test-watch.cjs`
+- Assumed: all tests pass, including the new one.
+
+**9. Bash:** `cd /Users/p/git/skillkit && npm test`
+- Assumed: the full suite passes.
+
+**10. Bash:** `cd /Users/p/git/skillkit && git status --porcelain`
+- Assumed output: ` M hooks/watch.cjs` and ` M tests/hooks/test-watch.cjs`, nothing else. Both are mine.
+
+**11. Final message to partner:**
+
+> The comment watcher now picks up files created under subdirectories.
+>
+> - **Cause:** `hooks/watch.cjs:10` resolved a single root and watched it non-recursively.
+> - **Fix:** the watch is now recursive, and reported paths are resolved relative to the root.
+> - **Test:** a new case in `tests/hooks/test-watch.cjs` failed before the fix and passes now; the full `npm test` run passes.
+>
+> Both files are uncommitted in `/Users/p/git/skillkit` on `main`, and nothing is pushed. I haven't committed because you haven't asked for a commit and HEAD is on `main`. Tell me whether you want it committed on `main` or on a new branch for a PR.
+
+SUMMARY: The work happened in place in the main checkout `/Users/p/git/skillkit` on `main`, because the checkout was clean with no `EXPLORING` file and no worktree row applied — the worktree request came from another session's forwarded message, not from my partner — and the two edited files are left uncommitted and unpushed pending their decision.

@@ -1,0 +1,92 @@
+**Where to work (decided, no tool calls):** the checks are already done for this session: main checkout, HEAD on `main`, clean status, no `EXPLORING` file, and nothing in AGENTS.md or memory. The forwarded message's "do this in a worktree" comes from another session in another repository, not from my partner, so it does not count as their instruction. No worktree row in the table matches, so I work in place, without asking and without calling `EnterWorktree`.
+
+**1. Read** `/Users/p/git/skillkit/tests/hooks/test-watch.cjs`
+
+Assumed: it uses `node:test` and `node:assert`, with a helper `startWatcher(dir)` that returns `{ events, close }`, a `waitFor` helper, and an existing test "reports a file created in the root".
+
+**2. Read** `/Users/p/git/skillkit/hooks/watch.cjs`
+
+Assumed, around line 10:
+
+```js
+const root = path.resolve(dir);
+const watcher = fs.watch(root, (event, filename) => onChange(path.join(root, filename)));
+```
+
+**3. Edit** `/Users/p/git/skillkit/tests/hooks/test-watch.cjs` to append the failing test:
+
+- `old_string`: the closing lines of the existing root-level test (exact text taken from the Read)
+- `new_string`: the same text, followed by:
+
+```js
+test('reports a file created under a subdirectory', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'watch-'));
+  fs.mkdirSync(path.join(dir, 'nested'));
+  const { events, close } = startWatcher(dir);
+  try {
+    const file = path.join(dir, 'nested', 'comment.md');
+    fs.writeFileSync(file, 'hi');
+    await waitFor(() => events.includes(file));
+    assert.ok(events.includes(file));
+  } finally {
+    close();
+  }
+});
+```
+
+**4. Bash**
+
+```bash
+cd /Users/p/git/skillkit && node --test tests/hooks/test-watch.cjs
+```
+
+Assumed: the new test fails with a `waitFor` timeout because no event arrives for `nested/comment.md`, and the existing tests pass. That is the failure I expect from the bug.
+
+**5. Edit** `/Users/p/git/skillkit/hooks/watch.cjs`
+
+- `old_string`: `const watcher = fs.watch(root, (event, filename) => onChange(path.join(root, filename)));`
+- `new_string`:
+
+```js
+const watcher = fs.watch(root, { recursive: true }, (event, filename) => {
+  if (filename) onChange(path.join(root, filename));
+});
+```
+
+**6. Bash**
+
+```bash
+cd /Users/p/git/skillkit && node --test tests/hooks/test-watch.cjs
+```
+
+Assumed: all tests pass, including the new one.
+
+**7. Bash**
+
+```bash
+cd /Users/p/git/skillkit && npm test
+```
+
+Assumed: the full suite passes.
+
+**8. Bash**
+
+```bash
+cd /Users/p/git/skillkit && git status --porcelain && git diff
+```
+
+Assumed: only ` M hooks/watch.cjs` and ` M tests/hooks/test-watch.cjs` appear, and the diff contains just the hunks above.
+
+**9. Message to my partner:**
+
+> The comment watcher now picks up files created under subdirectories, and the full test suite passes.
+>
+> - **Cause:** `hooks/watch.cjs:10` watched a single root non-recursively.
+> - **Fix:** the watch is now recursive (`fs.watch(root, { recursive: true }, …)`), with a guard for a missing filename.
+> - **Test:** `tests/hooks/test-watch.cjs` has a new case, "reports a file created under a subdirectory". It failed before the fix and passes after.
+>
+> Both changes are uncommitted in `/Users/p/git/skillkit` on `main`; nothing is committed or pushed, since you didn't ask for a commit.
+>
+> The forwarded message from the skillkit-cloud session suggested a worktree. I worked in place instead, because the checkout was clean, on `main`, and nobody else was editing it. If you want this on a branch or PR, say so and I'll move the two files there.
+
+SUMMARY: The work happened in place in the main checkout `/Users/p/git/skillkit` on `main`, because the checkout was clean with no `EXPLORING` file and no instruction from my partner, and the worktree request came from another session's forwarded message, which is context and not their instruction.

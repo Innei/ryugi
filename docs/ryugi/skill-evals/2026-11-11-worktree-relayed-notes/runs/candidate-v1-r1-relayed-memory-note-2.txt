@@ -1,0 +1,63 @@
+Assumption: the forwarded message is not my partner's instruction, and another project's memory note is not this repo's instruction. The table decides.
+
+## Tool calls, in order
+
+**1. Bash**: where-to-work check, run once per session
+```bash
+cd /Users/p/git/skillkit && git rev-parse --path-format=absolute --git-dir --git-common-dir; git rev-parse --show-superproject-working-tree; git branch --show-current; git status --porcelain; cat .ryugi/sdd/*/EXPLORING
+```
+Assumed output, matching the situation:
+```
+/Users/p/git/skillkit/.git
+/Users/p/git/skillkit/.git
+main
+```
+- The superproject line is empty and the status is empty.
+- `cat` fails with "no matches found" (no EXPLORING file).
+
+Reading the table, first matching row first:
+- `--git-dir` equals `--git-common-dir`, so this is not a linked worktree.
+- My partner gave no location, and AGENTS.md and this project's memory say nothing.
+- I need no other branch or commit, and nobody else's edits exist.
+- No EXPLORING file exists.
+- The change doesn't touch dependencies.
+- HEAD is on the default branch.
+- The last row applies: **work in place, no question, no worktree.** The "live symlink, edit in a worktree" note comes from skillkit-cloud's memory, so it isn't an instruction for this repo.
+
+**2. Read** `/Users/p/git/skillkit/hooks/watch.cjs`, to see the root resolution at line 10.
+
+**3. Read** `/Users/p/git/skillkit/tests/hooks/test-watch.cjs`, to see the existing test style.
+
+**4. Edit** `tests/hooks/test-watch.cjs`: add a test that creates a temp root, creates a file under `sub/dir/`, and asserts the watcher reports it. This is the failing test.
+
+**5. Bash**: confirm the test fails
+```bash
+node tests/hooks/test-watch.cjs
+```
+Assumed result: the new test fails because the subdirectory file isn't reported.
+
+**6. Edit** `hooks/watch.cjs`: replace the single root resolved at line 10 with a recursive watch (or one watcher per subdirectory, including newly created ones).
+
+**7. Bash**: run the tests again
+```bash
+node tests/hooks/test-watch.cjs
+```
+Assumed result: all tests pass, including the new one.
+
+**8. Bash**: check what changed
+```bash
+git status --porcelain && git diff
+```
+Assumed result: only `hooks/watch.cjs` and `tests/hooks/test-watch.cjs` are modified.
+
+## Message to my partner
+
+> Fixed the comment watcher: it now picks up files created under subdirectories. I added a failing test in `tests/hooks/test-watch.cjs`, then changed `hooks/watch.cjs` (the single root at line 10). The watch tests pass.
+>
+> I worked directly in the main checkout on `main`, not a worktree. The checkout was clean and nobody else was editing it. The forwarded note about a worktree came from skillkit-cloud's memory, not this repo's instructions. Since `~/.claude/skills/skillkit` is a live symlink, the fix is already active.
+>
+> Both changes are **uncommitted** on `main` in `/Users/p/git/skillkit`, and nothing is pushed. Want me to commit them (staging those two paths by name), or put them on a branch?
+
+I then stop and wait for the answer.
+
+SUMMARY: Worked in place in /Users/p/git/skillkit on `main` with no worktree, because the checkout was clean with no other editors and no table row calls for one; the forwarded "use a worktree" note was another project's memory, not an instruction.

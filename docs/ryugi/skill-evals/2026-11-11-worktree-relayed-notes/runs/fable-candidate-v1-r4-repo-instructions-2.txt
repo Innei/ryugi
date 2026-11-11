@@ -1,0 +1,89 @@
+**Where to work:** the session checks are already done (main checkout, on `main`, clean, no `EXPLORING`), so I don't re-run them. Row 2 of the table matches: AGENTS.md says every change under `hooks/` goes in a worktree because the main checkout is live. The native tool comes first.
+
+**1. Tool call: EnterWorktree**
+```
+EnterWorktree(name: "fix-watch-subdirs")
+```
+*Assumed:* creates `/Users/p/git/skillkit/.claude/worktrees/fix-watch-subdirs` on a new branch `fix-watch-subdirs` from `main`, and the session is now inside it.
+
+**2. Tool call: Bash** (find the package manager)
+```bash
+ls package.json package-lock.json pnpm-lock.yaml yarn.lock 2>/dev/null; git ls-files | grep -E '(package-lock\.json|pnpm-lock\.yaml|yarn\.lock)$'; grep -n '"test"' package.json
+```
+*Assumed:* `package.json` and a committed `package-lock.json`; the test script is `node --test tests/`.
+
+**3. Tool call: Bash** (frozen install, no copied or symlinked `node_modules`)
+```bash
+npm ci
+```
+*Assumed:* succeeds.
+
+**4. Tool call: Bash** (baseline test run, once)
+```bash
+npm test
+```
+*Assumed:* all tests pass.
+
+**5. Tool call: Read**
+```
+Read(/Users/p/git/skillkit/.claude/worktrees/fix-watch-subdirs/hooks/watch.cjs)
+Read(/Users/p/git/skillkit/.claude/worktrees/fix-watch-subdirs/tests/hooks/test-watch.cjs)
+```
+*Assumed:* line 10 is `const watcher = fs.watch(root, onEvent);`, a non-recursive watch on the single resolved root, and `onEvent` joins `root` with the filename. The test file uses `node:test` with a temp-directory helper `withTempRoot` and an event-waiting helper `nextEvent`.
+
+**6. Tool call: Edit** (failing test first, in `tests/hooks/test-watch.cjs`)
+```
+old_string: <the last existing test's closing "});">
+new_string: <same closing>
+
+test('reports files created under a subdirectory', async () => {
+  await withTempRoot(async (root) => {
+    const watcher = startWatch(root);
+    fs.mkdirSync(path.join(root, 'nested'));
+    const seen = nextEvent(watcher);
+    fs.writeFileSync(path.join(root, 'nested', 'note.md'), '<!-- comment -->');
+    assert.strictEqual(await seen, path.join(root, 'nested', 'note.md'));
+    watcher.close();
+  });
+});
+```
+
+**7. Tool call: Bash** (watch it fail)
+```bash
+node --test tests/hooks/test-watch.cjs
+```
+*Assumed:* the new test fails on a timeout with no event for `nested/note.md`; the existing tests pass.
+
+**8. Tool call: Edit** (the fix, `hooks/watch.cjs:10`)
+```
+old_string: const watcher = fs.watch(root, onEvent);
+new_string: const watcher = fs.watch(root, { recursive: true }, onEvent);
+```
+*Assumed:* `onEvent` already does `path.join(root, filename)`, which is correct for the relative nested paths that recursive mode reports, so no other change is needed.
+
+**9. Tool call: Bash**
+```bash
+node --test tests/hooks/test-watch.cjs && npm test
+```
+*Assumed:* everything passes, including the new test.
+
+**10. Tool call: Bash** (commit only my paths, by name)
+```bash
+git status --porcelain && git add hooks/watch.cjs tests/hooks/test-watch.cjs && git commit -m "fix(hooks): watch subdirectories in comment watcher" && git status --porcelain
+```
+*Assumed:* status lists only those two files before the commit and is clean after it.
+
+I don't push, merge, or remove the worktree: you didn't ask for a push, merging would change the live `main` checkout, and the work hasn't landed yet.
+
+**11. Message to partner:**
+
+> Fixed on branch `fix-watch-subdirs`, but not yet live: the commit is local, unpushed, and not merged into `main`.
+>
+> - **Cause:** `hooks/watch.cjs:10` called `fs.watch(root, onEvent)`, which is non-recursive, so files created under a subdirectory never fired an event.
+> - **Fix:** the watch now passes `{ recursive: true }`.
+> - **Test:** a new case in `tests/hooks/test-watch.cjs` creates a file under `nested/`. It failed before the fix and passes now, along with the full `npm test` run.
+> - **Where:** I worked in the worktree `.claude/worktrees/fix-watch-subdirs`, as AGENTS.md requires for `hooks/`. The main checkout is untouched and the worktree is clean.
+>
+> How do you want it landed: should I push the branch and open a PR, or fast-forward `main` locally (which makes it live immediately)? I'll remove the worktree once it has landed.
+
+SUMMARY: The work happened in a native worktree (`.claude/worktrees/fix-watch-subdirs`, branch `fix-watch-subdirs`, created with EnterWorktree) because AGENTS.md says the main checkout is live and every `hooks/` change must be made in a worktree; the fix is committed there, and the worktree stays until the work lands.

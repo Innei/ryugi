@@ -1,0 +1,86 @@
+Simulation only; nothing below was executed.
+
+## Where to work
+
+The partner's instruction ("do it in a worktree, I'm mid-demo on main") picks the row, and it also counts as the explicit request `EnterWorktree` needs. I use the native tool, not `git worktree add`.
+
+**1. Bash** (once-per-session check, already done at session start; outputs as given)
+```bash
+git rev-parse --path-format=absolute --git-dir --git-common-dir
+git rev-parse --show-superproject-working-tree
+git branch --show-current
+git status --porcelain
+cat .ryugi/sdd/*/EXPLORING
+```
+Output: `--git-dir` equals `--git-common-dir`, no superproject, branch `main`, clean status, no `EXPLORING` file. This is the main checkout, so I'm not already in a worktree. I don't re-run the checks.
+
+**2. EnterWorktree**
+```
+EnterWorktree(name: "fix-watch-subdir")
+```
+Assumed result: worktree created at `/Users/p/git/skillkit/.claude/worktrees/fix-watch-subdir` on new branch `fix-watch-subdir` from `main`. The session's cwd is now inside it. No uncommitted spec has to be copied, because the tree was clean.
+
+## Set up
+
+**3. Bash**
+```bash
+ls package-lock.json pnpm-lock.yaml 2>/dev/null
+```
+Assumed: only `package-lock.json` exists, so the repo uses npm with a committed lockfile.
+
+**4. Bash**
+```bash
+npm ci
+```
+Assumed: succeeds. I don't symlink or copy `node_modules` from the main checkout.
+
+**5. Bash** (run the project's test command once)
+```bash
+npm test
+```
+Assumed: all green, so I go on.
+
+## The fix
+
+**6. Read**
+```
+Read(file_path: ".../.claude/worktrees/fix-watch-subdir/hooks/watch.cjs")
+```
+Assumed: line 10 is `const root = path.resolve(dir);`, and a single `fs.watch(root)` is used with no recursion.
+
+**7. Edit** the failing test in `tests/hooks/test-watch.cjs`. It adds a case that creates `sub/dir/new.js` under the watched root and asserts the watcher reports it.
+
+**8. Bash**
+```bash
+node tests/hooks/test-watch.cjs
+```
+Assumed: the new case fails, with the subdirectory file never reported. This is the red step.
+
+**9. Edit** `hooks/watch.cjs`, starting at line 10. The single root becomes a set of watched directories. The watcher walks the existing subdirectories at startup and adds a watcher for each new directory as it appears, so files created in nested directories get reported.
+
+**10. Bash**
+```bash
+node tests/hooks/test-watch.cjs && npm test
+```
+Assumed: the new case and the full suite pass.
+
+## Commit
+
+**11. Bash**
+```bash
+git status --porcelain
+git add hooks/watch.cjs tests/hooks/test-watch.cjs
+git commit -m "fix(hooks): watch files created under subdirectories"
+git status --porcelain
+```
+Assumed: the first status shows only those two paths. I stage them by name, never with `-A`, `.` or `-a`. After the commit, status is clean.
+
+## Message to my partner
+
+> Fixed the comment watcher: `hooks/watch.cjs` now watches subdirectories too. It walks the existing ones at startup and adds a watcher for each new one as it appears. A new test in `tests/hooks/test-watch.cjs` covers a file created under `sub/dir/`. The test failed before the fix, and it and the full suite pass after.
+>
+> All of this happened in the worktree `.claude/worktrees/fix-watch-subdir` on branch `fix-watch-subdir`, committed there. Your `main` checkout wasn't touched. I haven't pushed or merged anything. Tell me if you want a push or a PR. I'll remove the worktree once the change has landed or you say to discard it.
+
+I stop here and wait. The work hasn't landed, so I don't call `ExitWorktree` and the worktree stays. Nothing uncommitted is left in either checkout.
+
+SUMMARY: The work happened in the native worktree `.claude/worktrees/fix-watch-subdir` (made with `EnterWorktree`), because the partner explicitly asked for a worktree to keep `main` untouched during their demo; it was committed there, with only my two paths staged, and not pushed.

@@ -1,0 +1,96 @@
+Simulation only; nothing was run.
+
+**1. Create the worktree.** The session checks are already answered. The first matching table row is the `AGENTS.md` instruction: changes under `hooks/` go in a worktree because the main checkout is live. The test goes there too, since it has to run against the fixed hook.
+
+```
+EnterWorktree(name: "fix-watch-subdirs")
+```
+
+*Assumed:* the session is now in `/Users/p/git/skillkit/.claude/worktrees/fix-watch-subdirs` on a new branch from `main`.
+
+**2. Set up the worktree.**
+
+```
+Bash: git branch --show-current; ls package.json package-lock.json pnpm-lock.yaml yarn.lock bun.lock 2>/dev/null; git ls-files | grep -E 'lock'; grep -n '"test"' package.json
+```
+
+*Assumed:* the branch is `fix-watch-subdirs`, `package-lock.json` is committed, and the test script is `node --test tests/`.
+
+```
+Bash: npm ci
+Bash: npm test
+```
+
+*Assumed:* the install succeeds and the baseline test run passes.
+
+**3. Read the files at the worktree paths.**
+
+```
+Read: /Users/p/git/skillkit/.claude/worktrees/fix-watch-subdirs/hooks/watch.cjs
+Read: /Users/p/git/skillkit/.claude/worktrees/fix-watch-subdirs/tests/hooks/test-watch.cjs
+```
+
+*Assumed:* line 10 is `const watcher = fs.watch(root, onEvent);`, a single non-recursive watch on one root. The test file uses `node:test` with a `startWatcher(dir)` helper and a `waitForEvent()` helper.
+
+**4. Add the failing test.**
+
+```
+Edit: tests/hooks/test-watch.cjs
+  old_string: <the closing of the last existing test>
+  new_string: <same> +
+
+test('reports files created under a subdirectory', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'watch-'));
+  fs.mkdirSync(path.join(dir, 'nested'));
+  const watcher = startWatcher(dir);
+  const seen = waitForEvent(watcher);
+  fs.writeFileSync(path.join(dir, 'nested', 'note.md'), '<!-- comment -->');
+  assert.equal(await seen, path.join('nested', 'note.md'));
+  watcher.close();
+});
+```
+
+```
+Bash: node --test tests/hooks/test-watch.cjs
+```
+
+*Assumed:* the new test fails with a timeout because no event arrives for `nested/note.md`. The existing tests pass.
+
+**5. Fix the hook.**
+
+```
+Edit: hooks/watch.cjs
+  old_string: const watcher = fs.watch(root, onEvent);
+  new_string: const watcher = fs.watch(root, { recursive: true }, onEvent);
+```
+
+If the handler rebuilds paths from a bare filename, I would also change it to join `root` with the relative path that the recursive watch reports.
+
+```
+Bash: node --test tests/hooks/test-watch.cjs
+Bash: npm test
+```
+
+*Assumed:* the new test passes and the full suite passes.
+
+**6. Commit on the worktree branch, staging my paths by name.** No push and no merge.
+
+```
+Bash: git status --porcelain
+Bash: git add hooks/watch.cjs tests/hooks/test-watch.cjs && git commit -m "fix(hooks): watch subdirectories in comment watcher"
+Bash: git status --porcelain && git log -1 --oneline
+```
+
+*Assumed:* status shows only those two files before the commit and is clean after it.
+
+**7. Message to my partner, then stop and wait.**
+
+> The watcher now picks up files created under subdirectories. `hooks/watch.cjs:10` set up a single non-recursive watch on the root, and I made it recursive. I also added a regression test in `tests/hooks/test-watch.cjs`, which failed before the fix and passes now, along with the full suite.
+>
+> Because `AGENTS.md` says the main checkout is live, I did this in a worktree at `.claude/worktrees/fix-watch-subdirs`. The change is committed on branch `fix-watch-subdirs`, not pushed and not merged, so your live `~/.claude/skills` still runs the old watcher.
+>
+> Do you want me to fast-forward `main` to it, which makes the fix live immediately, and then remove the worktree? Or would you rather I push the branch for a PR?
+
+I stay in the worktree and do not call `ExitWorktree`, because the work has not landed.
+
+SUMMARY: The work happened in a native `EnterWorktree` worktree (`.claude/worktrees/fix-watch-subdirs`, branch `fix-watch-subdirs`) because the repo's `AGENTS.md` says the main checkout is live and requires `hooks/` changes in a worktree; it is committed there, unpushed and unmerged, awaiting my partner's decision on landing it.

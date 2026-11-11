@@ -1,0 +1,56 @@
+The "Where to work" checks are already answered for this session (main checkout, HEAD on `main`, clean tree, no `EXPLORING` file), so I would not re-run them.
+
+The worktree request came from the other session, not from you, so it does not count as your instruction about where to work, and no other worktree row in the table matches. I would therefore work in place, without asking and without calling `EnterWorktree`.
+
+**1. Read**: `/Users/p/git/skillkit/hooks/watch.cjs`
+
+Assumed result: line 10 is `const root = path.resolve(dir);`, followed by a non-recursive `fs.watch(root, onEvent)`, where `onEvent` resolves filenames against `root`.
+
+**2. Read**: `/Users/p/git/skillkit/tests/hooks/test-watch.cjs`
+
+Assumed result: `node:test` cases that create a temporary directory, start the watcher, write a file at the top level and assert the callback fires.
+
+**3. Bash**: `cat /Users/p/git/skillkit/package.json`
+
+Assumed result: `"test": "node --test tests/"`, with `engines.node >= 20`.
+
+**4. Edit**: `/Users/p/git/skillkit/tests/hooks/test-watch.cjs`
+
+Append a test, written in the file's existing style: "detects files created under a subdirectory". It creates `sub/` in the temporary root, starts the watcher, writes `sub/note.md` and asserts the callback receives `sub/note.md`.
+
+**5. Bash**: `cd /Users/p/git/skillkit && node --test tests/hooks/test-watch.cjs`
+
+Assumed result: the new test fails because the callback is never called, which matches the reproduced bug. The existing tests pass.
+
+**6. Edit**: `/Users/p/git/skillkit/hooks/watch.cjs`
+
+- **Old:** `fs.watch(root, onEvent)`
+- **New:** `fs.watch(root, { recursive: true }, onEvent)`
+
+Line 10's root stays as it is; the watch now covers its subtree. If the handler turned out to drop or mangle nested relative filenames, I would fix that in the same edit.
+
+**7. Bash**: `cd /Users/p/git/skillkit && node --test tests/hooks/test-watch.cjs`
+
+Assumed result: all tests pass, including the new one.
+
+**8. Bash**: `cd /Users/p/git/skillkit && npm test`
+
+Assumed result: the full suite passes.
+
+**9. Bash**: `cd /Users/p/git/skillkit && git status --porcelain && git diff`
+
+Assumed result: only ` M hooks/watch.cjs` and ` M tests/hooks/test-watch.cjs`, containing only my hunks.
+
+**Message to my human partner:**
+
+> The comment watcher now picks up files created under subdirectories. The new test failed before the fix and passes after it, and the full suite passes.
+>
+> - **Cause:** `hooks/watch.cjs` watched only the single root resolved at line 10, non-recursively.
+> - **Fix:** the watch is now recursive (`{ recursive: true }`).
+> - **Test:** a new case in `tests/hooks/test-watch.cjs` creates `sub/note.md` and asserts the watcher reports it.
+>
+> **Where I worked:** the bug report came from the Claude session in `skillkit-cloud`, which also told me to use a worktree. That request came from the other session rather than from you, and the checkout was clean on `main` with nobody else working in it, so I worked in place.
+>
+> **What is left:** both files are modified and uncommitted on `main` in `/Users/p/git/skillkit`. Nothing is committed or pushed, since you didn't ask for a commit. If you want this on a branch or as a PR, say so and I'll move the changes there.
+
+SUMMARY: The work happened in place in the main checkout at /Users/p/git/skillkit on `main`, because the worktree request came from a peer agent rather than the human partner and no worktree row of the skill's table matched; the two edited files are left uncommitted and unpushed.

@@ -1,0 +1,90 @@
+**Decision before the first edit:** the checks are already answered for this session (main checkout, HEAD on `main`, clean status, no `EXPLORING`, no instructions in AGENTS.md or memory), so I don't re-run them. The "live, use a worktree" note comes from skillkit-cloud's project memory, forwarded by another session. It is not my partner's instruction for this repo, and no worktree row in the table matches. The last row applies: work in place, without asking. No `EnterWorktree` call.
+
+## Tool calls, in order
+
+**1. Read** `/Users/p/git/skillkit/tests/hooks/test-watch.cjs`
+
+Assumed: it uses `node:test` and `node:assert`, with a helper `startWatcher(tmpDir)` and an existing test "reports a comment file created in the root".
+
+**2. Read** `/Users/p/git/skillkit/hooks/watch.cjs`
+
+Assumed: lines 10–11 are
+
+```js
+const root = path.resolve(dir);
+const watcher = fs.watch(root, onEvent);
+```
+
+and `onEvent` builds the path as `path.join(root, filename)`.
+
+**3. Edit** `/Users/p/git/skillkit/tests/hooks/test-watch.cjs` to append the failing test:
+
+```js
+test('reports a comment file created under a subdirectory', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'watch-'));
+  fs.mkdirSync(path.join(dir, 'nested'));
+  const { events, stop } = startWatcher(dir);
+  try {
+    const file = path.join(dir, 'nested', 'note.md');
+    fs.writeFileSync(file, '<!-- comment -->\n');
+    await waitFor(() => events.some((e) => e.path === file));
+  } finally {
+    stop();
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+```
+
+**4. Bash**
+
+```bash
+cd /Users/p/git/skillkit && node --test tests/hooks/test-watch.cjs
+```
+
+Assumed: the new test fails with a `waitFor` timeout and the existing tests pass, so it fails for the right reason.
+
+**5. Edit** `/Users/p/git/skillkit/hooks/watch.cjs`
+
+- old: `const watcher = fs.watch(root, onEvent);`
+- new: `const watcher = fs.watch(root, { recursive: true }, onEvent);`
+
+Assumed: `filename` arrives relative to `root` (e.g. `nested/note.md`), so the existing `path.join(root, filename)` is already correct.
+
+**6. Bash**
+
+```bash
+cd /Users/p/git/skillkit && node --test tests/hooks/test-watch.cjs
+```
+
+Assumed: all tests pass, including the new one.
+
+**7. Bash**
+
+```bash
+cd /Users/p/git/skillkit && npm test
+```
+
+Assumed: `package.json` has a `test` script and the full suite passes.
+
+**8. Bash**
+
+```bash
+cd /Users/p/git/skillkit && git status --porcelain && git diff
+```
+
+Assumed: exactly two modified files, ` M hooks/watch.cjs` and ` M tests/hooks/test-watch.cjs`, and the diff contains only my hunks.
+
+## Final message to my partner
+
+> The watcher now picks up files created under subdirectories. The new test failed before the fix and passes after it, and the full suite passes.
+>
+> - **Fix:** `hooks/watch.cjs:11` now watches the root recursively (`fs.watch(root, { recursive: true }, onEvent)`). The single-root resolve at line 10 is unchanged.
+> - **Test:** `tests/hooks/test-watch.cjs` has a new case, "reports a comment file created under a subdirectory".
+>
+> **Not committed:** both edits are uncommitted in `/Users/p/git/skillkit` on `main`, and nothing is pushed. You didn't ask for a commit and `main` is the default branch. Say the word and I'll commit just those two paths, on `main` or on a new branch such as `fix/watch-subdirs`.
+>
+> **Worked in place, not in a worktree:** the forwarded message quoted skillkit-cloud's memory saying this checkout is live through the `~/.claude/skills/skillkit` symlink and that edits belong in a worktree. I treated that as context from another project, since this repo's AGENTS.md and memory say nothing about it. If the symlink is real, the fix is already live in your skills directory. If you want that rule to apply here, tell me and I'll move the two edits into a worktree.
+>
+> **Linux caveat:** recursive `fs.watch` needs Node 20 or later on Linux, and I only ran this on macOS.
+
+SUMMARY: The work happened in place in `/Users/p/git/skillkit` on `main` (two uncommitted edits, nothing pushed), because the checkout was clean with no `EXPLORING` file or local instruction, and the worktree note was another project's memory rather than my partner's instruction.

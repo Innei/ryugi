@@ -1,0 +1,75 @@
+Simulated trace, in order.
+
+**1. Where-to-work check (once per session)**
+
+```bash
+git rev-parse --path-format=absolute --git-dir --git-common-dir
+git rev-parse --show-superproject-working-tree
+git branch --show-current
+git status --porcelain
+cat .ryugi/sdd/*/EXPLORING
+```
+Output, as given: `--git-dir` equals `--git-common-dir` (the main checkout), no superproject, branch `main`, clean status, no `EXPLORING` file.
+
+**Decision:**
+- Row 1 doesn't match, because this is the main checkout.
+- Row 2 does match. AGENTS.md says "Make every change under hooks/ and skills/ in a worktree," and the main checkout is live-symlinked into `~/.claude/skills`. That is an instruction on where to work, so I follow it.
+- The skill treats that instruction as the explicit request `EnterWorktree` requires, so I don't ask.
+- I don't run `git worktree add` by hand. I use the native tool.
+
+**2. Tool call**
+
+```
+EnterWorktree(name: "fix-watch-subdir")
+```
+Assumed result: the worktree is created at `/Users/p/git/skillkit/.claude/worktrees/fix-watch-subdir` on a new branch from `main`. The session's cwd is now there.
+
+**3. Set up (this is a worktree I just created to develop and test in)**
+
+```bash
+ls package.json pnpm-lock.yaml package-lock.json
+```
+Assumed: `package.json` and `pnpm-lock.yaml` are committed.
+
+```bash
+pnpm install --frozen-lockfile
+```
+Assumed: succeeds. I don't symlink or copy `node_modules`.
+
+```bash
+node tests/hooks/test-watch.cjs
+```
+Assumed: the baseline passes. If it failed, I would report the failures and ask whether to go on.
+
+**4. Edits (paths inside the worktree, never the main checkout)**
+
+- `Read` `.claude/worktrees/fix-watch-subdir/hooks/watch.cjs` to see line 10 and its surroundings.
+- `Edit` `.../tests/hooks/test-watch.cjs`. Add a failing test that starts the watcher on a temp root, creates `sub/dir/file.txt`, and asserts the watcher reports it.
+- `Bash`: `node tests/hooks/test-watch.cjs`. Assumed: the new test fails because the subdirectory file is never reported. This confirms the red step.
+- `Edit` `.../hooks/watch.cjs` around line 10. Replace the single resolved root with a recursive watch over the root, so files created under any subdirectory are picked up.
+- `Bash`: `node tests/hooks/test-watch.cjs`. Assumed: all tests pass, including the new one.
+
+**5. Check what's left**
+
+```bash
+git status --porcelain
+```
+Assumed: only `M hooks/watch.cjs` and `M tests/hooks/test-watch.cjs`.
+
+I don't commit, push, or remove the worktree. You asked for a fix, not a commit, and the changes exist only in this worktree.
+
+**6. Message to my partner**
+
+> Fixed the comment watcher so it now picks up files created under subdirectories. `hooks/watch.cjs` resolved a single root at line 10. It now watches that root recursively.
+>
+> I added a regression test in `tests/hooks/test-watch.cjs`. It failed before the fix and passes now, along with the existing tests.
+>
+> Because AGENTS.md says the main checkout is live under `~/.claude/skills`, I worked in a worktree: `/Users/p/git/skillkit/.claude/worktrees/fix-watch-subdir`, on branch `fix-watch-subdir`.
+>
+> **Left there:** the two modified files above, uncommitted and not pushed. `main` is untouched.
+>
+> Do you want me to commit them on that branch, and push or open a PR? Once the work has landed, I'll remove the worktree.
+
+I then stop and wait for the answer.
+
+SUMMARY: The work happened in a native worktree (`EnterWorktree`, `fix-watch-subdir`) because AGENTS.md requires changes under `hooks/` to be made in a worktree, since the main checkout is live-symlinked into `~/.claude/skills`.

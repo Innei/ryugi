@@ -1,0 +1,73 @@
+I'm following your instruction to use a worktree, which is the second row of the skill's table. I'm using the native `EnterWorktree` tool, not `git worktree add`.
+
+**Tool call 1: Bash** (the once-per-session check from the skill)
+```bash
+git rev-parse --path-format=absolute --git-dir --git-common-dir; git rev-parse --show-superproject-working-tree; git branch --show-current; git status --porcelain; cat .ryugi/sdd/*/EXPLORING
+```
+Output given in the situation: both dirs are `/Users/p/git/skillkit/.git`, no superproject, branch `main`, clean status, no `EXPLORING` file. This is the main checkout, so I need to create the worktree.
+
+**Tool call 2: EnterWorktree**
+```
+EnterWorktree(name: "fix-watch-subdir")
+```
+Assumed result: the session is now in `/Users/p/git/skillkit/.claude/worktrees/fix-watch-subdir` on a new branch from `main`'s HEAD. `main` is untouched, so your demo is safe. Nothing uncommitted needs copying over, because the repro was only a read.
+
+**Tool call 3: Bash** (set up, to see which package manager the repo uses)
+```bash
+ls package.json package-lock.json pnpm-lock.yaml yarn.lock 2>/dev/null
+```
+Assumed output: `package.json` and `pnpm-lock.yaml`.
+
+**Tool call 4: Bash** (frozen install, since the lockfile is committed; no `node_modules` copying or symlinking)
+```bash
+pnpm install --frozen-lockfile
+```
+Assumed result: success.
+
+**Tool call 5: Bash** (run the project's test command once as a baseline)
+```bash
+pnpm test
+```
+Assumed result: all tests pass. If anything had failed, I'd stop and ask you whether to go on.
+
+**Tool call 6: Read** `hooks/watch.cjs`, around line 10 and its callers, to see how the single root is resolved.
+
+**Tool call 7: Read** `tests/hooks/test-watch.cjs`, to match the existing test style.
+
+**Tool call 8: Edit** `tests/hooks/test-watch.cjs`
+Add a failing test: create a temp root, create `sub/dir/new.js` after the watcher starts, and assert the watcher reports it.
+
+**Tool call 9: Bash**
+```bash
+node tests/hooks/test-watch.cjs
+```
+Assumed result: the new test fails because the file under the subdirectory is never seen, matching the bug.
+
+**Tool call 10: Edit** `hooks/watch.cjs`
+Replace the single-root resolution at line 10 with recursive watching. That means watching the root and every subdirectory, and also watching directories created later. I'd use `fs.watch(..., { recursive: true })` where supported, with a manual per-directory fallback.
+
+**Tool call 11: Bash**
+```bash
+node tests/hooks/test-watch.cjs && pnpm test
+```
+Assumed result: the new test and the full suite both pass.
+
+**Tool call 12: Bash** (stage my paths by name, never `git add -A`, `git add .` or `git commit -a`, then commit on the worktree branch)
+```bash
+git add hooks/watch.cjs tests/hooks/test-watch.cjs
+git commit -m "fix(hooks): watch files created under subdirectories"
+git status --porcelain
+```
+Assumed result: the commit succeeds and status is clean. I don't push or open a PR, since you didn't ask for one.
+
+**Message to partner:**
+> Fixed in a worktree, so `main` is untouched for your demo.
+> - Worktree: `.claude/worktrees/fix-watch-subdir`, on branch `worktree-fix-watch-subdir`.
+> - Cause: `hooks/watch.cjs:10` resolved a single root, so files created under subdirectories were never seen. The watcher now covers subdirectories, including ones created later.
+> - Tests: I added a regression test in `tests/hooks/test-watch.cjs`. It failed before the fix, and it and the full suite pass after.
+> - State: committed locally on that branch and not pushed. Nothing uncommitted is left in either checkout.
+> - Cleanup: I'll remove the worktree once this has landed or you tell me to discard it. Let me know if you want me to push and open a PR.
+
+I'd then stop and wait for you.
+
+SUMMARY: The work happened in a native `EnterWorktree` worktree (`.claude/worktrees/fix-watch-subdir`) off `main`, because you explicitly asked for a worktree and were mid-demo on `main`.

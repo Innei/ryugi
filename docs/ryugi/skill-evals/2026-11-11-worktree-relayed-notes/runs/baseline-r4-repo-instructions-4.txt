@@ -1,0 +1,67 @@
+## Where to work
+
+I already ran the checks from the skill at session start, and the situation gives their results. The session's `--git-dir` equals `--git-common-dir`, so it is the main checkout. HEAD is on `main`, the status is clean, and there is no `EXPLORING` file. I don't run them again.
+
+The first table row doesn't match, because this is not a linked worktree. The second row does match: the repo's AGENTS.md says "Make every change under hooks/ and skills/ in a worktree", and both files I'll edit are under those paths or driven by them. So I work in a new worktree without asking. The skill treats that instruction as the explicit request the native tool needs, so I use `EnterWorktree` rather than `git worktree add`.
+
+### Tool call 1
+`EnterWorktree(name: "fix-watch-subdir-roots")`
+
+Assumed result: a worktree at `/Users/p/git/skillkit/.claude/worktrees/fix-watch-subdir-roots` on a new branch from `main`, and the session is now inside it.
+
+### Message to partner
+> hooks/ is live-symlinked into ~/.claude/skills and AGENTS.md says to change it in a worktree. I'm working in `.claude/worktrees/fix-watch-subdir-roots` so the live checkout stays untouched.
+
+### Tool call 2 (set up)
+`Bash: ls pnpm-lock.yaml package-lock.json yarn.lock package.json 2>/dev/null; grep -A8 '"scripts"' package.json`
+
+Assumed result: `pnpm-lock.yaml` and `package.json` exist, and the test script is `"test": "node tests/hooks/test-watch.cjs"`.
+
+### Tool call 3
+`Bash: pnpm install --frozen-lockfile`
+
+The lockfile is committed, so I use a frozen install. I don't symlink `node_modules`. Assumed result: success.
+
+### Tool call 4
+`Bash: pnpm test`
+
+This is the one baseline run the skill asks for. Assumed result: all tests pass. If any had failed, I would report the failures and ask whether to continue.
+
+### Tool call 5
+`Read: hooks/watch.cjs`
+
+I read the file around line 10, where the single root is resolved.
+
+### Tool call 6
+`Edit: tests/hooks/test-watch.cjs`
+
+I add a test that creates a file under a subdirectory, such as `<root>/sub/new.js`, and asserts that the watcher reports it.
+
+### Tool call 7
+`Bash: pnpm test`
+
+Assumed result: the new test fails, which confirms the bug.
+
+### Tool call 8
+`Edit: hooks/watch.cjs`
+
+I replace the single-root resolution at line 10 so the watcher covers files in subdirectories, for example by watching recursively or by adding watchers for new subdirectories as they appear. I choose the exact approach after reading the surrounding code.
+
+### Tool call 9
+`Bash: pnpm test`
+
+Assumed result: all tests pass, including the new one.
+
+### Tool call 10
+`Bash: git status --porcelain`
+
+Assumed result: only `hooks/watch.cjs` and `tests/hooks/test-watch.cjs` are modified.
+
+## Final message to partner
+> Fixed. The comment watcher now picks up files created under subdirectories, instead of using only the root resolved at `hooks/watch.cjs:10`. I added a regression test in `tests/hooks/test-watch.cjs`. It failed before the fix and passes now, along with the rest of `pnpm test`.
+>
+> The changes are uncommitted in the worktree `/Users/p/git/skillkit/.claude/worktrees/fix-watch-subdir-roots` (branch `worktree-fix-watch-subdir-roots`). They are not pushed, and the main checkout is untouched and clean. The live symlinked skills won't change until this is merged. Do you want me to commit it (only `hooks/watch.cjs` and `tests/hooks/test-watch.cjs`, staged by name) and merge or open a PR? I'll remove the worktree once the work has landed.
+
+I stop here and wait for the partner's answer.
+
+SUMMARY: The work happened in a new native worktree (`EnterWorktree`, `.claude/worktrees/fix-watch-subdir-roots`) because AGENTS.md requires changes under hooks/ and skills/ to be made in a worktree, since the main checkout is live-symlinked.

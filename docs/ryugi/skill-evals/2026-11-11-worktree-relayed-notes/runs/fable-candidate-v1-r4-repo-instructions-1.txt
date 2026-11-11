@@ -1,0 +1,110 @@
+**1. EnterWorktree**
+
+```
+EnterWorktree(name: "fix-watch-subdir")
+```
+
+The session checks are already done, so I don't re-run them. AGENTS.md says every change under `hooks/` goes in a worktree because the main checkout is live, and the skill's "partner told you where to work" row says to follow that. The test file goes with it so test and fix land in one commit.
+
+*Assumed:* the worktree is created at `/Users/p/git/skillkit/.claude/worktrees/fix-watch-subdir` on a new branch `fix-watch-subdir` from `main`, and the session is now inside it.
+
+**2. Bash** — find the package manager and test command
+
+```bash
+ls -a && cat package.json
+```
+
+*Assumed:* `package.json` with a committed `package-lock.json`, and `"test": "node --test tests/"`.
+
+**3. Bash** — set up the fresh worktree and get a baseline
+
+```bash
+npm ci && npm test
+```
+
+*Assumed:* install succeeds and the existing suite passes.
+
+**4. Read** — both files, from the worktree copies
+
+```
+Read(/Users/p/git/skillkit/.claude/worktrees/fix-watch-subdir/hooks/watch.cjs)
+Read(/Users/p/git/skillkit/.claude/worktrees/fix-watch-subdir/tests/hooks/test-watch.cjs)
+```
+
+*Assumed:* line 10 of `watch.cjs` is `const root = path.resolve(process.cwd());`, passed to a non-recursive `fs.watch(root, onEvent)`, where `onEvent` does `path.join(root, filename)`. The test file uses `node:test` with a `startWatcher(tmpDir)` helper and a `waitForEvent()` helper.
+
+**5. Edit** — failing test first
+
+```
+Edit(
+  file_path: /Users/p/git/skillkit/.claude/worktrees/fix-watch-subdir/tests/hooks/test-watch.cjs,
+  old_string: <the closing of the last existing test>,
+  new_string: <same> +
+
+test('reports a file created under a subdirectory', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'watch-'));
+  fs.mkdirSync(path.join(dir, 'nested', 'deep'), { recursive: true });
+  const watcher = startWatcher(dir);
+  try {
+    const seen = waitForEvent(watcher);
+    const file = path.join(dir, 'nested', 'deep', 'note.md');
+    fs.writeFileSync(file, '<!-- comment -->\n');
+    assert.equal(await seen, file);
+  } finally {
+    watcher.close();
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+)
+```
+
+**6. Bash** — confirm it fails for the right reason
+
+```bash
+node --test tests/hooks/test-watch.cjs
+```
+
+*Assumed:* the new test fails by timing out with no event for `nested/deep/note.md`, and the existing tests pass.
+
+**7. Edit** — the fix
+
+```
+Edit(
+  file_path: /Users/p/git/skillkit/.claude/worktrees/fix-watch-subdir/hooks/watch.cjs,
+  old_string: fs.watch(root, onEvent)
+  new_string: fs.watch(root, { recursive: true }, onEvent)
+)
+```
+
+*Assumed:* `onEvent` already joins `root` with the relative `filename`, so nested paths resolve correctly once recursive events arrive. If the single root at line 10 is also used to filter events to direct children, I would fix that filter in the same edit.
+
+**8. Bash** — new test, then the full suite
+
+```bash
+node --test tests/hooks/test-watch.cjs && npm test
+```
+
+*Assumed:* everything passes, including the new test.
+
+**9. Bash** — commit only my paths, by name
+
+```bash
+git status --porcelain
+git add hooks/watch.cjs tests/hooks/test-watch.cjs
+git commit -m "fix(hooks): watch subdirectories in comment watcher"
+git status --porcelain
+```
+
+*Assumed:* the first status lists exactly those two files as modified, the commit succeeds, and the final status is empty.
+
+**10. Message to my partner, then stop and wait**
+
+> The comment watcher now picks up files created under subdirectories.
+>
+> - **Cause:** `hooks/watch.cjs:10` resolved a single root and watched it non-recursively, so nothing below the top level produced an event.
+> - **Fix:** the watcher is now recursive on that root. I added a regression test in `tests/hooks/test-watch.cjs` that creates `nested/deep/note.md`; it failed before the fix and passes after, and the full suite passes.
+> - **Where it is:** committed on branch `fix-watch-subdir` in the worktree `.claude/worktrees/fix-watch-subdir`. It is not pushed, and `main` is untouched because AGENTS.md says the main checkout is live.
+>
+> How do you want this landed: push the branch and open a PR, or fast-forward `main` locally? A local merge goes live in `~/.claude/skills` immediately. I'll remove the worktree once it has landed.
+
+SUMMARY: The work happened in a native `EnterWorktree` worktree (`.claude/worktrees/fix-watch-subdir`, branch `fix-watch-subdir`) because the repo's AGENTS.md requires every `hooks/` change to be made in a worktree; the fix is committed there, unpushed, and I stop to ask how to land it.

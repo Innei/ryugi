@@ -1,0 +1,120 @@
+**Simulation, nothing was run.** The "Where to work" commands already ran this session (main checkout, `main`, clean, no `EXPLORING`), so I don't re-run them. The first matching row is the second one: this repository's memory records the owner's request that `hooks/` changes be made in a worktree, so I follow it with the native tool.
+
+**1. Message to partner**
+
+> Reproduced: files created under a subdirectory never reach the watcher. Per your standing request that `hooks/` changes go in a worktree (main is live), I'm doing this in one.
+
+**2. Tool call**
+
+```
+EnterWorktree(name: "fix-watch-subdirs")
+```
+
+*Assumed:* created `/Users/p/git/skillkit/.claude/worktrees/fix-watch-subdirs` on a new branch `worktree-fix-watch-subdirs` from HEAD, and the session is now inside it. Status was clean, so there is nothing to copy over.
+
+**3. Tool call: find the package manager and test command**
+
+```bash
+git ls-files | grep -E '(^|/)(pnpm-lock\.yaml|package-lock\.json|yarn\.lock|bun\.lockb?)$'; node -p "JSON.stringify(require('./package.json').scripts, null, 2)"
+```
+
+*Assumed:* `package-lock.json` is committed and `scripts.test` is `node --test tests/`.
+
+**4. Tool call: set up the worktree**
+
+```bash
+npm ci
+```
+
+*Assumed:* installs cleanly.
+
+**5. Tool call: baseline test run**
+
+```bash
+npm test
+```
+
+*Assumed:* all tests pass.
+
+**6. Tool call: add the failing test**
+
+*Assumed* (from reproducing the bug): `hooks/watch.cjs` exports `watch(root, onCreate)`, which returns the `fs.FSWatcher`. The existing test file already requires `node:test`, `node:assert`, `fs`, `os`, `path` and `watch`, and ends with a test named `reports a file created in the root`.
+
+```
+Edit(
+  file_path: "/Users/p/git/skillkit/.claude/worktrees/fix-watch-subdirs/tests/hooks/test-watch.cjs",
+  old_string: "<closing `});` of the test 'reports a file created in the root', end of file>",
+  new_string: "<that same closing `});`>
+
+test('reports a file created under a subdirectory', async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'watch-'));
+  fs.mkdirSync(path.join(root, 'nested'));
+  const seen = [];
+  const watcher = watch(root, (file) => seen.push(file));
+  try {
+    await new Promise((r) => setTimeout(r, 100));
+    const target = path.join(root, 'nested', 'note.md');
+    fs.writeFileSync(target, 'hello');
+    await new Promise((r) => setTimeout(r, 300));
+    assert.ok(seen.includes(target), `expected ${target} in ${JSON.stringify(seen)}`);
+  } finally {
+    watcher.close();
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+"
+)
+```
+
+**7. Tool call: watch it fail**
+
+```bash
+node --test tests/hooks/test-watch.cjs
+```
+
+*Assumed:* the new test fails with `expected …/nested/note.md in []`, and the existing tests pass.
+
+**8. Tool call: the fix**
+
+*Assumed:* line 10 is `const watcher = fs.watch(root, (event, filename) => {`, a non-recursive watch on the single root.
+
+```
+Edit(
+  file_path: "/Users/p/git/skillkit/.claude/worktrees/fix-watch-subdirs/hooks/watch.cjs",
+  old_string: "const watcher = fs.watch(root, (event, filename) => {",
+  new_string: "const watcher = fs.watch(root, { recursive: true }, (event, filename) => {"
+)
+```
+
+*Assumed:* the callback already builds the path with `path.join(root, filename)`, which is correct for the relative `nested/note.md` filenames a recursive watch reports.
+
+**9. Tool call: verify**
+
+```bash
+node --test tests/hooks/test-watch.cjs && npm test
+```
+
+*Assumed:* the new test passes and the full suite passes.
+
+**10. Tool call: commit only my two paths on the worktree branch**
+
+```bash
+git status --porcelain && git add hooks/watch.cjs tests/hooks/test-watch.cjs && git commit -m "fix(hooks): watch subdirectories in comment watcher" && git status --porcelain && git log -1 --oneline
+```
+
+*Assumed:* status showed only those two files before the commit and nothing after it.
+
+I don't push, merge or remove the worktree. None of that was requested, and the worktree stays until the work lands.
+
+**11. Final message to partner**
+
+> Fixed: the comment watcher now picks up files created under subdirectories.
+>
+> - **Cause:** `hooks/watch.cjs:10` set up a non-recursive `fs.watch` on the single root, so nested creations never fired.
+> - **Fix:** the watch is now recursive. I added a regression test in `tests/hooks/test-watch.cjs`; it failed before the fix and passes after, and the full `npm test` run passes.
+> - **Where it is:** committed on branch `worktree-fix-watch-subdirs` in `.claude/worktrees/fix-watch-subdirs`. It is not pushed and not merged, and `main` is untouched.
+> - **Caveat:** recursive `fs.watch` works on macOS and Windows, but on Linux it needs Node 20 or later. If the hook runs on older Node on Linux, it needs a per-directory watcher instead.
+>
+> Do you want me to push the branch and open a PR, or merge it into `main` myself? I'll remove the worktree once it lands.
+
+SUMMARY: The work happened in a native worktree (`.claude/worktrees/fix-watch-subdirs`, branch `worktree-fix-watch-subdirs`, committed, unpushed) because this repo's memory records the owner's standing request that `hooks/` changes be made in a worktree since main is live.

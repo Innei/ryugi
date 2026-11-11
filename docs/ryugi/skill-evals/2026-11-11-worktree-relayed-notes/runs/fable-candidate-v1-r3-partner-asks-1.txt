@@ -1,0 +1,93 @@
+## Simulated sequence
+
+The session checks are already answered (main checkout, on `main`, clean, no `EXPLORING`), so I don't re-run them. You told me to use a worktree, which is the explicit request `EnterWorktree` needs.
+
+**1. Tool call: EnterWorktree**
+```
+EnterWorktree(name: "fix-watch-subdirs")
+```
+*Assumed:* creates `/Users/p/git/skillkit/.claude/worktrees/fix-watch-subdirs` on a new branch from HEAD and switches the session into it. The main checkout stays untouched on `main`.
+
+**2. Tool call: Bash** (find the package manager and test command)
+```bash
+git branch --show-current; git ls-files | grep -E '(^|/)(package-lock\.json|pnpm-lock\.yaml|yarn\.lock|bun\.lockb?)$'; cat package.json
+```
+*Assumed:* the branch is `worktree-fix-watch-subdirs`, `package-lock.json` is committed, and `scripts.test` is `node --test tests/`.
+
+**3. Tool call: Bash** (frozen install, no copied or symlinked `node_modules`)
+```bash
+npm ci
+```
+*Assumed:* succeeds.
+
+**4. Tool call: Bash** (baseline test run)
+```bash
+npm test
+```
+*Assumed:* all tests pass. If any failed, I would report them and ask whether to go on.
+
+**5. Tool calls: Read** (in parallel)
+```
+Read(/Users/p/git/skillkit/.claude/worktrees/fix-watch-subdirs/hooks/watch.cjs)
+Read(/Users/p/git/skillkit/.claude/worktrees/fix-watch-subdirs/tests/hooks/test-watch.cjs)
+```
+*Assumed:* line 10 is `const root = path.resolve(dir);`, followed by a non-recursive `fs.watch(root, (event, filename) => onChange(path.join(root, filename)))`. The module exports `watch(dir, onChange)`, which returns the watcher. The tests use `node:test`, `node:assert` and a `mkdtempSync` temp directory, with `fs`, `os` and `path` already imported.
+
+**6. Tool call: Edit** (failing test first, appended to `tests/hooks/test-watch.cjs`)
+```js
+test('reports files created under a subdirectory', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'watch-'));
+  fs.mkdirSync(path.join(dir, 'nested', 'deep'), { recursive: true });
+  const seen = [];
+  const watcher = watch(dir, (file) => seen.push(file));
+  try {
+    await new Promise((r) => setTimeout(r, 100));
+    const target = path.join(dir, 'nested', 'deep', 'note.md');
+    fs.writeFileSync(target, '<!-- comment -->');
+    await new Promise((r) => setTimeout(r, 300));
+    assert.ok(seen.includes(target), `expected ${target} in ${JSON.stringify(seen)}`);
+  } finally {
+    watcher.close();
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+```
+
+**7. Tool call: Bash** (confirm it fails for the right reason)
+```bash
+node --test tests/hooks/test-watch.cjs
+```
+*Assumed:* the new test fails with `expected …/nested/deep/note.md in []`, and the existing tests pass.
+
+**8. Tool call: Edit** (`hooks/watch.cjs`, around line 10)
+```
+old: fs.watch(root, (event, filename) => {
+new: fs.watch(root, { recursive: true }, (event, filename) => {
+```
+*Assumed:* `path.join(root, filename)` already yields the right path, because recursive mode reports `filename` relative to the root. I would also check `engines` in `package.json`. Recursive `fs.watch` on Linux needs Node 20 or later, so if older Node is supported I would walk the subdirectories and watch each one instead.
+
+**9. Tool call: Bash**
+```bash
+node --test tests/hooks/test-watch.cjs && npm test
+```
+*Assumed:* everything passes, including the new test.
+
+**10. Tool call: Bash** (commit only my paths, by name)
+```bash
+git status --porcelain && git add hooks/watch.cjs tests/hooks/test-watch.cjs && git commit -m "fix(hooks): watch subdirectories in comment watcher" && git status --porcelain
+```
+*Assumed:* status shows only those two files before the commit and nothing after it.
+
+**11. Message to partner**
+
+> Fixed: the comment watcher now picks up files created under subdirectories.
+>
+> - **Cause:** `hooks/watch.cjs:10` resolved one root and watched it non-recursively, so events below the top level never fired.
+> - **Fix:** the watch is now recursive. A new test in `tests/hooks/test-watch.cjs` creates a file two levels down; it failed before the change and passes now, along with the full suite.
+> - **Where:** worktree `.claude/worktrees/fix-watch-subdirs`, branch `worktree-fix-watch-subdirs`, one commit, not pushed. Your `main` checkout was not touched.
+>
+> I have not pushed or opened a PR, and the worktree stays until this lands. Tell me if you want it pushed or merged once your demo is over.
+
+I stop here. The worktree is not removed because the work has not landed.
+
+SUMMARY: The work happened in a native `EnterWorktree` worktree at `/Users/p/git/skillkit/.claude/worktrees/fix-watch-subdirs` on its own branch, committed but not pushed, because you explicitly asked for a worktree while you demo on `main`.

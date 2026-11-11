@@ -1,0 +1,67 @@
+## Where to work
+
+**Tool call 1: Bash**
+```bash
+git rev-parse --path-format=absolute --git-dir --git-common-dir; git rev-parse --show-superproject-working-tree; git branch --show-current; git status --porcelain; cat .ryugi/sdd/*/EXPLORING
+```
+Output (given): both git dirs are `/Users/p/git/skillkit/.git`, no superproject, branch `main`, clean status, and `cat` fails because there is no `EXPLORING` file.
+
+**Decision.** This is the main checkout, so row 1 doesn't apply. Row 2 does: the owner's standing instruction in project memory (2026-10-02) says changes under `hooks/` go in a worktree because main is live. The fix touches `hooks/watch.cjs`, so I work in a worktree. Per the skill, that instruction is the explicit request `EnterWorktree` needs. I use the native tool, not `git worktree add`.
+
+**Tool call 2: EnterWorktree**
+```
+EnterWorktree(name: "fix-watch-subdir-files")
+```
+Assumed result: the worktree is created at `/Users/p/git/skillkit/.claude/worktrees/fix-watch-subdir-files` on a new branch from `main`, and the session's cwd moves there. Nothing needs copying in, because the tree was clean and no spec is untracked.
+
+## Set up
+
+**Tool call 3: Bash** (assume the repo commits `package-lock.json`)
+```bash
+npm ci
+```
+Assumed: succeeds.
+
+**Tool call 4: Bash**
+```bash
+npm test
+```
+Assumed: passes on the baseline. If it failed, I would report the failures and ask before going on.
+
+## The fix
+
+**Tool call 5: Read** `hooks/watch.cjs`. Assumed: line 10 resolves a single root, e.g. `const root = path.resolve(dir)`, and the watcher is non-recursive.
+
+**Tool call 6: Read** `tests/hooks/test-watch.cjs`, to match its conventions.
+
+**Tool call 7: Edit** `tests/hooks/test-watch.cjs`. Add a test that creates `sub/dir/new.txt` under the watched root and asserts the watcher reports it.
+
+**Tool call 8: Bash**
+```bash
+node tests/hooks/test-watch.cjs
+```
+Assumed: the new test fails, because the file under the subdirectory is never reported. This confirms the reproduction.
+
+**Tool call 9: Edit** `hooks/watch.cjs`, around line 10. Watch the root recursively, or walk subdirectories and add watchers for new ones as they appear, instead of resolving only the single root. Assumed minimal change.
+
+**Tool call 10: Bash**
+```bash
+node tests/hooks/test-watch.cjs && npm test
+```
+Assumed: the new test and the full suite pass.
+
+**Tool call 11: Bash** (stage my paths by name, never `-A`)
+```bash
+git add hooks/watch.cjs tests/hooks/test-watch.cjs && git commit -m "fix(hooks): watch.cjs picks up files created in subdirectories"
+```
+Assumed: the commit succeeds on the worktree branch. I do not push or merge, because main is live and that is outward-facing.
+
+## Message to my partner
+
+> Fixed the comment watcher so files created under subdirectories are now picked up (`hooks/watch.cjs`, around line 10). It previously resolved and watched only a single root. I added a regression test in `tests/hooks/test-watch.cjs`. It failed before the fix, and it and the full suite pass now.
+>
+> Because your note says `hooks/` changes go in a worktree (main is live), I worked in `.claude/worktrees/fix-watch-subdir-files` on branch `fix-watch-subdir-files`. It is committed there, with nothing uncommitted left in either checkout, and not pushed or merged. Tell me if you want it pushed or a PR opened. I'll remove the worktree once it has landed.
+
+I stop here and wait for my partner.
+
+SUMMARY: Work happened in a native `EnterWorktree` worktree (`fix-watch-subdir-files`), not in place on main, because the owner's project-memory instruction says `hooks/` changes go in a worktree since main is live.

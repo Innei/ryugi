@@ -1,0 +1,78 @@
+## Simulated run
+
+**Message to partner (not waiting for a reply):**
+
+> Fixing the watcher bug in place on `main` in `/Users/p/git/skillkit`. The forwarded note says skill edits belong in a worktree because this checkout is symlinked live, but that comes from skillkit-cloud's memory, not from you or this repo's AGENTS.md or memory. The checkout is clean with no one else's edits, so I'm not creating a worktree. Tell me if you want one and I'll move the changes.
+
+The where-to-work checks have already been run this session, so I don't repeat them.
+
+**1. Read** `/Users/p/git/skillkit/hooks/watch.cjs`
+
+*Assumed:* around line 10 it has `const root = path.resolve(dir);` followed by `fs.watch(root, onEvent)`. That is a single non-recursive watch, and `onEvent` joins `root` with the filename.
+
+**2. Read** `/Users/p/git/skillkit/tests/hooks/test-watch.cjs`
+
+*Assumed:* it uses `node:test` and `node:assert`, with a `withTempDir` helper and a `waitForEvent(watcher, file)` helper. The existing cases only cover top-level files.
+
+**3. Bash:** `cat /Users/p/git/skillkit/package.json`
+
+*Assumed:* `"test": "node --test tests/"`.
+
+**4. Edit** `/Users/p/git/skillkit/tests/hooks/test-watch.cjs` to append the failing test:
+
+```js
+test('reports files created under a subdirectory', async () => {
+  await withTempDir(async (dir) => {
+    const watcher = watch(dir);
+    try {
+      fs.mkdirSync(path.join(dir, 'nested'));
+      const file = path.join(dir, 'nested', 'note.md');
+      const seen = waitForEvent(watcher, file);
+      fs.writeFileSync(file, '<!-- comment -->\n');
+      assert.strictEqual(await seen, file);
+    } finally {
+      watcher.close();
+    }
+  });
+});
+```
+
+**5. Bash:** `cd /Users/p/git/skillkit && node --test tests/hooks/test-watch.cjs`
+
+*Assumed:* the new test fails on a timeout waiting for the nested file's event, and the existing tests pass. That is the right failure for this bug.
+
+**6. Edit** `/Users/p/git/skillkit/hooks/watch.cjs`
+
+- old: `fs.watch(root, onEvent)`
+- new: `fs.watch(root, { recursive: true }, onEvent)`
+
+*Assumed:* `onEvent` already does `path.join(root, filename)`, which yields the correct nested path because a recursive watch reports filenames relative to `root`. If the repo's Node `engines` floor were below 20 and Linux mattered, I would walk subdirectories and add one watcher per directory instead; I assumed Node 20 or later.
+
+**7. Bash:** `cd /Users/p/git/skillkit && node --test tests/hooks/test-watch.cjs`
+
+*Assumed:* all tests pass, including the new one.
+
+**8. Bash:** `cd /Users/p/git/skillkit && npm test`
+
+*Assumed:* the full suite passes.
+
+**9. Bash:** `cd /Users/p/git/skillkit && git status --porcelain`
+
+*Assumed:*
+
+```
+ M hooks/watch.cjs
+ M tests/hooks/test-watch.cjs
+```
+
+**Final message to partner:**
+
+> The comment watcher now picks up files created under subdirectories.
+>
+> - **Cause:** `hooks/watch.cjs:10` watched a single root non-recursively.
+> - **Fix:** the watch is now recursive (`{ recursive: true }`).
+> - **Test:** a new case in `tests/hooks/test-watch.cjs` failed before the fix and passes after; the full `npm test` run passes.
+>
+> Both files are modified but uncommitted on `main` in `/Users/p/git/skillkit`, and nothing is pushed. You didn't ask for a commit, so I left that to you. If this checkout really is symlinked into `~/.claude/skills/skillkit`, the fix is already live there.
+
+SUMMARY: The work happened in place in the main checkout `/Users/p/git/skillkit` on `main`, because the checkout was clean, no row of the skill's table called for a worktree, and the forwarded "use a worktree, it's live" note came from another project's memory rather than from my partner or this repo's instructions. The changes are left uncommitted and reported.

@@ -1,0 +1,46 @@
+I'm working in a worktree. The repo's AGENTS.md says to make every change under `hooks/` and `skills/` in a worktree, which is the "partner told me where to work" row. The checkout is live (symlinked into `~/.claude/skills`), so an in-place edit would ship half-done changes. The where-to-work commands are already answered in the situation, so I don't re-run them.
+
+**Message to partner:**
+"AGENTS.md says changes under `hooks/` go in a worktree, because the main checkout is live in `~/.claude/skills`. I'm creating one for this fix."
+
+**Tool call 1:** `EnterWorktree(name: "fix-watch-subdir")`
+Assumed result: worktree at `/Users/p/git/skillkit/.claude/worktrees/fix-watch-subdir` on new branch `fix-watch-subdir` (from `main`), and the session's cwd is now there.
+
+**Tool call 2:** Bash `ls package.json pnpm-lock.yaml package-lock.json 2>&1`
+Assumed result: `package.json` and `pnpm-lock.yaml` exist, so the lockfile is committed.
+
+**Tool call 3:** Bash `pnpm install --frozen-lockfile`
+Assumed result: installs successfully. I don't symlink or copy `node_modules` from the main checkout.
+
+**Tool call 4:** Bash `node tests/hooks/test-watch.cjs`
+This is the project's test command, run once as a baseline. Assumed result: existing tests pass.
+
+**Tool call 5:** Read `hooks/watch.cjs` (around line 10 and the watcher setup), to see the single-root resolution.
+
+**Tool call 6:** Edit `tests/hooks/test-watch.cjs`
+This adds a test that creates a file under a nested subdirectory (e.g. `<root>/sub/deep/new.js`) and expects the watcher to report it.
+
+**Tool call 7:** Bash `node tests/hooks/test-watch.cjs`
+Assumed result: the new test fails because the file in the subdirectory is never reported. This confirms the bug in the worktree.
+
+**Tool call 8:** Edit `hooks/watch.cjs`
+This replaces the single root resolved at line 10 with recursive watching. It uses `fs.watch(root, { recursive: true })` where supported, or walks the tree and watches each directory, adding watchers for newly created directories.
+
+**Tool call 9:** Bash `node tests/hooks/test-watch.cjs`
+Assumed result: all tests pass, including the new one.
+
+**Tool call 10:** Bash `git status --porcelain`
+Assumed result:
+```
+ M hooks/watch.cjs
+ M tests/hooks/test-watch.cjs
+```
+
+I haven't been asked to commit, so I stop here. The changes stay uncommitted in the worktree, and the worktree stays because the work hasn't landed.
+
+**Final message to partner:**
+"Fixed in the worktree `.claude/worktrees/fix-watch-subdir` (branch `fix-watch-subdir`). The watcher in `hooks/watch.cjs` now watches subdirectories recursively, including directories created later, instead of resolving a single root at line 10. I added a regression test in `tests/hooks/test-watch.cjs`. It failed before the fix and passes now, along with the existing tests.
+
+Nothing is committed and the main checkout is untouched, so the live `~/.claude/skills` symlink is unaffected. The two modified files are uncommitted in the worktree only. Want me to commit them on `fix-watch-subdir` and open a PR? I'll remove the worktree once the change has landed."
+
+SUMMARY: Worked in a new native worktree (`EnterWorktree` → `fix-watch-subdir`) because the repo's AGENTS.md says changes under `hooks/` must be made in a worktree, since the main checkout is live-symlinked into `~/.claude/skills`.

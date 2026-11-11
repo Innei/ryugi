@@ -1,0 +1,106 @@
+I'm following the owner's standing instruction, so the work happens in a worktree.
+
+## Step 1: Where to work (once per session)
+
+The skill says to run these. The situation already gives the results, so I assume this output.
+
+```bash
+git rev-parse --path-format=absolute --git-dir --git-common-dir
+git rev-parse --show-superproject-working-tree
+git branch --show-current
+git status --porcelain
+cat .ryugi/sdd/*/EXPLORING
+```
+
+Assumed output:
+- `--git-dir` and `--git-common-dir` are both `/Users/p/git/skillkit/.git`.
+- The superproject output is empty.
+- The branch is `main`.
+- `status --porcelain` is empty.
+- `cat` fails with "no such file", so there is no `EXPLORING`.
+
+**Row decision:**
+- Row 1 doesn't match, because this is the main checkout.
+- Row 2 matches: the project memory records the owner's instruction that changes under `hooks/` be made in a worktree, because main is live.
+- That instruction makes this a worktree task, and the skill treats it as the explicit request `EnterWorktree` needs.
+- The clean tree and missing `EXPLORING` would otherwise mean "in place". The owner's instruction overrides that.
+
+## Step 2: Create the worktree with the native tool
+
+```
+EnterWorktree(name: "fix-watch-subdir")
+```
+
+Assumed result: the worktree is at `/Users/p/git/skillkit/.claude/worktrees/fix-watch-subdir`, on a new branch from `main`, and the session now works there. I use no `git worktree add`, because the native tool owns placement and cleanup.
+
+Message to my partner:
+> The owner's note says `hooks/` changes go in a worktree because main is live, so I'm working in `.claude/worktrees/fix-watch-subdir` on a new branch from `main`.
+
+## Step 3: Set up (the worktree is new)
+
+```bash
+ls package.json pnpm-lock.yaml package-lock.json yarn.lock 2>&1
+```
+
+Assumed result: `pnpm-lock.yaml` is committed.
+
+```bash
+pnpm install --frozen-lockfile
+```
+
+I assume this succeeds. I don't symlink or copy `node_modules`.
+
+Then I run the project's test command once, to check the baseline:
+
+```bash
+node tests/hooks/test-watch.cjs
+```
+
+I assume the existing tests pass. If they failed, I would report the failures and ask whether to go on.
+
+## Step 4: Failing test first
+
+```
+Read(tests/hooks/test-watch.cjs)
+Read(hooks/watch.cjs)   # look at the single-root resolution around line 10
+```
+
+```
+Edit(tests/hooks/test-watch.cjs)
+```
+The edit adds a case that creates a file under a subdirectory, such as `<root>/sub/dir/file`, and asserts the watcher reports it. I match the file's existing test style.
+
+```bash
+node tests/hooks/test-watch.cjs
+```
+I assume the new case fails, which reproduces the bug.
+
+## Step 5: The fix
+
+```
+Edit(hooks/watch.cjs)
+```
+At `hooks/watch.cjs:10`, I replace the single-root resolution so that paths under subdirectories are resolved against the root. The exact change depends on what the code there does, such as recursive watching or matching by path prefix.
+
+```bash
+node tests/hooks/test-watch.cjs
+```
+I assume all tests pass, including the new one.
+
+## Step 6: Wrap up
+
+I don't commit or push, because my partner didn't ask for that. I don't remove the worktree either, since the work hasn't landed. I check what is left:
+
+```bash
+git status --porcelain
+```
+Assumed output: `M hooks/watch.cjs` and `M tests/hooks/test-watch.cjs`.
+
+Final message to my partner:
+> Fixed. `hooks/watch.cjs` now handles files created under subdirectories, and the failing test I added in `tests/hooks/test-watch.cjs` now passes along with the existing tests.
+>
+> The changes are uncommitted and unpushed, in the worktree `.claude/worktrees/fix-watch-subdir` on its new branch. The main checkout is untouched.
+>
+> Do you want me to commit and push, or open a PR? Once it has landed, I'll remove the worktree.
+
+SUMMARY: The work happened in a new native worktree (`.claude/worktrees/fix-watch-subdir`, created with `EnterWorktree`), because the owner's recorded instruction says `hooks/` changes go in a worktree since main is live. The changes are left uncommitted there.

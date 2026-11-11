@@ -1,0 +1,110 @@
+**1. Message to partner**
+
+> Project memory records your 2026-10-02 request that changes under `hooks/` be made in a worktree because main is live, so I'm doing this fix in one.
+
+**2. Create the worktree**
+
+```
+EnterWorktree(name: "fix-watch-subdirs")
+```
+
+*Assumed:* this creates `/Users/p/git/skillkit/.claude/worktrees/fix-watch-subdirs` on a new branch `fix-watch-subdirs` from `main`, and the session is now inside it. Nothing needs copying in, because the main checkout is clean.
+
+**3. Set up**
+
+```
+Bash: git ls-files | grep -E '(^|/)(package\.json|package-lock\.json|pnpm-lock\.yaml|yarn\.lock|bun\.lockb?)$'; grep -n '"test"' package.json
+```
+
+*Assumed:* `package.json` and a committed `package-lock.json`, with the test script `node --test tests/`.
+
+```
+Bash: npm ci
+Bash: npm test
+```
+
+*Assumed:* the install succeeds and the baseline suite passes. If it failed, I would stop here, report the failures and ask whether to go on.
+
+**4. Read the code**
+
+```
+Read: hooks/watch.cjs
+Read: tests/hooks/test-watch.cjs
+```
+
+*Assumed:* line 10 is `const root = path.resolve(dir);`, followed by a non-recursive `fs.watch(root, onEvent)` that reports `path.join(root, filename)`. The tests use `node:test` with a temp-directory helper `makeTmp()` and a `waitForEvent(watcher)` helper.
+
+**5. Failing test first**
+
+```
+Edit: tests/hooks/test-watch.cjs
+  old_string: <the closing line of the last existing test>
+  new_string: <the same line, followed by>
+
+test('reports files created under a subdirectory', async () => {
+  const dir = makeTmp();
+  fs.mkdirSync(path.join(dir, 'nested', 'deeper'), { recursive: true });
+  const watcher = watch(dir);
+  try {
+    const target = path.join(dir, 'nested', 'deeper', 'note.md');
+    const seen = waitForEvent(watcher);
+    fs.writeFileSync(target, '<!-- comment -->');
+    assert.strictEqual(await seen, target);
+  } finally {
+    watcher.close();
+  }
+});
+```
+
+```
+Bash: node --test tests/hooks/test-watch.cjs
+```
+
+*Assumed:* the new test fails by timing out with no event for `nested/deeper/note.md`, and the existing tests pass. That is the reproduced bug.
+
+**6. The fix**
+
+```
+Edit: hooks/watch.cjs
+  old_string: fs.watch(root, onEvent)
+  new_string: fs.watch(root, { recursive: true }, onEvent)
+```
+
+*Assumed:* `filename` comes back relative to `root` (for example `nested/deeper/note.md`), so the existing `path.join(root, filename)` stays correct. `package.json` `engines` allows Node ≥ 20, where `recursive` is supported on macOS, Windows and Linux. If `engines` allowed older Node, I would instead walk the tree and add one watcher per directory, including newly created ones.
+
+```
+Bash: node --test tests/hooks/test-watch.cjs
+Bash: npm test
+```
+
+*Assumed:* the new test passes and the full suite is green.
+
+**7. Commit only my paths, on the worktree branch**
+
+```
+Bash: git status --porcelain
+```
+
+*Assumed:* exactly ` M hooks/watch.cjs` and ` M tests/hooks/test-watch.cjs`.
+
+```
+Bash: git add hooks/watch.cjs tests/hooks/test-watch.cjs && git commit -m "fix(hooks): watch subdirectories in comment watcher" && git status --porcelain
+```
+
+*Assumed:* the commit succeeds and status prints nothing.
+
+I would not push, merge into main or remove the worktree. You have not asked for a push, main is live, and the work has not landed.
+
+**8. Final message to partner**
+
+> Fixed: the comment watcher now picks up files created under subdirectories.
+>
+> - **Cause:** `hooks/watch.cjs:10` resolved a single root and watched it non-recursively, so events below the top level never fired.
+> - **Fix:** the watch on that root is now recursive (`fs.watch(root, { recursive: true }, …)`).
+> - **Test:** `tests/hooks/test-watch.cjs` has a new case, "reports files created under a subdirectory". It failed before the fix and passes now, and the full `npm test` run is green.
+>
+> The work is committed on branch `fix-watch-subdirs` in the worktree `.claude/worktrees/fix-watch-subdirs`, per your standing request for `hooks/` changes. It is not pushed and not merged. Main is untouched and clean.
+>
+> How do you want it landed: push and open a PR, or merge into main locally? The worktree stays until it lands, and I'll remove it then.
+
+SUMMARY: The work happened in a native worktree (`.claude/worktrees/fix-watch-subdirs`, branch `fix-watch-subdirs`, created with EnterWorktree) because the project's memory records the owner's instruction that `hooks/` changes be made in a worktree since main is live; the fix is committed there, unpushed, awaiting the partner's decision on landing.

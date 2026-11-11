@@ -1,0 +1,80 @@
+Setup: the "Where to work" commands have already been run and their output is given, so I don't repeat them. The checkout is the main one (not a linked worktree), on `main`, clean, with no `EXPLORING` file. The first matching row is "partner told you where to work, including the repo's AGENTS.md". AGENTS.md says every change under `hooks/` and `skills/` goes in a worktree, so I work in a worktree without asking. That instruction is also the explicit request `EnterWorktree` needs.
+
+**Tool call 1: EnterWorktree**
+```
+EnterWorktree(name: "fix-watch-subdir")
+```
+Assumed result: creates `/Users/p/git/skillkit/.claude/worktrees/fix-watch-subdir` on branch `fix-watch-subdir` from `main`, and the session switches into it. There is no uncommitted spec to copy, because the status was clean.
+
+**Message to partner:**
+> AGENTS.md says changes under `hooks/` must be made in a worktree, because the main checkout is live-symlinked into `~/.claude/skills`. I'm working in `.claude/worktrees/fix-watch-subdir` on branch `fix-watch-subdir`.
+
+**Tool call 2: Bash (set up, install the way the repo does)**
+```
+ls package.json pnpm-lock.yaml package-lock.json yarn.lock 2>/dev/null; grep -A8 '"scripts"' package.json
+```
+Assumed output: `package.json` and `pnpm-lock.yaml` exist, and the scripts include `"test": "node tests/run.cjs"`.
+
+**Tool call 3: Bash**
+```
+pnpm install --frozen-lockfile
+```
+Assumed: succeeds. I don't symlink `node_modules` from the main checkout.
+
+**Tool call 4: Bash (baseline test run, once)**
+```
+pnpm test
+```
+Assumed: all tests pass. If they failed, I would report the failures and ask whether to go on.
+
+**Tool call 5: Read**
+```
+Read(/Users/p/git/skillkit/.claude/worktrees/fix-watch-subdir/hooks/watch.cjs)
+Read(/Users/p/git/skillkit/.claude/worktrees/fix-watch-subdir/tests/hooks/test-watch.cjs)
+```
+Both calls run in parallel. Assumed: line 10 is `const root = path.resolve(dir)`, and the watcher calls `fs.watch(root)` non-recursively. The test file has helpers for creating a temp dir and collecting events.
+
+**Tool call 6: Edit (failing test first)**
+```
+Edit(.../tests/hooks/test-watch.cjs)
+```
+It adds a case, "detects files created under a subdirectory". The case does the following:
+- Starts the watcher on a temp dir.
+- Creates `sub/` and then writes `sub/new.js`.
+- Asserts that an event for `sub/new.js` is reported.
+
+**Tool call 7: Bash**
+```
+node tests/hooks/test-watch.cjs
+```
+Assumed: the new test fails with "no event for sub/new.js" and the other tests pass, which confirms the bug.
+
+**Tool call 8: Edit (the fix)**
+```
+Edit(.../hooks/watch.cjs)
+```
+At `hooks/watch.cjs:10`, the single non-recursive root watch is replaced with a watch that covers subdirectories. It uses `fs.watch(root, { recursive: true })`, which works on macOS. For a platform without recursive support, it walks the tree and adds a watcher per directory, including newly created ones. The change is kept to what the bug needs.
+
+**Tool call 9: Bash**
+```
+node tests/hooks/test-watch.cjs && pnpm test
+```
+Assumed: the new test and the full suite both pass.
+
+**Tool call 10: Bash (check what I changed)**
+```
+git status --porcelain
+```
+Assumed output:
+```
+ M hooks/watch.cjs
+ M tests/hooks/test-watch.cjs
+```
+These are the only two files, both mine. I have not committed, pushed, or opened a PR, since none was requested. I also have not removed the worktree: the work hasn't landed, and removal would delete uncommitted changes.
+
+**Final message to partner:**
+> Fixed. `hooks/watch.cjs` only watched the single root resolved at line 10, so files created under subdirectories produced no events. The watcher now covers subdirectories, including ones created after startup. I added a regression test in `tests/hooks/test-watch.cjs` ("detects files created under a subdirectory"). I confirmed it failed before the fix, and it and the full suite pass after.
+>
+> What's left: the changes are uncommitted in the worktree `/Users/p/git/skillkit/.claude/worktrees/fix-watch-subdir` (branch `fix-watch-subdir`, nothing pushed). The main checkout is untouched. Want me to commit (only those two files) and push or open a PR? I'll remove the worktree once it has landed.
+
+SUMMARY: Worked in a new native worktree (`EnterWorktree` → `.claude/worktrees/fix-watch-subdir`) because the repo's AGENTS.md requires worktrees for changes under `hooks/`, leaving the live main checkout untouched.

@@ -1,0 +1,26 @@
+**Decision:** I work in place in /Users/p/git/skillkit. I already ran the "Where to work" commands and their output is in the situation, so I don't re-run them.
+
+- The checkout is the main one (`--git-dir` equals `--git-common-dir`, no superproject), so the first row doesn't apply.
+- Neither the human partner, AGENTS.md nor memory said where to work. The forwarded "do this in a worktree" comes from another session, so it is context, not my partner's instruction.
+- There is no other branch or base, no edits by anyone else, no `EXPLORING` file, and no dependency or codegen step. HEAD is on `main`, the default branch.
+- No row calls for a worktree, so the answer is "In place, no question". I don't call `EnterWorktree`, since its description limits it to explicit requests.
+
+**Message to partner:**
+> Working in place on `main` in /Users/p/git/skillkit. The checkout is clean and nobody else is editing it, so a worktree would only add an install and a cleanup. Starting with a failing test for the subdirectory case in the comment watcher.
+
+**Tool calls, in order:**
+
+1. `Read` `/Users/p/git/skillkit/hooks/watch.cjs`. I assume line 10 is something like `const root = path.resolve(process.argv[2] || '.')`, with a single non-recursive watch on it.
+2. `Read` `/Users/p/git/skillkit/tests/hooks/test-watch.cjs` to learn the existing test conventions.
+3. `Edit` `/Users/p/git/skillkit/tests/hooks/test-watch.cjs`: add a test that creates `sub/dir/new.md` under the watched root and asserts the watcher reports it.
+4. `Bash`: `cd /Users/p/git/skillkit && node tests/hooks/test-watch.cjs`. I assume it fails on the new test, as in my reproduction.
+5. `Edit` `/Users/p/git/skillkit/hooks/watch.cjs`: make the watcher cover subdirectories. This means watching recursively, or adding a watcher for each new directory, depending on what the code and platform support.
+6. `Bash`: `cd /Users/p/git/skillkit && node tests/hooks/test-watch.cjs`. I assume all tests pass, including the new one.
+7. `Bash`: `cd /Users/p/git/skillkit && git status --porcelain`. I assume it shows only `M hooks/watch.cjs` and `M tests/hooks/test-watch.cjs`.
+
+I don't commit, because nobody asked me to, and I never use `git add -A`, `git add .` or `git commit -a`. If asked, I would stage those two paths by name.
+
+**Final message to partner:**
+> Fixed: the comment watcher in `hooks/watch.cjs` now picks up files created under subdirectories. I added a regression test in `tests/hooks/test-watch.cjs`; it failed before the fix and the whole file passes now. I worked in place on `main`; no worktree was created. Both changes are uncommitted in /Users/p/git/skillkit and not pushed. Tell me if you want them committed, on `main` or a branch.
+
+SUMMARY: Worked in place in the main checkout /Users/p/git/skillkit on `main`, because the checkout was clean and no table row called for a worktree; the other session's "use a worktree" was context, not my partner's instruction.

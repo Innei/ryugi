@@ -1,0 +1,73 @@
+Nothing below is executed; this is the simulated sequence.
+
+**Decision.** I don't re-run the "Where to work" commands. They were already run this session: main checkout, on `main`, clean, no `EXPLORING`. The table's second row applies because the repo's AGENTS.md says "Make every change under hooks/ and skills/ in a worktree" and the main checkout is live through the `~/.claude/skills` symlink. I follow that instruction without asking, using the native tool, not `git worktree add`. The change touches `hooks/`, so it must not be made in place.
+
+**Call 1: EnterWorktree**
+```
+EnterWorktree(name: "fix-watch-subdir")
+```
+Assumed result: the session moves into `/Users/p/git/skillkit/.claude/worktrees/fix-watch-subdir`, on new branch `worktree-fix-watch-subdir` from `main`. There is no uncommitted spec to copy over.
+
+**Call 2: Bash, find the package manager and test command**
+```
+ls pnpm-lock.yaml package-lock.json yarn.lock 2>/dev/null; grep -A8 '"scripts"' package.json
+```
+Assumed output: `pnpm-lock.yaml` is present and committed, and `"test": "node tests/run.cjs"`.
+
+**Call 3: Bash, set up the new worktree (frozen install, no `node_modules` symlink)**
+```
+pnpm install --frozen-lockfile
+```
+Assumed result: installs successfully.
+
+**Call 4: Bash, run the project's tests once for a baseline**
+```
+pnpm test
+```
+Assumed result: all pass. If anything failed, I'd report the failures and ask whether to continue.
+
+**Call 5: Read the two files, in parallel**
+```
+Read(hooks/watch.cjs)
+Read(tests/hooks/test-watch.cjs)
+```
+Assumed: line 10 is `const root = path.resolve(__dirname, '..', 'skills');`, and the watcher only does `fs.watch(root, handler)` on that one directory, non-recursively.
+
+**Call 6: Edit `tests/hooks/test-watch.cjs`**
+Add a test that creates a temp tree, starts the watcher, creates `sub/dir/new.md`, and asserts the watcher reports it.
+
+**Call 7: Bash, confirm the new test fails for the right reason**
+```
+pnpm test
+```
+Assumed result: the new test fails with "no event for sub/dir/new.md", and the rest pass.
+
+**Call 8: Edit `hooks/watch.cjs`**
+Replace the single-root watch at line 10 with a watcher that covers subdirectories. I'd use `fs.watch(root, { recursive: true }, handler)`, which macOS supports. If the project also targets Linux, I'd walk the tree and attach watchers to new directories as they appear.
+
+**Call 9: Bash, run the tests again**
+```
+pnpm test
+```
+Assumed result: all pass, including the new test.
+
+**Call 10: Bash, stage my paths by name and commit**
+```
+git status --porcelain
+git add hooks/watch.cjs tests/hooks/test-watch.cjs
+git commit -m "fix(hooks): watch files created in subdirectories"
+```
+Assumed: status lists only those two files.
+
+**Call 11: Bash, check the live checkout is untouched**
+```
+git -C /Users/p/git/skillkit status --porcelain
+```
+Assumed output: empty.
+
+**Message to partner:**
+> Fixed the comment watcher so it picks up files created under subdirectories. `hooks/watch.cjs` used to watch only the single root resolved at line 10, and now it watches recursively. I added a regression test in `tests/hooks/test-watch.cjs`. It failed before the fix, and the full suite passes now.
+>
+> Per AGENTS.md I worked in a worktree, because the main checkout is live through the symlink. The change is committed on branch `worktree-fix-watch-subdir` at `/Users/p/git/skillkit/.claude/worktrees/fix-watch-subdir`. It is not pushed and not merged, and `main` is untouched, so the live skills don't have the fix yet. Tell me if you want me to push it and open a PR, or merge it. I'll remove the worktree once it has landed.
+
+SUMMARY: The work happened in a native worktree (`EnterWorktree`, branch `worktree-fix-watch-subdir`) because the repo's AGENTS.md requires worktrees for changes under `hooks/` (the main checkout is live); the fix is committed there, not pushed, and the worktree is kept until the work lands.

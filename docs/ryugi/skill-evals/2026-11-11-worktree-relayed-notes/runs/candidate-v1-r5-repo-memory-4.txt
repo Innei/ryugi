@@ -1,0 +1,65 @@
+Simulated run, in order.
+
+## 1. Where-to-work check (once per session)
+
+```bash
+git rev-parse --path-format=absolute --git-dir --git-common-dir
+git rev-parse --show-superproject-working-tree
+git branch --show-current
+git status --porcelain
+cat .ryugi/sdd/*/EXPLORING
+```
+
+Given output: `--git-dir` equals `--git-common-dir` (/Users/p/git/skillkit/.git), no superproject, branch `main`, clean status, no EXPLORING file.
+
+Table: row 1 doesn't match (main checkout). Row 2 matches. The project's own memory says changes under `hooks/` go in a worktree, and that is the repo's memory, which row 2 lists as a source of instructions. The fix touches `hooks/watch.cjs`, so I work in a worktree without asking. That row also counts as the explicit request `EnterWorktree` requires.
+
+## 2. Create the worktree with the native tool
+
+```
+EnterWorktree(name: "fix-watch-subdir")
+```
+
+Assumed result: worktree at `/Users/p/git/skillkit/.claude/worktrees/fix-watch-subdir` on a new branch from `main`. The session is now inside it. I won't use `git worktree add`.
+
+There is no uncommitted spec to copy, since the tree was clean.
+
+## 3. Set up (worktree I just created)
+
+```bash
+ls pnpm-lock.yaml package-lock.json yarn.lock 2>/dev/null
+```
+
+Assumed: `pnpm-lock.yaml` is committed.
+
+```bash
+pnpm install --frozen-lockfile
+```
+
+Assumed: succeeds. I don't symlink or copy `node_modules`.
+
+```bash
+node tests/hooks/test-watch.cjs
+```
+
+Assumed: the project's test command exits 0 on the baseline, so I continue.
+
+## 4. Edits
+
+1. `Read` `hooks/watch.cjs` (around line 10, the single-root resolution) and `tests/hooks/test-watch.cjs`.
+2. `Edit` `tests/hooks/test-watch.cjs`: add a test that creates a file under a subdirectory, e.g. `sub/dir/new.txt`, and asserts the watcher reports it.
+3. Run `node tests/hooks/test-watch.cjs`. Assumed: the new test fails, which reproduces the bug.
+4. `Edit` `hooks/watch.cjs`: replace the single-root resolution at line 10 so subdirectories are covered, either by watching recursively or by resolving each event path against the root.
+5. Run `node tests/hooks/test-watch.cjs`. Assumed: all tests pass.
+
+I haven't been asked to commit, so I leave the changes uncommitted in the worktree. No cleanup yet, since the work hasn't landed.
+
+## 5. Message to my partner
+
+> Fixed the comment watcher so files created under subdirectories are now picked up. The cause was that `hooks/watch.cjs:10` resolved a single root. I added a failing test in `tests/hooks/test-watch.cjs` first, saw it fail, then fixed `hooks/watch.cjs`. The full test file now passes.
+>
+> Because project memory says changes under `hooks/` go in a worktree (main is live), I worked in `.claude/worktrees/fix-watch-subdir` on branch `fix-watch-subdir`. Nothing was changed in the main checkout.
+>
+> The two edited files are **uncommitted** in that worktree and not pushed. Do you want me to commit them there, push, or open a PR? I'll remove the worktree once the work has landed.
+
+SUMMARY: Work happened in a native `EnterWorktree` worktree (`fix-watch-subdir`), not in place, because the project's memory instructs that `hooks/` changes be made in a worktree and that is a "partner told you where to work" row in the table.

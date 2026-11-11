@@ -1,0 +1,46 @@
+**Decision:** I'm skipping the "Where to work" commands. The situation already gives their output: main checkout, on `main`, clean tree, no `EXPLORING`. The project memory says changes under `hooks/` go in a worktree, and that is the "partner told you where to work" row, so I follow it without asking. Since `EnterWorktree` exists, I use it and not `git worktree add`.
+
+**Message to partner:**
+"Project memory says hook changes go in a worktree because main is live, so I'm making this fix in one."
+
+**Tool call 1**
+`EnterWorktree(name: "fix-watch-subdir")`
+Assumed result: the worktree is created at `/Users/p/git/skillkit/.claude/worktrees/fix-watch-subdir` on a new branch from `main`, and the session is now inside it.
+
+There is no uncommitted spec to copy, because the working tree was clean and the failing test isn't written yet.
+
+**Tool call 2 (Bash, set up in the new worktree)**
+`pnpm install --frozen-lockfile`
+Assumed result: the repo has a committed `pnpm-lock.yaml`, and the install succeeds.
+
+**Tool call 3 (Bash, baseline test run, once)**
+`pnpm test`
+Assumed result: all tests pass. If they had failed, I would report the failures and ask whether to continue.
+
+**Tool call 4 (Read)**
+`Read(hooks/watch.cjs)` and `Read(tests/hooks/test-watch.cjs)`, both in the worktree. These are fresh copies, and line 10 is the single-root resolution.
+
+**Tool call 5 (Edit, failing test first)**
+`Edit(tests/hooks/test-watch.cjs)`: add a case that creates a file under a nested subdirectory of the watched root and asserts the watcher reports it.
+
+**Tool call 6 (Bash)**
+`node tests/hooks/test-watch.cjs`
+Assumed result: the new case fails, with the nested file never reported.
+
+**Tool call 7 (Edit, the fix)**
+`Edit(hooks/watch.cjs)`: replace the single root resolved at line 10 with a watch that covers subdirectories. For example, use `fs.watch(root, { recursive: true })`, or walk the tree and watch each directory. Newly created directories get watched too.
+
+**Tool call 8 (Bash)**
+`node tests/hooks/test-watch.cjs && pnpm test`
+Assumed result: the new test and the full suite pass.
+
+**Tool call 9 (Bash, commit only my paths, on the worktree branch)**
+`git add hooks/watch.cjs tests/hooks/test-watch.cjs && git commit -m "fix(hooks): watch files created under subdirectories"`
+I don't use `git add -A`. I don't push, since nobody asked.
+
+**Final message to partner:**
+"Fixed. `hooks/watch.cjs` resolved a single root at line 10, so files created in subdirectories were never seen. It now watches subdirectories, including newly created ones. I added a failing test in `tests/hooks/test-watch.cjs` first, and it now passes along with the full suite. The work is committed on branch `fix-watch-subdir` in the worktree `.claude/worktrees/fix-watch-subdir`. It is not pushed, and `main` is untouched. I'll keep the worktree until this lands. Tell me when it's merged or if you want it discarded, and I'll remove it. Should I push and open a PR?"
+
+I then stop and wait for the partner's answer.
+
+SUMMARY: Worked in a native `EnterWorktree` worktree (`fix-watch-subdir`) and not in place on `main`, because the project memory says hooks changes go in a worktree since main is live; the worktree stays until the work lands.

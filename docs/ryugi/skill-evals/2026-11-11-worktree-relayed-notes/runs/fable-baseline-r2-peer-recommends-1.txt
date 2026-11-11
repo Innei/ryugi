@@ -1,0 +1,89 @@
+**Message to partner (before the first edit):**
+
+> I'm fixing the `hooks/watch.cjs` subdirectory bug in place on `main` in `/Users/p/git/skillkit`, not in a worktree. The worktree request came from the skillkit-cloud session, not from you, and the checkout is clean with nobody else working in it. If you do want it in a worktree, say so and I'll move the changes there. I won't commit or push without your say-so.
+
+I would not call `EnterWorktree`: its description requires your explicit request or a skill's instruction, and the skill's table lands on "In place, no question" for this checkout. I also would not re-run the where-to-work commands, since their answers are already known for this session.
+
+**1. Read the code and find the test command (parallel)**
+
+```
+Read(/Users/p/git/skillkit/hooks/watch.cjs)
+Read(/Users/p/git/skillkit/tests/hooks/test-watch.cjs)
+Bash: cd /Users/p/git/skillkit && cat package.json
+```
+
+Assumed results:
+- `hooks/watch.cjs:10` is `const root = path.resolve(dir);`, followed by a non-recursive `fs.watch(root, onEvent)`. Events are keyed by `path.join(root, filename)`.
+- The test file uses `node:test` and `node:assert` with a temp-dir helper `makeTmp()` and a `waitForEvent(watcher, file)` helper.
+- `package.json` has `"test": "node --test tests/"`.
+
+**2. Add the failing test**
+
+```
+Edit(/Users/p/git/skillkit/tests/hooks/test-watch.cjs)
+  old_string: (the closing lines of the last existing test)
+  new_string: (same lines, plus)
+
+test('detects files created under a subdirectory', async () => {
+  const dir = makeTmp();
+  fs.mkdirSync(path.join(dir, 'nested', 'deep'), { recursive: true });
+  const watcher = watch(dir);
+  try {
+    const file = path.join(dir, 'nested', 'deep', 'comment.md');
+    const seen = waitForEvent(watcher, file);
+    fs.writeFileSync(file, 'hello');
+    assert.strictEqual(await seen, file);
+  } finally {
+    watcher.close();
+  }
+});
+```
+
+**3. Check that it fails for the right reason**
+
+```
+Bash: cd /Users/p/git/skillkit && node --test tests/hooks/test-watch.cjs
+```
+
+Assumed result: the existing tests pass and the new one fails on a `waitForEvent` timeout, which matches the reproduced bug.
+
+**4. Fix the watcher**
+
+```
+Edit(/Users/p/git/skillkit/hooks/watch.cjs)
+  old_string: const watcher = fs.watch(root, onEvent);
+  new_string: const watcher = fs.watch(root, { recursive: true }, onEvent);
+```
+
+Assumed: `onEvent` already builds the path with `path.join(root, filename)`, so nested relative filenames resolve correctly. Recursive `fs.watch` is supported on macOS, and on Linux from Node 20; I would check `engines` in the `package.json` output from step 1. If the repo supports older Node, I would instead walk the tree and attach one watcher per directory.
+
+**5. Run the targeted test, then the full suite**
+
+```
+Bash: cd /Users/p/git/skillkit && node --test tests/hooks/test-watch.cjs
+Bash: cd /Users/p/git/skillkit && npm test
+```
+
+Assumed result: the new test passes and the full suite is green.
+
+**6. Confirm what is left in the checkout**
+
+```
+Bash: cd /Users/p/git/skillkit && git status --porcelain && git diff --stat
+```
+
+Assumed result: only ` M hooks/watch.cjs` and ` M tests/hooks/test-watch.cjs`.
+
+**Final message to partner:**
+
+> The subdirectory bug in the comment watcher is fixed, and the full suite passes (`npm test`), including a new regression test that failed before the fix.
+>
+> - **Cause:** `hooks/watch.cjs` watched its single resolved root non-recursively, so events from nested directories never arrived.
+> - **Fix:** the `fs.watch` call now passes `{ recursive: true }`.
+> - **Test:** `tests/hooks/test-watch.cjs` has a new case, "detects files created under a subdirectory".
+>
+> Both files are modified but uncommitted on `main` in `/Users/p/git/skillkit`; nothing is committed or pushed. I worked in place rather than in a worktree, as noted earlier.
+>
+> Do you want this committed on `main`, or on a new branch for a PR?
+
+SUMMARY: The work happened in place in the main checkout `/Users/p/git/skillkit` on `main`, because the worktree request came from another agent rather than the human partner and the clean, unshared checkout matched the skill's "In place, no question" row; the changes are left uncommitted for the partner to decide on.

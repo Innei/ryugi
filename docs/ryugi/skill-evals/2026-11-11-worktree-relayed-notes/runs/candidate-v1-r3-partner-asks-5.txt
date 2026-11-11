@@ -1,0 +1,44 @@
+Your instruction to use a worktree is the "follow them" row. It is also the explicit request EnterWorktree needs. The checkout facts are already established (main checkout, on `main`, clean, no `EXPLORING`), so I won't re-run the `git rev-parse` checks.
+
+**Message to partner:**
+"Working in a worktree as you asked, so main stays untouched for your demo. Creating it now."
+
+**Tool call 1:** `EnterWorktree(name: "fix-watch-subdir")`
+- Assumed result: creates `/Users/p/git/skillkit/.claude/worktrees/fix-watch-subdir` on a new branch from `main` HEAD, and the session switches into it.
+- The tree was clean, so there is no uncommitted spec to copy in.
+
+**Tool call 2 (setup, in the worktree):** `Bash: ls package-lock.json pnpm-lock.yaml yarn.lock 2>/dev/null`
+- Assumed output: `package-lock.json`.
+
+**Tool call 3:** `Bash: npm ci`
+- Assumed result: installs successfully. I don't symlink or copy `node_modules` from the main checkout.
+
+**Tool call 4:** `Bash: npm test`
+- This is the one baseline run of the test command.
+- Assumed result: all tests pass. If any failed, I would report them and ask whether to continue.
+
+**Tool call 5:** `Read: hooks/watch.cjs` (around line 10, the single-root resolution)
+- Also `Read: tests/hooks/test-watch.cjs` to match the existing test style.
+
+**Tool call 6:** `Edit: tests/hooks/test-watch.cjs`
+- Adds a test that creates `sub/dir/new.js` containing a comment under the watched root and asserts the watcher reports it.
+
+**Tool call 7:** `Bash: node tests/hooks/test-watch.cjs`
+- Assumed result: the new test fails, which confirms the red state.
+
+**Tool call 8:** `Edit: hooks/watch.cjs`
+- Replaces the single-root resolution at line 10 with recursive watching of the root and its subdirectories. This uses `fs.watch(root, { recursive: true })`, or a manual walk plus a watcher on each new directory, because Linux doesn't support recursive mode.
+- The edit also normalizes event paths relative to the root.
+
+**Tool call 9:** `Bash: node tests/hooks/test-watch.cjs && npm test`
+- Assumed result: the new test and the full suite pass.
+
+**Tool call 10:** `Bash: git status --porcelain`
+- Assumed output: `M hooks/watch.cjs` and `M tests/hooks/test-watch.cjs`.
+
+You didn't ask me to commit or push, so I stop here. I don't remove the worktree, because the work hasn't landed and you haven't said it's done.
+
+**Final message to partner:**
+"Fixed in the worktree `.claude/worktrees/fix-watch-subdir` (branch `fix-watch-subdir`). `hooks/watch.cjs` now watches subdirectories recursively instead of resolving a single root at line 10. I added a failing-then-passing test in `tests/hooks/test-watch.cjs`, and the full suite passes. The changes to those two files are uncommitted and not pushed, and they exist only in that worktree. Your `main` checkout is untouched. Want me to commit and push, or open a PR? I'll remove the worktree once it has landed."
+
+SUMMARY: Worked in a native EnterWorktree worktree (`fix-watch-subdir`) because the partner explicitly asked for one to keep `main` free for their demo, and left it in place with the changes uncommitted.

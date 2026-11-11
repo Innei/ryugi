@@ -1,0 +1,98 @@
+Assumptions are marked where I invented a tool output.
+
+## Tool call 1: Bash, where to work (run once per session)
+
+```bash
+git rev-parse --path-format=absolute --git-dir --git-common-dir
+git rev-parse --show-superproject-working-tree
+git branch --show-current
+git status --porcelain
+cat .ryugi/sdd/*/EXPLORING
+```
+
+Output, as given in the situation:
+- `--git-dir` and `--git-common-dir` are both `/Users/p/git/skillkit/.git`, so this is the main checkout.
+- The superproject line is empty.
+- The branch is `main`.
+- `git status --porcelain` is empty.
+- There is no `EXPLORING` file (the glob matches nothing).
+
+**Decision:** The first table row doesn't match, because this is not a linked worktree. The second row does match. The project memory says "changes under hooks/ be made in a worktree", and the table treats the repository's own instructions, including its memory, as the partner's instruction. That entry is the standing request that `EnterWorktree` needs. The edit goes in a worktree, without asking.
+
+## Tool call 2: EnterWorktree
+
+```
+EnterWorktree(name: "fix-watch-subdir")
+```
+
+Assumed result: the worktree is created at `/Users/p/git/skillkit/.claude/worktrees/fix-watch-subdir` on a new branch from `main`, and the session's cwd switches into it. I use the native tool, not `git worktree add`. There is no uncommitted spec to copy, because the tree was clean.
+
+## Tool call 3: Bash, set up (in the new worktree)
+
+```bash
+pnpm install --frozen-lockfile
+```
+
+I assumed the repo commits `pnpm-lock.yaml`, so the install is frozen. I'm not symlinking or copying `node_modules`. Assumed result: the install succeeds.
+
+## Tool call 4: Bash, baseline test run
+
+```bash
+pnpm test
+```
+
+Assumed result: all tests pass, so I can go on. If anything had failed, I would report the failures and ask before continuing.
+
+## Tool call 5: Read
+
+```
+Read(hooks/watch.cjs)
+Read(tests/hooks/test-watch.cjs)
+```
+
+These two reads run in parallel. Assumed contents: line 10 is `const root = path.resolve(watchDir)`, and the watcher only handles events directly under that single root.
+
+## Tool call 6: Edit, failing test first
+
+```
+Edit(tests/hooks/test-watch.cjs)
+```
+
+I add a test that creates a temp watch root, starts the watcher, creates `sub/dir/new-file.txt`, and asserts the watcher reports it. I reuse the existing helpers in that file.
+
+## Tool call 7: Bash, confirm the test fails
+
+```bash
+node tests/hooks/test-watch.cjs
+```
+
+Assumed result: the new test fails with "expected event for sub/dir/new-file.txt, got none", and the existing tests pass. This matches the bug I reproduced earlier.
+
+## Tool call 8: Edit, the fix
+
+```
+Edit(hooks/watch.cjs)
+```
+
+The fix replaces the single-root resolution at line 10 with a recursive watch over the root and its subdirectories. It also registers directories created later, so files in new subdirectories are seen. Nothing else in the file changes.
+
+## Tool call 9: Bash, verify
+
+```bash
+node tests/hooks/test-watch.cjs && pnpm test
+```
+
+Assumed result: the new test passes and the full suite is green.
+
+## Message to partner
+
+> Fixed in a worktree, since the project memory asks for hooks/ changes to be made there. I did not commit.
+>
+> - **Cause:** `hooks/watch.cjs:10` resolved one root and watched only that level, so files created in subdirectories never fired.
+> - **Fix:** the watcher now covers subdirectories, including ones created after it starts.
+> - **Test:** I added a regression test in `tests/hooks/test-watch.cjs`. It failed before the fix and passes now. The full suite passes.
+> - **Where the changes are:** uncommitted in `/Users/p/git/skillkit/.claude/worktrees/fix-watch-subdir`, on a branch off `main`. Nothing is pushed, and `main` is untouched.
+>
+> Tell me if you want me to commit and push, or open a PR. I'll remove the worktree once the work has landed.
+
+SUMMARY: Work happened in a new native worktree (`EnterWorktree`, `fix-watch-subdir`), because the project memory asks for hooks/ changes to be made in a worktree and the skill table treats that as the partner's instruction; the changes are uncommitted there and the worktree stays until the work lands.

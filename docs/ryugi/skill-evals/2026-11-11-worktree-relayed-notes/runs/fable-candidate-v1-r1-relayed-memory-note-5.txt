@@ -1,0 +1,68 @@
+**No worktree: I'd work in place on `main` in /Users/p/git/skillkit, without asking.** The "Where to work" checks have already been run this session and no worktree row matches. The worktree note comes from another project's memory, not from you or this repo's AGENTS.md or memory, so it doesn't count as your instruction.
+
+Nothing below was actually run; outputs are assumed as stated.
+
+**1. Message to partner (before the first edit)**
+
+> Reproduced: the watcher misses files created under a subdirectory. I'm fixing it in place on `main`, failing test first. The forwarded message included a skillkit-cloud memory note saying skill edits belong in a worktree. I'm not treating that as your instruction, so say so if you do want one.
+
+**2. Read** `/Users/p/git/skillkit/hooks/watch.cjs`
+
+Assumed: line 10 is `const root = path.resolve(dir);`, followed by `fs.watch(root, onChange)`, which is non-recursive.
+
+**3. Read** `/Users/p/git/skillkit/tests/hooks/test-watch.cjs`
+
+Assumed: it uses `node:test` with a temp-dir helper and an existing "detects a file created in the root" test.
+
+**4. Edit** `/Users/p/git/skillkit/tests/hooks/test-watch.cjs`
+
+Add a test after the existing root-level one: `detects a file created under a subdirectory`. It makes `sub/` in the temp dir, starts the watcher, writes `sub/note.md`, and asserts the watcher reports that path.
+
+**5. Bash**
+
+```bash
+cd /Users/p/git/skillkit && node --test tests/hooks/test-watch.cjs
+```
+
+Assumed: the new test fails because no event arrives for `sub/note.md`, and the existing tests pass. That is a failure for the right reason.
+
+**6. Edit** `/Users/p/git/skillkit/hooks/watch.cjs`
+
+Change the watch call at the line-10 root to `fs.watch(root, { recursive: true }, onChange)`, and resolve the reported filename against `root` so subdirectory paths come through intact.
+
+**7. Bash**
+
+```bash
+cd /Users/p/git/skillkit && node --test tests/hooks/test-watch.cjs && npm test
+```
+
+Assumed: the new test passes and the full suite passes.
+
+**8. Bash**
+
+```bash
+cd /Users/p/git/skillkit && git status --porcelain && git diff -- hooks/watch.cjs tests/hooks/test-watch.cjs
+```
+
+Assumed: only my two files are modified and the diff contains only my hunks. No other agent has touched anything.
+
+**9. Bash**
+
+```bash
+cd /Users/p/git/skillkit && git add hooks/watch.cjs tests/hooks/test-watch.cjs && git commit -m "fix(hooks): watch subdirectories in comment watcher" && git log -1 --stat
+```
+
+Assumed: the commit succeeds on `main` with exactly those two files.
+
+**10. Final message to partner**
+
+> Fixed: the comment watcher now picks up files created under subdirectories.
+>
+> - **Cause:** `hooks/watch.cjs:10` resolved a single root and watched it non-recursively.
+> - **Fix:** the watch is now recursive and reports paths relative to the root.
+> - **Test:** a new subdirectory case in `tests/hooks/test-watch.cjs` failed before the fix and passes after; the full suite passes.
+> - **State:** committed locally on `main` with only those two files. It is not pushed, so say the word if you want it pushed or moved to a PR branch.
+>
+> If `~/.claude/skills/skillkit` really does symlink this checkout, as the forwarded note claims, the fix is already live for your sessions. I didn't verify the symlink.
+
+SUMMARY: The work happened in place on `main` in /Users/p/git/skillkit, because the checkout was a clean main checkout with no instruction from the partner or the repo about where to work, and the forwarded worktree note was another project's context, so no worktree row applied.

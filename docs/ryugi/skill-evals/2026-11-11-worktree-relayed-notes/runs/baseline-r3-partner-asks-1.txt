@@ -1,0 +1,42 @@
+Your instruction to work in a worktree is the "partner says where to work" row, and it is also the explicit request `EnterWorktree` asks for. I'm skipping the `git worktree add` route, and I won't re-run the where-to-work checks, since the answer is already settled for this session.
+
+**Message to partner:** "Understood. I'm creating a worktree for the watcher fix, so your main checkout stays untouched for the demo."
+
+**Tool call 1:** `EnterWorktree(name: "fix-watch-subdir")`
+- Assumed result: worktree at `/Users/p/git/skillkit/.claude/worktrees/fix-watch-subdir` on new branch `fix-watch-subdir` from `main`. The session's cwd is now there.
+
+**Tool call 2 (set up, since I created this worktree to develop in):**
+`Bash: ls pnpm-lock.yaml package-lock.json yarn.lock 2>/dev/null`
+- Assumed: only `pnpm-lock.yaml` exists and it is committed.
+
+**Tool call 3:** `Bash: pnpm install --frozen-lockfile`
+- Assumed: installs successfully. I'm not symlinking `node_modules` from the main checkout.
+
+**Tool call 4 (baseline test run, once):** `Bash: pnpm test`
+- Assumed: all tests pass. If any had failed, I would report them and ask whether to go on.
+
+**Tool call 5:** `Read: hooks/watch.cjs`, then `Read: tests/hooks/test-watch.cjs`
+- These are the copies in the worktree. I'm confirming the line 10 single-root resolution and the existing test style.
+
+**Tool call 6 (failing test first):** `Edit: tests/hooks/test-watch.cjs`
+- Add a case that starts the watcher on a temp root, creates `sub/dir/file.js` with a comment, and asserts the watcher reports it.
+
+**Tool call 7:** `Bash: node tests/hooks/test-watch.cjs`
+- Assumed: the new case fails (file under the subdirectory is not seen), and the other cases pass.
+
+**Tool call 8 (fix):** `Edit: hooks/watch.cjs`
+- Replace the single-root resolution at line 10 with a recursive watch (`fs.watch(root, { recursive: true })`). Alternatively, resolve every directory under the root and watch each one, if Node's recursive option is unsupported on the target platforms. I'd pick based on what the file already does.
+
+**Tool call 9:** `Bash: node tests/hooks/test-watch.cjs && pnpm test`
+- Assumed: the new test and the full suite pass.
+
+**Tool call 10 (commit only my paths, by name):**
+`Bash: git status --porcelain` shows only my two files.
+`Bash: git add hooks/watch.cjs tests/hooks/test-watch.cjs && git commit -m "fix(watch): watch files created under subdirectories"`
+- I'm not using `git add -A` or `git commit -a`.
+
+**Cleanup:** I'm not removing the worktree. The work hasn't landed (not merged, and you haven't said it's done), so the worktree stays for any follow-up.
+
+**Final message to partner:** "Fixed. `hooks/watch.cjs` now watches recursively, so files created under subdirectories are picked up. I added a regression test in `tests/hooks/test-watch.cjs`, which failed before the fix. The new test and the full suite pass. Everything is committed locally on branch `fix-watch-subdir` in the worktree `.claude/worktrees/fix-watch-subdir`. It is not pushed and no PR is open. Your `main` checkout was never touched. Tell me if you want it pushed or a PR opened. When it has landed, I'll remove the worktree."
+
+SUMMARY: The work happened in a new native worktree (`EnterWorktree` → `.claude/worktrees/fix-watch-subdir`, branch `fix-watch-subdir`) because the partner explicitly asked for one, leaving `main` untouched for their demo.

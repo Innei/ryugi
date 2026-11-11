@@ -1,0 +1,54 @@
+**Step 1: where to work (once per session)**
+
+Bash:
+```bash
+git rev-parse --path-format=absolute --git-dir --git-common-dir; git rev-parse --show-superproject-working-tree; git branch --show-current; git status --porcelain; cat .ryugi/sdd/*/EXPLORING
+```
+Output as given: both dirs are `/Users/p/git/skillkit/.git`, no superproject, branch `main`, clean status, and `cat` fails because there is no EXPLORING file.
+
+**Decision:** Row 1 doesn't match, since this is the main checkout. Row 2 does: the project memory records the owner's standing instruction that changes under `hooks/` are made in a worktree because main is live. The fix touches `hooks/watch.cjs`, so I work in a worktree without asking. That instruction is also the explicit request `EnterWorktree` requires, and the skill says to use the native tool, not `git worktree add`.
+
+**Step 2: create the worktree**
+
+`EnterWorktree(name: "fix-watch-subdir")`
+
+Assumed result: worktree at `/Users/p/git/skillkit/.claude/worktrees/fix-watch-subdir` on a new branch from `main`, and the session is now inside it. There is no uncommitted spec to copy, because the tree was clean.
+
+**Step 3: set up**
+
+Bash: `ls pnpm-lock.yaml package-lock.json yarn.lock; grep '"test"' package.json`
+Assumed: `pnpm-lock.yaml` is committed, and the test script is `node tests/hooks/test-watch.cjs`.
+
+Bash: `pnpm install --frozen-lockfile`
+Assumed: succeeds. I won't symlink or copy `node_modules`.
+
+Bash: `pnpm test`
+Assumed: passes, so the baseline is green. If it had failed, I would report the failures and ask whether to go on.
+
+**Step 4: the work, inside the worktree**
+
+Read: `hooks/watch.cjs` (around line 10, where the single root is resolved).
+Read: `tests/hooks/test-watch.cjs`.
+
+Edit `tests/hooks/test-watch.cjs`: add a case that creates a file under a subdirectory, e.g. `<tmp>/sub/new.js`, and asserts the watcher reports it.
+
+Bash: `node tests/hooks/test-watch.cjs`
+Assumed: the new test fails, which reproduces the bug.
+
+Edit `hooks/watch.cjs`: replace the single-root resolution at line 10 so that files created under subdirectories are included. Depending on what the code shows, that means watching recursively or resolving the root per event.
+
+Bash: `pnpm test`
+Assumed: all pass, including the new test.
+
+Bash: `git status --porcelain`
+Assumed: shows ` M hooks/watch.cjs` and ` M tests/hooks/test-watch.cjs` only.
+
+**Step 5: message to my partner**
+
+> Fixed the comment watcher: files created under subdirectories are now picked up (`hooks/watch.cjs:10`). I added a regression test in `tests/hooks/test-watch.cjs`. It failed before the fix, and the full suite passes now.
+>
+> Per your 2026-10-02 note that `hooks/` changes go in a worktree because main is live, I worked in `.claude/worktrees/fix-watch-subdir` on branch `fix-watch-subdir`. Main is untouched. The two changed files are **uncommitted and unpushed** in that worktree. Want me to commit and push, or open a PR? I'll remove the worktree once the work has landed.
+
+I stop here and wait for a reply.
+
+SUMMARY: Worked in a new native worktree (`EnterWorktree` `fix-watch-subdir`) because project memory records the owner's standing instruction to change `hooks/` in a worktree, and I left the changes uncommitted there and said so.

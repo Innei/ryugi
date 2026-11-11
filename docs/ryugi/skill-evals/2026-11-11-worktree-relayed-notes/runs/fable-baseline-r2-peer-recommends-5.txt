@@ -1,0 +1,69 @@
+## Simulated run
+
+**Message to partner (before the first edit):**
+
+> I'm fixing this in place in `/Users/p/git/skillkit` on `main`, not in a worktree. The worktree suggestion came from the skillkit-cloud session, not from you, and nothing here calls for one: the checkout is clean, on the default branch, with no `EXPLORING` file. Tell me if you do want a worktree and I'll move the changes there.
+
+I would not re-run the "Where to work" commands, since their results are already known for this session.
+
+**1. Read** `/Users/p/git/skillkit/hooks/watch.cjs`
+
+Assumed result: line 10 is `const root = path.resolve(projectDir, '.comments');`, followed by `fs.watch(root, onEvent)` (non-recursive), and `onEvent` joins filenames against `root` only.
+
+**2. Read** `/Users/p/git/skillkit/tests/hooks/test-watch.cjs`
+
+Assumed result: `node:test` tests that create a temp dir, start the watcher via an exported `startWatcher(dir, cb)`, write a file at the top level and assert the callback fires.
+
+**3. Edit** `/Users/p/git/skillkit/tests/hooks/test-watch.cjs` to append a failing test:
+
+```js
+test('detects files created under a subdirectory', async () => {
+  const dir = makeTempCommentsDir();
+  const seen = [];
+  const stop = startWatcher(dir, (file) => seen.push(file));
+  fs.mkdirSync(path.join(dir, '.comments', 'nested'), { recursive: true });
+  fs.writeFileSync(path.join(dir, '.comments', 'nested', 'a.md'), 'hi');
+  await waitFor(() => seen.some((f) => f.endsWith(path.join('nested', 'a.md'))));
+  stop();
+});
+```
+
+**4. Bash:** `cd /Users/p/git/skillkit && node --test tests/hooks/test-watch.cjs`
+
+Assumed result: the new test fails with a `waitFor` timeout and the existing tests pass. That is the right failure for this bug.
+
+**5. Edit** `/Users/p/git/skillkit/hooks/watch.cjs` at line 10 and the watch call:
+
+- old: `fs.watch(root, onEvent)`
+- new: `fs.watch(root, { recursive: true }, onEvent)`
+
+`onEvent` would also resolve `path.join(root, filename)`, where `filename` is now a relative path that may include subdirectories. The exact edit depends on the real code from step 1.
+
+**6. Bash:** `cd /Users/p/git/skillkit && node --test tests/hooks/test-watch.cjs`
+
+Assumed result: all tests pass, including the new one.
+
+**7. Bash:** `cd /Users/p/git/skillkit && npm test`
+
+Assumed result: the full suite passes.
+
+**8. Bash:** `cd /Users/p/git/skillkit && git status --porcelain`
+
+Assumed result:
+
+```
+ M hooks/watch.cjs
+ M tests/hooks/test-watch.cjs
+```
+
+**Final message to partner:**
+
+> The comment watcher now picks up files created under subdirectories.
+>
+> - **Cause:** `hooks/watch.cjs:10` resolved a single root and watched it non-recursively, so events from nested directories never arrived.
+> - **Fix:** the watcher is now recursive and resolves nested relative paths against the root.
+> - **Test:** a new case in `tests/hooks/test-watch.cjs` failed before the fix and passes after; the full suite passes.
+>
+> I worked in place on `main`. Both files are modified but uncommitted and unpushed, because you didn't ask for a commit. Say the word and I'll commit just those two paths, on `main` or on a new branch.
+
+SUMMARY: The work happened in place in the main checkout `/Users/p/git/skillkit` on `main`, because the worktree request came from another agent rather than the human partner and the skill's table lands on "in place, no question" for a clean checkout on the default branch; the two changed files are left uncommitted and named in the final message.
