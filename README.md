@@ -25,6 +25,11 @@ straight back to the agent.
 Then send `Let's make a react todo list`. There is nothing to invoke: the agent opens an artboard,
 asks what matters, and builds only what you approve.
 
+Have Node.js and npm available in the agent's environment. The plugin calls its own launcher,
+which downloads `ryugi-artifacts` on first use and caches each release under
+`~/.cache/ryugi/artifacts/` by default. It checks for updates at most once a day and can reuse a
+compatible cached release offline. The first run needs network access and a writable cache.
+
 <p align="center">
   <a href="docs/install.md">Harnesses</a> · <a href="docs/workflow.md">Workflow</a> · <a href="docs/artifacts-cli.md">CLI</a>
 </p>
@@ -103,6 +108,18 @@ npx ryugi-artifacts
 Local first, no subscription, no agent session needed. One server covers every project on the
 machine, with ⌘K to jump and links that survive a restart. `publish` shares one to
 [Ryugi Cloud](https://ryugi.innei.dev).
+
+For a `ryugi` command in your terminal, install the CLI globally:
+
+```bash
+npm install -g ryugi-artifacts
+ryugi
+ryugi /path/to/project
+```
+
+`ryugi-artifacts` remains an alias. Installing the plugin alone does not add `ryugi` to your PATH;
+the agent uses the plugin's launcher. The global CLI is optional and updates separately with
+`ryugi update`. See the [CLI guide](docs/artifacts-cli.md) for commands and options.
 
 ## The skills behind it
 
