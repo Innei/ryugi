@@ -7,6 +7,7 @@ const {
   beat,
   checkouts,
   sessionOf,
+  sessionProjects,
   subscriptionFile,
   subscriptions,
 } = require('./comment-subscriptions.cjs');
@@ -371,7 +372,7 @@ function main() {
     const events = [];
     if (!session) events.push(...poll(project));
     else
-      for (const root of checkouts(project)) {
+      for (const root of new Set([...checkouts(project), ...sessionProjects('claude', session)])) {
         if (root !== project && !fs.existsSync(subscriptionFile(root, 'claude', session))) continue;
         beat(root, 'claude', session);
         events.push(...poll(root, subscriptions(root, 'claude', session)));

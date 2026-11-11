@@ -89,6 +89,25 @@ function sessionOf(host, env = process.env) {
   return UUID.test(session || '') ? session : null;
 }
 
+// A session can open artifacts in a project its watcher was not started in; the index names each one.
+function sessionIndexFile(host, session) {
+  const cache = process.env.XDG_CACHE_HOME || path.join(os.homedir(), '.cache');
+  return path.join(cache, 'ryugi', HOSTS[host].dir, `${session}.json`);
+}
+
+function sessionProjects(host, session) {
+  const file = readJson(sessionIndexFile(host, session));
+  return Array.isArray(file?.projects) ? file.projects.filter((p) => typeof p === 'string') : [];
+}
+
+function addSessionProject(host, session, project) {
+  const projects = sessionProjects(host, session);
+  if (projects.includes(project)) return;
+  const file = sessionIndexFile(host, session);
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, JSON.stringify({ projects: [...projects, project] }), { mode: 0o600 });
+}
+
 function subscriptions(project, host, session) {
   const file = readJson(subscriptionFile(project, host, session));
   return new Set(Array.isArray(file?.artifacts) ? file.artifacts : []);
@@ -118,6 +137,7 @@ function register(args, env = process.env) {
     JSON.stringify({ artifacts: [...artifacts], updatedAt: new Date().toISOString() }),
     { mode: 0o600 },
   );
+  addSessionProject(host, session, project);
 }
 
 module.exports = {
@@ -127,6 +147,7 @@ module.exports = {
   projectRoot,
   register,
   sessionOf,
+  sessionProjects,
   subscriptionFile,
   subscriptions,
   UUID,

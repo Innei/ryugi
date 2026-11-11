@@ -4,9 +4,13 @@ import { readFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
-import test from 'node:test';
+import test, { after } from 'node:test';
 import { setTimeout as delay } from 'node:timers/promises';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+
+const cacheHome = mkdtempSync(join(tmpdir(), 'ryugi-pi-cache-'));
+process.env.XDG_CACHE_HOME = cacheHome;
+after(() => rmSync(cacheHome, { recursive: true, force: true }));
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(__dirname, '../..');

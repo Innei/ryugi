@@ -6,8 +6,12 @@ const { randomUUID } = require('node:crypto');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { test } = require('node:test');
+const { after, test } = require('node:test');
 const { setTimeout: delay } = require('node:timers/promises');
+
+const cacheHome = fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-comment-cache-'));
+process.env.XDG_CACHE_HOME = cacheHome;
+after(() => fs.rmSync(cacheHome, { recursive: true, force: true }));
 
 const repo = path.resolve(__dirname, '../..');
 const watcher = path.join(repo, 'hooks/watch-comments.cjs');
@@ -475,6 +479,20 @@ test('a session started in a linked worktree hears an artifact it opened in the 
   const lines = watcher.output.trim().split('\n');
   assert.deepEqual(lines.map(artifactOf), ['document/plan'], watcher.errors);
   assert.ok(lines[0].includes(`--project-dir '${f.project}'`), lines[0]);
+});
+
+test('a session hears an artifact it opened in a project outside its repository', async (t) => {
+  const f = fixture(t);
+  const outside = fixture(t);
+  const run = launcher(t);
+  const session = randomUUID();
+  const watcher = monitor(t, f.project, { CLAUDE_CODE_SESSION_ID: session });
+  run(outside.project, session, 'start', '--artifact', 'artboard/org-banner');
+  outside.save('artboard/org-banner', [thread()]);
+  await until(() => watcher.output.includes('artboard/org-banner'));
+  const lines = watcher.output.trim().split('\n');
+  assert.deepEqual(lines.map(artifactOf), ['artboard/org-banner'], watcher.errors);
+  assert.ok(lines[0].includes(`--project-dir '${outside.project}'`), lines[0]);
 });
 
 test("another session's artifact in a linked worktree stays quiet", async (t) => {

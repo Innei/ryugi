@@ -6,7 +6,11 @@ const fs = require('node:fs');
 const net = require('node:net');
 const os = require('node:os');
 const path = require('node:path');
-const { test } = require('node:test');
+const { after, test } = require('node:test');
+
+const cacheHome = fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-codex-cache-'));
+process.env.XDG_CACHE_HOME = cacheHome;
+after(() => fs.rmSync(cacheHome, { recursive: true, force: true }));
 const { setTimeout: delay } = require('node:timers/promises');
 
 const repo = path.resolve(__dirname, '../..');
