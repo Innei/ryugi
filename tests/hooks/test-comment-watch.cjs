@@ -418,6 +418,78 @@ test('the declared plugin monitor notices artifacts created later from a reposit
   assert.equal(watcher.output.trim().split('\n').length, count);
 });
 
+function linkedWorktree(t) {
+  const f = fixture(t);
+  const git = (...args) => execFileSync('git', ['-C', f.project, ...args], { stdio: 'pipe' });
+  git('init', '-q');
+  git(
+    '-c',
+    'user.name=t',
+    '-c',
+    'user.email=t@example.com',
+    '-c',
+    'commit.gpgsign=false',
+    'commit',
+    '-q',
+    '--allow-empty',
+    '-m',
+    'init',
+  );
+  const linked = path.join(f.project, '.claude/worktrees/rework');
+  git('worktree', 'add', '-q', linked);
+  const saveLinked = (artifact, threads) => {
+    const file = path.join(linked, '.ryugi/artifacts', artifact, 'comments.json');
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, JSON.stringify({ version: 1, threads }));
+  };
+  return { ...f, linked, saveLinked };
+}
+
+test('a session started in the main checkout hears an artifact it opened in a linked worktree', async (t) => {
+  const f = linkedWorktree(t);
+  const run = launcher(t);
+  const session = randomUUID();
+  const watcher = monitor(t, f.project, { CLAUDE_CODE_SESSION_ID: session });
+  run(f.linked, session, 'start', '--artifact', 'artboard/redesign');
+  f.saveLinked('artboard/redesign', [thread()]);
+  await until(() => watcher.output.includes('artboard/redesign'));
+  const lines = watcher.output.trim().split('\n');
+  assert.deepEqual(lines.map(artifactOf), ['artboard/redesign'], watcher.errors);
+  assert.ok(lines[0].includes(`--project-dir '${f.linked}'`), lines[0]);
+  assert.ok(
+    fs.existsSync(
+      path.join(f.linked, '.ryugi/artifacts/.state/claude-comment-watch', `${session}.alive`),
+    ),
+    'no heartbeat beside the worktree subscription',
+  );
+});
+
+test('a session started in a linked worktree hears an artifact it opened in the main checkout', async (t) => {
+  const f = linkedWorktree(t);
+  const run = launcher(t);
+  const session = randomUUID();
+  const watcher = monitor(t, f.linked, { CLAUDE_CODE_SESSION_ID: session });
+  run(f.project, session, 'start', '--artifact', 'document/plan');
+  f.save('document/plan', [thread()]);
+  await until(() => watcher.output.includes('document/plan'));
+  const lines = watcher.output.trim().split('\n');
+  assert.deepEqual(lines.map(artifactOf), ['document/plan'], watcher.errors);
+  assert.ok(lines[0].includes(`--project-dir '${f.project}'`), lines[0]);
+});
+
+test("another session's artifact in a linked worktree stays quiet", async (t) => {
+  const f = linkedWorktree(t);
+  const run = launcher(t);
+  const mine = randomUUID();
+  const watcher = monitor(t, f.project, { CLAUDE_CODE_SESSION_ID: mine });
+  run(f.linked, mine, 'start', '--artifact', 'artboard/redesign');
+  run(f.linked, randomUUID(), 'start', '--artifact', 'artboard/theirs');
+  await delay(1200);
+  f.saveLinked('artboard/theirs', [thread()]);
+  await delay(1500);
+  assert.equal(watcher.output, '', watcher.errors);
+});
+
 function choiceFixture(t) {
   const f = fixture(t);
   const rounds = (state) =>

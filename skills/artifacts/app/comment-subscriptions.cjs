@@ -31,6 +31,41 @@ function projectRoot(cwd) {
   }
 }
 
+function gitRoot(dir) {
+  for (let current = dir; ; current = path.dirname(current)) {
+    if (fs.existsSync(path.join(current, '.git'))) return current;
+    if (path.dirname(current) === current) return null;
+  }
+}
+
+// A linked worktree is its own project root, so a session can subscribe in a checkout its watcher was not started in.
+function checkouts(project) {
+  const roots = [project];
+  try {
+    const root = gitRoot(project);
+    let common = path.join(root, '.git');
+    if (fs.statSync(common).isFile()) {
+      const gitdir = path.resolve(
+        root,
+        fs
+          .readFileSync(common, 'utf8')
+          .replace(/^gitdir:\s*/, '')
+          .trim(),
+      );
+      common = path.resolve(gitdir, fs.readFileSync(path.join(gitdir, 'commondir'), 'utf8').trim());
+      roots.push(path.dirname(common));
+    }
+    for (const name of fs.readdirSync(path.join(common, 'worktrees'))) {
+      const entry = path.join(common, 'worktrees', name);
+      try {
+        const link = fs.readFileSync(path.join(entry, 'gitdir'), 'utf8').trim();
+        roots.push(fs.realpathSync(path.dirname(path.resolve(entry, link))));
+      } catch {}
+    }
+  } catch {}
+  return [...new Set(roots)];
+}
+
 function subscriptionFile(project, host, session) {
   return path.join(project, '.ryugi/artifacts/.state', HOSTS[host].dir, `${session}.json`);
 }
@@ -88,6 +123,7 @@ function register(args, env = process.env) {
 module.exports = {
   aliveFile,
   beat,
+  checkouts,
   projectRoot,
   register,
   sessionOf,

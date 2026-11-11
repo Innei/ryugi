@@ -3,7 +3,13 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { unreadThreadCount, reviewStateKey } = require('./comment-threads.cjs');
-const { beat, sessionOf, subscriptions } = require('./comment-subscriptions.cjs');
+const {
+  beat,
+  checkouts,
+  sessionOf,
+  subscriptionFile,
+  subscriptions,
+} = require('./comment-subscriptions.cjs');
 
 const cursorKey = (env) => (env.CLAUDE_CODE_IS_COWORK ? 'Claude Cowork' : 'Claude Code');
 
@@ -354,14 +360,23 @@ function createCommentWatch(project, key = cursorKey(process.env)) {
 
 function main() {
   const project = process.argv[2] || process.cwd();
-  const poll = createCommentWatch(project);
+  const polls = new Map();
+  const poll = (root, artifacts) => {
+    if (!polls.has(root)) polls.set(root, createCommentWatch(root));
+    return polls.get(root)(artifacts);
+  };
   // Without a session ID (older Claude Code) there is nothing to route by, so every artifact counts.
   const session = sessionOf('claude');
   const emit = () => {
-    if (session) beat(project, 'claude', session);
-    const artifacts = session ? subscriptions(project, 'claude', session) : undefined;
-    for (const event of poll(artifacts))
-      process.stdout.write(`${wakeMessage(event, NOTIFICATION_LIMIT)}\n`);
+    const events = [];
+    if (!session) events.push(...poll(project));
+    else
+      for (const root of checkouts(project)) {
+        if (root !== project && !fs.existsSync(subscriptionFile(root, 'claude', session))) continue;
+        beat(root, 'claude', session);
+        events.push(...poll(root, subscriptions(root, 'claude', session)));
+      }
+    for (const event of events) process.stdout.write(`${wakeMessage(event, NOTIFICATION_LIMIT)}\n`);
   };
   emit();
   const timer = setInterval(emit, 1000);

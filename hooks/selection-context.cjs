@@ -8,6 +8,12 @@ const {
   unreadThreadCount,
   reviewStateKey,
 } = require('../skills/artifacts/app/comment-threads.cjs');
+const {
+  checkouts,
+  subscriptionFile,
+  subscriptions,
+  UUID,
+} = require('../skills/artifacts/app/comment-subscriptions.cjs');
 
 const MAX_CONTEXT = 8000;
 const MAX_HTML = 600;
@@ -124,10 +130,11 @@ function artifactIds(root, type) {
   }
 }
 
-function commentReminders(project, root, key) {
+function commentReminders(project, root, key, only) {
   const waiting = [];
   for (const type of ['document', 'artboard', 'whiteboard']) {
     for (const id of artifactIds(root, type)) {
+      if (only && !only.has('*') && !only.has(`${type}/${id}`)) continue;
       const file = readJson(path.join(root, type, id, 'comments.json'));
       if (!file) continue;
       const scope = `${type}/${id}`;
@@ -300,7 +307,29 @@ function main() {
     process.env,
     typeof input.session_id === 'string' ? input.session_id : '',
   );
-  const reminders = [commentReminders(project, root, cursorKey(process.env)), autoPublish]
+  const sessionId = UUID.test(input.session_id || '')
+    ? input.session_id
+    : process.env.CLAUDE_CODE_SESSION_ID;
+  const elsewhere = UUID.test(sessionId || '')
+    ? checkouts(project)
+        .filter(
+          (other) =>
+            other !== project && fs.existsSync(subscriptionFile(other, 'claude', sessionId)),
+        )
+        .map((other) =>
+          commentReminders(
+            other,
+            path.join(other, '.ryugi', 'artifacts'),
+            cursorKey(process.env),
+            subscriptions(other, 'claude', sessionId),
+          ),
+        )
+    : [];
+  const reminders = [
+    commentReminders(project, root, cursorKey(process.env)),
+    ...elsewhere,
+    autoPublish,
+  ]
     .filter(Boolean)
     .join('\n\n');
   const files = selectionFiles(state).sort((a, b) =>

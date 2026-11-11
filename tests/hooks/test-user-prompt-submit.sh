@@ -221,6 +221,21 @@ JSON
 out="$(run_hook "$dir" "继续")"
 expect "reminds about a whiteboard with unread comments" "$out" 'whiteboard/sync (1)'
 
+dir="$(project worktree-main)"
+git -C "$dir" init -q
+git -C "$dir" -c user.name=t -c user.email=t@example.com -c commit.gpgsign=false commit -q --allow-empty -m init
+linked="$dir/.claude/worktrees/rework"
+git -C "$dir" worktree add -q "$linked" > /dev/null 2>&1
+session="0b5f6c1e-3f0a-4a52-9d0e-6a4d3c2b1a00"
+mkdir -p "$linked/.ryugi/artifacts/document/relay" "$linked/.ryugi/artifacts/document/theirs" "$linked/.ryugi/artifacts/.state/claude-comment-watch"
+write_doc_comments "$linked"
+cp "$linked/.ryugi/artifacts/document/relay/comments.json" "$linked/.ryugi/artifacts/document/theirs/comments.json"
+printf '{"artifacts":["document/relay"]}' > "$linked/.ryugi/artifacts/.state/claude-comment-watch/$session.json"
+out="$(printf '{"hook_event_name":"UserPromptSubmit","cwd":"%s","prompt":"go","session_id":"%s"}' "$dir" "$session" \
+  | env -i PATH="${PATH:-}" HOME="$TEST_ROOT" CLAUDE_PROJECT_DIR="$dir" bash "$HOOK" user-prompt-submit)"
+expect "reminds about an artifact this session opened in a linked worktree" "$out" "--project-dir \"$(cd "$linked" && pwd -P)\" --artifact document/relay"
+if [[ "$out" == *"document/theirs"* ]]; then fail "leaves out worktree artifacts this session did not open"; else pass "leaves out worktree artifacts this session did not open"; fi
+
 if grep -q '"UserPromptSubmit"' "$REPO_ROOT/hooks/hooks.json"; then pass "is registered in hooks.json"; else fail "is registered in hooks.json"; fi
 
 if [[ "$FAILURES" -gt 0 ]]; then
