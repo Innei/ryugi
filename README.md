@@ -4,7 +4,7 @@
 
 <h1 align="center">Ryugi 流儀</h1>
 
-<p align="center"><b>Your coding agent draws its options instead of describing them.<br>You pick, comment and pass — then it builds.</b></p>
+<p align="center"><b>Your coding agent draws its options instead of describing them.<br>You pick, comment and pass.</b></p>
 
 <p align="center">
   <img src="docs/images/hero.webp" alt="A terminal asks Claude Code to mock up notification settings; three layouts stream onto the Ryugi artboard, the user picks the recommended one and submits, the terminal receives q1 → b, and the built page appears next to the approved design, where the user presses Pass">
@@ -17,22 +17,17 @@ Ryugi puts that work on pages you can open: mockups side by side, design docs yo
 pages with real sliders, and the built result next to what you approved. Your picks and comments go
 straight back to the agent.
 
-```text
-/plugin marketplace add Innei/ryugi
-/plugin install ryugi@ryugi-dev
-```
-
-Then send `Let's make a react todo list`. There is nothing to invoke: the agent opens an artboard,
-asks what matters, and builds only what you approve.
-
-Only want the artboards, documents and comments, without the brainstorm → spec → TDD workflow?
-
 ```bash
 npx ryugi-artifacts install
 ```
 
-It asks which one you want and installs it into Claude Code. See
-[Artifacts only](docs/install.md#artifacts-only).
+It asks one question and installs Ryugi into Claude Code:
+
+- **Artifacts only** — send `Show me three directions for a settings page` and an artboard opens.
+- **The full workflow** — send `Let's make a react todo list`; the agent opens an artboard, asks
+  what matters, and builds only what you approve.
+
+Other harnesses and manual install: [Harnesses](docs/install.md).
 
 Have Node.js and npm available in the agent's environment. The plugin calls its own launcher,
 which downloads `ryugi-artifacts` on first use and caches each release under
@@ -130,10 +125,11 @@ ryugi /path/to/project
 the agent uses the plugin's launcher. The global CLI is optional and updates separately with
 `ryugi update`. See the [CLI guide](docs/artifacts-cli.md) for commands and options.
 
-## The skills behind it
+## The full workflow
 
-The artifacts are what you see; the skills make the agent reach for them at the right moment. They
-fire on their own:
+Want the agent to build from what you approved, not only show it? Pick the full workflow at
+install. Its skills make the agent reach for the artifacts at the right moment, and they fire on
+their own:
 
 ```mermaid
 flowchart LR
