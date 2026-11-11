@@ -81,6 +81,18 @@ if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -z "${CURSOR_PLUGIN_ROOT:-}" ] && [ "${
   RYUGI_ARTIFACTS_OWNER="$PPID" node "${SCRIPT_DIR}/start-artifacts.cjs" "$project_dir" < /dev/null > /dev/null 2>&1 &
 fi
 
+# The ryugi-artifacts marketplace entry loads only the artifacts skills but
+# still runs every hook. Its data dir (<entry>-<marketplace>) names the entry
+# for every marketplace source; a directory source runs hooks from the source
+# checkout, so the cache path alone cannot tell.
+plugin_data="${CLAUDE_PLUGIN_DATA:-}"
+case "${plugin_data##*[/\\]}" in
+  ryugi-artifacts-*) exit 0 ;;
+esac
+case "$PLUGIN_ROOT" in
+  */ryugi-artifacts/* | *\\ryugi-artifacts\\*) exit 0 ;;
+esac
+
 if [ -n "${CURSOR_PLUGIN_ROOT:-}" ]; then
   # Cursor sets CURSOR_PLUGIN_ROOT (may also set CLAUDE_PLUGIN_ROOT)
   emit_json '{\n  "additional_context": "%s"\n}\n' "$session_context"

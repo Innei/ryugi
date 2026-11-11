@@ -15,6 +15,17 @@
         "name": "Innei",
         "email": "i@innei.dev"
       }
+    },
+    {
+      "name": "ryugi-artifacts",
+      "description": "Ryugi artifacts only: artboards of mockups, documents and HTML pages you comment on, with comments delivered back to the agent. No workflow skills.",
+      "version": "1.71.0",
+      "source": "./",
+      "author": {
+        "name": "Innei",
+        "email": "i@innei.dev"
+      },
+      "skills": ["./skills/artifacts", "./skills/interface-craft"]
     }
   ]
 }

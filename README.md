@@ -25,6 +25,15 @@ straight back to the agent.
 Then send `Let's make a react todo list`. There is nothing to invoke: the agent opens an artboard,
 asks what matters, and builds only what you approve.
 
+Only want the artboards, documents and comments, without the brainstorm → spec → TDD workflow?
+
+```bash
+npx ryugi-artifacts install
+```
+
+It asks which one you want and installs it into Claude Code. See
+[Artifacts only](docs/install.md#artifacts-only).
+
 Have Node.js and npm available in the agent's environment. The plugin calls its own launcher,
 which downloads `ryugi-artifacts` on first use and caches each release under
 `~/.cache/ryugi/artifacts/` by default. It checks for updates at most once a day and can reuse a

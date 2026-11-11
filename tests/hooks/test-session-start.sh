@@ -420,6 +420,54 @@ else
   fail "starts the repository's server from a session in a subdirectory"
 fi
 
+install_variant() {
+  local root="$TEST_ROOT/plugins/cache/ryugi-dev/$1/1.71.0"
+  mkdir -p "$root/skills"
+  cp -R "$REPO_ROOT/hooks" "$root/hooks"
+  cp -R "$REPO_ROOT/skills/using-ryugi" "$root/skills/using-ryugi"
+  printf '%s\n' "$root"
+}
+
+artifacts_root="$(install_variant ryugi-artifacts)"
+artifacts_home="$(make_home artifacts-only)"
+if artifacts_out="$(env -i PATH="${PATH:-}" HOME="$artifacts_home" CLAUDE_PLUGIN_ROOT="$artifacts_root" \
+  bash "$artifacts_root/hooks/session-start" 2>&1)" && [[ -z "$artifacts_out" ]]; then
+  pass "the ryugi-artifacts install injects no workflow bootstrap"
+else
+  fail "the ryugi-artifacts install injects no workflow bootstrap"
+  echo "$artifacts_out" | sed 's/^/      /'
+fi
+
+data_home="$(make_home artifacts-data)"
+if data_out="$(env -i PATH="${PATH:-}" HOME="$data_home" CLAUDE_PLUGIN_ROOT="$REPO_ROOT" \
+  CLAUDE_PLUGIN_DATA="$TEST_ROOT/plugins/data/ryugi-artifacts-ryugi-dev" \
+  bash "$HOOK_UNDER_TEST" 2>&1)" && [[ -z "$data_out" ]]; then
+  pass "a directory-source ryugi-artifacts install, named only by its data dir, injects no bootstrap"
+else
+  fail "a directory-source ryugi-artifacts install, named only by its data dir, injects no bootstrap"
+  echo "$data_out" | head -3 | sed 's/^/      /'
+fi
+
+assert_command_output \
+  "the full entry's data dir keeps the bootstrap" \
+  "nested" \
+  "" \
+  "" \
+  "$(make_home full-data)" \
+  CLAUDE_PLUGIN_ROOT="$REPO_ROOT" \
+  CLAUDE_PLUGIN_DATA="$TEST_ROOT/plugins/data/ryugi-ryugi-dev" \
+  bash "$HOOK_UNDER_TEST"
+
+full_root="$(install_variant ryugi)"
+assert_command_output \
+  "the full ryugi install still injects the bootstrap" \
+  "nested" \
+  "" \
+  "" \
+  "$(make_home full-install)" \
+  CLAUDE_PLUGIN_ROOT="$full_root" \
+  bash "$full_root/hooks/session-start"
+
 if [[ "$FAILURES" -gt 0 ]]; then
   echo "STATUS: FAILED ($FAILURES failure(s))"
   exit 1

@@ -33,6 +33,34 @@ watches, described in their sections; other harnesses and older versions
 read comments when asked. Claude's own hosted Artifacts keep their built-in
 comment watches.
 
+## Artifacts only
+
+To get artboards, documents, HTML pages and comment delivery without the
+workflow skills (brainstorming, specs, TDD, debugging, verifying,
+worktrees), install the `ryugi-artifacts` entry instead of `ryugi`:
+
+```bash
+npx ryugi-artifacts install
+```
+
+It asks "artifacts only, or the full Ryugi workflow" and installs the
+matching entry at user scope. Pass `--mode artifacts` or `--mode full` to
+skip the question; without a terminal to ask in, `--mode` is required. When
+`ryugi` is already enabled, the default stays full, and leaving it asks
+again. To install by hand:
+
+```text
+/plugin install ryugi-artifacts --marketplace Innei/ryugi
+```
+
+The two entries share the plugin name `ryugi`, so enable only one of them.
+The installer disables the other one at user scope and warns when a
+project's `.claude/settings.json` or `.claude/settings.local.json` still
+enables it. Switching later is the same command with the other mode.
+
+Artifacts only covers Claude Code for now. On other harnesses, install the
+full plugin as described in their sections.
+
 ## Antigravity
 
 ```bash
