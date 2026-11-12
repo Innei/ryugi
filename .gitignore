@@ -19,8 +19,8 @@ __pycache__/
 *.pyo
 .pytest_cache/
 
-# Local builds of the artifacts CLI, server and viewer; the skill's launcher otherwise installs the newest npm release
+# Local builds of the artifacts CLI, server and viewer; the skill's launcher otherwise installs the newest npm release. The viewer is a symlink to a local build, so it is ignored without a trailing slash.
 skills/artifacts/app/server.cjs
-skills/artifacts/app/viewer/
+skills/artifacts/app/viewer
 skills/artifacts/app/runtime/
 skills/artifacts/app/cli.cjs
