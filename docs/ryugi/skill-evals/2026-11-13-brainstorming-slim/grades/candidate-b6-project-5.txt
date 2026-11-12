@@ -1,0 +1,1 @@
+PASS — Moves unresolved decisions into a linked document with playback and questions, starts no implementation, and does not treat “sounds good” as design approval.

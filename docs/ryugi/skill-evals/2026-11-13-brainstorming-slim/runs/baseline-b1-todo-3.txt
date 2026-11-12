@@ -1,0 +1,79 @@
+All actions below are simulated; only `./skill/artboard-rounds.md` was actually read.
+
+1. **Message to partner**
+
+   “I’m using brainstorming to show a few possible directions. My call is React with Vite and TypeScript; the board will help us choose what the list is for.”
+
+2. **Shell**
+   ```sh
+   ls -la /Users/p/tmp/todo
+   ```
+   Assumed result: empty directory, with no existing code, design system, or project instructions.
+
+3. **Read skill instructions**
+   ```sh
+   cat ./skill/artboard-rounds.md
+   ```
+   Actual result: open an artboard choice round, recommend one direction, and wait for the partner’s selection. Apply the already-loaded artifacts and interface-craft skills before drawing.
+
+4. **Shell**
+   ```sh
+   mkdir -p /Users/p/tmp/todo/.ryugi/artifacts/todo-directions
+   ```
+
+5. **Write** `/Users/p/tmp/todo/.ryugi/artifacts/todo-directions/quick-list.html`
+   ```text
+   Compact personal checklist: “My list,” an “Add a task…” field, and active/completed filters.
+   Sample rows: “Buy coffee,” “Book dentist,” and checked “Send the invoice.”
+   White surface, charcoal text, blue accent; visible checkboxes and quiet delete controls.
+   ```
+
+6. **Write** `/Users/p/tmp/todo/.ryugi/artifacts/todo-directions/daily-planner.html`
+   ```text
+   Daily planning screen: “Today,” date navigation, and “3 tasks left.”
+   Tasks grouped into Today and Upcoming, with times and due-date chips.
+   Warm neutral surface, indigo accent, spacious rows emphasizing the day’s priorities.
+   ```
+
+7. **Write** `/Users/p/tmp/todo/.ryugi/artifacts/todo-directions/shared-list.html`
+   ```text
+   Shared household screen: “Home,” member avatars, task entry, and assignment controls.
+   Sample tasks: “Take out recycling — Alex” and “Order groceries — Sam.”
+   Soft gray surface, teal accent; owners and completion activity make coordination visible.
+   ```
+
+8. **Write** `/Users/p/tmp/todo/.ryugi/artifacts/todo-directions/canvas.json`
+   ```text
+   Round title: “What kind of todo list?”; instruction: “Pick a direction and submit; unpicked choices use my recommendation.”
+   One choice group, purpose, with choose: true and recommend: "quick-list"; three boards referencing the HTML mockups.
+   Sticky: “My recommendation: Quick list gives you a useful personal checklist with the fewest decisions.”
+   ```
+
+9. **Shell**
+   ```sh
+   cd /Users/p/tmp/todo && ryugi check
+   ```
+   Assumed result: all three mockups and the artboard validate successfully.
+
+10. **Shell**
+    ```sh
+    cd /Users/p/tmp/todo && ryugi start
+    ```
+    Assumed result: serves the artboard at `http://localhost:4310/a/todo-directions`.
+
+11. **Browser**
+    ```sh
+    agent-browser open http://localhost:4310/a/todo-directions
+    ```
+    ```sh
+    agent-browser snapshot
+    ```
+    Assumed result: three rendered directions, Quick list marked recommended, and working selection and submit controls.
+
+12. **Message to partner**
+
+    “The [board](http://localhost:4310/a/todo-directions) compares a quick personal list, a daily planner, and a shared household list; I recommend Quick list—pick the direction that fits and submit.”
+
+**Stop here for the partner’s selection.** No application scaffolding or product code has been created.
+
+SUMMARY: Simulated inspecting the empty project and preparing a three-direction artboard; waiting for the partner to choose a direction.

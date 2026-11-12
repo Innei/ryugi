@@ -1,0 +1,47 @@
+1. **Message to partner:** “I’m using the brainstorming workflow to explore a few directions for the todo list.”
+
+2. **Shell call:**
+   ```sh
+   cd /Users/p/tmp/todo && pwd && rg --files --hidden -g '!.git'
+   ```
+   **Assumed output:** `/Users/p/tmp/todo`, with no files listed. There is no existing code or design system.
+
+3. **Apply the already-loaded interface-craft and artifacts skills.** Prepare one artboard choice group comparing three uses:
+   
+   - **Quick list — recommended:** a compact personal list with an “Add a task” field, checkboxes, and completed tasks.
+   - **Daily planner:** tasks grouped into Today and Later, with due dates and a daily progress indicator.
+   - **Shared list:** a household list with assignees and shared tasks.
+
+   My recommendation is the quick list because the brief gives no need for scheduling or collaboration. These are visual mockups; no application code is built.
+
+4. **Shell call:**
+   ```sh
+   cd /Users/p/tmp/todo && mkdir -p .ryugi/artifacts/todo-list
+   ```
+
+5. **File-write call:** `.ryugi/artifacts/todo-list/canvas.json`
+
+   Three-line content sketch:
+   ```text
+   Title note: “What kind of todo list? Pick a direction and submit; unpicked choices use the recommendation.”
+   One group: choose=true, recommend="quick-list"; three rendered boards: quick-list, daily-planner, shared-list.
+   Realistic task copy and distinct layouts; sticky: “Start with a quick personal list for the smallest useful version.”
+   ```
+
+6. **Shell call:**
+   ```sh
+   cd /Users/p/tmp/todo && ryugi check
+   ```
+   **Assumed output:** The artboard passes validation.
+
+7. **Shell call:**
+   ```sh
+   cd /Users/p/tmp/todo && ryugi start
+   ```
+   **Assumed output:** A local viewer starts and prints `http://localhost:4317/a/todo-list`.
+
+8. **Message to partner:** “The board shows a quick personal list, a daily planner, and a shared list—my recommendation is the quick list. Pick one and submit: [Open the board](http://localhost:4317/a/todo-list).”
+
+**Stop and wait for their selection.**
+
+SUMMARY: Simulated an initial artboard round with three todo-list directions; waiting for the partner’s selection before designing further or building.

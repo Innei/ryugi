@@ -1,0 +1,95 @@
+1. **Message to partner**
+
+   “This is a small change: notes get a `pinned` boolean, pinned notes sort first, and the context menu toggles Pin/Unpin, with no limit. My calls: existing notes start unpinned, and notes within each group keep their current ordering. I’ll implement it with tests.”
+
+2. **Simulated shell call** — working directory `/Users/p/git/notes-app`
+
+   ```sh
+   pwd
+   git status --short
+   rg --files --hidden -g '!node_modules' -g '!.git' -g 'AGENTS.md' -g 'package.json' -g '*lock*' -g '*notes*' -g '*sort*' -g '*ContextMenu*' -g '*test*' -g '*spec*'
+   ```
+
+   **Assumed output:** Clean working tree; pnpm and Vitest; existing tests beside the three affected files; a root `AGENTS.md`.
+
+3. **Simulated shell call** — same working directory
+
+   ```sh
+   cat AGENTS.md package.json src/notes/model.ts src/notes/sort.ts src/ui/ContextMenu.tsx src/notes/model.test.ts src/notes/sort.test.ts src/ui/ContextMenu.test.tsx
+   rg -n 'createNote|updateNote|localStorage|persist|deserialize|sortNotes|ContextMenu' src
+   ```
+
+   **Assumed output:** Repository instructions allow working on the current branch. The model normalizes saved notes and defines creation defaults. The sorter orders by modification time. The context menu uses an existing persisted update action. Tests use Vitest and React Testing Library. No additional applicable instructions appear.
+
+4. **Simulated file edits** — add regression tests first.
+
+   `/Users/p/git/notes-app/src/notes/model.test.ts`
+   ```text
+   New notes default to pinned: false.
+   Saved notes without pinned load as unpinned.
+   Saved pinned values survive normalization.
+   ```
+
+   `/Users/p/git/notes-app/src/notes/sort.test.ts`
+   ```text
+   An older pinned note sorts before a newer unpinned note.
+   Existing ordering remains intact within both groups.
+   Several pinned notes are all retained and sorted.
+   ```
+
+   `/Users/p/git/notes-app/src/ui/ContextMenu.test.tsx`
+   ```text
+   An unpinned note offers Pin and persists pinned: true.
+   A pinned note offers Unpin and persists pinned: false.
+   The menu reflects the updated state after each action.
+   ```
+
+5. **Simulated shell call**
+
+   ```sh
+   pnpm exec vitest run src/notes/model.test.ts src/notes/sort.test.ts src/ui/ContextMenu.test.tsx
+   ```
+
+   **Assumed output:** New tests fail because pin defaults, priority sorting, and menu actions are absent. Existing tests pass.
+
+6. **Simulated file edits**
+
+   `/Users/p/git/notes-app/src/notes/model.ts`
+   ```text
+   Add pinned: boolean to the note model.
+   Default new and legacy notes to pinned: false.
+   Preserve explicit saved pin values.
+   ```
+
+   `/Users/p/git/notes-app/src/notes/sort.ts`
+   ```text
+   Compare pin state before the existing comparator.
+   Place pinned notes first.
+   Preserve the current comparator within each group.
+   ```
+
+   `/Users/p/git/notes-app/src/ui/ContextMenu.tsx`
+   ```text
+   Add Pin or Unpin according to the note’s current state.
+   Toggle pinned through the existing persisted update action.
+   Reuse current menu styling and dismissal behavior.
+   ```
+
+7. **Simulated shell call**
+
+   ```sh
+   pnpm exec vitest run src/notes/model.test.ts src/notes/sort.test.ts src/ui/ContextMenu.test.tsx
+   pnpm test -- --run
+   pnpm typecheck
+   git diff --check
+   git diff --stat
+   git diff
+   ```
+
+   **Assumed output:** All tests and type checks pass; no whitespace errors. Review shows only the three implementation files and their tests changed.
+
+8. **Message to partner**
+
+   “Implemented pinning: Pin/Unpin is in the context menu, pinned notes stay first, and pins persist. Existing notes start unpinned, with the current ordering preserved within each group. Tests and type checks pass.”
+
+SUMMARY: Simulated implementing and verifying the agreed small change; no commands were actually run or files changed, and no further approval is needed.

@@ -1,0 +1,53 @@
+1. **Tool call — inspect the existing project**
+   ```sh
+   rg --files /Users/p/git/notes-app -g AGENTS.md -g package.json -g '*schema*' -g '*note*' -g '*Note*' -g '*deploy*' -g '*docker*'
+   ```
+   **Assumed output:** No `AGENTS.md`; React note editor, Node note routes, Postgres schema, and deployment configuration found.
+
+2. **Tool call — read the relevant files**
+   ```sh
+   cat /Users/p/git/notes-app/client/package.json /Users/p/git/notes-app/client/src/NoteEditor.tsx /Users/p/git/notes-app/api/package.json /Users/p/git/notes-app/api/src/routes/notes.ts /Users/p/git/notes-app/api/db/schema.sql /Users/p/git/notes-app/docker-compose.yml
+   ```
+   **Assumed output:** Notes use a plain-text editor, save through HTTP, and store their current text in Postgres. No collaboration library or websocket service exists.
+
+3. **Tool call — create the document artifact directory**
+   ```sh
+   mkdir -p /Users/p/git/notes-app/.ryugi/artifacts/note-collaboration
+   ```
+
+4. **Tool call — write the document artifact**
+
+   Path: `/Users/p/git/notes-app/.ryugi/artifacts/note-collaboration/index.md`
+
+   Three-line content sketch:
+   ```text
+   Title: Real-time note collaboration; instructions to pick/comment and submit; 200–300-word playback distinguishing requested simultaneous editing, presence cursors and offline merging from my tentative websocket/server-merge approach.
+   Settled: React/Node/Postgres are existing foundations; simultaneous editing, cursors and offline merging are theirs; retaining the current plain-text editor is my call; “sounds good” accepts the rough direction, with protocol, storage and deployment still open.
+   Round 1: five questions with recommendations and reasons—FORK: adopt CRDT merging (recommend yes; defer protocol/storage details); offline retention (recommend until successfully synced); edits after access revocation (recommend preserve a local recovery copy without uploading); rollout (recommend opt-in pilot); open question: what concrete collaboration failure would make this unacceptable?
+   ```
+
+   The four choice questions use `<ask>` elements with the recommended options marked `recommend`; the final question uses an open `<ask>`. No dependent CRDT implementation questions appear yet.
+
+5. **Tool call — validate the artifact**
+   ```sh
+   ryugi check
+   ```
+   Working directory: `/Users/p/git/notes-app`
+
+   **Assumed output:** Document validation passes.
+
+6. **Tool call — serve the artifact**
+   ```sh
+   ryugi start
+   ```
+   Working directory: `/Users/p/git/notes-app`
+
+   **Assumed output:** Document available at `http://localhost:4310/note-collaboration`.
+
+7. **Message to partner**
+
+   “This is a project with several linked architecture decisions, so I’ve moved the playback and first questions into a [document](http://localhost:4310/note-collaboration); pick or comment, then submit the round.”
+
+**Stop here.** Their “sounds good” covered the rough idea; it did not approve an unwritten design.
+
+SUMMARY: Simulated project inspection and a first document round; waiting for the partner’s answers before resolving dependent decisions and preparing the written design.

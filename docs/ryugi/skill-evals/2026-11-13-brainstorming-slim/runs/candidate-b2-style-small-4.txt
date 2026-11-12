@@ -1,0 +1,29 @@
+1. Message: “I’ll change the icon’s fill to cornflower blue (`#6495ED`).”
+
+2. Shell call:
+   ```sh
+   cd /Users/p/git/notes-app && cat src/icons/star.svg
+   ```
+   Assumed output: an SVG with a single `fill="#888"` attribute.
+
+3. Shell call:
+   ```sh
+   cd /Users/p/git/notes-app && perl -pi -e 's/fill="#888"/fill="#6495ED"/g' src/icons/star.svg
+   ```
+   File written: `/Users/p/git/notes-app/src/icons/star.svg`  
+   Three-line content sketch:
+   ```text
+   Existing SVG opening and attributes preserved.
+   Existing star geometry, fill="#6495ED".
+   Existing SVG closing preserved.
+   ```
+
+4. Shell call:
+   ```sh
+   cd /Users/p/git/notes-app && git diff --check && git diff -- src/icons/star.svg
+   ```
+   Assumed output: no whitespace errors; only the fill changes from `#888` to `#6495ED`.
+
+5. Message: “Changed `src/icons/star.svg` to cornflower blue (`#6495ED`).”
+
+SUMMARY: Simulated changing and verifying the icon’s fill; waiting on nothing.

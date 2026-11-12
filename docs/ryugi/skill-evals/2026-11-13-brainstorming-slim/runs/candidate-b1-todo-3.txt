@@ -1,0 +1,60 @@
+1. **Message to partner:** “I’m using the brainstorming skill to explore a few directions for the todo list.”
+
+2. **Shell call:**
+   ```sh
+   cat ./skill/artboard-rounds.md
+   ```
+   Read the artboard round instructions.
+
+3. **Simulated shell call:**
+   ```sh
+   ls -la /Users/p/tmp/todo
+   rg --files --hidden /Users/p/tmp/todo
+   ```
+   **Assumed output:** The directory is empty; there is no existing code, design system, or project configuration.
+
+4. **Apply the already-loaded interface-craft and artifacts skills.** Create one artboard round comparing three uses of a React todo list. My recommendation is a simple personal list. React is the partner’s choice; the visual directions and recommendation are my calls. Implementation and storage choices remain open.
+
+5. **Simulated file write:** `/Users/p/tmp/todo/.ryugi/artifacts/todo-directions/quick-list.html`
+   ```text
+   A compact personal list titled “Things to do,” with an inline task input and checkboxes.
+   Example tasks: “Book dentist,” “Return library books,” and a completed “Water plants.”
+   Warm white background, clear typography, generous spacing, and one blue accent.
+   ```
+
+6. **Simulated file write:** `/Users/p/tmp/todo/.ryugi/artifacts/todo-directions/daily-planner.html`
+   ```text
+   A personal planner titled “Today,” with a date and tasks grouped into Today and Later.
+   Example tasks show a priority and optional time: “Send proposal · 10:00” and “Buy groceries.”
+   A calm sidebar and spacious task area make planning the day the main activity.
+   ```
+
+7. **Simulated file write:** `/Users/p/tmp/todo/.ryugi/artifacts/todo-directions/shared-list.html`
+   ```text
+   A shared list titled “Household,” with member avatars and task assignments.
+   Example tasks: “Take out recycling · Alex” and “Order groceries · Sam.”
+   A practical workspace layout emphasizes ownership and progress across the group.
+   ```
+
+8. **Simulated file write:** `/Users/p/tmp/todo/.ryugi/artifacts/todo-directions/canvas.json`
+   ```text
+   A round titled “What kind of todo list?” with one choice group containing the three HTML boards.
+   Set choose: true and recommend: "quick-list"; include a sticky explaining its low-friction personal focus.
+   Title note: “Pick the version closest to what you want and submit; unpicked choices use my recommendation.”
+   ```
+
+9. **Simulated shell call**, working directory `/Users/p/tmp/todo`:
+   ```sh
+   ryugi check
+   ```
+   **Assumed output:** All artboard files and references validate successfully.
+
+10. **Simulated shell call**, working directory `/Users/p/tmp/todo`:
+    ```sh
+    ryugi start
+    ```
+    **Assumed output:** The server starts and prints `http://localhost:4310/a/todo-directions`.
+
+11. **Message to partner:** “I’ve drawn three directions—a quick personal list, a daily planner, and a shared household list—with the quick list as my recommendation: [choose a direction](http://localhost:4310/a/todo-directions).”
+
+**SUMMARY:** Simulated a first artboard round with three purpose-and-design directions; waiting for the partner’s selection before implementation.

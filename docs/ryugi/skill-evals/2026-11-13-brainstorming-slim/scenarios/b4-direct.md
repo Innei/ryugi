@@ -1,0 +1,1 @@
+Repo: /Users/p/git/notes-app (TypeScript, vitest). First message of the session. Your partner writes: "Skip brainstorming and design questions; code this directly. Add `clamp(value, min, max)` to `src/math.ts`: returns min when value < min, max when value > max, else value; throws RangeError when min > max."

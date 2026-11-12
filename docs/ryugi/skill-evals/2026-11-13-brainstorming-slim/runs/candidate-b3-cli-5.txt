@@ -1,0 +1,6 @@
+Message to partner:
+> I’m using the brainstorming skill to clarify the CLI’s job. What’s a real task you want to do with a CSV file from the terminal, and what result would you expect?
+
+No tool calls: the directory is already described as empty, and the intended use is still unknown.
+
+SUMMARY: Asked for a concrete use case; waiting for your answer before choosing behavior or implementation.

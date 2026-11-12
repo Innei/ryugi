@@ -1,0 +1,70 @@
+1. **Shell read, performed:** `cat ./skill/artboard-rounds.md`
+
+2. **Simulated shell call:**
+   ```sh
+   ls -la /Users/p/tmp/todo
+   ```
+   **Assumed output:** The directory is empty; there is no existing code or design system.
+
+3. **Message to partner:**
+   > I’m using the brainstorming and interface-craft skills to sketch three directions: a quick personal checklist, a daily planner, and a shared list. My call is to start with the personal checklist; React is settled, and I’d use TypeScript with Vite when we build.
+
+4. **Simulated shell calls**, to confirm the already-loaded artifacts workflow’s CLI syntax:
+   ```sh
+   ryugi start --help
+   ```
+   ```sh
+   ryugi check --help
+   ```
+   **Assumed output:** Both commands work from the project directory without arguments; `start` serves `.ryugi/artifacts/` and prints artifact links.
+
+5. **Simulated file-write tool calls** using `apply_patch`, with each file represented by the requested three-line sketch:
+
+   `/Users/p/tmp/todo/.ryugi/artifacts/todo-directions/canvas.json`
+   ```text
+   Artboard “Todo directions”; round 1 title: “Which kind of list would you use? Pick one and submit.”
+   One choice group “purpose”, choose: true, recommend: “quick-list”; three boards referencing the HTML mockups below.
+   Boards “quick-list”, “daily-planner”, “shared-list”; adjacent sticky: “I recommend the quick list for getting tasks down with the least setup.”
+   ```
+
+   `/Users/p/tmp/todo/.ryugi/artifacts/todo-directions/quick-list.html`
+   ```text
+   A compact white panel, dark ink, blue accent, generous task rows; title “My list”, input “What needs doing?”, Add button.
+   Checkboxes beside “Book dentist”, “Buy coffee”, and completed “Send invoice”; filters All / Active / Completed.
+   Footer “2 tasks left” and “Clear completed”; caption “Capture things quickly and check them off.”
+   ```
+
+   `/Users/p/tmp/todo/.ryugi/artifacts/todo-directions/daily-planner.html`
+   ```text
+   A calm daily agenda with warm paper background, clear date heading “Today”, and a prominent task composer.
+   Sections “Overdue”, “Today”, and “Upcoming”; rows such as “Send proposal · 10:00” and “Book dentist · Tomorrow”.
+   Date controls beside tasks; caption “Decide what needs your attention today.”
+   ```
+
+   `/Users/p/tmp/todo/.ryugi/artifacts/todo-directions/shared-list.html`
+   ```text
+   A household list with a compact sidebar, title “Home”, member initials, and an Invite button.
+   Rows “Buy coffee · Sam”, “Book plumber · You”, and completed “Pay electricity · Alex”; checkboxes and assignee controls.
+   Composer “Add something for the household”; caption “Keep track of who’s doing what together.”
+   ```
+
+   These are visual mockups only. The sample tasks are invented because the project has no data.
+
+6. **Simulated shell call**, working directory `/Users/p/tmp/todo`:
+   ```sh
+   ryugi check
+   ```
+   **Assumed output:** Artboard validation passes.
+
+7. **Simulated shell call**, same working directory:
+   ```sh
+   ryugi start
+   ```
+   **Assumed output:** Artboard served at `http://localhost:4317/a/todo-directions`.
+
+8. **Message to partner:**
+   > [Three directions for your todo list](http://localhost:4317/a/todo-directions) — pick the one you’d use and submit; my recommendation is the quick personal checklist.
+
+**Stop here to wait for their selection.**
+
+SUMMARY: Simulated creating and serving three visual directions; waiting for the partner’s choice before sizing and building the app.

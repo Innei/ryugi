@@ -1,0 +1,1 @@
+PASS — Asks one open question about intended behavior, only inspects the empty directory, and opens no visual artifact or builds anything.

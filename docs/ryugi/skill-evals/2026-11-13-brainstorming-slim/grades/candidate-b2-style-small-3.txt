@@ -1,0 +1,1 @@
+PASS — Changed the icon’s fill to #6495ED and confirmed it, without asking questions, opening an artboard, or writing a design.

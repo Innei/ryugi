@@ -1,0 +1,87 @@
+1. **Message to partner**
+
+   “This is a small change: I’ll add the `pinned` boolean, sort pinned notes first, and add Pin/Unpin to the context menu, with no limit on pins. My calls: existing notes start unpinned, and notes within each group keep their current sort order.”
+
+2. **Simulated shell call**
+   ```sh
+   cd /Users/p/git/notes-app && pwd && rg --files --hidden -g AGENTS.md -g '!node_modules' -g '!.git' && git status --short --branch
+   ```
+   **Assumed output:** Correct repository; no `AGENTS.md` files; clean working tree on `feature/note-pinning`.
+
+3. **Simulated shell call**
+   ```sh
+   cd /Users/p/git/notes-app && cat package.json src/notes/model.ts src/notes/sort.ts src/ui/ContextMenu.tsx && rg -n 'createNote|updateNote|localStorage|persist|sortNotes|ContextMenu|describe\(' src
+   ```
+   **Assumed output:** Vitest and TypeScript checks are configured. Notes use JSON persistence that preserves model fields; older records lack `pinned`. The model has a creation function, sorting uses a comparator, and the menu already updates notes through `updateNote`. Relevant model, sorting, and menu tests exist.
+
+4. **Simulated shell call**
+   ```sh
+   cd /Users/p/git/notes-app && cat src/notes/model.test.ts src/notes/sort.test.ts src/ui/ContextMenu.test.tsx
+   ```
+   **Assumed output:** Existing tests provide note factories and menu interaction helpers. The existing comparator sorts by modification time.
+
+5. **Simulated file write:** `/Users/p/git/notes-app/src/notes/model.test.ts`  
+   Three-line sketch:
+   ```text
+   Preserve existing model tests and fixtures.
+   Assert newly created notes have pinned: false.
+   Assert a saved pinned value survives JSON persistence.
+   ```
+
+6. **Simulated file write:** `/Users/p/git/notes-app/src/notes/sort.test.ts`  
+   Three-line sketch:
+   ```text
+   Preserve existing sorting tests.
+   Assert pinned notes precede newer unpinned notes; missing pinned behaves as false.
+   Assert both groups retain modification-time ordering, including multiple pins.
+   ```
+
+7. **Simulated file write:** `/Users/p/git/notes-app/src/ui/ContextMenu.test.tsx`  
+   Three-line sketch:
+   ```text
+   Preserve existing menu interaction tests.
+   Click Pin and assert the note becomes pinned.
+   Reopen the menu, click Unpin, and assert the note becomes unpinned.
+   ```
+
+8. **Simulated shell call**
+   ```sh
+   cd /Users/p/git/notes-app && npm test -- --run src/notes/model.test.ts src/notes/sort.test.ts src/ui/ContextMenu.test.tsx
+   ```
+   **Assumed output:** New tests fail because the default, pinned sorting, and menu action are absent; existing tests pass.
+
+9. **Simulated file write:** `/Users/p/git/notes-app/src/notes/model.ts`  
+   Three-line sketch:
+   ```text
+   Add pinned: boolean to the note model.
+   Default newly created notes to pinned: false.
+   Normalize missing saved values to false when loading existing notes.
+   ```
+
+10. **Simulated file write:** `/Users/p/git/notes-app/src/notes/sort.ts`  
+    Three-line sketch:
+    ```text
+    Compare Boolean(pinned) before the existing sort criteria.
+    Put pinned notes first without limiting their count.
+    Use the unchanged comparator within each group.
+    ```
+
+11. **Simulated file write:** `/Users/p/git/notes-app/src/ui/ContextMenu.tsx`  
+    Three-line sketch:
+    ```text
+    Add a menu item labeled Pin or Unpin from the note state.
+    Toggle pinned through the existing updateNote action.
+    Preserve existing menu styling and dismissal behavior.
+    ```
+
+12. **Simulated shell call**
+    ```sh
+    cd /Users/p/git/notes-app && npm test -- --run && npm run typecheck && git diff --check && git diff --stat
+    ```
+    **Assumed output:** All tests and type checks pass; no whitespace errors; only the three implementation files and their tests changed.
+
+13. **Message to partner**
+
+    “Note pinning is implemented: pinned notes sort first, and the context menu lets you Pin or Unpin any number of notes. Existing notes start unpinned. Tests and type checks pass.”
+
+SUMMARY: Simulated implementing and verifying the agreed small change; no actual commands or writes performed, and no approval needed.

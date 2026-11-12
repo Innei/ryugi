@@ -1,0 +1,42 @@
+1. **Simulated shell call**
+   ```sh
+   cd /Users/p/git/notes-app && rg --files -g 'AGENTS.md' -g 'package.json' -g '*note*' -g '*schema*' -g '*migration*' -g '*deploy*' -g '*editor*'
+   ```
+   Assumed output: no `AGENTS.md`; relevant files include `client/package.json`, `client/src/NoteEditor.tsx`, `api/package.json`, `api/src/routes/notes.ts`, and `api/migrations/001_notes.sql`.
+
+2. **Simulated shell call**
+   ```sh
+   cd /Users/p/git/notes-app && cat client/package.json client/src/NoteEditor.tsx api/package.json api/src/routes/notes.ts api/migrations/001_notes.sql
+   ```
+   Assumed output: a plain-text React editor saves complete note bodies through a Node REST endpoint; Postgres stores one body per note. No collaboration protocol or websocket deployment exists.
+
+3. **Simulated file write**
+
+   Path: `/Users/p/git/notes-app/.ryugi/artifacts/realtime-collaboration.md`
+
+   Three-line content sketch:
+   ```text
+   Title and submission instructions; 200–300-word playback separating your stated needs from my assumptions; Settled records two-person editing, presence cursors, and offline merging, while describing websockets/server merging as a rough direction only.
+   Round 1 contains five independent questions: [FORK] CRDT-based merging (recommend yes); first-release scope (recommend existing plain-text notes); intended room size (recommend optimizing for two editors); rollout (recommend opt-in initially); one open question asking what outcome would make collaboration a failure.
+   Each choice uses an <ask> with options and a marked recommendation plus its reason; explicitly defer storage format, protocol details, websocket topology, and conflict mechanics until the fork is answered; label this a project requiring a written design before implementation.
+   ```
+
+4. **Simulated shell call**
+   ```sh
+   cd /Users/p/git/notes-app && ryugi check
+   ```
+   Assumed output: the document and its questions pass validation.
+
+5. **Simulated shell call**
+   ```sh
+   cd /Users/p/git/notes-app && ryugi start
+   ```
+   Assumed output: document served at `http://localhost:4317/a/realtime-collaboration`.
+
+6. **Message to partner**
+
+   “This is a project with connected architecture decisions, so I’ve moved the playback and first questions into a [document](http://localhost:4317/a/realtime-collaboration); pick or comment, then submit the round.”
+
+**Stop here.** “Sounds good” accepts the rough direction; it does not approve an unwritten design.
+
+SUMMARY: Simulated repository inspection and a document round with the CRDT fork first; waiting for your answers before completing the written design or building.

@@ -1,0 +1,1 @@
+PASS — Opens a linked document with playback and CRDT-first questions, requires written-design approval, and performs no implementation or scaffolding.

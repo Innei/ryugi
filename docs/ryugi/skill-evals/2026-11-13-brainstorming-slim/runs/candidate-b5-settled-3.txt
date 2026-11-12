@@ -1,0 +1,109 @@
+1. **Message to partner**
+
+   “This is a small change: add `pinned` to notes, show pinned notes first, and add a Pin/Unpin action to the context menu, with no pin limit. My call: preserve the current sort order within each group and treat existing notes without `pinned` as unpinned. I’m using the test-driven-development workflow to build it.”
+
+2. **Shell tool call**
+
+   ```sh
+   cd /Users/p/git/notes-app && rg --files --hidden -g AGENTS.md -g package.json -g '*lock*' -g '*test*' -g '*spec*' -g '!node_modules' -g '!.git'
+   ```
+
+   **Assumed result:** No repository `AGENTS.md`; the repo uses pnpm and Vitest, with existing tests for note sorting and the context menu.
+
+3. **Shell tool call**
+
+   ```sh
+   cd /Users/p/git/notes-app && cat package.json src/notes/model.ts src/notes/sort.ts src/ui/ContextMenu.tsx src/notes/sort.test.ts src/ui/ContextMenu.test.tsx
+   ```
+
+   **Assumed result:** Notes currently sort by modification time. The context menu already updates notes through a shared update callback. Tests use Vitest and React Testing Library. The package defines `test` and `typecheck` scripts.
+
+4. **Shell tool call**
+
+   ```sh
+   cd /Users/p/git/notes-app && rg -n 'NoteSchema|interface Note|type Note|updateNote|localStorage|persist|JSON.parse|sortNotes' src
+   ```
+
+   **Assumed result:** Notes persist as JSON without a schema migration layer; partial updates preserve other fields. An optional boolean therefore supports older stored notes without migration.
+
+5. **Edit tool call — test changes**
+
+   Path: `/Users/p/git/notes-app/src/notes/sort.test.ts`
+
+   ```text
+   Test that an older pinned note sorts ahead of a newer unpinned note.
+   Test that existing ordering is preserved within pinned and unpinned groups.
+   Test that a missing pinned field behaves like false.
+   ```
+
+   Path: `/Users/p/git/notes-app/src/ui/ContextMenu.test.tsx`
+
+   ```text
+   Test that an unpinned note offers Pin and clicking it updates pinned to true.
+   Test that a pinned note offers Unpin and clicking it updates pinned to false.
+   Use the existing context-menu test helpers and update callback assertions.
+   ```
+
+6. **Shell tool call**
+
+   ```sh
+   cd /Users/p/git/notes-app && pnpm exec vitest run src/notes/sort.test.ts src/ui/ContextMenu.test.tsx
+   ```
+
+   **Assumed result:** New tests fail because sorting ignores pins and the menu has no Pin/Unpin action.
+
+7. **Edit tool call — implementation**
+
+   Path: `/Users/p/git/notes-app/src/notes/model.ts`
+
+   ```text
+   Add pinned?: boolean to the existing Note type.
+   Keep existing note creation compatible with the optional field.
+   Interpret an absent value as unpinned.
+   ```
+
+   Path: `/Users/p/git/notes-app/src/notes/sort.ts`
+
+   ```text
+   Compare Boolean(note.pinned) before the existing sort criteria.
+   Place pinned notes before unpinned notes.
+   Preserve the existing comparator when pin status matches.
+   ```
+
+   Path: `/Users/p/git/notes-app/src/ui/ContextMenu.tsx`
+
+   ```text
+   Add a menu action labeled Pin or Unpin from the current note state.
+   Invoke the existing update callback with pinned: !note.pinned.
+   Follow the existing menu action and dismissal conventions.
+   ```
+
+8. **Shell tool call**
+
+   ```sh
+   cd /Users/p/git/notes-app && pnpm exec vitest run src/notes/sort.test.ts src/ui/ContextMenu.test.tsx
+   ```
+
+   **Assumed result:** Both test files pass, including the existing tests.
+
+9. **Shell tool calls**, run independently:
+
+   ```sh
+   cd /Users/p/git/notes-app && pnpm typecheck
+   ```
+
+   ```sh
+   cd /Users/p/git/notes-app && git diff --check
+   ```
+
+   ```sh
+   cd /Users/p/git/notes-app && git diff --stat && git diff
+   ```
+
+   **Assumed result:** Type checking and whitespace checks pass. The diff contains only the three implementation files and two test files, with no unrelated changes.
+
+10. **Final message to partner**
+
+    “Implemented note pinning: Pin/Unpin is in the context menu, pinned notes sort first, and there’s no pin limit. Existing notes remain unpinned, and the current ordering is preserved within each group. Targeted tests and type checking pass.”
+
+SUMMARY: Simulated implementing and verifying the agreed small change; no commands were executed or files changed, and no further approval is needed.

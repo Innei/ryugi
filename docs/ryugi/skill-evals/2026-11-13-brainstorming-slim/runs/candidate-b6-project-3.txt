@@ -1,0 +1,63 @@
+1. **Read skill instructions** — performed:
+   ```sh
+   cat ./skill/doc-rounds.md
+   ```
+   Everything below is simulated.
+
+2. **Shell**, working directory `/Users/p/git/notes-app`:
+   ```sh
+   rg --files --hidden -g '!node_modules' -g '!.git' -g 'AGENTS.md' -g '*package.json' -g '*schema*' -g '*note*' -g '*editor*' -g '*auth*' -g '*deploy*' -g '*ryugi*'
+   ```
+   **Assumed output:** No applicable `AGENTS.md`; relevant files include `client/package.json`, `client/src/components/NoteEditor.tsx`, `api/package.json`, `api/src/routes/notes.ts`, `api/src/auth.ts`, `db/schema.sql`, and `deploy/README.md`. No existing collaboration design document.
+
+3. **Shell**, same working directory:
+   ```sh
+   cat client/package.json client/src/components/NoteEditor.tsx api/package.json api/src/routes/notes.ts api/src/auth.ts db/schema.sql deploy/README.md
+   ```
+   **Assumed output:** Notes currently save whole text bodies through authenticated HTTP requests; Postgres stores the current body. There is no offline queue or collaboration protocol. Deployment documentation confirms a separate websocket service is feasible.
+
+4. **Shell**, same working directory:
+   ```sh
+   ryugi start --help
+   ```
+   **Assumed output:** `ryugi start` serves artifacts from `.ryugi/artifacts/` and prints their URLs; document artifacts support the already-loaded artifacts workflow.
+
+5. **File write — document outline**, using the loaded artifacts skill:
+   
+   Path: `/Users/p/git/notes-app/.ryugi/artifacts/note-collaboration.document.md`
+   
+   Three-line content sketch:
+   ```text
+   Title: Real-time note collaboration; instructions for answering questions and submitting the round.
+   Sections: What I understand so far; Settled.
+   Round 1: architecture fork first, followed by independent requirements; protocol-dependent decisions deferred.
+   ```
+
+6. **File edit — fill the document**, same path:
+   
+   Three-line content sketch:
+   ```text
+   Playback (200–300 words): two people edit the same note, see presence cursors, and merge offline edits later (theirs); describe current whole-body saves and implications for client, API, storage, and separately deployed websocket service; mark automatic merging and preserving both people's contributions as my interpretation; “sounds good” accepts the rough websocket/server-merge direction, while the merge model remains open.
+   Settled: requested collaboration, presence, and offline merging (theirs); rough websocket/server-merge direction (accepted); retain React, Node, and Postgres (my call). This is a project requiring a written design; this document is its first decision round.
+   Round 1: six <ask> items with stable IDs—(1) FORK: use CRDT-based merging, recommend yes over a custom server merge protocol because offline concurrent editing drives the design; (2) scope, recommend note body first because metadata conflicts can be handled separately; (3) offline reach, recommend previously opened notes because first-time access requires cached data; (4) deletion/revocation, recommend preserving unsynced edits privately for recovery without restoring shared access; (5) expected concurrency, recommend optimizing first for two simultaneous editors per note as described; (6) open question: what concrete editing outcome would make this a failure? Defer library, wire protocol, persistence format, compaction, and service coordination until the fork is answered.
+   ```
+
+7. **Shell**, working directory `/Users/p/git/notes-app`:
+   ```sh
+   ryugi check
+   ```
+   **Assumed output:** Document and question markup pass validation.
+
+8. **Shell**, same working directory:
+   ```sh
+   ryugi start
+   ```
+   **Assumed output:** Document served at `http://localhost:4317/a/note-collaboration`.
+
+9. **Message to partner:**
+
+   “I’m using the brainstorming document workflow because this spans sync, storage, and deployment; the first round puts the merge-model choice first—[pick or comment here, then submit](http://localhost:4317/a/note-collaboration).”
+
+10. **Stop and wait.** No implementation skills, product code, scaffolding, dependencies, or deployment changes.
+
+SUMMARY: Simulated opening a document round with the CRDT fork first; waiting for the partner’s answers before completing the written design and seeking its approval.

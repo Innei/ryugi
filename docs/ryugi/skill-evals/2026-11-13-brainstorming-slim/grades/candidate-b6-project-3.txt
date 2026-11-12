@@ -1,0 +1,1 @@
+PASS — Opens a linked design document with playback and questions, treats “sounds good” as preliminary direction, and waits without implementing or scaffolding.

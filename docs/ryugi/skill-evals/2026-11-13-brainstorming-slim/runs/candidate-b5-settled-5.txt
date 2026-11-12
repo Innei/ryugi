@@ -1,0 +1,104 @@
+**Message to partner:** “I’ll make this as a small change: notes get a `pinned` boolean, pinned notes sort first, and the context menu gets a pin toggle, with no limit. My call: keep the existing order within each group and treat existing notes as unpinned.”
+
+**Simulated shell call:**
+```sh
+cd /Users/p/git/notes-app && for f in /AGENTS.md /Users/AGENTS.md /Users/p/AGENTS.md /Users/p/git/AGENTS.md; do if [ -f "$f" ]; then cat "$f"; fi; done
+```
+Assumed output: no ancestor instructions.
+
+**Simulated shell call:**
+```sh
+cd /Users/p/git/notes-app && git status --short --branch
+```
+Assumed output: clean working tree on `feat/note-pinning`.
+
+**Simulated shell call:**
+```sh
+cd /Users/p/git/notes-app && rg --files --hidden -g '!node_modules' -g '!.git' -g 'AGENTS.md' -g 'package.json' -g '*test*' -g '*spec*' -g '*notes*' -g '*ContextMenu*'
+```
+Assumed output: root `AGENTS.md`, no nested instructions, and existing Vitest tests alongside the three affected files.
+
+**Simulated shell call:**
+```sh
+cd /Users/p/git/notes-app && cat AGENTS.md package.json src/notes/model.ts src/notes/sort.ts src/ui/ContextMenu.tsx src/notes/model.test.ts src/notes/sort.test.ts src/ui/ContextMenu.test.tsx
+```
+Assumed output: npm scripts provide `test`, `typecheck`, and `lint`; notes already have a normalization function for persisted data; the comparator sorts by modification time; context-menu actions use an existing note-update callback. Repository instructions permit working on this branch.
+
+**Message to partner:** “The existing note-loading and menu-update paths cover this. I’ll add regression tests for old notes, sorting, and toggling the pin.”
+
+**Simulated edits under the loaded test-driven-development workflow:**
+
+`/Users/p/git/notes-app/src/notes/model.test.ts`
+```text
+Verify a persisted note without pinned loads as unpinned.
+Verify pinned: true survives normalization.
+Verify newly created notes start unpinned.
+```
+
+`/Users/p/git/notes-app/src/notes/sort.test.ts`
+```text
+Verify an older pinned note precedes a newer unpinned note.
+Verify pinned notes retain the existing modification-time order.
+Verify unpinned notes retain the existing modification-time order.
+```
+
+`/Users/p/git/notes-app/src/ui/ContextMenu.test.tsx`
+```text
+Verify an unpinned note offers Pin and updates pinned to true.
+Verify a pinned note offers Unpin and updates pinned to false.
+Use the existing menu interaction helpers and update callback assertions.
+```
+
+**Simulated shell call:**
+```sh
+cd /Users/p/git/notes-app && npm test -- --run src/notes/model.test.ts src/notes/sort.test.ts src/ui/ContextMenu.test.tsx
+```
+Assumed output: the new tests fail because pin defaults, sorting, and menu actions are missing.
+
+**Simulated edits:**
+
+`/Users/p/git/notes-app/src/notes/model.ts`
+```text
+Add pinned: boolean to the note model.
+Default pinned to false during creation and persisted-note normalization.
+Preserve stored pin values through the existing persistence path.
+```
+
+`/Users/p/git/notes-app/src/notes/sort.ts`
+```text
+Compare pin status before the existing sort criteria.
+Place pinned notes first.
+Preserve the existing comparator when pin status matches.
+```
+
+`/Users/p/git/notes-app/src/ui/ContextMenu.tsx`
+```text
+Add a context-menu item labeled Pin or Unpin from the note state.
+Toggle pinned through the existing note-update callback.
+Follow the menu’s existing interaction and accessibility conventions.
+```
+
+**Simulated shell call:**
+```sh
+cd /Users/p/git/notes-app && npm test -- --run
+```
+Assumed output: all tests pass, including the new regressions.
+
+**Simulated shell calls:**
+```sh
+cd /Users/p/git/notes-app && npm run typecheck
+```
+```sh
+cd /Users/p/git/notes-app && npm run lint
+```
+```sh
+cd /Users/p/git/notes-app && git diff --check
+```
+```sh
+cd /Users/p/git/notes-app && git diff --stat && git diff
+```
+Assumed output: all checks pass; review confirms only the three implementation files and their tests changed.
+
+**Final message to partner:** “Implemented note pinning: Pin/Unpin in the context menu, pinned notes first, and no pin limit. Existing notes start unpinned; ordering within each group stays the same. Tests, typecheck, and lint pass.”
+
+SUMMARY: Simulated implementing and verifying the agreed small change without another approval round; nothing actually ran or changed, and no partner response is needed.

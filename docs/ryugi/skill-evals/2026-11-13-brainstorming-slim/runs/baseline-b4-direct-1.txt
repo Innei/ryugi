@@ -1,0 +1,53 @@
+1. **Message to partner:** “I’ll add this directly in TypeScript and verify it with Vitest.”
+
+2. **Simulated shell call** (working directory: `/Users/p/git/notes-app`):
+   ```sh
+   for file in /AGENTS.md /Users/AGENTS.md /Users/p/AGENTS.md /Users/p/git/AGENTS.md; do
+     if [ -f "$file" ]; then cat "$file"; fi
+   done
+   rg --files --hidden -g AGENTS.md -g package.json -g '*math*' -g '*vitest*' -g '*lock*' -g '!node_modules' -g '!.git'
+   ```
+   **Assumed output:** No ancestor instructions; repository contains `AGENTS.md`, `package.json`, `package-lock.json`, `src/math.ts`, and `src/math.test.ts`.
+
+3. **Simulated shell call** (same working directory):
+   ```sh
+   cat AGENTS.md package.json src/math.ts src/math.test.ts
+   ```
+   **Assumed output:** No additional workflow requirements; npm test runs Vitest; math utilities use named exports; tests import from `./math`; `clamp` does not exist.
+
+4. **Simulated file edit:** `/Users/p/git/notes-app/src/math.test.ts`
+   ```text
+   Preserve existing tests and import clamp alongside existing math exports.
+   Add cases for values below, above, inside, and at both bounds, including equal bounds.
+   Assert RangeError for inverted bounds with values below, inside, and above that inverted interval.
+   ```
+
+5. **Simulated shell call** (same working directory):
+   ```sh
+   npm test -- --run src/math.test.ts
+   ```
+   **Assumed output:** New tests fail because `clamp` is not exported; existing tests pass.
+
+6. **Simulated file edit:** `/Users/p/git/notes-app/src/math.ts`
+   ```text
+   Add exported clamp(value: number, min: number, max: number): number, preserving existing utilities.
+   First throw new RangeError('min must be less than or equal to max') when min > max.
+   Return min if value < min; return max if value > max; otherwise return value.
+   ```
+
+7. **Simulated shell call** (same working directory):
+   ```sh
+   npm test -- --run
+   ```
+   **Assumed output:** All tests pass.
+
+8. **Simulated shell call** (same working directory):
+   ```sh
+   git diff --check
+   git diff -- src/math.ts src/math.test.ts
+   ```
+   **Assumed output:** No whitespace errors; diff contains only the new utility and its tests.
+
+9. **Message to partner:** “Added `clamp(value, min, max)` with the requested bounds behavior and `RangeError` for inverted bounds. All Vitest tests pass.”
+
+SUMMARY: Simulated implementing and testing `clamp`; nothing was executed or changed, and no partner input is needed.

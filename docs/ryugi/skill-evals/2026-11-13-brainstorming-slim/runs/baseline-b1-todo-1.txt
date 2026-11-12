@@ -1,0 +1,64 @@
+1. **Message to partner**
+
+   “I’m using the brainstorming workflow to explore a few directions for the todo list.”
+
+2. **Shell — simulated**
+   ```sh
+   cd /Users/p/tmp/todo && ls -la && rg --files --hidden -g '!node_modules' -g '!.git'
+   ```
+   **Assumed result:** The directory is empty. There is no existing React setup, design system, or project guidance.
+
+3. **Read — performed**
+   ```sh
+   cat ./skill/artboard-rounds.md
+   ```
+   The instructions call for an artboard with a choice group, a recommended direction, and a short explanation of how to answer.
+
+4. **Apply the already-loaded skills**
+
+   Use `ryugi:artifacts` for the artboard and `ryugi:interface-craft` before drawing the mockups. Keep these as design artifacts; do not scaffold the React app yet.
+
+5. **Shell — simulated**
+   ```sh
+   cd /Users/p/tmp/todo && mkdir -p .ryugi/artifacts/todo-directions
+   ```
+
+6. **Write file — simulated**
+
+   Path: `/Users/p/tmp/todo/.ryugi/artifacts/todo-directions/canvas.json`
+
+   Three-line content sketch:
+   ```text
+   Round 1 title: “What kind of todo list?”; instruction: “Pick a direction on the board and submit; anything left unpicked uses my recommendation.”
+   One choice group, choose: true, recommend: quick-list; three rendered UI boards: quick-list, daily-planner, shared-list.
+   Recommendation sticky: “My call: start with a quick personal list for capturing and finishing tasks with very little setup.”
+   ```
+
+   The boards show three different uses through concrete interfaces:
+
+   - **Quick list:** A compact “My tasks” screen with an “Add a task…” input, checkboxes, “Buy coffee,” “Book dentist,” and a completed “Send invoice.” My proposed default: a personal list saved in this browser.
+   - **Daily planner:** A “Today” screen with a date, an overdue task, scheduled tasks, and an inbox for later. This direction centers on deciding what to do today.
+   - **Shared list:** A “Household” screen with “You” and “Sam,” assigned tasks such as “Pick up groceries,” and an invite action. This direction centers on coordinating with someone else.
+
+   Each board is drawn as a usable-looking React product screen, with real labels and example tasks. The choice is about the product’s purpose as well as its appearance.
+
+7. **Shell — simulated**
+   ```sh
+   cd /Users/p/tmp/todo && ryugi check
+   ```
+   **Assumed result:** The artboard validates successfully.
+
+8. **Shell — simulated**
+   ```sh
+   cd /Users/p/tmp/todo && ryugi start
+   ```
+   **Assumed result:** The server starts and prints the artboard link:
+   `http://localhost:4310/a/todo-directions`
+
+9. **Message to partner**
+
+   “I sketched a quick personal list, a daily planner, and a shared household list—my recommendation is the quick list; pick a direction on the board and submit: [Todo directions](http://localhost:4310/a/todo-directions).”
+
+**Stop here.** No product code, dependencies, or implementation plan yet; the direction determines the scope.
+
+SUMMARY: Simulated inspecting the empty project and preparing a three-direction artboard; waiting for the partner’s choice before sizing and designing the implementation.

@@ -1,0 +1,6 @@
+Message to partner:
+> I’m using the brainstorming skill to clarify what this CLI should do. What would a successful run look like—from the CSV you give it to the output you want?
+
+No tool calls; the directory is already described as empty.
+
+SUMMARY: Asked for a concrete input-to-output example; waiting for your answer before choosing the CLI’s behavior or implementation.

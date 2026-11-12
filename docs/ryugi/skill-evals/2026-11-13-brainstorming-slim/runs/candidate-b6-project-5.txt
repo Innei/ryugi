@@ -1,0 +1,55 @@
+1. **Tool call — shell (simulated):**
+   ```sh
+   cd /Users/p/git/notes-app && rg --files -g 'AGENTS.md' -g 'package.json' -g '*schema*' -g '*migration*' -g '*note*' -g '*Note*' -g '*deploy*' -g '*docker*'
+   ```
+   **Assumed output:** React note editor, Node note routes, Postgres migrations, and deployment configuration. No existing collaboration implementation.
+
+2. **Tool call — shell (simulated):**
+   ```sh
+   cd /Users/p/git/notes-app && cat AGENTS.md package.json client/src/components/NoteEditor.tsx api/src/routes/notes.ts api/db/migrations/001_notes.sql docker-compose.yml
+   ```
+   **Assumed output:** These paths exist. Notes currently save whole text through HTTP into a Postgres text column. No CRDT library or websocket service is configured. Repository instructions add no relevant constraints.
+
+3. **Tool call — write file (simulated):**  
+   Path: `/Users/p/git/notes-app/.ryugi/artifacts/note-collaboration.document.md`  
+   Three-line outline:
+   ```text
+   # Real-time note collaboration — how to answer this round
+   What I understand so far; Settled
+   Round 1 — protocol fork and independent product constraints
+   ```
+
+4. **Tool call — write file (simulated):**  
+   Path: `/Users/p/git/notes-app/.ryugi/artifacts/note-collaboration.document.md`  
+   Three-line content sketch:
+   ```text
+   Answer each question or comment, then submit; 200–300-word playback covering simultaneous editing, presence cursors, offline merging, current whole-note saves, and unresolved architecture, with guesses marked.
+   Settled: requested capabilities are theirs; “sounds good” accepts the rough websocket/server-merge direction, while protocol, storage, deployment, and conflict semantics remain open.
+   Round 1: five questions with recommendations and reasons; defer storage format, wire messages, persistence, and merge implementation until the protocol fork is answered.
+   ```
+
+   The five questions in that document would be:
+
+   1. **Fork: use CRDTs to merge concurrent and offline edits?** My recommendation: yes, with the specific library still open. This supports merging edits made while disconnected and determines most subsequent technical choices.
+   2. **When should an offline edit require review?** My recommendation: merge ordinary concurrent edits automatically, but require explicit recovery when a note was deleted or access was revoked. This establishes the intended behavior independently of the merge mechanism.
+   3. **Who needs presence information?** My recommendation: show names and cursors to people currently editing that note; omit workspace-wide activity. This keeps presence focused on the requested editing experience.
+   4. **How long should offline editing remain supported?** My recommendation: support reconnecting after several days, including after closing and reopening the app. This sets a concrete durability requirement.
+   5. **What scale should the first release support?** My provisional recommendation: small teams, up to ten simultaneous editors per note. This gives the service an initial capacity target they can correct.
+
+5. **Tool call — shell (simulated):**
+   ```sh
+   cd /Users/p/git/notes-app && ryugi check
+   ```
+   **Assumed output:** Document and question markup pass validation.
+
+6. **Tool call — shell (simulated):**
+   ```sh
+   cd /Users/p/git/notes-app && ryugi start
+   ```
+   **Assumed output:** Artifact server starts and prints `http://localhost:4317/note-collaboration`.
+
+7. **Message to partner:**
+
+   “The protocol choice affects storage, deployment, and offline conflicts, so I’ve moved the playback and first decision round into a document: [review and submit your answers](http://localhost:4317/note-collaboration).”
+
+**SUMMARY:** Simulated project inspection and a document round; no implementation started, waiting for the partner’s answers.

@@ -1,0 +1,51 @@
+1. **Read the document-round instructions** — actually performed, as permitted:
+   ```sh
+   cat ./skill/doc-rounds.md
+   ```
+
+2. **Simulated shell call** — inspect the existing project:
+   ```sh
+   cd /Users/p/git/notes-app && rg --files -g 'AGENTS.md' -g 'package.json' -g '*schema*' -g '*migration*' -g '*note*' -g '*Note*' -g '*socket*' -g '*deploy*' -g 'docker-compose*'
+   ```
+   **Assumed output:** React note editor, Node note routes, Postgres migrations, deployment configuration, and a root `AGENTS.md`.
+
+3. **Simulated shell call** — read the discovered files:
+   ```sh
+   cd /Users/p/git/notes-app && cat AGENTS.md client/package.json api/package.json client/src/components/NoteEditor.tsx api/src/routes/notes.ts api/migrations/001_notes.sql docker-compose.yml
+   ```
+   **Assumed output:** Plain-text note bodies saved through REST, existing note access checks, Postgres storage, no collaboration protocol or websocket deployment. Repository instructions add no relevant constraints.
+
+4. **Simulated file write** — document outline at `/Users/p/git/notes-app/.ryugi/artifacts/note-collaboration.md`:
+   ```text
+   Real-time note collaboration — how to answer and submit this round.
+   What I understand so far; Settled.
+   Round 1 — the architecture fork and independent requirements.
+   ```
+
+5. **Simulated file write** — fill that same document:
+   ```text
+   A 200–300-word playback covering shared editing, presence, offline merging, and the protocol, storage, deployment, and conflict decisions; distinguish their requirements from my guesses.
+   Settled records their requested behavior and acceptance of the rough websocket/server-merge direction; CRDTs remain open, and “sounds good” is not recorded as approval of an unwritten design.
+   Five questions, each with an <ask>: CRDT fork (recommend evaluating a CRDT); offline duration (my call: days); collaborators per note (my call: small teams); access revocation (my call: recheck before accepting offline edits); an open question about a concrete failure they most need to prevent.
+   ```
+   Each closed question includes its recommendation and a one-line reason. The fork is labeled first. Protocol details, persistence format, and merge implementation are deferred until that answer arrives. No UI mockup is needed for these architectural questions.
+
+6. **Simulated shell call** — validate the document:
+   ```sh
+   cd /Users/p/git/notes-app && ryugi check
+   ```
+   **Assumed output:** Document validation passes.
+
+7. **Simulated shell call** — serve it:
+   ```sh
+   cd /Users/p/git/notes-app && ryugi start
+   ```
+   **Assumed output:** Document available at `http://localhost:4317/note-collaboration`.
+
+8. **Message to partner:**
+
+   “This spans sync, storage, and deployment, so I’ve moved the playback and remaining decisions into a [document](http://localhost:4317/note-collaboration); pick or comment on the questions, then submit the round.”
+
+**Stop and wait for their answers.**
+
+SUMMARY: Simulated inspecting the repo and opening a document round; waiting for the architecture fork and independent requirements before completing the written design for approval.

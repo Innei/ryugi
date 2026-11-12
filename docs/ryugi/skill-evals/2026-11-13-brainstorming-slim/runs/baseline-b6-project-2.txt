@@ -1,0 +1,68 @@
+1. **Shell — read workflow instructions** (actually read):
+   ```sh
+   cat ./skill/doc-rounds.md ./skill/written-design.md
+   ```
+
+2. **Shell — inspect the repository** (simulated):
+   ```sh
+   cd /Users/p/git/notes-app && rg --files -g AGENTS.md -g package.json -g '*schema*' -g '*note*' -g '*Note*' -g '*auth*' -g '*deploy*' -g '*docker*' -g '*README*'
+   ```
+   **Assumed output:** `AGENTS.md`, `package.json`, `client/src/NoteEditor.tsx`, `api/src/notes.ts`, `api/src/auth.ts`, `db/schema.sql`, and `README.md`.
+
+3. **Shell — read the existing implementation and instructions** (simulated):
+   ```sh
+   cd /Users/p/git/notes-app && cat AGENTS.md package.json client/src/NoteEditor.tsx api/src/notes.ts api/src/auth.ts db/schema.sql README.md
+   ```
+   **Assumed output:** No additional workflow requirements. Notes currently save whole text bodies through authenticated HTTP requests; Postgres stores the current body. No collaboration protocol exists. These are repository findings, not partner decisions.
+
+4. **Shell — discover artifact command syntax** (simulated):
+   ```sh
+   ryugi --help
+   ```
+   **Assumed output:** `start` serves the repository’s `.ryugi/artifacts/` directory; `check` accepts an artifact path. The already-loaded artifacts skill supplies the document format.
+
+5. **Write file — document outline** (simulated):
+
+   Path: `/Users/p/git/notes-app/.ryugi/artifacts/note-collaboration.document`
+   ```text
+   Title: Real-time note collaboration; instructions for answering and submitting a round.
+   Sections: What I understand so far; Settled; Round 1.
+   Round placeholders: CRDT fork, shared fields, offline duration, access loss, initial scale.
+   ```
+
+6. **Write file — fill the document** (simulated; same path):
+   ```text
+   Add a 200–300-word playback distinguishing requested simultaneous editing, presence cursors and offline merging from my assumptions; explain the protocol, storage and deployment implications and size this as a project.
+   Settled: partner requested those three capabilities and accepted the rough websocket/server-merge direction; React/Node/Postgres are existing constraints; CRDTs and the detailed architecture remain open.
+   Add five independent <ask> items with recommendations and reasons; keep protocol, persistence format, compaction and conflict-algorithm questions out until the CRDT fork is answered.
+   ```
+
+   The five items represented by that sketch are:
+
+   - **Fork — use a CRDT for note content?** My recommendation: yes, subject to checking compatibility with the editor. Offline merging makes this the first architectural choice; the earlier server-merge description did not settle it.
+   - **Which fields should support simultaneous editing initially?** My recommendation: note body only, retaining current behavior for titles and metadata, to bound the first release.
+   - **How long should offline editing remain supported?** My recommendation: days, including closing and reopening the app, because reconnecting later should preserve local work. This establishes the requirement without selecting a storage mechanism.
+   - **What should happen when an offline editor loses access before reconnecting?** My recommendation: reject shared-note updates while retaining a recoverable local copy, preserving both access control and the author’s work.
+   - **What scale should the first release support?** My recommendation: optimize acceptance around the stated two-person case and defer larger-team guarantees until there is a concrete need.
+
+   The document instructions say to pick or comment on each question and submit the round. Untouched submitted recommendations count as accepted for this round; implementation still requires approval of the eventual written design.
+
+7. **Shell — validate the document** (simulated):
+   ```sh
+   cd /Users/p/git/notes-app && ryugi check .ryugi/artifacts/note-collaboration.document
+   ```
+   **Assumed output:** Document valid; five questions with unique IDs.
+
+8. **Shell — serve the document** (simulated):
+   ```sh
+   cd /Users/p/git/notes-app && ryugi start
+   ```
+   **Assumed output:** Document available at `http://localhost:4317/a/note-collaboration`.
+
+9. **Message to partner:**
+
+   “This is a project with connected architecture decisions, so I’m using the brainstorming document workflow to settle the CRDT choice first; pick or comment, then submit: [collaboration design round](http://localhost:4317/a/note-collaboration).”
+
+**Stop here.** “Sounds good” accepted the rough idea; it did not approve a written design. No implementation skill, scaffolding, dependencies, or product code follows yet.
+
+SUMMARY: Simulated repository inspection and a first document round with the CRDT fork first; waiting for the partner’s answers before completing the written design for approval.

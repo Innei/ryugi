@@ -1,0 +1,1 @@
+PASS — Asks one open question about intended input and output, opens no visual artifact, and builds nothing.

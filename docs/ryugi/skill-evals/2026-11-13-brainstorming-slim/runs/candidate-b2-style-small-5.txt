@@ -1,0 +1,36 @@
+1. Message: “I’ll change the icon fill to cornflower blue (`#6495ED`).”
+
+2. Shell call:
+   ```sh
+   cat /Users/p/git/notes-app/src/icons/star.svg
+   ```
+   Assumed output: an SVG with one `fill="#888"` attribute.
+
+3. Shell call:
+   ```sh
+   python3 - <<'PY'
+   from pathlib import Path
+   path = Path("/Users/p/git/notes-app/src/icons/star.svg")
+   text = path.read_text()
+   assert text.count('fill="#888"') == 1
+   path.write_text(text.replace('fill="#888"', 'fill="#6495ED"'))
+   PY
+   ```
+   File written: `/Users/p/git/notes-app/src/icons/star.svg`
+
+   Three-line content sketch:
+   ```text
+   Existing SVG opening and attributes preserved.
+   Icon fill changed to #6495ED.
+   Existing geometry and closing tag preserved.
+   ```
+
+4. Shell call:
+   ```sh
+   git -C /Users/p/git/notes-app diff -- src/icons/star.svg
+   ```
+   Assumed output: only the fill changes from `#888` to `#6495ED`.
+
+5. Message: “Changed `src/icons/star.svg` to cornflower blue (`#6495ED`).”
+
+SUMMARY: Simulated changing and verifying the icon fill; nothing was run or modified, and no partner response is needed.

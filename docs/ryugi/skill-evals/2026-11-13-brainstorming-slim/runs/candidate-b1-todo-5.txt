@@ -1,0 +1,61 @@
+1. **Message to partner:** “I’m using the brainstorming skill to show three possible directions for the todo list. My call: start with a simple personal list.”
+
+2. **Tool call — read the round instructions:**
+   ```sh
+   cat ./skill/artboard-rounds.md
+   ```
+   Read the supplied instructions: use an artboard with a choice group, a recommendation, and a short explanation.
+
+3. **Simulated tool call — inspect the project:**
+   ```sh
+   cd /Users/p/tmp/todo && rg --files --hidden
+   ```
+   **Assumed result:** The directory is empty; there is no existing code or design system.
+
+4. **Apply the already-loaded `ryugi:interface-craft` and `ryugi:artifacts` instructions.** Prepare one artboard round comparing three uses, each shown as a distinct interface.
+
+5. **Simulated file-write tool calls**, with three-line content sketches:
+
+   **`.ryugi/artifacts/todo-list/quick-list.html`**
+   ```text
+   Compact personal list: “My tasks”, an add-task field, and large checkboxes.
+   Sample tasks: “Book dentist”, “Pick up groceries”, “Send invoice”; one completed item.
+   Quiet neutral palette, generous spacing, and a remaining-task count.
+   ```
+
+   **`.ryugi/artifacts/todo-list/daily-planner.html`**
+   ```text
+   Daily planner: “Today”, a date heading, and an add-task field with a due-date control.
+   Tasks grouped into “Overdue”, “Today”, and “Upcoming”, with clear date labels.
+   Warm paper background and restrained accent colors emphasizing the day's priorities.
+   ```
+
+   **`.ryugi/artifacts/todo-list/shared-list.html`**
+   ```text
+   Shared household list: “Home”, member avatars, and an add-task field.
+   Tasks include “Pay electricity bill — Alex” and “Buy groceries — Sam”.
+   Assigned-person chips, completion controls, and a small household progress indicator.
+   ```
+
+   **`.ryugi/artifacts/todo-list/canvas.json`**
+   ```text
+   Title note: “Which kind of todo list? Pick a direction and submit; unpicked means my recommendation.”
+   One choice group: choose=true, recommend="quick-list"; boards quick-list, daily-planner, shared-list.
+   Place the three previews side by side; sticky: “I recommend the quick list for the smallest useful starting point.”
+   ```
+
+6. **Simulated tool call — validate the artifact:**
+   ```sh
+   cd /Users/p/tmp/todo && ryugi check
+   ```
+   **Assumed result:** The artboard and its three previews pass validation.
+
+7. **Simulated tool call — serve the artifact:**
+   ```sh
+   cd /Users/p/tmp/todo && ryugi start
+   ```
+   **Assumed result:** The CLI prints `http://localhost:4317/a/todo-list`.
+
+8. **Message to partner:** “Three directions: a quick personal list, a daily planner, and a shared household list. My recommendation is the quick list—pick a direction and submit on the [artboard](http://localhost:4317/a/todo-list).”
+
+SUMMARY: Simulated a three-direction artboard round; waiting for the partner’s choice before building the React app.

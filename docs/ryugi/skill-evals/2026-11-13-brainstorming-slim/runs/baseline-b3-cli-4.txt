@@ -1,0 +1,4 @@
+Message to partner:
+“What’s a concrete example of how you’d use this CLI—what CSV would you give it, and what would you want back?”
+
+SUMMARY: Asked for the intended use and output; no tool calls. Waiting for your example.

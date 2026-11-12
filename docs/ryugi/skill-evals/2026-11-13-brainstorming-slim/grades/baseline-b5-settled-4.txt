@@ -1,0 +1,1 @@
+PASS — States small scope and full behavior, labels its own calls, asks no questions, and implements with failing-then-passing tests without approval or design documents.

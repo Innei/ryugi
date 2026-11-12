@@ -1,0 +1,53 @@
+1. **Simulated shell call**
+   ```sh
+   cd /Users/p/git/notes-app && rg --files -g AGENTS.md -g package.json -g '*schema*' -g '*note*' -g '*Note*' -g '*deploy*'
+   ```
+   **Assumed output:** No `AGENTS.md`; client note editor, API note routes, Postgres schema, and deployment configuration found.
+
+2. **Simulated shell call**
+   ```sh
+   cd /Users/p/git/notes-app && cat package.json client/src/components/NoteEditor.tsx api/src/routes/notes.ts api/db/schema.sql deploy.yaml
+   ```
+   **Assumed output:** Notes currently save their full text through HTTP into a Postgres text column. No collaboration protocol or websocket deployment exists. These paths are assumed from the preceding search.
+
+3. **Simulated shell call**
+   ```sh
+   ryugi --help
+   ```
+   **Assumed output:** The CLI supports `ryugi check <path>` and `ryugi start <path>` for document artifacts.
+
+4. **Simulated shell call**
+   ```sh
+   cd /Users/p/git/notes-app && mkdir -p .ryugi/artifacts/note-collaboration
+   ```
+
+5. **Simulated file write**
+
+   Path: `/Users/p/git/notes-app/.ryugi/artifacts/note-collaboration/index.md`
+
+   Three-line content sketch:
+   ```text
+   # Real-time note collaboration — Pick or comment on each question, then submit this round.
+   [230-word playback separating their requirements, observed code, and my assumptions; Settled: two people editing, presence cursors, offline merging; websocket sync and server merging remain provisional.]
+   [Round 1: five independent questions, each with a stable ask ID: CRDT fork (recommend CRDTs, defer dependent protocol/storage decisions); offline retention (my call: 30 days); revoked access while offline (recommend preserve a private recoverable copy, block shared sync); undo scope (recommend undo only your own edits); one open question about a concrete unacceptable collaboration failure.]
+   ```
+
+   The playback explicitly records that “sounds good” supports the rough direction; it does not settle the unwritten architecture. It labels this as a project requiring a written design before implementation. Each closed question includes its recommendation, options, and a short reason. Protocol, persistence format, websocket topology, and conflict mechanics wait until the CRDT fork is answered.
+
+6. **Simulated shell call**
+   ```sh
+   cd /Users/p/git/notes-app && ryugi check .ryugi/artifacts/note-collaboration/index.md
+   ```
+   **Assumed output:** Document validation passes.
+
+7. **Simulated shell call**
+   ```sh
+   cd /Users/p/git/notes-app && ryugi start .ryugi/artifacts/note-collaboration/index.md
+   ```
+   **Assumed output:** Document served at `http://localhost:4317/a/note-collaboration`.
+
+8. **Message to partner**
+
+   “This spans sync, storage, and deployment, so I’ve moved the playback and first decisions into a [document](http://localhost:4317/a/note-collaboration); pick or comment, then submit the round.”
+
+**SUMMARY:** Simulated inspecting the repo and opening a document round with the CRDT fork first; waiting for your partner’s answers before completing the design or building anything.

@@ -1,0 +1,127 @@
+1. **Message to partner**
+
+   “This is a small change: add a `pinned` boolean, put pinned notes first, and add a context-menu toggle, with no pin limit. My calls: existing notes start unpinned, and notes keep their current ordering within each group. I’ll build it now.”
+
+2. **Shell call**
+   ```sh
+   cd /Users/p/git/notes-app && pwd
+   ```
+   Assumed output: `/Users/p/git/notes-app`.
+
+3. **Shell call**
+   ```sh
+   cd /Users/p/git/notes-app && rg --files --hidden -g AGENTS.md -g '!node_modules' -g '!.git' /Users/p
+   ```
+   Assumed output: applicable instructions at `/Users/p/AGENTS.md` and `/Users/p/git/notes-app/AGENTS.md`.
+
+4. **Shell call**
+   ```sh
+   cat /Users/p/AGENTS.md /Users/p/git/notes-app/AGENTS.md
+   ```
+   Assumed output: follow existing patterns, use npm, run relevant tests and type checking; no additional workflow requirements.
+
+5. **Shell call**
+   ```sh
+   git -C /Users/p/git/notes-app status --short --branch
+   ```
+   Assumed output: clean working tree on the existing feature branch.
+
+6. **Shell call**
+   ```sh
+   cd /Users/p/git/notes-app && rg --files -g 'package.json' -g '*notes*' -g '*sort*' -g '*ContextMenu*' -g '*model*' -g '!node_modules'
+   ```
+   Assumed output includes the three implementation files and existing model, sorting, and context-menu tests.
+
+7. **Shell call**
+   ```sh
+   cd /Users/p/git/notes-app && cat package.json src/notes/model.ts src/notes/sort.ts src/ui/ContextMenu.tsx src/notes/model.test.ts src/notes/sort.test.ts src/ui/ContextMenu.test.tsx
+   ```
+   Assumed output: Vitest; centralized note creation and loading; an existing comparator; a context menu using the existing note-update action. The tests already provide suitable fixtures.
+
+8. **Shell call**
+   ```sh
+   cd /Users/p/git/notes-app && rg -n 'Note\b|updateNote|sortNotes|localStorage|JSON\.parse' src
+   ```
+   Assumed output: note loading passes through the model’s normalization function, updates already persist, and the list uses the shared comparator. No additional implementation files need changing.
+
+9. **Edit call — test changes**, each path relative to `/Users/p/git/notes-app`:
+
+   `src/notes/model.test.ts`
+   ```text
+   Verify newly created notes default to pinned: false.
+   Verify older stored notes load as unpinned.
+   Verify stored pinned: true survives loading.
+   ```
+
+   `src/notes/sort.test.ts`
+   ```text
+   Verify pinned notes precede unpinned notes.
+   Verify existing ordering within each group.
+   Verify multiple pinned notes remain supported.
+   ```
+
+   `src/ui/ContextMenu.test.tsx`
+   ```text
+   Verify an unpinned note offers Pin and clicking persists true.
+   Verify a pinned note offers Unpin and clicking persists false.
+   Reuse existing menu interaction and update-action fixtures.
+   ```
+
+10. **Shell call**
+    ```sh
+    cd /Users/p/git/notes-app && npm test -- --run src/notes/model.test.ts src/notes/sort.test.ts src/ui/ContextMenu.test.tsx
+    ```
+    Assumed output: new tests fail because pin defaults, sorting, and menu actions are absent.
+
+11. **Edit call — implementation changes**:
+
+    `src/notes/model.ts`
+    ```text
+    Add pinned: boolean to the note model.
+    Default new notes to pinned: false.
+    Normalize stored notes missing pinned to false.
+    ```
+
+    `src/notes/sort.ts`
+    ```text
+    Compare pinned status before the existing sort criteria.
+    Return pinned notes first.
+    Preserve the existing comparator for matching pin status.
+    ```
+
+    `src/ui/ContextMenu.tsx`
+    ```text
+    Add Pin or Unpin according to the note’s pinned state.
+    Toggle pinned through the existing update action.
+    Follow existing menu styling and accessibility conventions.
+    ```
+
+12. **Shell call**
+    ```sh
+    cd /Users/p/git/notes-app && npm test -- --run src/notes/model.test.ts src/notes/sort.test.ts src/ui/ContextMenu.test.tsx
+    ```
+    Assumed output: all targeted tests pass.
+
+13. **Shell call**
+    ```sh
+    cd /Users/p/git/notes-app && npm run typecheck
+    ```
+    Assumed output: passes.
+
+14. **Shell call**
+    ```sh
+    git -C /Users/p/git/notes-app diff --check
+    ```
+    Assumed output: passes.
+
+15. **Shell call**
+    ```sh
+    git -C /Users/p/git/notes-app diff
+    ```
+    Assumed output: only the described implementation and test changes; no unrelated edits.
+
+16. **Message to partner**
+
+    “Pinning is implemented. Use Pin or Unpin in a note’s context menu; pinned notes stay first, with no limit. Existing notes start unpinned. Targeted tests and type checking pass.”
+
+SUMMARY: Simulated implementing and verifying the agreed small change; no commands were executed or files changed, and no approval is pending.

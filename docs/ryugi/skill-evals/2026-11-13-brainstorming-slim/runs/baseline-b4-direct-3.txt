@@ -1,0 +1,57 @@
+1. **Message to partner**
+
+   “I’ll add this directly in TypeScript and use Vitest to check the bounds and the `RangeError` case.”
+
+2. **Shell call**
+   ```sh
+   cd /Users/p/git/notes-app && for file in /AGENTS.md /Users/AGENTS.md /Users/p/AGENTS.md /Users/p/git/AGENTS.md; do if [ -f "$file" ]; then cat "$file"; fi; done
+   ```
+   **Assumed output:** No ancestor instructions.
+
+3. **Shell call**
+   ```sh
+   cd /Users/p/git/notes-app && git status --short && rg --files --hidden -g '!node_modules' -g '!.git' -g 'AGENTS.md' -g 'package.json' -g '*lock*' -g '*math*' -g '*vitest*'
+   ```
+   **Assumed output:** Clean working tree; `AGENTS.md`, `package.json`, `package-lock.json`, `src/math.ts`, and `src/math.test.ts`. No nested instruction files.
+
+4. **Shell call**
+   ```sh
+   cd /Users/p/git/notes-app && cat AGENTS.md package.json src/math.ts src/math.test.ts
+   ```
+   **Assumed output:** No additional workflow requirements. Vitest is installed; the project uses named exports and colocated tests. `math.ts` contains other numeric helpers but no `clamp`.
+
+5. **File edit:** `/Users/p/git/notes-app/src/math.test.ts`
+
+   Three-line sketch:
+   ```text
+   Import clamp alongside existing helpers; retain existing tests.
+   Test values below, above, inside, and exactly at both bounds, including negative bounds and min === max.
+   Assert RangeError for min > max with values below, inside, and above the reversed bounds.
+   ```
+
+6. **Shell call**
+   ```sh
+   cd /Users/p/git/notes-app && npx --no-install vitest run src/math.test.ts
+   ```
+   **Assumed output:** New tests fail because `clamp` is not exported; existing tests pass.
+
+7. **File edit:** `/Users/p/git/notes-app/src/math.ts`
+
+   Three-line sketch:
+   ```text
+   Export clamp(value: number, min: number, max: number): number.
+   First throw new RangeError('min must not exceed max') when min > max.
+   Return min when value < min, max when value > max, otherwise value.
+   ```
+
+8. **Shell call**
+   ```sh
+   cd /Users/p/git/notes-app && npx --no-install vitest run && git diff --check && git diff -- src/math.ts src/math.test.ts
+   ```
+   **Assumed output:** All tests pass; no whitespace errors; the diff contains only the helper and its tests.
+
+9. **Message to partner**
+
+   “Added `clamp(value, min, max)` with the requested bounds behavior and `RangeError` for reversed bounds. Added boundary and error tests; all Vitest tests pass.”
+
+SUMMARY: Simulated implementing and testing `clamp`; nothing was executed or changed, and no partner input is needed.

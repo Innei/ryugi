@@ -1,0 +1,3 @@
+Message to partner: “What’s a real task you want this CLI to handle with a CSV file?”
+
+SUMMARY: Asked what the CLI is for; no tool calls or files written. Waiting for your answer.

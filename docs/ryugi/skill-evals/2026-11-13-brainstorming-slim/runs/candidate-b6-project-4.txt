@@ -1,0 +1,75 @@
+1. **Tool — shell (read project context)**
+   ```sh
+   cd /Users/p/git/notes-app && rg --files --hidden -g '!node_modules' -g '!.git' -g 'AGENTS.md' -g 'package.json' -g '*schema*' -g '*note*' -g '*Note*' -g '*editor*' -g '*deploy*' -g '*compose*'
+   ```
+   **Assumed result:** No `AGENTS.md`; relevant files include `client/package.json`, `client/src/components/NoteEditor.tsx`, `api/package.json`, `api/src/routes/notes.ts`, `api/db/schema.sql`, and `docker-compose.yml`.
+
+2. **Tool — shell (inspect existing behavior and deployment)**
+   ```sh
+   cd /Users/p/git/notes-app && cat client/package.json client/src/components/NoteEditor.tsx api/package.json api/src/routes/notes.ts api/db/schema.sql docker-compose.yml
+   ```
+   **Assumed result:** Notes currently save complete text through an authenticated API into Postgres. There is no collaboration protocol or durable offline queue. Deployment configuration covers the client, API, and database. These are inspection assumptions, not facts supplied by the partner.
+
+3. **Tool — write document outline using the loaded artifacts workflow**
+
+   Path: `/Users/p/git/notes-app/.ryugi/artifacts/note-collaboration.document`
+   
+   Three-line content sketch:
+   ```text
+   Title: Real-time note collaboration; instructions for answering and submitting this round.
+   Sections: What I understand so far; Settled; Round 1.
+   Round 1 placeholders: merge-model fork, collaboration scope, offline expectations, access changes, success/failure.
+   ```
+
+4. **Tool — fill the same document**
+
+   Path: `/Users/p/git/notes-app/.ryugi/artifacts/note-collaboration.document`
+   
+   Three-line content sketch:
+   ```text
+   A 200–300-word playback separates their requirements (simultaneous editing, presence cursors, offline merging) from my guesses; records inspected architecture and explains that “merge on the server” remains provisional.
+   Settled records their requested behaviors and acceptance of the broad websocket direction; my call is to retain React, Node, and Postgres. This is a project; protocol, storage, and deployment details remain open.
+   Round 1 contains the five questions below, with stable ask IDs, selectable options, and recommend markers; submission answers this round and does not approve implementation.
+   ```
+
+   The five questions represented in that sketch:
+
+   1. **Fork: use a CRDT for concurrent and offline edits?**  
+      My recommendation: use a CRDT, subject to compatibility with the existing editor. Alternative: design server-ordered operations with explicit offline reconciliation.  
+      Why: this choice determines the sync protocol, stored representation, and conflict behavior. Library choice, update storage, compaction, and merge placement wait until this fork is answered.
+
+   2. **What needs to collaborate in the first release?**  
+      My recommendation: the existing note body and presence cursors; leave titles and other metadata on their current save behavior. Alternative: include those fields in collaboration immediately.  
+      Why: this sets the release boundary independently of the merge model.
+
+   3. **What should work while disconnected?**  
+      My recommendation: edit notes already opened on that device, retain pending edits across reloads, and reconcile on reconnect. Alternative: also create and organize notes offline.  
+      Why: this determines the offline product scope without choosing its storage mechanism.
+
+   4. **What happens if editing access is removed while someone is offline?**  
+      My recommendation: prevent their pending changes from entering the shared note and preserve a recoverable local copy. Alternative: discard pending changes after warning.  
+      Why: reconnecting must respect current permissions while handling the person’s unsent work deliberately.
+
+   5. **What real situation would make the first release a success—or a failure?**  
+      Open response, no recommendation.  
+      Why: their concrete example establishes acceptance criteria that technical choices alone cannot supply.
+
+5. **Tool — shell (validate the document)**
+   ```sh
+   cd /Users/p/git/notes-app && ryugi check
+   ```
+   **Assumed result:** The document and its five question controls pass validation.
+
+6. **Tool — shell (serve the document)**
+   ```sh
+   cd /Users/p/git/notes-app && ryugi start
+   ```
+   **Assumed result:** The CLI prints `http://localhost:4317/a/note-collaboration`.
+
+7. **Message to partner**
+
+   “I’m using the brainstorming document workflow because collaboration changes sync, storage, and deployment; pick or comment on the [first round](http://localhost:4317/a/note-collaboration), then submit it.”
+
+**Stop and wait.** “Sounds good” accepts the rough direction; it does not settle the remaining architecture or approve an unwritten design. The supplied skill’s gate says, “Nothing gets built for a project until your human partner approves the written design.”
+
+SUMMARY: Simulated project inspection and a document round with the CRDT fork first; waiting for the partner’s answers before completing the written design.

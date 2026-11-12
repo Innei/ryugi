@@ -1,0 +1,6 @@
+Tool calls: none; the directory is already described as empty.
+
+Message to partner:
+“I’m using the brainstorming skill to clarify the CLI’s purpose. What’s a concrete example of a CSV you’d feed it and what you’d want it to output?”
+
+SUMMARY: Asked for a concrete input/output example; waiting for your answer before choosing behavior or implementation.

@@ -1,0 +1,1 @@
+PASS — Opens an artboard with one choice group containing three distinct use cases, starts the server, provides a concise link, and creates no product code.

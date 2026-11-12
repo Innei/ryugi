@@ -1,0 +1,51 @@
+1. Message to partner:
+   “I’ll add this directly in TypeScript and verify the boundary cases and invalid range with Vitest.”
+
+2. Shell call:
+   ```sh
+   cd /Users/p/git/notes-app && pwd && rg --files -g AGENTS.md -g package.json -g '*math*' -g '*vitest*' -g '*lock*' && git status --short
+   ```
+   Assumed output: clean working tree; `AGENTS.md`, `package.json`, `package-lock.json`, `src/math.ts`, and `src/math.test.ts` exist.
+
+3. Shell call:
+   ```sh
+   cd /Users/p/git/notes-app && cat AGENTS.md package.json src/math.ts src/math.test.ts && rg --files src -g AGENTS.md
+   ```
+   Assumed output: no nested instructions; named exports; existing Vitest tests; npm test runs Vitest; dependencies are installed.
+
+4. Write/edit call — `/Users/p/git/notes-app/src/math.test.ts`:
+   ```text
+   Import clamp alongside existing math exports; preserve existing tests.
+   Add cases below, within, above, and exactly at either bound, plus equal bounds.
+   Assert RangeError when min > max, including a value that would otherwise return early.
+   ```
+
+5. Shell call:
+   ```sh
+   cd /Users/p/git/notes-app && npm test -- --run src/math.test.ts
+   ```
+   Assumed output: new tests fail because `clamp` is not exported; existing tests pass.
+
+6. Write/edit call — `/Users/p/git/notes-app/src/math.ts`:
+   ```text
+   Append export function clamp(value: number, min: number, max: number): number.
+   First throw new RangeError('min must not exceed max') when min > max.
+   Return min if value < min, max if value > max, otherwise value.
+   ```
+
+7. Shell call:
+   ```sh
+   cd /Users/p/git/notes-app && npm test -- --run
+   ```
+   Assumed output: all tests pass.
+
+8. Shell call:
+   ```sh
+   cd /Users/p/git/notes-app && git diff --check && git diff -- src/math.ts src/math.test.ts
+   ```
+   Assumed output: no whitespace errors; diff contains only the function and its tests, with range validation preceding value comparisons.
+
+9. Message to partner:
+   “Added `clamp` to `src/math.ts`, including `RangeError` for reversed bounds. Tests cover values inside and outside the range, boundaries, equal bounds, and invalid ranges. All tests pass.”
+
+SUMMARY: Simulated implementing and testing `clamp`; no commands were executed or files changed, and no partner input is needed.

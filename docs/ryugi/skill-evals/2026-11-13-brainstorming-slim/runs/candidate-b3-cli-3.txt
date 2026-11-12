@@ -1,0 +1,11 @@
+1. Message: “I’m using the brainstorming skill to clarify what the CLI should do.”
+
+2. Shell call:
+   ```sh
+   rg --files --hidden -g '!.git' /Users/p/tmp/csvtool
+   ```
+   Assumed result: no files, consistent with the empty directory you described.
+
+3. Message: “What’s a concrete example of a CSV you’d run this on, and what would you want the CLI to produce?”
+
+SUMMARY: Simulated inspecting the empty project and asking one question about intended behavior; waiting for your example before building.

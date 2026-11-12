@@ -1,0 +1,34 @@
+1. Message: “I’m following the brainstorming skill’s quick-task path: I’ll change the icon fill to cornflower blue (`#6495ED`).”
+
+2. Shell call:
+   ```sh
+   cat /Users/p/git/notes-app/src/icons/star.svg
+   ```
+   Assumed result: an SVG containing one `fill="#888"` attribute.
+
+3. Shell call:
+   ```sh
+   python3 - <<'PY'
+   from pathlib import Path
+   path = Path("/Users/p/git/notes-app/src/icons/star.svg")
+   text = path.read_text()
+   assert text.count('fill="#888"') == 1
+   path.write_text(text.replace('fill="#888"', 'fill="#6495ED"'))
+   PY
+   ```
+   File written: `/Users/p/git/notes-app/src/icons/star.svg`. Three-line sketch:
+   ```text
+   Existing SVG opening and attributes preserved.
+   Existing star geometry, now fill="#6495ED".
+   Existing SVG closing preserved.
+   ```
+
+4. Shell call:
+   ```sh
+   git -C /Users/p/git/notes-app diff -- src/icons/star.svg
+   ```
+   Assumed result: the only change is `#888` → `#6495ED`.
+
+5. Message: “Changed `src/icons/star.svg` to cornflower blue (`#6495ED`).”
+
+SUMMARY: Simulated the exact color edit and diff verification; nothing was executed, and no response is needed.

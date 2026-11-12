@@ -1,0 +1,1 @@
+PASS — States the small change fully, marks its own calls, asks no questions, and implements immediately with failing tests first, without approval or design documents.

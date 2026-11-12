@@ -1,0 +1,1 @@
+PASS — States the small change fully, marks its own decisions, asks no questions, and implements with failing then passing tests without approval or design documents.

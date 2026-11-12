@@ -1,0 +1,66 @@
+1. **Message to partner**
+
+   “I’m using the brainstorming, artifacts, and interface-craft skills to show three possible uses. My starting choice is React with plain CSS.”
+
+2. **Shell tool call**
+   ```sh
+   cd /Users/p/tmp/todo && rg --files --hidden -g '!.git'
+   ```
+   **Assumed output:** No files; the directory is empty, with no existing design system.
+
+3. **Shell tool call**
+   ```sh
+   ryugi start --help
+   ```
+   **Assumed output:** The CLI supports `ryugi start <path>` and `ryugi check <path>` for artifact directories.
+
+4. **Write file:** `/Users/p/tmp/todo/.ryugi/artifacts/todo-directions/canvas.json`  
+   Three-line content sketch:
+   ```text
+   Title: “What kind of todo list?”; instruction: “Pick a direction and submit; unpicked choices use my recommendation.”
+   One choice group: purpose-and-direction; choose: true; recommend: quick-list.
+   Boards: quick-list, daily-planner, shared-list; nearby sticky recommends the quick list for its minimal setup.
+   ```
+
+5. **Write file:** `/Users/p/tmp/todo/.ryugi/artifacts/todo-directions/quick-list.html`  
+   Three-line content sketch:
+   ```text
+   Compact personal list, warm white background, clear typography, blue accent; title “Things to do”.
+   Input “Add a task”; sample tasks “Book dentist”, “Buy coffee”, and completed “Send invoice”.
+   Checkboxes, remaining count, and “Clear completed”; no dates or accounts.
+   ```
+
+6. **Write file:** `/Users/p/tmp/todo/.ryugi/artifacts/todo-directions/daily-planner.html`  
+   Three-line content sketch:
+   ```text
+   Calm daily planner with a date header and sections “Today” and “Later”.
+   Tasks “Prepare meeting notes · 9:30 AM”, “Collect parcel”, and “Renew passport · Friday”.
+   Add-task input with a date choice; completion controls and a small daily progress indicator.
+   ```
+
+7. **Write file:** `/Users/p/tmp/todo/.ryugi/artifacts/todo-directions/shared-list.html`  
+   Three-line content sketch:
+   ```text
+   Friendly household list titled “Weekend together”, with member initials and inviting green accents.
+   Tasks “Buy groceries · Alex”, “Water plants · Sam”, and unassigned “Choose dinner”.
+   Add-task input, assignee controls, checkboxes, and an invitation action.
+   ```
+   **Assumption:** All sample names and tasks are invented for the mockups. These files are design artifacts; application scaffolding has not begun.
+
+8. **Shell tool call**
+   ```sh
+   cd /Users/p/tmp/todo && ryugi check .ryugi/artifacts/todo-directions
+   ```
+   **Assumed output:** Validation passes; all three boards render and the choice group has a valid recommendation.
+
+9. **Shell tool call**
+   ```sh
+   cd /Users/p/tmp/todo && ryugi start .ryugi/artifacts/todo-directions
+   ```
+   **Assumed output:** Artboard served at `http://localhost:4317/a/todo-directions`.
+
+10. **Message to partner**
+
+    “The board compares a quick personal list, a daily planner, and a shared household list; I recommend the quick list—[pick a direction and submit](http://localhost:4317/a/todo-directions).”
+
+SUMMARY: Simulated inspecting the empty project and opening three visual directions; waiting for the partner’s selection before designing further or building the app.

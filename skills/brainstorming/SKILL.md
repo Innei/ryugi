@@ -10,28 +10,15 @@ partner wants, and that belief is usually thinner than it feels. This
 skill is for finding out what they actually want, and why, before
 anything gets built.
 
-People often haven't finished working out what they want. Good questions
-help them think it through. When you understand the why, you make the
-hundred decisions they never mention the way they would have made them.
-
-## The Flow
-
-1. **Pick the path** from what you already know (below).
-2. **Talk it through** on that path, until you understand what they want
-   and why.
-3. **Design what they'll see** on an artboard or page, when there is
-   something to see (below).
-4. **Size the work** and say the size.
-5. **Describe it in full**: in chat for a small change, then build; the
-   written design for a project, then wait for approval.
-6. **Hand off** to building.
+When you understand the why, you make the hundred decisions they never
+mention the way they would have made them.
 
 ## Pick the Path
 
 Before you reply, ask yourself: what do I know about what they want, and
-why? Everything said earlier in the conversation counts, not only the
-latest message. What their project already shows counts too: read the
-code, files or data before you ask about them.
+why? Everything said earlier in the conversation counts, and so does what
+their project already shows: read the code, files or data before you ask
+about them.
 
 | What you know                                                                                                                 | Do                                                                                                                                                    |
 | ----------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -53,8 +40,7 @@ then do what they asked through the normal workflow. This skill is done.
 
 These hold on every path.
 
-Be clear and concise. Lead with what matters. Avoid jargon, match their
-vocabulary.
+Lead with what matters, in their vocabulary.
 
 **Ask only what changes what gets built.** Before each question, ask
 yourself: would a different answer change what I build? If not, or if a
@@ -65,8 +51,8 @@ a failure.
 **Guess before you ask.** A guess they can correct ("I'm guessing this is
 because X keeps biting you?") beats a question. When you can't guess yet,
 ask about a real moment: "What's the moment you find yourself wishing
-this existed?" Offer a short menu only when they're stuck. When they say
-"just guess" or "what do you think?", propose something concrete.
+this existed?" Offer a short menu only when they're stuck; when they say
+"just guess", propose something concrete.
 
 **One question per message.** A follow-up waits for their answer.
 
@@ -74,14 +60,13 @@ this existed?" Offer a short menu only when they're stuck. When they say
 your call, never as something they agreed to.
 
 **How it gets made.** Platform, language, libraries, medium: find out
-early which of these choices they want to make and which they hand to
-you. Someone counting on you needs sensible defaults, said in plain
-words. When there's existing work, build on what it already uses.
+early which of these they want to choose and which they hand to you, then
+give sensible defaults in plain words. Build on what existing work
+already uses.
 
 **Look before you ask.** What exists now (code, services, config, their
-files) is for you to read, not for them to answer. Read their project
-without asking. Offer before going outside it, to the web or their
-accounts.
+files) is for you to read without asking, not for them to answer. Offer
+before going outside the project, to the web or their accounts.
 
 **Think wide privately.** Before you propose anything, come up with
 several ideas and drop the weak ones, including any that fight what
@@ -94,13 +79,11 @@ describe it back in a few short paragraphs, guesses marked as yours, and
 ask what's wrong or missing. For a small change, the full description is
 the only playback.
 
-**Spike to feel things out.** Agentic work is waterfall, but very, very
-fast. A quick throwaway build is often the cheapest way to learn what
-they want or whether something works. Offer one when it would help.
-When they just want to spike, get out of the way. Spikes get no tests
-or minimal ones, aren't bulletproof, and skip the spec, execution, and
-review process. Bring what the spike taught you back into the
-conversation.
+**Spike to feel things out.** A quick throwaway build is often the
+cheapest way to learn what they want or whether something works. Offer
+one when it would help; when they just want to spike, get out of the way.
+Spikes get minimal tests or none and skip the spec, execution and review
+process. Bring what the spike taught you back into the conversation.
 
 ## Step Up to the Document
 
@@ -139,9 +122,9 @@ instead of describing it:
 Requirements, scope, tradeoffs, and conceptual choices stay in words. A
 question about a UI topic isn't automatically a visual question. One
 exception: when something with an interface is being built and both its
-purpose and its look are open, the directions carry the purpose. A todo
-list becomes a quick list, a daily planner with due dates, and a list
-shared with others, each drawn as that use would look.
+purpose and its look are open, the directions carry the purpose: a todo
+list becomes a quick list, a daily planner with due dates, and a shared
+list, each drawn as that use would look.
 
 Open it without asking first; your message is one line on what's there,
 plus the link. Showing a mockup doesn't send every question to the

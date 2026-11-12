@@ -1,0 +1,1 @@
+PASS — Opens a linked document with playback and decision questions, requires written design before implementation, and does not treat “sounds good” as approval.

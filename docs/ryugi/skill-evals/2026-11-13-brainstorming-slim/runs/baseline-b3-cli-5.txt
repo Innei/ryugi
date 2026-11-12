@@ -1,0 +1,4 @@
+Message to partner:
+“What’s a concrete example of how you’d use this CLI—the command you’d run and the output you’d want?”
+
+SUMMARY: Asked for a concrete use case to establish the CLI’s behavior; waiting for your answer before designing or building.

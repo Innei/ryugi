@@ -1,0 +1,74 @@
+1. **Message:** “I’m using the brainstorming workflow to sketch a few directions so you can choose what kind of todo list fits.”
+
+2. **Shell call:**
+   ```sh
+   cat ./skill/artboard-rounds.md
+   ```
+   Read the supplied artboard-round instructions.
+
+3. **Shell call:**
+   ```sh
+   cd /Users/p/tmp/todo && rg --files --hidden -g '!.git'
+   ```
+   **Assumed output:** No files; there is no existing app or design system.
+
+4. **Apply the already-loaded skills:** `ryugi:artifacts` with type `artboard`, and `ryugi:interface-craft` before drawing.
+
+5. **Shell call:**
+   ```sh
+   mkdir -p /Users/p/tmp/todo/.ryugi/artifacts/todo-directions
+   ```
+
+6. **Write file:** `/Users/p/tmp/todo/.ryugi/artifacts/todo-directions/canvas.json`
+
+   Three-line content sketch:
+   ```text
+   Round title: “What kind of todo list would you use? Pick one and submit.”
+   One choice group: choose=true; recommend=quick-list; three boards referencing the mockups.
+   Beside the group: “My recommendation: Quick list keeps adding and finishing tasks immediate.”
+   ```
+
+7. **Write file:** `/Users/p/tmp/todo/.ryugi/artifacts/todo-directions/quick-list.html`
+
+   Three-line content sketch:
+   ```text
+   “My tasks”: a compact React-app mockup with an inline “Add a task…” field.
+   Tasks: “Book dentist”, “Return library books”, completed “Send invoice”; checkboxes and delete controls.
+   Quiet neutral styling, generous spacing, task count and All / Active / Completed filters.
+   ```
+
+8. **Write file:** `/Users/p/tmp/todo/.ryugi/artifacts/todo-directions/daily-planner.html`
+
+   Three-line content sketch:
+   ```text
+   “Today · Friday”: a daily planner with a date strip and “3 tasks planned”.
+   Today: “Prepare meeting notes · 9:30”, “Buy groceries”; Upcoming: “Renew insurance · Monday”.
+   Warm paper-like styling, grouped tasks, due-date badges and an “Add task” control.
+   ```
+
+9. **Write file:** `/Users/p/tmp/todo/.ryugi/artifacts/todo-directions/shared-list.html`
+
+   Three-line content sketch:
+   ```text
+   “Household”: a shared list with member avatars and an “Invite” control.
+   Tasks: “Buy groceries · Me”, “Book plumber · Sam”, “Take out recycling · Unassigned”.
+   Friendly blue accents, assignee chips, completion controls and an inline task field.
+   ```
+
+10. **Shell call:**
+    ```sh
+    cd /Users/p/tmp/todo && ryugi check
+    ```
+    **Assumed output:** Artboard and referenced mockups validate successfully.
+
+11. **Shell call:**
+    ```sh
+    cd /Users/p/tmp/todo && ryugi start
+    ```
+    **Assumed output:** The server prints `http://localhost:4310/a/todo-directions`.
+
+12. **Message:** “Three directions—quick personal list, daily planner, and shared household list—with Quick list as my recommendation: [pick one on the board and submit](http://localhost:4310/a/todo-directions).”
+
+**Stop here to wait for the selection.**
+
+SUMMARY: Read the artboard instructions and simulated creating three visual directions; waiting for your partner’s choice before sizing or building the app.

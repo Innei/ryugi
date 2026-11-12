@@ -1,0 +1,115 @@
+1. **Message to partner**
+
+   “This is a small change: add a `pinned` boolean, sort pinned notes first, and add a pin toggle to the note’s context menu, with no limit on pins. My calls: existing notes default to unpinned, the menu says ‘Pin’ or ‘Unpin’, and each group keeps the current sort order. I’ll build it using the loaded brainstorming and test-driven-development workflows.”
+
+2. **Simulated shell call**
+
+   ```sh
+   cd /Users/p/git/notes-app && pwd && git status --short --branch
+   ```
+
+   **Assumed output:** Correct repository; clean working tree on an existing task branch.
+
+3. **Simulated shell call**
+
+   ```sh
+   cd /Users/p/git/notes-app && for p in /AGENTS.md /Users/AGENTS.md /Users/p/AGENTS.md /Users/p/git/AGENTS.md; do if test -f "$p"; then cat "$p"; fi; done
+   ```
+
+   **Assumed output:** No ancestor instructions.
+
+4. **Simulated shell call**
+
+   ```sh
+   cd /Users/p/git/notes-app && rg --files --hidden -g '!node_modules' -g '!.git' -g 'AGENTS.md' -g 'package.json' -g '*lock*' -g '*notes*' -g '*sort*' -g '*ContextMenu*' -g '*model*'
+   ```
+
+   **Assumed output:** Repository instructions, the three named source files, adjacent tests, `package.json`, and `pnpm-lock.yaml`. No nested instructions apply.
+
+5. **Simulated shell call**
+
+   ```sh
+   cd /Users/p/git/notes-app && cat AGENTS.md package.json src/notes/model.ts src/notes/sort.ts src/ui/ContextMenu.tsx src/notes/model.test.ts src/notes/sort.test.ts src/ui/ContextMenu.test.tsx
+   ```
+
+   **Assumed output:** Instructions permit work on the current task branch. Vitest runs through `pnpm test`. Notes use a central normalization function and an existing partial-update action; persistence serializes normalized notes. The context menu already receives that action. Existing tests cover these paths.
+
+6. **Simulated file edits**
+
+   `src/notes/model.test.ts`
+   ```text
+   Verify legacy notes normalize to pinned: false.
+   Verify pinned: true survives serialization and normalization.
+   Verify newly created notes default to unpinned.
+   ```
+
+   `src/notes/sort.test.ts`
+   ```text
+   Verify pinned notes precede unpinned notes.
+   Verify both groups retain the existing sorting rules.
+   Verify several simultaneous pins are supported.
+   ```
+
+   `src/ui/ContextMenu.test.tsx`
+   ```text
+   Verify an unpinned note offers Pin and updates pinned to true.
+   Verify a pinned note offers Unpin and updates pinned to false.
+   Use the existing context-menu interaction helpers.
+   ```
+
+7. **Simulated shell call**
+
+   ```sh
+   cd /Users/p/git/notes-app && pnpm test --run src/notes/model.test.ts src/notes/sort.test.ts src/ui/ContextMenu.test.tsx
+   ```
+
+   **Assumed output:** New tests fail because pinning is absent; existing assertions pass.
+
+8. **Simulated file edits**
+
+   `src/notes/model.ts`
+   ```text
+   Add pinned: boolean to the note model.
+   Default new and legacy notes to false during normalization.
+   Preserve explicit pinned values through persistence.
+   ```
+
+   `src/notes/sort.ts`
+   ```text
+   Compare pinned status before applying the existing comparator.
+   Put pinned notes first.
+   Preserve current ordering within each group.
+   ```
+
+   `src/ui/ContextMenu.tsx`
+   ```text
+   Add a Pin or Unpin item based on the current note.
+   Toggle pinned through the existing update action.
+   Follow existing menu styling and dismissal behavior.
+   ```
+
+9. **Simulated shell call**
+
+   ```sh
+   cd /Users/p/git/notes-app && pnpm test --run
+   ```
+
+   **Assumed output:** All tests pass.
+
+10. **Message to partner**
+
+    “Pinning now uses the existing save path, and the tests cover legacy notes, ordering, and both menu actions. I’m checking types and the final diff.”
+
+11. **Simulated shell call**
+
+    ```sh
+    cd /Users/p/git/notes-app && pnpm typecheck && git diff --check && git diff --stat && git diff
+    ```
+
+    **Assumed output:** Type checking and whitespace checks pass; the diff contains only the intended implementation and tests.
+
+12. **Message to partner**
+
+    “Implemented note pinning: pinned notes sort first, and the context menu offers Pin/Unpin. Existing notes start unpinned; pins have no limit. All tests and type checks pass.”
+
+SUMMARY: Simulated implementing and verifying the agreed small change; no commands were actually run, and no further approval is needed.

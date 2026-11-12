@@ -1,0 +1,77 @@
+1. **Message to partner**
+
+   “I’m using brainstorming to explore three possible uses for the list, with artifacts and interface-craft for the mockups. My starting call is React with Vite and TypeScript.”
+
+2. **Shell tool**
+
+   ```sh
+   cd /Users/p/tmp/todo && pwd && rg --files --hidden -g '!node_modules' -g '!.git'
+   ```
+
+   **Assumed output:** The directory exists and is empty. There are no existing components, design tokens, or project instructions.
+
+3. **Shell tool**
+
+   ```sh
+   ryugi start --help
+   ```
+
+   **Assumed output:** Running `ryugi start` from the project directory serves `.ryugi/artifacts/` and prints artifact links.
+
+4. **Write tool** — create visual exploration files, using the loaded interface-craft guidance. These are static mockups.
+
+   Path: `/Users/p/tmp/todo/.ryugi/artifacts/todo-directions/quick-list.html`
+
+   ```text
+   Compact personal list: “Things to do,” an “Add a task…” field, and generous checkbox rows.
+   Example tasks: “Buy coffee,” “Book dentist,” and completed “Send invoice”; remaining count below.
+   Warm white background, dark text, blue accent, system typography, and a narrow focused layout.
+   ```
+
+   Path: `/Users/p/tmp/todo/.ryugi/artifacts/todo-directions/daily-planner.html`
+
+   ```text
+   Daily planner: “Today,” date navigation, and a prominent “Add task” control.
+   Sections “Overdue,” “Today,” and “Later,” with tasks such as “Send proposal · 2 pm.”
+   Calm cream surface, clear time labels, orange overdue accents, and a wider structured layout.
+   ```
+
+   Path: `/Users/p/tmp/todo/.ryugi/artifacts/todo-directions/shared-list.html`
+
+   ```text
+   Shared household list: “Our place,” member avatars, an invite control, and task entry.
+   Rows show “Buy groceries · Alex,” “Call plumber · Sam,” and an unassigned task.
+   White cards on a muted green background, visible assignee chips, and a collaborative layout.
+   ```
+
+   Path: `/Users/p/tmp/todo/.ryugi/artifacts/todo-directions/canvas.json`
+
+   ```text
+   Round 1 title: “What kind of todo list?”; note: “Pick one direction and submit; unpicked choices use the recommendation.”
+   One choice group, “purpose,” with choose: true and recommend: “quick-list”; three boards reference the HTML mockups.
+   Sticky beside the group: “I recommend Quick list for fast personal capture; choose planning or sharing if that is the real need.”
+   ```
+
+5. **Shell tool**
+
+   ```sh
+   cd /Users/p/tmp/todo && ryugi check
+   ```
+
+   **Assumed output:** The artboard and its three board sources pass validation.
+
+6. **Shell tool**
+
+   ```sh
+   cd /Users/p/tmp/todo && ryugi start
+   ```
+
+   **Assumed output:** The viewer starts and prints `http://localhost:4310/a/todo-directions`.
+
+7. **Message to partner**
+
+   “Three directions: a quick personal list, a daily planner, or a shared household list; my recommendation is the quick list—[pick one on the board and submit](http://localhost:4310/a/todo-directions).”
+
+**Stop here**, awaiting their choice before settling scope or building the app.
+
+SUMMARY: Simulated a validated artboard comparing three uses for a React todo list; waiting for the partner’s direction.

@@ -1,0 +1,73 @@
+1. **Read the document-round instructions** (the only command actually run):
+   ```sh
+   cat ./skill/doc-rounds.md
+   ```
+   They require moving the playback into a document, putting the CRDT fork first, and deferring questions that depend on it.
+
+2. **Simulated shell call:**
+   ```sh
+   cd /Users/p/git/notes-app && rg --files --hidden -g '!node_modules' -g '!.git' -g '!dist' -g '!package-lock.json'
+   ```
+   **Assumed output:** `AGENTS.md`, root/client/API package files, the note editor, note routes, database schema, and deployment configuration.
+
+3. **Simulated shell call:**
+   ```sh
+   cd /Users/p/git/notes-app && cat AGENTS.md package.json client/package.json api/package.json client/src/components/NoteEditor.tsx api/src/routes/notes.ts api/db/schema.sql deploy.yaml
+   ```
+   **Assumed output:** no additional workflow requirements; a React text editor, whole-note saves through the Node API, Postgres text storage, existing note permissions, and no collaboration infrastructure. These findings inform the document; they do not settle the new architecture.
+
+4. **Simulated shell call:**
+   ```sh
+   cd /Users/p/git/notes-app && ryugi start --help
+   ```
+   **Assumed output:** `ryugi start` serves artifacts from `.ryugi/artifacts/` and prints their links.
+
+5. **Simulated shell call:**
+   ```sh
+   cd /Users/p/git/notes-app && ryugi check --help
+   ```
+   **Assumed output:** `ryugi check` validates artifacts in the current project.
+
+6. **Simulated file write — create the document outline.**
+
+   Path: `/Users/p/git/notes-app/.ryugi/artifacts/note-collaboration.md`
+
+   Three-line sketch:
+   ```text
+   Title: Real-time note collaboration; instructions for answering and submitting this round.
+   Sections: What I understand so far; Settled; Round 1.
+   Round placeholders: CRDT fork; offline duration; scope; revoked access; unacceptable outcomes.
+   ```
+
+7. **Simulated file edit — fill the document.**
+
+   Path: `/Users/p/git/notes-app/.ryugi/artifacts/note-collaboration.md`
+
+   Three-line sketch:
+   ```text
+   Playback (200–300 words): their requirements are simultaneous editing, presence cursors, and offline merging; existing React/Node/Postgres behavior is recorded; websocket transport and server merging received broad assent, while the merge model remains open; my guesses are labeled.
+   Settled: their requested capabilities and broad transport direction; my call is to retain the existing stack. Size: a project spanning sync, storage, a separately deployed websocket service, and conflict handling; this is a discussion round, with written-design approval still ahead.
+   Round 1: five answerable <ask> items, each with a stable ID: CRDT fork (recommend CRDT-based automatic convergence; defer protocol/storage details); offline duration (recommend days, not just brief disconnects); scope (recommend current note body, with titles/sharing unchanged initially); revoked access (recommend retain local work for recovery but reject upload); unacceptable outcome (open question asking for a concrete failure).
+   ```
+
+   Each closed question includes options, marks my recommendation, and gives one sentence explaining why. The opening instructions ask them to answer or comment and submit when finished. Silence is not treated as approval of the eventual design.
+
+8. **Simulated shell call:**
+   ```sh
+   cd /Users/p/git/notes-app && ryugi check
+   ```
+   **Assumed output:** document validation passes.
+
+9. **Simulated shell call:**
+   ```sh
+   cd /Users/p/git/notes-app && ryugi start
+   ```
+   **Assumed output:** the document is available at `http://localhost:4317/a/note-collaboration`.
+
+10. **Message to partner:**
+
+    “I’m using the brainstorming workflow to move this project’s architecture decisions into a document; answer Round 1 and submit when ready: [Real-time note collaboration](http://localhost:4317/a/note-collaboration).”
+
+11. **Stop and wait.** No implementation, scaffolding, dependency installation, or implementation-skill invocation.
+
+SUMMARY: Simulated opening a document round with the CRDT fork first; waiting for their answers, with written-design approval still required before implementation.

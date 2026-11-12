@@ -1,0 +1,143 @@
+Simulation only; no commands or edits are actually executed.
+
+1. **Message to partner**
+
+   “This is a small change: notes get a `pinned` boolean, pinned notes sort first, and the context menu toggles Pin/Unpin with no limit. That keeps your three reference notes easy to find. My calls: existing notes start unpinned, and each group keeps its current sort order. I’ll build it now.”
+
+2. **Shell call** — working directory `/Users/p/git/notes-app`:
+
+   ```sh
+   pwd
+   ```
+
+   **Assumed output:** `/Users/p/git/notes-app`.
+
+3. **Shell call** — same working directory:
+
+   ```sh
+   rg --files --hidden -g AGENTS.md -g package.json -g '*notes*test*' -g '*sort*test*' -g '*ContextMenu*' -g '!node_modules' -g '!.git'
+   ```
+
+   **Assumed output:** root `AGENTS.md`, `package.json`, and existing model, sort, and context-menu tests. No nested `AGENTS.md` files.
+
+4. **Shell call** — same working directory:
+
+   ```sh
+   cat AGENTS.md package.json src/notes/model.ts src/notes/sort.ts src/ui/ContextMenu.tsx src/notes/model.test.ts src/notes/sort.test.ts src/ui/ContextMenu.test.tsx
+   ```
+
+   **Assumed output:** the project uses TypeScript, Vitest, and React Testing Library. Notes have a default-aware persistence schema; the menu uses an existing persisted note-update action. Scripts include `test`, `typecheck`, and `lint`. Repository instructions require focused tests and type checking.
+
+5. **Shell call** — same working directory:
+
+   ```sh
+   git status --short --branch
+   ```
+
+   **Assumed output:** clean working tree on an existing task branch, `feat/note-pinning`.
+
+6. **Shell call** — same working directory:
+
+   ```sh
+   rg -n 'updateNote|NoteSchema|parseNote|sortNotes|ContextMenu' src
+   ```
+
+   **Assumed output:** all note creation and loading pass through the schema; existing update actions persist changed fields. The current comparator and menu tests provide reusable fixtures.
+
+7. **File edits — regression tests**, with these three-line content sketches:
+
+   `src/notes/model.test.ts`
+   ```text
+   Parse an existing stored note without pinned; expect false.
+   Parse and serialize a note with pinned true; expect it preserved.
+   Reuse the existing note fixtures and persistence helpers.
+   ```
+
+   `src/notes/sort.test.ts`
+   ```text
+   Mix pinned and unpinned notes; expect all pinned notes first.
+   Within both groups, expect the existing comparator’s order.
+   Include more than three pinned notes to cover unrestricted pinning.
+   ```
+
+   `src/ui/ContextMenu.test.tsx`
+   ```text
+   An unpinned note exposes Pin; activating it persists pinned true.
+   A pinned note exposes Unpin; activating it persists pinned false.
+   Reuse existing menu interaction and note-update test helpers.
+   ```
+
+8. **Shell call** — same working directory:
+
+   ```sh
+   pnpm test --run src/notes/model.test.ts src/notes/sort.test.ts src/ui/ContextMenu.test.tsx
+   ```
+
+   **Assumed output:** new tests fail because the schema lacks the field, sorting ignores pin status, and the menu lacks Pin/Unpin.
+
+9. **File edits — implementation**, with these three-line content sketches:
+
+   `src/notes/model.ts`
+   ```text
+   Add pinned as a boolean with a schema default of false.
+   Include it in the inferred note type and existing serialization.
+   Existing stored notes acquire the default when loaded.
+   ```
+
+   `src/notes/sort.ts`
+   ```text
+   Compare pin status before the existing sort criteria.
+   Place pinned notes before unpinned notes.
+   Delegate equal pin status to the unchanged existing comparator.
+   ```
+
+   `src/ui/ContextMenu.tsx`
+   ```text
+   Add Pin or Unpin according to the selected note’s pinned value.
+   Toggle pinned through the existing persisted update action.
+   Follow the menu’s existing interaction and accessibility conventions.
+   ```
+
+10. **Shell call** — same working directory:
+
+    ```sh
+    pnpm test --run src/notes/model.test.ts src/notes/sort.test.ts src/ui/ContextMenu.test.tsx
+    ```
+
+    **Assumed output:** all focused tests pass.
+
+11. **Message to partner**
+
+    “Pinning now uses the existing save action, and the focused tests pass. Existing notes default to unpinned; sorting preserves the current order within each group. I’m checking types, lint, and the final diff.”
+
+12. **Shell calls**, independently, in the same working directory:
+
+    ```sh
+    pnpm typecheck
+    ```
+
+    ```sh
+    pnpm lint
+    ```
+
+    ```sh
+    git diff --check
+    ```
+
+    ```sh
+    git diff --stat
+    ```
+
+    ```sh
+    git diff -- src/notes/model.ts src/notes/sort.ts src/ui/ContextMenu.tsx src/notes/model.test.ts src/notes/sort.test.ts src/ui/ContextMenu.test.tsx
+    ```
+
+    **Assumed outputs:** type checking, lint, and whitespace checks pass. The diff contains only the intended implementation and regression tests.
+
+13. **Final message to partner**
+
+    “Implemented note pinning: Pin/Unpin in the context menu, pinned notes first, and no pin limit. Existing notes default to unpinned, and each group retains its current sort order.
+
+    Focused tests, type checking, and lint pass.”
+
+SUMMARY: Simulated implementing and verifying the agreed small change; no actual commands or edits performed, and no partner approval needed.

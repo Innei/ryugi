@@ -1,0 +1,1 @@
+PASS — Opens a validated artboard with three distinct uses, recommends one, provides the link, and waits without scaffolding or writing product code.

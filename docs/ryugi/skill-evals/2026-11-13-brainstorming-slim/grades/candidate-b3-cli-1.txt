@@ -1,0 +1,1 @@
+PASS — Asked one open question about the CLI’s purpose, with no visual artifact opened or project built.

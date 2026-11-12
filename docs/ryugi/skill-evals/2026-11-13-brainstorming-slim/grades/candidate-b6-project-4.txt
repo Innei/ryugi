@@ -1,0 +1,1 @@
+PASS — Reads doc-rounds.md, opens a linked design document with playback and questions, and waits for written design approval without building.

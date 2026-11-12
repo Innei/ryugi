@@ -1,0 +1,1 @@
+PASS — Asked no questions, opened no design or artifact, added failing tests before implementing clamp, then reported the full test suite passing.

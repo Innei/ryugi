@@ -1,0 +1,5 @@
+Message to partner: “What’s a concrete task you want this CLI to handle—what CSV goes in, and what should come out?”
+
+No tool calls: the directory is already described as empty.
+
+SUMMARY: Asked for the intended use and output; waiting for your answer before choosing an implementation.

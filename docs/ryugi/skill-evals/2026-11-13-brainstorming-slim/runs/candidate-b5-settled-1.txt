@@ -1,0 +1,91 @@
+1. **Message to partner**
+
+   “I’ll add the pinning behavior we agreed on so your reference notes stay at the top. This is a small change: a `pinned` boolean, pinned notes first, a context-menu toggle, and no pin limit. My call: keep the existing sort order within each group and treat older notes without the field as unpinned.”
+
+2. **Tool call — shell**
+   ```sh
+   cd /Users/p/git/notes-app && pwd && rg --files --hidden -g AGENTS.md -g '!node_modules' -g '!.git'
+   ```
+   **Assumed output:** The repository has a root `AGENTS.md` and no nested instruction files.
+
+3. **Tool call — shell**
+   ```sh
+   cd /Users/p/git/notes-app && cat AGENTS.md && git status --short --branch && cat package.json
+   ```
+   **Assumed output:** A clean, dedicated task branch; instructions require following existing patterns and running relevant tests and typechecking. The project uses npm and Vitest.
+
+4. **Tool call — shell**
+   ```sh
+   cd /Users/p/git/notes-app && cat src/notes/model.ts src/notes/sort.ts src/ui/ContextMenu.tsx && rg -n 'sortNotes|ContextMenu|localStorage|updateNote|createNote|pinned' src && rg --files src -g '*test*' -g '*spec*'
+   ```
+   **Assumed output:** Notes are persisted as JSON, creation and loading defaults live in `model.ts`, and the context menu already uses an `updateNote` action. Existing tests cover the model, comparator, and context menu. No schema migration is needed.
+
+5. **Tool call — shell**
+   ```sh
+   cd /Users/p/git/notes-app && cat src/notes/model.test.ts src/notes/sort.test.ts src/ui/ContextMenu.test.tsx
+   ```
+   **Assumed output:** Tests provide note factories, persistence helpers, and a context-menu render helper.
+
+6. **Apply the already-loaded test-driven-development workflow. Tool calls — edit files**, with these three-line content sketches:
+
+   `src/notes/model.test.ts`
+   ```text
+   New notes default to pinned: false.
+   Loading older notes without pinned defaults to false.
+   Saving and reloading preserves pinned: true.
+   ```
+
+   `src/notes/sort.test.ts`
+   ```text
+   Pinned notes precede unpinned notes regardless of existing sort keys.
+   Each group retains the existing ordering; missing pinned behaves as false.
+   Multiple pinned notes are supported without a limit.
+   ```
+
+   `src/ui/ContextMenu.test.tsx`
+   ```text
+   An unpinned note offers Pin and updates pinned to true.
+   A pinned note offers Unpin and updates pinned to false.
+   Toggling preserves the note’s other fields.
+   ```
+
+7. **Tool call — shell**
+   ```sh
+   cd /Users/p/git/notes-app && npm exec vitest run src/notes/model.test.ts src/notes/sort.test.ts src/ui/ContextMenu.test.tsx
+   ```
+   **Assumed output:** New tests fail because pin defaults, ordering, and menu actions are absent.
+
+8. **Tool calls — edit files**, with these three-line content sketches:
+
+   `src/notes/model.ts`
+   ```text
+   Add pinned: boolean to the note model.
+   Default new notes and legacy loaded notes to pinned: false.
+   Preserve explicit pinned values through existing persistence.
+   ```
+
+   `src/notes/sort.ts`
+   ```text
+   Compare pinned status before existing sort keys.
+   Place pinned notes first, treating missing values as false.
+   Delegate equal pin status to the existing comparator.
+   ```
+
+   `src/ui/ContextMenu.tsx`
+   ```text
+   Add Pin or Unpin according to the current note’s pinned status.
+   Toggle pinned through the existing updateNote action.
+   Reuse existing menu styling and dismissal behavior.
+   ```
+
+9. **Tool call — shell**
+   ```sh
+   cd /Users/p/git/notes-app && npm exec vitest run src/notes/model.test.ts src/notes/sort.test.ts src/ui/ContextMenu.test.tsx && npm run typecheck && git diff --check && git diff --stat && git diff
+   ```
+   **Assumed output:** Tests and typechecking pass; the diff contains only the intended implementation and regression tests, with no whitespace errors.
+
+10. **Message to partner**
+
+    “Pinning is implemented: pinned notes sort first, and the context menu lets you pin or unpin any number of notes. Older notes load as unpinned, and the existing ordering is preserved within each group. Regression tests and typechecking pass.”
+
+SUMMARY: Simulated implementing and verifying the already-agreed small change; no further approval or clarification needed.

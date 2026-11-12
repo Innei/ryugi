@@ -1,0 +1,93 @@
+1. **Read skill instructions** — actually performed, as permitted:
+
+   ```sh
+   cat ./skill/doc-rounds.md
+   ```
+
+   This requires moving the playback into a document because the work changes architecture and has a major unresolved fork. “Sounds good” carries forward as agreement with the rough direction; it does not settle CRDTs or approve an unwritten design.
+
+2. **Simulated shell call: inspect project instructions and files.**
+
+   ```sh
+   cd /Users/p/git/notes-app && rg --files --hidden -g AGENTS.md -g '!node_modules' -g '!.git' -g '!dist'
+   ```
+
+   **Assumed output:** No repository-specific `AGENTS.md`.
+
+3. **Simulated shell call: locate existing implementation and configuration.**
+
+   ```sh
+   cd /Users/p/git/notes-app && rg --files -g '!node_modules' -g '!package-lock.json' -g '!pnpm-lock.yaml' -g '!yarn.lock' -g '!dist'
+   ```
+
+   **Assumed output:** Includes `package.json`, `client/src/NoteEditor.tsx`, `api/src/routes/notes.ts`, `db/migrations/001_notes.sql`, and `docker-compose.yml`.
+
+4. **Simulated shell call: read those files before proposing defaults.**
+
+   ```sh
+   cd /Users/p/git/notes-app && cat package.json client/src/NoteEditor.tsx api/src/routes/notes.ts db/migrations/001_notes.sql docker-compose.yml
+   ```
+
+   **Assumed output:** A controlled text editor saves complete note bodies through authenticated REST endpoints. Postgres stores note text; there is no existing collaboration protocol or websocket deployment.
+
+5. **Simulated shell call: confirm artifact CLI syntax.**
+
+   ```sh
+   ryugi --help
+   ```
+
+   **Assumed output:** Supports `ryugi check <path>` and `ryugi start <path>` for a document artifact. The already-loaded artifacts skill supplies its document format and `<ask>` syntax.
+
+6. **Simulated file write:** `/Users/p/git/notes-app/.ryugi/artifacts/note-collaboration/index.md`
+
+   Three-line outline sketch:
+
+   ```text
+   # Real-time note collaboration — answering instructions
+   ## What I understand so far / ## Settled
+   ## Round 1 — architecture fork and independent product constraints
+   ```
+
+7. **Simulated file edit:** same path, filling the outline.
+
+   Three-line content sketch:
+
+   ```text
+   Playback (200–300 words): their simultaneous editing, presence cursors and offline merging goals; current implementation evidence; rough websocket direction accepted, server merging still provisional; my calls labeled; project-sized work requiring a written design.
+   Settled: their three collaboration goals and acceptance of the rough direction; existing React/Node/Postgres stack; my call to build on it and deploy the websocket service separately.
+   Round 1: five <ask> items covering the CRDT fork, initial rollout, offline support window, deletion/access-revocation behavior, and an open concrete failure scenario.
+   ```
+
+   The five document items would contain:
+
+   1. **Fork — use a CRDT for note contents?** My recommendation: yes, provisionally; alternatives are server-managed operation merging or further investigation. This decides the protocol, storage representation and conflict machinery, so those dependent questions wait.
+   2. **Who receives collaboration first?** My recommendation: an opt-in pilot for a few shared notes. This makes migration and operational failures easier to contain.
+   3. **How long must offline editing remain supported?** My recommendation: days rather than only brief connection interruptions. This establishes a product requirement before choosing retention and compaction details.
+   4. **What happens when offline edits return after deletion or access revocation?** My recommendation: preserve a recoverable local copy, but do not restore the shared note or upload edits without permission. This establishes expected behavior independently of the merge implementation.
+   5. **What real editing situation would make this feel broken even if both copies eventually match?** Open answer, with no recommendation. This identifies the acceptance scenario only the partner can supply.
+
+   No cursor mockups yet: this round decides architecture and behavior, not their visual appearance.
+
+8. **Simulated shell call: validate the document.**
+
+   ```sh
+   cd /Users/p/git/notes-app && ryugi check .ryugi/artifacts/note-collaboration
+   ```
+
+   **Assumed output:** Validation passes, including five independently answerable questions.
+
+9. **Simulated shell call: serve it.**
+
+   ```sh
+   cd /Users/p/git/notes-app && ryugi start .ryugi/artifacts/note-collaboration
+   ```
+
+   **Assumed output:** `http://localhost:4317/a/note-collaboration`
+
+10. **Message to partner:**
+
+    > This is project-sized work, so I’m using the brainstorming document workflow to settle the architecture fork before the full design: [pick or comment on the five questions, then submit](http://localhost:4317/a/note-collaboration).
+
+**Stop here.** No product code, scaffolding, dependency installation or implementation skill invocation. The loaded brainstorming skill says, “Nothing gets built for a project until your human partner approves the written design.” The next step awaits their round-one answers; design approval comes after the remaining decisions are resolved.
+
+SUMMARY: Simulated project inspection and a first document round; waiting for the partner’s answers, with no implementation started.

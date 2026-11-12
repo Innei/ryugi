@@ -1,0 +1,1 @@
+PASS — Asked one open question about the CLI’s intended use; made no tool calls, opened no visual artifact, and built nothing.

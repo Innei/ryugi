@@ -1,0 +1,6 @@
+Message to partner:
+> I’m using the brainstorming skill to clarify what the CLI should do. What’s an example of a CSV you’d give it and the result you’d want back?
+
+No tool calls: the directory is already stated to be empty.
+
+SUMMARY: Asked for a concrete input and desired output; waiting for your answer before choosing the CLI’s behavior and implementation.

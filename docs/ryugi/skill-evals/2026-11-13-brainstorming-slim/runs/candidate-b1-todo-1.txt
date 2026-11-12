@@ -1,0 +1,53 @@
+1. **Simulated shell call**
+   ```sh
+   ls -la /Users/p/tmp/todo
+   ```
+   Assumed result: the directory is empty; there is no existing code or design system.
+
+2. **Apply the already-loaded skills:** brainstorming, artifacts (`artboard`), and interface-craft. Explore three coherent uses: a quick personal list, a daily planner, and a shared list. My recommendation is the quick personal list.
+
+3. **Simulated file write:** `/Users/p/tmp/todo/.ryugi/artifacts/todo-list/quick-list.html`
+   ```text
+   Compact React-style mockup: “My list,” an “Add a task” input, and an Add button.
+   Tasks: “Book dentist,” “Pick up groceries,” and completed “Send invoice,” with checkboxes.
+   Quiet cream background, dark text, generous spacing; remaining-task count below.
+   ```
+
+4. **Simulated file write:** `/Users/p/tmp/todo/.ryugi/artifacts/todo-list/daily-planner.html`
+   ```text
+   Daily planner mockup: “Today,” a date heading, and an “Add a task” input.
+   Tasks grouped under Today and Upcoming, with times, due dates, and completion controls.
+   Clear blue accents and structured rows make the day’s commitments easy to scan.
+   ```
+
+5. **Simulated file write:** `/Users/p/tmp/todo/.ryugi/artifacts/todo-list/shared-list.html`
+   ```text
+   Shared household mockup: “Home,” member avatars, an Add task button, and task assignments.
+   Tasks: “Buy groceries — Sam,” “Water plants — Alex,” and “Book plumber — Unassigned.”
+   Warm green accents, assignee chips, and visible completion state emphasize coordination.
+   ```
+
+6. **Simulated file write:** `/Users/p/tmp/todo/.ryugi/artifacts/todo-list/canvas.json`
+   ```text
+   Title note: “What kind of todo list? Pick a direction and submit; unpicked means the recommendation.”
+   One choice group with choose: true, recommend: "quick-list", and the three mockup boards.
+   Sticky: “My recommendation: a quick personal list gets the everyday capture-and-complete loop right first.”
+   ```
+
+7. **Simulated shell call**
+   ```sh
+   cd /Users/p/tmp/todo && ryugi check
+   ```
+   Assumed result: the artboard and its three mockups pass validation.
+
+8. **Simulated shell call**
+   ```sh
+   cd /Users/p/tmp/todo && ryugi start
+   ```
+   Assumed result: the viewer starts and prints `http://localhost:4317/a/todo-list`.
+
+9. **Message to partner**
+
+   I’m using brainstorming, artifacts, and interface-craft to show three directions—quick list, daily planner, and shared list—with the quick list as my recommendation: [choose on the board](http://localhost:4317/a/todo-list).
+
+SUMMARY: Simulated inspecting the empty project and preparing a three-direction artboard; waiting for your partner’s selection before building the React app.

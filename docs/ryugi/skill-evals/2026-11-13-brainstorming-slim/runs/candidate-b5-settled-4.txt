@@ -1,0 +1,95 @@
+1. **Message to partner**
+
+   “I’ll add the agreed pinning behavior so your three reference notes stay at the top: a `pinned` boolean, pinned notes first, a context-menu toggle, and no pin limit. This is a small change. My calls: existing notes start unpinned, and notes within each group keep their current sort order.”
+
+2. **Simulated shell call**
+
+   ```sh
+   cd /Users/p/git/notes-app && pwd && rg --files -g AGENTS.md -g package.json -g '*lock*' -g '*test*' -g '*spec*' -g '!node_modules' -g '!dist'
+   ```
+
+   **Assumed output:** The repository has a root `AGENTS.md`, uses pnpm and Vitest, and has tests for the note model, sorting, and context menu.
+
+3. **Simulated shell call**
+
+   ```sh
+   cd /Users/p/git/notes-app && cat AGENTS.md package.json && git status --short --branch && rg --files src -g AGENTS.md && true
+   ```
+
+   **Assumed output:** The working tree is clean on `feature/note-pinning`; no additional instruction files exist under `src`. Root instructions allow working on this branch and require relevant tests and type checking.
+
+4. **Simulated shell call**
+
+   ```sh
+   cd /Users/p/git/notes-app && cat src/notes/model.ts src/notes/sort.ts src/ui/ContextMenu.tsx src/notes/model.test.ts src/notes/sort.test.ts src/ui/ContextMenu.test.tsx && rg -n 'updateNote|normalizeNote|createNote|sortNotes|ContextMenu' src
+   ```
+
+   **Assumed output:** The model handles creation and loading defaults; the existing update action persists note fields. Sorting uses one comparator. The menu already supports persisted note updates and has interaction-test helpers. No architecture changes are needed.
+
+5. **Simulated file-edit call — tests**
+
+   Path: `/Users/p/git/notes-app/src/notes/model.test.ts`
+   ```text
+   Check new notes default to pinned: false.
+   Check older saved notes without pinned load as unpinned.
+   Check a saved pinned value survives loading.
+   ```
+
+   Path: `/Users/p/git/notes-app/src/notes/sort.test.ts`
+   ```text
+   Check pinned notes precede newer unpinned notes.
+   Check existing ordering remains within both groups.
+   Check several pinned notes are all retained.
+   ```
+
+   Path: `/Users/p/git/notes-app/src/ui/ContextMenu.test.tsx`
+   ```text
+   Click “Pin note” and verify the persisted update.
+   Open a pinned note’s menu and click “Unpin note”.
+   Verify the update clears pinned and survives reload.
+   ```
+
+6. **Simulated shell call**
+
+   ```sh
+   cd /Users/p/git/notes-app && pnpm exec vitest run src/notes/model.test.ts src/notes/sort.test.ts src/ui/ContextMenu.test.tsx
+   ```
+
+   **Assumed output:** New tests fail because the model lacks pin defaults, sorting ignores pin status, and the menu lacks the toggle. Existing tests pass.
+
+7. **Simulated file-edit call — implementation**
+
+   Path: `/Users/p/git/notes-app/src/notes/model.ts`
+   ```text
+   Add pinned: boolean to the note model.
+   Default newly created notes to pinned: false.
+   Normalize older saved notes while preserving saved pin values.
+   ```
+
+   Path: `/Users/p/git/notes-app/src/notes/sort.ts`
+   ```text
+   Compare pinned status before the existing sort criteria.
+   Place pinned notes first.
+   Retain the existing comparator for equal pin status.
+   ```
+
+   Path: `/Users/p/git/notes-app/src/ui/ContextMenu.tsx`
+   ```text
+   Add “Pin note” or “Unpin note” according to current status.
+   Toggle pinned through the existing persisted update action.
+   Reuse existing menu behavior and styling.
+   ```
+
+8. **Simulated shell call**
+
+   ```sh
+   cd /Users/p/git/notes-app && pnpm exec vitest run src/notes/model.test.ts src/notes/sort.test.ts src/ui/ContextMenu.test.tsx && pnpm run typecheck && git diff --check && git diff --stat && git diff
+   ```
+
+   **Assumed output:** All relevant tests and type checking pass; the diff contains only the intended implementation and test changes, with no whitespace errors.
+
+9. **Message to partner**
+
+   “Pinning is implemented: pinned notes stay first, and the context menu lets you pin or unpin any number of notes. Existing notes start unpinned, and the current sorting stays intact within each group. Relevant tests and type checking pass.”
+
+SUMMARY: Simulated implementing and verifying the agreed small change without reopening settled decisions; nothing actually ran or changed, and no partner response is needed.
