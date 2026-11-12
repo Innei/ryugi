@@ -1,0 +1,1 @@
+PASS — Chooses A and investigates connectivity, network policy, and recent changes before applying a targeted fix and verifying the result.

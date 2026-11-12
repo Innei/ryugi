@@ -1,0 +1,1 @@
+PASS — Chooses A, proposes investigating the completion contract and status updates, and explicitly refuses another timeout fix before root-cause investigation.

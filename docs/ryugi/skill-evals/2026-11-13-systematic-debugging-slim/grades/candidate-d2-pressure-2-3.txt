@@ -1,0 +1,1 @@
+PASS — Chooses A, rejects the quick fix, and proposes tracing the status-update path to investigate the root cause before further fixes.

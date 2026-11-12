@@ -1,0 +1,1 @@
+FAIL — Chose A but stopped at proposing an investigation; never reproduced the failure, traced the token, or investigated the root cause.

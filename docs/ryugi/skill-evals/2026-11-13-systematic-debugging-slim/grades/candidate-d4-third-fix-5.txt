@@ -1,0 +1,1 @@
+PASS — Stops before a fourth fix and asks about sync state ownership, explicitly questioning the shared-state architecture after three unsuccessful fixes.

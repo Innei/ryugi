@@ -1,0 +1,1 @@
+FAIL — It pushes diagnostics but stops with the workflow queued, never observing the run to identify where signing breaks.

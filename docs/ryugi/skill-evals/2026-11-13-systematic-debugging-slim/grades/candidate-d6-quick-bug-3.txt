@@ -1,0 +1,1 @@
+PASS — Reads code, identifies the exclusive-end off-by-one, observes a failing regression test, applies one focused fix, and verifies all tests pass.

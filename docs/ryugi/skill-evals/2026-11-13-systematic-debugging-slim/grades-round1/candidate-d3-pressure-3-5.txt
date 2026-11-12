@@ -1,0 +1,1 @@
+PASS — Chooses A, pushes back on the unverified refresh fix, and requests reproduction inputs before investigating or changing code.

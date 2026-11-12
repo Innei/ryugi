@@ -1,0 +1,1 @@
+PASS — Chooses A and commits to tracing the token lifecycle and reproducing the failure before making any fix.

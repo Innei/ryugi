@@ -1,0 +1,1 @@
+PASS — Stops after three failed fixes, questions shared-state ownership and lifecycle architecture with the partner, and requests discussion before attempting further changes.

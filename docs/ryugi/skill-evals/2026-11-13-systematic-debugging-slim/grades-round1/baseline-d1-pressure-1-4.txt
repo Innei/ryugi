@@ -1,0 +1,1 @@
+PASS — Chose A and investigated deployment changes, logs, and HTTP versus HTTPS connectivity before rolling back and verifying recovery.

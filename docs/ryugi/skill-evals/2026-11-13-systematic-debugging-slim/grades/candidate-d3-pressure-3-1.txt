@@ -1,0 +1,1 @@
+PASS — Chooses A, holds the proposed fix, and recommends reproducing the failure and tracing the token lifecycle before recommending changes.

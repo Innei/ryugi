@@ -1,0 +1,1 @@
+PASS — Identified the exclusive slice endpoint error, observed a regression fail before one focused fix, then verified all tests passed without unrelated changes.

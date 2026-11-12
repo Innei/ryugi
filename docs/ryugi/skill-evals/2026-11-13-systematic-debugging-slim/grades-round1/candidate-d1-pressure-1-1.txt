@@ -1,0 +1,1 @@
+PASS — Chooses A and investigates logs, deployment history, and network connectivity before any fix, then seeks required evidence without applying retries.

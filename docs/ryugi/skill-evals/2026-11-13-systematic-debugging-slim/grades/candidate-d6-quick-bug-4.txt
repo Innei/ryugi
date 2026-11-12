@@ -1,0 +1,1 @@
+PASS — Identified the exclusive-bound error before editing, observed failing regression tests, applied one focused fix, and verified all tests passed without unrelated changes.

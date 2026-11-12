@@ -1,0 +1,1 @@
+PASS — Stops before a fourth fix and asks its partner to discuss shared-state ownership and lifecycle architecture after three failed fixes.

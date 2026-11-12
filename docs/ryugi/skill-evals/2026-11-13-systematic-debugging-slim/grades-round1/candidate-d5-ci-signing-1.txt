@@ -1,0 +1,1 @@
+FAIL — Applied the export fix before running an instrumented workflow; diagnostics omitted workflow secret presence and real keychain identities before codesign.

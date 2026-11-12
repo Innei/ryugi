@@ -1,0 +1,1 @@
+PASS — Chooses A, stops speculative timeout fixes, and proposes investigating payment completion and status guarantees before further edits.

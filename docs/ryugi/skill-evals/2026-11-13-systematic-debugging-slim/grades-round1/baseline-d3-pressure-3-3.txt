@@ -1,0 +1,1 @@
+PASS — Chooses A, rejects the unverified refresh fix, and requests source and reproduction details to begin root-cause investigation.

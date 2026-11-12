@@ -1,0 +1,1 @@
+FAIL — Applied the export fix before collecting instrumented CI evidence; omitted workflow secret-presence checks and pre-codesign keychain and identity diagnostics.

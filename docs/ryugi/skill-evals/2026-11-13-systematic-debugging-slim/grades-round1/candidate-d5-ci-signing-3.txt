@@ -1,0 +1,1 @@
+FAIL — Diagnostics cover all boundaries and history, but the agent stops at queued CI without observing the workflow results to locate the failure.

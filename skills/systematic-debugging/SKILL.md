@@ -21,28 +21,12 @@ If you haven't completed Phase 1, you cannot propose fixes.
 
 ## When to Use
 
-Use for ANY technical issue:
+Any technical issue: test failures, production bugs, unexpected behavior,
+performance problems, build failures, integration issues.
 
-- Test failures
-- Bugs in production
-- Unexpected behavior
-- Performance problems
-- Build failures
-- Integration issues
-
-**Use this ESPECIALLY when:**
-
-- Under time pressure (emergencies make guessing tempting)
-- "Just one quick fix" seems obvious
-- You've already tried multiple fixes
-- Previous fix didn't work
-- You don't fully understand the issue
-
-**Don't skip when:**
-
-- Issue seems simple (simple bugs have root causes too)
-- You're in a hurry (rushing guarantees rework)
-- Manager wants it fixed NOW (systematic is faster than thrashing)
+Especially under time pressure, when "one quick fix" seems obvious, when a
+previous fix didn't work, or when the issue seems too simple to need it.
+Simple bugs have root causes too, and systematic is faster than thrashing.
 
 ## The Four Phases
 
@@ -53,24 +37,17 @@ You MUST complete each phase before proceeding to the next.
 **BEFORE attempting ANY fix:**
 
 1. **Read Error Messages Carefully**
-   - Don't skip past errors or warnings
-   - They often contain the exact solution
-   - Read stack traces completely
-   - Note line numbers, file paths, error codes
+   - Don't skip past errors or warnings; they often contain the exact solution
+   - Read stack traces completely: line numbers, file paths, error codes
 
 2. **Reproduce Consistently**
-   - Can you trigger it reliably?
-   - What are the exact steps?
-   - Does it happen every time?
+   - Exact steps, and whether it happens every time
    - If not reproducible → gather more data, don't guess
    - A visible bug: capture the broken screen now, before any change —
      ryugi:verifying needs the "before"
 
 3. **Check Recent Changes**
-   - What changed that could cause this?
-   - Git diff, recent commits
-   - New dependencies, config changes
-   - Environmental differences
+   - Git diff, recent commits, new dependencies, config, environment
 
 4. **Gather Evidence in Multi-Component Systems**
 
@@ -90,27 +67,8 @@ You MUST complete each phase before proceeding to the next.
    THEN investigate that specific component
    ```
 
-   **Example (multi-layer system):**
-
-   ```bash
-   # Layer 1: Workflow
-   echo "=== Secrets available in workflow: ==="
-   echo "IDENTITY: $([ -n "${IDENTITY:-}" ] && echo SET || echo UNSET)"
-   
-   # Layer 2: Build script
-   echo "=== Env vars in build script: ==="
-   printenv IDENTITY > /dev/null 2>&1 && echo "IDENTITY in environment" || echo "IDENTITY not in environment"
-   
-   # Layer 3: Signing script
-   echo "=== Keychain state: ==="
-   security list-keychains
-   security find-identity -v
-   
-   # Layer 4: Actual signing
-   codesign --sign "$IDENTITY" --verbose=4 "$APP"
-   ```
-
-   **This reveals:** Which layer fails (secrets → workflow ✓, workflow → build ✗)
+   A worked example is in `root-cause-tracing.md` under "Instrumenting
+   component boundaries".
 
 5. **Trace Data Flow**
 
@@ -118,48 +76,36 @@ You MUST complete each phase before proceeding to the next.
 
    See `root-cause-tracing.md` in this directory for the complete backward tracing technique.
 
-   **Quick version:**
-   - Where does bad value originate?
-   - What called this with bad value?
-   - Keep tracing up until you find the source
-   - Fix at source, not at symptom
+   Trace the bad value up through its callers to where it originates. Fix
+   at the source, not at the symptom.
 
 ### Phase 2: Pattern Analysis
 
 **Find the pattern before fixing:**
 
 1. **Find Working Examples**
-   - Locate similar working code in same codebase
-   - What works that's similar to what's broken?
+   - Similar working code in the same codebase
 
 2. **Compare Against References**
-   - If implementing pattern, read reference implementation COMPLETELY
-   - Don't skim - read every line
-   - Understand the pattern fully before applying
+   - If implementing pattern, read reference implementation COMPLETELY,
+     every line, before applying it
 
 3. **Identify Differences**
-   - What's different between working and broken?
-   - List every difference, however small
+   - List every difference between working and broken, however small
    - Don't assume "that can't matter"
 
 4. **Understand Dependencies**
-   - What other components does this need?
-   - What settings, config, environment?
-   - What assumptions does it make?
+   - Other components, settings, config, environment, assumptions
 
 ### Phase 3: Hypothesis and Testing
 
 **Scientific method:**
 
 1. **Form Single Hypothesis**
-   - State clearly: "I think X is the root cause because Y"
-   - Write it down
-   - Be specific, not vague
+   - Write it down: "I think X is the root cause because Y"
 
 2. **Test Minimally**
-   - Make the SMALLEST possible change to test hypothesis
-   - One variable at a time
-   - Don't fix multiple things at once
+   - The SMALLEST possible change, one variable at a time
 
 3. **Verify Before Continuing**
    - Did it work? Yes → Phase 4
@@ -167,19 +113,16 @@ You MUST complete each phase before proceeding to the next.
    - DON'T add more fixes on top
 
 4. **When You Don't Know**
-   - Say "I don't understand X"
-   - Don't pretend to know
-   - Ask for help
-   - Research more
+   - Say "I don't understand X". Don't pretend to know
+   - Ask for help or research more
 
 ### Phase 4: Implementation
 
 **Fix the root cause, not the symptom:**
 
 1. **Create Failing Test Case**
-   - Simplest possible reproduction
-   - Automated test if possible
-   - One-off test script if no framework
+   - Simplest possible reproduction: an automated test, or a one-off
+     script if there is no framework
    - MUST have before fixing
    - A purely visual bug (layout, spacing, color, type): the "before"
      screenshot is the failing reproduction; ryugi:verifying's "after"
@@ -187,15 +130,11 @@ You MUST complete each phase before proceeding to the next.
    - Use the `ryugi:test-driven-development` skill for writing proper failing tests
 
 2. **Implement Single Fix**
-   - Address the root cause identified
-   - ONE change at a time
-   - No "while I'm here" improvements
-   - No bundled refactoring
+   - Address the root cause identified, ONE change at a time
+   - No "while I'm here" improvements or bundled refactoring
 
 3. **Verify Fix**
-   - Test passes now?
-   - No other tests broken?
-   - Issue actually resolved?
+   - Test passes, no other tests broken, issue actually resolved
    - Run the check and read its output before claiming success
    - Use ryugi:verifying before you say it is fixed: prove it where the
      bug was seen. A visible bug is fixed when your human partner passes it
@@ -267,15 +206,6 @@ If you catch yourself thinking:
 | "Reference too long, I'll adapt the pattern" | Partial understanding guarantees bugs. Read it completely.              |
 | "I see the problem, let me fix it"           | Seeing symptoms ≠ understanding root cause.                             |
 | "One more fix attempt" (after 2+ failures)   | 3+ failures = architectural problem. Question pattern, don't fix again. |
-
-## Quick Reference
-
-| Phase                 | Key Activities                                         | Success Criteria            |
-| --------------------- | ------------------------------------------------------ | --------------------------- |
-| **1. Root Cause**     | Read errors, reproduce, check changes, gather evidence | Understand WHAT and WHY     |
-| **2. Pattern**        | Find working examples, compare                         | Identify differences        |
-| **3. Hypothesis**     | Form theory, test minimally                            | Confirmed or new hypothesis |
-| **4. Implementation** | Create test, fix, verify                               | Bug resolved, tests pass    |
 
 ## When Process Reveals "No Root Cause"
 

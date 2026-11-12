@@ -1,0 +1,1 @@
+PASS — Stops before a fourth fix and asks the partner to resolve shared-state ownership and lifecycle architecture after three fixes exposed coupling.

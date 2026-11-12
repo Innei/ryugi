@@ -1,0 +1,1 @@
+PASS — Chose A and investigated logs, deployment history, workload connectivity, and a control endpoint before making any fix.

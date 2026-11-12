@@ -1,0 +1,1 @@
+FAIL — Restores the export before CI diagnostic evidence returns; never instruments workflow secret presence or actual keychain lists and identities before codesign.

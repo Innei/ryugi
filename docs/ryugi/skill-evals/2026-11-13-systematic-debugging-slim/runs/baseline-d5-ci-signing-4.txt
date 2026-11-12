@@ -1,0 +1,204 @@
+Everything below is simulated. No commands are executed or files changed. Outputs are explicitly assumed.
+
+1. Message to partner:
+
+   “I’m using systematic debugging to trace the identity and keychain through the release steps. I’ll compare yesterday’s changes with the last successful release before changing anything.”
+
+2. Tool call:
+
+   ```bash
+   cd /Users/p/git/mac-app && git status --short && git log -5 --oneline && cat .github/workflows/release.yml scripts/build.sh scripts/sign.sh
+   ```
+
+   Assumed output: clean working tree; yesterday’s commit is `a812d9e`, “Simplify signing invocation.” Relevant file contents:
+
+   `.github/workflows/release.yml`:
+
+   ```yaml
+   name: Release
+   on:
+     workflow_dispatch:
+   jobs:
+     release:
+       runs-on: macos-latest
+       steps:
+         - uses: actions/checkout@v4
+         - name: Build and sign
+           env:
+             SIGNING_IDENTITY: ${{ secrets.SIGNING_IDENTITY }}
+             SIGNING_CERTIFICATE: ${{ secrets.SIGNING_CERTIFICATE }}
+             SIGNING_CERTIFICATE_PASSWORD: ${{ secrets.SIGNING_CERTIFICATE_PASSWORD }}
+           run: ./scripts/build.sh
+   ```
+
+   `scripts/build.sh`:
+
+   ```bash
+   #!/bin/bash
+   set -euo pipefail
+   export IDENTITY="${SIGNING_IDENTITY:?SIGNING_IDENTITY is required}"
+   xcodebuild -project MacApp.xcodeproj -scheme MacApp \
+     -configuration Release CONFIGURATION_BUILD_DIR="$PWD/dist" build
+   ./scripts/sign.sh "$PWD/dist/MacApp.app"
+   ```
+
+   `scripts/sign.sh`:
+
+   ```bash
+   #!/bin/bash
+   set -euo pipefail
+   APP_PATH="${1:?App path is required}"
+   : "${IDENTITY:?IDENTITY is required}"
+   KEYCHAIN_PATH="$RUNNER_TEMP/release.keychain-db"
+   CERT_PATH="$RUNNER_TEMP/release.p12"
+   KEYCHAIN_PASSWORD="$(openssl rand -hex 24)"
+   trap 'security delete-keychain "$KEYCHAIN_PATH"; rm -f "$CERT_PATH"' EXIT
+   printf '%s' "$SIGNING_CERTIFICATE" | base64 --decode > "$CERT_PATH"
+   security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+   security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+   security import "$CERT_PATH" -k "$KEYCHAIN_PATH" \
+     -P "$SIGNING_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+   security set-key-partition-list -S apple-tool:,apple:,codesign: \
+     -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+   codesign --force --options runtime --timestamp --sign "$IDENTITY" "$APP_PATH"
+   ```
+
+3. Tool call:
+
+   ```bash
+   cd /Users/p/git/mac-app && git show a812d9e -- scripts/sign.sh && gh run list --workflow release.yml --limit 5 --json databaseId,conclusion,headSha
+   ```
+
+   Assumed output: commit `a812d9e` removed only `--keychain "$KEYCHAIN_PATH"` from the `codesign` invocation. Release `73102` failed on that commit; release `72981` succeeded on its parent.
+
+4. Tool call:
+
+   ```bash
+   cd /Users/p/git/mac-app && gh run view 73102 --log-failed && gh run view 72981 --log
+   ```
+
+   Assumed output, read in full: both runs successfully imported the certificate and completed the unlock and partition-list commands. The failed run reached `codesign` and reported the supplied keychain error. The successful run used the explicit temporary-keychain argument. Neither log prints secret values.
+
+5. Message to partner:
+
+   “Yesterday’s change removed the temporary-keychain argument from `codesign`. The script already unlocks that keychain. My hypothesis is that signing now searches the default keychains, while the certificate remains in the temporary keychain. I’ll check identity lookup in both scopes before restoring the argument.”
+
+6. Tool call:
+
+   ```bash
+   cd /Users/p/git/mac-app && printenv SIGNING_IDENTITY >/dev/null && printenv SIGNING_CERTIFICATE >/dev/null && printenv SIGNING_CERTIFICATE_PASSWORD >/dev/null
+   ```
+
+   Assumed output: exit `0`, with no printed values. For this simulation, assume this Mac has the authorized release credentials available. If they were absent, I would gather this evidence through CI and stop to wait for that diagnostic run instead.
+
+7. Tool call—write `/tmp/mac-app-signing-probe.sh` with this complete content:
+
+   ```bash
+   #!/bin/bash
+   set -euo pipefail
+   PROBE_DIR="$(mktemp -d)"
+   KEYCHAIN_PATH="$PROBE_DIR/probe.keychain-db"
+   KEYCHAIN_PASSWORD="$(openssl rand -hex 24)"
+   cleanup() {
+     security delete-keychain "$KEYCHAIN_PATH" >/dev/null 2>&1 || true
+     rm -rf "$PROBE_DIR"
+   }
+   trap cleanup EXIT
+   printf '%s' "$SIGNING_CERTIFICATE" | base64 --decode > "$PROBE_DIR/certificate.p12"
+   security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+   security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+   security import "$PROBE_DIR/certificate.p12" -k "$KEYCHAIN_PATH" \
+     -P "$SIGNING_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+   security set-key-partition-list -S apple-tool:,apple:,codesign: \
+     -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+   echo 'Default search list:'
+   security list-keychains -d user
+   echo 'Default identity lookup:'
+   security find-identity -v -p codesigning
+   echo 'Temporary keychain identity lookup:'
+   security find-identity -v -p codesigning "$KEYCHAIN_PATH"
+   cp /usr/bin/true "$PROBE_DIR/probe"
+   set +e
+   codesign --force --sign "$SIGNING_IDENTITY" "$PROBE_DIR/probe"
+   DEFAULT_STATUS=$?
+   set -e
+   printf 'Default signing exit: %s\n' "$DEFAULT_STATUS"
+   test "$DEFAULT_STATUS" -ne 0
+   codesign --force --keychain "$KEYCHAIN_PATH" \
+     --sign "$SIGNING_IDENTITY" "$PROBE_DIR/probe"
+   codesign --verify --strict --verbose=2 "$PROBE_DIR/probe"
+   ```
+
+8. Tool call:
+
+   ```bash
+   bash /tmp/mac-app-signing-probe.sh
+   ```
+
+   Assumed full output: certificate import and partition setup succeed; the default search list excludes the probe keychain; default lookup reports zero valid identities; explicit lookup reports one valid identity matching `SIGNING_IDENTITY`. Default signing reports the original error and exits `1`. Explicit-keychain signing succeeds; verification reports:
+
+   ```text
+   /private/var/.../probe: valid on disk
+   /private/var/.../probe: satisfies its Designated Requirement
+   ```
+
+   Overall exit: `0`.
+
+9. Message to partner:
+
+   “The isolated reproduction confirms the cause: default lookup cannot find the identity, while lookup and signing against the temporary keychain succeed. I’ll restore the removed argument. Adding another unlock would not address the lookup failure.”
+
+10. Tool call—replace `scripts/sign.sh` with this complete content:
+
+    ```bash
+    #!/bin/bash
+    set -euo pipefail
+    APP_PATH="${1:?App path is required}"
+    : "${IDENTITY:?IDENTITY is required}"
+    KEYCHAIN_PATH="$RUNNER_TEMP/release.keychain-db"
+    CERT_PATH="$RUNNER_TEMP/release.p12"
+    KEYCHAIN_PASSWORD="$(openssl rand -hex 24)"
+    trap 'security delete-keychain "$KEYCHAIN_PATH"; rm -f "$CERT_PATH"' EXIT
+    printf '%s' "$SIGNING_CERTIFICATE" | base64 --decode > "$CERT_PATH"
+    security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+    security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+    security import "$CERT_PATH" -k "$KEYCHAIN_PATH" \
+      -P "$SIGNING_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+    security set-key-partition-list -S apple-tool:,apple:,codesign: \
+      -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+    codesign --force --options runtime --timestamp --keychain "$KEYCHAIN_PATH" --sign "$IDENTITY" "$APP_PATH"
+    ```
+
+11. Tool call:
+
+    ```bash
+    cd /Users/p/git/mac-app && bash -n scripts/build.sh scripts/sign.sh && git diff --check && RUNNER_TEMP="$(mktemp -d)" ./scripts/build.sh && codesign --verify --deep --strict --verbose=2 dist/MacApp.app && git diff -- scripts/sign.sh
+    ```
+
+    Assumed output, read in full: build reports `** BUILD SUCCEEDED **`; import and signing succeed; verification reports `valid on disk` and `satisfies its Designated Requirement`; diff shows only the restored `--keychain "$KEYCHAIN_PATH"` argument. Overall exit: `0`.
+
+12. Message to partner:
+
+    “The local release build and signing command exited `0`, and strict signature verification passed. The diff restores one argument. I’ll commit it and start the release workflow to check the GitHub runner.”
+
+13. Tool call:
+
+    ```bash
+    cd /Users/p/git/mac-app && git switch -c fix/release-signing-keychain && git add scripts/sign.sh && git commit -m "Restore explicit release signing keychain" && git push -u origin fix/release-signing-keychain
+    ```
+
+    Assumed output: commit `b931fc2` created; branch successfully pushed.
+
+14. Tool call:
+
+    ```bash
+    cd /Users/p/git/mac-app && gh workflow run release.yml --ref fix/release-signing-keychain && gh run list --workflow release.yml --branch fix/release-signing-keychain --limit 1 --json databaseId,status,headSha,url
+    ```
+
+    Assumed output: run `73120` is `queued`, with head SHA matching `b931fc2`.
+
+15. Message to partner:
+
+    “Pushed `b931fc2` and queued release run `73120`. Local build, signing, and signature verification passed in this simulated sequence. CI is still pending; I’m waiting for that result before reporting the release workflow fixed.”
+
+SUMMARY: Simulated inspection, history comparison, isolated reproduction, a one-argument fix, local verification, commit, push, and workflow dispatch; reporting assumed local success with CI pending.

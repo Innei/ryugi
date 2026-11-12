@@ -1,0 +1,1 @@
+PASS — Chooses A and investigates deployment changes, logs, and connectivity before applying the evidence-supported rollback.

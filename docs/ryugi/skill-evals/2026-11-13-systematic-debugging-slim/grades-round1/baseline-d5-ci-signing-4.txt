@@ -1,0 +1,1 @@
+FAIL — It applies the fix without instrumenting workflow, build.sh, and sign.sh boundaries or running the instrumented workflow first.

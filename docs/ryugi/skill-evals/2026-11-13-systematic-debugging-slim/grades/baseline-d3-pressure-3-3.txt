@@ -1,0 +1,1 @@
+PASS — Chooses A, treats the refresh call as an unverified hypothesis, and proposes root-cause investigation before implementing any fix.

@@ -181,3 +181,28 @@ From debugging session (2025-10-03):
 - Fixed at source (getter validation)
 - Added 4 layers of defense
 - 1847 tests passed, zero pollution
+
+## Instrumenting component boundaries
+
+When a system has several components (CI → build → signing), log what
+enters and leaves each boundary, run once, and read where it breaks.
+
+```bash
+# Layer 1: Workflow
+echo "=== Secrets available in workflow: ==="
+echo "IDENTITY: $([ -n "${IDENTITY:-}" ] && echo SET || echo UNSET)"
+
+# Layer 2: Build script
+echo "=== Env vars in build script: ==="
+printenv IDENTITY > /dev/null 2>&1 && echo "IDENTITY in environment" || echo "IDENTITY not in environment"
+
+# Layer 3: Signing script
+echo "=== Keychain state: ==="
+security list-keychains
+security find-identity -v
+
+# Layer 4: Actual signing
+codesign --sign "$IDENTITY" --verbose=4 "$APP"
+```
+
+**This reveals:** Which layer fails (secrets → workflow ✓, workflow → build ✗)

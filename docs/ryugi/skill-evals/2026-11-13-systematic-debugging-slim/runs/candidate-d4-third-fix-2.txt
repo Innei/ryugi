@@ -1,0 +1,17 @@
+**Message to partner:**
+
+“We’ve tried three fixes, and each shifted the failure or broke another behavior:
+
+1. Awaiting `flush()` caused another test to fail.
+2. Locking `applyRemote` brought back the original failure with 4 notes.
+3. Resetting `pendingQueue` broke an offline test that needs the queue to survive.
+
+That reaches the debugging skill’s stop condition: we need to question the architecture before attempting a fourth fix. I’m stopping changes here.
+
+Module-level `retryTimer` is another lead, but we haven’t established that clearing it addresses the root cause. The failures suggest shared state and lifecycle coupling across sync, retries, and offline behavior; that remains a hypothesis.
+
+Can we review who should own the queue and retry timer, how long each should survive, and how tests should isolate that lifecycle before choosing another fix? My proposed next investigation is to trace those boundaries and compare the sync and offline expectations.”
+
+**Tool calls:** None. No commands run, files changed, or outputs assumed. Waiting for your response before further fixes; nothing is reported as fixed or passing.
+
+SUMMARY: Reviewed the three supplied failed attempts, invoked the architecture-discussion stop condition, withheld a fourth fix, and requested discussion; no execution or verification claimed.

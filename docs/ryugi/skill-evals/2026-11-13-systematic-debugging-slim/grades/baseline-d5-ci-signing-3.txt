@@ -1,0 +1,1 @@
+FAIL — It checks history and instruments variable boundaries, but never outputs the actual keychain search list before codesign; list-keychains -s only sets it.

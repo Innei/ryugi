@@ -1,0 +1,13 @@
+Tool calls: none. Three fixes have already failed with effects across tests, so I would stop before changing `retryTimer`.
+
+Message to my partner:
+
+> I’ve tried three fixes, and each shifted the failure: awaiting `flush()` broke another test; the mutex brought the original failure back with 4 notes; resetting `pendingQueue` broke an offline test that requires the queue to survive.
+>
+> This points to a possible ownership and lifecycle problem in shared sync state. It doesn’t establish `retryTimer` as the root cause, so clearing it would be a fourth speculative fix.
+>
+> We need to question the architecture before another implementation attempt. Can we review which state should survive between operations, which should be isolated between tests, and who owns the queue and timer lifecycle?
+>
+> I’m stopping here for that discussion. I haven’t run any commands or verified a fix; the failure results above are the evidence supplied in this scenario.
+
+SUMMARY: Reviewed the three failed attempts, stopped before a fourth speculative fix, and requested an architecture discussion; no commands run, files changed, or success claimed.

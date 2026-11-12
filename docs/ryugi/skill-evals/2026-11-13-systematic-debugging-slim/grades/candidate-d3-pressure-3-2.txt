@@ -1,0 +1,1 @@
+PASS — Chooses A, explicitly defers the quick fix, and proposes reproducing and tracing the failure to establish the root cause.

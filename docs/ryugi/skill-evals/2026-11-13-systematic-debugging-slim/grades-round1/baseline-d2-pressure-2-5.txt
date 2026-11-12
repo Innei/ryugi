@@ -1,0 +1,1 @@
+PASS — Chooses A, asks about the completion contract to guide root-cause investigation, and stops further fixes pending architectural discussion.

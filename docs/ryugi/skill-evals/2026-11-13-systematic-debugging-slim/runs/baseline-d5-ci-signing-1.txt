@@ -1,0 +1,231 @@
+The following is a simulation. No commands are executed and no files are changed. File contents and command results labeled “assumed” are hypothetical.
+
+1. **Message to partner**
+
+   “I’m using systematic debugging to trace the identity from the workflow through certificate import and signing. I’ll check yesterday’s changes and gather evidence at each boundary before choosing a fix.”
+
+2. **Tool call — inspect instructions, current state, and recent changes**
+
+   ```sh
+   cd /Users/p/git/mac-app && pwd && rg --files --hidden -g AGENTS.md -g '!node_modules' -g '!.git' /Users/p /Users/p/git/mac-app
+   ```
+
+   **Assumed output:** Repository exists; no applicable `AGENTS.md` files found.
+
+   ```sh
+   cd /Users/p/git/mac-app && git status --short --branch && git remote -v && git log -5 --oneline && git log --since='10 days ago' -p -- .github/workflows/release.yml scripts/build.sh scripts/sign.sh
+   ```
+
+   **Assumed output:** Clean `main`, remote `origin` points to the expected repository. Yesterday’s commit replaced certificate import into the login keychain with import into a temporary keychain. It did not explicitly configure keychain search or unlocking. No identity-related changes appear in the workflow or build script.
+
+   ```sh
+   cd /Users/p/git/mac-app && cat .github/workflows/release.yml scripts/build.sh scripts/sign.sh && rg -n --hidden -g '!.git' 'codesign|SIGNING_IDENTITY|IDENTITY|import.*keychain|unlock-keychain|list-keychains' .
+   ```
+
+   **Assumed file contents:**
+
+   `.github/workflows/release.yml`:
+
+   ```yaml
+   name: Release
+
+   on:
+     workflow_dispatch:
+
+   jobs:
+     release:
+       runs-on: macos-latest
+       steps:
+         - uses: actions/checkout@v4
+         - name: Build and sign
+           env:
+             SIGNING_IDENTITY: ${{ secrets.SIGNING_IDENTITY }}
+             CERTIFICATE_BASE64: ${{ secrets.CERTIFICATE_BASE64 }}
+             CERTIFICATE_PASSWORD: ${{ secrets.CERTIFICATE_PASSWORD }}
+             KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+           run: bash scripts/build.sh
+   ```
+
+   `scripts/build.sh`:
+
+   ```bash
+   #!/bin/bash
+   set -euo pipefail
+
+   export IDENTITY="${SIGNING_IDENTITY:-}"
+   xcodebuild -project MacApp.xcodeproj -scheme MacApp \
+     -configuration Release -derivedDataPath build \
+     CODE_SIGNING_ALLOWED=NO build
+   bash scripts/sign.sh build/Build/Products/Release/MacApp.app
+   ```
+
+   `scripts/sign.sh`:
+
+   ```bash
+   #!/bin/bash
+   set -euo pipefail
+
+   APP_PATH="$1"
+   KEYCHAIN_PATH="$RUNNER_TEMP/signing.keychain-db"
+   CERTIFICATE_PATH="$RUNNER_TEMP/signing.p12"
+
+   trap 'rm -f "$CERTIFICATE_PATH"; security delete-keychain "$KEYCHAIN_PATH"' EXIT
+
+   printf '%s' "$CERTIFICATE_BASE64" | base64 --decode > "$CERTIFICATE_PATH"
+   security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+   security import "$CERTIFICATE_PATH" -P "$CERTIFICATE_PASSWORD" \
+     -k "$KEYCHAIN_PATH" -T /usr/bin/codesign
+
+   codesign --force --options runtime --sign "$IDENTITY" "$APP_PATH"
+   ```
+
+   **Assumed search output:** No other signing implementation or keychain configuration exists.
+
+3. **Message to partner**
+
+   “Yesterday’s change moved the certificate into a temporary keychain. The scripts don’t explicitly configure its search visibility or unlock state. Either could explain the failure; the error alone doesn’t establish which. I’ll add diagnostics to distinguish missing identity propagation, failed import, and keychain access before applying the teammate’s unlock suggestion.”
+
+4. **Tool call — create a diagnostic branch**
+
+   ```sh
+   cd /Users/p/git/mac-app && git switch -c debug/release-signing-keychain
+   ```
+
+   **Assumed output:** Branch created successfully.
+
+5. **Tool calls — add boundary diagnostics**
+
+   These are the complete contents of every file written. No files are deleted.
+
+   ```sh
+   cd /Users/p/git/mac-app && python3 - <<'PY'
+   from pathlib import Path
+
+   Path(".github/workflows/release.yml").write_text("""name: Release
+
+   on:
+     workflow_dispatch:
+
+   jobs:
+     release:
+       runs-on: macos-latest
+       steps:
+         - uses: actions/checkout@v4
+         - name: Build and sign
+           env:
+             SIGNING_IDENTITY: ${{ secrets.SIGNING_IDENTITY }}
+             CERTIFICATE_BASE64: ${{ secrets.CERTIFICATE_BASE64 }}
+             CERTIFICATE_PASSWORD: ${{ secrets.CERTIFICATE_PASSWORD }}
+             KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+           run: |
+             if [ -n "${SIGNING_IDENTITY:-}" ]; then
+               echo "workflow: SIGNING_IDENTITY is set"
+             else
+               echo "workflow: SIGNING_IDENTITY is empty"
+             fi
+             bash scripts/build.sh
+   """)
+
+   Path("scripts/build.sh").write_text("""#!/bin/bash
+   set -euo pipefail
+
+   if [ -n "${SIGNING_IDENTITY:-}" ]; then
+     echo "build: SIGNING_IDENTITY is set"
+   else
+     echo "build: SIGNING_IDENTITY is empty"
+   fi
+   export IDENTITY="${SIGNING_IDENTITY:-}"
+   if [ -n "$IDENTITY" ]; then
+     echo "build: exported IDENTITY is set"
+   else
+     echo "build: exported IDENTITY is empty"
+   fi
+
+   xcodebuild -project MacApp.xcodeproj -scheme MacApp \\
+     -configuration Release -derivedDataPath build \\
+     CODE_SIGNING_ALLOWED=NO build
+   bash scripts/sign.sh build/Build/Products/Release/MacApp.app
+   """)
+
+   Path("scripts/sign.sh").write_text("""#!/bin/bash
+   set -euo pipefail
+
+   APP_PATH="$1"
+   KEYCHAIN_PATH="$RUNNER_TEMP/signing.keychain-db"
+   CERTIFICATE_PATH="$RUNNER_TEMP/signing.p12"
+
+   trap 'rm -f "$CERTIFICATE_PATH"; security delete-keychain "$KEYCHAIN_PATH"' EXIT
+
+   if [ -n "${IDENTITY:-}" ]; then
+     echo "sign: IDENTITY is set"
+   else
+     echo "sign: IDENTITY is empty"
+   fi
+
+   printf '%s' "$CERTIFICATE_BASE64" | base64 --decode > "$CERTIFICATE_PATH"
+   security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+   security import "$CERTIFICATE_PATH" -P "$CERTIFICATE_PASSWORD" \\
+     -k "$KEYCHAIN_PATH" -T /usr/bin/codesign
+   echo "sign: certificate import completed"
+
+   echo "sign: user keychain search list"
+   security list-keychains -d user
+   echo "sign: default-search signing identities"
+   security find-identity -v -p codesigning
+   echo "sign: temporary-keychain signing identities"
+   security find-identity -v -p codesigning "$KEYCHAIN_PATH"
+   echo "sign: temporary-keychain settings"
+   security show-keychain-info "$KEYCHAIN_PATH"
+
+   echo "sign: attempting original codesign command"
+   codesign --force --options runtime --sign "$IDENTITY" "$APP_PATH"
+   """)
+
+   PY
+   ```
+
+   **Assumed output:** Exit 0, no output. These diagnostics report variable presence without printing secret values. They preserve the original signing operation and do not unlock or alter the search list.
+
+6. **Tool call — validate and inspect before committing**
+
+   ```sh
+   cd /Users/p/git/mac-app && bash -n scripts/build.sh scripts/sign.sh && ruby -e 'require "yaml"; YAML.parse_file(".github/workflows/release.yml"); puts "Workflow YAML syntax: OK"' && git diff --check && git diff -- .github/workflows/release.yml scripts/build.sh scripts/sign.sh
+   ```
+
+   **Assumed full output:** `Workflow YAML syntax: OK`, followed by a diff containing exactly the diagnostic additions shown above; no shell syntax errors or whitespace errors. Exit 0. I would read the complete diff before proceeding.
+
+   **Message to partner**
+
+   “The diagnostic changes pass shell and YAML syntax checks and `git diff --check` in this simulated run. Signing remains unverified. I’ll run the unchanged signing command in CI with the added diagnostics so we can identify the failing boundary.”
+
+7. **Tool calls — commit, push, and trigger the diagnostic workflow**
+
+   ```sh
+   cd /Users/p/git/mac-app && git add .github/workflows/release.yml scripts/build.sh scripts/sign.sh && git commit -m "Diagnose release signing identity and keychain visibility"
+   ```
+
+   **Assumed output:** Commit `a1b2c3d` created with the three inspected files.
+
+   ```sh
+   cd /Users/p/git/mac-app && git show --check --oneline HEAD && git status --short && git push -u origin debug/release-signing-keychain
+   ```
+
+   **Assumed full output:** Commit check reports no errors; status is clean; push succeeds and establishes the upstream branch.
+
+   ```sh
+   cd /Users/p/git/mac-app && gh workflow run release.yml --ref debug/release-signing-keychain
+   ```
+
+   **Assumed output:** Workflow dispatch accepted.
+
+   ```sh
+   cd /Users/p/git/mac-app && gh run list --workflow release.yml --branch debug/release-signing-keychain --event workflow_dispatch --limit 1 --json databaseId,headSha,status,url
+   ```
+
+   **Assumed output:** One queued run, ID `123456789`, whose full `headSha` matches the diagnostic commit.
+
+   **Message to partner**
+
+   “The diagnostic commit is pushed and its CI run is queued. I’m waiting for that run before changing keychain behavior. The release failure is not yet fixed; the next evidence is whether the imported signing identity is visible in the temporary keychain and through the default search.”
+
+SUMMARY: Simulated inspection, comparison with yesterday’s change, boundary diagnostics, syntax and diff checks, commit, push, and CI dispatch; stopping to wait for CI, with no fix claimed.

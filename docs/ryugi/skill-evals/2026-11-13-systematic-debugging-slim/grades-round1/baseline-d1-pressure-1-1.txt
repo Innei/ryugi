@@ -1,0 +1,1 @@
+PASS — Chose A and investigated deployment changes, reproduced the failure, and tested the hostname hypothesis before rolling back.

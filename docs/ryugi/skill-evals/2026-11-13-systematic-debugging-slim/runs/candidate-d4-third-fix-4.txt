@@ -1,0 +1,13 @@
+1. **Message to partner:**
+
+   “Three attempted fixes have shifted failures between sync and offline tests. The queue reset also conflicts with offline’s requirement that the queue survive. That pattern requires an architecture discussion before a fourth fix.
+
+   I’m stopping changes here. Clearing `retryTimer` would be another untested hypothesis; we haven’t established it as the root cause. The evidence suggests shared state and lifecycle coupling, but doesn’t yet establish the correct ownership model.
+
+   Is the queue intended to survive across sync instances, offline transitions, or both—and should the retry timer have that same lifetime? We should settle that contract, then trace where the implementation violates it before writing a failing reproduction and making another change.
+
+   I haven’t run any commands or verified a fix in this continuation. The failures above are the supplied session history.”
+
+2. **Tool calls:** None. Stop and wait for the partner’s architecture discussion.
+
+SUMMARY: Reviewed the supplied three-fix history, stopped before a fourth attempt, raised shared-state lifecycle ownership for discussion, and reported that no new verification occurred.

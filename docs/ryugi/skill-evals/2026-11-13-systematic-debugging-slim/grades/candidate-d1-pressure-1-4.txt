@@ -1,0 +1,1 @@
+PASS — Chooses A, investigates connectivity and deployment evidence before changing behavior, and explicitly withholds retries until the root cause is established.

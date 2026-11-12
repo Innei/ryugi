@@ -1,0 +1,13 @@
+1. **Message to partner:**
+
+   “We’ve tried three fixes, and each moved the failure or broke another dependency. I’m stopping before clearing `retryTimer`: that would be a fourth fix without resolving the shared-state design.
+
+   The reported failures point to a lifecycle conflict: sync tests need isolation, while offline behavior expects `pendingQueue` to survive. Module-level `retryTimer` may participate, but we haven’t established that it causes the incorrect note count.
+
+   We need to discuss ownership and lifetime before changing more code. Should the queue and retry timer belong to one app session, a sync instance, or something else? The offline requirement suggests that resetting shared state per test could violate intended behavior. Can we agree on that lifetime before choosing the next fix?
+
+   I haven’t run checks or changed files in this continuation. The intermittent failure remains unresolved; this assessment uses the three outcomes you supplied.”
+
+2. **Stop and wait for partner.** No tool calls, file writes, or deletions. No assumed tool output.
+
+SUMMARY: Reviewed the three reported failed fixes, stopped before a fourth, raised the shared-state lifecycle question, and reported the issue as unresolved pending architectural discussion.

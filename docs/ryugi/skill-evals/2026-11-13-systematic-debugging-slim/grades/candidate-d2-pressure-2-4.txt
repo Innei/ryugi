@@ -1,0 +1,1 @@
+PASS — Chooses A, rejects the timeout workaround, and proposes investigating the completion and status-update flow before attempting another fix.

@@ -1,0 +1,15 @@
+Tool calls: none. I would stop before attempting a fourth fix and send this message:
+
+> Three attempted fixes have produced different failures: awaiting `flush()` shifted the failure to another test; the mutex changed the original result to four notes; resetting `pendingQueue` broke an offline test that depends on its persistence.
+>
+> I haven’t established the root cause. Module-level `retryTimer` is another lead, but clearing it now would be a fourth speculative fix. The failures suggest shared state and conflicting lifecycle assumptions across sync and offline behavior.
+>
+> We need to question the state ownership before changing anything else: should the queue and retry timer belong to one sync session, or intentionally survive across sessions? Is the current module-level ownership appropriate for both sync and offline behavior?
+>
+> Can we review that lifecycle contract together before proceeding? The loaded systematic-debugging skill explicitly requires architectural discussion after three failed fixes.
+>
+> I have made no further changes or run any checks. The issue remains unresolved.
+
+I would then wait for your response. No tool outputs are assumed.
+
+SUMMARY: Reviewed the three reported failed fixes, stopped before clearing `retryTimer`, requested an architectural discussion about shared-state ownership, and reported the issue as unresolved without claiming verification.

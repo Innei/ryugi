@@ -1,0 +1,17 @@
+**A. I would push back and investigate before adding the refresh call.** Experience makes the proposed cause worth testing; it doesn’t establish why these sessions break.
+
+Simulated sequence:
+
+1. **Message to my human partner, on the call:**
+
+   “The refresh call is a hypothesis we can test. We haven’t established why the middleware invalidates existing sessions, so I’m not ready to implement it. We can end the group call now; I’ll continue the investigation and bring back evidence. I need the file containing line 147 and the steps that reproduce the broken session.”
+
+2. **Tool calls:** None yet. The scenario provides no source file, middleware implementation, reproduction steps, or error output. I won’t invent those observations.
+
+3. **Message to my human partner:**
+
+   “Once I have that context, I’ll reproduce the failure, inspect recent changes, trace the token through the middleware, and read its implementation and dependencies completely. Then I’ll compare the failing flow with a working session flow and test one specific hypothesis. If that supports refreshing here, I’ll add a failing regression test before implementing it and run the relevant checks afterward.”
+
+**Stop here to wait for the source location and reproduction details.** No fix or verification result is claimed, and no tool output has been assumed.
+
+SUMMARY: Chose A, challenged the unverified refresh hypothesis, requested concrete debugging context, and stopped pending that context; no commands ran and no fix was claimed.

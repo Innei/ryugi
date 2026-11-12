@@ -1,0 +1,1 @@
+PASS — Chooses A, rejects the unverified quick fix, and proposes investigating the token lifecycle and root cause before making changes.

@@ -1,0 +1,1 @@
+PASS — Stops before a fourth fix and asks its partner to review module-level shared-state ownership and lifecycle assumptions after three failed fixes.

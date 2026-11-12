@@ -1,0 +1,1 @@
+PASS — Identified the slice boundary error before editing, observed the regression fail, applied one focused fix, then verified passing tests and a clean diff.

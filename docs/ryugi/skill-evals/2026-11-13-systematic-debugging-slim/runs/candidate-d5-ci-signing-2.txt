@@ -1,0 +1,282 @@
+Only the skill reference was actually read. Everything below is a simulation; commands, repository contents, and results are explicitly assumed.
+
+1. **Message to partner**
+
+   > I’ll trace the identity through the workflow, build script, and signing script, then inspect the temporary keychain. The unlock suggestion is a hypothesis; I’ll collect evidence before changing signing behavior.
+
+2. **Simulated shell call** — working directory `/Users/p/git/mac-app`:
+
+   ```sh
+   pwd
+   git status --short --branch
+   rg --files -g AGENTS.md -g '*test*' -g '*sign*' -g '*build*'
+   cat .github/workflows/release.yml scripts/build.sh scripts/sign.sh
+   git log -8 --oneline -- .github/workflows/release.yml scripts/build.sh scripts/sign.sh
+   git diff -- .github/workflows/release.yml scripts/build.sh scripts/sign.sh
+   ```
+
+   **Assumed results:** clean checkout on `main`; no applicable `AGENTS.md` or existing signing tests. The files contain:
+
+   `.github/workflows/release.yml`:
+
+   ```yaml
+   name: Release
+   on:
+     push:
+     workflow_dispatch:
+   jobs:
+     release:
+       runs-on: macos-latest
+       steps:
+         - uses: actions/checkout@v4
+         - name: Build and sign
+           env:
+             SIGNING_IDENTITY: ${{ secrets.SIGNING_IDENTITY }}
+             CERTIFICATE_BASE64: ${{ secrets.CERTIFICATE_BASE64 }}
+             CERTIFICATE_PASSWORD: ${{ secrets.CERTIFICATE_PASSWORD }}
+             KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+           run: bash scripts/build.sh
+   ```
+
+   `scripts/build.sh`:
+
+   ```bash
+   #!/bin/bash
+   set -euo pipefail
+
+   IDENTITY="$SIGNING_IDENTITY"
+   xcodebuild -scheme MacApp -configuration Release \
+     -derivedDataPath build CODE_SIGNING_ALLOWED=NO build
+   bash scripts/sign.sh build/Build/Products/Release/MacApp.app
+   ```
+
+   `scripts/sign.sh`:
+
+   ```bash
+   #!/bin/bash
+   set -euo pipefail
+
+   APP="$1"
+   IDENTITY="${IDENTITY:-}"
+   KEYCHAIN="$RUNNER_TEMP/release.keychain-db"
+   CERTIFICATE="$RUNNER_TEMP/release.p12"
+   trap 'security delete-keychain "$KEYCHAIN"; rm -f "$CERTIFICATE"' EXIT
+
+   printf '%s' "$CERTIFICATE_BASE64" | base64 --decode > "$CERTIFICATE"
+   security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+   security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+   security import "$CERTIFICATE" -k "$KEYCHAIN" \
+     -P "$CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+   security set-key-partition-list -S apple-tool:,apple:,codesign: \
+     -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+   security list-keychains -d user -s "$KEYCHAIN"
+   codesign --force --options runtime --sign "$IDENTITY" "$APP"
+   ```
+
+   Assume the log identifies yesterday’s build-script refactor as `a13c7e2`; no uncommitted differences exist.
+
+3. **Simulated shell call** — same working directory:
+
+   ```sh
+   git show a13c7e2 -- .github/workflows/release.yml scripts/build.sh scripts/sign.sh
+   gh run list --workflow release.yml --limit 5 --json databaseId,headSha,conclusion,status
+   ```
+
+   **Assumed results:** yesterday’s change replaced:
+
+   ```bash
+   export IDENTITY="$SIGNING_IDENTITY"
+   ```
+
+   with:
+
+   ```bash
+   IDENTITY="$SIGNING_IDENTITY"
+   ```
+
+   Assume the latest failed run is `48123001`, on that commit, and last week’s run succeeded.
+
+4. **Simulated shell call**:
+
+   ```sh
+   gh run view 48123001 --log
+   ```
+
+   **Assumed full-log findings:** build succeeds; certificate import reports one identity imported; unlock and partition-list commands succeed; `codesign` reports:
+
+   ```text
+   error: The specified item could not be found in the keychain.
+   ```
+
+   The existing log does not show whether the identity survives the process boundary.
+
+5. **Message to partner**
+
+   > Yesterday’s refactor removed `export` from `IDENTITY`. The signing script runs in a child process and defaults a missing identity to an empty string. That makes lost environment propagation the leading hypothesis. The script already unlocks the keychain. I’ll add diagnostics that report presence and keychain visibility without printing secrets, then run the unchanged signing behavior in CI.
+
+6. **Simulated shell call**:
+
+   ```sh
+   git switch -c debug/release-signing-identity
+   ```
+
+   **Assumed result:** branch created successfully.
+
+7. **Simulated shell call**, writing these three files in full. No files are deleted.
+
+   ```sh
+   cat > .github/workflows/release.yml <<'EOF'
+   name: Release
+   on:
+     push:
+     workflow_dispatch:
+   jobs:
+     release:
+       runs-on: macos-latest
+       steps:
+         - uses: actions/checkout@v4
+         - name: Build and sign
+           env:
+             SIGNING_IDENTITY: ${{ secrets.SIGNING_IDENTITY }}
+             CERTIFICATE_BASE64: ${{ secrets.CERTIFICATE_BASE64 }}
+             CERTIFICATE_PASSWORD: ${{ secrets.CERTIFICATE_PASSWORD }}
+             KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+           run: |
+             if [ -n "${SIGNING_IDENTITY:-}" ]; then
+               echo 'workflow: SIGNING_IDENTITY set'
+             else
+               echo 'workflow: SIGNING_IDENTITY empty or unset'
+             fi
+             bash scripts/build.sh
+   EOF
+   cat > scripts/build.sh <<'EOF'
+   #!/bin/bash
+   set -euo pipefail
+
+   if [ -n "${SIGNING_IDENTITY:-}" ]; then
+     echo 'build entry: SIGNING_IDENTITY set'
+   else
+     echo 'build entry: SIGNING_IDENTITY empty or unset'
+   fi
+
+   IDENTITY="$SIGNING_IDENTITY"
+   if [ -n "$IDENTITY" ]; then
+     echo 'build exit: shell IDENTITY set'
+   else
+     echo 'build exit: shell IDENTITY empty'
+   fi
+   if printenv IDENTITY >/dev/null 2>&1; then
+     echo 'build exit: IDENTITY exported'
+   else
+     echo 'build exit: IDENTITY not exported'
+   fi
+
+   xcodebuild -scheme MacApp -configuration Release \
+     -derivedDataPath build CODE_SIGNING_ALLOWED=NO build
+   bash scripts/sign.sh build/Build/Products/Release/MacApp.app
+   EOF
+   cat > scripts/sign.sh <<'EOF'
+   #!/bin/bash
+   set -euo pipefail
+
+   APP="$1"
+   IDENTITY="${IDENTITY:-}"
+   if [ -n "${SIGNING_IDENTITY:-}" ]; then
+     echo 'sign entry: SIGNING_IDENTITY set'
+   else
+     echo 'sign entry: SIGNING_IDENTITY empty or unset'
+   fi
+   if [ -n "$IDENTITY" ]; then
+     echo 'sign entry: IDENTITY set'
+   else
+     echo 'sign entry: IDENTITY empty or unset'
+   fi
+
+   KEYCHAIN="$RUNNER_TEMP/release.keychain-db"
+   CERTIFICATE="$RUNNER_TEMP/release.p12"
+   trap 'security delete-keychain "$KEYCHAIN"; rm -f "$CERTIFICATE"' EXIT
+
+   printf '%s' "$CERTIFICATE_BASE64" | base64 --decode > "$CERTIFICATE"
+   security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+   security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+   security import "$CERTIFICATE" -k "$KEYCHAIN" \
+     -P "$CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+   security set-key-partition-list -S apple-tool:,apple:,codesign: \
+     -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+   security list-keychains -d user -s "$KEYCHAIN"
+
+   echo 'sign: keychain search list'
+   security list-keychains -d user
+   echo 'sign: identities in temporary keychain'
+   security find-identity -v -p codesigning "$KEYCHAIN"
+   echo 'sign: identities in search list'
+   security find-identity -v -p codesigning
+   codesign --force --options runtime --sign "$IDENTITY" "$APP"
+   EOF
+   ```
+
+   **Assumed result:** all writes succeed. These are diagnostics only; the suspected export defect remains in place for reproduction.
+
+8. **Simulated shell call**:
+
+   ```sh
+   bash -n scripts/build.sh scripts/sign.sh
+   ruby -e 'require "yaml"; YAML.parse_file(".github/workflows/release.yml"); puts "workflow YAML syntax OK"'
+   git diff --check
+   git diff -- .github/workflows/release.yml scripts/build.sh scripts/sign.sh
+   git status --short
+   ```
+
+   **Assumed full output:** Bash syntax check and `git diff --check` produce no output and exit zero; Ruby prints `workflow YAML syntax OK`; the diff exactly matches the diagnostic additions above; status lists only the three intended files.
+
+9. **Message to partner**
+
+   > The diagnostic scripts pass `bash -n`, the workflow parses as YAML, and `git diff --check` reports no whitespace errors. Those checks validate the diagnostic edit only. Signing remains unverified. I’ll push this branch to reproduce the failure and capture the boundary evidence before implementing a fix.
+
+10. **Simulated shell call**:
+
+    ```sh
+    git add .github/workflows/release.yml scripts/build.sh scripts/sign.sh
+    git commit -m "Diagnose signing identity propagation and keychain visibility"
+    ```
+
+    **Assumed result:** commit succeeds with only the three reviewed files.
+
+11. **Simulated shell call**, checking the committed state before pushing:
+
+    ```sh
+    bash -n scripts/build.sh scripts/sign.sh
+    ruby -e 'require "yaml"; YAML.parse_file(".github/workflows/release.yml"); puts "workflow YAML syntax OK"'
+    git show --format=fuller --stat HEAD
+    git show --format= --check HEAD
+    git status --short
+    ```
+
+    **Assumed full output:** syntax checks exit zero, Ruby prints `workflow YAML syntax OK`, commit statistics show the three diagnostic files, commit whitespace check produces no output, and the working tree is clean.
+
+12. **Message to partner**
+
+    > The committed diagnostic change passes the same syntax and whitespace checks, and the working tree is clean. I’m pushing it now; this is an investigation run, so a signing failure is still expected.
+
+13. **Simulated shell call**:
+
+    ```sh
+    git push -u origin debug/release-signing-identity
+    ```
+
+    **Assumed result:** push succeeds and triggers the workflow.
+
+14. **Simulated shell call**:
+
+    ```sh
+    git rev-parse HEAD
+    gh run list --workflow release.yml --branch debug/release-signing-identity --limit 5 --json databaseId,headSha,status,conclusion,url
+    ```
+
+    **Assumed result:** run `48123109` is queued and its `headSha` matches the pushed commit.
+
+15. **Message to partner — stop here to wait for CI**
+
+    > Diagnostic CI run `48123109` is queued for the pushed commit. I’m waiting for its logs to establish whether `IDENTITY` disappears between build and signing and whether the imported identity is visible to codesign. No fix has been verified.
+
+SUMMARY: Read the tracing reference, simulated repository/history/log inspection, identified an export hypothesis, added and checked diagnostics, committed and pushed them, and stopped awaiting CI evidence; no actual repository changes or signing success are reported.

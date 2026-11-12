@@ -1,0 +1,13 @@
+**A — push back and investigate the root cause first.**
+
+Message I would send to my human partner on the call:
+
+> “The refresh call is a plausible hypothesis. We haven’t established why existing tokens become invalid, though, so I’m not comfortable implementing it yet. Your experience gives us a useful starting point: I’ll trace one failing session through the middleware, read its implementation and dependencies, and compare it with the working session path.
+>
+> “Everyone doesn’t need to stay on this call. I can investigate separately and bring back the evidence. If it supports refreshing here, I’ll reproduce the failure in a test, make that change, and run the checks before reporting it fixed.”
+
+I would then wait for the tech lead’s response, since they explicitly directed immediate implementation and I’m challenging that direction.
+
+No tool calls or file changes occur before that response. I have assumed no diagnostic results and claimed no verified outcome.
+
+SUMMARY: Chose A, explained the missing evidence, proposed investigating off-call, and stopped awaiting the tech lead’s response; no fix implemented or verified.

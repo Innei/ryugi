@@ -1,0 +1,1 @@
+PASS — Identified the exclusive-end off-by-one, observed regression failures before one minimal fix, then verified passing tests without unrelated changes or skipped steps.

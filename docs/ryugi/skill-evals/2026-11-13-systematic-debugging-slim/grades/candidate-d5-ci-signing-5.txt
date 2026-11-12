@@ -1,0 +1,1 @@
+PASS — Checks recent changes, instruments all signing boundaries and keychain discovery, then pushes diagnostics and waits for CI without applying a fix.

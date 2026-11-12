@@ -1,0 +1,250 @@
+All calls and outputs below are **simulated**. I would run no commands in this exercise.
+
+**Message to partner**
+
+“I’m using systematic debugging to trace the identity from Actions through the build and signing scripts, then check the imported certificate and keychain state. I’ll gather evidence before changing the signing behavior.”
+
+**1. Inspect the files, recent changes, and failed run.**
+
+Simulated shell call:
+
+```sh
+cd /Users/p/git/mac-app
+pwd
+git status --short --branch
+git log -5 --oneline
+git log -p -3 -- .github/workflows/release.yml scripts/build.sh scripts/sign.sh
+cat .github/workflows/release.yml scripts/build.sh scripts/sign.sh
+gh run list --workflow release.yml --limit 5
+```
+
+Assumed output:
+
+- Working directory is `/Users/p/git/mac-app`.
+- Branch is `main`; working tree is clean.
+- Yesterday’s change replaced an older signing setup with a temporary keychain.
+- Latest failed run is `987654321`.
+- The workflow runs on branch pushes.
+- The complete file contents are:
+
+`.github/workflows/release.yml`:
+
+```yaml
+name: Release
+
+on: push
+
+jobs:
+  release:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and sign
+        env:
+          SIGNING_IDENTITY: ${{ secrets.SIGNING_IDENTITY }}
+          CERTIFICATE_BASE64: ${{ secrets.CERTIFICATE_BASE64 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.CERTIFICATE_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: ./scripts/build.sh
+```
+
+`scripts/build.sh`:
+
+```bash
+#!/bin/bash
+set -euo pipefail
+
+export IDENTITY="$SIGNING_IDENTITY"
+xcodebuild -project MacApp.xcodeproj -scheme MacApp -configuration Release CONFIGURATION_BUILD_DIR="$PWD/build"
+./scripts/sign.sh
+```
+
+`scripts/sign.sh`:
+
+```bash
+#!/bin/bash
+set -euo pipefail
+
+KEYCHAIN="$RUNNER_TEMP/signing.keychain-db"
+CERTIFICATE="$RUNNER_TEMP/signing.p12"
+
+cleanup() {
+  rm -f "$CERTIFICATE"
+  security delete-keychain "$KEYCHAIN"
+}
+trap cleanup EXIT
+
+printf '%s' "$CERTIFICATE_BASE64" | base64 --decode > "$CERTIFICATE"
+security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+security import "$CERTIFICATE" -k "$KEYCHAIN" -P "$CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+codesign --force --options runtime --sign "$IDENTITY" build/MacApp.app
+```
+
+Simulated shell call:
+
+```sh
+cd /Users/p/git/mac-app
+gh run view 987654321 --log-failed
+```
+
+Assumed full failed-step output shows that build, certificate import, and partition-list configuration succeeded; `codesign` reports:
+
+```text
+error: The specified item could not be found in the keychain.
+```
+
+There are no existing diagnostics showing identity propagation or whether the temporary keychain is searchable.
+
+**Message to partner**
+
+“The script already unlocks the temporary keychain before importing the certificate, so another unlock isn’t supported by the evidence so far. Yesterday’s keychain change is relevant, but the current logs don’t show whether the requested identity reaches signing or whether codesign can discover it. I’ll add diagnostics at those boundaries and run the workflow.”
+
+**2. Add diagnostics without changing signing behavior.**
+
+Simulated shell call:
+
+```sh
+cd /Users/p/git/mac-app
+git switch -c debug/release-signing
+cat > .github/workflows/release.yml <<'EOF'
+name: Release
+
+on: push
+
+jobs:
+  release:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and sign
+        env:
+          SIGNING_IDENTITY: ${{ secrets.SIGNING_IDENTITY }}
+          CERTIFICATE_BASE64: ${{ secrets.CERTIFICATE_BASE64 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.CERTIFICATE_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          if [ -n "${SIGNING_IDENTITY:-}" ]; then
+            echo "workflow: SIGNING_IDENTITY set"
+          else
+            echo "workflow: SIGNING_IDENTITY empty or unset"
+          fi
+          ./scripts/build.sh
+EOF
+cat > scripts/build.sh <<'EOF'
+#!/bin/bash
+set -euo pipefail
+
+if [ -n "${SIGNING_IDENTITY:-}" ]; then
+  echo "build: SIGNING_IDENTITY set"
+else
+  echo "build: SIGNING_IDENTITY empty or unset"
+fi
+export IDENTITY="$SIGNING_IDENTITY"
+if [ -n "$IDENTITY" ]; then
+  echo "build: IDENTITY exported and nonempty"
+else
+  echo "build: IDENTITY exported but empty"
+fi
+xcodebuild -project MacApp.xcodeproj -scheme MacApp -configuration Release CONFIGURATION_BUILD_DIR="$PWD/build"
+./scripts/sign.sh
+EOF
+cat > scripts/sign.sh <<'EOF'
+#!/bin/bash
+set -euo pipefail
+
+KEYCHAIN="$RUNNER_TEMP/signing.keychain-db"
+CERTIFICATE="$RUNNER_TEMP/signing.p12"
+
+cleanup() {
+  rm -f "$CERTIFICATE"
+  security delete-keychain "$KEYCHAIN"
+}
+trap cleanup EXIT
+
+if [ -n "${IDENTITY:-}" ]; then
+  echo "sign: IDENTITY set"
+else
+  echo "sign: IDENTITY empty or unset"
+fi
+
+printf '%s' "$CERTIFICATE_BASE64" | base64 --decode > "$CERTIFICATE"
+security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+security import "$CERTIFICATE" -k "$KEYCHAIN" -P "$CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+
+echo "sign: user keychain search list"
+security list-keychains -d user
+echo "sign: identities in temporary keychain"
+security find-identity -v -p codesigning "$KEYCHAIN"
+echo "sign: identities in default search list"
+security find-identity -v -p codesigning
+echo "sign: requested identity present in temporary keychain"
+if security find-certificate -c "$IDENTITY" "$KEYCHAIN" >/dev/null 2>&1; then
+  echo "sign: requested certificate found"
+else
+  echo "sign: requested certificate absent or lookup failed"
+fi
+
+codesign --force --options runtime --sign "$IDENTITY" build/MacApp.app
+EOF
+```
+
+These are the complete contents of every file written. No files are deleted.
+
+**3. Verify the diagnostic changes before committing.**
+
+Simulated shell call:
+
+```sh
+cd /Users/p/git/mac-app
+bash -n scripts/build.sh scripts/sign.sh
+ruby -rpsych -e 'Psych.parse_file(".github/workflows/release.yml"); puts "Workflow YAML syntax OK"'
+git diff --check
+git diff -- .github/workflows/release.yml scripts/build.sh scripts/sign.sh
+```
+
+Assumed output, read in full:
+
+- `bash -n` exits `0`, with no output.
+- Ruby prints `Workflow YAML syntax OK` and exits `0`.
+- `git diff --check` exits `0`, with no output.
+- The full diff contains only the diagnostics shown above; the existing import, unlock, and codesign commands are unchanged.
+
+**Message to partner**
+
+“The diagnostic scripts pass Bash syntax checks, the workflow parses as YAML, and `git diff --check` reports no whitespace errors. That verifies the diagnostic edit only; signing remains unresolved. The CI run will compare identities in the temporary keychain with identities available through the default search list.”
+
+**4. Commit and push the diagnostic branch.**
+
+Simulated shell call:
+
+```sh
+cd /Users/p/git/mac-app
+git add .github/workflows/release.yml scripts/build.sh scripts/sign.sh
+git commit -m "Diagnose release signing identity and keychain discovery"
+git push -u origin debug/release-signing
+```
+
+Assumed output: commit `abc1234` is created and the branch push succeeds.
+
+**5. Locate the run for that exact commit.**
+
+Simulated shell call:
+
+```sh
+cd /Users/p/git/mac-app
+gh run list --workflow release.yml --branch debug/release-signing --commit "$(git rev-parse HEAD)" --limit 1 --json databaseId,status,conclusion,headSha,url
+```
+
+Assumed output identifies run `987654400`, with the full SHA matching `HEAD`, status `in_progress`, and no conclusion.
+
+**Message to partner**
+
+“The diagnostic branch is pushed, and Actions run `987654400` is in progress for that commit. I’m waiting for its boundary diagnostics before selecting a fix. No signing fix has been made or verified yet.”
+
+**Stop here to wait for CI.**
+
+SUMMARY: Simulated inspection of files, history, and failure logs; added boundary diagnostics; checked syntax and diff; committed and pushed a diagnostic branch; reported that CI is running and the root cause and fix remain unverified.

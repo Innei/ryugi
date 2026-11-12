@@ -1,0 +1,17 @@
+**Message to partner:**
+
+“I’m stopping before changing `retryTimer`. We’ve already tried three fixes, with these reported outcomes:
+
+1. Awaiting `flush()` caused a different test in the file to fail.
+2. Adding a mutex around `applyRemote` brought back the original failure with `got 4`.
+3. Resetting `pendingQueue` broke an offline test that depends on the queue surviving.
+
+That meets the debugging skill’s stop condition: ‘DON’T attempt Fix #4 without architectural discussion.’ The failures suggest shared state and lifecycle coupling across sync and offline behavior, but they don’t establish the root cause. Finding another module-level variable doesn’t prove clearing it is correct.
+
+Before another change, we need to discuss who should own the queue and retry timer, how long each should survive, and how tests should represent that lifecycle. Is queue persistence across sync and offline operations an intended application guarantee, and what should end that lifetime?
+
+I haven’t run any new checks in this continuation, so I’m not reporting anything as fixed or passing.”
+
+**Tool calls:** None. Stop here and wait for the partner’s architectural discussion. No assumed tool output; no files written or deleted.
+
+SUMMARY: Reviewed the three supplied failed attempts, stopped before a fourth fix, requested an architectural discussion about shared-state ownership and lifetime, and reported that no new verification was run.

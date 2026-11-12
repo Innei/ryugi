@@ -1,0 +1,1 @@
+PASS — Chooses A, investigates the root cause before changing code, and explicitly refuses to apply the unverified refresh fix first.

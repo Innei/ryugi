@@ -1,0 +1,281 @@
+Only `./skill/root-cause-tracing.md` was actually read. Everything below is a simulation; repository contents and outputs are assumptions, not observed evidence.
+
+1. **Message to partner**
+
+   “I’m using systematic debugging to trace the identity from Actions through both scripts. I’ll inspect the failed run and yesterday’s changes before changing keychain behavior. The error alone doesn’t establish that the keychain is locked.”
+
+2. **Shell call — inspect instructions, state, scripts, history, and runs**
+
+   ```bash
+   cd /Users/p/git/mac-app
+   pwd
+   rg --files --hidden -g AGENTS.md -g '! .git' /Users/p/git
+   git status --short --branch
+   cat .github/workflows/release.yml scripts/build.sh scripts/sign.sh
+   git log -5 --oneline
+   git log -p -3 -- .github/workflows/release.yml scripts/build.sh scripts/sign.sh
+   gh run list --workflow release.yml --limit 5
+   ```
+
+   **Assumed output:** no applicable `AGENTS.md`; clean `main`; workflow supports pushes to `main` and `workflow_dispatch`. Its build step is:
+
+   ```yaml
+   - name: Build and sign
+     env:
+       SIGNING_IDENTITY: ${{ secrets.SIGNING_IDENTITY }}
+       CERTIFICATE_BASE64: ${{ secrets.CERTIFICATE_BASE64 }}
+       CERTIFICATE_PASSWORD: ${{ secrets.CERTIFICATE_PASSWORD }}
+       KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+     run: bash scripts/build.sh
+   ```
+
+   Assume the complete scripts read:
+
+   ```bash
+   # scripts/build.sh
+   #!/bin/bash
+   set -euo pipefail
+   IDENTITY="${SIGNING_IDENTITY:?SIGNING_IDENTITY is required}"
+   xcodebuild -scheme MacApp -configuration Release \
+     -derivedDataPath build CODE_SIGNING_ALLOWED=NO build
+   bash scripts/sign.sh build/Build/Products/Release/MacApp.app
+   ```
+
+   ```bash
+   # scripts/sign.sh
+   #!/bin/bash
+   set -euo pipefail
+   APP="$1"
+   KEYCHAIN="$RUNNER_TEMP/signing.keychain-db"
+   CERTIFICATE="$RUNNER_TEMP/signing.p12"
+   trap 'security delete-keychain "$KEYCHAIN"; rm -f "$CERTIFICATE"' EXIT
+   printf '%s' "$CERTIFICATE_BASE64" | base64 --decode > "$CERTIFICATE"
+   security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+   security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+   security import "$CERTIFICATE" -k "$KEYCHAIN" \
+     -P "$CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+   security set-key-partition-list -S apple-tool:,apple:,codesign: \
+     -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+   security list-keychains -d user -s "$KEYCHAIN"
+   codesign --force --options runtime --timestamp \
+     --sign "${IDENTITY:-}" "$APP"
+   ```
+
+   Assume yesterday’s commit removed `export` from the `IDENTITY` assignment in `build.sh`. Last week’s successful version exported it. Run `812` failed yesterday; run `799` succeeded last week.
+
+3. **Shell call — read both runs**
+
+   ```bash
+   cd /Users/p/git/mac-app
+   gh run view 812 --log
+   gh run view 799 --log
+   ```
+
+   **Assumed output, read in full:** both runs successfully created, unlocked, and imported into the temporary keychain. Run `812` failed at `codesign` with the reported error; run `799` completed signing. Neither log records identity propagation.
+
+4. **Message to partner**
+
+   “Yesterday’s change removed `export` from the identity assignment. `sign.sh` runs in a child Bash process, so that could leave its signing identity empty. The script already unlocks the keychain. I’ll reproduce the environment boundary with a synthetic identity before making a fix.”
+
+5. **Shell call — create an isolated diagnostic and regression harness**
+
+   This writes only the following files, with exactly the contents shown:
+
+   ```bash
+   cd /Users/p/git/mac-app
+   TASK_TMP="$(mktemp -d /tmp/mac-app-signing.XXXXXX)"
+   mkdir "$TASK_TMP/bin"
+   cat > "$TASK_TMP/boundaries.sh" <<'EOF'
+   case "$0" in
+     scripts/build.sh|scripts/sign.sh)
+       printf '%s: SIGNING_IDENTITY=%s IDENTITY=%s\n' \
+         "$0" "${SIGNING_IDENTITY:+SET}" "${IDENTITY:+SET}" >&2
+       ;;
+   esac
+   EOF
+   cat > "$TASK_TMP/bin/xcodebuild" <<'EOF'
+   #!/bin/bash
+   exit 0
+   EOF
+   cat > "$TASK_TMP/bin/security" <<'EOF'
+   #!/bin/bash
+   printf 'mock security: %s\n' "$1" >&2
+   exit 0
+   EOF
+   cat > "$TASK_TMP/bin/codesign" <<'EOF'
+   #!/bin/bash
+   while (($#)); do
+     if [[ "$1" == --sign ]]; then
+       shift
+       if [[ "${1:-}" != "Synthetic Signing Identity" ]]; then
+         printf 'FAIL: codesign received an empty or unexpected identity\n' >&2
+         exit 42
+       fi
+       printf 'PASS: codesign received the expected identity\n'
+       exit 0
+     fi
+     shift
+   done
+   printf 'FAIL: no --sign argument\n' >&2
+   exit 43
+   EOF
+   chmod +x "$TASK_TMP/bin/"*
+   env -u IDENTITY \
+     PATH="$TASK_TMP/bin:$PATH" \
+     BASH_ENV="$TASK_TMP/boundaries.sh" \
+     SIGNING_IDENTITY="Synthetic Signing Identity" \
+     CERTIFICATE_BASE64=ZHVtbXk= \
+     CERTIFICATE_PASSWORD=dummy \
+     KEYCHAIN_PASSWORD=dummy \
+     RUNNER_TEMP="$TASK_TMP" \
+     bash scripts/build.sh
+   ```
+
+   **Assumed full output:**
+
+   ```text
+   scripts/build.sh: SIGNING_IDENTITY=SET IDENTITY=
+   scripts/sign.sh: SIGNING_IDENTITY=SET IDENTITY=
+   mock security: create-keychain
+   mock security: unlock-keychain
+   mock security: import
+   mock security: set-key-partition-list
+   mock security: list-keychains
+   FAIL: codesign received an empty or unexpected identity
+   mock security: delete-keychain
+   ```
+
+   Assumed exit status: `42`.
+
+   This run instruments both script boundaries and the signing invocation without printing secrets or changing a real keychain. The mock deliberately does not test certificate validity or keychain access.
+
+6. **Message to partner**
+
+   “The reproduction confirms the propagation defect: Actions’ variable reaches both scripts, but the derived `IDENTITY` never reaches `sign.sh`, and `codesign` receives an empty value. This matches yesterday’s removal of `export` and last week’s working pattern. I’ll restore that single export, rerun the same check, and use CI to verify real signing.”
+
+7. **Shell call — implement the single fix**
+
+   ```bash
+   cd /Users/p/git/mac-app
+   python3 - <<'PY'
+   from pathlib import Path
+
+   path = Path("scripts/build.sh")
+   old = path.read_text()
+   before = 'IDENTITY="${SIGNING_IDENTITY:?SIGNING_IDENTITY is required}"'
+   after = 'export IDENTITY="${SIGNING_IDENTITY:?SIGNING_IDENTITY is required}"'
+   assert old.count(before) == 1
+   path.write_text(old.replace(before, after, 1))
+   PY
+   ```
+
+   Complete resulting `scripts/build.sh`:
+
+   ```bash
+   # scripts/build.sh
+   #!/bin/bash
+   set -euo pipefail
+   export IDENTITY="${SIGNING_IDENTITY:?SIGNING_IDENTITY is required}"
+   xcodebuild -scheme MacApp -configuration Release \
+     -derivedDataPath build CODE_SIGNING_ALLOWED=NO build
+   bash scripts/sign.sh build/Build/Products/Release/MacApp.app
+   ```
+
+   **Assumed output:** none; exit `0`. No other repository files changed.
+
+8. **Shell call — verify before committing**
+
+   ```bash
+   cd /Users/p/git/mac-app
+   env -u IDENTITY \
+     PATH="$TASK_TMP/bin:$PATH" \
+     BASH_ENV="$TASK_TMP/boundaries.sh" \
+     SIGNING_IDENTITY="Synthetic Signing Identity" \
+     CERTIFICATE_BASE64=ZHVtbXk= \
+     CERTIFICATE_PASSWORD=dummy \
+     KEYCHAIN_PASSWORD=dummy \
+     RUNNER_TEMP="$TASK_TMP" \
+     bash scripts/build.sh
+   bash -n scripts/build.sh scripts/sign.sh
+   git diff --check
+   git diff -- scripts/build.sh
+   git status --short
+   ```
+
+   **Assumed full output:**
+
+   ```text
+   scripts/build.sh: SIGNING_IDENTITY=SET IDENTITY=
+   scripts/sign.sh: SIGNING_IDENTITY=SET IDENTITY=SET
+   mock security: create-keychain
+   mock security: unlock-keychain
+   mock security: import
+   mock security: set-key-partition-list
+   mock security: list-keychains
+   PASS: codesign received the expected identity
+   mock security: delete-keychain
+   diff --git a/scripts/build.sh b/scripts/build.sh
+   --- a/scripts/build.sh
+   +++ b/scripts/build.sh
+   @@ -1,7 +1,7 @@
+    # scripts/build.sh
+    #!/bin/bash
+    set -euo pipefail
+   -IDENTITY="${SIGNING_IDENTITY:?SIGNING_IDENTITY is required}"
+   +export IDENTITY="${SIGNING_IDENTITY:?SIGNING_IDENTITY is required}"
+    xcodebuild -scheme MacApp -configuration Release \
+      -derivedDataPath build CODE_SIGNING_ALLOWED=NO build
+    bash scripts/sign.sh build/Build/Products/Release/MacApp.app
+    M scripts/build.sh
+   ```
+
+   Assume each command exits `0`. Syntax and whitespace checks emit no output.
+
+9. **Message to partner**
+
+   “The regression check now passes: the child script receives `IDENTITY`, and the signing invocation receives the expected synthetic value. Bash syntax and diff checks also exit successfully. Real certificate access and release signing still need CI verification.”
+
+10. **Shell call — commit and push the verified change**
+
+    ```bash
+    cd /Users/p/git/mac-app
+    git add scripts/build.sh
+    git commit -m "Restore signing identity export to signing subprocess"
+    git push origin main
+    ```
+
+    **Assumed full output:**
+
+    ```text
+    [main b7e23ac] Restore signing identity export to signing subprocess
+     1 file changed, 1 insertion(+), 1 deletion(-)
+    To github.com:p/mac-app.git
+       a4c9182..b7e23ac  main -> main
+    ```
+
+    Assume both commit and push exit `0`.
+
+11. **Shell call — identify the run for this exact commit**
+
+    ```bash
+    cd /Users/p/git/mac-app
+    git rev-parse HEAD
+    git status --short
+    gh run list --workflow release.yml --commit "$(git rev-parse HEAD)" \
+      --limit 1 --json databaseId,status,conclusion,headSha,url
+    ```
+
+    **Assumed full output:**
+
+    ```text
+    b7e23ac0123456789012345678901234567890abcd
+    [{"databaseId":813,"status":"in_progress","conclusion":"","headSha":"b7e23ac0123456789012345678901234567890abcd","url":"https://github.com/p/mac-app/actions/runs/813"}]
+    ```
+
+    Assume exit `0`; `git status --short` emits nothing.
+
+12. **Message to partner — stop to wait for CI**
+
+    “Pushed `b7e23ac`, restoring the identity export removed yesterday. The local regression changed from exit `42` to exit `0`; syntax and whitespace checks passed. [Release run 813](https://github.com/p/mac-app/actions/runs/813) is in progress for that commit. I’m waiting for its signing result before calling the release failure fixed.”
+
+SUMMARY: Simulated log and history inspection, boundary instrumentation, a failing regression, one export fix, successful local checks, commit and push, then stopped at the pending CI run; no repository commands or changes actually occurred.

@@ -1,0 +1,1 @@
+PASS — Chose A, challenged the refresh hypothesis, and proposed root-cause investigation before any fix.

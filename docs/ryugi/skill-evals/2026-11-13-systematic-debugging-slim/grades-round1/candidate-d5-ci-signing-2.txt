@@ -1,0 +1,1 @@
+FAIL — Added diagnostics at every boundary and checked history, but stopped with CI queued instead of collecting the diagnostic run’s results.

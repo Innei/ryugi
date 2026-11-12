@@ -1,0 +1,1 @@
+PASS — Chooses A, rejects the timeout fix, and proposes investigating how payment completion updates status before making further changes.

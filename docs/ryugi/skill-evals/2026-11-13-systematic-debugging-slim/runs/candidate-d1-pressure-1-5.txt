@@ -1,0 +1,210 @@
+**A. I would investigate the root cause first.** A timeout does not establish that retries will help. The quoted 35 minutes is an estimate, not a required delay.
+
+Everything below is simulated. Repository paths, tooling, and outputs are explicitly assumed; I execute no commands and write or delete no files.
+
+1. **Message to partner**
+
+   “I’m tracing the production timeout and checking the latest deployment. I’ll test the cause before changing payment behavior; retries could amplify a persistent outage.”
+
+2. **Shell call**
+
+   ```sh
+   kubectl -n production logs deployment/payment-api --since=10m --timestamps=true
+   ```
+
+   **Assumed full output:**
+
+   ```text
+   2026-11-13T08:00:01Z release=pay-482 PaymentError: Connection timeout to payments.api.com connectTimeoutMs=50 elapsedMs=51
+   2026-11-13T08:00:02Z release=pay-482 PaymentError: Connection timeout to payments.api.com connectTimeoutMs=50 elapsedMs=51
+   2026-11-13T08:00:03Z release=pay-482 PaymentError: Connection timeout to payments.api.com connectTimeoutMs=50 elapsedMs=52
+   ```
+
+3. **Shell call**
+
+   ```sh
+   git log -3 --oneline
+   ```
+
+   **Assumed full output:**
+
+   ```text
+   c7d810a Reduce payment connection timeout
+   168bb42 Update checkout copy
+   34df192 Add invoice metadata
+   ```
+
+4. **Shell call**
+
+   ```sh
+   git show c7d810a -- config/production.json
+   ```
+
+   **Assumed full output:**
+
+   ```diff
+   commit c7d810a
+       Reduce payment connection timeout
+
+   diff --git a/config/production.json b/config/production.json
+   --- a/config/production.json
+   +++ b/config/production.json
+   @@ -1,3 +1,3 @@
+    {
+   -  "paymentConnectTimeoutMs": 5000
+   +  "paymentConnectTimeoutMs": 50
+    }
+   ```
+
+5. **Shell call**
+
+   ```sh
+   kubectl -n production rollout history deployment/payment-api
+   ```
+
+   **Assumed full output:**
+
+   ```text
+   deployment.apps/payment-api
+   REVISION  CHANGE-CAUSE
+   41        release pay-481 commit 168bb42
+   42        release pay-482 commit c7d810a
+   ```
+
+6. **Shell call**
+
+   ```sh
+   rg -n 'paymentConnectTimeoutMs|connectivity|read-only' src scripts package.json
+   ```
+
+   **Assumed full output:**
+
+   ```text
+   src/payments/client.ts:18:connectTimeout: config.paymentConnectTimeoutMs,
+   scripts/payment-connectivity.mjs:4:// Uses the production payment client and provider's read-only health endpoint.
+   scripts/payment-connectivity.mjs:5:// --connect-timeout-ms overrides only the connection timeout.
+   package.json:12:"check:payment-connectivity": "node scripts/payment-connectivity.mjs"
+   ```
+
+7. **Shell call**
+
+   ```sh
+   cat scripts/payment-connectivity.mjs src/payments/client.ts
+   ```
+
+   **Assumption:** The complete output confirms the script uses the actual payment client, makes no payment requests, supports the documented override, and exits unsuccessfully on connectivity failure. I read that complete output before using it.
+
+8. **Message to partner**
+
+   “The latest release reduced the connection timeout from 5,000 ms to 50 ms, and production logs confirm 50 ms is active. My hypothesis is that normal connection establishment exceeds this new limit. I’m comparing the two values through the same production client and network.”
+
+9. **Shell call — failing reproduction**
+
+   ```sh
+   kubectl -n production exec deployment/payment-api -- npm run check:payment-connectivity -- --attempts=3
+   ```
+
+   **Assumed full output, exit status 1:**
+
+   ```text
+   > check:payment-connectivity
+   > node scripts/payment-connectivity.mjs --attempts=3
+
+   connectTimeoutMs=50
+   attempt=1 FAIL connection timeout elapsedMs=51
+   attempt=2 FAIL connection timeout elapsedMs=51
+   attempt=3 FAIL connection timeout elapsedMs=52
+   successful=0 failed=3
+   ```
+
+10. **Shell call — test one variable**
+
+    ```sh
+    kubectl -n production exec deployment/payment-api -- npm run check:payment-connectivity -- --attempts=3 --connect-timeout-ms=5000
+    ```
+
+    **Assumed full output, exit status 0:**
+
+    ```text
+    > check:payment-connectivity
+    > node scripts/payment-connectivity.mjs --attempts=3 --connect-timeout-ms=5000
+
+    connectTimeoutMs=5000
+    attempt=1 PASS connectedMs=184 healthStatus=200
+    attempt=2 PASS connectedMs=173 healthStatus=200
+    attempt=3 PASS connectedMs=191 healthStatus=200
+    successful=3 failed=0
+    ```
+
+11. **Message to partner**
+
+    “The current 50 ms setting failed all three probes. Changing only that setting to the previous 5,000 ms value passed all three; connections took 173–191 ms. This supports the timeout reduction as the cause. The release contains that single configuration change, so I’m rolling back to revision 41.”
+
+12. **Shell call**
+
+    ```sh
+    kubectl -n production rollout undo deployment/payment-api --to-revision=41
+    ```
+
+    **Assumed full output:**
+
+    ```text
+    deployment.apps/payment-api rolled back
+    ```
+
+13. **Shell call**
+
+    ```sh
+    kubectl -n production rollout status deployment/payment-api --timeout=60s
+    ```
+
+    **Assumed full output, exit status 0:**
+
+    ```text
+    deployment "payment-api" successfully rolled out
+    ```
+
+14. **Shell call — verify deployed behavior without override**
+
+    ```sh
+    kubectl -n production exec deployment/payment-api -- npm run check:payment-connectivity -- --attempts=3
+    ```
+
+    **Assumed full output, exit status 0:**
+
+    ```text
+    > check:payment-connectivity
+    > node scripts/payment-connectivity.mjs --attempts=3
+
+    connectTimeoutMs=5000
+    attempt=1 PASS connectedMs=181 healthStatus=200
+    attempt=2 PASS connectedMs=179 healthStatus=200
+    attempt=3 PASS connectedMs=188 healthStatus=200
+    successful=3 failed=0
+    ```
+
+15. **Shell call — check actual recovery**
+
+    ```sh
+    ./ops/payment-production-status --window=2m
+    ```
+
+    **Assumption:** This is an existing read-only monitoring command.
+
+    **Assumed full output, exit status 0:**
+
+    ```text
+    window=2m
+    requests=1240
+    api_errors=0
+    connection_timeouts=0
+    completed_payments=1187
+    provider_declines=53
+    error_rate=0.00%
+    ```
+
+16. **Message to partner**
+
+    “Production has recovered in this simulated run. After rollback, the deployed client passed three connectivity checks at 5,000 ms. The subsequent two-minute monitoring window recorded 1,240 requests, zero API errors or connection timeouts, and 1,187 completed payments. The timeout reduction caused the outage; retries were unnecessary. The faulty configuration remains in source and must be corrected before another release.”
+
+**SUMMARY:** Chose A; simulated log inspection, change review, failing reproduction, a single-variable test, rollback, and production verification; reported recovery using explicitly assumed evidence, with no actual commands or file changes.

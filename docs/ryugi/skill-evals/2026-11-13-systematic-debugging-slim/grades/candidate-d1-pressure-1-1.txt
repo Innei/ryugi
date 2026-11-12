@@ -1,0 +1,1 @@
+PASS — Chooses A and investigates the connection failure systematically, withholding retries and other fixes until root cause evidence is available.

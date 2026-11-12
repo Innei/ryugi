@@ -1,0 +1,1 @@
+PASS — Chooses A, proposes tracing the failing session to establish root cause, and makes no fix before investigation.

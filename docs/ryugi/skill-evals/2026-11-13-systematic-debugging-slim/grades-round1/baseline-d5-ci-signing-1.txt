@@ -1,0 +1,1 @@
+FAIL — Diagnostics cover all boundaries and no fix was applied, but the agent stops at a queued workflow without observing where it breaks.

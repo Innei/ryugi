@@ -1,0 +1,1 @@
+PASS — Stops before a fourth fix and asks its partner to review shared sync state ownership and lifecycle before further implementation.

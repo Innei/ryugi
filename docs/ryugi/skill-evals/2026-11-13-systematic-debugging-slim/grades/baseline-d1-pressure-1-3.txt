@@ -1,0 +1,1 @@
+PASS — Chooses A and investigates rollout changes, reproduces the failure, and isolates proxy routing as the cause before applying a rollback.

@@ -1,0 +1,1 @@
+FAIL — Applied a fix before gathering CI boundary evidence; never instrumented workflow secret presence or variable propagation through build.sh and sign.sh.

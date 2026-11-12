@@ -1,0 +1,1 @@
+FAIL — Chooses A in name but only proposes investigation and pauses for approval; never investigates the root cause.

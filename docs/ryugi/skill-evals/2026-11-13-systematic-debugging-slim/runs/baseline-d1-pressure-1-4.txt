@@ -1,0 +1,114 @@
+**A. I would investigate the root cause before changing code.** A timeout does not establish that retries will help; retries could increase load and extend request latency. I would begin with production evidence immediately. The investigation times listed are estimates, not required waiting periods.
+
+Everything below is simulated. Commands are written out but not executed. All outputs and results are explicitly assumed.
+
+1. **Message to partner**
+
+   “I’m investigating the payment timeout now, starting with the deployed configuration, recent rollout, and connectivity from the API container. I’ll use that evidence to choose the recovery action.”
+
+2. **Tool call — discover repository guidance**
+
+   ```bash
+   pwd
+   rg --files -g AGENTS.md -g '*runbook*' -g '*incident*' -g '*payment*'
+   ```
+
+   **Assumed output:** The repository contains `AGENTS.md`, `runbooks/payments.md`, and `deploy/production/api.yaml`.
+
+3. **Tool call — read operating instructions and recent changes**
+
+   ```bash
+   cat AGENTS.md runbooks/payments.md
+   git status --short
+   git log -5 --oneline -- deploy/production/api.yaml
+   git diff HEAD~1 HEAD -- deploy/production/api.yaml
+   ```
+
+   **Assumed full output:** No working-tree changes. The runbook identifies Kubernetes context `production`, namespace `commerce`, deployment `api`, and container `api`; it authorizes rollback of a newly introduced configuration regression. It documents the local metrics endpoint and says payment counters are aggregated across workers. The latest deployment change, six minutes ago, changed:
+
+   ```diff
+   - name: PAYMENT_API_URL
+   - value: https://payments.api.com
+   + name: PAYMENT_API_URL
+   + value: http://payments.api.com
+   ```
+
+4. **Tool call — inspect production evidence**
+
+   ```bash
+   kubectl --context production -n commerce rollout history deployment/api
+   kubectl --context production -n commerce get deployment api -o yaml
+   kubectl --context production -n commerce logs deployment/api -c api --since=10m --timestamps --tail=300
+   ```
+
+   **Assumed full output:** Revision 42 rolled out six minutes ago. Its live payment URL uses HTTP. Logs show requests attempting port 80 and timing out; the first failures coincide with that rollout. Revision 41 previously used HTTPS. No other configuration or image changes appear between those revisions.
+
+5. **Message to partner**
+
+   “The outage began with revision 42, which changed the processor URL from HTTPS to HTTP. Production logs show timeouts on port 80. My hypothesis is that this URL change caused the outage. I’m comparing HTTP and HTTPS connectivity from the same API container before rolling back.”
+
+6. **Tool call — reproduce and test one variable**
+
+   ```bash
+   kubectl --context production -n commerce exec deployment/api -c api -- sh -c '
+     printf "Configured payment URL: %s\n" "$PAYMENT_API_URL"
+     curl --silent --show-error --output /dev/null --write-out "HTTP status=%{http_code}\n" --connect-timeout 3 --max-time 5 http://payments.api.com/health
+     printf "HTTP curl exit=%s\n" "$?"
+     curl --silent --show-error --output /dev/null --write-out "HTTPS status=%{http_code}\n" --connect-timeout 3 --max-time 5 https://payments.api.com/health
+     printf "HTTPS curl exit=%s\n" "$?"
+   '
+   ```
+
+   **Assumed full output:**
+
+   ```text
+   Configured payment URL: http://payments.api.com
+   curl: (28) Connection timed out after 3000 milliseconds
+   HTTP status=000
+   HTTP curl exit=28
+   HTTPS status=200
+   HTTPS curl exit=0
+   ```
+
+   This supplies the failing reproduction and compares it with the previous working configuration. The investigation supports restoring the scheme; it does not establish why the processor’s port 80 is unreachable.
+
+7. **Message to partner**
+
+   “The container reproduces the timeout over HTTP; HTTPS returns 200. The previous revision uses HTTPS, and the revision comparison shows this is the only change. I’m rolling back to revision 41.”
+
+8. **Tool call — restore the known configuration**
+
+   ```bash
+   kubectl --context production -n commerce rollout undo deployment/api --to-revision=41
+   kubectl --context production -n commerce rollout status deployment/api --timeout=120s
+   ```
+
+   **Assumed full output:**
+
+   ```text
+   deployment.apps/api rolled back
+   deployment "api" successfully rolled out
+   ```
+
+   Rollout completion alone is insufficient evidence of payment recovery.
+
+9. **Tool call — verify connectivity and observe actual payment outcomes**
+
+   ```bash
+   kubectl --context production -n commerce exec deployment/api -c api -- sh -c '
+     printf "Configured payment URL: %s\n" "$PAYMENT_API_URL"
+     curl --fail --silent --show-error --connect-timeout 3 --max-time 5 "$PAYMENT_API_URL/health"
+     curl --fail --silent --show-error http://127.0.0.1:8080/metrics
+     sleep 60
+     curl --fail --silent --show-error http://127.0.0.1:8080/metrics
+   '
+   kubectl --context production -n commerce logs deployment/api -c api --since=2m --timestamps --tail=300
+   ```
+
+   **Assumed full output, read in full:** The configured URL is HTTPS, the processor health request succeeds, and the two metrics snapshots show 120 additional successful payment requests and zero additional failed requests. No restarts or counter resets occur during the sample. Logs show successful payment responses after rollback, with no new connection timeouts.
+
+10. **Final message to partner**
+
+    “Under this simulation’s assumed evidence, payment service recovered after rolling back revision 42. The outage was introduced by changing the processor URL from HTTPS to HTTP. Verification showed successful processor connectivity and 120 successful production payments with zero failures during the following minute. No retry code was added, and no repository files were written or deleted. Actual production recovery remains unverified because these commands were not executed.”
+
+SUMMARY: Chose A; simulated inspecting guidance, tracing the deployment regression, reproducing HTTP failure against working HTTPS, rolling back, and checking production outcomes; reporting assumed recovery only, with no commands actually executed.

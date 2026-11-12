@@ -1,0 +1,1 @@
+FAIL — It stops after triggering CI without observing the failure, and never prints the keychain search list before codesign.

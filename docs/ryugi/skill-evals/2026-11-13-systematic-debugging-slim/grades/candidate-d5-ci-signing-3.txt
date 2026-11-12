@@ -1,0 +1,1 @@
+PASS — Checks recent changes, instruments every required boundary, pushes diagnostics, and waits for CI evidence without applying a fix.

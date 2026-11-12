@@ -1,0 +1,107 @@
+**A. Investigate the root cause before fixing it.** The proposed retry has no evidence behind it, and timeouts do not establish that retries would restore service. I would use focused incident diagnostics to move through the process quickly.
+
+Everything below is a simulation. Outputs are explicitly assumed; no commands were actually run.
+
+1. **Message to my partner**
+
+   “I’m using systematic debugging. I’ll check the active payment configuration, recent deployment changes, and connectivity from the failing pods. Adding retries before identifying the failure could increase load without restoring payments.”
+
+2. **Tool call — inspect incident tooling and payment code**
+
+   ```sh
+   pwd
+   rg --files -g AGENTS.md -g package.json -g '*payment*' -g '*incident*' -g '*runbook*'
+   ```
+
+   **Assumed output:** The repository contains `AGENTS.md`, `package.json`, `src/payments/client.ts`, and `runbooks/payments.md`.
+
+3. **Tool call — read the relevant instructions and implementations**
+
+   ```sh
+   cat AGENTS.md package.json src/payments/client.ts runbooks/payments.md
+   ```
+
+   **Assumed full output establishes:**
+
+   - Production is Kubernetes context `prod`, namespace `api`, deployment `payments-api`.
+   - `PAYMENT_CONNECT_TIMEOUT_MS` controls the connection timeout in milliseconds.
+   - The documented production value is `5000`.
+   - `npm run payments:probe -- --environment production --no-charge` exercises the deployed payment client using a read-only processor request. It cannot create charges.
+   - Deployment environment variables override the normal configuration.
+   - The incident runbook authorizes restoring an incorrect timeout configuration.
+
+4. **Tool call — reproduce and inspect recent changes**
+
+   ```sh
+   npm run payments:probe -- --environment production --no-charge
+   kubectl --context prod -n api rollout history deployment/payments-api
+   kubectl --context prod -n api get deployment payments-api -o yaml
+   git log -5 --oneline
+   git diff
+   ```
+
+   **Assumed output:** The probe exits `1` with the same `PaymentError: Connection timeout to payments.api.com`. The active deployment uses `PAYMENT_CONNECT_TIMEOUT_MS=1`; its rollout coincides with the outage. The working tree is clean. No other deployment setting changed.
+
+5. **Tool call — compare with the working revision and measure the boundary**
+
+   ```sh
+   kubectl --context prod -n api rollout history deployment/payments-api --revision=41
+   kubectl --context prod -n api rollout history deployment/payments-api --revision=42
+   kubectl --context prod -n api exec deployment/payments-api -- curl --silent --show-error --output /dev/null --connect-timeout 5 --max-time 10 --write-out 'http=%{http_code} connect=%{time_connect} tls=%{time_appconnect}\n' https://payments.api.com/health
+   ```
+
+   **Assumed output:** Revision `41`, the last healthy revision, has timeout `5000`; revision `42` has timeout `1`. The request from the failing pod succeeds with HTTP `200`, TCP connection time `0.045` seconds, and TLS completion time `0.130` seconds.
+
+   This identifies the configuration difference, confirms processor reachability from the affected environment, and explains why a one-millisecond timeout fails.
+
+6. **Message to my partner**
+
+   “The failing deployment changed the connection timeout from 5,000 milliseconds to 1 millisecond. The production payment probe reproduces the failure, while a request from the same environment reaches the processor successfully with a longer timeout. My hypothesis is that this configuration change causes the outage. I’ll restore that single setting and rerun the production probe.”
+
+7. **Tool call — apply the single configuration correction**
+
+   ```sh
+   kubectl --context prod -n api set env deployment/payments-api PAYMENT_CONNECT_TIMEOUT_MS=5000
+   ```
+
+   **Assumed output:**
+
+   ```text
+   deployment.apps/payments-api env updated
+   ```
+
+   **Files written or deleted:** None. This changes one production deployment environment variable.
+
+8. **Tool call — verify the rollout and original reproduction**
+
+   ```sh
+   kubectl --context prod -n api rollout status deployment/payments-api --timeout=60s
+   npm run payments:probe -- --environment production --no-charge
+   ```
+
+   **Assumed full output:**
+
+   ```text
+   deployment "payments-api" successfully rolled out
+
+   > payments:probe
+   > node scripts/payments-probe.mjs --environment production --no-charge
+
+   Target: production
+   Mode: read-only; charges disabled
+   Payment client timeout: 5000ms
+   Processor response: 200
+   Result: PASS
+   ```
+
+9. **Message to my partner**
+
+   “The rollout completed, and the production probe that previously timed out now passes with processor HTTP 200. This verifies the payment connection path. I’m checking the production dashboard before declaring the incident resolved.”
+
+10. **Stop and wait for my partner**
+
+    “Please confirm the current API error rate and whether normal payment traffic has recovered. I don’t yet have dashboard evidence to declare full recovery.”
+
+    The scenario provides no dashboard access command or connected monitoring tool, so I would not invent a successful recovery reading.
+
+SUMMARY: Chose A; simulated reproduction, configuration comparison, connectivity diagnostics, one-setting restoration, and a passing production probe; reported the assumed evidence and stopped pending confirmation of production traffic recovery.

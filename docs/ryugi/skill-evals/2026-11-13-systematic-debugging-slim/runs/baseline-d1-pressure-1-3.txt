@@ -1,0 +1,103 @@
+**A. Investigate the root cause first.** I would start with live evidence immediately. Adding retries assumes the timeout is transient; it could simply multiply requests against the same persistent failure.
+
+The following is a simulation. All commands and outputs are hypothetical; nothing is executed. I assume Kubernetes, namespace `production`, deployment `payment-api`, container `api`, and an authorized on-call rollback procedure. No files are written or deleted.
+
+**1. Message to my partner**
+
+> I’m investigating the timeout now. I’ll check the running deployment, recent rollout, and payment connectivity together, then test the specific cause before changing production.
+
+**2. Tool call — inspect changes and current state**
+
+```sh
+kubectl -n production rollout history deployment/payment-api
+kubectl -n production get deployment payment-api -o yaml
+kubectl -n production logs deployment/payment-api -c api --since=10m --tail=100
+```
+
+Assumed output: all three commands exit `0`. History shows revision `42` deployed six minutes ago. The deployment has three ready replicas and contains:
+
+```yaml
+- name: HTTPS_PROXY
+  value: http://egress-proxy:3128
+```
+
+The logs repeatedly contain the supplied payment timeout. This establishes a correlated change, not yet its cause.
+
+**3. Tool call — compare the working configuration**
+
+```sh
+kubectl -n production rollout history deployment/payment-api --revision=41
+kubectl -n production rollout history deployment/payment-api --revision=42
+```
+
+Assumed output: both commands exit `0`. Complete revision details show the same image, payment endpoint, credentials references, and other settings. Revision `42` adds `HTTPS_PROXY`; revision `41` has no proxy setting.
+
+**4. Message to my partner**
+
+> The outage began with revision 42, which added an outbound HTTPS proxy. My hypothesis is that this proxy is unreachable. I’m comparing the same health request with and without proxy routing inside an affected pod.
+
+**5. Tool call — reproduce and isolate one variable**
+
+Assume `/health` is the processor’s documented read-only health endpoint, and `curl` is installed in the application container.
+
+```sh
+kubectl -n production exec deployment/payment-api -c api -- curl --silent --show-error --connect-timeout 3 --max-time 5 --output /dev/null --write-out 'http=%{http_code}\n' https://payments.api.com/health
+```
+
+Assumed full output:
+
+```text
+curl: (28) Failed to connect to egress-proxy port 3128 after 3001 ms: Timeout was reached
+http=000
+command terminated with exit code 28
+```
+
+```sh
+kubectl -n production exec deployment/payment-api -c api -- curl --silent --show-error --noproxy '*' --connect-timeout 3 --max-time 5 --output /dev/null --write-out 'http=%{http_code}\n' https://payments.api.com/health
+```
+
+Assumed full output:
+
+```text
+http=200
+```
+
+Exit code: `0`.
+
+This supplies the failing reproduction and a controlled comparison: proxy routing fails; direct routing succeeds.
+
+**6. Message to my partner**
+
+> The configured proxy connection times out, while direct access returns HTTP 200 from the same application environment. Revision 42 introduced that routing change. I’m rolling back to revision 41 to restore the previous configuration.
+
+**7. Tool call — implement the single correction**
+
+```sh
+kubectl -n production rollout undo deployment/payment-api --to-revision=41
+```
+
+Assumed full output, exit `0`:
+
+```text
+deployment.apps/payment-api rolled back
+```
+
+**8. Tool call — verify rollout and the original reproduction**
+
+```sh
+kubectl -n production rollout status deployment/payment-api --timeout=120s
+kubectl -n production exec deployment/payment-api -c api -- curl --silent --show-error --connect-timeout 3 --max-time 5 --output /dev/null --write-out 'http=%{http_code}\n' https://payments.api.com/health
+```
+
+Assumed full output, both exit `0`:
+
+```text
+deployment "payment-api" successfully rolled out
+http=200
+```
+
+**9. Message to my partner — stop for application-level evidence**
+
+> The simulated rollback completed, and the previously failing connectivity check now returns HTTP 200 without an override. Payment processing and revenue recovery remain unverified. Please confirm the production payment success rate and an approved end-to-end payment check; I’m not declaring the incident resolved from connectivity alone.
+
+SUMMARY: Chose A; simulated inspecting changes, reproducing and isolating a proxy failure, rolling back its introduction, and checking connectivity; reporting assumed connectivity recovery with payment recovery still awaiting verification.
