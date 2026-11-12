@@ -1,5 +1,9 @@
 <p align="center">
-  <img src="assets/logo/ryugi-mark.svg" width="112" alt="Ryugi">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/logo/ryugi-wordmark-dark.svg">
+    <source media="(prefers-color-scheme: light)" srcset="assets/logo/ryugi-wordmark-light.svg">
+    <img src="assets/logo/ryugi-wordmark-light.svg" width="240" alt="Ryugi">
+  </picture>
 </p>
 
 <h1 align="center">Ryugi 流儀</h1>
