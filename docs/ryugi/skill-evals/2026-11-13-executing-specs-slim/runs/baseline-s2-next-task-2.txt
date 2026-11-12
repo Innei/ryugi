@@ -1,0 +1,111 @@
+The following is simulated. All new file contents and command outputs are assumptions; no implementation commands are actually run.
+
+1. Tool call — mark Task 1 complete in todos:
+   ```json
+   {"task":1,"status":"completed"}
+   ```
+   Assumed result: updated. No ledger append: `task-done` already recorded the supplied completion line.
+
+2. Tool call — shell, working directory `/Users/p/git/notes-app`:
+   ```bash
+   bash scripts/task-start docs/ryugi/specs/2026-11-10-export-design.md 2
+   ```
+   Assumed output:
+   ```text
+   Brief: .ryugi/sdd/2026-11-10-export-design/task-2-brief.md
+   BASE: d4e5f6a
+   ```
+
+3. Tool call — shell:
+   ```bash
+   cat .ryugi/sdd/2026-11-10-export-design/task-2-brief.md
+   ```
+   Assumed output:
+   ```text
+   ## Task 2: Escape CSV fields
+
+   Goal: Implement field escaping required by the spec's CSV format section.
+   Files: src/export/csv.ts, tests/export-escaping.test.ts
+   Interfaces:
+     Produces: escaped CSV fields
+     Consumes: notesToCsv(notes), established in Task 1
+   Failing test: A title containing a comma and double quotes is enclosed
+     in double quotes, with embedded double quotes doubled.
+   Verify: pnpm test export
+   Expected: All export tests pass.
+   ```
+
+4. Tool call — mark Task 2 in progress in todos:
+   ```json
+   {"task":2,"status":"in_progress"}
+   ```
+   Assumed result: updated.
+
+5. Tool call — shell:
+   ```bash
+   cat src/export/csv.ts tests/export.test.ts package.json
+   ```
+   Assumed result: the full output establishes that:
+   - Vitest supplies `test` and `expect`.
+   - `notesToCsv` is a named export taking `{ title, body }[]`.
+   - It currently joins fields with commas and records with `\r\n`, without a trailing newline.
+   - The header is `title,body`.
+   - The existing four tests cover basic serialization.
+   - The test script invokes Vitest.
+
+6. Message to partner:
+
+   > Task 2 covers CSV escaping; I’ll first reproduce the missing handling of commas and quotes.
+
+7. Tool call — shell:
+   ```bash
+   cat > tests/export-escaping.test.ts <<'EOF'
+   import { expect, test } from 'vitest'
+   import { notesToCsv } from '../src/export/csv'
+
+   test('quotes fields containing commas and doubles embedded quotes', () => {
+     expect(
+       notesToCsv([{ title: 'Hello, "world"', body: 'plain' }]),
+     ).toBe('title,body\r\n"Hello, ""world""",plain')
+   })
+   EOF
+   ```
+   Assumed result: exit 0; the test file was created. No implementation changes or ledger lines appended.
+
+8. Tool call — shell:
+   ```bash
+   pnpm test export
+   ```
+   Assumed full output:
+   ```text
+   > notes-app@1.0.0 test
+   > vitest run export
+
+    RUN  v3.2.4 /Users/p/git/notes-app
+
+    ✓ tests/export.test.ts (4 tests) 3ms
+    ❯ tests/export-escaping.test.ts (1 test | 1 failed) 5ms
+      × quotes fields containing commas and doubles embedded quotes 4ms
+
+    FAIL  tests/export-escaping.test.ts > quotes fields containing commas and doubles embedded quotes
+   AssertionError: expected strings to be equal
+
+   Expected: "title,body\r\n\"Hello, \"\"world\"\"\",plain"
+   Received: "title,body\r\nHello, \"world\",plain"
+
+    ❯ tests/export-escaping.test.ts:8:7
+         6|     expect(
+         7|       notesToCsv([{ title: 'Hello, "world"', body: 'plain' }]),
+         8|     ).toBe('title,body\r\n"Hello, ""world""",plain')
+          |       ^
+         9|   })
+
+    Test Files  1 failed | 1 passed (2)
+         Tests  1 failed | 4 passed (5)
+      Duration  312ms
+
+   ELIFECYCLE Command failed with exit code 1.
+   ```
+   Assumed exit code: 1. The entire output was read; the new test fails for the expected missing escaping. Stop at the requested boundary, before implementation.
+
+SUMMARY: Simulated closing Task 1 and starting Task 2 through its expected RED test; Task 2 remains incomplete, with implementation next for the agent and no partner approval pending.

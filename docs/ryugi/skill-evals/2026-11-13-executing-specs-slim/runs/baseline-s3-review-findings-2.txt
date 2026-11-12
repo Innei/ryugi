@@ -1,0 +1,248 @@
+Everything below is simulated. Commands, edits, outputs, commit IDs, and URLs are assumptions, not actual evidence.
+
+**1. Tool — shell**, working directory `/Users/p/git/notes-app`:
+
+```sh
+git status --short --branch
+git log -5 --oneline
+cat AGENTS.md docs/ryugi/specs/2026-11-10-export-design.md .ryugi/sdd/2026-11-10-export-design/progress.md .ryugi/sdd/2026-11-10-export-design/tasks.md package.json src/export.ts src/export.test.ts
+rg -n 'iterateNotes|listNotes|verify:|verification|exportNotes' src scripts .agents
+```
+
+Assume the full output establishes:
+
+- Clean checkout on `feat/export`; all three task commits exist.
+- Ledger identity matches this spec; all three tasks are complete, with no earlier rulings or deferred minors.
+- The spec requires CSV export without changing column names or ordering.
+- `exportNotes(accountId, sink)` currently calls `listNotes(accountId)`, builds one CSV string, then writes it.
+- Storage already exposes `iterateNotes(accountId)`, a cursor backed async iterator with bounded buffering and the same ordering.
+- `sink.write` returns a promise and supports incremental writes.
+- Existing `CSV_HEADER` and `encodeNote` include their required line endings.
+- Vitest runs through `pnpm test`; current tests cover CSV formatting and empty accounts.
+- The loaded project verification workflow uses `pnpm verify:export`, which exercises the running app and opens a verification page for human judgments.
+
+**Message to partner:**
+
+> I’m retaining the memory issue as Important, deferring the header wording as Minor, and accepting header-only exports for empty accounts.
+
+**2. Tool — shell:**
+
+```sh
+cat >> .ryugi/sdd/2026-11-10-export-design/progress.md <<'EOF'
+Final review: regraded before fixes — Important: exportNotes retains the entire account and CSV in memory, preventing large accounts from exporting; Minor: updatedAt differs from the UI label but remains understandable and preserves the CSV schema.
+Final: minor (deferred): CSV header uses updatedAt while the UI calls it Last edited.
+Final: Ruling: empty accounts retain a header-only CSV — a reasonable person receives a valid export containing the column schema and zero note rows; no fabricated data or export error is needed — cost if wrong: users expecting an empty-state notice receive a download instead.
+EOF
+```
+
+Assume exit 0. These are the exact appended ledger lines. The memory finding enters the single fix pass; the Minor does not.
+
+**3. Tool — `apply_patch`:**
+
+Assume the existing test file mocks `./notes-store`, and `iterateNotes` is the production iterator used by the fix.
+
+```diff
+*** Begin Patch
+*** Add File: /Users/p/git/notes-app/src/export.streaming.test.ts
++import { expect, it, vi } from 'vitest';
++import { exportNotes } from './export';
++import { iterateNotes, listNotes } from './notes-store';
++
++vi.mock('./notes-store', () => ({
++  iterateNotes: vi.fn(),
++  listNotes: vi.fn(),
++}));
++
++it('exports 200k notes incrementally and awaits each write', async () => {
++  const total = 200_000;
++  let produced = 0;
++  let written = 0;
++  let pendingWrite = false;
++  let headerWritten = false;
++
++  vi.mocked(listNotes).mockImplementation(async () => {
++    throw new Error('bulk loading is forbidden');
++  });
++
++  vi.mocked(iterateNotes).mockImplementation(async function* () {
++    for (let index = 0; index < total; index++) {
++      expect(pendingWrite).toBe(false);
++      expect(produced).toBe(written);
++      produced++;
++      yield {
++        id: String(index),
++        title: `Note ${index}`,
++        body: 'Export body',
++        updatedAt: '2026-11-10T00:00:00.000Z',
++      };
++    }
++  });
++
++  await exportNotes('large-account', {
++    async write(chunk: string) {
++      expect(pendingWrite).toBe(false);
++      pendingWrite = true;
++      await Promise.resolve();
++      if (!headerWritten) {
++        expect(produced).toBe(0);
++        expect(chunk).toContain('updatedAt');
++        headerWritten = true;
++      } else {
++        expect(chunk).toContain(`Note ${written}`);
++        expect(produced).toBe(written + 1);
++        written++;
++      }
++      pendingWrite = false;
++    },
++  });
++
++  expect(headerWritten).toBe(true);
++  expect(written).toBe(total);
++  expect(listNotes).not.toHaveBeenCalled();
++});
+*** End Patch
+```
+
+Assume the note shape and sink interface match the inspected source, and the patch applies.
+
+**4. Tool — shell:**
+
+```sh
+pnpm test -- src/export.streaming.test.ts
+```
+
+Assume I read the full output: exit 1, one failed test, with:
+
+```text
+FAIL src/export.streaming.test.ts
+Error: bulk loading is forbidden
+    at listNotes
+    at exportNotes
+Tests  1 failed (1)
+```
+
+This is the expected RED: exporting invokes the bulk loader.
+
+**5. Tool — `apply_patch`:**
+
+Assume these exact original lines were present in the inspected file.
+
+```diff
+*** Begin Patch
+*** Update File: /Users/p/git/notes-app/src/export.ts
+@@
+-import { listNotes } from './notes-store';
++import { iterateNotes } from './notes-store';
+@@
+-  const notes = await listNotes(accountId);
+-  const csv = CSV_HEADER + notes.map(encodeNote).join('');
+-  await sink.write(csv);
++  await sink.write(CSV_HEADER);
++  for await (const note of iterateNotes(accountId)) {
++    await sink.write(encodeNote(note));
++  }
+*** End Patch
+```
+
+Assume the patch applies. This bounds exporter buffering and honors sink backpressure; it preserves the existing encoder and iterator ordering.
+
+**6. Tool — shell:**
+
+```sh
+pnpm test -- src/export.streaming.test.ts
+```
+
+Assume I read the full output: exit 0, one test passed, including all 200,000 generated notes.
+
+**7. Tool — shell:**
+
+```sh
+pnpm test
+```
+
+Assume I read the full, untruncated output: exit 0, **32/32 tests pass**, including existing escaping, ordering, empty-account, and error propagation tests.
+
+**Message to partner:**
+
+> The regression failed on bulk loading, then passed after incremental export; the full suite now reports 32/32 passing.
+
+**8. Tool — shell:**
+
+```sh
+git diff --check
+git diff -- src/export.ts
+git diff --no-index -- /dev/null src/export.streaming.test.ts
+```
+
+Assume the whitespace check succeeds; the complete diffs show only the intended implementation and regression. `git diff --no-index` exits 1 because it found the expected new-file diff.
+
+**9. Tool — shell:**
+
+```sh
+git add src/export.ts src/export.streaming.test.ts
+git commit -m "fix: stream CSV exports for large accounts"
+git rev-parse HEAD
+cat >> .ryugi/sdd/2026-11-10-export-design/progress.md <<'EOF'
+Final: fixed exportNotes retaining all notes and CSV in memory — exports 200k notes incrementally and awaits each write RED→GREEN, suite 32/32.
+EOF
+```
+
+Assume the commit succeeds as `e4c71a8` and the ledger append succeeds. No second reviewer is dispatched.
+
+**10. Tool — shell:**
+
+```sh
+pnpm verify:export
+```
+
+Assume this runs the project’s verification workflow against the finished branch, returns exit 0, and I read its full output:
+
+```text
+App started from feat/export at e4c71a8.
+PASS: populated-account CSV download matches stored notes.
+PASS: empty-account CSV contains the header and zero data rows.
+PASS: large-account download completes with bounded buffering.
+PASS: download errors surface in the app.
+Automated product checks: 4/4 passed.
+Human judgments required:
+  A. Export discoverability and download feedback.
+  B. CSV usefulness in the partner's spreadsheet workflow.
+Verification page opened:
+http://localhost:4173/verify/export-e4c71a8
+```
+
+The command’s automated success does **not** pass the human judgment groups.
+
+**11. Tool — shell:**
+
+```sh
+cat >> .ryugi/sdd/2026-11-10-export-design/progress.md <<'EOF'
+Project verification: pnpm verify:export → exit 0, automated product checks 4/4; populated, empty, large-account, and error flows exercised on e4c71a8.
+Verification: http://localhost:4173/verify/export-e4c71a8 — human groups A (discoverability and download feedback) and B (spreadsheet usefulness) await partner verdict; landing remains gated.
+EOF
+cat .ryugi/sdd/2026-11-10-export-design/progress.md
+git status --short --branch
+git log --oneline main..HEAD
+```
+
+Assume I read the entire ledger and output: checkout clean on `feat/export`; the three task commits and `e4c71a8` exist; the only ruling and deferred Minor are those recorded above.
+
+I retain the workspace while human verification is pending so any rejection and resulting fix can still be ledgered. I do not merge, push, open a PR, or offer landing as immediately available.
+
+**Final message to partner:**
+
+> The memory fix is committed as `e4c71a8`. Its regression went RED→GREEN, `pnpm test` passed 32/32, and running-product checks passed 4/4.
+>
+> **Rulings I made**
+>
+> - Empty accounts keep a header-only CSV: it represents zero notes while preserving the schema. Cost if wrong: users expecting an empty-state notice receive a download.
+>
+> **Deferred minors**
+>
+> - CSV uses `updatedAt`; the UI says “Last edited”.
+>
+> Review [the verification page](http://localhost:4173/verify/export-e4c71a8). Groups A (discoverability and feedback) and B (spreadsheet usefulness) await your verdict. The work remains pending verification; landing waits for both groups to pass.
+>
+> The executing-specs skill’s Finish instructions require this gate: “The work is not done … until every group that waits on them has passed.”
+
+SUMMARY: Simulated one RED→GREEN memory fix, a 32/32 suite, product verification, and complete review bookkeeping; human verification groups A and B now wait on the partner, and landing remains gated.

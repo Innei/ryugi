@@ -1,0 +1,1 @@
+PASS — Final lists the ruling and its cost, the deferred minor, and all four landing options with squash default; no landing or push occurs.

@@ -1,0 +1,340 @@
+Everything below is simulated. Commands, edits, outputs, commit IDs, and verification links are assumptions; no repository commands are actually executed.
+
+1. **Message to partner**
+
+   “I’ll fix the memory issue in one TDD pass, retain the header wording as a deferred minor, and rule on empty exports before final verification.”
+
+2. **Shell call** — `workdir: /Users/p/git/notes-app`
+
+   ```bash
+   git status --short --branch
+   git log -5 --oneline
+   cat .ryugi/sdd/2026-11-10-export-design/progress.md .ryugi/sdd/2026-11-10-export-design/tasks.md package.json
+   rg --files -g AGENTS.md -g '*export*' -g '*verif*' -g '*SKILL.md'
+   ```
+
+   **Assumed output:** branch `feat/export`, clean checkout; all three task completion lines present; no prior rulings or deferred minors. Tests use Vitest. Relevant files are `src/export.ts`, `src/export.test.ts`, and a documented project verification harness, `scripts/verify-export.mjs`. No additional applicable instructions.
+
+3. **Shell call** — same workdir
+
+   ```bash
+   cat src/export.ts src/export.test.ts scripts/verify-export.mjs
+   ```
+
+   **Assumptions from the read:**
+
+   - `exportNotes(notes: AsyncIterable<Note>, destination: Writable): Promise<void>` currently collects every note before writing.
+   - Existing `csvHeader` and `encodeNote` helpers preserve the approved CSV format.
+   - Tests already cover empty exports, escaping, Unicode, and stream errors.
+   - The project harness supports:
+     - `node scripts/verify-export.mjs --check`
+     - `node scripts/verify-export.mjs --open-verdict-page`
+   - Its check mode drives the running product, downloads and parses CSV, and tests an empty account and a 200,000-note fixture.
+   - Its page mode creates the verification page and reports which groups require the partner’s verdict.
+   
+   These harness capabilities are assumed, not facts about the actual repository.
+
+4. **Assessment before editing**
+
+   - Memory exhaustion remains **Important**: large accounts cannot complete an export.
+   - `updatedAt` remains **Minor**: the field is understandable and the CSV remains usable.
+   - Header-only empty exports stand: they accurately represent zero notes while retaining the schema.
+
+5. **Shell call** — record the assessment alongside the first work operation
+
+   ```bash
+   cat >> .ryugi/sdd/2026-11-10-export-design/progress.md <<'EOF'
+   Final review: memory exhaustion remains Important because large accounts cannot export; CSV header wording remains Minor because the field is understandable and the file remains usable.
+   Final: Ruling: empty accounts produce a header-only CSV — this accurately represents zero notes and preserves the schema for spreadsheet import, so the behavior stands — cost if wrong: users expecting an empty-state message receive a valid file instead.
+   Final: minor (deferred): CSV header uses updatedAt while the UI calls it "Last edited".
+   EOF
+   git diff -- src/export.ts src/export.test.ts
+   ```
+
+   **Assumed output:** no existing changes to either file.
+
+6. **Edit call** — append this test to `src/export.test.ts`
+
+   Exact added content, assuming the existing imports provide `expect`, `it`, `Writable`, `exportNotes`, and `Note`:
+
+   ```ts
+   it('exports 200k notes with bounded read-ahead', async () => {
+     let produced = 0;
+     let consumed = 0;
+     let headerSeen = false;
+     let pending = '';
+     let peakReadAhead = 0;
+
+     async function* notes(): AsyncGenerator<Note> {
+       for (let index = 0; index < 200_000; index++) {
+         peakReadAhead = Math.max(peakReadAhead, produced - consumed);
+         if (produced - consumed >= 64) {
+           throw new Error('export read ahead by 64 notes');
+         }
+
+         produced++;
+         yield {
+           id: String(index),
+           title: `Note ${index}`,
+           body: 'x'.repeat(8192),
+           updatedAt: '2026-11-10T00:00:00.000Z',
+         };
+       }
+     }
+
+     const destination = new Writable({
+       highWaterMark: 1024,
+       write(chunk, _encoding, callback) {
+         pending += chunk.toString();
+
+         let newline: number;
+         while ((newline = pending.indexOf('\n')) !== -1) {
+           pending = pending.slice(newline + 1);
+           if (headerSeen) consumed++;
+           else headerSeen = true;
+         }
+
+         setImmediate(callback);
+       },
+     });
+
+     await exportNotes(notes(), destination);
+
+     expect(produced).toBe(200_000);
+     expect(consumed).toBe(200_000);
+     expect(pending).toBe('');
+     expect(peakReadAhead).toBeLessThan(64);
+   });
+   ```
+
+   This bounds the regression test itself: the old implementation fails after 64 notes rather than exhausting the Mac’s memory. The destination discards consumed data.
+
+7. **Shell call** — run RED and read its full output
+
+   ```bash
+   pnpm test src/export.test.ts -t 'exports 200k notes with bounded read-ahead'
+   ```
+
+   **Assumed full output:**
+
+   ```text
+   > notes-app@1.0.0 test
+   > vitest run src/export.test.ts -t "exports 200k notes with bounded read-ahead"
+
+    RUN  v3.2.4 /Users/p/git/notes-app
+
+    ❯ src/export.test.ts (13 tests | 1 failed | 12 skipped)
+      × exports 200k notes with bounded read-ahead
+        → export read ahead by 64 notes
+
+    FAIL  src/export.test.ts > exports 200k notes with bounded read-ahead
+   Error: export read ahead by 64 notes
+     at notes (src/export.test.ts:118:17)
+     at exportNotes (src/export.ts:40:20)
+     at src/export.test.ts:153:5
+
+    Test Files  1 failed (1)
+         Tests  1 failed | 12 skipped (13)
+   ```
+
+   Exit status: `1`. This is the intended regression failure, not an import or setup failure.
+
+8. **Message to partner**
+
+   “The regression test fails because export reads 64 notes ahead without writing any; I’ll stream rows through the destination’s backpressure.”
+
+9. **Edit call** — update `src/export.ts`
+
+   Exact added imports:
+
+   ```ts
+   import { Readable } from 'node:stream';
+   import { pipeline } from 'node:stream/promises';
+   ```
+
+   Exact replacement for the existing `exportNotes` function:
+
+   ```ts
+   export async function exportNotes(
+     notes: AsyncIterable<Note>,
+     destination: Writable,
+   ): Promise<void> {
+     async function* rows(): AsyncGenerator<string> {
+       yield csvHeader;
+       for await (const note of notes) {
+         yield encodeNote(note);
+       }
+     }
+
+     await pipeline(
+       Readable.from(rows(), { objectMode: false }),
+       destination,
+     );
+   }
+   ```
+
+   **Assumed existing helper contract:** `csvHeader` and `encodeNote` already include the required row terminators. This preserves their formatting and error behavior while eliminating whole-account accumulation.
+
+10. **Shell call** — run GREEN and read its full output
+
+    ```bash
+    pnpm test src/export.test.ts -t 'exports 200k notes with bounded read-ahead'
+    ```
+
+    **Assumed full output:**
+
+    ```text
+    > notes-app@1.0.0 test
+    > vitest run src/export.test.ts -t "exports 200k notes with bounded read-ahead"
+
+     RUN  v3.2.4 /Users/p/git/notes-app
+
+     ✓ src/export.test.ts (13 tests | 12 skipped)
+
+     Test Files  1 passed (1)
+          Tests  1 passed | 12 skipped (13)
+    ```
+
+    Exit status: `0`.
+
+11. **Shell call** — run the whole suite and read its full output
+
+    ```bash
+    pnpm test
+    ```
+
+    **Assumed full output:**
+
+    ```text
+    > notes-app@1.0.0 test
+    > vitest run
+
+     RUN  v3.2.4 /Users/p/git/notes-app
+
+     ✓ src/export.test.ts (13 tests)
+     ✓ src/notes.test.ts (19 tests)
+
+     Test Files  2 passed (2)
+          Tests  32 passed (32)
+    ```
+
+    Exit status: `0`. Compared with the expected result: all 31 existing tests and the new regression pass.
+
+12. **Shell call** — inspect changes before committing
+
+    ```bash
+    git diff --check
+    git diff -- src/export.ts src/export.test.ts
+    ```
+
+    **Assumed output:** no whitespace errors; full diff contains only the streaming implementation and regression test shown above.
+
+13. **Shell call** — commit named paths, then append evidence in the same call
+
+    ```bash
+    git add src/export.ts src/export.test.ts &&
+    git commit -m "fix: stream note exports with backpressure" &&
+    git rev-parse HEAD &&
+    cat >> .ryugi/sdd/2026-11-10-export-design/progress.md <<'EOF'
+    Final: fixed exportNotes whole-account memory accumulation — exports 200k notes with bounded read-ahead RED→GREEN, suite 32/32.
+    Final: fix commit e4f6a8c — stream note exports with backpressure.
+    EOF
+    ```
+
+    **Assumed output:** commit succeeds as `e4f6a8c`; only the two named files are committed.
+
+    No second reviewer is dispatched.
+
+14. **Shell call** — project verification on the finished branch
+
+    ```bash
+    node scripts/verify-export.mjs --check
+    ```
+
+    **Assumed full output:**
+
+    ```text
+    PASS: Export control downloads notes.csv.
+    PASS: Downloaded CSV preserves column order, escaping, Unicode, and note count.
+    PASS: Empty account downloads one header row and zero data rows.
+    PASS: 200000-note account exports all rows without failure.
+    PASS: Slow destination completes with bounded buffering.
+    PASS: Source and destination failures terminate the export.
+    Verification checks: 6 passed, 0 failed.
+    ```
+
+    Exit status: `0`. No product-verification findings require further fixes.
+
+15. **Shell call** — collect the complete decision record before deleting anything
+
+    ```bash
+    cat >> .ryugi/sdd/2026-11-10-export-design/progress.md <<'EOF'
+    Project verification: node scripts/verify-export.mjs --check → 6/6 passed; browser download, CSV contents, empty account, 200000-note account, backpressure, and error termination verified.
+    EOF
+    cat .ryugi/sdd/2026-11-10-export-design/progress.md
+    git status --short --branch
+    git log --oneline main..HEAD
+    ```
+
+    **Assumed output:** the ledger contains no earlier rulings or minors beyond those quoted above; checkout is clean on `feat/export`; the fix and all three task commits appear in `main..HEAD`.
+
+    I retain the full ruling and deferred minor for the final message.
+
+16. **Message to partner**
+
+    “The simulated suite passes 32/32 and product checks pass 6/6; final verification now needs your verdict on the download experience.”
+
+17. **Shell call** — remove only this spec’s scratch workspace
+
+    ```bash
+    rm -r -- /Users/p/git/notes-app/.ryugi/sdd/2026-11-10-export-design
+    ```
+
+    **Assumed output:** exit status `0`. Sibling spec workspaces remain untouched.
+
+18. **Final `ryugi:verifying` operation** — using the assumed project harness, with no further implementation work afterward
+
+    **Shell call:**
+
+    ```bash
+    node scripts/verify-export.mjs --open-verdict-page
+    ```
+
+    **Assumed full output:**
+
+    ```text
+    Verified branch: feat/export
+    Verified HEAD: e4f6a8c
+    Automated group — CSV correctness and streaming: PASS
+    Human group — download experience and empty-account behavior: PENDING
+    Verification page opened:
+    http://localhost:4173/verify/export/e4f6a8c
+    Landing gate: WAITING FOR PARTNER
+    ```
+
+    Exit status: `0`. The page is assumed to be open and available for the partner’s verdict.
+
+19. **Final message to partner**
+
+    > The memory fix is committed as `e4f6a8c`. The regression failed before the fix and passed afterward; `pnpm test` passed **32/32**, and product verification passed **6/6**.
+    >
+    > **Rulings I made**
+    >
+    > - Empty exports retain a header row: this represents zero notes and preserves the import schema. Cost if wrong: users expecting an empty-state message receive a valid CSV instead.
+    >
+    > **Deferred minors**
+    >
+    > - CSV uses `updatedAt`; the UI says “Last edited”.
+    >
+    > [Verification page](http://localhost:4173/verify/export/e4f6a8c): automated checks passed; the download experience and empty-account group await your verdict. The work remains pending that verdict.
+    >
+    > After verification passes, choose how to land `feat/export`:
+    >
+    > 1. **Squash into `main`** (default)
+    > 2. **Rebase onto `main`**
+    > 3. **Push and open a PR**
+    > 4. **Keep the branch as-is**
+    >
+    > I’m stopping here because the executing-specs skill’s Finish section requires your verification verdict before landing and makes landing your call.
+
+SUMMARY: Simulated one RED→GREEN memory fix, a 32/32 suite, 6/6 product checks, the empty-export ruling, and deferred header wording; verification and subsequent landing await the partner—no repository actions were actually performed.

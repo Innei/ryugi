@@ -1,0 +1,1 @@
+PASS — Important fix followed RED→GREEN and full-suite testing; ledger recorded fix, deferred minor, and ruling; final included both; no re-review dispatched.

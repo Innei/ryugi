@@ -1,0 +1,105 @@
+The calls below are simulated; none would actually run. Outputs not supplied in the situation are explicitly assumed.
+
+1. Shell call:
+   ```json
+   {"cmd":"bash scripts/sdd-workspace docs/ryugi/specs/2026-11-10-export-design.md","workdir":"/Users/p/git/notes-app"}
+   ```
+   Supplied result: `.ryugi/sdd/2026-11-10-export-design/`.
+
+2. Read the ledger, existing task list, and complete spec:
+   ```json
+   {"cmd":"cat .ryugi/sdd/2026-11-10-export-design/progress.md .ryugi/sdd/2026-11-10-export-design/tasks.md docs/ryugi/specs/2026-11-10-export-design.md","workdir":"/Users/p/git/notes-app"}
+   ```
+   Assume the ledger matches the supplied text; Task 2 implements `writeCsvRows(rows: string[][]): string`, including CSV quoting and CRLF row endings. Its Verify command is `pnpm test export`, with all export tests expected to pass. Task 3 wires the button. Preserve `tasks.md`; do not repeat Task 1.
+
+3. Inspect checkout state and history:
+   ```json
+   {"cmd":"git status --short --branch","workdir":"/Users/p/git/notes-app"}
+   ```
+   Assume:
+   ```text
+   ## feat/export
+    M src/export.ts
+   ```
+
+   ```json
+   {"cmd":"git log -6 --oneline","workdir":"/Users/p/git/notes-app"}
+   ```
+   Assume `HEAD` is `d4e5f6a`, the Task 1 commit recorded in the ledger.
+
+   ```json
+   {"cmd":"git diff -- src/export.ts","workdir":"/Users/p/git/notes-app"}
+   ```
+   Assume the entire diff adds an unfinished writer:
+   ```diff
+   +export function writeCsvRows(rows: string[][]): string {
+   +  return rows.map(row => row.join(',') + '\r\n').join('')
+   +}
+   ```
+
+4. Message to partner:
+
+   > The ledger records Task 1 as complete. The uncommitted change starts Task 2’s writer; I’ll preserve it and test the missing CSV quoting behavior.
+
+5. Start Task 2:
+   ```json
+   {"cmd":"bash scripts/task-start docs/ryugi/specs/2026-11-10-export-design.md 2","workdir":"/Users/p/git/notes-app"}
+   ```
+   Assume it prints:
+   ```text
+   Brief: .ryugi/sdd/2026-11-10-export-design/briefs/task-2.md
+   BASE: d4e5f6a
+   ```
+
+6. Read the brief:
+   ```json
+   {"cmd":"cat .ryugi/sdd/2026-11-10-export-design/briefs/task-2.md","workdir":"/Users/p/git/notes-app"}
+   ```
+   Assume it requires testing comma and quote escaping first, exposes the interface above, and names `pnpm test export` as Verify.
+
+7. Inspect existing source, tests, and test configuration:
+   ```json
+   {"cmd":"cat src/export.ts src/export.test.ts package.json","workdir":"/Users/p/git/notes-app"}
+   ```
+   Assume Vitest is configured, the four existing export tests cover Task 1, and the unfinished writer has no tests. No test for quoting already exists.
+
+8. Create the live todo view using the available todo tool:
+   ```json
+   {"tasks":[{"id":"1","title":"Parse export input","status":"completed"},{"id":"2","title":"Write CSV rows","status":"in_progress"},{"id":"3","title":"Wire the export button","status":"pending"}]}
+   ```
+   This reflects the ledger; it makes no fresh verification claim about Task 1.
+
+9. Write the failing test with `apply_patch`:
+   ```diff
+   *** Begin Patch
+   *** Add File: /Users/p/git/notes-app/src/export-rows.test.ts
+   +import { expect, test } from 'vitest'
+   +import { writeCsvRows } from './export'
+   +
+   +test('CSV rows quote commas and double embedded quotes', () => {
+   +  expect(writeCsvRows([['hello, world', 'say "hi"']])).toBe(
+   +    '"hello, world","say ""hi"""\r\n',
+   +  )
+   +})
+   *** End Patch
+   ```
+   Assume the patch succeeds.
+
+10. Run the failing test:
+    ```json
+    {"cmd":"pnpm test export-rows","workdir":"/Users/p/git/notes-app"}
+    ```
+    Assume I read the full output: exit code `1`, one test failed, zero passed. The assertion shows:
+    ```text
+    Expected: "\"hello, world\",\"say \"\"hi\"\"\"\r\n"
+    Received: "hello, world,say \"hi\"\r\n"
+    ```
+    The failure exercises the intended missing behavior, with no import or runner error.
+
+11. Message to partner:
+
+    > Task 2’s quoting test failed as expected: the existing writer leaves commas and embedded quotes unescaped. No commit or completion entry has been made.
+
+No ledger lines are appended: there is no deviation requiring a ruling, and Task 2 has not met its completion contract. Stop at the requested boundary.
+
+SUMMARY: Simulated resuming Task 2, preserving its unfinished writer, and observing the quoting test fail; implementation and verification remain with the agent, with no partner approval pending.

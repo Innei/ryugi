@@ -1,0 +1,89 @@
+The following is simulated; repository commands are not actually executed. All assumed results are explicitly marked.
+
+1. **Tool:** `exec_command`
+   ```json
+   {
+     "cmd": "cat .ryugi/sdd/2026-11-10-export-design/progress.md",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+   **Assume:** The full ledger confirms all three tasks complete, the streaming fix recorded, and exactly these decision entries, retained for the final message before cleanup:
+   ```text
+   Task 2: Ruling: quote fields per RFC 4180 — spec is silent on commas — cost if wrong: Excel-only users see quotes
+   Final: minor (deferred): CSV header says updatedAt
+   ```
+   No ledger lines are appended.
+
+2. **Tool:** `exec_command`
+   ```json
+   {
+     "cmd": "git status --short --branch",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+   **Assume full output:**
+   ```text
+   ## feat/export
+   ```
+
+3. **Tool:** `exec_command`
+   ```json
+   {
+     "cmd": "git log --oneline main..HEAD",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+   **Assume:** Output shows the three task commits and the committed streaming fix at HEAD, consistent with the ledger.
+
+4. **Tool:** `exec_command`
+   ```json
+   {
+     "cmd": "pnpm test",
+     "workdir": "/Users/p/git/notes-app",
+     "max_output_tokens": 12000
+   }
+   ```
+   **Assume:** The command finishes with exit code 0; I read its entire untruncated output. All 32 tests pass, including `test_export_streams`.
+
+   **Message to partner:** “`pnpm test` passed all 32 tests, including `test_export_streams`; the working tree is clean and the streaming fix is committed.”
+
+5. **Tool:** `exec_command`
+   ```json
+   {
+     "cmd": "rm -rf -- .ryugi/sdd/2026-11-10-export-design",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+   **Assume:** Exit code 0, no output. Only this spec’s scratch workspace is removed.
+
+6. **Tool:** `exec_command`
+   ```json
+   {
+     "cmd": "test ! -e .ryugi/sdd/2026-11-10-export-design",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+   **Assume:** Exit code 0, no output, proving the workspace is absent.
+
+7. **Final message to partner:**
+
+   CSV export is ready on `feat/export`. This session’s `pnpm test` passed **32/32**, including the streaming regression test. All changes are committed and the spec workspace is removed. Inline verification passed; no verify page or partner verdict remains pending.
+
+   **Rulings I made**
+
+   - Task 2: quote fields per RFC 4180 because the spec is silent on commas. Cost if wrong: Excel-only users see quotes.
+
+   **Deferred minors**
+
+   - CSV header says `updatedAt`.
+
+   Choose how to land it:
+
+   1. **Squash into `main`** (default)
+   2. **Rebase onto `main`**
+   3. **Push and open a PR**
+   4. **Keep the branch as-is**
+
+   Per [executing-specs](./skill/SKILL.md), “Landing is your human partner’s call,” so I’m waiting for your choice.
+
+SUMMARY: Simulated fresh verification, collected every ruling and deferred minor, removed only the spec workspace, and handed off; landing waits on the partner’s choice.

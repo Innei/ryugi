@@ -1,0 +1,277 @@
+Simulation only. All calls below are hypothetical; no repository commands or changes were actually made. Assumed outputs are labeled.
+
+1. **Message to partner**
+
+   “I’m using executing-specs in place on `main`; this exploratory work will stay uncommitted.”
+
+2. **Shell call** — inspect the checkout and read the spec.
+
+   Working directory for every shell call: `/Users/p/git/notes-app`.
+
+   ```bash
+   git status --short
+   git branch --show-current
+   cat docs/ryugi/specs/2026-11-10-export-design.md
+   cat package.json
+   rg --files -g AGENTS.md -g '*export*' -g '*test*' -g '*skill*'
+   ```
+
+   **Assumed output:** clean checkout, branch `main`, no additional applicable instructions or product-verification skill. Tests use Vitest. Neither export file exists. The spec requires `exportNotesCsv(notes)` with `title,body` headers, input order preserved, CRLF separators, CSV escaping, Unicode preservation, and header-only output for empty input. These details are assumptions about the unread spec, solely for this simulation.
+
+   The supplied workspace result and absence of a ledger are already known; I do not repeat that setup command. The required TDD skill is already loaded.
+
+3. **Shell call** — create the task list, immediately record exploratory paths, and initialize the ledger.
+
+   ```bash
+   cat > .ryugi/sdd/2026-11-10-export-design/tasks.md <<'EOF'
+   ## Task 1: Export notes as CSV
+
+   **Goal:** Implement the approved spec's CSV serialization requirements: title/body headers, stable input order, CRLF separators, escaping, Unicode preservation, and empty input.
+
+   **Files:**
+   - src/export.ts
+   - src/export.test.ts
+
+   **Interfaces:**
+   Produces: exportNotesCsv(notes: readonly { title: string; body: string }[]): string
+   Consumes: none from earlier tasks.
+
+   **Failing test:** Create src/export.test.ts first. Assert exact CSV output for ordered notes containing commas, quotes, embedded CR/LF, and Unicode; assert empty input emits only the header; assert the input is unchanged. Run pnpm test and observe failure because src/export.ts does not exist.
+
+   **Verify:** pnpm test
+   Expected: exit 0; every existing test and all three new export tests pass.
+   No project-specific running-product verification skill was found; this slice exposes a serializer only.
+
+   ## Review Focus
+   - Spreadsheet interpretation of formula-like note text and the spec's intended fidelity/security tradeoff.
+   - Memory usage for large note collections; automated tests use small inputs.
+   - Compatibility of the exported interface with existing note types and future download integration.
+   EOF
+   cat > .ryugi/sdd/2026-11-10-export-design/EXPLORING <<'EOF'
+   Exploratory: may be thrown away.
+   src/export.ts
+   src/export.test.ts
+   EOF
+   cat > .ryugi/sdd/2026-11-10-export-design/progress.md <<'EOF'
+   # SDD ledger — plan: docs/ryugi/specs/2026-11-10-export-design.md
+   Slicing: 1 tasks — CSV serialization and its behavioral tests form one independently verifiable slice.
+   EOF
+   ```
+
+   **Assumed output:** exit 0.
+
+   **Exact ledger content written:**
+
+   ```text
+   # SDD ledger — plan: docs/ryugi/specs/2026-11-10-export-design.md
+   Slicing: 1 tasks — CSV serialization and its behavioral tests form one independently verifiable slice.
+   ```
+
+4. **Todo call**
+
+   ```json
+   {
+     "tasks": [
+       {
+         "id": "task-1",
+         "title": "Implement and verify CSV export",
+         "status": "pending"
+       }
+     ]
+   }
+   ```
+
+   **Assumed output:** todo created.
+
+5. **Shell call**
+
+   ```bash
+   bash scripts/task-start docs/ryugi/specs/2026-11-10-export-design.md 1
+   ```
+
+   **Assumed output:**
+
+   ```text
+   Brief: /Users/p/git/notes-app/.ryugi/sdd/2026-11-10-export-design/task-1.md
+   BASE: a1b2c3d4e5f6789012345678901234567890abcd
+   ```
+
+   If this script initializes or appends ledger metadata, I read and retain its actual lines; for this simulation, assume it adds none.
+
+6. **Shell call** — read the generated brief.
+
+   ```bash
+   cat .ryugi/sdd/2026-11-10-export-design/task-1.md
+   ```
+
+   **Assumed output:** the complete Task 1 brief, matching the goal, files, interface, failing test, and `pnpm test` verification above, with the same BASE.
+
+7. **Todo call**
+
+   ```json
+   {
+     "tasks": [
+       {
+         "id": "task-1",
+         "title": "Implement and verify CSV export",
+         "status": "in_progress"
+       }
+     ]
+   }
+   ```
+
+   **Assumed output:** updated.
+
+8. **Shell call** — write behavioral tests before implementation, then run them as part of the suite.
+
+   ```bash
+   cat > src/export.test.ts <<'EOF'
+   import { describe, expect, it } from 'vitest'
+   import { exportNotesCsv } from './export'
+
+   describe('exportNotesCsv', () => {
+     it('preserves order and Unicode while escaping CSV fields', () => {
+       expect(exportNotesCsv([
+         { title: '旅行, "计划"', body: 'first\r\nsecond' },
+         { title: 'Next', body: 'plain' },
+         { title: 'CR', body: 'a\rb' },
+         { title: 'LF', body: 'a\nb' },
+       ])).toBe(
+         'title,body\r\n' +
+         '"旅行, ""计划""","first\r\nsecond"\r\n' +
+         'Next,plain\r\n' +
+         'CR,"a\rb"\r\n' +
+         'LF,"a\nb"',
+       )
+     })
+
+     it('exports only the header for an empty collection', () => {
+       expect(exportNotesCsv([])).toBe('title,body')
+     })
+
+     it('does not change the supplied notes', () => {
+       const notes = Object.freeze([
+         Object.freeze({ title: 'Title', body: 'Body' }),
+       ])
+
+       expect(exportNotesCsv(notes)).toBe('title,body\r\nTitle,Body')
+       expect(notes).toEqual([{ title: 'Title', body: 'Body' }])
+     })
+   })
+   EOF
+   pnpm test
+   ```
+
+   **Assumed full output:** the existing 12 tests pass; the new test suite fails to load because `./export` does not exist; exit 1. No unrelated failures.
+
+   This is the expected RED result: the required export implementation is absent.
+
+9. **Message to partner**
+
+   “The new tests fail because the export module is missing; I’ll implement the serializer now.”
+
+10. **Shell call** — implement the specified behavior and run Verify.
+
+    ```bash
+    cat > src/export.ts <<'EOF'
+    export function exportNotesCsv(
+      notes: readonly { title: string; body: string }[],
+    ): string {
+      const escapeField = (value: string): string =>
+        /[",\r\n]/.test(value)
+          ? `"${value.replace(/"/g, '""')}"`
+          : value
+
+      return [
+        'title,body',
+        ...notes.map(
+          note => `${escapeField(note.title)},${escapeField(note.body)}`,
+        ),
+      ].join('\r\n')
+    }
+    EOF
+    pnpm test
+    ```
+
+    **Assumed full output:** both test files pass; 15/15 tests pass, including all three export tests; exit 0.
+
+    I read the entire output and compare it with the brief’s Expected result: it matches. No deviation or ruling is needed under the assumed spec.
+
+    I do **not** stage or commit: the work is exploratory.
+
+11. **Shell call** — close Task 1 with its final verification run.
+
+    ```bash
+    bash scripts/task-done docs/ryugi/specs/2026-11-10-export-design.md 1 a1b2c3d4e5f6789012345678901234567890abcd --uncommitted -- pnpm test
+    ```
+
+    **Assumed output:** `pnpm test` runs again and exits 0 with 15/15 tests passing; the script saves its full output and appends a completion line. Assume the printed log path is:
+
+    ```text
+    /Users/p/git/notes-app/.ryugi/sdd/2026-11-10-export-design/task-1-test.log
+    ```
+
+    **Assumed exact script-generated ledger append**—the script’s actual formatting would be taken from its output:
+
+    ```text
+    Task 1: complete (uncommitted, tests: pnpm test → PASS)
+    ```
+
+12. **Shell call** — read the full final verification output and inspect the recorded state before claiming completion.
+
+    ```bash
+    cat .ryugi/sdd/2026-11-10-export-design/task-1-test.log
+    cat .ryugi/sdd/2026-11-10-export-design/progress.md
+    cat .ryugi/sdd/2026-11-10-export-design/EXPLORING
+    git status --short
+    ```
+
+    **Assumed output:** the complete test log reports 15/15 passing and exit 0; the ledger contains the identity, slicing, and completion lines shown above; `EXPLORING` contains both source paths; Git reports only the two new, untracked export files.
+
+13. **Todo call**
+
+    ```json
+    {
+      "tasks": [
+        {
+          "id": "task-1",
+          "title": "Implement and verify CSV export",
+          "status": "completed"
+        }
+      ]
+    }
+    ```
+
+    **Assumed output:** updated.
+
+14. **Message to partner**
+
+    “Task 1’s final `pnpm test` run passed 15/15; I’ll package the uncommitted changes for review.”
+
+15. **Shell call** — produce the exploratory review package.
+
+    ```bash
+    bash scripts/review-package docs/ryugi/specs/2026-11-10-export-design.md --exploring
+    ```
+
+    **Assumed output:** exit 0; package written to:
+
+    ```text
+    /Users/p/git/notes-app/.ryugi/sdd/2026-11-10-export-design/review-package.md
+    ```
+
+16. **Shell call** — verify the package includes the newly created files, which ordinary `git diff` would omit.
+
+    ```bash
+    cat .ryugi/sdd/2026-11-10-export-design/review-package.md
+    ```
+
+    **Assumed output:** the complete package includes the spec/task references, Review Focus, ledger context, and full additions for both `src/export.ts` and `src/export.test.ts`. It represents uncommitted exploratory work rather than a commit range.
+
+17. **Message to partner at the requested stopping boundary**
+
+    “In this simulation, Task 1 is recorded complete after `task-done` ran `pnpm test`: 15/15 passed. The exploratory review package includes both export files. Everything remains uncommitted, and the workspace and `EXPLORING` are retained. Fresh-context review and final verification still remain.”
+
+    No reviewer is dispatched within this requested slice, which ends at package production. No keep/discard decision is requested before those remaining checks.
+
+SUMMARY: Simulated one exploratory task through RED→GREEN, uncommitted task closure, and verified review-package production; fresh review and final verification remain with the agent, then keep/discard waits on the partner.

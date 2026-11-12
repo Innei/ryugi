@@ -1,0 +1,234 @@
+Everything below is simulated. Only `./skill/` was actually read. All outputs, repository interfaces, hashes, and verification URLs below are explicit assumptions.
+
+1. **Tool: shell**, working directory `/Users/p/git/notes-app`:
+
+```sh
+git status --short --branch
+cat .ryugi/sdd/2026-11-10-export-design/progress.md
+cat .ryugi/sdd/2026-11-10-export-design/tasks.md
+cat docs/ryugi/specs/2026-11-10-export-design.md
+cat package.json
+cat src/export.ts
+rg --files src tests scripts .agents
+git log -5 --oneline
+```
+
+**Assumed output:** Branch `feat/export`, clean checkout; ledger identity matches the spec and contains three completed tasks, with no earlier rulings or deferred minors. Tests use Vitest. Existing repository interfaces provide `all()` and a lazy, cursor-backed `iterate()`; the export destination supports asynchronous `write()`. `exportNotes` currently collects notes and builds the complete CSV before writing. Existing `csvHeader` and `encodeNote` functions preserve escaping and column order.
+
+**Assumed discovery:** The project’s verification instructions name `pnpm verify:export` for an isolated local product check and `pnpm verify:page -- --spec …` for the final verification page. These script names are assumptions, not commands specified by the supplied skill.
+
+2. **Message to partner:**
+
+> The memory failure remains Important; I’ll fix it in one TDD pass, defer the header wording, and retain header-only exports for empty accounts.
+
+3. **Tool: shell** — record classification while reading the relevant existing tests:
+
+```sh
+cat >> .ryugi/sdd/2026-11-10-export-design/progress.md <<'EOF'
+Final: classification: Important — exportNotes exhausts memory on large accounts, preventing export; enter the single fix pass.
+Final: minor (deferred): CSV header uses updatedAt while the UI calls it Last edited.
+Final: Ruling: empty accounts retain a header-only CSV — a reasonable person gets a valid file with the same columns and zero data rows; inventing a placeholder note would misrepresent their data — cost if wrong: users expecting an empty-state message instead receive a download and may need clearer feedback.
+EOF
+cat tests/export.test.ts
+cat src/notes.ts
+cat src/csv.ts
+cat .agents/skills/verify-export/SKILL.md
+```
+
+**Assumed output:** Existing tests already cover empty accounts, escaping, column ordering, export errors, and normal downloads. `iterate()` holds one bounded database page and closes its cursor on failure. The project verification skill uses isolated fixtures and checks actual downloads. No extra project check is required beyond its documented command.
+
+4. **Tool: shell** — add a regression test, using the assumed interfaces discovered above:
+
+```sh
+cat > tests/export.streaming.test.ts <<'EOF'
+import { expect, test } from 'vitest'
+import { exportNotes } from '../src/export'
+import { csvHeader } from '../src/csv'
+
+test('streams 200000 notes with destination backpressure', async () => {
+  const total = 200_000
+  let produced = 0
+  let consumed = 0
+  let headerWritten = false
+
+  async function* iterate() {
+    for (let i = 0; i < total; i++) {
+      produced++
+      expect(produced - consumed).toBeLessThanOrEqual(1)
+      yield {
+        id: String(i),
+        title: `Note ${i}`,
+        body: 'x'.repeat(1024),
+        updatedAt: '2026-11-10T00:00:00.000Z',
+      }
+    }
+  }
+
+  const notes = {
+    iterate,
+    async all() {
+      const rows = []
+      for await (const note of iterate()) rows.push(note)
+      return rows
+    },
+  }
+
+  const destination = {
+    async write(chunk: string) {
+      await Promise.resolve()
+      if (!headerWritten) {
+        expect(chunk).toBe(csvHeader)
+        headerWritten = true
+        return
+      }
+      expect(chunk).toContain(`Note ${consumed}`)
+      consumed++
+    },
+  }
+
+  await exportNotes(notes, destination)
+  expect(headerWritten).toBe(true)
+  expect(consumed).toBe(total)
+})
+EOF
+pnpm test -- tests/export.streaming.test.ts
+```
+
+**Assumed full output read:** One test fails at the second generated note: expected outstanding notes `<= 1`, received `2`; stack traces through `notes.all()` and `exportNotes`. Exit 1. This is the expected eager-loading failure, before changing implementation.
+
+5. **Tool: shell** — apply the smallest implementation change:
+
+```sh
+python3 - <<'PY'
+from pathlib import Path
+
+path = Path("src/export.ts")
+text = path.read_text()
+old = """  const rows = await notes.all()
+  const csv = csvHeader + rows.map(encodeNote).join('')
+  await destination.write(csv)
+"""
+new = """  await destination.write(csvHeader)
+  for await (const note of notes.iterate()) {
+    await destination.write(encodeNote(note))
+  }
+"""
+assert text.count(old) == 1
+path.write_text(text.replace(old, new))
+PY
+pnpm test -- tests/export.streaming.test.ts
+```
+
+**Assumed full output read:** Regression test passes, 1/1, exit 0. It consumes all 200,000 rows while allowing at most one produced note ahead of the destination.
+
+6. **Tool: shell**:
+
+```sh
+pnpm test
+git diff --check
+git diff -- src/export.ts
+cat tests/export.streaming.test.ts
+```
+
+**Assumed full output read:** All 32/32 tests pass, exit 0; no whitespace errors. Diff contains only the streaming implementation and the new regression test. Existing empty-account, escaping, and error tests remain green.
+
+7. **Message to partner:**
+
+> The regression failed on eager loading, then passed with incremental writes; `pnpm test` reports 32/32 passing.
+
+8. **Tool: shell** — commit only owned paths and record the evidence in the same call:
+
+```sh
+git add src/export.ts tests/export.streaming.test.ts &&
+git commit -m "fix: stream note exports with backpressure" &&
+git rev-parse HEAD &&
+cat >> .ryugi/sdd/2026-11-10-export-design/progress.md <<'EOF'
+Final: fixed exportNotes loads every note into memory — streams 200000 notes with destination backpressure RED→GREEN, suite 32/32.
+Final: review disposition: single fix pass complete; Important memory finding addressed, header wording deferred, empty-account behavior ruled on; no re-review dispatched.
+EOF
+```
+
+**Assumed output:** Commit `8e4c1a7` succeeds and contains exactly those two files. No second reviewer is dispatched.
+
+9. **Tool: shell** — run the project’s documented product verification:
+
+```sh
+pnpm verify:export
+```
+
+**Assumed full output read:** Isolated local app launches; real downloads verify normal notes, CSV quoting/newlines, empty-account header-only output, and a 200,000-note account. The large export completes with bounded memory within the project’s documented threshold. All checks pass; the harness stops its local app and removes its own fixtures. Exit 0.
+
+10. **Tool: shell** — record product evidence and collect every decision before cleanup:
+
+```sh
+cat >> .ryugi/sdd/2026-11-10-export-design/progress.md <<'EOF'
+Final: project verification: pnpm verify:export → exit 0; actual downloads checked for normal notes, quoting/newlines, empty accounts, and 200000 notes; large export stayed within the documented memory threshold.
+EOF
+rg -n 'Ruling:|minor \(deferred\)' .ryugi/sdd/2026-11-10-export-design/progress.md
+git log --oneline main..HEAD
+git status --short --branch
+```
+
+**Assumed output:** Exactly the empty-account ruling and header-wording minor recorded above; three original task commits plus `8e4c1a7`; clean `feat/export`.
+
+**Collected for the final message:** The complete ruling, its cost, the deferred minor, and the verification evidence. Nothing has landed on `main`.
+
+11. **Tool: shell** — remove only this spec’s disposable workspace, as the executing-specs finish step directs:
+
+```sh
+python3 - <<'PY'
+from pathlib import Path
+import shutil
+
+workspace = Path(".ryugi/sdd/2026-11-10-export-design")
+ledger = workspace / "progress.md"
+assert ledger.read_text().splitlines()[0] == (
+    "# SDD ledger — plan: docs/ryugi/specs/2026-11-10-export-design.md"
+)
+assert not (workspace / "EXPLORING").exists()
+shutil.rmtree(workspace)
+assert not workspace.exists()
+PY
+```
+
+**Assumed output:** Exit 0. Only this workspace is removed; sibling workspaces remain.
+
+12. **Message to partner:**
+
+> I’m using ryugi:verifying for the final checks and the verification page that collects your verdict.
+
+13. **Tool: shell** — the final verification workflow, using the assumed discovered entry point:
+
+```sh
+pnpm verify:page -- --spec docs/ryugi/specs/2026-11-10-export-design.md
+```
+
+**Assumed full output read:** The workflow verifies the current committed branch, opens and checks a reachable verification page at `http://localhost:4318/verify/export`, and reports:
+
+```text
+Automated evidence: PASS
+Human verdict pending:
+- CSV contents and spreadsheet usability
+- Export interaction and empty-account experience
+Landing: BLOCKED pending human verdicts
+```
+
+No verdict is inferred from successful automated checks or from opening the page.
+
+14. **Final message to partner:**
+
+> The memory fix is committed as `8e4c1a7`. The regression failed before the change and passed afterward; `pnpm test` passed 32/32. Product checks also verified actual downloads, including 200,000 notes within the memory threshold.
+>
+> **Rulings I made**
+>
+> - Empty accounts keep a header-only CSV: it represents zero notes using the normal columns. Cost if wrong: users may expect an empty-state message and need clearer feedback.
+>
+> **Deferred minors**
+>
+> - CSV uses `updatedAt`; the UI says “Last edited.”
+>
+> [Verification page](http://localhost:4318/verify/export): CSV usability and export/empty-account experience await your verdict. The work remains unlanded on `feat/export`.
+>
+> Please review those groups. The [executing-specs skill](./skill/SKILL.md) requires that “the ways to land it below wait” until the required verdicts pass; landing choices wait on that gate.
+
+SUMMARY: Simulated one TDD fix pass, deferred the minor, ruled on empty exports, committed and verified the fix, and opened final verification; human verdicts are pending, so landing waits on the partner.

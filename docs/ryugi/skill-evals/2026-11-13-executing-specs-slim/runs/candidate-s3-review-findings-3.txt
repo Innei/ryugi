@@ -1,0 +1,187 @@
+The following is a simulation. Only `./skill/code-reviewer.md` was actually read; none of the commands below are executed. Outputs and repository details marked “Assumed” are hypothetical.
+
+**Message to partner:** “I’ll fix the large-account memory failure, defer the header wording, and record a ruling on empty exports.”
+
+1. **Tool call — shell**
+```sh
+cd /Users/p/git/notes-app
+git status --short
+cat .ryugi/sdd/2026-11-10-export-design/progress.md
+cat .ryugi/sdd/2026-11-10-export-design/tasks.md
+cat docs/ryugi/specs/2026-11-10-export-design.md
+cat src/export.ts
+cat package.json
+rg --files tests .agents
+```
+
+**Assumed output:** Clean checkout on `feat/export`; three completed tasks and no earlier rulings. The spec requires valid CSV with existing column names. `exportNotes(notes, destination)` accepts an async iterable and a writable stream, but accumulates all notes and the complete CSV before writing. Existing tests use `node:test` through `tsx`; `pnpm test` runs all test files. No project-specific running-product verification skill exists.
+
+**Review disposition before editing:**
+
+- Memory failure remains **Important**: a large account cannot export.
+- Header wording remains **Minor**: the machine-readable column is understandable and does not break export.
+- Header-only empty exports are acceptable: they preserve the CSV schema and accurately represent zero notes.
+
+2. **Tool call — shell**
+```sh
+cd /Users/p/git/notes-app
+cat > tests/export-memory.test.ts <<'EOF'
+import assert from 'node:assert/strict';
+import { Writable } from 'node:stream';
+import test from 'node:test';
+import { exportNotes } from '../src/export.ts';
+
+test('exports 200000 notes to a backpressured destination', async () => {
+  let rows = 0;
+  let bytes = 0;
+
+  async function* notes() {
+    for (let i = 0; i < 200000; i++) {
+      yield {
+        id: String(i),
+        title: `Note ${i}`,
+        content: `${i}:${'x'.repeat(2048)}`,
+        createdAt: '2026-11-10T00:00:00.000Z',
+        updatedAt: '2026-11-10T00:00:00.000Z',
+      };
+    }
+  }
+
+  const destination = new Writable({
+    highWaterMark: 1024,
+    write(chunk, _encoding, callback) {
+      const text = chunk.toString();
+      rows += text.split('\r\n').length - 1;
+      bytes += chunk.length;
+      setImmediate(callback);
+    },
+  });
+
+  await exportNotes(notes(), destination);
+
+  assert.equal(rows, 200001);
+  assert.ok(bytes > 400000000);
+  assert.equal(destination.writableFinished, true);
+});
+EOF
+node --max-old-space-size=64 --import tsx --test tests/export-memory.test.ts
+```
+
+**Assumed output, read in full:** The test process exhausts its heap and exits nonzero. This reproduces the reported failure before implementation.
+
+3. **Tool call — file edit**
+
+Path: `/Users/p/git/notes-app/src/export.ts`
+
+Exact replacement of the accumulating implementation, retaining the existing `Note` import and existing CSV encoding helpers:
+
+```ts
+export async function exportNotes(
+  notes: AsyncIterable<Note>,
+  destination: Writable,
+): Promise<void> {
+  async function* chunks() {
+    yield encodeHeader();
+
+    for await (const note of notes) {
+      yield encodeNote(note);
+    }
+  }
+
+  await pipeline(chunks(), destination);
+}
+```
+
+Add these imports:
+
+```ts
+import type { Writable } from 'node:stream';
+import { pipeline } from 'node:stream/promises';
+```
+
+**Assumed inspected details:** `encodeHeader()` and `encodeNote()` already return properly escaped CSV records ending in `\r\n`; existing semantics require completing the destination. `pipeline` provides backpressure and propagates source and destination failures. This change eliminates both full-input and full-output accumulation.
+
+4. **Tool call — shell**
+```sh
+cd /Users/p/git/notes-app
+node --max-old-space-size=64 --import tsx --test tests/export-memory.test.ts
+pnpm test
+git diff --check
+git diff -- src/export.ts tests/export-memory.test.ts
+```
+
+**Assumed outputs, each read in full:**
+
+- Constrained-memory regression: **1/1 passed**, exit 0.
+- Full suite: **32/32 passed**, exit 0, including existing escaping, empty-export and stream-error coverage.
+- `git diff --check`: no output, exit 0.
+- Diff contains only the streaming implementation and regression test.
+
+**Message to partner:** “The 200,000-note regression failed with heap exhaustion before the change and now passes with a 64 MiB heap; the full suite passes 32/32.”
+
+5. **Tool call — shell**
+
+Bookkeeping and commit occur in the same call:
+
+```sh
+cd /Users/p/git/notes-app
+cat >> .ryugi/sdd/2026-11-10-export-design/progress.md <<'EOF'
+Final: minor (deferred): CSV header uses updatedAt while the UI calls it Last edited; retain the existing header and defer wording alignment.
+Final: Ruling: Empty accounts produce a header-only CSV — a reasonable person gets a valid file describing zero notes while preserving its column schema, so this behavior stands — cost if wrong: users may expect an explicit empty-state message.
+EOF
+git add src/export.ts tests/export-memory.test.ts
+git commit -m "Fix CSV export memory use for large accounts"
+```
+
+**Assumed output:** Commit `d4e5f6a` created successfully.
+
+6. **Tool call — shell**
+```sh
+cd /Users/p/git/notes-app
+node --max-old-space-size=64 --import tsx --test tests/export-memory.test.ts
+pnpm test
+git diff --check
+git status --short
+git log -4 --oneline
+cat >> .ryugi/sdd/2026-11-10-export-design/progress.md <<'EOF'
+Final: fixed exportNotes exhausts memory on large accounts — exports 200000 notes to a backpressured destination RED→GREEN, suite 32/32.
+EOF
+rg -n 'Ruling:|minor \(deferred\)|Task [0-9]+: complete|Final: fixed' .ryugi/sdd/2026-11-10-export-design/progress.md
+```
+
+**Assumed outputs, read in full:** Regression 1/1 and suite 32/32 pass; whitespace check passes; checkout clean. Log shows the three task commits plus `d4e5f6a`. Ledger contains exactly the ruling and deferred minor above. No second reviewer is dispatched.
+
+7. **Invoke the already-loaded `ryugi:verifying` workflow.**
+
+The prompt does not supply that skill’s tool interface. I would use its actual loaded instructions rather than invent command names. For this simulation, assume it creates a persistent verification page outside the disposable SDD workspace, with these groups:
+
+- Automated CSV correctness: existing escaping, field preservation and error tests — passed.
+- Automated scale: 200,000-note export under a 64 MiB heap — passed.
+- Partner acceptance: download a populated account’s CSV and an empty account’s CSV, inspect their contents and confirm the export experience — awaiting verdict.
+
+**Assumed result:** Verification page at `http://localhost:4173/verify/export`; the partner acceptance group requires the partner’s verdict before landing. The page persists independently of `.ryugi/sdd/2026-11-10-export-design/`.
+
+I retain the workspace while acceptance is pending, so any rejection and its fix can still be recorded. I do not delete it, merge, push or open a PR.
+
+**Final message to partner:**
+
+“The review fix is committed as `d4e5f6a`. The new regression reproduced heap exhaustion before the change; after streaming the CSV with backpressure, it passes under a 64 MiB heap. The full suite passes 32/32.
+
+[Verify the export experience](http://localhost:4173/verify/export). Automated checks passed; the partner acceptance group awaits your verdict. Landing waits on that verdict.
+
+**Rulings I made**
+
+- Empty exports retain a header row: this represents zero notes and preserves the schema. Cost if wrong: users may expect an explicit empty-state message.
+
+**Deferred minors**
+
+- CSV uses `updatedAt`; the UI says ‘Last edited’.
+
+After verification passes, choose how to land:
+
+1. **Squash into `main`** (default)
+2. **Rebase onto `main`**
+3. **Push and open a PR**
+4. **Keep the branch as-is**”
+
+SUMMARY: Simulated one TDD review-fix pass, recorded the empty-export ruling and deferred header wording, and stopped for the partner’s verification verdict before cleanup or landing.

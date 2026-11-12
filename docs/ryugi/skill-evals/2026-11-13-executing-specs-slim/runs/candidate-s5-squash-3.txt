@@ -1,0 +1,89 @@
+Simulation only. I read `./skill/landing.md`; none of the commands below are actually executed. All stated outputs are assumed.
+
+1. Message to partner:
+
+   “I’m following the executing-specs landing instructions to squash `feat/export` into `main`, verify it, and remove the local feature branch.”
+
+2. Shell call:
+
+   ```json
+   {"cmd":"git status --short && git branch --show-current && git log -5 --format=%s","workdir":"/Users/p/git/notes-app"}
+   ```
+
+   Assume: clean checkout, current branch `feat/export`, recent commit subjects use conventional commit style.
+
+3. Shell call:
+
+   ```json
+   {"cmd":"git switch main && git pull --ff-only","workdir":"/Users/p/git/notes-app"}
+   ```
+
+   Assume: switched to `main`; pull succeeds with “Already up to date.”
+
+4. Shell call:
+
+   ```json
+   {"cmd":"git merge --squash feat/export","workdir":"/Users/p/git/notes-app"}
+   ```
+
+   Assume: squash succeeds without conflicts and stages the CSV export changes.
+
+5. Shell call:
+
+   ```json
+   {"cmd":"git diff --cached --check && git diff --cached --stat && git status --short","workdir":"/Users/p/git/notes-app"}
+   ```
+
+   Assume: no whitespace errors; the staged changes contain only the reviewed CSV export implementation and tests.
+
+6. Shell call, proving the staged implementation before committing:
+
+   ```json
+   {"cmd":"pnpm test","workdir":"/Users/p/git/notes-app","max_output_tokens":20000}
+   ```
+
+   Assume: the command finishes with exit code 0; its entire output is returned and read, with no truncation. Totals: 12 test files passed, 86 tests passed.
+
+7. Message to partner:
+
+   “The squash is staged on `main`. `pnpm test` exited 0: all 12 test files and 86 tests passed. I’ll commit it and run the tests again on the resulting commit.”
+
+8. Shell call:
+
+   ```json
+   {"cmd":"git commit -m 'feat: add CSV export for notes'","workdir":"/Users/p/git/notes-app"}
+   ```
+
+   Assume: commit succeeds as `c74e9a2`.
+
+9. Shell call:
+
+   ```json
+   {"cmd":"pnpm test","workdir":"/Users/p/git/notes-app","max_output_tokens":20000}
+   ```
+
+   Assume: exit code 0; the entire output is returned and read, without truncation. All 12 test files and 86 tests pass again.
+
+10. Shell call:
+
+    ```json
+    {"cmd":"git branch -D feat/export","workdir":"/Users/p/git/notes-app"}
+    ```
+
+    Assume: local branch deletion succeeds. No worktree removal is needed because this work used the same checkout.
+
+11. Shell call:
+
+    ```json
+    {"cmd":"git status --short && git branch --show-current && git log -1 --format='%h %s' && git branch --list feat/export","workdir":"/Users/p/git/notes-app"}
+    ```
+
+    Assume: status is clean; branch is `main`; latest commit is `c74e9a2 feat: add CSV export for notes`; `feat/export` is absent.
+
+    Ledger appends: none. The completed spec’s workspace was removed during the previously finished execution; landing does not recreate it.
+
+12. Final message to partner:
+
+    “Squashed into local `main` as `c74e9a2` (`feat: add CSV export for notes`). Post-commit `pnpm test` exited 0: 12 test files and 86 tests passed. The checkout is clean and local `feat/export` is deleted. Nothing was pushed.”
+
+SUMMARY: Simulated squash landing, verification, and local branch cleanup; actual execution remains unperformed, and pushing waits on the partner’s instruction.

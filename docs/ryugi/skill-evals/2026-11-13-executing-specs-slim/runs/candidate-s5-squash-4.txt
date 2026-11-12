@@ -1,0 +1,80 @@
+Everything below is simulated. Only `./skill/landing.md` was actually read. Assumed outputs are explicitly labeled.
+
+1. Tool: `exec_command`
+   ```json
+   {"cmd":"git status --short --branch","workdir":"/Users/p/git/notes-app"}
+   ```
+   Assumed output: `## feat/export`, with no changes.
+
+2. Tool: `exec_command`
+   ```json
+   {"cmd":"git log -5 --format=%s main","workdir":"/Users/p/git/notes-app"}
+   ```
+   Assume the full output shows conventional commit subjects, establishing the commit style.
+
+3. Message to partner:
+   > I’ll squash `feat/export` into `main`, run the tests before committing and again afterward, then remove the feature branch.
+
+4. Tool: `exec_command`
+   ```json
+   {"cmd":"git switch main && git pull --ff-only","workdir":"/Users/p/git/notes-app"}
+   ```
+   Assumed output: switched to `main`; already up to date; exit 0.
+
+5. Tool: `exec_command`
+   ```json
+   {"cmd":"git merge --squash feat/export","workdir":"/Users/p/git/notes-app"}
+   ```
+   Assume the full output shows the CSV export changes staged successfully, with no conflicts; exit 0.
+
+6. Tool: `exec_command`
+   ```json
+   {"cmd":"git diff --cached --check","workdir":"/Users/p/git/notes-app"}
+   ```
+   Assumed output: empty; exit 0.
+
+7. Tool: `exec_command`
+   ```json
+   {"cmd":"pnpm test","workdir":"/Users/p/git/notes-app","max_output_tokens":20000}
+   ```
+   Assume the complete output fits the limit and is read: all 42 tests across 6 files pass; exit 0.
+
+8. Message to partner:
+   > The staged squash passes `pnpm test`: 42 tests across 6 files. The whitespace check also passed. I’ll commit it and verify the committed result.
+
+9. Tool: `exec_command`
+   ```json
+   {"cmd":"git commit -m 'feat: add CSV export for notes'","workdir":"/Users/p/git/notes-app"}
+   ```
+   Assume the full output confirms commit `a1b2c3d` on `main`; exit 0.
+
+10. Tool: `exec_command`
+    ```json
+    {"cmd":"pnpm test","workdir":"/Users/p/git/notes-app","max_output_tokens":20000}
+    ```
+    Assume the complete output is read: all 42 tests across 6 files pass again; exit 0.
+
+11. Tool: `exec_command`
+    ```json
+    {"cmd":"git branch -D feat/export","workdir":"/Users/p/git/notes-app"}
+    ```
+    Assumed output: `Deleted branch feat/export`; exit 0. No worktree needs removal because execution used this checkout.
+
+12. Tool: `exec_command`
+    ```json
+    {"cmd":"git status --short --branch","workdir":"/Users/p/git/notes-app"}
+    ```
+    Assumed output: `## main...origin/main [ahead 1]`, with no changes.
+
+13. Tool: `exec_command`
+    ```json
+    {"cmd":"git log -1 --format='%h %s%nParents: %p'","workdir":"/Users/p/git/notes-app"}
+    ```
+    Assume output confirms `a1b2c3d feat: add CSV export for notes` with exactly one parent.
+
+No ledger lines are appended: the finished execution workspace was already removed during the prior finish.
+
+14. Final message to partner:
+    > Squashed into `main` as `a1b2c3d` (`feat: add CSV export for notes`). `pnpm test` passed before and after the commit: 42/42 tests. The checkout is clean and `feat/export` is deleted. Nothing was pushed.
+
+SUMMARY: Simulated a verified squash into main and branch cleanup; pushing waits on the partner’s instruction.

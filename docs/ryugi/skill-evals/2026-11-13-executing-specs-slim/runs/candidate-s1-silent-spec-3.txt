@@ -1,0 +1,136 @@
+The following is a simulation. No repository commands or edits below are actually executed. All outputs, paths discovered from outputs, and commit IDs are explicitly assumed.
+
+1. **Shell** — recover Task 2’s existing brief and BASE without restarting it:
+
+```json
+{
+  "workdir": "/Users/p/git/notes-app",
+  "cmd": "git status --short --branch\ncat .ryugi/sdd/2026-11-10-export-design/progress.md\nrg --files .ryugi/sdd/2026-11-10-export-design\ncat docs/ryugi/specs/2026-11-10-export-design.md"
+}
+```
+
+**Assumed output:** branch `feat/export`; only Task 2’s source and test files are modified; ledger identity matches the spec; Task 1 is complete; Task 2’s original BASE is `12abc34`; its brief is `briefs/task-2.md`. The full spec contains no CSV escaping requirements.
+
+2. **Shell** — read the brief and current implementation:
+
+```json
+{
+  "workdir": "/Users/p/git/notes-app",
+  "cmd": "cat .ryugi/sdd/2026-11-10-export-design/briefs/task-2.md\ncat src/export/notes-csv.ts\ncat src/export/notes-csv.test.ts\ncat package.json"
+}
+```
+
+**Assumed output:**
+
+- Task 2 produces `exportNotesCsv(notes)` with columns `id,title,updatedAt`; Verify is `pnpm test`, Expected is all tests passing.
+- Task 1 supplied the header `id,title,updatedAt`.
+- The source defines `Note` with three string fields and currently returns only the header; row implementation is unfinished.
+- The test file already imports `describe`, `it`, `expect`, and `exportNotesCsv`, and contains the original failing row test.
+- Tests use Vitest. There are currently 20 tests.
+- No later task depends on the internal serialization method.
+
+3. **Todo tool**:
+
+```json
+{
+  "task": "Task 2: Write rows",
+  "status": "in_progress"
+}
+```
+
+**Message to partner:** “I’ll quote CSV fields containing commas, quotes, or line breaks, preserving each note as one logical record, and record that ruling with the commit.”
+
+4. **Shell** — add regression tests before implementing escaping:
+
+```json
+{
+  "workdir": "/Users/p/git/notes-app",
+  "cmd": "cat >> src/export/notes-csv.test.ts <<'EOF'\n\ndescribe('CSV title escaping', () => {\n  it.each([\n    ['Planning, today', '\"Planning, today\"'],\n    ['First\\nSecond', '\"First\\nSecond\"'],\n    ['First\\rSecond', '\"First\\rSecond\"'],\n    ['Say \"hello\"', '\"Say \"\"hello\"\"\"'],\n  ])('preserves title %j', (title, encodedTitle) => {\n    expect(exportNotesCsv([\n      { id: '1', title, updatedAt: '2026-11-13T00:00:00Z' },\n      { id: '2', title: 'Next', updatedAt: '2026-11-13T01:00:00Z' },\n    ])).toBe(\n      'id,title,updatedAt\\n' +\n      `1,${encodedTitle},2026-11-13T00:00:00Z\\n` +\n      '2,Next,2026-11-13T01:00:00Z'\n    );\n  });\n});\nEOF\npnpm test"
+}
+```
+
+**Assumed full output read:** exit 1; 19 passed, 5 failed. The original row test and all four new cases receive only the header, rather than the expected records. This is the expected RED result.
+
+5. **Shell** — implement rows and CSV field encoding:
+
+```json
+{
+  "workdir": "/Users/p/git/notes-app",
+  "cmd": "python3 - <<'PY'\nfrom pathlib import Path\npath = Path('src/export/notes-csv.ts')\nsource = path.read_text()\nold = \"  return 'id,title,updatedAt';\"\nnew = '''  const encodeField = (value: string): string =>\n    /[\",\\\\r\\\\n]/.test(value)\n      ? '\"' + value.replace(/\"/g, '\"\"') + '\"'\n      : value;\n\n  return [\n    'id,title,updatedAt',\n    ...notes.map((note) =>\n      [note.id, note.title, note.updatedAt].map(encodeField).join(',')\n    ),\n  ].join('\\\\n');'''\nassert source.count(old) == 1\npath.write_text(source.replace(old, new))\nPY\npnpm test"
+}
+```
+
+**Assumed full output read:** exit 0; 24/24 tests pass, including the original row test and four escaping cases. This matches the brief’s Expected result.
+
+6. **Shell** — inspect the exact changes and check whitespace before committing:
+
+```json
+{
+  "workdir": "/Users/p/git/notes-app",
+  "cmd": "git diff --check\ngit diff -- src/export/notes-csv.ts src/export/notes-csv.test.ts"
+}
+```
+
+**Assumed full output read:** exit 0; no whitespace errors; diff contains only the row implementation and the four new regression cases.
+
+**Message to partner:** “`pnpm test` passed 24/24 tests after the row and escaping cases failed first; I’ll commit Task 2 with its ruling.”
+
+7. **Shell** — commit named paths and append the ruling in the same call:
+
+```json
+{
+  "workdir": "/Users/p/git/notes-app",
+  "cmd": "git add src/export/notes-csv.ts src/export/notes-csv.test.ts && git commit -m 'feat: write CSV note rows with field escaping' && python3 - <<'PY'\nfrom pathlib import Path\npath = Path('.ryugi/sdd/2026-11-10-export-design/progress.md')\nwith path.open('a') as ledger:\n    ledger.write('Task 2: Ruling: Quote fields containing commas, double quotes, CR or LF and double embedded quotes; interpret one row per note as one logical CSV record — this preserves titles and column boundaries while retaining the established record separator — if wrong, a consumer requiring one physical line per note will need an explicit alternate export policy.\\n')\nPY\n git rev-parse HEAD"
+}
+```
+
+**Assumed output:** commit succeeds, SHA `89def0189def0189def0189def0189def0189def01`; ledger append succeeds.
+
+**Exact appended ledger line:**
+
+```text
+Task 2: Ruling: Quote fields containing commas, double quotes, CR or LF and double embedded quotes; interpret one row per note as one logical CSV record — this preserves titles and column boundaries while retaining the established record separator — if wrong, a consumer requiring one physical line per note will need an explicit alternate export policy.
+```
+
+8. **Shell** — run Task 2’s completion gate, listing the owned commit explicitly because this checkout is in place:
+
+```json
+{
+  "workdir": "/Users/p/git/notes-app",
+  "cmd": "bash scripts/task-done docs/ryugi/specs/2026-11-10-export-design.md 2 12abc34 89def0189def0189def0189def0189def0189def01 -- pnpm test"
+}
+```
+
+**Assumed output:** exit 0; 24/24 tests pass; full output saved to `.ryugi/sdd/2026-11-10-export-design/task-2-verify.log`; completion recorded.
+
+**Exact assumed script-appended ledger line:**
+
+```text
+Task 2: complete (commits 89def01, tests: pnpm test → exit 0)
+```
+
+9. **Shell** — read the full final test output and completion record:
+
+```json
+{
+  "workdir": "/Users/p/git/notes-app",
+  "cmd": "cat .ryugi/sdd/2026-11-10-export-design/task-2-verify.log\ncat .ryugi/sdd/2026-11-10-export-design/progress.md\ngit status --short --branch"
+}
+```
+
+**Assumed full output read:** final test run passes 24/24; the ruling and Task 2 completion line are present; branch `feat/export` has no uncommitted changes.
+
+10. **Todo tool**:
+
+```json
+{
+  "task": "Task 2: Write rows",
+  "status": "completed"
+}
+```
+
+**Message to partner:** “Task 2 is closed in commit `89def01`; its completion gate passed 24/24 tests. The ledger records CSV quoting and the compatibility cost for consumers expecting one physical line per note. I’m continuing to Task 3.”
+
+The requested simulation ends at Task 2’s closure. No review, workspace deletion, landing menu, or approval request occurs at this intermediate boundary.
+
+SUMMARY: Simulated Task 2’s escaping ruling, RED→GREEN tests, commit, and verified closure; Task 3 remains with the agent, with nothing waiting on the partner.

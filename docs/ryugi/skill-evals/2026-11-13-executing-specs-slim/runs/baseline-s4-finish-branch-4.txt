@@ -1,0 +1,91 @@
+All calls and results below are simulated; nothing is executed. Each shell call uses `workdir: "/Users/p/git/notes-app"`.
+
+1. Message to partner:
+
+   “I’m using executing-specs to finish verification and report the branch’s decisions and landing options.”
+
+2. Shell call:
+
+   ```sh
+   cat .ryugi/sdd/2026-11-10-export-design/progress.md
+   ```
+
+   Assumed output: the ledger identifies the supplied spec, records all three tasks complete, and contains exactly these final decisions:
+
+   ```text
+   Task 2: Ruling: quote fields per RFC 4180 — spec is silent on commas — cost if wrong: Excel-only users see quotes
+   Final: fixed streaming export — test_export_streams RED→GREEN, suite 32/32
+   Final: minor (deferred): CSV header says updatedAt
+   ```
+
+   No ledger lines appended.
+
+3. Shell call:
+
+   ```sh
+   git status --short --branch
+   ```
+
+   Assumed full output:
+
+   ```text
+   ## feat/export
+   ```
+
+4. Shell call:
+
+   ```sh
+   git log -4 --oneline
+   ```
+
+   Assumed full output:
+
+   ```text
+   f8a91bc Fix streaming CSV export
+   d37e502 Add CSV export integration
+   b62c194 Encode CSV fields
+   a14d803 Add note export selection
+   ```
+
+   These assumed commits account for the three completed tasks and the final review fix.
+
+5. Shell call:
+
+   ```sh
+   pnpm test
+   ```
+
+   Assumption: the command exits `0`; I read its full output, which reports all 32 tests passing, including `test_export_streams`.
+
+6. Message to partner:
+
+   “`pnpm test` passed all 32 tests, including streaming export; the working tree is clean and the review fix is committed.”
+
+7. Shell call:
+
+   ```sh
+   rm -r -- .ryugi/sdd/2026-11-10-export-design
+   ```
+
+   Assumed result: exit `0`, no output. Only this spec’s workspace is removed. The previously completed inline verification needs no page or partner verdict.
+
+8. Final message to partner:
+
+   “CSV export is implemented on `feat/export`. `pnpm test` passed 32/32 tests, including `test_export_streams`. The working tree is clean; the spec workspace has been removed.
+
+   **Rulings I made**
+
+   - Quote fields per RFC 4180 because the spec is silent on commas. Cost if wrong: Excel-only users see quotes.
+
+   **Deferred minors**
+
+   - CSV header says `updatedAt`.
+
+   Choose how to land it:
+
+   1. **Squash into `main`** (default)
+   2. **Rebase onto `main`**
+   3. **Push and open a PR**
+   4. **Keep the branch as-is**”
+
+SUMMARY: Simulated final evidence checks, collected the ruling and deferred minor, and removed the spec workspace; landing `feat/export` now waits on the partner’s choice.

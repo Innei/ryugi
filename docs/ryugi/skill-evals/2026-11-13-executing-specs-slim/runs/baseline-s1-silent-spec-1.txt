@@ -1,0 +1,214 @@
+This is a simulation; only `./skill/` was actually read. All commands and results below are hypothetical. Every shell call uses `cwd: "/Users/p/git/notes-app"`.
+
+1. **Message to partner:**
+
+   “I’m continuing Task 2 under executing-specs; I’ll preserve commas and newlines with CSV quoting and record that interpretation in the ledger.”
+
+2. **Tool: `shell`**
+   
+   ```bash
+   git status --short --branch
+   cat .ryugi/sdd/2026-11-10-export-design/progress.md
+   rg --files .ryugi/sdd/2026-11-10-export-design
+   ```
+
+   **Assumed output:** branch `feat/export`; only Task 2’s source and test files modified; ledger identity matches the spec and Task 1 is complete. Task 2 has no completion line. Its existing brief is `briefs/task-2.md`.
+
+3. **Tool: `shell`**
+
+   ```bash
+   cat .ryugi/sdd/2026-11-10-export-design/briefs/task-2.md
+   cat src/export/csv.ts
+   cat src/export/csv.test.ts
+   cat package.json
+   git log -3 --oneline
+   ```
+
+   **Assumptions from output:**
+
+   - Task 2’s recorded BASE is `a1b2c3d`; recover it from the existing brief rather than replacing it with current HEAD.
+   - Files are `src/export/csv.ts` and `src/export/csv.test.ts`.
+   - Task 1 supplies `CSV_HEADER`.
+   - Task 2 produces `writeRows(notes)`, returning CSV data rows without a header or trailing delimiter.
+   - Existing record separator is `\n`; `updatedAt` is already a string.
+   - Verify is `pnpm test`; Expected is all tests passing.
+   - Tests use Vitest. The existing failing test checks two ordinary notes.
+   - The current implementation is:
+   
+     ```ts
+     export const CSV_HEADER = 'id,title,updatedAt';
+     
+     export interface ExportNote {
+       id: string;
+       title: string;
+       updatedAt: string;
+     }
+     
+     export function writeRows(notes: readonly ExportNote[]): string {
+       return '';
+     }
+     ```
+
+   The original failing test was already observed in this session, as specified in the situation. No task-start rerun or re-slicing is needed.
+
+4. **Tool: `todos.update`**
+
+   ```json
+   {
+     "tasks": [
+       {"id": "1", "status": "completed"},
+       {"id": "2", "status": "in_progress"},
+       {"id": "3", "status": "pending"}
+     ]
+   }
+   ```
+
+5. **Tool: `shell`** — add regression coverage and persist the decision alongside that work.
+
+   ```bash
+   python3 - <<'PY'
+   from pathlib import Path
+   
+   tests = Path("src/export/csv.test.ts")
+   tests.write_text(tests.read_text() + '''
+   
+   describe('writeRows CSV escaping', () => {
+     it.each([
+       ['comma', 'Hello, world', '"Hello, world"'],
+       ['newline', 'First\\nSecond', '"First\\nSecond"'],
+       ['carriage return', 'First\\rSecond', '"First\\rSecond"'],
+       ['quote', 'Say "hello"', '"Say ""hello"""'],
+       ['combined', 'A, "B"\\nC', '"A, ""B""\\nC"'],
+     ])('preserves a title containing %s', (_, title, encoded) => {
+       const rows = writeRows([
+         { id: '1', title, updatedAt: '2026-11-10T00:00:00Z' },
+         { id: '2', title: 'Next', updatedAt: '2026-11-11T00:00:00Z' },
+       ]);
+       expect(rows).toBe(
+         `1,${encoded},2026-11-10T00:00:00Z\\n2,Next,2026-11-11T00:00:00Z`
+       );
+     });
+   });
+   ''')
+   
+   ledger = Path(".ryugi/sdd/2026-11-10-export-design/progress.md")
+   with ledger.open("a") as out:
+       out.write(
+           'Task 2: Ruling: Treat "one row per note" as one logical CSV record; '
+           'quote fields containing commas, double quotes, CR or LF and double embedded quotes, '
+           'preserving field contents — the spec leaves escaping unspecified, and literal joining '
+           'would corrupt columns or records — cost if wrong: consumers that split physical lines '
+           'instead of parsing CSV will need a CSV parser.\n'
+       )
+   PY
+   pnpm test
+   ```
+
+   **Exact ledger line appended:**
+
+   ```text
+   Task 2: Ruling: Treat "one row per note" as one logical CSV record; quote fields containing commas, double quotes, CR or LF and double embedded quotes, preserving field contents — the spec leaves escaping unspecified, and literal joining would corrupt columns or records — cost if wrong: consumers that split physical lines instead of parsing CSV will need a CSV parser.
+   ```
+
+   **Assumed output, read in full:** exit 1; the ordinary-row test and all five new cases fail because `writeRows` returns `''`; 8 tests pass, 6 fail. No import, syntax, or infrastructure errors.
+
+6. **Message to partner:**
+
+   “The row test and five escaping cases fail because `writeRows` returns an empty string; the ledger now records the logical-record interpretation.”
+
+7. **Tool: `shell`**
+
+   ```bash
+   python3 - <<'PY'
+   from pathlib import Path
+   
+   source = Path("src/export/csv.ts")
+   old = """export function writeRows(notes: readonly ExportNote[]): string {
+     return '';
+   }"""
+   new = """function escapeCsvField(value: string): string {
+     return /[",\\r\\n]/.test(value)
+       ? `"${value.replace(/"/g, '""')}"`
+       : value;
+   }
+   
+   export function writeRows(notes: readonly ExportNote[]): string {
+     return notes
+       .map(note =>
+         [note.id, note.title, note.updatedAt].map(escapeCsvField).join(',')
+       )
+       .join('\\n');
+   }"""
+   text = source.read_text()
+   assert text.count(old) == 1
+   source.write_text(text.replace(old, new))
+   PY
+   pnpm test
+   ```
+
+   **Assumed output, read in full:** exit 0; 14 tests pass, 0 fail, including the ordinary-row test and all escaping cases. This matches the brief’s Expected result.
+
+8. **Tool: `shell`**
+
+   ```bash
+   git diff --check
+   git diff -- src/export/csv.ts src/export/csv.test.ts
+   ```
+
+   **Assumed output, read in full:** exit 0; no whitespace errors; diff contains only Task 2’s implementation and tests. The implementation preserves the established header contract, field order, and record separator.
+
+9. **Message to partner:**
+
+   “`pnpm test` passed all 14 tests, matching Task 2’s Expected result; I’ll commit the two task files and run the completion gate.”
+
+10. **Tool: `shell`**
+
+    ```bash
+    git add -- src/export/csv.ts src/export/csv.test.ts
+    git commit -m "feat: write CSV note rows with escaped fields"
+    git rev-parse HEAD
+    ```
+
+    **Assumed output:** commit succeeds as `b7c8d9e`; two files committed.
+
+11. **Tool: `shell`**
+
+    In-place execution records the explicit task commit:
+
+    ```bash
+    bash scripts/task-done docs/ryugi/specs/2026-11-10-export-design.md 2 a1b2c3d b7c8d9e -- pnpm test
+    ```
+
+    **Assumed output:** exit 0; final task run passes 14/14. The script prints its full-output path, assumed here to be `.ryugi/sdd/2026-11-10-export-design/task-2-test.log`, and appends:
+
+    ```text
+    Task 2: complete (commits b7c8d9e, tests: pnpm test → 14/14 pass)
+    ```
+
+12. **Tool: `shell`**
+
+    ```bash
+    cat .ryugi/sdd/2026-11-10-export-design/task-2-test.log
+    cat .ryugi/sdd/2026-11-10-export-design/progress.md
+    git status --short --branch
+    ```
+
+    **Assumed output, read in full:** final test log confirms 14 passed, 0 failed; ledger contains the ruling and Task 2 completion line; branch is `feat/export` with a clean working tree.
+
+13. **Tool: `todos.update`**
+
+    ```json
+    {
+      "tasks": [
+        {"id": "1", "status": "completed"},
+        {"id": "2", "status": "completed"},
+        {"id": "3", "status": "pending"}
+      ]
+    }
+    ```
+
+14. **Message to partner:**
+
+    “Task 2 is closed in `b7c8d9e`: `task-done` reran `pnpm test`, and its full log confirms 14/14 passing. The ledger records CSV quoting and its compatibility cost for consumers that split physical lines. Task 3 is next.”
+
+SUMMARY: Simulated Task 2’s escaping ruling, RED→GREEN coverage, commit, and verified ledger closure; Task 3 remains with the agent, with no partner approval needed.

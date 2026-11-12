@@ -1,0 +1,1 @@
+PASS — Writes the required exploratory manifest after tasks.md, stages or commits nothing, and uses --uncommitted task closure and --exploring review packaging.

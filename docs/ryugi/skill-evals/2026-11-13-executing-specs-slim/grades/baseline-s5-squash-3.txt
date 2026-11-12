@@ -1,0 +1,1 @@
+PASS — Correct squash sequence, one commit, tests rerun on main afterward, branch deleted with -D, and pushing left to the partner.

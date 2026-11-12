@@ -1,0 +1,144 @@
+The following is a simulation; no commands are executed. Assumed outputs are labeled.
+
+1. **Message to partner**
+
+   “I’m using executing-specs to resume the export spec, checking the ledger and uncommitted work first.”
+
+2. **Shell call**
+
+   ```bash
+   cd /Users/p/git/notes-app && bash scripts/sdd-workspace docs/ryugi/specs/2026-11-10-export-design.md
+   ```
+
+   Given output:
+
+   ```text
+   /Users/p/git/notes-app/.ryugi/sdd/2026-11-10-export-design/
+   ```
+
+3. **Shell call**
+
+   ```bash
+   cd /Users/p/git/notes-app && cat .ryugi/sdd/2026-11-10-export-design/progress.md .ryugi/sdd/2026-11-10-export-design/tasks.md docs/ryugi/specs/2026-11-10-export-design.md
+   ```
+
+   Assume I read the complete output. The ledger matches the supplied record. Assume Task 2 specifies `notesToCsv(notes)` in `src/export.ts`, consuming Task 1’s parsed notes; its tests belong in `src/export.test.ts`. It requires headers `title,body`, CRLF row separators, and CSV escaping. Its Verify command is `pnpm test export`, expected to exit successfully. Task 3 wires the export button.
+
+   Task 1 is recorded complete, so I skip it and preserve the existing task list.
+
+4. **Shell call**
+
+   ```bash
+   cd /Users/p/git/notes-app && git status --short --branch
+   ```
+
+   Assumed full output:
+
+   ```text
+   ## feat/export
+    M src/export.ts
+   ```
+
+5. **Shell call**
+
+   ```bash
+   cd /Users/p/git/notes-app && git log -5 --oneline
+   ```
+
+   Assume the output confirms HEAD is `d4e5f6a`, the Task 1 commit recorded in the ledger, with no later commits.
+
+6. **Shell call**
+
+   ```bash
+   cd /Users/p/git/notes-app && git diff -- src/export.ts
+   ```
+
+   Assume the full diff shows a partial Task 2 implementation: `notesToCsv` writes headers and CRLF-separated rows, but joins fields directly without escaping commas or quotes. I preserve this uncommitted work.
+
+7. **Shell call**
+
+   ```bash
+   cd /Users/p/git/notes-app && bash scripts/task-start docs/ryugi/specs/2026-11-10-export-design.md 2
+   ```
+
+   Assumed output:
+
+   ```text
+   Brief: /Users/p/git/notes-app/.ryugi/sdd/2026-11-10-export-design/task-2.md
+   BASE: d4e5f6a
+   ```
+
+8. **Shell call**
+
+   ```bash
+   cd /Users/p/git/notes-app && cat .ryugi/sdd/2026-11-10-export-design/task-2.md src/export.ts src/export.test.ts package.json
+   ```
+
+   Assume I read the complete output. The brief confirms the Task 2 contract above. Existing tests use Vitest; parsed notes have string `title` and `body` fields. The test file imports `parseNotes` from `./export`. The current implementation lacks CSV escaping, as the diff indicated.
+
+9. **Todo call**
+
+   ```json
+   {
+     "tasks": [
+       {"title": "Task 1: parse notes", "status": "completed"},
+       {"title": "Task 2: write CSV rows", "status": "in_progress"},
+       {"title": "Task 3: wire the export button", "status": "pending"}
+     ]
+   }
+   ```
+
+10. **Message to partner**
+
+    “The ledger records Task 1 complete; the uncommitted changes partially implement Task 2. I’ll preserve them and test the missing CSV escaping.”
+
+11. **Edit call — `apply_patch`**
+
+    Assuming the inspected import matches the context below:
+
+    ```diff
+    *** Begin Patch
+    *** Update File: /Users/p/git/notes-app/src/export.test.ts
+    @@
+    -import { parseNotes } from './export'
+    +import { parseNotes, notesToCsv } from './export'
+    +
+    +it('quotes CSV fields and doubles embedded quotes', () => {
+    +  expect(notesToCsv([
+    +    { title: 'Shopping, today', body: 'Say "hello"' },
+    +  ])).toBe('title,body\r\n"Shopping, today","Say ""hello"""')
+    +})
+    *** Update File: /Users/p/git/notes-app/.ryugi/sdd/2026-11-10-export-design/progress.md
+    @@
+     Task 1: complete (commits a1b2c3d..d4e5f6a, tests: pnpm test export → 4/4 pass)
+    +Task 2: resumed — BASE d4e5f6a; inspected and preserved the existing uncommitted src/export.ts changes; adding the CSV escaping regression before further implementation.
+    *** End Patch
+    ```
+
+    Assume the patch applies successfully. The added ledger line is exactly the line shown above.
+
+12. **Shell call**
+
+    ```bash
+    cd /Users/p/git/notes-app && pnpm test export
+    ```
+
+    Assume the complete output reports four passing existing tests and one failing new test, exits with code 1, and includes:
+
+    ```text
+    FAIL src/export.test.ts > quotes CSV fields and doubles embedded quotes
+
+    Expected: "title,body\r\n\"Shopping, today\",\"Say \"\"hello\"\"\""
+    Received: "title,body\r\nShopping, today,Say \"hello\""
+
+    Test Files  1 failed (1)
+         Tests  1 failed | 4 passed (5)
+    ```
+
+    I read the full output. The failure demonstrates the missing CSV escaping rather than an import or test setup error.
+
+13. **Message to partner**
+
+    “Task 2’s new escaping test is RED: `pnpm test export` exited 1, with 4 passing and 1 failing test. The failure shows unescaped commas and quotes. No further implementation or commit has been made.”
+
+SUMMARY: Simulated resuming Task 2, preserving uncommitted work, and running its new test to the expected failure; stopping at your requested boundary, with implementation still pending.

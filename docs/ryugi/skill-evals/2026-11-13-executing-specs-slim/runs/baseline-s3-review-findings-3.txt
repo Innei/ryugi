@@ -1,0 +1,253 @@
+All calls and results below are simulated; nothing is executed. Assumed outputs are explicitly marked.
+
+1. Message to partner:
+
+   “I’m continuing the executing-specs workflow: I’ll assess the review findings, fix the memory issue with a failing test first, and record the header wording and empty-export decisions.”
+
+2. Shell call:
+
+   ```bash
+   cd /Users/p/git/notes-app && git status --short && git log -5 --oneline && cat .ryugi/sdd/2026-11-10-export-design/progress.md .ryugi/sdd/2026-11-10-export-design/tasks.md docs/ryugi/specs/2026-11-10-export-design.md && cat package.json src/export.ts src/notes-store.ts src/csv-sink.ts tests/export.test.ts
+   ```
+
+   Assumed result: exit 0; clean checkout on `feat/export`; all three completion entries exist. The spec requires CSV export of all notes. Existing APIs are:
+
+   ```ts
+   exportNotes(store: NoteStore, sink: CsvSink): Promise<void>
+   store.listNotes(): Promise<Note[]>
+   store.iterateNotes(): AsyncIterable<Note>
+   sink.writeRow(values: string[]): Promise<void>
+   ```
+
+   `iterateNotes` already uses bounded, stable pagination. `writeRow` already handles output backpressure. Export currently awaits `listNotes`, then writes the header and rows. Existing tests use Vitest. Task commits are assumed to be `a111111`, `b222222`, and `c333333`.
+
+3. Shell call appending the review assessment:
+
+   ```bash
+   cd /Users/p/git/notes-app && cat >> .ryugi/sdd/2026-11-10-export-design/progress.md <<'EOF'
+   Final review: fresh-context whole-branch review received.
+   Final: grade Important: exportNotes materializes every note before writing — large accounts can fail to export; fix in the single review fix pass.
+   Final: minor (deferred): CSV header uses updatedAt while the UI calls it Last edited.
+   Final: Ruling: empty accounts export the CSV header with zero data rows — this represents an empty dataset and preserves the same CSV schema as populated exports; the spec requires no alternative — cost if wrong: users may expect an empty-state message instead of a downloadable file.
+   EOF
+   ```
+
+   Assumed result: exit 0.
+
+4. Todo call:
+
+   ```json
+   {
+     "items": [
+       {"text": "Task 1", "status": "completed"},
+       {"text": "Task 2", "status": "completed"},
+       {"text": "Task 3", "status": "completed"},
+       {"text": "Fix Important memory finding with RED→GREEN and full suite", "status": "in_progress"},
+       {"text": "Verify finished product and collect partner verdict", "status": "pending"}
+     ]
+   }
+   ```
+
+5. Edit call adding this test to `tests/export.test.ts`:
+
+   ```ts
+   it('streams 200,000 notes without materializing the account', async () => {
+     let yielded = 0;
+     let rowsWritten = 0;
+
+     const store = {
+       listNotes: vi.fn(async () => {
+         throw new Error('export must not materialize all notes');
+       }),
+       async *iterateNotes() {
+         for (let i = 0; i < 200_000; i++) {
+           yielded++;
+           yield {
+             id: String(i),
+             title: `Note ${i}`,
+             body: '',
+             updatedAt: '2026-11-10T00:00:00.000Z',
+           };
+         }
+       },
+     };
+
+     const sink = {
+       async writeRow(_values: string[]) {
+         rowsWritten++;
+         if (rowsWritten === 2) {
+           expect(yielded).toBe(1);
+         }
+       },
+     };
+
+     await exportNotes(store, sink);
+
+     expect(store.listNotes).not.toHaveBeenCalled();
+     expect(yielded).toBe(200_000);
+     expect(rowsWritten).toBe(200_001);
+   });
+   ```
+
+   Assumed result: edit succeeds; fixture fields match the repository’s `Note` type.
+
+6. Shell call:
+
+   ```bash
+   cd /Users/p/git/notes-app && pnpm test -- tests/export.test.ts -t 'streams 200,000 notes without materializing the account'
+   ```
+
+   Assumed full output read: exit 1; the selected test fails with `Error: export must not materialize all notes`, originating from the production call to `store.listNotes()`. Other tests are skipped.
+
+7. Edit call to `src/export.ts`:
+
+   ```diff
+   -  const notes = await store.listNotes();
+      await sink.writeRow(['title', 'body', 'updatedAt']);
+   -  for (const note of notes) {
+   +  for await (const note of store.iterateNotes()) {
+        await sink.writeRow([note.title, note.body, note.updatedAt]);
+      }
+   ```
+
+   Assumed result: edit succeeds. The existing CSV escaping and backpressure handling remain in `sink.writeRow`.
+
+8. Shell call:
+
+   ```bash
+   cd /Users/p/git/notes-app && pnpm test -- tests/export.test.ts -t 'streams 200,000 notes without materializing the account'
+   ```
+
+   Assumed full output read: exit 0; selected test passes, including incremental output and all 200,000 notes.
+
+9. Shell call:
+
+   ```bash
+   cd /Users/p/git/notes-app && pnpm test && git diff --check && git diff -- src/export.ts tests/export.test.ts && git status --short
+   ```
+
+   Assumed full output read: exit 0; **32/32 tests pass**; no whitespace errors; only the intended implementation and regression test changed. The existing empty-account test passes and asserts a header with zero data rows.
+
+10. Message to partner:
+
+    “The streaming regression failed on the original implementation and now passes; the full suite is 32/32. I’m keeping header-only exports for empty accounts and deferring the header wording suggestion.”
+
+11. Shell call:
+
+    ```bash
+    cd /Users/p/git/notes-app && git add src/export.ts tests/export.test.ts && git commit -m "fix: stream notes during CSV export" && git rev-parse HEAD
+    ```
+
+    Assumed result: exit 0; commit is `d4444444444444444444444444444444444444444`.
+
+12. Shell call:
+
+    ```bash
+    cd /Users/p/git/notes-app && pnpm test
+    ```
+
+    Assumed full output read: exit 0; **32/32 tests pass** on the committed code.
+
+13. Shell call:
+
+    ```bash
+    cd /Users/p/git/notes-app && cat >> .ryugi/sdd/2026-11-10-export-design/progress.md <<'EOF'
+    Final: fixed exportNotes materializes every note — streams 200,000 notes without materializing the account RED→GREEN, suite 32/32; commit d4444444444444444444444444444444444444444.
+    EOF
+    ```
+
+    Assumed result: exit 0. No second reviewer is dispatched.
+
+14. Shell call inspecting the project’s running-product instructions:
+
+    ```bash
+    cd /Users/p/git/notes-app && rg --files -g AGENTS.md -g SKILL.md -g '*verify*' -g '*e2e*' -g 'playwright.config.*'
+    ```
+
+    Assumed result: exit 0; finds `tests/e2e/export.spec.ts` and `playwright.config.ts`; no additional project verification skill.
+
+15. Shell call:
+
+    ```bash
+    cd /Users/p/git/notes-app && cat playwright.config.ts tests/e2e/export.spec.ts
+    ```
+
+    Assumed result: exit 0; Playwright starts the local app automatically and exercises CSV downloads for populated and empty accounts using isolated fixtures.
+
+16. Shell call:
+
+    ```bash
+    cd /Users/p/git/notes-app && pnpm exec playwright test tests/e2e/export.spec.ts
+    ```
+
+    Assumed full output read: exit 0; **2/2 browser tests pass**. Downloads contain the expected escaped note values; an empty account downloads only the header. The test server exits afterward.
+
+17. Shell call:
+
+    ```bash
+    cd /Users/p/git/notes-app && cat >> .ryugi/sdd/2026-11-10-export-design/progress.md <<'EOF'
+    Project verification: pnpm exec playwright test tests/e2e/export.spec.ts → 2/2 passed; populated CSV and empty-account header-only downloads verified in the running app.
+    EOF
+    rg -n 'Ruling:|minor \(deferred\)|Task [0-9]+: complete|Final: fixed|Project verification:' .ryugi/sdd/2026-11-10-export-design/progress.md
+    git status --short
+    ```
+
+    Assumed full output read: exit 0; the only ruling and deferred minor are those recorded above; all three task commits and the fix commit are captured; checkout is clean.
+
+18. Message to partner:
+
+    “Browser verification passed both download scenarios. I’m preparing the final verification page; your verdict on the exported CSV’s presentation remains the last gate before landing.”
+
+19. Shell call removing only this spec’s workspace:
+
+    ```bash
+    cd /Users/p/git/notes-app && rm -r -- .ryugi/sdd/2026-11-10-export-design
+    ```
+
+    Assumed result: exit 0. All rulings, deferred findings, commit IDs, and test evidence have already been collected for the final report.
+
+20. Apply the already-loaded `ryugi:verifying` workflow.
+
+    Its tool interface is not supplied in the prompt, so inventing an exact invocation would be misleading. For this simulation, assume its prescribed calls create and open a verification page at:
+
+    `http://localhost:4318/verify/notes-export`
+
+    Assumed result: the page opens successfully and contains:
+
+    - Automated evidence: unit suite **32/32**, browser checks **2/2**.
+    - Regression evidence: streaming test observed **RED→GREEN**.
+    - Partner verdict group: inspect a populated CSV in the intended spreadsheet application and accept or reject its presentation.
+    - The empty-export ruling and deferred header wording.
+    - Branch and commit references.
+
+    The partner verdict remains pending; elapsed time does not count as acceptance.
+
+21. Todo call:
+
+    ```json
+    {
+      "items": [
+        {"text": "Task 1", "status": "completed"},
+        {"text": "Task 2", "status": "completed"},
+        {"text": "Task 3", "status": "completed"},
+        {"text": "Fix Important memory finding with RED→GREEN and full suite", "status": "completed"},
+        {"text": "Verify finished product and collect partner verdict", "status": "in_progress"}
+      ]
+    }
+    ```
+
+22. Final message to partner:
+
+    “The memory fix is committed on `feat/export` as `d444444`, following task commits `a111111`, `b222222`, and `c333333`. The regression was observed failing before the fix; afterward, `pnpm test` passed **32/32** and the browser export checks passed **2/2**.
+
+    Rulings I made:
+    
+    - Empty accounts download the header with zero data rows, preserving the CSV schema. Cost if wrong: users may expect an empty-state message instead.
+
+    Deferred minors:
+    
+    - The CSV header says `updatedAt`; the UI says ‘Last edited’.
+
+    [Review the verification page](http://localhost:4318/verify/notes-export). Your CSV presentation verdict is pending. Landing waits on that verdict; nothing has been pushed.”
+
+SUMMARY: Simulated one RED→GREEN memory fix, recorded the empty-export ruling and deferred minor, verified unit and browser checks, and stopped for the partner’s verification verdict before landing.

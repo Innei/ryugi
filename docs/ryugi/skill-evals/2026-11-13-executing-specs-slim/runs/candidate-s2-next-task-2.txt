@@ -1,0 +1,140 @@
+The attempted real read of `./skill/scripts/task-start` returned “No such file or directory.” Everything below is simulated; no further commands are actually run.
+
+Assumptions: `HEAD` is still `d4e5f6a`. Task 2’s brief specifies a CSV download button and existing React/Vitest test helpers, as detailed below. These are hypothetical tool outputs, not verified repository facts.
+
+1. **Todo tool**
+   ```json
+   {"task":1,"status":"completed"}
+   ```
+   Evidence: the supplied `task-done` output recorded Task 1’s verification as `4/4 pass`.
+
+2. **Message to partner**
+
+   “I’m taking Task 2 and reading its brief before writing the failing test.”
+
+3. **Shell tool**
+   ```sh
+   bash scripts/task-start docs/ryugi/specs/2026-11-10-export-design.md 2
+   ```
+   Assumed successful output:
+   ```text
+   Brief: .ryugi/sdd/2026-11-10-export-design/briefs/task-2.md
+   BASE: d4e5f6a
+   ```
+
+4. **Shell tool**
+   ```sh
+   cat .ryugi/sdd/2026-11-10-export-design/briefs/task-2.md
+   ```
+   Assumed brief:
+   ```text
+   ## Task 2: Download notes as CSV
+
+   Goal: Add the Export CSV action specified in the design.
+   Files: src/components/NotesPage.tsx; tests/export-download.test.tsx
+   Interfaces:
+   Produces: Export CSV action on NotesPage.
+   Consumes: serializeNotesCsv from Task 1.
+   Failing test: Render NotesPage with a note, click Export CSV, and
+   assert downloadFile receives notes.csv, the serialized CSV, and text/csv.
+   Existing helpers: renderNotesPage from ./helpers/renderNotesPage;
+   downloadFile from ../src/lib/download.
+   Verify: pnpm test export
+   Expected: All export tests pass.
+   ```
+
+5. **Todo tool**
+   ```json
+   {"task":2,"status":"in_progress"}
+   ```
+
+6. **Write-file tool**
+
+   Path: `tests/export-download.test.tsx`
+
+   Exact content:
+   ```tsx
+   import { expect, test, vi } from 'vitest';
+   import { screen } from '@testing-library/react';
+   import userEvent from '@testing-library/user-event';
+   import { renderNotesPage } from './helpers/renderNotesPage';
+   import { downloadFile } from '../src/lib/download';
+
+   vi.mock('../src/lib/download', () => ({
+     downloadFile: vi.fn(),
+   }));
+
+   test('export downloads the notes as CSV', async () => {
+     const user = userEvent.setup();
+     vi.mocked(downloadFile).mockClear();
+
+     renderNotesPage({
+       notes: [{ id: '1', title: 'Shopping', body: 'Milk' }],
+     });
+
+     await user.click(screen.getByRole('button', { name: 'Export CSV' }));
+
+     expect(downloadFile).toHaveBeenCalledExactlyOnceWith(
+       'notes.csv',
+       'title,body\r\nShopping,Milk\r\n',
+       'text/csv',
+     );
+   });
+   ```
+   Assumption: these helpers, signatures, note fields, and CSV format match the brief and Task 1’s established contract.
+
+7. **Shell tool**
+   ```sh
+   pnpm test export-download
+   ```
+   Assumed full output:
+   ```text
+   > notes-app test
+   > vitest run export-download
+
+    RUN  v3.2.4 /Users/p/git/notes-app
+
+    ❯ tests/export-download.test.tsx (1 test | 1 failed)
+      × export downloads the notes as CSV
+
+    FAIL  tests/export-download.test.tsx > export downloads the notes as CSV
+   TestingLibraryElementError: Unable to find an accessible element
+   with the role "button" and name "Export CSV"
+
+   Here are the accessible roles:
+
+     heading:
+
+     Name "Notes":
+     <h1 />
+
+   Ignored nodes: comments, script, style
+   <body>
+     <div>
+       <main>
+         <h1>Notes</h1>
+         <article>
+           <h2>Shopping</h2>
+           <p>Milk</p>
+         </article>
+       </main>
+     </div>
+   </body>
+
+    ❯ tests/export-download.test.tsx:18:29
+         await user.click(screen.getByRole('button', { name: 'Export CSV' }));
+
+    Test Files  1 failed (1)
+         Tests  1 failed (1)
+
+   ELIFECYCLE Test failed. See above for more details.
+   ```
+   Assumed exit code: `1`. I read the full output: the test reaches the rendered notes page and fails because the specified export action is absent.
+
+8. **Message to partner**
+
+   “Task 2’s first test is red: `pnpm test export-download` exits 1 because the Export CSV button is missing. No Task 2 implementation or completion is claimed.”
+
+No manual ledger lines are appended at this boundary. Task 1’s supplied completion remains recorded; Task 2 remains in progress. No commit, review, or approval request occurs.
+
+SUMMARY: Simulated taking Task 2, reading its brief, writing its first test, and observing the expected failure; implementation remains with the agent, with no partner decision needed.

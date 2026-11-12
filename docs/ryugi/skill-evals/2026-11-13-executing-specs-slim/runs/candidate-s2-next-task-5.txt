@@ -1,0 +1,114 @@
+Simulation only. All tool results below are assumptions; no repository commands are actually run.
+
+1. **Tool: `todos.update`**
+   ```json
+   {"task":1,"status":"completed"}
+   ```
+   Assumed result: todo updated using the supplied `task-done` result.
+
+2. **Message to partner:**
+   > I’m continuing with Task 2 and will read its generated brief before writing the failing test.
+
+3. **Tool: `shell`**
+   Working directory: `/Users/p/git/notes-app`
+   ```sh
+   git status --short --branch
+   git log -3 --oneline
+   cat .ryugi/sdd/2026-11-10-export-design/progress.md
+   ```
+   Assumed result: clean checkout on `feat/export`, HEAD `d4e5f6a`; ledger identity matches the spec and contains the supplied Task 1 completion line. Task 2 has no completion line. No setup or slicing is repeated.
+
+4. **Tool: `shell`**
+   Working directory: `/Users/p/git/notes-app`
+   ```sh
+   bash scripts/task-start docs/ryugi/specs/2026-11-10-export-design.md 2
+   ```
+   Assumed result:
+   ```text
+   Brief: .ryugi/sdd/2026-11-10-export-design/task-2-brief.md
+   BASE: d4e5f6a
+   ```
+   Retain `d4e5f6a` as Task 2’s BASE.
+
+5. **Tool: `shell`**
+   Working directory: `/Users/p/git/notes-app`
+   ```sh
+   cat .ryugi/sdd/2026-11-10-export-design/task-2-brief.md
+   ```
+   Assumed brief:
+   ```text
+   Task 2: Serialize notes as CSV
+
+   Goal: Implement the spec's CSV document format.
+   Files: src/export.ts, src/export.test.ts
+   Interfaces:
+     Produces: notesToCsv(notes)
+     Consumes: escapeCsvField(value)
+   Failing test: notesToCsv emits title,body headers and escapes note fields,
+   using CRLF between rows and preserving note order.
+   Verify: pnpm test export
+   Expected: all export tests pass.
+   ```
+   These details are assumed because the actual brief was not supplied.
+
+6. **Tool: `todos.update`**
+   ```json
+   {"task":2,"status":"in_progress"}
+   ```
+   Assumed result: Task 2 is in progress; Task 3 remains pending.
+
+7. **Tool: `shell`**
+   Working directory: `/Users/p/git/notes-app`
+   ```sh
+   cat package.json src/export.ts src/export.test.ts
+   ```
+   Assumed result: the test script uses Vitest; `src/export.test.ts` imports `describe`, `expect`, `it`, and `escapeCsvField`; its four existing tests cover Task 1. `src/export.ts` exports the working `escapeCsvField` and a `notesToCsv(notes)` placeholder returning `''`. The placeholder accepts notes with `title` and `body` fields. Thus the new test can fail on behavior rather than an import or setup error.
+
+8. **Tool: `apply_patch`**
+   ```diff
+   *** Begin Patch
+   *** Update File: /Users/p/git/notes-app/src/export.test.ts
+   @@
+   -import { escapeCsvField } from './export';
+   +import { escapeCsvField, notesToCsv } from './export';
+   +
+   +describe('notesToCsv', () => {
+   +  it('emits headers and escaped note rows in input order', () => {
+   +    const notes = [
+   +      { title: 'First, note', body: 'He said "hello"' },
+   +      { title: 'Second', body: 'Line one\nLine two' },
+   +    ];
+   +
+   +    expect(notesToCsv(notes)).toBe(
+   +      'title,body\r\n"First, note","He said ""hello"""\r\nSecond,"Line one\nLine two"',
+   +    );
+   +  });
+   +});
+   *** End Patch
+   ```
+   Assumed result: patch applied. No implementation changed.
+
+9. **Tool: `shell`**
+   Working directory: `/Users/p/git/notes-app`
+   ```sh
+   pnpm test export > .ryugi/sdd/2026-11-10-export-design/task-2-red.log 2>&1
+   test_status=$?
+   cat .ryugi/sdd/2026-11-10-export-design/task-2-red.log
+   exit "$test_status"
+   ```
+   Assumed full output: Vitest runs all five export tests, the four existing tests pass, and the new test fails:
+   ```text
+   FAIL src/export.test.ts > notesToCsv > emits headers and escaped note rows in input order
+   AssertionError: expected '' to be 'title,body\r\n"First, note",…'
+
+   Test Files  1 failed (1)
+        Tests  1 failed | 4 passed (5)
+   ```
+   Assumed exit code: `1`. Read the entire log; the failure is the expected empty CSV result from the unimplemented serializer.
+
+10. **Message to partner:**
+    > In this simulation, `pnpm test export` exits 1: four tests pass and Task 2’s new CSV serialization test fails because `notesToCsv` returns an empty string.
+
+No new ledger lines are appended: there is no ruling, commit, or Task 2 completion at this boundary. Stop the simulation at the requested failing-test run.
+
+SUMMARY: Simulated starting Task 2, writing its behavior test, and observing the expected failure; implementation remains with the agent, with no partner approval needed.

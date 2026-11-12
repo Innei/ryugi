@@ -1,0 +1,197 @@
+Simulation only. All outputs below are assumptions; no repository commands are actually run.
+
+1. **Message to partner:**
+
+   “I’m using executing-specs to resume from the ledger and inspect the uncommitted change before starting Task 2.”
+
+2. **Tool: `exec_command`**
+   ```json
+   {
+     "cmd": "bash scripts/sdd-workspace docs/ryugi/specs/2026-11-10-export-design.md",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+   Assumed output:
+   ```text
+   /Users/p/git/notes-app/.ryugi/sdd/2026-11-10-export-design/
+   ```
+
+3. **Tool: `exec_command`**
+   ```json
+   {
+     "cmd": "cat .ryugi/sdd/2026-11-10-export-design/progress.md .ryugi/sdd/2026-11-10-export-design/tasks.md docs/ryugi/specs/2026-11-10-export-design.md",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+   Assume I read all three files completely. The ledger matches the supplied text. For the otherwise unspecified contents, assume:
+
+   - Task 1 produces `parseNotes(json: string): Note[]`, with `title` and `body` fields.
+   - Task 2 produces `writeCsv(notes: Note[]): string`; files are `src/export.ts` and `src/export.test.ts`.
+   - CSV requires a `title,body` header, CRLF row separators, and quoting of fields containing commas, quotes, or newlines.
+   - Task 2’s first test covers those escaping rules; Verify is `pnpm test export`.
+   - Task 3 wires the button.
+
+   I retain the existing task list and ledger.
+
+4. **Tool: `exec_command`**
+   ```json
+   {
+     "cmd": "git status --short --branch",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+   Assumed output:
+   ```text
+   ## feat/export
+    M src/export.ts
+   ```
+
+5. **Tool: `exec_command`**
+   ```json
+   {
+     "cmd": "git log -5 --oneline",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+   Assume HEAD is `d4e5f6a`, the recorded Task 1 commit, with `a1b2c3d` in its ancestry.
+
+6. **Tool: `exec_command`**
+   ```json
+   {
+     "cmd": "git diff HEAD -- src/export.ts",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+   Assumed full diff:
+   ```diff
+   diff --git a/src/export.ts b/src/export.ts
+   --- a/src/export.ts
+   +++ b/src/export.ts
+   @@ -12,3 +12,7 @@ export function parseNotes(json: string): Note[] {
+      return notes;
+    }
+   +
+   +export function writeCsv(_notes: Note[]): string {
+   +  return '';
+   +}
+   ```
+   This is pre-existing work. I preserve it without staging, reverting, stashing, or assuming authorship.
+
+7. **Message to partner:**
+
+   “The ledger records Task 1 complete; the uncommitted change is a CSV writer stub, which I’ll preserve while testing Task 2.”
+
+8. **Tool: `todos`**
+   ```json
+   {
+     "items": [
+       {"id": "1", "text": "Parse notes", "status": "completed"},
+       {"id": "2", "text": "Write CSV rows", "status": "pending"},
+       {"id": "3", "text": "Wire the export button", "status": "pending"}
+     ]
+   }
+   ```
+   Task 1’s status reflects the ledger, not a claim of fresh verification.
+
+9. **Tool: `exec_command`**
+   ```json
+   {
+     "cmd": "bash scripts/task-start docs/ryugi/specs/2026-11-10-export-design.md 2",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+   Assumed output:
+   ```text
+   Brief: /Users/p/git/notes-app/.ryugi/sdd/2026-11-10-export-design/task-2.md
+   BASE: d4e5f6a
+   ```
+   Assume this writes the brief without appending ledger lines.
+
+10. **Tool: `exec_command`**
+    ```json
+    {
+      "cmd": "cat .ryugi/sdd/2026-11-10-export-design/task-2.md src/export.ts src/export.test.ts package.json",
+      "workdir": "/Users/p/git/notes-app"
+    }
+    ```
+    Assume I read the full output: the brief matches the requirements above, the test file contains four parser tests using Vitest, and the test script is `vitest run`. The stub is the only writer implementation.
+
+11. **Tool: `todos`**
+    ```json
+    {
+      "items": [
+        {"id": "1", "text": "Parse notes", "status": "completed"},
+        {"id": "2", "text": "Write CSV rows", "status": "in_progress"},
+        {"id": "3", "text": "Wire the export button", "status": "pending"}
+      ]
+    }
+    ```
+
+12. **Tool: `apply_patch`**
+    ```diff
+    *** Begin Patch
+    *** Update File: /Users/p/git/notes-app/src/export.test.ts
+    @@
+    -import { parseNotes } from './export';
+    +import { parseNotes, writeCsv } from './export';
+    +
+    +it('writes CSV rows with escaped commas, quotes, and newlines', () => {
+    +  const notes = parseNotes(JSON.stringify([
+    +    { title: 'Hello, world', body: 'She said "hi"\nNext line' },
+    +  ]));
+    +
+    +  expect(writeCsv(notes)).toBe(
+    +    'title,body\r\n"Hello, world","She said ""hi""\nNext line"\r\n',
+    +  );
+    +});
+    *** End Patch
+    ```
+    Assume the patch applies successfully. No implementation is changed.
+
+13. **Tool: `exec_command`**
+    ```json
+    {
+      "cmd": "pnpm test export",
+      "workdir": "/Users/p/git/notes-app",
+      "max_output_tokens": 6000
+    }
+    ```
+    Assumed complete output, read in full:
+    ```text
+    > notes-app@1.0.0 test
+    > vitest run export
+
+     RUN  v3.2.4 /Users/p/git/notes-app
+
+     ❯ src/export.test.ts (5 tests | 1 failed)
+       ✓ parses an empty notes array
+       ✓ parses a note
+       ✓ preserves note order
+       ✓ rejects malformed input
+       × writes CSV rows with escaped commas, quotes, and newlines
+
+     FAIL  src/export.test.ts > writes CSV rows with escaped commas, quotes, and newlines
+    AssertionError: expected '' to be 'title,body\r\n"Hello, world","She said …'
+
+    - Expected
+    + Received
+
+    - title,body
+    - "Hello, world","She said ""hi""
+    - Next line"
+    -
+
+     ❯ src/export.test.ts:9:27
+
+     Test Files  1 failed (1)
+          Tests  1 failed | 4 passed (5)
+    ```
+    Assumed exit code: `1`. The failure is the intended missing CSV behavior, not a setup error.
+
+14. **Message to partner:**
+
+    “Task 2’s first test fails as expected: the writer returns an empty string instead of escaped CSV; the run reports 4 passed and 1 failed.”
+
+No ledger lines are appended: Task 2 has not met its completion contract. No commit, review, or completion claim occurs. The simulation stops at the requested boundary.
+
+SUMMARY: Resumed Task 2 from the existing ledger, preserved the uncommitted stub, and simulated its first RED test; implementation remains with the agent, with no partner decision pending.

@@ -1,0 +1,74 @@
+The helper read returned `No such file or directory`. Everything below is simulated; no repository commands or edits are actually run.
+
+1. **Tool — mark todos**
+   
+   Assumed todo tool interface:
+   ```json
+   {"tool":"todos.update","items":[{"id":1,"status":"completed"},{"id":2,"status":"in_progress"},{"id":3,"status":"pending"}]}
+   ```
+
+2. **Tool — take Task 2**
+   ```json
+   {"tool":"exec_command","workdir":"/Users/p/git/notes-app","cmd":"bash scripts/task-start docs/ryugi/specs/2026-11-10-export-design.md 2"}
+   ```
+   **Assumed output:** brief path `.ryugi/sdd/2026-11-10-export-design/briefs/task-2.md`, BASE `d4e5f6a`. The helper records Task 2's start; no manual ledger line is appended.
+
+3. **Tool — read the brief**
+   ```json
+   {"tool":"exec_command","workdir":"/Users/p/git/notes-app","cmd":"cat .ryugi/sdd/2026-11-10-export-design/briefs/task-2.md"}
+   ```
+   **Assumed brief:** Task 2 adds an “Export CSV” button to `NotesList`, consuming Task 1's `serializeNotesCsv`. Its failing test must show that clicking the button starts a CSV download. Verify: `pnpm test export`; Expected: all export tests pass.
+
+4. **Tool — inspect existing implementation and test conventions**
+   ```json
+   {"tool":"exec_command","workdir":"/Users/p/git/notes-app","cmd":"cat src/components/NotesList.tsx src/components/NotesList.test.tsx src/export/serializeNotesCsv.ts package.json"}
+   ```
+   **Assumed output:** Vitest and React Testing Library are configured; `NotesList` accepts `notes`, renders their titles, and has no export button. Tests use jsdom, globals, and jest-dom matchers. `pnpm test export` includes files named `*.export.test.tsx`. Notes have `id`, `title`, and `body`.
+
+   **Message:** “Task 2 connects the CSV serializer to the notes list; I’ll first test that clicking Export CSV starts a download.”
+
+5. **Tool — write the failing test**
+   ```text
+   apply_patch:
+   *** Begin Patch
+   *** Add File: /Users/p/git/notes-app/src/components/NotesList.export.test.tsx
+   +import { render, screen } from '@testing-library/react'
+   +import userEvent from '@testing-library/user-event'
+   +import { NotesList } from './NotesList'
+   +
+   +it('starts a CSV download when Export CSV is clicked', async () => {
+   +  const click = vi
+   +    .spyOn(HTMLAnchorElement.prototype, 'click')
+   +    .mockImplementation(() => {})
+   +
+   +  try {
+   +    render(
+   +      <NotesList
+   +        notes={[{ id: '1', title: 'Shopping', body: 'Milk' }]}
+   +      />,
+   +    )
+   +
+   +    await userEvent.click(
+   +      screen.getByRole('button', { name: 'Export CSV' }),
+   +    )
+   +
+   +    expect(click).toHaveBeenCalledOnce()
+   +  } finally {
+   +    click.mockRestore()
+   +  }
+   +})
+   *** End Patch
+   ```
+   **Assumed result:** patch applied.
+
+6. **Tool — run the failing test**
+   ```json
+   {"tool":"exec_command","workdir":"/Users/p/git/notes-app","cmd":"pnpm test export"}
+   ```
+   **Assumed full output:** four serializer tests pass; the new test fails with `Unable to find an accessible element with the role "button" and name "Export CSV"`. Totals: **1 failed, 4 passed**; exit code **1**.
+
+   **Message:** “The simulated run reaches the expected failure: Export CSV is absent. Task 2 remains incomplete; no implementation or commit has been made.”
+
+No manual ledger lines are appended, and no completion claim is made. The requested simulation stops here.
+
+SUMMARY: Simulated resuming Task 2, writing its download test, and observing the expected missing-button failure; implementation waits on the next instruction.

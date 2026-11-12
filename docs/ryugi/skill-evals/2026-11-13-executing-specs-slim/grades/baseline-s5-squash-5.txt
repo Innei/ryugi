@@ -1,0 +1,1 @@
+PASS — Uses the required squash sequence, tests main after committing, deletes with `-D`, and leaves pushing to the partner.

@@ -1,0 +1,128 @@
+Everything below is simulated. The only actual tool call attempted to read `./skill/scripts/task-done`; that file was absent. No repository commands or edits ran.
+
+1. **Tool call — recover Task 2’s brief and current state:**
+
+   ```json
+   {
+     "cmd": "pwd && git status --short --branch && cat .ryugi/sdd/2026-11-10-export-design/briefs/task-2.md && cat .ryugi/sdd/2026-11-10-export-design/progress.md",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   **Assumed output:** Branch `feat/export`; only Task 2’s source and test files are modified. The brief identifies:
+   
+   - Source: `src/export/csv.ts`
+   - Tests: `src/export/csv.test.ts`
+   - Interface: `exportNotesCsv(notes)`, with string fields `id`, `title`, and `updatedAt`
+   - Verify: `pnpm test`
+   - Expected: all tests pass
+   - Task BASE: `a1b2c3d`
+
+   The ledger confirms Task 1 complete and no Task 2 completion. Assume the existing failing Task 2 test checks an ordinary note row. The implementation currently returns only the header:
+
+   ```ts
+   return 'id,title,updatedAt\n';
+   ```
+
+2. **Message to partner:**
+
+   “I’m treating commas, quotes, and line breaks as CSV field content: affected fields will be quoted, with embedded quotes doubled.”
+
+3. **Tool call — add a regression test before implementing escaping:**
+
+   ```json
+   {
+     "cmd": "cat >> src/export/csv.test.ts <<'EOF'\n\nit('preserves CSV delimiters, quotes, and line breaks within fields', () => {\n  expect(exportNotesCsv([\n    { id: '1', title: 'Hello, world', updatedAt: '2026-11-10T00:00:00Z' },\n    { id: '2', title: 'First\\nSecond', updatedAt: '2026-11-10T00:00:00Z' },\n    { id: '3', title: 'Say \"hello\"', updatedAt: '2026-11-10T00:00:00Z' },\n    { id: '4', title: 'First\\r\\nSecond', updatedAt: '2026-11-10T00:00:00Z' },\n  ])).toBe(\n    'id,title,updatedAt\\n' +\n    '1,\"Hello, world\",2026-11-10T00:00:00Z\\n' +\n    '2,\"First\\nSecond\",2026-11-10T00:00:00Z\\n' +\n    '3,\"Say \"\"hello\"\"\",2026-11-10T00:00:00Z\\n' +\n    '4,\"First\\r\\nSecond\",2026-11-10T00:00:00Z\\n'\n  );\n});\nEOF\npnpm test",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   **Assumed result, full output read:** Exit 1; five tests pass and two fail. Both Task 2 tests receive only the header instead of their expected rows. The new regression therefore fails because row serialization is absent, with no import or test setup errors.
+
+4. **Tool call — implement row serialization:**
+
+   ```text
+   apply_patch:
+   *** Begin Patch
+   *** Update File: /Users/p/git/notes-app/src/export/csv.ts
+   @@
+   -  return 'id,title,updatedAt\n';
+   +  const escapeField = (value: string): string =>
+   +    /[",\r\n]/.test(value)
+   +      ? `"${value.replace(/"/g, '""')}"`
+   +      : value;
+   +
+   +  return 'id,title,updatedAt\n' + notes.map((note) =>
+   +    [note.id, note.title, note.updatedAt].map(escapeField).join(',') + '\n'
+   +  ).join('');
+   *** End Patch
+   ```
+
+   **Assumed result:** Patch applied.
+
+5. **Tool call — run the brief’s Verify command:**
+
+   ```json
+   {
+     "cmd": "pnpm test",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   **Assumed result, full output read:** Exit 0; seven of seven tests pass. This matches `Expected: all tests pass`. The ordinary row test and new escaping regression are both green.
+
+6. **Message to partner:**
+
+   “The simulated `pnpm test` run passes all seven tests, including titles containing commas, quotes, and line breaks; I’ll record the ruling and commit Task 2.”
+
+7. **Tool call — record the ruling and commit only Task 2’s files:**
+
+   ```json
+   {
+     "cmd": "printf '%s\\n' 'Task 2: Ruling: The spec leaves CSV escaping unspecified — quote fields containing commas, double quotes, CR or LF and double embedded quotes; interpret one row per note as one logical CSV record, preserving title content — if wrong, a consumer expecting one physical line per note will need a separately specified format.' >> .ryugi/sdd/2026-11-10-export-design/progress.md\n git add src/export/csv.ts src/export/csv.test.ts && git commit -m \"feat: serialize note rows with CSV escaping\"",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   **Assumed result:** Commit succeeds as `b2c3d4e`.
+
+8. **Tool call — close Task 2 using its required final test run:**
+
+   ```json
+   {
+     "cmd": "bash scripts/task-done docs/ryugi/specs/2026-11-10-export-design.md 2 a1b2c3d -- pnpm test",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   **Assumed result:** Exit 0; seven of seven tests pass. The script saves the full output and appends:
+
+   ```text
+   Task 2: complete (commits a1b2c3d..b2c3d4e, tests: pnpm test → 7/7 passed)
+   ```
+
+9. **Tool call — read the complete final test output and ledger:**
+
+   ```json
+   {
+     "cmd": "cat .ryugi/sdd/2026-11-10-export-design/task-2-tests.log && cat .ryugi/sdd/2026-11-10-export-design/progress.md",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   **Assumption:** The script reports `task-2-tests.log` as its output path. Its complete contents confirm seven passing tests and exit 0; the ledger contains the ruling and Task 2 completion line.
+
+10. **Todo tool call:**
+
+    ```json
+    {
+      "task": "Task 2: Write rows",
+      "status": "completed"
+    }
+    ```
+
+11. **Message to partner:**
+
+    “In this simulation, Task 2 is closed in commit `b2c3d4e`: its final `task-done` run passed 7/7 tests. The escaping ruling preserves multiline titles as logical CSV records; consumers requiring one physical line per note would need a different format. Task 3 remains.”
+
+SUMMARY: Simulated Task 2’s CSV escaping regression, RED→GREEN implementation, ruling, commit, and final verification; Task 3 awaits continued execution, with no partner approval needed.

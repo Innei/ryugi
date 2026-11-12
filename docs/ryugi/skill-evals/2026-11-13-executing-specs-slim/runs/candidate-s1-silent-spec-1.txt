@@ -1,0 +1,135 @@
+Everything below is simulated. Commands, paths, file contents, SHAs, and outputs not supplied in the situation are explicitly assumed; no repository commands are actually run.
+
+1. **Tool — recover Task 2’s brief and original BASE.**
+
+   `functions.exec`:
+   ```js
+   text(await tools.exec_command({
+     cmd: "cat .ryugi/sdd/2026-11-10-export-design/progress.md .ryugi/sdd/2026-11-10-export-design/briefs/task-2.md",
+     workdir: "/Users/p/git/notes-app",
+     max_output_tokens: 6000
+   }));
+   ```
+
+   **Assumed output:** The ledger identifies the correct spec and records Task 1 complete. Task 2 already started at BASE `a111111111111111111111111111111111111111`. Its brief names `src/export.ts` and `src/export.test.ts`, requires `notesToCsv(notes)` to produce `id,title,updatedAt` records, and specifies `Verify: pnpm test`, `Expected: all tests pass`. Task 2’s todo is already in progress.
+
+   I retain the existing BASE and task list.
+
+2. **Tool — inspect the current implementation and tests.**
+
+   `functions.exec`:
+   ```js
+   text(await tools.exec_command({
+     cmd: "git status --short --branch\ncat src/export.ts src/export.test.ts package.json",
+     workdir: "/Users/p/git/notes-app",
+     max_output_tokens: 6000
+   }));
+   ```
+
+   **Assumed output:** Branch is `feat/export`; only the two Task 2 files are modified. Tests use Vitest. `Note` has string fields `id`, `title`, and `updatedAt`. Task 1 implemented the header. The current row implementation uses:
+   ```ts
+   [note.id, note.title, note.updatedAt].join(',')
+   ```
+   Records use `\r\n`. The existing failing test expects ordinary note rows; row implementation is still incomplete.
+
+   **Message to partner:** “I’ll quote CSV fields containing commas, quotes, or line breaks and double embedded quotes; this preserves each note as one CSV record.”
+
+   The ruling will be appended alongside the commit, as the skill requires.
+
+3. **Tool — add regression tests before completing the implementation.**
+
+   `functions.exec`:
+   ```js
+   text(await tools.apply_patch("*** Begin Patch\n*** Update File: /Users/p/git/notes-app/src/export.test.ts\n@@\n+it.each([\n+  ['comma', 'Ideas, drafts', '\"Ideas, drafts\"'],\n+  ['newline', 'First\\nSecond', '\"First\\nSecond\"'],\n+  ['carriage return', 'First\\rSecond', '\"First\\rSecond\"'],\n+  ['quote', 'Say \"hello\"', '\"Say \"\"hello\"\"\"'],\n+])('escapes a title containing a %s', (_, title, encodedTitle) => {\n+  expect(notesToCsv([\n+    { id: '1', title, updatedAt: '2026-11-10T00:00:00Z' },\n+    { id: '2', title: 'Next', updatedAt: '2026-11-11T00:00:00Z' },\n+  ])).toBe(\n+    'id,title,updatedAt\\r\\n' +\n+    `1,${encodedTitle},2026-11-10T00:00:00Z\\r\\n` +\n+    '2,Next,2026-11-11T00:00:00Z'\n+  );\n+});\n*** End Patch"));
+   ```
+
+   **Assumption:** Existing imports expose `it`, `expect`, and `notesToCsv`; the patch applies.
+
+4. **Tool — run the tests and read their complete output.**
+
+   `functions.exec`:
+   ```js
+   text(await tools.exec_command({
+     cmd: "pnpm test",
+     workdir: "/Users/p/git/notes-app",
+     max_output_tokens: 12000
+   }));
+   ```
+
+   **Assumed output, read in full:** Exit 1; 11 tests pass and 5 fail. The original row test fails because the row implementation is incomplete. All four new cases fail because fields are emitted without CSV quoting and quote doubling. No import, syntax, or environment failures occur.
+
+   This supplies current-session RED evidence for the original behavior and the escaping cases.
+
+5. **Tool — finish rows with a shared field encoder.**
+
+   `functions.exec`:
+   ```js
+   text(await tools.apply_patch("*** Begin Patch\n*** Update File: /Users/p/git/notes-app/src/export.ts\n@@\n+function csvField(value: string): string {\n+  return /[\",\\r\\n]/.test(value)\n+    ? `\"${value.replace(/\"/g, '\"\"')}\"`\n+    : value;\n+}\n@@\n export function notesToCsv(notes: Note[]): string {\n-  return 'id,title,updatedAt';\n+  return [\n+    'id,title,updatedAt',\n+    ...notes.map((note) =>\n+      [note.id, note.title, note.updatedAt].map(csvField).join(',')\n+    ),\n+  ].join('\\r\\n');\n }\n*** End Patch"));
+   ```
+
+   **Assumption:** The inspected function body still returns only the header; the incomplete row expression was outside that return and is removed as part of completing this patch. The final file contains only the existing `Note` definition, `csvField`, and the completed function.
+
+6. **Tool — run Verify and inspect the exact change.**
+
+   `functions.exec`:
+   ```js
+   text(await tools.exec_command({
+     cmd: "pnpm test\ngit diff --check\ngit diff -- src/export.ts src/export.test.ts",
+     workdir: "/Users/p/git/notes-app",
+     max_output_tokens: 12000
+   }));
+   ```
+
+   **Assumed complete output:** `pnpm test` exits 0, reporting 16/16 tests passing, including the original row test and all four escaping cases. `git diff --check` produces no output. The diff contains only the described Task 2 implementation and tests.
+
+   **Message to partner:** “`pnpm test` reports 16/16 passing, matching Task 2’s expected result; I’ll record the escaping ruling with its commit.”
+
+7. **Tool — commit only Task 2 paths and append the ruling in the same call.**
+
+   `functions.exec`:
+   ```js
+   text(await tools.exec_command({
+     cmd: "git add -- src/export.ts src/export.test.ts && git commit -m 'Implement CSV note rows with field escaping' && python3 - <<'PY'\nfrom pathlib import Path\np = Path('.ryugi/sdd/2026-11-10-export-design/progress.md')\nwith p.open('a') as f:\n    f.write('Task 2: Ruling: Quote CSV fields containing commas, double quotes, CR or LF and double embedded double quotes; interpret one row per note as one CSV record, allowing embedded line breaks inside quoted fields — preserves field values and record boundaries while retaining the required id,title,updatedAt columns — if a consumer requires one physical line per note or a different CSV dialect, it will need an explicit compatibility change.\\n')\nPY\n git rev-parse HEAD",
+     workdir: "/Users/p/git/notes-app",
+     max_output_tokens: 3000
+   }));
+   ```
+
+   **Assumed output:** Commit succeeds as `b222222222222222222222222222222222222222`; two files changed. The ruling append succeeds. No task-list rewrite is needed: the public interface and later task inputs remain unchanged.
+
+8. **Tool — close Task 2 through its required final test run, naming this checkout’s own commit.**
+
+   `functions.exec`:
+   ```js
+   text(await tools.exec_command({
+     cmd: "bash scripts/task-done docs/ryugi/specs/2026-11-10-export-design.md 2 a111111111111111111111111111111111111111 b222222222222222222222222222222222222222 -- pnpm test",
+     workdir: "/Users/p/git/notes-app",
+     max_output_tokens: 6000
+   }));
+   ```
+
+   **Assumed output:** Exit 0; 16/16 tests pass. The script prints the test-log path and appends:
+   ```text
+   Task 2: complete (commits b222222, tests: pnpm test → exit 0)
+   ```
+
+9. **Tool — read the final run’s full output and confirm the recorded completion.**
+
+   `functions.exec`:
+   ```js
+   text(await tools.exec_command({
+     cmd: "cat .ryugi/sdd/2026-11-10-export-design/task-2-test.log\ncat .ryugi/sdd/2026-11-10-export-design/progress.md\ngit status --short --branch",
+     workdir: "/Users/p/git/notes-app",
+     max_output_tokens: 12000
+   }));
+   ```
+
+   **Assumed output:** The script’s log path is the one above. Its complete output confirms 16/16 passing with no errors. The ledger contains the exact ruling and completion lines above. Git reports `feat/export` with no tracked changes.
+
+   Task 2’s todo is now marked complete. No todo tool is exposed in this session, so no fictitious tool call is claimed.
+
+   **Message to partner:** “Task 2 is closed in this simulation: commit `b222222`, with the final `task-done` run reporting 16/16 passing. The ledger records the CSV escaping ruling and its compatibility cost.”
+
+The requested simulation stops at Task 2’s closure. Task 3, whole-branch review, final product verification, and landing have not occurred; actual execution would continue to Task 3 without requesting permission.
+
+SUMMARY: Simulated Task 2’s escaping ruling, RED→GREEN tests, commit, and ledgered closure; Task 3 waits on the agent, with no partner approval needed.

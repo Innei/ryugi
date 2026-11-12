@@ -1,0 +1,87 @@
+Simulation only; no commands below are actually run. All described outputs are assumed.
+
+**Message to partner:** “I’m using executing-specs to finish verification and report the branch for your landing decision.”
+
+**Tool call — shell:**
+```json
+{"cmd":"cat .ryugi/sdd/2026-11-10-export-design/progress.md","workdir":"/Users/p/git/notes-app"}
+```
+
+Assume the full output identifies the specified spec, confirms all three tasks complete, and contains exactly these ruling, deferred-minor, and final-fix lines:
+
+```text
+Task 2: Ruling: quote fields per RFC 4180 — spec is silent on commas — cost if wrong: Excel-only users see quotes
+Final: fixed streaming export — test_export_streams RED→GREEN, suite 32/32
+Final: minor (deferred): CSV header says updatedAt
+```
+
+Assume it also records the completed final review and inline verification, with no outstanding findings or partner verdicts. Retain the ruling and minor for the final message. No ledger lines are appended.
+
+**Tool call — shell:**
+```json
+{"cmd":"git status --short --branch","workdir":"/Users/p/git/notes-app"}
+```
+
+Assume full output:
+```text
+## feat/export
+```
+
+**Tool call — shell:**
+```json
+{"cmd":"git log -4 --oneline","workdir":"/Users/p/git/notes-app"}
+```
+
+Assume full output shows the three task commits followed by the committed review fix:
+```text
+d4e5f6a Fix streaming CSV export
+c3d4e5f Connect notes CSV export
+b2c3d4e Encode CSV fields
+a1b2c3d Add notes export selection
+```
+
+**Tool call — shell:**
+```json
+{"cmd":"pnpm test","workdir":"/Users/p/git/notes-app","max_output_tokens":20000}
+```
+
+Assume exit code `0`; the full, untruncated output lists all 32 tests as passing, including `test_export_streams`, and reports `32 passed`. Read the entire output.
+
+**Message to partner:** “`pnpm test` exited 0 with 32/32 tests passing, including streaming export; the branch has no uncommitted changes.”
+
+The final review and its fixes are complete and committed. The ruling and deferred minor have been collected, so remove only this spec’s workspace.
+
+**Tool call — shell:**
+```json
+{"cmd":"rm -r -- .ryugi/sdd/2026-11-10-export-design","workdir":"/Users/p/git/notes-app"}
+```
+
+Assume exit code `0`, with no output.
+
+**Tool call — shell:**
+```json
+{"cmd":"test ! -e .ryugi/sdd/2026-11-10-export-design","workdir":"/Users/p/git/notes-app"}
+```
+
+Assume exit code `0`, with no output.
+
+**Final message to partner:**
+
+CSV export is implemented on `feat/export`, including the streaming fix. `pnpm test` exited 0: **32/32 passed**. Verification proved the single claim inline; no verify page or partner verdict is pending. The spec workspace was removed.
+
+**Rulings I made**
+
+- Quote fields per RFC 4180 because the spec is silent on commas. Cost if wrong: Excel-only users see quotes.
+
+**Deferred minors**
+
+- CSV header says `updatedAt`.
+
+Ways to land:
+
+1. **Squash into `main`** (default)
+2. **Rebase onto `main`**
+3. **Push and open a PR**
+4. **Keep the branch as-is**
+
+SUMMARY: Simulated final evidence checks, workspace cleanup, and the completion report; landing waits on the partner’s choice.

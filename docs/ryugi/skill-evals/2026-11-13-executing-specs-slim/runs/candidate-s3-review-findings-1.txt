@@ -1,0 +1,142 @@
+The following is a **simulation**. Only the reads under `./skill/` above actually ran. All outputs below are explicit assumptions.
+
+1. **Shell call** — recover the existing record and inspect the affected interfaces:
+
+   ```json
+   {
+     "cmd": "pwd\n git status --short --branch\n git log -5 --oneline\n cat docs/ryugi/specs/2026-11-10-export-design.md .ryugi/sdd/2026-11-10-export-design/progress.md .ryugi/sdd/2026-11-10-export-design/tasks.md package.json\n cat src/export.ts src/notes-repository.ts tests/export.test.ts\n rg --files -g AGENTS.md -g '*verif*' -g '*export*' scripts docs",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   **Assumed output:** clean `feat/export`; all three completion lines present; no earlier rulings or deferred minors. The spec requires exporting every note with the existing CSV schema. Existing CSV escaping is correct. The repository already supports stable cursor pagination through `listPage({ cursor, limit })`, returning `{ notes, nextCursor }`. `exportNotes(repository, sink)` currently calls `listAll()` and writes the resulting CSV to an asynchronous sink.
+
+   For the concrete edits below, assume the existing module exports `CSV_HEADER` and `serializeNote`, and imports `NotesRepository` and `ExportSink` as types. Assume tests use Vitest.
+
+   Also assume the project provides `pnpm verify:export`: its documented flow exercises browser downloads and opens a verification page with groups requiring the partner’s verdict.
+
+2. **Message to partner:**
+
+   > I’m keeping the memory failure Important, deferring the header wording, and retaining header-only exports for empty accounts; I’ll fix the memory failure in one TDD pass.
+
+   **Classification before editing:**
+
+   - **Important:** an otherwise valid large account cannot export its notes.
+   - **Minor:** `updatedAt` is understandable and does not corrupt the export; leave it unchanged.
+   - **Declined behavior:** header-only CSV is a valid representation of zero records, preserves the schema, and imports cleanly. It stands, with a recorded ruling.
+
+3. **Shell call** — add the regression before changing implementation:
+
+   ```json
+   {
+     "cmd": "cat > tests/export-large.test.ts <<'EOF'\nimport { expect, it } from 'vitest';\nimport { exportNotes } from '../src/export';\nimport type { NotesRepository } from '../src/notes-repository';\n\nit('exports 200000 notes incrementally and awaits the sink', async () => {\n  const total = 200000;\n  let produced = 0;\n  let consumed = 0;\n  let pending = false;\n  let headerSeen = false;\n  const repository = {\n    async listAll() {\n      throw new Error('unbounded listAll requested');\n    },\n    async listPage({ cursor, limit }: { cursor?: string; limit: number }) {\n      expect(pending).toBe(false);\n      expect(produced).toBe(consumed);\n      expect(limit).toBeLessThanOrEqual(1000);\n      const start = cursor === undefined ? 0 : Number(cursor);\n      const end = Math.min(start + limit, total);\n      const notes = Array.from({ length: end - start }, (_, offset) => ({\n        id: String(start + offset),\n        title: `note-${start + offset}`,\n        body: 'body',\n        updatedAt: '2026-11-10T00:00:00.000Z',\n      }));\n      produced = end;\n      return { notes, nextCursor: end < total ? String(end) : undefined };\n    },\n  } satisfies NotesRepository;\n  const sink = {\n    async write(chunk: string) {\n      expect(pending).toBe(false);\n      pending = true;\n      await Promise.resolve();\n      if (!headerSeen) {\n        expect(chunk).toBe('id,title,body,updatedAt\\r\\n');\n        headerSeen = true;\n      } else {\n        expect(chunk).toBe(`${consumed},note-${consumed},body,2026-11-10T00:00:00.000Z\\r\\n`);\n        consumed += 1;\n      }\n      pending = false;\n    },\n  };\n  await exportNotes(repository, sink);\n  expect(headerSeen).toBe(true);\n  expect(consumed).toBe(total);\n  expect(pending).toBe(false);\n});\nEOF\npnpm test -- tests/export-large.test.ts",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   **Assumed full output:** one test failed, exit 1, with `Error: unbounded listAll requested` originating from the current `exportNotes` call. This is the expected RED result.
+
+   The fixture generates pages on demand and discards output after checking it. Its assertions also detect fetching subsequent pages before consuming the current page, missing records, ordering errors, and overlapping sink writes.
+
+4. **Shell call** — implement bounded reads and awaited writes:
+
+   ```json
+   {
+     "cmd": "python3 - <<'PY'\nfrom pathlib import Path\np = Path('src/export.ts')\ns = p.read_text()\nold = '''export async function exportNotes(repository: NotesRepository, sink: ExportSink): Promise<void> {\n  const notes = await repository.listAll();\n  await sink.write(CSV_HEADER);\n  for (const note of notes) {\n    await sink.write(serializeNote(note));\n  }\n}\n'''\nnew = '''export async function exportNotes(repository: NotesRepository, sink: ExportSink): Promise<void> {\n  await sink.write(CSV_HEADER);\n  let cursor: string | undefined;\n  do {\n    const page = await repository.listPage({ cursor, limit: 1000 });\n    for (const note of page.notes) {\n      await sink.write(serializeNote(note));\n    }\n    cursor = page.nextCursor;\n  } while (cursor !== undefined);\n}\n'''\nassert old in s, 'Expected implementation differs; inspect before editing'\np.write_text(s.replace(old, new, 1))\nPY\npnpm test -- tests/export-large.test.ts",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   **Assumed full output:** one test passed, exit 0. GREEN established for the regression.
+
+   This bounds retained note data to a page and honors sink backpressure. It does not claim that arbitrary individual note sizes use constant bytes.
+
+5. **Shell call** — run the complete suite and inspect the final patch:
+
+   ```json
+   {
+     "cmd": "pnpm test\n git diff --check\n git diff -- src/export.ts\n cat tests/export-large.test.ts",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   **Assumed full output read:** 32/32 tests passed, exit 0; `git diff --check` produced no errors. Existing tests include CSV escaping, write errors, and empty-account header output. The inspected patch contains only the intended export change and regression.
+
+6. **Message to partner:**
+
+   > The regression failed on the unbounded read, then passed with pagination; the full suite now reports 32/32.
+
+7. **Shell call** — commit the fix and append its ledger record in the same call, only after successful checks:
+
+   ```json
+   {
+     "cmd": "git add src/export.ts tests/export-large.test.ts\n git commit -m \"Fix note export memory use with incremental pagination\" && cat >> .ryugi/sdd/2026-11-10-export-design/progress.md <<'EOF'\nFinal: Ruling: empty accounts produce a header-only CSV — a reasonable person gets a valid zero-record export with the same schema, so this behavior stands — cost if wrong: users expecting an empty-state message may find the download surprising.\nFinal: minor (deferred): CSV header uses updatedAt while the UI calls it Last edited.\nFinal: fixed exportNotes loads every note into memory — exports 200000 notes incrementally and awaits the sink RED→GREEN, suite 32/32.\nEOF",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   **Assumed output:** commit `d4e5f6a` created successfully; ledger append succeeded. No second reviewer is dispatched.
+
+8. **Shell call** — collect the complete decision record before cleanup:
+
+   ```json
+   {
+     "cmd": "cat .ryugi/sdd/2026-11-10-export-design/progress.md\n git status --short --branch\n git log --oneline main..HEAD\n pnpm verify:export --help",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   **Assumed output:** the ledger contains exactly the ruling and deferred minor above; working tree is clean. Help confirms `pnpm verify:export` runs the project’s browser checks and creates the human verification page. No separate project verification skill is configured.
+
+9. **Shell call** — remove only this spec’s disposable workspace after collecting its record:
+
+   ```json
+   {
+     "cmd": "python3 - <<'PY'\nfrom pathlib import Path\nimport shutil\nworkspace = Path('.ryugi/sdd/2026-11-10-export-design')\nledger = workspace / 'progress.md'\nassert ledger.read_text().splitlines()[0] == '# SDD ledger — plan: docs/ryugi/specs/2026-11-10-export-design.md'\nshutil.rmtree(workspace)\nPY",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   **Assumed output:** exit 0; only the named spec workspace was removed.
+
+10. **Message to partner:**
+
+    > I’m applying the loaded verifying workflow to the finished branch; any groups needing your verdict will remain pending.
+
+11. **Shell call** — perform the final verification workflow:
+
+    ```json
+    {
+      "cmd": "pnpm verify:export",
+      "workdir": "/Users/p/git/notes-app"
+    }
+    ```
+
+    **Assumed full output:** browser checks confirm an ordinary CSV download, correct escaping, a header-only empty export, and a 200,000-note download without accumulating the complete dataset in the export pipeline. Exit 0. The workflow opens `http://localhost:4173/verify/export`.
+
+    The page reports two human verdict groups still pending: **CSV compatibility** and **download experience**. An automated exit 0 does not pass those groups.
+
+12. **Final message to partner:**
+
+    > Committed the memory fix as `d4e5f6a`. The regression went RED→GREEN; `pnpm test` passed 32/32, and browser export checks passed.
+    >
+    > **Rulings I made**
+    >
+    > - Retained header-only CSV for empty accounts: it represents zero records with the same schema. Cost if wrong: users expecting an empty-state message may find the download surprising.
+    >
+    > **Deferred minors**
+    >
+    > - CSV uses `updatedAt`; the UI says “Last edited”.
+    >
+    > [Verification page](http://localhost:4173/verify/export): **CSV compatibility** and **download experience** await your verdict. The work remains pending until both pass.
+    >
+    > After approval, the landing choices are:
+    >
+    > 1. **Squash into `main`** (default)
+    > 2. **Rebase onto `main`**
+    > 3. **Push and open a PR**
+    > 4. **Keep the branch as-is**
+    >
+    > The approval gate comes from [executing-specs](./skill/SKILL.md): “The work is not done … until every group that waits on them has passed.”
+
+SUMMARY: Simulated one TDD fix pass, recorded the empty-export ruling and deferred wording minor, committed and verified the fix; human verification and the subsequent landing choice wait on the partner.

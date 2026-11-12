@@ -1,0 +1,1 @@
+PASS — Squash sequence and single commit are correct, tests pass on committed main, branch uses -D, and pushing awaits partner instruction.

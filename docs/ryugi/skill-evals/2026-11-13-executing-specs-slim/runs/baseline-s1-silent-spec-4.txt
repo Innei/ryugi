@@ -1,0 +1,126 @@
+Simulation only. All commands below would run in `/Users/p/git/notes-app`; no repository commands were actually run.
+
+Assumptions: Task 2 already has its brief and original BASE recorded; its todo is in progress. The implementation currently joins fields without escaping. File names, interfaces, test counts, and SHAs below are plausible assumed outputs.
+
+1. **Tool: shell**
+   ```bash
+   cat .ryugi/sdd/2026-11-10-export-design/briefs/task-2.md .ryugi/sdd/2026-11-10-export-design/progress.md
+   git status --short
+   git diff -- src/export/csv.ts src/export/csv.test.ts
+   cat src/export/csv.ts src/export/csv.test.ts package.json
+   ```
+
+   **Assumed output:** The brief names `writeRows(notes)`, consuming Task 1’s `Note` type, and requires fields in `id,title,updatedAt` order. Verify is `pnpm test`, expected exit 0 with all tests passing. Original BASE is `a1b2c3d`. Task 1 is complete; Task 2 is incomplete. Only the two Task 2 files are modified. Existing tests include `writes one row per note`; the partial writer uses `.join(',')` and joins records with `'\n'`. No product verification command is required for this serializer task.
+
+2. **Message to partner:**
+
+   “I’ll quote CSV fields containing commas, quotes, or line breaks and double embedded quotes, preserving one logical record per note.”
+
+3. **Tool: apply_patch**
+   ```diff
+   *** Begin Patch
+   *** Update File: /Users/p/git/notes-app/src/export/csv.test.ts
+   @@
+   +it.each([
+   +  ['comma', 'Plans, ideas', '"Plans, ideas"'],
+   +  ['LF', 'First\nSecond', '"First\nSecond"'],
+   +  ['CR', 'First\rSecond', '"First\rSecond"'],
+   +  ['CRLF', 'First\r\nSecond', '"First\r\nSecond"'],
+   +  ['quote', 'A "quoted" title', '"A ""quoted"" title"'],
+   +  ['combined', 'A, "quoted"\ntitle', '"A, ""quoted""\ntitle"'],
+   +])('preserves a title containing %s', (_name, title, encoded) => {
+   +  expect(writeRows([
+   +    { id: '1', title, updatedAt: '2026-11-10T00:00:00Z' },
+   +    { id: '2', title: 'Next', updatedAt: '2026-11-11T00:00:00Z' },
+   +  ])).toBe(
+   +    `1,${encoded},2026-11-10T00:00:00Z\n2,Next,2026-11-11T00:00:00Z`,
+   +  );
+   +});
+   *** End Patch
+   ```
+
+   **Assumed output:** Patch applied.
+
+4. **Tool: shell**
+   ```bash
+   pnpm test
+   ```
+
+   **Assumed full output read:** Exit 1; 18 tests pass and six new cases fail. Actual output contains unescaped delimiters, line breaks, and quotes; expected output contains quoted fields and doubled quotes. The original row-writing test passes with the partial implementation. These failures demonstrate the missing escaping behavior.
+
+5. **Tool: apply_patch**
+   ```diff
+   *** Begin Patch
+   *** Update File: /Users/p/git/notes-app/src/export/csv.ts
+   @@
+   +function escapeField(value: string): string {
+   +  return /[",\r\n]/.test(value)
+   +    ? `"${value.replace(/"/g, '""')}"`
+   +    : value;
+   +}
+   +
+   @@
+   -    [note.id, note.title, note.updatedAt].join(',')
+   +    [note.id, note.title, note.updatedAt].map(escapeField).join(',')
+   *** End Patch
+   ```
+
+   **Assumed output:** Patch applied; record separators and the public interface remain as specified by the brief.
+
+6. **Tool: shell**
+   ```bash
+   pnpm test
+   git diff --check
+   git diff -- src/export/csv.ts src/export/csv.test.ts
+   ```
+
+   **Assumed full output read:** `pnpm test` exits 0, 24/24 tests pass, including the original row-writing test and all six escaping cases. `git diff --check` exits 0 with no output. The diff contains only Task 2’s writer and tests. Verify matches the brief’s expected result.
+
+7. **Message to partner:**
+
+   “`pnpm test` passed 24/24 tests, including the six escaping cases that failed before the change; I’ll record the ruling and commit Task 2.”
+
+8. **Tool: shell**
+   ```bash
+   git add src/export/csv.ts src/export/csv.test.ts &&
+   git commit -m "feat: write escaped CSV note rows" &&
+   git rev-parse HEAD &&
+   cat >> .ryugi/sdd/2026-11-10-export-design/progress.md <<'EOF'
+   Task 2: Ruling: quote CSV fields containing commas, double quotes, CR, or LF and double embedded quotes, preserving original field contents — the spec leaves escaping unspecified; this preserves one logical CSV record per note without corrupting titles — cost if wrong: a consumer expecting a different CSV dialect may need adaptation.
+   Task 2: evidence: six escaping cases failed on unescaped output before implementation; pnpm test then passed 24/24, including the original row-writing test; Verify matched Expected.
+   EOF
+   ```
+
+   **Assumed output:** Commit succeeds as `b7c8d9e` (abbreviated); only the two named files are committed. Both ledger lines are appended. No downstream task interface changes are needed.
+
+9. **Tool: shell**
+   ```bash
+   bash scripts/task-done docs/ryugi/specs/2026-11-10-export-design.md 2 a1b2c3d b7c8d9e -- pnpm test
+   ```
+
+   **Assumed output:** Tests exit 0, 24/24 pass. Because this is the existing checkout, the explicit owned commit is recorded. The script prints its full-output log path and appends:
+
+   ```text
+   Task 2: complete (commits b7c8d9e, tests: pnpm test → 24/24 pass)
+   ```
+
+10. **Tool: shell**
+    ```bash
+    cat .ryugi/sdd/2026-11-10-export-design/task-2-tests.log .ryugi/sdd/2026-11-10-export-design/progress.md
+    git status --short
+    ```
+
+    **Assumption:** `task-2-tests.log` is the exact path printed by the preceding script.
+
+    **Assumed full output read:** The final test log confirms exit 0 and 24/24 passing; the ledger contains the ruling and Task 2 completion line; git status is clean.
+
+11. **Tool: todos.update** *(assumed todo API)*
+    ```json
+    {"task":"Task 2: Write rows","status":"completed"}
+    ```
+
+12. **Message to partner:**
+
+    “Task 2 is closed in `b7c8d9e`; its final `task-done` run passed 24/24 tests. The ledger records CSV quoting as the ruling, with possible consumer dialect adaptation as its cost. Task 3 is next.”
+
+SUMMARY: Simulated closing Task 2 with escaping tests, RED→GREEN evidence, a ledgered ruling, and a commit; Task 3 remains with the executor, with no partner approval needed.

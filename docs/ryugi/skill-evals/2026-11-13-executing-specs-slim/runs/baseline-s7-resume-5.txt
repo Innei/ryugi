@@ -1,0 +1,136 @@
+All calls below are **simulated**, with shell calls using `workdir: "/Users/p/git/notes-app"`. Assumed outputs are explicitly marked.
+
+1. Message to partner:
+
+   > I’m using executing-specs to resume from the ledger and inspect the uncommitted change before starting the next task.
+
+2. Shell:
+   ```bash
+   bash scripts/sdd-workspace docs/ryugi/specs/2026-11-10-export-design.md
+   ```
+   Given output: `.ryugi/sdd/2026-11-10-export-design/`.
+
+3. Shell:
+   ```bash
+   git status --short --branch
+   git log -5 --oneline
+   git diff -- src/export.ts
+   git diff --cached
+   rg --files --hidden -g AGENTS.md -g '!node_modules' -g '!.git'
+   ```
+   Assumed output: branch `feat/export`, HEAD `d4e5f6a`; only `src/export.ts` is modified, nothing staged. Its diff adds a TODO comment about CSV quoting. Root `AGENTS.md` is found. The diff’s authorship is unknown; nobody else currently working here does not establish ownership.
+
+4. Shell:
+   ```bash
+   cat AGENTS.md package.json docs/ryugi/specs/2026-11-10-export-design.md .ryugi/sdd/2026-11-10-export-design/progress.md .ryugi/sdd/2026-11-10-export-design/tasks.md
+   ```
+   Assumptions from the full output:
+
+   - `AGENTS.md` adds no conflicting instructions.
+   - The ledger is exactly as supplied; Task 1 is recorded complete.
+   - Existing tasks are parse, write rows, wire the button; no reslicing is needed.
+   - Task 2 produces `writeCsv(notes)` and consumes Task 1’s `ExportNote` type.
+   - Task 2 lists `src/export.ts` and `src/export.rows.test.ts`.
+   - The spec requires header `title,body`, CRLF row separators, and CSV quoting.
+   - Tests use Vitest; `pnpm test` runs `vitest run`.
+
+   These are simulation assumptions, not observed repository facts.
+
+5. Message to partner:
+
+   > The ledger records Task 1 complete; I’ll resume Task 2 and preserve the existing `src/export.ts` diff.
+
+6. Shell — create the live todo view without changing the existing task list or ledger:
+   ```bash
+   cat > .ryugi/sdd/2026-11-10-export-design/todos.md <<'EOF'
+   - [x] Task 1: parse — recorded complete in the existing ledger
+   - [ ] Task 2: write rows
+   - [ ] Task 3: wire the button
+   EOF
+   bash scripts/task-start docs/ryugi/specs/2026-11-10-export-design.md 2
+   ```
+   Assumed output:
+   ```text
+   Brief: .ryugi/sdd/2026-11-10-export-design/task-2.md
+   BASE: d4e5f6a
+   ```
+
+7. Shell:
+   ```bash
+   cat .ryugi/sdd/2026-11-10-export-design/task-2.md src/export.ts src/export.test.ts
+   ```
+   Assumed full output confirms:
+
+   - The brief’s first test must verify header, column order, and CRLF row separation.
+   - Verify is `pnpm test export`, expected all export tests passing.
+   - `ExportNote` has string fields `title` and `body`.
+   - `writeCsv` is an exported placeholder returning `""`.
+   - Existing tests cover Task 1 only.
+   - The uncommitted TODO does not implement the behavior being tested.
+
+8. Shell — mark Task 2 active and write only its failing test:
+   ```bash
+   cat > .ryugi/sdd/2026-11-10-export-design/todos.md <<'EOF'
+   - [x] Task 1: parse — recorded complete in the existing ledger
+   - [ ] Task 2: write rows — in_progress
+   - [ ] Task 3: wire the button
+   EOF
+   cat > src/export.rows.test.ts <<'EOF'
+   import { describe, expect, it } from 'vitest';
+   import { writeCsv } from './export';
+
+   describe('writeCsv', () => {
+     it('writes the header and note rows in column order with CRLF separators', () => {
+       expect(writeCsv([
+         { title: 'First', body: 'Alpha' },
+         { title: 'Second', body: 'Beta' },
+       ])).toBe('title,body\r\nFirst,Alpha\r\nSecond,Beta');
+     });
+   });
+   EOF
+   ```
+   Assumed result: exit 0. No implementation file was changed.
+
+9. Shell:
+   ```bash
+   pnpm test export.rows
+   ```
+   Assumed **full output**:
+   ```text
+   > notes-app@1.0.0 test /Users/p/git/notes-app
+   > vitest run export.rows
+
+    RUN  v3.2.4 /Users/p/git/notes-app
+
+    ❯ src/export.rows.test.ts (1 test | 1 failed)
+      × writeCsv > writes the header and note rows in column order with CRLF separators
+        → expected '' to be 'title,body\r\nFirst,Alpha\r\nSecond,Beta'
+
+    FAIL  src/export.rows.test.ts > writeCsv > writes the header and note rows in column order with CRLF separators
+   AssertionError: expected '' to be 'title,body\r\nFirst,Alpha\r\nSecond,Beta'
+
+   - Expected
+   + Received
+
+   - title,body
+   - First,Alpha
+   - Second,Beta
+   + ""
+
+    ❯ src/export.rows.test.ts:10:9
+
+    Test Files  1 failed (1)
+         Tests  1 failed (1)
+      Duration  310ms
+
+    ELIFECYCLE  Test failed. See above for more details.
+   ```
+   Assumed exit code: 1. The failure is the intended missing behavior, rather than an import or setup error.
+
+10. Message to partner:
+
+    > In this simulation, `pnpm test export.rows` exits 1: the new test expects CSV rows and receives an empty string. Task 2 remains in progress; the existing source diff is preserved.
+
+No ledger lines are appended: no new task is complete, and no spec deviation requires a ruling. No commit, final review, or landing action occurs at this requested stopping point.
+
+SUMMARY: Simulated resuming Task 2 and running its first test to the expected failure; implementation waits on the agent’s next step, with no partner approval needed.

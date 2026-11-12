@@ -1,0 +1,88 @@
+Simulation only. The landing instructions say “merge it” means squash into `main`. All results below are assumed, not observed.
+
+1. Tool: `exec_command`
+   ```json
+   {"cmd":"git status --short --branch","workdir":"/Users/p/git/notes-app"}
+   ```
+   Assumed full output:
+   ```text
+   ## feat/export
+   ```
+
+2. Tool: `exec_command`
+   ```json
+   {"cmd":"git log -5 --format=%s main","workdir":"/Users/p/git/notes-app"}
+   ```
+   Assume the repository uses conventional commit subjects.
+
+3. Tool: `exec_command`
+   ```json
+   {"cmd":"git switch main && git pull --ff-only","workdir":"/Users/p/git/notes-app"}
+   ```
+   Assumed output: switched to `main`; already up to date.
+
+4. Tool: `exec_command`
+   ```json
+   {"cmd":"git merge --squash feat/export","workdir":"/Users/p/git/notes-app"}
+   ```
+   Assume the squash applies without conflicts and stages the CSV export changes.
+
+5. Tool: `exec_command`
+   ```json
+   {"cmd":"git diff --cached --check","workdir":"/Users/p/git/notes-app"}
+   ```
+   Assumed full output: empty; exit 0.
+
+6. Tool: `exec_command`
+   ```json
+   {"cmd":"pnpm test","workdir":"/Users/p/git/notes-app","max_output_tokens":20000}
+   ```
+   Assume the command finishes with exit 0, its full output is read without truncation, and all 24 tests pass.
+
+7. Message to partner:
+
+   “The squash is staged on `main`. `pnpm test` passed all 24 tests, and `git diff --cached --check` exited 0. I’ll commit it and test the committed result.”
+
+8. Tool: `exec_command`
+   ```json
+   {"cmd":"git commit -m 'feat: export notes as CSV'","workdir":"/Users/p/git/notes-app"}
+   ```
+   Assume the commit succeeds with SHA `8b72c41`.
+
+9. Tool: `exec_command`
+   ```json
+   {"cmd":"pnpm test","workdir":"/Users/p/git/notes-app","max_output_tokens":20000}
+   ```
+   Assume exit 0; read the full output: all 24 tests pass again.
+
+10. Tool: `exec_command`
+    ```json
+    {"cmd":"git branch -D feat/export","workdir":"/Users/p/git/notes-app"}
+    ```
+    Assume the branch is deleted successfully. No worktree was created, so none needs removal.
+
+11. Tool: `exec_command`
+    ```json
+    {"cmd":"git status --short --branch","workdir":"/Users/p/git/notes-app"}
+    ```
+    Assumed full output:
+    ```text
+    ## main...origin/main [ahead 1]
+    ```
+
+12. Tool: `exec_command`
+    ```json
+    {"cmd":"git log -1 --format='%h %s'","workdir":"/Users/p/git/notes-app"}
+    ```
+    Assumed full output:
+    ```text
+    8b72c41 feat: export notes as CSV
+    ```
+
+No ledger lines are appended: the completed execution workspace was removed at the prior finish.
+
+13. Final message to partner:
+
+    “Squashed into `main` as `8b72c41` (`feat: export notes as CSV`). After the commit, `pnpm test` passed all 24 tests. Deleted `feat/export`; the working tree is clean. Local `main` is one commit ahead of origin. Nothing pushed.”
+
+SUMMARY: Simulated squash landing, verification, and branch cleanup; pushing local `main` waits on your partner.

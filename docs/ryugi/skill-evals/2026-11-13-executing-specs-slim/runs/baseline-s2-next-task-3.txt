@@ -1,0 +1,104 @@
+Simulation only. Outputs below are assumptions; no repository commands or edits actually run.
+
+1. **Tool: `todos.update`**
+   ```json
+   {"id":"1","status":"completed"}
+   ```
+   Assumption: todo `1` represents Task 1. Its existing ledger entry is the supplied `task-done` result; I do not append it again.
+
+2. **Message to partner:**
+   > Continuing with Task 2; I’ll read its brief and run its failing test.
+
+3. **Tool: `shell`**, working directory `/Users/p/git/notes-app`
+   ```bash
+   bash scripts/task-start docs/ryugi/specs/2026-11-10-export-design.md 2
+   ```
+   Assumed output:
+   ```text
+   Brief: .ryugi/sdd/2026-11-10-export-design/task-2.md
+   BASE: d4e5f6a
+   ```
+
+4. **Tool: `shell`**, same working directory
+   ```bash
+   cat .ryugi/sdd/2026-11-10-export-design/task-2.md
+   ```
+   Assume the brief specifies:
+
+   ```text
+   ## Task 2: Escape CSV fields
+
+   Goal: Quote fields containing commas, double quotes, or newlines,
+   doubling embedded double quotes, per the spec's CSV format section.
+
+   Files: src/export/csv.ts, src/export/csv.test.ts
+
+   Interfaces:
+   Produces: notesToCsv with CSV field escaping.
+   Consumes: notesToCsv from Task 1.
+
+   Failing test: A note containing commas, quotes, and a newline produces
+   correctly quoted fields.
+
+   Verify: pnpm test export
+   Expected: All export tests pass.
+   ```
+
+5. **Tool: `todos.update`**
+   ```json
+   {"id":"2","status":"in_progress"}
+   ```
+
+6. **Tool: `shell`**, same working directory
+   ```bash
+   cat src/export/csv.ts src/export/csv.test.ts package.json
+   ```
+   Assumptions after reading the full output:
+
+   - `notesToCsv` accepts notes with `title` and `body`.
+   - It currently joins fields without escaping, using CRLF between records.
+   - The existing test file imports `notesToCsv` and Vitest’s `test` and `expect`.
+   - `pnpm test export` selects the export tests.
+
+7. **Tool: `apply_patch`**
+   ```diff
+   *** Begin Patch
+   *** Update File: /Users/p/git/notes-app/src/export/csv.test.ts
+   @@
+   +test('quotes CSV fields containing commas, quotes, and newlines', () => {
+   +  expect(notesToCsv([
+   +    { title: 'Hello, "world"', body: 'first\nsecond' },
+   +  ])).toBe(
+   +    'title,body\r\n"Hello, ""world""","first\nsecond"',
+   +  );
+   +});
+   *** End Patch
+   ```
+   Assumed result: patch applied.
+
+8. **Tool: `shell`**, same working directory
+   ```bash
+   pnpm test export
+   ```
+   Assume I read the full output, whose relevant result is:
+
+   ```text
+   FAIL src/export/csv.test.ts
+   × quotes CSV fields containing commas, quotes, and newlines
+
+   AssertionError: expected values to be equal
+
+   Expected: "title,body\r\n\"Hello, \"\"world\"\"\",\"first\nsecond\""
+   Received: "title,body\r\nHello, \"world\",first\nsecond"
+
+   Test Files  1 failed (1)
+        Tests  1 failed | 4 passed (5)
+   ```
+   Exit status: `1`. The assertion fails for the intended missing escaping behavior.
+
+9. **Message to partner:**
+   > Task 2’s test fails for the expected escaping mismatch: 1 failed, 4 passed. Implementation is next.
+
+No new ledger lines are appended, and Task 2 remains in progress. The simulation ends at the requested boundary without implementation, commit, or a permission question.
+
+SUMMARY: Simulated advancing to Task 2 and observing its intended failing test; implementation remains with the agent, with no partner decision pending.

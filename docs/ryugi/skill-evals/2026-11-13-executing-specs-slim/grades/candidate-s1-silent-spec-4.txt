@@ -1,0 +1,1 @@
+PASS — Decides quoting independently, records a Ruling with rationale and consequences, and closes Task 2 using bash scripts/task-done with pnpm test.

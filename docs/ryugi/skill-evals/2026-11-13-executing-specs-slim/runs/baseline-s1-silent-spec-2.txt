@@ -1,0 +1,124 @@
+The following is a simulation; no repository commands are executed. All shell calls below use `workdir: "/Users/p/git/notes-app"`.
+
+1. **Message to partner:**
+
+   “I’m continuing Task 2 under executing-specs and recording CSV escaping as a ruling.”
+
+2. **Tool call — recover the task’s recorded state:**
+
+   ```sh
+   cat .ryugi/sdd/2026-11-10-export-design/progress.md .ryugi/sdd/2026-11-10-export-design/tasks.md
+   ```
+
+   **Assumed output:** Task 1 is complete; Task 2 is incomplete. Task 2 changes `src/export/writeRows.ts` and `src/export/writeRows.test.ts`, produces `writeRows(notes)`, and verifies with `pnpm test`, expecting all tests to pass. The spec was read during setup.
+
+3. **Tool call — obtain and read the current brief:**
+
+   ```sh
+   bash scripts/task-start docs/ryugi/specs/2026-11-10-export-design.md 2
+   ```
+
+   **Assumed output:** Brief path `.ryugi/sdd/2026-11-10-export-design/task-2.md`; original Task 2 BASE `a1b2c3d` is preserved.
+
+   ```sh
+   cat .ryugi/sdd/2026-11-10-export-design/task-2.md src/export/writeRows.ts src/export/writeRows.test.ts
+   git status --short
+   ```
+
+   **Assumed output:** The brief requires one CSV record per note, ordered `id,title,updatedAt`, without a header. Rows use CRLF with no trailing terminator. The implementation currently joins unescaped fields with commas. The existing test for ordinary notes was already observed failing before implementation. Only the two Task 2 files are modified.
+
+4. **Tool call — record the decision and add the regression test:**
+
+   ```sh
+   cat >> .ryugi/sdd/2026-11-10-export-design/progress.md <<'EOF'
+   Task 2: Ruling: interpret "one row per note" as one logical CSV record; quote fields containing commas, double quotes, CR, or LF and double embedded double quotes — preserves titles without inventing a lossy transformation where the spec is silent — cost if wrong: consumers requiring one physical line per note must support multiline CSV records or request a different format.
+   EOF
+   cat >> src/export/writeRows.test.ts <<'EOF'
+
+   it('preserves CSV punctuation and line breaks within a single record', () => {
+     expect(writeRows([
+       { id: '1', title: 'Hello, world', updatedAt: '2026-11-10T00:00:00Z' },
+       { id: '2', title: 'First\nSecond', updatedAt: '2026-11-10T00:00:00Z' },
+       { id: '3', title: 'Say "hello"\rAgain', updatedAt: '2026-11-10T00:00:00Z' },
+     ])).toBe(
+       '1,"Hello, world",2026-11-10T00:00:00Z\r\n' +
+       '2,"First\nSecond",2026-11-10T00:00:00Z\r\n' +
+       '3,"Say ""hello""\rAgain",2026-11-10T00:00:00Z',
+     );
+   });
+   EOF
+   pnpm test -- src/export/writeRows.test.ts
+   ```
+
+   **Assumed full output:** Vitest runs two tests: the ordinary-row test passes; the new escaping test fails because the actual output contains unquoted commas, quotes, and line breaks. Exit status 1. This is the expected RED result.
+
+5. **Tool call — implement escaping and run Verify:**
+
+   ```sh
+   cat > src/export/writeRows.ts <<'EOF'
+   type ExportNote = {
+     id: string;
+     title: string;
+     updatedAt: string;
+   };
+
+   function escapeField(value: string): string {
+     return /[",\r\n]/.test(value)
+       ? `"${value.replace(/"/g, '""')}"`
+       : value;
+   }
+
+   export function writeRows(notes: readonly ExportNote[]): string {
+     return notes
+       .map(note => [note.id, note.title, note.updatedAt].map(escapeField).join(','))
+       .join('\r\n');
+   }
+   EOF
+   pnpm test
+   ```
+
+   **Assumed full output, read in this session:** Three test files pass; all 12 tests pass, including both `writeRows` tests. Exit status 0. This matches the brief’s Expected result.
+
+6. **Tool call — inspect the changes before committing:**
+
+   ```sh
+   git diff --check
+   git diff -- src/export/writeRows.ts src/export/writeRows.test.ts
+   ```
+
+   **Assumed output:** `git diff --check` exits 0 without output. The full diff contains only the intended row serialization and tests.
+
+7. **Tool call — commit the task:**
+
+   ```sh
+   git add -- src/export/writeRows.ts src/export/writeRows.test.ts
+   git commit -m "feat: write CSV export rows with escaped fields"
+   ```
+
+   **Assumed output:** Commit `d4e5f6a` succeeds, changing only those two files.
+
+8. **Tool call — run the completion gate:**
+
+   ```sh
+   bash scripts/task-done docs/ryugi/specs/2026-11-10-export-design.md 2 a1b2c3d -- pnpm test
+   ```
+
+   **Assumed output:** Exit status 0; all 12 tests pass. The script saves the complete output and appends exactly:
+
+   ```text
+   Task 2: complete (commits a1b2c3d..d4e5f6a, tests: pnpm test → 12/12 pass)
+   ```
+
+9. **Tool call — read the saved evidence and ledger:**
+
+   ```sh
+   cat .ryugi/sdd/2026-11-10-export-design/task-2-test.log .ryugi/sdd/2026-11-10-export-design/progress.md
+   ```
+
+   **Assumption:** `task-done` reported that log path. Its full contents confirm three passing test files and 12/12 passing tests, exit 0; the ledger contains the ruling and Task 2 completion line above.
+
+10. **Message to partner:**
+
+    “Task 2 is closed in commit `d4e5f6a`: the completion gate ran `pnpm test` and passed 12/12 tests. I treated each note as one logical CSV record, quoting punctuation and line breaks; consumers must support multiline CSV records. Task 3 is next.”
+
+SUMMARY: Simulated Task 2’s escaping ruling, RED→GREEN implementation, commit, and verified ledger completion; Task 3 remains with the agent, with no partner approval pending.

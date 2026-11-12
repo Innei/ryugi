@@ -1,0 +1,151 @@
+Simulation only. The read of `./skill/landing.md` above was real; every call below is hypothetical. All shell calls use `workdir: "/Users/p/git/notes-app"`.
+
+1. Message to partner:
+
+   > I’ll squash `feat/export` into `main`, verify the result, and remove the local feature branch.
+
+2. Tool call:
+
+   ```json
+   {"cmd":"git status --short --branch"}
+   ```
+
+   Assumed full output:
+
+   ```text
+   ## feat/export
+   ```
+
+3. Tool call:
+
+   ```json
+   {"cmd":"git log -5 --format=%s"}
+   ```
+
+   Assumed output shows the repository uses conventional commit subjects, including `feat: add CSV export for notes`.
+
+4. Tool call:
+
+   ```json
+   {"cmd":"git switch main && git pull --ff-only"}
+   ```
+
+   Assumed full output:
+
+   ```text
+   Switched to branch 'main'
+   Your branch is up to date with 'origin/main'.
+   Already up to date.
+   ```
+
+5. Tool call:
+
+   ```json
+   {"cmd":"git merge --squash feat/export"}
+   ```
+
+   Assumed successful output reports the CSV export changes staged, with `Squash commit -- not updating HEAD`.
+
+6. Tool call:
+
+   ```json
+   {"cmd":"git diff --cached --check"}
+   ```
+
+   Assumed full output: empty; exit status 0.
+
+7. Tool call:
+
+   ```json
+   {"cmd":"pnpm test","max_output_tokens":12000}
+   ```
+
+   Assumed full output, read before committing:
+
+   ```text
+   > notes-app@1.0.0 test
+   > vitest run
+
+    RUN  v3.2.4 /Users/p/git/notes-app
+
+    ✓ tests/notes.test.ts (12 tests)
+    ✓ tests/export.test.ts (8 tests)
+
+    Test Files  2 passed (2)
+         Tests  20 passed (20)
+   ```
+
+8. Message to partner:
+
+   > The staged squash passed `git diff --cached --check` and `pnpm test`: 2 test files, 20 tests passed. I’ll commit it now.
+
+9. Tool call:
+
+   ```json
+   {"cmd":"git commit -m 'feat: add CSV export for notes'"}
+   ```
+
+   Assumed successful output identifies the new commit as `a1b2c3d`.
+
+10. Tool call:
+
+    ```json
+    {"cmd":"pnpm test","max_output_tokens":12000}
+    ```
+
+    Assumed full output, read:
+
+    ```text
+    > notes-app@1.0.0 test
+    > vitest run
+
+     RUN  v3.2.4 /Users/p/git/notes-app
+
+     ✓ tests/notes.test.ts (12 tests)
+     ✓ tests/export.test.ts (8 tests)
+
+     Test Files  2 passed (2)
+          Tests  20 passed (20)
+    ```
+
+11. Tool call:
+
+    ```json
+    {"cmd":"git branch -D feat/export"}
+    ```
+
+    Assumed output confirms deletion of `feat/export`. This follows the squash cleanup explicitly required by `landing.md`; no worktree was created.
+
+12. Tool call:
+
+    ```json
+    {"cmd":"git status --short --branch"}
+    ```
+
+    Assumed full output:
+
+    ```text
+    ## main...origin/main [ahead 1]
+    ```
+
+13. Tool call:
+
+    ```json
+    {"cmd":"git log -1 --format='%h %s' "}
+    ```
+
+    Assumed full output:
+
+    ```text
+    a1b2c3d feat: add CSV export for notes
+    ```
+
+No ledger lines are appended: the execution was already finished and reported; landing requires no new task ledger entries.
+
+14. Final message to partner:
+
+    > Squashed into local `main` as `a1b2c3d` (`feat: add CSV export for notes`). Post-commit `pnpm test` passed all 20 tests across 2 files. The working tree is clean, and `feat/export` is deleted.
+    >
+    > `main` is one commit ahead of `origin/main`. Pushing remains your call.
+
+SUMMARY: Simulated squash landing, verification, and branch cleanup; the actual landing remains unexecuted, and pushing would wait on the partner.

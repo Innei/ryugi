@@ -1,0 +1,156 @@
+All calls below are simulated; no commands are executed. Outputs labeled “Assumed” are invented for this walkthrough.
+
+**Message to partner:** “I’m using executing-specs to resume from the ledger and run the next task’s failing test.”
+
+1. **Shell call** — recover the workspace:
+
+   ```bash
+   cd /Users/p/git/notes-app
+   bash scripts/sdd-workspace docs/ryugi/specs/2026-11-10-export-design.md
+   ```
+
+   Assumed output:
+
+   ```text
+   /Users/p/git/notes-app/.ryugi/sdd/2026-11-10-export-design
+   ```
+
+2. **Shell call** — read the existing record, task list, and complete spec:
+
+   ```bash
+   cd /Users/p/git/notes-app
+   cat .ryugi/sdd/2026-11-10-export-design/progress.md
+   cat .ryugi/sdd/2026-11-10-export-design/tasks.md
+   cat docs/ryugi/specs/2026-11-10-export-design.md
+   ```
+
+   Assumed output: the ledger matches the supplied lines. The spec requires CSV columns `title,body`, CRLF row separators, and CSV escaping for commas, quotes, and newlines. Existing tasks are:
+
+   - Task 1: normalize notes, producing `normalizeExportNotes`; complete.
+   - Task 2: serialize CSV, consuming `normalizeExportNotes` and producing `serializeNotesCsv`; files `src/export.ts` and `tests/export-csv.test.ts`; failing test covers escaping and row separators; Verify is `pnpm test export`, expected all export tests passing.
+   - Task 3: wire the export button, consuming `serializeNotesCsv`.
+
+   I retain the existing task list and skip Task 1.
+
+3. **Shell call** — inspect the checkout and unfinished change before touching it:
+
+   ```bash
+   cd /Users/p/git/notes-app
+   git status --short --branch
+   git log -5 --oneline
+   git diff -- src/export.ts
+   cat src/export.ts
+   cat package.json
+   rg --files tests
+   ```
+
+   Assumed output:
+
+   - Branch is `feat/export`; HEAD is `d4e5f6a`, matching Task 1’s recorded endpoint.
+   - Only `src/export.ts` is modified.
+   - Its uncommitted diff adds a partial `serializeNotesCsv` implementation returning only `"title,body\r\n"`.
+   - `normalizeExportNotes` accepts `{ title, body }` notes.
+   - Existing tests use Vitest; `pnpm test export` selects export tests.
+   - `tests/export-csv.test.ts` does not exist.
+
+   The unfinished change’s authorship is unknown. I preserve it and test the behavior Task 2 still requires.
+
+4. **Todo tool call**:
+
+   ```json
+   {
+     "todos": [
+       {"id":"task-1","content":"Normalize export notes","status":"completed"},
+       {"id":"task-2","content":"Serialize CSV rows and escaping","status":"pending"},
+       {"id":"task-3","content":"Wire the export button","status":"pending"}
+     ]
+   }
+   ```
+
+   Task 1’s status is restored from the ledger; this is not a claim that I reran its tests.
+
+5. **Shell call** — take Task 2:
+
+   ```bash
+   cd /Users/p/git/notes-app
+   bash scripts/task-start docs/ryugi/specs/2026-11-10-export-design.md 2
+   ```
+
+   Assumed output:
+
+   ```text
+   Brief: /Users/p/git/notes-app/.ryugi/sdd/2026-11-10-export-design/task-2.md
+   BASE: d4e5f6a
+   ```
+
+6. **Shell call** — read the exact brief:
+
+   ```bash
+   cd /Users/p/git/notes-app
+   cat .ryugi/sdd/2026-11-10-export-design/task-2.md
+   ```
+
+   Assumed output confirms Task 2’s interfaces, files, failing test, and Verify command described above. BASE remains `d4e5f6a`; the existing uncommitted change is outside that commit.
+
+7. **Todo tool call**:
+
+   ```json
+   {
+     "todos": [
+       {"id":"task-1","content":"Normalize export notes","status":"completed"},
+       {"id":"task-2","content":"Serialize CSV rows and escaping","status":"in_progress"},
+       {"id":"task-3","content":"Wire the export button","status":"pending"}
+     ]
+   }
+   ```
+
+**Message to partner:** “The ledger records Task 1 complete; Task 2 has unfinished CSV code, which I’ll preserve while testing the missing row behavior.”
+
+8. **Shell call** — record the decision and write the failing test:
+
+   ```bash
+   cd /Users/p/git/notes-app
+   cat >> .ryugi/sdd/2026-11-10-export-design/progress.md <<'EOF'
+   Task 2: Ruling: preserve the pre-existing uncommitted src/export.ts change and continue from it — its authorship is unknown and it partially implements this task — cost if wrong: inherited implementation may need correction after the failing test.
+   EOF
+   cat > tests/export-csv.test.ts <<'EOF'
+   import { expect, test } from 'vitest'
+   import { serializeNotesCsv } from '../src/export'
+
+   test('serializes note rows with CSV escaping and CRLF separators', () => {
+     expect(
+       serializeNotesCsv([
+         { title: 'Shopping, today', body: 'Say "hello"\nNext line' },
+         { title: 'Plain', body: 'Text' },
+       ]),
+     ).toBe(
+       'title,body\r\n"Shopping, today","Say ""hello""\nNext line"\r\nPlain,Text\r\n',
+     )
+   })
+   EOF
+   ```
+
+   Assumed result: exit 0. No implementation is changed.
+
+9. **Shell call** — run the failing test and read its full output:
+
+   ```bash
+   cd /Users/p/git/notes-app
+   pnpm test export
+   ```
+
+   Assumed full test result: exit 1; four existing tests pass and the new test fails:
+
+   ```text
+   FAIL tests/export-csv.test.ts > serializes note rows with CSV escaping and CRLF separators
+
+   AssertionError: expected 'title,body\r\n' to equal
+   'title,body\r\n"Shopping, today","Say ""hello""\nNext line"\r\nPlain,Text\r\n'
+
+   Test Files  1 failed | 1 passed (2)
+        Tests  1 failed | 4 passed (5)
+   ```
+
+**Message to partner:** “The simulated test run exits 1: four existing tests pass, and Task 2’s new test fails because the serializer returns only the header. Task 2 remains in progress; no commit or completion line has been written.”
+
+SUMMARY: Simulated recovery of the ledger, preservation of unfinished work, and Task 2’s expected failing test; implementation waits on the requested walkthrough boundary, with no partner approval needed.

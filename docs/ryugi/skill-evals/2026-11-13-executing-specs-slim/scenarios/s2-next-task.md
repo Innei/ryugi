@@ -1,0 +1,3 @@
+Repo: /Users/p/git/notes-app (pnpm, tests: `pnpm test`), default branch `main`. Spec: `docs/ryugi/specs/2026-11-10-export-design.md` (CSV export of notes), approved by your partner, who chose inline execution. ryugi:using-git-worktrees put you on branch `feat/export` in this checkout; nobody else is working here. Workspace: `.ryugi/sdd/2026-11-10-export-design/`.
+
+`tasks.md` has 3 tasks. You just ran `bash scripts/task-done docs/ryugi/specs/2026-11-10-export-design.md 1 a1b2c3d -- pnpm test export` and it printed `Task 1: complete (commits a1b2c3d..d4e5f6a, tests: pnpm test export → 4/4 pass)`. Task 1 took longer than expected. Continue from here until Task 2's failing test has been run.

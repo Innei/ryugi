@@ -1,0 +1,217 @@
+This is a simulation; only files under `./skill/` were actually read. All outputs below are explicitly assumed.
+
+1. **Message to partner**
+
+   “I’m continuing with executing-specs; I’ll preserve titles using CSV quoting and record that interpretation in the ledger.”
+
+2. **Tool: `shell`**
+
+   Working directory for this and every subsequent shell call: `/Users/p/git/notes-app`.
+
+   ```bash
+   git status --short --branch
+   git log -3 --oneline
+   cat .ryugi/sdd/2026-11-10-export-design/progress.md
+   cat .ryugi/sdd/2026-11-10-export-design/briefs/task-2.md
+   cat package.json
+   cat src/export/rows.ts
+   cat src/export/rows.test.ts
+   ```
+
+   **Assumed output:** Branch is `feat/export`; only Task 2’s two files are modified. The ledger identifies this spec, records Task 1 complete, and retains Task 2’s BASE as `a1b2c3d`. The brief produces `writeRows(notes): string`, returning CSV records without a header or trailing record separator, using CRLF between records. Its Verify command is `pnpm test`, with all tests expected to pass. This task has no separate running-product check.
+
+   Assume the existing implementation, partially written after the original observed failure, is:
+
+   ```ts
+   export function writeRows(
+     notes: readonly { id: string; title: string; updatedAt: string }[],
+   ): string {
+     return notes
+       .map((note) => [note.id, note.title, note.updatedAt].join(','))
+       .join('\r\n');
+   }
+   ```
+
+   Assume its test file uses Vitest and imports `writeRows` from `./rows`; there are 12 existing tests across the project. The original failing test checks ordinary rows. Task 2’s brief was already read and its todo is already `in_progress`; I retain its existing BASE rather than restarting the task.
+
+3. **Tool: `shell` — record the ruling alongside the regression-test edit**
+
+   ```bash
+   python3 - <<'PY'
+   from pathlib import Path
+
+   workspace = Path(".ryugi/sdd/2026-11-10-export-design")
+   ruling = (
+       "Task 2: Ruling: Treat one row per note as one logical CSV record; "
+       "quote fields containing commas, double quotes, CR, or LF and double "
+       "embedded quotes, preserving title contents — the spec leaves escaping "
+       "unspecified, and raw delimiters would corrupt the exported records — "
+       "cost if wrong: a consumer requiring one physical line per note will "
+       "need a different format or newline policy.\n"
+   )
+   with (workspace / "progress.md").open("a") as ledger:
+       ledger.write(ruling)
+
+   tests = Path("src/export/rows.test.ts")
+   with tests.open("a") as output:
+       output.write(r'''
+   
+   describe('CSV title escaping', () => {
+     it.each([
+       ['comma', 'Hello, world', '"Hello, world"'],
+       ['LF', 'First\nSecond', '"First\nSecond"'],
+       ['CR', 'First\rSecond', '"First\rSecond"'],
+       ['quote', 'Say "hello"', '"Say ""hello"""'],
+       ['combined', 'First, "quoted"\r\nSecond', '"First, ""quoted""\r\nSecond"'],
+     ])('preserves a title containing %s within one logical record', (_, title, field) => {
+       expect(writeRows([
+         { id: 'n1', title, updatedAt: '2026-11-10T00:00:00Z' },
+         { id: 'n2', title: 'Plain', updatedAt: '2026-11-11T00:00:00Z' },
+       ])).toBe(
+         `n1,${field},2026-11-10T00:00:00Z\r\nn2,Plain,2026-11-11T00:00:00Z`,
+       );
+     });
+   });
+   ''')
+   PY
+   ```
+
+   **Assumed result:** Exit 0. The exact ledger line appended is:
+
+   ```text
+   Task 2: Ruling: Treat one row per note as one logical CSV record; quote fields containing commas, double quotes, CR, or LF and double embedded quotes, preserving title contents — the spec leaves escaping unspecified, and raw delimiters would corrupt the exported records — cost if wrong: a consumer requiring one physical line per note will need a different format or newline policy.
+   ```
+
+4. **Tool: `shell` — observe RED**
+
+   ```bash
+   pnpm test
+   ```
+
+   **Assumed full output read:** Exit 1; 12 tests pass and all five new cases fail. Each failure shows raw title characters where the assertion expects a quoted field with doubled embedded quotes. There are no import, compilation, or setup failures.
+
+5. **Message to partner**
+
+   “The five escaping cases fail as expected; I’ll quote special fields while preserving their contents.”
+
+6. **Tool: `shell` — implement**
+
+   ```bash
+   python3 - <<'PY'
+   from pathlib import Path
+
+   path = Path("src/export/rows.ts")
+   source = path.read_text()
+   old = ".map((note) => [note.id, note.title, note.updatedAt].join(','))"
+   new = ".map((note) => [note.id, note.title, note.updatedAt].map(escapeField).join(','))"
+   assert source.count(old) == 1
+   source = source.replace(old, new)
+   source += '''
+   
+   function escapeField(value: string): string {
+     return /[",\\r\\n]/.test(value)
+       ? '"' + value.replace(/"/g, '""') + '"'
+       : value;
+   }
+   '''
+   path.write_text(source)
+   PY
+   ```
+
+   **Assumed result:** Exit 0.
+
+7. **Tool: `shell` — run the brief’s Verify command before committing**
+
+   ```bash
+   pnpm test
+   ```
+
+   **Assumed full output read:** Exit 0; 17 tests pass, zero fail, including the original Task 2 test and all five escaping cases.
+
+8. **Message to partner**
+
+   “`pnpm test` reports 17 passing tests, matching Task 2’s expected result.”
+
+9. **Tool: `shell` — inspect the exact change**
+
+   ```bash
+   git diff --check
+   git diff -- src/export/rows.ts src/export/rows.test.ts
+   git status --short
+   ```
+
+   **Assumed full output read:** `git diff --check` exits 0. The diff contains only Task 2’s row-writing implementation and tests. Status lists those two modified files; workspace artifacts are ignored.
+
+10. **Tool: `shell` — commit named paths and record evidence in the same call**
+
+    ```bash
+    git add src/export/rows.ts src/export/rows.test.ts &&
+    git commit -m "feat: write CSV note rows with escaped fields" &&
+    python3 - <<'PY'
+    from pathlib import Path
+    import subprocess
+
+    sha = subprocess.check_output(
+        ["git", "rev-parse", "HEAD"], text=True
+    ).strip()
+    line = (
+        f"Task 2: Evidence: commit {sha}; original row test previously "
+        "observed RED; five escaping regressions observed RED in this "
+        "session; Verify pnpm test → 17 passed, 0 failed, exit 0; "
+        "matches Expected: all tests pass.\n"
+    )
+    with Path(".ryugi/sdd/2026-11-10-export-design/progress.md").open("a") as ledger:
+        ledger.write(line)
+    print(line, end="")
+    PY
+    ```
+
+    **Assumed output:** Commit succeeds with SHA `d4e5f6a0123456789abcdef0123456789abcdef012`.
+
+    Exact appended ledger line:
+
+    ```text
+    Task 2: Evidence: commit d4e5f6a0123456789abcdef0123456789abcdef012; original row test previously observed RED; five escaping regressions observed RED in this session; Verify pnpm test → 17 passed, 0 failed, exit 0; matches Expected: all tests pass.
+    ```
+
+11. **Tool: `shell` — close Task 2 with its final test run**
+
+    Because this is the existing checkout, explicitly identify my commit:
+
+    ```bash
+    bash scripts/task-done docs/ryugi/specs/2026-11-10-export-design.md 2 a1b2c3d d4e5f6a0123456789abcdef0123456789abcdef012 -- pnpm test
+    ```
+
+    **Assumed output:** Exit 0; final run reports 17 tests passed, zero failed. The script prints its saved output path, assumed to be `.ryugi/sdd/2026-11-10-export-design/task-2-tests.log`, and appends exactly:
+
+    ```text
+    Task 2: complete (commits d4e5f6a, tests: pnpm test → 17 passed, 0 failed)
+    ```
+
+12. **Tool: `shell` — read the full final output and ledger**
+
+    ```bash
+    cat .ryugi/sdd/2026-11-10-export-design/task-2-tests.log
+    cat .ryugi/sdd/2026-11-10-export-design/progress.md
+    ```
+
+    **Assumed full output read:** Final test log confirms exit-successful execution with 17 passing tests and no failures; the ledger contains the ruling, evidence, and Task 2 completion line.
+
+13. **Tool: `todos.update`**
+
+    ```json
+    {
+      "task": "Task 2: Write rows",
+      "status": "completed"
+    }
+    ```
+
+    **Assumed result:** Todo updated.
+
+14. **Message to partner**
+
+    “Task 2 is closed in commit `d4e5f6a`; its final `task-done` run reports 17 passing tests. I ruled that ‘one row’ means one logical CSV record, preserving embedded newlines through quoting; consumers requiring physical single-line rows would need a different policy. Task 3 is next.”
+
+The requested simulation ends at Task 2’s closure. No approval pause, whole-branch review, workspace deletion, or landing action occurs here.
+
+SUMMARY: Simulated recording the CSV-escaping ruling, RED→GREEN regression coverage, verification, commit, and Task 2 closure; Task 3 remains with the agent, with no partner decision required.

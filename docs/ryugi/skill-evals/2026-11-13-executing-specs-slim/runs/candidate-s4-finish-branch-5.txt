@@ -1,0 +1,93 @@
+This is a simulation; no commands below are executed. No additional skill files are needed.
+
+1. Message to partner:
+
+   > I’m using the loaded executing-specs workflow to collect the final evidence and ledger decisions before cleanup.
+
+2. Tool call:
+
+   ```json
+   {"cmd":"cat .ryugi/sdd/2026-11-10-export-design/progress.md","workdir":"/Users/p/git/notes-app"}
+   ```
+
+   Assumed output: the ledger identifies the supplied spec, records all three tasks complete, and contains exactly the supplied ruling, deferred minor, and streaming fix. Assume its task commits are `a13bc92`, `b24cd83`, and `c35de74`.
+
+   Collected verbatim:
+
+   ```text
+   Task 2: Ruling: quote fields per RFC 4180 — spec is silent on commas — cost if wrong: Excel-only users see quotes
+   Final: minor (deferred): CSV header says updatedAt
+   Final: fixed streaming export — test_export_streams RED→GREEN, suite 32/32
+   ```
+
+3. Tool call:
+
+   ```json
+   {"cmd":"git status --short --branch","workdir":"/Users/p/git/notes-app"}
+   ```
+
+   Assumed full output:
+
+   ```text
+   ## feat/export
+   ```
+
+4. Tool call:
+
+   ```json
+   {"cmd":"git log --oneline main..HEAD","workdir":"/Users/p/git/notes-app"}
+   ```
+
+   Assumed full output:
+
+   ```text
+   d46ef65 Fix streaming CSV export
+   c35de74 Wire CSV export into notes
+   b24cd83 Encode CSV fields
+   a13bc92 Add notes export
+   ```
+
+   This establishes that the final fix is committed.
+
+5. Tool call:
+
+   ```json
+   {"cmd":"pnpm test","workdir":"/Users/p/git/notes-app"}
+   ```
+
+   Assume the command exits `0`, and I read its full output: all 32 tests pass, including `test_export_streams`, with no failures.
+
+6. Message to partner:
+
+   > `pnpm test` exited 0 with 32/32 tests passing, including the streaming regression test. The fix is committed and the checkout is clean; I’m removing this spec’s scratch workspace.
+
+7. Tool call:
+
+   ```json
+   {"cmd":"rm -r -- .ryugi/sdd/2026-11-10-export-design","workdir":"/Users/p/git/notes-app"}
+   ```
+
+   Assumed output: none; exit `0`. No sibling workspace is removed. No ledger lines are appended.
+
+8. Final message to partner:
+
+   > CSV export is implemented on `feat/export`. Final verification: `pnpm test` exited 0, with 32/32 tests passing, including `test_export_streams`. The final review’s Important finding is fixed and committed. Inline verification passed; no verify page was needed.
+   >
+   > **Rulings I made**
+   >
+   > - Quote fields per RFC 4180 because the spec is silent on commas. Cost if wrong: Excel-only users see quotes.
+   >
+   > **Deferred minors**
+   >
+   > - CSV header says `updatedAt`.
+   >
+   > Commits: `a13bc92`, `b24cd83`, `c35de74`, `d46ef65`. The checkout is clean and this spec’s scratch workspace has been removed.
+   >
+   > Choose how to land it:
+   >
+   > 1. **Squash into `main`** (default)
+   > 2. **Rebase onto `main`**
+   > 3. **Push and open a PR**
+   > 4. **Keep the branch as-is**
+
+SUMMARY: Simulated final verification, ledger collection, and workspace cleanup; landing waits on the partner’s choice.

@@ -1,0 +1,84 @@
+Simulation only; no commands below are actually executed. All outputs are assumed.
+
+**Message:** “I’ll squash `feat/export` into `main`, run the tests before committing, then verify the result and remove the branch.”
+
+1. Shell call:
+   ```json
+   {"cmd":"git status --short --branch","workdir":"/Users/p/git/notes-app"}
+   ```
+   Assumed full output:
+   ```text
+   ## feat/export
+   ```
+   The checkout is clean.
+
+2. Shell call:
+   ```json
+   {"cmd":"git log -5 --format=%s","workdir":"/Users/p/git/notes-app"}
+   ```
+   Assume the output shows conventional commit subjects, establishing the style for the squash commit.
+
+3. Shell call:
+   ```json
+   {"cmd":"git switch main","workdir":"/Users/p/git/notes-app"}
+   ```
+   Assumed output: switched to `main`, tracking `origin/main`.
+
+4. Shell call:
+   ```json
+   {"cmd":"git pull --ff-only","workdir":"/Users/p/git/notes-app"}
+   ```
+   Assumed output:
+   ```text
+   Already up to date.
+   ```
+
+5. Shell call:
+   ```json
+   {"cmd":"git merge --squash feat/export","workdir":"/Users/p/git/notes-app"}
+   ```
+   Assume exit 0: the export changes are staged without conflicts; HEAD remains unchanged.
+
+6. Shell call:
+   ```json
+   {"cmd":"pnpm test","workdir":"/Users/p/git/notes-app"}
+   ```
+   Assume the full output is returned and read: all 18 tests pass, exit 0.
+
+**Message:** “The squash applied cleanly, and `pnpm test` passed all 18 tests on `main`. I’ll commit it and verify again.”
+
+7. Shell call:
+   ```json
+   {"cmd":"git commit -m 'feat: add CSV export for notes'","workdir":"/Users/p/git/notes-app"}
+   ```
+   Assume exit 0 and squash commit `a12bc34` is created.
+
+8. Shell call:
+   ```json
+   {"cmd":"pnpm test","workdir":"/Users/p/git/notes-app"}
+   ```
+   Assume the full output is returned and read: all 18 tests pass, exit 0.
+
+9. Shell call:
+   ```json
+   {"cmd":"git branch -D feat/export","workdir":"/Users/p/git/notes-app"}
+   ```
+   Assumed output:
+   ```text
+   Deleted branch feat/export (was b45cd67).
+   ```
+
+10. Shell call:
+    ```json
+    {"cmd":"git status --short --branch","workdir":"/Users/p/git/notes-app"}
+    ```
+    Assumed full output:
+    ```text
+    ## main...origin/main [ahead 1]
+    ```
+
+No ledger lines are appended: the completed execution’s workspace was already removed. No worktree needs removal because this work used the same checkout.
+
+**Final message:** “Squashed into `main` as `a12bc34`. `pnpm test` passed 18/18 before and after the commit. The checkout is clean, and `feat/export` is deleted. `main` is one commit ahead of origin; pushing remains your call.”
+
+SUMMARY: Simulated squash, verification, commit, and branch cleanup; nothing actually ran, and pushing waits on the partner.

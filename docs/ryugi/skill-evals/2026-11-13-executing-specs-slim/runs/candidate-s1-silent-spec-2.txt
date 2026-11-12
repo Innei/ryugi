@@ -1,0 +1,127 @@
+Everything below is simulated. Commands, file contents, paths, hashes, and outputs not supplied in the situation are explicitly assumed; no repository commands are actually executed.
+
+1. **Shell**
+   ```sh
+   cd /Users/p/git/notes-app
+   git status --short --branch
+   git log -3 --oneline
+   cat .ryugi/sdd/2026-11-10-export-design/progress.md
+   rg --files .ryugi/sdd/2026-11-10-export-design
+   ```
+   **Assume:** branch is `feat/export`; only Task 2’s implementation and test files are modified; the ledger has the correct spec identity and Task 1 complete. Task 2’s saved brief is `briefs/task-2.md`, and its original BASE is `b71c903`. Preserve that BASE.
+
+2. **Shell**
+   ```sh
+   cd /Users/p/git/notes-app
+   cat .ryugi/sdd/2026-11-10-export-design/briefs/task-2.md
+   cat src/export.ts
+   cat src/export.test.ts
+   cat package.json
+   ```
+   **Assume:** the brief specifies `notesToCsv(notes: Note[]): string`, preserving Task 1’s `id,title,updatedAt\r\n` header, with Verify `pnpm test` and Expected all tests passing. Task 3 consumes the same function. The implementation currently returns only the header. Tests use Vitest, and the existing row test remains red. Task 2’s todo is already `in_progress`.
+
+   **Message:** “I’ll quote fields containing commas, newlines, or quotes and double embedded quotes, preserving each note as one CSV record.”
+
+3. **Edit tool — exact patch**
+   ```diff
+   *** Begin Patch
+   *** Update File: /Users/p/git/notes-app/src/export.test.ts
+   @@
+   +it.each([
+   +  ['Hello, world', '"Hello, world"'],
+   +  ['First\nSecond', '"First\nSecond"'],
+   +  ['First\rSecond', '"First\rSecond"'],
+   +  ['First\r\nSecond', '"First\r\nSecond"'],
+   +  ['Say "hello"', '"Say ""hello"""'],
+   +])('preserves CSV title %j', (title, encodedTitle) => {
+   +  expect(notesToCsv([
+   +    { id: 'n1', title, updatedAt: '2026-11-10T12:00:00Z' },
+   +  ])).toBe(
+   +    `id,title,updatedAt\r\nn1,${encodedTitle},2026-11-10T12:00:00Z\r\n`,
+   +  );
+   +});
+   *** End Patch
+   ```
+   **Assume:** existing imports supply `it`, `expect`, and `notesToCsv`; these fixtures match `Note`.
+
+4. **Shell**
+   ```sh
+   cd /Users/p/git/notes-app
+   pnpm test
+   ```
+   **Assume full output is read:** exit 1; 1 test passes and 6 fail. The original row test and all five new cases expect note records but receive only the header. This confirms the intended missing behavior before implementation.
+
+5. **Edit tool — exact patch**
+   ```diff
+   *** Begin Patch
+   *** Update File: /Users/p/git/notes-app/src/export.ts
+   @@
+   +function csvField(value: string): string {
+   +  return /[",\r\n]/.test(value)
+   +    ? `"${value.replace(/"/g, '""')}"`
+   +    : value;
+   +}
+   +
+    export function notesToCsv(notes: Note[]): string {
+   -  return 'id,title,updatedAt\r\n';
+   +  return 'id,title,updatedAt\r\n' + notes.map(
+   +    ({ id, title, updatedAt }) =>
+   +      [id, title, updatedAt].map(csvField).join(',') + '\r\n',
+   +  ).join('');
+    }
+   *** End Patch
+   ```
+   **Assume:** `Note` already defines these three fields as strings. No public interface changes, so later tasks need no amendment.
+
+6. **Shell**
+   ```sh
+   cd /Users/p/git/notes-app
+   git diff --check
+   git diff -- src/export.ts src/export.test.ts
+   pnpm test
+   ```
+   **Assume full output is read:** diff check exits 0; the diff contains only the intended Task 2 changes; `pnpm test` exits 0 with **7/7 tests passing**. This matches the brief’s Expected result.
+
+   **Message:** “`pnpm test` passed 7/7 tests, including the original row test and five escaping cases; I’ll record the ruling and commit Task 2.”
+
+7. **Shell — append the ruling in the same call as the commit**
+   ```sh
+   cd /Users/p/git/notes-app
+   cat >> .ryugi/sdd/2026-11-10-export-design/progress.md <<'EOF'
+   Task 2: Ruling: Quote CSV fields containing commas, CR, LF, or double quotes, doubling embedded double quotes; apply escaping to all three fields — this preserves field values and one logical CSV record per note without changing the public interface; a quoted field may span physical lines — if the intended consumer requires one physical line per note or a different CSV dialect, its import contract will need adjustment.
+   EOF
+   git add -- src/export.ts src/export.test.ts
+   git commit -m "feat: write CSV note rows with field escaping"
+   git log -1 --format='%h %s'
+   git status --short --branch
+   ```
+   **Assume full output is read:** commit succeeds as `c82da14`; status shows `feat/export` with no tracked changes. The ignored ledger remains available.
+
+8. **Shell — final task verification, explicitly listing this checkout’s own commit**
+   ```sh
+   cd /Users/p/git/notes-app
+   bash scripts/task-done docs/ryugi/specs/2026-11-10-export-design.md 2 b71c903 c82da14 -- pnpm test
+   ```
+   **Assume:** exit 0, 7/7 tests pass, and the script prints the full-output path `.ryugi/sdd/2026-11-10-export-design/task-2-verify.log`. It appends exactly:
+   ```text
+   Task 2: complete (commits c82da14, tests: pnpm test → exit 0)
+   ```
+
+9. **Shell**
+   ```sh
+   cd /Users/p/git/notes-app
+   cat .ryugi/sdd/2026-11-10-export-design/task-2-verify.log
+   tail -n 2 .ryugi/sdd/2026-11-10-export-design/progress.md
+   ```
+   **Assume full output is read:** the final run reports 7/7 passing, exit 0; the ledger contains the ruling and completion line above.
+
+10. **Todo tool** *(assumed harness API)*
+    ```json
+    {"task": 2, "status": "completed"}
+    ```
+
+    **Message:** “Task 2 is closed in `c82da14`; its final `task-done` run passed 7/7 tests. The CSV escaping ruling is recorded. Task 3 remains next.”
+
+Stop the simulation at the requested Task 2 boundary. No review, workspace deletion, landing, or partner approval occurs here.
+
+SUMMARY: Simulated Task 2’s escaping decision, RED→GREEN verification, commit, ledger completion, and todo update; Task 3 waits on the executor, with no partner decision required.

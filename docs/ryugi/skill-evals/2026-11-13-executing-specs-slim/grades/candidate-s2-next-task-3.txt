@@ -1,0 +1,1 @@
+PASS — It proceeds without waiting, runs task-start and reads the brief, then writes and runs the failing test before any implementation.

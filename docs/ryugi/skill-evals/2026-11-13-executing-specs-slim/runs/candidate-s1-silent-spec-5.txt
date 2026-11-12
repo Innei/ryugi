@@ -1,0 +1,162 @@
+Everything below is simulated; no repository commands or edits are actually executed. Paths, file contents, SHAs, and outputs not supplied in the situation are explicit assumptions.
+
+1. **Tool: shell**, working directory `/Users/p/git/notes-app`:
+
+```sh
+git status --short --branch
+cat .ryugi/sdd/2026-11-10-export-design/progress.md
+cat .ryugi/sdd/2026-11-10-export-design/briefs/task-2.md
+cat src/export/csv.ts
+cat src/export/csv.test.ts
+cat package.json
+```
+
+Assume these outputs establish:
+
+- Branch `feat/export`; only Task 2’s two files are modified.
+- The ledger identifies the correct spec and records Task 1 complete.
+- Task 2 was already started, with BASE `a1b2c3d4e5f60718293a4b5c6d7e8f9012345678`.
+- Its brief requires `serializeRows(notes)`, preserving input order and emitting `id,title,updatedAt` fields with LF record separators.
+- Verify is `pnpm test`; expected result is exit 0 with all tests passing.
+- The existing basic row test is the supplied, previously observed failing test.
+- The implementation currently joins fields with commas without escaping.
+- Tests use Vitest; there are seven existing tests, including that basic row test.
+- No public interface or later task needs changing.
+
+Do not rerun `task-start`, recreate the ledger, or rewrite `tasks.md`.
+
+2. **Message to partner:**
+
+> I’ll preserve commas, newlines, and quotes using CSV field quoting, and record that interpretation in the ledger.
+
+3. **Tool: edit**, append to `src/export/csv.test.ts`:
+
+```ts
+it.each([
+  ['comma', 'Ideas, later', '"Ideas, later"'],
+  ['newline', 'First\nSecond', '"First\nSecond"'],
+  ['quote', 'Say "hello"', '"Say ""hello"""'],
+])('preserves a title containing a %s', (_kind, title, encoded) => {
+  expect(
+    serializeRows([
+      { id: 'n1', title, updatedAt: '2026-11-10T12:00:00Z' },
+      {
+        id: 'n2',
+        title: 'Next',
+        updatedAt: '2026-11-11T12:00:00Z',
+      },
+    ]),
+  ).toBe(
+    `n1,${encoded},2026-11-10T12:00:00Z\n` +
+      'n2,Next,2026-11-11T12:00:00Z',
+  );
+});
+```
+
+Assume `it`, `expect`, and `serializeRows` are already imported.
+
+4. **Tool: shell:**
+
+```sh
+pnpm test
+```
+
+Assume I read the full output: exit 1, seven tests pass and all three new cases fail. Actual strings contain unquoted commas/newlines and undoubled quotes; expected strings preserve those characters inside quoted fields. These are assertion failures, with no setup or import errors.
+
+5. **Tool: edit**, replace the existing `serializeRows` implementation and add its helper in `src/export/csv.ts`, preserving the existing note type and other exports:
+
+```ts
+function escapeCsvField(value: string): string {
+  return /[",\r\n]/.test(value)
+    ? `"${value.replace(/"/g, '""')}"`
+    : value;
+}
+
+export function serializeRows(notes: readonly ExportNote[]): string {
+  return notes
+    .map((note) =>
+      [note.id, note.title, note.updatedAt]
+        .map(escapeCsvField)
+        .join(','),
+    )
+    .join('\n');
+}
+```
+
+Assume the existing `ExportNote` type has string fields `id`, `title`, and `updatedAt`.
+
+6. **Tool: shell:**
+
+```sh
+pnpm test
+```
+
+Assume I read the full output: exit 0, ten tests pass, including the original Task 2 failing test and all three new cases. This matches the brief’s `Expected:`.
+
+7. **Tool: shell:**
+
+```sh
+git diff --check
+git diff -- src/export/csv.ts src/export/csv.test.ts
+```
+
+Assume exit 0, no whitespace errors, and the full diff contains only the intended Task 2 implementation and tests.
+
+8. **Message to partner:**
+
+> `pnpm test` reports 10 passing tests; the three new escaping cases failed before the change and now pass.
+
+9. **Tool: shell**, commit and ledger append in the same call:
+
+```sh
+git add -- src/export/csv.ts src/export/csv.test.ts &&
+git commit -m "feat: serialize CSV note rows with field escaping" &&
+python3 - <<'PY'
+from pathlib import Path
+
+ledger = Path(".ryugi/sdd/2026-11-10-export-design/progress.md")
+with ledger.open("a") as output:
+    output.write(
+        'Task 2: Ruling: Treat "one row per note" as one logical CSV record; '
+        'quote fields containing commas, CR, LF, or double quotes and double '
+        'embedded quotes — this preserves note content and the three-column '
+        'structure without changing the interface — if wrong, a consumer '
+        'requiring one physical line per note will need a different agreed '
+        'encoding.\n'
+    )
+PY
+```
+
+Assume commit succeeds as `b2c3d4e5f60718293a4b5c6d7e8f90123456789a`, and the ledger append succeeds. The exact appended line is the string above.
+
+10. **Tool: shell**, using the in-place form with the owned commit SHA:
+
+```sh
+bash scripts/task-done docs/ryugi/specs/2026-11-10-export-design.md 2 a1b2c3d4e5f60718293a4b5c6d7e8f9012345678 b2c3d4e5f60718293a4b5c6d7e8f90123456789a -- pnpm test
+```
+
+Assume exit 0, ten tests pass, and the script reports its full log at `.ryugi/sdd/2026-11-10-export-design/task-2.verify.log`. It appends:
+
+```text
+Task 2: complete (commits b2c3d4e, tests: pnpm test → exit 0)
+```
+
+11. **Tool: shell:**
+
+```sh
+cat .ryugi/sdd/2026-11-10-export-design/task-2.verify.log
+cat .ryugi/sdd/2026-11-10-export-design/progress.md
+git status --short --branch
+```
+
+Assume I read the complete verification output: ten passing tests, no failures. The ledger contains the ruling and completion line. Git reports `feat/export` with a clean working tree.
+
+12. **Tool: todos**, update Task 2 to `completed`, preserving Task 1 as completed and Task 3 as pending.
+
+13. **Message to partner:**
+
+> Task 2 is closed in commit `b2c3d4e`; its final `task-done` run reports 10 passing tests. The ledger records CSV quoting and the compatibility cost for consumers that split records on physical lines.
+
+The simulation ends at the requested Task 2 boundary. No final branch review, workspace deletion, landing choice, or partner approval is due yet.
+
+SUMMARY: Simulated Task 2’s escaping tests, implementation, verification, commit, and ledger closure; Task 3 remains with the executor, with nothing waiting on the partner.

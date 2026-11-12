@@ -1,0 +1,169 @@
+Everything below is simulated. Only `./skill/` was actually read.
+
+1. **Message:** “I’m using executing-specs to resume from the ledger and inspect the uncommitted change before starting Task 2.”
+
+2. **Shell calls**, each with `workdir: "/Users/p/git/notes-app"`:
+
+   ```sh
+   git status --short --branch
+   ```
+
+   Assumed output: branch `feat/export`; only `src/export.ts` is modified.
+
+   ```sh
+   bash scripts/sdd-workspace docs/ryugi/specs/2026-11-10-export-design.md
+   ```
+
+   Given output: `.ryugi/sdd/2026-11-10-export-design/`.
+
+   ```sh
+   cat .ryugi/sdd/2026-11-10-export-design/progress.md
+   ```
+
+   Given output: the supplied ledger, with matching spec identity and Task 1 recorded complete.
+
+   ```sh
+   cat docs/ryugi/specs/2026-11-10-export-design.md
+   ```
+
+   Assumption after reading the full spec: CSV columns are `title,content`; fields containing commas, quotes, or newlines must be quoted, with embedded quotes doubled.
+
+   ```sh
+   cat .ryugi/sdd/2026-11-10-export-design/tasks.md
+   ```
+
+   Assumption: the existing three tasks match the ledger; Task 2 implements `notesToCsv(notes: Note[]): string` in `src/export.ts`, with tests in `src/export.test.ts`. Its Verify command is `pnpm test export`. I retain this task list unchanged.
+
+   ```sh
+   git log -8 --oneline
+   ```
+
+   Assumption: `HEAD` is `d4e5f6a`, and history agrees with Task 1’s recorded range. That establishes where to resume; it is not a current test result.
+
+   ```sh
+   git diff -- src/export.ts
+   ```
+
+   Assumption: the uncommitted change adds an unfinished `notesToCsv` function returning `''`. I preserve it; I neither discard it nor commit it as completed work.
+
+   ```sh
+   cat src/export.ts src/export.test.ts package.json
+   ```
+
+   Assumptions: `Note` has `title` and `content` fields; tests use Vitest; four existing export tests cover Task 1; the test script supports `pnpm test export`. The existing stub is callable, so the new test can fail on behavior rather than an import error.
+
+3. **Todo call:**
+
+   ```json
+   {
+     "todos": [
+       {"id": "task-1", "text": "Parse notes", "status": "completed"},
+       {"id": "task-2", "text": "Write CSV rows", "status": "pending"},
+       {"id": "task-3", "text": "Wire the export button", "status": "pending"}
+     ]
+   }
+   ```
+
+   Task 1’s status comes from the ledger; I do not repeat its implementation.
+
+4. **Message:** “The ledger records Task 1 complete; the working tree contains an unfinished CSV writer, which I’ll preserve while adding Task 2’s regression test.”
+
+5. **Shell call**, same workdir:
+
+   ```sh
+   bash scripts/task-start docs/ryugi/specs/2026-11-10-export-design.md 2
+   ```
+
+   Assumed output:
+
+   ```text
+   Brief: .ryugi/sdd/2026-11-10-export-design/briefs/task-2.md
+   BASE: d4e5f6a
+   ```
+
+6. **Shell call**, same workdir:
+
+   ```sh
+   cat .ryugi/sdd/2026-11-10-export-design/briefs/task-2.md
+   ```
+
+   Assumed brief: consume Task 1’s `Note` type; produce `notesToCsv`; first test checks the header and escaping of commas, quotes, and newlines. Verify: `pnpm test export`; expected: all export tests pass.
+
+7. **Todo call:**
+
+   ```json
+   {
+     "todos": [
+       {"id": "task-1", "text": "Parse notes", "status": "completed"},
+       {"id": "task-2", "text": "Write CSV rows", "status": "in_progress"},
+       {"id": "task-3", "text": "Wire the export button", "status": "pending"}
+     ]
+   }
+   ```
+
+8. **Edit call** using `apply_patch` (assuming the inspected test file ends with the shown closing `});`):
+
+   ```diff
+   *** Begin Patch
+   *** Update File: /Users/p/git/notes-app/src/export.test.ts
+   @@
+   +import { notesToCsv } from './export';
+   +
+   @@
+    });
+   +
+   +it('writes CSV headers and escapes commas, quotes, and newlines', () => {
+   +  expect(notesToCsv([
+   +    { title: 'Hello, "world"', content: 'line one\nline two' },
+   +  ])).toBe(
+   +    'title,content\n"Hello, ""world""","line one\nline two"',
+   +  );
+   +});
+   *** End Patch
+   ```
+
+   Assumption: the edit applies successfully. No implementation changes are made.
+
+9. **Shell call**, same workdir:
+
+   ```sh
+   pnpm test export
+   ```
+
+   Assumed full output:
+
+   ```text
+   > notes-app@1.0.0 test
+   > vitest run export
+
+    RUN  v3.2.4 /Users/p/git/notes-app
+
+    ❯ src/export.test.ts (5 tests | 1 failed)
+      ✓ parses an empty collection
+      ✓ parses a note
+      ✓ preserves note order
+      ✓ preserves note text
+      × writes CSV headers and escapes commas, quotes, and newlines
+
+    FAIL  src/export.test.ts > writes CSV headers and escapes commas, quotes, and newlines
+   AssertionError: expected '' to be 'title,content\n"Hello, ""world""","line one\nline two"'
+
+   - Expected
+   + Received
+
+   - title,content
+   - "Hello, ""world""","line one
+   - line two"
+   + ""
+
+    Test Files  1 failed (1)
+         Tests  1 failed | 4 passed (5)
+   ```
+
+   Assumed exit code: `1`. I read the full output: the new test fails for the intended behavioral reason—the unfinished writer returns an empty string.
+
+10. **Message:** “Task 2’s test is red: `pnpm test export` exits 1, with the new CSV test failing because the writer returns `''`; four existing tests pass in this simulated run.”
+
+No ledger lines are appended: no ruling, commit, or task completion has occurred. I stop at the requested boundary, before implementing Task 2.
+
+SUMMARY: Simulated resuming Task 2 and running its failing test while preserving the uncommitted change; implementation remains with the agent, with no partner approval needed.

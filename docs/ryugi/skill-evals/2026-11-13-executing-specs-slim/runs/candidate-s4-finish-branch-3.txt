@@ -1,0 +1,59 @@
+Simulation only. No commands below are actually executed.
+
+1. Tool call:
+   ```json
+   {"cmd":"cat .ryugi/sdd/2026-11-10-export-design/progress.md","workdir":"/Users/p/git/notes-app"}
+   ```
+   Assumed output: all three tasks complete, the streaming fix verified with `test_export_streams` RED→GREEN and suite 32/32, and exactly the ruling and deferred minor supplied in the situation. No ledger lines appended.
+
+2. Tool call:
+   ```json
+   {"cmd":"git status --short --branch","workdir":"/Users/p/git/notes-app"}
+   ```
+   Assumed full output:
+   ```text
+   ## feat/export
+   ```
+
+3. Tool call:
+   ```json
+   {"cmd":"git log --oneline main..HEAD","workdir":"/Users/p/git/notes-app"}
+   ```
+   Assumed output: the three task commits and the committed streaming fix, with no unrelated commits.
+
+4. Tool call:
+   ```json
+   {"cmd":"pnpm test","workdir":"/Users/p/git/notes-app"}
+   ```
+   Assumed result: command exits 0; I read its full output, which reports all 32 tests passing, including `test_export_streams`.
+
+5. Message to partner:
+
+   > `pnpm test` passed all 32 tests; the working tree is clean and the streaming fix is committed. I’m removing this spec’s scratch workspace.
+
+6. Tool call:
+   ```json
+   {"cmd":"rm -r .ryugi/sdd/2026-11-10-export-design","workdir":"/Users/p/git/notes-app"}
+   ```
+   Assumed result: exit 0, no output. Only this spec’s workspace is removed.
+
+7. Final message to partner:
+
+   > CSV export is implemented on `feat/export`, including the streaming fix. Fresh verification: `pnpm test` exited 0 with 32/32 passing. The single claim was proved inline; no verify page or pending verification verdict remains.
+   >
+   > **Rulings I made**
+   >
+   > - Task 2: quote fields per RFC 4180 — spec is silent on commas — cost if wrong: Excel-only users see quotes.
+   >
+   > **Deferred minors**
+   >
+   > - CSV header says `updatedAt`.
+   >
+   > Choose how to land it:
+   >
+   > 1. **Squash into `main`** (default)
+   > 2. **Rebase onto `main`**
+   > 3. **Push and open a PR**
+   > 4. **Keep the branch as-is**
+
+SUMMARY: Simulated fresh verification, collected the ruling and deferred minor, and removed the spec workspace; landing now waits on the partner’s choice.

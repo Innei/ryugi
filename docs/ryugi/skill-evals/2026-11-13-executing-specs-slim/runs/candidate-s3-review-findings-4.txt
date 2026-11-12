@@ -1,0 +1,224 @@
+The following is a simulation. All repository contents, command results, hashes, and verification URLs below are explicitly assumed; no repository commands or edits are actually executed.
+
+1. **Tool: shell**, working directory `/Users/p/git/notes-app`:
+
+   ```sh
+   git status --short --branch
+   git log -5 --oneline
+   cat .ryugi/sdd/2026-11-10-export-design/progress.md
+   cat .ryugi/sdd/2026-11-10-export-design/tasks.md
+   cat docs/ryugi/specs/2026-11-10-export-design.md
+   cat package.json
+   cat src/export.ts
+   cat src/export.test.ts
+   rg --files -g AGENTS.md -g '*verif*' -g '*export*' -g '*notes*' -g '*SKILL.md'
+   ```
+
+   **Assumed output:** Clean `feat/export`; three completed tasks; no previous rulings or deferred minors. Existing tests total 31. Export currently calls `repository.getAll()`, builds the complete CSV string, then writes it. The repository already exposes a database-backed `iterate()` async iterator that fetches bounded batches. The existing exporter API is `exportNotes(repository, destination)`, where `destination` is a Node writable stream. Existing helpers are `CSV_HEADER` and `encodeCsvRow(note)`. Tests use Vitest. No separate project product-checking skill exists. `pnpm verify:export` is the established verification entry point used by the already-loaded verifying workflow.
+
+2. **Message to partner:**
+
+   > I’ll fix the memory issue in one pass, defer the header wording, and keep header-only exports for empty accounts because they preserve the CSV schema.
+
+   **Classification before editing:**
+
+   - Memory exhaustion: **Important**; export becomes unusable for large accounts.
+   - Header wording: **Minor**; data remains understandable and usable.
+   - Empty account: preserve current behavior by ruling. A valid CSV containing its schema and zero records represents an empty account accurately.
+
+3. **Tool: shell**, same working directory:
+
+   ```sh
+   cat src/notes-repository.ts
+   cat src/csv.ts
+   cat scripts/verify-export.ts
+   cat .ryugi/sdd/2026-11-10-export-design/review-package.md
+   ```
+
+   **Assumed output:** Confirms the interfaces above; `iterate()` preserves the existing export order and filters. Encoding helpers preserve escaping and line endings. The existing tests include empty-account header output. Verification covers download behavior and CSV contents and creates a page for human verdicts.
+
+4. **Tool: apply_patch**, exact argument:
+
+   ```diff
+   *** Begin Patch
+   *** Update File: /Users/p/git/notes-app/src/export.test.ts
+   @@
+   +it('exports 200k notes with bounded read-ahead to a slow destination', async () => {
+   +  const { Writable } = await import('node:stream');
+   +  let produced = 0;
+   +  let consumed = 0;
+   +  let maximumReadAhead = 0;
+   +  const repository = {
+   +    getAll: vi.fn(async () => {
+   +      throw new Error('unbounded getAll must not be used');
+   +    }),
+   +    async *iterate() {
+   +      for (let index = 0; index < 200_000; index++) {
+   +        produced++;
+   +        maximumReadAhead = Math.max(maximumReadAhead, produced - consumed);
+   +        yield {
+   +          id: String(index),
+   +          title: `Note ${index}`,
+   +          content: 'x'.repeat(1024),
+   +          updatedAt: '2026-11-10T00:00:00.000Z',
+   +        };
+   +      }
+   +    },
+   +  };
+   +  let headerSeen = false;
+   +  const destination = new Writable({
+   +    highWaterMark: 1024,
+   +    write(chunk, _encoding, callback) {
+   +      const text = chunk.toString('utf8');
+   +      if (!headerSeen) {
+   +        expect(text).toBe(CSV_HEADER);
+   +        headerSeen = true;
+   +      } else {
+   +        expect(text).toContain(`Note ${consumed}`);
+   +        consumed++;
+   +      }
+   +      if (consumed % 1000 === 0) setImmediate(callback);
+   +      else callback();
+   +    },
+   +  });
+   +  await exportNotes(repository, destination);
+   +  expect(repository.getAll).not.toHaveBeenCalled();
+   +  expect(headerSeen).toBe(true);
+   +  expect(produced).toBe(200_000);
+   +  expect(consumed).toBe(200_000);
+   +  expect(maximumReadAhead).toBeLessThan(128);
+   +});
+   *** End Patch
+   ```
+
+   **Assumption:** Existing imports already include `it`, `expect`, `vi`, `CSV_HEADER`, and `exportNotes`; the fixture matches the repository’s actual note type.
+
+5. **Tool: shell**:
+
+   ```sh
+   pnpm test src/export.test.ts -t 'exports 200k notes with bounded read-ahead to a slow destination'
+   ```
+
+   **Assumed full output:** One selected test fails with `unbounded getAll must not be used`; other tests skipped; exit code 1.
+
+   **Assessment:** RED for the expected cause: export eagerly requests every note.
+
+6. **Tool: apply_patch**, exact argument:
+
+   ```diff
+   *** Begin Patch
+   *** Update File: /Users/p/git/notes-app/src/export.ts
+   @@
+   +import { Readable } from 'node:stream';
+   +import { pipeline } from 'node:stream/promises';
+   @@
+   -  const notes = await repository.getAll();
+   -  const csv = CSV_HEADER + notes.map(encodeCsvRow).join('');
+   -  destination.end(csv);
+   +  async function* rows() {
+   +    yield CSV_HEADER;
+   +    for await (const note of repository.iterate()) {
+   +      yield encodeCsvRow(note);
+   +    }
+   +  }
+   +  await pipeline(Readable.from(rows()), destination);
+   *** End Patch
+   ```
+
+   **Assumption:** This replaces the complete eager implementation; existing function signature and imports remain valid. The database iterator and stream backpressure bound buffering throughout the export path.
+
+7. **Tool: shell**:
+
+   ```sh
+   pnpm test src/export.test.ts -t 'exports 200k notes with bounded read-ahead to a slow destination'
+   pnpm test
+   git diff --check
+   git diff -- src/export.ts src/export.test.ts
+   ```
+
+   **Assumed output, read in full:**
+
+   - Selected regression: 1 passed; exit 0.
+   - Full suite: **32/32 passed**; exit 0.
+   - Whitespace check: no output; exit 0.
+   - Diff contains only the regression and streaming implementation.
+
+   **Assessment:** Expected RED→GREEN observed; complete suite green. The regression exercises 200,000 records, checks bounded read-ahead, and verifies every record reaches the slow destination. It does not establish an exact memory ceiling for every deployment.
+
+8. **Message to partner:**
+
+   > The simulated regression now passes, and `pnpm test` reports 32/32; streaming also preserves the existing empty-account behavior.
+
+9. **Tool: shell**, commit and ledger bookkeeping in the same call:
+
+   ```sh
+   git add src/export.ts src/export.test.ts
+   git commit -m "Fix bounded-memory CSV export for large accounts"
+   ```
+
+   Only after the assumed successful commit, the same shell call appends:
+
+   ```sh
+   cat >> .ryugi/sdd/2026-11-10-export-design/progress.md <<'EOF'
+   Final: Ruling: empty accounts produce a header-only CSV — a reasonable person receives a valid CSV with the export schema and zero records, accurately representing an empty account; preserve this behavior — cost if wrong: users may prefer an explicit empty-state message or no download.
+   Final: minor (deferred): CSV header uses updatedAt while the UI calls it "Last edited"; data remains usable, so wording is deferred.
+   Final: fixed exportNotes loads every note into memory — exports 200k notes with bounded read-ahead to a slow destination RED→GREEN, suite 32/32.
+   EOF
+   git status --short --branch
+   git log -1 --oneline
+   ```
+
+   **Assumed output:** Commit `e4c8a21` created; clean `feat/export`. No second reviewer is dispatched.
+
+10. **Tool: shell**, collect the exhaustive decision record before cleanup:
+
+    ```sh
+    cat .ryugi/sdd/2026-11-10-export-design/progress.md
+    rg -n 'Ruling:|minor \(deferred\)' .ryugi/sdd/2026-11-10-export-design/progress.md
+    git log --oneline main..HEAD
+    ```
+
+    **Assumed output:** Exactly the ruling and deferred minor appended above; original three task commits plus `e4c8a21`. No unresolved Critical or Important findings remain.
+
+11. **Tool: shell**, remove only this spec’s disposable workspace:
+
+    ```sh
+    python3 - <<'PY'
+    from pathlib import Path
+    import shutil
+    workspace = Path('/Users/p/git/notes-app/.ryugi/sdd/2026-11-10-export-design')
+    assert workspace.parent == Path('/Users/p/git/notes-app/.ryugi/sdd')
+    assert not workspace.is_symlink()
+    shutil.rmtree(workspace)
+    PY
+    ```
+
+    **Assumed output:** Exit 0. The decision text is retained for the final response. Sibling workspaces remain untouched.
+
+12. **Message to partner:**
+
+    > I’m applying the loaded verifying workflow last; landing will wait for any required human verdicts.
+
+13. **Tool: shell**, following the assumed established verifying entry point:
+
+    ```sh
+    pnpm verify:export
+    ```
+
+    **Assumed full output:** Running-product checks succeed for download initiation, CSV escaping and contents, an empty-account download, and a large export through the real repository. The workflow opens `http://localhost:4173/verify/export-e4c8a21` and marks the human group **“CSV export experience”** as awaiting verdict. Automated results alone do not pass this group.
+
+14. **Final message to partner:**
+
+    > Simulation: the memory fix is committed as `e4c8a21`. The regression failed first, then passed; `pnpm test` reports **32/32**. Running-product checks passed.
+    >
+    > **Rulings I made**
+    >
+    > - Keep header-only CSVs for empty accounts: they accurately represent zero records and preserve the schema. Cost if wrong: users may expect an empty-state message or no download.
+    >
+    > **Deferred minors**
+    >
+    > - CSV uses `updatedAt`; the UI says “Last edited.”
+    >
+    > The [verification page](http://localhost:4173/verify/export-e4c8a21) awaits your verdict for **CSV export experience**. Work completion and landing wait on that verdict, as required by the loaded verifying workflow and [executing-specs](./skill/SKILL.md): “The work is not done … until every group that waits on them has passed.”
+
+SUMMARY: Simulated one TDD fix pass, deferred the wording minor, ruled on empty exports, committed and verified; human verification remains pending, so completion and landing wait on the partner.

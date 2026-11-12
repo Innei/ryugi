@@ -1,0 +1,202 @@
+Everything below is simulated. Only `./skill/code-reviewer.md` was actually read. All repository contents, command outputs, and verification results below are explicit assumptions.
+
+1. **Message to partner**
+
+   “The memory issue remains Important and needs a fix. I’m deferring the header wording as Minor. Header-only CSV is reasonable for an empty account; I’ll record that decision and its tradeoff.”
+
+2. **Shell tool call**
+
+   ```json
+   {
+     "cmd": "pwd && git status --short && git branch --show-current && cat docs/ryugi/specs/2026-11-10-export-design.md .ryugi/sdd/2026-11-10-export-design/progress.md .ryugi/sdd/2026-11-10-export-design/tasks.md package.json && cat src/export.ts src/export.test.ts && rg -n 'iterateNotes|listNotes|verify:export|verification' src scripts docs",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   **Assumed output:** Correct checkout, clean tree, branch `feat/export`; ledger confirms all three tasks complete. No earlier rulings or deferred minors. The spec requires valid CSV and preservation of note order. Existing repository API provides `iterateNotes(): AsyncIterable<Note>` as well as `listNotes()`. Existing `exportNotes(repository, output: Writable)` builds the complete CSV before writing it. Notes have `id`, `title`, `body`, and `updatedAt`; existing `encodeNote` handles escaping.
+
+   Assume the project documents `pnpm verify:export` for browser verification and verification-page creation.
+
+3. **Shell tool call — record review disposition before implementing**
+
+   ```json
+   {
+     "cmd": "cat >> .ryugi/sdd/2026-11-10-export-design/progress.md <<'EOF'\nFinal review: Important retained — exportNotes materializes the entire account; fix in the single final fix pass.\nFinal: minor (deferred): CSV header uses updatedAt while the UI calls it Last edited.\nFinal: Ruling: empty accounts export a header-only CSV — it preserves the CSV schema and accurately represents zero notes, so the existing behavior stands — cost if wrong: users may expect an explanatory message instead of a downloaded empty dataset.\nEOF",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   **Assumed result:** Exit 0.
+
+4. **Shell tool call — write the regression test**
+
+   ```json
+   {
+     "cmd": "cat > src/export.streaming.test.ts <<'EOF'\nimport { Writable } from 'node:stream';\nimport { expect, it } from 'vitest';\nimport { exportNotes } from './export';\n\nit('exports 200k notes incrementally with bounded read-ahead', async () => {\n  let produced = 0;\n  let written = 0;\n  let rows = 0;\n  let pending = '';\n  const output = new Writable({\n    highWaterMark: 1,\n    write(chunk, _encoding, callback) {\n      pending += chunk.toString();\n      let newline;\n      while ((newline = pending.indexOf('\\n')) !== -1) {\n        const line = pending.slice(0, newline).replace(/\\r$/, '');\n        pending = pending.slice(newline + 1);\n        if (rows > 0) {\n          expect(line.split(',')[0]).toBe(String(written));\n          written++;\n        }\n        rows++;\n      }\n      setImmediate(callback);\n    },\n  });\n  const repository = {\n    async listNotes(): Promise<never> {\n      throw new Error('bulk loading is forbidden for CSV export');\n    },\n    async *iterateNotes() {\n      for (let index = 0; index < 200_000; index++) {\n        produced++;\n        expect(produced - written).toBeLessThan(1024);\n        yield {\n          id: String(index),\n          title: 'title',\n          body: 'x'.repeat(4096),\n          updatedAt: '2026-11-10T00:00:00.000Z',\n        };\n      }\n    },\n  };\n  await exportNotes(repository, output);\n  expect(produced).toBe(200_000);\n  expect(written).toBe(200_000);\n  expect(rows).toBe(200_001);\n  expect(pending).toBe('');\n}, 120_000);\nEOF\npnpm test -- src/export.streaming.test.ts",
+     "workdir": "/Users/p/git/notes-app",
+     "yield_time_ms": 1000
+   }
+   ```
+
+   **Assumed complete output:**
+
+   ```text
+   > notes-app test
+   > vitest run src/export.streaming.test.ts
+
+    FAIL src/export.streaming.test.ts
+     × exports 200k notes incrementally with bounded read-ahead
+   Error: bulk loading is forbidden for CSV export
+       at Object.listNotes (src/export.streaming.test.ts)
+       at exportNotes (src/export.ts:40)
+
+   Test Files  1 failed (1)
+        Tests  1 failed (1)
+   ```
+
+   Exit 1. This is the expected RED: export calls the bulk-loading method.
+
+5. **Shell tool call — implement the fix**
+
+   The following exact replacement assumes the inspected implementation matches `old` below; the assertion prevents silently editing a different implementation.
+
+   ```json
+   {
+     "cmd": "python3 - <<'PY'\nfrom pathlib import Path\np = Path('src/export.ts')\ns = p.read_text()\nold = '''export async function exportNotes(repository: NoteRepository, output: Writable): Promise<void> {\n  const notes = await repository.listNotes();\n  const csv = CSV_HEADER + notes.map(encodeNote).join('');\n  output.end(csv);\n  await finished(output);\n}'''\nnew = '''export async function exportNotes(repository: NoteRepository, output: Writable): Promise<void> {\n  async function* csvRows() {\n    yield CSV_HEADER;\n    for await (const note of repository.iterateNotes()) {\n      yield encodeNote(note);\n    }\n  }\n  await pipeline(csvRows(), output);\n}'''\nassert old in s, 'Implementation differs from inspected assumption'\ns = s.replace(old, new)\nassert \"import { finished } from 'node:stream/promises';\" in s\ns = s.replace(\"import { finished } from 'node:stream/promises';\", \"import { pipeline } from 'node:stream/promises';\")\np.write_text(s)\nPY\npnpm test -- src/export.streaming.test.ts",
+     "workdir": "/Users/p/git/notes-app",
+     "yield_time_ms": 1000
+   }
+   ```
+
+   **Assumed result:** The test process remains running, session ID `701`.
+
+6. **Poll tool call**
+
+   ```json
+   {"session_id":701,"chars":"","yield_time_ms":1000,"max_output_tokens":6000}
+   ```
+
+   **Assumed complete remaining output:**
+
+   ```text
+    PASS src/export.streaming.test.ts
+     ✓ exports 200k notes incrementally with bounded read-ahead
+
+   Test Files  1 passed (1)
+        Tests  1 passed (1)
+   ```
+
+   Exit 0. GREEN: all 200,000 rows were written in order while read-ahead remained below the test’s bound.
+
+7. **Shell tool call — whole suite and patch check**
+
+   ```json
+   {
+     "cmd": "pnpm test && git diff --check && git diff -- src/export.ts && cat src/export.streaming.test.ts",
+     "workdir": "/Users/p/git/notes-app",
+     "yield_time_ms": 1000
+   }
+   ```
+
+   **Assumed result:** Running, session ID `702`.
+
+8. **Poll tool call**
+
+   ```json
+   {"session_id":702,"chars":"","yield_time_ms":1000,"max_output_tokens":12000}
+   ```
+
+   **Assumed complete output:** Vitest reports all existing 31 tests and the new regression passing, **32/32**, with no failures. `git diff --check` exits 0; the complete diff and test contents match the changes above. No output is truncated.
+
+9. **Shell tool call — commit and ledger in the same call**
+
+   ```json
+   {
+     "cmd": "git add src/export.ts src/export.streaming.test.ts && git commit -m \"fix: stream CSV note exports\" && fix_sha=$(git rev-parse HEAD) && printf 'Final: fixed unbounded CSV export memory — exports 200k notes incrementally with bounded read-ahead RED→GREEN, suite 32/32; commit %s\\n' \"$fix_sha\" >> .ryugi/sdd/2026-11-10-export-design/progress.md",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   **Assumed output:** Commit `d4e5f6a`, two files changed. The appended ledger line contains its full SHA:
+
+   ```text
+   Final: fixed unbounded CSV export memory — exports 200k notes incrementally with bounded read-ahead RED→GREEN, suite 32/32; commit d4e5f6a000000000000000000000000000000000000
+   ```
+
+   No second reviewer is dispatched.
+
+10. **Message to partner**
+
+    “The regression failed on bulk loading, then passed with streaming; the full suite passed 32/32. I’m checking the finished export flow and preparing its verification page.”
+
+11. **Shell tool call — project verification**
+
+    ```json
+    {
+      "cmd": "pnpm verify:export",
+      "workdir": "/Users/p/git/notes-app",
+      "yield_time_ms": 1000
+    }
+    ```
+
+    **Assumed result:** Running, session ID `703`.
+
+12. **Poll tool call**
+
+    ```json
+    {"session_id":703,"chars":"","yield_time_ms":1000,"max_output_tokens":12000}
+    ```
+
+    **Assumed complete output:**
+
+    ```text
+    Browser verification:
+    PASS populated account: export downloads parseable CSV
+    PASS escaped content: quotes, commas and embedded newlines round-trip
+    PASS empty account: header-only CSV
+    PASS large account: export finishes and UI remains responsive
+
+    Verification page: http://localhost:4173/verify/export
+    Automated checks: passed
+    Partner verdicts:
+      CSV contents and compatibility: pending
+      Download experience, including empty accounts: pending
+    ```
+
+    Exit 0. The URL is an assumed local page, not an actual artifact created in this session.
+
+13. **Shell tool call — preserve verification evidence and decisions**
+
+    ```json
+    {
+      "cmd": "cat >> .ryugi/sdd/2026-11-10-export-design/progress.md <<'EOF'\nProject verification: pnpm verify:export → exit 0; populated, escaped-content, empty-account, and large-account browser checks passed.\nFinal verification: http://localhost:4173/verify/export — automated checks passed; partner verdicts pending for CSV contents and compatibility, and download experience including empty accounts. Landing and workspace cleanup wait for those verdicts.\nEOF\nrg -n 'Ruling:|minor \\(deferred\\)|Task [0-9]+: complete|Final:' .ryugi/sdd/2026-11-10-export-design/progress.md && git status --short && git log -1 --oneline",
+      "workdir": "/Users/p/git/notes-app"
+    }
+    ```
+
+    **Assumed output:** The three original completion records, the ruling and deferred minor above, and the final fix and verification records. Working tree clean; HEAD `d4e5f6a`.
+
+    The workspace stays intact while verification awaits the partner.
+
+14. **Final message to partner**
+
+    > The memory fix is committed as `d4e5f6a`. Its regression failed before the fix and passed afterward; `pnpm test` passed **32/32**. Browser export checks also passed.
+    >
+    > Review the [verification page](http://localhost:4173/verify/export). CSV contents/compatibility and download experience await your verdict; landing waits for both.
+    >
+    > **Rulings I made**
+    >
+    > - Keep header-only CSV for empty accounts: it accurately represents zero notes and preserves the schema. Cost if wrong: users may expect an explanatory message.
+    >
+    > **Deferred minors**
+    >
+    > - CSV uses `updatedAt`; the UI says “Last edited”.
+    >
+    > After verification passes, ways to land `feat/export`:
+    >
+    > 1. Squash into `main` (default).
+    > 2. Rebase onto `main`.
+    > 3. Push and open a PR.
+    > 4. Keep the branch as-is.
+
+SUMMARY: Simulated one RED→GREEN memory fix, a 32/32 suite, commit, browser verification, and recorded review decisions; partner verification verdicts now gate landing and workspace cleanup.

@@ -1,0 +1,1 @@
+PASS — Task 1 remains complete, tasks.md is read and preserved, and Task 2 starts through its brief and a failing test without approval requests.

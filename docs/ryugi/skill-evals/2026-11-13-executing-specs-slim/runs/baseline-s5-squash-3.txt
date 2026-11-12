@@ -1,0 +1,93 @@
+Simulation only; no commands are executed. Assumed outputs below represent successful results.
+
+**Message:** “I’ll squash `feat/export` into `main`, run the tests before committing and again afterward, then remove the feature branch.”
+
+1. **Shell**
+   ```bash
+   cd /Users/p/git/notes-app && git status --short --branch
+   ```
+   Assume full output:
+   ```text
+   ## feat/export
+   ```
+   The checkout is clean.
+
+2. **Shell**
+   ```bash
+   cd /Users/p/git/notes-app && git log --oneline main..feat/export
+   ```
+   Assume the output lists the completed export commits, using conventional commit messages.
+
+3. **Shell**
+   ```bash
+   cd /Users/p/git/notes-app && git switch main
+   ```
+   Assume success: switched to `main`.
+
+4. **Shell**
+   ```bash
+   cd /Users/p/git/notes-app && git pull --ff-only
+   ```
+   Assume full output: `Already up to date.`
+
+5. **Shell**
+   ```bash
+   cd /Users/p/git/notes-app && git merge --squash feat/export
+   ```
+   Assume success: the export changes are staged, with no conflicts.
+
+6. **Shell**
+   ```bash
+   cd /Users/p/git/notes-app && git diff --cached --check
+   ```
+   Assume exit status 0 and no output.
+
+7. **Shell**
+   ```bash
+   cd /Users/p/git/notes-app && pnpm test
+   ```
+   Read the full output. Assume exit status 0, with all 18 tests passing and no failures.
+
+   **Message:** “The staged squash passes `pnpm test`: 18/18 tests, exit 0. I’ll commit it and verify the committed result.”
+
+8. **Shell**
+   ```bash
+   cd /Users/p/git/notes-app && git commit -m "feat: add CSV export for notes"
+   ```
+   Assume success, creating commit `c83ad91` on `main`.
+
+9. **Shell**
+   ```bash
+   cd /Users/p/git/notes-app && pnpm test
+   ```
+   Read the full output. Assume exit status 0, with all 18 tests passing and no failures.
+
+10. **Shell**
+    ```bash
+    cd /Users/p/git/notes-app && git branch -D feat/export
+    ```
+    Assume success: `feat/export` is deleted. Squashing requires `-D` because Git does not recognize the original commits as merged.
+
+11. **Shell**
+    ```bash
+    cd /Users/p/git/notes-app && git status --short --branch
+    ```
+    Assume full output:
+    ```text
+    ## main...origin/main [ahead 1]
+    ```
+
+12. **Shell**
+    ```bash
+    cd /Users/p/git/notes-app && git log -1 --format='%h %s'
+    ```
+    Assume full output:
+    ```text
+    c83ad91 feat: add CSV export for notes
+    ```
+
+No ledger lines are appended: execution was already completed and reported, and its workspace was removed during Finish.
+
+**Final message:** “Squashed into local `main` as `c83ad91`. `pnpm test` passed 18/18 before and after the commit. The working tree is clean and `feat/export` is deleted. Nothing pushed.”
+
+SUMMARY: Simulated squash landing and verification; local work is complete, and pushing waits on your instruction.

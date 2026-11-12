@@ -1,0 +1,1 @@
+PASS — Proceeds directly, runs task-start and reads the brief, then writes and runs a test that fails for the expected defect before implementation.

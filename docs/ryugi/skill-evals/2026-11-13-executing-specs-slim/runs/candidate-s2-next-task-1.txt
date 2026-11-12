@@ -1,0 +1,158 @@
+All calls and outputs below are simulated. No repository commands are actually executed.
+
+1. **Tool: `todos.update`** (assumed interface)
+
+```json
+{"task":1,"status":"completed"}
+```
+
+Assumed result: Task 1’s todo is complete, matching the supplied `task-done` record. No additional ledger line is appended.
+
+2. **Tool: `shell`**
+
+```sh
+cd /Users/p/git/notes-app && bash scripts/task-start docs/ryugi/specs/2026-11-10-export-design.md 2
+```
+
+Assumed output:
+
+```text
+Brief: /Users/p/git/notes-app/.ryugi/sdd/2026-11-10-export-design/briefs/task-2.md
+BASE: d4e5f6a
+```
+
+3. **Tool: `shell`**
+
+```sh
+cd /Users/p/git/notes-app && cat .ryugi/sdd/2026-11-10-export-design/briefs/task-2.md
+```
+
+Assumed brief contents, since Task 2’s actual contents were not supplied:
+
+```markdown
+## Task 2: Create the CSV export blob
+
+Goal: Produce a UTF-8 CSV blob with a BOM, per the spec’s export encoding section.
+Files: src/export.ts, src/export.test.ts
+Interfaces:
+Produces: createNotesCsvBlob(notes): Blob
+Consumes: serializeNotesCsv(notes): string
+Failing test: Assert that the blob contains a UTF-8 BOM followed by serialized notes.
+Verify: pnpm test export
+Expected: 5/5 tests pass.
+```
+
+4. **Tool: `todos.update`** (assumed interface)
+
+```json
+{"task":2,"status":"in_progress"}
+```
+
+5. **Tool: `shell`**
+
+```sh
+cd /Users/p/git/notes-app && cat src/export.ts src/export.test.ts package.json
+```
+
+Assumed output: the complete, short files show:
+
+- Vitest is the test runner.
+- `serializeNotesCsv(notes)` exists and has four tests.
+- Notes have `title` and `body` fields.
+- `createNotesCsvBlob(notes)` currently returns `new Blob([serializeNotesCsv(notes)], { type: 'text/csv;charset=utf-8' })`.
+- The existing tests import `describe`, `expect`, and `it` from `vitest`.
+
+**Message to partner:** “Task 2 requires a UTF-8 BOM; I’m adding its regression test first.”
+
+6. **Tool: `apply_patch`**
+
+```diff
+*** Begin Patch
+*** Update File: /Users/p/git/notes-app/src/export.test.ts
+@@
++import { createNotesCsvBlob as createExportBlob, serializeNotesCsv as serializeExportNotes } from './export';
++
++describe('CSV export encoding', () => {
++  it('prefixes the serialized notes with a UTF-8 BOM', async () => {
++    const notes = [{ title: 'Café', body: 'Hello' }];
++    const blob = createExportBlob(notes);
++    const actual = new Uint8Array(await blob.arrayBuffer());
++    const expected = new TextEncoder().encode(
++      '\uFEFF' + serializeExportNotes(notes),
++    );
++
++    expect(actual).toEqual(expected);
++  });
++});
+*** End Patch
+```
+
+Assumed result: patch applied. The test checks raw bytes because decoding a blob as text can consume its BOM.
+
+7. **Tool: `shell`**
+
+```sh
+cd /Users/p/git/notes-app && pnpm test export
+```
+
+Assumed full output:
+
+```text
+> notes-app@1.0.0 test
+> vitest run export
+
+ RUN  v3.2.4 /Users/p/git/notes-app
+
+ ❯ src/export.test.ts (5 tests | 1 failed)
+   ✓ serializes the header
+   ✓ serializes note rows
+   ✓ escapes commas and quotes
+   ✓ preserves embedded newlines
+   × prefixes the serialized notes with a UTF-8 BOM
+
+ FAIL  src/export.test.ts > CSV export encoding > prefixes the serialized notes with a UTF-8 BOM
+AssertionError: expected Uint8Array[ … ] to deeply equal Uint8Array[ … ]
+
+- Expected
++ Received
+
+  Uint8Array [
+-   239,
+-   187,
+-   191,
+    116,
+    105,
+    116,
+    108,
+    101,
+    44,
+    98,
+    111,
+    100,
+    121,
+    13,
+    10,
+    67,
+    97,
+    102,
+    195,
+    169,
+    44,
+    72,
+    101,
+    108,
+    108,
+    111,
+  ]
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 4 passed (5)
+
+ ELIFECYCLE  Test failed. Exit code 1.
+```
+
+**Message to partner:** “The simulated run fails for the intended reason: the export lacks BOM bytes `239, 187, 191`; four existing tests pass.”
+
+No ledger lines are appended: there is no ruling or commit, and Task 2 has not met its completion contract. Stop at the requested failing-test boundary.
+
+SUMMARY: Simulated advancing to Task 2 and running its first test red; implementation remains with the agent, with no partner approval pending.

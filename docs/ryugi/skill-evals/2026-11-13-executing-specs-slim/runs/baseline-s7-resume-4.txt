@@ -1,0 +1,145 @@
+All calls and outputs below are simulated; nothing is executed.
+
+**Message to partner:** “I’m using executing-specs to resume from the ledger and run the next task’s failing test.”
+
+**1. Tool call — recover this spec’s workspace**
+
+```json
+{
+  "cmd": "bash scripts/sdd-workspace docs/ryugi/specs/2026-11-10-export-design.md",
+  "workdir": "/Users/p/git/notes-app"
+}
+```
+
+Assumed output:
+
+```text
+/Users/p/git/notes-app/.ryugi/sdd/2026-11-10-export-design
+```
+
+**2. Tool call — read the spec and recovery records**
+
+```json
+{
+  "cmd": "cat docs/ryugi/specs/2026-11-10-export-design.md .ryugi/sdd/2026-11-10-export-design/progress.md .ryugi/sdd/2026-11-10-export-design/tasks.md",
+  "workdir": "/Users/p/git/notes-app"
+}
+```
+
+Assume the ledger matches the supplied record. Task 1 is complete and will not be repeated; `tasks.md` already exists and will not be rewritten.
+
+For the unspecified file contents, assume the spec requires CSV quoting for commas, quotes, and newlines. Task 2 requires implementing `writeCsvRow(fields: string[]): string` in `src/export.ts`, with tests in `src/export.test.ts`; its Verify command is `pnpm test export`, expecting all export tests to pass. Task 3 wires the export button.
+
+**3. Tool call — inspect the checkout and existing work**
+
+```json
+{
+  "cmd": "git status --short --branch",
+  "workdir": "/Users/p/git/notes-app"
+}
+```
+
+Assumed output:
+
+```text
+## feat/export
+ M src/export.ts
+```
+
+**4. Tool call — inspect history**
+
+```json
+{
+  "cmd": "git log -6 --oneline",
+  "workdir": "/Users/p/git/notes-app"
+}
+```
+
+Assume the output confirms that `d4e5f6a` is HEAD and contains Task 1’s committed implementation.
+
+**5. Tool call — inspect the uncommitted change**
+
+```json
+{
+  "cmd": "git diff -- src/export.ts",
+  "workdir": "/Users/p/git/notes-app"
+}
+```
+
+Assume the full diff shows only an added comment describing the intended CSV writer. It contains no implementation or conflicting behavior. Preserve it without staging, restoring, or attributing it to this session.
+
+**Message to partner:** “The ledger records Task 1 complete; the uncommitted change is a comment I’ll preserve while starting Task 2.”
+
+**6. Tool call — take Task 2**
+
+```json
+{
+  "cmd": "bash scripts/task-start docs/ryugi/specs/2026-11-10-export-design.md 2",
+  "workdir": "/Users/p/git/notes-app"
+}
+```
+
+Assumed output:
+
+```text
+Brief: /Users/p/git/notes-app/.ryugi/sdd/2026-11-10-export-design/task-2.md
+BASE: d4e5f6a
+```
+
+**7. Tool call — read the brief and relevant source**
+
+```json
+{
+  "cmd": "cat .ryugi/sdd/2026-11-10-export-design/task-2.md src/export.ts src/export.test.ts package.json",
+  "workdir": "/Users/p/git/notes-app"
+}
+```
+
+Assume the brief confirms the Task 2 contract above. The existing four tests use Vitest, `writeCsvRow` does not exist, and the test script supports `pnpm test export`. No todo tool is available; Task 2 is the active task.
+
+**8. Tool call — add the failing test**
+
+```text
+tools.apply_patch("*** Begin Patch\n*** Add File: /Users/p/git/notes-app/src/export-row.test.ts\n+import { expect, test } from 'vitest'\n+import * as csv from './export'\n+\n+test('writeCsvRow escapes commas, quotes, and newlines', () => {\n+  expect(csv).toHaveProperty('writeCsvRow')\n+  const writeCsvRow = Reflect.get(csv, 'writeCsvRow') as (\n+    fields: string[],\n+  ) => string\n+\n+  expect(writeCsvRow(['plain', 'a,b', 'say \"hi\"', 'two\\nlines'])).toBe(\n+    'plain,\"a,b\",\"say \"\"hi\"\"\",\"two\\nlines\"',\n+  )\n+})\n*** End Patch")
+```
+
+Assume the patch applies successfully. The new test file keeps existing work intact and remains within the assumed export test filter.
+
+Because this changes the brief’s named test path, record the deviation.
+
+**9. Tool call — append the ruling**
+
+```json
+{
+  "cmd": "cat <<'EOF' >> .ryugi/sdd/2026-11-10-export-design/progress.md\nTask 2: Ruling: put row-writer tests in src/export-row.test.ts instead of src/export.test.ts — keeps this slice separate from the existing parser tests while retaining the export test filter — cost if wrong: one extra test file to consolidate.\nEOF",
+  "workdir": "/Users/p/git/notes-app"
+}
+```
+
+**10. Tool call — run the failing test**
+
+```json
+{
+  "cmd": "pnpm test export",
+  "workdir": "/Users/p/git/notes-app"
+}
+```
+
+Assume the complete output shows the four existing tests passing and the new test failing:
+
+```text
+PASS src/export.test.ts (4 tests)
+FAIL src/export-row.test.ts (1 test)
+  × writeCsvRow escapes commas, quotes, and newlines
+
+AssertionError: expected { ... } to have property "writeCsvRow"
+
+Test Files  1 failed | 1 passed (2)
+Tests       1 failed | 4 passed (5)
+```
+
+Exit code: `1`.
+
+**Message to partner:** “Task 2’s new test failed because `writeCsvRow` is absent; the four existing tests passed. No implementation or commit has been made.”
+
+SUMMARY: Simulated recovery through Task 2’s expected failing test, preserving the dirty source and recording the test-path ruling; implementation is next for the agent, with no partner approval pending.

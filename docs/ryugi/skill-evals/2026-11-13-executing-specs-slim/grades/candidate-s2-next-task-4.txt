@@ -1,0 +1,1 @@
+PASS — Proceeds directly to Task 2, runs task-start, reads the brief, then writes and runs the failing test before implementation.

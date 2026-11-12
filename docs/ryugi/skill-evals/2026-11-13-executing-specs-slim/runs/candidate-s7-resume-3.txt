@@ -1,0 +1,139 @@
+All calls below are simulated; no commands are actually run. Outputs not supplied in the situation are explicitly assumed.
+
+**Message to partner:** “I’m resuming with the executing-specs workflow, checking the ledger and uncommitted export changes before taking the next task.”
+
+1. **Shell call**
+   ```sh
+   cd /Users/p/git/notes-app && git status --short --branch
+   ```
+   Assumed output:
+   ```text
+   ## feat/export
+    M src/export.ts
+   ```
+
+2. **Shell call**
+   ```sh
+   cd /Users/p/git/notes-app && git diff -- src/export.ts
+   ```
+   Assumption: the diff contains unfinished Task 2 work: a CSV serializer that joins fields with commas but does not escape embedded commas. I preserve this change; its ownership is unverified.
+
+3. **Shell call**
+   ```sh
+   cd /Users/p/git/notes-app && git log -5 --oneline
+   ```
+   Assumption: `HEAD` is `d4e5f6a`, the recorded Task 1 completion commit. No later task commits exist.
+
+4. **Shell call**
+   ```sh
+   cd /Users/p/git/notes-app && bash scripts/sdd-workspace docs/ryugi/specs/2026-11-10-export-design.md
+   ```
+   Supplied result:
+   ```text
+   .ryugi/sdd/2026-11-10-export-design/
+   ```
+
+5. **Shell call**
+   ```sh
+   cd /Users/p/git/notes-app && cat .ryugi/sdd/2026-11-10-export-design/progress.md .ryugi/sdd/2026-11-10-export-design/tasks.md docs/ryugi/specs/2026-11-10-export-design.md
+   ```
+   Assumptions beyond the supplied ledger:
+   - The existing task list confirms Task 2 is CSV serialization.
+   - The spec requires a `title,body` header, CRLF row separators, and CSV quoting for fields containing commas.
+   - Task 2 produces `serializeNotesCsv(notes)`, consuming Task 1’s parsed notes.
+   - Its test file is `src/export.test.ts`; Verify is `pnpm test export`, expected to exit successfully.
+   - Task 3 wires the export button.
+
+   Task 1 remains complete; I do not rerun or rewrite it. I reuse `tasks.md`.
+
+6. **Todos call**
+   ```json
+   {
+     "todos": [
+       {"id": "task-1", "content": "Parse export input", "status": "completed"},
+       {"id": "task-2", "content": "Write CSV rows", "status": "pending"},
+       {"id": "task-3", "content": "Wire the export button", "status": "pending"}
+     ]
+   }
+   ```
+
+7. **Shell call**
+   ```sh
+   cd /Users/p/git/notes-app && bash scripts/task-start docs/ryugi/specs/2026-11-10-export-design.md 2
+   ```
+   Assumed output:
+   ```text
+   Brief: .ryugi/sdd/2026-11-10-export-design/task-2-brief.md
+   BASE: d4e5f6a
+   ```
+
+8. **Shell call**
+   ```sh
+   cd /Users/p/git/notes-app && cat .ryugi/sdd/2026-11-10-export-design/task-2-brief.md
+   ```
+   Assumption: the brief confirms the interfaces and verification command above, and calls for a failing test proving comma-containing fields are quoted.
+
+9. **Todos call**
+   ```json
+   {
+     "id": "task-2",
+     "status": "in_progress"
+   }
+   ```
+
+10. **Shell call**
+    ```sh
+    cd /Users/p/git/notes-app && cat src/export.ts src/export.test.ts package.json
+    ```
+    Assumption: these files confirm the serializer’s signature, existing Vitest imports (`describe`, `expect`, `it`), and that the proposed assertion fails on the current implementation. The test name below does not already exist.
+
+**Message to partner:** “Task 1 is recorded complete. The uncommitted serializer lacks CSV quoting; I’ll preserve it and add Task 2’s failing test.”
+
+11. **Shell call**
+    ```sh
+    cd /Users/p/git/notes-app && cat >> src/export.test.ts <<'EOF'
+
+    describe('CSV row serialization', () => {
+      it('quotes a title containing a comma', () => {
+        expect(
+          serializeNotesCsv([{ title: 'Shopping, today', body: 'Milk' }]),
+        ).toBe('title,body\r\n"Shopping, today",Milk\r\n');
+      });
+    });
+    EOF
+    ```
+    Assumption: `serializeNotesCsv` is already imported by the existing test file.
+
+12. **Shell call**
+    ```sh
+    cd /Users/p/git/notes-app && pnpm test export
+    ```
+    Assumed full output:
+    ```text
+    > notes-app@1.0.0 test /Users/p/git/notes-app
+    > vitest run export
+
+     RUN  v3.2.4 /Users/p/git/notes-app
+
+     ❯ src/export.test.ts (5 tests | 1 failed)
+       ✓ parse export input > accepts valid notes
+       ✓ parse export input > accepts an empty list
+       ✓ parse export input > rejects invalid titles
+       ✓ parse export input > rejects invalid bodies
+       × CSV row serialization > quotes a title containing a comma
+
+     FAIL  src/export.test.ts > CSV row serialization > quotes a title containing a comma
+    AssertionError: expected strings to be equal
+    Expected: "title,body\r\n\"Shopping, today\",Milk\r\n"
+    Received: "title,body\r\nShopping, today,Milk\r\n"
+
+     Test Files  1 failed (1)
+          Tests  1 failed | 4 passed (5)
+    ```
+    Assumed exit code: `1`. I read the full output: the test reaches the serializer and fails because the comma-containing title is unquoted.
+
+No ledger lines are appended: there is no new ruling, commit, or task completion.
+
+**Message to partner:** “Reached the requested stopping point. In this simulation, `pnpm test export` exits 1: four tests pass and the new comma-quoting test fails for the expected reason. Task 2 remains in progress; no implementation changes or commits were made.”
+
+SUMMARY: Simulated resumption from the ledger, preserved the uncommitted export work, and ran Task 2’s failing test; implementation waits on your instruction to continue.

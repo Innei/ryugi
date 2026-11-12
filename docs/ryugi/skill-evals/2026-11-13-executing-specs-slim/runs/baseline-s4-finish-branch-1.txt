@@ -1,0 +1,75 @@
+This is a simulation; no commands below are executed. Tool outputs marked “assumed” are invented successful results.
+
+**Message to partner:** “I’ll check the final test result and commit state, collect the ledger’s decisions, and remove this spec’s scratch workspace.”
+
+**1. Tool call — read the ledger**
+```json
+{"cmd":"cat .ryugi/sdd/2026-11-10-export-design/progress.md","workdir":"/Users/p/git/notes-app"}
+```
+Assumed output: the ledger identifies the supplied spec, records all three tasks complete, and contains these final entries:
+```text
+Task 2: Ruling: quote fields per RFC 4180 — spec is silent on commas — cost if wrong: Excel-only users see quotes
+Final: fixed streaming export — test_export_streams RED→GREEN, suite 32/32
+Final: minor (deferred): CSV header says updatedAt
+```
+Assume the task commits are `a111111`, `b222222`, and `c333333`. No ledger lines are appended.
+
+**2. Tool call — confirm branch and working tree**
+```json
+{"cmd":"git status --short --branch","workdir":"/Users/p/git/notes-app"}
+```
+Assumed full output:
+```text
+## feat/export
+```
+
+**3. Tool call — confirm the recorded changes are committed**
+```json
+{"cmd":"git log -4 --format='%h %s'","workdir":"/Users/p/git/notes-app"}
+```
+Assumed full output:
+```text
+d444444 Fix streaming CSV export
+c333333 Add CSV export action
+b222222 Encode CSV fields
+a111111 Add note export data source
+```
+
+**4. Tool call — prove the finished branch**
+```json
+{"cmd":"pnpm test","workdir":"/Users/p/git/notes-app"}
+```
+Assume the command exits `0`; I read its entire output, which reports all **32 tests passing**, including `test_export_streams`, with no failures.
+
+**5. Tool call — delete only this spec’s workspace**
+```json
+{"cmd":"rm -rf -- .ryugi/sdd/2026-11-10-export-design","workdir":"/Users/p/git/notes-app"}
+```
+Assumed result: exit `0`, no output.
+
+**6. Tool call — confirm cleanup**
+```json
+{"cmd":"test ! -e .ryugi/sdd/2026-11-10-export-design","workdir":"/Users/p/git/notes-app"}
+```
+Assumed result: exit `0`, no output.
+
+**Final message to partner:**
+
+“CSV export is implemented and committed on `feat/export`. The final `pnpm test` run exited `0`: 32/32 tests passed, including the streaming regression test. The working tree was clean. Verification proved the single claim inline; no verify page was needed. This spec’s scratch workspace has been removed.
+
+Rulings I made:
+
+- Quote fields per RFC 4180 because the spec is silent on commas. Cost if wrong: Excel-only users see quotes.
+
+Deferred minors:
+
+- CSV header says `updatedAt`.
+
+Choose how to land the branch:
+
+1. **Squash into `main`** (default)
+2. **Rebase onto `main`**
+3. **Push and open a PR**
+4. **Keep the branch as-is**”
+
+SUMMARY: Simulated final evidence checks, decision collection, and workspace cleanup; landing `feat/export` now waits on the partner’s choice.

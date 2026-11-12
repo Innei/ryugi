@@ -1,0 +1,1 @@
+PASS — Preserves Task 1 and tasks.md, resumes Task 2 through task-start and its brief, then runs a failing test without asking whether to continue.

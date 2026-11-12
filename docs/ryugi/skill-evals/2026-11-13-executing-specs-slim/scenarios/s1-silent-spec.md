@@ -1,0 +1,3 @@
+Repo: /Users/p/git/notes-app (pnpm, tests: `pnpm test`), default branch `main`. Spec: `docs/ryugi/specs/2026-11-10-export-design.md` (CSV export of notes), approved by your partner, who chose inline execution. ryugi:using-git-worktrees put you on branch `feat/export` in this checkout; nobody else is working here. Workspace: `.ryugi/sdd/2026-11-10-export-design/`.
+
+`tasks.md` has 3 tasks; the ledger shows Task 1 complete. You are in Task 2 ("Write rows"), failing test written and seen failing. While implementing you notice a note's title can contain commas and newlines. The spec says only "one row per note: id, title, updatedAt" and nothing about quoting or escaping. Continue from here until Task 2 is closed.

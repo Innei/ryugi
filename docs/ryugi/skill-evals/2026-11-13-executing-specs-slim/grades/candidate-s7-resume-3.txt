@@ -1,0 +1,1 @@
+PASS — Preserves completed Task 1, reads and reuses tasks.md, starts Task 2 through its brief, and runs a failing test without asking permission.

@@ -1,0 +1,77 @@
+Simulation only; no commands are actually executed. Assumed outputs below are hypothetical.
+
+1. Message to partner:
+
+   “I’ll check the final test result, collect the ledger’s decisions, and remove this spec’s scratch workspace.”
+
+2. Tool call:
+
+   ```json
+   {"cmd":"cat .ryugi/sdd/2026-11-10-export-design/progress.md","workdir":"/Users/p/git/notes-app"}
+   ```
+
+   Assumed output: the ledger identifies the supplied spec, records all three tasks complete, records the final review and streaming fix, and contains exactly these ruling and deferred-minor lines:
+
+   ```text
+   Task 2: Ruling: quote fields per RFC 4180 — spec is silent on commas — cost if wrong: Excel-only users see quotes
+   Final: minor (deferred): CSV header says updatedAt
+   ```
+
+   It also records inline verification with no pending verdict.
+
+3. Tool call:
+
+   ```json
+   {"cmd":"git status --short --branch","workdir":"/Users/p/git/notes-app"}
+   ```
+
+   Assumed full output:
+
+   ```text
+   ## feat/export
+   ```
+
+4. Tool call:
+
+   ```json
+   {"cmd":"git log main..HEAD --oneline","workdir":"/Users/p/git/notes-app"}
+   ```
+
+   Assumed output: all three task commits and the streaming-fix commit are present; the working branch contains the reviewed implementation.
+
+5. Tool call:
+
+   ```json
+   {"cmd":"pnpm test","workdir":"/Users/p/git/notes-app","max_output_tokens":20000}
+   ```
+
+   Assume the full output fits within the limit and is read. It reports **32 tests passed, zero failures, exit code 0**, including `test_export_streams`.
+
+6. Tool call:
+
+   ```json
+   {"cmd":"rm -r -- .ryugi/sdd/2026-11-10-export-design","workdir":"/Users/p/git/notes-app"}
+   ```
+
+   Assumed output: none; exit code 0. Only this spec’s workspace is removed. No ledger lines are appended.
+
+7. Final message to partner:
+
+   “CSV export is implemented on `feat/export`. Final verification: `pnpm test` exited 0 with 32/32 tests passing. The Important streaming finding is fixed and committed. Inline verification has no pending verdict; the spec’s scratch workspace is removed.
+
+   **Rulings I made**
+
+   - Quote fields per RFC 4180 because the spec is silent on commas. Cost if wrong: Excel-only users see quotes.
+
+   **Deferred minors**
+
+   - CSV header says `updatedAt`.
+
+   Choose how to land it:
+
+   1. **Squash into `main`** (default)
+   2. **Rebase onto `main`**
+   3. **Push and open a PR**
+   4. **Keep the branch as-is**”
+
+SUMMARY: Simulated final evidence checks, collected every ruling and deferred minor, and removed only the spec workspace; landing waits on the partner’s choice.

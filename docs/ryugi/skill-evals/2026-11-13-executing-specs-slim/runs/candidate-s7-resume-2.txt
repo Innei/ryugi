@@ -1,0 +1,182 @@
+Simulation only. All shell calls below use `cwd: "/Users/p/git/notes-app"`. Outputs not supplied in the situation are explicitly assumed.
+
+1. **Message to partner:** “I’m using executing-specs to resume from the ledger and inspect the uncommitted change before starting the next task.”
+
+2. **Shell:**
+   ```sh
+   bash scripts/sdd-workspace docs/ryugi/specs/2026-11-10-export-design.md
+   ```
+   Given output:
+   ```text
+   /Users/p/git/notes-app/.ryugi/sdd/2026-11-10-export-design/
+   ```
+
+3. **Shell:**
+   ```sh
+   git status --short --branch
+   ```
+   Assumed output:
+   ```text
+   ## feat/export
+    M src/export.ts
+   ```
+
+4. **Shell:**
+   ```sh
+   cat .ryugi/sdd/2026-11-10-export-design/progress.md
+   ```
+   Output: the supplied ledger. Its identity matches the spec; Task 1 is recorded complete. I resume at Task 2 without redoing Task 1.
+
+5. **Shell:**
+   ```sh
+   git log -8 --oneline
+   ```
+   Assumed output confirms `HEAD` is `d4e5f6a`, Task 1’s ending commit, with `a1b2c3d` in its history.
+
+6. **Shell:**
+   ```sh
+   git diff -- src/export.ts
+   ```
+   Assumed full output:
+   ```diff
+   diff --git a/src/export.ts b/src/export.ts
+   --- a/src/export.ts
+   +++ b/src/export.ts
+   @@ -1,3 +1,4 @@
+   +// CSV row serialization follows the existing parsing helpers.
+    export interface ExportNote {
+      title: string;
+      body: string;
+   ```
+   I preserve this existing edit. Its presence alone does not justify staging, reverting, stashing, or asking permission.
+
+7. **Shell:**
+   ```sh
+   for file in /AGENTS.md /Users/AGENTS.md /Users/p/AGENTS.md /Users/p/git/AGENTS.md; do
+     if [ -f "$file" ]; then
+       printf '\n%s\n' "$file"
+       cat "$file"
+     fi
+   done
+   rg --files --hidden -g AGENTS.md -g '!node_modules' -g '!.git' -g '!.ryugi'
+   ```
+   Assumption: no applicable `AGENTS.md` files exist.
+
+8. **Shell:**
+   ```sh
+   cat docs/ryugi/specs/2026-11-10-export-design.md .ryugi/sdd/2026-11-10-export-design/tasks.md
+   ```
+   Assumptions after reading both fully:
+   - The existing tasks are parse, write rows, and wire the button.
+   - Task 2 consumes `ExportNote` and produces `writeRows(notes: ExportNote[]): string`.
+   - CSV uses `title,body` headers, CRLF row separators, doubled embedded quotes, and quoted fields containing commas, quotes, or newlines.
+   - Task 2 names `src/export.test.ts`, with Verify `pnpm test export`.
+   - Task 3 remains pending.
+
+   I retain `tasks.md` unchanged. The required TDD and worktree skills are already loaded; the supplied worktree decision stands.
+
+9. **Todos tool:**
+   ```json
+   {
+     "todos": [
+       {"id": "task-1", "text": "Parse export input", "status": "completed"},
+       {"id": "task-2", "text": "Write CSV rows", "status": "pending"},
+       {"id": "task-3", "text": "Wire the export button", "status": "pending"}
+     ]
+   }
+   ```
+   Task 1’s status reflects the ledger, not a claim of fresh verification.
+
+10. **Message to partner:** “The ledger resumes at Task 2; I’ll preserve the existing comment in `src/export.ts`.”
+
+11. **Shell:**
+    ```sh
+    bash scripts/task-start docs/ryugi/specs/2026-11-10-export-design.md 2
+    ```
+    Assumed output:
+    ```text
+    Brief: /Users/p/git/notes-app/.ryugi/sdd/2026-11-10-export-design/task-2-brief.md
+    BASE: d4e5f6a
+    ```
+    I retain that BASE for eventual completion.
+
+12. **Shell:**
+    ```sh
+    cat .ryugi/sdd/2026-11-10-export-design/task-2-brief.md
+    ```
+    Assumption: the brief confirms the interface and CSV requirements above; its first test checks escaping and row separators.
+
+13. **Todos tool:**
+    ```json
+    {
+      "todos": [
+        {"id": "task-1", "text": "Parse export input", "status": "completed"},
+        {"id": "task-2", "text": "Write CSV rows", "status": "in_progress"},
+        {"id": "task-3", "text": "Wire the export button", "status": "pending"}
+      ]
+    }
+    ```
+
+14. **Shell:**
+    ```sh
+    cat package.json src/export.ts src/export.test.ts
+    ```
+    Assumptions: tests use Vitest with imported `expect` and `test`; four parser tests exist; `writeRows` is an exported stub returning `''`, already imported by the test file. The notes interface matches the brief.
+
+15. **Edit tool — append to `src/export.test.ts`:**
+    ```ts
+    test('writeRows escapes CSV fields and separates rows with CRLF', () => {
+      expect(
+        writeRows([
+          { title: 'Shopping, today', body: 'Say "hello"\nNext line' },
+          { title: 'Plain', body: 'Text' },
+        ]),
+      ).toBe(
+        'title,body\r\n"Shopping, today","Say ""hello""\nNext line"\r\nPlain,Text',
+      );
+    });
+    ```
+    Assumed edit succeeds. No implementation changes.
+
+16. **Shell:**
+    ```sh
+    pnpm test export
+    ```
+    Assumed full output:
+    ```text
+    > notes-app@1.0.0 test
+    > vitest run export
+
+     RUN  v3.2.4 /Users/p/git/notes-app
+
+     ❯ src/export.test.ts (5 tests | 1 failed)
+       ✓ parses a note
+       ✓ parses multiple notes
+       ✓ preserves empty fields
+       ✓ preserves embedded newlines
+       × writeRows escapes CSV fields and separates rows with CRLF
+
+     FAIL  src/export.test.ts > writeRows escapes CSV fields and separates rows with CRLF
+    AssertionError: expected '' to be 'title,body\r\n"Shopping, today",…'
+
+    - Expected
+    + Received
+
+    - title,body
+    - "Shopping, today","Say ""hello""
+    - Next line"
+    - Plain,Text
+    + ""
+
+     Test Files  1 failed (1)
+          Tests  1 failed | 4 passed (5)
+
+    ELIFECYCLE Test failed. See above for more details.
+    ```
+    Assumed exit code: `1`. This is the intended assertion failure from the unimplemented serializer, not a setup error.
+
+17. **Message to partner:** “In the simulation, Task 2’s new test fails because `writeRows` returns an empty string. No implementation or commit has been made.”
+
+No ledger lines are appended: no new ruling, commit, or task completion has occurred. Stop at the requested boundary.
+
+SUMMARY: Simulated resuming Task 2, preserving the uncommitted edit, and running its first failing test; implementation remains with the agent, with no partner approval pending.

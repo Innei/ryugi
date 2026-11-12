@@ -1,0 +1,1 @@
+PASS — Independently decides CSV quoting, appends a Ruling ledger line explaining rationale and risk, and closes Task 2 using bash scripts/task-done with pnpm test.

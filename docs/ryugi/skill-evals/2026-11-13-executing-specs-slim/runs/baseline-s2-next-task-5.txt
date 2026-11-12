@@ -1,0 +1,131 @@
+Everything below is simulated; no repository commands or edits are executed. Missing outputs are explicitly assumed.
+
+1. **Message to partner:** “I’m continuing with executing-specs, taking Task 2 next.”
+
+2. **Tool call — todos:**
+   ```json
+   {
+     "tasks": [
+       {"id": 1, "status": "completed"},
+       {"id": 2, "status": "in_progress"},
+       {"id": 3, "status": "pending"}
+     ]
+   }
+   ```
+   Assumed result: todo state updated. Task 1’s completion comes from the supplied `task-done` result; I do not rerun or reimplement it.
+
+3. **Tool call — shell**, working directory `/Users/p/git/notes-app`:
+   ```bash
+   bash scripts/task-start docs/ryugi/specs/2026-11-10-export-design.md 2
+   ```
+   Assumed output:
+   ```text
+   Brief: .ryugi/sdd/2026-11-10-export-design/task-2-brief.md
+   BASE: d4e5f6a
+   ```
+
+4. **Tool call — shell**, same working directory:
+   ```bash
+   cat .ryugi/sdd/2026-11-10-export-design/task-2-brief.md
+   ```
+   Assumed brief:
+   ```text
+   ## Task 2: Serialize notes as CSV
+
+   Goal: Implement the CSV document format from the spec's CSV Format section.
+   Files: src/export.ts, src/export.test.ts
+   Interfaces:
+     Produces: notesToCsv(notes: readonly Note[]): string
+     Consumes: escapeCsvField(value: string): string
+   Failing test: Serialize two notes with commas, embedded quotes, and
+     multiline bodies; assert the exact header, column order, CRLF row
+     separators, escaping, and final CRLF.
+   Verify: pnpm test export
+   Expected: All export tests pass.
+   ```
+
+5. **Tool call — shell**, same working directory:
+   ```bash
+   cat src/export.ts src/export.test.ts src/types.ts package.json
+   ```
+   Assumed findings:
+
+   - Task 1 exports `escapeCsvField` and has four tests.
+   - `Note` has string fields `id`, `title`, and `body`.
+   - The test file imports `describe`, `expect`, and `it` from Vitest.
+   - `notesToCsv` does not exist yet.
+   - `pnpm test export` runs `vitest run export`.
+
+   No conflict with the brief is assumed; no ruling or ledger append is needed.
+
+6. **Message to partner:** “Task 2 starts with an exact CSV output test using Task 1’s escaping function.”
+
+7. **Tool call — edit:**
+   ```text
+   apply_patch
+   ```
+   Exact patch:
+   ```diff
+   *** Begin Patch
+   *** Update File: /Users/p/git/notes-app/src/export.test.ts
+   @@
+   -import { escapeCsvField } from './export'
+   +import * as csvExport from './export'
+   +import { escapeCsvField } from './export'
+   +
+   +describe('notesToCsv', () => {
+   +  it('serializes notes with CSV escaping and CRLF row separators', () => {
+   +    expect(csvExport).toHaveProperty('notesToCsv', expect.any(Function))
+   +    const notesToCsv = (
+   +      csvExport as unknown as {
+   +        notesToCsv: (
+   +          notes: readonly { id: string; title: string; body: string }[]
+   +        ) => string
+   +      }
+   +    ).notesToCsv
+   +
+   +    expect(notesToCsv([
+   +      { id: '1', title: 'Shopping, today', body: 'Say "hello"' },
+   +      { id: '2', title: 'Journal', body: 'First line\nSecond line' },
+   +    ])).toBe(
+   +      'id,title,body\r\n' +
+   +      '1,"Shopping, today","Say ""hello"""\r\n' +
+   +      '2,Journal,"First line\nSecond line"\r\n',
+   +    )
+   +  })
+   +})
+   *** End Patch
+   ```
+   Assumed result: patch applied; implementation untouched.
+
+8. **Tool call — shell**, same working directory:
+   ```bash
+   pnpm test export
+   ```
+   Assumed full output:
+   ```text
+   > notes-app@1.0.0 test
+   > vitest run export
+
+    RUN  v3.2.4 /Users/p/git/notes-app
+
+    ❯ src/export.test.ts (5 tests | 1 failed)
+      ✓ escapes plain fields
+      ✓ quotes fields containing commas
+      ✓ doubles embedded quotes
+      ✓ quotes multiline fields
+      × serializes notes with CSV escaping and CRLF row separators
+
+    FAIL src/export.test.ts > notesToCsv > serializes notes with CSV escaping and CRLF row separators
+   AssertionError: expected { escapeCsvField: [Function] } to have property "notesToCsv"
+
+    Test Files  1 failed (1)
+         Tests  1 failed | 4 passed (5)
+   ```
+   Assumed exit code: `1`. I read the full output: the new test fails because the required export is absent, as expected.
+
+9. **Message to partner:** “Task 2’s test is RED: `pnpm test export` exits 1 because `notesToCsv` is missing; four existing tests pass.”
+
+No ledger line is appended: Task 2 has neither a ruling nor a completion result. This simulation ends at the requested failing-test checkpoint, without a permission question.
+
+SUMMARY: Simulated starting Task 2 and running its failing test; implementation and GREEN verification remain with the agent, with nothing awaiting partner approval.

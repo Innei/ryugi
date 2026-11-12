@@ -1,0 +1,162 @@
+Simulation only. No commands below are actually executed, and all described outputs beyond the supplied facts are assumptions.
+
+1. Message to partner:
+
+   “I’ll read the ledger and inspect the uncommitted export changes before resuming Task 2.”
+
+2. Tool: shell
+
+   ```sh
+   cd /Users/p/git/notes-app && bash scripts/sdd-workspace docs/ryugi/specs/2026-11-10-export-design.md
+   ```
+
+   Supplied result: `.ryugi/sdd/2026-11-10-export-design/`.
+
+3. Tool: shell
+
+   ```sh
+   cd /Users/p/git/notes-app && cat .ryugi/sdd/2026-11-10-export-design/progress.md .ryugi/sdd/2026-11-10-export-design/tasks.md docs/ryugi/specs/2026-11-10-export-design.md
+   ```
+
+   Assumptions: the ledger matches the supplied contents; Task 2 writes CSV rows, including escaping commas, quotes, and newlines; it changes `src/export.ts` and `src/export.test.ts`. Its Verify command is `pnpm test export`, with `Expected: all export tests pass`. The spec defines a `title,body` header and LF row separators.
+
+   Task 1 stays complete. I do not rewrite `tasks.md` or rerun its implementation.
+
+4. Tool: shell
+
+   ```sh
+   cd /Users/p/git/notes-app && git status --short --branch
+   ```
+
+   Assumed output:
+
+   ```text
+   ## feat/export
+    M src/export.ts
+   ```
+
+5. Tool: shell
+
+   ```sh
+   cd /Users/p/git/notes-app && git log -6 --oneline
+   ```
+
+   Assumption: HEAD is `d4e5f6a`, the recorded Task 1 endpoint; the history agrees with the ledger.
+
+6. Tool: shell
+
+   ```sh
+   cd /Users/p/git/notes-app && git diff -- src/export.ts
+   ```
+
+   Assumption: the uncommitted change adds an unfinished `writeCsvRows(notes)` implementation that joins fields with commas without escaping them. It fits Task 2 and contains no unrelated changes.
+
+7. Tool: shell
+
+   ```sh
+   cd /Users/p/git/notes-app && cat src/export.ts src/export.test.ts package.json
+   ```
+
+   Assumptions: `writeCsvRows` accepts `{ title: string, body: string }[]`; the existing test file uses Vitest and contains Task 1’s four tests; the project’s test script supports `pnpm test export`.
+
+8. Message to partner:
+
+   “Task 1 is recorded complete; the uncommitted row writer fits Task 2. I’ll preserve it and test CSV escaping next.”
+
+9. Tool: todos
+
+   ```json
+   {
+     "todos": [
+       {"id": "task-1", "content": "Parse export input", "status": "completed"},
+       {"id": "task-2", "content": "Write CSV rows", "status": "pending"},
+       {"id": "task-3", "content": "Wire the export button", "status": "pending"}
+     ]
+   }
+   ```
+
+10. Tool: shell
+
+    ```sh
+    cd /Users/p/git/notes-app && bash scripts/task-start docs/ryugi/specs/2026-11-10-export-design.md 2
+    ```
+
+    Assumed output:
+
+    ```text
+    Brief: .ryugi/sdd/2026-11-10-export-design/briefs/task-2.md
+    BASE: d4e5f6a
+    ```
+
+11. Tool: shell
+
+    ```sh
+    cd /Users/p/git/notes-app && cat .ryugi/sdd/2026-11-10-export-design/briefs/task-2.md
+    ```
+
+    Assumption: the brief confirms the interface and requirements read above, and calls for a failing test covering CSV escaping.
+
+12. Tool: todos
+
+    ```json
+    {
+      "todos": [
+        {"id": "task-1", "content": "Parse export input", "status": "completed"},
+        {"id": "task-2", "content": "Write CSV rows", "status": "in_progress"},
+        {"id": "task-3", "content": "Wire the export button", "status": "pending"}
+      ]
+    }
+    ```
+
+13. Tool: `apply_patch`
+
+    Assumption: the existing file imports only the parser from `./export`; this patch matches that inspected content.
+
+    ```diff
+    *** Begin Patch
+    *** Update File: /Users/p/git/notes-app/src/export.test.ts
+    @@
+    +import { writeCsvRows } from './export'
+    +
+    +it('escapes commas, quotes, and newlines in CSV fields', () => {
+    +  expect(
+    +    writeCsvRows([
+    +      { title: 'One, "two"', body: 'first\nsecond' },
+    +    ]),
+    +  ).toBe('title,body\n"One, ""two""","first\nsecond"')
+    +})
+    *** End Patch
+    ```
+
+    Assumed result: patch applies. The unfinished implementation remains untouched.
+
+14. Tool: shell
+
+    ```sh
+    cd /Users/p/git/notes-app && pnpm test export
+    ```
+
+    Assumed full output: Vitest runs the four existing tests and the new test; the existing four pass, and the new test fails with an assertion mismatch:
+
+    ```text
+    Expected: title,body
+    "One, ""two""","first
+    second"
+
+    Received: title,body
+    One, "two",first
+    second
+
+    Test Files  1 failed (1)
+         Tests  1 failed | 4 passed (5)
+    ```
+
+    Assumed exit code: `1`. I read the full output and identify the expected failure: CSV fields are not escaped.
+
+15. Message to partner:
+
+    “The simulated test run reaches RED: 4 tests pass and the new escaping test fails because fields are emitted without CSV quoting.”
+
+No ledger lines are appended: there is no ruling or commit, and Task 2 has not met its completion contract.
+
+SUMMARY: Resumed Task 2 without redoing Task 1, preserved the uncommitted implementation, and simulated its failing escaping test; implementation and GREEN verification remain with the agent, with no partner decision pending.

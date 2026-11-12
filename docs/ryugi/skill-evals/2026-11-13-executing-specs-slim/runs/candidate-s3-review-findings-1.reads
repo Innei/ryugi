@@ -1,0 +1,1 @@
+"command":"/bin/zsh -lc 'cat ./skill/code-reviewer.md ./skill/SKILL.md'"

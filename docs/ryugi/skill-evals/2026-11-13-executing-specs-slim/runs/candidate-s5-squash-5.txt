@@ -1,0 +1,98 @@
+1. Message to partner: “I’ll squash `feat/export` into `main`, run the tests before committing and again afterward, then remove the feature branch.”
+
+2. Read `./skill/landing.md` — the only command actually run:
+   ```sh
+   cat ./skill/landing.md
+   ```
+   It specifies squash for “merge it,” updating `main` with `--ff-only`, testing after landing, and deleting the squashed branch with `-D`.
+
+All calls below are simulated. Each uses `exec_command` with `workdir: "/Users/p/git/notes-app"`.
+
+3. Inspect the checkout:
+   ```json
+   {"cmd":"git status --short --branch","workdir":"/Users/p/git/notes-app"}
+   ```
+   Assumed output: `## feat/export`, with no changes.
+
+4. Inspect the branch changes and commit style:
+   ```json
+   {"cmd":"git log -5 --format=%s main","workdir":"/Users/p/git/notes-app"}
+   ```
+   Assumed output: recent commits use conventional subjects such as `feat: ...`.
+
+   ```json
+   {"cmd":"git diff --stat main...feat/export","workdir":"/Users/p/git/notes-app"}
+   ```
+   Assumed output: only the previously reviewed CSV export implementation and tests.
+
+5. Switch to the default branch:
+   ```json
+   {"cmd":"git switch main","workdir":"/Users/p/git/notes-app"}
+   ```
+   Assumed output: switched to `main`.
+
+6. Update it:
+   ```json
+   {"cmd":"git pull --ff-only","workdir":"/Users/p/git/notes-app"}
+   ```
+   Assumed output: `Already up to date.`
+
+7. Prepare the squash:
+   ```json
+   {"cmd":"git merge --squash feat/export","workdir":"/Users/p/git/notes-app"}
+   ```
+   Assumed output: squash applied without conflicts; HEAD unchanged.
+
+8. Inspect exactly what will be committed:
+   ```json
+   {"cmd":"git diff --cached","workdir":"/Users/p/git/notes-app","max_output_tokens":30000}
+   ```
+   Assumption: the full output fits and matches the reviewed CSV export changes.
+
+   ```json
+   {"cmd":"git diff --cached --check","workdir":"/Users/p/git/notes-app"}
+   ```
+   Assumed output: empty, exit 0.
+
+9. Prove the staged result before committing:
+   ```json
+   {"cmd":"pnpm test","workdir":"/Users/p/git/notes-app","max_output_tokens":30000}
+   ```
+   Assumption: the command finishes successfully, its full output fits and is read, and all tests pass.
+
+10. Message to partner: “The squash is staged on `main`. `pnpm test` exited 0 with all tests passing, and `git diff --cached --check` reported no errors. I’ll commit it now.”
+
+11. Commit:
+   ```json
+   {"cmd":"git commit -m 'feat: add CSV export for notes'","workdir":"/Users/p/git/notes-app"}
+   ```
+   Assumed output: one new commit, `a1b2c3d`.
+
+12. Verify the committed result:
+   ```json
+   {"cmd":"pnpm test","workdir":"/Users/p/git/notes-app","max_output_tokens":30000}
+   ```
+   Assumption: full output is read; all tests pass, exit 0.
+
+13. Remove the squashed feature branch, as instructed by `landing.md`:
+   ```json
+   {"cmd":"git branch -D feat/export","workdir":"/Users/p/git/notes-app"}
+   ```
+   Assumed output: branch deleted successfully. No worktree was created, so none needs removal.
+
+14. Verify the final state:
+   ```json
+   {"cmd":"git status --short --branch","workdir":"/Users/p/git/notes-app"}
+   ```
+   Assumed output: `## main...origin/main [ahead 1]`, with no changes.
+
+   ```json
+   {"cmd":"git log -1 --format='%h %s'","workdir":"/Users/p/git/notes-app"}
+   ```
+   Assumed output: `a1b2c3d feat: add CSV export for notes`.
+
+No ledger lines are appended: execution and review were already finished, and their workspace was removed during Finish.
+
+15. Final message to partner: “Squashed into local `main` as `a1b2c3d`. `pnpm test` passed before committing and again afterward. The checkout is clean, and `feat/export` is deleted. Nothing was pushed.”
+
+SUMMARY: Simulated squash landing and verification; no repository commands were actually run, and pushing waits on the partner.

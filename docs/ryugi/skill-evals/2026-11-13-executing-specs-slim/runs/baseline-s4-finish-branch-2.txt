@@ -1,0 +1,126 @@
+The following is a simulation. No commands are actually executed. All tool outputs below are assumed.
+
+**Message to partner:** “I’m checking the final evidence and ledger before cleaning up the spec workspace.”
+
+**Tool call:** `exec_command`
+```json
+{
+  "cmd": "cat .ryugi/sdd/2026-11-10-export-design/progress.md",
+  "workdir": "/Users/p/git/notes-app"
+}
+```
+
+Assumed complete output:
+```text
+# SDD ledger — plan: docs/ryugi/specs/2026-11-10-export-design.md
+Slicing: 3 tasks — CSV encoding, export integration, streaming
+Task 1: complete (commits 120ac45..31ab204, tests: pnpm test → exit 0)
+Task 2: Ruling: quote fields per RFC 4180 — spec is silent on commas — cost if wrong: Excel-only users see quotes
+Task 2: complete (commits 31ab204..42bc305, tests: pnpm test → exit 0)
+Task 3: complete (commits 42bc305..53cd406, tests: pnpm test → exit 0)
+Final: fixed streaming export — test_export_streams RED→GREEN, suite 32/32
+Final: minor (deferred): CSV header says updatedAt
+```
+
+**Tool call:** `exec_command`
+```json
+{
+  "cmd": "git status --short --branch",
+  "workdir": "/Users/p/git/notes-app"
+}
+```
+
+Assumed complete output:
+```text
+## feat/export
+```
+
+**Tool call:** `exec_command`
+```json
+{
+  "cmd": "git log --oneline main..HEAD",
+  "workdir": "/Users/p/git/notes-app"
+}
+```
+
+Assumed complete output:
+```text
+64de507 Stream CSV export without buffering all notes
+53cd406 Add streaming export coverage
+42bc305 Connect notes CSV export
+31ab204 Encode notes as CSV
+```
+
+**Tool call:** `exec_command`
+```json
+{
+  "cmd": "pnpm test",
+  "workdir": "/Users/p/git/notes-app"
+}
+```
+
+Assumed complete output:
+```text
+> notes-app@1.0.0 test /Users/p/git/notes-app
+> vitest run
+
+ RUN  v3.2.4 /Users/p/git/notes-app
+
+ ✓ tests/notes.test.ts (10 tests) 18ms
+ ✓ tests/export.test.ts (12 tests) 24ms
+ ✓ tests/export-stream.test.ts (10 tests) 31ms
+
+ Test Files  3 passed (3)
+      Tests  32 passed (32)
+   Start at  14:20:00
+   Duration  612ms (transform 105ms, setup 0ms, collect 160ms, tests 73ms, environment 0ms, prepare 110ms)
+```
+
+Assumed exit code: `0`. This proves the final suite passes in this simulated session. The clean status and commit log show the streaming fix is committed. Verification was already completed inline; there is no verify page or pending verification verdict.
+
+No ledger lines are appended: the supplied completion, review, and verification state requires no further implementation or rulings.
+
+**Message to partner:** “All 32 tests passed; I’ve collected the ruling and deferred minor and will remove this spec’s workspace.”
+
+**Tool call:** `exec_command`
+```json
+{
+  "cmd": "rm -rf -- .ryugi/sdd/2026-11-10-export-design",
+  "workdir": "/Users/p/git/notes-app"
+}
+```
+
+Assumed complete output: empty; exit code `0`.
+
+**Tool call:** `exec_command`
+```json
+{
+  "cmd": "test ! -e .ryugi/sdd/2026-11-10-export-design",
+  "workdir": "/Users/p/git/notes-app"
+}
+```
+
+Assumed complete output: empty; exit code `0`.
+
+**Final message to partner:**
+
+“CSV export is implemented on `feat/export`, including the streaming fix. Final verification: `pnpm test` exited 0 with 32/32 tests passing. The checkout is clean and the spec workspace has been removed.
+
+Rulings I made:
+
+- Quote fields per RFC 4180 because the spec is silent on commas. Cost if wrong: Excel-only users see quotes.
+
+Deferred minors:
+
+- CSV header says `updatedAt`.
+
+Commits: `31ab204`, `42bc305`, `53cd406`, `64de507`.
+
+Ways to land:
+
+1. **Squash into `main`** (default)
+2. **Rebase onto `main`**
+3. **Push and open a PR**
+4. **Keep the branch as-is**”
+
+SUMMARY: Simulated final verification, recorded the existing ruling and deferred minor, and removed the spec workspace; landing waits on the partner’s choice.

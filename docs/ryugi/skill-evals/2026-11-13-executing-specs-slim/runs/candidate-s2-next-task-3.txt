@@ -1,0 +1,148 @@
+Simulation only. All calls below are hypothetical; missing outputs are explicitly assumed.
+
+1. Todo call:
+
+```json
+{"task_1":"completed","task_2":"pending","task_3":"pending"}
+```
+
+2. Message to partner:
+
+> I’m continuing with Task 2 and will read its brief before writing the failing test.
+
+3. Shell call:
+
+```json
+{
+  "cmd": "bash scripts/task-start docs/ryugi/specs/2026-11-10-export-design.md 2",
+  "workdir": "/Users/p/git/notes-app"
+}
+```
+
+Assumed output:
+
+```text
+Brief: .ryugi/sdd/2026-11-10-export-design/briefs/task-2.md
+BASE: d4e5f6a
+```
+
+4. Shell call:
+
+```json
+{
+  "cmd": "cat .ryugi/sdd/2026-11-10-export-design/briefs/task-2.md",
+  "workdir": "/Users/p/git/notes-app"
+}
+```
+
+Assumed brief:
+
+```text
+## Task 2: Escape CSV fields
+
+Goal: Implement field escaping from the spec's CSV format section.
+Files: src/export.ts, src/export.test.ts
+Interfaces:
+  Produces: CSV-safe field serialization
+  Consumes: notesToCsv(notes)
+Failing test: Fields containing commas, double quotes, or newlines are
+quoted; embedded double quotes are doubled.
+Verify: pnpm test export
+Expected: 5/5 pass
+```
+
+5. Todo call:
+
+```json
+{"task_1":"completed","task_2":"in_progress","task_3":"pending"}
+```
+
+6. Shell call:
+
+```json
+{
+  "cmd": "cat src/export.ts src/export.test.ts package.json",
+  "workdir": "/Users/p/git/notes-app"
+}
+```
+
+Assume the full output shows:
+
+- Vitest runs through `pnpm test`.
+- `notesToCsv` accepts `{ title: string, body: string }[]`.
+- It emits `title,body`, uses CRLF between records, and currently joins fields without escaping.
+- Four existing export tests cover empty input, headers, ordinary fields, and multiple records.
+- The test file imports `describe`, `expect`, and `it` from `vitest`, and `notesToCsv` from `./export`.
+
+7. Message to partner:
+
+> Task 2 covers CSV escaping; I’m adding a case with commas, quotes, and an embedded newline.
+
+8. Edit call:
+
+```text
+apply_patch
+*** Begin Patch
+*** Update File: /Users/p/git/notes-app/src/export.test.ts
+@@
+ import { notesToCsv } from './export';
++
++it('quotes CSV fields and doubles embedded double quotes', () => {
++  expect(
++    notesToCsv([
++      { title: 'Ideas, "later"', body: 'First line\nSecond line' },
++    ]),
++  ).toBe(
++    'title,body\r\n"Ideas, ""later""","First line\nSecond line"',
++  );
++});
+*** End Patch
+```
+
+Assume the patch applies successfully. No implementation changes.
+
+9. Shell call:
+
+```json
+{
+  "cmd": "pnpm test export",
+  "workdir": "/Users/p/git/notes-app"
+}
+```
+
+Assumed full output, with the expected test failure:
+
+```text
+> notes-app@1.0.0 test
+> vitest run export
+
+ RUN  v3.2.4 /Users/p/git/notes-app
+
+ ❯ src/export.test.ts (5 tests | 1 failed)
+   ✓ emits headers for empty input
+   ✓ emits the title and body headers
+   ✓ serializes ordinary fields
+   ✓ separates records with CRLF
+   × quotes CSV fields and doubles embedded double quotes
+
+ FAIL  src/export.test.ts > quotes CSV fields and doubles embedded double quotes
+AssertionError: expected strings to be equal
+
+Expected: "title,body\r\n\"Ideas, \"\"later\"\"\",\"First line\nSecond line\""
+Received: "title,body\r\nIdeas, \"later\",First line\nSecond line"
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 4 passed (5)
+
+ELIFECYCLE Test failed. See above for more details.
+```
+
+Assumed exit code: `1`. I read the full output: the assertion fails because fields are unquoted and embedded quotes are not doubled.
+
+10. Message to partner:
+
+> The new test fails for the expected escaping mismatch: `pnpm test export` reports 4 passed and 1 failed. Task 2 remains in progress.
+
+No ledger lines appended, no commits made, and no approval requested. This stops at the requested simulation boundary.
+
+SUMMARY: Simulated starting Task 2, reading its brief, and running its new test to the expected failure; implementation waits on the agent’s next step, with nothing awaiting partner approval.

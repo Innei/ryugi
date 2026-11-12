@@ -1,0 +1,189 @@
+This is a simulation. Only `./skill/code-reviewer.md` was actually read. All outputs below are explicitly assumed.
+
+1. **Shell — inspect the current state and review context.**
+
+   ```sh
+   cd /Users/p/git/notes-app
+   git status --short
+   git branch --show-current
+   git log -5 --oneline
+   cat .ryugi/sdd/2026-11-10-export-design/progress.md
+   cat .ryugi/sdd/2026-11-10-export-design/tasks.md
+   cat docs/ryugi/specs/2026-11-10-export-design.md
+   cat package.json
+   cat src/export.ts
+   rg -n 'exportNotes|iterateNotes|listNotes|backpressure' src tests
+   ```
+
+   **Assumed output:** clean `feat/export`; all three tasks complete; no earlier rulings or deferred minors. The exporter accepts a note source and writable destination, but calls `listNotes()` before writing. The source already supports bounded, ordered `iterateNotes()`. Tests use Vitest. CSV helpers and destination backpressure handling already exist. No separate project verification skill is configured.
+
+2. **Message to partner:**
+
+   > The memory issue is Important and enters the fix pass. I’ll defer the header wording and retain header-only exports for empty accounts, since that gives users a valid CSV with the expected columns.
+
+3. **Shell — record the review disposition and add the regression test.**
+
+   For concrete commands below, assume the inspected interfaces are `exportNotes(source, destination)`, `source.listNotes()`, `source.iterateNotes()`, and `writeCsvRow(destination, values)`.
+
+   ```sh
+   cd /Users/p/git/notes-app
+   cat >> .ryugi/sdd/2026-11-10-export-design/progress.md <<'EOF'
+   Final review: Important retained — eager note loading can exhaust memory for large accounts; fix in the single final fix pass.
+   Final: minor (deferred): CSV header uses updatedAt while the UI calls it "Last edited"; cosmetic terminology mismatch, with no loss of exported data.
+   Final: Ruling: Empty accounts export a header-only CSV — retain this behavior because users receive a valid CSV identifying the exported columns even when there are no records — cost if wrong: users may expect an empty-state message instead of a download.
+   EOF
+   cat > tests/export-streaming.test.ts <<'EOF'
+   import { Writable } from 'node:stream';
+   import { expect, test } from 'vitest';
+   import { exportNotes } from '../src/export';
+
+   test('exports 200k notes incrementally while honoring destination backpressure', async () => {
+     const count = 200_000;
+     let produced = 0;
+     let written = 0;
+     let headerWritten = false;
+
+     const source = {
+       async listNotes() {
+         throw new Error('bulk loading notes is forbidden during export');
+       },
+       async *iterateNotes() {
+         for (let i = 0; i < count; i++) {
+           expect(produced - written).toBeLessThanOrEqual(1);
+           produced++;
+           yield {
+             id: String(i),
+             title: `Note ${i}`,
+             content: 'Export content',
+             updatedAt: '2026-11-10T00:00:00.000Z',
+           };
+         }
+       },
+     };
+
+     const destination = new Writable({
+       highWaterMark: 1,
+       write(chunk, _encoding, callback) {
+         const row = chunk.toString();
+         if (!headerWritten) {
+           headerWritten = true;
+           expect(row).toContain('updatedAt');
+         } else {
+           expect(row).toContain(`Note ${written}`);
+           written++;
+         }
+         setImmediate(callback);
+       },
+     });
+
+     await exportNotes(source, destination);
+     expect(produced).toBe(count);
+     expect(written).toBe(count);
+   });
+   EOF
+   pnpm test -- tests/export-streaming.test.ts
+   ```
+
+   **Assumed full output read:** one test fails with `bulk loading notes is forbidden during export`. This is the expected RED result.
+
+4. **Shell — implement incremental iteration.**
+
+   ```sh
+   cd /Users/p/git/notes-app
+   python3 - <<'PY'
+   from pathlib import Path
+   path = Path("src/export.ts")
+   text = path.read_text()
+   old = """  const notes = await source.listNotes();
+     for (const note of notes) {"""
+   new = """  for await (const note of source.iterateNotes()) {"""
+   assert text.count(old) == 1, "Expected exactly one eager export loop"
+   path.write_text(text.replace(old, new))
+   PY
+   pnpm test -- tests/export-streaming.test.ts
+   pnpm test
+   git diff --check
+   git diff -- src/export.ts
+   cat tests/export-streaming.test.ts
+   ```
+
+   **Assumed full outputs read:** regression passes; full suite passes **32/32**; whitespace check succeeds. Inspection confirms each CSV write remains awaited, so iteration respects destination backpressure. Existing tests cover escaping, column order, and header-only empty exports.
+
+5. **Message to partner:**
+
+   > The regression failed on bulk loading, then passed with incremental iteration; the full suite reports 32/32. The fix uses the existing bounded iterator and preserves destination backpressure.
+
+6. **Shell — verify immediately before committing, then append the fix record in the same call.**
+
+   ```sh
+   cd /Users/p/git/notes-app
+   pnpm test && git diff --check &&
+   git add src/export.ts tests/export-streaming.test.ts &&
+   git commit -m "fix: stream notes during CSV export" &&
+   git rev-parse HEAD &&
+   cat >> .ryugi/sdd/2026-11-10-export-design/progress.md <<'EOF'
+   Final: fixed eager loading in exportNotes — exports 200k notes incrementally while honoring destination backpressure RED→GREEN, suite 32/32.
+   EOF
+   ```
+
+   **Assumed full output read:** suite **32/32**, successful commit `a71c9de`, changing only the two named files. No second reviewer is dispatched.
+
+7. **Shell — collect the complete decision record before deleting scratch data.**
+
+   ```sh
+   cd /Users/p/git/notes-app
+   cat .ryugi/sdd/2026-11-10-export-design/progress.md
+   rg -n 'Ruling:|minor \(deferred\)|Task [0-9]+: complete|Final: fixed' \
+     .ryugi/sdd/2026-11-10-export-design/progress.md
+   git status --short
+   git show --stat --oneline HEAD
+   ```
+
+   **Assumed output:** exactly the ruling and minor recorded above; all three task completion records remain present; the fix is committed and the working tree is clean. Save that complete decision record in conversation context.
+
+8. **Shell — delete only this spec’s scratch workspace.**
+
+   ```sh
+   cd /Users/p/git/notes-app
+   rm -r -- .ryugi/sdd/2026-11-10-export-design
+   ```
+
+   **Assumed output:** successful removal; sibling workspaces untouched.
+
+9. **Invoke the already-loaded `ryugi:verifying` workflow last.**
+
+   Inputs:
+
+   ```text
+   Repo: /Users/p/git/notes-app
+   Branch: feat/export
+   Spec: docs/ryugi/specs/2026-11-10-export-design.md
+   Automated evidence: pnpm test → 32/32, including the 200k-note streaming regression.
+   Claims to verify:
+   - Notes export as a downloadable CSV with correct fields and escaping.
+   - Empty accounts download a header-only CSV.
+   - Large exports consume notes incrementally and honor destination backpressure.
+   Human verdict required:
+   - Export/download experience in the running app.
+   Preserve the recorded empty-account ruling and deferred header terminology minor.
+   ```
+
+   The invocation above is a workflow step, not an invented executable command. Its internal tool calls depend on the already-loaded skill, whose contents are not supplied here; inventing exact calls would misrepresent that workflow.
+
+   **Assumed successful workflow output:** automated verification passes and a verification page opens at `http://localhost:4173/verify/export`, with the export/download experience group awaiting the partner’s verdict.
+
+10. **Message to partner — stop here:**
+
+   > The simulated fix is committed as `a71c9de`. Verification ran `pnpm test`: **32/32 passed**, including the regression observed failing before the fix.
+   >
+   > Rulings I made:
+   >
+   > - Retained header-only CSVs for empty accounts because they preserve the column schema. If wrong, users may expect an empty-state message.
+   >
+   > Deferred minors:
+   >
+   > - CSV uses `updatedAt`; the UI says “Last edited.”
+   >
+   > Please review the export/download experience on the [verification page](http://localhost:4173/verify/export). That group awaits your verdict; completion and landing wait on it.
+
+SUMMARY: Simulated one verified fix pass, deferred the cosmetic minor, recorded the empty-account ruling, and opened verification; the partner’s product verdict is pending, with no merge, push, or PR.
