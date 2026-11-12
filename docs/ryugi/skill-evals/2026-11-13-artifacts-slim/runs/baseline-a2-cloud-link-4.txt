@@ -1,0 +1,42 @@
+1. **Shell call (already run; directory inspection only):**
+   ```bash
+   ls ./skill
+   ```
+
+2. **Simulated shell call:**
+   ```bash
+   node /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/tmp.XO8bnHufBK/skill/app/ryugi.cjs get https://ryugi.innei.dev/a/KwtefwXFtLrnQrp7AIPsG
+   ```
+
+   **Assumed successful output** — illustrative, not retrieved:
+   ```text
+   Get: document/notes-navigation · outline
+   Blocks:
+   overview · Overview
+   round-1 · Round 1
+   round-2 · Round 2 decisions
+   Details: node /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/tmp.XO8bnHufBK/skill/app/ryugi.cjs get https://ryugi.innei.dev/a/KwtefwXFtLrnQrp7AIPsG --block round-2
+   ```
+
+3. **Simulated shell call, following the printed Details command:**
+   ```bash
+   node /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/tmp.XO8bnHufBK/skill/app/ryugi.cjs get https://ryugi.innei.dev/a/KwtefwXFtLrnQrp7AIPsG --block round-2
+   ```
+
+   **Assumed successful output** — these decisions are invented solely for this simulation:
+   ```text
+   Get: document/notes-navigation · block round-2
+   Round 2 decisions
+   - Keep a persistent sidebar on desktop.
+   - Put search above the notebook list.
+   - Defer tags to a later iteration.
+   - Mobile navigation remains undecided.
+   ```
+
+4. **Message to partner, conditional on that assumed content:**
+
+   “Round 2 settled on a persistent desktop sidebar, with search above the notebook list. Tags were deferred to a later iteration. Mobile navigation is still open.
+
+   [Source](https://ryugi.innei.dev/a/KwtefwXFtLrnQrp7AIPsG)”
+
+SUMMARY: Inspected `./skill/`; simulated reading the shared artifact and its round 2 block; created nothing; gave https://ryugi.innei.dev/a/KwtefwXFtLrnQrp7AIPsG as the source link.

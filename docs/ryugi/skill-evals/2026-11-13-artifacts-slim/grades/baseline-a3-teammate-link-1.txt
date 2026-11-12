@@ -1,0 +1,1 @@
+PASS — Runs the launcher publish command with --public and shares the exact URL printed by the command.

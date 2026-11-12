@@ -1,0 +1,117 @@
+1. **Message to partner**
+
+   “I’m using the artifacts skill to make a sidebar motion playground, with duration and easing controls and a replay button.”
+
+2. **Shell — read guides** (actually read, as permitted)
+
+   ```sh
+   cat ./skill/html.md
+   ```
+
+   ```sh
+   cat ./skill/ui.md
+   ```
+
+   This is one surface being tuned, so I’ll use an `html` artifact.
+
+3. **Shell — inspect the project** (simulated)
+
+   ```sh
+   rg --files --hidden -g '!node_modules' -g '!.git' /Users/p/git/notes-app
+   ```
+
+   Assumed result: includes `AGENTS.md`, `src/styles/tokens.css`, and `src/components/Sidebar.tsx`.
+
+   ```sh
+   cat /Users/p/git/notes-app/AGENTS.md /Users/p/git/notes-app/src/styles/tokens.css /Users/p/git/notes-app/src/components/Sidebar.tsx
+   ```
+
+   Assumed result: no additional workflow requirements; system typography, neutral surfaces, blue accent, light and dark themes; sidebar collapses from 240px to 56px.
+
+4. **Shell — start before writing** (simulated)
+
+   ```sh
+   node "$PWD/skill/app/ryugi.cjs" start --background --project-dir /Users/p/git/notes-app --artifact html/sidebar-motion
+   ```
+
+   Assumed output:
+
+   ```text
+   Server: RUNNING
+   Project: /Users/p/git/notes-app
+   Artifact: html/sidebar-motion
+   Open: https://ryugi.innei.dev/a/sidebar-motion-demo
+   Local: http://localhost:27319/html/sidebar-motion
+   Cloud: live_link_reserved
+   ```
+
+5. **File write** (simulated)
+
+   Path: `/Users/p/git/notes-app/.ryugi/artifacts/html/sidebar-motion/index.html`
+
+   ```text
+   Complete “Sidebar motion” page using project tokens, realistic notes content, light/dark previews, and synchronized 240px↔56px sidebar motion; stable-ID ryugi controls for duration (100–600ms), easing presets, collapse/expand, replay, and a CSS value readout.
+   Initialize after ryugi-ui:ready; read control properties and handle ryugi-change plus restored input/change events; render restored state, handle rapid reversals, respect reduced motion, and keep all assets inline without browser storage.
+   ```
+
+   Initial setting: `220ms cubic-bezier(0.2, 0, 0, 1)`. Easing options: ease, ease-in-out, linear, and the initial curve. Both preview themes use the same settings.
+
+6. **Shell — check after the write** (simulated)
+
+   ```sh
+   node "$PWD/skill/app/ryugi.cjs" check --project-dir /Users/p/git/notes-app --artifact html/sidebar-motion
+   ```
+
+   Assumed output:
+
+   ```text
+   Check: INCOMPLETE · html/sidebar-motion
+   Browser: not run
+   Pending: browser_not_run
+   ```
+
+   Assumed no warnings or module-tagging request. Runtime behavior is still unverified.
+
+7. **Message to partner**
+
+   “The [sidebar motion playground](https://ryugi.innei.dev/a/sidebar-motion-demo) is ready to open. Adjust duration and easing, then collapse, expand, or replay it in both themes. I started at 220ms with a quick ease-out. I’m checking the interactions now.”
+
+8. **Browser calls** (simulated)
+
+   ```text
+   browser.open("http://localhost:27319/html/sidebar-motion")
+   browser.click("#collapse")
+   browser.click("#expand")
+   browser.setValue("#duration", 400)
+   browser.setValue("#easing", "linear")
+   browser.click("#replay")
+   browser.click("#collapse")
+   browser.click("#expand")
+   browser.reload()
+   browser.emulateMedia({ reducedMotion: "reduce" })
+   browser.click("#collapse")
+   browser.emulateMedia({ reducedMotion: "no-preference" })
+   ```
+
+   Assumed result: both themes respond together; the readout updates; rapid reversals remain smooth; 400ms and linear survive reload and drive the preview; reduced motion makes the transition immediate.
+
+9. **Shell — confirm browser evidence** (simulated)
+
+   ```sh
+   node "$PWD/skill/app/ryugi.cjs" check --project-dir /Users/p/git/notes-app --artifact html/sidebar-motion
+   ```
+
+   Assumed output:
+
+   ```text
+   Check: OK · html/sidebar-motion
+   Browser: ran
+   ```
+
+   Assumed no runtime warnings or pending work.
+
+10. **Message to partner**
+
+    “The controls, replay, rapid reversals, and restored settings checked out. Try the [playground](https://ryugi.innei.dev/a/sidebar-motion-demo) and tell me which setting feels best.”
+
+SUMMARY: Simulated creating and checking an HTML sidebar motion playground and starting its server; gave https://ryugi.innei.dev/a/sidebar-motion-demo.

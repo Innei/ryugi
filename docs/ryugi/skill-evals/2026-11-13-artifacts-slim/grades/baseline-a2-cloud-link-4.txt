@@ -1,0 +1,1 @@
+PASS — Used the Ryugi launcher to read the link and followed its printed Details command, without fetching content through another method.

@@ -1,0 +1,50 @@
+Simulated continuation (guide reads above were real; no other actions executed):
+
+1. Shell:
+   ```bash
+   node /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/tmp.Do0NVC8DAt/skill/app/ryugi.cjs check --project-dir /Users/p/git/notes-app --artifact artboard/settings-nav
+   ```
+   Output: the supplied `W_MODULES` warning and `browser_not_run` pending status.
+
+2. Read guide: `./skill/modules.md` (read above).
+
+3. Shell:
+   ```bash
+   node /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/tmp.Do0NVC8DAt/skill/app/ryugi.cjs modules --project-dir /Users/p/git/notes-app
+   ```
+   Assume successful output lists an existing `settings` module covering preferences and settings navigation, with no actionable hints.
+
+4. Shell:
+   ```bash
+   node /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/tmp.Do0NVC8DAt/skill/app/ryugi.cjs modules --project-dir /Users/p/git/notes-app --artifact artboard/settings-nav --set settings
+   ```
+   Assume successful tagging. No manual file writes or vocabulary edits.
+
+5. Shell:
+   ```bash
+   node /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/tmp.Do0NVC8DAt/skill/app/ryugi.cjs check --project-dir /Users/p/git/notes-app --artifact artboard/settings-nav
+   ```
+   Assume the module warning clears, with no file or layout issues. Browser evidence remains `not run`; I do not treat that as a completed browser check or delay sharing static boards for a screenshot pass.
+
+6. Shell, immediately before sharing:
+   ```bash
+   node /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/tmp.Do0NVC8DAt/skill/app/ryugi.cjs start --background --project-dir /Users/p/git/notes-app --artifact artboard/settings-nav
+   ```
+   Assume:
+   ```text
+   Server: RUNNING · reused
+   Project: /Users/p/git/notes-app
+   Artifact: artboard/settings-nav
+   Open: http://localhost:27319/artboard/settings-nav
+   Cloud: local_only
+   ```
+
+7. Message to partner:
+
+   “The settings navigation options are ready to compare: [Open the board](http://localhost:27319/artboard/settings-nav). Pick your preferred option and submit the round on the page.
+
+   I cleared the module warning. File and layout checks are clear; browser checks haven’t run yet.”
+
+Stop and wait for the partner’s choice.
+
+SUMMARY: Simulated module tagging, recheck, and server reuse; shared http://localhost:27319/artboard/settings-nav.

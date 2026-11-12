@@ -1,0 +1,61 @@
+1. **Read guide — shell (actually read):**
+   ```sh
+   cat ./skill/html.md
+   ```
+
+2. **Read controls guide — shell (actually read):**
+   ```sh
+   cat ./skill/ui.md
+   ```
+
+3. **Message to partner:**
+
+   “I’m using the artifacts skill to make a sidebar motion playground with duration, easing presets, and a collapse/expand toggle, using the app’s existing styling.”
+
+4. **Simulated shell — find project instructions and design files:**
+   ```sh
+   rg --files --hidden /Users/p/git/notes-app -g AGENTS.md -g '*sidebar*' -g '*Sidebar*' -g '*token*' -g '*theme*' -g '*global*' -g '!node_modules' -g '!.git'
+   ```
+   **Assume:** Finds `AGENTS.md`, `src/components/Sidebar.tsx`, and `src/styles/globals.css`.
+
+5. **Simulated shell — read them:**
+   ```sh
+   cat /Users/p/git/notes-app/AGENTS.md /Users/p/git/notes-app/src/components/Sidebar.tsx /Users/p/git/notes-app/src/styles/globals.css
+   ```
+   **Assume:** No additional workflow instructions; the app uses system sans typography, a 4px spacing scale, neutral light/dark palettes, and a 256px sidebar collapsing to a 56px rail.
+
+6. **Simulated shell — start before writing:**
+   ```sh
+   node /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/tmp.Hm1rj3LkgA/skill/app/ryugi.cjs start --background --project-dir /Users/p/git/notes-app --artifact html/sidebar-motion
+   ```
+   **Assumed output:**
+   ```text
+   Server: RUNNING
+   Project: /Users/p/git/notes-app
+   Artifact: html/sidebar-motion
+   Open: https://ryugi.innei.dev/a/sidebar-motion-demo
+   Local: http://localhost:27319/html/sidebar-motion
+   Cloud: live_link_reserved
+   ```
+
+7. **Simulated file write:**
+
+   Path: `/Users/p/git/notes-app/.ryugi/artifacts/html/sidebar-motion/index.html`
+
+   Two-line content sketch:
+   ```text
+   Complete “Sidebar motion” HTML playground matching the app’s tokens, with a notes sidebar and reading pane, light/dark previews, ryugi-slider-input#duration (80–600ms, initially 220), ryugi-select#easing (ease, ease-in-out, cubic-bezier presets), ryugi-switch#collapsed, and ryugi-button#replay.
+   Initialize from control properties on ryugi-ui:ready; handle ryugi-change and restoration events to update shared CSS timing variables, width transitions and exact CSS readout; replay both directions, support interrupted transitions, honor reduced motion by default, and use no browser storage.
+   ```
+
+8. **Simulated shell — validate final write:**
+   ```sh
+   node /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/tmp.Hm1rj3LkgA/skill/app/ryugi.cjs check --project-dir /Users/p/git/notes-app --artifact html/sidebar-motion
+   ```
+   **Assume:** Check is clean, the current version has loaded in the automatically opened browser, and no runtime warnings or pending work are reported.
+
+9. **Message to partner:**
+
+   “Try the [sidebar motion playground](https://ryugi.innei.dev/a/sidebar-motion-demo). Adjust duration and easing, then toggle collapse or replay both directions. Light and dark previews stay in sync, and the current CSS values are shown below.”
+
+SUMMARY: Simulated a sidebar motion HTML playground, server startup and validation; gave https://ryugi.innei.dev/a/sidebar-motion-demo as the assumed Open link.

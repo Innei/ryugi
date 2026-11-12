@@ -1,0 +1,17 @@
+Tool call (simulated):
+```bash
+node /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/tmp.6ifvcexSQ2/skill/app/ryugi.cjs publish --project-dir /Users/p/git/notes-app --artifact document/sync-design --public
+```
+
+Assumed output:
+```text
+Publish: PUBLISHED · document/sync-design
+ID: sync-design-k7m2
+URL: https://ryugi.innei.dev/a/sync-design-k7m2
+Visibility: public (requested)
+```
+
+Message to partner:
+“Here’s the public link your teammate can open: https://ryugi.innei.dev/a/sync-design-k7m2”
+
+SUMMARY: Simulated publishing the existing sync-design document publicly; gave https://ryugi.innei.dev/a/sync-design-k7m2.

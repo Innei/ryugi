@@ -1,0 +1,32 @@
+**Message:** “I’m using the artifacts skill to read the shared page and check what round 2 decided.”
+
+**Shell — read guide (actually read):**
+```bash
+cat ./skill/document.md
+```
+
+**Shell — read round semantics (actually read):**
+```bash
+cat ./skill/artboard.md
+```
+
+**Shell (simulated):**
+```bash
+node ./skill/app/ryugi.cjs get https://ryugi.innei.dev/a/KwtefwXFtLrnQrp7AIPsG
+```
+
+**Assumed successful output:** A document outline titled “Notes app design decisions,” including a “Round 2” block. Its printed continuation is:
+```text
+Details: node ./skill/app/ryugi.cjs get https://ryugi.innei.dev/a/KwtefwXFtLrnQrp7AIPsG --block b-round-2
+```
+
+**Shell (simulated; follow printed command):**
+```bash
+node ./skill/app/ryugi.cjs get https://ryugi.innei.dev/a/KwtefwXFtLrnQrp7AIPsG --block b-round-2
+```
+
+**Assumed successful output:** The complete round 2 block says the decisions were a persistent notebook sidebar, a compact note list with two-line previews, and autosave with a visible saved status. Mobile navigation remains undecided. No further continuation is printed.
+
+**Message:** “Round 2 settled on a persistent notebook sidebar, compact notes with two-line previews, and autosave with a visible saved status. Mobile navigation is still open. [Source](https://ryugi.innei.dev/a/KwtefwXFtLrnQrp7AIPsG).”
+
+SUMMARY: Simulated reading the Cloud outline and complete round 2 block; created nothing, started no server, and linked https://ryugi.innei.dev/a/KwtefwXFtLrnQrp7AIPsG.

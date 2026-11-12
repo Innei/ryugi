@@ -1,0 +1,22 @@
+1. **Message:** “I’ll use the artifacts workflow to publish the document so your teammate can open it.”
+
+2. **Read guide** (actually read):
+   ```bash
+   cat ./skill/cloud.md
+   ```
+
+3. **Simulated shell call:**
+   ```bash
+   node /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/tmp.KIs60kgxiv/skill/app/ryugi.cjs publish --project-dir /Users/p/git/notes-app --artifact document/sync-design --public
+   ```
+   Assumed the server is running, as stated in the situation, and publication succeeds:
+   ```text
+   Publish: PUBLISHED · document/sync-design
+   ID: sync-design-k7m2
+   URL: https://ryugi.innei.dev/a/sync-design-k7m2
+   Visibility: public (requested)
+   ```
+
+4. **Message:** “Your teammate can open [the sync design](https://ryugi.innei.dev/a/sync-design-k7m2). Anyone with this link can view it.”
+
+SUMMARY: Simulated publishing the existing document publicly; changed no files; gave https://ryugi.innei.dev/a/sync-design-k7m2.

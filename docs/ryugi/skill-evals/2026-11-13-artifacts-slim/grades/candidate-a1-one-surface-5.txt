@@ -1,0 +1,1 @@
+PASS — Uses html, reads html.md and ui.md before writing, starts the artifact before writing, checks afterward, and shares the printed Open link.

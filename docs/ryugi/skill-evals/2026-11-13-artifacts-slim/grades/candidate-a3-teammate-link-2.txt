@@ -1,0 +1,1 @@
+PASS — Publishes the correct artifact through the launcher with --public and shares the exact URL printed by the command.

@@ -1,0 +1,1 @@
+PASS — Uses HTML, reads both required guides, starts before writing, checks after the final write, and shares the printed Open link.

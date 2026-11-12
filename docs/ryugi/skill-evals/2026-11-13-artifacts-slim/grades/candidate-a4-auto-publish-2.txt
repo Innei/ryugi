@@ -1,0 +1,1 @@
+PASS — Edits the existing doc.xml in place, checks clean after the last write, never publishes, and describes changes with the artifact link.

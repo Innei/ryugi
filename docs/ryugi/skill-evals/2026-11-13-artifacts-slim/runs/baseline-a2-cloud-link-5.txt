@@ -1,0 +1,46 @@
+Simulation only. CLI outputs and decision content below are assumed, not fetched from the real link.
+
+1. **Message to partner**
+
+   “I’m using the artifacts skill to read the shared page and check what round 2 settled.”
+
+2. **Shell call**
+
+   ```bash
+   node ./skill/app/ryugi.cjs get https://ryugi.innei.dev/a/KwtefwXFtLrnQrp7AIPsG
+   ```
+
+   **Assumed successful output:** a document outline titled “Notes app design decisions,” with a “Round 2 — decisions” block and this printed continuation:
+
+   ```text
+   Details: node ./skill/app/ryugi.cjs get https://ryugi.innei.dev/a/KwtefwXFtLrnQrp7AIPsG --block round-2
+   ```
+
+3. **Read the document guide** — actually read during this simulation:
+
+   ```bash
+   cat ./skill/document.md
+   ```
+
+4. **Follow the printed Details command**
+
+   ```bash
+   node ./skill/app/ryugi.cjs get https://ryugi.innei.dev/a/KwtefwXFtLrnQrp7AIPsG --block round-2
+   ```
+
+   **Assumed successful output:** the complete round 2 block says the team selected a persistent notebook sidebar, compact note rows with title and last-edited time, and an editor that opens beside the list. Tags were deferred. Keyboard navigation remains an open question. No further continuation is printed.
+
+5. **Message to partner**
+
+   “Round 2 settled on:
+
+   - A persistent notebook sidebar.
+   - Compact note rows showing title and last-edited time.
+   - An editor beside the note list.
+   - Tags deferred to a later round.
+
+   Keyboard navigation is still open.
+
+   Source: [shared design document](https://ryugi.innei.dev/a/KwtefwXFtLrnQrp7AIPsG).”
+
+SUMMARY: Simulated reading the Cloud outline and complete round 2 block; created no files and started no server; linked https://ryugi.innei.dev/a/KwtefwXFtLrnQrp7AIPsG.

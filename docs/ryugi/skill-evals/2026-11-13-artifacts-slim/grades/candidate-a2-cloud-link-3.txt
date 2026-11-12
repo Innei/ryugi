@@ -1,0 +1,1 @@
+PASS — Used the launcher to read the link and followed its Details command for round 2, without fetching content through another method.

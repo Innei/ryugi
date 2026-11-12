@@ -1,0 +1,53 @@
+1. **Shell — actually read:**
+   ```sh
+   cat ./skill/document.md
+   ```
+
+2. **Message to partner:**
+   > I’ll add conflict resolution to the existing sync design, following its current approach.
+
+3. **Shell — simulated:**
+   ```sh
+   cat /Users/p/git/notes-app/.ryugi/artifacts/document/sync-design/doc.xml
+   ```
+   **Assumed result:** The current document describes revision-based sync, has no conflict-resolution section or unfinished placeholders, and retains server-assigned block IDs.
+
+4. **Edit file — simulated:**  
+   `/Users/p/git/notes-app/.ryugi/artifacts/document/sync-design/doc.xml`
+
+   Two-line content sketch:
+   - Insert “Conflict resolution” with proposed behavior: detect stale base revisions, merge independent edits, and preserve both versions when overlapping edits need a user decision.
+   - Add a case table covering concurrent edits and edit-versus-delete, plus retry behavior: submit resolution against the latest revision and reopen resolution if another edit intervenes; preserve existing blocks and IDs, omit IDs on new blocks.
+
+5. **Shell — simulated:**
+   ```sh
+   node /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/tmp.0hxYbH002c/skill/app/ryugi.cjs check --project-dir /Users/p/git/notes-app --artifact document/sync-design
+   ```
+   **Assumed output:**
+   ```text
+   Check: CLEAN · document/sync-design
+   Browser: not run
+   ```
+   Assume no warnings or pending work.
+
+6. **Shell — simulated, immediately before sharing:**
+   ```sh
+   node /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/tmp.0hxYbH002c/skill/app/ryugi.cjs start --background --project-dir /Users/p/git/notes-app --artifact document/sync-design
+   ```
+   **Assumed output:** Taking “The server is running” as the current state:
+   ```text
+   Server: RUNNING · reused
+   Project: /Users/p/git/notes-app
+   Artifact: document/sync-design
+   Open: https://ryugi.innei.dev/a/notes-sync-design
+   Local: http://localhost:27319/document/sync-design
+   Cloud: live_link_reserved
+   ```
+   The assumed `Open` URL is the same one shared earlier. No manual publication: auto-publish updates the existing private copy at turn end.
+
+7. **Final message to partner:**
+   > Added a conflict-resolution section covering concurrent edits, edit-versus-delete, preserving both versions, and resolution retries. The proposed behavior is marked as such.
+   >
+   > [Open the updated sync design](https://ryugi.innei.dev/a/notes-sync-design). Validation is clean; browser checks haven’t run.
+
+SUMMARY: Simulated an in-place document update, clean check, and reused-server start; gave https://ryugi.innei.dev/a/notes-sync-design; left private publication to auto-publish.

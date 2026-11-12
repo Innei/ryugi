@@ -1,0 +1,1 @@
+PASS — Ran publish through the launcher with --public and gave the partner the exact URL printed by the publish command.

@@ -1,0 +1,52 @@
+1. Read the guides (actually read; all remaining calls are simulated):
+   ```bash
+   cat ./skill/modules.md
+   ```
+   ```bash
+   cat ./skill/artboard.md
+   ```
+
+2. Shell:
+   ```bash
+   node /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/tmp.W7XgEz6tuY/skill/app/ryugi.cjs modules --project-dir /Users/p/git/notes-app
+   ```
+   Assumed result: the existing vocabulary includes `settings`, described as preferences and settings navigation; no merge or unused-module hints.
+
+3. Shell:
+   ```bash
+   node /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/tmp.W7XgEz6tuY/skill/app/ryugi.cjs modules --project-dir /Users/p/git/notes-app --artifact artboard/settings-nav --set settings
+   ```
+   Assumed result: artifact tagged successfully. No edit to `modules.json` needed.
+
+4. Shell:
+   ```bash
+   node /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/tmp.W7XgEz6tuY/skill/app/ryugi.cjs check --project-dir /Users/p/git/notes-app --artifact artboard/settings-nav
+   ```
+   Assumed result: the already-open viewer has now loaded the boards:
+   ```text
+   Check: OK · artboard/settings-nav
+   Warnings: 0
+   Browser: passed
+   Pending: none
+   ```
+
+5. Shell, immediately before sharing:
+   ```bash
+   node /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/tmp.W7XgEz6tuY/skill/app/ryugi.cjs start --background --project-dir /Users/p/git/notes-app --artifact artboard/settings-nav
+   ```
+   Assumed output:
+   ```text
+   Server: RUNNING · reused
+   Project: /Users/p/git/notes-app
+   Artifact: artboard/settings-nav
+   Open: http://localhost:27319/artboard/settings-nav
+   Cloud: local_only
+   ```
+
+6. Message to partner:
+
+   “The settings navigation options are ready, and the module warning is cleared. [Open the board](http://localhost:27319/artboard/settings-nav), pick your preferred option, and submit the round on the page.”
+
+Stop and wait for their choice.
+
+SUMMARY: Simulated tagging settings-nav, checking it, and reusing the server; shared http://localhost:27319/artboard/settings-nav.

@@ -1,0 +1,53 @@
+1. Shell (actually read):
+   ```bash
+   cat ./skill/artboard.md
+   ```
+
+2. Shell (simulated):
+   ```bash
+   node ./skill/app/ryugi.cjs check --project-dir /Users/p/git/notes-app --artifact artboard/settings-nav
+   ```
+   Output: the supplied `W_MODULES` warning and `browser_not_run` pending item.
+
+3. Shell (actually read):
+   ```bash
+   cat ./skill/modules.md
+   ```
+
+4. Shell (simulated):
+   ```bash
+   node ./skill/app/ryugi.cjs modules --project-dir /Users/p/git/notes-app
+   ```
+   Assumed successful output: an existing `settings` module covers preferences and settings navigation; no vocabulary changes or merge hints need action.
+
+5. Shell (simulated):
+   ```bash
+   node ./skill/app/ryugi.cjs modules --project-dir /Users/p/git/notes-app --artifact artboard/settings-nav --set settings
+   ```
+   Assumed successful output: artifact tagged with `settings`.
+
+6. Shell (simulated; reuse the server stated to be running and retrieve its link):
+   ```bash
+   node ./skill/app/ryugi.cjs start --background --project-dir /Users/p/git/notes-app --artifact artboard/settings-nav
+   ```
+   Assumed output:
+   ```text
+   Server: RUNNING · reused
+   Project: /Users/p/git/notes-app
+   Artifact: artboard/settings-nav
+   Open: https://ryugi.innei.dev/a/settings-nav-demo
+   Local: http://localhost:27319/artboard/settings-nav
+   Cloud: live_link_reserved
+   ```
+
+7. Shell (simulated):
+   ```bash
+   node ./skill/app/ryugi.cjs check --project-dir /Users/p/git/notes-app --artifact artboard/settings-nav
+   ```
+   Assumed successful result: the viewer has loaded, warnings and pending work are empty, and check is clean. No screenshot or interaction verification is claimed.
+
+8. Message to partner:
+
+   “The settings navigation options are ready: [open the artboard](https://ryugi.innei.dev/a/settings-nav-demo). Pick your preferred option and submit the round on the page.”
+
+SUMMARY: Simulated checking and tagging the existing artboard, reusing the server, and confirming a clean check; gave https://ryugi.innei.dev/a/settings-nav-demo.

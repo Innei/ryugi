@@ -1,0 +1,27 @@
+Message to partner:
+> I’ll use the artifacts skill to read the shared board and check round 2’s choices and comments.
+
+Tool call — shell:
+```bash
+node /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/tmp.NlyJ4l1Zov/skill/app/ryugi.cjs get https://ryugi.innei.dev/a/KwtefwXFtLrnQrp7AIPsG
+```
+
+Assumed successful Brief output for this simulation:
+```text
+Get: artboard/notes-navigation · Notes navigation
+Rounds: 2
+r2 · submitted · Round 2
+Details: node /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/tmp.NlyJ4l1Zov/skill/app/ryugi.cjs get https://ryugi.innei.dev/a/KwtefwXFtLrnQrp7AIPsG --block r2
+```
+
+Tool call — shell, following the printed command:
+```bash
+node /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/tmp.NlyJ4l1Zov/skill/app/ryugi.cjs get https://ryugi.innei.dev/a/KwtefwXFtLrnQrp7AIPsG --block r2
+```
+
+Assume this returns complete round 2 evidence with no continuation: the round was submitted; “Persistent sidebar” and “Compact note rows” were selected; the complete comments request keeping search visible and showing previews only for the selected note. These details are invented solely for the simulation.
+
+Message to partner:
+> Round 2 chose a persistent sidebar and compact note rows. The comments add two requirements: keep search visible, and show a preview only for the selected note. [View the board](https://ryugi.innei.dev/a/KwtefwXFtLrnQrp7AIPsG).
+
+SUMMARY: Simulated two Cloud read commands; created no files and started no server; linked https://ryugi.innei.dev/a/KwtefwXFtLrnQrp7AIPsG.

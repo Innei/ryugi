@@ -1,0 +1,1 @@
+PASS — Used the launcher to read the link, followed the printed Details command, and did not fetch the page by any other method.

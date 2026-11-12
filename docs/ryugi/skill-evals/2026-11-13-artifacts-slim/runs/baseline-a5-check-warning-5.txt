@@ -1,0 +1,51 @@
+1. **Shell — read the warning’s guide:**
+   ```bash
+   cat ./skill/modules.md
+   ```
+   Read `./skill/artboard.md` separately for the static-board completion rules:
+   ```bash
+   cat ./skill/artboard.md
+   ```
+   These reads were performed; all remaining calls are simulated.
+
+2. **Shell — inspect the existing module vocabulary:**
+   ```bash
+   node "$PWD/skill/app/ryugi.cjs" modules --project-dir /Users/p/git/notes-app
+   ```
+   **Assumed output:** an existing `settings` module covers preferences and settings navigation, with no actionable merge hints.
+
+3. **Shell — tag the artifact:**
+   ```bash
+   node "$PWD/skill/app/ryugi.cjs" modules --project-dir /Users/p/git/notes-app --artifact artboard/settings-nav --set settings
+   ```
+   **Assumed result:** successfully tagged with `settings`. No vocabulary file edit needed.
+
+4. **Shell — check again:**
+   ```bash
+   node "$PWD/skill/app/ryugi.cjs" check --project-dir /Users/p/git/notes-app --artifact artboard/settings-nav
+   ```
+   **Assumed result:** clean check, no warnings or pending work. The viewer has loaded since the initial check. No independent screenshot review has been performed.
+
+5. **Shell — retrieve the link immediately before sharing:**
+   ```bash
+   node "$PWD/skill/app/ryugi.cjs" start --background --project-dir /Users/p/git/notes-app --artifact artboard/settings-nav
+   ```
+   **Assumed output:**
+   ```text
+   Server: RUNNING · reused
+   Project: /Users/p/git/notes-app
+   Artifact: artboard/settings-nav
+   Open: https://ryugi.innei.dev/a/settings-nav-demo
+   Local: http://localhost:27319/artboard/settings-nav
+   Cloud: live_link_reserved
+   ```
+
+6. **Message to partner:**
+
+   “The settings navigation options are ready: [Open the artboard](https://ryugi.innei.dev/a/settings-nav-demo). Pick your preferred option and submit the round on the page.
+
+   I tagged it under Settings; the file and layout check is clean.”
+
+**Stop and wait for their choice.**
+
+SUMMARY: Tagged the existing artboard, reran check, retrieved the running server’s link, and shared https://ryugi.innei.dev/a/settings-nav-demo; all commands after the guide reads and their results were simulated.

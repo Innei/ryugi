@@ -1,0 +1,71 @@
+**Message to partner:** “I’ll use the artifacts skill to make a sidebar motion playground with duration and easing controls, so you can try collapsing and expanding it.”
+
+**Tool call — shell:**
+```bash
+cat ./skill/html.md
+```
+Read the HTML artifact guide.
+
+**Tool call — shell:**
+```bash
+cat ./skill/ui.md
+```
+Read the bundled controls guide.
+
+**Tool call — shell (simulated):**
+```bash
+rg --files --hidden /Users/p/git/notes-app -g AGENTS.md -g '*Sidebar*' -g '*sidebar*' -g '*token*' -g '*theme*' -g '*global*.css' -g '!node_modules' -g '!.git'
+```
+Assume it finds `src/components/Sidebar.tsx` and `src/styles/tokens.css`, with no applicable `AGENTS.md`.
+
+**Tool call — shell (simulated):**
+```bash
+cat /Users/p/git/notes-app/src/components/Sidebar.tsx /Users/p/git/notes-app/src/styles/tokens.css
+```
+Assume these show a 256px sidebar collapsing to a 56px rail, system typography, neutral light/dark palettes and a violet accent.
+
+**Message to partner:** “I’ll use the app’s sidebar dimensions, typography and colors. The playground will show light and dark previews together, with a starting point of 220ms and an ease-out curve.”
+
+**Tool call — shell (simulated):**
+```bash
+node /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/tmp.pukGGWMD7W/skill/app/ryugi.cjs start --background --project-dir /Users/p/git/notes-app --artifact html/sidebar-motion
+```
+Assume successful output:
+```text
+Server: RUNNING
+Project: /Users/p/git/notes-app
+Artifact: html/sidebar-motion
+Open: http://localhost:27319/html/sidebar-motion
+Cloud: local_only
+```
+
+**Tool call — write file (simulated):**
+
+Path: `/Users/p/git/notes-app/.ryugi/artifacts/html/sidebar-motion/index.html`
+
+Two-line content sketch:
+```text
+Complete “Sidebar motion” HTML page with matching light/dark Notes previews, real note titles, Collapse/Expand and Replay buttons; ryugi-slider-input duration (80–600ms), ryugi-select easing presets, validated custom cubic-bezier input, and current CSS readout with Copy button.
+Stable control ids; initialize from component properties on ryugi-ui:ready, update via ryugi-change and restored input/change events; animate sidebar width with clipped labels, handle interrupted transitions, respect reduced motion with explicit preview opt-in, and keep all state in DOM/variables.
+```
+
+**Tool call — shell (simulated):**
+```bash
+node /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/tmp.pukGGWMD7W/skill/app/ryugi.cjs check --project-dir /Users/p/git/notes-app --artifact html/sidebar-motion
+```
+Assume the opened browser has loaded this version and the check reports:
+```text
+Check: OK · html/sidebar-motion
+Browser: passed
+```
+Assume no warnings, runtime errors or pending actions.
+
+**Tool call — shell (simulated, immediately before sharing):**
+```bash
+node /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/tmp.pukGGWMD7W/skill/app/ryugi.cjs start --background --project-dir /Users/p/git/notes-app --artifact html/sidebar-motion
+```
+Assume it reports `Server: RUNNING · reused` and the same `Open` URL.
+
+**Message to partner:** “The [sidebar motion playground](http://localhost:27319/html/sidebar-motion) is ready. Adjust the duration, try an easing preset or your own curve, then collapse and expand the sidebar. Copy the CSS when you find a combination you like.”
+
+SUMMARY: Simulated creating and checking an HTML sidebar motion playground; gave http://localhost:27319/html/sidebar-motion.

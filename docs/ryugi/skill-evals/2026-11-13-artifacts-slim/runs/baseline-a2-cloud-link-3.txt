@@ -1,0 +1,20 @@
+1. **Message to partner:** “I’m using the artifacts skill to read the shared page and find round 2’s decisions.”
+
+2. **Simulated shell call:**
+   ```bash
+   node ./skill/app/ryugi.cjs get https://ryugi.innei.dev/a/KwtefwXFtLrnQrp7AIPsG
+   ```
+   **Assumed successful Brief output:** The artifact is a document titled “Notes app design decisions.” Its outline includes a `round-2` block. The printed continuation is:
+   ```text
+   Details: node ./skill/app/ryugi.cjs get https://ryugi.innei.dev/a/KwtefwXFtLrnQrp7AIPsG --block round-2
+   ```
+
+3. **Simulated shell call, following Details exactly:**
+   ```bash
+   node ./skill/app/ryugi.cjs get https://ryugi.innei.dev/a/KwtefwXFtLrnQrp7AIPsG --block round-2
+   ```
+   **Assumed successful output:** The complete block records three settled decisions: use a sidebar for notebooks, show notes in a compact list, and autosave edits. It records mobile navigation as unresolved. These are illustrative assumptions for this simulation, not facts retrieved from the real link.
+
+4. **Message to partner, based on that assumed output:** “Round 2 settled on a notebook sidebar, a compact notes list, and autosave. Mobile navigation is still open. [Decision record](https://ryugi.innei.dev/a/KwtefwXFtLrnQrp7AIPsG).”
+
+SUMMARY: Simulated two Cloud reads and a decision summary; created no files, started no server, and linked https://ryugi.innei.dev/a/KwtefwXFtLrnQrp7AIPsG.

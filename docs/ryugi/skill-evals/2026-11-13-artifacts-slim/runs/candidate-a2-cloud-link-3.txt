@@ -1,0 +1,34 @@
+1. Message to partner:
+   > I’m using the artifacts skill to read the shared page and check what round 2 decided.
+
+2. Read the Cloud guide:
+   ```bash
+   cat ./skill/cloud.md
+   ```
+
+3. Run this simulated shell call:
+   ```bash
+   node /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/tmp.FDtBkgybhN/skill/app/ryugi.cjs get https://ryugi.innei.dev/a/KwtefwXFtLrnQrp7AIPsG
+   ```
+
+   Assumed successful output:
+   ```text
+   Get: document/notes-navigation · Notes navigation decisions
+   Blocks: 3
+   overview · Overview
+   round-1 · Round 1
+   round-2 · Round 2 decisions
+   Details: node /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/tmp.FDtBkgybhN/skill/app/ryugi.cjs get https://ryugi.innei.dev/a/KwtefwXFtLrnQrp7AIPsG --block round-2
+   ```
+
+4. Follow the assumed printed `Details` command:
+   ```bash
+   node /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/tmp.FDtBkgybhN/skill/app/ryugi.cjs get https://ryugi.innei.dev/a/KwtefwXFtLrnQrp7AIPsG --block round-2
+   ```
+
+   Assumed successful output: the complete round 2 block says the team chose a persistent notebook sidebar, kept tags as filters, and deferred nested notebooks. No further evidence is pending. These decisions are invented for this simulation.
+
+5. Message to partner:
+   > Round 2 decided to keep a persistent notebook sidebar, use tags as filters, and defer nested notebooks. See [the shared page](https://ryugi.innei.dev/a/KwtefwXFtLrnQrp7AIPsG).
+
+SUMMARY: Simulated reading the Cloud outline and complete round 2 block; created no files, started no server, and linked https://ryugi.innei.dev/a/KwtefwXFtLrnQrp7AIPsG.

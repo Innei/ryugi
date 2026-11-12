@@ -1,0 +1,50 @@
+1. Message to partner:
+   “I’ll add conflict resolution to the existing sync design, matching its current sync model.”
+
+2. Read the document guide (actually read):
+   ```bash
+   cat ./skill/document.md
+   ```
+
+3. Simulated shell call:
+   ```bash
+   cat /Users/p/git/notes-app/.ryugi/artifacts/document/sync-design/doc.xml
+   ```
+   Assumed result: the current document uses revision-based sync with a shared base revision. It contains no conflict-resolution section or unfinished placeholders.
+
+4. Simulated file edit:
+   Path: `/Users/p/git/notes-app/.ryugi/artifacts/document/sync-design/doc.xml`
+
+   Two-line content sketch:
+   - Insert “Conflict resolution”: detect stale base revisions; merge independent changes; preserve both versions when edits overlap or deletion conflicts with editing.
+   - Explain how users compare and resolve versions, how resolutions retry against the latest revision, and how offline clients converge; preserve existing text and block IDs, leaving new blocks without IDs.
+
+5. Simulated shell call:
+   ```bash
+   node /Users/p/git/notes-app/skill/app/ryugi.cjs check --project-dir /Users/p/git/notes-app --artifact document/sync-design
+   ```
+   Assumed successful output:
+   ```text
+   Check: CLEAN · document/sync-design
+   Browser: not run
+   ```
+   Assume no warnings or pending work. Browser rendering has not been verified.
+
+6. Simulated shell call, immediately before sharing:
+   ```bash
+   node /Users/p/git/notes-app/skill/app/ryugi.cjs start --background --project-dir /Users/p/git/notes-app --artifact document/sync-design
+   ```
+   Assumed successful output:
+   ```text
+   Server: RUNNING · reused
+   Project: /Users/p/git/notes-app
+   Artifact: document/sync-design
+   Open: https://ryugi.innei.dev/a/sync-design-example
+   Local: http://localhost:27319/document/sync-design
+   ```
+   The Open URL is an assumed stand-in for the existing artifact’s actual URL. Auto-publish remains on; no manual publish command is needed.
+
+7. Final message to partner:
+   “Added conflict detection, automatic merging, overlapping edits, delete/edit conflicts, and resolution retries to the [sync design](https://ryugi.innei.dev/a/sync-design-example). Document validation passed.”
+
+SUMMARY: Simulated updating the existing sync-design document, checking it, and reusing the server; gave the assumed existing link https://ryugi.innei.dev/a/sync-design-example.

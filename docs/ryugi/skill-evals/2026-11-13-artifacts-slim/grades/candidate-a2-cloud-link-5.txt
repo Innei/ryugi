@@ -1,0 +1,1 @@
+PASS — Used the required launcher to read the link, followed Details with --block round-2, and never fetched the content through another method.

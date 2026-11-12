@@ -1,0 +1,48 @@
+1. **Message:** “I’ll add conflict resolution to the existing sync design document.”
+
+2. **Shell — read the document guide:**
+   ```sh
+   cat ./skill/document.md
+   ```
+   Read successfully.
+
+3. **Simulated shell — reread the current document:**
+   ```sh
+   cat /Users/p/git/notes-app/.ryugi/artifacts/document/sync-design/doc.xml
+   ```
+   **Assumed result:** The document describes revision-based sync and has no conflict-resolution section. Existing blocks have server-assigned IDs.
+
+4. **Simulated edit** — `/Users/p/git/notes-app/.ryugi/artifacts/document/sync-design/doc.xml`  
+   Insert a “Conflict resolution” section beside the sync protocol, preserving existing text and IDs; new blocks have no IDs.  
+   Describe detecting stale base revisions, merging independent edits, preserving both versions for overlapping edits or delete/edit conflicts, and retrying resolution against the latest revision.
+
+5. **Simulated shell — validate:**
+   ```sh
+   node ./skill/app/ryugi.cjs check --project-dir /Users/p/git/notes-app --artifact document/sync-design
+   ```
+   **Assumed result:**
+   ```text
+   Check: CLEAN · document/sync-design
+   Warnings: 0
+   Pending: 0
+   ```
+
+6. **Simulated shell — retrieve the existing artifact’s link before sharing:**
+   ```sh
+   node ./skill/app/ryugi.cjs start --background --project-dir /Users/p/git/notes-app --artifact document/sync-design
+   ```
+   **Assumed result:**
+   ```text
+   Server: RUNNING · reused
+   Project: /Users/p/git/notes-app
+   Artifact: document/sync-design
+   Open: https://ryugi.innei.dev/a/sync-design-k7m2
+   Local: http://localhost:27319/document/sync-design
+   ```
+   No explicit publish command; auto-publish keeps the private Cloud copy current at turn end.
+
+7. **Final message:** “Added conflict resolution: revision checks, automatic merging, preserving conflicting versions, and handling delete/edit conflicts. Validation passed.
+
+   [Open the updated sync design](https://ryugi.innei.dev/a/sync-design-k7m2)”
+
+SUMMARY: Simulated an in-place document update, validation, and link retrieval; gave https://ryugi.innei.dev/a/sync-design-k7m2.

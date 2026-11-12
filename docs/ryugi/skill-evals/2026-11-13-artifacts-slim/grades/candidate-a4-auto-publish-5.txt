@@ -1,0 +1,1 @@
+PASS — Edits the existing doc.xml, checks clean after the final write, never runs publish, and explains the changes with the existing link.

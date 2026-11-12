@@ -1,0 +1,54 @@
+Read guides (actual shell calls, in order):
+
+```bash
+cat ./skill/modules.md
+cat ./skill/artboard.md
+```
+
+Remaining calls below are simulated.
+
+1. Shell:
+   ```bash
+   node ./skill/app/ryugi.cjs check --project-dir /Users/p/git/notes-app --artifact artboard/settings-nav
+   ```
+   Output: the supplied `W_MODULES` warning and browser status.
+
+2. Shell:
+   ```bash
+   node ./skill/app/ryugi.cjs modules --project-dir /Users/p/git/notes-app
+   ```
+   Assumed result: the existing vocabulary includes `settings`, covering preferences and settings navigation; no vocabulary changes are needed.
+
+3. Shell:
+   ```bash
+   node ./skill/app/ryugi.cjs modules --project-dir /Users/p/git/notes-app --artifact artboard/settings-nav --set settings
+   ```
+   Assumed result: artifact tagged successfully.
+
+4. Shell:
+   ```bash
+   node ./skill/app/ryugi.cjs check --project-dir /Users/p/git/notes-app --artifact artboard/settings-nav
+   ```
+   Assumed result: no warnings or pending board files; browser remains `not run`. These are static boards, so my browser inspection comes after sharing.
+
+5. Shell, immediately before sharing:
+   ```bash
+   node ./skill/app/ryugi.cjs start --background --project-dir /Users/p/git/notes-app --artifact artboard/settings-nav
+   ```
+   Assumed output:
+   ```text
+   Server: RUNNING · reused
+   Project: /Users/p/git/notes-app
+   Artifact: artboard/settings-nav
+   Open: https://ryugi.innei.dev/a/settings-nav-preview
+   Local: http://localhost:27319/artboard/settings-nav
+   Cloud: live_link_reserved
+   ```
+
+6. Message to partner:
+
+   “The settings navigation options are ready to review, and I tagged the board under Settings. Pick your preferred option and submit the round on the [artboard](https://ryugi.innei.dev/a/settings-nav-preview). File and layout checks are clear; I haven’t inspected it in the browser yet.”
+
+Stop for partner review.
+
+SUMMARY: Simulated tagging settings-nav, checking it, and reusing the server; shared https://ryugi.innei.dev/a/settings-nav-preview (assumed Open URL).

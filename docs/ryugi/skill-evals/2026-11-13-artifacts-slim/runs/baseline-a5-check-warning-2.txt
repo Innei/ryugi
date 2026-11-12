@@ -1,0 +1,61 @@
+1. Read guides (actually run):
+   ```bash
+   cat ./skill/artboard.md
+   ```
+   ```bash
+   cat ./skill/modules.md
+   ```
+
+2. Simulated shell call:
+   ```bash
+   node /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/tmp.EVT4QMQWqA/skill/app/ryugi.cjs check --project-dir /Users/p/git/notes-app --artifact artboard/settings-nav
+   ```
+   Output: the supplied `W_MODULES` warning and `browser_not_run` pending item.
+
+3. Simulated shell call:
+   ```bash
+   node /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/tmp.EVT4QMQWqA/skill/app/ryugi.cjs modules --project-dir /Users/p/git/notes-app
+   ```
+   Assumed output: an existing `settings` module covering preferences and settings navigation; no vocabulary changes needed.
+
+4. Simulated shell call:
+   ```bash
+   node /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/tmp.EVT4QMQWqA/skill/app/ryugi.cjs modules --project-dir /Users/p/git/notes-app --artifact artboard/settings-nav --set settings
+   ```
+   Assumed output: artifact successfully tagged `settings`.
+
+5. Simulated shell call:
+   ```bash
+   node /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/tmp.EVT4QMQWqA/skill/app/ryugi.cjs check --project-dir /Users/p/git/notes-app --artifact artboard/settings-nav
+   ```
+   Assumed output:
+   ```text
+   Check: INCOMPLETE · artboard/settings-nav
+   Warnings: 0
+   Browser: not run
+   Pending: browser_not_run
+   ```
+
+6. Simulated shell call, immediately before sharing:
+   ```bash
+   node /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/tmp.EVT4QMQWqA/skill/app/ryugi.cjs start --background --project-dir /Users/p/git/notes-app --artifact artboard/settings-nav
+   ```
+   Assumed output, using the stated running server:
+   ```text
+   Server: RUNNING · reused
+   Project: /Users/p/git/notes-app
+   Artifact: artboard/settings-nav
+   Open: https://ryugi.innei.dev/a/settings-nav-preview
+   Local: http://localhost:27319/artboard/settings-nav
+   Cloud: live_link_reserved
+   ```
+
+7. Message to partner:
+
+   “I tagged the settings navigation options under Settings; validation now reports no warnings. Browser checking is still pending.
+
+   [View the navigation options](https://ryugi.innei.dev/a/settings-nav-preview), select your preferred board, and submit the round using the page controls.”
+
+Stop to wait for their choice; do not describe the check as clean or the boards as verified.
+
+SUMMARY: Simulated module tagging, rechecking, and server reuse; shared https://ryugi.innei.dev/a/settings-nav-preview with browser checking explicitly pending.

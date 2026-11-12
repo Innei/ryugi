@@ -1,0 +1,18 @@
+Message to partner: “I’ll publish the design document so your teammate can open it.”
+
+Simulated shell call:
+```bash
+node /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/tmp.WDWjKAyjaK/skill/app/ryugi.cjs publish --project-dir /Users/p/git/notes-app --artifact document/sync-design --public
+```
+
+Assumed successful output:
+```text
+Publish: PUBLISHED · document/sync-design
+ID: sync-design-k7m2
+URL: https://ryugi.innei.dev/a/sync-design-k7m2
+Visibility: public (requested)
+```
+
+Message to partner: “Your teammate can open the sync design here: https://ryugi.innei.dev/a/sync-design-k7m2”
+
+SUMMARY: Simulated publishing `document/sync-design` publicly and sharing https://ryugi.innei.dev/a/sync-design-k7m2.

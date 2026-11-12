@@ -1,0 +1,43 @@
+1. **Message:** “I’m using the artifacts skill to add conflict resolution to the existing sync design.”
+
+2. **Read guide (actually run):**
+   ```bash
+   cat ./skill/document.md
+   ```
+
+3. **Simulated shell call:**
+   ```bash
+   cat /Users/p/git/notes-app/.ryugi/artifacts/document/sync-design/doc.xml
+   ```
+   **Assumed result:** The complete document describes revision-based sync with a shared base revision. It has no conflict-resolution section.
+
+4. **Simulated file edit:** `/Users/p/git/notes-app/.ryugi/artifacts/document/sync-design/doc.xml`
+
+   Two-line content sketch:
+   ```text
+   Insert an <h2>Conflict resolution</h2> and proposed policy: merge non-overlapping edits against the shared base; preserve both versions when edits overlap or deletion conflicts with an edit.
+   Add a case table and resolution steps: show both versions, let the user combine or choose, save against the latest revision, and retry on a concurrent update without losing either version; preserve all existing blocks and IDs.
+   ```
+
+5. **Simulated shell call:**
+   ```bash
+   node "$PWD/skill/app/ryugi.cjs" check --project-dir /Users/p/git/notes-app --artifact document/sync-design
+   ```
+   **Assumed result:** Validation completes successfully with no warnings, pending blocks, or required actions.
+
+6. **Simulated shell call, immediately before sharing:**
+   ```bash
+   node "$PWD/skill/app/ryugi.cjs" start --background --project-dir /Users/p/git/notes-app --artifact document/sync-design
+   ```
+   **Assumed output:**
+   ```text
+   Server: RUNNING · reused
+   Project: /Users/p/git/notes-app
+   Artifact: document/sync-design
+   Open: https://ryugi.innei.dev/a/sync-design-x7k2
+   ```
+   Assumed this is the existing artifact’s URL. No explicit publish command: auto-publish keeps its private Cloud copy current at turn end.
+
+7. **Final message:** “Added a proposed conflict-resolution policy covering automatic merges, overlapping edits, deletion conflicts, and safe retries. Validation passed. [Read the updated sync design](https://ryugi.innei.dev/a/sync-design-x7k2).”
+
+SUMMARY: Simulated updating document/sync-design, validating it, and reusing the server; gave https://ryugi.innei.dev/a/sync-design-x7k2.

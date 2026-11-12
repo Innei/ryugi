@@ -1,0 +1,2 @@
+"command":"/bin/zsh -lc 'cat ./skill/html.md'"
+"command":"/bin/zsh -lc 'cat ./skill/ui.md'"

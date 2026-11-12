@@ -1,0 +1,38 @@
+1. **Message to partner:** “I’m using the artifacts skill to read the shared page and find the round 2 decisions.”
+
+2. **Shell read (actually performed):**
+   ```bash
+   cat ./skill/cloud.md
+   ```
+
+3. **Simulated shell call:**
+   ```bash
+   node /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/tmp.xHUlL2baTN/skill/app/ryugi.cjs get https://ryugi.innei.dev/a/KwtefwXFtLrnQrp7AIPsG
+   ```
+   **Assumed successful Brief output:**
+   ```text
+   Get: document/notes-navigation · Notes navigation review
+   Blocks: 3
+   context · Background
+   round-1 · Round 1
+   round-2 · Round 2 decisions
+   Details: node /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/tmp.xHUlL2baTN/skill/app/ryugi.cjs get https://ryugi.innei.dev/a/KwtefwXFtLrnQrp7AIPsG --block round-2
+   ```
+
+4. **Simulated shell call, following the printed Details command:**
+   ```bash
+   node /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/tmp.xHUlL2baTN/skill/app/ryugi.cjs get https://ryugi.innei.dev/a/KwtefwXFtLrnQrp7AIPsG --block round-2
+   ```
+   **Assumed complete block:** Round 2 approved a persistent desktop sidebar, put search above the notes list, and deferred nested folders. No unresolved decisions or further reading commands.
+
+5. **Message to partner, based on that simulated content:**
+
+   “Round 2 decided to:
+   
+   - Keep a persistent sidebar on desktop.
+   - Put search above the notes list.
+   - Defer nested folders.
+   
+   All three are recorded as settled in the [round 2 review](https://ryugi.innei.dev/a/KwtefwXFtLrnQrp7AIPsG).”
+
+SUMMARY: Read cloud.md; simulated two Cloud reads and a decision summary; created no files and started no server; linked https://ryugi.innei.dev/a/KwtefwXFtLrnQrp7AIPsG.

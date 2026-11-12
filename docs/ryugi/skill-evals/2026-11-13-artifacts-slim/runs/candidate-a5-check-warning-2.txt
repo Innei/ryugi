@@ -1,0 +1,54 @@
+1. Shell (read guide):
+   ```bash
+   cat ./skill/artboard.md
+   ```
+
+2. Shell (simulated):
+   ```bash
+   node /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/tmp.yaNefVgbKr/skill/app/ryugi.cjs check --project-dir /Users/p/git/notes-app --artifact artboard/settings-nav
+   ```
+   Assume the supplied output: `W_MODULES`, `Browser: not run`, and `Pending: browser_not_run`.
+
+3. Shell (read guide):
+   ```bash
+   cat ./skill/modules.md
+   ```
+
+4. Shell (simulated):
+   ```bash
+   node /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/tmp.yaNefVgbKr/skill/app/ryugi.cjs modules --project-dir /Users/p/git/notes-app
+   ```
+   Assume the existing vocabulary includes `settings`, described as “Preferences, appearance and settings navigation,” with no hints requiring changes.
+
+5. Shell (simulated):
+   ```bash
+   node /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/tmp.yaNefVgbKr/skill/app/ryugi.cjs modules --project-dir /Users/p/git/notes-app --artifact artboard/settings-nav --set settings
+   ```
+   Assume tagging succeeds. No edit to `modules.json` is needed.
+
+6. Shell (simulated; resolves the conflicting server status and obtains the sharing URL):
+   ```bash
+   node /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/tmp.yaNefVgbKr/skill/app/ryugi.cjs start --background --project-dir /Users/p/git/notes-app --artifact artboard/settings-nav
+   ```
+   Assume:
+   ```text
+   Server: RUNNING · reused
+   Project: /Users/p/git/notes-app
+   Artifact: artboard/settings-nav
+   Open: http://localhost:27319/artboard/settings-nav
+   Cloud: local_only
+   ```
+
+7. Shell (simulated):
+   ```bash
+   node /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/tmp.yaNefVgbKr/skill/app/ryugi.cjs check --project-dir /Users/p/git/notes-app --artifact artboard/settings-nav
+   ```
+   Assume the browser has now loaded the boards and the result is clean, with no warnings or pending work.
+
+8. Message to partner:
+
+   “The settings navigation options are ready: [Open the artboard](http://localhost:27319/artboard/settings-nav). Pick an option and submit the round on the page. I tagged it under Settings; the file and layout checks are clean.”
+
+Stop and wait for their choice.
+
+SUMMARY: Simulated module tagging, server reuse and clean checks; gave http://localhost:27319/artboard/settings-nav.

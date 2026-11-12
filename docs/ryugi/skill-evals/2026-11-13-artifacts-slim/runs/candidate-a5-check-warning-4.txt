@@ -1,0 +1,52 @@
+1. Read guides with the shell (actually read):
+   ```bash
+   cat ./skill/artboard.md
+   ```
+   ```bash
+   cat ./skill/modules.md
+   ```
+
+2. Shell — simulated:
+   ```bash
+   node /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/tmp.lEJ98OTHFq/skill/app/ryugi.cjs check --project-dir /Users/p/git/notes-app --artifact artboard/settings-nav
+   ```
+   Output: the supplied `W_MODULES` warning and `browser_not_run` pending item.
+
+3. Shell — simulated:
+   ```bash
+   node /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/tmp.lEJ98OTHFq/skill/app/ryugi.cjs modules --project-dir /Users/p/git/notes-app
+   ```
+   Assume the vocabulary includes `settings`, described as preferences and settings navigation, with no hints requiring edits.
+
+4. Shell — simulated:
+   ```bash
+   node /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/tmp.lEJ98OTHFq/skill/app/ryugi.cjs modules --project-dir /Users/p/git/notes-app --artifact artboard/settings-nav --set settings
+   ```
+   Assume tagging succeeds. No manual file writes or vocabulary changes.
+
+5. Shell — simulated:
+   ```bash
+   node /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/tmp.lEJ98OTHFq/skill/app/ryugi.cjs check --project-dir /Users/p/git/notes-app --artifact artboard/settings-nav
+   ```
+   Assume the automatically opened viewer has now loaded the completed static boards, and check reports no warnings or pending work. This establishes readiness; no independent screenshot review has run.
+
+6. Shell — simulated, immediately before sharing:
+   ```bash
+   node /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/tmp.lEJ98OTHFq/skill/app/ryugi.cjs start --background --project-dir /Users/p/git/notes-app --artifact artboard/settings-nav
+   ```
+   Assume:
+   ```text
+   Server: RUNNING · reused
+   Project: /Users/p/git/notes-app
+   Artifact: artboard/settings-nav
+   Open: http://localhost:27319/artboard/settings-nav
+   Cloud: local_only
+   ```
+
+7. Message to partner:
+
+   “The settings navigation options are ready: [Open the artboard](http://localhost:27319/artboard/settings-nav). I tagged it under Settings, and check reports no warnings or pending work. Pick an option and submit the round on the page.”
+
+Stop and wait for their choice.
+
+SUMMARY: Simulated checking and tagging settings-nav, rechecking readiness, and reusing the server; gave http://localhost:27319/artboard/settings-nav.

@@ -1,0 +1,52 @@
+1. **Message to partner:** “I’m using the artifacts skill to add conflict resolution to the existing sync design.”
+
+2. **Shell — read the document guide** (actually read):
+   ```bash
+   cat ./skill/document.md
+   ```
+
+3. **Shell — simulated read of the current document:**
+   ```bash
+   cat /Users/p/git/notes-app/.ryugi/artifacts/document/sync-design/doc.xml
+   ```
+   **Assumed result:** The complete document describes revision-based sync with optimistic concurrency. All sections are complete; conflict resolution is missing. Existing blocks have server-assigned IDs.
+
+4. **Edit tool — simulated targeted insertion:**
+
+   Path: `/Users/p/git/notes-app/.ryugi/artifacts/document/sync-design/doc.xml`
+
+   Two-line content sketch:
+   ```text
+   Add “Conflict resolution”: compare base, local and remote revisions; merge independent changes, preserve both versions for overlapping edits and delete/edit conflicts, and explain recovery with a concrete two-device example.
+   Add a case/outcome table and resolution steps: choose or combine versions, save against the latest revision, retry if it changed, and deduplicate repeated submissions; preserve every existing block and ID, with no IDs on new blocks.
+   ```
+   **Assumed result:** The section is inserted beside the existing sync protocol section; the rest of the document remains intact.
+
+5. **Shell — simulated validation:**
+   ```bash
+   node /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/tmp.FzzPYzq0do/skill/app/ryugi.cjs check --project-dir /Users/p/git/notes-app --artifact document/sync-design
+   ```
+   **Assumed successful output:**
+   ```text
+   Check: CLEAN · document/sync-design
+   ```
+   No warnings, pending sections, or unfinished merges are reported.
+
+6. **Shell — simulated retrieval of the current link immediately before sharing:**
+   ```bash
+   node /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/tmp.FzzPYzq0do/skill/app/ryugi.cjs start --background --project-dir /Users/p/git/notes-app --artifact document/sync-design
+   ```
+   **Assumed successful output** (using the situation’s statement that the server is running):
+   ```text
+   Server: RUNNING · reused
+   Project: /Users/p/git/notes-app
+   Artifact: document/sync-design
+   Open: https://ryugi.innei.dev/a/sync-design-example
+   Local: http://localhost:27319/document/sync-design
+   Cloud: live_link_reserved
+   ```
+   The example URL stands in for the existing artifact’s actual printed URL. No `publish` command is needed: auto-publish will update its existing private copy when the turn ends.
+
+7. **Final message to partner:** “Added conflict resolution covering automatic merges, overlapping edits, delete/edit conflicts, and recovery. Validation is clean. [Open the updated sync design](https://ryugi.innei.dev/a/sync-design-example).”
+
+SUMMARY: Simulated updating and checking document/sync-design, reused the server, and shared the assumed existing Open link https://ryugi.innei.dev/a/sync-design-example; private auto-publish handles the update.

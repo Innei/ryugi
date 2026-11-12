@@ -1,0 +1,24 @@
+Message: “I’ll publish the sync design document so your teammate can open it.”
+
+Tool call (read):
+```bash
+cat ./skill/cloud.md
+```
+Read the actual guide: first publication for someone else uses `--public`; the server is already running.
+
+Tool call (simulated):
+```bash
+node /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/tmp.l6Cxb6aJDV/skill/app/ryugi.cjs publish --project-dir /Users/p/git/notes-app --artifact document/sync-design --public
+```
+
+Assumed successful output:
+```text
+Publish: PUBLISHED · document/sync-design
+ID: sync-design-k7m2
+URL: https://ryugi.innei.dev/a/sync-design-k7m2
+Visibility: public (requested)
+```
+
+Message: “Your teammate can open the [sync design document](https://ryugi.innei.dev/a/sync-design-k7m2). Anyone with the link can view it.”
+
+SUMMARY: Simulated publishing `document/sync-design` publicly; gave https://ryugi.innei.dev/a/sync-design-k7m2.

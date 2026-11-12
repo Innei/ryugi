@@ -1,0 +1,33 @@
+Message: “I’ll publish the document so your teammate can open it.”
+
+Simulated shell call:
+```bash
+node /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/tmp.syGVOiaHVO/skill/app/ryugi.cjs start --background --project-dir /Users/p/git/notes-app --artifact document/sync-design
+```
+
+Assumed successful output:
+```text
+Server: RUNNING · reused
+Project: /Users/p/git/notes-app
+Artifact: document/sync-design
+Open: https://ryugi.innei.dev/a/sync-design-7k2m
+Local: http://localhost:27319/document/sync-design
+Cloud: live_link_reserved
+```
+
+Simulated shell call:
+```bash
+node /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/tmp.syGVOiaHVO/skill/app/ryugi.cjs publish --project-dir /Users/p/git/notes-app --artifact document/sync-design --public
+```
+
+Assumed successful output:
+```text
+Publish: PUBLISHED · document/sync-design
+ID: sync-design-7k2m
+URL: https://ryugi.innei.dev/a/sync-design-7k2m
+Visibility: public (requested)
+```
+
+Message: “Here’s the [public document link](https://ryugi.innei.dev/a/sync-design-7k2m) your teammate can open.”
+
+SUMMARY: Simulated reusing the server and publishing document/sync-design publicly; gave https://ryugi.innei.dev/a/sync-design-7k2m.

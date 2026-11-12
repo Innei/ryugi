@@ -1,0 +1,94 @@
+**Message to partner:** “I’ll use the artifacts skill to make a sidebar motion playground with easing presets, a duration slider, and collapse/expand controls.”
+
+**1. Shell — read the HTML guide**
+```bash
+cat ./skill/html.md
+```
+Read successfully.
+
+**2. Shell — read the controls guide**
+```bash
+cat ./skill/ui.md
+```
+Read successfully. All calls below are simulated.
+
+**3. Shell — inspect project instructions and design files**
+```bash
+cd /Users/p/git/notes-app && rg --files -g AGENTS.md -g '*sidebar*' -g '*Sidebar*' -g '*token*' -g '*theme*' -g '*global*.css' -g 'package.json'
+```
+Assumed result: `AGENTS.md`, `src/components/Sidebar.tsx`, `src/styles/tokens.css`, and `package.json`.
+
+**4. Shell — read project guidance**
+```bash
+cat /Users/p/git/notes-app/AGENTS.md
+```
+Assumed result: no additional artifact requirements.
+
+**5. Shell — read the existing sidebar and visual tokens**
+```bash
+cat /Users/p/git/notes-app/src/components/Sidebar.tsx /Users/p/git/notes-app/src/styles/tokens.css /Users/p/git/notes-app/package.json
+```
+Assumed result: a 240px sidebar collapsing to a 56px rail, system typography, neutral surfaces with a blue accent, and light/dark themes.
+
+**6. Shell — start the server before writing**
+```bash
+node /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/tmp.0NNZ30CodA/skill/app/ryugi.cjs start --background --project-dir /Users/p/git/notes-app --artifact html/sidebar-motion
+```
+Assumed output:
+```text
+Server: RUNNING
+Project: /Users/p/git/notes-app
+Artifact: html/sidebar-motion
+Open: http://localhost:27319/html/sidebar-motion
+Cloud: local_only
+```
+
+**7. File write**
+
+Path: `/Users/p/git/notes-app/.ryugi/artifacts/html/sidebar-motion/index.html`
+
+Two-line content sketch:
+```text
+Complete “Sidebar motion” HTML playground using the app’s tokens and real notes copy; light/dark previews share a 100–600ms ryugi-slider-input, easing ryugi-select (ease, ease-out, crisp cubic-bezier, custom), four custom curve inputs, and Collapse/Expand, Replay, and Reset ryugi-buttons, all with stable ids.
+Wait for ryugi-ui:ready; read control properties and handle ryugi-change plus restored input/change events; animate both sidebars and content reflow together, show exact CSS values, preserve interruption continuity, avoid storage APIs, and respect reduced motion with an explicit opt-in to animated preview.
+```
+
+**8. Shell — check the last write**
+```bash
+node /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/tmp.0NNZ30CodA/skill/app/ryugi.cjs check --project-dir /Users/p/git/notes-app --artifact html/sidebar-motion
+```
+Assumed output:
+```text
+Check: INCOMPLETE · html/sidebar-motion
+Browser: not run
+Pending: browser_not_run
+```
+Assume no structural warnings or `W_MODULES` line. Runtime remains unverified.
+
+**Message to partner:** “The [sidebar playground](http://localhost:27319/html/sidebar-motion) is ready to open. Try the easing presets and duration slider, then use Replay to feel each setting in both themes. It starts at 220ms with `cubic-bezier(0.2, 0, 0, 1)`. I’m checking the interactions now.”
+
+**9. Browser — open**
+```text
+browser.open("http://localhost:27319/html/sidebar-motion")
+```
+Assumed result: page loads and bundled controls initialize.
+
+**10. Browser — exercise the playground**
+```text
+browser.test("Set duration to 320ms; select each easing preset; enter custom curve (0.22, 1, 0.36, 1); collapse, expand, replay, and reverse mid-animation. Verify both themes and the CSS readout. Reload and verify restored controls update the preview. Emulate reduced motion and verify animation requires opt-in.")
+```
+Assumed result: all interactions pass; restored controls match the readout and preview.
+
+**11. Shell — confirm browser evidence**
+```bash
+node /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/tmp.0NNZ30CodA/skill/app/ryugi.cjs check --project-dir /Users/p/git/notes-app --artifact html/sidebar-motion
+```
+Assumed output:
+```text
+Check: OK · html/sidebar-motion
+Browser: ran
+```
+
+**Message to partner:** “The [playground](http://localhost:27319/html/sidebar-motion) checks out, including replay, reversing mid-animation, and restored settings. Play with it and tell me which combination feels right.”
+
+SUMMARY: Simulated a sidebar easing/duration HTML playground, server startup, validation and browser checks; gave http://localhost:27319/html/sidebar-motion.

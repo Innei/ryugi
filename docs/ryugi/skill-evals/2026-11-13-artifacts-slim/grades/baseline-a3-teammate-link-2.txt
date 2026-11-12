@@ -1,0 +1,1 @@
+PASS — Ran publish through the launcher with the required project, artifact, and --public flag, then shared the URL printed by publish.

@@ -1,0 +1,51 @@
+1. **Message:** “I’ll add conflict resolution to the existing sync design, keeping its current structure.”
+
+2. **Read guide:**
+   ```bash
+   cat ./skill/document.md
+   ```
+   Read successfully.
+
+3. **Read the current document:**
+   ```bash
+   cat /Users/p/git/notes-app/.ryugi/artifacts/document/sync-design/doc.xml
+   ```
+   **Assumed output:** The complete document describes revision-based sync and offline edits, with existing block IDs and no conflict resolution section.
+
+4. **Edit file:** `/Users/p/git/notes-app/.ryugi/artifacts/document/sync-design/doc.xml`  
+   Two-line content sketch:
+   ```text
+   Append “Conflict resolution” with proposed revision checks, three-way merging against the shared base, and a table covering overlapping edits, edit/delete conflicts, and missing base revisions.
+   Explain preserving both versions when automatic merging is unsafe, explicit user resolution, and retrying against the latest revision; preserve all existing blocks and IDs, omit IDs on new blocks.
+   ```
+
+5. **Validate:**
+   ```bash
+   node /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/tmp.Tbd634v1oI/skill/app/ryugi.cjs check --project-dir /Users/p/git/notes-app --artifact document/sync-design
+   ```
+   **Assumed output:**
+   ```text
+   Check: CLEAN · document/sync-design
+   Warnings: 0
+   Pending: 0
+   ```
+
+6. **Retrieve the existing link immediately before sharing:**
+   ```bash
+   node /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/tmp.Tbd634v1oI/skill/app/ryugi.cjs start --background --project-dir /Users/p/git/notes-app --artifact document/sync-design
+   ```
+   **Assumed output:**
+   ```text
+   Server: RUNNING · reused
+   Project: /Users/p/git/notes-app
+   Artifact: document/sync-design
+   Open: https://ryugi.innei.dev/a/sync-design-example
+   Local: http://localhost:27319/document/sync-design
+   ```
+   The assumed `Open` URL represents the same link shared earlier. No manual publication: auto-publish updates the existing private Cloud copy at turn end.
+
+7. **Final message:** “Added a conflict resolution section covering automatic merges, preserving conflicting versions, edit/delete conflicts, and resolution retries. Validation passed.
+
+   [Read the updated sync design](https://ryugi.innei.dev/a/sync-design-example)”
+
+SUMMARY: Simulated updating document/sync-design, validating it, and retrieving its existing link; gave https://ryugi.innei.dev/a/sync-design-example (assumed).

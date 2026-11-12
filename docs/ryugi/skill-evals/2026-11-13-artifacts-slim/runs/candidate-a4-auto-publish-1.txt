@@ -1,0 +1,49 @@
+1. Message to partner:
+   “I’ll add conflict resolution to the existing sync design, covering concurrent edits, recovery, and what the user sees.”
+
+2. Read the existing document:
+   ```bash
+   cat /Users/p/git/notes-app/.ryugi/artifacts/document/sync-design/doc.xml
+   ```
+   Assumed result: the current document describes revision-based sync with a shared base revision. It has no conflict-resolution section or unfinished placeholders; existing blocks have server-assigned IDs.
+
+3. Edit in place with the file-edit tool:
+   Path: `/Users/p/git/notes-app/.ryugi/artifacts/document/sync-design/doc.xml`
+   
+   Content sketch, two lines:
+   ```text
+   Add “Conflict resolution” before the closing section; preserve all existing text and block IDs, leaving new blocks without IDs.
+   Explain stale-revision detection, three-way merging of independent edits, preserving both versions for overlapping edits or edit/delete conflicts, and revision-checked resolution with retry.
+   ```
+
+   The section describes this as proposed behavior, includes a table of conflict cases, and explains that unresolved versions remain available until the user saves a resolution.
+
+4. Validate the edit:
+   ```bash
+   node /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/tmp.S1jvyCOPd9/skill/app/ryugi.cjs check --project-dir /Users/p/git/notes-app --artifact document/sync-design
+   ```
+   Assumed result:
+   ```text
+   Check: CLEAN · document/sync-design
+   Warnings: 0
+   Pending: 0
+   ```
+
+5. Retrieve the existing artifact’s link immediately before sharing:
+   ```bash
+   node /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/tmp.S1jvyCOPd9/skill/app/ryugi.cjs start --background --project-dir /Users/p/git/notes-app --artifact document/sync-design
+   ```
+   Assumed result, taking “the server is running” as the current state:
+   ```text
+   Server: RUNNING · reused
+   Project: /Users/p/git/notes-app
+   Artifact: document/sync-design
+   Open: https://ryugi.innei.dev/a/sync-design-k7m2
+   Local: http://localhost:27319/document/sync-design
+   ```
+   No publish command: auto-publish is already on.
+
+6. Final message to partner:
+   “Added conflict resolution to the [sync design](https://ryugi.innei.dev/a/sync-design-k7m2): concurrent edits, merge rules, preserved conflict copies, and resolution retries. Validation passed.”
+
+SUMMARY: Simulated editing and checking document/sync-design, reused the server, and shared https://ryugi.innei.dev/a/sync-design-k7m2; no publish command.

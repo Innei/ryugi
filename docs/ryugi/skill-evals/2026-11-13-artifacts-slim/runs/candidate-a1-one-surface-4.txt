@@ -1,0 +1,124 @@
+**Message to partner:**  
+“I’m using the artifacts skill to make a sidebar motion playground with duration and easing controls, plus collapse and expand playback.”
+
+**1. Shell — read the HTML guide (actually read):**
+```bash
+cat ./skill/html.md
+```
+
+**2. Shell — read the controls guide (actually read):**
+```bash
+cat ./skill/ui.md
+```
+
+All calls below are simulated; no project files or commands are actually executed.
+
+**3. Shell — find the app’s design tokens and sidebar:**
+```bash
+rg --files /Users/p/git/notes-app -g '*theme*' -g '*token*' -g '*Sidebar*' -g '*sidebar*' -g '*globals*'
+```
+
+Assumed result:
+```text
+/Users/p/git/notes-app/src/styles/tokens.css
+/Users/p/git/notes-app/src/components/Sidebar.tsx
+```
+
+**4. Shell — read those files:**
+```bash
+cat /Users/p/git/notes-app/src/styles/tokens.css /Users/p/git/notes-app/src/components/Sidebar.tsx
+```
+
+Assumed result: the app uses system typography, neutral surfaces with a violet accent, light and dark themes, and a sidebar that collapses from 240px to 56px.
+
+**Message to partner:**  
+“I’ll match the app’s styling and start at 220ms with ease-out. You can adjust the timing, try custom Bézier values, and reverse the animation mid-collapse to feel how it responds.”
+
+**5. Shell — start the artifact before writing its first file:**
+```bash
+node /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/tmp.YhQmVcqIEV/skill/app/ryugi.cjs start --background --project-dir /Users/p/git/notes-app --artifact html/sidebar-motion
+```
+
+Assumed output:
+```text
+Server: RUNNING
+Project: /Users/p/git/notes-app
+Artifact: html/sidebar-motion
+Open: http://localhost:27319/html/sidebar-motion
+Local: http://localhost:27319/html/sidebar-motion
+Cloud: local_only
+```
+
+**6. File write**
+
+Path: `/Users/p/git/notes-app/.ryugi/artifacts/html/sidebar-motion/index.html`
+
+Two-line content sketch:
+```text
+Complete “Sidebar motion” HTML page with app-matched light/dark preview, real note titles, duration slider (0–600ms), easing presets and four custom Bézier inputs, collapse/expand and replay buttons, and a live CSS timing readout.
+Bundled ryugi controls have stable ids; initialize from their properties on ryugi-ui:ready and update through ryugi-change, including restored values; animate reversible 240px↔56px sidebar width, clip labels, respect reduced motion, and use no browser storage or external local assets.
+```
+
+The implementation would use `ryugi-slider-input`, `ryugi-select`, `ryugi-input-number`, `ryugi-segmented`, and `ryugi-button`. Bézier x values would be constrained to 0–1. Theme and sidebar state would also be stored in controls with stable IDs so restored settings redraw correctly.
+
+**7. Shell — validate the last write:**
+```bash
+node /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/tmp.YhQmVcqIEV/skill/app/ryugi.cjs check --project-dir /Users/p/git/notes-app --artifact html/sidebar-motion
+```
+
+Assumed output:
+```text
+Check: INCOMPLETE · html/sidebar-motion
+Browser: not run
+Pending: browser_not_run
+```
+
+Assumption: there are no validation warnings or module-tagging instructions. Browser execution remains unverified.
+
+**8. Shell — refresh the link immediately before sharing:**
+```bash
+node /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/tmp.YhQmVcqIEV/skill/app/ryugi.cjs start --background --project-dir /Users/p/git/notes-app --artifact html/sidebar-motion
+```
+
+Assumed output:
+```text
+Server: RUNNING · reused
+Project: /Users/p/git/notes-app
+Artifact: html/sidebar-motion
+Open: http://localhost:27319/html/sidebar-motion
+Local: http://localhost:27319/html/sidebar-motion
+Cloud: local_only
+```
+
+**Message to partner:**  
+“[Open the sidebar motion playground](http://localhost:27319/html/sidebar-motion). Adjust duration and easing, then collapse, expand, or reverse midway. The timing values stay visible for whichever combination you like. Browser checks are next.”
+
+**9. Browser tool — open:**
+```text
+browser.open({ "url": "http://localhost:27319/html/sidebar-motion" })
+```
+
+**10. Browser tool — exercise controls:**
+```text
+browser.evaluate({ "expression": "async () => { await customElements.whenDefined('ryugi-button'); document.getElementById('toggle-sidebar').click(); await new Promise(resolve => setTimeout(resolve, 80)); document.getElementById('toggle-sidebar').click(); return { sidebarWidth: getComputedStyle(document.getElementById('sidebar')).width, timing: document.getElementById('timing-readout').textContent }; }" })
+```
+
+Then inspect the page in both themes, exercise duration endpoints and custom easing, and reload to confirm control restoration.
+
+Assumed result: collapse, expansion, interruption, theme switching, and restored controls work; the timing readout matches the selected settings.
+
+**11. Shell — confirm browser evidence:**
+```bash
+node /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/tmp.YhQmVcqIEV/skill/app/ryugi.cjs check --project-dir /Users/p/git/notes-app --artifact html/sidebar-motion
+```
+
+Assumed output:
+```text
+Check: OK · html/sidebar-motion
+Browser: passed
+```
+
+**Message to partner:**  
+“Playback and control restoration checked out in both themes, with no reported runtime errors. Try a few timings and tell me which feels right.”
+
+SUMMARY: Simulated creating and checking an interactive HTML sidebar motion playground; gave http://localhost:27319/html/sidebar-motion.

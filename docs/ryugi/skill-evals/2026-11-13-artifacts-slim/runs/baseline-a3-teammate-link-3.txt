@@ -1,0 +1,31 @@
+1. Message to partner: “I’ll publish the sync design so your teammate can open it.”
+
+2. Shell call (simulated):
+   ```bash
+   node "$PWD/skill/app/ryugi.cjs" start --background --project-dir /Users/p/git/notes-app --artifact document/sync-design
+   ```
+   Assumed output:
+   ```text
+   Server: RUNNING · reused
+   Project: /Users/p/git/notes-app
+   Artifact: document/sync-design
+   Open: https://ryugi.innei.dev/a/sync-design-k7m2
+   Local: http://localhost:27319/document/sync-design
+   Cloud: live_link_reserved
+   ```
+
+3. Shell call (simulated):
+   ```bash
+   node "$PWD/skill/app/ryugi.cjs" publish --project-dir /Users/p/git/notes-app --artifact document/sync-design --public
+   ```
+   Assumed output:
+   ```text
+   Publish: PUBLISHED · document/sync-design
+   ID: sync-design-k7m2
+   URL: https://ryugi.innei.dev/a/sync-design-k7m2
+   Visibility: public (requested)
+   ```
+
+4. Message to partner: “Published: [Sync design](https://ryugi.innei.dev/a/sync-design-k7m2). Your teammate can open this public link from her machine.”
+
+SUMMARY: Simulated reusing the server and publishing the existing document publicly; gave https://ryugi.innei.dev/a/sync-design-k7m2.

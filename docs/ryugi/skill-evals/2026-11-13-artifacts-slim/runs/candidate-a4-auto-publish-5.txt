@@ -1,0 +1,51 @@
+1. **Message to partner:** “I’ll add conflict resolution to the existing sync design, following its current approach.”
+
+2. **Shell — read the document guide (actually read):**
+   ```bash
+   cat ./skill/document.md
+   ```
+
+3. **Shell — simulated:**
+   ```bash
+   cat /Users/p/git/notes-app/.ryugi/artifacts/document/sync-design/doc.xml
+   ```
+   **Assumed output:** The current document has stable block IDs and describes revision-based sync. Concurrent edits are detected, but resolution behavior is unspecified.
+
+4. **Edit tool — simulated targeted insertion**, preserving existing text and block IDs; new blocks have no IDs.
+
+   Path: `/Users/p/git/notes-app/.ryugi/artifacts/document/sync-design/doc.xml`
+
+   Two-line content sketch:
+   ```text
+   Add “Conflict resolution”: detect a stale base revision, merge non-overlapping edits, and preserve both versions when overlapping edits or edit/delete conflicts need user review.
+   Add resolution steps: compare versions, choose or combine content, then save against the latest revision; retry on another concurrent change and retain recoverable originals.
+   ```
+
+5. **Shell — simulated:**
+   ```bash
+   node /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/tmp.iM36nC1UVl/skill/app/ryugi.cjs check --project-dir /Users/p/git/notes-app --artifact document/sync-design
+   ```
+   **Assumed output:**
+   ```text
+   Check: CLEAN · document/sync-design
+   Warnings: 0
+   Pending: 0
+   ```
+
+6. **Shell — simulated, immediately before sharing:**
+   ```bash
+   node /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/tmp.iM36nC1UVl/skill/app/ryugi.cjs start --background --project-dir /Users/p/git/notes-app --artifact document/sync-design
+   ```
+   **Assumed output:** The running server is reused and returns the existing link:
+   ```text
+   Server: RUNNING · reused
+   Project: /Users/p/git/notes-app
+   Artifact: document/sync-design
+   Open: https://ryugi.innei.dev/a/notes-sync-design
+   Local: http://localhost:27319/document/sync-design
+   ```
+   No explicit publish command; auto-publish keeps the private copy current.
+
+7. **Final message to partner:** “Added conflict resolution covering automatic merges, overlapping edits, edit/delete conflicts, and saving a resolved version safely. Validation passed. [Open the updated sync design](https://ryugi.innei.dev/a/notes-sync-design).”
+
+SUMMARY: Read the document guide; simulated editing and checking the existing document and reusing the server; gave the assumed existing link https://ryugi.innei.dev/a/notes-sync-design.
