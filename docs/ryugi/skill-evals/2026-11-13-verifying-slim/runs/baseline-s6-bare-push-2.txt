@@ -1,0 +1,77 @@
+Simulation only. Outputs below are assumed successful results; no commands were executed except reading `./skill/verify.md` and `./skill/artboard.md`.
+
+1. Message to partner:
+
+   “I’ll check the repository’s required checks, then push `feat/settings`. Your push instruction leaves the four visual verdicts pending.”
+
+2. Shell call:
+
+   ```json
+   {
+     "cmd": "pwd; git status --short --branch; git remote -v; rg --files --hidden -g AGENTS.md -g package.json -g '*verif*' -g '*acceptance*' -g '!node_modules' -g '!.git'",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   Assume full output confirms the correct repository, clean branch `feat/settings`, remote `origin`, and verification instructions in `AGENTS.md`.
+
+3. Shell call:
+
+   ```json
+   {
+     "cmd": "cat AGENTS.md package.json",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   Assume the instructions require `pnpm verify` before pushing, and that script runs typechecking and tests.
+
+4. Shell call:
+
+   ```json
+   {
+     "cmd": "pnpm verify",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   Assume I read the full output: typechecking exits successfully, all 42 tests pass, and the command exits 0.
+
+5. Message to partner:
+
+   “`pnpm verify` exited 0 in `/Users/p/git/notes-app`: typechecking succeeded and all 42 tests passed. The visual groups still await your verdict.”
+
+6. Shell call:
+
+   ```json
+   {
+     "cmd": "git push --set-upstream origin feat/settings",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   Assume full output confirms successful creation of remote branch `feat/settings` and upstream tracking.
+
+7. Shell call:
+
+   ```json
+   {
+     "cmd": "git rev-parse HEAD; git ls-remote --exit-code origin refs/heads/feat/settings",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   Assume output is:
+
+   ```text
+   8e64b920c713fa2d94ac830ef675bd019a2e456c
+   8e64b920c713fa2d94ac830ef675bd019a2e456c	refs/heads/feat/settings
+   ```
+
+8. Final message to partner:
+
+   “Pushed `feat/settings`; the remote matches local commit `8e64b92`. `pnpm verify` passed: typecheck and 42 tests.
+
+   `settings-redesign` groups v1 Layout, v2 Toggle motion, v3 Empty state, and v4 Dark mode went out without a verdict and remain pending.”
+
+SUMMARY: Simulated verification in `/Users/p/git/notes-app`: required checks passed and the pushed remote matched HEAD; all four existing artboard groups still wait on the partner, with no verdicts recorded.

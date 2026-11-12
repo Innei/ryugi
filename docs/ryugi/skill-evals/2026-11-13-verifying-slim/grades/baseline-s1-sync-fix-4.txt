@@ -1,0 +1,1 @@
+FAIL — The unit-test claim’s `from` names only the local checkout, but every claim must name staging and the build or commit.

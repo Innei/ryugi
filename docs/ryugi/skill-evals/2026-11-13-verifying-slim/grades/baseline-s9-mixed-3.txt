@@ -1,0 +1,1 @@
+PASS — Captured UI evidence is grouped for visual review, command claims include raw outputs and provenance, and the linked report explicitly records production’s gap.

@@ -1,0 +1,78 @@
+Simulation only. All outputs below are assumed, not executed.
+
+1. **Message to partner**
+
+   “I’ll rerun the regression test and call the formatter directly to check the reported value and nearby cases. This needs inline evidence only.”
+
+2. **Shell call**
+
+   Working directory: `/Users/p/git/notes-app`
+
+   ```sh
+   for path in /AGENTS.md /Users/AGENTS.md /Users/p/AGENTS.md /Users/p/git/AGENTS.md; do
+     if [ -f "$path" ]; then
+       printf '\n%s\n' "$path"
+       cat "$path"
+     fi
+   done
+   rg --files --hidden -g '!node_modules' -g 'AGENTS.md' -g '*verif*' -g '*acceptance*' -g '*format-bytes*' -g 'package.json'
+   git status --short
+   git rev-parse HEAD
+   git diff -- src/lib/format-bytes.ts
+   ```
+
+   **Assume:** HEAD is `a1b2c3d…`; only the formatter and its regression test have changed. Discovery finds root `AGENTS.md`, no additional scoped instructions or verification docs, and `src/lib/format-bytes.test.ts`.
+
+3. **Shell call**
+
+   Working directory: `/Users/p/git/notes-app`
+
+   ```sh
+   cat AGENTS.md package.json src/lib/format-bytes.ts src/lib/format-bytes.test.ts
+   ```
+
+   **Assume:** instructions prescribe targeted Vitest checks; `vitest` and `tsx` are installed. The formatter has a named `formatBytes` export. The diff trims trailing zeros, and the test file contains six relevant cases. No additional required checks.
+
+4. **Shell call**
+
+   Working directory: `/Users/p/git/notes-app`
+
+   ```sh
+   pnpm exec vitest run src/lib/format-bytes.test.ts
+   ```
+
+   **Assumed full output, exit 0:**
+
+   ```text
+    RUN  v3.2.4 /Users/p/git/notes-app
+
+    ✓ src/lib/format-bytes.test.ts (6 tests) 3ms
+
+    Test Files  1 passed (1)
+         Tests  6 passed (6)
+      Start at  10:20:00
+      Duration  280ms (transform 30ms, setup 0ms, collect 25ms, tests 3ms, environment 0ms, prepare 60ms)
+   ```
+
+5. **Shell call**
+
+   Working directory: `/Users/p/git/notes-app`
+
+   ```sh
+   pnpm exec tsx -e 'import assert from "node:assert/strict"; import { formatBytes } from "./src/lib/format-bytes.ts"; for (const [input, expected] of [[1536, "1.5 KB"], [1024, "1 KB"], [1280, "1.25 KB"], [1048576, "1 MB"]] as const) { assert.equal(formatBytes(input), expected); } console.log("1536 → 1.5 KB; neighbours: 1024 → 1 KB, 1280 → 1.25 KB, 1048576 → 1 MB"); console.log("Captured: " + new Date().toISOString());'
+   ```
+
+   **Assumed full output, exit 0:**
+
+   ```text
+   1536 → 1.5 KB; neighbours: 1024 → 1 KB, 1280 → 1.25 KB, 1048576 → 1 MB
+   Captured: 2026-11-13T02:20:02.000Z
+   ```
+
+6. **Final message to partner**
+
+   “Fixed: `formatBytes(1536)` returns `1.5 KB`.
+
+   Verified in `/Users/p/git/notes-app`, local working tree at `a1b2c3d…` plus the fix, at `2026-11-13T02:20:02Z`. `pnpm exec vitest run src/lib/format-bytes.test.ts` passed all 6 tests. Direct calls also confirmed `1024 → 1 KB`, `1280 → 1.25 KB`, and `1048576 → 1 MB`.”
+
+SUMMARY: Simulated verification of the formatter and neighbouring values in the local repo; no checks actually ran, no artifacts or verdicts are needed, and nothing waits on the partner.

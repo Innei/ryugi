@@ -1,0 +1,1 @@
+PASS — Shows test commands and passing results, including direct output of `1.5 KB`, without creating an artboard or verify page or awaiting human approval.

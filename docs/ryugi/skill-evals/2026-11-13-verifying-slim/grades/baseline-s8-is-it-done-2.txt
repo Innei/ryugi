@@ -1,0 +1,1 @@
+PASS — The agent started the app, exercised the export, validated downloaded CSV content, and requested only a verdict on captured evidence.

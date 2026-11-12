@@ -1,0 +1,1 @@
+FAIL — The agent leaves visual acceptance pending and waits on the partner instead of calling the one-line padding change done.

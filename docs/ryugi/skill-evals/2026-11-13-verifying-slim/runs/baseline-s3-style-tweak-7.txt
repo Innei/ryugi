@@ -1,0 +1,109 @@
+Simulation only. Outputs below are assumed; no app checks or file changes actually run. This is one small visible change, so verification stays inline—no report or artboard.
+
+1. **Message to partner**
+
+   “I’ll check the applied padding in the running settings page and capture it. I missed capturing the original appearance before editing, so there’s no authentic before screenshot.”
+
+2. **Shell call**
+
+   ```json
+   {
+     "cmd": "pwd; for f in /AGENTS.md /Users/AGENTS.md /Users/p/AGENTS.md /Users/p/git/AGENTS.md; do if [ -f \"$f\" ]; then cat \"$f\"; fi; done; rg --files --hidden -g '!node_modules' -g '!.git' -g AGENTS.md -g '*verif*' -g '*acceptance*' -g package.json",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   **Assumed output:** cwd is `/Users/p/git/notes-app`; no ancestor instructions; discovered `AGENTS.md` and `package.json`, with no separate verification or acceptance files.
+
+3. **Shell call**
+
+   ```json
+   {
+     "cmd": "cat AGENTS.md package.json",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   **Assumed output, read in full:** instructions require checking CSS changes in the running app; no additional applicable checks.
+
+4. **Shell call**
+
+   ```json
+   {
+     "cmd": "git diff -- src/settings/SaveButton.css",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   **Assumed output:** the sole change is:
+
+   ```diff
+   -  padding-inline: 8px;
+   +  padding-inline: 12px;
+   ```
+
+5. **Shell call**
+
+   ```json
+   {
+     "cmd": "agent-browser --auto-connect get url",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   **Assumed output:**
+
+   ```text
+   http://localhost:5173/settings
+   ```
+
+6. **Shell call**
+
+   ```json
+   {
+     "cmd": "agent-browser --auto-connect eval '(() => { const matches = [...document.querySelectorAll(\"button\")].filter(b => b.textContent.trim() === \"Save\"); if (matches.length !== 1) throw new Error(`Expected one Save button; found ${matches.length}`); const b = matches[0]; const s = getComputedStyle(b); const r = b.getBoundingClientRect(); const result = {url: location.href, capturedAt: new Date().toISOString(), paddingInlineStart: s.paddingInlineStart, paddingInlineEnd: s.paddingInlineEnd, visible: r.width > 0 && r.height > 0, contentFits: b.scrollWidth <= b.clientWidth}; if (result.paddingInlineStart !== \"12px\" || result.paddingInlineEnd !== \"12px\" || !result.visible || !result.contentFits) throw new Error(JSON.stringify(result)); return result; })()'",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   **Assumed full output:**
+
+   ```json
+   {
+     "url": "http://localhost:5173/settings",
+     "capturedAt": "2026-11-13T04:00:00.000Z",
+     "paddingInlineStart": "12px",
+     "paddingInlineEnd": "12px",
+     "visible": true,
+     "contentFits": true
+   }
+   ```
+
+7. **Shell call**
+
+   ```json
+   {
+     "cmd": "agent-browser --auto-connect screenshot /tmp/notes-save-padding-after.png",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   **Assumed output:** screenshot saved at `/tmp/notes-save-padding-after.png`.
+
+8. **Image inspection call**
+
+   ```json
+   {
+     "path": "/tmp/notes-save-padding-after.png"
+   }
+   ```
+
+   **Assumed observation:** the running settings page shows the Save button with its label and surrounding controls visible and unclipped.
+
+9. **Final message to partner**
+
+   “Save now has 12px horizontal padding. The browser check on `http://localhost:5173/settings` returned `12px` for both inline edges; the label fits, and the surrounding settings controls remain unclipped.
+
+   After screenshot: `/tmp/notes-save-padding-after.png`. Before screenshot: unavailable—I edited before capturing it.”
+
+SUMMARY: Simulated verification of 12px padding and the surrounding settings layout on local dev; an authentic before screenshot is missing, and no approval or additional check is assigned to the partner.

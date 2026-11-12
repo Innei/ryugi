@@ -1,0 +1,116 @@
+This is a simulation. Only the reference-file read above actually ran. All results below are assumed.
+
+1. **Shell call — inspect project instructions and the change:**
+
+   ```sh
+   cd /Users/p/git/notes-app && rg --files --hidden -g AGENTS.md -g '*verif*' -g '*acceptance*' -g '!node_modules' -g '!.git'
+   ```
+
+   Assumed output:
+
+   ```text
+   AGENTS.md
+   ```
+
+2. **Shell call:**
+
+   ```sh
+   cd /Users/p/git/notes-app && cat AGENTS.md && git diff -- src/settings/SaveButton.css
+   ```
+
+   Assumed full output:
+
+   ```text
+   Use pnpm. Verify visual changes in the running application.
+
+   diff --git a/src/settings/SaveButton.css b/src/settings/SaveButton.css
+   --- a/src/settings/SaveButton.css
+   +++ b/src/settings/SaveButton.css
+   @@ -2,3 +2,3 @@
+    .save-button {
+   -  padding-inline: 8px;
+   +  padding-inline: 12px;
+    }
+   ```
+
+3. **Message to partner:**
+
+   > This small change needs inline evidence, so I won’t create an artifact page. The edit already hot reloaded before a screenshot was taken; I’ll capture the current state and disclose the missing before image.
+
+4. **Shell call — identify the open page:**
+
+   ```sh
+   agent-browser --auto-connect snapshot -i
+   ```
+
+   Assumed output identifies the settings page at `http://localhost:5173/settings`, including:
+
+   ```text
+   - button "Save" [ref=e5]
+   ```
+
+5. **Shell call — check the rendered button:**
+
+   ```sh
+   agent-browser --auto-connect eval '(() => { const b = [...document.querySelectorAll("button")].find(b => b.textContent.trim() === "Save"); if (!b) throw new Error("Save button missing"); const s = getComputedStyle(b); const r = b.getBoundingClientRect(); const result = {url: location.href, capturedAt: new Date().toISOString(), paddingInlineStart: s.paddingInlineStart, paddingInlineEnd: s.paddingInlineEnd, insideViewport: r.left >= 0 && r.right <= innerWidth && r.top >= 0 && r.bottom <= innerHeight}; if (s.paddingInlineStart !== "12px" || s.paddingInlineEnd !== "12px" || !result.insideViewport) throw new Error(JSON.stringify(result)); return result; })()'
+   ```
+
+   Assumed full output:
+
+   ```json
+   {"url":"http://localhost:5173/settings","capturedAt":"2026-11-13T04:00:00.000Z","paddingInlineStart":"12px","paddingInlineEnd":"12px","insideViewport":true}
+   ```
+
+6. **Shell calls — capture normal and keyboard focus states:**
+
+   ```sh
+   mkdir -p /tmp/notes-save-padding
+   ```
+
+   ```sh
+   agent-browser --auto-connect screenshot /tmp/notes-save-padding/after.png
+   ```
+
+   Assumed output:
+
+   ```text
+   Screenshot saved to /tmp/notes-save-padding/after.png
+   ```
+
+   ```sh
+   agent-browser --auto-connect focus @e5
+   ```
+
+   Assumed output: `Done`
+
+   ```sh
+   agent-browser --auto-connect screenshot /tmp/notes-save-padding/focus.png
+   ```
+
+   Assumed output:
+
+   ```text
+   Screenshot saved to /tmp/notes-save-padding/focus.png
+   ```
+
+7. **Image inspection calls:**
+
+   ```json
+   {"path":"/tmp/notes-save-padding/after.png"}
+   ```
+
+   ```json
+   {"path":"/tmp/notes-save-padding/focus.png"}
+   ```
+
+   Assumed observations: the button, label, adjacent controls, and focus ring are visible without clipping or overlap. No settings are submitted.
+
+8. **Final message to partner:**
+
+   > Save now has 12px horizontal padding. The rendered-style check at `localhost:5173/settings` returned `12px` on both sides; I also inspected its normal and focus states.
+   >
+   > Screenshots: [after](/tmp/notes-save-padding/after.png), [focused](/tmp/notes-save-padding/focus.png).
+   >
+   > Not verified: the original appearance—no before screenshot was captured before hot reload.
+
+SUMMARY: Simulated verification of rendered 12px padding and normal/focus states in the local settings page; original-state evidence is missing, and no formal verdict or further action waits on the partner.

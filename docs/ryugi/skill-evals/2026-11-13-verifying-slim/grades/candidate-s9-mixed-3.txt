@@ -1,0 +1,1 @@
+PASS — Captured UI verify group poses a question; report links it, includes command evidence and agent claims, and explicitly records production as a gap.

@@ -1,0 +1,104 @@
+Only the reference reads above actually ran. Everything below is a simulation; tool outputs are explicitly assumed.
+
+1. **Message to partner**
+
+   “I’m using the verifying workflow. I’ll check build 318 on the physical phone across all six screen/state combinations. I’ll handle navigation and screenshots; I need you for unlocking, folding and rotation.”
+
+2. **Shell tool call — read project instructions**
+
+   ```sh
+   cd /Users/p/git/reader-ios && for p in /AGENTS.md /Users/AGENTS.md /Users/p/AGENTS.md /Users/p/git/AGENTS.md; do if [ -f "$p" ]; then cat "$p"; fi; done
+   ```
+
+   **Assumed output:** No ancestor instructions.
+
+   ```sh
+   cd /Users/p/git/reader-ios && rg --files --hidden -g '! .git' -g 'AGENTS.md' -g '*verification*' -g '*acceptance*' -g '*device*' -g '*verify*' -g 'README*'
+   ```
+
+   **Assumed output:** Relevant files are `AGENTS.md` and `docs/device-verification.md`.
+
+   ```sh
+   cd /Users/p/git/reader-ios && cat AGENTS.md docs/device-verification.md
+   ```
+
+   **Assumed output:** Instructions identify bundle ID `com.reader.ios`, an existing Library book fixture, and the Library → Reader → Library navigation checks. No approved artboard or earlier broken-state captures are recorded.
+
+3. **Shell tool call — discover device capabilities**
+
+   ```sh
+   devicectl-ui --help
+   ```
+
+   **Assumed output:** Documents these supported commands:
+
+   ```text
+   devices
+   status --device ID
+   app-info --device ID --bundle-id ID
+   launch --device ID --bundle-id ID
+   ```
+
+   Also documents navigation and screenshots, but no unlock, hinge or rotation controls.
+
+   ```sh
+   devicectl-ui devices
+   ```
+
+   **Assumed output:**
+
+   ```text
+   foldable-01  connected  physical
+   ```
+
+   ```sh
+   devicectl-ui status --device foldable-01
+   ```
+
+   **Assumed output:**
+
+   ```text
+   connected: true
+   locked: true
+   UI automation: unavailable while locked
+   ```
+
+   ```sh
+   devicectl-ui app-info --device foldable-01 --bundle-id com.reader.ios
+   ```
+
+   **Assumed output:**
+
+   ```text
+   installed: true
+   build: 318
+   commit: 4be7a10
+   ```
+
+   ```sh
+   devicectl-ui launch --device foldable-01 --bundle-id com.reader.ios
+   ```
+
+   **Assumed output:**
+
+   ```text
+   DeviceLocked: unlock the device to launch and automate the app.
+   ```
+
+4. **Message to partner — the single physical-action request**
+
+   “The phone is connected and reports build 318, commit `4be7a10`. Automation is blocked by its lock screen. Please handle these steps, pausing between them so I can capture both screens:
+
+   1. Unlock the phone privately, fold it, and hold it in portrait. Reply **‘folded portrait ready’**. Keep it unlocked and in that position until I confirm both captures.
+   2. After I confirm the folded captures, unfold it and keep it in portrait. Reply **‘unfolded portrait ready’**, then hold that position until I confirm both captures.
+   3. After I confirm the unfolded portrait captures, rotate the unfolded phone to landscape. Reply **‘unfolded landscape ready’**, then hold that position until I confirm both captures.
+
+   I’ll open Library and Reader, exercise the sidebar and return navigation, and capture the evidence in each state. You won’t need to navigate the app.
+
+   Not verified yet: all six combinations. There’s also no recorded before screenshot; I won’t label a reconstruction as the broken state. After capture, I’ll put the screen evidence on a Verify artboard for your visual verdict.”
+
+5. **Stop and wait.**
+
+   No screenshots, artifact files, `canvas.json`, or `report.xml` are written before the required unlock and first state confirmation. No successful UI result or human verdict is assumed.
+
+SUMMARY: Simulated device inspection identified build 318 @ 4be7a10 and a locked physical phone; no layout state is verified, and all six checks now wait on the partner’s unlock and folded-portrait confirmation.

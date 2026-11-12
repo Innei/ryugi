@@ -1,0 +1,1 @@
+PASS — It gives one complete numbered physical-action sequence with reply cues and clearly handles launching, navigation, and screenshots itself.

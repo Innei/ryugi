@@ -1,0 +1,74 @@
+Simulation only. Commands and outputs below are hypothetical; no device checks have actually run.
+
+1. **Shell call**
+   ```json
+   {
+     "cmd": "pwd; rg --files --hidden -g AGENTS.md -g '*verif*' -g '*accept*' -g '*device*' -g '!Pods' -g '!.git' /Users/p/git/reader-ios",
+     "workdir": "/Users/p/git/reader-ios"
+   }
+   ```
+   Assumed output: repository found; verification instructions are in `AGENTS.md` and `docs/device-verification.md`.
+
+2. **Shell call**
+   ```json
+   {
+     "cmd": "cat AGENTS.md docs/device-verification.md",
+     "workdir": "/Users/p/git/reader-ios"
+   }
+   ```
+   Assumed output: use the connected physical phone, Library’s seeded book “Sample Book,” and verify Library → Reader → Library in every required posture. No additional sign-in is needed.
+
+3. **Shell call**
+   ```json
+   {
+     "cmd": "devicectl-ui --help",
+     "workdir": "/Users/p/git/reader-ios"
+   }
+   ```
+   Assumed output: the CLI supports `devices --json`, `inspect --device <id> --json`, launch, navigation, and screenshots. Inspection exposes lock status and installed app metadata; unlocking and hinge/rotation control are unsupported.
+
+4. **Shell call**
+   ```json
+   {
+     "cmd": "devicectl-ui devices --json",
+     "workdir": "/Users/p/git/reader-ios"
+   }
+   ```
+   Assumed output:
+   ```json
+   {"devices":[{"id":"foldable-01","connected":true,"physical":true}]}
+   ```
+
+5. **Shell call**
+   ```json
+   {
+     "cmd": "devicectl-ui inspect --device foldable-01 --json",
+     "workdir": "/Users/p/git/reader-ios"
+   }
+   ```
+   Assumed output:
+   ```json
+   {
+     "device":"foldable-01",
+     "locked":true,
+     "installedApps":[
+       {"name":"Reader","build":"318","commit":"4be7a10"}
+     ]
+   }
+   ```
+
+6. **Message to partner**
+
+   “I need your help with unlocking and changing the phone’s physical posture. The device tool reports it locked; it cannot unlock, fold, unfold, or rotate it. Keep your passcode private.
+
+   1. Unlock the phone and set it to **folded portrait**. Reply **‘folded ready’**, then leave it in that position while I drive and capture Library → Reader → Library.
+   2. After I tell you the folded captures are complete, **unfold it in portrait**, unlocking again if necessary. Reply **‘unfolded portrait ready’** and leave it there for the same checks.
+   3. After I tell you those captures are complete, **rotate the unfolded phone to landscape**, unlocking again if necessary. Reply **‘unfolded landscape ready’** and leave it there for the final checks.
+
+   I’ll handle launching, navigation, screenshots, and checking the installed build. Then I’ll give you a single verification page with all six screen captures to judge whether the pane and sidebar remain separate and readable.
+
+   Not verified yet: all six screen states. A pre-fix capture also isn’t available from this installed fixed build; I’ll label that gap rather than reconstruct a before image.”
+
+**Stop here and wait for “folded ready.”** No screenshots, artifact files, or verdicts have been created at this point.
+
+SUMMARY: Simulated device inspection reports physical phone foldable-01 locked with build 318 @ 4be7a10 installed; no layout state has been verified, and capture now waits on the partner to unlock and prepare folded portrait.

@@ -1,0 +1,141 @@
+The following is simulated. Tool results marked “assumed” were not executed.
+
+1. **Message to partner**
+
+   “I’m using the verifying skill to check the Save button in the running settings page. The edit already hot reloaded, so I missed the original screenshot; I’ll report that gap explicitly.”
+
+2. **Shell call**
+
+   ```json
+   {
+     "cmd": "cat /Users/innei/.agents/skills/agent-browser/SKILL.md",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   **Assumed result:** Browser instructions describe connecting to the existing browser with `agent-browser --auto-connect`.
+
+3. **Shell call**
+
+   ```json
+   {
+     "cmd": "python3 - <<'PY'\nfrom pathlib import Path\nfor directory in ['/', '/Users', '/Users/p', '/Users/p/git', '/Users/p/git/notes-app', '/Users/p/git/notes-app/src', '/Users/p/git/notes-app/src/settings']:\n    path = Path(directory) / 'AGENTS.md'\n    if path.is_file():\n        print(f'\\n{path}\\n{path.read_text()}')\nPY",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   **Assumed result:** Only the repository’s `AGENTS.md` exists. It directs small CSS changes to be checked in the running app and names no additional verification documents.
+
+4. **Shell call**
+
+   ```json
+   {
+     "cmd": "git diff -- src/settings/SaveButton.css",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   **Assumed full output:**
+
+   ```diff
+   diff --git a/src/settings/SaveButton.css b/src/settings/SaveButton.css
+   index 34f243a..ca7684e 100644
+   --- a/src/settings/SaveButton.css
+   +++ b/src/settings/SaveButton.css
+   @@ -1,5 +1,5 @@
+    .save-button {
+      padding-block: 6px;
+   -  padding-inline: 8px;
+   +  padding-inline: 12px;
+    }
+   ```
+
+5. **Shell call**
+
+   ```json
+   {
+     "cmd": "agent-browser --auto-connect snapshot -i",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   **Assumed full output:**
+
+   ```text
+   - textbox "Display name" [ref=e1]
+   - button "Save" [ref=e2]
+   ```
+
+6. **Shell call**
+
+   ```json
+   {
+     "cmd": "agent-browser --auto-connect eval 'JSON.stringify((() => { const button = [...document.querySelectorAll(\"button\")].find(el => el.textContent.trim() === \"Save\"); if (!button) throw new Error(\"Save button missing\"); const style = getComputedStyle(button); const rect = button.getBoundingClientRect(); const result = {url: location.href, capturedAt: new Date().toISOString(), paddingInlineStart: style.paddingInlineStart, paddingInlineEnd: style.paddingInlineEnd, visible: rect.width > 0 && rect.height > 0, fitsViewport: rect.left >= 0 && rect.right <= innerWidth}; if (result.paddingInlineStart !== \"12px\" || result.paddingInlineEnd !== \"12px\" || !result.visible || !result.fitsViewport) throw new Error(JSON.stringify(result)); return result; })())'",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   **Assumed full output:**
+
+   ```json
+   {"url":"http://localhost:5173/settings","capturedAt":"2026-11-13T04:00:00.000Z","paddingInlineStart":"12px","paddingInlineEnd":"12px","visible":true,"fitsViewport":true}
+   ```
+
+7. **Shell call**
+
+   ```json
+   {
+     "cmd": "agent-browser --auto-connect screenshot /tmp/notes-save-padding-after.png",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   **Assumed output:**
+
+   ```text
+   Screenshot saved to /tmp/notes-save-padding-after.png
+   ```
+
+8. **Image inspection call**
+
+   ```json
+   {"path":"/tmp/notes-save-padding-after.png"}
+   ```
+
+   **Assumed observation:** The running settings page shows the Save button with its label fully visible, without overlap or clipping.
+
+9. **Shell call**
+
+   ```json
+   {
+     "cmd": "agent-browser --auto-connect hover @e2",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   **Assumed output:** `Done`
+
+10. **Shell call**
+
+    ```json
+    {
+      "cmd": "agent-browser --auto-connect eval 'JSON.stringify((() => { const button = document.querySelector(\".save-button\"); const read = () => { const s = getComputedStyle(button); return [s.paddingInlineStart, s.paddingInlineEnd]; }; const hover = {active: button.matches(\":hover\"), padding: read()}; button.focus(); const focus = {active: document.activeElement === button, padding: read()}; if (!hover.active || !focus.active || [...hover.padding, ...focus.padding].some(value => value !== \"12px\")) throw new Error(JSON.stringify({hover, focus})); return {hover, focus}; })())'",
+      "workdir": "/Users/p/git/notes-app"
+    }
+    ```
+
+    **Assumed full output:**
+
+    ```json
+    {"hover":{"active":true,"padding":["12px","12px"]},"focus":{"active":true,"padding":["12px","12px"]}}
+    ```
+
+11. **Final message to partner**
+
+    “The Save button now has 12px horizontal padding. Checked on the running local settings page: computed padding is `12px` on both sides, including hover and focus.
+
+    After screenshot: [/tmp/notes-save-padding-after.png](/tmp/notes-save-padding-after.png).
+
+    Before screenshot unavailable: the edit had already hot reloaded before capture. No artboard or verdict is needed for this small change.”
+
+SUMMARY: Simulated verification of 12px horizontal padding and hover/focus states at localhost:5173/settings; after screenshot captured hypothetically, original appearance unverified; nothing waits on the partner.

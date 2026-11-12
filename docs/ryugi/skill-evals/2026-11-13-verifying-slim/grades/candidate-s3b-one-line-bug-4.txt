@@ -1,0 +1,1 @@
+PASS — Reports inline with the test command and passing output; creates no verify page or artboard and requests no human verdict.

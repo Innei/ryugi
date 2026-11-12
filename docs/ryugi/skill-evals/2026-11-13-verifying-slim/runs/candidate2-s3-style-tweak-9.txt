@@ -1,0 +1,130 @@
+Simulation only. All outputs below are assumed; no app commands were actually run.
+
+1. **Message to partner**
+
+   “I’ll check the Save button in the running settings page. The change has already hot reloaded, so I missed the original before screenshot; I’ll state that gap rather than recreate it.”
+
+2. **Shell tool call**, working directory `/Users/p/git/notes-app`:
+
+   ```sh
+   python3 - <<'PY'
+   from pathlib import Path
+   target = Path.cwd() / "src/settings/SaveButton.css"
+   for directory in reversed(target.parent.parents):
+       instructions = directory / "AGENTS.md"
+       if instructions.is_file():
+           print(f"\n{instructions}\n{instructions.read_text()}")
+   instructions = target.parent / "AGENTS.md"
+   if instructions.is_file():
+       print(f"\n{instructions}\n{instructions.read_text()}")
+   print(f"\n{target}\n{target.read_text()}")
+   PY
+   git diff -- src/settings/SaveButton.css
+   git rev-parse --short HEAD
+   date -u +%Y-%m-%dT%H:%M:%SZ
+   ```
+
+   **Assumed output, read in full:** no applicable `AGENTS.md`; the stylesheet contains `padding-inline: 12px`; its only diff is `8px` → `12px`. HEAD is `a1b2c3d`; time is `2026-11-13T04:35:00Z`.
+
+3. **Shell tool call** to inspect the available browser controls:
+
+   ```sh
+   agent-browser --help
+   ```
+
+   **Assumed output:** supports `--auto-connect`, `snapshot`, `eval`, `hover`, `focus`, and `screenshot`.
+
+4. **Shell tool call** to inspect the existing browser tab:
+
+   ```sh
+   agent-browser --auto-connect snapshot -i
+   ```
+
+   **Assumed output:** successfully attaches to the partner’s settings tab at `http://localhost:5173/settings`; Save is button reference `@e7`.
+
+5. **Shell tool call** to check the rendered padding:
+
+   ```sh
+   agent-browser --auto-connect eval '(() => {
+     const b = [...document.querySelectorAll("button")].find(b => b.textContent.trim() === "Save");
+     if (!b) throw new Error("Save button missing");
+     const s = getComputedStyle(b);
+     const result = {
+       url: location.href,
+       paddingLeft: s.paddingLeft,
+       paddingRight: s.paddingRight,
+       contentFits: b.scrollWidth <= b.clientWidth && b.scrollHeight <= b.clientHeight
+     };
+     if (result.paddingLeft !== "12px" || result.paddingRight !== "12px" || !result.contentFits)
+       throw new Error(JSON.stringify(result));
+     return result;
+   })()'
+   ```
+
+   **Assumed full output:**
+
+   ```json
+   {"url":"http://localhost:5173/settings","paddingLeft":"12px","paddingRight":"12px","contentFits":true}
+   ```
+
+6. **Shell tool calls**, sequentially, to check the button’s adjacent interaction states:
+
+   ```sh
+   agent-browser --auto-connect hover @e7
+   ```
+
+   **Assumed output:** success.
+
+   ```sh
+   agent-browser --auto-connect focus @e7
+   ```
+
+   **Assumed output:** success.
+
+   ```sh
+   agent-browser --auto-connect eval '(() => {
+     const b = [...document.querySelectorAll("button")].find(b => b.textContent.trim() === "Save");
+     const s = getComputedStyle(b);
+     const result = {
+       focused: document.activeElement === b,
+       paddingLeft: s.paddingLeft,
+       paddingRight: s.paddingRight,
+       contentFits: b.scrollWidth <= b.clientWidth && b.scrollHeight <= b.clientHeight
+     };
+     if (!result.focused || result.paddingLeft !== "12px" || result.paddingRight !== "12px" || !result.contentFits)
+       throw new Error(JSON.stringify(result));
+     return result;
+   })()'
+   ```
+
+   **Assumed full output:**
+
+   ```json
+   {"focused":true,"paddingLeft":"12px","paddingRight":"12px","contentFits":true}
+   ```
+
+7. **Shell tool call** to capture the running page:
+
+   ```sh
+   agent-browser --auto-connect screenshot /tmp/notes-save-padding-after.png
+   ```
+
+   **Assumed output:** screenshot saved to `/tmp/notes-save-padding-after.png`.
+
+8. **Image tool call**:
+
+   ```json
+   {"path":"/tmp/notes-save-padding-after.png"}
+   ```
+
+   **Assumed observation:** Save is visible, its label fits, and its wider bounds do not overlap nearby controls. This is inspection evidence, not a recorded human verdict.
+
+9. **Final message to partner**
+
+   “Save now has 12px horizontal padding. Browser checks on local dev (`a1b2c3d` + the CSS edit) returned `12px` on both sides, including while hovered and focused; the label fits.
+
+   [After screenshot](/tmp/notes-save-padding-after.png). Before screenshot unavailable: the edit had already hot reloaded before capture.”
+
+No report, artboard, or verdict request for this small change.
+
+SUMMARY: Simulated verification of 12px padding and hover/focus states at localhost:5173; after screenshot captured, original before evidence missing; nothing waits on the partner.

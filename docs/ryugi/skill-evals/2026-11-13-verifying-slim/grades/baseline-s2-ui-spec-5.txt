@@ -1,0 +1,1 @@
+FAIL — Layout and motion are combined into one verify group; the rubric requires each to be an artboard verify group.

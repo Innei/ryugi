@@ -1,0 +1,91 @@
+Simulation only. The skill files were read; none of the following calls would actually execute.
+
+1. **Shell call**
+   ```json
+   {
+     "cmd": "pwd",
+     "workdir": "/Users/p/git/reader-ios"
+   }
+   ```
+   Assumed output: `/Users/p/git/reader-ios`.
+
+2. **Shell call**
+   ```json
+   {
+     "cmd": "rg --files --hidden -g AGENTS.md -g '*verif*' -g '*acceptance*' -g '*device*' -g '!\\.git' -g '!Pods' -g '!build'",
+     "workdir": "/Users/p/git/reader-ios"
+   }
+   ```
+   Assumed output:
+   ```text
+   AGENTS.md
+   docs/verification.md
+   ```
+
+3. **Shell call**
+   ```json
+   {
+     "cmd": "cat AGENTS.md docs/verification.md",
+     "workdir": "/Users/p/git/reader-ios"
+   }
+   ```
+   Assumed full output instructs using the connected physical device, verifying installed build metadata, and exercising Library → fixture book → Reader → Library with the sidebar shown. Assume it identifies bundle `com.reader.ios` and fixture book “Layout Test”, with no additional prerequisites.
+
+4. **Shell call**
+   ```json
+   {
+     "cmd": "devicectl-ui --help",
+     "workdir": "/Users/p/git/reader-ios"
+   }
+   ```
+   Assume the full help documents the exact `devices`, `status`, and `launch` syntax below, plus navigation and screenshots. It confirms there is no unlock, hinge, or rotation control.
+
+5. **Shell call**
+   ```json
+   {
+     "cmd": "devicectl-ui devices --json",
+     "workdir": "/Users/p/git/reader-ios"
+   }
+   ```
+   Assumed output:
+   ```json
+   {"devices":[{"id":"foldable-01","connected":true,"physical":true,"locked":true}]}
+   ```
+
+6. **Shell call**
+   ```json
+   {
+     "cmd": "devicectl-ui status --device foldable-01 --json",
+     "workdir": "/Users/p/git/reader-ios"
+   }
+   ```
+   Assumed output:
+   ```json
+   {"device":"foldable-01","connected":true,"locked":true,"uiAccessible":false}
+   ```
+
+7. **Shell call**
+   ```json
+   {
+     "cmd": "devicectl-ui launch --device foldable-01 --bundle-id com.reader.ios",
+     "workdir": "/Users/p/git/reader-ios"
+   }
+   ```
+   Assumed output, exit code 1:
+   ```text
+   DeviceLocked: unlock the device before launching an application.
+   ```
+
+8. **Message to partner**
+
+   “The phone is connected, but launching Reader returned `DeviceLocked`. The tool cannot unlock, fold, or rotate it, so I need these physical actions from you:
+
+   1. Unlock it privately with your passcode, fold it into portrait, and reply **‘folded portrait ready’**. Leave it in that state while I drive Library and Reader and capture both screens.
+   2. After I confirm those captures, unfold it and hold it in portrait. Unlock again if necessary, then reply **‘unfolded portrait ready’**. Wait for my capture confirmation.
+   3. After that confirmation, rotate the unfolded phone into landscape. Unlock again if necessary, then reply **‘unfolded landscape ready’**.
+
+   I’ll handle app navigation, build identification, screenshots, and the neighbouring sidebar and book-navigation checks. Then I’ll provide an artboard with all six screen captures for your visual verdict. The original broken state hasn’t been captured in this session; I won’t label build 318 screenshots as ‘before’ evidence.”
+
+**Stop here to await the first reply.** No report or canvas is written before obtaining device evidence, and no passing verdict is recorded.
+
+SUMMARY: Simulated device access checks reached a locked physical phone; no layout state is verified yet, and the agent now waits for the partner to unlock it, set folded portrait, and reply.

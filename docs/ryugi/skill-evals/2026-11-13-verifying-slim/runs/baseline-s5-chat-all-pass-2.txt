@@ -1,0 +1,133 @@
+Simulation only; outputs below are assumed, not actual results.
+
+1. Message to partner:
+
+   “I’m using the verifying workflow to record your four passes, run the required checks, and push `feat/settings`.”
+
+2. Shell call:
+
+   ```json
+   {
+     "cmd": "ryugi comment pass --project-dir /Users/p/git/notes-app --artifact artboard/settings-redesign --all",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   Assumed output: `Recorded pass for v1, v2, v3, v4.`
+
+3. Shell call:
+
+   ```json
+   {
+     "cmd": "ryugi comment list --project-dir /Users/p/git/notes-app --artifact artboard/settings-redesign --sections groups,threads --detail",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   Assumed complete output:
+
+   ```text
+   v1 · verify · pass · Layout
+   v2 · verify · pass · Toggle motion
+   v3 · verify · pass · Empty state
+   v4 · verify · pass · Dark mode
+   Threads: 0
+   More: none
+   ```
+
+4. Shell call:
+
+   ```json
+   {
+     "cmd": "pwd; rg --files --hidden -g AGENTS.md -g package.json -g '*verification*' -g '*acceptance*' -g '!node_modules' -g '!.git'; git status --short --branch; git remote -v",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   Assumption: correct repository and branch, clean working tree, `origin` configured; root `AGENTS.md` and `package.json` identify the required checks.
+
+5. Shell call:
+
+   ```json
+   {
+     "cmd": "cat AGENTS.md package.json",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   Assumption: instructions require `pnpm verify` before pushing, and that script runs lint, typecheck, tests, and build. No additional verification documents apply.
+
+6. Shell call:
+
+   ```json
+   {
+     "cmd": "pnpm verify",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   Assumed full output, read before proceeding:
+
+   ```text
+   > notes-app@1.0.0 verify
+   > pnpm lint && pnpm typecheck && pnpm test && pnpm build
+
+   > notes-app@1.0.0 lint
+   > eslint .
+
+   > notes-app@1.0.0 typecheck
+   > tsc --noEmit
+
+   > notes-app@1.0.0 test
+   > vitest run
+
+    Test Files  8 passed (8)
+         Tests  42 passed (42)
+
+   > notes-app@1.0.0 build
+   > vite build
+
+   vite building for production...
+   ✓ 126 modules transformed.
+   ✓ built in 1.32s
+   ```
+
+   Assumed exit code: `0`.
+
+7. Message to partner:
+
+   “All four passes are recorded. In `/Users/p/git/notes-app`, `pnpm verify` exited 0: lint, typecheck, 42 tests, and build passed. I’m pushing `feat/settings` now.”
+
+8. Shell call:
+
+   ```json
+   {
+     "cmd": "git push --set-upstream origin feat/settings",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   Assumed output confirms successful creation of remote branch `feat/settings` and upstream tracking; exit code `0`.
+
+9. Shell call:
+
+   ```json
+   {
+     "cmd": "git rev-parse HEAD; git ls-remote --exit-code origin refs/heads/feat/settings; git status --short --branch",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   Assumed complete output:
+
+   ```text
+   9c2b7a46e1f083d54a0bc1968e7253fd6a4b9012
+   9c2b7a46e1f083d54a0bc1968e7253fd6a4b9012	refs/heads/feat/settings
+   ## feat/settings...origin/feat/settings
+   ```
+
+10. Final message to partner:
+
+    “Pushed `feat/settings` at `9c2b7a4`; the remote SHA matches local HEAD and the working tree is clean. `pnpm verify` passed all checks, including 42 tests. Your passes are recorded for v1–v4; nothing remains pending.”
+
+SUMMARY: Simulated verification in `/Users/p/git/notes-app`: four verdicts recorded, required checks passed, remote branch matched HEAD; nothing waits on the partner.

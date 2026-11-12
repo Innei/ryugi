@@ -1,0 +1,153 @@
+All calls and outputs below are **simulated**. Only the reads under `./skill/` above actually ran.
+
+1. **Message to partner**
+
+   “The merge fix is deployed to staging. I’m checking it with two real clients, including the delete-versus-edit conflict. The in-memory tests provide supporting evidence; the staging run will check the reported failure.”
+
+2. **Shell call**
+
+   Working directory: `/Users/p/git/notes-app`
+
+   ```sh
+   pwd
+   rg --files --hidden -g AGENTS.md -g '*verif*' -g '*acceptance*' -g '*sync*' -g README.md -g package.json -g '!node_modules' -g '!.git'
+   cat /AGENTS.md /Users/AGENTS.md /Users/p/AGENTS.md /Users/p/git/AGENTS.md AGENTS.md README.md package.json
+   ```
+
+   **Assumed output:** The working directory is correct; absent ancestor instruction files are reported as missing. The repository instructions specify `pnpm sync:e2e --env staging`. There are no additional acceptance requirements. The runner reports the server’s running build and commit, uses authenticated real clients, and checks both offline-edit and delete-versus-edit conflicts.
+
+3. **Shell call**
+
+   ```sh
+   ryugi start --help
+   ryugi check --help
+   ```
+
+   **Assumed output:** Both commands support `--project-dir` and `--artifact`. `start` serves verification reports locally and prints their link.
+
+4. **Shell call**
+
+   Working directory: `/Users/p/git/notes-app`
+
+   ```sh
+   mkdir -p .ryugi/artifacts/verify/offline-sync/evidence
+   ```
+
+   **Assumed result:** Exit 0.
+
+5. **Shell call**
+
+   Working directory: `/Users/p/git/notes-app`
+
+   ```sh
+   set -o pipefail
+   pnpm sync:e2e --env staging 2>&1 | tee .ryugi/artifacts/verify/offline-sync/evidence/sync-e2e.txt
+   ```
+
+   **Assumed complete output, read before continuing:**
+
+   ```text
+   > notes-app@1.0.0 sync:e2e /Users/p/git/notes-app
+   > tsx scripts/sync-e2e.ts --env staging
+
+   Environment: staging
+   Running server: build 4812, commit 9f3c2aa
+   Client A: authenticated, real sync transport
+   Client B: authenticated, real sync transport
+   PASS create note and sync initial copy to both clients
+   PASS disconnect both clients and edit different content offline
+   PASS reconnect both clients
+   PASS both offline edits retained in both copies
+   PASS both copies converge
+   PASS create second note and sync initial copy to both clients
+   PASS disconnect both clients; delete on A and edit on B
+   PASS reconnect both clients
+   PASS delete-versus-edit conflict matches expected resolution
+   PASS both copies converge
+   PASS clean up test fixtures
+   Result: 2 scenarios passed, 0 failed
+   ```
+
+   **Assumed result:** Exit 0. This confirms the running build before exercising the fix and covers the neighbouring delete-versus-edit path.
+
+6. **Shell call**
+
+   ```sh
+   date -u +%Y-%m-%dT%H:%M:%SZ
+   ```
+
+   **Assumed output:**
+
+   ```text
+   2026-11-13T03:40:12Z
+   ```
+
+7. **File-write call**
+
+   Path: `/Users/p/git/notes-app/.ryugi/artifacts/verify/offline-sync/report.xml`
+
+   Exact content:
+
+   ```xml
+   <report title="Offline edits survive reconnecting two devices">
+     <p>Verified against the real staging sync server using <code>pnpm sync:e2e --env staging</code>. The run authenticated two real clients and confirmed the running build before testing. Verification is scoped to staging.</p>
+     <claim id="build" judge="agent"
+            from="staging build 4812 @ 9f3c2aa"
+            capturedAt="2026-11-13T03:40:12Z">
+       <title>The staging run exercised build 4812, commit 9f3c2aa</title>
+       <output src="evidence/sync-e2e.txt" />
+     </claim>
+     <claim id="offline-edits" judge="agent"
+            from="staging build 4812 @ 9f3c2aa"
+            capturedAt="2026-11-13T03:40:12Z">
+       <title>Both devices retain both offline edits and converge after reconnecting</title>
+       <output src="evidence/sync-e2e.txt" />
+     </claim>
+     <claim id="delete-edit" judge="agent"
+            from="staging build 4812 @ 9f3c2aa"
+            capturedAt="2026-11-13T03:40:12Z">
+       <title>The neighbouring delete-versus-edit conflict resolves as expected and both copies converge</title>
+       <output src="evidence/sync-e2e.txt" />
+     </claim>
+   </report>
+   ```
+
+   **Assumed result:** File written successfully. No artboard or `canvas.json`: all claims are decided by output, with no visual judgement.
+
+8. **Shell call**
+
+   ```sh
+   ryugi start --project-dir /Users/p/git/notes-app --artifact verify/offline-sync
+   ```
+
+   **Assumed output:**
+
+   ```text
+   Serving verify/offline-sync
+   http://localhost:4317/verify/offline-sync
+   ```
+
+9. **Shell call**
+
+   ```sh
+   ryugi check --project-dir /Users/p/git/notes-app --artifact verify/offline-sync
+   ```
+
+   **Assumed complete output:**
+
+   ```text
+   verify/offline-sync
+   Claims: 3 checked by agent, 0 pending, 0 rejected
+   Gaps: 0
+   Warnings: 0
+   Provenance notes: 0
+   Check passed
+   ```
+
+10. **Final message to partner**
+
+    “Fixed and verified on staging build **4812 / 9f3c2aa**. `pnpm sync:e2e --env staging` passed both real-client scenarios: offline edits survive reconnection, and delete-versus-edit conflicts resolve correctly.
+
+    [Verification report](http://localhost:4317/verify/offline-sync): 3 claims checked by me, no gaps or pending judgements. This verification covers staging.”
+
+SUMMARY: Simulated verification of staging build 4812 / 9f3c2aa through both real-client sync scenarios, recorded in verify/offline-sync; nothing waits on the partner, and no checks actually ran.

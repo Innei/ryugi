@@ -1,0 +1,83 @@
+Simulation only. I read the supplied skill files; the following calls and results are hypothetical.
+
+1. Message to partner:
+
+   “I’m using the verifying skill to check build 318 on the physical phone across all six screen/state combinations. I’ll handle app navigation and screenshots; I’ll need you for unlocking, folding and rotation.”
+
+2. Shell call:
+
+   ```sh
+   cd /Users/p/git/reader-ios && pwd && rg --files --hidden -g AGENTS.md -g '*verif*' -g '*acceptance*' -g '*device*' -g '! .git'
+   ```
+
+   Assumed output: the repository path, `AGENTS.md`, and `docs/device-verification.md`.
+
+3. Shell call:
+
+   ```sh
+   cd /Users/p/git/reader-ios && cat AGENTS.md docs/device-verification.md
+   ```
+
+   Assumed output, read in full: instructions identify the app as `com.reader.ios`, describe the Library → fixture book → Reader flow and sidebar checks, and contain no existing before screenshots. No additional applicable instructions are assumed.
+
+4. Shell call:
+
+   ```sh
+   devicectl-ui --help
+   ```
+
+   Assumed output, read in full: supports `devices --json`, `status --device`, and `launch --device --bundle-id`; no unlock, hinge or rotation control. These exact argument forms are assumptions for this simulation.
+
+5. Shell call:
+
+   ```sh
+   devicectl-ui devices --json
+   ```
+
+   Assumed output:
+
+   ```json
+   {"devices":[{"id":"foldable-01","connection":"connected","physical":true}]}
+   ```
+
+6. Shell call:
+
+   ```sh
+   devicectl-ui status --device foldable-01
+   ```
+
+   Assumed output:
+
+   ```text
+   Connected: true
+   Locked: true
+   Hinge control: unsupported
+   Rotation control: unsupported
+   Unlock control: unsupported
+   ```
+
+7. Shell call:
+
+   ```sh
+   devicectl-ui launch --device foldable-01 --bundle-id com.reader.ios
+   ```
+
+   Assumed result: nonzero exit, with:
+
+   ```text
+   DeviceLocked: Unlock the device before launching the app.
+   ```
+
+8. Message to partner, then stop and wait:
+
+   “The phone is connected, but launch is blocked by its lock. The tool cannot unlock, fold or rotate it. Here is the full sequence; pause at each step so I can capture both screens before you change its state.
+
+   1. Unlock the phone yourself, fold it and hold it in portrait. Reply **‘folded portrait ready’**, then leave it in that state.
+   2. After I reply **‘folded captures collected’**, unfold it and keep it in portrait. Unlock again if necessary. Reply **‘unfolded portrait ready’**, then hold that state.
+   3. After I reply **‘unfolded portrait captures collected’**, rotate the unfolded phone to landscape. Unlock again if necessary. Reply **‘unfolded landscape ready’**, then hold that state.
+
+   I’ll confirm the installed build, navigate Library and Reader, capture all six screenshots and exercise the shared sidebar controls. The screenshots will go into one artboard verify group for your visual verdict. There is no captured before state available; I won’t manufacture one.
+
+   Not verified yet: build identity and all six layouts. No verification page exists yet. I’m waiting for step 1.”
+
+SUMMARY: In this simulation, device connectivity and the lock/tool limitations were checked; build 318’s six layouts remain unverified on the physical phone, waiting on the partner to unlock it and prepare folded portrait.

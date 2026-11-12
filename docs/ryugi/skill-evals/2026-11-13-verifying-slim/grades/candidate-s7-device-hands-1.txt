@@ -1,0 +1,1 @@
+PASS — Gives one complete numbered physical-action sequence with reply cues, handles launching, navigation and screenshots itself, and correctly leaves verification pending.

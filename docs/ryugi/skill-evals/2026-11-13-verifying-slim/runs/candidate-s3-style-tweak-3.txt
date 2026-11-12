@@ -1,0 +1,109 @@
+The file read above was real. Everything below is simulated; no commands, browser actions, or writes below were executed.
+
+1. **Message to partner**
+
+   “I’m using the verifying skill to check the padding in the running settings page. The edit already hot reloaded before I captured the original appearance, so a before screenshot is missing.”
+
+2. **Shell tool call**
+
+   ```sh
+   cd /Users/p/git/notes-app && pwd && rg --files --hidden -g AGENTS.md -g '*verification*' -g '*acceptance*' -g '!node_modules' -g '!.git'
+   ```
+
+   **Assumed output:** Working directory is `/Users/p/git/notes-app`; the search finds `AGENTS.md`.
+
+3. **Shell tool call**
+
+   ```sh
+   cd /Users/p/git/notes-app && cat AGENTS.md && git diff -- src/settings/SaveButton.css && git rev-parse --short HEAD && date -u +%Y-%m-%dT%H:%M:%SZ
+   ```
+
+   **Assumed output:** `AGENTS.md` requires checking small CSS changes in the running app and provides no additional verification instructions. The full diff contains exactly:
+
+   ```diff
+   -  padding-inline: 8px;
+   +  padding-inline: 12px;
+   ```
+
+   Assumed commit: `a1b2c3d`; timestamp: `2026-11-13T04:00:00Z`.
+
+4. **Browser tool call — inspect the existing settings tab**
+
+   ```json
+   {
+     "operation": "evaluate",
+     "tab": "current",
+     "script": "(() => { const buttons = [...document.querySelectorAll('button')].filter(b => b.textContent.trim() === 'Save'); if (buttons.length !== 1) throw new Error(`Expected one Save button, found ${buttons.length}`); const b = buttons[0]; const s = getComputedStyle(b); const r = b.getBoundingClientRect(); return { url: location.href, capturedAt: new Date().toISOString(), text: b.textContent.trim(), paddingInlineStart: s.paddingInlineStart, paddingInlineEnd: s.paddingInlineEnd, visible: r.width > 0 && r.height > 0, disabled: b.disabled }; })()"
+   }
+   ```
+
+   **Assumed full result:**
+
+   ```json
+   {
+     "url": "http://localhost:5173/settings",
+     "capturedAt": "2026-11-13T04:00:05.000Z",
+     "text": "Save",
+     "paddingInlineStart": "12px",
+     "paddingInlineEnd": "12px",
+     "visible": true,
+     "disabled": false
+   }
+   ```
+
+5. **Shell tool call**
+
+   ```sh
+   mkdir -p /Users/p/git/notes-app/.ryugi/evidence/save-button
+   ```
+
+   **Assumed output:** Empty; exit status `0`.
+
+6. **Browser tool call — capture the running page**
+
+   ```json
+   {
+     "operation": "screenshot",
+     "tab": "current",
+     "path": "/Users/p/git/notes-app/.ryugi/evidence/save-button/after.png",
+     "fullPage": false
+   }
+   ```
+
+   **Assumed result:** Screenshot saved; image inspection shows the Save button and its neighbouring settings controls without overlap or clipping.
+
+7. **Browser tool calls — check adjacent button states**
+
+   ```json
+   {
+     "operation": "hover",
+     "tab": "current",
+     "role": "button",
+     "name": "Save",
+     "exact": true
+   }
+   ```
+
+   ```json
+   {
+     "operation": "evaluate",
+     "tab": "current",
+     "script": "(() => { const b = [...document.querySelectorAll('button')].find(b => b.textContent.trim() === 'Save'); const s = getComputedStyle(b); return { hovered: b.matches(':hover'), start: s.paddingInlineStart, end: s.paddingInlineEnd }; })()"
+   }
+   ```
+
+   **Assumed full result:**
+
+   ```json
+   {"hovered":true,"start":"12px","end":"12px"}
+   ```
+
+8. **Final message to partner**
+
+   “The running settings page reports **12px on both horizontal sides**, including hover, at `http://localhost:5173/settings` (local dev, `a1b2c3d` plus the CSS edit; captured `2026-11-13T04:00:05Z`). I also inspected the surrounding controls for overlap and clipping.
+
+   After screenshot: `/Users/p/git/notes-app/.ryugi/evidence/save-button/after.png`.
+
+   Not verified: the original appearance wasn’t captured before hot reload. Your visual judgement of the updated spacing is still pending.”
+
+SUMMARY: Simulated verification checks 12px horizontal padding in the running local settings page and hover state, with an after screenshot; the original before capture is missing, and visual acceptance waits on the partner.

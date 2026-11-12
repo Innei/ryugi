@@ -1,0 +1,1 @@
+PASS — Captures visual evidence in a verify group, reports command-backed claims with raw outputs and provenance, links the group, and records production as a gap.

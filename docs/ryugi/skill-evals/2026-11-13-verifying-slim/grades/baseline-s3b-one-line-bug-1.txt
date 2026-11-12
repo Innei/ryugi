@@ -1,0 +1,1 @@
+PASS — Reports the test command and passing output inline, including the 1.5 KB regression, without creating an artboard or waiting for approval.

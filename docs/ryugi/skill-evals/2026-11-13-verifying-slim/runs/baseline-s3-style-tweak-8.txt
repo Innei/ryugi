@@ -1,0 +1,104 @@
+All calls and results below are simulated; only the two reference files were actually read. This small visual change needs inline evidence, with no report or artboard.
+
+1. Message to partner:
+
+   “I’ll check the rendered padding and capture the button. The edit already hot reloaded before a screenshot was taken, so the original appearance wasn’t captured.”
+
+2. Shell call:
+
+   ```json
+   {
+     "cmd": "pwd; rg --files --hidden -g AGENTS.md -g '*verif*' -g '*acceptance*' -g package.json -g '!node_modules' -g '!.git'; for f in /AGENTS.md /Users/AGENTS.md /Users/p/AGENTS.md /Users/p/git/AGENTS.md; do if [ -f \"$f\" ]; then cat \"$f\"; fi; done",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   Assumed output: correct repository; `AGENTS.md` and `package.json` found; no ancestor instructions or separate verification documents.
+
+3. Shell call:
+
+   ```json
+   {
+     "cmd": "cat AGENTS.md package.json",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   Assumed output: instructions specify checking small CSS changes in the running app; no additional required checks.
+
+4. Shell call:
+
+   ```json
+   {
+     "cmd": "git rev-parse HEAD; git diff -- src/settings/SaveButton.css; date -u +%Y-%m-%dT%H:%M:%SZ",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   Assumed full output:
+
+   ```text
+   a1b2c3d4e5f60718293a4b5c6d7e8f9012345678
+   diff --git a/src/settings/SaveButton.css b/src/settings/SaveButton.css
+   --- a/src/settings/SaveButton.css
+   +++ b/src/settings/SaveButton.css
+   @@ -2 +2 @@
+   -  padding-inline: 8px;
+   +  padding-inline: 12px;
+   2026-11-13T06:00:00Z
+   ```
+
+5. Browser call through the shell:
+
+   ```json
+   {
+     "cmd": "agent-browser snapshot -i",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   Assumed output: attached browser shows `http://localhost:5173/settings`, with a single Save button and the settings controls.
+
+6. Browser call through the shell:
+
+   ```json
+   {
+     "cmd": "agent-browser eval 'JSON.stringify((() => { const b = [...document.querySelectorAll(\"button\")].find(e => e.textContent.trim() === \"Save\"); if (!b) throw new Error(\"Save button missing\"); const s = getComputedStyle(b); const r = b.getBoundingClientRect(); const result = {url: location.href, capturedAt: new Date().toISOString(), paddingInlineStart: s.paddingInlineStart, paddingInlineEnd: s.paddingInlineEnd, withinViewport: r.left >= 0 && r.right <= innerWidth}; if (s.paddingInlineStart !== \"12px\" || s.paddingInlineEnd !== \"12px\" || !result.withinViewport) throw new Error(JSON.stringify(result)); return result; })())'",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   Assumed full output:
+
+   ```json
+   {"url":"http://localhost:5173/settings","capturedAt":"2026-11-13T06:00:10.000Z","paddingInlineStart":"12px","paddingInlineEnd":"12px","withinViewport":true}
+   ```
+
+7. Screenshot call:
+
+   ```json
+   {
+     "cmd": "agent-browser screenshot /tmp/notes-save-padding-after.png",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   Assumed output: screenshot saved at that path.
+
+8. Image inspection call:
+
+   ```json
+   {"path":"/tmp/notes-save-padding-after.png"}
+   ```
+
+   Assumed image: Save button and adjacent settings controls visible, with no clipping or overlap.
+
+9. Final message to partner:
+
+   “The local settings page renders 12px padding on both horizontal sides; the browser check returned `12px` / `12px`. Evidence: local dev at `a1b2c3d` plus the CSS edit, captured at 06:00 UTC.
+
+   After: [screenshot](/tmp/notes-save-padding-after.png). I also inspected the adjacent controls for clipping and overlap.
+
+   Before: unavailable—the edit had already hot reloaded. The original appearance wasn’t verified. The updated page is open beside your terminal for judging the spacing.”
+
+SUMMARY: Simulated verification checked rendered 12px horizontal padding and surrounding layout at localhost:5173/settings; original before evidence is missing, and visual judgment waits on the partner.

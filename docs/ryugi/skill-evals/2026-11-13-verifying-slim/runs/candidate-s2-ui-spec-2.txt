@@ -1,0 +1,347 @@
+Everything below is a simulation. Only the reads under `./skill/` above actually ran. Tool names for browser and file operations below are illustrative; their arguments are exact for this simulated interface.
+
+1. **Message to partner**
+
+   > I’m checking the notification settings in the running app, including persistence and every toggle’s animation. I’ll put the approved design beside the captured screen and recording for your layout and motion verdict.
+
+2. **Shell**
+   ```sh
+   cd /Users/p/git/notes-app
+   pwd
+   rg --files --hidden -g AGENTS.md -g '*acceptance*' -g '*verif*' -g '*notification*' -g '*prefs*' -g package.json -g '!node_modules' -g '!.git'
+   git status --short
+   git rev-parse HEAD
+   ```
+   **Assumed output:** correct repository; clean tree at `a1b2c3d`; relevant files are `AGENTS.md`, `docs/verification.md`, `src/settings/NotificationSettings.tsx`, and `src/api/prefs.ts`.
+
+3. **Shell**
+   ```sh
+   cd /Users/p/git/notes-app
+   cat AGENTS.md docs/verification.md package.json src/settings/NotificationSettings.tsx src/api/prefs.ts
+   cat .ryugi/artifacts/artboard/settings-redesign/canvas.json
+   cat .ryugi/artifacts/.state/artboard/settings-redesign/layout.json
+   cat .ryugi/artifacts/artboard/settings-redesign/pages/settings/notify-a.html
+   ```
+   **Assumptions from these reads:** verification uses the existing local development account; settings route is `/settings`; three accessible switches are “Email notifications”, “Push notifications”, and “Weekly summary”; their API keys are `emailNotifications`, `pushNotifications`, and `weeklySummary`. Each switch contains `[data-switch-thumb]`. There are no additional applicable instructions or spec-document references. Approved board dimensions are 1280×800; there is no existing Verify page. The app has no feature flag for this section.
+
+4. **Shell**
+   ```sh
+   cd /Users/p/git/notes-app
+   ryugi start --project-dir /Users/p/git/notes-app --artifact artboard/settings-redesign
+   ```
+   **Assumed output:** artboard served at `http://localhost:4317/artboard/settings-redesign`.
+
+5. **Shell**
+   ```sh
+   cd /Users/p/git/notes-app
+   mkdir -p .ryugi/artifacts/artboard/settings-redesign/pages/verify .ryugi/artifacts/verify/notification-settings/evidence
+   date -u +%Y-%m-%dT%H:%M:%SZ
+   ```
+   **Assumed timestamp:** `2026-11-13T04:00:00Z`.
+
+6. **Browser**
+   ```json
+   {
+     "action": "open",
+     "url": "http://localhost:5173/settings",
+     "viewport": {"width": 1280, "height": 800}
+   }
+   ```
+   **Assumed result:** signed-in notification settings load successfully.
+
+7. **Browser**
+   ```json
+   {
+     "action": "evaluate",
+     "script": "await document.fonts.ready; window.__notificationProof = { original: Object.fromEntries([...document.querySelectorAll('[role=\"switch\"]')].map(el => [el.getAttribute('aria-label'), el.getAttribute('aria-checked')])), animations: [], requests: [] }; const originalFetch = window.fetch.bind(window); window.fetch = async (...args) => { const response = await originalFetch(...args); if (String(args[0]).includes('/api/prefs')) window.__notificationProof.requests.push({url: String(args[0]), method: args[1]?.method || 'GET', status: response.status, body: await response.clone().text()}); return response; }; [...document.querySelectorAll('[role=\"switch\"]')].map(el => ({name: el.getAttribute('aria-label'), checked: el.getAttribute('aria-checked')}));"
+   }
+   ```
+   **Assumed result:** all three expected switches exist; original values are recorded.
+
+8. **Browser**
+   ```json
+   {
+     "action": "screenshot",
+     "path": "/Users/p/git/notes-app/.ryugi/artifacts/artboard/settings-redesign/pages/verify/notification-settings.png",
+     "fullPage": false
+   }
+   ```
+   **Assumed result:** screenshot captured from the running app at 1280×800, after fonts loaded.
+
+9. **Browser**
+   ```json
+   {
+     "action": "record_start",
+     "path": "/Users/p/git/notes-app/.ryugi/artifacts/artboard/settings-redesign/pages/verify/notification-settings.webm"
+   }
+   ```
+
+10. **Browser**
+
+    This checks both directions of every toggle, preserves the original preferences, and measures an actual running animation rather than only reading CSS.
+
+    ```json
+    {
+      "action": "evaluate",
+      "script": "for (const name of ['Email notifications', 'Push notifications', 'Weekly summary']) { const sw = [...document.querySelectorAll('[role=\"switch\"]')].find(el => el.getAttribute('aria-label') === name); const original = sw.getAttribute('aria-checked'); for (let direction = 0; direction < 2; direction++) { const before = sw.getAttribute('aria-checked'); sw.click(); await new Promise(requestAnimationFrame); const thumb = sw.querySelector('[data-switch-thumb]'); const animation = thumb.getAnimations().find(a => a.playState === 'running'); if (!animation) throw new Error(name + ': no running thumb animation'); const duration = animation.effect.getTiming().duration; const keyframes = animation.effect.getKeyframes(); if (duration !== 160) throw new Error(name + ': expected 160ms, got ' + duration); if (new Set(keyframes.map(k => k.transform)).size < 2) throw new Error(name + ': no transform movement'); await animation.finished; if (sw.getAttribute('aria-checked') === before) throw new Error(name + ': value did not change'); window.__notificationProof.animations.push({name, direction, duration, keyframes, before, after: sw.getAttribute('aria-checked')}); await new Promise(r => setTimeout(r, 700)); } if (sw.getAttribute('aria-checked') !== original) throw new Error(name + ': original state not restored'); } return window.__notificationProof;"
+    }
+    ```
+    **Assumed output:** six real transform animations, each 160ms; six successful PATCH requests; all original values restored.
+
+11. **Browser**
+    ```json
+    {
+      "action": "record_stop"
+    }
+    ```
+    **Assumed result:** a playable 2.1MB WebM recording.
+
+12. **Browser**
+    ```json
+    {
+      "action": "evaluate",
+      "script": "const sw = [...document.querySelectorAll('[role=\"switch\"]')].find(el => el.getAttribute('aria-label') === 'Email notifications'); window.__notificationProof.persistExpected = sw.getAttribute('aria-checked') !== 'true'; sw.click(); await new Promise(r => setTimeout(r, 1000)); const response = await fetch('/api/prefs'); const prefs = await response.json(); if (response.status !== 200 || prefs.emailNotifications !== window.__notificationProof.persistExpected) throw new Error('Changed UI preference was not returned by GET'); return {...window.__notificationProof, getStatus: response.status, returned: prefs};",
+      "saveOutput": "/Users/p/git/notes-app/.ryugi/artifacts/verify/notification-settings/evidence/browser-flow.txt"
+    }
+    ```
+    **Assumed output:** UI change triggered PATCH 200; subsequent GET 200 returned the changed value. The tool saves the full invocation and raw result, including animation measurements and network responses.
+
+13. **Browser**
+    ```json
+    {
+      "action": "reload"
+    }
+    ```
+    Then:
+    ```json
+    {
+      "action": "evaluate",
+      "script": "await document.fonts.ready; const sw = [...document.querySelectorAll('[role=\"switch\"]')].find(el => el.getAttribute('aria-label') === 'Email notifications'); if (sw.getAttribute('aria-checked') !== 'false') throw new Error('Preference did not survive reload'); return {emailNotifications: false, reloadPersistence: 'PASS'};",
+      "appendOutput": "/Users/p/git/notes-app/.ryugi/artifacts/verify/notification-settings/evidence/browser-flow.txt"
+    }
+    ```
+    **Assumption:** the originally recorded email value was `true`, so the changed value is `false`. Reload displays `false`.
+
+14. **Browser**
+
+    Restore the original preference, then walk adjacent controls and keyboard operation.
+    ```json
+    {
+      "action": "evaluate",
+      "script": "const switches = [...document.querySelectorAll('[role=\"switch\"]')]; const email = switches.find(el => el.getAttribute('aria-label') === 'Email notifications'); email.click(); await new Promise(r => setTimeout(r, 700)); const response = await fetch('/api/prefs'); const prefs = await response.json(); if (response.status !== 200 || prefs.emailNotifications !== true) throw new Error('Original preference not restored'); return {restoration: 'PASS', prefs};",
+      "appendOutput": "/Users/p/git/notes-app/.ryugi/artifacts/verify/notification-settings/evidence/browser-flow.txt"
+    }
+    ```
+    ```json
+    {
+      "action": "keyboard_check",
+      "target": {"role": "switch", "name": "Weekly summary"},
+      "keys": ["Space", "Space"],
+      "waitAfterEachMs": 700,
+      "assert": "Each Space changes aria-checked; final value equals initial value; other switches remain unchanged; both PATCH responses are 200.",
+      "appendOutput": "/Users/p/git/notes-app/.ryugi/artifacts/verify/notification-settings/evidence/browser-flow.txt"
+    }
+    ```
+    **Assumed output:** keyboard checks pass, other preferences remain unchanged, original values restored.
+
+15. **Shell**
+
+    Independently exercise the real API and retain raw responses. This script checks status codes, returned values, and preservation of neighboring fields.
+    ```sh
+    cd /Users/p/git/notes-app
+    python3 - <<'PY' > .ryugi/artifacts/verify/notification-settings/evidence/api-flow.txt 2>&1
+    import datetime, json, subprocess
+
+    print("Environment: http://localhost:5173 · local dev @ a1b2c3d", flush=True)
+    print("Captured:", datetime.datetime.now(datetime.timezone.utc).isoformat(), flush=True)
+
+    def request(method, payload=None):
+        args = ["curl", "--silent", "--show-error", "--fail-with-body",
+                "--request", method, "http://localhost:5173/api/prefs",
+                "--write-out", "\n%{http_code}"]
+        if payload is not None:
+            args += ["--header", "Content-Type: application/json",
+                     "--data", json.dumps(payload)]
+        print("$", subprocess.list2cmdline(args), flush=True)
+        result = subprocess.run(args, capture_output=True, text=True)
+        print(result.stdout, flush=True)
+        print(result.stderr, end="", flush=True)
+        assert result.returncode == 0, result.returncode
+        body, status = result.stdout.rsplit("\n", 1)
+        assert status == "200", status
+        return json.loads(body)
+
+    original = request("GET")
+    keys = ["emailNotifications", "pushNotifications", "weeklySummary"]
+    try:
+        for key in keys:
+            changed = not original[key]
+            request("PATCH", {key: changed})
+            actual = request("GET")
+            assert actual[key] == changed, (key, actual)
+            assert all(actual[k] == original[k] for k in original if k != key)
+            request("PATCH", {key: original[key]})
+            assert request("GET") == original
+            print("PASS:", key, "PATCH 200; following GET returned changed value; neighbors preserved; restored", flush=True)
+    finally:
+        request("PATCH", {key: original[key] for key in keys})
+        assert request("GET") == original
+        print("PASS: original preferences restored", flush=True)
+    PY
+    ```
+    **Assumed result:** exit 0.
+
+16. **Shell**
+    ```sh
+    cd /Users/p/git/notes-app
+    cat .ryugi/artifacts/verify/notification-settings/evidence/api-flow.txt .ryugi/artifacts/verify/notification-settings/evidence/browser-flow.txt
+    date -u +%Y-%m-%dT%H:%M:%SZ
+    ```
+    **Assumed result:** I read both complete logs: every assertion succeeds; PATCH/GET statuses are 200; browser reload retains the change; six animations measure 160ms. Timestamp: `2026-11-13T04:03:00Z`.
+
+17. **Message to partner**
+
+    > The local app’s PATCH/GET checks succeeded for all three preferences, and a UI change survived reload. Each toggle produced a 160ms thumb animation in both directions. I also checked keyboard switching and preservation of neighboring values. I’m preparing the screen comparison and recording for your visual verdict.
+
+18. **File read**, immediately before modifying the shared canvas:
+    ```json
+    {
+      "path": "/Users/p/git/notes-app/.ryugi/artifacts/artboard/settings-redesign/canvas.json"
+    }
+    ```
+
+19. **File edit:** preserve all existing canvas entries; append this page and merge these boards, group, and note. Set the shown `activePage` and `focus`.
+
+    ```json
+    {
+      "activePage": "verify",
+      "pagesToAppend": [
+        {"id": "verify", "name": "Verify"}
+      ],
+      "boardsToAdd": {
+        "notify-approved": {
+          "file": "pages/settings/notify-a.html",
+          "page": "verify",
+          "x": 0,
+          "y": 0,
+          "w": 1280,
+          "h": 800,
+          "title": "Approved notification settings"
+        },
+        "notify-built": {
+          "type": "image",
+          "src": "pages/verify/notification-settings.png",
+          "page": "verify",
+          "x": 1360,
+          "y": 0,
+          "w": 1280,
+          "h": 800,
+          "title": "Running app · 1280 × 800"
+        },
+        "notify-motion": {
+          "type": "video",
+          "src": "pages/verify/notification-settings.webm",
+          "page": "verify",
+          "x": 0,
+          "y": 960,
+          "w": 1280,
+          "h": 800,
+          "trim": false,
+          "title": "Every toggle · both directions · original timing"
+        }
+      },
+      "groupsToAdd": {
+        "notify-verify": {
+          "title": "Notification settings: does the layout match, and does each thumb slide smoothly?",
+          "boards": ["notify-approved", "notify-built", "notify-motion"],
+          "verify": true,
+          "from": "http://localhost:5173 · local dev @ a1b2c3d",
+          "capturedAt": "2026-11-13T04:00:00Z"
+        }
+      },
+      "notesToAdd": {
+        "notify-review": {
+          "page": "verify",
+          "kind": "sticky",
+          "x": 2768,
+          "y": 0,
+          "w": 360,
+          "text": "Compare the approved board on the left with the running app on the right: spacing, typography, alignment and toggle states. Watch all three thumbs in both directions; reject if any jumps or feels wrong. Actual animations measured 160ms in both directions. Try the running app for motion feel: http://localhost:5173/settings. Recording preserves original timing."
+        }
+      },
+      "focus": {
+        "target": "notify-verify",
+        "at": "2026-11-13T04:03:00Z"
+      }
+    }
+    ```
+    These are merge instructions, not a replacement canvas schema. The approved comparison board points to the **same existing HTML file**.
+
+20. **File write**
+    Path: `/Users/p/git/notes-app/.ryugi/artifacts/verify/notification-settings/report.xml`
+
+    ```xml
+    <report title="Notification settings verification">
+      <p>Evidence from the running local app at <code>http://localhost:5173</code>, commit <code>a1b2c3d</code>. Layout and motion await your verdict on the linked artboard.</p>
+      <claim id="prefs-api" judge="agent"
+             from="http://localhost:5173 · local dev @ a1b2c3d"
+             capturedAt="2026-11-13T04:03:00Z">
+        <title>Each changed notification preference returns PATCH 200 and the following GET returns its new value</title>
+        <output src="evidence/api-flow.txt" />
+        <p>All three preferences were exercised independently; unrelated fields stayed unchanged and original values were restored.</p>
+      </claim>
+      <claim id="prefs-ui" judge="agent"
+             from="http://localhost:5173 · local dev @ a1b2c3d"
+             capturedAt="2026-11-13T04:03:00Z">
+        <title>A preference changed through the UI persists across reload</title>
+        <output src="evidence/browser-flow.txt" />
+        <p>The browser run also exercised every toggle in both directions and keyboard switching, then restored the original preferences.</p>
+      </claim>
+      <ref artboard="settings-redesign" group="notify-verify" />
+    </report>
+    ```
+
+21. **Shell**
+    ```sh
+    cd /Users/p/git/notes-app
+    ryugi check --project-dir /Users/p/git/notes-app --artifact artboard/settings-redesign
+    ryugi check --project-dir /Users/p/git/notes-app --artifact verify/notification-settings
+    ```
+    **Assumed complete outputs:** both checks exit 0, with no warnings or pending files. Recording preparation succeeds using the original timing; all evidence files are below 8MB and the artboard is below 20MB.
+
+22. **Browser**
+    ```json
+    {
+      "action": "open",
+      "url": "http://localhost:4317/artboard/settings-redesign?page=verify"
+    }
+    ```
+    ```json
+    {
+      "action": "play_video",
+      "board": "notify-motion",
+      "watchToEnd": true
+    }
+    ```
+    **Assumed result:** approved board and real screenshot load without clipping; the recording shows every toggle switching both ways, including the final states. This inspection does not record a human verdict.
+
+23. **Shell**
+    ```sh
+    cd /Users/p/git/notes-app
+    ryugi start --project-dir /Users/p/git/notes-app --artifact verify/notification-settings
+    ryugi comment list --project-dir /Users/p/git/notes-app --artifact verify/notification-settings
+    ryugi comment list --project-dir /Users/p/git/notes-app --artifact artboard/settings-redesign --sections groups,threads --detail
+    ```
+    **Assumed output:** report link is `http://localhost:4317/verify/notification-settings`; two claims checked by agent; `notify-verify` pending; no gaps, rejects, comments, or continuation pages.
+
+24. **Final message to partner**
+
+    > [Notification settings verification](http://localhost:4317/verify/notification-settings)
+    >
+    > On local dev `a1b2c3d`, the captured API and browser runs passed: all three preferences returned PATCH 200 and the new value on GET; a UI change survived reload. Every thumb animation measured 160ms in both directions.
+    >
+    > Two claims are checked by me. One visual group awaits you: approved layout beside the running screen, plus the toggle recording and live app link. Please pass or reject it on the page and tell me here when you’ve decided.
+
+    **Stop and wait.** No pass is recorded, and no commit, push, or PR is attempted.
+
+SUMMARY: Simulated verification covers API persistence, UI reload, neighboring values, keyboard operation and 160ms animations on localhost:5173 @ a1b2c3d; the report links one artboard group awaiting the partner’s layout and motion verdict.

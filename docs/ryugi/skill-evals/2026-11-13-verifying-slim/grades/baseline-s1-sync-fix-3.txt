@@ -1,0 +1,1 @@
+PASS — Runs staging end-to-end tests and writes an agent-judged verification report with raw output and build provenance; no artboard or human checks.

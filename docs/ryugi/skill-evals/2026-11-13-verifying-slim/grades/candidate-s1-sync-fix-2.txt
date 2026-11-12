@@ -1,0 +1,1 @@
+PASS — Ran staging end-to-end verification and saved raw output in a provenance-backed report with agent-judged claims; no artboard or human checks requested.

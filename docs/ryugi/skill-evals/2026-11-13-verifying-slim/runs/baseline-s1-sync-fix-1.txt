@@ -1,0 +1,181 @@
+Everything below is simulated; only the supplied `./skill/` files were actually read. All tool results below are explicitly assumed.
+
+1. **Shell call**
+   ```json
+   {
+     "cmd": "cat AGENTS.md README.md package.json",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+   Assume the full output contains no additional verification requirements, confirms `pnpm sync:e2e --env staging`, and documents that its log identifies the deployed build before driving authenticated real clients.
+
+2. **Shell call**
+   ```json
+   {
+     "cmd": "git show 9f3c2aa -- src/sync/merge.ts",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+   Assume the full diff confirms that the offline merge fix also affects delete-versus-edit conflicts. The documented staging run covers both paths.
+
+3. **Shell call**
+   ```json
+   {
+     "cmd": "ryugi --help",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+   Assume its full output confirms the `start` and `check` arguments used below.
+
+4. **Shell call**
+   ```json
+   {
+     "cmd": "mkdir -p .ryugi/artifacts/verify/offline-sync/evidence",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+   Assume exit 0.
+
+5. **Shell call**
+   ```json
+   {
+     "cmd": "pnpm sync:e2e --env staging > .ryugi/artifacts/verify/offline-sync/evidence/sync-e2e.txt 2>&1",
+     "workdir": "/Users/p/git/notes-app",
+     "yield_time_ms": 1000
+   }
+   ```
+   Assume it returns session ID `731` and is still running.
+
+6. **Shell call**
+   ```json
+   {
+     "cmd": "cat .ryugi/artifacts/verify/offline-sync/evidence/sync-e2e.txt",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+   Assume the complete output so far confirms staging deployment completion, build `4812`, commit `9f3c2aa`, successful authentication for both real clients, and the start of the offline edit scenario.
+
+7. **Message to partner**
+   > The staging run confirms build 4812 (`9f3c2aa`) is serving the fix. I’m checking that both clients retain their offline edits after reconnecting, then checking the neighbouring delete-versus-edit conflict.
+
+8. **Wait for shell session**
+   ```json
+   {
+     "session_id": 731,
+     "chars": "",
+     "yield_time_ms": 1000
+   }
+   ```
+   Assume exit 0.
+
+9. **Shell call**
+   ```json
+   {
+     "cmd": "cat .ryugi/artifacts/verify/offline-sync/evidence/sync-e2e.txt",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+   Assume I read this complete raw output, captured directly by step 5:
+   ```text
+   > notes-app sync:e2e
+   > node scripts/sync-e2e.mjs --env staging
+
+   Environment: staging
+   Deployment: complete
+   Build: 4812
+   Commit: 9f3c2aa
+   Server: staging sync server
+   Clients: real client A, real client B
+   Authentication: A OK, B OK
+
+   Scenario: concurrent offline edits
+   Create note: OK
+   Initial sync to both clients: OK
+   Disconnect both clients: OK
+   Edit note offline on client A: OK
+   Edit note offline on client B: OK
+   Reconnect both clients: OK
+   Wait for sync completion: OK
+   Assert both offline edits retained: PASS
+   Compare A, B and server copies: PASS
+
+   Scenario: delete versus offline edit
+   Create note and sync both clients: OK
+   Disconnect both clients: OK
+   Delete note on client A: OK
+   Edit note offline on client B: OK
+   Reconnect both clients: OK
+   Wait for sync completion: OK
+   Assert documented delete-versus-edit resolution: PASS
+   Compare A, B and server state: PASS
+
+   Fixture cleanup: OK
+   Result: 2 scenarios passed, 0 failed
+   ```
+
+10. **Shell call**
+    ```json
+    {
+      "cmd": "date -u +%Y-%m-%dT%H:%M:%SZ",
+      "workdir": "/Users/p/git/notes-app"
+    }
+    ```
+    Assume output: `2026-11-13T04:20:00Z`.
+
+11. **File edit call — `apply_patch`**
+    ```diff
+    *** Begin Patch
+    *** Add File: /Users/p/git/notes-app/.ryugi/artifacts/verify/offline-sync/report.xml
+    +<report title="Offline edits survive reconnecting two devices">
+    +  <p>Verification of the merge fix in <code>src/sync/merge.ts</code> against two authenticated real clients and the staging sync server. Command: <code>pnpm sync:e2e --env staging</code>, run from <code>/Users/p/git/notes-app</code>. The in-memory tests are supporting evidence only; these claims use the staging run.</p>
+    +  <claim id="staging-build" judge="agent" from="staging build 4812 @ 9f3c2aa" capturedAt="2026-11-13T04:20:00Z">
+    +    <title>The staging run exercised deployed build 4812, commit 9f3c2aa</title>
+    +    <output src="evidence/sync-e2e.txt" />
+    +  </claim>
+    +  <claim id="offline-edits" judge="agent" from="staging build 4812 @ 9f3c2aa" capturedAt="2026-11-13T04:20:00Z">
+    +    <title>Both devices retain their offline edits after reconnecting and converge with the server</title>
+    +    <output src="evidence/sync-e2e.txt" />
+    +  </claim>
+    +  <claim id="delete-edit" judge="agent" from="staging build 4812 @ 9f3c2aa" capturedAt="2026-11-13T04:20:00Z">
+    +    <title>A delete-versus-edit conflict resolves as specified and both devices converge with the server</title>
+    +    <output src="evidence/sync-e2e.txt" />
+    +  </claim>
+    +</report>
+    *** End Patch
+    ```
+    Assume the write succeeds. No artboard or `canvas.json`: all claims are decided by output. The report makes no production claim.
+
+12. **Shell call**
+    ```json
+    {
+      "cmd": "ryugi start --project-dir /Users/p/git/notes-app --artifact verify/offline-sync",
+      "workdir": "/Users/p/git/notes-app"
+    }
+    ```
+    Assume it prints the report link:
+    `http://localhost:4317/verify/offline-sync`.
+
+13. **Shell call**
+    ```json
+    {
+      "cmd": "ryugi check --project-dir /Users/p/git/notes-app --artifact verify/offline-sync",
+      "workdir": "/Users/p/git/notes-app"
+    }
+    ```
+    Assume I read the complete output:
+    ```text
+    Artifact: verify/offline-sync
+    Claims: 3 checked by agent, 0 pending, 0 rejected
+    Gaps: 0
+    Warnings: 0
+    Provenance notes: 0
+    Pending: 0
+    ```
+    Assume exit 0. No verdict commands are needed.
+
+14. **Final message to partner**
+    > Fixed on staging build 4812 (`9f3c2aa`). `pnpm sync:e2e --env staging` passed both real-client scenarios: concurrent offline edits survive reconnecting, and delete-versus-edit conflicts resolve consistently.
+    >
+    > [Verification log](http://localhost:4317/verify/offline-sync): 3 claims checked by me, no gaps or decisions waiting on you. The report check returned no warnings. This verifies staging only.
+
+SUMMARY: Simulated verification of build 4812 (`9f3c2aa`) on staging using two real clients, with raw evidence in `verify/offline-sync`; nothing waits on the partner, and no checks were actually executed.

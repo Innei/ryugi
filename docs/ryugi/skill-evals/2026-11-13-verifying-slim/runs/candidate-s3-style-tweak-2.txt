@@ -1,0 +1,94 @@
+All calls and results below are simulated; nothing runs. Browser calls use an assumed `browser` interface.
+
+1. Message to partner:
+
+   “I’ll check the rendered padding and capture the button. The edit already hot reloaded, so I missed the original before screenshot; I’ll flag that gap.”
+
+2. Tool call:
+
+   ```text
+   shell({
+     "command": "cd /Users/p/git/notes-app && rg --files --hidden -g AGENTS.md -g '*verification*' -g '*acceptance*' -g '!node_modules' -g '!.git'"
+   })
+   ```
+
+   Assumed output:
+
+   ```text
+   AGENTS.md
+   ```
+
+3. Tool call:
+
+   ```text
+   shell({
+     "command": "cd /Users/p/git/notes-app && cat AGENTS.md && git rev-parse --short HEAD && git diff -- src/settings/SaveButton.css"
+   })
+   ```
+
+   Assumed full output:
+
+   ```text
+   For CSS-only changes, verify in the running app. Check hover and keyboard focus.
+   a1b2c3d
+   diff --git a/src/settings/SaveButton.css b/src/settings/SaveButton.css
+   --- a/src/settings/SaveButton.css
+   +++ b/src/settings/SaveButton.css
+   @@ -2,1 +2,1 @@
+   -  padding-inline: 8px;
+   +  padding-inline: 12px;
+   ```
+
+4. Tool call:
+
+   ```text
+   browser.evaluate({
+     "expression": "(() => { const b = [...document.querySelectorAll('button')].find(b => b.textContent.trim() === 'Save'); if (!b) throw new Error('Save button missing'); const s = getComputedStyle(b); const result = {url: location.href, capturedAt: new Date().toISOString(), paddingInlineStart: s.paddingInlineStart, paddingInlineEnd: s.paddingInlineEnd}; if (result.paddingInlineStart !== '12px' || result.paddingInlineEnd !== '12px') throw new Error(JSON.stringify(result)); return result; })()"
+   })
+   ```
+
+   Assumed full output:
+
+   ```json
+   {"url":"http://localhost:5173/settings","capturedAt":"2026-11-13T08:00:00.000Z","paddingInlineStart":"12px","paddingInlineEnd":"12px"}
+   ```
+
+5. Tool calls:
+
+   ```text
+   browser.screenshot({
+     "path": "/Users/p/git/notes-app/.ryugi/evidence/save-padding-after.png"
+   })
+   browser.hover({
+     "role": "button",
+     "name": "Save",
+     "exact": true
+   })
+   browser.screenshot({
+     "path": "/Users/p/git/notes-app/.ryugi/evidence/save-padding-hover.png"
+   })
+   browser.evaluate({
+     "expression": "(() => { const b = [...document.querySelectorAll('button')].find(b => b.textContent.trim() === 'Save'); b.blur(); b.focus(); return {focused: document.activeElement === b}; })()"
+   })
+   browser.pressKey({"key":"Shift+Tab"})
+   browser.pressKey({"key":"Tab"})
+   browser.screenshot({
+     "path": "/Users/p/git/notes-app/.ryugi/evidence/save-padding-focus.png"
+   })
+   ```
+
+   Assumed results: screenshots saved; focus evaluation returned `{"focused":true}`; keyboard navigation returned focus to Save. Screenshot inspection shows the button and adjacent controls without overlap in normal, hover, and keyboard focus states.
+
+6. Message to partner:
+
+   “The running settings page renders **12px on both horizontal sides**. The browser check at `http://localhost:5173/settings` returned `paddingInlineStart: "12px"` and `paddingInlineEnd: "12px"` against local dev `a1b2c3d` plus the CSS edit. I also checked hover and keyboard focus.
+
+   After: `.ryugi/evidence/save-padding-after.png`  
+   Hover: `.ryugi/evidence/save-padding-hover.png`  
+   Focus: `.ryugi/evidence/save-padding-focus.png`
+
+   Before: unavailable—the edit had already hot reloaded before capture. The visual before/after comparison remains unverified. The updated button is open for your visual review.”
+
+Stop and wait. No report or artboard for this small visible change.
+
+SUMMARY: Simulated verification found 12px horizontal padding on local dev and exercised hover and keyboard focus; original before evidence is missing, and visual acceptance waits on the partner.

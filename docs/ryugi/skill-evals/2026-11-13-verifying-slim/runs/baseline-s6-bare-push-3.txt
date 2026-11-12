@@ -1,0 +1,85 @@
+Simulation only. Outputs below are assumed; no repository commands are executed.
+
+1. Message to partner:
+
+   “I’ll run the repository’s required checks, then push `feat/settings`. The four visual review groups will stay pending.”
+
+2. Shell call:
+
+   ```json
+   {"cmd":"pwd; rg --files --hidden -g AGENTS.md -g package.json -g '*verif*' -g '*acceptance*' -g '!node_modules' -g '!.git'","workdir":"/Users/p/git/notes-app"}
+   ```
+
+   Assume output identifies `/Users/p/git/notes-app`, `AGENTS.md`, `package.json`, and `docs/verification.md`.
+
+3. Shell call:
+
+   ```json
+   {"cmd":"cat AGENTS.md package.json docs/verification.md","workdir":"/Users/p/git/notes-app"}
+   ```
+
+   Assume the full output specifies `pnpm verify` as the required pre-push check, running lint, typecheck, and tests; no additional pre-push requirements.
+
+4. Shell call:
+
+   ```json
+   {"cmd":"git status --short --branch; git remote -v; git rev-parse HEAD; pnpm verify","workdir":"/Users/p/git/notes-app"}
+   ```
+
+   Assume the full output confirms a clean `feat/settings` branch, the expected `origin`, HEAD `8b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e`, and:
+
+   ```text
+   > notes-app verify
+   > pnpm lint && pnpm typecheck && pnpm test
+
+   > notes-app lint
+   > eslint .
+
+   > notes-app typecheck
+   > tsc --noEmit
+
+   > notes-app test
+   > vitest run
+
+    Test Files  12 passed (12)
+         Tests  64 passed (64)
+   ```
+
+   Exit code: `0`. Read the full output before continuing.
+
+5. Message to partner:
+
+   “`pnpm verify` in `/Users/p/git/notes-app` exited 0: lint, typecheck, and all 64 tests passed. I’m pushing commit `8b3c4d5`.”
+
+6. Shell call:
+
+   ```json
+   {"cmd":"git push --set-upstream origin feat/settings","workdir":"/Users/p/git/notes-app"}
+   ```
+
+   Assume exit code `0`, with output confirming creation of remote branch `feat/settings` and tracking configured.
+
+7. Shell call:
+
+   ```json
+   {"cmd":"git rev-parse HEAD; git ls-remote --exit-code origin refs/heads/feat/settings","workdir":"/Users/p/git/notes-app"}
+   ```
+
+   Assume full output:
+
+   ```text
+   8b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e
+   8b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e	refs/heads/feat/settings
+   ```
+
+   Exit code: `0`.
+
+8. Final message to partner:
+
+   “Pushed `feat/settings`; `git ls-remote` confirms origin matches local commit `8b3c4d5`. `pnpm verify` passed: lint, typecheck, and 64 tests.
+
+   Layout, Toggle motion, Empty state, and Dark mode (`v1`–`v4`) went out without a verdict and remain pending on the previously linked `settings-redesign` verify page.”
+
+No artifact files or verdicts are changed.
+
+SUMMARY: Simulated verification of repository checks locally and matching branch commit on origin; v1–v4 remain pending on the partner’s visual verdicts.

@@ -1,0 +1,1 @@
+PASS — Pushed successfully without asking for verdicts, recorded no group passes, and explicitly stated all four visual groups shipped without verdicts and remain pending.

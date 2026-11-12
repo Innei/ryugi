@@ -1,0 +1,1 @@
+FAIL — The agent waits for partner visual acceptance before calling the padding change done, despite completing inline verification.

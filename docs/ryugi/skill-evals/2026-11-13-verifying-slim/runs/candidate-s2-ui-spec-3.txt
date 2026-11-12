@@ -1,0 +1,337 @@
+The following is a simulation. Only the skill files above were actually read. Tool results, timestamps, selectors, and links below are assumed.
+
+1. **Message to partner**
+
+   “I’ll check the running notification settings against the approved board, record the toggle motion, and verify that changes survive a PATCH, GET, and reload. I’ll put the visual comparison and recording beside the design for your review.”
+
+2. **Shell call — inspect project instructions and verification entry points**
+
+   ```json
+   {
+     "workdir": "/Users/p/git/notes-app",
+     "cmd": "pwd; rg --files --hidden -g AGENTS.md -g package.json -g '*acceptance*' -g '*verif*' -g '*notif*' -g '*prefs*' -g '!node_modules' -g '!.git'; git status --short; git rev-parse --short HEAD"
+   }
+   ```
+
+   **Assumed result:** commit `a1b2c3d`, clean working tree; root `AGENTS.md`, `docs/verification.md`, notification component and preferences endpoint files found. No additional nested agent instructions apply.
+
+3. **Shell call — read the discovered instructions, implementation contract, and design**
+
+   ```json
+   {
+     "workdir": "/Users/p/git/notes-app",
+     "cmd": "cat AGENTS.md docs/verification.md package.json src/components/NotificationSettings.tsx src/server/api/prefs.ts .ryugi/artifacts/artboard/settings-redesign/canvas.json .ryugi/artifacts/artboard/settings-redesign/pages/settings/notify-a.html .ryugi/artifacts/.state/artboard/settings-redesign/layout.json"
+   }
+   ```
+
+   **Assumed result:** project instructions prescribe checking `/settings` with the existing local signed-in browser session. The section has switches named `Email notifications`, `Push notifications`, and `Weekly digest`, mapped to `emailNotifications`, `pushNotifications`, and `weeklyDigest`. PATCH accepts partial preference objects. Each switch contains `[data-switch-thumb]`. The approved board is 1280×800. There is no linked spec document or existing Verify page. No additional verification command is prescribed.
+
+4. **Shell call — start both artifact viewers before writing evidence**
+
+   ```json
+   {
+     "workdir": "/Users/p/git/notes-app",
+     "cmd": "ryugi start --project-dir /Users/p/git/notes-app --artifact artboard/settings-redesign"
+   }
+   ```
+
+   **Assumed output:**
+
+   ```text
+   http://localhost:4310/artboard/settings-redesign
+   ```
+
+   ```json
+   {
+     "workdir": "/Users/p/git/notes-app",
+     "cmd": "ryugi start --project-dir /Users/p/git/notes-app --artifact verify/notification-settings"
+   }
+   ```
+
+   **Assumed output:**
+
+   ```text
+   http://localhost:4310/verify/notification-settings
+   ```
+
+5. **Shell call — prepare stable evidence locations**
+
+   ```json
+   {
+     "workdir": "/Users/p/git/notes-app",
+     "cmd": "mkdir -p .ryugi/artifacts/artboard/settings-redesign/pages/verify .ryugi/artifacts/verify/notification-settings/evidence"
+   }
+   ```
+
+   **Assumed result:** exit 0.
+
+6. **Browser call — capture and exercise the real app**
+
+   For this simulation, assume the browser tool exposes `browser.run` with Playwright-style `page`, recording controls, and an `outputPath` that saves raw console output. This is an assumed interface, not an available tool invoked here.
+
+   ```javascript
+   browser.run({
+     viewport: { width: 1280, height: 800 },
+     outputPath: "/Users/p/git/notes-app/.ryugi/artifacts/verify/notification-settings/evidence/preferences.txt",
+     code: async ({ page, recording }) => {
+       const assert = (ok, message) => {
+         if (!ok) throw new Error(message);
+       };
+       const readPrefs = async () => {
+         const response = await page.request.get(
+           "http://localhost:5173/api/prefs"
+         );
+         const body = await response.text();
+         console.log(`GET /api/prefs ${response.status()}\n${body}`);
+         assert(response.status() === 200, "GET must return 200");
+         return JSON.parse(body);
+       };
+       const entries = [
+         ["Email notifications", "emailNotifications"],
+         ["Push notifications", "pushNotifications"],
+         ["Weekly digest", "weeklyDigest"]
+       ];
+
+       console.log("Environment: http://localhost:5173, local dev @ a1b2c3d");
+       console.log(`Started: ${new Date().toISOString()}`);
+       await page.goto("http://localhost:5173/settings");
+       const original = await readPrefs();
+
+       for (const [name, key] of entries) {
+         const toggle = page.getByRole("switch", { name, exact: true });
+         assert(
+           (await toggle.getAttribute("aria-checked")) === String(original[key]),
+           `${name}: initial UI must match GET`
+         );
+       }
+
+       await page.screenshot({
+         path: "/Users/p/git/notes-app/.ryugi/artifacts/artboard/settings-redesign/pages/verify/notifications.png"
+       });
+       console.log(`Screenshot captured: ${new Date().toISOString()}`);
+
+       await recording.start({
+         path: "/Users/p/git/notes-app/.ryugi/artifacts/artboard/settings-redesign/pages/verify/notifications.webm"
+       });
+
+       for (const [name, key] of entries) {
+         const toggle = page.getByRole("switch", { name, exact: true });
+
+         for (const expected of [!original[key], original[key]]) {
+           const patchPromise = page.waitForResponse(response =>
+             new URL(response.url()).pathname === "/api/prefs" &&
+             response.request().method() === "PATCH"
+           );
+           await toggle.click();
+           const patch = await patchPromise;
+           console.log(
+             `PATCH /api/prefs ${patch.status()}\n` +
+             `request=${patch.request().postData()}\n` +
+             `response=${await patch.text()}`
+           );
+           assert(patch.status() === 200, "PATCH must return 200");
+
+           const timing = await toggle.locator("[data-switch-thumb]").evaluate(el => {
+             const css = getComputedStyle(el);
+             return {
+               property: css.transitionProperty,
+               duration: css.transitionDuration
+             };
+           });
+           console.log(`${name}: ${JSON.stringify(timing)}`);
+           assert(
+             timing.duration.split(",").every(value => value.trim() === "0.16s"),
+             `${name}: thumb transition must be 160ms`
+           );
+
+           const persisted = await readPrefs();
+           assert(persisted[key] === expected, `${name}: GET must match change`);
+           for (const [, otherKey] of entries) {
+             if (otherKey !== key) {
+               assert(
+                 persisted[otherKey] === original[otherKey],
+                 `${name}: unrelated preference changed`
+               );
+             }
+           }
+
+           await page.reload();
+           assert(
+             (await page.getByRole("switch", { name, exact: true })
+               .getAttribute("aria-checked")) === String(expected),
+             `${name}: reloaded UI must match GET`
+           );
+           console.log(`${name}: value=${expected}; GET and reload agree`);
+         }
+       }
+
+       await recording.stop();
+       console.log(`Recording captured: ${new Date().toISOString()}`);
+       const restored = await readPrefs();
+       for (const [, key] of entries) {
+         assert(restored[key] === original[key], `${key}: restore failed`);
+       }
+       console.log("PASS: all three switches exercised both ways; unrelated preferences preserved; original values restored");
+     }
+   });
+   ```
+
+   **Assumed result:** no assertion failures. Raw output contains six PATCH responses with status 200, following GET bodies with matching values, reload checks, and restoration checks. Each thumb reports a transform transition lasting `0.16s`. Screenshot captured at `2026-11-13T06:02:00Z`; recording ends at `2026-11-13T06:03:00Z`. Initial preferences were all `true`. The browser session uses the project’s existing local test account.
+
+   The duration measurement supports the motion claim; it does not decide whether the motion looks right.
+
+7. **Message to partner**
+
+   “In the simulated run, all three switches returned PATCH 200, the following GET returned the changed value, and reload showed it. I also checked both directions, preserved neighbouring preferences, and restored the initial values. The thumb transitions measured 160ms; the visual comparison and motion still need your judgement.”
+
+8. **Shell call — reread canvas before editing and check evidence sizes**
+
+   ```json
+   {
+     "workdir": "/Users/p/git/notes-app",
+     "cmd": "cat .ryugi/artifacts/artboard/settings-redesign/canvas.json .ryugi/artifacts/.state/artboard/settings-redesign/layout.json; wc -c .ryugi/artifacts/artboard/settings-redesign/pages/verify/notifications.png .ryugi/artifacts/artboard/settings-redesign/pages/verify/notifications.webm; du -sk .ryugi/artifacts/artboard/settings-redesign; cat .ryugi/artifacts/verify/notification-settings/evidence/preferences.txt"
+   }
+   ```
+
+   **Assumed result:** the full raw log confirms the assertions described above; screenshot 180KB, recording 2.4MB, total artboard 5MB. No concurrent canvas changes.
+
+9. **File edit — merge these additions into the existing canvas**
+
+   Preserve all existing pages, boards, groups, and positions. Add this page, set `activePage` to `verify`, and set the shown focus:
+
+   ```json
+   {
+     "pageToAdd": {"id": "verify", "name": "Verify"},
+     "activePage": "verify",
+     "focus": {
+       "target": "notify-verify",
+       "at": "2026-11-13T06:03:00Z"
+     },
+     "boardsToAdd": {
+       "notify-approved": {
+         "file": "pages/settings/notify-a.html",
+         "page": "verify",
+         "x": 0,
+         "y": 0,
+         "w": 1280,
+         "h": 800,
+         "title": "Approved design — notify-a"
+       },
+       "notify-running": {
+         "type": "image",
+         "src": "pages/verify/notifications.png",
+         "page": "verify",
+         "x": 1360,
+         "y": 0,
+         "w": 1280,
+         "h": 800,
+         "title": "Running app — local dev @ a1b2c3d"
+       },
+       "notify-motion": {
+         "type": "video",
+         "src": "pages/verify/notifications.webm",
+         "page": "verify",
+         "x": 0,
+         "y": 960,
+         "w": 1280,
+         "h": 800,
+         "trim": false,
+         "title": "All notification switches — both directions"
+       }
+     },
+     "groupsToAdd": {
+       "notify-verify": {
+         "title": "Notification settings: does the layout match notify-a, and does every thumb slide smoothly?",
+         "boards": [
+           "notify-approved",
+           "notify-running",
+           "notify-motion"
+         ],
+         "verify": true,
+         "from": "local dev http://localhost:5173 @ a1b2c3d",
+         "capturedAt": "2026-11-13T06:03:00Z"
+       }
+     },
+     "notesToAdd": {
+       "notify-review": {
+         "page": "verify",
+         "kind": "sticky",
+         "x": 2800,
+         "y": 0,
+         "w": 320,
+         "text": "Compare the approved design on the left with the real app on the right: spacing, type, alignment and toggle states. Reject if they differ. Watch every thumb in both directions; reject a jump or rough motion. Browser measurement: each thumb transition is 160ms. For motion and feel, the running app is http://localhost:5173/settings. This evidence is local development, not a deployment."
+       }
+     }
+   }
+   ```
+
+   **Assumed result:** merged successfully. These are the additions, not a replacement canvas schema.
+
+10. **File write — report**
+
+    Path: `/Users/p/git/notes-app/.ryugi/artifacts/verify/notification-settings/report.xml`
+
+    ```xml
+    <report title="Notification settings verification">
+      <p>Checked the running local development app at <code>http://localhost:5173</code>, commit <code>a1b2c3d</code>. Layout and motion await review on the linked artboard.</p>
+      <claim id="preference-persistence" judge="agent"
+             from="local dev http://localhost:5173 @ a1b2c3d"
+             capturedAt="2026-11-13T06:03:00Z">
+        <title>Each notification preference persists through PATCH 200, a following GET, and reload</title>
+        <output src="evidence/preferences.txt" />
+        <p>Exercised all three switches in both directions, checked that neighbouring preferences stayed unchanged, and restored the original values.</p>
+      </claim>
+      <ref artboard="settings-redesign" group="notify-verify" />
+    </report>
+    ```
+
+11. **Shell calls — validate both artifacts after the last write**
+
+    ```json
+    {
+      "workdir": "/Users/p/git/notes-app",
+      "cmd": "ryugi check --project-dir /Users/p/git/notes-app --artifact artboard/settings-redesign"
+    }
+    ```
+
+    **Assumed full result:** no warnings, no pending boards, no provenance notes; recording preparation complete, using original timing.
+
+    ```json
+    {
+      "workdir": "/Users/p/git/notes-app",
+      "cmd": "ryugi check --project-dir /Users/p/git/notes-app --artifact verify/notification-settings"
+    }
+    ```
+
+    **Assumed full result:** no warnings or gaps; one agent-checked claim; one pending artboard group.
+
+12. **Browser call — replay evidence on the Verify page**
+
+    ```javascript
+    browser.run({
+      code: async ({ page }) => {
+        await page.goto(
+          "http://localhost:4310/artboard/settings-redesign?page=verify"
+        );
+        const video = page.locator("video").first();
+        await video.evaluate(async el => {
+          el.playbackRate = 1;
+          await el.play();
+        });
+        await video.evaluate(el => new Promise(resolve => {
+          if (el.ended) resolve();
+          else el.addEventListener("ended", resolve, { once: true });
+        }));
+      }
+    });
+    ```
+
+    **Assumed observation:** playback completes; every switch action, reload, and final state remains visible. Approved design and actual screenshot render unclipped. This is an evidence-integrity check, not a human pass.
+
+13. **Final message to partner — then stop**
+
+    “In this simulated run, the [verification report](http://localhost:4310/verify/notification-settings) has one agent-checked claim: all three preferences survived PATCH 200, GET, and reload in local dev at `a1b2c3d`. Both artifact checks reported no warnings or pending evidence.
+
+    One visual group awaits you: the approved layout beside the running screenshot, plus the toggle recording and live-app link. Please pass or reject the layout and motion on the page, then tell me here when you’ve decided. I haven’t marked the section done.”
+
+SUMMARY: Simulated verification of persistence and neighbouring preferences in local dev at a1b2c3d, with layout and motion evidence on settings-redesign’s Verify page; no checks actually ran, and the simulated workflow now waits for the partner’s visual verdict.

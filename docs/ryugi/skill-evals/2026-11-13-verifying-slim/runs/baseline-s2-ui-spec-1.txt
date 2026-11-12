@@ -1,0 +1,293 @@
+The following is a **simulation**. Only `./skill/` was read. Commands, browser results, timestamps, and links below are assumed, not actual verification.
+
+1. **Message to partner**
+
+   > I’m using the verifying skill to check the running Notification settings section. I’ll capture the layout and toggle motion beside the approved design, and record the preference persistence results separately.
+
+2. **Shell call — discover project instructions before testing**
+
+   ```sh
+   cd /Users/p/git/notes-app
+   pwd
+   rg --files --hidden -g AGENTS.md -g '*acceptance*' -g '*verif*' -g package.json -g '*spec*' -g '!node_modules' -g '!.git'
+   git status --short
+   git rev-parse HEAD
+   ```
+
+   **Assume output:** commit `a1b2c3d`, no application changes after that commit; relevant files are `AGENTS.md`, `docs/verification.md`, and `docs/specs/notification-settings.md`.
+
+3. **Shell call — read instructions, spec, design, and artifact layout**
+
+   ```sh
+   cd /Users/p/git/notes-app
+   cat AGENTS.md docs/verification.md docs/specs/notification-settings.md package.json
+   cat .ryugi/artifacts/artboard/settings-redesign/canvas.json
+   cat .ryugi/artifacts/.state/artboard/settings-redesign/layout.json
+   cat .ryugi/artifacts/artboard/settings-redesign/pages/settings/notify-a.html
+   ```
+
+   **Assume output:**
+
+   - Acceptance uses `/settings`, the existing signed-in local browser session, and its development test account.
+   - Notification switches are named `Email notifications` and `Push notifications`; their thumb selector is `[data-toggle-thumb]`.
+   - API keys are `emailNotifications` and `pushNotifications`. `theme` is a neighbouring preference that must stay unchanged.
+   - The approved board is 1280×800.
+   - There is no existing Verify page and no linked discussion document requiring a backlink.
+   - The app exposes its build commit through `<meta name="build-commit">`.
+   - Local development preference changes are permitted.
+   - No additional verification commands are prescribed.
+
+4. **Shell call — start artifacts before writing evidence**
+
+   ```sh
+   ryugi start --project-dir /Users/p/git/notes-app --artifact artboard/settings-redesign
+   ryugi start --project-dir /Users/p/git/notes-app --artifact verify/notification-settings
+   mkdir -p /Users/p/git/notes-app/.ryugi/artifacts/artboard/settings-redesign/pages/verify
+   mkdir -p /Users/p/git/notes-app/.ryugi/artifacts/verify/notification-settings/evidence
+   ```
+
+   **Assume output:** local artboard and report URLs are respectively:
+
+   ```text
+   http://localhost:4310/a/artboard/settings-redesign
+   http://localhost:4310/a/verify/notification-settings
+   ```
+
+5. **Browser call — open the running app**
+
+   For this simulation, assume `browser.run_code` accepts Playwright code with an existing `page`, and `outputFile` stores the complete raw console output.
+
+   ```json
+   {
+     "code": "await page.setViewportSize({width:1280,height:800}); await page.goto('http://localhost:5173/settings'); await page.getByRole('heading',{name:'Notification settings',exact:true}).waitFor(); console.log(JSON.stringify({url:page.url(),commit:await page.locator('meta[name=\"build-commit\"]').getAttribute('content'),switches:await page.getByRole('switch').evaluateAll(xs=>xs.map(x=>({name:x.getAttribute('aria-label'),checked:x.getAttribute('aria-checked')})))}));",
+     "outputFile": "/Users/p/git/notes-app/.ryugi/artifacts/verify/notification-settings/evidence/environment.txt"
+   }
+   ```
+
+   **Assume full output:** URL is `/settings`, served commit is `a1b2c3d`, and both expected switches are present. No sign-in intervention is needed.
+
+6. **Browser call — capture the actual layout**
+
+   ```json
+   {
+     "code": "console.log('capturedAt='+new Date().toISOString()); await page.screenshot({path:'/Users/p/git/notes-app/.ryugi/artifacts/artboard/settings-redesign/pages/verify/notification-settings.png',fullPage:false});",
+     "outputFile": "/Users/p/git/notes-app/.ryugi/artifacts/verify/notification-settings/evidence/screenshot-capture.txt"
+   }
+   ```
+
+   **Assume output:** `capturedAt=2026-11-13T03:40:00Z`; screenshot saved successfully.
+
+7. **Browser call — start a short recording**
+
+   ```json
+   {
+     "action": "start",
+     "path": "/Users/p/git/notes-app/.ryugi/artifacts/artboard/settings-redesign/pages/verify/notification-settings.webm"
+   }
+   ```
+
+   **Assume output:** recording started for the current 1280×800 app viewport.
+
+8. **Browser call — exercise every switch in both directions, measure motion, and verify persistence**
+
+   ```json
+   {
+     "code": "const assert=(ok,msg)=>{if(!ok)throw new Error(msg)}; const readPrefs=()=>page.evaluate(async()=>{const r=await fetch('/api/prefs');return {status:r.status,body:await r.json()}}); const initial=await readPrefs(); console.log('initial GET '+JSON.stringify(initial)); assert(initial.status===200,'Initial GET failed'); const controls=[['Email notifications','emailNotifications'],['Push notifications','pushNotifications']]; for(const [name,key] of controls){const toggle=page.getByRole('switch',{name,exact:true}); const original=initial.body[key]; for(const expected of [!original,original]){await toggle.scrollIntoViewIfNeeded(); const before=await toggle.locator('[data-toggle-thumb]').evaluate(el=>getComputedStyle(el).transform); const pending=page.waitForResponse(r=>new URL(r.url()).pathname==='/api/prefs'&&r.request().method()==='PATCH'); await toggle.click(); const animation=await toggle.locator('[data-toggle-thumb]').evaluate(async el=>{const a=el.getAnimations().find(a=>a instanceof CSSTransition&&a.transitionProperty==='transform'); if(!a)throw new Error('No thumb transform transition'); const duration=a.effect.getTiming().duration; const frames=[]; while(a.playState!=='finished'){frames.push(getComputedStyle(el).transform);await new Promise(requestAnimationFrame)} return {duration,frames,after:getComputedStyle(el).transform}}); console.log('motion '+JSON.stringify({name,expected,before,...animation})); assert(animation.duration===160,'Expected 160ms thumb transition'); assert(animation.after!==before,'Thumb did not move'); assert(new Set(animation.frames).size>1,'No intermediate sliding frames'); const response=await pending; console.log('PATCH '+JSON.stringify({name,request:response.request().postData(),status:response.status(),body:await response.text()})); assert(response.status()===200,'PATCH did not return 200'); const saved=await readPrefs(); console.log('following GET '+JSON.stringify(saved)); assert(saved.status===200&&saved.body[key]===expected,'GET did not return changed preference'); for(const k of Object.keys(initial.body)){if(k!==key)assert(JSON.stringify(saved.body[k])===JSON.stringify(initial.body[k]),'Unrelated preference changed: '+k)} await page.reload(); await page.getByRole('heading',{name:'Notification settings',exact:true}).waitFor(); assert(await page.getByRole('switch',{name,exact:true}).getAttribute('aria-checked')===String(expected),'Reload lost preference'); console.log('reload '+JSON.stringify({name,expected,result:'PASS'}));}} const final=await readPrefs(); assert(JSON.stringify(final.body)===JSON.stringify(initial.body),'Original preferences not restored'); console.log('PASS: both switches changed and restored; PATCH 200; subsequent GET matched; reload retained each value; neighbouring preferences unchanged'); console.log('capturedAt='+new Date().toISOString());",
+     "outputFile": "/Users/p/git/notes-app/.ryugi/artifacts/verify/notification-settings/evidence/preferences-flow.txt"
+   }
+   ```
+
+   **Assume full output:** all four switch operations succeed. Every PATCH returns 200; every following GET returns the expected value; every reload preserves the displayed setting. Each thumb has a 160ms transform transition with intermediate positions. Other preferences remain unchanged, and original values are restored. Capture ends at `2026-11-13T03:40:20Z`.
+
+9. **Browser call — stop recording**
+
+   ```json
+   {
+     "action": "stop"
+   }
+   ```
+
+   **Assume output:** recording saved successfully, including all clicks, save states, reloads, and final restored state.
+
+10. **Shell call — read the complete captured output and check evidence sizes**
+
+    ```sh
+    cd /Users/p/git/notes-app
+    cat .ryugi/artifacts/verify/notification-settings/evidence/environment.txt .ryugi/artifacts/verify/notification-settings/evidence/screenshot-capture.txt .ryugi/artifacts/verify/notification-settings/evidence/preferences-flow.txt
+    find .ryugi/artifacts/artboard/settings-redesign/pages/verify -type f -exec stat -f '%N %z bytes' {} \;
+    du -sk .ryugi/artifacts/artboard/settings-redesign
+    git rev-parse HEAD
+    git diff -- src
+    ```
+
+    **Assume output:** the complete logs confirm the results above; screenshot is 310KB, recording is 2.8MB, total artboard is 5.4MB; commit remains `a1b2c3d` and application source is unchanged.
+
+11. **Message to partner**
+
+    > In the simulated run, both switches retained their values after reload. All four PATCH requests returned 200, and each following GET returned the saved value. Both thumbs measured 160ms with intermediate positions. I’m putting the actual screenshot and recording beside `notify-a` for your layout and motion judgement.
+
+12. **Shell call — reread canvas immediately before editing**
+
+    ```sh
+    cd /Users/p/git/notes-app
+    cat .ryugi/artifacts/artboard/settings-redesign/canvas.json
+    cat .ryugi/artifacts/.state/artboard/settings-redesign/layout.json
+    ```
+
+    **Assume output:** no intervening moves; Verify page still absent.
+
+13. **File edit call — merge into the existing canvas without replacing existing entries**
+
+    Target:
+
+    ```text
+    /Users/p/git/notes-app/.ryugi/artifacts/artboard/settings-redesign/canvas.json
+    ```
+
+    Add the page `{"id":"verify","name":"Verify"}` and merge these boards, group, and sticky. Set `activePage` and `focus` as shown. Preserve every existing page, board, group, note, and position.
+
+    ```json
+    {
+      "activePage": "verify",
+      "focus": {
+        "target": "verify-notifications",
+        "at": "2026-11-13T03:40:20Z"
+      },
+      "boards": {
+        "verify-notify-design": {
+          "file": "pages/settings/notify-a.html",
+          "page": "verify",
+          "x": 0,
+          "y": 0,
+          "w": 1280,
+          "h": 800,
+          "title": "Approved — notify-a"
+        },
+        "verify-notify-actual": {
+          "type": "image",
+          "src": "pages/verify/notification-settings.png",
+          "page": "verify",
+          "x": 1360,
+          "y": 0,
+          "w": 1280,
+          "h": 800,
+          "title": "Running app — local a1b2c3d"
+        },
+        "verify-notify-motion": {
+          "type": "video",
+          "src": "pages/verify/notification-settings.webm",
+          "page": "verify",
+          "x": 1360,
+          "y": 960,
+          "w": 1280,
+          "h": 800,
+          "trim": false,
+          "title": "Both switches, both directions, and reload persistence"
+        }
+      },
+      "groups": {
+        "verify-notifications": {
+          "title": "Notification settings — layout and toggle motion",
+          "boards": [
+            "verify-notify-design",
+            "verify-notify-actual",
+            "verify-notify-motion"
+          ],
+          "verify": true,
+          "from": "local http://localhost:5173/settings · a1b2c3d",
+          "capturedAt": "2026-11-13T03:40:20Z"
+        }
+      },
+      "notes": {
+        "verify-notify-ask": {
+          "page": "verify",
+          "kind": "sticky",
+          "x": 2768,
+          "y": 0,
+          "w": 340,
+          "text": "Does the running section match notify-a in spacing, type, alignment and switch appearance? Do both thumbs slide smoothly in both directions? Reject if either layout or motion differs from the approved intent.\nMeasured in the running app: transform transitions are 160ms with intermediate positions on all four changes.\nTry the running app for motion feel: http://localhost:5173/settings\nRecording retains original timing. API and reload results are in the linked verification report."
+        }
+      }
+    }
+    ```
+
+14. **File write call — report XML**
+
+    Path:
+
+    ```text
+    /Users/p/git/notes-app/.ryugi/artifacts/verify/notification-settings/report.xml
+    ```
+
+    Exact content:
+
+    ```xml
+    <report title="Notification settings verification">
+      <p>Verified against the running local app at <code>http://localhost:5173/settings</code>, serving commit <code>a1b2c3d</code>. Both switches were changed in both directions, checked after reload, and restored to their original values. No application code changed during capture.</p>
+      <claim id="patch" judge="agent"
+             from="local http://localhost:5173 · a1b2c3d"
+             capturedAt="2026-11-13T03:40:20Z">
+        <title>Changing either notification switch sends PATCH /api/prefs and receives 200</title>
+        <output src="evidence/preferences-flow.txt" />
+      </claim>
+      <claim id="persist" judge="agent"
+             from="local http://localhost:5173 · a1b2c3d"
+             capturedAt="2026-11-13T03:40:20Z">
+        <title>A following GET returns each saved value, and reload retains it without changing neighbouring preferences</title>
+        <output src="evidence/preferences-flow.txt" />
+      </claim>
+      <ref artboard="settings-redesign" group="verify-notifications" />
+    </report>
+    ```
+
+    There are no `<gap>` entries because, under the assumed successful results, no scoped verification is blocked. The visual group remains pending.
+
+15. **Shell call — validate both artifacts**
+
+    ```sh
+    ryugi check --project-dir /Users/p/git/notes-app --artifact artboard/settings-redesign
+    ryugi check --project-dir /Users/p/git/notes-app --artifact verify/notification-settings
+    ```
+
+    **Assume complete output:** both checks have no warnings, provenance notes, or pending files. Recording preparation is complete, using the original recording because `trim` is false. The report has two agent-checked claims, one pending artboard group, and no gaps. A pending human verdict is distinct from pending evidence preparation.
+
+16. **Browser call — replay the recording on Verify**
+
+    ```json
+    {
+      "url": "http://localhost:4310/a/artboard/settings-redesign?page=verify"
+    }
+    ```
+
+    Then:
+
+    ```json
+    {
+      "action": "play_video",
+      "board": "verify-notify-motion",
+      "watch": "entire recording at original speed"
+    }
+    ```
+
+    **Assume observation:** the original recording plays completely; every switch action, save state, reload, and final state remains visible. Screenshot and approved design load at matching dimensions. No files need replacement.
+
+17. **Shell call — read current verdict state**
+
+    ```sh
+    ryugi comment list --project-dir /Users/p/git/notes-app --artifact verify/notification-settings
+    ryugi comment list --project-dir /Users/p/git/notes-app --artifact artboard/settings-redesign --sections groups,threads --detail
+    ```
+
+    **Assume complete output:** two claims checked by agent; `verify-notifications` has `kind=verify`, verdict `pending`; no threads, gaps, or continuation pages. Record no pass.
+
+18. **Final message to partner**
+
+    > [Notification settings verification](http://localhost:4310/a/verify/notification-settings)
+    >
+    > On local commit `a1b2c3d`, the recorded browser run verified PATCH 200, subsequent GET values, reload persistence, and unchanged neighbouring preferences. Two output claims are checked; both artifact checks reported no warnings or pending files.
+    >
+    > One group awaits your judgement: layout against `notify-a`, and toggle motion. The recording preserves timing; measured transitions were 160ms. The running app is linked for motion feel.
+    >
+    > Tell me here when you’ve decided. Acceptance remains pending your verdict.
+
+SUMMARY: Simulated verification covers local a1b2c3d API persistence, reloads, neighbouring preferences, and 160ms toggle evidence; the report links the Verify group, whose layout and motion verdict waits on the partner.

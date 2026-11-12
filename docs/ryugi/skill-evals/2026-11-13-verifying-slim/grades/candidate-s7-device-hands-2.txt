@@ -1,0 +1,1 @@
+PASS — Batches all physical actions into one numbered sequence with reply cues, and explicitly handles launching, navigation, and screenshots itself.

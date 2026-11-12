@@ -1,0 +1,1 @@
+PASS — Reports commands and passing outputs inline, including `1.5 KB`, without creating a verify page or artboard or awaiting human judgment.

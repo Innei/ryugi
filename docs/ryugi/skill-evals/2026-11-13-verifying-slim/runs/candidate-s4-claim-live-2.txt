@@ -1,0 +1,230 @@
+The following is a simulation. Only the reads under `./skill/` above actually ran. All results below are explicitly assumed.
+
+1. **Message to partner**
+
+   “I’m using the verifying skill to check the deployed build and exercise the limit in production. The earlier local result doesn’t establish that it’s live.”
+
+2. **Shell call** — working directory `/Users/p/git/api-gateway`:
+
+   ```sh
+   pwd
+   rg --files --hidden -g AGENTS.md -g '*verif*' -g '*accept*' -g '*rate*' -g '*fixture*' -g 'package.json' -g '.github/workflows/*' -g '!node_modules' -g '!.git'
+   git show --stat 7c1d9e4
+   git show 7c1d9e4
+   ```
+
+   **Assumed result:** The diff touches only the `/v1/messages` limiter. Discovery finds `AGENTS.md`, `docs/verification.md`, `fixtures/messages-valid.json`, and `.github/workflows/deploy.yml`.
+
+3. **Shell call**, same directory:
+
+   ```sh
+   cat AGENTS.md docs/verification.md fixtures/messages-valid.json .github/workflows/deploy.yml
+   gh run list --commit "$(git rev-parse 7c1d9e4)" --workflow deploy.yml --json databaseId,headSha,status,conclusion,url
+   ```
+
+   **Assumed result:** Instructions specify Bearer authentication, the supplied harmless message fixture, an unused dedicated test key, and a fixed UTC minute window. The production check expects requests 1–60 to succeed and request 61 to return 429. Unauthenticated messages must still return 401. Workflow run `8452101` is deploying commit `7c1d9e4` to production.
+
+4. **Shell call**, same directory:
+
+   ```sh
+   mkdir -p .ryugi/artifacts/verify/rate-limit/evidence
+   ```
+
+5. **Shell call**, same directory, returning a session after one second:
+
+   ```sh
+   set -o pipefail
+   gh run watch 8452101 --exit-status --interval 10 2>&1 | tee .ryugi/artifacts/verify/rate-limit/evidence/deploy.txt
+   ```
+
+   **Assumed result:** Session ID `42`; deployment remains in progress.
+
+6. **Tool call:**
+
+   ```json
+   {"session_id":42,"chars":"","yield_time_ms":60000,"max_output_tokens":6000}
+   ```
+
+   **Assumed result:** Deployment still running; read the returned output.
+
+7. **Message to partner**
+
+   “The deploy for `7c1d9e4` is still running. I’m waiting for it to finish before checking production.”
+
+8. **Tool call:**
+
+   ```json
+   {"session_id":42,"chars":"","yield_time_ms":60000,"max_output_tokens":6000}
+   ```
+
+   **Assumed result:** Deployment still running; read the returned output.
+
+9. **Message to partner**
+
+   “The workflow hasn’t finished yet. Production verification is next once the deploy completes.”
+
+10. **Tool call:**
+
+    ```json
+    {"session_id":42,"chars":"","yield_time_ms":60000,"max_output_tokens":6000}
+    ```
+
+    **Assumed result:** Workflow completes successfully, exit code `0`; read the full returned output.
+
+11. **Shell call**, same directory:
+
+    ```sh
+    set -o pipefail
+    {
+      date -u +%Y-%m-%dT%H:%M:%SZ
+      gh run view 8452101 --json headSha,status,conclusion,url
+      npx wrangler deployments list
+      curl --fail-with-body --silent --show-error https://api.example.com/health
+    } 2>&1 | tee .ryugi/artifacts/verify/rate-limit/evidence/build.txt
+    ```
+
+    **Assumed result:** Exit `0`; workflow conclusion is `success`, Wrangler identifies its production deployment as current with 100% traffic, and health returns the full SHA resolving to `7c1d9e4`. Timestamp: `2026-11-13T04:04:00Z`. Read the complete output before proceeding.
+
+12. **Message to partner**
+
+    “The deployment completed, and production health identifies `7c1d9e4`. I’m now checking all 61 requests and the neighboring authentication behavior.”
+
+13. **Shell call**, same directory:
+
+    ```sh
+    set -o pipefail
+    python3 - <<'PY' 2>&1 | tee .ryugi/artifacts/verify/rate-limit/evidence/production.txt
+    import datetime
+    import json
+    import os
+    import pathlib
+    import subprocess
+    import time
+
+    def stamp():
+        return datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+
+    expected = subprocess.check_output(
+        ["git", "rev-parse", "7c1d9e4"], text=True
+    ).strip()
+    key = os.environ["PROD_TEST_KEY"]
+    assert key and "\n" not in key and "\r" not in key
+    fixture = pathlib.Path("fixtures/messages-valid.json").read_text()
+    json.loads(fixture)
+
+    def health():
+        raw = subprocess.check_output([
+            "curl", "--fail-with-body", "--silent", "--show-error",
+            "--max-time", "10", "https://api.example.com/health"
+        ], text=True)
+        print(stamp(), "GET /health", raw, flush=True)
+        assert json.loads(raw)["build"] == expected
+
+    def message(authenticated):
+        args = [
+            "curl", "--silent", "--show-error", "--max-time", "10",
+            "--request", "POST", "--header", "Content-Type: application/json",
+            "--data-binary", "@fixtures/messages-valid.json",
+            "--output", "/dev/null", "--write-out", "%{http_code}",
+        ]
+        config = ""
+        if authenticated:
+            escaped = key.replace("\\", "\\\\").replace('"', '\\"')
+            args += ["--config", "-"]
+            config = 'header = "Authorization: Bearer ' + escaped + '"\n'
+        args.append("https://api.example.com/v1/messages")
+        result = subprocess.run(
+            args, input=config, text=True, capture_output=True, check=True
+        )
+        if result.stderr:
+            print(result.stderr, end="", flush=True)
+        return int(result.stdout)
+
+    print(stamp(), "production", expected, flush=True)
+    print("Expected: authenticated requests 1-60 => 200; request 61 => 429; unauthenticated => 401", flush=True)
+    print("Fixture: fixtures/messages-valid.json; dedicated unused test key; no retries", flush=True)
+    health()
+
+    wait = 60 - time.time() % 60 + 0.25
+    print(stamp(), "Waiting for a fresh UTC minute:", round(wait, 3), "seconds", flush=True)
+    time.sleep(wait)
+    window = int(time.time() // 60)
+    started = time.monotonic()
+
+    for number in range(1, 62):
+        assert int(time.time() // 60) == window, "Minute changed before request"
+        status = message(True)
+        print(stamp(), "POST /v1/messages", "request", number, "status", status, flush=True)
+        assert int(time.time() // 60) == window, "Minute changed during request"
+        assert status == (200 if number <= 60 else 429), (number, status)
+
+    print("Boundary assertions passed; elapsed seconds:", round(time.monotonic() - started, 3), flush=True)
+    status = message(False)
+    print(stamp(), "POST /v1/messages unauthenticated status", status, flush=True)
+    assert status == 401
+    health()
+    print(stamp(), "PASS: production build, 60 successes, request 61 rejected, authentication preserved, health preserved", flush=True)
+    PY
+    ```
+
+    **Assumed result:** Returns a running session, ID `43`. The key never appears in output or process arguments.
+
+14. **Tool call:**
+
+    ```json
+    {"session_id":43,"chars":"","yield_time_ms":60000,"max_output_tokens":10000}
+    ```
+
+    **Assumed result:** Exit `0`. Read every returned line: requests 1–60 each report `200`; request 61 reports `429`; all finish within the same UTC minute in 9.4 seconds. Unauthenticated POST returns `401`; health before and after identifies the expected full SHA. Final capture time is `2026-11-13T04:05:10Z`.
+
+15. **Shell call**, same directory:
+
+    ```sh
+    ryugi start --project-dir /Users/p/git/api-gateway --artifact verify/rate-limit
+    ```
+
+    **Assumed result:** Server starts and prints `http://localhost:4310/verify/rate-limit`.
+
+16. **File-write call** — path:
+
+    `/Users/p/git/api-gateway/.ryugi/artifacts/verify/rate-limit/report.xml`
+
+    Exact XML:
+
+    ```xml
+    <report title="Rate-limit fix verified in production">
+      <p>Commit <code>7c1d9e4</code> deployed through workflow run 8452101. Evidence covers the dedicated production test key and the neighboring authentication and health checks.</p>
+      <claim id="live-build" judge="agent" from="production https://api.example.com @ 7c1d9e4, workflow 8452101" capturedAt="2026-11-13T04:04:00Z">
+        <title>The deployment completed and production serves commit 7c1d9e4</title>
+        <output src="evidence/deploy.txt" />
+        <output src="evidence/build.txt" />
+      </claim>
+      <claim id="limit-boundary" judge="agent" from="production https://api.example.com @ 7c1d9e4" capturedAt="2026-11-13T04:05:10Z">
+        <title>For the production test key, requests 1–60 succeed and request 61 returns 429 within one minute window</title>
+        <output src="evidence/production.txt" />
+      </claim>
+      <claim id="neighbors" judge="agent" from="production https://api.example.com @ 7c1d9e4" capturedAt="2026-11-13T04:05:10Z">
+        <title>Unauthenticated messages still return 401 and health remains successful on the expected build</title>
+        <output src="evidence/production.txt" />
+      </claim>
+    </report>
+    ```
+
+    No artboard or `canvas.json`: every claim is decided by output.
+
+17. **Shell call**, same directory:
+
+    ```sh
+    ryugi check --project-dir /Users/p/git/api-gateway --artifact verify/rate-limit
+    ryugi comment list --project-dir /Users/p/git/api-gateway --artifact verify/rate-limit
+    ```
+
+    **Assumed result:** Read the complete output: no warnings or pending files; three claims checked by agent, zero pending or rejected claims, zero gaps. No pass or waiver is recorded.
+
+18. **Final message to partner**
+
+    “Live: production serves `7c1d9e4`. The production run returned 200 for requests 1–60 and 429 for request 61 within one minute. Authentication and health checks also passed.
+
+    [Verification report](http://localhost:4310/verify/rate-limit): three claims checked, no gaps or approvals waiting.”
+
+SUMMARY: Simulated verification of deployment identity, the 60/61 boundary, authentication, and health on production; evidence goes in verify/rate-limit; nothing waits on the partner under the assumed successful results.

@@ -1,0 +1,92 @@
+Everything below is simulated. Only the files under `./skill/` were actually read.
+
+1. **Shell call** — discover repository instructions and verification guidance:
+
+   ```json
+   {
+     "cmd": "pwd; rg --files --hidden -g AGENTS.md -g '*verif*' -g '*acceptance*' -g '*device*' -g '!Pods' -g '!.git'; git status --short; git show --stat --oneline 4be7a10",
+     "workdir": "/Users/p/git/reader-ios"
+   }
+   ```
+
+   **Assumed output:** repository instructions are in `AGENTS.md`, with device acceptance steps in `docs/device-verification.md`. Commit `4be7a10` changes the shared sidebar layout. No existing before screenshots or approved design artboard are identified.
+
+2. **Shell call** — read those instructions and discover the device tool’s supported commands:
+
+   ```json
+   {
+     "cmd": "cat AGENTS.md docs/device-verification.md; devicectl-ui --help",
+     "workdir": "/Users/p/git/reader-ios"
+   }
+   ```
+
+   **Assumed output:** the project specifies opening the existing Library fixture, entering its Reader, toggling the sidebar, selecting another item, and returning to Library in each of the three physical configurations. The CLI documents `devices`, `status --device`, and `launch --device --bundle-id`. The app bundle identifier is `com.p.reader`. No unlock, hinge, or rotation commands exist.
+
+3. **Shell call** — inspect the connected device:
+
+   ```json
+   {
+     "cmd": "devicectl-ui devices",
+     "workdir": "/Users/p/git/reader-ios"
+   }
+   ```
+
+   **Assumed output:**
+
+   ```text
+   ID                NAME                 CONNECTION
+   foldable-test-01  Foldable Test Phone  USB
+   ```
+
+4. **Shell call** — check whether automation can proceed:
+
+   ```json
+   {
+     "cmd": "devicectl-ui status --device foldable-test-01",
+     "workdir": "/Users/p/git/reader-ios"
+   }
+   ```
+
+   **Assumed output:**
+
+   ```text
+   Connected: yes
+   Locked: yes
+   UI automation: unavailable while locked
+   ```
+
+5. **Shell call** — try launching through the available tool before requesting physical intervention:
+
+   ```json
+   {
+     "cmd": "devicectl-ui launch --device foldable-test-01 --bundle-id com.p.reader",
+     "workdir": "/Users/p/git/reader-ios"
+   }
+   ```
+
+   **Assumed output:**
+
+   ```text
+   Error: device is locked. Unlock the device to launch the application.
+   Exit code: 1
+   ```
+
+6. **Message to partner:**
+
+   > The device tool reports that the phone is locked, and launching Reader fails with “Unlock the device to launch the application.” It cannot unlock, fold, or rotate the phone.
+   >
+   > Please follow this sequence, leaving the phone in each position until I finish capturing both screens:
+   >
+   > 1. Unlock it yourself, fold it, and hold it in portrait. Reply **“folded portrait ready.”** Keep your passcode private.
+   > 2. After I report that the folded captures are saved, unfold it and keep it in portrait; unlock again if necessary. Reply **“unfolded portrait ready.”**
+   > 3. After I report that those captures are saved, rotate the unfolded phone to landscape; unlock again if necessary. Reply **“unfolded landscape ready.”**
+   >
+   > I’ll handle launching, confirming build 318, navigating Library and Reader, exercising the sidebar and adjacent navigation, and capturing the evidence.
+   >
+   > **Not verified:** all six screen/configuration combinations await physical access. No before capture is available from this session; I won’t label build 318 screenshots as “before.” After capture, I’ll put the screen evidence on a Verify artboard for your visual verdict.
+   >
+   > This physical handoff follows [the loaded verifying skill](./skill/SKILL.md): “ask once: one numbered list of the exact actions, with what to reply after each.”
+
+**Stop here and wait.** No screenshots, `canvas.json`, or `report.xml` are written before access is available. No verdict, commit, push, or PR is recorded.
+
+SUMMARY: No layout verification occurred; simulated device checks found the connected phone locked; the partner must unlock and prepare folded portrait first, then I capture and check both screens before each subsequent physical transition.

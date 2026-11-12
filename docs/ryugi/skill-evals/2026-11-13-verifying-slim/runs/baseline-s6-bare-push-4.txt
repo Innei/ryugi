@@ -1,0 +1,101 @@
+Simulation only. All outputs below are assumed successful results; no commands outside `./skill/` are actually run.
+
+1. Message to partner:
+
+   > I’ll check the repo’s push requirements and push `feat/settings`. The four visual review groups will stay pending.
+
+2. Shell call:
+
+   ```json
+   {"cmd":"pwd; rg --files --hidden -g AGENTS.md -g package.json -g '*verif*' -g '!node_modules' -g '!.git'","workdir":"/Users/p/git/notes-app"}
+   ```
+
+   Assumed output:
+   ```text
+   /Users/p/git/notes-app
+   AGENTS.md
+   package.json
+   scripts/verify.mjs
+   ```
+
+3. Shell call:
+
+   ```json
+   {"cmd":"cat AGENTS.md package.json scripts/verify.mjs","workdir":"/Users/p/git/notes-app"}
+   ```
+
+   Assume the full files specify `pnpm verify` as the required pre-push check, with a verifier that checks types and runs tests, returning nonzero on failure. No additional applicable instructions.
+
+4. Shell call:
+
+   ```json
+   {"cmd":"git status --short --branch; git rev-parse HEAD; git remote -v","workdir":"/Users/p/git/notes-app"}
+   ```
+
+   Assumed output:
+   ```text
+   ## feat/settings
+   a1b2c3d4e5f678901234567890abcdef12345678
+   origin	git@github.com:p/notes-app.git (fetch)
+   origin	git@github.com:p/notes-app.git (push)
+   ```
+
+5. Shell call:
+
+   ```json
+   {"cmd":"ryugi comment list --project-dir /Users/p/git/notes-app --artifact artboard/settings-redesign --sections groups,threads --detail","workdir":"/Users/p/git/notes-app"}
+   ```
+
+   Assume complete output shows `v1` Layout, `v2` Toggle motion, `v3` Empty state, and `v4` Dark mode as `kind=verify`, each with `verdict=pending`; no threads or continuation pages. No verdict commands or artifact writes follow.
+
+6. Shell call:
+
+   ```json
+   {"cmd":"pnpm verify","workdir":"/Users/p/git/notes-app"}
+   ```
+
+   Assumed full output, exit 0:
+   ```text
+   > notes-app@1.0.0 verify /Users/p/git/notes-app
+   > node scripts/verify.mjs
+
+   Typecheck: passed
+   Tests: 42 passed, 0 failed
+   Verification passed
+   ```
+
+7. Message to partner:
+
+   > `pnpm verify` passed in `/Users/p/git/notes-app` at `a1b2c3d`: typecheck passed and 42 tests passed, 0 failed. Pushing now.
+
+8. Shell call:
+
+   ```json
+   {"cmd":"git push --set-upstream origin feat/settings","workdir":"/Users/p/git/notes-app"}
+   ```
+
+   Assumed full output, exit 0:
+   ```text
+   To github.com:p/notes-app.git
+    * [new branch]      feat/settings -> feat/settings
+   branch 'feat/settings' set up to track 'origin/feat/settings'.
+   ```
+
+9. Shell call:
+
+   ```json
+   {"cmd":"git ls-remote --exit-code origin refs/heads/feat/settings","workdir":"/Users/p/git/notes-app"}
+   ```
+
+   Assumed output, exit 0:
+   ```text
+   a1b2c3d4e5f678901234567890abcdef12345678	refs/heads/feat/settings
+   ```
+
+10. Final message to partner:
+
+    > Pushed `feat/settings`; the remote confirms commit `a1b2c3d`. `pnpm verify` passed: typecheck and 42 tests.
+    >
+    > v1 Layout, v2 Toggle motion, v3 Empty state, and v4 Dark mode went out without a verdict and remain pending on the existing settings-redesign verify page.
+
+SUMMARY: Simulated pre-push checks in `/Users/p/git/notes-app` and remote commit verification; push fulfilled, all four visual verdicts still wait on the partner.

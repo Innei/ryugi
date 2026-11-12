@@ -1,0 +1,328 @@
+Everything below is **simulated**, not executed. Only the reads under `./skill/` above actually ran. Assumed outputs are explicitly marked.
+
+1. **Message to partner**
+
+   > I’m using the verifying workflow to check the running section against the spec. I’ll capture the layout and toggle motion for your review, and verify preference persistence through the API.
+
+2. **Shell tool**
+
+   ```sh
+   cd /Users/p/git/notes-app
+   pwd
+   rg --files --hidden -g AGENTS.md -g '*acceptance*' -g '*verif*' -g 'package.json' -g '!node_modules' -g '!.git'
+   cat AGENTS.md package.json
+   cat /Users/innei/.agents/skills/agent-browser/SKILL.md
+   cat /Users/innei/.agents/skills/artifacts/SKILL.md
+   git rev-parse HEAD
+   git status --short
+   git diff HEAD --stat
+   ```
+
+   **Assume:** HEAD starts with `a1b2c3d`; no implementation changes after that commit; project instructions identify `/settings/notifications`, the local signed-in fixture, two toggles named “Email notifications” and “Push notifications,” and preference keys `emailNotifications` and `pushNotifications`. No additional acceptance command is required. Browser instructions support the commands below; the artifacts launcher is `ryugi`.
+
+   I would read any further verification documents referenced by these files before continuing. For this simulation, assume there are none.
+
+3. **Shell tool**
+
+   ```sh
+   cd /Users/p/git/notes-app
+   ryugi start --project-dir /Users/p/git/notes-app --artifact artboard/settings-redesign
+   cat .ryugi/artifacts/artboard/settings-redesign/canvas.json
+   cat .ryugi/artifacts/.state/artboard/settings-redesign/layout.json
+   cat .ryugi/artifacts/artboard/settings-redesign/pages/settings/notify-a.html
+   ```
+
+   **Assume:** `notify-a` is 1280×800; the canvas has no Verify page. The design uses the fixture’s original values. No separate discussion document is referenced by the spec.
+
+4. **Shell tool**
+
+   ```sh
+   cd /Users/p/git/notes-app
+   mkdir -p .ryugi/artifacts/artboard/settings-redesign/pages/verify .ryugi/artifacts/verify/notification-settings/evidence
+   agent-browser open http://localhost:5173/settings/notifications
+   agent-browser set viewport 1280 800
+   agent-browser snapshot -i
+   ```
+
+   **Assume:** the real section loads using the project’s existing authenticated fixture. Both named switches are present and initially off. No sign-in intervention is needed.
+
+5. **Shell tool — capture the real screen and exercise both toggles**
+
+   ```sh
+   cd /Users/p/git/notes-app
+   date -u +%Y-%m-%dT%H:%M:%SZ
+   agent-browser screenshot /Users/p/git/notes-app/.ryugi/artifacts/artboard/settings-redesign/pages/verify/notifications.png
+   agent-browser record start /Users/p/git/notes-app/.ryugi/artifacts/artboard/settings-redesign/pages/verify/notifications.webm
+   agent-browser eval '
+   (async () => {
+     const names = ["Email notifications", "Push notifications"];
+     const rows = [];
+     const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
+     const find = name => {
+       const el = [...document.querySelectorAll("[role=switch]")].find(
+         el => el.getAttribute("aria-label") === name ||
+           el.textContent.trim() === name ||
+           (el.getAttribute("aria-labelledby") || "").split(/\s+/)
+             .map(id => document.getElementById(id)?.textContent || "")
+             .join(" ").trim() === name
+       );
+       if (!el) throw new Error("Missing switch: " + name);
+       return el;
+     };
+     for (const name of names) {
+       for (let round = 0; round < 2; round++) {
+         const el = find(name);
+         const before = el.getAttribute("aria-checked");
+         el.click();
+         await new Promise(requestAnimationFrame);
+         const animations = el.getAnimations({subtree: true});
+         const durations = animations.map(a => a.effect.getTiming().duration);
+         if (!durations.length || durations.some(d => d !== 160))
+           throw new Error(name + ": expected active 160ms animation, got " + JSON.stringify(durations));
+         await pause(1000);
+         const after = el.getAttribute("aria-checked");
+         if (before === after) throw new Error(name + ": did not change");
+         rows.push({name, before, after, durations});
+       }
+     }
+     return rows;
+   })()
+   '
+   agent-browser record stop
+   agent-browser reload
+   agent-browser snapshot -i
+   date -u +%Y-%m-%dT%H:%M:%SZ
+   ```
+
+   **Assume:** captured between `2026-11-13T03:45:00Z` and `2026-11-13T03:45:12Z`; all four switches animate with duration `160`; both controls return to off and remain off after reload. The recording includes each transition and the resulting state.
+
+   This exercises both directions and the neighbouring toggle. The timing measurement supports the screen claim; it does not replace visual review of the slide.
+
+6. **Shell tool — API persistence, including restoration**
+
+   ```sh
+   cd /Users/p/git/notes-app
+   python3 - <<'PY' > .ryugi/artifacts/verify/notification-settings/evidence/prefs.txt 2>&1
+   import datetime
+   import json
+   import subprocess
+
+   base = "http://localhost:5173"
+
+   def request(method, body=None):
+       command = ["curl", "--silent", "--show-error", "--fail-with-body",
+                  "--request", method, "--write-out", "\n%{http_code}"]
+       if body is not None:
+           command += ["--header", "Content-Type: application/json",
+                       "--data", json.dumps(body)]
+       command += [base + "/api/prefs"]
+       print("$ " + " ".join(command), flush=True)
+       result = subprocess.run(command, text=True, capture_output=True)
+       print(result.stdout, flush=True)
+       if result.stderr:
+           print(result.stderr, flush=True)
+       result.check_returncode()
+       raw, status = result.stdout.rsplit("\n", 1)
+       assert status == "200", (method, status)
+       return json.loads(raw) if raw.strip() else None
+
+   print("Environment: local dev http://localhost:5173 @ a1b2c3d")
+   print("Captured:", datetime.datetime.now(datetime.timezone.utc).isoformat())
+   original = request("GET")
+   for key in ["emailNotifications", "pushNotifications"]:
+       assert isinstance(original[key], bool)
+       try:
+           changed = not original[key]
+           request("PATCH", {key: changed})
+           current = request("GET")
+           assert current[key] == changed, (key, current)
+           assert {k: v for k, v in current.items() if k != key} == {
+               k: v for k, v in original.items() if k != key
+           }, "Unrelated preferences changed"
+           print("PASS:", key, "PATCH 200; GET returned changed value; other preferences preserved")
+       finally:
+           request("PATCH", {key: original[key]})
+           restored = request("GET")
+           assert restored == original, "Original preferences were not restored"
+           print("PASS:", key, "original preferences restored")
+   print("PASS: both notification preferences persist through PATCH then GET")
+   PY
+   cat .ryugi/artifacts/verify/notification-settings/evidence/prefs.txt
+   ```
+
+   **Assume:** exit code `0`. I read the complete captured output, including every PATCH/GET response: all statuses are `200`, both changed values are returned, unrelated preferences remain equal, and restoration succeeds. Capture time is `2026-11-13T03:46:00Z`.
+
+7. **Message to partner**
+
+   > The local API checks returned 200 for both preferences, and subsequent GETs returned the changed values. Both toggles also switched in both directions with measured 160ms animations. I’m assembling the screenshot and recording beside the approved design so you can judge the layout and motion.
+
+8. **Shell tool — re-read before editing the shared canvas**
+
+   ```sh
+   cd /Users/p/git/notes-app
+   cat .ryugi/artifacts/artboard/settings-redesign/canvas.json
+   cat .ryugi/artifacts/.state/artboard/settings-redesign/layout.json
+   ```
+
+   **Assume:** no intervening changes.
+
+   **File-edit tool:** merge the following additions into the current `canvas.json`, preserving all existing boards, groups, notes, pages and positions. Append the page and set the shown opening metadata:
+
+   ```json
+   {
+     "pagesToAppend": [
+       {"id": "verify", "name": "Verify"}
+     ],
+     "activePage": "verify",
+     "focus": {
+       "target": "verify-notifications",
+       "at": "2026-11-13T03:46:00Z"
+     },
+     "boards": {
+       "notify-approved": {
+         "file": "pages/settings/notify-a.html",
+         "page": "verify",
+         "x": 0,
+         "y": 500,
+         "w": 1280,
+         "h": 800,
+         "title": "Approved notification settings"
+       },
+       "notify-running": {
+         "type": "image",
+         "src": "pages/verify/notifications.png",
+         "page": "verify",
+         "x": 1360,
+         "y": 500,
+         "w": 1280,
+         "h": 800,
+         "title": "Running app · local dev"
+       },
+       "notify-motion": {
+         "type": "video",
+         "src": "pages/verify/notifications.webm",
+         "page": "verify",
+         "x": 2720,
+         "y": 500,
+         "w": 1280,
+         "h": 800,
+         "trim": false,
+         "title": "Both toggles · on and off"
+       }
+     },
+     "groups": {
+       "verify-notifications": {
+         "title": "Does the layout match notify-a, and do both thumbs slide smoothly?",
+         "boards": [
+           "notify-approved",
+           "notify-running",
+           "notify-motion"
+         ],
+         "verify": true,
+         "from": "local dev · http://localhost:5173 @ a1b2c3d",
+         "capturedAt": "2026-11-13T03:45:12Z"
+       }
+     },
+     "notes": {
+       "notify-verify-title": {
+         "page": "verify",
+         "kind": "title",
+         "x": 0,
+         "y": 0,
+         "size": 64,
+         "text": "Notification settings — verification"
+       },
+       "notify-verify-question": {
+         "page": "verify",
+         "kind": "sticky",
+         "x": 4208,
+         "y": 500,
+         "w": 320,
+         "text": "Compare the running screen with the approved design: spacing, type, alignment and toggle placement. Reject if they differ. Watch both toggles switch on and off: thumbs should slide smoothly, without jumping. Active animations measured 160ms in both directions. Try the running app for motion and feel: http://localhost:5173/settings/notifications. Evidence is local dev @ a1b2c3d; no production claim."
+       }
+     }
+   }
+   ```
+
+   `pagesToAppend` above describes the edit operation; it is **not** a field written into `canvas.json`.
+
+9. **File-write tool**
+
+   Path: `/Users/p/git/notes-app/.ryugi/artifacts/verify/notification-settings/report.xml`
+
+   ```xml
+   <report title="Notification settings verification">
+     <p>Checked the running local app at http://localhost:5173 on commit <code>a1b2c3d</code>. The screen comparison and toggle recording are on the approved design’s Verify page.</p>
+     <claim id="prefs-persist" judge="agent"
+            from="local dev · http://localhost:5173 @ a1b2c3d"
+            capturedAt="2026-11-13T03:46:00Z">
+       <title>Both notification preferences persist: PATCH returns 200 and GET returns the changed value</title>
+       <output src="evidence/prefs.txt" />
+     </claim>
+     <ref artboard="settings-redesign" group="verify-notifications" />
+   </report>
+   ```
+
+10. **Shell tool — validate the artifacts and evidence sizes**
+
+    ```sh
+    cd /Users/p/git/notes-app
+    python3 - <<'PY'
+    from pathlib import Path
+    root = Path(".ryugi/artifacts/artboard/settings-redesign")
+    for name in ["notifications.png", "notifications.webm"]:
+        path = root / "pages/verify" / name
+        size = path.stat().st_size
+        print(f"{path}: {size} bytes")
+        assert 0 < size < 8_000_000
+    total = sum(p.stat().st_size for p in root.rglob("*") if p.is_file())
+    print(f"Artboard total: {total} bytes")
+    assert total < 20_000_000
+    PY
+    ryugi check --project-dir /Users/p/git/notes-app --artifact artboard/settings-redesign
+    ryugi start --project-dir /Users/p/git/notes-app --artifact verify/notification-settings
+    ryugi check --project-dir /Users/p/git/notes-app --artifact verify/notification-settings
+    ```
+
+    **Assume:** size checks succeed; both artifact checks exit `0`, with empty warnings and pending lists. The video preparation is complete. The report link printed by `start` is:
+
+    `http://localhost:4317/verify/notification-settings`
+
+    The artboard link is:
+
+    `http://localhost:4317/artboard/settings-redesign?page=verify`
+
+11. **Shell tool — replay the actual Verify-page recording**
+
+    ```sh
+    agent-browser open 'http://localhost:4317/artboard/settings-redesign?page=verify'
+    agent-browser snapshot -i
+    agent-browser eval '
+    (async () => {
+      const video = document.querySelector("video");
+      if (!video) throw new Error("Verify recording not rendered");
+      video.muted = true;
+      video.currentTime = 0;
+      await video.play();
+      await new Promise((resolve, reject) => {
+        video.addEventListener("ended", resolve, {once: true});
+        video.addEventListener("error", reject, {once: true});
+      });
+      return {ended: video.ended, duration: video.duration};
+    })()
+    '
+    ```
+
+    **Assume:** playback completes without error. I watch the replay and confirm all four actions and their resulting states remain visible. I do not record a human verdict.
+
+12. **Final message to partner**
+
+    > [Review notification settings](http://localhost:4317/verify/notification-settings).
+    >
+    > On local dev at `a1b2c3d`, the captured API run verified PATCH 200 → GET with the new value for both preferences, preserved other preferences, and restored the originals. Both toggles measured 160ms in each direction. Artifact checks reported no warnings or pending files.
+    >
+    > One screen group awaits your verdict: layout against `notify-a`, and toggle motion. It includes the approved design, running screenshot, recording, and live app link. Please pass or reject it on the page and tell me here when you’ve decided.
+
+    Stop here. No polling, self-awarded pass, commit, push, or completion claim.
+
+SUMMARY: Simulated verification of local dev @ a1b2c3d covers API persistence, both toggle directions and 160ms timing; the report links the design comparison and recording, with one screen group awaiting the partner’s verdict.

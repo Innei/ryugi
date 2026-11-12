@@ -1,0 +1,1 @@
+PASS — Reports inline with commands and passing test output, directly confirms `1.5 KB`, and creates no verify page or artboard.

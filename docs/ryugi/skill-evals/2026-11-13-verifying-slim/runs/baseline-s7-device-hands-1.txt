@@ -1,0 +1,68 @@
+1. **Message to partner**
+
+   “I’m using the verifying workflow to check build 318 on the physical phone. I’ll drive Library and Reader and capture the evidence; I need you only for unlocking, folding and rotation. I’ll first inspect the device connection and the project’s verification instructions.”
+
+2. **Shell call** — working directory `/Users/p/git/reader-ios`:
+
+   ```sh
+   rg --files --hidden -g AGENTS.md -g '*verif*' -g '*acceptance*' -g '!Pods' -g '!.git'
+   ```
+
+   **Assumed output:**
+
+   ```text
+   AGENTS.md
+   docs/verification.md
+   ```
+
+3. **Shell call** — same working directory:
+
+   ```sh
+   cat AGENTS.md docs/verification.md
+   ```
+
+   **Assumed output:** Instructions identify the app as `com.example.reader`, require physical-device checks on Library and Reader using the bundled “Sample Book,” and require opening and closing the sidebar and navigating back to Library. No existing before screenshots or design artboard are identified.
+
+4. **Shell call**:
+
+   ```sh
+   devicectl-ui --help
+   ```
+
+   **Assumed output:** The CLI supports `devices --json` and `inspect --device <id> --json`, along with launch, navigation and screenshots. It has no unlock, hinge or rotation operation. These assumed command forms would be taken from the actual help output before use.
+
+5. **Shell call**:
+
+   ```sh
+   devicectl-ui devices --json
+   ```
+
+   **Assumed output:**
+
+   ```json
+   {"devices":[{"id":"FOLD-01","connection":"usb","physical":true,"connected":true}]}
+   ```
+
+6. **Shell call**:
+
+   ```sh
+   devicectl-ui inspect --device FOLD-01 --json
+   ```
+
+   **Assumed output:**
+
+   ```json
+   {"device":"FOLD-01","locked":true,"uiAvailable":false,"error":"Unlock the device to enable UI automation."}
+   ```
+
+7. **Message to partner — then stop and wait**
+
+   “The phone is connected, but inspection reports `locked: true` and `uiAvailable: false`. The tool cannot unlock, fold or rotate it. Please follow this sequence, waiting between states so I can capture both screens:
+
+   1. Unlock the phone yourself, put it in **folded portrait**, and reply **‘folded ready’**. Keep it unlocked while I check Library and Reader.
+   2. After I say the folded captures are saved, **unfold it and keep it in portrait**. Reply **‘unfolded portrait ready’**.
+   3. After I say those captures are saved, rotate it to **unfolded landscape**. Reply **‘landscape ready’**.
+
+   I’ll handle all app navigation and screenshots. After all six screen checks, I’ll put the evidence on a Verify artboard for your visual verdict. The fix is already installed; no broken-state capture has been established, so I’ll disclose that missing comparison.”
+
+SUMMARY: Simulated device inspection confirmed the connected phone is locked; no layout verification has run on build 318, and I’m waiting for your partner to unlock it, set folded portrait and reply “folded ready.”

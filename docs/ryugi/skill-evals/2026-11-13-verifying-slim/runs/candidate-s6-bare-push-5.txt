@@ -1,0 +1,42 @@
+Simulation only; no repo commands executed.
+
+1. Message to partner:
+   > I’ll push `feat/settings`. The four visual review groups will stay pending; “push” doesn’t record a verdict.
+
+2. Shell:
+   ```bash
+   cd /Users/p/git/notes-app && pwd && git status --short --branch && git log -1 --format='%H %s' && git remote -v && cat AGENTS.md package.json
+   ```
+   Assume successful output shows a clean `feat/settings`, HEAD `a1b2c3d…`, remote `origin`, and project instructions specifying `pnpm verify` before pushing.
+
+3. Shell:
+   ```bash
+   ryugi comment list --project-dir /Users/p/git/notes-app --artifact artboard/settings-redesign --sections groups,threads --detail --all
+   ```
+   Assume complete output shows `v1` Layout, `v2` Toggle motion, `v3` Empty state and `v4` Dark mode all `pending`, no threads, no continuation. Record no verdict and change no artifact files.
+
+4. Shell:
+   ```bash
+   cd /Users/p/git/notes-app && pnpm verify
+   ```
+   Assume exit code 0, with full output read: every project-required check passes.
+
+5. Message to partner:
+   > `pnpm verify` passed in `/Users/p/git/notes-app` at `a1b2c3d…`. I’m pushing that commit now.
+
+6. Shell:
+   ```bash
+   cd /Users/p/git/notes-app && git push --set-upstream origin feat/settings
+   ```
+   Assume exit code 0; output confirms `feat/settings -> feat/settings` and upstream tracking configured.
+
+7. Shell:
+   ```bash
+   cd /Users/p/git/notes-app && git rev-parse HEAD && git ls-remote --exit-code origin refs/heads/feat/settings
+   ```
+   Assume exit code 0; read both complete hashes and confirm they match.
+
+8. Final message to partner:
+   > Pushed `feat/settings` to `origin`; the remote hash matches local HEAD. `pnpm verify` passed. v1 Layout, v2 Toggle motion, v3 Empty state and v4 Dark mode went out without a verdict and remain pending your review.
+
+SUMMARY: Simulated project checks locally and confirmed the pushed branch on origin; all four settings-redesign groups await the partner’s verdict.

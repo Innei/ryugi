@@ -1,0 +1,106 @@
+Simulation only. I read `./skill/verify.md` and `./skill/artboard.md`; none of the calls below are executed.
+
+1. Message to partner:
+
+   “I’ll check the padding in the running settings page and capture a comparison. I missed capturing the original state before editing; I’ll briefly restore 8px to reproduce it, then reapply 12px.”
+
+2. Shell:
+
+   ```sh
+   cd /Users/p/git/notes-app && rg --files --hidden -g AGENTS.md -g '*verif*' -g '*acceptance*' -g '!node_modules' -g '!.git'
+   ```
+
+   Assumed result: `AGENTS.md`.
+
+3. Shell:
+
+   ```sh
+   cd /Users/p/git/notes-app && cat AGENTS.md src/settings/SaveButton.css
+   ```
+
+   Assumed result: project instructions require checking CSS changes in the running app; the button selector is `.save-button`, with `padding-inline: 12px`.
+
+4. Shell:
+
+   ```sh
+   cd /Users/p/git/notes-app && git diff -- src/settings/SaveButton.css
+   ```
+
+   Assumed full output:
+
+   ```diff
+   diff --git a/src/settings/SaveButton.css b/src/settings/SaveButton.css
+   --- a/src/settings/SaveButton.css
+   +++ b/src/settings/SaveButton.css
+   @@ -2 +2 @@
+   -  padding-inline: 8px;
+   +  padding-inline: 12px;
+   ```
+
+5. Shell — temporarily restore the reported value:
+
+   ```sh
+   cd /Users/p/git/notes-app && python3 -c 'from pathlib import Path; p=Path("src/settings/SaveButton.css"); s=p.read_text(); assert s.count("padding-inline: 12px")==1; p.write_text(s.replace("padding-inline: 12px","padding-inline: 8px"))'
+   ```
+
+   Assumed result: exit 0; hot reload applies.
+
+6. Browser — inspect the existing settings tab:
+
+   ```json
+   {"action":"evaluate","expression":"(() => { const b=document.querySelector('.save-button'); const s=getComputedStyle(b); return {url:location.href,left:s.paddingLeft,right:s.paddingRight}; })()"}
+   ```
+
+   Assumed result: `{"url":"http://localhost:5173/settings","left":"8px","right":"8px"}`.
+
+7. Browser:
+
+   ```json
+   {"action":"screenshot","path":"/tmp/notes-save-before-reproduced.png"}
+   ```
+
+   Assumed result: screenshot captured and inspected; this is the reproduced 8px state, not a historical capture.
+
+8. Shell — reapply the requested value:
+
+   ```sh
+   cd /Users/p/git/notes-app && python3 -c 'from pathlib import Path; p=Path("src/settings/SaveButton.css"); s=p.read_text(); assert s.count("padding-inline: 8px")==1; p.write_text(s.replace("padding-inline: 8px","padding-inline: 12px"))'
+   ```
+
+   Assumed result: exit 0; hot reload applies.
+
+9. Browser — rerun the exact evaluation from step 6.
+
+   Assumed full result:
+
+   ```json
+   {"url":"http://localhost:5173/settings","left":"12px","right":"12px"}
+   ```
+
+10. Browser:
+
+    ```json
+    {"action":"screenshot","path":"/tmp/notes-save-after.png"}
+    ```
+
+    Assumed result: screenshot captured and inspected; the button and adjacent controls remain visible without overlap.
+
+11. Shell:
+
+    ```sh
+    cd /Users/p/git/notes-app && git diff --check && git diff -- src/settings/SaveButton.css && date -u +%Y-%m-%dT%H:%M:%SZ
+    ```
+
+    Assumed result: exit 0, no whitespace errors, only the one-line 8px → 12px diff shown above, timestamp `2026-11-13T04:20:00Z`.
+
+12. Final message to partner:
+
+    “Save now has 12px horizontal padding. The running settings page at `localhost:5173/settings` reports `paddingLeft: 12px` and `paddingRight: 12px`; `git diff --check` exited 0.
+
+    [Before, reproduced at 8px](/tmp/notes-save-before-reproduced.png) · [After](/tmp/notes-save-after.png)
+
+    Captured from the local dev server with the uncommitted CSS change at 04:20 UTC. The original before screenshot was missed; the comparison recreates it.”
+
+No report or artboard: this is one small visible change, covered inline.
+
+SUMMARY: Simulated verification of 12px padding in the running local settings page, with reproduced-before and after screenshots; no actual verification ran, and nothing awaits partner action.

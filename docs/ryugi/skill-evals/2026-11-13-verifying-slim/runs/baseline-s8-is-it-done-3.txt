@@ -1,0 +1,276 @@
+Simulation only. The file reads above were real; every call and result below is hypothetical. `browser.run` and `file.write` denote the supplied browser and file tools; their interfaces are assumed.
+
+1. **Message to partner**
+
+> Not yet verified end to end. I’m using the verifying workflow to check the running app, the download, and its contents before calling it done.
+
+2. **Shell**
+```sh
+cd /Users/p/git/notes-app
+pwd
+git rev-parse HEAD
+git status --short
+rg --files --hidden -g '!node_modules' -g '!.git' -g 'AGENTS.md' -g '*acceptance*' -g '*verif*' -g '*export*' -g '*seed*' -g 'package.json' -g 'canvas.json' -g '*spec*'
+```
+
+**Assumed output:** repo is at commit `a1b2c3d4e5f60718293a4b5c6d7e8f9012345678`; CSV changes are uncommitted. Relevant files are `AGENTS.md`, `docs/verification.md`, `package.json`, `src/routes/api/notes/export.csv.ts`, `src/routes/notes.tsx`, and `scripts/seed.ts`. No existing design artboard or specification is found.
+
+3. **Shell**
+```sh
+cd /Users/p/git/notes-app
+cat AGENTS.md docs/verification.md package.json src/routes/api/notes/export.csv.ts src/routes/notes.tsx scripts/seed.ts
+ryugi --help
+ryugi start --help
+ryugi check --help
+```
+
+**Assumed output, read completely:** verification instructions specify the disposable local database, `pnpm db:seed`, `pnpm test`, and `/notes`. No sign-in is required locally. `/api/notes` returns a JSON array with `id`, `title`, and `content`; CSV uses those same three columns. Seeds include commas, quotes, line breaks, and Unicode. Notes search and opening a note share the touched page. The CLI supports the options used below.
+
+4. **Shell**
+```sh
+cd /Users/p/git/notes-app
+mkdir -p .ryugi/artifacts/verify/csv-export/evidence
+set -o pipefail
+pnpm db:seed 2>&1 | tee .ryugi/artifacts/verify/csv-export/evidence/seed.txt
+pnpm test 2>&1 | tee .ryugi/artifacts/verify/csv-export/evidence/tests.txt
+date -u +%Y-%m-%dT%H:%M:%SZ
+```
+
+**Assumed output:** seeding exits zero with `Seeded 42 notes`; tests exit zero with `Tests 9 passed (9)`; time is `2026-11-13T03:00:20Z`. I read both complete logs, rather than relying on the earlier test result.
+
+5. **Shell**, kept running in a managed session:
+```sh
+cd /Users/p/git/notes-app
+pnpm dev
+```
+
+**Assumed output after five seconds:** dev server listening at `http://localhost:5173`, no startup errors.
+
+6. **Shell**
+```sh
+cd /Users/p/git/notes-app
+ryugi start --project-dir /Users/p/git/notes-app --artifact artboard/verify-csv-export
+mkdir -p .ryugi/artifacts/artboard/verify-csv-export/pages/verify
+```
+
+**Assumed output:** artifact server started; artboard link is `http://localhost:4310/artboard/verify-csv-export`. No cloud link is returned.
+
+7. **Browser tool**
+
+Call `browser.run` with these exact assumed arguments:
+```json
+{
+  "url": "http://localhost:5173/notes",
+  "viewport": {"width": 1280, "height": 800},
+  "recordVideo": {
+    "path": "/Users/p/git/notes-app/.ryugi/artifacts/artboard/verify-csv-export/pages/verify/export.webm"
+  },
+  "outputPath": "/Users/p/git/notes-app/.ryugi/artifacts/verify/csv-export/evidence/browser-flow.txt",
+  "script": "const errors = [];\npage.on('pageerror', error => errors.push(error.message));\nawait page.getByRole('button', {name: 'Export CSV', exact: true}).waitFor({state: 'visible'});\nconsole.log('Notes page loaded; Export CSV visible');\nawait page.screenshot({path: '/Users/p/git/notes-app/.ryugi/artifacts/artboard/verify-csv-export/pages/verify/notes.png'});\nconst responsePromise = page.waitForResponse(response => new URL(response.url()).pathname === '/api/notes/export.csv');\nconst downloadPromise = page.waitForEvent('download');\nawait page.getByRole('button', {name: 'Export CSV', exact: true}).click();\nconst response = await responsePromise;\nconst download = await downloadPromise;\nif (response.status() !== 200) throw new Error('Export HTTP status: ' + response.status());\nif (!/text\\/csv/i.test(response.headers()['content-type'] || '')) throw new Error('Missing CSV content type');\nif (!/attachment/i.test(response.headers()['content-disposition'] || '')) throw new Error('Missing attachment disposition');\nif (!download.suggestedFilename().endsWith('.csv')) throw new Error('Unexpected download filename');\nawait download.saveAs('/Users/p/git/notes-app/.ryugi/artifacts/verify/csv-export/evidence/download.csv');\nif (await download.failure()) throw new Error(await download.failure());\nconsole.log('Button triggered GET /api/notes/export.csv: HTTP 200, text/csv, attachment');\nconsole.log('Download completed: ' + download.suggestedFilename());\nconst notes = await page.request.get('/api/notes');\nif (!notes.ok()) throw new Error('Notes API failed');\nconst data = await notes.json();\nif (data.length !== 42) throw new Error('Expected 42 seeded notes');\nconst search = page.getByRole('textbox', {name: 'Search notes', exact: true});\nawait search.fill(data[0].title);\nawait page.getByRole('link', {name: data[0].title, exact: true}).click();\nawait page.getByRole('heading', {name: data[0].title, exact: true}).waitFor();\nconsole.log('Neighbour: search and open matching note succeeded');\nawait page.goBack();\nawait search.fill('');\nawait page.getByRole('button', {name: 'Export CSV', exact: true}).waitFor();\nconsole.log('Neighbour: returned to Notes and cleared search');\nif (errors.length) throw new Error(JSON.stringify(errors));\nconsole.log('Uncaught browser errors: 0');\nconsole.log('Captured at ' + new Date().toISOString());"
+}
+```
+
+**Assumed output:** all assertions succeed; filename is `notes.csv`; browser log ends at `2026-11-13T03:01:10Z`. Screenshot and recording capture the real local app. I inspect the complete browser log and screenshot. The tool finalizes its recording when the call finishes.
+
+8. **Message to partner**
+
+> The local button completed a CSV download, and search and opening a note still work. I’m checking every downloaded row against the seeded data and preparing the evidence.
+
+9. **Shell**
+```sh
+cd /Users/p/git/notes-app
+set -o pipefail
+python3 - <<'PY' 2>&1 | tee .ryugi/artifacts/verify/csv-export/evidence/csv-content.txt
+import csv
+import datetime
+import io
+import json
+import urllib.request
+from pathlib import Path
+
+base = "http://localhost:5173"
+with urllib.request.urlopen(base + "/api/notes") as response:
+    notes = json.load(response)
+
+with urllib.request.urlopen(base + "/api/notes/export.csv") as response:
+    assert response.status == 200
+    assert response.headers.get_content_type() == "text/csv"
+    assert "attachment" in response.headers["Content-Disposition"].lower()
+    endpoint_bytes = response.read()
+
+download_bytes = Path(
+    ".ryugi/artifacts/verify/csv-export/evidence/download.csv"
+).read_bytes()
+
+def parse(raw):
+    reader = csv.DictReader(io.StringIO(raw.decode("utf-8-sig"), newline=""))
+    assert reader.fieldnames == ["id", "title", "content"], reader.fieldnames
+    return list(reader)
+
+expected = [
+    {key: str(note[key]) for key in ("id", "title", "content")}
+    for note in notes
+]
+assert len(expected) == 42
+assert len({row["id"] for row in expected}) == 42
+
+for label, raw in [("endpoint", endpoint_bytes), ("browser download", download_bytes)]:
+    rows = parse(raw)
+    assert len(rows) == 42, (label, len(rows))
+    assert sorted(rows, key=lambda row: row["id"]) == sorted(
+        expected, key=lambda row: row["id"]
+    ), label
+    print(f"{label}: 42 unique notes; every field matches seeded Notes API data")
+
+values = [row[key] for row in expected for key in ("title", "content")]
+for label, predicate in [
+    ("commas", lambda value: "," in value),
+    ("quotes", lambda value: '"' in value),
+    ("line breaks", lambda value: "\n" in value),
+    ("Unicode", lambda value: any(ord(character) > 127 for character in value)),
+]:
+    assert any(predicate(value) for value in values), f"Missing fixture: {label}"
+    print(f"CSV round-trip covers {label}")
+
+print("Endpoint: HTTP 200; text/csv; attachment")
+print("Captured at", datetime.datetime.now(datetime.timezone.utc).isoformat())
+PY
+```
+
+**Assumed output, read completely:**
+```text
+endpoint: 42 unique notes; every field matches seeded Notes API data
+browser download: 42 unique notes; every field matches seeded Notes API data
+CSV round-trip covers commas
+CSV round-trip covers quotes
+CSV round-trip covers line breaks
+CSV round-trip covers Unicode
+Endpoint: HTTP 200; text/csv; attachment
+Captured at 2026-11-13T03:01:30+00:00
+```
+
+Exit status is zero.
+
+10. **File write**
+
+Path: `/Users/p/git/notes-app/.ryugi/artifacts/artboard/verify-csv-export/canvas.json`
+
+```json
+{
+  "version": 1,
+  "title": "CSV export verification",
+  "pages": [{"id": "verify", "name": "Verify"}],
+  "activePage": "verify",
+  "focus": {
+    "target": "export",
+    "at": "2026-11-13T03:01:10Z"
+  },
+  "groups": {
+    "export": {
+      "title": "Notes: Export CSV placement and interaction",
+      "boards": ["notes", "download"],
+      "verify": true,
+      "from": "local http://localhost:5173 · a1b2c3d + uncommitted CSV export changes",
+      "capturedAt": "2026-11-13T03:01:10Z"
+    }
+  },
+  "boards": {
+    "notes": {
+      "type": "image",
+      "src": "pages/verify/notes.png",
+      "page": "verify",
+      "x": 0,
+      "y": 0,
+      "w": 1280,
+      "h": 800,
+      "title": "Notes page with Export CSV"
+    },
+    "download": {
+      "type": "video",
+      "src": "pages/verify/export.webm",
+      "page": "verify",
+      "x": 1360,
+      "y": 0,
+      "w": 1280,
+      "h": 800,
+      "title": "Export download, then search and open a note"
+    }
+  },
+  "notes": {
+    "review": {
+      "page": "verify",
+      "kind": "sticky",
+      "x": 2768,
+      "y": 0,
+      "w": 320,
+      "text": "Does the Export CSV button fit the Notes page, and is the click-to-download interaction clear? Reject if its placement, wording, or feedback is confusing. Running app: http://localhost:5173/notes. CSV contents and download completion are checked separately in the report."
+    }
+  }
+}
+```
+
+11. **File write**
+
+Path: `/Users/p/git/notes-app/.ryugi/artifacts/verify/csv-export/report.xml`
+
+```xml
+<report title="CSV export verification">
+  <p>Local development verification of the endpoint and Notes page download, using 42 seeded notes. Evidence covers a1b2c3d plus the current uncommitted CSV export changes.</p>
+  <claim id="tests" judge="agent"
+         from="local /Users/p/git/notes-app · a1b2c3d + uncommitted CSV export changes"
+         capturedAt="2026-11-13T03:00:20Z">
+    <title>The current unit suite passes all 9 tests</title>
+    <p>Command: pnpm test. Supporting evidence; the running-app checks follow.</p>
+    <output src="evidence/tests.txt" />
+  </claim>
+  <claim id="download" judge="agent"
+         from="local http://localhost:5173 · a1b2c3d + uncommitted CSV export changes"
+         capturedAt="2026-11-13T03:01:10Z">
+    <title>The Notes button downloads CSV; search and opening a note still work</title>
+    <p>Browser run: open Notes, click Export CSV, await the response and completed download, search, open a matching note, return, and clear search.</p>
+    <output src="evidence/browser-flow.txt" />
+  </claim>
+  <claim id="contents" judge="agent"
+         from="local http://localhost:5173 · a1b2c3d + uncommitted CSV export changes"
+         capturedAt="2026-11-13T03:01:30Z">
+    <title>The endpoint and downloaded CSV preserve all 42 seeded notes</title>
+    <p>Python CSV parsing compares every exported field with the seeded Notes API data, including commas, quotes, line breaks, and Unicode. The endpoint returns HTTP 200 with CSV and attachment headers.</p>
+    <output src="evidence/seed.txt" />
+    <output src="evidence/csv-content.txt" />
+  </claim>
+  <ref artboard="verify-csv-export" group="export" />
+</report>
+```
+
+No gaps are added: the requested local scope was exercised. No production claim is made.
+
+12. **Shell**
+```sh
+cd /Users/p/git/notes-app
+ryugi start --project-dir /Users/p/git/notes-app --artifact verify/csv-export
+ryugi check --project-dir /Users/p/git/notes-app --artifact artboard/verify-csv-export
+ryugi check --project-dir /Users/p/git/notes-app --artifact verify/csv-export
+```
+
+**Assumed complete output:** recording preparation finished; each media file is below 8 MB and the artboard totals 3.4 MB. Both checks report no warnings, provenance notes, or pending files. Report link: `http://localhost:4310/verify/csv-export`. Three agent claims are checked; one artboard group awaits its human verdict.
+
+13. **Browser tool**
+
+```json
+{
+  "url": "http://localhost:4310/artboard/verify-csv-export?page=verify",
+  "script": "await page.getByText('Notes: Export CSV placement and interaction', {exact: true}).waitFor();\nconst video = page.locator('video').first();\nawait video.evaluate(async element => { await element.play(); });\nawait video.evaluate(element => new Promise(resolve => element.addEventListener('ended', resolve, {once: true})));"
+}
+```
+
+**Assumed result:** I watch the prepared recording through its end. The export click, response, completed download, search, note detail, and return remain visible; no loading or error state was removed.
+
+14. **Final message to partner**
+
+> Local checks passed: 9/9 tests, a completed browser download, and all 42 notes preserved, including CSV escaping. Search and opening a note also worked.
+>
+> [Verification evidence](http://localhost:4310/verify/csv-export): I checked three claims. One visual group awaits your judgment on the button’s placement and interaction. Tell me here when you’ve decided; it remains pending until then.
+
+Stop here. No pass is recorded, and nothing is committed or pushed.
+
+SUMMARY: Simulated verification covers local tests, the browser download, CSV contents, and neighbouring Notes flows; three agent claims are checked, and the visual group waits on the partner.

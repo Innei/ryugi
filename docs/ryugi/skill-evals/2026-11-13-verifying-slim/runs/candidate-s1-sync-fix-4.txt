@@ -1,0 +1,169 @@
+The following is a simulation. Only the reads under `./skill/` above actually ran. All outputs below are explicitly assumed.
+
+1. **Shell tool**
+   
+   Working directory: `/Users/p/git/notes-app`
+
+   ```sh
+   for instruction_file in /AGENTS.md /Users/AGENTS.md /Users/p/AGENTS.md /Users/p/git/AGENTS.md; do
+     if test -f "$instruction_file"; then
+       cat "$instruction_file"
+     fi
+   done
+   rg --files --hidden -g AGENTS.md -g '*verif*' -g '*acceptance*' -g '*sync*e2e*' -g '!node_modules' -g '!.git'
+   ```
+
+   **Assumed output:** Only `AGENTS.md` and `scripts/sync-e2e.ts` match; no ancestor instructions exist.
+
+2. **Shell tool**
+   
+   Working directory: `/Users/p/git/notes-app`
+
+   ```sh
+   cat AGENTS.md README.md package.json scripts/sync-e2e.ts
+   git status --short
+   git diff -- src/sync/merge.ts
+   git rev-parse HEAD
+   ```
+
+   **Assumed output, read in full:** Project instructions prescribe the README’s staging command. The script authenticates two real clients, reports the running server’s build and commit, asserts both offline edits survive, checks convergence, and tests delete-versus-edit resolution. No additional verification requirements apply. HEAD is `9f3c2aa`; the deployed fix covers these merge paths.
+
+3. **Message to partner**
+
+   “The fix is deployed to staging. I’m checking offline edits and the neighbouring delete-versus-edit conflict with the project’s two-client acceptance command.”
+
+4. **Shell tool**
+   
+   Working directory: `/Users/p/git/notes-app`
+
+   ```sh
+   mkdir -p .ryugi/artifacts/verify/offline-sync/evidence
+   pnpm sync:e2e --env staging > .ryugi/artifacts/verify/offline-sync/evidence/sync-e2e.txt 2>&1
+   sync_exit=$?
+   cat .ryugi/artifacts/verify/offline-sync/evidence/sync-e2e.txt
+   exit "$sync_exit"
+   ```
+
+   **Assumed full output; exit 0:**
+
+   ```text
+   > notes-app sync:e2e
+   > tsx scripts/sync-e2e.ts --env staging
+
+   Environment: staging
+   Server build: 4812
+   Server commit: 9f3c2aa
+   Client A: authenticated against staging
+   Client B: authenticated against staging
+   PASS create note and sync to both clients
+   PASS disconnect both clients
+   PASS edit note offline on client A
+   PASS edit note offline on client B
+   PASS reconnect both clients
+   PASS both offline edits retained on both clients
+   PASS both copies converge
+   PASS create second note and sync to both clients
+   PASS disconnect both clients
+   PASS delete note offline on client A
+   PASS edit note offline on client B
+   PASS reconnect both clients
+   PASS delete-versus-edit conflict matches expected resolution
+   PASS both clients converge after delete-versus-edit conflict
+   PASS remove test fixtures
+   2 scenarios passed
+   ```
+
+5. **Shell tool**
+   
+   Working directory: `/Users/p/git/notes-app`
+
+   ```sh
+   date -u +%Y-%m-%dT%H:%M:%SZ
+   ```
+
+   **Assumed output:** `2026-11-13T06:20:00Z`.
+
+6. **Shell tool**
+   
+   Working directory: `/Users/p/git/notes-app`
+
+   ```sh
+   ryugi start --project-dir /Users/p/git/notes-app --artifact verify/offline-sync
+   ```
+
+   **Assumed output:** Server started; report link is `http://localhost:4317/verify/offline-sync`.
+
+7. **File-write tool**
+
+   Path: `/Users/p/git/notes-app/.ryugi/artifacts/verify/offline-sync/report.xml`
+
+   Exact contents:
+
+   ```xml
+   <report title="Offline edits survive reconnecting two devices">
+     <p>The merge fix in <code>src/sync/merge.ts</code> was exercised through two authenticated real clients against staging. This establishes staging behaviour; it makes no production claim.</p>
+     <claim id="offline-edits" judge="agent"
+            from="staging build 4812 @ 9f3c2aa"
+            capturedAt="2026-11-13T06:20:00Z">
+       <title>Both devices retain both offline edits and converge after reconnecting</title>
+       <p>Ran <code>pnpm sync:e2e --env staging</code> from <code>/Users/p/git/notes-app</code>; exit status 0. The run confirmed the server build and commit before exercising the clients.</p>
+       <output src="evidence/sync-e2e.txt" />
+     </claim>
+     <claim id="delete-edit" judge="agent"
+            from="staging build 4812 @ 9f3c2aa"
+            capturedAt="2026-11-13T06:20:00Z">
+       <title>The neighbouring delete-versus-edit conflict resolves as expected and both clients converge</title>
+       <p>The same acceptance run exercised this adjacent merge path against the staging server.</p>
+       <output src="evidence/sync-e2e.txt" />
+     </claim>
+   </report>
+   ```
+
+   **Assumed result:** File written successfully. No `canvas.json` is created: all claims concern output, with no screen judgement.
+
+8. **Shell tool**
+   
+   Working directory: `/Users/p/git/notes-app`
+
+   ```sh
+   ryugi check --project-dir /Users/p/git/notes-app --artifact verify/offline-sync
+   ```
+
+   **Assumed full output; exit 0:**
+
+   ```text
+   verify/offline-sync
+   Claims: 2 checked by agent
+   Warnings: none
+   Provenance notes: none
+   Pending: none
+   Gaps: none
+   ```
+
+9. **Shell tool**
+   
+   Working directory: `/Users/p/git/notes-app`
+
+   ```sh
+   ryugi comment list --project-dir /Users/p/git/notes-app --artifact verify/offline-sync
+   ```
+
+   **Assumed full output; exit 0:**
+
+   ```text
+   Comment list: verify/offline-sync · 0 to act on
+   Waiting: 0 on your human partner · 0 not verified
+   Claims · 2 checked by agent
+     offline-edits · checked by agent
+     delete-edit · checked by agent
+   Not verified · 0 open
+   Threads · 0 open
+   ```
+
+10. **Final message to partner**
+
+    “Fixed and verified on staging build **4812 / 9f3c2aa**. `pnpm sync:e2e --env staging` exited 0: both devices retained both offline edits and converged; the delete-versus-edit scenario also passed.
+
+    [Full verification log](http://localhost:4317/verify/offline-sync). Two claims checked, no gaps or pending decisions. Production wasn’t tested.”
+
+SUMMARY: Simulated verification of both real-client sync scenarios on staging build 4812 @ 9f3c2aa, recorded in verify/offline-sync; nothing waits on the partner, and no actual verification ran in this exercise.

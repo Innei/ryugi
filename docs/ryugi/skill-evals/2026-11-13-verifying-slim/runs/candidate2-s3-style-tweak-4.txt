@@ -1,0 +1,62 @@
+Everything below is simulated. Tool results are assumed, not observed.
+
+1. **Shell call** — read project instructions and inspect the change:
+
+   ```sh
+   cd /Users/p/git/notes-app && for f in /AGENTS.md /Users/AGENTS.md /Users/p/AGENTS.md /Users/p/git/AGENTS.md AGENTS.md src/AGENTS.md src/settings/AGENTS.md; do if [ -f "$f" ]; then cat "$f"; fi; done
+   ```
+
+   **Assumed output:** No additional verification requirements.
+
+   ```sh
+   cd /Users/p/git/notes-app && git diff -- src/settings/SaveButton.css && cat src/settings/SaveButton.css && git rev-parse --short HEAD && date -u +%Y-%m-%dT%H:%M:%SZ
+   ```
+
+   **Assumed output:** The only change is `padding-inline: 8px` → `padding-inline: 12px`; HEAD is `a1b2c3d`; time is `2026-11-13T06:00:00Z`.
+
+2. **Message to partner:**
+
+   > The change has already hot reloaded, so I missed capturing the original appearance. I’ll check the rendered padding and capture the current button. This small change needs no artboard or approval step.
+
+3. **Browser call** — identify the existing settings tab:
+
+   ```json
+   browser.tabs({})
+   ```
+
+   **Assumed output:** Tab `settings` is open at `http://localhost:5173/settings`.
+
+4. **Browser call** — verify the actual rendered button:
+
+   ```json
+   browser.evaluate({
+     "tab": "settings",
+     "expression": "(() => { const buttons = [...document.querySelectorAll('button')].filter(b => b.textContent.trim() === 'Save'); if (buttons.length !== 1) throw new Error('Expected exactly one Save button'); const b = buttons[0]; const s = getComputedStyle(b); const r = b.getBoundingClientRect(); const result = { url: location.href, capturedAt: new Date().toISOString(), paddingInlineStart: s.paddingInlineStart, paddingInlineEnd: s.paddingInlineEnd, visible: r.width > 0 && r.height > 0, withinViewport: r.left >= 0 && r.right <= innerWidth && r.top >= 0 && r.bottom <= innerHeight }; console.log(JSON.stringify(result)); if (s.paddingInlineStart !== '12px' || s.paddingInlineEnd !== '12px' || !result.visible || !result.withinViewport) throw new Error('Save button verification failed'); return result; })()"
+   })
+   ```
+
+   **Assumed full output:**
+
+   ```json
+   {"url":"http://localhost:5173/settings","capturedAt":"2026-11-13T06:00:10Z","paddingInlineStart":"12px","paddingInlineEnd":"12px","visible":true,"withinViewport":true}
+   ```
+
+5. **Browser call** — capture the running settings screen:
+
+   ```json
+   browser.screenshot({
+     "tab": "settings",
+     "path": "/tmp/notes-save-padding-after.png",
+     "fullPage": false
+   })
+   ```
+
+   **Assumed result:** Screenshot saved and displayed. I inspect it: the button label and adjacent settings controls are visible without overlap.
+
+6. **Final message to partner:**
+
+   > Save now has 12px horizontal padding. Checked the running settings page at `localhost:5173/settings` on local HEAD `a1b2c3d` with the working change, at `2026-11-13T06:00:10Z`: computed start/end padding both returned `12px`. The screenshot also shows the button and adjacent controls without overlap.
+   >
+   > After: [screenshot](/tmp/notes-save-padding-after.png). Before: unavailable—the change had already hot reloaded before capture. No visual verdict is required for this small change.
+
+SUMMARY: Simulated verification of rendered Save padding and adjacent layout on localhost; original appearance was not captured; nothing waits on the partner.

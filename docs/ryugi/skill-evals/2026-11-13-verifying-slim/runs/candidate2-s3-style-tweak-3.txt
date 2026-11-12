@@ -1,0 +1,103 @@
+Simulation only. Browser calls below use an assumed `browser` interface; all results are explicitly assumed.
+
+1. **Message to partner**
+
+   “I’m using the verifying workflow to check the padding in the running settings page. The edit already hot reloaded before a before screenshot was captured, so I can only capture the current state honestly.”
+
+2. **Shell call**
+   ```json
+   {
+     "cmd": "pwd; rg --files --hidden -g AGENTS.md -g '*verif*' -g '*acceptance*' -g package.json -g '!node_modules' -g '!.git'; git diff -- src/settings/SaveButton.css; git rev-parse --short HEAD",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+   **Assumed full output**
+   ```text
+   /Users/p/git/notes-app
+   AGENTS.md
+   package.json
+   diff --git a/src/settings/SaveButton.css b/src/settings/SaveButton.css
+   index 92391ab..f008e61 100644
+   --- a/src/settings/SaveButton.css
+   +++ b/src/settings/SaveButton.css
+   @@ -2,3 +2,3 @@
+    .save-button {
+   -  padding-inline: 8px;
+   +  padding-inline: 12px;
+    }
+   a1b2c3d
+   ```
+
+3. **Shell call**
+   ```json
+   {
+     "cmd": "cat AGENTS.md package.json; rg -n 'SaveButton|save-button' src",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+   **Assumption:** I read the complete returned files and matches. They specify no additional verification command for CSS changes; the selector is used only by the settings Save button. No test suite is needed for this one-line padding change.
+
+4. **Browser call**
+   ```json
+   {"tool":"browser.tabs","arguments":{}}
+   ```
+   **Assumed result**
+   ```json
+   [{"id":"settings","url":"http://localhost:5173/settings","active":true}]
+   ```
+
+5. **Browser call**
+   ```json
+   {"tool":"browser.snapshot","arguments":{"tabId":"settings"}}
+   ```
+   **Assumption:** The running settings page is visible, with one Save button and adjacent Cancel button.
+
+6. **Browser call**
+   ```json
+   {
+     "tool":"browser.evaluate",
+     "arguments":{
+       "tabId":"settings",
+       "expression":"(() => { const b = document.querySelector('button.save-button'); if (!b) throw new Error('Save button missing'); const s = getComputedStyle(b); const result = {url: location.href, capturedAt: new Date().toISOString(), paddingInlineStart: s.paddingInlineStart, paddingInlineEnd: s.paddingInlineEnd}; if (s.paddingInlineStart !== '12px' || s.paddingInlineEnd !== '12px') throw new Error(JSON.stringify(result)); return result; })()"
+     }
+   }
+   ```
+   **Assumed full output**
+   ```json
+   {
+     "url":"http://localhost:5173/settings",
+     "capturedAt":"2026-11-13T03:10:00.000Z",
+     "paddingInlineStart":"12px",
+     "paddingInlineEnd":"12px"
+   }
+   ```
+
+7. **Browser calls**
+   ```json
+   {"tool":"browser.screenshot","arguments":{"tabId":"settings","path":"/tmp/notes-save-padding-after.png"}}
+   ```
+   ```json
+   {"tool":"browser.hover","arguments":{"tabId":"settings","selector":"button.save-button"}}
+   ```
+   ```json
+   {"tool":"browser.screenshot","arguments":{"tabId":"settings","path":"/tmp/notes-save-padding-hover.png"}}
+   ```
+   ```json
+   {"tool":"browser.evaluate","arguments":{"tabId":"settings","expression":"document.querySelector('button.save-button').focus()"}}
+   ```
+   ```json
+   {"tool":"browser.screenshot","arguments":{"tabId":"settings","path":"/tmp/notes-save-padding-focus.png"}}
+   ```
+   **Assumption:** Each capture succeeds and I inspect every returned image. The label remains visible, the button does not overlap Cancel, and hover and focus remain visible.
+
+8. **Final message to partner**
+
+   “Save now has 12px horizontal padding. In the running page at `http://localhost:5173/settings` (local `a1b2c3d` plus the CSS edit, 03:10 UTC), the browser check returned `paddingInlineStart: "12px"` and `paddingInlineEnd: "12px"`. I also inspected hover, focus, and spacing beside Cancel.
+
+   After screenshot: `/tmp/notes-save-padding-after.png`.
+
+   Not verified: the visual before/after comparison—the edit had already hot reloaded before I captured the original state. No before screenshot exists.”
+
+No report, artboard, or verdict request for this small change.
+
+SUMMARY: Simulated verification of 12px horizontal padding and adjacent visual states on localhost:5173/settings; original before evidence is unavailable, and nothing waits on the partner.

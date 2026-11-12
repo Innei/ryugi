@@ -1,0 +1,1 @@
+"command":"/bin/zsh -lc 'ls -la ./skill && cat ./skill/verify.md ./skill/artboard.md'"

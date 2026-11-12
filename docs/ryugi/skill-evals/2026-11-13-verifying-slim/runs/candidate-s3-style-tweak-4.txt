@@ -1,0 +1,105 @@
+All calls and results below are simulated. No commands outside `./skill/` were executed.
+
+1. **Message to partner**
+
+   “I’m using the verifying skill to check the button in the running settings page. The change already hot reloaded, so I missed the original before screenshot; I’ll flag that gap.”
+
+2. **Shell call**
+
+   ```sh
+   cd /Users/p/git/notes-app && rg --files --hidden -g AGENTS.md -g '*verification*' -g '*acceptance*' -g '!node_modules' -g '!.git'
+   ```
+
+   Assumed output:
+   ```text
+   AGENTS.md
+   ```
+
+3. **Shell call**
+
+   ```sh
+   cd /Users/p/git/notes-app && cat AGENTS.md
+   ```
+
+   Assume it instructs checking small CSS changes in the running app, including keyboard focus and adjacent controls, with no required test suite for this change.
+
+4. **Shell call**
+
+   ```sh
+   cd /Users/p/git/notes-app && git diff -- src/settings/SaveButton.css && git rev-parse --short HEAD && date -u +%Y-%m-%dT%H:%M:%SZ
+   ```
+
+   Assumed full output:
+   ```text
+   diff --git a/src/settings/SaveButton.css b/src/settings/SaveButton.css
+   index 73ff921..ff82190 100644
+   --- a/src/settings/SaveButton.css
+   +++ b/src/settings/SaveButton.css
+   @@ -2,3 +2,3 @@
+      padding-block: 6px;
+   -  padding-inline: 8px;
+   +  padding-inline: 12px;
+    }
+   a1b2c3d
+   2026-11-13T06:30:00Z
+   ```
+
+5. **Browser shell call**
+
+   ```sh
+   agent-browser snapshot -i
+   ```
+
+   Assume the connected browser is on `http://localhost:5173/settings`, with Save at `@e7` and Cancel at `@e8`.
+
+6. **Browser shell call**
+
+   ```sh
+   agent-browser eval '(() => { const b = [...document.querySelectorAll("button")].find(b => b.textContent.trim() === "Save"); if (!b) throw new Error("Save button missing"); const s = getComputedStyle(b); if (s.paddingInlineStart !== "12px" || s.paddingInlineEnd !== "12px") throw new Error(`Unexpected padding: ${s.paddingInlineStart} ${s.paddingInlineEnd}`); return {url: location.href, paddingInlineStart: s.paddingInlineStart, paddingInlineEnd: s.paddingInlineEnd, capturedAt: new Date().toISOString()}; })()'
+   ```
+
+   Assumed output:
+   ```json
+   {"url":"http://localhost:5173/settings","paddingInlineStart":"12px","paddingInlineEnd":"12px","capturedAt":"2026-11-13T06:30:10.000Z"}
+   ```
+
+7. **Browser shell calls**, sequentially:
+
+   ```sh
+   agent-browser focus @e8
+   ```
+   ```sh
+   agent-browser press Tab
+   ```
+   ```sh
+   agent-browser eval '(() => { const b = document.activeElement; if (b?.textContent.trim() !== "Save") throw new Error("Tab did not reach Save"); return "PASS: keyboard focus reaches Save from Cancel"; })()'
+   ```
+
+   Assume the first two commands succeed and the third prints:
+   ```text
+   PASS: keyboard focus reaches Save from Cancel
+   ```
+
+8. **Browser shell call**
+
+   ```sh
+   agent-browser screenshot /tmp/notes-app-save-padding-after.png
+   ```
+
+   Assume it captures the settings page with Save focused.
+
+9. **Image inspection call**
+
+   ```json
+   {"path":"/tmp/notes-app-save-padding-after.png"}
+   ```
+
+   Assume the screenshot shows Save’s focus ring, its complete label, and the adjacent Cancel button without clipping or overlap.
+
+10. **Final message to partner**
+
+   “Save measures **12px on both horizontal sides** in the running settings page (`localhost:5173`, local working tree at `a1b2c3d`, captured 2026-11-13 06:30 UTC). Keyboard focus from Cancel to Save also passed.
+
+   [After screenshot](/tmp/notes-app-save-padding-after.png). Before screenshot unavailable: hot reload had already applied the edit. The visual spacing awaits your judgment.”
+
+SUMMARY: Simulated verification checked 12px horizontal padding and adjacent keyboard focus in the local settings page; the original before capture is missing, and visual acceptance waits on the partner.

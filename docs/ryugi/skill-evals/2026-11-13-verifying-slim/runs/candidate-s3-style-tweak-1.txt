@@ -1,0 +1,95 @@
+Simulation only. Browser calls below assume a tool supporting `evaluate` and `screenshot`; no commands or browser actions are actually run.
+
+1. Message to partner:
+
+   “I’ll check the rendered padding and capture the button. The edit has already hot reloaded, so I missed the original before screenshot; I’ll flag that gap.”
+
+2. Shell call:
+
+   ```json
+   {
+     "command": "pwd",
+     "cwd": "/Users/p/git/notes-app"
+   }
+   ```
+
+   Assumed output: `/Users/p/git/notes-app`.
+
+3. Shell call:
+
+   ```json
+   {
+     "command": "rg --files --hidden -g AGENTS.md -g '*acceptance*' -g '*verification*' -g '!node_modules' -g '!.git'",
+     "cwd": "/Users/p/git/notes-app"
+   }
+   ```
+
+   Assume output lists `AGENTS.md` only.
+
+4. Shell call:
+
+   ```json
+   {
+     "command": "cat AGENTS.md",
+     "cwd": "/Users/p/git/notes-app"
+   }
+   ```
+
+   Assume its full output requires checking small CSS changes in the running browser, with no additional acceptance commands.
+
+5. Shell call:
+
+   ```json
+   {
+     "command": "git diff -- src/settings/SaveButton.css",
+     "cwd": "/Users/p/git/notes-app"
+   }
+   ```
+
+   Assume the full output confirms only `padding-inline: 8px` → `padding-inline: 12px`.
+
+6. Browser call against the already-open settings tab:
+
+   ```json
+   {
+     "method": "evaluate",
+     "arguments": {
+       "expression": "(() => { const b = [...document.querySelectorAll('button')].find(b => b.textContent.trim() === 'Save'); if (!b) throw new Error('Save button missing'); const s = getComputedStyle(b); const r = b.getBoundingClientRect(); const result = { url: location.href, capturedAt: new Date().toISOString(), paddingInlineStart: s.paddingInlineStart, paddingInlineEnd: s.paddingInlineEnd, visible: r.width > 0 && r.height > 0, withinViewport: r.left >= 0 && r.right <= innerWidth }; if (result.paddingInlineStart !== '12px' || result.paddingInlineEnd !== '12px' || !result.visible || !result.withinViewport) throw new Error(JSON.stringify(result)); return result; })()"
+     }
+   }
+   ```
+
+   Assumed output, read in full:
+
+   ```json
+   {
+     "url": "http://localhost:5173/settings",
+     "capturedAt": "2026-11-13T04:00:00Z",
+     "paddingInlineStart": "12px",
+     "paddingInlineEnd": "12px",
+     "visible": true,
+     "withinViewport": true
+   }
+   ```
+
+7. Browser call:
+
+   ```json
+   {
+     "method": "screenshot",
+     "arguments": {
+       "path": "/tmp/notes-save-padding-after.png",
+       "fullPage": false
+     }
+   }
+   ```
+
+   Assume capture succeeds. Inspect the image: Save and adjacent settings controls remain visible without overlap. No report or artboard is warranted for this single small change.
+
+8. Final message to partner:
+
+   “The local settings page renders 12px horizontal padding on both sides of Save, confirmed by computed styles after hot reload. Adjacent controls remain visible without overlap.
+
+   After: `/tmp/notes-save-padding-after.png`. Before: unavailable; the edit had already hot reloaded before capture. Visual acceptance remains pending.”
+
+SUMMARY: Simulated verification of 12px padding on localhost:5173 with computed styles and an after screenshot; original before evidence is missing, and visual acceptance waits on the partner.

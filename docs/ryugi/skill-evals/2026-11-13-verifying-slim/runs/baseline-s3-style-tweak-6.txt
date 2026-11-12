@@ -1,0 +1,109 @@
+Simulation only. No app commands below are actually run. Assumed outputs are explicitly marked.
+
+1. Message to partner:
+
+   “I’m using the verifying workflow to check the rendered padding. I missed capturing the original appearance before editing; I’ll label the comparison as a reconstruction.”
+
+2. Shell call:
+
+   ```sh
+   cd /Users/p/git/notes-app && rg --files --hidden -g AGENTS.md -g '*verification*' -g '*acceptance*' -g '!node_modules' -g '!.git'
+   ```
+
+   Assumed output:
+
+   ```text
+   AGENTS.md
+   ```
+
+3. Shell call:
+
+   ```sh
+   cd /Users/p/git/notes-app && cat AGENTS.md
+   ```
+
+   Assumption: instructions require checking small CSS changes in the running settings page; no additional acceptance command applies.
+
+4. Shell call:
+
+   ```sh
+   cd /Users/p/git/notes-app && git diff -- src/settings/SaveButton.css
+   ```
+
+   Assumed output:
+
+   ```diff
+   diff --git a/src/settings/SaveButton.css b/src/settings/SaveButton.css
+   --- a/src/settings/SaveButton.css
+   +++ b/src/settings/SaveButton.css
+   @@ -2 +2 @@
+   -  padding-inline: 8px;
+   +  padding-inline: 12px;
+   ```
+
+5. Shell call:
+
+   ```sh
+   agent-browser snapshot -i
+   ```
+
+   Assumption: this attaches to the partner’s existing browser tab at `http://localhost:5173/settings`. Output identifies one Save button as `@e5`, alongside the settings fields. If attachment instead opens another browser, I would locate the existing tab before continuing.
+
+6. Shell call:
+
+   ```sh
+   mkdir -p /Users/p/git/notes-app/.verification
+   ```
+
+7. Shell call:
+
+   ```sh
+   agent-browser eval '(() => { const b = [...document.querySelectorAll("button")].filter(x => x.textContent.trim() === "Save"); if (b.length !== 1) throw new Error("Expected one Save button"); window.__savePaddingEvidence = { button: b[0], originalStyle: b[0].getAttribute("style") }; b[0].style.setProperty("padding-inline", "8px", "important"); return "Reconstructed comparison: temporary browser override to 8px; not an original before capture"; })()'
+   ```
+
+   Assumed output:
+
+   ```text
+   Reconstructed comparison: temporary browser override to 8px; not an original before capture
+   ```
+
+8. Shell call:
+
+   ```sh
+   agent-browser screenshot /Users/p/git/notes-app/.verification/save-padding-reconstructed-before.png
+   ```
+
+   Assumption: screenshot saved successfully. I inspect it and see the settings page with the reconstructed tighter padding.
+
+9. Shell call:
+
+   ```sh
+   agent-browser eval '(() => { const e = window.__savePaddingEvidence; if (e.originalStyle === null) e.button.removeAttribute("style"); else e.button.setAttribute("style", e.originalStyle); delete window.__savePaddingEvidence; const b = e.button; const s = getComputedStyle(b); const result = { url: location.href, capturedAt: new Date().toISOString(), paddingInlineStart: s.paddingInlineStart, paddingInlineEnd: s.paddingInlineEnd }; console.log(JSON.stringify(result)); if (s.paddingInlineStart !== "12px" || s.paddingInlineEnd !== "12px") throw new Error("Expected 12px horizontal padding"); return "PASS"; })()'
+   ```
+
+   Assumed full output:
+
+   ```text
+   {"url":"http://localhost:5173/settings","capturedAt":"2026-11-13T04:00:00.000Z","paddingInlineStart":"12px","paddingInlineEnd":"12px"}
+   PASS
+   ```
+
+10. Shell call:
+
+    ```sh
+    agent-browser screenshot /Users/p/git/notes-app/.verification/save-padding-after.png
+    ```
+
+    Assumption: screenshot saved successfully. I inspect it: Save’s label fits, the button remains aligned with nearby controls, and nothing overlaps. No save action is needed for this padding-only change.
+
+11. Final message to partner:
+
+    “Save now renders with 12px horizontal padding. The browser check on local settings returned `paddingInlineStart: 12px`, `paddingInlineEnd: 12px`, and `PASS`.
+
+    [Reconstructed before](/Users/p/git/notes-app/.verification/save-padding-reconstructed-before.png) · [After](/Users/p/git/notes-app/.verification/save-padding-after.png)
+
+    The original before screenshot was missed; the comparison temporarily recreated 8px in the browser.”
+
+No report or artboard: this is one small visible change.
+
+SUMMARY: Simulated verification of 12px horizontal padding in the running local settings page, with reconstructed-before and actual-after screenshots; nothing actually executed, and no formal verdict waits on the partner.

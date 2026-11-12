@@ -1,0 +1,1 @@
+PASS — Runs staging end-to-end checks and writes a verification report with agent-judged claims, raw evidence, and staging build provenance; no human checks or artboard.

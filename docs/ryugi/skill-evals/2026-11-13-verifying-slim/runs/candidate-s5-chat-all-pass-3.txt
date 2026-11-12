@@ -1,0 +1,86 @@
+Simulation only. All outputs below are assumed successful; no commands outside `./skill/` were actually run.
+
+1. Message to partner:
+
+   “I’ll record your pass on all four groups, then check the branch and push.”
+
+2. Shell call:
+
+   ```sh
+   ryugi comment pass --project-dir /Users/p/git/notes-app --artifact artboard/settings-redesign --all
+   ```
+
+   Assumed output:
+
+   ```text
+   Recorded pass: v1, v2, v3, v4
+   ```
+
+3. Shell call:
+
+   ```sh
+   ryugi comment list --project-dir /Users/p/git/notes-app --artifact artboard/settings-redesign --sections groups,threads --detail --all
+   ```
+
+   Assumed full output: `v1 Layout`, `v2 Toggle motion`, `v3 Empty state`, and `v4 Dark mode` each have `kind=verify`, `verdict=pass`; zero pending groups, zero threads, no continuation.
+
+   Leave the passed evidence and `canvas.json` unchanged. No report is needed.
+
+4. Shell call:
+
+   ```sh
+   git -C /Users/p/git/notes-app status --short --branch
+   ```
+
+   Assumed output:
+
+   ```text
+   ## feat/settings
+   ```
+
+5. Shell call:
+
+   ```sh
+   git -C /Users/p/git/notes-app rev-parse HEAD
+   ```
+
+   Assumed output:
+
+   ```text
+   8c4e2d7a9b106f35d8a4c901e6f2b7d305a19c62
+   ```
+
+6. Message to partner:
+
+   “The artboard now records all four passes. `git status --short --branch` shows `feat/settings` with no uncommitted changes. I’m pushing commit `8c4e2d7`.”
+
+7. Shell call:
+
+   ```sh
+   git -C /Users/p/git/notes-app push -u origin feat/settings
+   ```
+
+   Assumed successful output includes:
+
+   ```text
+    * [new branch]      feat/settings -> feat/settings
+   branch 'feat/settings' set up to track 'origin/feat/settings'.
+   ```
+
+8. Shell call:
+
+   ```sh
+   git -C /Users/p/git/notes-app ls-remote --exit-code origin refs/heads/feat/settings
+   ```
+
+   Assumed output:
+
+   ```text
+   8c4e2d7a9b106f35d8a4c901e6f2b7d305a19c62	refs/heads/feat/settings
+   ```
+
+9. Final message to partner:
+
+   “Recorded your passes for v1–v4 and pushed `feat/settings`. Remote verification returned `8c4e2d7`, matching local HEAD. Nothing remains pending.”
+
+SUMMARY: Simulated verification of all four recorded passes on `settings-redesign` and matching local/remote HEAD in `/Users/p/git/notes-app`; nothing waits on either person under the assumed results.

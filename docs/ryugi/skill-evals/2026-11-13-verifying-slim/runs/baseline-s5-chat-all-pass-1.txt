@@ -1,0 +1,106 @@
+Simulation only. Commands below are not executed; outputs are assumed.
+
+1. **Message to partner**
+
+   “I’ll use the verifying workflow to record your four passes, run the repository’s pre-push checks, and push `feat/settings`.”
+
+2. **Shell call** — record the verdict first:
+
+   ```bash
+   ryugi comment pass --project-dir /Users/p/git/notes-app --artifact artboard/settings-redesign --all
+   ```
+
+   Assumed output, read in full:
+
+   ```text
+   Recorded pass: v1, v2, v3, v4
+   ```
+
+3. **Shell call** — confirm the recorded verdicts:
+
+   ```bash
+   ryugi comment list --project-dir /Users/p/git/notes-app --artifact artboard/settings-redesign --sections groups,threads --detail
+   ```
+
+   Assumed complete output, with no continuation:
+
+   ```text
+   v1 · kind=verify · verdict=pass · Layout
+   v2 · kind=verify · verdict=pass · Toggle motion
+   v3 · kind=verify · verdict=pass · Empty state
+   v4 · kind=verify · verdict=pass · Dark mode
+   Threads: 0
+   ```
+
+4. **Shell call**, working directory `/Users/p/git/notes-app`:
+
+   ```bash
+   pwd
+   git status --short --branch
+   git rev-parse HEAD
+   git remote -v
+   rg --files --hidden -g AGENTS.md -g '*verification*' -g '*acceptance*' -g package.json -g '!node_modules' -g '!.git'
+   ```
+
+   Assume full output confirms a clean `feat/settings`, HEAD `a1b2c3d4e5f678901234567890abcdef1234567890`, the expected `origin`, and root `AGENTS.md`, `docs/verification.md`, and `package.json`.
+
+5. **Shell call**, same working directory:
+
+   ```bash
+   cat AGENTS.md docs/verification.md package.json
+   ```
+
+   Assume the full files specify `pnpm verify` as the required pre-push check, with no additional required checks.
+
+6. **Shell call**, same working directory:
+
+   ```bash
+   pnpm verify
+   ```
+
+   Assumed full output:
+
+   ```text
+   > notes-app@1.0.0 verify
+   > pnpm exec tsc --noEmit && pnpm exec vitest run
+
+    Test Files  8 passed (8)
+         Tests  42 passed (42)
+      Duration  2.31s
+   ```
+
+   Assumed exit code: `0`.
+
+7. **Message to partner**
+
+   “All four passes are recorded on `settings-redesign`. In `/Users/p/git/notes-app`, `pnpm verify` exited 0: TypeScript reported no errors and all 42 tests passed. I’ll push the checked commit now.”
+
+8. **Shell call**, same working directory:
+
+   ```bash
+   git push --set-upstream origin feat/settings
+   ```
+
+   Assumed successful output confirms `feat/settings -> feat/settings` and upstream tracking established.
+
+9. **Shell call**, same working directory:
+
+   ```bash
+   git rev-parse HEAD
+   git ls-remote --exit-code origin refs/heads/feat/settings
+   git status --short --branch
+   ```
+
+   Assumed full output:
+
+   ```text
+   a1b2c3d4e5f678901234567890abcdef1234567890
+   a1b2c3d4e5f678901234567890abcdef1234567890	refs/heads/feat/settings
+   ## feat/settings...origin/feat/settings
+   ```
+
+10. **Final message to partner**
+
+    “Pushed `feat/settings`. `git ls-remote` confirms origin matches local commit `a1b2c3d`; the working tree is clean. `pnpm verify` passed all 42 tests. Your four artboard passes are recorded; nothing remains pending.”
+
+SUMMARY: Simulated verification in `/Users/p/git/notes-app`: four verdicts recorded and confirmed, pre-push checks passed, remote branch matched local HEAD; nothing waits on the partner.

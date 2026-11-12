@@ -1,0 +1,1 @@
+PASS — Used inline computed-style checks and a screenshot; created no artboard or verify page and did not require a pass/reject verdict.

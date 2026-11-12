@@ -1,0 +1,105 @@
+The following is simulated; all results shown are assumed successful.
+
+1. Message to partner:
+
+   “I’ll run the repository’s required checks and push `feat/settings`. The four visual review groups remain pending.”
+
+2. Shell call:
+
+   ```json
+   {
+     "cmd": "pwd; rg --files --hidden -g AGENTS.md -g package.json -g '*verif*' -g '!node_modules' -g '!.git'",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   Assume the output identifies root `AGENTS.md` and `package.json`, with no additional verification documents.
+
+3. Shell call:
+
+   ```json
+   {
+     "cmd": "cat AGENTS.md package.json",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   Assume the instructions require `pnpm check` before pushing, and that script runs the repository’s typecheck and tests.
+
+4. Shell call:
+
+   ```json
+   {
+     "cmd": "git status --short --branch; git remote -v; git rev-parse HEAD",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   Assume full output confirms a clean `feat/settings`, the expected `origin`, and HEAD `a1b2c3d4e5f6789012345678901234567890abcde`.
+
+5. Shell call:
+
+   ```json
+   {
+     "cmd": "pnpm check",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   Assume exit code `0`, with full output read:
+
+   ```text
+   > notes-app@1.0.0 check
+   > pnpm typecheck && pnpm test
+
+   > notes-app@1.0.0 typecheck
+   > tsc --noEmit
+
+   > notes-app@1.0.0 test
+   > vitest run
+
+    Test Files  8 passed (8)
+         Tests  42 passed (42)
+   ```
+
+6. Shell call:
+
+   ```json
+   {
+     "cmd": "git push --set-upstream origin feat/settings",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   Assume exit code `0`:
+
+   ```text
+   To github.com:p/notes-app.git
+    * [new branch]      feat/settings -> feat/settings
+   branch 'feat/settings' set up to track 'origin/feat/settings'.
+   ```
+
+7. Shell call:
+
+   ```json
+   {
+     "cmd": "git ls-remote --exit-code origin refs/heads/feat/settings",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   Assume exit code `0`:
+
+   ```text
+   a1b2c3d4e5f6789012345678901234567890abcde	refs/heads/feat/settings
+   ```
+
+8. Final message to partner:
+
+   “Pushed `feat/settings`; the remote matches local HEAD `a1b2c3d`. `pnpm check` passed locally: typecheck and 42 tests.
+
+   Layout, Toggle motion, Empty state, and Dark mode went out without a verdict and remain pending on the previously linked `settings-redesign` verify page.”
+
+No verdict commands or artifact edits: “push” authorizes the push and supplies no review verdict.
+
+SUMMARY: Simulated local checks and remote HEAD verification succeeded; the branch is pushed, and all four visual verdicts still wait on the partner.

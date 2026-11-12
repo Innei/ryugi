@@ -1,0 +1,1 @@
+PASS — Gives one numbered list covering all physical actions and reply cues, while explicitly handling launch, navigation, build identification, and screenshots itself.

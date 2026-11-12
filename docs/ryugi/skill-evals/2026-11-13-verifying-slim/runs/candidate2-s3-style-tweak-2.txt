@@ -1,0 +1,89 @@
+Simulation only. No app checks or changes below were actually run.
+
+1. **Message to partner**
+
+   “I’ll check the Save button in the running settings page. The edit already hot reloaded before I captured a before screenshot, so I can’t provide an honest before image.”
+
+2. **Shell call**
+
+   ```json
+   {
+     "command": "pwd; rg --files --hidden -g AGENTS.md -g '*verification*' -g '*acceptance*' -g '!node_modules' -g '!.git'; git diff -- src/settings/SaveButton.css; git rev-parse --short HEAD",
+     "cwd": "/Users/p/git/notes-app"
+   }
+   ```
+
+   **Assumed output:** cwd is `/Users/p/git/notes-app`; discovery finds only `AGENTS.md`; the diff contains only `padding-inline: 8px` → `padding-inline: 12px`; HEAD is `a7c29ef`.
+
+3. **Shell call**
+
+   ```json
+   {
+     "command": "cat AGENTS.md",
+     "cwd": "/Users/p/git/notes-app"
+   }
+   ```
+
+   **Assumed output:** for CSS-only changes, verify the running page and keyboard focus; no additional required checks or referenced verification docs.
+
+4. **Browser call — inspect the existing settings tab**
+
+   ```json
+   {
+     "action": "evaluate",
+     "tab": "http://localhost:5173",
+     "script": "() => { const buttons = [...document.querySelectorAll('button')].filter(b => b.textContent.trim() === 'Save'); if (buttons.length !== 1) throw new Error(`Expected one Save button, found ${buttons.length}`); const b = buttons[0]; const s = getComputedStyle(b); const result = { url: location.href, capturedAt: new Date().toISOString(), paddingInlineStart: s.paddingInlineStart, paddingInlineEnd: s.paddingInlineEnd }; if (result.paddingInlineStart !== '12px' || result.paddingInlineEnd !== '12px') throw new Error(JSON.stringify(result)); return result; }"
+   }
+   ```
+
+   **Assumed full output:**
+
+   ```json
+   {"url":"http://localhost:5173/settings","capturedAt":"2026-11-13T06:20:00.000Z","paddingInlineStart":"12px","paddingInlineEnd":"12px"}
+   ```
+
+5. **Browser calls — check adjacent button states and capture evidence**
+
+   ```json
+   {"action":"hover","tab":"http://localhost:5173","target":{"role":"button","name":"Save","exact":true}}
+   ```
+
+   ```json
+   {"action":"screenshot","tab":"http://localhost:5173","path":"/tmp/notes-save-padding-hover.png"}
+   ```
+
+   ```json
+   {"action":"press","tab":"http://localhost:5173","key":"Tab"}
+   ```
+
+   **Assumed result:** focus moves to Save.
+
+   ```json
+   {
+     "action":"evaluate",
+     "tab":"http://localhost:5173",
+     "script":"() => { const b = document.activeElement; if (b?.tagName !== 'BUTTON' || b.textContent.trim() !== 'Save') throw new Error('Save does not have keyboard focus'); return 'PASS: Save receives keyboard focus'; }"
+   }
+   ```
+
+   **Assumed full output:**
+
+   ```text
+   PASS: Save receives keyboard focus
+   ```
+
+   ```json
+   {"action":"screenshot","tab":"http://localhost:5173","path":"/tmp/notes-save-padding-after.png"}
+   ```
+
+   **Assumed result:** both screenshots saved. I inspect both returned images: the label and focus ring are visible, with no clipping or overlap.
+
+6. **Final message to partner**
+
+   “Save now has 12px horizontal padding. The running page at `localhost:5173/settings` reports `12px` on both sides; keyboard focus also passed. Checked local dev at `a7c29ef` plus the CSS edit, at 06:20 UTC.
+
+   Screenshots: [after](/tmp/notes-save-padding-after.png), [hover](/tmp/notes-save-padding-hover.png).
+
+   Not verified: the before appearance—I missed capturing it before hot reload. No before screenshot exists.”
+
+SUMMARY: Simulated verification of 12px horizontal padding and keyboard focus in local settings; after screenshots captured by assumption, before evidence unavailable; no report, artboard, or partner verdict waits.

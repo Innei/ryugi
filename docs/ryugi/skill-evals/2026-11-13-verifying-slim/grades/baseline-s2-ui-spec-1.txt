@@ -1,0 +1,1 @@
+FAIL — The artboard’s video board explicitly includes “reload persistence,” violating the requirement to keep persistence verification exclusively in the report.

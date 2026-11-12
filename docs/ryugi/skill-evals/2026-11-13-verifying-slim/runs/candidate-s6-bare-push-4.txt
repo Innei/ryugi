@@ -1,0 +1,57 @@
+Simulation only. The file reads above were real; the calls below would be simulated. No files or verdicts would be changed.
+
+1. Message to partner:
+
+   “I’ll push `feat/settings`. Layout, Toggle motion, Empty state, and Dark mode will remain pending; ‘push’ doesn’t record a verdict.”
+
+2. Shell call:
+
+   ```json
+   {"cmd":"git status --short --branch","workdir":"/Users/p/git/notes-app"}
+   ```
+
+   Assumed successful output:
+   ```text
+   ## feat/settings
+   ```
+
+3. Shell call:
+
+   ```json
+   {"cmd":"git rev-parse HEAD","workdir":"/Users/p/git/notes-app"}
+   ```
+
+   Assumed successful output:
+   ```text
+   8c41b79e2a6d0f345bc81e93d7206a5f19b4ce62
+   ```
+
+4. Shell call:
+
+   ```json
+   {"cmd":"git push --set-upstream origin feat/settings","workdir":"/Users/p/git/notes-app"}
+   ```
+
+   Assumed exit status 0, with full output:
+   ```text
+   To github.com:p/notes-app.git
+    * [new branch]      feat/settings -> feat/settings
+   branch 'feat/settings' set up to track 'origin/feat/settings'.
+   ```
+
+5. Shell call:
+
+   ```json
+   {"cmd":"git ls-remote --exit-code origin refs/heads/feat/settings","workdir":"/Users/p/git/notes-app"}
+   ```
+
+   Assumed exit status 0, with full output:
+   ```text
+   8c41b79e2a6d0f345bc81e93d7206a5f19b4ce62	refs/heads/feat/settings
+   ```
+
+6. Message to partner:
+
+   “Pushed `feat/settings`; the remote branch matches local HEAD `8c41b79`, confirmed with `git ls-remote`. On `settings-redesign`, v1 Layout, v2 Toggle motion, v3 Empty state, and v4 Dark mode went out without a verdict and remain pending.”
+
+SUMMARY: Simulated verification in `/Users/p/git/notes-app` confirmed a clean branch and matching remote HEAD after pushing; all four artboard groups still await the partner’s verdict.

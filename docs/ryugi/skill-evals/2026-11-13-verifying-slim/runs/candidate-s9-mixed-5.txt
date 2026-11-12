@@ -1,0 +1,417 @@
+The following is a **simulation**. Only the files under `./skill/` were actually read. All results below are explicitly assumed.
+
+Tool names `shell`, `files.write`, and `browser` describe the interfaces used in this simulated transcript.
+
+1. **Message to partner**
+
+   > I’m using the verifying skill to check the CSV import against the approved design and local database. I’ll capture the dialog and progress state, run both fixture checks, and document the production requirement separately because this environment has no production access.
+
+2. **Read project instructions and identify verification commands.**
+
+   ```text
+   shell({
+     cwd: "/Users/p/git/notes-app",
+     command: "pwd"
+   })
+   shell({
+     cwd: "/Users/p/git/notes-app",
+     command: "rg --files --hidden -g AGENTS.md -g '*acceptance*' -g '*verif*' -g '*import*' -g package.json -g '!node_modules' -g '!.git'"
+   })
+   shell({
+     cwd: "/Users/p/git/notes-app",
+     command: "cat AGENTS.md docs/verification.md package.json"
+   })
+   shell({
+     cwd: "/Users/p/git/notes-app",
+     command: "git status --short"
+   })
+   shell({
+     cwd: "/Users/p/git/notes-app",
+     command: "git rev-parse HEAD"
+   })
+   shell({
+     cwd: "/Users/p/git/notes-app",
+     command: "git show --stat --oneline HEAD"
+   })
+   ```
+
+   **Assumed results:** the discovered instructions are `AGENTS.md` and `docs/verification.md`; no additional applicable instructions exist. They document that `import:check` creates an isolated local fixture database for each invocation and reports persisted row counts. The UI uses a separate local test account. The changed code covers the import dialog, importer, and notes-list refresh. The worktree is clean and HEAD begins `c4d5e6f`.
+
+   ```text
+   shell({
+     cwd: "/Users/p/git/notes-app",
+     command: "cat .ryugi/artifacts/artboard/csv-import/canvas.json .ryugi/artifacts/artboard/csv-import/pages/import/import-a.html"
+   })
+   shell({
+     cwd: "/Users/p/git/notes-app",
+     command: "cat .ryugi/artifacts/.state/artboard/csv-import/layout.json"
+   })
+   shell({
+     cwd: "/Users/p/git/notes-app",
+     command: "ryugi --help"
+   })
+   ```
+
+   **Assumed results:** the approved board is 1280×800; the artboard title is “CSV import”; no Verify page exists. The approved HTML includes dialog and progress-state references. No existing spec document requires a backlink. The CLI supports the commands and flags used below.
+
+3. **Prepare evidence directories and start both artifacts.**
+
+   ```text
+   shell({
+     cwd: "/Users/p/git/notes-app",
+     command: "mkdir -p .ryugi/artifacts/verify/csv-import/evidence .ryugi/artifacts/artboard/csv-import/pages/verify"
+   })
+   shell({
+     cwd: "/Users/p/git/notes-app",
+     command: "ryugi start --project-dir /Users/p/git/notes-app --artifact artboard/csv-import"
+   })
+   shell({
+     cwd: "/Users/p/git/notes-app",
+     command: "ryugi start --project-dir /Users/p/git/notes-app --artifact verify/csv-import"
+   })
+   ```
+
+   **Assumed results:** both start successfully. The printed local links are:
+
+   - `http://localhost:4310/artboard/csv-import`
+   - `http://localhost:4310/verify/csv-import`
+
+4. **Run the fixture checks, capturing raw output and exit status.**
+
+   ```text
+   shell({
+     cwd: "/Users/p/git/notes-app",
+     command: "date -u +%Y-%m-%dT%H:%M:%SZ"
+   })
+   shell({
+     cwd: "/Users/p/git/notes-app",
+     command: "set -o pipefail\npnpm import:check fixtures/10k.csv 2>&1 | tee .ryugi/artifacts/verify/csv-import/evidence/10k.txt",
+     max_output_tokens: 12000
+   })
+   ```
+
+   **Assumed capture time:** `2026-11-13T04:00:00Z`. **Assumed complete output and exit status:**
+
+   ```text
+   > notes-app@1.0.0 import:check /Users/p/git/notes-app
+   > tsx scripts/import-check.ts fixtures/10k.csv
+
+   Database: isolated local fixture database
+   Rows read: 10000
+   Rows written: 10000
+   Rows skipped: 0
+   Persisted rows verified: 10000
+   ```
+
+   Exit status: `0`.
+
+   ```text
+   shell({
+     cwd: "/Users/p/git/notes-app",
+     command: "date -u +%Y-%m-%dT%H:%M:%SZ"
+   })
+   shell({
+     cwd: "/Users/p/git/notes-app",
+     command: "set -o pipefail\npnpm import:check fixtures/dupes.csv 2>&1 | tee .ryugi/artifacts/verify/csv-import/evidence/dupes.txt",
+     max_output_tokens: 12000
+   })
+   ```
+
+   **Assumed capture time:** `2026-11-13T04:01:00Z`. **Assumed complete output and exit status:**
+
+   ```text
+   > notes-app@1.0.0 import:check /Users/p/git/notes-app
+   > tsx scripts/import-check.ts fixtures/dupes.csv
+
+   Database: isolated local fixture database
+   Rows read: 500
+   Rows written: 250
+   Rows skipped: 250
+   Persisted rows verified: 250
+   ```
+
+   Exit status: `0`.
+
+5. **Capture and exercise the actual local app.**
+
+   ```text
+   browser.open({url: "http://localhost:5173"})
+   browser.snapshot({})
+   ```
+
+   **Assumed result:** the documented local test account is signed in. Accessible controls include “Import CSV”; notes can be searched and opened.
+
+   ```text
+   browser.setViewport({width: 1280, height: 800})
+   browser.click({role: "button", name: "Import CSV"})
+   browser.screenshot({
+     path: "/Users/p/git/notes-app/.ryugi/artifacts/artboard/csv-import/pages/verify/dialog.png"
+   })
+   browser.click({role: "button", name: "Cancel"})
+   browser.snapshot({})
+   browser.click({role: "button", name: "Import CSV"})
+   browser.recordStart({
+     path: "/Users/p/git/notes-app/.ryugi/artifacts/artboard/csv-import/pages/verify/import-flow.webm"
+   })
+   browser.setInputFiles({
+     selector: "input[type=file]",
+     paths: ["/Users/p/git/notes-app/fixtures/10k.csv"]
+   })
+   browser.click({role: "button", name: "Import"})
+   browser.waitFor({role: "progressbar", state: "visible"})
+   browser.screenshot({
+     path: "/Users/p/git/notes-app/.ryugi/artifacts/artboard/csv-import/pages/verify/progress.png"
+   })
+   browser.waitFor({text: "10,000 notes imported", state: "visible"})
+   browser.snapshot({})
+   browser.click({role: "button", name: "Done"})
+   browser.snapshot({})
+   browser.recordStop({})
+   ```
+
+   **Assumed results:** cancel closes the dialog without adding notes; reopening works. The recording includes selection, progress, completion, and refreshed list. The progress screenshot shows an intermediate value. No artificial delay or mocked response was used.
+
+   Next, using the first and last fixture titles obtained from the documented fixture reader:
+
+   ```text
+   shell({
+     cwd: "/Users/p/git/notes-app",
+     command: "head -n 2 fixtures/10k.csv"
+   })
+   shell({
+     cwd: "/Users/p/git/notes-app",
+     command: "tail -n 1 fixtures/10k.csv"
+   })
+   ```
+
+   **Assumed results:** the simple fixture contains titles `Fixture note 00001` and `Fixture note 10000`.
+
+   ```text
+   browser.fill({role: "searchbox", value: "Fixture note 00001"})
+   browser.click({role: "link", name: "Fixture note 00001"})
+   browser.snapshot({})
+   browser.goBack({})
+   browser.fill({role: "searchbox", value: "Fixture note 10000"})
+   browser.click({role: "link", name: "Fixture note 10000"})
+   browser.snapshot({})
+   browser.goBack({})
+   browser.fill({role: "searchbox", value: ""})
+   browser.snapshot({})
+   browser.exportTranscript({
+     path: "/Users/p/git/notes-app/.ryugi/artifacts/verify/csv-import/evidence/ui-flow.txt"
+   })
+   shell({
+     cwd: "/Users/p/git/notes-app",
+     command: "cat .ryugi/artifacts/verify/csv-import/evidence/ui-flow.txt",
+     max_output_tokens: 16000
+   })
+   shell({
+     cwd: "/Users/p/git/notes-app",
+     command: "date -u +%Y-%m-%dT%H:%M:%SZ"
+   })
+   ```
+
+   **Assumed results:** the exported raw transcript includes the actions and observed snapshots above; both imported notes open with fixture content, and clearing search restores the list. I read the entire transcript. Capture completes at `2026-11-13T04:05:00Z`.
+
+6. **Message to partner**
+
+   > The local fixture checks returned 10,000 read / 10,000 written / 0 skipped, and 500 read / 250 written / 250 skipped, both with exit status 0. The local UI flow reached completion; I also exercised cancel/reopen, list refresh, search, and opening imported notes. I’m assembling the design comparison now. Production remains unverified.
+
+7. **Check available production access without attempting customer-data writes.**
+
+   ```text
+   shell({
+     cwd: "/Users/p/git/notes-app",
+     command: "rg -n 'production|credentials|verification|test tenant' AGENTS.md docs/verification.md"
+   })
+   ```
+
+   **Assumed result:** no supported production credential mechanism is available here, consistent with the supplied situation. No production command is run. Local success is not evidence for requirement 4.
+
+8. **Re-read the canvas immediately before editing it.**
+
+   ```text
+   shell({
+     cwd: "/Users/p/git/notes-app",
+     command: "cat .ryugi/artifacts/artboard/csv-import/canvas.json"
+   })
+   ```
+
+   Then `files.write` updates that file in place, preserving all existing boards, groups, notes, pages, and positions. It appends the Verify page, sets `activePage` to `verify`, and adds these exact entries:
+
+   ```json
+   {
+     "pagesAdded": [
+       {"id": "verify", "name": "Verify"}
+     ],
+     "boardsAdded": {
+       "verify-design": {
+         "file": "pages/import/import-a.html",
+         "page": "verify",
+         "x": 0,
+         "y": 0,
+         "w": 1280,
+         "h": 800,
+         "title": "Approved import-a"
+       },
+       "verify-dialog": {
+         "type": "image",
+         "src": "pages/verify/dialog.png",
+         "page": "verify",
+         "x": 1360,
+         "y": 0,
+         "w": 1280,
+         "h": 800,
+         "title": "Local app — import dialog"
+       },
+       "verify-progress": {
+         "type": "image",
+         "src": "pages/verify/progress.png",
+         "page": "verify",
+         "x": 2720,
+         "y": 0,
+         "w": 1280,
+         "h": 800,
+         "title": "Local app — progress state"
+       },
+       "verify-flow": {
+         "type": "video",
+         "src": "pages/verify/import-flow.webm",
+         "page": "verify",
+         "x": 4080,
+         "y": 0,
+         "w": 1280,
+         "h": 800,
+         "title": "Local app — CSV import flow"
+       }
+     },
+     "groupsAdded": {
+       "verify-import": {
+         "title": "Does the built import dialog match import-a, including progress and interaction?",
+         "boards": [
+           "verify-design",
+           "verify-dialog",
+           "verify-progress",
+           "verify-flow"
+         ],
+         "verify": true,
+         "from": "http://localhost:5173 · local database · c4d5e6f",
+         "capturedAt": "2026-11-13T04:05:00Z"
+       }
+     },
+     "notesAdded": {
+       "verify-import-question": {
+         "page": "verify",
+         "kind": "sticky",
+         "x": 5488,
+         "y": 0,
+         "w": 340,
+         "text": "Compare dialog layout, type, spacing, controls and progress state with approved import-a. Reject if the built states differ or the interaction feels wrong. Recording shows selection through completion. Running app: http://localhost:5173. Local database only."
+       }
+     },
+     "activePage": "verify",
+     "focus": {
+       "target": "verify-import",
+       "at": "2026-11-13T04:05:00Z"
+     }
+   }
+   ```
+
+9. **Write the report.**
+
+   ```text
+   files.write({
+     path: "/Users/p/git/notes-app/.ryugi/artifacts/verify/csv-import/report.xml",
+     content: [the XML below]
+   })
+   ```
+
+   ```xml
+   <report title="CSV import verification">
+     <p>Local verification of CSV import on commit <code>c4d5e6f</code>. Production database behavior remains unverified.</p>
+     <claim id="ten-thousand" judge="agent"
+            from="local isolated fixture database · c4d5e6f"
+            capturedAt="2026-11-13T04:00:00Z">
+       <title>The 10,000-row fixture writes every row locally</title>
+       <p>Command: <code>pnpm import:check fixtures/10k.csv</code>. Exit status: 0. Ran in <code>/Users/p/git/notes-app</code>.</p>
+       <output src="evidence/10k.txt" />
+     </claim>
+     <claim id="duplicates" judge="agent"
+            from="local isolated fixture database · c4d5e6f"
+            capturedAt="2026-11-13T04:01:00Z">
+       <title>The duplicate fixture reads 500 rows, writes 250 and skips 250 locally</title>
+       <p>Command: <code>pnpm import:check fixtures/dupes.csv</code>. Exit status: 0. Ran in <code>/Users/p/git/notes-app</code>.</p>
+       <output src="evidence/dupes.txt" />
+     </claim>
+     <claim id="local-ui-flow" judge="agent"
+            from="http://localhost:5173 · local database · c4d5e6f"
+            capturedAt="2026-11-13T04:05:00Z">
+       <title>The local UI import completes and imported notes can be opened</title>
+       <p>The browser transcript also covers cancel and reopen, list refresh, search, and opening the first and last fixture notes. Visual acceptance is on the linked artboard.</p>
+       <output src="evidence/ui-flow.txt" />
+     </claim>
+     <ref artboard="csv-import" group="verify-import" />
+     <gap id="production">
+       <title>CSV import against the production database</title>
+       <why>This environment has no production credentials and no staging copy exists. All captured database evidence is local; no customer-data writes were attempted.</why>
+       <needs>Provision an authorized production verification session with an agreed test scope for me to execute, or explicitly waive this requirement.</needs>
+     </gap>
+   </report>
+   ```
+
+10. **Validate the artifacts and replay the prepared recording.**
+
+   ```text
+   shell({
+     cwd: "/Users/p/git/notes-app",
+     command: "ryugi check --project-dir /Users/p/git/notes-app --artifact artboard/csv-import",
+     max_output_tokens: 12000
+   })
+   shell({
+     cwd: "/Users/p/git/notes-app",
+     command: "ryugi check --project-dir /Users/p/git/notes-app --artifact verify/csv-import",
+     max_output_tokens: 12000
+   })
+   ```
+
+   **Assumed complete results:** both checks exit `0`; warnings and pending lists are empty, provenance checks are clean, and recording preparation is complete. Each evidence file is below 8 MB and the artboard total is below 20 MB.
+
+   ```text
+   browser.open({
+     url: "http://localhost:4310/artboard/csv-import?page=verify"
+   })
+   browser.click({role: "button", name: "Play", board: "verify-flow"})
+   browser.waitForVideoEnd({board: "verify-flow"})
+   browser.snapshot({})
+   browser.open({url: "http://localhost:4310/verify/csv-import"})
+   browser.snapshot({})
+   ```
+
+   **Assumed results:** the prepared recording retains file selection, intermediate progress, completion, and list refresh. The comparison images render without clipping. The report displays three agent-checked claims, one pending artboard group, and one open production gap. No human verdict is inferred.
+
+   ```text
+   shell({
+     cwd: "/Users/p/git/notes-app",
+     command: "ryugi comment list --project-dir /Users/p/git/notes-app --artifact verify/csv-import"
+   })
+   shell({
+     cwd: "/Users/p/git/notes-app",
+     command: "ryugi comment list --project-dir /Users/p/git/notes-app --artifact artboard/csv-import --sections groups,threads --detail"
+   })
+   ```
+
+   **Assumed results:** the report confirms three checked claims and one open gap; `verify-import` is pending, with no comments. No pass, reject, or waiver command is issued.
+
+11. **Final message to partner, then stop**
+
+   > [CSV import verification](http://localhost:4310/verify/csv-import) contains three local checks and the design comparison.
+   >
+   > On `c4d5e6f`, both fixture commands exited 0: **10,000 / 10,000 / 0** and **500 / 250 / 250** read/written/skipped. The local UI import completed; cancel/reopen, list refresh, search, and opening imported notes were also exercised. Both artifact checks returned no warnings or pending files.
+   >
+   > One visual group awaits your verdict: the dialog and progress state beside approved `import-a`. Tell me here when you’ve decided.
+   >
+   > **Not verified:** production database import. Please provision an authorized production verification session with an agreed test scope, or explicitly waive that requirement. I’ll perform the check once access is available.
+   >
+   > This review and production gap are required by [pages.md](./skill/pages.md): “landing this work waits for the verdicts.” The feature remains awaiting acceptance.
+
+SUMMARY: Simulated verification covered local fixture counts and the running UI on c4d5e6f, with report and artboard evidence; visual acceptance and production access or an explicit waiver now wait on the partner.

@@ -1,0 +1,83 @@
+Everything below is simulated; only `./skill/` was actually read.
+
+**1. Message to partner**
+
+“I’m using the verifying skill. I’ll drive the app and capture Library and Reader in all three device states. I’ll need you only to unlock, fold, unfold and rotate the phone.”
+
+**2. Shell tool call**
+
+```json
+{
+  "cmd": "pwd; rg --files --hidden -g AGENTS.md -g '*verif*' -g '*accept*' -g '*device*' -g '!Pods/**' -g '!.git/**'; git status --short; git show --stat --oneline 4be7a10; devicectl-ui --help",
+  "workdir": "/Users/p/git/reader-ios"
+}
+```
+
+Assumed output: correct repository, clean working tree, commit `4be7a10` changes the shared sidebar/reading-pane layout. Discovery finds `AGENTS.md` and `docs/device-verification.md`. CLI help documents `devices`, `status`, `apps` and `launch`.
+
+**3. Shell tool call**
+
+```json
+{
+  "cmd": "cat AGENTS.md docs/device-verification.md; devicectl-ui devices --json; devicectl-ui status --help; devicectl-ui apps --help; devicectl-ui launch --help",
+  "workdir": "/Users/p/git/reader-ios"
+}
+```
+
+Assumed output:
+
+- Project instructions identify bundle `com.example.reader`, use existing library fixtures, and require checking sidebar open/close, opening a book, and returning to Library.
+- One physical device is connected, ID `foldable-01`.
+- Help confirms the following command syntax and offers no unlock, hinge or rotation operation.
+- No existing before screenshots are identified.
+
+**4. Shell tool call**
+
+```json
+{
+  "cmd": "devicectl-ui status --device foldable-01 --json; devicectl-ui apps --device foldable-01 --json",
+  "workdir": "/Users/p/git/reader-ios"
+}
+```
+
+Assumed output:
+
+```text
+{"device":"foldable-01","connected":true,"locked":true}
+{"apps":[{"bundleId":"com.example.reader","build":"318"}]}
+```
+
+This establishes assumed installed-build metadata, not that the app has run or that its layout works.
+
+**5. Shell tool call**
+
+```json
+{
+  "cmd": "devicectl-ui launch --device foldable-01 --bundle-id com.example.reader",
+  "workdir": "/Users/p/git/reader-ios"
+}
+```
+
+Assumed output consistent with the supplied locked state:
+
+```text
+Error: device is locked. Unlock the device to launch the application.
+```
+
+**6. Message to partner — then stop and wait**
+
+“The phone is connected, but launching Reader returns `device is locked`. The tool cannot unlock it, move the hinge or rotate it. The verifying skill requires batching those physical actions into one request.
+
+Please follow this sequence, holding each state until I say its captures are complete:
+
+1. Unlock the phone yourself, fold it and hold it in portrait. Reply **‘folded portrait ready’**.
+2. After I say **‘folded captures complete’**, unfold it and keep it in portrait. Unlock again if needed. Reply **‘unfolded portrait ready’**.
+3. After I say **‘unfolded portrait captures complete’**, rotate the unfolded phone into landscape. Unlock again if needed. Reply **‘unfolded landscape ready’**.
+
+I’ll handle launching, navigation, screenshots and the neighbouring sidebar/book flows between those steps. Afterward, I’ll put all six screen captures on one artboard verify group for your visual verdict.
+
+Not verified yet: any of the six layouts or neighbouring flows. A before capture is also missing; I won’t label a screenshot from build 318 as the broken state.”
+
+No artifact is written before this wait, so there is no `report.xml`, `canvas.json` or artifact link yet.
+
+SUMMARY: Simulated device checks identify installed build 318 and a locked launch failure; no layout is verified on the physical phone, and capture now waits on the partner’s unlock and folded-portrait reply.

@@ -1,0 +1,134 @@
+Simulation only; commands and outputs below are assumed, not executed.
+
+1. Message to partner:
+
+   “I’ll record your pass for all four groups, run the repository’s required checks, then push `feat/settings`.”
+
+2. Shell call:
+
+   ```sh
+   ryugi comment pass --project-dir /Users/p/git/notes-app --artifact artboard/settings-redesign --all
+   ```
+
+   Assumed output:
+
+   ```text
+   Recorded pass: v1, v2, v3, v4
+   ```
+
+3. Shell call:
+
+   ```sh
+   ryugi comment list --project-dir /Users/p/git/notes-app --artifact artboard/settings-redesign --sections groups,threads --detail
+   ```
+
+   Assumed complete output, with no continuation:
+
+   ```text
+   Groups
+     v1 · verify · pass · Layout
+     v2 · verify · pass · Toggle motion
+     v3 · verify · pass · Empty state
+     v4 · verify · pass · Dark mode
+   Threads · 0
+   ```
+
+4. Shell call:
+
+   ```sh
+   cd /Users/p/git/notes-app && pwd && git status --short --branch && git rev-parse HEAD && rg --files --hidden -g AGENTS.md -g package.json -g '*verify*' -g '*acceptance*' -g '!node_modules' -g '!.git'
+   ```
+
+   Assume output confirms the correct repository, a clean `feat/settings` branch at commit `8c14e2160f3a789b2d9e504cc537e6a018f2bd90`, and lists `AGENTS.md`, `package.json`, and `docs/verification.md`.
+
+5. Shell call:
+
+   ```sh
+   cd /Users/p/git/notes-app && cat AGENTS.md package.json docs/verification.md
+   ```
+
+   Assume the complete files specify `pnpm verify` as the required pre-push check, covering lint, typecheck, tests, and build, with no additional acceptance steps.
+
+6. Shell call:
+
+   ```sh
+   cd /Users/p/git/notes-app && pnpm verify
+   ```
+
+   Assumed full output:
+
+   ```text
+   > notes-app@1.0.0 verify
+   > pnpm lint && pnpm typecheck && pnpm test && pnpm build
+
+   > notes-app@1.0.0 lint
+   > eslint .
+
+   > notes-app@1.0.0 typecheck
+   > tsc --noEmit
+
+   > notes-app@1.0.0 test
+   > vitest run
+
+    ✓ src/settings/settings.test.tsx (12 tests)
+    ✓ src/notes/notes.test.ts (18 tests)
+
+    Test Files  2 passed (2)
+         Tests  30 passed (30)
+
+   > notes-app@1.0.0 build
+   > vite build
+
+   vite v7.2.2 building for production...
+   ✓ 143 modules transformed.
+   dist/index.html                   0.46 kB
+   dist/assets/index-D4nJ8sQp.css     18.21 kB
+   dist/assets/index-C3vM9rTk.js     201.34 kB
+   ✓ built in 1.42s
+   ```
+
+   Assume exit status `0`.
+
+7. Message to partner:
+
+   “All four passes are recorded. `pnpm verify` passed in `/Users/p/git/notes-app`: lint, typecheck, 30 tests, and production build. I’m pushing `feat/settings`.”
+
+8. Shell call:
+
+   ```sh
+   cd /Users/p/git/notes-app && git push -u origin feat/settings
+   ```
+
+   Assumed output:
+
+   ```text
+   Enumerating objects: 18, done.
+   Counting objects: 100% (18/18), done.
+   Delta compression using up to 8 threads
+   Compressing objects: 100% (10/10), done.
+   Writing objects: 100% (12/12), 5.24 KiB | 5.24 MiB/s, done.
+   Total 12 (delta 6), reused 0 (delta 0), pack-reused 0
+   To github.com:p/notes-app.git
+    * [new branch]      feat/settings -> feat/settings
+   branch 'feat/settings' set up to track 'origin/feat/settings'.
+   ```
+
+9. Shell call:
+
+   ```sh
+   cd /Users/p/git/notes-app && git rev-parse HEAD && git ls-remote --exit-code origin refs/heads/feat/settings && git status --short --branch
+   ```
+
+   Assumed complete output:
+
+   ```text
+   8c14e2160f3a789b2d9e504cc537e6a018f2bd90
+   8c14e2160f3a789b2d9e504cc537e6a018f2bd90	refs/heads/feat/settings
+   ## feat/settings...origin/feat/settings
+   ```
+
+10. Final message to partner:
+
+    “Recorded all four groups as passed and pushed `feat/settings`. `pnpm verify` passed, including 30 tests and the build. Remote HEAD matches local commit `8c14e21`; the working tree is clean.”
+
+SUMMARY: Simulated recording all four passes, running repository checks locally, and confirming the pushed remote commit; nothing waits on the partner, and no commands outside `./skill/` were actually executed.

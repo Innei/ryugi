@@ -1,0 +1,100 @@
+All calls below are simulated; only `./skill/verify.md` and `./skill/artboard.md` were actually read. Browser tool names are illustrative.
+
+1. **Message to partner**
+
+   “I’ll check the rendered padding and capture the settings page. I missed capturing the original appearance before the edit, so I can’t provide an honest before screenshot.”
+
+2. **Shell call** — read project instructions before checking:
+
+   ```sh
+   cd /Users/p/git/notes-app
+   rg --files --hidden -g AGENTS.md -g '*verif*' -g '*acceptance*' -g '!node_modules' -g '!.git'
+   ```
+
+   **Assumed output:** `AGENTS.md` only.
+
+3. **Shell call**
+
+   ```sh
+   cd /Users/p/git/notes-app
+   cat AGENTS.md
+   ```
+
+   **Assumed output:** For CSS changes, inspect the running page and computed styles; no additional required checks.
+
+4. **Shell call**
+
+   ```sh
+   cd /Users/p/git/notes-app
+   git rev-parse --short HEAD
+   git diff -- src/settings/SaveButton.css
+   date -u +%Y-%m-%dT%H:%M:%SZ
+   mkdir -p /tmp/notes-save-padding
+   ```
+
+   **Assumed full output:**
+
+   ```text
+   a1b2c3d
+   diff --git a/src/settings/SaveButton.css b/src/settings/SaveButton.css
+   index 1234567..89abcde 100644
+   --- a/src/settings/SaveButton.css
+   +++ b/src/settings/SaveButton.css
+   @@ -3 +3 @@
+   -  padding-inline: 8px;
+   +  padding-inline: 12px;
+   2026-11-13T06:20:00Z
+   ```
+
+5. **Browser call** — inspect the existing settings tab:
+
+   ```json
+   {"tool":"browser.snapshot","arguments":{}}
+   ```
+
+   **Assumed result:** Settings is open at `http://localhost:5173/settings`; one visible Save button; surrounding controls render normally.
+
+6. **Browser call** — prove the requested value in the running app:
+
+   ```json
+   {
+     "tool": "browser.evaluate",
+     "arguments": {
+       "expression": "(() => { const buttons = [...document.querySelectorAll('button')].filter(b => b.textContent.trim() === 'Save'); if (buttons.length !== 1) throw new Error('Expected one Save button'); const b = buttons[0]; const s = getComputedStyle(b); const r = b.getBoundingClientRect(); if (s.paddingInlineStart !== '12px' || s.paddingInlineEnd !== '12px') throw new Error('Unexpected padding'); if (!r.width || !r.height) throw new Error('Save button is not visible'); return {url: location.href, capturedAt: new Date().toISOString(), paddingInlineStart: s.paddingInlineStart, paddingInlineEnd: s.paddingInlineEnd, visible: true}; })()"
+     }
+   }
+   ```
+
+   **Assumed full result:**
+
+   ```json
+   {
+     "url": "http://localhost:5173/settings",
+     "capturedAt": "2026-11-13T06:20:08Z",
+     "paddingInlineStart": "12px",
+     "paddingInlineEnd": "12px",
+     "visible": true
+   }
+   ```
+
+7. **Browser calls** — capture and inspect the actual page:
+
+   ```json
+   {"tool":"browser.screenshot","arguments":{"path":"/tmp/notes-save-padding/after.png"}}
+   ```
+
+   ```json
+   {"tool":"browser.view_image","arguments":{"path":"/tmp/notes-save-padding/after.png"}}
+   ```
+
+   **Assumed results:** Screenshot saved and inspected; Save text fits, and the button does not overlap adjacent controls.
+
+8. **Final message to partner**
+
+   “The running settings page shows `12px` horizontal padding on both sides of Save. Browser assertions returned `paddingInlineStart: "12px"` and `paddingInlineEnd: "12px"` on local dev at `a1b2c3d` plus the CSS edit, captured at `2026-11-13T06:20:08Z`.
+
+   After screenshot: `/tmp/notes-save-padding/after.png`. The button and adjacent controls show no overlap.
+
+   Not verified: before/after visual comparison—the original screenshot was missed before hot reload. No artboard or verdict is needed for this small change.”
+
+SUMMARY: Simulated verification confirms 12px horizontal padding on localhost settings and captures the after appearance; the before screenshot is missing, and nothing awaits the partner.

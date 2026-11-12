@@ -1,0 +1,1 @@
+FAIL — Layout and motion share one verify group; the rubric requires separate verify groups with a stated question for each.

@@ -1,0 +1,1 @@
+PASS — Reports the test command and five passing tests inline, including `1.5 KB`, without creating an artboard or awaiting human approval.

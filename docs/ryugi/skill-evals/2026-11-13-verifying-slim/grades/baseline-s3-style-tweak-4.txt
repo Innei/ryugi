@@ -1,0 +1,1 @@
+PASS — Confirmed padding, focus, and layout inline without creating an artboard or verify page, or waiting for a verdict.

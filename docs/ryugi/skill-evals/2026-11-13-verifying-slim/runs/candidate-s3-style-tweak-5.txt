@@ -1,0 +1,96 @@
+1. **Message to partner**
+
+   “I’ll check the Save button in the running settings page. The change already hot reloaded before I captured a screenshot, so I don’t have an original ‘before’ image.”
+
+2. **Shell tool call — read project instructions and inspect the change**
+
+   ```json
+   {
+     "cmd": "cd /Users/p/git/notes-app && for f in /AGENTS.md /Users/AGENTS.md /Users/p/AGENTS.md /Users/p/git/AGENTS.md AGENTS.md src/AGENTS.md src/settings/AGENTS.md; do if [ -f \"$f\" ]; then cat \"$f\"; fi; done && rg --files -g '*verif*' -g '*acceptance*' -g 'package.json' -g 'AGENTS.md' -g '*SaveButton*' && git diff -- src/settings/SaveButton.css && git status --short && git rev-parse --short HEAD",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   **Assumed output:** Project instructions specify checking this cosmetic change in the running app; no additional verification documents apply. Commit is `a1b2c3d`; the only modified file is `src/settings/SaveButton.css`, with only `padding-inline: 8px` changing to `padding-inline: 12px`.
+
+3. **Shell tool call — inspect the open browser**
+
+   ```json
+   {
+     "cmd": "agent-browser snapshot -i",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   **Assumed output:** The browser is on `http://localhost:5173/settings`; the Save button is `@e5`.
+
+4. **Shell tool call — measure the actual rendered button**
+
+   ```json
+   {
+     "cmd": "agent-browser eval 'JSON.stringify({url:location.href,buttons:Array.from(document.querySelectorAll(\"button\")).filter(b=>b.textContent.trim()===\"Save\").map(b=>{const s=getComputedStyle(b);return {text:b.textContent.trim(),paddingInlineStart:s.paddingInlineStart,paddingInlineEnd:s.paddingInlineEnd}})})'",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   **Assumed full output:**
+
+   ```json
+   {"url":"http://localhost:5173/settings","buttons":[{"text":"Save","paddingInlineStart":"12px","paddingInlineEnd":"12px"}]}
+   ```
+
+5. **Shell tool call — inspect adjacent interaction states**
+
+   ```json
+   {
+     "cmd": "agent-browser hover @e5",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   **Assumed output:** Success. Inspect the returned browser view; assume no clipping or overlap appears.
+
+6. **Shell tool call — check focus**
+
+   ```json
+   {
+     "cmd": "agent-browser focus @e5",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   **Assumed output:** Success. Inspect the returned browser view; assume the focus indicator remains visible and adjacent controls remain unobstructed.
+
+7. **Shell tool call — capture evidence and its time**
+
+   ```json
+   {
+     "cmd": "mkdir -p /tmp/notes-save-padding && agent-browser screenshot /tmp/notes-save-padding/after.png && date -u +%Y-%m-%dT%H:%M:%SZ",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   **Assumed output:**
+
+   ```text
+   Screenshot saved to /tmp/notes-save-padding/after.png
+   2026-11-13T04:30:00Z
+   ```
+
+8. **Image tool call — inspect the screenshot**
+
+   ```json
+   {"path":"/tmp/notes-save-padding/after.png"}
+   ```
+
+   **Assumed result:** The real settings screen shows the focused Save button without clipping or overlap.
+
+9. **Final message to partner**
+
+   “The running settings page reports `12px` padding on both horizontal sides. Checked hover and focus too.
+
+   Evidence: local dev at `localhost:5173/settings`, `a1b2c3d` plus the CSS change, captured at `2026-11-13T04:30:00Z`. [After screenshot](/tmp/notes-save-padding/after.png).
+
+   Before screenshot: unavailable—the edit had already hot reloaded. Visual acceptance remains yours.”
+
+SUMMARY: Simulated verification of 12px horizontal padding, hover and focus in the local running app; no checks actually ran, the original before capture is missing, and visual acceptance waits on the partner.

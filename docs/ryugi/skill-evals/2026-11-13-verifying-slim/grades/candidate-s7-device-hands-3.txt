@@ -1,0 +1,1 @@
+PASS — Requests all physical actions once in one numbered list with reply cues, and explicitly handles app navigation and screenshots itself.

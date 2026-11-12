@@ -1,0 +1,236 @@
+Simulation only. The skill files above were actually read; every call below is proposed, with assumed results explicitly marked.
+
+1. **Message to partner**
+
+   “I’m using the verifying skill to check the deployed build and exercise the limit in production. The earlier local run doesn’t establish that it’s live.”
+
+2. **Shell call** — inspect project instructions before running checks:
+
+   ```bash
+   cd /Users/p/git/api-gateway
+   pwd
+   for path in /AGENTS.md /Users/AGENTS.md /Users/p/AGENTS.md /Users/p/git/AGENTS.md; do
+     if [ -f "$path" ]; then
+       cat "$path"
+     fi
+   done
+   rg --files --hidden -g '!node_modules' -g '!.git' -g 'AGENTS.md' -g '*verif*' -g '*accept*' -g '*rate*' -g '*message*' -g '*deploy*' -g 'package.json' -g 'wrangler.*'
+   ```
+
+   **Assumed output:** Repo root is correct; relevant files are `AGENTS.md`, `docs/verification.md`, `.github/workflows/deploy.yml`, and `fixtures/message.json`.
+
+3. **Shell call**
+
+   ```bash
+   cd /Users/p/git/api-gateway
+   cat AGENTS.md docs/verification.md .github/workflows/deploy.yml fixtures/message.json
+   git show --stat 7c1d9e4
+   git show 7c1d9e4 -- src
+   gh run list --branch main --commit "$(git rev-parse 7c1d9e4)" --workflow deploy.yml --limit 1 --json databaseId,headSha,status,conclusion,url
+   ```
+
+   **Assumed output:** Run `314159` is deploying the intended commit. Project instructions specify Bearer authentication, the committed message fixture, and a dedicated unused test key. The diff touches the authenticated message limiter only. The fixture produces HTTP 200 for an accepted request. The production verification instructions permit this 61-request run and an unauthenticated request, which should return 401. No additional flag needs enabling.
+
+4. **Shell call** — start the report and retain deployment evidence:
+
+   ```bash
+   cd /Users/p/git/api-gateway
+   ryugi start --project-dir /Users/p/git/api-gateway --artifact verify/rate-limit-live
+   mkdir -p .ryugi/artifacts/verify/rate-limit-live/evidence
+   ```
+
+   **Assumed output:** Artifact server started, report link:
+
+   ```text
+   http://localhost:4310/verify/rate-limit-live
+   ```
+
+5. **Shell call**, using `/bin/bash`, `yield_time_ms: 1000`:
+
+   ```bash
+   set -euo pipefail
+   cd /Users/p/git/api-gateway
+   {
+     date -u +%Y-%m-%dT%H:%M:%SZ
+     gh run view 314159 --json headSha,status,conclusion,url
+     gh run watch 314159 --exit-status --interval 10
+   } 2>&1 | tee .ryugi/artifacts/verify/rate-limit-live/evidence/deploy.txt
+   ```
+
+   **Assumed output:** Workflow still running; shell returns session ID `42`.
+
+6. **Tool call**
+
+   ```json
+   {"session_id":42,"chars":"","yield_time_ms":1000,"max_output_tokens":6000}
+   ```
+
+   **Assumed output:** Deploy job remains in progress.
+
+7. **Message to partner**
+
+   “The deployment for `7c1d9e4` is still running. Once it finishes, I’ll confirm production reports that build and test all 61 requests.”
+
+8. **Tool call**
+
+   ```json
+   {"session_id":42,"chars":"","yield_time_ms":1000,"max_output_tokens":6000}
+   ```
+
+   **Assumed output:** Run `314159` completes successfully; shell exits 0. I read the full returned workflow output, including the successful deployment job.
+
+   *For this simulation, the workflow completes during these calls. If it remained active, I would continue polling with brief progress updates, without claiming it was live.*
+
+9. **Shell call**, using `/bin/bash` — identify the active deployment:
+
+   ```bash
+   set -euo pipefail
+   cd /Users/p/git/api-gateway
+   {
+     date -u +%Y-%m-%dT%H:%M:%SZ
+     git rev-parse 7c1d9e4
+     npx wrangler deployments list
+   } 2>&1 | tee .ryugi/artifacts/verify/rate-limit-live/evidence/deployment.txt
+   ```
+
+   **Assumed output:** The latest production deployment is the workflow’s deployment for `7c1d9e4`, with 100% traffic. I read its full output.
+
+10. **Shell call**, using `/bin/bash` — verify the build, threshold and adjacent behavior in production. The script never prints the key or message contents.
+
+    ```bash
+    set -euo pipefail
+    cd /Users/p/git/api-gateway
+    python3 - <<'PY' 2>&1 | tee .ryugi/artifacts/verify/rate-limit-live/evidence/production.txt
+    import datetime
+    import json
+    import os
+    import subprocess
+    import time
+    import urllib.error
+    import urllib.request
+    from pathlib import Path
+
+    def stamp():
+        return datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    expected = subprocess.check_output(
+        ["git", "rev-parse", "7c1d9e4"], text=True
+    ).strip()
+    key = os.environ["PROD_TEST_KEY"]
+    assert key, "PROD_TEST_KEY is empty"
+    payload = Path("fixtures/message.json").read_bytes()
+    json.loads(payload)
+    base = "https://api.example.com"
+
+    def request(path, data=None, authenticated=False):
+        headers = {"Content-Type": "application/json"}
+        if authenticated:
+            headers["Authorization"] = "Bearer " + key
+        req = urllib.request.Request(base + path, data=data, headers=headers)
+        try:
+            with urllib.request.urlopen(req, timeout=20) as response:
+                return response.status, response.read()
+        except urllib.error.HTTPError as response:
+            return response.code, response.read()
+
+    def health(label):
+        print(stamp(), label, "GET /health", flush=True)
+        result = subprocess.run(
+            ["curl", "--fail-with-body", "--silent", "--show-error",
+             "--max-time", "20", base + "/health"],
+            capture_output=True, text=True, check=True
+        )
+        print(result.stdout, flush=True)
+        build = json.loads(result.stdout)["build"]
+        assert build in (expected, expected[:7]), (build, expected)
+        print("PASS production build matches 7c1d9e4", flush=True)
+
+    print("Environment:", base, "expected commit:", expected, flush=True)
+    health("before")
+
+    print(stamp(), "Threshold: requests 1-60 = 200; request 61 = 429; elapsed < 60 seconds",
+          flush=True)
+    started = time.monotonic()
+    for number in range(1, 62):
+        status, _ = request("/v1/messages", payload, authenticated=True)
+        elapsed = time.monotonic() - started
+        print(stamp(), "POST /v1/messages", "request", number,
+              "status", status, "elapsed_seconds", round(elapsed, 3), flush=True)
+        assert status == (200 if number <= 60 else 429), (number, status)
+        assert elapsed < 60, "Run crossed the one-minute duration"
+
+    print("PASS requests 1-60 returned 200; request 61 returned 429 within 60 seconds",
+          flush=True)
+
+    status, _ = request("/v1/messages", payload)
+    print(stamp(), "POST /v1/messages without credentials:", status, flush=True)
+    assert status == 401, status
+    print("PASS missing credentials still return 401", flush=True)
+
+    health("after")
+    print(stamp(), "PASS production verification", flush=True)
+    PY
+    ```
+
+    **Assumed output:** Both health responses identify `7c1d9e4`. Requests 1–60 each return 200; request 61 returns 429, at 18.4 seconds. The unauthenticated request returns 401. The script exits 0.
+
+    I read the entire output, including every numbered request. The log records actual capture times; assume these span `2026-11-13T06:04:00Z` through `2026-11-13T06:04:20Z`.
+
+11. **Message to partner**
+
+    “Production reports `7c1d9e4`. The production run returned 200 for requests 1–60 and 429 for request 61 within 18.4 seconds. Health and missing-credential behavior also passed. I’m saving the deployment and request logs in the verification report.”
+
+12. **File-write call** — write `/Users/p/git/api-gateway/.ryugi/artifacts/verify/rate-limit-live/report.xml` with exactly:
+
+    ```xml
+    <report title="Production rate-limit fix">
+      <p>Commit <code>7c1d9e4</code> deployed to Cloudflare Workers. Evidence comes from the deployment workflow and requests to <code>https://api.example.com</code>. The production run used the dedicated test key and the repository message fixture. Separate-key isolation and recovery after the minute expires were not exercised; this report establishes the deployed build and the observed 60-request boundary.</p>
+      <claim id="deployment" judge="agent" from="production Cloudflare Workers @ 7c1d9e4; workflow 314159" capturedAt="2026-11-13T06:03:55Z">
+        <title>The deployment workflow succeeded and the intended Worker deployment has 100% traffic</title>
+        <output src="evidence/deploy.txt" />
+        <output src="evidence/deployment.txt" />
+      </claim>
+      <claim id="build" judge="agent" from="production https://api.example.com @ 7c1d9e4" capturedAt="2026-11-13T06:04:20Z">
+        <title>Production health identifies 7c1d9e4 before and after the request run</title>
+        <output src="evidence/production.txt" />
+      </claim>
+      <claim id="limit" judge="agent" from="production https://api.example.com @ 7c1d9e4" capturedAt="2026-11-13T06:04:20Z">
+        <title>For the production test key, requests 1–60 succeed and request 61 returns 429 within one minute</title>
+        <output src="evidence/production.txt" />
+      </claim>
+      <claim id="auth" judge="agent" from="production https://api.example.com @ 7c1d9e4" capturedAt="2026-11-13T06:04:20Z">
+        <title>A message request without credentials still returns 401</title>
+        <output src="evidence/production.txt" />
+      </claim>
+      <gap id="isolation">
+        <title>Separate keys retain independent request allowances</title>
+        <why>The available production run used one key.</why>
+        <needs>A second dedicated production test key.</needs>
+      </gap>
+      <gap id="recovery">
+        <title>The test key can send messages again after its rate-limit window expires</title>
+        <why>The stated production allowance covers 61 authenticated requests, all consumed by the boundary check.</why>
+        <needs>Authorization for one additional production test request after the documented window expires.</needs>
+      </gap>
+    </report>
+    ```
+
+    The two unexercised behaviors are explicit gaps, not agent-checked claims. No artboard or human judgment claim is needed.
+
+13. **Shell call**
+
+    ```bash
+    cd /Users/p/git/api-gateway
+    ryugi check --project-dir /Users/p/git/api-gateway --artifact verify/rate-limit-live
+    ryugi comment list --project-dir /Users/p/git/api-gateway --artifact verify/rate-limit-live
+    ```
+
+    **Assumed output:** Report validation succeeds with no warnings. Four claims are checked by agent; no claims await a human verdict; two verification gaps remain open. I read the complete diagnostics and claim/gap listing. I record no pass or waiver.
+
+14. **Final message to partner**
+
+    “`7c1d9e4` is live: the deployment succeeded, production health identifies the commit, and production requests 1–60 returned 200 while request 61 returned 429.
+
+    [Verification report](http://localhost:4310/verify/rate-limit-live): four checks passed. Separate-key isolation and window recovery remain unverified. Completing those needs a second test key and allowance for one additional request; alternatively, you can waive those gaps.”
+
+SUMMARY: Simulated verification of deployment, production build, the 60/61 boundary, health and authentication; report records four agent checks, with isolation and recovery gaps awaiting the partner’s test access/allowance or waiver.

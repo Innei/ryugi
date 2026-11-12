@@ -1,0 +1,63 @@
+1. Read `./skill/verdicts.md`, `verify.md`, and `artboard.md` (actually read). The rule applies: “Push” authorizes pushing; it records no verdict.
+
+2. Message to partner:
+   > I’ll run the repository’s checks and push `feat/settings`. The four visual review groups will stay pending.
+
+3. Shell call:
+   ```json
+   {"cmd":"git status --short --branch","workdir":"/Users/p/git/notes-app"}
+   ```
+   Assumed output:
+   ```text
+   ## feat/settings
+   ```
+
+4. Shell call:
+   ```json
+   {"cmd":"cat AGENTS.md package.json","workdir":"/Users/p/git/notes-app"}
+   ```
+   Assume the full output identifies `pnpm verify` as the required pre-push check, running lint, typecheck, and tests, with no additional verification instructions.
+
+5. Shell call:
+   ```json
+   {"cmd":"pnpm verify","workdir":"/Users/p/git/notes-app","max_output_tokens":20000}
+   ```
+   Assume it completes with exit code 0, and I read its full, untruncated output: lint and typecheck succeed; all 42 tests pass.
+
+6. Shell call:
+   ```json
+   {"cmd":"git rev-parse HEAD","workdir":"/Users/p/git/notes-app"}
+   ```
+   Assumed output:
+   ```text
+   7c9a2b4e6d8f013579abcdef0123456789abcdef0
+   ```
+
+7. Shell call:
+   ```json
+   {"cmd":"git push --set-upstream origin feat/settings","workdir":"/Users/p/git/notes-app","max_output_tokens":20000}
+   ```
+   Assume exit code 0; full output confirms:
+   ```text
+   To github.com:p/notes-app.git
+    * [new branch]      feat/settings -> feat/settings
+   branch 'feat/settings' set up to track 'origin/feat/settings'.
+   ```
+
+8. Shell call:
+   ```json
+   {"cmd":"git ls-remote --exit-code origin refs/heads/feat/settings","workdir":"/Users/p/git/notes-app"}
+   ```
+   Assumed output:
+   ```text
+   7c9a2b4e6d8f013579abcdef0123456789abcdef0	refs/heads/feat/settings
+   ```
+
+9. Final message to partner:
+   > Pushed `7c9a2b4` to `origin/feat/settings`; the remote SHA matches HEAD. `pnpm verify` passed lint, typecheck, and 42 tests in this session.
+   >
+   > Sent without visual verdicts: v1 Layout, v2 Toggle motion, v3 Empty state, v4 Dark mode. All remain pending on `settings-redesign`.
+
+No verdict commands or artifact writes.
+
+SUMMARY: Simulated repository checks in `/Users/p/git/notes-app` and remote SHA verification on `origin/feat/settings`; push fulfilled, four visual groups await the partner’s verdicts.

@@ -1,0 +1,81 @@
+Simulation only; outputs below are assumed successful results.
+
+1. Message to partner:
+
+   “I’ll record your pass for all four groups, run the repository’s required checks, then push `feat/settings`.”
+
+2. Shell call, working directory `/Users/p/git/notes-app`:
+
+   ```sh
+   ryugi comment pass --project-dir /Users/p/git/notes-app --artifact artboard/settings-redesign --all
+   ```
+
+   Assumed output: `Recorded pass: v1, v2, v3, v4`.
+
+3. Shell call, same directory:
+
+   ```sh
+   ryugi comment list --project-dir /Users/p/git/notes-app --artifact artboard/settings-redesign --sections groups,threads --detail --all
+   ```
+
+   Assumed full output: all four verify groups have verdict `pass`; no threads, pending groups, or continuation pages.
+
+4. Shell call, same directory:
+
+   ```sh
+   git status --short --branch
+   git log -1 --format='%H %s'
+   rg --files --hidden -g AGENTS.md -g package.json -g '*verif*' -g '!node_modules' -g '!.git'
+   ```
+
+   Assumed output: clean `feat/settings`, HEAD `8c4f2ab713d9e650a28f04b91cc765e238a901bd`; discovery lists root `AGENTS.md` and `package.json`, with no separate verification documents.
+
+5. Shell call, same directory:
+
+   ```sh
+   cat AGENTS.md package.json
+   ```
+
+   Assumption: I read the full output. `AGENTS.md` requires `pnpm check` before pushing; the package defines it as the complete automated verification command.
+
+6. Shell call, same directory:
+
+   ```sh
+   pnpm check
+   ```
+
+   Assumed full output: typecheck, tests, and build all succeed; exit status `0`.
+
+7. Message to partner:
+
+   “The artboard now records v1–v4 as passed. `pnpm check` in `/Users/p/git/notes-app` exited 0: typecheck, tests, and build succeeded at `8c4f2ab`. Pushing now.”
+
+8. Shell call, same directory:
+
+   ```sh
+   git push -u origin feat/settings
+   ```
+
+   Assumed output: successfully created remote branch `feat/settings` and configured its upstream; exit status `0`.
+
+9. Shell call, same directory:
+
+   ```sh
+   git rev-parse HEAD
+   git ls-remote --exit-code origin refs/heads/feat/settings
+   git status --short --branch
+   ```
+
+   Assumed full output:
+
+   ```text
+   8c4f2ab713d9e650a28f04b91cc765e238a901bd
+   8c4f2ab713d9e650a28f04b91cc765e238a901bd	refs/heads/feat/settings
+   ## feat/settings...origin/feat/settings
+   ```
+
+10. Final message to partner:
+
+    “Recorded all four groups as passed and pushed `feat/settings`. `pnpm check` passed; the remote branch matches local commit `8c4f2ab`, and the working tree is clean.”
+
+SUMMARY: Simulated verification in `/Users/p/git/notes-app`: four recorded passes, successful repository checks, and matching local/remote commit after push; nothing waits on the partner.

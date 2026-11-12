@@ -1,0 +1,1 @@
+PASS — Confirms padding and focus appearance inline with screenshots, creates no artboard or verify page, and requests no pass/reject verdict.

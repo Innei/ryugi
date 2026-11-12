@@ -1,0 +1,2 @@
+"command":"/bin/zsh -lc 'cat skill/pages.md skill/verify.md skill/artboard.md skill/verdicts.md'"
+"command":"/bin/zsh -lc 'cat skill/SKILL.md'"

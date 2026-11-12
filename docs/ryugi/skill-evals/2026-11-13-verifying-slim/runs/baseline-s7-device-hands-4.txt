@@ -1,0 +1,82 @@
+The following is simulated; only `./skill/` was actually read.
+
+1. **Message to partner**
+
+   “I’m using the verifying skill. I’ll check build 318 on the physical phone in all six screen/state combinations. I’ll handle navigation and captures; you’ll only need to unlock, fold and rotate the phone.”
+
+2. **Shell call**
+
+   ```sh
+   cd /Users/p/git/reader-ios && pwd && rg --files --hidden -g AGENTS.md -g '*verif*' -g '*acceptance*' -g '*device*' -g '! .git' -g '!node_modules' -g '!Pods'
+   ```
+
+   **Assumed output:** Repository instructions are in `AGENTS.md` and `docs/verification.md`.
+
+3. **Shell call**
+
+   ```sh
+   cd /Users/p/git/reader-ios && cat AGENTS.md docs/verification.md
+   ```
+
+   **Assumed output:** Use the connected physical device, open the existing sample book from Library, check sidebar selection and Reader navigation. Bundle ID is `com.example.reader`. No additional device-driving skill or prerequisite is specified.
+
+4. **Shell call**
+
+   ```sh
+   devicectl-ui --help
+   ```
+
+   **Assumed output:** Supports `devices`, `status --device`, and `launch --device --bundle-id`, plus navigation and screenshots. No unlock, hinge or physical rotation capability.
+
+5. **Shell call**
+
+   ```sh
+   devicectl-ui devices
+   ```
+
+   **Assumed output:**
+
+   ```text
+   foldable-01  connected  physical
+   ```
+
+6. **Shell call**
+
+   ```sh
+   devicectl-ui status --device foldable-01
+   ```
+
+   **Assumed output consistent with the supplied situation:**
+
+   ```text
+   connected: true
+   locked: true
+   ```
+
+7. **Shell call**
+
+   ```sh
+   devicectl-ui launch --device foldable-01 --bundle-id com.example.reader
+   ```
+
+   **Assumed output:**
+
+   ```text
+   Cannot launch: device locked. Unlock on the device and retry.
+   ```
+
+8. **Message to partner, then stop and wait**
+
+   “The device tool reports that the phone is locked and cannot launch the app. Please follow this sequence, pausing after each reply so I can capture both screens before you change its posture:
+
+   1. Unlock the phone yourself, fold it, and hold it in portrait. Reply **‘folded portrait ready’**, then leave it in that state.
+   2. After I tell you the folded captures are complete, unfold it and keep it in portrait. Unlock again if needed. Reply **‘unfolded portrait ready’**, then leave it there.
+   3. After I tell you the unfolded portrait captures are complete, rotate it to landscape. Unlock again if needed. Reply **‘unfolded landscape ready’**, then leave it there.
+
+   I’ll open Library and Reader, exercise their shared sidebar/navigation controls, and capture the evidence in each state. You don’t need to navigate or judge the screens during capture. Afterward I’ll provide an artboard for your visual verdict.
+
+   Not verified yet: all six combinations. There is also no before screenshot supplied; I won’t present build 318 as before evidence.
+
+   This pause follows [the verifying skill](./skill/SKILL.md): ‘ask once: one numbered list of the exact actions, with what to reply after each.’ Unlocking, folding and rotating require your hands.”
+
+SUMMARY: No app behavior verified; simulated device checks reached the locked physical phone; waiting on the partner’s unlock and folded-portrait readiness before capturing build 318 @ 4be7a10.

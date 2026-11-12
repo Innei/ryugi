@@ -1,0 +1,1 @@
+PASS — Runs staging E2E and writes a verification report with agent-judged claims, raw evidence, and build provenance; no artboard or human review requested.

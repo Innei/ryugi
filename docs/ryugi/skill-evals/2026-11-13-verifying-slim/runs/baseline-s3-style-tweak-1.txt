@@ -1,0 +1,121 @@
+Simulation only. The file reads under `./skill/` above were real; all calls and results below are hypothetical. Browser call names represent the supplied browser tool.
+
+1. Message to partner:
+
+   > I’m using the verifying skill to check the padding in the running settings page. The edit already hot reloaded before I captured a before screenshot, so that evidence is missing. This small change can be verified inline.
+
+2. Shell call:
+
+   ```json
+   {
+     "cwd": "/Users/p/git/notes-app",
+     "command": "for p in /AGENTS.md /Users/AGENTS.md /Users/p/AGENTS.md /Users/p/git/AGENTS.md /Users/p/git/notes-app/AGENTS.md; do if [ -f \"$p\" ]; then cat \"$p\"; fi; done"
+   }
+   ```
+
+   Assumed output: repo instructions say to inspect browser computed styles for CSS-only changes; no additional required checks.
+
+3. Shell call:
+
+   ```json
+   {
+     "cwd": "/Users/p/git/notes-app",
+     "command": "git diff -- src/settings/SaveButton.css"
+   }
+   ```
+
+   Assumed full output:
+
+   ```diff
+   diff --git a/src/settings/SaveButton.css b/src/settings/SaveButton.css
+   index 473a123..16d7abc 100644
+   --- a/src/settings/SaveButton.css
+   +++ b/src/settings/SaveButton.css
+   @@ -2,5 +2,5 @@
+    .save-button {
+      padding-block: 6px;
+   -  padding-inline: 8px;
+   +  padding-inline: 12px;
+      border-radius: 6px;
+    }
+   ```
+
+4. Browser call:
+
+   ```json
+   {"action":"inspect","target":"current-tab"}
+   ```
+
+   Assumed result: current tab is `http://localhost:5173/settings`, with one visible Save button matching `button.save-button`. Settings content is loaded.
+
+5. Browser call:
+
+   ```json
+   {
+     "action": "evaluate",
+     "target": "current-tab",
+     "expression": "(() => { const b = document.querySelector('button.save-button'); const s = getComputedStyle(b); const result = {url: location.href, capturedAt: new Date().toISOString(), paddingInlineStart: s.paddingInlineStart, paddingInlineEnd: s.paddingInlineEnd}; if (result.paddingInlineStart !== '12px' || result.paddingInlineEnd !== '12px') throw new Error(JSON.stringify(result)); return result; })()"
+   }
+   ```
+
+   Assumed full output:
+
+   ```json
+   {
+     "url": "http://localhost:5173/settings",
+     "capturedAt": "2026-11-13T06:20:00.000Z",
+     "paddingInlineStart": "12px",
+     "paddingInlineEnd": "12px"
+   }
+   ```
+
+6. Browser call:
+
+   ```json
+   {"action":"hover","target":"current-tab","selector":"button.save-button"}
+   ```
+
+   Assumed result: success. Inspect the rendered hover state for clipping or overlap.
+
+7. Browser call:
+
+   ```json
+   {"action":"press","target":"current-tab","selector":"button.save-button","key":"Tab"}
+   ```
+
+   Assumed result: success. Then focus the Save button explicitly:
+
+   ```json
+   {
+     "action":"evaluate",
+     "target":"current-tab",
+     "expression":"document.querySelector('button.save-button').focus()"
+   }
+   ```
+
+   Assumed result: visible focus state; no clipping or overlap observed around the button and adjacent controls.
+
+8. Browser call:
+
+   ```json
+   {
+     "action":"screenshot",
+     "target":"current-tab",
+     "path":"/tmp/notes-save-padding-after.png"
+   }
+   ```
+
+   Assumed result: screenshot saved and inspected. It shows the running settings page with the updated button.
+
+9. Final message to partner:
+
+   > The running settings page reports `12px` horizontal padding on both sides. I also checked hover, focus, and adjacent controls for clipping.
+   >
+   > After: `/tmp/notes-save-padding-after.png`  
+   > Before: unavailable—the edit had already hot reloaded before capture.
+   >
+   > Checked locally at `http://localhost:5173/settings`, 2026-11-13 06:20 UTC. Does the spacing look right?
+
+No report, artboard, commit, or publication is needed for this small change.
+
+SUMMARY: Simulated verification of 12px horizontal padding in the running local settings page; before evidence is missing, and visual judgment now waits on the partner.

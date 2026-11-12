@@ -1,0 +1,126 @@
+Simulation only. All outputs below are assumed successful results; no commands below were executed.
+
+1. Message to partner:
+
+   “I’ll record your pass for all four groups, check the branch, then push.”
+
+2. Shell call, working directory `/Users/p/git/notes-app`:
+
+   ```sh
+   ryugi comment pass --project-dir /Users/p/git/notes-app --artifact artboard/settings-redesign --all
+   ```
+
+   Assumed output:
+
+   ```text
+   Recorded pass: v1, v2, v3, v4
+   ```
+
+3. Shell call:
+
+   ```sh
+   ryugi comment list --project-dir /Users/p/git/notes-app --artifact artboard/settings-redesign --sections groups,threads --detail --all
+   ```
+
+   Assumed complete output:
+
+   ```text
+   v1 · kind=verify · verdict=pass · Layout
+   v2 · kind=verify · verdict=pass · Toggle motion
+   v3 · kind=verify · verdict=pass · Empty state
+   v4 · kind=verify · verdict=pass · Dark mode
+   Threads · 0
+   ```
+
+4. Shell call, working directory `/Users/p/git/notes-app`:
+
+   ```sh
+   git status --short --branch
+   ```
+
+   Assumed complete output:
+
+   ```text
+   ## feat/settings
+   ```
+
+5. Shell call, same directory:
+
+   ```sh
+   rg --files --hidden -g AGENTS.md -g package.json -g '*verif*' -g '*acceptance*' -g '!node_modules' -g '!.git'
+   ```
+
+   Assumed output:
+
+   ```text
+   AGENTS.md
+   package.json
+   docs/verification.md
+   ```
+
+6. Shell call, same directory:
+
+   ```sh
+   cat AGENTS.md package.json docs/verification.md
+   ```
+
+   Assume the full output specifies `pnpm verify` as the required pre-push check, includes that script, and introduces no additional requirements.
+
+7. Shell call, same directory:
+
+   ```sh
+   pnpm verify
+   ```
+
+   Assumed complete output, exit code 0:
+
+   ```text
+   > notes-app@1.0.0 verify /Users/p/git/notes-app
+   > eslint . && tsc --noEmit
+   ```
+
+8. Message to partner:
+
+   “The artboard now records all four groups as passed. `pnpm verify` exited 0 in `/Users/p/git/notes-app`; Git reports a clean `feat/settings` branch. I’m pushing it now.”
+
+9. Shell call, same directory:
+
+   ```sh
+   git push --set-upstream origin feat/settings
+   ```
+
+   Assumed complete output, exit code 0:
+
+   ```text
+   To github.com:p/notes-app.git
+    * [new branch]      feat/settings -> feat/settings
+   branch 'feat/settings' set up to track 'origin/feat/settings'.
+   ```
+
+10. Shell calls, same directory:
+
+    ```sh
+    git rev-parse HEAD
+    ```
+
+    Assumed output:
+
+    ```text
+    8c4e2b19a70f6d3c05b92e184ad768f031cb5e62
+    ```
+
+    ```sh
+    git ls-remote --exit-code origin refs/heads/feat/settings
+    ```
+
+    Assumed output:
+
+    ```text
+    8c4e2b19a70f6d3c05b92e184ad768f031cb5e62	refs/heads/feat/settings
+    ```
+
+11. Final message to partner:
+
+    “Recorded your pass for v1–v4 and pushed `feat/settings`. `pnpm verify` exited 0; the remote branch matches local commit `8c4e2b1`. Nothing remains pending.”
+
+SUMMARY: Simulated verification in `/Users/p/git/notes-app`: four recorded passes, successful pre-push check, and matching local/remote commits; nothing waits on either partner under the assumed results.

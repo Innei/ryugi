@@ -1,0 +1,1 @@
+PASS — Shows the test command and passing output confirming `1.5 KB`, creates no verify page or artboard, and requests no human verdict.

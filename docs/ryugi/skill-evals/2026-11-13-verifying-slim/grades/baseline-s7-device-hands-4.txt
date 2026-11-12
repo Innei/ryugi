@@ -1,0 +1,1 @@
+PASS — Requests all physical actions once in a numbered list with reply checkpoints, handles app operation and screenshots itself, and explicitly leaves verification pending.

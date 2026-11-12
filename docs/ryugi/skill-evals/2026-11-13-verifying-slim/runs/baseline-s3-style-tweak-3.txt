@@ -1,0 +1,82 @@
+All calls and results below are simulated; only `./skill/verify.md` and `./skill/artboard.md` were actually read.
+
+1. **Message to partner**
+
+   “I’ll check the rendered padding and capture the settings page. I missed capturing the original appearance before editing, so there’s no original before screenshot.”
+
+2. **Shell call**
+
+   ```json
+   {
+     "command": "pwd; rg --files --hidden -g AGENTS.md -g '*verif*' -g '*acceptance*' -g '!node_modules' -g '!.git'; git diff -- src/settings/SaveButton.css; cat package.json",
+     "cwd": "/Users/p/git/notes-app"
+   }
+   ```
+
+   **Assumed output:** Correct repository; no project verification instructions found; the only diff is `padding-inline: 8px` → `padding-inline: 12px`; pnpm scripts are available. Read the full returned output.
+
+3. **Browser call: inspect the current running page**
+
+   ```json
+   {
+     "action": "evaluate",
+     "expression": "(() => { const b = [...document.querySelectorAll('button')].find(b => b.textContent.trim() === 'Save'); if (!b) throw new Error('Save button missing'); const s = getComputedStyle(b); const r = b.getBoundingClientRect(); const result = { url: location.href, capturedAt: new Date().toISOString(), paddingInlineStart: s.paddingInlineStart, paddingInlineEnd: s.paddingInlineEnd, withinViewport: r.left >= 0 && r.right <= innerWidth && r.top >= 0 && r.bottom <= innerHeight }; console.log(JSON.stringify(result)); if (result.paddingInlineStart !== '12px' || result.paddingInlineEnd !== '12px' || !result.withinViewport) throw new Error('Save button verification failed'); return result; })()"
+   }
+   ```
+
+   **Assumed full output:**
+
+   ```json
+   {
+     "url": "http://localhost:5173/settings",
+     "capturedAt": "2026-11-13T06:00:00.000Z",
+     "paddingInlineStart": "12px",
+     "paddingInlineEnd": "12px",
+     "withinViewport": true
+   }
+   ```
+
+4. **Browser call: capture the real settings screen**
+
+   ```json
+   {
+     "action": "screenshot",
+     "path": "/Users/p/git/notes-app/.ryugi/evidence/save-button-after.png",
+     "fullPage": false
+   }
+   ```
+
+   **Assumed result:** Screenshot saved and displayed. Inspect it: Save text is unclipped, and the button does not overlap adjacent settings controls.
+
+5. **Browser call: check the adjacent focus state**
+
+   ```json
+   {
+     "action": "evaluate",
+     "expression": "(() => { const b = [...document.querySelectorAll('button')].find(b => b.textContent.trim() === 'Save'); b.focus(); return { focused: document.activeElement === b }; })()"
+   }
+   ```
+
+   **Assumed output:** `{"focused":true}`.
+
+6. **Browser call**
+
+   ```json
+   {
+     "action": "screenshot",
+     "path": "/Users/p/git/notes-app/.ryugi/evidence/save-button-focus.png",
+     "fullPage": false
+   }
+   ```
+
+   **Assumed result:** Screenshot saved and displayed. Inspect the focus outline and surrounding controls for clipping or overlap.
+
+7. **Final message to partner**
+
+   “The running settings page reports `12px` on both horizontal sides of Save. I also checked its focused appearance and adjacent controls.
+
+   After: [screenshot](/Users/p/git/notes-app/.ryugi/evidence/save-button-after.png). Before: unavailable—I missed capturing it before the edit, so the visual before/after comparison isn’t verified.”
+
+No report or artboard: this is one small visible change, covered inline.
+
+SUMMARY: Simulated verification of 12px horizontal padding and focus appearance at localhost:5173/settings; original before evidence is missing, and appearance remains for the partner to judge.

@@ -1,0 +1,196 @@
+The following is a simulation. Only the reads under `./skill/` above actually ran. All results below are explicitly assumed.
+
+1. Message to partner:
+
+   “The merge fix is on staging. I’m checking it with two real clients, including the related delete-versus-edit conflict. The 14 passing fake-server tests are supporting evidence; staging will prove the reported case. I’m using the verifying workflow and its report guidance.”
+
+2. Shell call:
+
+   ```json
+   {
+     "cmd": "pwd && rg --files --hidden -g AGENTS.md -g '*verif*' -g '*accept*' -g README.md -g package.json -g '!node_modules' -g '!.git'",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   Assumed output:
+
+   ```text
+   /Users/p/git/notes-app
+   AGENTS.md
+   README.md
+   package.json
+   ```
+
+3. Shell call:
+
+   ```json
+   {
+     "cmd": "cat AGENTS.md README.md package.json",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   Assume I read the full output. It specifies the supplied staging command, permits its test fixtures, and identifies no additional required checks. Assume the runner prints the server and client build identities before exercising the flows.
+
+4. Shell call:
+
+   ```json
+   {
+     "cmd": "ryugi start --project-dir /Users/p/git/notes-app --artifact verify/offline-sync",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   Assumed output:
+
+   ```text
+   http://localhost:4317/verify/offline-sync
+   ```
+
+5. Shell call:
+
+   ```json
+   {
+     "cmd": "mkdir -p .ryugi/artifacts/verify/offline-sync/evidence",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   Assume exit 0, no output.
+
+6. Shell call:
+
+   ```json
+   {
+     "cmd": "python3 - <<'PY'\nimport datetime, pathlib, subprocess, sys\nroot = pathlib.Path('.ryugi/artifacts/verify/offline-sync/evidence')\nchecks = [('unit', ['pnpm', 'test', 'sync']), ('staging', ['pnpm', 'sync:e2e', '--env', 'staging'])]\nfor name, command in checks:\n    path = root / (name + '.txt')\n    with path.open('w') as output:\n        output.write('cwd: ' + str(pathlib.Path.cwd()) + '\\n')\n        output.write('command: ' + ' '.join(command) + '\\n')\n        output.flush()\n        result = subprocess.run(command, stdout=output, stderr=subprocess.STDOUT)\n        captured = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')\n        output.write('\\nexit: ' + str(result.returncode) + '\\ncapturedAt: ' + captured + '\\n')\n    print(path.read_text(), end='')\n    if result.returncode:\n        sys.exit(result.returncode)\nPY",
+     "workdir": "/Users/p/git/notes-app",
+     "yield_time_ms": 1000,
+     "max_output_tokens": 12000
+   }
+   ```
+
+   Assume the command completes within this call. Its full assumed output is:
+
+   ```text
+   cwd: /Users/p/git/notes-app
+   command: pnpm test sync
+
+   > notes-app test
+   > vitest run sync
+
+    ✓ src/sync/merge.test.ts (14 tests)
+
+    Test Files  1 passed (1)
+         Tests  14 passed (14)
+
+   exit: 0
+   capturedAt: 2026-11-13T02:00:05Z
+   cwd: /Users/p/git/notes-app
+   command: pnpm sync:e2e --env staging
+
+   > notes-app sync:e2e
+   > tsx scripts/sync-e2e.ts --env staging
+
+   Environment: staging
+   Server build: 4812
+   Server commit: 9f3c2aa
+   Client A build: 4812 @ 9f3c2aa
+   Client B build: 4812 @ 9f3c2aa
+   Authentication: staging credentials accepted
+   PASS create note and sync to both clients
+   PASS disconnect both clients
+   PASS edit note offline on client A
+   PASS edit note offline on client B
+   PASS reconnect both clients
+   PASS both offline edits preserved
+   PASS both copies converge
+   PASS create conflict fixture and sync to both clients
+   PASS disconnect both clients
+   PASS delete note offline on client A
+   PASS edit note offline on client B
+   PASS reconnect both clients
+   PASS delete-versus-edit result matches conflict policy
+   PASS both copies converge
+   PASS clean up test fixtures
+   Scenarios: 2 passed, 0 failed
+
+   exit: 0
+   capturedAt: 2026-11-13T02:00:42Z
+   ```
+
+   I read the complete output, including build identities, both scenarios, and exit statuses.
+
+7. File-write call: `apply_patch`
+
+   ```diff
+   *** Begin Patch
+   *** Add File: /Users/p/git/notes-app/.ryugi/artifacts/verify/offline-sync/report.xml
+   +<report title="Offline edits survive reconnecting two devices">
+   +  <p>The merge fix in <code>src/sync/merge.ts</code> was verified against staging build 4812 at commit 9f3c2aa. This report covers staging.</p>
+   +  <claim id="offline-edits" judge="agent" from="staging server and two real clients · build 4812 @ 9f3c2aa" capturedAt="2026-11-13T02:00:42Z">
+   +    <title>Both clients preserve their offline edits and converge after reconnecting</title>
+   +    <output src="evidence/staging.txt" />
+   +  </claim>
+   +  <claim id="delete-edit" judge="agent" from="staging server and two real clients · build 4812 @ 9f3c2aa" capturedAt="2026-11-13T02:00:42Z">
+   +    <title>A delete-versus-edit conflict follows the conflict policy and converges on both clients</title>
+   +    <output src="evidence/staging.txt" />
+   +  </claim>
+   +  <claim id="unit-tests" judge="agent" from="local workspace /Users/p/git/notes-app · in-memory fake sync server" capturedAt="2026-11-13T02:00:05Z">
+   +    <title>All 14 sync unit tests pass</title>
+   +    <p>Supporting evidence; these tests use an in-memory fake server.</p>
+   +    <output src="evidence/unit.txt" />
+   +  </claim>
+   +</report>
+   *** End Patch
+   ```
+
+   Assume successful write. No `canvas.json`: there are no screen claims or human judgments.
+
+8. Shell call:
+
+   ```json
+   {
+     "cmd": "ryugi check --project-dir /Users/p/git/notes-app --artifact verify/offline-sync",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   Assumed full output:
+
+   ```text
+   verify/offline-sync
+   Claims: 3 checked by agent
+   Needs you: 0
+   Not verified: 0
+   Warnings: 0
+   ```
+
+9. Shell call:
+
+   ```json
+   {
+     "cmd": "ryugi comment list --project-dir /Users/p/git/notes-app --artifact verify/offline-sync",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   Assumed full output:
+
+   ```text
+   Comment list: verify/offline-sync · 0 to act on
+   Waiting: 0 on your human partner · 0 not verified
+   Claims · 0 rejected · 0 pending · 3 checked by agent
+     offline-edits · checked by agent
+     delete-edit · checked by agent
+     unit-tests · checked by agent
+   Threads · 0 open
+   ```
+
+10. Final message to partner:
+
+    “Fixed and verified on staging build **4812 @ 9f3c2aa**. `pnpm sync:e2e --env staging` passed both real-client scenarios: offline edits survive reconnecting, and delete-versus-edit conflicts converge. `pnpm test sync` also passed **14/14**.
+
+    [Verification report](http://localhost:4317/verify/offline-sync): three checks proved, no gaps or verdicts waiting. Production was outside this verification.”
+
+SUMMARY: Simulated verification covers staging build 4812 @ 9f3c2aa, both real-client conflict flows, and 14 unit tests; evidence is in verify/offline-sync, with nothing waiting on the partner.

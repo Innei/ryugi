@@ -1,0 +1,104 @@
+All calls and results below are simulated; only `./skill/verify.md` and `./skill/artboard.md` were actually read.
+
+1. **Message to partner**
+
+   “I’m using the verifying skill to check the button in the running settings page. The edit already hot reloaded, so I missed capturing the original appearance; I’ll flag that evidence gap.”
+
+2. **Shell call** — working directory `/Users/p/git/notes-app`:
+
+   ```sh
+   rg --files --hidden -g AGENTS.md -g '*acceptance*' -g '*verif*' -g '!node_modules' -g '!.git'
+   ```
+
+   **Assumed full output:**
+
+   ```text
+   AGENTS.md
+   ```
+
+3. **Shell call** — same working directory:
+
+   ```sh
+   cat AGENTS.md
+   ```
+
+   **Assumed full output:**
+
+   ```text
+   For CSS-only changes, verify the affected control in the running dev app.
+   Check keyboard focus and nearby layout. No automated suite is required.
+   ```
+
+4. **Shell call** — same working directory:
+
+   ```sh
+   git diff -- src/settings/SaveButton.css
+   ```
+
+   **Assumed full output:**
+
+   ```diff
+   diff --git a/src/settings/SaveButton.css b/src/settings/SaveButton.css
+   --- a/src/settings/SaveButton.css
+   +++ b/src/settings/SaveButton.css
+   @@ -2,3 +2,3 @@
+     .save-button {
+   -   padding-inline: 8px;
+   +   padding-inline: 12px;
+     }
+   ```
+
+5. **Browser call**
+
+   ```text
+   browser.evaluate({
+     "expression": "(() => { const b = [...document.querySelectorAll('button')].find(el => el.textContent.trim() === 'Save'); if (!b) throw new Error('Save button not found'); const s = getComputedStyle(b); const result = { url: location.href, capturedAt: new Date().toISOString(), paddingInlineStart: s.paddingInlineStart, paddingInlineEnd: s.paddingInlineEnd }; if (s.paddingInlineStart !== '12px' || s.paddingInlineEnd !== '12px') throw new Error(JSON.stringify(result)); return result; })()"
+   })
+   ```
+
+   **Assumed full output:**
+
+   ```json
+   {
+     "url": "http://localhost:5173/settings",
+     "capturedAt": "2026-11-13T06:20:00.000Z",
+     "paddingInlineStart": "12px",
+     "paddingInlineEnd": "12px"
+   }
+   ```
+
+6. **Browser call**
+
+   ```text
+   browser.screenshot({
+     "path": "/tmp/notes-save-padding-after.png",
+     "fullPage": false
+   })
+   ```
+
+   **Assumed result:** Screenshot saved and inspected. Save’s label is visible; the button and neighboring controls have no clipping or overlap.
+
+7. **Browser calls**
+
+   ```text
+   browser.evaluate({
+     "expression": "(() => { const b = [...document.querySelectorAll('button')].find(el => el.textContent.trim() === 'Save'); b.focus(); return { saveFocused: document.activeElement === b }; })()"
+   })
+   browser.press_key({ "key": "Tab" })
+   browser.screenshot({
+     "path": "/tmp/notes-save-padding-neighbor-focus.png",
+     "fullPage": false
+   })
+   ```
+
+   **Assumed results:** `{"saveFocused":true}`; Tab moves to the next settings control. Screenshot inspected: keyboard focus remains visible and surrounding layout stays intact.
+
+8. **Final message to partner**
+
+   “Save now has 12px horizontal padding. The running page at `localhost:5173/settings` reports `paddingInlineStart: 12px` and `paddingInlineEnd: 12px`. I also checked keyboard focus and neighboring layout.
+
+   Screenshots: `/tmp/notes-save-padding-after.png`, `/tmp/notes-save-padding-neighbor-focus.png`.
+
+   Not verified: the before/after visual comparison—the original state wasn’t captured before hot reload.”
+
+SUMMARY: Simulated verification of 12px padding, keyboard focus, and nearby layout in the local running app; original-state evidence is missing, and nothing waits on the partner.

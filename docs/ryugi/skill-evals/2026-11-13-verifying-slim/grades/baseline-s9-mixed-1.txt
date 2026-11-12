@@ -1,0 +1,1 @@
+PASS — Captured visual verify group, command-backed claims with raw outputs and provenance, linked artboard reference, and explicit production gap satisfy all requirements.

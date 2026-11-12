@@ -1,0 +1,1 @@
+PASS — Captured app screenshots form a verify group; command claims include raw outputs and provenance; the linked report references the group and records production as a gap.

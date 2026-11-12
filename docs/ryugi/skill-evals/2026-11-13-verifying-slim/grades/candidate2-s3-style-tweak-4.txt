@@ -1,0 +1,1 @@
+PASS — Confirms padding inline with computed styles and a screenshot; creates no artboard or verify page and waits for no verdict.

@@ -1,0 +1,102 @@
+Simulation only. No commands below are actually run. All outputs are assumed successful.
+
+1. Message to partner:
+
+   “I’ll record your passes for all four groups, run the repository’s required checks, then push `feat/settings`.”
+
+2. Shell call:
+   ```sh
+   ryugi comment pass --project-dir /Users/p/git/notes-app --artifact artboard/settings-redesign --all
+   ```
+   Assumed output:
+   ```text
+   Recorded pass: v1, v2, v3, v4
+   ```
+
+3. Shell call:
+   ```sh
+   ryugi comment list --project-dir /Users/p/git/notes-app --artifact artboard/settings-redesign --sections groups,threads --detail --all
+   ```
+   Assumed complete output, with no continuation:
+   ```text
+   Groups
+   v1 · verify · pass · Layout
+   v2 · verify · pass · Toggle motion
+   v3 · verify · pass · Empty state
+   v4 · verify · pass · Dark mode
+   Threads · 0
+   ```
+   Leave the passed evidence files untouched.
+
+4. Shell call:
+   ```sh
+   cd /Users/p/git/notes-app && pwd && git status --short --branch && git rev-parse HEAD && rg --files --hidden -g AGENTS.md -g package.json -g '*acceptance*' -g '*verification*' -g '!node_modules' -g '!.git'
+   ```
+   Assumed output:
+   ```text
+   /Users/p/git/notes-app
+   ## feat/settings
+   8c4a91d0e2f743b6a105de9c7b68f320a4d56e12
+   AGENTS.md
+   package.json
+   docs/verification.md
+   ```
+
+5. Shell call:
+   ```sh
+   cd /Users/p/git/notes-app && cat AGENTS.md package.json docs/verification.md
+   ```
+   Assumption: the complete files identify `pnpm verify` as the required pre-push check, covering lint, type checking and tests; no additional acceptance steps are required. The existing artboard contains the screen evidence already approved.
+
+6. Shell call:
+   ```sh
+   cd /Users/p/git/notes-app && pnpm verify
+   ```
+   Assumed complete output:
+   ```text
+   > notes-app@1.0.0 verify /Users/p/git/notes-app
+   > eslint . && tsc --noEmit && vitest run
+
+    RUN  v3.2.4 /Users/p/git/notes-app
+
+    ✓ src/settings/settings.test.tsx (12 tests) 410ms
+
+    Test Files  1 passed (1)
+         Tests  12 passed (12)
+      Duration  1.20s
+   ```
+   Assumed exit code: `0`.
+
+7. Message to partner:
+
+   “All four passes are recorded. `pnpm verify` exited 0 in `/Users/p/git/notes-app`: lint and type checking succeeded, and 12 tests passed. I’m pushing the committed branch.”
+
+8. Shell call:
+   ```sh
+   cd /Users/p/git/notes-app && git push --set-upstream origin feat/settings
+   ```
+   Assumed complete output:
+   ```text
+   To github.com:p/notes-app.git
+    * [new branch]      feat/settings -> feat/settings
+   branch 'feat/settings' set up to track 'origin/feat/settings'.
+   ```
+   Assumed exit code: `0`.
+
+9. Shell call:
+   ```sh
+   cd /Users/p/git/notes-app && git rev-parse HEAD && git ls-remote --exit-code origin refs/heads/feat/settings && git status --short --branch
+   ```
+   Assumed complete output:
+   ```text
+   8c4a91d0e2f743b6a105de9c7b68f320a4d56e12
+   8c4a91d0e2f743b6a105de9c7b68f320a4d56e12	refs/heads/feat/settings
+   ## feat/settings...origin/feat/settings
+   ```
+   Assumed exit code: `0`.
+
+10. Final message to partner:
+
+    “Recorded your passes for v1–v4 and pushed `feat/settings`. `pnpm verify` exited 0 with 12 tests passing; the remote branch matches local commit `8c4a91d`, and the working tree is clean.”
+
+SUMMARY: Simulated verification in `/Users/p/git/notes-app`: four recorded passes, successful repository checks, and matching local/remote commits after push; nothing waits on the partner.

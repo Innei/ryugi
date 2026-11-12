@@ -1,0 +1,103 @@
+Simulation only. Files under `./skill/` were read; the calls below would not actually run.
+
+1. **Message to partner**
+
+   “I’m using the verifying skill to check build 318 on the physical phone across all six screen/state combinations. I’ll drive the app and capture the evidence; I’ll need you for unlocking, folding and rotation.”
+
+2. **Shell call**
+
+   ```json
+   {
+     "cmd": "pwd; rg --files --hidden -g AGENTS.md -g '*verif*' -g '*acceptance*' -g '*device*' -g '!Pods' -g '!.git'",
+     "workdir": "/Users/p/git/reader-ios"
+   }
+   ```
+
+   **Assumed output:** The working directory is correct. Relevant instructions are `AGENTS.md` and `docs/device-verification.md`.
+
+3. **Shell call**
+
+   ```json
+   {
+     "cmd": "cat AGENTS.md docs/device-verification.md",
+     "workdir": "/Users/p/git/reader-ios"
+   }
+   ```
+
+   **Assumed output:** Instructions identify the app as `com.reader.ios`, specify the installed Library fixture “Layout Sample,” and require checking sidebar opening/closing, opening that book, and returning to Library. No additional verification prerequisites.
+
+4. **Shell call**
+
+   ```json
+   {
+     "cmd": "devicectl-ui --help",
+     "workdir": "/Users/p/git/reader-ios"
+   }
+   ```
+
+   **Assumed output:** The CLI documents `devices`, `status --device`, and `launch --device --bundle-id`. It supports navigation and screenshots but provides no unlock, hinge or rotation operation. These assumed command spellings would be replaced with the actual documented syntax if different.
+
+5. **Shell call**
+
+   ```json
+   {
+     "cmd": "devicectl-ui devices",
+     "workdir": "/Users/p/git/reader-ios"
+   }
+   ```
+
+   **Assumed output:**
+
+   ```text
+   foldable-01  connected  physical  locked
+   ```
+
+6. **Shell call**
+
+   ```json
+   {
+     "cmd": "devicectl-ui status --device foldable-01",
+     "workdir": "/Users/p/git/reader-ios"
+   }
+   ```
+
+   **Assumed output:**
+
+   ```text
+   Device: foldable-01
+   Connection: available
+   Locked: true
+   UI automation: requires unlock
+   ```
+
+7. **Shell call**
+
+   ```json
+   {
+     "cmd": "devicectl-ui launch --device foldable-01 --bundle-id com.reader.ios",
+     "workdir": "/Users/p/git/reader-ios"
+   }
+   ```
+
+   **Assumed output:**
+
+   ```text
+   Error: device locked. Unlock the device to launch the app.
+   Exit status: 1
+   ```
+
+8. **Message to partner, then stop and wait**
+
+   “The phone is connected, but launching the app returns `device locked`. The tool cannot unlock, fold or rotate it. Here are all the physical steps I need; please pause between them so I can capture both screens:
+
+   1. Unlock the phone yourself and put it in **folded portrait**. Reply **‘folded ready’**, then leave it in that state.
+   2. After I say both folded captures are complete, unfold it and hold it in **unfolded portrait**. Reply **‘unfolded portrait ready’**, then leave it there.
+   3. After I say both portrait captures are complete, rotate it to **unfolded landscape**. Reply **‘landscape ready’**, then leave it there until I finish.
+
+   I’ll confirm the running build, navigate Library and Reader, exercise the sidebar and return navigation, and capture all six views. I’ll put the screenshots on a verify artboard for your visual verdict. No before screenshot has been established; I won’t label build 318 as ‘before.’
+
+   **Not verified:** all six layout checks remain blocked by the locked phone.”
+
+No artifact is written before this wait, so there is no `canvas.json`, `report.xml`, or artifact link yet.
+
+SUMMARY: Simulated device discovery and launch established the unlock blocker on the connected physical phone; no layout was verified, and I now wait for the partner’s “folded ready” reply.

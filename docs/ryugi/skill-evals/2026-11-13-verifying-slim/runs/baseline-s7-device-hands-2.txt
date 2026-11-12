@@ -1,0 +1,101 @@
+Simulation only. No commands below are actually run. I’m using the verifying skill; the next stopping point is the phone’s physical access requirement.
+
+1. **Shell tool** — read repository instructions:
+
+   ```sh
+   for f in /AGENTS.md /Users/AGENTS.md /Users/p/AGENTS.md /Users/p/git/AGENTS.md /Users/p/git/reader-ios/AGENTS.md; do
+     if test -f "$f"; then
+       cat "$f"
+     fi
+   done
+   ```
+
+   **Assumed output:** repository instructions identify `docs/verification/foldable.md` as the acceptance procedure and `docs/tools/devicectl-ui.md` as the device tool guide. No additional ancestor instructions apply.
+
+2. **Shell tool** — read those procedures and the change being verified:
+
+   ```sh
+   cat docs/verification/foldable.md docs/tools/devicectl-ui.md
+   ```
+
+   Working directory: `/Users/p/git/reader-ios`.
+
+   **Assumed output:** use the connected physical device and installed build; exercise Library → existing book → Reader → Library in each required posture. Check sidebar opening/closing and reader scrolling. Tool documentation supplies the command syntax used below. The guide confirms that unlocking, hinge changes and rotation require a person.
+
+3. **Shell tool** — inspect the fix and available prior evidence:
+
+   ```sh
+   git show --format=fuller --stat --patch 4be7a10
+   ```
+
+   Working directory: `/Users/p/git/reader-ios`.
+
+   **Assumed output:** the commit changes the shared sidebar/reading-pane layout used by Library and Reader. No unrelated flows require checking.
+
+4. **Shell tool** — locate existing verification artifacts and before captures:
+
+   ```sh
+   rg --files --hidden .ryugi docs -g '*canvas.json' -g '*report.xml' -g '*before*' -g '*fold*'
+   ```
+
+   Working directory: `/Users/p/git/reader-ios`.
+
+   **Assumed output:** only the foldable verification guide matches; there is no existing artboard or before capture. I would not label a screenshot of build 318 as “before.” The missing reproduction would remain an explicit verification gap unless authentic earlier evidence can be recovered.
+
+5. **Shell tool** — inspect the device tool:
+
+   ```sh
+   devicectl-ui --help
+   ```
+
+   **Assumed output:** supports `devices`, `status --device`, `launch --device --bundle-id`, navigation and screenshots. No unlock, hinge or rotation operation exists. The project guide identifies the app as `com.reader.ios`.
+
+6. **Shell tool** — find the connected phone:
+
+   ```sh
+   devicectl-ui devices --json
+   ```
+
+   **Assumed output:**
+
+   ```json
+   {"devices":[{"id":"foldable-01","connection":"usb","connected":true}]}
+   ```
+
+7. **Shell tool** — inspect its access state:
+
+   ```sh
+   devicectl-ui status --device foldable-01 --json
+   ```
+
+   **Assumed output:**
+
+   ```json
+   {"device":"foldable-01","locked":true,"uiAutomationAvailable":false}
+   ```
+
+8. **Shell tool** — attempt app access with the available tool:
+
+   ```sh
+   devicectl-ui launch --device foldable-01 --bundle-id com.reader.ios
+   ```
+
+   **Assumed output, exit 1:**
+
+   ```text
+   DeviceLocked: Unlock the device to launch and control the app.
+   ```
+
+9. **Message to partner:**
+
+   “I can navigate the app and capture both screens myself. The device tool reports that the phone is locked and cannot unlock it, fold it or rotate it. I need these physical actions:
+
+   1. Unlock the phone yourself, put it in **folded portrait**, and leave it unlocked. Reply **‘folded ready’**, then hold that state while I capture Library and Reader.
+   2. After I say **‘folded captures complete’**, unfold it into **portrait**. Reply **‘unfolded portrait ready’**, then hold that state while I capture both screens.
+   3. After I say **‘unfolded portrait captures complete’**, rotate it into **unfolded landscape**. Reply **‘landscape ready’**, then hold that state while I capture both screens.
+
+   I’ll handle navigation and the neighbouring sidebar and reading interactions. I’ll put the captures on a Verify artboard for your visual verdict. No device captures have been taken yet.”
+
+**Stop here.** Do not assume an unlock or posture change, create placeholder evidence, or continue to captures before the partner replies.
+
+SUMMARY: Simulated repository and device-access checks only; layout remains unverified on physical build 318 @ 4be7a10, awaiting the partner’s unlock and “folded ready” reply.

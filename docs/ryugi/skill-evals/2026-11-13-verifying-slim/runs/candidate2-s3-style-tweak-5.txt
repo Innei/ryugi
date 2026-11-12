@@ -1,0 +1,91 @@
+All calls and results below are simulated. Only `./skill/verify.md` and `./skill/artboard.md` were actually read.
+
+1. Message to partner:
+
+   “I’m using the verifying skill to check the rendered padding and capture the result. The edit already hot reloaded before I captured a screenshot, so there’s no original before image.”
+
+2. Shell call:
+
+   ```json
+   {
+     "cmd": "pwd; rg --files --hidden -g AGENTS.md -g '*acceptance*' -g '*verification*' -g '!node_modules' -g '!.git'; git diff -- src/settings/SaveButton.css",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   Assumed output: repository path, `AGENTS.md`, and exactly this diff:
+
+   ```diff
+   -  padding-inline: 8px;
+   +  padding-inline: 12px;
+   ```
+
+3. Shell call:
+
+   ```json
+   {
+     "cmd": "cat AGENTS.md; git rev-parse --short HEAD; date -u +%Y-%m-%dT%H:%M:%SZ",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   Assumed output: instructions require checking CSS changes in the running app; commit `a1b2c3d`; timestamp `2026-11-13T06:30:00Z`. No additional verification documents were found.
+
+4. Shell call:
+
+   ```json
+   {
+     "cmd": "agent-browser --auto-connect snapshot -i",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   Assumed output: the connected browser is on `http://localhost:5173/settings`, with one button named “Save”.
+
+5. Shell call:
+
+   ```json
+   {
+     "cmd": "agent-browser --auto-connect eval '(() => { const b = [...document.querySelectorAll(\"button\")].find(e => e.textContent.trim() === \"Save\"); if (!b) throw new Error(\"Save button missing\"); const measure = () => { const s = getComputedStyle(b); return { start: s.paddingInlineStart, end: s.paddingInlineEnd }; }; const normal = measure(); b.focus(); const focused = measure(); const focusReached = document.activeElement === b; b.blur(); if ([normal, focused].some(p => p.start !== \"12px\" || p.end !== \"12px\") || !focusReached) throw new Error(JSON.stringify({normal, focused, focusReached})); return {url: location.href, normal, focused, focusReached}; })()'",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   Assumed full output:
+
+   ```json
+   {"url":"http://localhost:5173/settings","normal":{"start":"12px","end":"12px"},"focused":{"start":"12px","end":"12px"},"focusReached":true}
+   ```
+
+6. Shell call:
+
+   ```json
+   {
+     "cmd": "agent-browser --auto-connect screenshot /tmp/notes-save-padding-after.png",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   Assumed output: screenshot saved successfully.
+
+7. Image inspection call:
+
+   ```json
+   {
+     "path": "/tmp/notes-save-padding-after.png"
+   }
+   ```
+
+   Assumed image: the running settings page with the Save button visible.
+
+8. Final message to partner:
+
+   “Save now has 12px horizontal padding. On local dev at `a1b2c3d` plus the CSS edit, the browser check returned `12px` on both sides in normal and focused states at `2026-11-13T06:30:00Z`.
+
+   After screenshot: `/tmp/notes-save-padding-after.png`.
+
+   Not verified: the original visual comparison; no before screenshot was captured before hot reload.”
+
+No report, artboard, or verdict request: this is one small visible change.
+
+SUMMARY: Simulated verification of 12px rendered padding and focus on localhost:5173/settings, with an after screenshot; original before evidence is missing, and nothing waits on the partner.

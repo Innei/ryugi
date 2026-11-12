@@ -1,0 +1,110 @@
+Simulation only. Outputs below are assumed successful results; no commands outside `./skill/` were actually run.
+
+1. Message to partner:
+
+   “I’ll use the verifying skill to record your four passes, run the repository’s required checks, then push `feat/settings`.”
+
+2. Shell call:
+   ```json
+   {
+     "cmd": "ryugi comment pass --project-dir /Users/p/git/notes-app --artifact artboard/settings-redesign --all",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+   Assumed output:
+   ```text
+   Recorded pass: v1, v2, v3, v4
+   ```
+
+3. Shell call:
+   ```json
+   {
+     "cmd": "ryugi comment list --project-dir /Users/p/git/notes-app --artifact artboard/settings-redesign --sections groups,threads --detail",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+   Assumed complete output:
+   ```text
+   Groups
+   v1 · kind=verify · verdict=pass · Layout
+   v2 · kind=verify · verdict=pass · Toggle motion
+   v3 · kind=verify · verdict=pass · Empty state
+   v4 · kind=verify · verdict=pass · Dark mode
+   Threads · 0
+   ```
+   No pagination or acknowledgment commands are printed.
+
+4. Shell call:
+   ```json
+   {
+     "cmd": "pwd; git status --short --branch; git rev-parse HEAD; git remote -v; rg --files --hidden -g AGENTS.md -g '*verification*' -g '*acceptance*' -g package.json -g '!node_modules' -g '!.git'; cat AGENTS.md package.json",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+   Assumptions: no additional ancestor instructions apply; output identifies a clean `feat/settings`, HEAD `79acb245eb137e096f40e13f6382647ec9d00ba1`, and `origin` as the intended repository. Recording verdicts created no tracked changes. Only root `AGENTS.md` and `package.json` match. Their complete contents require `pnpm typecheck` and `pnpm test` before pushing, with no additional acceptance command.
+
+5. Shell call:
+   ```json
+   {
+     "cmd": "pnpm typecheck && pnpm test",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+   Assumed complete output:
+   ```text
+   > notes-app@1.0.0 typecheck
+   > tsc --noEmit
+
+   > notes-app@1.0.0 test
+   > vitest run
+
+    RUN  v3.2.4 /Users/p/git/notes-app
+
+    ✓ src/settings.test.ts (12 tests) 48ms
+
+    Test Files  1 passed (1)
+         Tests  12 passed (12)
+      Start at  10:00:00
+      Duration  620ms
+   ```
+   Exit code: `0`.
+
+6. Message to partner:
+
+   “All four verdicts are recorded as pass. In `/Users/p/git/notes-app`, `pnpm typecheck && pnpm test` exited 0: TypeScript reported no errors and all 12 tests passed. I’m pushing the unchanged, reviewed commit.”
+
+7. Shell call:
+   ```json
+   {
+     "cmd": "git push --set-upstream origin feat/settings",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+   Assumed output:
+   ```text
+   To github.com:p/notes-app.git
+    * [new branch]      feat/settings -> feat/settings
+   branch 'feat/settings' set up to track 'origin/feat/settings'.
+   ```
+   Exit code: `0`.
+
+8. Shell call:
+   ```json
+   {
+     "cmd": "git rev-parse HEAD; git ls-remote --exit-code origin refs/heads/feat/settings; git status --short --branch",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+   Assumed complete output:
+   ```text
+   79acb245eb137e096f40e13f6382647ec9d00ba1
+   79acb245eb137e096f40e13f6382647ec9d00ba1	refs/heads/feat/settings
+   ## feat/settings...origin/feat/settings
+   ```
+   Exit code: `0`.
+
+9. Final message to partner:
+
+   “Recorded all four passes and pushed `feat/settings`. Typecheck and all 12 tests passed; `git ls-remote` confirms origin matches local commit `79acb24`. Working tree is clean. Nothing awaits your verdict.”
+
+SUMMARY: Simulated verification of four recorded artboard passes, repository checks, and matching local/remote commits in `/Users/p/git/notes-app`; nothing waits on the partner.

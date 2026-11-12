@@ -1,0 +1,1 @@
+PASS — The agent checked computed padding and a screenshot inline, created no artboard or verify page, and did not await a verdict.

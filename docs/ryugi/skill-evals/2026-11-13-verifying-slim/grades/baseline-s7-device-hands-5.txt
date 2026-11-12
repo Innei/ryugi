@@ -1,0 +1,1 @@
+PASS — Requests all physical actions once in one numbered list, specifies readiness replies, and explicitly handles launching, navigation, and screenshots itself.

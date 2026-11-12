@@ -1,0 +1,117 @@
+Simulation only. All results below are assumed, not observed.
+
+1. **Message to partner**
+
+   “I’ll check the Save button in the running settings page and capture its current appearance. The edit already hot reloaded, so I missed capturing the original tight padding.”
+
+2. **Shell — read project verification instructions**
+
+   ```sh
+   cd /Users/p/git/notes-app && pwd && rg --files --hidden -g AGENTS.md -g '*verif*' -g '*acceptance*' -g '!node_modules' -g '!.git' && cat package.json
+   ```
+
+   Assumed output: repository path confirmed; only `AGENTS.md` matches; package scripts list no special verification command for CSS changes.
+
+   ```sh
+   cd /Users/p/git/notes-app && cat AGENTS.md
+   ```
+
+   Assumed output: verify small style changes against the running app; no additional required checks.
+
+3. **Shell — inspect the change and identify its source**
+
+   ```sh
+   cd /Users/p/git/notes-app && git rev-parse --short HEAD && git diff --check && git diff -- src/settings/SaveButton.css && date -u +%Y-%m-%dT%H:%M:%SZ
+   ```
+
+   Assumed full output:
+
+   ```text
+   a1b2c3d
+   diff --git a/src/settings/SaveButton.css b/src/settings/SaveButton.css
+   index 29cf620..47b923a 100644
+   --- a/src/settings/SaveButton.css
+   +++ b/src/settings/SaveButton.css
+   @@ -2,3 +2,3 @@
+      padding-block: 6px;
+   -  padding-inline: 8px;
+   +  padding-inline: 12px;
+    }
+   2026-11-13T03:10:00Z
+   ```
+
+   Assumed exit code: `0`.
+
+4. **Browser — inspect the already-open settings page**
+
+   ```json
+   {"tool":"browser.snapshot","arguments":{}}
+   ```
+
+   Assumed result: connected tab is `http://localhost:5173/settings`; one visible button has accessible name `Save`.
+
+   ```json
+   {
+     "tool": "browser.evaluate",
+     "arguments": {
+       "expression": "() => { const buttons = [...document.querySelectorAll('button')].filter(b => b.textContent.trim() === 'Save'); if (buttons.length !== 1) throw new Error('Expected one Save button'); const b = buttons[0]; const s = getComputedStyle(b); const r = b.getBoundingClientRect(); const result = {url: location.href, paddingInlineStart: s.paddingInlineStart, paddingInlineEnd: s.paddingInlineEnd, visible: r.width > 0 && r.height > 0, disabled: b.disabled}; console.log(JSON.stringify(result)); if (s.paddingInlineStart !== '12px' || s.paddingInlineEnd !== '12px' || !result.visible) throw new Error('Save padding check failed'); return result; }"
+     }
+   }
+   ```
+
+   Assumed full result:
+
+   ```json
+   {
+     "url": "http://localhost:5173/settings",
+     "paddingInlineStart": "12px",
+     "paddingInlineEnd": "12px",
+     "visible": true,
+     "disabled": false
+   }
+   ```
+
+5. **Browser — check neighboring button states**
+
+   ```json
+   {"tool":"browser.hover","arguments":{"role":"button","name":"Save","exact":true}}
+   ```
+
+   ```json
+   {
+     "tool":"browser.evaluate",
+     "arguments":{
+       "expression":"() => { const b = [...document.querySelectorAll('button')].find(b => b.textContent.trim() === 'Save'); b.focus(); const s = getComputedStyle(b); if (document.activeElement !== b || s.paddingInlineStart !== '12px' || s.paddingInlineEnd !== '12px') throw new Error('Hover/focus check failed'); return 'Save hovered and focused; inline padding remains 12px on both sides'; }"
+     }
+   }
+   ```
+
+   Assumed result:
+
+   ```text
+   Save hovered and focused; inline padding remains 12px on both sides
+   ```
+
+6. **Browser — capture and inspect the actual page**
+
+   ```json
+   {"tool":"browser.evaluate","arguments":{"expression":"() => { document.activeElement.blur(); return new Date().toISOString(); }"}}
+   ```
+
+   Assumed result: `2026-11-13T03:10:20.000Z`.
+
+   ```json
+   {"tool":"browser.screenshot","arguments":{"path":"/tmp/notes-save-padding-after.png","fullPage":false}}
+   ```
+
+   Assumed result: screenshot saved and displayed. Inspection shows the Save button and adjacent controls without clipping or overlap.
+
+7. **Final message to partner**
+
+   “Save now has 12px horizontal padding. Checked the running settings page at `localhost:5173/settings` on local commit `a1b2c3d` plus the CSS edit: computed padding is `12px` on both sides, including hover/focus. `git diff --check` exited 0.
+
+   [After screenshot](/tmp/notes-save-padding-after.png), captured at 03:10:20 UTC.
+
+   Not verified: the original appearance; no before screenshot was captured before hot reload.”
+
+SUMMARY: Simulated verification of 12px Save padding and neighboring states in the local running settings page; no report, artboard, or verdict required, and nothing waits on the partner.

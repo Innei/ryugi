@@ -1,0 +1,153 @@
+All calls and results below are simulated. Only `./skill/verify.md` and `./skill/artboard.md` were actually read.
+
+1. Message to partner:
+
+   “I’ll check the padding in the running settings page and capture the comparison. Since the edit already hot reloaded, the 8px comparison will be a reconstruction; there’s no original before screenshot.”
+
+2. Shell call:
+
+   ```json
+   {
+     "cmd": "pwd; rg --files -g AGENTS.md -g '*acceptance*' -g '*verification*' -g '*verify*' -g '!node_modules' -g '!pnpm-lock.yaml'; git diff -- src/settings/SaveButton.css; cat src/settings/SaveButton.css; date -u +%Y-%m-%dT%H:%M:%SZ",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   Assumed output: working directory matches; no project verification instructions found; the full diff contains only `padding-inline: 8px` → `padding-inline: 12px`; the button selector is `.save-button`; timestamp is `2026-11-13T04:00:00Z`.
+
+3. Browser evaluate call against the existing settings tab:
+
+   ```js
+   () => {
+     const button = document.querySelector('button.save-button');
+     if (!button || button.textContent.trim() !== 'Save') {
+       throw new Error('Expected settings Save button');
+     }
+     const css = getComputedStyle(button);
+     const result = {
+       url: location.href,
+       capturedAt: new Date().toISOString(),
+       paddingLeft: css.paddingLeft,
+       paddingRight: css.paddingRight
+     };
+     if (result.paddingLeft !== '12px' || result.paddingRight !== '12px') {
+       throw new Error(JSON.stringify(result));
+     }
+     return result;
+   }
+   ```
+
+   Assumed full output:
+
+   ```json
+   {
+     "url": "http://localhost:5173/settings",
+     "capturedAt": "2026-11-13T04:00:05.000Z",
+     "paddingLeft": "12px",
+     "paddingRight": "12px"
+   }
+   ```
+
+4. Browser screenshot call:
+
+   ```json
+   {
+     "path": "/tmp/notes-save-padding-after.png",
+     "fullPage": false
+   }
+   ```
+
+   Assumed result: screenshot saved. Inspect it using the image viewer:
+
+   ```json
+   {"path": "/tmp/notes-save-padding-after.png"}
+   ```
+
+   Assumed observation: Save remains fully visible and does not overlap adjacent controls.
+
+5. Reconstruct the previous padding temporarily in the running page:
+
+   ```js
+   () => {
+     const button = document.querySelector('button.save-button');
+     window.__savePaddingOriginalStyle = button.getAttribute('style');
+     button.style.setProperty('padding-inline', '8px', 'important');
+     return {
+       paddingLeft: getComputedStyle(button).paddingLeft,
+       paddingRight: getComputedStyle(button).paddingRight
+     };
+   }
+   ```
+
+   Assumed output:
+
+   ```json
+   {"paddingLeft":"8px","paddingRight":"8px"}
+   ```
+
+   Browser screenshot call, followed by image inspection:
+
+   ```json
+   {"path":"/tmp/notes-save-padding-before-reconstructed.png","fullPage":false}
+   ```
+
+   ```json
+   {"path":"/tmp/notes-save-padding-before-reconstructed.png"}
+   ```
+
+   Assumed result: screenshot saved and inspected, showing the narrower button.
+
+6. Restore the page’s original inline style and check the actual stylesheet again:
+
+   ```js
+   () => {
+     const button = document.querySelector('button.save-button');
+     const original = window.__savePaddingOriginalStyle;
+     if (original === null) button.removeAttribute('style');
+     else button.setAttribute('style', original);
+     delete window.__savePaddingOriginalStyle;
+
+     const css = getComputedStyle(button);
+     const result = {
+       url: location.href,
+       capturedAt: new Date().toISOString(),
+       paddingLeft: css.paddingLeft,
+       paddingRight: css.paddingRight
+     };
+     if (result.paddingLeft !== '12px' || result.paddingRight !== '12px') {
+       throw new Error(JSON.stringify(result));
+     }
+     return result;
+   }
+   ```
+
+   Assumed full output:
+
+   ```json
+   {
+     "url": "http://localhost:5173/settings",
+     "capturedAt": "2026-11-13T04:00:20.000Z",
+     "paddingLeft": "12px",
+     "paddingRight": "12px"
+   }
+   ```
+
+   Overwrite the after screenshot with this final state and inspect it:
+
+   ```json
+   {"path":"/tmp/notes-save-padding-after.png","fullPage":false}
+   ```
+
+   ```json
+   {"path":"/tmp/notes-save-padding-after.png"}
+   ```
+
+   Assumed observation: restored page matches the initial after capture; adjacent controls remain unobstructed.
+
+7. Final message to partner:
+
+   “Updated Save to 12px horizontal padding. Browser checks on the local settings page returned `paddingLeft: "12px"` and `paddingRight: "12px"` after removing the temporary comparison override. Adjacent controls remain unobstructed.
+
+   Screenshots: [before, reconstructed at 8px](/tmp/notes-save-padding-before-reconstructed.png) · [after](/tmp/notes-save-padding-after.png). No original pre-edit screenshot was captured.”
+
+SUMMARY: Simulated verification of 12px horizontal padding and surrounding layout at localhost:5173/settings; inline screenshot evidence only, no artifact or verdict required, nothing waits on the partner.

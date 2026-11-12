@@ -1,0 +1,79 @@
+All calls below are simulated; only `./skill/verify.md` and `./skill/artboard.md` were actually read.
+
+1. **Message to partner**
+
+   “I’ll check the rendered Save button and capture it. The edit has already hot reloaded, so I missed the original before screenshot; I’ll state that explicitly.”
+
+2. **Shell call** — read applicable project instructions:
+
+   ```sh
+   cd /Users/p/git/notes-app && for f in /AGENTS.md /Users/AGENTS.md /Users/p/AGENTS.md /Users/p/git/AGENTS.md AGENTS.md src/AGENTS.md src/settings/AGENTS.md; do if [ -f "$f" ]; then cat "$f"; fi; done
+   ```
+
+   **Assumed output:** Project instructions require checking small CSS changes in the running app; no additional applicable requirements.
+
+3. **Shell call** — find verification guidance:
+
+   ```sh
+   rg --files --hidden -g '!node_modules' -g '!.git' -g '*verif*' -g '*acceptance*' -g 'package.json' /Users/p/git/notes-app
+   ```
+
+   **Assumed output:** Only `/Users/p/git/notes-app/package.json`.
+
+4. **Shell call**
+
+   ```sh
+   cd /Users/p/git/notes-app && cat package.json src/settings/SaveButton.css
+   ```
+
+   **Assumed output:** Standard pnpm development scripts; the Save button’s class is `.save-button`, with `padding-inline: 12px`.
+
+5. **Shell call**
+
+   ```sh
+   cd /Users/p/git/notes-app && git diff -- src/settings/SaveButton.css
+   ```
+
+   **Assumed full output:**
+
+   ```diff
+   diff --git a/src/settings/SaveButton.css b/src/settings/SaveButton.css
+   index 6e014ad..5e71c45 100644
+   --- a/src/settings/SaveButton.css
+   +++ b/src/settings/SaveButton.css
+   @@ -2,1 +2,1 @@
+   -  padding-inline: 8px;
+   +  padding-inline: 12px;
+   ```
+
+6. **Browser call** — inspect the already-open settings tab:
+
+   ```json
+   {"action":"evaluate","expression":"(() => { const b = [...document.querySelectorAll('button')].find(el => el.textContent.trim() === 'Save'); if (!b) throw new Error('Save button missing'); const s = getComputedStyle(b); const r = b.getBoundingClientRect(); const result = {url: location.href, capturedAt: new Date().toISOString(), paddingInlineStart: s.paddingInlineStart, paddingInlineEnd: s.paddingInlineEnd, visible: r.width > 0 && r.height > 0}; if (result.paddingInlineStart !== '12px' || result.paddingInlineEnd !== '12px' || !result.visible) throw new Error(JSON.stringify(result)); return result; })()"}
+   ```
+
+   **Assumed full output:**
+
+   ```json
+   {"url":"http://localhost:5173/settings","capturedAt":"2026-11-13T06:20:00.000Z","paddingInlineStart":"12px","paddingInlineEnd":"12px","visible":true}
+   ```
+
+7. **Browser call** — capture the button with surrounding settings controls:
+
+   ```json
+   {"action":"screenshot","path":"/Users/p/git/notes-app/.verification/save-button-after.png","fullPage":false}
+   ```
+
+   **Assumption:** Screenshot saved successfully. I inspect it: the button label and adjacent controls remain visible, without overlap or clipping. This is a visual inspection, not a partner verdict.
+
+8. **Final message to partner**
+
+   “The running settings page reports `12px` horizontal padding on both sides of Save. The diff contains only the requested `8px → 12px` change.
+
+   After screenshot: [save-button-after.png](/Users/p/git/notes-app/.verification/save-button-after.png).
+
+   Not verified: the original visual comparison—I missed capturing the before state before hot reload. No before screenshot exists.”
+
+No report or artboard: this is one small visible change.
+
+SUMMARY: Simulated verification confirms 12px horizontal padding in the local running settings page; after screenshot captured, original before evidence unavailable, and visual judgment remains with the partner.

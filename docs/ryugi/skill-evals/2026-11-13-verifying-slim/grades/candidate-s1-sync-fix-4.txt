@@ -1,0 +1,1 @@
+PASS — Ran staging end-to-end tests, wrote agent-judged verification claims with raw evidence and build provenance, and requested no human checks or artboard.

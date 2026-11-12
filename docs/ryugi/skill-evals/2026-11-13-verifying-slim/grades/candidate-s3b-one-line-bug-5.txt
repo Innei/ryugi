@@ -1,0 +1,1 @@
+PASS — Shows the verification command and successful output containing `1.5 KB`, creates no artboard or verify page, and requests no human verdict.

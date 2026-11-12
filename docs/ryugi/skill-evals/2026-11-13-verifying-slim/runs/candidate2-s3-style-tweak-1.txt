@@ -1,0 +1,102 @@
+Simulation only. All outputs below are assumed successful results; no repo or browser commands were actually run.
+
+1. Message to partner:
+
+   “I’ll check the Save button’s rendered padding and capture the updated settings page. The change already hot reloaded, so I missed capturing the original appearance; I won’t label a recreated image as a before screenshot.”
+
+2. Shell call, working directory `/Users/p/git/notes-app`:
+
+   ```sh
+   for f in /AGENTS.md /Users/AGENTS.md /Users/p/AGENTS.md /Users/p/git/AGENTS.md /Users/p/git/notes-app/AGENTS.md; do
+     if [ -f "$f" ]; then
+       printf '\n%s\n' "$f"
+       cat "$f"
+     fi
+   done
+   rg --files --hidden -g AGENTS.md -g '*verif*' -g '*acceptance*' -g '!node_modules' -g '!.git'
+   cat package.json src/settings/SaveButton.css
+   git diff -- src/settings/SaveButton.css
+   git rev-parse HEAD
+   date -u +%Y-%m-%dT%H:%M:%SZ
+   ```
+
+   Assumed output: no additional verification instructions or nested `AGENTS.md` files; the stylesheet uses `.save-button`; the only diff is `padding-inline: 8px` → `padding-inline: 12px`. HEAD is `a1b2c3d4e5f60718293a4b5c6d7e8f9012345678`; capture preparation time is `2026-11-13T06:10:00Z`.
+
+3. Shell call:
+
+   ```sh
+   agent-browser --auto-connect snapshot -i
+   ```
+
+   Assumed output: attached to the existing settings tab at `http://localhost:5173/settings`; Save is `@e7`, enabled. No navigation or sign-in needed.
+
+4. Shell call:
+
+   ```sh
+   agent-browser --auto-connect eval 'JSON.stringify((() => {
+     const b = [...document.querySelectorAll("button")].find(e => e.textContent.trim() === "Save");
+     if (!b) throw new Error("Save button missing");
+     const s = getComputedStyle(b);
+     const r = b.getBoundingClientRect();
+     if (s.paddingInlineStart !== "12px" || s.paddingInlineEnd !== "12px") throw new Error("Unexpected Save padding");
+     return {
+       url: location.href,
+       capturedAt: new Date().toISOString(),
+       paddingInlineStart: s.paddingInlineStart,
+       paddingInlineEnd: s.paddingInlineEnd,
+       width: r.width,
+       height: r.height,
+       disabled: b.disabled
+     };
+   })())'
+   ```
+
+   Assumed full output:
+
+   ```json
+   {"url":"http://localhost:5173/settings","capturedAt":"2026-11-13T06:10:08.000Z","paddingInlineStart":"12px","paddingInlineEnd":"12px","width":60,"height":32,"disabled":false}
+   ```
+
+5. Shell calls, sequentially:
+
+   ```sh
+   agent-browser --auto-connect hover @e7
+   ```
+
+   Assumed output: success.
+
+   ```sh
+   agent-browser --auto-connect eval 'const b = [...document.querySelectorAll("button")].find(e => e.textContent.trim() === "Save"); b.focus(); const s = getComputedStyle(b); JSON.stringify({focused: document.activeElement === b, paddingInlineStart: s.paddingInlineStart, paddingInlineEnd: s.paddingInlineEnd})'
+   ```
+
+   Assumed full output:
+
+   ```json
+   {"focused":true,"paddingInlineStart":"12px","paddingInlineEnd":"12px"}
+   ```
+
+   ```sh
+   agent-browser --auto-connect screenshot /tmp/notes-app-save-padding-after.png
+   ```
+
+   Assumed output: screenshot saved at `/tmp/notes-app-save-padding-after.png`.
+
+6. Read-image tool call:
+
+   ```json
+   {"path":"/tmp/notes-app-save-padding-after.png"}
+   ```
+
+   Assumed image: the real settings page with Save hovered and focused; its label, focus outline and adjacent controls are visible without clipping or overlap. This is supporting observation, not a recorded human verdict.
+
+7. Final message to partner:
+
+   “Save now renders with **12px horizontal padding** on the local settings page, including hover and focus. Browser checks returned `12px` on both sides at `2026-11-13T06:10:08Z`, against local HEAD `a1b2c3d` plus the CSS edit.
+
+   After screenshot: `/tmp/notes-app-save-padding-after.png`.
+
+   Not verified: the original appearance—no before screenshot was captured before hot reload.”
+
+No report, artboard, tests or verdict request: this is one small visible change.
+
+SUMMARY: Simulated verification of 12px Save padding in the running localhost settings page, with hover/focus checks and an after screenshot; original before evidence is unavailable, and nothing waits on the partner.
