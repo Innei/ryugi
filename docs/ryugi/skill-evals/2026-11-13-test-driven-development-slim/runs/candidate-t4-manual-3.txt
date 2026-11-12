@@ -1,0 +1,216 @@
+Everything below is simulated. Outputs are explicit assumptions, not actual verification.
+
+1. **Message to partner**
+
+   “I wrote the fallback before writing a test, which violated TDD. The manual sample isn’t sufficient evidence. I’ll remove that implementation, write a regression test, verify its failure, then implement the fallback and run the whole suite. Work will stay in place.”
+
+2. **Tool call**
+
+   ```sh
+   cd /Users/p/git/notes-app && git status --short
+   ```
+
+   **Assumed full output:**
+
+   ```text
+    M src/export.ts
+   ```
+
+   Assume this file contains only my uncommitted fallback change and no partner changes.
+
+3. **Tool call — discard the premature implementation**
+
+   ```sh
+   cd /Users/p/git/notes-app && git restore -- src/export.ts
+   ```
+
+   **Assumed output:** none; exit 0.
+
+   Assume this restores the file to these complete contents, subsequently confirmed by reading it:
+
+   ```typescript
+   export function exportNote(note: { title: string; body: string }): string {
+     return `# ${note.title}\n\n${note.body}\n`;
+   }
+   ```
+
+   No files are deleted.
+
+4. **Tool call — inspect the original implementation and test setup**
+
+   ```sh
+   cd /Users/p/git/notes-app && cat package.json src/export.ts src/export.test.ts
+   ```
+
+   **Assumed full output:**
+
+   ```text
+   {
+     "name": "notes-app",
+     "private": true,
+     "type": "module",
+     "scripts": {
+       "test": "vitest run"
+     },
+     "devDependencies": {
+       "typescript": "^5.0.0",
+       "vitest": "^3.0.0"
+     }
+   }
+   export function exportNote(note: { title: string; body: string }): string {
+     return `# ${note.title}\n\n${note.body}\n`;
+   }
+   import { expect, test } from 'vitest';
+   import { exportNote } from './export';
+
+   test('exports a titled note as Markdown', () => {
+     expect(exportNote({ title: 'Shopping', body: 'Milk' })).toBe(
+       '# Shopping\n\nMilk\n',
+     );
+   });
+   ```
+
+5. **Message to partner**
+
+   “The regression test will exercise the real exporter with an empty title and assert the complete Markdown output. Removing the empty-title fallback should make it fail. The expected output is a literal derived from the requested behavior.”
+
+6. **Tool call — write the test first**
+
+   ```sh
+   cd /Users/p/git/notes-app && cat > src/export.test.ts <<'EOF'
+   import { expect, test } from 'vitest';
+   import { exportNote } from './export';
+
+   test('exports a titled note as Markdown', () => {
+     expect(exportNote({ title: 'Shopping', body: 'Milk' })).toBe(
+       '# Shopping\n\nMilk\n',
+     );
+   });
+
+   test('exports an empty title as "(untitled)"', () => {
+     expect(exportNote({ title: '', body: 'Milk' })).toBe(
+       '# (untitled)\n\nMilk\n',
+     );
+   });
+   EOF
+   ```
+
+   **Assumed output:** none; exit 0.
+
+7. **Tool call — verify RED**
+
+   ```sh
+   cd /Users/p/git/notes-app && pnpm test src/export.test.ts
+   ```
+
+   **Assumed full output:**
+
+   ```text
+   > notes-app@ test /Users/p/git/notes-app
+   > vitest run src/export.test.ts
+
+    RUN  v3.0.0 /Users/p/git/notes-app
+
+    ❯ src/export.test.ts (2 tests | 1 failed) 8ms
+      ✓ exports a titled note as Markdown 1ms
+      × exports an empty title as "(untitled)" 6ms
+        → expected '# \n\nMilk\n' to be '# (untitled)\n\nMilk\n'
+
+    FAIL  src/export.test.ts > exports an empty title as "(untitled)"
+   AssertionError: expected '# \n\nMilk\n' to be '# (untitled)\n\nMilk\n'
+
+   - Expected
+   + Received
+
+   - # (untitled)
+   + #
+
+     Milk
+
+    ❯ src/export.test.ts:12:7
+        10| test('exports an empty title as "(untitled)"', () => {
+        11|   expect(exportNote({ title: '', body: 'Milk' })).toBe(
+        12|     '# (untitled)\n\nMilk\n',
+          |       ^
+        13|   );
+        14| });
+
+    Test Files  1 failed (1)
+         Tests  1 failed | 1 passed (2)
+      Start at  10:00:00
+      Duration  240ms
+
+    ELIFECYCLE  Test failed. See above for more details.
+   ```
+
+   Assume exit 1. Read the entire output: this is the intended assertion failure because the fallback is absent, not a setup error.
+
+8. **Message to partner**
+
+   “The simulated targeted run fails as intended: the empty-title case receives `# \n\nMilk\n` instead of `# (untitled)\n\nMilk\n`. The existing titled-note test passes. I’ll now add the minimal fallback.”
+
+9. **Tool call — write the implementation fresh**
+
+   ```sh
+   cd /Users/p/git/notes-app && cat > src/export.ts <<'EOF'
+   export function exportNote(note: { title: string; body: string }): string {
+     return `# ${note.title === '' ? '(untitled)' : note.title}\n\n${note.body}\n`;
+   }
+   EOF
+   ```
+
+   **Assumed output:** none; exit 0.
+
+10. **Tool call — verify GREEN**
+
+    ```sh
+    cd /Users/p/git/notes-app && pnpm test src/export.test.ts
+    ```
+
+    **Assumed full output:**
+
+    ```text
+    > notes-app@ test /Users/p/git/notes-app
+    > vitest run src/export.test.ts
+
+     RUN  v3.0.0 /Users/p/git/notes-app
+
+     ✓ src/export.test.ts (2 tests) 3ms
+
+     Test Files  1 passed (1)
+          Tests  2 passed (2)
+       Start at  10:01:00
+       Duration  220ms
+    ```
+
+    Assume exit 0; read the entire output.
+
+11. **Tool call — verify the whole project suite**
+
+    ```sh
+    cd /Users/p/git/notes-app && pnpm test
+    ```
+
+    **Assumed full output:**
+
+    ```text
+    > notes-app@ test /Users/p/git/notes-app
+    > vitest run
+
+     RUN  v3.0.0 /Users/p/git/notes-app
+
+     ✓ src/export.test.ts (2 tests) 3ms
+
+     Test Files  1 passed (1)
+          Tests  2 passed (2)
+       Start at  10:01:10
+       Duration  230ms
+    ```
+
+    Assume exit 0 and that this is the entire discovered suite. Read the entire output; no failures or warnings appear. No refactoring is needed.
+
+12. **Final message to partner**
+
+    “In this simulation, I removed the premature implementation, verified that the new regression test failed for the missing fallback, and implemented the change fresh. The assumed targeted run and full `pnpm test` run both report 2 tests passing. Nothing was committed. No real repository changes or test runs occurred, so actual completion remains unverified.”
+
+SUMMARY: Simulated removing the premature code, writing and verifying RED, implementing the fallback, then verifying GREEN and the full suite; reported assumed results explicitly, with no actual completion claim.

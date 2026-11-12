@@ -1,0 +1,206 @@
+The following is a simulated transcript. Only `./skill/writing-good-tests.md` was actually read; all repository contents and command results below are assumptions.
+
+1. **Message to partner**
+
+   “I’m using the TDD workflow: reproduce the missing item with a failing test, change the slice boundary, then run the focused test and whole suite. I’ll work in place.”
+
+2. **Shell call**
+   ```sh
+   cd /Users/p/git/notes-app
+   pwd
+   git status --short
+   rg --files --hidden -g '!node_modules' -g '!.git' -g AGENTS.md -g package.json -g '*paginate*' -g '*test*' -g '*vitest*'
+   ```
+
+   **Assumed output:** working directory is `/Users/p/git/notes-app`; clean working tree; no applicable `AGENTS.md`; files include `package.json`, `src/paginate.ts`, `src/paginate.test.ts`, and `src/notes.test.ts`.
+
+3. **Shell call**
+   ```sh
+   cd /Users/p/git/notes-app
+   cat package.json src/paginate.ts src/paginate.test.ts src/notes.test.ts
+   ```
+
+   **Assumptions from this read:** `pnpm test` runs `vitest run`; pagination uses one-based page numbers; the function is a named export. Production file:
+   ```typescript
+   export function paginate<T>(items: T[], page: number, size: number): T[] {
+     const start = (page - 1) * size;
+     const end = start + size;
+     return items.slice(start, end - 1);
+   }
+   ```
+
+   Existing pagination test:
+   ```typescript
+   import { expect, test } from 'vitest';
+   import { paginate } from './paginate';
+
+   test('returns an empty page for empty input', () => {
+     expect(paginate([], 1, 2)).toEqual([]);
+   });
+   ```
+
+   Assume `src/notes.test.ts` contains two unrelated tests.
+
+4. **Message to partner**
+
+   “The regression test will request page 3 of five items at size 2 and expect `[5]`. Using `end - 1` drops that item, so this test directly catches the boundary bug.”
+
+5. **Shell call — write the complete test file**
+   ```sh
+   cd /Users/p/git/notes-app
+   cat > src/paginate.test.ts <<'EOF'
+   import { expect, test } from 'vitest';
+   import { paginate } from './paginate';
+
+   test('returns an empty page for empty input', () => {
+     expect(paginate([], 1, 2)).toEqual([]);
+   });
+
+   test('includes the final item on the last page', () => {
+     expect(paginate([1, 2, 3, 4, 5], 3, 2)).toEqual([5]);
+   });
+   EOF
+   ```
+
+6. **Shell call — verify RED**
+   ```sh
+   cd /Users/p/git/notes-app
+   pnpm test src/paginate.test.ts
+   ```
+
+   **Assumed full output, exit 1:**
+   ```text
+   > notes-app@1.0.0 test /Users/p/git/notes-app
+   > vitest run src/paginate.test.ts
+
+    RUN  v3.2.4 /Users/p/git/notes-app
+
+    ❯ src/paginate.test.ts (2 tests | 1 failed) 6ms
+      ✓ returns an empty page for empty input 1ms
+      × includes the final item on the last page 4ms
+        → expected [] to deeply equal [ 5 ]
+
+    Failed Tests 1
+
+    FAIL  src/paginate.test.ts > includes the final item on the last page
+   AssertionError: expected [] to deeply equal [ 5 ]
+
+   - Expected
+   + Received
+
+   - [
+   -   5,
+   - ]
+   + []
+
+    ❯ src/paginate.test.ts:9:49
+         9|   expect(paginate([1, 2, 3, 4, 5], 3, 2)).toEqual([5]);
+          |                                                 ^
+
+    Test Files  1 failed (1)
+         Tests  1 failed | 1 passed (2)
+      Start at  10:00:00
+      Duration  250ms
+
+    ELIFECYCLE  Command failed with exit code 1.
+   ```
+
+7. **Message to partner**
+
+   “The regression failed for the expected reason: page 3 returned `[]` instead of `[5]`. I’ll change the exclusive slice endpoint to `end`.”
+
+8. **Shell call — write the complete production file**
+   ```sh
+   cd /Users/p/git/notes-app
+   cat > src/paginate.ts <<'EOF'
+   export function paginate<T>(items: T[], page: number, size: number): T[] {
+     const start = (page - 1) * size;
+     const end = start + size;
+     return items.slice(start, end);
+   }
+   EOF
+   ```
+
+9. **Shell call — verify focused GREEN**
+   ```sh
+   cd /Users/p/git/notes-app
+   pnpm test src/paginate.test.ts
+   ```
+
+   **Assumed full output, exit 0:**
+   ```text
+   > notes-app@1.0.0 test /Users/p/git/notes-app
+   > vitest run src/paginate.test.ts
+
+    RUN  v3.2.4 /Users/p/git/notes-app
+
+    ✓ src/paginate.test.ts (2 tests) 3ms
+
+    Test Files  1 passed (1)
+         Tests  2 passed (2)
+      Start at  10:00:10
+      Duration  240ms
+   ```
+
+10. **Shell call — verify the whole suite**
+    ```sh
+    cd /Users/p/git/notes-app
+    pnpm test
+    ```
+
+    **Assumed full output, exit 0:**
+    ```text
+    > notes-app@1.0.0 test /Users/p/git/notes-app
+    > vitest run
+
+     RUN  v3.2.4 /Users/p/git/notes-app
+
+     ✓ src/paginate.test.ts (2 tests) 3ms
+     ✓ src/notes.test.ts (2 tests) 4ms
+
+     Test Files  2 passed (2)
+          Tests  4 passed (4)
+       Start at  10:00:15
+       Duration  310ms
+    ```
+
+11. **Shell call — review final changes**
+    ```sh
+    cd /Users/p/git/notes-app
+    git diff --check
+    git diff -- src/paginate.ts src/paginate.test.ts
+    git status --short
+    ```
+
+    **Assumed full output, exit 0:**
+    ```diff
+    diff --git a/src/paginate.test.ts b/src/paginate.test.ts
+    --- a/src/paginate.test.ts
+    +++ b/src/paginate.test.ts
+    @@ -5,3 +5,7 @@
+     test('returns an empty page for empty input', () => {
+       expect(paginate([], 1, 2)).toEqual([]);
+     });
+    +
+    +test('includes the final item on the last page', () => {
+    +  expect(paginate([1, 2, 3, 4, 5], 3, 2)).toEqual([5]);
+    +});
+    diff --git a/src/paginate.ts b/src/paginate.ts
+    --- a/src/paginate.ts
+    +++ b/src/paginate.ts
+    @@ -1,5 +1,5 @@
+     export function paginate<T>(items: T[], page: number, size: number): T[] {
+       const start = (page - 1) * size;
+       const end = start + size;
+    -  return items.slice(start, end - 1);
+    +  return items.slice(start, end);
+     }
+     M src/paginate.test.ts
+     M src/paginate.ts
+    ```
+
+12. **Final message to partner, within the simulation**
+
+    “Fixed the slice endpoint and added a regression test for the last item. The test first failed with `[]` versus `[5]`; after the fix, the focused run passed 2/2 and `pnpm test` passed 4/4 across both files. `git diff --check` exited 0. Changes are uncommitted.”
+
+SUMMARY: Actually read the test-writing reference; simulated inspection, regression test, expected failure, minimal fix, focused and full-suite verification, and diff review; all repository results are assumed, with no actual edits or test runs.

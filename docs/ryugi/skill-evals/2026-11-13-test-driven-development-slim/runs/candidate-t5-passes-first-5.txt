@@ -1,0 +1,148 @@
+Everything below is **simulated**. Only the reads under `./skill/` above actually ran. Assumed outputs are not verification evidence.
+
+1. **Message to partner:**
+
+   “The test passed before implementation, so it hasn’t demonstrated the missing behavior. I’ll inspect its fixtures and the current sorter, then make the test distinguish pin priority from the existing sort order.”
+
+2. **Shell call** (working directory `/Users/p/git/notes-app`):
+
+   ```sh
+   pwd
+   git status --short
+   rg --files -g AGENTS.md -g package.json -g '*sort*' -g '*test*' -g '*vitest*'
+   ```
+
+   **Assumed output:** Correct repository; only `src/sort.test.ts` modified; no applicable `AGENTS.md`; relevant files are `package.json`, `src/sort.ts`, `src/sort.test.ts`, and `src/search.test.ts`.
+
+3. **Shell call:**
+
+   ```sh
+   cat package.json src/sort.ts src/sort.test.ts src/search.test.ts
+   git diff -- src/sort.test.ts
+   ```
+
+   **Assumed findings:**
+
+   - The test script is `vitest run`.
+   - `src/search.test.ts` contains two existing tests.
+   - `src/sort.ts` currently contains:
+
+     ```ts
+     export interface Note {
+       id: string;
+       updatedAt: number;
+       pinned?: boolean;
+     }
+
+     export function sortNotes(notes: Note[]): Note[] {
+       return [...notes].sort((a, b) => b.updatedAt - a.updatedAt);
+     }
+     ```
+
+   - The added test currently contains:
+
+     ```ts
+     import { expect, test } from 'vitest';
+     import { sortNotes } from './sort';
+
+     test('pinned notes sort first', () => {
+       const unpinned = { id: 'unpinned', updatedAt: 1, pinned: false };
+       const pinned = { id: 'pinned', updatedAt: 2, pinned: true };
+
+       expect(sortNotes([unpinned, pinned]).map((note) => note.id)).toEqual([
+         'pinned',
+         'unpinned',
+       ]);
+     });
+     ```
+
+4. **Message to partner:**
+
+   “The pinned fixture is also newer, so the existing date sorter already produces the expected order. I’ll make the pinned note older. This test should catch the bug of ignoring `pinned` and sorting solely by date; its expected order is hand-derived.”
+
+5. **Shell call — replace `src/sort.test.ts` with this complete content:**
+
+   ```sh
+   cat > src/sort.test.ts <<'EOF'
+   import { expect, test } from 'vitest';
+   import { sortNotes } from './sort';
+
+   test('pinned notes sort first', () => {
+     const unpinned = { id: 'unpinned', updatedAt: 2, pinned: false };
+     const pinned = { id: 'pinned', updatedAt: 1, pinned: true };
+
+     expect(sortNotes([unpinned, pinned]).map((note) => note.id)).toEqual([
+       'pinned',
+       'unpinned',
+     ]);
+   });
+   EOF
+   ```
+
+   **Assumed output:** None; exit 0.
+
+6. **Shell call:**
+
+   ```sh
+   pnpm test src/sort.test.ts
+   ```
+
+   **Assumed complete test result, read before proceeding:** Exit 1; one assertion failure in `pinned notes sort first`; expected `['pinned', 'unpinned']`, received `['unpinned', 'pinned']`; 0 passed, 1 failed; no collection or runtime errors.
+
+7. **Message to partner:**
+
+   “The corrected test now fails for the intended reason: date sorting places the newer unpinned note first. I’ll add pin priority and retain the date comparator when pin status matches.”
+
+8. **Shell call — replace `src/sort.ts` with this complete content:**
+
+   ```sh
+   cat > src/sort.ts <<'EOF'
+   export interface Note {
+     id: string;
+     updatedAt: number;
+     pinned?: boolean;
+   }
+
+   export function sortNotes(notes: Note[]): Note[] {
+     return [...notes].sort(
+       (a, b) =>
+         Number(Boolean(b.pinned)) - Number(Boolean(a.pinned)) ||
+         b.updatedAt - a.updatedAt,
+     );
+   }
+   EOF
+   ```
+
+   **Assumed output:** None; exit 0. No files deleted.
+
+9. **Shell call:**
+
+   ```sh
+   pnpm test src/sort.test.ts
+   ```
+
+   **Assumed complete test result:** Exit 0; `src/sort.test.ts`: 1 passed, 0 failed; no warnings or errors.
+
+10. **Shell call:**
+
+    ```sh
+    git diff --check
+    git diff -- src/sort.ts src/sort.test.ts
+    git status --short
+    ```
+
+    **Assumed output:** No whitespace errors; diff contains exactly the fixture correction and pin comparator shown above; only those two files modified.
+
+11. **Shell call:**
+
+    ```sh
+    pnpm test
+    ```
+
+    **Assumed complete test result:** Exit 0; `src/sort.test.ts`: 1 passed; `src/search.test.ts`: 2 passed; 2 files passed, 3 tests passed, 0 failed; no warnings or errors.
+
+12. **Final message to partner:**
+
+    “In this simulation, pin priority is implemented after observing the corrected test fail. The assumed focused run passed 1/1, and the assumed full `pnpm test` run passed 3/3 across two files. No actual repository edits or verification occurred, and nothing was committed.”
+
+SUMMARY: Read the skill rules, simulated inspection, corrected the accidentally green test, observed an assumed RED, implemented pin priority, checked the diff, and simulated focused and full-suite GREEN; reporting simulated results only.

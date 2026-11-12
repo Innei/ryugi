@@ -1,0 +1,1 @@
+PASS — The agent investigated the false positive, corrected the fixture, observed the intended failure, and only then changed production code.

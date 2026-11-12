@@ -1,0 +1,1 @@
+PASS — The corrected regression was run and failed before the one-line fix, then passed afterward; testing was neither skipped nor deferred.

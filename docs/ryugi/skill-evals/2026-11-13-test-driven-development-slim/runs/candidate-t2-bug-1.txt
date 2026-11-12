@@ -1,0 +1,85 @@
+The following is a simulation. Only files under `./skill/` were actually read; all repository contents and command results below are explicitly assumed.
+
+1. **Message to partner**
+
+   “I’m using the test-driven-development skill: reproduce the dropped item, confirm the test fails, make the one-line fix, then run the focused test and full suite. I’ll work in place.”
+
+2. **Shell call**
+   ```sh
+   cd /Users/p/git/notes-app && pwd && git status --short && rg --files --hidden -g AGENTS.md -g '!node_modules' -g '!.git' /Users/p
+   ```
+   **Assumed output:** Correct repository; clean working tree; no applicable `AGENTS.md` files.
+
+3. **Shell call**
+   ```sh
+   cd /Users/p/git/notes-app && cat package.json && cat src/paginate.ts && rg --files -g '*paginate*' -g '*vitest*' -g '*test*' -g '!node_modules'
+   ```
+   **Assumed output:** `test` runs `vitest run`; dependencies are installed; no pagination tests exist; tests use `src/*.test.ts`. Production file:
+   ```ts
+   export function paginate<T>(items: T[], page: number, size: number): T[] {
+     const start = (page - 1) * size;
+     const end = start + size;
+     return items.slice(start, end - 1);
+   }
+   ```
+
+4. **Message to partner**
+
+   “The regression test will require page 2 of `[1, 2, 3, 4, 5]`, with size 3, to return `[4, 5]`. Using `end - 1` as the slice boundary should make it fail by dropping `5`.”
+
+5. **Shell call — write the regression test**
+   ```sh
+   cd /Users/p/git/notes-app && cat > src/paginate.test.ts <<'EOF'
+   import { expect, test } from 'vitest';
+   import { paginate } from './paginate';
+
+   test('includes the final item on the last page', () => {
+     expect(paginate([1, 2, 3, 4, 5], 2, 3)).toEqual([4, 5]);
+   });
+   EOF
+   ```
+
+6. **Shell call — verify RED**
+   ```sh
+   cd /Users/p/git/notes-app && pnpm test src/paginate.test.ts
+   ```
+   **Assumed full output is read:** Exit 1; the single test fails with expected `[4, 5]`, received `[4]`; no import or setup errors.
+
+7. **Message to partner**
+
+   “The regression fails for the expected reason: the last page returns `[4]` instead of `[4, 5]`. I’ll correct the slice boundary.”
+
+8. **Shell call — write the minimal production fix**
+   ```sh
+   cd /Users/p/git/notes-app && cat > src/paginate.ts <<'EOF'
+   export function paginate<T>(items: T[], page: number, size: number): T[] {
+     const start = (page - 1) * size;
+     const end = start + size;
+     return items.slice(start, end);
+   }
+   EOF
+   ```
+
+9. **Shell call — verify focused GREEN**
+   ```sh
+   cd /Users/p/git/notes-app && pnpm test src/paginate.test.ts
+   ```
+   **Assumed full output is read:** Exit 0; 1 test passes; no warnings or errors.
+
+10. **Shell call — verify the entire suite**
+    ```sh
+    cd /Users/p/git/notes-app && pnpm test
+    ```
+    **Assumed full output is read:** Exit 0; 8 test files and 25 tests pass; no warnings or errors.
+
+11. **Shell call — review final changes**
+    ```sh
+    cd /Users/p/git/notes-app && git diff --check && git diff -- src/paginate.ts && cat src/paginate.test.ts && git status --short
+    ```
+    **Assumed full output is read:** Exit 0; no whitespace errors; production diff changes only `end - 1` to `end`; regression file matches step 5; status lists only those two files. No files deleted.
+
+12. **Final message to partner — simulated**
+
+    “Fixed the slice boundary and added a regression test. It first failed with `[4]` instead of `[4, 5]`, then passed after the fix. `pnpm test` passed all 25 tests across 8 files; `git diff --check` passed.”
+
+SUMMARY: Simulated inspection → regression test → observed RED → one-line fix → focused GREEN → full-suite verification → diff review; reporting assumed results only, with no repository commands or edits actually performed.

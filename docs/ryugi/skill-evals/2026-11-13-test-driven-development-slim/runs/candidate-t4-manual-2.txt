@@ -1,0 +1,193 @@
+Everything below is simulated. Only `./skill/writing-good-tests.md` was actually read; no repository commands or edits were executed.
+
+1. **Message to partner**
+
+   “I wrote the implementation before its test. The manual sample doesn’t establish that this is complete. I’m applying the TDD skill: discard that change, write a regression test, observe its expected failure, then implement it fresh and run the full suite. Work stays in place.”
+
+2. **Shell call**
+
+   ```sh
+   cd /Users/p/git/notes-app && git status --short
+   ```
+
+   **Assumed output:**
+
+   ```text
+    M src/export.ts
+   ```
+
+   Assume the situation’s empty-title change is the only uncommitted edit.
+
+3. **Shell call — discard the premature implementation**
+
+   ```sh
+   cd /Users/p/git/notes-app && git restore -- src/export.ts
+   ```
+
+   **Assumed output:** none; exit 0.
+
+   Assume the restored file’s entire content is:
+
+   ```ts
+   export function exportNote(note: { title: string; body: string }): string {
+     return `# ${note.title}\n\n${note.body}`;
+   }
+   ```
+
+   No file is deleted.
+
+4. **Shell call — inspect instructions and test conventions after discarding the change**
+
+   ```sh
+   cd /Users/p/git/notes-app && rg --files --hidden -g '!node_modules' -g '!.git' -g 'AGENTS.md' -g 'package.json' -g '*test*' -g '*spec*'
+   ```
+
+   **Assumed output:**
+
+   ```text
+   package.json
+   src/notes.test.ts
+   ```
+
+   Assume no applicable `AGENTS.md` exists in ancestor directories.
+
+5. **Shell call**
+
+   ```sh
+   cd /Users/p/git/notes-app && cat package.json src/export.ts src/notes.test.ts
+   ```
+
+   **Assumed findings:** `test` runs `vitest run`; `src/export.ts` matches the restored content above; existing tests import `expect` and `test` from Vitest. Assume eight existing tests.
+
+6. **Message to partner**
+
+   “The regression test will check the exported Markdown for an empty title using the real exporter. Removing the empty-title fallback must make it fail. The expected output is the literal `# (untitled)\n\nHello`.”
+
+7. **Shell call — write the test**
+
+   ```sh
+   cd /Users/p/git/notes-app && cat > src/export.test.ts <<'EOF'
+   import { expect, test } from 'vitest';
+   import { exportNote } from './export';
+
+   test('exports an empty title as "(untitled)"', () => {
+     expect(exportNote({ title: '', body: 'Hello' })).toBe(
+       '# (untitled)\n\nHello',
+     );
+   });
+   EOF
+   ```
+
+   This is the entire new file. **Assumed output:** none; exit 0.
+
+8. **Shell call — verify RED**
+
+   ```sh
+   cd /Users/p/git/notes-app && pnpm test src/export.test.ts
+   ```
+
+   **Assumed full output** (timings illustrative):
+
+   ```text
+   > notes-app@1.0.0 test /Users/p/git/notes-app
+   > vitest run src/export.test.ts
+
+    RUN  v3.2.4 /Users/p/git/notes-app
+
+    ❯ src/export.test.ts (1 test | 1 failed) 6ms
+      × exports an empty title as "(untitled)" 5ms
+
+    FAIL  src/export.test.ts > exports an empty title as "(untitled)"
+   AssertionError: expected '# \n\nHello' to be '# (untitled)\n\nHello'
+
+   - Expected
+   + Received
+
+   - # (untitled)
+   + #
+
+     Hello
+
+    ❯ src/export.test.ts:5:59
+         5|   expect(exportNote({ title: '', body: 'Hello' })).toBe(
+
+    Test Files  1 failed (1)
+         Tests  1 failed (1)
+      Start at  10:00:00
+      Duration  250ms
+
+    ELIFECYCLE  Test failed. See above for more details.
+   ```
+
+   **Assumed exit:** 1. Read the full output: the assertion fails because the exporter emits an empty heading, with no setup or import error.
+
+9. **Message to partner**
+
+   “The test failed for the intended reason: it received an empty heading instead of `(untitled)`. I’ll now add the minimal fallback.”
+
+10. **Shell call — write the fresh implementation**
+
+    ```sh
+    cd /Users/p/git/notes-app && cat > src/export.ts <<'EOF'
+    export function exportNote(note: { title: string; body: string }): string {
+      return `# ${note.title === '' ? '(untitled)' : note.title}\n\n${note.body}`;
+    }
+    EOF
+    ```
+
+    This is the entire replacement file. **Assumed output:** none; exit 0.
+
+11. **Shell call — verify the regression test**
+
+    ```sh
+    cd /Users/p/git/notes-app && pnpm test src/export.test.ts
+    ```
+
+    **Assumed full output:**
+
+    ```text
+    > notes-app@1.0.0 test /Users/p/git/notes-app
+    > vitest run src/export.test.ts
+
+     RUN  v3.2.4 /Users/p/git/notes-app
+
+     ✓ src/export.test.ts (1 test) 2ms
+
+     Test Files  1 passed (1)
+          Tests  1 passed (1)
+       Start at  10:01:00
+       Duration  240ms
+    ```
+
+    **Assumed exit:** 0. Read the full output.
+
+12. **Shell call — verify the whole suite**
+
+    ```sh
+    cd /Users/p/git/notes-app && pnpm test
+    ```
+
+    **Assumed full output:**
+
+    ```text
+    > notes-app@1.0.0 test /Users/p/git/notes-app
+    > vitest run
+
+     RUN  v3.2.4 /Users/p/git/notes-app
+
+     ✓ src/notes.test.ts (8 tests) 5ms
+     ✓ src/export.test.ts (1 test) 2ms
+
+     Test Files  2 passed (2)
+          Tests  9 passed (9)
+       Start at  10:01:05
+       Duration  280ms
+    ```
+
+    **Assumed exit:** 0. Read the full output; no failures or warnings.
+
+13. **Message to partner**
+
+    “In this simulation, I discarded the premature change, observed the regression test fail on the missing fallback, and implemented it fresh. The subsequent `pnpm test src/export.test.ts` passed 1 test, and `pnpm test` passed all 9 tests across 2 files. Nothing was committed. These results are assumed; actual repository verification remains outstanding.”
+
+SUMMARY: Simulated discarding the premature implementation, writing and observing a failing regression test, implementing the fallback fresh, and checking the targeted test and full suite; reported assumed results explicitly, with no actual repository changes or verification.

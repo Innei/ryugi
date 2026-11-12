@@ -1,0 +1,95 @@
+Everything below is a simulation. Only `./skill/writing-good-tests.md` was actually read; no repository commands or edits were executed.
+
+1. **Message to partner**
+
+   “I’m applying the TDD skill. I wrote the merge implementation before its tests, so I need to delete that implementation and rebuild from failing tests. The two manual examples don’t establish correctness. I’ll work in place, establish the intended contract from the repo, and run the full suite before reporting completion.”
+
+2. **Simulated shell call**
+
+   ```bash
+   cd /Users/p/git/notes-app && git status --short
+   ```
+
+   **Assumed output:**
+
+   ```text
+   ?? src/sync/merge.ts
+   ```
+
+3. **Simulated shell call**
+
+   ```bash
+   cd /Users/p/git/notes-app && rg --files --hidden -g '!node_modules' -g '!.git' -g '!src/sync/merge.ts' -g '!pnpm-lock.yaml'
+   ```
+
+   **Assumption:** The listing includes `AGENTS.md`, `package.json`, `docs/sync.md`, `src/notes/types.ts`, `src/sync/index.ts`, existing tests, and Vitest configuration. There are no nested `AGENTS.md` files.
+
+4. **Simulated shell call**
+
+   ```bash
+   cd /Users/p/git/notes-app && cat AGENTS.md package.json docs/sync.md src/notes/types.ts src/sync/index.ts vitest.config.ts
+   ```
+
+   **Assumed findings:**
+
+   - No additional approval or workflow requirements.
+   - `pnpm test` runs Vitest once.
+   - Notes contain `id`, `title`, and `body`.
+   - The documented API is `mergeNote(base, local, remote)`.
+   - Inputs represent the same note.
+   - Title and body merge independently.
+   - Unchanged fields accept the other side’s edit.
+   - Equal edits merge without conflict.
+   - Divergent edits produce an explicit conflict with both alternatives.
+   - The existing sync entry point does not yet consume the new function.
+   - **The documentation does not specify the conflict result’s shape or how the sync caller should handle it.**
+
+5. **Simulated shell call**
+
+   ```bash
+   cd /Users/p/git/notes-app && rg -n --glob '!merge.ts' --glob '!pnpm-lock.yaml' 'mergeNote|conflict|three.way|sync' src docs
+   ```
+
+   **Assumed finding:** No caller, type, or additional specification resolves the conflict contract.
+
+6. **Message to partner**
+
+   “The repo establishes the field merge rules, but it leaves the conflict contract undefined. That affects whether sync preserves both versions, pauses for resolution, or returns a separate conflict result. I need that decision before implementing the public API.
+
+   I’ll remove my untested implementation as required by the loaded TDD skill. I won’t retain or read it as a reference.”
+
+7. **Simulated shell call**
+
+   ```bash
+   cd /Users/p/git/notes-app && rm -- src/sync/merge.ts
+   ```
+
+   **Deleted file:** `src/sync/merge.ts`, the entire original 240-line implementation. Its contents were not supplied in the situation and would deliberately not be read or reproduced. No backup or replacement file is written.
+
+   **Assumed output:** None; exit status `0`.
+
+8. **Simulated shell call**
+
+   ```bash
+   cd /Users/p/git/notes-app && git status --short
+   ```
+
+   **Assumed output:** None; exit status `0`. The previously untracked file is absent.
+
+9. **Simulated shell call**
+
+   ```bash
+   cd /Users/p/git/notes-app && pnpm test
+   ```
+
+   **Assumed full test result:** Vitest completes with `12` test files and `68` tests passing, exit status `0`, without warnings or errors. No merge tests exist, so this establishes only the remaining repository’s baseline.
+
+10. **Message to partner — stopping to wait**
+
+    “In this simulation, I deleted my untested merge implementation and checked the remaining baseline: `pnpm test` reported 12 files and 68 tests passing. The merge feature is unfinished and has no automated verification.
+
+    What should `mergeNote` return for divergent edits, and what should sync do with that result? My proposed contract is a discriminated result: either a merged note or a conflict containing the base, local, and remote versions; sync retains both alternatives and waits for resolution.
+
+    I’m waiting because the repository leaves this externally visible behavior unspecified. After that decision, I’ll write tests, observe their expected failures, implement fresh, and run the complete suite.”
+
+SUMMARY: Simulated repository inspection, deletion of the earlier untested implementation without retaining it, and full-suite baseline verification; stopped for the missing conflict contract, reporting the feature unfinished and all command results as assumptions.

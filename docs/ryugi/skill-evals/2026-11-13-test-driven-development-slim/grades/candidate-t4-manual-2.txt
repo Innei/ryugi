@@ -1,0 +1,1 @@
+PASS — Reverted the untested change, observed the empty-title regression test fail, reimplemented the fallback, and observed targeted and full-suite passes.

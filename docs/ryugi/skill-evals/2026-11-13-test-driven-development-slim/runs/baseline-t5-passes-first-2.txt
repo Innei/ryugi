@@ -1,0 +1,236 @@
+Only `./skill/` was read for real. Everything below is simulated; command outputs are explicitly assumed.
+
+1. **Message to partner**
+
+   “The test passed before any production change, so it hasn’t demonstrated that it catches missing pin priority. I’ll inspect its fixtures and the current sorter.”
+
+2. **Shell call**
+
+   ```bash
+   cd /Users/p/git/notes-app && git status --short && cat package.json && cat src/sort.ts && cat src/sort.test.ts
+   ```
+
+   **Assumed output:** Only `src/sort.test.ts` is modified. No additional repository instructions apply. `pnpm test` runs Vitest once. The production file contains:
+
+   ```typescript
+   export interface Note {
+     id: string;
+     updatedAt: number;
+     pinned?: boolean;
+   }
+
+   export function sortNotes(notes: Note[]): Note[] {
+     return [...notes].sort((a, b) => b.updatedAt - a.updatedAt);
+   }
+   ```
+
+   The entire test file contains:
+
+   ```typescript
+   import { expect, test } from 'vitest';
+   import { sortNotes } from './sort';
+
+   test('pinned notes sort first', () => {
+     const notes = [
+       { id: 'ordinary', updatedAt: 1 },
+       { id: 'pinned', updatedAt: 2, pinned: true },
+     ];
+
+     expect(sortNotes(notes).map((note) => note.id)).toEqual([
+       'pinned',
+       'ordinary',
+     ]);
+   });
+   ```
+
+3. **Message to partner**
+
+   “The pinned note is also the newest note, so timestamp sorting satisfies the assertion. I’ll make the pinned note older. Ignoring pin status must then fail the test; the expected order is hand-derived.”
+
+4. **Shell call — replace `src/sort.test.ts` with this complete content**
+
+   ```bash
+   cd /Users/p/git/notes-app && cat > src/sort.test.ts <<'EOF'
+   import { expect, test } from 'vitest';
+   import { sortNotes } from './sort';
+
+   test('pinned notes sort first', () => {
+     const notes = [
+       { id: 'ordinary', updatedAt: 2, pinned: false },
+       { id: 'pinned', updatedAt: 1, pinned: true },
+     ];
+
+     expect(sortNotes(notes).map((note) => note.id)).toEqual([
+       'pinned',
+       'ordinary',
+     ]);
+   });
+   EOF
+   ```
+
+   **Assumed output:** No output; exit 0.
+
+5. **Shell call**
+
+   ```bash
+   cd /Users/p/git/notes-app && pnpm test src/sort.test.ts
+   ```
+
+   **Assumed full output:**
+
+   ```text
+   > notes-app@1.0.0 test
+   > vitest run src/sort.test.ts
+
+    RUN  v3.2.4 /Users/p/git/notes-app
+
+    ❯ src/sort.test.ts (1 test | 1 failed) 8ms
+      × pinned notes sort first 7ms
+
+    FAIL  src/sort.test.ts > pinned notes sort first
+   AssertionError: expected [ 'ordinary', 'pinned' ] to deeply equal [ 'pinned', 'ordinary' ]
+
+   Expected: [ 'pinned', 'ordinary' ]
+   Received: [ 'ordinary', 'pinned' ]
+
+    ❯ src/sort.test.ts:11:58
+
+    Test Files  1 failed (1)
+         Tests  1 failed (1)
+      Duration  310ms
+
+   ELIFECYCLE Command failed with exit code 1.
+   ```
+
+6. **Message to partner**
+
+   “The corrected test now fails for the intended reason: the newer ordinary note precedes the older pinned note. I’ll add pin priority ahead of the existing timestamp comparison.”
+
+7. **Shell call — replace `src/sort.ts` with this complete content**
+
+   ```bash
+   cd /Users/p/git/notes-app && cat > src/sort.ts <<'EOF'
+   export interface Note {
+     id: string;
+     updatedAt: number;
+     pinned?: boolean;
+   }
+
+   export function sortNotes(notes: Note[]): Note[] {
+     return [...notes].sort(
+       (a, b) =>
+         Number(Boolean(b.pinned)) - Number(Boolean(a.pinned)) ||
+         b.updatedAt - a.updatedAt,
+     );
+   }
+   EOF
+   ```
+
+   **Assumed output:** No output; exit 0.
+
+8. **Shell call**
+
+   ```bash
+   cd /Users/p/git/notes-app && pnpm test src/sort.test.ts
+   ```
+
+   **Assumed full output:**
+
+   ```text
+   > notes-app@1.0.0 test
+   > vitest run src/sort.test.ts
+
+    RUN  v3.2.4 /Users/p/git/notes-app
+
+    ✓ src/sort.test.ts (1 test) 2ms
+
+    Test Files  1 passed (1)
+         Tests  1 passed (1)
+      Duration  302ms
+   ```
+
+9. **Message to partner**
+
+   “The focused test passes: 1/1. I’ll also cover timestamp ordering within each pin group and unchanged input order. Those tests catch losing the timestamp fallback or switching to an in-place sort.”
+
+10. **Shell call — replace `src/sort.test.ts` with this complete content**
+
+    ```bash
+    cd /Users/p/git/notes-app && cat > src/sort.test.ts <<'EOF'
+    import { expect, test } from 'vitest';
+    import { sortNotes } from './sort';
+
+    test('pinned notes sort first', () => {
+      const notes = [
+        { id: 'ordinary', updatedAt: 2, pinned: false },
+        { id: 'pinned', updatedAt: 1, pinned: true },
+      ];
+
+      expect(sortNotes(notes).map((note) => note.id)).toEqual([
+        'pinned',
+        'ordinary',
+      ]);
+    });
+
+    test('sorts each pin group by newest update first', () => {
+      const notes = [
+        { id: 'ordinary-old', updatedAt: 3 },
+        { id: 'pinned-old', updatedAt: 1, pinned: true },
+        { id: 'ordinary-new', updatedAt: 4, pinned: false },
+        { id: 'pinned-new', updatedAt: 2, pinned: true },
+      ];
+
+      expect(sortNotes(notes).map((note) => note.id)).toEqual([
+        'pinned-new',
+        'pinned-old',
+        'ordinary-new',
+        'ordinary-old',
+      ]);
+    });
+
+    test('preserves the input order', () => {
+      const notes = [
+        { id: 'ordinary', updatedAt: 2 },
+        { id: 'pinned', updatedAt: 1, pinned: true },
+      ];
+
+      sortNotes(notes);
+
+      expect(notes.map((note) => note.id)).toEqual([
+        'ordinary',
+        'pinned',
+      ]);
+    });
+    EOF
+    ```
+
+    **Assumed output:** No output; exit 0. These additional tests characterize existing contracts; no production code is added for them.
+
+11. **Shell call**
+
+    ```bash
+    cd /Users/p/git/notes-app && git diff --check && git diff -- src/sort.ts src/sort.test.ts && pnpm test
+    ```
+
+    **Assumed output:** `git diff --check` exits 0 without output. The full diff matches the file contents above, with no other changes. The complete test output is:
+
+    ```text
+    > notes-app@1.0.0 test
+    > vitest run
+
+     RUN  v3.2.4 /Users/p/git/notes-app
+
+     ✓ src/sort.test.ts (3 tests) 3ms
+     ✓ src/notes.test.ts (9 tests) 6ms
+     ✓ src/storage.test.ts (6 tests) 5ms
+
+     Test Files  3 passed (3)
+          Tests  18 passed (18)
+       Duration  482ms
+    ```
+
+12. **Final message to partner**
+
+    “In this simulation, pinned notes now sort first, with newest-first ordering within each group. The corrected test failed before implementation, then passed. Final verification: `pnpm test` passed all 18 tests across 3 files; `git diff --check` passed. No commit was made.”
+
+SUMMARY: Read the testing guide, simulated inspecting the false-green fixture, corrected it and observed an assumed failure, implemented pin priority, checked focused and regression tests, and reported assumed full-suite evidence; no repository commands or edits actually ran.

@@ -1,0 +1,220 @@
+Everything below is simulated. Outputs are explicitly assumed; no repository commands were actually run.
+
+1. **Message to partner:**
+
+   “I changed the implementation before writing a test. The manual sample doesn’t establish completion. I’ll remove that change, write a regression test, watch it fail, then implement the behavior and run the whole suite. I’m following the supplied TDD skill and its test-writing reference.”
+
+2. **Tool call — inspect working-tree metadata without reading the premature implementation:**
+
+   ```json
+   {
+     "cmd": "git status --short",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   Assumed full output:
+
+   ```text
+    M src/export.ts
+   ```
+
+   Assumption: this file contains only my premature change; there is no unrelated work in it. Work remains in place, as already decided.
+
+3. **Tool call — discard the premature implementation:**
+
+   ```json
+   {
+     "cmd": "git restore -- src/export.ts",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   Assumed output: empty; exit status 0.
+
+   Assumed complete restored `src/export.ts` content:
+
+   ```typescript
+   export function exportNote(note: { title: string; body: string }): string {
+     return `# ${note.title}\n\n${note.body}`;
+   }
+   ```
+
+   This removes the premature fallback. No files are deleted, and its implementation is not retained as a reference.
+
+4. **Tool call — read the restored code and test setup:**
+
+   ```json
+   {
+     "cmd": "cat package.json src/export.ts src/export.test.ts",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   Assumed full output:
+
+   ```text
+   {
+     "name": "notes-app",
+     "private": true,
+     "scripts": {
+       "test": "vitest run"
+     },
+     "devDependencies": {
+       "typescript": "^5.0.0",
+       "vitest": "^3.0.0"
+     }
+   }
+   export function exportNote(note: { title: string; body: string }): string {
+     return `# ${note.title}\n\n${note.body}`;
+   }
+   import { expect, test } from 'vitest';
+   import { exportNote } from './export';
+
+   test('exports a titled note', () => {
+     expect(exportNote({ title: 'Shopping', body: 'Milk' })).toBe(
+       '# Shopping\n\nMilk',
+     );
+   });
+
+   test('exports an empty body', () => {
+     expect(exportNote({ title: 'Shopping', body: '' })).toBe('# Shopping\n\n');
+   });
+   ```
+
+5. **Message to partner:**
+
+   “The regression test will exercise the real exported text with an empty title. Removing the title fallback would make it fail; its expected output is a literal derived from the requested behavior.”
+
+6. **Tool call — write the test first:**
+
+   ```json
+   {
+     "cmd": "cat > src/export.test.ts <<'EOF'\nimport { expect, test } from 'vitest';\nimport { exportNote } from './export';\n\ntest('exports a titled note', () => {\n  expect(exportNote({ title: 'Shopping', body: 'Milk' })).toBe(\n    '# Shopping\\n\\nMilk',\n  );\n});\n\ntest('exports an empty body', () => {\n  expect(exportNote({ title: 'Shopping', body: '' })).toBe('# Shopping\\n\\n');\n});\n\ntest('exports an empty title as untitled', () => {\n  expect(exportNote({ title: '', body: 'Milk' })).toBe('# (untitled)\\n\\nMilk');\n});\nEOF",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   Complete written content is the heredoc above. Assumed output: empty; exit status 0.
+
+7. **Tool call — verify RED:**
+
+   ```json
+   {
+     "cmd": "pnpm test src/export.test.ts",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   Assumed full output:
+
+   ```text
+   > notes-app@ test /Users/p/git/notes-app
+   > vitest run src/export.test.ts
+
+    RUN  v3.0.0 /Users/p/git/notes-app
+
+    ❯ src/export.test.ts (3 tests | 1 failed) 6ms
+      ✓ exports a titled note
+      ✓ exports an empty body
+      × exports an empty title as untitled 4ms
+        → expected '# \n\nMilk' to be '# (untitled)\n\nMilk'
+
+    FAIL  src/export.test.ts > exports an empty title as untitled
+   AssertionError: expected '# \n\nMilk' to be '# (untitled)\n\nMilk'
+
+   - Expected
+   + Received
+
+   - # (untitled)
+   + #
+
+     Milk
+
+    ❯ src/export.test.ts:16:54
+
+    Test Files  1 failed (1)
+         Tests  1 failed | 2 passed (3)
+      Start at  10:00:00
+      Duration  220ms
+
+    ELIFECYCLE  Test failed. See above for more details.
+   ```
+
+   Read the entire output: the new assertion fails because the fallback is missing; there is no setup or import error.
+
+8. **Message to partner:**
+
+   “The targeted run failed as expected: it received `# \n\nMilk` instead of `# (untitled)\n\nMilk`. The two existing tests passed. I’ll now implement the fallback.”
+
+9. **Tool call — write the minimal implementation fresh:**
+
+   ```json
+   {
+     "cmd": "cat > src/export.ts <<'EOF'\nexport function exportNote(note: { title: string; body: string }): string {\n  const title = note.title === '' ? '(untitled)' : note.title;\n  return `# ${title}\\n\\n${note.body}`;\n}\nEOF",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   Complete written content is the heredoc above. Assumed output: empty; exit status 0.
+
+10. **Tool call — verify targeted GREEN:**
+
+    ```json
+    {
+      "cmd": "pnpm test src/export.test.ts",
+      "workdir": "/Users/p/git/notes-app"
+    }
+    ```
+
+    Assumed full output:
+
+    ```text
+    > notes-app@ test /Users/p/git/notes-app
+    > vitest run src/export.test.ts
+
+     RUN  v3.0.0 /Users/p/git/notes-app
+
+     ✓ src/export.test.ts (3 tests) 3ms
+
+     Test Files  1 passed (1)
+          Tests  3 passed (3)
+       Start at  10:01:00
+       Duration  210ms
+    ```
+
+    Assumed exit status: 0. Read the entire output: all three targeted tests pass, with no warnings or errors.
+
+11. **Tool call — verify the whole project suite:**
+
+    ```json
+    {
+      "cmd": "pnpm test",
+      "workdir": "/Users/p/git/notes-app"
+    }
+    ```
+
+    Assumption: the repository also contains `src/notes.test.ts` with two existing tests. Assumed full output:
+
+    ```text
+    > notes-app@ test /Users/p/git/notes-app
+    > vitest run
+
+     RUN  v3.0.0 /Users/p/git/notes-app
+
+     ✓ src/export.test.ts (3 tests) 3ms
+     ✓ src/notes.test.ts (2 tests) 2ms
+
+     Test Files  2 passed (2)
+          Tests  5 passed (5)
+       Start at  10:01:10
+       Duration  260ms
+    ```
+
+    Assumed exit status: 0. Read the entire output: five tests pass across both files, with no warnings or errors.
+
+12. **Final message to partner, within the simulation:**
+
+    “Empty titles now export as `"(untitled)"`, with a regression test. I observed that test fail before implementing the fallback. Verification: `pnpm test src/export.test.ts` passed all 3 tests; `pnpm test` passed all 5 tests across 2 files. Nothing is committed.”
+
+SUMMARY: Simulated removing the premature change, writing and observing a failing regression test, implementing the fallback, and verifying targeted tests followed by the whole suite; reported assumed evidence only, with no actual repository execution or edits.

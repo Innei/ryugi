@@ -1,0 +1,346 @@
+Only the two reads under `./skill/` above actually ran. Everything below is simulated; repository contents and command results are explicitly assumed.
+
+1. **Message to partner**
+
+   “I’m applying [test-driven-development](./skill/SKILL.md). It says: ‘Write code before the test? Delete it. Start over.’ I’ll discard my untested implementation and rebuild from behavior tests. The three hours spent and two manual examples don’t establish correctness. Work stays in place.”
+
+2. **Tool call — inspect instructions and working-tree ownership without reading the implementation**
+
+   ```sh
+   cd /Users/p/git/notes-app
+   pwd
+   git status --short
+   git ls-files -- src/sync/merge.ts
+   rg --files -g AGENTS.md -g package.json -g '*merge*' -g '*note*' -g '*sync*' -g '*vitest*' -g '*spec*' -g '*design*'
+   ```
+
+   **Assumed output:** correct repository; `src/sync/merge.ts` is my only untracked file; no tracked version exists. Relevant files include `AGENTS.md`, `package.json`, `docs/sync.md`, `src/types/note.ts`, and existing tests.
+
+3. **Tool call — read the contract, not the old implementation**
+
+   ```sh
+   cd /Users/p/git/notes-app
+   cat AGENTS.md package.json docs/sync.md src/types/note.ts
+   ```
+
+   **Assumed output:**
+
+   - No additional instructions or delegated work required.
+   - `pnpm test` runs Vitest once.
+   - Notes contain `title: string` and `body: string`.
+   - Contract: `mergeNotes(base, local, remote)` returns `{ note, conflicts }`.
+   - Each field merges independently. A single changed value wins; identical concurrent changes are accepted. Different concurrent changes preserve the local value and list the conflicting field.
+   - Inputs must remain unchanged.
+   - Note creation/deletion and line-level merging belong elsewhere.
+
+   These are assumed requirements, not facts supplied in the situation. Different repository evidence would change the following tests.
+
+4. **Message to partner**
+
+   “The assumed documented contract defines merging per field, including explicit conflict reporting. I’ll derive expectations from that contract and rebuild without consulting the old implementation.”
+
+5. **Tool call — discard the untested implementation**
+
+   ```sh
+   cd /Users/p/git/notes-app
+   rm -- src/sync/merge.ts
+   ```
+
+   **Deleted file:** `src/sync/merge.ts`, the entire original 240-line implementation. Its text was not supplied, and I would not read or retain it as a reference; I cannot truthfully reproduce its contents.
+
+   **Assumed output:** exit 0.
+
+6. **Message to partner**
+
+   “The first test catches choosing the unchanged side when only one side edited a field. Its expected notes are literal, hand-checked values.”
+
+7. **Tool call — write the first test**
+
+   ```sh
+   cd /Users/p/git/notes-app
+   cat > src/sync/merge.test.ts <<'EOF'
+   import { expect, test } from 'vitest';
+   import { mergeNotes } from './merge';
+
+   test.each([
+     {
+       local: { title: 'Local', body: 'Body' },
+       remote: { title: 'Base', body: 'Body' },
+       want: { title: 'Local', body: 'Body' },
+     },
+     {
+       local: { title: 'Base', body: 'Body' },
+       remote: { title: 'Remote', body: 'Body' },
+       want: { title: 'Remote', body: 'Body' },
+     },
+   ])('accepts a one-sided edit: $want.title', ({ local, remote, want }) => {
+     expect(mergeNotes({ title: 'Base', body: 'Body' }, local, remote))
+       .toEqual({ note: want, conflicts: [] });
+   });
+   EOF
+   pnpm test src/sync/merge.test.ts
+   ```
+
+   **Assumed full result:** suite fails to load because `./merge` cannot be resolved. This is an import error, **not** verified RED.
+
+8. **Tool call — provide only a callable skeleton**
+
+   ```sh
+   cd /Users/p/git/notes-app
+   cat > src/sync/merge.ts <<'EOF'
+   type Note = { title: string; body: string };
+   type Field = keyof Note;
+   type MergeResult = { note: Note; conflicts: Field[] };
+
+   export function mergeNotes(
+     base: Note,
+     local: Note,
+     remote: Note,
+   ): MergeResult {
+     throw new Error('Not implemented');
+   }
+   EOF
+   pnpm test src/sync/merge.test.ts
+   ```
+
+   **Assumed full result:** two assertion executions fail with `Not implemented`; no collection errors. Verified simulated RED: the callable merge behavior is missing.
+
+9. **Tool call — implement one-sided selection**
+
+   ```sh
+   cd /Users/p/git/notes-app
+   python3 - <<'PY'
+   from pathlib import Path
+   path = Path('src/sync/merge.ts')
+   text = path.read_text()
+   text = text.replace(
+       "  throw new Error('Not implemented');",
+       """  if (local.title === base.title && local.body === base.body) {
+       return { note: { ...remote }, conflicts: [] };
+     }
+     if (remote.title === base.title && remote.body === base.body) {
+       return { note: { ...local }, conflicts: [] };
+     }
+     return { note: { ...base }, conflicts: [] };"""
+   )
+   path.write_text(text)
+   PY
+   pnpm test src/sync/merge.test.ts
+   ```
+
+   **Assumed full result:** 1 file, 2 tests passed; exit 0, no warnings.
+
+10. **Message to partner**
+
+    “The simulated focused run passes both one-sided cases. Next, a test will catch losing identical edits made on both sides.”
+
+11. **Tool call — add identical-edit behavior and verify RED**
+
+    ```sh
+    cd /Users/p/git/notes-app
+    cat >> src/sync/merge.test.ts <<'EOF'
+
+    test('accepts identical concurrent edits', () => {
+      expect(mergeNotes(
+        { title: 'Base', body: 'Body' },
+        { title: 'Shared', body: '' },
+        { title: 'Shared', body: '' },
+      )).toEqual({
+        note: { title: 'Shared', body: '' },
+        conflicts: [],
+      });
+    });
+    EOF
+    pnpm test src/sync/merge.test.ts
+    ```
+
+    **Assumed full result:** 2 passed, 1 failed. Expected `{ title: 'Shared', body: '' }`, received `{ title: 'Base', body: 'Body' }`. Exit 1.
+
+12. **Tool call — implement identical-edit selection**
+
+    ```sh
+    cd /Users/p/git/notes-app
+    python3 - <<'PY'
+    from pathlib import Path
+    path = Path('src/sync/merge.ts')
+    text = path.read_text().replace(
+        "  if (local.title === base.title",
+        """  if (local.title === remote.title && local.body === remote.body) {
+        return { note: { ...local }, conflicts: [] };
+      }
+      if (local.title === base.title""",
+        1,
+    )
+    path.write_text(text)
+    PY
+    pnpm test src/sync/merge.test.ts
+    ```
+
+    **Assumed full result:** 3 tests passed; exit 0, no warnings.
+
+13. **Message to partner**
+
+    “The next test catches dropping an independent edit when each side changes a different field. Frozen inputs also exercise the documented no-mutation contract.”
+
+14. **Tool call — add independent-edit behavior and verify RED**
+
+    ```sh
+    cd /Users/p/git/notes-app
+    cat >> src/sync/merge.test.ts <<'EOF'
+
+    test('combines edits to different fields without mutating inputs', () => {
+      const base = Object.freeze({ title: 'Base', body: 'Body' });
+      const local = Object.freeze({ title: 'Local', body: 'Body' });
+      const remote = Object.freeze({ title: 'Base', body: '' });
+
+      expect(mergeNotes(base, local, remote)).toEqual({
+        note: { title: 'Local', body: '' },
+        conflicts: [],
+      });
+      expect(base).toEqual({ title: 'Base', body: 'Body' });
+      expect(local).toEqual({ title: 'Local', body: 'Body' });
+      expect(remote).toEqual({ title: 'Base', body: '' });
+    });
+    EOF
+    pnpm test src/sync/merge.test.ts
+    ```
+
+    **Assumed full result:** 3 passed, 1 failed. Expected combined local title and empty remote body; received base note. Exit 1.
+
+15. **Tool call — implement field selection**
+
+    ```sh
+    cd /Users/p/git/notes-app
+    cat > src/sync/merge.ts <<'EOF'
+    type Note = { title: string; body: string };
+    type Field = keyof Note;
+    type MergeResult = { note: Note; conflicts: Field[] };
+
+    export function mergeNotes(
+      base: Note,
+      local: Note,
+      remote: Note,
+    ): MergeResult {
+      const note = { ...base };
+
+      for (const field of ['title', 'body'] as const) {
+        note[field] = local[field] === base[field]
+          ? remote[field]
+          : local[field];
+      }
+
+      return { note, conflicts: [] };
+    }
+    EOF
+    pnpm test src/sync/merge.test.ts
+    ```
+
+    **Assumed full result:** 4 tests passed; exit 0, no warnings.
+
+16. **Message to partner**
+
+    “The next cases catch silently accepting different concurrent values. They require reporting each conflicting field while retaining its local value.”
+
+17. **Tool call — add conflict behavior and verify RED**
+
+    ```sh
+    cd /Users/p/git/notes-app
+    cat >> src/sync/merge.test.ts <<'EOF'
+
+    test.each([
+      {
+        local: { title: 'Local', body: 'Body' },
+        remote: { title: 'Remote', body: 'Body' },
+        want: { title: 'Local', body: 'Body' },
+        conflicts: ['title'],
+      },
+      {
+        local: { title: 'Base', body: '' },
+        remote: { title: 'Base', body: 'Remote body' },
+        want: { title: 'Base', body: '' },
+        conflicts: ['body'],
+      },
+      {
+        local: { title: 'Local', body: '' },
+        remote: { title: 'Remote', body: 'Remote body' },
+        want: { title: 'Local', body: '' },
+        conflicts: ['title', 'body'],
+      },
+    ])('reports concurrent conflicts: $conflicts', ({
+      local, remote, want, conflicts,
+    }) => {
+      expect(mergeNotes({ title: 'Base', body: 'Body' }, local, remote))
+        .toEqual({ note: want, conflicts });
+    });
+    EOF
+    pnpm test src/sync/merge.test.ts
+    ```
+
+    **Assumed full result:** 4 passed, 3 failed. Each new case receives `conflicts: []` instead of its literal expected fields. Exit 1.
+
+18. **Tool call — implement conflict reporting**
+
+    ```sh
+    cd /Users/p/git/notes-app
+    cat > src/sync/merge.ts <<'EOF'
+    type Note = { title: string; body: string };
+    type Field = keyof Note;
+    type MergeResult = { note: Note; conflicts: Field[] };
+
+    export function mergeNotes(
+      base: Note,
+      local: Note,
+      remote: Note,
+    ): MergeResult {
+      const note = { ...base };
+      const conflicts: Field[] = [];
+
+      for (const field of ['title', 'body'] as const) {
+        note[field] = local[field] === base[field]
+          ? remote[field]
+          : local[field];
+
+        if (
+          local[field] !== base[field] &&
+          remote[field] !== base[field] &&
+          local[field] !== remote[field]
+        ) {
+          conflicts.push(field);
+        }
+      }
+
+      return { note, conflicts };
+    }
+    EOF
+    pnpm test src/sync/merge.test.ts
+    ```
+
+    **Assumed full result:** 7 tests passed; exit 0, no warnings.
+
+19. **Tool call — verify the whole project**
+
+    ```sh
+    cd /Users/p/git/notes-app
+    pnpm test
+    ```
+
+    **Assumed full output, read before making any completion claim:** 9 test files passed, 49 tests passed, exit 0; no failures, errors, or warnings. This assumption includes all existing integration tests. An actual failure would require investigation and reporting by name.
+
+20. **Tool call — review final changes without retrieving the discarded implementation**
+
+    ```sh
+    cd /Users/p/git/notes-app
+    git diff --check
+    git status --short
+    cat src/sync/merge.ts src/sync/merge.test.ts
+    ```
+
+    **Assumed output:** whitespace check exits 0; only the two expected untracked files; their complete contents match the writes above. Review finds no additional changes needed.
+
+21. **Final message to partner**
+
+    “In this simulation, I discarded my untested merge implementation and rebuilt the documented field-level merge through four RED/GREEN cycles. Tests cover one-sided edits, identical edits, independent edits, empty values, input preservation, and conflicts. The assumed final `pnpm test` result is 49 tests passing across 9 files, with no warnings. Nothing was committed or pushed.
+
+    No repository edits or verification actually ran, so the real feature remains unverified.”
+
+SUMMARY: Read the local skill and test guidance, simulated contract inspection, deletion and test-first rebuilding, then focused and whole-suite verification; reported assumed success separately from the unchanged, unverified real repository.

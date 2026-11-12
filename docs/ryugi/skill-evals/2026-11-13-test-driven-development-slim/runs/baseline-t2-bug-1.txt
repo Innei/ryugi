@@ -1,0 +1,136 @@
+Everything below is simulated; only `./skill/writing-good-tests.md` was actually read.
+
+1. Message to partner:
+
+   “I’m using the TDD skill: reproduce the missing last item, verify the failure, make the one-line fix, then run the full suite.”
+
+2. Shell call:
+
+   ```sh
+   cd /Users/p/git/notes-app && pwd && rg --files --hidden -g AGENTS.md -g '!node_modules' -g '!.git' /Users/p/git /Users/p /Users 2>/dev/null
+   ```
+
+   Assumed output: working directory confirmed; no applicable `AGENTS.md` files found.
+
+3. Shell call:
+
+   ```sh
+   cd /Users/p/git/notes-app && git status --short && cat package.json && cat src/paginate.ts && rg --files -g '*test*' -g '*spec*' -g '*vitest*' -g '!node_modules'
+   ```
+
+   Assumed output: clean working tree; `test` script is `vitest run`; existing tests use named imports; pages are one-based. Assume `src/paginate.ts` contains:
+
+   ```ts
+   export function paginate<T>(items: T[], page: number, size: number): T[] {
+     const start = (page - 1) * size;
+     const end = start + size;
+     return items.slice(start, end - 1);
+   }
+   ```
+
+4. Message to partner:
+
+   “The regression will call the real function with five items and a page size of three. Page two must return `[4, 5]`. Passing `end - 1` to `slice` should make this test fail.”
+
+5. Shell call creating `src/paginate.regression.test.ts`, with its complete contents:
+
+   ```sh
+   cd /Users/p/git/notes-app && cat > src/paginate.regression.test.ts <<'EOF'
+   import { expect, test } from 'vitest';
+   import { paginate } from './paginate';
+
+   test('includes the final item on the last page', () => {
+     expect(paginate([1, 2, 3, 4, 5], 2, 3)).toEqual([4, 5]);
+   });
+   EOF
+   ```
+
+   Assumed output: exit 0.
+
+6. Shell call:
+
+   ```sh
+   cd /Users/p/git/notes-app && pnpm test src/paginate.regression.test.ts
+   ```
+
+   Assume the full output shows one **passing** test: `slice(3, 5)` returns `[4, 5]`. Exit 0.
+
+7. Message to partner:
+
+   “That fixture passed against the bug: its end index extends past the array, masking the missing item. I’ll use a full last page so the test exposes the boundary error.”
+
+8. Shell call replacing `src/paginate.regression.test.ts`, with its complete contents:
+
+   ```sh
+   cd /Users/p/git/notes-app && cat > src/paginate.regression.test.ts <<'EOF'
+   import { expect, test } from 'vitest';
+   import { paginate } from './paginate';
+
+   test('includes the final item on a full last page', () => {
+     expect(paginate([1, 2, 3, 4], 2, 2)).toEqual([3, 4]);
+   });
+   EOF
+   ```
+
+   Assumed output: exit 0.
+
+9. Shell call:
+
+   ```sh
+   cd /Users/p/git/notes-app && pnpm test src/paginate.regression.test.ts
+   ```
+
+   Assume the full output shows the expected assertion failure: expected `[3, 4]`, received `[3]`; one failed test. Exit 1.
+
+10. Shell call applying the production change:
+
+    ```sh
+    cd /Users/p/git/notes-app && apply_patch <<'PATCH'
+    *** Begin Patch
+    *** Update File: src/paginate.ts
+    @@
+    -  return items.slice(start, end - 1);
+    +  return items.slice(start, end);
+    *** End Patch
+    PATCH
+    ```
+
+    Assumed output: patch applied. Complete resulting file:
+
+    ```ts
+    export function paginate<T>(items: T[], page: number, size: number): T[] {
+      const start = (page - 1) * size;
+      const end = start + size;
+      return items.slice(start, end);
+    }
+    ```
+
+11. Shell call:
+
+    ```sh
+    cd /Users/p/git/notes-app && pnpm test src/paginate.regression.test.ts
+    ```
+
+    Assume the full output shows one test passed, no warnings or errors. Exit 0.
+
+12. Shell call:
+
+    ```sh
+    cd /Users/p/git/notes-app && pnpm test
+    ```
+
+    Assume the full output shows all 13 tests across four files passed, no warnings or errors. Exit 0.
+
+13. Shell call:
+
+    ```sh
+    cd /Users/p/git/notes-app && git diff --check && git diff -- src/paginate.ts && git status --short && cat src/paginate.regression.test.ts
+    ```
+
+    Assumed output: whitespace check exits 0; production diff contains only the `end` correction; status shows the modified production file and new regression test; test contents match step 8.
+
+14. Final message to partner, conditional on those assumed results:
+
+    “Fixed the last-page boundary by passing `end` to `slice`. The regression failed with `[3]` instead of `[3, 4]` before the fix and passed afterward. `pnpm test` passed all 13 tests across four files; `git diff --check` passed. No commit made.”
+
+SUMMARY: Simulated inspection, corrected a masking fixture, verified the regression failure, applied the one-line fix, and verified targeted tests, the full suite, and the diff; all execution results are explicitly assumed, with no actual repository changes or test runs.

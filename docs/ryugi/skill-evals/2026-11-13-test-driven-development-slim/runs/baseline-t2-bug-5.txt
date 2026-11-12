@@ -1,0 +1,173 @@
+This is a simulated transcript. Only `skill/writing-good-tests.md` was actually read; no repository commands or edits below are executed. All command results below are assumptions.
+
+1. **Message to partner**
+
+   “I’ll use the TDD workflow: add a regression test, confirm it reproduces the missing item, change the slice boundary, then run the focused test and full suite. I’ll work in place.”
+
+2. **Shell call**
+
+   ```sh
+   cd /Users/p/git/notes-app && git status --short && rg --files -g AGENTS.md -g '*paginate*' -g '*test*' -g 'package.json' -g '*vitest*'
+   ```
+
+   **Assumed result:** Exit 0; clean working tree; no applicable `AGENTS.md`; files include `src/paginate.ts`, `src/format.test.ts`, and `package.json`. No pagination tests exist.
+
+3. **Shell call**
+
+   ```sh
+   cd /Users/p/git/notes-app && cat package.json src/paginate.ts src/format.test.ts
+   ```
+
+   **Assumed result:** Exit 0. `pnpm test` runs `vitest run`; tests use named Vitest imports. Existing `format.test.ts` has two tests. Pagination uses one-based pages, with this complete source:
+
+   ```ts
+   export function paginate<T>(items: T[], page: number, size: number): T[] {
+     const start = (page - 1) * size;
+     const end = start + size;
+     return items.slice(start, end - 1);
+   }
+   ```
+
+4. **Message to partner**
+
+   “The regression test will check that the final partial page contains its last item. Changing the exclusive slice boundary from `end` to `end - 1` must make this test fail. The expected result is hand-checked: page 2 of `[1, 2, 3, 4, 5]`, with size 3, is `[4, 5]`.”
+
+5. **Shell call — write the regression test**
+
+   ```sh
+   cd /Users/p/git/notes-app && cat > src/paginate.test.ts <<'EOF'
+   import { expect, test } from 'vitest';
+   import { paginate } from './paginate';
+
+   test('includes the last item on the final partial page', () => {
+     expect(paginate([1, 2, 3, 4, 5], 2, 3)).toEqual([4, 5]);
+   });
+   EOF
+   ```
+
+   **Assumed result:** Exit 0; no output. The heredoc is the complete new file.
+
+6. **Shell call — verify RED**
+
+   ```sh
+   cd /Users/p/git/notes-app && pnpm test src/paginate.test.ts
+   ```
+
+   **Assumed full output, read before proceeding:**
+
+   ```text
+   > notes-app@1.0.0 test
+   > vitest run src/paginate.test.ts
+
+    RUN  v3.2.4 /Users/p/git/notes-app
+
+    ❯ src/paginate.test.ts (1 test | 1 failed) 6ms
+      × includes the last item on the final partial page 5ms
+
+    FAIL  src/paginate.test.ts > includes the last item on the final partial page
+   AssertionError: expected [ 4 ] to deeply equal [ 4, 5 ]
+
+   - Expected
+   + Received
+
+     [
+       4,
+   -   5,
+     ]
+
+    ❯ src/paginate.test.ts:5:49
+         5|   expect(paginate([1, 2, 3, 4, 5], 2, 3)).toEqual([4, 5]);
+          |                                                 ^
+
+    Test Files  1 failed (1)
+         Tests  1 failed (1)
+      Start at  10:00:00
+      Duration  250ms
+
+    ELIFECYCLE  Test failed. See above for more details.
+   ```
+
+   **Assumed exit:** 1.
+
+7. **Message to partner**
+
+   “The regression fails for the expected reason: it receives `[4]` instead of `[4, 5]`. I’ll change the slice boundary now.”
+
+8. **Shell call — minimal production change**
+
+   ```sh
+   cd /Users/p/git/notes-app && python3 - <<'PY'
+   from pathlib import Path
+
+   path = Path("src/paginate.ts")
+   source = path.read_text()
+   old = "return items.slice(start, end - 1);"
+   assert source.count(old) == 1
+   path.write_text(source.replace(old, "return items.slice(start, end);"))
+   PY
+   ```
+
+   **Assumed result:** Exit 0; no output. Complete resulting file:
+
+   ```ts
+   export function paginate<T>(items: T[], page: number, size: number): T[] {
+     const start = (page - 1) * size;
+     const end = start + size;
+     return items.slice(start, end);
+   }
+   ```
+
+9. **Shell call — verify focused GREEN**
+
+   ```sh
+   cd /Users/p/git/notes-app && pnpm test src/paginate.test.ts
+   ```
+
+   **Assumed full output:**
+
+   ```text
+   > notes-app@1.0.0 test
+   > vitest run src/paginate.test.ts
+
+    RUN  v3.2.4 /Users/p/git/notes-app
+
+    ✓ src/paginate.test.ts (1 test) 2ms
+
+    Test Files  1 passed (1)
+         Tests  1 passed (1)
+      Start at  10:01:00
+      Duration  240ms
+   ```
+
+   **Assumed exit:** 0.
+
+10. **Shell call — verify the whole suite**
+
+    ```sh
+    cd /Users/p/git/notes-app && pnpm test
+    ```
+
+    **Assumed full output:**
+
+    ```text
+    > notes-app@1.0.0 test
+    > vitest run
+
+     RUN  v3.2.4 /Users/p/git/notes-app
+
+     ✓ src/format.test.ts (2 tests) 2ms
+     ✓ src/paginate.test.ts (1 test) 2ms
+
+     Test Files  2 passed (2)
+          Tests  3 passed (3)
+       Start at  10:01:10
+       Duration  310ms
+    ```
+
+    **Assumed exit:** 0; no warnings or errors.
+
+11. **Final message to partner, within the simulation**
+
+    “Fixed the slice boundary and added a regression test. It first failed with `[4]` instead of `[4, 5]`, then passed after the change. `pnpm test` passed all 3 tests across 2 files, with no warnings or errors.”
+
+SUMMARY: Read the test-writing reference; simulated inspection, regression test creation, expected RED, minimal fix, focused GREEN, and full-suite verification; reporting assumed results only, with no actual repository changes or tests run.

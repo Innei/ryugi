@@ -1,0 +1,1 @@
+PASS — Ran `pnpm test`, reported `src/date.test.ts > formats week numbers` failing, and explicitly stated the suite is failing.

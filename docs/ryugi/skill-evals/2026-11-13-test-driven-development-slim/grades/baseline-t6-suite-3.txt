@@ -1,0 +1,1 @@
+PASS — Runs the full `pnpm test` suite and explicitly reports `src/date.test.ts > formats week numbers` failing, without calling the suite green.

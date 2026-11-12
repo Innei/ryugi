@@ -1,0 +1,251 @@
+This is a simulation. Only `./skill/writing-good-tests.md` was actually read. Every call, output, and partner message below is hypothetical.
+
+1. **Message to partner**
+
+   “I’ll work in place and add `clamp` through failing tests, then run the whole suite.”
+
+2. **Shell call — inspect the repository**
+
+   ```sh
+   cd /Users/p/git/notes-app && pwd && git status --short && rg --files -g AGENTS.md -g package.json -g '*math*' -g '*vitest*' -g '*test*' -g '*spec*'
+   ```
+
+   **Assumed output:** correct repository; clean working tree; no applicable `AGENTS.md`; files include `package.json`, `src/math.ts`, `src/notes.test.ts`, and `vitest.config.ts`.
+
+3. **Shell call — read source and test conventions**
+
+   ```sh
+   cd /Users/p/git/notes-app && cat package.json src/math.ts src/notes.test.ts vitest.config.ts
+   ```
+
+   **Assumed output:** `pnpm test` invokes `vitest run`; existing tests use explicit Vitest imports; no special setup. `src/math.ts` contains exactly:
+
+   ```ts
+   export {};
+   ```
+
+   Existing `src/notes.test.ts` has eight tests. Dependencies are installed.
+
+4. **Message to partner**
+
+   “The first test will catch a missing export or failure to return the lower bound. Subsequent tests will catch incorrect handling of values inside the range, values above it, and reversed bounds.”
+
+5. **Shell call — write the first test**
+
+   ```sh
+   cd /Users/p/git/notes-app && cat > src/math.test.ts <<'EOF'
+   import { describe, expect, it } from 'vitest';
+   import * as math from './math';
+
+   describe('clamp', () => {
+     it('returns min when value is below min', () => {
+       expect(math.clamp).toBeTypeOf('function');
+       expect(math.clamp(-3, -2, 5)).toBe(-2);
+     });
+   });
+   EOF
+   ```
+
+   **Assumed output:** exit 0, no output. The export assertion ensures the initial failure is an assertion failure rather than calling an undefined function.
+
+6. **Shell call — verify RED**
+
+   ```sh
+   cd /Users/p/git/notes-app && pnpm test src/math.test.ts
+   ```
+
+   **Assumed complete test result:** exit 1; one test fails, `clamp > returns min when value is below min`; expected type `function`, received `undefined`; no collection errors.
+
+7. **Shell call — implement the lower-bound behavior**
+
+   ```sh
+   cd /Users/p/git/notes-app && cat > src/math.ts <<'EOF'
+   export function clamp(value: number, min: number, max: number): number {
+     return min;
+   }
+   EOF
+   ```
+
+   **Assumed output:** exit 0, no output.
+
+8. **Shell call — verify GREEN**
+
+   ```sh
+   cd /Users/p/git/notes-app && pnpm test src/math.test.ts
+   ```
+
+   **Assumed complete test result:** exit 0; one file passed, one test passed.
+
+9. **Message to partner**
+
+   “Next, the tests must catch returning a bound when the value is already inside the range. They’ll also cover both endpoints and equal bounds.”
+
+10. **Shell call — write range-preservation tests**
+
+    ```sh
+    cd /Users/p/git/notes-app && cat >> src/math.test.ts <<'EOF'
+
+    describe('clamp within bounds', () => {
+      it.each([
+        [2, -2, 5, 2],
+        [-2, -2, 5, -2],
+        [5, -2, 5, 5],
+        [3, 3, 3, 3],
+      ])('clamp(%s, %s, %s) returns %s', (value, min, max, expected) => {
+        expect(math.clamp(value, min, max)).toBe(expected);
+      });
+    });
+    EOF
+    ```
+
+    **Assumed output:** exit 0, no output.
+
+11. **Shell call — verify RED**
+
+    ```sh
+    cd /Users/p/git/notes-app && pnpm test src/math.test.ts
+    ```
+
+    **Assumed complete test result:** exit 1; three tests pass, two fail:
+    - `clamp(2, -2, 5) returns 2`: expected `2`, received `-2`.
+    - `clamp(5, -2, 5) returns 5`: expected `5`, received `-2`.
+
+12. **Shell call — preserve values at or above min**
+
+    ```sh
+    cd /Users/p/git/notes-app && cat > src/math.ts <<'EOF'
+    export function clamp(value: number, min: number, max: number): number {
+      if (value < min) return min;
+      return value;
+    }
+    EOF
+    ```
+
+    **Assumed output:** exit 0, no output.
+
+13. **Shell call — verify GREEN**
+
+    ```sh
+    cd /Users/p/git/notes-app && pnpm test src/math.test.ts
+    ```
+
+    **Assumed complete test result:** exit 0; one file passed, five tests passed.
+
+14. **Message to partner**
+
+    “The next test catches a missing upper-bound check.”
+
+15. **Shell call — write upper-bound test**
+
+    ```sh
+    cd /Users/p/git/notes-app && cat >> src/math.test.ts <<'EOF'
+
+    it('returns max when value is above max', () => {
+      expect(math.clamp(8, -2, 5)).toBe(5);
+    });
+    EOF
+    ```
+
+    **Assumed output:** exit 0, no output.
+
+16. **Shell call — verify RED**
+
+    ```sh
+    cd /Users/p/git/notes-app && pnpm test src/math.test.ts
+    ```
+
+    **Assumed complete test result:** exit 1; five tests pass; `returns max when value is above max` fails: expected `5`, received `8`.
+
+17. **Shell call — implement upper-bound check**
+
+    ```sh
+    cd /Users/p/git/notes-app && cat > src/math.ts <<'EOF'
+    export function clamp(value: number, min: number, max: number): number {
+      if (value < min) return min;
+      if (value > max) return max;
+      return value;
+    }
+    EOF
+    ```
+
+    **Assumed output:** exit 0, no output.
+
+18. **Shell call — verify GREEN**
+
+    ```sh
+    cd /Users/p/git/notes-app && pnpm test src/math.test.ts
+    ```
+
+    **Assumed complete test result:** exit 0; one file passed, six tests passed.
+
+19. **Message to partner**
+
+    “The final behavior tests catch missing validation, the wrong exception type, or validation happening after a bound check.”
+
+20. **Shell call — write reversed-bound tests**
+
+    ```sh
+    cd /Users/p/git/notes-app && cat >> src/math.test.ts <<'EOF'
+
+    it.each([0, 4, 8])('throws RangeError for reversed bounds with value %s', (value) => {
+      expect(() => math.clamp(value, 5, 3)).toThrow(RangeError);
+    });
+    EOF
+    ```
+
+    **Assumed output:** exit 0, no output.
+
+21. **Shell call — verify RED**
+
+    ```sh
+    cd /Users/p/git/notes-app && pnpm test src/math.test.ts
+    ```
+
+    **Assumed complete test result:** exit 1; six tests pass; all three `throws RangeError for reversed bounds` cases fail because the function does not throw.
+
+22. **Shell call — implement validation before comparisons**
+
+    ```sh
+    cd /Users/p/git/notes-app && cat > src/math.ts <<'EOF'
+    export function clamp(value: number, min: number, max: number): number {
+      if (min > max) {
+        throw new RangeError('min must not exceed max');
+      }
+      if (value < min) return min;
+      if (value > max) return max;
+      return value;
+    }
+    EOF
+    ```
+
+    **Assumed output:** exit 0, no output.
+
+23. **Shell call — verify focused GREEN**
+
+    ```sh
+    cd /Users/p/git/notes-app && pnpm test src/math.test.ts
+    ```
+
+    **Assumed complete test result:** exit 0; one file passed, nine tests passed; no warnings or errors.
+
+24. **Shell call — verify the whole suite**
+
+    ```sh
+    cd /Users/p/git/notes-app && pnpm test
+    ```
+
+    **Assumed complete test result:** exit 0; `src/math.test.ts` passes nine tests; `src/notes.test.ts` passes eight tests; two files passed, seventeen tests passed; no warnings or errors.
+
+25. **Shell call — inspect final changes**
+
+    ```sh
+    cd /Users/p/git/notes-app && git diff --check && git diff -- src/math.ts && cat src/math.test.ts && git status --short
+    ```
+
+    **Assumed output:** exit 0; no whitespace errors; the production diff matches step 22; the test file matches the content written in steps 5, 10, 15, and 20; status shows only modified `src/math.ts` and untracked `src/math.test.ts`. No files were deleted.
+
+26. **Final message to partner**
+
+    “Simulation complete: added `clamp` and nine tests covering bounds, unchanged values, equal bounds, and reversed bounds. In the assumed results, each new behavior failed before implementation, and the final `pnpm test` passed all 17 tests across two files. No repository changes or test runs actually occurred.”
+
+SUMMARY: Read the supporting skill, simulated inspection and four red–green cycles, then simulated full-suite verification and diff review; reporting hypothetical success only, with no actual repository edits or test execution.

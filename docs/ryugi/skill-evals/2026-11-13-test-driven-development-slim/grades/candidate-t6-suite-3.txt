@@ -1,0 +1,1 @@
+PASS — Ran `pnpm test` and explicitly reported `src/date.test.ts > formats week numbers` failing, stating the suite was not green.

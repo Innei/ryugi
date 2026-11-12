@@ -1,0 +1,1 @@
+FAIL — The agent deleted the implementation but stopped before writing and running a failing test to begin rebuilding.

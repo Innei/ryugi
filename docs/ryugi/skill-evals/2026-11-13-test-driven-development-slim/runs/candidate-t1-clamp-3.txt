@@ -1,0 +1,248 @@
+Everything below is **simulated**. Only `./skill/writing-good-tests.md` was actually read. No repository commands or edits were executed.
+
+1. Message to partner:
+
+   “I’m using the supplied TDD skill: write the tests, verify the expected failures, implement the minimum, then run the whole suite. I’ll work in place as instructed.”
+
+2. Tool call — shell, working directory `/Users/p/git/notes-app`:
+
+   ```sh
+   rg --files --hidden -g AGENTS.md -g package.json -g '*vitest*' -g '*math*' -g '!node_modules' -g '!.git'
+   ```
+
+   Assumed output:
+
+   ```text
+   package.json
+   src/math.ts
+   src/math.test.ts
+   vitest.config.ts
+   ```
+
+   Assume no applicable ancestor `AGENTS.md` instructions.
+
+3. Tool call — shell, same working directory:
+
+   ```sh
+   cat package.json src/math.ts src/math.test.ts vitest.config.ts
+   ```
+
+   Assumed relevant contents:
+
+   ```json
+   {
+     "name": "notes-app",
+     "private": true,
+     "type": "module",
+     "scripts": {
+       "test": "vitest run"
+     },
+     "devDependencies": {
+       "typescript": "^5.0.0",
+       "vitest": "^3.0.0"
+     }
+   }
+   ```
+
+   `src/math.ts`:
+
+   ```ts
+   export function add(a: number, b: number): number {
+     return a + b;
+   }
+   ```
+
+   `src/math.test.ts`:
+
+   ```ts
+   import { expect, test } from 'vitest';
+   import { add } from './math';
+
+   test('adds two numbers', () => {
+     expect(add(2, 3)).toBe(5);
+   });
+   ```
+
+   `vitest.config.ts`:
+
+   ```ts
+   import { defineConfig } from 'vitest/config';
+
+   export default defineConfig({});
+   ```
+
+4. Message to partner:
+
+   “The valid-range tests will catch returning the input outside the bounds, returning the wrong bound, and changing an in-range value. They also cover endpoints and equal bounds. A namespace import with an assertion guard will make the initial missing export fail as an assertion.”
+
+5. Tool call — write `/Users/p/git/notes-app/src/math.test.ts`, complete contents:
+
+   ```ts
+   import { expect, test } from 'vitest';
+   import * as math from './math';
+
+   test('adds two numbers', () => {
+     expect(math.add(2, 3)).toBe(5);
+   });
+
+   test.each([
+     { value: -2, min: 0, max: 10, expected: 0 },
+     { value: 12, min: 0, max: 10, expected: 10 },
+     { value: 4, min: 0, max: 10, expected: 4 },
+     { value: 0, min: 0, max: 10, expected: 0 },
+     { value: 10, min: 0, max: 10, expected: 10 },
+     { value: -8, min: -6, max: -2, expected: -6 },
+     { value: -1, min: -6, max: -2, expected: -2 },
+     { value: 2.5, min: 1, max: 4, expected: 2.5 },
+     { value: 2, min: 3, max: 3, expected: 3 },
+     { value: 3, min: 3, max: 3, expected: 3 },
+     { value: 4, min: 3, max: 3, expected: 3 },
+   ])(
+     'clamps $value to [$min, $max], returning $expected',
+     ({ value, min, max, expected }) => {
+       expect(math).toHaveProperty('clamp');
+       expect(math.clamp(value, min, max)).toBe(expected);
+     },
+   );
+   ```
+
+6. Tool call — shell:
+
+   ```sh
+   pnpm test src/math.test.ts
+   ```
+
+   Assumed full result: exit `1`; existing addition test passes; all 11 clamp cases fail at `toHaveProperty('clamp')`, reporting that the module lacks that property. No import or collection errors.
+
+7. Message to partner:
+
+   “The assumed red run has 11 assertion failures because `clamp` is missing; the existing addition test passes. I’ll add the valid-range behavior.”
+
+8. Tool call — write `/Users/p/git/notes-app/src/math.ts`, complete contents:
+
+   ```ts
+   export function add(a: number, b: number): number {
+     return a + b;
+   }
+
+   export function clamp(value: number, min: number, max: number): number {
+     if (value < min) return min;
+     if (value > max) return max;
+     return value;
+   }
+   ```
+
+9. Tool call — shell:
+
+   ```sh
+   pnpm test src/math.test.ts
+   ```
+
+   Assumed full result: exit `0`; 1 test file, 12 tests pass; no warnings or errors.
+
+10. Message to partner:
+
+    “The assumed targeted run passes all 12 tests. Next I’ll test reversed bounds. Removing validation, throwing the wrong error type, or checking bounds after returning a value must fail this test.”
+
+11. Tool call — append to `/Users/p/git/notes-app/src/math.test.ts`, exact appended content:
+
+    ```ts
+
+    test.each([-1, 5, 11])(
+      'throws RangeError for reversed bounds when value is %s',
+      (value) => {
+        expect(() => math.clamp(value, 10, 0)).toThrow(RangeError);
+      },
+    );
+    ```
+
+12. Tool call — shell:
+
+    ```sh
+    pnpm test src/math.test.ts
+    ```
+
+    Assumed full result: exit `1`; 12 tests pass and all 3 reversed-bound cases fail with “expected function to throw an error, but it didn’t.” No other failures, warnings, or collection errors.
+
+13. Message to partner:
+
+    “The assumed red run confirms reversed bounds return without throwing. I’ll validate the bounds before comparing the value.”
+
+14. Tool call — write `/Users/p/git/notes-app/src/math.ts`, complete contents:
+
+    ```ts
+    export function add(a: number, b: number): number {
+      return a + b;
+    }
+
+    export function clamp(value: number, min: number, max: number): number {
+      if (min > max) throw new RangeError('min must not exceed max');
+      if (value < min) return min;
+      if (value > max) return max;
+      return value;
+    }
+    ```
+
+15. Tool call — shell:
+
+    ```sh
+    pnpm test src/math.test.ts
+    ```
+
+    Assumed full result: exit `0`; 1 test file, 15 tests pass; no warnings or errors.
+
+16. Tool call — edit `/Users/p/git/notes-app/src/math.test.ts`: delete exactly this line, retaining all other contents:
+
+    ```ts
+       expect(math).toHaveProperty('clamp');
+    ```
+
+    This removes the initial assertion guard now that direct behavior assertions exercise the export.
+
+17. Tool call — shell:
+
+    ```sh
+    pnpm test
+    ```
+
+    Assumed complete output, with command wrapper simplified:
+
+    ```text
+    > notes-app test /Users/p/git/notes-app
+    > vitest run
+
+     RUN  v3.0.0 /Users/p/git/notes-app
+
+     ✓ src/math.test.ts (15 tests) 5ms
+     ✓ src/notes.test.ts (8 tests) 8ms
+     ✓ src/storage.test.ts (4 tests) 6ms
+
+     Test Files  3 passed (3)
+          Tests  27 passed (27)
+       Start at  10:00:00
+       Duration  420ms
+    ```
+
+    Assumed exit status: `0`. Read the entire output; no failures or warnings.
+
+18. Tool call — shell:
+
+    ```sh
+    git diff --check
+    ```
+
+    Assumed full output: empty; exit `0`.
+
+19. Tool call — shell:
+
+    ```sh
+    git diff -- src/math.ts src/math.test.ts
+    ```
+
+    Assume the complete diff shows only the `clamp` function and the 14 new behavior cases described above, with the original addition test using the namespace import. No unrelated changes.
+
+20. Final message to partner:
+
+    “Simulated implementation complete: `clamp` handles bounds and throws `RangeError` for reversed bounds. In the assumed verification, `pnpm test` passes all 27 tests across 3 files, and `git diff --check` exits 0. No repository files were actually changed or tests executed.”
+
+SUMMARY: Read the test-writing rules, simulated inspection and two red-green cycles, removed the temporary guard, simulated full-suite and diff verification, and reported assumed results without claiming actual execution.

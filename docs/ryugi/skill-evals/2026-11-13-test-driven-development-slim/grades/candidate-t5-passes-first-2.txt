@@ -1,0 +1,1 @@
+PASS — Investigated the false-green fixture, corrected it, and observed both tests fail for missing pin priority before changing src/sort.ts.

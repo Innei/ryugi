@@ -1,0 +1,1 @@
+PASS — Tests preceded implementation, the initial run failed because clamp was missing, subsequent tests passed, and the full pnpm test suite passed before reporting.

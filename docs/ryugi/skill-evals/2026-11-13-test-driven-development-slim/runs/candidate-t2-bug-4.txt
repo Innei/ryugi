@@ -1,0 +1,199 @@
+The skill reference was actually read. Everything below is simulated; repository contents and command outputs are explicit assumptions. No repository commands were executed.
+
+1. **Message to partner**
+
+   “I’ll reproduce the dropped item with a regression test, confirm it fails, change the slice boundary, then run the focused test and full suite.”
+
+2. **Shell call** — working directory `/Users/p/git/notes-app` for every call below:
+
+   ```sh
+   git status --short
+   ```
+
+   **Assumed full output:** empty; exit 0. Working tree is clean.
+
+3. **Shell call**
+
+   ```sh
+   rg --files --hidden -g AGENTS.md -g package.json -g '*paginate*' -g '*test*' -g '*vitest*' -g '!node_modules' -g '!.git'
+   ```
+
+   **Assumed full output**, exit 0:
+
+   ```text
+   package.json
+   src/paginate.ts
+   src/search.test.ts
+   ```
+
+4. **Shell call**
+
+   ```sh
+   cat package.json src/paginate.ts src/search.test.ts
+   ```
+
+   **Assumed full output**, exit 0:
+
+   ```typescript
+   {
+     "name": "notes-app",
+     "private": true,
+     "scripts": {
+       "test": "vitest run"
+     },
+     "devDependencies": {
+       "typescript": "^5.0.0",
+       "vitest": "^3.0.0"
+     }
+   }
+   export function paginate<T>(items: T[], page: number, size: number): T[] {
+     const start = (page - 1) * size;
+     const end = start + size;
+     return items.slice(start, end - 1);
+   }
+   import { expect, test } from 'vitest';
+   import { search } from './search';
+
+   test('finds matching notes', () => {
+     expect(search(['apple', 'pear'], 'app')).toEqual(['apple']);
+   });
+
+   test('returns no matches for absent text', () => {
+     expect(search(['apple'], 'pear')).toEqual([]);
+   });
+
+   test('searches an empty collection', () => {
+     expect(search([], 'apple')).toEqual([]);
+   });
+   ```
+
+5. **Message to partner**
+
+   “Pages are numbered from 1. With five items and a page size of two, page 3 must return `[5]`. Using `end - 1` returns `[]`; this test will catch that boundary bug.”
+
+6. **Shell call** — writes the complete new file `src/paginate.test.ts`:
+
+   ```sh
+   cat > src/paginate.test.ts <<'EOF'
+   import { expect, test } from 'vitest';
+   import { paginate } from './paginate';
+
+   test('retains the final item on a partially filled last page', () => {
+     expect(paginate([1, 2, 3, 4, 5], 3, 2)).toEqual([5]);
+   });
+   EOF
+   ```
+
+   **Assumed full output:** empty; exit 0.
+
+7. **Shell call**
+
+   ```sh
+   pnpm test src/paginate.test.ts
+   ```
+
+   **Assumed full output**, exit 1:
+
+   ```text
+   > notes-app@ test /Users/p/git/notes-app
+   > vitest run src/paginate.test.ts
+
+    RUN  v3.0.0 /Users/p/git/notes-app
+
+    ❯ src/paginate.test.ts (1 test | 1 failed) 7ms
+      × retains the final item on a partially filled last page 6ms
+
+    FAIL  src/paginate.test.ts > retains the final item on a partially filled last page
+   AssertionError: expected [] to deeply equal [ 5 ]
+
+   - Expected
+   + Received
+
+   - [
+   -   5,
+   - ]
+   + []
+
+    ❯ src/paginate.test.ts:5:51
+         3|
+         4| test('retains the final item on a partially filled last page', () => {
+         5|   expect(paginate([1, 2, 3, 4, 5], 3, 2)).toEqual([5]);
+          |                                                   ^
+         6| });
+
+    Test Files  1 failed (1)
+         Tests  1 failed (1)
+      Start at  10:00:00
+      Duration  250ms
+
+    ELIFECYCLE  Test failed. See above for more details.
+   ```
+
+8. **Message to partner**
+
+   “The regression test fails for the expected reason: the last page returns `[]` instead of `[5]`. I’ll change the slice boundary now.”
+
+9. **Shell call** — writes the complete contents of `src/paginate.ts`:
+
+   ```sh
+   cat > src/paginate.ts <<'EOF'
+   export function paginate<T>(items: T[], page: number, size: number): T[] {
+     const start = (page - 1) * size;
+     const end = start + size;
+     return items.slice(start, end);
+   }
+   EOF
+   ```
+
+   **Assumed full output:** empty; exit 0.
+
+10. **Shell call**
+
+    ```sh
+    pnpm test src/paginate.test.ts
+    ```
+
+    **Assumed full output**, exit 0:
+
+    ```text
+    > notes-app@ test /Users/p/git/notes-app
+    > vitest run src/paginate.test.ts
+
+     RUN  v3.0.0 /Users/p/git/notes-app
+
+     ✓ src/paginate.test.ts (1 test) 2ms
+
+     Test Files  1 passed (1)
+          Tests  1 passed (1)
+       Start at  10:00:10
+       Duration  240ms
+    ```
+
+11. **Shell call**
+
+    ```sh
+    pnpm test
+    ```
+
+    **Assumed full output**, exit 0:
+
+    ```text
+    > notes-app@ test /Users/p/git/notes-app
+    > vitest run
+
+     RUN  v3.0.0 /Users/p/git/notes-app
+
+     ✓ src/search.test.ts (3 tests) 3ms
+     ✓ src/paginate.test.ts (1 test) 2ms
+
+     Test Files  2 passed (2)
+          Tests  4 passed (4)
+       Start at  10:00:12
+       Duration  280ms
+    ```
+
+12. **Final message to partner in the simulation**
+
+    “Fixed the dropped last item by changing `slice(start, end - 1)` to `slice(start, end)`. The regression test first failed with `[]` versus `[5]`, then passed. `pnpm test` passed all 4 tests across 2 files.”
+
+SUMMARY: Read the test-writing reference; simulated repository inspection, regression test, expected failure, minimal fix, focused pass, and full-suite pass; reporting assumed results only, with no actual repository changes or test execution.

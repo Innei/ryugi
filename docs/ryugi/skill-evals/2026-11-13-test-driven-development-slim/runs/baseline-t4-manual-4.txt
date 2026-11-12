@@ -1,0 +1,203 @@
+Everything below is simulated. Only `./skill/writing-good-tests.md` was actually read; no repository commands or edits were executed.
+
+1. **Message to partner**
+
+   “I wrote the fallback before adding a test, so I haven’t verified this properly. I’m applying the TDD skill: remove that implementation, write and observe a failing regression test, then implement it again and run the full suite. Work stays in place.”
+
+2. **Tool call — inspect the working state and original code**
+
+   ```sh
+   cd /Users/p/git/notes-app && git status --short && git show HEAD:src/export.ts && rg --files -g AGENTS.md -g package.json -g '*test*' -g '*spec*'
+   ```
+
+   **Assumed output:**
+
+   ```text
+    M src/export.ts
+   export function exportNote(note: { title: string; body: string }): string {
+     return `# ${note.title}\n\n${note.body}`;
+   }
+   package.json
+   src/search.test.ts
+   ```
+
+   Assume the only uncommitted change is my earlier fallback implementation, no applicable `AGENTS.md` exists, and `src/export.test.ts` does not exist. I have read the original version, without inspecting or retaining the premature implementation.
+
+3. **Tool call — inspect test conventions**
+
+   ```sh
+   cd /Users/p/git/notes-app && cat package.json src/search.test.ts
+   ```
+
+   **Assumed output:**
+
+   ```text
+   {
+     "name": "notes-app",
+     "private": true,
+     "type": "module",
+     "scripts": {
+       "test": "vitest run"
+     },
+     "devDependencies": {
+       "typescript": "^5.0.0",
+       "vitest": "^3.0.0"
+     }
+   }
+   import { expect, test } from 'vitest';
+   import { searchNotes } from './search';
+
+   test('finds notes with matching titles', () => {
+     expect(searchNotes([{ title: 'Shopping', body: '' }], 'shop')).toEqual([
+       { title: 'Shopping', body: '' },
+     ]);
+   });
+   ```
+
+4. **Tool call — delete the premature implementation by restoring the original file**
+
+   ```sh
+   cd /Users/p/git/notes-app && cat > src/export.ts <<'EOF'
+   export function exportNote(note: { title: string; body: string }): string {
+     return `# ${note.title}\n\n${note.body}`;
+   }
+   EOF
+   ```
+
+   The heredoc is the complete replacement content. No files are deleted.
+
+   **Assumed result:** exit 0, no output.
+
+5. **Message to partner**
+
+   “The premature implementation has been removed. The regression test will exercise the real exporter and assert the complete exported text. Returning an empty heading instead of the required fallback must make it fail.”
+
+6. **Tool call — write the regression test**
+
+   ```sh
+   cd /Users/p/git/notes-app && cat > src/export.test.ts <<'EOF'
+   import { expect, test } from 'vitest';
+   import { exportNote } from './export';
+
+   test('exports an empty title as "(untitled)"', () => {
+     expect(exportNote({ title: '', body: 'Remember milk.' })).toBe(
+       '# (untitled)\n\nRemember milk.',
+     );
+   });
+   EOF
+   ```
+
+   **Assumed result:** exit 0, no output.
+
+7. **Tool call — verify RED**
+
+   ```sh
+   cd /Users/p/git/notes-app && pnpm test src/export.test.ts
+   ```
+
+   **Assumed full output:**
+
+   ```text
+   > notes-app@ test /Users/p/git/notes-app
+   > vitest run src/export.test.ts
+
+    RUN  v3.0.0 /Users/p/git/notes-app
+
+    ❯ src/export.test.ts (1 test | 1 failed) 5ms
+      × exports an empty title as "(untitled)" 4ms
+        → expected '# \n\nRemember milk.' to be '# (untitled)\n\nRemember milk.'
+
+    FAIL  src/export.test.ts > exports an empty title as "(untitled)"
+   AssertionError: expected '# \n\nRemember milk.' to be '# (untitled)\n\nRemember milk.'
+
+   - Expected
+   + Received
+
+   - # (untitled)
+   + #
+
+     Remember milk.
+
+    ❯ src/export.test.ts:5:64
+
+    Test Files  1 failed (1)
+         Tests  1 failed (1)
+      Start at  10:00:00
+      Duration  250ms
+
+    ELIFECYCLE  Test failed. See above for more details.
+   ```
+
+   **Assumed exit:** 1. The assertion fails because the fallback is missing, with no import or setup error.
+
+8. **Message to partner**
+
+   “The regression test failed for the expected reason: the exporter produced an empty heading. I’ll now implement the fallback.”
+
+9. **Tool call — write the minimal implementation fresh**
+
+   ```sh
+   cd /Users/p/git/notes-app && cat > src/export.ts <<'EOF'
+   export function exportNote(note: { title: string; body: string }): string {
+     const title = note.title === '' ? '(untitled)' : note.title;
+     return `# ${title}\n\n${note.body}`;
+   }
+   EOF
+   ```
+
+   **Assumed result:** exit 0, no output.
+
+10. **Tool call — verify GREEN**
+
+    ```sh
+    cd /Users/p/git/notes-app && pnpm test src/export.test.ts
+    ```
+
+    **Assumed full output:**
+
+    ```text
+    > notes-app@ test /Users/p/git/notes-app
+    > vitest run src/export.test.ts
+
+     RUN  v3.0.0 /Users/p/git/notes-app
+
+     ✓ src/export.test.ts (1 test) 2ms
+
+     Test Files  1 passed (1)
+          Tests  1 passed (1)
+       Start at  10:00:10
+       Duration  240ms
+    ```
+
+    **Assumed exit:** 0.
+
+11. **Tool call — run the whole project suite**
+
+    ```sh
+    cd /Users/p/git/notes-app && pnpm test
+    ```
+
+    **Assumed full output:**
+
+    ```text
+    > notes-app@ test /Users/p/git/notes-app
+    > vitest run
+
+     RUN  v3.0.0 /Users/p/git/notes-app
+
+     ✓ src/search.test.ts (1 test) 2ms
+     ✓ src/export.test.ts (1 test) 2ms
+
+     Test Files  2 passed (2)
+          Tests  2 passed (2)
+       Start at  10:00:15
+       Duration  310ms
+    ```
+
+    **Assumed exit:** 0, with no warnings or errors.
+
+12. **Final message to partner, conditional on those actual results**
+
+    “Empty titles now export as `"(untitled)"`, with a regression test. I observed the test fail on the missing fallback before implementing it. The targeted run passed, and `pnpm test` passed the full suite: 2 files, 2 tests. Nothing is committed.”
+
+SUMMARY: Simulated removing the premature implementation, writing and observing a failing regression test, implementing the fallback fresh, and verifying the targeted test and whole suite; all repository results are explicitly assumed, and no real fix or passing tests are claimed.

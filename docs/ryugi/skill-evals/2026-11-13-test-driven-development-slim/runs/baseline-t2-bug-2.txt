@@ -1,0 +1,148 @@
+Everything below is simulated. Only `./skill/writing-good-tests.md` was actually read; no repository commands or edits were executed.
+
+**Message to partner:** “I’m following the TDD skill: reproduce the missing item with a regression test, make the one-line fix, then run the full suite.”
+
+**1. Tool call — inspect the repository.**
+
+```sh
+cd /Users/p/git/notes-app && pwd && git status --short && rg --files -g AGENTS.md -g '*paginate*' -g '*test*' -g package.json -g '*vitest*'
+```
+
+Assume output:
+```text
+/Users/p/git/notes-app
+package.json
+src/paginate.ts
+src/search.test.ts
+vitest.config.ts
+```
+
+Assume a clean working tree and no applicable `AGENTS.md`.
+
+**2. Tool call — read implementation and test conventions.**
+
+```sh
+cd /Users/p/git/notes-app && cat package.json src/paginate.ts src/search.test.ts vitest.config.ts
+```
+
+Assume the package uses Vitest with `"test": "vitest run"`, tests import from `vitest`, and pagination is one-based. Assume the complete implementation is:
+
+```ts
+export function paginate<T>(items: T[], page: number, size: number): T[] {
+  const start = (page - 1) * size;
+  const end = start + size;
+  return items.slice(start, end - 1);
+}
+```
+
+**Message to partner:** “The regression will assert that page 2 of `[1, 2, 3]`, with size 2, returns `[3]`. Using `end - 1` incorrectly returns an empty page; the expected value is hand-checked.”
+
+**3. Tool call — write the regression test first.**
+
+```sh
+cd /Users/p/git/notes-app && cat > src/paginate.test.ts <<'EOF'
+import { expect, test } from 'vitest';
+import { paginate } from './paginate';
+
+test('includes the last item on the final page', () => {
+  expect(paginate([1, 2, 3], 2, 2)).toEqual([3]);
+});
+EOF
+```
+
+Entire new file content appears above. Assume the write succeeds.
+
+**4. Tool call — verify RED.**
+
+```sh
+cd /Users/p/git/notes-app && pnpm test src/paginate.test.ts
+```
+
+Assume exit code 1 and full test output showing:
+
+```text
+ FAIL  src/paginate.test.ts > includes the last item on the final page
+AssertionError: expected [] to deeply equal [ 3 ]
+
+- Expected
++ Received
+
+- [
+-   3,
+- ]
++ []
+
+ Test Files  1 failed (1)
+      Tests  1 failed (1)
+```
+
+**Message to partner:** “The regression fails for the expected reason: pagination returns `[]` where `[3]` is required. I’ll change the slice endpoint now.”
+
+**5. Tool call — apply the minimal production change.**
+
+```sh
+cd /Users/p/git/notes-app && python3 - <<'PY'
+from pathlib import Path
+
+path = Path("src/paginate.ts")
+source = path.read_text()
+old = "return items.slice(start, end - 1);"
+assert source.count(old) == 1
+path.write_text(source.replace(old, "return items.slice(start, end);"))
+PY
+```
+
+Assume success. Complete resulting file:
+
+```ts
+export function paginate<T>(items: T[], page: number, size: number): T[] {
+  const start = (page - 1) * size;
+  const end = start + size;
+  return items.slice(start, end);
+}
+```
+
+No files are deleted.
+
+**6. Tool call — verify the regression.**
+
+```sh
+cd /Users/p/git/notes-app && pnpm test src/paginate.test.ts
+```
+
+Assume exit code 0, with the full output read and showing one test passed, with no errors or warnings.
+
+**7. Tool call — verify the whole project.**
+
+```sh
+cd /Users/p/git/notes-app && pnpm test
+```
+
+Assume exit code 0, with the full output read and showing:
+
+```text
+ ✓ src/paginate.test.ts (1 test)
+ ✓ src/search.test.ts (4 tests)
+
+ Test Files  2 passed (2)
+      Tests  5 passed (5)
+```
+
+Assume no errors or warnings.
+
+**8. Tool call — review the final changes.**
+
+```sh
+cd /Users/p/git/notes-app && git diff --check && git diff -- src/paginate.ts && cat src/paginate.test.ts && git status --short
+```
+
+Assume exit code 0, no whitespace errors, exactly the endpoint change and regression test shown above, and status:
+
+```text
+ M src/paginate.ts
+?? src/paginate.test.ts
+```
+
+**Final message to partner, under those assumed results:** “Fixed the slice endpoint and added a regression test. It failed before the change (`[]` instead of `[3]`), then passed. Full `pnpm test`: 2 files, 5 tests passed; `git diff --check` passed. No commit made.”
+
+SUMMARY: Read the test-writing reference, simulated inspection → regression test → expected failure → minimal fix → focused and full-suite verification → diff review; reported assumed success only, with no actual repository changes or test runs.

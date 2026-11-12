@@ -1,0 +1,492 @@
+Everything below is simulated. Commands and outputs are hypothetical; no repository files were changed and no tests were actually run.
+
+**1. Message to partner**
+
+> The merge implementation was written before its tests. Under the TDD rules you supplied, I need to delete it and rebuild from behavioral tests. I’ll work in place as already decided, derive the contract from the surrounding code and documentation, and run the whole suite before reporting completion.
+
+**2. Shell call — inspect instructions and the merge contract without reading the implementation**
+
+```sh
+cd /Users/p/git/notes-app && pwd && git status --short && rg --files -g AGENTS.md -g package.json -g '*merge*' -g '*note*' -g '*sync*' -g '*vitest*' -g '*spec*' -g '*README*' -g '!node_modules' -g '!src/sync/merge.ts'
+```
+
+Assumed output: the expected repository; only `?? src/sync/merge.ts` is uncommitted. Relevant files are `AGENTS.md`, `package.json`, `src/notes/types.ts`, `docs/sync.md`, and `src/sync/client.ts`.
+
+```sh
+cd /Users/p/git/notes-app && cat AGENTS.md package.json src/notes/types.ts docs/sync.md src/sync/client.ts
+```
+
+Assumed output:
+
+- No additional workflow requirements.
+- `pnpm test` invokes Vitest once.
+- `Note` is `{ id: string; title: string; body: string }`.
+- The consumer expects `mergeNote(base, local, remote)`.
+- All three notes must have the same ID.
+- Title and body merge independently. An unchanged side yields to the changed side. Identical concurrent edits are accepted. Divergent edits preserve the local value and report the field as a conflict, in title/body order.
+- Inputs must remain unchanged.
+- Deletion and line-level text merging are outside this function’s contract.
+
+These are assumptions for this simulation, not facts established about the actual repository.
+
+**3. Shell call — delete the untested implementation**
+
+```sh
+cd /Users/p/git/notes-app && rm src/sync/merge.ts
+```
+
+Deletion: the entire existing 240-line `src/sync/merge.ts`. Its exact former contents were not supplied, and I would not read or retain them as reference. I cannot truthfully reproduce those contents here.
+
+**4. Shell call — establish the baseline**
+
+```sh
+cd /Users/p/git/notes-app && pnpm test
+```
+
+Assumed full output:
+
+```text
+> notes-app test
+> vitest run
+
+ RUN  v3.2.4 /Users/p/git/notes-app
+
+ ✓ src/notes/store.test.ts (12 tests)
+ ✓ src/sync/client.test.ts (8 tests)
+
+ Test Files  2 passed (2)
+      Tests  20 passed (20)
+   Duration  620ms
+```
+
+Assumed exit code: `0`.
+
+**5. Message to partner**
+
+> The assumed contract merges title and body independently and reports divergent edits without discarding the local value. The simulated baseline has 20 passing tests. I’ll first cover unchanged notes and changes made on either side; selecting the wrong side must fail these tests.
+
+**6. Shell call — write the first tests**
+
+```sh
+cd /Users/p/git/notes-app && cat > src/sync/merge.test.ts <<'EOF'
+import { describe, expect, it } from 'vitest';
+import { mergeNote } from './merge';
+
+describe('mergeNote', () => {
+  const base = { id: 'n1', title: 'Original', body: 'Original body' };
+
+  it.each([
+    {
+      name: 'preserves an unchanged note',
+      local: base,
+      remote: base,
+      note: base,
+    },
+    {
+      name: 'accepts a local title change',
+      local: { ...base, title: 'Local title' },
+      remote: base,
+      note: { ...base, title: 'Local title' },
+    },
+    {
+      name: 'accepts a remote body change',
+      local: base,
+      remote: { ...base, body: 'Remote body' },
+      note: { ...base, body: 'Remote body' },
+    },
+  ])('$name', ({ local, remote, note }) => {
+    expect(mergeNote(base, local, remote)).toEqual({
+      note,
+      conflicts: [],
+    });
+  });
+});
+EOF
+pnpm test src/sync/merge.test.ts
+```
+
+Assumed output: Vitest cannot resolve `./merge`; exit `1`. This is a collection error, **not** the required behavioral RED.
+
+**7. Shell call — add only the API skeleton so tests can execute**
+
+```sh
+cd /Users/p/git/notes-app && cat > src/sync/merge.ts <<'EOF'
+import type { Note } from '../notes/types';
+
+export function mergeNote(
+  _base: Note,
+  _local: Note,
+  _remote: Note,
+): { note: Note; conflicts: Array<'title' | 'body'> } | undefined {
+  return undefined;
+}
+EOF
+pnpm test src/sync/merge.test.ts
+```
+
+Assumed full output:
+
+```text
+> notes-app test
+> vitest run src/sync/merge.test.ts
+
+ RUN  v3.2.4 /Users/p/git/notes-app
+
+ ❯ src/sync/merge.test.ts (3 tests | 3 failed)
+   × mergeNote > preserves an unchanged note
+     AssertionError: expected undefined to deeply equal { note: { id: 'n1', title: 'Original', body: 'Original body' }, conflicts: [] }
+   × mergeNote > accepts a local title change
+     AssertionError: expected undefined to deeply equal { note: { id: 'n1', title: 'Local title', body: 'Original body' }, conflicts: [] }
+   × mergeNote > accepts a remote body change
+     AssertionError: expected undefined to deeply equal { note: { id: 'n1', title: 'Original', body: 'Remote body' }, conflicts: [] }
+
+ Test Files  1 failed (1)
+      Tests  3 failed (3)
+   Duration  310ms
+```
+
+Assumed exit code: `1`. The tests now fail because merge behavior is absent.
+
+**8. Shell call — implement the tested behavior**
+
+```sh
+cd /Users/p/git/notes-app && cat > src/sync/merge.ts <<'EOF'
+import type { Note } from '../notes/types';
+
+export function mergeNote(
+  base: Note,
+  local: Note,
+  remote: Note,
+): { note: Note; conflicts: Array<'title' | 'body'> } {
+  return {
+    note: {
+      id: base.id,
+      title: local.title === base.title ? remote.title : local.title,
+      body: local.body === base.body ? remote.body : local.body,
+    },
+    conflicts: [],
+  };
+}
+EOF
+pnpm test src/sync/merge.test.ts
+```
+
+Assumed full output:
+
+```text
+> notes-app test
+> vitest run src/sync/merge.test.ts
+
+ RUN  v3.2.4 /Users/p/git/notes-app
+
+ ✓ src/sync/merge.test.ts (3 tests)
+
+ Test Files  1 passed (1)
+      Tests  3 passed (3)
+   Duration  300ms
+```
+
+Assumed exit code: `0`.
+
+**9. Message to partner**
+
+> The first three simulated tests pass. Next I’m testing independent edits, identical concurrent edits, and divergent edits—including empty strings. Omitting conflict detection or treating an empty string as “unchanged” must fail this coverage.
+
+**10. Shell call — append concurrent-edit tests**
+
+```sh
+cd /Users/p/git/notes-app && cat >> src/sync/merge.test.ts <<'EOF'
+
+describe('concurrent edits', () => {
+  const base = { id: 'n1', title: 'Original', body: 'Original body' };
+
+  it.each([
+    {
+      name: 'combines independent changes',
+      local: { ...base, title: 'Local title' },
+      remote: { ...base, body: 'Remote body' },
+      note: { id: 'n1', title: 'Local title', body: 'Remote body' },
+      conflicts: [],
+    },
+    {
+      name: 'accepts identical concurrent changes',
+      local: { id: 'n1', title: 'Shared', body: '' },
+      remote: { id: 'n1', title: 'Shared', body: '' },
+      note: { id: 'n1', title: 'Shared', body: '' },
+      conflicts: [],
+    },
+    {
+      name: 'reports a divergent title and preserves the local value',
+      local: { ...base, title: '' },
+      remote: { ...base, title: 'Remote title' },
+      note: { ...base, title: '' },
+      conflicts: ['title'],
+    },
+    {
+      name: 'reports a divergent body and preserves the local value',
+      local: { ...base, body: 'Local body' },
+      remote: { ...base, body: '' },
+      note: { ...base, body: 'Local body' },
+      conflicts: ['body'],
+    },
+    {
+      name: 'reports both divergent fields in contract order',
+      local: { id: 'n1', title: 'Local', body: 'Local body' },
+      remote: { id: 'n1', title: 'Remote', body: 'Remote body' },
+      note: { id: 'n1', title: 'Local', body: 'Local body' },
+      conflicts: ['title', 'body'],
+    },
+  ])('$name', ({ local, remote, note, conflicts }) => {
+    expect(mergeNote(base, local, remote)).toEqual({ note, conflicts });
+  });
+});
+EOF
+pnpm test src/sync/merge.test.ts
+```
+
+Assumed full output:
+
+```text
+> notes-app test
+> vitest run src/sync/merge.test.ts
+
+ RUN  v3.2.4 /Users/p/git/notes-app
+
+ ❯ src/sync/merge.test.ts (8 tests | 3 failed)
+   × concurrent edits > reports a divergent title and preserves the local value
+     AssertionError: expected [] to deeply equal [ 'title' ]
+   × concurrent edits > reports a divergent body and preserves the local value
+     AssertionError: expected [] to deeply equal [ 'body' ]
+   × concurrent edits > reports both divergent fields in contract order
+     AssertionError: expected [] to deeply equal [ 'title', 'body' ]
+
+ Test Files  1 failed (1)
+      Tests  3 failed | 5 passed (8)
+   Duration  320ms
+```
+
+Assumed exit code: `1`. The expected failure is missing conflict reporting.
+
+**11. Shell call — implement conflict reporting**
+
+```sh
+cd /Users/p/git/notes-app && cat > src/sync/merge.ts <<'EOF'
+import type { Note } from '../notes/types';
+
+export function mergeNote(
+  base: Note,
+  local: Note,
+  remote: Note,
+): { note: Note; conflicts: Array<'title' | 'body'> } {
+  const note = { ...base };
+  const conflicts: Array<'title' | 'body'> = [];
+
+  for (const field of ['title', 'body'] as const) {
+    note[field] = local[field] === base[field] ? remote[field] : local[field];
+
+    if (
+      local[field] !== base[field] &&
+      remote[field] !== base[field] &&
+      local[field] !== remote[field]
+    ) {
+      conflicts.push(field);
+    }
+  }
+
+  return { note, conflicts };
+}
+EOF
+pnpm test src/sync/merge.test.ts
+```
+
+Assumed full output:
+
+```text
+> notes-app test
+> vitest run src/sync/merge.test.ts
+
+ RUN  v3.2.4 /Users/p/git/notes-app
+
+ ✓ src/sync/merge.test.ts (8 tests)
+
+ Test Files  1 passed (1)
+      Tests  8 passed (8)
+   Duration  310ms
+```
+
+Assumed exit code: `0`.
+
+**12. Message to partner**
+
+> The eight simulated merge cases pass. I’ll now verify the input boundary: mismatched IDs must be rejected, and merging frozen inputs must succeed without changing them. Removing ID validation must fail the new rejection tests.
+
+**13. Shell call — append boundary tests**
+
+```sh
+cd /Users/p/git/notes-app && cat >> src/sync/merge.test.ts <<'EOF'
+
+describe('input boundaries', () => {
+  const base = { id: 'n1', title: 'Original', body: 'Original body' };
+
+  it.each([
+    {
+      name: 'rejects a mismatched local ID',
+      local: { ...base, id: 'n2' },
+      remote: base,
+    },
+    {
+      name: 'rejects a mismatched remote ID',
+      local: base,
+      remote: { ...base, id: 'n2' },
+    },
+    {
+      name: 'rejects matching branch IDs that differ from the base',
+      local: { ...base, id: 'n2' },
+      remote: { ...base, id: 'n2' },
+    },
+  ])('$name', ({ local, remote }) => {
+    expect(() => mergeNote(base, local, remote)).toThrow();
+  });
+
+  it('merges frozen inputs without changing them', () => {
+    const original = Object.freeze({ ...base });
+    const local = Object.freeze({ ...base, title: 'Local' });
+    const remote = Object.freeze({ ...base, body: 'Remote body' });
+
+    expect(mergeNote(original, local, remote)).toEqual({
+      note: { id: 'n1', title: 'Local', body: 'Remote body' },
+      conflicts: [],
+    });
+    expect(original).toEqual({
+      id: 'n1', title: 'Original', body: 'Original body',
+    });
+    expect(local).toEqual({
+      id: 'n1', title: 'Local', body: 'Original body',
+    });
+    expect(remote).toEqual({
+      id: 'n1', title: 'Original', body: 'Remote body',
+    });
+  });
+});
+EOF
+pnpm test src/sync/merge.test.ts
+```
+
+Assumed full output:
+
+```text
+> notes-app test
+> vitest run src/sync/merge.test.ts
+
+ RUN  v3.2.4 /Users/p/git/notes-app
+
+ ❯ src/sync/merge.test.ts (12 tests | 3 failed)
+   × input boundaries > rejects a mismatched local ID
+     AssertionError: expected function to throw an error, but it did not
+   × input boundaries > rejects a mismatched remote ID
+     AssertionError: expected function to throw an error, but it did not
+   × input boundaries > rejects matching branch IDs that differ from the base
+     AssertionError: expected function to throw an error, but it did not
+
+ Test Files  1 failed (1)
+      Tests  3 failed | 9 passed (12)
+   Duration  320ms
+```
+
+Assumed exit code: `1`. The expected failure is missing ID validation. The immutability test already passes; it protects existing behavior and does not justify adding production code.
+
+**14. Shell call — write the final implementation**
+
+```sh
+cd /Users/p/git/notes-app && cat > src/sync/merge.ts <<'EOF'
+import type { Note } from '../notes/types';
+
+export function mergeNote(
+  base: Note,
+  local: Note,
+  remote: Note,
+): { note: Note; conflicts: Array<'title' | 'body'> } {
+  if (local.id !== base.id || remote.id !== base.id) {
+    throw new Error('Cannot merge notes with different IDs');
+  }
+
+  const note = { ...base };
+  const conflicts: Array<'title' | 'body'> = [];
+
+  for (const field of ['title', 'body'] as const) {
+    note[field] = local[field] === base[field] ? remote[field] : local[field];
+
+    if (
+      local[field] !== base[field] &&
+      remote[field] !== base[field] &&
+      local[field] !== remote[field]
+    ) {
+      conflicts.push(field);
+    }
+  }
+
+  return { note, conflicts };
+}
+EOF
+pnpm test src/sync/merge.test.ts
+```
+
+Assumed full output:
+
+```text
+> notes-app test
+> vitest run src/sync/merge.test.ts
+
+ RUN  v3.2.4 /Users/p/git/notes-app
+
+ ✓ src/sync/merge.test.ts (12 tests)
+
+ Test Files  1 passed (1)
+      Tests  12 passed (12)
+   Duration  315ms
+```
+
+Assumed exit code: `0`.
+
+**15. Shell call — verify the whole project**
+
+```sh
+cd /Users/p/git/notes-app && pnpm test
+```
+
+Assumed full output:
+
+```text
+> notes-app test
+> vitest run
+
+ RUN  v3.2.4 /Users/p/git/notes-app
+
+ ✓ src/notes/store.test.ts (12 tests)
+ ✓ src/sync/client.test.ts (8 tests)
+ ✓ src/sync/merge.test.ts (12 tests)
+
+ Test Files  3 passed (3)
+      Tests  32 passed (32)
+   Duration  710ms
+```
+
+Assumed exit code: `0`, with no warnings.
+
+**16. Shell call — inspect final changes**
+
+```sh
+cd /Users/p/git/notes-app && git status --short && git diff --check && cat src/sync/merge.ts src/sync/merge.test.ts
+```
+
+Assumed output: exactly the final file contents above; both files are untracked; `git diff --check` emits nothing. Since untracked files are excluded from that check, their displayed contents are also reviewed directly.
+
+Mental mutation review: always selecting local breaks the remote-edit test; always selecting remote breaks the local-edit test; omitting conflicts breaks divergent-edit tests; reporting identical edits as conflicts breaks the shared-edit test; removing ID checks breaks rejection tests; mutating inputs breaks the frozen-input test.
+
+**17. Final message to partner**
+
+> In this simulation, I deleted the untested implementation and rebuilt the documented merge behavior through observed RED/GREEN cycles. The final simulated `pnpm test` result is 3 files and 32 tests passing, including 12 merge tests, with no warnings. Changes remain uncommitted.
+>
+> Actual status: only the supporting skill file was read. Repository edits and verification were simulated, so I am not reporting the real feature as finished or passing.
+
+SUMMARY: Read the test rules, simulated contract inspection and deletion of the untested implementation, rebuilt through failing tests and minimal implementations, then simulated the full 32-test suite; reporting hypothetical success only, with no actual repository changes or verification.

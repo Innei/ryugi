@@ -1,0 +1,337 @@
+This is a simulation. Only `./skill/writing-good-tests.md` was actually read; no repository commands or edits were executed. All outputs below are explicitly assumed.
+
+1. **Message to partner**
+
+   “I’ll work in place and use the supplied TDD skill: write a failing test, implement only enough to pass, then run the full suite.”
+
+2. **Shell call — inspect repository instructions and files**
+
+   ```sh
+   cd /Users/p/git/notes-app && pwd && rg --files --hidden -g AGENTS.md -g '!node_modules' -g '!.git' /Users/p/git && git status --short && cat package.json && cat src/math.ts && rg --files src -g '*test*' -g '*spec*'
+   ```
+
+   **Assumed output:** No applicable `AGENTS.md`; clean working tree; Vitest runs through `"test": "vitest run"`; `src/math.ts` contains:
+
+   ```ts
+   export function add(a: number, b: number): number {
+     return a + b;
+   }
+   ```
+
+   Existing test file: `src/math.test.ts`.
+
+3. **Shell call — read existing tests**
+
+   ```sh
+   cd /Users/p/git/notes-app && cat src/math.test.ts
+   ```
+
+   **Assumed output:**
+
+   ```ts
+   import { expect, test } from 'vitest';
+   import { add } from './math';
+
+   test.each([
+     [1, 2, 3],
+     [-1, 1, 0],
+     [0, 0, 0],
+   ])('add(%s, %s) returns %s', (a, b, expected) => {
+     expect(add(a, b)).toBe(expected);
+   });
+   ```
+
+4. **Message to partner**
+
+   “The first test will catch missing or incorrect range validation: reversed bounds must throw `RangeError`. Then I’ll cover clamping and boundary values with literal expectations.”
+
+5. **Shell call — write the first test**
+
+   ```sh
+   cd /Users/p/git/notes-app && cat > src/clamp.test.ts <<'EOF'
+   import { expect, test } from 'vitest';
+   import * as math from './math';
+
+   test('clamp throws RangeError when min exceeds max', () => {
+     expect(() => math.clamp(5, 10, 0)).toThrow(RangeError);
+   });
+   EOF
+   ```
+
+   This creates `src/clamp.test.ts` with exactly the content shown. No files are deleted.
+
+6. **Shell call — verify red**
+
+   ```sh
+   cd /Users/p/git/notes-app && pnpm test src/clamp.test.ts
+   ```
+
+   **Assumed full output** (Vitest transpiles TypeScript without type-checking):
+
+   ```text
+   > notes-app@1.0.0 test /Users/p/git/notes-app
+   > vitest run src/clamp.test.ts
+
+    RUN  v3.2.4 /Users/p/git/notes-app
+
+    ❯ src/clamp.test.ts (1 test | 1 failed) 5ms
+      × clamp throws RangeError when min exceeds max 4ms
+        → expected error to be instance of RangeError
+
+   ⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+    FAIL  src/clamp.test.ts > clamp throws RangeError when min exceeds max
+   AssertionError: expected error to be instance of RangeError
+
+   - Expected:
+   [Function RangeError]
+
+   + Received:
+   [TypeError: math.clamp is not a function]
+
+    ❯ src/clamp.test.ts:5:42
+         3|
+         4| test('clamp throws RangeError when min exceeds max', () => {
+         5|   expect(() => math.clamp(5, 10, 0)).toThrow(RangeError);
+          |                                          ^
+         6| });
+
+    Test Files  1 failed (1)
+         Tests  1 failed (1)
+      Start at  10:00:00
+      Duration  240ms (transform 25ms, setup 0ms, collect 20ms, tests 5ms, environment 0ms, prepare 70ms)
+
+    ELIFECYCLE  Test failed. See above for more details.
+   ```
+
+7. **Message to partner**
+
+   “The range-validation assertion failed as expected: it received a `TypeError` because `clamp` is missing, instead of the required `RangeError`. The test was collected and executed.”
+
+8. **Shell call — minimal implementation for the first test**
+
+   ```sh
+   cd /Users/p/git/notes-app && cat >> src/math.ts <<'EOF'
+
+   export function clamp(value: number, min: number, max: number): number {
+     if (min > max) {
+       throw new RangeError('min must not exceed max');
+     }
+     return value;
+   }
+   EOF
+   ```
+
+   This appends exactly the shown content, including its leading blank line. Nothing else changes.
+
+9. **Shell call — verify green**
+
+   ```sh
+   cd /Users/p/git/notes-app && pnpm test src/clamp.test.ts
+   ```
+
+   **Assumed full output:**
+
+   ```text
+   > notes-app@1.0.0 test /Users/p/git/notes-app
+   > vitest run src/clamp.test.ts
+
+    RUN  v3.2.4 /Users/p/git/notes-app
+
+    ✓ src/clamp.test.ts (1 test) 2ms
+
+    Test Files  1 passed (1)
+         Tests  1 passed (1)
+      Start at  10:01:00
+      Duration  230ms (transform 25ms, setup 0ms, collect 20ms, tests 2ms, environment 0ms, prepare 70ms)
+   ```
+
+10. **Message to partner**
+
+    “The validation test now passes in the assumed run. The next cases catch returning an out-of-range value, incorrectly changing an in-range value, and mishandling equal bounds.”
+
+11. **Shell call — append valid-range cases**
+
+    ```sh
+    cd /Users/p/git/notes-app && cat >> src/clamp.test.ts <<'EOF'
+
+    test.each([
+      [-1, 0, 10, 0],
+      [11, 0, 10, 10],
+      [5, 0, 10, 5],
+      [0, 0, 10, 0],
+      [10, 0, 10, 10],
+      [-5, -10, -2, -5],
+      [4, 5, 5, 5],
+      [6, 5, 5, 5],
+    ])('clamp(%s, %s, %s) returns %s', (value, min, max, expected) => {
+      expect(math.clamp(value, min, max)).toBe(expected);
+    });
+    EOF
+    ```
+
+12. **Shell call — verify red**
+
+    ```sh
+    cd /Users/p/git/notes-app && pnpm test src/clamp.test.ts
+    ```
+
+    **Assumed full output:**
+
+    ```text
+    > notes-app@1.0.0 test /Users/p/git/notes-app
+    > vitest run src/clamp.test.ts
+
+     RUN  v3.2.4 /Users/p/git/notes-app
+
+     ❯ src/clamp.test.ts (9 tests | 4 failed) 8ms
+       ✓ clamp throws RangeError when min exceeds max 1ms
+       × clamp(-1, 0, 10) returns 0 3ms
+         → expected -1 to be +0 // Object.is equality
+       × clamp(11, 0, 10) returns 10 1ms
+         → expected 11 to be 10 // Object.is equality
+       ✓ clamp(5, 0, 10) returns 5 0ms
+       ✓ clamp(0, 0, 10) returns 0 0ms
+       ✓ clamp(10, 0, 10) returns 10 0ms
+       ✓ clamp(-5, -10, -2) returns -5 0ms
+       × clamp(4, 5, 5) returns 5 1ms
+         → expected 4 to be 5 // Object.is equality
+       × clamp(6, 5, 5) returns 5 1ms
+         → expected 6 to be 5 // Object.is equality
+
+    ⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+     FAIL  src/clamp.test.ts > clamp(-1, 0, 10) returns 0
+    AssertionError: expected -1 to be +0 // Object.is equality
+
+    - Expected
+    + Received
+
+    - 0
+    + -1
+
+     ❯ src/clamp.test.ts:18:39
+         16|   [6, 5, 5, 5],
+         17| ])('clamp(%s, %s, %s) returns %s', (value, min, max, expected) => {
+         18|   expect(math.clamp(value, min, max)).toBe(expected);
+           |                                       ^
+         19| });
+
+     FAIL  src/clamp.test.ts > clamp(11, 0, 10) returns 10
+    AssertionError: expected 11 to be 10 // Object.is equality
+
+    - Expected
+    + Received
+
+    - 10
+    + 11
+
+     ❯ src/clamp.test.ts:18:39
+
+     FAIL  src/clamp.test.ts > clamp(4, 5, 5) returns 5
+    AssertionError: expected 4 to be 5 // Object.is equality
+
+    - Expected
+    + Received
+
+    - 5
+    + 4
+
+     ❯ src/clamp.test.ts:18:39
+
+     FAIL  src/clamp.test.ts > clamp(6, 5, 5) returns 5
+    AssertionError: expected 6 to be 5 // Object.is equality
+
+    - Expected
+    + Received
+
+    - 5
+    + 6
+
+     ❯ src/clamp.test.ts:18:39
+
+     Test Files  1 failed (1)
+          Tests  4 failed | 5 passed (9)
+       Start at  10:02:00
+       Duration  245ms (transform 25ms, setup 0ms, collect 20ms, tests 8ms, environment 0ms, prepare 70ms)
+
+     ELIFECYCLE  Test failed. See above for more details.
+    ```
+
+13. **Message to partner**
+
+    “The assumed run shows four expected failures: values below and above the range, including equal bounds, are returned unchanged. The in-range cases already pass and serve as regression coverage.”
+
+14. **Shell call — implement the missing branches**
+
+    ```sh
+    cd /Users/p/git/notes-app && cat > src/math.ts <<'EOF'
+    export function add(a: number, b: number): number {
+      return a + b;
+    }
+
+    export function clamp(value: number, min: number, max: number): number {
+      if (min > max) {
+        throw new RangeError('min must not exceed max');
+      }
+      if (value < min) {
+        return min;
+      }
+      if (value > max) {
+        return max;
+      }
+      return value;
+    }
+    EOF
+    ```
+
+15. **Shell call — verify targeted green**
+
+    ```sh
+    cd /Users/p/git/notes-app && pnpm test src/clamp.test.ts
+    ```
+
+    **Assumed full output:**
+
+    ```text
+    > notes-app@1.0.0 test /Users/p/git/notes-app
+    > vitest run src/clamp.test.ts
+
+     RUN  v3.2.4 /Users/p/git/notes-app
+
+     ✓ src/clamp.test.ts (9 tests) 3ms
+
+     Test Files  1 passed (1)
+          Tests  9 passed (9)
+       Start at  10:03:00
+       Duration  230ms (transform 25ms, setup 0ms, collect 20ms, tests 3ms, environment 0ms, prepare 70ms)
+    ```
+
+16. **Shell call — verify the whole project**
+
+    ```sh
+    cd /Users/p/git/notes-app && pnpm test
+    ```
+
+    **Assumed full output:**
+
+    ```text
+    > notes-app@1.0.0 test /Users/p/git/notes-app
+    > vitest run
+
+     RUN  v3.2.4 /Users/p/git/notes-app
+
+     ✓ src/math.test.ts (3 tests) 2ms
+     ✓ src/clamp.test.ts (9 tests) 3ms
+
+     Test Files  2 passed (2)
+          Tests  12 passed (12)
+       Start at  10:04:00
+       Duration  300ms (transform 40ms, setup 0ms, collect 35ms, tests 5ms, environment 0ms, prepare 140ms)
+    ```
+
+17. **Final message to partner**
+
+    “In this simulation, `clamp` implements the requested bounds and `RangeError` behavior. The assumed targeted run passes 9 tests; the assumed `pnpm test` run passes all 12 tests across 2 files without warnings. No actual repository edits or verification occurred.”
+
+SUMMARY: Read the test-writing reference, simulated inspection and two test-first implementation cycles, then targeted and full-suite verification; reported assumed results explicitly, with no actual repository changes or test runs.

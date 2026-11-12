@@ -1,0 +1,1 @@
+PASS — Tests precede implementation, the initial run fails because clamp is missing, subsequent tests pass, and the whole suite runs before reporting.

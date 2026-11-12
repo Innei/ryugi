@@ -1,0 +1,1 @@
+PASS — Reverts the untested change, observes the empty-title regression test fail, reimplements, and verifies passing tests before reporting success.

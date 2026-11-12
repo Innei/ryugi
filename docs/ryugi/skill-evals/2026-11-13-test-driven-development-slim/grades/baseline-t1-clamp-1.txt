@@ -1,0 +1,1 @@
+PASS — Clamp tests precede implementation, fail because clamp is missing, then pass after implementation; the full pnpm test suite passes before reporting.

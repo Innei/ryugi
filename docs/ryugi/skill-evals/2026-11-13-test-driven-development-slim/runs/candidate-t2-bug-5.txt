@@ -1,0 +1,237 @@
+Everything below is simulated. Outputs are explicitly assumed; no repository commands or edits were actually performed.
+
+1. **Message to partner**
+
+   “I’ll add a regression test for the missing last item, confirm it fails, apply the one-line fix, then run the focused test and the full suite. I’ll work in place.”
+
+2. **Shell call**
+
+   ```sh
+   cd /Users/p/git/notes-app && pwd && git status --short && rg --files --hidden -g '!node_modules' -g 'AGENTS.md' -g 'package.json' -g '*paginate*' -g '*vitest*'
+   ```
+
+   **Assumed full output:** clean working tree; these relevant files exist:
+
+   ```text
+   /Users/p/git/notes-app
+   AGENTS.md
+   package.json
+   src/paginate.ts
+   src/paginate.test.ts
+   ```
+
+3. **Shell call**
+
+   ```sh
+   cd /Users/p/git/notes-app && cat AGENTS.md package.json src/paginate.ts src/paginate.test.ts
+   ```
+
+   **Assumed full output:**
+
+   ```text
+   Use pnpm. Keep changes focused.
+   {
+     "name": "notes-app",
+     "private": true,
+     "type": "module",
+     "scripts": {
+       "test": "vitest run"
+     },
+     "devDependencies": {
+       "typescript": "^5.7.0",
+       "vitest": "^3.0.0"
+     }
+   }
+   export function paginate<T>(items: T[], page: number, size: number): T[] {
+     const start = (page - 1) * size;
+     const end = start + size;
+     return items.slice(start, end - 1);
+   }
+   import { expect, test } from 'vitest';
+   import { paginate } from './paginate';
+
+   test('returns an empty page for an empty collection', () => {
+     expect(paginate([], 1, 2)).toEqual([]);
+   });
+   ```
+
+4. **Message to partner**
+
+   “Pages are numbered from 1. The regression will require page 2 of `[1, 2, 3, 4]`, with size 2, to return `[3, 4]`. Using `end - 1` should make this test fail by returning `[3]`.”
+
+5. **Shell call — append the regression test**
+
+   ```sh
+   cd /Users/p/git/notes-app && cat >> src/paginate.test.ts <<'EOF'
+
+   test('includes the final item on the last page', () => {
+     expect(paginate([1, 2, 3, 4], 2, 2)).toEqual([3, 4]);
+   });
+   EOF
+   ```
+
+   **Assumed output:** none; exit 0.
+
+   The complete resulting test file is:
+
+   ```ts
+   import { expect, test } from 'vitest';
+   import { paginate } from './paginate';
+
+   test('returns an empty page for an empty collection', () => {
+     expect(paginate([], 1, 2)).toEqual([]);
+   });
+
+   test('includes the final item on the last page', () => {
+     expect(paginate([1, 2, 3, 4], 2, 2)).toEqual([3, 4]);
+   });
+   ```
+
+6. **Shell call — verify RED**
+
+   ```sh
+   cd /Users/p/git/notes-app && pnpm test src/paginate.test.ts
+   ```
+
+   **Assumed full output, exit 1:**
+
+   ```text
+   > notes-app@ test /Users/p/git/notes-app
+   > vitest run src/paginate.test.ts
+
+    RUN  v3.0.0 /Users/p/git/notes-app
+
+    ❯ src/paginate.test.ts (2 tests | 1 failed) 8ms
+      ✓ returns an empty page for an empty collection
+      × includes the final item on the last page 6ms
+        → expected [ 3 ] to deeply equal [ 3, 4 ]
+
+    FAIL  src/paginate.test.ts > includes the final item on the last page
+   AssertionError: expected [ 3 ] to deeply equal [ 3, 4 ]
+
+   - Expected
+   + Received
+
+     [
+       3,
+   -   4,
+     ]
+
+    ❯ src/paginate.test.ts:9:45
+         9|   expect(paginate([1, 2, 3, 4], 2, 2)).toEqual([3, 4]);
+
+    Test Files  1 failed (1)
+         Tests  1 failed | 1 passed (2)
+      Start at  10:00:00
+      Duration  250ms
+
+    ELIFECYCLE  Test failed. See above for more details.
+   ```
+
+7. **Message to partner**
+
+   “The regression fails for the expected reason: it receives `[3]` instead of `[3, 4]`. I’ll change the slice boundary to `end`.”
+
+8. **Shell call — minimal production edit**
+
+   ```sh
+   cd /Users/p/git/notes-app && python3 - <<'PY'
+   from pathlib import Path
+
+   path = Path("src/paginate.ts")
+   source = path.read_text()
+   old = "return items.slice(start, end - 1);"
+   assert source.count(old) == 1
+   path.write_text(source.replace(old, "return items.slice(start, end);"))
+   PY
+   ```
+
+   **Assumed output:** none; exit 0.
+
+   The complete resulting production file is:
+
+   ```ts
+   export function paginate<T>(items: T[], page: number, size: number): T[] {
+     const start = (page - 1) * size;
+     const end = start + size;
+     return items.slice(start, end);
+   }
+   ```
+
+   No files are deleted.
+
+9. **Shell call — verify focused GREEN**
+
+   ```sh
+   cd /Users/p/git/notes-app && pnpm test src/paginate.test.ts
+   ```
+
+   **Assumed full output, exit 0:**
+
+   ```text
+   > notes-app@ test /Users/p/git/notes-app
+   > vitest run src/paginate.test.ts
+
+    RUN  v3.0.0 /Users/p/git/notes-app
+
+    ✓ src/paginate.test.ts (2 tests) 3ms
+
+    Test Files  1 passed (1)
+         Tests  2 passed (2)
+      Start at  10:00:10
+      Duration  240ms
+   ```
+
+10. **Shell call — verify the whole project and inspect the final diff**
+
+    ```sh
+    cd /Users/p/git/notes-app && pnpm test && git diff --check && git diff && git status --short
+    ```
+
+    **Assumed full output, exit 0:**
+
+    ```text
+    > notes-app@ test /Users/p/git/notes-app
+    > vitest run
+
+     RUN  v3.0.0 /Users/p/git/notes-app
+
+     ✓ src/paginate.test.ts (2 tests) 3ms
+
+     Test Files  1 passed (1)
+          Tests  2 passed (2)
+       Start at  10:00:15
+       Duration  245ms
+
+    diff --git a/src/paginate.test.ts b/src/paginate.test.ts
+    index 1111111..2222222 100644
+    --- a/src/paginate.test.ts
+    +++ b/src/paginate.test.ts
+    @@ -5,3 +5,7 @@ import { paginate } from './paginate';
+     test('returns an empty page for an empty collection', () => {
+       expect(paginate([], 1, 2)).toEqual([]);
+     });
+    +
+    +test('includes the final item on the last page', () => {
+    +  expect(paginate([1, 2, 3, 4], 2, 2)).toEqual([3, 4]);
+    +});
+    diff --git a/src/paginate.ts b/src/paginate.ts
+    index 3333333..4444444 100644
+    --- a/src/paginate.ts
+    +++ b/src/paginate.ts
+    @@ -1,5 +1,5 @@
+     export function paginate<T>(items: T[], page: number, size: number): T[] {
+       const start = (page - 1) * size;
+       const end = start + size;
+    -  return items.slice(start, end - 1);
+    +  return items.slice(start, end);
+     }
+     M src/paginate.test.ts
+     M src/paginate.ts
+    ```
+
+11. **Final message to partner, within the simulation**
+
+    “Fixed the slice boundary and added a regression test. It first failed with `[3]` instead of `[3, 4]`, then passed after the fix. The full `pnpm test` run passed all 2 tests; `git diff --check` exited 0.”
+
+SUMMARY: Read the test-writing rules; simulated inspection, regression test, expected failure, minimal fix, focused pass, full-suite pass, and diff review; all repository outputs and success claims are hypothetical.

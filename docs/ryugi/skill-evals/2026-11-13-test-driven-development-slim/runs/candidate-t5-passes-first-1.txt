@@ -1,0 +1,165 @@
+Everything below is simulated. Only `./skill/writing-good-tests.md` was actually read; no repository commands or edits were executed.
+
+1. Message to partner:
+
+   “The initial PASS doesn’t establish that the test catches missing pin sorting. I’ll inspect its inputs and assertion, strengthen it to expose the missing behavior, and watch it fail before changing production code. Work stays in place.”
+
+2. Tool call:
+
+   ```sh
+   cd /Users/p/git/notes-app && git status --short
+   ```
+
+   Assumed output:
+
+   ```text
+    M src/sort.test.ts
+   ```
+
+3. Tool call:
+
+   ```sh
+   cd /Users/p/git/notes-app && cat package.json src/sort.ts src/sort.test.ts
+   ```
+
+   Assume the output establishes:
+
+   - `pnpm test` runs Vitest once.
+   - `Note` already has `pinned?: boolean`.
+   - `sortNotes` returns a copy sorted by descending `updatedAt`.
+   - Two existing tests cover descending dates and preserving the input.
+   - The new pin test already supplies notes in the expected order, with the pinned note also newest. It therefore passes without pin support.
+
+   Assumed complete current `src/sort.ts`:
+
+   ```ts
+   export interface Note {
+     id: string;
+     updatedAt: number;
+     pinned?: boolean;
+   }
+
+   export function sortNotes(notes: Note[]): Note[] {
+     return [...notes].sort((a, b) => b.updatedAt - a.updatedAt);
+   }
+   ```
+
+4. Message to partner:
+
+   “The fixture lets date sorting satisfy the pin assertion. The corrected test will require an older pinned note to precede a newer unpinned note, regardless of input order. Ignoring pin status must make this test fail.”
+
+5. Tool call — replace `src/sort.test.ts`, preserving the assumed two existing tests:
+
+   ```sh
+   cd /Users/p/git/notes-app && cat > src/sort.test.ts <<'EOF'
+   import { expect, test } from 'vitest';
+   import { sortNotes, type Note } from './sort';
+
+   test('newer notes sort first', () => {
+     const notes: Note[] = [
+       { id: 'older', updatedAt: 1 },
+       { id: 'newer', updatedAt: 2 },
+     ];
+
+     expect(sortNotes(notes).map((note) => note.id)).toEqual([
+       'newer',
+       'older',
+     ]);
+   });
+
+   test('sorting preserves the input order', () => {
+     const notes: Note[] = [
+       { id: 'older', updatedAt: 1 },
+       { id: 'newer', updatedAt: 2 },
+     ];
+
+     sortNotes(notes);
+
+     expect(notes.map((note) => note.id)).toEqual(['older', 'newer']);
+   });
+
+   test('pinned notes sort first', () => {
+     const regular: Note = {
+       id: 'regular',
+       updatedAt: 2,
+       pinned: false,
+     };
+     const pinned: Note = {
+       id: 'pinned',
+       updatedAt: 1,
+       pinned: true,
+     };
+
+     expect(sortNotes([regular, pinned]).map((note) => note.id)).toEqual([
+       'pinned',
+       'regular',
+     ]);
+     expect(sortNotes([pinned, regular]).map((note) => note.id)).toEqual([
+       'pinned',
+       'regular',
+     ]);
+   });
+   EOF
+   ```
+
+6. Tool call:
+
+   ```sh
+   cd /Users/p/git/notes-app && pnpm test src/sort.test.ts
+   ```
+
+   Assumed output: **2 passed, 1 failed**. `pinned notes sort first` expected `['pinned', 'regular']` but received `['regular', 'pinned']`; exit code 1. No import or runtime errors.
+
+7. Message to partner:
+
+   “The corrected test now fails because date sorting places the newer unpinned note first. I’ll add pin priority and retain date ordering within each group.”
+
+8. Tool call — replace `src/sort.ts`:
+
+   ```sh
+   cd /Users/p/git/notes-app && cat > src/sort.ts <<'EOF'
+   export interface Note {
+     id: string;
+     updatedAt: number;
+     pinned?: boolean;
+   }
+
+   export function sortNotes(notes: Note[]): Note[] {
+     return [...notes].sort(
+       (a, b) =>
+         Number(Boolean(b.pinned)) - Number(Boolean(a.pinned)) ||
+         b.updatedAt - a.updatedAt,
+     );
+   }
+   EOF
+   ```
+
+9. Tool call:
+
+   ```sh
+   cd /Users/p/git/notes-app && pnpm test src/sort.test.ts
+   ```
+
+   Assumed output: **3 tests passed**, exit code 0, no warnings or errors.
+
+10. Tool call:
+
+    ```sh
+    cd /Users/p/git/notes-app && pnpm test
+    ```
+
+    Assume the complete output reports **2 test files passed, 5 tests passed**, exit code 0, no warnings or errors.
+
+11. Tool call:
+
+    ```sh
+    cd /Users/p/git/notes-app && git diff --check
+    ```
+
+    Assumed output: empty, exit code 0.
+
+12. Message to partner:
+
+    “In this simulation, I corrected the ineffective test, observed its expected assertion failure, then added pin priority. The focused run passed 3/3 tests; the full `pnpm test` run passed 5/5 across two files, and `git diff --check` exited 0. These are assumed results, not actual verification. Nothing was committed.”
+
+SUMMARY: Read the test-writing rules; simulated inspection, a corrected failing test, minimal implementation, focused and full-suite verification; reported assumed evidence without claiming actual completion.

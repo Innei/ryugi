@@ -1,0 +1,130 @@
+Everything below is simulated. Only the read of `./skill/writing-good-tests.md` above actually ran.
+
+1. **Message to partner**
+
+   “The pinning test passed before implementation, so it hasn’t proved it detects missing pin support. I’ll inspect its fixtures and make it fail for the intended reason before changing production code.”
+
+2. **Tool call**
+   ```sh
+   cd /Users/p/git/notes-app && git status --short && cat src/sort.ts src/sort.test.ts package.json
+   ```
+
+   **Assumed output:** Only `src/sort.test.ts` is modified. `package.json` defines `"test": "vitest run"`. The complete source files are:
+
+   ```ts
+   // src/sort.ts
+   export interface Note {
+     id: string;
+     updatedAt: number;
+     pinned?: boolean;
+   }
+
+   export function sortNotes(notes: Note[]): Note[] {
+     return [...notes].sort((a, b) => b.updatedAt - a.updatedAt);
+   }
+   ```
+
+   ```ts
+   // src/sort.test.ts
+   import { expect, test } from 'vitest';
+   import { sortNotes } from './sort';
+
+   test('newer notes sort first', () => {
+     expect(sortNotes([
+       { id: 'old', updatedAt: 1 },
+       { id: 'new', updatedAt: 2 },
+     ]).map(note => note.id)).toEqual(['new', 'old']);
+   });
+
+   test('pinned notes sort first', () => {
+     expect(sortNotes([
+       { id: 'pinned', updatedAt: 2, pinned: true },
+       { id: 'regular', updatedAt: 1 },
+     ]).map(note => note.id)).toEqual(['pinned', 'regular']);
+   });
+   ```
+
+3. **Message to partner**
+
+   “The pinned note is already newer, so the existing date sort satisfies the assertion. I’ll use an older pinned note. Omitting pin priority must then fail this test.”
+
+4. **Tool call — replace the test file with this exact content**
+   ```sh
+   cd /Users/p/git/notes-app && cat > src/sort.test.ts <<'EOF'
+   import { expect, test } from 'vitest';
+   import { sortNotes } from './sort';
+
+   test('newer notes sort first', () => {
+     expect(sortNotes([
+       { id: 'old', updatedAt: 1 },
+       { id: 'new', updatedAt: 2 },
+     ]).map(note => note.id)).toEqual(['new', 'old']);
+   });
+
+   test('pinned notes sort first', () => {
+     expect(sortNotes([
+       { id: 'regular', updatedAt: 2 },
+       { id: 'pinned', updatedAt: 1, pinned: true },
+     ]).map(note => note.id)).toEqual(['pinned', 'regular']);
+   });
+   EOF
+   ```
+
+   **Assumed output:** Empty; exit 0.
+
+5. **Tool call**
+   ```sh
+   cd /Users/p/git/notes-app && pnpm test src/sort.test.ts
+   ```
+
+   **Assumed full test result:** Exit 1; `newer notes sort first` passes; `pinned notes sort first` fails:
+   ```text
+   Expected: ["pinned", "regular"]
+   Received: ["regular", "pinned"]
+   Test Files  1 failed (1)
+        Tests  1 failed | 1 passed (2)
+   ```
+
+6. **Message to partner**
+
+   “The revised test now fails because the older pinned note sorts second. That is the expected failure. I’ll add pin priority and preserve date ordering within each group.”
+
+7. **Tool call — replace the production file with this exact content**
+   ```sh
+   cd /Users/p/git/notes-app && cat > src/sort.ts <<'EOF'
+   export interface Note {
+     id: string;
+     updatedAt: number;
+     pinned?: boolean;
+   }
+
+   export function sortNotes(notes: Note[]): Note[] {
+     return [...notes].sort((a, b) =>
+       Number(Boolean(b.pinned)) - Number(Boolean(a.pinned)) ||
+       b.updatedAt - a.updatedAt
+     );
+   }
+   EOF
+   ```
+
+   **Assumed output:** Empty; exit 0.
+
+8. **Tool call**
+   ```sh
+   cd /Users/p/git/notes-app && pnpm test src/sort.test.ts
+   ```
+
+   **Assumed result, read in full:** Exit 0; both named tests pass; 1 file, 2 tests passed; no warnings.
+
+9. **Tool call**
+   ```sh
+   cd /Users/p/git/notes-app && pnpm test
+   ```
+
+   **Assumed result, read in full:** Exit 0; the entire repository suite consists of those 2 tests; both pass; no warnings.
+
+10. **Message to partner**
+
+    “In this simulation, the corrected test failed with the expected reversed ordering before implementation. After adding pin priority, the focused command and full `pnpm test` suite each reported 2/2 passing. No repository edits or tests actually ran, so these assumed results are not verification evidence.”
+
+SUMMARY: Read the test-writing rules, simulated inspection, corrected the ineffective test, observed an assumed RED, simulated minimal implementation and focused/full GREEN checks; reporting a simulated outcome only.

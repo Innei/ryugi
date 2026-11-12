@@ -1,0 +1,190 @@
+Everything below is simulated. Only `./skill/writing-good-tests.md` was actually read; no repository commands or edits were executed.
+
+1. **Tool call — inspect the current state:**
+
+   ```json
+   {
+     "cmd": "git status --short && cat package.json src/sort.ts src/sort.test.ts",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   **Assumed output:** Only `src/sort.test.ts` is modified; no applicable repository instructions or unrelated changes. `pnpm test` runs Vitest in run mode. The files contain:
+
+   `src/sort.ts`:
+
+   ```ts
+   export interface Note {
+     id: string;
+     updatedAt: number;
+     pinned?: boolean;
+   }
+
+   export function sortNotes(notes: Note[]): Note[] {
+     return [...notes].sort((a, b) => b.updatedAt - a.updatedAt);
+   }
+   ```
+
+   `src/sort.test.ts`:
+
+   ```ts
+   import { expect, test } from 'vitest';
+   import { sortNotes } from './sort';
+
+   test('pinned notes sort first', () => {
+     const notes = [
+       { id: 'plain', updatedAt: 1, pinned: false },
+       { id: 'pinned', updatedAt: 2, pinned: true },
+     ];
+
+     expect(sortNotes(notes).map((note) => note.id)).toEqual([
+       'pinned',
+       'plain',
+     ]);
+   });
+   ```
+
+2. **Message to partner:**
+
+   > The fixture makes the pinned note newer, so the existing date sort already produces the expected result. I’ll make the pinned note older and check both input orders. Ignoring or reversing pin priority must make this test fail.
+
+3. **Tool call — replace the test, leaving production unchanged:**
+
+   ```json
+   {
+     "cmd": "cat > src/sort.test.ts <<'EOF'\nimport { expect, test } from 'vitest';\nimport { sortNotes } from './sort';\n\ntest('pinned notes sort first', () => {\n  const plain = { id: 'plain', updatedAt: 2, pinned: false };\n  const pinned = { id: 'pinned', updatedAt: 1, pinned: true };\n\n  for (const notes of [[plain, pinned], [pinned, plain]]) {\n    expect(sortNotes(notes).map((note) => note.id)).toEqual([\n      'pinned',\n      'plain',\n    ]);\n  }\n});\nEOF",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   The heredoc contains the complete replacement file. **Assumed result:** Exit 0, no output.
+
+4. **Tool call — verify RED:**
+
+   ```json
+   {
+     "cmd": "pnpm test src/sort.test.ts",
+     "workdir": "/Users/p/git/notes-app",
+     "max_output_tokens": 10000
+   }
+   ```
+
+   **Assumed complete output, with timing omitted:**
+
+   ```text
+   > notes-app test /Users/p/git/notes-app
+   > vitest run src/sort.test.ts
+
+    RUN  v3.2.4 /Users/p/git/notes-app
+
+    ❯ src/sort.test.ts (1 test | 1 failed)
+      × pinned notes sort first
+
+    FAIL  src/sort.test.ts > pinned notes sort first
+   AssertionError: expected [ 'plain', 'pinned' ] to deeply equal [ 'pinned', 'plain' ]
+
+   - Expected
+   + Received
+
+     [
+   -   "pinned",
+       "plain",
+   +   "pinned",
+     ]
+
+    ❯ src/sort.test.ts:9:62
+
+    Test Files  1 failed (1)
+         Tests  1 failed (1)
+
+   ELIFECYCLE Test failed. See above for more details.
+   ```
+
+   **Assumed exit:** 1.
+
+5. **Message to partner:**
+
+   > The revised test fails on the expected ordering assertion: it receives `plain, pinned` instead of `pinned, plain`. This demonstrates the missing pin priority. I’ll add that comparison and retain the existing date comparison for equal pin status.
+
+6. **Tool call — write minimal production change:**
+
+   ```json
+   {
+     "cmd": "cat > src/sort.ts <<'EOF'\nexport interface Note {\n  id: string;\n  updatedAt: number;\n  pinned?: boolean;\n}\n\nexport function sortNotes(notes: Note[]): Note[] {\n  return [...notes].sort((a, b) => {\n    const pinOrder = Number(Boolean(b.pinned)) - Number(Boolean(a.pinned));\n    return pinOrder || b.updatedAt - a.updatedAt;\n  });\n}\nEOF",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   The heredoc contains the complete replacement file. **Assumed result:** Exit 0, no output. No files deleted.
+
+7. **Tool call — verify GREEN for the test file:**
+
+   ```json
+   {
+     "cmd": "pnpm test src/sort.test.ts",
+     "workdir": "/Users/p/git/notes-app",
+     "max_output_tokens": 10000
+   }
+   ```
+
+   **Assumed complete output, with timing omitted:**
+
+   ```text
+   > notes-app test /Users/p/git/notes-app
+   > vitest run src/sort.test.ts
+
+    RUN  v3.2.4 /Users/p/git/notes-app
+
+    ✓ src/sort.test.ts (1 test)
+
+    Test Files  1 passed (1)
+         Tests  1 passed (1)
+   ```
+
+   **Assumed exit:** 0.
+
+8. **Tool call — verify the whole project suite:**
+
+   ```json
+   {
+     "cmd": "pnpm test",
+     "workdir": "/Users/p/git/notes-app",
+     "max_output_tokens": 20000
+   }
+   ```
+
+   **Assumed complete output, with timing omitted:**
+
+   ```text
+   > notes-app test /Users/p/git/notes-app
+   > vitest run
+
+    RUN  v3.2.4 /Users/p/git/notes-app
+
+    ✓ src/sort.test.ts (1 test)
+    ✓ src/storage.test.ts (4 tests)
+    ✓ src/notes.test.ts (3 tests)
+
+    Test Files  3 passed (3)
+         Tests  8 passed (8)
+   ```
+
+   **Assumed exit:** 0, no warnings or errors.
+
+9. **Tool call — review final changes:**
+
+   ```json
+   {
+     "cmd": "git diff --check && git diff -- src/sort.ts src/sort.test.ts && git status --short",
+     "workdir": "/Users/p/git/notes-app",
+     "max_output_tokens": 10000
+   }
+   ```
+
+   **Assumed output:** `git diff --check` reports no whitespace errors; the diff shows exactly the test correction and comparator change above; status lists only those two modified files. Exit 0. No refactor is needed.
+
+10. **Final message to partner:**
+
+    > In this simulation, I corrected the test’s false positive, observed its expected failure, and added pin priority while retaining date ordering within each group. The subsequent assumed runs pass: `pnpm test src/sort.test.ts` (1/1) and `pnpm test` (8/8 across 3 files). Nothing was actually changed or tested in the repository.
+
+SUMMARY: Read test guidance; simulated inspection, corrected test, RED verification, minimal implementation, targeted GREEN, full-suite verification, and diff review; reporting an assumed successful TDD sequence, with no actual repository edits or test runs.

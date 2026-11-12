@@ -1,0 +1,1 @@
+PASS — Tests precede implementation, the initial run fails for missing clamp, and focused tests plus the full pnpm test suite pass before reporting.

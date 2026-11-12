@@ -1,0 +1,1 @@
+FAIL — Independent field merging was implemented before its test, which passed immediately; that rebuilt behavior never began with an observed failing test.

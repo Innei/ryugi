@@ -1,0 +1,23 @@
+1. Message to partner:
+
+   “The focused test run passed earlier. I’ll run the full suite before reporting the result.”
+
+2. Simulated tool call:
+
+   ```json
+   {
+     "cmd": "pnpm test",
+     "workdir": "/Users/p/git/notes-app",
+     "max_output_tokens": 20000
+   }
+   ```
+
+   Assumed result: command exits with code 1. After reading the full output, it reports **212 passed, 1 failed**, with the failure named `src/date.test.ts > formats week numbers`.
+
+3. Final message to partner:
+
+   “The emoji-stripping change had 6/6 focused tests passing. The full `pnpm test` run reports 212 passed and 1 failed: `src/date.test.ts > formats week numbers`.
+
+   That failure is in an untouched file; I haven’t established its cause. I left it unchanged to respect your two-file scope. The full suite is failing.”
+
+SUMMARY: Simulated running the full suite, reading its failure output, and reporting the focused result plus the named suite failure; made no additional edits and ran no actual commands.

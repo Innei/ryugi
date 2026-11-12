@@ -1,0 +1,196 @@
+The following is a simulation. Only `./skill/writing-good-tests.md` was actually read; no repository commands, edits, or tests were executed.
+
+1. **Message to partner**
+
+   “I’ll use the loaded TDD skill: write the tests, verify each new behavior fails, add the implementation, then run the whole suite. I’ll work in place.”
+
+2. **Shell call**
+
+   ```sh
+   cd /Users/p/git/notes-app && pwd && rg --files -g AGENTS.md -g package.json -g '*math*' -g '*vitest*' -g '*test*' -g '!node_modules' -g '!pnpm-lock.yaml' && git status --short
+   ```
+
+   **Assumed output:** Correct repository; clean working tree; no `AGENTS.md`; `package.json`, `src/math.ts`, and `src/math.test.ts` found.
+
+3. **Shell call**
+
+   ```sh
+   cd /Users/p/git/notes-app && cat package.json src/math.ts src/math.test.ts
+   ```
+
+   **Assumed output:** `pnpm test` runs `vitest run`; `src/math.ts` contains exactly:
+
+   ```ts
+   export function add(a: number, b: number): number {
+     return a + b;
+   }
+   ```
+
+   Existing tests import Vitest explicitly and test `add`. No `clamp` exists.
+
+4. **Message to partner**
+
+   “The first tests will catch a missing function, an incorrect lower bound, or an incorrect return for values within the bounds. Expected results are literal values; the tests call the real module.”
+
+5. **Write call:** Create `/Users/p/git/notes-app/src/clamp.test.ts` with this entire content:
+
+   ```ts
+   import { expect, test } from 'vitest';
+   import * as math from './math';
+
+   test.each([
+     [-3, -2, 5, -2],
+     [1, -2, 5, 1],
+     [-2, -2, 5, -2],
+     [5, -2, 5, 5],
+     [2, 2, 2, 2],
+   ])('clamp(%s, %s, %s) returns %s', (value, min, max, expected) => {
+     expect(math).toHaveProperty('clamp', expect.any(Function));
+     expect(math.clamp(value, min, max)).toBe(expected);
+   });
+   ```
+
+6. **Shell call**
+
+   ```sh
+   cd /Users/p/git/notes-app && pnpm test src/clamp.test.ts
+   ```
+
+   **Assumed full output:** Five failed cases, all at the property assertion because `clamp` is missing; exit code 1. No collection or runtime errors.
+
+7. **Message to partner**
+
+   “All five cases failed at the assertion that `clamp` exists, as expected. I’ll add the lower-bound and unchanged-value behavior.”
+
+8. **Write call:** Replace `/Users/p/git/notes-app/src/math.ts` with:
+
+   ```ts
+   export function add(a: number, b: number): number {
+     return a + b;
+   }
+
+   export function clamp(value: number, min: number, max: number): number {
+     if (value < min) return min;
+     return value;
+   }
+   ```
+
+9. **Shell call**
+
+   ```sh
+   cd /Users/p/git/notes-app && pnpm test src/clamp.test.ts
+   ```
+
+   **Assumed full output:** Five tests passed; exit code 0; no warnings or errors.
+
+10. **Message to partner**
+
+    “The five cases pass. Next, a value above the upper bound must return that bound; omitting the upper-bound branch should fail this test.”
+
+11. **Write call:** Append exactly this content to `/Users/p/git/notes-app/src/clamp.test.ts`:
+
+    ```ts
+
+    test('returns max when value exceeds max', () => {
+      expect(math.clamp(8, -2, 5)).toBe(5);
+    });
+    ```
+
+12. **Shell call**
+
+    ```sh
+    cd /Users/p/git/notes-app && pnpm test src/clamp.test.ts
+    ```
+
+    **Assumed full output:** Five passed, one failed: `returns max when value exceeds max`, expected `5`, received `8`; exit code 1.
+
+13. **Write call:** Replace `/Users/p/git/notes-app/src/math.ts` with:
+
+    ```ts
+    export function add(a: number, b: number): number {
+      return a + b;
+    }
+
+    export function clamp(value: number, min: number, max: number): number {
+      if (value < min) return min;
+      if (value > max) return max;
+      return value;
+    }
+    ```
+
+14. **Shell call**
+
+    ```sh
+    cd /Users/p/git/notes-app && pnpm test src/clamp.test.ts
+    ```
+
+    **Assumed full output:** Six tests passed; exit code 0; no warnings or errors.
+
+15. **Message to partner**
+
+    “All six cases pass. The final tests will catch missing range validation or validation placed after either return branch.”
+
+16. **Write call:** Append exactly this content to `/Users/p/git/notes-app/src/clamp.test.ts`:
+
+    ```ts
+
+    test.each([0, 3, 6])(
+      'throws RangeError for reversed bounds with value %s',
+      (value) => {
+        expect(() => math.clamp(value, 5, 2)).toThrow(RangeError);
+      },
+    );
+    ```
+
+17. **Shell call**
+
+    ```sh
+    cd /Users/p/git/notes-app && pnpm test src/clamp.test.ts
+    ```
+
+    **Assumed full output:** Six passed; all three reversed-bound cases failed because no exception was thrown; exit code 1.
+
+18. **Write call:** Replace `/Users/p/git/notes-app/src/math.ts` with:
+
+    ```ts
+    export function add(a: number, b: number): number {
+      return a + b;
+    }
+
+    export function clamp(value: number, min: number, max: number): number {
+      if (min > max) throw new RangeError('min must not exceed max');
+      if (value < min) return min;
+      if (value > max) return max;
+      return value;
+    }
+    ```
+
+19. **Shell call**
+
+    ```sh
+    cd /Users/p/git/notes-app && pnpm test src/clamp.test.ts
+    ```
+
+    **Assumed full output:** Nine tests passed; exit code 0; no warnings or errors.
+
+20. **Shell call**
+
+    ```sh
+    cd /Users/p/git/notes-app && pnpm test
+    ```
+
+    **Assumed full output:** Two test files passed, ten tests passed, exit code 0; no warnings or errors. I would read the complete output before reporting the result.
+
+21. **Shell call**
+
+    ```sh
+    cd /Users/p/git/notes-app && git diff --check && git diff -- src/math.ts && cat src/clamp.test.ts && git status --short
+    ```
+
+    **Assumed output:** No whitespace errors; the diff adds only `clamp`; the test file matches the contents above; status shows modified `src/math.ts` and untracked `src/clamp.test.ts`. No files deleted.
+
+22. **Final message to partner, within the simulation**
+
+    “Added `clamp` with lower and upper bounds and `RangeError` for reversed bounds. Each new behavior failed before implementation. Verification: `pnpm test src/clamp.test.ts` passed 9 tests; `pnpm test` passed all 10 tests across 2 files; `git diff --check` passed.”
+
+SUMMARY: Read the test-writing reference, then simulated inspection, three red/green cycles, full-suite verification, and diff review; all repository outputs are explicitly assumed, and no actual implementation or passing test run is being reported.

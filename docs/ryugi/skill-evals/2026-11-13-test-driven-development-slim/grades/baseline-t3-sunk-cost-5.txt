@@ -1,0 +1,1 @@
+FAIL — Discards the implementation but never writes or runs a failing test, so it does not start the required test-first rebuild.

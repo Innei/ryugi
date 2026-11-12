@@ -1,0 +1,1 @@
+PASS — Clamp tests preceded implementation, the initial run failed for the missing export, focused tests passed afterward, and the full pnpm test suite passed.

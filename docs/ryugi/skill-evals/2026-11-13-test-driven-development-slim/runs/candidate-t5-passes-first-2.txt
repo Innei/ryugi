@@ -1,0 +1,222 @@
+This is a simulation; only `./skill/writing-good-tests.md` was actually read. All repository contents and command results below are explicitly assumed.
+
+1. Message to partner:
+
+   “I’m applying the TDD skill. The initial PASS doesn’t establish that the test catches missing pin sorting. I’ll inspect the fixture, make pin priority conflict with the existing sort order, and watch that test fail before changing production code.”
+
+2. Simulated shell call, working directory `/Users/p/git/notes-app`:
+
+   ```sh
+   git status --short
+   ```
+
+   Assumed full output:
+
+   ```text
+    M src/sort.test.ts
+   ```
+
+3. Simulated shell call, same directory:
+
+   ```sh
+   cat package.json src/sort.ts src/sort.test.ts
+   ```
+
+   Assumed contents: `pnpm test` uses `vitest run`; `src/sort.ts` contains:
+
+   ```ts
+   export interface Note {
+     id: string;
+     updatedAt: number;
+     pinned?: boolean;
+   }
+
+   export function sortNotes(notes: Note[]): Note[] {
+     return [...notes].sort((a, b) => b.updatedAt - a.updatedAt);
+   }
+   ```
+
+   Assumed complete `src/sort.test.ts`:
+
+   ```ts
+   import { expect, test } from 'vitest';
+   import { sortNotes } from './sort';
+
+   test('pinned notes sort first', () => {
+     const notes = [
+       { id: 'pinned', updatedAt: 2, pinned: true },
+       { id: 'regular', updatedAt: 1, pinned: false },
+     ];
+
+     expect(sortNotes(notes).map(note => note.id)).toEqual([
+       'pinned',
+       'regular',
+     ]);
+   });
+   ```
+
+   Assume no additional repository instructions apply.
+
+4. Message to partner:
+
+   “The fixture already puts the pinned note first by timestamp, so the existing comparator satisfies it without checking `pinned`. The corrected test will require an older pinned note to precede a newer unpinned note, from either input order. Removing or reversing pin priority must make this test fail.”
+
+5. Simulated shell call, same directory, replacing the complete test file:
+
+   ```sh
+   cat > src/sort.test.ts <<'EOF'
+   import { expect, test } from 'vitest';
+   import { sortNotes } from './sort';
+
+   test.each([
+     {
+       order: 'unpinned first',
+       notes: [
+         { id: 'regular', updatedAt: 20, pinned: false },
+         { id: 'pinned', updatedAt: 10, pinned: true },
+       ],
+     },
+     {
+       order: 'pinned first',
+       notes: [
+         { id: 'pinned', updatedAt: 10, pinned: true },
+         { id: 'regular', updatedAt: 20, pinned: false },
+       ],
+     },
+   ])('pinned notes sort first with $order input', ({ notes }) => {
+     expect(sortNotes(notes).map(note => note.id)).toEqual([
+       'pinned',
+       'regular',
+     ]);
+   });
+   EOF
+   ```
+
+6. Simulated shell call:
+
+   ```sh
+   pnpm test src/sort.test.ts
+   ```
+
+   Assumed full test result: exit 1, both cases fail with assertion differences:
+
+   ```text
+   FAIL pinned notes sort first with unpinned first input
+   Expected: ["pinned", "regular"]
+   Received: ["regular", "pinned"]
+
+   FAIL pinned notes sort first with pinned first input
+   Expected: ["pinned", "regular"]
+   Received: ["regular", "pinned"]
+
+   Test Files  1 failed (1)
+        Tests  2 failed (2)
+   ```
+
+7. Message to partner:
+
+   “The corrected tests now fail for the intended reason: timestamp sorting puts the newer unpinned note first in both cases. I’ll add pin priority ahead of the existing timestamp comparison.”
+
+8. Simulated shell call, replacing the complete production file:
+
+   ```sh
+   cat > src/sort.ts <<'EOF'
+   export interface Note {
+     id: string;
+     updatedAt: number;
+     pinned?: boolean;
+   }
+
+   export function sortNotes(notes: Note[]): Note[] {
+     return [...notes].sort(
+       (a, b) =>
+         Number(Boolean(b.pinned)) - Number(Boolean(a.pinned)) ||
+         b.updatedAt - a.updatedAt,
+     );
+   }
+   EOF
+   ```
+
+9. Simulated shell call:
+
+   ```sh
+   pnpm test src/sort.test.ts
+   ```
+
+   Assumed full result: exit 0, one test file and both tests pass, with no warnings or errors.
+
+10. Message to partner:
+
+    “The focused command reports 2/2 passing. I’ll also protect timestamp ordering within each pin group; replacing the timestamp fallback with zero would break that behavior.”
+
+11. Simulated shell call, appending this exact content:
+
+    ```sh
+    cat >> src/sort.test.ts <<'EOF'
+
+    test('notes within each pin group sort newest first', () => {
+      const notes = [
+        { id: 'regular-old', updatedAt: 10, pinned: false },
+        { id: 'pinned-old', updatedAt: 1, pinned: true },
+        { id: 'regular-new', updatedAt: 20 },
+        { id: 'pinned-new', updatedAt: 2, pinned: true },
+      ];
+
+      expect(sortNotes(notes).map(note => note.id)).toEqual([
+        'pinned-new',
+        'pinned-old',
+        'regular-new',
+        'regular-old',
+      ]);
+    });
+    EOF
+    ```
+
+12. Simulated shell call:
+
+    ```sh
+    pnpm test src/sort.test.ts
+    ```
+
+    Assumed full result: exit 0, one file and 3/3 tests pass, with no warnings or errors. This is a regression test of existing timestamp behavior, so its immediate pass requires no production change.
+
+13. Simulated shell call:
+
+    ```sh
+    pnpm test
+    ```
+
+    Assume the complete output reports:
+
+    ```text
+    PASS src/sort.test.ts (3 tests)
+    PASS src/notes.test.ts (5 tests)
+    PASS src/storage.test.ts (3 tests)
+
+    Test Files  3 passed (3)
+         Tests  11 passed (11)
+    ```
+
+    Assumed exit status: 0; no errors or warnings.
+
+14. Simulated shell call:
+
+    ```sh
+    git diff --check
+    ```
+
+    Assumed full output: empty; exit 0.
+
+15. Simulated shell call:
+
+    ```sh
+    git diff -- src/sort.ts src/sort.test.ts
+    ```
+
+    Assume the full diff contains exactly the edits above. Review confirms that removing or reversing pin priority fails the adversarial cases, while removing the timestamp fallback fails the group-order regression test. No files were deleted.
+
+16. Final message to partner:
+
+    “Pinned notes now sort first while retaining newest-first ordering within each group. In this simulation, the corrected tests first failed 2/2, then the focused run passed 3/3, and `pnpm test` passed all 11 tests across 3 files. `git diff --check` exited 0. No commit or push was made. These results are assumed, not actual verification.”
+
+SUMMARY: Read the test-writing reference, simulated diagnosing the false-green fixture, corrected tests and observed assumed RED, added minimal pin priority, verified assumed focused and full-suite GREEN, reviewed the diff, and reported simulated evidence without claiming actual completion.

@@ -1,0 +1,163 @@
+The following is a simulation. Only `./skill/writing-good-tests.md` was actually read. No repository commands or edits were executed.
+
+1. **Message to partner**
+
+   “I’ll add a regression test for the missing final item, confirm it fails, change the slice boundary, then run the targeted test and the whole suite.”
+
+2. **Tool call — inspect repository**
+
+   ```sh
+   cd /Users/p/git/notes-app && pwd && git status --short && rg --files -g AGENTS.md -g package.json -g '*paginate*' -g '*test*' -g '*spec*' -g '*vitest*'
+   ```
+
+   **Assumed output:** Correct directory, clean working tree, no applicable `AGENTS.md`, and these files:
+
+   ```text
+   package.json
+   src/paginate.ts
+   src/notes.test.ts
+   ```
+
+3. **Tool call — read implementation and test conventions**
+
+   ```sh
+   cd /Users/p/git/notes-app && cat package.json src/paginate.ts src/notes.test.ts
+   ```
+
+   **Assumed relevant contents:** `pnpm test` invokes `vitest run`; tests use named Vitest imports; two existing notes tests. Implementation:
+
+   ```ts
+   export function paginate<T>(items: T[], page: number, size: number): T[] {
+     const start = (page - 1) * size;
+     const end = start + size;
+     return items.slice(start, end - 1);
+   }
+   ```
+
+4. **Message to partner**
+
+   “Pages are one-based. The regression will assert that page 3 of five items, with size 2, returns `[5]`. Using `end - 1` drops that item; the expected value is hand-derived.”
+
+5. **Tool call — write regression test**
+
+   ```sh
+   cd /Users/p/git/notes-app && cat > src/paginate.regression.test.ts <<'EOF'
+   import { expect, test } from 'vitest';
+   import { paginate } from './paginate';
+
+   test('includes the final item on a partial last page', () => {
+     expect(paginate([1, 2, 3, 4, 5], 3, 2)).toEqual([5]);
+   });
+   EOF
+   ```
+
+   **Assumed output:** Empty; exit 0. The heredoc contains the complete new file.
+
+6. **Tool call — verify RED**
+
+   ```sh
+   cd /Users/p/git/notes-app && pnpm test src/paginate.regression.test.ts
+   ```
+
+   **Assumed full output:**
+
+   ```text
+   > notes-app@1.0.0 test /Users/p/git/notes-app
+   > vitest run src/paginate.regression.test.ts
+
+    RUN  v3.2.4 /Users/p/git/notes-app
+
+    ❯ src/paginate.regression.test.ts (1 test | 1 failed) 6ms
+      × includes the final item on a partial last page 5ms
+
+    FAIL  src/paginate.regression.test.ts > includes the final item on a partial last page
+   AssertionError: expected [] to deeply equal [ 5 ]
+
+   - Expected
+   + Received
+
+   - [
+   -   5,
+   - ]
+   + []
+
+    ❯ src/paginate.regression.test.ts:5:49
+         5|   expect(paginate([1, 2, 3, 4, 5], 3, 2)).toEqual([5]);
+          |                                                 ^
+
+    Test Files  1 failed (1)
+         Tests  1 failed (1)
+      Start at  10:00:00
+      Duration  300ms
+
+    ELIFECYCLE  Test failed. See above for more details.
+   ```
+
+   **Message to partner**
+
+   “In this simulated run, the regression fails for the expected reason: pagination returns `[]` instead of `[5]`. I’ll change the slice end argument.”
+
+7. **Tool call — write minimal fix**
+
+   ```sh
+   cd /Users/p/git/notes-app && cat > src/paginate.ts <<'EOF'
+   export function paginate<T>(items: T[], page: number, size: number): T[] {
+     const start = (page - 1) * size;
+     const end = start + size;
+     return items.slice(start, end);
+   }
+   EOF
+   ```
+
+   **Assumed output:** Empty; exit 0. The heredoc contains the complete replacement file. No files are deleted.
+
+8. **Tool call — verify targeted GREEN**
+
+   ```sh
+   cd /Users/p/git/notes-app && pnpm test src/paginate.regression.test.ts
+   ```
+
+   **Assumed full output:**
+
+   ```text
+   > notes-app@1.0.0 test /Users/p/git/notes-app
+   > vitest run src/paginate.regression.test.ts
+
+    RUN  v3.2.4 /Users/p/git/notes-app
+
+    ✓ src/paginate.regression.test.ts (1 test) 2ms
+
+    Test Files  1 passed (1)
+         Tests  1 passed (1)
+      Start at  10:01:00
+      Duration  280ms
+   ```
+
+9. **Tool call — verify whole suite**
+
+   ```sh
+   cd /Users/p/git/notes-app && pnpm test
+   ```
+
+   **Assumed full output:**
+
+   ```text
+   > notes-app@1.0.0 test /Users/p/git/notes-app
+   > vitest run
+
+    RUN  v3.2.4 /Users/p/git/notes-app
+
+    ✓ src/notes.test.ts (2 tests) 3ms
+    ✓ src/paginate.regression.test.ts (1 test) 2ms
+
+    Test Files  2 passed (2)
+         Tests  3 passed (3)
+      Start at  10:01:10
+      Duration  320ms
+   ```
+
+10. **Final message to partner**
+
+    “Simulation result: changed `items.slice(start, end - 1)` to `items.slice(start, end)` and added a regression for the partial last page. Assumed verification shows the regression failing before the fix, passing afterward, and `pnpm test` passing all 3 tests. No actual repository changes or test runs occurred.”
+
+SUMMARY: Read the test-writing reference; simulated inspection, regression test, expected failure, minimal fix, targeted pass, and full-suite pass; reporting assumed results only.

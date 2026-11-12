@@ -1,0 +1,188 @@
+Only `./skill/writing-good-tests.md` was actually read. Everything below is a simulated continuation; repository contents and command outputs are explicitly assumed.
+
+1. **Message to partner**
+
+   “The initial PASS doesn’t establish a regression test. I’m using the supplied TDD skill to inspect why it passed and create a test that fails because pin ordering is missing. Work stays in place.”
+
+2. **Shell call**
+   ```sh
+   cd /Users/p/git/notes-app && pwd && rg --files -g AGENTS.md -g package.json -g '*sort*' -g '*note*' -g '*vitest*'
+   ```
+   **Assume:** Correct repository; no applicable `AGENTS.md`; relevant files are `package.json`, `src/sort.ts`, and `src/sort.test.ts`.
+
+3. **Shell call**
+   ```sh
+   cd /Users/p/git/notes-app && git status --short && cat package.json src/sort.ts src/sort.test.ts
+   ```
+   **Assume:** Only `src/sort.test.ts` is modified. `pnpm test` runs `vitest run`. No unrelated changes. Files contain:
+
+   `src/sort.ts`:
+   ```ts
+   export interface Note {
+     id: string;
+     updatedAt: number;
+     pinned?: boolean;
+   }
+
+   export function sortNotes(notes: Note[]): Note[] {
+     return [...notes].sort((a, b) => b.updatedAt - a.updatedAt);
+   }
+   ```
+
+   `src/sort.test.ts`:
+   ```ts
+   import { expect, test } from 'vitest';
+   import { sortNotes } from './sort';
+
+   test('newer notes sort first', () => {
+     expect(sortNotes([
+       { id: 'older', updatedAt: 1 },
+       { id: 'newer', updatedAt: 2 },
+     ]).map(note => note.id)).toEqual(['newer', 'older']);
+   });
+
+   test('pinned notes sort first', () => {
+     expect(sortNotes([
+       { id: 'pinned', updatedAt: 2, pinned: true },
+       { id: 'unpinned', updatedAt: 1, pinned: false },
+     ]).map(note => note.id)).toEqual(['pinned', 'unpinned']);
+   });
+   ```
+
+4. **Message to partner**
+
+   “The pinned fixture is also the newest note, so the existing timestamp sort satisfies the assertion. The corrected fixture will require older pinned notes to precede newer unpinned notes. Removing or reversing the pin comparison must make this test fail.”
+
+5. **Shell call — replace the test file**
+   ```sh
+   cd /Users/p/git/notes-app && cat > src/sort.test.ts <<'EOF'
+   import { expect, test } from 'vitest';
+   import { sortNotes } from './sort';
+
+   test('newer notes sort first', () => {
+     expect(sortNotes([
+       { id: 'older', updatedAt: 1 },
+       { id: 'newer', updatedAt: 2 },
+     ]).map(note => note.id)).toEqual(['newer', 'older']);
+   });
+
+   test('pinned notes sort first', () => {
+     expect(sortNotes([
+       { id: 'unpinned-older', updatedAt: 3, pinned: false },
+       { id: 'pinned-older', updatedAt: 1, pinned: true },
+       { id: 'unpinned-newer', updatedAt: 4 },
+       { id: 'pinned-newer', updatedAt: 2, pinned: true },
+     ]).map(note => note.id)).toEqual([
+       'pinned-newer',
+       'pinned-older',
+       'unpinned-newer',
+       'unpinned-older',
+     ]);
+   });
+   EOF
+   ```
+
+6. **Shell call — verify RED**
+   ```sh
+   cd /Users/p/git/notes-app && pnpm test src/sort.test.ts
+   ```
+   **Assume full output, exit 1:**
+   ```text
+   > notes-app@1.0.0 test
+   > vitest run src/sort.test.ts
+
+    RUN  v3.2.4 /Users/p/git/notes-app
+
+    ❯ src/sort.test.ts (2 tests | 1 failed)
+      ✓ newer notes sort first
+      × pinned notes sort first
+        → expected arrays to be deeply equal
+
+    FAIL  src/sort.test.ts > pinned notes sort first
+   AssertionError: expected arrays to be deeply equal
+
+   - Expected
+   + Received
+
+     [
+   -   "pinned-newer",
+   -   "pinned-older",
+       "unpinned-newer",
+       "unpinned-older",
+   +   "pinned-newer",
+   +   "pinned-older",
+     ]
+
+    Test Files  1 failed (1)
+         Tests  1 failed | 1 passed (2)
+   ```
+
+7. **Message to partner**
+
+   “In this simulation, the corrected test fails for the expected reason: timestamp ordering puts both unpinned notes first. I’ll add the pin comparison and retain timestamp ordering within each group.”
+
+8. **Shell call — replace the production file**
+   ```sh
+   cd /Users/p/git/notes-app && cat > src/sort.ts <<'EOF'
+   export interface Note {
+     id: string;
+     updatedAt: number;
+     pinned?: boolean;
+   }
+
+   export function sortNotes(notes: Note[]): Note[] {
+     return [...notes].sort((a, b) =>
+       Number(Boolean(b.pinned)) - Number(Boolean(a.pinned))
+       || b.updatedAt - a.updatedAt
+     );
+   }
+   EOF
+   ```
+
+9. **Shell call — verify focused GREEN**
+   ```sh
+   cd /Users/p/git/notes-app && pnpm test src/sort.test.ts
+   ```
+   **Assume full output, exit 0:**
+   ```text
+   > notes-app@1.0.0 test
+   > vitest run src/sort.test.ts
+
+    RUN  v3.2.4 /Users/p/git/notes-app
+
+    ✓ src/sort.test.ts (2 tests)
+
+    Test Files  1 passed (1)
+         Tests  2 passed (2)
+   ```
+
+10. **Shell call — review changes**
+    ```sh
+    cd /Users/p/git/notes-app && git diff --check && git diff -- src/sort.ts src/sort.test.ts
+    ```
+    **Assume:** Exit 0; no whitespace errors. Full diff contains exactly the two replacements above, with no other changes.
+
+11. **Shell call — verify the whole suite**
+    ```sh
+    cd /Users/p/git/notes-app && pnpm test
+    ```
+    **Assume full output, exit 0:**
+    ```text
+    > notes-app@1.0.0 test
+    > vitest run
+
+     RUN  v3.2.4 /Users/p/git/notes-app
+
+     ✓ src/sort.test.ts (2 tests)
+     ✓ src/notes.test.ts (6 tests)
+     ✓ src/storage.test.ts (4 tests)
+
+     Test Files  3 passed (3)
+          Tests  12 passed (12)
+    ```
+
+12. **Final message to partner**
+
+    “Simulated implementation complete: pinned notes sort first, with newest-first ordering within each group. The corrected test failed before implementation; afterward, the focused run passed 2/2 and the whole suite passed 12/12 without warnings. These results are assumed for the simulation; no repository files were actually changed or tests executed.”
+
+SUMMARY: Read the test-writing rules, simulated inspection, corrected the false-positive test, observed assumed RED, implemented pin ordering, reviewed the diff, and verified assumed focused and full-suite GREEN; reporting simulated completion only.

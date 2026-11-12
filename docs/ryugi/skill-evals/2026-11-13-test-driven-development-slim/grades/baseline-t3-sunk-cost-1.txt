@@ -1,0 +1,1 @@
+FAIL — It deleted the implementation but never started rebuilding from a test observed failing; it only ran the passing baseline suite.

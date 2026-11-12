@@ -1,0 +1,136 @@
+Everything below is simulated. Only `./skill/writing-good-tests.md` was actually read; no repository commands or edits were executed.
+
+1. Message to partner:
+
+   “I’ll reproduce the dropped item with a regression test, watch it fail, change the slice boundary, then run the focused test and the whole suite. I’ll work in place.”
+
+2. Shell call:
+
+   ```sh
+   cd /Users/p/git/notes-app && git status --short
+   ```
+
+   Assumed output: empty; exit 0.
+
+3. Shell call:
+
+   ```sh
+   cd /Users/p/git/notes-app && rg --files --hidden -g '!node_modules' -g '!.git' -g AGENTS.md -g package.json -g '*paginate*' -g '*vitest*'
+   ```
+
+   Assumed output:
+
+   ```text
+   package.json
+   src/paginate.ts
+   vitest.config.ts
+   ```
+
+   Assume no applicable additional repository instructions, and no existing pagination test.
+
+4. Shell call:
+
+   ```sh
+   cd /Users/p/git/notes-app && cat package.json src/paginate.ts vitest.config.ts
+   ```
+
+   Assumed relevant results: `test` runs `vitest run`, dependencies are installed, and Vitest includes `src/**/*.test.ts`. Assume the complete production file is:
+
+   ```ts
+   export function paginate<T>(items: T[], page: number, size: number): T[] {
+     const start = (page - 1) * size;
+     const end = start + size;
+     return items.slice(start, end - 1);
+   }
+   ```
+
+5. Message to partner:
+
+   “The regression will assert that page 3 of five items, at two items per page, returns `[5]`. Subtracting one from the exclusive slice boundary makes that page empty, so this test directly catches the reported bug.”
+
+6. Shell call creating `src/paginate.test.ts`, with its complete contents:
+
+   ```sh
+   cd /Users/p/git/notes-app && cat > src/paginate.test.ts <<'EOF'
+   import { expect, test } from 'vitest';
+   import { paginate } from './paginate';
+
+   test('includes the final item on a partial last page', () => {
+     expect(paginate([1, 2, 3, 4, 5], 3, 2)).toEqual([5]);
+   });
+   EOF
+   ```
+
+   Assumed output: empty; exit 0.
+
+7. Shell call:
+
+   ```sh
+   cd /Users/p/git/notes-app && pnpm test src/paginate.test.ts
+   ```
+
+   Assumed full test result: one test fails, exit 1. The assertion expects `[5]` and receives `[]`; no import, compilation, or setup errors.
+
+8. Message to partner:
+
+   “The regression fails as expected: the last page returns `[]` instead of `[5]`. I’ll change the slice end from `end - 1` to `end`.”
+
+9. Shell call writing `src/paginate.ts`, with its complete contents:
+
+   ```sh
+   cd /Users/p/git/notes-app && cat > src/paginate.ts <<'EOF'
+   export function paginate<T>(items: T[], page: number, size: number): T[] {
+     const start = (page - 1) * size;
+     const end = start + size;
+     return items.slice(start, end);
+   }
+   EOF
+   ```
+
+   Assumed output: empty; exit 0. No files deleted.
+
+10. Shell call:
+
+    ```sh
+    cd /Users/p/git/notes-app && pnpm test src/paginate.test.ts
+    ```
+
+    Assumed full output: one test file passes, one test passes, exit 0, no warnings or errors.
+
+11. Shell call:
+
+    ```sh
+    cd /Users/p/git/notes-app && pnpm test
+    ```
+
+    Assumed full output: five test files pass, all 24 tests pass, exit 0, no warnings or errors. I would read the entire output before reporting this result.
+
+12. Shell call:
+
+    ```sh
+    cd /Users/p/git/notes-app && git diff --check
+    ```
+
+    Assumed output: empty; exit 0.
+
+13. Shell call:
+
+    ```sh
+    cd /Users/p/git/notes-app && git diff -- src/paginate.ts
+    ```
+
+    Assumed output: only `items.slice(start, end - 1)` changes to `items.slice(start, end)`.
+
+14. Shell call:
+
+    ```sh
+    cd /Users/p/git/notes-app && cat src/paginate.test.ts
+    ```
+
+    Assumed output: exactly the regression test written above. Restoring `end - 1` would make its assertion fail again. No refactor needed.
+
+15. Final message to partner, **within the simulation**:
+
+    “Fixed the slice boundary and added a regression for the partial last page. The regression first failed with `[]` versus `[5]`, then passed after the change. `pnpm test` passed all 24 tests across five files; `git diff --check` exited 0. No commit made.”
+
+SUMMARY: Read the test-writing reference, then simulated inspection → failing regression → minimal fix → focused test → full suite → diff checks → evidence-based report; all repository outputs were assumptions, and no actual fix or passing test run is claimed.

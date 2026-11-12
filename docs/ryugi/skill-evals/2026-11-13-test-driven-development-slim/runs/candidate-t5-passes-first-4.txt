@@ -1,0 +1,229 @@
+Everything below is simulated. Only `./skill/writing-good-tests.md` was actually read.
+
+1. Message to partner:
+
+   “The test passed before implementation, so it hasn’t demonstrated that it catches missing pin ordering. I’ll inspect its fixture and the current sorter, then make the test distinguish pin priority from the existing sort order.”
+
+2. Shell call:
+
+   ```sh
+   cd /Users/p/git/notes-app && pwd
+   ```
+
+   Assumed output:
+
+   ```text
+   /Users/p/git/notes-app
+   ```
+
+3. Shell call:
+
+   ```sh
+   cd /Users/p/git/notes-app && rg --files --hidden -g AGENTS.md -g '!node_modules' -g '!.git'
+   ```
+
+   Assume no matches and no repository instructions supplied elsewhere.
+
+4. Shell call:
+
+   ```sh
+   cd /Users/p/git/notes-app && git diff -- src/sort.ts src/sort.test.ts
+   ```
+
+   Assume the only change is the newly added test; production code is untouched.
+
+5. Shell call:
+
+   ```sh
+   cd /Users/p/git/notes-app && cat package.json src/sort.ts src/sort.test.ts
+   ```
+
+   Assume `package.json` defines `"test": "vitest run"`, and these are the complete source files:
+
+   `src/sort.ts`:
+
+   ```ts
+   export interface Note {
+     id: string;
+     updatedAt: number;
+     pinned?: boolean;
+   }
+
+   export function sortNotes(notes: Note[]): Note[] {
+     return [...notes].sort((a, b) => b.updatedAt - a.updatedAt);
+   }
+   ```
+
+   `src/sort.test.ts`:
+
+   ```ts
+   import { expect, test } from 'vitest';
+   import { sortNotes } from './sort';
+
+   test('empty input returns no notes', () => {
+     expect(sortNotes([])).toEqual([]);
+   });
+
+   test('newest notes sort first', () => {
+     expect(
+       sortNotes([
+         { id: 'older', updatedAt: 1 },
+         { id: 'newer', updatedAt: 2 },
+       ]).map((note) => note.id),
+     ).toEqual(['newer', 'older']);
+   });
+
+   test('pinned notes sort first', () => {
+     expect(
+       sortNotes([
+         { id: 'pinned', updatedAt: 2, pinned: true },
+         { id: 'unpinned', updatedAt: 1, pinned: false },
+       ]).map((note) => note.id),
+     ).toEqual(['pinned', 'unpinned']);
+   });
+   ```
+
+6. Message to partner:
+
+   “The fixture puts the pinned note first by recency already. I’ll make it older than the unpinned notes. The regression this test must catch is removing pin priority and sorting solely by recency; the expected IDs will be literal values.”
+
+7. Write call: replace `/Users/p/git/notes-app/src/sort.test.ts` with this exact content:
+
+   ```ts
+   import { expect, test } from 'vitest';
+   import { sortNotes } from './sort';
+
+   test('empty input returns no notes', () => {
+     expect(sortNotes([])).toEqual([]);
+   });
+
+   test('newest notes sort first', () => {
+     expect(
+       sortNotes([
+         { id: 'older', updatedAt: 1 },
+         { id: 'newer', updatedAt: 2 },
+       ]).map((note) => note.id),
+     ).toEqual(['newer', 'older']);
+   });
+
+   test('pinned notes sort first', () => {
+     expect(
+       sortNotes([
+         { id: 'unpinned', updatedAt: 3, pinned: false },
+         { id: 'unspecified', updatedAt: 2 },
+         { id: 'pinned', updatedAt: 1, pinned: true },
+       ]).map((note) => note.id),
+     ).toEqual(['pinned', 'unpinned', 'unspecified']);
+   });
+   ```
+
+8. Shell call:
+
+   ```sh
+   cd /Users/p/git/notes-app && pnpm test src/sort.test.ts
+   ```
+
+   Assumed full test-run output, omitting only package-manager/version/timing banners:
+
+   ```text
+   ❯ src/sort.test.ts (3 tests | 1 failed)
+     ✓ empty input returns no notes
+     ✓ newest notes sort first
+     × pinned notes sort first
+
+   FAIL src/sort.test.ts > pinned notes sort first
+   AssertionError: expected arrays to deeply equal
+
+   - Expected
+   + Received
+
+     [
+   -   "pinned",
+       "unpinned",
+       "unspecified",
+   +   "pinned",
+     ]
+
+   Test Files  1 failed (1)
+        Tests  1 failed | 2 passed (3)
+   ```
+
+   Assume exit code `1`, with no additional errors or warnings.
+
+9. Message to partner:
+
+   “The revised test now fails for the intended reason: recency puts the older pinned note last. I’ll add pin priority ahead of the existing recency comparison.”
+
+10. Write call: replace `/Users/p/git/notes-app/src/sort.ts` with this exact content:
+
+    ```ts
+    export interface Note {
+      id: string;
+      updatedAt: number;
+      pinned?: boolean;
+    }
+
+    export function sortNotes(notes: Note[]): Note[] {
+      return [...notes].sort(
+        (a, b) =>
+          Number(b.pinned === true) - Number(a.pinned === true) ||
+          b.updatedAt - a.updatedAt,
+      );
+    }
+    ```
+
+11. Shell call:
+
+    ```sh
+    cd /Users/p/git/notes-app && pnpm test src/sort.test.ts
+    ```
+
+    Assumed output:
+
+    ```text
+    ✓ src/sort.test.ts (3 tests)
+
+    Test Files  1 passed (1)
+         Tests  3 passed (3)
+    ```
+
+    Assume exit code `0`, with no additional errors or warnings.
+
+12. Shell call:
+
+    ```sh
+    cd /Users/p/git/notes-app && git diff --check
+    ```
+
+    Assume no output, exit code `0`.
+
+13. Shell call:
+
+    ```sh
+    cd /Users/p/git/notes-app && git diff -- src/sort.ts src/sort.test.ts
+    ```
+
+    Assume the complete diff contains exactly the fixture replacement in step 7 and comparator replacement in step 10, with no other changes. Review confirms removing pin priority would reproduce the observed failure.
+
+14. Shell call:
+
+    ```sh
+    cd /Users/p/git/notes-app && pnpm test
+    ```
+
+    Assume this repository’s entire suite consists of the three tests above. Output:
+
+    ```text
+    ✓ src/sort.test.ts (3 tests)
+
+    Test Files  1 passed (1)
+         Tests  3 passed (3)
+    ```
+
+    Assume exit code `0`, with no additional errors or warnings.
+
+15. Final message to partner:
+
+    “In this simulation, pin priority is implemented while retaining recency ordering within each group. The corrected test failed before implementation, then passed afterward. The assumed full-suite run passed all 3 tests; `git diff --check` exited 0. No actual repository edits or test runs occurred.”
+
+SUMMARY: Read the test-writing rules, simulated inspecting the unexpected PASS, corrected the fixture, observed an assumed RED, implemented pin priority, checked the diff, and assumed focused and full-suite GREEN; reporting simulated results only.

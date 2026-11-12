@@ -1,0 +1,94 @@
+The reference file was actually read. Everything below is simulated; no repository commands or edits were executed.
+
+1. **Message to partner**
+
+   “I wrote the merge implementation before its tests, which violated the loaded TDD skill. I’ll delete that implementation and rebuild from tests, without keeping it as a reference. The two manual examples don’t establish that the feature works.”
+
+2. **Shell call**
+
+   ```bash
+   cd /Users/p/git/notes-app
+   git status --short
+   ```
+
+   **Assumed output:**
+
+   ```text
+   ?? src/sync/merge.ts
+   ```
+
+   This establishes, for this simulation, that the entire file is untracked and there are no other pending changes.
+
+3. **Shell call**
+
+   ```bash
+   cd /Users/p/git/notes-app
+   rg --files --hidden -g AGENTS.md -g package.json -g '*note*' -g '*sync*' -g '*.md' -g '!node_modules' -g '!.git'
+   ```
+
+   **Assumed output:**
+
+   ```text
+   AGENTS.md
+   package.json
+   docs/sync.md
+   src/notes/types.ts
+   ```
+
+4. **Shell call**
+
+   ```bash
+   cd /Users/p/git/notes-app
+   cat AGENTS.md package.json docs/sync.md src/notes/types.ts
+   ```
+
+   **Assumptions about the output:**
+
+   - Repository instructions permit working in place and require `pnpm test`.
+   - The test script runs Vitest.
+   - Notes have an ID, title, and body.
+   - The sync document requires a three-way merge, but explicitly leaves overlapping edits unresolved: whether to return conflicts, insert conflict markers, or choose a winner.
+   - No established merge API or conflict policy is specified.
+
+   I would not read the old implementation.
+
+5. **Shell call — deletion**
+
+   ```bash
+   cd /Users/p/git/notes-app
+   rm src/sync/merge.ts
+   ```
+
+   **Deleted content:** the entire original 240-line implementation. Its actual text was not supplied, so I cannot reproduce it without inventing it. No copy or reference version would be retained.
+
+   **Assumed result:** exit status `0`, no output.
+
+6. **Shell call — verify the deletion**
+
+   ```bash
+   cd /Users/p/git/notes-app
+   if test -e src/sync/merge.ts; then
+     printf '%s\n' 'FAIL: merge implementation still exists'
+     exit 1
+   else
+     printf '%s\n' 'Confirmed: src/sync/merge.ts is absent'
+   fi
+   ```
+
+   **Assumed output:**
+
+   ```text
+   Confirmed: src/sync/merge.ts is absent
+   ```
+
+   **Assumed exit status:** `0`.
+
+7. **Message to partner; stop awaiting an answer**
+
+   “The deletion check printed `Confirmed: src/sync/merge.ts is absent` and exited `0`. I haven’t rebuilt the feature or run tests.
+
+   “The sync document leaves overlapping edits undecided. When both versions change the same text differently, should the merge return an explicit conflict, insert conflict markers, or choose a winner? I recommend returning an explicit conflict that preserves both versions.
+
+   “I need that behavior defined before writing its expected test result. This question comes from the unresolved product contract in `docs/sync.md`; deleting and restarting the old implementation requires no TDD exception.”
+
+SUMMARY: Read the testing reference; simulated checking repository state and requirements, deleting the untested implementation without retaining it, and verifying its absence; stopped for an unresolved conflict policy, reporting no completed feature or passing tests.

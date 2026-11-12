@@ -1,0 +1,234 @@
+The following is a simulation. Only `./skill/writing-good-tests.md` was actually read; all repo outputs below are explicit assumptions.
+
+1. **Message to partner**
+
+   “I added the fallback before writing a test. The manual sample doesn’t establish completion. I’ll remove that premature change, write a regression test, watch it fail, then implement the fallback again and run the full suite.”
+
+2. **Simulated shell call**
+
+   ```sh
+   cd /Users/p/git/notes-app && git status --short
+   ```
+
+   Assumed full output:
+
+   ```text
+    M src/export.ts
+   ```
+
+3. **Simulated shell call**
+
+   Read the committed implementation, test locations, and test configuration without reading the premature implementation:
+
+   ```sh
+   cd /Users/p/git/notes-app && git show HEAD:src/export.ts
+   ```
+
+   Assumed full output:
+
+   ```typescript
+   export interface Note {
+     title: string;
+     body: string;
+   }
+
+   export function exportNote(note: Note): string {
+     return `${note.title}\n\n${note.body}`;
+   }
+   ```
+
+   **Simulated shell call**
+
+   ```sh
+   cd /Users/p/git/notes-app && rg --files -g '*test*' -g '*spec*' -g 'package.json' -g '*vitest*' -g 'AGENTS.md'
+   ```
+
+   Assumed full output:
+
+   ```text
+   package.json
+   src/export.test.ts
+   src/notes.test.ts
+   ```
+
+   **Simulated shell call**
+
+   ```sh
+   cd /Users/p/git/notes-app && cat package.json src/export.test.ts
+   ```
+
+   Assumed full output:
+
+   ```text
+   {
+     "name": "notes-app",
+     "private": true,
+     "type": "module",
+     "scripts": {
+       "test": "vitest run"
+     },
+     "devDependencies": {
+       "typescript": "5.9.3",
+       "vitest": "3.2.4"
+     }
+   }
+   import { expect, test } from 'vitest';
+   import { exportNote } from './export';
+
+   test('exports the title and body', () => {
+     expect(exportNote({ title: 'Shopping', body: 'Milk' }))
+       .toBe('Shopping\n\nMilk');
+   });
+   ```
+
+   Assumption: the empty-title fallback is the only uncommitted edit, and there are no additional applicable repository instructions.
+
+4. **Simulated shell call — remove the premature implementation**
+
+   ```sh
+   cd /Users/p/git/notes-app && git restore --source=HEAD -- src/export.ts
+   ```
+
+   Assumed output: none; exit code `0`.
+
+   This restores the complete `src/export.ts` content shown in step 3. No files are deleted.
+
+5. **Message to partner**
+
+   “The regression test will check the exported text for an empty title. Removing the fallback should make it fail because the output starts with a blank title instead of `(untitled)`.”
+
+6. **Simulated file write**
+
+   Replace `/Users/p/git/notes-app/src/export.test.ts` with:
+
+   ```typescript
+   import { expect, test } from 'vitest';
+   import { exportNote } from './export';
+
+   test('exports the title and body', () => {
+     expect(exportNote({ title: 'Shopping', body: 'Milk' }))
+       .toBe('Shopping\n\nMilk');
+   });
+
+   test('exports an empty title as (untitled)', () => {
+     expect(exportNote({ title: '', body: 'Milk' }))
+       .toBe('(untitled)\n\nMilk');
+   });
+   ```
+
+7. **Simulated shell call — verify RED**
+
+   ```sh
+   cd /Users/p/git/notes-app && pnpm test src/export.test.ts
+   ```
+
+   Assumed full output, read before proceeding:
+
+   ```text
+   > notes-app@ test /Users/p/git/notes-app
+   > vitest run src/export.test.ts
+
+    RUN  v3.2.4 /Users/p/git/notes-app
+
+    ❯ src/export.test.ts (2 tests | 1 failed) 7ms
+      ✓ exports the title and body 1ms
+      × exports an empty title as (untitled) 5ms
+
+    FAIL  src/export.test.ts > exports an empty title as (untitled)
+   AssertionError: expected '\n\nMilk' to be '(untitled)\n\nMilk'
+
+   - Expected
+   + Received
+
+   - (untitled)
+   +
+
+     Milk
+
+    ❯ src/export.test.ts:11:8
+         9| test('exports an empty title as (untitled)', () => {
+        10|   expect(exportNote({ title: '', body: 'Milk' }))
+        11|     .toBe('(untitled)\n\nMilk');
+          |        ^
+        12| });
+
+    Test Files  1 failed (1)
+         Tests  1 failed | 1 passed (2)
+      Start at  10:00:00
+      Duration  280ms
+
+    ELIFECYCLE  Test failed. See above for more details.
+   ```
+
+   Assumed exit code: `1`. This is the intended assertion failure caused by the missing fallback.
+
+8. **Simulated file write — minimal implementation**
+
+   Replace `/Users/p/git/notes-app/src/export.ts` with:
+
+   ```typescript
+   export interface Note {
+     title: string;
+     body: string;
+   }
+
+   export function exportNote(note: Note): string {
+     const title = note.title === '' ? '(untitled)' : note.title;
+     return `${title}\n\n${note.body}`;
+   }
+   ```
+
+9. **Simulated shell call — verify focused GREEN**
+
+   ```sh
+   cd /Users/p/git/notes-app && pnpm test src/export.test.ts
+   ```
+
+   Assumed full output:
+
+   ```text
+   > notes-app@ test /Users/p/git/notes-app
+   > vitest run src/export.test.ts
+
+    RUN  v3.2.4 /Users/p/git/notes-app
+
+    ✓ src/export.test.ts (2 tests) 3ms
+
+    Test Files  1 passed (1)
+         Tests  2 passed (2)
+      Start at  10:01:00
+      Duration  260ms
+   ```
+
+   Assumed exit code: `0`.
+
+10. **Simulated shell call — verify the whole suite**
+
+    ```sh
+    cd /Users/p/git/notes-app && pnpm test
+    ```
+
+    Assumed full output:
+
+    ```text
+    > notes-app@ test /Users/p/git/notes-app
+    > vitest run
+
+     RUN  v3.2.4 /Users/p/git/notes-app
+
+     ✓ src/export.test.ts (2 tests) 3ms
+     ✓ src/notes.test.ts (8 tests) 5ms
+
+     Test Files  2 passed (2)
+          Tests  10 passed (10)
+       Start at  10:02:00
+       Duration  320ms
+    ```
+
+    Assumed exit code: `0`; no failures or warnings.
+
+11. **Final simulated message to partner**
+
+    “Empty titles now export as `(untitled)`, with a regression test. I observed the test fail with the blank-title output before adding the fallback. Then `pnpm test src/export.test.ts` passed both tests, and `pnpm test` passed all 10 tests across both files. Nothing is committed.”
+
+SUMMARY: Read the test-writing reference; simulated removing the premature change, writing and observing a failing regression test, implementing the fallback, and verifying focused and full-suite success; all repo actions and results are assumed, not executed.

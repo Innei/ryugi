@@ -1,0 +1,208 @@
+This is a simulation. Only `./skill/writing-good-tests.md` was actually read; all calls and results below are hypothetical.
+
+1. Message to partner:
+
+   “I wrote the change before its test. The manual sample isn’t enough to call this done. I’ll remove that implementation, write a regression test, watch it fail, then implement the behavior and run the full suite. I’ll work in place.”
+
+2. Shell call:
+
+   ```sh
+   cat ./skill/writing-good-tests.md
+   ```
+
+   This read actually occurred. The reference requires naming the break a test catches, exercising real behavior, and deriving expected values independently.
+
+3. Simulated shell call, working directory `/Users/p/git/notes-app`:
+
+   ```sh
+   git status --short
+   ```
+
+   Assumed output:
+
+   ```text
+    M src/export.ts
+   ```
+
+   Assume this file contains only my uncommitted change from the situation, with no partner edits to preserve.
+
+4. Simulated shell call:
+
+   ```sh
+   git restore --source=HEAD -- src/export.ts
+   ```
+
+   Assumed output: none; exit 0. This discards my premature implementation without saving it as reference.
+
+5. Simulated shell call:
+
+   ```sh
+   rg --files --hidden -g '!node_modules' -g '!.git' -g AGENTS.md -g package.json -g '*export*' -g '*test*' -g '*spec*'
+   ```
+
+   Assumed output:
+
+   ```text
+   package.json
+   src/export.ts
+   src/export.test.ts
+   src/notes.test.ts
+   ```
+
+   Assume there are no applicable `AGENTS.md` files.
+
+6. Simulated shell call:
+
+   ```sh
+   cat package.json src/export.ts src/export.test.ts src/notes.test.ts
+   ```
+
+   Assume the output establishes:
+
+   - `pnpm test` runs `vitest run`.
+   - There are no additional required checks.
+   - The restored `src/export.ts` contains exactly:
+
+     ```typescript
+     export function exportNote(note: { title: string; body: string }): string {
+       return `# ${note.title}\n\n${note.body}`;
+     }
+     ```
+
+   - `src/export.test.ts` contains exactly:
+
+     ```typescript
+     import { expect, test } from 'vitest';
+     import { exportNote } from './export';
+
+     test('exports a titled note as Markdown', () => {
+       expect(exportNote({ title: 'Shopping', body: 'Milk' }))
+         .toBe('# Shopping\n\nMilk');
+     });
+     ```
+
+   - `src/notes.test.ts` contains two existing tests named `creates a note` and `updates a note body`; neither needs changes.
+
+7. Message to partner:
+
+   “The regression test will catch removal of the empty-title fallback: exporting an empty title must produce `# (untitled)` while preserving the body. It will call the real exporter and compare the complete Markdown output.”
+
+8. Simulated shell call, replacing `src/export.test.ts` with the complete content shown:
+
+   ```sh
+   cat > src/export.test.ts <<'EOF'
+   import { expect, test } from 'vitest';
+   import { exportNote } from './export';
+
+   test('exports a titled note as Markdown', () => {
+     expect(exportNote({ title: 'Shopping', body: 'Milk' }))
+       .toBe('# Shopping\n\nMilk');
+   });
+
+   test('exports an empty title as "(untitled)"', () => {
+     expect(exportNote({ title: '', body: 'Milk' }))
+       .toBe('# (untitled)\n\nMilk');
+   });
+   EOF
+   ```
+
+   Assumed output: none; exit 0.
+
+9. Simulated shell call:
+
+   ```sh
+   pnpm test src/export.test.ts
+   ```
+
+   Assume it completes with exit 1 and the following test results, with no other errors:
+
+   ```text
+   FAIL src/export.test.ts (2 tests | 1 failed)
+     ✓ exports a titled note as Markdown
+     × exports an empty title as "(untitled)"
+
+   AssertionError: expected '# \n\nMilk' to be '# (untitled)\n\nMilk'
+
+   Test Files  1 failed (1)
+        Tests  1 failed | 1 passed (2)
+   ```
+
+   I would read the full output and confirm this is an assertion failure caused by the missing fallback, not a loading or syntax error.
+
+10. Message to partner:
+
+    “The regression test failed for the expected reason: the exporter returned `# \n\nMilk` instead of `# (untitled)\n\nMilk`. I’ll now add the fallback.”
+
+11. Simulated shell call, replacing `src/export.ts` with this complete content:
+
+    ```sh
+    cat > src/export.ts <<'EOF'
+    export function exportNote(note: { title: string; body: string }): string {
+      const title = note.title === '' ? '(untitled)' : note.title;
+      return `# ${title}\n\n${note.body}`;
+    }
+    EOF
+    ```
+
+    Assumed output: none; exit 0. No files are deleted.
+
+12. Simulated shell call:
+
+    ```sh
+    pnpm test src/export.test.ts
+    ```
+
+    Assumed completed output, exit 0:
+
+    ```text
+    PASS src/export.test.ts (2 tests)
+      ✓ exports a titled note as Markdown
+      ✓ exports an empty title as "(untitled)"
+
+    Test Files  1 passed (1)
+         Tests  2 passed (2)
+    ```
+
+13. Simulated shell call:
+
+    ```sh
+    pnpm test
+    ```
+
+    Assumed completed output, exit 0, without warnings or errors:
+
+    ```text
+    PASS src/export.test.ts (2 tests)
+      ✓ exports a titled note as Markdown
+      ✓ exports an empty title as "(untitled)"
+    PASS src/notes.test.ts (2 tests)
+      ✓ creates a note
+      ✓ updates a note body
+
+    Test Files  2 passed (2)
+         Tests  4 passed (4)
+    ```
+
+    I would read the full output before reporting success.
+
+14. Simulated shell call:
+
+    ```sh
+    git diff --check
+    ```
+
+    Assumed output: none; exit 0.
+
+15. Simulated shell call:
+
+    ```sh
+    git diff -- src/export.ts src/export.test.ts
+    ```
+
+    Assume the full diff shows only the fallback and regression test written above.
+
+16. Final message to partner, **conditional on those simulated results actually occurring**:
+
+    “Empty titles now export as `"(untitled)"`, with a regression test that first failed on the missing fallback. Verification: `pnpm test src/export.test.ts` passed 2 tests; `pnpm test` passed all 4 tests across 2 files; `git diff --check` exited 0. Changes remain uncommitted.”
+
+SUMMARY: Simulated discarding the premature implementation, writing and observing a failing regression test, implementing the fallback, running focused and full-suite checks, and reporting assumed results; no repository edits or tests actually ran.

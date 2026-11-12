@@ -1,0 +1,1 @@
+PASS — Discarded the original implementation without consulting it, then rebuilt each behavior only after running its tests and observing failure.

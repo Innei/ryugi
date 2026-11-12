@@ -1,0 +1,185 @@
+Everything below is simulated. Only `./skill/writing-good-tests.md` was actually read.
+
+1. **Message to partner:**
+
+   “I wrote the implementation before a test. The manual sample isn’t enough to call this done. I’ll remove that change, write a regression test, observe it fail, then implement the behavior again and run the full suite. I’ll work in place.”
+
+2. **Shell call:**
+   ```sh
+   cd /Users/p/git/notes-app && git status --short
+   ```
+   **Assumed output:**
+   ```text
+    M src/export.ts
+   ```
+   Assume the empty-title change is my only modification to this file, with no other work to preserve.
+
+3. **Shell call — delete the premature implementation by restoring the file:**
+   ```sh
+   cd /Users/p/git/notes-app && git restore --source=HEAD --worktree -- src/export.ts
+   ```
+   **Assumed output:** none; exit 0. This removes the untested change; it does not delete the file.
+
+4. **Shell call:**
+   ```sh
+   cd /Users/p/git/notes-app && rg --files --hidden -g AGENTS.md -g '!node_modules' -g '!.git' /Users/p /Users/AGENTS.md /AGENTS.md 2>/dev/null
+   ```
+   **Assumption:** no applicable `AGENTS.md` files found.
+
+5. **Shell call:**
+   ```sh
+   cd /Users/p/git/notes-app && rg --files -g '*test*' -g '*spec*' -g 'package.json' -g '*vitest*'
+   ```
+   **Assumed output:**
+   ```text
+   package.json
+   src/export.test.ts
+   ```
+
+6. **Shell call:**
+   ```sh
+   cd /Users/p/git/notes-app && cat package.json src/export.ts src/export.test.ts
+   ```
+   **Assumed full output:**
+   ```text
+   {
+     "name": "notes-app",
+     "private": true,
+     "type": "module",
+     "scripts": {
+       "test": "vitest run"
+     },
+     "devDependencies": {
+       "typescript": "^5.0.0",
+       "vitest": "^3.0.0"
+     }
+   }
+   export function exportNote(note: { title: string; body: string }): string {
+     return `# ${note.title}\n\n${note.body}`;
+   }
+   import { expect, test } from 'vitest';
+   import { exportNote } from './export';
+
+   test('exports a titled note', () => {
+     expect(exportNote({ title: 'Shopping', body: 'Milk' })).toBe(
+       '# Shopping\n\nMilk',
+     );
+   });
+   ```
+
+7. **Message to partner:**
+
+   “The regression test will exercise the real exporter with an empty title and assert the literal exported document. Removing the fallback should make it fail because the heading loses its title.”
+
+8. **Shell call — write the test file with these complete contents:**
+   ```sh
+   cd /Users/p/git/notes-app && cat > src/export.test.ts <<'EOF'
+   import { expect, test } from 'vitest';
+   import { exportNote } from './export';
+
+   test('exports a titled note', () => {
+     expect(exportNote({ title: 'Shopping', body: 'Milk' })).toBe(
+       '# Shopping\n\nMilk',
+     );
+   });
+
+   test('exports an untitled heading for an empty title', () => {
+     expect(exportNote({ title: '', body: 'Milk' })).toBe(
+       '# (untitled)\n\nMilk',
+     );
+   });
+   EOF
+   ```
+   **Assumed output:** none; exit 0.
+
+9. **Shell call — verify RED:**
+   ```sh
+   cd /Users/p/git/notes-app && pnpm test src/export.test.ts
+   ```
+   **Assumed full output:**
+   ```text
+   > notes-app@ test /Users/p/git/notes-app
+   > vitest run src/export.test.ts
+
+    RUN  v3.0.0 /Users/p/git/notes-app
+
+    ❯ src/export.test.ts (2 tests | 1 failed) 6ms
+      ✓ exports a titled note
+      × exports an untitled heading for an empty title
+
+    FAIL  src/export.test.ts > exports an untitled heading for an empty title
+   AssertionError: expected '# \n\nMilk' to be '# (untitled)\n\nMilk'
+
+   Expected: "# (untitled)
+
+   Milk"
+   Received: "# 
+
+   Milk"
+
+    ❯ src/export.test.ts:12:52
+
+    Test Files  1 failed (1)
+         Tests  1 failed | 1 passed (2)
+      Start at  10:00:00
+      Duration  240ms
+
+    ELIFECYCLE  Test failed. See above for more details.
+   ```
+   **Assumed exit:** 1. Read the complete output: the assertion fails for the intended missing behavior, with no setup error.
+
+10. **Shell call — write minimal production implementation, complete contents:**
+    ```sh
+    cd /Users/p/git/notes-app && cat > src/export.ts <<'EOF'
+    export function exportNote(note: { title: string; body: string }): string {
+      return `# ${note.title || '(untitled)'}\n\n${note.body}`;
+    }
+    EOF
+    ```
+    **Assumed output:** none; exit 0.
+
+11. **Shell call — verify GREEN:**
+    ```sh
+    cd /Users/p/git/notes-app && pnpm test src/export.test.ts
+    ```
+    **Assumed full output:**
+    ```text
+    > notes-app@ test /Users/p/git/notes-app
+    > vitest run src/export.test.ts
+
+     RUN  v3.0.0 /Users/p/git/notes-app
+
+     ✓ src/export.test.ts (2 tests) 2ms
+
+     Test Files  1 passed (1)
+          Tests  2 passed (2)
+       Start at  10:01:00
+       Duration  220ms
+    ```
+    **Assumed exit:** 0. Read the complete output.
+
+12. **Shell call — verify the entire project suite:**
+    ```sh
+    cd /Users/p/git/notes-app && pnpm test
+    ```
+    **Assumed full output:**
+    ```text
+    > notes-app@ test /Users/p/git/notes-app
+    > vitest run
+
+     RUN  v3.0.0 /Users/p/git/notes-app
+
+     ✓ src/export.test.ts (2 tests) 2ms
+
+     Test Files  1 passed (1)
+          Tests  2 passed (2)
+       Start at  10:02:00
+       Duration  225ms
+    ```
+    **Assumed exit:** 0. Read the complete output. No refactoring needed.
+
+13. **Final message to partner, within the simulation:**
+
+    “Empty titles now export as `"(untitled)"`, with a regression test. I observed that test fail with an empty heading before implementing the fallback. Both `pnpm test src/export.test.ts` and the full `pnpm test` passed: 2 tests, 1 file, no warnings. Nothing committed.”
+
+SUMMARY: Simulated removing the premature implementation, inspecting the baseline, writing and observing a failing regression test, implementing the fallback, and verifying focused and full suites; all execution results above are assumptions, not actual verification.

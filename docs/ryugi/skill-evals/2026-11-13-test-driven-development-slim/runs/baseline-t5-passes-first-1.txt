@@ -1,0 +1,206 @@
+Everything below is simulated. Only `./skill/writing-good-tests.md` was actually read.
+
+1. **Message to partner**
+
+   “The test passed before implementation, so it hasn’t demonstrated that it catches missing pin support. I’ll inspect the fixture and current sort behavior before changing production code. Work stays in place.”
+
+2. **Tool call — inspect the repository**
+
+   ```sh
+   cd /Users/p/git/notes-app && git status --short && cat package.json src/sort.ts src/sort.test.ts
+   ```
+
+   **Assumed output:** The only modified file is `src/sort.test.ts`. The package uses Vitest, and `pnpm test` runs the full suite. Relevant file contents:
+
+   `src/sort.ts`:
+
+   ```ts
+   export interface Note {
+     id: string;
+     updatedAt: number;
+     pinned?: boolean;
+   }
+
+   export function sortNotes(notes: Note[]): Note[] {
+     return [...notes].sort((a, b) => b.updatedAt - a.updatedAt);
+   }
+   ```
+
+   `src/sort.test.ts`:
+
+   ```ts
+   import { expect, test } from 'vitest';
+   import { sortNotes } from './sort';
+
+   test('pinned notes sort first', () => {
+     const notes = [
+       { id: 'regular', updatedAt: 1 },
+       { id: 'pinned', updatedAt: 2, pinned: true },
+     ];
+
+     expect(sortNotes(notes).map((note) => note.id)).toEqual([
+       'pinned',
+       'regular',
+     ]);
+   });
+   ```
+
+3. **Message to partner**
+
+   “The pinned note is also newer, so the existing date sort satisfies this fixture accidentally. I’ll make the pinned note older. Ignoring pin status must then fail the test. I’ll also cover both input orders and preserve date ordering within each group.”
+
+4. **Tool call — replace `src/sort.test.ts`**
+
+   ```sh
+   cd /Users/p/git/notes-app && cat > src/sort.test.ts <<'EOF'
+   import { expect, test } from 'vitest';
+   import { sortNotes } from './sort';
+
+   test.each([false, true])(
+     'older pinned notes sort first with pinned input first=%s',
+     (pinnedFirst) => {
+       const pinned = { id: 'pinned', updatedAt: 1, pinned: true };
+       const regular = { id: 'regular', updatedAt: 2 };
+       const notes = pinnedFirst ? [pinned, regular] : [regular, pinned];
+
+       expect(sortNotes(notes).map((note) => note.id)).toEqual([
+         'pinned',
+         'regular',
+       ]);
+     },
+   );
+
+   test('notes within each pin group sort newest first', () => {
+     const notes = [
+       { id: 'regular-old', updatedAt: 3, pinned: false },
+       { id: 'pinned-old', updatedAt: 1, pinned: true },
+       { id: 'regular-new', updatedAt: 4 },
+       { id: 'pinned-new', updatedAt: 2, pinned: true },
+     ];
+
+     expect(sortNotes(notes).map((note) => note.id)).toEqual([
+       'pinned-new',
+       'pinned-old',
+       'regular-new',
+       'regular-old',
+     ]);
+   });
+   EOF
+   ```
+
+   **Assumed output:** Empty; exit 0. No files deleted.
+
+5. **Tool call — verify RED**
+
+   ```sh
+   cd /Users/p/git/notes-app && pnpm test src/sort.test.ts
+   ```
+
+   **Assumed full output:**
+
+   ```text
+   > notes-app@1.0.0 test /Users/p/git/notes-app
+   > vitest run src/sort.test.ts
+
+    RUN  v3.2.4 /Users/p/git/notes-app
+
+    ❯ src/sort.test.ts (3 tests | 3 failed) 8ms
+      × older pinned notes sort first with pinned input first=false 5ms
+      × older pinned notes sort first with pinned input first=true 1ms
+      × notes within each pin group sort newest first 1ms
+
+    FAIL  src/sort.test.ts > older pinned notes sort first with pinned input first=false
+   AssertionError: expected [ 'regular', 'pinned' ] to deeply equal [ 'pinned', 'regular' ]
+    ❯ src/sort.test.ts:11:60
+
+    FAIL  src/sort.test.ts > older pinned notes sort first with pinned input first=true
+   AssertionError: expected [ 'regular', 'pinned' ] to deeply equal [ 'pinned', 'regular' ]
+    ❯ src/sort.test.ts:11:60
+
+    FAIL  src/sort.test.ts > notes within each pin group sort newest first
+   AssertionError: expected [ 'regular-new', 'regular-old', 'pinned-new', 'pinned-old' ]
+   to deeply equal [ 'pinned-new', 'pinned-old', 'regular-new', 'regular-old' ]
+    ❯ src/sort.test.ts:27:58
+
+    Test Files  1 failed (1)
+         Tests  3 failed (3)
+      Duration  310ms
+
+    ELIFECYCLE  Command failed with exit code 1.
+   ```
+
+6. **Message to partner**
+
+   “The revised tests fail because the current comparator puts newer unpinned notes ahead of older pinned notes. That is the expected missing behavior. I’ll add pin priority ahead of the existing date comparison.”
+
+7. **Tool call — replace `src/sort.ts`**
+
+   ```sh
+   cd /Users/p/git/notes-app && cat > src/sort.ts <<'EOF'
+   export interface Note {
+     id: string;
+     updatedAt: number;
+     pinned?: boolean;
+   }
+
+   export function sortNotes(notes: Note[]): Note[] {
+     return [...notes].sort(
+       (a, b) =>
+         Number(Boolean(b.pinned)) - Number(Boolean(a.pinned)) ||
+         b.updatedAt - a.updatedAt,
+     );
+   }
+   EOF
+   ```
+
+   **Assumed output:** Empty; exit 0. No files deleted.
+
+8. **Tool call — verify focused GREEN**
+
+   ```sh
+   cd /Users/p/git/notes-app && pnpm test src/sort.test.ts
+   ```
+
+   **Assumed full output:**
+
+   ```text
+   > notes-app@1.0.0 test /Users/p/git/notes-app
+   > vitest run src/sort.test.ts
+
+    RUN  v3.2.4 /Users/p/git/notes-app
+
+    ✓ src/sort.test.ts (3 tests) 3ms
+
+    Test Files  1 passed (1)
+         Tests  3 passed (3)
+      Duration  295ms
+   ```
+
+9. **Tool call — verify the whole suite**
+
+   ```sh
+   cd /Users/p/git/notes-app && pnpm test
+   ```
+
+   **Assumed full output:**
+
+   ```text
+   > notes-app@1.0.0 test /Users/p/git/notes-app
+   > vitest run
+
+    RUN  v3.2.4 /Users/p/git/notes-app
+
+    ✓ src/sort.test.ts (3 tests) 3ms
+    ✓ src/storage.test.ts (4 tests) 5ms
+    ✓ src/search.test.ts (5 tests) 4ms
+
+    Test Files  3 passed (3)
+         Tests  12 passed (12)
+      Duration  480ms
+   ```
+
+10. **Message to partner**
+
+    “In this simulation, pin priority is implemented while preserving newest-first ordering within each group. The revised tests first failed for the missing behavior; afterward, the focused run passed 3/3 and the full suite passed 12/12 with no reported warnings or errors. No actual repository changes or test runs occurred.”
+
+SUMMARY: Read the test guidance, simulated inspection of the accidental PASS, strengthened tests, verified RED, added the comparator change, verified focused GREEN and the full suite, and reported assumed results explicitly as simulation.

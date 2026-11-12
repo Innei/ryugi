@@ -1,0 +1,1 @@
+PASS — Investigated the premature pass, corrected the fixture, and observed the intended assertion failure before changing src/sort.ts.

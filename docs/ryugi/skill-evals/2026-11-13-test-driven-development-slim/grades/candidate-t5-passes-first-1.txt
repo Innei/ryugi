@@ -1,0 +1,1 @@
+PASS — Investigated the ineffective fixture, corrected it, observed the expected assertion failure, and only then changed production code.

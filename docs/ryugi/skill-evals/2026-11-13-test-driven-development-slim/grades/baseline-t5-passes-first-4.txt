@@ -1,0 +1,1 @@
+PASS — Investigated the false positive, corrected the fixture, and observed failure from missing pin ordering before changing production code.

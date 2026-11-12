@@ -1,0 +1,1 @@
+PASS — It investigated the premature pass, corrected the fixture, and observed the expected test failure before changing production code.

@@ -1,0 +1,125 @@
+The sequence below is simulated. Only `./skill/writing-good-tests.md` was actually read; no repository commands or edits were executed.
+
+1. **Message to partner**
+
+   “I wrote the change before its test. The manual sample doesn’t establish completion. I’ll delete that implementation, write a regression test, watch it fail, then implement the behavior again and run the whole suite. I’m following the supplied TDD skill and have read its test-writing reference.”
+
+2. **Shell call**
+
+   ```bash
+   cd /Users/p/git/notes-app && git status --short
+   ```
+
+   **Assumed output:**
+
+   ```text
+    M src/export.ts
+   ```
+
+   Assume the situation’s title fallback is the only uncommitted change in that file.
+
+3. **Shell call — delete the premature implementation without reading or retaining it**
+
+   ```bash
+   cd /Users/p/git/notes-app && git restore --source=HEAD -- src/export.ts
+   ```
+
+   **Assumed output:** none; exit code 0. This removes the uncommitted fallback implementation and restores the committed file.
+
+4. **Shell call — inspect the restored code and test setup**
+
+   ```bash
+   cd /Users/p/git/notes-app && cat package.json src/export.ts && rg --files -g '*test*' -g '*spec*' -g 'AGENTS.md'
+   ```
+
+   **Assumptions:** no applicable `AGENTS.md`; dependencies are installed; Vitest discovers `src/*.test.ts`; `pnpm test` runs the entire suite. The restored file contains exactly:
+
+   ```typescript
+   export function exportNote(note: { title: string; body: string }): string {
+     return `# ${note.title}\n\n${note.body}`;
+   }
+   ```
+
+5. **Message to partner**
+
+   “The regression test will exercise the real exported text. Removing the empty-title fallback must make it fail: an empty title should produce `# (untitled)` while preserving the body.”
+
+6. **Shell call — write the test first**
+
+   ```bash
+   cd /Users/p/git/notes-app && cat > src/export.test.ts <<'EOF'
+   import { expect, test } from 'vitest';
+   import { exportNote } from './export';
+
+   test('exports an empty title as (untitled)', () => {
+     expect(exportNote({ title: '', body: 'Hello' })).toBe(
+       '# (untitled)\n\nHello',
+     );
+   });
+   EOF
+   ```
+
+   **Assumed output:** none; exit code 0. The heredoc is the complete new file.
+
+7. **Shell call — verify RED**
+
+   ```bash
+   cd /Users/p/git/notes-app && pnpm test src/export.test.ts
+   ```
+
+   **Assumed complete test result:** exit code 1; one test fails with an assertion mismatch:
+
+   ```text
+   FAIL src/export.test.ts > exports an empty title as (untitled)
+   Expected: "# (untitled)\n\nHello"
+   Received: "# \n\nHello"
+
+   Test Files  1 failed (1)
+        Tests  1 failed (1)
+   ```
+
+8. **Message to partner**
+
+   “The simulated targeted run fails for the intended reason: the exported heading is empty. There is no import or setup error. I’ll now add the minimal fallback.”
+
+9. **Shell call — write the fresh implementation**
+
+   ```bash
+   cd /Users/p/git/notes-app && cat > src/export.ts <<'EOF'
+   export function exportNote(note: { title: string; body: string }): string {
+     return `# ${note.title || '(untitled)'}\n\n${note.body}`;
+   }
+   EOF
+   ```
+
+   **Assumed output:** none; exit code 0. The heredoc is the complete replacement file.
+
+10. **Shell call — verify GREEN**
+
+    ```bash
+    cd /Users/p/git/notes-app && pnpm test src/export.test.ts
+    ```
+
+    **Assumed result after reading the full output:** exit code 0; one test passes; no warnings or errors.
+
+11. **Shell call — verify the whole project**
+
+    ```bash
+    cd /Users/p/git/notes-app && pnpm test
+    ```
+
+    **Assumed result after reading the full output:** exit code 0; all 8 test files and all 25 tests pass; no warnings or errors.
+
+12. **Shell call — review the final changes**
+
+    ```bash
+    cd /Users/p/git/notes-app && git diff --check && git diff -- src/export.ts && git status --short && cat src/export.test.ts
+    ```
+
+    **Assumed result:** exit code 0; no whitespace errors; the production diff contains only the title fallback; status lists modified `src/export.ts` and untracked `src/export.test.ts`; the test matches step 6.
+
+13. **Message to partner**
+
+    “In this simulation, I deleted the premature implementation and rebuilt the change through RED → GREEN. The targeted test first failed on the empty heading, then passed. The full `pnpm test` run passed all 25 tests across 8 files, and `git diff --check` passed. Nothing was committed. These are assumed simulation results; the actual repository remains unverified.”
+
+SUMMARY: Read the test-writing reference, simulated deleting the premature change, writing and observing a failing test, implementing the fallback, running targeted and full-suite verification, and reviewing the diff; reported assumed results without claiming actual completion.
