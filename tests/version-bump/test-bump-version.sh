@@ -58,6 +58,37 @@ jq -e '
 ' "$REPO_ROOT/.version-bump.json" > /dev/null \
   || fail "Hermes manifest is not registered"
 
+plugin_count="$(jq '.plugins | length' "$REPO_ROOT/.claude-plugin/marketplace.json")"
+for ((i = 0; i < plugin_count; i++)); do
+  jq -e --arg field "plugins.$i.version" '
+    any(.files[];
+      .path == ".claude-plugin/marketplace.json" and .field == $field)
+  ' "$REPO_ROOT/.version-bump.json" > /dev/null \
+    || fail "marketplace entry $i ($(jq -r ".plugins[$i].name" "$REPO_ROOT/.claude-plugin/marketplace.json")) is not registered"
+done
+
+marketplace_repo="$TEST_ROOT/marketplace"
+make_fixture "$marketplace_repo" $'name: ryugi\nversion: 1.2.3'
+mkdir -p "$marketplace_repo/.claude-plugin"
+cat > "$marketplace_repo/.claude-plugin/marketplace.json" << 'JSON'
+{
+  "name": "ryugi-dev",
+  "plugins": [
+    { "name": "ryugi", "version": "1.2.3", "source": "./" },
+    { "name": "ryugi-artifacts", "version": "1.2.3", "source": "./" }
+  ]
+}
+JSON
+jq '.files += [
+  { "path": ".claude-plugin/marketplace.json", "field": "plugins.0.version" },
+  { "path": ".claude-plugin/marketplace.json", "field": "plugins.1.version" }
+]' "$marketplace_repo/.version-bump.json" > "$TEST_ROOT/marketplace-config.json"
+mv "$TEST_ROOT/marketplace-config.json" "$marketplace_repo/.version-bump.json"
+
+/bin/bash "$marketplace_repo/scripts/bump-version.sh" 2.3.4 > /dev/null
+[[ "$(jq -r '[.plugins[].version] | join(" ")' "$marketplace_repo/.claude-plugin/marketplace.json")" == "2.3.4 2.3.4" ]] \
+  || fail "marketplace entries were not bumped together"
+
 /bin/bash "$REPO_ROOT/scripts/bump-version.sh" --check > "$TEST_ROOT/repo-check.out" 2>&1 \
   || fail "repo versions drift: $(cat "$TEST_ROOT/repo-check.out")"
 
