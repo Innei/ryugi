@@ -25,7 +25,9 @@ comments.json  the server writes; never edit
   recordings in a report.
 - **Both kinds in one piece of work**: both artifacts, and the report lists
   each artboard verify group as a row. Give the report's link.
-- **Only screen claims**: the artboard alone, no report.
+- **Only screen claims**: the artboard alone, no report. Measurements and
+  test runs that back a screen claim do not make a second kind; they go in
+  the group's sticky or your final message.
 
 ## report.xml
 
@@ -57,6 +59,9 @@ comments.json  the server writes; never edit
 </report>
 ```
 
+- Write the report in their language: the report title, claim titles,
+  `<ask>`, `<gap>` and every note. Ids, `from`, commands and captured output
+  stay as they are.
 - `<report title>`: required. At most one `<p>` first, to introduce the
   work. After it, only `<claim>`, `<gap>` and `<ref artboard group>`, in any
   order. No headings and no other prose at the top level; `check` refuses

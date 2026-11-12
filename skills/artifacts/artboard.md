@@ -3,7 +3,8 @@
 An artboard is the space of a business requirement: boards are options,
 groups are questions, pages are areas. You put design explorations on it by
 writing files into the artboard's directory; the canvas updates the moment a
-file changes. Your human partner cannot move boards in the browser. In a
+file changes. Your human partner can move boards, titles and stickies in
+the browser; their positions are written into `canvas.json`. In a
 choice group they pick a board and submit the round there; anything else
 they tell you in the terminal ("make q3-a's header lighter").
 
@@ -14,7 +15,7 @@ Start the server and get the link as `SKILL.md` describes, with
 
 ```
 <project>/.ryugi/artifacts/artboard/<id>/
-  canvas.json                  ← you write: pages, boards, groups, notes, focus
+  canvas.json                  ← you and the server: pages, boards, groups, notes, focus
   pages/<page-id>/<board>.html ← you write: one self-contained page per board
 
 <project>/.ryugi/artifacts/.state/artboard/<id>/   ← the server writes; never edit it
@@ -24,6 +25,16 @@ Start the server and get the link as `SKILL.md` describes, with
 
 comments.json in the artboard directory is the server's; never write it.
 ```
+
+The server writes `canvas.json` too, when your human partner moves a board
+or a note. Read it again before every edit and change it in place; never
+write back a whole copy you read earlier.
+
+A write that puts a moved item back where it was before they moved it is
+undone: their position is kept, and `check` notes
+`board "<id>" was moved by your human partner; your write put it back, so
+their position was kept`. To move such an item on purpose, give it a
+position it has not had before.
 
 ## canvas.json
 
@@ -245,6 +256,8 @@ the ID the viewer shows on hover, `<board id>#<n>` (`hero-2#7`).
 - `selected`: the selected nodes, each with its `file`, a CSS `path` from
   `body`, `text`, `html`, and its `tweaks` (`property`, `from`, `value`);
   `more` counts selected nodes left out.
+- `boards`, `notes`: the ids of the boards and notes they selected on the
+  canvas, left out when none is.
 - `tweaks`: Inspector changes on nodes that are not selected.
 - `nodes`: every node's ID, `file` and `path`, for IDs they type.
 
@@ -254,7 +267,7 @@ ones", name an ID, or refer to what they tweaked. Read only what you need:
 tokens.
 
 ```bash
-jq '{selected, more, tweaks}' .ryugi/artifacts/.state/artboard/ < id > /selection.json
+jq '{selected, more, boards, notes, tweaks}' .ryugi/artifacts/.state/artboard/ < id > /selection.json
 ```
 
 Look up `nodes` only for an ID they typed:
@@ -314,7 +327,8 @@ node app/ryugi.cjs comment list --section threads --project-dir /path/to/project
 A group with `"verify": true` gets pass and reject buttons next to its title.
 Your human partner decides. When they ask you to
 verify or show a built change, put the evidence (screenshots, recordings,
-boards) in a new group with `"verify": true`.
+boards) in a new group with `"verify": true`. Write its title and its
+stickies in their language.
 
 Every verify group says where its evidence came from:
 

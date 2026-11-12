@@ -87,12 +87,21 @@ and numbers?
 | Only screen claims | The artboard verify page. No report; "Not verified" goes in your final message.    |
 | Both               | Both. The report lists the artboard's verify groups as rows; give the report link. |
 
+Work whose whole question is how a screen looks, moves or feels has only
+screen claims. What you measured or ran to back them — pixel sizes, sampled
+frames, the test suite, a typecheck — is your proof of those same claims,
+not a second kind: put it in the group's sticky or your final message. An
+output claim is one that would still need proving if nobody looked at a
+screen: an API result, data, a deploy, a number against a threshold.
+
 ## The verify report
 
 For what is judged by reading: the log of an end-to-end run, API status,
 counts, a migration result, which build is deployed and what it serves, a
 number against a threshold, a downstream build, an eval tally. Write it as
-`verify.md` says. One report per piece of work, `verify/<topic>`.
+`verify.md` says. One report per piece of work, `verify/<topic>`. Write it
+in their language: titles, asks, gaps and notes. Ids, commands and output
+stay as they are.
 
 1. **One claim per thing you assert**, titled with the claim, each with
    `from` and `capturedAt`.
@@ -125,8 +134,8 @@ visible bug before and after, motion, device screenshots.
    `verify-<topic>`, with the design's link in each group's sticky when
    there is one.
 2. **One group per module or per bug**, `"verify": true`, with `from` and
-   `capturedAt`. The title or a sticky says what you are asking: what to
-   look at, and what would make it wrong.
+   `capturedAt`. The title or a sticky says what you are asking, in their
+   language: what to look at, and what would make it wrong.
    - Built from a spec: the approved board (a board with the same `file`)
      on the left, a screenshot of the real app on the right. A module with
      interaction also gets a short recording. No approved board: the
