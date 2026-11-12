@@ -238,6 +238,10 @@ whether it is on.
    has loaded there: while a `Browser: not run` or `Browser: unknown` line
    shows, an empty list means "not run yet", not "no errors".
 
+   A `W_MODULES` line asks you to tag the artifact with the business module
+   it serves: read `modules.md` and do what the line says before you report.
+   No such line, nothing to do.
+
 3. Tell them what changed and give the link. Questions, choice groups and verify
    groups use their page controls; discussion can continue in the terminal.
    For a document, an `html` page or static boards, send that
