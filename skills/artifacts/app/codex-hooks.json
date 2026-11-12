@@ -42,8 +42,8 @@
           {
             "type": "command",
             "command": "node \"${PLUGIN_ROOT}/skills/artifacts/app/agent-event.cjs\" codex",
-            "timeout": 5,
-            "async": true
+            "timeout": 3,
+            "async": false
           }
         ]
       }
@@ -102,8 +102,8 @@
           {
             "type": "command",
             "command": "node \"${PLUGIN_ROOT}/skills/artifacts/app/agent-event.cjs\" codex",
-            "timeout": 5,
-            "async": true
+            "timeout": 3,
+            "async": false
           }
         ]
       }

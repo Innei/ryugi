@@ -176,12 +176,27 @@ test('every lifecycle event both hosts report is registered', () => {
     commandFor(codexHooks(), event);
 });
 
-test('only the Stop hooks wait; every other agent event hook is async', () => {
-  for (const config of [claudeHooks(), codexHooks()])
-    for (const [event, groups] of Object.entries(config))
-      for (const hook of groups.flatMap((group) => group.hooks))
-        if (/agent-event/.test(hook.command))
-          assert.equal(hook.async, event !== 'Stop', `${event} async`);
+function agentEventHooks(config) {
+  return Object.entries(config).flatMap(([event, groups]) =>
+    groups
+      .flatMap((group) => group.hooks)
+      .filter((hook) => /agent-event/.test(hook.command))
+      .map((hook) => [event, hook]),
+  );
+}
+
+test('only the Claude Code Stop hook waits; every other Claude Code agent event hook is async', () => {
+  for (const [event, hook] of agentEventHooks(claudeHooks()))
+    assert.equal(hook.async, event !== 'Stop', `${event} async`);
+});
+
+test('Codex agent event hooks ask only for what Codex runs: turn-ending events wait at most 3s', () => {
+  const waits = new Set(['Stop', 'SessionEnd', 'Interrupt']);
+  for (const [event, hook] of agentEventHooks(codexHooks())) {
+    assert.equal(hook.async, !waits.has(event), `${event} async`);
+    if (event === 'SessionEnd' || event === 'Interrupt')
+      assert.ok(hook.timeout <= 3, `${event} timeout ${hook.timeout}s exceeds Codex's 3s clamp`);
+  }
 });
 
 test('the Claude Code Stop hook reports the end of the turn and still flushes', async (t) => {
