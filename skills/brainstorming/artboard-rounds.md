@@ -13,7 +13,7 @@ canvas, the boards and reading what they selected. Name it after the topic
 - When a document section sent you here, write the group references first:
   before `canvas.json`, put one `<ref artboard="…" group="…" />` per group,
   each in its own `<p>`, under that section's heading (References
-  in ryugi:artifacts' `document.md`). A missing artboard is only a warning,
+  in the artifacts CLI document writing description). A missing artboard is only a warning,
   so the reference can come before the drawing. Tell them the section now
   links to the board.
 - A title note for the round, with one line on how to answer, in their
@@ -48,7 +48,7 @@ When they answer:
 2. Record each answered group as a decision, theirs or the recommendation
    they accepted: in the document's Settled when one is open, in your next
    playback otherwise. In the document, name the chosen board with a
-   `<ref artboard=… board=…>` (ryugi:artifacts, document.md), not as plain
+   `<ref artboard=… board=…>` (artifacts CLI document writing description), not as plain
    text.
 3. Append the next round below the last one, as ryugi:artifacts says.
    Earlier rounds stay as history.

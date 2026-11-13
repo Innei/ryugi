@@ -41,7 +41,7 @@ Write it in their language. Top to bottom:
 - Mockups don't go in the document. When an item is about something they'll
   look at, put it on the artboard (`artboard-rounds.md`) or an `html` page.
   For an artboard, write a group `<ref>` under the section's heading in the
-  same change (ryugi:artifacts, document.md, References); for an
+  same change (artifacts CLI document writing description, References); for an
   `html` page, link it from the item. Their answer there settles the item.
 
 ## Starting Fresh

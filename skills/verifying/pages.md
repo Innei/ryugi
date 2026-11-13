@@ -4,8 +4,7 @@
 
 For what is judged by reading: the log of an end-to-end run, API status,
 counts, a migration result, which build is deployed and what it serves, a
-number against a threshold, a downstream build, an eval tally. Write it as
-`verify.md` says. One report per piece of work, `verify/<topic>`. Write it
+number against a threshold, a downstream build, an eval tally. Use the complete verify writing description returned by the artifacts CLI. One report per piece of work, `verify/<topic>`. Write it
 in their language: titles, asks, gaps and notes. Ids, commands and output
 stay as they are.
 
@@ -59,8 +58,7 @@ visible bug before and after, motion, device screenshots.
    say so and shrink or drop the largest recordings.
 4. **Link back.** When the spec lists the document where this was
    discussed and it still exists, add `<ref artboard="<id>" group="<verify
-group>" />` to the section that discussed each module, as ryugi:artifacts
-   says under References in document.md. The reference shows the verdict,
+group>" />` to the section that discussed each module, as the artifacts CLI document writing description explains. The reference shows the verdict,
    and it is the only way back from the verify page to that discussion.
 5. Set `focus` to the first group, run `check` and clear its warnings,
    provenance notes and `pending`, give the link (the report's link when

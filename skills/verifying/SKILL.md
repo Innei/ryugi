@@ -10,9 +10,10 @@ command can decide, you decide and show. Your human partner is asked only
 for what needs a person: how something looks, moves, feels, sounds or
 reads, and whether a trade-off is right.
 
-**REQUIRED BACKGROUND:** ryugi:artifacts — its `verify.md` covers verify
-reports (claims, output, gaps), and its `artboard.md` covers verify groups
-for screens; both cover `from`, `capturedAt` and reading verdicts.
+**REQUIRED BACKGROUND:** ryugi:artifacts — start the verify report or artboard
+through its launcher. The CLI response supplies the complete writing description,
+including evidence provenance and verdict semantics; start --artifact … --help
+retrieves that same description for existing content.
 
 ## How much verification
 
