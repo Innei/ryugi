@@ -1,0 +1,174 @@
+{
+  "candidateSkillSha256": "11c77e574ce454ad570b1f565ac6ab41333989df741150395e692dcb56fd5699",
+  "cliVersion": "1.77.0",
+  "effort": "medium",
+  "model": "gpt-6.1-sol",
+  "runs": [
+    {
+      "label": "create-baseline-1",
+      "scenario": "create",
+      "arm": "baseline",
+      "repetition": 1,
+      "capturedAt": "2026-11-13T15:22:57.073Z",
+      "model": "gpt-6.1-sol",
+      "effort": "medium",
+      "codex": "codex-cli 0.167.2",
+      "package": {
+        "cli": "/Users/innei/.cache/ryugi/artifacts/1.77.0/node_modules/ryugi-artifacts/dist/cli.cjs",
+        "version": "1.77.0",
+        "cliSha256": "068315f11ea47786a9fce155466a2648aa98c7af465e43c23f0712795076552a",
+        "integrity": "sha512-1QCkCEl2vIGCasSCSKj0WtFUBdIzBW51EVyRWAa0NRWpqCCl5kJdSjvLLENIgtLfBScTM2l3y3rSwfHV39vYxw==",
+        "tarball": "https://registry.npmjs.org/ryugi-artifacts/-/ryugi-artifacts-1.77.0.tgz"
+      },
+      "skillSha256": "9184b30aa46b512ffde14d7afb1e6b258116925dc13d667066d94e05cdda53a4",
+      "wallMs": 37736,
+      "input": 81945,
+      "cached": 72448,
+      "uncached": 9497,
+      "output": 866,
+      "total": 82811,
+      "toolCalls": 6,
+      "commands": [
+        "/bin/zsh -lc 'cat skill/SKILL.md'",
+        "/bin/zsh -lc 'node /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-package-eval-oiA6Vn/skill/app/ryugi.cjs start --background --no-open --artifact document/retry-policy --project-dir /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-package-eval-oiA6Vn'",
+        "/bin/zsh -lc 'if [ -f .ryugi/artifacts/document/retry-policy/doc.xml ]; then cat .ryugi/artifacts/document/retry-policy/doc.xml; fi'",
+        "/bin/zsh -lc 'node /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-package-eval-oiA6Vn/skill/app/ryugi.cjs check --project-dir /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-package-eval-oiA6Vn --artifact document/retry-policy'",
+        "/bin/zsh -lc 'node /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-package-eval-oiA6Vn/skill/app/ryugi.cjs start --background --no-open --artifact document/retry-policy --project-dir /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-package-eval-oiA6Vn'"
+      ],
+      "referenceReads": [],
+      "sourceFallbacks": [],
+      "checks": {
+        "processSucceeded": true,
+        "checkClean": true,
+        "agentRanCheck": true,
+        "respectedScope": true,
+        "titlePresent": true,
+        "requestedContent": true,
+        "nativeDiagram": true,
+        "interactiveQuestion": true,
+        "questionWaitingForHuman": true
+      },
+      "passed": true,
+      "calls": [
+        {
+          "args": [
+            "start",
+            "--background",
+            "--no-open",
+            "--artifact",
+            "document/retry-policy",
+            "--project-dir",
+            "/private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-package-eval-oiA6Vn"
+          ],
+          "code": 0
+        },
+        {
+          "args": [
+            "check",
+            "--project-dir",
+            "/private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-package-eval-oiA6Vn",
+            "--artifact",
+            "document/retry-policy"
+          ],
+          "code": 0
+        },
+        {
+          "args": [
+            "start",
+            "--background",
+            "--no-open",
+            "--artifact",
+            "document/retry-policy",
+            "--project-dir",
+            "/private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-package-eval-oiA6Vn"
+          ],
+          "code": 0
+        }
+      ]
+    },
+    {
+      "label": "create-candidate-1",
+      "scenario": "create",
+      "arm": "candidate",
+      "repetition": 1,
+      "capturedAt": "2026-11-13T15:24:15.101Z",
+      "model": "gpt-6.1-sol",
+      "effort": "medium",
+      "codex": "codex-cli 0.167.2",
+      "package": {
+        "cli": "/Users/innei/.cache/ryugi/artifacts/1.77.0/node_modules/ryugi-artifacts/dist/cli.cjs",
+        "version": "1.77.0",
+        "cliSha256": "068315f11ea47786a9fce155466a2648aa98c7af465e43c23f0712795076552a",
+        "integrity": "sha512-1QCkCEl2vIGCasSCSKj0WtFUBdIzBW51EVyRWAa0NRWpqCCl5kJdSjvLLENIgtLfBScTM2l3y3rSwfHV39vYxw==",
+        "tarball": "https://registry.npmjs.org/ryugi-artifacts/-/ryugi-artifacts-1.77.0.tgz"
+      },
+      "skillSha256": "11c77e574ce454ad570b1f565ac6ab41333989df741150395e692dcb56fd5699",
+      "wallMs": 37821,
+      "input": 82086,
+      "cached": 72448,
+      "uncached": 9638,
+      "output": 894,
+      "total": 82980,
+      "toolCalls": 6,
+      "commands": [
+        "/bin/zsh -lc 'cat skill/SKILL.md'",
+        "/bin/zsh -lc 'node /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-package-eval-F8BEFJ/skill/app/ryugi.cjs start --background --no-open --artifact document/retry-policy --project-dir /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-package-eval-F8BEFJ'",
+        "/bin/zsh -lc 'if [ -f .ryugi/artifacts/document/retry-policy/doc.xml ]; then cat .ryugi/artifacts/document/retry-policy/doc.xml; else test ! -f .ryugi/artifacts/document/retry-policy/doc.xml; fi'",
+        "/bin/zsh -lc 'node /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-package-eval-F8BEFJ/skill/app/ryugi.cjs check --project-dir /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-package-eval-F8BEFJ --artifact document/retry-policy'",
+        "/bin/zsh -lc 'node /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-package-eval-F8BEFJ/skill/app/ryugi.cjs start --background --no-open --artifact document/retry-policy --project-dir /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-package-eval-F8BEFJ'"
+      ],
+      "referenceReads": [],
+      "sourceFallbacks": [],
+      "checks": {
+        "processSucceeded": true,
+        "checkClean": true,
+        "agentRanCheck": true,
+        "respectedScope": true,
+        "titlePresent": true,
+        "requestedContent": true,
+        "nativeDiagram": true,
+        "interactiveQuestion": true,
+        "questionWaitingForHuman": true
+      },
+      "passed": true,
+      "calls": [
+        {
+          "args": [
+            "start",
+            "--background",
+            "--no-open",
+            "--artifact",
+            "document/retry-policy",
+            "--project-dir",
+            "/private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-package-eval-F8BEFJ"
+          ],
+          "code": 0
+        },
+        {
+          "args": [
+            "check",
+            "--project-dir",
+            "/private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-package-eval-F8BEFJ",
+            "--artifact",
+            "document/retry-policy"
+          ],
+          "code": 0
+        },
+        {
+          "args": [
+            "start",
+            "--background",
+            "--no-open",
+            "--artifact",
+            "document/retry-policy",
+            "--project-dir",
+            "/private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-package-eval-F8BEFJ"
+          ],
+          "code": 0
+        }
+      ]
+    }
+  ],
+  "samplesPerArm": 1,
+  "task": "Remove artifacts compatibility pointer files; preserve the single SKILL-to-CLI entry"
+}

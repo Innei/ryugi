@@ -52,9 +52,15 @@ the same response contains the complete, coherent writing description for that
 type. Use its full block set and constraints; write with your file-editing tool.
 The CLI package owns formats and examples. No separate format file is a gate.
 
-Existing content omits the manual. If you need its writing description, use
-`start --artifact <type>/<id> --help` (with the project) without starting a
-server. Use `<command> --help` or `comment <action> --help` for inputs.
+Existing content omits the manual. Retrieve the same complete writing description
+without starting a server through this launcher:
+
+```bash
+node app/ryugi.cjs start --project-dir /path/to/project --artifact document/retry-policy --help
+```
+
+Use your task's type and ID. Use `<command> --help` or
+`comment <action> --help` for inputs.
 `get --project-dir <path>` discovers local artifacts without a server;
 `get --artifact <type>/<id> --detail` reads complete native source.
 

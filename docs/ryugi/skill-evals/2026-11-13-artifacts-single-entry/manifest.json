@@ -1,0 +1,26 @@
+{
+  "baselineSkill": "/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-artifacts-single-entry-9nh1avsy/baseline-skill",
+  "baselineSkillSha256": "9184b30aa46b512ffde14d7afb1e6b258116925dc13d667066d94e05cdda53a4",
+  "candidateCommit": "3225ebde649f89b389141e694d5e2eaeee1296d2",
+  "candidateSkillSha256": "11c77e574ce454ad570b1f565ac6ab41333989df741150395e692dcb56fd5699",
+  "codex": "codex-cli 0.167.2",
+  "effort": "medium",
+  "model": "gpt-6.1-sol",
+  "packages": {
+    "baseline": {
+      "cli": "/Users/innei/.cache/ryugi/artifacts/1.77.0/node_modules/ryugi-artifacts/dist/cli.cjs",
+      "version": "1.77.0",
+      "cliSha256": "068315f11ea47786a9fce155466a2648aa98c7af465e43c23f0712795076552a",
+      "integrity": "sha512-1QCkCEl2vIGCasSCSKj0WtFUBdIzBW51EVyRWAa0NRWpqCCl5kJdSjvLLENIgtLfBScTM2l3y3rSwfHV39vYxw==",
+      "tarball": "https://registry.npmjs.org/ryugi-artifacts/-/ryugi-artifacts-1.77.0.tgz"
+    },
+    "candidate": {
+      "cli": "/Users/innei/.cache/ryugi/artifacts/1.77.0/node_modules/ryugi-artifacts/dist/cli.cjs",
+      "version": "1.77.0",
+      "cliSha256": "068315f11ea47786a9fce155466a2648aa98c7af465e43c23f0712795076552a",
+      "integrity": "sha512-1QCkCEl2vIGCasSCSKj0WtFUBdIzBW51EVyRWAa0NRWpqCCl5kJdSjvLLENIgtLfBScTM2l3y3rSwfHV39vYxw==",
+      "tarball": "https://registry.npmjs.org/ryugi-artifacts/-/ryugi-artifacts-1.77.0.tgz"
+    }
+  },
+  "skillBaseCommit": "5a6b13205b531afcc26a4f0ffbe3af7e5699e497"
+}
