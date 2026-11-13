@@ -1,5 +1,7 @@
 # Artifacts single entry cleanup
 
+The later [full GPT matrix](../2026-11-13-artifacts-single-entry-full/README.md) runs six scenarios, five samples per arm, and preserves all 60 results plus ten infrastructure attempts. This page retains the original one-sample smoke comparison.
+
 2026-11-13. Removed the ten compatibility pointer files under skills/artifacts. The normal entry and an executable type-help example live in SKILL.md. Complete formats stay owned by the installed CLI. Existing human decisions, permissions, preservation and receipt rules are unchanged.
 
 ## Before and after

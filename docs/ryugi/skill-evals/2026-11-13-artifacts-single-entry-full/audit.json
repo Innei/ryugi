@@ -1,0 +1,451 @@
+{
+  "capturedAt": "2026-11-13T16:31:02.098Z",
+  "checks": {
+    "browser-ready-artboard-baseline-1": "record and sealed inputs verified",
+    "browser-ready-artboard-baseline-2": "record and sealed inputs verified",
+    "browser-ready-artboard-baseline-3": "record and sealed inputs verified",
+    "browser-ready-artboard-baseline-4": "record and sealed inputs verified",
+    "browser-ready-artboard-baseline-5": "record and sealed inputs verified",
+    "browser-ready-artboard-candidate-1": "record and sealed inputs verified",
+    "browser-ready-artboard-candidate-2": "record and sealed inputs verified",
+    "browser-ready-artboard-candidate-3": "record and sealed inputs verified",
+    "browser-ready-artboard-candidate-4": "record and sealed inputs verified",
+    "browser-ready-artboard-candidate-5": "record and sealed inputs verified",
+    "browser-ready-html-baseline-1": "record and sealed inputs verified",
+    "browser-ready-html-baseline-2": "record and sealed inputs verified",
+    "browser-ready-html-baseline-3": "record and sealed inputs verified",
+    "browser-ready-html-baseline-4": "record and sealed inputs verified",
+    "browser-ready-html-baseline-5": "record and sealed inputs verified",
+    "browser-ready-html-candidate-1": "record and sealed inputs verified",
+    "browser-ready-html-candidate-2": "record and sealed inputs verified",
+    "browser-ready-html-candidate-3": "record and sealed inputs verified",
+    "browser-ready-html-candidate-4": "record and sealed inputs verified",
+    "browser-ready-html-candidate-5": "record and sealed inputs verified",
+    "browser-ready-whiteboard-baseline-1": "record and sealed inputs verified",
+    "browser-ready-whiteboard-baseline-2": "record and sealed inputs verified",
+    "browser-ready-whiteboard-baseline-3": "record and sealed inputs verified",
+    "browser-ready-whiteboard-baseline-4": "record and sealed inputs verified",
+    "browser-ready-whiteboard-baseline-5": "record and sealed inputs verified",
+    "browser-ready-whiteboard-candidate-1": "record and sealed inputs verified",
+    "browser-ready-whiteboard-candidate-2": "record and sealed inputs verified",
+    "browser-ready-whiteboard-candidate-3": "record and sealed inputs verified",
+    "browser-ready-whiteboard-candidate-4": "record and sealed inputs verified",
+    "browser-ready-whiteboard-candidate-5": "record and sealed inputs verified",
+    "comments-baseline-1": "record and sealed inputs verified",
+    "comments-baseline-2": "record and sealed inputs verified",
+    "comments-baseline-3": "record and sealed inputs verified",
+    "comments-baseline-4": "record and sealed inputs verified",
+    "comments-baseline-5": "record and sealed inputs verified",
+    "comments-candidate-1": "record and sealed inputs verified",
+    "comments-candidate-2": "record and sealed inputs verified",
+    "comments-candidate-3": "record and sealed inputs verified",
+    "comments-candidate-4": "record and sealed inputs verified",
+    "comments-candidate-5": "record and sealed inputs verified",
+    "create-baseline-1": "record and sealed inputs verified",
+    "create-baseline-2": "record and sealed inputs verified",
+    "create-baseline-3": "record and sealed inputs verified",
+    "create-baseline-4": "record and sealed inputs verified",
+    "create-baseline-5": "record and sealed inputs verified",
+    "create-candidate-1": "record and sealed inputs verified",
+    "create-candidate-2": "record and sealed inputs verified",
+    "create-candidate-3": "record and sealed inputs verified",
+    "create-candidate-4": "record and sealed inputs verified",
+    "create-candidate-5": "record and sealed inputs verified",
+    "verify-baseline-1": "record and sealed inputs verified",
+    "verify-baseline-2": "record and sealed inputs verified",
+    "verify-baseline-3": "record and sealed inputs verified",
+    "verify-baseline-4": "record and sealed inputs verified",
+    "verify-baseline-5": "record and sealed inputs verified",
+    "verify-candidate-1": "record and sealed inputs verified",
+    "verify-candidate-2": "record and sealed inputs verified",
+    "verify-candidate-3": "record and sealed inputs verified",
+    "verify-candidate-4": "record and sealed inputs verified",
+    "verify-candidate-5": "record and sealed inputs verified"
+  },
+  "failures": [
+    {
+      "label": "browser-ready-artboard-baseline-1",
+      "failed": [
+        "checkClean",
+        "agentRanCheck"
+      ],
+      "status": "unknown"
+    },
+    {
+      "label": "browser-ready-artboard-baseline-2",
+      "failed": [
+        "checkClean",
+        "agentRanCheck"
+      ],
+      "status": "unknown"
+    },
+    {
+      "label": "browser-ready-artboard-baseline-3",
+      "failed": [
+        "checkClean",
+        "agentRanCheck"
+      ],
+      "status": "unknown"
+    },
+    {
+      "label": "browser-ready-artboard-baseline-4",
+      "failed": [
+        "checkClean",
+        "agentRanCheck"
+      ],
+      "status": "unknown"
+    },
+    {
+      "label": "browser-ready-artboard-baseline-5",
+      "failed": [
+        "checkClean",
+        "agentRanCheck"
+      ],
+      "status": "unknown"
+    },
+    {
+      "label": "browser-ready-artboard-candidate-1",
+      "failed": [
+        "checkClean",
+        "agentRanCheck"
+      ],
+      "status": "unknown"
+    },
+    {
+      "label": "browser-ready-artboard-candidate-2",
+      "failed": [
+        "checkClean",
+        "agentRanCheck"
+      ],
+      "status": "unknown"
+    },
+    {
+      "label": "browser-ready-artboard-candidate-3",
+      "failed": [
+        "checkClean",
+        "agentRanCheck"
+      ],
+      "status": "unknown"
+    },
+    {
+      "label": "browser-ready-artboard-candidate-4",
+      "failed": [
+        "checkClean",
+        "agentRanCheck"
+      ],
+      "status": "unknown"
+    },
+    {
+      "label": "browser-ready-artboard-candidate-5",
+      "failed": [
+        "checkClean",
+        "agentRanCheck"
+      ],
+      "status": "unknown"
+    },
+    {
+      "label": "browser-ready-html-baseline-1",
+      "failed": [
+        "checkClean"
+      ],
+      "status": "pending"
+    },
+    {
+      "label": "browser-ready-html-baseline-3",
+      "failed": [
+        "checkClean"
+      ],
+      "status": "pending"
+    },
+    {
+      "label": "browser-ready-html-baseline-5",
+      "failed": [
+        "checkClean"
+      ],
+      "status": "pending"
+    },
+    {
+      "label": "browser-ready-html-candidate-2",
+      "failed": [
+        "checkClean"
+      ],
+      "status": "pending"
+    },
+    {
+      "label": "browser-ready-html-candidate-3",
+      "failed": [
+        "checkClean"
+      ],
+      "status": "pending"
+    },
+    {
+      "label": "browser-ready-html-candidate-5",
+      "failed": [
+        "checkClean",
+        "agentRanCheck"
+      ],
+      "status": "pending"
+    },
+    {
+      "label": "browser-ready-whiteboard-baseline-1",
+      "failed": [
+        "checkClean"
+      ],
+      "status": "pending"
+    },
+    {
+      "label": "browser-ready-whiteboard-baseline-4",
+      "failed": [
+        "checkClean"
+      ],
+      "status": "pending"
+    },
+    {
+      "label": "browser-ready-whiteboard-baseline-5",
+      "failed": [
+        "checkClean"
+      ],
+      "status": "pending"
+    },
+    {
+      "label": "browser-ready-whiteboard-candidate-1",
+      "failed": [
+        "checkClean"
+      ],
+      "status": "pending"
+    },
+    {
+      "label": "browser-ready-whiteboard-candidate-2",
+      "failed": [
+        "checkClean"
+      ],
+      "status": "pending"
+    }
+  ],
+  "rubricDisagreements": [],
+  "typeSpecificChecks": {
+    "artboard/baseline": {
+      "observed": 5,
+      "passed": 5
+    },
+    "artboard/candidate": {
+      "observed": 5,
+      "passed": 5
+    },
+    "html/baseline": {
+      "observed": 5,
+      "passed": 5
+    },
+    "html/candidate": {
+      "observed": 5,
+      "passed": 5
+    },
+    "whiteboard/baseline": {
+      "observed": 5,
+      "passed": 5
+    },
+    "whiteboard/candidate": {
+      "observed": 5,
+      "passed": 5
+    },
+    "comments/baseline": {
+      "observed": 5,
+      "passed": 5
+    },
+    "comments/candidate": {
+      "observed": 5,
+      "passed": 5
+    },
+    "create/baseline": {
+      "observed": 5,
+      "passed": 5
+    },
+    "create/candidate": {
+      "observed": 5,
+      "passed": 5
+    },
+    "verify/baseline": {
+      "observed": 5,
+      "passed": 5
+    },
+    "verify/candidate": {
+      "observed": 5,
+      "passed": 5
+    }
+  },
+  "retiredGuideMentions": [],
+  "handoffDiagnostics": [
+    {
+      "label": "browser-ready-html-baseline-1",
+      "ports": [
+        "64151",
+        "49358"
+      ],
+      "portChanged": true,
+      "browserLaunchFailure": false,
+      "hadSuccessfulAgentCheck": true,
+      "finalStatus": "pending",
+      "pending": [
+        "browser_not_run"
+      ]
+    },
+    {
+      "label": "browser-ready-html-baseline-3",
+      "ports": [
+        "54373",
+        "55499"
+      ],
+      "portChanged": true,
+      "browserLaunchFailure": false,
+      "hadSuccessfulAgentCheck": true,
+      "finalStatus": "pending",
+      "pending": [
+        "browser_not_run"
+      ]
+    },
+    {
+      "label": "browser-ready-html-baseline-5",
+      "ports": [
+        "61860",
+        "62552"
+      ],
+      "portChanged": true,
+      "browserLaunchFailure": true,
+      "hadSuccessfulAgentCheck": true,
+      "finalStatus": "pending",
+      "pending": [
+        "browser_not_run"
+      ]
+    },
+    {
+      "label": "browser-ready-html-candidate-2",
+      "ports": [
+        "51362",
+        "53160"
+      ],
+      "portChanged": true,
+      "browserLaunchFailure": false,
+      "hadSuccessfulAgentCheck": true,
+      "finalStatus": "pending",
+      "pending": [
+        "browser_not_run"
+      ]
+    },
+    {
+      "label": "browser-ready-html-candidate-3",
+      "ports": [
+        "54336",
+        "58160"
+      ],
+      "portChanged": true,
+      "browserLaunchFailure": false,
+      "hadSuccessfulAgentCheck": true,
+      "finalStatus": "pending",
+      "pending": [
+        "browser_not_run"
+      ]
+    },
+    {
+      "label": "browser-ready-html-candidate-5",
+      "ports": [
+        "62524"
+      ],
+      "portChanged": false,
+      "browserLaunchFailure": true,
+      "hadSuccessfulAgentCheck": false,
+      "finalStatus": "pending",
+      "pending": [
+        "browser_not_run"
+      ]
+    },
+    {
+      "label": "browser-ready-whiteboard-baseline-1",
+      "ports": [
+        "64164",
+        "64549"
+      ],
+      "portChanged": true,
+      "browserLaunchFailure": false,
+      "hadSuccessfulAgentCheck": true,
+      "finalStatus": "pending",
+      "pending": [
+        "browser_not_run"
+      ]
+    },
+    {
+      "label": "browser-ready-whiteboard-baseline-4",
+      "ports": [
+        "55081",
+        "57168"
+      ],
+      "portChanged": true,
+      "browserLaunchFailure": false,
+      "hadSuccessfulAgentCheck": true,
+      "finalStatus": "pending",
+      "pending": [
+        "browser_not_run"
+      ]
+    },
+    {
+      "label": "browser-ready-whiteboard-baseline-5",
+      "ports": [
+        "60774",
+        "61273"
+      ],
+      "portChanged": true,
+      "browserLaunchFailure": false,
+      "hadSuccessfulAgentCheck": true,
+      "finalStatus": "pending",
+      "pending": [
+        "browser_not_run"
+      ]
+    },
+    {
+      "label": "browser-ready-whiteboard-candidate-1",
+      "ports": [
+        "64133",
+        "64536"
+      ],
+      "portChanged": true,
+      "browserLaunchFailure": false,
+      "hadSuccessfulAgentCheck": true,
+      "finalStatus": "pending",
+      "pending": [
+        "browser_not_run"
+      ]
+    },
+    {
+      "label": "browser-ready-whiteboard-candidate-2",
+      "ports": [
+        "50041",
+        "50967"
+      ],
+      "portChanged": true,
+      "browserLaunchFailure": false,
+      "hadSuccessfulAgentCheck": true,
+      "finalStatus": "pending",
+      "pending": [
+        "browser_not_run"
+      ]
+    }
+  ],
+  "retiredGuideFiles": [
+    "artboard-prototype.md",
+    "artboard.md",
+    "cloud.md",
+    "document.md",
+    "html.md",
+    "icons.md",
+    "modules.md",
+    "ui.md",
+    "verify.md",
+    "whiteboard.md"
+  ],
+  "observedRuns": 60,
+  "passedRuns": 39,
+  "failedRuns": 21,
+  "infrastructureAttempts": 10,
+  "inputsFrozen": true,
+  "rawUsageReconciled": true,
+  "missingReportedUsage": []
+}

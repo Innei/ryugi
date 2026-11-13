@@ -1,0 +1,67 @@
+{
+  "baselineSkill": "/Users/innei/git/innei-repo/ryugi/docs/ryugi/skill-evals/2026-11-13-artifacts-single-entry-full/inputs/baseline-skill",
+  "baselineSkillSha256": "9184b30aa46b512ffde14d7afb1e6b258116925dc13d667066d94e05cdda53a4",
+  "browser": {
+    "cli": "agent-browser 0.42.0",
+    "chrome": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+    "isolation": "Per-run HOME, short socket directory, named session; no ambient user browser",
+    "host": "Parent-owned Chrome prelaunch before nested Codex, corrected browser-ready- cohort",
+    "infrastructureAttempts": 10,
+    "originalFailedAttempts": 4,
+    "deliberatelyCancelledAttempts": 6
+  },
+  "candidateCommit": "3225ebde649f89b389141e694d5e2eaeee1296d2",
+  "candidateSkill": "/Users/innei/git/innei-repo/ryugi/docs/ryugi/skill-evals/2026-11-13-artifacts-single-entry-full/inputs/candidate-skill",
+  "candidateSkillSha256": "11c77e574ce454ad570b1f565ac6ab41333989df741150395e692dcb56fd5699",
+  "capturedAt": "2026-11-13T15:54:24Z",
+  "codex": "codex-cli 0.167.2",
+  "effort": "medium",
+  "graderInputs": {
+    "run.mjs": "4b9dd78b76452ae4567e57bcb4afe94f8fb19c12d3e5a17a4b7d8fad9e5c7e86",
+    "scenarios.mjs": "9d91bde0a862329967c7ae2246e0764b1e1b132a0b3b0099e5961ba9afe8d18b",
+    "report.mjs": "018758899963aafa87a7c7523700ab58e53e8cb0e2ff61c3b11f8af6bdc44212",
+    "preflight.mjs": "642d94fc80527a06590472219e775954a3654ff4f66469a50d6e72ca164e109b",
+    "audit.mjs": "743b7f28a87c2ad3549cf4aeb3e17d2601811f94308b6bb0b1003e4fcdc21a05",
+    "scenarios.test.mjs": "1224303dc1913df4c6e64dc0f9277dbb6cb59fb7a6517060ec052e8d3348b992",
+    "documentParserBundle": "2ca5c6f97b72a3eee85b719e011af88c236f285d063533f8d5dc91d9ff8fa354"
+  },
+  "harnessCommit": "dc2678d843e2acbcfdfaf460a372523eabd503fd",
+  "infrastructureGraderInputs": {
+    "run.mjs": "d64748bc2aa2425fb2a13562ceb1523547c648326d942934297b91ed48135ed3",
+    "scenarios.mjs": "75d157dcdd4f6e7ea47d92e4c893f5886a031499345216f39be735ea660c35ff",
+    "report.mjs": "11b1c334886cf44bd2dde3a432c4c48e359b849cd481a54d7a0623df841a19d7",
+    "preflight.mjs": "f3d59f885162c5dcc7c801aca9dcf2ea12b613d2a7f5377d35cf5b56981c963f",
+    "documentParserBundle": "2ca5c6f97b72a3eee85b719e011af88c236f285d063533f8d5dc91d9ff8fa354"
+  },
+  "knownPackageBlocker": "Published CLI 1.77.0 always leaves HTML artboard runtime unknown; preflight reproduces this with an actual loaded viewer. Clean-check failures remain failures.",
+  "model": "gpt-6.1-sol",
+  "packages": {
+    "baseline": {
+      "cli": "/Users/innei/.cache/ryugi/artifacts/1.77.0/node_modules/ryugi-artifacts/dist/cli.cjs",
+      "version": "1.77.0",
+      "cliSha256": "068315f11ea47786a9fce155466a2648aa98c7af465e43c23f0712795076552a",
+      "integrity": "sha512-1QCkCEl2vIGCasSCSKj0WtFUBdIzBW51EVyRWAa0NRWpqCCl5kJdSjvLLENIgtLfBScTM2l3y3rSwfHV39vYxw==",
+      "tarball": "https://registry.npmjs.org/ryugi-artifacts/-/ryugi-artifacts-1.77.0.tgz"
+    },
+    "candidate": {
+      "cli": "/Users/innei/.cache/ryugi/artifacts/1.77.0/node_modules/ryugi-artifacts/dist/cli.cjs",
+      "version": "1.77.0",
+      "cliSha256": "068315f11ea47786a9fce155466a2648aa98c7af465e43c23f0712795076552a",
+      "integrity": "sha512-1QCkCEl2vIGCasSCSKj0WtFUBdIzBW51EVyRWAa0NRWpqCCl5kJdSjvLLENIgtLfBScTM2l3y3rSwfHV39vYxw==",
+      "tarball": "https://registry.npmjs.org/ryugi-artifacts/-/ryugi-artifacts-1.77.0.tgz"
+    }
+  },
+  "samplesPerArm": 5,
+  "scenarios": ["comments", "create", "artboard", "html", "whiteboard", "verify"],
+  "scope": "Same installed CLI 1.77.0; before and after compatibility reference removal",
+  "skillBaseCommit": "5a6b13205b531afcc26a4f0ffbe3af7e5699e497",
+  "skillCommits": {
+    "baseline": "5a6b13205b531afcc26a4f0ffbe3af7e5699e497",
+    "candidate": "5450574dfeb2fe1e3732f1accab08e8dac06950b"
+  },
+  "skillTreeSha256": {
+    "baseline": "4ae40064ad1931853f1cd1def1708fcb40e2a8251c57f0415db8dd11b9fae16c",
+    "candidate": "5a95a13cc651304b2d4ff662d4bf815ba30af1fc3510af634314acd3fc45a090"
+  },
+  "workspaceAdvancedDuringRunTo": "ryugi-cloud 1.78.0; evaluated npm package remained pinned at 1.77.0"
+}

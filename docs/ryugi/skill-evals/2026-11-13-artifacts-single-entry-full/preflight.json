@@ -1,0 +1,934 @@
+[
+  {
+    "name": "artboard",
+    "check": {
+      "schema": "ryugi.cli/v1",
+      "command": "check",
+      "outcome": "pending",
+      "data": {
+        "artifact": "artboard/retry-options",
+        "status": "unknown",
+        "static": "clean",
+        "runtime": "unknown",
+        "issues": [],
+        "pending": [],
+        "evidence": {
+          "checkedAt": "2026-11-13T16:09:56.570Z",
+          "warnings": [],
+          "pending": [],
+          "modules": [],
+          "provenance": [],
+          "evidence": {
+            "required": true,
+            "fresh": true
+          }
+        },
+        "file": "/private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-eval-preflight-N2qxI4/.ryugi/artifacts/artboard/retry-options/canvas.json"
+      },
+      "next": [
+        {
+          "kind": "command",
+          "argv": [
+            "/Users/innei/.n/bin/node",
+            "/Users/innei/.cache/ryugi/artifacts/1.77.0/node_modules/ryugi-artifacts/dist/cli.cjs",
+            "check",
+            "--artifact",
+            "artboard/retry-options",
+            "--project-dir",
+            "/private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-eval-preflight-N2qxI4",
+            "--detail"
+          ],
+          "label": "Details"
+        }
+      ]
+    },
+    "grade": {
+      "checks": {
+        "titlePresent": true,
+        "choiceReady": true,
+        "completeBoardFiles": true,
+        "requestedContent": true,
+        "noInventedChoice": true
+      },
+      "detail": {
+        "canvas": {
+          "version": 1,
+          "title": "Retry strategy comparison",
+          "pages": [
+            {
+              "id": "main",
+              "name": "Retry"
+            }
+          ],
+          "activePage": "main",
+          "boards": {
+            "fixed-delay": {
+              "file": "pages/fixed-delay.html",
+              "page": "main",
+              "x": 0,
+              "y": 0,
+              "w": 640,
+              "h": 400,
+              "title": "Fixed delay"
+            },
+            "exponential-backoff": {
+              "file": "pages/exponential-backoff.html",
+              "page": "main",
+              "x": 720,
+              "y": 0,
+              "w": 640,
+              "h": 400,
+              "title": "Exponential backoff"
+            }
+          },
+          "groups": {
+            "retry-strategy": {
+              "title": "Retry strategy",
+              "boards": ["fixed-delay", "exponential-backoff"],
+              "choose": true,
+              "recommend": "exponential-backoff"
+            }
+          },
+          "notes": {
+            "round-one": {
+              "kind": "title",
+              "page": "main",
+              "x": 0,
+              "y": -300,
+              "text": "Retry strategy"
+            }
+          }
+        },
+        "files": {
+          "fixed-delay": "<!doctype html><html><head><title>Fixed delay</title></head><body style=\"margin:0\"><h1>Fixed delay</h1><p>Maximum 3 attempts.</p></body></html>",
+          "exponential-backoff": "<!doctype html><html><head><title>Exponential backoff</title></head><body style=\"margin:0\"><h1>Exponential backoff</h1><p>Maximum 3 attempts.</p></body></html>"
+        },
+        "groups": {
+          "schema": "ryugi.cli/v1",
+          "command": "comment.list",
+          "outcome": "success",
+          "data": {
+            "artifact": "artboard/retry-options",
+            "section": "groups",
+            "items": [
+              {
+                "id": "retry-strategy",
+                "kind": "choose",
+                "page": "main",
+                "round": "round-one",
+                "title": "Retry strategy",
+                "recommend": "exponential-backoff",
+                "choice": "exponential-backoff",
+                "byRecommendation": true,
+                "threads": 0,
+                "boards": ["fixed-delay", "exponential-backoff"]
+              }
+            ],
+            "evidence": "state",
+            "snapshot": "95f0ce62-dc97-4b26-9864-7c2b9cf1d906",
+            "summary": {
+              "chosen": 1
+            }
+          },
+          "page": {
+            "returned": 1,
+            "total": 1,
+            "hasMore": false,
+            "nextCursor": null,
+            "offset": 0,
+            "scope": "historical",
+            "snapshot": "95f0ce62-dc97-4b26-9864-7c2b9cf1d906"
+          },
+          "next": [
+            {
+              "kind": "command",
+              "argv": [
+                "/Users/innei/.n/bin/node",
+                "/Users/innei/.cache/ryugi/artifacts/1.77.0/node_modules/ryugi-artifacts/dist/cli.cjs",
+                "comment",
+                "list",
+                "--artifact",
+                "artboard/retry-options",
+                "--project-dir",
+                "/private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-eval-preflight-N2qxI4",
+                "--section",
+                "threads",
+                "--detail"
+              ],
+              "label": "Next",
+              "reason": "read the threads on these groups too, then act on each"
+            }
+          ]
+        },
+        "rounds": {
+          "schema": "ryugi.cli/v1",
+          "command": "comment.list",
+          "outcome": "success",
+          "data": {
+            "artifact": "artboard/retry-options",
+            "section": "rounds",
+            "items": [
+              {
+                "id": "round-one",
+                "page": "main",
+                "title": "Retry strategy",
+                "state": "open",
+                "groups": ["retry-strategy"]
+              }
+            ],
+            "evidence": "state",
+            "snapshot": "974c2672-2a55-4bf2-b716-40b25b46780a",
+            "summary": {
+              "open": 1
+            }
+          },
+          "page": {
+            "returned": 1,
+            "total": 1,
+            "hasMore": false,
+            "nextCursor": null,
+            "offset": 0,
+            "scope": "historical",
+            "snapshot": "974c2672-2a55-4bf2-b716-40b25b46780a"
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": "html",
+    "check": {
+      "schema": "ryugi.cli/v1",
+      "command": "check",
+      "outcome": "success",
+      "data": {
+        "artifact": "html/retry-tuner",
+        "status": "clean",
+        "static": "clean",
+        "runtime": "clean",
+        "issues": [],
+        "pending": [],
+        "evidence": {
+          "checkedAt": "2026-11-13T16:10:02.776Z",
+          "warnings": [],
+          "ran": true,
+          "modules": [],
+          "evidence": {
+            "required": true,
+            "observed": true,
+            "fresh": true
+          }
+        },
+        "file": "/private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-eval-preflight-skukSf/.ryugi/artifacts/html/retry-tuner/index.html"
+      },
+      "next": [
+        {
+          "kind": "command",
+          "argv": [
+            "/Users/innei/.n/bin/node",
+            "/Users/innei/.cache/ryugi/artifacts/1.77.0/node_modules/ryugi-artifacts/dist/cli.cjs",
+            "check",
+            "--artifact",
+            "html/retry-tuner",
+            "--project-dir",
+            "/private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-eval-preflight-skukSf",
+            "--detail"
+          ],
+          "label": "Details"
+        }
+      ]
+    },
+    "grade": {
+      "checks": {
+        "titlePresent": true,
+        "completeHtml": true,
+        "initialControls": true,
+        "rangeUpdatesVisibleOutput": true,
+        "bundledSwitchUpdatesPreview": true,
+        "noPersistentStorage": true
+      },
+      "detail": {
+        "html": "<!doctype html><html><head><title>Retry delay tuner</title></head><body><label>Delay<input id=\"delay\" type=\"range\" min=\"1\" max=\"10\" value=\"3\"></label><output id=\"delay-value\">3 seconds</output><ryugi-switch id=\"priority\" checked></ryugi-switch><p id=\"queue-result\">Priority jobs first</p><script>const slider=document.querySelector('#delay');slider.addEventListener('input',()=>document.querySelector('#delay-value').textContent=slider.value+' seconds');document.addEventListener('ryugi-change',e=>{if(e.target.id==='priority')document.querySelector('#queue-result').textContent=e.detail.value?'Priority jobs first':'Normal jobs first';});</script></body></html>",
+        "observed": {
+          "initial": {
+            "range": "3",
+            "output": "3 seconds",
+            "queue": "Priority jobs first",
+            "custom": true
+          },
+          "maximum": {
+            "range": "10",
+            "output": "10 seconds",
+            "queue": "Priority jobs first",
+            "custom": true
+          },
+          "toggled": {
+            "range": "10",
+            "output": "10 seconds",
+            "queue": "Normal jobs first",
+            "custom": true
+          }
+        },
+        "browserLog": [
+          {
+            "args": ["open", "http://localhost:63560/html/PW3QPWNy15FkjUyTDUujz"],
+            "code": 0,
+            "stdout": "{\"success\":true,\"data\":{\"lifecycle\":{\"effectiveLaunch\":{\"browserLaunched\":true,\"engine\":\"chrome\",\"launchHash\":13652769386817852056},\"launched\":false,\"relaunchedBrowser\":false,\"restartedBackground\":false,\"restoreStatus\":\"not_configured\",\"reused\":true,\"saveStatus\":\"not_attempted\"},\"targetId\":\"D27038A8883CFD55586694442AE6A48F\",\"title\":\"Retry delay tuner\",\"url\":\"http://localhost:63560/html/PW3QPWNy15FkjUyTDUujz\"},\"error\":null}\n",
+            "stderr": ""
+          },
+          {
+            "args": ["wait", "iframe"],
+            "code": 0,
+            "stdout": "{\"success\":true,\"data\":{\"lifecycle\":{\"effectiveLaunch\":{\"browserLaunched\":true,\"engine\":\"chrome\",\"launchHash\":13652769386817852056},\"launched\":false,\"relaunchedBrowser\":false,\"restartedBackground\":false,\"restoreStatus\":\"not_configured\",\"reused\":true,\"saveStatus\":\"not_attempted\"},\"selector\":\"iframe\",\"waited\":\"selector\"},\"error\":null}\n",
+            "stderr": ""
+          },
+          {
+            "args": ["eval", "document.querySelector('iframe').src"],
+            "code": 0,
+            "stdout": "{\"success\":true,\"data\":{\"lifecycle\":{\"effectiveLaunch\":{\"browserLaunched\":true,\"engine\":\"chrome\",\"launchHash\":13652769386817852056},\"launched\":false,\"relaunchedBrowser\":false,\"restartedBackground\":false,\"restoreStatus\":\"not_configured\",\"reused\":true,\"saveStatus\":\"not_attempted\"},\"origin\":\"http://localhost:63560/html/PW3QPWNy15FkjUyTDUujz\",\"result\":\"http://localhost:63560/c/7pId7a5kH3sGOe3sRVYpWwidflEd78u0/html/retry-tuner/index.html?v=1794586200966.66\"},\"error\":null}\n",
+            "stderr": ""
+          },
+          {
+            "args": [
+              "tab",
+              "new",
+              "http://localhost:63560/c/7pId7a5kH3sGOe3sRVYpWwidflEd78u0/html/retry-tuner/index.html?v=1794586200966.66"
+            ],
+            "code": 0,
+            "stdout": "{\"success\":true,\"data\":{\"label\":null,\"lifecycle\":{\"effectiveLaunch\":{\"browserLaunched\":true,\"engine\":\"chrome\",\"launchHash\":13652769386817852056},\"launched\":false,\"relaunchedBrowser\":false,\"restartedBackground\":false,\"restoreStatus\":\"not_configured\",\"reused\":true,\"saveStatus\":\"not_attempted\"},\"tabId\":\"t2\",\"targetId\":\"E3B2E9BD591B573906270BF444C47A28\",\"total\":2,\"url\":\"http://localhost:63560/c/7pId7a5kH3sGOe3sRVYpWwidflEd78u0/html/retry-tuner/index.html?v=1794586200966.66\"},\"error\":null}\n",
+            "stderr": ""
+          },
+          {
+            "args": ["wait", "#delay"],
+            "code": 0,
+            "stdout": "{\"success\":true,\"data\":{\"lifecycle\":{\"effectiveLaunch\":{\"browserLaunched\":true,\"engine\":\"chrome\",\"launchHash\":13652769386817852056},\"launched\":false,\"relaunchedBrowser\":false,\"restartedBackground\":false,\"restoreStatus\":\"not_configured\",\"reused\":true,\"saveStatus\":\"not_attempted\"},\"selector\":\"#delay\",\"waited\":\"selector\"},\"error\":null}\n",
+            "stderr": ""
+          },
+          {
+            "args": [
+              "eval",
+              "JSON.stringify({range:document.querySelector('#delay')?.value,output:document.querySelector('#delay-value')?.textContent,queue:document.querySelector('#queue-result')?.textContent,custom:!!customElements.get('ryugi-switch')})"
+            ],
+            "code": 0,
+            "stdout": "{\"success\":true,\"data\":{\"lifecycle\":{\"effectiveLaunch\":{\"browserLaunched\":true,\"engine\":\"chrome\",\"launchHash\":13652769386817852056},\"launched\":false,\"relaunchedBrowser\":false,\"restartedBackground\":false,\"restoreStatus\":\"not_configured\",\"reused\":true,\"saveStatus\":\"not_attempted\"},\"origin\":\"http://localhost:63560/c/7pId7a5kH3sGOe3sRVYpWwidflEd78u0/html/retry-tuner/index.html?v=1794586200966.66\",\"result\":\"{\\\"range\\\":\\\"3\\\",\\\"output\\\":\\\"3 seconds\\\",\\\"queue\\\":\\\"Priority jobs first\\\",\\\"custom\\\":true}\"},\"error\":null}\n",
+            "stderr": ""
+          },
+          {
+            "args": ["focus", "#delay"],
+            "code": 0,
+            "stdout": "{\"success\":true,\"data\":{\"focused\":\"#delay\",\"lifecycle\":{\"effectiveLaunch\":{\"browserLaunched\":true,\"engine\":\"chrome\",\"launchHash\":13652769386817852056},\"launched\":false,\"relaunchedBrowser\":false,\"restartedBackground\":false,\"restoreStatus\":\"not_configured\",\"reused\":true,\"saveStatus\":\"not_attempted\"}},\"error\":null}\n",
+            "stderr": ""
+          },
+          {
+            "args": ["press", "End"],
+            "code": 0,
+            "stdout": "{\"success\":true,\"data\":{\"lifecycle\":{\"effectiveLaunch\":{\"browserLaunched\":true,\"engine\":\"chrome\",\"launchHash\":13652769386817852056},\"launched\":false,\"relaunchedBrowser\":false,\"restartedBackground\":false,\"restoreStatus\":\"not_configured\",\"reused\":true,\"saveStatus\":\"not_attempted\"},\"pressed\":\"End\"},\"error\":null}\n",
+            "stderr": ""
+          },
+          {
+            "args": [
+              "eval",
+              "JSON.stringify({range:document.querySelector('#delay')?.value,output:document.querySelector('#delay-value')?.textContent,queue:document.querySelector('#queue-result')?.textContent,custom:!!customElements.get('ryugi-switch')})"
+            ],
+            "code": 0,
+            "stdout": "{\"success\":true,\"data\":{\"lifecycle\":{\"effectiveLaunch\":{\"browserLaunched\":true,\"engine\":\"chrome\",\"launchHash\":13652769386817852056},\"launched\":false,\"relaunchedBrowser\":false,\"restartedBackground\":false,\"restoreStatus\":\"not_configured\",\"reused\":true,\"saveStatus\":\"not_attempted\"},\"origin\":\"http://localhost:63560/c/7pId7a5kH3sGOe3sRVYpWwidflEd78u0/html/retry-tuner/index.html?v=1794586200966.66\",\"result\":\"{\\\"range\\\":\\\"10\\\",\\\"output\\\":\\\"10 seconds\\\",\\\"queue\\\":\\\"Priority jobs first\\\",\\\"custom\\\":true}\"},\"error\":null}\n",
+            "stderr": ""
+          },
+          {
+            "args": ["click", "#priority"],
+            "code": 0,
+            "stdout": "{\"success\":true,\"data\":{\"clicked\":\"#priority\",\"lifecycle\":{\"effectiveLaunch\":{\"browserLaunched\":true,\"engine\":\"chrome\",\"launchHash\":13652769386817852056},\"launched\":false,\"relaunchedBrowser\":false,\"restartedBackground\":false,\"restoreStatus\":\"not_configured\",\"reused\":true,\"saveStatus\":\"not_attempted\"}},\"error\":null}\n",
+            "stderr": ""
+          },
+          {
+            "args": [
+              "eval",
+              "JSON.stringify({range:document.querySelector('#delay')?.value,output:document.querySelector('#delay-value')?.textContent,queue:document.querySelector('#queue-result')?.textContent,custom:!!customElements.get('ryugi-switch')})"
+            ],
+            "code": 0,
+            "stdout": "{\"success\":true,\"data\":{\"lifecycle\":{\"effectiveLaunch\":{\"browserLaunched\":true,\"engine\":\"chrome\",\"launchHash\":13652769386817852056},\"launched\":false,\"relaunchedBrowser\":false,\"restartedBackground\":false,\"restoreStatus\":\"not_configured\",\"reused\":true,\"saveStatus\":\"not_attempted\"},\"origin\":\"http://localhost:63560/c/7pId7a5kH3sGOe3sRVYpWwidflEd78u0/html/retry-tuner/index.html?v=1794586200966.66\",\"result\":\"{\\\"range\\\":\\\"10\\\",\\\"output\\\":\\\"10 seconds\\\",\\\"queue\\\":\\\"Normal jobs first\\\",\\\"custom\\\":true}\"},\"error\":null}\n",
+            "stderr": ""
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "whiteboard",
+    "check": {
+      "schema": "ryugi.cli/v1",
+      "command": "check",
+      "outcome": "success",
+      "data": {
+        "artifact": "whiteboard/retry-flow",
+        "status": "clean",
+        "static": "clean",
+        "runtime": "clean",
+        "issues": [],
+        "pending": [],
+        "evidence": {
+          "checkedAt": "2026-11-13T16:10:33.366Z",
+          "warnings": [],
+          "pending": [],
+          "modules": [],
+          "evidence": {
+            "required": true,
+            "observed": true,
+            "fresh": true
+          }
+        },
+        "file": "/private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-eval-preflight-vnh0Aq/.ryugi/artifacts/whiteboard/retry-flow/scene.excalidraw"
+      },
+      "next": [
+        {
+          "kind": "command",
+          "argv": [
+            "/Users/innei/.n/bin/node",
+            "/Users/innei/.cache/ryugi/artifacts/1.77.0/node_modules/ryugi-artifacts/dist/cli.cjs",
+            "check",
+            "--artifact",
+            "whiteboard/retry-flow",
+            "--project-dir",
+            "/private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-eval-preflight-vnh0Aq",
+            "--detail"
+          ],
+          "label": "Details"
+        }
+      ]
+    },
+    "grade": {
+      "checks": {
+        "titlePresent": true,
+        "threeNamedStages": true,
+        "nativeConnectedFlow": true,
+        "uniqueLiveIds": true,
+        "noManufacturedHuman": true,
+        "browserGeometryRecorded": true,
+        "currentRenderCaptured": true
+      },
+      "detail": {
+        "scene": {
+          "type": "excalidraw",
+          "version": 2,
+          "source": "ryugi",
+          "elements": [
+            {
+              "id": "ingress",
+              "type": "rectangle",
+              "x": 0,
+              "y": 0,
+              "width": 180,
+              "height": 80,
+              "angle": 0,
+              "strokeColor": "#1e1e1e",
+              "backgroundColor": "transparent",
+              "fillStyle": "solid",
+              "strokeWidth": 2,
+              "strokeStyle": "solid",
+              "roughness": 1,
+              "opacity": 100,
+              "groupIds": [],
+              "frameId": null,
+              "index": "a0",
+              "roundness": null,
+              "seed": 2023682729,
+              "version": 3,
+              "versionNonce": 353472871,
+              "isDeleted": false,
+              "boundElements": [
+                {
+                  "type": "text",
+                  "id": "M1CvwgaavXfyjLHvbr4ms"
+                },
+                {
+                  "id": "arrow-0",
+                  "type": "arrow"
+                }
+              ],
+              "updated": 1794586208881,
+              "link": null,
+              "locked": false,
+              "customData": {
+                "ryugiAuthor": "agent",
+                "ryugiRev": 1,
+                "ryugiLastBy": "agent"
+              }
+            },
+            {
+              "id": "priority-queue",
+              "type": "rectangle",
+              "x": 320,
+              "y": 0,
+              "width": 180,
+              "height": 80,
+              "angle": 0,
+              "strokeColor": "#1e1e1e",
+              "backgroundColor": "transparent",
+              "fillStyle": "solid",
+              "strokeWidth": 2,
+              "strokeStyle": "solid",
+              "roughness": 1,
+              "opacity": 100,
+              "groupIds": [],
+              "frameId": null,
+              "index": "a1",
+              "roundness": null,
+              "seed": 452831335,
+              "version": 4,
+              "versionNonce": 1110156199,
+              "isDeleted": false,
+              "boundElements": [
+                {
+                  "type": "text",
+                  "id": "GiqK6FwqKWq19JfhK2T4O"
+                },
+                {
+                  "id": "arrow-0",
+                  "type": "arrow"
+                },
+                {
+                  "id": "arrow-1",
+                  "type": "arrow"
+                }
+              ],
+              "updated": 1794586208881,
+              "link": null,
+              "locked": false,
+              "customData": {
+                "ryugiAuthor": "agent",
+                "ryugiRev": 1,
+                "ryugiLastBy": "agent"
+              }
+            },
+            {
+              "id": "worker",
+              "type": "rectangle",
+              "x": 640,
+              "y": 0,
+              "width": 180,
+              "height": 80,
+              "angle": 0,
+              "strokeColor": "#1e1e1e",
+              "backgroundColor": "transparent",
+              "fillStyle": "solid",
+              "strokeWidth": 2,
+              "strokeStyle": "solid",
+              "roughness": 1,
+              "opacity": 100,
+              "groupIds": [],
+              "frameId": null,
+              "index": "a2",
+              "roundness": null,
+              "seed": 1532802441,
+              "version": 3,
+              "versionNonce": 2087098055,
+              "isDeleted": false,
+              "boundElements": [
+                {
+                  "type": "text",
+                  "id": "UVx81tVsO3yRzGdPdiebF"
+                },
+                {
+                  "id": "arrow-1",
+                  "type": "arrow"
+                }
+              ],
+              "updated": 1794586208881,
+              "link": null,
+              "locked": false,
+              "customData": {
+                "ryugiAuthor": "agent",
+                "ryugiRev": 1,
+                "ryugiLastBy": "agent"
+              }
+            },
+            {
+              "id": "arrow-0",
+              "type": "arrow",
+              "x": 180,
+              "y": 40,
+              "width": 140,
+              "height": 0,
+              "angle": 0,
+              "strokeColor": "#1e1e1e",
+              "backgroundColor": "transparent",
+              "fillStyle": "solid",
+              "strokeWidth": 2,
+              "strokeStyle": "solid",
+              "roughness": 1,
+              "opacity": 100,
+              "groupIds": [],
+              "frameId": null,
+              "index": "a3",
+              "roundness": null,
+              "seed": 505021319,
+              "version": 4,
+              "versionNonce": 731372681,
+              "isDeleted": false,
+              "boundElements": null,
+              "updated": 1794586208881,
+              "link": null,
+              "locked": false,
+              "customData": {
+                "ryugiAuthor": "agent",
+                "ryugiRev": 1,
+                "ryugiLastBy": "agent"
+              },
+              "points": [
+                [0.5, 0],
+                [139.5, 0]
+              ],
+              "lastCommittedPoint": null,
+              "startBinding": {
+                "elementId": "ingress",
+                "focus": 0,
+                "gap": 1
+              },
+              "endBinding": {
+                "elementId": "priority-queue",
+                "focus": 0,
+                "gap": 1
+              },
+              "startArrowhead": null,
+              "endArrowhead": "arrow",
+              "elbowed": false
+            },
+            {
+              "id": "arrow-1",
+              "type": "arrow",
+              "x": 500,
+              "y": 40,
+              "width": 140,
+              "height": 0,
+              "angle": 0,
+              "strokeColor": "#1e1e1e",
+              "backgroundColor": "transparent",
+              "fillStyle": "solid",
+              "strokeWidth": 2,
+              "strokeStyle": "solid",
+              "roughness": 1,
+              "opacity": 100,
+              "groupIds": [],
+              "frameId": null,
+              "index": "a4",
+              "roundness": null,
+              "seed": 1797201001,
+              "version": 4,
+              "versionNonce": 42929737,
+              "isDeleted": false,
+              "boundElements": null,
+              "updated": 1794586208881,
+              "link": null,
+              "locked": false,
+              "customData": {
+                "ryugiAuthor": "agent",
+                "ryugiRev": 1,
+                "ryugiLastBy": "agent"
+              },
+              "points": [
+                [0.5, 0],
+                [139.5, 0]
+              ],
+              "lastCommittedPoint": null,
+              "startBinding": {
+                "elementId": "priority-queue",
+                "focus": 0,
+                "gap": 1
+              },
+              "endBinding": {
+                "elementId": "worker",
+                "focus": 0,
+                "gap": 1
+              },
+              "startArrowhead": null,
+              "endArrowhead": "arrow",
+              "elbowed": false
+            },
+            {
+              "id": "M1CvwgaavXfyjLHvbr4ms",
+              "type": "text",
+              "x": 53.59003448486328,
+              "y": 27.5,
+              "width": 72.81993103027344,
+              "height": 25,
+              "angle": 0,
+              "strokeColor": "#1e1e1e",
+              "backgroundColor": "transparent",
+              "fillStyle": "solid",
+              "strokeWidth": 2,
+              "strokeStyle": "solid",
+              "roughness": 1,
+              "opacity": 100,
+              "groupIds": [],
+              "frameId": null,
+              "index": "a5",
+              "roundness": null,
+              "seed": 960833801,
+              "version": 4,
+              "versionNonce": 1617705726,
+              "isDeleted": false,
+              "boundElements": [],
+              "updated": 1794586208909,
+              "link": null,
+              "locked": false,
+              "text": "Ingress",
+              "fontSize": 20,
+              "fontFamily": 5,
+              "textAlign": "center",
+              "verticalAlign": "middle",
+              "containerId": "ingress",
+              "originalText": "Ingress",
+              "autoResize": true,
+              "lineHeight": 1.25,
+              "customData": {
+                "ryugiAuthor": "agent",
+                "ryugiRev": 1,
+                "ryugiLastBy": "agent"
+              }
+            },
+            {
+              "id": "GiqK6FwqKWq19JfhK2T4O",
+              "type": "text",
+              "x": 341.5800552368164,
+              "y": 27.5,
+              "width": 136.8398895263672,
+              "height": 25,
+              "angle": 0,
+              "strokeColor": "#1e1e1e",
+              "backgroundColor": "transparent",
+              "fillStyle": "solid",
+              "strokeWidth": 2,
+              "strokeStyle": "solid",
+              "roughness": 1,
+              "opacity": 100,
+              "groupIds": [],
+              "frameId": null,
+              "index": "a6",
+              "roundness": null,
+              "seed": 1789730793,
+              "version": 4,
+              "versionNonce": 1230298702,
+              "isDeleted": false,
+              "boundElements": [],
+              "updated": 1794586208909,
+              "link": null,
+              "locked": false,
+              "text": "Priority queue",
+              "fontSize": 20,
+              "fontFamily": 5,
+              "textAlign": "center",
+              "verticalAlign": "middle",
+              "containerId": "priority-queue",
+              "originalText": "Priority queue",
+              "autoResize": true,
+              "lineHeight": 1.25,
+              "customData": {
+                "ryugiAuthor": "agent",
+                "ryugiRev": 1,
+                "ryugiLastBy": "agent"
+              }
+            },
+            {
+              "id": "UVx81tVsO3yRzGdPdiebF",
+              "type": "text",
+              "x": 697.5000305175781,
+              "y": 27.5,
+              "width": 64.99993896484375,
+              "height": 25,
+              "angle": 0,
+              "strokeColor": "#1e1e1e",
+              "backgroundColor": "transparent",
+              "fillStyle": "solid",
+              "strokeWidth": 2,
+              "strokeStyle": "solid",
+              "roughness": 1,
+              "opacity": 100,
+              "groupIds": [],
+              "frameId": null,
+              "index": "a7",
+              "roundness": null,
+              "seed": 1572027081,
+              "version": 4,
+              "versionNonce": 1476645575,
+              "isDeleted": false,
+              "boundElements": [],
+              "updated": 1794586208909,
+              "link": null,
+              "locked": false,
+              "text": "Worker",
+              "fontSize": 20,
+              "fontFamily": 5,
+              "textAlign": "center",
+              "verticalAlign": "middle",
+              "containerId": "worker",
+              "originalText": "Worker",
+              "autoResize": true,
+              "lineHeight": 1.25,
+              "customData": {
+                "ryugiAuthor": "agent",
+                "ryugiRev": 1,
+                "ryugiLastBy": "agent"
+              }
+            }
+          ],
+          "appState": {
+            "name": "Retry delivery flow"
+          },
+          "files": {}
+        },
+        "geometry": {
+          "sceneVersion": 30,
+          "elements": {
+            "ingress": {
+              "x": 0,
+              "y": 0,
+              "w": 180,
+              "h": 80
+            },
+            "priority-queue": {
+              "x": 320,
+              "y": 0,
+              "w": 180,
+              "h": 80
+            },
+            "worker": {
+              "x": 640,
+              "y": 0,
+              "w": 180,
+              "h": 80
+            },
+            "arrow-0": {
+              "x": 180.5,
+              "y": 40,
+              "w": 139,
+              "h": 0
+            },
+            "arrow-1": {
+              "x": 500.5,
+              "y": 40,
+              "w": 139,
+              "h": 0
+            },
+            "M1CvwgaavXfyjLHvbr4ms": {
+              "x": 53.59003448486328,
+              "y": 27.5,
+              "w": 72.81993103027344,
+              "h": 25
+            },
+            "GiqK6FwqKWq19JfhK2T4O": {
+              "x": 341.5800552368164,
+              "y": 27.5,
+              "w": 136.8398895263672,
+              "h": 25
+            },
+            "UVx81tVsO3yRzGdPdiebF": {
+              "x": 697.5000305175781,
+              "y": 27.5,
+              "w": 64.99993896484375,
+              "h": 25
+            }
+          }
+        },
+        "project": "/private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-eval-preflight-vnh0Aq"
+      }
+    }
+  },
+  {
+    "name": "verify",
+    "check": {
+      "schema": "ryugi.cli/v1",
+      "command": "check",
+      "outcome": "success",
+      "data": {
+        "artifact": "verify/retry-policy",
+        "status": "clean",
+        "static": "clean",
+        "runtime": "not_required",
+        "issues": [],
+        "pending": [],
+        "evidence": {
+          "checkedAt": "2026-11-13T16:10:35.043Z",
+          "warnings": [],
+          "modules": [],
+          "provenance": [],
+          "evidence": {
+            "required": false,
+            "observed": true,
+            "fresh": true
+          }
+        },
+        "file": "/private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-eval-preflight-qIHxOC/.ryugi/artifacts/verify/retry-policy/report.xml"
+      },
+      "next": [
+        {
+          "kind": "command",
+          "argv": [
+            "/Users/innei/.n/bin/node",
+            "/Users/innei/.cache/ryugi/artifacts/1.77.0/node_modules/ryugi-artifacts/dist/cli.cjs",
+            "check",
+            "--artifact",
+            "verify/retry-policy",
+            "--project-dir",
+            "/private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-eval-preflight-qIHxOC",
+            "--detail"
+          ],
+          "label": "Details"
+        }
+      ]
+    },
+    "grade": {
+      "checks": {
+        "titlePresent": true,
+        "rawEvidenceMatchesExecutedProbe": true,
+        "agentClaimHasProvenance": true,
+        "productionGapLeftOpen": true,
+        "noInventedHumanVerdict": true
+      },
+      "detail": {
+        "report": "<report title=\"Retry policy verification\"><claim id=\"retry-and-priority\" judge=\"agent\" from=\"local Node v26.12.1\" capturedAt=\"2026-11-13T16:10:33.705Z\"><title>Three attempts and priority first</title><output src=\"evidence/retry-check.txt\"/></claim><gap id=\"production\"><title>Production</title><why>No production credentials</why><needs>A production test key</needs></gap></report>",
+        "evidence": "{\"maxAttempts\":3,\"order\":[\"priority-1\",\"normal-1\"]}\n",
+        "expected": "{\"maxAttempts\":3,\"order\":[\"priority-1\",\"normal-1\"]}\n",
+        "state": {
+          "schema": "ryugi.cli/v1",
+          "command": "comment.list",
+          "outcome": "success",
+          "data": {
+            "type": "report",
+            "artifact": "verify/retry-policy",
+            "claims": [
+              {
+                "id": "retry-and-priority",
+                "title": "Three attempts and priority first",
+                "judge": "agent",
+                "from": "local Node v26.12.1",
+                "capturedAt": "2026-11-13T16:10:33.705Z",
+                "state": "checked",
+                "evidenceUpdated": false,
+                "rejectThreads": 0
+              }
+            ],
+            "rows": [],
+            "gaps": [
+              {
+                "id": "production",
+                "title": "Production",
+                "waived": false
+              }
+            ],
+            "tally": {
+              "needYou": 0,
+              "rejected": 0,
+              "checked": 1,
+              "notVerified": 1,
+              "orphaned": 0,
+              "done": false
+            },
+            "threads": [],
+            "projectDir": "/private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-eval-preflight-qIHxOC"
+          }
+        },
+        "capture": "2026-11-13T16:10:33.705Z"
+      }
+    }
+  }
+]

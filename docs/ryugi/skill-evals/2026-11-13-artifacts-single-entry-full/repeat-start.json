@@ -1,0 +1,21 @@
+{
+  "capturedAt": "2026-11-13T16:14:18.713Z",
+  "findings": [
+    {
+      "mode": "offline-origin",
+      "cliVersion": "1.77.0",
+      "firstPort": "51748",
+      "secondPort": "51748",
+      "reused": true,
+      "portPreserved": true
+    },
+    {
+      "mode": "default-origin",
+      "cliVersion": "1.77.0",
+      "firstPort": "51794",
+      "secondPort": "51794",
+      "reused": true,
+      "portPreserved": true
+    }
+  ]
+}

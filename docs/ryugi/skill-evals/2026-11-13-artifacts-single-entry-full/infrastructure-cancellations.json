@@ -1,0 +1,38 @@
+[
+  {
+    "pid": 33169,
+    "label": "html-baseline-2",
+    "children": [61043],
+    "reason": "Infrastructure cancellation: Chrome cannot launch from the nested Codex workspace sandbox; restart browser cohorts with parent-owned prelaunched sessions."
+  },
+  {
+    "pid": 33170,
+    "label": "html-candidate-2",
+    "children": [40586],
+    "reason": "Infrastructure cancellation: Chrome cannot launch from the nested Codex workspace sandbox; restart browser cohorts with parent-owned prelaunched sessions."
+  },
+  {
+    "pid": 36454,
+    "label": "whiteboard-baseline-2",
+    "children": [62350],
+    "reason": "Infrastructure cancellation: Chrome cannot launch from the nested Codex workspace sandbox; restart browser cohorts with parent-owned prelaunched sessions."
+  },
+  {
+    "pid": 36455,
+    "label": "whiteboard-candidate-2",
+    "children": [61450],
+    "reason": "Infrastructure cancellation: Chrome cannot launch from the nested Codex workspace sandbox; restart browser cohorts with parent-owned prelaunched sessions."
+  },
+  {
+    "pid": 38869,
+    "label": "artboard-baseline-1",
+    "children": [38904],
+    "reason": "Infrastructure cancellation: Chrome cannot launch from the nested Codex workspace sandbox; restart browser cohorts with parent-owned prelaunched sessions."
+  },
+  {
+    "pid": 38870,
+    "label": "artboard-candidate-1",
+    "children": [38886],
+    "reason": "Infrastructure cancellation: Chrome cannot launch from the nested Codex workspace sandbox; restart browser cohorts with parent-owned prelaunched sessions."
+  }
+]

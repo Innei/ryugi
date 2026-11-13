@@ -1,0 +1,814 @@
+{
+  "capturedAt": "2026-11-13T16:09:27.182559+00:00",
+  "reason": "Chrome could not launch from the nested Codex workspace sandbox. Ten original attempts are retained, including six deliberately cancelled attempts. The corrected browser-host cohort uses a new browser-ready- label prefix. No observed run was overwritten.",
+  "runs": [
+    {
+      "label": "html-candidate-1",
+      "scenario": "html",
+      "arm": "candidate",
+      "repetition": 1,
+      "capturedAt": "2026-11-13T16:06:42.437Z",
+      "model": "gpt-6.1-sol",
+      "effort": "medium",
+      "codex": "codex-cli 0.167.2",
+      "package": {
+        "cli": "/Users/innei/.cache/ryugi/artifacts/1.77.0/node_modules/ryugi-artifacts/dist/cli.cjs",
+        "version": "1.77.0",
+        "cliSha256": "068315f11ea47786a9fce155466a2648aa98c7af465e43c23f0712795076552a",
+        "integrity": "sha512-1QCkCEl2vIGCasSCSKj0WtFUBdIzBW51EVyRWAa0NRWpqCCl5kJdSjvLLENIgtLfBScTM2l3y3rSwfHV39vYxw==",
+        "tarball": "https://registry.npmjs.org/ryugi-artifacts/-/ryugi-artifacts-1.77.0.tgz"
+      },
+      "skillSha256": "11c77e574ce454ad570b1f565ac6ab41333989df741150395e692dcb56fd5699",
+      "wallMs": 142355,
+      "input": 173774,
+      "cached": 147712,
+      "uncached": 26062,
+      "output": 1770,
+      "total": 175544,
+      "toolCalls": 8,
+      "commands": [
+        "/bin/zsh -lc 'node /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-package-eval-XPqqYB/skill/app/ryugi.cjs start --background --no-open --artifact html/retry-tuner --project-dir /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-package-eval-XPqqYB'",
+        "/bin/zsh -lc 'agent-browser skills get core'",
+        "/bin/zsh -lc \"ls -a; rg --files -g 'AGENTS.md' -g '*tokens*' -g '*css' -g 'index.html' .ryugi 2>/dev/null\"",
+        "/bin/zsh -lc 'agent-browser --session e7bed6efd29 open http://localhost:56253/html/tp4PRAyxmKikjNLM4dHx7'",
+        "/bin/zsh -lc 'agent-browser --session e7bed6efd29 snapshot'",
+        "/bin/zsh -lc 'agent-browser --session e7bed6efd29 doctor'",
+        "/bin/zsh -lc 'node /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-package-eval-XPqqYB/skill/app/ryugi.cjs check --project-dir /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-package-eval-XPqqYB --artifact html/retry-tuner'"
+      ],
+      "referenceReads": [
+        "/bin/zsh -lc \"ls -a; rg --files -g 'AGENTS.md' -g '*tokens*' -g '*css' -g 'index.html' .ryugi 2>/dev/null\""
+      ],
+      "sourceFallbacks": [],
+      "checks": {
+        "processSucceeded": true,
+        "checkClean": false,
+        "agentRanCheck": false,
+        "respectedScope": true,
+        "titlePresent": true,
+        "completeHtml": true,
+        "initialControls": false,
+        "rangeUpdatesVisibleOutput": false,
+        "bundledSwitchUpdatesPreview": false,
+        "noPersistentStorage": true
+      },
+      "passed": false,
+      "calls": [
+        {
+          "args": [
+            "start",
+            "--background",
+            "--no-open",
+            "--artifact",
+            "html/retry-tuner",
+            "--project-dir",
+            "/private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-package-eval-XPqqYB"
+          ],
+          "code": 0
+        },
+        {
+          "args": [
+            "check",
+            "--project-dir",
+            "/private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-package-eval-XPqqYB",
+            "--artifact",
+            "html/retry-tuner"
+          ],
+          "code": 4
+        }
+      ],
+      "classification": "infrastructure",
+      "rawDirectory": "runs/infrastructure-chrome-sandbox",
+      "cancelled": false
+    },
+    {
+      "label": "html-baseline-2",
+      "scenario": "html",
+      "arm": "baseline",
+      "repetition": 2,
+      "capturedAt": "2026-11-13T16:09:02.110Z",
+      "model": "gpt-6.1-sol",
+      "effort": "medium",
+      "codex": "codex-cli 0.167.2",
+      "package": {
+        "cli": "/Users/innei/.cache/ryugi/artifacts/1.77.0/node_modules/ryugi-artifacts/dist/cli.cjs",
+        "version": "1.77.0",
+        "cliSha256": "068315f11ea47786a9fce155466a2648aa98c7af465e43c23f0712795076552a",
+        "integrity": "sha512-1QCkCEl2vIGCasSCSKj0WtFUBdIzBW51EVyRWAa0NRWpqCCl5kJdSjvLLENIgtLfBScTM2l3y3rSwfHV39vYxw==",
+        "tarball": "https://registry.npmjs.org/ryugi-artifacts/-/ryugi-artifacts-1.77.0.tgz"
+      },
+      "skillSha256": "9184b30aa46b512ffde14d7afb1e6b258116925dc13d667066d94e05cdda53a4",
+      "wallMs": 106208,
+      "input": 0,
+      "cached": 0,
+      "uncached": 0,
+      "output": 0,
+      "total": 0,
+      "toolCalls": 6,
+      "commands": [
+        "/bin/zsh -lc 'node /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-package-eval-uIZsVT/skill/app/ryugi.cjs start --background --no-open --artifact html/retry-tuner --project-dir /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-package-eval-uIZsVT'",
+        "/bin/zsh -lc 'agent-browser skills get core'",
+        "/bin/zsh -lc 'ls -la .ryugi/artifacts/html/retry-tuner'",
+        "/bin/zsh -lc 'agent-browser --session ef06559c36c open http://localhost:61636/html/r0uqJgf7uuW9AL9KPiVtB'",
+        "/bin/zsh -lc 'agent-browser --session ef06559c36c doctor'"
+      ],
+      "referenceReads": [],
+      "sourceFallbacks": [],
+      "checks": {
+        "processSucceeded": false,
+        "checkClean": false,
+        "agentRanCheck": false,
+        "respectedScope": true,
+        "titlePresent": true,
+        "completeHtml": true,
+        "initialControls": false,
+        "rangeUpdatesVisibleOutput": false,
+        "bundledSwitchUpdatesPreview": false,
+        "noPersistentStorage": true
+      },
+      "passed": false,
+      "calls": [
+        {
+          "args": [
+            "start",
+            "--background",
+            "--no-open",
+            "--artifact",
+            "html/retry-tuner",
+            "--project-dir",
+            "/private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-package-eval-uIZsVT"
+          ],
+          "code": 0
+        }
+      ],
+      "classification": "infrastructure",
+      "rawDirectory": "runs/infrastructure-chrome-sandbox",
+      "cancelled": true
+    },
+    {
+      "label": "html-baseline-1",
+      "scenario": "html",
+      "arm": "baseline",
+      "repetition": 1,
+      "capturedAt": "2026-11-13T16:07:14.352Z",
+      "model": "gpt-6.1-sol",
+      "effort": "medium",
+      "codex": "codex-cli 0.167.2",
+      "package": {
+        "cli": "/Users/innei/.cache/ryugi/artifacts/1.77.0/node_modules/ryugi-artifacts/dist/cli.cjs",
+        "version": "1.77.0",
+        "cliSha256": "068315f11ea47786a9fce155466a2648aa98c7af465e43c23f0712795076552a",
+        "integrity": "sha512-1QCkCEl2vIGCasSCSKj0WtFUBdIzBW51EVyRWAa0NRWpqCCl5kJdSjvLLENIgtLfBScTM2l3y3rSwfHV39vYxw==",
+        "tarball": "https://registry.npmjs.org/ryugi-artifacts/-/ryugi-artifacts-1.77.0.tgz"
+      },
+      "skillSha256": "9184b30aa46b512ffde14d7afb1e6b258116925dc13d667066d94e05cdda53a4",
+      "wallMs": 174254,
+      "input": 212377,
+      "cached": 183424,
+      "uncached": 28953,
+      "output": 1627,
+      "total": 214004,
+      "toolCalls": 10,
+      "commands": [
+        "/bin/zsh -lc 'node /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-package-eval-jbhBog/skill/app/ryugi.cjs start --background --no-open --artifact html/retry-tuner --project-dir /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-package-eval-jbhBog'",
+        "/bin/zsh -lc 'agent-browser skills get core'",
+        "/bin/zsh -lc 'ls -la .ryugi/artifacts/html/retry-tuner'",
+        "/bin/zsh -lc \"rg --files -g AGENTS.md -g '*SKILL.md' skill | head -20\"",
+        "/bin/zsh -lc 'agent-browser --session edd0af7fc35 open http://localhost:56266/html/BssOuisyNxKGfc6l8ZnuH'",
+        "/bin/zsh -lc 'agent-browser --session edd0af7fc35 doctor'",
+        "/bin/zsh -lc 'agent-browser --session edd0af7fc35 --args \"--no-sandbox\" open http://localhost:56266/html/BssOuisyNxKGfc6l8ZnuH'",
+        "/bin/zsh -lc 'node skill/app/ryugi.cjs check --project-dir /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-package-eval-jbhBog --artifact html/retry-tuner'",
+        "/bin/zsh -lc 'node skill/app/ryugi.cjs start --background --no-open --artifact html/retry-tuner --project-dir /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-package-eval-jbhBog'"
+      ],
+      "referenceReads": [],
+      "sourceFallbacks": [],
+      "checks": {
+        "processSucceeded": true,
+        "checkClean": false,
+        "agentRanCheck": false,
+        "respectedScope": true,
+        "titlePresent": true,
+        "completeHtml": true,
+        "initialControls": false,
+        "rangeUpdatesVisibleOutput": false,
+        "bundledSwitchUpdatesPreview": false,
+        "noPersistentStorage": true
+      },
+      "passed": false,
+      "calls": [
+        {
+          "args": [
+            "start",
+            "--background",
+            "--no-open",
+            "--artifact",
+            "html/retry-tuner",
+            "--project-dir",
+            "/private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-package-eval-jbhBog"
+          ],
+          "code": 0
+        },
+        {
+          "args": [
+            "check",
+            "--project-dir",
+            "/private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-package-eval-jbhBog",
+            "--artifact",
+            "html/retry-tuner"
+          ],
+          "code": 4
+        },
+        {
+          "args": [
+            "start",
+            "--background",
+            "--no-open",
+            "--artifact",
+            "html/retry-tuner",
+            "--project-dir",
+            "/private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-package-eval-jbhBog"
+          ],
+          "code": 0
+        }
+      ],
+      "classification": "infrastructure",
+      "rawDirectory": "runs/infrastructure-chrome-sandbox",
+      "cancelled": false
+    },
+    {
+      "label": "artboard-baseline-1",
+      "scenario": "artboard",
+      "arm": "baseline",
+      "repetition": 1,
+      "capturedAt": "2026-11-13T16:09:00.925Z",
+      "model": "gpt-6.1-sol",
+      "effort": "medium",
+      "codex": "codex-cli 0.167.2",
+      "package": {
+        "cli": "/Users/innei/.cache/ryugi/artifacts/1.77.0/node_modules/ryugi-artifacts/dist/cli.cjs",
+        "version": "1.77.0",
+        "cliSha256": "068315f11ea47786a9fce155466a2648aa98c7af465e43c23f0712795076552a",
+        "integrity": "sha512-1QCkCEl2vIGCasSCSKj0WtFUBdIzBW51EVyRWAa0NRWpqCCl5kJdSjvLLENIgtLfBScTM2l3y3rSwfHV39vYxw==",
+        "tarball": "https://registry.npmjs.org/ryugi-artifacts/-/ryugi-artifacts-1.77.0.tgz"
+      },
+      "skillSha256": "9184b30aa46b512ffde14d7afb1e6b258116925dc13d667066d94e05cdda53a4",
+      "wallMs": 163993,
+      "input": 0,
+      "cached": 0,
+      "uncached": 0,
+      "output": 0,
+      "total": 0,
+      "toolCalls": 11,
+      "commands": [
+        "/bin/zsh -lc 'node /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-package-eval-sPfewe/skill/app/ryugi.cjs start --background --no-open --artifact artboard/retry-options --project-dir /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-package-eval-sPfewe'",
+        "/bin/zsh -lc 'agent-browser --session ef02870e91f skills get core'",
+        "/bin/zsh -lc 'ls -la .ryugi/artifacts/artboard/retry-options; rg --files -g AGENTS.md -g SKILL.md skill | head -20'",
+        "/bin/zsh -lc 'cat skill/SKILL.md'",
+        "/bin/zsh -lc \"python3 - <<'PY'\nimport json,pathlib\np=pathlib.Path('.ryugi/artifacts/artboard/retry-options'); (p/'pages').mkdir(exist_ok=True)\nc={'version':1,'title':'Retry strategy comparison','activePage':'comparison','pages':[{'id':'comparison','name':'Comparison'}],'boards':{},'groups':{'retry-strategy':{'title':'Retry strategy','boards':['fixed-delay','exponential-backoff'],'choose':True,'recommend':'exponential-backoff'}},'notes':{'round-one':{'kind':'title','page':'comparison','x':0,'y':-380,'w':1400,'text':'Retry strategy comparison \u00b7 Round 1'}}}\nfor i,(key,title) in enumerate([('fixed-delay','Fixed delay'),('exponential-backoff','Exponential backoff')]):\n c['boards'][key]={'file':f'pages/{key}.html','page':'comparison','x':i*720,'y':0,'w':640,'h':460,'title':title}\n(p/'canvas.json').write_text(json.dumps(c,indent=2)+'\\\\n')\nfor key,title,desc,waits,times,trade in [('fixed-delay','Fixed delay','Wait the same interval before each retry.',['Wait 1 second','Wait 1 second'],['0 s','1 s','2 s'],'Simple and predictable; repeated failures keep the same request rate.'),('exponential-backoff','Exponential backoff','Double the wait after each failed attempt.',['Wait 1 second','Wait 2 seconds'],['0 s','1 s','3 s'],'Gives a busy service more time to recover; the final attempt happens later.')]:\n html='''<\"'!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>'\"'''+title+'''</title><style>html,body{margin:0}body{font:17px/1.5 system-ui,sans-serif;color:#172b42;background:#f6f8fb}main{padding:32px}h1{font-size:32px;line-height:1.2;margin:8px 0 16px}p{margin:12px 0}.label{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:#52657c}ol{padding:0;list-style:none;margin:22px 0;display:flex;gap:12px}li{flex:1;background:white;border:1px solid #ced9e5;border-radius:8px;padding:12px;font-size:14px}strong{display:block;font-size:18px}.rule{border-top:1px solid #ced9e5;padding-top:16px;font-weight:600}.trade{font-size:15px;color:#43566f}</style></head><body><main><div class=\\\"label\\\">Maximum 3 attempts \u00b7 2 retries</div><h1>'''+title+'''</h1><p>'''+desc+'''</p><ol><li><strong>Attempt 1</strong>Now \u00b7 '''+times[0]+'''</li><li><strong>Attempt 2</strong>'''+waits[0]+'''<br>At '''+times[1]+'''</li><li><strong>Attempt 3</strong>'''+waits[1]+'''<br>At '''+times[2]+'''</li></ol><p class=\\\"rule\\\">Stop on success. After attempt 3 fails, return the error.</p><p class=\\\"trade\\\">'''+trade+''' Times assume immediate failures; request duration is excluded.</p></main></body></html>'''\n (p/'pages'/f'{key}.html').write_text(html)\nPY\"",
+        "/bin/zsh -lc 'agent-browser --session ef02870e91f open http://localhost:61226/artboard/bJuFK6Q35llkLuMldstHB'",
+        "/bin/zsh -lc 'agent-browser --session ef02870e91f doctor'",
+        "/bin/zsh -lc 'node skill/app/ryugi.cjs check --project-dir /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-package-eval-sPfewe --artifact artboard/retry-options'",
+        "/bin/zsh -lc 'node skill/app/ryugi.cjs check --artifact artboard/retry-options --project-dir /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-package-eval-sPfewe --detail'",
+        "/bin/zsh -lc 'node skill/app/ryugi.cjs comment list --sections threads,groups,rounds --detail --project-dir /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-package-eval-sPfewe --artifact artboard/retry-options'",
+        "/bin/zsh -lc 'node skill/app/ryugi.cjs start --background --no-open --artifact artboard/retry-options --project-dir /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-package-eval-sPfewe'"
+      ],
+      "referenceReads": [],
+      "sourceFallbacks": [],
+      "checks": {
+        "processSucceeded": false,
+        "checkClean": false,
+        "agentRanCheck": false,
+        "respectedScope": true,
+        "titlePresent": true,
+        "choiceReady": true,
+        "completeBoardFiles": true,
+        "requestedContent": true,
+        "noInventedChoice": true
+      },
+      "passed": false,
+      "calls": [
+        {
+          "args": [
+            "start",
+            "--background",
+            "--no-open",
+            "--artifact",
+            "artboard/retry-options",
+            "--project-dir",
+            "/private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-package-eval-sPfewe"
+          ],
+          "code": 0
+        },
+        {
+          "args": [
+            "check",
+            "--project-dir",
+            "/private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-package-eval-sPfewe",
+            "--artifact",
+            "artboard/retry-options"
+          ],
+          "code": 4
+        },
+        {
+          "args": [
+            "check",
+            "--artifact",
+            "artboard/retry-options",
+            "--project-dir",
+            "/private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-package-eval-sPfewe",
+            "--detail"
+          ],
+          "code": 4
+        },
+        {
+          "args": [
+            "comment",
+            "list",
+            "--sections",
+            "threads,groups,rounds",
+            "--detail",
+            "--project-dir",
+            "/private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-package-eval-sPfewe",
+            "--artifact",
+            "artboard/retry-options"
+          ],
+          "code": 0
+        },
+        {
+          "args": [
+            "start",
+            "--background",
+            "--no-open",
+            "--artifact",
+            "artboard/retry-options",
+            "--project-dir",
+            "/private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-package-eval-sPfewe"
+          ],
+          "code": 0
+        }
+      ],
+      "classification": "infrastructure",
+      "rawDirectory": "runs/infrastructure-chrome-sandbox",
+      "cancelled": true
+    },
+    {
+      "label": "html-candidate-2",
+      "scenario": "html",
+      "arm": "candidate",
+      "repetition": 2,
+      "capturedAt": "2026-11-13T16:09:02.101Z",
+      "model": "gpt-6.1-sol",
+      "effort": "medium",
+      "codex": "codex-cli 0.167.2",
+      "package": {
+        "cli": "/Users/innei/.cache/ryugi/artifacts/1.77.0/node_modules/ryugi-artifacts/dist/cli.cjs",
+        "version": "1.77.0",
+        "cliSha256": "068315f11ea47786a9fce155466a2648aa98c7af465e43c23f0712795076552a",
+        "integrity": "sha512-1QCkCEl2vIGCasSCSKj0WtFUBdIzBW51EVyRWAa0NRWpqCCl5kJdSjvLLENIgtLfBScTM2l3y3rSwfHV39vYxw==",
+        "tarball": "https://registry.npmjs.org/ryugi-artifacts/-/ryugi-artifacts-1.77.0.tgz"
+      },
+      "skillSha256": "11c77e574ce454ad570b1f565ac6ab41333989df741150395e692dcb56fd5699",
+      "wallMs": 138058,
+      "input": 0,
+      "cached": 0,
+      "uncached": 0,
+      "output": 0,
+      "total": 0,
+      "toolCalls": 7,
+      "commands": [
+        "/bin/zsh -lc 'node /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-package-eval-JTU0VU/skill/app/ryugi.cjs start --background --no-open --artifact html/retry-tuner --project-dir /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-package-eval-JTU0VU'",
+        "/bin/zsh -lc 'agent-browser skills get core'",
+        "/bin/zsh -lc 'ls -la .ryugi/artifacts/html/retry-tuner'",
+        "/bin/zsh -lc 'agent-browser --session e175d056a29 skills get core --ref commands'",
+        "/bin/zsh -lc 'agent-browser --session e175d056a29 open http://localhost:61451/html/VRKkPn9jnDCKqZ0re2TqI'",
+        "/bin/zsh -lc 'agent-browser --session e175d056a29 snapshot -i'"
+      ],
+      "referenceReads": [],
+      "sourceFallbacks": [],
+      "checks": {
+        "processSucceeded": false,
+        "checkClean": false,
+        "agentRanCheck": false,
+        "respectedScope": true,
+        "titlePresent": true,
+        "completeHtml": true,
+        "initialControls": false,
+        "rangeUpdatesVisibleOutput": false,
+        "bundledSwitchUpdatesPreview": false,
+        "noPersistentStorage": true
+      },
+      "passed": false,
+      "calls": [
+        {
+          "args": [
+            "start",
+            "--background",
+            "--no-open",
+            "--artifact",
+            "html/retry-tuner",
+            "--project-dir",
+            "/private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-package-eval-JTU0VU"
+          ],
+          "code": 0
+        }
+      ],
+      "classification": "infrastructure",
+      "rawDirectory": "runs/infrastructure-chrome-sandbox",
+      "cancelled": true
+    },
+    {
+      "label": "whiteboard-baseline-2",
+      "scenario": "whiteboard",
+      "arm": "baseline",
+      "repetition": 2,
+      "capturedAt": "2026-11-13T16:09:00.810Z",
+      "model": "gpt-6.1-sol",
+      "effort": "medium",
+      "codex": "codex-cli 0.167.2",
+      "package": {
+        "cli": "/Users/innei/.cache/ryugi/artifacts/1.77.0/node_modules/ryugi-artifacts/dist/cli.cjs",
+        "version": "1.77.0",
+        "cliSha256": "068315f11ea47786a9fce155466a2648aa98c7af465e43c23f0712795076552a",
+        "integrity": "sha512-1QCkCEl2vIGCasSCSKj0WtFUBdIzBW51EVyRWAa0NRWpqCCl5kJdSjvLLENIgtLfBScTM2l3y3rSwfHV39vYxw==",
+        "tarball": "https://registry.npmjs.org/ryugi-artifacts/-/ryugi-artifacts-1.77.0.tgz"
+      },
+      "skillSha256": "9184b30aa46b512ffde14d7afb1e6b258116925dc13d667066d94e05cdda53a4",
+      "wallMs": 77839,
+      "input": 0,
+      "cached": 0,
+      "uncached": 0,
+      "output": 0,
+      "total": 0,
+      "toolCalls": 4,
+      "commands": [
+        "/bin/zsh -lc 'node /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-package-eval-csUga5/skill/app/ryugi.cjs start --background --no-open --artifact whiteboard/retry-flow --project-dir /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-package-eval-csUga5'",
+        "/bin/zsh -lc 'agent-browser skills get core'",
+        "/bin/zsh -lc 'if test -f .ryugi/artifacts/whiteboard/retry-flow/scene.excalidraw; then cat .ryugi/artifacts/whiteboard/retry-flow/scene.excalidraw; fi'",
+        "/bin/zsh -lc 'agent-browser --session e9f483e073f open http://localhost:61885/whiteboard/ucorGbC26LJpBJj6okzAh'"
+      ],
+      "referenceReads": [],
+      "sourceFallbacks": [],
+      "checks": {
+        "processSucceeded": false,
+        "checkClean": false,
+        "agentRanCheck": false,
+        "respectedScope": true,
+        "titlePresent": false,
+        "threeNamedStages": false,
+        "nativeConnectedFlow": false,
+        "uniqueLiveIds": true,
+        "noManufacturedHuman": true,
+        "browserGeometryRecorded": false,
+        "currentRenderCaptured": false
+      },
+      "passed": false,
+      "calls": [
+        {
+          "args": [
+            "start",
+            "--background",
+            "--no-open",
+            "--artifact",
+            "whiteboard/retry-flow",
+            "--project-dir",
+            "/private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-package-eval-csUga5"
+          ],
+          "code": 0
+        }
+      ],
+      "classification": "infrastructure",
+      "rawDirectory": "runs/infrastructure-chrome-sandbox",
+      "cancelled": true
+    },
+    {
+      "label": "whiteboard-candidate-2",
+      "scenario": "whiteboard",
+      "arm": "candidate",
+      "repetition": 2,
+      "capturedAt": "2026-11-13T16:09:00.807Z",
+      "model": "gpt-6.1-sol",
+      "effort": "medium",
+      "codex": "codex-cli 0.167.2",
+      "package": {
+        "cli": "/Users/innei/.cache/ryugi/artifacts/1.77.0/node_modules/ryugi-artifacts/dist/cli.cjs",
+        "version": "1.77.0",
+        "cliSha256": "068315f11ea47786a9fce155466a2648aa98c7af465e43c23f0712795076552a",
+        "integrity": "sha512-1QCkCEl2vIGCasSCSKj0WtFUBdIzBW51EVyRWAa0NRWpqCCl5kJdSjvLLENIgtLfBScTM2l3y3rSwfHV39vYxw==",
+        "tarball": "https://registry.npmjs.org/ryugi-artifacts/-/ryugi-artifacts-1.77.0.tgz"
+      },
+      "skillSha256": "11c77e574ce454ad570b1f565ac6ab41333989df741150395e692dcb56fd5699",
+      "wallMs": 99909,
+      "input": 0,
+      "cached": 0,
+      "uncached": 0,
+      "output": 0,
+      "total": 0,
+      "toolCalls": 6,
+      "commands": [
+        "/bin/zsh -lc 'node /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-package-eval-uH1r1z/skill/app/ryugi.cjs start --background --no-open --artifact whiteboard/retry-flow --project-dir /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-package-eval-uH1r1z'",
+        "/bin/zsh -lc 'agent-browser skills get core'",
+        "/bin/zsh -lc 'test ! -f .ryugi/artifacts/whiteboard/retry-flow/scene.excalidraw || cat .ryugi/artifacts/whiteboard/retry-flow/scene.excalidraw'",
+        "/bin/zsh -lc 'agent-browser --session e4591f1cd9e open http://localhost:61787/whiteboard/OT4L9BufsIGCiG3mOPgIz'",
+        "/bin/zsh -lc 'agent-browser --session e4591f1cd9e doctor'"
+      ],
+      "referenceReads": [],
+      "sourceFallbacks": [],
+      "checks": {
+        "processSucceeded": false,
+        "checkClean": false,
+        "agentRanCheck": false,
+        "respectedScope": true,
+        "titlePresent": true,
+        "threeNamedStages": true,
+        "nativeConnectedFlow": true,
+        "uniqueLiveIds": true,
+        "noManufacturedHuman": true,
+        "browserGeometryRecorded": false,
+        "currentRenderCaptured": false
+      },
+      "passed": false,
+      "calls": [
+        {
+          "args": [
+            "start",
+            "--background",
+            "--no-open",
+            "--artifact",
+            "whiteboard/retry-flow",
+            "--project-dir",
+            "/private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-package-eval-uH1r1z"
+          ],
+          "code": 0
+        }
+      ],
+      "classification": "infrastructure",
+      "rawDirectory": "runs/infrastructure-chrome-sandbox",
+      "cancelled": true
+    },
+    {
+      "label": "artboard-candidate-1",
+      "scenario": "artboard",
+      "arm": "candidate",
+      "repetition": 1,
+      "capturedAt": "2026-11-13T16:09:00.925Z",
+      "model": "gpt-6.1-sol",
+      "effort": "medium",
+      "codex": "codex-cli 0.167.2",
+      "package": {
+        "cli": "/Users/innei/.cache/ryugi/artifacts/1.77.0/node_modules/ryugi-artifacts/dist/cli.cjs",
+        "version": "1.77.0",
+        "cliSha256": "068315f11ea47786a9fce155466a2648aa98c7af465e43c23f0712795076552a",
+        "integrity": "sha512-1QCkCEl2vIGCasSCSKj0WtFUBdIzBW51EVyRWAa0NRWpqCCl5kJdSjvLLENIgtLfBScTM2l3y3rSwfHV39vYxw==",
+        "tarball": "https://registry.npmjs.org/ryugi-artifacts/-/ryugi-artifacts-1.77.0.tgz"
+      },
+      "skillSha256": "11c77e574ce454ad570b1f565ac6ab41333989df741150395e692dcb56fd5699",
+      "wallMs": 163996,
+      "input": 0,
+      "cached": 0,
+      "uncached": 0,
+      "output": 0,
+      "total": 0,
+      "toolCalls": 10,
+      "commands": [
+        "/bin/zsh -lc 'node /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-package-eval-JbwMqx/skill/app/ryugi.cjs start --background --no-open --artifact artboard/retry-options --project-dir /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-package-eval-JbwMqx'",
+        "/bin/zsh -lc 'agent-browser --session e1f21eb2245 skills get core'",
+        "/bin/zsh -lc 'test ! -f .ryugi/artifacts/artboard/retry-options/canvas.json || cat .ryugi/artifacts/artboard/retry-options/canvas.json'",
+        "/bin/zsh -lc 'cat skill/SKILL.md'",
+        "/bin/zsh -lc 'agent-browser --session e1f21eb2245 open http://localhost:61252/artboard/XsTKhWG55hJeRjWhKzXz6'",
+        "/bin/zsh -lc 'node skill/app/ryugi.cjs check --project-dir /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-package-eval-JbwMqx --artifact artboard/retry-options'",
+        "/bin/zsh -lc 'agent-browser --session e1f21eb2245 doctor'",
+        "/bin/zsh -lc 'node skill/app/ryugi.cjs check --artifact artboard/retry-options --project-dir /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-package-eval-JbwMqx --detail'",
+        "/bin/zsh -lc 'node skill/app/ryugi.cjs start --background --no-open --artifact artboard/retry-options --project-dir /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-package-eval-JbwMqx'"
+      ],
+      "referenceReads": [],
+      "sourceFallbacks": [],
+      "checks": {
+        "processSucceeded": false,
+        "checkClean": false,
+        "agentRanCheck": false,
+        "respectedScope": true,
+        "titlePresent": true,
+        "choiceReady": true,
+        "completeBoardFiles": true,
+        "requestedContent": true,
+        "noInventedChoice": true
+      },
+      "passed": false,
+      "calls": [
+        {
+          "args": [
+            "start",
+            "--background",
+            "--no-open",
+            "--artifact",
+            "artboard/retry-options",
+            "--project-dir",
+            "/private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-package-eval-JbwMqx"
+          ],
+          "code": 0
+        },
+        {
+          "args": [
+            "check",
+            "--project-dir",
+            "/private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-package-eval-JbwMqx",
+            "--artifact",
+            "artboard/retry-options"
+          ],
+          "code": 4
+        },
+        {
+          "args": [
+            "check",
+            "--artifact",
+            "artboard/retry-options",
+            "--project-dir",
+            "/private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-package-eval-JbwMqx",
+            "--detail"
+          ],
+          "code": 4
+        },
+        {
+          "args": [
+            "start",
+            "--background",
+            "--no-open",
+            "--artifact",
+            "artboard/retry-options",
+            "--project-dir",
+            "/private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-package-eval-JbwMqx"
+          ],
+          "code": 0
+        }
+      ],
+      "classification": "infrastructure",
+      "rawDirectory": "runs/infrastructure-chrome-sandbox",
+      "cancelled": true
+    },
+    {
+      "label": "whiteboard-candidate-1",
+      "scenario": "whiteboard",
+      "arm": "candidate",
+      "repetition": 1,
+      "capturedAt": "2026-11-13T16:07:20.655Z",
+      "model": "gpt-6.1-sol",
+      "effort": "medium",
+      "codex": "codex-cli 0.167.2",
+      "package": {
+        "cli": "/Users/innei/.cache/ryugi/artifacts/1.77.0/node_modules/ryugi-artifacts/dist/cli.cjs",
+        "version": "1.77.0",
+        "cliSha256": "068315f11ea47786a9fce155466a2648aa98c7af465e43c23f0712795076552a",
+        "integrity": "sha512-1QCkCEl2vIGCasSCSKj0WtFUBdIzBW51EVyRWAa0NRWpqCCl5kJdSjvLLENIgtLfBScTM2l3y3rSwfHV39vYxw==",
+        "tarball": "https://registry.npmjs.org/ryugi-artifacts/-/ryugi-artifacts-1.77.0.tgz"
+      },
+      "skillSha256": "11c77e574ce454ad570b1f565ac6ab41333989df741150395e692dcb56fd5699",
+      "wallMs": 115705,
+      "input": 139433,
+      "cached": 120832,
+      "uncached": 18601,
+      "output": 1020,
+      "total": 140453,
+      "toolCalls": 8,
+      "commands": [
+        "/bin/zsh -lc 'node /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-package-eval-vMGv3s/skill/app/ryugi.cjs start --background --no-open --artifact whiteboard/retry-flow --project-dir /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-package-eval-vMGv3s'",
+        "/bin/zsh -lc 'agent-browser skills get core'",
+        "/bin/zsh -lc 'if test -f .ryugi/artifacts/whiteboard/retry-flow/scene.excalidraw; then cat .ryugi/artifacts/whiteboard/retry-flow/scene.excalidraw; fi'",
+        "/bin/zsh -lc 'agent-browser --session ea451657d5f open http://localhost:56904/whiteboard/AbYvoVIx8fnM8sYicmeN5'",
+        "/bin/zsh -lc 'agent-browser --session ea451657d5f doctor'",
+        "/bin/zsh -lc 'agent-browser --session ea451657d5f --args \"--no-sandbox\" open http://localhost:56904/whiteboard/AbYvoVIx8fnM8sYicmeN5'",
+        "/bin/zsh -lc 'node skill/app/ryugi.cjs check --project-dir /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-package-eval-vMGv3s --artifact whiteboard/retry-flow'"
+      ],
+      "referenceReads": [],
+      "sourceFallbacks": [],
+      "checks": {
+        "processSucceeded": true,
+        "checkClean": false,
+        "agentRanCheck": false,
+        "respectedScope": true,
+        "titlePresent": true,
+        "threeNamedStages": true,
+        "nativeConnectedFlow": true,
+        "uniqueLiveIds": true,
+        "noManufacturedHuman": true,
+        "browserGeometryRecorded": false,
+        "currentRenderCaptured": false
+      },
+      "passed": false,
+      "calls": [
+        {
+          "args": [
+            "start",
+            "--background",
+            "--no-open",
+            "--artifact",
+            "whiteboard/retry-flow",
+            "--project-dir",
+            "/private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-package-eval-vMGv3s"
+          ],
+          "code": 0
+        },
+        {
+          "args": [
+            "check",
+            "--project-dir",
+            "/private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-package-eval-vMGv3s",
+            "--artifact",
+            "whiteboard/retry-flow"
+          ],
+          "code": 4
+        }
+      ],
+      "classification": "infrastructure",
+      "rawDirectory": "runs/infrastructure-chrome-sandbox",
+      "cancelled": false
+    },
+    {
+      "label": "whiteboard-baseline-1",
+      "scenario": "whiteboard",
+      "arm": "baseline",
+      "repetition": 1,
+      "capturedAt": "2026-11-13T16:07:42.728Z",
+      "model": "gpt-6.1-sol",
+      "effort": "medium",
+      "codex": "codex-cli 0.167.2",
+      "package": {
+        "cli": "/Users/innei/.cache/ryugi/artifacts/1.77.0/node_modules/ryugi-artifacts/dist/cli.cjs",
+        "version": "1.77.0",
+        "cliSha256": "068315f11ea47786a9fce155466a2648aa98c7af465e43c23f0712795076552a",
+        "integrity": "sha512-1QCkCEl2vIGCasSCSKj0WtFUBdIzBW51EVyRWAa0NRWpqCCl5kJdSjvLLENIgtLfBScTM2l3y3rSwfHV39vYxw==",
+        "tarball": "https://registry.npmjs.org/ryugi-artifacts/-/ryugi-artifacts-1.77.0.tgz"
+      },
+      "skillSha256": "9184b30aa46b512ffde14d7afb1e6b258116925dc13d667066d94e05cdda53a4",
+      "wallMs": 137782,
+      "input": 160347,
+      "cached": 128128,
+      "uncached": 32219,
+      "output": 994,
+      "total": 161341,
+      "toolCalls": 9,
+      "commands": [
+        "/bin/zsh -lc 'node /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-package-eval-lpvyz4/skill/app/ryugi.cjs start --background --no-open --artifact whiteboard/retry-flow --project-dir /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-package-eval-lpvyz4'",
+        "/bin/zsh -lc 'agent-browser skills get core'",
+        "/bin/zsh -lc 'ls -la .ryugi/artifacts/whiteboard/retry-flow'",
+        "/bin/zsh -lc 'agent-browser --session eb139677235 open http://localhost:56912/whiteboard/uterW8cp0ObDXPAiefEbI'",
+        "/bin/zsh -lc 'agent-browser --session eb139677235 doctor'",
+        "/bin/zsh -lc 'agent-browser --session eb139677235 --args \"--no-sandbox\" open http://localhost:56912/whiteboard/uterW8cp0ObDXPAiefEbI'",
+        "/bin/zsh -lc 'node skill/app/ryugi.cjs check --project-dir /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-package-eval-lpvyz4 --artifact whiteboard/retry-flow'",
+        "/bin/zsh -lc 'node skill/app/ryugi.cjs check --project-dir /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-package-eval-lpvyz4 --artifact whiteboard/retry-flow --detail'"
+      ],
+      "referenceReads": [],
+      "sourceFallbacks": [],
+      "checks": {
+        "processSucceeded": true,
+        "checkClean": false,
+        "agentRanCheck": false,
+        "respectedScope": true,
+        "titlePresent": true,
+        "threeNamedStages": true,
+        "nativeConnectedFlow": true,
+        "uniqueLiveIds": true,
+        "noManufacturedHuman": true,
+        "browserGeometryRecorded": false,
+        "currentRenderCaptured": false
+      },
+      "passed": false,
+      "calls": [
+        {
+          "args": [
+            "start",
+            "--background",
+            "--no-open",
+            "--artifact",
+            "whiteboard/retry-flow",
+            "--project-dir",
+            "/private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-package-eval-lpvyz4"
+          ],
+          "code": 0
+        },
+        {
+          "args": [
+            "check",
+            "--project-dir",
+            "/private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-package-eval-lpvyz4",
+            "--artifact",
+            "whiteboard/retry-flow"
+          ],
+          "code": 4
+        },
+        {
+          "args": [
+            "check",
+            "--project-dir",
+            "/private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/ryugi-package-eval-lpvyz4",
+            "--artifact",
+            "whiteboard/retry-flow",
+            "--detail"
+          ],
+          "code": 4
+        }
+      ],
+      "classification": "infrastructure",
+      "rawDirectory": "runs/infrastructure-chrome-sandbox",
+      "cancelled": false
+    }
+  ]
+}
