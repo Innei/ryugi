@@ -251,7 +251,8 @@ function outputFiles(projectDir) {
 function read(file) {
   try {
     const raw = JSON.parse(import_node_fs2.default.readFileSync(file, "utf8"));
-    if (!raw || typeof raw !== "object" || Array.isArray(raw)) throw new Error("Expected an object");
+    if (!raw || typeof raw !== "object" || Array.isArray(raw))
+      throw new Error("Expected an object");
     return raw;
   } catch (error) {
     if (error.code === "ENOENT") return {};
@@ -553,7 +554,13 @@ function renderText(view, wire, options, collection, requiredFields = [], code =
   if (code || (wire.effects ?? []).some((effect) => effect.state !== "confirmed"))
     lines.push(...effectLines(wire.effects ?? []));
   for (const warning of wire.warnings ?? []) lines.push(`Warning: ${clean(warning.message)}`);
-  const actions = [...view.actions ?? wire.next ?? [], ...errorActions];
+  const given = view.actions ?? wire.next ?? [];
+  const actions = [
+    ...given,
+    ...errorActions.filter(
+      (action) => !given.some((other) => actionText(other) === actionText(action))
+    )
+  ];
   const used = /* @__PURE__ */ new Set();
   const details = actions.find((action) => action.label === "Details");
   for (const omission of omissions) {
