@@ -21,6 +21,11 @@ function postToServer(project, pathname, body) {
     }
     const key = base.searchParams.get('key') || '';
     const payload = body === undefined ? null : JSON.stringify(body);
+    const finish = () => {
+      clearTimeout(deadline);
+      req.destroy();
+      resolve();
+    };
     const req = http.request(
       {
         host: base.hostname === 'localhost' ? '127.0.0.1' : base.hostname,
@@ -31,15 +36,18 @@ function postToServer(project, pathname, body) {
           'X-Ryugi-Project': encodeURIComponent(project),
           ...(payload ? { 'Content-Type': 'application/json' } : {}),
         },
-        timeout: 2000,
       },
       (res) => {
+        res.on('error', finish);
+        res.on('end', finish);
         res.resume();
-        res.on('end', resolve);
       },
     );
-    req.on('error', () => resolve());
-    req.on('timeout', () => req.destroy());
+    // Socket idle timeouts reset on data. Bound the entire request instead,
+    // leaving room for stdin and process startup inside Codex's 3s hooks.
+    const deadline = setTimeout(finish, 1500);
+    req.on('error', finish);
+    req.on('close', finish);
     req.end(payload ?? undefined);
   });
 }

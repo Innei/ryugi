@@ -227,6 +227,46 @@ test('the Codex Stop hook stays silent without a running server', async (t) => {
   assert.ok(Date.now() - started < 5000);
 });
 
+test('the Codex Stop hook exits before the host deadline even while the server keeps responding', async (t) => {
+  const dir = project(t);
+  let received;
+  const server = http.createServer((req, res) => {
+    let body = '';
+    req.on('data', (chunk) => (body += chunk));
+    req.on('end', () => {
+      received = { path: req.url.split('?')[0], body: JSON.parse(body) };
+      res.writeHead(200);
+      res.write(' ');
+      const timer = setInterval(() => res.write(' '), 100);
+      const end = setTimeout(() => res.end(), 5500);
+      res.on('close', () => {
+        clearInterval(timer);
+        clearTimeout(end);
+      });
+    });
+  });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  t.after(() => {
+    server.closeAllConnections();
+    server.close();
+  });
+  fs.writeFileSync(
+    path.join(dir, '.ryugi/artifacts/.state/server-info'),
+    JSON.stringify({ url: `http://localhost:${server.address().port}/` }),
+  );
+
+  const started = Date.now();
+  const result = await run(commandFor(codexHooks(), 'Stop').command, {
+    hook_event_name: 'Stop',
+    session_id: SESSION,
+    cwd: dir,
+  });
+  assert.deepEqual(result, { code: 0, out: '' });
+  assert.ok(Date.now() - started < 2800, `took ${Date.now() - started} ms`);
+  assert.equal(received.path, '/api/agent/event');
+  assert.equal(received.body.event, 'Stop');
+});
+
 test('the turn-end flush never waits on a stdin that stays open', async (t) => {
   const dir = project(t);
   const seen = await hub(t, dir);
