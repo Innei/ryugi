@@ -202,7 +202,7 @@ test('a human comment on an artboard this Pi session opened wakes the session', 
   p.write('artboard/other/comments.json', { threads: [] });
   p.write('.state/artboard/home/rounds.json', { rounds: [{ id: 'r1', state: 'open' }] });
   await firstHandler(handlers, 'session_start')({ type: 'session_start' }, ctx);
-  register(['comment', 'list', '--artifact', 'artboard/home', '--project-dir', p.root], {
+  register(['start', '--artifact', 'artboard/home', '--project-dir', p.root], {
     PI_SESSION_ID: session,
   });
   await delay(1500);
@@ -251,7 +251,7 @@ async function startSession(t, handlers, ctx) {
 
 function opened(p, artifact, id = session) {
   p.write(`${artifact}/comments.json`, { threads: [] });
-  register(['comment', 'list', '--artifact', artifact, '--project-dir', p.root], {
+  register(['start', '--artifact', artifact, '--project-dir', p.root], {
     PI_SESSION_ID: id,
   });
 }
@@ -340,14 +340,14 @@ test('a forked session watches only what it opens itself', async (t) => {
   await delay(1500);
   assert.deepEqual(comments(sent), [], 'the fork does not inherit the parent subscriptions');
 
-  register(['comment', 'list', '--artifact', 'artboard/home', '--project-dir', p.root], {
+  register(['start', '--artifact', 'artboard/home', '--project-dir', p.root], {
     PI_SESSION_ID: fork,
   });
   p.write('artboard/home/comments.json', { threads: [p.human(1), p.human(2)] });
   await until(() => comments(sent).length === 1, 'the fork is woken once it opens the artboard');
 });
 
-test('a Pi nested in Codex or Claude Code registers with the outer host', (t) => {
+test('a Pi subscription does not guess its host from inherited or conflicting session markers', (t) => {
   const p = project(t);
   const ids = {
     CODEX_THREAD_ID: '019a4f5e-0000-7000-8000-000000000001',
@@ -357,12 +357,19 @@ test('a Pi nested in Codex or Claude Code registers with the outer host', (t) =>
   const hostOf = (env) => {
     const root = join(p.root, '.ryugi/artifacts/.state');
     rmSync(root, { recursive: true, force: true });
-    register(['comment', 'list', '--artifact', 'artboard/home', '--project-dir', p.root], env);
+    register(['start', '--artifact', 'artboard/home', '--project-dir', p.root], env);
     return ['codex', 'claude', 'pi'].filter((host) =>
       existsSync(join(root, `${host}-comment-watch`)),
     );
   };
-  assert.deepEqual(hostOf(ids), ['codex']);
-  assert.deepEqual(hostOf({ ...ids, CODEX_THREAD_ID: undefined }), ['claude']);
+  assert.throws(() => hostOf(ids), /ambiguous agent session markers/);
+  assert.deepEqual(
+    hostOf({ CODEX_THREAD_ID: ids.CODEX_THREAD_ID, PI_SESSION_ID: ids.PI_SESSION_ID }),
+    ['pi'],
+  );
+  assert.throws(
+    () => hostOf({ ...ids, CODEX_THREAD_ID: undefined }),
+    /ambiguous agent session markers/,
+  );
   assert.deepEqual(hostOf({ PI_SESSION_ID: ids.PI_SESSION_ID }), ['pi']);
 });

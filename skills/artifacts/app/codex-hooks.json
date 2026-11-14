@@ -6,6 +6,11 @@
         "hooks": [
           {
             "type": "command",
+            "command": "node \"${PLUGIN_ROOT}/skills/artifacts/app/codex-comment-watch.cjs\" bind",
+            "timeout": 5
+          },
+          {
+            "type": "command",
             "command": "node \"${PLUGIN_ROOT}/skills/artifacts/app/codex-comment-watch.cjs\" watch",
             "async": true,
             "timeout": 86400
@@ -16,6 +21,11 @@
     "UserPromptSubmit": [
       {
         "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${PLUGIN_ROOT}/skills/artifacts/app/codex-comment-watch.cjs\" bind",
+            "timeout": 5
+          },
           {
             "type": "command",
             "command": "node \"${PLUGIN_ROOT}/skills/artifacts/app/codex-comment-watch.cjs\" watch",

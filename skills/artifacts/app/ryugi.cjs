@@ -215,6 +215,16 @@ function ownerPid() {
 
 function main() {
   const args = process.argv.slice(2);
+  let sessionProof;
+  const proofIndex = args.indexOf('--ryugi-session');
+  if (proofIndex >= 0) {
+    sessionProof = args[proofIndex + 1];
+    if (!/^[\da-f-]{36}:[\da-f-]{36}$/i.test(sessionProof || ''))
+      throw new LaunchError(
+        'The Ryugi session binding is invalid. Use the launcher supplied by the current session hook.',
+      );
+    args.splice(proofIndex, 2);
+  }
   const selection = outputBootstrap.resolveSelection(args);
   if (selection.error) {
     outputBootstrap.reportFailure(args, selection.error, selection);
@@ -223,7 +233,7 @@ function main() {
   const local = path.join(__dirname, 'cli.cjs');
   const env = {
     ...process.env,
-    RYUGI_ARTIFACTS_COMMAND: `node "${__filename}"`,
+    RYUGI_ARTIFACTS_COMMAND: `node "${__filename}"${sessionProof ? ` --ryugi-session ${sessionProof}` : ''}`,
   };
   let cli = local;
   if (!fs.existsSync(local)) {
@@ -235,12 +245,14 @@ function main() {
   }
   requireOutputProtocol(cli);
   if (
+    sessionProof ||
     process.env.CODEX_THREAD_ID ||
+    process.env.CODEX_SESSION_ID ||
     process.env.CLAUDE_CODE_SESSION_ID ||
     process.env.PI_SESSION_ID
   ) {
     try {
-      require('./comment-subscriptions.cjs').register(args);
+      require('./comment-subscriptions.cjs').register(args, process.env, sessionProof);
     } catch (error) {
       if (error.code !== 'MODULE_NOT_FOUND')
         console.error(JSON.stringify({ type: 'comment-watch-error', message: error.message }));

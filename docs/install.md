@@ -122,10 +122,18 @@ Code bootstrap. They start a background comment watcher and stop it when
 the session ends; repeated startup or compaction hooks share one watcher.
 The background hook expires after 24 hours; the next user prompt restarts it.
 
-The artifacts launcher registers each document or Artboard opened by the
-current session. Only those artifacts can send review comments back to it;
-opening the artifact library registers the project. Changes that have already
-been resolved are skipped, including during a delivery retry.
+The artifacts launcher subscribes only when `start --artifact` explicitly opens
+a document, Artboard or whiteboard. Starting the server or library, including
+`start --no-open`, does not subscribe the session to a whole project. Reading
+or acknowledging comments does not create a subscription. Legacy `*` project
+subscriptions are ignored. Resolved comments are skipped, including during a retry.
+
+Codex hooks bind the canonical hook `session_id` to the host process before
+tools run. The hook supplies a launcher command carrying `--ryugi-session`;
+agents keep that binding in subsequent commands. The binding checks the host
+process and its start time, so inherited parent-session environment variables
+cannot silently retarget feedback. Ambiguous or expired bindings do not create
+a subscription. Session end removes its binding without touching other sessions.
 
 ### Codex desktop
 

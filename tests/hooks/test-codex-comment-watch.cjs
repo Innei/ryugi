@@ -25,7 +25,7 @@ async function until(check, explanation, timeout = 5000) {
     if (check()) return;
     await delay(25);
   }
-  assert.fail(explanation);
+  assert.fail(typeof explanation === 'function' ? explanation() : explanation);
 }
 
 async function initialScan(f) {
@@ -49,6 +49,20 @@ function fixture(t) {
   fs.mkdirSync(data);
   fs.mkdirSync(bin);
   fs.mkdirSync(path.join(project, '.git'));
+  // Hide the enclosing agent's external transport discovery, but retain real
+  // ancestry for session bindings. A shell wrapper also survives Node execve
+  // without adding extra NODE_OPTIONS preload executions to the fixture log.
+  if (process.platform !== 'win32')
+    fs.writeFileSync(
+      path.join(bin, 'ps'),
+      `#!/bin/sh
+case " $* " in
+  *" ppid=,comm= "*) /bin/ps "$@" | sed 's/codex[^[:space:]/]*/fixture-host/g' ;;
+  *) exec /bin/ps "$@" ;;
+esac
+`,
+      { mode: 0o755 },
+    );
   const log = path.join(root, 'queue.jsonl');
   const fail = path.join(root, 'fail');
   const fake = path.join(bin, process.platform === 'win32' ? 'codex.cmd' : 'codex');
@@ -63,6 +77,7 @@ function fixture(t) {
     PLUGIN_ROOT: repo,
     PLUGIN_DATA: data,
     CODEX_THREAD_ID: inherited,
+    CODEX_SESSION_ID: inherited,
     RYUGI_CODEX_REMOTE: 'unix:///tmp/ryugi-test.sock',
     PATH: `${bin}${path.delimiter}${process.env.PATH}`,
   };
@@ -77,6 +92,7 @@ function fixture(t) {
     source: 'startup',
   };
   const children = [];
+  const errors = [];
   const app = path.join(root, 'app');
   fs.mkdirSync(app);
   for (const name of fs.readdirSync(path.dirname(adapter)))
@@ -87,10 +103,20 @@ function fixture(t) {
     `console.log(JSON.stringify({schema:'ryugi.cli/v1', command:process.argv.includes('--version')?'version':'start', outcome:'success', data:{status:'running',capabilities:['reviewBundlesV1']}}));\n`,
   );
   const open = (artifact, session = id) => {
+    const bound = spawnSync(process.execPath, [adapter, 'bind'], {
+      env,
+      input: JSON.stringify({ ...input, session_id: session }),
+      encoding: 'utf8',
+    });
+    assert.equal(bound.status, 0, bound.stderr);
+    const proof = bound.stdout.match(/--ryugi-session ([a-f0-9:-]+)/)?.[1];
+    assert.ok(proof, 'the hook did not supply a session-bound invocation');
     const result = spawnSync(
       process.execPath,
       [
         path.join(app, 'ryugi.cjs'),
+        '--ryugi-session',
+        proof,
         'start',
         '--json',
         '--project-dir',
@@ -99,11 +125,12 @@ function fixture(t) {
         artifact,
       ],
       {
-        env: { ...env, CODEX_THREAD_ID: session },
+        env: { ...env, CODEX_THREAD_ID: session, CODEX_SESSION_ID: session },
         encoding: 'utf8',
       },
     );
     assert.equal(result.status, 0, result.stderr);
+    assert.equal(result.stderr, '', 'the launcher rejected its hook binding');
   };
   const read = () =>
     fs.existsSync(log)
@@ -141,7 +168,7 @@ function fixture(t) {
       env,
       stdio: ['pipe', 'pipe', 'pipe'],
     });
-    child.stderr.on('data', () => {});
+    child.stderr.on('data', (chunk) => errors.push(String(chunk)));
     child.stdout.on('data', () => {});
     child.stdin.end(JSON.stringify({ ...input, ...overrides }));
     children.push(child);
@@ -165,7 +192,21 @@ function fixture(t) {
       return null;
     }
   };
-  return { root, project, data, env, input, read, write, comments, start, fail, open, state };
+  return {
+    root,
+    project,
+    data,
+    env,
+    input,
+    read,
+    write,
+    comments,
+    start,
+    fail,
+    open,
+    state,
+    errors,
+  };
 }
 
 async function desktop(t, f) {
@@ -290,6 +331,21 @@ test('comments wake only the session that opened that artifact through the launc
   assert.equal(f.read().length, 1);
 });
 
+test('a legacy project wildcard cannot wake a session for unrelated historical comments', async (t) => {
+  const f = fixture(t);
+  const file = path.join(f.project, '.ryugi/artifacts/.state/codex-comment-watch', `${id}.json`);
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, JSON.stringify({ artifacts: ['*'] }));
+  f.write('document/history', f.comments());
+  f.start({}, false);
+  await initialScan(f);
+  assert.equal(f.read().length, 0);
+  f.open('document/plan');
+  f.write('document/plan', f.comments());
+  await until(() => f.read().length === 1, 'an explicitly opened artifact never woke its session');
+  assert.ok(f.read()[0][f.read()[0].indexOf('--message') + 1].includes('document/plan'));
+});
+
 test('hosts without PLUGIN_DATA keep worker ownership separate from launcher subscriptions', async (t) => {
   const f = fixture(t);
   delete f.env.PLUGIN_DATA;
@@ -340,7 +396,7 @@ test('SessionEnd stops delivery and leaves other sessions alone', async (t) => {
 
 test('an invalid session identifier does not fall back to an inherited thread', async (t) => {
   const f = fixture(t);
-  const child = f.start({ session_id: '' });
+  const child = f.start({ session_id: '' }, false);
   await until(() => child.exitCode !== null, 'invalid input left a watcher running');
   f.write('document/plan', f.comments());
   await delay(1100);
@@ -350,20 +406,32 @@ test('an invalid session identifier does not fall back to an inherited thread', 
 test('the shipped lifecycle hooks invoke the portable watcher and stop it on session end', async (t) => {
   const f = fixture(t);
   const config = hooks();
+  const children = [];
+  for (const entry of (config.SessionStart ?? []).flatMap((group) => group.hooks)) {
+    if (!entry.async) {
+      const result = spawnSync(entry.command, {
+        cwd: f.project,
+        env: f.env,
+        shell: true,
+        input: JSON.stringify(f.input),
+        encoding: 'utf8',
+      });
+      assert.equal(result.status, 0, result.stderr);
+    } else {
+      const child = spawn(entry.command, {
+        cwd: f.project,
+        env: f.env,
+        shell: true,
+        stdio: ['pipe', 'pipe', 'pipe'],
+      });
+      child.stderr.on('data', () => {});
+      child.stdout.on('data', () => {});
+      child.stdin.end(JSON.stringify(f.input));
+      children.push(child);
+      t.after(() => child.kill());
+    }
+  }
   f.open('document/plan');
-  const entry = config.SessionStart?.[0]?.hooks?.[0];
-  assert.ok(entry, 'the Codex plugin has no startup hook');
-  assert.equal(entry.async, true);
-  const child = spawn(entry.command, {
-    cwd: f.project,
-    env: f.env,
-    shell: true,
-    stdio: ['pipe', 'pipe', 'pipe'],
-  });
-  child.stderr.on('data', () => {});
-  child.stdout.on('data', () => {});
-  child.stdin.end(JSON.stringify(f.input));
-  t.after(() => child.kill());
   f.write('document/plan', f.comments());
   await until(() => f.read().length > 0, 'the manifest command did not deliver comments');
   const end = config.SessionEnd?.[0]?.hooks?.[0];
@@ -376,7 +444,7 @@ test('the shipped lifecycle hooks invoke the portable watcher and stop it on ses
   });
   assert.equal(result.status, 0);
   await until(
-    () => child.exitCode !== null,
+    () => children.every((child) => child.exitCode !== null),
     'the manifest cleanup command did not stop the watcher',
   );
 });
@@ -447,7 +515,11 @@ test('desktop comments retry through the app pipe and acknowledge the hook sessi
   const app = await desktop(t, f);
   f.start();
   f.write('document/plan', f.comments());
-  await until(() => app.calls.length > 0, 'desktop comment never reached the app pipe');
+  await until(
+    () => app.calls.length > 0,
+    () =>
+      `desktop comment never reached the app pipe: ${f.errors.join('')} ${JSON.stringify(f.state())}`,
+  );
   await until(
     () => f.state()?.lastError?.includes('desktop offline'),
     'app failure was not recorded',

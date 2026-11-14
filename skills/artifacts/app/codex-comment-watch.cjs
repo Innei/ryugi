@@ -12,9 +12,11 @@ const {
 const { createCommentWatch, unreadCount, wakeMessage } = require('./comment-watch.cjs');
 const {
   beat,
+  bindCodexSession,
   projectRoot,
-  register,
   subscriptionFile,
+  subscriptions,
+  unbindCodexSession,
   UUID,
 } = require('./comment-subscriptions.cjs');
 
@@ -212,8 +214,8 @@ function watch(ctx, input, remote) {
     if (readJson(ctx.file)?.token !== state.token) return stop();
     beat(ctx.project, 'codex', ctx.session);
     if (running) return;
-    const subscriptions = new Set(readJson(ctx.subscriptions)?.artifacts || []);
-    for (const event of poll(subscriptions))
+    const active = subscriptions(ctx.project, 'codex', ctx.session);
+    for (const event of poll(active))
       pending.set(
         event.type === 'ryugi-choices'
           ? `${event.artifact}#choices`
@@ -224,7 +226,7 @@ function watch(ctx, input, remote) {
       );
     if (!pending.size || Date.now() < nextAttempt) return;
     const [key, event] = pending.entries().next().value;
-    if (!subscriptions.has('*') && !subscriptions.has(event.artifact)) {
+    if (!active.has(event.artifact)) {
       pending.delete(key);
       return;
     }
@@ -272,12 +274,24 @@ function main() {
   }
   const ctx = context(input);
   if (!ctx) return;
-  if (process.argv[2] === 'stop') fs.rmSync(ctx.file, { force: true });
-  else if (process.argv[2] === 'watch') {
+  if (process.argv[2] === 'stop') {
+    fs.rmSync(ctx.file, { force: true });
+    unbindCodexSession(ctx.session);
+  } else if (process.argv[2] === 'bind') {
+    const proof = bindCodexSession(ctx.session);
+    const launcher = path.join(__dirname, 'ryugi.cjs');
+    notice(
+      input,
+      `Ryugi artifact commands for this session must use the bound launcher below. It targets this hook session even when parent session environment variables were inherited. Keep --ryugi-session in follow-up commands.\nnode ${JSON.stringify(launcher)} --ryugi-session ${proof}`,
+    );
+  } else if (process.argv[2] === 'watch') {
     if (failure) notice(input, failure);
-    else watch(ctx, input, remote);
+    else {
+      bindCodexSession(ctx.session);
+      watch(ctx, input, remote);
+    }
   }
 }
 
-module.exports = { context, endpoint, hostEndpoint, projectRoot, register };
+module.exports = { context, endpoint, hostEndpoint, projectRoot };
 if (require.main === module) main();
