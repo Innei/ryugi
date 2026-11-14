@@ -1,14 +1,55 @@
 # Installing Ryugi
 
-Ryugi is not listed in any harness's official marketplace; install it from this
-repository. If you use more than one harness, install it in each.
+Use the unified installer with Node.js 20.12 or newer:
 
-The bootstrap (`using-ryugi`) is what makes the skills fire on their own. The
-acceptance test is the same everywhere: open a clean session and send
+```bash
+npx ryugi-artifacts install
+```
+
+The terminal wizard selects Artifacts or Full workflow, then one or more detected
+harnesses. It installs a persistent CLI and shows the plan before applying it.
+Supported targets: Claude Code, Codex, Cursor, Gemini CLI, OpenCode, Pi and GitHub
+Copilot CLI. Leave the target selection empty for CLI only. Scripts use explicit
+choices:
+
+```bash
+npx ryugi-artifacts install --mode artifacts --harness codex,pi
+npx ryugi-artifacts install --mode full --harness claude-code
+npx ryugi-artifacts install --mode artifacts --harness none
+```
+
+On Unix, `ryugi` is linked under `~/.local/bin` and its complete runtime is kept
+under `$XDG_DATA_HOME/ryugi/install` (default `~/.local/share/ryugi/install`). Windows
+uses a command shim. PATH instructions match your shell. Global npm/pnpm/Yarn/Bun
+installations retain their original update channel; `--no-cli` keeps your existing
+CLI while installing plugins.
+
+`ryugi update` updates the CLI and recorded integrations, each in its current mode.
+Use `--cli-only` or `--plugins-only` to select one part, and `--check` for a CLI
+version check without writes. `ryugi doctor` checks files and native registration.
+`ryugi uninstall` removes owned entries and retains project artifacts, comments,
+plugin data and runtime caches. Modified files are preserved and reported.
+
+Git is required for plugin downloads outside Claude's marketplace. Use
+`--plugin-source /path/to/ryugi` with a checkout for offline or development installs.
+`--install-dir` and `--bin-dir` customize the first install; the managed command
+remembers its root. Re-run `install --mode artifacts|full --harness <targets>` to
+change content. Existing Claude marketplace entries are recognized; other existing
+Ryugi installations must first be removed with their original installer.
+
+Each target keeps its native mechanism. Claude Code and Pi retain their comment
+integrations; Codex retains its hooks, which you must trust in `/hooks`. Other
+harnesses read comments on request. Installation success does not certify live
+comment delivery. Start a new harness session after installation or a mode switch.
+Other integrations below remain available through their manual installation paths.
+
+In Full workflow mode, the bootstrap (`using-ryugi`) makes the skills fire on their
+own. Open a clean session and send:
 
 > Let's make a react todo list
 
-A working install starts `brainstorming` before any code is written; where artifacts can run, the first reply opens an artboard of directions.
+A working Full install starts brainstorming before code is written. Artifacts mode
+exposes the artifacts and interface-craft skills without the workflow bootstrap.
 
 ## Claude Code
 
@@ -43,11 +84,8 @@ worktrees), install the `ryugi-artifacts` entry instead of `ryugi`:
 npx ryugi-artifacts install
 ```
 
-It asks "artifacts only, or the full Ryugi workflow" and installs the
-matching entry at user scope. Pass `--mode artifacts` or `--mode full` to
-skip the question; without a terminal to ask in, `--mode` is required. When
-`ryugi` is already enabled, the default stays full, and leaving it asks
-again. To install by hand:
+Select Artifacts in the wizard, or pass `--mode artifacts --harness claude-code`.
+Both content modes are available for every unified-installer target. To install by hand:
 
 ```text
 /plugin install ryugi-artifacts --marketplace Innei/ryugi
@@ -58,8 +96,8 @@ The installer disables the other one at user scope and warns when a
 project's `.claude/settings.json` or `.claude/settings.local.json` still
 enables it. Switching later is the same command with the other mode.
 
-Artifacts only covers Claude Code for now. On other harnesses, install the
-full plugin as described in their sections.
+For other supported harnesses, pass their target name to the unified installer;
+manual installation commands below retain their existing full-workflow behavior.
 
 ## Antigravity
 

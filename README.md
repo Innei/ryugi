@@ -36,7 +36,8 @@ share it.
 npx ryugi-artifacts install
 ```
 
-It asks one question and installs Ryugi into Claude Code:
+The terminal wizard installs a persistent `ryugi` command, lets you select one or more
+harnesses, then asks which content to install:
 
 - **Artifacts only** — send `Show me three directions for a settings page` and an artboard opens.
 - **The full workflow** — artifacts plus skills that brainstorm, spec, build under TDD and verify.
@@ -136,22 +137,26 @@ Local first, no subscription, no agent session needed. One server covers every p
 machine, with ⌘K to jump and links that survive a restart. `publish` shares one to
 [Ryugi Cloud](https://ryugi.innei.dev).
 
-For a `ryugi` command in your terminal, install the CLI globally:
+For a persistent `ryugi` command without a harness plugin:
 
 ```bash
-npm install -g ryugi-artifacts
+npx ryugi-artifacts install --mode artifacts --harness none
 ryugi
 ryugi /path/to/project
 ```
 
-`ryugi-artifacts` remains an alias. Installing the plugin alone does not add `ryugi` to your PATH;
-the agent uses the plugin's launcher. The global CLI is optional and updates separately with
-`ryugi update`. See the [CLI guide](docs/artifacts-cli.md) for commands and options.
+Node.js 20.12 or newer is required. The installer keeps a complete runtime outside
+the npx cache and creates `~/.local/bin/ryugi` (a command shim on Windows). It prints
+PATH instructions for your shell. `npm install -g ryugi-artifacts` remains available;
+package-manager installations keep their original update channel. `ryugi update`
+updates the CLI and recorded plugins; `ryugi doctor` checks the install and
+`ryugi uninstall` removes owned entries while retaining artifacts and user data.
+See the [CLI guide](docs/artifacts-cli.md) for commands and options.
 
 ## Add the full workflow
 
 Artifacts work on their own. If you also want the agent to build from what you approved, pick the
-full workflow at install (or run `npx ryugi-artifacts install --mode full` later). Its skills make
+full workflow at install (or run `ryugi install --mode full --harness codex,pi` later). Its skills make
 the agent reach for the artifacts at the right moment, and they fire on their own:
 
 ```mermaid
