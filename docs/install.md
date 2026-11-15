@@ -123,7 +123,7 @@ the session ends; repeated startup or compaction hooks share one watcher.
 The background hook expires after 24 hours; the next user prompt restarts it.
 
 The artifacts launcher subscribes only when `start --artifact` explicitly opens
-a document, Artboard or whiteboard. Starting the server or library, including
+a document, Artboard, whiteboard or slide deck. Starting the server or library, including
 `start --no-open`, does not subscribe the session to a whole project. Reading
 or acknowledging comments does not create a subscription. Legacy `*` project
 subscriptions are ignored. Resolved comments are skipped, including during a retry.

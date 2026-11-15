@@ -19,6 +19,7 @@ Ryugi Cloud.
 | What is being decided                                                                               | Type                       |
 | --------------------------------------------------------------------------------------------------- | -------------------------- |
 | Architecture, engineering design, a review, report, proposal or walkthrough                         | `document`                 |
+| Something they will present to an audience — a talk, a team share-out, a launch                     | `slides`                   |
 | Structure still taking shape — parts, roles, who talks to whom — or they want to draw it themselves | `whiteboard`               |
 | One surface or one dimension — a component, type scale, background, motion                          | `html`                     |
 | A business space — several screens, dimensions, states or questions at once                         | `artboard`                 |

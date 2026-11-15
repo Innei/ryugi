@@ -1,0 +1,90 @@
+{
+  "a-no-row": {
+    "t1-all-hands": [
+      "node \"$(find /work/app ~/.claude -path '*artifacts/app/ryugi.cjs' -not -path '*/node_modules/*' -print -quit 2>/dev/null)\" start --background --project-dir /work/app --artifact document/retry-policy-all-hands",
+      "node app/ryugi.cjs start --background --project-dir /work/app --artifact document/retry-policy-all-hands",
+      "node app/ryugi.cjs start --background --project-dir /work/app --artifact document/retry-policy",
+      "node app/ryugi.cjs start --background --project-dir /work/app --artifact document/retry-policy-all-hands",
+      "node app/ryugi.cjs start --background --project-dir /work/app --artifact document/retry-policy"
+    ],
+    "t2-share-zh": [
+      "node app/ryugi.cjs start --background --project-dir /work/app --artifact document/whiteboard-engine-replacement",
+      "node app/ryugi.cjs start --background --project-dir /work/app --artifact document/whiteboard-engine-replacement",
+      "node app/ryugi.cjs start --background --project-dir /work/app --artifact document/whiteboard-engine-replacement",
+      "node app/ryugi.cjs start --background --project-dir /work/app --artifact document/whiteboard-engine-replacement",
+      "node app/ryugi.cjs start --background --project-dir /work/app --artifact document/whiteboard-engine-replacement"
+    ],
+    "t3-launch": [
+      "node app/ryugi.cjs start --background --project-dir /work/app --artifact document/billing-page-walkthrough",
+      "node app/ryugi.cjs start --background --project-dir /work/app --artifact document/billing-page-walkthrough",
+      "node app/ryugi.cjs start --background --project-dir /work/app --artifact document/billing-page-walkthrough",
+      "node app/ryugi.cjs start --background --project-dir /work/app --artifact document/billing-page-walkthrough",
+      "node app/ryugi.cjs start --background --project-dir /work/app --artifact document/billing-page-walkthrough"
+    ],
+    "g1-design-doc": [
+      "node app/ryugi.cjs start --background --project-dir /work/app --artifact document/retry-policy",
+      "node app/ryugi.cjs start --background --project-dir /work/app --artifact document/retry-policy",
+      "node app/ryugi.cjs start --background --project-dir /work/app --artifact document/retry-policy",
+      "node app/ryugi.cjs start --background --project-dir /work/app --artifact document/retry-policy",
+      "node app/ryugi.cjs start --background --project-dir /work/app --artifact document/retry-policy"
+    ],
+    "g2-directions": [
+      "node app/ryugi.cjs start --background --project-dir /work/app --artifact html/settings-navigation",
+      "node app/ryugi.cjs start --background --project-dir /work/app --artifact html/settings-navigation",
+      "node app/ryugi.cjs start --background --project-dir /work/app --artifact html/settings-navigation",
+      "node app/ryugi.cjs start --background --project-dir /work/app --artifact html/settings-navigation",
+      "node app/ryugi.cjs start --background --project-dir /work/app --artifact html/settings-navigation"
+    ],
+    "g3-report": [
+      "node app/ryugi.cjs start --background --project-dir /work/app --artifact document/outage-report",
+      "node app/ryugi.cjs start --background --project-dir /work/app --artifact document/outage-report",
+      "node app/ryugi.cjs start --background --project-dir /work/app --artifact document/outage-report",
+      "node app/ryugi.cjs start --background --project-dir /work/app --artifact document/outage-report",
+      "node app/ryugi.cjs start --background --project-dir /work/app --artifact document/outage-report"
+    ]
+  },
+  "b-with-row": {
+    "t1-all-hands": [
+      "node app/ryugi.cjs start --background --project-dir /work/app --artifact slides/retry-policy",
+      "node app/ryugi.cjs start --background --project-dir /work/app --artifact slides/retry-policy",
+      "node app/ryugi.cjs start --background --project-dir /work/app --artifact slides/retry-policy",
+      "node app/ryugi.cjs start --background --project-dir /work/app --artifact slides/retry-policy",
+      "node app/ryugi.cjs start --background --project-dir /work/app --artifact slides/retry-policy"
+    ],
+    "t2-share-zh": [
+      "node app/ryugi.cjs start --background --project-dir /work/app --artifact slides/whiteboard-engine-replacement",
+      "node app/ryugi.cjs start --background --project-dir /work/app --artifact slides/whiteboard-engine-replacement",
+      "node app/ryugi.cjs start --background --project-dir /work/app --artifact slides/whiteboard-engine-replacement",
+      "node app/ryugi.cjs start --background --project-dir /work/app --artifact slides/whiteboard-engine-replacement",
+      "node app/ryugi.cjs start --background --project-dir /work/app --artifact slides/whiteboard-engine-replacement"
+    ],
+    "t3-launch": [
+      "node app/ryugi.cjs start --background --project-dir /work/app --artifact slides/billing-page-walkthrough",
+      "node app/ryugi.cjs start --background --project-dir /work/app --artifact slides/billing-page-launch",
+      "node app/ryugi.cjs start --background --project-dir /work/app --artifact slides/billing-page-launch",
+      "node app/ryugi.cjs start --background --project-dir /work/app --artifact slides/billing-page-launch",
+      "node app/ryugi.cjs start --background --project-dir /work/app --artifact slides/billing-page-walkthrough"
+    ],
+    "g1-design-doc": [
+      "node app/ryugi.cjs start --background --project-dir /work/app --artifact document/retry-policy",
+      "node app/ryugi.cjs start --background --project-dir /work/app --artifact document/retry-policy",
+      "node app/ryugi.cjs start --background --project-dir /work/app --artifact document/retry-policy",
+      "node app/ryugi.cjs start --background --project-dir /work/app --artifact document/retry-policy",
+      "node app/ryugi.cjs start --background --project-dir /work/app --artifact document/retry-policy"
+    ],
+    "g2-directions": [
+      "node app/ryugi.cjs start --background --project-dir /work/app --artifact html/settings-navigation",
+      "node app/ryugi.cjs start --background --project-dir /work/app --artifact html/settings-navigation",
+      "node app/ryugi.cjs start --background --project-dir /work/app --artifact html/settings-navigation",
+      "node app/ryugi.cjs start --background --project-dir /work/app --artifact html/settings-navigation",
+      "node app/ryugi.cjs start --background --project-dir /work/app --artifact html/settings-navigation"
+    ],
+    "g3-report": [
+      "node app/ryugi.cjs start --background --project-dir /work/app --artifact document/outage-report",
+      "node app/ryugi.cjs start --background --project-dir /work/app --artifact document/outage-report",
+      "node app/ryugi.cjs start --background --project-dir /work/app --artifact document/outage-report",
+      "node app/ryugi.cjs start --background --project-dir /work/app --artifact document/outage-report",
+      "node app/ryugi.cjs start --background --project-dir /work/app --artifact document/outage-report"
+    ]
+  }
+}

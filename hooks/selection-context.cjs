@@ -132,7 +132,7 @@ function artifactIds(root, type) {
 
 function commentReminders(project, root, key, only) {
   const waiting = [];
-  for (const type of ['document', 'artboard', 'whiteboard']) {
+  for (const type of ['document', 'artboard', 'whiteboard', 'slides']) {
     for (const id of artifactIds(root, type)) {
       if (only && !only.has('*') && !only.has(`${type}/${id}`)) continue;
       const file = readJson(path.join(root, type, id, 'comments.json'));
