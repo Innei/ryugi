@@ -36,7 +36,7 @@ __export(index_exports, {
 module.exports = __toCommonJS(index_exports);
 
 // <define:BOOTSTRAP_OPTIONS>
-var define_BOOTSTRAP_OPTIONS_default = { format: { type: "string" }, json: { type: "boolean" }, detail: { type: "boolean" }, fields: { type: "string" }, quiet: { type: "boolean" }, verbose: { type: "boolean" }, "project-dir": { type: "string" }, artifact: { type: "string" }, host: { type: "string" }, "url-host": { type: "string" }, port: { type: "string" }, open: { type: "boolean" }, "no-open": { type: "boolean" }, foreground: { type: "boolean" }, background: { type: "boolean" }, page: { type: "string" }, visibility: { type: "string" }, type: { type: "string" }, project: { type: "boolean" }, module: { type: "string" }, limit: { type: "string" }, cursor: { type: "string" }, public: { type: "boolean" }, private: { type: "boolean" }, key: { type: "boolean" }, expires: { type: "string" }, "new-key": { type: "boolean" }, "revoke-key": { type: "boolean" }, profile: { type: "boolean" }, "no-profile": { type: "boolean" }, unpublish: { type: "boolean" }, list: { type: "boolean" }, delete: { type: "string" }, "no-refs": { type: "boolean" }, login: { type: "boolean" }, from: { type: "string" }, logout: { type: "boolean" }, set: { type: "string" }, sections: { type: "string" }, section: { type: "string" }, snapshot: { type: "string" }, receipt: { type: "string" }, status: { type: "string" }, "waiting-on": { type: "string" }, kind: { type: "string" }, claim: { type: "string" }, gap: { type: "string" }, "choice-state": { type: "string" }, all: { type: "boolean" }, block: { type: "string" }, quote: { type: "string" }, board: { type: "string" }, element: { type: "string" }, x: { type: "string" }, y: { type: "string" }, thread: { type: "string" }, text: { type: "string" }, group: { type: "string" }, clear: { type: "boolean" }, ask: { type: "string" }, choice: { type: "string" }, round: { type: "string" }, withdraw: { type: "boolean" }, save: { type: "string" }, frame: { type: "string" }, source: { type: "boolean" }, download: { type: "boolean" }, out: { type: "string" }, "no-comments": { type: "boolean" }, "output-format": { type: "string" }, "auto-publish": { type: "string" }, check: { type: "boolean" }, pm: { type: "string" }, mode: { type: "string" } };
+var define_BOOTSTRAP_OPTIONS_default = { format: { type: "string" }, json: { type: "boolean" }, detail: { type: "boolean" }, fields: { type: "string" }, quiet: { type: "boolean" }, verbose: { type: "boolean" }, "project-dir": { type: "string" }, artifact: { type: "string" }, host: { type: "string" }, "url-host": { type: "string" }, port: { type: "string" }, open: { type: "boolean" }, "no-open": { type: "boolean" }, foreground: { type: "boolean" }, background: { type: "boolean" }, page: { type: "string" }, visibility: { type: "string" }, type: { type: "string" }, project: { type: "boolean" }, module: { type: "string" }, limit: { type: "string" }, cursor: { type: "string" }, public: { type: "boolean" }, private: { type: "boolean" }, key: { type: "boolean" }, expires: { type: "string" }, "new-key": { type: "boolean" }, "revoke-key": { type: "boolean" }, profile: { type: "boolean" }, "no-profile": { type: "boolean" }, unpublish: { type: "boolean" }, list: { type: "boolean" }, delete: { type: "string" }, "no-refs": { type: "boolean" }, login: { type: "boolean" }, from: { type: "string" }, logout: { type: "boolean" }, set: { type: "string" }, sections: { type: "string" }, section: { type: "string" }, snapshot: { type: "string" }, receipt: { type: "string" }, status: { type: "string" }, "waiting-on": { type: "string" }, kind: { type: "string" }, claim: { type: "string" }, gap: { type: "string" }, "choice-state": { type: "string" }, all: { type: "boolean" }, block: { type: "string" }, quote: { type: "string" }, board: { type: "string" }, element: { type: "string" }, slide: { type: "string" }, x: { type: "string" }, y: { type: "string" }, thread: { type: "string" }, text: { type: "string" }, group: { type: "string" }, clear: { type: "boolean" }, ask: { type: "string" }, choice: { type: "string" }, round: { type: "string" }, withdraw: { type: "boolean" }, save: { type: "string" }, frame: { type: "string" }, source: { type: "boolean" }, download: { type: "boolean" }, out: { type: "string" }, "no-comments": { type: "boolean" }, "output-format": { type: "string" }, "auto-publish": { type: "string" }, check: { type: "boolean" }, "cli-only": { type: "boolean" }, "plugins-only": { type: "boolean" }, "install-dir": { type: "string" }, "plugin-source": { type: "string" }, pm: { type: "string" }, mode: { type: "string" }, harness: { type: "string" }, yes: { type: "boolean" }, "no-cli": { type: "boolean" }, "bin-dir": { type: "string" } };
 
 // src/cli/output/configuration.ts
 var import_node_fs2 = __toESM(require("node:fs"), 1);
@@ -326,10 +326,6 @@ function recoveryActions(error, subject) {
 
 // src/cli/output/render.ts
 var clean = (text) => text.replaceAll(new RegExp("\\p{Cc}", "gu"), " ");
-function clip(text, size = 160) {
-  const segments = [...new Intl.Segmenter(void 0, { granularity: "grapheme" }).segment(text)];
-  return segments.length > size ? `${segments.slice(0, size).map((s) => s.segment).join("")}\u2026` : text;
-}
 function flatten(value, nested = false) {
   if (value === null || value === void 0) return "";
   if (Array.isArray(value)) return value.map((item) => flatten(item, true)).join(", ");
@@ -393,12 +389,7 @@ function renderText(view, wire, options, collection, requiredFields = [], code =
   const lines = [head.length ? `${clean(view.heading)}: ${head.join(" \xB7 ")}` : clean(view.heading)];
   const omissions = [...wire.omitted ?? []];
   const selected = (key, required = false) => required || requiredFields.includes(key) || !options.fields || options.fields.includes(key);
-  const value = (input, path5, loose = false) => {
-    const text = clean(scalar(input, path5, loose));
-    const shown = options.detail ? text : clip(text);
-    if (shown !== text) omissions.push({ path: path5, reason: "preview" });
-    return shown;
-  };
+  const value = (input, path5, loose = false) => clean(scalar(input, path5, loose));
   const cell = (label, key, input, path5, positional, fallback, loose = false) => {
     if (absent(input, fallback)) return null;
     const name = clean(label ?? key);
@@ -571,8 +562,6 @@ function renderText(view, wire, options, collection, requiredFields = [], code =
       lines.push(`${more} \xB7 Details: ${actionText(details)}`);
     } else lines.push(more);
   }
-  if (!details && !options.detail && omissions.some((item) => item.reason === "preview" && item.count === void 0))
-    lines.push("Some values are clipped; add --detail to see them in full.");
   for (const action of actions)
     if (!used.has(action))
       lines.push(
