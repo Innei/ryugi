@@ -1,0 +1,1 @@
+FAIL — Partner message lists all 23 rulings and includes reviewer-model and context-compaction notes; full lists were not written to a linked artifact.

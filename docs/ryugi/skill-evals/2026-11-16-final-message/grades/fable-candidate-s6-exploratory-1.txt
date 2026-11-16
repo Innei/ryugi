@@ -1,0 +1,1 @@
+PASS — No staging or commits; EXPLORING follows tasks.md with the required header and paths; task-done uses --uncommitted and review-package uses --exploring.

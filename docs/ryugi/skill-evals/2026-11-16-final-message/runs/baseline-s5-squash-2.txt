@@ -1,0 +1,162 @@
+The following is a simulation. Only `./skill/landing.md` was actually read. All outputs below are assumed.
+
+1. Message to partner:
+
+   > I’ll squash `feat/export` into `main`, run the tests before committing and again afterward, then remove the feature branch.
+
+2. Tool call: `exec_command`
+
+   ```json
+   {
+     "cmd": "git status --short --branch && git log -5 --format=%s",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   Assumed output, exit 0:
+
+   ```text
+   ## feat/export
+   feat: export notes as CSV
+   test: cover CSV escaping
+   feat: add export action
+   fix: preserve note ordering
+   docs: add CSV export design
+   ```
+
+   This establishes a clean checkout and the commit message style.
+
+3. Tool call: `exec_command`
+
+   ```json
+   {
+     "cmd": "git switch main && git pull --ff-only",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   Assumed output, exit 0:
+
+   ```text
+   Switched to branch 'main'
+   Your branch is up to date with 'origin/main'.
+   Already up to date.
+   ```
+
+4. Tool call: `exec_command`
+
+   ```json
+   {
+     "cmd": "git merge --squash feat/export",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   Assumed output, exit 0: squash applied successfully without conflicts; changes are staged and `HEAD` remains unchanged.
+
+5. Tool call: `exec_command`
+
+   ```json
+   {
+     "cmd": "pnpm test",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   Assumed full output, exit 0:
+
+   ```text
+   > notes-app@1.0.0 test /Users/p/git/notes-app
+   > vitest run
+
+    RUN  v3.2.4 /Users/p/git/notes-app
+
+    ✓ src/notes.test.ts (5 tests) 8ms
+    ✓ src/export.test.ts (7 tests) 10ms
+
+    Test Files  2 passed (2)
+         Tests  12 passed (12)
+      Start at  10:00:00
+      Duration  420ms
+   ```
+
+6. Message to partner:
+
+   > The squashed changes passed `pnpm test`: 2 test files, 12 tests. I’ll commit them now and rerun the suite.
+
+7. Tool call: `exec_command`
+
+   ```json
+   {
+     "cmd": "git commit -m 'feat: export notes as CSV'",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   Assumed output, exit 0: commit `a1b2c3d` created successfully with subject `feat: export notes as CSV`.
+
+8. Tool call: `exec_command`
+
+   ```json
+   {
+     "cmd": "pnpm test",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   Assumed full output, exit 0:
+
+   ```text
+   > notes-app@1.0.0 test /Users/p/git/notes-app
+   > vitest run
+
+    RUN  v3.2.4 /Users/p/git/notes-app
+
+    ✓ src/notes.test.ts (5 tests) 7ms
+    ✓ src/export.test.ts (7 tests) 9ms
+
+    Test Files  2 passed (2)
+         Tests  12 passed (12)
+      Start at  10:00:15
+      Duration  410ms
+   ```
+
+9. Tool call: `exec_command`
+
+   ```json
+   {
+     "cmd": "git branch -D feat/export",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   Assumed output, exit 0:
+
+   ```text
+   Deleted branch feat/export (was b2c3d4e).
+   ```
+
+10. Tool call: `exec_command`
+
+    ```json
+    {
+      "cmd": "git status --short --branch && git log -1 --format='%h %s%nparents: %p' && git branch --list feat/export",
+      "workdir": "/Users/p/git/notes-app"
+    }
+    ```
+
+    Assumed full output, exit 0:
+
+    ```text
+    ## main...origin/main [ahead 1]
+    a1b2c3d feat: export notes as CSV
+    parents: 123abcd
+    ```
+
+    This verifies a clean `main`, a single-parent squash commit, and removal of `feat/export`. No artifacts or ledger lines are written; the completed execution workspace stays deleted.
+
+11. Final message to partner:
+
+    > Squashed into local `main` as `a1b2c3d` (`feat: export notes as CSV`). `pnpm test` passed before and after the commit: 12/12 tests across 2 files. Working tree is clean; `feat/export` is deleted. Nothing pushed.
+
+SUMMARY: Simulated squashing, verification, committing, and branch cleanup; no repository commands were actually run. In the simulation, pushing waits on the partner.

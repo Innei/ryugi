@@ -1,0 +1,336 @@
+Simulation only. No commands are executed. All outputs below are explicitly assumed.
+
+1. Message to partner:
+
+   > I’m treating the memory issue as Important, deferring the header wording, and checking the empty-account behavior before recording its ruling.
+
+2. Tool call:
+
+   ```json
+   {
+     "cmd": "cat docs/ryugi/specs/2026-11-10-export-design.md .ryugi/sdd/2026-11-10-export-design/progress.md .ryugi/sdd/2026-11-10-export-design/tasks.md src/export.ts src/notes.ts src/export.test.ts package.json",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   Assumed output establishes:
+
+   - The spec requires exporting all notes as CSV and preserving their order.
+   - The ledger records all three tasks complete and contains no earlier rulings.
+   - `exportNotes(store, sink)` currently calls `store.getAllNotes()`, then writes the CSV header and each row.
+   - Its existing header, row encoding, and exports are:
+
+     ```ts
+     import type { NotesStore } from './notes'
+
+     export interface CsvSink {
+       write(chunk: string): Promise<void>
+     }
+
+     const header = 'id,title,body,updatedAt\r\n'
+
+     function csvField(value: string): string {
+       return `"${value.replaceAll('"', '""')}"`
+     }
+
+     function csvRow(note: {
+       id: string
+       title: string
+       body: string
+       updatedAt: string
+     }): string {
+       return [
+         note.id,
+         note.title,
+         note.body,
+         note.updatedAt,
+       ].map(csvField).join(',') + '\r\n'
+     }
+
+     export async function exportNotes(
+       store: NotesStore,
+       sink: CsvSink,
+     ): Promise<void> {
+       const notes = await store.getAllNotes()
+       await sink.write(header)
+       for (const note of notes) {
+         await sink.write(csvRow(note))
+       }
+     }
+     ```
+
+   - `NotesStore` already provides bounded, ordered pagination:
+
+     ```ts
+     getNotesPage(options: {
+       cursor: string | null
+       limit: number
+     }): Promise<{
+       notes: Note[]
+       nextCursor: string | null
+     }>
+     ```
+
+   - `Note` contains the four string fields used above.
+   - Existing tests cover CSV escaping, export order, and header-only output for an empty account.
+   - The sink writes incrementally and does not accumulate the exported file.
+   - `pnpm test` runs Vitest, with 31 existing tests.
+   - The spec and project instructions name no running-product verification skill or additional mandatory check.
+
+3. Tool call:
+
+   ```json
+   {
+     "cmd": "cat > src/export.streaming.test.ts <<'EOF'\nimport { expect, test } from 'vitest'\nimport { exportNotes } from './export'\nimport type { NotesStore } from './notes'\n\ntest('exports 200000 notes in bounded pages and awaits writes before fetching again', async () => {\n  const total = 200000\n  const pageSize = 500\n  let pagesRead = 0\n  let rowsWritten = 0\n  let headerWritten = false\n  let writePending = false\n\n  const store: NotesStore = {\n    async getAllNotes() {\n      throw new Error('Unbounded note loading is forbidden during export')\n    },\n    async getNotesPage({ cursor, limit }) {\n      expect(limit).toBe(pageSize)\n      expect(writePending).toBe(false)\n      const start = cursor === null ? 0 : Number(cursor)\n      expect(rowsWritten).toBe(start)\n      pagesRead += 1\n      const end = Math.min(start + limit, total)\n      return {\n        notes: Array.from({ length: end - start }, (_, index) => ({\n          id: String(start + index),\n          title: 'Title',\n          body: 'Body',\n          updatedAt: '2026-11-10T00:00:00Z',\n        })),\n        nextCursor: end < total ? String(end) : null,\n      }\n    },\n  }\n\n  await exportNotes(store, {\n    async write(chunk) {\n      expect(writePending).toBe(false)\n      writePending = true\n      await Promise.resolve()\n      if (!headerWritten) {\n        expect(chunk).toBe('id,title,body,updatedAt\\r\\n')\n        headerWritten = true\n      } else {\n        expect(chunk).toBe(\n          `\"${rowsWritten}\",\"Title\",\"Body\",\"2026-11-10T00:00:00Z\"\\r\\n`,\n        )\n        rowsWritten += 1\n      }\n      writePending = false\n    },\n  })\n\n  expect(headerWritten).toBe(true)\n  expect(rowsWritten).toBe(total)\n  expect(pagesRead).toBe(total / pageSize)\n})\nEOF\npnpm test -- src/export.streaming.test.ts",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   Assumed full output:
+
+   ```text
+   > notes-app@1.0.0 test
+   > vitest run src/export.streaming.test.ts
+
+    RUN  v3.2.4 /Users/p/git/notes-app
+
+    ❯ src/export.streaming.test.ts (1 test | 1 failed)
+      × exports 200000 notes in bounded pages and awaits writes before fetching again
+
+    FAIL  src/export.streaming.test.ts > exports 200000 notes in bounded pages and awaits writes before fetching again
+   Error: Unbounded note loading is forbidden during export
+    ❯ Object.getAllNotes src/export.streaming.test.ts:15:13
+    ❯ exportNotes src/export.ts:33:29
+    ❯ src/export.streaming.test.ts:35:9
+
+    Test Files  1 failed (1)
+         Tests  1 failed (1)
+   ```
+
+   Assumption: this is the expected RED failure; export still calls the unbounded loader.
+
+4. Tool call:
+
+   ```text
+   tools.apply_patch("*** Begin Patch
+   *** Update File: /Users/p/git/notes-app/src/export.ts
+   @@
+   -  const notes = await store.getAllNotes()
+      await sink.write(header)
+   -  for (const note of notes) {
+   -    await sink.write(csvRow(note))
+   -  }
+   +  let cursor: string | null = null
+   +  do {
+   +    const page = await store.getNotesPage({ cursor, limit: 500 })
+   +    for (const note of page.notes) {
+   +      await sink.write(csvRow(note))
+   +    }
+   +    cursor = page.nextCursor
+   +  } while (cursor !== null)
+    }
+   *** End Patch")
+   ```
+
+   Assumed output: patch applied successfully.
+
+5. Tool call:
+
+   ```json
+   {
+     "cmd": "pnpm test",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   Assumed full output:
+
+   ```text
+   > notes-app@1.0.0 test
+   > vitest run
+
+    RUN  v3.2.4 /Users/p/git/notes-app
+
+    ✓ src/export.test.ts (31 tests)
+    ✓ src/export.streaming.test.ts (1 test)
+
+    Test Files  2 passed (2)
+         Tests  32 passed (32)
+   ```
+
+6. Tool call:
+
+   ```json
+   {
+     "cmd": "git diff --check && git diff -- src/export.ts && git status --short",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   Assumed full output:
+
+   ```diff
+   diff --git a/src/export.ts b/src/export.ts
+   index 1111111..2222222 100644
+   --- a/src/export.ts
+   +++ b/src/export.ts
+   @@ -30,9 +30,13 @@ export async function exportNotes(
+      store: NotesStore,
+      sink: CsvSink,
+    ): Promise<void> {
+   -  const notes = await store.getAllNotes()
+      await sink.write(header)
+   -  for (const note of notes) {
+   -    await sink.write(csvRow(note))
+   -  }
+   +  let cursor: string | null = null
+   +  do {
+   +    const page = await store.getNotesPage({ cursor, limit: 500 })
+   +    for (const note of page.notes) {
+   +      await sink.write(csvRow(note))
+   +    }
+   +    cursor = page.nextCursor
+   +  } while (cursor !== null)
+    }
+    M src/export.ts
+   ?? src/export.streaming.test.ts
+   ```
+
+   Assumption: command exits zero; `git diff --check` reports no whitespace errors. The complete new test was read in call 3.
+
+7. Message to partner:
+
+   > The regression failed on the unbounded loader, then the full suite passed 32/32 with paged export; the empty-account test also passed.
+
+8. Tool call, recording all review dispositions in the same call as the fix commit:
+
+   ```json
+   {
+     "cmd": "cat >> .ryugi/sdd/2026-11-10-export-design/progress.md <<'EOF'\nFinal review: fresh-context reviewer returned one Important finding, one Minor finding, and one Declined to judge item; dispositions below cover all three.\nFinal: Ruling: Empty accounts continue to produce a CSV file containing only its header row — this preserves the existing tested behavior and provides a valid CSV with the export schema despite there being no records — cost if wrong: users or importers expecting no file will receive a header-only file instead.\nFinal: minor (deferred): CSV header uses updatedAt while the UI says Last edited.\nFinal: fixed exportNotes loads every note into memory — exports 200000 notes in bounded pages and awaits writes before fetching again RED→GREEN, suite 32/32; pnpm test passed in this session. Export now consumes ordered pages of at most 500 notes and awaits each sink write before advancing.\nEOF\n git add src/export.ts src/export.streaming.test.ts && git commit -m 'Fix CSV export memory usage with bounded pagination'",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   Assumed full output:
+
+   ```text
+   [feat/export a4c8e21] Fix CSV export memory usage with bounded pagination
+    2 files changed, 74 insertions(+), 4 deletions(-)
+    create mode 100644 src/export.streaming.test.ts
+   ```
+
+   No second reviewer is dispatched. The Important finding received the single TDD fix pass; the Minor finding remains deferred.
+
+9. Tool call, gathering evidence for the final verification report:
+
+   ```json
+   {
+     "cmd": "git log --oneline main..HEAD && git status --short && git diff --check main...HEAD",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   Assumed full output:
+
+   ```text
+   a4c8e21 Fix CSV export memory usage with bounded pagination
+   c30d002 Connect CSV export to the notes UI
+   b20d002 Encode note fields as CSV
+   a10d002 Add notes export entry point
+   ```
+
+   Assumption: command exits zero, status is clean, and the branch diff has no whitespace errors.
+
+10. Tool call, writing the complete verification report:
+
+    ```json
+    {
+      "cmd": "mkdir -p docs/ryugi/verify\ncat > docs/ryugi/verify/2026-11-16-export.md <<'EOF'\n# CSV export verification\n\nSpec: [2026-11-10-export-design.md](../specs/2026-11-10-export-design.md)\n\nBranch: feat/export. Base: main. Landing awaits the partner's choice.\n\n## Implementation and review\n\nThe ledger recorded all three implementation tasks complete before final review. The fresh-context final reviewer returned one Important finding, one Minor finding, and one Declined to judge item. All three received the dispositions below. There was no second review.\n\nThe Important finding was unbounded note loading. Export now reads ordered pages of at most 500 notes, awaits every sink write, and finishes writing a page before requesting another. CSV encoding and header wording are unchanged.\n\n## Verification evidence\n\n| Check | Observed result |\n| --- | --- |\n| pnpm test -- src/export.streaming.test.ts before the fix | Failed with Unbounded note loading is forbidden during export at getAllNotes; expected RED |\n| pnpm test after the fix | 2 test files passed; 32/32 tests passed |\n| 200000-note regression | 400 pages of 500 records; exact row order and content checked; writes awaited before the next page |\n| Existing export tests | All 31 passed, including escaping, order, and empty-account output |\n| git diff --check | Exit 0; no output |\n| git diff --check main...HEAD | Exit 0; no output |\n| git status --short after the fix commit | No output |\n\nThese checks were run and their full output read during this session. The 200000-note regression generates records page by page and discards output after checking each row. It does not measure process RSS or exercise a real 200000-note database. The production store's bounded pagination and incremental sink were inspected; their production-scale performance remains unmeasured.\n\nNo project-specific running-product verification skill or additional required check was identified in the inspected project instructions. No browser interaction was performed in this continuation.\n\n## Exhaustive rulings\n\nThe prior task ledger contained no rulings. This continuation added one:\n\n| Ruling | Why | Cost if wrong |\n| --- | --- | --- |\n| Empty accounts continue to produce a CSV file containing only its header row | Preserves existing tested behavior and provides a valid CSV with the export schema despite there being no records | Users or importers expecting no file receive a header-only file instead |\n\n## Exhaustive deferred minors\n\n- CSV header uses updatedAt while the UI says Last edited.\n\n## Commits\n\n- a10d002 Add notes export entry point\n- b20d002 Encode note fields as CSV\n- c30d002 Connect CSV export to the notes UI\n- a4c8e21 Fix CSV export memory usage with bounded pagination\n\n## Pending partner decisions\n\nNo unresolved Critical or Important review finding remains. The report records one behavior ruling and one deferred Minor finding. Choose how to land the branch: squash into main, rebase onto main, push and open a PR, or keep the branch as-is. No landing, push, or publication has been performed.\nEOF\ncat docs/ryugi/verify/2026-11-16-export.md",
+      "workdir": "/Users/p/git/notes-app"
+    }
+    ```
+
+    Assumed output: the complete report exactly as written above. It contains the exhaustive ruling and deferred-minor lists.
+
+11. Tool call, checking the report before committing it:
+
+    ```json
+    {
+      "cmd": "git diff --no-index --check /dev/null docs/ryugi/verify/2026-11-16-export.md",
+      "workdir": "/Users/p/git/notes-app"
+    }
+    ```
+
+    Assumed full output: empty; exit zero.
+
+12. Tool call:
+
+    ```json
+    {
+      "cmd": "cat >> .ryugi/sdd/2026-11-10-export-design/progress.md <<'EOF'\nVerification: docs/ryugi/verify/2026-11-16-export.md records session test evidence, all one Ruling and all one deferred Minor; report whitespace check passed. Landing awaits partner choice.\nEOF\n git add docs/ryugi/verify/2026-11-16-export.md && git commit -m 'Record CSV export verification and review dispositions'",
+      "workdir": "/Users/p/git/notes-app"
+    }
+    ```
+
+    Assumed full output:
+
+    ```text
+    [feat/export d5e9f32] Record CSV export verification and review dispositions
+     1 file changed, 48 insertions(+)
+     create mode 100644 docs/ryugi/verify/2026-11-16-export.md
+    ```
+
+13. Tool call, deleting only this spec’s scratch workspace after preserving its decisions:
+
+    ```json
+    {
+      "cmd": "rm -rf -- .ryugi/sdd/2026-11-10-export-design",
+      "workdir": "/Users/p/git/notes-app"
+    }
+    ```
+
+    Assumed full output: empty; exit zero.
+
+14. Tool call, final branch verification:
+
+    ```json
+    {
+      "cmd": "pnpm test && git diff --check main...HEAD && git status --short && git log -2 --oneline",
+      "workdir": "/Users/p/git/notes-app"
+    }
+    ```
+
+    Assumed full output:
+
+    ```text
+    > notes-app@1.0.0 test
+    > vitest run
+
+     RUN  v3.2.4 /Users/p/git/notes-app
+
+     ✓ src/export.test.ts (31 tests)
+     ✓ src/export.streaming.test.ts (1 test)
+
+     Test Files  2 passed (2)
+          Tests  32 passed (32)
+
+    d5e9f32 Record CSV export verification and review dispositions
+    a4c8e21 Fix CSV export memory usage with bounded pagination
+    ```
+
+    Assumption: command exits zero; status is clean and branch whitespace checks pass.
+
+15. Final message to partner, word for word:
+
+    > Waiting on you to choose how to land `feat/export`.
+    >
+    > 1. **Squash into `main`** (default)
+    > 2. **Rebase onto `main`**
+    > 3. **Push and open a PR**
+    > 4. **Keep the branch as-is**
+    >
+    > `pnpm test` passed 32/32; real-database memory usage remains unmeasured. Empty accounts retain header-only CSV output; the report records one ruling and one deferred minor.
+    >
+    > [Verification and review record](/Users/p/git/notes-app/docs/ryugi/verify/2026-11-16-export.md)
+
+SUMMARY: Simulated the Important fix through RED→GREEN, deferred the Minor, ruled on empty exports, preserved the review and verification record, and stopped for the partner’s landing choice; nothing was actually executed.

@@ -1,0 +1,133 @@
+Simulation only. The only command actually run was reading `./skill/landing.md`.
+
+1. Message to partner:
+
+   “I’ll squash `feat/export` into `main`, run the tests, and remove the feature branch after verification.”
+
+2. Tool call:
+
+   ```json
+   {"cmd":"git status --short --branch","workdir":"/Users/p/git/notes-app"}
+   ```
+
+   Assumed full output:
+
+   ```text
+   ## feat/export
+   ```
+
+3. Tool call:
+
+   ```json
+   {"cmd":"git log -5 --format=%s","workdir":"/Users/p/git/notes-app"}
+   ```
+
+   Assumed output shows sentence-case subjects such as `Add CSV export for notes`. Use that style for the squash commit.
+
+4. Tool call:
+
+   ```json
+   {"cmd":"git switch main && git pull --ff-only","workdir":"/Users/p/git/notes-app"}
+   ```
+
+   Assumed full output:
+
+   ```text
+   Switched to branch 'main'
+   Your branch is up to date with 'origin/main'.
+   Already up to date.
+   ```
+
+5. Tool call:
+
+   ```json
+   {"cmd":"git merge --squash feat/export","workdir":"/Users/p/git/notes-app"}
+   ```
+
+   Assume success: the complete export change is staged, with no conflicts.
+
+6. Tool call:
+
+   ```json
+   {"cmd":"pnpm test","workdir":"/Users/p/git/notes-app","max_output_tokens":20000}
+   ```
+
+   Assume the command finishes with exit code `0`, its full output is returned without truncation and read, and all tests pass.
+
+7. Message to partner:
+
+   “`pnpm test` exited 0 on the staged squash; all tests passed. I’ll commit it and verify the committed result.”
+
+8. Tool call:
+
+   ```json
+   {"cmd":"git commit -m 'Add CSV export for notes'","workdir":"/Users/p/git/notes-app"}
+   ```
+
+   Assume success, creating commit `a1b2c3d`.
+
+9. Tool call:
+
+   ```json
+   {"cmd":"pnpm test","workdir":"/Users/p/git/notes-app","max_output_tokens":20000}
+   ```
+
+   Assume exit code `0`; the full output is returned and read, and all tests pass on committed `main`.
+
+10. Tool call:
+
+    ```json
+    {"cmd":"git branch -D feat/export","workdir":"/Users/p/git/notes-app"}
+    ```
+
+    Assume success. This checkout was used directly, so there is no worktree to remove.
+
+11. Tool call:
+
+    ```json
+    {"cmd":"git status --short --branch","workdir":"/Users/p/git/notes-app"}
+    ```
+
+    Assumed full output:
+
+    ```text
+    ## main...origin/main [ahead 1]
+    ```
+
+12. Tool call:
+
+    ```json
+    {"cmd":"git log -1 --format='%h %s'","workdir":"/Users/p/git/notes-app"}
+    ```
+
+    Assumed full output:
+
+    ```text
+    a1b2c3d Add CSV export for notes
+    ```
+
+13. Tool call:
+
+    ```json
+    {"cmd":"git branch --list feat/export","workdir":"/Users/p/git/notes-app"}
+    ```
+
+    Assumed output: empty, exit code `0`.
+
+14. Tool call to write the verification artifact:
+
+    ```json
+    {"cmd":"cat > /tmp/notes-export-landing-verify.md <<'EOF'\n# CSV export landing verification\n\n- Squashed feat/export into local main as a1b2c3d (Add CSV export for notes).\n- Before commit: pnpm test exited 0; full output read; all tests passed.\n- After commit: pnpm test exited 0; full output read; all tests passed.\n- git status --short --branch returned only: ## main...origin/main [ahead 1]\n- git log -1 --format='%h %s' returned: a1b2c3d Add CSV export for notes\n- git branch --list feat/export returned no output, exit 0.\n- Feature branch deleted; no worktree was created.\n- No push performed.\n- The earlier implementation report remains the record of rulings and deferred minors.\nEOF","workdir":"/Users/p/git/notes-app"}
+    ```
+
+    Assume exit code `0`. No ledger is recreated or appended: execution was already finished and reported.
+
+15. Final message to partner:
+
+    > Done — squashed into local `main`; `pnpm test` exited 0 before and after commit.
+    >
+    > [Verification](/tmp/notes-export-landing-verify.md)
+    >
+    > 1. Push `main` when ready; it is one commit ahead of `origin/main`.
+
+SUMMARY: Simulated squash landing, verification, branch cleanup, and report; pushing waits on the partner.

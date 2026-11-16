@@ -1,0 +1,1 @@
+FAIL — The partner message lists all 25 rulings, including internal decisions, and includes prohibited reviewer-model process notes.

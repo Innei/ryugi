@@ -1,0 +1,58 @@
+Nothing below was actually run; only `skill/landing.md` was read for real. "merge it" means squash into `main`, so this is the sequence I would run, with assumed results marked.
+
+**Tool call 1 — shell** (look before touching anything)
+```bash
+cd /Users/p/git/notes-app && git status --short --branch && git branch -vv && git log --oneline -8 main && git rev-parse --short feat/export
+```
+Assumed result:
+- The tree is clean on `feat/export`.
+- `feat/export` has no upstream, and `main` tracks `origin/main`.
+- `main`'s log uses conventional commits (`feat: …`, `fix: …`).
+- The branch tip is `9c41e7a`.
+
+**Tool call 2 — shell** (squash, per `landing.md`)
+```bash
+git switch main && git pull --ff-only && git merge --squash feat/export && git status --short
+```
+Assumed result:
+- `main` is already up to date.
+- The squash applies with no conflicts and the export files are staged.
+
+**Tool call 3 — shell** (one commit for the whole branch, in the repo's style)
+```bash
+git commit -m "feat: export notes as CSV" -m "Implements docs/ryugi/specs/2026-11-10-export-design.md." && git rev-parse --short HEAD
+```
+Assumed result: commit `e5b20d3` on `main`.
+
+**Tool call 4 — shell** (the proof, on `main`, after the commit)
+```bash
+pnpm test
+```
+Assumed result: exit 0, full output read, `Test Files 14 passed (14)` and `Tests 96 passed (96)`, no failures or skips.
+
+**Tool call 5 — shell** (confirm the squash holds everything on the branch, then delete it)
+```bash
+git diff --stat main feat/export && git status --short
+```
+Assumed result: empty output from both, so `main`'s tree is identical to the branch tip and nothing is uncommitted.
+
+**Tool call 6 — shell** (no worktree was made, so only the branch goes)
+```bash
+git branch -D feat/export && git branch --list feat/export && git status --short --branch
+```
+Assumed result:
+- `Deleted branch feat/export (was 9c41e7a).`
+- The branch list is empty.
+- `## main...origin/main [ahead 1]`.
+
+I would not push: "merge it" does not cover it, and pushing is my partner's call.
+
+**Message to my human partner:**
+
+> Done: `feat/export` is squashed into `main` as `e5b20d3` (`feat: export notes as CSV`). `pnpm test` on `main` after the commit passed 96/96 with exit 0.
+>
+> 1. **Push `main`?** It is one commit ahead of `origin/main` and I have not pushed.
+>
+> The `feat/export` branch is deleted. Its tip was `9c41e7a`, so `git branch feat/export 9c41e7a` brings it back if you want the per-task commits.
+
+SUMMARY: Simulated squashing `feat/export` into `main` per `landing.md` (one commit, tests assumed green on `main`, tree checked against the branch tip, branch deleted, nothing pushed); the push of `main` now waits on my human partner.

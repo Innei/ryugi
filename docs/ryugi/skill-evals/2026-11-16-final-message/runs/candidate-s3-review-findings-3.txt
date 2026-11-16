@@ -1,0 +1,182 @@
+The following is a simulation. No repository commands or edits below are executed. Outputs explicitly marked “Assumed” are hypothetical.
+
+1. Tool call — shell:
+
+```json
+{
+  "cmd": "cd /Users/p/git/notes-app && cat AGENTS.md docs/ryugi/specs/2026-11-10-export-design.md .ryugi/sdd/2026-11-10-export-design/progress.md .ryugi/sdd/2026-11-10-export-design/tasks.md package.json && git status --short --branch && cat src/export.ts src/export.test.ts && rg -n 'iterateNotes|listNotes|verification|browser|simulator' src .agents",
+  "max_output_tokens": 20000
+}
+```
+
+Assumed output, read in full:
+
+- Branch is `feat/export`; working tree is clean.
+- All three tasks are recorded complete; no earlier rulings or deferred minors exist.
+- The spec requires exporting all notes with the existing CSV schema. It does not specify empty accounts.
+- `exportNotes` accepts a note repository and a writable stream. It currently calls `await repository.listNotes()`, then writes each serialized row with backpressure.
+- The repository already supplies `iterateNotes()`, which fetches bounded pages in the same order as `listNotes()`.
+- Existing serialization and stream error handling can remain intact.
+- Tests use Vitest; `pnpm test` runs `vitest run`.
+- An existing test verifies header-only output for empty accounts.
+- No project skill requires checking a running product.
+- Repository instructions allow the following files and checks.
+
+These assumptions determine the exact hypothetical edits below. Different actual interfaces would require adjusting the edits.
+
+2. Message to partner:
+
+> The memory issue is Important and enters the fix pass. I’m deferring the header wording as Minor and accepting header-only empty exports as a valid CSV result.
+
+3. Tool call — shell; record grading and the empty-account ruling before fixing anything:
+
+```json
+{
+  "cmd": "cd /Users/p/git/notes-app && python3 - <<'PY'\nfrom pathlib import Path\np = Path('.ryugi/sdd/2026-11-10-export-design/progress.md')\nwith p.open('a') as f:\n    f.write('Final review: grading — Important: eager loading can prevent large accounts from exporting; fix in the single final fix pass. Minor: updatedAt versus Last edited is naming polish; defer.\\n')\n    f.write('Final: minor (deferred): CSV header uses updatedAt while the UI calls it Last edited.\\n')\n    f.write('Final: Ruling: empty accounts export a header-only CSV — a reasonable person gets a valid file with the documented columns and zero note rows; retain the existing behavior — cost if wrong: people may expect an empty-state message instead of a download.\\n')\nPY"
+}
+```
+
+Assumed result: exit `0`.
+
+4. Tool call — shell; inspect exact test helpers and implementation before writing the regression:
+
+```json
+{
+  "cmd": "cd /Users/p/git/notes-app && cat src/export.ts src/export.test.ts src/notes-repository.ts",
+  "max_output_tokens": 20000
+}
+```
+
+Assumed output, read in full:
+
+- Tests already import `Writable`, `expect`, `it`, and `exportNotes`.
+- The repository type is structurally compatible with the test fixture below; note fields are `id`, `title`, `body`, and `updatedAt`.
+- The implementation contains exactly:
+
+```ts
+  const notes = await repository.listNotes();
+  for (const note of notes) {
+```
+
+- The header is written before this block.
+- Every row write already waits for backpressure.
+- Existing tests cover CSV escaping, ordering, empty accounts, and stream failures.
+- Production `iterateNotes()` uses keyset pagination, requests 500 rows per page, and does not retain earlier pages.
+
+5. Tool call — shell; append the failing regression test:
+
+```json
+{
+  "cmd": "cd /Users/p/git/notes-app && cat >> src/export.test.ts <<'EOF'\n\nit('exports 200,000 notes without retaining the whole account', async () => {\n  const total = 200_000;\n  let produced = 0;\n  let written = 0;\n  let pending = '';\n  let headerSeen = false;\n\n  async function* generateNotes() {\n    for (let i = 0; i < total; i++) {\n      produced++;\n      if (produced - written > 1024) {\n        throw new Error('export accumulated notes before writing them');\n      }\n      yield {\n        id: String(i),\n        title: `Note ${i}`,\n        body: 'Body',\n        updatedAt: '2026-11-10T00:00:00.000Z',\n      };\n    }\n  }\n\n  const repository = {\n    iterateNotes: generateNotes,\n    async listNotes() {\n      const notes = [];\n      for await (const note of generateNotes()) notes.push(note);\n      return notes;\n    },\n  };\n\n  const output = new Writable({\n    highWaterMark: 1,\n    write(chunk, _encoding, callback) {\n      pending += chunk.toString();\n      let newline;\n      while ((newline = pending.indexOf('\\n')) !== -1) {\n        pending = pending.slice(newline + 1);\n        if (headerSeen) written++;\n        else headerSeen = true;\n      }\n      setImmediate(callback);\n    },\n  });\n\n  await exportNotes(repository, output);\n  expect(headerSeen).toBe(true);\n  expect(produced).toBe(total);\n  expect(written).toBe(total);\n  expect(pending).toBe('');\n});\nEOF\npnpm test -- src/export.test.ts",
+  "max_output_tokens": 12000
+}
+```
+
+Assumed output, read in full: exit `1`; the new test fails with:
+
+```text
+Error: export accumulated notes before writing them
+```
+
+All previously existing export tests pass. This is the expected RED: the exporter consumes the account before writing note rows.
+
+6. Tool call — shell; make the minimal implementation change:
+
+```json
+{
+  "cmd": "cd /Users/p/git/notes-app && python3 - <<'PY'\nfrom pathlib import Path\np = Path('src/export.ts')\ns = p.read_text()\nold = '  const notes = await repository.listNotes();\\n  for (const note of notes) {'\nnew = '  for await (const note of repository.iterateNotes()) {'\nassert s.count(old) == 1\np.write_text(s.replace(old, new))\nPY\npnpm test -- src/export.test.ts",
+  "max_output_tokens": 12000
+}
+```
+
+Assumed output, read in full: exit `0`; all export tests pass, including the 200,000-note regression. This is GREEN.
+
+7. Tool call — shell; verify the whole suite and inspect the complete change:
+
+```json
+{
+  "cmd": "cd /Users/p/git/notes-app && pnpm test && git diff --check && git diff -- src/export.ts src/export.test.ts",
+  "max_output_tokens": 20000
+}
+```
+
+Assumed output, read in full:
+
+```text
+Tests  32 passed (32)
+```
+
+Exit `0`; `git diff --check` reports no whitespace errors. The diff contains only the regression test and replacement of eager loading with the existing lazy iterator. Existing backpressure, serialization, ordering, and error handling remain in place.
+
+8. Message to partner:
+
+> The simulated regression failed on eager loading and passed with paged iteration; the full suite passed 32/32. The empty-account test also passed.
+
+9. Tool call — shell; commit only the changed source and test, and append the fix evidence in the same call:
+
+```json
+{
+  "cmd": "cd /Users/p/git/notes-app && git add src/export.ts src/export.test.ts && git commit -m 'fix: stream notes during CSV export' && python3 - <<'PY'\nfrom pathlib import Path\nimport subprocess\nsha = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()\np = Path('.ryugi/sdd/2026-11-10-export-design/progress.md')\nwith p.open('a') as f:\n    f.write('Final: fixed eager loading of all notes during export — exports 200,000 notes without retaining the whole account RED→GREEN, suite 32/32.\\n')\n    f.write(f'Final fix commit: {sha}\\n')\nPY",
+  "max_output_tokens": 12000
+}
+```
+
+Assumed output: successful commit `a42b8c1…`; exit `0`.
+
+No second reviewer is dispatched. The single fix pass is complete under the assumed evidence.
+
+10. Tool call — shell; final verification under the already-loaded verifying skill:
+
+```json
+{
+  "cmd": "cd /Users/p/git/notes-app && pnpm test && git diff --check main...HEAD && git status --short --branch && git log --format='%h %s' main..HEAD && cat .ryugi/sdd/2026-11-10-export-design/progress.md",
+  "max_output_tokens": 20000
+}
+```
+
+Assumed output, read in full:
+
+- `pnpm test`: exit `0`, `32 passed (32)`.
+- `git diff --check main...HEAD`: exit `0`, no output.
+- Status: `## feat/export`, no tracked or untracked changes.
+- Four branch commits, including the final fix.
+- Ledger contains exactly the one ruling and one deferred minor recorded above.
+- No Critical or Important findings remain.
+- No project-specific running-product verification is required.
+
+11. Tool call — shell; write the durable verification report outside the scratch workspace:
+
+```json
+{
+  "cmd": "cd /Users/p/git/notes-app && cat > docs/ryugi/specs/2026-11-10-export-verify.md <<'EOF'\n# CSV export verification\n\nSpec: [Export design](2026-11-10-export-design.md)\n\nBranch: feat/export. Base: main.\n\n## Verification\n\n| Check | Result |\n| --- | --- |\n| Regression before implementation | Failed: export accumulated notes before writing them |\n| Regression after implementation | Passed for 200,000 generated notes with a slow writable stream |\n| Final pnpm test | 32/32 passed, exit 0 |\n| git diff --check main...HEAD | Passed, exit 0 |\n| Working tree before this report | Clean |\n| Project-specific running-product skill | None configured |\n\nThe regression exercises exportNotes through a generated source and a slow writable stream. It guards against consuming the account ahead of output. It does not measure process RSS against a production database. Inspection confirmed that the production iterator fetches 500-row pages without retaining previous pages.\n\n## Final review\n\nOne fresh-context whole-branch review was completed before the fix pass.\n\n- Important: loading all notes could exhaust memory for large accounts. Fixed by using the existing paged iterator while preserving output backpressure. Regression observed RED then GREEN; whole suite passed 32/32.\n- Minor: CSV header updatedAt differs from UI wording Last edited. Deferred.\n- Declined to judge: header-only CSV for an empty account. Resolved by the ruling below; the existing empty-account test passed.\n\nNo Critical or Important findings remain. No second review was requested.\n\n## Exhaustive rulings\n\n| Ruling | Why | Cost if wrong |\n| --- | --- | --- |\n| Retain header-only CSV for empty accounts | A valid file exposes the documented columns and contains zero note rows | People may expect an empty-state message instead of a download |\n\n## Exhaustive deferred minors\n\n- CSV header uses updatedAt while the UI calls it Last edited.\n\n## Verdicts and landing\n\nAutomated verification passed. Human acceptance of the empty-account behavior and the landing choice remain pending. No merge, push, or PR has been performed.\n\n## Evidence scope\n\nThis report belongs to the hypothetical execution transcript requested by the partner. Its commands, results, source interfaces, and commit identifiers are assumed; none is evidence of an actual repository run.\nEOF\ncat docs/ryugi/specs/2026-11-10-export-verify.md && git diff --check && git add docs/ryugi/specs/2026-11-10-export-verify.md && git commit -m 'docs: record CSV export verification'",
+  "max_output_tokens": 12000
+}
+```
+
+Assumed output, read in full: report matches the supplied content; whitespace check and commit succeed.
+
+12. Tool call — shell; remove only this spec’s scratch workspace after preserving its exhaustive decisions, then verify the final branch:
+
+```json
+{
+  "cmd": "cd /Users/p/git/notes-app && python3 - <<'PY'\nfrom pathlib import Path\nimport shutil\nrepo = Path.cwd().resolve()\nworkspace = repo / '.ryugi/sdd/2026-11-10-export-design'\nassert workspace.resolve() == repo / '.ryugi/sdd/2026-11-10-export-design'\nassert workspace.is_dir() and not workspace.is_symlink()\nassert (repo / 'docs/ryugi/specs/2026-11-10-export-verify.md').is_file()\nshutil.rmtree(workspace)\nPY\npnpm test && git diff --check main...HEAD && git status --short --branch && test ! -e .ryugi/sdd/2026-11-10-export-design",
+  "max_output_tokens": 12000
+}
+```
+
+Assumed output, read in full: `32 passed (32)`; all checks exit `0`; status is clean on `feat/export`; this spec’s workspace is absent.
+
+13. Final message to partner, word for word:
+
+> Waiting on you — simulated implementation and verification are complete; landing is pending.
+>
+> 1. Accept header-only CSV for empty accounts? The [report](/Users/p/git/notes-app/docs/ryugi/specs/2026-11-10-export-verify.md) holds 1 ruling and 1 deferred minor.
+> 2. Choose how to land:
+>    - **Squash into `main`** (default)
+>    - **Rebase onto `main`**
+>    - **Push and open a PR**
+>    - **Keep the branch as-is**
+>
+> All execution results are assumed. Production memory usage was not measured.
+
+SUMMARY: Simulated grading, one TDD fix pass, final verification, exhaustive decision preservation, and workspace cleanup; empty-account acceptance and landing now wait on the partner.

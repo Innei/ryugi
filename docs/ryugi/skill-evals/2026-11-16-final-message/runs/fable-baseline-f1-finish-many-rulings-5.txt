@@ -1,0 +1,131 @@
+Everything below is simulated: nothing was run except reading `skill/landing.md` and the Finish section of `skill/SKILL.md`. Each assumed output is marked.
+
+## Tool calls, in order
+
+**1. Shell: branch state**
+
+```bash
+cd /Users/p/git/board-app/.worktrees/offline-sync && git status --short && git rev-parse --short HEAD && git rev-list --left-right --count main...HEAD && grep -c "^Final: fixed" .ryugi/sdd/2026-11-12-offline-sync-design/progress.md
+```
+
+Assumed output: clean tree; HEAD `c4d5e6f` (the 23 task commits `a1b2c3d..f9e8d7c` plus 3 fix commits); `2	26` (2 behind `main`, 26 ahead); `3`.
+
+**2. Shell: re-run the suite, typecheck and build in this session**
+
+```bash
+pnpm test > .ryugi/sdd/2026-11-12-offline-sync-design/final-suite.log 2>&1; echo "exit=$?"; tail -n 30 .ryugi/sdd/2026-11-12-offline-sync-design/final-suite.log; pnpm typecheck && pnpm build
+```
+
+Assumed output: `exit=1`; 412 passed, 1 failed; the failure is `bundle-size` at 512 KB against the 500 KB budget; typecheck and build pass. The script names `typecheck` and `build` are assumed.
+
+**3. Shell: measure current `main` without touching the shared checkout**
+
+```bash
+git worktree add --detach /tmp/board-app-main-size main && cd /tmp/board-app-main-size && pnpm install --frozen-lockfile && pnpm build && pnpm test bundle-size; cd /Users/p/git/board-app/.worktrees/offline-sync && git worktree remove /tmp/board-app-main-size
+```
+
+Assumed output: `bundle-size` fails on `main` too, at 509 KB against 500 KB; the temporary worktree is removed.
+
+**4. Shell: would the branch conflict with the two new `main` commits? (read-only)**
+
+```bash
+git merge-tree --write-tree main HEAD
+```
+
+Assumed output: a tree SHA and no conflict lines.
+
+**5. Shell: ledger the bundle-size decision and the reviewer's model, then re-collect both lists**
+
+```bash
+cd .ryugi/sdd/2026-11-12-offline-sync-design && cat >> progress.md <<'EOF'
+Final: Ruling: bundle-size fails at 512 KB against the 500 KB budget and I left both the budget and the bundle alone — main already fails at 509 KB, this branch adds 3 KB, and raising a budget or cutting code outside the spec is not my call — cost if wrong: the suite stays red on main after landing until someone raises the budget or trims the bundle.
+Final review: subagent in a fresh context, but on the session's model — this harness ignores the model named in the dispatch.
+EOF
+grep "Ruling:" progress.md; grep "minor (deferred)" progress.md
+```
+
+Assumed output: 23 `Ruling:` lines (the 22 given plus the new one) and the 6 deferred minors, as given.
+
+**6. Shell: look at the workspace, then delete it**
+
+The skill says to delete once the review's fixes are committed and both lists are collected.
+
+```bash
+cd /Users/p/git/board-app/.worktrees/offline-sync && ls .ryugi/sdd/ .ryugi/sdd/2026-11-12-offline-sync-design/ && rm -rf .ryugi/sdd/2026-11-12-offline-sync-design && ls .ryugi/sdd/ && git status --short
+```
+
+Assumed output: the directory held `tasks.md`, `progress.md`, briefs, review packages and logs; after the delete it is gone, sibling directories are untouched, and the tree is still clean. `.ryugi/artifacts/verify/offline-sync/report.xml` is outside this directory and stays.
+
+No rebase, merge, push or landing: those wait on my partner.
+
+## Message to my partner
+
+> 离线同步已按 spec 全部实现并提交,但还不能算完成:验证页上有 3 组等你判定,`pnpm test` 也有 1 项失败(`bundle-size`,`main` 上本来就超)。
+>
+> **现状**
+>
+> - **分支**:`feat/offline-sync`(worktree `.worktrees/offline-sync`),18 个任务全部完成,任务提交 `a1b2c3d..f9e8d7c` 共 23 个,另有 3 个终审修复提交,工作区干净。
+> - **测试**:本次会话重跑 `pnpm test`,412 通过、1 失败;typecheck 和 build 通过。
+> - **失败项**:`bundle-size` 为 512 KB,预算 500 KB。我单独量了当前 `main`,是 509 KB,同样失败;本分支只增加 3 KB。预算和包体我都没动(见裁决 23)。
+> - **终审**:结论是"修复后可合并",1 个 Critical 和 2 个 Important 已在一轮内修完,每个都有先红后绿的测试。
+> - **终审模型**:审查者是全新上下文,但跑在本会话的模型上,因为这个 harness 会忽略我指定的模型。这是否足够由你判断。
+> - **check-app**:两个浏览器上下文走完"离线编辑 → 重连 → 合并",全部通过。
+> - **与 `main` 的差距**:另一个 agent 在 `main` 上提交了 2 个无关提交,本分支落后这 2 个。`git merge-tree` 显示没有冲突,但合并后的结果我没有跑过测试。
+>
+> **需要你做的**
+>
+> 验证报告:https://ryugi.innei.dev/a/Rk3vQ0 (`verify/offline-sync`,9 条我已自证的结论,报告自检无问题)
+>
+> 1. `board-ui` 画板上有 3 组等你判定:
+>    - 同步状态圆点
+>    - 重连横幅
+>    - 附件占位图
+> 2. 有 1 个缺口我无法验证:两台真实手机之间的同步,需要你的第二台 iPhone。
+> 3. `bundle-size` 怎么处理:提高预算,还是另外瘦身。
+>
+> 这 3 组全部通过之前不落地。通过后我再给出落地方式,默认是 squash 到 `main`。有驳回的话我先修。
+>
+> **先看这几条裁决**
+>
+> - **裁决 3 和 14 偏离了 spec。** 冲突合并改成了按字段(§4 写的是按卡片);附件离线时不同步(§7 写的是附件也入队)。
+> - **裁决 9 会让用户停止编辑。** 离线队列满 5,000 条后应用不再接受编辑。
+> - **裁决 16 的代价账本写轻了。** 登出清空离线队列,意味着还没同步的编辑会被丢弃。
+>
+> **我做的裁决(共 23 条,按时间顺序)**
+>
+> 1. 任务 1:操作日志放在 `src/sync/oplog.ts`,不是任务清单写的 `src/store`,因为 store 不能引入网络层。代价:无。
+> 2. 任务 2:操作 id 用现有 ulid 工具生成的 ULID,不用 UUIDv7,保持代码库只有一种 id 方案。代价:无。
+> 3. 任务 3:并发编辑按字段合并,每个字段后写者胜,而不是 spec §4 的按卡片合并。按卡片时,两人改同一张卡的不同字段会丢掉一人的编辑。代价:两人改同一字段时,仍有一人的编辑无提示地消失。
+> 4. 任务 4:IndexedDB 封装手写,约 60 行,不引入 `idb` 依赖。代价:多维护一个文件。
+> 5. 任务 5:同步 worker 用 module worker,打包器已支持。代价:很旧的 Safari 上同步无法启动。
+> 6. 任务 6:重试退避从 1 秒开始,上限 60 秒(spec 未规定)。代价:长时间断网后恢复较慢。
+> 7. 任务 7:队列测试用 `fake-indexeddb` 提供的假 IndexedDB,它已是开发依赖。代价:无。
+> 8. 任务 8:重连横幅复用现有 Toast 组件。代价:无。
+> 9. 任务 9:离线队列上限 5,000 条操作;超过后显示 "sync paused, reconnect to keep editing" 并停止接受编辑(spec 未规定上限)。代价:长时间离线时编辑不再被记录。
+> 10. 任务 10:服务端 ack 每 200 毫秒批量发送一次。代价:ack 延迟略增。
+> 11. 任务 11:冲突测试的 fixtures 放在 `test/fixtures/sync`。代价:无。
+> 12. 任务 12:`applyRemote` 增加一个时钟参数,作为测试接缝。代价:无。
+> 13. 任务 13:看板版本向量存成 JSON 列而不是单独的表,每个看板只读一次。代价:以后若要按它查询,需要一次迁移。
+> 14. 任务 14:附件离线时不同步,只同步文本和布局。spec §7 要求附件也入队,但 Safari 把 IndexedDB 限制在约 50 MB。代价:离线添加的图片在其他设备上缺失,直到联网后重新添加。
+> 15. 任务 14:附件占位图用现有的破损图片图标。代价:无。
+> 16. 任务 15:同步状态圆点放在看板标题栏、标题右侧(spec 画了它但没定位置)。代价:挪一次 CSS。
+> 17. 任务 16:登出时先弹确认框,再清空离线队列(spec 未规定)。账本写的代价是"只多一个对话框";我现在的补充:队列里未同步的编辑会随登出丢弃。
+> 18. 任务 16:队列中的操作用现有会话密钥做静态加密。账本写的代价是"无";我没有单独验证会话密钥在离线期间过期或轮换后,队列是否还能解密。
+> 19. 任务 17:e2e 测试用两个浏览器上下文,而不是两个浏览器。代价:无。
+> 20. 终审:空看板同步一个空操作日志,而不是跳过(审查者未作判断)。代价:每个空看板多一个很小的请求。
+> 21. 终审:审查者提的"打开看板时 N+1 读取"不改。500 张卡的看板实际 3 次读取,实测 4 毫秒。代价:超大看板打开变慢。
+> 22. 终审:审查者提的"重命名 `applyRemote`"不改,命名与服务端一致。代价:无。
+> 23. 终审:`bundle-size` 512 KB 超出 500 KB 预算,我没有改预算也没有瘦身。`main` 已是 509 KB,本分支只加 3 KB,而改预算或删 spec 之外的代码不该由我决定。代价:落地后 `main` 的测试仍是红的,直到有人提高预算或瘦身。
+>
+> **推迟的小问题(共 6 条,均未修)**
+>
+> 1. 重连横幅的文案没有本地化。(判定"重连横幅"那组时你会看到。)
+> 2. `oplog.ts` 导出了一个没人用的 `peekOp`。
+> 3. 退避常量分散在两个文件里。
+> 4. 队列已满的提示写的是 "operations",而界面其他地方用的是 "changes"。
+> 5. 同步日志用的是 `console.log`,不是应用的 logger。
+> 6. e2e 测试固定 sleep 500 毫秒,本可以等待事件。
+>
+> 本 spec 的工作目录 `.ryugi/sdd/2026-11-12-offline-sync-design/` 已删除;以上两份清单是这些决定的唯一留存,git 历史是实现的记录。
+
+SUMMARY: I re-ran the suite, measured `main`, ledgered the bundle-size ruling, collected all 23 rulings and 6 deferred minors into a Chinese final message, and deleted the spec workspace. Landing now waits on my partner's verdicts for the 3 `board-ui` groups, the two-iPhone check and the bundle-size decision.

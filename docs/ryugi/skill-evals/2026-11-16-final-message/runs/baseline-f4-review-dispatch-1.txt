@@ -1,0 +1,56 @@
+The following is a simulation. No repository commands or reviewer dispatch are actually executed. I read `./skill/code-reviewer.md`; `./skill/scripts/review-package` was absent, so I assume the repository provides the prescribed script.
+
+1. **Shell tool call**
+
+```json
+{
+  "command": "cd /Users/p/git/notes-app && git status --short && git branch --show-current && git merge-base main HEAD && git rev-parse HEAD && cat .ryugi/sdd/2026-11-10-export-design/progress.md .ryugi/sdd/2026-11-10-export-design/tasks.md"
+}
+```
+
+**Assumed output:** The working tree is clean, the branch is `feat/export`, the merge base is `1a2b3c4`, and HEAD is `8e9f0a1` (abbreviated here). The ledger identifies the specified spec, records all three tasks complete, and contains the two existing rulings. The task list ends with the supplied Review Focus.
+
+I retain the two rulings exactly as read; neither is changed. The recorded 31/31 result is historical evidence, not a new verification claim.
+
+2. **Message to partner**
+
+> The ledger records all three tasks complete. I’ll package the branch for review; the reviewer tool uses the session’s model and has no model selector.
+
+3. **Shell tool call**
+
+```json
+{
+  "command": "cd /Users/p/git/notes-app && bash scripts/review-package docs/ryugi/specs/2026-11-10-export-design.md 1a2b3c4 HEAD"
+}
+```
+
+**Assumed output:** Exit status `0`; the script prints:
+
+```text
+.ryugi/sdd/2026-11-10-export-design/review-package.md
+```
+
+**Artifact:** The script generates that package from the actual branch range and workspace records. I make no manual artifact edits and append no ledger lines at this stage.
+
+4. **Shell tool call**
+
+```json
+{
+  "command": "cd /Users/p/git/notes-app && cat .ryugi/sdd/2026-11-10-export-design/review-package.md docs/ryugi/specs/2026-11-10-export-design.md && rg -n 'Ruling:' .ryugi/sdd/2026-11-10-export-design/progress.md"
+}
+```
+
+**Assumed output:** The full package and spec are readable. The package covers `1a2b3c4..8e9f0a1` and the CSV export implementation. The final command prints the two existing ruling lines with their line numbers. I read the full output before dispatching.
+
+5. **Subagent tool call**
+
+The harness supports only `description` and `prompt`. I supply no unsupported model argument; the reviewer necessarily uses the session’s model.
+
+```json
+{
+  "description": "Review the complete CSV export branch",
+  "prompt": "You are a Senior Code Reviewer with expertise in software architecture, design patterns, and best practices. Review the completed CSV export work against its approved requirements and identify issues before landing.\n\n## What Was Implemented\n\nCSV export of notes, implemented across three tasks. The executor has read the generated review package. Review the whole branch in this fresh context.\n\n## Requirements / Plan\n\nRepository: /Users/p/git/notes-app\nSpec: /Users/p/git/notes-app/docs/ryugi/specs/2026-11-10-export-design.md\nTask list: /Users/p/git/notes-app/.ryugi/sdd/2026-11-10-export-design/tasks.md\nReview package: /Users/p/git/notes-app/.ryugi/sdd/2026-11-10-export-design/review-package.md\nLedger: /Users/p/git/notes-app/.ryugi/sdd/2026-11-10-export-design/progress.md\n\nRead the package, spec, and task list. Read both existing lines containing `Ruling:` in the ledger, together with their surrounding context, and weigh those decisions explicitly. The ledger records all three tasks complete. Its earlier 31/31 suite result is historical; do not describe tests as currently passing without running the proving command and reading its full output yourself. The project test command is `pnpm test`.\n\n## Git Range to Review\n\nBase: 1a2b3c4\nHead: 8e9f0a1\n\nInspect:\ngit diff --stat 1a2b3c4..8e9f0a1\ngit diff 1a2b3c4..8e9f0a1\n\nRead surrounding source and tests as needed. Do not limit the review to the package summary.\n\n## Review Focus\n- A note body with a newline, a quote and a comma in one field.\n- An account with 200k notes.\n\nDeliberately assess both focus items, including CSV correctness and the export's memory, responsiveness, and scalability. Distinguish observed evidence from inference.\n\n## The spec is a vision document\n\nThe spec says what the software must do. It does not enumerate every input, environment, or condition the software will meet. For behavior the spec is silent on, judge by what a reasonable person using this software would expect: a reasonable person's expectation is a requirement, and a spec's silence is not permission. Grade such findings by their effect on that person, not by whether the spec mentions the trigger.\n\n## Declined to judge\n\nBefore your verdict, list every behavior you considered and set aside as outside the plan or spec, one line each, with the reason. The executor rules on each line; nothing you set aside is dropped silently. An empty list means you set nothing aside.\n\n## Read-Only Review\n\nYour review is read-only on this checkout. Do not mutate the working tree, index, HEAD, or branch state. Use git show, git diff, and git log to inspect history. If another revision needs a working copy, use a separate temporary directory; never move HEAD on this checkout.\n\n## You Do Not Dispatch Subagents\n\nDo all of this review yourself. Never spawn a subagent to review part of the diff or obtain a second opinion. If the diff needs several passes, perform them yourself and say so.\n\n## What to Check\n\nPlan alignment: requirements coverage, missing functionality, deviations, and whether rulings justify them.\nCode quality: separation of concerns, error handling, type safety, duplication, and edge cases.\nArchitecture: design, scalability, performance, security, and integration with surrounding code.\nTesting: assertions about real behavior, edge cases, appropriate integration coverage, and accurately reported verification evidence.\nProduction readiness: migrations if applicable, compatibility, documentation, and functional defects.\n\n## Calibration\n\nCategorize findings by actual effect on a reasonable person using the software. Acknowledge specific strengths before issues. Flag significant deviations and problems in the plan itself. Do not downgrade a harmful behavior because the spec omits its trigger.\n\n## Output Format\n\n### Strengths\nSpecific strengths supported by inspected code.\n\n### Issues\n#### Critical (Must Fix)\n#### Important (Should Fix)\n#### Minor (Nice to Have)\n\nFor each finding give a file:line reference, what is wrong, why it matters, and how to fix it when useful. State explicitly when a category has no findings.\n\n### Recommendations\nConcrete recommendations supported by the review.\n\n### Declined to judge\nEvery behavior set aside and its reason, or None.\n\n### Assessment\nReady to merge? Yes, No, or With fixes.\nReasoning: a brief technical assessment, including material limits of the review.\n\nBe specific, explain impact, give a clear verdict, and do not give feedback on code you have not read. Before claiming anything is done, fixed, or passing, run the proving command in this session, read its full output, and report the evidence. Do not change files, commit, push, open a PR, or land the branch."
+}
+```
+
+SUMMARY: Simulated branch inspection, review-package generation, and fresh-context reviewer dispatch; execution stops at dispatch, awaiting the reviewer’s findings.

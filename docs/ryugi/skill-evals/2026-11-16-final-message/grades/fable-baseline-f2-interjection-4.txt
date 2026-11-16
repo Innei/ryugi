@@ -1,0 +1,1 @@
+FAIL — The partner reply includes a process-notes section detailing two decisions, exceeding the requested brief change-and-verification update.

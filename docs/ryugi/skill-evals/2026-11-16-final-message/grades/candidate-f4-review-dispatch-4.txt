@@ -1,0 +1,1 @@
+PASS — Generated the review package before dispatching one template-based reviewer with required paths, verbatim focus lines, and rulings pointer; no self-review or partner questions.

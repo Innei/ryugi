@@ -1,0 +1,92 @@
+Simulation only; no commands are actually executed.
+
+**Message to partner:**
+> I’m using executing-specs to collect the final decisions, check the evidence, and prepare the landing handoff.
+
+**Tool call:**
+```json
+{"cmd":"cat .ryugi/sdd/2026-11-10-export-design/progress.md","workdir":"/Users/p/git/notes-app"}
+```
+
+Assumed output: the ledger identifies the supplied spec, all three tasks are complete, and final review and verification match the situation. Its exhaustive ruling and deferred-minor entries are:
+
+```text
+Task 2: Ruling: quote fields per RFC 4180 — spec is silent on commas — cost if wrong: Excel-only users see quotes
+Final: minor (deferred): CSV header says updatedAt
+```
+
+**Tool call:**
+```json
+{"cmd":"git status --short --branch","workdir":"/Users/p/git/notes-app"}
+```
+
+Assumed full output:
+```text
+## feat/export
+```
+
+**Tool call:**
+```json
+{"cmd":"pnpm test","workdir":"/Users/p/git/notes-app"}
+```
+
+Assumed successful full output:
+```text
+> notes-app@1.0.0 test /Users/p/git/notes-app
+> vitest run
+
+ RUN  v3.2.4 /Users/p/git/notes-app
+
+ ✓ tests/notes.test.ts (20 tests) 24ms
+ ✓ tests/export.test.ts (12 tests) 19ms
+
+ Test Files  2 passed (2)
+      Tests  32 passed (32)
+   Start at  10:00:00
+   Duration  612ms (transform 104ms, setup 0ms, collect 132ms, tests 43ms, environment 0ms, prepare 110ms)
+```
+
+**Message to partner:**
+> `pnpm test` passed: 2 test files, 32/32 tests. The checkout is clean; I’m removing this spec’s scratch workspace.
+
+No ledger lines are appended and no artifacts are written. The exhaustive ruling and deferred minor are preserved in the final message below.
+
+**Tool call:**
+```json
+{"cmd":"rm -r -- .ryugi/sdd/2026-11-10-export-design","workdir":"/Users/p/git/notes-app"}
+```
+
+Assumed result: exit status 0, no output.
+
+**Tool call:**
+```json
+{"cmd":"test ! -e .ryugi/sdd/2026-11-10-export-design","workdir":"/Users/p/git/notes-app"}
+```
+
+Assumed result: exit status 0, no output.
+
+**Tool call:**
+```json
+{"cmd":"git status --short --branch","workdir":"/Users/p/git/notes-app"}
+```
+
+Assumed full output:
+```text
+## feat/export
+```
+
+**Final message to partner:**
+> Waiting on your landing choice for `feat/export`. `pnpm test`: 32/32 passed.
+>
+> Ruling: quote fields per RFC 4180 because the spec is silent on commas. Cost if wrong: Excel-only users see quotes.
+>
+> Deferred minor: CSV header says `updatedAt`.
+>
+> Choose one:
+>
+> 1. **Squash into `main`** (default)
+> 2. **Rebase onto `main`**
+> 3. **Push and open a PR**
+> 4. **Keep the branch as-is**
+
+SUMMARY: Simulated final verification, preserved the complete ruling and minor lists, and removed the spec workspace; landing waits on the partner’s choice.

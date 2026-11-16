@@ -1,0 +1,1 @@
+FAIL — The numbered partner actions omit the bundle-size budget decision; reporting the failed budget check does not request a decision.

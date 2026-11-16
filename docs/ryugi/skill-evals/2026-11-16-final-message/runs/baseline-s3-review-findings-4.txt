@@ -1,0 +1,373 @@
+Everything below is simulated. Outputs, source details, commit IDs, and verification results are assumptions, not actual execution evidence.
+
+**Message to partner:**
+
+> I’ll fix the large-account failure, defer the header wording, and record a decision on empty exports.
+
+**1. Tool call — inspect the existing record and implementation**
+
+```json
+{
+  "cmd": "pwd && git status --short && git branch --show-current && git log -4 --oneline && cat docs/ryugi/specs/2026-11-10-export-design.md .ryugi/sdd/2026-11-10-export-design/progress.md .ryugi/sdd/2026-11-10-export-design/tasks.md package.json src/export.ts src/notes-repository.ts tests/export.test.ts && rg --files -g AGENTS.md -g '*SKILL.md' -g '*verify*'",
+  "workdir": "/Users/p/git/notes-app"
+}
+```
+
+Assumed output, read in full:
+
+- Checkout is clean, on `feat/export`.
+- Ledger identity matches this spec; Tasks 1–3 are complete.
+- Existing commits are `1111111`, `2222222`, and `3333333`; no existing rulings or deferred minors.
+- Spec requires CSV export preserving note order and escaping; it does not require loading the entire account first.
+- No project-specific product verification skill exists.
+- Tests use Vitest; `pnpm test` runs the suite once.
+- An existing empty-account test asserts a header-only CSV.
+- The repository already provides a bounded, cursor-backed `iterateNotes()` async iterator.
+- The exporter currently contains:
+
+```ts
+import type { NotesRepository } from './notes-repository'
+import { serializeNoteCsv } from './csv'
+
+export interface CsvSink {
+  write(chunk: string): Promise<void>
+}
+
+export async function exportNotes(
+  repository: NotesRepository,
+  sink: CsvSink,
+): Promise<void> {
+  await sink.write('id,title,body,updatedAt\r\n')
+
+  const notes = await repository.getAllNotes()
+  for (const note of notes) {
+    await sink.write(serializeNoteCsv(note))
+  }
+}
+```
+
+- The repository interface is:
+
+```ts
+export interface Note {
+  id: string
+  title: string
+  body: string
+  updatedAt: string
+}
+
+export interface NotesRepository {
+  getAllNotes(): Promise<Note[]>
+  iterateNotes(): AsyncIterable<Note>
+}
+```
+
+- The existing export UI streams the sink into a file without collecting chunks.
+- Local product verification supports `pnpm dev --host 127.0.0.1`, seeded demo accounts, and browser checks.
+- No additional repository instructions affect this work.
+
+**Review decisions, before editing:**
+
+- Large-account failure remains **Important**: exporting a valid account can fail entirely. Include it in the single fix pass.
+- Header wording remains **Minor**: the field name is intelligible and preserves the existing CSV schema. Defer it.
+- Empty-account behavior stands: a header-only CSV accurately represents zero notes and retains the export schema. Record this as a ruling, with its cost if wrong.
+
+**2. Tool call — write the regression test**
+
+```json
+{
+  "cmd": "python3 - <<'PY'\nfrom pathlib import Path\nPath('tests/export.streaming.test.ts').write_text('''import { expect, it } from 'vitest'\nimport { exportNotes } from '../src/export'\nimport type { NotesRepository } from '../src/notes-repository'\n\nit('exports 200,000 notes incrementally and waits for each sink write', async () => {\n  const total = 200_000\n  let yielded = 0\n  let acknowledged = 0\n  let headerWrites = 0\n\n  const repository: NotesRepository = {\n    async getAllNotes() {\n      throw new Error('export must not materialize all notes')\n    },\n    async *iterateNotes() {\n      for (let index = 0; index < total; index += 1) {\n        expect(acknowledged).toBe(index)\n        yielded += 1\n        yield {\n          id: String(index),\n          title: 'Note',\n          body: 'Body',\n          updatedAt: '2026-11-10T00:00:00.000Z',\n        }\n      }\n    },\n  }\n\n  await exportNotes(repository, {\n    async write(chunk) {\n      await Promise.resolve()\n      if (chunk === 'id,title,body,updatedAt\\\\r\\\\n') {\n        headerWrites += 1\n        return\n      }\n      expect(yielded).toBe(acknowledged + 1)\n      expect(chunk.startsWith(String(acknowledged) + ',')).toBe(true)\n      expect(chunk.endsWith('\\\\r\\\\n')).toBe(true)\n      acknowledged += 1\n    },\n  })\n\n  expect(headerWrites).toBe(1)\n  expect(yielded).toBe(total)\n  expect(acknowledged).toBe(total)\n}, 30_000)\n''')\nPY",
+  "workdir": "/Users/p/git/notes-app"
+}
+```
+
+Assumed output: exit 0; the file contains exactly the test above.
+
+**3. Tool call — watch the regression fail**
+
+```json
+{
+  "cmd": "pnpm test tests/export.streaming.test.ts",
+  "workdir": "/Users/p/git/notes-app"
+}
+```
+
+Assumed full output:
+
+```text
+> notes-app test
+> vitest run tests/export.streaming.test.ts
+
+ RUN  v3.2.4 /Users/p/git/notes-app
+
+ ❯ tests/export.streaming.test.ts (1 test | 1 failed)
+   × exports 200,000 notes incrementally and waits for each sink write
+     → export must not materialize all notes
+
+ FAIL  tests/export.streaming.test.ts
+Error: export must not materialize all notes
+ ❯ Object.getAllNotes tests/export.streaming.test.ts:14:13
+ ❯ exportNotes src/export.ts:14:34
+
+ Test Files  1 failed (1)
+      Tests  1 failed (1)
+```
+
+The failure identifies the reviewed cause: the exporter calls the method that materializes every note.
+
+**4. Tool call — implement the bounded export**
+
+```json
+{
+  "cmd": "python3 - <<'PY'\nfrom pathlib import Path\npath = Path('src/export.ts')\nold = '  const notes = await repository.getAllNotes()\\n  for (const note of notes) {'\nnew = '  for await (const note of repository.iterateNotes()) {'\nsource = path.read_text()\nassert source.count(old) == 1\npath.write_text(source.replace(old, new))\nPY",
+  "workdir": "/Users/p/git/notes-app"
+}
+```
+
+Assumed output: exit 0.
+
+The resulting file is exactly:
+
+```ts
+import type { NotesRepository } from './notes-repository'
+import { serializeNoteCsv } from './csv'
+
+export interface CsvSink {
+  write(chunk: string): Promise<void>
+}
+
+export async function exportNotes(
+  repository: NotesRepository,
+  sink: CsvSink,
+): Promise<void> {
+  await sink.write('id,title,body,updatedAt\r\n')
+
+  for await (const note of repository.iterateNotes()) {
+    await sink.write(serializeNoteCsv(note))
+  }
+}
+```
+
+**5. Tool call — verify the regression and whole suite**
+
+```json
+{
+  "cmd": "pnpm test",
+  "workdir": "/Users/p/git/notes-app"
+}
+```
+
+Assumed full output:
+
+```text
+> notes-app test
+> vitest run
+
+ RUN  v3.2.4 /Users/p/git/notes-app
+
+ ✓ tests/csv.test.ts (12 tests)
+ ✓ tests/export.test.ts (10 tests)
+ ✓ tests/notes-repository.test.ts (9 tests)
+ ✓ tests/export.streaming.test.ts (1 test)
+
+ Test Files  4 passed (4)
+      Tests  32 passed (32)
+```
+
+Compared with the expected result: the new regression passes, all 31 existing tests remain green, and the suite reports 32/32.
+
+**Message to partner:**
+
+> The regression failed on bulk loading, then passed with incremental writes; `pnpm test` reports 32/32.
+
+**6. Tool call — inspect the complete fix before committing**
+
+```json
+{
+  "cmd": "git diff --check && git diff -- src/export.ts && cat tests/export.streaming.test.ts && git status --short",
+  "workdir": "/Users/p/git/notes-app"
+}
+```
+
+Assumed full output: `git diff --check` exits 0; the source diff is exactly the replacement above; the regression file matches Step 2; only those two paths are changed.
+
+**7. Tool call — commit the fix and append the review record together**
+
+```json
+{
+  "cmd": "git add src/export.ts tests/export.streaming.test.ts && git commit -m 'fix: stream notes during CSV export' && python3 - <<'PY'\nfrom pathlib import Path\nimport subprocess\nsha = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()\nlines = [\n    'Final review: fresh-context reviewer completed; findings graded by user impact; one fix pass; no re-review.',\n    'Final: Ruling: empty accounts export a header-only CSV — this accurately represents zero notes and preserves the CSV schema; retain this behavior — cost if wrong: users may expect an empty-state message instead of a downloaded file.',\n    'Final: minor (deferred): CSV header uses updatedAt while the UI says Last edited; retain the existing field name pending a separate schema decision.',\n    'Final: fixed exportNotes materializing the entire account — exports 200,000 notes incrementally and waits for each sink write RED→GREEN, suite 32/32; commit ' + sha,\n]\nwith Path('.ryugi/sdd/2026-11-10-export-design/progress.md').open('a') as ledger:\n    ledger.write('\\n' + '\\n'.join(lines) + '\\n')\nPY",
+  "workdir": "/Users/p/git/notes-app"
+}
+```
+
+Assumed output:
+
+```text
+[feat/export 4444444] fix: stream notes during CSV export
+ 2 files changed, 49 insertions(+), 2 deletions(-)
+ create mode 100644 tests/export.streaming.test.ts
+```
+
+Assumed full SHA: `4444444444444444444444444444444444444444`.
+
+The appended ledger lines are exactly those in the command, with that SHA substituted. No second reviewer is dispatched.
+
+**8. Tool calls — check the running product**
+
+Because no project-specific verification skill was found, these are direct product checks. The following browser CLI commands assume the already-loaded verification workflow supports them.
+
+```json
+{
+  "cmd": "pnpm dev --host 127.0.0.1",
+  "workdir": "/Users/p/git/notes-app",
+  "yield_time_ms": 1000
+}
+```
+
+Assumed output: server ready at `http://127.0.0.1:5173`; session ID `812`.
+
+```json
+{
+  "cmd": "agent-browser open http://127.0.0.1:5173 && agent-browser snapshot -i",
+  "workdir": "/Users/p/git/notes-app"
+}
+```
+
+Assumed full output: populated demo account, three notes, and an `Export CSV` button at `@e3`.
+
+```json
+{
+  "cmd": "agent-browser click @e3 && agent-browser snapshot",
+  "workdir": "/Users/p/git/notes-app"
+}
+```
+
+Assumed output: browser download completes at `/tmp/notes-export.csv`; UI displays `Export complete`.
+
+```json
+{
+  "cmd": "python3 - <<'PY'\nimport csv\nfrom pathlib import Path\nwith Path('/tmp/notes-export.csv').open(newline='') as source:\n    rows = list(csv.reader(source))\nassert rows == [\n    ['id', 'title', 'body', 'updatedAt'],\n    ['1', 'Shopping, today', 'Milk\\nEggs', '2026-11-10T00:00:00.000Z'],\n    ['2', 'Quote', 'He said \"hello\".', '2026-11-11T00:00:00.000Z'],\n    ['3', '日本語', 'メモ', '2026-11-12T00:00:00.000Z'],\n], rows\nprint('PASS: browser download contains the expected header and all three notes, including commas, newlines, quotes, and Unicode')\nPY",
+  "workdir": "/Users/p/git/notes-app"
+}
+```
+
+Assumed output:
+
+```text
+PASS: browser download contains the expected header and all three notes, including commas, newlines, quotes, and Unicode
+```
+
+```json
+{
+  "cmd": "agent-browser open 'http://127.0.0.1:5173/?demo=empty' && agent-browser snapshot -i",
+  "workdir": "/Users/p/git/notes-app"
+}
+```
+
+Assumed output: empty demo account; `Export CSV` at `@e2`.
+
+```json
+{
+  "cmd": "agent-browser click @e2",
+  "workdir": "/Users/p/git/notes-app"
+}
+```
+
+Assumed output: download completes at `/tmp/notes-export-empty.csv`.
+
+```json
+{
+  "cmd": "python3 - <<'PY'\nfrom pathlib import Path\nactual = Path('/tmp/notes-export-empty.csv').read_bytes()\nassert actual == b'id,title,body,updatedAt\\r\\n', actual\nprint('PASS: empty-account browser export contains exactly the CSV header')\nPY",
+  "workdir": "/Users/p/git/notes-app"
+}
+```
+
+Assumed output:
+
+```text
+PASS: empty-account browser export contains exactly the CSV header
+```
+
+**9. Tool call — collect the record before deleting the spec workspace**
+
+```json
+{
+  "cmd": "cat .ryugi/sdd/2026-11-10-export-design/progress.md && git log main..HEAD --oneline && git status --short",
+  "workdir": "/Users/p/git/notes-app"
+}
+```
+
+Assumed output, read in full:
+
+- Tasks 1–3 retain their completion records.
+- The only `Ruling:` line is the empty-account ruling above.
+- The only `minor (deferred)` line is the header wording above.
+- Branch commits are `1111111`, `2222222`, `3333333`, `4444444`.
+- Working tree is clean.
+
+**10. Tool call — remove only this completed execution workspace**
+
+```json
+{
+  "cmd": "python3 - <<'PY'\nfrom pathlib import Path\nimport shutil\nworkspace = Path('.ryugi/sdd/2026-11-10-export-design')\nidentity = workspace.joinpath('progress.md').read_text().splitlines()[0]\nassert identity == '# SDD ledger — plan: docs/ryugi/specs/2026-11-10-export-design.md'\nshutil.rmtree(workspace)\nprint('Removed only .ryugi/sdd/2026-11-10-export-design')\nPY",
+  "workdir": "/Users/p/git/notes-app"
+}
+```
+
+Assumed output:
+
+```text
+Removed only .ryugi/sdd/2026-11-10-export-design
+```
+
+**11. Apply the already-loaded verifying skill last**
+
+For this simulation, assume its prescribed mechanism is a local verification page with explicit human verdicts. These multiple user-facing claims require that page; automated checks do not supply the partner’s verdict.
+
+**Message to partner:**
+
+> The browser checks passed; I’m opening the verification page for your CSV and empty-account verdicts.
+
+**Tool call — write the verification artifact**
+
+```json
+{
+  "cmd": "python3 - <<'PY'\nfrom pathlib import Path\npage = Path('.ryugi/verify/export.html')\npage.parent.mkdir(parents=True, exist_ok=True)\npage.write_text('''<!doctype html>\n<html lang=\"en\">\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<title>Verify notes CSV export</title>\n<style>\nbody { max-width: 760px; margin: 48px auto; padding: 0 20px; font: 17px/1.6 system-ui; }\nsection { margin: 28px 0; padding: 20px; border: 1px solid #ccc; border-radius: 12px; }\nbutton { margin-right: 12px; padding: 8px 16px; }\n</style>\n<h1>Verify notes CSV export</h1>\n<p>Branch: feat/export. Fix commit: 4444444. Human verdicts are pending; landing waits for both groups.</p>\n<p>Automated evidence: pnpm test passed 32/32. The new 200,000-note regression failed before the fix and passed afterward. Browser downloads passed exact CSV-content checks for populated and empty accounts.</p>\n<section>\n<h2>CSV export</h2>\n<p><a href=\"http://127.0.0.1:5173/\">Open the populated demo account</a>, export its notes, and open the downloaded file in your CSV application. Confirm that every note is present and commas, newlines, quotes, and Unicode appear correctly.</p>\n<p>Large-account streaming has automated coverage; this verdict checks the user-facing download and file.</p>\n<button onclick=\"record('csv', 'Pass')\">Pass</button><button onclick=\"record('csv', 'Reject')\">Reject</button>\n<p id=\"csv\">Pending</p>\n</section>\n<section>\n<h2>Empty account</h2>\n<p><a href=\"http://127.0.0.1:5173/?demo=empty\">Open the empty demo account</a> and export it. Confirm that a CSV containing only the header is acceptable.</p>\n<p>Ruling: a header-only CSV represents zero notes and preserves the schema. If wrong, users may expect an empty-state message instead of a download.</p>\n<button onclick=\"record('empty', 'Pass')\">Pass</button><button onclick=\"record('empty', 'Reject')\">Reject</button>\n<p id=\"empty\">Pending</p>\n</section>\n<h2>Deferred minor</h2>\n<p>The CSV header uses updatedAt; the UI says Last edited. The existing field name remains unchanged.</p>\n<p>Send both verdicts to your coding partner. These buttons record local selections only.</p>\n<script>\nfunction record(group, verdict) {\n  localStorage.setItem('notes-export-4444444-' + group, verdict);\n  document.getElementById(group).textContent = verdict;\n}\nfor (const group of ['csv', 'empty']) {\n  document.getElementById(group).textContent = localStorage.getItem('notes-export-4444444-' + group) || 'Pending';\n}\n</script>\n</html>\n''')\nprint(page.resolve())\nPY",
+  "workdir": "/Users/p/git/notes-app"
+}
+```
+
+Assumed output:
+
+```text
+/Users/p/git/notes-app/.ryugi/verify/export.html
+```
+
+**Tool call — open the verification page**
+
+```json
+{
+  "cmd": "open /Users/p/git/notes-app/.ryugi/verify/export.html",
+  "workdir": "/Users/p/git/notes-app"
+}
+```
+
+Assumed output: exit 0; the page opens. Both verdicts remain pending. Keep the development server running for verification.
+
+**Final message to partner:**
+
+> The streaming fix is committed as `4444444`. `pnpm test` passed 32/32, including the regression observed failing before the fix. Browser export checks also passed.
+>
+> **Rulings I made**
+>
+> - Keep header-only exports for empty accounts: they represent zero notes and preserve the schema. Cost if wrong: users may expect an empty-state message.
+>
+> **Deferred minors**
+>
+> - CSV uses `updatedAt`; the UI says “Last edited.”
+>
+> [Verify the export](/Users/p/git/notes-app/.ryugi/verify/export.html). The CSV and empty-account groups await your verdicts; completion and landing wait for both to pass.
+
+Stop here. Do not offer landing choices, push, merge, or dispatch another reviewer while verification is pending.
+
+SUMMARY: Simulated one RED→GREEN fix pass, 32/32 tests, browser checks, commit, exhaustive review decisions, workspace cleanup, and a verification page; completion and landing now wait on the partner’s two verdicts.

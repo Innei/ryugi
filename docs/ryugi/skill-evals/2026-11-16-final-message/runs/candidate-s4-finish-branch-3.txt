@@ -1,0 +1,61 @@
+The following is a simulation; no commands are actually executed.
+
+**Message to partner:**
+> I’m collecting the final rulings and deferred minor, then removing this spec’s scratch workspace.
+
+**Tool call — shell:**
+```sh
+rg -n 'Ruling:|minor \(deferred\)' .ryugi/sdd/2026-11-10-export-design/progress.md
+```
+
+Assumed successful output, with plausible line numbers:
+```text
+12:Task 2: Ruling: quote fields per RFC 4180 — spec is silent on commas — cost if wrong: Excel-only users see quotes
+21:Final: minor (deferred): CSV header says updatedAt
+```
+
+Assumption: these are the ledger’s exhaustive rulings and deferred minors. I prepare both verbatim for the final message below. No ledger lines or artifacts are written.
+
+**Tool call — shell:**
+```sh
+pnpm test
+```
+
+Assumed successful full output:
+```text
+> notes-app@1.0.0 test
+> vitest run
+
+ RUN  v3.2.4 /Users/p/git/notes-app
+
+ ✓ tests/notes.test.ts (20 tests) 41ms
+ ✓ tests/export.test.ts (12 tests) 28ms
+
+ Test Files  2 passed (2)
+      Tests  32 passed (32)
+   Start at  10:00:00
+   Duration  612ms (transform 102ms, setup 0ms, collect 121ms, tests 69ms, environment 0ms, prepare 140ms)
+```
+
+Assumption: the command exits with status `0`. This supplies session evidence for the simulated result: 32/32 tests pass.
+
+**Tool call — shell:**
+```sh
+rm -r -- .ryugi/sdd/2026-11-10-export-design/
+```
+
+Assumed successful output: none; exit status `0`. Only this spec’s workspace is removed.
+
+**Final message to partner:**
+> Not done — waiting on your landing choice.
+>
+> 1. **Squash into `main`** (default).
+> 2. **Rebase onto `main`**.
+> 3. **Push and open a PR**.
+> 4. **Keep `feat/export` as-is**.
+>
+> Ruling: quote fields per RFC 4180 — spec is silent on commas — cost if wrong: Excel-only users see quotes.
+>
+> Deferred minor: CSV header says `updatedAt`.
+
+SUMMARY: Simulated collecting every ruling and deferred minor, verifying 32/32 tests, and deleting this spec’s workspace; landing waits on the partner’s choice.

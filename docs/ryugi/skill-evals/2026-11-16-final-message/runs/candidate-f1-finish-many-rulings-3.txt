@@ -1,0 +1,252 @@
+以下全部是模拟；不会实际执行命令或写入文件。标注“假设输出”的内容是模拟所需的假设。
+
+工具调用统一为 `tools.exec_command`，参数中的 `workdir` 均为 `/Users/p/git/board-app/.worktrees/offline-sync`。
+
+1. 读取当前状态和已有记录。
+
+```json
+{
+  "cmd": "pwd\n git status --short --branch\n git rev-list --count HEAD..main\n cat package.json\n cat .ryugi/sdd/2026-11-12-offline-sync-design/progress.md\n cat .ryugi/artifacts/verify/offline-sync/report.xml",
+  "max_output_tokens": 30000
+}
+```
+
+假设输出：工作目录正确，当前分支为 `feat/offline-sync`，没有未提交的源码更改；`HEAD..main` 有 2 个提交。账本与题述一致，包含 18 项完成记录、修复记录、22 条裁定和 6 条延期小问题。报告包含 9 项 agent claims、真实双手机验证缺口及 3 个等待人工裁定的 UI 组。
+
+为使后续调用具体可执行，另假设读取结果确认：
+
+- `package.json` 有 `typecheck`、`build`、`check-app` 脚本；`check-app` 执行题述的两个浏览器上下文验证。
+- 报告支持 `<notes>` 文本节点。
+- 项目提供 `pnpm verify:check -- <report-path>`，检查报告结构及引用完整性。
+
+2. 在报告目录保留本轮验证的完整输出，逐项运行，读取全部输出。
+
+```json
+{
+  "cmd": "mkdir -p .ryugi/artifacts/verify/offline-sync/evidence",
+  "max_output_tokens": 1000
+}
+```
+
+假设输出：退出码 `0`。
+
+```json
+{
+  "cmd": "pnpm test > .ryugi/artifacts/verify/offline-sync/evidence/final-test.log 2>&1",
+  "max_output_tokens": 1000
+}
+```
+
+假设输出：退出码 `1`。
+
+```json
+{
+  "cmd": "cat .ryugi/artifacts/verify/offline-sync/evidence/final-test.log",
+  "max_output_tokens": 30000
+}
+```
+
+假设已完整读取输出；结果为 `412 passed, 1 failed`。唯一失败为 `bundle-size`：`512 KB > 500 KB`。
+
+发送给伙伴：
+
+> 本轮 `pnpm test` 仍为 412 通过、1 失败：包体积 512 KB，超过 500 KB；这项门禁尚未通过。
+
+```json
+{
+  "cmd": "pnpm typecheck > .ryugi/artifacts/verify/offline-sync/evidence/final-typecheck.log 2>&1",
+  "max_output_tokens": 1000
+}
+```
+
+假设输出：退出码 `0`。
+
+```json
+{
+  "cmd": "cat .ryugi/artifacts/verify/offline-sync/evidence/final-typecheck.log",
+  "max_output_tokens": 10000
+}
+```
+
+假设完整输出显示类型检查成功，无诊断。
+
+```json
+{
+  "cmd": "pnpm build > .ryugi/artifacts/verify/offline-sync/evidence/final-build.log 2>&1",
+  "max_output_tokens": 1000
+}
+```
+
+假设输出：退出码 `0`。
+
+```json
+{
+  "cmd": "cat .ryugi/artifacts/verify/offline-sync/evidence/final-build.log",
+  "max_output_tokens": 20000
+}
+```
+
+假设完整输出显示构建成功。
+
+```json
+{
+  "cmd": "pnpm check-app > .ryugi/artifacts/verify/offline-sync/evidence/final-check-app.log 2>&1",
+  "max_output_tokens": 1000
+}
+```
+
+假设输出：退出码 `0`。
+
+```json
+{
+  "cmd": "cat .ryugi/artifacts/verify/offline-sync/evidence/final-check-app.log",
+  "max_output_tokens": 20000
+}
+```
+
+假设完整输出显示两个浏览器上下文中的离线编辑、重连和合并全部通过；未执行真实双手机测试。
+
+3. 保留账本、任务和评审资料，将所有裁定及延期小问题写入报告。这里不新增裁定，不修改预算，不修延期小问题。
+
+```json
+{
+  "cmd": "python3 - <<'PY'\nfrom pathlib import Path\nimport shutil\nimport xml.etree.ElementTree as ET\n\nworkspace = Path('.ryugi/sdd/2026-11-12-offline-sync-design')\nreport_dir = Path('.ryugi/artifacts/verify/offline-sync')\nreport_path = report_dir / 'report.xml'\nledger = (workspace / 'progress.md').read_text()\nrulings = [line for line in ledger.splitlines() if 'Ruling:' in line]\nminors = [line for line in ledger.splitlines() if 'minor (deferred)' in line]\nassert len(rulings) == 22, len(rulings)\nassert len(minors) == 6, len(minors)\n\nshutil.copytree(workspace, report_dir / 'execution-record', dirs_exist_ok=True)\n\nrows = []\nfor line in rulings:\n    origin, body = line.split('Ruling:', 1)\n    parts = body.strip().split(' — ')\n    assert parts[-1].startswith('cost if wrong:'), line\n    decision = parts[0]\n    reason = ' — '.join(parts[1:-1]) or '账本未另记理由'\n    cost = parts[-1].removeprefix('cost if wrong:').strip()\n    cells = [origin.strip().rstrip(':'), decision, reason, cost]\n    rows.append('| ' + ' | '.join(cell.replace('|', '\\\\|') for cell in cells) + ' |')\n\nnotes = '''完成状态：未完成，等待人工裁定及失败门禁处理。\n\n本轮验证：\n- pnpm test：退出码 1，412 passed, 1 failed；bundle-size 为 512 KB，预算 500 KB。完整输出：evidence/final-test.log。\n- pnpm typecheck：退出码 0。完整输出：evidence/final-typecheck.log。\n- pnpm build：退出码 0。完整输出：evidence/final-build.log。\n- pnpm check-app：退出码 0；两个浏览器上下文的离线编辑、重连及合并通过。完整输出：evidence/final-check-app.log。\n- main 的 509 KB 基线及本分支增加 3 KB 来自已有记录；本轮未独立复测 main。\n- 当前 main 有 2 个提交尚未进入本分支；与这些提交整合后的行为尚未验证。\n\n等待伙伴：\n- 裁定逐字段合并、5000 操作上限及离线附件不排队这三项行为。\n- 在 board-ui 验证页裁定同步状态点、重连提示、附件占位符三个组。\n- 提供第二部 iPhone，完成真实双手机同步验证；浏览器上下文结果不能覆盖此缺口。\n- 决定包体积失败的处理范围；当前结果不得记作全套测试通过。\n- 门禁完成后选择落地方式；本轮不整合 main、不推送、不创建 PR。\n\n完整裁定表（22 条）：\n\n| 来源 | 裁定 | 理由 | 判断错误的代价 |\n| --- | --- | --- | --- |\n''' + '\\n'.join(rows) + '''\n\n延期小问题（6 条，未修复）：\n\n''' + '\\n'.join('- ' + line for line in minors) + '''\n\n执行原始记录：execution-record/；其中 progress.md 保留全部原始裁定、任务完成记录及修复证据。\n'''\n\n(report_dir / 'finish-notes.md').write_text(notes)\ntree = ET.parse(report_path)\nroot = tree.getroot()\nassert not any(node.get('id') == 'execution-finish' for node in root.findall('notes'))\nnode = ET.SubElement(root, 'notes', {'id': 'execution-finish'})\nnode.text = notes\ntree.write(report_path, encoding='utf-8', xml_declaration=True)\nprint('Archived execution record; embedded 22 rulings and 6 deferred minors.')\nPY",
+  "max_output_tokens": 2000
+}
+```
+
+假设输出：退出码 `0`，打印：
+
+```text
+Archived execution record; embedded 22 rulings and 6 deferred minors.
+```
+
+上述脚本生成的 `finish-notes.md` 及报告 `<notes>` 内容完全相同。除脚本中给出的固定文字外，裁定表内容为：
+
+| 来源 | 裁定 | 理由 | 判断错误的代价 |
+| --- | --- | --- | --- |
+| Task 1 | the operation log lives in src/sync/oplog.ts, not src/store as the task list said | the store must not import the network layer | none. |
+| Task 2 | operation ids are ULIDs from the existing ulid helper, not UUIDv7 | one id scheme in the codebase | none. |
+| Task 3 | concurrent edits merge per field, last writer wins on each field, not per card as spec §4 says | per card loses one person's edit when two people change different fields of the same card | two people editing the same field still see one edit vanish without notice. |
+| Task 4 | the IndexedDB wrapper is hand-written, no idb dependency | 60 lines | one more file to maintain. |
+| Task 5 | the sync worker is a module worker | the bundler already supports it | very old Safari fails to start sync. |
+| Task 6 | retry backoff starts at 1 s and caps at 60 s | spec silent | slower recovery after a long outage. |
+| Task 7 | the queue test uses fake IndexedDB from fake-indexeddb | already a dev dependency | none. |
+| Task 8 | the reconnect banner reuses the existing Toast component | 账本未另记理由 | none. |
+| Task 9 | the offline queue is capped at 5,000 operations; past that the app shows "sync paused, reconnect to keep editing" and stops accepting edits | spec silent on a cap | a long offline session stops recording edits. |
+| Task 10 | server acks are batched every 200 ms | 账本未另记理由 | a little more latency on acks. |
+| Task 11 | the conflict test fixtures live in test/fixtures/sync | 账本未另记理由 | none. |
+| Task 12 | `applyRemote` takes a clock parameter | test seam | none. |
+| Task 13 | board version vectors are stored as a JSON column, not a table | one read per board | a migration later if queries need them. |
+| Task 14 | attachments do not sync while offline; only text and layout do | spec §7 says attachments queue too, but Safari caps IndexedDB at about 50 MB | images added offline are missing on other devices until re-added online. |
+| Task 14 | the attachment placeholder uses the existing broken-image icon | 账本未另记理由 | none. |
+| Task 15 | the sync status dot sits in the board header, right of the title | spec shows it but does not place it | one CSS move. |
+| Task 16 | logout clears the offline queue after a confirm dialog | spec silent | none beyond one dialog. |
+| Task 16 | queued operations are encrypted at rest with the existing session key | 账本未另记理由 | none. |
+| Task 17 | e2e tests run two browser contexts, not two browsers | 账本未另记理由 | none. |
+| Final | empty boards sync an empty operation log instead of skipping | reviewer declined to judge | one tiny request per empty board. |
+| Final | the reviewer's "N+1 reads on board open" stays | 3 reads for a 500-card board, measured 4 ms | slower opens on huge boards. |
+| Final | the reviewer's "rename applyRemote" stays | naming matches the server | none. |
+
+延期列表原文：
+
+```text
+- Final: minor (deferred): the reconnect banner's text is not localized.
+- Final: minor (deferred): oplog.ts exports an unused `peekOp`.
+- Final: minor (deferred): the backoff constants live in two files.
+- Final: minor (deferred): the queue-full message says "operations" where the UI says "changes".
+- Final: minor (deferred): sync logs use console.log, not the app logger.
+- Final: minor (deferred): the e2e test sleeps 500 ms where it could wait on an event.
+```
+
+本阶段没有追加账本行；原账本完整归档，未增加任务完成或全套测试通过的声明。
+
+4. 检查更新后的报告及归档。
+
+```json
+{
+  "cmd": "pnpm verify:check -- .ryugi/artifacts/verify/offline-sync/report.xml",
+  "max_output_tokens": 20000
+}
+```
+
+假设完整输出：退出码 `0`，报告结构及引用检查通过；3 个人工组仍等待裁定，真实手机缺口仍存在，测试失败仍被记录。结构检查不代表验证门禁通过。
+
+```json
+{
+  "cmd": "python3 - <<'PY'\nfrom pathlib import Path\nimport xml.etree.ElementTree as ET\n\nworkspace = Path('.ryugi/sdd/2026-11-12-offline-sync-design')\nreport_dir = Path('.ryugi/artifacts/verify/offline-sync')\narchive = report_dir / 'execution-record'\nfor source in workspace.rglob('*'):\n    if source.is_file():\n        target = archive / source.relative_to(workspace)\n        assert target.read_bytes() == source.read_bytes(), str(source)\nnotes = (report_dir / 'finish-notes.md').read_text()\nroot = ET.parse(report_dir / 'report.xml').getroot()\nembedded = next(node for node in root.findall('notes') if node.get('id') == 'execution-finish')\nassert embedded.text == notes\nassert notes.count('minor (deferred):') == 6\nassert len([line for line in notes.splitlines() if line.startswith('| Task ') or line.startswith('| Final |')]) == 22\nfor name in ['final-test.log', 'final-typecheck.log', 'final-build.log', 'final-check-app.log']:\n    assert (report_dir / 'evidence' / name).stat().st_size > 0\nprint('Archive matches workspace; report contains all 22 rulings, all 6 minors, and four verification logs.')\nPY",
+  "max_output_tokens": 2000
+}
+```
+
+假设输出：退出码 `0`，打印：
+
+```text
+Archive matches workspace; report contains all 22 rulings, all 6 minors, and four verification logs.
+```
+
+发送给伙伴：
+
+> 报告已收录全部 22 条裁定、6 条延期小问题和本轮验证输出；三个界面裁定及真实双手机验证仍待你处理。
+
+5. 按 Finish 要求，仅删除已归档的本 spec 工作区。
+
+```json
+{
+  "cmd": "python3 - <<'PY'\nfrom pathlib import Path\nimport shutil\n\nworkspace = Path('.ryugi/sdd/2026-11-12-offline-sync-design')\narchive = Path('.ryugi/artifacts/verify/offline-sync/execution-record')\nassert workspace.name == '2026-11-12-offline-sync-design'\nassert workspace.parent == Path('.ryugi/sdd')\nassert (archive / 'progress.md').read_bytes() == (workspace / 'progress.md').read_bytes()\nshutil.rmtree(workspace)\nassert not workspace.exists()\nprint('Removed only this spec workspace; archived execution record remains.')\nPY",
+  "max_output_tokens": 2000
+}
+```
+
+假设输出：退出码 `0`，打印：
+
+```text
+Removed only this spec workspace; archived execution record remains.
+```
+
+6. 最后检查报告和分支状态。
+
+```json
+{
+  "cmd": "pnpm verify:check -- .ryugi/artifacts/verify/offline-sync/report.xml",
+  "max_output_tokens": 20000
+}
+```
+
+假设完整输出：退出码 `0`，报告及归档引用完整，等待项和失败项均保留。
+
+```json
+{
+  "cmd": "git status --short --branch\n git rev-list --count HEAD..main",
+  "max_output_tokens": 2000
+}
+```
+
+假设完整输出：
+
+```text
+## feat/offline-sync
+2
+```
+
+到此停止，不提交、不整合主线、不推送、不创建 PR。发送给伙伴的最终消息逐字如下：
+
+> 未完成：等待你的裁定、第二部 iPhone 和包体积门禁处理。
+>
+> 1. 裁定三项行为：逐字段合并、离线队列达 5000 条后停止编辑、离线附件不排队。[全部 22 条裁定及 6 条延期问题](https://ryugi.innei.dev/a/Rk3vQ0)。
+> 2. 在验证页裁定三个界面组：同步状态点、重连提示、附件占位符。
+> 3. 提供第二部 iPhone，补做真实双手机同步验证。
+> 4. 决定包体积失败的处理范围。本轮 `pnpm test` 为 412 通过、1 失败：512 KB，预算 500 KB。
+>
+> 分支尚未包含 `main` 的两个新提交；整合后的结果未验证。主线 509 KB 的基线本轮未复测。
+>
+> [验证报告与完整证据](https://ryugi.innei.dev/a/Rk3vQ0)
+>
+> 门禁通过后，再选择落地方式：
+>
+> 1. Squash 到 `main`（默认）
+> 2. Rebase 到 `main`
+> 3. 推送并创建 PR
+> 4. 保留分支现状
+
+SUMMARY: 已模拟重新验证、归档全部裁定和延期问题、检查报告并清理该 spec 工作区；等待伙伴裁定行为与界面、提供第二部 iPhone、决定包体积问题的处理范围，门禁通过后再选择落地方式。

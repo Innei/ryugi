@@ -1,0 +1,249 @@
+以下是模拟续跑记录。除前面的 `ls -la ./skill` 外，不实际执行任何命令。所有假定输出均明确标注。
+
+**1. 工具调用：恢复收尾所需的记录。**
+
+```javascript
+const results = await Promise.allSettled([
+  tools.exec_command({
+    cmd: "git status --short; git branch --show-current; git log --oneline main..HEAD; git log --oneline HEAD..main",
+    workdir: "/Users/p/git/board-app/.worktrees/offline-sync",
+    max_output_tokens: 12000
+  }),
+  tools.exec_command({
+    cmd: "cat docs/ryugi/specs/2026-11-12-offline-sync-design.md .ryugi/sdd/2026-11-12-offline-sync-design/tasks.md .ryugi/sdd/2026-11-12-offline-sync-design/progress.md .ryugi/artifacts/verify/offline-sync/report.xml package.json",
+    workdir: "/Users/p/git/board-app/.worktrees/offline-sync",
+    max_output_tokens: 60000
+  })
+]);
+for (const result of results) text(result);
+```
+
+假定：读取完整、没有截断；工作区干净，当前分支为 `feat/offline-sync`；日志确认任务和修复提交均在分支上，`main` 有两个不在当前分支上的无关提交。任务记录、22 条裁定、6 条延期项及报告内容与题设一致。`package.json` 中存在 `typecheck`、`build` 脚本。
+
+假定：报告 XML 根节点允许 Markdown 补充章节；报告中已有的 claim、gap 和人工验收状态可以原样保留。若实际格式不支持，须使用其既有格式，不能强行加入未知节点。
+
+不重新切任务、不重新实现、不重新派审、不再次修复延期的小问题，也不更新或合并 `main`。
+
+**2. 发给伙伴的消息：**
+
+> 记录已恢复；我会重新核对测试结果，并把全部裁定和延期项补入验收报告。
+
+**3. 工具调用：重新取得本次会话的检查证据。**
+
+```javascript
+text(await tools.exec_command({
+  cmd: "pnpm test",
+  workdir: "/Users/p/git/board-app/.worktrees/offline-sync",
+  max_output_tokens: 60000,
+  yield_time_ms: 1000
+}));
+```
+
+假定返回 `session_id: 71`，进程仍运行。
+
+```javascript
+text(await tools.write_stdin({
+  session_id: 71,
+  chars: "",
+  max_output_tokens: 60000,
+  yield_time_ms: 1000
+}));
+```
+
+假定进程结束，完整输出已读，无截断：
+
+```text
+Tests: 412 passed, 1 failed, 413 total
+
+FAIL bundle-size
+Expected bundle size <= 500 KB
+Received: 512 KB
+
+Exit code: 1
+```
+
+```javascript
+const results = await Promise.allSettled([
+  tools.exec_command({
+    cmd: "pnpm typecheck",
+    workdir: "/Users/p/git/board-app/.worktrees/offline-sync",
+    max_output_tokens: 60000,
+    yield_time_ms: 1000
+  }),
+  tools.exec_command({
+    cmd: "pnpm build",
+    workdir: "/Users/p/git/board-app/.worktrees/offline-sync",
+    max_output_tokens: 60000,
+    yield_time_ms: 1000
+  })
+]);
+for (const result of results) text(result);
+```
+
+假定两个命令均在调用内结束，完整输出已读，没有截断：`pnpm typecheck` 和 `pnpm build` 的退出码均为 `0`，build 输出包大小 `512 KB`。
+
+`main` 的 `509 KB` 来自既有记录，本次未重新测量；因此不能用它证明当前失败可以豁免。
+
+**4. 发给伙伴的消息：**
+
+> 本次测试仍为 412 通过、1 失败：包体积 512 KB，超过 500 KB；类型检查和构建退出码均为 0，整体尚未通过。
+
+**5. 工具调用：在删除临时工作区前，把全部裁定、延期项和当前阻塞写入报告。**
+
+不追加新的 ledger 裁定，也不把失败登记为完成。本次生成的 Markdown 内容如下，完整嵌入原报告：
+
+```markdown
+## 收尾记录
+
+状态：未完成。全部 18 个实现任务已完成；最终审查的 1 个 Critical 和 2 个 Important 已在同一轮修复中完成 RED→GREEN 验证。以下验收项仍未关闭。
+
+### 本次命令证据
+
+| 命令 | 结果 |
+| --- | --- |
+| pnpm test | 退出码 1；412 passed，1 failed，413 total；bundle-size 为 512 KB，预算 500 KB |
+| pnpm typecheck | 退出码 0 |
+| pnpm build | 退出码 0；包体积 512 KB |
+
+main 的 509 KB 是此前记录，本次未重新测量。此前记录显示本分支增加 3 KB；既有超限不构成本分支通过预算检查的证据。
+
+项目 check-app 已在最终代码上执行：两个浏览器 context 中的离线编辑、重连和合并均通过。这是已有验证记录，本次收尾未重跑。
+
+现有 9 条 agent claims、真实双手机同步 gap，以及 board-ui 的三个人工验收组保持原状态。报告原有 check 干净的记录不表示测试套件通过，也不替代人工验收。
+
+### 全部裁定：22 项
+
+| 裁定 | 原因 | 判断错误的代价 |
+| --- | --- | --- |
+| Task 1: the operation log lives in src/sync/oplog.ts, not src/store as the task list said | the store must not import the network layer | none |
+| Task 2: operation ids are ULIDs from the existing ulid helper, not UUIDv7 | one id scheme in the codebase | none |
+| Task 3: concurrent edits merge per field, last writer wins on each field, not per card as spec §4 says | per card loses one person's edit when two people change different fields of the same card | two people editing the same field still see one edit vanish without notice |
+| Task 4: the IndexedDB wrapper is hand-written, no idb dependency | 60 lines | one more file to maintain |
+| Task 5: the sync worker is a module worker | the bundler already supports it | very old Safari fails to start sync |
+| Task 6: retry backoff starts at 1 s and caps at 60 s | spec silent | slower recovery after a long outage |
+| Task 7: the queue test uses fake IndexedDB from fake-indexeddb | already a dev dependency | none |
+| Task 8: the reconnect banner reuses the existing Toast component | ledger 未另述 | none |
+| Task 9: the offline queue is capped at 5,000 operations; past that the app shows "sync paused, reconnect to keep editing" and stops accepting edits | spec silent on a cap | a long offline session stops recording edits |
+| Task 10: server acks are batched every 200 ms | ledger 未另述 | a little more latency on acks |
+| Task 11: the conflict test fixtures live in test/fixtures/sync | ledger 未另述 | none |
+| Task 12: applyRemote takes a clock parameter | test seam | none |
+| Task 13: board version vectors are stored as a JSON column, not a table | one read per board | a migration later if queries need them |
+| Task 14: attachments do not sync while offline; only text and layout do | spec §7 says attachments queue too, but Safari caps IndexedDB at about 50 MB | images added offline are missing on other devices until re-added online |
+| Task 14: the attachment placeholder uses the existing broken-image icon | ledger 未另述 | none |
+| Task 15: the sync status dot sits in the board header, right of the title | spec shows it but does not place it | one CSS move |
+| Task 16: logout clears the offline queue after a confirm dialog | spec silent | none beyond one dialog |
+| Task 16: queued operations are encrypted at rest with the existing session key | ledger 未另述 | none |
+| Task 17: e2e tests run two browser contexts, not two browsers | ledger 未另述 | none |
+| Final: empty boards sync an empty operation log instead of skipping | reviewer declined to judge | one tiny request per empty board |
+| Final: the reviewer's "N+1 reads on board open" stays | 3 reads for a 500-card board, measured 4 ms | slower opens on huge boards |
+| Final: the reviewer's "rename applyRemote" stays | naming matches the server | none |
+
+上表记录既有裁定，不表示这些理由已全部独立核实，也不表示伙伴已经接受规格偏离。尤其 Safari 容量的概括性理由不能替代平台存储限制的核实。
+
+### 全部延期小问题：6 项
+
+- Final: minor (deferred): the reconnect banner's text is not localized.
+- Final: minor (deferred): oplog.ts exports an unused `peekOp`.
+- Final: minor (deferred): the backoff constants live in two files.
+- Final: minor (deferred): the queue-full message says "operations" where the UI says "changes".
+- Final: minor (deferred): sync logs use console.log, not the app logger.
+- Final: minor (deferred): the e2e test sleeps 500 ms where it could wait on an event.
+
+### 等待伙伴
+
+1. 对 22 项裁定作出验收决定，尤其是字段级合并、5,000 条队列上限、离线附件不排队同步这三项。
+2. 在 board-ui 验收页分别裁决同步状态点、重连提示、附件占位图三个组。
+3. 提供第二台 iPhone，完成两台真实手机之间的同步验证。
+4. 决定包体积失败的处理方向：继续优化至 500 KB，或另行明确批准预算调整；当前没有任何豁免。
+
+### 落地状态与限制
+
+当前分支 feat/offline-sync；任务记录范围 a1b2c3d..f9e8d7c，共 23 个任务提交，最终审查修复另见现有报告和 git 历史。
+
+main 有两个当前分支未包含的无关提交。本次未 rebase、未合并、未推送、未创建 PR。当前验证不能证明与这两个提交集成后的状态；落地时需要验证实际集成结果。
+
+当前不得标记整体完成。验收与测试门槛关闭后，由伙伴选择 squash 到 main、rebase 到 main、推送并创建 PR，或保留分支。
+
+本补充已完整保留 22 项裁定和 6 项延期小问题。临时 SDD 工作区可在核对报告保存结果后删除；人工验收状态继续保留在报告中。
+```
+
+精确调用如下；`supplement` 的值是上面代码块的全文，末尾含一个换行，不省略任何内容：
+
+```javascript
+text(await tools.exec_command({
+  cmd: "python3 - <<'PY'\nfrom pathlib import Path\nimport xml.etree.ElementTree as ET\n\nreport = Path('.ryugi/artifacts/verify/offline-sync/report.xml')\nledger = Path('.ryugi/sdd/2026-11-12-offline-sync-design/progress.md')\nlines = ledger.read_text().splitlines()\nrulings = [line for line in lines if 'Ruling:' in line]\nminors = [line for line in lines if 'minor (deferred)' in line]\nassert len(rulings) == 22\nassert len(minors) == 6\n\ntree = ET.parse(report)\nroot = tree.getroot()\nassert root.find(\"section[@id='finish-audit']\") is None\n\nintro = '''## 收尾记录\n\n状态：未完成。全部 18 个实现任务已完成；最终审查的 1 个 Critical 和 2 个 Important 已在同一轮修复中完成 RED→GREEN 验证。以下验收项仍未关闭。\n\n### 本次命令证据\n\n| 命令 | 结果 |\n| --- | --- |\n| pnpm test | 退出码 1；412 passed，1 failed，413 total；bundle-size 为 512 KB，预算 500 KB |\n| pnpm typecheck | 退出码 0 |\n| pnpm build | 退出码 0；包体积 512 KB |\n\nmain 的 509 KB 是此前记录，本次未重新测量。此前记录显示本分支增加 3 KB；既有超限不构成本分支通过预算检查的证据。\n\n项目 check-app 已在最终代码上执行：两个浏览器 context 中的离线编辑、重连和合并均通过。这是已有验证记录，本次收尾未重跑。\n\n现有 9 条 agent claims、真实双手机同步 gap，以及 board-ui 的三个人工验收组保持原状态。报告原有 check 干净的记录不表示测试套件通过，也不替代人工验收。\n\n### 全部裁定：22 项\n\n| 裁定 | 原因 | 判断错误的代价 |\n| --- | --- | --- |\n'''\nrows = []\nfor line in rulings:\n    decision, tail = line.split('Ruling: ', 1)\n    body, cost = tail.rsplit(' — cost if wrong: ', 1)\n    if ' — ' in body:\n        ruling, reason = body.split(' — ', 1)\n    else:\n        ruling, reason = body, 'ledger 未另述'\n    def cell(value):\n        return value.replace('`', '').replace('|', '\\\\|').rstrip('.')\n    rows.append('| ' + ' | '.join([cell(decision + ruling), cell(reason), cell(cost)]) + ' |')\n\nmiddle = '''\n\n上表记录既有裁定，不表示这些理由已全部独立核实，也不表示伙伴已经接受规格偏离。尤其 Safari 容量的概括性理由不能替代平台存储限制的核实。\n\n### 全部延期小问题：6 项\n\n'''\nending = '''\n\n### 等待伙伴\n\n1. 对 22 项裁定作出验收决定，尤其是字段级合并、5,000 条队列上限、离线附件不排队同步这三项。\n2. 在 board-ui 验收页分别裁决同步状态点、重连提示、附件占位图三个组。\n3. 提供第二台 iPhone，完成两台真实手机之间的同步验证。\n4. 决定包体积失败的处理方向：继续优化至 500 KB，或另行明确批准预算调整；当前没有任何豁免。\n\n### 落地状态与限制\n\n当前分支 feat/offline-sync；任务记录范围 a1b2c3d..f9e8d7c，共 23 个任务提交，最终审查修复另见现有报告和 git 历史。\n\nmain 有两个当前分支未包含的无关提交。本次未 rebase、未合并、未推送、未创建 PR。当前验证不能证明与这两个提交集成后的状态；落地时需要验证实际集成结果。\n\n当前不得标记整体完成。验收与测试门槛关闭后，由伙伴选择 squash 到 main、rebase 到 main、推送并创建 PR，或保留分支。\n\n本补充已完整保留 22 项裁定和 6 项延期小问题。临时 SDD 工作区可在核对报告保存结果后删除；人工验收状态继续保留在报告中。\n'''\nsupplement = intro + '\\n'.join(rows) + middle + '\\n'.join('- ' + line for line in minors) + ending\nsection = ET.SubElement(root, 'section', {'id': 'finish-audit'})\nET.SubElement(section, 'markdown').text = supplement\nET.indent(tree, space='  ')\ntree.write(report, encoding='utf-8', xml_declaration=True)\nprint(supplement)\nPY",
+  workdir: "/Users/p/git/board-app/.worktrees/offline-sync",
+  max_output_tokens: 20000
+}));
+```
+
+假定退出码为 `0`，完整打印上述补充内容；核对 22 项裁定与 6 项延期项均已保留。其余 XML 内容只发生格式化，既有验收状态未改变。
+
+**6. 工具调用：读回持久化结果并核对完整性。**
+
+```javascript
+text(await tools.exec_command({
+  cmd: "python3 - <<'PY'\nfrom pathlib import Path\nimport xml.etree.ElementTree as ET\n\nreport = Path('.ryugi/artifacts/verify/offline-sync/report.xml')\nledger = Path('.ryugi/sdd/2026-11-12-offline-sync-design/progress.md')\nroot = ET.parse(report).getroot()\ntext = root.find(\"section[@id='finish-audit']/markdown\").text\nlines = ledger.read_text().splitlines()\nrulings = [line for line in lines if 'Ruling:' in line]\nminors = [line for line in lines if 'minor (deferred)' in line]\nassert len(rulings) == 22\nassert len(minors) == 6\nfor line in rulings:\n    prefix, body = line.split('Ruling: ', 1)\n    body, cost = body.rsplit(' — cost if wrong: ', 1)\n    parts = body.split(' — ', 1)\n    for part in [prefix + parts[0], *parts[1:], cost]:\n        assert part.replace('`', '').replace('|', '\\\\|').rstrip('.') in text\nfor line in minors:\n    assert line in text\nfor required in ['状态：未完成', '412 passed', '512 KB', '第二台 iPhone', '三个组', '两个当前分支未包含']:\n    assert required in text\nprint('XML parse: OK')\nprint('Rulings preserved: 22/22')\nprint('Deferred minors preserved: 6/6')\nprint('Failure and pending-verdict records: present')\nPY",
+  workdir: "/Users/p/git/board-app/.worktrees/offline-sync",
+  max_output_tokens: 4000
+}));
+```
+
+假定完整输出：
+
+```text
+XML parse: OK
+Rulings preserved: 22/22
+Deferred minors preserved: 6/6
+Failure and pending-verdict records: present
+```
+
+这只证明本地 XML 和内容核对，不声称重新运行了报告专用 `check`，也不声称远端分享页面已经更新。
+
+**7. 工具调用：仅删除本规格的临时工作区，然后核对剩余状态。**
+
+```javascript
+text(await tools.exec_command({
+  cmd: "python3 - <<'PY'\nfrom pathlib import Path\nimport shutil\nimport xml.etree.ElementTree as ET\n\nrepo = Path.cwd().resolve()\nworkspace = repo / '.ryugi/sdd/2026-11-12-offline-sync-design'\nreport = repo / '.ryugi/artifacts/verify/offline-sync/report.xml'\nassert not workspace.is_symlink()\nassert workspace.resolve() == workspace\nassert workspace.parent == repo / '.ryugi/sdd'\nroot = ET.parse(report).getroot()\nassert root.find(\"section[@id='finish-audit']/markdown\") is not None\nshutil.rmtree(workspace)\nassert not workspace.exists()\nassert report.is_file()\nprint('Removed only: .ryugi/sdd/2026-11-12-offline-sync-design/')\nprint('Retained: .ryugi/artifacts/verify/offline-sync/report.xml')\nPY",
+  workdir: "/Users/p/git/board-app/.worktrees/offline-sync",
+  max_output_tokens: 4000
+}));
+```
+
+假定退出码 `0`，输出与两个 `print` 完全一致。
+
+```javascript
+text(await tools.exec_command({
+  cmd: "git status --short; git branch --show-current",
+  workdir: "/Users/p/git/board-app/.worktrees/offline-sync",
+  max_output_tokens: 4000
+}));
+```
+
+假定报告目录为 git-ignored，输出只有：
+
+```text
+feat/offline-sync
+```
+
+不提交、不推送、不创建 PR。未选择落地方式，不读取 `landing.md`。
+
+**8. 发给伙伴的最终消息：**
+
+> 未完成，等待你的验收与包体积处理决定。
+>
+> 1. 确认[本地报告](/Users/p/git/board-app/.worktrees/offline-sync/.ryugi/artifacts/verify/offline-sync/report.xml)的 22 项裁定；其中字段级合并、5,000 条队列上限、离线附件不排队同步需要明确接受。
+> 2. 在[验收页](https://ryugi.innei.dev/a/Rk3vQ0)分别裁决同步状态点、重连提示、附件占位图三个组。
+> 3. 提供第二台 iPhone，完成真实双手机同步验证。
+> 4. 决定继续优化至 500 KB，或批准调整预算。本次 `pnpm test` 为 412 通过、1 失败：512 KB 超过 500 KB。
+>
+> 分支尚未包含 `main` 的两个新提交；集成后需重新验证。本地报告补充尚未确认同步到分享页。
+>
+> 以上门槛关闭后，落地方式由你选择：
+>
+> 5. Squash 到 `main`（默认）。
+> 6. Rebase 到 `main`。
+> 7. 推送并创建 PR。
+> 8. 保留当前分支。
+
+SUMMARY: 已模拟重新检查、完整保存 22 项裁定和 6 项延期项并清理本规格临时工作区；整体未完成，等待伙伴验收、第二台 iPhone 和包体积处理决定，之后再选择落地方式。

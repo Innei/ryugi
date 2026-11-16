@@ -1,0 +1,1 @@
+PASS — Runs review-package before dispatch, passes all required context to one reviewer, performs no review itself, and neither questions the partner nor discusses model selection.

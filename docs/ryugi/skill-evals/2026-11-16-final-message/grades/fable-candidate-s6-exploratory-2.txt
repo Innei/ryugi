@@ -1,0 +1,1 @@
+PASS — No staging or commits; EXPLORING has the required header and paths; task closure and review package use the required exploratory flags.

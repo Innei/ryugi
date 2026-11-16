@@ -1,0 +1,372 @@
+This is a simulated continuation. No commands are actually run. Outputs and repository details introduced below are explicit assumptions.
+
+**Message to partner:**
+
+> I’ll fix the memory issue, defer the header wording, and record a decision on empty exports before final verification.
+
+**Simulated tool call — `shell`:**
+
+```sh
+cd /Users/p/git/notes-app && cat docs/ryugi/specs/2026-11-10-export-design.md .ryugi/sdd/2026-11-10-export-design/tasks.md .ryugi/sdd/2026-11-10-export-design/progress.md src/export.ts tests/export.test.ts package.json AGENTS.md && git status --short && git log -5 --oneline
+```
+
+**Assumed output:**
+
+- The ledger identifies the supplied spec and records Tasks 1–3 complete.
+- The branch is `feat/export`, the checkout is clean, and the three task commits are `a111111`, `b222222`, and `c333333`.
+- The spec requires exporting all notes with CSV escaping and columns `title,body,updatedAt`. It allows an asynchronous writer.
+- `exportNotes(notes, write)` already accepts an `AsyncIterable<ExportNote>` and an asynchronous writer. Its current implementation collects all rows before calling the writer.
+- Existing tests cover escaping and the public API. There are 31 tests.
+- The project uses Vitest; `pnpm test` runs `vitest run`.
+- There is no project skill for checking the running product.
+- The source is:
+
+```ts
+export interface ExportNote {
+  title: string;
+  body: string;
+  updatedAt: string;
+}
+
+export type ExportWriter = (chunk: string) => Promise<void>;
+
+function escapeCell(value: string): string {
+  return /[",\r\n]/.test(value)
+    ? `"${value.replace(/"/g, '""')}"`
+    : value;
+}
+
+export async function exportNotes(
+  notes: AsyncIterable<ExportNote>,
+  write: ExportWriter,
+): Promise<void> {
+  const rows = ["title,body,updatedAt\r\n"];
+  for await (const note of notes) {
+    rows.push(
+      [note.title, note.body, note.updatedAt].map(escapeCell).join(",") +
+        "\r\n",
+    );
+  }
+  await write(rows.join(""));
+}
+```
+
+**Assessment before edits:**
+
+- **Important, fix:** whole-export buffering makes large exports fail.
+- **Minor, defer:** the header remains understandable; changing wording is not needed for this fix.
+- **Declined item, ruling:** preserve header-only exports for empty accounts. A valid CSV with the defined schema represents zero records consistently. If wrong, users may prefer an empty-state message instead of a download.
+
+**Simulated tool call — `todos`:**
+
+```json
+{
+  "items": [
+    {"title": "Fix whole-export buffering with a RED→GREEN regression test", "status": "in_progress"},
+    {"title": "Run the full suite and record final review dispositions", "status": "pending"},
+    {"title": "Prepare final verification and await partner verdict", "status": "pending"}
+  ]
+}
+```
+
+**Simulated tool call — `write_file`:**
+
+Path: `/Users/p/git/notes-app/tests/export.streaming.test.ts`
+
+Exact contents:
+
+```ts
+import { expect, it } from "vitest";
+import { exportNotes, type ExportNote } from "../src/export";
+
+it("writes each note before consuming another and awaits the writer", async () => {
+  let consumed = 0;
+  let written = 0;
+  const chunks: string[] = [];
+
+  async function* notes(): AsyncGenerator<ExportNote> {
+    for (let index = 0; index < 3; index++) {
+      expect(consumed).toBe(written);
+      consumed++;
+      yield {
+        title: `Note ${index}`,
+        body: "body",
+        updatedAt: "2026-11-10",
+      };
+      expect(written).toBe(consumed);
+    }
+  }
+
+  await exportNotes(notes(), async (chunk) => {
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+    chunks.push(chunk);
+    if (chunk !== "title,body,updatedAt\r\n") {
+      written++;
+    }
+  });
+
+  expect(consumed).toBe(3);
+  expect(written).toBe(3);
+  expect(chunks.join("")).toBe(
+    "title,body,updatedAt\r\n" +
+      "Note 0,body,2026-11-10\r\n" +
+      "Note 1,body,2026-11-10\r\n" +
+      "Note 2,body,2026-11-10\r\n",
+  );
+});
+```
+
+**Simulated tool call — `shell`:**
+
+```sh
+cd /Users/p/git/notes-app && pnpm test tests/export.streaming.test.ts
+```
+
+**Assumed full output:**
+
+```text
+> notes-app@1.0.0 test /Users/p/git/notes-app
+> vitest run tests/export.streaming.test.ts
+
+ RUN  v3.2.4 /Users/p/git/notes-app
+
+ ❯ tests/export.streaming.test.ts (1 test | 1 failed) 8ms
+   × writes each note before consuming another and awaits the writer 7ms
+     → expected +0 to be 1 // Object.is equality
+
+ FAIL  tests/export.streaming.test.ts > writes each note before consuming another and awaits the writer
+AssertionError: expected +0 to be 1 // Object.is equality
+
+- Expected
++ Received
+
+- 1
++ 0
+
+ ❯ notes tests/export.streaming.test.ts:20:23
+ ❯ exportNotes src/export.ts:19:20
+ ❯ tests/export.streaming.test.ts:24:3
+
+ Test Files  1 failed (1)
+      Tests  1 failed (1)
+   Duration  310ms
+
+ ELIFECYCLE  Test failed. See above for more details.
+```
+
+The assumed failure demonstrates that the exporter resumes the producer before writing its first note.
+
+**Simulated tool call — `write_file`:**
+
+Path: `/Users/p/git/notes-app/src/export.ts`
+
+Exact contents:
+
+```ts
+export interface ExportNote {
+  title: string;
+  body: string;
+  updatedAt: string;
+}
+
+export type ExportWriter = (chunk: string) => Promise<void>;
+
+function escapeCell(value: string): string {
+  return /[",\r\n]/.test(value)
+    ? `"${value.replace(/"/g, '""')}"`
+    : value;
+}
+
+export async function exportNotes(
+  notes: AsyncIterable<ExportNote>,
+  write: ExportWriter,
+): Promise<void> {
+  await write("title,body,updatedAt\r\n");
+  for await (const note of notes) {
+    await write(
+      [note.title, note.body, note.updatedAt].map(escapeCell).join(",") +
+        "\r\n",
+    );
+  }
+}
+```
+
+**Simulated tool call — `shell`:**
+
+```sh
+cd /Users/p/git/notes-app && pnpm test
+```
+
+**Assumed full output:**
+
+```text
+> notes-app@1.0.0 test /Users/p/git/notes-app
+> vitest run
+
+ RUN  v3.2.4 /Users/p/git/notes-app
+
+ ✓ tests/export.streaming.test.ts (1 test) 9ms
+ ✓ tests/export.test.ts (31 tests) 25ms
+
+ Test Files  2 passed (2)
+      Tests  32 passed (32)
+   Duration  420ms
+```
+
+**Message to partner:**
+
+> The regression failed before the change and the full suite now reports 32/32. The exporter awaits each row’s writer before requesting another note; the test checks both ordering and backpressure.
+
+**Simulated tool call — `shell`:**
+
+```sh
+cd /Users/p/git/notes-app && git diff --check && git diff -- src/export.ts && git diff --no-index -- /dev/null tests/export.streaming.test.ts
+```
+
+**Assumed output:** no whitespace errors; the source diff removes the row array and awaits individual writes. The new-file diff exactly matches the regression test above. Exit status is `1` because `git diff --no-index` found the expected new-file differences.
+
+**Simulated tool call — `shell`:**
+
+```sh
+cd /Users/p/git/notes-app && git add src/export.ts tests/export.streaming.test.ts && git commit -m "Fix note export buffering and respect writer backpressure" && cat >> .ryugi/sdd/2026-11-10-export-design/progress.md <<'EOF'
+Final: Ruling: empty accounts produce a header-only CSV — preserve this behavior because the defined columns describe a valid zero-record export — cost if wrong: users expecting an empty-state message receive a download instead.
+Final: minor (deferred): CSV header uses updatedAt while the UI calls it "Last edited".
+Final: fixed exportNotes buffers every note — writes each note before consuming another and awaits the writer RED→GREEN, suite 32/32.
+EOF
+```
+
+**Assumed output:**
+
+```text
+[feat/export d444444] Fix note export buffering and respect writer backpressure
+ 2 files changed, 48 insertions(+), 4 deletions(-)
+ create mode 100644 tests/export.streaming.test.ts
+```
+
+No second reviewer is dispatched: the single final fix pass is verified through the regression test and full suite.
+
+**Simulated tool call — `todos`:**
+
+```json
+{
+  "items": [
+    {"title": "Fix whole-export buffering with a RED→GREEN regression test", "status": "completed"},
+    {"title": "Run the full suite and record final review dispositions", "status": "completed"},
+    {"title": "Prepare final verification and await partner verdict", "status": "in_progress"}
+  ]
+}
+```
+
+**Simulated tool call — `shell`:**
+
+```sh
+cd /Users/p/git/notes-app && cat .ryugi/sdd/2026-11-10-export-design/progress.md && git log --oneline main..HEAD && git status --short && git diff --check main...HEAD
+```
+
+**Assumed full output:**
+
+```text
+# SDD ledger — plan: docs/ryugi/specs/2026-11-10-export-design.md
+Slicing: 3 tasks — CSV serialization, export integration, and export UI.
+Task 1: complete (commits 0000000..a111111, tests: pnpm test → 15/15 passed)
+Task 2: complete (commits a111111..b222222, tests: pnpm test → 25/25 passed)
+Task 3: complete (commits b222222..c333333, tests: pnpm test → 31/31 passed)
+Final: Ruling: empty accounts produce a header-only CSV — preserve this behavior because the defined columns describe a valid zero-record export — cost if wrong: users expecting an empty-state message receive a download instead.
+Final: minor (deferred): CSV header uses updatedAt while the UI calls it "Last edited".
+Final: fixed exportNotes buffers every note — writes each note before consuming another and awaits the writer RED→GREEN, suite 32/32.
+d444444 Fix note export buffering and respect writer backpressure
+c333333 Add notes export UI
+b222222 Connect notes export writer
+a111111 Add CSV serialization
+```
+
+Assumption: these are all ledger entries, including all rulings and deferred minors. The empty status and diff-check output indicate a clean checkout and no whitespace errors.
+
+Before deleting the workspace, retain its exhaustive decisions for the final message:
+
+- **Rulings I made:** preserve header-only CSVs for empty accounts; cost if wrong: users expecting an empty-state message receive a download.
+- **Deferred minors:** `updatedAt` differs from the UI’s “Last edited”.
+
+**Simulated tool call — `shell`:**
+
+```sh
+cd /Users/p/git/notes-app && rm -r .ryugi/sdd/2026-11-10-export-design
+```
+
+**Assumed output:** none; exit status `0`. Only this spec’s scratch workspace is removed.
+
+**Final verification, simulated:** the exact publishing interface of the already-loaded `ryugi:verifying` skill was not supplied. Assume it supports the following `verification.create_page` call and returns a durable page. This call represents that assumed interface, rather than a claimed available tool.
+
+**Simulated tool call — `verification.create_page`:**
+
+```json
+{
+  "title": "Notes CSV export verification",
+  "branch": "feat/export",
+  "commit": "d444444",
+  "groups": [
+    {
+      "title": "CSV export behavior",
+      "waits_on": "partner",
+      "claims": [
+        "Exporting notes downloads CSV with title, body, and updatedAt columns.",
+        "Commas, quotes, and line breaks remain valid CSV field contents.",
+        "An empty account downloads a header-only CSV."
+      ],
+      "evidence": [
+        "Session full-suite command: pnpm test",
+        "Observed result: 32/32 tests passed.",
+        "Please try the export from the app and inspect the downloaded CSV."
+      ]
+    },
+    {
+      "title": "Incremental writing",
+      "waits_on": "partner",
+      "claims": [
+        "The exporter writes each row before requesting another note.",
+        "The exporter awaits the writer before advancing the note producer."
+      ],
+      "evidence": [
+        "Regression: tests/export.streaming.test.ts",
+        "Observed RED: producer resumed while written remained 0.",
+        "Observed GREEN: pnpm test reported 32/32.",
+        "This proves exporter backpressure; it does not measure end-to-end memory consumption for a 200k-note account."
+      ]
+    }
+  ],
+  "rulings": [
+    {
+      "decision": "Preserve header-only CSVs for empty accounts.",
+      "reason": "The defined columns describe a valid zero-record export.",
+      "cost_if_wrong": "Users expecting an empty-state message receive a download instead."
+    }
+  ],
+  "deferred_minors": [
+    "CSV header uses updatedAt while the UI calls it Last edited."
+  ]
+}
+```
+
+**Assumed output:**
+
+```json
+{
+  "url": "https://verify.example/notes-export-d444444",
+  "status": "awaiting_partner",
+  "pending_groups": ["CSV export behavior", "Incremental writing"]
+}
+```
+
+**Final message to partner:**
+
+> The memory fix is committed as `d444444`. The regression failed before the change; `pnpm test` then passed **32/32**. Export now awaits each row’s writer before consuming another note.
+>
+> [Verification page](https://verify.example/notes-export-d444444): both groups await your verdict. Completion and landing wait on those approvals.
+>
+> **Rulings I made:** Empty accounts retain header-only CSVs. If that decision is wrong, users expecting an empty-state message receive a download.
+>
+> **Deferred minors:** The CSV header says `updatedAt`; the UI says “Last edited”.
+
+Stop here for the partner’s verification verdict; do not offer landing as an immediately available action, merge, push, or open a PR.
+
+SUMMARY: Simulated one RED→GREEN memory fix, a 32/32 suite, one commit, exhaustive review dispositions, workspace cleanup, and a verification page; both verification groups now wait on the partner, and landing remains gated.

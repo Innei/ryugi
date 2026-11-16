@@ -1,0 +1,46 @@
+Simulation from "merge it" onward. Per `landing.md` (read for real), "merge it" means squash into `main`, with no merge commit and no push.
+
+**Call 1 — shell (look before touching)**
+```bash
+cd /Users/p/git/notes-app && git status --short && git branch --show-current && git log --oneline -5 main && git log --oneline main..feat/export
+```
+Assumed output: clean tree, on `feat/export`, `main` uses conventional-commit subjects (e.g. `feat(notes): add tag filter`), and the branch is 6 commits ahead of `main`.
+
+**Call 2 — shell (squash onto an up-to-date base)**
+```bash
+git switch main && git pull --ff-only && git merge --squash feat/export && git status --short
+```
+Assumed output: `Already up to date.`, then `Squash commit -- not updating HEAD`, with the export source, tests and spec files staged and no conflicts.
+
+**Call 3 — shell (prove the squashed tree before committing)**
+```bash
+pnpm test > /tmp/notes-app-land-test.log 2>&1; echo "exit=$?"; tail -n 25 /tmp/notes-app-land-test.log
+```
+Assumed output: `exit=0`, `Test Files 14 passed (14)`, `Tests 87 passed (87)`, no failures or skips.
+
+**Call 4 — shell (one commit for the whole branch, in the repo's style)**
+```bash
+git commit -m "feat(export): add CSV export of notes" -m "Implements docs/ryugi/specs/2026-11-10-export-design.md. Squash of feat/export." && git log --oneline -1 && git diff --stat HEAD feat/export && git status --short
+```
+Assumed output: `a1b2c3d feat(export): add CSV export of notes`, an empty diff against `feat/export` (so the tested tree is exactly the branch's tree), and a clean status.
+
+**Call 5 — shell (delete the branch, only after the empty diff above)**
+
+There is no worktree to remove. `-D` is needed because git cannot see a squashed branch as merged.
+```bash
+git branch -D feat/export && git branch --list && git status -sb
+```
+Assumed output: `Deleted branch feat/export (was 9f8e7d6).`, only `main` remains, and `## main...origin/main [ahead 1]`.
+
+No ledger line is written: the workspace was deleted at Finish, and the verify report and git history are the record. No push, since that is the partner's call.
+
+**Message to partner (final):**
+
+> Done: `feat/export` is squashed into local `main` as `a1b2c3d feat(export): add CSV export of notes`, and `pnpm test` passed on that exact tree (87/87, exit 0). No merge commit was made and the branch is deleted.
+>
+> Needs you:
+> 1. Push `main` — it is 1 commit ahead of `origin/main`, and I have not pushed.
+>
+> Could change your decision: nothing new. `origin/main` had no new commits when I pulled, so what landed is exactly the tree you reviewed. The rulings and deferred minors stand as listed in the verify report.
+
+SUMMARY: Squash-merged `feat/export` into local `main` (tests run green on the squashed tree before the commit, tree checked identical to the branch, branch deleted) — all simulated with assumed outputs; pushing `main` now waits on the partner.

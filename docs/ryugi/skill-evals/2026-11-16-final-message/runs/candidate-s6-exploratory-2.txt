@@ -1,0 +1,405 @@
+The following is a simulation. Only `skill/exploring.md` was actually read. All other calls and outputs below are hypothetical; assumed outputs are identified.
+
+1. **Tool call — read the spec and inspect the checkout**
+
+```json
+{
+  "cmd": "cd /Users/p/git/notes-app && git status --short && git branch --show-current && git rev-parse HEAD && cat docs/ryugi/specs/2026-11-10-export-design.md && cat package.json && rg --files src && cat scripts/task-start scripts/task-done scripts/review-package",
+  "max_output_tokens": 20000
+}
+```
+
+**Assumed output:** Clean checkout on `main`, HEAD `8f3c2a19d604bf7ae91328c5a72de9064bfa018c`. Neither export file exists. The project uses Vitest. The spec requires a pure `exportNotesCsv(notes)` function accepting notes with `title`, `content`, and `createdAt` strings; header `title,content,createdAt`; CRLF record separators; standard CSV escaping; preserved Unicode, embedded newlines, and input order; no trailing record separator. Empty input returns only the header. The scripts support the exploratory flags documented in `exploring.md`. There are no pre-existing changes to preserve.
+
+2. **Tool call — write the task list, ledger, and exploratory manifest**
+
+```text
+apply_patch
+*** Begin Patch
+*** Add File: /Users/p/git/notes-app/.ryugi/sdd/2026-11-10-export-design/tasks.md
++## Task 1: Export notes as CSV
++
++**Goal:** Implement the CSV serialization behavior in docs/ryugi/specs/2026-11-10-export-design.md.
++
++**Files:**
++- src/export.ts
++- src/export.test.ts
++
++**Interfaces:**
++Produces: exportNotesCsv(notes: readonly { title: string; content: string; createdAt: string }[]): string
++Consumes: none.
++
++**Failing test:** src/export.test.ts asserts the header for empty input, record order and CRLF separators, comma escaping, quote escaping, embedded CR/LF handling, Unicode preservation, and immutable input support. Initially it fails because src/export.ts does not exist.
++
++**Verify:** pnpm test
++Expected: exit 0; all existing tests and the seven export tests pass.
++
++## Review Focus
++
++- CSV consumers interpret embedded CR/LF and doubled quotes correctly.
++- The implementation matches every requirement in the spec, including header names and trailing-record behavior.
++- The public function fits the repository's conventions without adding an unrequested UI or download flow.
++- The exploratory review package includes both newly created files and excludes unrelated work.
+*** Add File: /Users/p/git/notes-app/.ryugi/sdd/2026-11-10-export-design/progress.md
++# SDD ledger — plan: docs/ryugi/specs/2026-11-10-export-design.md
++
++Slicing: 1 task — implement and test the complete pure CSV serializer.
++Exploratory: work in place on main; leave changes uncommitted until the partner chooses to keep them.
+*** Add File: /Users/p/git/notes-app/.ryugi/sdd/2026-11-10-export-design/EXPLORING
++Exploratory: may be thrown away.
++src/export.ts
++src/export.test.ts
+*** End Patch
+```
+
+**Assumed output:** All three files created successfully.
+
+3. **Tool call — create the live todo**
+
+```json
+{
+  "plan": [
+    {
+      "step": "Implement and verify CSV export; close the exploratory task",
+      "status": "pending"
+    },
+    {
+      "step": "Produce the exploratory review package",
+      "status": "pending"
+    }
+  ]
+}
+```
+
+**Assumed output:** Plan recorded.
+
+4. **Tool call — start Task 1**
+
+```json
+{
+  "cmd": "cd /Users/p/git/notes-app && bash scripts/task-start docs/ryugi/specs/2026-11-10-export-design.md 1",
+  "max_output_tokens": 4000
+}
+```
+
+**Assumed output:**
+
+```text
+Brief: /Users/p/git/notes-app/.ryugi/sdd/2026-11-10-export-design/task-1-brief.md
+BASE: 8f3c2a19d604bf7ae91328c5a72de9064bfa018c
+```
+
+5. **Tool call — read the brief**
+
+```json
+{
+  "cmd": "cat /Users/p/git/notes-app/.ryugi/sdd/2026-11-10-export-design/task-1-brief.md",
+  "max_output_tokens": 6000
+}
+```
+
+**Assumed output:** The brief reproduces Task 1’s goal, files, interfaces, failing test, and `pnpm test` verification command exactly as written above.
+
+6. **Tool call — mark Task 1 active**
+
+```json
+{
+  "plan": [
+    {
+      "step": "Implement and verify CSV export; close the exploratory task",
+      "status": "in_progress"
+    },
+    {
+      "step": "Produce the exploratory review package",
+      "status": "pending"
+    }
+  ]
+}
+```
+
+**Assumed output:** Plan updated.
+
+7. **Tool call — write the failing tests**
+
+```text
+apply_patch
+*** Begin Patch
+*** Add File: /Users/p/git/notes-app/src/export.test.ts
++import { describe, expect, it } from 'vitest';
++import { exportNotesCsv } from './export';
++
++describe('exportNotesCsv', () => {
++  it('returns the header for empty input', () => {
++    expect(exportNotesCsv([])).toBe('title,content,createdAt');
++  });
++
++  it('preserves record order and uses CRLF without a trailing separator', () => {
++    expect(exportNotesCsv([
++      { title: 'First', content: 'One', createdAt: '2026-11-10' },
++      { title: 'Second', content: 'Two', createdAt: '2026-11-11' },
++    ])).toBe(
++      'title,content,createdAt\r\nFirst,One,2026-11-10\r\nSecond,Two,2026-11-11',
++    );
++  });
++
++  it('quotes fields containing commas', () => {
++    expect(exportNotesCsv([
++      { title: 'Hello, world', content: 'Body', createdAt: 'date' },
++    ])).toBe('title,content,createdAt\r\n"Hello, world",Body,date');
++  });
++
++  it('doubles embedded quotes', () => {
++    expect(exportNotesCsv([
++      { title: 'A "quote"', content: 'Body', createdAt: 'date' },
++    ])).toBe('title,content,createdAt\r\n"A ""quote""",Body,date');
++  });
++
++  it('quotes and preserves embedded CR and LF characters', () => {
++    expect(exportNotesCsv([
++      { title: 'A\rB', content: 'C\nD\r\nE', createdAt: 'date' },
++    ])).toBe('title,content,createdAt\r\n"A\rB","C\nD\r\nE",date');
++  });
++
++  it('preserves Unicode and empty fields', () => {
++    expect(exportNotesCsv([
++      { title: '笔记 📝', content: '', createdAt: 'date' },
++    ])).toBe('title,content,createdAt\r\n笔记 📝,,date');
++  });
++
++  it('accepts frozen input without mutation', () => {
++    const note = Object.freeze({
++      title: 'Title',
++      content: 'Body',
++      createdAt: 'date',
++    });
++    const notes = Object.freeze([note]);
++    expect(exportNotesCsv(notes)).toBe(
++      'title,content,createdAt\r\nTitle,Body,date',
++    );
++    expect(notes).toEqual([note]);
++  });
++});
+*** End Patch
+```
+
+**Assumed output:** Test file created successfully.
+
+8. **Tool call — observe RED**
+
+```json
+{
+  "cmd": "cd /Users/p/git/notes-app && pnpm test -- src/export.test.ts",
+  "max_output_tokens": 12000
+}
+```
+
+**Assumed full output:**
+
+```text
+> notes-app@1.0.0 test
+> vitest run src/export.test.ts
+
+ RUN  v3.2.4 /Users/p/git/notes-app
+
+ FAIL  src/export.test.ts
+Error: Failed to resolve import "./export" from "src/export.test.ts". Does the file exist?
+
+ Test Files  1 failed (1)
+      Tests  no tests
+   Duration  302ms
+
+ ELIFECYCLE  Test failed. See above for more details.
+```
+
+**Assumed exit:** `1`. This is the expected RED: the tested implementation module is absent.
+
+**Message to partner:**
+
+> The export tests fail because the implementation is missing; I’ll add the serializer and leave the changes uncommitted.
+
+9. **Tool call — implement the serializer**
+
+```text
+apply_patch
+*** Begin Patch
+*** Add File: /Users/p/git/notes-app/src/export.ts
++type ExportNote = {
++  title: string;
++  content: string;
++  createdAt: string;
++};
++
++function escapeCsvField(value: string): string {
++  return /[",\r\n]/.test(value)
++    ? `"${value.replace(/"/g, '""')}"`
++    : value;
++}
++
++export function exportNotesCsv(notes: readonly ExportNote[]): string {
++  return [
++    'title,content,createdAt',
++    ...notes.map((note) =>
++      [note.title, note.content, note.createdAt]
++        .map(escapeCsvField)
++        .join(','),
++    ),
++  ].join('\r\n');
++}
+*** End Patch
+```
+
+**Assumed output:** Implementation file created successfully.
+
+10. **Tool call — verify the whole task**
+
+```json
+{
+  "cmd": "cd /Users/p/git/notes-app && pnpm test",
+  "max_output_tokens": 12000
+}
+```
+
+**Assumed full output:**
+
+```text
+> notes-app@1.0.0 test
+> vitest run
+
+ RUN  v3.2.4 /Users/p/git/notes-app
+
+ ✓ src/notes.test.ts (8 tests) 5ms
+ ✓ src/export.test.ts (7 tests) 3ms
+
+ Test Files  2 passed (2)
+      Tests  15 passed (15)
+   Duration  418ms
+```
+
+**Assumed exit:** `0`. Compared against `Expected:`: all existing tests and all seven export tests pass.
+
+11. **Tool call — close Task 1 without committing**
+
+```json
+{
+  "cmd": "cd /Users/p/git/notes-app && bash scripts/task-done docs/ryugi/specs/2026-11-10-export-design.md 1 8f3c2a19d604bf7ae91328c5a72de9064bfa018c --uncommitted -- pnpm test",
+  "max_output_tokens": 12000
+}
+```
+
+**Assumed output:** The script runs `pnpm test`, saves its full output, prints the complete short test output shown in step 10 with `15 passed (15)`, and exits `0`.
+
+**Assumed exact completion line appended by the script:**
+
+```text
+Task 1: complete (uncommitted, base 8f3c2a1, tests: pnpm test → exit 0)
+```
+
+12. **Tool call — inspect the recorded evidence and working tree**
+
+```json
+{
+  "cmd": "cd /Users/p/git/notes-app && cat .ryugi/sdd/2026-11-10-export-design/progress.md && cat .ryugi/sdd/2026-11-10-export-design/EXPLORING && git status --short && git rev-parse HEAD",
+  "max_output_tokens": 6000
+}
+```
+
+**Assumed output:**
+
+```text
+# SDD ledger — plan: docs/ryugi/specs/2026-11-10-export-design.md
+
+Slicing: 1 task — implement and test the complete pure CSV serializer.
+Exploratory: work in place on main; leave changes uncommitted until the partner chooses to keep them.
+Task 1: complete (uncommitted, base 8f3c2a1, tests: pnpm test → exit 0)
+Exploratory: may be thrown away.
+src/export.ts
+src/export.test.ts
+?? src/export.test.ts
+?? src/export.ts
+8f3c2a19d604bf7ae91328c5a72de9064bfa018c
+```
+
+No deviations required a ruling. HEAD is unchanged; both implementation paths are listed in `EXPLORING`.
+
+13. **Tool call — update the todo**
+
+```json
+{
+  "plan": [
+    {
+      "step": "Implement and verify CSV export; close the exploratory task",
+      "status": "completed"
+    },
+    {
+      "step": "Produce the exploratory review package",
+      "status": "in_progress"
+    }
+  ]
+}
+```
+
+**Assumed output:** Plan updated.
+
+**Message to partner:**
+
+> Task 1 is closed: `task-done` reran `pnpm test` with 15/15 passing; I’ll package the uncommitted changes for review.
+
+14. **Tool call — produce the exploratory review package**
+
+```json
+{
+  "cmd": "cd /Users/p/git/notes-app && bash scripts/review-package docs/ryugi/specs/2026-11-10-export-design.md --exploring",
+  "max_output_tokens": 6000
+}
+```
+
+**Assumed output:**
+
+```text
+Review package: /Users/p/git/notes-app/.ryugi/sdd/2026-11-10-export-design/review-package.md
+Included exploratory paths:
+src/export.ts
+src/export.test.ts
+```
+
+The script generates the review artifact from the spec, task list, ledger, and both uncommitted files, including their full additions. No commit range is substituted for the exploratory changes.
+
+15. **Tool call — inspect the generated package**
+
+```json
+{
+  "cmd": "cat /Users/p/git/notes-app/.ryugi/sdd/2026-11-10-export-design/review-package.md",
+  "max_output_tokens": 20000
+}
+```
+
+**Assumed output:** The complete package identifies the correct spec and base, contains both file additions exactly as written above, includes the ledger and Review Focus, and includes no unrelated paths.
+
+16. **Tool call — complete the scoped todo**
+
+```json
+{
+  "plan": [
+    {
+      "step": "Implement and verify CSV export; close the exploratory task",
+      "status": "completed"
+    },
+    {
+      "step": "Produce the exploratory review package",
+      "status": "completed"
+    }
+  ]
+}
+```
+
+**Assumed output:** Plan updated.
+
+**Final message to partner at this requested boundary:**
+
+> Not done — final review remains; no action needed from you yet.
+>
+> [Task verification and ledger](/Users/p/git/notes-app/.ryugi/sdd/2026-11-10-export-design/progress.md) · [Review package](/Users/p/git/notes-app/.ryugi/sdd/2026-11-10-export-design/review-package.md)
+
+The simulation stops at the requested review-package boundary. The workspace and `EXPLORING` remain; no commit, cleanup, keep/discard request, or claim that the complete workflow is finished occurs.
+
+SUMMARY: Simulated one exploratory task through RED, GREEN, uncommitted closure, and review-package production; final review waits on the agent, and nothing waits on the partner yet.

@@ -1,0 +1,59 @@
+I read `./skill/landing.md` for real; everything below is simulated, with assumed outputs marked. "Merge it" means the squash path, so `main` gets no merge commit.
+
+**Call 1: check state before touching anything**
+
+```bash
+cd /Users/p/git/notes-app && git status --short --branch && git log --oneline -5 main && git log --oneline main..feat/export
+```
+
+Assumed output: `## feat/export`, a clean tree, `main` history in conventional-commit style (e.g. `feat(notes): add tag filter`), and the branch's task commits plus final-review fix commits ahead of `main`.
+
+**Call 2: switch to base and update**
+
+```bash
+git switch main && git pull --ff-only
+```
+
+Assumed output: `Switched to branch 'main'`, `Already up to date.`
+
+**Call 3: squash and commit with one message in the repo's style**
+
+```bash
+git merge --squash feat/export && git commit -m "feat(export): add CSV export of notes" -m "Implements docs/ryugi/specs/2026-11-10-export-design.md."
+```
+
+Assumed output: `Squash commit -- not updating HEAD`, then `[main 4c1e9ab] feat(export): add CSV export of notes`, with no conflicts.
+
+**Call 4: run the tests on `main` and confirm the squash matches the branch**
+
+```bash
+pnpm test > /tmp/notes-app-land-test.log 2>&1; echo "exit=$?"; tail -n 15 /tmp/notes-app-land-test.log; git diff --stat main feat/export; git status --short --branch
+```
+
+Assumed output: `exit=0`, a tail showing all test files passing (e.g. `Tests 142 passed (142)`), an empty `git diff --stat` (the `main` tree is identical to the `feat/export` tree), and `## main...origin/main [ahead 1]` with a clean tree.
+
+If the tests had failed here, I would stop, leave the branch in place, and report the failure.
+
+**Call 5: delete the branch**
+
+There is no worktree to remove. `-D` is needed because git cannot see a squashed branch as merged; the empty diff in call 4 shows nothing is lost.
+
+```bash
+git branch -D feat/export && git branch --list feat/export && git log --oneline -1
+```
+
+Assumed output: `Deleted branch feat/export (was 9d2f7e3).`, an empty list, and `4c1e9ab feat(export): add CSV export of notes`.
+
+There are no ledger writes: the workspace was already deleted at Finish, and I do not push.
+
+**Message to my partner:**
+
+> Done: `feat/export` is squashed into `main` as `4c1e9ab feat(export): add CSV export of notes`, and `pnpm test` on `main` passes after the squash (142/142, exit 0). The branch is deleted, and `main`'s tree was identical to the branch's before I deleted it.
+>
+> What needs you:
+>
+> 1. Push `main` — it is one commit ahead of `origin/main`, and I have not pushed.
+>
+> Nothing else could change that decision: `git pull --ff-only` reported `main` already up to date before the squash.
+
+SUMMARY: Squash-merged `feat/export` into `main` per `landing.md`, ran `pnpm test` on `main` (assumed green), confirmed the trees matched and deleted the branch; pushing `main` now waits on my partner.

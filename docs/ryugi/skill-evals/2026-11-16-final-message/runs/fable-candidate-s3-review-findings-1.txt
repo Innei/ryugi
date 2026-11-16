@@ -1,0 +1,174 @@
+Nothing below was actually run. I read `skill/code-reviewer.md`; `skill/scripts/task-done` and `skill/scripts/sdd-workspace` do not exist in this sandbox, so the script behaviour is taken from the skill text. Assumed outputs are marked **Assumed**.
+
+## 1. Sort the findings and read the code
+
+Re-graded by effect on the person using the software:
+
+- **Memory on large accounts:** stays Important, because a large account gets a crashed export. It enters the fix pass.
+- **`updatedAt` header:** stays Minor, because the column is still understandable. It is deferred and not fixed.
+- **Empty account:** this is mine to rule on.
+
+**Call 1 (shell):**
+```
+cd /Users/p/git/notes-app && W=.ryugi/sdd/2026-11-10-export-design && cat >> $W/progress.md <<'EOF'
+Final review: findings sorted — 1 Important (fix pass), 1 Minor, 1 declined-to-judge
+Final: Ruling: empty account exports a file with only the header row — a valid CSV that opens cleanly and reads as "no notes"; an error or a 0-byte file would look like a broken export, so this stands — cost if wrong: an empty-account user gets a near-empty download instead of a "nothing to export" message; one UI guard to change
+Final: minor (deferred): CSV header says `updatedAt`, UI calls the field "Last edited"
+EOF
+grep -n "Ruling:" $W/progress.md; sed -n 1,80p src/export.ts; grep -rn "exportNotes" src tests; grep -n "listNotes\|listAll" src/store.ts
+```
+
+**Assumed result:**
+- The ledger holds one earlier ruling: `Task 2: Ruling: spec silent on timestamp format — ISO 8601 UTC — cost if wrong: users in spreadsheets see UTC, not local time`.
+- `src/export.ts:40` is `const notes = await store.listAll(userId)`, and the function returns `Promise<string>`.
+- `src/routes/export.ts` does `res.type('text/csv').send(await exportNotes(userId, store))`.
+- The store already has a keyset-paginated `listNotes(userId, { after, limit })`.
+- Tests are vitest, in `tests/export.test.ts`.
+
+## 2. Fix pass (one pass, TDD)
+
+**Call 2 (write `tests/export.stream.test.ts`):**
+```ts
+import { describe, it, expect } from 'vitest'
+import { exportNotes } from '../src/export'
+
+const note = (i: number) => ({ id: `n${i}`, title: `t${i}`, body: 'b', createdAt: new Date(0), updatedAt: new Date(0) })
+
+function pagedStore(total: number) {
+  const calls: Array<{ after?: string; limit: number }> = []
+  return {
+    calls,
+    listAll: async () => { throw new Error('listAll must not be used by export') },
+    listNotes: async (_u: string, o: { after?: string; limit: number }) => {
+      calls.push(o)
+      const start = o.after ? Number(o.after.slice(1)) + 1 : 0
+      return Array.from({ length: Math.max(0, Math.min(o.limit, total - start)) }, (_, k) => note(start + k))
+    },
+  }
+}
+
+describe('exportNotes streaming', () => {
+  it('fetches pages lazily instead of loading every note', async () => {
+    const store = pagedStore(2500)
+    const it = exportNotes('u1', store as any, { pageSize: 500 })[Symbol.asyncIterator]()
+    await it.next() // header
+    await it.next() // first page of rows
+    expect(store.calls.length).toBe(1)
+    expect(store.calls[0].limit).toBe(500)
+  })
+
+  it('emits every note exactly once across pages', async () => {
+    const store = pagedStore(1201)
+    let out = ''
+    for await (const chunk of exportNotes('u1', store as any, { pageSize: 500 })) out += chunk
+    const lines = out.trimEnd().split('\r\n')
+    expect(lines.length).toBe(1202)
+    expect(lines[1].startsWith('n0,')).toBe(true)
+    expect(lines[1201].startsWith('n1200,')).toBe(true)
+  })
+})
+```
+
+**Call 3 (shell):** `pnpm test tests/export.stream.test.ts > $W/final-red.log 2>&1; tail -20 $W/final-red.log`
+
+**Assumed result:** RED for the expected reason. Both tests fail with `listAll must not be used by export`.
+
+**Call 4 (edit `src/export.ts`):** replace the load-all body with a generator.
+```ts
+export async function* exportNotes(
+  userId: string,
+  store: NoteStore,
+  { pageSize = 500 }: { pageSize?: number } = {},
+): AsyncGenerator<string> {
+  yield HEADER + '\r\n'
+  let after: string | undefined
+  for (;;) {
+    const page = await store.listNotes(userId, { after, limit: pageSize })
+    if (page.length === 0) return
+    yield page.map(toCsvRow).join('\r\n') + '\r\n'
+    after = page[page.length - 1].id
+  }
+}
+```
+
+**Call 5 (edit `src/routes/export.ts`):**
+```ts
+res.type('text/csv').attachment('notes.csv')
+await pipeline(Readable.from(exportNotes(userId, store)), res) // backpressure; destroys res on error
+```
+This adds `import { Readable } from 'node:stream'` and `import { pipeline } from 'node:stream/promises'`.
+
+**Call 6 (edit `tests/export.test.ts`):** existing assertions are unchanged. The string is now gathered with a `collect()` helper (`for await … out += chunk`) because `exportNotes` no longer returns a `Promise<string>`.
+
+**Call 7 (shell):** `pnpm test > $W/final-green.log 2>&1; echo exit=$?; tail -15 $W/final-green.log`
+
+**Assumed result:** `exit=0`, `Tests 33 passed (33)`, which is the earlier 31 plus the 2 new ones.
+
+**Call 8 (shell, commit and ledger together):**
+```
+git add src/export.ts src/routes/export.ts tests/export.stream.test.ts tests/export.test.ts && git commit -m "fix(export): stream CSV in pages instead of loading all notes" && cat >> $W/progress.md <<'EOF'
+Final: fixed exportNotes loads every note into memory (src/export.ts:40) — "fetches pages lazily instead of loading every note" RED→GREEN, suite 33/33
+Final: Ruling: exportNotes now returns an async generator and the route streams it (tasks.md said Promise<string>) — the only way to bound memory; if the store fails mid-export the response is destroyed, so the browser shows a failed download rather than a JSON error — cost if wrong: a mid-export failure has no readable error message; route-level error path is not covered by a test
+EOF
+git log --oneline -1
+```
+
+**Assumed result:** commit `a41c9e2`.
+
+There is no re-review and no second fix pass, as the skill says.
+
+## 3. Project verification
+
+The project has no skill for checking the running product (**Assumed**, since none was named), so nothing runs here. That gap goes into the verify report as a group waiting on my partner.
+
+## 4. Finish
+
+**Call 9 (ryugi:verifying, not expanded):** a fresh run of `pnpm test > /tmp/export-verify.log 2>&1; echo exit=$?; tail -15 /tmp/export-verify.log`.
+
+**Assumed result:** `exit=0`, 33/33. I assume the skill writes its report to `docs/ryugi/verify/2026-11-10-export-design.md`.
+
+**Call 10 (write the verify report):** it holds the following.
+
+- **Group A, automated, passed:** CSV content, quoting, paging and laziness, with the 33/33 output.
+- **Group B, waits on partner:** a real download from the running app.
+- **Rulings (3):**
+
+| Ruling | Why | Cost if wrong |
+|---|---|---|
+| Task 2: timestamps are ISO 8601 UTC | The spec is silent on the format | Spreadsheet users see UTC, not local time |
+| Final: an empty account exports a header-only file | It is a valid CSV that reads as "no notes" | An empty-account user gets a near-empty file instead of a message |
+| Final: the export streams, and a mid-export failure aborts the download | It is the only way to bound memory | There is no readable error message, and the route error path is untested |
+
+- **Minors (1):** the CSV header says `updatedAt`, while the UI calls the field "Last edited".
+
+**Call 11 (shell):**
+```
+git add docs/ryugi/verify/2026-11-10-export-design.md && git commit -m "docs: verify report for CSV export" && ls .ryugi/sdd/2026-11-10-export-design/ && rm -rf .ryugi/sdd/2026-11-10-export-design && git status --short && git log --oneline main..HEAD
+```
+
+**Assumed result:** the listing shows only `tasks.md`, `progress.md`, the briefs, the review package and logs. The working tree is clean, and the branch has 5 commits (3 tasks, the fix and the report).
+
+## 5. Final message to my partner
+
+> **Waiting on you:** CSV export is built on `feat/export` and `pnpm test` passes 33/33 (run this session), but one verify group needs your verdict before it lands.
+>
+> Verify report: `docs/ryugi/verify/2026-11-10-export-design.md`
+>
+> 1. **Verdict on Group B:** download an export from the running app and confirm the file opens. I had no way to drive the app, so this is unchecked.
+> 2. **Rulings to accept or overturn** (the report holds 3; these 2 change what users get):
+>    - a. An account with no notes downloads a file with only the header row; the spec did not say.
+>    - b. The final review found the export would run out of memory on very large accounts, so it now streams in pages of 500. If the database fails mid-export, the user sees a failed download, not an error message.
+> 3. **Deferred minor, your call:** the CSV column is `updatedAt`, while the UI says "Last edited". Rename it, or leave it?
+> 4. **How to land it**, once 1 passes:
+>    1. Squash into `main` (default)
+>    2. Rebase onto `main`
+>    3. Push and open a PR
+>    4. Keep the branch as-is
+>
+> **What could change your decision:**
+> - The memory fix is proven by a test showing notes are fetched page by page, not by a real 200k-note run measuring memory.
+> - The failed-download behaviour in 2b has no test at the route level.
+
+I stop here. `landing.md` is read only after they pick a way to land.
+
+SUMMARY: I sorted the review (ruled on the empty-account case, deferred the header minor), fixed the memory finding under TDD in one pass (RED→GREEN, 33/33 assumed), wrote the verify report with all rulings and minors, and deleted the workspace. It now waits on my partner for the Group B verdict, the two rulings, the minor and the choice of how to land.

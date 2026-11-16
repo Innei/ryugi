@@ -1,0 +1,54 @@
+I read `./skill/landing.md` for real; everything below is simulated. "Merge it" means squash into `main`, with no merge commit.
+
+**Call 1 — shell: look at the state before touching anything**
+```bash
+cd /Users/p/git/notes-app && git status --short --branch && git log --oneline main..feat/export && git log --oneline -5 main
+```
+Assumed output: `## feat/export`, clean tree; 6 commits on `feat/export` ahead of `main`; `main`'s history uses conventional-commit subjects (`feat: …`, `fix: …`).
+
+**Call 2 — shell: switch to base, update, squash**
+```bash
+git switch main && git pull --ff-only && git merge --squash feat/export && git status --short
+```
+Assumed output: `Already up to date.`, then `Squash commit -- not updating HEAD`, with the export source and test files staged and no conflicts.
+
+**Call 3 — shell: prove the squashed tree before committing**
+
+The session rule requires the test evidence before the commit, so the test run goes here rather than after it as `landing.md` lists it. The committed tree is identical to this staged one.
+```bash
+pnpm test > /tmp/notes-app-land-test.log 2>&1; echo "exit=$?"; tail -n 25 /tmp/notes-app-land-test.log
+```
+Assumed output: `exit=0`, `Test Files 23 passed (23)`, `Tests 152 passed (152)`, no failures or skips.
+
+**Call 4 — shell: one commit for the whole branch, in the repo's style**
+```bash
+git commit -m "feat: export notes as CSV" -m "Implements docs/ryugi/specs/2026-11-10-export-design.md. Squashed from feat/export." && git log --oneline -3 && git status --short --branch
+```
+Assumed output: `[main 4c1e9ab] feat: export notes as CSV`; the log shows a single new commit on top of the previous `main` head with no merge commit; the tree is clean and `## main...origin/main [ahead 1]`.
+
+**Call 5 — shell: confirm the branch is fully contained, then delete it**
+
+`-D` is a forced delete, so I check first that `main` holds exactly the branch's content.
+```bash
+git diff --stat main feat/export && echo "diff-exit=$?" && git rev-parse --short feat/export
+```
+Assumed output: empty diff, `diff-exit=0`, branch tip `9d2f7e3`.
+
+```bash
+git branch -D feat/export && git branch --list
+```
+Assumed output: `Deleted branch feat/export (was 9d2f7e3).`, and only `* main` remains.
+
+There is no worktree to remove because the work was on a branch in this checkout. The workspace `.ryugi/sdd/2026-11-10-export-design/` was already deleted at the Finish step. I do not push.
+
+**Message to my partner:**
+
+> `feat/export` is squashed into `main` as a single commit, `4c1e9ab feat: export notes as CSV`, with no merge commit.
+>
+> - **Tests:** `pnpm test` on the squashed tree on `main` exited 0, with 152 of 152 tests passing across 23 files. I ran it just before the commit; the committed tree is the same one.
+> - **Branch:** `git diff main feat/export` was empty, so I deleted `feat/export` (its tip was `9d2f7e3`, recoverable from the reflog if you want it back).
+> - **Not pushed:** `main` is one commit ahead of `origin/main`. Pushing is your call.
+>
+> The deferred minors from my last message are still open and are not in this commit.
+
+SUMMARY: Squashed `feat/export` into `main` as one commit after a green `pnpm test` (simulated), verified the branch content matched and deleted the branch; nothing was pushed, so pushing `main` and deciding on the deferred minors wait on my partner.

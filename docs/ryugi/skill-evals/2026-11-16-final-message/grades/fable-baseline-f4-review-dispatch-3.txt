@@ -1,0 +1,1 @@
+PASS — Built the merge-base-to-HEAD review package and dispatched one template-based reviewer with package, spec, verbatim focus, and rulings pointer; no partner questions or self-review.

@@ -1,0 +1,196 @@
+The following is a simulation. Only `./skill/landing.md` was actually read; no repository commands were executed.
+
+1. Message to partner:
+
+   > I’ll squash `feat/export` into `main`, run the tests before committing and after landing, then remove the branch.
+
+2. Shell call:
+
+   ```json
+   {
+     "cmd": "git status --short --branch",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   Assumed output:
+
+   ```text
+   ## feat/export
+   ```
+
+3. Shell call:
+
+   ```json
+   {
+     "cmd": "git log -5 --format=%s",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   Assumed output:
+
+   ```text
+   Add CSV export for notes
+   Add CSV serialization
+   Add export action
+   Update notes list
+   Add note editing
+   ```
+
+4. Shell call:
+
+   ```json
+   {
+     "cmd": "git switch main && git pull --ff-only",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   Assumed successful output:
+
+   ```text
+   Switched to branch 'main'
+   Your branch is up to date with 'origin/main'.
+   Already up to date.
+   ```
+
+5. Shell call:
+
+   ```json
+   {
+     "cmd": "git merge --squash feat/export",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   Assumed result: exit code `0`; CSV export changes staged successfully, with no conflicts. The actual file statistics are unavailable in this simulation.
+
+6. Shell call:
+
+   ```json
+   {
+     "cmd": "pnpm test",
+     "workdir": "/Users/p/git/notes-app",
+     "max_output_tokens": 20000
+   }
+   ```
+
+   Assumed complete output:
+
+   ```text
+   > notes-app@1.0.0 test /Users/p/git/notes-app
+   > vitest run
+
+    RUN  v3.2.4 /Users/p/git/notes-app
+
+    ✓ tests/notes.test.ts (12 tests)
+    ✓ tests/csv-export.test.ts (8 tests)
+    ✓ tests/export-action.test.ts (4 tests)
+
+    Test Files  3 passed (3)
+         Tests  24 passed (24)
+      Duration  1.21s
+   ```
+
+   Assumed exit code: `0`. I would read the full output before proceeding.
+
+7. Message to partner:
+
+   > The squashed changes on `main` passed `pnpm test`: 24/24 tests. I’ll commit and verify the landed commit.
+
+8. Shell call:
+
+   ```json
+   {
+     "cmd": "git commit -m 'Add CSV export for notes'",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   Assumed result: exit code `0`; squash commit `b83f2ad` created with message `Add CSV export for notes`.
+
+9. Shell call:
+
+   ```json
+   {
+     "cmd": "pnpm test",
+     "workdir": "/Users/p/git/notes-app",
+     "max_output_tokens": 20000
+   }
+   ```
+
+   Assumed complete output:
+
+   ```text
+   > notes-app@1.0.0 test /Users/p/git/notes-app
+   > vitest run
+
+    RUN  v3.2.4 /Users/p/git/notes-app
+
+    ✓ tests/notes.test.ts (12 tests)
+    ✓ tests/csv-export.test.ts (8 tests)
+    ✓ tests/export-action.test.ts (4 tests)
+
+    Test Files  3 passed (3)
+         Tests  24 passed (24)
+      Duration  1.18s
+   ```
+
+   Assumed exit code: `0`. I would read the full output before proceeding.
+
+10. Shell call:
+
+    ```json
+    {
+      "cmd": "git branch -D feat/export",
+      "workdir": "/Users/p/git/notes-app"
+    }
+    ```
+
+    Assumed output:
+
+    ```text
+    Deleted branch feat/export (was 72e98c1).
+    ```
+
+11. Shell call:
+
+    ```json
+    {
+      "cmd": "git status --short --branch",
+      "workdir": "/Users/p/git/notes-app"
+    }
+    ```
+
+    Assumed output:
+
+    ```text
+    ## main...origin/main [ahead 1]
+    ```
+
+12. Shell call:
+
+    ```json
+    {
+      "cmd": "git log -1 --format='%h %s%nParents: %p'",
+      "workdir": "/Users/p/git/notes-app"
+    }
+    ```
+
+    Assumed output:
+
+    ```text
+    b83f2ad Add CSV export for notes
+    Parents: 48a2c70
+    ```
+
+No ledger lines or report artifacts would be written: execution and reporting were already finished, and this landing requires no new rulings.
+
+13. Final message to partner:
+
+    > Done — squashed into local `main`; `pnpm test` passed 24/24 after commit.
+    >
+    > 1. No action required. Pushing remains your call.
+
+SUMMARY: Simulated squashing and verifying `feat/export` on local `main`, then deleting the branch; no actual changes were made, and pushing waits on the partner.

@@ -1,0 +1,1 @@
+FAIL — The agent explicitly told the partner that reviewer model selection was unavailable, violating rubric item 4.

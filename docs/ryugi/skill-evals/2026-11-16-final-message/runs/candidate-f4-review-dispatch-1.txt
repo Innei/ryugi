@@ -1,0 +1,51 @@
+Simulation only. No commands below are actually run.
+
+1. **Shell call**
+
+```json
+{
+  "command": "bash scripts/review-package docs/ryugi/specs/2026-11-10-export-design.md 1a2b3c4 HEAD",
+  "workdir": "/Users/p/git/notes-app"
+}
+```
+
+Assumed result: exit `0`; prints `.ryugi/sdd/2026-11-10-export-design/review-package.md`. The script writes the review package with the branch’s commit list, changed files and net diff with extended context. Its exact contents depend on repository data not supplied here.
+
+2. **Shell call**
+
+```json
+{
+  "command": "cat .ryugi/sdd/2026-11-10-export-design/review-package.md",
+  "workdir": "/Users/p/git/notes-app"
+}
+```
+
+Assumed result: exit `0`; the complete package is returned and read. It covers the three completed tasks from `1a2b3c4` through `HEAD`.
+
+3. **Shell call**
+
+```json
+{
+  "command": "printf '%s\\n' 'Final review: session model' >> .ryugi/sdd/2026-11-10-export-design/progress.md",
+  "workdir": "/Users/p/git/notes-app"
+}
+```
+
+Exact ledger line appended:
+
+```text
+Final review: session model
+```
+
+Assumed result: exit `0`.
+
+4. **Subagent dispatch call**
+
+```json
+{
+  "description": "Review the branch against its spec",
+  "prompt": "You are reviewing a finished branch before it lands. Find what would\nhurt someone using this software if it shipped as it is.\n\n## What to read\n\n- The review package: /Users/p/git/notes-app/.ryugi/sdd/2026-11-10-export-design/review-package.md. It holds the commit list, the\n  files changed and the net diff with extended context. Read it first;\n  read files in the checkout when the package is not enough.\n- The spec: /Users/p/git/notes-app/docs/ryugi/specs/2026-11-10-export-design.md.\n- The executor's rulings: the `Ruling:` lines in /Users/p/git/notes-app/.ryugi/sdd/2026-11-10-export-design/progress.md. Each\n  is a decision the spec did not make. Weigh them: a ruling a\n  reasonable person using this software would not accept is a finding.\n\nCheck each of the following inputs and failure modes deliberately and say what you found. The executor named these as ones its tests do not exercise.\n\n## Review Focus\n- A note body with a newline, a quote and a comma in one field.\n- An account with 200k notes.\n\n## The spec is a vision document\n\nThe spec says what the software must do. It does not enumerate every\ninput, environment, or condition the software will meet. For behavior\nthe spec is silent on, judge by what a reasonable person using this\nsoftware would expect: a reasonable person's expectation is a\nrequirement, and a spec's silence is not permission. Grade such\nfindings by their effect on that person, not by whether the spec\nmentions the trigger.\n\n## Read-only\n\nYour review is read-only on this checkout. Do not mutate the working\ntree, the index, HEAD, or branch state in any way. If you need a\nworking copy of another revision, check it out into a separate\ntemporary directory (`git worktree add /tmp/review-<sha> <sha>`).\n\n## You do not dispatch subagents\n\nDo all of this review yourself. Never spawn a subagent to review part\nof the diff, and never spawn another reviewer for a second opinion.\nThis process already provides every review seat the work gets. If the\ndiff feels too large for one pass, review it in passes yourself and\nsay so in your report.\n\n## What to look for\n\n- The spec: behavior it asks for that is missing, wrong, or departs\n  from it without a ruling.\n- Correctness: edge cases, error handling, concurrency, data loss.\n- Security and production readiness: input trust, secrets, migrations,\n  compatibility with existing data.\n- Tests: they exercise real behavior, not mocks of it.\n\n## Output\n\nReport findings only. No strengths, no praise, no general\nrecommendations.\n\n### Critical\nData loss, security holes, broken core behavior.\n\n### Important\nWrong behavior a person using this software will meet, missing spec\nrequirements, error handling or test gaps that hide such behavior.\n\n### Minor\nStyle, naming, small polish.\n\nFor each finding: `file:line`, what is wrong, what a person using the\nsoftware gets because of it, and the fix when it is not obvious. A\nsection with no findings says \"None\".\n\n### Declined to judge\nEvery behavior you considered and set aside as outside the spec, one\nline each, with the reason. The executor rules on each line; nothing\nyou set aside is dropped silently. \"None\" means you set nothing aside.\n\n### Verdict\nReady to land: Yes, No, or With fixes, and one or two sentences why."
+}
+```
+
+SUMMARY: Simulated review-package preparation, reading, session-model ledger entry and reviewer dispatch; execution stops at dispatch, awaiting the reviewer, with no partner action needed.

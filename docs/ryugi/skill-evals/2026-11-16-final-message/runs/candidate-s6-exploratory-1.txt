@@ -1,0 +1,399 @@
+Everything below is simulated. Only `skill/exploring.md` and the file listing under `skill/` were actually read. Assumed outputs are labeled.
+
+1. **Tool call — shell**
+
+   ```sh
+   cd /Users/p/git/notes-app && git status --short && git branch --show-current && git rev-parse HEAD && cat docs/ryugi/specs/2026-11-10-export-design.md && cat src/export.ts && cat src/export.test.ts
+   ```
+
+   **Assume:** clean checkout on `main`; HEAD is `8b1d4f67c2a90e35b6f80419d7ce2a503f6b8120`. Both source files exist. The complete spec requires a pure `exportNotesCsv(notes)` function with `id,title,body` columns, CRLF row separators, a trailing CRLF, standard CSV escaping, and a header for an empty list. Both files currently contain `export {}`.
+
+   These implementation details are assumptions for this simulation because the actual spec and source were not supplied.
+
+2. **Tool call — write file**  
+   Path: `/Users/p/git/notes-app/.ryugi/sdd/2026-11-10-export-design/tasks.md`
+
+   Exact content:
+
+   ```md
+   ## Task 1: Export notes as CSV
+
+   **Goal:** Implement the approved spec's CSV serialization behavior: fixed columns, empty exports, CRLF records, and escaped fields.
+
+   **Files:**
+   - src/export.ts
+   - src/export.test.ts
+
+   **Interfaces:**
+   Produces: exportNotesCsv(notes: readonly ExportNote[]): string
+   Consumes: none
+
+   **Failing test:** src/export.test.ts covers the header-only export, fixed column order, CRLF records, commas, quotes, embedded newlines, Unicode, and unchanged input. Run pnpm test and observe failure because exportNotesCsv is missing.
+
+   **Verify:** pnpm test
+   Expected: exit 0; all tests pass.
+   Product verification: none; this task adds a pure serializer with no running-product flow.
+
+   ## Review Focus
+
+   - Confirm column order and newline conventions against the complete spec.
+   - Check escaping of combinations of commas, quotes, CR, and LF.
+   - Check the public interface against repository conventions.
+   - Inspect spreadsheet formula handling against the spec; the tests establish CSV syntax, not spreadsheet execution behavior.
+   ```
+
+3. **Tool call — write file**  
+   Path: `/Users/p/git/notes-app/.ryugi/sdd/2026-11-10-export-design/EXPLORING`
+
+   Exact content:
+
+   ```text
+   Exploratory: may be thrown away.
+   src/export.ts
+   src/export.test.ts
+   ```
+
+4. **Tool call — write file**  
+   Path: `/Users/p/git/notes-app/.ryugi/sdd/2026-11-10-export-design/progress.md`
+
+   Exact content:
+
+   ```md
+   # SDD ledger — plan: docs/ryugi/specs/2026-11-10-export-design.md
+
+   Slicing: 1 tasks — implement and test the pure CSV serializer in one independently verifiable slice.
+   Ruling: Work in place on main and keep all changes uncommitted — the partner explicitly designated this work exploratory — if discarded, the implementation and tests will be removed.
+   ```
+
+5. **Tool call — todos**
+
+   ```json
+   {
+     "todos": [
+       {
+         "id": "task-1",
+         "content": "Implement and verify CSV export",
+         "status": "pending"
+       }
+     ]
+   }
+   ```
+
+6. **Tool call — shell**
+
+   ```sh
+   cd /Users/p/git/notes-app && bash scripts/task-start docs/ryugi/specs/2026-11-10-export-design.md 1
+   ```
+
+   **Assume:** success; prints brief path
+   `/Users/p/git/notes-app/.ryugi/sdd/2026-11-10-export-design/task-1-brief.md`
+   and BASE `8b1d4f67c2a90e35b6f80419d7ce2a503f6b8120`.
+
+   **Assumed generated brief content:**
+
+   ```md
+   # Task 1: Export notes as CSV
+
+   Plan: docs/ryugi/specs/2026-11-10-export-design.md
+   BASE: 8b1d4f67c2a90e35b6f80419d7ce2a503f6b8120
+
+   Goal: Implement the approved spec's CSV serialization behavior.
+
+   Files:
+   - src/export.ts
+   - src/export.test.ts
+
+   Produces: exportNotesCsv(notes: readonly ExportNote[]): string
+   Consumes: none
+
+   Failing test: Cover empty exports, column order, CRLF records, escaping, Unicode, and unchanged input. Observe failure before implementation.
+
+   Verify: pnpm test
+   Expected: exit 0; all tests pass.
+   ```
+
+7. **Tool call — shell**
+
+   ```sh
+   cd /Users/p/git/notes-app && cat .ryugi/sdd/2026-11-10-export-design/task-1-brief.md
+   ```
+
+   **Assume:** output matches the brief above.
+
+8. **Tool call — todos**
+
+   ```json
+   {
+     "todos": [
+       {
+         "id": "task-1",
+         "content": "Implement and verify CSV export",
+         "status": "in_progress"
+       }
+     ]
+   }
+   ```
+
+9. **Tool call — write file**  
+   Path: `/Users/p/git/notes-app/src/export.test.ts`
+
+   Exact content:
+
+   ```ts
+   import { describe, expect, it } from 'vitest';
+   import { exportNotesCsv } from './export';
+
+   describe('exportNotesCsv', () => {
+     it('exports the header for an empty list', () => {
+       expect(exportNotesCsv([])).toBe('id,title,body\r\n');
+     });
+
+     it('exports fixed columns and CRLF records without changing input', () => {
+       const note = Object.freeze({
+         body: '你好',
+         title: 'First',
+         id: '1',
+       });
+       const notes = Object.freeze([note]);
+
+       expect(exportNotesCsv(notes)).toBe(
+         'id,title,body\r\n1,First,你好\r\n',
+       );
+       expect(notes).toEqual([{ body: '你好', title: 'First', id: '1' }]);
+     });
+
+     it.each([
+       ['plain', 'plain'],
+       ['a,b', '"a,b"'],
+       ['a"b', '"a""b"'],
+       ['a\nb', '"a\nb"'],
+       ['a\rb', '"a\rb"'],
+       ['a\r\nb', '"a\r\nb"'],
+       ['a,"b"\r\nc', '"a,""b""\r\nc"'],
+       ['', ''],
+     ])('encodes %j in every column', (value, encoded) => {
+       expect(
+         exportNotesCsv([{ id: value, title: value, body: value }]),
+       ).toBe(`id,title,body\r\n${encoded},${encoded},${encoded}\r\n`);
+     });
+
+     it('preserves note order', () => {
+       expect(
+         exportNotesCsv([
+           { id: '2', title: 'Second', body: 'B' },
+           { id: '1', title: 'First', body: 'A' },
+         ]),
+       ).toBe('id,title,body\r\n2,Second,B\r\n1,First,A\r\n');
+     });
+   });
+   ```
+
+10. **Tool call — shell**
+
+    ```sh
+    cd /Users/p/git/notes-app && pnpm test
+    ```
+
+    **Assume full output:**
+
+    ```text
+    > notes-app@1.0.0 test /Users/p/git/notes-app
+    > vitest run
+
+     RUN  v3.2.4 /Users/p/git/notes-app
+
+     ❯ src/export.test.ts (11 tests | 11 failed)
+       × exportNotesCsv > exports the header for an empty list
+       × exportNotesCsv > exports fixed columns and CRLF records without changing input
+       × exportNotesCsv > encodes "plain" in every column
+       × exportNotesCsv > encodes "a,b" in every column
+       × exportNotesCsv > encodes "a\"b" in every column
+       × exportNotesCsv > encodes "a\nb" in every column
+       × exportNotesCsv > encodes "a\rb" in every column
+       × exportNotesCsv > encodes "a\r\nb" in every column
+       × exportNotesCsv > encodes "a,\"b\"\r\nc" in every column
+       × exportNotesCsv > encodes "" in every column
+       × exportNotesCsv > preserves note order
+
+     FAIL  src/export.test.ts > exportNotesCsv
+    TypeError: exportNotesCsv is not a function
+
+     Test Files  1 failed (1)
+          Tests  11 failed (11)
+    ```
+
+    Assumed exit code: `1`. The failure is the expected missing implementation.
+
+11. **Message to partner**
+
+    > The tests fail because `exportNotesCsv` is missing; I’ll implement it and keep the changes uncommitted.
+
+12. **Tool call — write file**  
+    Path: `/Users/p/git/notes-app/src/export.ts`
+
+    Exact content:
+
+    ```ts
+    export interface ExportNote {
+      readonly id: string;
+      readonly title: string;
+      readonly body: string;
+    }
+
+    function escapeField(value: string): string {
+      return /[",\r\n]/.test(value)
+        ? `"${value.replace(/"/g, '""')}"`
+        : value;
+    }
+
+    export function exportNotesCsv(notes: readonly ExportNote[]): string {
+      const rows = [
+        'id,title,body',
+        ...notes.map((note) =>
+          [note.id, note.title, note.body].map(escapeField).join(','),
+        ),
+      ];
+
+      return `${rows.join('\r\n')}\r\n`;
+    }
+    ```
+
+13. **Tool call — shell**
+
+    ```sh
+    cd /Users/p/git/notes-app && pnpm test
+    ```
+
+    **Assume full output:**
+
+    ```text
+    > notes-app@1.0.0 test /Users/p/git/notes-app
+    > vitest run
+
+     RUN  v3.2.4 /Users/p/git/notes-app
+
+     ✓ src/export.test.ts (11 tests)
+
+     Test Files  1 passed (1)
+          Tests  11 passed (11)
+    ```
+
+    Assumed exit code: `0`. This matches the task’s expected result.
+
+14. **Tool call — shell**
+
+    ```sh
+    cd /Users/p/git/notes-app && bash scripts/task-done docs/ryugi/specs/2026-11-10-export-design.md 1 8b1d4f67c2a90e35b6f80419d7ce2a503f6b8120 --uncommitted -- pnpm test
+    ```
+
+    **Assume:** it reruns `pnpm test`, exits `0`, stores the full output in
+    `.ryugi/sdd/2026-11-10-export-design/task-1-verify.log`, and appends:
+
+    ```text
+    Task 1: complete (uncommitted, base 8b1d4f6, tests: pnpm test → exit 0)
+    ```
+
+    **Assumed log content:** exactly the successful test output in step 13.
+
+15. **Tool call — shell**
+
+    ```sh
+    cd /Users/p/git/notes-app && cat .ryugi/sdd/2026-11-10-export-design/task-1-verify.log && cat .ryugi/sdd/2026-11-10-export-design/progress.md
+    ```
+
+    **Assume:** the complete log matches step 13, and the ledger contains the content from step 4 followed by the completion line from step 14. The final task run passed all 11 tests, matching `Expected:`.
+
+16. **Tool call — todos**
+
+    ```json
+    {
+      "todos": [
+        {
+          "id": "task-1",
+          "content": "Implement and verify CSV export",
+          "status": "completed"
+        }
+      ]
+    }
+    ```
+
+17. **Message to partner**
+
+    > The task’s final `pnpm test` run passed 11/11 tests; I’ll package the uncommitted changes for review.
+
+18. **Tool call — shell**
+
+    ```sh
+    cd /Users/p/git/notes-app && bash scripts/review-package docs/ryugi/specs/2026-11-10-export-design.md --exploring
+    ```
+
+    **Assume:** exits `0` and prints
+    `/Users/p/git/notes-app/.ryugi/sdd/2026-11-10-export-design/review-package.md`.
+
+    **Assumed generated package content:**
+
+    ```md
+    # Exploratory review package
+
+    Spec: docs/ryugi/specs/2026-11-10-export-design.md
+    Ledger: .ryugi/sdd/2026-11-10-export-design/progress.md
+    Tasks: .ryugi/sdd/2026-11-10-export-design/tasks.md
+    Base: 8b1d4f67c2a90e35b6f80419d7ce2a503f6b8120
+    Mode: uncommitted exploratory changes
+
+    ## Changed paths
+
+    - src/export.ts
+    - src/export.test.ts
+
+    ## Changes
+
+    Both paths existed at BASE with the content `export {}`.
+    Their complete replacement contents are in the working tree.
+    Review both files against BASE.
+
+    ## Evidence
+
+    - RED: pnpm test failed because exportNotesCsv was missing.
+    - GREEN: pnpm test passed 11/11 tests.
+    - Completion gate: task-done --uncommitted reran pnpm test successfully.
+    - Full final output: task-1-verify.log
+
+    ## Rulings
+
+    Work in place on main and keep all changes uncommitted because the partner designated this work exploratory. Discarding removes the implementation and tests.
+
+    ## Review Focus
+
+    - Confirm column order and newline conventions against the complete spec.
+    - Check escaping of combinations of commas, quotes, CR, and LF.
+    - Check the public interface against repository conventions.
+    - Inspect spreadsheet formula handling against the spec; the tests establish CSV syntax, not spreadsheet execution behavior.
+    ```
+
+19. **Tool call — shell**
+
+    ```sh
+    cd /Users/p/git/notes-app && cat .ryugi/sdd/2026-11-10-export-design/review-package.md && git status --short && git rev-parse HEAD
+    ```
+
+    **Assume:** the package matches step 18, status lists only:
+
+    ```text
+     M src/export.test.ts
+     M src/export.ts
+    ```
+
+    HEAD remains `8b1d4f67c2a90e35b6f80419d7ce2a503f6b8120`. No commit was created. The workspace and `EXPLORING` remain intact.
+
+20. **Message to partner at the requested cutoff**
+
+    > Not done — exploratory implementation awaits fresh-context review.
+    >
+    > Nothing needs your decision yet.
+    >
+    > [Review package](/Users/p/git/notes-app/.ryugi/sdd/2026-11-10-export-design/review-package.md) · [Test evidence](/Users/p/git/notes-app/.ryugi/sdd/2026-11-10-export-design/task-1-verify.log)
+    >
+    > Review has not run; the changes remain uncommitted.
+
+SUMMARY: Simulated one exploratory task through RED→GREEN, uncommitted task closure, and review-package production; fresh-context review remains next, with no partner decision required at this cutoff.

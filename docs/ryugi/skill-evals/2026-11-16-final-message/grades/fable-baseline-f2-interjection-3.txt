@@ -1,0 +1,1 @@
+FAIL — The partner reply includes a process-notes section explaining two decisions, exceeding the rubric’s concise change-and-confirmation format.

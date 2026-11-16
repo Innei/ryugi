@@ -1,0 +1,385 @@
+Simulation only. No commands are actually run. Outputs below are explicit assumptions.
+
+1. **Message to partner**
+
+   “The memory finding needs a fix. I’ll defer the header wording, record a ruling for empty exports, and verify the fix before preparing the landing choices.”
+
+2. **Shell call**
+
+   ```sh
+   cd /Users/p/git/notes-app && git status --short --branch
+   ```
+
+   **Assumed output:** branch `feat/export`, clean working tree.
+
+3. **Shell call**
+
+   ```sh
+   cd /Users/p/git/notes-app && cat docs/ryugi/specs/2026-11-10-export-design.md .ryugi/sdd/2026-11-10-export-design/progress.md .ryugi/sdd/2026-11-10-export-design/tasks.md src/export.ts tests/export.test.ts package.json
+   ```
+
+   **Assumed output, read in full:**
+
+   - The spec requires CSV export of all notes, preserving the existing columns and escaping.
+   - The ledger contains all three completion lines and identifies the starting commit as `a13bc72`.
+   - The review package and original reviewer invocation are recorded.
+   - `pnpm test` invokes `vitest run`; the existing suite contains 31 tests.
+   - `src/export.ts` currently contains:
+
+     ```ts
+     import type { Writable } from 'node:stream';
+
+     export interface ExportNote {
+       id: string;
+       title: string;
+       body: string;
+       updatedAt: string;
+     }
+
+     function csvCell(value: string): string {
+       return /[",\r\n]/.test(value)
+         ? `"${value.replace(/"/g, '""')}"`
+         : value;
+     }
+
+     export async function exportNotes(
+       notes: AsyncIterable<ExportNote>,
+       destination: Writable,
+     ): Promise<void> {
+       const rows = ['id,title,body,updatedAt\r\n'];
+
+       for await (const note of notes) {
+         rows.push(
+           [note.id, note.title, note.body, note.updatedAt]
+             .map(csvCell)
+             .join(',') + '\r\n',
+         );
+       }
+
+       await new Promise<void>((resolve, reject) => {
+         destination.once('error', reject);
+         destination.end(rows.join(''), resolve);
+       });
+     }
+     ```
+
+   - Its caller supplies a database cursor as an async iterable, without first collecting notes.
+   - No earlier `Ruling:` or `minor (deferred)` entries exist.
+
+   These assumed interfaces determine the following simulated implementation.
+
+4. **Write-file call**
+
+   Path: `/Users/p/git/notes-app/tests/export-streaming.test.ts`
+
+   Exact content:
+
+   ```ts
+   import { Writable } from 'node:stream';
+   import { describe, expect, it } from 'vitest';
+   import { exportNotes, type ExportNote } from '../src/export';
+
+   function note(id: number): ExportNote {
+     return {
+       id: String(id),
+       title: 'Title',
+       body: 'Body',
+       updatedAt: '2026-11-10T00:00:00Z',
+     };
+   }
+
+   describe('streaming CSV export', () => {
+     it('writes notes before consuming the entire source', async () => {
+       let received = '';
+       const destination = new Writable({
+         write(chunk, _encoding, callback) {
+           received += chunk.toString();
+           callback();
+         },
+       });
+
+       async function* notes() {
+         yield note(0);
+         for (let id = 1; id < 1_024; id++) {
+           yield note(id);
+         }
+         expect(received).toContain(
+           '0,Title,Body,2026-11-10T00:00:00Z\r\n',
+         );
+         yield note(1_024);
+       }
+
+       await exportNotes(notes(), destination);
+
+       expect(received.startsWith('id,title,body,updatedAt\r\n')).toBe(true);
+       expect(received).toContain(
+         '1024,Title,Body,2026-11-10T00:00:00Z\r\n',
+       );
+     });
+
+     it('keeps source consumption bounded behind a slow destination', async () => {
+       let produced = 0;
+       let written = 0;
+       let maximumLead = 0;
+       let headerWritten = false;
+
+       const destination = new Writable({
+         highWaterMark: 1,
+         write(_chunk, _encoding, callback) {
+           if (headerWritten) {
+             written++;
+           } else {
+             headerWritten = true;
+           }
+           setImmediate(callback);
+         },
+       });
+
+       async function* notes() {
+         for (let id = 0; id < 200_000; id++) {
+           produced++;
+           maximumLead = Math.max(maximumLead, produced - written);
+           yield note(id);
+         }
+       }
+
+       await exportNotes(notes(), destination);
+
+       expect(written).toBe(200_000);
+       expect(maximumLead).toBeLessThan(8_192);
+     });
+   });
+   ```
+
+5. **Shell call — demonstrate RED**
+
+   ```sh
+   cd /Users/p/git/notes-app && pnpm test tests/export-streaming.test.ts > .ryugi/sdd/2026-11-10-export-design/final-red.log 2>&1
+   ```
+
+   **Assumed result:** exit `1`.
+
+6. **Shell call — read the complete output**
+
+   ```sh
+   cd /Users/p/git/notes-app && cat .ryugi/sdd/2026-11-10-export-design/final-red.log
+   ```
+
+   **Assumed output:** both tests fail for the intended reasons:
+
+   - Before the source finishes, `received` is still empty.
+   - For 200,000 notes, `maximumLead` is `200000`, exceeding `8192`.
+
+7. **Write-file call**
+
+   Path: `/Users/p/git/notes-app/src/export.ts`
+
+   Exact content:
+
+   ```ts
+   import { Readable, type Writable } from 'node:stream';
+   import { pipeline } from 'node:stream/promises';
+
+   export interface ExportNote {
+     id: string;
+     title: string;
+     body: string;
+     updatedAt: string;
+   }
+
+   function csvCell(value: string): string {
+     return /[",\r\n]/.test(value)
+       ? `"${value.replace(/"/g, '""')}"`
+       : value;
+   }
+
+   export async function exportNotes(
+     notes: AsyncIterable<ExportNote>,
+     destination: Writable,
+   ): Promise<void> {
+     async function* rows() {
+       yield 'id,title,body,updatedAt\r\n';
+
+       for await (const note of notes) {
+         yield (
+           [note.id, note.title, note.body, note.updatedAt]
+             .map(csvCell)
+             .join(',') + '\r\n'
+         );
+       }
+     }
+
+     await pipeline(Readable.from(rows()), destination);
+   }
+   ```
+
+8. **Shell call — verify the complete suite**
+
+   ```sh
+   cd /Users/p/git/notes-app && pnpm test > .ryugi/sdd/2026-11-10-export-design/final-green.log 2>&1
+   ```
+
+   **Assumed result:** exit `0`.
+
+9. **Shell call — read the complete output and inspect the patch**
+
+   ```sh
+   cd /Users/p/git/notes-app && cat .ryugi/sdd/2026-11-10-export-design/final-green.log && git diff --check && git diff -- src/export.ts && cat tests/export-streaming.test.ts
+   ```
+
+   **Assumed results:** `33/33` tests pass; `git diff --check` exits `0`. The full output and patch match the intended change. Existing tests cover CSV escaping, empty exports, and stream failures. The project has no separate running-product verification skill.
+
+10. **Message to partner**
+
+    “The regression tests failed against the buffered exporter and now pass with streaming; the full suite passes 33/33. Empty exports will keep their header row, and the header wording remains deferred.”
+
+11. **Shell call — commit and append the review record together**
+
+    ```sh
+    cd /Users/p/git/notes-app && git add src/export.ts tests/export-streaming.test.ts && git commit -m "Fix bounded-memory CSV export" && python3 - <<'PY'
+    from pathlib import Path
+    import subprocess
+
+    ledger = Path(".ryugi/sdd/2026-11-10-export-design/progress.md")
+    commit = subprocess.check_output(
+        ["git", "rev-parse", "HEAD"], text=True
+    ).strip()
+
+    with ledger.open("a") as output:
+        output.write(
+            "\nFinal: triage: unbounded export buffering is Important — "
+            "large accounts can fail to export; enters the single fix pass.\n"
+            "Final: minor (deferred): CSV header uses updatedAt while the UI "
+            "uses Last edited; retain the existing export schema.\n"
+            "Final: Ruling: empty accounts export a header-only CSV — "
+            "zero data rows accurately represent an empty account while "
+            "preserving the column schema — cost if wrong: users expecting "
+            "no download receive a valid but empty CSV.\n"
+            "Final: fixed unbounded export buffering — "
+            "streaming CSV export tests RED→GREEN, suite 33/33; "
+            f"commit {commit}.\n"
+        )
+    PY
+    ```
+
+    **Assumed result:** commit succeeds as `d74b901`; the ledger append succeeds. No second reviewer is dispatched.
+
+12. **Shell call — collect the exhaustive decision record**
+
+    ```sh
+    cd /Users/p/git/notes-app && rg -n 'Ruling:|minor \(deferred\)' .ryugi/sdd/2026-11-10-export-design/progress.md && git status --short --branch && git log --oneline a13bc72..HEAD
+    ```
+
+    **Assumed output:** exactly the one ruling and one deferred minor above; clean branch `feat/export`; the three task commits and `d74b901` are present.
+
+13. **Write-file call — verification report**
+
+    Path: `/Users/p/git/notes-app/docs/ryugi/verify/2026-11-10-export.md`
+
+    Exact content:
+
+    ```md
+    # CSV export verification
+
+    Spec: ../specs/2026-11-10-export-design.md
+    Branch: feat/export
+    Base: main
+    Starting commit: a13bc72
+    Final implementation commit: d74b901
+
+    ## Verification
+
+    | Check | Result |
+    | --- | --- |
+    | New streaming tests against buffered exporter | 2 failed for expected reasons |
+    | Full suite after streaming fix: pnpm test | 33/33 passed |
+    | git diff --check | Passed |
+    | Final review | Fresh-context reviewer completed; Important finding fixed |
+    | Running-product verification skill | None present |
+
+    The regression tests demonstrate output before source exhaustion and
+    bounded source consumption with a slow destination across 200,000 notes.
+    They do not measure peak process memory in production.
+
+    The source caller supplies a database cursor. Export rows now flow
+    through a backpressure-aware pipeline instead of accumulating in an array.
+    Existing tests cover escaping, empty exports, and stream failures.
+
+    ## Review disposition
+
+    | Finding | Disposition |
+    | --- | --- |
+    | Important: exporter buffers every note | Fixed in d74b901; regression tests observed RED then GREEN |
+    | Minor: updatedAt differs from Last edited | Deferred |
+    | Declined to judge: header-only export for empty accounts | Ruled valid; see below |
+
+    ## Rulings — exhaustive, in recorded order
+
+    | Ruling | Why | Cost if wrong |
+    | --- | --- | --- |
+    | Empty accounts export a header-only CSV | Zero data rows accurately represent an empty account while preserving the column schema | Users expecting no download receive a valid but empty CSV |
+
+    ## Deferred minors — exhaustive
+
+    - CSV header uses updatedAt while the UI uses Last edited; retain the
+      existing export schema.
+
+    ## Gates and landing
+
+    Implementation and automated verification are complete.
+    No additional review group awaits a verdict.
+    Landing awaits the partner's choice.
+    No push, merge, or PR has been performed.
+    ```
+
+14. **Shell call — persist the report**
+
+    ```sh
+    cd /Users/p/git/notes-app && git diff --check && git add docs/ryugi/verify/2026-11-10-export.md && git commit -m "Record CSV export verification"
+    ```
+
+    **Assumed result:** check exits `0`; commit succeeds as `e92c814`.
+
+15. **Shell call — final verification on the finished branch**
+
+    ```sh
+    cd /Users/p/git/notes-app && pnpm test > .ryugi/sdd/2026-11-10-export-design/finished-branch.log 2>&1
+    ```
+
+    **Assumed result:** exit `0`.
+
+16. **Shell call — read all final evidence before cleanup**
+
+    ```sh
+    cd /Users/p/git/notes-app && cat .ryugi/sdd/2026-11-10-export-design/finished-branch.log && git diff --check && git status --short --branch && cat docs/ryugi/verify/2026-11-10-export.md
+    ```
+
+    **Assumed results:** `33/33` tests pass, whitespace check passes, working tree is clean, and the report contains the exhaustive ruling and deferred-minor lists.
+
+17. **Shell call — remove only this spec’s scratch workspace**
+
+    ```sh
+    cd /Users/p/git/notes-app && python3 - <<'PY'
+    from pathlib import Path
+    import shutil
+
+    workspace = Path(".ryugi/sdd/2026-11-10-export-design")
+    shutil.rmtree(workspace)
+    assert not workspace.exists()
+    PY
+    ```
+
+    **Assumed result:** exit `0`.
+
+18. **Final message to partner**
+
+    Waiting on you to choose how to land `feat/export`.
+
+    1. Squash into `main` (default).
+    2. Rebase onto `main`.
+    3. Push and open a PR.
+    4. Keep the branch as-is.
+
+    Empty accounts retain header-only exports. Peak production memory was not measured. [Verification: 33/33 passed; one ruling and one deferred minor]( /Users/p/git/notes-app/docs/ryugi/verify/2026-11-10-export.md).
+
+SUMMARY: Simulated one TDD fix pass, exhaustive review disposition, verification report, commits, and workspace cleanup; landing waits on the partner, and nothing was actually executed.

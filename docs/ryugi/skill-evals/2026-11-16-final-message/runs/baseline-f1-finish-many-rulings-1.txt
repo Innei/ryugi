@@ -1,0 +1,188 @@
+以下仅是模拟；不会实际执行命令或修改文件。未给出的输出会明确标为假定。
+
+**发给伙伴：**
+
+> 我先处理仍然失败的体积检查，再核对最终验证状态；手机实测和三个界面判定仍需要你完成。
+
+**工具调用 1：读取当前状态和完整记录。**
+
+```javascript
+text(await tools.exec_command({
+  cmd: "pwd && git status --short && git branch --show-current && git log --oneline main..HEAD && git log --oneline HEAD..main && cat package.json && cat .ryugi/sdd/2026-11-12-offline-sync-design/progress.md && cat .ryugi/artifacts/verify/offline-sync/report.xml",
+  workdir: "/Users/p/git/board-app/.worktrees/offline-sync",
+  max_output_tokens: 30000
+}));
+```
+
+假定输出：工作区干净，当前分支为 `feat/offline-sync`；记录与题述一致，`main` 有两个尚未包含的提交。另假定 `package.json` 提供 `typecheck`、`build`、`check-app` 和 `verify:offline-sync` 脚本；最后一个脚本支持只检查既有报告的 `--check` 参数。没有更改分支或集成其他提交。
+
+**工具调用 2：亲自运行完整测试，确认当前失败。**
+
+```javascript
+text(await tools.exec_command({
+  cmd: "pnpm test",
+  workdir: "/Users/p/git/board-app/.worktrees/offline-sync",
+  max_output_tokens: 30000
+}));
+```
+
+假定读完完整输出：退出码为 `1`，412 项通过，`bundle-size` 失败，512 KB 超过 500 KB。
+
+**工具调用 3：按已加载的 systematic-debugging 查找体积来源。**
+
+```javascript
+text(await tools.exec_command({
+  cmd: "rg -n 'bundle-size|500|lodash|debounce' package.json src test tests vite.config.*",
+  workdir: "/Users/p/git/board-app/.worktrees/offline-sync",
+  max_output_tokens: 12000
+}));
+```
+
+假定输出：新增的 `src/sync/retry.ts` 使用 `import { debounce } from 'lodash'`；体积检查针对生产入口包。
+
+**工具调用 4：读取实现、构建配置和体积检查。**
+
+```javascript
+text(await tools.exec_command({
+  cmd: "cat src/sync/retry.ts && cat vite.config.ts && cat test/bundle-size.test.ts && cat node_modules/lodash/package.json",
+  workdir: "/Users/p/git/board-app/.worktrees/offline-sync",
+  max_output_tokens: 16000
+}));
+```
+
+假定输出确认：这里只使用 `debounce`；当前构建把 Lodash 的 CommonJS 根入口带入包中；项目已具备子路径导入所需的类型声明。体积测试确实检查生产包，没有遗漏其他入口。
+
+**发给伙伴：**
+
+> 体积失败确认了。同步重试代码引入了 Lodash 整包；我会改用具体函数入口，并保持 500 KB 预算。
+
+**工具调用 5：最小修改。**
+
+```javascript
+text(await tools.apply_patch("*** Begin Patch\n*** Update File: /Users/p/git/board-app/.worktrees/offline-sync/src/sync/retry.ts\n@@\n-import { debounce } from 'lodash'\n+import debounce from 'lodash/debounce'\n*** End Patch"));
+```
+
+这是唯一实现修改；不改变预算或测试断言。
+
+**工具调用 6：运行完整验证。**
+
+```javascript
+const results = await Promise.allSettled([
+  tools.exec_command({
+    cmd: "pnpm test",
+    workdir: "/Users/p/git/board-app/.worktrees/offline-sync",
+    max_output_tokens: 30000
+  }),
+  tools.exec_command({
+    cmd: "pnpm typecheck",
+    workdir: "/Users/p/git/board-app/.worktrees/offline-sync",
+    max_output_tokens: 12000
+  })
+]);
+for (let i = 0; i < results.length; i++) text({ check: i, result: results[i] });
+```
+
+假定读完两份完整输出：
+
+- `pnpm test`：退出码 `0`，413/413 通过，生产入口包为 494 KB。
+- `pnpm typecheck`：退出码 `0`，无类型错误。
+
+原先失败的体积测试现在通过，满足这次修复的 RED→GREEN 证据；不再派第二轮 reviewer。
+
+**工具调用 7：构建、产品验证、既有报告检查。**
+
+```javascript
+text(await tools.exec_command({
+  cmd: "pnpm build && pnpm check-app && pnpm verify:offline-sync --check",
+  workdir: "/Users/p/git/board-app/.worktrees/offline-sync",
+  max_output_tokens: 30000
+}));
+```
+
+假定读完完整输出：三个命令均退出 `0`。构建成功；两个浏览器上下文的离线编辑、重连和合并通过。报告检查干净，但依然明确列出真实双手机验证缺口及三个待伙伴判定的界面组。这个检查没有把待判项目标记为通过，也没有改写报告。
+
+**工具调用 8：提交前核对差异。**
+
+```javascript
+text(await tools.exec_command({
+  cmd: "git diff --check && git diff -- src/sync/retry.ts && git status --short",
+  workdir: "/Users/p/git/board-app/.worktrees/offline-sync",
+  max_output_tokens: 12000
+}));
+```
+
+假定输出：退出码 `0`，唯一源码差异是上述导入路径，未发现其他修改。
+
+**工具调用 9：同一次调用中记录证据并提交自己的文件。**
+
+```javascript
+text(await tools.exec_command({
+  cmd: "cat >> .ryugi/sdd/2026-11-12-offline-sync-design/progress.md <<'EOF'\nFinal: fixed bundle-size exceeds 500 KB — bundle-size RED 512 KB→GREEN 494 KB, suite 413/413; replaced the Lodash root import with lodash/debounce without changing the budget.\nProject verification: pnpm typecheck, pnpm build and pnpm check-app passed after the bundle fix; offline edit, reconnect and merge passed in two browser contexts.\nFinal review provenance: reviewer ran on the session model because the harness ignored the requested model; no second review dispatched.\nVerification pending: report verify/offline-sync check clean; real-phone sync requires the partner's second iPhone; board-ui groups awaiting partner verdict: sync status dot, reconnect banner, attachment placeholder. Work is not complete and landing waits.\nEOF\n git add -- src/sync/retry.ts && git commit -m 'fix(sync): avoid bundling the Lodash root entry'",
+  workdir: "/Users/p/git/board-app/.worktrees/offline-sync",
+  max_output_tokens: 12000
+}));
+```
+
+假定提交成功，SHA 为 `b7c8d9e`。没有暂存其他文件。
+
+**工具调用 10：检查提交结果，并最后核对验证门槛。**
+
+```javascript
+text(await tools.exec_command({
+  cmd: "git status --short && git log -1 --format='%h %s' && git show --stat --oneline HEAD && cat .ryugi/sdd/2026-11-12-offline-sync-design/progress.md && pnpm verify:offline-sync --check",
+  workdir: "/Users/p/git/board-app/.worktrees/offline-sync",
+  max_output_tokens: 30000
+}));
+```
+
+假定读完完整输出：工作区干净；`b7c8d9e` 仅修改导入路径。报告检查退出 `0`，人工验证仍待定。
+
+保留该 spec 的 workspace：工作尚未通过全部验证，不能按完成流程清理记录。不执行 rebase、合并、推送或开 PR。
+
+**发给伙伴的最终消息：**
+
+> 自动检查已通过，但这项工作还没完成，暂不进入落地流程。
+>
+> 本次完整测试先复现了 512 KB 超预算的失败；修正 Lodash 导入后，`pnpm test` 为 **413/413 通过，494 KB / 500 KB**。类型检查、构建和双浏览器离线编辑、重连、合并验证也通过。补充修复提交：`b7c8d9e`。
+>
+> 请在[验证页](https://ryugi.innei.dev/a/Rk3vQ0)判定状态点、重连横幅、附件占位图三个组，并用第二台 iPhone 完成双真实手机同步验证。报告检查干净只说明报告有效，这四项仍未通过。
+>
+> **执行中作出的全部裁定及代价：**
+>
+> 1. 操作日志放在 `src/sync/oplog.ts`，避免 store 引入网络层；判断有误的代价：无。
+> 2. 操作 ID 使用现有 ULID，统一 ID 方案；代价：无。
+> 3. **偏离 spec §4：按字段而非整卡执行最后写入胜出**，保留不同字段的并发修改；代价：同字段并发修改仍可能静默丢失一次编辑。
+> 4. 手写约 60 行 IndexedDB 包装，不引入 idb；代价：多维护一个文件。
+> 5. 使用 module worker，沿用构建支持；代价：很旧的 Safari 可能无法启动同步。
+> 6. 重试从 1 秒退避至最多 60 秒，补足规格空白；代价：长时间断网后恢复可能较慢。
+> 7. 队列测试使用已有的 fake-indexeddb；代价：无。
+> 8. 重连横幅复用 Toast；代价：无。
+> 9. 离线队列限制为 5,000 次操作，达到上限后提示重连并停止接受编辑；代价：长时间离线会无法继续记录编辑。
+> 10. 服务端确认每 200 毫秒批量发送；代价：确认稍有延迟。
+> 11. 冲突测试数据放在 `test/fixtures/sync`；代价：无。
+> 12. `applyRemote` 接受时钟参数，以便测试；代价：无。
+> 13. 版本向量使用 JSON 列以便一次读取；代价：未来查询需求变化时可能需要迁移。
+> 14. **偏离 spec §7：离线附件不排队同步，仅同步文字和布局**；当时依据是 Safari 存储限制，这个依据没有在本轮重新核实。代价：离线添加的图片必须联网后重新添加，其他设备才会收到。
+> 15. 附件占位复用损坏图片图标；代价：无。
+> 16. 同步状态点放在标题右侧；代价：位置不合适时调整 CSS。
+> 17. 退出登录确认后清空离线队列；代价：多一个确认对话框。
+> 18. 队列沿用会话密钥进行静态加密；记录中的误判代价为无。
+> 19. E2E 使用两个浏览器上下文；记录中的误判代价为无，真实手机覆盖仍单独待验。
+> 20. 空白看板发送空操作日志，不跳过同步；代价：每个空看板多一次小请求。
+> 21. 保留打开看板时的三次读取，500 张卡实测约 4 毫秒；代价：超大看板打开可能较慢。
+> 22. 保留 `applyRemote` 命名，与服务端一致；代价：无。
+>
+> **延期的小问题，共六项：**
+>
+> - 重连横幅文案未本地化。
+> - `oplog.ts` 导出了未使用的 `peekOp`。
+> - 退避常量分散在两个文件。
+> - 队列满提示使用 “operations”，其他界面使用 “changes”。
+> - 同步日志使用 `console.log`，未使用应用 logger。
+> - E2E 固定等待 500 毫秒，可以改为等待事件。
+>
+> 最终 reviewer 实际使用了会话模型；运行环境忽略了指定模型。原有 1 个 Critical 和 2 个 Important 已在同一轮修复，本轮补齐了未通过的体积检查。
+>
+> 分支仍比 `main` 少两个无关提交，尚未集成。验证通过后再选择落地方式；现在保留分支和执行记录，不推送、不合并。
+
+SUMMARY: 以上模拟复现并修复体积失败、验证并提交修复，完整披露了 22 项裁定和 6 项延期问题；现在等待伙伴完成三个界面判定及双真实手机验证，尚未完成或落地。

@@ -1,0 +1,438 @@
+以下均为模拟，不执行命令或修改文件。缺失的工具输出明确标为假设。模拟中的所有 shell 调用均使用：
+
+```json
+{"workdir":"/Users/p/git/deck-app/.worktrees/slides"}
+```
+
+**发给伙伴：**
+
+> 当前页边框会用界面的 `--brand-accent`；改完验证后继续 Task 21。
+
+**工具调用 1 — shell**
+
+```sh
+git status --short --branch
+git log -3 --oneline
+cat .ryugi/sdd/2026-11-14-slides-design/progress.md
+cat src/viewer/Filmstrip.tsx
+rg -n 'Filmstrip|hairline-strong|brand-accent|deck-accent' src
+cat package.json
+```
+
+假设输出：当前分支 `feat/slides`，工作区干净，HEAD 为 `7f8a9b0`；ledger 首行标识正确，Task 1–20 已完成，末行为题目给出的 Task 20 完成记录。已有 Vitest、React Testing Library 和 jsdom；`pnpm test` 单次运行后退出。当前缩略图有 `aria-current="page"`，边框通过内联样式设置；`Filmstrip` 接收 `slides`、`currentIndex`、`onSelect`，测试使用现有的 `makeSlide` fixture。
+
+不重新执行 Task 20，不改写其完成记录。把此次用户要求作为已完成任务的补充修订；选择 shell 的 `--brand-accent`，因为选中状态属于编辑界面。
+
+**工具调用 2 — shell**
+
+```sh
+cat src/viewer/Filmstrip.test.tsx
+cat src/test/fixtures.ts
+```
+
+假设输出确认已有 fixture 路径与上述 props，并且边框当前为：
+
+```tsx
+border: isCurrent
+  ? '1px solid var(--hairline-strong)'
+  : '1px solid transparent',
+```
+
+**工具调用 3 — edit**
+
+文件：`src/viewer/Filmstrip.test.tsx`。在现有测试中追加以下完整测试；假设所用 imports 已存在：
+
+```tsx
+it('uses the shell accent for the current slide border', () => {
+  const { container } = render(
+    <Filmstrip
+      slides={[makeSlide({ id: 'first' }), makeSlide({ id: 'second' })]}
+      currentIndex={0}
+      onSelect={vi.fn()}
+    />,
+  );
+
+  const current = container.querySelector<HTMLElement>('[aria-current="page"]');
+
+  expect(current).not.toBeNull();
+  expect(current!.style.border).toBe('1px solid var(--brand-accent)');
+
+  const thumbnails = screen.getAllByRole('button');
+  expect(thumbnails[1].style.border).toBe('1px solid transparent');
+});
+```
+
+**工具调用 4 — shell**
+
+```sh
+pnpm test -- src/viewer/Filmstrip.test.tsx
+```
+
+假设读取完整输出，新增测试失败，其余通过。失败原因准确对应：
+
+```text
+Expected: "1px solid var(--brand-accent)"
+Received: "1px solid var(--hairline-strong)"
+```
+
+这是预期的 RED，不把它当成意外故障。
+
+**工具调用 5 — edit**
+
+文件：`src/viewer/Filmstrip.tsx`。精确替换：
+
+```diff
+ border: isCurrent
+-  ? '1px solid var(--hairline-strong)'
++  ? '1px solid var(--brand-accent)'
+   : '1px solid transparent',
+```
+
+**工具调用 6 — shell**
+
+```sh
+pnpm test
+```
+
+假设完整输出已读取，结尾为：
+
+```text
+Tests  389 passed (389)
+```
+
+退出码 `0`，新增边框测试 GREEN。
+
+**工具调用 7 — shell**
+
+```sh
+git diff --check
+git diff -- src/viewer/Filmstrip.tsx src/viewer/Filmstrip.test.tsx
+```
+
+假设退出码 `0`，完整 diff 只有上述样式和回归测试。
+
+**工具调用 8 — shell**
+
+```sh
+git add src/viewer/Filmstrip.tsx src/viewer/Filmstrip.test.tsx
+git commit -m "fix: use shell accent for active filmstrip slide" &&
+python3 - <<'PY'
+from pathlib import Path
+
+ledger = Path(".ryugi/sdd/2026-11-14-slides-design/progress.md")
+with ledger.open("a") as output:
+    output.write(
+        "\nTask 20 follow-up: Ruling: 当前缩略图边框使用 --brand-accent"
+        " — 伙伴要求 active border 使用 accent；选中状态属于 shell 界面"
+        " — 若伙伴原意是随 deck 配色，需要将此边框切换为 --deck-accent。\n"
+        "Task 20 follow-up: verified — uses the shell accent for the current slide border"
+        " RED→GREEN；pnpm test → 389 passed；原 Task 20 完成记录保留。\n"
+    )
+PY
+git log -1 --oneline
+```
+
+假设提交成功，SHA 为 `8a9b0c1`。追加的 ledger 内容就是命令中的两行，没有另写一个 `Task 20: complete`。
+
+**发给伙伴：**
+
+> 当前页边框已改为 `--brand-accent`；`pnpm test` 输出 `389 passed`，继续 Task 21。
+
+**工具调用 9 — shell**
+
+```sh
+bash scripts/task-start docs/ryugi/specs/2026-11-14-slides-design.md 21
+```
+
+假设输出：
+
+```text
+Brief: .ryugi/sdd/2026-11-14-slides-design/briefs/task-21.md
+BASE: 8a9b0c1
+```
+
+**工具调用 10 — shell**
+
+```sh
+cat .ryugi/sdd/2026-11-14-slides-design/briefs/task-21.md
+rg -n 'Presenter|presenter|演讲|备注' src docs/ryugi/specs/2026-11-14-slides-design.md
+```
+
+假设 brief 内容如下；这是模拟输入假设，不声称真实 spec 包含这些内容：
+
+```markdown
+## Task 21: Presenter window layout
+
+Goal: Implement the presenter window layout from the presenter-view section:
+current slide, next-slide preview, and speaker notes. The last slide shows
+an explicit end state. Opening the window and synchronizing it are later tasks.
+
+Files:
+- src/viewer/PresenterWindow.tsx
+- src/viewer/PresenterWindow.test.tsx
+
+Interfaces:
+Produces: PresenterWindow({ slides, currentIndex })
+Consumes: SlidePreview({ slide }), Slide
+
+Failing test: Verify current and next slide placement, current speaker
+notes, and the last-slide end state.
+
+Verify: pnpm test
+Expected: All tests pass.
+
+Project product-check skill: none.
+```
+
+假设搜索结果同时确认：`SlidePreview` 已存在且会渲染 slide 的 `title`；`Slide` 从 `../model/slide` 导出，包含 `id`、`title`、`notes`；fixture 支持这些字段。现有布局使用标准 CSS Grid，没有额外的项目产品检查技能要求。此次 Task 21 无需打开实际窗口或实现同步。
+
+**工具调用 11 — todos**
+
+```json
+{
+  "updates": [
+    {
+      "task": "Task 21: Presenter window layout",
+      "status": "in_progress"
+    }
+  ]
+}
+```
+
+其余 32 个任务状态保留。
+
+**工具调用 12 — shell**
+
+```sh
+cat src/viewer/SlidePreview.tsx
+cat src/model/slide.ts
+cat src/test/fixtures.ts
+```
+
+假设完整输出确认上述接口，无额外必需 props。
+
+**工具调用 13 — write**
+
+路径：`src/viewer/PresenterWindow.test.tsx`。完整内容：
+
+```tsx
+import { render, screen, within } from '@testing-library/react';
+import { describe, expect, it } from 'vitest';
+
+import { makeSlide } from '../test/fixtures';
+import { PresenterWindow } from './PresenterWindow';
+
+describe('PresenterWindow', () => {
+  const slides = [
+    makeSlide({
+      id: 'first',
+      title: 'Opening',
+      notes: 'Welcome the audience.',
+    }),
+    makeSlide({
+      id: 'second',
+      title: 'Details',
+      notes: 'Explain the details.',
+    }),
+  ];
+
+  it('places the current and next slide in separate labelled regions', () => {
+    render(<PresenterWindow slides={slides} currentIndex={0} />);
+
+    expect(
+      within(screen.getByRole('region', { name: 'Current slide' }))
+        .getByText('Opening'),
+    ).toBeInTheDocument();
+
+    expect(
+      within(screen.getByRole('region', { name: 'Next slide' }))
+        .getByText('Details'),
+    ).toBeInTheDocument();
+  });
+
+  it('shows notes belonging to the current slide', () => {
+    render(<PresenterWindow slides={slides} currentIndex={1} />);
+
+    const notes = screen.getByRole('region', { name: 'Speaker notes' });
+
+    expect(within(notes).getByText('Explain the details.')).toBeInTheDocument();
+    expect(within(notes).queryByText('Welcome the audience.')).toBeNull();
+  });
+
+  it('shows an end state after the final slide', () => {
+    render(<PresenterWindow slides={slides} currentIndex={1} />);
+
+    expect(
+      within(screen.getByRole('region', { name: 'Next slide' }))
+        .getByText('End of deck'),
+    ).toBeInTheDocument();
+  });
+});
+```
+
+**工具调用 14 — shell**
+
+```sh
+pnpm test -- src/viewer/PresenterWindow.test.tsx
+```
+
+假设完整输出显示导入失败：
+
+```text
+Failed to resolve import "./PresenterWindow"
+```
+
+退出码 `1`。组件尚不存在，符合预期 RED；不把基础设施异常当成测试证据。
+
+**工具调用 15 — write**
+
+路径：`src/viewer/PresenterWindow.tsx`。完整内容：
+
+```tsx
+import type { Slide } from '../model/slide';
+import { SlidePreview } from './SlidePreview';
+
+type PresenterWindowProps = {
+  slides: readonly Slide[];
+  currentIndex: number;
+};
+
+export function PresenterWindow({
+  slides,
+  currentIndex,
+}: PresenterWindowProps) {
+  const currentSlide = slides[currentIndex];
+  const nextSlide = slides[currentIndex + 1];
+
+  return (
+    <main
+      aria-label="Presenter view"
+      style={{
+        display: 'grid',
+        gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)',
+        gap: '1rem',
+        padding: '1rem',
+      }}
+    >
+      <section aria-label="Current slide" style={{ minWidth: 0 }}>
+        <h1>Current slide</h1>
+        {currentSlide ? (
+          <SlidePreview slide={currentSlide} />
+        ) : (
+          <p>No current slide</p>
+        )}
+      </section>
+
+      <section aria-label="Next slide" style={{ minWidth: 0 }}>
+        <h2>Next slide</h2>
+        {nextSlide ? (
+          <SlidePreview slide={nextSlide} />
+        ) : (
+          <p>End of deck</p>
+        )}
+      </section>
+
+      <section
+        aria-label="Speaker notes"
+        style={{ gridColumn: '1 / -1', minWidth: 0 }}
+      >
+        <h2>Speaker notes</h2>
+        <p style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
+          {currentSlide?.notes || 'No speaker notes'}
+        </p>
+      </section>
+    </main>
+  );
+}
+```
+
+**工具调用 16 — shell**
+
+```sh
+pnpm test
+```
+
+假设读取完整输出，三个新增测试均通过，结尾：
+
+```text
+Tests  392 passed (392)
+```
+
+退出码 `0`，与 brief 的 “All tests pass” 一致。
+
+**工具调用 17 — shell**
+
+```sh
+git diff --check
+git status --short
+cat src/viewer/PresenterWindow.tsx
+cat src/viewer/PresenterWindow.test.tsx
+```
+
+假设读取完整输出，检查退出码 `0`；仅两个新增文件，与 brief 一致，没有发现需修改任务接口的偏差。
+
+**工具调用 18 — shell**
+
+```sh
+git add src/viewer/PresenterWindow.tsx src/viewer/PresenterWindow.test.tsx
+git commit -m "feat: add presenter window layout"
+git log -1 --oneline
+```
+
+假设提交成功，SHA 为 `9b0c1d2`。本任务没有偏离 brief 的裁定，故无额外手工 ledger 追加。
+
+**工具调用 19 — shell**
+
+```sh
+bash scripts/task-done docs/ryugi/specs/2026-11-14-slides-design.md 21 8a9b0c1 -- pnpm test
+```
+
+假设脚本退出码 `0`，输出完整测试日志路径：
+
+```text
+.ryugi/sdd/2026-11-14-slides-design/logs/task-21-verify.log
+Tests  392 passed (392)
+```
+
+脚本追加的精确 ledger 行：
+
+```text
+Task 21: complete (commits 8a9b0c1..9b0c1d2, tests: pnpm test → 392 passed)
+```
+
+**工具调用 20 — shell**
+
+```sh
+cat .ryugi/sdd/2026-11-14-slides-design/logs/task-21-verify.log
+```
+
+假设完整日志已读取：所有测试通过，`392 passed`，没有隐藏失败；与 `Expected` 一致。
+
+**工具调用 21 — todos**
+
+```json
+{
+  "updates": [
+    {
+      "task": "Task 21: Presenter window layout",
+      "status": "completed"
+    }
+  ]
+}
+```
+
+**发给伙伴：**
+
+> Task 21 已完成，`task-done` 本轮运行 `pnpm test` 输出 `392 passed`；继续 Task 22。
+
+**工具调用 22 — shell**
+
+```sh
+bash scripts/task-start docs/ryugi/specs/2026-11-14-slides-design.md 22
+```
+
+假设成功输出 Task 22 的 brief 路径和 `BASE: 9b0c1d2`。下一步读取该 brief 并继续执行。
+
+这里到达题目指定的 Task 21 模拟范围边界，**执行流程本身不停下来等伙伴**：没有触发四种停止条件，不能在 33 个任务只完成 21 个时提前做整分支最终评审、清理 workspace、请求落地选择或发送完成总结。
+
+SUMMARY: 已模拟 active border 改用 --brand-accent、RED→GREEN 验证与补充提交，以及 Task 21 的测试、实现、提交和 task-done；执行代理继续 Task 22，伙伴无需答复。

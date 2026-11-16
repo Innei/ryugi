@@ -1,0 +1,1 @@
+FAIL — Partner actions aren’t numbered; the message lists 23 rulings, includes review-model and compaction notes, and deletes the only file containing full lists.

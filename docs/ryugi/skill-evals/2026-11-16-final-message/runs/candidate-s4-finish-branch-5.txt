@@ -1,0 +1,81 @@
+The following is a simulation. No commands are actually run.
+
+1. Tool call:
+   ```json
+   {
+     "cmd": "rg -n 'Ruling:|minor \\(deferred\\)' .ryugi/sdd/2026-11-10-export-design/progress.md",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+   Assumed successful output:
+   ```text
+   18:Task 2: Ruling: quote fields per RFC 4180 — spec is silent on commas — cost if wrong: Excel-only users see quotes
+   27:Final: minor (deferred): CSV header says updatedAt
+   ```
+   These are assumed to be the exhaustive matching lines.
+
+2. Tool call:
+   ```json
+   {
+     "cmd": "git status --short --branch",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+   Assumed full output:
+   ```text
+   ## feat/export
+   ```
+   Assumption: all implementation and review fixes are committed.
+
+3. Tool call:
+   ```json
+   {
+     "cmd": "pnpm test",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+   Assumed full output, using a plausible Vitest configuration:
+   ```text
+   > notes-app@1.0.0 test /Users/p/git/notes-app
+   > vitest run
+
+    RUN  v3.2.4 /Users/p/git/notes-app
+
+    ✓ tests/export.test.ts (32 tests) 42ms
+
+    Test Files  1 passed (1)
+         Tests  32 passed (32)
+      Start at  10:00:00
+      Duration  420ms
+   ```
+   Assumed exit code: `0`.
+
+4. Message to partner:
+
+   > `pnpm test` passed: 1 test file, 32/32 tests; `git status --short --branch` shows a clean `feat/export` checkout.
+
+5. Prepare the final message below, retaining both exhaustive ledger lists before deleting their workspace. No verify page or additional artifact is created, and no ledger line is appended.
+
+6. Tool call:
+   ```json
+   {
+     "cmd": "rm -r -- .ryugi/sdd/2026-11-10-export-design",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+   Assumed full output: empty. Assumed exit code: `0`.
+
+7. Final message to partner:
+
+   > Waiting on you to choose how to land `feat/export`.
+   >
+   > 1. Squash into `main` (default).
+   > 2. Rebase onto `main`.
+   > 3. Push and open a PR.
+   > 4. Keep the branch as-is.
+   >
+   > Ruling: quote fields per RFC 4180 — spec is silent on commas — cost if wrong: Excel-only users see quotes.
+   >
+   > Minor deferred: CSV header says `updatedAt`.
+
+SUMMARY: Simulated final evidence checks, preserved the ruling and deferred minor, and removed only this spec’s workspace; landing waits on your choice.

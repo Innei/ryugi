@@ -1,0 +1,219 @@
+I read `skill/code-reviewer.md` for real. `skill/scripts/review-package` is not present in this sandbox, so its output below is assumed. All commands run from `/Users/p/git/notes-app`, with `skill/` resolving from there.
+
+## Call 1: shell (confirm range and ledger state)
+
+```bash
+cd /Users/p/git/notes-app && git status --short && git merge-base main HEAD && git rev-parse HEAD && grep -nE '^# SDD ledger|Task [0-9]+: complete|Ruling:' .ryugi/sdd/2026-11-10-export-design/progress.md
+```
+
+Assumed output:
+- `git status --short` prints nothing, so the tree is clean.
+- The merge base is `1a2b3c4…`.
+- HEAD is `9f8e7d6…` (assumed SHA).
+- The grep shows the identity line naming `docs/ryugi/specs/2026-11-10-export-design.md`, three `Task N: complete` lines, and the two `Ruling:` lines.
+
+Narration: "Ledger shows 3/3 complete; building the review package."
+
+## Call 2: shell (review package, with the ledger append in the same call)
+
+The subagent tool takes no model, so I cannot name one as the skill requires. That is a deviation, so it gets a ruling.
+
+```bash
+cd /Users/p/git/notes-app && bash skill/scripts/review-package docs/ryugi/specs/2026-11-10-export-design.md 1a2b3c4 HEAD && cat >> .ryugi/sdd/2026-11-10-export-design/progress.md <<'EOF'
+Final: Ruling: final reviewer dispatched without a named model — this harness's subagent tool takes only prompt and description, so the reviewer runs on the session's model; a fresh-context review on that model still beats a self-review, so I dispatch rather than skip — if the session model is not the most capable available, the review is weaker than the skill intends and my partner may want a second review on a stronger model before landing.
+EOF
+```
+
+Assumed output: the script prints the package path `/Users/p/git/notes-app/.ryugi/sdd/2026-11-10-export-design/review-package.md`.
+
+Narration: "Package built; dispatching the fresh-context reviewer."
+
+## Call 3: subagent dispatch
+
+There is no model argument because the tool has none.
+
+**description:** `Review code changes`
+
+**prompt:**
+
+````
+You are a Senior Code Reviewer with expertise in software architecture,
+design patterns, and best practices. Your job is to review completed work
+against its plan or requirements and identify issues before they cascade.
+
+## What Was Implemented
+
+CSV export of notes for the notes app, in the repo at
+/Users/p/git/notes-app (pnpm; tests run with `pnpm test`), on branch
+`feat/export`, cut from `main`. It was built in 3 tasks, each test-first.
+This is the one whole-branch review of that work.
+
+The review package (full diff and commit list for the range) is at:
+/Users/p/git/notes-app/.ryugi/sdd/2026-11-10-export-design/review-package.md
+Review from that file.
+
+## Requirements / Plan
+
+- Spec (the binding authority):
+  /Users/p/git/notes-app/docs/ryugi/specs/2026-11-10-export-design.md
+- Task list (the executor's reading of the spec):
+  /Users/p/git/notes-app/.ryugi/sdd/2026-11-10-export-design/tasks.md
+- Ledger: /Users/p/git/notes-app/.ryugi/sdd/2026-11-10-export-design/progress.md
+  The executor made judgment calls where the spec was silent or in
+  conflict. Each is a line containing `Ruling:` in the ledger:
+  `grep -n 'Ruling:' /Users/p/git/notes-app/.ryugi/sdd/2026-11-10-export-design/progress.md`
+  Read those lines and weigh each call: say whether it stands against the
+  spec, and flag any you would have decided differently. (The last one is
+  about how this review was dispatched, not about the code.)
+
+## Review Focus
+
+The executor's tests do not exercise these inputs and failure modes.
+Check each one deliberately and report what the code does for each:
+
+- A note body with a newline, a quote and a comma in one field.
+- An account with 200k notes.
+
+## Git Range to Review
+
+**Base:** 1a2b3c4
+**Head:** 9f8e7d6
+
+```bash
+git diff --stat 1a2b3c4..9f8e7d6
+git diff 1a2b3c4..9f8e7d6
+```
+
+## The spec is a vision document
+
+The spec says what the software must do. It does not enumerate every
+input, environment, or condition the software will meet. For behavior
+the spec is silent on, judge by what a reasonable person using this
+software would expect: a reasonable person's expectation is a
+requirement, and a spec's silence is not permission. Grade such
+findings by their effect on that person, not by whether the spec
+mentions the trigger.
+
+## Declined to judge
+
+Before your verdict, list every behavior you considered and set aside
+as outside the plan or spec, one line each, with the reason. The
+executor rules on each line; nothing you set aside is dropped
+silently. An empty list means you set nothing aside.
+
+## Read-Only Review
+
+Your review is read-only on this checkout. Do not mutate the working tree, the index, HEAD, or branch state in any way. Use tools like `git show`, `git diff`, and `git log` to inspect history. If you need a working copy of a different revision, check it out into a separate temporary directory (e.g. `git worktree add /tmp/review-9f8e7d6 9f8e7d6`) — never move HEAD on this checkout.
+
+## You Do Not Dispatch Subagents
+
+Do all of this review yourself. Never spawn a subagent to review part
+of the diff, and never spawn another reviewer for a second opinion.
+This process already provides every review seat the work gets; a
+reviewer you spawn duplicates one of them at full cost, and its
+verdict counts for nothing. If the diff feels too large for one
+pass, review it in passes yourself and say so in your report.
+
+## What to Check
+
+**Plan alignment:**
+- Does the implementation match the plan / requirements?
+- Are deviations justified improvements, or problematic departures?
+- Is all planned functionality present?
+
+**Code quality:**
+- Clean separation of concerns?
+- Proper error handling?
+- Type safety where applicable?
+- DRY without premature abstraction?
+- Edge cases handled?
+
+**Architecture:**
+- Sound design decisions?
+- Reasonable scalability and performance?
+- Security concerns?
+- Integrates cleanly with surrounding code?
+
+**Testing:**
+- Tests verify real behavior, not mocks?
+- Edge cases covered?
+- Integration tests where they matter?
+- All tests passing?
+
+**Production readiness:**
+- Migration strategy if schema changed?
+- Backward compatibility considered?
+- Documentation complete?
+- No obvious bugs?
+
+## Calibration
+
+Categorize issues by actual severity. Not everything is Critical.
+Acknowledge what was done well before listing issues — accurate praise
+helps the implementer trust the rest of the feedback.
+
+If you find significant deviations from the plan, flag them specifically
+so the implementer can confirm whether the deviation was intentional.
+If you find issues with the plan itself rather than the implementation,
+say so.
+
+## Output Format
+
+### Strengths
+[What's well done? Be specific.]
+
+### Issues
+
+#### Critical (Must Fix)
+[Bugs, security issues, data loss risks, broken functionality]
+
+#### Important (Should Fix)
+[Architecture problems, missing features, poor error handling, test gaps]
+
+#### Minor (Nice to Have)
+[Code style, optimization opportunities, documentation polish]
+
+For each issue:
+- File:line reference
+- What's wrong
+- Why it matters
+- How to fix (if not obvious)
+
+### Review Focus results
+[One entry per Review Focus item: what the code does, with file:line.]
+
+### Rulings
+[One entry per `Ruling:` line in the ledger: stands / would decide differently, and why.]
+
+### Declined to judge
+[One line per behavior set aside, with the reason. Empty means none.]
+
+### Recommendations
+[Improvements for code quality, architecture, or process]
+
+### Assessment
+
+**Ready to merge?** [Yes | No | With fixes]
+
+**Reasoning:** [1-2 sentence technical assessment]
+
+## Critical Rules
+
+**DO:**
+- Categorize by actual severity
+- Be specific (file:line, not vague)
+- Explain WHY each issue matters
+- Acknowledge strengths
+- Give a clear verdict
+
+**DON'T:**
+- Say "looks good" without checking
+- Mark nitpicks as Critical
+- Give feedback on code you didn't actually read
+- Be vague ("improve error handling")
+- Avoid giving a clear verdict
+````
+
+The dispatch is made, and I stop here as instructed. I send no message to my partner at this point, because the skill forbids check-ins between steps.
+
+SUMMARY: I confirmed the range `1a2b3c4..HEAD` and the ledger state, built the review package, ledgered a ruling that the reviewer runs on the session's model because the tool takes no model, and dispatched the reviewer. The work now waits on the reviewer's report; nothing waits on my partner yet, and the model ruling reaches them in the final "Rulings I made" list.

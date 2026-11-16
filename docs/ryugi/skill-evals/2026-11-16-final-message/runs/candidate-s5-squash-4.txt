@@ -1,0 +1,116 @@
+Simulation only. No repository commands below are actually run. Assumed outputs are explicitly marked.
+
+**Message to partner:**
+> I’ll squash `feat/export` into `main`, verify it, and remove the feature branch.
+
+**1. Tool call**
+```json
+{"cmd":"git status --short --branch","workdir":"/Users/p/git/notes-app"}
+```
+Assume full output:
+```text
+## feat/export
+```
+
+**2. Tool call**
+```json
+{"cmd":"git log main -5 --format=%s","workdir":"/Users/p/git/notes-app"}
+```
+Assume output establishes this commit style:
+```text
+feat: add note search
+fix: preserve note ordering
+docs: update development instructions
+chore: update dependencies
+fix: handle empty notes
+```
+
+**3. Tool call**
+```json
+{"cmd":"git switch main && git pull --ff-only","workdir":"/Users/p/git/notes-app"}
+```
+Assume exit 0, full output:
+```text
+Switched to branch 'main'
+Your branch is up to date with 'origin/main'.
+Already up to date.
+```
+
+**4. Tool call**
+```json
+{"cmd":"git merge --squash feat/export","workdir":"/Users/p/git/notes-app"}
+```
+Assume exit 0: the completed export changes are staged successfully, with no conflicts. The tool returns the full changed-file summary; no file names were supplied in the situation, so those are not invented here.
+
+**5. Tool call**
+```json
+{"cmd":"pnpm test","workdir":"/Users/p/git/notes-app","max_output_tokens":20000}
+```
+Assume exit 0 and that the complete output fits within the requested limit. Assumed result:
+```text
+ Test Files  8 passed (8)
+      Tests  42 passed (42)
+```
+Read the full returned output before proceeding.
+
+**Message to partner:**
+> The staged squash passed `pnpm test`: 8 test files, 42 tests. I’ll commit it and run the tests on the resulting `main` commit.
+
+**6. Tool call**
+```json
+{"cmd":"git commit -m 'feat: add CSV export of notes'","workdir":"/Users/p/git/notes-app"}
+```
+Assume exit 0: one squash commit is created successfully.
+
+**7. Tool call**
+```json
+{"cmd":"pnpm test","workdir":"/Users/p/git/notes-app","max_output_tokens":20000}
+```
+Assume exit 0, complete output read, with:
+```text
+ Test Files  8 passed (8)
+      Tests  42 passed (42)
+```
+
+**8. Tool call**
+```json
+{"cmd":"git branch -D feat/export","workdir":"/Users/p/git/notes-app"}
+```
+Assume exit 0: `feat/export` is deleted. No worktree removal is needed because the work used this checkout.
+
+**9. Tool call**
+```json
+{"cmd":"git status --short --branch","workdir":"/Users/p/git/notes-app"}
+```
+Assume full output:
+```text
+## main...origin/main [ahead 1]
+```
+
+**10. Tool call**
+```json
+{"cmd":"git log -1 --format='%h %s%nparents: %p'","workdir":"/Users/p/git/notes-app"}
+```
+Assume full output:
+```text
+a1b2c3d feat: add CSV export of notes
+parents: 1234567
+```
+This confirms a single-parent squash commit.
+
+**11. Tool call — write verification artifact**
+```json
+{"cmd":"cat > /tmp/notes-app-export-landing-verify.md <<'EOF'\n# CSV export landing verification\n\nRepository: /Users/p/git/notes-app\n\nPartner instruction: \"merge it\"; interpreted as squash into main under skill/landing.md.\n\n- Started on feat/export with a clean working tree.\n- Switched to main; git pull --ff-only succeeded and reported already up to date.\n- git merge --squash feat/export succeeded without conflicts.\n- Before committing, pnpm test exited 0: 8 test files passed, 42 tests passed. Full output read.\n- Created a1b2c3d: feat: add CSV export of notes.\n- After committing, pnpm test exited 0: 8 test files passed, 42 tests passed. Full output read.\n- Deleted feat/export after the squash.\n- Final git status: clean main, ahead of origin/main by 1 commit.\n- Final commit has one parent: 1234567.\n- No push performed.\n\nNo new rulings or deferred findings. The completed implementation report remains the record of the earlier review and rulings.\nEOF","workdir":"/Users/p/git/notes-app"}
+```
+Assume exit 0. No ledger lines are appended: the completed spec workspace was removed at finish.
+
+**Final message to partner:**
+> done — squashed into local `main`; feature branch deleted.
+>
+> Needs you: none.
+>
+> `main` is one commit ahead of `origin/main`; pushing remains your call.
+>
+> [Verification](/tmp/notes-app-export-landing-verify.md)
+
+SUMMARY: Simulated squash landing, precommit and postcommit verification, branch cleanup, and verification report; nothing waits on the partner unless they want to push.

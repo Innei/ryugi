@@ -1,0 +1,1 @@
+PASS — Built the review package before dispatching one reviewer with its path, spec, verbatim focus lines, and rulings pointer; no partner questions or model messages.

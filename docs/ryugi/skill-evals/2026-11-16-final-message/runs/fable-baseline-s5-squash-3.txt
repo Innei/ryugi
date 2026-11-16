@@ -1,0 +1,64 @@
+Simulation of what I would do from "merge it" onward. `landing.md` says "merge it" means squash into `main`, so that is the path. Nothing below was actually run except reading `./skill/landing.md`.
+
+**Tool call 1** (shell): check the starting state
+
+```bash
+cd /Users/p/git/notes-app && git status --short --branch && git log --oneline -5 main
+```
+
+Assumed output: `## feat/export`, no modified or untracked files, and recent `main` commits in conventional-commit style (e.g. `feat: add tag filter`).
+
+**Tool call 2** (shell): switch to base, update, squash
+
+```bash
+git switch main && git pull --ff-only && git merge --squash feat/export && git status --short
+```
+
+Assumed output: `Already up to date.`, then `Squash commit -- not updating HEAD`, with the export files staged and no conflicts.
+
+**Tool call 3** (shell): prove the squashed tree before committing
+
+```bash
+pnpm test > /tmp/notes-app-landing-test.log 2>&1; echo "exit=$?"; tail -n 25 /tmp/notes-app-landing-test.log
+```
+
+Assumed output: `exit=0`, all test files passed, 0 failed. I read the tail for the counts.
+
+**Tool call 4** (shell): one commit for the whole branch, in the repo's style
+
+```bash
+git commit -m "feat: export notes as CSV" -m "Implements docs/ryugi/specs/2026-11-10-export-design.md. Squashed from feat/export."
+```
+
+Assumed output: `[main abc1234] feat: export notes as CSV`.
+
+**Tool call 5** (shell): the post-commit test run from `landing.md`, plus a check that the squash holds everything on the branch
+
+```bash
+pnpm test > /tmp/notes-app-landing-test.log 2>&1; echo "exit=$?"; tail -n 25 /tmp/notes-app-landing-test.log; git status --short --branch; git diff --stat main feat/export
+```
+
+Assumed output: `exit=0`, same pass counts, `## main...origin/main [ahead 1]`, clean tree, and an empty diff, so `main` and `feat/export` have identical trees.
+
+**Tool call 6** (shell): delete the branch. No worktree was made, so there is none to remove. `-D` is needed because git cannot see a squashed branch as merged; the empty diff in call 5 is what makes it safe.
+
+```bash
+git branch -D feat/export && git branch --list && git log --oneline -1
+```
+
+Assumed output: `Deleted branch feat/export (was def5678).`, only `main` listed, and `abc1234 feat: export notes as CSV`.
+
+No ledger lines are appended: the workspace was deleted at Finish, and the git history is the record now.
+
+**Message to my partner:**
+
+> `feat/export` is squashed into `main` as one commit, `abc1234 feat: export notes as CSV`, and it has not been pushed.
+>
+> - **Tests:** `pnpm test` on `main` after the commit exited 0 with every test passing (it also passed on the staged squash before I committed).
+> - **Nothing left behind:** `git diff main feat/export` was empty before I deleted the branch, so the squash carries everything the branch had.
+> - **Branch:** `feat/export` is deleted locally (it was at `def5678`, if you ever want it back from the reflog).
+> - **State of `main`:** it was already up to date with `origin/main` and is now one commit ahead.
+>
+> Pushing is your call.
+
+SUMMARY: Squash-merged `feat/export` into local `main` as a single commit, ran `pnpm test` before and after the commit (assumed green), confirmed the trees matched and deleted the branch; pushing `main` now waits on my partner.

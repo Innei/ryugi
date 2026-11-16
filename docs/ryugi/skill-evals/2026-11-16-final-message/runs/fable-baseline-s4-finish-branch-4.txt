@@ -1,0 +1,108 @@
+Simulation of the finish, from the current state until I stop. Nothing here was actually run; every output is assumed and marked as such.
+
+## Tool call 1: collect the ledger lines before anything is deleted
+
+```bash
+cd /Users/p/git/notes-app && grep -n -e 'Ruling:' -e 'minor (deferred)' -e '^Task [0-9]*: complete' -e '^Final' .ryugi/sdd/2026-11-10-export-design/progress.md
+```
+
+Assumed output (SHAs invented for the simulation):
+
+```
+4:Task 1: complete (commits 3f1c2aa..8d04e19, tests: pnpm test → 27 passed)
+6:Task 2: Ruling: quote fields per RFC 4180 — spec is silent on commas — cost if wrong: Excel-only users see quotes
+7:Task 2: complete (commits 8d04e19..b72a6c0, tests: pnpm test → 29 passed)
+9:Task 3: complete (commits b72a6c0..e9153fd, tests: pnpm test → 31 passed)
+11:Final: fixed streaming export — test_export_streams RED→GREEN, suite 32/32
+12:Final: minor (deferred): CSV header says updatedAt
+```
+
+This gives exactly one `Ruling:` line and one `minor (deferred)` line, with no `Final: Ruling:` lines.
+
+## Tool call 2: confirm the fixes are committed and the branch state
+
+```bash
+git status --short && git branch --show-current && git log --oneline main..HEAD
+```
+
+Assumed output: `git status --short` prints nothing (clean tree, and the workspace is git-ignored), then:
+
+```
+feat/export
+a41d7c3 fix(export): stream CSV rows instead of buffering
+e9153fd feat(export): export endpoint and download action
+b72a6c0 feat(export): CSV serializer with RFC 4180 quoting
+8d04e19 feat(export): note query for export
+```
+
+## Tool call 3: fresh proof of the suite at HEAD, in this session
+
+```bash
+pnpm test > /tmp/notes-app-export-final-test.log 2>&1; echo "exit=$?"; tail -n 15 /tmp/notes-app-export-final-test.log
+```
+
+Assumed output:
+
+```
+exit=0
+ ✓ test/export/stream.test.ts (1)
+   ✓ test_export_streams
+ ...
+ Test Files  9 passed (9)
+      Tests  32 passed (32)
+   Duration  2.41s
+```
+
+I read this as 32/32 passing with exit 0 and no failures or skips in the tail.
+
+## Tool call 4: look at the workspace, then delete only this spec's directory
+
+```bash
+ls -la .ryugi/sdd/ .ryugi/sdd/2026-11-10-export-design/
+```
+
+Assumed output: `.ryugi/sdd/` contains only `2026-11-10-export-design/`, which holds `tasks.md`, `progress.md`, the `briefs/` directory, the review package and the test logs. It is all scratch, with nothing I have not already captured above.
+
+```bash
+rm -rf .ryugi/sdd/2026-11-10-export-design && ls .ryugi/sdd/ && git status --short
+```
+
+Assumed output: `ls` prints nothing and `git status --short` prints nothing, so the workspace is gone and the tree is still clean.
+
+There is no ledger append here: the ledger is deleted with the workspace, and the git history is the record now.
+
+## Message to my human partner
+
+> **CSV export is built on `feat/export` and I've stopped before landing it — how it lands is your call.**
+>
+> **Evidence (this session, at HEAD `a41d7c3`):** `pnpm test` → 32 passed of 32, exit 0. The working tree is clean and everything is committed.
+>
+> **What landed** (4 commits on `feat/export`, ahead of `main`):
+> - `8d04e19` feat(export): note query for export
+> - `b72a6c0` feat(export): CSV serializer with RFC 4180 quoting
+> - `e9153fd` feat(export): export endpoint and download action
+> - `a41d7c3` fix(export): stream CSV rows instead of buffering
+>
+> **Final review:** one fresh-context review of the whole branch found one Important issue: the export buffered instead of streaming. I fixed it under TDD (`test_export_streams` failed first, then passed; suite 32/32). There was no re-review of that fix, by design.
+>
+> **Rulings I made** (1 — the complete list):
+> 1. Task 2: fields are quoted per RFC 4180, because the spec is silent on commas inside field values. Cost if wrong: Excel-only users see quotes.
+>
+> **Deferred minors** (1 — the complete list, not fixed):
+> 1. The CSV header says `updatedAt`.
+>
+> **Verification:** the spec had one claim, proved by the test run above, so there is no verify page and nothing waits on a verdict. The project has no skill for checking the running product, so I have not exercised the export in the running app.
+>
+> The spec's scratch workspace (`.ryugi/sdd/2026-11-10-export-design/`) is deleted. Nothing has been pushed or merged.
+>
+> **Ways to land it:**
+> 1. **Squash into `main`** (default)
+> 2. **Rebase onto `main`**
+> 3. **Push and open a PR**
+> 4. **Keep the branch as-is**
+>
+> Which one?
+
+I stop here. When they pick, I read `./skill/landing.md` and follow it.
+
+SUMMARY: I finished the export spec run on `feat/export` (rulings and minors collected, suite re-run at 32/32 in the simulation, workspace deleted, final report sent with the four landing options); landing now waits on my human partner's choice.

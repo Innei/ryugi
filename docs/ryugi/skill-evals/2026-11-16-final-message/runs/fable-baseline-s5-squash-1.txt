@@ -1,0 +1,71 @@
+I read `skill/landing.md` (a real read). "merge it" means squash into `main`, with no merge commit and no push. Everything below is simulated; nothing was run.
+
+## Tool calls, in order
+
+**1. Shell: confirm the starting state and record the branch tip**
+```bash
+cd /Users/p/git/notes-app && git status --short && git branch --show-current && git rev-parse feat/export
+```
+Assumed output: no status lines (clean tree), `feat/export`, tip `c41d9e7…`.
+
+**2. Shell: switch to base and update it**
+```bash
+git switch main && git pull --ff-only
+```
+Assumed output: `Switched to branch 'main'`, `Already up to date.`
+
+**3. Shell: check the repo's commit style and what is being squashed**
+```bash
+git log --oneline -8 main && git log --oneline main..feat/export
+```
+Assumed output: `main` uses conventional commits (`feat: …`, `fix: …`); the branch holds the task commits plus the final-review fix commits.
+
+**4. Shell: squash**
+```bash
+git merge --squash feat/export
+```
+Assumed output: `Squash commit -- not updating HEAD`, `Automatic merge went well; stopped before committing as requested`.
+
+**5. Shell: one commit for the whole branch**
+```bash
+git commit -m "feat: export notes as CSV" -m "Implements docs/ryugi/specs/2026-11-10-export-design.md.
+Squashed from feat/export (c41d9e7)."
+```
+Assumed output: `[main 8b2f6a3] feat: export notes as CSV`, with the files-changed summary.
+
+**6. Shell: run the tests on `main` after the squash**
+```bash
+pnpm test
+```
+Assumed output, read in full: all test files pass, 0 failed, exit 0 (say 58/58 tests).
+
+**7. Shell: check that `main` holds exactly the branch's content before deleting the branch**
+```bash
+git diff --stat HEAD feat/export && git status --short
+```
+Assumed output: empty for both, so the trees are identical and the checkout is clean.
+
+**8. Shell: delete the branch**
+```bash
+git branch -D feat/export
+```
+`-D` is needed because git cannot see a squashed branch as merged. Assumed output: `Deleted branch feat/export (was c41d9e7).`
+
+There was no worktree to remove, since the work was done in this checkout. No ledger line is written: the workspace was deleted at Finish, and git history is the record.
+
+**9. Shell: final state**
+```bash
+git log --oneline -1 && git status -sb
+```
+Assumed output: `8b2f6a3 feat: export notes as CSV`, `## main...origin/main [ahead 1]`.
+
+## Message to my partner
+
+> `feat/export` is squashed into `main` as one commit, `8b2f6a3 feat: export notes as CSV`, with no merge commit.
+>
+> - **Tests:** `pnpm test` on `main` after the squash passed, 58/58, exit 0.
+> - **Content:** `git diff HEAD feat/export` was empty before I deleted the branch, so `main` has exactly what the branch had.
+> - **Branch:** `feat/export` is deleted locally (its tip was `c41d9e7`, still in the reflog if you want it back).
+> - **Not pushed:** `main` is 1 commit ahead of `origin/main`. Pushing is your call.
+
+SUMMARY: Simulated squashing `feat/export` into `main` as one commit, running `pnpm test` on the result (assumed green), confirming the trees matched and deleting the branch; pushing `main` now waits on my partner.

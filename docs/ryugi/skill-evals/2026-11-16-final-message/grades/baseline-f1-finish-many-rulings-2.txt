@@ -1,0 +1,1 @@
+FAIL — Final message lists all 22 rulings, lacks numbered partner actions and bundle-budget decision, includes reviewer-model notes, and writes no accessible full-list artifact.

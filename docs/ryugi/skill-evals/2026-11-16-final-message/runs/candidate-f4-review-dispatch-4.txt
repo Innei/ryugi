@@ -1,0 +1,138 @@
+Not done — simulation only; the sequence stops at reviewer dispatch.
+
+1. **Simulated tool call**
+   ```json
+   {
+     "command": "cat .ryugi/sdd/2026-11-10-export-design/progress.md .ryugi/sdd/2026-11-10-export-design/tasks.md",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+   Assumed output: the ledger identifies the supplied spec, records all three tasks complete and two existing rulings; the task list ends with the supplied Review Focus. No task is repeated.
+
+2. **Simulated tool call**
+   ```json
+   {
+     "command": "bash scripts/review-package docs/ryugi/specs/2026-11-10-export-design.md 1a2b3c4 HEAD",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+   Assumed successful output:
+   ```text
+   /Users/p/git/notes-app/.ryugi/sdd/2026-11-10-export-design/review-package.md
+   ```
+   Assumed artifact: the script generates that package containing the branch’s actual commit list, changed files, and net diff with extended context. Those repository-derived contents are unavailable in this simulation; I do not invent them.
+
+3. **Simulated tool call**
+   ```json
+   {
+     "command": "cat .ryugi/sdd/2026-11-10-export-design/review-package.md",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+   Assumed output: the complete generated package, covering the three completed CSV-export tasks from `1a2b3c4` through `HEAD`.
+
+4. **Simulated tool call**
+   ```json
+   {
+     "command": "printf '%s\\n' 'Final review: session model' >> .ryugi/sdd/2026-11-10-export-design/progress.md",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+   Exact ledger line appended:
+   ```text
+   Final review: session model
+   ```
+   Assumed result: exit status `0`, no output.
+
+5. **Message to partner**
+   > I’m sending the whole branch for a fresh-context review.
+
+6. **Simulated tool call — dispatch**
+   ```yaml
+   description: "Review the branch against its spec"
+   prompt: |
+     You are reviewing a finished branch before it lands. Find what would
+     hurt someone using this software if it shipped as it is.
+
+     ## What to read
+
+     - The review package: /Users/p/git/notes-app/.ryugi/sdd/2026-11-10-export-design/review-package.md. It holds the commit list, the
+       files changed and the net diff with extended context. Read it first;
+       read files in the checkout when the package is not enough.
+     - The spec: /Users/p/git/notes-app/docs/ryugi/specs/2026-11-10-export-design.md.
+     - The executor's rulings: the `Ruling:` lines in /Users/p/git/notes-app/.ryugi/sdd/2026-11-10-export-design/progress.md. Each
+       is a decision the spec did not make. Weigh them: a ruling a
+       reasonable person using this software would not accept is a finding.
+
+     ## Review Focus
+
+     The executor named these inputs and failure modes as ones its tests do
+     not exercise. Check each one deliberately and say what you found:
+
+     ## Review Focus
+     - A note body with a newline, a quote and a comma in one field.
+     - An account with 200k notes.
+
+     ## The spec is a vision document
+
+     The spec says what the software must do. It does not enumerate every
+     input, environment, or condition the software will meet. For behavior
+     the spec is silent on, judge by what a reasonable person using this
+     software would expect: a reasonable person's expectation is a
+     requirement, and a spec's silence is not permission. Grade such
+     findings by their effect on that person, not by whether the spec
+     mentions the trigger.
+
+     ## Read-only
+
+     Your review is read-only on this checkout. Do not mutate the working
+     tree, the index, HEAD, or branch state in any way. If you need a
+     working copy of another revision, check it out into a separate
+     temporary directory (`git worktree add /tmp/review-<sha> <sha>`).
+
+     ## You do not dispatch subagents
+
+     Do all of this review yourself. Never spawn a subagent to review part
+     of the diff, and never spawn another reviewer for a second opinion.
+     This process already provides every review seat the work gets. If the
+     diff feels too large for one pass, review it in passes yourself and
+     say so in your report.
+
+     ## What to look for
+
+     - The spec: behavior it asks for that is missing, wrong, or departs
+       from it without a ruling.
+     - Correctness: edge cases, error handling, concurrency, data loss.
+     - Security and production readiness: input trust, secrets, migrations,
+       compatibility with existing data.
+     - Tests: they exercise real behavior, not mocks of it.
+
+     ## Output
+
+     Report findings only. No strengths, no praise, no general
+     recommendations.
+
+     ### Critical
+     Data loss, security holes, broken core behavior.
+
+     ### Important
+     Wrong behavior a person using this software will meet, missing spec
+     requirements, error handling or test gaps that hide such behavior.
+
+     ### Minor
+     Style, naming, small polish.
+
+     For each finding: `file:line`, what is wrong, what a person using the
+     software gets because of it, and the fix when it is not obvious. A
+     section with no findings says "None".
+
+     ### Declined to judge
+     Every behavior you considered and set aside as outside the spec, one
+     line each, with the reason. The executor rules on each line; nothing
+     you set aside is dropped silently. "None" means you set nothing aside.
+
+     ### Verdict
+     Ready to land: Yes, No, or With fixes, and one or two sentences why.
+   ```
+
+SUMMARY: Simulated review-package generation, recorded `Final review: session model`, and dispatched the reviewer; execution would now wait on the reviewer, with no partner action required.

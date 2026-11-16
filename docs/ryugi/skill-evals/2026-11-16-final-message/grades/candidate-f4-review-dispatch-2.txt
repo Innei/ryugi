@@ -1,0 +1,1 @@
+PASS — Runs the whole-branch review package before dispatching one reviewer with the package, spec, verbatim focus lines, and rulings pointer; no prohibited partner messages.

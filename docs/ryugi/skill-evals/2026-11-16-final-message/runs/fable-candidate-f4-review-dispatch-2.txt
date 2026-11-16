@@ -1,0 +1,112 @@
+Simulation follows. One thing I checked for real: `./skill/code-reviewer.md` exists and I read it; `./skill/scripts/review-package` is not in this directory, so its behaviour and output below are assumed.
+
+## Call 1: shell (build the review package, ledger the model note in the same call)
+
+```bash
+cd /Users/p/git/notes-app && \
+bash /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/tmp.g8d8g9YmN4/skill/scripts/review-package \
+  docs/ryugi/specs/2026-11-10-export-design.md 1a2b3c4 HEAD && \
+echo 'Final review: session model' >> .ryugi/sdd/2026-11-10-export-design/progress.md
+```
+
+- **Merge base:** `1a2b3c4`, the commit the branch started from. Nobody else works in this checkout, so I use the range form, not `--commits`.
+- **Ledger line appended:** `Final review: session model`. The subagent tool takes no model parameter, so the reviewer runs on the session's model.
+- **Assumed output:** the script succeeds and prints the package path `/Users/p/git/notes-app/.ryugi/sdd/2026-11-10-export-design/review-package.md`.
+
+Narration: Package built; dispatching the reviewer.
+
+## Call 2: subagent dispatch
+
+There is no model argument because the tool has none.
+
+**description:** `Review the branch against its spec`
+
+**prompt:**
+
+```
+You are reviewing a finished branch before it lands. Find what would
+hurt someone using this software if it shipped as it is.
+
+## What to read
+
+- The review package: /Users/p/git/notes-app/.ryugi/sdd/2026-11-10-export-design/review-package.md. It holds the commit list, the
+  files changed and the net diff with extended context. Read it first;
+  read files in the checkout when the package is not enough.
+- The spec: /Users/p/git/notes-app/docs/ryugi/specs/2026-11-10-export-design.md.
+- The executor's rulings: the `Ruling:` lines in /Users/p/git/notes-app/.ryugi/sdd/2026-11-10-export-design/progress.md. Each
+  is a decision the spec did not make. Weigh them: a ruling a
+  reasonable person using this software would not accept is a finding.
+
+## Review Focus
+
+The executor named these inputs and failure modes as ones its tests do
+not exercise. Check each one deliberately and say what you found:
+
+- A note body with a newline, a quote and a comma in one field.
+- An account with 200k notes.
+
+## The spec is a vision document
+
+The spec says what the software must do. It does not enumerate every
+input, environment, or condition the software will meet. For behavior
+the spec is silent on, judge by what a reasonable person using this
+software would expect: a reasonable person's expectation is a
+requirement, and a spec's silence is not permission. Grade such
+findings by their effect on that person, not by whether the spec
+mentions the trigger.
+
+## Read-only
+
+Your review is read-only on this checkout. Do not mutate the working
+tree, the index, HEAD, or branch state in any way. If you need a
+working copy of another revision, check it out into a separate
+temporary directory (`git worktree add /tmp/review-<sha> <sha>`).
+
+## You do not dispatch subagents
+
+Do all of this review yourself. Never spawn a subagent to review part
+of the diff, and never spawn another reviewer for a second opinion.
+This process already provides every review seat the work gets. If the
+diff feels too large for one pass, review it in passes yourself and
+say so in your report.
+
+## What to look for
+
+- The spec: behavior it asks for that is missing, wrong, or departs
+  from it without a ruling.
+- Correctness: edge cases, error handling, concurrency, data loss.
+- Security and production readiness: input trust, secrets, migrations,
+  compatibility with existing data.
+- Tests: they exercise real behavior, not mocks of it.
+
+## Output
+
+Report findings only. No strengths, no praise, no general
+recommendations.
+
+### Critical
+Data loss, security holes, broken core behavior.
+
+### Important
+Wrong behavior a person using this software will meet, missing spec
+requirements, error handling or test gaps that hide such behavior.
+
+### Minor
+Style, naming, small polish.
+
+For each finding: `file:line`, what is wrong, what a person using the
+software gets because of it, and the fix when it is not obvious. A
+section with no findings says "None".
+
+### Declined to judge
+Every behavior you considered and set aside as outside the spec, one
+line each, with the reason. The executor rules on each line; nothing
+you set aside is dropped silently. "None" means you set nothing aside.
+
+### Verdict
+Ready to land: Yes, No, or With fixes, and one or two sentences why.
+```
+
+The simulation stops here, at the dispatch. I send no message to my partner at this point: the run is mid-flight and nothing needs them yet.
+
+SUMMARY: Built the review package for `1a2b3c4..HEAD`, ledgered `Final review: session model`, and dispatched the whole-branch reviewer with the filled template. The run now waits on the reviewer's report, not on my partner; sorting findings, the single fix pass, verifying and the landing options come after.

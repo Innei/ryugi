@@ -1,0 +1,155 @@
+The skill directory only contains `code-reviewer.md` and `landing.md` (the `scripts/` files aren't there to read), so everything below is simulated, and each assumed tool output is marked **Assumed**.
+
+## 1. Sort the findings
+
+Narration: *Sorting findings; reading the spec and code before grading.*
+
+**Tool call 1 — shell**
+```bash
+cd /Users/p/git/notes-app && W=.ryugi/sdd/2026-11-10-export-design \
+&& grep -n -i 'column\|header\|empty\|stream\|memory\|limit' docs/ryugi/specs/2026-11-10-export-design.md \
+&& sed -n '1,80p' src/export.ts && grep -rn 'exportNotes\|findAllByUser' src test \
+&& cat $W/progress.md && ls .claude/skills 2>/dev/null
+```
+**Assumed output:**
+- The spec says: "`GET /api/export.csv` downloads all of the signed-in user's notes as CSV, columns `id,title,body,createdAt,updatedAt`, RFC 4180 quoting." It is silent on empty accounts, size and streaming.
+- `src/export.ts:40` is `const notes = await repo.findAllByUser(userId)`, and `exportNotes` returns `Promise<string>` built from `HEADER` and `toCsvRow(note)`.
+- `src/routes/export.ts` does `res.send(await exportNotes(...))`.
+- Tests are vitest, in `test/export.test.ts` and `test/routes/export.test.ts`.
+- The ledger has `Slicing: 3 tasks — …`, three `Task N: complete` lines, the review dispatch line, and no `Ruling:` lines so far.
+- The project has no skill for checking the running product.
+
+Grading by effect on the person using it:
+
+| Finding | Reviewer's label | My grade | Why |
+|---|---|---|---|
+| `exportNotes` loads every note into memory | Important | Important, enters the fix pass | A large account gets a crashed export, and the crash can take the server down for everyone. |
+| CSV header `updatedAt` vs UI "Last edited" | Minor | Minor, deferred | The spec names the column `updatedAt` literally, and the person gets a readable but differently named column. |
+| Header-only file for empty accounts | Declined to judge | Ruling: stands | A header-only CSV is valid and opens cleanly in a spreadsheet. |
+
+## 2. The one fix pass
+
+Narration: *Writing the failing test for the memory finding.*
+
+**Tool call 2 — edit `test/export.test.ts`** (add the test and a `collect` helper)
+```ts
+const collect = async (it: AsyncIterable<string>) => { let s = ''; for await (const c of it) s += c; return s }
+
+test('exportNotes streams in bounded pages and never loads all notes', async () => {
+  const all = Array.from({ length: 2500 }, (_, i) => makeNote({ id: String(i + 1).padStart(6, '0') }))
+  const limits: number[] = []
+  const repo = {
+    findAllByUser: vi.fn(() => { throw new Error('findAllByUser must not be used by export') }),
+    findPageByUser: vi.fn(async (_u: string, { after, limit }: { after?: string; limit: number }) => {
+      limits.push(limit)
+      const start = after ? all.findIndex(n => n.id === after) + 1 : 0
+      return all.slice(start, start + limit)
+    }),
+  }
+  const it = exportNotes('u1', repo)[Symbol.asyncIterator]()
+  await it.next()                                    // header
+  await it.next()                                    // first page of rows
+  expect(repo.findPageByUser).toHaveBeenCalledTimes(1) // page 2 not fetched until asked for
+  let rest = ''; for (let r = await it.next(); !r.done; r = await it.next()) rest += r.value
+  expect(Math.max(...limits)).toBeLessThanOrEqual(1000)
+  expect(rest.trimEnd().split('\r\n')).toHaveLength(1500)
+  expect(repo.findAllByUser).not.toHaveBeenCalled()
+})
+```
+
+**Tool call 3 — shell (RED)**
+```bash
+pnpm test -- test/export.test.ts -t 'streams in bounded pages' > .ryugi/sdd/2026-11-10-export-design/final-fix-red.log 2>&1; echo "exit $?"; tail -25 .ryugi/sdd/2026-11-10-export-design/final-fix-red.log
+```
+**Assumed output:** `exit 1`, 1 failed, with `Error: findAllByUser must not be used by export` raised from `src/export.ts:40`. That is the expected reason: the code path the finding names.
+
+**Tool call 4 — edit `src/export.ts`** (replace the body at line 40 onward)
+```ts
+export const EXPORT_PAGE_SIZE = 1000
+
+export async function* exportNotes(userId: string, repo: NotesRepo): AsyncGenerator<string> {
+  yield HEADER + '\r\n'
+  let after: string | undefined
+  for (;;) {
+    const page = await repo.findPageByUser(userId, { after, limit: EXPORT_PAGE_SIZE })
+    if (page.length === 0) return
+    yield page.map(toCsvRow).join('\r\n') + '\r\n'
+    if (page.length < EXPORT_PAGE_SIZE) return
+    after = page[page.length - 1].id
+  }
+}
+```
+
+**Tool call 5 — edit `src/notes-repo.ts`**: add `findPageByUser(userId, { after, limit })`, a keyset query (`WHERE user_id = ? AND id > ? ORDER BY id LIMIT ?`).
+
+**Tool call 6 — edit `src/routes/export.ts`**: replace `res.send(await exportNotes(...))` with `await pipeline(Readable.from(exportNotes(userId, repo)), res)`, keeping the same `Content-Type` and `Content-Disposition` headers.
+
+**Tool call 7 — edit existing tests**: in `test/export.test.ts` and `test/routes/export.test.ts`, wrap the existing `exportNotes(...)` string assertions in `collect(...)` and give the fake repos a `findPageByUser`. The assertions themselves do not change.
+
+**Tool call 8 — shell (GREEN, then the whole suite)**
+```bash
+W=.ryugi/sdd/2026-11-10-export-design; pnpm test -- test/export.test.ts -t 'streams in bounded pages' > $W/final-fix-green.log 2>&1; echo "exit $?"; tail -8 $W/final-fix-green.log; pnpm test > $W/final-suite.log 2>&1; echo "exit $?"; tail -15 $W/final-suite.log
+```
+**Assumed output:** `exit 0`, 1 passed; then `exit 0`, `Tests 32 passed (32)`, which is the earlier 31 plus the new test.
+
+**Tool call 9 — shell (commit and ledger in one call, own paths staged by name)**
+```bash
+W=.ryugi/sdd/2026-11-10-export-design
+git add src/export.ts src/notes-repo.ts src/routes/export.ts test/export.test.ts test/routes/export.test.ts \
+&& git commit -m "fix(export): stream CSV in keyset pages instead of loading all notes" \
+&& cat >> $W/progress.md <<EOF
+Final: fixed exportNotes loads every note into memory (src/export.ts:40) — "exportNotes streams in bounded pages and never loads all notes" RED→GREEN, suite 32/32 (commit $(git rev-parse --short HEAD))
+Final: Ruling: export now streams in pages of 1000 ordered by id, so a database error mid-export truncates the download after a 200 status instead of returning an error — bounded memory matters more than all-or-nothing delivery, and the spec is silent on both — cost if wrong: a user can receive a partial file with no error message
+Final: Ruling: empty accounts produce a file with only a header row (reviewer declined to judge) — a person exporting an empty account gets a valid CSV that opens with the right columns and no rows, which stands — cost if wrong: someone reads the empty file as a failed export; an "nothing to export" message would be a small follow-up
+Final: minor (deferred): CSV header uses updatedAt where the UI says "Last edited"; the spec names the column updatedAt
+EOF
+git log --oneline -1 && git status --short
+```
+**Assumed output:** `a41c9e2 fix(export): stream CSV in keyset pages instead of loading all notes`, and a clean status.
+
+There is no re-review and no second fix pass.
+
+## 3. Project verification
+
+The project has no skill for checking the running product (tool call 1), so this step is skipped.
+
+## 4. Finish
+
+**Tool call 10 — shell (collect the rulings, look at the target, then delete the workspace)**
+```bash
+W=.ryugi/sdd/2026-11-10-export-design; grep -n 'Ruling:\|minor (deferred)\|complete (commits' $W/progress.md; git log --oneline main..HEAD; ls -la $W && rm -rf $W
+```
+**Assumed output:**
+- The two `Final: Ruling:` lines and the one `minor (deferred)` line from tool call 9, with no rulings from Tasks 1–3.
+- Three `Task N: complete` lines.
+- Four commits on `feat/export`: `1f0c3aa`, `7be21d4`, `c92e5f0`, `a41c9e2`.
+- The directory holds only this spec's `tasks.md`, `progress.md`, briefs, review package and logs, and is then removed.
+
+**Tool call 11 — ryugi:verifying** (already loaded, not expanded here), run on the finished branch.
+**Assumed result:** because the work is more than one small claim, it opens a verify page and prints its link. The groups are "Download and columns", "Quoting" and "Large account", and all three wait on my partner's verdict.
+
+**Message to my human partner:**
+
+> The CSV export is built on `feat/export`, but it is not done until you pass the three groups on the verify page: `<link printed by ryugi:verifying>`.
+>
+> **What landed** (4 commits, `main..feat/export`: `1f0c3aa`, `7be21d4`, `c92e5f0`, `a41c9e2`)
+> - `GET /api/export.csv` downloads all of the signed-in user's notes with columns `id,title,body,createdAt,updatedAt` and RFC 4180 quoting.
+> - The full suite passes: `pnpm test` gave 32 passed out of 32 after the last commit.
+>
+> **Final review** (fresh-context reviewer, one fix pass, no re-review)
+> - **Fixed:** the export loaded every note into memory and would have run out of memory on a 200k-note account. It now streams in pages of 1000. The test "exportNotes streams in bounded pages and never loads all notes" failed before the fix and passes after it (`a41c9e2`).
+>
+> **Rulings I made**
+> 1. **Streaming and mid-export errors:** because the export now streams, a database error partway through truncates the download after a 200 status instead of returning an error. I chose bounded memory over all-or-nothing delivery; the spec is silent on both. If wrong, a user can receive a partial file with no error message.
+> 2. **Empty accounts:** they get a file with only the header row. The reviewer declined to judge this because the spec doesn't say. I let it stand, since it is a valid CSV with the right columns. If wrong, someone reads the empty file as a failed export; a "nothing to export" message would be a small follow-up.
+>
+> **Deferred minors**
+> - The CSV header says `updatedAt` where the UI says "Last edited". The spec names the column `updatedAt`, so I left it; say so if you want the header to match the UI.
+>
+> **Waiting on you**
+> - The verify page groups "Download and columns", "Quoting" and "Large account" each need your verdict.
+> - Nothing is pushed or merged. Once every group has passed I'll give you the ways to land the branch (squash into `main` is the default).
+
+Then I stop.
+
+SUMMARY: I sorted the final review (one Important fixed under TDD with the suite at 32/32, one minor deferred, two rulings ledgered), committed the fix, deleted the workspace and ran ryugi:verifying; landing `feat/export` now waits on my partner's verdicts on the verify page.

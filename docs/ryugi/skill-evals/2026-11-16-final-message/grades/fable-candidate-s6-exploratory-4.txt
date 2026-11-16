@@ -1,0 +1,1 @@
+PASS — EXPLORING has the required header and paths after tasks.md; task-done uses --uncommitted, review-package uses --exploring, and nothing is committed or staged.

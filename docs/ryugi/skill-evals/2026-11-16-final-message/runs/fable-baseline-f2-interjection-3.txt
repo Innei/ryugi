@@ -1,0 +1,226 @@
+Simulation follows. Nothing was run except reading `./skill/SKILL.md`; `./skill/scripts/*` is not present in this directory, so every script output below is assumed and behaves as the skill describes. All commands run from `/Users/p/git/deck-app/.worktrees/slides`, with `W=.ryugi/sdd/2026-11-14-slides-design` and `SPEC=docs/ryugi/specs/2026-11-14-slides-design.md`.
+
+## Part 1 — the partner's message
+
+The message is a small change to finished Task 20, so I handle it as a ledgered amendment under TDD before Task 21. The one open point, which accent token, is a ruling and not a reason to stop.
+
+**Call 1 (three parallel calls) — check what the code, spec and later tasks say**
+
+```
+Read src/viewer/Filmstrip.tsx
+shell: grep -n -i "filmstrip\|hairline-strong\|accent" docs/ryugi/specs/2026-11-14-slides-design.md
+shell: grep -rn "hairline-strong\|brand-accent" src/viewer src/theme | head -30; grep -n "Filmstrip" .ryugi/sdd/2026-11-14-slides-design/tasks.md
+```
+
+Assumed results:
+- **`Filmstrip.tsx`:** the thumbnail button carries `aria-current={isCurrent ? 'true' : undefined}` and the inline style `border: isCurrent ? '1px solid var(--hairline-strong)' : '1px solid transparent'`.
+- **Spec:** it says only that "the current slide's thumbnail is marked with a ring" and names no colour, so the change does not contradict it.
+- **Tokens:** `--brand-accent: #c65d3b` is defined in `src/theme/shell.css`.
+- **Existing tests:** `src/viewer/Filmstrip.test.tsx` has no assertion on the ring colour.
+- **Later tasks:** `Filmstrip` appears in `tasks.md` only under Task 20.
+
+Narration: 规格没规定颜色，直接按修订做，先写失败测试。
+
+**Call 2 — Edit `src/viewer/Filmstrip.test.tsx`, adding the failing test**
+
+```tsx
+it('current thumbnail ring uses the brand accent', () => {
+  render(<Filmstrip slides={threeSlides} currentIndex={1} onSelect={() => {}} />)
+  const thumbs = screen.getAllByRole('button', { name: /slide \d+/i })
+  expect(thumbs[1].getAttribute('style')).toContain('var(--brand-accent)')
+  expect(thumbs[0].getAttribute('style')).not.toContain('var(--brand-accent)')
+})
+```
+
+**Call 3 — watch it fail**
+
+```
+pnpm test src/viewer/Filmstrip.test.tsx > $W/amend-filmstrip-red.log 2>&1; tail -20 $W/amend-filmstrip-red.log
+```
+
+Assumed: 1 failed, 6 passed. The failure is `expected 'border: 1px solid var(--hairline-strong);' to contain 'var(--brand-accent)'`, which is the expected reason.
+
+**Call 4 — Edit `src/viewer/Filmstrip.tsx`**
+
+```
+old: '1px solid var(--hairline-strong)'
+new: '1px solid var(--brand-accent)'
+```
+
+**Call 5 — full suite**
+
+```
+pnpm test > $W/amend-filmstrip-green.log 2>&1; echo "exit $?"; tail -15 $W/amend-filmstrip-green.log
+```
+
+Assumed: `exit 0`, `Tests  389 passed (389)`, which is the 388 from before plus the new test.
+
+**Call 6 — commit and ledger in one call**
+
+```
+git add src/viewer/Filmstrip.tsx src/viewer/Filmstrip.test.tsx \
+&& git commit -m "feat(filmstrip): current thumbnail ring uses brand accent" \
+&& cat >> $W/progress.md <<EOF
+Amendment (partner, 2026-11-16, after Task 20): "底部 slides 的当前页的 active 的 border 可以用 accent color" — filmstrip current-thumbnail ring --hairline-strong → --brand-accent (commit $(git rev-parse --short HEAD), test "current thumbnail ring uses the brand accent" RED→GREEN, tests: pnpm test → 389 passed)
+Ruling: filmstrip active ring uses the shell's --brand-accent, not the deck's --deck-accent — the filmstrip is shell chrome on the shell's surface; a per-deck accent would change the ring with every deck and can sit near-invisible on the shell background — if wrong: one token swap in src/viewer/Filmstrip.tsx and its test
+Ruling: ring stays 1px solid, colour only — partner asked for the colour, not the weight — if wrong: one value in the same line
+EOF
+git log --oneline -1
+```
+
+Assumed: `a1b2c3d feat(filmstrip): current thumbnail ring uses brand accent`.
+
+**Message to partner:**
+
+> 改好了：底部 filmstrip 当前页的边框从 `--hairline-strong` 换成了 `--brand-accent`（#c65d3b），提交 `a1b2c3d`。新测试先失败后通过，`pnpm test` 全量 389 通过。
+>
+> 两个我自己定的点：
+> - **用哪个 accent**：用了外壳的 `--brand-accent`，没用每个 deck 自己的 `--deck-accent`。filmstrip 属于外壳界面，跟着 deck 主题变色的话，在外壳背景上可能看不清。如果你要的是 `--deck-accent`，改一个 token 就行。
+> - **粗细**：保持 1px，只换了颜色。
+>
+> 测试只证明了样式值，我还没在运行的界面里看过实际效果。我继续做 Task 21。
+
+## Part 2 — Task 21
+
+**Call 7 — take the task**
+
+```
+bash skill/scripts/task-start $SPEC 21
+```
+
+Assumed output: `brief: .ryugi/sdd/2026-11-14-slides-design/briefs/task-21.md` and `BASE: a1b2c3d`.
+
+**Call 8 (two parallel calls)**
+
+```
+Read .ryugi/sdd/2026-11-14-slides-design/briefs/task-21.md
+todos: Task 21 → in_progress
+```
+
+Assumed brief:
+- **Goal:** presenter window layout (spec §7.1) with a current-slide stage, a next-slide preview, a notes pane and a timer slot. On the last slide the next-preview shows an "End of deck" placeholder.
+- **Files:** create `src/presenter/PresenterLayout.tsx` and `src/presenter/PresenterLayout.test.tsx`.
+- **Interfaces:** Consumes `SlideThumbnail` (Task 18) and the `Slide` type (Task 2). Produces `PresenterLayout({ slides, currentIndex, timerSlot })`.
+- **Failing test:** four tests covering the current-slide region, the next-slide region, the end-of-deck placeholder, and the notes with the timer slot.
+- **Verify:** `pnpm test`, `Expected: 392 passed`.
+
+Narration: 先写 brief 里的失败测试。
+
+**Call 9 — Write `src/presenter/PresenterLayout.test.tsx`**
+
+```tsx
+import { render, screen, within } from '@testing-library/react'
+import { describe, expect, it } from 'vitest'
+import { PresenterLayout } from './PresenterLayout'
+import type { Slide } from '../model/slide'
+
+const slides: Slide[] = [
+  { id: 'a', title: 'Intro', notes: 'Say hello', blocks: [] },
+  { id: 'b', title: 'Agenda', notes: '', blocks: [] },
+]
+
+describe('PresenterLayout', () => {
+  it('shows the current slide in the stage region', () => {
+    render(<PresenterLayout slides={slides} currentIndex={0} timerSlot={null} />)
+    expect(within(screen.getByRole('region', { name: 'Current slide' })).getByText('Intro')).toBeTruthy()
+  })
+
+  it('shows the next slide in the preview region', () => {
+    render(<PresenterLayout slides={slides} currentIndex={0} timerSlot={null} />)
+    expect(within(screen.getByRole('region', { name: 'Next slide' })).getByText('Agenda')).toBeTruthy()
+  })
+
+  it('shows an end-of-deck placeholder on the last slide', () => {
+    render(<PresenterLayout slides={slides} currentIndex={1} timerSlot={null} />)
+    expect(within(screen.getByRole('region', { name: 'Next slide' })).getByText('End of deck')).toBeTruthy()
+  })
+
+  it('shows the current notes and renders the timer slot', () => {
+    render(<PresenterLayout slides={slides} currentIndex={0} timerSlot={<span>00:00</span>} />)
+    expect(within(screen.getByRole('region', { name: 'Speaker notes' })).getByText('Say hello')).toBeTruthy()
+    expect(screen.getByText('00:00')).toBeTruthy()
+  })
+})
+```
+
+**Call 10 — watch it fail**
+
+```
+pnpm test src/presenter/PresenterLayout.test.tsx > $W/task-21-red.log 2>&1; tail -20 $W/task-21-red.log
+```
+
+Assumed: the suite fails with `Failed to resolve import "./PresenterLayout"`. The module does not exist yet, so this is the expected reason.
+
+**Call 11 — Write `src/presenter/PresenterLayout.tsx`**
+
+```tsx
+import type { ReactNode } from 'react'
+import type { Slide } from '../model/slide'
+import { SlideThumbnail } from '../viewer/SlideThumbnail'
+
+export interface PresenterLayoutProps {
+  slides: Slide[]
+  currentIndex: number
+  timerSlot: ReactNode
+}
+
+export function PresenterLayout({ slides, currentIndex, timerSlot }: PresenterLayoutProps) {
+  const current = slides[currentIndex]
+  const next = slides[currentIndex + 1]
+  return (
+    <div className="presenter-layout">
+      <section aria-label="Current slide" className="presenter-stage">
+        {current && <SlideThumbnail slide={current} />}
+      </section>
+      <aside className="presenter-side">
+        <section aria-label="Next slide" className="presenter-next">
+          {next ? <SlideThumbnail slide={next} /> : <p className="presenter-end">End of deck</p>}
+        </section>
+        <div className="presenter-timer">{timerSlot}</div>
+        <section aria-label="Speaker notes" className="presenter-notes">
+          {current?.notes}
+        </section>
+      </aside>
+    </div>
+  )
+}
+```
+
+**Call 12 — run Verify and compare with Expected**
+
+```
+pnpm test > $W/task-21-verify.log 2>&1; echo "exit $?"; tail -15 $W/task-21-verify.log
+```
+
+Assumed: `exit 0`, `Tests  393 passed (393)`. The brief expects 392. The extra one is the filmstrip amendment test, which postdates the task list; all four `PresenterLayout` tests pass. The task list's count is stale and the code is right, so I ledger a ruling.
+
+**Call 13 — commit and ruling in one call**
+
+```
+git add src/presenter/PresenterLayout.tsx src/presenter/PresenterLayout.test.tsx \
+&& git commit -m "feat(presenter): presenter window layout" \
+&& echo "Task 21: Ruling: Verify printed 393 passed, brief Expected 392 — the difference is the amendment's filmstrip test (a1b2c3d), all 4 PresenterLayout tests pass; accepted as matching, and later tasks' expected counts are read as +1 — if wrong: a miscounted suite goes unnoticed, bounded by task-done recording the real count each task" >> $W/progress.md
+git log --oneline -1
+```
+
+Assumed: `d4e5f6a feat(presenter): presenter window layout`.
+
+**Call 14 — complete the task**
+
+```
+bash skill/scripts/task-done $SPEC 21 a1b2c3d -- pnpm test
+```
+
+Assumed: the tail shows `Tests  393 passed (393)` and the script appends `Task 21: complete (commits a1b2c3d..d4e5f6a, tests: pnpm test → 393 passed)`.
+
+**Call 15**
+
+```
+todos: Task 21 → completed
+```
+
+Narration: Task 21 完成，393 通过，接着做 Task 22。
+
+I send no message here. Continuous execution means the next call is `bash skill/scripts/task-start $SPEC 22`, and I do not check in. The three rulings above go into the final message's "Rulings I made" list when the run finishes.
+
+SUMMARY: I applied the partner's filmstrip change as a ledgered amendment (ring now `--brand-accent`, commit `a1b2c3d`, RED→GREEN, 389 passed), told them in Chinese which accent token I chose and that I have not checked it visually, then completed Task 21 (commit `d4e5f6a`, 393 passed, ledgered). Nothing waits on the partner; I continue into Task 22, and the `--brand-accent` versus `--deck-accent` choice is theirs to overturn whenever they like.

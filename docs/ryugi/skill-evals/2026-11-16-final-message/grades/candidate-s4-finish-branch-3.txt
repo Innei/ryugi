@@ -1,0 +1,1 @@
+PASS — Final message includes the ruling, cost, deferred minor, and all four landing choices; no merge, squash, rebase, or push occurs.

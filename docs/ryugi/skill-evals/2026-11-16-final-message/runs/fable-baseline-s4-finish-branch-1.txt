@@ -1,0 +1,78 @@
+Simulation from the Finish step onward. Nothing below was actually run; the outputs are assumed and marked as such.
+
+## Tool call 1: shell (read the ledger, check the tree, run the suite)
+
+```bash
+cd /Users/p/git/notes-app && \
+grep -nE 'Ruling:|minor \(deferred\)|^Task [0-9]+: complete|^Final' .ryugi/sdd/2026-11-10-export-design/progress.md; \
+git status --short; git branch --show-current; git log --oneline main..HEAD; \
+pnpm test > .ryugi/sdd/2026-11-10-export-design/final-test.log 2>&1; echo "exit=$?"; \
+tail -n 15 .ryugi/sdd/2026-11-10-export-design/final-test.log
+```
+
+Assumed output (the SHAs are invented for the simulation):
+
+```
+3:Task 1: complete (commits 4c1e9a2..a1f3c07, tests: pnpm test → 29 passed)
+5:Task 2: Ruling: quote fields per RFC 4180 — spec is silent on commas — cost if wrong: Excel-only users see quotes
+6:Task 2: complete (commits a1f3c07..7be20d4, tests: pnpm test → 30 passed)
+7:Task 3: complete (commits 7be20d4..e94d611, tests: pnpm test → 31 passed)
+8:Final: fixed streaming export — test_export_streams RED→GREEN, suite 32/32
+9:Final: minor (deferred): CSV header says updatedAt
+feat/export
+c52aa18 fix(export): stream CSV rows instead of buffering
+e94d611 feat(export): export route and download
+7be20d4 feat(export): CSV serializer
+a1f3c07 feat(export): notes query for export
+exit=0
+ Test Files  9 passed (9)
+      Tests  32 passed (32)
+```
+
+`git status --short` printed nothing, so the review fix is committed and the tree is clean. There is exactly one `Ruling:` line and one `minor (deferred)` line.
+
+Both lists are now captured, so the workspace can go.
+
+## Tool call 2: shell (look at the target, delete only this spec's workspace, confirm)
+
+```bash
+cd /Users/p/git/notes-app && ls -la .ryugi/sdd/ .ryugi/sdd/2026-11-10-export-design/ && \
+rm -rf .ryugi/sdd/2026-11-10-export-design && \
+ls -la .ryugi/sdd/; git status --short
+```
+
+Assumed output: before deletion, `.ryugi/sdd/` holds only `2026-11-10-export-design/` (containing `tasks.md`, `progress.md`, briefs, the review package and test logs). Afterwards `.ryugi/sdd/` is empty and `git status --short` prints nothing.
+
+No ledger append is made, because the ledger is deleted with the workspace. I make no merge, push or other landing action: that is a side effect on `main` and my partner's call.
+
+## Message to my partner
+
+> CSV export is built on `feat/export` and matches the spec `docs/ryugi/specs/2026-11-10-export-design.md`. I ran `pnpm test` just now on the branch head `c52aa18`: 32 of 32 tests passed, exit 0. Nothing is merged or pushed.
+>
+> **What landed** (4 commits on `feat/export`, `main..HEAD`):
+> - `a1f3c07` feat(export): notes query for export
+> - `7be20d4` feat(export): CSV serializer
+> - `e94d611` feat(export): export route and download
+> - `c52aa18` fix(export): stream CSV rows instead of buffering
+>
+> **Final review:** a fresh-context reviewer went over the whole branch and raised one Important finding, that the export was not streaming. I fixed it in `c52aa18`; `test_export_streams` failed first and now passes. There was no re-review of that fix, by design.
+>
+> **Verification:** the spec makes one claim, and the test command proves it, so there is no verify page and nothing waits on a verdict. The project has no skill for checking the running product, so I have not exercised the export in the running app.
+>
+> **Rulings I made**
+> 1. Task 2: fields are quoted per RFC 4180. The spec is silent on commas inside fields. Cost if wrong: Excel-only users see quotes.
+>
+> **Deferred minors**
+> 1. The CSV header says `updatedAt`. The reviewer flagged it and I did not change it; say so if you want it fixed before landing.
+>
+> I deleted the spec workspace `.ryugi/sdd/2026-11-10-export-design/`, which was git-ignored scratch; the git history is the record now.
+>
+> **Ways to land it — your call:**
+> 1. **Squash into `main`** (default)
+> 2. **Rebase onto `main`**
+> 3. **Push and open a PR**
+> 4. **Keep the branch as-is**
+
+I stop here. When they pick, I follow `landing.md`: for a squash, that is `git switch main && git pull --ff-only`, `git merge --squash feat/export`, `git commit`, `pnpm test`, then `git branch -D feat/export`.
+
+SUMMARY: I finished the export spec run by re-running `pnpm test` (assumed 32/32), deleting the spec workspace, and reporting the one ruling, the one deferred minor and the four commits on `feat/export`; landing (squash, rebase, PR or keep) and the `updatedAt` minor now wait on my partner.

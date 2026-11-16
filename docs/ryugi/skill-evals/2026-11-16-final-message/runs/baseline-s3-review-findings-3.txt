@@ -1,0 +1,357 @@
+Everything below is simulated. Only `./skill/code-reviewer.md` was actually read. Commands, file contents, results, and commit IDs below are hypothetical.
+
+1. Message to partner:
+
+> I’m treating the memory failure as Important, deferring the header wording, and keeping header-only exports for empty accounts because they accurately represent zero notes.
+
+2. Shell call:
+
+```json
+{
+  "cmd": "pwd\ngit status --short --branch\ncat .ryugi/sdd/2026-11-10-export-design/progress.md\ncat .ryugi/sdd/2026-11-10-export-design/tasks.md\ncat docs/ryugi/specs/2026-11-10-export-design.md\ncat src/export.ts\ncat src/export.test.ts\ncat src/notes.ts\ncat package.json\nrg --files -g AGENTS.md -g '*SKILL.md' -g '*verify*' -g '*export*'",
+  "workdir": "/Users/p/git/notes-app"
+}
+```
+
+Assumed results:
+
+- Clean checkout on `feat/export`.
+- Ledger records all three completed tasks, their successful checks, and commits `a111111`, `b222222`, and `c333333`.
+- No earlier rulings or deferred minors.
+- Spec requires CSV download, stable ordering, escaping, and preservation of notes.
+- `exportNotes(notes, sink)` currently calls `notes.listAll()`, constructs the entire CSV, and writes it once.
+- `NoteSource` already exposes `iterate(): AsyncIterable<Note>`, backed by bounded database pagination.
+- `CsvSink.write(chunk: string): Promise<void>` resolves when the destination accepts the chunk; it does not accumulate the download.
+- `Note` has string fields `id`, `title`, `body`, and `updatedAt`.
+- The existing header is `id,title,body,updatedAt\r\n`.
+- Vitest runs through `pnpm test`; 31 tests currently exist.
+- No additional project verification skill is present.
+- For the already-loaded verifying skill, assume the applicable workflow is a local evidence page with partner verdicts for user-visible claims.
+
+These assumptions determine the concrete patch below; actual differing interfaces would require adapting it.
+
+3. Shell call:
+
+```json
+{
+  "cmd": "cat >> .ryugi/sdd/2026-11-10-export-design/progress.md <<'EOF'\nFinal review: Important — bulk loading prevents large accounts from exporting; include bounded-memory export in the single fix pass.\nFinal: minor (deferred): CSV header uses updatedAt while the UI calls it Last edited.\nFinal: Ruling: Empty accounts produce a header-only CSV — retain this behavior because a reasonable person gets a valid export describing zero notes, without fabricated data — cost if wrong: people expecting an empty-state notice may find the download surprising.\nEOF",
+  "workdir": "/Users/p/git/notes-app"
+}
+```
+
+Assumed result: exit 0. No second reviewer is dispatched.
+
+4. Write artifact with `apply_patch`:
+
+```diff
+*** Begin Patch
+*** Add File: /Users/p/git/notes-app/src/export.streaming.test.ts
++import { expect, it } from 'vitest'
++import { exportNotes } from './export'
++
++it('exports 200,000 notes incrementally and awaits each destination write', async () => {
++  const count = 200_000
++  let written = 0
++  let headerWritten = false
++  let pending = false
++
++  const notes = {
++    async listAll(): Promise<never> {
++      throw new Error('Bulk loading is forbidden for CSV export')
++    },
++    async *iterate() {
++      for (let i = 0; i < count; i++) {
++        expect(pending).toBe(false)
++        expect(written).toBe(i)
++        yield {
++          id: String(i),
++          title: 'A, "quoted" title',
++          body: 'line one\nline two',
++          updatedAt: '2026-11-16T00:00:00Z',
++        }
++      }
++    },
++  }
++
++  const sink = {
++    async write(chunk: string) {
++      expect(pending).toBe(false)
++      pending = true
++      await Promise.resolve()
++      if (!headerWritten) {
++        expect(chunk).toBe('id,title,body,updatedAt\r\n')
++        headerWritten = true
++      } else {
++        expect(chunk).toBe(
++          `${written},"A, ""quoted"" title","line one\nline two",2026-11-16T00:00:00Z\r\n`,
++        )
++        written++
++      }
++      pending = false
++    },
++  }
++
++  await exportNotes(notes, sink)
++  expect(headerWritten).toBe(true)
++  expect(written).toBe(count)
++})
+*** End Patch
+```
+
+Assumed result: patch applied.
+
+5. Shell call:
+
+```json
+{
+  "cmd": "pnpm test -- src/export.streaming.test.ts",
+  "workdir": "/Users/p/git/notes-app"
+}
+```
+
+Assumed full output:
+
+```text
+> notes-app@1.0.0 test
+> vitest run src/export.streaming.test.ts
+
+ RUN  v3.2.0 /Users/p/git/notes-app
+
+ ❯ src/export.streaming.test.ts (1 test | 1 failed)
+   × exports 200,000 notes incrementally and awaits each destination write
+     → Bulk loading is forbidden for CSV export
+
+ FAIL  src/export.streaming.test.ts
+Error: Bulk loading is forbidden for CSV export
+ ❯ Object.listAll src/export.streaming.test.ts:12:13
+ ❯ exportNotes src/export.ts:40:29
+
+ Test Files  1 failed (1)
+      Tests  1 failed (1)
+```
+
+Exit 1. This is the expected RED result: export invokes bulk loading.
+
+6. Write implementation artifact with `apply_patch`:
+
+```diff
+*** Begin Patch
+*** Update File: /Users/p/git/notes-app/src/export.ts
+@@
+ export async function exportNotes(
+   notes: NoteSource,
+   sink: CsvSink,
+ ): Promise<void> {
+-  const allNotes = await notes.listAll()
+-  const rows = allNotes.map((note) =>
+-    [note.id, note.title, note.body, note.updatedAt]
+-      .map(escapeCsv)
+-      .join(','),
+-  )
+-  await sink.write(['id,title,body,updatedAt', ...rows].join('\r\n') + '\r\n')
++  await sink.write('id,title,body,updatedAt\r\n')
++  for await (const note of notes.iterate()) {
++    const row = [note.id, note.title, note.body, note.updatedAt]
++      .map(escapeCsv)
++      .join(',')
++    await sink.write(row + '\r\n')
++  }
+ }
+*** End Patch
+```
+
+Assumed result: patch applied. Existing escaping, source ordering, and sink ownership remain governed by their existing implementations and tests.
+
+7. Shell call:
+
+```json
+{
+  "cmd": "pnpm test",
+  "workdir": "/Users/p/git/notes-app"
+}
+```
+
+Assumed full output:
+
+```text
+> notes-app@1.0.0 test
+> vitest run
+
+ RUN  v3.2.0 /Users/p/git/notes-app
+
+ ✓ src/notes.test.ts (12 tests)
+ ✓ src/export.test.ts (10 tests)
+ ✓ src/ui.test.ts (9 tests)
+ ✓ src/export.streaming.test.ts (1 test)
+
+ Test Files  4 passed (4)
+      Tests  32 passed (32)
+```
+
+Exit 0. Read the full output. The regression is GREEN, and the entire suite passes 32/32.
+
+8. Message to partner:
+
+> The regression failed on bulk loading and now passes across 200,000 generated notes; the full suite passes 32/32.
+
+9. Shell call:
+
+```json
+{
+  "cmd": "git diff --check\ngit diff -- src/export.ts\ngit diff --no-index -- /dev/null src/export.streaming.test.ts",
+  "workdir": "/Users/p/git/notes-app"
+}
+```
+
+Assumed results: whitespace check exits 0; diffs match the two patches above. The final `git diff --no-index` exits 1 because it displays a new file, with no error.
+
+10. Shell call, keeping the ledger append with the commit:
+
+```json
+{
+  "cmd": "git add src/export.ts src/export.streaming.test.ts\ngit commit -m \"fix: stream note exports with destination backpressure\"\ncommit_result=$?\nif [ \"$commit_result\" -ne 0 ]; then\n  exit \"$commit_result\"\nfi\ncat >> .ryugi/sdd/2026-11-10-export-design/progress.md <<'EOF'\nFinal: fixed bulk loading during export — exports 200,000 notes incrementally and awaits each destination write RED→GREEN, suite 32/32.\nEOF\ngit log -1 --format='%h %s'\ngit status --short --branch",
+  "workdir": "/Users/p/git/notes-app"
+}
+```
+
+Assumed output:
+
+```text
+[feat/export d444444] fix: stream note exports with destination backpressure
+ 2 files changed, 54 insertions(+), 6 deletions(-)
+ create mode 100644 src/export.streaming.test.ts
+d444444 fix: stream note exports with destination backpressure
+## feat/export
+```
+
+Exit 0. The single fix pass is finished. No deferred minor was included.
+
+11. Shell call to collect the complete decision record and verify history before cleanup:
+
+```json
+{
+  "cmd": "rg -n 'Ruling:|minor \\(deferred\\)' .ryugi/sdd/2026-11-10-export-design/progress.md\ngit log --oneline main..HEAD\ngit status --porcelain",
+  "workdir": "/Users/p/git/notes-app"
+}
+```
+
+Assumed results:
+
+```text
+Final: minor (deferred): CSV header uses updatedAt while the UI calls it Last edited.
+Final: Ruling: Empty accounts produce a header-only CSV — retain this behavior because a reasonable person gets a valid export describing zero notes, without fabricated data — cost if wrong: people expecting an empty-state notice may find the download surprising.
+d444444 fix: stream note exports with destination backpressure
+c333333 feat: add CSV export download
+b222222 feat: encode notes as CSV
+a111111 feat: add ordered note iteration
+```
+
+No porcelain status output. All required fixes are committed.
+
+12. Shell call to remove only this spec’s scratch workspace:
+
+```json
+{
+  "cmd": "python3 - <<'PY'\nfrom pathlib import Path\nimport shutil\nworkspace = Path('/Users/p/git/notes-app/.ryugi/sdd/2026-11-10-export-design')\nassert workspace.parent == Path('/Users/p/git/notes-app/.ryugi/sdd')\nshutil.rmtree(workspace)\nprint(f'Removed {workspace}')\nPY",
+  "workdir": "/Users/p/git/notes-app"
+}
+```
+
+Assumed result: exit 0, printing the exact removed path. This deletes only reproducible execution scratch, after collecting decisions and confirming committed work.
+
+13. Message to partner:
+
+> Automated checks are green. Final verification still needs your verdict on the downloaded CSV and empty-account behavior.
+
+14. Under the assumed loaded verifying workflow, write this persistent verification artifact:
+
+```diff
+*** Begin Patch
+*** Add File: /tmp/notes-export-verification.html
++<!doctype html>
++<html lang="en">
++<meta charset="utf-8">
++<meta name="viewport" content="width=device-width,initial-scale=1">
++<title>Notes CSV export verification</title>
++<style>
++body{font:16px system-ui;max-width:760px;margin:48px auto;padding:0 24px;line-height:1.6}
++section{border:1px solid #ccc;border-radius:12px;padding:20px;margin:20px 0}
++label{display:block;margin-top:12px}
++select,textarea{font:inherit}
++textarea{display:block;width:95%;min-height:64px}
++</style>
++<h1>Notes CSV export verification</h1>
++<p>Branch: feat/export. Fix commit: d444444. Landing waits for both partner groups to pass.</p>
++<section>
++<h2>Automated evidence</h2>
++<p>pnpm test: 32/32 tests passed. The added regression first failed because
++export called listAll, then passed while exporting 200,000 generated notes.
++It checks incremental consumption, awaited writes, ordering, and CSV escaping.</p>
++<p>This proves the tested export path; it does not measure production browser
++memory or replace checking an actual downloaded file.</p>
++</section>
++<section>
++<h2>Group 1: Download and CSV contents</h2>
++<p>Partner: export notes containing commas, quotes, and multiline bodies.
++Open the downloaded file in your normal CSV application. Check that fields,
++rows, and order are correct and that your notes remain unchanged.</p>
++<label>Verdict <select data-save="download">
++<option>Pending</option><option>Pass</option><option>Reject</option>
++</select></label>
++<label>Evidence or rejection details
++<textarea data-save="download-details"></textarea></label>
++</section>
++<section>
++<h2>Group 2: Empty account</h2>
++<p>Partner: export an account with no notes. Check that the downloaded file
++contains only id,title,body,updatedAt and that this behavior is acceptable.</p>
++<label>Verdict <select data-save="empty">
++<option>Pending</option><option>Pass</option><option>Reject</option>
++</select></label>
++<label>Evidence or rejection details
++<textarea data-save="empty-details"></textarea></label>
++</section>
++<p>Verdicts save locally in this browser. Send the verdicts and evidence back
++to the coding agent; this page does not transmit them.</p>
++<script>
++for(const field of document.querySelectorAll('[data-save]')){
++  const key='notes-export-d444444-'+field.dataset.save;
++  const saved=localStorage.getItem(key);
++  if(saved!==null)field.value=saved;
++  field.addEventListener('input',()=>localStorage.setItem(key,field.value));
++}
++</script>
++</html>
+*** End Patch
+```
+
+Assumed result: artifact written. Its automated evidence describes the simulated results above.
+
+15. Shell call to open the verification page:
+
+```json
+{
+  "cmd": "open /tmp/notes-export-verification.html",
+  "workdir": "/Users/p/git/notes-app"
+}
+```
+
+Assumed result: exit 0; the page opens. Both partner verdicts remain **Pending**. Opening the page supplies no approval.
+
+16. Final message to partner:
+
+> The memory fix is committed as `d444444`. The new regression failed on bulk loading before the fix; `pnpm test` then passed **32/32**.
+>
+> [Verification page](/tmp/notes-export-verification.html): download/CSV contents and empty-account behavior both await your verdict. The work is not yet verified for landing.
+>
+> **Rulings I made**
+>
+> - Retained header-only exports for empty accounts: they accurately represent zero notes. Cost if wrong: people expecting an empty-state notice may find the download surprising.
+>
+> **Deferred minors**
+>
+> - CSV header `updatedAt` differs from the UI’s “Last edited.”
+>
+> Branch `feat/export` remains unlanded.
+
+SUMMARY: Simulated one verified memory-fix pass, deferred the header wording, recorded the empty-account ruling, and opened verification; both partner verdicts must pass before landing proceeds.

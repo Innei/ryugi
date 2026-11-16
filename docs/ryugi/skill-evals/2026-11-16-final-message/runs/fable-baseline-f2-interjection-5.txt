@@ -1,0 +1,131 @@
+A note before the transcript: `./skill/scripts/task-start` and `./skill/scripts/task-done` are not present in this sandbox (both reads failed), so I use the script commands exactly as the skill gives them and assume they behave as it describes. Every output below is assumed, not real.
+
+## Part 1 — the partner's message (amendment to completed Task 20)
+
+The request is a small design change to already-committed work and none of the four stops applies. The only open point is which accent token, so I rule on it, prove it with a test, and commit it before Task 21's BASE is cut.
+
+**Call 1 — shell** (check what the spec, task list and code already say)
+```
+cd /Users/p/git/deck-app/.worktrees/slides && \
+grep -n -i "filmstrip\|accent\|hairline" docs/ryugi/specs/2026-11-14-slides-design.md | head -40; \
+grep -n -i "filmstrip\|accent" .ryugi/sdd/2026-11-14-slides-design/tasks.md | head -40; \
+grep -rn -e "--brand-accent" -e "--deck-accent" src | head -40
+```
+Assumed output:
+- The spec says the current slide's thumbnail "has a visible ring" and names no color.
+- No task after 20 touches the filmstrip ring.
+- `--brand-accent` is used by other shell selection states (toolbar, sidebar).
+- `--deck-accent` is defined only inside the deck theme scope (`.deck-root`), which the filmstrip chrome sits outside of.
+
+**Call 2 — read** `src/viewer/Filmstrip.tsx` and `src/viewer/Filmstrip.test.tsx` (in parallel)
+
+Assumed: the ring is an inline style, `border: isCurrent ? '1px solid var(--hairline-strong)' : '1px solid var(--hairline)'`. Task 20's test `marks the current thumbnail with a ring` asserts that the current thumbnail's `style` attribute contains `var(--hairline-strong)`.
+
+Accent means `--brand-accent`; test first.
+
+**Call 3 — edit** `src/viewer/Filmstrip.test.tsx`
+```
+old: it('marks the current thumbnail with a ring', () => {
+       ...
+       expect(current.getAttribute('style')).toContain('var(--hairline-strong)')
+     })
+new: it('rings the current thumbnail in the shell accent color', () => {
+       ...
+       expect(current.getAttribute('style')).toContain('1px solid var(--brand-accent)')
+       expect(other.getAttribute('style')).not.toContain('var(--brand-accent)')
+     })
+```
+
+**Call 4 — shell** (watch it fail)
+```
+pnpm test src/viewer/Filmstrip.test.tsx > .ryugi/sdd/2026-11-14-slides-design/amend-20-red.log 2>&1; tail -25 .ryugi/sdd/2026-11-14-slides-design/amend-20-red.log
+```
+Assumed output: 1 failed — `expected 'border: 1px solid var(--hairline-strong);…' to contain '1px solid var(--brand-accent)'`. That is the expected reason.
+
+**Call 5 — edit** `src/viewer/Filmstrip.tsx`
+```
+old: border: isCurrent ? '1px solid var(--hairline-strong)' : '1px solid var(--hairline)',
+new: border: isCurrent ? '1px solid var(--brand-accent)' : '1px solid var(--hairline)',
+```
+
+**Call 6 — shell** (full suite)
+```
+pnpm test > .ryugi/sdd/2026-11-14-slides-design/amend-20-green.log 2>&1; tail -25 .ryugi/sdd/2026-11-14-slides-design/amend-20-green.log
+```
+Assumed output: `Tests 388 passed (388)`, exit 0. The count is unchanged because one existing test was rewritten and none added.
+
+**Call 7 — shell** (commit and ledger in one call, staging by name)
+```
+git add src/viewer/Filmstrip.tsx src/viewer/Filmstrip.test.tsx && \
+git commit -m "feat(filmstrip): ring current thumbnail in brand accent" && \
+SHA=$(git rev-parse --short HEAD) && \
+cat >> .ryugi/sdd/2026-11-14-slides-design/progress.md <<EOF
+Task 20: Amendment (partner, 2026-11-16, after completion): current filmstrip thumbnail border uses the accent color — commit $SHA, test "rings the current thumbnail in the shell accent color" RED→GREEN, tests: pnpm test → 388 passed
+Task 20: Ruling: "accent color" = shell --brand-accent (#c65d3b), not per-deck --deck-accent; width stays 1px — the filmstrip is authoring chrome outside the deck theme scope, other shell selection states use --brand-accent, and partner asked only about color — if wrong: one-token swap in Filmstrip.tsx and its test, plus extending the deck theme scope to the filmstrip if --deck-accent was meant
+EOF
+git log --oneline -1
+```
+Assumed output: `a1b2c3d feat(filmstrip): ring current thumbnail in brand accent`.
+
+**Message to partner** (a status note; I do not wait for a reply)
+
+> 已改：底部 filmstrip 当前页的边框现在用 `--brand-accent`（#c65d3b），宽度保持 1px，提交 `a1b2c3d`。
+>
+> - **验证**：先把测试改成断言 accent 边框并看它失败，改完后 `pnpm test` 全量 388 通过。我没有在运行的应用里看实际效果。
+> - **我做的一个决定**：「accent color」我取的是外壳的 `--brand-accent`，不是每个 deck 主题自己的 `--deck-accent`。filmstrip 属于编辑界面的外壳，不在 deck 主题的作用域里，外壳其他选中态也用这个 token。如果你想要的是跟随 deck 主题的 `--deck-accent`，说一声，我来换。
+>
+> 我继续做 Task 21（演讲者窗口布局）。
+
+## Part 2 — Task 21
+
+**Call 8 — shell**
+```
+bash scripts/task-start docs/ryugi/specs/2026-11-14-slides-design.md 21
+```
+Assumed output: brief path `.ryugi/sdd/2026-11-14-slides-design/briefs/task-21.md`, `BASE=a1b2c3d`. The amendment commit sits before BASE, so it stays out of Task 21's range.
+
+**Call 9 — read** `.ryugi/sdd/2026-11-14-slides-design/briefs/task-21.md`, and **todos**: Task 21 → in_progress (same block)
+
+Assumed brief:
+- **Goal:** the presenter window layout — current slide, next-slide preview, notes pane, timer slot.
+- **Files:** `src/presenter/PresenterWindow.tsx` and `src/presenter/PresenterWindow.test.tsx`.
+- **Consumes:** `SlideThumbnail` and `useDeck` from earlier tasks.
+- **Produces:** `PresenterWindow` with `data-region` slots `current`, `next`, `notes`, `timer`.
+- **Failing test:** three tests — the four regions render; `next` shows slide n+1; on the last slide `next` shows the end-of-deck placeholder.
+- **Verify:** `pnpm test`, `Expected:` 391 passed.
+
+**Call 10 — write** `src/presenter/PresenterWindow.test.tsx` — the brief's three tests, using its exact names.
+
+**Call 11 — shell**
+```
+pnpm test src/presenter/PresenterWindow.test.tsx > .ryugi/sdd/2026-11-14-slides-design/task-21-red.log 2>&1; tail -25 .ryugi/sdd/2026-11-14-slides-design/task-21-red.log
+```
+Assumed output: the suite fails with `Failed to resolve import "./PresenterWindow"`. That is the expected reason, since the component does not exist yet.
+
+**Call 12 — write** `src/presenter/PresenterWindow.tsx` — minimal grid layout with the four `data-region` slots, consuming `useDeck` and `SlideThumbnail` and rendering the end-of-deck placeholder on the last slide.
+
+**Call 13 — shell** (Verify)
+```
+pnpm test > .ryugi/sdd/2026-11-14-slides-design/task-21-verify.log 2>&1; tail -25 .ryugi/sdd/2026-11-14-slides-design/task-21-verify.log
+```
+Assumed output: `Tests 391 passed (391)`, which matches `Expected:`. There are no deviations from the brief, so no ruling line.
+
+**Call 14 — shell**
+```
+git add src/presenter/PresenterWindow.tsx src/presenter/PresenterWindow.test.tsx && \
+git commit -m "feat(presenter): presenter window layout" && git log --oneline -1
+```
+Assumed output: `b2c3d4e feat(presenter): presenter window layout`.
+
+**Call 15 — shell**
+```
+bash scripts/task-done docs/ryugi/specs/2026-11-14-slides-design.md 21 a1b2c3d -- pnpm test
+```
+Assumed output: tail shows 391 passed, and the script appends to the ledger:
+`Task 21: complete (commits a1b2c3d..b2c3d4e, tests: pnpm test → 391 passed)`
+
+**Call 16 — todos**: Task 21 → complete, Task 22 → in_progress, together with **shell** `bash scripts/task-start docs/ryugi/specs/2026-11-14-slides-design.md 22`.
+
+I send no check-in message here. Execution continues through Tasks 22–33, then the final review, where the reviewer is pointed at the Task 20 ruling. That ruling will also appear under "Rulings I made" in the final message.
+
+SUMMARY: I applied the partner's filmstrip request as a tested, committed amendment to Task 20 (current thumbnail border now `--brand-accent`, ruling ledgered, 388 passed), told them in Chinese which token I chose, then completed Task 21 (391 passed, ledgered) and moved on to Task 22. Nothing waits on the partner unless they want `--deck-accent` instead; Tasks 22–33 and the final review wait on me. All outputs are simulated.

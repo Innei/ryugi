@@ -1,0 +1,105 @@
+This is a simulated transcript. No commands are executed; outputs below are assumed.
+
+**Message to partner:**
+> I’m using executing-specs to collect the final decisions, verify the branch, and prepare the landing choices.
+
+**Tool call — shell:**
+```json
+{"cmd":"rg -n 'Ruling:|minor \\(deferred\\)' .ryugi/sdd/2026-11-10-export-design/progress.md","workdir":"/Users/p/git/notes-app"}
+```
+
+Assumed output (line numbers illustrative):
+```text
+18:Task 2: Ruling: quote fields per RFC 4180 — spec is silent on commas — cost if wrong: Excel-only users see quotes
+29:Final: minor (deferred): CSV header says updatedAt
+```
+
+**Tool call — shell:**
+```json
+{"cmd":"git status --short --branch","workdir":"/Users/p/git/notes-app"}
+```
+
+Assumed output:
+```text
+## feat/export
+```
+
+**Tool call — shell:**
+```json
+{"cmd":"git log --reverse --format='%h %s' main..HEAD","workdir":"/Users/p/git/notes-app"}
+```
+
+Assumed output (commit IDs and titles invented for this simulation):
+```text
+a13bc20 Add CSV serialization for notes
+b24cd31 Add notes export action
+c35de42 Test CSV export integration
+d46ef53 Stream CSV export
+```
+
+**Tool call — shell:**
+```json
+{"cmd":"pnpm test","workdir":"/Users/p/git/notes-app"}
+```
+
+Assumed full output:
+```text
+> notes-app@1.0.0 test /Users/p/git/notes-app
+> vitest run
+
+ RUN  v3.2.4 /Users/p/git/notes-app
+
+ ✓ tests/notes.test.ts (20 tests) 34ms
+ ✓ tests/export.test.ts (12 tests) 28ms
+
+ Test Files  2 passed (2)
+      Tests  32 passed (32)
+   Start at  10:00:00
+   Duration  612ms
+```
+
+Assumed exit code: `0`. I read the full output: all 32 tests passed.
+
+**Message to partner:**
+> `pnpm test` passed all 32 tests. The branch has no uncommitted changes; I’m removing this spec’s scratch workspace.
+
+**Tool call — shell:**
+```json
+{"cmd":"rm -r -- .ryugi/sdd/2026-11-10-export-design","workdir":"/Users/p/git/notes-app"}
+```
+
+Assumed output: empty; exit code `0`.
+
+**Tool call — shell:**
+```json
+{"cmd":"test ! -e .ryugi/sdd/2026-11-10-export-design && git status --short --branch","workdir":"/Users/p/git/notes-app"}
+```
+
+Assumed full output:
+```text
+## feat/export
+```
+
+Assumed exit code: `0`.
+
+No artifacts are written and no ledger lines are appended.
+
+**Final message to partner:**
+> CSV export is ready on `feat/export`. `pnpm test` passed 32/32 tests. The final review’s streaming issue is fixed, inline verification passed, and the working tree is clean.
+>
+> **Rulings I made**
+>
+> - Quote fields per RFC 4180 because the spec is silent on commas. Cost if wrong: Excel-only users see quotes.
+>
+> **Deferred minors**
+>
+> - CSV header says `updatedAt`.
+>
+> Choose how to land it:
+>
+> 1. **Squash into `main`** (default)
+> 2. **Rebase onto `main`**
+> 3. **Push and open a PR**
+> 4. **Keep the branch as-is**
+
+SUMMARY: Simulated verification, decision collection, workspace cleanup, and final handoff; landing waits on the partner’s choice.

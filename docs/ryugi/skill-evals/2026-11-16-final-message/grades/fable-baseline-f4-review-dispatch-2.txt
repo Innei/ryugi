@@ -1,0 +1,1 @@
+FAIL — The agent explicitly tells its partner that the harness cannot name a model and the reviewer inherits the session model.

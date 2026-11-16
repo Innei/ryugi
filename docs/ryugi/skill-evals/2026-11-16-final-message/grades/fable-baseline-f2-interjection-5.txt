@@ -1,0 +1,1 @@
+FAIL — The partner reply includes lengthy process notes and token-selection rationale, exceeding the required short change-and-verification update.

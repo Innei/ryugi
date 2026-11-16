@@ -1,0 +1,1 @@
+FAIL — Partner message lists all 23 rulings and reviewer-model details; full rulings and deferred minors were never written to a linked, accessible artifact.

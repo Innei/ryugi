@@ -1,0 +1,1 @@
+FAIL — The accent change had no failing test or check showing the rendered ring colour; passing tests and a token diff do not confirm it.

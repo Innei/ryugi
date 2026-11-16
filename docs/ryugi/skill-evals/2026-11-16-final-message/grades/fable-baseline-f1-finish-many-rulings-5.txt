@@ -1,0 +1,1 @@
+FAIL — The partner message lists all 23 rulings, includes reviewer-model process notes, and leaves no linked artifact containing the full rulings and deferred minors.

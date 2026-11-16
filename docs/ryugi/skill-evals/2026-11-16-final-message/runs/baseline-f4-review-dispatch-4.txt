@@ -1,0 +1,82 @@
+The following is simulated. Only `./skill/code-reviewer.md` was actually read.
+
+1. **Shell tool call**
+   
+   Working directory: `/Users/p/git/notes-app`
+   
+   ```sh
+   git status --short --branch
+   ```
+   
+   Assumed output:
+   
+   ```text
+   ## feat/export
+   ```
+
+2. **Shell tool call**
+   
+   ```sh
+   cat .ryugi/sdd/2026-11-10-export-design/progress.md .ryugi/sdd/2026-11-10-export-design/tasks.md docs/ryugi/specs/2026-11-10-export-design.md
+   ```
+   
+   Assumed output: the ledger identifies the supplied spec, records all three completed tasks and their verification commands, and contains the two supplied `Ruling:` entries. The task list and approved spec describe CSV export. The Review Focus is exactly as supplied. No further conflicts appear.
+
+3. **Shell tool call**
+   
+   ```sh
+   git merge-base main HEAD
+   ```
+   
+   Assumed output:
+   
+   ```text
+   1a2b3c4
+   ```
+
+4. **Shell tool call**
+   
+   ```sh
+   git rev-parse HEAD
+   ```
+   
+   Assumed output:
+   
+   ```text
+   8d9e0f1a2b3c4d5e6f708192a3b4c5d6e7f80912
+   ```
+
+5. **Message to partner**
+   
+   > The reviewer tool cannot select a model; I’ll use its fresh session-model context for the whole-branch review.
+
+6. **Shell tool call**
+   
+   ```sh
+   bash scripts/review-package docs/ryugi/specs/2026-11-10-export-design.md 1a2b3c4 8d9e0f1a2b3c4d5e6f708192a3b4c5d6e7f80912
+   ```
+   
+   Assumed output:
+   
+   ```text
+   .ryugi/sdd/2026-11-10-export-design/review-package.md
+   ```
+
+7. **Shell tool call**
+   
+   ```sh
+   cat .ryugi/sdd/2026-11-10-export-design/review-package.md
+   ```
+   
+   Assumed output: a complete review package covering the three task commits from `1a2b3c4` through the resolved HEAD, including the changed-file list and whole-branch diff. I read the full output; no truncation or unrelated changes appear.
+
+8. **Subagent tool call**
+   
+   ```json
+   {
+     "description": "Review CSV export branch against approved spec",
+     "prompt": "You are a Senior Code Reviewer with expertise in software architecture, design patterns, and best practices. Review the completed CSV export of notes against its approved requirements and identify issues before further work.\n\nWhat was implemented: all three tasks for CSV export of notes, as recorded in the task list and ledger. Independently inspect the implementation; completion records are not proof of correctness.\n\nRead these inputs in /Users/p/git/notes-app:\n- Review package: .ryugi/sdd/2026-11-10-export-design/review-package.md\n- Approved spec: docs/ryugi/specs/2026-11-10-export-design.md\n- Task list: .ryugi/sdd/2026-11-10-export-design/tasks.md\n- Ledger: .ryugi/sdd/2026-11-10-export-design/progress.md\n\nRead every ledger line containing `Ruling:` and weigh both recorded decisions against the spec and actual user impact.\n\nGit range:\nBase: 1a2b3c4\nHead: 8d9e0f1a2b3c4d5e6f708192a3b4c5d6e7f80912\n\nInspect with:\ngit diff --stat 1a2b3c4..8d9e0f1a2b3c4d5e6f708192a3b4c5d6e7f80912\ngit diff 1a2b3c4..8d9e0f1a2b3c4d5e6f708192a3b4c5d6e7f80912\n\n## Review Focus\n- A note body with a newline, a quote and a comma in one field.\n- An account with 200k notes.\n\nCheck each Review Focus item deliberately, including failure modes the tests do not exercise.\n\nThe spec is a vision document: it defines required behavior without enumerating every input or condition. For behavior it leaves unspecified, judge what a reasonable person using the software would expect. Spec silence is not permission. Grade findings by their effect on that person.\n\nRead-only review: do not mutate the working tree, index, HEAD, or branch state. Use git show, git diff, git log, and file reads. Do not dispatch any subagents or additional reviewers. Perform the whole review yourself, in multiple passes if needed.\n\nCheck plan alignment, justified deviations, completeness, separation of concerns, error handling, type safety, duplication, edge cases, architecture, scalability, performance, security, integration, meaningful behavioral tests, compatibility, and documentation. Distinguish recorded test results from checks you actually run. Do not claim tests pass without running the proving command and reading its full output in your own session.\n\nReport:\n1. Strengths: specific things done well.\n2. Issues grouped as Critical, Important, and Minor. For each, provide file:line, what is wrong, its user impact, and how to fix it when not obvious. Grade by actual effect, including for inputs the spec does not name.\n3. Recommendations.\n4. Declined to judge: before the verdict, list every behavior you considered but set aside as outside the plan or spec, one line per behavior with the reason. Explicitly state an empty list when nothing was set aside.\n5. Assessment: Ready to merge? Yes, No, or With fixes, followed by a brief technical rationale.\n\nFlag significant deviations and problems in the plan explicitly. Do not invent findings or give feedback on code you have not read. This is the single fresh-context whole-branch review; return findings without editing anything."
+   }
+   ```
+
+SUMMARY: Simulated review preparation and reviewer dispatch; no repo commands or dispatch were executed, and the next step waits on the reviewer’s findings, not partner approval.

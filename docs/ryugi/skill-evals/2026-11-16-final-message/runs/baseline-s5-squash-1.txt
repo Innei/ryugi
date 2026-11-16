@@ -1,0 +1,200 @@
+Simulation only. Except for reading `./skill/landing.md`, no commands are executed below. Assumed outputs are explicitly labeled.
+
+1. Message to partner:
+
+   “I’ll squash `feat/export` into `main`, run the tests before committing and again afterward, then remove the feature branch.”
+
+2. Shell call:
+
+   ```json
+   {
+     "cmd": "git status --short --branch",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   Assumed full output:
+
+   ```text
+   ## feat/export
+   ```
+
+3. Shell call:
+
+   ```json
+   {
+     "cmd": "git log -5 --format=%s",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   Assumed full output, used to match the repository’s commit style:
+
+   ```text
+   feat: export notes as CSV
+   test: cover CSV export escaping
+   feat: add CSV serialization
+   docs: record CSV export design
+   fix: preserve note ordering
+   ```
+
+4. Shell call:
+
+   ```json
+   {
+     "cmd": "git switch main && git pull --ff-only",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   Assumed full output:
+
+   ```text
+   Switched to branch 'main'
+   Your branch is up to date with 'origin/main'.
+   Already up to date.
+   ```
+
+5. Shell call:
+
+   ```json
+   {
+     "cmd": "git merge --squash feat/export",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   Assumed full output:
+
+   ```text
+   Updating a12bc34..b23cd45
+   Fast-forward
+   Squash commit -- not updating HEAD
+    docs/ryugi/specs/2026-11-10-export-design.md | 24 ++++++++++++++++++++++++
+    src/export-csv.ts                          | 30 ++++++++++++++++++++++++++++++
+    src/notes.ts                              | 10 ++++++++++
+    tests/export-csv.test.ts                  | 40 ++++++++++++++++++++++++++++++++++++++++
+    4 files changed, 104 insertions(+)
+   ```
+
+6. Shell call:
+
+   ```json
+   {
+     "cmd": "pnpm test",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   Assumed full output, read before committing:
+
+   ```text
+   > notes-app@1.0.0 test /Users/p/git/notes-app
+   > vitest run
+
+    RUN  v3.2.4 /Users/p/git/notes-app
+
+    ✓ tests/notes.test.ts (3 tests) 5ms
+    ✓ tests/export-csv.test.ts (5 tests) 7ms
+
+    Test Files  2 passed (2)
+         Tests  8 passed (8)
+      Start at  10:00:00
+      Duration  420ms
+   ```
+
+7. Shell call:
+
+   ```json
+   {
+     "cmd": "git diff --cached --check",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   Assumed full output: empty; exit status `0`.
+
+8. Shell call:
+
+   ```json
+   {
+     "cmd": "git commit -m 'feat: export notes as CSV'",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   Assumed full output:
+
+   ```text
+   [main c34de56] feat: export notes as CSV
+    4 files changed, 104 insertions(+)
+    create mode 100644 src/export-csv.ts
+    create mode 100644 tests/export-csv.test.ts
+   ```
+
+9. Shell call:
+
+   ```json
+   {
+     "cmd": "pnpm test",
+     "workdir": "/Users/p/git/notes-app"
+   }
+   ```
+
+   Assumed full output, read before reporting success:
+
+   ```text
+   > notes-app@1.0.0 test /Users/p/git/notes-app
+   > vitest run
+
+    RUN  v3.2.4 /Users/p/git/notes-app
+
+    ✓ tests/notes.test.ts (3 tests) 5ms
+    ✓ tests/export-csv.test.ts (5 tests) 7ms
+
+    Test Files  2 passed (2)
+         Tests  8 passed (8)
+      Start at  10:00:04
+      Duration  418ms
+   ```
+
+10. Shell call:
+
+    ```json
+    {
+      "cmd": "git branch -D feat/export",
+      "workdir": "/Users/p/git/notes-app"
+    }
+    ```
+
+    Assumed full output:
+
+    ```text
+    Deleted branch feat/export (was b23cd45).
+    ```
+
+    No worktree removal: the situation specifies the same checkout.
+
+11. Shell call:
+
+    ```json
+    {
+      "cmd": "git status --short --branch && git log -1 --format='%h %s' && git branch --list feat/export",
+      "workdir": "/Users/p/git/notes-app"
+    }
+    ```
+
+    Assumed full output:
+
+    ```text
+    ## main...origin/main [ahead 1]
+    c34de56 feat: export notes as CSV
+    ```
+
+No ledger lines or artifacts are written; the execution workflow was already finished and reported.
+
+12. Final message to partner:
+
+    “Squashed into local `main` as `c34de56` (`feat: export notes as CSV`). `pnpm test` passed before committing and afterward: 2 files, 8 tests. Working tree is clean; `feat/export` is deleted. `main` is one commit ahead of `origin/main`; nothing pushed.”
+
+SUMMARY: Simulated squash landing, verification, and branch cleanup; no repository commands actually ran, and pushing would wait on the partner.

@@ -1,0 +1,1 @@
+PASS — Squashed onto updated main, tested the squashed tree, created one commit, deleted with `-D`, and left pushing to the partner.

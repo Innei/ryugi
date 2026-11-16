@@ -1,0 +1,1 @@
+PASS — Final message includes the ruling, cost, deferred minor, and all four landing options; the agent performs no landing or push.

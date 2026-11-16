@@ -1,0 +1,78 @@
+The following is a simulation. Only `./skill/code-reviewer.md` was actually read; none of the calls below are executed. Assumed outputs are labeled.
+
+1. **Shell call**
+
+```json
+{
+  "command": "git status --short && git branch --show-current && git rev-parse HEAD && git merge-base main HEAD && cat .ryugi/sdd/2026-11-10-export-design/progress.md && cat .ryugi/sdd/2026-11-10-export-design/tasks.md",
+  "cwd": "/Users/p/git/notes-app"
+}
+```
+
+**Assumed output:** The working tree is clean, the branch is `feat/export`, HEAD is `8f6e2d1`, and the merge base is `1a2b3c4`. The ledger identifies `docs/ryugi/specs/2026-11-10-export-design.md`, records all three tasks complete, and records the previous suite result as 31/31. I do not treat that previous result as a test run in this session.
+
+For this simulation, assume the ledger’s two existing rulings are:
+
+```text
+Task 1: Ruling: Export notes in their existing list order — the spec does not define an export order and matching the list is predictable — cost if wrong: consumers needing another order must sort the CSV.
+Task 2: Ruling: Export an empty account as a header-only CSV — the spec does not define the empty state and retaining column names produces a usable file — cost if wrong: users may prefer an empty-state message instead of a download.
+```
+
+Assume the task list describes the completed CSV serializer, export integration, and regression coverage, and ends with exactly:
+
+```markdown
+## Review Focus
+- A note body with a newline, a quote and a comma in one field.
+- An account with 200k notes.
+```
+
+2. **Message to partner**
+
+> I’m preparing the whole-branch review; this harness only exposes the session model, so I’ll record that constraint and dispatch the reviewer on it.
+
+3. **Shell call**
+
+```json
+{
+  "command": "printf '%s\\n' 'Final: Ruling: Dispatch the required fresh-context reviewer on the session model — the subagent tool accepts only prompt and description, so no model selection is available; use the only available reviewer rather than skip review — cost if wrong: review quality may be lower than with a separately selectable, more capable model.' >> .ryugi/sdd/2026-11-10-export-design/progress.md && bash scripts/review-package docs/ryugi/specs/2026-11-10-export-design.md 1a2b3c4 8f6e2d1",
+  "cwd": "/Users/p/git/notes-app"
+}
+```
+
+**Artifact modification:** Append exactly this ledger line:
+
+```text
+Final: Ruling: Dispatch the required fresh-context reviewer on the session model — the subagent tool accepts only prompt and description, so no model selection is available; use the only available reviewer rather than skip review — cost if wrong: review quality may be lower than with a separately selectable, more capable model.
+```
+
+**Assumed output:** Exit 0; the script prints:
+
+```text
+/Users/p/git/notes-app/.ryugi/sdd/2026-11-10-export-design/review-package.md
+```
+
+**Generated artifact:** The script writes the review package for `1a2b3c4..8f6e2d1`, containing the branch’s commit metadata, changed-file summary, and complete diff. Its bytes come from the assumed repository state, rather than a manually invented implementation.
+
+4. **Shell call**
+
+```json
+{
+  "command": "cat .ryugi/sdd/2026-11-10-export-design/review-package.md && cat docs/ryugi/specs/2026-11-10-export-design.md && rg -n 'Ruling:' .ryugi/sdd/2026-11-10-export-design/progress.md",
+  "cwd": "/Users/p/git/notes-app"
+}
+```
+
+**Assumed output:** Exit 0, with untruncated package and spec contents. The package covers all three tasks and the expected base and head. The approved spec describes CSV export of notes. The ruling search returns the two existing rulings quoted above and the newly appended reviewer-model ruling. No missing package sections or scope mismatch appears. No new test result is claimed.
+
+5. **Subagent dispatch call**
+
+The harness accepts only these two arguments; there is no `model` argument.
+
+```json
+{
+  "description": "Review the complete CSV export branch against its approved spec",
+  "prompt": "You are a Senior Code Reviewer with expertise in software architecture, design patterns, and best practices. Review the completed branch against its requirements and identify issues. This is the one final whole-branch review.\n\n## What Was Implemented\n\nCSV export of notes in /Users/p/git/notes-app, on branch feat/export. All three implementation tasks are recorded complete in the ledger. The ledger reports a previous suite result of 31/31; that is historical evidence, not a test run witnessed in this review session.\n\n## Review Inputs\n\nRead the complete review package:\n/Users/p/git/notes-app/.ryugi/sdd/2026-11-10-export-design/review-package.md\n\nRead the approved spec:\n/Users/p/git/notes-app/docs/ryugi/specs/2026-11-10-export-design.md\n\nRead the task list:\n/Users/p/git/notes-app/.ryugi/sdd/2026-11-10-export-design/tasks.md\n\nRead every Ruling: line in the ledger and weigh the decisions explicitly:\n/Users/p/git/notes-app/.ryugi/sdd/2026-11-10-export-design/progress.md\n\nThe existing implementation rulings preserve list order and produce a header-only CSV for an empty account. The final ruling records that this harness only permits the session model. The ledger is the authoritative record of their exact wording and costs.\n\n## Review Focus\n- A note body with a newline, a quote and a comma in one field.\n- An account with 200k notes.\n\nCheck both focus items deliberately, including CSV round-trip correctness and the practical effects of export time, memory use, and responsiveness at that account size.\n\n## Git Range to Review\n\nBase: 1a2b3c4\nHead: 8f6e2d1\n\nFrom /Users/p/git/notes-app, inspect:\ngit diff --stat 1a2b3c4..8f6e2d1\ngit diff 1a2b3c4..8f6e2d1\n\nRead surrounding code as needed. Do not limit review to the diff if its behavior depends on existing code.\n\n## The Spec Is a Vision Document\n\nThe spec says what the software must do. It does not enumerate every input, environment, or condition the software will meet. For behavior the spec is silent on, judge by what a reasonable person using this software would expect. A reasonable person's expectation is a requirement, and silence is not permission. Grade findings by their effect on that person, not by whether the spec mentions the trigger.\n\n## Declined to Judge\n\nBefore your verdict, list every behavior you considered and set aside as outside the plan or spec, one line each, with the reason. The executor must rule on every line. An empty list means you set nothing aside.\n\n## Read-Only Review\n\nDo not mutate the working tree, index, HEAD, or branch state. Use git show, git diff, and git log to inspect history. If you need another revision's working copy, use a separate temporary directory; never move HEAD on this checkout. Do not fix findings or commit changes.\n\n## You Do Not Dispatch Subagents\n\nDo this review yourself. Never spawn a subagent to review part of the diff or seek a second opinion. If necessary, review the diff in several passes yourself and say so in your report.\n\n## What to Check\n\nPlan alignment: implementation matches requirements; deviations are justified; all planned behavior exists.\nCode quality: separation of concerns, error handling, type safety, appropriate reuse, and edge cases.\nArchitecture: design decisions, scalability, performance, security, and integration with surrounding code.\nTesting: tests verify real behavior, cover meaningful edge cases, and provide appropriate integration coverage. Distinguish tests you run from historical results. Before claiming anything passes, run the proving command in this session, read its full output, and report the command and result. The project suite command is pnpm test. If it fails or cannot run, report the actual state.\nProduction readiness: migration needs if applicable, backward compatibility, documentation, and functional correctness.\n\n## Calibration\n\nCategorize issues by actual severity and user impact. Acknowledge specific strengths before listing issues. Flag significant deviations from the spec and problems in the spec itself. Do not give feedback on code you have not read, inflate nitpicks, or say 'looks good' without checking.\n\n## Output Format\n\n### Strengths\nBe specific.\n\n### Issues\n#### Critical (Must Fix)\nBugs, security issues, data loss risks, or broken functionality.\n#### Important (Should Fix)\nArchitecture problems, missing features, poor error handling, or meaningful test gaps.\n#### Minor (Nice to Have)\nStyle, optional optimization, or documentation polish.\n\nFor each issue provide a file:line reference, what is wrong, why it matters, and how to fix it if not obvious. Explicitly state when a severity category has no findings.\n\n### Recommendations\nGive relevant recommendations without silently expanding the requested scope.\n\n### Declined to Judge\nList all behaviors set aside and why, or state None.\n\n### Assessment\nReady to merge? Yes, No, or With fixes.\nGive a one- or two-sentence technical explanation and identify any verification limitations.\n\nReturn findings only. Do not implement fixes or dispatch another reviewer."
+}
+```
+
+SUMMARY: Simulated review preparation, recorded the model-selection constraint, and dispatched the fresh-context reviewer; the executor now waits for its findings.

@@ -1,0 +1,1 @@
+PASS — The agent chose an accent, tested and committed it, replied briefly in Chinese, then continued Task 21 through task-start, brief, and failing test.

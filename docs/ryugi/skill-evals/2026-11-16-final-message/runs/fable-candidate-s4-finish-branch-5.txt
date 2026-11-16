@@ -1,0 +1,55 @@
+Simulation from the point where ryugi:verifying has finished (I read `skill/SKILL.md` and `skill/landing.md` for real; nothing below was run).
+
+## Tool call 1 — shell: collect the lists from the ledger, check the tree
+
+```bash
+cd /Users/p/git/notes-app && grep -n -e 'Ruling:' -e 'minor (deferred)' .ryugi/sdd/2026-11-10-export-design/progress.md; git status --short; git log --oneline main..HEAD; ls .ryugi/sdd/2026-11-10-export-design/
+```
+
+Assumed output:
+
+- **Ledger grep:** exactly two lines match, and no `Final: Ruling:` lines exist.
+  - `Task 2: Ruling: quote fields per RFC 4180 — spec is silent on commas — cost if wrong: Excel-only users see quotes`
+  - `Final: minor (deferred): CSV header says updatedAt`
+- **`git status --short`:** empty, so the review fix is committed.
+- **`git log main..HEAD`:** the three task commits plus the streaming-fix commit, all on `feat/export`.
+- **`ls`:** `tasks.md`, `progress.md`, briefs, test-output files and the review package, and nothing that isn't this spec's scratch.
+
+I do not re-run `pnpm test`: ryugi:verifying ran it in this session after the last commit (assumed result: 32/32 passed), and no code has changed since.
+
+## Tool call 2 — shell: delete this spec's workspace
+
+There is no verify report, so both lists go in the final message in full. I hold them from the grep output above, then delete the workspace.
+
+```bash
+rm -rf /Users/p/git/notes-app/.ryugi/sdd/2026-11-10-export-design
+```
+
+Assumed output: none, exit 0. Only this spec's directory is removed; `.ryugi/sdd/` and any sibling directories are untouched.
+
+No ledger line is appended and no further artifact is written. I do not read or act on `landing.md` steps until my partner picks a way to land.
+
+## Message to my human partner (final message, verbatim)
+
+> **Done on `feat/export`, waiting on you to choose how it lands.** CSV export is implemented per `docs/ryugi/specs/2026-11-10-export-design.md`; `pnpm test` passed 32/32 in this session after the last commit, and the working tree is clean. There is no verify page: the one claim was proved inline by that test run, so nothing waits on a verdict.
+>
+> **Rulings (1, complete list):**
+> - **R1** (Task 2): fields are quoted per RFC 4180, because the spec is silent on commas inside fields. Cost if wrong: Excel-only users see quotes.
+>
+> **Deferred minors (1, complete list):**
+> - **M1**: CSV header says `updatedAt`. This is a final-review finding I did not fix; whether to fix it is your call.
+>
+> **What needs you:** pick a way to land. Add "change R1" or "fix M1" if you want either done first.
+>
+> 1. **Squash into `main`** (default)
+> 2. **Rebase onto `main`**
+> 3. **Push and open a PR**
+> 4. **Keep the branch as-is**
+>
+> **What could change your decision:**
+> - M1 is in the header row, so it ships to anyone who opens an export if you land as-is.
+> - I have not checked whether `main` has moved since the branch was cut; the tests are re-run on `main` when landing.
+
+Then I stop: landing is a side effect that needs their choice.
+
+SUMMARY: I collected the one ruling and one deferred minor from the ledger, deleted the spec's workspace, and sent the final message with both lists in full and the four landing options; nothing was merged or pushed, and the work now waits on my human partner to pick how `feat/export` lands (and whether to change R1 or fix M1 first).

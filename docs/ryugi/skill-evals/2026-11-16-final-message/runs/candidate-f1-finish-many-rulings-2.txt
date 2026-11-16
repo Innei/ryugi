@@ -1,0 +1,484 @@
+以下均为模拟；除读取 `./skill/` 外，不实际执行调用。模拟输出明确标为假设，不代表真实验证证据。
+
+### 1. 恢复收尾状态
+
+工具调用：
+
+```json
+{
+  "cmd": "pwd",
+  "workdir": "/Users/p/git/board-app/.worktrees/offline-sync"
+}
+```
+
+假设输出：
+
+```text
+/Users/p/git/board-app/.worktrees/offline-sync
+```
+
+工具调用：
+
+```json
+{
+  "cmd": "cat .ryugi/sdd/2026-11-12-offline-sync-design/progress.md .ryugi/sdd/2026-11-12-offline-sync-design/tasks.md .ryugi/artifacts/verify/offline-sync/report.xml package.json",
+  "workdir": "/Users/p/git/board-app/.worktrees/offline-sync"
+}
+```
+
+假设完整读取结果与题设一致，包括：
+
+- ledger 首行指向本 spec，18 个任务均有完成记录。
+- 三项审查修复均有 RED→GREEN 记录；不再启动审查或重做任务。
+- 已有 `Final review: session model`，不重复追加。
+- 22 条裁决、6 条延期小问题。
+- 报告已有 9 项 agent claims、真机缺口、3 项待人工判定。
+- `package.json` 有 `test`、`typecheck`、`build` 脚本。
+- 假设报告采用 XML，根节点允许保留补充 section；后续使用工具检查其有效性。
+
+工具调用：
+
+```json
+{
+  "cmd": "git status --short --branch",
+  "workdir": "/Users/p/git/board-app/.worktrees/offline-sync"
+}
+```
+
+假设输出：
+
+```text
+## feat/offline-sync
+```
+
+工具调用：
+
+```json
+{
+  "cmd": "git rev-list --left-right --count main...HEAD",
+  "workdir": "/Users/p/git/board-app/.worktrees/offline-sync"
+}
+```
+
+假设输出：
+
+```text
+2	23
+```
+
+工具调用：
+
+```json
+{
+  "cmd": "git log --oneline main..HEAD",
+  "workdir": "/Users/p/git/board-app/.worktrees/offline-sync"
+}
+```
+
+假设完整输出为题设所述的 23 项提交，末端为 `f9e8d7c`，包含三项审查修复；不臆造其余 SHA 或提交标题。
+
+给伙伴的消息：
+
+> 全套测试仍有包体积失败；我会将失败、全部裁决和待你验收的项目保存在验证报告中。
+
+### 2. 重新取得当前证据
+
+工具调用：
+
+```json
+{
+  "cmd": "pnpm test > .ryugi/artifacts/verify/offline-sync/final-test.log 2>&1",
+  "workdir": "/Users/p/git/board-app/.worktrees/offline-sync"
+}
+```
+
+假设退出码：`1`。
+
+工具调用：
+
+```json
+{
+  "cmd": "cat .ryugi/artifacts/verify/offline-sync/final-test.log",
+  "workdir": "/Users/p/git/board-app/.worktrees/offline-sync"
+}
+```
+
+假设读取完整日志；结果保持题设给定的失败，关键输出：
+
+```text
+FAIL bundle-size
+Expected: <= 500 KB
+Received: 512 KB
+Tests: 412 passed, 1 failed
+```
+
+工具调用：
+
+```json
+{
+  "cmd": "pnpm typecheck > .ryugi/artifacts/verify/offline-sync/final-typecheck.log 2>&1",
+  "workdir": "/Users/p/git/board-app/.worktrees/offline-sync"
+}
+```
+
+假设退出码：`0`。
+
+工具调用：
+
+```json
+{
+  "cmd": "cat .ryugi/artifacts/verify/offline-sync/final-typecheck.log",
+  "workdir": "/Users/p/git/board-app/.worktrees/offline-sync"
+}
+```
+
+假设完整输出确认 typecheck 通过，无诊断错误。
+
+工具调用：
+
+```json
+{
+  "cmd": "pnpm build > .ryugi/artifacts/verify/offline-sync/final-build.log 2>&1",
+  "workdir": "/Users/p/git/board-app/.worktrees/offline-sync"
+}
+```
+
+假设退出码：`0`。
+
+工具调用：
+
+```json
+{
+  "cmd": "cat .ryugi/artifacts/verify/offline-sync/final-build.log",
+  "workdir": "/Users/p/git/board-app/.worktrees/offline-sync"
+}
+```
+
+假设完整输出确认构建通过。
+
+不将 `main` 的既有超标当成通过理由，不提高预算，不把 `412 passed, 1 failed` 改写为全绿。三项修复的 RED→GREEN 记录保留，但全套测试门禁仍未通过。
+
+### 3. 将所有裁决和延期项永久写入报告
+
+不追加新 ledger 行：这里没有新实施裁决、提交或完成声明。现有 22 条裁决按原顺序全部保留。
+
+工具调用如下；其中 `addition` 是此次写入的完整新增产物内容，其余已有报告内容原样保留：
+
+```python
+# tools.exec_command 参数：
+# workdir: /Users/p/git/board-app/.worktrees/offline-sync
+# cmd: python3 - <<'PY'
+from pathlib import Path
+import xml.etree.ElementTree as ET
+
+report = Path(".ryugi/artifacts/verify/offline-sync/report.xml")
+ledger = Path(".ryugi/sdd/2026-11-12-offline-sync-design/progress.md")
+
+addition = r"""
+<section id="execution-closeout" status="not-done">
+  <title>离线同步执行收尾</title>
+
+  <verification>
+    <check command="pnpm test" exit-code="1"
+           evidence="final-test.log">412 passed, 1 failed；bundle-size 为 512 KB，预算为 500 KB。</check>
+    <check command="pnpm typecheck" exit-code="0"
+           evidence="final-typecheck.log">通过。</check>
+    <check command="pnpm build" exit-code="0"
+           evidence="final-build.log">通过。</check>
+    <prior-evidence source="existing check-app record">两个浏览器 context 的离线编辑、重连和合并已通过；本次没有重跑，不将其视为两台真机的证据。</prior-evidence>
+    <baseline source="provided earlier measurement" remeasured="false">此前 main 为 509 KB，分支增加 3 KB；本次没有重新测量当前 main。既有超标不能使分支的预算检查变成通过。</baseline>
+    <gate status="failed">全套测试门禁未通过；审查修复的 RED→GREEN 记录不代表全套测试已通过。</gate>
+  </verification>
+
+  <branch>
+    <name>feat/offline-sync</name>
+    <default>main</default>
+    <comparison command="git rev-list --left-right --count main...HEAD">2 23</comparison>
+    <risk>main 有两个尚未集成的提交。当前证据不覆盖集成后的结果；选定落地方式后须重新验证。</risk>
+    <actions>本次没有合并、变基、提交、推送或创建 PR。</actions>
+  </branch>
+
+  <human-verdicts artboard="board-ui">
+    <group status="waiting">sync status dot</group>
+    <group status="waiting">reconnect banner</group>
+    <group status="waiting">attachment placeholder</group>
+    <gap status="waiting">两台真实 iPhone 之间的同步，需要伙伴的第二台 iPhone；浏览器 context 测试未覆盖这一点。</gap>
+    <landing status="blocked">上述三组判定、真机缺口和失败门禁尚未解决；落地方式等待伙伴选择，尚不执行。</landing>
+  </human-verdicts>
+
+  <rulings count="22">
+    <table>
+      <columns>ruling | why | cost-if-wrong</columns>
+      <row>
+        <ruling>Task 1: the operation log lives in src/sync/oplog.ts, not src/store as the task list said</ruling>
+        <why>the store must not import the network layer</why>
+        <cost-if-wrong>none.</cost-if-wrong>
+      </row>
+      <row>
+        <ruling>Task 2: operation ids are ULIDs from the existing ulid helper, not UUIDv7</ruling>
+        <why>one id scheme in the codebase</why>
+        <cost-if-wrong>none.</cost-if-wrong>
+      </row>
+      <row>
+        <ruling>Task 3: concurrent edits merge per field, last writer wins on each field, not per card as spec §4 says</ruling>
+        <why>per card loses one person's edit when two people change different fields of the same card</why>
+        <cost-if-wrong>two people editing the same field still see one edit vanish without notice.</cost-if-wrong>
+      </row>
+      <row>
+        <ruling>Task 4: the IndexedDB wrapper is hand-written, no idb dependency</ruling>
+        <why>60 lines</why>
+        <cost-if-wrong>one more file to maintain.</cost-if-wrong>
+      </row>
+      <row>
+        <ruling>Task 5: the sync worker is a module worker</ruling>
+        <why>the bundler already supports it</why>
+        <cost-if-wrong>very old Safari fails to start sync.</cost-if-wrong>
+      </row>
+      <row>
+        <ruling>Task 6: retry backoff starts at 1 s and caps at 60 s</ruling>
+        <why>spec silent</why>
+        <cost-if-wrong>slower recovery after a long outage.</cost-if-wrong>
+      </row>
+      <row>
+        <ruling>Task 7: the queue test uses fake IndexedDB from fake-indexeddb</ruling>
+        <why>already a dev dependency</why>
+        <cost-if-wrong>none.</cost-if-wrong>
+      </row>
+      <row>
+        <ruling>Task 8: the reconnect banner reuses the existing Toast component</ruling>
+        <why>原 ledger 未另记理由。</why>
+        <cost-if-wrong>none.</cost-if-wrong>
+      </row>
+      <row>
+        <ruling>Task 9: the offline queue is capped at 5,000 operations; past that the app shows "sync paused, reconnect to keep editing" and stops accepting edits</ruling>
+        <why>spec silent on a cap</why>
+        <cost-if-wrong>a long offline session stops recording edits.</cost-if-wrong>
+      </row>
+      <row>
+        <ruling>Task 10: server acks are batched every 200 ms</ruling>
+        <why>原 ledger 未另记理由。</why>
+        <cost-if-wrong>a little more latency on acks.</cost-if-wrong>
+      </row>
+      <row>
+        <ruling>Task 11: the conflict test fixtures live in test/fixtures/sync</ruling>
+        <why>原 ledger 未另记理由。</why>
+        <cost-if-wrong>none.</cost-if-wrong>
+      </row>
+      <row>
+        <ruling>Task 12: `applyRemote` takes a clock parameter</ruling>
+        <why>test seam</why>
+        <cost-if-wrong>none.</cost-if-wrong>
+      </row>
+      <row>
+        <ruling>Task 13: board version vectors are stored as a JSON column, not a table</ruling>
+        <why>one read per board</why>
+        <cost-if-wrong>a migration later if queries need them.</cost-if-wrong>
+      </row>
+      <row>
+        <ruling>Task 14: attachments do not sync while offline; only text and layout do</ruling>
+        <why>spec §7 says attachments queue too, but Safari caps IndexedDB at about 50 MB</why>
+        <cost-if-wrong>images added offline are missing on other devices until re-added online.</cost-if-wrong>
+      </row>
+      <row>
+        <ruling>Task 14: the attachment placeholder uses the existing broken-image icon</ruling>
+        <why>原 ledger 未另记理由。</why>
+        <cost-if-wrong>none.</cost-if-wrong>
+      </row>
+      <row>
+        <ruling>Task 15: the sync status dot sits in the board header, right of the title</ruling>
+        <why>spec shows it but does not place it</why>
+        <cost-if-wrong>one CSS move.</cost-if-wrong>
+      </row>
+      <row>
+        <ruling>Task 16: logout clears the offline queue after a confirm dialog</ruling>
+        <why>spec silent</why>
+        <cost-if-wrong>none beyond one dialog.</cost-if-wrong>
+      </row>
+      <row>
+        <ruling>Task 16: queued operations are encrypted at rest with the existing session key</ruling>
+        <why>原 ledger 未另记理由。</why>
+        <cost-if-wrong>none.</cost-if-wrong>
+      </row>
+      <row>
+        <ruling>Task 17: e2e tests run two browser contexts, not two browsers</ruling>
+        <why>原 ledger 未另记理由。</why>
+        <cost-if-wrong>none.</cost-if-wrong>
+      </row>
+      <row>
+        <ruling>Final: empty boards sync an empty operation log instead of skipping</ruling>
+        <why>reviewer declined to judge</why>
+        <cost-if-wrong>one tiny request per empty board.</cost-if-wrong>
+      </row>
+      <row>
+        <ruling>Final: the reviewer's "N+1 reads on board open" stays</ruling>
+        <why>3 reads for a 500-card board, measured 4 ms</why>
+        <cost-if-wrong>slower opens on huge boards.</cost-if-wrong>
+      </row>
+      <row>
+        <ruling>Final: the reviewer's "rename applyRemote" stays</ruling>
+        <why>naming matches the server</why>
+        <cost-if-wrong>none.</cost-if-wrong>
+      </row>
+    </table>
+    <qualification>以上完整保留 ledger 的决定、理由和代价，不代表本次重新验证了所有理由。尤其 Safari 约 50 MB 的容量说法未在本次核实，不能作为固定平台上限的已验证结论。</qualification>
+  </rulings>
+
+  <deferred-minors count="6">
+    <item>Final: minor (deferred): the reconnect banner's text is not localized.</item>
+    <item>Final: minor (deferred): oplog.ts exports an unused `peekOp`.</item>
+    <item>Final: minor (deferred): the backoff constants live in two files.</item>
+    <item>Final: minor (deferred): the queue-full message says "operations" where the UI says "changes".</item>
+    <item>Final: minor (deferred): sync logs use console.log, not the app logger.</item>
+    <item>Final: minor (deferred): the e2e test sleeps 500 ms where it could wait on an event.</item>
+  </deferred-minors>
+</section>
+"""
+
+tree = ET.parse(report)
+root = tree.getroot()
+assert not root.findall(".//*[@id='execution-closeout']")
+
+ledger_lines = ledger.read_text().splitlines()
+assert sum("Ruling:" in line for line in ledger_lines) == 22
+assert sum("minor (deferred)" in line for line in ledger_lines) == 6
+
+section = ET.fromstring(addition)
+assert len(section.findall("./rulings/table/row")) == 22
+assert len(section.findall("./deferred-minors/item")) == 6
+
+root.append(section)
+tree.write(report, encoding="utf-8", xml_declaration=True)
+print("Preserved existing report; added 22 rulings and 6 deferred minors.")
+# PY
+```
+
+假设输出：
+
+```text
+Preserved existing report; added 22 rulings and 6 deferred minors.
+```
+
+### 4. 检查更新后的报告
+
+先发现真实可用的检查命令，不把 XML 能解析等同于报告检查通过。
+
+工具调用：
+
+```json
+{
+  "cmd": "ryugi --help",
+  "workdir": "/Users/p/git/board-app/.worktrees/offline-sync"
+}
+```
+
+假设帮助输出列出 `artifacts` 子命令。
+
+工具调用：
+
+```json
+{
+  "cmd": "ryugi artifacts --help",
+  "workdir": "/Users/p/git/board-app/.worktrees/offline-sync"
+}
+```
+
+假设帮助输出明确支持：
+
+```text
+check <report-path>
+```
+
+工具调用：
+
+```json
+{
+  "cmd": "ryugi artifacts check .ryugi/artifacts/verify/offline-sync/report.xml",
+  "workdir": "/Users/p/git/board-app/.worktrees/offline-sync"
+}
+```
+
+假设完整输出：
+
+```text
+check: clean
+```
+
+这里的 `clean` 只证明报告检查通过；测试失败、人工判定和真机缺口继续保留。
+
+工具调用：
+
+```json
+{
+  "cmd": "cat .ryugi/artifacts/verify/offline-sync/report.xml",
+  "workdir": "/Users/p/git/board-app/.worktrees/offline-sync"
+}
+```
+
+假设完整读取后确认：
+
+- 原 9 项 claims、真机缺口和三组人工判定仍在。
+- 新增表有 22 行，顺序与 ledger 一致；延期项有 6 条。
+- 测试状态为失败，未将人工项目标成通过。
+- 所有新日志位于持久报告目录，不依赖即将删除的 workspace。
+- 题设给出的分享链接仍指向该报告，无需发布新产物。
+
+### 5. 只删除本 spec 的临时 workspace
+
+给伙伴的消息：
+
+> 报告检查通过，已保存全部 22 条裁决和 6 条延期项；测试失败、三组界面验收和双真机验证仍未关闭。
+
+这是技能明确要求的临时 workspace 清理，不删除工作树或分支，也不触碰其他 spec。
+
+工具调用：
+
+```json
+{
+  "cmd": "python3 - <<'PY'\nfrom pathlib import Path\nimport shutil\nimport xml.etree.ElementTree as ET\n\nroot = Path.cwd().resolve()\nworkspace = root / '.ryugi/sdd/2026-11-12-offline-sync-design'\nreport = root / '.ryugi/artifacts/verify/offline-sync/report.xml'\nassert root == Path('/Users/p/git/board-app/.worktrees/offline-sync').resolve()\nassert not workspace.is_symlink()\nassert workspace.resolve() == root / '.ryugi/sdd/2026-11-12-offline-sync-design'\nsection = ET.parse(report).getroot().find(\".//*[@id='execution-closeout']\")\nassert section is not None\nassert len(section.findall('./rulings/table/row')) == 22\nassert len(section.findall('./deferred-minors/item')) == 6\nfor name in ('final-test.log', 'final-typecheck.log', 'final-build.log'):\n    assert (report.parent / name).is_file()\nshutil.rmtree(workspace)\nassert not workspace.exists()\nprint('Removed only .ryugi/sdd/2026-11-12-offline-sync-design; persistent report and evidence remain.')\nPY",
+  "workdir": "/Users/p/git/board-app/.worktrees/offline-sync"
+}
+```
+
+假设输出：
+
+```text
+Removed only .ryugi/sdd/2026-11-12-offline-sync-design; persistent report and evidence remain.
+```
+
+工具调用：
+
+```json
+{
+  "cmd": "git status --short --branch",
+  "workdir": "/Users/p/git/board-app/.worktrees/offline-sync"
+}
+```
+
+假设输出：
+
+```text
+## feat/offline-sync
+```
+
+不执行提交、变基、合并、推送、PR 或第二轮审查。
+
+### 6. 发给伙伴的最终消息
+
+> 未完成，等你验收和决定。
+>
+> 1. 请在[验证报告](https://ryugi.innei.dev/a/Rk3vQ0)中判定三组：同步状态点、重连横幅、附件占位符。
+> 2. 请提供第二台 iPhone，完成两台真机之间的同步验证。
+> 3. 请决定是否接受这些行为：按字段合并、5,000 条后停止编辑、离线附件不排队、确认退出后清空队列。完整 22 条裁决及 6 条延期项见报告。
+>
+> `pnpm test`：412 通过、1 失败；包体积 512 KB，预算 500 KB，门禁未通过。类型检查和构建通过。分支落后 `main` 两个提交，集成后还需重新验证；附件裁决所依据的 Safari 容量说法尚未核实。
+>
+> 以下落地方式暂不执行，等待验收与失败门禁处理完毕后选择：
+>
+> 4. **Squash 到 `main`（默认）**
+> 5. **Rebase 到 `main`**
+> 6. **推送并开 PR**
+> 7. **保持分支现状**
+>
+> 暂停落地依据：[executing-specs](./skill/SKILL.md)：“The work is not done … until every group that waits on them has passed.”
+
+SUMMARY: 已模拟重新验证、保存全部裁决与延期项、检查报告和清理本 spec workspace；未模拟落地，等待伙伴完成界面验收、提供第二台 iPhone、判定行为偏差，并在失败门禁解决后选择落地方式。

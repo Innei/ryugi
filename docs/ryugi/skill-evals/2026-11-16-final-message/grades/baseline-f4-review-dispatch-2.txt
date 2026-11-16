@@ -1,0 +1,1 @@
+PASS — Prepared the correct review package before dispatching one reviewer with required paths, verbatim focus lines, and rulings; no self-review or prohibited partner message.

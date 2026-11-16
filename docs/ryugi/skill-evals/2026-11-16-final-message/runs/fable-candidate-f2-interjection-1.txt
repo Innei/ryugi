@@ -1,0 +1,97 @@
+The skill's scripts were not readable (`skill/scripts/task-start` and `skill/scripts/task-done` both returned "File does not exist"), so the script calls below follow the usage given in the skill text. Nothing was run; every output is an assumption and is marked as such.
+
+## Part 1: the partner's message
+
+**1. Shell** (cwd `/Users/p/git/deck-app/.worktrees/slides`): look at the target and the tokens before touching them.
+```
+grep -n "hairline-strong\|accent" src/viewer/Filmstrip.tsx src/viewer/Filmstrip.test.tsx; grep -rn -- "--brand-accent\|--deck-accent" src --include=*.css --include=*.ts --include=*.tsx | head -20; grep -n -i "filmstrip\|accent" docs/ryugi/specs/2026-11-14-slides-design.md
+```
+Assumed output:
+- `Filmstrip.tsx:41` has `border: isCurrent ? '1px solid var(--hairline-strong)' : '1px solid var(--hairline)'` as an inline style.
+- The current thumbnail carries `aria-current="true"`, and the existing test asserts only that.
+- `--brand-accent: #c65d3b` is defined in `src/shell/theme.css` on `:root`.
+- `--deck-accent` is set per deck theme on the `.deck-root` slide canvas.
+- The spec says the filmstrip "marks the current slide" and names no colour.
+
+**2. Edit** `src/viewer/Filmstrip.test.tsx`: add the failing test first.
+```tsx
+it('rings the current thumbnail with the shell accent colour', () => {
+  render(<Filmstrip slides={threeSlides} currentIndex={1} onSelect={() => {}} />)
+  const thumbs = screen.getAllByRole('button', { name: /slide/i })
+  expect(thumbs[1].getAttribute('style')).toContain('var(--brand-accent)')
+  expect(thumbs[0].getAttribute('style')).not.toContain('var(--brand-accent)')
+})
+```
+
+**3. Shell**: watch it fail.
+```
+pnpm test src/viewer/Filmstrip.test.tsx > .ryugi/sdd/2026-11-14-slides-design/filmstrip-accent-red.log 2>&1; tail -20 .ryugi/sdd/2026-11-14-slides-design/filmstrip-accent-red.log
+```
+Assumed output: 1 failed, with `expected '…1px solid var(--hairline-strong)…' to contain 'var(--brand-accent)'`. That is the expected reason.
+
+**4. Edit** `src/viewer/Filmstrip.tsx:41`: replace `'1px solid var(--hairline-strong)'` with `'1px solid var(--brand-accent)'`. Width and the non-current border stay as they are.
+
+**5. Shell**: run the whole suite.
+```
+pnpm test > .ryugi/sdd/2026-11-14-slides-design/filmstrip-accent-green.log 2>&1; tail -15 .ryugi/sdd/2026-11-14-slides-design/filmstrip-accent-green.log
+```
+Assumed output: `389 passed` (388 plus the new test), 0 failed.
+
+**6. Shell**: commit and append to the ledger in the same call.
+```
+git add src/viewer/Filmstrip.tsx src/viewer/Filmstrip.test.tsx && git commit -m "feat(filmstrip): ring the current thumbnail with the accent colour" && SHA=$(git rev-parse --short HEAD) && cat >> .ryugi/sdd/2026-11-14-slides-design/progress.md <<EOF
+Partner request (after Task 20): filmstrip current-thumbnail border → accent colour (commit $SHA, tests: pnpm test → 389 passed; test "rings the current thumbnail with the shell accent colour" RED→GREEN)
+Task 20: Ruling: "accent color" read as the shell's --brand-accent, not the deck's --deck-accent; width stays 1px — the filmstrip is app chrome, and a deck-accent ring would change per deck and can blend into thumbnails drawn in that same colour — if wrong, a one-line token swap in src/viewer/Filmstrip.tsx plus its test
+EOF
+```
+Assumed output: commit `a1b2c3d` created, 2 files changed.
+
+**7. Message to the partner** (mid-run, in Chinese):
+
+> 已改：底部 filmstrip 当前页的边框现在用 accent color（`src/viewer/Filmstrip.tsx`，提交 `a1b2c3d`，`pnpm test` 389 通过）。我用的是外壳的 `--brand-accent`（#c65d3b），不是每套 deck 自己的 `--deck-accent`，因为 deck 的 accent 会随主题变，还可能和缩略图本身的颜色混在一起；想换成 `--deck-accent` 说一声，改一行就行。宽度仍是 1px，目前只有测试验证，还没在运行的界面里看过效果。
+>
+> 进度：20/33 完成，现在开始 Task 21（presenter 窗口布局）。
+
+## Part 2: Task 21
+
+**8. Shell**: take the task.
+```
+bash <skill-dir>/scripts/task-start docs/ryugi/specs/2026-11-14-slides-design.md 21
+```
+Assumed output: brief path `.ryugi/sdd/2026-11-14-slides-design/briefs/task-21.md` and `BASE=a1b2c3d`. The accent commit therefore sits before Task 21's range; the final review's `MERGE_BASE..HEAD` package still covers it.
+
+**9. Read** `.ryugi/sdd/2026-11-14-slides-design/briefs/task-21.md` and, in the same call, mark the Task 21 todo `in_progress`. Assumed brief:
+- **Goal:** the presenter window layout (spec §Presenter): current slide large on the left, next-slide preview and speaker notes on the right, timer and slide counter in a bottom bar.
+- **Files:** create `src/presenter/PresenterLayout.tsx` and `src/presenter/PresenterLayout.test.tsx`.
+- **Interfaces:** Consumes `SlideThumbnail` (Task 19) and `useDeck()` (Task 7). Produces `<PresenterLayout deck currentIndex />` with regions `presenter-current`, `presenter-next`, `presenter-notes` and `presenter-bar`.
+- **Failing test:** renders the four regions; `presenter-next` shows slide `currentIndex + 1`; on the last slide it shows an "End of deck" placeholder; the counter reads `3 / 12`.
+- **Verify:** `pnpm test`. **Expected:** all pass, 0 failed.
+
+**10. Write** `src/presenter/PresenterLayout.test.tsx`: the brief's three tests (four regions with the next preview on slide N+1, the last-slide placeholder, the counter text), using the exact region names from the brief.
+
+**11. Shell**: watch it fail.
+```
+pnpm test src/presenter/PresenterLayout.test.tsx > .ryugi/sdd/2026-11-14-slides-design/task-21-red.log 2>&1; tail -20 .ryugi/sdd/2026-11-14-slides-design/task-21-red.log
+```
+Assumed output: the suite fails with `Failed to resolve import "./PresenterLayout"`. The component does not exist yet, so this is the expected reason.
+
+**12. Write** `src/presenter/PresenterLayout.tsx`: a minimal CSS-grid component with the four regions, `SlideThumbnail` for the current and next slides, the "End of deck" placeholder when `currentIndex` is last, notes from `deck.slides[currentIndex].notes`, and the counter `{currentIndex + 1} / {deck.slides.length}`. The bottom bar gets a timer slot only; I am assuming timer behaviour belongs to Task 22's brief.
+
+**13. Shell**: run Verify.
+```
+pnpm test > .ryugi/sdd/2026-11-14-slides-design/task-21-verify.log 2>&1; tail -15 .ryugi/sdd/2026-11-14-slides-design/task-21-verify.log
+```
+Assumed output: `392 passed`, 0 failed. This matches `Expected:`, and there is no deviation from the brief, so no ruling is needed.
+
+**14. Shell**: commit, then record completion (the ledger line is written by `task-done`).
+```
+git add src/presenter/PresenterLayout.tsx src/presenter/PresenterLayout.test.tsx && git commit -m "feat(presenter): presenter window layout" && bash <skill-dir>/scripts/task-done docs/ryugi/specs/2026-11-14-slides-design.md 21 a1b2c3d -- pnpm test
+```
+Assumed output: commit `d4e5f6a`; the tail shows `392 passed`; the ledger gains
+`Task 21: complete (commits a1b2c3d..d4e5f6a, tests: pnpm test → 392 passed)`.
+
+**15. Todo**: mark Task 21 complete and Task 22 `in_progress`, in the same call as `bash <skill-dir>/scripts/task-start docs/ryugi/specs/2026-11-14-slides-design.md 22`.
+
+I would not stop here and would send no message to the partner: none of the four stops applies, so the run continues into Task 22. The only message sent in this stretch is the one in step 7.
+
+SUMMARY: Simulated the filmstrip accent change under TDD (ruled `--brand-accent` over `--deck-accent`, ledgered, committed, partner told in Chinese) and Task 21 through `task-done`; nothing waits on the partner, the token choice is theirs to overrule, and the run continues into Task 22.

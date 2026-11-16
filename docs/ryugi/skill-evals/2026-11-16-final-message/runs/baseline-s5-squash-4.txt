@@ -1,0 +1,145 @@
+Simulation only. All outputs below are assumed; no repository commands are run.
+
+**Message to partner:**
+> I’ll squash `feat/export` into `main`, run the tests before committing and again afterward, then delete the feature branch.
+
+**1. Tool call**
+```json
+exec_command({
+  "cmd": "git status --short --branch",
+  "workdir": "/Users/p/git/notes-app"
+})
+```
+Assumed full output:
+```text
+## feat/export
+```
+
+**2. Tool call**
+```json
+exec_command({
+  "cmd": "git log main -5 --format=%s",
+  "workdir": "/Users/p/git/notes-app"
+})
+```
+Assumed output:
+```text
+feat: add note search
+fix: preserve note timestamps
+feat: add note tags
+fix: handle empty notes
+chore: update dependencies
+```
+
+**3. Tool call**
+```json
+exec_command({
+  "cmd": "git switch main",
+  "workdir": "/Users/p/git/notes-app"
+})
+```
+Assumed output:
+```text
+Switched to branch 'main'
+Your branch is up to date with 'origin/main'.
+```
+
+**4. Tool call**
+```json
+exec_command({
+  "cmd": "git pull --ff-only",
+  "workdir": "/Users/p/git/notes-app"
+})
+```
+Assumed output:
+```text
+Already up to date.
+```
+
+**5. Tool call**
+```json
+exec_command({
+  "cmd": "git merge --squash feat/export",
+  "workdir": "/Users/p/git/notes-app"
+})
+```
+Assume exit code 0 and output reporting a successful squash with staged CSV export implementation and tests. No conflicts.
+
+**6. Tool call**
+```json
+exec_command({
+  "cmd": "pnpm test",
+  "workdir": "/Users/p/git/notes-app",
+  "max_output_tokens": 20000
+})
+```
+Assume the complete output fits within the limit, is read, and reports exit code 0: 8 test files passed, 42 tests passed.
+
+**Message to partner:**
+> The squash is staged on `main`. `pnpm test` exited 0 with all 42 tests passing; I’ll commit it and check the committed result.
+
+**7. Tool call**
+```json
+exec_command({
+  "cmd": "git commit -m 'feat: add CSV export for notes'",
+  "workdir": "/Users/p/git/notes-app"
+})
+```
+Assume exit code 0, creating commit `8ac71d2` with message:
+```text
+feat: add CSV export for notes
+```
+
+**8. Tool call**
+```json
+exec_command({
+  "cmd": "pnpm test",
+  "workdir": "/Users/p/git/notes-app",
+  "max_output_tokens": 20000
+})
+```
+Assume the complete output is read and reports exit code 0: 8 test files passed, 42 tests passed.
+
+**9. Tool call**
+```json
+exec_command({
+  "cmd": "git branch -D feat/export",
+  "workdir": "/Users/p/git/notes-app"
+})
+```
+Assumed output:
+```text
+Deleted branch feat/export (was b391e60).
+```
+
+**10. Tool call**
+```json
+exec_command({
+  "cmd": "git status --short --branch",
+  "workdir": "/Users/p/git/notes-app"
+})
+```
+Assumed full output:
+```text
+## main...origin/main [ahead 1]
+```
+
+**11. Tool call**
+```json
+exec_command({
+  "cmd": "git log -1 --format='%h %s%nparents: %p'",
+  "workdir": "/Users/p/git/notes-app"
+})
+```
+Assumed full output:
+```text
+8ac71d2 feat: add CSV export for notes
+parents: 572ad94
+```
+
+No ledger lines or additional artifacts are written during landing.
+
+**Final message to partner:**
+> Squashed into `main` as `8ac71d2` (`feat: add CSV export for notes`). Post-commit `pnpm test` exited 0: all 42 tests passed across 8 files. Working tree is clean; `feat/export` is deleted. `main` is one commit ahead of origin. Nothing pushed.
+
+SUMMARY: Simulated squash landing, pre-commit and post-commit verification, and branch cleanup; no repository changes were executed, and pushing would wait on the partner.

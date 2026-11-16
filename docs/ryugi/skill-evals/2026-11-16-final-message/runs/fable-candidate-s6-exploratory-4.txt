@@ -1,0 +1,91 @@
+Simulation, in order. Only `skill/exploring.md` and `skill/code-reviewer.md` were really read; the three `skill/scripts/` files I tried to read do not exist there, so the script calls follow the skill text. Everything below is the simulated run, and every output is assumed.
+
+**1. Shell: see the shared checkout before touching it**
+```
+cd /Users/p/git/notes-app && git status --short && git rev-parse HEAD
+```
+Assumed: clean tree, HEAD `a1b2c3d…`, on `main`; neither `src/export.ts` nor `src/export.test.ts` exists yet.
+
+**2. Read: the spec, end to end**
+`Read /Users/p/git/notes-app/docs/ryugi/specs/2026-11-10-export-design.md`
+Assumed: the spec asks for `exportNotesToCsv(notes: Note[]): string` in `src/export.ts`, with a header row `id,title,body,createdAt`, one row per note, RFC 4180 quoting for commas, quotes and newlines, and header only for an empty list.
+
+**3. Write: `/Users/p/git/notes-app/.ryugi/sdd/2026-11-10-export-design/tasks.md`**
+```markdown
+## Task 1: CSV export of notes
+
+- **Goal:** `exportNotesToCsv(notes)` returns the notes as CSV text: header row, one row per note, RFC 4180 quoting (spec §Format, §Escaping).
+- **Files:** create `src/export.ts`, create `src/export.test.ts`
+- **Interfaces:** Produces: `exportNotesToCsv(notes: Note[]): string`. Consumes: nothing (first task); the existing `Note` type.
+- **Failing test:** `src/export.test.ts` asserts: empty list → `id,title,body,createdAt\n`; two notes → header plus two rows in input order; a field with a comma, a double quote, or a newline is quoted and inner quotes are doubled.
+- **Verify:** `pnpm test`
+  Expected: all suites pass, including the new `export.test.ts` cases; 0 failures.
+
+## Review Focus
+
+- Fields starting with `=`, `+`, `-`, `@` (formula injection when the CSV is opened in a spreadsheet): not tested.
+- Non-ASCII text and whether a spreadsheet needs a BOM to read it: not tested.
+- Very large note lists (the string is built in memory): not tested.
+- `\r\n` inside bodies, and null or undefined fields: not tested.
+```
+
+**4. Write: `…/.ryugi/sdd/2026-11-10-export-design/progress.md`** (the ledger)
+```
+# SDD ledger — plan: docs/ryugi/specs/2026-11-10-export-design.md
+Slicing: 1 tasks — the spec is one function and its tests; one slice that ends green.
+Exploratory: in place on main, nothing committed or staged until partner keeps it; paths tracked in EXPLORING.
+```
+
+**5. Write: `…/.ryugi/sdd/2026-11-10-export-design/EXPLORING`** (as `exploring.md` requires once `tasks.md` exists)
+```
+Exploratory: may be thrown away.
+src/export.ts
+src/export.test.ts
+```
+
+**6. Todo:** create `Task 1: CSV export of notes` (pending).
+
+**7. Shell: take the task**
+```
+bash scripts/task-start docs/ryugi/specs/2026-11-10-export-design.md 1
+```
+Assumed: it prints the brief path `…/2026-11-10-export-design/briefs/task-1.md` and `BASE=a1b2c3d`.
+
+**8. Read** `…/briefs/task-1.md`; **Todo:** Task 1 → in_progress.
+
+**9. Write: `src/export.test.ts`**, the three cases from the brief (empty list, two notes in order, quoting of comma, quote and newline).
+
+**10. Shell: watch it fail**
+```
+pnpm test src/export.test.ts > .ryugi/sdd/2026-11-10-export-design/task-1-red.log 2>&1; tail -20 .ryugi/sdd/2026-11-10-export-design/task-1-red.log
+```
+Assumed: it fails with `Cannot find module './export'`, which is the expected reason because the implementation does not exist.
+
+**11. Write: `src/export.ts`**, the minimal `exportNotesToCsv`: header row, one row per note, and a field quoted when it contains `,`, `"`, `\n` or `\r`, with inner `"` doubled.
+
+**12. Shell: Verify**
+```
+pnpm test > .ryugi/sdd/2026-11-10-export-design/task-1-verify.log 2>&1; tail -20 .ryugi/sdd/2026-11-10-export-design/task-1-verify.log
+```
+Assumed: all suites pass with 0 failures and the three new cases are green, which matches `Expected:`.
+
+**13. No commit and no `git add`.** The work is exploratory, so the two files stay untracked in the working tree.
+
+**14. Shell: close the task**
+```
+bash scripts/task-done docs/ryugi/specs/2026-11-10-export-design.md 1 a1b2c3d --uncommitted -- pnpm test
+```
+Assumed: the tests pass and the script appends the completion line to the ledger itself. I assume its uncommitted form is:
+`Task 1: complete (uncommitted, base a1b2c3d, tests: pnpm test → pass)`
+
+**Todo:** Task 1 → completed.
+
+**15. Shell: produce the review package**
+```
+bash scripts/review-package docs/ryugi/specs/2026-11-10-export-design.md --exploring
+```
+Assumed: it prints `/Users/p/git/notes-app/.ryugi/sdd/2026-11-10-export-design/review-package.md`, holding the uncommitted diff of the two `EXPLORING` paths.
+
+**Messages to my human partner in this stretch:** none. Nothing here is one of the four stops, and the run is not at its end. The next step would be dispatching the final reviewer on `claude-fable-5-2`, named explicitly, with `code-reviewer.md` filled in with the package, spec and ledger paths and the Review Focus section verbatim. The keep-or-discard question for `src/export.ts` and `src/export.test.ts` goes in the final message after review and verifying, not now.
+
+SUMMARY: Simulated the exploratory in-place run on `main` through closing Task 1 with `task-done --uncommitted` and producing the review package with `--exploring`, with nothing committed or staged; nothing waits on the partner yet, and the next step is mine: dispatch the final reviewer.

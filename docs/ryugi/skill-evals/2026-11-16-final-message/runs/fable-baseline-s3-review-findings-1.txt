@@ -1,0 +1,193 @@
+Simulation from the reviewer's return onward. I ran nothing except reading `./skill/code-reviewer.md` and `./skill/landing.md`; `./skill/scripts/task-done` and `./skill/scripts/review-package` were not found at that path, so script behaviour is taken from the skill text. All outputs below are assumed and labelled as such.
+
+## 1. Sort the findings (re-grade by effect)
+
+- **Important (memory)**: stays Important. Anyone with a large account gets a crashed export, so it enters the fix pass.
+- **Minor (`updatedAt` header)**: stays Minor. The file is correct and readable, only the label differs from the UI. It is deferred and not fixed.
+- **Declined to judge (empty account)**: mine to rule on. A header-only CSV is a valid file that opens as an empty table, so the behaviour stands.
+
+**Tool call 1 — shell** (ledger lines ride along with the first read of the fix pass)
+
+```bash
+cd /Users/p/git/notes-app && W=.ryugi/sdd/2026-11-10-export-design && cat >> $W/progress.md <<'EOF'
+Final review: subagent reviewer returned — 1 Important, 1 Minor, 1 declined-to-judge
+Final: minor (deferred): CSV header column is `updatedAt`; the UI calls the same field "Last edited"
+Final: Ruling: empty account exports a file with only the header row (reviewer set aside, spec silent) — a person exporting an empty account gets a valid CSV that opens as an empty table with the right columns, which is what a spreadsheet user or an import script expects; stands, no change — if wrong, the person wanted a "nothing to export" message instead of a download: one branch in the route plus one test
+EOF
+grep -n "export\|empty\|stream\|size\|column" docs/ryugi/specs/2026-11-10-export-design.md; cat -n src/export.ts; grep -rn "exportNotes\|listNotesPage\|listNotes(" src test | grep -v "^src/export.ts"
+```
+
+*Assumed output:*
+- The spec says `GET /export.csv` downloads all of the user's notes as CSV with columns `id,title,body,createdAt,updatedAt`. It is silent on account size, streaming and empty accounts.
+- `src/export.ts:38-42` is `export async function exportNotes(userId, store): Promise<string>`. Line 40 is `const notes = await store.listNotes(userId)`, followed by `return [HEADER, ...notes.map(toCsvRow)].join('\n') + '\n'`.
+- The only caller is `src/routes/export.ts:12`, which does `res.type('text/csv').send(await exportNotes(req.user.id, store))`.
+- `NoteStore` already has `listNotesPage(userId, { after?, limit })`, ordered by id and used by the notes list.
+- Three existing tests in `test/export.test.ts` await the returned string.
+
+## 2. Fix pass (one pass, TDD)
+
+**Tool call 2 — edit `test/export.test.ts`**: add a `collect` helper and the reproducing test.
+
+```ts
+async function collect(chunks: AsyncIterable<string>): Promise<string> {
+  let out = ''
+  for await (const c of chunks) out += c
+  return out
+}
+
+function pagedStore(total: number) {
+  const notes = Array.from({ length: total }, (_, i) => makeNote({ id: String(i).padStart(6, '0') }))
+  const limits: number[] = []
+  return {
+    limits,
+    listNotes: async () => { throw new Error('unbounded listNotes called') },
+    listNotesPage: async (_u: string, { after, limit }: { after?: string; limit: number }) => {
+      limits.push(limit)
+      const start = after ? notes.findIndex(n => n.id === after) + 1 : 0
+      return notes.slice(start, start + limit)
+    },
+  }
+}
+
+it('exportNotes reads notes in bounded pages, never the whole account', async () => {
+  const store = pagedStore(2500)
+  const it = exportNotes('u1', store as any)[Symbol.asyncIterator]()
+  await it.next(); await it.next()            // header + first page only
+  expect(store.limits).toHaveLength(1)        // lazy: nothing fetched ahead of the consumer
+  const csv = await collect(exportNotes('u1', store as any))
+  expect(csv.trimEnd().split('\n')).toHaveLength(2501)   // header + 2500 rows
+  expect(Math.max(...store.limits)).toBeLessThanOrEqual(500)
+})
+```
+
+**Tool call 3 — edit `test/routes/export.test.ts`**: add the route test.
+
+```ts
+it('GET /export.csv streams the body instead of buffering it', async () => {
+  const res = await request(appWith(pagedStore(2500))).get('/export.csv')
+  expect(res.status).toBe(200)
+  expect(res.headers['content-length']).toBeUndefined()
+  expect(res.headers['transfer-encoding']).toBe('chunked')
+  expect(res.text.trimEnd().split('\n')).toHaveLength(2501)
+})
+```
+
+**Tool call 4 — shell (watch RED)**
+
+```bash
+pnpm test test/export.test.ts test/routes/export.test.ts > .ryugi/sdd/2026-11-10-export-design/final-red.log 2>&1; echo "exit $?"; tail -30 .ryugi/sdd/2026-11-10-export-design/final-red.log
+```
+
+*Assumed output:* exit 1, with 2 failed and 31 passed. Both new tests fail with `Error: unbounded listNotes called` from `src/export.ts:40`. That is the expected reason, so the finding is real.
+
+**Tool call 5 — edit `src/export.ts`** (replace lines 38-42)
+
+```ts
+const PAGE_SIZE = 500
+
+export async function* exportNotes(userId: string, store: NoteStore): AsyncGenerator<string> {
+  yield HEADER + '\n'
+  let after: string | undefined
+  for (;;) {
+    const page = await store.listNotesPage(userId, { after, limit: PAGE_SIZE })
+    if (page.length === 0) return
+    yield page.map(toCsvRow).join('\n') + '\n'
+    if (page.length < PAGE_SIZE) return
+    after = page[page.length - 1].id
+  }
+}
+```
+
+**Tool call 6 — edit `src/routes/export.ts`**
+
+```ts
+import { Readable } from 'node:stream'
+import { pipeline } from 'node:stream/promises'
+// ...
+res.type('text/csv')
+await pipeline(Readable.from(exportNotes(req.user.id, store)), res)
+```
+
+**Tool call 7 — edit `test/export.test.ts`**: the three existing tests change from `await exportNotes(...)` to `await collect(exportNotes(...))`. Their assertions are unchanged.
+
+**Tool call 8 — shell (GREEN on the new tests, then the whole suite)**
+
+```bash
+W=.ryugi/sdd/2026-11-10-export-design; pnpm test test/export.test.ts test/routes/export.test.ts > $W/final-green.log 2>&1; echo "exit $?"; tail -15 $W/final-green.log; pnpm test > $W/final-suite.log 2>&1; echo "exit $?"; tail -15 $W/final-suite.log
+```
+
+*Assumed output:* both runs exit 0. The full suite shows `Tests  33 passed (33)`, which is the 31 earlier tests plus the 2 new ones.
+
+**Tool call 9 — shell (commit, with ledger lines in the same call)**
+
+```bash
+git status --short && git add src/export.ts src/routes/export.ts test/export.test.ts test/routes/export.test.ts && git commit -m "fix(export): stream notes in pages instead of loading the whole account" && cat >> .ryugi/sdd/2026-11-10-export-design/progress.md <<EOF
+Final: fixed exportNotes loads every note into memory (src/export.ts:40) — "exportNotes reads notes in bounded pages, never the whole account" + "GET /export.csv streams the body instead of buffering it" RED→GREEN, suite 33/33 (commit $(git rev-parse --short HEAD))
+Final: Ruling: exportNotes now returns AsyncGenerator<string> (500-note pages via listNotesPage) instead of Promise<string>, and the route pipes it — the spec is silent on size and streaming, and buffering in either place keeps the out-of-memory failure — if wrong: a failure mid-export now gives a truncated download with status 200 rather than a 500, and a note created or deleted during a long export may be missed
+EOF
+git log --oneline main..HEAD
+```
+
+*Assumed output:* `git status` shows only those four files modified. The commit is `a41c9e2`. The log shows four commits on `feat/export`: three task commits plus this fix.
+
+There is no re-review and no second fix pass, as the skill requires.
+
+## 3. Project verification
+
+The project has no skill for checking the running product, so this step is skipped. I say so in the final message.
+
+## 4. Finish
+
+**Tool call 10 — shell (collect rulings and minors, look at the workspace before deleting it)**
+
+```bash
+W=.ryugi/sdd/2026-11-10-export-design; grep -n -e "Ruling:" -e "minor (deferred)" $W/progress.md; ls -la $W
+```
+
+*Assumed output:* two `Ruling:` lines and one `minor (deferred)` line, all from this pass. Tasks 1–3 recorded no rulings. The directory holds `progress.md`, `tasks.md`, the briefs, the review package and my three logs, and nothing else.
+
+**Tool call 11 — shell**
+
+```bash
+rm -rf .ryugi/sdd/2026-11-10-export-design && ls .ryugi/sdd/
+```
+
+*Assumed output:* the directory is gone and there are no sibling directories.
+
+**Tool call 12 — ryugi:verifying** (already loaded, not expanded here). It includes a fresh full run:
+
+```bash
+pnpm test 2>&1 | tail -15; git status --short; git log --oneline main..HEAD
+```
+
+*Assumed output:* `Tests  33 passed (33)`, a clean tree and four commits. Because the work is more than one small claim, I assume the skill opens a verify page with two groups waiting on my partner's verdict: "CSV download contents" and "Large-account export". The link below is a placeholder for whatever the skill prints.
+
+**Message to my human partner (word for word):**
+
+> CSV export is built on `feat/export`, but it is not done until you pass the two groups on the verify page: **CSV download contents** and **Large-account export**.
+> Verify page: `<link printed by ryugi:verifying>`
+>
+> **Evidence:** `pnpm test` just now shows 33 passed out of 33, the tree is clean, and there are 4 commits on top of `main`.
+>
+> **What landed**
+> - The 3 spec tasks: `GET /export.csv` downloads all of a user's notes with columns `id,title,body,createdAt,updatedAt`.
+> - One fix from the final review (`a41c9e2`): the export loaded every note into memory and would have crashed on a very large account (the reviewer's example was 200k notes). It now reads 500 notes at a time and streams the response.
+> - What the fix is proven by: two new tests that failed first and now pass. They show the export never calls the unbounded query and the response is chunked. I did not run a real 200k-note export under a memory limit.
+> - The project has no skill for checking the running app, so nothing beyond the test suite was exercised.
+>
+> **Rulings I made**
+> 1. **Empty account exports a header-only file.** The reviewer set this aside because the spec is silent. I left it: you get a valid CSV that opens as an empty table. If wrong, you wanted a "nothing to export" message instead, which is one branch in the route plus a test.
+> 2. **`exportNotes` now returns a stream of chunks instead of one string, and the route pipes it.** The spec is silent on size, and buffering anywhere keeps the crash. If wrong, a failure mid-export now gives a truncated download with status 200 rather than a clean 500, and a note created or deleted during a long export may be missed.
+>
+> **Deferred minors**
+> - The CSV header says `updatedAt`; the UI calls that field "Last edited". Not changed — the spec names the column `updatedAt`. Your call.
+>
+> Once both verify groups pass, the ways to land it:
+> 1. **Squash into `main`** (default)
+> 2. **Rebase onto `main`**
+> 3. **Push and open a PR**
+> 4. **Keep the branch as-is**
+
+I stop here. Landing is my partner's call, and when they pick a way I follow `landing.md`.
+
+SUMMARY: I sorted the review (deferred the header minor, ruled that header-only empty exports stand), fixed the memory finding in one TDD pass (RED→GREEN, suite 33/33 assumed, commit `a41c9e2`), deleted the workspace and ran verifying. It now waits on my partner to give verdicts on the two verify groups and then choose how to land `feat/export`.

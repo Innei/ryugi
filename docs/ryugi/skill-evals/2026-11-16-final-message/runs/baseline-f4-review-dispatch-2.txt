@@ -1,0 +1,66 @@
+The following is a simulation. Only `./skill/code-reviewer.md` was actually read; none of the calls below are executed.
+
+1. **Shell call**
+   ```json
+   {
+     "workdir": "/Users/p/git/notes-app",
+     "command": "git status --short --branch && git rev-parse HEAD && cat .ryugi/sdd/2026-11-10-export-design/progress.md .ryugi/sdd/2026-11-10-export-design/tasks.md docs/ryugi/specs/2026-11-10-export-design.md"
+   }
+   ```
+
+   **Assumed output:** Clean checkout on `feat/export`; HEAD is `7d8e9f0a1b2c3d4e5f60718293a4b5c6d7e8f901`. The ledger identifies this spec and records all three tasks complete. It contains the two supplied rulings, which remain available verbatim to the reviewer. The spec and task list describe the implemented CSV export. Review Focus matches the supplied text.
+
+2. **Shell call**
+   ```json
+   {
+     "workdir": "/Users/p/git/notes-app",
+     "command": "pnpm test"
+   }
+   ```
+
+   **Assumed output, read in full:** The command exits 0; all 31 tests pass.
+
+3. **Message to partner**
+
+   > `pnpm test` reports 31/31 passing, exit 0; I’m preparing the whole-branch review using the harness’s inherited session model.
+
+4. **Shell call**
+
+   The absolute script path refers to the supplied skill directory.
+
+   ```json
+   {
+     "workdir": "/Users/p/git/notes-app",
+     "command": "bash /private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/tmp.DzbG3oy70Y/skill/scripts/review-package docs/ryugi/specs/2026-11-10-export-design.md 1a2b3c4 HEAD && printf '%s\\n' 'Final: Ruling: The reviewer tool cannot select or name a model — dispatch the required fresh-context reviewer on the inherited session model because the harness exposes only prompt and description — cost if wrong: review may miss issues a more capable model would catch.' >> .ryugi/sdd/2026-11-10-export-design/progress.md"
+   }
+   ```
+
+   **Assumed output:** Exit 0; the script prints:
+   ```text
+   /Users/p/git/notes-app/.ryugi/sdd/2026-11-10-export-design/review-package.md
+   ```
+
+   **Exact appended ledger line:**
+   ```text
+   Final: Ruling: The reviewer tool cannot select or name a model — dispatch the required fresh-context reviewer on the inherited session model because the harness exposes only prompt and description — cost if wrong: review may miss issues a more capable model would catch.
+   ```
+
+5. **Shell call**
+   ```json
+   {
+     "workdir": "/Users/p/git/notes-app",
+     "command": "cat .ryugi/sdd/2026-11-10-export-design/review-package.md"
+   }
+   ```
+
+   **Assumed output, read in full:** The package identifies the correct spec and branch range, `1a2b3c4..7d8e9f0a1b2c3d4e5f60718293a4b5c6d7e8f901`, and includes all three tasks’ changes and verification records.
+
+6. **Subagent dispatch call**
+   ```json
+   {
+     "description": "Review the complete CSV export branch",
+     "prompt": "You are a Senior Code Reviewer with expertise in software architecture, design patterns, and best practices. Review the completed CSV export implementation against its approved requirements and identify issues. This is the single fresh-context whole-branch review. The harness runs you on the inherited session model and exposes no model-selection argument.\n\n## What Was Implemented\n\nCSV export of notes. All three implementation tasks are recorded complete. The executor's current-session verification command, pnpm test, exited 0 with 31/31 tests passing. Inspect the actual tests and their coverage; this result alone does not establish correctness.\n\n## Requirements / Plan\n\nRead these files in /Users/p/git/notes-app:\n- docs/ryugi/specs/2026-11-10-export-design.md\n- .ryugi/sdd/2026-11-10-export-design/tasks.md\n- .ryugi/sdd/2026-11-10-export-design/review-package.md\n- .ryugi/sdd/2026-11-10-export-design/progress.md\n\nRead every Ruling: line in progress.md, including the two implementation rulings and the final ruling about the harness's model-selection limitation. Weigh the implementation rulings against the spec and user expectations; do not assume they are correct merely because they were recorded.\n\n## Git Range to Review\n\nBase: 1a2b3c4\nHead: 7d8e9f0a1b2c3d4e5f60718293a4b5c6d7e8f901\n\nInspect using:\ngit diff --stat 1a2b3c4..7d8e9f0a1b2c3d4e5f60718293a4b5c6d7e8f901\ngit diff 1a2b3c4..7d8e9f0a1b2c3d4e5f60718293a4b5c6d7e8f901\n\n## Review Focus\n- A note body with a newline, a quote and a comma in one field.\n- An account with 200k notes.\n\nCheck both focus items deliberately, including correctness of CSV escaping and the resource and responsiveness effects of exporting 200k notes. Distinguish demonstrated behavior from inference and identify any verification limits.\n\n## The spec is a vision document\n\nThe spec says what the software must do. It does not enumerate every input, environment, or condition the software will meet. For behavior the spec is silent on, judge by what a reasonable person using this software would expect: a reasonable person's expectation is a requirement, and a spec's silence is not permission. Grade such findings by their effect on that person, not by whether the spec mentions the trigger.\n\n## Declined to judge\n\nBefore your verdict, list every behavior you considered and set aside as outside the plan or spec, one line each, with the reason. The executor rules on each line; nothing you set aside is dropped silently. An empty list means you set nothing aside.\n\n## Read-Only Review\n\nYour review is read-only on this checkout. Do not mutate the working tree, the index, HEAD, or branch state in any way. Use git show, git diff, and git log to inspect history. If you need a working copy of a different revision, check it out into a separate temporary directory; never move HEAD on this checkout.\n\n## You Do Not Dispatch Subagents\n\nDo all of this review yourself. Never spawn a subagent to review part of the diff, and never spawn another reviewer for a second opinion. This process already provides every review seat the work gets; a reviewer you spawn duplicates one of them at full cost, and its verdict counts for nothing. If the diff feels too large for one pass, review it in passes yourself and say so in your report.\n\n## What to Check\n\nPlan alignment: Does the implementation match the requirements? Is all planned functionality present? Are deviations justified or problematic?\n\nCode quality: Check separation of concerns, error handling, type safety, duplication without premature abstraction, and edge cases.\n\nArchitecture: Check design, scalability, performance, security, and integration with surrounding code.\n\nTesting: Do tests verify real behavior rather than mocks? Are edge cases and relevant integration behavior covered? Assess the passing test evidence and its limits.\n\nProduction readiness: Check migration needs if the schema changed, backward compatibility, documentation, and obvious bugs.\n\n## Calibration\n\nCategorize issues by actual severity. Not everything is Critical. Acknowledge what was done well before listing issues, with specific evidence. Flag significant deviations from the plan and issues in the plan itself.\n\n## Output Format\n\n### Strengths\nSpecific strengths supported by inspected code.\n\n### Issues\n#### Critical (Must Fix)\nBugs, security issues, data loss risks, broken functionality.\n#### Important (Should Fix)\nArchitecture problems, missing features, poor error handling, test gaps.\n#### Minor (Nice to Have)\nCode style, optimization opportunities, documentation polish.\n\nFor every issue provide a file:line reference, what is wrong, why it matters, and how to fix it if not obvious.\n\n### Recommendations\nRelevant improvements to code quality, architecture, or process.\n\n### Declined to judge\nEvery behavior set aside and its reason, or explicitly state none.\n\n### Assessment\nReady to merge? Yes, No, or With fixes.\nReasoning: A 1–2 sentence technical assessment.\n\n## Critical Rules\n\nCategorize by actual severity. Be specific and explain why each issue matters. Give a clear verdict. Do not say looks good without checking, mark nitpicks as Critical, give feedback on code you did not actually read, or make vague recommendations."
+   }
+   ```
+
+SUMMARY: Simulated verification, review-package preparation, a ledgered model limitation, and reviewer dispatch; execution stops at dispatch, awaiting the reviewer’s findings.

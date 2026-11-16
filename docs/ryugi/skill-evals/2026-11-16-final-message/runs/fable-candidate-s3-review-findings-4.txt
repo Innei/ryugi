@@ -1,0 +1,203 @@
+Simulation from the reviewer's return to the point where I stop. Nothing below was run; every tool output is an assumption and is marked as one.
+
+## 1. Sort the findings
+
+**Call 1: Read** `/Users/p/git/notes-app/docs/ryugi/specs/2026-11-10-export-design.md` (re-check what the spec says about columns, empty accounts and size).
+Assumed: the spec names the columns `id,title,body,createdAt,updatedAt`, says "GET /export.csv downloads all of the user's notes", and is silent on empty accounts, account size and streaming.
+
+**Call 2: Read** `/Users/p/git/notes-app/src/export.ts` and `/Users/p/git/notes-app/src/routes/export.ts` (parallel).
+Assumed:
+- `src/export.ts:40` is `const notes = await store.listNotes(userId)`, and `exportNotes` returns one joined string.
+- The route does `res.send(await exportNotes(store, userId))`.
+- `NoteStore` already has a paginated `listNotesPage(userId, { after, limit })` returning `{ notes, nextCursor }`, used by the notes list.
+
+Re-grade by effect:
+- **Out of memory on large accounts:** stays Important and enters the fix pass. A large account cannot export at all, and the process dying affects other users.
+- **`updatedAt` header:** stays Minor. The spec names that column, and the file still opens and reads correctly.
+- **Empty account:** this is my ruling to make. A header-only file stands.
+
+**Call 3: Bash** (ledger appends for the sort)
+
+```bash
+cd /Users/p/git/notes-app && cat >> .ryugi/sdd/2026-11-10-export-design/progress.md <<'EOF'
+Final review: dispatched (findings: 1 Important, 1 Minor, 1 declined to judge)
+Final: minor (deferred): CSV header says `updatedAt`, the UI calls the field "Last edited" — spec names the column `updatedAt`
+Final: Ruling: empty account exports a file with only the header row — a person with no notes gets a valid CSV that opens cleanly and shows the columns, rather than an error or a 0-byte file; stands — if wrong, someone reads a header-only file as a failed export and one empty-state branch in the route is needed
+EOF
+```
+
+## 2. Fix pass (one pass, TDD)
+
+**Call 4: Edit** `test/routes/export.test.ts` to add the reproducing test (assumed from Task 3: vitest, supertest, `createApp(store)`, `fakeStore(n)`):
+
+```ts
+it('exports a large account page by page, never loading every note at once', async () => {
+  const store = fakeStore(1201)
+  const listAll = vi.spyOn(store, 'listNotes')
+  const listPage = vi.spyOn(store, 'listNotesPage')
+
+  const res = await request(createApp(store)).get('/export.csv').set(authAs('u1'))
+
+  expect(res.status).toBe(200)
+  expect(listAll).not.toHaveBeenCalled()
+  expect(listPage).toHaveBeenCalledTimes(3) // 500 + 500 + 201
+  for (const [, opts] of listPage.mock.calls) expect(opts.limit).toBeLessThanOrEqual(500)
+  expect(res.text.trimEnd().split('\n')).toHaveLength(1202) // header + 1201 rows
+})
+```
+
+**Call 5: Bash** (watch it fail)
+
+```bash
+cd /Users/p/git/notes-app && pnpm test test/routes/export.test.ts > .ryugi/sdd/2026-11-10-export-design/final-red.log 2>&1; echo "exit $?"; tail -25 .ryugi/sdd/2026-11-10-export-design/final-red.log
+```
+
+Assumed: exit 1, the new test fails with `AssertionError: expected "listNotes" to not be called at all, but actually been called 1 times`, and the other tests in the file pass. That is the expected reason: it reproduces the finding.
+
+**Call 6: Edit** `src/export.ts` so `exportNotes` becomes an async generator that pages through the store:
+
+```ts
+const EXPORT_PAGE_SIZE = 500
+
+export async function* exportNotes(store: NoteStore, userId: string): AsyncGenerator<string> {
+  yield HEADER + '\n'
+  let after: string | undefined
+  do {
+    const page = await store.listNotesPage(userId, { after, limit: EXPORT_PAGE_SIZE })
+    if (page.notes.length) yield page.notes.map(toCsvRow).join('\n') + '\n'
+    after = page.nextCursor
+  } while (after)
+}
+```
+
+**Call 7: Edit** `src/routes/export.ts` to replace `res.send(await exportNotes(store, userId))` with:
+
+```ts
+res.setHeader('Content-Type', 'text/csv; charset=utf-8')
+res.setHeader('Content-Disposition', 'attachment; filename="notes.csv"')
+await pipeline(Readable.from(exportNotes(store, userId)), res)
+```
+
+(with `import { Readable } from 'node:stream'` and `import { pipeline } from 'node:stream/promises'`)
+
+**Call 8: Edit** `test/export.test.ts` so the existing unit tests (assumed 4) read the generator through a local helper. Their assertions are unchanged:
+
+```ts
+const csv = async (store: NoteStore, userId: string) => {
+  let out = ''
+  for await (const chunk of exportNotes(store, userId)) out += chunk
+  return out
+}
+```
+
+**Call 9: Bash** (the new test, then the whole suite)
+
+```bash
+cd /Users/p/git/notes-app && pnpm test > .ryugi/sdd/2026-11-10-export-design/final-green.log 2>&1; echo "exit $?"; tail -25 .ryugi/sdd/2026-11-10-export-design/final-green.log
+```
+
+Assumed: exit 0, `Tests  32 passed (32)`, including `exports a large account page by page, never loading every note at once` and the existing empty-account, header-only test.
+
+**Call 10: Bash** (commit and ledger in the same call; own paths staged by name)
+
+```bash
+cd /Users/p/git/notes-app && git add src/export.ts src/routes/export.ts test/export.test.ts test/routes/export.test.ts \
+&& git commit -m "fix(export): stream CSV export in pages instead of loading all notes" \
+&& git rev-parse --short HEAD \
+&& cat >> .ryugi/sdd/2026-11-10-export-design/progress.md <<'EOF'
+Final: fixed exportNotes loading every note into memory (src/export.ts:40) — "exports a large account page by page, never loading every note at once" RED→GREEN, suite 32/32
+Final: Ruling: export is streamed to the response in pages of 500 via listNotesPage; exportNotes now yields CSV chunks instead of returning a string — spec is silent on size and transport, and bounded memory needs it — if wrong: a store failure mid-export reaches the user as a truncated download with status 200 already sent, and notes edited during a long export can be missed or duplicated across pages
+EOF
+```
+
+Assumed: commit `c41d9ae` on `feat/export`. No re-review is dispatched and there is no second fix pass.
+
+## 3. Project verification
+
+Assumed: the project has no skill of its own for checking the running product, so there is nothing to run here.
+
+## 4. Finish
+
+**Call 11:** ryugi:verifying (already loaded, not expanded). Assumed:
+- It re-runs `pnpm test` on `c41d9ae` with result 32 passed (32), exit 0.
+- It writes the verify report at `docs/ryugi/verify/2026-11-10-export-design.md`.
+- It produces no rejects.
+- It leaves two groups waiting on my partner's verdict: **G1 Export download** and **G2 Large account**.
+
+**Call 12: Bash** (collect both lists in order)
+
+```bash
+cd /Users/p/git/notes-app && grep -n -e 'Ruling:' -e 'minor (deferred)' .ryugi/sdd/2026-11-10-export-design/progress.md
+```
+
+Assumed output: one earlier ruling plus the three lines from this pass:
+
+```
+7:Task 2: Ruling: fields containing commas, quotes or newlines are quoted per RFC 4180 — spec only says "CSV" — if wrong, files differ from what a consumer expecting naive comma-joining parses
+12:Final: minor (deferred): CSV header says `updatedAt`, …
+13:Final: Ruling: empty account exports a file with only the header row — …
+15:Final: Ruling: export is streamed to the response in pages of 500 … 
+```
+
+**Call 13: Edit** `docs/ryugi/verify/2026-11-10-export-design.md` to append both lists in full:
+
+```markdown
+## Rulings (3)
+
+| Ruling | Why | Cost if wrong |
+| --- | --- | --- |
+| Fields containing commas, quotes or newlines are quoted per RFC 4180 (Task 2) | Spec only says "CSV" | Files differ from what a consumer expecting naive comma-joining parses |
+| Empty account exports a file with only the header row (Final) | Reviewer declined to judge; a valid CSV that opens cleanly beats an error or a 0-byte file | Someone reads a header-only file as a failed export; one empty-state branch in the route is needed |
+| Export is streamed in pages of 500 via `listNotesPage`; `exportNotes` yields chunks instead of returning a string (Final) | Fix for the reviewer's Important finding; spec is silent on size and transport | A store failure mid-export arrives as a truncated download with status 200; notes edited during a long export can be missed or duplicated across pages |
+
+## Minors (deferred, 1)
+
+- CSV header says `updatedAt`, the UI calls the field "Last edited"; the spec names the column `updatedAt`.
+
+## Final review
+
+Reviewer: 1 Important (fixed in c41d9ae, test RED→GREEN, suite 32/32), 1 Minor (deferred), 1 declined to judge (ruled above).
+```
+
+**Call 14: Bash** (commit the report, look at the workspace, then delete this spec's workspace only)
+
+```bash
+cd /Users/p/git/notes-app && git add docs/ryugi/verify/2026-11-10-export-design.md \
+&& git commit -m "docs(export): verify report" \
+&& ls -la .ryugi/sdd/2026-11-10-export-design/ \
+&& rm -rf .ryugi/sdd/2026-11-10-export-design \
+&& git status --short && git log --oneline main..HEAD
+```
+
+Assumed:
+- `ls` shows only `tasks.md`, `progress.md`, briefs, the review package and test logs.
+- `git status` is clean.
+- The log shows the three task commits, `c41d9ae` and the report commit.
+
+Only docs changed after the 32/32 run on `c41d9ae`.
+
+## 5. Final message to my partner (word for word)
+
+> **Not done — waiting on you.** CSV export is built on `feat/export`; `pnpm test` on `c41d9ae` → 32 passed (32), exit 0. Nothing is pushed or merged.
+>
+> **Needs you**
+>
+> 1. Your verdict on the two groups in the verify report: **G1 Export download** and **G2 Large account** — [docs/ryugi/verify/2026-11-10-export-design.md](docs/ryugi/verify/2026-11-10-export-design.md)
+> 2. Once both pass, how to land it:
+>    1. **Squash into `main`** (default)
+>    2. **Rebase onto `main`**
+>    3. **Push and open a PR**
+>    4. **Keep the branch as-is**
+>
+> **Could change your decision**
+>
+> - The final review found the export loaded every note into memory. I fixed it by streaming in pages of 500. The test proves the paging with a 1,201-note fake store; no export was run against a real 200k-note account, so memory use at that size is not measured.
+> - Because the export now streams, a database failure partway through reaches the user as a truncated file with a 200 status, not an error.
+> - An empty account downloads a file with only the header row; the spec did not say, and I ruled that it stands.
+> - Fields containing commas, quotes or newlines are quoted per RFC 4180; the spec only says "CSV".
+>
+> The report holds all 3 rulings and 1 deferred minor.
+
+Then I stop. `landing.md` is followed only after they pick a way.
+
+SUMMARY: I ledgered the minor and ruled on the empty-account case, fixed the out-of-memory finding under TDD in one pass (RED→GREEN, suite 32/32, commit `c41d9ae`), wrote the rulings and minors into the verify report and deleted the spec workspace; the branch `feat/export` now waits on my partner for the verdict on verify groups G1 and G2 and then the choice of how to land.

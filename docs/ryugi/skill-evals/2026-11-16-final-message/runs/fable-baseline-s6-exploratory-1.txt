@@ -1,0 +1,127 @@
+Simulation below. I read `skill/exploring.md` for real; `skill/scripts/` is not present in this directory, so all script output is assumed.
+
+## Setup
+
+**1. Shell: check the shared checkout and other exploratory work**
+```
+cd /Users/p/git/notes-app && git status --short && git rev-parse --short HEAD && ls .ryugi/sdd/*/EXPLORING 2>/dev/null
+```
+*Assumed:* clean tree, HEAD `a1b2c3d` on `main`, no sibling `EXPLORING` files, and neither `src/export.ts` nor `src/export.test.ts` exists yet.
+
+**2. Read** `docs/ryugi/specs/2026-11-10-export-design.md`, end to end.
+*Assumed content:* `exportNotesToCsv(notes: Note[]): string` in `src/export.ts`. Header row is `id,title,body,createdAt`, one row per note in input order. Fields containing a comma, quote, CR or LF are quoted with quotes doubled (RFC 4180). Rows are joined with CRLF, and an empty list yields the header only.
+
+**3. Read** `skill/exploring.md` (done, real). It says: no commits, write `EXPLORING`, close with `--uncommitted`, review with `--exploring`.
+
+## Slice
+
+**4. Write** `/Users/p/git/notes-app/.ryugi/sdd/2026-11-10-export-design/tasks.md`
+```markdown
+## Task 1: CSV export of notes
+
+- **Goal:** `exportNotesToCsv` turns a list of notes into a CSV string
+  (spec: "Export format", "Escaping").
+- **Files:** create `src/export.ts`, create `src/export.test.ts`
+- **Interfaces:** Produces: `exportNotesToCsv(notes: Note[]): string`.
+  Consumes: `Note` from `src/types.ts` (existing).
+- **Failing test:** `src/export.test.ts` asserts: empty list → header
+  `id,title,body,createdAt` only; two notes → header plus two rows in
+  input order, joined with CRLF; a field with a comma, a quote or a
+  newline is quoted, with quotes doubled.
+- **Verify:** `pnpm test`
+  Expected: all suites pass, including the `export.test.ts` cases; 0 failures.
+
+## Review Focus
+
+- Fields containing a bare `\r`, and leading or trailing whitespace.
+- Null or undefined `body`, and non-string `createdAt` (Date vs ISO string).
+- Cells starting with `=`, `+`, `-`, `@` (spreadsheet formula injection).
+- Very large note lists (string building cost); non-ASCII text and BOM.
+```
+
+**5. Shell: write `EXPLORING`, create the ledger, record the slicing** (one call)
+```
+cd /Users/p/git/notes-app && W=.ryugi/sdd/2026-11-10-export-design && \
+printf 'Exploratory: may be thrown away.\nsrc/export.ts\nsrc/export.test.ts\n' > $W/EXPLORING && \
+printf '# SDD ledger — plan: docs/ryugi/specs/2026-11-10-export-design.md\nSlicing: 1 tasks — the spec is one function and its tests, so one task; exploratory, in place on main, nothing committed\n' > $W/progress.md
+```
+
+**6. Todo:** create "Task 1: CSV export of notes" (pending).
+
+## Task 1
+
+**7. Shell:** `bash scripts/task-start docs/ryugi/specs/2026-11-10-export-design.md 1`
+*Assumed output:* brief at `.ryugi/sdd/2026-11-10-export-design/briefs/task-1.md`, BASE `a1b2c3d`.
+
+**8. Read** `.ryugi/sdd/2026-11-10-export-design/briefs/task-1.md`. **Todo:** Task 1 → in_progress.
+
+**9. Write** `src/export.test.ts`
+```ts
+import { describe, expect, it } from 'vitest'
+import { exportNotesToCsv } from './export'
+
+const note = (over = {}) => ({
+  id: '1', title: 'T', body: 'B', createdAt: '2026-11-10T00:00:00.000Z', ...over,
+})
+
+describe('exportNotesToCsv', () => {
+  it('returns only the header for an empty list', () => {
+    expect(exportNotesToCsv([])).toBe('id,title,body,createdAt')
+  })
+  it('writes one row per note, in order, joined with CRLF', () => {
+    expect(exportNotesToCsv([note(), note({ id: '2', title: 'U' })])).toBe(
+      'id,title,body,createdAt\r\n1,T,B,2026-11-10T00:00:00.000Z\r\n2,U,B,2026-11-10T00:00:00.000Z',
+    )
+  })
+  it('quotes fields with commas, quotes and newlines, doubling quotes', () => {
+    const csv = exportNotesToCsv([note({ title: 'a,b', body: 'say "hi"\nbye' })])
+    expect(csv.split('\r\n')[1]).toBe('1,"a,b","say ""hi""\nbye",2026-11-10T00:00:00.000Z')
+  })
+})
+```
+
+**10. Shell (RED):**
+```
+pnpm test src/export.test.ts > .ryugi/sdd/2026-11-10-export-design/task-1-red.log 2>&1; echo "exit $?"; tail -20 .ryugi/sdd/2026-11-10-export-design/task-1-red.log
+```
+*Assumed:* exit 1, `Failed to resolve import "./export"`. This is the expected reason: the module does not exist.
+
+**11. Write** `src/export.ts`
+```ts
+import type { Note } from './types'
+
+const HEADER = ['id', 'title', 'body', 'createdAt'] as const
+
+function escapeField(value: string): string {
+  return /[",\r\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value
+}
+
+export function exportNotesToCsv(notes: Note[]): string {
+  const rows = notes.map((n) => HEADER.map((k) => escapeField(String(n[k]))).join(','))
+  return [HEADER.join(','), ...rows].join('\r\n')
+}
+```
+
+**12. Shell (Verify):**
+```
+pnpm test > .ryugi/sdd/2026-11-10-export-design/task-1-verify.log 2>&1; echo "exit $?"; tail -20 .ryugi/sdd/2026-11-10-export-design/task-1-verify.log
+```
+*Assumed:* exit 0, all suites pass including the 3 new `export.test.ts` cases, 0 failures. This matches `Expected:`. There is no commit and no `git add`, because the work is exploratory.
+
+**13. Shell (close the task):**
+```
+bash scripts/task-done docs/ryugi/specs/2026-11-10-export-design.md 1 a1b2c3d --uncommitted -- pnpm test
+```
+*Assumed:* tests pass, and the script appends to the ledger:
+`Task 1: complete (uncommitted, base a1b2c3d, tests: pnpm test → pass)`
+
+**14. Todo:** Task 1 → completed.
+
+## Review package
+
+**15. Shell:** `bash scripts/review-package docs/ryugi/specs/2026-11-10-export-design.md --exploring`
+*Assumed output:* `/Users/p/git/notes-app/.ryugi/sdd/2026-11-10-export-design/review-package.md`
+
+No message goes to my partner in this stretch: no ruling was needed and none of the four stops was hit. The requested stretch ends here.
+
+SUMMARY: Simulated slicing the spec into one task, writing `EXPLORING` and the ledger, taking `exportNotesToCsv` from RED to GREEN uncommitted on `main`, closing Task 1 with `task-done --uncommitted`, and producing the `--exploring` review package. Next is mine: dispatch the fresh-context final reviewer, then the fix pass and verification. Only after that does my partner decide whether to keep or discard `src/export.ts` and `src/export.test.ts`.

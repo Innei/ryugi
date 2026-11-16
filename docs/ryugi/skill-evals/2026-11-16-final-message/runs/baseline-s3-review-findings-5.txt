@@ -1,0 +1,445 @@
+Everything below is simulated. No repository commands, edits, tests, or commits are actually executed.
+
+**1. Inspect the current branch and review context.**
+
+Tool: `shell`
+```sh
+cd /Users/p/git/notes-app
+git status --short --branch
+git log -5 --oneline
+cat docs/ryugi/specs/2026-11-10-export-design.md
+cat .ryugi/sdd/2026-11-10-export-design/progress.md
+cat .ryugi/sdd/2026-11-10-export-design/tasks.md
+cat package.json
+cat src/export.ts
+cat src/notes.ts
+cat src/export.test.ts
+rg --files -g AGENTS.md -g '*SKILL.md' -g '*verif*'
+```
+
+Assumed output:
+
+- Branch is `feat/export`, working tree clean.
+- Ledger identity matches the spec; Tasks 1–3 are complete.
+- Task commits are `a111111`, `b222222`, and `c333333`.
+- No earlier `Ruling:` or deferred-minor lines exist.
+- The spec requires CSV columns `id,title,body,updatedAt`, standard CSV escaping, and an export download.
+- `NoteRepository` already exposes `listNotes()` and a lazy, database-backed `iterateNotes()`.
+- `exportNotes(repository, destination)` currently materializes notes and CSV before writing to a Node `Writable`.
+- The existing CSV helper preserves the required format.
+- Tests use Vitest; `pnpm test` runs `vitest run`.
+- There is no project-specific running-product verification skill.
+- For this simulation, the already-loaded verifying workflow permits a persistent local HTML verification page and a human verdict.
+
+Message to partner:
+
+> I’m treating the memory failure as Important, deferring the header wording, and keeping header-only exports for empty accounts.
+
+Classification before acting:
+
+- **Important:** Large accounts can fail to export. Fix in the single final fix pass.
+- **Minor:** `updatedAt` is understandable and preserves the specified schema. Defer the wording change.
+- **Declined behavior:** A header-only CSV accurately represents zero notes and preserves the schema. Keep it; record the decision and its cost.
+
+**2. Add regression tests before implementation.**
+
+Tool: `edit`
+
+Create `/Users/p/git/notes-app/src/export.regression.test.ts` with exactly:
+
+```ts
+import { createHash } from "node:crypto";
+import { Writable } from "node:stream";
+import { expect, test } from "vitest";
+import { exportNotes } from "./export";
+import type { NoteRepository } from "./notes";
+
+test("exports 200000 notes with bounded buffering and backpressure", async () => {
+  const count = 200_000;
+  const body = "x".repeat(1024);
+  const updatedAt = "2026-11-10T00:00:00.000Z";
+  const expected = createHash("sha256");
+  const actual = createHash("sha256");
+  let produced = 0;
+  let written = 0;
+  let rows = 0;
+
+  expected.update("id,title,body,updatedAt\n");
+  for (let id = 0; id < count; id++) {
+    expected.update(`${id},Note ${id},${body},${updatedAt}\n`);
+  }
+
+  async function* iterateNotes() {
+    for (let id = 0; id < count; id++) {
+      produced++;
+      if (produced - written > 128) {
+        throw new Error("more than 128 notes buffered");
+      }
+      yield {
+        id: String(id),
+        title: `Note ${id}`,
+        body,
+        updatedAt,
+      };
+    }
+  }
+
+  const repository: NoteRepository = {
+    iterateNotes,
+    async listNotes() {
+      const notes = [];
+      for await (const note of iterateNotes()) notes.push(note);
+      return notes;
+    },
+  };
+
+  const destination = new Writable({
+    highWaterMark: 1024,
+    write(chunk, _encoding, callback) {
+      const text = chunk.toString();
+      actual.update(chunk);
+      rows += text.split("\n").length - 1;
+      written = Math.max(0, rows - 1);
+      setImmediate(callback);
+    },
+  });
+
+  await exportNotes(repository, destination);
+
+  expect(produced).toBe(count);
+  expect(written).toBe(count);
+  expect(actual.digest("hex")).toBe(expected.digest("hex"));
+});
+
+test("exports an empty account as a header-only CSV", async () => {
+  const repository: NoteRepository = {
+    async *iterateNotes() {},
+    async listNotes() {
+      return [];
+    },
+  };
+  let csv = "";
+
+  await exportNotes(
+    repository,
+    new Writable({
+      write(chunk, _encoding, callback) {
+        csv += chunk.toString();
+        callback();
+      },
+    }),
+  );
+
+  expect(csv).toBe("id,title,body,updatedAt\n");
+});
+```
+
+Tool: `shell`
+```sh
+cd /Users/p/git/notes-app
+pnpm test -- src/export.regression.test.ts
+```
+
+Assumed full output:
+```text
+> notes-app@1.0.0 test /Users/p/git/notes-app
+> vitest run src/export.regression.test.ts
+
+ RUN  v3.2.4 /Users/p/git/notes-app
+
+ ❯ src/export.regression.test.ts (2 tests | 1 failed)
+   × exports 200000 notes with bounded buffering and backpressure
+     → more than 128 notes buffered
+   ✓ exports an empty account as a header-only CSV
+
+ FAIL  src/export.regression.test.ts > exports 200000 notes with bounded buffering and backpressure
+Error: more than 128 notes buffered
+ ❯ iterateNotes src/export.regression.test.ts:27:15
+ ❯ Object.listNotes src/export.regression.test.ts:42:24
+ ❯ exportNotes src/export.ts:40:17
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 1 passed (2)
+
+ ELIFECYCLE  Test failed. See above for more details.
+```
+
+Interpretation: The memory regression fails because export reads ahead without writing. The empty-account test already passes; it characterizes the ruling and is not claimed as a RED→GREEN fix.
+
+**3. Implement bounded streaming.**
+
+Additional assumed source detail: `src/export.ts` already contains the unchanged `csvCell` helper and imports `NoteRepository`.
+
+Tool: `edit`
+
+Add this import to `/Users/p/git/notes-app/src/export.ts`:
+
+```ts
+import { pipeline } from "node:stream/promises";
+```
+
+Replace only `exportNotes` with:
+
+```ts
+export async function exportNotes(
+  repository: NoteRepository,
+  destination: Writable,
+): Promise<void> {
+  async function* rows() {
+    yield "id,title,body,updatedAt\n";
+
+    for await (const note of repository.iterateNotes()) {
+      yield (
+        [note.id, note.title, note.body, note.updatedAt]
+          .map(csvCell)
+          .join(",") + "\n"
+      );
+    }
+  }
+
+  await pipeline(rows(), destination);
+}
+```
+
+This assumes inspection established that the database iterator itself is lazy and the destination does not accumulate the entire export.
+
+Tool: `shell`
+```sh
+cd /Users/p/git/notes-app
+pnpm test
+```
+
+Assumed full output:
+```text
+> notes-app@1.0.0 test /Users/p/git/notes-app
+> vitest run
+
+ RUN  v3.2.4 /Users/p/git/notes-app
+
+ ✓ src/export.test.ts (31 tests)
+ ✓ src/export.regression.test.ts (2 tests)
+
+ Test Files  2 passed (2)
+      Tests  33 passed (33)
+```
+
+Message to partner:
+
+> `pnpm test` reports 33/33 passing; the 200,000-note regression now completes with bounded buffering and matching CSV content.
+
+**4. Check and commit the single fix pass, with ledger bookkeeping in the same call.**
+
+Tool: `shell`
+```sh
+cd /Users/p/git/notes-app
+git diff --check
+git diff -- src/export.ts
+git diff --no-index -- /dev/null src/export.regression.test.ts
+```
+
+Assumed output: `git diff --check` exits 0; the displayed diffs match the edits above. The final command exits 1 because it displays an added file, with no execution failure.
+
+Tool: `shell`
+```sh
+cd /Users/p/git/notes-app
+python3 - <<'PY'
+from pathlib import Path
+import subprocess
+
+ledger = Path(".ryugi/sdd/2026-11-10-export-design/progress.md")
+lines = [
+    "Final: Important: exportNotes materializes every note and can exhaust memory for a 200000-note account — included in the single fix pass.",
+    'Final: minor (deferred): CSV header uses updatedAt while the UI calls it "Last edited".',
+    "Final: Ruling: empty accounts produce a header-only CSV — zero data rows accurately represent zero notes and retain a usable CSV schema, so the behavior stands — cost if wrong: users expecting an empty-state message receive a download instead.",
+    "Final: fixed exportNotes materializes every note — exports 200000 notes with bounded buffering and backpressure RED→GREEN, suite 33/33.",
+    "Final: verification: pnpm test exited 0; 2 test files passed, 33/33 tests passed; git diff --check exited 0.",
+    "Final: project verification: no project-specific running-product verification skill was found; human browser verification remains pending under ryugi:verifying.",
+]
+with ledger.open("a") as file:
+    file.write("\n".join(lines) + "\n")
+
+subprocess.run(
+    ["git", "add", "--", "src/export.ts", "src/export.regression.test.ts"],
+    check=True,
+)
+subprocess.run(
+    [
+        "git", "commit",
+        "-m", "fix: stream note CSV exports with backpressure",
+        "-m",
+        "Final review fix: replace full materialization with lazy iteration. "
+        "Regression failed on unbounded read-ahead before the fix; pnpm test "
+        "then passed 33/33. Keep header-only CSV for empty accounts; users "
+        "expecting an empty-state message receive a download instead. "
+        "Defer updatedAt versus Last edited header wording.",
+    ],
+    check=True,
+)
+PY
+```
+
+Assumed output:
+```text
+[feat/export d444444] fix: stream note CSV exports with backpressure
+ 2 files changed
+```
+
+No second reviewer is dispatched.
+
+**5. Collect the exhaustive finish record before cleanup.**
+
+Tool: `shell`
+```sh
+cd /Users/p/git/notes-app
+cat .ryugi/sdd/2026-11-10-export-design/progress.md
+git log --oneline main..HEAD
+git status --short --branch
+```
+
+Assumed output confirms:
+
+- The only ruling is the empty-account ruling printed above.
+- The only deferred minor is the header wording.
+- Commits are `a111111`, `b222222`, `c333333`, `d444444`.
+- Branch remains `feat/export`; working tree is clean.
+- No Critical or Important findings remain unresolved.
+
+Tool: `shell`
+```sh
+cd /Users/p/git/notes-app
+python3 - <<'PY'
+from pathlib import Path
+import shutil
+
+workspace = Path(".ryugi/sdd/2026-11-10-export-design")
+assert not workspace.is_symlink()
+assert workspace.resolve() == Path(
+    "/Users/p/git/notes-app/.ryugi/sdd/2026-11-10-export-design"
+)
+shutil.rmtree(workspace)
+PY
+```
+
+Assumed output: exit 0; only this spec’s authorized scratch workspace is removed.
+
+**6. Run the final verifying workflow and leave human groups pending.**
+
+Tool: `shell`
+```sh
+cd /Users/p/git/notes-app
+pnpm test
+```
+
+Assumed full output:
+```text
+> notes-app@1.0.0 test /Users/p/git/notes-app
+> vitest run
+
+ RUN  v3.2.4 /Users/p/git/notes-app
+
+ ✓ src/export.test.ts (31 tests)
+ ✓ src/export.regression.test.ts (2 tests)
+
+ Test Files  2 passed (2)
+      Tests  33 passed (33)
+```
+
+Tool: `shell`
+```sh
+cd /Users/p/git/notes-app
+pnpm dev --host 127.0.0.1
+```
+
+Assumed output:
+```text
+> notes-app@1.0.0 dev /Users/p/git/notes-app
+> vite --host 127.0.0.1
+
+  VITE v6.3.5 ready
+
+  ➜  Local: http://127.0.0.1:5173/
+```
+
+Assume the tool returns a running session identifier and leaves the server available.
+
+Tool: `write`
+
+Create `/Users/p/git/notes-app/.ryugi/verify/2026-11-10-export.html` with exactly:
+
+```html
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Notes CSV export verification</title>
+<style>
+body { max-width: 760px; margin: 48px auto; padding: 0 20px;
+       font: 16px/1.6 system-ui; color: #202124; }
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; border-bottom: 1px solid #ddd; padding: 12px; }
+</style>
+<h1>Notes CSV export verification</h1>
+<p>Branch: <code>feat/export</code>. Fix commit: <code>d444444</code>.</p>
+<p><a href="http://127.0.0.1:5173/">Open the running notes app</a>.</p>
+<table>
+<tr><th>Group</th><th>Evidence or action</th><th>Status</th></tr>
+<tr>
+<td>Automated export checks</td>
+<td>Final pnpm test: 33/33 passed. The 200,000-note regression failed
+before the streaming fix and passed afterward. It checks bounded
+read-ahead, slow-writer backpressure, row count, and CSV content hash.
+It does not measure browser memory.</td>
+<td>Passed</td>
+</tr>
+<tr>
+<td>Download and CSV contents</td>
+<td>Use a local test account with commas, quotes, and multiline note
+content. Export through the app. Open the downloaded CSV and confirm
+the expected notes, four columns, and intact content.</td>
+<td>Awaiting partner verdict</td>
+</tr>
+<tr>
+<td>Empty account</td>
+<td>Export from an empty local test account. Confirm the downloaded
+file has only id,title,body,updatedAt and no note rows. Decide whether
+that user experience is acceptable.</td>
+<td>Awaiting partner verdict</td>
+</tr>
+</table>
+<h2>Rulings I made</h2>
+<p>Empty accounts retain a header-only CSV because zero rows represent
+zero notes and preserve the schema. Cost if wrong: users expecting an
+empty-state message receive a download instead.</p>
+<h2>Deferred minors</h2>
+<p>The CSV header uses updatedAt; the UI calls it “Last edited”.</p>
+<p>Reply with Pass or Reject for each pending group, including the
+observed behavior for any rejection. Verification and landing remain
+pending until both groups pass.</p>
+</html>
+```
+
+Tool: `shell`
+```sh
+cd /Users/p/git/notes-app
+open /Users/p/git/notes-app/.ryugi/verify/2026-11-10-export.html
+```
+
+Assumed output: exit 0; the verification page opens.
+
+**7. Final message to partner; stop for their verdict.**
+
+> The streaming fix is committed as `d444444`. Final `pnpm test` reports 33/33 passing, including the 200,000-note regression that failed before the fix.
+>
+> [Verification page](/Users/p/git/notes-app/.ryugi/verify/2026-11-10-export.html): **Download and CSV contents** and **Empty account** await your Pass/Reject verdicts. Verification remains incomplete, and landing waits on both.
+>
+> **Rulings I made**
+>
+> - Keep header-only CSVs for empty accounts: zero rows accurately represent zero notes. Cost if wrong: users expecting an empty-state message receive a download instead.
+>
+> **Deferred minors**
+>
+> - CSV uses `updatedAt`; the UI says “Last edited”.
+>
+> Please return the two verdicts. This verification gate comes from the supplied [executing-specs skill](skill/SKILL.md): “The work is not done, and the ways to land it below wait, until every group that waits on them has passed.”
+
+SUMMARY: Simulated one TDD fix pass, a 33/33 suite, commit and ledger recording, scoped cleanup, and a verification page; two human verification groups await the partner, with landing deferred.

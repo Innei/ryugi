@@ -1,0 +1,110 @@
+以下为模拟，不执行项目命令。所有命令的工作目录均为 `/Users/p/git/board-app/.worktrees/offline-sync`。题目已给出的失败和待验收状态保持原样，不假设它们通过。
+
+1. 工具调用：
+
+```json
+{
+  "tool": "shell",
+  "command": "pwd; git status --short --branch; git log --oneline main..HEAD; git rev-list --left-right --count main...HEAD; cat .ryugi/sdd/2026-11-12-offline-sync-design/progress.md; cat package.json; cat .ryugi/artifacts/verify/offline-sync/report.xml"
+}
+```
+
+假设输出：工作目录和分支正确，工作树干净；日志与账本中的任务及修复提交相符；`main` 独有两个提交。账本身份正确，18 个任务完成，包含题目给出的三条修复记录、22 条裁决和六条延期项。报告列出九项 agent claims、双真机验证缺口及三个待人工裁定组。完整阅读输出，不重新执行已完成任务，也不再次派发审查。
+
+2. 工具调用：
+
+```json
+{
+  "tool": "shell",
+  "command": "pnpm test"
+}
+```
+
+假设完整输出重现题目状态：退出码 `1`，412 passed、1 failed；唯一失败为 `bundle-size`，512 KB 超过 500 KB。完整阅读输出。
+
+3. 发给伙伴：
+
+> 本轮复跑仍有一项失败：包体积 512 KB，预算 500 KB；人工验收也尚未结束，现在不能宣布完成。
+
+4. 工具调用：
+
+```json
+{
+  "tool": "shell",
+  "command": "pnpm typecheck"
+}
+```
+
+假设步骤 1 的 `package.json` 确认该脚本存在。假设完整输出无错误，退出码 `0`；完整阅读输出。
+
+5. 工具调用：
+
+```json
+{
+  "tool": "shell",
+  "command": "pnpm build"
+}
+```
+
+假设完整输出构建成功，退出码 `0`，没有修改受版本控制的文件；完整阅读输出。
+
+6. 工具调用：
+
+```json
+{
+  "tool": "shell",
+  "command": "git status --short --branch; git diff --check"
+}
+```
+
+假设输出：仍在 `feat/offline-sync`，工作树干净，`git diff --check` 退出码 `0`。
+
+本段模拟没有修改代码、追加账本或写入人工编写的 artifact。保留本 spec 的 workspace：全套测试未绿，验证仍待人工裁定，不能按收尾完成处理。既有双浏览器验证仅作为已记录的结果引用，不冒充本轮重新运行的证据。不合并、不变基、不推送，不删除另一个 agent 的提交。
+
+7. 发给伙伴的最终消息，逐字如下：
+
+> 离线同步还不能宣布完成，分支保留在 `feat/offline-sync`。
+>
+> 本轮 `pnpm test` 返回失败：412 项通过、1 项失败；`bundle-size` 为 512 KB，预算为 500 KB。已有记录显示 `main` 为 509 KB、本分支增加 3 KB，但基线超标不能把这次失败算作通过。包体积仍需修复。`pnpm typecheck` 和 `pnpm build` 本轮均退出 `0`。
+>
+> 账本记录了 18 项任务以及三项审查修复的 RED→GREEN 证据；全套测试仍有上述失败，因此修复流程不能视为结束。项目 `check-app` 已有双浏览器离线编辑、重连和合并通过记录，但它不能证明两台真实手机的同步。最终审查实际使用了会话模型：工具忽略了指定模型，不能声称使用了指定的最强模型。
+>
+> 请在[验收页](https://ryugi.innei.dev/a/Rk3vQ0)裁定 `board-ui` 的三个组：同步状态点、重连横幅、附件占位符。双真机同步还需要你的第二台 iPhone。按 [executing-specs 的收尾规则](./skill/SKILL.md)，「The work is not done … until every group that waits on them has passed.」所以目前等待这些验收，不进入落地选择。
+>
+> **Rulings I made（作出的裁决，按账本顺序）**
+>
+> 1. 操作日志放在 `src/sync/oplog.ts`，而非任务表中的 `src/store`，避免 store 导入网络层；判断错误的代价：无。
+> 2. 操作 ID 使用现有 ULID helper，而非 UUIDv7，统一代码库中的 ID 方案；代价：无。
+> 3. 并发编辑按字段分别采用最后写入者胜出，偏离 spec §4 的按卡片合并，避免不同字段的编辑互相覆盖；代价：同一字段的并发编辑仍可能静默丢失其中一次。
+> 4. 手写 IndexedDB wrapper，不引入 `idb`，实现约 60 行；代价：多维护一个文件。
+> 5. 同步 worker 使用 module worker，现有 bundler 已支持；代价：非常旧的 Safari 无法启动同步。
+> 6. 重试退避从 1 秒开始，上限 60 秒，spec 未规定；代价：长时间断网后的恢复较慢。
+> 7. 队列测试使用已有开发依赖 `fake-indexeddb`；代价：无。
+> 8. 重连横幅复用现有 Toast；代价：无。
+> 9. 离线队列上限为 5,000 次操作，达到后提示暂停同步、需要重连，并拒绝继续编辑，spec 未规定上限；代价：长时间离线会停止记录编辑。
+> 10. 服务端每 200 ms 批量确认操作；代价：确认稍有延迟。
+> 11. 冲突测试 fixtures 放在 `test/fixtures/sync`；代价：无。
+> 12. `applyRemote` 接受 clock 参数，作为测试接口；代价：无。
+> 13. 看板版本向量存为 JSON 列，而非独立表，以便每个看板一次读取；代价：将来需要查询时可能要迁移。
+> 14. 离线只同步文字和布局，不排队同步附件，偏离 spec §7；当时依据是对 Safari IndexedDB 容量限制的判断；代价：离线添加的图片需要联网后重新添加，其他设备才能收到。
+> 15. 附件占位符复用现有损坏图片图标；代价：无。
+> 16. 同步状态点位于看板标题右侧，spec 未指定位置；代价：一次 CSS 调整。
+> 17. 退出登录经确认后清空离线队列，spec 未规定；代价：增加一次确认对话框。
+> 18. 排队操作使用现有 session key 加密存储；账本记载的判断错误代价：无。
+> 19. e2e 使用两个浏览器 context，而非两个浏览器；代价：无。
+> 20. 空看板同步空操作日志，不跳过；这是审查者未作判断、由我裁定的行为；代价：每个空看板增加一个小请求。
+> 21. 保留审查者提出的打开看板多次读取：500 张卡片实测三次读取、4 ms；代价：超大看板打开较慢。
+> 22. 保留 `applyRemote` 名称，与服务端一致；代价：无。
+>
+> **Deferred minors（延期小项）**
+>
+> - 重连横幅文字未本地化。
+> - `oplog.ts` 导出了未使用的 `peekOp`。
+> - 退避常量分散在两个文件。
+> - 队列满提示使用 “operations”，界面其他位置使用 “changes”。
+> - 同步日志使用 `console.log`，没有使用应用 logger。
+> - e2e 测试固定等待 500 ms，可以改为等待事件。
+>
+> `main` 已另有两个提交，尚未集成或验证集成后的状态。workspace 和分支均保留；没有合并、变基、推送或创建 PR。后续我负责解决包体积失败，你负责页面裁定及提供第二台 iPhone 完成真机验证。
+
+SUMMARY: 模拟了账本核对、测试与构建复验及完整收尾说明；包体积失败仍待 agent 修复，三个界面验收组和双 iPhone 验证待伙伴，尚未完成或落地。

@@ -1,0 +1,461 @@
+以下为模拟记录；除已读取 `./skill/` 目录清单外，没有执行命令或修改文件。所有假设输出均明确标注。记录到 Task 21 完成并接续 Task 22 为止；这不是等待伙伴确认的停点。
+
+**发给伙伴：**
+
+> 我会把当前缩略图的边框改用应用的 `--brand-accent`，补上验证并记入执行记录，然后继续 Task 21 的演示者窗口布局。
+
+**1. 读取当前实现、测试和执行记录。**
+
+模拟工具调用：
+
+```json
+{
+  "cmd": "pwd && git status --short && git branch --show-current && cat .ryugi/sdd/2026-11-14-slides-design/progress.md && sed -n '/^## Task 20:/,/^## Task 22:/p' .ryugi/sdd/2026-11-14-slides-design/tasks.md && cat src/viewer/Filmstrip.tsx && cat src/viewer/Filmstrip.test.tsx && cat package.json",
+  "workdir": "/Users/p/git/deck-app/.worktrees/slides"
+}
+```
+
+假设输出：
+
+- 工作目录、分支分别为上述 worktree 和 `feat/slides`，工作区干净。
+- ledger 的第一行正确标识当前 spec；Task 1–20 已完成，Task 20 的完成行与题目一致。
+- Filmstrip 接口为 `slides: { id: string; title: string }[]`、`currentSlideId: string`、`onSelect: (id: string) => void`。
+- 缩略图按钮以标题作为 accessible name；当前按钮有 `aria-current="page"`。
+- 当前按钮的内联样式为 `border: '1px solid var(--hairline-strong)'`；其他按钮使用 `--hairline`。
+- 项目使用 Vitest、Testing Library 和 jsdom，已有测试环境与 matcher 配置。
+- Task 21 的内容假设如下，后续以 `task-start` 产生的 brief 为准：
+
+```markdown
+## Task 21: Presenter window layout
+
+**Goal:** 实现 spec “Presenter window” 中的当前页、下一页、讲稿布局及末页空状态。
+
+**Files:** src/presenter/PresenterWindowLayout.tsx; src/presenter/PresenterWindowLayout.test.tsx
+
+**Interfaces:**
+Produces: PresenterWindowLayout
+Consumes: PresenterWindowSlots（Task 19 产生，包含 current: ReactNode、next: ReactNode | null、notes: ReactNode）
+
+**Failing test:** 渲染三个具名区域并显示传入内容；next 为 null 时显示“没有下一页”。
+
+**Verify:** pnpm test
+Expected: 所有测试通过，包括新增的布局和末页空状态测试。
+运行产品检查：项目没有专用验证 skill；用本地浏览器确认三个区域的位置。
+
+## Task 22:
+```
+
+**2. 先验证伙伴刚提出的边框调整，不重开已完成的 Task 20。**
+
+模拟工具调用 `apply_patch`，内容：
+
+```diff
+*** Begin Patch
+*** Add File: /Users/p/git/deck-app/.worktrees/slides/src/viewer/Filmstrip.accent.test.tsx
++import { render, screen } from '@testing-library/react';
++import { expect, it, vi } from 'vitest';
++import { Filmstrip } from './Filmstrip';
++
++it('uses the application accent for the current thumbnail border', () => {
++  render(
++    <Filmstrip
++      slides={[
++        { id: 'one', title: '第一页' },
++        { id: 'two', title: '第二页' },
++      ]}
++      currentSlideId="two"
++      onSelect={vi.fn()}
++    />,
++  );
++
++  const current = screen.getByRole('button', { name: '第二页' });
++  const other = screen.getByRole('button', { name: '第一页' });
++
++  expect(current).toHaveAttribute('aria-current', 'page');
++  expect(current.getAttribute('style')).toContain(
++    'border: 1px solid var(--brand-accent)',
++  );
++  expect(other.getAttribute('style')).not.toContain('--brand-accent');
++});
+*** End Patch
+```
+
+模拟工具调用：
+
+```json
+{
+  "cmd": "pnpm test -- src/viewer/Filmstrip.accent.test.tsx",
+  "workdir": "/Users/p/git/deck-app/.worktrees/slides"
+}
+```
+
+假设完整输出只有该测试的运行结果：`1 failed`。失败断言期望 `border: 1px solid var(--brand-accent)`，实际为 `border: 1px solid var(--hairline-strong)`；没有导入、环境或渲染错误。
+
+模拟工具调用 `apply_patch`：
+
+```diff
+*** Begin Patch
+*** Update File: /Users/p/git/deck-app/.worktrees/slides/src/viewer/Filmstrip.tsx
+@@
+-            border: isCurrent ? '1px solid var(--hairline-strong)' : '1px solid var(--hairline)',
++            border: isCurrent ? '1px solid var(--brand-accent)' : '1px solid var(--hairline)',
+*** End Patch
+```
+
+模拟工具调用：
+
+```json
+{
+  "cmd": "pnpm test",
+  "workdir": "/Users/p/git/deck-app/.worktrees/slides",
+  "max_output_tokens": 12000
+}
+```
+
+假设读取了完整输出：`389 passed`，退出码 `0`，没有失败或跳过。
+
+模拟工具调用：
+
+```json
+{
+  "cmd": "git diff --check && git diff -- src/viewer/Filmstrip.tsx && git add -- src/viewer/Filmstrip.tsx src/viewer/Filmstrip.accent.test.tsx && git commit -m 'fix: use application accent for active slide thumbnail' && cat >> .ryugi/sdd/2026-11-14-slides-design/progress.md <<'EOF'\nRuling: 当前缩略图边框使用应用外壳的 --brand-accent，沿用非当前缩略图样式 — 伙伴在 Task 20 完成后提出调整；filmstrip 属于编辑器控件，使用应用强调色 — 若理解有误，当前页边框将不会随 deck theme 改变，需要改用 --deck-accent。\nFollow-up to Task 20: active thumbnail border — src/viewer/Filmstrip.accent.test.tsx RED→GREEN; pnpm test → 389 passed; commit 8a9b0c1.\nEOF",
+  "workdir": "/Users/p/git/deck-app/.worktrees/slides"
+}
+```
+
+假设输出：`git diff --check` 成功，diff 只有预期边框修改；提交成功，SHA 为 `8a9b0c1`。
+
+**发给伙伴：**
+
+> 当前页边框已改为应用强调色。新增测试先复现了原边框，再通过验证；`pnpm test` 输出为 389 passed。现在继续演示者窗口布局。
+
+**3. 接取 Task 21，读取 brief 和依赖。**
+
+模拟工具调用：
+
+```json
+{
+  "cmd": "bash scripts/task-start docs/ryugi/specs/2026-11-14-slides-design.md 21",
+  "workdir": "/Users/p/git/deck-app/.worktrees/slides"
+}
+```
+
+假设输出：
+
+```text
+Brief: .ryugi/sdd/2026-11-14-slides-design/briefs/task-21.md
+BASE: 8a9b0c1
+```
+
+模拟工具调用：
+
+```json
+{
+  "cmd": "cat .ryugi/sdd/2026-11-14-slides-design/briefs/task-21.md && cat src/presenter/types.ts && cat src/presenter/PresenterWindowLayout.tsx && rg --files -g '*playwright*' -g '*AGENTS.md' -g '*SKILL.md' -g 'vite.config.*' -g '*presenter*' -g '*Presenter*'",
+  "workdir": "/Users/p/git/deck-app/.worktrees/slides"
+}
+```
+
+假设输出：
+
+- brief 与前述 Task 21 内容一致。
+- `PresenterWindowSlots` 定义为：
+
+```tsx
+import type { ReactNode } from 'react';
+
+export interface PresenterWindowSlots {
+  current: ReactNode;
+  next: ReactNode | null;
+  notes: ReactNode;
+}
+```
+
+- `PresenterWindowLayout.tsx` 是已有占位组件：
+
+```tsx
+import type { PresenterWindowSlots } from './types';
+
+export function PresenterWindowLayout({ current }: PresenterWindowSlots) {
+  return <main>{current}</main>;
+}
+```
+
+- 没有额外项目指令或项目验证 skill。
+- 已有 Vite 开发服务器和测试路由 `/__dev/presenter`，使用此组件显示测试幻灯片。
+- 本会话任务列表已存在；将 Task 21 状态更新为 `in_progress`。若工具为 `todos.update`，模拟参数：
+
+```json
+{"id":"task-21","status":"in_progress"}
+```
+
+**4. 写 Task 21 的失败测试。**
+
+模拟工具调用 `apply_patch`：
+
+```diff
+*** Begin Patch
+*** Add File: /Users/p/git/deck-app/.worktrees/slides/src/presenter/PresenterWindowLayout.test.tsx
++import { render, screen, within } from '@testing-library/react';
++import { expect, it } from 'vitest';
++import { PresenterWindowLayout } from './PresenterWindowLayout';
++
++it('shows current slide, next slide, and speaker notes in named regions', () => {
++  render(
++    <PresenterWindowLayout
++      current={<p>当前幻灯片内容</p>}
++      next={<p>下一张幻灯片内容</p>}
++      notes={<p>提醒自己放慢语速</p>}
++    />,
++  );
++
++  expect(
++    within(screen.getByRole('region', { name: '当前页' }))
++      .getByText('当前幻灯片内容'),
++  ).toBeVisible();
++  expect(
++    within(screen.getByRole('region', { name: '下一页' }))
++      .getByText('下一张幻灯片内容'),
++  ).toBeVisible();
++  expect(
++    within(screen.getByRole('region', { name: '讲稿' }))
++      .getByText('提醒自己放慢语速'),
++  ).toBeVisible();
++});
++
++it('shows an explicit next-slide empty state on the final slide', () => {
++  render(
++    <PresenterWindowLayout
++      current={<p>最后一页</p>}
++      next={null}
++      notes={null}
++    />,
++  );
++
++  expect(
++    within(screen.getByRole('region', { name: '下一页' }))
++      .getByText('没有下一页'),
++  ).toBeVisible();
++  expect(screen.getByText('最后一页')).toBeVisible();
++});
+*** End Patch
+```
+
+模拟工具调用：
+
+```json
+{
+  "cmd": "pnpm test -- src/presenter/PresenterWindowLayout.test.tsx",
+  "workdir": "/Users/p/git/deck-app/.worktrees/slides"
+}
+```
+
+假设读取完整输出：`2 failed`，均因找不到具名区域而失败；当前页内容成功渲染，证明失败来自未实现的布局。
+
+**5. 实现 brief 要求的布局。**
+
+模拟工具调用 `apply_patch`：
+
+```diff
+*** Begin Patch
+*** Update File: /Users/p/git/deck-app/.worktrees/slides/src/presenter/PresenterWindowLayout.tsx
+@@
++import { useId } from 'react';
+ import type { PresenterWindowSlots } from './types';
+ 
+-export function PresenterWindowLayout({ current }: PresenterWindowSlots) {
+-  return <main>{current}</main>;
++export function PresenterWindowLayout({
++  current,
++  next,
++  notes,
++}: PresenterWindowSlots) {
++  const id = useId();
++
++  return (
++    <main
++      style={{
++        display: 'grid',
++        gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)',
++        gridTemplateRows: 'minmax(0, 1fr) minmax(0, 1fr)',
++        gridTemplateAreas: '"current next" "current notes"',
++        gap: 16,
++        height: '100dvh',
++        padding: 16,
++        boxSizing: 'border-box',
++      }}
++    >
++      <section
++        aria-labelledby={`${id}-current`}
++        style={{ gridArea: 'current', minWidth: 0, overflow: 'auto' }}
++      >
++        <h2 id={`${id}-current`}>当前页</h2>
++        {current}
++      </section>
++      <section
++        aria-labelledby={`${id}-next`}
++        style={{ gridArea: 'next', minWidth: 0, overflow: 'auto' }}
++      >
++        <h2 id={`${id}-next`}>下一页</h2>
++        {next ?? <p>没有下一页</p>}
++      </section>
++      <section
++        aria-labelledby={`${id}-notes`}
++        style={{ gridArea: 'notes', minWidth: 0, overflow: 'auto' }}
++      >
++        <h2 id={`${id}-notes`}>讲稿</h2>
++        {notes}
++      </section>
++    </main>
++  );
+ }
+*** End Patch
+```
+
+模拟工具调用：
+
+```json
+{
+  "cmd": "pnpm test",
+  "workdir": "/Users/p/git/deck-app/.worktrees/slides",
+  "max_output_tokens": 12000
+}
+```
+
+假设读取完整输出：`391 passed`，退出码 `0`。与 brief 的 `Expected:` 相符。
+
+**6. 检查运行中的布局。**
+
+这里假设已加载的浏览器操作说明允许通过现有浏览器工具进行本地检查；工具名和参数采用该环境实际提供的接口。模拟调用：
+
+```json
+{
+  "cmd": "pnpm dev --host 127.0.0.1",
+  "workdir": "/Users/p/git/deck-app/.worktrees/slides",
+  "yield_time_ms": 1000
+}
+```
+
+假设返回 session ID `2101`，服务器地址 `http://127.0.0.1:5173`。
+
+模拟浏览器调用依次为：
+
+```json
+{"url":"http://127.0.0.1:5173/__dev/presenter"}
+```
+
+```json
+{"width":1280,"height":800}
+```
+
+```json
+{"fullPage":true}
+```
+
+假设返回截图并已查看：当前页在左侧，下一页在右上，讲稿在右下，内容没有重叠或被遮挡。
+
+```json
+{"width":800,"height":600}
+```
+
+```json
+{"fullPage":true}
+```
+
+假设返回截图并已查看：三块区域保持上述位置，长讲稿可在自己的区域滚动，页面没有横向溢出。
+
+模拟停止本次启动的服务器：
+
+```json
+{"session_id":2101,"chars":"\u0003","yield_time_ms":1000}
+```
+
+假设进程退出。
+
+**7. 提交 Task 21，同调用记录验证结果。**
+
+模拟工具调用：
+
+```json
+{
+  "cmd": "git diff --check && git diff -- src/presenter/PresenterWindowLayout.tsx && git add -- src/presenter/PresenterWindowLayout.tsx src/presenter/PresenterWindowLayout.test.tsx && git commit -m 'feat: lay out presenter slide previews and notes' && cat >> .ryugi/sdd/2026-11-14-slides-design/progress.md <<'EOF'\nTask 21: evidence — PresenterWindowLayout.test.tsx: 2 expected failures before implementation → both pass; pnpm test → 391 passed; matches Expected.\nTask 21: product check — local /__dev/presenter inspected at 1280×800 and 800×600; current slide left, next slide upper right, notes lower right; no overlap or horizontal overflow; long notes scroll within their region.\nEOF",
+  "workdir": "/Users/p/git/deck-app/.worktrees/slides"
+}
+```
+
+假设输出：diff 检查通过，提交成功，SHA 为 `9b0c1d2`。此时尚未写 `Task 21: complete`。
+
+模拟工具调用：
+
+```json
+{
+  "cmd": "bash scripts/task-done docs/ryugi/specs/2026-11-14-slides-design.md 21 8a9b0c1 -- pnpm test",
+  "workdir": "/Users/p/git/deck-app/.worktrees/slides",
+  "max_output_tokens": 12000
+}
+```
+
+假设脚本运行测试成功，输出日志路径：
+
+```text
+.ryugi/sdd/2026-11-14-slides-design/task-21.verify.log
+```
+
+并追加以下 ledger 行：
+
+```text
+Task 21: complete (commits 8a9b0c1..9b0c1d2, tests: pnpm test → 391 passed)
+```
+
+为遵守伙伴“读取完整输出”的要求，继续模拟调用：
+
+```json
+{
+  "cmd": "cat .ryugi/sdd/2026-11-14-slides-design/task-21.verify.log",
+  "workdir": "/Users/p/git/deck-app/.worktrees/slides",
+  "max_output_tokens": 20000
+}
+```
+
+假设读到完整、未截断输出：`391 passed`，没有失败或跳过。
+
+模拟 todo 更新：
+
+```json
+{"id":"task-21","status":"completed"}
+```
+
+**发给伙伴：**
+
+> Task 21 的演示者布局已通过验证：当前页在左侧，下一页和讲稿在右侧；末页显示“没有下一页”。`task-done` 重跑结果为 391 passed，本地浏览器的两种窗口尺寸检查也通过。继续 Task 22。
+
+**8. 接续下一任务，不请求确认。**
+
+模拟工具调用：
+
+```json
+{
+  "cmd": "bash scripts/task-start docs/ryugi/specs/2026-11-14-slides-design.md 22",
+  "workdir": "/Users/p/git/deck-app/.worktrees/slides"
+}
+```
+
+假设输出：
+
+```text
+Brief: .ryugi/sdd/2026-11-14-slides-design/briefs/task-22.md
+BASE: 9b0c1d2
+```
+
+模拟工具调用：
+
+```json
+{
+  "cmd": "cat .ryugi/sdd/2026-11-14-slides-design/briefs/task-22.md",
+  "workdir": "/Users/p/git/deck-app/.worktrees/slides"
+}
+```
+
+至此到达本次要求的模拟范围边界。实际执行会按 brief 继续，不进行全分支最终评审、不删除 workspace，也不请求伙伴选择合并方式；这些步骤属于全部任务结束之后。
+
+SUMMARY: 模拟完成当前缩略图强调色调整及 Task 21 的 RED→GREEN、浏览器检查、提交和 ledger 记录；已接续 Task 22，无需伙伴确认，余下任务由执行代理继续。

@@ -1,0 +1,102 @@
+Simulation from here to the stop. I read `skill/landing.md` for real; it only applies once my partner picks a way to land, so nothing in it runs now.
+
+## Tool call 1 — shell: collect the record before deleting anything
+
+```bash
+cd /Users/p/git/notes-app && W=.ryugi/sdd/2026-11-10-export-design \
+&& ls "$W" \
+&& grep -nE 'Ruling:|minor \(deferred\)|^Final|Task [0-9]+: complete' "$W/progress.md" \
+&& git status --short && git branch --show-current \
+&& git log --oneline main..HEAD
+```
+
+Assumed output:
+
+```
+briefs  progress.md  review  tasks.md  test-output
+3:Slicing: 3 tasks — CSV serializer, export service, export command
+5:Task 1: complete (commits 4c1e9a2..a81f3d0, tests: pnpm test → 24 passed)
+7:Task 2: Ruling: quote fields per RFC 4180 — spec is silent on commas — cost if wrong: Excel-only users see quotes
+8:Task 2: complete (commits a81f3d0..6be27c4, tests: pnpm test → 28 passed)
+9:Task 3: complete (commits 6be27c4..d09a7f1, tests: pnpm test → 31 passed)
+10:Final review: subagent
+11:Final: fixed streaming export — test_export_streams RED→GREEN, suite 32/32
+12:Final: minor (deferred): CSV header says updatedAt
+feat/export
+e5b7c18 fix(export): stream rows instead of buffering
+d09a7f1 feat(export): add export command
+6be27c4 feat(export): export service
+a81f3d0 feat(export): CSV serializer
+```
+
+Assumed:
+- **Ledger:** exactly one `Ruling:` line and one `minor (deferred)` line, as the situation states.
+- **Working tree:** `git status --short` prints nothing, so the review fix is committed.
+- **Commits:** four on `feat/export` ahead of `main`; the SHAs and messages are invented for the simulation.
+
+## Tool call 2 — shell: prove the suite on the finished branch, this session
+
+```bash
+cd /Users/p/git/notes-app && pnpm test > /tmp/notes-app-export-final-test.log 2>&1; echo "exit=$?"; tail -n 15 /tmp/notes-app-export-final-test.log
+```
+
+The log goes to `/tmp` because the workspace is about to be deleted.
+
+Assumed output:
+
+```
+exit=0
+ ✓ test/export/csv.test.ts (9)
+ ✓ test/export/service.test.ts (6)
+ ✓ test/export/command.test.ts (4)
+   ✓ test_export_streams
+ ...
+ Test Files  7 passed (7)
+      Tests  32 passed (32)
+```
+
+Assumed: exit 0, 32 of 32 passing, including `test_export_streams`. If this had failed, I would not delete the workspace or offer landing; I would debug and report the real state.
+
+## Tool call 3 — shell: delete this spec's workspace only
+
+The review is clean, its fix is committed, and tool call 1 showed what the directory holds.
+
+```bash
+cd /Users/p/git/notes-app && rm -rf .ryugi/sdd/2026-11-10-export-design && ls .ryugi/sdd/ ; git status --short
+```
+
+Assumed output: `ls` prints nothing (no sibling spec directories) and `git status --short` prints nothing, since the workspace was git-ignored.
+
+No further tool calls. No merge, push or PR: landing is my partner's call.
+
+## Message to my human partner
+
+> CSV export is built on `feat/export` and ready to land. `pnpm test` just now on the branch head: 32 passed, 0 failed, exit 0, working tree clean.
+>
+> **What landed** (4 commits ahead of `main`):
+> - `a81f3d0` CSV serializer
+> - `6be27c4` export service
+> - `d09a7f1` export command
+> - `e5b7c18` streaming fix from the final review
+>
+> **Final review:** one Important finding, fixed in the single fix pass. The export now streams; `test_export_streams` failed first, then passed, and the suite is 32/32. There was no re-review, by design.
+>
+> **Rulings I made**
+> 1. Task 2: fields are quoted per RFC 4180, because the spec is silent on commas inside fields. Cost if wrong: Excel-only users see quotes.
+>
+> **Deferred minors**
+> 1. CSV header says `updatedAt`. Not fixed; say the word if you want it changed before landing.
+>
+> **Verification:** the spec had one claim, proved inline by the test command above. There is no verify page and nothing is waiting on a verdict. The project has no skill for checking the running product, so none was run.
+>
+> I deleted the spec workspace (`.ryugi/sdd/2026-11-10-export-design/`); the git history is the record now.
+>
+> **How do you want to land it?**
+> 1. **Squash into `main`** (default)
+> 2. **Rebase onto `main`**
+> 3. **Push and open a PR**
+> 4. **Keep the branch as-is**
+
+Then I stop and wait.
+
+SUMMARY: I collected the ledger's one ruling and one deferred minor, re-ran `pnpm test` (assumed 32/32, simulated), deleted the spec's workspace and reported on `feat/export`; landing now waits on my partner choosing squash, rebase, PR or keep.

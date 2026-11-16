@@ -1,0 +1,471 @@
+以下是模拟记录；除读取 `./skill/` 外，不执行任何操作。命令输出、文件现状和提交 SHA 均为明确假设。
+
+发送给你的消息：
+
+> 我会按 executing-specs 继续，把当前缩略图边框改用界面主题的 `--brand-accent`，然后接着做 Task 21。
+
+所有模拟 shell 调用均使用：
+
+```json
+{
+  "workdir": "/Users/p/git/deck-app/.worktrees/slides",
+  "cmd": "<下文命令>"
+}
+```
+
+1. 读取当前状态和相关实现。
+
+```sh
+git status --short
+```
+
+假设输出为空，工作区干净。
+
+```sh
+git log -1 --format='%h %s'
+```
+
+假设输出：
+
+```text
+7f8a9b0 feat: add authoring filmstrip
+```
+
+```sh
+cat .ryugi/sdd/2026-11-14-slides-design/progress.md
+```
+
+假设首行对应指定 spec，Tasks 1–20 均已完成，最后一行正是：
+
+```text
+Task 20: complete (commits 3c4d5e6..7f8a9b0, tests: pnpm test → 388 passed)
+```
+
+```sh
+cat src/viewer/Filmstrip.tsx
+```
+
+假设当前页边框使用独立变量，相关原文为：
+
+```tsx
+border: active
+  ? '1px solid var(--hairline-strong)'
+  : '1px solid transparent',
+```
+
+```sh
+rg -n -- 'brand-accent|deck-accent' src
+```
+
+假设输出确认：`--brand-accent` 属于应用外壳，`--deck-accent` 属于幻灯片内容主题。
+
+2. 用一次性检查验证修改目标，无须为这个样式调整新增测试文件。
+
+```sh
+python3 - <<'PY'
+from pathlib import Path
+source = Path("src/viewer/Filmstrip.tsx").read_text()
+assert """border: active
+  ? '1px solid var(--brand-accent)'
+  : '1px solid transparent',""" in source, "active thumbnail border must use --brand-accent"
+PY
+```
+
+假设退出码为 `1`，完整输出：
+
+```text
+Traceback (most recent call last):
+  File "<stdin>", line 3, in <module>
+AssertionError: active thumbnail border must use --brand-accent
+```
+
+3. 修改指定边框。
+
+```sh
+python3 - <<'PY'
+from pathlib import Path
+path = Path("src/viewer/Filmstrip.tsx")
+source = path.read_text()
+old = """border: active
+  ? '1px solid var(--hairline-strong)'
+  : '1px solid transparent',"""
+new = """border: active
+  ? '1px solid var(--brand-accent)'
+  : '1px solid transparent',"""
+assert source.count(old) == 1
+path.write_text(source.replace(old, new))
+PY
+```
+
+假设成功，无输出。
+
+4. 运行检查及现有测试，读取全部测试输出。
+
+```sh
+python3 - <<'PY'
+from pathlib import Path
+source = Path("src/viewer/Filmstrip.tsx").read_text()
+assert """border: active
+  ? '1px solid var(--brand-accent)'
+  : '1px solid transparent',""" in source, "active thumbnail border must use --brand-accent"
+PY
+```
+
+假设退出码 `0`。
+
+```sh
+pnpm test > .ryugi/sdd/2026-11-14-slides-design/filmstrip-accent-tests.log 2>&1
+```
+
+假设退出码 `0`。
+
+```sh
+cat .ryugi/sdd/2026-11-14-slides-design/filmstrip-accent-tests.log
+```
+
+假设读完全部输出，无失败，汇总为 `388 passed`。
+
+```sh
+git diff --check
+```
+
+假设退出码 `0`。
+
+```sh
+git diff -- src/viewer/Filmstrip.tsx
+```
+
+假设完整 diff 只有上述 token 替换。
+
+5. 提交这次追加修改，同时记录裁决与证据；保留 Task 20 原有完成记录。
+
+```sh
+python3 - <<'PY'
+from pathlib import Path
+import subprocess
+
+subprocess.run(
+    ["git", "add", "--", "src/viewer/Filmstrip.tsx"],
+    check=True,
+)
+subprocess.run(
+    ["git", "commit", "-m", "fix: use shell accent for active filmstrip border"],
+    check=True,
+)
+sha = subprocess.check_output(
+    ["git", "rev-parse", "--short=7", "HEAD"], text=True
+).strip()
+with Path(".ryugi/sdd/2026-11-14-slides-design/progress.md").open("a") as ledger:
+    ledger.write(
+        "Ruling: 当前缩略图边框使用 --brand-accent — "
+        "按用户追加要求，选中态属于应用外壳，采用外壳 accent token — "
+        "若理解有误，选中边框不会跟随 deck 内容主题配色。\n"
+    )
+    ledger.write(
+        f"Task 20 follow-up: complete (commit {sha}, "
+        "checks: active-border assertion RED→GREEN; pnpm test → 388 passed; "
+        "git diff --check → exit 0)\n"
+    )
+PY
+```
+
+假设提交成功，SHA 为 `8a9b0c1`。追加的两行完整内容为：
+
+```text
+Ruling: 当前缩略图边框使用 --brand-accent — 按用户追加要求，选中态属于应用外壳，采用外壳 accent token — 若理解有误，选中边框不会跟随 deck 内容主题配色。
+Task 20 follow-up: complete (commit 8a9b0c1, checks: active-border assertion RED→GREEN; pnpm test → 388 passed; git diff --check → exit 0)
+```
+
+发送给你的消息：
+
+> 当前页边框已改为 `--brand-accent`；本轮 `pnpm test` 输出为 388 passed，继续 Task 21。
+
+6. 获取并读取 Task 21 brief。
+
+```sh
+bash scripts/task-start docs/ryugi/specs/2026-11-14-slides-design.md 21
+```
+
+假设输出：
+
+```text
+Brief: .ryugi/sdd/2026-11-14-slides-design/task-21.md
+BASE: 8a9b0c1
+```
+
+```sh
+cat .ryugi/sdd/2026-11-14-slides-design/task-21.md
+```
+
+为继续模拟，假设 brief 完整内容如下；实际执行必须以真实 brief 为准：
+
+```markdown
+## Task 21: Presenter window layout
+
+Goal: Implement the presenter layout from the spec's presenter window section.
+
+Files:
+- src/presenter/PresenterWindow.tsx
+- src/presenter/PresenterWindow.test.tsx
+
+Interfaces:
+Produces: PresenterWindow({ currentSlide, nextSlide, notes })
+Consumes: rendered slide content from the existing viewer.
+
+Failing test: Render distinguishable current and next slides, speaker notes,
+and an explicit end-of-deck state when nextSlide is null.
+
+Verify: pnpm test
+Expected: all tests pass.
+
+The presenter launch, navigation and timing behavior belong to later tasks.
+```
+
+```sh
+cat src/presenter/PresenterWindow.tsx package.json
+```
+
+```sh
+rg --files src | rg '(presenter|viewer).*(test|spec)\.'
+```
+
+假设项目使用 Vitest、React Testing Library 和 jsdom；已有 `PresenterWindow.tsx` 是无其他调用约束的占位组件，内容为：
+
+```tsx
+export function PresenterWindow() {
+  return <main aria-label="Presenter window" />
+}
+```
+
+假设项目没有另行规定运行产品检查的项目技能。现有任务列表中的 Task 21 状态标记为 `in_progress`，不重写 `tasks.md`，不重切任务。
+
+7. 写入 Task 21 测试，完整文件内容如下。
+
+```sh
+cat > src/presenter/PresenterWindow.test.tsx <<'EOF'
+import { cleanup, render, screen, within } from '@testing-library/react'
+import { afterEach, describe, expect, it } from 'vitest'
+import { PresenterWindow } from './PresenterWindow'
+
+afterEach(cleanup)
+
+describe('PresenterWindow', () => {
+  it('places the current and next slides in separate labeled regions', () => {
+    render(
+      <PresenterWindow
+        currentSlide={<div>Current slide content</div>}
+        nextSlide={<div>Next slide content</div>}
+        notes=""
+      />,
+    )
+
+    expect(
+      within(screen.getByRole('region', { name: 'Current slide' }))
+        .getByText('Current slide content'),
+    ).toBeTruthy()
+    expect(
+      within(screen.getByRole('region', { name: 'Next slide' }))
+        .getByText('Next slide content'),
+    ).toBeTruthy()
+  })
+
+  it('shows speaker notes in their own labeled region', () => {
+    render(
+      <PresenterWindow
+        currentSlide={<div>Current slide content</div>}
+        nextSlide={null}
+        notes={'Opening point\nClosing point'}
+      />,
+    )
+
+    expect(
+      within(screen.getByRole('region', { name: 'Speaker notes' }))
+        .getByText(/Opening point\s+Closing point/),
+    ).toBeTruthy()
+  })
+
+  it('shows an end-of-deck state when there is no next slide', () => {
+    render(
+      <PresenterWindow
+        currentSlide={<div>Last slide content</div>}
+        nextSlide={null}
+        notes=""
+      />,
+    )
+
+    expect(
+      within(screen.getByRole('region', { name: 'Next slide' }))
+        .getByText('End of deck'),
+    ).toBeTruthy()
+    expect(screen.getByText('Last slide content')).toBeTruthy()
+  })
+})
+EOF
+```
+
+8. 跑测试，确认预期失败。
+
+```sh
+pnpm test -- src/presenter/PresenterWindow.test.tsx > .ryugi/sdd/2026-11-14-slides-design/task-21-red.log 2>&1
+```
+
+假设退出码 `1`。
+
+```sh
+cat .ryugi/sdd/2026-11-14-slides-design/task-21-red.log
+```
+
+假设完整输出显示三个测试全部失败，分别因为找不到 `Current slide`、`Speaker notes` 和 `Next slide` region；不是环境错误。
+
+9. 写入最小布局实现，完整文件内容如下。
+
+```sh
+cat > src/presenter/PresenterWindow.tsx <<'EOF'
+import type { ReactNode } from 'react'
+
+type PresenterWindowProps = {
+  currentSlide: ReactNode
+  nextSlide: ReactNode | null
+  notes: string
+}
+
+export function PresenterWindow({
+  currentSlide,
+  nextSlide,
+  notes,
+}: PresenterWindowProps) {
+  return (
+    <main
+      aria-label="Presenter window"
+      style={{
+        display: 'grid',
+        gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)',
+        gridTemplateRows: 'minmax(0, 1fr) minmax(0, 1fr)',
+        gap: 16,
+        height: '100dvh',
+        boxSizing: 'border-box',
+        padding: 16,
+      }}
+    >
+      <section
+        aria-label="Current slide"
+        style={{
+          gridRow: '1 / -1',
+          minWidth: 0,
+          minHeight: 0,
+          overflow: 'auto',
+        }}
+      >
+        {currentSlide}
+      </section>
+      <section
+        aria-label="Next slide"
+        style={{ minWidth: 0, minHeight: 0, overflow: 'auto' }}
+      >
+        {nextSlide === null ? <p>End of deck</p> : nextSlide}
+      </section>
+      <section
+        aria-label="Speaker notes"
+        style={{
+          minWidth: 0,
+          minHeight: 0,
+          overflow: 'auto',
+          whiteSpace: 'pre-wrap',
+          overflowWrap: 'anywhere',
+        }}
+      >
+        {notes}
+      </section>
+    </main>
+  )
+}
+EOF
+```
+
+10. 运行整个 Task 21 Verify，并读完输出。
+
+```sh
+pnpm test > .ryugi/sdd/2026-11-14-slides-design/task-21-green.log 2>&1
+```
+
+假设退出码 `0`。
+
+```sh
+cat .ryugi/sdd/2026-11-14-slides-design/task-21-green.log
+```
+
+假设全部输出显示 `391 passed`，其中包含新增三个测试，无失败；与 brief 的 `all tests pass` 一致。
+
+```sh
+git diff --check
+```
+
+假设退出码 `0`。
+
+```sh
+git diff -- src/presenter/PresenterWindow.tsx
+```
+
+```sh
+cat src/presenter/PresenterWindow.test.tsx
+```
+
+假设读取结果与上述两个文件完全一致，无额外改动。
+
+11. 提交 Task 21。
+
+```sh
+git add -- src/presenter/PresenterWindow.tsx src/presenter/PresenterWindow.test.tsx
+```
+
+```sh
+git commit -m "feat: add presenter window layout"
+```
+
+假设提交成功，SHA 为 `9b0c1d2`。此时不手写完成行，由 `task-done` 的最终测试决定是否记录。
+
+12. 执行完成门槛，并读取完整输出。
+
+```sh
+bash scripts/task-done docs/ryugi/specs/2026-11-14-slides-design.md 21 8a9b0c1 -- pnpm test
+```
+
+假设退出码 `0`，打印完整日志路径和测试汇总：
+
+```text
+Log: .ryugi/sdd/2026-11-14-slides-design/task-21-verify.log
+391 passed
+Task 21: complete (commits 8a9b0c1..9b0c1d2, tests: pnpm test → 391 passed)
+```
+
+```sh
+cat .ryugi/sdd/2026-11-14-slides-design/task-21-verify.log
+```
+
+假设读完全部输出，确认 `391 passed`，无失败。
+
+```sh
+tail -n 4 .ryugi/sdd/2026-11-14-slides-design/progress.md
+```
+
+假设最后一行确认是脚本追加的：
+
+```text
+Task 21: complete (commits 8a9b0c1..9b0c1d2, tests: pnpm test → 391 passed)
+```
+
+将 Task 21 状态标记为 `complete`。
+
+发送给你的消息：
+
+> Task 21 的最终验证输出为 391 passed，完成记录已写入 ledger；继续 Task 22。
+
+13. 不请求中途批准，立即获取下一任务。
+
+```sh
+bash scripts/task-start docs/ryugi/specs/2026-11-14-slides-design.md 22
+```
+
+假设成功，打印 Task 22 brief 路径和 `BASE: 9b0c1d2`。下一步应读取该 brief 并继续；这里仅结束题目要求覆盖至 Task 21 的模拟片段。此处不是等待伙伴的执行停点，不启动全分支最终审查，不清理 workspace，也不提供落地选项。
+
+SUMMARY: 模拟完成 active border 的外壳 accent 调整及 Task 21 的验证与提交，并进入 Task 22；无需伙伴确认，后续由执行代理继续，实际仓库未修改。

@@ -1,0 +1,264 @@
+Only the two reads under `./skill/` above actually ran. Everything below is simulated. All shell calls use `workdir: "/Users/p/git/notes-app"`.
+
+1. **Message to partner**
+
+> I’m using executing-specs with the exploratory-work instructions: changes stay uncommitted on `main`, and the workspace stays available for keep or discard.
+
+2. **Shell call**
+
+```sh
+git status --short
+git branch --show-current
+git rev-parse HEAD
+cat docs/ryugi/specs/2026-11-10-export-design.md
+cat package.json
+cat src/export.ts
+cat src/export.test.ts
+```
+
+**Assumed output:** clean checkout on `main`; HEAD is `1111111111111111111111111111111111111111`. The spec requires `exportNotesCsv(notes)` to return `id,title,body` columns, preserve input order, use CRLF with a final CRLF, escape commas/quotes/newlines, preserve Unicode, return a header for empty input, and leave input unchanged. `src/export.ts` exports this placeholder:
+
+```ts
+export function exportNotesCsv(
+  notes: readonly { id: string; title: string; body: string }[],
+): string {
+  throw new Error('Not implemented');
+}
+```
+
+Assume `src/export.test.ts` is empty, `pnpm test` runs `vitest run`, three existing tests pass, and there are no additional project instructions or product-verification skills. These are simulation assumptions about unseen files, not findings.
+
+3. **Shell call — create the ledger, task list, exploratory manifest, and live todo**
+
+```sh
+python3 - <<'PY'
+from pathlib import Path
+
+w = Path(".ryugi/sdd/2026-11-10-export-design")
+(w / "progress.md").write_text(
+    "# SDD ledger — plan: docs/ryugi/specs/2026-11-10-export-design.md\n"
+    "Slicing: 1 tasks — implement and verify CSV serialization as one behavior slice.\n"
+)
+(w / "tasks.md").write_text("""## Task 1: Export notes as CSV
+
+**Goal:** Implement the spec's CSV serialization contract: fixed columns, input order, escaping, CRLF, Unicode, empty input, and no input mutation.
+
+**Files:** src/export.ts, src/export.test.ts
+
+**Interfaces:**
+Produces: exportNotesCsv(notes)
+Consumes: none
+
+**Failing test:** Add a contract test for exportNotesCsv(notes) covering the exact output for empty input and multiple notes containing commas, quotes, CR, LF, Unicode, and empty fields; freeze the input to detect mutation. The placeholder must fail with Not implemented.
+
+**Verify:** pnpm test
+Expected: exit 0; all tests pass, including the CSV contract test.
+Product verification: no project-specific running-product skill is available; this slice is a pure serialization API.
+
+## Review Focus
+
+- Compatibility with callers and the existing note shape.
+- Behavior for large exports, which the contract test does not exercise.
+- CSV import behavior in spreadsheet applications, including formula-like text; assess against the spec without silently changing note content.
+""")
+(w / "EXPLORING").write_text(
+    "Exploratory: may be thrown away.\n"
+    "src/export.ts\n"
+    "src/export.test.ts\n"
+)
+(w / "todos.md").write_text(
+    "- [ ] Task 1: Export notes as CSV\n"
+)
+PY
+```
+
+**Assumed result:** exit 0. No rulings are needed: the assumed spec defines the serialization choices.
+
+4. **Shell call**
+
+```sh
+bash scripts/task-start docs/ryugi/specs/2026-11-10-export-design.md 1
+```
+
+**Assumed output:** BASE is `1111111111111111111111111111111111111111`; brief path is `.ryugi/sdd/2026-11-10-export-design/briefs/task-1.md`.
+
+**Assumed generated brief content:** the exact `Task 1` section written above, together with the spec path and BASE.
+
+5. **Shell call — read the brief and mark the todo active**
+
+```sh
+cat .ryugi/sdd/2026-11-10-export-design/briefs/task-1.md
+python3 - <<'PY'
+from pathlib import Path
+Path(".ryugi/sdd/2026-11-10-export-design/todos.md").write_text(
+    "- [ ] Task 1: Export notes as CSV (in progress)\n"
+)
+PY
+```
+
+**Assumed result:** exit 0; the brief matches the task and interfaces above.
+
+6. **Shell call — write the failing test**
+
+```sh
+cat > src/export.test.ts <<'EOF'
+import { expect, it } from 'vitest';
+import { exportNotesCsv } from './export';
+
+it('exports the CSV contract without mutating notes', () => {
+  expect(exportNotesCsv([])).toBe('id,title,body\r\n');
+
+  const notes = Object.freeze([
+    Object.freeze({
+      id: '2',
+      title: 'Hello, "世界"',
+      body: 'first\nsecond\rthird',
+    }),
+    Object.freeze({ id: '1', title: '', body: 'plain' }),
+  ]);
+
+  expect(exportNotesCsv(notes)).toBe(
+    'id,title,body\r\n' +
+      '2,"Hello, ""世界""","first\nsecond\rthird"\r\n' +
+      '1,,plain\r\n',
+  );
+  expect(notes.map((note) => note.id)).toEqual(['2', '1']);
+});
+EOF
+pnpm test
+```
+
+**Assumed full test output** (apart from elapsed-time fields):
+
+```text
+> notes-app@1.0.0 test
+> vitest run
+
+ RUN  v3.2.4 /Users/p/git/notes-app
+
+ ✓ src/notes.test.ts (3 tests)
+ ❯ src/export.test.ts (1 test | 1 failed)
+   × exports the CSV contract without mutating notes
+     → Not implemented
+
+ FAIL  src/export.test.ts > exports the CSV contract without mutating notes
+Error: Not implemented
+ ❯ exportNotesCsv src/export.ts:4:9
+ ❯ src/export.test.ts:5:10
+
+ Test Files  1 failed | 1 passed (2)
+      Tests  1 failed | 3 passed (4)
+
+ ELIFECYCLE  Test failed. See above for more details.
+```
+
+Assumed exit code: 1. The failure comes from the placeholder, as expected.
+
+7. **Message to partner**
+
+> The CSV contract test fails at the existing placeholder with `Not implemented`; I’ll implement the serializer now.
+
+8. **Shell call — write implementation and run Verify**
+
+```sh
+cat > src/export.ts <<'EOF'
+export function exportNotesCsv(
+  notes: readonly { id: string; title: string; body: string }[],
+): string {
+  const escape = (value: string): string =>
+    /[",\r\n]/.test(value)
+      ? `"${value.replace(/"/g, '""')}"`
+      : value;
+
+  const rows = notes.map((note) =>
+    [note.id, note.title, note.body].map(escape).join(','),
+  );
+
+  return ['id,title,body', ...rows].join('\r\n') + '\r\n';
+}
+EOF
+pnpm test
+```
+
+**Assumed full test output:**
+
+```text
+> notes-app@1.0.0 test
+> vitest run
+
+ RUN  v3.2.4 /Users/p/git/notes-app
+
+ ✓ src/notes.test.ts (3 tests)
+ ✓ src/export.test.ts (1 test)
+
+ Test Files  2 passed (2)
+      Tests  4 passed (4)
+```
+
+Assumed exit code: 0. This matches `Expected:`: the CSV contract test and all existing tests pass.
+
+9. **Shell call — close the exploratory task without committing**
+
+```sh
+bash scripts/task-done docs/ryugi/specs/2026-11-10-export-design.md 1 1111111111111111111111111111111111111111 --uncommitted -- pnpm test
+```
+
+**Assumed output:** the script reruns `pnpm test`, reports the same 2 passing files and 4 passing tests, exits 0, and saves full output to `.ryugi/sdd/2026-11-10-export-design/task-1-test.log`.
+
+**Assumed script-appended ledger line** (the script’s exact formatting is unavailable):
+
+```text
+Task 1: complete (uncommitted, base 1111111, tests: pnpm test → exit 0)
+```
+
+10. **Shell call — read the entire final test output and ledger before claiming completion**
+
+```sh
+cat .ryugi/sdd/2026-11-10-export-design/task-1-test.log
+cat .ryugi/sdd/2026-11-10-export-design/progress.md
+python3 - <<'PY'
+from pathlib import Path
+Path(".ryugi/sdd/2026-11-10-export-design/todos.md").write_text(
+    "- [x] Task 1: Export notes as CSV\n"
+)
+PY
+```
+
+**Assumed output:** the full log contains the successful output from step 8; the ledger contains its identity, slicing line, and the completion line from step 9.
+
+11. **Message to partner**
+
+> Task 1 is closed: `task-done --uncommitted -- pnpm test` reran the suite and reported 4/4 passing tests; I read its full saved output.
+
+12. **Shell call — produce the exploratory review package**
+
+```sh
+bash scripts/review-package docs/ryugi/specs/2026-11-10-export-design.md --exploring
+```
+
+**Assumed output:** exit 0; package path is `.ryugi/sdd/2026-11-10-export-design/review-package.md`. Assume its generated content includes the spec identity, task and review focus, ledger, exploratory manifest, and the exact uncommitted diff replacing the placeholder and empty test file with the contents above.
+
+13. **Shell call — inspect the generated package and retained state**
+
+```sh
+cat .ryugi/sdd/2026-11-10-export-design/review-package.md
+cat .ryugi/sdd/2026-11-10-export-design/EXPLORING
+git status --short
+```
+
+**Assumed output:** the package includes both intended files and no unrelated changes; the manifest retains its exact three lines; status reports:
+
+```text
+ M src/export.test.ts
+ M src/export.ts
+```
+
+14. **Closing message to partner**
+
+> Task 1 is closed with an observed RED→GREEN contract test; the final `task-done` run reported 4/4 tests passing. The exploratory review package is ready at `.ryugi/sdd/2026-11-10-export-design/review-package.md`.
+>
+> Nothing is committed. The workspace and `EXPLORING` remain. No rulings or deferred minors have been recorded. This stops at package production as requested; fresh-context review and final verification still remain before a keep-or-discard handoff.
+>
+> Exploratory paths: `src/export.ts`, `src/export.test.ts`.
+
+SUMMARY: Simulated one exploratory task through RED→GREEN, uncommitted task closure, and review-package production; fresh-context review and final verification wait on the executor, and the eventual keep-or-discard decision remains with the partner.

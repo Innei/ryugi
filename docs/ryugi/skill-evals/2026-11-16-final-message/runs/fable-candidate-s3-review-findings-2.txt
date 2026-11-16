@@ -1,0 +1,172 @@
+Simulation from the reviewer's return onward. Nothing was run; every tool output below is assumed, and each assumption is stated. `skill/scripts/` does not exist in this directory, so I use the script interfaces as the skill describes them.
+
+## 1. Sort the findings (reads only)
+
+**Call 1: shell**
+```bash
+cd /Users/p/git/notes-app && grep -n "Ruling:" .ryugi/sdd/2026-11-10-export-design/progress.md; grep -n -i -E "header|column|empty|stream|memory|size" docs/ryugi/specs/2026-11-10-export-design.md
+```
+Assumed output:
+- The ledger holds one earlier ruling: `Task 2: Ruling: fields containing commas, quotes or newlines are quoted per RFC 4180 — spec only says "CSV" — if wrong, spreadsheet apps that expect a different dialect misparse multi-line notes`.
+- The spec names the columns `id,title,body,createdAt,updatedAt`.
+- The spec says nothing about empty accounts, account size or streaming.
+
+**Call 2: Read** `src/export.ts`, `src/routes/export.ts`, `src/store.ts`, `test/export.test.ts`
+
+Assumed:
+- `exportNotes(userId, store): Promise<string>` calls `store.listNotes(userId)` at line 40 and joins the rows into one string.
+- The route sends that string as the response body.
+- The store already has `listNotesPage(userId, { after, limit })`, ordered by id.
+
+Re-grade by effect:
+- **Memory (Important → stays Important).** A person with a large account gets a crashed export, and on a shared server a crash for everyone else. It enters the fix pass.
+- **Header `updatedAt` (Minor → stays Minor).** The spec names that column, and the file is still readable. It is deferred, not fixed.
+- **Empty account (Declined to judge → ruling).** A header-only file stands.
+
+## 2. Fix pass (one pass, TDD)
+
+**Call 3: Edit** `test/export.test.ts`, appending:
+```ts
+test('exportNotes streams in bounded pages and never loads the whole account', async () => {
+  const notes = Array.from({ length: 2500 }, (_, i) => ({
+    id: String(i).padStart(6, '0'), title: `t${i}`, body: 'b',
+    createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-02T00:00:00Z',
+  }))
+  const limits: number[] = []
+  const store = {
+    listNotes: async () => { throw new Error('listNotes loads the whole account') },
+    listNotesPage: async (_u: string, { after, limit }: { after?: string; limit: number }) => {
+      limits.push(limit)
+      const start = after ? notes.findIndex(n => n.id === after) + 1 : 0
+      return notes.slice(start, start + limit)
+    },
+  }
+  const chunks: string[] = []
+  const out = new Writable({ write(c, _e, cb) { chunks.push(String(c)); cb() } })
+  await exportNotes('u1', store as any, out)
+  const lines = chunks.join('').trimEnd().split('\r\n')
+  expect(lines).toHaveLength(2501)            // header + every note, none dropped or repeated
+  expect(lines[2500]).toMatch(/^002499,/)
+  expect(Math.max(...limits)).toBeLessThanOrEqual(500)
+})
+```
+
+**Call 4: shell (RED)**
+```bash
+pnpm test -- test/export.test.ts > .ryugi/sdd/2026-11-10-export-design/final-fix-red.log 2>&1; tail -20 .ryugi/sdd/2026-11-10-export-design/final-fix-red.log
+```
+Assumed output: 1 failed with `Error: listNotes loads the whole account`. That is the expected reason, because it is the finding itself.
+
+**Call 5: Edit** `src/export.ts`, replacing the load-all body:
+```ts
+const PAGE_SIZE = 500
+
+export async function exportNotes(userId: string, store: NoteStore, out: Writable): Promise<void> {
+  await write(out, HEADER + '\r\n')
+  let after: string | undefined
+  for (;;) {
+    const page = await store.listNotesPage(userId, { after, limit: PAGE_SIZE })
+    if (page.length === 0) break
+    await write(out, page.map(toCsvRow).join('\r\n') + '\r\n')
+    after = page[page.length - 1].id
+  }
+}
+
+// Wait for drain when the destination is slower than the database.
+function write(out: Writable, chunk: string): Promise<void> {
+  return out.write(chunk) ? Promise.resolve() : once(out, 'drain').then(() => {})
+}
+```
+
+**Call 6: Edit** `src/routes/export.ts`. Set the headers, then `await exportNotes(userId, store, res); res.end()` instead of sending a string.
+
+**Call 7: Edit** `test/export.test.ts` and `test/routes/export.test.ts`. The existing tests that awaited a returned string now collect from a `Writable`. Their assertions are unchanged.
+
+**Call 8: shell (GREEN, whole suite)**
+```bash
+pnpm test > .ryugi/sdd/2026-11-10-export-design/final-fix-green.log 2>&1; echo "exit $?"; tail -15 .ryugi/sdd/2026-11-10-export-design/final-fix-green.log
+```
+Assumed output: `exit 0`, `Tests 32 passed (32)`.
+
+**Call 9: shell (commit with the ledger appends in the same call)**
+```bash
+git add src/export.ts src/routes/export.ts test/export.test.ts test/routes/export.test.ts \
+&& git commit -m "fix(export): stream CSV in pages instead of loading every note" \
+&& cat >> .ryugi/sdd/2026-11-10-export-design/progress.md <<'EOF'
+Final: fixed exportNotes loads every note into memory (src/export.ts:40) — "exportNotes streams in bounded pages and never loads the whole account" RED→GREEN, suite 32/32
+Final: Ruling: exportNotes now writes to a Writable instead of returning a string — the only way to bound memory; spec does not fix the signature — if wrong, a caller wanting the CSV as a string must collect the stream itself
+Final: Ruling: empty accounts produce a header-only CSV (reviewer declined to judge) — the person gets a valid file that opens with column names and no rows, which is what "export my notes" means when there are none; an error or disabled button would be new UI the spec does not ask for — if wrong, someone with no notes downloads a file that looks empty and wonders if export failed
+Final: minor (deferred): CSV header says `updatedAt`, the UI calls the field "Last edited" (spec names the column `updatedAt`)
+EOF
+git log --oneline -1
+```
+Assumed output: `a41c9e2 fix(export): stream CSV in pages instead of loading every note`.
+
+There is no re-review and no second fix pass.
+
+## 3. Project verification
+
+**Call 10: shell**
+```bash
+ls .claude/skills 2>/dev/null; grep -n -i -E "simulator|browser|e2e|playwright" CLAUDE.md package.json 2>/dev/null
+```
+Assumed output: nothing. The project has no skill for checking the running product, so this step has nothing to run.
+
+## 4. Finish
+
+**Call 11: ryugi:verifying** (already loaded, not expanded). Assumed result:
+- It re-runs `pnpm test` on HEAD `a41c9e2` and gets 32/32.
+- It writes the verify report at `docs/ryugi/verify/2026-11-10-export-design.md`.
+- It has no rejects.
+- One group, "CSV export end to end", waits on my partner's verdict.
+
+**Call 12: shell**
+```bash
+grep -n -E "Ruling:|minor \(deferred\)" .ryugi/sdd/2026-11-10-export-design/progress.md
+```
+Assumed output: three rulings and one minor, as above.
+
+**Call 13: Edit** `docs/ryugi/verify/2026-11-10-export-design.md`, appending:
+```markdown
+## Rulings (3)
+
+| # | Ruling | Why | Cost if wrong |
+|---|--------|-----|---------------|
+| 1 | Task 2: fields containing commas, quotes or newlines are quoted per RFC 4180 | Spec only says "CSV" | Spreadsheet apps expecting a different dialect misparse multi-line notes |
+| 2 | Final: `exportNotes` writes to a Writable instead of returning a string | Only way to bound memory; spec does not fix the signature | A caller wanting a string must collect the stream itself |
+| 3 | Final: empty accounts produce a header-only CSV | Valid file with column names and no rows; an error or disabled button would be UI the spec does not ask for | Someone with no notes downloads a file that looks empty and wonders if export failed |
+
+## Minors (deferred, not fixed)
+
+- CSV header says `updatedAt`; the UI calls the field "Last edited" (spec names the column `updatedAt`).
+
+## Final review
+
+- Important, fixed: `exportNotes` loaded every note into memory (`src/export.ts:40`) — test "exportNotes streams in bounded pages and never loads the whole account" RED→GREEN, suite 32/32, commit a41c9e2.
+```
+
+**Call 14: shell (look at the target, then delete this spec's workspace only)**
+```bash
+ls .ryugi/sdd/ && ls .ryugi/sdd/2026-11-10-export-design/ && rm -rf .ryugi/sdd/2026-11-10-export-design && git status --short
+```
+Assumed output: the directory holds `tasks.md`, `progress.md`, briefs, the review package and logs. After deletion, `git status` shows only the verify report in the state ryugi:verifying left it.
+
+## 5. Final message to my partner (word for word)
+
+> **Not done — waiting on you:** the export branch is built and reviewed, and `pnpm test` passes 32/32 on `feat/export` at `a41c9e2`, but it needs your verdict before it lands.
+>
+> 1. **Verdict on "CSV export end to end"** in the verify report: [docs/ryugi/verify/2026-11-10-export-design.md](docs/ryugi/verify/2026-11-10-export-design.md). Pass or reject.
+> 2. **Empty accounts get a file with only the header row.** The spec doesn't say; I ruled that this stands. Tell me if you want something else (a message, a disabled button).
+> 3. **How to land it**, once 1 has passed:
+>    1. Squash into `main` (default)
+>    2. Rebase onto `main`
+>    3. Push and open a PR
+>    4. Keep the branch as-is
+>
+> **What could change your decision:**
+> - The reviewer found that export loaded every note into memory, which would crash on very large accounts. I fixed it by streaming in pages of 500. The proof is a test with 2,500 fake notes; no real 200k-note export was run, and the fix itself was not re-reviewed.
+> - The report holds 3 rulings and 1 deferred minor (CSV header says `updatedAt`, UI says "Last edited"). Item 2 is the only ruling that changes what a user gets.
+
+Then I stop. Landing is my partner's call, so `landing.md` is followed only after they pick.
+
+SUMMARY: Re-graded the review, fixed the Important memory finding under TDD (RED→GREEN, suite 32/32, commit `a41c9e2`), ruled on the empty-account case, deferred the header minor, wrote the rulings and minors into the verify report, and deleted the workspace. The branch now waits on my partner for the verify verdict and the choice of how to land `feat/export`.

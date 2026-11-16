@@ -1,0 +1,123 @@
+Nothing below was actually run, apart from reading `landing.md`, `code-reviewer.md` and `exploring.md` under `./skill/`. This is the simulated sequence, with assumed outputs marked.
+
+## Tool calls
+
+**1. Shell: confirm the branch state**
+
+```bash
+cd /Users/p/git/board-app/.worktrees/offline-sync && git status --short && git log --oneline -1 && git rev-list --count main..HEAD && git rev-list --count HEAD..main
+```
+
+Assumed output: the working tree is clean, so the three review fixes are committed. HEAD is `c4d5e6f` (assumed SHA of the last fix commit), 26 commits ahead of `main` (23 task commits plus 3 fix commits, assumed) and 2 behind.
+
+**2. Shell: fresh evidence for the suite, typecheck and build**
+
+```bash
+cd /Users/p/git/board-app/.worktrees/offline-sync && W=.ryugi/sdd/2026-11-12-offline-sync-design && pnpm test > $W/final-suite.log 2>&1; echo "test exit=$?"; tail -n 30 $W/final-suite.log; pnpm typecheck > $W/final-typecheck.log 2>&1; echo "typecheck exit=$?"; pnpm build > $W/final-build.log 2>&1; echo "build exit=$?"
+```
+
+Assumed output, matching the situation: `412 passed, 1 failed`, with the failure `bundle-size: 512 KB exceeds budget 500 KB` and test exit 1. Typecheck and build both exit 0. The script names `typecheck` and `build` are assumed.
+
+**3. Shell: ledger the two open facts and collect the rulings and minors before deleting anything**
+
+```bash
+cd /Users/p/git/board-app/.worktrees/offline-sync && W=.ryugi/sdd/2026-11-12-offline-sync-design && cat >> $W/progress.md <<'EOF'
+Final review: subagent in a fresh context, ran on the session's model — this harness ignores the named model.
+Final: Ruling: bundle-size fails at 512 KB against the 500 KB budget and stays as is — main already fails at 509 KB, this branch adds 3 KB, and raising the budget or trimming unrelated code is outside the spec — cost if wrong: the suite stays red (412/413) on this branch and on main after landing until someone raises the budget or trims the bundle.
+EOF
+grep "Ruling:" $W/progress.md; grep "minor (deferred)" $W/progress.md
+```
+
+Assumed output: the 22 ruling lines from the situation plus the new one (23 in total), and the 6 deferred minors.
+
+**4. Shell: look at the workspace, then delete only this spec's directory**
+
+The review is finished, its fixes are committed, and the rulings and minors are collected in step 3, so the skill's condition for deleting the workspace is met.
+
+```bash
+cd /Users/p/git/board-app/.worktrees/offline-sync && W=$(bash /Users/p/git/board-app/.worktrees/offline-sync/skill/scripts/sdd-workspace docs/ryugi/specs/2026-11-12-offline-sync-design.md) && echo "$W" && ls "$W" && head -1 "$W/progress.md"
+```
+
+The path of the `skill/scripts` directory is assumed. Assumed output: the path ends in `.ryugi/sdd/2026-11-12-offline-sync-design`, and the listing shows `tasks.md`, `progress.md`, the briefs, the review package and the logs. The first ledger line is `# SDD ledger — plan: docs/ryugi/specs/2026-11-12-offline-sync-design.md`, so the directory belongs to this spec.
+
+```bash
+rm -rf "/Users/p/git/board-app/.worktrees/offline-sync/.ryugi/sdd/2026-11-12-offline-sync-design" && ls /Users/p/git/board-app/.worktrees/offline-sync/.ryugi/sdd/ /Users/p/git/board-app/.worktrees/offline-sync/.ryugi/artifacts/verify/offline-sync/
+```
+
+Assumed output: the spec's directory is gone, and `report.xml` is still in `.ryugi/artifacts/verify/offline-sync/`. Sibling directories are untouched.
+
+I make no rebase, merge or push, because landing is my partner's call and it waits on the verify verdicts.
+
+## Message to my partner
+
+> **离线同步已实现完毕，但还不能算完成：有 3 组界面等你在 verify 页面上裁决，另有 1 项只有你能测。合入方式要等这些通过后再定。**
+>
+> Verify 报告：https://ryugi.innei.dev/a/Rk3vQ0 （`verify/offline-sync`，9 条由我验证的声明，`check` 无问题）
+>
+> ### 等你处理
+>
+> 1. **`board-ui` 上等你裁决的 3 组**：同步状态圆点、重连横幅、附件占位图。
+> 2. **一个缺口**：两台真机之间的同步我测不了，需要你的第二台 iPhone。
+> 3. **两处我偏离了 spec，请你确认或推翻**：
+>    - **§4 冲突合并**：spec 写的是按卡片 last-writer-wins，我做成了按字段。原因是按卡片时，两人改同一张卡片的不同字段会丢掉其中一人的修改。代价：两人改同一字段时，仍有一方的修改无提示地消失。
+>    - **§7 附件**：spec 写附件也要离线排队，我没做，离线时只同步文本和布局。原因是 Safari 的 IndexedDB 上限约 50 MB。代价：离线添加的图片在其他设备上缺失，直到联网后重新添加。附件占位图这一组就是由此而来；如果你推翻这条，那一组也跟着作废。
+>
+> ### 当前实际状态
+>
+> - **测试**：本次会话重跑 `pnpm test`，412 通过，**1 失败**。失败的是 `bundle-size`：512 KB，预算 500 KB。`main` 本身已是 509 KB，本分支增加 3 KB。我没有改预算，也没有去裁剪无关代码，这需要你决定。
+> - **类型检查和构建**：通过。
+> - **`check-app`**：两个浏览器上下文走完离线编辑、重连、合并，全部通过。
+> - **分支**：`feat/offline-sync`（worktree `.worktrees/offline-sync`），18 个任务全部完成，任务提交 `a1b2c3d..f9e8d7c` 共 23 个，之后是评审修复的提交，工作区干净。
+> - **落后 `main` 2 个提交**：是另一个 agent 的无关提交。以上测试结果都不包含这两个提交，合入时会在新的 `main` 上重跑。
+> - **最终评审**：结论是"修复后可合入"，1 个 Critical、2 个 Important，已在一轮内全部修复，每个都有先失败后通过的测试。评审用的是全新上下文的子 agent，但这个环境会忽略我指定的模型，所以它跑在与本会话相同的模型上，而不是单独指定的最强模型。是否需要再评一次由你定。
+> - spec 的工作目录（任务列表、ledger）已按流程删除，下面两份清单是这些决定的唯一记录。
+>
+> ### 我做的裁决（共 23 条，按时间顺序）
+>
+> | # | 任务 | 裁决 | 错了的代价 |
+> |---|---|---|---|
+> | 1 | Task 1 | 操作日志放在 `src/sync/oplog.ts`，而不是任务列表写的 `src/store`，因为 store 不能依赖网络层 | 无 |
+> | 2 | Task 2 | 操作 id 用现有 ulid 工具生成的 ULID，不用 UUIDv7，代码库只留一种 id 方案 | 无 |
+> | 3 | Task 3 | **偏离 spec §4**：并发编辑按字段合并，每个字段 last-writer-wins | 两人改同一字段时，一方的修改仍会无提示消失 |
+> | 4 | Task 4 | IndexedDB 封装手写（60 行），不引入 `idb` | 多维护一个文件 |
+> | 5 | Task 5 | 同步 worker 用 module worker，打包器已支持 | 很老的 Safari 无法启动同步 |
+> | 6 | Task 6 | 重试退避从 1 秒起，上限 60 秒（spec 未提） | 长时间断网后恢复较慢 |
+> | 7 | Task 7 | 队列测试用 `fake-indexeddb`，已是开发依赖 | 无 |
+> | 8 | Task 8 | 重连横幅复用现有 Toast 组件 | 无 |
+> | 9 | Task 9 | 离线队列上限 5,000 条操作；超过后显示 "sync paused, reconnect to keep editing" 并停止接受编辑（spec 未提上限） | 长时间离线时会停止记录编辑 |
+> | 10 | Task 10 | 服务端 ack 每 200 ms 批量发送 | ack 延迟略增 |
+> | 11 | Task 11 | 冲突测试的 fixtures 放在 `test/fixtures/sync` | 无 |
+> | 12 | Task 12 | `applyRemote` 增加 clock 参数，供测试用 | 无 |
+> | 13 | Task 13 | 看板版本向量存成 JSON 列而不是单独的表，每个看板一次读取 | 以后若要查询它们，需要一次迁移 |
+> | 14 | Task 14 | **偏离 spec §7**：附件离线时不同步，只同步文本和布局 | 离线添加的图片在其他设备上缺失，直到联网后重新添加 |
+> | 15 | Task 14 | 附件占位图用现有的破损图片图标 | 无 |
+> | 16 | Task 15 | 同步状态圆点放在看板标题栏、标题右侧（spec 有这个圆点但没定位置） | 挪一次 CSS |
+> | 17 | Task 16 | 登出时弹确认框，确认后清空离线队列（spec 未提） | ledger 记的是"只多一个对话框"。我补充一点：确认登出后，尚未同步的编辑会被丢弃 |
+> | 18 | Task 16 | 排队的操作用现有 session key 静态加密 | ledger 记的是"无"。我没有验证 session 过期或密钥轮换后队列是否还能解密，如果不能，未同步的编辑会丢，这点值得你看一眼 |
+> | 19 | Task 17 | e2e 测试用两个浏览器上下文，不是两个浏览器 | 无 |
+> | 20 | Final | 空看板同步一份空操作日志而不是跳过（评审者未作判断） | 每个空看板多一个很小的请求 |
+> | 21 | Final | 评审指出的"打开看板时 N+1 读取"不改：500 张卡片的看板是 3 次读取，实测 4 ms | 超大看板打开变慢 |
+> | 22 | Final | 评审建议的"重命名 `applyRemote`"不改，命名与服务端一致 | 无 |
+> | 23 | Final | `bundle-size` 失败保持原样：`main` 已超预算，本分支只加 3 KB，调预算或裁剪无关代码不在 spec 范围内 | 本分支以及合入后的 `main` 上测试持续为红（412/413），直到有人调预算或瘦身 |
+>
+> ### 推迟的小问题（共 6 条，均未修）
+>
+> 1. 重连横幅的文案没有本地化。
+> 2. `oplog.ts` 导出了一个没人用的 `peekOp`。
+> 3. 退避常量分散在两个文件里。
+> 4. 队列已满的提示用的是 "operations"，而界面其他地方用 "changes"。
+> 5. 同步日志用的是 `console.log`，不是应用的 logger。
+> 6. e2e 测试 sleep 了 500 ms，本可以等待事件。
+>
+> ### 之后的合入方式
+>
+> 等 3 组裁决通过、真机同步测过之后，你再选：
+>
+> 1. **Squash 到 `main`**（默认）
+> 2. **Rebase 到 `main`**
+> 3. **Push 并开 PR**
+> 4. **分支保持原样**
+>
+> 被驳回的组我会修复后重新提交验证。
+
+SUMMARY: I re-ran the suite (assumed 412 passed, 1 failed on the already-over-budget `bundle-size`), ledgered that as a 23rd ruling, deleted the spec workspace and sent the Chinese final report with all 23 rulings and 6 deferred minors; the work now waits on my partner for the 3 `board-ui` verify verdicts, the two-iPhone sync test, the two spec deviations (§4, §7) and the bundle budget, and landing waits until those pass.

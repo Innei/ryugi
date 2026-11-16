@@ -1,0 +1,2 @@
+"command":"/bin/zsh -lc 'cat ./skill/exploring.md'"
+"command":"/bin/zsh -lc 'cat ./skill/scripts/task-start ./skill/scripts/task-done ./skill/scripts/review-package'"

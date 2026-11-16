@@ -1,0 +1,65 @@
+Simulation from the Finish step onward; nothing was run, and I read no files under `./skill/` (`landing.md` is only read once a landing way is chosen).
+
+## Tool calls, in order
+
+**1. Shell: collect the rulings and minors from the ledger, and check the branch state**
+
+```
+cd /Users/p/git/notes-app && grep -n -e 'Ruling:' -e 'minor (deferred)' .ryugi/sdd/2026-11-10-export-design/progress.md; git status --short; git log --oneline main..HEAD
+```
+
+Assumed output:
+- The grep returns exactly two lines:
+  - `Task 2: Ruling: quote fields per RFC 4180 — spec is silent on commas — cost if wrong: Excel-only users see quotes`
+  - `Final: minor (deferred): CSV header says updatedAt`
+- `git status --short` prints nothing, so the tree is clean.
+- `git log` shows the three task commits plus the streaming-fix commit on `feat/export`.
+
+**2. Shell: re-run the suite on the finished branch, so the final claim has fresh evidence**
+
+```
+cd /Users/p/git/notes-app && pnpm test > /tmp/notes-app-export-final-test.log 2>&1; echo "exit=$?"; tail -n 15 /tmp/notes-app-export-final-test.log
+```
+
+Assumed output: `exit=0`, and the tail shows 32 tests passed, 0 failed.
+
+**3. Shell: look at the workspace, then delete it**
+
+Both lists are now captured for the final message. This is this spec's own git-ignored scratch directory, and the skill tells me to remove it at Finish.
+
+```
+cd /Users/p/git/notes-app && ls -la .ryugi/sdd/2026-11-10-export-design/
+```
+
+Assumed output: `tasks.md`, `progress.md`, task briefs, test-output logs and the review package, with nothing unexpected.
+
+```
+cd /Users/p/git/notes-app && rm -rf .ryugi/sdd/2026-11-10-export-design && ls .ryugi/sdd/
+```
+
+Assumed output: the directory is gone and no sibling directory was touched.
+
+No todo updates, commits, pushes or merges; landing is my partner's call.
+
+## Final message to my human partner
+
+> **Waiting on you:** CSV export is built and committed on `feat/export`, and `pnpm test` passes 32/32 (run just now, exit 0). Nothing is landed.
+>
+> **What needs you**
+>
+> 1. **Ruling to confirm or overturn (the only one):** fields are quoted per RFC 4180. The spec is silent on commas inside fields. Cost if wrong: Excel-only users see quotes.
+> 2. **Deferred minor (the only one), fix or leave:** the final review noted "CSV header says updatedAt". I did not change it.
+> 3. **How to land `feat/export`:**
+>    - a. Squash into `main` (default)
+>    - b. Rebase onto `main`
+>    - c. Push and open a PR
+>    - d. Keep the branch as-is
+>
+> **What could change your decision**
+>
+> - The export is proved by the test suite only. The project has no skill for checking the running product, so nobody has exported a real file from the running app or opened one in Excel.
+> - The final review's one Important finding (the export was not streaming) was fixed and proved by `test_export_streams` failing then passing. That fix was not re-reviewed.
+>
+> There is no verify page: the single claim was proved inline by the test command. The spec workspace is deleted, so this message and the git history on `feat/export` are the record.
+
+SUMMARY: I collected the one ruling and one deferred minor from the ledger, re-ran `pnpm test` (assumed 32/32), deleted the spec workspace, and sent the final message; the work now waits on my partner for the ruling verdict, the minor, and the choice of how to land `feat/export`.

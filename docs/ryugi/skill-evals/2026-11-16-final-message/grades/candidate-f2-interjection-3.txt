@@ -1,0 +1,1 @@
+PASS — Chose and committed an accent token with failing-first tests, replied briefly in Chinese, and continued Task 21 through task-start, brief, and failing tests.

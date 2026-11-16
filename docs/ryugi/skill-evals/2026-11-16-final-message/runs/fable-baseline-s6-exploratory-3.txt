@@ -1,0 +1,161 @@
+I read `./skill/exploring.md` for real, and it changes the run: no commits, an `EXPLORING` marker file, `task-done --uncommitted`, and `review-package --exploring`. Everything below is simulated, with assumptions marked.
+
+One real finding: `./skill/scripts/` does not exist in this sandbox (reads of `task-start`, `task-done` and `review-package` failed). I assume the scripts exist in the real install and behave as the skill describes.
+
+## Setup
+
+**Call 1 — shell** (state of the shared checkout, other specs' exploratory paths, the spec)
+
+```bash
+cd /Users/p/git/notes-app && git status --short && git rev-parse HEAD \
+  && ls .ryugi/sdd/*/EXPLORING 2>/dev/null; git check-ignore .ryugi; \
+  cat docs/ryugi/specs/2026-11-10-export-design.md
+```
+
+Assumed output:
+- The tree is clean and HEAD is `a1b2c3d…`.
+- No sibling `EXPLORING` files exist, and `.ryugi` is git-ignored.
+- The spec defines `exportNotesToCsv(notes: Note[]): string` in `src/export.ts`.
+- The header row is `id,title,body,createdAt`.
+- Fields containing a comma, quote or newline are quoted, with `"` doubled.
+- Rows end in CRLF, and empty input gives the header row only.
+- `Note` already exists in `src/types.ts`, and tests are vitest.
+
+Narration: "Spec read; slicing into one task."
+
+## Slice
+
+**Call 2 — shell** (one call writes `tasks.md`, the ledger and `EXPLORING`)
+
+```bash
+cd /Users/p/git/notes-app && W=.ryugi/sdd/2026-11-10-export-design && cat > $W/tasks.md <<'EOF'
+## Task 1: CSV export of notes
+
+- **Goal:** `exportNotesToCsv` turns a list of notes into CSV text (spec: "Format", "Escaping").
+- **Files:** create `src/export.ts`, create `src/export.test.ts`
+- **Interfaces:** Produces: `exportNotesToCsv(notes: Note[]): string`. Consumes: `Note` from `src/types.ts` (existing).
+- **Failing test:** `src/export.test.ts` asserts: empty list → `"id,title,body,createdAt\r\n"`; one plain note → header + one CRLF-terminated row; a title with a comma is quoted; a body with `"` is quoted with quotes doubled; a body with a newline is quoted and kept intact.
+- **Verify:** `pnpm test`
+  Expected: exit 0, all files pass, including 5 tests in `src/export.test.ts`.
+
+## Review Focus
+
+- Fields with a bare `\r`, or leading/trailing whitespace — not tested.
+- Cells starting with `=`, `+`, `-`, `@` (spreadsheet formula injection) — spec silent, not tested.
+- Null/undefined `body`, and `createdAt` serialization if it is a `Date` rather than a string.
+- Very large note lists (string building, memory).
+EOF
+cat > $W/progress.md <<'EOF'
+# SDD ledger — plan: docs/ryugi/specs/2026-11-10-export-design.md
+Exploratory: uncommitted, in place on main, until partner keeps it.
+Slicing: 1 tasks — whole spec is one function plus its tests; nothing to cut.
+EOF
+printf 'Exploratory: may be thrown away.\nsrc/export.ts\nsrc/export.test.ts\n' > $W/EXPLORING
+```
+
+**Call 3 — todos:** create `Task 1: CSV export of notes` (pending).
+
+## Task 1
+
+**Call 4 — shell**
+
+```bash
+cd /Users/p/git/notes-app && bash "$SKILL/scripts/task-start" docs/ryugi/specs/2026-11-10-export-design.md 1
+```
+
+(`$SKILL` is the absolute path of `./skill`.) Assumed output: brief at `.ryugi/sdd/2026-11-10-export-design/briefs/task-1.md`, `BASE=a1b2c3d`.
+
+**Call 5 — read** the brief at that path, **and todos:** Task 1 → in_progress.
+
+**Call 6 — write** `/Users/p/git/notes-app/src/export.test.ts`
+
+```ts
+import { describe, expect, it } from 'vitest'
+import { exportNotesToCsv } from './export'
+
+const HEADER = 'id,title,body,createdAt\r\n'
+const note = (over = {}) => ({
+  id: '1', title: 'Hello', body: 'World', createdAt: '2026-11-10T00:00:00.000Z', ...over,
+})
+
+describe('exportNotesToCsv', () => {
+  it('returns only the header for an empty list', () => {
+    expect(exportNotesToCsv([])).toBe(HEADER)
+  })
+  it('writes one CRLF-terminated row per note', () => {
+    expect(exportNotesToCsv([note()])).toBe(`${HEADER}1,Hello,World,2026-11-10T00:00:00.000Z\r\n`)
+  })
+  it('quotes a field containing a comma', () => {
+    expect(exportNotesToCsv([note({ title: 'a,b' })])).toContain('1,"a,b",World,')
+  })
+  it('doubles quotes inside a quoted field', () => {
+    expect(exportNotesToCsv([note({ body: 'say "hi"' })])).toContain(',"say ""hi""",')
+  })
+  it('quotes a field containing a newline', () => {
+    expect(exportNotesToCsv([note({ body: 'a\nb' })])).toContain(',"a\nb",')
+  })
+})
+```
+
+**Call 7 — shell** (watch it fail)
+
+```bash
+cd /Users/p/git/notes-app && pnpm test src/export.test.ts > .ryugi/sdd/2026-11-10-export-design/task-1-red.log 2>&1; echo "exit $?"; tail -20 .ryugi/sdd/2026-11-10-export-design/task-1-red.log
+```
+
+Assumed output: `exit 1`, `Failed to resolve import "./export"`. That is the expected failure, because the module does not exist yet.
+
+**Call 8 — write** `/Users/p/git/notes-app/src/export.ts`
+
+```ts
+import type { Note } from './types'
+
+const COLUMNS = ['id', 'title', 'body', 'createdAt'] as const
+
+function escapeField(value: string): string {
+  return /[",\r\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value
+}
+
+export function exportNotesToCsv(notes: Note[]): string {
+  const rows = notes.map((n) => COLUMNS.map((c) => escapeField(String(n[c]))).join(','))
+  return [COLUMNS.join(','), ...rows].map((r) => `${r}\r\n`).join('')
+}
+```
+
+**Call 9 — shell** (Verify)
+
+```bash
+cd /Users/p/git/notes-app && pnpm test > .ryugi/sdd/2026-11-10-export-design/task-1-verify.log 2>&1; echo "exit $?"; tail -20 .ryugi/sdd/2026-11-10-export-design/task-1-verify.log
+```
+
+Assumed output: `exit 0`, `Test Files 7 passed (7)`, `Tests 41 passed (41)`, with `src/export.test.ts (5)` all green. This matches `Expected:`. There are no deviations from the brief, so no `Ruling:` lines.
+
+There is no commit and no staging, because the work is exploratory.
+
+**Call 10 — shell** (close the task; the script runs the tests and writes the ledger line)
+
+```bash
+cd /Users/p/git/notes-app && bash "$SKILL/scripts/task-done" docs/ryugi/specs/2026-11-10-export-design.md 1 a1b2c3d --uncommitted -- pnpm test
+```
+
+Assumed output: tail shows 41/41 passing, and the script appends a completion line to the ledger. I assume its uncommitted form is:
+
+`Task 1: complete (uncommitted, base a1b2c3d, tests: pnpm test → 41 passed)`
+
+**Call 11 — todos:** Task 1 → completed.
+
+## Review package
+
+**Call 12 — shell**
+
+```bash
+cd /Users/p/git/notes-app && bash "$SKILL/scripts/review-package" docs/ryugi/specs/2026-11-10-export-design.md --exploring
+```
+
+Assumed output: `/Users/p/git/notes-app/.ryugi/sdd/2026-11-10-export-design/review-package.md`, built from the working-tree diff of the two paths in `EXPLORING`.
+
+## Messages to my partner
+
+There are none in this span beyond the one-line narration above. The skill forbids check-ins between tasks, and none of the four stop conditions came up.
+
+SUMMARY: Simulated setup, a one-task slice, `EXPLORING` marker, RED→GREEN on `src/export.ts` and `src/export.test.ts`, `task-done --uncommitted`, and `review-package --exploring`, with nothing committed on `main`; the final review dispatch and fix pass are still mine to do, and only after that does the keep-or-discard decision wait on my partner.

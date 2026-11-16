@@ -1,0 +1,59 @@
+Simulation from the point where ryugi:verifying has finished. I read no skill files: `landing.md` is only read once you pick a way to land.
+
+## Tool call 1 — shell: look at the tree and collect the ledger lines before deleting
+
+```bash
+cd /Users/p/git/notes-app && git branch --show-current && git status --short && git log --oneline main..HEAD && grep -nE 'Ruling:|minor \(deferred\)|^Final' .ryugi/sdd/2026-11-10-export-design/progress.md
+```
+
+Assumed output:
+
+```
+feat/export
+a1c9e02 fix: stream CSV export instead of buffering
+7d3b5f1 feat: export endpoint wiring
+52e80ac feat: CSV serialisation with RFC 4180 quoting
+0b6f4d7 feat: note export query
+14:Task 2: Ruling: quote fields per RFC 4180 — spec is silent on commas — cost if wrong: Excel-only users see quotes
+22:Final: fixed streaming export — test_export_streams RED→GREEN, suite 32/32
+23:Final: minor (deferred): CSV header says updatedAt
+```
+
+I assumed that `git status --short` prints nothing (clean tree, review fix committed), that the branch has four commits, and that the ledger holds exactly one `Ruling:` line and one `minor (deferred)` line. I also assumed the ryugi:verifying run of `pnpm test` earlier in this session ended 32/32 on this same HEAD, so I do not rerun it.
+
+## Tool call 2 — shell: delete this spec's workspace only
+
+There is no verify report, so both lists go in the final message in full, and the workspace can go once they are captured.
+
+```bash
+rm -rf /Users/p/git/notes-app/.ryugi/sdd/2026-11-10-export-design && ls -A /Users/p/git/notes-app/.ryugi/sdd/ && git -C /Users/p/git/notes-app status --short
+```
+
+Assumed output: empty for both commands (no sibling workspaces, tree still clean).
+
+No ledger append, commit, push or merge follows; landing is your call.
+
+## Final message to my human partner
+
+> **Done on branch `feat/export`, not landed — waiting on you to pick how it lands.**
+>
+> CSV export is built to `docs/ryugi/specs/2026-11-10-export-design.md`. `pnpm test` passed 32/32 on the current HEAD (`a1c9e02`) in this session. There is no verify page, because the one claim was proved by that test run, so nothing waits on a verdict.
+>
+> **Rulings (1, the full list)**
+> - Task 2: fields are quoted per RFC 4180. The spec is silent on commas inside fields. Cost if wrong: Excel-only users see quotes.
+>
+> **Minors deferred (1, the full list)**
+> - The CSV header says `updatedAt`. I did not change it; say so if you want it changed before landing.
+>
+> **What could change your decision**
+> - The export is proved only by the test suite. The project has no skill for checking the running product, so nobody has opened an exported file in Excel or another spreadsheet app.
+>
+> The spec's workspace is deleted; this message and the git history are the record now.
+>
+> **Ways to land it — answer with a number:**
+> 1. **Squash into `main`** (default)
+> 2. **Rebase onto `main`**
+> 3. **Push and open a PR**
+> 4. **Keep the branch as-is**
+
+SUMMARY: I collected the one ruling and one deferred minor from the ledger, deleted the spec's workspace, and reported `feat/export` as finished with tests 32/32; landing now waits on my human partner choosing one of the four ways, plus an optional call on the `updatedAt` header minor.

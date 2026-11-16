@@ -1,0 +1,245 @@
+This is a simulation. Only `./skill/` was read; none of the calls below are executed. Repository contents and command results below are explicit assumptions.
+
+### 1. Inspect the branch and classify all review findings
+
+**Message to partner:**
+
+> I’ll fix the large-account memory failure, defer the header wording, and record why an empty export keeps its header.
+
+**Tool call — shell:**
+
+```json
+{
+  "cmd": "pwd\ngit status --short --branch\ngit log -5 --oneline\ncat .ryugi/sdd/2026-11-10-export-design/progress.md\ncat .ryugi/sdd/2026-11-10-export-design/tasks.md\ncat docs/ryugi/specs/2026-11-10-export-design.md\nrg --files -g AGENTS.md -g package.json -g '*export*' -g '*note-store*' -g '*csv*' -g '*verify*' -g '*SKILL.md'\ncat src/export.ts src/note-store.ts src/csv.ts package.json\ncat tests/helpers/note-store.ts",
+  "workdir": "/Users/p/git/notes-app"
+}
+```
+
+**Assumed output, read in full:**
+
+- Branch is `feat/export`; working tree is clean.
+- The ledger identifies the supplied spec and records all three completed tasks.
+- There are no earlier `Ruling:` or `minor (deferred)` lines.
+- The reviewer dispatch is already recorded. No further reviewer is needed.
+- The spec requires a downloadable CSV with `id,title,body,updatedAt` columns.
+- `exportNotes(store, output)` already writes to a Node `Writable`; its current implementation loads `store.listAll()` and builds the complete CSV before writing.
+- `NoteStore.iterate()` already provides an incremental iterator backed by the database cursor. It preserves the same ordering as `listAll()` and closes the cursor on iterator completion or cancellation.
+- `escapeCsv(string)` is the existing field encoder; `updatedAt` is already an ISO string.
+- `createTestNoteStore()` returns `{ store, close }`, with a temporary disk-backed database; `store.insert(note)` inserts one note.
+- `pnpm test` runs Vitest. `tsx` is installed.
+- The existing Playwright export tests cover the download, escaping, and header-only empty export. The project’s already-loaded verification instructions specify `pnpm exec playwright test tests/e2e/export.spec.ts`.
+- Verification reports belong under `docs/ryugi/verify/`.
+- There are no additional repository instructions affecting this fix.
+
+**Classification before editing:**
+
+| Finding | Gate |
+|---|---|
+| Large-account memory exhaustion | Important: ordinary export becomes unusable for a large account. Fix in the single final fix pass. |
+| `updatedAt` versus “Last edited” | Minor: defer without changing the implementation or treating it as a ruling. |
+| Header-only empty export | Accept: a valid CSV still communicates its columns and accurately contains zero records. Record a ruling, including its cost if wrong. |
+
+The exact ledger additions are included with the fix commit below.
+
+### 2. Write the memory regression before changing production code
+
+**Tool call — shell:**
+
+```json
+{
+  "cmd": "mkdir -p tests/fixtures\ncat > tests/fixtures/export-large-account.ts <<'EOF'\nimport assert from 'node:assert/strict';\nimport { Writable } from 'node:stream';\nimport { exportNotes } from '../../src/export';\nimport { createTestNoteStore } from '../helpers/note-store';\n\nconst count = 200_000;\nconst body = 'x'.repeat(1024);\nconst { store, close } = await createTestNoteStore();\nlet rows = 0;\nlet bytes = 0;\nlet header = '';\n\nconst output = new Writable({\n  highWaterMark: 1,\n  write(chunk, _encoding, callback) {\n    const text = chunk.toString('utf8');\n    if (bytes === 0) header = text.split('\\r\\n')[0];\n    bytes += Buffer.byteLength(text);\n    for (const character of text) {\n      if (character === '\\n') rows += 1;\n    }\n    setImmediate(callback);\n  },\n});\n\ntry {\n  for (let index = 0; index < count; index += 1) {\n    await store.insert({\n      id: String(index),\n      title: `Note ${index}`,\n      body,\n      updatedAt: '2026-11-10T00:00:00.000Z',\n    });\n  }\n  await exportNotes(store, output);\n  assert.equal(output.writableFinished, true);\n  assert.equal(header, 'id,title,body,updatedAt');\n  assert.equal(rows, count + 1);\n  assert.ok(bytes > 200_000_000);\n  console.log(`exported ${count} notes; ${rows} CSV rows; writable finished`);\n} finally {\n  await close();\n}\nEOF\ncat > tests/export-memory.test.ts <<'EOF'\nimport { spawnSync } from 'node:child_process';\nimport { fileURLToPath } from 'node:url';\nimport { expect, test } from 'vitest';\n\ntest('exports 200k notes with a 64 MiB heap and a slow writable', () => {\n  const fixture = fileURLToPath(\n    new URL('./fixtures/export-large-account.ts', import.meta.url),\n  );\n  const result = spawnSync(\n    process.execPath,\n    ['--max-old-space-size=64', '--import=tsx', fixture],\n    { encoding: 'utf8', timeout: 180_000, maxBuffer: 1024 * 1024 },\n  );\n  expect(result.error).toBeUndefined();\n  expect(result.signal, result.stderr).toBeNull();\n  expect(result.status, result.stderr).toBe(0);\n  expect(result.stdout).toContain(\n    'exported 200000 notes; 200001 CSV rows; writable finished',\n  );\n}, 190_000);\nEOF\npnpm test tests/export-memory.test.ts > .ryugi/sdd/2026-11-10-export-design/memory-red.log 2>&1\nresult=$?\ncat .ryugi/sdd/2026-11-10-export-design/memory-red.log\nexit \"$result\"",
+  "workdir": "/Users/p/git/notes-app"
+}
+```
+
+**Assumed output, read in full:** exit `1`; the new test fails because the child process exhausts its 64 MiB heap during `listAll()`. The failure is not an import error, timeout, or fixture error. The log contains `Reached heap limit` and `JavaScript heap out of memory`.
+
+This reproduces the review finding using the real database and a non-buffering destination. The fixture itself never builds a 200k-note array.
+
+### 3. Implement bounded streaming and run the regression
+
+**Tool call — shell:**
+
+```json
+{
+  "cmd": "cat > src/export.ts <<'EOF'\nimport { once } from 'node:events';\nimport type { Writable } from 'node:stream';\nimport { finished, pipeline } from 'node:stream/promises';\nimport { escapeCsv } from './csv';\nimport type { NoteStore } from './note-store';\n\nexport async function exportNotes(\n  store: NoteStore,\n  output: Writable,\n): Promise<void> {\n  async function* rows(): AsyncGenerator<string> {\n    yield 'id,title,body,updatedAt\\r\\n';\n    for await (const note of store.iterate()) {\n      yield [note.id, note.title, note.body, note.updatedAt]\n        .map(escapeCsv)\n        .join(',') + '\\r\\n';\n    }\n  }\n\n  await pipeline(rows(), output);\n}\nEOF",
+  "workdir": "/Users/p/git/notes-app"
+}
+```
+
+Before running the test, I notice that the replacement includes unused imports. I remove them as part of this same implementation edit.
+
+**Tool call — shell:**
+
+```json
+{
+  "cmd": "python3 - <<'PY'\nfrom pathlib import Path\npath = Path('src/export.ts')\ntext = path.read_text()\ntext = text.replace(\"import { once } from 'node:events';\\n\", '')\ntext = text.replace(\"import { finished, pipeline } from 'node:stream/promises';\", \"import { pipeline } from 'node:stream/promises';\")\npath.write_text(text)\nPY\npnpm test tests/export-memory.test.ts > .ryugi/sdd/2026-11-10-export-design/memory-green.log 2>&1\nresult=$?\ncat .ryugi/sdd/2026-11-10-export-design/memory-green.log\nexit \"$result\"",
+  "workdir": "/Users/p/git/notes-app"
+}
+```
+
+**Assumed output, read in full:** exit `0`; `1/1` test passes. The child exports `200000` notes as `200001` CSV rows under the 64 MiB heap limit, including completion of the slow writable.
+
+`pipeline` supplies backpressure and propagates source and destination errors. No notes array, complete CSV string, or collecting destination remains in the export path.
+
+### 4. Verify the whole suite before recording the fix or committing
+
+**Tool call — shell:**
+
+```json
+{
+  "cmd": "pnpm test > .ryugi/sdd/2026-11-10-export-design/final-suite.log 2>&1\nresult=$?\ncat .ryugi/sdd/2026-11-10-export-design/final-suite.log\nexit \"$result\"",
+  "workdir": "/Users/p/git/notes-app"
+}
+```
+
+**Assumed output, read in full:** exit `0`; `32/32` tests pass, including existing CSV correctness and error-handling tests and the new memory regression.
+
+**Message to partner:**
+
+> The memory regression failed with heap exhaustion before the change and now passes; the full suite passes 32/32.
+
+**Tool call — shell:**
+
+```json
+{
+  "cmd": "git diff --check\ngit diff -- src/export.ts\ngit status --short",
+  "workdir": "/Users/p/git/notes-app"
+}
+```
+
+**Assumed output, read in full:** exit `0`; no whitespace errors. Only `src/export.ts`, `tests/export-memory.test.ts`, and `tests/fixtures/export-large-account.ts` are changed or untracked. The source diff matches the intended streaming fix.
+
+**Tool call — shell, commit and bookkeeping together:**
+
+```json
+{
+  "cmd": "git add src/export.ts tests/export-memory.test.ts tests/fixtures/export-large-account.ts\ngit commit -m 'fix: stream CSV exports with backpressure'\nresult=$?\nif [ \"$result\" -ne 0 ]; then exit \"$result\"; fi\npython3 - <<'PY'\nfrom pathlib import Path\nimport subprocess\nledger = Path('.ryugi/sdd/2026-11-10-export-design/progress.md')\nsha = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()\nlines = [\n    'Final: triage: large-account memory exhaustion is Important because export fails for a valid large account; CSV header wording remains Minor; header-only empty exports are accepted by the ruling below.',\n    'Final: Ruling: empty accounts produce a header-only CSV — a reasonable person receives a valid export containing the column names and zero note records, so the behavior stands — cost if wrong: people expecting an empty-state message may find the download surprising.',\n    'Final: minor (deferred): the CSV header uses updatedAt while the UI calls it Last edited.',\n    'Final: fixed exportNotes loads every note into memory — exports 200k notes with a 64 MiB heap and a slow writable RED→GREEN, suite 32/32',\n    f'Final: fix commit {sha}',\n]\nwith ledger.open('a') as output:\n    output.write('\\n' + '\\n'.join(lines) + '\\n')\nPY\ngit log -1 --format='%H %s'",
+  "workdir": "/Users/p/git/notes-app"
+}
+```
+
+**Assumed output, read in full:** commit succeeds. For this simulation, assume the fix commit is `8f3c2a1b4d5e6f708192a3b4c5d6e7f8091a2b3c`.
+
+There is no second reviewer dispatch.
+
+### 5. Verify the running product on the finished implementation
+
+**Message to partner:**
+
+> I’m checking the downloaded CSV in the browser and preserving the verification record before cleanup.
+
+**Tool call — shell:**
+
+```json
+{
+  "cmd": "pnpm exec playwright test tests/e2e/export.spec.ts > .ryugi/sdd/2026-11-10-export-design/product-check.log 2>&1\nresult=$?\ncat .ryugi/sdd/2026-11-10-export-design/product-check.log\nexit \"$result\"",
+  "workdir": "/Users/p/git/notes-app"
+}
+```
+
+**Assumed output, read in full:** exit `0`; `3/3` browser tests pass:
+
+- A populated account downloads the expected CSV.
+- Quoting and multiline content survive the download.
+- An empty account downloads exactly the header row.
+
+No product-verification finding enters the fix pass.
+
+### 6. Assemble the durable verification report
+
+This is the already-loaded `ryugi:verifying` finish step. I do not invent a verification executable or dispatch another code reviewer.
+
+**Tool call — shell:**
+
+```json
+{
+  "cmd": "cat .ryugi/sdd/2026-11-10-export-design/progress.md\nrg -n 'Ruling:|minor \\(deferred\\)' .ryugi/sdd/2026-11-10-export-design/progress.md\ngit log --oneline main..HEAD\ngit diff --check main...HEAD\ngit status --short --branch",
+  "workdir": "/Users/p/git/notes-app"
+}
+```
+
+**Assumed output, read in full:**
+
+- Exactly one ruling and one deferred minor exist, matching the additions above.
+- Three task commits precede the fix commit.
+- For this simulation their short SHAs and subjects are:
+  - `1a2b3c4 feat: encode notes as CSV`
+  - `2b3c4d5 feat: download note exports`
+  - `3c4d5e6 test: cover CSV export workflows`
+  - `8f3c2a1 fix: stream CSV exports with backpressure`
+- `git diff --check main...HEAD` exits `0`.
+- Working tree is clean.
+- Automated and browser verification groups have evidence and pass. No verification group requires a partner verdict; landing still requires their choice.
+- The 64 MiB check establishes this fixture’s bounded-heap behavior, not a measured bound for every possible note size or runtime.
+
+**Tool call — shell, write durable artifacts:**
+
+```json
+{
+  "cmd": "mkdir -p docs/ryugi/verify/2026-11-10-export-evidence\ncp .ryugi/sdd/2026-11-10-export-design/memory-red.log docs/ryugi/verify/2026-11-10-export-evidence/memory-red.log\ncp .ryugi/sdd/2026-11-10-export-design/memory-green.log docs/ryugi/verify/2026-11-10-export-evidence/memory-green.log\ncp .ryugi/sdd/2026-11-10-export-design/final-suite.log docs/ryugi/verify/2026-11-10-export-evidence/final-suite.log\ncp .ryugi/sdd/2026-11-10-export-design/product-check.log docs/ryugi/verify/2026-11-10-export-evidence/product-check.log\ncat > docs/ryugi/verify/2026-11-10-export.md <<'EOF'\n# CSV export verification\n\nSpec: [2026-11-10-export-design.md](../specs/2026-11-10-export-design.md)\n\nBranch: `feat/export`. Base: `main`.\n\n## Verification groups\n\n| Group | Evidence | Result | Partner verdict required |\n| --- | --- | --- | --- |\n| Memory regression RED | `pnpm test tests/export-memory.test.ts`; [full output](2026-11-10-export-evidence/memory-red.log) | Expected failure: child exhausted its 64 MiB heap before the fix | No |\n| Memory regression GREEN | Same command; [full output](2026-11-10-export-evidence/memory-green.log) | 1/1 passed; 200000 notes, 200001 CSV rows, slow destination finished | No |\n| Whole suite | `pnpm test`; [full output](2026-11-10-export-evidence/final-suite.log) | 32/32 passed | No |\n| Running product | `pnpm exec playwright test tests/e2e/export.spec.ts`; [full output](2026-11-10-export-evidence/product-check.log) | 3/3 passed: download, escaping, empty export | No |\n| Patch checks | `git diff --check main...HEAD` | Exit 0 | No |\n\n## Final review disposition\n\nThe fresh-context whole-branch review was completed before the final fix pass.\n\n- Important: loading every note into memory. Fixed by reading the existing incremental database iterator and streaming CSV rows through a pipeline with backpressure. The real-database memory regression failed before the change and passed afterward.\n- Minor: CSV header wording. Deferred below.\n- Declined to judge: header-only empty exports. Resolved by the ruling below; the existing browser check passed.\n\nThe executor made one final fix pass. No second review was dispatched.\n\n## Exhaustive rulings\n\n| Ruling | Why | Cost if wrong |\n| --- | --- | --- |\n| Empty accounts produce a header-only CSV. | A reasonable person receives a valid export containing the column names and zero note records, so the behavior stands. | People expecting an empty-state message may find the download surprising. |\n\n## Exhaustive deferred minors\n\n- The CSV header uses `updatedAt` while the UI calls it “Last edited”.\n\n## Commits\n\n- `1a2b3c4` — feat: encode notes as CSV\n- `2b3c4d5` — feat: download note exports\n- `3c4d5e6` — test: cover CSV export workflows\n- `8f3c2a1b4d5e6f708192a3b4c5d6e7f8091a2b3c` — fix: stream CSV exports with backpressure\n\n## Limits and remaining decisions\n\nThe large-account regression uses 200000 notes with 1024-byte bodies and a slow destination in a child process with a 64 MiB V8 heap limit. It does not establish a universal process-RSS bound or behavior for arbitrarily large individual notes.\n\nAll verification groups passed. The partner chooses how to land the branch. No squash, rebase, push, PR, or publish has been performed.\nEOF",
+  "workdir": "/Users/p/git/notes-app"
+}
+```
+
+The four copied logs retain their complete assumed command output; they are not replaced with summaries. The report above is the complete new report content.
+
+### 7. Check and commit the durable record
+
+**Tool call — shell:**
+
+```json
+{
+  "cmd": "cat docs/ryugi/verify/2026-11-10-export.md\npython3 - <<'PY'\nfrom pathlib import Path\nroot = Path('.')\nworkspace = root / '.ryugi/sdd/2026-11-10-export-design'\nreport = (root / 'docs/ryugi/verify/2026-11-10-export.md').read_text()\nledger = (workspace / 'progress.md').read_text()\nrulings = [line for line in ledger.splitlines() if 'Ruling:' in line]\nminors = [line for line in ledger.splitlines() if 'minor (deferred)' in line]\nassert len(rulings) == 1\nassert len(minors) == 1\nassert 'People expecting an empty-state message may find the download surprising.' in report\nassert 'The CSV header uses `updatedAt` while the UI calls it “Last edited”.' in report\nfor name in ['memory-red.log', 'memory-green.log', 'final-suite.log', 'product-check.log']:\n    durable = root / 'docs/ryugi/verify/2026-11-10-export-evidence' / name\n    assert durable.read_bytes() == (workspace / name).read_bytes(), name\nprint('Verification record checked: 1/1 ruling, 1/1 deferred minor, 4/4 complete logs preserved.')\nPY\ngit diff --check",
+  "workdir": "/Users/p/git/notes-app"
+}
+```
+
+**Assumed output, read in full:** exit `0`:
+
+```text
+Verification record checked: 1/1 ruling, 1/1 deferred minor, 4/4 complete logs preserved.
+```
+
+**Tool call — shell, commit and bookkeeping together:**
+
+```json
+{
+  "cmd": "git add docs/ryugi/verify/2026-11-10-export.md docs/ryugi/verify/2026-11-10-export-evidence/memory-red.log docs/ryugi/verify/2026-11-10-export-evidence/memory-green.log docs/ryugi/verify/2026-11-10-export-evidence/final-suite.log docs/ryugi/verify/2026-11-10-export-evidence/product-check.log\ngit commit -m 'docs: preserve CSV export verification evidence'\nresult=$?\nif [ \"$result\" -ne 0 ]; then exit \"$result\"; fi\npython3 - <<'PY'\nfrom pathlib import Path\nimport subprocess\nsha = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()\nwith Path('.ryugi/sdd/2026-11-10-export-design/progress.md').open('a') as output:\n    output.write(f'Final: verification report docs/ryugi/verify/2026-11-10-export.md; all verification groups passed; evidence commit {sha}; landing awaits partner choice.\\n')\nPY",
+  "workdir": "/Users/p/git/notes-app"
+}
+```
+
+**Assumed output, read in full:** commit succeeds as `9a4d3b2 docs: preserve CSV export verification evidence`. Only documentation and preserved logs changed after the successful code and product checks.
+
+### 8. Delete only this spec’s scratch workspace and establish final state
+
+The skill explicitly directs deletion after preserving the durable record. I carry out that scoped cleanup without asking for a separate approval.
+
+**Tool call — shell:**
+
+```json
+{
+  "cmd": "python3 - <<'PY'\nfrom pathlib import Path\nimport shutil\nroot = Path('/Users/p/git/notes-app').resolve()\nworkspace = root / '.ryugi/sdd/2026-11-10-export-design'\nassert workspace.is_dir()\nassert not workspace.is_symlink()\nassert workspace.resolve() == workspace\nassert (root / 'docs/ryugi/verify/2026-11-10-export.md').is_file()\nshutil.rmtree(workspace)\nassert not workspace.exists()\nprint('Removed only .ryugi/sdd/2026-11-10-export-design/.')\nPY\ngit diff --check main...HEAD\ngit status --short --branch\ngit log -5 --oneline",
+  "workdir": "/Users/p/git/notes-app"
+}
+```
+
+**Assumed output, read in full:** exit `0`; the specified workspace is absent, the branch is still `feat/export`, the working tree is clean, and the five expected commits are present.
+
+**Final message to partner, word for word:**
+
+> Waiting on you to choose how to land `feat/export`.
+>
+> [Verification report: 32/32 tests, 3/3 browser checks, one ruling and one deferred minor](/Users/p/git/notes-app/docs/ryugi/verify/2026-11-10-export.md)
+>
+> Empty accounts keep a header-only CSV. The memory check covers 200k notes with 1 KiB bodies; arbitrarily large individual notes remain unverified.
+>
+> Choose one:
+>
+> 1. **Squash into `main`** (default)
+> 2. **Rebase onto `main`**
+> 3. **Push and open a PR**
+> 4. **Keep the branch as-is**
+
+SUMMARY: Simulated one RED→GREEN memory fix, recorded the empty-export ruling and deferred minor, preserved verification evidence, and cleaned only the spec workspace; landing waits on the partner’s choice.

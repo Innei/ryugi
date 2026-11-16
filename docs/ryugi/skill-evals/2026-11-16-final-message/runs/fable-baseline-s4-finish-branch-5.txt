@@ -1,0 +1,95 @@
+I read `skill/landing.md` for real (above). It only applies once my partner picks a way to land, so nothing in it runs now. Everything below is simulated; nothing was executed.
+
+## Tool call 1: collect the ledger lines and prove the branch state
+
+Shell, cwd `/Users/p/git/notes-app`:
+
+```bash
+cd /Users/p/git/notes-app
+WS=.ryugi/sdd/2026-11-10-export-design
+grep -n -E 'Ruling:|minor \(deferred\)|^Task [0-9]+: complete|^Final:' "$WS/progress.md"
+git status --short --branch
+git log --oneline main..HEAD
+pnpm test > "$WS/final-test.log" 2>&1; echo "exit=$?"; tail -n 15 "$WS/final-test.log"
+```
+
+Assumed output:
+
+```
+1:# SDD ledger — plan: docs/ryugi/specs/2026-11-10-export-design.md
+2:Slicing: 3 tasks — …
+4:Task 1: complete (commits 3f1a9c2..a41c0de, tests: pnpm test → pass)
+5:Task 2: Ruling: quote fields per RFC 4180 — spec is silent on commas — cost if wrong: Excel-only users see quotes
+6:Task 2: complete (commits a41c0de..7be92f4, tests: pnpm test → pass)
+7:Task 3: complete (commits 7be92f4..c0d5e18, tests: pnpm test → pass)
+8:Final: fixed streaming export — test_export_streams RED→GREEN, suite 32/32
+9:Final: minor (deferred): CSV header says updatedAt
+## feat/export
+a9e3f77 fix(export): stream CSV rows instead of buffering
+c0d5e18 feat(export): export endpoint
+7be92f4 feat(export): CSV field quoting
+a41c0de feat(export): CSV serializer
+exit=0
+ Tests  32 passed (32)
+```
+
+Assumptions:
+- **Ledger:** it holds exactly one `Ruling:` line and one `minor (deferred)` line, as the situation states.
+- **Working tree:** it is clean, so the review fix is committed.
+- **Commits:** the branch is four commits ahead of `main`; the SHAs are placeholders I made up.
+- **Tests:** `pnpm test` exits 0 with 32 of 32 passing.
+
+If the tree were dirty or the tests failed, I would not continue to the next step.
+
+## Tool call 2: delete this spec's workspace
+
+The review is clean, the fix is committed and the ledger lines are captured, so the workspace goes. Only this spec's directory is removed; sibling directories are left alone.
+
+```bash
+cd /Users/p/git/notes-app
+ls -la .ryugi/sdd/2026-11-10-export-design/
+rm -rf .ryugi/sdd/2026-11-10-export-design
+ls .ryugi/sdd/ ; git status --short --branch
+```
+
+Assumed output: the listing shows `tasks.md`, `progress.md`, the briefs, the review package and the test logs. After the `rm`, `.ryugi/sdd/` is empty and `git status` still prints `## feat/export` with a clean tree.
+
+## Tool call 3: todos
+
+All three task todos are already complete, so there is nothing to change and no call is made.
+
+## Message to my partner
+
+> **CSV export is built on `feat/export`; nothing is merged or pushed.**
+>
+> **Evidence (this session):** `pnpm test` exits 0 with 32 of 32 passing on `feat/export` at `a9e3f77`. The working tree is clean.
+>
+> **What landed** (4 commits ahead of `main`, spec `docs/ryugi/specs/2026-11-10-export-design.md`):
+> - `a41c0de` feat(export): CSV serializer (Task 1)
+> - `7be92f4` feat(export): CSV field quoting (Task 2)
+> - `c0d5e18` feat(export): export endpoint (Task 3)
+> - `a9e3f77` fix(export): stream CSV rows instead of buffering (final-review fix)
+>
+> **Final review:** a fresh-context reviewer looked at the whole branch and raised one Important finding: the export was not streaming. I fixed it under TDD (`test_export_streams` failed first, then passed; suite 32/32). As the process prescribes, the fix was not re-reviewed.
+>
+> **Rulings I made**
+> 1. Task 2: fields are quoted per RFC 4180, because the spec is silent on commas inside fields. Cost if wrong: Excel-only users see quotes.
+>
+> **Deferred minors** (not fixed; your call)
+> - The CSV header says `updatedAt`.
+>
+> **Verification:** the spec makes one claim, and the test command above proves it; there is no verify page and nothing awaits a verdict. The project has no skill for checking the running product, so the export has not been exercised in the running app.
+>
+> I deleted the spec workspace (`.ryugi/sdd/2026-11-10-export-design/`); the git history is the record now.
+>
+> **Ways to land it:**
+> 1. **Squash into `main`** (default)
+> 2. **Rebase onto `main`**
+> 3. **Push and open a PR**
+> 4. **Keep the branch as-is**
+>
+> Which one?
+
+I stop here: landing touches `main` or a remote, so it is my partner's call. When they pick, I follow `landing.md`. For a squash that means `git switch main && git pull --ff-only`, `git merge --squash feat/export`, `git commit`, `pnpm test`, then `git branch -D feat/export`.
+
+SUMMARY: Finished the spec run — re-ran `pnpm test` (assumed 32/32), reported the one ruling and one deferred minor, deleted the spec workspace — and the branch `feat/export` now waits on my partner to choose how to land it.

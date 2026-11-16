@@ -1,0 +1,48 @@
+Simulation from the Finish step onward; nothing was actually run.
+
+## Tool call 1: collect the lists and check the branch state
+
+```bash
+cd /Users/p/git/notes-app && grep -n -e 'Ruling:' -e 'minor (deferred)' .ryugi/sdd/2026-11-10-export-design/progress.md; git status --short; git log --oneline main..HEAD
+```
+
+Assumed output:
+
+- **Ledger lines:** grep returns exactly two lines, in ledger order:
+  - `Task 2: Ruling: quote fields per RFC 4180 — spec is silent on commas — cost if wrong: Excel-only users see quotes`
+  - `Final: minor (deferred): CSV header says updatedAt`
+- **Working tree:** `git status --short` prints nothing, so the tree is clean.
+- **Commits:** `git log` shows four commits on `feat/export` ahead of `main`: three task commits and the streaming-export fix.
+
+## Tool call 2: delete this spec's workspace
+
+There is no verify report, so both lists go in the final message in full. Once they are drafted there, I delete the workspace (git-ignored scratch, this spec's directory only):
+
+```bash
+cd /Users/p/git/notes-app && rm -rf .ryugi/sdd/2026-11-10-export-design && git status --short
+```
+
+Assumed output: empty, so the directory is gone and the tree is still clean.
+
+No ledger append is made, because the ledger is deleted with the workspace. I do not read `landing.md` yet; the skill says to read it once my partner picks a way to land.
+
+## Final message to my human partner
+
+> **Done on `feat/export`, waiting on you to choose how it lands.** CSV export is built to the spec, and verification's `pnpm test` run passed 32/32 this session. Nothing is merged or pushed.
+>
+> **Needs you:**
+>
+> 1. **How to land it.** Pick one:
+>    1. Squash into `main` (default)
+>    2. Rebase onto `main`
+>    3. Push and open a PR
+>    4. Keep the branch as-is
+>
+> **Could change your decision:**
+>
+> - **Ruling (the only one):** in Task 2, fields are quoted per RFC 4180. The spec is silent on commas inside fields. Cost if wrong: Excel-only users see quotes.
+> - **Minor, deferred and not fixed (the only one):** the final review noted "CSV header says updatedAt".
+>
+> There is no verify page: the single claim was proved inline by the test run. The workspace is deleted, so the two items above are the full record of the run's decisions.
+
+SUMMARY: I collected the ledger's one ruling and one deferred minor into the final message, deleted the spec's workspace, and stopped on `feat/export`; landing now waits on my human partner picking one of the four ways.

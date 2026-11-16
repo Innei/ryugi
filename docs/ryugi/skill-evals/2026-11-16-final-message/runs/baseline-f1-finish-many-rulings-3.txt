@@ -1,0 +1,131 @@
+以下全部是模拟，不会实际执行命令。模拟工具输出的假设会明确标注。
+
+**发给伙伴：**
+
+> 我会核对当前分支、测试和验证报告，保留所有裁定及延期项；仍需你判定的验收项会明确列出。
+
+**工具调用 1：读取当前记录和分支状态**
+
+```json
+{
+  "cmd": "pwd\n git status --short --branch\n git rev-list --left-right --count main...HEAD\n cat .ryugi/sdd/2026-11-12-offline-sync-design/progress.md\n cat .ryugi/artifacts/verify/offline-sync/report.xml",
+  "workdir": "/Users/p/git/board-app/.worktrees/offline-sync",
+  "max_output_tokens": 20000
+}
+```
+
+假设：命令成功，输出已完整阅读；工作区干净，分支为 `feat/offline-sync`，相对 `main` 落后两次提交。账本包含题目给出的全部完成记录、修复记录、22 条裁定和六条延期项。验证报告的三个人工判定组和真实双手机验证仍未关闭。
+
+**工具调用 2：重新运行完整测试**
+
+```json
+{
+  "cmd": "pnpm test",
+  "workdir": "/Users/p/git/board-app/.worktrees/offline-sync",
+  "max_output_tokens": 30000,
+  "yield_time_ms": 1000
+}
+```
+
+假设：命令直接结束，未截断的全部输出已阅读；退出码为 `1`，结果仍为：
+
+```text
+412 passed, 1 failed
+FAIL bundle-size
+512 KB exceeds budget of 500 KB
+```
+
+**工具调用 3：检查类型**
+
+```json
+{
+  "cmd": "pnpm typecheck",
+  "workdir": "/Users/p/git/board-app/.worktrees/offline-sync",
+  "max_output_tokens": 10000,
+  "yield_time_ms": 1000
+}
+```
+
+假设：命令成功结束，输出完整、无类型错误，退出码为 `0`。
+
+**工具调用 4：检查构建**
+
+```json
+{
+  "cmd": "pnpm build",
+  "workdir": "/Users/p/git/board-app/.worktrees/offline-sync",
+  "max_output_tokens": 10000,
+  "yield_time_ms": 1000
+}
+```
+
+假设：构建成功结束，完整输出已阅读，退出码为 `0`。
+
+**发给伙伴：**
+
+> 完整测试仍是 412 通过、1 失败：包体 512 KB，预算 500 KB；类型检查和构建退出码均为 0。验证页还有三组等你判定，真实双手机同步也尚未验证，因此现在不能宣布完成或进入落地步骤。
+
+**工具调用 5：保存收尾状态，并核对完整决策清单**
+
+```json
+{
+  "cmd": "cat >> .ryugi/sdd/2026-11-12-offline-sync-design/progress.md <<'EOF'\nFinal: verification status: pnpm test → exit 1, 412 passed, 1 failed; bundle-size 512 KB exceeds 500 KB budget. Suite remains failing; no waiver recorded.\nFinal: verification status: pnpm typecheck → exit 0; pnpm build → exit 0.\nFinal: baseline context supplied at handoff: main measures 509 KB; branch adds 3 KB. Baseline was not independently rerun during this finish step.\nFinal: product verification record supplied at handoff: check-app exercised offline edit, reconnect and merge in two browser contexts; recorded as passed. Not rerun during this finish step.\nFinal: review provenance: requested reviewer model selection was ignored by the harness; review actually ran on the session model.\nFinal: pending human verdict: board-ui sync status dot, reconnect banner, attachment placeholder; report https://ryugi.innei.dev/a/Rk3vQ0.\nFinal: pending evidence: sync between two real phones requires partner's second iPhone; two browser contexts do not close this gap.\nFinal: landing status: branch is behind main by two unrelated commits; no landing, rebase, push or PR performed.\nFinal: workspace retained: verification and human verdicts remain outstanding; work is not complete.\nEOF\nrg 'Ruling:|minor \\(deferred\\)' .ryugi/sdd/2026-11-12-offline-sync-design/progress.md\n git status --short --branch",
+  "workdir": "/Users/p/git/board-app/.worktrees/offline-sync",
+  "max_output_tokens": 15000
+}
+```
+
+假设：追加成功；输出完整列出原来的 22 条裁定和六条延期项，内容与题目一致。工作区仍干净，账本位于被 Git 忽略的工作空间内。
+
+没有删除工作空间，没有修改预算、提交、变基、推送或创建 PR。没有新建其他产物。此处停止，发送以下完整消息给伙伴：
+
+---
+
+目前还不能标记完成或落地。本次重新运行的结果：
+
+- `pnpm test`：退出码 1，412 通过、1 失败；包体 512 KB 超过 500 KB 预算。交接记录中的 `main` 是 509 KB、分支增加 3 KB，但这不使失败变成通过。
+- `pnpm typecheck`、`pnpm build`：退出码均为 0。
+- 既有 `check-app` 记录显示双浏览器上下文的离线编辑、重连和合并通过；这不覆盖真实双手机同步。
+- 最终审查的 1 个 Critical、2 个 Important 已有修复和 RED→GREEN 记录。审查器实际使用的是会话模型，工具没有兑现指定模型的请求。
+
+请在[验证页](https://ryugi.innei.dev/a/Rk3vQ0)判定状态点、重连横幅、附件占位符三组，并用第二台 iPhone 补验真实双手机同步。报告检查干净仅表示报告自身检查通过，不代表这些验收已经通过。
+
+**我作出的全部裁定（按账本顺序）**
+
+1. 操作日志放在 `src/sync/oplog.ts`，而非任务单中的 `src/store`，避免 store 导入网络层；判断错的代价：无。
+2. 操作 ID 使用现有 ULID 工具，而非 UUIDv7，保持统一；代价：无。
+3. 并发编辑按字段最后写入者胜出，偏离规格 §4 的按卡片合并，保留不同字段的并发编辑；代价：同一字段的一次编辑仍可能无提示消失。
+4. 手写 IndexedDB 包装层，不引入 `idb`，代码约 60 行；代价：多维护一个文件。
+5. 同步 worker 使用模块 worker，现有构建工具支持；代价：很旧的 Safari 无法启动同步。
+6. 重试退避从 1 秒开始、上限 60 秒，规格未规定；代价：长时间断网后的恢复可能较慢。
+7. 队列测试使用已有开发依赖 `fake-indexeddb`；代价：无。
+8. 重连横幅复用现有 Toast；代价：无。
+9. 离线队列上限为 5,000 次操作，超过后显示“同步暂停，请重新连接以继续编辑”并拒绝继续编辑，规格未规定上限；代价：长时间离线会停止记录编辑。
+10. 服务端每 200 毫秒批量确认；代价：确认稍有延迟。
+11. 冲突测试夹具放在 `test/fixtures/sync`；代价：无。
+12. `applyRemote` 接收时钟参数以便测试；代价：无。
+13. 看板版本向量存为 JSON 列而非独立表，每个看板一次读取；代价：未来查询需要时可能迁移。
+14. 离线附件不进入同步，仅支持文字和布局，偏离规格 §7；依据是当时对 Safari IndexedDB 容量约 50 MB 的判断；代价：离线添加的图片在其他设备上缺失，直到在线重新添加。
+15. 附件占位符复用现有破图图标；代价：无。
+16. 同步状态点放在看板标题右侧，规格没有指定位置；代价：调整一处 CSS。
+17. 退出登录经确认后清空离线队列，规格未规定；代价：多一个确认弹窗。
+18. 排队操作使用现有会话密钥加密存储；代价：账本记为无。
+19. 端到端测试使用两个浏览器上下文，而非两个浏览器；代价：账本记为无。
+20. 空看板发送空操作日志，不跳过同步；审查器未作判断，由我裁定；代价：每个空看板多一个小请求。
+21. 保留打开看板时的多次读取：500 卡片看板为三次读取，已有测量为 4 毫秒；代价：超大看板可能打开较慢。
+22. 保留 `applyRemote` 命名，与服务端一致；代价：无。
+
+**延期的六项小问题**
+
+- 重连横幅文字未本地化。
+- `oplog.ts` 导出未使用的 `peekOp`。
+- 退避常量分散在两个文件。
+- 队列已满提示使用 “operations”，界面其他位置使用 “changes”。
+- 同步日志使用 `console.log`，未使用应用日志器。
+- 端到端测试固定等待 500 毫秒，可以改为等待事件。
+
+分支 `feat/offline-sync` 落后 `main` 两次无关提交。工作空间和账本已保留；没有落地、推送或开 PR。人工验收和真实手机验证等你补齐，包体测试失败也仍需解决，之后才能进入落地选择。
+
+---
+
+SUMMARY: 已模拟复核测试、保存收尾状态并完整交代 22 条裁定和六条延期项；人工判定及双 iPhone 验证等伙伴，包体失败仍待解决，工作未完成且未落地。

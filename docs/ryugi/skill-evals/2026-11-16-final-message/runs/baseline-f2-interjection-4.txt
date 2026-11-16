@@ -1,0 +1,360 @@
+以下是模拟执行记录；除读取 `./skill/SKILL.md` 外，没有实际执行命令或修改文件。工具输出缺失处均明确标为假设。对话消息使用中文。
+
+这里将记录展开到 Task 21 完成并领取 Task 22；这不是等待用户确认的节点，执行会继续。
+
+**发送消息**
+
+> 收到，当前缩略图的边框用应用的 `--brand-accent`；我会记录这次调整，然后继续演讲者窗口布局。
+
+**工具调用：`exec_command`**
+
+```json
+{
+  "cmd": "git status --short --branch\ncat .ryugi/sdd/2026-11-14-slides-design/progress.md\nrg -n -C 8 'hairline-strong|deck-accent|brand-accent|aria-current' src/viewer/Filmstrip.tsx\ncat package.json",
+  "workdir": "/Users/p/git/deck-app/.worktrees/slides",
+  "max_output_tokens": 12000
+}
+```
+
+假设输出确认：
+
+- 当前分支为 `feat/slides`，工作区干净。
+- Ledger 第一行对应本次 spec，Tasks 1–20 已完成，Task 20 的记录与题目一致。
+- 当前缩略图已有 `aria-current` 标记，只有当前项使用以下边框：
+  ```tsx
+  border: '1px solid var(--hairline-strong)',
+  ```
+- `pnpm test` 是项目的完整测试命令。
+- 此处属于应用的编辑器选中状态；`--deck-accent` 用于幻灯片内容主题。
+
+这是一处纯样式调整，不新增复制实现细节的测试；运行现有测试和差异检查。已经完成的 Task 20 不重开，补充提交和记录。
+
+**工具调用：`apply_patch`**
+
+```diff
+*** Begin Patch
+*** Update File: /Users/p/git/deck-app/.worktrees/slides/src/viewer/Filmstrip.tsx
+@@
+-              border: '1px solid var(--hairline-strong)',
++              border: '1px solid var(--brand-accent)',
+*** End Patch
+```
+
+假设输出：补丁成功应用，只有该行改变。
+
+**工具调用：`exec_command`**
+
+```json
+{
+  "cmd": "git diff --check && git diff -- src/viewer/Filmstrip.tsx && pnpm test",
+  "workdir": "/Users/p/git/deck-app/.worktrees/slides",
+  "max_output_tokens": 16000
+}
+```
+
+假设已读取完整输出：差异检查成功；差异仅为上述 token 替换；`pnpm test` 显示 `388 passed`，退出码为 `0`。
+
+**工具调用：`exec_command`**
+
+```json
+{
+  "cmd": "git add src/viewer/Filmstrip.tsx && git commit -m 'fix: use brand accent for active filmstrip border' && python3 - <<'PY'\nfrom pathlib import Path\nimport subprocess\nledger = Path('.ryugi/sdd/2026-11-14-slides-design/progress.md')\nsha = subprocess.check_output(['git', 'rev-parse', '--short=7', 'HEAD'], text=True).strip()\nwith ledger.open('a') as f:\n    f.write('Ruling: Use --brand-accent for the active filmstrip border — the partner requested accent for application selection chrome, so use the shell token rather than the deck content token — if deck-specific selection coloring was intended, the border will need a token substitution.\\n')\n    f.write(f'Task 20: amendment (commit {sha}, active filmstrip border uses --brand-accent; checks: git diff --check → exit 0; pnpm test → 388 passed).\\n')\nPY",
+  "workdir": "/Users/p/git/deck-app/.worktrees/slides",
+  "max_output_tokens": 3000
+}
+```
+
+假设提交成功，SHA 为 `8a9b0c1`。实际追加的 ledger 内容为：
+
+```text
+Ruling: Use --brand-accent for the active filmstrip border — the partner requested accent for application selection chrome, so use the shell token rather than the deck content token — if deck-specific selection coloring was intended, the border will need a token substitution.
+Task 20: amendment (commit 8a9b0c1, active filmstrip border uses --brand-accent; checks: git diff --check → exit 0; pnpm test → 388 passed).
+```
+
+**发送消息**
+
+> 当前页边框已改为 `--brand-accent`；`pnpm test` 为 388 passed，差异检查通过，提交 `8a9b0c1`。继续 Task 21。
+
+**工具调用：`exec_command`**
+
+```json
+{
+  "cmd": "bash scripts/task-start docs/ryugi/specs/2026-11-14-slides-design.md 21",
+  "workdir": "/Users/p/git/deck-app/.worktrees/slides",
+  "max_output_tokens": 3000
+}
+```
+
+假设输出：
+
+```text
+Brief: .ryugi/sdd/2026-11-14-slides-design/briefs/task-21.md
+BASE: 8a9b0c1
+```
+
+**工具调用：`exec_command`**
+
+```json
+{
+  "cmd": "cat .ryugi/sdd/2026-11-14-slides-design/briefs/task-21.md\nrg --files src/viewer | sort\ncat src/viewer/SlidePreview.tsx\ncat src/viewer/Filmstrip.test.tsx",
+  "workdir": "/Users/p/git/deck-app/.worktrees/slides",
+  "max_output_tokens": 12000
+}
+```
+
+假设 brief 内容如下：
+
+```markdown
+## Task 21: Presenter window layout
+
+**Goal:** Implement the presenter's current-slide and next-slide layout
+from the spec's presenter-window section. The next-slide area shows an
+explicit end-of-deck message on the last slide.
+
+**Files:** src/viewer/PresenterLayout.tsx;
+src/viewer/PresenterLayout.test.tsx.
+
+**Interfaces:**
+Produces: PresenterLayout({ currentSlide, nextSlide }).
+Consumes: SlidePreview({ slide }) from Task 17;
+Slide from src/model/slide.ts.
+
+**Failing test:** Render two different slides and verify that the
+current and next regions contain the correct slide. On the last slide,
+render an end-of-deck message in the next region.
+
+**Verify:** pnpm test
+Expected: all tests pass.
+
+No project-specific running-product verification skill is configured.
+Window creation and presenter synchronization are later tasks.
+```
+
+假设源码确认：
+
+- `Slide` 的最小合法值为 `{ id: string, title: string }`。
+- `SlidePreview` 导出为命名导出，接受 `{ slide: Slide }`，在 DOM 中呈现标题。
+- 项目使用 Vitest 和 React Testing Library，测试清理已全局配置。
+- `PresenterLayout.tsx` 尚不存在。
+
+**模拟 todo 更新**
+
+```json
+{
+  "task": "Task 21: Presenter window layout",
+  "status": "in_progress"
+}
+```
+
+**工具调用：`apply_patch`**
+
+```diff
+*** Begin Patch
+*** Add File: /Users/p/git/deck-app/.worktrees/slides/src/viewer/PresenterLayout.test.tsx
++import { render, screen, within } from '@testing-library/react';
++import { describe, expect, it } from 'vitest';
++import { PresenterLayout } from './PresenterLayout';
++
++describe('PresenterLayout', () => {
++  it('places the current and next slides in their respective regions', () => {
++    render(
++      <PresenterLayout
++        currentSlide={{ id: 'current', title: 'Current slide content' }}
++        nextSlide={{ id: 'next', title: 'Next slide content' }}
++      />,
++    );
++
++    const current = screen.getByRole('region', { name: '当前幻灯片' });
++    const next = screen.getByRole('region', { name: '下一张幻灯片' });
++
++    expect(within(current).getByText('Current slide content')).toBeTruthy();
++    expect(within(current).queryByText('Next slide content')).toBeNull();
++    expect(within(next).getByText('Next slide content')).toBeTruthy();
++    expect(within(next).queryByText('Current slide content')).toBeNull();
++  });
++
++  it('shows an end-of-deck message when there is no next slide', () => {
++    render(
++      <PresenterLayout
++        currentSlide={{ id: 'last', title: 'Last slide content' }}
++        nextSlide={null}
++      />,
++    );
++
++    const next = screen.getByRole('region', { name: '下一张幻灯片' });
++    expect(within(next).getByText('演示结束')).toBeTruthy();
++    expect(
++      within(screen.getByRole('region', { name: '当前幻灯片' }))
++        .getByText('Last slide content'),
++    ).toBeTruthy();
++  });
++});
+*** End Patch
+```
+
+**工具调用：`exec_command`**
+
+```json
+{
+  "cmd": "pnpm test src/viewer/PresenterLayout.test.tsx",
+  "workdir": "/Users/p/git/deck-app/.worktrees/slides",
+  "max_output_tokens": 6000
+}
+```
+
+假设已读取完整输出：
+
+```text
+FAIL src/viewer/PresenterLayout.test.tsx
+Failed to resolve import "./PresenterLayout"
+Test Files  1 failed
+```
+
+退出码为 `1`，失败原因是待实现组件不存在，符合预期。
+
+**工具调用：`apply_patch`**
+
+```diff
+*** Begin Patch
+*** Add File: /Users/p/git/deck-app/.worktrees/slides/src/viewer/PresenterLayout.tsx
++import type { Slide } from '../model/slide';
++import { SlidePreview } from './SlidePreview';
++
++export interface PresenterLayoutProps {
++  currentSlide: Slide;
++  nextSlide: Slide | null;
++}
++
++export function PresenterLayout({
++  currentSlide,
++  nextSlide,
++}: PresenterLayoutProps) {
++  return (
++    <div
++      style={{
++        display: 'grid',
++        gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)',
++        gap: 24,
++        padding: 24,
++        minHeight: '100%',
++        boxSizing: 'border-box',
++      }}
++    >
++      <section aria-label="当前幻灯片" style={{ minWidth: 0 }}>
++        <h2>当前幻灯片</h2>
++        <SlidePreview slide={currentSlide} />
++      </section>
++      <section aria-label="下一张幻灯片" style={{ minWidth: 0 }}>
++        <h2>下一张幻灯片</h2>
++        {nextSlide ? (
++          <SlidePreview slide={nextSlide} />
++        ) : (
++          <p>演示结束</p>
++        )}
++      </section>
++    </div>
++  );
++}
+*** End Patch
+```
+
+**工具调用：`exec_command`**
+
+```json
+{
+  "cmd": "pnpm test src/viewer/PresenterLayout.test.tsx && git diff --check && pnpm test",
+  "workdir": "/Users/p/git/deck-app/.worktrees/slides",
+  "max_output_tokens": 16000
+}
+```
+
+假设已读取完整输出：
+
+```text
+PresenterLayout.test.tsx: 2 passed
+```
+
+差异检查退出码为 `0`，随后完整测试输出：
+
+```text
+Tests  390 passed
+```
+
+命令退出码为 `0`。与 brief 的 `Expected: all tests pass` 一致。
+
+**工具调用：`exec_command`**
+
+```json
+{
+  "cmd": "git add src/viewer/PresenterLayout.tsx src/viewer/PresenterLayout.test.tsx && git commit -m 'feat: add presenter current and next slide layout' && python3 - <<'PY'\nfrom pathlib import Path\nwith Path('.ryugi/sdd/2026-11-14-slides-design/progress.md').open('a') as f:\n    f.write('Task 21: evidence — pnpm test src/viewer/PresenterLayout.test.tsx failed because PresenterLayout was missing, then passed 2 tests after implementation; git diff --check exited 0; pnpm test passed 390 tests, matching Expected: all tests pass.\\n')\nPY",
+  "workdir": "/Users/p/git/deck-app/.worktrees/slides",
+  "max_output_tokens": 3000
+}
+```
+
+假设提交成功，SHA 为 `9b0c1d2`。追加的 ledger 内容为：
+
+```text
+Task 21: evidence — pnpm test src/viewer/PresenterLayout.test.tsx failed because PresenterLayout was missing, then passed 2 tests after implementation; git diff --check exited 0; pnpm test passed 390 tests, matching Expected: all tests pass.
+```
+
+**工具调用：`exec_command`**
+
+```json
+{
+  "cmd": "bash scripts/task-done docs/ryugi/specs/2026-11-14-slides-design.md 21 8a9b0c1 -- pnpm test",
+  "workdir": "/Users/p/git/deck-app/.worktrees/slides",
+  "max_output_tokens": 6000
+}
+```
+
+假设该命令重新运行完整测试，输出 `390 passed`，退出码为 `0`，并打印日志路径：
+
+```text
+.ryugi/sdd/2026-11-14-slides-design/task-21-verify.log
+```
+
+脚本追加：
+
+```text
+Task 21: complete (commits 8a9b0c1..9b0c1d2, tests: pnpm test → 390 passed)
+```
+
+**工具调用：`exec_command`**
+
+```json
+{
+  "cmd": "cat .ryugi/sdd/2026-11-14-slides-design/task-21-verify.log",
+  "workdir": "/Users/p/git/deck-app/.worktrees/slides",
+  "max_output_tokens": 16000
+}
+```
+
+假设完整日志已读完，无截断，确认 `390 passed`，没有失败或跳过的测试。
+
+**模拟 todo 更新**
+
+```json
+{
+  "task": "Task 21: Presenter window layout",
+  "status": "completed"
+}
+```
+
+**发送消息**
+
+> Task 21 已提交为 `9b0c1d2`；新增测试先因组件缺失失败，实现后两项通过，`task-done` 重跑完整测试为 390 passed。继续下一项。
+
+**工具调用：`exec_command`**
+
+```json
+{
+  "cmd": "bash scripts/task-start docs/ryugi/specs/2026-11-14-slides-design.md 22",
+  "workdir": "/Users/p/git/deck-app/.worktrees/slides",
+  "max_output_tokens": 3000
+}
+```
+
+假设成功打印 Task 22 的 brief 路径及 `BASE: 9b0c1d2`。此处到达本次模拟展开范围；实际工作流没有暂停、没有等待确认，也没有提前进行整分支最终评审或提出合并选项。
+
+SUMMARY: 模拟完成当前页边框的 accent 调整和 Task 21 的 RED→GREEN、验证、提交与 ledger 记录，并领取 Task 22；Tasks 22–33 及最终评审验证仍由执行代理继续，无事等待用户确认。

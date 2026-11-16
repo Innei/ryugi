@@ -1,0 +1,299 @@
+以下为模拟记录。除查看 `./skill/` 外，不执行命令、不修改文件。所有仓库内容和运行结果均为明确标注的假设。
+
+**发给伙伴：**
+
+> 我会把底部当前页的边框改用应用的 `--brand-accent`，补上验证后继续第 21 项的演讲者窗口布局。
+
+**模拟工具调用 1：读取当前状态与相关实现。**
+
+```json
+{
+  "cmd": "pwd && git status --short && git log -3 --oneline && cat .ryugi/sdd/2026-11-14-slides-design/progress.md && sed -n '/^## Task 21:/,/^## Task 22:/p' .ryugi/sdd/2026-11-14-slides-design/tasks.md && cat src/viewer/Filmstrip.tsx && cat src/viewer/Filmstrip.test.tsx",
+  "workdir": "/Users/p/git/deck-app/.worktrees/slides",
+  "max_output_tokens": 20000
+}
+```
+
+假设输出已完整阅读，确认：
+
+- 当前目录、分支和工作区正确，工作树干净。
+- HEAD 为 `7f8a9b0`。
+- 任务 1–20 已完成，最后一条完成记录与题设一致；不重做 Task 20。
+- 假设现有 filmstrip 测试使用 `renderFilmstrip()` 返回 `{ container }`；当前缩略图带 `aria-current="page"`，其他缩略图不带该属性。
+- 假设当前边框为内联样式，测试环境保留 CSS 变量表达式。
+- 假设 Task 21 内容如下；后续模拟严格以这份假设为界：
+
+```markdown
+## Task 21: Presenter window layout
+
+**Goal:** 实现 spec「Presenter window」中的当前页、下一页、备注和底部状态区布局。
+
+**Files:** src/presenter/PresenterWindow.tsx; src/presenter/PresenterWindow.test.tsx
+
+**Interfaces:**
+Produces: PresenterWindow
+Consumes: 无新增跨任务接口；当前页和下一页以 ReactNode 传入。
+
+**Failing test:** 当前页、下一页、备注和 elapsed 均出现在各自区域；当前页占左侧主要区域，下一页及备注位于右侧，状态区跨底部。
+
+**Verify:** pnpm test
+Expected: 全部测试通过。
+项目无专用运行产品验证技能；最终成品验证按已加载的 verifying 执行。
+```
+
+**模拟工具调用 2：写入当前页边框的回归测试。**
+
+```json
+{
+  "cmd": "python3 - <<'PY'\nfrom pathlib import Path\np = Path('src/viewer/Filmstrip.test.tsx')\ns = p.read_text()\ns += '''\\n// The selected thumbnail follows the application chrome accent.\\nit('uses the shell accent for the current thumbnail border', () => {\\n  const { container } = renderFilmstrip();\\n  const current = container.querySelector('[aria-current=\"page\"]');\\n  expect(current).not.toBeNull();\\n  expect(current!.getAttribute('style')).toContain(\\n    'border: 1px solid var(--brand-accent)',\\n  );\\n});\\n'''\np.write_text(s)\nPY"
+}
+```
+
+该调用的工作目录及后续所有模拟 shell 调用均为：
+
+```text
+/Users/p/git/deck-app/.worktrees/slides
+```
+
+**模拟工具调用 3：观察失败。**
+
+```json
+{
+  "cmd": "pnpm test src/viewer/Filmstrip.test.tsx",
+  "max_output_tokens": 12000
+}
+```
+
+假设完整输出显示退出码 `1`，新增测试失败，原因正是：
+
+```text
+Expected substring: border: 1px solid var(--brand-accent)
+Received: border: 1px solid var(--hairline-strong)
+```
+
+**模拟工具调用 4：只修改当前页边框。**
+
+```json
+{
+  "cmd": "python3 - <<'PY'\nfrom pathlib import Path\np = Path('src/viewer/Filmstrip.tsx')\ns = p.read_text()\nold = 'border: \"1px solid var(--hairline-strong)\"'\nnew = 'border: \"1px solid var(--brand-accent)\"'\nassert s.count(old) == 1, 'Expected exactly one current-thumbnail border declaration'\np.write_text(s.replace(old, new))\nPY"
+}
+```
+
+假设源文件采用上述双引号写法，断言成功。
+
+**模拟工具调用 5：运行完整验证。**
+
+```json
+{
+  "cmd": "pnpm test",
+  "max_output_tokens": 20000
+}
+```
+
+假设完整输出已阅读，退出码 `0`，结果为：
+
+```text
+389 passed
+```
+
+与本次预期一致：原有 388 项加上新的边框回归测试全部通过。
+
+**模拟工具调用 6：检查将提交的实际变更。**
+
+```json
+{
+  "cmd": "git diff --check && git diff -- src/viewer/Filmstrip.tsx src/viewer/Filmstrip.test.tsx",
+  "max_output_tokens": 12000
+}
+```
+
+假设退出码 `0`，完整 diff 仅包含该边框替换和新增测试。
+
+**模拟工具调用 7：提交补充修改，并在同一次调用中追加账本。**
+
+```json
+{
+  "cmd": "git add src/viewer/Filmstrip.tsx src/viewer/Filmstrip.test.tsx && git commit -m 'fix: use shell accent for active filmstrip border' && python3 - <<'PY'\nfrom pathlib import Path\nimport subprocess\nsha = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()\np = Path('.ryugi/sdd/2026-11-14-slides-design/progress.md')\nwith p.open('a') as f:\n    f.write('Ruling: Interpret the partner’s active filmstrip border accent as --brand-accent — the filmstrip belongs to the application chrome, whose accent is supplied by the shell; --deck-accent belongs to slide content — if wrong, the selection border will not follow the deck palette.\\n')\n    f.write(f'Task 20: follow-up verified (commit {sha}, partner-requested active border uses --brand-accent; Filmstrip regression RED→GREEN; tests: pnpm test → 389 passed). Original Task 20 completion remains unchanged.\\n')\nPY",
+  "max_output_tokens": 12000
+}
+```
+
+假设提交成功，完整 SHA 为：
+
+```text
+8b9c0d18b9c0d18b9c0d18b9c0d18b9c0d18b9c0d1
+```
+
+账本实际追加内容为：
+
+```text
+Ruling: Interpret the partner’s active filmstrip border accent as --brand-accent — the filmstrip belongs to the application chrome, whose accent is supplied by the shell; --deck-accent belongs to slide content — if wrong, the selection border will not follow the deck palette.
+Task 20: follow-up verified (commit 8b9c0d18b9c0d18b9c0d18b9c0d18b9c0d18b9c0d1, partner-requested active border uses --brand-accent; Filmstrip regression RED→GREEN; tests: pnpm test → 389 passed). Original Task 20 completion remains unchanged.
+```
+
+**发给伙伴：**
+
+> 当前页边框已改用 `--brand-accent`；新增测试先复现了旧颜色，修改后 `pnpm test` 为 389 项通过。继续第 21 项。
+
+**模拟工具调用 8：领取 Task 21。**
+
+```json
+{
+  "cmd": "bash scripts/task-start docs/ryugi/specs/2026-11-14-slides-design.md 21",
+  "max_output_tokens": 12000
+}
+```
+
+假设输出：
+
+```text
+Brief: .ryugi/sdd/2026-11-14-slides-design/briefs/task-21.md
+BASE: 8b9c0d18b9c0d18b9c0d18b9c0d18b9c0d18b9c0d1
+```
+
+**模拟 todo 调用：**
+
+```json
+{
+  "task": "Task 21: Presenter window layout",
+  "status": "in_progress"
+}
+```
+
+**模拟工具调用 9：读取任务 brief 和现有组件。**
+
+```json
+{
+  "cmd": "cat .ryugi/sdd/2026-11-14-slides-design/briefs/task-21.md && cat src/presenter/PresenterWindow.tsx && cat src/presenter/PresenterWindow.test.tsx",
+  "max_output_tokens": 16000
+}
+```
+
+假设完整输出确认：
+
+- brief 与前面假设的 Task 21 一致。
+- 已有组件接受 `currentSlide`、`nextSlide`、`notes`、`elapsed`，尚只渲染空容器。
+- 当前测试文件只有导入；测试使用 Vitest、Testing Library 和 jest-dom。
+- 规范对应段落已在最初 setup 读过；brief 明确要求右侧上下两区、底部状态区。
+- 本任务不包括计时、导航、窗口打开或跨窗口同步逻辑。
+
+**模拟工具调用 10：写入布局测试，文件完整内容如下。**
+
+```json
+{
+  "cmd": "cat > src/presenter/PresenterWindow.test.tsx <<'EOF'\nimport { render, screen, within } from '@testing-library/react';\nimport { describe, expect, it } from 'vitest';\nimport { PresenterWindow } from './PresenterWindow';\n\nfunction renderPresenter() {\n  return render(\n    <PresenterWindow\n      currentSlide={<div>Current slide content</div>}\n      nextSlide={<div>Next slide content</div>}\n      notes=\"Speaker notes\"\n      elapsed=\"03:12\"\n    />,\n  );\n}\n\ndescribe('PresenterWindow', () => {\n  it('places the current slide in the main left region', () => {\n    renderPresenter();\n    const region = screen.getByRole('region', { name: '当前页' });\n    expect(within(region).getByText('Current slide content')).toBeVisible();\n    expect(region).toHaveStyle({ gridArea: 'current' });\n    expect(screen.getByRole('main')).toHaveStyle({\n      display: 'grid',\n      gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)',\n      gridTemplateAreas: '\"current next\" \"current notes\" \"status status\"',\n    });\n  });\n\n  it('places the next slide above the notes on the right', () => {\n    renderPresenter();\n    const region = screen.getByRole('region', { name: '下一页' });\n    expect(within(region).getByText('Next slide content')).toBeVisible();\n    expect(region).toHaveStyle({ gridArea: 'next' });\n  });\n\n  it('keeps long speaker notes within a scrollable region', () => {\n    renderPresenter();\n    const region = screen.getByRole('region', { name: '备注' });\n    expect(within(region).getByText('Speaker notes')).toBeVisible();\n    expect(region).toHaveStyle({\n      gridArea: 'notes',\n      minHeight: '0',\n      overflow: 'auto',\n    });\n  });\n\n  it('shows the elapsed time in a status region spanning the bottom', () => {\n    renderPresenter();\n    const status = screen.getByRole('status');\n    expect(within(status).getByText('03:12')).toBeVisible();\n    expect(status).toHaveStyle({ gridArea: 'status' });\n  });\n});\nEOF"
+}
+```
+
+**模拟工具调用 11：观察 Task 21 的失败。**
+
+```json
+{
+  "cmd": "pnpm test src/presenter/PresenterWindow.test.tsx",
+  "max_output_tokens": 16000
+}
+```
+
+假设完整输出显示退出码 `1`，四项测试均失败，分别找不到当前页、下一页、备注和状态区域。失败源于现有空布局，符合预期。
+
+**模拟工具调用 12：实现组件，文件完整内容如下。**
+
+```json
+{
+  "cmd": "cat > src/presenter/PresenterWindow.tsx <<'EOF'\nimport type { ReactNode } from 'react';\n\nexport interface PresenterWindowProps {\n  currentSlide: ReactNode;\n  nextSlide: ReactNode;\n  notes: string;\n  elapsed: string;\n}\n\nexport function PresenterWindow({\n  currentSlide,\n  nextSlide,\n  notes,\n  elapsed,\n}: PresenterWindowProps) {\n  return (\n    <main\n      aria-label=\"演讲者窗口\"\n      style={{\n        display: 'grid',\n        gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)',\n        gridTemplateRows: 'minmax(0, 1fr) minmax(0, 1fr) auto',\n        gridTemplateAreas: '\"current next\" \"current notes\" \"status status\"',\n        height: '100dvh',\n        boxSizing: 'border-box',\n        gap: 16,\n        padding: 16,\n      }}\n    >\n      <section\n        aria-label=\"当前页\"\n        style={{ gridArea: 'current', minWidth: 0, minHeight: 0 }}\n      >\n        {currentSlide}\n      </section>\n      <section\n        aria-label=\"下一页\"\n        style={{ gridArea: 'next', minWidth: 0, minHeight: 0 }}\n      >\n        {nextSlide}\n      </section>\n      <section\n        aria-label=\"备注\"\n        style={{\n          gridArea: 'notes',\n          minWidth: 0,\n          minHeight: 0,\n          overflow: 'auto',\n          whiteSpace: 'pre-wrap',\n        }}\n      >\n        {notes}\n      </section>\n      <div role=\"status\" style={{ gridArea: 'status' }}>\n        <span aria-label=\"已用时间\">{elapsed}</span>\n      </div>\n    </main>\n  );\n}\nEOF"
+}
+```
+
+**模拟工具调用 13：运行 brief 的 Verify。**
+
+```json
+{
+  "cmd": "pnpm test",
+  "max_output_tokens": 24000
+}
+```
+
+假设完整输出已阅读，退出码 `0`：
+
+```text
+393 passed
+```
+
+对照 `Expected: 全部测试通过`，结果一致。新增四项测试从失败转为通过；包括边框回归在内的其他测试继续通过。
+
+**模拟工具调用 14：检查 Task 21 变更。**
+
+```json
+{
+  "cmd": "git diff --check && git diff -- src/presenter/PresenterWindow.tsx src/presenter/PresenterWindow.test.tsx",
+  "max_output_tokens": 18000
+}
+```
+
+假设退出码 `0`，完整输出仅包含上述实现和测试，没有偏离 brief 的变更。
+
+**模拟工具调用 15：提交 Task 21，并在同一次调用中记录证据。**
+
+```json
+{
+  "cmd": "git add src/presenter/PresenterWindow.tsx src/presenter/PresenterWindow.test.tsx && git commit -m 'feat: add presenter window layout' && python3 - <<'PY'\nfrom pathlib import Path\nimport subprocess\nsha = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()\np = Path('.ryugi/sdd/2026-11-14-slides-design/progress.md')\nwith p.open('a') as f:\n    f.write(f'Task 21: implementation commit {sha}; presenter layout tests observed RED (4 missing-region failures)→GREEN; Verify: pnpm test → 393 passed; Expected: all tests pass, matched; deviations: none.\\n')\nPY",
+  "max_output_tokens": 12000
+}
+```
+
+假设提交成功，完整 SHA 为：
+
+```text
+9c0d1e29c0d1e29c0d1e29c0d1e29c0d1e29c0d1e2
+```
+
+实际追加的账本行：
+
+```text
+Task 21: implementation commit 9c0d1e29c0d1e29c0d1e29c0d1e29c0d1e29c0d1e2; presenter layout tests observed RED (4 missing-region failures)→GREEN; Verify: pnpm test → 393 passed; Expected: all tests pass, matched; deviations: none.
+```
+
+**模拟工具调用 16：通过 task-done 的最终验证记录完成。**
+
+```json
+{
+  "cmd": "bash scripts/task-done docs/ryugi/specs/2026-11-14-slides-design.md 21 8b9c0d18b9c0d18b9c0d18b9c0d18b9c0d18b9c0d1 -- pnpm test",
+  "max_output_tokens": 24000
+}
+```
+
+假设退出码 `0`，脚本打印日志路径和以下完成记录：
+
+```text
+Task 21: complete (commits 8b9c0d1..9c0d1e2, tests: pnpm test → 393 passed)
+```
+
+**模拟工具调用 17：读取最终运行的完整输出，确认账本和工作树。**
+
+```json
+{
+  "cmd": "cat .ryugi/sdd/2026-11-14-slides-design/task-21-verify.log && tail -n 6 .ryugi/sdd/2026-11-14-slides-design/progress.md && git status --short",
+  "max_output_tokens": 24000
+}
+```
+
+假设日志路径来自上一步实际输出；完整日志显示 `393 passed`，账本包含上述完成记录，`git status --short` 无输出。
+
+**模拟 todo 调用：**
+
+```json
+{
+  "task": "Task 21: Presenter window layout",
+  "status": "completed"
+}
+```
+
+**发给伙伴：**
+
+> 第 21 项布局也已完成：当前页在左，下一页与备注在右，底部显示已用时间。新增四项测试先失败后通过，`task-done` 最终重跑 `pnpm test` 为 393 项通过。
+>
+> 颜色上我采用了应用的 `--brand-accent`，依据是底部栏属于应用界面；如果你指的是牌组配色，当前选择框就不会随牌组主题变化。修改已提交，继续第 22 项。
+
+本模拟按题目范围在 Task 21 完成处结束；实际执行不会在这里等待确认。Task 22–33、全分支新上下文审查和最终产品验证仍待后续执行，保留 workspace，不推送、不发起 PR、不宣称整份规范已完成。
+
+SUMMARY: 模拟完成当前页 accent 边框补充修改与 Task 21 的 RED→GREEN、提交及账本记录；Task 22 起由执行代理继续，无需伙伴确认，最终审查和产品验证尚未进行。

@@ -1,0 +1,564 @@
+Everything below is **simulated**. Only the reads under `./skill/` above actually ran. All repository contents, command results, commit IDs, and URLs below are explicitly assumed.
+
+For brevity, `shell(command)` denotes this exact tool call:
+
+```js
+tools.exec_command({
+  cmd: command,
+  workdir: "/Users/p/git/notes-app",
+  max_output_tokens: 20000,
+  yield_time_ms: 1000
+})
+```
+
+1. Message to partner:
+
+> I’m keeping the memory issue Important, deferring the header wording as Minor, and accepting header-only exports for empty accounts because they preserve the CSV schema without inventing a note.
+
+2. Inspect the existing record and implementation:
+
+```sh
+git status --short --branch
+```
+
+Assumed output:
+
+```text
+## feat/export
+```
+
+```sh
+cat docs/ryugi/specs/2026-11-10-export-design.md .ryugi/sdd/2026-11-10-export-design/tasks.md .ryugi/sdd/2026-11-10-export-design/progress.md package.json src/export.ts src/notes.ts
+```
+
+Assumed result: I read the full output. The spec requires CSV export with existing escaping and column order. The ledger records three complete tasks and no earlier rulings or deferred minors. The project uses Node’s test runner through `tsx`; `pnpm test` runs `node --import tsx --test src/*.test.ts`. No additional project verification skill is configured.
+
+Assumed existing interfaces:
+
+```ts
+export interface Note {
+  id: string;
+  title: string;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface NoteSource {
+  getAllNotes(): Promise<Note[]>;
+  iterateNotes(): AsyncIterable<Note>;
+}
+```
+
+`iterateNotes()` already reads bounded database pages. `src/export.ts` exports `CsvSink`, whose `write(chunk: string)` returns a promise, and currently contains:
+
+```ts
+export async function exportNotes(
+  source: NoteSource,
+  destination: CsvSink,
+): Promise<void> {
+  const notes = await source.getAllNotes();
+  await destination.write(HEADER);
+  for (const note of notes) {
+    await destination.write(serializeNote(note));
+  }
+}
+```
+
+`serializeNote()` already includes the row terminator. `HEADER` includes its terminator. The destination writes incrementally to a file and does not accumulate chunks. These assumptions establish that replacing bulk loading can bound memory throughout the export path.
+
+```sh
+git log -4 --format='%h %s'
+```
+
+Assumed output:
+
+```text
+c3d4e5f Connect CSV export to the notes UI
+b2c3d4e Serialize notes as CSV
+a1b2c3d Add CSV export destination
+0123456 Previous main commit
+```
+
+3. Write the regression test and bounded-memory check before changing production code:
+
+```sh
+python3 - <<'PY'
+from pathlib import Path
+
+Path("src/export.streaming.test.ts").write_text('''import assert from "node:assert/strict";
+import test from "node:test";
+import { exportNotes, type CsvSink } from "./export.ts";
+import type { Note, NoteSource } from "./notes.ts";
+
+test("exportNotes writes each row before requesting the next note", async () => {
+  const chunks: string[] = [];
+  const note: Note = {
+    id: "note-1",
+    title: "Streaming regression",
+    content: "First body",
+    createdAt: "2026-11-10T00:00:00.000Z",
+    updatedAt: "2026-11-10T00:00:00.000Z",
+  };
+
+  const source: NoteSource = {
+    async *iterateNotes() {
+      yield note;
+      assert.ok(
+        chunks.some((chunk) => chunk.includes("Streaming regression")),
+        "first CSV row must be written before reading the next note",
+      );
+      yield { ...note, id: "note-2", title: "Second note" };
+    },
+    async getAllNotes() {
+      const notes: Note[] = [];
+      for await (const item of this.iterateNotes()) notes.push(item);
+      return notes;
+    },
+  };
+
+  const destination: CsvSink = {
+    async write(chunk) {
+      await Promise.resolve();
+      chunks.push(chunk);
+    },
+  };
+
+  await exportNotes(source, destination);
+  assert.equal(chunks.length, 3);
+  assert.ok(chunks[2].includes("Second note"));
+});
+''')
+
+Path("scripts/export-memory-check.ts").write_text('''import assert from "node:assert/strict";
+import { exportNotes, type CsvSink } from "../src/export.ts";
+import type { Note, NoteSource } from "../src/notes.ts";
+
+const count = 200_000;
+let writtenRows = 0;
+let bytesWritten = 0;
+
+const source: NoteSource = {
+  async *iterateNotes() {
+    for (let index = 0; index < count; index++) {
+      yield {
+        id: String(index),
+        title: `Note ${index}`,
+        content: `${index}:` + "x".repeat(4096),
+        createdAt: "2026-11-10T00:00:00.000Z",
+        updatedAt: "2026-11-10T00:00:00.000Z",
+      };
+    }
+  },
+  async getAllNotes() {
+    const notes: Note[] = [];
+    for await (const note of this.iterateNotes()) notes.push(note);
+    return notes;
+  },
+};
+
+const destination: CsvSink = {
+  async write(chunk) {
+    bytesWritten += Buffer.byteLength(chunk);
+    if (chunk.startsWith("id,")) return;
+    writtenRows++;
+  },
+};
+
+await exportNotes(source, destination);
+assert.equal(writtenRows, count);
+assert.ok(bytesWritten > 800_000_000);
+console.log(`Exported ${writtenRows} notes; output exceeded 800 MB; 64 MiB heap check passed.`);
+''')
+PY
+```
+
+Assumed output: empty, exit 0. The memory check’s header detection matches the inspected existing CSV header.
+
+4. Watch the regression fail:
+
+```sh
+node --import tsx --test src/export.streaming.test.ts
+```
+
+Assumed full output:
+
+```text
+✖ exportNotes writes each row before requesting the next note
+  AssertionError [ERR_ASSERTION]: first CSV row must be written before reading the next note
+    at Object.iterateNotes (src/export.streaming.test.ts:20:14)
+    at async Object.getAllNotes (src/export.streaming.test.ts:28:24)
+    at async exportNotes (src/export.ts:40:17)
+
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+```
+
+Exit 1. I read the full output: bulk loading advances the source before writing the first row, which is the expected failure.
+
+5. Apply the smallest production change:
+
+```sh
+python3 - <<'PY'
+from pathlib import Path
+
+path = Path("src/export.ts")
+before = """  const notes = await source.getAllNotes();
+  await destination.write(HEADER);
+  for (const note of notes) {
+    await destination.write(serializeNote(note));
+  }
+"""
+after = """  await destination.write(HEADER);
+  for await (const note of source.iterateNotes()) {
+    await destination.write(serializeNote(note));
+  }
+"""
+text = path.read_text()
+assert text.count(before) == 1
+path.write_text(text.replace(before, after))
+PY
+```
+
+Assumed output: empty, exit 0.
+
+6. Verify the regression, resource bound, and complete suite:
+
+```sh
+node --import tsx --test src/export.streaming.test.ts
+```
+
+Assumed full output:
+
+```text
+✔ exportNotes writes each row before requesting the next note
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+```
+
+Exit 0.
+
+```sh
+node --max-old-space-size=64 --import tsx scripts/export-memory-check.ts
+```
+
+Assumed full output:
+
+```text
+Exported 200000 notes; output exceeded 800 MB; 64 MiB heap check passed.
+```
+
+Exit 0. This checks the export path with a non-buffering sink; the earlier source inspection establishes bounded database iteration and file writing.
+
+```sh
+pnpm test
+```
+
+Assumed result: exit 0. I read the full output, including all 32 passing test entries and this footer:
+
+```text
+ℹ tests 32
+ℹ suites 0
+ℹ pass 32
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+```
+
+7. Message to partner:
+
+> The streaming regression failed on bulk loading and now passes. The 200,000-note check also passed with a 64 MiB heap, and `pnpm test` passed 32/32.
+
+8. Inspect the complete fix before committing:
+
+```sh
+git diff --check
+```
+
+Assumed output: empty, exit 0.
+
+```sh
+git diff -- src/export.ts
+```
+
+Assumed full output:
+
+```diff
+diff --git a/src/export.ts b/src/export.ts
+--- a/src/export.ts
++++ b/src/export.ts
+@@ -37,9 +37,8 @@ export async function exportNotes(
+   source: NoteSource,
+   destination: CsvSink,
+ ): Promise<void> {
+-  const notes = await source.getAllNotes();
+   await destination.write(HEADER);
+-  for (const note of notes) {
++  for await (const note of source.iterateNotes()) {
+     await destination.write(serializeNote(note));
+   }
+ }
+```
+
+```sh
+cat src/export.streaming.test.ts scripts/export-memory-check.ts
+```
+
+Assumed output: exactly the two artifacts written in step 3, read in full.
+
+No second reviewer is dispatched. The single fix pass has addressed the Important finding; the Minor remains unchanged.
+
+9. Commit the fix and append the review record in the same call:
+
+```sh
+python3 - <<'PY'
+import subprocess
+from pathlib import Path
+
+paths = [
+    "src/export.ts",
+    "src/export.streaming.test.ts",
+    "scripts/export-memory-check.ts",
+]
+subprocess.run(["git", "add", "--", *paths], check=True)
+subprocess.run(
+    ["git", "commit", "-m", "Stream note CSV export with bounded memory"],
+    check=True,
+)
+sha = subprocess.check_output(
+    ["git", "rev-parse", "HEAD"], text=True
+).strip()
+lines = [
+    "Final review: triaged — bulk loading remains Important because large accounts cannot export; header wording remains Minor because columns and values are still unambiguous.",
+    "Final: Ruling: Empty accounts export a header-only CSV — this is a valid zero-record export that preserves the documented column schema, so the behavior stands — cost if wrong: users expecting an empty-state message may find the download confusing.",
+    "Final: minor (deferred): CSV header uses updatedAt while the UI calls it Last edited.",
+    "Final: fixed exportNotes materializes all notes — exportNotes writes each row before requesting the next note RED→GREEN, suite 32/32; 200000-note export passed with a 64 MiB heap and over 800 MB of streamed output.",
+    f"Final: fix commit {sha}",
+]
+with Path(".ryugi/sdd/2026-11-10-export-design/progress.md").open("a") as ledger:
+    ledger.write("\n" + "\n".join(lines) + "\n")
+PY
+```
+
+Assumed output:
+
+```text
+[feat/export d4e5f6a] Stream note CSV export with bounded memory
+ 3 files changed, 88 insertions(+), 2 deletions(-)
+ create mode 100644 scripts/export-memory-check.ts
+ create mode 100644 src/export.streaming.test.ts
+```
+
+Assumed full SHA:
+
+```text
+d4e5f6a1234567890abcdef1234567890abcdef123
+```
+
+10. Collect the exhaustive decisions before deleting the workspace:
+
+```sh
+cat .ryugi/sdd/2026-11-10-export-design/progress.md
+```
+
+Assumed result: I read the complete ledger. It contains the three original task completion lines and exactly the five appended lines from step 9. There are no other `Ruling:` or `minor (deferred)` lines.
+
+```sh
+git status --short --branch
+```
+
+Assumed output:
+
+```text
+## feat/export
+```
+
+```sh
+git log -1 --format='%h %s'
+```
+
+Assumed output:
+
+```text
+d4e5f6a Stream note CSV export with bounded memory
+```
+
+The automated review gate is satisfied by the verified fix and explicit disposition of the remaining findings. Human product verification is still pending.
+
+11. Remove only this spec’s workspace:
+
+```sh
+python3 - <<'PY'
+from pathlib import Path
+import shutil
+
+workspace = Path(".ryugi/sdd/2026-11-10-export-design")
+assert workspace.is_dir()
+shutil.rmtree(workspace)
+print(f"Removed {workspace}")
+PY
+```
+
+Assumed output:
+
+```text
+Removed .ryugi/sdd/2026-11-10-export-design
+```
+
+12. Apply the already-loaded verifying skill.
+
+Assumption needed for this simulation: its final gate uses a local verification page and a human verdict for user-facing behavior. Automated evidence covers streaming and CSV serialization; one human group covers the download experience, spreadsheet readability, and the empty-account result.
+
+Message to partner:
+
+> Automated checks are green. I’m opening a verification page for the CSV download and empty-account behavior; landing waits for your verdict on that group.
+
+Write the verification artifact outside the deleted spec workspace:
+
+```sh
+python3 - <<'PY'
+from pathlib import Path
+
+directory = Path(".ryugi/verification/export")
+directory.mkdir(parents=True, exist_ok=True)
+(directory / "index.html").write_text('''<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Verify notes CSV export</title>
+<style>
+body { max-width: 48rem; margin: 3rem auto; padding: 0 1rem;
+       font: 17px/1.6 system-ui, sans-serif; color: #202124; }
+section { border: 1px solid #bbb; border-radius: 8px; padding: 1rem;
+          margin: 1rem 0; }
+code { overflow-wrap: anywhere; }
+</style>
+</head>
+<body>
+<h1>Verify notes CSV export</h1>
+<p>Branch: <code>feat/export</code>.
+Fix commit: <code>d4e5f6a1234567890abcdef1234567890abcdef123</code>.</p>
+
+<section>
+<h2>Automated evidence</h2>
+<ul>
+<li>The incremental-output regression failed before the fix and passed afterward.</li>
+<li><code>pnpm test</code>: 32 passed, 0 failed.</li>
+<li>A 200,000-note export streamed over 800 MB with a 64 MiB JavaScript heap.</li>
+</ul>
+</section>
+
+<section>
+<h2>Group 1 — CSV download and readability</h2>
+<p>Status: awaiting your verdict. This group gates landing.</p>
+<p><a href="http://127.0.0.1:5173" target="_blank" rel="noopener">Open the local notes app</a>.
+Use a disposable local account.</p>
+<ol>
+<li>With no notes, export CSV. Expect one header row and no note records.</li>
+<li>Create notes containing a comma, a double quote, a line break, and Unicode text.</li>
+<li>Export using the app. Expect a CSV download with one record per note.</li>
+<li>Open the file in your usual spreadsheet application. Confirm the text,
+line breaks, and dates appear in their correct columns.</li>
+</ol>
+<p>Reply in chat: “Group 1: pass”, or “Group 1: reject” with what happened
+and what you expected. Leave the group pending if you cannot check it.</p>
+</section>
+
+<section>
+<h2>Rulings I made</h2>
+<p>Empty accounts keep a header-only CSV: it represents zero records and
+preserves the schema. Cost if wrong: people expecting an empty-state
+message may find the download confusing.</p>
+<h2>Deferred minors</h2>
+<p>The CSV header says <code>updatedAt</code>; the UI says “Last edited”.</p>
+</section>
+
+<p>No branch landing or push has been performed.</p>
+</body>
+</html>
+''')
+PY
+```
+
+Assumed output: empty, exit 0.
+
+Start the local application:
+
+```sh
+pnpm dev --host 127.0.0.1
+```
+
+Assumed output and tool state:
+
+```text
+VITE ready
+Local: http://127.0.0.1:5173/
+```
+
+The command remains running with assumed session ID `201`.
+
+Serve the verification artifact:
+
+```sh
+python3 -m http.server 4318 --bind 127.0.0.1 --directory .ryugi/verification/export
+```
+
+Assumed output:
+
+```text
+Serving HTTP on 127.0.0.1 port 4318 ...
+```
+
+The command remains running with assumed session ID `202`.
+
+Check both servers:
+
+```sh
+curl --fail --silent --show-error http://127.0.0.1:5173/
+```
+
+Assumed result: exit 0; I read the returned application HTML. This proves availability, not correctness of the export interaction.
+
+```sh
+curl --fail --silent --show-error http://127.0.0.1:4318/
+```
+
+Assumed result: exit 0; I read the full returned HTML and it exactly matches the verification artifact above.
+
+Open the page:
+
+```sh
+open http://127.0.0.1:4318/
+```
+
+Assumed result: exit 0. This establishes that macOS accepted the open request; the human verdict remains pending.
+
+13. Final message to partner:
+
+> The memory fix is committed as `d4e5f6a`. The regression failed before the fix and passed afterward; `pnpm test` passed 32/32. A 200,000-note export also passed with a 64 MiB heap.
+>
+> **Rulings I made**
+>
+> - Empty accounts keep a header-only CSV because it represents zero records and preserves the schema. Cost if wrong: users expecting an empty-state message may find the download confusing.
+>
+> **Deferred minors**
+>
+> - The CSV header says `updatedAt`; the UI says “Last edited”.
+>
+> [Verify the export](http://127.0.0.1:4318/). Group 1 awaits your pass or reject verdict. The work remains pending verification; landing choices wait until that group passes. Nothing has been pushed.
+
+Stop here. Do not interpret silence as acceptance, dispatch another reviewer, fix the deferred Minor, or offer landing actions before verification passes.
+
+SUMMARY: Simulated one verified memory fix, recorded the empty-account ruling and deferred header wording, committed the fix, removed only this spec’s workspace, and opened a verification page; Group 1 now waits on the partner, and landing remains gated.

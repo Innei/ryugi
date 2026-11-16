@@ -1,0 +1,421 @@
+未完成：以下是模拟执行记录；没有运行命令或修改文件。模拟覆盖本次改动和 Task 21，之后继续 Task 22，不等待伙伴确认。
+
+以下工具调用均为**拟调用**。未提供的文件内容和命令输出均明确标为假设，不能作为真实验证证据。
+
+1. 发给伙伴：
+
+   > 可以，当前页边框用界面主题的 `--brand-accent`。我会补上验证，然后继续 Task 21。
+
+2. 拟调用 shell，读取恢复执行所需的记录：
+
+   ```json
+   {
+     "cmd": "pwd",
+     "workdir": "/Users/p/git/deck-app/.worktrees/slides"
+   }
+   ```
+
+   假设输出：
+
+   ```text
+   /Users/p/git/deck-app/.worktrees/slides
+   ```
+
+   ```json
+   {
+     "cmd": "git status --short --branch",
+     "workdir": "/Users/p/git/deck-app/.worktrees/slides"
+   }
+   ```
+
+   假设输出：
+
+   ```text
+   ## feat/slides
+   ```
+
+   ```json
+   {
+     "cmd": "cat .ryugi/sdd/2026-11-14-slides-design/progress.md",
+     "workdir": "/Users/p/git/deck-app/.worktrees/slides"
+   }
+   ```
+
+   假设完整输出确认：第一行指向本次 spec；Tasks 1–20 均完成，最后一条是题目给出的 Task 20 记录，没有 Task 21 完成记录。恢复执行，不重做 Task 20。
+
+   ```json
+   {
+     "cmd": "cat .ryugi/sdd/2026-11-14-slides-design/tasks.md",
+     "workdir": "/Users/p/git/deck-app/.worktrees/slides"
+   }
+   ```
+
+   假设读到全部 33 个任务，Task 21 的内容为：
+
+   ```markdown
+   ## Task 21: Presenter window layout
+
+   **Goal:** Implement the presenter window layout from the spec’s presenter-view section: current slide, next-slide preview, speaker notes, and navigation controls.
+
+   **Files:** src/presenter/PresenterWindow.tsx; src/presenter/PresenterWindow.test.tsx
+
+   **Interfaces:**
+   Produces: PresenterWindow layout.
+   Consumes: DeckPlaybackState; SlideRenderer.
+
+   **Failing test:** Render an active slide and assert that the current slide, next-slide preview, speaker notes, and navigation controls appear in their specified regions.
+
+   **Verify:** pnpm test
+   Expected: all tests pass.
+   ```
+
+   另假设：该任务此前已规定窗口路由、播放状态和组件接口；这里只缺布局实现。项目没有额外的运行产品检查技能。
+
+3. 拟调用 shell，生成并读取 Task 21 brief：
+
+   ```json
+   {
+     "cmd": "bash scripts/task-start docs/ryugi/specs/2026-11-14-slides-design.md 21",
+     "workdir": "/Users/p/git/deck-app/.worktrees/slides"
+   }
+   ```
+
+   假设输出：
+
+   ```text
+   BRIEF=.ryugi/sdd/2026-11-14-slides-design/task-21-brief.md
+   BASE=7f8a9b0
+   ```
+
+   ```json
+   {
+     "cmd": "cat .ryugi/sdd/2026-11-14-slides-design/task-21-brief.md",
+     "workdir": "/Users/p/git/deck-app/.worktrees/slides"
+   }
+   ```
+
+   假设完整输出与上述 Task 21 内容及接口一致。
+
+4. 拟调用文件编辑工具，**只修改 Task 21 对应部分**，其余 32 个任务及 Review Focus 保留：
+
+   ```text
+   文件：
+   .ryugi/sdd/2026-11-14-slides-design/tasks.md
+
+   将 Task 21 的 Goal 替换为：
+   **Goal:** Implement the presenter window layout from the spec’s presenter-view section: current slide, next-slide preview, speaker notes, and navigation controls. Also apply the partner’s latest instruction: the authoring filmstrip’s active thumbnail border uses the shell’s --brand-accent token.
+
+   将 Files 替换为：
+   **Files:** src/presenter/PresenterWindow.tsx; src/presenter/PresenterWindow.test.tsx; src/viewer/Filmstrip.tsx; src/viewer/Filmstrip.test.tsx
+
+   将 Failing test 替换为：
+   **Failing test:** First assert that only the active filmstrip thumbnail uses border: 1px solid var(--brand-accent). Then render an active slide and assert that the current slide, next-slide preview, speaker notes, and navigation controls appear in their specified regions.
+   ```
+
+   这是对伙伴新指令的增补，不重新执行已经完成的 Task 20。相应 ruling 随第一次提交写入 ledger。
+
+5. 拟调用 shell，读取实现、测试及现有接口：
+
+   ```json
+   {
+     "cmd": "cat src/viewer/Filmstrip.tsx src/viewer/Filmstrip.test.tsx src/presenter/PresenterWindow.tsx src/presenter/PresenterWindow.test.tsx package.json",
+     "workdir": "/Users/p/git/deck-app/.worktrees/slides"
+   }
+   ```
+
+   假设完整输出显示：
+
+   - 使用 Vitest、Testing Library 和已有的测试环境。
+   - Filmstrip 测试已有 `renderFilmstrip({ currentIndex })` helper，返回 `thumbnails`。
+   - 当前缩略图的内联边框正是题目给出的字符串；普通缩略图使用 `var(--hairline)`。
+   - Presenter 测试已有 `renderPresenter({ currentIndex })` helper，注入两页幻灯片及笔记。
+   - PresenterWindow 已读取 `currentSlide`、`nextSlide`、`notes`、`goPrevious`、`goNext`、`canGoPrevious`、`canGoNext`；返回值目前为 `null`。
+   - `SlideRenderer` 接收 `slide` prop；现有样式系统使用 Tailwind。
+   - 已有 388 个测试。
+
+6. 拟调用编辑工具，在 `src/viewer/Filmstrip.test.tsx` 现有测试组中追加：
+
+   ```tsx
+   it('uses the shell accent border only for the current thumbnail', () => {
+     const { thumbnails } = renderFilmstrip({ currentIndex: 1 })
+
+     expect(thumbnails[1].style.border).toBe(
+       '1px solid var(--brand-accent)',
+     )
+     expect(thumbnails[0].style.border).toBe(
+       '1px solid var(--hairline)',
+     )
+   })
+   ```
+
+7. 拟调用 shell，先看这个测试失败：
+
+   ```json
+   {
+     "cmd": "pnpm exec vitest run src/viewer/Filmstrip.test.tsx",
+     "workdir": "/Users/p/git/deck-app/.worktrees/slides"
+   }
+   ```
+
+   假设完整输出：原有测试通过，新增测试失败，原因恰好是：
+
+   ```text
+   Expected: "1px solid var(--brand-accent)"
+   Received: "1px solid var(--hairline-strong)"
+   ```
+
+8. 拟调用编辑工具：
+
+   ```diff
+   *** Update File: /Users/p/git/deck-app/.worktrees/slides/src/viewer/Filmstrip.tsx
+   @@
+   -          border: '1px solid var(--hairline-strong)',
+   +          border: '1px solid var(--brand-accent)',
+   ```
+
+   此处假设该行位于已有的 active 分支中；不修改普通缩略图分支，也不使用 deck 的 `--deck-accent`。
+
+9. 拟调用 shell，运行本次增补的验证：
+
+   ```json
+   {
+     "cmd": "pnpm exec vitest run src/viewer/Filmstrip.test.tsx",
+     "workdir": "/Users/p/git/deck-app/.worktrees/slides"
+   }
+   ```
+
+   假设完整输出：该文件全部测试通过，新增断言通过。
+
+   ```json
+   {
+     "cmd": "pnpm test",
+     "workdir": "/Users/p/git/deck-app/.worktrees/slides"
+   }
+   ```
+
+   假设完整输出：`389 passed`，退出码 `0`。
+
+10. 拟调用 shell，检查后只提交本次修改的两个源码路径：
+
+    ```json
+    {
+      "cmd": "git diff --check",
+      "workdir": "/Users/p/git/deck-app/.worktrees/slides"
+    }
+    ```
+
+    假设无输出，退出码 `0`。
+
+    ```json
+    {
+      "cmd": "git diff -- src/viewer/Filmstrip.tsx src/viewer/Filmstrip.test.tsx",
+      "workdir": "/Users/p/git/deck-app/.worktrees/slides"
+    }
+    ```
+
+    假设完整 diff 仅包含上述边框替换与回归测试。
+
+    ```json
+    {
+      "cmd": "git add src/viewer/Filmstrip.tsx src/viewer/Filmstrip.test.tsx && git commit -m 'fix: use shell accent for active slide thumbnail' && git rev-parse HEAD && cat >> .ryugi/sdd/2026-11-14-slides-design/progress.md <<'EOF'\nTask 21: Ruling: Apply the partner’s active-filmstrip-border instruction as an addition to Task 21; use --brand-accent — the border belongs to the authoring shell, whose accent token is explicitly available; keep the completed Task 20 record intact — if wrong, the selection border will not follow the deck’s accent and needs a token change.\nTask 21: Filmstrip follow-up verified — active-thumbnail border regression RED→GREEN; pnpm test → 389 passed; commit 8a9b0c1.\nEOF",
+      "workdir": "/Users/p/git/deck-app/.worktrees/slides"
+    }
+    ```
+
+    假设提交成功，短 SHA 为 `8a9b0c1`；`git rev-parse HEAD` 的完整输出以前述短 SHA 开头。这里没有写 `Task 21: complete`。
+
+11. 发给伙伴：
+
+    > 边框回归测试已先失败再通过，`pnpm test` 为 389 passed；继续演讲者窗口布局。
+
+    这句话仅属于假设执行成功后的模拟消息；真实环境中尚未获得该证据。
+
+12. 拟调用编辑工具，在 `src/presenter/PresenterWindow.test.tsx` 现有测试组追加：
+
+    ```tsx
+    it('lays out the current slide, next slide, notes, and controls', () => {
+      renderPresenter({ currentIndex: 0 })
+
+      const current = screen.getByRole('region', {
+        name: 'Current slide',
+      })
+      const next = screen.getByRole('region', {
+        name: 'Next slide',
+      })
+      const notes = screen.getByRole('region', {
+        name: 'Speaker notes',
+      })
+      const controls = screen.getByRole('navigation', {
+        name: 'Slide controls',
+      })
+
+      expect(within(current).getByText('Opening')).toBeVisible()
+      expect(within(next).getByText('Agenda')).toBeVisible()
+      expect(within(notes).getByText('Welcome the audience.')).toBeVisible()
+      expect(
+        within(controls).getByRole('button', { name: 'Previous slide' }),
+      ).toBeDisabled()
+      expect(
+        within(controls).getByRole('button', { name: 'Next slide' }),
+      ).toBeEnabled()
+    })
+    ```
+
+    假设这些英文文本与项目已有界面及测试 fixture 一致；按需将 `within` 加入现有 `@testing-library/react` import。
+
+13. 拟调用 shell：
+
+    ```json
+    {
+      "cmd": "pnpm exec vitest run src/presenter/PresenterWindow.test.tsx",
+      "workdir": "/Users/p/git/deck-app/.worktrees/slides"
+    }
+    ```
+
+    假设完整输出：新增测试失败，原因是找不到 `Current slide` region；现有窗口返回 `null`，不是依赖或测试环境故障。
+
+14. 拟调用编辑工具，把 `PresenterWindow` 的 `return null` 替换为以下内容，并按已有文件的 import 路径导入 `SlideRenderer`：
+
+    ```tsx
+    return (
+      <main className="grid h-dvh min-h-0 grid-cols-[minmax(0,2fr)_minmax(0,1fr)] grid-rows-[minmax(0,1fr)_auto] gap-4 p-4">
+        <section
+          aria-label="Current slide"
+          className="flex min-h-0 min-w-0 items-center justify-center"
+        >
+          <SlideRenderer slide={currentSlide} />
+        </section>
+
+        <div className="grid min-h-0 min-w-0 grid-rows-[auto_minmax(0,1fr)] gap-4">
+          <section aria-label="Next slide" className="min-w-0">
+            {nextSlide ? (
+              <SlideRenderer slide={nextSlide} />
+            ) : (
+              <p>End of deck</p>
+            )}
+          </section>
+
+          <section
+            aria-label="Speaker notes"
+            className="min-h-0 overflow-auto whitespace-pre-wrap"
+          >
+            {notes}
+          </section>
+        </div>
+
+        <nav
+          aria-label="Slide controls"
+          className="col-span-2 flex items-center justify-between"
+        >
+          <button
+            type="button"
+            onClick={goPrevious}
+            disabled={!canGoPrevious}
+          >
+            Previous slide
+          </button>
+          <button
+            type="button"
+            onClick={goNext}
+            disabled={!canGoNext}
+          >
+            Next slide
+          </button>
+        </nav>
+      </main>
+    )
+    ```
+
+    这份实现建立在前面明确假设的 brief、接口及样式环境上；实际执行必须以读到的文件为准。
+
+15. 拟调用 shell：
+
+    ```json
+    {
+      "cmd": "pnpm exec vitest run src/presenter/PresenterWindow.test.tsx",
+      "workdir": "/Users/p/git/deck-app/.worktrees/slides"
+    }
+    ```
+
+    假设完整输出：新增布局测试通过，该文件全部测试通过。
+
+    ```json
+    {
+      "cmd": "pnpm test",
+      "workdir": "/Users/p/git/deck-app/.worktrees/slides"
+    }
+    ```
+
+    假设完整输出：`390 passed`，退出码 `0`，与 Task 21 的 `Expected: all tests pass` 一致。
+
+16. 拟调用 shell，检查并提交 Presenter 布局：
+
+    ```json
+    {
+      "cmd": "git diff --check",
+      "workdir": "/Users/p/git/deck-app/.worktrees/slides"
+    }
+    ```
+
+    假设无输出，退出码 `0`。
+
+    ```json
+    {
+      "cmd": "git diff -- src/presenter/PresenterWindow.tsx src/presenter/PresenterWindow.test.tsx",
+      "workdir": "/Users/p/git/deck-app/.worktrees/slides"
+    }
+    ```
+
+    假设完整输出仅包含上述布局实现、测试及所需 import。
+
+    ```json
+    {
+      "cmd": "git add src/presenter/PresenterWindow.tsx src/presenter/PresenterWindow.test.tsx && git commit -m 'feat: implement presenter window layout' && git rev-parse HEAD && cat >> .ryugi/sdd/2026-11-14-slides-design/progress.md <<'EOF'\nTask 21: Presenter layout verified — presenter regions regression RED→GREEN; pnpm test → 390 passed; commit 9b0c1d2.\nEOF",
+      "workdir": "/Users/p/git/deck-app/.worktrees/slides"
+    }
+    ```
+
+    假设提交成功，短 SHA 为 `9b0c1d2`，完整 SHA 输出与其一致。
+
+17. 拟调用 shell，执行 Task 21 的最终门禁：
+
+    ```json
+    {
+      "cmd": "bash scripts/task-done docs/ryugi/specs/2026-11-14-slides-design.md 21 7f8a9b0 -- pnpm test",
+      "workdir": "/Users/p/git/deck-app/.worktrees/slides"
+    }
+    ```
+
+    假设脚本再次运行测试，退出码 `0`，打印 `390 passed`，保留完整输出并追加：
+
+    ```text
+    Task 21: complete (commits 7f8a9b0..9b0c1d2, tests: pnpm test → 390 passed)
+    ```
+
+    拟调用 shell 读取脚本保存的完整输出及 ledger；假设脚本打印的输出文件路径如下：
+
+    ```json
+    {
+      "cmd": "cat .ryugi/sdd/2026-11-14-slides-design/task-21-verify.log .ryugi/sdd/2026-11-14-slides-design/progress.md",
+      "workdir": "/Users/p/git/deck-app/.worktrees/slides"
+    }
+    ```
+
+    假设完整测试日志确认 `390 passed`、没有失败，ledger 包含上述 completion line。此时才把 Task 21 标为完成。
+
+18. 发给伙伴：
+
+    > Task 21 的最终验证为 `pnpm test → 390 passed`；继续 Task 22。
+
+19. 下一次拟调用：
+
+    ```json
+    {
+      "cmd": "bash scripts/task-start docs/ryugi/specs/2026-11-14-slides-design.md 22",
+      "workdir": "/Users/p/git/deck-app/.worktrees/slides"
+    }
+    ```
+
+    模拟记录在题目要求的 Task 21 范围后截断。实际执行不会在这里等待伙伴，也不会提前做最终 review、删除 workspace、提出 landing 选项或声称整份 spec 已完成。
+
+SUMMARY: 已模拟当前页边框改用 --brand-accent、回归测试 RED→GREEN，以及 Task 21 的实现、提交和最终验证；真实改动与验证均未执行，模拟中的执行者继续 Task 22，伙伴无需确认。

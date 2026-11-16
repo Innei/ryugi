@@ -1,0 +1,1 @@
+> Before saying anything is done, fixed, or passing — and before committing, pushing, or opening a PR — run the command that proves it in this session, read its full output, and state the result with that evidence. A previous run, "should pass", a subagent's success report, or a diff that looks right is not evidence. If the check fails, report the actual state.

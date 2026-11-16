@@ -20,7 +20,8 @@ ledger and the tool results carry the record.
 **Continuous execution:** Do not pause to check in with your human partner
 between tasks. They approved the spec and chose inline execution so they
 would not have to answer "should I continue?". Execute every task without
-stopping.
+stopping. When they speak mid-run, do what they ask, answer it as
+ryugi:using-ryugi says, and take the next task.
 
 **Rulings, not stalls.** Conflicts, ambiguities, gaps the spec is silent
 on — decide them. The spec is the binding authority, your task list is
@@ -46,22 +47,6 @@ guess. For those, stop and ask.
 
 "Just code it" at the handoff means no spec execution: build the change
 under ryugi:test-driven-development and report.
-
-On a spec large enough that its later tasks run on a compacted context,
-the last tasks get the least of you. Say so to your human partner before
-starting.
-
-## The Process
-
-1. Setup: workspace and ledger, read the spec, load TDD.
-2. Slice the spec into `tasks.md` (skip if it exists).
-3. Per task: `task-start` and read the brief → failing test, watch it
-   fail, implement, run Verify → output matches `Expected:`? If not: task
-   list wrong, rule and ledger; code wrong, ryugi:systematic-debugging →
-   commit → completion contract met → `task-done`, mark the todo complete.
-4. After the last task: one final whole-branch review, then ONE fix pass.
-5. Project verification, if the project has a skill for it.
-6. Finish: report rulings, deferred minors and what landed.
 
 ## Setup
 
@@ -213,17 +198,19 @@ stay out of the package.
 
 **With a subagent tool:** dispatch the reviewer on the most capable
 available model — the whole-branch review is a judgment task — using
-[code-reviewer.md](code-reviewer.md), with the package path, the spec
-path, the `## Review Focus` section of `tasks.md` verbatim, and a pointer
-to the ledger's `Ruling:` lines so it can weigh the calls you made.
-Name the model explicitly; an omitted model inherits the session's. This
+[code-reviewer.md](code-reviewer.md), filled with the package path, the
+spec path, the ledger path for its `Ruling:` lines, and the
+`## Review Focus` section of `tasks.md` verbatim.
+Name the model explicitly; an omitted model inherits the session's. When
+the harness cannot choose one, ledger `Final review: session model` and
+go on; it is not news for your human partner. This
 is the one fresh context the whole run buys. Do not skip it, and do not
 replace it with your own read of the diff.
 
 **Without a subagent tool:** read code-reviewer.md and perform that review
 yourself against the package, as a separate pass after the last task's
 ledger line. Write `Final review: self-review (no subagent tool)` to the
-ledger, and say so in your final message: your human partner decides
+ledger, and list it among what needs your human partner: they decide
 whether a self-review is enough before merge.
 
 Sort the findings before you act on any of them. The reviewer's severity
@@ -236,9 +223,8 @@ is what a reasonable person using this software gets if it ships, not
 whether the spec names the input that triggers it. Then:
 
 - **Critical and Important** enter the fix pass.
-- **Minor** goes to the ledger as `Final: minor (deferred): <one-liner>`
-  and to your final message under "Deferred minors". Minors never enter
-  the fix pass, and never become rulings.
+- **Minor** goes to the ledger as `Final: minor (deferred): <one-liner>`.
+  Minors never enter the fix pass, and never become rulings.
 
 Fix the Critical and Important findings yourself in ONE pass. Each fix is
 verified by TDD, not by a second reviewer: write the test that reproduces
@@ -257,34 +243,36 @@ in the rulings list. There is no second fix pass.
 
 When the project has its own skill for checking the running product —
 launching the app in a simulator, driving a browser, a local test
-environment — run it now, on the finished branch, and put what it showed
-in your final message. Something it shows broken is a finding: fix it
+environment — run it now, on the finished branch, and keep what it showed as
+evidence for ryugi:verifying. Something it shows broken is a finding: fix it
 under TDD like a Critical one, and ledger it.
 
 ## Finish
 
-Before you delete anything, collect every ledger line containing
-`Ruling:` into your final message under "Rulings I made", in the order you
-made them, each with what it costs if wrong, and every `minor (deferred)`
-line under "Deferred minors". Both lists are exhaustive: your final
-message is the only place those decisions reach your human partner.
+Use ryugi:verifying first; fixes for its rejects follow that skill. Then
+collect every ledger line containing
+`Ruling:`, in the order you made them, each with what it costs if wrong,
+and every `minor (deferred)` line. Both lists are exhaustive: once the
+workspace is gone they are the only record of those decisions.
 
-When the final review is clean and its fixes are committed, delete this
-spec's workspace directory — the git history is the record now. Sibling
-directories belong to other specs; leave them alone.
+- **With a verify report**, both lists go into it in full: a table of
+  rulings (ruling, why, cost if wrong) and a list of minors. Your final
+  message names only the rulings that depart from the spec or change what
+  someone using the software gets, at most five, and says how many the
+  report holds.
+- **Without one**, both lists go in your final message in full.
 
-Exploratory work finishes as `exploring.md` says.
+Once they are written, delete this spec's workspace directory (never a
+sibling's): the report and git history are the record now. Exploratory
+work finishes as `exploring.md` says.
 
-Use ryugi:verifying last, after the steps above. It proves the built
-work where the spec's claims are about, and opens a verify page when the
-work is more than one small claim. When it does, your final message
-carries its link and says which groups wait on their verdict. The work is
-not done, and the ways to land it below wait, until every group that waits
-on them has passed. Fixes for rejects follow that skill.
+Your final message follows ryugi:using-ryugi. It carries the verify link
+and which groups wait on their verdict. The work is not done, and the ways
+to land it below wait, until every group that waits on them has passed.
 
-Committed work in place on the default branch has nothing to land: end your final
-message with the commits from the ledger, and stop. Pushing is your
-human partner's call.
+Committed work in place on the default branch has nothing to land: name
+your commits from the ledger in one line, and stop. Pushing is your human
+partner's call.
 
 On a branch, stop, and end your final message with the ways to land it:
 

@@ -1,0 +1,1 @@
+PASS — Chinese handoff states pending decisions, lists required partner actions, links all rulings and deferred minors, and leaves the branch unlanded and unpushed.

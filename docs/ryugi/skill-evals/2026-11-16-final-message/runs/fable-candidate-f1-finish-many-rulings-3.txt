@@ -1,0 +1,111 @@
+Everything below is simulated: I only read `skill/landing.md`, and nothing was run.
+
+## Tool calls, in order
+
+**1. Shell — re-read the ledger after compaction** (cwd `/Users/p/git/board-app/.worktrees/offline-sync`)
+
+```bash
+W=$(bash skill/scripts/sdd-workspace docs/ryugi/specs/2026-11-12-offline-sync-design.md); echo "$W"
+head -1 "$W/progress.md"; grep -c "Task [0-9]*: complete" "$W/progress.md"
+grep -n "Final review:" "$W/progress.md"
+grep "Ruling:" "$W/progress.md"; grep "minor (deferred)" "$W/progress.md"
+git status --short; git rev-list --count HEAD..main
+```
+
+Assumed output:
+- The workspace path is `.ryugi/sdd/2026-11-12-offline-sync-design/` and the first ledger line names this spec.
+- There are 18 `complete` lines, and `Final review: session model` is already ledgered.
+- The 22 `Ruling:` lines and 6 minors print exactly as given.
+- The tree is clean and the branch is `2` behind `main`.
+
+**2. Read** `.ryugi/artifacts/verify/offline-sync/report.xml`
+
+Assumed: 9 agent claims, 1 gap (two real phones), and 3 `board-ui` group rows waiting for a verdict. The test claim already records `pnpm test` as 412 passed, 1 failed (`bundle-size`, 512 KB against 500 KB). There is no rulings table or minors list yet.
+
+**3. Edit** `report.xml` — add both lists in full, in the report's existing table and list elements, written in Chinese for my partner.
+
+Rulings table (22 rows: ruling / why / cost if wrong):
+
+| # | 裁决 | 原因 | 判断错误的代价 |
+|---|---|---|---|
+| Task 1 | 操作日志放在 `src/sync/oplog.ts`，不是任务清单写的 `src/store` | store 不能引用网络层 | 无 |
+| Task 2 | 操作 id 用现有 ulid helper 生成的 ULID，不用 UUIDv7 | 代码库只保留一种 id 方案 | 无 |
+| Task 3 | **偏离 spec §4**：并发编辑按字段合并，每个字段后写者胜，而不是按卡片 | 按卡片合并时，两人改同一张卡片的不同字段会丢掉一人的修改 | 两人改同一字段时，仍有一人的修改无提示地消失 |
+| Task 4 | IndexedDB 封装手写，不引入 `idb` 依赖 | 只有 60 行 | 多维护一个文件 |
+| Task 5 | 同步 worker 用 module worker | 打包器已支持 | 很旧的 Safari 上同步无法启动 |
+| Task 6 | 重试退避从 1 s 起，上限 60 s | spec 未规定 | 长时间断网后恢复较慢 |
+| Task 7 | 队列测试用 `fake-indexeddb` | 已是 dev 依赖 | 无 |
+| Task 8 | 重连横幅复用现有 Toast 组件 | — | 无 |
+| Task 9 | 离线队列上限 5,000 条操作；超过后显示 "sync paused, reconnect to keep editing" 并停止接受编辑 | spec 未规定上限 | 长时间离线会话会停止记录编辑 |
+| Task 10 | 服务器 ack 每 200 ms 批量一次 | — | ack 延迟略增 |
+| Task 11 | 冲突测试 fixtures 放在 `test/fixtures/sync` | — | 无 |
+| Task 12 | `applyRemote` 接收 clock 参数 | 测试接缝 | 无 |
+| Task 13 | board 版本向量存为 JSON 列，不建表 | 每个 board 只读一次 | 以后若要查询需做迁移 |
+| Task 14 | **偏离 spec §7**：离线时附件不同步，只同步文字和布局 | Safari 把 IndexedDB 限制在约 50 MB | 离线添加的图片在其他设备上缺失，直到联网后重新添加 |
+| Task 14 | 附件占位符用现有的 broken-image 图标 | — | 无 |
+| Task 15 | 同步状态点放在 board 标题栏、标题右侧 | spec 有此元素但未指定位置 | 改一处 CSS |
+| Task 16 | 登出时经确认对话框后清空离线队列 | spec 未规定 | 仅多一个对话框 |
+| Task 16 | 排队的操作用现有 session key 静态加密 | — | 无 |
+| Task 17 | e2e 测试用两个 browser context，不是两个浏览器 | — | 无 |
+| Final | 空 board 同步一个空操作日志，而不是跳过 | reviewer 未作判断 | 每个空 board 多一个很小的请求 |
+| Final | reviewer 提出的 "N+1 reads on board open" 保持不改 | 500 张卡片的 board 读 3 次，实测 4 ms | 超大 board 打开变慢 |
+| Final | reviewer 提出的 "rename applyRemote" 保持不改 | 命名与服务端一致 | 无 |
+
+Deferred minors list (6):
+
+1. 重连横幅的文字未本地化。
+2. `oplog.ts` 导出了未使用的 `peekOp`。
+3. 退避常量分散在两个文件里。
+4. 队列已满的提示写的是 "operations"，而 UI 其他地方写 "changes"。
+5. 同步日志用的是 `console.log`，不是应用的 logger。
+6. e2e 测试 sleep 500 ms，本可以等待事件。
+
+**4. Shell — re-check the report and prove both lists landed before deleting anything**
+
+Run ryugi:verifying's `check` on `verify/offline-sync`, then count the ruling rows and minor items in `report.xml`.
+
+Assumed: `check` is clean, with 22 ruling rows and 6 minors.
+
+**5. Shell — delete this spec's workspace only**
+
+```bash
+ls .ryugi/sdd/ && ls .ryugi/sdd/2026-11-12-offline-sync-design/
+rm -rf .ryugi/sdd/2026-11-12-offline-sync-design
+```
+
+Assumed: the directory held `tasks.md`, `progress.md`, briefs, review packages and test logs. Only this directory is removed.
+
+I do not rebase, merge, push or change the bundle budget; those are my partner's calls.
+
+## Final message to my partner
+
+> **未完成，等你：3 组界面裁定、1 项真机测试、6 个决定。** 18 个任务和终审修复都已提交在 `feat/offline-sync`（`a1b2c3d..f9e8d7c`）；`pnpm test` 是 412 通过、1 失败（`bundle-size`）。
+>
+> 验证报告：https://ryugi.innei.dev/a/Rk3vQ0
+>
+> **需要你处理（按编号回复即可）：**
+>
+> 1. 裁定 `board-ui` 的「同步状态点」：我放在 board 标题栏、标题右侧，spec 没指定位置。
+> 2. 裁定 `board-ui` 的「重连横幅」。
+> 3. 裁定 `board-ui` 的「附件占位符」。
+> 4. 用你的第二台 iPhone 做两台真机之间的同步测试。这是报告里唯一的缺口，我做不了。
+> 5. `bundle-size` 失败怎么处理：现在是 512 KB，预算 500 KB；`main` 本身已是 509 KB，本分支增加 3 KB。上调预算、让我瘦身，还是带着失败落地？
+> 6. 偏离 spec §4：并发编辑改为按字段合并（每个字段后写者胜），不是按卡片。按卡片合并会在两人改同一卡片的不同字段时丢掉一人的修改。代价是两人改同一字段时，仍有一人的修改无提示消失。保留还是改回？
+> 7. 偏离 spec §7：离线时附件不同步，只同步文字和布局，因为 Safari 把 IndexedDB 限制在约 50 MB。代价是离线添加的图片在其他设备上缺失，直到联网后重新添加。保留还是改回？
+> 8. 离线队列上限 5,000 条操作（spec 没写）：超过后显示 "sync paused, reconnect to keep editing" 并停止接受编辑。接受吗？
+> 9. 登出时经确认对话框后清空离线队列（spec 没写）：未同步的修改会被丢弃。接受吗？
+> 10. 落地方式（要等 1–4 都通过才执行）：
+>     - A. Squash 进 `main`（默认）
+>     - B. Rebase 到 `main`
+>     - C. Push 并开 PR
+>     - D. 保留分支不动
+>
+> 另有一条影响使用的裁决：同步 worker 用 module worker，很旧的 Safari 上同步无法启动。报告里共 22 条裁决和 6 条延后的小问题。
+>
+> **可能改变你决定的事：**
+>
+> - 全套测试不是绿的：`bundle-size` 失败，而且 `main` 上同样失败。
+> - 分支落后 `main` 两个提交（另一个 agent 提交的，与本功能无关）。我没有在合入这两个提交后的代码上跑过测试。
+> - 真机同步未验证；`check-app` 只用两个 browser context 跑通了离线编辑、重连、合并。
+
+SUMMARY: I wrote all 22 rulings and 6 deferred minors into the verify report, re-checked it, and deleted the spec's workspace (all simulated). The work now waits on my partner for three `board-ui` verdicts, the two-iPhone sync test, the `bundle-size` decision, four ruling confirmations and the choice of how to land `feat/offline-sync`.

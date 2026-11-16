@@ -1,0 +1,97 @@
+This is a simulation. No commands are actually executed; all tool results below are assumed.
+
+**Message to partner:**
+
+> I’ll check the final evidence, preserve the rulings, and leave the branch awaiting your landing choice.
+
+**Tool call — `functions.exec`:**
+
+```javascript
+const results = await Promise.allSettled([
+  tools.exec_command({
+    cmd: "git status --short --branch",
+    workdir: "/Users/p/git/notes-app",
+    max_output_tokens: 2000
+  }),
+  tools.exec_command({
+    cmd: "rg -n 'Ruling:|minor \\(deferred\\)' .ryugi/sdd/2026-11-10-export-design/progress.md",
+    workdir: "/Users/p/git/notes-app",
+    max_output_tokens: 4000
+  }),
+  tools.exec_command({
+    cmd: "pnpm test",
+    workdir: "/Users/p/git/notes-app",
+    max_output_tokens: 10000
+  })
+]);
+for (let i = 0; i < results.length; i++) text({ index: i, result: results[i] });
+```
+
+Assumed successful results, read in full:
+
+```text
+[index 0, exit 0]
+## feat/export
+
+[index 1, exit 0]
+14:Task 2: Ruling: quote fields per RFC 4180 — spec is silent on commas — cost if wrong: Excel-only users see quotes
+26:Final: minor (deferred): CSV header says updatedAt
+
+[index 2, exit 0]
+> notes-app@1.0.0 test /Users/p/git/notes-app
+> vitest run
+
+ RUN  v3.2.4 /Users/p/git/notes-app
+
+ ✓ tests/notes.test.ts (20 tests)
+ ✓ tests/export.test.ts (11 tests)
+ ✓ tests/export-stream.test.ts (1 test)
+
+ Test Files  3 passed (3)
+      Tests  32 passed (32)
+   Duration  1.24s
+```
+
+The assumed search results are the exhaustive ruling and deferred-minor lists. The final message below preserves both, so no verify page or additional artifact is written.
+
+**Tool call — `functions.exec`:**
+
+```javascript
+text(await tools.exec_command({
+  cmd: "rm -rf -- /Users/p/git/notes-app/.ryugi/sdd/2026-11-10-export-design",
+  workdir: "/Users/p/git/notes-app",
+  max_output_tokens: 2000
+}));
+```
+
+Assumed result: exit 0, empty output.
+
+**Tool call — `functions.exec`:**
+
+```javascript
+text(await tools.exec_command({
+  cmd: "test ! -e /Users/p/git/notes-app/.ryugi/sdd/2026-11-10-export-design",
+  workdir: "/Users/p/git/notes-app",
+  max_output_tokens: 2000
+}));
+```
+
+Assumed result: exit 0, empty output.
+
+No ledger lines are appended. No artifacts are written. Stop after sending this final message.
+
+**Final message to partner, word for word:**
+
+> Waiting on your landing choice. `pnpm test` exited 0: 3 test files passed, 32/32 tests passed.
+>
+> 1. **Squash into `main`** (default)
+> 2. **Rebase onto `main`**
+> 3. **Push and open a PR**
+> 4. **Keep the branch as-is**
+>
+> What could change your decision:
+>
+> - Ruling: quote fields per RFC 4180 — spec is silent on commas — cost if wrong: Excel-only users see quotes.
+> - Minor deferred: CSV header says `updatedAt`.
+
+SUMMARY: Simulated final verification, preserved the exhaustive ruling and minor lists, and removed only this spec’s workspace; landing waits on the partner’s choice.

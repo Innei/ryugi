@@ -1,0 +1,154 @@
+The following is a simulation. Only `./skill/landing.md` was actually read. All outputs below are assumed.
+
+**Message to partner:**
+
+> I’ll squash `feat/export` into `main`, run the tests before committing and after landing, then remove the feature branch.
+
+**1. Tool call**
+
+```json
+{"cmd":"git status --porcelain=v1 && git branch --show-current && git log -5 --format=%s","workdir":"/Users/p/git/notes-app"}
+```
+
+Assumed full output: clean working tree, expected branch, and repository commit style:
+
+```text
+feat/export
+feat: add CSV export for notes
+test: cover CSV escaping
+docs: add export design
+fix: preserve note ordering
+feat: add note search
+```
+
+**2. Tool call**
+
+```json
+{"cmd":"git switch main && git pull --ff-only","workdir":"/Users/p/git/notes-app"}
+```
+
+Assumed full output:
+
+```text
+Switched to branch 'main'
+Your branch is up to date with 'origin/main'.
+Already up to date.
+```
+
+**3. Tool call**
+
+```json
+{"cmd":"git merge --squash feat/export","workdir":"/Users/p/git/notes-app"}
+```
+
+Assumed full output:
+
+```text
+Updating 54b12cf..a12cd34
+Fast-forward
+Squash commit -- not updating HEAD
+ src/export.test.ts | 70 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ src/export.ts      | 40 +++++++++++++++++++++++++++++++
+ 2 files changed, 110 insertions(+)
+```
+
+**4. Tool call**
+
+```json
+{"cmd":"git diff --cached --check && pnpm test","workdir":"/Users/p/git/notes-app"}
+```
+
+Assumed full output, read before committing:
+
+```text
+> notes-app@1.0.0 test /Users/p/git/notes-app
+> vitest run
+
+ RUN  v3.2.4 /Users/p/git/notes-app
+
+ ✓ src/notes.test.ts (8 tests) 9ms
+ ✓ src/export.test.ts (4 tests) 5ms
+
+ Test Files  2 passed (2)
+      Tests  12 passed (12)
+   Start at  10:00:00
+   Duration  410ms
+```
+
+Assumed exit code: `0`.
+
+**5. Tool call**
+
+```json
+{"cmd":"git commit -m 'feat: add CSV export for notes'","workdir":"/Users/p/git/notes-app"}
+```
+
+Assumed full output:
+
+```text
+[main b73e910] feat: add CSV export for notes
+ 2 files changed, 110 insertions(+)
+ create mode 100644 src/export.test.ts
+ create mode 100644 src/export.ts
+```
+
+**6. Tool call**
+
+```json
+{"cmd":"pnpm test","workdir":"/Users/p/git/notes-app"}
+```
+
+Assumed full output, read before claiming success:
+
+```text
+> notes-app@1.0.0 test /Users/p/git/notes-app
+> vitest run
+
+ RUN  v3.2.4 /Users/p/git/notes-app
+
+ ✓ src/notes.test.ts (8 tests) 9ms
+ ✓ src/export.test.ts (4 tests) 5ms
+
+ Test Files  2 passed (2)
+      Tests  12 passed (12)
+   Start at  10:00:10
+   Duration  405ms
+```
+
+Assumed exit code: `0`.
+
+**7. Tool call**
+
+```json
+{"cmd":"git branch -D feat/export","workdir":"/Users/p/git/notes-app"}
+```
+
+Assumed full output:
+
+```text
+Deleted branch feat/export (was a12cd34).
+```
+
+**8. Tool call**
+
+```json
+{"cmd":"git status --porcelain=v1 && git branch --show-current && git log -1 --format='%h %s' && git rev-list --count origin/main..main","workdir":"/Users/p/git/notes-app"}
+```
+
+Assumed full output:
+
+```text
+main
+b73e910 feat: add CSV export for notes
+1
+```
+
+No ledger lines or artifacts are written: the completed execution workspace was removed during the prior finish. No worktree was created, so none needs removal.
+
+**Final message to partner:**
+
+> Done — squashed into local `main` as `b73e910`; `pnpm test` passed 12/12 after landing.
+>
+> 1. Push `main` when ready.
+
+SUMMARY: Simulated squashing into main, verifying before and after the commit, and deleting feat/export; pushing waits on the partner.

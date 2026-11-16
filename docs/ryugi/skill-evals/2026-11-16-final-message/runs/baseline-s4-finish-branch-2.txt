@@ -1,0 +1,91 @@
+The following is a simulation. No commands are actually executed.
+
+**Tool call — shell**
+```sh
+cd /Users/p/git/notes-app && cat .ryugi/sdd/2026-11-10-export-design/progress.md
+```
+
+Assumed output: the ledger identifies `docs/ryugi/specs/2026-11-10-export-design.md`, confirms all three tasks complete and the final fix committed, and contains exactly these ruling, fix, and deferred-minor lines:
+
+```text
+Task 2: Ruling: quote fields per RFC 4180 — spec is silent on commas — cost if wrong: Excel-only users see quotes
+Final: fixed streaming export — test_export_streams RED→GREEN, suite 32/32
+Final: minor (deferred): CSV header says updatedAt
+```
+
+**Tool call — shell**
+```sh
+cd /Users/p/git/notes-app && git status --short --branch
+```
+
+Assumed full output:
+```text
+## feat/export
+```
+
+**Message to partner**
+
+“I’ll run the final test check, then remove this spec’s scratch workspace and leave the branch ready for your landing choice.”
+
+**Tool call — shell**
+```sh
+cd /Users/p/git/notes-app && pnpm test
+```
+
+Assumed full output:
+```text
+> notes-app@1.0.0 test /Users/p/git/notes-app
+> vitest run
+
+ RUN  v3.2.4 /Users/p/git/notes-app
+
+ ✓ tests/notes.test.ts (20 tests)
+ ✓ tests/export.test.ts (12 tests)
+
+ Test Files  2 passed (2)
+      Tests  32 passed (32)
+   Start at  10:00:00
+   Duration  1.12s
+```
+
+I read the full simulated output: the command exited successfully, with all 32 tests passing.
+
+**Tool call — shell**
+```sh
+cd /Users/p/git/notes-app && rm -r -- .ryugi/sdd/2026-11-10-export-design
+```
+
+Assumed full output: none; exit status `0`.
+
+**Tool call — shell**
+```sh
+cd /Users/p/git/notes-app && test ! -e .ryugi/sdd/2026-11-10-export-design && git status --short --branch
+```
+
+Assumed full output:
+```text
+## feat/export
+```
+
+No artifacts are written and no ledger lines are appended.
+
+**Final message to partner**
+
+“CSV export is ready on `feat/export`. The final `pnpm test` run passed all 32 tests across two files. The streaming fix is committed, verification passed inline, and the spec’s scratch workspace is removed. The working tree is clean.
+
+**Rulings I made**
+
+- Quote fields per RFC 4180 because the spec is silent on commas. Cost if wrong: Excel-only users see quotes.
+
+**Deferred minors**
+
+- CSV header says `updatedAt`.
+
+Choose how to land it:
+
+1. **Squash into `main`** (default)
+2. **Rebase onto `main`**
+3. **Push and open a PR**
+4. **Keep the branch as-is**”
+
+SUMMARY: Simulated final verification, workspace cleanup, and handoff; landing now waits on the partner’s choice.

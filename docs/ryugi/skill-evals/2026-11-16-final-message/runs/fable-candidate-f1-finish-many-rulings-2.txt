@@ -1,0 +1,135 @@
+Read `skill/landing.md` for real (it only applies once a landing way is picked). `skill/scripts/` does not exist in this directory, so I use the workspace path from the situation instead of `scripts/sdd-workspace`. Everything below is simulated.
+
+## Simulated run
+
+**Call 1 — shell (fresh evidence after two compactions; four independent commands in one block)**
+
+```bash
+cd /Users/p/git/board-app/.worktrees/offline-sync
+pnpm test > .ryugi/sdd/2026-11-12-offline-sync-design/final-suite.log 2>&1; echo "exit=$?"; tail -n 25 .ryugi/sdd/2026-11-12-offline-sync-design/final-suite.log
+git status --short; git rev-parse --short HEAD; git rev-list --left-right --count main...HEAD
+git merge-tree --write-tree main HEAD; echo "merge-tree exit=$?"
+grep -c "Ruling:" .ryugi/sdd/2026-11-12-offline-sync-design/progress.md; grep -c "minor (deferred)" .ryugi/sdd/2026-11-12-offline-sync-design/progress.md; grep -n "Final review:" .ryugi/sdd/2026-11-12-offline-sync-design/progress.md
+```
+
+Assumed output:
+- `pnpm test`: `exit=1`, 412 passed, 1 failed; the failure is `bundle-size`, 512 KB against a 500 KB budget.
+- Tree clean, HEAD `f9e8d7c` plus the fix-pass commits, `2	26` (2 behind `main`, 26 ahead).
+- `merge-tree` exits 0, so there are no conflicts with the two new `main` commits.
+- Counts are `22` and `6`.
+- No `Final review:` line exists yet.
+
+**Call 2 — shell (the missing ledger line, and a look at the report before editing it)**
+
+```bash
+cd /Users/p/git/board-app/.worktrees/offline-sync
+echo "Final review: session model" >> .ryugi/sdd/2026-11-12-offline-sync-design/progress.md
+grep -n -i -E "ruling|minor|bundle-size|<gap|<group|</report>" .ryugi/artifacts/verify/offline-sync/report.xml
+```
+
+Assumed output:
+- The report has 9 `<claim>` rows, 1 `<gap>` (two real phones) and 3 `<group>` rows.
+- One claim already records the suite as `412 passed, 1 failed (bundle-size 512 KB / 500 KB; main 509 KB)`.
+- There is no rulings table and no minors list.
+- `</report>` is the last line.
+
+**Call 3 — Edit `.ryugi/artifacts/verify/offline-sync/report.xml`**
+
+Insert the block below before `</report>`. The element names are my assumption about the report's schema; I would match whatever Call 2 showed.
+
+```xml
+<section id="rulings" title="Rulings (22)">
+  <table>
+    <columns><col>Ruling</col><col>Why</col><col>Cost if wrong</col></columns>
+    <row><c>Task 1: the operation log lives in src/sync/oplog.ts, not src/store as the task list said</c><c>the store must not import the network layer</c><c>none</c></row>
+    <row><c>Task 2: operation ids are ULIDs from the existing ulid helper, not UUIDv7</c><c>one id scheme in the codebase</c><c>none</c></row>
+    <row flag="departs-spec"><c>Task 3: concurrent edits merge per field, last writer wins on each field, not per card as spec §4 says</c><c>per card loses one person's edit when two people change different fields of the same card</c><c>two people editing the same field still see one edit vanish without notice</c></row>
+    <row><c>Task 4: the IndexedDB wrapper is hand-written, no idb dependency</c><c>60 lines</c><c>one more file to maintain</c></row>
+    <row flag="user-visible"><c>Task 5: the sync worker is a module worker</c><c>the bundler already supports it</c><c>very old Safari fails to start sync</c></row>
+    <row><c>Task 6: retry backoff starts at 1 s and caps at 60 s</c><c>spec silent</c><c>slower recovery after a long outage</c></row>
+    <row><c>Task 7: the queue test uses fake IndexedDB from fake-indexeddb</c><c>already a dev dependency</c><c>none</c></row>
+    <row><c>Task 8: the reconnect banner reuses the existing Toast component</c><c>—</c><c>none</c></row>
+    <row flag="user-visible"><c>Task 9: the offline queue is capped at 5,000 operations; past that the app shows "sync paused, reconnect to keep editing" and stops accepting edits</c><c>spec silent on a cap</c><c>a long offline session stops recording edits</c></row>
+    <row><c>Task 10: server acks are batched every 200 ms</c><c>—</c><c>a little more latency on acks</c></row>
+    <row><c>Task 11: the conflict test fixtures live in test/fixtures/sync</c><c>—</c><c>none</c></row>
+    <row><c>Task 12: `applyRemote` takes a clock parameter</c><c>test seam</c><c>none</c></row>
+    <row><c>Task 13: board version vectors are stored as a JSON column, not a table</c><c>one read per board</c><c>a migration later if queries need them</c></row>
+    <row flag="departs-spec"><c>Task 14: attachments do not sync while offline; only text and layout do</c><c>spec §7 says attachments queue too, but Safari caps IndexedDB at about 50 MB</c><c>images added offline are missing on other devices until re-added online</c></row>
+    <row><c>Task 14: the attachment placeholder uses the existing broken-image icon</c><c>—</c><c>none</c></row>
+    <row><c>Task 15: the sync status dot sits in the board header, right of the title</c><c>spec shows it but does not place it</c><c>one CSS move</c></row>
+    <row flag="user-visible"><c>Task 16: logout clears the offline queue after a confirm dialog</c><c>spec silent</c><c>none beyond one dialog</c></row>
+    <row><c>Task 16: queued operations are encrypted at rest with the existing session key</c><c>—</c><c>none</c></row>
+    <row><c>Task 17: e2e tests run two browser contexts, not two browsers</c><c>—</c><c>none</c></row>
+    <row><c>Final: empty boards sync an empty operation log instead of skipping</c><c>reviewer declined to judge</c><c>one tiny request per empty board</c></row>
+    <row><c>Final: the reviewer's "N+1 reads on board open" stays</c><c>3 reads for a 500-card board, measured 4 ms</c><c>slower opens on huge boards</c></row>
+    <row><c>Final: the reviewer's "rename applyRemote" stays</c><c>naming matches the server</c><c>none</c></row>
+  </table>
+</section>
+<section id="minors" title="Deferred minors (6)">
+  <list>
+    <item>the reconnect banner's text is not localized.</item>
+    <item>oplog.ts exports an unused `peekOp`.</item>
+    <item>the backoff constants live in two files.</item>
+    <item>the queue-full message says "operations" where the UI says "changes".</item>
+    <item>sync logs use console.log, not the app logger.</item>
+    <item>the e2e test sleeps 500 ms where it could wait on an event.</item>
+  </list>
+</section>
+```
+
+**Call 4 — shell (prove the lists landed, re-check and re-sync the report)**
+
+```bash
+cd /Users/p/git/board-app/.worktrees/offline-sync
+grep -c "<row" .ryugi/artifacts/verify/offline-sync/report.xml; grep -c "<item>" .ryugi/artifacts/verify/offline-sync/report.xml
+<ryugi:verifying's check command> verify/offline-sync
+<ryugi:verifying's publish command> verify/offline-sync
+```
+
+The last two are the commands ryugi:verifying already used in this session; I do not know their literal names from here. Assumed output: 22 ruling rows and 6 minor items, `check` clean, and the same link https://ryugi.innei.dev/a/Rk3vQ0 now shows both sections.
+
+**Call 5 — shell (delete this spec's workspace only, looking at it first)**
+
+```bash
+cd /Users/p/git/board-app/.worktrees/offline-sync
+ls .ryugi/sdd/ && ls .ryugi/sdd/2026-11-12-offline-sync-design/
+rm -rf .ryugi/sdd/2026-11-12-offline-sync-design
+ls .ryugi/sdd/
+```
+
+Assumed output: the directory held `tasks.md`, `progress.md`, briefs, the review package and test logs. It is gone, and any sibling directories are untouched.
+
+**Call 6 — todos:** mark "Finish" complete. No merge, push or rebase: landing waits on my partner.
+
+## Final message to my partner
+
+> **未完成，等你：3 组界面裁决和一次双 iPhone 实测通过之前，分支不能落地。**
+>
+> 代码已全部提交在 `feat/offline-sync`（工作树 `.worktrees/offline-sync`）。验证报告：https://ryugi.innei.dev/a/Rk3vQ0
+>
+> **需要你处理：**
+>
+> 1. **界面裁决（3 组，在报告的 `board-ui` 验证页）：** 同步状态点、重连横幅、附件占位图。
+> 2. **双真机同步：** 需要你的第二台 iPhone 实测。我只用 `check-app` 跑了两个浏览器上下文的离线编辑 → 重连 → 合并，全部通过；真机之间没有验证。
+> 3. **`bundle-size` 测试是红的：** 本次运行 `pnpm test` 为 412 通过、1 失败，512 KB 对 500 KB 预算。`main` 本身已是 509 KB，本分支加了 3 KB。请决定：(a) 就这样落地，预算另行处理（我的建议，因为 `main` 已经超了）；(b) 先上调预算；(c) 我先瘦身到 500 KB 以内。
+> 4. **5 条裁定请确认或推翻**（报告里共 22 条裁定、6 条延后的小问题）：
+>    - a. **偏离 spec §4：** 并发编辑按字段合并（每个字段后写者胜），不是按卡片。代价：两人改同一字段时，仍有一人的修改无提示地消失。
+>    - b. **偏离 spec §7：** 离线时附件不同步，只同步文字和布局（Safari 的 IndexedDB 上限约 50 MB）。代价：离线添加的图片在其他设备上缺失，要联网后重新添加。
+>    - c. **离线队列上限 5,000 条操作**（spec 未提）：超过后显示 "sync paused, reconnect to keep editing" 并停止接受编辑。
+>    - d. **登出会清空离线队列**（spec 未提）：先弹确认框，确认后未同步的修改会丢失。
+>    - e. **同步 worker 用 module worker：** 很旧的 Safari 上同步无法启动。
+> 5. **落地方式**（等 1、2 通过后再执行）：见文末。
+>
+> **可能改变你决定的：**
+>
+> - 分支落后 `main` 2 个提交（另一个 agent 的无关提交）。`git merge-tree` 显示无冲突，但合并后的全套测试还没跑过，落地时会跑。
+> - 如果 CI 把 `bundle-size` 设为必过，第 3 项不解决的话 PR 或合并会被拦住。
+>
+> **落地方式：**
+>
+> 1. **Squash 进 `main`**（默认）
+> 2. **Rebase 到 `main`**
+> 3. **Push 并开 PR**
+> 4. **分支保持原样**
+
+SUMMARY: Re-ran the suite (412 passed, 1 failed on `bundle-size`), ledgered the session-model review, wrote all 22 rulings and 6 deferred minors into the verify report, deleted the spec's workspace and sent the Chinese final message. The branch now waits on my partner for the 3 `board-ui` verdicts, the two-iPhone sync test, the bundle-size decision, the five flagged rulings and the choice of how to land.

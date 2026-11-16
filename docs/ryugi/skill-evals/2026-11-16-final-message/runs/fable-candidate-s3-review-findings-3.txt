@@ -1,0 +1,207 @@
+Simulation from the reviewer's return onward. I read `skill/code-reviewer.md` and `skill/landing.md` for real; everything below is simulated, with assumed outputs marked.
+
+---
+
+## 1. Sort the findings
+
+**Tool call (shell)** — ledger the sorting, and read what the fix needs:
+
+```bash
+cd /Users/p/git/notes-app && W=.ryugi/sdd/2026-11-10-export-design && cat >> $W/progress.md <<'EOF'
+Final review: dispatched (findings: 1 Important, 1 Minor, 1 declined to judge)
+Final: Ruling: empty account exports a header-only CSV (reviewer declined to judge; spec silent) — the person gets a valid file that opens in any spreadsheet and shows the columns with no rows, which reads as "export worked, you have no notes"; stands — cost if wrong: someone with no notes downloads a file that looks empty and would rather have been told "nothing to export"; changing it later is a route-level check
+Final: minor (deferred): CSV header says `updatedAt`, the UI calls the field "Last edited" (src/export.ts)
+EOF
+grep -n "Ruling:" $W/progress.md; grep -n -i "column\|header\|order" docs/ryugi/specs/2026-11-10-export-design.md; cat -n src/export.ts; grep -n "listAllNotes\|listNotes" -r src | head -20; sed -n 1,40p test/export.test.ts
+```
+
+*Assumed output:*
+- The only `Ruling:` line in the ledger is the one just appended; tasks 1–3 made none.
+- The spec lists the columns as `id,title,body,createdAt,updatedAt`, oldest first. The header therefore matches the spec, and the re-grade by effect leaves it Minor: the column is still understandable.
+- `src/export.ts` exports `exportNotes(store, userId, out: Writable): Promise<void>`. Line 40 is `const notes = await store.listAllNotes(userId)`, followed by a loop of `out.write(toCsvRow(note))`.
+- The store already has `listNotes(userId, { cursor, limit, order })` returning `{ notes, nextCursor }`, used by the list UI.
+- Tests are vitest, with a `makeNote(i)` helper in `test/export.test.ts`.
+
+The re-grade keeps the Important finding as Important, because a large account gets a crashed export. It is the only finding in the fix pass.
+
+## 2. Fix pass — RED
+
+**Tool call (edit)** — append to `test/export.test.ts`:
+
+```ts
+describe('exportNotes on a large account', () => {
+  const TOTAL = 5000
+
+  function pagedStore() {
+    const calls = { all: 0, limits: [] as number[] }
+    const store = {
+      listAllNotes: async () => {
+        calls.all++
+        return Array.from({ length: TOTAL }, (_, i) => makeNote(i))
+      },
+      listNotes: async (_userId: string, { cursor, limit }: { cursor?: string; limit: number; order: 'asc' }) => {
+        calls.limits.push(limit)
+        const start = cursor ? Number(cursor) : 0
+        const end = Math.min(start + limit, TOTAL)
+        const notes = Array.from({ length: end - start }, (_, i) => makeNote(start + i))
+        return { notes, nextCursor: end < TOTAL ? String(end) : null }
+      },
+    }
+    return { store, calls }
+  }
+
+  it('reads notes in bounded pages and never loads the whole account', async () => {
+    const { store, calls } = pagedStore()
+    const chunks: string[] = []
+    const out = new Writable({ write(c, _e, cb) { chunks.push(String(c)); cb() } })
+    await exportNotes(store as any, 'u1', out)
+    expect(calls.all).toBe(0)
+    expect(calls.limits.length).toBeGreaterThan(1)
+    expect(Math.max(...calls.limits)).toBeLessThanOrEqual(500)
+    expect(chunks.join('').trimEnd().split('\n')).toHaveLength(TOTAL + 1) // header + rows
+  })
+
+  it('waits for a slow reader instead of buffering the export', async () => {
+    const { store } = pagedStore()
+    let peak = 0
+    const out = new Writable({
+      highWaterMark: 16 * 1024,
+      write(_c, _e, cb) { peak = Math.max(peak, out.writableLength); setImmediate(cb) },
+    })
+    await exportNotes(store as any, 'u1', out)
+    expect(peak).toBeLessThan(256 * 1024)
+  })
+})
+```
+
+**Tool call (shell):**
+
+```bash
+pnpm test test/export.test.ts > .ryugi/sdd/2026-11-10-export-design/final-fix-red.log 2>&1; echo "exit $?"; tail -25 .ryugi/sdd/2026-11-10-export-design/final-fix-red.log
+```
+
+*Assumed output:* exit 1, with 2 failed and 9 passed in this file. The first test fails with `expected 1 to be 0` on `calls.all`. The second fails with `expected 612344 to be less than 262144`. Both fail for the reason the finding names.
+
+## 3. Fix pass — GREEN
+
+**Tool call (edit)** — `src/export.ts`, replace the `listAllNotes` load and its loop (lines 40–43):
+
+```ts
+const PAGE_SIZE = 500
+
+  let cursor: string | undefined
+  do {
+    const page = await store.listNotes(userId, { cursor, limit: PAGE_SIZE, order: 'asc' })
+    for (const note of page.notes) {
+      if (!out.write(toCsvRow(note))) await once(out, 'drain')
+    }
+    cursor = page.nextCursor ?? undefined
+  } while (cursor)
+```
+
+plus `import { once } from 'node:events'` at the top.
+
+**Tool call (shell)** — the new tests, then the whole suite:
+
+```bash
+W=.ryugi/sdd/2026-11-10-export-design; pnpm test test/export.test.ts > $W/final-fix-green.log 2>&1; echo "exit $?"; tail -8 $W/final-fix-green.log; pnpm test > $W/final-suite.log 2>&1; echo "exit $?"; tail -12 $W/final-suite.log
+```
+
+*Assumed output:* both exit 0. The file shows 11 passed; the suite shows `Tests 33 passed (33)`.
+
+**Tool call (shell)** — commit and ledger line in one call:
+
+```bash
+git add src/export.ts test/export.test.ts && git commit -m "fix(export): page through notes and honor backpressure instead of loading the whole account" && W=.ryugi/sdd/2026-11-10-export-design && cat >> $W/progress.md <<EOF
+Final: fixed exportNotes loads every note into memory (src/export.ts:40) — "reads notes in bounded pages and never loads the whole account" + "waits for a slow reader instead of buffering the export" RED→GREEN, suite 33/33 (commit $(git rev-parse --short HEAD))
+EOF
+git status --short
+```
+
+*Assumed output:* commit `c41d9e2`, clean tree. I dispatch no re-review, as the skill requires.
+
+## 4. Project verification
+
+**Tool call (shell):** `ls .claude/skills 2>/dev/null; grep -n -i "skill" CLAUDE.md AGENTS.md 2>/dev/null`
+
+*Assumed output:* nothing. The project has no skill for checking the running product, so there is nothing to run here.
+
+## 5. Finish — ryugi:verifying
+
+*Assumptions about the already-loaded verifying skill:* it has me re-run the proof fresh on the finished branch and write a report at `docs/ryugi/verify/2026-11-10-export-design.md`. It groups the claims and marks any group I cannot prove myself as waiting on my partner.
+
+**Tool call (shell):**
+
+```bash
+git log --oneline main..HEAD; pnpm test > /tmp/export-verify.log 2>&1; echo "exit $?"; tail -12 /tmp/export-verify.log; grep -n "Ruling:\|minor (deferred)" .ryugi/sdd/2026-11-10-export-design/progress.md
+```
+
+*Assumed output:* 4 commits (3 task commits and `c41d9e2`), exit 0, `Tests 33 passed (33)`, one `Ruling:` line and one `minor (deferred)` line.
+
+**Tool call (write)** — `docs/ryugi/verify/2026-11-10-export-design.md`:
+
+```markdown
+# Verify — CSV export (docs/ryugi/specs/2026-11-10-export-design.md)
+
+Branch `feat/export`, 4 commits on `main`. `pnpm test` → 33 passed (33), run 2026-11-16 at HEAD c41d9e2.
+
+## Groups
+
+| Group | What | Evidence | Status |
+| --- | --- | --- | --- |
+| A | CSV content: columns, order, escaping (spec tasks 1–3) | `pnpm test` 33/33 | passed |
+| B | Large accounts: paged reads (500), backpressure | 2 tests RED→GREEN in test/export.test.ts, commit c41d9e2 | passed |
+| C | Download in the running app: click Export, file opens in a spreadsheet | not run — the project has no skill for driving the product | **waits on your verdict** |
+
+## Not verified
+
+- Group B is proven against a fake store with 5,000 notes. No export of a real 200k-note account was run or measured.
+
+## Final review
+
+One fresh-context reviewer over the whole branch: 1 Important (fixed), 1 Minor (deferred), 1 declined to judge (ruled).
+
+## Rulings
+
+| Ruling | Why | Cost if wrong |
+| --- | --- | --- |
+| An empty account exports a header-only CSV (spec silent; reviewer declined to judge) | A valid file that opens anywhere and shows the columns with no rows reads as "export worked, no notes" | Someone with no notes gets a file that looks empty and would rather be told "nothing to export"; a route-level check changes it |
+
+## Minors (deferred)
+
+- CSV header says `updatedAt`; the UI calls the field "Last edited" (src/export.ts). The header matches the spec's column list.
+```
+
+**Tool call (shell)** — commit the report, look at the workspace, then delete it:
+
+```bash
+git add docs/ryugi/verify/2026-11-10-export-design.md && git commit -m "docs: verify report for CSV export" && ls .ryugi/sdd/2026-11-10-export-design/ && rm -rf .ryugi/sdd/2026-11-10-export-design && git status --short && git log --oneline main..HEAD | wc -l
+```
+
+*Assumed output:* commit `e07b3aa`. `ls` shows `tasks.md progress.md`, briefs, the review package and logs, all belonging to this spec only. The tree is clean and the branch has 5 commits.
+
+## 6. Final message to my partner
+
+> **Not done — waiting on you for one verdict.** CSV export is built on `feat/export` (5 commits, `pnpm test` → 33 passed (33) at `e07b3aa`). Report: [docs/ryugi/verify/2026-11-10-export-design.md](docs/ryugi/verify/2026-11-10-export-design.md)
+>
+> **What needs you**
+>
+> 1. **Group C verdict (pass or fail):** run the app, click Export, and open the file in a spreadsheet. I could not drive the running app, so this is the one group I have not proven.
+> 2. **Ruling to accept or overturn:** an account with no notes downloads a CSV with only the header row. The spec did not say; the alternative is a "nothing to export" message. It is the only ruling in the report.
+> 3. **Final-review fix to accept or reject:** the reviewer found that export loaded every note into memory. It now reads 500 notes at a time and waits for slow readers.
+>
+> **What could change your decision**
+>
+> - The large-account fix is proven by tests against a fake store with 5,000 notes. I did not run or measure an export of a real 200k-note account.
+> - One minor is deferred, not fixed: the CSV header says `updatedAt` where the UI says "Last edited". The header matches the spec.
+>
+> Once Group C passes, the ways to land it:
+>
+> 1. **Squash into `main`** (default)
+> 2. **Rebase onto `main`**
+> 3. **Push and open a PR**
+> 4. **Keep the branch as-is**
+
+I stop here: landing waits on the Group C verdict and the partner's pick.
+
+SUMMARY: I ruled on the declined item (header-only CSV stands), deferred the Minor to the ledger, fixed the Important memory finding under TDD (2 tests RED→GREEN, suite 33/33, no re-review), wrote and committed the verify report, and deleted the workspace; the branch now waits on my partner for the Group C in-app verdict, the ruling, and a landing choice.

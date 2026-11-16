@@ -1,0 +1,1 @@
+FAIL — The partner message explicitly says the reviewer uses the session’s model and has no model selector.

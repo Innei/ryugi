@@ -1,0 +1,205 @@
+The following is a simulation. All outputs and repository details below are assumptions; no repository commands are executed.
+
+1. Message to partner:
+
+> I’ll fix the memory issue, defer the header wording, and record header-only exports as the empty-account behavior.
+
+2. Tool call:
+
+```json
+{
+  "cmd": "pwd && git status --short --branch && cat .ryugi/sdd/2026-11-10-export-design/progress.md && cat .ryugi/sdd/2026-11-10-export-design/tasks.md && cat docs/ryugi/specs/2026-11-10-export-design.md && cat package.json && cat src/export.ts && cat src/export.test.ts && rg -n 'iterateNotes|listNotes|exportNotes|verification|verify' src AGENTS.md .",
+  "workdir": "/Users/p/git/notes-app"
+}
+```
+
+Assumed output:
+
+- Checkout is clean on `feat/export`; all three ledger tasks are complete.
+- The ledger identifies the supplied spec and contains no previous rulings.
+- The spec requires exporting all notes in CSV format.
+- `exportNotes(store, sink)` currently calls `store.listNotes()` and then writes each row.
+- `NoteStore` already provides `iterateNotes(): AsyncIterable<Note>`, backed by bounded database pagination.
+- The caller supplies a file-backed sink; it does not collect the output in memory.
+- `sink.write()` returns a promise; awaiting it provides backpressure.
+- Existing export helpers are `CSV_HEADER` and `encodeNote`.
+- Tests use Vitest. `pnpm build` runs the TypeScript build.
+- No project skill defines additional running-product verification.
+- The existing suite contains 31 tests.
+
+3. Tool call — append this regression test to `src/export.test.ts`:
+
+```diff
+*** Begin Patch
+*** Update File: /Users/p/git/notes-app/src/export.test.ts
+@@
++it('writes each note before requesting another and never loads the collection', async () => {
++  const first = {
++    id: '1',
++    title: 'First',
++    content: 'First note',
++    updatedAt: '2026-11-10T00:00:00.000Z',
++  };
++  const second = {
++    ...first,
++    id: '2',
++    title: 'Second',
++  };
++  const writes: string[] = [];
++  const store = {
++    listNotes: async () => {
++      throw new Error('Unbounded collection read');
++    },
++    async *iterateNotes() {
++      yield first;
++      expect(writes).toHaveLength(2);
++      yield second;
++      expect(writes).toHaveLength(3);
++    },
++  };
++  const sink = {
++    async write(chunk: string) {
++      await Promise.resolve();
++      writes.push(chunk);
++    },
++  };
++
++  await exportNotes(store, sink);
++
++  expect(writes).toHaveLength(3);
++  expect(writes[1]).toContain('First');
++  expect(writes[2]).toContain('Second');
++});
+*** End Patch
+```
+
+Assumed result: patch applied; the existing file already imports `it`, `expect`, and `exportNotes`.
+
+4. Tool call:
+
+```json
+{
+  "cmd": "pnpm test -- src/export.test.ts",
+  "workdir": "/Users/p/git/notes-app"
+}
+```
+
+Assumed full output: the new test fails with `Error: Unbounded collection read`, originating from the call to `store.listNotes()` in `exportNotes`. All existing export tests pass.
+
+5. Tool call:
+
+```diff
+*** Begin Patch
+*** Update File: /Users/p/git/notes-app/src/export.ts
+@@
+-  const notes = await store.listNotes();
+   await sink.write(CSV_HEADER);
+-  for (const note of notes) {
++  for await (const note of store.iterateNotes()) {
+     await sink.write(encodeNote(note));
+   }
+*** End Patch
+```
+
+Assumed result: patch applied. The surrounding function signature and existing CSV encoding remain unchanged.
+
+6. Tool call:
+
+```json
+{
+  "cmd": "pnpm test && pnpm build && git diff --check && git diff -- src/export.ts src/export.test.ts",
+  "workdir": "/Users/p/git/notes-app"
+}
+```
+
+Assumed full output: 32/32 tests pass; TypeScript build exits 0; whitespace check exits 0. The diff contains only the regression test and the iterator change above.
+
+7. Message to partner:
+
+> The regression failed on the unbounded read, then passed with incremental writes; the full suite is 32/32 and the build passes.
+
+8. Tool call:
+
+```json
+{
+  "cmd": "git add src/export.ts src/export.test.ts && git commit -m 'Fix unbounded memory use during CSV export' && cat >> .ryugi/sdd/2026-11-10-export-design/progress.md <<'EOF'\nFinal review: fresh-context review received; Important memory finding accepted for the single fix pass.\nFinal: minor (deferred): CSV header uses updatedAt while the UI says Last edited.\nFinal: Ruling: empty accounts produce a header-only CSV — an empty export retains the column schema and accurately represents zero notes — cost if wrong: users expecting no download will receive an empty CSV instead.\nFinal: fixed unbounded note collection in exportNotes — writes each note before requesting another and never loads the collection RED→GREEN, suite 32/32; pnpm build passed; commit 8f3c2a1.\nEOF",
+  "workdir": "/Users/p/git/notes-app"
+}
+```
+
+Assumed output: commit `8f3c2a1` succeeds with only the two named files. Ledger append succeeds.
+
+No second reviewer is dispatched.
+
+9. Tool call:
+
+```json
+{
+  "cmd": "pnpm test && pnpm build && git diff --check && git status --short --branch && git log -4 --format='%h %s'",
+  "workdir": "/Users/p/git/notes-app"
+}
+```
+
+Assumed full output: 32/32 tests pass; build and whitespace check exit 0; clean checkout on `feat/export`. The log contains the fix and the three task commits:
+
+```text
+8f3c2a1 Fix unbounded memory use during CSV export
+7c9e4d2 Add CSV export action
+5b8a1c3 Write escaped CSV rows
+2a6d0f9 Add note export interfaces
+```
+
+Verification assessment:
+
+- Automated behavior and build checks pass.
+- The fresh-context review is complete; its Important finding has a failing-then-passing regression.
+- The empty-account ruling and deferred wording issue need no implementation gate.
+- A real 200k-note account was not exercised; bounded iteration and awaited writes are verified by the regression and source inspection.
+
+10. Tool call — write the complete verification report:
+
+```json
+{
+  "cmd": "mkdir -p docs/ryugi/verify && cat > docs/ryugi/verify/2026-11-10-export.md <<'EOF'\n# CSV export verification\n\nSpec: docs/ryugi/specs/2026-11-10-export-design.md\nBranch: feat/export\n\n## Evidence\n\n| Check | Result |\n| --- | --- |\n| Regression before fix: pnpm test -- src/export.test.ts | Failed with Unbounded collection read at exportNotes |\n| Regression after fix, included in pnpm test | Passed |\n| Final pnpm test | 32/32 passed |\n| Final pnpm build | Exit 0 |\n| Final git diff --check | Exit 0 |\n| Source and caller inspection | Database iterator pages notes; file-backed sink accepts awaited writes |\n| Project running-product verification | No project skill defines an additional procedure |\n\nThe regression requires each row write to finish before the iterator advances and rejects the previous unbounded collection read. It does not measure peak memory on a real 200k-note account.\n\n## Review disposition\n\nThe fresh-context reviewer identified one Important finding, one Minor finding, and one behavior it declined to judge. The Important finding was fixed in the single fix pass with a regression observed failing before the implementation and passing afterward. No second review was dispatched.\n\n## Rulings — exhaustive (1)\n\n| Ruling | Why | Cost if wrong |\n| --- | --- | --- |\n| Empty accounts produce a header-only CSV | It preserves the column schema and accurately represents zero notes | Users expecting no download receive an empty CSV instead |\n\nNo ruling departs from an explicit spec requirement.\n\n## Deferred minors — exhaustive (1)\n\n- CSV header uses updatedAt while the UI says Last edited.\n\n## Implementation commits\n\n- 2a6d0f9 Add note export interfaces\n- 5b8a1c3 Write escaped CSV rows\n- 7c9e4d2 Add CSV export action\n- 8f3c2a1 Fix unbounded memory use during CSV export\n\n## Verdicts\n\nAutomated verification: passed.\nFresh-context review: complete; Important finding fixed and verified.\nLanding: waits on partner's choice.\n\n## Remaining limit\n\nA real 200k-note export and its peak memory were not measured.\nEOF\n git diff --check && git add docs/ryugi/verify/2026-11-10-export.md && git commit -m 'Record CSV export verification' && cat >> .ryugi/sdd/2026-11-10-export-design/progress.md <<'EOF'\nVerification: pnpm test 32/32; pnpm build exit 0; git diff --check exit 0. Report: docs/ryugi/verify/2026-11-10-export.md. Exhaustive rulings: 1; deferred minors: 1. Landing waits on partner.\nEOF",
+  "workdir": "/Users/p/git/notes-app"
+}
+```
+
+Assumed output: whitespace check passes; report commit `9d4e6b0` succeeds; ledger append succeeds.
+
+11. Tool call:
+
+```json
+{
+  "cmd": "cat docs/ryugi/verify/2026-11-10-export.md && cat .ryugi/sdd/2026-11-10-export-design/progress.md && git status --short --branch && git log -5 --format='%h %s'",
+  "workdir": "/Users/p/git/notes-app"
+}
+```
+
+Assumed full output: report contains the complete ruling and deferred-minor lists; they match the ledger. Checkout is clean on `feat/export`; the five listed commits are present.
+
+12. Tool call:
+
+```json
+{
+  "cmd": "rm -r .ryugi/sdd/2026-11-10-export-design && test ! -e .ryugi/sdd/2026-11-10-export-design && git status --short --branch",
+  "workdir": "/Users/p/git/notes-app"
+}
+```
+
+Assumed output: the spec workspace is absent; checkout remains clean on `feat/export`. No sibling workspace was touched.
+
+13. Final message to partner:
+
+> Waiting on you to choose how to land `feat/export`.
+>
+> 1. **Squash into `main`** (default).
+> 2. **Rebase onto `main`**.
+> 3. **Push and open a PR**.
+> 4. **Keep the branch as-is**.
+>
+> A real 200k-note export was not measured.
+>
+> [Verification: 32/32 tests, build passed; 1 ruling and 1 deferred minor](/Users/p/git/notes-app/docs/ryugi/verify/2026-11-10-export.md)
+
+SUMMARY: Simulated one verified memory fix, recorded the empty-export ruling and deferred wording issue, preserved verification evidence, and removed the spec workspace; landing waits on the partner.

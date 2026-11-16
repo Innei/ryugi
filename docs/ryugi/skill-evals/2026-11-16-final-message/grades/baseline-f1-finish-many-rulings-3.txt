@@ -1,0 +1,1 @@
+FAIL — Final partner message lists all 22 rulings, includes reviewer-model process notes, and fails to present required partner actions as a numbered list.

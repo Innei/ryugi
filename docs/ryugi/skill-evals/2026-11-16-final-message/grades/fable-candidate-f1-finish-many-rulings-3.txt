@@ -1,0 +1,1 @@
+FAIL — The partner message names six rulings, exceeding the five-ruling limit: status-point placement, per-field merge, attachments, operation cap, logout behavior, and module worker.

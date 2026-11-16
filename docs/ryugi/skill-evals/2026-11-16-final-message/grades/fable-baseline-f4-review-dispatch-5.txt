@@ -1,0 +1,1 @@
+PASS — Built the merge-base-to-HEAD review package, dispatched one properly prompted reviewer with both focus lines and ledger pointer, and neither self-reviewed nor questioned the partner.

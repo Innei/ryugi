@@ -1,0 +1,88 @@
+Nothing under `./skill/` needs reading yet: `landing.md` is only read once my partner picks a way to land. Nothing below was actually run.
+
+## Tool call 1: collect the ledger's decisions and look at the workspace before deleting it
+
+```bash
+cd /Users/p/git/notes-app && head -1 .ryugi/sdd/2026-11-10-export-design/progress.md && grep -nE 'Ruling:|minor \(deferred\)|complete|Final' .ryugi/sdd/2026-11-10-export-design/progress.md && ls -la .ryugi/sdd/ .ryugi/sdd/2026-11-10-export-design/
+```
+
+Assumed output:
+
+```
+# SDD ledger — plan: docs/ryugi/specs/2026-11-10-export-design.md
+2:Slicing: 3 tasks — serializer, CSV quoting, export endpoint
+3:Task 1: complete (commits 4e1a9c2..a13f0d7, tests: pnpm test → 27 passed)
+4:Task 2: Ruling: quote fields per RFC 4180 — spec is silent on commas — cost if wrong: Excel-only users see quotes
+5:Task 2: complete (commits a13f0d7..c82b6e1, tests: pnpm test → 29 passed)
+6:Task 3: complete (commits c82b6e1..e90d4fa, tests: pnpm test → 31 passed)
+7:Final review: subagent
+8:Final: fixed streaming export — test_export_streams RED→GREEN, suite 32/32
+9:Final: minor (deferred): CSV header says updatedAt
+```
+
+I also assume `.ryugi/sdd/` holds only `2026-11-10-export-design/`, containing `tasks.md`, `progress.md`, briefs, test logs and the review package. That gives exactly one `Ruling:` line and one `minor (deferred)` line.
+
+## Tool call 2: prove the fixes are committed and the suite is green
+
+```bash
+cd /Users/p/git/notes-app && git status --short && git branch --show-current && git log --oneline main..HEAD && pnpm test > /tmp/notes-app-export-final-test.log 2>&1; echo "exit=$?"; tail -15 /tmp/notes-app-export-final-test.log
+```
+
+Assumed output:
+
+```
+feat/export
+7b3c5aa fix(export): stream CSV rows instead of buffering
+e90d4fa feat(export): GET /notes/export endpoint
+c82b6e1 feat(export): RFC 4180 field quoting
+a13f0d7 feat(export): note-to-row serializer
+exit=0
+ Test Files  6 passed (6)
+      Tests  32 passed (32)
+```
+
+`git status --short` printed nothing, so the tree is clean and the fix is committed in `7b3c5aa`. The suite is 32/32 with exit 0.
+
+## Tool call 3: delete this spec's workspace only
+
+The review is clean, the fix is committed, and the rulings and minors are captured above.
+
+```bash
+cd /Users/p/git/notes-app && rm -rf .ryugi/sdd/2026-11-10-export-design && ls -la .ryugi/sdd/ && git status --short
+```
+
+Assumed output: `.ryugi/sdd/` is now empty and `git status` is still clean, since the workspace was git-ignored.
+
+No push, merge or PR: landing is my partner's call.
+
+## Message to my human partner
+
+> CSV export is built on `feat/export` and the suite is green: `pnpm test` just now gave 32 passed out of 32, exit 0, with a clean working tree. Nothing has been pushed or merged.
+>
+> **What landed** (4 commits, `main..feat/export`)
+> - `a13f0d7` note-to-row serializer
+> - `c82b6e1` RFC 4180 field quoting
+> - `e90d4fa` `GET /notes/export` endpoint
+> - `7b3c5aa` fix from the final review: the export now streams rows instead of buffering (`test_export_streams` went from failing to passing)
+>
+> **Final review:** a fresh-context reviewer went over the whole branch. It raised one Important finding (the streaming fix above) and one Minor, which is deferred below.
+>
+> **Verification:** the spec makes one claim, and the test command proves it, so there is no verify page and nothing awaits a verdict from you. The project has no skill for checking the running product, so I did not check it in a running app.
+>
+> **Rulings I made**
+> 1. Task 2: fields are quoted per RFC 4180, because the spec is silent on commas inside fields. Cost if wrong: Excel-only users see quotes.
+>
+> **Deferred minors**
+> 1. The CSV header says `updatedAt`. I did not fix it; it is yours to decide.
+>
+> The spec's scratch workspace (`.ryugi/sdd/2026-11-10-export-design/`) is deleted; the git history is the record now.
+>
+> **How do you want to land it?**
+> 1. **Squash into `main`** (default)
+> 2. **Rebase onto `main`**
+> 3. **Push and open a PR**
+> 4. **Keep the branch as-is**
+
+I stop here. When they pick, I read `./skill/landing.md` and follow it.
+
+SUMMARY: I collected the one ruling and one deferred minor from the ledger, re-ran `pnpm test` (assumed 32/32, tree clean), deleted only this spec's workspace and reported with the four landing options; landing `feat/export` now waits on my partner's choice.
