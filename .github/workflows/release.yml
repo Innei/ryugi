@@ -104,6 +104,10 @@ jobs:
         timeout-minutes: 5
         run: pnpm install --frozen-lockfile
 
+      - name: Catch the plugin checkout up with main, which can move during the wait
+        working-directory: ryugi
+        run: git pull -q --ff-only origin "$GITHUB_REF_NAME"
+
       - name: Sync the generated launcher files into the plugin
         working-directory: ryugi-cloud/packages/artifacts
         env:
