@@ -280,3 +280,94 @@ test('the turn-end flush never waits on a stdin that stays open', async (t) => {
   assert.ok(Date.now() - started < 3000, `took ${Date.now() - started} ms`);
   await until(() => seen.some((r) => r.path === '/api/cloud/flush'));
 });
+
+test('the Antigravity PreToolUse hook reports camelCase toolCall.args.TargetFile and returns {} without auto-allowing', async (t) => {
+  const dir = project(t);
+  const seen = await hub(t, dir);
+  const file = path.join(dir, '.ryugi/artifacts/document/plan/doc.xml');
+  const result = await run(
+    `"${path.join(repo, 'hooks/run-hook.cmd')}" agent-event`,
+    {
+      hookEventName: 'PreToolUse',
+      conversationId: SESSION,
+      cwd: dir,
+      toolCall: {
+        id: 'call_1',
+        name: 'edit_file',
+        args: { TargetFile: file },
+      },
+    },
+    { ANTIGRAVITY_AGENT: '1', CLAUDE_PLUGIN_ROOT: '' },
+  );
+  assert.equal(result.code, 0);
+  assert.deepEqual(JSON.parse(result.out), {});
+  await until(() => seen.length === 1);
+  assert.deepEqual(
+    { ...seen[0].body, at: undefined },
+    {
+      host: 'antigravity',
+      session: SESSION,
+      event: 'PreToolUse',
+      at: undefined,
+      paths: [file],
+      tool: 'edit_file',
+    },
+  );
+});
+
+test('the Antigravity PostToolUse and PreInvocation hooks return {} and only map invocationNum 0 to UserPromptSubmit', async (t) => {
+  const dir = project(t);
+  const seen = await hub(t, dir);
+  const cmd = `"${path.join(repo, 'hooks/run-hook.cmd')}" agent-event`;
+  const preInv0 = await run(
+    cmd,
+    {
+      hookEventName: 'PreInvocation',
+      conversationId: SESSION,
+      cwd: dir,
+      invocationNum: 0,
+    },
+    { ANTIGRAVITY_AGENT: '1', CLAUDE_PLUGIN_ROOT: '' },
+  );
+  assert.equal(preInv0.code, 0);
+  assert.deepEqual(JSON.parse(preInv0.out), {});
+  await until(() => seen.length === 1);
+  assert.equal(seen[0].body.host, 'antigravity');
+  assert.equal(seen[0].body.event, 'UserPromptSubmit');
+
+  const preInv1 = await run(
+    cmd,
+    {
+      hookEventName: 'PreInvocation',
+      conversationId: SESSION,
+      cwd: dir,
+      invocationNum: 1,
+    },
+    { ANTIGRAVITY_AGENT: '1', CLAUDE_PLUGIN_ROOT: '' },
+  );
+  assert.equal(preInv1.code, 0);
+  assert.deepEqual(JSON.parse(preInv1.out), {});
+  await new Promise((r) => setTimeout(r, 150));
+  assert.equal(seen.length, 1, 'mid-turn PreInvocation must not emit UserPromptSubmit');
+});
+
+test('inherited ANTIGRAVITY_AGENT=1 does not hijack Codex or Claude Code agent-event hooks', async (t) => {
+  const dir = project(t);
+  const seen = await hub(t, dir);
+  const file = path.join(dir, '.ryugi/artifacts/document/plan/doc.xml');
+  const codexRes = await run(
+    commandFor(codexHooks(), 'PreToolUse').command,
+    {
+      hook_event_name: 'PreToolUse',
+      session_id: SESSION,
+      cwd: dir,
+      tool_name: 'apply_patch',
+      tool_input: { file_path: file },
+    },
+    { ANTIGRAVITY_AGENT: '1' },
+  );
+  assert.equal(codexRes.code, 0);
+  assert.equal(codexRes.out, '');
+  await until(() => seen.length === 1);
+  assert.equal(seen[0].body.host, 'codex');
+});

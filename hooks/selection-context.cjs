@@ -108,7 +108,8 @@ function describe(session, { file, value }, prompt, budget) {
   return [head.join('\n'), kept, tail].filter(Boolean).join('\n');
 }
 
-const cursorKey = (env) => (env.CLAUDE_CODE_IS_COWORK ? 'Claude Cowork' : 'Claude Code');
+const cursorKey = (env, isAntigravity = false) =>
+  isAntigravity ? 'Antigravity' : env.CLAUDE_CODE_IS_COWORK ? 'Claude Cowork' : 'Claude Code';
 
 const LAUNCHER = path.resolve(__dirname, '..', 'skills', 'artifacts', 'app', 'ryugi.cjs');
 
@@ -293,40 +294,101 @@ function whiteboardSelections(session, root, budget) {
 }
 
 function main() {
-  const project = process.argv[2];
-  const session = process.argv[3] || project;
   let input = {};
   try {
     input = JSON.parse(fs.readFileSync(0, 'utf8'));
   } catch {}
-  const prompt = typeof input.prompt === 'string' ? input.prompt : '';
+  const isAntigravity = Boolean(
+    input.hookEventName === 'PreInvocation' ||
+    (process.env.ANTIGRAVITY_AGENT &&
+      !process.env.CLAUDE_PROJECT_DIR &&
+      !process.env.CLAUDE_PLUGIN_ROOT &&
+      !process.env.CURSOR_PLUGIN_ROOT &&
+      input.hook_event_name === undefined),
+  );
+  if (isAntigravity && typeof input.invocationNum === 'number' && input.invocationNum > 0) {
+    process.stdout.write('{}\n');
+    return;
+  }
+  const { projectRoot } = require('../skills/artifacts/app/comment-subscriptions.cjs');
+  const rawCwd =
+    typeof input.cwd === 'string' && input.cwd
+      ? input.cwd
+      : Array.isArray(input.workspacePaths) && typeof input.workspacePaths[0] === 'string'
+        ? input.workspacePaths[0]
+        : process.cwd();
+  let session;
+  let project;
+  try {
+    session = process.argv[3] || (process.argv[2] ? process.argv[2] : fs.realpathSync(rawCwd));
+    project = process.argv[2] || projectRoot(session);
+  } catch {
+    if (isAntigravity) process.stdout.write('{}\n');
+    return;
+  }
   const root = path.join(project, '.ryugi', 'artifacts');
   const state = path.join(root, '.state');
-  const autoPublish = autoPublishContext(
-    project,
-    process.env,
-    typeof input.session_id === 'string' ? input.session_id : '',
-  );
-  const sessionId = UUID.test(input.session_id || '')
-    ? input.session_id
-    : process.env.CLAUDE_CODE_SESSION_ID;
+  const rawSessionId =
+    typeof input.session_id === 'string' && input.session_id
+      ? input.session_id
+      : typeof input.conversationId === 'string' && input.conversationId
+        ? input.conversationId
+        : '';
+  const sessionId = UUID.test(rawSessionId)
+    ? rawSessionId
+    : process.env.ANTIGRAVITY_CONVERSATION_ID || process.env.CLAUDE_CODE_SESSION_ID;
+  if (isAntigravity && process.env.ANTIGRAVITY_LS_ADDRESS && UUID.test(sessionId || '')) {
+    try {
+      const watcher = path.resolve(
+        __dirname,
+        '..',
+        'skills',
+        'artifacts',
+        'app',
+        'agy-comment-watch.cjs',
+      );
+      if (fs.existsSync(watcher)) {
+        const { spawn } = require('node:child_process');
+        const child = spawn(process.execPath, [watcher, 'watch'], {
+          cwd: project,
+          env: { ...process.env, ANTIGRAVITY_CONVERSATION_ID: sessionId },
+          detached: true,
+          stdio: ['pipe', 'ignore', 'ignore'],
+        });
+        child.stdin.end(JSON.stringify({ conversationId: sessionId, cwd: project }));
+        child.unref();
+      }
+    } catch {}
+  }
+  if (isAntigravity && !fs.existsSync(path.join(state, 'server-info'))) {
+    process.stdout.write('{}\n');
+    return;
+  }
+  const prompt =
+    typeof input.prompt === 'string'
+      ? input.prompt
+      : typeof input.lastUserInput === 'string'
+        ? input.lastUserInput
+        : '';
+  const autoPublish = autoPublishContext(project, process.env, sessionId || rawSessionId);
+  const subHost = isAntigravity ? 'antigravity' : 'claude';
   const elsewhere = UUID.test(sessionId || '')
     ? checkouts(project)
         .filter(
           (other) =>
-            other !== project && fs.existsSync(subscriptionFile(other, 'claude', sessionId)),
+            other !== project && fs.existsSync(subscriptionFile(other, subHost, sessionId)),
         )
         .map((other) =>
           commentReminders(
             other,
             path.join(other, '.ryugi', 'artifacts'),
-            cursorKey(process.env),
-            subscriptions(other, 'claude', sessionId),
+            cursorKey(process.env, isAntigravity),
+            subscriptions(other, subHost, sessionId),
           ),
         )
     : [];
   const reminders = [
-    commentReminders(project, root, cursorKey(process.env)),
+    commentReminders(project, root, cursorKey(process.env, isAntigravity)),
     ...elsewhere,
     autoPublish,
   ]
@@ -350,8 +412,20 @@ function main() {
   for (const section of documents) left -= section.length + 2;
   sections.push(...whiteboardSelections(session, root, left));
   if (reminders) sections.push(reminders);
-  if (!sections.length) return;
-  process.stdout.write(`${sections.join('\n\n')}\n`);
+  if (!sections.length) {
+    if (isAntigravity) process.stdout.write('{}\n');
+    return;
+  }
+  const text = `${sections.join('\n\n')}\n`;
+  if (isAntigravity) {
+    process.stdout.write(
+      `${JSON.stringify({
+        injectSteps: [{ systemMessage: { systemMessage: text.trimEnd() } }],
+      })}\n`,
+    );
+    return;
+  }
+  process.stdout.write(text);
 }
 
 module.exports = {

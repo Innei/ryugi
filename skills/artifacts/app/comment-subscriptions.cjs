@@ -12,6 +12,7 @@ const HOSTS = {
   codex: { env: 'CODEX_THREAD_ID', dir: 'codex-comment-watch' },
   claude: { env: 'CLAUDE_CODE_SESSION_ID', dir: 'claude-comment-watch' },
   pi: { env: 'PI_SESSION_ID', dir: 'pi-comment-watch' },
+  antigravity: { env: 'ANTIGRAVITY_CONVERSATION_ID', dir: 'agy-comment-watch' },
 };
 
 function readJson(file) {
@@ -254,7 +255,7 @@ function boundCodexSession(env, proof) {
       return bound.session;
     }
     candidates = candidates.filter((c) =>
-      ['claude', 'pi'].every(
+      ['claude', 'pi', 'antigravity'].every(
         (host) => !sessionOf(host, env) || sessionOf(host, env) === c.inherited?.[host],
       ),
     );
@@ -283,11 +284,16 @@ function identity(env, proof) {
     if (session) return { host: 'codex', session };
     if (proof) throw new Error('Artifact feedback session binding is no longer active.');
   }
+  if (env.ANTIGRAVITY_AGENT && sessionOf('antigravity', env)) {
+    return { host: 'antigravity', session: sessionOf('antigravity', env) };
+  }
   const hosts = ['claude', 'pi'].filter((host) => sessionOf(host, env));
   if (hosts.length === 1) return { host: hosts[0], session: sessionOf(hosts[0], env) };
   if (hosts.length > 1) throw new Error('Artifact feedback has ambiguous agent session markers.');
   if (sessionOf('codex', env))
     throw new Error('Artifact feedback needs a current Codex hook session binding.');
+  if (sessionOf('antigravity', env))
+    return { host: 'antigravity', session: sessionOf('antigravity', env) };
   return null;
 }
 

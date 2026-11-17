@@ -249,6 +249,67 @@ if [[ "$out" == *"document/theirs"* ]]; then fail "leaves out worktree artifacts
 
 if grep -q '"UserPromptSubmit"' "$REPO_ROOT/hooks/hooks.json"; then pass "is registered in hooks.json"; else fail "is registered in hooks.json"; fi
 
+echo "Antigravity PreInvocation"
+agy_dir="$(project agy-selected)"
+write_selection "$agy_dir"
+agy_out="$(printf '{"hookEventName":"PreInvocation","conversationId":"0b5f6c1e-3f0a-4a52-9d0e-6a4d3c2b1a00","cwd":"%s","lastUserInput":"看看 hero-2#5","invocationNum":0}' "$agy_dir" \
+  | env -i PATH="${PATH:-}" HOME="$TEST_ROOT" ANTIGRAVITY_AGENT=1 bash "$HOOK" user-prompt-submit)"
+if printf '%s' "$agy_out" | node -e '
+const fs = require("fs");
+const data = JSON.parse(fs.readFileSync(0, "utf8"));
+const msg = data.injectSteps?.[0]?.systemMessage?.systemMessage || "";
+if (!msg.includes("hero-2#12 <div>") || !msg.includes("hero-2#5 <span>")) process.exit(1);
+'; then
+  pass "Antigravity PreInvocation wraps selection context in injectSteps on invocationNum 0"
+else
+  fail "Antigravity PreInvocation wraps selection context in injectSteps on invocationNum 0"
+  echo "$agy_out" | sed 's/^/      /'
+fi
+
+agy_later_out="$(printf '{"hookEventName":"PreInvocation","conversationId":"0b5f6c1e-3f0a-4a52-9d0e-6a4d3c2b1a00","cwd":"%s","lastUserInput":"看看 hero-2#5","invocationNum":1}' "$agy_dir" \
+  | env -i PATH="${PATH:-}" HOME="$TEST_ROOT" ANTIGRAVITY_AGENT=1 bash "$HOOK" user-prompt-submit)"
+if [[ "$agy_later_out" == "{}" ]]; then
+  pass "Antigravity PreInvocation emits {} when invocationNum > 0"
+else
+  fail "Antigravity PreInvocation emits {} when invocationNum > 0 ($agy_later_out)"
+fi
+
+agy_empty_dir="$(project agy-empty)"
+rm "$agy_empty_dir/.ryugi/artifacts/.state/server-info"
+agy_empty_out="$(printf '{"hookEventName":"PreInvocation","conversationId":"0b5f6c1e-3f0a-4a52-9d0e-6a4d3c2b1a00","cwd":"%s","lastUserInput":"hello","invocationNum":0}' "$agy_empty_dir" \
+  | env -i PATH="${PATH:-}" HOME="$TEST_ROOT" ANTIGRAVITY_AGENT=1 bash "$HOOK" user-prompt-submit)"
+if [[ "$agy_empty_out" == "{}" ]]; then
+  pass "Antigravity PreInvocation emits {} when no server or selection is active"
+else
+  fail "Antigravity PreInvocation emits {} when no server or selection is active ($agy_empty_out)"
+fi
+
+agy_omitted_out="$(printf '{"hookEventName":"PreInvocation","conversationId":"0b5f6c1e-3f0a-4a52-9d0e-6a4d3c2b1a00","workspacePaths":["%s"],"lastUserInput":"看看 hero-2#5"}' "$agy_dir" \
+  | env -i PATH="${PATH:-}" HOME="$TEST_ROOT" ANTIGRAVITY_AGENT=1 bash "$HOOK" user-prompt-submit)"
+if printf '%s' "$agy_omitted_out" | node -e '
+const fs = require("fs");
+const data = JSON.parse(fs.readFileSync(0, "utf8"));
+const msg = data.injectSteps?.[0]?.systemMessage?.systemMessage || "";
+if (!msg.includes("hero-2#12 <div>") || !msg.includes("hero-2#5 <span>")) process.exit(1);
+'; then
+  pass "Antigravity PreInvocation handles omitted invocationNum and workspacePaths[0] fallback"
+else
+  fail "Antigravity PreInvocation handles omitted invocationNum and workspacePaths[0] fallback"
+  echo "$agy_omitted_out" | sed 's/^/      /'
+fi
+
+agy_missing_cwd="$(printf '{"hookEventName":"PreInvocation","conversationId":"0b5f6c1e-3f0a-4a52-9d0e-6a4d3c2b1a00","cwd":"%s/nonexistent-dir"}' "$TEST_ROOT" \
+  | env -i PATH="${PATH:-}" HOME="$TEST_ROOT" ANTIGRAVITY_AGENT=1 bash "$HOOK" user-prompt-submit)"
+if [[ "$agy_missing_cwd" == "{}" ]]; then
+  pass "Antigravity PreInvocation emits {} cleanly when cwd does not exist"
+else
+  fail "Antigravity PreInvocation emits {} cleanly when cwd does not exist ($agy_missing_cwd)"
+fi
+
+claude_in_agy_out="$(printf '{"hook_event_name":"UserPromptSubmit","cwd":"%s","prompt":"看看 hero-2#5"}' "$agy_dir" \
+  | env -i PATH="${PATH:-}" HOME="$TEST_ROOT" ANTIGRAVITY_AGENT=1 CLAUDE_PROJECT_DIR="$agy_dir" bash "$HOOK" user-prompt-submit)"
+expect "Claude Code hook inside inherited ANTIGRAVITY_AGENT=1 still outputs plain text" "$claude_in_agy_out" 'Artboard artboard/node-id'
+
 if [[ "$FAILURES" -gt 0 ]]; then
   echo "FAILED: $FAILURES"
   exit 1

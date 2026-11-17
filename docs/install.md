@@ -8,13 +8,13 @@ npx ryugi-artifacts install
 
 The terminal wizard selects Artifacts or Full workflow, then one or more detected
 harnesses. It installs a persistent CLI and shows the plan before applying it.
-Supported targets: Claude Code, Codex, Cursor, Gemini CLI, OpenCode, Pi and GitHub
-Copilot CLI. Leave the target selection empty for CLI only. Scripts use explicit
+Supported targets: Claude Code, Codex, Cursor, Gemini CLI, OpenCode, Pi, GitHub
+Copilot CLI and Antigravity (`agy`). Leave the target selection empty for CLI only. Scripts use explicit
 choices:
 
 ```bash
 npx ryugi-artifacts install --mode artifacts --harness codex,pi
-npx ryugi-artifacts install --mode full --harness claude-code
+npx ryugi-artifacts install --mode full --harness claude-code,agy
 npx ryugi-artifacts install --mode artifacts --harness none
 ```
 
@@ -102,12 +102,16 @@ manual installation commands below retain their existing full-workflow behavior.
 ## Antigravity
 
 ```bash
+npx ryugi-artifacts install --mode full --harness agy
+```
+
+Or install directly from the repository with `agy`:
+
+```bash
 agy plugin install https://github.com/Innei/ryugi
 ```
 
-Antigravity lists each installed skill's description, and the description of the
-`using-ryugi` skill prompts the model to load that skill at the start of a
-conversation. Reinstall with the same command to update.
+When installed through the unified installer (`--harness agy` or `--harness antigravity`), Ryugi stages its native `hooks.json` at the plugin root so `SessionStart` injects the `using-ryugi` bootstrap automatically (in `full` mode), `PreInvocation` attaches open Artboard/document selections and unread comment reminders, `Stop` flushes changes, and the background watcher delivers browser comments and submitted choices through the local Antigravity Language Server. When installed directly from the git repository URL without the unified installer, Antigravity lists each installed skill's description and the `using-ryugi` description prompts the model to load it at the start of a conversation.
 
 ## Codex, Cursor
 

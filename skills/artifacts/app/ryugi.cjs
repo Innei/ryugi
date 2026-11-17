@@ -249,7 +249,8 @@ function main() {
     process.env.CODEX_THREAD_ID ||
     process.env.CODEX_SESSION_ID ||
     process.env.CLAUDE_CODE_SESSION_ID ||
-    process.env.PI_SESSION_ID
+    process.env.PI_SESSION_ID ||
+    process.env.ANTIGRAVITY_CONVERSATION_ID
   ) {
     try {
       require('./comment-subscriptions.cjs').register(args, process.env, sessionProof);
