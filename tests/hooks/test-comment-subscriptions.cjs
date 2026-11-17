@@ -39,6 +39,8 @@ function fixture(t) {
   for (const key of [
     'CLAUDE_CODE_SESSION_ID',
     'PI_SESSION_ID',
+    'ANTIGRAVITY_CONVERSATION_ID',
+    'ANTIGRAVITY_AGENT',
     'CODEX_APP_TOOLS_PIPE_PATH',
     'CODEX_MCP_NODE_PATH',
     'CODEX_APP_TOOLS_CALLER_HOST_ID',
@@ -76,7 +78,12 @@ function fixture(t) {
     return result;
   };
   const file = (host = 'codex', session = CURRENT) =>
-    path.join(project, '.ryugi/artifacts/.state', `${host}-comment-watch`, `${session}.json`);
+    path.join(
+      project,
+      '.ryugi/artifacts/.state',
+      host === 'antigravity' ? 'agy-comment-watch' : `${host}-comment-watch`,
+      `${session}.json`,
+    );
   const read = (host, session) =>
     fs.existsSync(file(host, session))
       ? JSON.parse(fs.readFileSync(file(host, session), 'utf8')).artifacts
@@ -304,3 +311,13 @@ process.stdout.write(r.stdout);process.stderr.write(r.stderr);process.exitCode=r
     assert.deepEqual(f.read('codex', PARENT), []);
   },
 );
+
+test('an Antigravity session registers its opened artifact under agy-comment-watch', (t) => {
+  const f = fixture(t);
+  f.run(['start', '--artifact', 'document/agy-plan'], {
+    CODEX_THREAD_ID: '',
+    CODEX_SESSION_ID: '',
+    ANTIGRAVITY_CONVERSATION_ID: CURRENT,
+  });
+  assert.deepEqual(f.read('antigravity', CURRENT), ['document/agy-plan']);
+});

@@ -320,6 +320,37 @@ function main() {
   const project = process.argv[2] || projectRoot(session);
   const root = path.join(project, '.ryugi', 'artifacts');
   const state = path.join(root, '.state');
+  const rawSessionId =
+    typeof input.session_id === 'string' && input.session_id
+      ? input.session_id
+      : typeof input.conversationId === 'string' && input.conversationId
+        ? input.conversationId
+        : '';
+  const sessionId = UUID.test(rawSessionId)
+    ? rawSessionId
+    : process.env.ANTIGRAVITY_CONVERSATION_ID || process.env.CLAUDE_CODE_SESSION_ID;
+  if (isAntigravity && process.env.ANTIGRAVITY_LS_ADDRESS && UUID.test(sessionId || '')) {
+    try {
+      const watcher = path.resolve(
+        __dirname,
+        '..',
+        'skills',
+        'artifacts',
+        'app',
+        'agy-comment-watch.cjs',
+      );
+      if (fs.existsSync(watcher)) {
+        const { spawn } = require('node:child_process');
+        const child = spawn(process.execPath, [watcher, 'watch'], {
+          cwd: project,
+          env: { ...process.env, ANTIGRAVITY_CONVERSATION_ID: sessionId },
+          detached: true,
+          stdio: 'ignore',
+        });
+        child.unref();
+      }
+    } catch {}
+  }
   if (isAntigravity && !fs.existsSync(path.join(state, 'server-info'))) {
     process.stdout.write('{}\n');
     return;
@@ -330,16 +361,7 @@ function main() {
       : typeof input.lastUserInput === 'string'
         ? input.lastUserInput
         : '';
-  const rawSessionId =
-    typeof input.session_id === 'string' && input.session_id
-      ? input.session_id
-      : typeof input.conversationId === 'string' && input.conversationId
-        ? input.conversationId
-        : '';
   const autoPublish = autoPublishContext(project, process.env, rawSessionId);
-  const sessionId = UUID.test(rawSessionId)
-    ? rawSessionId
-    : process.env.ANTIGRAVITY_CONVERSATION_ID || process.env.CLAUDE_CODE_SESSION_ID;
   const subHost = isAntigravity ? 'antigravity' : 'claude';
   const elsewhere = UUID.test(sessionId || '')
     ? checkouts(project)

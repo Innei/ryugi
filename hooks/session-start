@@ -88,6 +88,10 @@ if { [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] || [ -n "${ANTIGRAVITY_AGENT:-}" ]; } && [
   RYUGI_ARTIFACTS_OWNER="$PPID" node "${SCRIPT_DIR}/start-artifacts.cjs" "$project_dir" < /dev/null > /dev/null 2>&1 &
 fi
 
+if [ -n "${ANTIGRAVITY_AGENT:-}" ] && [ -n "${ANTIGRAVITY_LS_ADDRESS:-}" ] && [ -f "${PLUGIN_ROOT}/skills/artifacts/app/agy-comment-watch.cjs" ] && command -v node > /dev/null 2>&1; then
+  node "${PLUGIN_ROOT}/skills/artifacts/app/agy-comment-watch.cjs" watch < /dev/null > /dev/null 2>&1 &
+fi
+
 # The ryugi-artifacts marketplace entry loads only the artifacts skills but
 # still runs every hook. Its data dir (<entry>-<marketplace>) names the entry
 # for every marketplace source; a directory source runs hooks from the source
