@@ -28,6 +28,11 @@ id>"` for your recommended board (the viewer tags it), and a sticky beside
   the group with one line of why.
 - Real copy and data from their project, drawn with their design system
   when it has one.
+- When what is being decided is a path through several screens (what an
+  action opens, where a condition forks, where an error returns), draw those
+  screens as a connected flow with labelled edges and condition notes
+  (Flows in the artifacts CLI artboard writing description). Options for one
+  step of the path still sit in a choice group.
 
 - Use ryugi:interface-craft for UI design judgment. If direction is the open question, compare coherent directions and explain their rationale; once chosen, keep the **selected visual direction** and tokens fixed while comparing one layout or interaction dimension per later group.
 

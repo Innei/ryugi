@@ -31,7 +31,9 @@ Draw on a whiteboard while the parts and arrows are themselves the question;
 once the structure is settled and the reasons need writing, it is a document
 that references the whiteboard. Explaining an existing structure is a document;
 working one out together is a whiteboard. UI screens and user flows stay on an
-artboard. One tunable surface is `html`; an artboard compares several dimensions.
+artboard; when its screens follow one another, connect them as a flow instead
+of laying them side by side. One tunable surface is `html`; an artboard
+compares several dimensions.
 
 Same topic: keep the same artifact and edit in place. New topic: a new ID and
 link. Your human partner can override either. IDs use lowercase letters, digits
