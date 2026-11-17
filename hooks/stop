@@ -6,6 +6,15 @@ case "$0" in
   *) SCRIPT_DIR="$(pwd)" ;;
 esac
 
+if [ -n "${ANTIGRAVITY_AGENT:-}" ]; then
+  if command -v node > /dev/null 2>&1; then
+    node "$SCRIPT_DIR/flush-artifacts.cjs" 2> /dev/null
+  else
+    printf '{}\n'
+  fi
+  exit 0
+fi
+
 . "$SCRIPT_DIR/project-root.sh"
 project="$(ryugi_project_root "${CLAUDE_PROJECT_DIR:-$PWD}")"
 [ -f "$project/.ryugi/artifacts/.state/server-info" ] || exit 0

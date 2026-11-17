@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const http = require('node:http');
 const path = require('node:path');
 
-const PATH_FIELDS = ['file_path', 'path', 'notebook_path'];
+const PATH_FIELDS = ['file_path', 'path', 'notebook_path', 'Path'];
 const PATCH_FILE = /^\*\*\* (?:Add|Update|Delete) File: (.+)$|^\*\*\* Move to: (.+)$/gm;
 
 function postToServer(project, pathname, body) {
@@ -61,9 +61,19 @@ function strings(value, out = []) {
 }
 
 function pathsOf(input) {
-  const tool = input.tool_input;
-  if (!tool || typeof tool !== 'object') return [];
-  const cwd = typeof input.cwd === 'string' ? input.cwd : process.cwd();
+  const tool =
+    input.tool_input && typeof input.tool_input === 'object'
+      ? input.tool_input
+      : input.toolCall && typeof input.toolCall.args === 'object'
+        ? input.toolCall.args
+        : null;
+  if (!tool) return [];
+  const cwd =
+    typeof input.cwd === 'string' && input.cwd
+      ? input.cwd
+      : Array.isArray(input.workspacePaths) && typeof input.workspacePaths[0] === 'string'
+        ? input.workspacePaths[0]
+        : process.cwd();
   const found = PATH_FIELDS.map((field) => tool[field]).filter(
     (value) => typeof value === 'string',
   );
@@ -73,13 +83,35 @@ function pathsOf(input) {
 }
 
 function eventFrom(input, host, at = Date.now()) {
-  if (!input || typeof input.session_id !== 'string' || typeof input.hook_event_name !== 'string')
-    return null;
-  const event = { host, session: input.session_id, event: input.hook_event_name, at };
-  if (input.hook_event_name === 'PreToolUse') {
+  if (!input || typeof input !== 'object') return null;
+  const session =
+    typeof input.session_id === 'string' && input.session_id
+      ? input.session_id
+      : typeof input.conversationId === 'string' && input.conversationId
+        ? input.conversationId
+        : null;
+  const rawEvent =
+    typeof input.hook_event_name === 'string' && input.hook_event_name
+      ? input.hook_event_name
+      : typeof input.hookEventName === 'string' && input.hookEventName
+        ? input.hookEventName
+        : null;
+  if (!session || !rawEvent) return null;
+  const eventName = rawEvent === 'PreInvocation' ? 'UserPromptSubmit' : rawEvent;
+  const resolvedHost =
+    host === 'antigravity' || (!input.session_id && typeof input.conversationId === 'string')
+      ? 'antigravity'
+      : host;
+  const event = { host: resolvedHost, session, event: eventName, at };
+  if (eventName === 'PreToolUse') {
     event.paths = pathsOf(input).slice(0, 64);
-    if (typeof input.tool_name === 'string' && input.tool_name.length <= 64)
-      event.tool = input.tool_name;
+    const toolName =
+      typeof input.tool_name === 'string'
+        ? input.tool_name
+        : typeof input.toolCall?.name === 'string'
+          ? input.toolCall.name
+          : null;
+    if (toolName && toolName.length <= 64) event.tool = toolName;
   }
   return event;
 }
@@ -120,11 +152,29 @@ function projectOf(cwd) {
 
 if (require.main === module) {
   const at = Date.now();
-  const host = process.argv[2] === 'claude' ? 'claude' : 'codex';
+  const host =
+    process.argv[2] === 'antigravity'
+      ? 'antigravity'
+      : process.argv[2] === 'claude'
+        ? 'claude'
+        : 'codex';
   void readStdin().then((input) => {
+    if (host === 'antigravity' || process.env.ANTIGRAVITY_AGENT) {
+      const rawEvent = input?.hookEventName || input?.hook_event_name;
+      if (rawEvent === 'PreToolUse') {
+        process.stdout.write('{"decision":"allow"}\n');
+      } else {
+        process.stdout.write('{}\n');
+      }
+    }
     const event = eventFrom(input, host, at);
-    const project =
-      process.argv[3] || (input && typeof input.cwd === 'string' ? projectOf(input.cwd) : null);
+    const rawCwd =
+      input && typeof input.cwd === 'string' && input.cwd
+        ? input.cwd
+        : Array.isArray(input?.workspacePaths) && typeof input.workspacePaths[0] === 'string'
+          ? input.workspacePaths[0]
+          : null;
+    const project = (rawCwd ? projectOf(rawCwd) : null) || process.argv[3] || null;
     if (event && project) void postToServer(project, '/api/agent/event', event);
   });
 }

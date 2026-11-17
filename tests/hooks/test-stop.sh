@@ -71,7 +71,7 @@ for _ in $(seq 1 50); do
   sleep 0.1
 done
 printf '{"type":"server-started","url":"http://localhost:%s/"}\n' "$(cat "$port_file")" > "$dir/.ryugi/artifacts/.state/server-info"
-printf '{"hook_event_name":"Stop","session_id":"s1"}' | node "$REPO_ROOT/hooks/flush-artifacts.cjs" "$dir"
+printf '{"hook_event_name":"Stop","session_id":"s1"}' | env -u ANTIGRAVITY_AGENT node "$REPO_ROOT/hooks/flush-artifacts.cjs" "$dir"
 for _ in $(seq 1 30); do
   [ -s "$seen" ] && break
   sleep 0.1
@@ -79,6 +79,10 @@ done
 wait "$server_pid" 2> /dev/null || true
 expected="$(printf 'POST /api/agent/event %s\nPOST /api/cloud/flush %s' "$dir" "$dir")"
 if [ "$(cat "$seen" 2> /dev/null)" = "$expected" ]; then pass "tells its project's server the turn ended and flushes it"; else fail "tells its project's server the turn ended and flushes it ($(cat "$seen" 2> /dev/null))"; fi
+
+agy_stop_out="$(printf '{"hookEventName":"Stop","conversationId":"s1","cwd":"%s"}' "$TEST_ROOT/none" \
+  | env -i PATH="${PATH:-}" HOME="$TEST_ROOT" ANTIGRAVITY_AGENT=1 bash "$HOOK" stop)"
+if [ "$agy_stop_out" = "{}" ]; then pass "Antigravity Stop hook outputs {}"; else fail "Antigravity Stop hook outputs {} ($agy_stop_out)"; fi
 
 if [ "$FAILURES" -gt 0 ]; then
   echo "$FAILURES failure(s)"

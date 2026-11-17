@@ -111,6 +111,14 @@ if (shape === "nested") {
     fail("sdk output included additional_context");
   }
   context = payload.additionalContext;
+} else if (shape === "antigravity") {
+  if (hasOwn(payload, "hookSpecificOutput") || hasOwn(payload, "additionalContext") || hasOwn(payload, "additional_context")) {
+    fail("antigravity output included foreign context fields");
+  }
+  if (!Array.isArray(payload.injectSteps) || payload.injectSteps.length !== 1) {
+    fail("antigravity output must contain injectSteps array of length 1");
+  }
+  context = payload.injectSteps[0]?.systemMessage?.systemMessage;
 } else {
   fail(`unknown expected shape: ${shape}`);
 }
@@ -226,6 +234,17 @@ assert_command_output \
   "$copilot_home" \
   COPILOT_CLI=1 \
   CLAUDE_PLUGIN_ROOT="$REPO_ROOT" \
+  bash "$HOOK_UNDER_TEST"
+
+agy_home="$(make_home antigravity)"
+assert_command_output \
+  "Antigravity emits injectSteps with systemMessage and read_file instruction" \
+  "antigravity" \
+  "read_file" \
+  "" \
+  "$agy_home" \
+  ANTIGRAVITY_AGENT=1 \
+  PLUGIN_ROOT="$REPO_ROOT" \
   bash "$HOOK_UNDER_TEST"
 
 legacy_home="$(make_home legacy-warning-removed)"
@@ -436,6 +455,17 @@ if artifacts_out="$(env -i PATH="${PATH:-}" HOME="$artifacts_home" CLAUDE_PLUGIN
 else
   fail "the ryugi-artifacts install injects no workflow bootstrap"
   echo "$artifacts_out" | sed 's/^/      /'
+fi
+
+agy_artifacts_only="$TEST_ROOT/agy-artifacts-only"
+mkdir -p "$agy_artifacts_only/skills/artifacts"
+cp -R "$REPO_ROOT/hooks" "$agy_artifacts_only/hooks"
+if agy_artifacts_out="$(env -i PATH="${PATH:-}" HOME="$artifacts_home" ANTIGRAVITY_AGENT=1 PLUGIN_ROOT="$agy_artifacts_only" \
+  bash "$agy_artifacts_only/hooks/session-start" 2>&1)" && [[ "$agy_artifacts_out" == "{}" ]]; then
+  pass "Antigravity artifacts-only install emits empty JSON object {}"
+else
+  fail "Antigravity artifacts-only install emits empty JSON object {}"
+  echo "$agy_artifacts_out" | sed 's/^/      /'
 fi
 
 data_home="$(make_home artifacts-data)"

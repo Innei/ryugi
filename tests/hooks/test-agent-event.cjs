@@ -66,8 +66,11 @@ async function hub(t, dir) {
 
 function run(command, input, env = {}) {
   return new Promise((resolve) => {
+    const baseEnv = { ...process.env };
+    delete baseEnv.ANTIGRAVITY_AGENT;
+    delete baseEnv.ANTIGRAVITY_CONVERSATION_ID;
     const child = spawn(command, {
-      env: { ...process.env, PLUGIN_ROOT: repo, CLAUDE_PLUGIN_ROOT: repo, ...env },
+      env: { ...baseEnv, PLUGIN_ROOT: repo, CLAUDE_PLUGIN_ROOT: repo, ...env },
       shell: true,
       stdio: ['pipe', 'pipe', 'pipe'],
     });
@@ -270,7 +273,11 @@ test('the Codex Stop hook exits before the host deadline even while the server k
 test('the turn-end flush never waits on a stdin that stays open', async (t) => {
   const dir = project(t);
   const seen = await hub(t, dir);
+  const baseEnv = { ...process.env };
+  delete baseEnv.ANTIGRAVITY_AGENT;
+  delete baseEnv.ANTIGRAVITY_CONVERSATION_ID;
   const child = spawn(process.execPath, [path.join(repo, 'hooks/flush-artifacts.cjs'), dir], {
+    env: baseEnv,
     stdio: ['pipe', 'pipe', 'pipe'],
   });
   t.after(() => child.kill());
@@ -279,4 +286,59 @@ test('the turn-end flush never waits on a stdin that stays open', async (t) => {
   assert.equal(code, 0);
   assert.ok(Date.now() - started < 3000, `took ${Date.now() - started} ms`);
   await until(() => seen.some((r) => r.path === '/api/cloud/flush'));
+});
+
+test('the Antigravity PreToolUse hook reports camelCase toolCall.args.Path and returns decision:allow', async (t) => {
+  const dir = project(t);
+  const seen = await hub(t, dir);
+  const file = path.join(dir, '.ryugi/artifacts/document/plan/doc.xml');
+  const result = await run(
+    `"${path.join(repo, 'hooks/run-hook.cmd')}" agent-event`,
+    {
+      hookEventName: 'PreToolUse',
+      conversationId: SESSION,
+      cwd: dir,
+      toolCall: {
+        id: 'call_1',
+        name: 'edit_file',
+        args: { Path: file },
+      },
+    },
+    { ANTIGRAVITY_AGENT: '1' },
+  );
+  assert.equal(result.code, 0);
+  assert.deepEqual(JSON.parse(result.out), { decision: 'allow' });
+  await until(() => seen.length === 1);
+  assert.deepEqual(
+    { ...seen[0].body, at: undefined },
+    {
+      host: 'antigravity',
+      session: SESSION,
+      event: 'PreToolUse',
+      at: undefined,
+      paths: [file],
+      tool: 'edit_file',
+    },
+  );
+});
+
+test('the Antigravity PostToolUse and PreInvocation hooks return {} and map PreInvocation to UserPromptSubmit', async (t) => {
+  const dir = project(t);
+  const seen = await hub(t, dir);
+  const cmd = `"${path.join(repo, 'hooks/run-hook.cmd')}" agent-event`;
+  const preInv = await run(
+    cmd,
+    {
+      hookEventName: 'PreInvocation',
+      conversationId: SESSION,
+      cwd: dir,
+      invocationNum: 0,
+    },
+    { ANTIGRAVITY_AGENT: '1' },
+  );
+  assert.equal(preInv.code, 0);
+  assert.deepEqual(JSON.parse(preInv.out), {});
+  await until(() => seen.length === 1);
+  assert.equal(seen[0].body.host, 'antigravity');
+  assert.equal(seen[0].body.event, 'UserPromptSubmit');
 });
