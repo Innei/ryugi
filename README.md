@@ -25,6 +25,8 @@ Ryugi gives the agent pages to put that work on, and gives you a way to answer o
 - **Document** — a design doc with the agent's questions inline; comment on any sentence.
 - **Whiteboard** — boxes and arrows you both draw on.
 - **HTML** — one page with real sliders to tune a component or a motion.
+- **Slides** — a deck the agent writes and you present, with your notes on a second screen; fix
+  any slide by hand.
 - **Verify** — the built screen next to what you approved, and a report of what the agent proved
   by running it; pass or reject.
 
@@ -92,6 +94,19 @@ You both draw on it. Select what you drew, ask about it, and the answer lands ne
 </picture>
 
 A one-page bench whose sliders keep their values when the agent rewrites the page.
+
+## Slides — a deck you can present
+
+**Use it when** you will stand in front of people with it: a talk, a team share-out, a launch.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/slides-dark.webp">
+  <img src="docs/images/slides-light.webp" alt="A six-slide deck on notification settings: the statement slide “A daily digest by default, instant push only for what can't wait” on stage, the filmstrip below, and Present and Presenter mode in the header">
+</picture>
+
+The agent writes the deck and it follows your light or dark look. Present it full screen, or in
+presenter mode with your notes and the next slide on your screen and the audience on another. Click
+a slide to fix a word, restyle or move a block yourself, or pin a comment for the agent.
 
 ## Verify — you pass or reject
 
@@ -177,8 +192,8 @@ compatible cached release offline. The first run needs network access and a writ
 
 ### Claude Code settings
 
-Ryugi replaces Claude's hosted Artifacts with the Artboard, documents, whiteboards and HTML
-benches. Turn the hosted ones off by adding this key to the top level of `~/.claude/settings.json` —
+Ryugi replaces Claude's hosted Artifacts with the Artboard, documents, whiteboards, HTML
+benches and decks. Turn the hosted ones off by adding this key to the top level of `~/.claude/settings.json` —
 keep your other settings:
 
 ```json
