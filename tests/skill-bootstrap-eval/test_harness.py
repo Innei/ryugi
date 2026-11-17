@@ -87,6 +87,28 @@ class ObservationTests(unittest.TestCase):
         }
         self.assertFalse(score(record)["outcome_pass"])
 
+    def look_record(self, trace):
+        return {
+            "name": "look-candidate-1", "arm": "candidate", "case": "look", "rep": 1,
+            "exit_code": 0, "timed_out": False, "result": {}, "elapsed_seconds": 1,
+            "git_status": "", "checks": {"behavior_pass": True}, "observer_stop": None,
+            "trace": trace,
+        }
+
+    def test_a_question_that_ends_in_a_fix_needs_the_debugging_skill_first(self):
+        edit = {"role": "assistant", "type": "tool_use", "name": "Edit", "id": "e",
+                "input": {"file_path": "/project/filter.cjs"}}
+        skill = {"role": "assistant", "type": "tool_use", "name": "Skill", "id": "s",
+                 "input": {"skill": "ryugi:systematic-debugging"}}
+        self.assertFalse(score(self.look_record([edit]))["route_pass"])
+        self.assertFalse(score(self.look_record([edit, skill]))["route_pass"])
+        self.assertTrue(score(self.look_record([skill, edit]))["route_pass"])
+
+    def test_a_question_answered_without_edits_needs_no_skill(self):
+        answer = {"role": "assistant", "type": "text", "text": "The comparison uses < max."}
+        self.assertTrue(score(self.look_record([answer]))["route_pass"])
+        self.assertIn("look", harness.CASES)
+
 
 
 REPO = Path(__file__).resolve().parents[2]

@@ -46,6 +46,10 @@ CASES["resume"] = (
     "Continue from the recorded progress: Task 1 is complete, so resume Task 2. "
     "Do not ask me to approve the design again."
 )
+CASES["look"] = (
+    "Can you take a look at why the price filter leaves out items priced exactly "
+    "at the maximum? They should be included."
+)
 CASES["style-small"] = "Make the icon cornflower blue."
 CASES["cli-build"] = "Write a CLI that parses CSV."
 CASE_TIMEOUTS = {"todo": 600, "style-small": 420, "cli-build": 300}

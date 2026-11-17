@@ -67,6 +67,10 @@ todo list`. Passes when the first reply starts the artifacts server and
   Independent assertions check the resulting function. Separately inspect
   debugging discovery, regression-test edits, observed failure before the
   production edit, and a green run afterward.
+- **look:** the same defect as bug, asked as a question ("Can you take a
+  look at why…? They should be included."). Answering without touching
+  `filter.cjs` needs no skill; a production edit passes the route only
+  when systematic-debugging was loaded before it.
 - **clamp:** implement a fully specified small CommonJS function.
   Independent boundary assertions check the result; tool order checks
   test-first work and observed red/green runs independently of skill calls.

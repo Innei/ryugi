@@ -121,6 +121,8 @@ def score(record):
         outcome = bool(record.get("observer_stop") and
                        record["observer_stop"]["reason"] == "resume_task_started" and
                        record["checks"].get("completed_task_preserved") and not asked)
+    elif case == "look":
+        outcome = completed
     elif case == "question":
         outcome = completed and "304" in text and "cach" in text.lower() and not calls
     else:
@@ -128,6 +130,7 @@ def score(record):
             r"fail|does not pass|doesn't pass|not passing|not green|失败|未通过", final, re.I))
     skill_names = {item["skill"] for item in skills}
     expected = {"todo": "brainstorming", "bug": "systematic-debugging",
+                "look": "systematic-debugging",
                 "clamp": "test-driven-development", "direct": "test-driven-development",
                 "resume": "executing-specs"}.get(case)
     route_limit = first_prod
@@ -137,6 +140,8 @@ def score(record):
         item["skill"] == expected and (route_limit is None or item["i"] < route_limit)
         for item in skills
     )))
+    if case == "look" and first_prod is None:
+        route_pass = bool(outcome)
     if case in ("direct", "resume") and "brainstorming" in skill_names:
         route_pass = False
     usage = record["result"].get("usage", {})
