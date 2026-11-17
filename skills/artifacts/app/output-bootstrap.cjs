@@ -131,20 +131,27 @@ var OutputError = class extends Error {
 };
 function completionState(completion, warning = false) {
   switch (completion.kind) {
-    case "succeeded":
+    case "succeeded": {
       return { outcome: warning ? "attention" : "success", code: 0 };
-    case "validation_failed":
+    }
+    case "validation_failed": {
       return { outcome: "attention", code: 3 };
-    case "pending":
+    }
+    case "pending": {
       return { outcome: "pending", code: 4 };
-    case "action_required":
+    }
+    case "action_required": {
       return { outcome: "attention", code: 2 };
-    case "partial":
+    }
+    case "partial": {
       return { outcome: "partial", code: 5 };
-    case "failed":
+    }
+    case "failed": {
       return { outcome: "error", code: 1 };
-    case "interrupted":
+    }
+    case "interrupted": {
       return { outcome: "error", code: completion.signal === "SIGINT" ? 130 : 143 };
+    }
   }
 }
 function project(value, keys, path5, omitted) {
