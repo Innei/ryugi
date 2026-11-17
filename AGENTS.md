@@ -20,11 +20,12 @@ The plugin ships without runtime dependencies. The artifacts app (artboard, docu
 
 ## Releasing
 
-Users install from `main`. `ryugi-artifacts` releases separately on npm; a plugin release only versions the skills and harness manifests.
+Users install from `main`. The plugin and `ryugi-artifacts` share one version and release together from the `Release` workflow here.
 
-1. `scripts/bump-version.sh <version>` and commit.
-2. `git tag v<version>` and `git push --atomic origin main v<version>`.
-3. The `Release` workflow checks the versions and creates the GitHub Release.
+1. In `ryugi-cloud`, run `pnpm release <version|patch|minor|major>`. It commits the `packages/artifacts` version, pushes `main` with the tag `artifacts-v<version>` and starts the `Release` workflow here (`gh workflow run release.yml -R Innei/ryugi -f version=<version>`).
+2. The workflow waits for the `Artifacts` CI to pass on a `ryugi-cloud` main commit that contains the tag, publishes `ryugi-artifacts@<version>` to npm from the tag, copies the generated `output-bootstrap.cjs` and `comment-threads.cjs` here, runs `scripts/bump-version.sh <version>`, pushes the commit with the tag `v<version>` and creates the GitHub Release.
+
+A rerun skips whatever is already published or tagged. The workflow reads `ryugi-cloud` with the `RYUGI_CLOUD_TOKEN` secret (contents and actions, read-only) and publishes through npm trusted publishing.
 
 ## Harness Integrations
 

@@ -1,36 +1,155 @@
 name: Release
 
 on:
-  push:
-    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: ryugi-artifacts version to release; defaults to the one on ryugi-cloud main
+        required: false
+        type: string
 
 permissions:
   contents: write
+  id-token: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+env:
+  CLOUD_REPO: ryugi-dev/ryugi-cloud
 
 jobs:
   release:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
+        with:
+          path: ryugi
+          fetch-depth: 0
+          fetch-tags: true
 
-      - name: Tag matches every declared version
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ env.CLOUD_REPO }}
+          ref: main
+          token: ${{ secrets.RYUGI_CLOUD_TOKEN }}
+          path: ryugi-cloud
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Resolve the version
+        id: release
+        working-directory: ryugi-cloud
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
         run: |
-          version="$(jq -r '.version' package.json)"
-          if [[ "v$version" != "$GITHUB_REF_NAME" ]]; then
-            echo "::error::tag $GITHUB_REF_NAME does not match package.json version $version"
+          version="${INPUT_VERSION:-$(jq -r '.version' packages/artifacts/package.json)}"
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::$version is not a semver version"
             exit 1
           fi
+          tag="artifacts-v$version"
+          if ! git rev-parse -q --verify "refs/tags/$tag" > /dev/null; then
+            echo "::error::$CLOUD_REPO has no tag $tag"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          if npm view "ryugi-artifacts@$version" version > /dev/null 2>&1; then
+            echo "ryugi-artifacts@$version is already on npm."
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Wait for Artifacts CI to pass on main with the tag
+        if: steps.release.outputs.publish == 'true'
+        working-directory: ryugi-cloud
+        timeout-minutes: 40
+        env:
+          GH_TOKEN: ${{ secrets.RYUGI_CLOUD_TOKEN }}
+          TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          runs="repos/$CLOUD_REPO/actions/workflows/artifacts.yml/runs?branch=main&event=push&status=success&per_page=1"
+          while true; do
+            tested="$(gh api "$runs" --jq '.workflow_runs[0].head_sha // empty')"
+            if [[ -n "$tested" ]]; then
+              git fetch -q origin main
+              if git merge-base --is-ancestor "$TAG" "$tested"; then
+                echo "$TAG is tested at ${tested:0:8}."
+                break
+              fi
+            fi
+            echo "Artifacts CI has not passed on a commit that contains $TAG yet; waiting."
+            sleep 30
+          done
+
+      - name: Check out the release tag
+        working-directory: ryugi-cloud
+        env:
+          TAG: ${{ steps.release.outputs.tag }}
+        run: git checkout -q --detach "$TAG"
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12.4.1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - working-directory: ryugi-cloud
+        timeout-minutes: 5
+        run: pnpm install --frozen-lockfile
+
+      - name: Sync the generated launcher files into the plugin
+        working-directory: ryugi-cloud/packages/artifacts
+        env:
+          RYUGI_PLUGIN_DIR: ${{ github.workspace }}/ryugi
+          RYUGI_SYNC_PLUGIN: '1'
+        run: pnpm run build:cli
+
+      - name: Publish ryugi-artifacts to npm
+        if: steps.release.outputs.publish == 'true'
+        working-directory: ryugi-cloud/packages/artifacts
+        timeout-minutes: 8
+        env:
+          # The package is built from a private repository; provenance would attest this one as its source.
+          NPM_CONFIG_PROVENANCE: 'false'
+        run: |
+          npm install -g npm@^11.15.0
+          npm publish
+
+      - name: Bump the plugin
+        id: bump
+        working-directory: ryugi
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          if git rev-parse -q --verify "refs/tags/v$VERSION" > /dev/null; then
+            echo "v$VERSION is already tagged."
+            exit 0
+          fi
+          pnpm install --frozen-lockfile
+          scripts/bump-version.sh "$VERSION"
+          jq -r '.files[].path' .version-bump.json | sort -u | while IFS= read -r file; do
+            pnpm exec prettier --write --ignore-unknown "$file"
+          done
           scripts/bump-version.sh --check
-
-      - name: ryugi-artifacts with the same version is on npm
-        run: |
-          version="$(jq -r '.version' package.json)"
-          if ! npm view "ryugi-artifacts@$version" version >/dev/null 2>&1; then
-            echo "::error::ryugi-artifacts@$version is not on npm yet; release it from ryugi-cloud first (tag artifacts-v$version)"
-            exit 1
-          fi
+          git add -A
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git diff --cached --quiet || git commit --no-verify -m "chore: release $VERSION"
+          git tag "v$VERSION"
+          git push --atomic origin "HEAD:${GITHUB_REF_NAME}" "v$VERSION"
 
       - name: Create GitHub Release
-        run: gh release create "$GITHUB_REF_NAME" --verify-tag --generate-notes
+        working-directory: ryugi
         env:
           GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          gh release view "v$VERSION" > /dev/null 2>&1 \
+            || gh release create "v$VERSION" --verify-tag --generate-notes
