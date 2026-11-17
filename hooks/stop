@@ -6,7 +6,7 @@ case "$0" in
   *) SCRIPT_DIR="$(pwd)" ;;
 esac
 
-if [ -n "${ANTIGRAVITY_AGENT:-}" ]; then
+if [ -n "${ANTIGRAVITY_AGENT:-}" ] && [ -z "${CLAUDE_PROJECT_DIR:-}" ] && [ -z "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -z "${CURSOR_PLUGIN_ROOT:-}" ]; then
   if command -v node > /dev/null 2>&1; then
     node "$SCRIPT_DIR/flush-artifacts.cjs" 2> /dev/null
   else

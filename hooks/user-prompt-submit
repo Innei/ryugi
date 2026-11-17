@@ -6,13 +6,18 @@ case "$0" in
   *) SCRIPT_DIR="$(pwd)" ;;
 esac
 
+is_antigravity=0
+if [ -n "${ANTIGRAVITY_AGENT:-}" ] && [ -z "${CLAUDE_PROJECT_DIR:-}" ] && [ -z "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -z "${CURSOR_PLUGIN_ROOT:-}" ]; then
+  is_antigravity=1
+fi
+
 if ! command -v node > /dev/null 2>&1; then
-  [ -n "${ANTIGRAVITY_AGENT:-}" ] && printf '{}\n'
+  [ "$is_antigravity" -eq 1 ] && printf '{}\n'
   exit 0
 fi
 
 . "$SCRIPT_DIR/project-root.sh"
-if [ -n "${ANTIGRAVITY_AGENT:-}" ]; then
+if [ "$is_antigravity" -eq 1 ]; then
   node "$SCRIPT_DIR/selection-context.cjs"
   exit 0
 fi

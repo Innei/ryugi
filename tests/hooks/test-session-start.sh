@@ -247,6 +247,35 @@ assert_command_output \
   PLUGIN_ROOT="$REPO_ROOT" \
   bash "$HOOK_UNDER_TEST"
 
+assert_command_output \
+  "Claude Code inside an inherited ANTIGRAVITY_AGENT=1 shell still emits nested SessionStart additionalContext" \
+  "nested" \
+  "" \
+  "" \
+  "$claude_home" \
+  ANTIGRAVITY_AGENT=1 \
+  CLAUDE_PLUGIN_ROOT="$REPO_ROOT" \
+  bash "$HOOK_UNDER_TEST"
+
+agy_pub_home="$(make_home agy-published-repo)"
+agy_repo_dir="$(cd "$agy_pub_home" && pwd -P)/repo"
+mkdir -p "$agy_repo_dir/.git" "$agy_repo_dir/.ryugi" "$agy_repo_dir/packages/app" "$agy_pub_home/bin"
+printf '{"version":1,"artifacts":{"document/plan":{"cloud":{"id":"c1","url":"u","publishedAt":"t","visibility":"private"}}}}\n' > "$agy_repo_dir/.ryugi/config.json"
+printf '#!/usr/bin/env bash\ncase "$*" in *start-artifacts.cjs*) printf "%%s\\n" "$@" > "%s" ;; *) exec "%s" "$@" ;; esac\n' "$agy_pub_home/node-args" "$(command -v node)" > "$agy_pub_home/bin/node"
+chmod +x "$agy_pub_home/bin/node"
+printf '{"hookEventName":"SessionStart","conversationId":"29ba4e4a-2224-4457-947d-c39ebcbc846c","workspacePaths":["%s"]}' "$agy_repo_dir/packages/app" \
+  | env -i PATH="$agy_pub_home/bin:${PATH:-}" HOME="$agy_pub_home" ANTIGRAVITY_AGENT=1 PLUGIN_ROOT="$REPO_ROOT" \
+    bash "$HOOK_UNDER_TEST" > /dev/null 2>&1 || true
+for _ in 1 2 3 4 5 6 7 8 9 10; do
+  [[ -s "$agy_pub_home/node-args" ]] && break
+  sleep 0.2
+done
+if [[ "$(tail -n 1 "$agy_pub_home/node-args" 2> /dev/null)" == "$agy_repo_dir" ]]; then
+  pass "Antigravity SessionStart resolves workspacePaths[0] from stdin to start the repository's server"
+else
+  fail "Antigravity SessionStart resolves workspacePaths[0] from stdin to start the repository's server"
+fi
+
 legacy_home="$(make_home legacy-warning-removed)"
 mkdir -p "$legacy_home/.config/ryugi/skills"
 assert_command_output \

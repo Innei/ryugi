@@ -12,10 +12,11 @@ function projectOf(cwd) {
 
 const at = Date.now();
 const fallbackProject = process.argv[2];
-if (process.env.ANTIGRAVITY_AGENT) {
+const isAntigravity = !fallbackProject && Boolean(process.env.ANTIGRAVITY_AGENT);
+if (isAntigravity) {
   process.stdout.write('{}\n');
 }
-if (fallbackProject && !process.env.ANTIGRAVITY_AGENT) {
+if (fallbackProject) {
   void postToServer(fallbackProject, '/api/cloud/flush');
 }
 void readStdin().then((input) => {
@@ -27,10 +28,10 @@ void readStdin().then((input) => {
         : null;
   const project = (rawCwd ? projectOf(rawCwd) : null) || fallbackProject;
   if (!project) return;
-  if (process.env.ANTIGRAVITY_AGENT) {
+  if (isAntigravity) {
     void postToServer(project, '/api/cloud/flush');
   }
-  const host = process.env.ANTIGRAVITY_AGENT ? 'antigravity' : 'claude';
+  const host = isAntigravity ? 'antigravity' : 'claude';
   const event = eventFrom(input, host, at);
   if (event) void postToServer(project, '/api/agent/event', event);
 });

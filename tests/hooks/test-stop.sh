@@ -71,7 +71,7 @@ for _ in $(seq 1 50); do
   sleep 0.1
 done
 printf '{"type":"server-started","url":"http://localhost:%s/"}\n' "$(cat "$port_file")" > "$dir/.ryugi/artifacts/.state/server-info"
-printf '{"hook_event_name":"Stop","session_id":"s1"}' | env -u ANTIGRAVITY_AGENT node "$REPO_ROOT/hooks/flush-artifacts.cjs" "$dir"
+printf '{"hook_event_name":"Stop","session_id":"s1"}' | node "$REPO_ROOT/hooks/flush-artifacts.cjs" "$dir"
 for _ in $(seq 1 30); do
   [ -s "$seen" ] && break
   sleep 0.1

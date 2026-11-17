@@ -223,8 +223,55 @@ test('agy-comment-watch falls back to SendUserCascadeMessage when SendAgentMessa
     (c) => c.url === '/exa.language_server_pb.LanguageServerService/SendUserCascadeMessage',
   );
   assert.equal(cascadeCall.body.cascadeId, SESSION);
-  assert.equal(cascadeCall.body.continueExecution, true);
-  assert.match(cascadeCall.body.messageText, /check fallback/);
+  assert.equal(cascadeCall.body.items?.[0]?.text !== undefined, true);
+  assert.match(cascadeCall.body.items[0].text, /check fallback/);
 
   f.stopWatch();
+});
+
+test('agy-comment-watch supersedes a worker with a stale lsAddress and exits cleanly when stopped or when LS address is missing', async (t) => {
+  const ls1 = await lsServer(t);
+  const ls2 = await lsServer(t);
+  const f = fixture(t, ls1);
+  f.subscribe('document/resume');
+
+  // Missing ANTIGRAVITY_LS_ADDRESS exits 0 immediately
+  const noLs = spawnSync(process.execPath, [adapter, 'watch'], {
+    cwd: f.project,
+    env: { ...f.env, ANTIGRAVITY_LS_ADDRESS: '' },
+    input: JSON.stringify({
+      conversationId: SESSION,
+      cwd: f.project,
+      hookEventName: 'SessionStart',
+    }),
+    encoding: 'utf8',
+  });
+  assert.equal(noLs.status, 0);
+
+  const first = f.startWatch();
+  await initialScan(f.project);
+
+  // Resume session on a new LS address: second watcher supersedes the first
+  f.env.ANTIGRAVITY_LS_ADDRESS = ls2.address;
+  const second = f.startWatch();
+  const firstExit = await new Promise((resolve) => first.on('exit', resolve));
+  assert.equal(firstExit, 0);
+
+  f.writeComments('document/resume', [
+    {
+      id: 't3',
+      anchor: { blockId: 'b3', quote: ' resume ' },
+      status: 'open',
+      statusAt: at(3),
+      statusBy: 'human',
+      messages: [{ id: 'm3', author: 'human', text: 'resumed comment', at: at(3) }],
+    },
+  ]);
+
+  await until(() => ls2.calls.length === 1, 'new watcher did not deliver to new LS address');
+  assert.equal(ls1.calls.length, 0);
+
+  f.stopWatch();
+  const secondExit = await new Promise((resolve) => second.on('exit', resolve));
+  assert.equal(secondExit, 0);
 });

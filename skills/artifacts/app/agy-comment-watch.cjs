@@ -47,7 +47,12 @@ function context(input, env = process.env) {
         ? input.workspacePaths[0]
         : process.cwd();
   if (!session || typeof rawCwd !== 'string') return null;
-  const project = projectRoot(rawCwd);
+  let project;
+  try {
+    project = projectRoot(rawCwd);
+  } catch {
+    return null;
+  }
   const data = env.PLUGIN_DATA || path.join(project, '.ryugi/artifacts/.state');
   return {
     session,
@@ -80,7 +85,16 @@ function claim(ctx) {
     } catch (error) {
       if (error.code !== 'EEXIST') throw error;
       const previous = readJson(ctx.file);
-      if (alive(previous?.pid)) return null;
+      if (alive(previous?.pid)) {
+        if (previous.lsAddress && ctx.lsAddress && previous.lsAddress !== ctx.lsAddress) {
+          try {
+            if (readJson(ctx.file)?.token === previous?.token) fs.rmSync(ctx.file, { force: true });
+            process.kill(previous.pid, 'SIGTERM');
+          } catch {}
+          continue;
+        }
+        return null;
+      }
       try {
         if (!previous && Date.now() - fs.statSync(ctx.file).mtimeMs < 5000) return null;
         if (readJson(ctx.file)?.token === previous?.token) fs.rmSync(ctx.file, { force: true });
@@ -166,8 +180,7 @@ async function deliverComment(ctx, event, signal) {
       'SendUserCascadeMessage',
       {
         cascadeId: ctx.session,
-        messageText: message,
-        continueExecution: true,
+        items: [{ text: message }],
       },
       signal,
     );

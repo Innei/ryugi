@@ -15,6 +15,18 @@ case "$0" in
 esac
 PLUGIN_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
+# Only treat this invocation as Antigravity when ANTIGRAVITY_AGENT is set AND
+# no foreign harness plugin root / CLI marker is active (so launching Claude,
+# Cursor, Copilot CLI, or Muse from an Antigravity terminal does not hijack them).
+is_antigravity=0
+if [ -n "${ANTIGRAVITY_AGENT:-}" ] \
+  && [ -z "${CURSOR_PLUGIN_ROOT:-}" ] \
+  && [ -z "${CLAUDE_PLUGIN_ROOT:-}" ] \
+  && [ -z "${MUSE_PLUGIN_ROOT:-}" ] \
+  && [ -z "${COPILOT_CLI:-}" ]; then
+  is_antigravity=1
+fi
+
 # Read using-ryugi content via bash's builtin $(< file) instead of
 # cat, for the same PATH-independence reason.
 skill_md="${PLUGIN_ROOT}/skills/using-ryugi/SKILL.md"
@@ -40,32 +52,12 @@ escape_for_json() {
 }
 
 using_ryugi_escaped=$(escape_for_json "$using_ryugi_content")
-if [ -n "${ANTIGRAVITY_AGENT:-}" ]; then
+if [ "$is_antigravity" -eq 1 ]; then
   session_context="<EXTREMELY_IMPORTANT>\nYou have Ryugi.\n\n**Below is the full content of your 'ryugi:using-ryugi' skill - your introduction to using skills. To load another skill on Antigravity, read its SKILL.md with \`read_file\`:**\n\n${using_ryugi_escaped}\n</EXTREMELY_IMPORTANT>"
 else
   session_context="<EXTREMELY_IMPORTANT>\nYou have Ryugi.\n\n**Below is the full content of your 'ryugi:using-ryugi' skill - your introduction to using skills. For all other skills, use the 'Skill' tool:**\n\n${using_ryugi_escaped}\n</EXTREMELY_IMPORTANT>"
 fi
 
-# Output context injection as JSON.
-# Cursor hooks expect additional_context (snake_case).
-# Claude Code hooks expect hookSpecificOutput.additionalContext (nested).
-# Antigravity hooks expect injectSteps[0].systemMessage.systemMessage.
-# Copilot CLI (v1.0.11+) and others expect additionalContext (top-level, SDK standard).
-# Claude Code reads BOTH additional_context and hookSpecificOutput without
-# deduplication, so we must emit only the field the current platform consumes.
-# Muse sets MUSE_PLUGIN_ROOT and expects additionalContext (SDK standard).
-#
-# Uses printf instead of heredoc to work around bash 5.3+ heredoc hang.
-# See: https://github.com/obra/superpowers/issues/571
-#
-# emit_json pipes printf through `cat` when cat is on PATH, to absorb EPIPE
-# on Windows. On Windows + Git Bash, the harness can close the hook's stdout
-# before printf finishes, and Git Bash's printf reports that EPIPE as
-# "printf: write error: Permission denied", which `set -euo pipefail` lets
-# escape as a startup diagnostic every session. Letting cat receive the EPIPE
-# keeps it out of the hook's error path (#1612). When PATH is broken and cat
-# can't be found (#2310), it falls back to printf alone so context still
-# gets injected.
 emit_json() {
   # shellcheck disable=SC2059 # every caller passes a literal format string
   if command -v cat > /dev/null 2>&1; then
@@ -75,21 +67,39 @@ emit_json() {
   fi
 }
 
+stdin_payload=""
+if [ "$is_antigravity" -eq 1 ] && [ ! -t 0 ]; then
+  IFS= read -r -d '' stdin_payload || true
+fi
+
 # A project with published documents gets its artifacts server for the whole
 # session, so its owner can comment from the cloud. Backgrounded and silent:
 # it must never delay or break session start, and skips when node is missing.
 project_dir="${CLAUDE_PROJECT_DIR:-}"
+if [ -z "$project_dir" ] && [ "$is_antigravity" -eq 1 ] && [ -n "$stdin_payload" ] && command -v node > /dev/null 2>&1; then
+  project_dir="$(printf '%s' "$stdin_payload" | node -e '
+    let d = "";
+    process.stdin.on("data", (c) => (d += c));
+    process.stdin.on("end", () => {
+      try {
+        const j = JSON.parse(d);
+        const p = (typeof j.cwd === "string" && j.cwd) || (Array.isArray(j.workspacePaths) && typeof j.workspacePaths[0] === "string" ? j.workspacePaths[0] : "");
+        if (p) process.stdout.write(p);
+      } catch {}
+    });
+  ' 2> /dev/null || true)"
+fi
 if [ -n "$project_dir" ]; then
   . "${SCRIPT_DIR}/project-root.sh"
   project_dir="$(ryugi_project_root "$project_dir")"
 fi
-if { [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] || [ -n "${ANTIGRAVITY_AGENT:-}" ]; } && [ -z "${CURSOR_PLUGIN_ROOT:-}" ] && [ "${OS:-}" != "Windows_NT" ] && [ -n "$project_dir" ] \
+if { [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] || [ "$is_antigravity" -eq 1 ]; } && [ -z "${CURSOR_PLUGIN_ROOT:-}" ] && [ "${OS:-}" != "Windows_NT" ] && [ -n "$project_dir" ] \
   && [ -f "$project_dir/.ryugi/config.json" ] && command -v node > /dev/null 2>&1; then
   RYUGI_ARTIFACTS_OWNER="$PPID" node "${SCRIPT_DIR}/start-artifacts.cjs" "$project_dir" < /dev/null > /dev/null 2>&1 &
 fi
 
-if [ -n "${ANTIGRAVITY_AGENT:-}" ] && [ -n "${ANTIGRAVITY_LS_ADDRESS:-}" ] && [ -f "${PLUGIN_ROOT}/skills/artifacts/app/agy-comment-watch.cjs" ] && command -v node > /dev/null 2>&1; then
-  node "${PLUGIN_ROOT}/skills/artifacts/app/agy-comment-watch.cjs" watch < /dev/null > /dev/null 2>&1 &
+if [ "$is_antigravity" -eq 1 ] && [ -n "${ANTIGRAVITY_LS_ADDRESS:-}" ] && [ -f "${PLUGIN_ROOT}/skills/artifacts/app/agy-comment-watch.cjs" ] && command -v node > /dev/null 2>&1; then
+  printf '%s' "$stdin_payload" | node "${PLUGIN_ROOT}/skills/artifacts/app/agy-comment-watch.cjs" watch > /dev/null 2>&1 &
 fi
 
 # The ryugi-artifacts marketplace entry loads only the artifacts skills but
@@ -99,24 +109,18 @@ fi
 plugin_data="${CLAUDE_PLUGIN_DATA:-}"
 case "${plugin_data##*[/\\]}" in
   ryugi-artifacts-*)
-    if [ -n "${ANTIGRAVITY_AGENT:-}" ]; then emit_json '{}\n'; fi
+    if [ "$is_antigravity" -eq 1 ]; then emit_json '{}\n'; fi
     exit 0
     ;;
 esac
 case "$PLUGIN_ROOT" in
   */ryugi-artifacts/* | *\\ryugi-artifacts\\*)
-    if [ -n "${ANTIGRAVITY_AGENT:-}" ]; then emit_json '{}\n'; fi
+    if [ "$is_antigravity" -eq 1 ]; then emit_json '{}\n'; fi
     exit 0
     ;;
 esac
 
-if [ -n "${ANTIGRAVITY_AGENT:-}" ]; then
-  if [ "$has_using_ryugi" -eq 0 ]; then
-    emit_json '{}\n'
-  else
-    emit_json '{\n  "injectSteps": [\n    {\n      "systemMessage": {\n        "systemMessage": "%s"\n      }\n    }\n  ]\n}\n' "$session_context"
-  fi
-elif [ -n "${CURSOR_PLUGIN_ROOT:-}" ]; then
+if [ -n "${CURSOR_PLUGIN_ROOT:-}" ]; then
   # Cursor sets CURSOR_PLUGIN_ROOT (may also set CLAUDE_PLUGIN_ROOT)
   emit_json '{\n  "additional_context": "%s"\n}\n' "$session_context"
 elif [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -z "${COPILOT_CLI:-}" ] && [ -z "${MUSE_PLUGIN_ROOT:-}" ]; then
@@ -125,6 +129,12 @@ elif [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -z "${COPILOT_CLI:-}" ] && [ -z "${MU
 elif [ -n "${MUSE_PLUGIN_ROOT:-}" ]; then
   # Muse sets MUSE_PLUGIN_ROOT — try Claude-style nested output for Muse Spark
   emit_json '{\n  "hookSpecificOutput": {\n    "hookEventName": "SessionStart",\n    "additionalContext": "%s"\n  }\n}\n' "$session_context"
+elif [ "$is_antigravity" -eq 1 ]; then
+  if [ "$has_using_ryugi" -eq 0 ]; then
+    emit_json '{}\n'
+  else
+    emit_json '{\n  "injectSteps": [\n    {\n      "systemMessage": {\n        "systemMessage": "%s"\n      }\n    }\n  ]\n}\n' "$session_context"
+  fi
 else
   # Copilot CLI (sets COPILOT_CLI=1) or unknown platform — SDK standard format
   emit_json '{\n  "additionalContext": "%s"\n}\n' "$session_context"

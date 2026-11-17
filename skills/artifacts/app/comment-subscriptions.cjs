@@ -284,6 +284,9 @@ function identity(env, proof) {
     if (session) return { host: 'codex', session };
     if (proof) throw new Error('Artifact feedback session binding is no longer active.');
   }
+  if (env.ANTIGRAVITY_AGENT && sessionOf('antigravity', env)) {
+    return { host: 'antigravity', session: sessionOf('antigravity', env) };
+  }
   const hosts = ['claude', 'pi'].filter((host) => sessionOf(host, env));
   if (hosts.length === 1) return { host: hosts[0], session: sessionOf(hosts[0], env) };
   if (hosts.length > 1) throw new Error('Artifact feedback has ambiguous agent session markers.');

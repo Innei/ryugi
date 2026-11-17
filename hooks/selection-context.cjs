@@ -108,12 +108,8 @@ function describe(session, { file, value }, prompt, budget) {
   return [head.join('\n'), kept, tail].filter(Boolean).join('\n');
 }
 
-const cursorKey = (env) =>
-  env.ANTIGRAVITY_AGENT
-    ? 'Antigravity'
-    : env.CLAUDE_CODE_IS_COWORK
-      ? 'Claude Cowork'
-      : 'Claude Code';
+const cursorKey = (env, isAntigravity = false) =>
+  isAntigravity ? 'Antigravity' : env.CLAUDE_CODE_IS_COWORK ? 'Claude Cowork' : 'Claude Code';
 
 const LAUNCHER = path.resolve(__dirname, '..', 'skills', 'artifacts', 'app', 'ryugi.cjs');
 
@@ -303,7 +299,12 @@ function main() {
     input = JSON.parse(fs.readFileSync(0, 'utf8'));
   } catch {}
   const isAntigravity = Boolean(
-    process.env.ANTIGRAVITY_AGENT || input.hookEventName === 'PreInvocation',
+    input.hookEventName === 'PreInvocation' ||
+    (process.env.ANTIGRAVITY_AGENT &&
+      !process.env.CLAUDE_PROJECT_DIR &&
+      !process.env.CLAUDE_PLUGIN_ROOT &&
+      !process.env.CURSOR_PLUGIN_ROOT &&
+      input.hook_event_name === undefined),
   );
   if (isAntigravity && typeof input.invocationNum === 'number' && input.invocationNum > 0) {
     process.stdout.write('{}\n');
@@ -316,8 +317,15 @@ function main() {
       : Array.isArray(input.workspacePaths) && typeof input.workspacePaths[0] === 'string'
         ? input.workspacePaths[0]
         : process.cwd();
-  const session = process.argv[3] || (process.argv[2] ? process.argv[2] : fs.realpathSync(rawCwd));
-  const project = process.argv[2] || projectRoot(session);
+  let session;
+  let project;
+  try {
+    session = process.argv[3] || (process.argv[2] ? process.argv[2] : fs.realpathSync(rawCwd));
+    project = process.argv[2] || projectRoot(session);
+  } catch {
+    if (isAntigravity) process.stdout.write('{}\n');
+    return;
+  }
   const root = path.join(project, '.ryugi', 'artifacts');
   const state = path.join(root, '.state');
   const rawSessionId =
@@ -345,8 +353,9 @@ function main() {
           cwd: project,
           env: { ...process.env, ANTIGRAVITY_CONVERSATION_ID: sessionId },
           detached: true,
-          stdio: 'ignore',
+          stdio: ['pipe', 'ignore', 'ignore'],
         });
+        child.stdin.end(JSON.stringify({ conversationId: sessionId, cwd: project }));
         child.unref();
       }
     } catch {}
@@ -361,7 +370,7 @@ function main() {
       : typeof input.lastUserInput === 'string'
         ? input.lastUserInput
         : '';
-  const autoPublish = autoPublishContext(project, process.env, rawSessionId);
+  const autoPublish = autoPublishContext(project, process.env, sessionId || rawSessionId);
   const subHost = isAntigravity ? 'antigravity' : 'claude';
   const elsewhere = UUID.test(sessionId || '')
     ? checkouts(project)
@@ -373,13 +382,13 @@ function main() {
           commentReminders(
             other,
             path.join(other, '.ryugi', 'artifacts'),
-            cursorKey(process.env),
+            cursorKey(process.env, isAntigravity),
             subscriptions(other, subHost, sessionId),
           ),
         )
     : [];
   const reminders = [
-    commentReminders(project, root, cursorKey(process.env)),
+    commentReminders(project, root, cursorKey(process.env, isAntigravity)),
     ...elsewhere,
     autoPublish,
   ]

@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const http = require('node:http');
 const path = require('node:path');
 
-const PATH_FIELDS = ['file_path', 'path', 'notebook_path', 'Path'];
+const PATH_FIELDS = ['file_path', 'path', 'notebook_path', 'Path', 'TargetFile', 'target_file'];
 const PATCH_FILE = /^\*\*\* (?:Add|Update|Delete) File: (.+)$|^\*\*\* Move to: (.+)$/gm;
 
 function postToServer(project, pathname, body) {
@@ -97,6 +97,12 @@ function eventFrom(input, host, at = Date.now()) {
         ? input.hookEventName
         : null;
   if (!session || !rawEvent) return null;
+  if (
+    rawEvent === 'PreInvocation' &&
+    typeof input.invocationNum === 'number' &&
+    input.invocationNum > 0
+  )
+    return null;
   const eventName = rawEvent === 'PreInvocation' ? 'UserPromptSubmit' : rawEvent;
   const resolvedHost =
     host === 'antigravity' || (!input.session_id && typeof input.conversationId === 'string')
@@ -159,13 +165,8 @@ if (require.main === module) {
         ? 'claude'
         : 'codex';
   void readStdin().then((input) => {
-    if (host === 'antigravity' || process.env.ANTIGRAVITY_AGENT) {
-      const rawEvent = input?.hookEventName || input?.hook_event_name;
-      if (rawEvent === 'PreToolUse') {
-        process.stdout.write('{"decision":"allow"}\n');
-      } else {
-        process.stdout.write('{}\n');
-      }
+    if (host === 'antigravity') {
+      process.stdout.write('{}\n');
     }
     const event = eventFrom(input, host, at);
     const rawCwd =

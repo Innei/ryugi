@@ -312,12 +312,13 @@ process.stdout.write(r.stdout);process.stderr.write(r.stderr);process.exitCode=r
   },
 );
 
-test('an Antigravity session registers its opened artifact under agy-comment-watch', (t) => {
+test('an Antigravity session registers its opened artifact under agy-comment-watch even with inherited Codex/Claude vars', (t) => {
   const f = fixture(t);
   f.run(['start', '--artifact', 'document/agy-plan'], {
-    CODEX_THREAD_ID: '',
-    CODEX_SESSION_ID: '',
+    ANTIGRAVITY_AGENT: '1',
     ANTIGRAVITY_CONVERSATION_ID: CURRENT,
+    CLAUDE_CODE_SESSION_ID: PARENT,
   });
   assert.deepEqual(f.read('antigravity', CURRENT), ['document/agy-plan']);
+  assert.deepEqual(f.read('claude', PARENT), []);
 });
