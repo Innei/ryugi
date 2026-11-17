@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Validate the Antigravity (agy) tool mapping: subagent dispatch via
+# Validate the Antigravity (agy) tool mapping: core file/shell/search tools,
+# skill loading via read_file on SKILL.md, subagent dispatch via
 # invoke_subagent (self/research types), task tracking via a task artifact, and
 # SKILL.md pointing at the mapping. The plugin manifest and layout are checked
 # by test-plugin-manifest.sh.
@@ -25,10 +26,14 @@ echo "test-antigravity-tools: checking Antigravity tool mapping"
 [ -f "$MAPPING" ] || fail "tool mapping missing at $MAPPING"
 
 # --- Core action→tool mappings are documented -------------------------------
-for tool in write_to_file replace_file_content invoke_subagent; do
+for tool in read_file write_file edit_file run_command grep_search find_by_name list_dir read_url_content search_web ask_question invoke_subagent write_to_file replace_file_content; do
   grep -q "$tool" "$MAPPING" \
     || fail "mapping does not document the '$tool' tool"
 done
+
+# --- Skill invocation uses read_file on SKILL.md ----------------------------
+grep -q 'SKILL\.md' "$MAPPING" \
+  || fail "mapping does not document reading SKILL.md to load a skill"
 
 # --- Subagents use the built-in self/research types -------------------------
 grep -q '`self`' "$MAPPING" \
@@ -44,4 +49,4 @@ grep -qE 'ArtifactType.*task|task. artifact' "$MAPPING" \
 grep -q "antigravity-tools.md" "$SKILL" \
   || fail "SKILL.md Platform Adaptation does not reference antigravity-tools.md"
 
-echo "PASS: Antigravity tool mapping valid (subagent dispatch, task artifact, SKILL.md link)"
+echo "PASS: Antigravity tool mapping valid (core tools, skill loading, subagent dispatch, task artifact, SKILL.md link)"

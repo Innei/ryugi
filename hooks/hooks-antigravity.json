@@ -1,0 +1,54 @@
+{
+  "ryugi": {
+    "SessionStart": [
+      {
+        "type": "command",
+        "command": "\"./hooks/run-hook.cmd\" session-start",
+        "timeout": 10
+      }
+    ],
+    "PreInvocation": [
+      {
+        "type": "command",
+        "command": "\"./hooks/run-hook.cmd\" user-prompt-submit",
+        "timeout": 10
+      },
+      {
+        "type": "command",
+        "command": "\"./hooks/run-hook.cmd\" agent-event",
+        "timeout": 5
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"./hooks/run-hook.cmd\" agent-event",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"./hooks/run-hook.cmd\" agent-event",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "type": "command",
+        "command": "\"./hooks/run-hook.cmd\" stop",
+        "timeout": 5
+      }
+    ]
+  }
+}

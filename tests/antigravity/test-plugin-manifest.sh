@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # Validate the native Antigravity plugin: the Marketplace manifest, the skill
-# description agy relies on to bootstrap using-ryugi, and the repo layout
-# agy depends on. CI-safe; when `agy` is on PATH, also runs `agy plugin validate`.
+# description agy relies on to bootstrap using-ryugi, the Antigravity hooks
+# configuration, and the repo layout agy depends on. CI-safe; when `agy` is on
+# PATH, also runs `agy plugin validate` against the repo and `agy plugin
+# validate --strict` against a staged native Antigravity plugin.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -75,8 +77,8 @@ if not any(entry.get("path") == ".antigravity-plugin/plugin.json"
            for entry in version_config.get("files", [])):
     fail(".version-bump.json does not register .antigravity-plugin/plugin.json")
 
-# --- Bootstrap: agy lists each skill's description, and using-ryugi'
-# description is what gets the model to load it at the start of a session.
+# --- Bootstrap: agy lists each skill's description, and using-ryugi's
+# description + SessionStart hook get the model to load it at session start.
 skill_md = (root / "skills" / "using-ryugi" / "SKILL.md").read_text(encoding="utf-8")
 frontmatter = re.match(r"---\n(.*?)\n---\n", skill_md, re.DOTALL)
 description = frontmatter and re.search(r"^description:(.*)$", frontmatter.group(1), re.MULTILINE)
@@ -84,32 +86,60 @@ if not description or "Use when starting any conversation" not in description.gr
     fail("using-ryugi description no longer says 'Use when starting any "
          "conversation'; Antigravity relies on it to bootstrap")
 
+# --- Antigravity hooks template --------------------------------------------
+hooks_path = root / "hooks" / "hooks-antigravity.json"
+if not hooks_path.is_file():
+    fail(f"Antigravity hooks template missing at {hooks_path}")
+hooks_data = json.loads(hooks_path.read_text(encoding="utf-8"))
+ryugi_hooks = hooks_data.get("ryugi")
+if not isinstance(ryugi_hooks, dict):
+    fail("hooks/hooks-antigravity.json must define top-level 'ryugi' hook spec")
+for event in ["SessionStart", "PreInvocation", "PreToolUse", "PostToolUse", "Stop"]:
+    if not isinstance(ryugi_hooks.get(event), list) or not ryugi_hooks[event]:
+        fail(f"hooks/hooks-antigravity.json missing non-empty {event!r} handler list")
+
 # --- Layout agy depends on -------------------------------------------------
 # A root plugin.json would be read instead of .antigravity-plugin/plugin.json,
-# a root hooks.json would run on every model call, and Cursor loads any
-# rules/*.md shipped in a plugin.
+# a root hooks.json would conflict with other harnesses in the repo root, and
+# Cursor loads any rules/*.md shipped in a plugin.
 for stray in ["plugin.json", "hooks.json", "rules"]:
     if (root / stray).exists():
         fail(f"root {stray} must not exist")
 PY
 
 if command -v agy > /dev/null 2>&1; then
-  output="$(agy plugin validate "$REPO_ROOT" 2>&1)" \
+  output="$(agy plugin validate --json "$REPO_ROOT" 2>&1)" \
     || {
       echo "$output" >&2
-      echo "FAIL: agy plugin validate failed" >&2
+      echo "FAIL: agy plugin validate --json failed on repo root" >&2
       exit 1
     }
-  grep -q '\[ok\]' <<< "$output" \
+  python3 - "$output" << 'PY'
+import json
+import sys
+
+report = json.loads(sys.argv[1])
+if report.get("name") != "ryugi":
+    raise SystemExit(f"FAIL: expected name 'ryugi', got {report.get('name')!r}")
+skills = report.get("components", {}).get("skills", 0)
+if skills < 1:
+    raise SystemExit(f"FAIL: agy found no skills ({skills})")
+errors = [f for f in report.get("findings", []) if f.get("severity") == "error"]
+if errors:
+    raise SystemExit(f"FAIL: agy plugin validate reported errors: {errors}")
+PY
+
+  # Also validate a staged native Antigravity plugin (with root hooks.json and
+  # without other harnesses' root files) in --strict mode (0 warnings).
+  stage="$(mktemp -d)"
+  trap 'rm -rf "$stage"' EXIT
+  cp -R "$REPO_ROOT/.antigravity-plugin" "$REPO_ROOT/assets" "$REPO_ROOT/skills" "$REPO_ROOT/hooks" "$stage/"
+  cp "$REPO_ROOT/hooks/hooks-antigravity.json" "$stage/hooks.json"
+  rm -f "$stage/hooks/hooks.json" "$stage/hooks/hooks-cursor.json" "$stage/hooks/hooks-antigravity.json"
+  strict_out="$(agy plugin validate --strict "$stage" 2>&1)" \
     || {
-      echo "$output" >&2
-      echo "FAIL: agy plugin validate did not report [ok]" >&2
-      exit 1
-    }
-  grep -qE 'skills +: [0-9]+ processed' <<< "$output" \
-    || {
-      echo "$output" >&2
-      echo "FAIL: agy found no skills" >&2
+      echo "$strict_out" >&2
+      echo "FAIL: agy plugin validate --strict failed on staged plugin" >&2
       exit 1
     }
 else
