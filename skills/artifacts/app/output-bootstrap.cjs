@@ -36,7 +36,7 @@ __export(index_exports, {
 module.exports = __toCommonJS(index_exports);
 
 // <define:BOOTSTRAP_OPTIONS>
-var define_BOOTSTRAP_OPTIONS_default = { format: { type: "string" }, json: { type: "boolean" }, detail: { type: "boolean" }, fields: { type: "string" }, quiet: { type: "boolean" }, verbose: { type: "boolean" }, "project-dir": { type: "string" }, artifact: { type: "string" }, host: { type: "string" }, "url-host": { type: "string" }, port: { type: "string" }, open: { type: "boolean" }, "no-open": { type: "boolean" }, foreground: { type: "boolean" }, background: { type: "boolean" }, page: { type: "string" }, visibility: { type: "string" }, type: { type: "string" }, project: { type: "boolean" }, module: { type: "string" }, limit: { type: "string" }, cursor: { type: "string" }, public: { type: "boolean" }, private: { type: "boolean" }, key: { type: "boolean" }, expires: { type: "string" }, "new-key": { type: "boolean" }, "revoke-key": { type: "boolean" }, profile: { type: "boolean" }, "no-profile": { type: "boolean" }, unpublish: { type: "boolean" }, list: { type: "boolean" }, delete: { type: "string" }, "no-refs": { type: "boolean" }, login: { type: "boolean" }, from: { type: "string" }, logout: { type: "boolean" }, set: { type: "string" }, sections: { type: "string" }, section: { type: "string" }, snapshot: { type: "string" }, receipt: { type: "string" }, status: { type: "string" }, "waiting-on": { type: "string" }, kind: { type: "string" }, claim: { type: "string" }, gap: { type: "string" }, "choice-state": { type: "string" }, all: { type: "boolean" }, block: { type: "string" }, quote: { type: "string" }, board: { type: "string" }, element: { type: "string" }, x: { type: "string" }, y: { type: "string" }, thread: { type: "string" }, text: { type: "string" }, group: { type: "string" }, clear: { type: "boolean" }, ask: { type: "string" }, choice: { type: "string" }, round: { type: "string" }, withdraw: { type: "boolean" }, save: { type: "string" }, frame: { type: "string" }, source: { type: "boolean" }, download: { type: "boolean" }, out: { type: "string" }, "no-comments": { type: "boolean" }, "output-format": { type: "string" }, "auto-publish": { type: "string" }, check: { type: "boolean" }, "cli-only": { type: "boolean" }, "plugins-only": { type: "boolean" }, "install-dir": { type: "string" }, "plugin-source": { type: "string" }, pm: { type: "string" }, mode: { type: "string" }, harness: { type: "string" }, yes: { type: "boolean" }, "no-cli": { type: "boolean" }, "bin-dir": { type: "string" } };
+var define_BOOTSTRAP_OPTIONS_default = { format: { type: "string" }, json: { type: "boolean" }, detail: { type: "boolean" }, fields: { type: "string" }, quiet: { type: "boolean" }, verbose: { type: "boolean" }, "project-dir": { type: "string" }, artifact: { type: "string" }, host: { type: "string" }, "url-host": { type: "string" }, port: { type: "string" }, open: { type: "boolean" }, "no-open": { type: "boolean" }, foreground: { type: "boolean" }, background: { type: "boolean" }, page: { type: "string" }, visibility: { type: "string" }, type: { type: "string" }, project: { type: "boolean" }, module: { type: "string" }, limit: { type: "string" }, cursor: { type: "string" }, public: { type: "boolean" }, private: { type: "boolean" }, key: { type: "boolean" }, expires: { type: "string" }, "new-key": { type: "boolean" }, "revoke-key": { type: "boolean" }, profile: { type: "boolean" }, "no-profile": { type: "boolean" }, unpublish: { type: "boolean" }, list: { type: "boolean" }, delete: { type: "string" }, "no-refs": { type: "boolean" }, login: { type: "boolean" }, from: { type: "string" }, logout: { type: "boolean" }, set: { type: "string" }, sections: { type: "string" }, section: { type: "string" }, snapshot: { type: "string" }, receipt: { type: "string" }, status: { type: "string" }, "waiting-on": { type: "string" }, kind: { type: "string" }, claim: { type: "string" }, gap: { type: "string" }, "choice-state": { type: "string" }, all: { type: "boolean" }, block: { type: "string" }, quote: { type: "string" }, board: { type: "string" }, element: { type: "string" }, slide: { type: "string" }, x: { type: "string" }, y: { type: "string" }, thread: { type: "string" }, text: { type: "string" }, group: { type: "string" }, clear: { type: "boolean" }, ask: { type: "string" }, choice: { type: "string" }, round: { type: "string" }, withdraw: { type: "boolean" }, save: { type: "string" }, frame: { type: "string" }, source: { type: "boolean" }, download: { type: "boolean" }, out: { type: "string" }, "no-comments": { type: "boolean" }, "output-format": { type: "string" }, "auto-publish": { type: "string" }, check: { type: "boolean" }, "cli-only": { type: "boolean" }, "plugins-only": { type: "boolean" }, "install-dir": { type: "string" }, "plugin-source": { type: "string" }, pm: { type: "string" }, mode: { type: "string" }, harness: { type: "string" }, yes: { type: "boolean" }, "no-cli": { type: "boolean" }, "bin-dir": { type: "string" } };
 
 // src/cli/output/configuration.ts
 var import_node_fs2 = __toESM(require("node:fs"), 1);
@@ -131,20 +131,27 @@ var OutputError = class extends Error {
 };
 function completionState(completion, warning = false) {
   switch (completion.kind) {
-    case "succeeded":
+    case "succeeded": {
       return { outcome: warning ? "attention" : "success", code: 0 };
-    case "validation_failed":
+    }
+    case "validation_failed": {
       return { outcome: "attention", code: 3 };
-    case "pending":
+    }
+    case "pending": {
       return { outcome: "pending", code: 4 };
-    case "action_required":
+    }
+    case "action_required": {
       return { outcome: "attention", code: 2 };
-    case "partial":
+    }
+    case "partial": {
       return { outcome: "partial", code: 5 };
-    case "failed":
+    }
+    case "failed": {
       return { outcome: "error", code: 1 };
-    case "interrupted":
+    }
+    case "interrupted": {
       return { outcome: "error", code: completion.signal === "SIGINT" ? 130 : 143 };
+    }
   }
 }
 function project(value, keys, path5, omitted) {
