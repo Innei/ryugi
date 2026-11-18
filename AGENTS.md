@@ -8,6 +8,7 @@ Skill files shape agent behavior; treat edits to them like code changes.
 
 - Use the repo-local `writing-skills` skill (`.claude/skills/writing-skills/`) to develop and test changes.
 - Run a baseline without the change and a run with it, and keep the before/after results with the change.
+- Every agent session that runs unattended (auto-approve, skip-permissions, yolo) runs in a container per the repo-local `isolated-agent-eval` skill (`.claude/skills/isolated-agent-eval/`), never on the host.
 - Do not rewrite carefully-tuned content (Red Flags tables, rationalization lists) without evidence the change is an improvement.
 - "Your human partner" is deliberate wording, not interchangeable with "the user".
 
@@ -43,3 +44,4 @@ Skills, harness integrations and docs are under Ryugi License 1.0 (`LICENSE`): u
 
 - Plugin-infrastructure tests live in `tests/`; run the relevant `run-*.sh` or test script for what you changed.
 - `docs/testing.md` lists what each suite covers.
+- A test that starts an agent session with auto-approve follows `.claude/skills/isolated-agent-eval/`.
