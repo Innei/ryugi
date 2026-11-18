@@ -9,7 +9,7 @@
     {
       "name": "ryugi",
       "description": "Ryugi skills for coding agents, plus the artifacts workbench they design in: brainstorming, artboards, documents and TDD.",
-      "version": "1.85.0",
+      "version": "1.86.0",
       "source": "./",
       "author": {
         "name": "Innei",
