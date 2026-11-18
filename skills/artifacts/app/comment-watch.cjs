@@ -1,5 +1,6 @@
 'use strict';
 
+const { spawnSync } = require('node:child_process');
 const fs = require('node:fs');
 const path = require('node:path');
 const { unreadThreadCount, reviewStateKey } = require('./comment-threads.cjs');
@@ -204,8 +205,41 @@ function unreadCount(project, artifact, key) {
   return unreadThreadCount({ threads: open }, agentState?.consumed ?? []);
 }
 
+const sectionFlags = (section) =>
+  section === 'groups' ? ['--kind', 'choose'] : section === 'asks' ? ['--status', 'submitted'] : [];
+
 const command = (project, artifact, section = 'threads') =>
-  `node ${quote(LAUNCHER)} comment list --section ${section}${section === 'groups' ? ' --kind choose' : section === 'asks' ? ' --status submitted' : ''} --detail --format brief --project-dir ${quote(project)} --artifact ${artifact}`;
+  `node ${quote(LAUNCHER)} comment list --section ${section}${sectionFlags(section)
+    .map((flag) => ` ${flag}`)
+    .join('')} --detail --format brief --project-dir ${quote(project)} --artifact ${artifact}`;
+
+const listArgv = (project, artifact, section) => [
+  LAUNCHER,
+  'comment',
+  'list',
+  '--section',
+  section,
+  ...sectionFlags(section),
+  '--detail',
+  '--format',
+  'brief',
+  '--project-dir',
+  project,
+  '--artifact',
+  artifact,
+];
+
+const BRIEF_TIMEOUT_MS = 15000;
+
+function readBrief(argv) {
+  const result = spawnSync(process.execPath, argv, {
+    encoding: 'utf8',
+    timeout: BRIEF_TIMEOUT_MS,
+    maxBuffer: 1024 * 1024,
+    env: { ...process.env, RYUGI_NO_UPDATE_CHECK: '1' },
+  });
+  return result.status === 0 ? (result.stdout || '').trim() : '';
+}
 
 const flatten = (text) => text.replaceAll(/\s*\n\s*/g, ' / ').trim();
 
@@ -267,6 +301,11 @@ const cutTo = (text, room) => {
 // The brief carries the ids needed to reply or settle; over the limit it takes a line of its own.
 function wakeMessage(event, limit = Infinity) {
   const { head, brief, next } = wakeParts(event);
+  // Only hosts without a notification length cap get the submit brief inline; a failed read keeps Run.
+  if (limit === Infinity && event.argv && !event.withdrawn) {
+    const listed = readBrief(event.argv);
+    if (listed) return `${head}. ${next}\n${listed}`;
+  }
   const tail = `${next} Run: ${event.command}`;
   const full = `${head}.${brief ? ` ${brief}.` : ''} ${tail}`;
   if (full.length <= limit) return full;
@@ -319,6 +358,7 @@ function createCommentWatch(project, key = cursorKey(process.env)) {
             groups: Array.isArray(spec.groups) ? spec.groups.length : 0,
             ...(submit ? { submit } : {}),
             command: command(project, artifact, 'groups'),
+            argv: listArgv(project, artifact, 'groups'),
           });
         }
         if (type === 'document') {
@@ -336,6 +376,7 @@ function createCommentWatch(project, key = cursorKey(process.env)) {
               ...(submit ? { submit: submit.id } : {}),
               questions: submittedCount(file, submit),
               command: command(project, artifact, 'asks'),
+              argv: listArgv(project, artifact, 'asks'),
             });
         }
         const roundDraft = draftCheck(

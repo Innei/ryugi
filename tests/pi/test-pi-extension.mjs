@@ -11,6 +11,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 const cacheHome = mkdtempSync(join(tmpdir(), 'ryugi-pi-cache-'));
 process.env.XDG_CACHE_HOME = cacheHome;
 after(() => rmSync(cacheHome, { recursive: true, force: true }));
+createRequire(import.meta.url)('../hooks/fake-artifacts-release.cjs').seedFakeRelease(cacheHome);
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(__dirname, '../..');
@@ -227,6 +228,8 @@ test('a human comment on an artboard this Pi session opened wakes the session', 
   await until(() => sent.length === 2, 'a submitted choice round wakes Pi');
   assert.equal(sent[1].message.customType, 'ryugi-choices');
   assert.match(sent[1].message.content, /Ryugi choices artboard\/home round r1 submitted/);
+  assert.match(sent[1].message.content, /\nComment list: artboard\/home/);
+  assert.doesNotMatch(sent[1].message.content, /Run:/);
 
   await firstHandler(handlers, 'session_shutdown')({ type: 'session_shutdown' }, ctx);
   p.write('artboard/home/comments.json', { threads: [p.human(4), p.human(5)] });

@@ -12,6 +12,7 @@ const { setTimeout: delay } = require('node:timers/promises');
 const cacheHome = fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-comment-cache-'));
 process.env.XDG_CACHE_HOME = cacheHome;
 after(() => fs.rmSync(cacheHome, { recursive: true, force: true }));
+require('./fake-artifacts-release.cjs').seedFakeRelease(cacheHome);
 
 const repo = path.resolve(__dirname, '../..');
 const watcher = path.join(repo, 'hooks/watch-comments.cjs');
@@ -61,6 +62,8 @@ function watch(project, key) {
 
 const message = (event) =>
   require(path.join(repo, 'skills/artifacts/app/comment-watch.cjs')).wakeMessage(event);
+const limited = (event) =>
+  require(path.join(repo, 'skills/artifacts/app/comment-watch.cjs')).wakeMessage(event, 500);
 const artifactOf = (line) => line.match(/^Ryugi \w+ (\S+)/)?.[1];
 
 test('new document and artboard comments produce actionable notifications without consuming them', (t) => {
@@ -704,7 +707,7 @@ test('answer records never count as unread comments', (t) => {
   assert.equal(unreadCount(f.project, 'document/plan', 'Claude Code'), 1);
 });
 
-test('an answers message counts the submitted questions and leaves the answers to the CLI', (t) => {
+test('an answers message inlines the submitted brief when the host has no length limit', (t) => {
   const f = fixture(t);
   f.save('document/plan', []);
   f.write('.state/document/plan/asks.json', { latest: null });
@@ -739,14 +742,52 @@ test('an answers message counts the submitted questions and leaves the answers t
       'comment list --section asks --status submitted --detail --format brief',
     ),
   );
+  assert.deepEqual(event.argv.slice(1), [
+    'comment',
+    'list',
+    '--section',
+    'asks',
+    '--status',
+    'submitted',
+    '--detail',
+    '--format',
+    'brief',
+    '--project-dir',
+    f.project,
+    '--artifact',
+    'document/plan',
+  ]);
+  const full = message(event);
+  assert.ok(
+    full.startsWith(
+      'Ryugi answers document/plan submitted (s1, 2 questions). Apply each answer, then settle it with comment note --ask <id>.\nComment list: document/plan',
+    ),
+    full,
+  );
+  assert.ok(!full.includes('Run:'), full);
   assert.equal(
-    message(event),
+    limited(event),
     `Ryugi answers document/plan submitted (s1, 2 questions). Apply each answer, then settle it with comment note --ask <id>. Run: ${event.command}`,
   );
-  assert.ok(!message(event).includes('pre-test'));
 });
 
-test('a choices message counts the round groups and leaves the picks to the CLI', (t) => {
+test('a submit message falls back to the Run line when its brief command fails', (t) => {
+  const f = fixture(t);
+  const event = {
+    type: 'ryugi-answers',
+    artifact: 'document/plan',
+    submit: 's1',
+    questions: 1,
+    command: 'node ryugi.cjs comment list',
+    argv: [path.join(f.project, 'missing.cjs')],
+  };
+  assert.equal(
+    message(event),
+    'Ryugi answers document/plan submitted (s1, 1 question). Apply each answer, then settle it with comment note --ask <id>. Run: node ryugi.cjs comment list',
+  );
+});
+
+test('a choices message inlines the picks brief when the host has no length limit', (t) => {
   const f = fixture(t);
   f.save('artboard/pick', []);
   const rounds = (state) =>
@@ -779,8 +820,16 @@ test('a choices message counts the round groups and leaves the picks to the CLI'
   assert.equal(event.submit, 's1');
   assert.equal(event.groups, 2);
   assert.equal(event.picks, undefined);
+  const full = message(event);
+  assert.ok(
+    full.startsWith(
+      'Ryugi choices artboard/pick round r1 submitted (s1, 2 groups). Draw the next round from these choices and the threads.\nComment list: artboard/pick',
+    ),
+    full,
+  );
+  assert.ok(!full.includes('Run:'), full);
   assert.equal(
-    message(event),
+    limited(event),
     `Ryugi choices artboard/pick round r1 submitted (s1, 2 groups). Draw the next round from these choices and the threads. Run: ${event.command}`,
   );
 });

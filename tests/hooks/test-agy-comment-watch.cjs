@@ -12,6 +12,7 @@ const { setTimeout: delay } = require('node:timers/promises');
 const cacheHome = fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-agy-cache-'));
 process.env.XDG_CACHE_HOME = cacheHome;
 after(() => fs.rmSync(cacheHome, { recursive: true, force: true }));
+require('./fake-artifacts-release.cjs').seedFakeRelease(cacheHome);
 
 const repo = path.resolve(__dirname, '../..');
 const adapter = path.join(repo, 'skills/artifacts/app/agy-comment-watch.cjs');

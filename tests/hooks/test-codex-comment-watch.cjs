@@ -11,6 +11,7 @@ const { after, test } = require('node:test');
 const cacheHome = fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-codex-cache-'));
 process.env.XDG_CACHE_HOME = cacheHome;
 after(() => fs.rmSync(cacheHome, { recursive: true, force: true }));
+require('./fake-artifacts-release.cjs').seedFakeRelease(cacheHome);
 const { setTimeout: delay } = require('node:timers/promises');
 
 const repo = path.resolve(__dirname, '../..');
@@ -501,13 +502,11 @@ test('submitted document answers are queued even with no unread comments', async
   const message = args[args.indexOf('--message') + 1];
   assert.ok(
     message.startsWith(
-      'Ryugi answers document/plan submitted (s1). Apply each answer, then settle it with comment note --ask <id>. Run: node ',
+      'Ryugi answers document/plan submitted (s1). Apply each answer, then settle it with comment note --ask <id>.\nComment list: document/plan',
     ),
     message,
   );
-  assert.ok(
-    message.includes('comment list --section asks --status submitted --detail --format brief'),
-  );
+  assert.ok(!message.includes('Run:'), message);
 });
 
 test('desktop comments retry through the app pipe and acknowledge the hook session without a CLI fallback', async (t) => {
