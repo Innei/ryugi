@@ -43,24 +43,40 @@ var import_node_fs2 = __toESM(require("node:fs"), 1);
 var import_node_os2 = __toESM(require("node:os"), 1);
 var import_node_path4 = __toESM(require("node:path"), 1);
 
-// src/shared/cloud.ts
-var MAX_ARTIFACT_BYTES = 20 * 1024 * 1024;
+// src/core/server/cloud/credentials.ts
+var import_node_path = __toESM(require("node:path"), 1);
 
-// src/shared/validate.ts
+// ../shared/src/types.ts
+var ENTRY_FILE = {
+  artboard: "canvas.json",
+  document: "doc.xml",
+  html: "index.html",
+  whiteboard: "scene.excalidraw",
+  verify: "verify.xml",
+  slides: "index.html",
+  report: "report.tsx"
+};
+var PUBLISHED_ENTRY_FILE = { ...ENTRY_FILE, verify: "report.xml" };
+
+// ../shared/src/validate.ts
 var BOARD_NUMBERS = ["x", "y", "w", "h"];
 var BOARD_REQUIRED = ["file", "page", ...BOARD_NUMBERS];
 var MEDIA_REQUIRED = ["src", "page", ...BOARD_NUMBERS];
 
-// src/server/credentials.ts
-var import_node_path = __toESM(require("node:path"), 1);
+// src/core/server/cloud/credentials.ts
 function credentialsFile(env, platform, home) {
   if (platform === "win32" && env.APPDATA)
     return import_node_path.default.join(env.APPDATA, "ryugi", "credentials.json");
   return import_node_path.default.join(env.XDG_CONFIG_HOME || import_node_path.default.join(home, ".config"), "ryugi", "credentials.json");
 }
 
-// src/server/settings.ts
+// src/core/server/cloud/settings.ts
 var import_node_path2 = __toESM(require("node:path"), 1);
+
+// ../shared/src/cloud.ts
+var MAX_ARTIFACT_BYTES = 20 * 1024 * 1024;
+
+// src/core/server/cloud/settings.ts
 var settingsFileFor = (credentialsFile2) => import_node_path2.default.join(import_node_path2.default.dirname(credentialsFile2), "config.json");
 
 // src/cli/paths.ts

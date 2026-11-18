@@ -1,4 +1,4 @@
-// Generated from ryugi-cloud/packages/artifacts/src/shared/review-evidence.ts. Do not edit.
+// Generated from ryugi-cloud/packages/shared/src/review-evidence.ts. Do not edit.
 "use strict";
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
@@ -18,7 +18,7 @@ var __copyProps = (to, from, except, desc) => {
 };
 var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
-// src/shared/review-evidence.ts
+// ../shared/src/review-evidence.ts
 var review_evidence_exports = {};
 __export(review_evidence_exports, {
   humanTokens: () => humanTokens,
