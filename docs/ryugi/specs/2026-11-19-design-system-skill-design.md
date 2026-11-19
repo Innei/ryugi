@@ -2,7 +2,7 @@
 
 Approved 2026-11-19 on document artifact `document/design-system-skill`
 (https://ryugi.innei.dev/a/f9Abo1MdjDSZGuU2FVktH), two rounds, every answer recorded there.
-Revised the same day in chat: the human partner set the flow as four steps (方向 → token → layout → 规范) and named two starting points (complete UI without tokens; no code but a product doc). In the first starting point the tone is kept, not re-chosen.
+Revised the same day in chat: the human partner set the flow as four steps (方向 → token → layout → 规范) and named two starting points (complete UI without tokens; no code but a product doc). In the first starting point the tone is kept, not re-chosen. After five eval rounds they accepted three more calls: start C draws every step in one round; each round's message ends with a fixed "Next:" line that never offers code; the turn after a round is tested by replaying it from a frozen first turn.
 
 ## 为什么做
 
@@ -55,7 +55,7 @@ flowchart TD
 
 | 起点                     | 判定                                                   | 准备                                                                               | 1 方向                                                           | 2 token                                                                                                      | 3 layout                                         | 4 规范                             |
 | ------------------------ | ------------------------------------------------------ | ---------------------------------------------------------------------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------ | ---------------------------------- |
-| **A 从零**               | 没有产品代码，也没有产品文档                           | 一句「什么都没有」                                                                 | 2–3 套完整系统，同时各代表一种用途                               | 选项对比                                                                                                     | 选项对比                                         | 逐个定组件                         |
+| **A 没有可保留的**       | 空项目或只有脚手架，没有产品文档                       | 一句「还没有要保留的」                                                             | 2–3 套完整系统，同时各代表一种用途                               | 选项对比                                                                                                     | 选项对比                                         | 逐个定组件                         |
 | **B 有产品文档，没代码** | 有描述页面、流程或数据的文档                           | 读文档：列出页面、流程、数据字段，作为后面所有板的内容来源                         | 2–3 套，按文档里的产品定位和调性推导                             | 选项对比                                                                                                     | 按文档的信息架构和主导航排，出选项               | 只做文档页面用到的组件             |
 | **C UI 完整，缺 token**  | 页面和组件都在，样式值散在代码里，没有自己的语义 token | 读全部样式：收集实际用到的颜色、字号、间距、圆角、阴影、时长，按出现次数和位置统计 | **不选方向**：一块板确认现在的调性（五条方向线从现有界面读出来） | **提取**：左列「现在散落的值」，右列「合并后的 token」；近似值、撞值在这里合并，只有合并方式有分歧时才出选项 | **记录**现有页面的排布，只把不一致的地方拿出来选 | 从现有组件反推用法规则，不重画组件 |
 | **D 已有 DS，要求重建**  | 有自己的 token，人明确要求重建或刷一遍                 | 审计：撞值、对比度不达标、裸值、被覆盖的 token                                     | 2–3 套，第一块是现状                                             | 选项对比，第一块是现状基线                                                                                   | 选项对比，第一块是现状                           | 逐个定组件                         |
@@ -80,7 +80,8 @@ C 里人想换调性时，会明确说「重新设计」，那就按 D 走（人
 - 全产品验证通过之前，不改代码里的 token，也不写任何 token 文件或设计文档。
 - 每个数值要么来自现有代码，要么来自产品文档或人点名的参考，要么来自被选中的板。不发明数值，不画数据或文档里没有的字段和页面。
 - 交板之前先跑 Check，并在浏览器里看过每一块板；没看过就说没看过。
-- 小产品可以压缩：第 1、2 步合成一轮，第 4 步只做 3–5 个组件。顺序不变，layout 和全产品验证不跳过。
+- 小产品只缩小第 4 步（只做页面用到的 3–5 个组件）；第 1 步照样要出选择，layout 和全产品验证不跳过。评测里「第 1、2 步合成一轮」被用来把方向压成一份方案，所以删掉。
+- 一轮只做一步（起点 A、B、D）；起点 C 没有要等的选择，所有步骤一轮画完。每轮的回复最后一行固定是三句之一：「下一步：第 N 步，等你选完再画」「下一步：写 spec，等你回复」「下一步：executing-specs，等你批准 spec」。全产品验证通过后，下一步是写 spec，不是写代码。
 
 ## 落地物（写进 spec，由 executing-specs 实现）
 
@@ -142,6 +143,8 @@ C 里人想换调性时，会明确说「重新设计」，那就按 D 走（人
 | S5 有产品文档，没代码（起点 B） | 只有 README 和 `docs/product.md`（页面、流程、数据字段、调性）                                             | 「这个项目还没开始写，产品文档在 docs/product.md。先把 design system 定下来，用 artboard。别问我问题，直接画。」           | ① 读了文档，方向从文档的调性推导；② 板上只出现文档里的页面和字段；③ 第 3 轮或更早出现 layout 组，按文档的主导航排；④ 三轮都没写产品代码                                         |
 
 S0、S3 基线和新版各 1 次；S1、S2 各 2 次；S4、S5 基线 1 次、新版 2 次。记录写到 `docs/ryugi/skill-evals/YYYY-MM-DD-design-system.md`，格式同 10-24；原始 JSONL 和截图放在 `.ryugi/evals/`。新版在某条判定上不比基线好，就补 skill 再跑，直到每条都过，或在记录里写明为什么不过。
+
+「下一轮写不写代码」单独测：用新版跑一次第一轮作为冻结起点，从这个起点只重放下一轮，每组 5 次。对照组只把第一轮结尾那一行改成提议写代码，其余完全相同；另一组把「按推荐，继续」换成看过板的人会说的话。全部在 `isolated-agent-eval` 的容器里跑。
 
 ## 留给施工方（agent 的决定）
 

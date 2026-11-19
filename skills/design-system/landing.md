@@ -9,7 +9,7 @@ One row per token, grouped (surface, text, border, accent, semantic, type, space
 | Token | Light | Dark | Use | Board |
 | ----- | ----- | ---- | --- | ----- |
 
-The code token source is the only source: CSS variables, a theme module, an asset catalog, whatever the platform and the project already use. Name the file it lives in.
+Use the names and required roles of `pages/tokens.css` and copy the values from it, not from the boards' prose; the token sheet board shows the same set. The code token source is the only source: CSS variables, a theme module, an asset catalog, whatever the platform and the project already use. Name the file it lives in.
 
 ## Layout rules
 

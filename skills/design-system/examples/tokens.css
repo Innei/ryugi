@@ -1,0 +1,69 @@
+/*
+ * Example only, for a made-up running log called Pace. Copy the shape, never the values:
+ * every value in a real system comes from the boards your human partner chose.
+ *
+ * pages/tokens.css on the artboard: light on :root, dark on [data-appearance="dark"].
+ * The --color-*, --radius-group and --font-* names are the ones the mockup elements read;
+ * the rest are the product's own roles.
+ */
+:root {
+  /* Surface */
+  --color-bg: #f4f6f3;
+  --color-surface: #ffffff;
+  --color-surface-raised: #ffffff;
+  --color-fill: rgba(31, 61, 46, 0.08);
+  --color-separator: rgba(23, 33, 28, 0.14);
+
+  /* Text */
+  --color-text: #17211c;
+  --color-text-secondary: rgba(23, 33, 28, 0.64);
+  --color-text-tertiary: rgba(23, 33, 28, 0.36);
+
+  /* Accent and semantic */
+  --color-accent: #1f6b4a;
+  --color-on-accent: #ffffff;
+  --color-positive: #1f6b4a;
+  --color-negative: #b3261e;
+  --color-pace-fast: #c2410c;
+
+  /* Type */
+  --font-body: -apple-system, system-ui, 'PingFang SC', sans-serif;
+  --font-display: 'SF Pro Rounded', -apple-system, system-ui, sans-serif;
+  --type-title: 700 32px/38px var(--font-display);
+  --type-headline: 600 17px/22px var(--font-body);
+  --type-body: 400 17px/22px var(--font-body);
+  --type-figure: 600 28px/32px var(--font-display);
+  --type-caption: 400 13px/18px var(--font-body);
+
+  /* Space, size, radius */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --size-row: 52px;
+  --size-control: 44px;
+  --radius-group: 18px;
+  --radius-control: 12px;
+
+  /* Depth and motion */
+  --shadow-float: 0 10px 30px rgba(23, 33, 28, 0.12);
+  --motion-quick: 180ms cubic-bezier(0.22, 1, 0.36, 1);
+  --motion-sheet: 420ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+[data-appearance='dark'] {
+  --color-bg: #0e1411;
+  --color-surface: #18201c;
+  --color-surface-raised: #222b26;
+  --color-fill: rgba(140, 200, 168, 0.14);
+  --color-separator: rgba(233, 240, 236, 0.12);
+  --color-text: #e9f0ec;
+  --color-text-secondary: rgba(233, 240, 236, 0.64);
+  --color-text-tertiary: rgba(233, 240, 236, 0.34);
+  --color-accent: #6fcf9d;
+  --color-on-accent: #0e1411;
+  --color-positive: #6fcf9d;
+  --color-negative: #f2847a;
+  --color-pace-fast: #fb923c;
+  --shadow-float: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
