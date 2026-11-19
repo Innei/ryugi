@@ -93,12 +93,13 @@ C 里人想换调性时，会明确说「重新设计」，那就按 D 走（人
 
 ## Skill 文件
 
-| 文件                              | 内容                                                                                                                                         | 篇幅     |
-| --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
-| `skills/design-system/SKILL.md`   | 触发条件（只写 when）；起点表；四步表；硬规则；与 brainstorming、artifacts、interface-craft、executing-specs、verifying 的分工；Red Flags 表 | ≤ 500 词 |
-| `skills/design-system/stages.md`  | 每个起点的准备、每一步的板清单、尺寸、分组、title note 写法、进入条件、压缩规则、全产品验证的并行做法                                        | 参考     |
-| `skills/design-system/landing.md` | spec 落地部分写法：token 表格式、DESIGN.md 大纲、tokens page、画廊、守护测试                                                                 | 参考     |
-| `skills/design-system/checks.md`  | 跨项目翻车检查项，只收 interface-craft `signs.md` 里没有的，格式 `征兆 → 修法`                                                               | 参考     |
+| 文件                                    | 内容                                                                                                                                                 | 篇幅     |
+| --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| `skills/design-system/SKILL.md`         | 触发条件（只写 when）；起点表；四步表；硬规则；与 brainstorming、artifacts、interface-craft、executing-specs、verifying 的分工；Red Flags 表         | ≤ 500 词 |
+| `skills/design-system/stages.md`        | 每个起点的准备、每一步的板清单、尺寸、分组、title note 写法、进入条件、压缩规则、全产品验证的并行做法                                                | 参考     |
+| `skills/design-system/landing.md`       | spec 落地部分写法：token 表格式、DESIGN.md 大纲、tokens page、画廊、守护测试                                                                         | 参考     |
+| `skills/design-system/checks.md`        | 跨项目翻车检查项，只收 interface-craft `signs.md` 里没有的，格式 `征兆 → 修法`                                                                       | 参考     |
+| `skills/design-system/platforms/ios.md` | iPhone 屏怎么画：`ryugi-ios-shell` 机身与尺寸、屏内导航栏/玻璃/标签栏按系统手写、`ryugi-icon` 的 SF Symbol；其他平台以后在 `platforms/` 下加同级文件 | 参考     |
 
 **checks.md 初稿条目**：
 
