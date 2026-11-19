@@ -27,7 +27,7 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
 ));
 var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
-// src/cli/output/bootstrap/index.ts
+// src/core/cli/output/bootstrap/index.ts
 var index_exports = {};
 __export(index_exports, {
   reportFailure: () => reportFailure,
@@ -38,7 +38,7 @@ module.exports = __toCommonJS(index_exports);
 // <define:BOOTSTRAP_OPTIONS>
 var define_BOOTSTRAP_OPTIONS_default = { format: { type: "string" }, json: { type: "boolean" }, detail: { type: "boolean" }, fields: { type: "string" }, quiet: { type: "boolean" }, verbose: { type: "boolean" }, "project-dir": { type: "string" }, artifact: { type: "string" }, host: { type: "string" }, "url-host": { type: "string" }, port: { type: "string" }, open: { type: "boolean" }, "no-open": { type: "boolean" }, foreground: { type: "boolean" }, background: { type: "boolean" }, page: { type: "string" }, visibility: { type: "string" }, type: { type: "string" }, project: { type: "boolean" }, module: { type: "string" }, limit: { type: "string" }, cursor: { type: "string" }, public: { type: "boolean" }, private: { type: "boolean" }, key: { type: "boolean" }, expires: { type: "string" }, "new-key": { type: "boolean" }, "revoke-key": { type: "boolean" }, profile: { type: "boolean" }, "no-profile": { type: "boolean" }, unpublish: { type: "boolean" }, list: { type: "boolean" }, delete: { type: "string" }, "no-refs": { type: "boolean" }, login: { type: "boolean" }, from: { type: "string" }, logout: { type: "boolean" }, only: { type: "string" }, set: { type: "string" }, sections: { type: "string" }, section: { type: "string" }, snapshot: { type: "string" }, receipt: { type: "string" }, status: { type: "string" }, "waiting-on": { type: "string" }, kind: { type: "string" }, claim: { type: "string" }, gap: { type: "string" }, "choice-state": { type: "string" }, all: { type: "boolean" }, block: { type: "string" }, quote: { type: "string" }, node: { type: "string" }, edge: { type: "string" }, board: { type: "string" }, element: { type: "string" }, slide: { type: "string" }, point: { type: "string" }, row: { type: "string" }, x: { type: "string" }, y: { type: "string" }, thread: { type: "string" }, text: { type: "string" }, group: { type: "string" }, clear: { type: "boolean" }, ask: { type: "string" }, choice: { type: "string" }, round: { type: "string" }, withdraw: { type: "boolean" }, save: { type: "string" }, frame: { type: "string" }, source: { type: "boolean" }, download: { type: "boolean" }, out: { type: "string" }, "no-comments": { type: "boolean" }, "output-format": { type: "string" }, "auto-publish": { type: "string" }, check: { type: "boolean" }, "cli-only": { type: "boolean" }, "plugins-only": { type: "boolean" }, "install-dir": { type: "string" }, "plugin-source": { type: "string" }, pm: { type: "string" }, mode: { type: "string" }, harness: { type: "string" }, yes: { type: "boolean" }, "no-cli": { type: "boolean" }, "bin-dir": { type: "string" } };
 
-// src/cli/output/configuration.ts
+// src/core/cli/output/configuration.ts
 var import_node_fs2 = __toESM(require("node:fs"), 1);
 var import_node_os2 = __toESM(require("node:os"), 1);
 var import_node_path4 = __toESM(require("node:path"), 1);
@@ -79,7 +79,7 @@ var MAX_ARTIFACT_BYTES = 20 * 1024 * 1024;
 // src/core/server/cloud/settings.ts
 var settingsFileFor = (credentialsFile2) => import_node_path2.default.join(import_node_path2.default.dirname(credentialsFile2), "config.json");
 
-// src/cli/paths.ts
+// src/core/cli/kit/paths.ts
 var import_node_fs = __toESM(require("node:fs"), 1);
 var import_node_os = __toESM(require("node:os"), 1);
 var import_node_path3 = __toESM(require("node:path"), 1);
@@ -133,7 +133,7 @@ function projectPaths(dir) {
   };
 }
 
-// src/cli/output/normalize.ts
+// src/core/cli/output/normalize.ts
 var OutputError = class extends Error {
   constructor(error, kind = "failed", raw) {
     super(error.message);
@@ -214,7 +214,7 @@ function normalize(command, result2, options, policy) {
   };
 }
 
-// src/cli/output/planning.ts
+// src/core/cli/output/planning.ts
 function scanOptions(argv, optionSpecs) {
   const values = {};
   for (let i = 0; i < argv.length; i++) {
@@ -263,7 +263,7 @@ function selectOutput(argv, optionSpecs, env = process.env) {
   return { options, ...error ? { error } : {} };
 }
 
-// src/cli/output/configuration.ts
+// src/core/cli/output/configuration.ts
 var PERSISTED_FORMATS = ["brief", "json", "jsonl"];
 function outputFiles(projectDir) {
   return {
@@ -319,12 +319,12 @@ function configuredEnvironment(argv, specs, env = process.env) {
   return { ...env, RYUGI_ARTIFACTS_FORMAT: config.effective };
 }
 
-// src/cli/output/protocol.ts
+// src/core/cli/output/protocol.ts
 function result(data, completion = { kind: "succeeded" }, extra = {}) {
   return { data, completion, coverage: {}, effects: [], warnings: [], actions: [], ...extra };
 }
 
-// src/cli/output/time.ts
+// src/core/cli/output/time.ts
 var ISO = /^\d{4}-\d\d-\d\dT\d\d:\d\d(?::\d\d(?:\.\d+)?)?(?:Z|[+-]\d\d:?\d\d)$/;
 var two = (n) => String(n).padStart(2, "0");
 var isIsoTime = (value) => typeof value === "string" && ISO.test(value) && !Number.isNaN(Date.parse(value));
@@ -338,7 +338,7 @@ function formatTime(iso, now = /* @__PURE__ */ new Date()) {
   return `${two(at.getMonth() + 1)}-${two(at.getDate())} ${clock}`;
 }
 
-// src/cli/output/view.ts
+// src/core/cli/output/view.ts
 function recoveryActions(error, subject) {
   const details = error.details;
   if (!details || typeof details !== "object" || Array.isArray(details)) return [];
@@ -347,7 +347,7 @@ function recoveryActions(error, subject) {
   );
 }
 
-// src/cli/output/render.ts
+// src/core/cli/output/render.ts
 var clean = (text) => text.replaceAll(new RegExp("\\p{Cc}", "gu"), " ");
 function flatten(value, nested = false) {
   if (value === null || value === void 0) return "";
@@ -607,7 +607,7 @@ function renderFailure(wire, options, code = 1) {
   );
 }
 
-// src/cli/output/bootstrap/index.ts
+// src/core/cli/output/bootstrap/index.ts
 function resolveSelection(argv) {
   return selectOutput(argv, define_BOOTSTRAP_OPTIONS_default, configuredEnvironment(argv, define_BOOTSTRAP_OPTIONS_default));
 }
