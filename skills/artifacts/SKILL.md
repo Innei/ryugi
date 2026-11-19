@@ -132,10 +132,13 @@ the actual answer using config; add `--project` for a project-only choice.
 For UI mockups, landing and marketing pages, visual direction exploration and interface critique, use ryugi:interface-craft to inform choices; it adds no approval gate. Pure documentation, precise cosmetic edits and non-UI visualizations do not require it.
 
 Load the project's design system (tokens, components, type) before the first
-frame; if it has none, say which type, scale and palette you are using. Use
-real copy and data, never lorem ipsum. An html page shows both themes when the
-product has them and the states the decision touches. Preview icons map to the
-app's existing business icons when implementing an approved design.
+frame. If it has none (framework defaults as installed are none) and the
+mockups cover several screens or a whole UI, use ryugi:design-system before
+drawing any screen; for one surface, say which type, scale and palette you
+are using. Use real copy and data, never lorem ipsum. An html page shows both
+themes when the product has them and the states the decision touches. Preview
+icons map to the app's existing business icons when implementing an approved
+design.
 
 After Check is clean, tell them what changed and give the link. Questions,
 choices and verdicts use the page controls; discussion can continue in the

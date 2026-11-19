@@ -136,6 +136,10 @@ words and don't open one again unless they raise it.
 **Mockups of their product look like their product.** Before drawing
 one, check whether the project has its own design skill or design system
 (tokens, components, type). If it does, load it first and draw with it.
+If it has none and several screens or a whole UI are being designed, or
+they ask for a design system, use ryugi:design-system: its first round is
+the direction round, each direction drawn as a complete system. A single
+screen goes ahead as above.
 
 ## Size the Work
 

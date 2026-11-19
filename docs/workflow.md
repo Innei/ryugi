@@ -31,11 +31,14 @@ Two-hour autonomous stretches without "should I continue?" are normal. Because t
 
 **Visual design craft** — `interface-craft` is a domain skill for first UI mockups and later critique. It derives a product-specific direction, audits the screen against named defects and one set of starting values, fixes in ordered passes, and carries approved visual intent through Artboard rounds into the spec without a separate approval gate.
 
+**Design system first** — `design-system` activates when a project without a system of its own needs several screens or a whole UI, when its screens exist but have no tokens, when only a product doc exists, or when you ask for a design system. On one artboard, one step per round: a direction chosen from the product's tone, tokens one dimension at a time, layout on real pages, then each component with its usage rules. The whole product is redrawn in the system before any token code is written, and a spec lands code tokens, `DESIGN.md`, a tokens page, a gallery and a guard test. Screens that exist without tokens keep their tone: the values are extracted and merged, not redesigned. A product doc supplies the pages, fields and tone.
+
 **Your project's own skills come first at their step** — a design system before mockups, a verify skill before reporting, a ship skill for merging. Ryugi sets the process; your project carries its domain.
 
 ## What's inside
 
 - **Process** — `brainstorming`, `artifacts`, `executing-specs`, `verifying`
+- **Design** — `interface-craft`, `design-system`
 - **Discipline** — `test-driven-development`, `systematic-debugging`
 - **Workspace** — `using-git-worktrees`
 - **Meta** — `using-ryugi` (bootstrap, plus evidence before claims)

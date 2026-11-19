@@ -17,7 +17,7 @@ A design technique, not a mandatory extra phase. Two halves, in order: set a dir
 | **Repair** | An existing screen, with defects or with a request to improve it          | Audit with [signs](references/signs.md), report findings with locations, fix only the agreed scope     |
 | **Edit**   | One exact visual change is specified                                      | Make that change. No audit, no direction, no questions                                                 |
 
-Not a UI task: backend work, architecture diagrams, pure copy, generic documents that happen to have a visual format.
+Not a UI task: backend work, architecture diagrams, pure copy, generic documents that happen to have a visual format. Building a whole design system: ryugi:design-system orders the stages; this skill judges each board.
 
 Landing pages, marketing and pricing pages, onboarding, empty states, settings and emails are product interfaces too; use this skill for them.
 
