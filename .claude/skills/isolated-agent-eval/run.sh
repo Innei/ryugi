@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
 # One unattended agent session in a throwaway container.
 #
-#   bash run.sh --fixture DIR --out DIR --prompt TEXT [--turns N] [--next TEXT]
-#               [--model ID] [--plugin DIR] [--models-yml FILE] [--memory 3g]
+#   bash run.sh (--fixture DIR | --resume RUN_DIR) --out DIR --prompt TEXT [--turns N]
+#               [--next TEXT] [--model ID] [--plugin DIR] [--models-yml FILE] [--memory 3g]
+#
+# --resume continues a previous run's session and repo (its --out); --prompt is
+# then the next turn's message.
 #
 # Only --out is writable to the container. The fixture, the plugin checkout,
 # the provider config and any outside directories the checkout's symlinks point
@@ -20,12 +23,12 @@ HERE=${EVAL_RUN_HERE:-$HERE}
 trap 'rm -f "$0"' EXIT
 
 IMAGE=${RYUGI_EVAL_IMAGE:-ryugi-agent-eval:local}
-fixture='' out='' prompt='' turns=1 next='按推荐，继续' model=deepseek/deepseek-flash memory=3g
+fixture='' resume='' out='' prompt='' turns=1 next='按推荐，继续' model=deepseek/deepseek-flash memory=3g
 plugin='' models_yml=''
 
 while [ $# -gt 0 ]; do
   case $1 in
-    --fixture) fixture=$2 ;; --out) out=$2 ;; --prompt) prompt=$2 ;; --turns) turns=$2 ;;
+    --fixture) fixture=$2 ;; --resume) resume=$2 ;; --out) out=$2 ;; --prompt) prompt=$2 ;; --turns) turns=$2 ;;
     --next) next=$2 ;; --model) model=$2 ;; --plugin) plugin=$2 ;; --models-yml) models_yml=$2 ;;
     --memory) memory=$2 ;;
     *)
@@ -35,15 +38,24 @@ while [ $# -gt 0 ]; do
   esac
   shift 2
 done
-[ -n "$fixture" ] && [ -n "$out" ] && [ -n "$prompt" ] || {
-  echo "--fixture, --out and --prompt are required" >&2
+if { [ -n "$fixture" ] && [ -n "$resume" ]; } || { [ -z "$fixture" ] && [ -z "$resume" ]; } || [ -z "$out" ] || [ -z "$prompt" ]; then
+  echo "exactly one of --fixture or --resume, plus --out and --prompt, are required" >&2
   exit 2
-}
+fi
 [ -n "$models_yml" ] || {
   echo "--models-yml is required (see provider-config.py)" >&2
   exit 2
 }
-fixture=$(cd "$fixture" && pwd)
+if [ -n "$fixture" ]; then
+  source_mount=(-v "$(cd "$fixture" && pwd):/fixture:ro")
+else
+  [ -f "$resume/status" ] && [ -d "$resume/repo" ] && [ -d "$resume/sessions" ] || {
+    echo "--resume $resume is not a previous run (needs status, repo/, sessions/)" >&2
+    exit 2
+  }
+  resume=$(cd "$resume" && pwd)
+  source_mount=(-v "$resume:/resume:ro")
+fi
 [ -n "$plugin" ] || plugin=$(git -C "$HERE" rev-parse --show-toplevel)
 plugin=$(cd "$plugin" && pwd)
 
@@ -58,6 +70,10 @@ if [ -e "$out" ] && [ ! -f "$out/status" ] && [ -n "$(ls -A "$out")" ]; then
   echo "refusing --out $out: exists, is not empty and is not a previous run" >&2
   exit 2
 fi
+if [ -n "$resume" ] && [ -e "$out" ] && [ "$(cd "$out" && pwd)" = "$resume" ]; then
+  echo "refusing --out $out: it is the --resume source" >&2
+  exit 2
+fi
 rm -rf "$out" && mkdir -p "$out" && out=$(cd "$out" && pwd)
 
 extra=()
@@ -68,7 +84,7 @@ done < <(find "$plugin/skills" -type l -exec readlink {} \; | grep '^/' | grep -
 docker run --rm --name "agent-eval-$(basename "$out")-$$" \
   --cap-drop ALL --security-opt no-new-privileges --pids-limit 2048 --memory "$memory" --cpus 2 --shm-size 1g \
   -e EVAL_MODEL="$model" \
-  -v "$fixture:/fixture:ro" \
+  "${source_mount[@]}" \
   -v "$plugin:/opt/plugin:ro" \
   "${extra[@]}" \
   -v "$(cd "$(dirname "$models_yml")" && pwd)/$(basename "$models_yml"):/secrets/models.yml:ro" \
