@@ -22,7 +22,7 @@ env:
 jobs:
   release:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 75
     steps:
       - uses: actions/checkout@v4
         with:
@@ -35,6 +35,7 @@ jobs:
           repository: ${{ env.CLOUD_REPO }}
           ref: main
           token: ${{ secrets.RYUGI_CLOUD_TOKEN }}
+          persist-credentials: false
           path: ryugi-cloud
           fetch-depth: 0
           fetch-tags: true
@@ -64,25 +65,6 @@ jobs:
             echo "publish=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Wait for Artifacts CI to pass on main with the tag
-        if: steps.release.outputs.publish == 'true'
-        working-directory: ryugi-cloud
-        timeout-minutes: 40
-        env:
-          GH_TOKEN: ${{ secrets.RYUGI_CLOUD_TOKEN }}
-          TAG: ${{ steps.release.outputs.tag }}
-        run: |
-          sha="$(git rev-list -n 1 "$TAG")"
-          runs="repos/$CLOUD_REPO/actions/workflows/artifacts.yml/runs?head_sha=$sha&status=success&per_page=1"
-          while true; do
-            if [[ -n "$(gh api "$runs" --jq '.workflow_runs[0].id // empty')" ]]; then
-              echo "$TAG is tested at ${sha:0:8}."
-              break
-            fi
-            echo "Artifacts CI has not passed on $TAG yet; waiting."
-            sleep 30
-          done
-
       - name: Check out the release tag
         working-directory: ryugi-cloud
         env:
@@ -101,7 +83,42 @@ jobs:
         timeout-minutes: 5
         run: pnpm install --frozen-lockfile
 
-      - name: Catch the plugin checkout up with main, which can move during the wait
+      - name: Read the plugin revision the suite pins as a fixture
+        id: fixture
+        if: steps.release.outputs.publish == 'true'
+        working-directory: ryugi-cloud
+        run: |
+          revision="$(cat packages/artifacts/test/plugin-revision)"
+          [[ "$revision" =~ ^[0-9a-f]{40}$ ]]
+          echo "revision=$revision" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v4
+        if: steps.release.outputs.publish == 'true'
+        with:
+          ref: ${{ steps.fixture.outputs.revision }}
+          path: ryugi-plugin
+
+      - name: Lint and typecheck
+        if: steps.release.outputs.publish == 'true'
+        working-directory: ryugi-cloud
+        timeout-minutes: 8
+        run: |
+          pnpm lint
+          pnpm --dir packages/shared typecheck
+          pnpm --dir packages/artifacts typecheck
+
+      - name: Test
+        if: steps.release.outputs.publish == 'true'
+        working-directory: ryugi-cloud
+        # The artifacts suite takes over 15 minutes on hosted runners.
+        timeout-minutes: 35
+        env:
+          RYUGI_PLUGIN_DIR: ${{ github.workspace }}/ryugi-plugin
+        run: |
+          pnpm --dir packages/shared test
+          pnpm --dir packages/artifacts test
+
+      - name: Catch the plugin checkout up with main, which can move during the tests
         working-directory: ryugi
         run: git pull -q --ff-only origin "$GITHUB_REF_NAME"
 
