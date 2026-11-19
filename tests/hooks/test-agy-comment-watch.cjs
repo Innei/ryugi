@@ -276,3 +276,35 @@ test('agy-comment-watch supersedes a worker with a stale lsAddress and exits cle
   const secondExit = await new Promise((resolve) => second.on('exit', resolve));
   assert.equal(secondExit, 0);
 });
+
+test('ensureWatch launches a detached watcher and skips respawning while healthy', async (t) => {
+  const { ensureWatch } = require(adapter);
+  const ls = await lsServer(t);
+  const f = fixture(t, ls);
+  f.subscribe('document/launcher');
+
+  assert.equal(ensureWatch(f.project, f.env), true);
+  await initialScan(f.project);
+
+  // Calling ensureWatch again while healthy is a fast no-op
+  assert.equal(ensureWatch(f.project, f.env), false);
+
+  f.writeComments('document/launcher', [
+    {
+      id: 't4',
+      anchor: { blockId: 'b4', quote: ' launcher ' },
+      status: 'open',
+      statusAt: at(4),
+      statusBy: 'human',
+      messages: [{ id: 'm4', author: 'human', text: 'woken from launcher', at: at(4) }],
+    },
+  ]);
+
+  await until(
+    () => ls.calls.length === 1,
+    'watcher spawned by ensureWatch did not deliver comment',
+  );
+  assert.match(ls.calls[0].body.content, /woken from launcher/);
+
+  f.stopWatch();
+});

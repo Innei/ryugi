@@ -300,7 +300,7 @@ function main() {
   } catch {}
   const isAntigravity = Boolean(
     input.hookEventName === 'PreInvocation' ||
-    (process.env.ANTIGRAVITY_AGENT &&
+    ((process.env.ANTIGRAVITY_AGENT || process.env.PLUGIN_ROOT || process.env.PLUGIN_DATA) &&
       !process.env.CLAUDE_PROJECT_DIR &&
       !process.env.CLAUDE_PLUGIN_ROOT &&
       !process.env.CURSOR_PLUGIN_ROOT &&

@@ -12,7 +12,12 @@ function projectOf(cwd) {
 
 const at = Date.now();
 const fallbackProject = process.argv[2];
-const isAntigravity = !fallbackProject && Boolean(process.env.ANTIGRAVITY_AGENT);
+const isAntigravity =
+  !fallbackProject &&
+  !process.env.CLAUDE_PROJECT_DIR &&
+  !process.env.CLAUDE_PLUGIN_ROOT &&
+  !process.env.CURSOR_PLUGIN_ROOT &&
+  Boolean(process.env.ANTIGRAVITY_AGENT || process.env.PLUGIN_ROOT || process.env.PLUGIN_DATA);
 if (isAntigravity) {
   process.stdout.write('{}\n');
 }

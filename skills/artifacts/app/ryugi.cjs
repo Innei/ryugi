@@ -259,6 +259,16 @@ function main() {
         console.error(JSON.stringify({ type: 'comment-watch-error', message: error.message }));
     }
   }
+  if (process.env.ANTIGRAVITY_CONVERSATION_ID && process.env.ANTIGRAVITY_LS_ADDRESS) {
+    try {
+      const idx = args.indexOf('--project-dir');
+      const projectDir =
+        idx >= 0
+          ? args[idx + 1]
+          : args.find((arg) => arg.startsWith('--project-dir='))?.slice('--project-dir='.length);
+      require('./agy-comment-watch.cjs').ensureWatch(projectDir || process.cwd(), process.env);
+    } catch {}
+  }
   const given = Number(env.RYUGI_ARTIFACTS_OWNER);
   const owner = Number.isInteger(given) && given > 1 ? given : ownerPid();
   if (owner) env.RYUGI_ARTIFACTS_OWNER = String(owner);

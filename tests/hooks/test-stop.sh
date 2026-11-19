@@ -81,8 +81,8 @@ expected="$(printf 'POST /api/agent/event %s\nPOST /api/cloud/flush %s' "$dir" "
 if [ "$(cat "$seen" 2> /dev/null)" = "$expected" ]; then pass "tells its project's server the turn ended and flushes it"; else fail "tells its project's server the turn ended and flushes it ($(cat "$seen" 2> /dev/null))"; fi
 
 agy_stop_out="$(printf '{"hookEventName":"Stop","conversationId":"s1","cwd":"%s"}' "$TEST_ROOT/none" \
-  | env -i PATH="${PATH:-}" HOME="$TEST_ROOT" ANTIGRAVITY_AGENT=1 bash "$HOOK" stop)"
-if [ "$agy_stop_out" = "{}" ]; then pass "Antigravity Stop hook outputs {}"; else fail "Antigravity Stop hook outputs {} ($agy_stop_out)"; fi
+  | env -i PATH="${PATH:-}" HOME="$TEST_ROOT" PLUGIN_ROOT="$REPO_ROOT" bash "$HOOK" stop)"
+if [ "$agy_stop_out" = "{}" ]; then pass "Antigravity Stop hook outputs {} even without ANTIGRAVITY_AGENT"; else fail "Antigravity Stop hook outputs {} even without ANTIGRAVITY_AGENT ($agy_stop_out)"; fi
 
 if [ "$FAILURES" -gt 0 ]; then
   echo "$FAILURES failure(s)"

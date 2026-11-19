@@ -7,7 +7,12 @@ case "$0" in
 esac
 
 is_antigravity=0
-if [ -n "${ANTIGRAVITY_AGENT:-}" ] && [ -z "${CLAUDE_PROJECT_DIR:-}" ] && [ -z "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -z "${CURSOR_PLUGIN_ROOT:-}" ]; then
+if { [ -n "${ANTIGRAVITY_AGENT:-}" ] || [ -n "${PLUGIN_ROOT:-}" ] || [ -n "${PLUGIN_DATA:-}" ]; } \
+  && [ -z "${CLAUDE_PROJECT_DIR:-}" ] \
+  && [ -z "${CLAUDE_PLUGIN_ROOT:-}" ] \
+  && [ -z "${CURSOR_PLUGIN_ROOT:-}" ] \
+  && [ -z "${MUSE_PLUGIN_ROOT:-}" ] \
+  && [ -z "${COPILOT_CLI:-}" ]; then
   is_antigravity=1
 fi
 

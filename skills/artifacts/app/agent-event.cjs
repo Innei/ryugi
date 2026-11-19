@@ -165,7 +165,8 @@ if (require.main === module) {
         ? 'claude'
         : 'codex';
   void readStdin().then((input) => {
-    if (host === 'antigravity') {
+    // Antigravity PreToolUse treats {} (missing decision) as deny; empty stdout defers to normal permissions.
+    if (host === 'antigravity' && input?.hookEventName !== 'PreToolUse') {
       process.stdout.write('{}\n');
     }
     const event = eventFrom(input, host, at);

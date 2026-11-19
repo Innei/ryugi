@@ -486,14 +486,14 @@ else
   echo "$artifacts_out" | sed 's/^/      /'
 fi
 
-agy_artifacts_only="$TEST_ROOT/agy-artifacts-only"
+agy_artifacts_only="$TEST_ROOT/plugins/ryugi-artifacts"
 mkdir -p "$agy_artifacts_only/skills/artifacts"
 cp -R "$REPO_ROOT/hooks" "$agy_artifacts_only/hooks"
-if agy_artifacts_out="$(env -i PATH="${PATH:-}" HOME="$artifacts_home" ANTIGRAVITY_AGENT=1 PLUGIN_ROOT="$agy_artifacts_only" \
+if agy_artifacts_out="$(env -i PATH="${PATH:-}" HOME="$artifacts_home" PLUGIN_ROOT="$agy_artifacts_only" PLUGIN_DATA="$TEST_ROOT/plugin_data/ryugi-artifacts" \
   bash "$agy_artifacts_only/hooks/session-start" 2>&1)" && [[ "$agy_artifacts_out" == "{}" ]]; then
-  pass "Antigravity artifacts-only install emits empty JSON object {}"
+  pass "Antigravity artifacts-only install (without ANTIGRAVITY_AGENT) emits empty JSON object {}"
 else
-  fail "Antigravity artifacts-only install emits empty JSON object {}"
+  fail "Antigravity artifacts-only install (without ANTIGRAVITY_AGENT) emits empty JSON object {}"
   echo "$agy_artifacts_out" | sed 's/^/      /'
 fi
 

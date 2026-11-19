@@ -306,6 +306,20 @@ else
   fail "Antigravity PreInvocation emits {} cleanly when cwd does not exist ($agy_missing_cwd)"
 fi
 
+agy_plugin_only_out="$(printf '{"hookEventName":"PreInvocation","conversationId":"0b5f6c1e-3f0a-4a52-9d0e-6a4d3c2b1a00","cwd":"%s","lastUserInput":"看看 hero-2#5","invocationNum":0}' "$agy_dir" \
+  | env -i PATH="${PATH:-}" HOME="$TEST_ROOT" PLUGIN_ROOT="$REPO_ROOT" bash "$HOOK" user-prompt-submit)"
+if printf '%s' "$agy_plugin_only_out" | node -e '
+const fs = require("fs");
+const data = JSON.parse(fs.readFileSync(0, "utf8"));
+const msg = data.injectSteps?.[0]?.systemMessage?.systemMessage || "";
+if (!msg.includes("hero-2#12 <div>") || !msg.includes("hero-2#5 <span>")) process.exit(1);
+'; then
+  pass "Antigravity PreInvocation works with PLUGIN_ROOT even without ANTIGRAVITY_AGENT"
+else
+  fail "Antigravity PreInvocation works with PLUGIN_ROOT even without ANTIGRAVITY_AGENT"
+  echo "$agy_plugin_only_out" | sed 's/^/      /'
+fi
+
 claude_in_agy_out="$(printf '{"hook_event_name":"UserPromptSubmit","cwd":"%s","prompt":"看看 hero-2#5"}' "$agy_dir" \
   | env -i PATH="${PATH:-}" HOME="$TEST_ROOT" ANTIGRAVITY_AGENT=1 CLAUDE_PROJECT_DIR="$agy_dir" bash "$HOOK" user-prompt-submit)"
 expect "Claude Code hook inside inherited ANTIGRAVITY_AGENT=1 still outputs plain text" "$claude_in_agy_out" 'Artboard artboard/node-id'

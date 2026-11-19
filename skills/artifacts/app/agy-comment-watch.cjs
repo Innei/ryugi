@@ -1,5 +1,6 @@
 'use strict';
 
+const { spawn } = require('node:child_process');
 const { randomUUID } = require('node:crypto');
 const fs = require('node:fs');
 const http = require('node:http');
@@ -256,6 +257,36 @@ function watch(ctx) {
   void tick();
 }
 
+function workerFile(project, session, env = process.env) {
+  const data = env.PLUGIN_DATA || path.join(project, '.ryugi/artifacts/.state');
+  return path.join(data, 'agy-comment-watch', 'workers', `${session}.json`);
+}
+
+function ensureWatch(project, env = process.env) {
+  const session = UUID.test(env.ANTIGRAVITY_CONVERSATION_ID || '')
+    ? env.ANTIGRAVITY_CONVERSATION_ID
+    : null;
+  const lsAddress = env.ANTIGRAVITY_LS_ADDRESS || '';
+  if (!session || !lsAddress) return false;
+  let root;
+  try {
+    root = projectRoot(project || process.cwd());
+  } catch {
+    return false;
+  }
+  const existing = readJson(workerFile(root, session, env));
+  if (alive(existing?.pid) && existing?.lsAddress === lsAddress) return false;
+  const child = spawn(process.execPath, [__filename, 'watch'], {
+    cwd: root,
+    env: { ...env, ANTIGRAVITY_CONVERSATION_ID: session },
+    detached: true,
+    stdio: ['pipe', 'ignore', 'ignore'],
+  });
+  child.stdin.end(JSON.stringify({ conversationId: session, cwd: root }));
+  child.unref();
+  return true;
+}
+
 function main() {
   let input = {};
   try {
@@ -270,5 +301,5 @@ function main() {
   }
 }
 
-module.exports = { context, deliverComment, lsRpc, projectRoot };
+module.exports = { context, deliverComment, ensureWatch, lsRpc, projectRoot };
 if (require.main === module) main();

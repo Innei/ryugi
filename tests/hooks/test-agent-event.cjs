@@ -281,7 +281,7 @@ test('the turn-end flush never waits on a stdin that stays open', async (t) => {
   await until(() => seen.some((r) => r.path === '/api/cloud/flush'));
 });
 
-test('the Antigravity PreToolUse hook reports camelCase toolCall.args.TargetFile and returns {} without auto-allowing', async (t) => {
+test('the Antigravity PreToolUse hook reports camelCase toolCall.args.TargetFile and emits empty stdout without denying or auto-allowing', async (t) => {
   const dir = project(t);
   const seen = await hub(t, dir);
   const file = path.join(dir, '.ryugi/artifacts/document/plan/doc.xml');
@@ -297,10 +297,10 @@ test('the Antigravity PreToolUse hook reports camelCase toolCall.args.TargetFile
         args: { TargetFile: file },
       },
     },
-    { ANTIGRAVITY_AGENT: '1', CLAUDE_PLUGIN_ROOT: '' },
+    { CLAUDE_PLUGIN_ROOT: '' },
   );
   assert.equal(result.code, 0);
-  assert.deepEqual(JSON.parse(result.out), {});
+  assert.equal(result.out, '');
   await until(() => seen.length === 1);
   assert.deepEqual(
     { ...seen[0].body, at: undefined },

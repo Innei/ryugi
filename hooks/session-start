@@ -9,19 +9,25 @@ set -euo pipefail
 # dirname because a SessionStart:startup hook can run with a broken/empty
 # PATH (anthropics/claude-code#43127) before any PATH-repairing sibling hook
 # in the same startup batch takes effect.
+env_plugin_root="${PLUGIN_ROOT:-}"
+env_plugin_data="${PLUGIN_DATA:-}"
+
 case "$0" in
   */* | *\\*) SCRIPT_DIR="$(cd "${0%[/\\]*}" && pwd)" ;;
   *) SCRIPT_DIR="$(pwd)" ;;
 esac
 PLUGIN_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
-# Only treat this invocation as Antigravity when ANTIGRAVITY_AGENT is set AND
-# no foreign harness plugin root / CLI marker is active (so launching Claude,
-# Cursor, Copilot CLI, or Muse from an Antigravity terminal does not hijack them).
+# Only treat this invocation as Antigravity when an Antigravity hook marker
+# (ANTIGRAVITY_AGENT, or Antigravity's plugin hook PLUGIN_ROOT/PLUGIN_DATA) is
+# set AND no foreign harness plugin root / CLI marker is active (so launching
+# Claude, Cursor, Copilot CLI, or Muse from an Antigravity terminal does not
+# hijack them).
 is_antigravity=0
-if [ -n "${ANTIGRAVITY_AGENT:-}" ] \
+if { [ -n "${ANTIGRAVITY_AGENT:-}" ] || [ -n "$env_plugin_root" ] || [ -n "$env_plugin_data" ]; } \
   && [ -z "${CURSOR_PLUGIN_ROOT:-}" ] \
   && [ -z "${CLAUDE_PLUGIN_ROOT:-}" ] \
+  && [ -z "${CLAUDE_PROJECT_DIR:-}" ] \
   && [ -z "${MUSE_PLUGIN_ROOT:-}" ] \
   && [ -z "${COPILOT_CLI:-}" ]; then
   is_antigravity=1
@@ -99,22 +105,32 @@ if { [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] || [ "$is_antigravity" -eq 1 ]; } && [ -z 
 fi
 
 if [ "$is_antigravity" -eq 1 ] && [ -n "${ANTIGRAVITY_LS_ADDRESS:-}" ] && [ -f "${PLUGIN_ROOT}/skills/artifacts/app/agy-comment-watch.cjs" ] && command -v node > /dev/null 2>&1; then
-  printf '%s' "$stdin_payload" | node "${PLUGIN_ROOT}/skills/artifacts/app/agy-comment-watch.cjs" watch > /dev/null 2>&1 &
+  printf '%s' "$stdin_payload" | node -e '
+    const { spawn } = require("node:child_process");
+    const fs = require("node:fs");
+    const payload = fs.readFileSync(0, "utf8");
+    const child = spawn(process.execPath, [process.argv[1], "watch"], {
+      detached: true,
+      stdio: ["pipe", "ignore", "ignore"],
+    });
+    child.stdin.end(payload);
+    child.unref();
+  ' "${PLUGIN_ROOT}/skills/artifacts/app/agy-comment-watch.cjs" > /dev/null 2>&1 || true
 fi
 
 # The ryugi-artifacts marketplace entry loads only the artifacts skills but
 # still runs every hook. Its data dir (<entry>-<marketplace>) names the entry
 # for every marketplace source; a directory source runs hooks from the source
 # checkout, so the cache path alone cannot tell.
-plugin_data="${CLAUDE_PLUGIN_DATA:-}"
+plugin_data="${CLAUDE_PLUGIN_DATA:-${env_plugin_data}}"
 case "${plugin_data##*[/\\]}" in
-  ryugi-artifacts-*)
+  ryugi-artifacts | ryugi-artifacts-*)
     if [ "$is_antigravity" -eq 1 ]; then emit_json '{}\n'; fi
     exit 0
     ;;
 esac
 case "$PLUGIN_ROOT" in
-  */ryugi-artifacts/* | *\\ryugi-artifacts\\*)
+  */ryugi-artifacts | */ryugi-artifacts/* | *\\ryugi-artifacts | *\\ryugi-artifacts\\*)
     if [ "$is_antigravity" -eq 1 ]; then emit_json '{}\n'; fi
     exit 0
     ;;
