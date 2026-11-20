@@ -49,6 +49,8 @@ node app/ryugi.cjs start --background --project-dir /path/to/project --artifact 
 ```
 
 Run it before a new artifact's first file so they can see it take shape.
+Add `--mockup` when the artifact will show phone screens: the writing
+description then includes the device mockup guide.
 Read the result: project, artifact, native `Write` path, content state, actual
 CLI/server versions, link state, and Check command. When content is missing,
 the same response contains the complete, coherent writing description for that

@@ -4,7 +4,7 @@ For a product that runs on iPhone. Read it before the first phone board.
 
 ## The device
 
-- Every phone screen is a `<ryugi-ios-shell>` (Mockup components in the artboard writing description). It draws the screen (402×874, iPhone 17), status bar, Dynamic Island and home indicator; `bezel` adds the frame (442×914). Never hand-draw those parts; `hide` drops the ones a screen should not show.
+- Every phone screen is a `<ryugi-ios-shell>` (run start with `--mockup` for its guide). It draws the screen (402×874, iPhone 17), status bar, Dynamic Island and home indicator; `bezel` adds the frame (442×914). Never hand-draw those parts; `hide` drops the ones a screen should not show.
 - A board holds one phone at 402×874, or the same screen light and dark side by side: two shells with `appearance="light"` and `appearance="dark"`.
 - Content flows from below the status bar (`--safe-top`, 62px). Anything floating at the bottom sits above `--safe-bottom` (34px).
 
