@@ -19,3 +19,14 @@ A fresh sonnet subagent reads the skill files (read only, no commands, no networ
 | executing-specs reads the design                        | the `docs/` copy 3  | `get --detail` from the pointer 3 |
 
 Baseline runs named the gap themselves: "The baseline gives no mechanism for approval", "the builder check reads the artifact's XML, but executing-specs reads the markdown copy". With the change, the three runs produced the same pointer shape and the same commit set.
+
+## Review fixes
+
+The final review found that an approval question with `recommend` would count as approved on any page submit, and that `git add -f` on the whole document directory stages `.artifact-id`. Two sonnet runs per arm on a focused scenario (partner submits the page without touching the approval question; root `.gitignore` ignores `.ryugi/`):
+
+| Behavior                                           | Before fix (2) | After fix (2) |
+| -------------------------------------------------- | -------------- | ------------- |
+| Treats the untouched approval question as approval | 0              | 0             |
+| Force-adds `.artifact-id`                          | 2              | 0             |
+
+The approval case did not reproduce once the scenario spelled out the page rule; the fix removes `recommend` from the approval question so the rule never applies.

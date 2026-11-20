@@ -29,7 +29,8 @@ document; do not copy it. After approval, write a pointer at
 ```
 
 Commit the pointer and `.ryugi/artifacts/document/<id>/` together. If the
-repo's `.gitignore` ignores that directory, `git add -f` it; leave
+repo's `.gitignore` ignores that directory, `git add -f` its `doc.xml`,
+`comments.json` and `assets/`, never its `.artifact-id`; leave
 `.gitignore` as it is. When your human partner says not to commit the
 design, put the document's `--detail` markdown at the spec path instead.
 
