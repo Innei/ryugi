@@ -181,7 +181,7 @@ in between.
 
 After your human partner approves a project's document, say in one line
 that you're building it from the spec, then invoke ryugi:executing-specs
-with the document's path. When they ask to just code it, now or in their
+with the spec path (the pointer, for a document design). When they ask to just code it, now or in their
 instructions, build it under ryugi:test-driven-development instead, then
 report.
 

@@ -13,14 +13,29 @@ could build from without going back to your human partner. Cover:
   and what was decided there, stated in the text too, since
   `.ryugi/artifacts/` may not be committed
 
-When your human partner has ADHD, also write `<spec>.tldr.md` beside it for
-them: what gets built, what they'll see as numbered steps, decisions in a
-table, your own calls under "check these", a concrete time estimate. They
-review the TL;DR; the builder works from the spec.
+**Where it goes:** a design that converged in a document artifact is that
+document; do not copy it. After approval, write a pointer at
+`docs/ryugi/specs/YYYY-MM-DD-<topic>-design.md`:
 
-**Where it goes:** in a software repo,
-`docs/ryugi/specs/YYYY-MM-DD-<topic>-design.md`, committed.
-Otherwise, ask. Your human partner's preferences override both.
+```md
+# <Title>
+
+<One sentence: what gets built and why.>
+
+- Design: `.ryugi/artifacts/document/<id>/doc.xml`
+- Read: `ryugi get --artifact document/<id> --detail --project-dir <repo-root>` (through the ryugi:artifacts launcher)
+- Boards: <artboard and whiteboard ids, if any>
+- Approved: YYYY-MM-DD
+```
+
+Commit the pointer and `.ryugi/artifacts/document/<id>/` together. If the
+repo's `.gitignore` ignores that directory, `git add -f` it; leave
+`.gitignore` as it is. When your human partner says not to commit the
+design, put the document's `--detail` markdown at the spec path instead.
+
+A design written in chat goes at the same path in full, committed. Outside
+a software repo, ask. Your human partner's preferences override all of
+these.
 
 ## Builder Check
 

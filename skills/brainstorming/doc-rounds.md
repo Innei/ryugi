@@ -90,8 +90,13 @@ item now and say so in the reply.
 When nothing is left that only they can answer, rewrite the document in
 place into the written design (`written-design.md`), keeping
 Settled as its decisions. Run the builder check on it; the "theirs" pile is
-the last round. Approval happens on this document; then save it to the spec
-path as `written-design.md` says.
+the last round. Approval happens on this document: its last block is an
+approval question in their language, `<ask id="approve" recommend="approve">`
+with the options `approve` and `revise`, and your message says to pick
+and submit it. A submitted `approve` is the approval. A `revise`, or
+comments, gets applied, and the question comes back with a new id
+(`approve-2`). Then write the pointer and commit as `written-design.md`
+says.
 
 ## Without a Browser
 

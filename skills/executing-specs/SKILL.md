@@ -81,7 +81,9 @@ ledger file is the record; harness todos are only a live view.
 - `git clean -fdx` will destroy the workspace (it's git-ignored scratch);
   if that happens, recover from `git log` and the spec.
 
-Read the spec once, end to end.
+Read the spec once, end to end. A spec with a `Read:` line points to a
+document artifact: run that command through the ryugi:artifacts launcher,
+and the markdown it prints is the spec.
 
 **REQUIRED SUB-SKILL:** load ryugi:test-driven-development now,
 before slicing. It governs every task below.

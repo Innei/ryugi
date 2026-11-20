@@ -67,7 +67,9 @@ node app/ryugi.cjs start --project-dir /path/to/project --artifact document/retr
 Use your task's type and ID. Use `<command> --help` or
 `comment <action> --help` for inputs.
 `get --project-dir <path>` discovers local artifacts without a server;
-`get --artifact <type>/<id> --detail` reads complete native source.
+`get --artifact <type>/<id> --detail` reads complete native source; a
+document prints as markdown with its heading outline, and `--source` prints
+its LiteXML.
 
 If a missing-content result lacks writing information, run `update --check`
 and rerun start through the same launcher. If the latest available CLI still

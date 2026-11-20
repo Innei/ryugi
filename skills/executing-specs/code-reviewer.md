@@ -91,6 +91,7 @@ Subagent (general-purpose):
 **Placeholders:**
 
 - `[PACKAGE_PATH]` — the file `review-package` printed
-- `[SPEC_PATH]` — the spec file
+- `[SPEC_PATH]` — the spec file; for a spec with a `Read:` line, also
+  that command with the launcher's absolute path
 - `[LEDGER_PATH]` — `<workspace>/progress.md`
 - `[REVIEW_FOCUS]` — the `## Review Focus` section of `tasks.md`, verbatim

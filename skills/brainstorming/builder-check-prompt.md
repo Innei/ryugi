@@ -1,7 +1,10 @@
 # Builder Check Prompt
 
 Dispatch a fresh general-purpose subagent with this prompt once the
-written design exists. Fill in the domain and the document path.
+written design exists. Fill in the domain and how to read the design: for a
+document artifact, the command
+`node <launcher> get --artifact document/<id> --detail --project-dir <repo-root>`
+with the launcher's absolute path; otherwise the document's path.
 
 ```
 You are a talented [DOMAIN, e.g. "software engineer", "event planner",
@@ -9,7 +12,7 @@ You are a talented [DOMAIN, e.g. "software engineer", "event planner",
 put together a plan to build what it describes. You will not be able to
 talk to the person who wrote it.
 
-Read [DOCUMENT_PATH].
+Read the design: [HOW_TO_READ].
 
 Report only the questions you'd still need answered before you could plan
 this well: places where you'd have to guess and a wrong guess would
