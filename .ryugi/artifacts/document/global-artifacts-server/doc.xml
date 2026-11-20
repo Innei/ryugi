@@ -1,0 +1,401 @@
+<doc>
+  <h1 id="2JC0neol">Artifacts server：整机单例</h1>
+  <p id="LxBgMGEi">正式设计，两轮讨论的结论都已经并进来了。你看完点头，我就照这份开始做；哪里不对，直接改或者加评论。</p>
+  <h2 id="idsiTV-i">TL;DR</h2>
+  <p id="LhWzSTqX"><b>要做的：</b>把每个项目各起一个 artifacts server，改成整台机器只跑一个常驻 server，端口固定。本地首页改成能跨项目找产物，同时管理这个 server。cloud 页面在本机直接连这个端口，不再经过 Durable Object（DO），DO 只在别的设备上查看时做中继。被 DO 拒绝时，页面明确说出原因，并且不再自动重试。</p>
+  <p id="podrTdIz"><b>做完以后你会看到：</b></p>
+  <ol id="81uGgsLC">
+    <li>不管开几个项目，<code>ps</code> 里只有一个 artifacts server 进程。</li>
+    <li>本地地址一直是 <code>http://localhost:27319/</code>，书签不会失效。</li>
+    <li>打开首页：左边是项目栏，最上面是「最近 · 所有项目」；按 ⌘K 可以搜所有项目里的产物。</li>
+    <li>顶栏有一个状态胶囊，显示版本和 relay 状态；点开可以升级、重启、停止、看日志、移除项目登记。</li>
+    <li>放一整晚，cloud 页面也不会变成 offline；本机开 20 个 cloud 标签页，个个都是实时的。</li>
+    <li>在手机上看时如果被 DO 拒绝，页面上直接写「连接已满」或「今日额度用完」，并给一个「重新连接」按钮。</li>
+  </ol>
+  <table id="4Q4L6mcg">
+    <tr>
+      <th>
+        <p>决定</p>
+      </th>
+      <th>
+        <p>谁定的</p>
+      </th>
+    </tr>
+    <tr>
+      <td>
+        <p>整机一个常驻 server，删除 <code>monitor</code></p>
+      </td>
+      <td>
+        <p>你</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>产物留在各项目的 <code>.ryugi/artifacts/</code>，方便作为 git 资产管理</p>
+      </td>
+      <td>
+        <p>你</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>本机直连固定端口，不经过 DO；不用 mDNS</p>
+      </td>
+      <td>
+        <p>你</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>DO 返回 429 时不再重试，页面明确提示原因</p>
+      </td>
+      <td>
+        <p>你</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>用高端口：27319–27321，board 端口 27329–27331</p>
+      </td>
+      <td>
+        <p>你</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>首页主要用来找产物；左侧项目栏，顶部有「最近 · 所有项目」入口，外加 ⌘K</p>
+      </td>
+      <td>
+        <p>你（artboard 上选的）</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>server 状态放顶栏状态胶囊，点开是下拉面板</p>
+      </td>
+      <td>
+        <p>你（artboard 上选的）</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>链接不带项目、只对 owner 探测、项目登记表和休眠、只升不降的升级规则、管理功能第一版做状态、项目、日志、操作四块</p>
+      </td>
+      <td>
+        <p>你看过、没改（我推荐的）</p>
+      </td>
+    </tr>
+  </table>
+  <p id="BZNqzfPY"><b>我提议、你确认过的：</b></p>
+  <ul id="mJWChSEj">
+    <li>cloud 先发版，并且兼容旧 server：探测不到固定端口时，退回到今天这条「DO 给 host 列表 → 直连」的路径，直连成功后关掉 DO。</li>
+    <li><code>--host</code> 是整个 server 的设置。<code>start</code> 带的 host 和正在运行的不一致时，替换掉正在运行的 server。</li>
+    <li>项目栏按最近使用排序；休眠的项目折叠在底部；右键项目可以移除登记。</li>
+  </ul>
+  <p id="Qh-CbhnU"><b>时间：</b>ryugi 的 server 和 CLI 大约 5～6 小时（大头是让 <code>app.ts</code> 支持多个项目根），首页和管理界面大约 3～4 小时，ryugi-cloud 大约 2～3 小时，再加两次发版，总共大约一天半。</p>
+  <h2 id="_cCxYBBx">1. 为什么做</h2>
+  <p id="XaZiyCRZ">现在每个项目各起一个 server：pid、端口、key、owners 都记在项目自己的 <code>.ryugi/artifacts/.state/</code> 里。端口拿不到上次的就随机分配；每个 server 各连一条云端 relay；会话全部退出或者空闲 4 小时，server 就退出。<code>monitor</code> 是为了列出、清理这些零散进程才加的。</p>
+  <p id="HldOOMgh">你遇到的问题：同时开几个项目时，后台挂着一堆 node 进程；端口随机，localhost 地址每次都不一样；relay 要按 server 逐个处理；server 不知什么时候空闲退出，cloud 就显示 offline。</p>
+  <mermaid id="0oR3QHOA">flowchart LR
+  subgraph 现在
+    A1[项目 A] --&gt; S1[server :随机]
+    B1[项目 B] --&gt; S2[server :随机]
+    S1 --&gt; R1[relay]
+    S2 --&gt; R2[relay]
+  end
+  subgraph 之后
+    A2[项目 A] --&gt; G[整机 server :27319]
+    B2[项目 B] --&gt; G
+    G --&gt; R[一条 relay]
+  end</mermaid>
+  <h2 id="LJTmZetH">2. 今天 cloud 一直 offline 的原因（已查明）</h2>
+  <alert id="TJ2QoWLi" type="important">
+    <p>每个打开的 cloud 页面都会长期占着一条 DO viewer 连接，就算已经直连本地也一样。一个账号最多 10 条，满了以后新开的页面每次握手都拿到 429，前端每隔 1～3 秒重试一次。关掉其他标签页后马上就能连上，你已经验证过了。</p>
+  </alert>
+  <table id="R06zJOL4">
+    <tr>
+      <th>
+        <p>环节</p>
+      </th>
+      <th>
+        <p>现在的行为</p>
+      </th>
+      <th>
+        <p>位置</p>
+      </th>
+    </tr>
+    <tr>
+      <td>
+        <p>DO 名额</p>
+      </td>
+      <td>
+        <p>每个账号最多 10 条 viewer、5 条 host</p>
+      </td>
+      <td>
+        <p><code>ryugi-cloud/src/relay/relay-room.ts:27</code></p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>页面连接</p>
+      </td>
+      <td>
+        <p>直连成功后，DO 连接仍然保持打开：host 列表和「本地是否在线」都靠它推送</p>
+      </td>
+      <td>
+        <p><code>ryugi-cloud/web/src/lib/liveConnection.ts</code></p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>被拒原因</p>
+      </td>
+      <td>
+        <p>429 写在 HTTP 响应体里，浏览器的 WebSocket 读不到，页面只能显示 offline 并一直重试</p>
+      </td>
+      <td>
+        <p><code>relay-room.ts:112-117</code></p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>计时</p>
+      </td>
+      <td>
+        <p>直连期间 DO 也照样累计观看时长，免费用户每天 4 小时的额度会被耗掉（我的推断）</p>
+      </td>
+      <td>
+        <p><code>relay-room.ts:67-85</code></p>
+      </td>
+    </tr>
+  </table>
+  <h2 id="N1tSH7X-">3. 目标、非目标、反目标</h2>
+  <ul id="AKc-8HTl">
+    <li><b>目标：</b>整机一个常驻进程；本地地址稳定；整机一条 relay；本机查看完全不占 DO；DO 拒绝时原因看得见；一个页面就能跨项目找到产物，也能管理 server。</li>
+    <li><b>非目标：</b>开机自启（launchd、systemd）；局域网其他设备直连（mDNS）；改变产物的存放位置和格式；改变 cloud 链接的形状；评论汇总和 cloud 发布管理（以后再说）。</li>
+    <li><b>反目标：</b>公开链接的访客被弹出本地网络权限框；hooks、评论监听或 auto-publish 因为改成全局而失效；旧链接（<code>/&lt;type&gt;/&lt;id&gt;</code>）打不开；新增运行时依赖；server 在你编辑时自己重启。</li>
+  </ul>
+  <h2 id="1BjNIM8w">4. 设计</h2>
+  <h3 id="3T26JmKf">4.1 状态分两层</h3>
+  <table id="upGXqIxX">
+    <tr>
+      <th>
+        <p>放在哪</p>
+      </th>
+      <th>
+        <p>存什么</p>
+      </th>
+    </tr>
+    <tr>
+      <td>
+        <p><code>~/.ryugi/server/</code>（整机）</p>
+      </td>
+      <td>
+        <p>pid、server-id、端口、key、日志、版本、启动锁、server-info，以及项目登记表 <code>projects.json</code>（每个项目的真实路径、登记时间、最近使用时间）</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p><code>&lt;project&gt;/.ryugi/artifacts/.state/</code>（每个项目）</p>
+      </td>
+      <td>
+        <p>保持现状：warnings、layout、recordings、评论监听订阅（<code>*-comment-watch/</code>）、<code>agent</code>、auto-publish 状态。hooks 和评论监听仍按项目读写</p>
+      </td>
+    </tr>
+  </table>
+  <p id="JtL5palj">项目里不再写 <code>server.pid</code>、<code>owners</code> 这些进程级文件。新 hooks（<code>stop</code>、<code>user-prompt-submit</code>、<code>flush-artifacts.cjs</code>、<code>selection-context.cjs</code>）改成读 <code>~/.ryugi/server/server-info</code>，再判断这个项目有没有登记。</p>
+  <p id="JCkpTpmA"><b>兼容旧 hooks（我的决定）：</b>插件里的 hooks 可能比 CLI 旧好几个版本，而旧 hooks 要看到 <code>&lt;project&gt;/.ryugi/artifacts/.state/server-info</code> 才会运行。所以 server 运行期间，给每个已登记的项目写一份兼容用的 <code>server-info</code>，指向全局地址；server 停止时删掉。新 hooks 不读它，两个大版本之后移除。</p>
+  <h3 id="JHSPNhGS">4.2 生命周期、重启和升级</h3>
+  <ul id="AbrcVTYy">
+    <li>常驻：去掉「owner 会话全部退出」和「空闲 4 小时」这两个退出条件，同时删除 <code>owners</code> 登记和 <code>--idle-timeout-minutes</code>。不做开机自启，第一次 <code>start</code> 时拉起来。</li>
+    <li>server 绝不在后台自己重启。</li>
+    <li><b>Windows 和 Codex（交给我定的）：</b>Windows 改用 Node 的 <code>detached</code> 方式在后台常驻，不再默认前台；以前改前台，是因为 Git Bash 会回收 <code>nohup</code> 起的进程，Node 的 detached 不是这种情况。Windows 不做实测，只保证单测覆盖。Codex 已经有全局 server 就复用；没有才在前台起一个，会话结束时 server 跟着退出，下一次在别处 <code>start</code> 时再用后台方式拉起来。</li>
+  </ul>
+  <table id="t-cUvLLL">
+    <tr>
+      <th>
+        <p>情况</p>
+      </th>
+      <th>
+        <p>怎么做</p>
+      </th>
+    </tr>
+    <tr>
+      <td>
+        <p><code>start</code> 时 CLI 是更新的正式版</p>
+      </td>
+      <td>
+        <p>替换。端口不变，打开的标签页会自动重连</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p><code>start</code> 时 CLI 是更旧的正式版</p>
+      </td>
+      <td>
+        <p>不替换，复用正在跑的 server，输出里加一行提示。只升不降</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>本地构建（<code>local-&lt;hash&gt;</code>）</p>
+      </td>
+      <td>
+        <p>hash 变了就替换；正式版 CLI 遇到本地构建的 server 时不替换</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>进程还在，但 <code>/api/status</code> 1 秒内没响应</p>
+      </td>
+      <td>
+        <p>当作卡死，杀掉重启</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>进程不在了</p>
+      </td>
+      <td>
+        <p>下一次 <code>start</code> 时拉起来</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>npm 上有新版本，但没人跑 <code>start</code></p>
+      </td>
+      <td>
+        <p>server 每天检查一次 npm，在状态胶囊上标出「有更新」，点开后可以「升级并重启」</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>管理界面上点重启、停止或升级</p>
+      </td>
+      <td>
+        <p>和 <code>stop</code>、<code>start</code> 走同一条路径</p>
+      </td>
+    </tr>
+  </table>
+  <p id="xPGhLLIS">每次替换或停止前，先把 auto-publish 队列和文档落盘做完，最多等 5 秒，然后再退出。</p>
+  <h3 id="eU9akFsN">4.3 端口和 key</h3>
+  <ul id="uyfxInBL">
+    <li>主端口按 <code>27319</code> → <code>27320</code> → <code>27321</code> 的顺序取第一个空闲的。三个都被占用时报错，并说明怎么用 <code>--port</code> 指定。选 2 万多这一段：够高，不容易和常见开发服务撞上；又低于 macOS（49152 起）和 Linux（32768 起）的临时端口范围。</li>
+    <li>board 端口（iframe 隔离用）：<code>27329</code>–<code>27331</code>，规则同上。</li>
+    <li>绑定 loopback 时不需要 key（和现在一样）；绑定非 loopback 时整机一个 key，存在 <code>~/.ryugi/server/</code> 里。</li>
+    <li><b>整个 server 共用的设置（我的决定）：</b><code>--host</code>、<code>--url-host</code>、<code>RYUGI_CLOUD_ORIGIN</code>。<code>start</code> 带的值和正在运行的不一致时，替换掉正在运行的 server，并在输出里说明原因。<b>按每次请求生效的设置：</b><code>--open</code>、要打开的产物、<code>ARTIFACTS_OPEN_CMD</code>，随登记请求一起发给正在运行的 server，由它在产物准备好时打开一次。</li>
+  </ul>
+  <h3 id="zqRY_XOH">4.4 项目登记和路由</h3>
+  <ul id="Hcy6zimd">
+    <li><b>登记：</b><code>start --project-dir</code> 和 session-start hook 把项目写进 <code>projects.json</code>。session-start 沿用现在的条件（已登录，并且这个项目有已发布的产物）：条件满足而 server 没在跑时，就把它拉起来，这样重启电脑后开第一个会话，cloud 就恢复在线；条件不满足时只登记，不拉起（我的决定）。server 运行中通过本地 API 热加入；server 重启时从登记表把所有项目重新挂上。项目根的解析沿用 <code>projectRoot()</code>。</li>
+    <li><b>索引：</b>启动时扫描每个项目里的 <code>.artifact-id</code>，建一张 id → (项目, type, slug) 的索引，之后靠文件监听增量更新。链接保持 <code>/&lt;type&gt;/&lt;artifactId&gt;</code>。</li>
+    <li><b>休眠：</b>只监听 7 天内用过的项目。更久没用的不监听；有人打开它的链接时按需扫描一次并唤醒。</li>
+    <li><b>清理：</b>项目目录或 <code>.ryugi/artifacts/</code> 不存在了，就自动移出登记表。管理界面上也可以手动移除登记，产物文件不动。</li>
+    <li><b>隔离：</b>只读取登记过的项目根，路径检查以项目根为界。</li>
+    <li><b>项目相关的设置</b>（agent 名字、auto-publish、评论监听）按产物所在的项目读取。</li>
+  </ul>
+  <h3 id="LelWH3ui">4.5 命令和 hooks</h3>
+  <table id="sGQeugMe">
+    <tr>
+      <th>
+        <p>命令</p>
+      </th>
+      <th>
+        <p>之后</p>
+      </th>
+    </tr>
+    <tr>
+      <td>
+        <p><code>start --project-dir</code></p>
+      </td>
+      <td>
+        <p>没有 server 就拉起；登记项目；打印链接，输出的 JSON 格式不变</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p><code>stop</code></p>
+      </td>
+      <td>
+        <p>停掉整机 server；<code>--project-dir</code> 接受但忽略</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p><code>monitor</code></p>
+      </td>
+      <td>
+        <p>删除，连同 <code>monitor-ui.ts</code>、<code>monitor-view.ts</code>、<code>servers.ts</code>、<code>server/registry.ts</code> 和对应的测试</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p><code>check</code> / <code>comment</code> / <code>publish</code> / <code>get</code></p>
+      </td>
+      <td>
+        <p>参数不变，改成连全局 server</p>
+      </td>
+    </tr>
+  </table>
+  <p id="QRjqQAYL"><code>skills/artifacts/SKILL.md</code> 里关于 server 生命周期的段落要同步改，用英文写。</p>
+  <h3 id="BaWAYgiR">4.6 迁移旧 server</h3>
+  <p id="ZNChrHeQ">新版 <code>start</code> 读取旧的 registry，给每个旧的每项目 server 发 SIGTERM，再起全局 server。旧标签页因为换了端口，需要刷新一次。</p>
+  <h3 id="TUgY4t_e">4.7 cloud：连接本地和 DO 中继</h3>
+  <mermaid id="8wcUIXy0">sequenceDiagram
+  participant P as cloud 页面（owner）
+  participant L as 本机 server
+  participant D as DO
+  P-&gt;&gt;L: 依次试 27319 / 27320 / 27321
+  alt 有一个回 presence，并且在服务这个产物
+    L--&gt;&gt;P: online
+    Note over P,D: 完全不连 DO
+  else 都连不上
+    P-&gt;&gt;D: viewer 连接
+    alt DO 给出的 host 列表能直连（旧版 server）
+      P-&gt;&gt;L: 直连
+      P-xD: 关闭 DO 连接
+    else 在别的设备上
+      Note over P,D: 一直走 DO 中继
+    end
+  end
+  Note over P,L: 直连断开时，回到第一步重新探测</mermaid>
+  <ul id="hcuflv9q">
+    <li><b>只对 owner 探测：</b><code>/api/a/:id</code> 返回 <code>owner: true</code> 时才去探测本机。live 本来就只对 owner 开放（<code>findOwned</code>），所以访客永远不会被弹出本地网络权限框。</li>
+    <li><b>记住「这台设备没有本地 server」（我的决定）：</b>只有 owner 拒绝本地网络权限时，才写进 localStorage，之后不再自动探测，只留「连接本机」按钮。三个端口都连不上只说明 server 暂时没开（重启后还没 <code>start</code>，或者旧版 server 用的是随机端口），这时不写持久标记：页面在内存里退避，30 秒到 5 分钟重新探测一次。另外，如果 DO 返回的 host 列表里出现了这台机器的 <code>hostId</code>，就清掉标记。</li>
+    <li><b>不用 mDNS：</b>https 页面只允许连 <code>localhost</code> / <code>127.0.0.1</code> 的 <code>ws://</code>，<code>.local</code> 会被当作混合内容拦下来。</li>
+    <li><b>host 端：</b>全局 server 只连一条 <code>/api/relay/host</code>，宣告所有登记项目里已发布的 id。</li>
+    <li><b>DO 拒绝：</b>DO 先接受握手，再用 close code <code>4429</code> 关闭连接，reason 区分「连接已满」和「今日额度用完」。页面收到后<b>不再自动重试</b>，显示原因和下一步该做什么，配一个「重新连接」按钮。只有 host 真的不在线时才显示 offline。</li>
+  </ul>
+  <h3 id="Zy5Ny6Uu">4.8 首页和管理界面</h3>
+  <p id="v9QeFFdf">地址 <code>http://localhost:27319/</code>，主要用来找产物，其次才是管理。样子见 <code>artboard/server-home</code>，按 <b>q3-a</b> 做，⌘K 面板按 <b>q3-b</b> 做。</p>
+  <ul id="Z0RtV0cy">
+    <li><b>左侧项目栏</b>（q1-c）：最上面固定一个「最近 · 所有项目」入口，打开后把所有项目的产物按更新时间混排，卡片上标出项目名。下面列出已登记的项目，按最近使用排序，每个项目显示产物数量；休眠的项目折叠在底部；右键项目可以移除登记。</li>
+    <li><b>产物区：</b>沿用 <code>artboard/artifact-library</code> 第三轮定下的 Compact 卡片：4 列，真实缩略图，顶部按类型筛选，默认按最近更新排序。</li>
+    <li><b>搜索：</b>工具栏里的搜索框可以切换「本项目 / 所有项目」；⌘K 打开全局面板，结果按项目分组，↵ 打开，⌘↵ 在新标签页打开。</li>
+    <li><b>状态胶囊</b>（q2-a）：放在顶栏右侧，显示状态点、版本和 relay 状态，有新版本时带一个「有更新」标记。点开是下拉面板，内容依次是：运行时长、地址、Cloud relay（是否连上、宣告了几个产物）、实时页面数（本机几个 · 中继几个）、升级提示和「升级并重启」按钮、已登记项目（活跃或休眠、产物数、移除）、查看日志、重启、停止。</li>
+    <li><b>日志：</b>从面板进入，可以按项目筛选；数据来自 <code>~/.ryugi/server/</code> 里的日志。</li>
+    <li>首页数据只在 loopback 上无需 key；非 loopback 绑定时，和其他页面一样要带 key。</li>
+  </ul>
+  <h2 id="5oNOzyPv">5. 约束</h2>
+  <ul id="N-ljRWYu">
+    <li>运行时零依赖；<code>artifacts/</code> 下的新文件用 AGPL-3.0-only。</li>
+    <li>skill 文件只能写英文；界面文案走现有 i18n（中英文）。</li>
+    <li>发版顺序：先发 ryugi-cloud（要兼容旧 server），再发 <code>ryugi-artifacts</code>，最后在 cloud 里锁定新版本号。</li>
+    <li>先写测试（TDD）；只对改过的文件跑 lint 和类型检查；UI 做完以后按 ryugi:verifying-ui 验证。</li>
+  </ul>
+  <h2 id="dYdb5Z5F">6. 留给实现者</h2>
+  <ul id="N0NS9qnm">
+    <li><code>app.ts</code> 里 <code>root</code> 从单值改成「按产物解析项目根」的具体做法，以及是否顺手把它拆开（这个文件现在 1574 行）。</li>
+    <li>热登记、状态、日志、重启这些本地 API 的路径和形状；只要求同一台机器上的 CLI 和首页能用。</li>
+    <li>4429 的 reason 文案和多语言 key。</li>
+    <li>文件监听的具体实现。</li>
+    <li>状态胶囊面板和 ⌘K 面板的组件拆分，复用 viewer 现有的组件和 token。</li>
+  </ul>
+  <h2 id="Ty4PdGC2">7. 用到的产物</h2>
+  <ul id="TRkXk0W1">
+    <li><code>document/global-artifacts-server</code>：就是这份文档，<a href="https://ryugi.innei.dev/a/4BGfi1fNUYZdjtOHH19H4">cloud 链接</a>。</li>
+    <li><code>artboard/server-home</code>（<code>.ryugi/artifacts/artboard/server-home/</code>，<a href="https://ryugi.innei.dev/a/BY0DbbUNsbcTMQYRQQ0an">cloud 链接</a>）：第 1 轮选了 q1-c（左侧项目栏）和 q2-a（顶栏状态胶囊）；第 2 轮选了 q3-a（「最近 · 所有项目」入口 + 搜索范围切换），另外加上 q3-b 的 ⌘K 面板。</li>
+    <li><code>artboard/artifact-library</code>：产物卡片的样式来源（第三轮的 r3-compact）。</li>
+  </ul>
+</doc>
+

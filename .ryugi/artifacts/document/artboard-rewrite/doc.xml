@@ -1,0 +1,458 @@
+<doc>
+  <h1 id="S_rHkCeW">Artboard 重写：常驻挂载的画布、保活、Cloud 嵌入本地画布、去掉 key</h1>
+  <p id="_Qrogokc">这是最终设计，取代了前三轮的问答。审阅代理已经读过，它的问题都已经回答并写进正文。你在这里批准，或者在要改的地方留评论；批准后我把它存到 <code>docs/ryugi/specs/2026-10-31-artboard-rewrite-design.md</code>，再开始实现。</p>
+  <h2 id="zx46qSIQ">1. 为什么要做</h2>
+  <p id="oXcsAxez">为了提升缩放性能，Artboard 画布上叠了一整套分层机制：</p>
+  <ul id="RIlwSO1r">
+    <li>board 有四种状态：<code>live</code>、<code>snapshot</code>、<code>placeholder</code>、<code>empty</code>；</li>
+    <li>还有同时在线的数量上限、悬停唤醒、交互保持、预热、离开后保留 1.5 秒、8 秒超时。</li>
+  </ul>
+  <p id="kr12qtUk">这些规则叠加后，边界情况越修越坏。最典型的一个：触控板缩放时 iframe 被卸掉，又没有截图可用，最后只剩封面文字。</p>
+  <p id="WMAbe31G">压测（30 个 board 的 Cursor 画板）说明瓶颈根本不在 iframe 的数量，而在 Chrome 的进程隔离。<code>sandbox=&quot;allow-scripts&quot;</code> 让每个 board 变成不透明源，Chrome 就把它放进独立进程，缩放时每一帧都要跨进程同步。board 只要和画布同站，30 个全部挂载也能稳定 60 fps。</p>
+  <p id="XYgmotu-">所以这次是重写，不是修补：画布显示的永远是真 iframe；只有长时间不活跃、而且截得出图的 board，才会被换成同一版本的截图。</p>
+  <h2 id="YrrWpnPg">2. 目标、非目标、反目标</h2>
+  <h3 id="5M2qdlvK">目标</h3>
+  <ul id="ZTpB-PHz">
+    <li>本地画布和 Cloud 画布（包括 Cloud 直连本机），用触控板缩放时 P95 ≤ 18.2 ms（≥ 55 fps）。</li>
+    <li>画布上只会出现两种东西：真 iframe，或者同一文件版本的截图。封面文字和空白占位不再出现。</li>
+    <li>长时间不活跃的 board 被卸载，用来控制内存；截不出图的 board 永远不卸。</li>
+    <li>Cloud 直连本机时，board 依旧直接从本机加载，不经过 CF。</li>
+    <li>本地 server 绑在回环地址上时不再需要 key；本地和 Cloud 用同一种方式生成 artifact ID。</li>
+  </ul>
+  <h3 id="IdesTHXT">非目标</h3>
+  <ul id="8gPWMGBA">
+    <li>手机端 <code>PhoneBoard</code> 不重写，只换成新的 board 源和保活控制器（见 6.7）。HTML artifact 和文档里的 <code>&lt;dynamic&gt;</code> 块不在这次范围内：它们没有缩放问题，继续用不透明源的 sandbox，从主端口提供。</li>
+    <li>Cloud 每个 artifact 一个子域名：不做，需要二级通配证书。</li>
+    <li>缩放时暂停 board 里的动画：实测没有收益，反而多出 67–217 ms 的卡顿，不做。</li>
+    <li>Safari 直连本机：沿用现有的非目标，Safari 走 CF。</li>
+  </ul>
+  <h3 id="1Lss2rFq">反目标（技术上能跑，但做成这样就算失败）</h3>
+  <ul id="IST9ozLR">
+    <li>为了内存，在手势进行中或者按数量上限卸载 board。</li>
+    <li>任何一个 board 在屏幕上显示成文字封面，或者空白。</li>
+    <li>去掉 key 后，一个普通网页（包括 DNS 重绑定，以及知道 artifact ID 的网页）能读到本地 artifact、写评论或触发发布。评论会进入 agent 会话，所以能写评论就等于能远程给 agent 下指令。</li>
+    <li>直连本机时，board 改成经过 CF 加载。</li>
+    <li>board 的源和它所在画布的源相同。同源时 <code>allow-same-origin</code> 会让 board 拿掉自己的 sandbox。</li>
+  </ul>
+  <h2 id="oErbO3sF">3. 约束</h2>
+  <ul id="Z4YCQVUL">
+    <li>插件零运行时依赖；<code>artifacts/</code> 下的新文件是 AGPL-3.0-only（见 <code>AGENTS.md</code>）。</li>
+    <li>用户从 <code>main</code> 安装，改了 <code>artifacts/src/</code> 就要发版。新旧版本的本地 server 和 Cloud 会同时存在一段时间（见第 7 节）。</li>
+    <li>Cloud（<code>ryugi-cloud</code>）通过 npm 包 <code>ryugi-artifacts</code> 使用 viewer。发版顺序沿用现有做法：先用本地构建部署 Cloud，再发 npm。</li>
+    <li>Chrome 访问 127.0.0.1 的 fetch 和 iframe 时会询问「本地网络访问」权限。现在的 Cloud 外壳已经在 iframe 上声明了 <code>allow=&quot;… local-network-access; loopback-network&quot;</code>，还有一个 <code>probeLoopback</code> 探测；新增的嵌套 iframe 也要往下传递这个权限。</li>
+    <li>修改 <code>skills/</code> 下的文件时，要按 <code>writing-skills</code> 的流程处理（<code>AGENTS.md</code>「Skills Are Code」）。</li>
+  </ul>
+  <h2 id="helfGV1t">4. 结构总览</h2>
+  <mermaid id="4RM_3udx">flowchart LR
+  subgraph Local[&quot;本地：浏览器打开 localhost&quot;]
+    LV[&quot;画布页面&lt;br/&gt;localhost:P&quot;] --&gt;|iframe，同站| LB[&quot;board&lt;br/&gt;localhost:P2&quot;]
+  end
+  subgraph CloudDirect[&quot;Cloud，已直连本机&quot;]
+    CS[&quot;外壳 /a/:id&quot;] --&gt; CV[&quot;view 框 /a/:id/view&lt;br/&gt;ryugi.innei.dev&quot;]
+    CV --&gt;|一个跨站 iframe| EV[&quot;本地嵌入画布&lt;br/&gt;127.0.0.1:P/embed/…&quot;]
+    EV --&gt;|iframe，同站| EB[&quot;board&lt;br/&gt;127.0.0.1:P2&quot;]
+  end
+  subgraph CloudRelay[&quot;Cloud，未直连&quot;]
+    CS2[&quot;外壳 /a/:id&quot;] --&gt; CV2[&quot;view 框：Cloud 自己渲染画布&quot;]
+    CV2 --&gt;|iframe，同站| CB[&quot;board&lt;br/&gt;ryugi-content.innei.dev&quot;]
+  end</mermaid>
+  <p id="mOu8j27r">三种情况下，board 都和直接包含它的画布同站，所以和画布在同一个进程里。Cloud 直连时只多一道跨进程边界：view 框和本地画布之间。画布内部的缩放不会让这一层重绘。</p>
+  <h2 id="f4jahNFP">5. 压测依据</h2>
+  <p id="Dbp3TpTW">原型是一个一次性页面：30 个 iframe，只对一个外层容器做 transform。手势是 CDP 发出的 ctrl+滚轮，60Hz 显示器，帧率在画布所在文档里用 rAF 测。下表是缩放时的 P95，每行跑 2–3 次。</p>
+  <table id="pGT7inHI">
+    <tr>
+      <th>
+        <p>情况</p>
+      </th>
+      <th>
+        <p>缩放 P95</p>
+      </th>
+      <th>
+        <p>说明</p>
+      </th>
+    </tr>
+    <tr>
+      <td>
+        <p>同站，视口外 <code>display:none</code>，缩放期间 <code>will-change</code></p>
+      </td>
+      <td>
+        <p>17.4 ms</p>
+      </td>
+      <td>
+        <p>60 fps</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>同上，但不隐藏视口外、也不加 <code>will-change</code></p>
+      </td>
+      <td>
+        <p>17.5 ms</p>
+      </td>
+      <td>
+        <p>偶尔卡 183–667 ms</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p><code>sandbox=&quot;allow-scripts&quot;</code>（现在的做法）</p>
+      </td>
+      <td>
+        <p>33–50 ms</p>
+      </td>
+      <td>
+        <p>20–30 fps</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>同上，但关掉 Chrome 的 <code>IsolateSandboxedIframes</code></p>
+      </td>
+      <td>
+        <p>17.5 ms</p>
+      </td>
+      <td>
+        <p>确认瓶颈是进程隔离</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>同站不同端口，加 <code>allow-scripts allow-same-origin</code>，鼠标在 board 里</p>
+      </td>
+      <td>
+        <p>17.5 ms</p>
+      </td>
+      <td>
+        <p>最长一帧 18 ms</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>跨站（相当于现在 Cloud 直连本机）</p>
+      </td>
+      <td>
+        <p>33–34 ms</p>
+      </td>
+      <td>
+        <p>给每个 board 或 iframe 加 <code>will-change</code> 也没用</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>跨站外壳里嵌入整个本地画布</p>
+      </td>
+      <td>
+        <p>17.3–17.6 ms</p>
+      </td>
+      <td>
+        <p>鼠标在 board 里也一样</p>
+      </td>
+    </tr>
+  </table>
+  <p id="zYUomziO">内存：30 个 board 全部挂载、同站时，Chrome 总 RSS 多出约 135–180 MB；用 sandbox 时是 264 MB。只能看量级。</p>
+  <h2 id="UUTZ0svE">6. 设计</h2>
+  <h3 id="BBmwoLwA">6.1 画布：常驻挂载</h3>
+  <ul id="mwO97e5c">
+    <li><b>视图状态：</b>不再每个滚轮事件都 <code>setView</code>。视图放在 ref 里，每个 rAF 合并成一次写入：直接设置 world 元素的 <code>transform</code>，同时写一个 CSS 变量 <code>--zoom</code>，用于标签、描边这类需要反向缩放的东西。依赖视图的 React 组件（工具栏的缩放百分比、浮层定位等）通过一个外部 store 订阅，手势进行中按 rAF 更新，或者在手势结束后更新。<i>（我的决定：现在每个滚轮事件都触发一次 React 渲染，原型证明直接写 DOM 就够了。）</i></li>
+    <li><b>手势状态：</b>缩放或平移开始时进入 <code>gesturing</code>：world 加 <code>will-change: transform</code>，所有 board iframe 设 <code>pointer-events: none</code>。最后一个事件过去 150 ms 后退出：去掉 <code>will-change</code>，让内容按新的缩放比例重新清晰栅格化，并恢复 <code>pointer-events</code>。</li>
+    <li><b>视口外隐藏：</b>手势结束后，以及平移或缩放的每个 rAF，计算每个 board 的屏幕矩形。完全在视口外 240 px 以外的 board 设 <code>display: none</code>，iframe 不卸载。</li>
+    <li><b>鼠标在 board 里时的手势：</b>board 里的 runtime 已经会通过 <code>ryugi:inspect:wheel</code> 转发 ctrl+滚轮，画布按当前视图把坐标换算到画布空间。手势一开始所有 iframe 就变成 <code>pointer-events: none</code>，所以后续事件直接落在画布上。</li>
+    <li><b>认 board 的方式：</b>继续用 <code>contentWindow === event.source</code>（现在 <code>useInspector</code>、<code>useBoardTweaks</code> 都是这样），不看来源字符串。</li>
+    <li><b>不再需要的：</b>悬停唤醒（<code>useHoverDwell</code>）、交互保持（<code>useKeptBoards</code>）、同时在线上限（<code>live-limit</code>）、分层（<code>board-tiers</code>、<code>tier-controller</code>、<code>useBoardTiers</code>）、封面文字层、IndexedDB 截图缓存（<code>snapshot-store</code>）。</li>
+    <li><b>调试：</b>保留 <code>?debug</code> HUD，内容改成 fps、最长一帧、慢帧数、各状态的 board 数（挂载、隐藏、已卸载、截不了图）。</li>
+  </ul>
+  <h3 id="EP-p34xN">6.2 保活：卸载长时间不活跃的 board</h3>
+  <p id="eXWgEcrZ">每个 board 记一个「最后活跃时间」。满足任意一条时，最后活跃时间更新为现在：</p>
+  <ul id="f3D8AJgH">
+    <li>在视口内（屏幕矩形和视口有交集）；</li>
+    <li>鼠标在上面；</li>
+    <li>在里面点过或按过键（runtime 已经会发 <code>ryugi:board:interacted</code>）；</li>
+    <li>被选中、被检查、正在写评论、开着参数面板；</li>
+    <li>正在播放视频或原型；</li>
+    <li>agent 刚改过它的文件（<code>ryugi:board:changed</code> 或文件版本变了）。</li>
+  </ul>
+  <p id="dQ_JgH2b">卸载规则：</p>
+  <steps id="cR4GEfB6">
+    <step id="s_o2zlbk06" title="成为候选">
+      <p>连续 5 分钟不活跃（<code>IDLE_UNLOAD_MS = 300000</code>），并且当前不在手势中，就成为候选。没有数量上限，也不按内存压力提前卸。</p>
+    </step>
+    <step id="s_qiwcdflt" title="截图">
+      <p>沿用 <code>inspector/snapshot.ts</code> 的 <code>ryugi:board:capture</code> 协议，让 board 自己截图。截图要记下对应的文件版本。失败、超过 10 秒、或者结果是空白（宽或高为 0、全透明），就把这个 board 标成「当前版本截不了图」。在文件版本变化之前不再尝试，也永远不卸。截图不是空白、但有失真（比如 <code>backdrop-filter</code>、视频、跨域图片画不准），照样可以卸载：失真的截图只会在快速平移到一块闲置区域时短暂露出，随后 iframe 就会恢复。（你同意）</p>
+    </step>
+    <step id="s_6q8idr7p" title="换图再卸">
+      <p>截图成功，并且版本仍然是当前版本：先在 iframe 位置显示截图（object URL，只存在内存里），下一帧再移除 iframe。截图期间如果 board 又变成活跃，就放弃这次卸载。</p>
+    </step>
+  </steps>
+  <p id="6HmpDOhF">恢复规则：</p>
+  <ul id="1xp1dYmr">
+    <li>已卸载的 board 进入视口外一屏以内、被点到、被评论定位到时，在截图下面重新挂载 iframe。board 发出 <code>ryugi:board:ready</code> 后，下一帧移除截图；8 秒内没有 ready，也直接移除截图。</li>
+    <li>手势进行中不挂载也不卸载，等手势结束后再处理。</li>
+    <li>卸载期间文件被改：截图标为过期，board 保持卸载。恢复时直接挂载新版本，ready 之前先显示旧截图。</li>
+    <li>评论模式下点到一个已卸载的 board：先按 board 级坐标记下这次点击，同时恢复 iframe。这是现有的降级行为，不用等 ready。</li>
+  </ul>
+  <p id="cI6BSH5Y">实现形态：保活规则写成一个纯函数或控制器，输入 board 列表、视口、活跃信号、截图状态和时钟，输出每个 board 是 <code>mounted</code> 还是 <code>unloaded</code>，用假时钟单测。<i>（我的决定）</i></p>
+  <h3 id="B1fIKkqz">6.3 board 的源和隔离</h3>
+  <ul id="GzERSwzt">
+    <li><b>本地：</b>server 多监听一个端口，专门提供 board 内容。主机名永远和画布页面当前用的一致：画布用 <code>localhost:P</code> 打开，board 就用 <code>localhost:P2</code>；用 127.0.0.1 就都用 127.0.0.1。内容路径用 artifact ID：<code>/c/&lt;type&gt;/&lt;id&gt;/&lt;file&gt;</code>，替换现在每次启动随机生成的 <code>contentToken</code>。这个端口只提供 board 内容和 runtime，不提供任何 API。</li>
+    <li><b>iframe：</b><code>sandbox=&quot;allow-scripts allow-same-origin&quot;</code>，再加上现在 HTML artifact 已经在用的 <code>allow-forms allow-popups allow-modals allow-downloads</code>。只改 artboard 的 board：<code>Canvas.tsx</code>、<code>ExpandedBoard.tsx</code>、<code>PhoneBoard.tsx</code>、<code>PreviewView</code>，本地和 Cloud 都改。HTML artifact 和文档 <code>&lt;dynamic&gt;</code> 块不动，路径从 <code>/c/&lt;contentToken&gt;/</code> 换成 <code>/c/&lt;type&gt;/&lt;id&gt;/</code>，仍然由主端口提供。</li>
+    <li><b>响应头：</b>本地 server 的 board 内容 CSP（<code>app.ts:123</code>）和 Cloud 的 <code>CONTENT_CSP.artboard</code>（<code>content.service.ts:30-35</code>），都去掉 <code>sandbox</code> 指令，否则响应头会强制不透明源，iframe 属性加了也没用。改成加 <code>worker-src &apos;none&apos;</code>，禁止 board 注册 Service Worker。</li>
+    <li><b>Cloud 隔离：</b>所有 artifact 的 board 共用 <code>ryugi-content.innei.dev</code>。共享 localStorage 的风险可以接受；Service Worker 被 <code>worker-src &apos;none&apos;</code> 挡住；内容访问仍然靠路径里的 HMAC 授权。HTML artifact 和文档块继续是不透明源，不会和 board 共享存储。</li>
+    <li><b>board 端口不可达时退回单端口：</b>board 端口像主端口一样持久化，重启后尽量复用同一个端口，并写进 <code>server-info</code> 和 <code>start</code> 的输出。画布加载时先探测 board 端口；不可达时（比如 SSH 或 VS Code 只转发了主端口），就退回到现在的做法：从主端口提供 board，用不透明源 sandbox。功能照常，只是缩放回到约 30 fps，<code>?debug</code> HUD 会标出来。绑定非回环地址（key 模式）时，固定走这个单端口模式。<i>（我的决定）</i></li>
+    <li><b>Cloud 自部署：</b>提速的前提是内容源和应用源同站。自部署配置（<code>src/platform/bun/settings.ts</code>）现在只要求两者不同；不同站时启动日志给出警告，不阻止启动。<i>（我的决定；自部署本身仍是延后的事）</i></li>
+  </ul>
+  <h3 id="iaeWc-0P">6.4 Cloud 直连时嵌入本地画布（只针对 artboard）</h3>
+  <ul id="2k8EG51R">
+    <li><b>结构：</b>外壳 <code>/a/:id</code> 不变。view 框 <code>/a/:id/view</code> 照旧负责连接：先走 relay，再试直连。直连成功、并且本地 server 声明支持嵌入时，view 框不再渲染 <code>ArtboardView</code>，改成渲染一个占满画布区域的 iframe，指向 <code>http://127.0.0.1:&lt;port&gt;/embed/artboard/&lt;id&gt;</code>。这个 iframe 带上 <code>allow=&quot;clipboard-write; local-network-access; loopback-network&quot;</code>。<i>（我的决定：连接逻辑原本就在 view 框里，外壳不用动。）</i></li>
+    <li><b>嵌入页：</b>就是本地画布页面的嵌入模式：没有顶栏，评论、检查、参数面板、保活都在里面。它通过同源的 <code>/ws</code> 和本地 API 跟本地 server 通信。CSP 设 <code>frame-ancestors &lt;Cloud 源&gt;</code>；本地普通页面保持 <code>frame-ancestors &apos;none&apos;</code>。</li>
+    <li>
+      <b>消息：</b>在 <code>ryugi:cloud-header</code>的基础上扩展，嵌入页和 view 框之间双向发消息，发送时都指定对方的源，接收时同时校验 <code>event.source</code>和 <code>event.origin</code>。view 框再沿用现有通道，把消息转给外壳。
+      <ul>
+        <li><b>嵌入页 → view 框：</b>标题、发布状态、在线状态、画布自己不处理的快捷键。</li>
+        <li><b>view 框 → 嵌入页：</b>主题、语言、要跳到的评论线程、<code>ryugi:publish</code> 等现有的外壳指令。</li>
+      </ul>
+    </li>
+    <li><b>掉线：</b>直连断开，或者嵌入页超过 5 秒没响应（view 框发心跳），view 框就移除 iframe，切回 Cloud 自己渲染：走 relay，board 从 <code>ryugi-content</code> 的 live 路由加载。</li>
+    <li><b>HTML 和文档：</b>不嵌入，保持现在的直连方式。HTML 只有一个 iframe，没有这个问题。</li>
+  </ul>
+  <h3 id="Krrv-b2X">6.5 去掉 key：本地 server 的新鉴权规则</h3>
+  <p id="9TBjplwo">只要 server 绑在回环地址（默认 <code>127.0.0.1</code>）上，下面四条一起替代 key、cookie 和 <code>contentToken</code>：</p>
+  <steps id="nOGXJbUj">
+    <step id="s_aum627ru" title="Host 白名单">
+      <p>所有请求和 WebSocket 升级，Host 必须是 <code>127.0.0.1:&lt;port&gt;</code>、<code>localhost:&lt;port&gt;</code> 或配置的 <code>--url-host</code> 加端口（board 端口同理），否则返回 403。这一条挡住 DNS 重绑定。</p>
+    </step>
+    <step id="s_rkv6xtx4" title="Origin 规则">
+      <p>带 Origin 的请求，Origin 必须是本地画布的源（同上几个主机名加端口）。直连 relay 和嵌入页还额外接受配置的 Cloud 源。不带 Origin 的请求（CLI、curl 这类本机进程）放行，但不能是改动数据的浏览器请求：所有改动数据的接口只接受 POST、PUT、DELETE，浏览器跨源发这些方法时一定会带 Origin。</p>
+    </step>
+    <step id="s_oacv2rzp" title="不带 ID 的页面和接口">
+      <p>列表页 <code>/</code> 只在 <code>Sec-Fetch-Site</code> 是 <code>none</code> 或 <code>same-origin</code> 时返回。<code>/api/artifacts</code>、<code>/api/status</code>、<code>/ws</code>、<code>/api/cloud/*</code> 只接受同源。都不返回 CORS 头。</p>
+    </step>
+    <step id="s_9w1ywp70" title="ID 只是地址，不是秘密">
+      <p>ID 会出现在公开分享链接里，本地路由也接受目录名（比如 <code>artboard-rewrite</code>），所以不把 ID 当凭证。挡住其他网站的，是这几条规则本身。board 端口另外加 <code>frame-ancestors</code>，只允许本地画布的源和配置的 Cloud 源，这样别的网站嵌不了 board，也就没法通过 board 里的 runtime（<code>ryugi:board:capture</code>、检查器）读出内容。runtime 只响应 <code>event.source === parent</code> 的消息。board 端口只接受 21 位地址，不接受目录名。直连 relay 改成 <code>/relay/a/&lt;id&gt;</code>，校验 Origin 是 Cloud 源，以及 Host 白名单。</p>
+    </step>
+  </steps>
+  <p id="qQxtzDb3"><b>绑到非回环地址时</b>（<code>--host 0.0.0.0</code>，用于容器或远程开发），继续要求 key，沿用现在的 <code>?key=</code> 和 cookie 机制，只是作用范围收窄到这种模式。</p>
+  <p id="Dl_jiLSC">随之要改的地方：</p>
+  <ul id="UiReIgCe">
+    <li>CLI：<code>serverClient</code>、<code>start</code> 的 <code>link</code>、<code>monitor</code> 在回环模式下不带 key。</li>
+    <li><code>server-info</code> 的 <code>url</code> 不再含 key。</li>
+    <li>relay <code>hello</code> 的 <code>local</code> 里，<code>key</code> 改为可选，回环模式下不发。</li>
+    <li>Cloud 的 <code>LocalHost</code> 校验和 <code>liveConnection</code> 的候选主机，改成按 <code>[hostId, port]</code> 去重。</li>
+    <li><code>skills/artifacts/SKILL.md</code> 里关于 <code>?key=</code> 的说明（104–137 行）同步更新。</li>
+  </ul>
+  <h3 id="QptSSAlx">6.6 统一 artifact ID</h3>
+  <ul id="oIsvy8sz">
+    <li>在 <code>ryugi-artifacts</code> 的 <code>shared/ids.ts</code> 导出 <code>mintArtifactId()</code>：21 位，字符集是 62 个字母和数字，和现在 <code>server/artifact-address.ts</code> 的 <code>customAlphabet</code> 一样。本地 server 改用它；Cloud 从包里引入，用来生成新 artifact 的 ID。</li>
+    <li>本地建 Cloud 记录时（<code>cloud.ts</code> 的 <code>createRecord</code>），把本地地址作为 <code>id</code> 发过去。Cloud 的 <code>CreateArtifactDto</code> 增加可选的 <code>id</code>，必须匹配 21 位格式；被占用时返回 409。没传 <code>id</code> 时，Cloud 自己用 <code>mintArtifactId()</code> 生成。</li>
+    <li>收到 409 时，本地不改自己的地址，而是退回到「由 Cloud 生成 ID，本地保留映射」的老路径。</li>
+    <li>已有的 artifact 不迁移：20 位的 Cloud ID 继续有效，本地 <code>cloud.id</code> 的映射保留，旧链接都能打开。所有校验 ID 格式的地方同时接受两种长度。</li>
+  </ul>
+  <h3 id="vSAKUmGN">6.7 手机端和其他使用者</h3>
+  <ul id="pSQb93L6">
+    <li><code>PhoneArtboard</code> 现在用 <code>useBoardTiers</code>（<code>preview: true</code>）。改成和桌面端用同一个保活控制器：视口外隐藏，5 分钟不活跃就截图卸载。<i>（我的决定）</i></li>
+    <li><code>PreviewView</code> 只用了 <code>visibleRenders</code>，换成新的视口外隐藏逻辑。</li>
+    <li>Cloud 的 <code>CloudSnapshot</code> 给 <code>ArtboardView</code> 传的 <code>tiers</code> 参数、<code>publishPayload</code> 里的 <code>snapshots: true</code> 一并删掉。Cloud 缩略图是服务端按布局画的示意 SVG（<code>ryugi-artifacts/thumbnail</code>），不依赖截图，不受影响。</li>
+  </ul>
+  <h2 id="5OztMyGP">7. 兼容和发版顺序</h2>
+  <ul id="bLvJHFdJ">
+    <li><b>Cloud 先上：</b>Cloud 要同时兼容带 key 的旧本地 server 和不带 key 的新本地 server。<code>LocalHost.key</code> 可选；只有当 hello 里声明了 <code>embed: true</code> 时，才用嵌入模式，否则走现在的直连。Cloud 的内容 CSP 改动，和它固定使用的 viewer 版本一起部署。</li>
+    <li><b>本地 server 后上：</b>新版本 server 收到带 <code>?key=</code> 的旧链接时，回环模式下直接忽略 key。旧版本 Cloud 不存在：Cloud 先部署。</li>
+    <li><b>发版：</b>按 <code>AGENTS.md</code> 的 Releasing 流程走：<code>scripts/bump-version.sh</code>、打 tag、推送；Cloud 用本地构建先部署。</li>
+  </ul>
+  <h2 id="7wz7A6mI">8. 验收和测试</h2>
+  <ul id="yeMcSXQ-">
+    <li><b>bench 命令：</b>把原型的驱动脚本放进仓库，比如 <code>artifacts/bench/zoom/</code> 加上 <code>pnpm bench:zoom</code>。它会启动 Chrome，打开 30 个 board 的固定样例（用 Cursor 画板的页面），跑「空闲、双指缩放、平移」三段，输出 P95、最长一帧、慢帧数。要跑两种场景：本地画布，和跨站外壳里嵌入本地画布。验收标准是两者的缩放 P95 都 ≤ 18.2 ms。bench 依赖本机 Chrome，不进 CI。</li>
+    <li>
+      <b>单测：</b>
+      <ul>
+        <li>保活控制器（假时钟，覆盖 6.2 的每一条）；</li>
+        <li>鉴权规则（Host 白名单、Origin、<code>Sec-Fetch-Site</code>、回环模式和非回环模式）；</li>
+        <li><code>mintArtifactId</code>；</li>
+        <li>Cloud 建记录时的 <code>id</code> 和 409；</li>
+        <li>嵌入页和 view 框之间的消息校验；</li>
+        <li>掉线后切回 Cloud 渲染。</li>
+      </ul>
+      现有测试中，tier、snapshot-store、live-limit、kept-boards、hover-dwell 这些测试随模块一起删除；<code>server.test.ts</code>等鉴权相关测试按新规则改写。
+    </li>
+    <li>
+      <b>手测：</b>
+      <ul>
+        <li>你用真实触控板测：本地画布和 Cloud 直连各一遍，包括鼠标停在 board 里缩放。</li>
+        <li>评论：点元素发评论、框选、跳到某条评论、在已卸载的 board 上发评论。</li>
+        <li>1.46.2 修过的焦点和快捷键，在嵌入模式下重新验一遍。</li>
+        <li>Safari 和 Firefox 只检查不比现在差。</li>
+      </ul>
+    </li>
+    <li><b>安全手测：</b>用一个指向 127.0.0.1 的自定义域名（比如在 <code>/etc/hosts</code> 里加 <code>evil.test</code>），访问 <code>http://evil.test:P/</code>，确认返回 403。</li>
+  </ul>
+  <h2 id="05v1NK9O">9. 留给实现者决定的</h2>
+  <ul id="bdM4GI-2">
+    <li>新模块的文件划分和命名（遵循每个文件 500 行、组件 300 行以内）。</li>
+    <li>视图外部 store 的具体形态（<code>useSyncExternalStore</code> 或类似方式）。</li>
+    <li>第二个端口在 server 里怎么监听，以及怎么写进 <code>server-info</code>。</li>
+    <li>嵌入页心跳的具体间隔。</li>
+    <li>bench 样例具体放哪些文件，驱动脚本的细节。</li>
+  </ul>
+  <h2 id="_CsTeOsu">10. 本次用过的材料</h2>
+  <ul id="gYa-jNR9">
+    <li><b>压测样例：</b>Cloud artboard「Cursor · AI 光效与尺寸 ×2」，<code>https://ryugi.innei.dev/a/EdRyTU3BvwYu8LglNe74</code>，30 个 board（15 个页面各用两次），带无限循环的 CSS 动画、<code>backdrop-filter</code>、conic 渐变和 mask。</li>
+    <li><b>原型和驱动：</b><code>/private/tmp/claude-501/-Users-innei-git-innei-repo-ryugi/4ee3a984-f680-4a80-96e4-1c28d2718fe8/scratchpad/</code> 下的 <code>spike/index.html</code>（参数 <code>cull</code>、<code>wc</code>、<code>sandbox</code>、<code>hover</code>、<code>origin</code>、<code>pause</code>、<code>bwc</code>）、<code>spike/shell.html</code>、<code>drive.mjs</code> 和 <code>mem.mjs</code>。这些是临时文件，第 8 节的 bench 要据此重写。所有结论都已经记在第 5 节和本文里。</li>
+    <li><b>本文档：</b><code>document/artboard-rewrite</code>，<code>https://ryugi.innei.dev/a/Hd1EUxoadtn7g3xINjFZ</code>。</li>
+    <li><b>被取代的设计：</b><code>docs/ryugi/specs/2026-10-27-artboard-board-rendering-rules-design.md</code> 和 <code>docs/ryugi/specs/2026-10-28-live-board-budget-design.md</code>。</li>
+  </ul>
+  <h2 id="mqzfAMdL">11. 决定一览</h2>
+  <table id="2gkkuchc">
+    <tr>
+      <th>
+        <p>决定</p>
+      </th>
+      <th>
+        <p>谁定的</p>
+      </th>
+    </tr>
+    <tr>
+      <td>
+        <p>重写画布模块，不在旧代码上修补</p>
+      </td>
+      <td>
+        <p>你</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>缩放目标 P95 ≥ 55 fps</p>
+      </td>
+      <td>
+        <p>你</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>board 用自己的同站源：本地换一个端口，Cloud 用 <code>ryugi-content</code></p>
+      </td>
+      <td>
+        <p>你</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>board 默认常驻挂载，视口外 <code>display:none</code>，手势期间 <code>will-change</code> 和 <code>pointer-events:none</code></p>
+      </td>
+      <td>
+        <p>我提议、你同意，依据是压测</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>直连本机时 board 不经 CF</p>
+      </td>
+      <td>
+        <p>你</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>直连本机时，嵌入整个本地画布</p>
+      </td>
+      <td>
+        <p>我提议、你同意</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>Cloud 共用一个内容源，加 <code>allow-same-origin</code> 和 <code>worker-src &apos;none&apos;</code></p>
+      </td>
+      <td>
+        <p>我提议、你同意</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>保活：5 分钟不活跃才卸，先截图，截不出图就不卸，手势中不动</p>
+      </td>
+      <td>
+        <p>你定方向，细则我提议、你同意</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>缩放时不暂停动画</p>
+      </td>
+      <td>
+        <p>我提议，依据是压测</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>去掉 key，用 artifact ID 当凭证</p>
+      </td>
+      <td>
+        <p>你</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>Host 白名单、Origin 规则、非回环模式继续要求 key</p>
+      </td>
+      <td>
+        <p>我提议</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>本地和 Cloud 用同一个函数生成 ID</p>
+      </td>
+      <td>
+        <p>你</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>画布重写和去 key 一起做</p>
+      </td>
+      <td>
+        <p>你</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>截图有失真照样卸载；只有失败、超时、空白才算截不了图</p>
+      </td>
+      <td>
+        <p>我提议、你同意</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>ID 只是地址不是秘密；board 端口加 frame-ancestors，runtime 只响应父页面</p>
+      </td>
+      <td>
+        <p>我的决定，依据是审阅</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>只改 artboard 的 board；HTML 和文档块保持不透明源</p>
+      </td>
+      <td>
+        <p>我的决定，依据是审阅</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>board 端口不可达或绑定非回环地址时，退回单端口 + 不透明源</p>
+      </td>
+      <td>
+        <p>我的决定，依据是审阅</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>视图写 DOM 而不是 React state；嵌入 iframe 放在 view 框里；手机端用同一个保活控制器</p>
+      </td>
+      <td>
+        <p>我的决定</p>
+      </td>
+    </tr>
+  </table>
+</doc>
+

@@ -1,0 +1,158 @@
+<doc>
+  <h1 id="title">把 skill 脚本收进 ryugi-artifacts CLI</h1>
+  <p id="meta">讨论稿 · 2026-10-20 · 在任意段落上评论，我读到后回复或直接改文档。</p>
+  <h2 id="now-h">1. 现在是什么样</h2>
+  <table id="now-table">
+    <tr>
+      <th>
+        <p>入口</p>
+      </th>
+      <th>
+        <p>行数</p>
+      </th>
+      <th>
+        <p>做什么</p>
+      </th>
+    </tr>
+    <tr>
+      <td>
+        <p><code>skills/artifacts/app/start-server.sh</code></p>
+      </td>
+      <td>
+        <p>359</p>
+      </td>
+      <td>
+        <p>解析参数；Codex / Git Bash 自动前台；找 server（本地 build 优先 → 每天问一次 npm latest → 装进 <code>~/.cache/ryugi/artifacts/&lt;version&gt;/</code> → 离线用已装的最新版）；项目锁；判断是否已在跑（pid + server-id）；旧版本 server 原端口原 key 替换；登记 owner（harness 的 pid）；nohup 后台或前台；输出一行 JSON（url / link / reused）</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p><code>skills/artifacts/app/stop-server.sh</code></p>
+      </td>
+      <td>
+        <p>75</p>
+      </td>
+      <td>
+        <p>停掉项目的 server，删 <code>server-info</code>，写 <code>server-stopped</code></p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p><code>skills/artifacts/app/publish.sh</code></p>
+      </td>
+      <td>
+        <p>129</p>
+      </td>
+      <td>
+        <p>通过运行中 server 的 HTTP API 发布 / 取消发布 / 列表 / 删除 / 登录 / 登出；exit 2 表示需要登录</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p><code>npx ryugi-artifacts</code>（<code>bin/ryugi-artifacts.cjs</code>）</p>
+      </td>
+      <td>
+        <p>~60</p>
+      </td>
+      <td>
+        <p>给人用：spawn <code>bash dist/start-server.sh --foreground</code>，打印 URL 并打开浏览器；没有 stop / publish</p>
+      </td>
+    </tr>
+  </table>
+  <mermaid id="now-flow">flowchart LR
+  agent[Agent] --&gt;|bash| start[start-server.sh]
+  agent --&gt;|bash| pub[publish.sh]
+  agent --&gt;|bash| stop[stop-server.sh]
+  human[npx ryugi-artifacts] --&gt;|spawn bash| start
+  start --&gt;|node -e x5| npm[(npm + ~/.cache)]
+  start --&gt;|node| server[dist/server.cjs]
+  pub --&gt;|HTTP| server</mermaid>
+  <h2 id="why-h">2. 问题（我的猜测）</h2>
+  <ul id="why-list">
+    <li><b>依赖 Bash</b>：Windows 必须装 Git Bash；脚本里嵌了 5 段 <code>node -e</code>，实际上已经离不开 node。</li>
+    <li><b>两个入口一套逻辑</b>：agent 走 shell，人走 bin → shell；能力不对等（人用 CLI 没法 stop / publish）。</li>
+    <li><b>难测难改</b>：锁、owner、旧版替换只能靠 bash 集成测试；改一处要同时懂 bash 和嵌入的 JS。</li>
+  </ul>
+  <h2 id="goal-h">3. 目标 / 非目标（草案）</h2>
+  <ul id="goals">
+    <li>一个 CLI，子命令覆盖 start / stop / publish（以及 version）。</li>
+    <li>skill 只调用这个 CLI；给 agent 的输出仍是一行 JSON，字段不变。</li>
+    <li>保留&quot;自动跑最新 release、每天问一次 npm、离线用已装版本&quot;。</li>
+    <li>插件本身仍然零运行时依赖。</li>
+    <li>CLI 的子命令和 JSON 输出是 skill 唯一依赖的接口；之后用 Go 或 Rust 重写 CLI 时，skill 和启动器都不用改。</li>
+    <li>非目标：改 server 行为、改 cloud API。</li>
+    <li>反目标：agent 每次调用比现在慢（例如每次都等 npm）；离线启动坏掉；做完后 Windows 还需要 Git Bash。</li>
+  </ul>
+  <h2 id="find-h">4. 关键问题：skill 怎么找到 CLI</h2>
+  <p id="find-why">插件从 <code>main</code> 安装，CLI 从 npm 发布，两者版本不同步。skill 里总得留一个入口去拿到&quot;当前该用的 CLI&quot;。</p>
+  <table id="find-table">
+    <tr>
+      <th>
+        <p>方案</p>
+      </th>
+      <th>
+        <p>做法</p>
+      </th>
+      <th>
+        <p>代价</p>
+      </th>
+    </tr>
+    <tr>
+      <td>
+        <p><b>A. 薄启动器（已选）</b></p>
+      </td>
+      <td>
+        <p>skill 留一个很小的 node 脚本 <code>app/ryugi.cjs</code>：本地 build 优先；否则用缓存里的最新 release（每天问一次 npm，现有逻辑原样搬过来）；然后把子命令原样转给 release 里的 CLI。其余逻辑全部在 CLI。</p>
+      </td>
+      <td>
+        <p>启动器还是要维护版本解析这一小段；但它是 JS，可单测，不需要 bash。</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>B. 直接 npx</p>
+      </td>
+      <td>
+        <p>skill 写 <code>npx -y ryugi-artifacts@latest start …</code></p>
+      </td>
+      <td>
+        <p>最简单；但每次调用都查 npm（1–3 秒），离线可能直接失败，本地 build 调试不方便。</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>C. 全局安装</p>
+      </td>
+      <td>
+        <p>要求用户 <code>npm i -g ryugi-artifacts</code></p>
+      </td>
+      <td>
+        <p>多一步安装；升级靠人，和&quot;自动跑最新版&quot;相反。</p>
+      </td>
+    </tr>
+  </table>
+  <mermaid id="find-flow">flowchart LR
+  agent[Agent] --&gt;|node| launcher[app/ryugi.cjs]
+  human[npx ryugi-artifacts] --&gt; cli
+  launcher --&gt;|resolve: local build / cached release / npm once a day| cli[ryugi-artifacts CLI]
+  cli --&gt;|start / stop| server[dist/server.cjs]
+  cli --&gt;|publish| server</mermaid>
+  <h2 id="cli-h">5. CLI 形态（草案）</h2>
+  <codeblock id="cli-shape" lang="bash">ryugi-artifacts                        # 不带子命令 = 今天的行为：前台启动 + 打开浏览器
+ryugi-artifacts start   [--project-dir P] [--artifact type/id] [--host H] [--url-host H]
+                        [--idle-timeout-minutes N] [--open|--no-open] [--foreground|--background]
+ryugi-artifacts stop    [--project-dir P]
+ryugi-artifacts publish --artifact type/id [--public|--private] [--unpublish]
+ryugi-artifacts publish --list | --delete ID | --login | --logout
+ryugi-artifacts --version
+# 输出：终端里给人看的文字；非 TTY 或 --json 时是一行 JSON（agent 的 shell 都是非 TTY）
+# 退出码保持：0 成功，1 错误，2 需要登录</codeblock>
+  <h2 id="move-h">6. 迁移</h2>
+  <ul id="move-list">
+    <li>skill 文档（<code>SKILL.md</code> 等）改成调用启动器。</li>
+    <li>三个 <code>.sh</code>：这次直接删除，不留转发。</li>
+    <li><code>test/scripts.test.ts</code> 里的 bash 行为测试改成测 CLI 和启动器。</li>
+    <li>owner 检测（今天靠 <code>$PPID</code> 找 harness 进程）搬到启动器：<code>process.ppid</code> 的父进程。</li>
+  </ul>
+</doc>
+

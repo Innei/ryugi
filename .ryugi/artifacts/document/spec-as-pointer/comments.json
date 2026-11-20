@@ -1,0 +1,183 @@
+{
+  "threads": [
+    {
+      "id": "H0_m440BCz",
+      "anchor": {
+        "blockId": "KcYqq96i",
+        "quote": "",
+        "ask": "existing-docs",
+        "choice": "commit-all",
+        "answer": null
+      },
+      "status": "open",
+      "statusAt": "2026-11-20T13:54:32.755Z",
+      "statusBy": "human",
+      "messages": [
+        {
+          "id": "KNTcDyTsOU",
+          "author": "human",
+          "name": "Innei",
+          "avatar": "/api/avatar/github/Innei",
+          "text": "commit-all",
+          "at": "2026-11-20T13:54:32.755Z"
+        }
+      ]
+    },
+    {
+      "id": "pHvn98j4Gs",
+      "anchor": {
+        "blockId": "*",
+        "quote": "",
+        "submit": true,
+        "asks": [
+          "cli-surface",
+          "block-mapping",
+          "block-ids",
+          "comments-in-md",
+          "pointer-shape",
+          "existing-docs"
+        ]
+      },
+      "status": "open",
+      "statusAt": "2026-11-20T13:54:33.447Z",
+      "statusBy": "human",
+      "messages": [
+        {
+          "id": "gaiIZErNPW",
+          "author": "human",
+          "name": "Innei",
+          "avatar": "/api/avatar/github/Innei",
+          "text": "Submitted the answers",
+          "at": "2026-11-20T13:54:33.447Z"
+        }
+      ]
+    },
+    {
+      "id": "FbiNEnxrLS",
+      "anchor": {
+        "blockId": "Kp52q7vZ",
+        "quote": "",
+        "ask": "cli-surface",
+        "note": true
+      },
+      "status": "open",
+      "statusAt": "2026-11-20T13:57:16.344Z",
+      "statusBy": "agent",
+      "messages": [
+        {
+          "id": "tTjH7rk0WE",
+          "author": "agent",
+          "name": "Claude Code",
+          "text": "Moved to Settled; the CLI section now specifies brief=outline, --detail=markdown, --source=XML.",
+          "at": "2026-11-20T13:57:16.344Z"
+        }
+      ]
+    },
+    {
+      "id": "DQiA-vpn56",
+      "anchor": {
+        "blockId": "Kp52q7vZ",
+        "quote": "",
+        "ask": "block-mapping",
+        "note": true
+      },
+      "status": "open",
+      "statusAt": "2026-11-20T13:57:16.623Z",
+      "statusBy": "agent",
+      "messages": [
+        {
+          "id": "eodxbtwjHD",
+          "author": "agent",
+          "name": "Claude Code",
+          "text": "Moved to Settled; the mapping is written out as the block-mapping table.",
+          "at": "2026-11-20T13:57:16.623Z"
+        }
+      ]
+    },
+    {
+      "id": "EN6-_uXdKn",
+      "anchor": {
+        "blockId": "Kp52q7vZ",
+        "quote": "",
+        "ask": "block-ids",
+        "note": true
+      },
+      "status": "open",
+      "statusAt": "2026-11-20T13:57:16.911Z",
+      "statusBy": "agent",
+      "messages": [
+        {
+          "id": "HiJHgtomSx",
+          "author": "agent",
+          "name": "Claude Code",
+          "text": "Moved to Settled; headings carry {#id}, other blocks carry none.",
+          "at": "2026-11-20T13:57:16.911Z"
+        }
+      ]
+    },
+    {
+      "id": "JDiiOr7L7y",
+      "anchor": {
+        "blockId": "Kp52q7vZ",
+        "quote": "",
+        "ask": "comments-in-md",
+        "note": true
+      },
+      "status": "open",
+      "statusAt": "2026-11-20T13:57:17.199Z",
+      "statusBy": "agent",
+      "messages": [
+        {
+          "id": "nVYJhPJl6S",
+          "author": "agent",
+          "name": "Claude Code",
+          "text": "Moved to Settled; markdown output omits comments.",
+          "at": "2026-11-20T13:57:17.199Z"
+        }
+      ]
+    },
+    {
+      "id": "5vcvvliSea",
+      "anchor": {
+        "blockId": "Kp52q7vZ",
+        "quote": "",
+        "ask": "pointer-shape",
+        "note": true
+      },
+      "status": "open",
+      "statusAt": "2026-11-20T13:57:17.487Z",
+      "statusBy": "agent",
+      "messages": [
+        {
+          "id": "zgS4TNwU7C",
+          "author": "agent",
+          "name": "Claude Code",
+          "text": "Moved to Settled; pointer stays at docs/ryugi/specs/YYYY-MM-DD-<topic>-design.md, template added.",
+          "at": "2026-11-20T13:57:17.487Z"
+        }
+      ]
+    },
+    {
+      "id": "RfXnZGwhr6",
+      "anchor": {
+        "blockId": "Kp52q7vZ",
+        "quote": "",
+        "ask": "existing-docs",
+        "note": true
+      },
+      "status": "open",
+      "statusAt": "2026-11-20T13:57:17.776Z",
+      "statusBy": "agent",
+      "messages": [
+        {
+          "id": "FtnlP9TyG6",
+          "author": "agent",
+          "name": "Claude Code",
+          "text": "Moved to Settled; all 15 existing docs get committed, listed under the skills changes.",
+          "at": "2026-11-20T13:57:17.776Z"
+        }
+      ]
+    }
+  ],
+  "version": 1
+}

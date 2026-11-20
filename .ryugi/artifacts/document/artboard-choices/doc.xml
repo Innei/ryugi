@@ -1,0 +1,127 @@
+<doc>
+  <h1 id="n__fkNSB">画板内直接选择：设计</h1>
+  <p id="3jTZi8U3">这是要批准的设计。看完回终端说“批准”，或者在要改的地方评论。批准后我会把它存成 <code>docs/ryugi/specs/2026-11-01-artboard-choices-design.md</code>，然后照着实现。</p>
+  <h2 id="rX1J4H_I">TL;DR</h2>
+  <p id="FbCSETzh"><b>要做的</b>：问题组可以直接在画板上选，一轮选完点提交。有 monitor 时提交会叫醒 agent，没有时回终端说“选好了”。</p>
+  <p id="YMLTzC_M"><b>你会看到的</b>：</p>
+  <ol id="sg8djUEN">
+    <li>每块画板标签行最左边有一个单选圈，推荐的那块带“推荐”标记。</li>
+    <li>点单选圈，画板加上橙色描边；同组再点另一块就换过去，点已选的那块取消。</li>
+    <li>视口底部有一条深色提交栏：“第 1 轮 · 已选 2/4 · 3 条评论 · q3、q4 按推荐 [提交]”。</li>
+    <li>点提交后，这一轮锁定。提交栏变成“已提交 16:04 · Claude 在画第 2 轮 · 撤回”，没有 monitor 时变成“已提交 · 回终端说 选好了 · 撤回”。</li>
+    <li>手机上点开一块画板全屏看，底部有“选这个”；面板标题行写“选了 b”。</li>
+    <li>标题很长时，标签行最多两行，操作固定在右上，画板很窄时收进 ⋯。</li>
+  </ol>
+  <p id="hxNgrjaE"><b>工作量</b>：我来做大约 6–8 小时，包括测试、skill 前后评测和发版。</p>
+  <h2 id="NBa4XHTW">1. 为什么</h2>
+  <p id="todX1t_B">brainstorming 产出的画板大多是“一组一个问题，几块画板是选项”。现在回答要切回终端敲 <code>q1 → b</code>，一边敲一边对编号；想对某个选项补一句话，要另外用评论工具，而每条评论都会马上叫醒 agent，打断还没看完的一轮。目标是看、选、评论、提交都在画板上完成，agent 一次收到一整轮的答案。</p>
+  <h2 id="ZUx4BLLH">2. 目标、非目标、反目标</h2>
+  <ul id="hWtzbpNU">
+    <li><b>目标</b>：按问题组单选；选择和评论攒到提交才发；有 monitor 时提交即唤醒，没有时说“选好了”；桌面和手机都能用；长标题的标签行不再错乱。</li>
+    <li><b>非目标</b>：多选、打分、排序；拖动画板；给验证组（<code>verify</code>）改交互；在 agent 那边自动生成下一轮。</li>
+    <li><b>反目标</b>：agent 在你选到一半时被叫醒开始改东西；提交后答案在 agent 画下一轮期间悄悄变了；旧画板（没有新字段的）行为变了；“选方案”和“选元素”（Inspector 的蓝色选中）混在一起。</li>
+  </ul>
+  <h2 id="yswUxExR">3. 约束</h2>
+  <ul id="d5BtEuFs">
+    <li>插件零运行时依赖；<code>artifacts/</code> 下新文件 AGPL-3.0-only。</li>
+    <li>改了 <code>artifacts/src/</code> 就要发版；skill 改动要跑基线和改后评测（AGENTS.md）。</li>
+    <li>skill 文件只写英文；界面文案走 viewer i18n，英文和中文都要。</li>
+    <li>Claude Code 和 Codex 的评论监听共用 <code>skills/artifacts/app/comment-watch.cjs</code> 的 <code>createCommentWatch</code>，唤醒逻辑主要改这一处。Codex 那边的事件队列（<code>codex-comment-watch.cjs</code> 现在会丢掉未读数为 0 的事件）和 <code>register()</code> 允许跟着改。（我的决定）</li>
+  </ul>
+  <h2 id="bckNfiyR">4. 设计</h2>
+  <h3 id="grM9LA0f">4.1 canvas.json</h3>
+  <p id="kOFPuzxm">组上新增两个可选字段，和 <code>verify</code> 并列：</p>
+  <codeblock id="vMGEGntJ" lang="json">&quot;groups&quot;: {
+  &quot;q1&quot;: { &quot;title&quot;: &quot;评论被回复：横幅怎么排&quot;, &quot;boards&quot;: [&quot;q1-a&quot;, &quot;q1-b&quot;, &quot;q1-c&quot;],
+          &quot;choose&quot;: true, &quot;recommend&quot;: &quot;q1-b&quot; }
+}</codeblock>
+  <ul id="4QFYzBqc">
+    <li><code>recommend</code> 必须是本组的画板，否则 <code>check</code> 报警告；<code>choose</code> 和 <code>verify</code> 同时为 true 也报警告。</li>
+    <li>没有 <code>recommend</code> 的选择组，没选就提交时记为“未选”，不是“按推荐”。</li>
+    <li>没有这两个字段的组，界面和行为完全不变。</li>
+  </ul>
+  <h3 id="KH0lqPi9">4.2 轮次</h3>
+  <p id="RqI6bL3x">一轮 = 当前页面上一个标题便签下的那批组，和 viewer 现有的 <code>lib/questions.ts</code> 里的 <code>roundsOf</code> 同一个划分。轮次 id 用标题便签 id；没有标题便签的组归入 <code>page:&lt;page id&gt;</code>。服务端和 CLI 要用同一份划分逻辑（放进 <code>shared/</code>）。</p>
+  <p id="OR8wH6t-">（我的决定）轮次的推导只在服务端做：服务端把每轮的组、提交状态写进 <code>.ryugi/artifacts/.state/artboard/&lt;id&gt;/rounds.json</code>，CJS 写的 watcher 只读这个文件，不自己算。agent 出新一轮时，标题便签和这一轮的组在同一次 <code>canvas.json</code> 写入里出现，所以新组不会短暂落进上一轮。</p>
+  <h3 id="9mxL8o0f">4.3 存储</h3>
+  <p id="de_Rv446">选择、提交、撤回都存进画板的 <code>comments.json</code>，作为带特殊 anchor 的线程，和验证组的 pass/reject 一样：</p>
+  <ul id="PUMn79j7">
+    <li><b>选择</b>：anchor 带 <code>group</code> 和 <code>choice</code>（画板 id，或 <code>null</code> 表示取消）。每组以最新一条为准。</li>
+    <li><b>提交 / 撤回</b>：anchor 带 <code>round</code> 和 <code>submit: true | false</code>。每轮以最新一条为准。</li>
+    <li>服务端拒绝：对已提交的轮次写选择；对没有 <code>choose</code> 的组写选择；<code>choice</code> 不属于本组。</li>
+    <li>这些线程不出现在评论列表里，也不算未读评论。</li>
+  </ul>
+  <p id="wC75hExu">（我的决定）<b>终端里的回答也记到画板上</b>：你在终端说 <code>q1 → b</code>，或者没点提交就说“选好了”，agent 用 CLI 代你写选择并提交这一轮（<code>comment choose --group q1 --board q1-b</code>、<code>comment submit --round &lt;id&gt;</code>，记为 agent 写入）。这样画板上显示的和 agent 拿到的答案一致，这一轮也会锁上。两边冲突时，以终端里最新那句为准。服务端只对人写入执行“已提交不能改”；agent 的提交用来收尾。</p>
+  <h3 id="4vnyRX9q">4.4 草稿和唤醒</h3>
+  <ul id="qiSeuh-Y">
+    <li><b>草稿评论</b>：锚在“未提交轮次的选择组”里（画板或组上）的评论。照常存储、照常显示给你，只是 <code>createCommentWatch</code> 不为它们发事件。</li>
+    <li><b>提交时</b>：watcher 发一条 <code>{&quot;type&quot;:&quot;ryugi-choices&quot;,&quot;artifact&quot;:…,&quot;round&quot;:…,&quot;command&quot;:…}</code>，command 是 <code>comment list --json …</code>。撤回也发一条，带 <code>&quot;withdrawn&quot;: true</code>。</li>
+    <li><b>提交后</b>写的评论是普通评论，马上唤醒。其他地方（旧轮次、空白画布、非选择组）的评论一直照旧。</li>
+    <li>UserPromptSubmit hook（<code>hooks/selection-context.cjs</code>）不变：你在终端说话时，草稿评论也会被提到。</li>
+  </ul>
+  <p id="wYZlPfp9">（我的决定）一轮在下面出现新一轮后就算<b>关闭</b>，不管有没有提交：关闭后不再是草稿，那里的评论照常唤醒；<code>rounds</code> 里这一轮的状态是 <code>closed</code>。</p>
+  <h3 id="Vh9r3pVB">4.5 CLI 输出</h3>
+  <p id="tGARD2Tt"><code>comment list --json</code> 的 <code>groups</code> 里加入选择组，并新增 <code>rounds</code>：</p>
+  <codeblock id="rGJVmh3a" lang="json">{
+  &quot;groups&quot;: [
+    { &quot;id&quot;: &quot;q1&quot;, &quot;kind&quot;: &quot;choose&quot;, &quot;round&quot;: &quot;round&quot;, &quot;recommend&quot;: &quot;q1-b&quot;,
+      &quot;choice&quot;: &quot;q1-b&quot;, &quot;byRecommendation&quot;: false, &quot;threads&quot;: 1 },
+    { &quot;id&quot;: &quot;q3&quot;, &quot;kind&quot;: &quot;choose&quot;, &quot;round&quot;: &quot;round&quot;, &quot;recommend&quot;: &quot;q3-a&quot;,
+      &quot;choice&quot;: null, &quot;byRecommendation&quot;: true, &quot;threads&quot;: 0 }
+  ],
+  &quot;rounds&quot;: [ { &quot;id&quot;: &quot;round&quot;, &quot;page&quot;: &quot;ui&quot;, &quot;submitted&quot;: &quot;2026-11-01T08:04:00Z&quot; } ]
+}</codeblock>
+  <p id="nDl4K9gJ">线程照旧在 <code>threads</code> 里；草稿线程带 <code>&quot;draft&quot;: true</code>。文本输出每组一行，例如 <code>q1 → q1-b (1 comment)</code>、<code>q3 → q3-a by recommendation</code>。没提交就说“选好了”时，agent 按当前选择作答，并按 4.3 代你提交。</p>
+  <h3 id="cBxCmdkD">4.6 锁定和撤回</h3>
+  <ul id="1Hm81mnE">
+    <li>提交后这一轮只读：单选圈禁用，选中的画板保持橙色描边，作为历史。</li>
+    <li>撤回在同一页面出现更晚的轮次（agent 写了下一轮的标题便签）之前都可用；之后提交栏消失，这一轮永久只读。</li>
+  </ul>
+  <p id="hC1QDul7">（我的决定）收到撤回事件时，如果 agent 还没写下一轮，就停下来，等你重新提交；已经写了下一轮的话，撤回按钮早已消失，不会出现这种情况。有 monitor 时 agent 几秒内就会开始画，撤回主要在没有 monitor、或 agent 还没开始画时有用。</p>
+  <h3 id="UZNNvXVO">4.7 提交栏怎么知道有没有 monitor</h3>
+  <p id="YpS4-PgS">watcher 每次轮询时，在订阅文件旁边写一个心跳文件（<code>.ryugi/artifacts/.state/{claude,codex}-comment-watch/&lt;session&gt;.alive</code>，内容是时间戳）。心跳不写进订阅文件本身，因为 <code>register()</code> 每次订阅都会重写那个文件。服务端看到有订阅了这个画板（或 <code>*</code>）、且 <code>aliveAt</code> 在 10 秒内的会话，就告诉 viewer “有人在听”。提交栏据此显示“Claude 在画第 N 轮”或“回终端说 选好了”。（我的决定：用心跳，而不是只看订阅文件在不在，因为会话退出后订阅文件还留着。）</p>
+  <h3 id="ev-KKTbX">4.8 桌面端界面</h3>
+  <ul id="xSDUgfIm">
+    <li><b>标签行</b>（画板 q1-a + q3-b）：单选圈在最左；标题最多两行，“推荐”和 id 跟在标题文字后面；操作（展开、下载、参数、播放）固定在第一行右侧；画板窄于现在的 compact 阈值时操作收进 ⋯。标签向上长高，底边贴画板。重写 <code>lib/board-label.ts</code> 的布局，去掉现在“放不下就拆两行”和留空行的做法；这对所有画板生效，不只是选择组。</li>
+    <li><b>选中</b>：画板外 3px 橙色描边（<code>brand.accent</code>），和 Inspector 的蓝色选中分开。</li>
+    <li><b>提交栏</b>（画板 q2-a）：视口底部居中的深色浮条，只在当前页有未锁定的选择轮次时出现。四个状态：草稿、已提交且有人在听、已提交且没人在听、只读（不显示）。</li>
+  </ul>
+  <h3 id="--c9MSjc">4.9 手机端界面</h3>
+  <p id="BNWsHQyz">画板 q4-a：全屏看画板（<code>PhoneBoard</code>）时底部有“选这个”，已选时变成实心“✓ 已选这个”，再点取消；回到整组时标签上的单选圈和桌面一致；<code>QuestionSheet</code> 标题行写“选了 b”，进度条里已选的题用橙色；提交栏浮在面板上方。</p>
+  <h3 id="SZVE7ezH">4.10 Skill</h3>
+  <ul id="JR1UjzZr">
+    <li><code>skills/artifacts/artboard.md</code>：改开头“不能在浏览器里选”的说法；新增 “Choice groups” 一节（字段、怎么读 <code>groups</code>/<code>rounds</code>、提交后怎么做、撤回事件）。</li>
+    <li><code>skills/brainstorming/artboard-rounds.md</code>：出题时给每组写 <code>choose</code> 和 <code>recommend</code>，标题里不再写“说 q1 → b 来选”，改成“在画板上选，选完提交”；Between Rounds 改为先读 <code>groups</code>。终端里说 <code>q1 → b</code> 仍然算数。</li>
+    <li>按 <code>writing-skills</code> 跑基线和改后，结果放 <code>docs/ryugi/skill-evals/</code>。</li>
+  </ul>
+  <h3 id="iY1nZHCD">4.11 Cloud</h3>
+  <p id="BKzzE0LZ">cloud 链接在本机开着时是同一个实时页面，选择和提交照常经过本机服务端。本机关了、只剩已发布副本时，单选圈和提交栏只读。（我的决定）</p>
+  <h2 id="LR5mjvR1">5. 留给实现的</h2>
+  <ul id="iR3v_9GM">
+    <li>线程和 op 的具体字段名、ws 消息格式。</li>
+    <li>动画、悬停态、键盘操作（单选圈要能 Tab 到、空格选中）和无障碍标签。</li>
+    <li>⋯ 菜单的具体内容和顺序。</li>
+  </ul>
+  <h2 id="BJjFAErj">6. 测试</h2>
+  <ul id="sffrQOla">
+    <li>单元：选择和提交的推导（最新一条为准、按推荐、未选）；服务端拒绝规则；<code>roundsOf</code> 共享后行为不变；<code>boardLabelLayout</code> 新布局；watcher 对草稿不发事件、提交和撤回各发一次；<code>aliveAt</code> 判断。</li>
+    <li>hook 测试：<code>tests/hooks/test-comment-watch.cjs</code> 和 <code>test-codex-comment-watch.cjs</code> 补草稿和提交场景。</li>
+    <li>界面：按 ryugi:verifying-ui，桌面和手机各截图验证，给你一个验证组过目。</li>
+  </ul>
+  <h2 id="D3r5_0NB">7. 发版</h2>
+  <p id="N-9klafm">升到 1.50.0：<code>scripts/bump-version.sh 1.50.0</code>，打 tag，推送。viewer 改了，按之前定的顺序先用本地构建部署 cloud，再发 npm。</p>
+  <h2 id="vxXPNFAe">8. 用到的 artifacts</h2>
+  <ul id="9bd0rhc8">
+    <li>文档 <code>document/artboard-choices</code>（本文）：<a href="https://ryugi.innei.dev/a/77dJ5pRqaRvZPR7DGFH9A">链接</a>。</li>
+    <li>画板 <code>artboard/artboard-choices</code>：<a href="https://ryugi.innei.dev/a/3cBp3xju73YiTCwkCGKaE">链接</a>。定了 q1-a（标签行单选圈）、q2-a（底部提交栏）、q3-b（标题最多两行、操作右上、窄时收进 ⋯）、q4-a（手机全屏底部“选这个”）。</li>
+  </ul>
+  <h2 id="0MAmcqPB">9. 决定记录</h2>
+  <ul id="wRqM0IdP">
+    <li>在画板上按问题组选；每块画板可以选、选了再评论、不选只评论。（你定的）</li>
+    <li>有提交按钮；有 monitor 时提交才响应，没有时回终端说“选好了”。（你定的）</li>
+    <li>标签行的长标题要一起处理。（你提的）</li>
+    <li>一组最多选一块；草稿评论攒到提交；<code>choose</code>/<code>recommend</code> 字段；没选的按推荐；提交后锁定可撤回；<code>comment list</code> 读结果；一轮一提交；服务端判断有没有人在听；提交后评论照常唤醒；手机一起做；q1-a、q2-a、q3-b、q4-a。（接受了推荐）</li>
+    <li>终端 <code>q1 → b</code> 仍有效；复用评论线程存储；两个 skill 改动并评测；发 1.50.0；i18n 中英；心跳判断监听；cloud 离线只读；终端回答由 agent 代写进画板并提交；新一轮出现后旧轮关闭；轮次只由服务端推导并写 <code>rounds.json</code>；撤回时 agent 等重新提交；Codex 事件队列和 <code>register()</code> 可以改。（我的决定）</li>
+  </ul>
+</doc>
+

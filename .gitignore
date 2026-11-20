@@ -2,7 +2,11 @@
 .private-journal/
 .claude/*
 !.claude/skills/
-.ryugi/
+.ryugi/*
+!.ryugi/artifacts/
+.ryugi/artifacts/*
+!.ryugi/artifacts/document/
+.ryugi/artifacts/document/*/.artifact-id
 .DS_Store
 node_modules/
 inspo

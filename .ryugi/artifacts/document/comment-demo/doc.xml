@@ -1,0 +1,59 @@
+<doc>
+  <h1 id="title">评论样式演示</h1>
+  <p id="intro">这篇只用来看评论的新样式：整块评论的竖线、圆弧连线、作者名字。</p>
+  <h2 id="code-h">1. 代码块</h2>
+  <p id="code-p">下面这段是 server 读取 Agent 名字的逻辑，整块都挂了一条评论。</p>
+  <codeblock id="code" lang="ts">export function commentNames({ agentFile, projectDir, cloud }: Options): CommentNames {
+  let git: { name: string | undefined } | undefined;
+  return {
+    human: () =&gt; {
+      const login = cloud ? readCredentials(cloud.credentialsFile, cloud.origin)?.login : undefined;
+      if (login) return login;
+      git ??= { name: gitUserName(projectDir) };
+      return git.name;
+    },
+    agent: () =&gt; detectAgent(readAgentFile(agentFile)),
+  };
+}</codeblock>
+  <h2 id="table-h">2. 表格</h2>
+  <table id="agents">
+    <tr>
+      <th>
+        <p>显示名</p>
+      </th>
+      <th>
+        <p>识别依据</p>
+      </th>
+    </tr>
+    <tr>
+      <td>
+        <p>Claude Code</p>
+      </td>
+      <td>
+        <p><code>AI_AGENT=claude-code_…</code> / <code>CLAUDECODE</code></p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>Codex</p>
+      </td>
+      <td>
+        <p><code>CODEX_THREAD_ID</code> / <code>CODEX_SANDBOX</code></p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>Cursor</p>
+      </td>
+      <td>
+        <p><code>CURSOR_AGENT</code></p>
+      </td>
+    </tr>
+  </table>
+  <h2 id="text-h">3. 普通段落</h2>
+  <p id="para">选中一段文字评论时，仍然是黄色高亮；只有对整个块评论时才换成右侧竖线。重启 server 之后，已经保存的评论和名字都保持不变。</p>
+  <alert id="note" type="note">
+    <p>没登录时，「你」会显示为项目里的 git user.name。</p>
+  </alert>
+</doc>
+

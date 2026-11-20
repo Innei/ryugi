@@ -1,0 +1,224 @@
+<doc>
+  <h1 id="bUzjPDFv">只装 Artifacts：同一个仓库，安装时选模式</h1>
+  <p id="ERMSPW84">设计文档，待批准。不同意的地方直接在段落上评论；没有意见就在终端回一句“批准”。批准后存到 <code>docs/ryugi/specs/2026-11-11-artifacts-only-install-design.md</code>，然后照它实现。</p>
+  <h2 id="XG39vyCa">1. 为什么做</h2>
+  <p id="ttWshhWh">推广时拿整套流程（brainstorm → spec → TDD）当卖点不好讲：太抽象，和 Superpowers 本体撞位置。Artifacts 能直接演示：agent 打开一张画板摆出几个方向，你在上面评论，评论回到 agent。Artifacts 的应用本身已经是独立项目（<code>ryugi-cloud</code> 里的 <code>packages/artifacts</code>，npm 上的 <code>ryugi-artifacts</code>，加上 <code>landing/</code> 落地页），所以不新建仓库，也不搬 skill。只加一个安装入口，让人可以选「只要 Artifacts」，装上以后不会被拉进工作流。</p>
+  <h2 id="ImCHcVkC">2. 目标与非目标</h2>
+  <ul id="aEjso-1A">
+    <li><b>目标</b>：落地页上一条命令装好 Artifacts；会话里只出现 <code>ryugi:artifacts</code> 和 <code>ryugi:interface-craft</code>，没有 brainstorming 引导，也不会被要求先写 spec。</li>
+    <li><b>目标</b>：之后想要整套流程，重新跑一次安装、选「整套」即可，不用卸载。</li>
+    <li><b>目标</b>：现有用户什么都不用做，<code>ryugi@ryugi-dev</code> 的行为完全不变。</li>
+    <li><b>非目标</b>：不拆仓库，不改 skill 文件，服务端、viewer 和 Cloud 也不改。</li>
+    <li><b>非目标</b>：Claude Code 以外的 harness 这一轮不做「只要 Artifacts」。在别的 harness 上，安装命令什么都不装，只打印 <code>docs/install.md</code> 里对应小节的链接（那里是整套的手动安装方法）。</li>
+    <li><b>反目标</b>：同一台机器上不能同时启用两个变体。两个变体的 manifest 名字都是 <code>ryugi</code>，同时启用会让 skill 和 hooks 冲突。</li>
+  </ul>
+  <h2 id="i8Klgydz">3. 已定的决定</h2>
+  <table id="jaCzBGQC">
+    <tr>
+      <th>
+        <p>决定</p>
+      </th>
+      <th>
+        <p>谁定的</p>
+      </th>
+    </tr>
+    <tr>
+      <td>
+        <p>不新建仓库，也不搬工作流；在现有仓库上做引导安装</p>
+      </td>
+      <td>
+        <p>你</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>同一个插件，安装时选「只要 Artifacts」或「整套」；「只要 Artifacts」模式关掉工作流引导</p>
+      </td>
+      <td>
+        <p>你</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>做法：在 <code>marketplace.json</code> 里加第二个条目 <code>ryugi-artifacts</code>，source 同为 <code>./</code>，<code>skills</code> 只列 <code>./skills/artifacts</code> 和 <code>./skills/interface-craft</code></p>
+      </td>
+      <td>
+        <p>我的判断，已验证（见第 4 节）</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>引导安装由 npm CLI 提供：<code>npx ryugi-artifacts install</code>，代码在 <code>ryugi-cloud</code></p>
+      </td>
+      <td>
+        <p>我的判断，你在聊天里认可了方向</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>「只要 Artifacts」第一批只做 Claude Code；Codex 等确认它的插件清单能只露出部分 skill 之后再做</p>
+      </td>
+      <td>
+        <p>我的判断</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>前两轮里「工作流搬去 Kata」的所有决定都作废，包括 <code>ryugi-kata</code> 和 <code>kata</code> 的命名、硬依赖、迁移提示；没有改名，也就不需要迁移</p>
+      </td>
+      <td>
+        <p>你在聊天里确认（“是的”）</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>installer 只管 user 作用域。project 和 local 作用域里如果启用了另一个变体（读当前目录的 <code>.claude/settings.json</code> 和 <code>.claude/settings.local.json</code>），只给出警告和对应的命令，不替用户改</p>
+      </td>
+      <td>
+        <p>我的判断</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>交互时的默认值跟着已装的变体走：已经启用 <code>ryugi</code> 的，默认选「整套」；要从整套切到「只要 Artifacts」，必须再确认一次。没装过的默认选「只要 Artifacts」</p>
+      </td>
+      <td>
+        <p>我的判断</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>「只要 Artifacts」模式下，interface-craft 里还会提到 <code>ryugi:brainstorming</code> 和 <code>ryugi:verifying</code>，这一轮先不改 skill 文件，靠验收来检查影响；验收出问题再在 session-start 里补一行说明，并按 writing-skills 做前后对比</p>
+      </td>
+      <td>
+        <p>我的判断</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>推广第一站：X 上发一段画板演示，对象是用 Claude Code 写前端的开发者；落地页首屏放画板 GIF 和安装命令</p>
+      </td>
+      <td>
+        <p>我的假设，你没回答这题</p>
+      </td>
+    </tr>
+  </table>
+  <h2 id="rwavOXJY">4. 已验证的事实</h2>
+  <p id="FDKG120H">验证环境是 Claude Code 2.1.322，在临时 <code>HOME</code> 里做，没有动你的真实配置。我把仓库复制了一份，在复制品里加了上面那个条目，然后跑了 <code>claude plugin validate</code>、<code>marketplace add</code>、<code>install ryugi-artifacts@ryugi-dev</code> 和 <code>details</code>：</p>
+  <table id="p_l7ze-F">
+    <tr>
+      <th>
+        <p>看什么</p>
+      </th>
+      <th>
+        <p>结果</p>
+      </th>
+      <th>
+        <p>影响</p>
+      </th>
+    </tr>
+    <tr>
+      <td>
+        <p>skills</p>
+      </td>
+      <td>
+        <p>只加载了 2 个：artifacts、interface-craft</p>
+      </td>
+      <td>
+        <p>工作流的 skill 不会出现在模型的列表里，description 也就不会触发</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>skill 命名空间</p>
+      </td>
+      <td>
+        <p>manifest 名仍是 <code>ryugi</code>，调用名是 <code>ryugi:artifacts</code></p>
+      </td>
+      <td>
+        <p>monitor 的触发条件 <code>on-skill-invoke:ryugi:artifacts</code> 不用改</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>hooks</p>
+      </td>
+      <td>
+        <p>9 个全部加载，包括 SessionStart</p>
+      </td>
+      <td>
+        <p><code>session-start</code> 必须自己判断当前是哪个变体，否则会注入一个引用了不存在的 skill 的 using-ryugi</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>安装路径</p>
+      </td>
+      <td>
+        <p><code>~/.claude/plugins/cache/ryugi-dev/ryugi-artifacts/&lt;version&gt;/</code></p>
+      </td>
+      <td>
+        <p>hook 可以从插件根目录的路径看出当前变体</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>monitors</p>
+      </td>
+      <td>
+        <p>文件被复制进了缓存；<code>details</code> 不列 monitor</p>
+      </td>
+      <td>
+        <p>评论 monitor 是否启动要在真实会话里验收</p>
+      </td>
+    </tr>
+  </table>
+  <p id="sG_LYKc7">文档依据：marketplace 条目的 source 是仓库根目录、且列了 <code>skills</code> 时，只加载这些目录；hooks 不能按条目裁剪；两个条目共用一个 manifest 名字，所以只能启用一个（Claude Code 插件文档：manifest reference、marketplace reference、loading）。</p>
+  <h2 id="Sdy7aYCx">5. 本仓库的改动</h2>
+  <ul id="WVC79Qvq">
+    <li><code>.claude-plugin/marketplace.json</code>：新增 <code>ryugi-artifacts</code> 条目，并给它一句只讲 artifacts 的 description。</li>
+    <li><code>hooks/session-start</code>：插件根目录的路径里有 <code>/ryugi-artifacts/</code> 这一段时，跳过 using-ryugi 注入，但服务自启照常。判断要写在纯 bash 里，和现有脚本一样不依赖 PATH。</li>
+    <li><code>.version-bump.json</code>：加上 <code>plugins.1.version</code>，两个条目的版本一起升。</li>
+    <li>README 和 <code>docs/install.md</code>：加一节「只要 Artifacts」，写明 <code>npx ryugi-artifacts install</code>，以及手动安装的一行命令 <code>/plugin install ryugi-artifacts --marketplace Innei/ryugi</code>，并说明两个变体不能同时启用。</li>
+    <li>测试：在 <code>tests/hooks/</code> 里加两个用例，分别是 artifacts 路径下不注入引导、完整路径下照常注入；在 <code>tests/version-bump/</code> 里加覆盖第二个条目的用例。</li>
+  </ul>
+  <h2 id="PzR2O6r3">6. <code>ryugi-cloud</code> 的改动</h2>
+  <steps id="g-7fLDip">
+    <step id="s_nasv153m" title="新增 install 命令">
+      <p>在 <code>packages/artifacts/src/cli/</code> 里加 <code>install</code>，挂到 <code>commands.ts</code> 上，输出遵守现有的 Brief 格式和退出码。</p>
+    </step>
+    <step id="s_32g688d0" title="选模式">
+      <p>交互式终端里问一句「只要 Artifacts，还是整套 Ryugi 工作流」，默认值按第 3 节的规则：已经启用 <code>ryugi</code> 的默认选整套，从整套切走要再确认一次。非交互时用 <code>--mode artifacts|full</code>，不带这个参数就报错退出，退出码 3。</p>
+    </step>
+    <step id="s_3f1h2tnw" title="装到 Claude Code">
+      <p>执行 <code>claude plugin marketplace add Innei/ryugi</code> 和 <code>claude plugin install &lt;ryugi-artifacts|ryugi&gt;@ryugi-dev</code>。都在 user 作用域。另一个变体已经启用的话，先 <code>claude plugin disable</code> 它，并在输出里写明。project 和 local 作用域里如果启用了另一个变体，只给出警告和命令。</p>
+    </step>
+    <step id="s_7jjzib6x" title="其他 harness">
+      <p>找不到 <code>claude</code> 时，打印 <code>docs/install.md</code> 对应小节的链接，说明这些 harness 目前只能手动装整套，什么都不装，然后正常退出。同时装了 <code>claude</code> 和别的 harness 时，只处理 Claude Code。</p>
+    </step>
+    <step id="s_qufhtxm1" title="落地页">
+      <p>在 <code>landing/</code> 首屏加上安装命令和画板演示。</p>
+    </step>
+  </steps>
+  <h2 id="-YKfqVNm">7. 验收</h2>
+  <ul id="fMvv1hSm" type="check">
+    <li checked="false">只装 <code>ryugi-artifacts</code> 的干净会话：<code>details</code> 只列 2 个 skill；发 “Let&apos;s make a react todo list” 不会走 brainstorming；发 “Show me three directions for a settings page” 会打开画板；在画板上评论能回到 agent，说明 monitor 已启动。</li>
+    <li checked="false">只装 <code>ryugi-artifacts</code> 的会话里画一张 UI mockup，会用到 interface-craft：agent 不会去调用不存在的 <code>ryugi:brainstorming</code> 或 <code>ryugi:verifying</code>，也不会要求先写 spec。</li>
+    <li checked="false">已经启用 <code>ryugi</code> 的机器上跑 <code>npx ryugi-artifacts install</code> 并直接回车：结果仍是整套。</li>
+    <li checked="false">只装 <code>ryugi</code> 的干净会话：todo list 请求先走 brainstorming，和现在一样。</li>
+    <li checked="false">从 artifacts 模式切到 full 模式：重新跑 <code>npx ryugi-artifacts install --mode full</code> 以后，只启用了 <code>ryugi</code>。</li>
+    <li checked="false">本仓库改动涉及的测试套件全部通过。</li>
+  </ul>
+  <p id="R2mIaTJx">预计用时：本仓库 2 到 3 小时；<code>ryugi-cloud</code> 的 install 命令 2 到 3 小时，落地页另计；验收 1 小时。发布顺序照旧：先发 <code>ryugi-artifacts</code> 到 npm，再发插件。</p>
+  <h2 id="jbAHgTqg">8. 留给实现者</h2>
+  <ul id="ShG_TQf3">
+    <li>install 的提示文案，以及输出里每一行怎么写。</li>
+    <li>路径判断失败时（比如本机开发时用 <code>~/.claude/skills/ryugi</code> symlink），按整套处理。</li>
+    <li>落地页的版式和演示素材。</li>
+  </ul>
+  <h2 id="nl98OdX6">9. 用到的 artifact</h2>
+  <ul id="ECyLQXTc">
+    <li><code>document/artifacts-standalone</code>（<code>.ryugi/artifacts/document/artifacts-standalone/</code>）：也就是本文。前两轮问答在这里进行，中途方向改了两次：先是「Artifacts 单独成插件」，再是「工作流搬去 Kata」，最后定为本文的方案。</li>
+  </ul>
+</doc>
+

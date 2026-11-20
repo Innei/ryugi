@@ -1,0 +1,168 @@
+<doc>
+  <h1 id="title">Artifact 地址与 Artboard 页面状态</h1>
+  <p id="answer">已根据你的“合理，开始修改”进入实现。浏览器地址使用持久化 ID，文件系统与 CLI 保留 slug，page 使用 query 同步；以下保留讨论依据，并记录具体实现选择。</p>
+  <h2 id="understanding">我目前的理解</h2>
+  <p id="request">Artboard 的每个 page 都需要可定位的地址，并与当前显示的页面同步。Artifact 的地址统一使用持久化 ID，docs 也包含在内；文件系统继续使用 slug，不考虑 slug 的 SEO 优化。方案讨论后，你已要求开始修改。</p>
+  <p id="ambiguity">你指出这份文档的地址 /document/artifact-addressing 本身就是 slug 地址，明确了要改的是作品在 pathname 中的标识：使用稳定 hash／唯一 ID。文档标题继续可读，地址不再依赖标题或主题名称。</p>
+  <p id="storage-request">你进一步明确：文件系统管理仍然需要可读性，所有类型的 Artifact 继续用 slug 组织存储目录。浏览器地址和存储目录采用不同的标识，通过映射找到同一份作品。</p>
+  <h2 id="settled">已经明确</h2>
+  <ul id="decisions">
+    <li>你的要求：Artboard 的 page 需要 URL 定义和状态同步。</li>
+    <li>你的要求：地址设计同时考虑 docs，不做 slug SEO 优化。</li>
+    <li>你的澄清：/document/artifact-addressing 中的 artifact-addressing 就是要替换的 slug；作品地址改用稳定 hash／唯一 ID。</li>
+    <li>你的决定：文件系统存储继续用 slug，方便直接浏览和管理；Artboard、document 和 HTML 采用相同原则。</li>
+    <li>你的要求：先在 docs 中讨论；随后认可方案并要求开始修改。</li>
+  </ul>
+  <h2 id="current">修改前的代码现状</h2>
+  <table id="current-table">
+    <tr>
+      <th>
+        <p>位置</p>
+      </th>
+      <th>
+        <p>当前行为</p>
+      </th>
+      <th>
+        <p>依据</p>
+      </th>
+    </tr>
+    <tr>
+      <td>
+        <p>本地 Artifact</p>
+      </td>
+      <td>
+        <p>地址是 /artboard/header、/document/spec、/html/demo。ID 直接对应目录名，允许小写字母、数字和连字符；是命名时选择的可读标识，没有从标题自动生成 slug 的逻辑。</p>
+      </td>
+      <td>
+        <p>shared/ids.ts、server/artifacts.ts、viewer/lib/route.ts</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>云端分享</p>
+      </td>
+      <td>
+        <p>地址是 /a/&lt;cloudId&gt;，使用独立的云端 ID。本地配置保存 type/id 到云端记录的对应关系。</p>
+      </td>
+      <td>
+        <p>server/cloud.ts、server/config.ts、viewer/lib/route.ts</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>Artboard 的 page</p>
+      </td>
+      <td>
+        <p>当前页保存在 useArtboardPage 的组件状态中。初次打开读取 activePage 或第一个 page；手机还会优先考虑已有 focus。切页没有写 URL，也没有从 URL 恢复 page。</p>
+      </td>
+      <td>
+        <p>hooks/useArtboardPage.ts、layouts/PhoneArtboard.tsx</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>云端外层</p>
+      </td>
+      <td>
+        <p>/a/&lt;cloudId&gt; 内嵌 /a/&lt;cloudId&gt;/view。若只改 iframe 内的地址，浏览器地址栏和复制出来的链接仍不会反映当前页。</p>
+      </td>
+      <td>
+        <p>layouts/CloudShell.tsx</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>docs 目录</p>
+      </td>
+      <td>
+        <p>文档是单篇内容，目录点击只滚动到标题；没有 Artboard 式的 page，也没有把目录位置写入 URL。</p>
+      </td>
+      <td>
+        <p>document/DocumentToc.tsx</p>
+      </td>
+    </tr>
+  </table>
+  <p id="boundary">浏览器作品标识使用持久化 ID，磁盘目录、CLI 定位符和 page.id 保留现有 slug 形式。具体实现选择：每个作品目录内新增 .artifact-id，保存随机生成的 128 位 ID，以 32 位十六进制字符串作为地址标识。目录重命名时保留这个文件，地址解析会找到新的目录名。</p>
+  <h2 id="storage">存储与地址如何对应</h2>
+  <table id="storage-table">
+    <tr>
+      <th>
+        <p>用途</p>
+      </th>
+      <th>
+        <p>以这份文档为例</p>
+      </th>
+      <th>
+        <p>状态</p>
+      </th>
+    </tr>
+    <tr>
+      <td>
+        <p>文件系统</p>
+      </td>
+      <td>
+        <p>.ryugi/artifacts/document/artifact-addressing/doc.xml</p>
+      </td>
+      <td>
+        <p>你的决定：继续用可读 slug 组织目录。</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>浏览器地址</p>
+      </td>
+      <td>
+        <p>/document/7f84a91c</p>
+      </td>
+      <td>
+        <p>你的决定：作品地址使用 hash／唯一 ID；实现采用 32 位十六进制 ID。</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>CLI 和 Agent 操作</p>
+      </td>
+      <td>
+        <p>--artifact document/artifact-addressing</p>
+      </td>
+      <td>
+        <p>采用：沿用可读定位符，方便文件操作和现有工作流。</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>地址解析</p>
+      </td>
+      <td>
+        <p>7f84a91c 对应 document/artifact-addressing</p>
+      </td>
+      <td>
+        <p>在对应 slug 目录内保存 .artifact-id；目录随作品移动，无需另外改一份路径索引。</p>
+      </td>
+    </tr>
+  </table>
+  <p id="storage-stability"><b>采用：</b>作品 ID 创建后持久化，标题和正文变化不改 ID；同一类型目录内重命名作品目录时保留 .artifact-id。复制为一份新作品时省略这个文件，副本会获得自己的 ID。元信息损坏或同一 ID 对应多个目录时明确报错，保留原文件。</p>
+  <h2 id="round">采用的地址与页面行为</h2>
+  <h3 id="q1">1. 已明确：作品地址使用 hash／唯一 ID</h3>
+  <p id="q1-rec"><b>你的决定：</b>替换浏览器地址中的 slug，文件系统存储继续使用 slug。以这份文档为例，浏览器地址改成 /document/7f84a91c，磁盘仍是 document/artifact-addressing/；Artboard 同样使用 /artboard/b62109df。示例只说明形式，不规定最终长度或生成算法。</p>
+  <p id="q1-why">标题和主题名称用于界面展示，hash／唯一 ID 用于地址定位。此前关于 # 路由的讨论删除，不纳入这次方案。</p>
+  <p id="q1-note"><b>采用：</b>ID 创建后存进作品目录内的 .artifact-id，CLI 继续使用 type/slug。旧 slug 链接继续提供内容，浏览器读取后将地址规范到 ID 路径，并保留 query 与 fragment。云端现有 /a/&lt;cloudId&gt; 地址继续沿用独立的云端 ID。</p>
+  <h3 id="q2">2. page 的标识沿用现有 page.id 吗？</h3>
+  <p id="q2-rec"><b>采用：</b>沿用 canvas.pages 中现有的 page.id。URL 定位到 page.id，界面继续显示 page.name；改显示名称不改变链接。</p>
+  <p id="q2-why">原因：page 已经有独立 ID，board、note 和评论也使用它关联页面。没有必要为了 URL 再维护一套页码或标题 slug。</p>
+  <h3 id="q3">3. page 放在 query，还是再加一层 pathname？</h3>
+  <p id="q3-rec"><b>采用：</b>把 page 作为 query 参数，例如 /artboard/&lt;32 位 ID&gt;?page=review；作品本身保留一个地址。docs 则是 /document/&lt;32 位 ID&gt;。既有 key 等参数继续保留，分享云端链接时只附加 page。</p>
+  <p id="q3-why">原因：切 page 是同一个 Artboard 的导航状态。query 可以单独读写，也便于保留 key 等已有参数。以后是否需要编码画布位置，另行讨论。</p>
+  <h3 id="q4">4. 打开链接、刷新与 Agent focus 谁优先？</h3>
+  <p id="q4-rec"><b>采用：</b>初次打开时，有效的 URL page 优先；没有时才使用已有的 focus／activePage 默认行为。页面不存在或已删除时回到第一个有效 page，并修正 URL。打开之后，旧 focus 不覆盖人的选择；Agent 新发出的显式 focus 仍可切页，并同步地址。</p>
+  <p id="q4-why">原因：复制链接应打开相同页面，同时保留当前 Agent 引导浏览的能力。只恢复 page 并按现有逻辑 fit，不把旧坐标当成默认导航目标。</p>
+  <h3 id="q5">5. 切页与浏览器前进后退如何配合？</h3>
+  <p id="q5-rec"><b>采用：</b>人的主动切页新增一条历史；重复选择当前页不新增。默认页补全、无效页修正、Agent 导航替换当前记录。前进后退恢复当前页和相应的 fit，避免立即写回而把历史覆盖掉。</p>
+  <p id="q5-why">原因：后退应能回到人刚才浏览的页，Agent 更新和自动修正则不应塞满浏览历史。写参数时保留其他 query 参数及现有历史 state。</p>
+  <h3 id="q6">6. 哪些入口需要同步，哪些状态先不进入 URL？</h3>
+  <p id="q6-rec"><b>采用：</b>桌面、手机、本地、云端 live 和云端快照采用同一套 page 语义；同源云端 viewer 将 page 直接同步到所属作品的外层地址，切页不重载 iframe。作品标识方案覆盖 Artboard、document 和 HTML。缩放、平移、选择、面板开关和 docs 章节定位保持现有行为。</p>
+  <p id="q6-why">原因：同一个链接跨设备打开应得到同一页。docs 本身没有 page，不能把它的章节目录和 Artboard 页面混为一个状态模型。</p>
+  <h2 id="next">实现与验证</h2>
+  <p id="next-body">服务端解析 ID 后向 viewer 提供实际 slug，内部内容 API 和 CLI 继续使用原定位符。列表、预览与 CLI 输出新 ID 链接。浏览器已验证本地旧地址规范化、docs／HTML 加载、Artboard 切页／刷新／前进后退，以及模拟云端外层地址、分享链接和手机布局的 page 同步。本次改动在隔离副本中通过 122 个文件、1240 项测试；当前共享工作区构建与类型检查通过，版本一致性和发布检查通过。版本准备为 1.31.5，尚未提交或发布。</p>
+</doc>
+

@@ -1,0 +1,336 @@
+<doc>
+  <h1 id="1hEg7Y5y">CLI Brief 输出格式重做：设计</h1>
+  <p id="O4ZCCmPC">这份设计重写 <code>ryugi-artifacts</code> 的 brief 文本输出，同时精简 monitor 的提交通知。代码分在两个仓库：CLI 在 <code>ryugi-cloud/packages/artifacts</code>（发布到 npm），monitor 和 skill 文档在 <code>ryugi</code>。看完没问题就批准；有要改的地方，直接在对应段落评论。</p>
+  <h2 id="AJ46U3-C">1. 为什么做</h2>
+  <p id="NoAMkL1_">brief 的主要读者是 agent。理想情况是 agent 读完一次输出，就知道下一步做什么。现在的 agent 却要额外 grep、翻页，还要猜字段是什么意思。一个真实例子：一次回答提交后，agent 先 <code>grep -v &quot;state=settled&quot;</code>，再跟一条 <code>More</code> 才读到最后 2 条 submitted，因为第 1 页有 7 个位置被已经 settled 的记录占了。monitor 那边把答案又展开了一遍，被 500 字符截断，agent 还是得去跑 CLI。</p>
+  <p id="ivDt_4Fo">大部分问题出在共用渲染器 <code>src/cli/output/render.ts</code> 上，所以每个命令都有：</p>
+  <ul id="q8Nb5_LI">
+    <li>null 字段打印成 <code>none</code>，false 也照样打印；</li>
+    <li>对象字段被 <code>JSON.stringify</code> 原样输出，线程的 anchor 会带出 CSS 路径和 hash；</li>
+    <li>后续命令绕过了 launcher；</li>
+    <li>状态词混用（<code>COMPLETE</code>/<code>STATE</code>/<code>PREVIEW</code>/<code>READY</code>/<code>LISTED</code>）；</li>
+    <li>时间用 ISO 格式；</li>
+    <li>截断提示写成 <code>Omitted: data.issues (preview)</code> 这样的 JSON 路径；</li>
+    <li>报错的头行是内部 id（<code>comment.list: ERROR</code>），后面没有下一步。</li>
+  </ul>
+  <h2 id="wkJJqOhk">2. 目标和非目标</h2>
+  <table id="Q8MXwgdl">
+    <tr>
+      <th>
+        <p>目标</p>
+      </th>
+      <th>
+        <p>非目标</p>
+      </th>
+    </tr>
+    <tr>
+      <td>
+        <p>agent 读一次 brief 就能执行下一步，不需要 grep，常见情况下不需要翻页</p>
+      </td>
+      <td>
+        <p>改 <code>--format json</code> / <code>jsonl</code> 的结构</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>所有命令共用同一套写法：头行、记录行、分页行、命令行</p>
+      </td>
+      <td>
+        <p>给人做终端里的漂亮排版，人看内容走 viewer</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>brief 里不再出现 JSON、内部字段和 JSON 路径</p>
+      </td>
+      <td>
+        <p>升级 <code>ryugi.cli/v1</code> 协议，或者改 launcher 的版本协商</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>monitor 的提交通知只负责叫醒 agent，内容一律从 CLI 读</p>
+      </td>
+      <td>
+        <p>改评论通知的内联正文（<code>fa75b174</code> 刚修好）</p>
+      </td>
+    </tr>
+  </table>
+  <p id="_H2kkVpS"><b>反目标</b>：不能为了简短而丢掉 agent 执行下一步要用的东西，比如 id、receipt、snapshot、cursor、错误码和恢复链接。</p>
+  <h2 id="-HqIlJt7">3. 约束</h2>
+  <ul id="MnhAY__W">
+    <li>插件和 CLI 分开发布。launcher 总是跑最新的 CLI，所以新 CLI 发出去时，用户手上可能还是旧版 skill 文档。旧文档里写的字段名（<code>byRecommendation</code>、<code>waitingOn</code>、<code>state</code>）在新 brief 里换了写法，agent 仍然要读得懂：保留同样的单词（<code>submitted</code>、<code>recommended</code>、<code>waiting on</code>），只是不再写成 key=value。</li>
+    <li>用户可以把默认格式配置成 json（<code>config --output-format</code>）。打印出来的后续命令必须保证执行时仍然输出 brief。</li>
+    <li><code>ryugi</code> 没有运行时依赖；monitor 的改动只用 Node 内置模块。</li>
+  </ul>
+  <h2 id="RFXQn5s0">4. 设计</h2>
+  <h3 id="uHMjS-O2">4.1 共用规则（渲染器）</h3>
+  <p id="zbSpYQlv">输出从上到下固定是这几部分：</p>
+  <codeblock id="Y3tDGmdc" lang="text">&lt;Thing&gt;: &lt;STATUS&gt; · &lt;subject&gt; · &lt;count summary&gt;     头行
+&lt;facts，每行一个 Label: value&gt;
+&lt;section 标题行：Asks · 5 to apply (7 settled)&gt;
+  &lt;记录行&gt;
+&lt;Page 1 of 2 · 10 of 12 · More: &lt;命令&gt;&gt;             只在有分页时出现
+Warning: …
+Next: &lt;一句话下一步&gt; · &lt;命令&gt;                        每个 section 一行，没有就省略
+&lt;Label&gt;: &lt;命令&gt;                                     Read / Acknowledge / Details / More</codeblock>
+  <table id="qk5vU4Vv">
+    <tr>
+      <th>
+        <p>规则</p>
+      </th>
+      <th>
+        <p>具体</p>
+      </th>
+    </tr>
+    <tr>
+      <td>
+        <p>状态词</p>
+      </td>
+      <td>
+        <p>exit 0 时写命令自己的结果（<code>RUNNING</code>、<code>PUBLISHED</code>、<code>CLEAN</code>、<code>STOPPED</code>、<code>UP TO DATE</code>）。非 0 统一用固定词：1 <code>FAILED</code>、2 <code>NEEDS YOU</code>、3 <code>ISSUES</code>、4 <code>INCOMPLETE</code>、5 <code>PARTIAL</code>、130/143 <code>INTERRUPTED</code>。<code>READY</code>、<code>LISTED</code>、<code>STATE</code>、<code>COMPLETE</code>、<code>PREVIEW</code>、<code>READ</code> 删掉；成功的读操作不写状态词，直接写计数。</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>头行名称</p>
+      </td>
+      <td>
+        <p>用用户看到的命令名，首字母大写，例如 <code>Comment list</code>，不用 <code>comment.list</code>。</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>空值和默认值</p>
+      </td>
+      <td>
+        <p>null、空字符串、false 和视图声明的默认值都不打印。布尔值为 true 时只写它的单词（<code>recommended</code>、<code>stale</code>）。</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>对象</p>
+      </td>
+      <td>
+        <p>渲染器遇到对象或数组字段直接抛错。每个视图自己决定展开哪些字段；快照测试保证没有命令会走到这一步。</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>记录行</p>
+      </td>
+      <td>
+        <p>id 开头，用 <code>·</code> 分隔，位置固定的值不写 key；长度不固定的文本（标题、quote）放最后。只有含义不明显的值才写成 <code>label value</code>。</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>时间</p>
+      </td>
+      <td>
+        <p>按本地时区：今天写 <code>14:47</code>，今年写 <code>11-07 19:09</code>，更早写 <code>2025-11-07</code>。</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>截断</p>
+      </td>
+      <td>
+        <p>写成 <code>2 more issues · Details: &lt;命令&gt;</code>；记录内的长文本截断时，在行尾写 <code>…</code>，同时在命令行里给出 <code>--detail</code> 的版本。</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>分页</p>
+      </td>
+      <td>
+        <p><code>Page 1 of 2 · 10 of 12</code>；全部显示时写 <code>all shown</code>，只有一页时整行省略。</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>命令行</p>
+      </td>
+      <td>
+        <p>用 <code>RYUGI_ARTIFACTS_COMMAND</code>（launcher 已经设置，<code>paths.ts</code> 的 <code>invocation()</code>）作为前缀，不再用 <code>process.execPath + argv[1]</code>。只有当前生效的配置格式不是 brief 时才带 <code>--format brief</code>。保留 <code>--project-dir</code>、<code>--artifact</code>、snapshot、cursor 和 receipt。</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>报错</p>
+      </td>
+      <td>
+        <p><code>CODE: message</code> 一行；<code>HTTP:</code> 只在 5xx 时显示；能恢复的错误跟一行 <code>Next:</code>，恢复链接照旧打印。</p>
+      </td>
+    </tr>
+  </table>
+  <h3 id="yINchyoo">4.2 评论相关视图</h3>
+  <p id="9w5RpNlg">包括 <code>comment list</code>（summary、threads、asks、groups、rounds、<code>--sections</code>）、<code>comment read</code>、<code>comment ack</code> 和各个写操作。</p>
+  <ul id="Y0TcT1is">
+    <li><b>默认只列要处理的</b>：asks 只列 submitted；threads 保持现在的 unread 范围，但去掉没有未读人类消息的 resolved 线程；groups 只列 submitted 状态 round 里的 choose group，以及 verdict 是 reject 的 verify group；rounds 只列 open 和 submitted。其余记录只在 section 标题的括号里计数。过滤放在服务端做，这样分页的计数才对。</li>
+    <li><b><code>--all</code> 的含义不变</b>：仍然是&quot;全部、历史、没有 receipt&quot;。threads 默认隐藏的那些线程本来就不需要 ack，所以不会出现&quot;看得到但 ack 不了&quot;的情况；asks、groups、rounds 本来就没有 receipt。不新增 flag。<i>（我的决定）</i></li>
+    <li><b>JSON 也按同样的默认过滤</b>：结构不变，<code>summary</code> 里的计数仍然是全部记录。ryugi 仓库里没有代码解析 <code>comment list</code> 的 JSON（hook 直接读文件），这样 brief 和 JSON 两边就不会对不上。<i>（我的决定）</i></li>
+    <li><b>section 标题</b>写要处理几条，例如 <code>Asks · 5 to apply (7 settled)</code>、<code>Threads · 2 waiting on you (4 resolved)</code>、<code>Groups · 3 picked in round r2 (4 earlier, 2 pending verdict)</code>。没有要处理的就写 <code>Asks · nothing to apply (7 settled)</code>。</li>
+    <li><b>summary</b>（不带 section 的 <code>comment list</code>）每个集合一行计数，后面跟它的读取命令，不打印 JSON。</li>
+    <li><b>Next</b>：asks 写 <code>Next: apply each answer, then settle it · &lt;comment note 命令，--ask &lt;id&gt;&gt;</code>；threads 保留 <code>Read</code> / <code>Acknowledge</code>；groups 的 Next 跟 artboard.md 里的流程一致。</li>
+  </ul>
+  <codeblock id="zYZqFMsS" lang="text">Comment list: document/using-ryugi-rework · 5 to apply
+Asks · 5 to apply (7 settled)
+  artboard-home · submitted → brainstorming (recommended)
+  direction-axis · submitted → by-purpose (recommended)
+  codex-method · submitted → manual
+  trigger-moment · submitted · &quot;按 router eval 里 todo 的失败作为起因&quot;
+  more-cases · submitted · no answer
+Next: apply each answer, then settle it · node &quot;/…/ryugi-artifacts.cjs&quot; comment note --project-dir /… --artifact document/using-ryugi-rework --ask &lt;id&gt;
+
+Threads · 1 waiting on you (4 resolved)
+  HAnrNaY-40 · open · waiting on agent · block intro &quot;作者名字&quot;
+    8XPC1qx1hw Innei 14:47
+      这条带头像：没登录时是 Gravatar，取不到就退回首字母。
+Acknowledge: node &quot;/…/ryugi-artifacts.cjs&quot; comment ack --project-dir /… --artifact document/comment-demo --receipt 801f…</codeblock>
+  <p id="ETnTSHJ6">asks 行里，有选项时写 <code>→ value</code>，写了文字时把文字加引号放在行尾，两者都没有时写 <code>no answer</code>。stale 或 orphan 的记录用 <code>--all</code> 才看得到，在行里作为单词出现。线程位置：document 写 <code>block &lt;id&gt; &quot;quote&quot;</code>，artboard 写 <code>board &lt;id&gt;</code>（有页面时写 <code>page &lt;id&gt; board &lt;id&gt;</code>），whiteboard 写 <code>element &lt;id&gt;</code> 或 <code>page &lt;id&gt; x,y</code>。消息行写 <code>&lt;id&gt; &lt;name&gt; &lt;time&gt;</code>，作者是 agent 时写 <code>(agent)</code>，正文缩进放在下一行。</p>
+  <h3 id="GHmb8Su6">4.3 其他命令</h3>
+  <table id="WoBIci1Z">
+    <tr>
+      <th>
+        <p>命令</p>
+      </th>
+      <th>
+        <p>现在的问题</p>
+      </th>
+      <th>
+        <p>改成</p>
+      </th>
+    </tr>
+    <tr>
+      <td>
+        <p><code>start</code> / <code>stop</code></p>
+      </td>
+      <td>
+        <p><code>Effect:</code> 一行重复了头行</p>
+      </td>
+      <td>
+        <p>头行 <code>Server: RUNNING · reused</code>；<code>Open</code> 和 <code>Local</code> 照旧；只有 effect 不是 confirmed 时才打印 <code>Effect:</code>。</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p><code>publish</code> / <code>publish --list</code></p>
+      </td>
+      <td>
+        <p><code>ID=</code> 和 <code>version=</code> 大小写混用，ISO 时间，<code>matched · 10 shown / 249 matched</code></p>
+      </td>
+      <td>
+        <p>记录行 <code>id · type · visibility · vN · time · title</code>；标题行 <code>Cloud artifacts · 249 on account</code>；分页按 4.1。</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p><code>get</code></p>
+      </td>
+      <td>
+        <p>outline 行同样是 key=value</p>
+      </td>
+      <td>
+        <p>按 4.1 的记录行写；<code>Details</code> / <code>More</code> 保留 snapshot。</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p><code>check</code></p>
+      </td>
+      <td>
+        <p><code>Static: issues</code> 重复了头行，<code>Browser: unknown</code>，<code>Omitted: data.issues</code></p>
+      </td>
+      <td>
+        <p>头行 <code>Check: ISSUES · artboard/x · 3 issues</code>；Browser 一项只在它影响结论时出现；截断按 4.1。</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p><code>config</code></p>
+      </td>
+      <td>
+        <p>Output 是 JSON；<code>Source: global</code> 和 JSON 里的 <code>&quot;source&quot;:&quot;default&quot;</code> 矛盾</p>
+      </td>
+      <td>
+        <p><code>Auto-publish: on (global)</code>、<code>Output format: brief (default)</code>，一项一行，来源写在括号里。</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p><code>changes</code></p>
+      </td>
+      <td>
+        <p><code>UNCHANGED</code> 加 <code>No records.</code> 加 <code>Scope: human_changes · 0 shown</code></p>
+      </td>
+      <td>
+        <p><code>Changes: document/x · no human edits</code> 一行；有改动时列 block id 和 <code>Read</code>。</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p><code>scene</code> / <code>update</code></p>
+      </td>
+      <td>
+        <p>同样的通用问题</p>
+      </td>
+      <td>
+        <p>按 4.1。</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p><code>--version</code> / <code>--help</code></p>
+      </td>
+      <td>
+        <p><code>Version: READY</code> 加 <code>Version: 1.63.0</code></p>
+      </td>
+      <td>
+        <p><code>ryugi-artifacts 1.63.0</code> 一行；help 不加头行状态。</p>
+      </td>
+    </tr>
+  </table>
+  <p id="m6WxtIO5">表里没有列出的字段，由每个视图逐个判断：agent 下一步用得到就留，用不到就删。</p>
+  <p id="3zlliahF"><b><code>--fields</code> 和 <code>--format table</code></b>：<code>--fields</code> 在 brief 里继续可用，额外选中的字段以 <code>label value</code> 的形式加在行尾；table 保留自己的列布局，但也遵守 4.1 里空值、对象和时间的规则。两者现有的调用方式都不会坏。<i>（我的决定）</i></p>
+  <h3 id="K2JnfNgW">4.4 Monitor（ryugi 仓库）</h3>
+  <ul id="URQ2eCsF">
+    <li><code>skills/artifacts/app/comment-watch.cjs</code>：<code>ryugi-answers</code> 和 <code>ryugi-choices</code> 的消息改成 <code>Ryugi answers document/x submitted (5 questions). Apply each answer, then settle it with comment note --ask &lt;id&gt;. Run: …</code>，不再列出逐条内容。choices 写 round 和 group 的数量。</li>
+    <li>answers 的 <code>Run:</code> 加 <code>--status submitted</code>；choices 的 <code>Run:</code> 保持 <code>--section groups --kind choose</code>。</li>
+    <li>删除 <code>askCatalog</code>、<code>decode</code>、<code>submittedAnswers</code> 和 <code>roundPicks</code>，计数直接从 submit 线程的 <code>anchor.asks</code> 和 round 的 groups 取。event 对象里的 <code>answers</code> / <code>picks</code> 字段跟着删掉；Codex watch（<code>codex-comment-watch.cjs</code>）用的是同一个 <code>wakeMessage</code>，会一起变。</li>
+    <li>评论事件不动。</li>
+  </ul>
+  <h3 id="WM-V1rS-">4.5 Skill 文档</h3>
+  <p id="xJegR07x"><code>skills/artifacts/SKILL.md</code>（Reading CLI output）、<code>document.md</code>（Questions、Comments）、<code>artboard.md</code>（threads、groups）和 <code>skills/brainstorming/doc-rounds.md</code> 里描述 brief 字段的句子，改成新的写法：讲行里出现的单词，不讲 key 名；讲 <code>--all</code>，不讲&quot;Follow More for every submitted question&quot;。命令示例里不写 <code>--format</code>。改法按 repo 里的 <code>writing-skills</code> 走。</p>
+  <h2 id="nAqGZJcQ">5. 验证</h2>
+  <steps id="vkusvM-L">
+    <step id="s_y1nyck3m" title="快照测试">
+      <p>在 <code>ryugi-cloud/packages/artifacts/test</code> 里给每个命令的每种结果（成功、空、分页、非 0 退出）都加一份 brief 快照，先写测试再改视图。再加一条测试：把对象字段交给渲染器时必须抛错。</p>
+    </step>
+    <step id="s_58yy0i5g" title="monitor 测试">
+      <p><code>tests/hooks/test-comment-watch.cjs</code> 和 <code>test-codex-comment-watch.cjs</code> 改成断言新的消息格式和 <code>--status submitted</code>；跑 <code>bash tests/hooks/test-user-prompt-submit.sh</code>。</p>
+    </step>
+    <step id="s_k36ka6yh" title="agent 前后对比">
+      <p>三个固定场景：回答提交后去 apply、回复并 resolve 一条线程、publish 失败（exit 2）后按提示恢复。分别用旧 CLI 加旧文档、新 CLI 加新文档，在 Haiku 上各跑 3 次，记录工具调用次数、读错或执行错的次数，以及有没有 grep 或手动拼命令。结果写到 <code>docs/ryugi/skill-evals/2026-11-xx-brief-format.md</code>，格式参照 <code>2026-11-04-artifacts-brief-consumption.md</code>。新格式的调用次数不能多于旧格式，错误次数不能多于旧格式。</p>
+    </step>
+  </steps>
+  <h2 id="wrM7f3Py">6. 发布顺序</h2>
+  <ol id="-YqZ-wGE">
+    <li>在 ryugi-cloud 里改 CLI，用本地构建写到 <code>skills/artifacts/app/cli.cjs</code> 上跑对比和测试。</li>
+    <li>发布 npm 的 <code>ryugi-artifacts</code>。</li>
+    <li>在 ryugi 里提交 monitor 和 skill 文档的改动，删掉本地的 <code>cli.cjs</code> 和 <code>server.cjs</code> 副本，用 npm 版本再跑一次 monitor 测试，然后推到 main。</li>
+  </ol>
+  <p id="khZEhbPm">旧插件加新 CLI 能正常工作，因为单词没变（见 3. 约束）；新插件加旧 CLI 也能工作，因为 monitor 不依赖 CLI 的 brief。</p>
+  <h2 id="0qUdkFr3">7. 留给实现的人</h2>
+  <ul id="2dr7_AR4">
+    <li>每个视图里，&quot;agent 下一步用得到&quot;的字段具体是哪些。</li>
+    <li>Next 那一句话的具体措辞。</li>
+    <li>渲染器内部怎么拆：时间格式化、命令行拼接、记录行。</li>
+    <li>快照测试用的工具和文件组织。</li>
+  </ul>
+  <h2 id="r6qRM4R9">8. 用到的 artifact</h2>
+  <ul id="tVBtsm_l">
+    <li><code>document/cli-brief-format</code>（就是这份文档，<code>.ryugi/artifacts/document/cli-brief-format/</code>）：两轮讨论，所有决定都已经写进上面的正文。第 1 轮：改动范围是所有视图；默认只列要处理的；头行写要处理几条；记录用紧凑行；线程只带位置；命令走 launcher 并加 Next。第 2 轮：状态词按结果或退出码；时间用本地短格式；截断写计数加命令；报错用命令名加 Next；所有列表都用紧凑行；对象由视图展开并用快照锁住；用 agent 前后对比来验证。</li>
+  </ul>
+</doc>
+

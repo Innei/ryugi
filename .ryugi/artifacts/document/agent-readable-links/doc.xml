@@ -1,0 +1,169 @@
+<doc>
+  <h1 id="VGZ0dAf-">让 AI 读懂 Ryugi Cloud 链接</h1>
+  <p id="5tPIg5kr">设计稿 · 2026-10-27。第 1 轮 7 项推荐你全部同意，以下按此写成可实施的设计。标&quot;我的决定&quot;的地方请过目，不对直接改或评论。</p>
+  <h2 id="M3gsMqkw">1. 为什么做</h2>
+  <p id="1bjPQb0F">你把 <code>https://ryugi.innei.dev/a/&lt;id&gt;</code> 贴给 AI，AI 会去 fetch 这个页面。现在它只能拿到一个前端空壳：没有正文，也没有说明原文在哪。私有 artifact 的数据接口 <code>/api/a/:id</code> 在未登录时返回 404，也不会提示需要登录。上一次我只能开一个已登录的浏览器去抓渲染后的文字，表格被拆成一格一行，<code>doc.xml</code> 的结构全丢了。</p>
+  <p id="I0RWo10t">要做到：任何 AI 拿到链接后，第一次 fetch 就知道该运行哪条命令；这条命令借用本机 CLI 的登录态，返回 AI 写文档时用的同一种格式。</p>
+  <h2 id="QoLCnLas">2. 目标、非目标、反目标</h2>
+  <ul id="fGmjSDd1">
+    <li><b>目标</b>：AI fetch <code>/a/:id</code> 或 <code>/a/:id/view</code> 时，在页面正文的文字里看到指示牌。</li>
+    <li><b>目标</b>：<code>ryugi-artifacts get &lt;链接或 id&gt;</code> 返回 document 的 LiteXML 和评论，或者把 artboard/html 的文件下载到本地。</li>
+    <li><b>目标</b>：装了 Ryugi 插件的 AI 看到这种链接直接运行 <code>get</code>，不再先 fetch 网页或开浏览器。</li>
+    <li><b>非目标</b>：通过 <code>get</code> 写回云端（编辑、评论）；Markdown 输出；把实时内容（本机在线时的 live 版本）当作 <code>get</code> 的来源。</li>
+    <li><b>反目标</b>：给未登录的请求暴露原文地址或任何新的公开原始数据接口；指示牌泄露私有 artifact 的标题或类型。</li>
+  </ul>
+  <h2 id="3NAJvwF7">3. 整体流程</h2>
+  <mermaid id="onEhuPSP">sequenceDiagram
+  participant U as 你
+  participant A as AI
+  participant W as ryugi.innei.dev/a/:id
+  participant C as ryugi-artifacts get
+  participant F as 本机 credentials 文件
+  participant API as /api/a/:id
+  participant CO as content origin
+  U-&gt;&gt;A: 贴链接
+  A-&gt;&gt;W: fetch HTML
+  W--&gt;&gt;A: 空壳 + 指示牌（正文文字）
+  A-&gt;&gt;C: get &lt;链接&gt;
+  C-&gt;&gt;F: 按链接 origin 读 token
+  C-&gt;&gt;API: GET（有 token 带 Bearer）
+  alt document
+    API--&gt;&gt;C: type、title、state、comments
+    C--&gt;&gt;A: LiteXML + 评论
+  else artboard / html
+    API--&gt;&gt;C: type、title、contentBase、files
+    C-&gt;&gt;CO: 逐个下载 contentBase + path
+    C--&gt;&gt;A: 本地目录路径 + 文件清单
+  else 404 且没有 token
+    C--&gt;&gt;A: login-required（退出码 2）
+  end</mermaid>
+  <h2 id="6O0c9uiq">4. 改动分布</h2>
+  <mermaid id="sW6RZY4q">flowchart LR
+  subgraph cloud[&quot;ryugi-cloud&quot;]
+    VC[&quot;viewer.controller&lt;br/&gt;/a/:id 与 /a/:id/view&lt;br/&gt;注入指示牌&quot;]
+    SVC[&quot;artifacts.service.viewerData&lt;br/&gt;新增 files 字段&quot;]
+  end
+  subgraph cli[&quot;ryugi / artifacts&quot;]
+    GET[&quot;src/cli/get.ts&lt;br/&gt;新命令&quot;]
+    MAIN[&quot;src/cli/main.ts&lt;br/&gt;注册 get 与帮助&quot;]
+    CODEC[&quot;server/document-codec&lt;br/&gt;serializeDocument（复用）&quot;]
+    CRED[&quot;server/credentials&lt;br/&gt;readCredentials（复用）&quot;]
+  end
+  subgraph skill[&quot;ryugi / skills&quot;]
+    SK[&quot;skills/artifacts/SKILL.md&lt;br/&gt;新增：读取 Ryugi 链接&quot;]
+  end
+  GET --&gt; CODEC
+  GET --&gt; CRED
+  GET -- &quot;GET /api/a/:id&quot; --&gt; SVC
+  SK -. 引导 .-&gt; GET
+  VC -. 指示牌指向 .-&gt; GET</mermaid>
+  <p id="_pLymFuh">云端的认证不用改：<code>GET /api/a/:id</code> 已经通过 <code>requestSession</code>（<code>ryugi-cloud/src/common/request.ts</code>）接受 <code>Authorization: Bearer</code>，CLI 登录拿到的 token 会被识别为 <code>api</code> 会话。</p>
+  <h2 id="fHdPRyTc">5. 指示牌（ryugi-cloud）</h2>
+  <ul id="A-zqkxbH">
+    <li><b>位置</b>：只在 <code>GET /a/:id</code>（<code>viewer.controller.ts</code> 的 <code>shell</code>）和 <code>GET /a/:id/view</code> 两个页面注入。<code>web/index.html</code> 是 /home、/account 等页面共用的模板，不能直接改它。（你同意的推荐 + 我的决定）</li>
+    <li><b>两份</b>：<code>&lt;head&gt;</code> 里放 <code>&lt;meta name=&quot;ryugi:agent&quot; content=&quot;…&quot;&gt;</code>；<code>&lt;div id=&quot;root&quot;&gt;</code> 里放一段视觉隐藏的纯文本，前端挂载时被替换掉。很多 fetch 工具把 HTML 转成 Markdown 时会丢掉 head，所以 body 里那份才是关键。（你同意的推荐）</li>
+    <li><b>文案</b>：所有 artifact 都用同一段英文，只把链接填进去，不带标题和类型：<br /><code>This is a Ryugi Cloud artifact. Agents: read its source with `npx -y ryugi-artifacts@latest get https://ryugi.innei.dev/a/&lt;id&gt;`. Private artifacts need a Ryugi sign-in on this machine; the command says how.</code><br />用英文是因为读者是 AI，技能文件也只用英文。（我的决定）</li>
+    <li><b>验证</b>：开发者工具的无障碍树里读不到这段文字，页面也不闪出可见文字；JS 挂载后 <code>#root</code> 里不再有它。</li>
+  </ul>
+  <h2 id="DA-6Hfwf">6. 云端补一个字段</h2>
+  <p id="1YBDck4A"><code>viewerData</code> 在已发布时多返回 <code>files: string[]</code>，即当前版本的路径列表（来自 <code>version_files</code> 表）。artboard 和 html 要整目录下载，现在的返回值里没有文件清单。只返回路径，不返回 hash；访问权限和现在的 <code>contentBase</code> 一样。（我的决定）</p>
+  <h2 id="Ag7VN3Si">7. get 命令（CLI）</h2>
+  <steps id="hb1DSrNR">
+    <step id="s_q51vxbo7" title="解析参数">
+      <p>接受 <code>https://&lt;origin&gt;/a/&lt;id&gt;</code>（以及 <code>/view</code>、<code>/preview</code> 后缀）或裸 id。裸 id 用 <code>RYUGI_CLOUD_ORIGIN</code>，没设就用 <code>https://ryugi.innei.dev</code>，和 <code>lifecycle.ts</code> 的默认值一致。id 校验规则和 <code>publish --delete</code> 相同：<code>^[A-Za-z0-9_-]{1,64}$</code>。</p>
+    </step>
+    <step id="s_5uhll3em" title="读取登录态">
+      <p>用 <code>credentialsFile(process.env, process.platform, os.homedir())</code> 加 <code>readCredentials(file, origin)</code>。有 token 就带上 Bearer，没有就匿名请求。不需要运行中的 server，也不需要 <code>--project-dir</code>。</p>
+    </step>
+    <step id="s_uilkstf4" title="请求数据">
+      <p><code>GET &lt;origin&gt;/api/a/&lt;id&gt;</code>。出错时：404 且没有 token → 退出码 2，打印 <code>{&quot;type&quot;:&quot;login-required&quot;,&quot;message&quot;:…}</code>；404 但有 token → 普通错误&quot;not found or no access&quot;；429 → 原样转出云端的 <code>error</code> 和 <code>code</code>；<code>published: false</code> → 错误&quot;not published yet&quot;。</p>
+    </step>
+    <step id="s_odbf9n42" title="document 输出">
+      <p>默认输出：<code>serializeDocument(state)</code> 得到的 LiteXML，后面跟评论区。每个未删除的 thread 写成一个块：<code>[blockId] &quot;quote&quot;</code>，下面每条消息一行 <code>author: text</code>，已解决的 thread 标 <code>(resolved)</code>。<code>--no-comments</code> 去掉评论区。<code>--json</code> 输出一行 <code>{type:&quot;artifact&quot;, artifactType, id, title, visibility, updatedAt, content, comments}</code>，其中 <code>comments</code> 就是云端返回的 threads。文档里有 <code>&lt;img&gt;</code>、<code>&lt;excalidraw&gt;</code> 或 <code>&lt;dynamic&gt;</code> 引用的文件时，<code>files</code> 中除 <code>doc.xml</code> 以外的文件按下一步的规则下载到目录；文本输出在 LiteXML 前加一行 <code>Files: &lt;dir&gt;</code>，<code>--json</code> 多一个 <code>dir</code>。没有这类文件时不建目录。（我的决定）</p>
+    </step>
+    <step id="s_pnwy1mfd" title="artboard / html 输出">
+      <p>把 <code>files</code> 逐个从 <code>contentBase + path</code> 下载到 <code>--out</code> 指定的目录。没给 <code>--out</code> 就放到 <code>~/.cache/ryugi/get/&lt;id&gt;/</code>，每次运行先清空这个目录。artboard 另外把 payload 里的 <code>canvas</code> 写成 <code>canvas.json</code>。默认输出目录路径和文件清单；<code>--json</code> 输出 <code>{type:&quot;artifact&quot;, artifactType, id, title, dir, files}</code>。路径要校验，防止跳出目标目录。（我的决定）</p>
+    </step>
+  </steps>
+  <p id="6ZwwSIb7">帮助文本加一行：<code>get  Read a published Ryugi Cloud artifact by link or id: [--out &lt;dir&gt;] [--no-comments]</code>。</p>
+  <p id="IPV4no04"><b>输出模式和其他命令不同</b>：其他命令在非终端时默认输出 JSON（<code>main.ts</code> 的 <code>argv.includes(&apos;--json&apos;) || !process.stdout.isTTY</code>），<code>get</code> 不走这条规则。不管是不是终端，只有显式传 <code>--json</code> 才输出 JSON，否则 stdout 是原文。理由：指示牌里的命令不带 <code>--json</code>，AI 在非终端下运行，按旧规则会拿到一行转义过的字符串。原文模式下错误写到 stderr，是纯文本一行（<code>login-required</code> 也一样），退出码不变（登录 2，其他错误 1）；<code>--json</code> 模式的错误格式和其他命令一致。（我的决定）</p>
+  <h3 id="46NaW_5c">登录</h3>
+  <p id="OoxwOKM9">现在的登录流程要靠运行中的 server 接收回调（<code>publish --login</code>），<code>get</code> 不会自己去启动 server。需要登录时，<code>login-required</code> 的 message 写成：&quot;Sign in once with `ryugi-artifacts start` then `ryugi-artifacts publish --login` in any project, then run this command again.&quot;。你自己的机器已经登录过，Codex 和 Claude 读的是同一个 credentials 文件，所以平时碰不到这一步。（我的决定，见第 13 节）</p>
+  <h2 id="gZzlDHvy">8. 技能（skills/artifacts/SKILL.md）</h2>
+  <p id="g-b1JrGY">加一小节&quot;Read a Ryugi Cloud link&quot;：用户贴来 <code>ryugi.innei.dev/a/</code> 链接（或其他 Ryugi Cloud origin）时，先运行 <code>node app/ryugi-artifacts.cjs get --json &lt;链接&gt;</code>，不要 fetch 网页或开浏览器；document 读 <code>content</code>，artboard/html 读 <code>dir</code> 里的文件。只用英文。</p>
+  <p id="tYxsCNRm">这一节放在 SKILL.md 开头&quot;You have a tool named <code>Artifact</code>&quot;那个分支<b>之前</b>，否则 Claude Code 用户会被分到 <code>claude-artifacts.md</code>，看不到它。frontmatter 的 <code>description</code> 末尾加一个触发条件：&quot;or when they paste a Ryugi Cloud link (…/a/…) to read&quot;。只改 body 的话，AI 收到&quot;读下 &lt;链接&gt;&quot;时可能根本不会加载这个技能。（我的决定）</p>
+  <p id="klCXQZKs">按 <code>AGENTS.md</code>，这处技能改动要用 <code>writing-skills</code> 做改前改后的对照：同一个提示&quot;读下 &lt;链接&gt;&quot;，改前记录 AI 怎么取内容，改后确认它第一步就运行 <code>get</code>。对照结果跟改动一起保存。</p>
+  <h2 id="tkm3t5ib">9. 测试</h2>
+  <table id="_xbdLGGp">
+    <tr>
+      <th>
+        <p>哪里</p>
+      </th>
+      <th>
+        <p>测什么</p>
+      </th>
+    </tr>
+    <tr>
+      <td>
+        <p><code>artifacts/test/cli-get.test.ts</code>（用 <code>fake-cloud.ts</code>）</p>
+      </td>
+      <td>
+        <p>链接与裸 id 的解析；带 token 和匿名两种请求；document 的 LiteXML 与评论输出、<code>--no-comments</code>、<code>--json</code>；artboard/html 下载、拒绝 <code>../</code> 路径；404 时有 token 和无 token 两种结果、429、未发布</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>ryugi-cloud viewer 测试</p>
+      </td>
+      <td>
+        <p><code>/a/:id</code> 和 <code>/a/:id/view</code> 有 meta 和 body 两份指示牌；其他页面没有；私有 artifact 的指示牌不含标题和类型</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>ryugi-cloud artifacts 测试</p>
+      </td>
+      <td>
+        <p><code>viewerData</code> 的 <code>files</code> 就是当前版本的路径；未发布时没有这个字段</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>手动</p>
+      </td>
+      <td>
+        <p><code>curl</code> 本文链接能看到 body 里的指示牌；在另一个目录运行 <code>get</code> 拿到这份文档的 LiteXML</p>
+      </td>
+    </tr>
+  </table>
+  <h2 id="O0XIcHf7">10. 发布顺序</h2>
+  <ol id="i6H3HPmJ">
+    <li>先发 ryugi-cloud（指示牌和 <code>files</code> 字段），按以往做法用本地构建部署。</li>
+    <li>再发 ryugi-artifacts：<code>artifacts/src/</code> 有改动就必须 bump 版本、打 tag 走 Release。</li>
+    <li>技能改动跟 CLI 在同一次发布里。</li>
+  </ol>
+  <alert id="w9JRyEk1" type="note">
+    <p>指示牌里写的是 <code>@latest</code>。云端先上线、npm 还没发布这段时间，指示牌指向的命令不存在。两次发布离得近就行，不另加兼容处理。（我的决定）</p>
+  </alert>
+  <h2 id="TWz_jAz7">11. 留给实施者</h2>
+  <ul id="OxrAqynN">
+    <li>视觉隐藏的 CSS 写法，以及在哪个函数里注入（可以照 <code>withShareMeta</code> 写一个同类函数）。</li>
+    <li>评论区的具体排版，只要满足第 7 节的字段。</li>
+    <li>下载的并发数。</li>
+  </ul>
+  <h2 id="ilqJIvQq">12. 用到的 artifact</h2>
+  <ul id="xIb-JW_G">
+    <li>document <code>agent-readable-links</code>（本文，<code>.ryugi/artifacts/document/agent-readable-links/</code>，<a href="https://ryugi.innei.dev/a/x56gIp3uNO6lfGLTtPGX">云端链接</a>）。第 1 轮定下：三种类型都支持；命令是 <code>get</code>，默认输出原文、<code>--json</code> 时包一层；document 用 LiteXML；评论默认附上；指示牌 head 和 body 各放一份；指示牌里写 npx；SKILL.md 加引导。</li>
+    <li>被读的样本：document <code>paOMLK_jHrmmMcyUNhLR</code>《平台适配与 Docker 自部署设计》，暴露了这个问题。</li>
+  </ul>
+  <h2 id="0oaSIjGL">13. 请你核对</h2>
+  <p id="AZlZACsA">以下是我替你定的，不对就改：</p>
+  <ol id="TP4vTCYO">
+    <li><b>登录</b>：<code>get</code> 不自带登录，需要登录时让你先 <code>start</code> 再 <code>publish --login</code>。要做成 <code>get</code> 自己就能登录，CLI 得新增一条不依赖项目的登录回调，工作量会明显增加。</li>
+    <li><b>技能触发</b>：改 artifacts 技能的 <code>description</code>，让它在用户贴 Ryugi 链接时也加载。这会影响所有用户这个技能什么时候触发；改前改后的对照测试会覆盖这一点。</li>
+    <li><b>输出模式</b>：<code>get</code> 默认输出原文，不管是不是终端，和其他命令&quot;非终端就输出 JSON&quot;的约定不一样。</li>
+    <li><b>文档附件</b>：文档引用了图片、excalidraw 或动态块时，相关文件一起下载到目录。</li>
+    <li><b>来源</b>：只读已发布的版本，不读本机在线时的实时内容。</li>
+  </ol>
+</doc>
+

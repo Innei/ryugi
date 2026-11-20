@@ -1,0 +1,291 @@
+{
+  "threads": [
+    {
+      "id": "bdnQieynSA",
+      "anchor": {
+        "blockId": "VXTgxwWI",
+        "quote": "",
+        "ask": "relation",
+        "choice": null,
+        "answer": "都不是：把工作流搬出去。工作流是一个 skill collection，单独成仓库；本仓库留给 Artifacts。"
+      },
+      "status": "open",
+      "statusAt": "2026-11-11T14:34:01.023Z",
+      "statusBy": "agent",
+      "messages": [
+        {
+          "id": "yVskYsDq4g",
+          "author": "agent",
+          "name": "Claude Code",
+          "text": "Answered relation",
+          "at": "2026-11-11T14:34:01.023Z"
+        }
+      ]
+    },
+    {
+      "id": "nRBgvyWP_N",
+      "anchor": {
+        "blockId": "*",
+        "quote": "",
+        "submit": true,
+        "asks": ["relation"]
+      },
+      "status": "open",
+      "statusAt": "2026-11-11T14:34:01.146Z",
+      "statusBy": "agent",
+      "messages": [
+        {
+          "id": "HUtfcMQbtD",
+          "author": "agent",
+          "name": "Claude Code",
+          "text": "Submitted the answers",
+          "at": "2026-11-11T14:34:01.146Z"
+        }
+      ]
+    },
+    {
+      "id": "C5z6HmXFNr",
+      "anchor": {
+        "blockId": "VXTgxwWI",
+        "quote": "",
+        "ask": "relation",
+        "note": true
+      },
+      "status": "open",
+      "statusAt": "2026-11-11T14:34:01.261Z",
+      "statusBy": "agent",
+      "messages": [
+        {
+          "id": "hfzOl4mfWk",
+          "author": "agent",
+          "name": "Claude Code",
+          "text": "已采用：工作流（brainstorming、executing-specs、TDD、debugging、verifying、worktrees、using-ryugi）搬到独立仓库，本仓库只做 Artifacts。原第 2–7 题依赖这个答案，已按新方向重写为第 2 轮，用新 id。",
+          "at": "2026-11-11T14:34:01.261Z"
+        }
+      ]
+    },
+    {
+      "id": "TLkY4B1qC_",
+      "anchor": {
+        "blockId": "VksvjRZT",
+        "quote": "",
+        "ask": "workflow-name",
+        "choice": null,
+        "answer": "仓库 ryugi-kata，插件名 kata（调用名 kata:brainstorming）；using-ryugi 改为 using-kata"
+      },
+      "status": "open",
+      "statusAt": "2026-11-11T14:43:31.477Z",
+      "statusBy": "agent",
+      "messages": [
+        {
+          "id": "0W_VyKKey9",
+          "author": "agent",
+          "name": "Claude Code",
+          "text": "Answered workflow-name",
+          "at": "2026-11-11T14:43:31.477Z"
+        }
+      ]
+    },
+    {
+      "id": "WABRy0hVFB",
+      "anchor": {
+        "blockId": "sixvPNtQ",
+        "quote": "",
+        "ask": "artifacts-dep",
+        "choice": "required",
+        "answer": null
+      },
+      "status": "open",
+      "statusAt": "2026-11-11T14:59:39.834Z",
+      "statusBy": "human",
+      "messages": [
+        {
+          "id": "1GFsDvungP",
+          "author": "human",
+          "name": "Innei",
+          "avatar": "/api/avatar/github/Innei",
+          "text": "required",
+          "at": "2026-11-11T14:59:39.834Z"
+        }
+      ]
+    },
+    {
+      "id": "XcJMYT6Xzn",
+      "anchor": {
+        "blockId": "*",
+        "quote": "",
+        "submit": true,
+        "asks": [
+          "keeps-name",
+          "workflow-name",
+          "workflow-form",
+          "artifacts-dep",
+          "migration",
+          "craft-home",
+          "launch-target"
+        ]
+      },
+      "status": "open",
+      "statusAt": "2026-11-11T14:59:57.533Z",
+      "statusBy": "human",
+      "messages": [
+        {
+          "id": "4GGlnDhkw_",
+          "author": "human",
+          "name": "Innei",
+          "avatar": "/api/avatar/github/Innei",
+          "text": "Submitted the answers",
+          "at": "2026-11-11T14:59:57.533Z"
+        }
+      ]
+    },
+    {
+      "id": "ceOyft-B0x",
+      "anchor": {
+        "blockId": "YEWK0diP",
+        "quote": "",
+        "ask": "keeps-name",
+        "note": true
+      },
+      "status": "open",
+      "statusAt": "2026-11-11T15:00:36.670Z",
+      "statusBy": "agent",
+      "messages": [
+        {
+          "id": "Dp0ftMxMHa",
+          "author": "agent",
+          "name": "Claude Code",
+          "text": "已采用：本仓库和插件名 ryugi 留给 Artifacts，ryugi:artifacts 及 monitor 触发条件不变。",
+          "at": "2026-11-11T15:00:36.670Z"
+        }
+      ]
+    },
+    {
+      "id": "bXQnIn5sjT",
+      "anchor": {
+        "blockId": "VksvjRZT",
+        "quote": "",
+        "ask": "workflow-name",
+        "note": true
+      },
+      "status": "open",
+      "statusAt": "2026-11-11T15:00:36.786Z",
+      "statusBy": "agent",
+      "messages": [
+        {
+          "id": "CM8BUNQP95",
+          "author": "agent",
+          "name": "Claude Code",
+          "text": "已采用：工作流仓库 ryugi-kata，插件名 kata，using-ryugi 改为 using-kata。",
+          "at": "2026-11-11T15:00:36.786Z"
+        }
+      ]
+    },
+    {
+      "id": "W4o2jBUkCa",
+      "anchor": {
+        "blockId": "qShYkO2V",
+        "quote": "",
+        "ask": "workflow-form",
+        "note": true
+      },
+      "status": "open",
+      "statusAt": "2026-11-11T15:00:36.904Z",
+      "statusBy": "agent",
+      "messages": [
+        {
+          "id": "mxbO00q-pe",
+          "author": "agent",
+          "name": "Claude Code",
+          "text": "已采用：kata 是插件，只带 session-start 引导 hook。",
+          "at": "2026-11-11T15:00:36.904Z"
+        }
+      ]
+    },
+    {
+      "id": "_pj5w0D5bl",
+      "anchor": {
+        "blockId": "sixvPNtQ",
+        "quote": "",
+        "ask": "artifacts-dep",
+        "note": true
+      },
+      "status": "open",
+      "statusAt": "2026-11-11T15:00:37.025Z",
+      "statusBy": "agent",
+      "messages": [
+        {
+          "id": "4tTnYb9k0P",
+          "author": "agent",
+          "name": "Claude Code",
+          "text": "已采用：kata 硬依赖 ryugi。README 要求两个都装；kata 的 session-start 检测不到 ryugi 时提示一行安装命令；skill 里没有浏览器时的退路保留，用于 node 或服务起不来的情况。",
+          "at": "2026-11-11T15:00:37.025Z"
+        }
+      ]
+    },
+    {
+      "id": "UxqsXOSOQi",
+      "anchor": {
+        "blockId": "Y-OfLu5x",
+        "quote": "",
+        "ask": "migration",
+        "note": true
+      },
+      "status": "open",
+      "statusAt": "2026-11-11T15:00:37.143Z",
+      "statusBy": "agent",
+      "messages": [
+        {
+          "id": "nXbUtoNpIj",
+          "author": "agent",
+          "name": "Claude Code",
+          "text": "已采用：ryugi 拆分后的版本在会话开始时提示一次工作流搬到 kata 及安装方法，保留 3 个版本后删除。",
+          "at": "2026-11-11T15:00:37.143Z"
+        }
+      ]
+    },
+    {
+      "id": "FEsSi5vOQF",
+      "anchor": {
+        "blockId": "6yj9thoP",
+        "quote": "",
+        "ask": "craft-home",
+        "note": true
+      },
+      "status": "open",
+      "statusAt": "2026-11-11T15:00:37.256Z",
+      "statusBy": "agent",
+      "messages": [
+        {
+          "id": "-PBHAD92sC",
+          "author": "agent",
+          "name": "Claude Code",
+          "text": "已采用：interface-craft 留在 ryugi。",
+          "at": "2026-11-11T15:00:37.256Z"
+        }
+      ]
+    },
+    {
+      "id": "KVaDZTQ9RL",
+      "anchor": {
+        "blockId": "JxUCbZgp",
+        "quote": "",
+        "ask": "launch-target",
+        "note": true
+      },
+      "status": "open",
+      "statusAt": "2026-11-11T15:00:37.371Z",
+      "statusBy": "agent",
+      "messages": [
+        {
+          "id": "cwYAjxuoFk",
+          "author": "agent",
+          "name": "Claude Code",
+          "text": "没有回答。我的假设：第一站是 X 上的一段画板演示，对象是用 Claude Code 写前端的开发者；README 首屏放画板 GIF。需要改的话在设计文档里评论。",
+          "at": "2026-11-11T15:00:37.371Z"
+        }
+      ]
+    }
+  ],
+  "version": 1
+}

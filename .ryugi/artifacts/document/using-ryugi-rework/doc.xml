@@ -1,0 +1,575 @@
+<doc>
+  <h1 id="a_q4C_Kq">using-ryugi 重写：设计</h1>
+  <p id="jg0yR1Ql">两轮问题都已回答，这份文档改写成了实施依据的设计。请通读，有问题直接评论；没有问题就在终端回一句&quot;批准&quot;。</p>
+  <alert id="O3kTujG_" type="important">
+    <p>要做的事：把 using-ryugi 从 Superpowers 的 658 词强制版改成按阶段路由的短版（普通问题额外 token ≤ +800）；brainstorming 加一条路径，让 &quot;Let&apos;s make a react todo list&quot; 第一条回复就打开 artboard，给出 2–3 个按用途区分的方向；然后在 Haiku、Sonnet 上跑 eval，Codex 手动验收。预计约 1 个工作日。标&quot;我的判断&quot;的地方请重点看。</p>
+  </alert>
+  <h2 id="EiablZcA">1. 意图</h2>
+  <p id="GI1LoVL5">using-ryugi 是每个会话都会注入的 bootstrap。它的结构来自 Superpowers v7.0.0：1% 门槛、&quot;任何回复前先调 skill&quot;、12 行 Red Flags。每个普通问题因此多付 1,693 个输入 token，而这些部分没有一项被单独测过是否必要。</p>
+  <p id="1ZziU-EU">旗舰 prompt &quot;Let&apos;s make a react todo list&quot; 现在两头都退化了。10-31 测过的短版 router 让它直接开写，5 次里 0 次先讨论。11-03 的 brainstorming 改版让它只剩&quot;猜一句 + 一个问题&quot;，README 承诺的 artboard 没有出现。</p>
+  <p id="6AsSfzRs">这次重写要同时做到两件事：bootstrap 变成 Ryugi 自己的阶段路由，更短、语气更平；todo 的流程变成 README 写的样子，也就是第一条回复打开 artboard，2–3 个方向，什么都不动手。</p>
+  <mermaid id="EdRYuAcE">flowchart TD
+  P[&quot;Let&apos;s make a react todo list&quot;] --&gt; U[&quot;using-ryugi：当前阶段是「要构建」&quot;]
+  U --&gt; B[&quot;brainstorming：Pick the Path&quot;]
+  B --&gt;|&quot;有界面，用途和样子都没定&quot;| A[&quot;artboard 第 1 轮：2–3 个按用途区分的方向&quot;]
+  B --&gt;|&quot;说清楚的小改&quot;| D[&quot;直接做&quot;]
+  B --&gt;|&quot;非 UI，能猜&quot;| G[&quot;猜一句 + 一个问题&quot;]
+  A --&gt; W[&quot;后续轮次 → 书面设计 → 批准&quot;]
+  W --&gt; E[&quot;executing-specs / TDD&quot;]</mermaid>
+  <h2 id="m40nwua1">2. 目标、非目标、反目标</h2>
+  <h3 id="UIXh2qjs">目标</h3>
+  <ul id="wTu54l_3">
+    <li>using-ryugi 正文改为阶段路由：删掉 1% 门槛、强制措辞和 Red Flags。字数不设硬上限，以下面的 token 目标为准；Evidence Before Claims 原样保留，其余保留段落可以压缩（我的判断，builder check 后修订）。</li>
+    <li>在干净会话里，todo prompt 的第一条回复打开 artboard：一个 choice group、2–3 个按用途区分的 board；不写产品代码、不建脚手架、不装依赖。</li>
+    <li>说清楚的样式小改和非 UI 的构建请求都不开方向 artboard。</li>
+    <li>现有 7 个 eval 场景的结果不比全文版差。</li>
+    <li>普通问题的额外输入 token 明显低于全文版的 +1,693。目标 ≤ +800（我的判断）。</li>
+  </ul>
+  <h3 id="zt9T0K1O">非目标</h3>
+  <ul id="X7btcuGB">
+    <li>hook 注入的 <code>&lt;EXTREMELY_IMPORTANT&gt;</code> 外壳和各 harness 的集成代码。</li>
+    <li>test-driven-development、systematic-debugging、executing-specs、verifying-ui、artifacts 这几个 skill。</li>
+    <li>给 eval harness 加 Codex arm。</li>
+    <li>发版。改动合入后另走 Releasing 流程。</li>
+  </ul>
+  <h3 id="LFPXpbQh">反目标</h3>
+  <ul id="hevjPubA">
+    <li>把所有构建请求都推向 artboard。</li>
+    <li>把 brainstorming 的 HARD-GATE 或 artboard 轮次规则搬进 bootstrap。</li>
+  </ul>
+  <h2 id="YMKkv34G">3. 约束</h2>
+  <ul id="CRCR_ES8">
+    <li>skill 文件只用英文，示例和 UI 标签也不例外；文档里出现的中文方向名只是说明，写进 skill 时要译成英文。</li>
+    <li>AGENTS.md：改 skill 走仓库内的 <code>writing-skills</code>，基线和候选版各跑一遍，结果随改动保留；&quot;your human partner&quot;的措辞不能换。</li>
+    <li>零运行时依赖。</li>
+    <li>多个 harness 的测试断言了注入外壳以 <code>&lt;EXTREMELY_IMPORTANT&gt;\nYou have Ryugi.</code> 开头。外壳不动，这些测试应保持通过。</li>
+    <li><code>tests/skill-bootstrap-eval/run.py</code> 只会驱动 <code>claude -p</code>；observer 在第一次可识别的写操作处停下。新的 todo 预期会写 <code>.ryugi/artifacts/artboard/…</code>，这次写入不能再算作开始实现。</li>
+  </ul>
+  <h2 id="5PX3Ookh">4. 已定</h2>
+  <table id="m3niI2nu">
+    <tr>
+      <th>
+        <p>决定</p>
+      </th>
+      <th>
+        <p>内容</p>
+      </th>
+      <th>
+        <p>谁定的</p>
+      </th>
+    </tr>
+    <tr>
+      <td>
+        <p>范围</p>
+      </td>
+      <td>
+        <p>重写 using-ryugi，不以 Superpowers 的结构为前提</p>
+      </td>
+      <td>
+        <p>你</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>todo 第一条回复</p>
+      </td>
+      <td>
+        <p>打开 artboard，给 2–3 个方向，不动手</p>
+      </td>
+      <td>
+        <p>你</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>入口规则</p>
+      </td>
+      <td>
+        <p>读项目文件或写代码之前，先加载当前阶段的 skill；普通问题直接回答。1% 门槛删掉</p>
+      </td>
+      <td>
+        <p>接受推荐</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>路由形状</p>
+      </td>
+      <td>
+        <p>写成阶段表，外加&quot;跳过讨论 → 仍走 TDD&quot;</p>
+      </td>
+      <td>
+        <p>接受推荐</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>description</p>
+      </td>
+      <td>
+        <p>保留&quot;会话开始时使用&quot;的触发，去掉强制语气</p>
+      </td>
+      <td>
+        <p>接受推荐</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>Red Flags</p>
+      </td>
+      <td>
+        <p>候选版先去掉；eval 出现退化，再按失败场景加回对应的行</p>
+      </td>
+      <td>
+        <p>接受推荐</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>artboard 行为放在哪</p>
+      </td>
+      <td>
+        <p>写进 brainstorming 的 Pick the Path；using-ryugi 只负责把&quot;要构建&quot;送进 brainstorming</p>
+      </td>
+      <td>
+        <p>接受推荐</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>方向怎么区分</p>
+      </td>
+      <td>
+        <p>按用途区分，每个方向画成它那种用途该有的样子</p>
+      </td>
+      <td>
+        <p>接受推荐</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>防过度触发</p>
+      </td>
+      <td>
+        <p>eval 加两个守门场景：样式小改、非 UI 构建</p>
+      </td>
+      <td>
+        <p>接受推荐</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>模型</p>
+      </td>
+      <td>
+        <p>Haiku + Sonnet 跑 harness；Codex 手动验收</p>
+      </td>
+      <td>
+        <p>你 + 接受推荐</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>todo 怎么判</p>
+      </td>
+      <td>
+        <p>只看结果，从工具调用判断，不要求加载了 brainstorming</p>
+      </td>
+      <td>
+        <p>接受推荐</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>注入外壳</p>
+      </td>
+      <td>
+        <p>不动</p>
+      </td>
+      <td>
+        <p>我的判断</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>README:25</p>
+      </td>
+      <td>
+        <p>不用改，它写的就是选定的行为</p>
+      </td>
+      <td>
+        <p>我的判断</p>
+      </td>
+    </tr>
+  </table>
+  <h2 id="0aklIo8t">5. 新 using-ryugi</h2>
+  <h3 id="USHKlq7a">保留、删除、新增</h3>
+  <table id="ZVGvqie0">
+    <tr>
+      <th>
+        <p>段落</p>
+      </th>
+      <th>
+        <p>处理</p>
+      </th>
+    </tr>
+    <tr>
+      <td>
+        <p>SUBAGENT-STOP</p>
+      </td>
+      <td>
+        <p>保留</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>EXTREMELY-IMPORTANT 块、1% 门槛</p>
+      </td>
+      <td>
+        <p>删除</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>The Rule</p>
+      </td>
+      <td>
+        <p>换成一句入口规则：读项目文件或写代码之前，先加载当前阶段的 skill；普通问题和只读检查直接回答</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>进 plan mode 前先 brainstorm</p>
+      </td>
+      <td>
+        <p>并入阶段表，plan mode 算&quot;要构建&quot;阶段（我的判断）</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>宣布 &quot;Using X to Y&quot;、每个 checklist 项建 todo</p>
+      </td>
+      <td>
+        <p>删除（我的判断）</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>输出格式变了要重读合同</p>
+      </td>
+      <td>
+        <p>保留</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>Skill Priority 和 &quot;Let&apos;s build X&quot; 示例</p>
+      </td>
+      <td>
+        <p>换成下面的阶段表</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>项目自己的 skill 负责它那一步</p>
+      </td>
+      <td>
+        <p>保留</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>Evidence Before Claims</p>
+      </td>
+      <td>
+        <p>原样保留</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>Red Flags</p>
+      </td>
+      <td>
+        <p>删除，交给 eval 决定</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>Platform Adaptation</p>
+      </td>
+      <td>
+        <p>保留，改成只在你的 harness 出现在列表里时才读对应文件</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>User Instructions 优先级</p>
+      </td>
+      <td>
+        <p>保留，和&quot;跳过讨论 → 仍走 TDD&quot;放在一起</p>
+      </td>
+    </tr>
+  </table>
+  <h3 id="ts8rqwcs">阶段表</h3>
+  <table id="4dRIO5oz">
+    <tr>
+      <th>
+        <p>当前阶段</p>
+      </th>
+      <th>
+        <p>加载</p>
+      </th>
+    </tr>
+    <tr>
+      <td>
+        <p>要构建或改变行为：新功能、组件、项目，包括 &quot;Let&apos;s build X&quot; 和进入 plan mode</p>
+      </td>
+      <td>
+        <p><code>ryugi:brainstorming</code>，在读项目或写代码之前</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>有已批准的 spec，或要继续执行</p>
+      </td>
+      <td>
+        <p><code>ryugi:executing-specs</code></p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>bug、测试失败、意外行为</p>
+      </td>
+      <td>
+        <p><code>ryugi:systematic-debugging</code>，在修之前</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>写实现代码</p>
+      </td>
+      <td>
+        <p><code>ryugi:test-driven-development</code></p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>UI 已经做完，或要修一个看得见的 bug</p>
+      </td>
+      <td>
+        <p><code>ryugi:verifying-ui</code>，在说&quot;完成&quot;之前</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>有东西要给人看：mockup、设计文档、分享链接</p>
+      </td>
+      <td>
+        <p><code>ryugi:artifacts</code></p>
+      </td>
+    </tr>
+  </table>
+  <p id="PVT0anrd">表下面写两句：你的 human partner 说跳过讨论直接写时，仍然走 TDD；普通问题和只读检查直接回答。</p>
+  <p id="LOA4Ebwd">description 草案（我的判断）：<code>Use when starting any conversation - routes each task to the Ryugi workflow for its stage</code>。</p>
+  <h2 id="ujFUDX99">6. brainstorming 的改动</h2>
+  <ul id="uiGEdKmS">
+    <li><b>Pick the Path 加一行</b>，放在 &quot;Enough to guess&quot; 之前：要构建的东西有界面，而且用途和样子都没定（例：&quot;Let&apos;s make a react todo list&quot;）→ 打开 artboard 第 1 轮，2–3 个方向，每个是一种不同的用途，画成那种用途该有的样子；选一个，就同时回答了用途和样子。</li>
+    <li><b>todo 的例子方向</b>：随手清单、带截止日期的日常计划、多人共享清单。写进 skill 时用英文。</li>
+    <li><b>补例外</b>：在 &quot;A question about a UI topic isn&apos;t automatically a visual question&quot; 旁边写明，有界面的构建请求在用途和样子都没定时，是视觉问题。</li>
+    <li><b>不变</b>：第一个 mockup 前要用 interface-craft；artboard 轮次按 <code>artboard-rounds.md</code>；HARD-GATE 不变。</li>
+  </ul>
+  <h2 id="3YijIfyh">7. 验证</h2>
+  <h3 id="DiKAvTdJ">Harness eval（Haiku + Sonnet，每格 5 次）</h3>
+  <p id="93SfqURH">三个 arm（我的判断）。短版 router 已有 Haiku 数据，可作参考，这次不再重跑。</p>
+  <table id="AIjSLkD3">
+    <tr>
+      <th>
+        <p>Arm</p>
+      </th>
+      <th>
+        <p>using-ryugi</p>
+      </th>
+      <th>
+        <p>brainstorming</p>
+      </th>
+      <th>
+        <p>用来回答</p>
+      </th>
+    </tr>
+    <tr>
+      <td>
+        <p>baseline</p>
+      </td>
+      <td>
+        <p>现有全文版</p>
+      </td>
+      <td>
+        <p>现有版</p>
+      </td>
+      <td>
+        <p>现状</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>bs-only</p>
+      </td>
+      <td>
+        <p>现有全文版</p>
+      </td>
+      <td>
+        <p>候选版</p>
+      </td>
+      <td>
+        <p>todo 的变化有多少来自 brainstorming</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>candidate</p>
+      </td>
+      <td>
+        <p>候选版</p>
+      </td>
+      <td>
+        <p>候选版</p>
+      </td>
+      <td>
+        <p>最终组合</p>
+      </td>
+    </tr>
+  </table>
+  <p id="ffw3Kc5w">场景：现有 7 个，加 2 个守门场景，共 9 个，3 × 9 × 5 × 2 = 270 个会话。另加一个 absent arm（不注入 bootstrap），只跑 question 场景，两个模型各 5 次，共 10 个会话，用来算额外 token（我的判断）。</p>
+  <table id="TCfZU5fm">
+    <tr>
+      <th>
+        <p>场景</p>
+      </th>
+      <th>
+        <p>判定</p>
+      </th>
+    </tr>
+    <tr>
+      <td>
+        <p>todo</p>
+      </td>
+      <td>
+        <p>启动了 artifacts；写了一个 choice group，包含 2–3 个 board；没有产品代码、脚手架或依赖安装。方向是否按用途区分，由人工逐个阅读判断</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>style-small：&quot;把图标改成 cornflower blue&quot;（fixture 里放一个图标）</p>
+      </td>
+      <td>
+        <p>改动完成；没有 choice group，也没有 brainstorming 提问。verifying-ui 的 verify group 不算违规（我的判断：那是验收，不是方向选择）</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>cli-build：&quot;写个解析 CSV 的 CLI&quot;</p>
+      </td>
+      <td>
+        <p>没有 artboard</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>bug、clamp、direct、resume、question、verify</p>
+      </td>
+      <td>
+        <p>沿用现有判定</p>
+      </td>
+    </tr>
+  </table>
+  <p id="BOdx4Xsd">通过标准（我的判断）：candidate 的 todo 在每个模型上至少 4/5；两个守门场景 5/5；其余场景的 outcome 和实际 TDD 红/绿顺序每项最多比 baseline 低 1/5，skill 是否加载只记录、不作门槛（我的判断，延续&quot;只看结果&quot;）；question 场景的额外输入 token ≤ +800。没达到就按失败场景调整候选版，再跑一次；Red Flags 的行只在这个时候、按对应的失败场景加回。</p>
+  <h3 id="TJ8hZlGJ">Codex 手动验收</h3>
+  <p id="1LVi9OUP">在干净的 Codex 会话里跑 todo、direct、question 三个场景，各 3 次，保存 transcript，判定标准和上表一致。每个场景至少 2/3 算通过。Codex 不在调整循环里：没通过就记进 eval 文档，作为后续问题处理，不阻塞合入，也不触发 270 个会话重跑（我的判断）。</p>
+  <h3 id="qDE4m_De">harness 要改的地方</h3>
+  <ul id="qTsaTeCI">
+    <li>observer：写入 <code>.ryugi/</code> 下的文件不算开始实现，在 <code>.ryugi/</code> 之外的第一次写入、脚手架或安装命令处停下。</li>
+    <li>scorer：todo 改成上表的结果判定，新增两个守门场景。</li>
+    <li>arm 支持分别替换 using-ryugi 和 brainstorming。</li>
+    <li>artifacts 在 eval 里启动：不能弹出 270 个浏览器窗口，具体做法由 builder 决定（例如统一加 <code>--no-open</code>，或改环境变量）。</li>
+    <li>artifacts 服务器隔离：每个会话把 <code>RYUGI_SERVER_HOME</code> 和 <code>RYUGI_RUNTIME_DIR</code> 指向它自己的临时目录，不碰你正在运行的服务器；eval 的插件副本只带 session-start hook，不会自动发布。正式开跑前先做 preflight，确认 <code>start</code> 输出 <code>Cloud: local_only</code>，不占 Cloud 配额（我的判断）。</li>
+  </ul>
+  <h2 id="hNc-FWD6">8. 跟着改的文档</h2>
+  <p id="QWqLWcQp">验收描述从&quot;加载 brainstorming&quot;改为：写代码之前先讨论；在能运行 artifacts 的环境里（有 node、能打开浏览器），第一条回复打开一个方向 artboard。artboard 不作为每个 harness 的硬性要求（我的判断）：</p>
+  <ul id="fel-UIQn">
+    <li><code>AGENTS.md:35</code>、<code>docs/install.md:11</code>、<code>docs/porting-to-a-new-harness.md:148</code>、<code>docs/README.kimi.md:88</code>、<code>.github/PULL_REQUEST_TEMPLATE.md:106</code></li>
+    <li><code>tests/skill-bootstrap-eval/README.md</code> 里 todo 的信号描述</li>
+    <li><code>UPSTREAM.md</code> 路径表中 using-ryugi 那一行，注明已按 Ryugi 阶段路由重写</li>
+  </ul>
+  <p id="AsbydvZO">结果写成 <code>docs/ryugi/skill-evals/2026-11-&lt;dd&gt;-using-ryugi-rework.md</code>，证据目录与之前的 eval 保持一致。</p>
+  <h2 id="UknvrDH0">9. 留给 builder</h2>
+  <ul id="W4okr_qy">
+    <li>两个 skill 的英文措辞、表格行顺序，在 token 目标内自定。</li>
+    <li>scorer 的实现方式，以及如何禁止 eval 里打开浏览器。</li>
+    <li>style-small fixture 的具体内容。</li>
+    <li>eval 失败后的候选版调整，每次调整都要记进 eval 文档。</li>
+  </ul>
+  <h2 id="DvpLe4TT">10. 用到的 artifact</h2>
+  <ul id="m85NoKAh">
+    <li><code>document/using-ryugi-rework</code>（本文档，<a href="https://ryugi.innei.dev/a/KwtefwXFtLrnQrp7AIPsG">链接</a>）。第 1 轮定了 todo 打开 artboard、阶段入口规则、阶段表、description、Red Flags 先去掉、用哪些模型；第 2 轮定了 artboard 行为放在 brainstorming、按用途区分方向、两个守门场景、Codex 手动验收、只看结果判定。全部记在第 4 节。</li>
+  </ul>
+  <h2 id="UpoWfv30">11. 时间</h2>
+  <table id="Qv687Hd6">
+    <tr>
+      <th>
+        <p>步骤</p>
+      </th>
+      <th>
+        <p>预计</p>
+      </th>
+    </tr>
+    <tr>
+      <td>
+        <p>写两个 skill 的候选版</p>
+      </td>
+      <td>
+        <p>1 小时</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>改 harness（observer、scorer、arm、两个场景）</p>
+      </td>
+      <td>
+        <p>2–3 小时</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>跑 270 个会话（5 并发）</p>
+      </td>
+      <td>
+        <p>约 2 小时墙钟时间</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>Codex 手动验收</p>
+      </td>
+      <td>
+        <p>1 小时</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>逐条阅读样本，写 eval 文档，改文档</p>
+      </td>
+      <td>
+        <p>1–2 小时</p>
+      </td>
+    </tr>
+  </table>
+  <p id="3gBpQGMk">一共大约 1 个工作日。如果需要第二轮调整候选版，再加半天。</p>
+  <details id="6CZIKwNc" summary="问答记录：第 2 轮（已回答）" open="false">
+    <p>1. 写在哪？<ask id="artboard-home" recommend="brainstorming"><option value="brainstorming">写进 brainstorming：Pick the Path 加一行&quot;要构建一个界面，用途和样子都没定 → artboard 第 1 轮&quot;；using-ryugi 只负责把&quot;要构建&quot;送进 brainstorming</option><option value="using-ryugi">写进 using-ryugi：阶段表里&quot;要构建且有界面 → 直接 artifacts + interface-craft&quot;，跳过 brainstorming</option></ask></p>
+    <p>2. 方向按什么区分？<ask id="direction-axis" recommend="by-purpose"><option value="by-purpose">按用途区分：随手清单 / 带截止日期的日常计划 / 多人共享清单，每个方向长成它自己的样子</option><option value="by-style">只按视觉风格区分，用途另外问一句</option></ask></p>
+    <p>3. 防过度触发？<ask id="over-trigger" recommend="guard-cases"><option value="guard-cases">eval 加两个守门场景：一个说清楚的样式小改（&quot;把图标改成 cornflower blue&quot;）、一个非 UI 的构建请求（&quot;写个解析 CSV 的 CLI&quot;），都不能开 artboard</option><option value="none">不加，只看现有 7 个场景</option></ask></p>
+    <p>4. Codex 怎么测？<ask id="codex-method" recommend="manual"><option value="manual">手动验收：干净的 Codex 会话跑 todo、direct、question 三个场景，各 3 次，记录 transcript</option><option value="harness">给 tests/skill-bootstrap-eval 加 Codex arm，和 Claude 的 7 + 2 个场景一样跑</option></ask></p>
+    <p>5. todo 验收怎么判？<ask id="acceptance-score" recommend="outcome"><option value="outcome">只看结果，从工具调用判：启动了 artifacts、写了带 2–3 个 board 的 choice group、没有产品代码、脚手架或依赖安装</option><option value="outcome-and-load">结果之外，还要求加载了 brainstorming</option></ask></p>
+  </details>
+</doc>
+

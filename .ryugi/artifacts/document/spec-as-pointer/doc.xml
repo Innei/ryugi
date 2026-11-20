@@ -1,0 +1,355 @@
+<doc>
+  <h1 id="lIqTezPS">Spec 只留指针：doc 就是事实源</h1>
+  <p id="dw0xMmAW">这份是可以直接照着做的设计稿，问题都已经答完。我会先让一个 reviewer 读一遍，读完再请你批准；要改的地方直接在正文旁边评论。</p>
+  <h2 id="DGzqnsyt">为什么做</h2>
+  <p id="bC6E8JUh">复杂一点的需求，都是在 doc artifact 里一轮轮问答收敛出来的。收敛后的 doc 已经足够拿来实现。现在的流程却还要再写两份：一份 130–240 行的 <code>docs/ryugi/specs/*.md</code>（和 doc 重复），以及给你看的 <code>.tldr.md</code>。这两份你都不读，agent 每次还要多花一轮去写。另一方面，agent 读 doc 时拿到的是原始 LiteXML：每个块都带 id，表格每格还要再套一层 <code>&lt;p&gt;</code>，token 有不少花在标记上。</p>
+  <h2 id="JJkKJmuo">目标、非目标、反目标</h2>
+  <ul id="yMLn9TqH">
+    <li><b>目标</b>：设计只有一份，就是批准后的 doc。spec 文件只剩几行，用来关联 doc。doc 和指针一起 commit。</li>
+    <li><b>目标</b>：agent 读 document 时默认拿到 outline，要全文时拿到 markdown，不再拿到 XML。</li>
+    <li><b>非目标</b>：markdown 只导出、不回写。agent 编辑 doc 时照旧改 Write 路径上的 <code>doc.xml</code>。</li>
+    <li><b>非目标</b>：不改 Cloud 链接的读取，也不改 artboard、whiteboard、slides 的读取。</li>
+    <li><b>反目标</b>：agent 在 markdown 上改完再转回 XML 写回去。这样会丢掉 block id，评论锚点也会跟着丢。</li>
+  </ul>
+  <h2 id="eWypFpwi">已定</h2>
+  <table id="yC9F9-t5">
+    <tr>
+      <th>
+        <p>决定</p>
+      </th>
+      <th>
+        <p>来源</p>
+      </th>
+    </tr>
+    <tr>
+      <td>
+        <p>删掉 TL;DR 规则（<code>skills/brainstorming/written-design.md</code> 第 16–19 行）</p>
+      </td>
+      <td>
+        <p>你</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>spec 缩成几行指针；doc artifact 就是实现的事实源</p>
+      </td>
+      <td>
+        <p>你</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>批准后的 doc 默认 commit 进仓库</p>
+      </td>
+      <td>
+        <p>你</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>CLI 给本地 document 提供 outline 和 markdown 两种读法</p>
+      </td>
+      <td>
+        <p>你</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>brief 输出 outline，<code>--detail</code> 输出 markdown，<code>--source</code> 照旧输出 XML</p>
+      </td>
+      <td>
+        <p>你（选了推荐）</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>富块按下面的映射表转成 markdown</p>
+      </td>
+      <td>
+        <p>你（选了推荐）</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>block id 只留在标题后面，写成 <code>{#id}</code></p>
+      </td>
+      <td>
+        <p>你（选了推荐）</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>评论不放进 markdown</p>
+      </td>
+      <td>
+        <p>你（选了推荐）</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>指针路径还是 <code>docs/ryugi/specs/YYYY-MM-DD-&lt;topic&gt;-design.md</code>，executing-specs 的脚本不用改</p>
+      </td>
+      <td>
+        <p>你（选了推荐）</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>ryugi 仓库里已有的 15 个 doc 全部提交</p>
+      </td>
+      <td>
+        <p>你</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>已有的 21 个 <code>.tldr.md</code> 和旧 spec 不动，留作历史</p>
+      </td>
+      <td>
+        <p>我的判断</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>和 doc 一起提交的还有 <code>comments.json</code> 和 <code>assets/</code>，<code>.artifact-id</code> 照旧忽略</p>
+      </td>
+      <td>
+        <p>我的判断</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>没有浏览器、在聊天里收敛的项目，没有 doc 可以指向，照旧在 spec 路径写完整的 markdown 设计</p>
+      </td>
+      <td>
+        <p>我的判断</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>markdown 里 <code>ask</code> 的答案按 <code>askListing</code>（<code>src/document/server/document-asks.ts</code>）合并 <code>comments.json</code> 读出；“评论不放进 markdown”指讨论线程，不包括问答结果</p>
+      </td>
+      <td>
+        <p>我的判断（reviewer 提出）</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>markdown 标记用英文：<code>[chosen: …]</code>、<code>[recommended: …]</code>、<code>[open]</code>、<code>[image: …]</code>、<code>[dynamic: …]</code>、<code>[pending: …]</code></p>
+      </td>
+      <td>
+        <p>我的判断（reviewer 提出）</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>指针的 Read 行不写绝对路径，写 <code>ryugi get --artifact document/&lt;id&gt; --detail --project-dir &lt;repo-root&gt;</code>，由读的一方通过 ryugi:artifacts 的 launcher 运行</p>
+      </td>
+      <td>
+        <p>我的判断（reviewer 提出）</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>项目根 <code>.gitignore</code> 挡住了 doc 时，用 <code>git add -f</code> 只提交这个 doc 目录，不改对方的 <code>.gitignore</code>；你说不提交时，spec 路径改放 CLI 导出的完整 markdown，不写指针</p>
+      </td>
+      <td>
+        <p>我的判断（reviewer 提出）</p>
+      </td>
+    </tr>
+  </table>
+  <h2 id="e4xLzdje">做法一：CLI（ryugi-cloud，packages/artifacts）</h2>
+  <p id="q0s7aYoC">改动集中在 <code>src/core/cli/commands/get/local.ts</code>，它现在只给 slides 生成 outline。Cloud 读取那条路径（<code>run.ts</code>）不动。</p>
+  <ul id="QK9ppX71">
+    <li><code>get --artifact document/&lt;id&gt;</code>（brief）：除了现有的那一行 artifact 信息，再加一个 <code>outline</code> 段，每个标题一行，列是 <code>id</code>、<code>level</code>、<code>title</code>、<code>chars</code>（这一节正文的字符数）。JSON 输出里对应 <code>data.outline</code>。</li>
+    <li><code>get --artifact document/&lt;id&gt; --detail</code>：content 段换成 markdown 全文，标题写 <code>Markdown</code>。JSON 里 <code>data.content</code> 放 markdown，另加 <code>data.contentFormat: &quot;markdown&quot;</code>；<code>sha256</code> 仍然对 <code>doc.xml</code> 原始字节计算。</li>
+    <li><code>--source</code> 和 <code>--format source</code> 照旧输出完整 XML。</li>
+    <li>其他类型的 <code>--detail</code> 不变。</li>
+    <li><code>get --help</code> 写明：document 的 <code>--detail</code> 是 markdown，原生源文件用 <code>--source</code>。</li>
+  </ul>
+  <h3 id="mceIi4EO">块映射</h3>
+  <table id="DPJ6-4hG">
+    <tr>
+      <th>
+        <p>LiteXML</p>
+      </th>
+      <th>
+        <p>markdown</p>
+      </th>
+    </tr>
+    <tr>
+      <td>
+        <p><code>h1</code>–<code>h6</code></p>
+      </td>
+      <td>
+        <p><code># 标题 {#blockId}</code></p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p><code>p</code>、行内 <code>b i s code a mark sub sup</code></p>
+      </td>
+      <td>
+        <p>标准 markdown。<code>u</code> 和 <code>mark</code> 只留文字，不加标记</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p><code>ul</code>/<code>ol</code>/<code>li</code>、check 列表</p>
+      </td>
+      <td>
+        <p><code>-</code>、<code>1.</code>、<code>- [x]</code></p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p><code>table</code></p>
+      </td>
+      <td>
+        <p>GFM 表格。格子里有多个段落时用 <code>&lt;br&gt;</code> 连起来</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p><code>blockquote</code>、<code>hr</code>、<code>codeblock</code>、<code>math</code></p>
+      </td>
+      <td>
+        <p><code>&gt;</code>、<code>---</code>、带语言的代码块、<code>$…$</code> / <code>$$…$$</code></p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p><code>mermaid</code></p>
+      </td>
+      <td>
+        <p>mermaid 代码块</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p><code>alert</code></p>
+      </td>
+      <td>
+        <p><code>&gt; [!NOTE]</code> 这类 GFM 提示块</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p><code>details</code></p>
+      </td>
+      <td>
+        <p>把 summary 写成粗体一行，下面直接展开内容</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p><code>steps</code>/<code>step</code></p>
+      </td>
+      <td>
+        <p>有序列表，每步的 title 加粗，内容跟在后面</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p><code>chart</code></p>
+      </td>
+      <td>
+        <p>一行 title，下面是数据表格</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p><code>ask</code></p>
+      </td>
+      <td>
+        <p>选了的写 <code>[chosen: 选项文字]</code>；页面提交了但没改的算接受推荐，同样写 <code>[chosen: …]</code>；还没提交的写 <code>[recommended: 选项文字]</code>；开放题写答案文字，没答写 <code>[open]</code>。没有 <code>comments.json</code> 时一律按没提交处理</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p><code>ref</code></p>
+      </td>
+      <td>
+        <p><code>[label](ryugi:artboard/slug#group)</code>；没有 label 时用 target 当 label</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p><code>img</code>、<code>excalidraw</code>、<code>dynamic</code>、嵌入的 whiteboard</p>
+      </td>
+      <td>
+        <p>一行占位：<code>[image: alt — assets/x.png]</code>、<code>[dynamic: assets/demo.html]</code>、<code>[whiteboard: slug#frame]</code></p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p><code>footnote</code>/<code>def</code></p>
+      </td>
+      <td>
+        <p><code>[^1]</code> 和文末的 <code>[^1]: …</code></p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p><code>pending</code></p>
+      </td>
+      <td>
+        <p><code>[pending: intent]</code></p>
+      </td>
+    </tr>
+  </table>
+  <h2 id="8hhFDDpQ">做法二：skills（本仓库）</h2>
+  <p id="BP-LXObU">每一处都按 <code>writing-skills</code> 跑改动前和改动后各一次对比，结果和改动一起保存。</p>
+  <ul id="gz7IJotn">
+    <li><code>brainstorming/written-design.md</code>：删掉 TL;DR 段。“Where it goes”改成：doc artifact 就是这份 written design；批准后在 spec 路径写指针，并在同一个 commit 里提交 <code>.ryugi/artifacts/document/&lt;id&gt;/</code>。没有 doc 的（在聊天里收敛的）照旧在 spec 路径写完整的 markdown 设计。</li>
+    <li><code>brainstorming/doc-rounds.md</code> 的 Converging 段：把“save it to the spec path”改成“写指针，然后提交指针和 doc”。</li>
+    <li><code>brainstorming/builder-check-prompt.md</code>：<code>Read [DOCUMENT_PATH]</code> 改成运行 <code>[READ_COMMAND]</code>，也就是 <code>get --artifact document/&lt;id&gt; --detail</code>；没有 doc 时照旧给路径。</li>
+    <li><code>executing-specs/SKILL.md</code>（第 84 行“Read the spec once”）和 <code>code-reviewer.md</code> 的 <code>[SPEC_PATH]</code>：spec 是指针时，按指针里的命令读 doc 全文。</li>
+    <li><code>artifacts/SKILL.md</code> 里 <code>get --artifact &lt;type&gt;/&lt;id&gt; --detail reads complete native source</code> 这一行：改成 document 的 <code>--detail</code> 读 markdown，原生源文件用 <code>--source</code>。</li>
+    <li>根 <code>.gitignore</code>：<code>.ryugi/</code> 这一行改成只放行 <code>.ryugi/artifacts/document/</code>，与 <code>.ryugi/.gitignore</code> 的规则一致；<code>sdd/</code>、<code>checks/</code>、<code>evals/</code>、<code>release/</code>、<code>config.json</code>、<code>modules.json</code>、<code>.state/</code> 都继续忽略。</li>
+    <li>提交现有的 15 个 doc（包括这一份）。</li>
+  </ul>
+  <h3 id="-4-SQBSn">指针模板</h3>
+  <codeblock id="iDGxt5Du" lang="md"># &lt;Title&gt;
+
+&lt;One sentence: what gets built and why.&gt;
+
+- Design: `.ryugi/artifacts/document/&lt;id&gt;/doc.xml`
+- Read: `ryugi get --artifact document/&lt;id&gt; --detail --project-dir &lt;repo-root&gt;` (run it through the ryugi:artifacts launcher)
+- Boards: artboard/&lt;id&gt;, whiteboard/&lt;id&gt; (if any)
+- Approved: YYYY-MM-DD</codeblock>
+  <p id="yON6S-YE">模板内容用英文，因为它写在 skill 文件里；只有 Title 和那一句话跟随你说的语言。</p>
+  <h2 id="6DqCmJXU">发布顺序</h2>
+  <ol id="cp0dpw68">
+    <li>ryugi-cloud：实现 CLI 改动和测试，合进 main，CI 通过。</li>
+    <li>本仓库：skills 和 <code>.gitignore</code> 的改动落到 main。</li>
+    <li>在 ryugi-cloud 运行 <code>pnpm release minor</code>，它会触发本仓库的 Release workflow，打 tag 时 skills 改动已经在里面了。</li>
+  </ol>
+  <p id="gg-5Ghpr">中间如果有人装了新 skill 但还是旧 CLI，<code>--detail</code> 仍然返回 XML。只是多花一些 token，不会出错。</p>
+  <h2 id="31U_O8CJ">留给 builder</h2>
+  <ul id="m7LEIk4-">
+    <li>转换基于 <code>parseDocument</code> 出来的 Lexical state 写，还是直接遍历 XML 写。</li>
+    <li>转换器放在 <code>src/document/</code> 下的哪个文件、怎么命名、怎么测。</li>
+    <li>outline 的 <code>chars</code> 怎么统计（CJK 和英文都要合理）。</li>
+  </ul>
+  <h2 id="DOqtIz31">怎么算做完</h2>
+  <ul id="JZCCJ56q">
+    <li>拿 <code>design-system-skill</code>、<code>cli-brief-format</code>、<code>using-ryugi-rework</code> 三个 doc，报告 XML 和 markdown 各自的字节数。markdown 读起来不丢决定、表格、问答结果和引用。</li>
+    <li>映射表里的每一种块都有单测。</li>
+    <li>writing-skills 对比：改动后的 brainstorming 收敛时只写指针、提交 doc，不写 TL;DR；builder check 读的是 markdown。</li>
+    <li>executing-specs 从一个指针 spec 开始，能读到 doc 全文并切出任务。</li>
+  </ul>
+  <h2 id="bn42o9xS">用到的 artifact</h2>
+  <ul id="FnlYqUCl">
+    <li>本文档 <code>document/spec-as-pointer</code>：第 1 轮的 6 个问题都在这里定下，结果见上面的“已定”表。</li>
+  </ul>
+  <details id="Kp52q7vZ" summary="第 1 轮问答记录" open="false">
+    <p>CLI 读法：<ask id="cli-surface" recommend="detail-md"><option value="detail-md">brief 出 outline，--detail 出 markdown，--source 出 XML</option><option value="format-md">--detail 保持 XML，另加 --format markdown</option></ask></p>
+    <p>富块映射：<ask id="block-mapping" recommend="as-listed"><option value="as-listed">就按上面映射</option><option value="drop-rich">富块全部只留一行占位</option></ask></p>
+    <p>block id：<ask id="block-ids" recommend="headings"><option value="headings">只在标题后留</option><option value="none">都不留，要 id 去看 outline</option><option value="all">每个块都留</option></ask></p>
+    <p>评论：<ask id="comments-in-md" recommend="no"><option value="no">不放</option><option value="open-only">只把没解决的评论附在对应段落后面</option></ask></p>
+    <p>指针：<ask id="pointer-shape" recommend="keep-path"><option value="keep-path">保持现在的路径，写几行指针</option><option value="no-file">不要指针文件，executing-specs 直接接收 doc id</option></ask></p>
+    <p>已有 doc：<ask id="existing-docs" recommend="commit-specced"><option value="commit-specced">有 spec 对应的提交，demo 另外处理</option><option value="commit-all">全部提交</option><option value="new-only">旧的继续忽略，只有新批准的提交</option></ask></p>
+  </details>
+</doc>
+

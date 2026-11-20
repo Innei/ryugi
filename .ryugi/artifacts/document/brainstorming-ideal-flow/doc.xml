@@ -1,0 +1,301 @@
+<doc>
+  <h1 id="Bmxe-Zby">Brainstorming 理想流程：五段对话</h1>
+  <p id="Y7o92HtO">这份文档用五段示例对话展示我理想中的 brainstorming 应该怎么跑，覆盖从&quot;上下文已经齐了&quot;到&quot;需求很模糊&quot;的几种情况。每段对话下面写了它和现在的 skill 有什么不同。请直接在对话上评论：哪里不对，哪里太啰嗦，哪里你会希望它换个做法。</p>
+  <h2 id="Zon61nrB">1. 一条原则，三种起点</h2>
+  <alert id="BFyt-O51" type="important">
+    <p><b>原则：</b>动手之前，先弄清楚要做什么、为什么做。只问那些答案会改变做法的问题，其余的自己定默认值并说出来。用户批准完整方案之后才开始做。</p>
+  </alert>
+  <p id="EmuP_xoy">需要问几个问题，取决于已经知道多少。这里的&quot;已经知道&quot;包括整段对话，不只是最新一条消息。</p>
+  <mermaid id="YNuW2F5c">flowchart TD
+  S[调用 brainstorming] --&gt; K{整段对话里&lt;br/&gt;要做什么、为什么做&lt;br/&gt;已经清楚了吗？}
+  K --&gt;|都清楚| P[回放完整方案&lt;br/&gt;把默认值写出来]
+  K --&gt;|大致清楚| G[给出猜测和默认值&lt;br/&gt;最多问一个关键问题]
+  K --&gt;|不清楚| O[问一个开放问题&lt;br/&gt;让对方描述]
+  O --&gt; G
+  G --&gt; P
+  P --&gt; Z{规模}
+  Z --&gt;|小改动| A1[说明方案后直接做&lt;br/&gt;行为改动走 TDD]
+  Z --&gt;|项目| A2[写设计文档并批准&lt;br/&gt;然后 executing-specs]
+  G -.跨服务、架构级、待定点超过五个.-&gt; D[转到文档轮次]
+  G -.有界面要看.-&gt; B[转到画板]</mermaid>
+  <p id="OIcWpPtY">和现在最大的不同：<b>默认先给猜测，开放提问是退路</b>。现在的 skill 正好相反，第一条消息固定是开放问题。</p>
+  <h2 id="FxOQPW6x">2. 对话中途进来：上下文已经齐了</h2>
+  <p id="xmyj6F66">前面几轮已经查过代码，Claude 也给出了改法。用户回了一句&quot;ok&quot;，这时调用 brainstorming。</p>
+  <blockquote id="_Ufqp1-H">
+    <p><b>你：</b>现在这个 feature flag 的灰度不支持百分比放量吗？</p>
+    <p><b>Claude：</b>不支持。值的类型是 <code>boolean | string[]</code>，<code>evaluateFeatureFlag</code> 只判断 <code>includes(userId)</code>。要支持百分比，需要新增一种值类型 <code>{ percent, users? }</code>，按哈希分桶，再改 parser、测试和后台界面。大约半天到一天。要我先出一份改动方案吗？</p>
+    <p><b>你：</b>ok</p>
+    <p><b>Claude：</b>这是一个小改动，方案就写在这里：</p>
+    <ul>
+      <li>值类型新增 <code>{ percent: number, users?: string[] }</code>，现有的 <code>boolean</code> 和 <code>string[]</code> 保持不变</li>
+      <li>判断逻辑：先看 <code>users</code> 名单，名单里没有再看 <code>hash(flagKey + userId) % 100 &lt; percent</code></li>
+      <li>哈希加上 flagKey 作为盐，这样不同的 flag 会落到不同的用户分组。<i>（我的决定）</i></li>
+      <li>回滚就是把 percent 设成 0，不另做开关。<i>（我的决定）</i></li>
+      <li>没有登录的用户不参与百分比放量。<i>（我的决定）</i></li>
+      <li>改动范围：schema、parser、单元测试、后台界面的输入框</li>
+    </ul>
+    <p>标了&quot;我的决定&quot;的三条是我替你做的选择，有不对的随时打断。我现在开始写。</p>
+  </blockquote>
+  <p id="ikwBxw6-"><b>和现在的不同：</b>不再追问&quot;下一个要放量的是哪个 flag&quot;。那个答案不会改变方案的任何一条。默认值都写了出来，用户心里有数，可以逐条否决。小改动不再等用户确认，说明方案后在同一轮里直接开始做。</p>
+  <h2 id="5Eff0Edq">3. 冷启动，需求基本清楚</h2>
+  <blockquote id="9kfLJVeF">
+    <p><b>你：</b>订单列表加个导出 CSV</p>
+    <p><b>Claude：</b>（先去读订单列表的代码，看筛选条件和字段从哪里来，然后才回复。）</p>
+    <p><b>Claude：</b>我的理解：在订单列表的工具栏加一个&quot;导出&quot;按钮，导出当前筛选条件下的全部订单，不只是当前这一页。字段和表格里显示的列一致，在浏览器端生成文件。</p>
+    <p>有一处需要你定：订单可能有几万条，全部在浏览器端生成会卡。是限制最多导出一万条，还是改成后端异步生成、做好了再通知下载？</p>
+  </blockquote>
+  <p id="KNedqvI7"><b>和现在的不同：</b>开头不再问&quot;你是在什么情况下需要导出的&quot;。先给出可以直接否决的猜测，只问那个会改变实现方式的问题。</p>
+  <p id="ZSxBrX3m">代码里能查到的东西（现在有哪些列、用的是哪个表格组件）自己去查，不拿去问用户。</p>
+  <h2 id="bICZjdDX">4. 冷启动，需求模糊</h2>
+  <p id="TaJp9-do">这是 AGENTS.md 里的验收句子。它太空泛，猜了也没有可以否决的东西，所以开放提问在这里仍然是对的。</p>
+  <blockquote id="oTXLI4mV">
+    <p><b>你：</b>Let&apos;s make a react todo list</p>
+    <p><b>Claude：</b>这个 todo list 是给谁用的？是你自己每天用，还是一个练手或演示用的项目？</p>
+    <p><b>你：</b>我自己用，现在用的 app 太重了</p>
+    <p><b>Claude：</b>那我先猜一下：你要一个打开就能记、不用登录的列表，数据存在本地，没有项目、标签这些层级。重的地方大概是层级太多，加一条要点好几下？</p>
+    <p><b>你：</b>对，但我要能按天看</p>
+    <p><b>Claude：</b>好。一个单页 React 应用，数据存在 localStorage，有&quot;今天&quot;和&quot;全部&quot;两个视图，打开就聚焦在输入框，回车就加一条。这是一个小改动，我现在按这个方案用 TDD 开始写，想改哪里随时说。</p>
+  </blockquote>
+  <p id="LB-7OS9F"><b>和现在的不同：</b>开放问题只问了一次。拿到第一个答案之后马上转成猜测，再来回一轮就收住了。现在的 skill 会一直一问一答，每轮还要插一段 200 到 300 字的回放。</p>
+  <h2 id="YRhcBZAs">5. 项目级：转到文档</h2>
+  <blockquote id="j59UrhRG">
+    <p><b>你：</b>把 worker 的任务队列从轮询数据库改成 Redis Streams，api 和 worker 都要改，要能灰度切换</p>
+    <p><b>Claude：</b>这个改动跨两个服务，还改了数据存放的位置，按项目来做。我开了一份设计文档，第一轮列了 4 个待定项，每一项都附了我的建议。没改动的我就当你同意了，改完在这里说一声。<code>[链接]</code></p>
+  </blockquote>
+  <p id="F350bPoq">这一段和现在基本一样。doc-rounds 在 10 月 21 日评测过，表现稳定，我不打算动它。</p>
+  <p id="cSClYY_h">唯一的变化是&quot;从对话转到文档&quot;的条件。现在是四条硬性条件，我想保留它们，同时补上一条：已经说定的事情直接写进&quot;已定&quot;一栏，不在文档里再问一遍。这一条在 doc-rounds 里其实已经有了。</p>
+  <h2 id="0300QmUW">6. 有界面要看：转到画板</h2>
+  <blockquote id="D7zUzPRz">
+    <p><b>你：</b>设置页想改成左边一列分类，右边显示那一类的选项</p>
+    <p><b>Claude：</b>画板上画了三种左栏的做法，第二种是我推荐的。在画板上选好就行。<code>[链接]</code></p>
+  </blockquote>
+  <p id="X2AcYHYh">这一段也基本不变。用户已经描述了布局，所以直接画出来，不再用文字问&quot;你希望左栏多宽&quot;。</p>
+  <h2 id="HPypnas2">7. 和现在的 skill 比</h2>
+  <table id="xVc_tgar">
+    <tr>
+      <th>
+        <p>现在的规则</p>
+      </th>
+      <th>
+        <p>处理</p>
+      </th>
+      <th>
+        <p>原因</p>
+      </th>
+    </tr>
+    <tr>
+      <td>
+        <p>Pick the Path 只看请求本身</p>
+      </td>
+      <td>
+        <p>改写</p>
+      </td>
+      <td>
+        <p>改成看整段对话，并新增一行&quot;都清楚了，直接回放方案&quot;</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>&quot;Get them describing&quot;：开放问题优先</p>
+      </td>
+      <td>
+        <p>改写</p>
+      </td>
+      <td>
+        <p>改成猜测优先，开放问题只在没东西可猜时用（第 4 节）</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>chat.md 第一条消息：一句话、一个问号、问一个&quot;真实时刻&quot;</p>
+      </td>
+      <td>
+        <p>删掉</p>
+      </td>
+      <td>
+        <p>这次的无效提问就是这条规则问出来的</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>每条消息以一个问题结尾，不带示例答案</p>
+      </td>
+      <td>
+        <p>放宽</p>
+      </td>
+      <td>
+        <p>保留&quot;一次只问一个问题&quot;，其余的格式规定删掉</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>回放 200 到 300 字，和提问交替进行</p>
+      </td>
+      <td>
+        <p>放宽</p>
+      </td>
+      <td>
+        <p>需要的时候回放，长度看内容；小改动只在最后回放一次</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>Ground to cover / Questions that work</p>
+      </td>
+      <td>
+        <p>压缩</p>
+      </td>
+      <td>
+        <p>那些访谈式的例句会诱导出访谈式的问题</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>新增：只问会改变做法的问题</p>
+      </td>
+      <td>
+        <p>新增</p>
+      </td>
+      <td>
+        <p>第 2、3 节都靠这一条判断</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>HARD-GATE</p>
+      </td>
+      <td>
+        <p>改写</p>
+      </td>
+      <td>
+        <p>只拦项目：设计文档批准之后才动手。小改动说明方案后直接做，不等确认</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>新增：默认值标成&quot;我的决定&quot;</p>
+      </td>
+      <td>
+        <p>新增</p>
+      </td>
+      <td>
+        <p>不等确认之后，这是用户唯一能提前看到并否决的地方</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>chat.md</p>
+      </td>
+      <td>
+        <p>合并</p>
+      </td>
+      <td>
+        <p>简化后只剩一百多词，并进 SKILL.md，少读一个文件</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>Size the Work、Handoff</p>
+      </td>
+      <td>
+        <p>保留</p>
+      </td>
+      <td>
+        <p>流程的核心，也没有出问题的记录</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>doc-rounds、artboard-rounds、written-design</p>
+      </td>
+      <td>
+        <p>保留</p>
+      </td>
+      <td>
+        <p>评测过，这次的问题也和它们无关</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>Red Flags</p>
+      </td>
+      <td>
+        <p>保留并加一行</p>
+      </td>
+      <td>
+        <p>新增&quot;刚加载 skill 就开始提问&quot;</p>
+      </td>
+    </tr>
+  </table>
+  <p id="koPPTQoh">预计 SKILL.md 从 1442 词降到 1100 词左右，chat.md 从 387 词降到 150 词左右。</p>
+  <h2 id="jFhcfDZq">8. TDD 的适用范围</h2>
+  <alert id="RFdO1M0c" type="important">
+    <p><b>评测结果：没有复现。</b>基线跑了 6 次（直接改样式 2 次、在对话里确认过的样式改动 2 次、移动 14 个工具文件 2 次），没有一次写新测试。样式改动都用了改前改后截图，移动文件则在改前改后各跑一遍现有测试和类型检查。所以这次没有改 TDD skill，下面的分析保留作记录。另外发现，每次改样式都会开验收画板并等你给结论，哪怕只改了两行 CSS。这可能才是真正让你觉得繁琐的地方。</p>
+  </alert>
+  <p id="hafm7a8w">读 skill 原文时，我以为改样式和调整项目结构都会触发 TDD，理由是：</p>
+  <ul id="nBxcKW9l">
+    <li><b>改样式：</b>需求没说死时会被定成&quot;小改动&quot;，brainstorming 的 Size 表把小改动交给 TDD。样式 bug 本身也会命中 TDD 的 description &quot;implementing any feature or bugfix&quot;。只有 verifying-ui 在验收被打回时区分了 &quot;Look only&quot;。</li>
+    <li><b>调整结构：</b>TDD 的 &quot;When to Use → Always&quot; 里直接列了 Refactoring。Iron Law 又要求先有一个会失败的测试，可纯粹移动文件写不出这样的测试。</li>
+  </ul>
+  <p id="LzOsQj4x">建议在 TDD 的 When to Use 里按改动类型分成三类：</p>
+  <table id="twlBtFV5">
+    <tr>
+      <th>
+        <p>改动类型</p>
+      </th>
+      <th>
+        <p>例子</p>
+      </th>
+      <th>
+        <p>怎么验证</p>
+      </th>
+    </tr>
+    <tr>
+      <td>
+        <p>行为改动</p>
+      </td>
+      <td>
+        <p>新功能、修 bug、会改变行为的重构</p>
+      </td>
+      <td>
+        <p>TDD，和现在一样</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>只改外观</p>
+      </td>
+      <td>
+        <p>样式、布局、颜色、字体、文案</p>
+      </td>
+      <td>
+        <p>不写单元测试，用改前和改后的截图对比</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <p>只改结构</p>
+      </td>
+      <td>
+        <p>移动文件、改名、拆模块、调整 import</p>
+      </td>
+      <td>
+        <p>不写新测试。改之前和改之后都要跑一遍现有的测试、类型检查和 lint，都必须通过。被移动的代码如果本来就没有测试覆盖，不补测试，在汇报里说明</p>
+      </td>
+    </tr>
+  </table>
+  <alert id="3I8O7w02" type="note">
+    <p><b>判断方法：</b>想一想，跑代码的测试能不能看出这次改动前后的区别？能看出来，就是行为改动。比如&quot;什么情况下显示这个按钮&quot;，看起来像样式问题，其实是行为改动，仍然要走 TDD。用这个标准，可以防止把行为改动说成&quot;只是改样式&quot;来跳过测试。</p>
+  </alert>
+  <p id="6MQwVCFu">需要一起改的地方：brainstorming 的 Size 表里，小改动那一行改成 &quot;under TDD when behavior changes&quot;；verifying-ui 那条 Look only 的规则保持不变。</p>
+  <p id="deh95gZr"><b>风险：</b>Iron Law 和 Red Flags 表是从上游继承来的，调过很多次。评测要加三个场景：改样式、移动目录，再加一个反例，即看起来像样式、实际改了逻辑的请求，用来确认它仍然会走 TDD。</p>
+  <h2 id="Rs4f10kn">9. 想听你意见的地方</h2>
+  <ol id="N7W8NTfY">
+    <li><b>小改动要不要单独确认一次？</b>第 2 节和第 4 节的结尾都是&quot;回放完整方案，问有没有要改的&quot;，用户回复之后才开始写。我倾向保留这一步，因为它就是 HARD-GATE 本身。你会不会觉得这一轮也多余？</li>
+    <li><b>&quot;我的决定&quot;要不要标出来？</b>第 2 节把 Claude 自己定的默认值逐条标了出来，方便用户否决，代价是消息会长一些。</li>
+    <li><b>chat.md 要不要合并进 SKILL.md？</b>简化之后 chat.md 只剩一百多词，可以并进 SKILL.md，少读一个文件。</li>
+    <li><b>&quot;只改结构&quot;之前要不要先补测试？</b>被移动的代码如果没有测试，可以先补一层特征测试再动手，也可以只在汇报里说明。我倾向只说明，因为补测试正是你嫌多余的那部分。</li>
+    <li><b>还有别的场景吗？</b>除了这五种，你平时觉得别扭的场景请写在这里，我会把它们一起放进评测。</li>
+  </ol>
+</doc>
+

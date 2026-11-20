@@ -1,0 +1,30 @@
+<doc>
+  <h1 id="title">Document 历史与协作</h1>
+  <p id="intro">历史二进制<b>只保存在本地</b>。云端只负责在线转发，电脑在线时可以查看历史。</p>
+  <h2 id="agents-h">Agent 显示名</h2>
+  <table id="agents">
+    <tr>
+      <th>
+        <p>显示名</p>
+      </th>
+      <th>
+        <p>识别依据</p>
+      </th>
+    </tr>
+    <tr>
+      <td>
+        <p><b>Codex</b></p>
+      </td>
+      <td>
+        <p><code>CODEX_THREAD_ID</code></p>
+      </td>
+    </tr>
+  </table>
+  <h2 id="code-h">评论者名字</h2>
+  <codeblock id="code" lang="ts">return {
+  human: () =&gt; gitUserName(projectDir),
+  agent: () =&gt; detectAgent(readAgentFile(agentFile)),
+};</codeblock>
+  <p id="review">选择历史记录，查看这篇富内容文档的修改。本轮更新已经保存。</p>
+</doc>
+

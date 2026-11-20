@@ -1,0 +1,238 @@
+{
+  "threads": [
+    {
+      "id": "77VaUXqKiV",
+      "anchor": {
+        "blockId": "*",
+        "quote": "",
+        "submit": true,
+        "asks": ["trigger", "landing", "taste", "gallery", "scope", "eval", "audience", "missing"]
+      },
+      "status": "open",
+      "statusAt": "2026-11-18T18:05:41.634Z",
+      "statusBy": "human",
+      "messages": [
+        {
+          "id": "bBqAxvC2p7",
+          "author": "human",
+          "name": "Innei",
+          "avatar": "/api/avatar/github/Innei",
+          "text": "Submitted the answers",
+          "at": "2026-11-18T18:05:41.634Z"
+        }
+      ]
+    },
+    {
+      "id": "mWtPNdqxQM",
+      "anchor": {
+        "blockId": "kY_6Jmew",
+        "quote": "",
+        "ask": "trigger",
+        "note": true
+      },
+      "status": "open",
+      "statusAt": "2026-11-18T18:07:05.708Z",
+      "statusBy": "agent",
+      "messages": [
+        {
+          "id": "H8QgkSPT7m",
+          "author": "agent",
+          "name": "OMP",
+          "text": "按推荐：明确要求，或没有 DS 且要做多屏/整套 UI 时触发；新产品的第一轮方向就是 system 方向，不额外加一轮，验收测试不受影响。已写进设计「触发」。",
+          "at": "2026-11-18T18:07:05.708Z"
+        }
+      ]
+    },
+    {
+      "id": "KuvcoTOm5q",
+      "anchor": {
+        "blockId": "2arWvwwn",
+        "quote": "",
+        "ask": "landing",
+        "note": true
+      },
+      "status": "open",
+      "statusAt": "2026-11-18T18:07:06.113Z",
+      "statusBy": "agent",
+      "messages": [
+        {
+          "id": "10OvwGz9SW",
+          "author": "agent",
+          "name": "OMP",
+          "text": "按推荐：代码 token 为唯一来源 + 根目录 DESIGN.md；项目已有设计文档/skill 约定时改那份。已写进设计「落地」。",
+          "at": "2026-11-18T18:07:06.113Z"
+        }
+      ]
+    },
+    {
+      "id": "-X0FqPSrRl",
+      "anchor": {
+        "blockId": "uk43iCAv",
+        "quote": "",
+        "ask": "taste",
+        "note": true
+      },
+      "status": "open",
+      "statusAt": "2026-11-18T18:07:06.540Z",
+      "statusBy": "agent",
+      "messages": [
+        {
+          "id": "dePjq9WBnk",
+          "author": "agent",
+          "name": "OMP",
+          "text": "按推荐：只写跨项目翻车检查项（checks.md），产品口味不进默认值。",
+          "at": "2026-11-18T18:07:06.540Z"
+        }
+      ]
+    },
+    {
+      "id": "UWde46LC8j",
+      "anchor": {
+        "blockId": "eUECiTJh",
+        "quote": "",
+        "ask": "gallery",
+        "note": true
+      },
+      "status": "open",
+      "statusAt": "2026-11-18T18:07:06.980Z",
+      "statusBy": "agent",
+      "messages": [
+        {
+          "id": "AsQepevxcC",
+          "author": "agent",
+          "name": "OMP",
+          "text": "按推荐：落地必须有 tokens page、自家组件画的产品切片画廊、tokens page 守护测试。",
+          "at": "2026-11-18T18:07:06.980Z"
+        }
+      ]
+    },
+    {
+      "id": "Maf9tYQO59",
+      "anchor": {
+        "blockId": "L-sZpQ9M",
+        "quote": "",
+        "ask": "scope",
+        "note": true
+      },
+      "status": "open",
+      "statusAt": "2026-11-18T18:07:07.395Z",
+      "statusBy": "agent",
+      "messages": [
+        {
+          "id": "5myj2842Yx",
+          "author": "agent",
+          "name": "OMP",
+          "text": "按推荐：skill 管到 spec 批准；阶段 4 全量 flow 通过前不动代码 token；替换交给 executing-specs，verify 交给 verifying。",
+          "at": "2026-11-18T18:07:07.395Z"
+        }
+      ]
+    },
+    {
+      "id": "-0EsqdRHha",
+      "anchor": {
+        "blockId": "gWfZEH-m",
+        "quote": "",
+        "ask": "eval",
+        "note": true
+      },
+      "status": "open",
+      "statusAt": "2026-11-18T18:07:07.885Z",
+      "statusBy": "agent",
+      "messages": [
+        {
+          "id": "C3VyzhW9du",
+          "author": "agent",
+          "name": "OMP",
+          "text": "按推荐：OMP + deepseek flash，2 场景 × 基线/新版 × 2 次，记录到 docs/ryugi/skill-evals/。",
+          "at": "2026-11-18T18:07:07.885Z"
+        }
+      ]
+    },
+    {
+      "id": "iRXt3sPxn8",
+      "anchor": {
+        "blockId": "RHvrm3pP",
+        "quote": "",
+        "ask": "audience",
+        "note": true
+      },
+      "status": "open",
+      "statusAt": "2026-11-18T18:07:08.514Z",
+      "statusBy": "agent",
+      "messages": [
+        {
+          "id": "J46DSTAUBY",
+          "author": "agent",
+          "name": "OMP",
+          "text": "按推荐：写给 agent，agent 主导；每轮 title note 一句话说这步定什么、为什么先定。",
+          "at": "2026-11-18T18:07:08.514Z"
+        }
+      ]
+    },
+    {
+      "id": "51lHrkqver",
+      "anchor": {
+        "blockId": "IlbvSXPt",
+        "quote": "",
+        "ask": "missing",
+        "note": true
+      },
+      "status": "open",
+      "statusAt": "2026-11-18T18:07:09.212Z",
+      "statusBy": "agent",
+      "messages": [
+        {
+          "id": "MTFNcHu1pX",
+          "author": "agent",
+          "name": "OMP",
+          "text": "没有补充。只按 session 里看到的步骤写，不另加步骤。",
+          "at": "2026-11-18T18:07:09.212Z"
+        }
+      ]
+    },
+    {
+      "id": "-t1F4M4aFZ",
+      "anchor": {
+        "blockId": "*",
+        "quote": "",
+        "submit": true,
+        "asks": ["ds-threshold"]
+      },
+      "status": "open",
+      "statusAt": "2026-11-18T18:12:50.870Z",
+      "statusBy": "human",
+      "messages": [
+        {
+          "id": "jWls6w57ms",
+          "author": "human",
+          "name": "Innei",
+          "avatar": "/api/avatar/github/Innei",
+          "text": "Submitted the answers",
+          "at": "2026-11-18T18:12:50.870Z"
+        }
+      ]
+    },
+    {
+      "id": "O413eG1LqE",
+      "anchor": {
+        "blockId": "4fsxF7_E",
+        "quote": "",
+        "ask": "ds-threshold",
+        "note": true
+      },
+      "status": "open",
+      "statusAt": "2026-11-18T18:13:32.278Z",
+      "statusBy": "agent",
+      "messages": [
+        {
+          "id": "OajvC8NatE",
+          "author": "agent",
+          "name": "OMP",
+          "text": "按推荐：项目自己改过的语义 token 或设计文档才算已有 DS，框架原样默认值不算，乱但存在的 token 算有。已移入「已定」，S3 判定改为「新版应当触发」，写进 SKILL.md 触发条件和 brainstorming 新增句。",
+          "at": "2026-11-18T18:13:32.278Z"
+        }
+      ]
+    }
+  ],
+  "version": 1
+}

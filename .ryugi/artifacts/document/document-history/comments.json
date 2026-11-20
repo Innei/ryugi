@@ -1,0 +1,32 @@
+{
+  "threads": [
+    {
+      "id": "8Zse6U7O8r",
+      "anchor": {
+        "blockId": "implementation-pending",
+        "quote": "本地和在线云端共用这份能力。"
+      },
+      "status": "resolved",
+      "statusAt": "2026-10-23T16:41:43.598Z",
+      "statusBy": "agent",
+      "messages": [
+        {
+          "id": "kjIWGMBJuT",
+          "author": "human",
+          "name": "Innei",
+          "avatar": "/api/avatar/github/Innei",
+          "text": "这里要注意的是，云端的存储还是不会上传这个二进制文件的。所以它只有在云端进行转发，以及在在线或者本地环境中可以查看历史",
+          "at": "2026-10-23T16:40:04.043Z"
+        },
+        {
+          "id": "vFiTIQedxq",
+          "author": "agent",
+          "name": "Codex",
+          "text": "已在“现有能力与实现边界”和“云端”两段明确：doc.loro 历史二进制只保存在本地，云端仅在电脑在线时转发，不写入云端存储或发布副本。也删掉了离线缓存历史回看的承诺；云端断线时历史入口不可用，退出对比，重连后重新加载。本地历史照常可看。已同步完整设计稿、已定方向和验收要求。",
+          "at": "2026-10-23T16:41:43.428Z"
+        }
+      ]
+    }
+  ],
+  "version": 1
+}
