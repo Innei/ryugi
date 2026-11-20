@@ -1,4 +1,5 @@
 {
+  "version": 1,
   "threads": [
     {
       "id": "bdnQieynSA",
@@ -28,7 +29,9 @@
         "blockId": "*",
         "quote": "",
         "submit": true,
-        "asks": ["relation"]
+        "asks": [
+          "relation"
+        ]
       },
       "status": "open",
       "statusAt": "2026-11-11T14:34:01.146Z",
@@ -286,6 +289,5 @@
         }
       ]
     }
-  ],
-  "version": 1
+  ]
 }

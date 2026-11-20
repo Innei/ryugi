@@ -3,3 +3,5 @@ artifacts/bench/zoom/fixture/
 # Preserve generated helpers byte-for-byte with the core build.
 skills/artifacts/app/output-bootstrap.cjs
 skills/artifacts/app/comment-threads.cjs
+# The artifacts server owns these files and rewrites them in its own format.
+.ryugi/

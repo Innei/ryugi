@@ -1,4 +1,5 @@
 {
+  "version": 1,
   "threads": [
     {
       "id": "l8Nn5KWNpS",
@@ -110,6 +111,5 @@
         }
       ]
     }
-  ],
-  "version": 1
+  ]
 }

@@ -1,4 +1,5 @@
 {
+  "version": 1,
   "threads": [
     {
       "id": "77VaUXqKiV",
@@ -6,7 +7,16 @@
         "blockId": "*",
         "quote": "",
         "submit": true,
-        "asks": ["trigger", "landing", "taste", "gallery", "scope", "eval", "audience", "missing"]
+        "asks": [
+          "trigger",
+          "landing",
+          "taste",
+          "gallery",
+          "scope",
+          "eval",
+          "audience",
+          "missing"
+        ]
       },
       "status": "open",
       "statusAt": "2026-11-18T18:05:41.634Z",
@@ -196,7 +206,9 @@
         "blockId": "*",
         "quote": "",
         "submit": true,
-        "asks": ["ds-threshold"]
+        "asks": [
+          "ds-threshold"
+        ]
       },
       "status": "open",
       "statusAt": "2026-11-18T18:12:50.870Z",
@@ -233,6 +245,5 @@
         }
       ]
     }
-  ],
-  "version": 1
+  ]
 }
