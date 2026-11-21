@@ -82,11 +82,11 @@ what to reply after each. Do everything around those actions yourself.
 Ask of each claim: is it judged by looking at a screen, or by reading output
 and numbers?
 
-| The work has       | You make                                                                           |
-| ------------------ | ---------------------------------------------------------------------------------- |
-| Only output claims | A verify report. No artboard.                                                      |
-| Only screen claims | The artboard verify page. No report; "Not verified" goes in your final message.    |
-| Both               | Both. The report lists the artboard's verify groups as rows; give the report link. |
+| The work has       | You make                                                                                                                                          |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Only output claims | A verify report. No artboard.                                                                                                                     |
+| Only screen claims | The artboard verify page. No report; "Not verified" goes in your final message.                                                                   |
+| Both               | Both. Screen verdicts happen on the artboard: give its link first, then the report's. The report references the groups and sums them in one line. |
 
 Work whose whole question is how a screen looks, moves or feels has only
 screen claims. What you measured or ran to back them — pixel sizes, sampled
@@ -128,7 +128,7 @@ then your final message carries the link and what is waiting on whom.
 | "I'll ask them to tap, then ask for the next step"      | One numbered list of every physical action, once. Everything else is yours.             |
 | "It isn't visible, so this skill doesn't apply"         | Output is evidence. A verify report: `judge="agent"`, the output file, where it ran.    |
 | "It looks right to me; I'll mark it checked"            | Look, motion and feel are theirs, on the artboard. `"verify": true`, with the question. |
-| "I'll put the log on the artboard next to the screens"  | The artboard is for screens. Output goes in the report; the report lists the groups.    |
+| "I'll put the log on the artboard next to the screens"  | The artboard is for screens. Output goes in the report; the report sums the groups.     |
 | "They said push, so they passed it"                     | Push. Record nothing. Say which groups went out without a verdict.                      |
 | "They said all pass in chat; the page can stay pending" | Record it first. A page that disagrees with them is wrong evidence.                     |
 | "A verify page, to be thorough" (for a one-line change) | One claim, nothing to judge: the command and its output, inline.                        |

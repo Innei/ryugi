@@ -11,19 +11,26 @@ stay as they are.
 1. **One claim per thing you assert**, titled with the claim, each with
    `from` and `capturedAt`.
    - **A command decided it**: `judge="agent"`, with the command's raw
-     output as an `<output>` file. Nothing waits on it. A check that failed
-     never goes here: fix it first.
+     output as an `<output>` file and a one-line `<result>` saying what it
+     proved; that line is all the page shows until it is opened. Claims
+     from the same environment and build share one identical `from`
+     string, so the page writes it once. Nothing waits on it. A check that
+     failed never goes here: fix it first.
    - **This work left a judgement open, and it is not about a screen** (a
      threshold you picked, a trade-off you made, whether a sample is
      enough): `judge="human"` with an `<ask>` saying what would make it
      wrong. Most reports have none: never re-ask what the spec or the bug
-     report already decided.
+     report already decided. A claim that lists many calls (the rulings of
+     a spec run) marks each table row `cost="change|small|none"`; only the
+     `change` rows are the ones you ask them to look at.
 2. **Every item under "Not verified" is a `<gap>`**: what, why you could
    not, and the one thing you need. An empty gaps section is part of done.
-3. **Screen claims are rows**: `<ref artboard="…" group="…" />` for each
-   verify group on the artboard, so the report shows their verdicts too.
-4. Run `check`, clear its warnings and provenance notes, give the link, say
-   how many claims need them and how many you checked, and ask them to tell
+3. **Screen claims stay on the artboard**: add `<ref artboard="…" group="…" />`
+   for each verify group so they count toward done; the report sums them
+   in one status-line sentence that links to the artboard, not as rows.
+4. Run `check`, clear its warnings and provenance notes, give the link (and
+   the artboard's link first when screen groups wait on them), say how many
+   claims need them and how many you checked, and ask them to tell
    you here when they have decided. End your turn; don't poll. While you
    wait you may start the next unrelated task; landing this work waits for
    the verdicts.
