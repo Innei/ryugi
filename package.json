@@ -1,6 +1,6 @@
 {
   "name": "ryugi",
-  "version": "1.97.0",
+  "version": "1.98.0",
   "description": "Ryugi — Interactive Artifacts for Coding Agents: artboards, design docs, whiteboards, HTML benches and verify reports",
   "keywords": [
     "pi-package",
@@ -19,6 +19,11 @@
     "whiteboard",
     "verify-reports"
   ],
+  "homepage": "https://ryugi.innei.dev",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Innei/ryugi.git"
+  },
   "license": "SEE LICENSE IN LICENSE",
   "type": "module",
   "main": ".opencode/plugins/ryugi.js",
@@ -53,10 +58,5 @@
     "skills": [
       "./skills"
     ]
-  },
-  "homepage": "https://ryugi.innei.dev",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/Innei/ryugi.git"
   }
 }
