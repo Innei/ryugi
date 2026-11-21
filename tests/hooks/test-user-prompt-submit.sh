@@ -232,6 +232,17 @@ JSON
 out="$(run_hook "$dir" "继续")"
 expect "reminds about a slide deck with unread comments" "$out" 'slides/talk (1)'
 
+dir="$(project storyboard-comments)"
+mkdir -p "$dir/.ryugi/artifacts/storyboard/launch"
+cat > "$dir/.ryugi/artifacts/storyboard/launch/comments.json" << 'JSON'
+{ "version": 1, "threads": [
+  { "id": "s1", "anchor": { "shot": "sketch", "t": 1.5 }, "status": "open", "statusAt": "2026-11-21T08:00:00.000Z", "statusBy": "human",
+    "messages": [{ "id": "m1", "author": "human", "text": "slower here", "at": "2026-11-21T08:00:00.000Z" }] }
+] }
+JSON
+out="$(run_hook "$dir" "继续")"
+expect "reminds about a storyboard with unread comments" "$out" 'storyboard/launch (1)'
+
 dir="$(project worktree-main)"
 git -C "$dir" init -q
 git -C "$dir" -c user.name=t -c user.email=t@example.com -c commit.gpgsign=false commit -q --allow-empty -m init

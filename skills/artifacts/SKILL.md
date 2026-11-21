@@ -25,6 +25,7 @@ Ryugi Cloud.
 | A business space — several screens, dimensions, states or questions at once                         | `artboard`                 |
 | Whether a built screen matches what was approved                                                    | `artboard`, a verify group |
 | What you proved by running it: output, numbers, a deployment; what you did not verify               | `verify`                   |
+| A product demo video to record for others — a launch film, a feature intro, a tutorial              | `storyboard`               |
 | Nothing to see                                                                                      | text                       |
 
 Draw on a whiteboard while the parts and arrows are themselves the question;

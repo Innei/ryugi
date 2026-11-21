@@ -138,6 +138,31 @@ test('starting a slide deck subscribes the session to its comments', (t) => {
   assert.deepEqual([...subscriptions(f.project, 'claude', session)], ['slides/talk']);
 });
 
+test('a comment on a storyboard wakes the agent', (t) => {
+  const f = fixture(t);
+  const poll = watch(f.project);
+  assert.deepEqual(poll(), []);
+  f.save('storyboard/launch', [{ ...thread(), anchor: { shot: 'sketch', t: 1.5 } }]);
+  const [event] = poll();
+  assert.equal(event?.artifact, 'storyboard/launch');
+  assert.equal(event.unread, 1);
+  assert.ok(event.command.includes('--artifact storyboard/launch'));
+  assert.deepEqual(poll(), []);
+});
+
+test('starting a storyboard subscribes the session to its comments', (t) => {
+  const f = fixture(t);
+  const { register, subscriptions } = require(
+    path.join(repo, 'skills/artifacts/app/comment-subscriptions.cjs'),
+  );
+  const session = randomUUID();
+  fs.mkdirSync(path.join(f.project, '.git'));
+  register(['start', '--project-dir', f.project, '--artifact', 'storyboard/launch'], {
+    CLAUDE_CODE_SESSION_ID: session,
+  });
+  assert.deepEqual([...subscriptions(f.project, 'claude', session)], ['storyboard/launch']);
+});
+
 test('an agent reply or resolve never re-notifies even while another human thread is unread', (t) => {
   const f = fixture(t);
   const first = thread();
