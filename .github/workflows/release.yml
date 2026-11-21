@@ -172,8 +172,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ steps.release.outputs.version }}
         run: |
-          gh release view "v$VERSION" > /dev/null 2>&1 \
-            || gh release create "v$VERSION" --verify-tag --generate-notes
+          node scripts/release-notes.mjs --tag "v$VERSION" > /tmp/release-notes.md
+          if gh release view "v$VERSION" > /dev/null 2>&1; then
+            gh release edit "v$VERSION" --notes-file /tmp/release-notes.md
+          else
+            gh release create "v$VERSION" --verify-tag --notes-file /tmp/release-notes.md
+          fi
 
   daemon:
     needs: release
