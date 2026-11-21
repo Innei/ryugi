@@ -7,7 +7,7 @@ const os = require('node:os');
 const path = require('node:path');
 
 const UUID = /^[\da-f]{8}(?:-[\da-f]{4}){3}-[\da-f]{12}$/i;
-const ARTIFACT = /^(?:document|artboard|whiteboard|slides|storyboard)\/[a-z0-9][a-z0-9-]*$/;
+const ARTIFACT = /^(?:document|artboard|whiteboard|slides|storyboard|preview)\/[a-z0-9][a-z0-9-]*$/;
 const HOSTS = {
   codex: { env: 'CODEX_THREAD_ID', dir: 'codex-comment-watch' },
   claude: { env: 'CLAUDE_CODE_SESSION_ID', dir: 'claude-comment-watch' },
@@ -299,7 +299,9 @@ function identity(env, proof) {
 
 // The launcher knows the real argv and cwd; hook text cannot safely reconstruct shell commands.
 function register(args, env = process.env, proof) {
-  if (args[0] !== 'start') return;
+  const isStart = args[0] === 'start';
+  const isPreviewRead = args[0] === 'comment' && (args[1] === 'list' || args[1] === 'read');
+  if (!isStart && !isPreviewRead) return;
   const option = (name) => {
     const index = args.indexOf(name);
     return index >= 0
@@ -308,6 +310,7 @@ function register(args, env = process.env, proof) {
   };
   const artifact = option('--artifact');
   if (!ARTIFACT.test(artifact || '')) return;
+  if (isPreviewRead && !artifact.startsWith('preview/')) return;
   const current = identity(env, proof);
   if (!current) return;
   const { host, session } = current;

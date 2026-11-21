@@ -293,6 +293,65 @@ function whiteboardSelections(session, root, budget) {
   return sections;
 }
 
+function previewReminders(project, root, key, only) {
+  const previewRoot = path.join(path.dirname(root), 'preview');
+  const waiting = [];
+  let ids;
+  try {
+    ids = fs.readdirSync(previewRoot).sort();
+  } catch {
+    return '';
+  }
+  for (const id of ids) {
+    const scope = `preview/${id}`;
+    if (only && !only.has('*') && !only.has(scope)) continue;
+    const file = readJson(path.join(previewRoot, id, 'comments.json'));
+    if (!file || !Array.isArray(file.threads)) continue;
+    const agentState = readJson(
+      path.join(root, '.state', 'agent-review', `agent-${reviewStateKey(scope, key)}.json`),
+    );
+    const count = unreadThreadCount(
+      { ...file, threads: file.threads.filter((thread) => thread.status !== 'resolved') },
+      agentState?.consumed ?? [],
+    );
+    if (count) waiting.push({ id, count });
+  }
+  if (!waiting.length) return '';
+  const summary = waiting.map(({ id, count }) => `${id} (${count})`).join(', ');
+  const idArg = waiting.length === 1 ? ` --id ${waiting[0].id}` : '';
+  return `Unread local preview comments: ${summary}.\nList them with \`node "${LAUNCHER}" preview comments${idArg} --project-dir "${project}"\`.`;
+}
+
+function previewSelections(session, root, budget) {
+  const sections = [];
+  let left = budget;
+  for (const id of artifactIds(path.join(root, '.state'), 'preview')) {
+    const file = path.join(root, '.state', 'preview', id, 'selection.json');
+    const value = readJson(file);
+    const sel = value && typeof value.selected === 'object' ? value.selected : null;
+    if (!sel || typeof sel.route !== 'string') continue;
+    const parts = [sel.route];
+    if (sel.kind === 'box' && sel.rect) {
+      parts.push(`box (${sel.rect.x},${sel.rect.y} ${sel.rect.w}x${sel.rect.h})`);
+    }
+    if (typeof sel.selector === 'string' && sel.selector) parts.push(sel.selector);
+    else if (typeof sel.tag === 'string' && sel.tag) parts.push(`<${sel.tag}>`);
+    if (sel.source && typeof sel.source.file === 'string') {
+      parts.push(`${sel.source.file}${sel.source.line ? `:${sel.source.line}` : ''}`);
+    } else if (sel.source && typeof sel.source.component === 'string') {
+      parts.push(`<${sel.source.component}>`);
+    }
+    const text = typeof sel.text === 'string' && sel.text ? ` "${clip(sel.text, 120)}"` : '';
+    const head = `Local preview (${id}), open in Hub (updated ${value.updatedAt}):\nSelected: ${parts.join(' · ')}${text}`;
+    const tail = `Full selection: ${path.relative(session, file)}`;
+    const section = [head, tail].join('\n');
+    if (section.length + 2 > left) break;
+    sections.push(section);
+    left -= section.length + 2;
+  }
+  return sections;
+}
+
 function main() {
   let input = {};
   try {
@@ -387,8 +446,10 @@ function main() {
           ),
         )
     : [];
+  const reviewKey = cursorKey(process.env, isAntigravity);
   const reminders = [
-    commentReminders(project, root, cursorKey(process.env, isAntigravity)),
+    previewReminders(project, root, reviewKey),
+    commentReminders(project, root, reviewKey),
     ...elsewhere,
     autoPublish,
   ]
@@ -411,6 +472,7 @@ function main() {
   sections.push(...documents);
   for (const section of documents) left -= section.length + 2;
   sections.push(...whiteboardSelections(session, root, left));
+  sections.push(...previewSelections(session, root, left));
   if (reminders) sections.push(reminders);
   if (!sections.length) {
     if (isAntigravity) process.stdout.write('{}\n');

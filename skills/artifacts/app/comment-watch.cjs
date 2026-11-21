@@ -118,7 +118,9 @@ function briefThreads(file, updated) {
         ? { block: thread.anchor.blockId }
         : thread.anchor?.board
           ? { block: thread.anchor.board }
-          : {}),
+          : thread.anchor?.route
+            ? { block: thread.anchor.route }
+            : {}),
       messages,
     });
   }
@@ -210,25 +212,38 @@ const sectionFlags = (section) =>
   section === 'groups' ? ['--kind', 'choose'] : section === 'asks' ? ['--status', 'submitted'] : [];
 
 const command = (project, artifact, section = 'threads') =>
-  `node ${quote(LAUNCHER)} comment list --section ${section}${sectionFlags(section)
-    .map((flag) => ` ${flag}`)
-    .join('')} --detail --format brief --project-dir ${quote(project)} --artifact ${artifact}`;
+  artifact.startsWith('preview/')
+    ? `node ${quote(LAUNCHER)} preview comments --id ${artifact.slice('preview/'.length)} --project-dir ${quote(project)}`
+    : `node ${quote(LAUNCHER)} comment list --section ${section}${sectionFlags(section)
+        .map((flag) => ` ${flag}`)
+        .join('')} --detail --format brief --project-dir ${quote(project)} --artifact ${artifact}`;
 
-const listArgv = (project, artifact, section) => [
-  LAUNCHER,
-  'comment',
-  'list',
-  '--section',
-  section,
-  ...sectionFlags(section),
-  '--detail',
-  '--format',
-  'brief',
-  '--project-dir',
-  project,
-  '--artifact',
-  artifact,
-];
+const listArgv = (project, artifact, section) =>
+  artifact.startsWith('preview/')
+    ? [
+        LAUNCHER,
+        'preview',
+        'comments',
+        '--id',
+        artifact.slice('preview/'.length),
+        '--project-dir',
+        project,
+      ]
+    : [
+        LAUNCHER,
+        'comment',
+        'list',
+        '--section',
+        section,
+        ...sectionFlags(section),
+        '--detail',
+        '--format',
+        'brief',
+        '--project-dir',
+        project,
+        '--artifact',
+        artifact,
+      ];
 
 const BRIEF_TIMEOUT_MS = 15000;
 
@@ -326,11 +341,13 @@ function createCommentWatch(project, key = cursorKey(process.env)) {
   const notifiedSubmits = new Map();
   return (artifacts) => {
     const events = [];
-    for (const type of ['document', 'artboard', 'whiteboard', 'slides', 'storyboard']) {
-      for (const id of ids(root, type)) {
+    const previewBase = path.dirname(root);
+    for (const type of ['document', 'artboard', 'whiteboard', 'slides', 'storyboard', 'preview']) {
+      const base = type === 'preview' ? previewBase : root;
+      for (const id of ids(base, type)) {
         const artifact = `${type}/${id}`;
         if (artifacts && !artifacts.has('*') && !artifacts.has(artifact)) continue;
-        const file = readJson(path.join(root, artifact, 'comments.json'));
+        const file = readJson(path.join(base, artifact, 'comments.json'));
         const rounds = type === 'artboard' ? choiceRounds(root, artifact) : [];
         const known = roundStates.get(artifact);
         const states = new Map(rounds.map((round) => [round.id, round.state]));

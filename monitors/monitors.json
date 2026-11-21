@@ -2,7 +2,7 @@
   {
     "name": "artifact-comments",
     "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook.cmd\" watch-comments",
-    "description": "Ryugi document and Artboard comments",
-    "when": "on-skill-invoke:ryugi:artifacts"
+    "description": "Ryugi document, Artboard and Preview comments",
+    "when": "always"
   }
 ]
