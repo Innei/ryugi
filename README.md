@@ -6,11 +6,11 @@
   </picture>
 </p>
 
-<h1 align="center">Ryugi 流儀</h1>
+<h1 align="center">Ryugi (流儀) — Interactive Artifacts for Coding Agents</h1>
 
 <p align="center"><i>ryoo-ghee</i> · [ɾʲɯːɡʲi] · Japanese for “a school's own way of doing things”</p>
 
-<p align="center"><b>Artifacts for coding agents.</b><br>Your agent draws its options instead of describing them. You pick, comment and pass.</p>
+<p align="center"><b>Interactive artboards, design docs, whiteboards, HTML benches, slides and verify reports for coding agents.</b><br>Your agent draws its options instead of describing them in Markdown. Pick, comment and send feedback straight back to your agent session.</p>
 
 <p align="center">
   <img src="docs/images/hero.webp" alt="A terminal asks Claude Code to mock up notification settings; three layouts stream onto the Ryugi artboard, the user picks the recommended one and submits, the terminal receives q1 → b, and the built page appears next to the approved design, where the user presses Pass">

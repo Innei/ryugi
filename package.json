@@ -1,14 +1,23 @@
 {
   "name": "ryugi",
   "version": "1.97.0",
-  "description": "Ryugi skills and the artifacts workbench for coding agents",
+  "description": "Ryugi — Interactive Artifacts for Coding Agents: artboards, design docs, whiteboards, HTML benches and verify reports",
   "keywords": [
     "pi-package",
     "skills",
     "tdd",
     "debugging",
     "collaboration",
-    "workflow"
+    "workflow",
+    "coding-agents",
+    "ai-artifacts",
+    "claude-code",
+    "codex",
+    "cursor",
+    "artboard",
+    "design-review",
+    "whiteboard",
+    "verify-reports"
   ],
   "license": "SEE LICENSE IN LICENSE",
   "type": "module",
@@ -44,5 +53,10 @@
     "skills": [
       "./skills"
     ]
+  },
+  "homepage": "https://ryugi.innei.dev",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Innei/ryugi.git"
   }
 }
