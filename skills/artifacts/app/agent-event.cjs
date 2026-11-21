@@ -148,6 +148,42 @@ function readStdin(timeoutMs = 1000) {
   });
 }
 
+function hasHub(project) {
+  return fs.existsSync(path.join(project, '.ryugi', 'artifacts', '.state', 'server-info'));
+}
+
+// A linked worktree rarely runs its own hub; its sessions belong on the hub of a sibling checkout.
+function hubProjectOf(project) {
+  if (hasHub(project)) return project;
+  try {
+    const { checkouts } = require('./comment-subscriptions.cjs');
+    return checkouts(project).find(hasHub) || project;
+  } catch {
+    return project;
+  }
+}
+
+function reportDeliveries(project, host, session, events) {
+  if (!session) return Promise.resolve();
+  const posts = [];
+  for (const event of events) {
+    if (event?.type !== 'ryugi-comments' || !Array.isArray(event.threads)) continue;
+    const threads = event.threads.flatMap((item) =>
+      typeof item?.thread === 'string' ? [item.thread] : [],
+    );
+    if (threads.length)
+      posts.push(
+        postToServer(project, '/api/agent/delivered', {
+          host,
+          session,
+          artifact: event.artifact,
+          threads,
+        }),
+      );
+  }
+  return Promise.all(posts);
+}
+
 function projectOf(cwd) {
   try {
     return require('./comment-subscriptions.cjs').projectRoot(cwd);
@@ -177,8 +213,8 @@ if (require.main === module) {
           ? input.workspacePaths[0]
           : null;
     const project = (rawCwd ? projectOf(rawCwd) : null) || process.argv[3] || null;
-    if (event && project) void postToServer(project, '/api/agent/event', event);
+    if (event && project) void postToServer(hubProjectOf(project), '/api/agent/event', event);
   });
 }
 
-module.exports = { eventFrom, pathsOf, postToServer, readStdin };
+module.exports = { eventFrom, hubProjectOf, pathsOf, postToServer, readStdin, reportDeliveries };

@@ -1002,3 +1002,32 @@ test('a burst of long comments is cut down instead of dropped', () => {
   assert.ok(lines[0].endsWith('… (cut; Run prints the rest).'), lines[0]);
   assert.ok(lines[1].endsWith(`Run: ${event.command}`));
 });
+
+test('a woken Claude Code session tells the hub which threads it was shown', async (t) => {
+  const f = fixture(t);
+  const run = launcher(t);
+  const mine = randomUUID();
+  const seen = [];
+  const server = require('node:http').createServer((req, res) => {
+    let body = '';
+    req.on('data', (chunk) => (body += chunk));
+    req.on('end', () => {
+      seen.push({ path: req.url.split('?')[0], body: body ? JSON.parse(body) : null });
+      res.statusCode = 204;
+      res.end();
+    });
+  });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  t.after(() => server.close());
+  f.write('.state/server-info', { url: `http://127.0.0.1:${server.address().port}/` });
+  const watcher = monitor(t, f.project, { CLAUDE_CODE_SESSION_ID: mine });
+  run(f.project, mine, 'start', '--artifact', 'document/plan');
+  await delay(1200);
+  f.save('document/plan', [thread('t7')]);
+  await until(() => seen.some((entry) => entry.path === '/api/agent/delivered'));
+  assert.ok(watcher.output.includes('document/plan'), watcher.errors);
+  assert.deepEqual(
+    seen.filter((entry) => entry.path === '/api/agent/delivered').map((entry) => entry.body),
+    [{ host: 'claude', session: mine, artifact: 'document/plan', threads: ['t7'] }],
+  );
+});

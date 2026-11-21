@@ -4,6 +4,7 @@ const { spawnSync } = require('node:child_process');
 const fs = require('node:fs');
 const path = require('node:path');
 const { unreadThreadCount, reviewStateKey } = require('./comment-threads.cjs');
+const { reportDeliveries } = require('./agent-event.cjs');
 const {
   beat,
   checkouts,
@@ -433,7 +434,9 @@ function main() {
       for (const root of new Set([...checkouts(project), ...sessionProjects('claude', session)])) {
         if (root !== project && !fs.existsSync(subscriptionFile(root, 'claude', session))) continue;
         beat(root, 'claude', session);
-        events.push(...poll(root, subscriptions(root, 'claude', session)));
+        const found = poll(root, subscriptions(root, 'claude', session));
+        void reportDeliveries(root, 'claude', session, found);
+        events.push(...found);
       }
     for (const event of events) process.stdout.write(`${wakeMessage(event, NOTIFICATION_LIMIT)}\n`);
   };

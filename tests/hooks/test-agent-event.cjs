@@ -371,3 +371,89 @@ test('inherited ANTIGRAVITY_AGENT=1 does not hijack Codex or Claude Code agent-e
   await until(() => seen.length === 1);
   assert.equal(seen[0].body.host, 'codex');
 });
+
+const { reportDeliveries } = require(path.join(repo, 'skills/artifacts/app/agent-event.cjs'));
+
+const woken = (artifact, ids) => ({
+  type: 'ryugi-comments',
+  artifact,
+  unread: ids.length,
+  threads: ids.map((id) => ({ thread: id, status: 'open', messages: [] })),
+});
+
+test('watcher deliveries tell the hub which threads each session was shown', async (t) => {
+  const dir = project(t);
+  const seen = await hub(t, dir);
+  await reportDeliveries(dir, 'claude', SESSION, [
+    woken('document/plan', ['t1', 't2']),
+    { type: 'ryugi-answers', artifact: 'document/plan', questions: 1 },
+  ]);
+  assert.deepEqual(seen, [
+    {
+      path: '/api/agent/delivered',
+      project: dir,
+      body: { host: 'claude', session: SESSION, artifact: 'document/plan', threads: ['t1', 't2'] },
+    },
+  ]);
+});
+
+test('a watcher without a session reports nothing', async (t) => {
+  const dir = project(t);
+  const seen = await hub(t, dir);
+  await reportDeliveries(dir, 'claude', null, [woken('document/plan', ['t1'])]);
+  assert.deepEqual(seen, []);
+});
+
+function linkedWorktree(t) {
+  const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-agent-event-wt-')));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const main = path.join(root, 'main');
+  const linked = path.join(root, 'linked');
+  const git = (...args) =>
+    require('node:child_process').execFileSync('git', args, { cwd: main, stdio: 'ignore' });
+  fs.mkdirSync(path.join(main, '.ryugi/artifacts/.state'), { recursive: true });
+  git('init', '-q');
+  git(
+    '-c',
+    'user.email=t@example.com',
+    '-c',
+    'user.name=t',
+    'commit',
+    '-q',
+    '--allow-empty',
+    '-m',
+    'init',
+  );
+  git('worktree', 'add', '-q', linked);
+  return { main, linked };
+}
+
+test('a hook in a linked worktree without its own hub reports to the main checkout', async (t) => {
+  const { main, linked } = linkedWorktree(t);
+  const seen = await hub(t, main);
+  const result = await run(
+    commandFor(claudeHooks(), 'UserPromptSubmit', /agent-event/).command,
+    { hook_event_name: 'UserPromptSubmit', session_id: SESSION, cwd: linked },
+    { CLAUDE_PROJECT_DIR: linked },
+  );
+  assert.equal(result.code, 0);
+  await until(() => seen.length === 1);
+  assert.equal(seen[0]?.path, '/api/agent/event');
+  assert.equal(seen[0]?.project, main);
+  assert.equal(seen[0]?.body.event, 'UserPromptSubmit');
+});
+
+test('the Stop hook in a linked worktree without its own hub ends the turn on the main checkout', async (t) => {
+  const { main, linked } = linkedWorktree(t);
+  const seen = await hub(t, main);
+  const result = await run(
+    commandFor(claudeHooks(), 'Stop').command,
+    { hook_event_name: 'Stop', session_id: SESSION, cwd: linked },
+    { CLAUDE_PROJECT_DIR: linked },
+  );
+  assert.equal(result.code, 0);
+  await until(() => seen.some((r) => r.path === '/api/agent/event'));
+  const event = seen.find((r) => r.path === '/api/agent/event');
+  assert.equal(event?.project, main);
+  assert.equal(event?.body.event, 'Stop');
+});

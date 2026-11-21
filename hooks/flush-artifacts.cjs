@@ -1,6 +1,11 @@
 'use strict';
 
-const { eventFrom, postToServer, readStdin } = require('../skills/artifacts/app/agent-event.cjs');
+const {
+  eventFrom,
+  hubProjectOf,
+  postToServer,
+  readStdin,
+} = require('../skills/artifacts/app/agent-event.cjs');
 
 function projectOf(cwd) {
   try {
@@ -38,5 +43,5 @@ void readStdin().then((input) => {
   }
   const host = isAntigravity ? 'antigravity' : 'claude';
   const event = eventFrom(input, host, at);
-  if (event) void postToServer(project, '/api/agent/event', event);
+  if (event) void postToServer(hubProjectOf(project), '/api/agent/event', event);
 });

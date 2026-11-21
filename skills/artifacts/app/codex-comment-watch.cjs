@@ -9,6 +9,7 @@ const {
   hasDesktopPipe,
   sendDesktop,
 } = require('./codex-desktop-transport.cjs');
+const { reportDeliveries } = require('./agent-event.cjs');
 const { createCommentWatch, unreadCount, wakeMessage } = require('./comment-watch.cjs');
 const {
   beat,
@@ -242,6 +243,7 @@ function watch(ctx, input, remote) {
     try {
       const { receipt, warning } = await queueComment(ctx, remote, event, controller.signal);
       pending.delete(key);
+      void reportDeliveries(ctx.project, 'codex', ctx.session, [event]);
       failures = 0;
       update({ artifact: event.artifact, receipt, warning, queuedAt: new Date().toISOString() });
     } catch (error) {
