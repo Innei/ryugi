@@ -58,6 +58,13 @@ test('the Antigravity comment watcher runs as Ryugi watch-comments (version)', {
   );
 });
 
+test('the custom command comment watcher runs as Ryugi watch-comments (version)', { skip }, () => {
+  assert.equal(
+    titleOf(path.join(app, 'cmd-comment-watch.cjs'), ['stop']),
+    `Ryugi watch-comments (${version})`,
+  );
+});
+
 test('the launcher runs as Ryugi launcher (version)', { skip }, () => {
   assert.equal(titleOf(path.join(app, 'ryugi.cjs'), ['--version']), `Ryugi launcher (${version})`);
 });

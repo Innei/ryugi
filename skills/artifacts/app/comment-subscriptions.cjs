@@ -5,6 +5,7 @@ const { createHash } = require('node:crypto');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const { matchCustomHost } = require('./custom-hosts.cjs');
 
 const UUID = /^[\da-f]{8}(?:-[\da-f]{4}){3}-[\da-f]{12}$/i;
 const ARTIFACT = /^(?:document|artboard|whiteboard|slides|storyboard|preview)\/[a-z0-9][a-z0-9-]*$/;
@@ -240,6 +241,8 @@ function boundCodexSession(env, proof) {
 }
 
 function identity(env, proof) {
+  const custom = matchCustomHost(env);
+  if (custom) return { host: custom.host, session: custom.session };
   if (proof || sessionOf('codex', env)) {
     const session = boundCodexSession(env, proof);
     if (session) return { host: 'codex', session };

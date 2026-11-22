@@ -453,3 +453,19 @@ test('a hub that keeps refusing the hello is launched no more often than an unre
     await hub.close();
   }
 });
+
+test('unsubscribe flushes the unsubscribe message to the hub and closes without reconnecting', async () => {
+  const env = setup();
+  const hub = await fakeHub(env.socket);
+  const channel = openChannel({ project: env.project, env: env.env, onEvent: () => {} });
+  try {
+    await until(() => hub.received.some((m) => m.t === 'hello'));
+    await new Promise((resolve) => channel.unsubscribe(resolve));
+    await until(() => hub.received.some((m) => m.t === 'unsubscribe'));
+    const count = hub.connections();
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    assert.equal(hub.connections(), count);
+  } finally {
+    await hub.close();
+  }
+});

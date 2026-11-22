@@ -4,6 +4,7 @@ const { setRyugiTitle } = require('./process-title.cjs');
 const { spawnSync } = require('node:child_process');
 const { openHubChannel } = require('./hub-channel.cjs');
 const { sessionOf } = require('./comment-subscriptions.cjs');
+const { matchCustomHost } = require('./custom-hosts.cjs');
 
 const cursorKey = (env) => (env.CLAUDE_CODE_IS_COWORK ? 'Claude Cowork' : 'Claude Code');
 
@@ -105,6 +106,9 @@ function wakeMessage(event, limit = Infinity) {
 
 function main() {
   setRyugiTitle('watch-comments');
+  try {
+    if (matchCustomHost(process.env)) return;
+  } catch {}
   const project = process.argv[2] || process.cwd();
   const session = sessionOf('claude');
   if (!session) return;

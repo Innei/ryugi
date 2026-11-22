@@ -250,6 +250,15 @@ function openHubChannel(options) {
     delivered(id) {
       if (socket && !socket.destroyed) socket.write(`${JSON.stringify({ t: 'delivered', id })}\n`);
     },
+    unsubscribe(done) {
+      closed = true;
+      clearTimeout(timer);
+      if (socket && !socket.destroyed) {
+        socket.end(`${JSON.stringify({ t: 'unsubscribe' })}\n`, done);
+      } else {
+        done?.();
+      }
+    },
     close() {
       closed = true;
       clearTimeout(timer);

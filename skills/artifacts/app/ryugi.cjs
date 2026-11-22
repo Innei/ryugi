@@ -244,8 +244,16 @@ function main() {
     env.RYUGI_ARTIFACTS_VERSION = localVersion();
   }
   requireOutputProtocol(cli);
+  let customHost = null;
+  try {
+    customHost = require('./custom-hosts.cjs').matchCustomHost(process.env);
+  } catch (error) {
+    if (error.code !== 'MODULE_NOT_FOUND')
+      console.error(JSON.stringify({ type: 'comment-watch-error', message: error.message }));
+  }
   let subscription = null;
   if (
+    customHost ||
     sessionProof ||
     process.env.CODEX_THREAD_ID ||
     process.env.CODEX_SESSION_ID ||
@@ -264,13 +272,25 @@ function main() {
         console.error(JSON.stringify({ type: 'comment-watch-error', message: error.message }));
     }
   }
-  if (process.env.ANTIGRAVITY_CONVERSATION_ID && process.env.ANTIGRAVITY_LS_ADDRESS) {
+  const idx = args.indexOf('--project-dir');
+  const projectDir =
+    idx >= 0
+      ? args[idx + 1]
+      : args.find((arg) => arg.startsWith('--project-dir='))?.slice('--project-dir='.length);
+  if (customHost && (subscription || args[0] === 'start')) {
     try {
-      const idx = args.indexOf('--project-dir');
-      const projectDir =
-        idx >= 0
-          ? args[idx + 1]
-          : args.find((arg) => arg.startsWith('--project-dir='))?.slice('--project-dir='.length);
+      require('./cmd-comment-watch.cjs').ensureWatch(
+        projectDir || process.cwd(),
+        customHost,
+        process.env,
+      );
+    } catch {}
+  } else if (
+    !customHost &&
+    process.env.ANTIGRAVITY_CONVERSATION_ID &&
+    process.env.ANTIGRAVITY_LS_ADDRESS
+  ) {
+    try {
       require('./agy-comment-watch.cjs').ensureWatch(projectDir || process.cwd(), process.env);
     } catch {}
   }

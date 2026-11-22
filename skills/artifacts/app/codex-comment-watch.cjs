@@ -17,6 +17,7 @@ const {
   unbindCodexSession,
   UUID,
 } = require('./comment-subscriptions.cjs');
+const { matchCustomHost } = require('./custom-hosts.cjs');
 const { createDeliveryQueue } = require('./delivery-queue.cjs');
 const { openHubChannel } = require('./hub-channel.cjs');
 
@@ -179,6 +180,9 @@ function notice(input, message) {
 }
 
 function watch(ctx, input, remote) {
+  try {
+    if (matchCustomHost(process.env)) return;
+  } catch {}
   const desktop = !remote && hasDesktopPipe();
   if (!desktop && !remote) {
     notice(
@@ -236,6 +240,11 @@ function stopWorker(file) {
 
 function main() {
   setRyugiTitle('watch-comments');
+  if (process.argv[2] === 'watch') {
+    try {
+      if (matchCustomHost(process.env)) return;
+    } catch {}
+  }
   const remote = process.argv[2] === 'watch' ? cliEndpoint() : null;
   let failure = null;
   if (process.argv[2] === 'watch' && !remote)
