@@ -1,5 +1,6 @@
 'use strict';
 
+const { setRyugiTitle } = require('./process-title.cjs');
 const fs = require('node:fs');
 const http = require('node:http');
 const path = require('node:path');
@@ -179,6 +180,7 @@ function projectOf(cwd) {
 }
 
 if (require.main === module) {
+  setRyugiTitle('hook');
   const at = Date.now();
   const host =
     process.argv[2] === 'antigravity'

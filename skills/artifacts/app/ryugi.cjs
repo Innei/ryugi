@@ -308,7 +308,25 @@ async function subscribe(subscription) {
   }
 }
 
+// Copied on its own into installs, so it cannot require process-title.cjs.
+function setLauncherTitle() {
+  if (win32) return;
+  const root = path.join(__dirname, '..', '..', '..');
+  const version = ['package.json', '.claude-plugin/plugin.json', '.codex-plugin/plugin.json']
+    .map((file) => {
+      try {
+        const manifest = JSON.parse(fs.readFileSync(path.join(root, file), 'utf8'));
+        return manifest.name === 'ryugi' ? manifest.version || null : null;
+      } catch {
+        return null;
+      }
+    })
+    .find(Boolean);
+  process.title = version ? `Ryugi launcher (${version})` : 'Ryugi launcher';
+}
+
 function run() {
+  setLauncherTitle();
   try {
     main();
   } catch (err) {

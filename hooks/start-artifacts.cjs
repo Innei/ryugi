@@ -1,5 +1,6 @@
 'use strict';
 
+const { setRyugiTitle } = require('../skills/artifacts/app/process-title.cjs');
 const { spawnSync } = require('node:child_process');
 const fs = require('node:fs');
 const http = require('node:http');
@@ -53,6 +54,7 @@ function registerWithRunningServer(project) {
 }
 
 function main() {
+  setRyugiTitle('hook');
   const project = process.argv[2];
   if (!project) return;
   const config = readJson(path.join(project, '.ryugi', 'config.json'));

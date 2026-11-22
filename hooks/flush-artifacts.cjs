@@ -1,5 +1,6 @@
 'use strict';
 
+const { setRyugiTitle } = require('../skills/artifacts/app/process-title.cjs');
 const {
   eventFrom,
   hubProjectOf,
@@ -15,6 +16,7 @@ function projectOf(cwd) {
   }
 }
 
+setRyugiTitle('hook');
 const at = Date.now();
 const fallbackProject = process.argv[2];
 const isAntigravity =

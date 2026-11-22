@@ -1,5 +1,6 @@
 'use strict';
 
+const { setRyugiTitle } = require('../skills/artifacts/app/process-title.cjs');
 const { createHash } = require('node:crypto');
 const fs = require('node:fs');
 const os = require('node:os');
@@ -347,6 +348,7 @@ function previewSelections(session, root, budget) {
 }
 
 function main() {
+  setRyugiTitle('hook');
   let input = {};
   try {
     input = JSON.parse(fs.readFileSync(0, 'utf8'));

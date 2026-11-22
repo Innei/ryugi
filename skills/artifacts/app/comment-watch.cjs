@@ -1,5 +1,6 @@
 'use strict';
 
+const { setRyugiTitle } = require('./process-title.cjs');
 const { spawnSync } = require('node:child_process');
 const { openHubChannel } = require('./hub-channel.cjs');
 const { sessionOf } = require('./comment-subscriptions.cjs');
@@ -103,6 +104,7 @@ function wakeMessage(event, limit = Infinity) {
 }
 
 function main() {
+  setRyugiTitle('watch-comments');
   const project = process.argv[2] || process.cwd();
   const session = sessionOf('claude');
   if (!session) return;

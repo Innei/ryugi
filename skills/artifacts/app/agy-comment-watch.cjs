@@ -1,5 +1,6 @@
 'use strict';
 
+const { setRyugiTitle } = require('./process-title.cjs');
 const { spawn } = require('node:child_process');
 const { randomUUID } = require('node:crypto');
 const fs = require('node:fs');
@@ -262,6 +263,7 @@ function ensureWatch(project, env = process.env) {
 }
 
 function main() {
+  setRyugiTitle('watch-comments');
   let input = {};
   try {
     input = JSON.parse(fs.readFileSync(0, 'utf8'));

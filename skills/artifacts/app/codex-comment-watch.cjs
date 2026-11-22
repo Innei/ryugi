@@ -1,5 +1,6 @@
 'use strict';
 
+const { setRyugiTitle } = require('./process-title.cjs');
 const { execFile, execFileSync } = require('node:child_process');
 const { randomUUID } = require('node:crypto');
 const fs = require('node:fs');
@@ -234,6 +235,7 @@ function stopWorker(file) {
 }
 
 function main() {
+  setRyugiTitle('watch-comments');
   const remote = process.argv[2] === 'watch' ? cliEndpoint() : null;
   let failure = null;
   if (process.argv[2] === 'watch' && !remote)
