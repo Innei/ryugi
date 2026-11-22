@@ -20,12 +20,13 @@ retrieves that same description for existing content.
 Two things decide it: does a person have to judge something a reply cannot
 show, and does the proof fit in a reply. Who reported the work does not.
 
-| The work                                                                                                                           | What you do                                                                                                    |
-| ---------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| One claim a line or two of output proves, nothing for a person to judge (an off-by-one, a failing command)                         | Prove it inline: the command, its output, where it ran. No page.                                               |
-| One small visible change (a padding, a colour), reported bug or not                                                                | Prove it inline, with the before and after screenshot paths in the reply. No page, and no verdict to wait for. |
-| Several claims, a proof that is a run of several steps or flows, work built from a spec, or a judgement about motion, feel, a flow | A verify report, an artboard verify page, or both: see Where the evidence goes.                                |
-| They say skip it                                                                                                                   | Skip it, and say what was not verified.                                                                        |
+| The work                                                                                                                                                            | What you do                                                                                                    |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| One claim a line or two of output proves, nothing for a person to judge (an off-by-one, a failing command)                                                          | Prove it inline: the command, its output, where it ran. No page.                                               |
+| One small visible change (a padding, a colour), reported bug or not                                                                                                 | Prove it inline, with the before and after screenshot paths in the reply. No page, and no verdict to wait for. |
+| Work built from a spec where nothing waits on them: no call to judge, no gap, no screen                                                                             | Prove it in your final message: the results, the routine checks in one line. No page.                          |
+| Several results to show, a proof that is a run of several steps or flows, a call you made that changes what someone gets, or a judgement about motion, feel, a flow | A verify report, an artboard verify page, or both: see Where the evidence goes.                                |
+| They say skip it                                                                                                                                                    | Skip it, and say what was not verified.                                                                        |
 
 A fix proved by driving a flow end to end (sync between two clients, an
 import, a deploy and what it serves) is a run of several steps: its log goes
@@ -95,6 +96,15 @@ not a second kind: put it in the group's sticky or your final message. An
 output claim is one that would still need proving if nobody looked at a
 screen: an API result, data, a deploy, a number against a threshold.
 
+## What is a claim
+
+A claim is a result of this work that someone would still ask about: what
+an API answers, which build is deployed and what it serves, the data after a
+migration, a number against a threshold, a flow run end to end. Routine
+checks (the test suites, typecheck, lint, a build) are not claims. Run them,
+then state them as one line of numbers in the report's opening paragraph and
+in your final message, with no output file.
+
 ## Reports and verify pages
 
 Before you write a verify report or a verify page, or add a recording to
@@ -131,6 +141,7 @@ then your final message carries the link and what is waiting on whom.
 | "I'll put the log on the artboard next to the screens"  | The artboard is for screens. Output goes in the report; the report sums the groups.     |
 | "They said push, so they passed it"                     | Push. Record nothing. Say which groups went out without a verdict.                      |
 | "They said all pass in chat; the page can stay pending" | Record it first. A page that disagrees with them is wrong evidence.                     |
+| "Each suite gets its own claim, to be thorough"         | Routine checks are one line of numbers. A claim is a result of the work.                |
 | "A verify page, to be thorough" (for a one-line change) | One claim, nothing to judge: the command and its output, inline.                        |
 | "I measured it in the browser; it's aligned"            | Measurements show what you measured. Put the screenshots up.                            |
 | "Tests pass, so the UI matches"                         | Tests don't see font size, spacing or color. Compare against the approved board.        |

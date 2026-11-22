@@ -26,7 +26,8 @@ ryugi:using-ryugi says, and take the next task.
 **Rulings, not stalls.** Conflicts, ambiguities, gaps the spec is silent
 on — decide them. The spec is the binding authority, your task list is
 your reading of it, and your judgment settles what the spec does not
-answer. Record every decision in the ledger as
+answer. Record every decision in the ledger, in your human partner's
+language, as
 `Ruling: <what you decided> — <why> — <what it costs if wrong>`, and keep
 going. Deviating from the spec without a ledgered ruling is a decision
 made in secret.
@@ -252,21 +253,20 @@ under TDD like a Critical one, and ledger it.
 ## Finish
 
 Use ryugi:verifying first; fixes for its rejects follow that skill. Then
-collect every ledger line containing
-`Ruling:`, in the order you made them, each with what it costs if wrong,
-and every `minor (deferred)` line. Both lists are exhaustive: once the
-workspace is gone they are the only record of those decisions.
+read every ledger line containing `Ruling:` and every `minor (deferred)`
+line, and pick the ones that depart from the spec or change what someone
+using the software gets, at most five. A deferred minor that someone would
+run into counts as one. Your human partner judges those; the rest stay in
+the ledger, which is the full record until the work lands.
 
-- **With a verify report**, both lists go into it in full: a table of
-  rulings (ruling, why, cost if wrong) and a list of minors. Your final
-  message names only the rulings that depart from the spec or change what
-  someone using the software gets, at most five, and says how many the
-  report holds.
-- **Without one**, both lists go in your final message in full.
+- **With a verify report**, each picked ruling is its own claim, as
+  ryugi:verifying's `pages.md` says. Never copy the ledger into it.
+- **Without one**, your final message names them, one line each.
 
-Once they are written, delete this spec's workspace directory (never a
-sibling's): the report and git history are the record now. Exploratory
-work finishes as `exploring.md` says.
+Keep this spec's workspace until the work is done: delete it (never a
+sibling's) when the last claim or group that waits on them has passed for
+work committed in place, or after landing for a branch. Exploratory work
+finishes as `exploring.md` says.
 
 Your final message follows ryugi:using-ryugi. It carries the verify link
 and which groups wait on their verdict. The work is not done, and the ways

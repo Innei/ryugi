@@ -4,13 +4,15 @@
 
 For what is judged by reading: the log of an end-to-end run, API status,
 counts, a migration result, which build is deployed and what it serves, a
-number against a threshold, a downstream build, an eval tally. Use the complete verify writing description returned by the artifacts CLI. One report per piece of work, `verify/<topic>`. Write it
-in their language: titles, asks, gaps and notes. Ids, commands and output
-stay as they are.
+number against a threshold, a downstream build, an eval tally. Use the complete verify writing description returned by the artifacts CLI. One report per piece of work, `verify/<topic>`. Write
+everything they read in their language: titles, results, asks, table
+headers and cells, gaps, notes, and any line you copy from a ledger or a
+log, translated. Ids, commands and raw output stay as they are.
 
 1. **One claim per thing you assert**, titled with the claim, each with
    `from` and `capturedAt`.
-   - **A command decided it**: `judge="agent"`, with the command's raw
+   - **A command decided it**, and it is a result of the work, not a
+     routine check (see What is a claim in SKILL.md): `judge="agent"`, with the command's raw
      output as an `<output>` file and a one-line `<result>` saying what it
      proved; that line is all the page shows until it is opened. Claims
      from the same environment and build share one identical `from`
@@ -20,9 +22,11 @@ stay as they are.
      threshold you picked, a trade-off you made, whether a sample is
      enough): `judge="human"` with an `<ask>` saying what would make it
      wrong. Most reports have none: never re-ask what the spec or the bug
-     report already decided. A claim that lists many calls (the rulings of
-     a spec run) marks each table row `cost="change|small|none"`; only the
-     `change` rows are the ones you ask them to look at.
+     report already decided. From a spec run's rulings, take only those
+     that change what someone using the software gets, at most five, each
+     its own claim: the ruling in plain words as the title, the `<ask>`
+     saying when it would be wrong, one paragraph on why. The rest stay in
+     the ledger; never paste the ledger as a table.
 2. **Every item under "Not verified" is a `<gap>`**: what, why you could
    not, and the one thing you need. An empty gaps section is part of done.
 3. **Screen claims stay on the artboard**: add `<ref artboard="…" group="…" />`
