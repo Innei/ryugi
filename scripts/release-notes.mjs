@@ -2,12 +2,19 @@
 // Generates a Ryugi plugin release note from conventional commits.
 //
 //   node scripts/release-notes.mjs --tag v1.98.0
-//   node scripts/release-notes.mjs --tag v1.98.0 --previous v1.97.0
+//   node scripts/release-notes.mjs --tag v1.98.0 --ai
 //   node scripts/release-notes.mjs --tag detect-agent-v0.1.0 --previous v1.46.0 --scope detect-agent
 //
-// Markdown goes to stdout. The previous tag is the greatest lower vX.Y.Z tag
-// unless --previous names one; a tag whose range is empty (tags created out of
-// order) steps back until a commit is found.
+// Without --ai it renders the note deterministically from commit subjects.
+// With --ai it asks an OpenAI-compatible chat completions endpoint to rewrite
+// the same commits as user-facing notes, validating every link; if the call or
+// the validation fails it falls back to the deterministic note (or exits 1
+// with --ai-strict). Markdown goes to stdout.
+//
+// AI configuration:
+//   RELEASE_NOTES_API_URL  default https://models.github.ai/inference/chat/completions
+//   RELEASE_NOTES_API_KEY  default GITHUB_TOKEN
+//   RELEASE_NOTES_MODEL    default openai/gpt-4.1
 
 import { execFileSync } from 'node:child_process';
 
@@ -15,6 +22,10 @@ const REPO = 'Innei/ryugi';
 const URL = `https://github.com/${REPO}`;
 const AREA_ORDER = ['Artifacts', 'Skills', 'Hosts', 'Detect agent', 'Docs', 'Brand', 'Other'];
 const LABEL_ORDER = ['New', 'Fix', 'Improved'];
+const AI_URL =
+  process.env.RELEASE_NOTES_API_URL ?? 'https://models.github.ai/inference/chat/completions';
+const AI_KEY = process.env.RELEASE_NOTES_API_KEY ?? process.env.GITHUB_TOKEN;
+const AI_MODEL = process.env.RELEASE_NOTES_MODEL ?? 'openai/gpt-4.1';
 
 const SCOPE_AREA = {
   'artifacts': 'Artifacts',
@@ -55,8 +66,8 @@ const SCOPE_AREA = {
   'detect-agent': 'Detect agent',
 };
 
-// Release tooling and CI changes stay out of the notes; dependencies and
-// internal refactors only reach a release as "Maintenance release".
+// Release tooling and CI changes stay out of the deterministic note;
+// dependencies and internal refactors only reach a release as maintenance.
 const HIDDEN_SCOPES = new Set(['release', 'ci']);
 const TYPE_LABEL = { feat: 'New', fix: 'Fix', perf: 'Improved', style: 'Improved' };
 
@@ -67,8 +78,29 @@ const SUBJECT_OVERRIDES = {
     'the storyboard type: a row in the type table for product demo videos, and comments on storyboards wake the agent',
 };
 
+const AI_SYSTEM_PROMPT = `You write release notes for Ryugi, a plugin that gives coding agents interactive artifacts (artboards, documents, whiteboards, slides, storyboards) they publish and collect comments on.
+
+Audience: developers who use Ryugi inside a coding agent. They want to know what changed in how they work, not which files changed.
+
+Rules:
+- Open with a lead paragraph of one or two sentences when the release contains a feature (feat) or more than one user-facing change. Skip it for a single fix, a version bump, or a maintenance release.
+- Then area sections in this order, omitting empty ones: ## Artifacts, ## Skills, ## Hosts, ## Detect agent, ## Docs, ## Brand, ## Other.
+- Each bullet is "**Short title** — one sentence, two at most, on the user-visible change." Keep the bold title under six words. Write for someone deciding whether to upgrade, not for someone reviewing the diff.
+- No file paths, command flags, option names, internal identifiers, line counts, or file lists. Mention a command only when the user must type it.
+- Merge commits that describe one change into one bullet. Each change appears once; do not repeat the same work in two sections.
+- Skip README, package metadata, specs, tests, CI, refactors, and routine dependency bumps. When every commit is documentation, write a single ## Docs bullet instead of a maintenance line.
+- End every bullet with its commit links: ([abc1234](https://github.com/Innei/ryugi/commit/FULL_SHA)). For several commits, separate the links with ", ".
+- If there are no commits, or nothing user-facing remains, output exactly one line: "Version bump only." or "Maintenance release: dependency and tooling updates."
+- No Full Changelog line; it is appended later. Output only Markdown, no code fence. English, no emojis, no marketing adjectives.
+
+Shape, not content:
+## Artifacts
+
+- **Design docs as the spec** — An approved design document now serves as the spec; the spec file only points to it, and approval is a question on the doc itself. ([8ace8fe](https://github.com/Innei/ryugi/commit/8ace8fe69234632a2e1e3619fefe82f707261819))`;
+
 const root = execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' }).trim();
-const git = (...args) => execFileSync('git', ['-C', root, ...args], { encoding: 'utf8' });
+const git = (...args) =>
+  execFileSync('git', ['-C', root, ...args], { encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 });
 
 function parseArgs(argv) {
   const out = {};
@@ -77,6 +109,10 @@ function parseArgs(argv) {
     if (!key.startsWith('--')) throw new Error(`unexpected argument: ${key}`);
     const name = key.slice(2);
     if (name === 'help') return { help: true };
+    if (name === 'ai' || name === 'ai-strict') {
+      out[name] = true;
+      continue;
+    }
     out[name] = argv[++i];
   }
   return out;
@@ -147,16 +183,17 @@ function tidySubject(subject) {
 
 function readCommits(from, to) {
   const range = from ? `${from}..${to}` : to;
-  return git('log', '--no-merges', '--reverse', '--format=%H%x1f%s', range)
-    .split('\n')
+  return git('log', '--no-merges', '--reverse', '--format=%H%x1f%s%x1f%b%x1e', range)
+    .split('\x1E')
+    .map((record) => record.trim())
     .filter(Boolean)
-    .map((line) => {
-      const [sha, subject] = line.split('\x1F');
-      return { sha, subject };
+    .map((record) => {
+      const [sha, subject, body = ''] = record.split('\x1F');
+      return { sha, subject, body: body.trim() };
     });
 }
 
-function render({ tag, previous, scope, tags }) {
+function resolveRange({ tag, previous, tags }) {
   let from = previous;
   let rows = readCommits(from, tag);
   // A tag can point at a commit older than the previous version tag; step back
@@ -166,15 +203,25 @@ function render({ tag, previous, scope, tags }) {
     from = earlier.at(-1) ?? null;
     rows = readCommits(from, tag);
   }
+  return { from, rows };
+}
 
+function publicCommits(rows, scope) {
   const filtered = rows.filter((c) => !isReleaseCommit(c.subject));
-  const scoped = scope
-    ? filtered.filter((c) => parseSubject(c.subject)?.scope === scope)
-    : filtered;
+  return scope ? filtered.filter((c) => parseSubject(c.subject)?.scope === scope) : filtered;
+}
+
+function footer(from, tag) {
+  return from
+    ? `**Full Changelog**: ${URL}/compare/${from}...${tag}`
+    : `**Full Changelog**: ${URL}/commits/${tag}`;
+}
+
+function renderDeterministic({ tag, from, rows, scope }) {
   const sections = new Map();
   const seen = new Set();
 
-  for (const row of scoped) {
+  for (const row of publicCommits(rows, scope)) {
     const parsed = parseSubject(row.subject);
     if (!parsed) continue;
     if (!TYPE_LABEL[parsed.type] && parsed.type !== 'docs') continue;
@@ -195,7 +242,7 @@ function render({ tag, previous, scope, tags }) {
   const lines = [];
   if (!sections.size) {
     lines.push(
-      filtered.length
+      publicCommits(rows, scope).length
         ? 'Maintenance release: internal changes only.'
         : 'Version bump only; no user-facing changes.',
     );
@@ -210,21 +257,116 @@ function render({ tag, previous, scope, tags }) {
       lines.push(`## ${area}`, '', ...bullets);
     }
   }
-  lines.push('');
-  lines.push(
-    from
-      ? `**Full Changelog**: ${URL}/compare/${from}...${tag}`
-      : `**Full Changelog**: ${URL}/commits/${tag}`,
-  );
+  lines.push('', footer(from, tag));
   return `${lines.join('\n')}\n`;
 }
 
-const args = parseArgs(process.argv.slice(2));
-if (args.help) {
-  console.log('usage: release-notes.mjs --tag <tag> [--previous <tag>] [--scope <scope>]');
-  process.exit(0);
+function aiCommitPayload(row) {
+  let diff = git('show', '--format=', '--unified=2', '--no-color', row.sha);
+  if (diff.length > 8000) diff = `${diff.slice(0, 8000)}\n[…diff truncated…]`;
+  return {
+    sha: row.sha,
+    subject: row.subject,
+    body: row.body,
+    stat: git('show', '--stat', '--format=', row.sha).trim(),
+    diff,
+  };
 }
-if (!args.tag) fail('--tag is required');
-const tags = versionTags();
-const previous = previousTag(args.tag, args.previous, tags);
-process.stdout.write(render({ tag: args.tag, previous, scope: args.scope, tags }));
+
+async function callAi(tag, from, commits) {
+  if (!AI_KEY) throw new Error('no API key (set RELEASE_NOTES_API_KEY or GITHUB_TOKEN)');
+  let budget = 40000;
+  const payload = [];
+  for (const row of commits) {
+    const entry = aiCommitPayload(row);
+    if (entry.diff.length > budget) entry.diff = entry.diff.slice(0, budget);
+    budget -= entry.diff.length;
+    payload.push(entry);
+  }
+  const body = {
+    model: AI_MODEL,
+    messages: [
+      { role: 'system', content: AI_SYSTEM_PROMPT },
+      { role: 'user', content: JSON.stringify({ tag, previous: from, commits: payload }) },
+    ],
+    max_tokens: 4000,
+    temperature: 0.2,
+  };
+  const response = await fetch(AI_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${AI_KEY}` },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(240_000),
+  });
+  if (!response.ok) throw new Error(`${response.status} ${(await response.text()).slice(0, 300)}`);
+  const data = await response.json();
+  const content = data.choices?.[0]?.message?.content;
+  if (!content) throw new Error('empty completion');
+  return content;
+}
+
+function normalizeAi(text, rows) {
+  const allowed = new Map(rows.map((row) => [row.sha, row.sha]));
+  for (const row of rows) allowed.set(row.sha.slice(0, 7), row.sha);
+  let out = text.trim();
+  if (out.startsWith('```')) out = out.replace(/^```[a-z]*\n/, '').replace(/\n```$/, '');
+  if (!out) throw new Error('empty output');
+  if (/^# /m.test(out)) throw new Error('h1 heading in output');
+  if (out.includes('```')) throw new Error('code fence in output');
+  if (/full changelog/i.test(out)) throw new Error('model wrote its own Full Changelog');
+  out = out.replaceAll(
+    /\[([^\]]*)\]\((https:\/\/github\.com\/Innei\/ryugi\/commit\/([0-9a-f]{7,40}))\)/g,
+    (whole, label, _url, sha) => {
+      const full = allowed.get(sha);
+      if (!full) throw new Error(`unknown commit link ${sha}`);
+      return `[${full.slice(0, 7)}](${URL}/commit/${full})`;
+    },
+  );
+  const headings = [...out.matchAll(/^## (.+)$/gm)].map((m) => m[1].trim());
+  for (const heading of headings) {
+    if (!AREA_ORDER.includes(heading)) throw new Error(`unknown section ${heading}`);
+  }
+  const bullets = out.split('\n').filter((line) => line.startsWith('- '));
+  const oneLiner = /^(?:Version bump only\.|Maintenance release:)/.test(out);
+  if (!bullets.length && !oneLiner) throw new Error('no bullets');
+  if (bullets.length && !headings.length) throw new Error('bullets without a section');
+  for (const bullet of bullets) {
+    if (!/\]\(https:\/\/github\.com\/Innei\/ryugi\/(?:commit|pull)\//.test(bullet)) {
+      throw new Error(`bullet without a link: ${bullet.slice(0, 80)}`);
+    }
+  }
+  return out;
+}
+
+async function main() {
+  const args = parseArgs(process.argv.slice(2));
+  if (args.help) {
+    console.log(
+      'usage: release-notes.mjs --tag <tag> [--previous <tag>] [--scope <scope>] [--ai | --ai-strict]',
+    );
+    process.exit(0);
+  }
+  if (!args.tag) fail('--tag is required');
+
+  const tags = versionTags();
+  const previous = previousTag(args.tag, args.previous, tags);
+  const { from, rows } = resolveRange({ tag: args.tag, previous, tags });
+  const deterministic = renderDeterministic({ tag: args.tag, from, rows, scope: args.scope });
+
+  if (!args.ai && !args['ai-strict']) {
+    process.stdout.write(deterministic);
+    return;
+  }
+
+  try {
+    const commits = publicCommits(rows, args.scope);
+    const content = normalizeAi(await callAi(args.tag, from, commits), commits);
+    process.stdout.write(`${content}\n\n${footer(from, args.tag)}\n`);
+  } catch (error) {
+    console.error(`release-notes: ai failed: ${error.message}`);
+    if (args['ai-strict']) process.exit(1);
+    process.stdout.write(deterministic);
+  }
+}
+
+await main();
