@@ -110,3 +110,50 @@ jobs:
         env:
           KEYCHAIN: ${{ steps.keychain.outputs.keychain }}
         run: security delete-keychain "$KEYCHAIN"
+
+  linux:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            target: x86_64-unknown-linux-musl
+            asset: ryugi-daemon-linux-x64
+          - runner: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-musl
+            asset: ryugi-daemon-linux-arm64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ env.CLOUD_REPO }}
+          ref: artifacts-v${{ inputs.version }}
+          token: ${{ secrets.RYUGI_CLOUD_TOKEN }}
+          persist-credentials: false
+
+      - name: Install rustup when the runner has none
+        run: |
+          if ! command -v rustup > /dev/null; then
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
+            echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+          fi
+
+      - name: Add the musl target
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y musl-tools
+          rustup target add ${{ matrix.target }}
+
+      - name: Build ryugi-daemon for ${{ matrix.target }}
+        run: scripts/build-daemon.sh daemon-dist ${{ matrix.target }}
+
+      - name: Check it is a static binary
+        run: file "daemon-dist/${{ matrix.asset }}" | tee /dev/stderr | grep -Eq 'statically linked|static-pie linked'
+
+      - name: Attach the binary to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+          ASSET: ${{ matrix.asset }}
+        run: gh release upload "v$VERSION" "daemon-dist/$ASSET" "daemon-dist/$ASSET.sha256" --clobber -R "$GITHUB_REPOSITORY"
