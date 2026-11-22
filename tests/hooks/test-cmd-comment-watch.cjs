@@ -23,7 +23,7 @@ const { loadCustomHosts, matchCustomHost } = require(path.join(appDir, 'custom-h
 const { subscriptionFor } = require(path.join(appDir, 'comment-subscriptions.cjs'));
 const { ensureWatch, UNSUBSCRIBE_EXIT_CODE } = require(adapter);
 
-const THREAD = 'thr_01JXYZ.42';
+const THREAD = 'mcp:thr_01JXYZ.42';
 const CLAUDE_SESSION = '29ba4e4a-2224-4457-947d-c39ebcbc846c';
 const at = (n) => `2026-11-22T01:00:${String(n).padStart(2, '0')}.000Z`;
 
@@ -397,17 +397,19 @@ test('launcher subscribes under custom host, spawns cmd watcher, and suppresses 
   await f.connected();
   f.stopWatch();
 
-  // Codex watch hook stays silent when a custom host owns the session.
-  const codexRes = spawnSync(process.execPath, [codexAdapter, 'watch'], {
-    cwd: f.project,
-    env: { ...f.env, CODEX_THREAD_ID: CLAUDE_SESSION },
-    input: JSON.stringify({
-      session_id: CLAUDE_SESSION,
+  // Codex watch and bind hooks stay silent when a custom host owns the session.
+  for (const mode of ['watch', 'bind']) {
+    const codexRes = spawnSync(process.execPath, [codexAdapter, mode], {
       cwd: f.project,
-      hook_event_name: 'SessionStart',
-    }),
-    encoding: 'utf8',
-  });
-  assert.equal(codexRes.status, 0);
-  assert.equal(codexRes.stdout.trim(), '');
+      env: { ...f.env, CODEX_THREAD_ID: CLAUDE_SESSION },
+      input: JSON.stringify({
+        session_id: CLAUDE_SESSION,
+        cwd: f.project,
+        hook_event_name: 'SessionStart',
+      }),
+      encoding: 'utf8',
+    });
+    assert.equal(codexRes.status, 0);
+    assert.equal(codexRes.stdout.trim(), '');
+  }
 });

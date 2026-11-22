@@ -240,7 +240,7 @@ function stopWorker(file) {
 
 function main() {
   setRyugiTitle('watch-comments');
-  if (process.argv[2] === 'watch') {
+  if (process.argv[2] === 'watch' || process.argv[2] === 'bind') {
     try {
       if (matchCustomHost(process.env)) return;
     } catch {}

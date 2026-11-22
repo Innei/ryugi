@@ -41,7 +41,13 @@ function alive(pid) {
 function workerFile(host, session, env = process.env) {
   const base =
     env.PLUGIN_DATA || path.join(env.XDG_CACHE_HOME || path.join(os.homedir(), '.cache'), 'ryugi');
-  return path.join(base, 'cmd-comment-watch', 'workers', host, `${session}.json`);
+  return path.join(
+    base,
+    'cmd-comment-watch',
+    'workers',
+    host,
+    `${encodeURIComponent(session)}.json`,
+  );
 }
 
 function commandKeyOf({ command, agent, timeoutMs }) {

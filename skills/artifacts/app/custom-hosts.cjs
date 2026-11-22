@@ -5,7 +5,7 @@ const os = require('node:os');
 const path = require('node:path');
 
 const HOST_NAME = /^[a-z][a-z0-9_-]{0,31}$/;
-const SESSION_ID = /^(?!\.\.?$)(?!.*\.\.)[\w.-]{1,128}$/;
+const SESSION_ID = /^(?!\.\.?$)(?!.*\.\.)[\w.:-]{1,128}$/;
 const ENV_NAME = /^[a-z_]\w*$/i;
 const BUILTIN_HOSTS = new Set(['codex', 'claude', 'pi', 'antigravity']);
 const DEFAULT_TIMEOUT_MS = 15000;
