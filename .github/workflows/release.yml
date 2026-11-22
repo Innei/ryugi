@@ -198,10 +198,10 @@ jobs:
           token: ${{ secrets.RYUGI_CLOUD_TOKEN }}
           persist-credentials: false
 
-      - name: Add both Mac targets
-        run: rustup target add aarch64-apple-darwin x86_64-apple-darwin
+      - name: Add the Apple silicon target
+        run: rustup target add aarch64-apple-darwin
 
-      - name: Build ryugi-daemon for both architectures
+      - name: Build ryugi-daemon for Apple silicon
         run: scripts/build-daemon.sh daemon-dist
 
       - name: Attach the binaries to the release
