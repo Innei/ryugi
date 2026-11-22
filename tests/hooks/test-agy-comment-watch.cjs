@@ -8,6 +8,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { after, test } = require('node:test');
 const { setTimeout: delay } = require('node:timers/promises');
+const { fakeHub } = require('./fake-hub.cjs');
 
 const cacheHome = fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-agy-cache-'));
 process.env.XDG_CACHE_HOME = cacheHome;
@@ -26,16 +27,6 @@ async function until(check, explanation, timeout = 5000) {
     await delay(25);
   }
   assert.fail(typeof explanation === 'function' ? explanation() : explanation);
-}
-
-async function initialScan(project, session = SESSION) {
-  const file = path.join(project, '.ryugi/artifacts/.state/agy-comment-watch', `${session}.alive`);
-  await until(() => fs.existsSync(file), 'agy watcher never wrote a heartbeat');
-  const first = fs.readFileSync(file, 'utf8');
-  await until(
-    () => fs.readFileSync(file, 'utf8') !== first,
-    'agy watcher never finished its initial scan',
-  );
 }
 
 async function lsServer(t, options = {}) {
@@ -85,6 +76,7 @@ async function lsServer(t, options = {}) {
 }
 
 function fixture(t, ls) {
+  const hub = fakeHub(t);
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-agy-watch-')));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const project = path.join(root, 'project');
@@ -100,6 +92,7 @@ function fixture(t, ls) {
     ANTIGRAVITY_LS_ADDRESS: ls.address,
     ANTIGRAVITY_CSRF_TOKEN: 'test-csrf-token',
     RYUGI_NO_UPDATE_CHECK: '1',
+    ...hub.env,
   };
   for (const key of [
     'CODEX_THREAD_ID',
@@ -116,16 +109,37 @@ function fixture(t, ls) {
       } catch {}
     }
   });
-  const subscribe = (artifact, session = SESSION) => {
-    const file = path.join(project, '.ryugi/artifacts/.state/agy-comment-watch', `${session}.json`);
-    fs.mkdirSync(path.dirname(file), { recursive: true });
-    fs.writeFileSync(file, JSON.stringify({ artifacts: [artifact], updatedAt: at(0) }));
+  let nextId = 0;
+  const connected = (count = 1) =>
+    until(
+      () => hub.hellos().length >= count && hub.sessions.has(SESSION),
+      'the watcher never said hello to the hub',
+    );
+  const push = async (artifact, text) => {
+    await connected();
+    const sent = ++nextId;
+    hub.send(SESSION, {
+      t: 'event',
+      id: sent,
+      event: {
+        type: 'ryugi-comments',
+        project,
+        artifact,
+        unread: 1,
+        threads: [
+          {
+            thread: 't1',
+            status: 'open',
+            block: 'b1',
+            messages: [{ id: 'm1', at: at(1), name: 'human', text }],
+          },
+        ],
+      },
+    });
+    return sent;
   };
-  const writeComments = (artifact, threads) => {
-    const file = path.join(project, '.ryugi/artifacts', artifact, 'comments.json');
-    fs.mkdirSync(path.dirname(file), { recursive: true });
-    fs.writeFileSync(file, JSON.stringify({ version: 1, threads }));
-  };
+  const retract = (artifact) =>
+    hub.send(SESSION, { t: 'retract', project, artifact, type: 'ryugi-comments' });
   const startWatch = (session = SESSION) => {
     const child = spawn(process.execPath, [adapter, 'watch'], {
       cwd: project,
@@ -155,38 +169,29 @@ function fixture(t, ls) {
     });
     assert.equal(res.status, 0, res.stderr);
   };
-  return { data, env, project, startWatch, stopWatch, subscribe, writeComments };
+  return { connected, data, env, hub, project, push, retract, startWatch, stopWatch };
 }
 
-test('agy-comment-watch delivers unread comments via SendAgentMessage and deduplicates workers', async (t) => {
+test('agy-comment-watch delivers hub events via SendAgentMessage, acknowledges them and deduplicates workers', async (t) => {
   const ls = await lsServer(t);
   const f = fixture(t, ls);
-  f.subscribe('document/spec');
   f.startWatch();
-  await initialScan(f.project);
+  await f.connected();
 
-  // Starting a second watcher while the first is alive is a no-op
   const duplicate = f.startWatch();
   const dupExit = await new Promise((resolve) => duplicate.on('exit', resolve));
   assert.equal(dupExit, 0);
 
-  f.writeComments('document/spec', [
-    {
-      id: 't1',
-      anchor: { blockId: 'b1', quote: ' section ' },
-      status: 'open',
-      statusAt: at(1),
-      statusBy: 'human',
-      messages: [{ id: 'm1', author: 'human', text: 'please clarify this', at: at(1) }],
-    },
-  ]);
-
-  await until(() => ls.calls.length === 1, 'watcher did not send RPC for unread comment');
+  const sent = await f.push('document/spec', 'please clarify this');
+  await until(() => ls.calls.length === 1, 'watcher did not send RPC for the event');
   assert.equal(ls.calls[0].url, '/exa.language_server_pb.LanguageServerService/SendAgentMessage');
   assert.equal(ls.calls[0].csrf, 'test-csrf-token');
   assert.equal(ls.calls[0].body.recipient, SESSION);
   assert.match(ls.calls[0].body.content, /Ryugi comments document\/spec \(1 unread\)/);
   assert.match(ls.calls[0].body.content, /please clarify this/);
+  await until(() => f.hub.delivered().includes(sent), 'the delivery was never acknowledged');
+  assert.equal(f.hub.hellos()[0].agent, 'Antigravity');
+  assert.equal(f.hub.hellos()[0].host, 'antigravity');
 
   f.stopWatch();
 });
@@ -194,22 +199,11 @@ test('agy-comment-watch delivers unread comments via SendAgentMessage and dedupl
 test('agy-comment-watch falls back to SendUserCascadeMessage when SendAgentMessage is rejected and retries on failure', async (t) => {
   const ls = await lsServer(t, { failSendAgent: true, failAll: true });
   const f = fixture(t, ls);
-  f.subscribe('document/fallback');
   f.startWatch();
-  await initialScan(f.project);
-
-  f.writeComments('document/fallback', [
-    {
-      id: 't2',
-      anchor: { blockId: 'b2', quote: ' fallback ' },
-      status: 'open',
-      statusAt: at(2),
-      statusBy: 'human',
-      messages: [{ id: 'm2', author: 'human', text: 'check fallback', at: at(2) }],
-    },
-  ]);
+  const sent = await f.push('document/fallback', 'check fallback');
 
   await until(() => ls.calls.length >= 1, 'watcher did not attempt initial delivery');
+  assert.deepEqual(f.hub.delivered(), []);
   ls.setFailAll(false);
 
   await until(
@@ -224,9 +218,25 @@ test('agy-comment-watch falls back to SendUserCascadeMessage when SendAgentMessa
     (c) => c.url === '/exa.language_server_pb.LanguageServerService/SendUserCascadeMessage',
   );
   assert.equal(cascadeCall.body.cascadeId, SESSION);
-  assert.equal(cascadeCall.body.items?.[0]?.text !== undefined, true);
   assert.match(cascadeCall.body.items[0].text, /check fallback/);
+  await until(() => f.hub.delivered().includes(sent), 'the fallback delivery was not acknowledged');
 
+  f.stopWatch();
+});
+
+test('a retract drops an event still waiting for the language server', async (t) => {
+  const ls = await lsServer(t, { failAll: true });
+  const f = fixture(t, ls);
+  f.startWatch();
+  await f.push('document/retract', 'answered elsewhere');
+  await until(() => ls.calls.length >= 1, 'watcher did not attempt delivery');
+  f.retract('document/retract');
+  await delay(100);
+  const attempts = ls.calls.length;
+  ls.setFailAll(false);
+  await delay(2000);
+  assert.equal(ls.calls.length, attempts);
+  assert.deepEqual(f.hub.delivered(), []);
   f.stopWatch();
 });
 
@@ -234,9 +244,7 @@ test('agy-comment-watch supersedes a worker with a stale lsAddress and exits cle
   const ls1 = await lsServer(t);
   const ls2 = await lsServer(t);
   const f = fixture(t, ls1);
-  f.subscribe('document/resume');
 
-  // Missing ANTIGRAVITY_LS_ADDRESS exits 0 immediately
   const noLs = spawnSync(process.execPath, [adapter, 'watch'], {
     cwd: f.project,
     env: { ...f.env, ANTIGRAVITY_LS_ADDRESS: '' },
@@ -250,25 +258,15 @@ test('agy-comment-watch supersedes a worker with a stale lsAddress and exits cle
   assert.equal(noLs.status, 0);
 
   const first = f.startWatch();
-  await initialScan(f.project);
+  await f.connected();
 
-  // Resume session on a new LS address: second watcher supersedes the first
   f.env.ANTIGRAVITY_LS_ADDRESS = ls2.address;
   const second = f.startWatch();
   const firstExit = await new Promise((resolve) => first.on('exit', resolve));
   assert.equal(firstExit, 0);
+  await f.connected(2);
 
-  f.writeComments('document/resume', [
-    {
-      id: 't3',
-      anchor: { blockId: 'b3', quote: ' resume ' },
-      status: 'open',
-      statusAt: at(3),
-      statusBy: 'human',
-      messages: [{ id: 'm3', author: 'human', text: 'resumed comment', at: at(3) }],
-    },
-  ]);
-
+  await f.push('document/resume', 'resumed comment');
   await until(() => ls2.calls.length === 1, 'new watcher did not deliver to new LS address');
   assert.equal(ls1.calls.length, 0);
 
@@ -281,28 +279,15 @@ test('ensureWatch launches a detached watcher and skips respawning while healthy
   const { ensureWatch } = require(adapter);
   const ls = await lsServer(t);
   const f = fixture(t, ls);
-  f.subscribe('document/launcher');
 
   assert.equal(ensureWatch(f.project, f.env), true);
-  await initialScan(f.project);
-
-  // Calling ensureWatch again while healthy is a fast no-op
+  await f.connected();
   assert.equal(ensureWatch(f.project, f.env), false);
 
-  f.writeComments('document/launcher', [
-    {
-      id: 't4',
-      anchor: { blockId: 'b4', quote: ' launcher ' },
-      status: 'open',
-      statusAt: at(4),
-      statusBy: 'human',
-      messages: [{ id: 'm4', author: 'human', text: 'woken from launcher', at: at(4) }],
-    },
-  ]);
-
+  await f.push('document/launcher', 'woken from launcher');
   await until(
     () => ls.calls.length === 1,
-    'watcher spawned by ensureWatch did not deliver comment',
+    'watcher spawned by ensureWatch did not deliver the event',
   );
   assert.match(ls.calls[0].body.content, /woken from launcher/);
 

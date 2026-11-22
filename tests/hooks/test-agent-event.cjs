@@ -372,38 +372,6 @@ test('inherited ANTIGRAVITY_AGENT=1 does not hijack Codex or Claude Code agent-e
   assert.equal(seen[0].body.host, 'codex');
 });
 
-const { reportDeliveries } = require(path.join(repo, 'skills/artifacts/app/agent-event.cjs'));
-
-const woken = (artifact, ids) => ({
-  type: 'ryugi-comments',
-  artifact,
-  unread: ids.length,
-  threads: ids.map((id) => ({ thread: id, status: 'open', messages: [] })),
-});
-
-test('watcher deliveries tell the hub which threads each session was shown', async (t) => {
-  const dir = project(t);
-  const seen = await hub(t, dir);
-  await reportDeliveries(dir, 'claude', SESSION, [
-    woken('document/plan', ['t1', 't2']),
-    { type: 'ryugi-answers', artifact: 'document/plan', questions: 1 },
-  ]);
-  assert.deepEqual(seen, [
-    {
-      path: '/api/agent/delivered',
-      project: dir,
-      body: { host: 'claude', session: SESSION, artifact: 'document/plan', threads: ['t1', 't2'] },
-    },
-  ]);
-});
-
-test('a watcher without a session reports nothing', async (t) => {
-  const dir = project(t);
-  const seen = await hub(t, dir);
-  await reportDeliveries(dir, 'claude', null, [woken('document/plan', ['t1'])]);
-  assert.deepEqual(seen, []);
-});
-
 function linkedWorktree(t) {
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-agent-event-wt-')));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));

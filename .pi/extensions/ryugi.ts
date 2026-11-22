@@ -4,8 +4,9 @@ import { fileURLToPath } from 'node:url';
 
 import type { ExtensionAPI, ExtensionContext } from '@earendil-works/pi-coding-agent';
 
-import { projectRoot, subscriptions } from '../../skills/artifacts/app/comment-subscriptions.cjs';
-import { createCommentWatch, wakeMessage } from '../../skills/artifacts/app/comment-watch.cjs';
+import { projectRoot } from '../../skills/artifacts/app/comment-subscriptions.cjs';
+import { wakeMessage } from '../../skills/artifacts/app/comment-watch.cjs';
+import { openHubChannel } from '../../skills/artifacts/app/hub-channel.cjs';
 
 const EXTREMELY_IMPORTANT_MARKER = '<EXTREMELY_IMPORTANT>';
 const BOOTSTRAP_MARKER = 'ryugi:using-ryugi bootstrap for pi';
@@ -15,23 +16,21 @@ const packageRoot = resolve(extensionDir, '../..');
 const skillsDir = resolve(packageRoot, 'skills');
 const bootstrapSkillPath = resolve(skillsDir, 'using-ryugi', 'SKILL.md');
 
-const COMMENT_POLL_MS = 1000;
-
 let cachedBootstrap: string | null | undefined;
 
 export default function ryugiPiExtension(pi: ExtensionAPI) {
   let injectBootstrap = true;
-  let commentTimer: ReturnType<typeof setInterval> | undefined;
+  let channel: { close: () => void } | undefined;
 
   const stopCommentWatch = () => {
-    clearInterval(commentTimer);
-    commentTimer = undefined;
+    channel?.close();
+    channel = undefined;
   };
 
   pi.on('session_start', async (_event, ctx) => {
     injectBootstrap = true;
     stopCommentWatch();
-    commentTimer = watchComments(pi, ctx, projectRoot(ctx.cwd), ctx.sessionManager.getSessionId());
+    channel = watchComments(pi, ctx, projectRoot(ctx.cwd), ctx.sessionManager.getSessionId());
   });
 
   pi.on('session_shutdown', async () => {
@@ -71,9 +70,8 @@ export default function ryugiPiExtension(pi: ExtensionAPI) {
 }
 
 function watchComments(pi: ExtensionAPI, ctx: ExtensionContext, project: string, session: string) {
-  const poll = createCommentWatch(project, 'pi');
-  // An error thrown from a timer is an uncaughtException, which exits Pi. Report each distinct
-  // failure once instead, because the same one usually repeats on every poll.
+  // A throw escaping a socket callback is an uncaughtException, which exits Pi. Report each
+  // distinct failure once instead, because the same one usually repeats on every event.
   let reported: string | undefined;
   const report = (error: unknown) => {
     const message = `Ryugi comment watch: ${error instanceof Error ? error.message : String(error)}`;
@@ -85,29 +83,26 @@ function watchComments(pi: ExtensionAPI, ctx: ExtensionContext, project: string,
       console.error(message);
     }
   };
-  const deliver = (event: { type: string }) => {
-    try {
-      // Typed as void, but a host may hand back a promise; its rejection must not escape either.
-      Promise.resolve(
-        pi.sendMessage(
-          { customType: event.type, content: wakeMessage(event), display: true },
-          { triggerTurn: true, deliverAs: 'followUp' },
-        ),
-      ).catch(report);
-    } catch (error) {
-      report(error);
-    }
-  };
-  const timer = setInterval(() => {
-    try {
-      const artifacts = subscriptions(project, 'pi', session);
-      if (artifacts.size) for (const event of poll(artifacts)) deliver(event);
-    } catch (error) {
-      report(error);
-    }
-  }, COMMENT_POLL_MS);
-  timer.unref();
-  return timer;
+  const channel = openHubChannel({
+    project,
+    host: 'pi',
+    session,
+    agent: 'pi',
+    onEvent: (event: { type: string }, id: number) => {
+      try {
+        // Typed as void, but a host may hand back a promise; its rejection must not escape either.
+        Promise.resolve(
+          pi.sendMessage(
+            { customType: event.type, content: wakeMessage(event), display: true },
+            { triggerTurn: true, deliverAs: 'followUp' },
+          ),
+        ).then(() => channel.delivered(id), report);
+      } catch (error) {
+        report(error);
+      }
+    },
+  });
+  return channel;
 }
 
 function getBootstrapContent(): string | null {

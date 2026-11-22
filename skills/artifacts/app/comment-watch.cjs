@@ -1,45 +1,12 @@
 'use strict';
 
 const { spawnSync } = require('node:child_process');
-const fs = require('node:fs');
-const path = require('node:path');
-const { unreadThreadCount, reviewStateKey } = require('./comment-threads.cjs');
-const { reportDeliveries } = require('./agent-event.cjs');
-const {
-  beat,
-  checkouts,
-  sessionOf,
-  sessionProjects,
-  subscriptionFile,
-  subscriptions,
-} = require('./comment-subscriptions.cjs');
+const { openHubChannel } = require('./hub-channel.cjs');
+const { sessionOf } = require('./comment-subscriptions.cjs');
 
 const cursorKey = (env) => (env.CLAUDE_CODE_IS_COWORK ? 'Claude Cowork' : 'Claude Code');
 
-const LAUNCHER = path.resolve(__dirname, 'ryugi.cjs');
-const quote = (text) => `'${text.replaceAll("'", "'\"'\"'")}'`;
-
-// The notification carries the changed human text itself: one line, truncated per message and capped in total.
-const PREVIEW_LIMIT = 400;
-const MESSAGE_LIMIT = 20;
 const graphemes = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
-const preview = (text) => {
-  const parts = [...graphemes.segment(text)];
-  return parts.length > PREVIEW_LIMIT
-    ? parts
-        .slice(0, PREVIEW_LIMIT)
-        .map((part) => part.segment)
-        .join('') + '…'
-    : text;
-};
-
-function readJson(file) {
-  try {
-    return JSON.parse(fs.readFileSync(file, 'utf8'));
-  } catch {
-    return null;
-  }
-}
 
 const clock = (at) => {
   const date = new Date(at);
@@ -47,203 +14,6 @@ const clock = (at) => {
     ? ''
     : `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
 };
-
-function ids(root, type) {
-  try {
-    return fs.readdirSync(path.join(root, type)).filter((id) => /^[a-z0-9][a-z0-9-]*$/.test(id));
-  } catch {
-    return [];
-  }
-}
-
-function humanChanges(file, isDraft = () => false) {
-  if (!file || !Array.isArray(file.threads)) return null;
-  const changes = new Map();
-  for (const thread of file.threads) {
-    if (!thread || typeof thread.id !== 'string' || !Array.isArray(thread.messages)) return null;
-    const draft = isDraft(thread);
-    for (const message of thread.messages) {
-      if (!message || typeof message.id !== 'string') return null;
-      if (message.author === 'human' && thread.status !== 'resolved')
-        changes.set(`${thread.id}/message/${message.id}`, {
-          draft,
-          value: JSON.stringify([message.at, message.editedAt, message.text, message.deleted]),
-        });
-    }
-    if (thread.statusBy === 'human' && thread.status !== 'resolved')
-      changes.set(`${thread.id}/status`, {
-        draft,
-        value: JSON.stringify([thread.status, thread.statusAt]),
-      });
-  }
-  return changes;
-}
-
-function choiceRounds(root, artifact) {
-  const file = readJson(path.join(root, '.state', artifact, 'rounds.json'));
-  return Array.isArray(file?.rounds)
-    ? file.rounds.filter((round) => round && typeof round.id === 'string')
-    : [];
-}
-
-function briefThreads(file, updated) {
-  const threads = [];
-  let omitted = 0;
-  let shown = 0;
-  for (const thread of file.threads) {
-    if (!thread || typeof thread.id !== 'string' || !Array.isArray(thread.messages)) continue;
-    const messages = [];
-    for (const message of thread.messages) {
-      if (!message || typeof message.id !== 'string') continue;
-      if (!updated.has(`${thread.id}/message/${message.id}`)) continue;
-      if (shown >= MESSAGE_LIMIT) {
-        omitted++;
-        continue;
-      }
-      shown++;
-      const entry = {
-        id: message.id,
-        at: message.at,
-        name: typeof message.name === 'string' && message.name ? message.name : 'human',
-        text: preview(typeof message.text === 'string' ? message.text : ''),
-      };
-      if (message.deleted === true) entry.deleted = true;
-      messages.push(entry);
-    }
-    if (!messages.length) continue;
-    threads.push({
-      thread: thread.id,
-      status: thread.status,
-      ...(thread.anchor?.blockId
-        ? { block: thread.anchor.blockId }
-        : thread.anchor?.board
-          ? { block: thread.anchor.board }
-          : thread.anchor?.route
-            ? { block: thread.anchor.route }
-            : {}),
-      messages,
-    });
-  }
-  return { threads, omitted };
-}
-
-const isAnswerRecord = (thread) =>
-  thread?.anchor?.ask !== undefined || thread?.anchor?.submit !== undefined;
-
-function latestSubmit(root, artifact) {
-  const latest = readJson(path.join(root, '.state', artifact, 'asks.json'))?.latest;
-  return latest && typeof latest.id === 'string'
-    ? { id: latest.id, withdrawn: latest.withdrawn === true }
-    : null;
-}
-
-function newest(threads, match) {
-  let found;
-  for (const thread of threads) {
-    if (!Array.isArray(thread?.messages) || !match(thread)) continue;
-    const at = thread.messages[0]?.at ?? '';
-    if (!found || at >= found.at) found = { thread, at };
-  }
-  return found?.thread;
-}
-
-function submittedCount(file, submit) {
-  const threads = Array.isArray(file?.threads) ? file.threads : [];
-  const covered = threads.find((thread) => thread.id === submit?.id)?.anchor?.asks;
-  if (Array.isArray(covered) && covered.length) return covered.length;
-  return new Set(
-    threads
-      .map((thread) => thread?.anchor)
-      .filter(
-        (anchor) =>
-          anchor &&
-          typeof anchor.ask === 'string' &&
-          anchor.submit === undefined &&
-          anchor.note !== true,
-      )
-      .map((anchor) => anchor.ask),
-  ).size;
-}
-
-const roundRecord = (file, round, submit) =>
-  newest(
-    Array.isArray(file?.threads) ? file.threads : [],
-    (thread) => thread.anchor?.round === round && thread.anchor?.submit === submit,
-  );
-
-const roundSubmit = (file, round) => roundRecord(file, round, true)?.id ?? null;
-
-const firstAt = (thread) => thread?.messages?.[0]?.at ?? '';
-
-// rounds.json is derived state another server can rewrite; while a submit record stands, only a later withdrawal record withdraws it.
-function standingSubmit(file, round) {
-  const submit = roundRecord(file, round, true);
-  const withdrawal = roundRecord(file, round, false);
-  return submit && !(withdrawal && firstAt(withdrawal) >= firstAt(submit)) ? submit.id : null;
-}
-
-function draftCheck(rounds) {
-  const open = rounds.filter((round) => round.state === 'open');
-  const boards = new Set(open.flatMap((round) => round.boards || []));
-  const groups = new Set(open.flatMap((round) => round.groups || []));
-  if (!boards.size && !groups.size) return () => false;
-  return (thread) => {
-    const anchor = thread.anchor || {};
-    if (anchor.group && groups.has(anchor.group)) return true;
-    if (anchor.board && boards.has(anchor.board)) return true;
-    return Array.isArray(anchor.nodes) && anchor.nodes.some((node) => boards.has(node?.board));
-  };
-}
-
-function unreadCount(project, artifact, key) {
-  const root = path.join(project, '.ryugi/artifacts');
-  const file = readJson(path.join(root, artifact, 'comments.json'));
-  if (!humanChanges(file)) return null;
-  const agentState = readJson(
-    path.join(root, '.state', 'agent-review', `agent-${reviewStateKey(artifact, key)}.json`),
-  );
-  const open = file.threads.filter(
-    (thread) => thread.status !== 'resolved' && !isAnswerRecord(thread),
-  );
-  return unreadThreadCount({ threads: open }, agentState?.consumed ?? []);
-}
-
-const sectionFlags = (section) =>
-  section === 'groups' ? ['--kind', 'choose'] : section === 'asks' ? ['--status', 'submitted'] : [];
-
-const command = (project, artifact, section = 'threads') =>
-  artifact.startsWith('preview/')
-    ? `node ${quote(LAUNCHER)} preview comments --id ${artifact.slice('preview/'.length)} --project-dir ${quote(project)}`
-    : `node ${quote(LAUNCHER)} comment list --section ${section}${sectionFlags(section)
-        .map((flag) => ` ${flag}`)
-        .join('')} --detail --format brief --project-dir ${quote(project)} --artifact ${artifact}`;
-
-const listArgv = (project, artifact, section) =>
-  artifact.startsWith('preview/')
-    ? [
-        LAUNCHER,
-        'preview',
-        'comments',
-        '--id',
-        artifact.slice('preview/'.length),
-        '--project-dir',
-        project,
-      ]
-    : [
-        LAUNCHER,
-        'comment',
-        'list',
-        '--section',
-        section,
-        ...sectionFlags(section),
-        '--detail',
-        '--format',
-        'brief',
-        '--project-dir',
-        project,
-        '--artifact',
-        artifact,
-      ];
 
 const BRIEF_TIMEOUT_MS = 15000;
 
@@ -332,140 +102,28 @@ function wakeMessage(event, limit = Infinity) {
   return `${head}. ${inline}.\n${tail}`;
 }
 
-// Notification delivery is separate from evidence acknowledgement; reads never consume comments.
-function createCommentWatch(project, key = cursorKey(process.env)) {
-  const root = path.join(project, '.ryugi/artifacts');
-  const seen = new Map();
-  const roundStates = new Map();
-  const submits = new Map();
-  const notifiedSubmits = new Map();
-  return (artifacts) => {
-    const events = [];
-    const previewBase = path.dirname(root);
-    for (const type of ['document', 'artboard', 'whiteboard', 'slides', 'storyboard', 'preview']) {
-      const base = type === 'preview' ? previewBase : root;
-      for (const id of ids(base, type)) {
-        const artifact = `${type}/${id}`;
-        if (artifacts && !artifacts.has('*') && !artifacts.has(artifact)) continue;
-        const file = readJson(path.join(base, artifact, 'comments.json'));
-        const rounds = type === 'artboard' ? choiceRounds(root, artifact) : [];
-        const known = roundStates.get(artifact);
-        const states = new Map(rounds.map((round) => [round.id, round.state]));
-        // An empty list is a canvas being rewritten; keeping the last states stops a replayed submit.
-        if (states.size > 0 || !known) roundStates.set(artifact, states);
-        const wasOpen = new Set(
-          [...(known ?? [])].filter(([, state]) => state === 'open').map(([id]) => id),
-        );
-        for (const [round, state] of states) {
-          const before = known?.get(round);
-          if (!known || before === undefined || before === state) continue;
-          const submitted = state === 'submitted';
-          if (!submitted && !(before === 'submitted' && state === 'open')) continue;
-          const standing = standingSubmit(file, round);
-          const notifiedKey = `${artifact}#${round}`;
-          if (submitted ? standing && notifiedSubmits.get(notifiedKey) === standing : standing)
-            continue;
-          if (submitted && standing) notifiedSubmits.set(notifiedKey, standing);
-          const spec = rounds.find((item) => item.id === round) ?? { id: round, groups: [] };
-          const submit = roundSubmit(file, round);
-          events.push({
-            type: 'ryugi-choices',
-            artifact,
-            round,
-            ...(submitted ? {} : { withdrawn: true }),
-            groups: Array.isArray(spec.groups) ? spec.groups.length : 0,
-            ...(submit ? { submit } : {}),
-            command: command(project, artifact, 'groups'),
-            argv: listArgv(project, artifact, 'groups'),
-          });
-        }
-        if (type === 'document') {
-          const submit = latestSubmit(root, artifact);
-          const before = submits.get(artifact);
-          submits.set(artifact, submit);
-          const fresh = submit && before !== undefined && submit.id !== before?.id;
-          const withdrawn =
-            submit?.withdrawn && before?.id === submit.id && before.withdrawn === false;
-          if ((fresh && !submit.withdrawn) || withdrawn)
-            events.push({
-              type: 'ryugi-answers',
-              artifact,
-              ...(withdrawn ? { withdrawn: true } : {}),
-              ...(submit ? { submit: submit.id } : {}),
-              questions: submittedCount(file, submit),
-              command: command(project, artifact, 'asks'),
-              argv: listArgv(project, artifact, 'asks'),
-            });
-        }
-        const roundDraft = draftCheck(
-          rounds.map((r) => (wasOpen.has(r.id) ? { ...r, state: 'open' } : r)),
-        );
-        const changes = humanChanges(
-          file,
-          (thread) => isAnswerRecord(thread) || roundDraft(thread),
-        );
-        if (!changes) continue; // A partial save is retried on the next poll.
-        const previous = seen.get(artifact) || new Map();
-        const updated = new Set();
-        let changed = false;
-        for (const [event, { draft, value }] of changes) {
-          if (previous.get(event) !== value && !draft) {
-            changed = true;
-            updated.add(event);
-          }
-          previous.set(event, value);
-        }
-        // Keep human status stamps when an agent changes the status, so its resolve cannot wake itself.
-        seen.set(artifact, previous);
-        if (!changed) continue;
-        const unread = unreadCount(project, artifact, key);
-        if (!unread) continue;
-        const brief = briefThreads(file, updated);
-        events.push({
-          type: 'ryugi-comments',
-          artifact,
-          unread,
-          threads: brief.threads,
-          ...(brief.omitted ? { omitted: brief.omitted } : {}),
-          command: command(project, artifact),
-        });
-      }
-    }
-    return events;
-  };
-}
-
 function main() {
   const project = process.argv[2] || process.cwd();
-  const polls = new Map();
-  const poll = (root, artifacts) => {
-    if (!polls.has(root)) polls.set(root, createCommentWatch(root));
-    return polls.get(root)(artifacts);
-  };
-  // Without a session ID (older Claude Code) there is nothing to route by, so every artifact counts.
   const session = sessionOf('claude');
-  const emit = () => {
-    const events = [];
-    if (!session) events.push(...poll(project));
-    else
-      for (const root of new Set([...checkouts(project), ...sessionProjects('claude', session)])) {
-        if (root !== project && !fs.existsSync(subscriptionFile(root, 'claude', session))) continue;
-        beat(root, 'claude', session);
-        const found = poll(root, subscriptions(root, 'claude', session));
-        void reportDeliveries(root, 'claude', session, found);
-        events.push(...found);
-      }
-    for (const event of events) process.stdout.write(`${wakeMessage(event, NOTIFICATION_LIMIT)}\n`);
-  };
-  emit();
-  const timer = setInterval(emit, 1000);
+  if (!session) return;
+  const channel = openHubChannel({
+    project,
+    host: 'claude',
+    session,
+    agent: cursorKey(process.env),
+    onEvent: (event, id) => {
+      process.stdout.write(`${wakeMessage(event, NOTIFICATION_LIMIT)}\n`);
+      channel.delivered(id);
+    },
+    onReplaced: () => process.exit(0),
+  });
   const stop = () => {
-    clearInterval(timer);
+    channel.close();
     process.exit(0);
   };
   process.on('SIGINT', stop);
   process.on('SIGTERM', stop);
 }
 
-module.exports = { createCommentWatch, main, unreadCount, wakeMessage };
+module.exports = { main, wakeMessage };
 if (require.main === module) main();

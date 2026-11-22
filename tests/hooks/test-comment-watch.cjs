@@ -1,253 +1,95 @@
 'use strict';
 
 const assert = require('node:assert/strict');
-const { execFileSync, spawn, spawnSync } = require('node:child_process');
-const { randomUUID } = require('node:crypto');
+const { execFileSync, spawn } = require('node:child_process');
 const fs = require('node:fs');
+const net = require('node:net');
 const os = require('node:os');
 const path = require('node:path');
-const { after, test } = require('node:test');
-const { setTimeout: delay } = require('node:timers/promises');
-
-const cacheHome = fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-comment-cache-'));
-process.env.XDG_CACHE_HOME = cacheHome;
-after(() => fs.rmSync(cacheHome, { recursive: true, force: true }));
-require('./fake-artifacts-release.cjs').seedFakeRelease(cacheHome);
+const { test } = require('node:test');
 
 const repo = path.resolve(__dirname, '../..');
 const watcher = path.join(repo, 'hooks/watch-comments.cjs');
-const at = (n) => `2026-10-30T10:00:${String(n).padStart(2, '0')}.000Z`;
-const { humanTokens, reviewStateKey } = require(
-  path.join(repo, 'skills/artifacts/app/comment-threads.cjs'),
-);
-function acknowledged(f, artifact, at, key = 'Claude Code') {
-  const file = JSON.parse(fs.readFileSync(path.join(f.root, artifact, 'comments.json'), 'utf8'));
-  const consumed = file.threads
-    .flatMap((thread) => humanTokens(thread))
-    .filter((event) => event.at <= at)
-    .map((event) => event.token);
-  f.write(`.state/agent-review/agent-${reviewStateKey(artifact, key)}.json`, {
-    artifact,
-    agent: key,
-    consumed,
-    frontiers: null,
-  });
-}
-const human = (id, n, text = 'Please change this') => ({ id, author: 'human', at: at(n), text });
-const thread = (id = 't1') => ({
-  id,
-  anchor: { blockId: 'b1', quote: '' },
-  status: 'open',
-  statusAt: at(1),
-  statusBy: 'human',
-  messages: [human('m1', 1)],
-});
+const { command } = require(path.join(repo, 'skills/artifacts/app/hub-channel.cjs'));
 
-function fixture(t) {
-  const project = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-comment-watch-')));
-  t.after(() => fs.rmSync(project, { recursive: true, force: true }));
-  const root = path.join(project, '.ryugi/artifacts');
-  const write = (relative, value) => {
-    const file = path.join(root, relative);
-    fs.mkdirSync(path.dirname(file), { recursive: true });
-    fs.writeFileSync(file, JSON.stringify(value));
-  };
-  const save = (artifact, threads) => write(`${artifact}/comments.json`, { version: 1, threads });
-  return { project, root, write, save };
-}
-
-function watch(project, key) {
-  return require(watcher).createCommentWatch(project, key);
-}
-
-const message = (event) =>
-  require(path.join(repo, 'skills/artifacts/app/comment-watch.cjs')).wakeMessage(event);
-const limited = (event) =>
-  require(path.join(repo, 'skills/artifacts/app/comment-watch.cjs')).wakeMessage(event, 500);
-const artifactOf = (line) => line.match(/^Ryugi \w+ (\S+)/)?.[1];
-
-test('new document and artboard comments produce actionable notifications without consuming them', (t) => {
-  const f = fixture(t);
-  const poll = watch(f.project);
-  assert.deepEqual(poll(), []);
-  f.save('document/plan', [thread()]);
-  f.save('artboard/settings', [{ ...thread(), anchor: { page: 'p', board: 'a', x: 1, y: 2 } }]);
-  const events = poll();
-  assert.deepEqual(events.map((event) => event.artifact).sort(), [
-    'artboard/settings',
-    'document/plan',
-  ]);
-  for (const event of events) {
-    assert.equal(event.unread, 1);
-    assert.ok(event.command.includes('comment list --section threads --detail --format brief'));
-    assert.ok(event.command.includes(`--artifact ${event.artifact}`));
-    assert.ok(message(event).includes('acknowledge'));
-    assert.ok(!fs.existsSync(path.join(f.root, '.state', event.artifact, 'comment-cursors.json')));
+const until = async (check, ms = 10000) => {
+  const start = Date.now();
+  while (!check()) {
+    if (Date.now() - start > ms) throw new Error('timed out');
+    await new Promise((resolve) => setTimeout(resolve, 20));
   }
-  assert.deepEqual(poll(), []);
-});
+};
 
-test('a whiteboard comment wakes the agent and points at the whiteboard guide', (t) => {
-  const f = fixture(t);
-  const poll = watch(f.project);
-  assert.deepEqual(poll(), []);
-  f.save('whiteboard/sync', [{ ...thread(), anchor: { x: 10, y: 20, elements: ['n-hub'] } }]);
-  const [event] = poll();
-  assert.equal(event?.artifact, 'whiteboard/sync');
-  assert.equal(event.unread, 1);
-  assert.ok(event.command.includes('--artifact whiteboard/sync'));
-  assert.ok(message(event).includes('whiteboard/sync'));
-});
-
-test('starting a whiteboard subscribes the session to its comments', (t) => {
-  const f = fixture(t);
-  const { register, subscriptions } = require(
-    path.join(repo, 'skills/artifacts/app/comment-subscriptions.cjs'),
-  );
-  const session = randomUUID();
-  fs.mkdirSync(path.join(f.project, '.git'));
-  register(['start', '--project-dir', f.project, '--artifact', 'whiteboard/sync'], {
-    CLAUDE_CODE_SESSION_ID: session,
+function fakeHub(t) {
+  const socketPath = path.join(fs.mkdtempSync('/tmp/cwt-'), 'hub.sock');
+  const received = [];
+  const sockets = new Set();
+  const server = net.createServer((socket) => {
+    sockets.add(socket);
+    let buffer = '';
+    socket.on('data', (chunk) => {
+      buffer += chunk;
+      for (let at = buffer.indexOf('\n'); at >= 0; at = buffer.indexOf('\n')) {
+        const message = JSON.parse(buffer.slice(0, at));
+        buffer = buffer.slice(at + 1);
+        received.push(message);
+        if (message.t === 'hello')
+          socket.write(`${JSON.stringify({ t: 'welcome', version: '9.9.9' })}\n`);
+      }
+    });
+    socket.on('close', () => sockets.delete(socket));
   });
-  assert.deepEqual([...subscriptions(f.project, 'claude', session)], ['whiteboard/sync']);
-});
-
-test('a comment on a slide deck wakes the agent', (t) => {
-  const f = fixture(t);
-  const poll = watch(f.project);
-  assert.deepEqual(poll(), []);
-  f.save('slides/talk', [{ ...thread(), anchor: { slide: 'why', x: 320, y: 180 } }]);
-  const [event] = poll();
-  assert.equal(event?.artifact, 'slides/talk');
-  assert.equal(event.unread, 1);
-  assert.ok(event.command.includes('--artifact slides/talk'));
-  assert.ok(message(event).includes('slides/talk'));
-  assert.deepEqual(poll(), []);
-});
-
-test('starting a slide deck subscribes the session to its comments', (t) => {
-  const f = fixture(t);
-  const { register, subscriptions } = require(
-    path.join(repo, 'skills/artifacts/app/comment-subscriptions.cjs'),
+  server.listen(socketPath);
+  t.after(
+    () =>
+      new Promise((resolve) => {
+        for (const socket of sockets) socket.destroy();
+        server.close(resolve);
+      }),
   );
-  const session = randomUUID();
-  fs.mkdirSync(path.join(f.project, '.git'));
-  register(['start', '--project-dir', f.project, '--artifact', 'slides/talk'], {
-    CLAUDE_CODE_SESSION_ID: session,
+  return {
+    socketPath,
+    received,
+    send: (message) => {
+      for (const socket of sockets) socket.write(`${JSON.stringify(message)}\n`);
+    },
+  };
+}
+
+function project(t) {
+  const dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-comment-watch-')));
+  fs.mkdirSync(path.join(dir, '.ryugi', 'artifacts'), { recursive: true });
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  return dir;
+}
+
+const stoppedHome = fs.mkdtempSync(path.join(os.tmpdir(), 'cwt-home-'));
+fs.writeFileSync(path.join(stoppedHome, 'server-stopped'), JSON.stringify({ reason: 'stop' }));
+
+function run(t, cwd, env) {
+  const child = spawn(process.execPath, [watcher, cwd], {
+    cwd,
+    env: {
+      ...process.env,
+      CLAUDE_CODE_SESSION_ID: undefined,
+      RYUGI_SERVER_HOME: stoppedHome,
+      ...env,
+    },
+    stdio: ['ignore', 'pipe', 'pipe'],
   });
-  assert.deepEqual([...subscriptions(f.project, 'claude', session)], ['slides/talk']);
-});
+  const state = { output: '', exit: null };
+  child.stdout.on('data', (chunk) => (state.output += chunk));
+  child.on('exit', (code) => (state.exit = code));
+  t.after(() => child.kill());
+  return state;
+}
 
-test('a comment on a storyboard wakes the agent', (t) => {
-  const f = fixture(t);
-  const poll = watch(f.project);
-  assert.deepEqual(poll(), []);
-  f.save('storyboard/launch', [{ ...thread(), anchor: { shot: 'sketch', t: 1.5 } }]);
-  const [event] = poll();
-  assert.equal(event?.artifact, 'storyboard/launch');
-  assert.equal(event.unread, 1);
-  assert.ok(event.command.includes('--artifact storyboard/launch'));
-  assert.deepEqual(poll(), []);
-});
-
-test('starting a storyboard subscribes the session to its comments', (t) => {
-  const f = fixture(t);
-  const { register, subscriptions } = require(
-    path.join(repo, 'skills/artifacts/app/comment-subscriptions.cjs'),
-  );
-  const session = randomUUID();
-  fs.mkdirSync(path.join(f.project, '.git'));
-  register(['start', '--project-dir', f.project, '--artifact', 'storyboard/launch'], {
-    CLAUDE_CODE_SESSION_ID: session,
-  });
-  assert.deepEqual([...subscriptions(f.project, 'claude', session)], ['storyboard/launch']);
-});
-
-test('an agent reply or resolve never re-notifies even while another human thread is unread', (t) => {
-  const f = fixture(t);
-  const first = thread();
-  const second = { ...thread('t2'), messages: [human('m2', 1)] };
-  f.save('document/plan', [first, second]);
-  const poll = watch(f.project);
-  assert.equal(poll().length, 1);
-  first.messages.push({ id: 'a1', author: 'agent', at: at(2), text: 'Done' });
-  f.save('document/plan', [first, second]);
-  assert.deepEqual(poll(), []);
-  Object.assign(first, { status: 'resolved', statusBy: 'agent', statusAt: at(3) });
-  f.save('document/plan', [first, second]);
-  assert.deepEqual(poll(), []);
-});
-
-test('a second human comment notifies again when the unread thread count is unchanged', (t) => {
-  const f = fixture(t);
-  const value = thread();
-  f.save('document/plan', [value]);
-  const poll = watch(f.project);
-  assert.equal(poll().length, 1);
-  value.messages.push(human('m2', 2));
-  f.save('document/plan', [value]);
-  assert.equal(poll()[0].unread, 1);
-  assert.deepEqual(poll(), []);
-});
-
-test('human edits, deletions and reopens are delivered after the CLI read cursor', (t) => {
-  const f = fixture(t);
-  const value = thread();
-  f.save('document/plan', [value]);
-  acknowledged(f, 'document/plan', at(1));
-  const poll = watch(f.project);
-  assert.deepEqual(poll(), []);
-  Object.assign(value.messages[0], { text: 'A different request', editedAt: at(2) });
-  f.save('document/plan', [value]);
-  assert.equal(poll().length, 1);
-  acknowledged(f, 'document/plan', at(2));
-  Object.assign(value.messages[0], { text: '', deleted: true, editedAt: at(3) });
-  f.save('document/plan', [value]);
-  assert.equal(poll().length, 1);
-  Object.assign(value, { status: 'open', statusBy: 'human', statusAt: at(4) });
-  value.messages.push(human('m2', 4));
-  f.save('document/plan', [value]);
-  assert.equal(poll().length, 1);
-});
-
-test('pending comments survive a watcher restart but comments already read by this harness stay quiet', (t) => {
-  const f = fixture(t);
-  f.save('document/plan', [thread()]);
-  assert.equal(watch(f.project)().length, 1);
-  assert.equal(watch(f.project)().length, 1);
-  acknowledged(f, 'document/plan', at(2));
-  assert.deepEqual(watch(f.project)(), []);
-  assert.equal(watch(f.project, 'Claude Cowork')().length, 1);
-});
-
-test('reopening an answered thread wakes the agent without adding another message', (t) => {
-  const f = fixture(t);
-  const value = thread();
-  value.messages.push({ id: 'a1', author: 'agent', at: at(2), text: 'Done' });
-  Object.assign(value, { status: 'resolved', statusBy: 'agent', statusAt: at(3) });
-  f.save('document/plan', [value]);
-  acknowledged(f, 'document/plan', at(3));
-  const poll = watch(f.project);
-  assert.deepEqual(poll(), []);
-  Object.assign(value, { status: 'open', statusBy: 'human', statusAt: at(4) });
-  f.save('document/plan', [value]);
-  assert.equal(poll().length, 1);
-  assert.deepEqual(poll(), []);
-});
-
-test('a human resolving a thread leaves the agent asleep, also after a restart', (t) => {
-  const f = fixture(t);
-  const value = thread();
-  f.save('document/plan', [value]);
-  acknowledged(f, 'document/plan', at(1));
-  const poll = watch(f.project);
-  assert.deepEqual(poll(), []);
-  Object.assign(value, { status: 'resolved', statusBy: 'human', statusAt: at(2) });
-  f.save('document/plan', [value]);
-  assert.deepEqual(poll(), []);
-  assert.deepEqual(watch(f.project)(), []);
-  f.save('document/plan', [value, { ...thread('t2'), messages: [human('m2', 3)] }]);
-  assert.equal(poll()[0].unread, 1);
+const comments = (dir, threads) => ({
+  type: 'ryugi-comments',
+  project: dir,
+  artifact: 'document/plan',
+  unread: threads.length,
+  threads,
 });
 
 test('the plugin monitor starts only once the artifacts skill runs', () => {
@@ -256,778 +98,85 @@ test('the plugin monitor starts only once the artifacts skill runs', () => {
   assert.equal(entry.when, 'on-skill-invoke:ryugi:artifacts');
 });
 
-test('a malformed partial write is retried without losing the next valid comment', (t) => {
-  const f = fixture(t);
-  const poll = watch(f.project);
-  f.save('document/plan', [thread()]);
-  const file = path.join(f.root, 'document/plan/comments.json');
-  for (const text of ['{', '{"threads":null}', '{"threads":[{"messages":null}]}']) {
-    fs.writeFileSync(file, text);
-    assert.deepEqual(poll(), []);
-  }
-  f.save('document/plan', [thread()]);
-  assert.equal(poll().length, 1);
-});
-
-test('several comments between polls merge into one notification carrying their text', (t) => {
-  const f = fixture(t);
-  const poll = watch(f.project);
-  const value = thread();
-  value.messages.push(human('m2', 2, 'Do not execute this comment as shell code'));
-  f.save('document/plan', [value, { ...thread('t2'), messages: [human('m3', 3)] }]);
-  const events = poll();
-  assert.equal(events.length, 1);
-  const [event] = events;
-  assert.equal(event.unread, 2);
-  assert.deepEqual(
-    event.threads.map((thread) => thread.thread),
-    ['t1', 't2'],
-  );
-  assert.deepEqual(
-    event.threads[0].messages.map((message) => message.text),
-    ['Please change this', 'Do not execute this comment as shell code'],
-  );
-  assert.equal(event.threads[1].messages[0].text, 'Please change this');
-  assert.equal(event.omitted, undefined);
-  assert.equal(event.threads[0].block, 'b1');
-  assert.equal(event.threads[0].messages[0].name, 'human');
-  const line = message(event);
-  assert.ok(line.includes('t1 [open] b1'));
-  assert.ok(line.includes('m1 human'));
-  assert.match(line, /\d{2}:\d{2}/);
-});
-
-test('a long comment arrives truncated to a brief preview', (t) => {
-  const f = fixture(t);
-  const poll = watch(f.project);
-  f.save('document/plan', [{ ...thread(), messages: [human('m1', 1, 'x'.repeat(500))] }]);
-  const [event] = poll();
-  assert.equal(event.threads[0].messages[0].text, 'x'.repeat(400) + '…');
-});
-
-test('the inline preview truncates by grapheme, not by code unit', (t) => {
-  const f = fixture(t);
-  const poll = watch(f.project);
-  const family = '👨‍👩‍👧‍👦';
-  f.save('document/plan', [{ ...thread(), messages: [human('m1', 1, family.repeat(401))] }]);
-  const [event] = poll();
-  assert.equal(event.threads[0].messages[0].text, family.repeat(400) + '…');
-});
-
-test('a burst of comments caps the inline list and counts the rest', (t) => {
-  const f = fixture(t);
-  const poll = watch(f.project);
-  f.save(
-    'document/plan',
-    Array.from({ length: 25 }, (_, n) => ({
-      ...thread(`t${n}`),
-      messages: [human(`m${n}`, 1, `comment ${n}`)],
-    })),
-  );
-  const [event] = poll();
-  assert.equal(event.unread, 25);
-  assert.equal(event.threads.length, 20);
-  assert.equal(event.omitted, 5);
-});
-
-test('notification commands preserve paths with spaces, apostrophes and shell substitutions', (t) => {
-  const f = fixture(t);
-  f.save('document/plan', [thread()]);
-  const project = path.join(f.project, "a b'$(touch WRONG)");
-  fs.mkdirSync(project);
-  fs.renameSync(path.join(f.project, '.ryugi'), path.join(project, '.ryugi'));
-  const event = watch(project)()[0];
-  const args = execFileSync('bash', ['-c', `set -- ${event.command}; printf '%s\\0' "$@"`], {
-    cwd: f.project,
-    encoding: 'utf8',
-  }).split('\0');
-  assert.equal(args[args.indexOf('--project-dir') + 1], project);
-  assert.ok(!fs.existsSync(path.join(f.project, 'WRONG')));
-});
-
-function monitor(t, cwd, overrides) {
-  const config = path.join(repo, 'monitors/monitors.json');
-  // A missing declaration is the baseline: Claude has no process to receive events from.
-  const entries = fs.existsSync(config) ? JSON.parse(fs.readFileSync(config, 'utf8')) : [];
-  const entry = entries.find((item) => item.name === 'artifact-comments');
-  const env = {
-    ...process.env,
-    CLAUDE_CODE_SESSION_ID: undefined,
-    CLAUDE_PLUGIN_ROOT: repo,
-    CLAUDE_PROJECT_DIR: cwd,
-    ...overrides,
-  };
-  const child =
-    entry && spawn(entry.command, { cwd, env, shell: true, stdio: ['ignore', 'pipe', 'pipe'] });
-  const state = { output: '', errors: '', child };
-  if (state.child) {
-    state.child.stdout.on('data', (data) => {
-      state.output += data;
-    });
-    state.child.stderr.on('data', (data) => {
-      state.errors += data;
-    });
-    t.after(async () => {
-      const { child } = state;
-      if (child.exitCode !== null || child.signalCode !== null) return;
-      const exited = new Promise((resolve) => child.once('exit', resolve));
-      child.kill();
-      await exited;
-    });
-  }
-  return state;
-}
-
-function launcher(t) {
-  const app = fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-comment-launcher-'));
-  t.after(() => fs.rmSync(app, { recursive: true, force: true }));
-  const source = path.join(repo, 'skills/artifacts/app');
-  for (const name of fs.readdirSync(source))
-    if (/\.(?:cjs|json)$/.test(name))
-      fs.copyFileSync(path.join(source, name), path.join(app, name));
-  fs.writeFileSync(
-    path.join(app, 'cli.cjs'),
-    `console.log(JSON.stringify({schema:'ryugi.cli/v1', command:process.argv.includes('--version')?'version':'start', outcome:'success', data:{status:'running',capabilities:['reviewBundlesV1']}}));\n`,
-  );
-  return (project, session, ...args) => {
-    const result = spawnSync(
-      process.execPath,
-      [path.join(app, 'ryugi.cjs'), ...args, '--json', '--project-dir', project],
+test('a hub event becomes one notification and is acknowledged', async (t) => {
+  const hub = fakeHub(t);
+  const dir = project(t);
+  const watching = run(t, dir, {
+    CLAUDE_CODE_SESSION_ID: '11111111-1111-4111-8111-111111111111',
+    RYUGI_HUB_SOCKET: hub.socketPath,
+  });
+  await until(() => hub.received.some((m) => m.t === 'hello'));
+  assert.equal(hub.received[0].session, '11111111-1111-4111-8111-111111111111');
+  assert.equal(hub.received[0].agent, 'Claude Code');
+  hub.send({
+    t: 'event',
+    id: 3,
+    event: comments(dir, [
       {
-        env: {
-          ...process.env,
-          CODEX_THREAD_ID: undefined,
-          PI_SESSION_ID: undefined,
-          CLAUDE_CODE_SESSION_ID: session,
-        },
-        encoding: 'utf8',
+        thread: 't1',
+        status: 'open',
+        block: 'b1',
+        messages: [
+          { id: 'm1', at: '2026-10-30T10:00:01.000Z', name: 'Innei', text: 'Please change this' },
+        ],
       },
-    );
-    assert.equal(result.status, 0, result.stderr);
-  };
-}
-
-async function until(check, deadlineMs = 3500) {
-  const deadline = Date.now() + deadlineMs;
-  while (!check() && Date.now() < deadline) await delay(30);
-}
-
-test('a Claude Code session hears only comments on artifacts it opened through the launcher', async (t) => {
-  const f = fixture(t);
-  const run = launcher(t);
-  const mine = randomUUID();
-  const other = randomUUID();
-  const watcher = monitor(t, f.project, { CLAUDE_CODE_SESSION_ID: mine });
-  run(f.project, mine, 'start', '--artifact', 'artboard/chat');
-  run(f.project, other, 'start', '--artifact', 'artboard/mac-app-shell');
-  run(f.project, mine, 'start');
-  await delay(1200);
-  f.save('artboard/mac-app-shell', [thread()]);
-  f.save('document/plan', [thread()]);
-  await delay(1500);
-  assert.equal(watcher.output, '', "another session's artifact woke this session");
-  f.save('artboard/chat', [thread()]);
-  await until(() => watcher.output.includes('artboard/chat'));
+    ]),
+  });
+  await until(() => watching.output.includes('--artifact document/plan'));
+  const lines = watching.output.trim().split('\n');
+  assert.match(
+    lines[0],
+    /^Ryugi comments document\/plan \(1 unread\)\. t1 \[open\] b1 · m1 Innei \d\d:\d\d: Please change this\./,
+  );
+  await until(() => hub.received.some((m) => m.t === 'delivered'));
   assert.deepEqual(
-    watcher.output.trim().split('\n').map(artifactOf),
-    ['artboard/chat'],
-    watcher.errors,
+    hub.received.find((m) => m.t === 'delivered'),
+    { t: 'delivered', id: 3 },
   );
 });
 
-test('the Claude Code monitor keeps every line within its 500-character notification limit', async (t) => {
-  const f = fixture(t);
-  const watcher = monitor(t, f.project, {});
-  await delay(1200);
-  f.save(
-    'document/plan',
-    Array.from({ length: 25 }, (_, n) => ({
-      ...thread(`t${n}`),
-      messages: [human(`m${n}`, 1, 'x'.repeat(200))],
-    })),
-  );
-  await until(() => watcher.output.includes('--artifact document/plan'));
-  const lines = watcher.output.trim().split('\n');
+test('every notification line stays within the 500-character limit', async (t) => {
+  const hub = fakeHub(t);
+  const dir = project(t);
+  const watching = run(t, dir, {
+    CLAUDE_CODE_SESSION_ID: '11111111-1111-4111-8111-111111111111',
+    RYUGI_HUB_SOCKET: hub.socketPath,
+  });
+  await until(() => hub.received.some((m) => m.t === 'hello'));
+  const threads = Array.from({ length: 25 }, (_, n) => ({
+    thread: `t${n}`,
+    status: 'open',
+    messages: [
+      { id: `m${n}`, at: '2026-10-30T10:00:01.000Z', name: 'human', text: 'x'.repeat(200) },
+    ],
+  }));
+  hub.send({ t: 'event', id: 1, event: comments(dir, threads) });
+  await until(() => watching.output.includes('--artifact document/plan'));
+  const lines = watching.output.trim().split('\n');
   for (const line of lines) assert.ok(line.length <= 500, `${line.length}: ${line}`);
-  assert.ok(lines[0].startsWith('Ryugi comments document/plan'), lines[0]);
   assert.ok(lines.at(-1).endsWith('--artifact document/plan'), lines.at(-1));
 });
 
-test('the declared plugin monitor notices artifacts created later from a repository subdirectory', async (t) => {
-  const f = fixture(t);
-  fs.mkdirSync(path.join(f.project, '.git'));
-  const cwd = path.join(f.project, 'packages/app');
-  fs.mkdirSync(cwd, { recursive: true });
-  const watcher = monitor(t, cwd, {});
-  await delay(1200);
-  assert.equal(watcher.output, '');
-  f.save('document/plan', [thread()]);
-  await until(
-    () =>
-      watcher.output.includes('document/plan') ||
-      (watcher.child && watcher.child.exitCode !== null),
-  );
-  const { output, errors } = watcher;
-  assert.ok(output.includes('document/plan'), `No automatic comment notification. ${errors}`);
-  const events = output.trim().split('\n');
-  assert.equal(artifactOf(events[0]), 'document/plan');
-  const count = events.length;
-  await delay(1200);
-  assert.equal(watcher.output.trim().split('\n').length, count);
+test('without a session id the watcher exits quietly', async (t) => {
+  const dir = project(t);
+  const watching = run(t, dir, {});
+  await until(() => watching.exit !== null);
+  assert.equal(watching.exit, 0);
+  assert.equal(watching.output, '');
 });
 
-function linkedWorktree(t) {
-  const f = fixture(t);
-  const git = (...args) => execFileSync('git', ['-C', f.project, ...args], { stdio: 'pipe' });
-  git('init', '-q');
-  git(
-    '-c',
-    'user.name=t',
-    '-c',
-    'user.email=t@example.com',
-    '-c',
-    'commit.gpgsign=false',
-    'commit',
-    '-q',
-    '--allow-empty',
-    '-m',
-    'init',
-  );
-  const linked = path.join(f.project, '.claude/worktrees/rework');
-  git('worktree', 'add', '-q', linked);
-  const saveLinked = (artifact, threads) => {
-    const file = path.join(linked, '.ryugi/artifacts', artifact, 'comments.json');
-    fs.mkdirSync(path.dirname(file), { recursive: true });
-    fs.writeFileSync(file, JSON.stringify({ version: 1, threads }));
-  };
-  return { ...f, linked, saveLinked };
-}
-
-test('a session started in the main checkout hears an artifact it opened in a linked worktree', async (t) => {
-  const f = linkedWorktree(t);
-  const run = launcher(t);
-  const session = randomUUID();
-  const watcher = monitor(t, f.project, { CLAUDE_CODE_SESSION_ID: session });
-  run(f.linked, session, 'start', '--artifact', 'artboard/redesign');
-  f.saveLinked('artboard/redesign', [thread()]);
-  await until(() => watcher.output.includes('artboard/redesign'));
-  const lines = watcher.output.trim().split('\n');
-  assert.deepEqual(lines.map(artifactOf), ['artboard/redesign'], watcher.errors);
-  assert.ok(lines[0].includes(`--project-dir '${f.linked}'`), lines[0]);
-  assert.ok(
-    fs.existsSync(
-      path.join(f.linked, '.ryugi/artifacts/.state/claude-comment-watch', `${session}.alive`),
-    ),
-    'no heartbeat beside the worktree subscription',
-  );
-});
-
-test('a session started in a linked worktree hears an artifact it opened in the main checkout', async (t) => {
-  const f = linkedWorktree(t);
-  const run = launcher(t);
-  const session = randomUUID();
-  const watcher = monitor(t, f.linked, { CLAUDE_CODE_SESSION_ID: session });
-  run(f.project, session, 'start', '--artifact', 'document/plan');
-  f.save('document/plan', [thread()]);
-  await until(() => watcher.output.includes('document/plan'));
-  const lines = watcher.output.trim().split('\n');
-  assert.deepEqual(lines.map(artifactOf), ['document/plan'], watcher.errors);
-  assert.ok(lines[0].includes(`--project-dir '${f.project}'`), lines[0]);
-});
-
-test('a session hears an artifact it opened in a project outside its repository', async (t) => {
-  const f = fixture(t);
-  const outside = fixture(t);
-  const run = launcher(t);
-  const session = randomUUID();
-  const watcher = monitor(t, f.project, { CLAUDE_CODE_SESSION_ID: session });
-  run(outside.project, session, 'start', '--artifact', 'artboard/org-banner');
-  outside.save('artboard/org-banner', [thread()]);
-  await until(() => watcher.output.includes('artboard/org-banner'));
-  const lines = watcher.output.trim().split('\n');
-  assert.deepEqual(lines.map(artifactOf), ['artboard/org-banner'], watcher.errors);
-  assert.ok(lines[0].includes(`--project-dir '${outside.project}'`), lines[0]);
-});
-
-test("another session's artifact in a linked worktree stays quiet", async (t) => {
-  const f = linkedWorktree(t);
-  const run = launcher(t);
-  const mine = randomUUID();
-  const watcher = monitor(t, f.project, { CLAUDE_CODE_SESSION_ID: mine });
-  run(f.linked, mine, 'start', '--artifact', 'artboard/redesign');
-  run(f.linked, randomUUID(), 'start', '--artifact', 'artboard/theirs');
-  await delay(1200);
-  f.saveLinked('artboard/theirs', [thread()]);
-  await delay(1500);
-  assert.equal(watcher.output, '', watcher.errors);
-});
-
-function choiceFixture(t) {
-  const f = fixture(t);
-  const rounds = (state) =>
-    f.write('.state/artboard/pick/rounds.json', {
-      rounds: [{ id: 'r1', page: 'p', state, groups: ['q1'], boards: ['q1-a', 'q1-b'] }],
-    });
-  f.save('artboard/pick', []);
-  const comment = (id, n, board) => ({
-    ...thread(id),
-    anchor: { page: 'p', board, x: 1, y: 2 },
-    messages: [human(`m${id}`, n)],
-  });
-  return { ...f, rounds, comment };
-}
-
-test('comments on an open choice round stay silent until the round is submitted', (t) => {
-  const f = choiceFixture(t);
-  f.rounds('open');
-  const poll = watch(f.project);
-  assert.deepEqual(poll(), []);
-  f.save('artboard/pick', [f.comment('t1', 1, 'q1-a')]);
-  assert.deepEqual(poll(), []);
-  f.rounds('submitted');
-  const [event, ...rest] = poll();
-  assert.deepEqual(rest, []);
-  assert.equal(event.type, 'ryugi-choices');
-  assert.equal(event.artifact, 'artboard/pick');
-  assert.equal(event.round, 'r1');
-  assert.ok(
-    event.command.includes('comment list --section groups --kind choose --detail --format brief'),
-  );
-  assert.ok(!event.withdrawn);
-  assert.deepEqual(poll(), []);
-});
-
-test('a withdrawal wakes once, and a comment after submit wakes as usual', (t) => {
-  const f = choiceFixture(t);
-  f.rounds('submitted');
-  const poll = watch(f.project);
-  assert.deepEqual(poll(), []);
-  f.save('artboard/pick', [f.comment('t1', 1, 'q1-a')]);
-  assert.equal(poll()[0].type, 'ryugi-comments');
-  f.rounds('open');
-  const events = poll();
-  assert.equal(events.length, 1);
-  assert.equal(events[0].withdrawn, true);
-});
-
-test('without rounds.json every board comment wakes, never silence', (t) => {
-  const f = choiceFixture(t);
-  const poll = watch(f.project);
-  f.save('artboard/pick', [f.comment('t1', 1, 'q1-a')]);
-  assert.equal(poll()[0].type, 'ryugi-comments');
-});
-
-test('a running watcher keeps a heartbeat beside its subscription', async (t) => {
-  const f = fixture(t);
-  const session = randomUUID();
-  const child = spawn(process.execPath, [watcher, f.project], {
-    env: {
-      ...process.env,
-      CODEX_THREAD_ID: undefined,
-      PI_SESSION_ID: undefined,
-      CLAUDE_CODE_SESSION_ID: session,
-    },
-    stdio: 'ignore',
-  });
-  t.after(() => child.kill());
-  const alive = path.join(f.root, '.state/claude-comment-watch', `${session}.alive`);
-  const deadline = Date.now() + 5000;
-  while (!fs.existsSync(alive) && Date.now() < deadline) await delay(100);
-  const stamp = Number(fs.readFileSync(alive, 'utf8'));
-  assert.ok(Math.abs(Date.now() - stamp) < 5000);
-  const { aliveFile } = require(path.join(repo, 'skills/artifacts/app/comment-subscriptions.cjs'));
-  assert.equal(aliveFile(f.project, 'claude', session), alive);
-});
-
-test('a submitted round closed by the next round wakes nobody', (t) => {
-  const f = choiceFixture(t);
-  f.rounds('submitted');
-  const poll = watch(f.project);
-  assert.deepEqual(poll(), []);
-  f.rounds('closed');
-  assert.deepEqual(poll(), []);
-});
-
-test('a canvas that briefly yields no rounds does not replay the submit', (t) => {
-  const f = choiceFixture(t);
-  f.rounds('submitted');
-  const poll = watch(f.project);
-  assert.deepEqual(poll(), []);
-  f.write('.state/artboard/pick/rounds.json', { rounds: [] });
-  assert.deepEqual(poll(), []);
-  f.rounds('submitted');
-  assert.deepEqual(poll(), []);
-});
-
-test('a last comment and the submit in one tick wake once', (t) => {
-  const f = choiceFixture(t);
-  f.rounds('open');
-  const poll = watch(f.project);
-  assert.deepEqual(poll(), []);
-  f.save('artboard/pick', [f.comment('t1', 1, 'q1-a')]);
-  f.rounds('submitted');
-  assert.deepEqual(
-    poll().map((event) => event.type),
-    ['ryugi-choices'],
-  );
-});
-
-const answer = (id, n, ask) => ({
-  id,
-  anchor: { blockId: 'b1', quote: '', ask, choice: 'yes', answer: null },
-  status: 'open',
-  statusAt: at(n),
-  statusBy: 'human',
-  messages: [human(`${id}m`, n, 'yes')],
-});
-const latest = (id, withdrawn = false) => ({ latest: { id, at: at(9), withdrawn } });
-
-test('answers to document questions stay silent until they are submitted', (t) => {
-  const f = fixture(t);
-  const poll = watch(f.project);
-  f.save('document/plan', []);
-  f.write('.state/document/plan/asks.json', { latest: null });
-  assert.deepEqual(poll(), []);
-  f.save('document/plan', [answer('a1', 2, 'pre-test')]);
-  assert.deepEqual(poll(), []);
-  f.save('document/plan', [
-    answer('a1', 2, 'pre-test'),
-    { ...answer('s1', 3), anchor: { blockId: '*', quote: '', submit: true, asks: ['pre-test'] } },
-  ]);
-  f.write('.state/document/plan/asks.json', latest('s1'));
-  const [event, ...rest] = poll();
-  assert.deepEqual(rest, []);
-  assert.equal(event.type, 'ryugi-answers');
-  assert.equal(event.artifact, 'document/plan');
-  assert.ok(
-    event.command.includes(
-      'comment list --section asks --status submitted --detail --format brief',
-    ),
-  );
-  assert.ok(message(event).includes('answers'));
-  assert.deepEqual(poll(), []);
-});
-
-test('a withdrawn submit wakes once, a second submit wakes again', (t) => {
-  const f = fixture(t);
-  const poll = watch(f.project);
-  f.write('.state/document/plan/asks.json', latest('s1'));
-  f.save('document/plan', []);
-  assert.deepEqual(poll(), []);
-  f.write('.state/document/plan/asks.json', latest('s1', true));
-  const [withdrawn] = poll();
-  assert.equal(withdrawn.type, 'ryugi-answers');
-  assert.equal(withdrawn.withdrawn, true);
-  assert.deepEqual(poll(), []);
-  f.write('.state/document/plan/asks.json', latest('s2'));
-  const [again] = poll();
-  assert.equal(again.type, 'ryugi-answers');
-  assert.equal(again.withdrawn, undefined);
-});
-
-test('answer records never count as unread comments', (t) => {
-  const f = fixture(t);
-  f.save('document/plan', [answer('a1', 2, 'pre-test'), thread('t2')]);
-  const { unreadCount } = require(path.join(repo, 'skills/artifacts/app/comment-watch.cjs'));
-  assert.equal(unreadCount(f.project, 'document/plan', 'Claude Code'), 1);
-});
-
-test('an answers message inlines the submitted brief when the host has no length limit', (t) => {
-  const f = fixture(t);
-  f.save('document/plan', []);
-  f.write('.state/document/plan/asks.json', { latest: null });
-  const poll = watch(f.project);
-  assert.deepEqual(poll(), []);
-  f.save('document/plan', [
+test('notification commands preserve paths with spaces, apostrophes and shell substitutions', (t) => {
+  const base = project(t);
+  const dir = path.join(base, "a b'$(touch WRONG)");
+  fs.mkdirSync(dir);
+  const args = execFileSync(
+    'bash',
+    ['-c', `set -- ${command(dir, 'document/plan')}; printf '%s\\0' "$@"`],
     {
-      id: 'a1',
-      anchor: { blockId: 'b1', quote: '', ask: 'pre-test', choice: 'report', answer: null },
-      status: 'open',
-      statusAt: at(2),
-      statusBy: 'human',
-      messages: [human('am1', 2, 'report')],
+      cwd: base,
+      encoding: 'utf8',
     },
-    {
-      id: 's1',
-      anchor: { blockId: '*', quote: '', submit: true, asks: ['pre-test', 'more'] },
-      status: 'open',
-      statusAt: at(3),
-      statusBy: 'human',
-      messages: [human('sm1', 3, 'submitted')],
-    },
-  ]);
-  f.write('.state/document/plan/asks.json', { latest: { id: 's1', at: at(3), withdrawn: false } });
-  const [event] = poll();
-  assert.equal(event.type, 'ryugi-answers');
-  assert.equal(event.submit, 's1');
-  assert.equal(event.questions, 2);
-  assert.equal(event.answers, undefined);
-  assert.ok(
-    event.command.includes(
-      'comment list --section asks --status submitted --detail --format brief',
-    ),
-  );
-  assert.deepEqual(event.argv.slice(1), [
-    'comment',
-    'list',
-    '--section',
-    'asks',
-    '--status',
-    'submitted',
-    '--detail',
-    '--format',
-    'brief',
-    '--project-dir',
-    f.project,
-    '--artifact',
-    'document/plan',
-  ]);
-  const full = message(event);
-  assert.ok(
-    full.startsWith(
-      'Ryugi answers document/plan submitted (s1, 2 questions). Apply each answer, then settle it with comment note --ask <id>.\nComment list: document/plan',
-    ),
-    full,
-  );
-  assert.ok(!full.includes('Run:'), full);
-  assert.equal(
-    limited(event),
-    `Ryugi answers document/plan submitted (s1, 2 questions). Apply each answer, then settle it with comment note --ask <id>. Run: ${event.command}`,
-  );
-});
-
-test('a submit message falls back to the Run line when its brief command fails', (t) => {
-  const f = fixture(t);
-  const event = {
-    type: 'ryugi-answers',
-    artifact: 'document/plan',
-    submit: 's1',
-    questions: 1,
-    command: 'node ryugi.cjs comment list',
-    argv: [path.join(f.project, 'missing.cjs')],
-  };
-  assert.equal(
-    message(event),
-    'Ryugi answers document/plan submitted (s1, 1 question). Apply each answer, then settle it with comment note --ask <id>. Run: node ryugi.cjs comment list',
-  );
-});
-
-test('a choices message inlines the picks brief when the host has no length limit', (t) => {
-  const f = fixture(t);
-  f.save('artboard/pick', []);
-  const rounds = (state) =>
-    f.write('.state/artboard/pick/rounds.json', {
-      rounds: [{ id: 'r1', page: 'p', state, groups: ['q1', 'q2'], boards: ['q1-a', 'q1-b'] }],
-    });
-  rounds('open');
-  const poll = watch(f.project);
-  assert.deepEqual(poll(), []);
-  f.save('artboard/pick', [
-    {
-      id: 't1',
-      anchor: { page: 'p', x: 1, y: 2, group: 'q1', choice: 'q1-b' },
-      status: 'open',
-      statusAt: at(1),
-      statusBy: 'human',
-      messages: [human('m1', 1, 'pick')],
-    },
-    {
-      id: 's1',
-      anchor: { page: 'p', x: 1, y: 2, round: 'r1', submit: true },
-      status: 'open',
-      statusAt: at(2),
-      statusBy: 'human',
-      messages: [human('m2', 2, 'submitted')],
-    },
-  ]);
-  rounds('submitted');
-  const event = poll().find((item) => item.type === 'ryugi-choices');
-  assert.equal(event.submit, 's1');
-  assert.equal(event.groups, 2);
-  assert.equal(event.picks, undefined);
-  const full = message(event);
-  assert.ok(
-    full.startsWith(
-      'Ryugi choices artboard/pick round r1 submitted (s1, 2 groups). Draw the next round from these choices and the threads.\nComment list: artboard/pick',
-    ),
-    full,
-  );
-  assert.ok(!full.includes('Run:'), full);
-  assert.equal(
-    limited(event),
-    `Ryugi choices artboard/pick round r1 submitted (s1, 2 groups). Draw the next round from these choices and the threads. Run: ${event.command}`,
-  );
-});
-
-test('a withdrawn round names the submit it withdraws, not the withdrawal', (t) => {
-  const f = choiceFixture(t);
-  const submit = (id, n, value) => ({
-    ...thread(id),
-    anchor: { page: 'p', x: 0, y: 0, round: 'r1', submit: value },
-    messages: [human(`m${id}`, n)],
-  });
-  f.save('artboard/pick', [submit('s1', 1, true)]);
-  f.rounds('submitted');
-  const poll = watch(f.project);
-  assert.deepEqual(poll(), []);
-  f.save('artboard/pick', [submit('s1', 1, true), submit('w1', 2, false)]);
-  f.rounds('open');
-  const [event] = poll();
-  assert.equal(event.withdrawn, true);
-  assert.equal(event.submit, 's1');
-});
-
-test('a round state that flaps under one submit record wakes once, never as a withdrawal', (t) => {
-  const f = choiceFixture(t);
-  const submit = {
-    ...thread('s1'),
-    anchor: { page: 'p', x: 0, y: 0, round: 'r1', submit: true },
-    messages: [human('ms1', 1)],
-  };
-  f.rounds('open');
-  const poll = watch(f.project);
-  assert.deepEqual(poll(), []);
-  f.save('artboard/pick', [submit]);
-  f.rounds('submitted');
-  const events = poll();
-  for (const state of ['open', 'submitted', 'open', 'submitted']) {
-    f.rounds(state);
-    events.push(...poll());
-  }
-  assert.deepEqual(
-    events.map((event) => [event.type, event.submit, event.withdrawn ?? false]),
-    [['ryugi-choices', 's1', false]],
-  );
-});
-
-test('a new withdrawal record after an already-notified submit still wakes', (t) => {
-  const f = choiceFixture(t);
-  const record = (id, n, value) => ({
-    ...thread(id),
-    anchor: { page: 'p', x: 0, y: 0, round: 'r1', submit: value },
-    messages: [human(`m${id}`, n)],
-  });
-  f.rounds('open');
-  const poll = watch(f.project);
-  poll();
-  f.save('artboard/pick', [record('s1', 1, true)]);
-  f.rounds('submitted');
-  assert.equal(poll().length, 1);
-  f.save('artboard/pick', [record('s1', 1, true), record('w1', 2, false)]);
-  f.rounds('open');
-  assert.deepEqual(
-    poll().map((event) => event.withdrawn),
-    [true],
-  );
-  f.save('artboard/pick', [record('s1', 1, true), record('w1', 2, false), record('s2', 3, true)]);
-  f.rounds('submitted');
-  assert.deepEqual(
-    poll().map((event) => [event.submit, event.withdrawn ?? false]),
-    [['s2', false]],
-  );
-});
-
-const embedVfs = (text) => ({
-  type: 'ryugi-comments',
-  artifact: 'document/embed-vfs',
-  unread: 1,
-  threads: [
-    {
-      thread: 'merF_KJnWJ',
-      status: 'open',
-      block: 'GI-jT5jl',
-      messages: [{ id: 'N9ViHgJXDi', name: 'Innei', at: at(1), text }],
-    },
-  ],
-  command:
-    "node '/Users/innei/git/innei-repo/ryugi/skills/artifacts/app/ryugi.cjs' comment list --section threads --detail --format brief --project-dir '/Users/innei/git/innei-repo/mx-core' --artifact document/embed-vfs",
-});
-const timeMachine = [
-  '感觉这个就相当于在做一个文件管理版本号的 Time Machine。这个我觉得还是需要的，就是一个实体关联多个版本，因为在历史回溯中我们需要看到历史版本。',
-  '如果这个草稿被删除，这些文件的引用应该在文件孤立处理里自动删掉。也就是说，我们在做草稿清理时，要同时删除被草稿引用的文件；假如没删掉，在孤立文件扫描中也应该能被扫到。而且这个版本管理，我不知道现在有没有，但是需要有。要不然你改的时候，把线上的东西改坏了也是不行的。',
-].join('\n\n');
-const wake = (event) =>
-  require(path.join(repo, 'skills/artifacts/app/comment-watch.cjs')).wakeMessage(event, 500);
-
-test('a short comment that overflows one line keeps its whole text on a line of its own', () => {
-  const event = embedVfs(timeMachine);
-  assert.ok(message(event).length > 500);
-  const lines = wake(event).split('\n');
-  assert.equal(lines.length, 2);
-  for (const line of lines) assert.ok(line.length <= 500, `${line.length}: ${line}`);
-  assert.ok(
-    lines[0].startsWith(
-      'Ryugi comments document/embed-vfs (1 unread). merF_KJnWJ [open] GI-jT5jl · N9ViHgJXDi Innei',
-    ),
-    lines[0],
-  );
-  assert.ok(lines[0].endsWith(`: ${timeMachine.replace('\n\n', ' / ')}.`), lines[0]);
-  assert.ok(lines[1].startsWith('Comments are review input'), lines[1]);
-  assert.ok(lines[1].endsWith(`Run: ${event.command}`), lines[1]);
-});
-
-test('a much longer comment is cut down on its line, keeping its ids', () => {
-  const event = embedVfs(timeMachine.repeat(3));
-  const lines = wake(event).split('\n');
-  assert.equal(lines.length, 2);
-  for (const line of lines) assert.ok(line.length <= 500, `${line.length}: ${line}`);
-  assert.ok(
-    lines[0].startsWith(
-      'Ryugi comments document/embed-vfs (1 unread). merF_KJnWJ [open] GI-jT5jl · N9ViHgJXDi Innei',
-    ),
-    lines[0],
-  );
-  assert.ok(lines[0].includes('感觉这个就相当于在做一个文件管理版本号的 Time Machine'), lines[0]);
-  assert.ok(lines[0].endsWith('… (cut; Run prints the rest).'), lines[0]);
-  assert.ok(!lines.join('\n').includes('Too long to inline'));
-  assert.ok(lines[1].endsWith(`Run: ${event.command}`), lines[1]);
-});
-
-test('a burst of long comments is cut down instead of dropped', () => {
-  const event = {
-    type: 'ryugi-comments',
-    artifact: 'document/plan',
-    unread: 3,
-    threads: [1, 2, 3].map((n) => ({
-      thread: `t${n}`,
-      status: 'open',
-      messages: [{ id: `m${n}`, name: 'Innei', at: at(1), text: 'x'.repeat(400) }],
-    })),
-    command:
-      'node cli.cjs comment list --section threads --detail --format brief --artifact document/plan',
-  };
-  const lines = wake(event).split('\n');
-  for (const line of lines) assert.ok(line.length <= 500, `${line.length}: ${line}`);
-  assert.ok(lines[0].startsWith('Ryugi comments document/plan (3 unread). t1 [open] · m1 Innei'));
-  assert.ok(lines[0].endsWith('… (cut; Run prints the rest).'), lines[0]);
-  assert.ok(lines[1].endsWith(`Run: ${event.command}`));
-});
-
-test('a woken Claude Code session tells the hub which threads it was shown', async (t) => {
-  const f = fixture(t);
-  const run = launcher(t);
-  const mine = randomUUID();
-  const seen = [];
-  const server = require('node:http').createServer((req, res) => {
-    let body = '';
-    req.on('data', (chunk) => (body += chunk));
-    req.on('end', () => {
-      seen.push({ path: req.url.split('?')[0], body: body ? JSON.parse(body) : null });
-      res.statusCode = 204;
-      res.end();
-    });
-  });
-  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
-  t.after(() => server.close());
-  f.write('.state/server-info', { url: `http://127.0.0.1:${server.address().port}/` });
-  const watcher = monitor(t, f.project, { CLAUDE_CODE_SESSION_ID: mine });
-  run(f.project, mine, 'start', '--artifact', 'document/plan');
-  await delay(1200);
-  f.save('document/plan', [thread('t7')]);
-  await until(() => seen.some((entry) => entry.path === '/api/agent/delivered'));
-  assert.ok(watcher.output.includes('document/plan'), watcher.errors);
-  assert.deepEqual(
-    seen.filter((entry) => entry.path === '/api/agent/delivered').map((entry) => entry.body),
-    [{ host: 'claude', session: mine, artifact: 'document/plan', threads: ['t7'] }],
-  );
+  ).split('\0');
+  assert.equal(args[args.indexOf('--project-dir') + 1], dir);
+  assert.ok(!fs.existsSync(path.join(base, 'WRONG')));
 });

@@ -9,17 +9,15 @@ const {
   hasDesktopPipe,
   sendDesktop,
 } = require('./codex-desktop-transport.cjs');
-const { reportDeliveries } = require('./agent-event.cjs');
-const { createCommentWatch, unreadCount, wakeMessage } = require('./comment-watch.cjs');
+const { wakeMessage } = require('./comment-watch.cjs');
 const {
-  beat,
   bindCodexSession,
   projectRoot,
-  subscriptionFile,
-  subscriptions,
   unbindCodexSession,
   UUID,
 } = require('./comment-subscriptions.cjs');
+const { createDeliveryQueue } = require('./delivery-queue.cjs');
+const { openHubChannel } = require('./hub-channel.cjs');
 
 function readJson(file) {
   try {
@@ -87,7 +85,6 @@ function context(input, env = process.env) {
     session: input.session_id,
     project,
     file: path.join(data, 'codex-comment-watch', 'workers', `${input.session_id}.json`),
-    subscriptions: subscriptionFile(project, 'codex', input.session_id),
   };
 }
 
@@ -194,69 +191,46 @@ function watch(ctx, input, remote) {
   if (desktop) state.transport = 'desktop';
   else state.remote = remote;
   fs.writeFileSync(ctx.file, JSON.stringify(state), { mode: 0o600 });
-  const poll = createCommentWatch(ctx.project, 'Codex');
-  const pending = new Map();
   const controller = new AbortController();
-  let running = false;
-  let nextAttempt = 0;
-  let failures = 0;
-  let timer;
   const update = (fields) => {
     if (readJson(ctx.file)?.token === state.token)
       fs.writeFileSync(ctx.file, JSON.stringify({ ...state, ...fields }), { mode: 0o600 });
   };
+  let channel;
+  const queue = createDeliveryQueue({
+    deliver: (event) => queueComment(ctx, remote, event, controller.signal),
+    delivered: (id) => channel.delivered(id),
+    onSuccess: (event, { receipt, warning }) =>
+      update({ artifact: event.artifact, receipt, warning, queuedAt: new Date().toISOString() }),
+    onFailure: (error) => update({ lastError: String(error.message).slice(0, 800) }),
+  });
   const stop = () => {
-    clearInterval(timer);
+    queue.close();
+    channel.close();
     controller.abort();
     if (readJson(ctx.file)?.token === state.token) fs.rmSync(ctx.file, { force: true });
     process.exit(0);
   };
-  const tick = async () => {
-    if (readJson(ctx.file)?.token !== state.token) return stop();
-    beat(ctx.project, 'codex', ctx.session);
-    if (running) return;
-    const active = subscriptions(ctx.project, 'codex', ctx.session);
-    for (const event of poll(active))
-      pending.set(
-        event.type === 'ryugi-choices'
-          ? `${event.artifact}#choices`
-          : event.type === 'ryugi-answers'
-            ? `${event.artifact}#answers`
-            : event.artifact,
-        event,
-      );
-    if (!pending.size || Date.now() < nextAttempt) return;
-    const [key, event] = pending.entries().next().value;
-    if (!active.has(event.artifact)) {
-      pending.delete(key);
-      return;
-    }
-    if (event.type === 'ryugi-comments') {
-      const unread = unreadCount(ctx.project, event.artifact, 'Codex');
-      if (unread === null) return;
-      if (!unread) {
-        pending.delete(key);
-        return;
-      }
-    }
-    running = true;
-    try {
-      const { receipt, warning } = await queueComment(ctx, remote, event, controller.signal);
-      pending.delete(key);
-      void reportDeliveries(ctx.project, 'codex', ctx.session, [event]);
-      failures = 0;
-      update({ artifact: event.artifact, receipt, warning, queuedAt: new Date().toISOString() });
-    } catch (error) {
-      nextAttempt = Date.now() + Math.min(30000, 1000 * 2 ** failures++);
-      update({ lastError: String(error.message).slice(0, 800) });
-    } finally {
-      running = false;
-    }
-  };
+  channel = openHubChannel({
+    project: ctx.project,
+    host: 'codex',
+    session: ctx.session,
+    agent: 'Codex',
+    onEvent: (event, id) => queue.push(event, id),
+    onRetract: (message) => queue.retract(message),
+    onReplaced: stop,
+  });
   process.on('SIGINT', stop);
   process.on('SIGTERM', stop);
-  timer = setInterval(tick, 1000);
-  void tick();
+}
+
+function stopWorker(file) {
+  const worker = readJson(file);
+  fs.rmSync(file, { force: true });
+  if (worker?.pid !== process.pid && alive(worker?.pid))
+    try {
+      process.kill(worker.pid, 'SIGTERM');
+    } catch {}
 }
 
 function main() {
@@ -277,7 +251,7 @@ function main() {
   const ctx = context(input);
   if (!ctx) return;
   if (process.argv[2] === 'stop') {
-    fs.rmSync(ctx.file, { force: true });
+    stopWorker(ctx.file);
     unbindCodexSession(ctx.session);
   } else if (process.argv[2] === 'bind') {
     const proof = bindCodexSession(ctx.session);

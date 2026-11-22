@@ -244,6 +244,7 @@ function main() {
     env.RYUGI_ARTIFACTS_VERSION = localVersion();
   }
   requireOutputProtocol(cli);
+  let subscription = null;
   if (
     sessionProof ||
     process.env.CODEX_THREAD_ID ||
@@ -253,7 +254,11 @@ function main() {
     process.env.ANTIGRAVITY_CONVERSATION_ID
   ) {
     try {
-      require('./comment-subscriptions.cjs').register(args, process.env, sessionProof);
+      subscription = require('./comment-subscriptions.cjs').subscriptionFor(
+        args,
+        process.env,
+        sessionProof,
+      );
     } catch (error) {
       if (error.code !== 'MODULE_NOT_FOUND')
         console.error(JSON.stringify({ type: 'comment-watch-error', message: error.message }));
@@ -274,9 +279,33 @@ function main() {
   if (owner) env.RYUGI_ARTIFACTS_OWNER = String(owner);
   const child = spawn(process.execPath, [cli, ...args], { env, stdio: 'inherit' });
   for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => child.kill(signal));
-  child.on('close', (code, signal) => {
+  child.on('close', async (code, signal) => {
     process.exitCode = code ?? (signal ? 1 : 0);
+    if (subscription) await subscribe(subscription);
   });
+}
+
+// The hub is running only once the CLI command has returned, so the subscription follows it.
+async function subscribe(subscription) {
+  try {
+    const { hubProjectOf, postToHub, postToServer } = require('./agent-event.cjs');
+    await postToServer(hubProjectOf(subscription.project), '/api/agent/subscribe', subscription);
+    const defaultHome = path.join(os.homedir(), '.ryugi', 'server');
+    // The session's watcher dials the hub of the session's own environment, normally the default one, not the hub this command was pointed at.
+    if (
+      process.env.RYUGI_SERVER_HOME &&
+      path.resolve(process.env.RYUGI_SERVER_HOME) !== defaultHome
+    )
+      await postToHub(
+        path.join(defaultHome, 'server-info'),
+        subscription.project,
+        '/api/agent/subscribe',
+        subscription,
+      );
+  } catch (error) {
+    if (error.code !== 'MODULE_NOT_FOUND')
+      console.error(JSON.stringify({ type: 'comment-watch-error', message: error.message }));
+  }
 }
 
 function run() {

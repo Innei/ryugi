@@ -13,6 +13,7 @@ process.env.XDG_CACHE_HOME = cacheHome;
 after(() => fs.rmSync(cacheHome, { recursive: true, force: true }));
 require('./fake-artifacts-release.cjs').seedFakeRelease(cacheHome);
 const { setTimeout: delay } = require('node:timers/promises');
+const { fakeHub } = require('./fake-hub.cjs');
 
 const repo = path.resolve(__dirname, '../..');
 const adapter = path.join(repo, 'skills/artifacts/app/codex-comment-watch.cjs');
@@ -29,19 +30,8 @@ async function until(check, explanation, timeout = 5000) {
   assert.fail(typeof explanation === 'function' ? explanation() : explanation);
 }
 
-async function initialScan(f) {
-  const file = path.join(f.project, '.ryugi/artifacts/.state/codex-comment-watch', `${id}.alive`);
-  await until(() => fs.existsSync(file), 'codex watcher never wrote a heartbeat');
-  const first = fs.readFileSync(file, 'utf8');
-  // A heartbeat starts each synchronous scan. The next one proves the initial
-  // snapshot finished before this test submits a new answer or round.
-  await until(
-    () => fs.readFileSync(file, 'utf8') !== first,
-    'codex watcher never finished its initial scan',
-  );
-}
-
 function fixture(t) {
+  const hub = fakeHub(t);
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-codex-watch-')));
   const project = path.join(root, "project with ' quote");
   const data = path.join(root, 'plugin-data');
@@ -81,6 +71,7 @@ esac
     CODEX_SESSION_ID: inherited,
     RYUGI_CODEX_REMOTE: 'unix:///tmp/ryugi-test.sock',
     PATH: `${bin}${path.delimiter}${process.env.PATH}`,
+    ...hub.env,
   };
   // Fixture hooks must never contact the real desktop app inherited by the test runner.
   delete env.CODEX_APP_TOOLS_PIPE_PATH;
@@ -160,7 +151,34 @@ esac
       },
     ],
   });
-  const start = (overrides = {}, activate = true) => {
+  let nextId = 0;
+  const push = async (artifact, event = {}, session = id) => {
+    await until(() => hub.sessions.has(session), 'the watcher never said hello to the hub');
+    const sent = ++nextId;
+    hub.send(session, {
+      t: 'event',
+      id: sent,
+      event: {
+        type: 'ryugi-comments',
+        project,
+        artifact,
+        unread: 1,
+        threads: [
+          {
+            thread: 't1',
+            status: 'open',
+            block: 'b1',
+            messages: [{ id: 'm1', at: at(1), name: 'human', text: 'Change it' }],
+          },
+        ],
+        ...event,
+      },
+    });
+    return sent;
+  };
+  const retract = (artifact, session = id) =>
+    hub.send(session, { t: 'retract', project, artifact, type: 'ryugi-comments' });
+  const start = (overrides = {}, activate = false) => {
     if (activate)
       for (const artifact of ['document/plan', 'artboard/settings'])
         open(artifact, overrides.session_id ?? id);
@@ -194,6 +212,9 @@ esac
     }
   };
   return {
+    hub,
+    push,
+    retract,
     root,
     project,
     data,
@@ -271,11 +292,13 @@ function hooks() {
   return JSON.parse(fs.readFileSync(path.resolve(repo, manifest.hooks), 'utf8')).hooks;
 }
 
-test('a new comment is queued to the hook session rather than an inherited parent thread', async (t) => {
+test('a hub event is queued to the hook session rather than an inherited parent thread, then acknowledged', async (t) => {
   const f = fixture(t);
   f.start();
-  f.write('document/plan', f.comments());
+  const sent = await f.push('document/plan');
   await until(() => f.read().length > 0, 'comment never reached codex queue');
+  assert.equal(f.hub.hellos()[0].session, id);
+  assert.equal(f.hub.hellos()[0].agent, 'Codex');
   const args = f.read()[0];
   assert.equal(args[0], 'queue');
   assert.equal(args[args.indexOf('--thread') + 1], id);
@@ -285,89 +308,58 @@ test('a new comment is queued to the hook session rather than an inherited paren
   assert.ok(message.includes('document/plan'));
   assert.ok(message.includes('comment list --section threads --detail --format brief'));
   assert.ok(message.includes('Change it'));
-  assert.ok(
-    !fs.existsSync(
-      path.join(f.project, '.ryugi/artifacts/.state/document/plan/comment-cursors.json'),
-    ),
-  );
-  await delay(1200);
+  await until(() => f.hub.delivered().includes(sent), 'the delivery was never acknowledged');
   assert.equal(f.read().length, 1);
 });
 
 test('two lifecycle invocations keep a single watcher for the same session', async (t) => {
   const f = fixture(t);
-  f.start();
-  f.start({ source: 'compact' });
-  await delay(250);
-  f.write('artboard/settings', f.comments());
+  const first = f.start();
+  const second = f.start({ source: 'compact' });
+  await until(
+    () => [first, second].some((child) => child.exitCode !== null),
+    'both watchers kept running',
+  );
+  await f.push('artboard/settings');
   await until(() => f.read().length > 0, 'comment never reached the active watcher');
-  await delay(1200);
+  await delay(300);
   assert.equal(f.read().length, 1);
+  assert.equal(f.hub.hellos().length, 1);
 });
 
-test('transport failure retries the pending comment without requiring another human edit', async (t) => {
+test('transport failure retries the pending comment, and only success is acknowledged', async (t) => {
   const f = fixture(t);
   fs.writeFileSync(f.fail, 'offline');
   f.start();
-  f.write('document/plan', f.comments());
+  const sent = await f.push('document/plan');
   await until(() => f.read().length > 0, 'no first delivery attempt');
+  assert.deepEqual(f.hub.delivered(), []);
   fs.unlinkSync(f.fail);
   await until(() => f.read().length >= 2, 'failed comment was lost instead of retried');
+  await until(() => f.hub.delivered().includes(sent), 'the retried delivery was not acknowledged');
   const delivered = f.read().length;
   await delay(1200);
   assert.equal(f.read().length, delivered);
 });
 
-test('comments wake only the session that opened that artifact through the launcher', async (t) => {
-  const f = fixture(t);
-  f.start({}, false);
-  f.write('document/plan', f.comments());
-  f.open('document/plan', inherited);
-  await delay(1200);
-  assert.equal(f.read().length, 0);
-  f.open('document/plan');
-  await until(() => f.read().length === 1, 'opening the artifact did not activate its watcher');
-  f.write('artboard/unrelated', f.comments());
-  await delay(1200);
-  assert.equal(f.read().length, 1);
-});
-
-test('a legacy project wildcard cannot wake a session for unrelated historical comments', async (t) => {
-  const f = fixture(t);
-  const file = path.join(f.project, '.ryugi/artifacts/.state/codex-comment-watch', `${id}.json`);
-  fs.mkdirSync(path.dirname(file), { recursive: true });
-  fs.writeFileSync(file, JSON.stringify({ artifacts: ['*'] }));
-  f.write('document/history', f.comments());
-  f.start({}, false);
-  await initialScan(f);
-  assert.equal(f.read().length, 0);
-  f.open('document/plan');
-  f.write('document/plan', f.comments());
-  await until(() => f.read().length === 1, 'an explicitly opened artifact never woke its session');
-  assert.ok(f.read()[0][f.read()[0].indexOf('--message') + 1].includes('document/plan'));
-});
-
-test('hosts without PLUGIN_DATA keep worker ownership separate from launcher subscriptions', async (t) => {
+test('hosts without PLUGIN_DATA still deliver', async (t) => {
   const f = fixture(t);
   delete f.env.PLUGIN_DATA;
   delete f.env.CLAUDE_PLUGIN_DATA;
-  const child = f.start({}, false);
-  await delay(250);
-  f.open('document/plan');
-  f.write('document/plan', f.comments());
-  await until(() => f.read().length > 0, 'launcher registration stopped its own watcher');
+  const child = f.start();
+  await f.push('document/plan');
+  await until(() => f.read().length > 0, 'no delivery without PLUGIN_DATA');
   assert.equal(child.exitCode, null);
 });
 
-test('a comment resolved during an outage is not delivered when transport recovers', async (t) => {
+test('a retract drops a comment still waiting for the transport', async (t) => {
   const f = fixture(t);
   fs.writeFileSync(f.fail, 'offline');
   f.start();
-  const comments = f.comments();
-  f.write('document/plan', comments);
+  await f.push('document/plan');
   await until(() => f.read().length > 0, 'no first delivery attempt');
-  Object.assign(comments.threads[0], { status: 'resolved', statusBy: 'human', statusAt: at(2) });
-  f.write('document/plan', comments);
+  f.retract('document/plan');
+  await delay(100);
   fs.unlinkSync(f.fail);
   await delay(2400);
   assert.equal(f.read().length, 1);
@@ -377,7 +369,10 @@ test('SessionEnd stops delivery and leaves other sessions alone', async (t) => {
   const f = fixture(t);
   const first = f.start();
   const other = f.start({ session_id: inherited });
-  await delay(250);
+  await until(
+    () => f.hub.sessions.has(id) && f.hub.sessions.has(inherited),
+    'watchers never connected',
+  );
   const end = spawnSync(process.execPath, [adapter, 'stop'], {
     // Cleanup must still work when the desktop runtime/pipe has gone away.
     env: { ...f.env, CODEX_APP_TOOLS_PIPE_PATH: 'unavailable', CODEX_MCP_NODE_PATH: 'missing' },
@@ -390,18 +385,16 @@ test('SessionEnd stops delivery and leaves other sessions alone', async (t) => {
     'ended session kept watching',
   );
   assert.equal(other.exitCode, null);
-  f.write('document/plan', f.comments());
+  await f.push('document/plan', {}, inherited);
   await until(() => f.read().length > 0, 'other session stopped too');
   assert.ok(f.read().every((args) => args[args.indexOf('--thread') + 1] === inherited));
 });
 
 test('an invalid session identifier does not fall back to an inherited thread', async (t) => {
   const f = fixture(t);
-  const child = f.start({ session_id: '' }, false);
+  const child = f.start({ session_id: '' });
   await until(() => child.exitCode !== null, 'invalid input left a watcher running');
-  f.write('document/plan', f.comments());
-  await delay(1100);
-  assert.equal(f.read().length, 0);
+  assert.deepEqual(f.hub.hellos(), []);
 });
 
 test('the shipped lifecycle hooks invoke the portable watcher and stop it on session end', async (t) => {
@@ -432,8 +425,7 @@ test('the shipped lifecycle hooks invoke the portable watcher and stop it on ses
       t.after(() => child.kill());
     }
   }
-  f.open('document/plan');
-  f.write('document/plan', f.comments());
+  await f.push('document/plan');
   await until(() => f.read().length > 0, 'the manifest command did not deliver comments');
   const end = config.SessionEnd?.[0]?.hooks?.[0];
   assert.ok(end, 'the Codex plugin has no cleanup hook');
@@ -450,53 +442,33 @@ test('the shipped lifecycle hooks invoke the portable watcher and stop it on ses
   );
 });
 
-test('a submitted round is queued even with no unread comments, and the watcher beats', async (t) => {
+test('a submitted round is queued', async (t) => {
   const f = fixture(t);
-  const rounds = (state) => {
-    const file = path.join(f.project, '.ryugi/artifacts/.state/artboard/settings/rounds.json');
-    fs.mkdirSync(path.dirname(file), { recursive: true });
-    fs.writeFileSync(
-      file,
-      JSON.stringify({ rounds: [{ id: 'r1', page: 'p', state, groups: ['q1'], boards: ['a'] }] }),
-    );
-  };
-  f.write('artboard/settings', { version: 1, threads: [] });
-  rounds('open');
   f.start();
-  await initialScan(f);
-  rounds('submitted');
+  await f.push('artboard/settings', {
+    type: 'ryugi-choices',
+    round: 'r1',
+    groups: 1,
+    threads: undefined,
+    unread: undefined,
+  });
   await until(() => f.read().length > 0, 'submitted round never reached codex queue');
   const args = f.read()[0];
   const message = args[args.indexOf('--message') + 1];
-  assert.ok(message.includes('artboard/settings'));
-  assert.ok(message.includes('submitted'));
+  assert.ok(message.includes('Ryugi choices artboard/settings round r1 submitted'), message);
 });
 
-test('the heartbeat keeps beating while a queue call is in flight', async (t) => {
+test('submitted document answers are queued with the listed answers inline', async (t) => {
   const f = fixture(t);
-  fs.writeFileSync(`${f.fail}.slow`, '');
-  f.start();
-  const alive = path.join(f.project, '.ryugi/artifacts/.state/codex-comment-watch', `${id}.alive`);
-  await until(() => fs.existsSync(alive), 'codex watcher never wrote a heartbeat');
-  f.write('document/plan', f.comments());
-  await until(() => f.read().length > 0, 'comment never reached codex queue');
-  const during = Number(fs.readFileSync(alive, 'utf8'));
-  await delay(2500);
-  assert.ok(Number(fs.readFileSync(alive, 'utf8')) > during, 'heartbeat stopped while queueing');
-});
-
-test('submitted document answers are queued even with no unread comments', async (t) => {
-  const f = fixture(t);
-  const asks = (latest) => {
-    const file = path.join(f.project, '.ryugi/artifacts/.state/document/plan/asks.json');
-    fs.mkdirSync(path.dirname(file), { recursive: true });
-    fs.writeFileSync(file, JSON.stringify({ latest }));
-  };
   f.write('document/plan', { version: 1, threads: [] });
-  asks(null);
   f.start();
-  await initialScan(f);
-  asks({ id: 's1', at: '2026-11-03T00:00:00.000Z', withdrawn: false });
+  await f.push('document/plan', {
+    type: 'ryugi-answers',
+    submit: 's1',
+    questions: 0,
+    threads: undefined,
+    unread: undefined,
+  });
   await until(() => f.read().length > 0, 'submitted answers never reached codex queue');
   const args = f.read()[0];
   const message = args[args.indexOf('--message') + 1];
@@ -513,7 +485,7 @@ test('desktop comments retry through the app pipe and acknowledge the hook sessi
   const f = fixture(t);
   const app = await desktop(t, f);
   f.start();
-  f.write('document/plan', f.comments());
+  const sent = await f.push('document/plan');
   await until(
     () => app.calls.length > 0,
     () =>
@@ -537,20 +509,21 @@ test('desktop comments retry through the app pipe and acknowledge the hook sessi
   assert.ok(call.arguments.prompt.includes('Change it'));
   assert.equal(JSON.parse(f.state().receipt).threadId, id);
   assert.equal(f.read().length, 0);
+  await until(() => f.hub.delivered().includes(sent), 'the desktop delivery was not acknowledged');
 });
 
-test('desktop choice submissions use the existing artifact subscription and round notification', async (t) => {
+test('desktop choice submissions reach the app pipe', async (t) => {
   const f = fixture(t);
   const app = await desktop(t, f);
   app.recover();
-  f.write('artboard/settings', { version: 1, threads: [] });
-  const file = path.join(f.project, '.ryugi/artifacts/.state/artboard/settings/rounds.json');
-  fs.mkdirSync(path.dirname(file), { recursive: true });
-  const round = { id: 'r1', page: 'p', state: 'open', groups: ['q1'], boards: ['a'] };
-  fs.writeFileSync(file, JSON.stringify({ rounds: [round] }));
   f.start();
-  await until(() => Boolean(f.state()), 'desktop watcher never started');
-  fs.writeFileSync(file, JSON.stringify({ rounds: [{ ...round, state: 'submitted' }] }));
+  await f.push('artboard/settings', {
+    type: 'ryugi-choices',
+    round: 'r1',
+    groups: 1,
+    threads: undefined,
+    unread: undefined,
+  });
   await until(() => app.calls.length > 0, 'desktop choice never reached the app pipe');
   assert.ok(
     app.calls[0].arguments.prompt.includes('Ryugi choices artboard/settings round r1 submitted'),
@@ -564,7 +537,7 @@ test('an explicit RYUGI_CODEX_REMOTE keeps the CLI queue inside a desktop enviro
   app.recover();
   f.env.RYUGI_CODEX_REMOTE = 'unix:///tmp/ryugi-test.sock';
   f.start();
-  f.write('document/plan', f.comments());
+  await f.push('document/plan');
   await until(() => f.read().length > 0, 'comment never reached codex queue');
   assert.equal(f.read()[0][f.read()[0].indexOf('--remote') + 1], 'unix:///tmp/ryugi-test.sock');
   assert.equal(app.calls.length, 0);
@@ -576,7 +549,7 @@ test('a nonlocal desktop host is rejected without trying the CLI endpoint', asyn
   const app = await desktop(t, f);
   f.env.CODEX_APP_TOOLS_CALLER_HOST_ID = 'durable';
   f.start();
-  f.write('document/plan', f.comments());
+  await f.push('document/plan');
   await until(
     () => /local host/i.test(f.state()?.lastError || ''),
     'nonlocal host was not rejected',

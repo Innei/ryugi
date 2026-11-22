@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
@@ -162,7 +162,8 @@ test('pi tools reference documents pi-specific mappings', async () => {
 });
 
 const require = createRequire(import.meta.url);
-const { register } = require('../../skills/artifacts/app/comment-subscriptions.cjs');
+const { subscriptionFor } = require('../../skills/artifacts/app/comment-subscriptions.cjs');
+const { fakeHub } = require('../hooks/fake-hub.cjs');
 
 const session = '019a4f5e-8a2b-7c3d-9e4f-0123456789ab';
 const at = (n) => `2026-11-03T10:00:${String(n).padStart(2, '0')}.000Z`;
@@ -179,63 +180,49 @@ async function until(check, explanation, timeout = 4000) {
 function project(t) {
   const root = realpathSync(mkdtempSync(join(tmpdir(), 'ryugi-pi-watch-')));
   mkdirSync(join(root, '.git'));
+  mkdirSync(join(root, '.ryugi/artifacts'), { recursive: true });
   t.after(() => rmSync(root, { recursive: true, force: true }));
-  const write = (file, value) => {
-    const target = join(root, '.ryugi/artifacts', file);
-    mkdirSync(dirname(target), { recursive: true });
-    writeFileSync(target, JSON.stringify(value));
-  };
-  const human = (n, text = 'Make the header smaller') => ({
-    id: `t${n}`,
-    status: 'open',
-    anchor: { board: 'b1' },
-    messages: [{ id: `m${n}`, author: 'human', at: at(n), text }],
-  });
-  return { root, write, human };
+  return { root };
 }
 
-test('a human comment on an artboard this Pi session opened wakes the session', async (t) => {
-  const p = project(t);
-  const { handlers, sent } = await loadExtension();
-  const ctx = { cwd: p.root, sessionManager: { getSessionId: () => session } };
-  t.after(() => firstHandler(handlers, 'session_shutdown')({ type: 'session_shutdown' }, ctx));
-  p.write('artboard/home/comments.json', { threads: [] });
-  p.write('artboard/other/comments.json', { threads: [] });
-  p.write('.state/artboard/home/rounds.json', { rounds: [{ id: 'r1', state: 'open' }] });
-  await firstHandler(handlers, 'session_start')({ type: 'session_start' }, ctx);
-  register(['start', '--artifact', 'artboard/home', '--project-dir', p.root], {
-    PI_SESSION_ID: session,
+function hubFor(t) {
+  const hub = fakeHub(t);
+  const saved = { ...process.env };
+  Object.assign(process.env, hub.env);
+  t.after(() => {
+    for (const key of Object.keys(hub.env)) {
+      if (saved[key] === undefined) delete process.env[key];
+      else process.env[key] = saved[key];
+    }
   });
-  await delay(1500);
-
-  p.write('artboard/other/comments.json', { threads: [p.human(1)] });
-  const agentReply = p.human(2);
-  agentReply.messages.push({ id: 'a2', author: 'agent', at: at(3), text: 'Done' });
-  agentReply.messages.shift();
-  p.write('artboard/home/comments.json', { threads: [agentReply] });
-  await delay(1500);
-  assert.deepEqual(sent, [], 'agent replies and artifacts this session never opened stay quiet');
-
-  p.write('artboard/home/comments.json', { threads: [p.human(4)] });
-  await until(() => sent.length === 1, 'a human comment on the opened artboard wakes Pi');
-  assert.equal(sent[0].message.customType, 'ryugi-comments');
-  assert.deepEqual(sent[0].options, { triggerTurn: true, deliverAs: 'followUp' });
-  assert.match(sent[0].message.content, /artboard\/home/);
-  assert.match(sent[0].message.content, /comment list --section threads --detail --format brief/);
-  assert.match(sent[0].message.content, /Make the header smaller/);
-
-  p.write('.state/artboard/home/rounds.json', { rounds: [{ id: 'r1', state: 'submitted' }] });
-  await until(() => sent.length === 2, 'a submitted choice round wakes Pi');
-  assert.equal(sent[1].message.customType, 'ryugi-choices');
-  assert.match(sent[1].message.content, /Ryugi choices artboard\/home round r1 submitted/);
-  assert.match(sent[1].message.content, /\nComment list: artboard\/home/);
-  assert.doesNotMatch(sent[1].message.content, /Run:/);
-
-  await firstHandler(handlers, 'session_shutdown')({ type: 'session_shutdown' }, ctx);
-  p.write('artboard/home/comments.json', { threads: [p.human(4), p.human(5)] });
-  await delay(1500);
-  assert.equal(sent.length, 2, 'a shut-down session no longer wakes');
-});
+  let nextId = 0;
+  const event = (id, root, fields) => {
+    const sent = ++nextId;
+    hub.send(id, {
+      t: 'event',
+      id: sent,
+      event: {
+        type: 'ryugi-comments',
+        project: root,
+        artifact: 'artboard/home',
+        unread: 1,
+        threads: [
+          {
+            thread: 't1',
+            status: 'open',
+            block: 'b1',
+            messages: [{ id: 'm1', at: at(1), name: 'human', text: 'Make the header smaller' }],
+          },
+        ],
+        ...fields,
+      },
+    });
+    return sent;
+  };
+  const connected = (id = session) =>
+    until(() => hub.sessions.has(id), `session ${id} never said hello to the hub`);
+  return { ...hub, event, connected };
+}
 
 function sessionContext(cwd, id = session) {
   const notes = [];
@@ -252,17 +239,38 @@ async function startSession(t, handlers, ctx) {
   t.after(() => firstHandler(handlers, 'session_shutdown')({ type: 'session_shutdown' }, ctx));
 }
 
-function opened(p, artifact, id = session) {
-  p.write(`${artifact}/comments.json`, { threads: [] });
-  register(['start', '--artifact', artifact, '--project-dir', p.root], {
-    PI_SESSION_ID: id,
-  });
-}
-
-const comments = (sent) => sent.filter((s) => s.message.customType === 'ryugi-comments');
-
-test('a delivery that throws or rejects is reported once and the watch keeps waking Pi', async (t) => {
+test('a hub event wakes the Pi session and is acknowledged once delivered', async (t) => {
   const p = project(t);
+  const hub = hubFor(t);
+  const { handlers, sent } = await loadExtension();
+  const ctx = sessionContext(p.root);
+  await startSession(t, handlers, ctx);
+  await hub.connected();
+  assert.equal(hub.hellos()[0].host, 'pi');
+
+  const first = hub.event(session, p.root);
+  await until(() => sent.length === 1, 'a hub event wakes Pi');
+  assert.equal(sent[0].message.customType, 'ryugi-comments');
+  assert.deepEqual(sent[0].options, { triggerTurn: true, deliverAs: 'followUp' });
+  assert.match(sent[0].message.content, /artboard\/home/);
+  assert.match(sent[0].message.content, /comment list --section threads --detail --format brief/);
+  assert.match(sent[0].message.content, /Make the header smaller/);
+  await until(() => hub.delivered().includes(first), 'the delivery is acknowledged');
+
+  hub.event(session, p.root, { type: 'ryugi-choices', round: 'r1', groups: 1, threads: undefined });
+  await until(() => sent.length === 2, 'a submitted choice round wakes Pi');
+  assert.equal(sent[1].message.customType, 'ryugi-choices');
+  assert.match(sent[1].message.content, /Ryugi choices artboard\/home round r1 submitted/);
+  assert.match(sent[1].message.content, /\nComment list: artboard\/home/);
+  assert.doesNotMatch(sent[1].message.content, /Run:/);
+
+  await firstHandler(handlers, 'session_shutdown')({ type: 'session_shutdown' }, ctx);
+  await until(() => !hub.sessions.has(session), 'a shut-down session leaves the hub');
+});
+
+test('a delivery that throws or rejects is reported once, not acknowledged, and the watch keeps waking Pi', async (t) => {
+  const p = project(t);
+  const hub = hubFor(t);
   const failures = [
     () => {
       throw new Error('extension runtime is gone');
@@ -271,83 +279,58 @@ test('a delivery that throws or rejects is reported once and the watch keeps wak
   ];
   const { handlers, sent } = await loadExtension(() => failures.shift()?.());
   const ctx = sessionContext(p.root);
-  opened(p, 'artboard/home');
   await startSession(t, handlers, ctx);
-  await delay(1200);
+  await hub.connected();
 
-  p.write('artboard/home/comments.json', { threads: [p.human(1)] });
-  await until(() => sent.length === 1, 'the first comment reaches sendMessage');
-  p.write('artboard/home/comments.json', { threads: [p.human(1), p.human(2)] });
+  hub.event(session, p.root);
+  await until(() => sent.length === 1, 'the first event reaches sendMessage');
+  hub.event(session, p.root);
   await until(() => sent.length === 2, 'the watch survives a synchronous throw');
-  p.write('artboard/home/comments.json', { threads: [p.human(1), p.human(2), p.human(3)] });
+  const third = hub.event(session, p.root);
   await until(() => sent.length === 3, 'the watch survives a rejected delivery');
+  await until(() => hub.delivered().includes(third), 'the working delivery is acknowledged');
 
+  assert.deepEqual(hub.delivered(), [third]);
   assert.equal(ctx.notes.length, 1, 'a repeated failure is reported once');
   assert.equal(ctx.notes[0].type, 'warning');
   assert.match(ctx.notes[0].message, /Ryugi comment watch.*extension runtime is gone/);
 });
 
-test('a new session ID replaces the watch: only the new session is woken', async (t) => {
+test('a new session ID replaces the watch: only the new session is connected', async (t) => {
   const p = project(t);
+  const hub = hubFor(t);
   const next = '019a4f5e-8a2b-7c3d-9e4f-0123456789ac';
   const { handlers, sent } = await loadExtension();
-  opened(p, 'artboard/home');
-  opened(p, 'artboard/other', next);
   await startSession(t, handlers, sessionContext(p.root));
+  await hub.connected();
   await startSession(t, handlers, sessionContext(p.root, next));
-  await delay(1200);
+  await hub.connected(next);
+  await until(() => !hub.sessions.has(session), 'the replaced session kept its connection');
 
-  p.write('artboard/home/comments.json', { threads: [p.human(1)] });
-  await delay(1500);
-  assert.deepEqual(sent, [], 'the replaced session no longer has a watch');
-
-  p.write('artboard/other/comments.json', { threads: [p.human(2)] });
+  hub.event(next, p.root, { artifact: 'artboard/other' });
   await until(() => sent.length === 1, 'the new session is woken');
   assert.match(sent[0].message.content, /artboard\/other/);
 });
 
 test('after reload the reloaded extension keeps watching and the old one stays quiet', async (t) => {
   const p = project(t);
+  const hub = hubFor(t);
   const before = await loadExtension();
   const after = await loadExtension();
   const ctx = sessionContext(p.root);
-  opened(p, 'artboard/home');
   await firstHandler(before.handlers, 'session_start')({ type: 'session_start' }, ctx);
+  await hub.connected();
   await firstHandler(before.handlers, 'session_shutdown')(
     { type: 'session_shutdown', reason: 'reload' },
     ctx,
   );
   await startSession(t, after.handlers, ctx);
-  await delay(1200);
+  await until(() => hub.hellos().length === 2 && hub.sessions.has(session), 'no reconnect');
 
-  p.write('artboard/home/comments.json', { threads: [p.human(1)] });
+  hub.event(session, p.root);
   await until(() => after.sent.length === 1, 'the reloaded extension wakes the session');
-  await delay(1200);
+  await delay(300);
   assert.deepEqual(before.sent, []);
-});
-
-test('a forked session watches only what it opens itself', async (t) => {
-  const p = project(t);
-  const fork = '019a4f5e-8a2b-7c3d-9e4f-0123456789ad';
-  const { handlers, sent } = await loadExtension();
-  opened(p, 'artboard/home');
-  await firstHandler(handlers, 'session_start')({ type: 'session_start' }, sessionContext(p.root));
-  await firstHandler(handlers, 'session_shutdown')(
-    { type: 'session_shutdown', reason: 'fork' },
-    sessionContext(p.root),
-  );
-  await startSession(t, handlers, sessionContext(p.root, fork));
-  await delay(1200);
-
-  p.write('artboard/home/comments.json', { threads: [p.human(1)] });
-  await delay(1500);
-  assert.deepEqual(comments(sent), [], 'the fork does not inherit the parent subscriptions');
-
-  register(['start', '--artifact', 'artboard/home', '--project-dir', p.root], {
-    PI_SESSION_ID: fork,
-  });
-  p.write('artboard/home/comments.json', { threads: [p.human(1), p.human(2)] });
-  await until(() => comments(sent).length === 1, 'the fork is woken once it opens the artboard');
 });
 
 test('a Pi subscription does not guess its host from inherited or conflicting session markers', (t) => {
@@ -357,22 +340,16 @@ test('a Pi subscription does not guess its host from inherited or conflicting se
     CLAUDE_CODE_SESSION_ID: '019a4f5e-0000-7000-8000-000000000002',
     PI_SESSION_ID: '019a4f5e-0000-7000-8000-000000000003',
   };
-  const hostOf = (env) => {
-    const root = join(p.root, '.ryugi/artifacts/.state');
-    rmSync(root, { recursive: true, force: true });
-    register(['start', '--artifact', 'artboard/home', '--project-dir', p.root], env);
-    return ['codex', 'claude', 'pi'].filter((host) =>
-      existsSync(join(root, `${host}-comment-watch`)),
-    );
-  };
+  const hostOf = (env) =>
+    subscriptionFor(['start', '--artifact', 'artboard/home', '--project-dir', p.root], env)?.host;
   assert.throws(() => hostOf(ids), /ambiguous agent session markers/);
-  assert.deepEqual(
+  assert.equal(
     hostOf({ CODEX_THREAD_ID: ids.CODEX_THREAD_ID, PI_SESSION_ID: ids.PI_SESSION_ID }),
-    ['pi'],
+    'pi',
   );
   assert.throws(
     () => hostOf({ ...ids, CODEX_THREAD_ID: undefined }),
     /ambiguous agent session markers/,
   );
-  assert.deepEqual(hostOf({ PI_SESSION_ID: ids.PI_SESSION_ID }), ['pi']);
+  assert.equal(hostOf({ PI_SESSION_ID: ids.PI_SESSION_ID }), 'pi');
 });

@@ -8,12 +8,7 @@ const {
   unreadThreadCount,
   reviewStateKey,
 } = require('../skills/artifacts/app/comment-threads.cjs');
-const {
-  checkouts,
-  subscriptionFile,
-  subscriptions,
-  UUID,
-} = require('../skills/artifacts/app/comment-subscriptions.cjs');
+const { UUID } = require('../skills/artifacts/app/comment-subscriptions.cjs');
 
 const MAX_CONTEXT = 8000;
 const MAX_HTML = 600;
@@ -131,11 +126,10 @@ function artifactIds(root, type) {
   }
 }
 
-function commentReminders(project, root, key, only) {
+function commentReminders(project, root, key) {
   const waiting = [];
   for (const type of ['document', 'artboard', 'whiteboard', 'slides', 'storyboard']) {
     for (const id of artifactIds(root, type)) {
-      if (only && !only.has('*') && !only.has(`${type}/${id}`)) continue;
       const file = readJson(path.join(root, type, id, 'comments.json'));
       if (!file) continue;
       const scope = `${type}/${id}`;
@@ -430,27 +424,10 @@ function main() {
         ? input.lastUserInput
         : '';
   const autoPublish = autoPublishContext(project, process.env, sessionId || rawSessionId);
-  const subHost = isAntigravity ? 'antigravity' : 'claude';
-  const elsewhere = UUID.test(sessionId || '')
-    ? checkouts(project)
-        .filter(
-          (other) =>
-            other !== project && fs.existsSync(subscriptionFile(other, subHost, sessionId)),
-        )
-        .map((other) =>
-          commentReminders(
-            other,
-            path.join(other, '.ryugi', 'artifacts'),
-            cursorKey(process.env, isAntigravity),
-            subscriptions(other, subHost, sessionId),
-          ),
-        )
-    : [];
   const reviewKey = cursorKey(process.env, isAntigravity);
   const reminders = [
     previewReminders(project, root, reviewKey),
     commentReminders(project, root, reviewKey),
-    ...elsewhere,
     autoPublish,
   ]
     .filter(Boolean)

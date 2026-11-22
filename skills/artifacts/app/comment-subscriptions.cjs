@@ -9,10 +9,10 @@ const path = require('node:path');
 const UUID = /^[\da-f]{8}(?:-[\da-f]{4}){3}-[\da-f]{12}$/i;
 const ARTIFACT = /^(?:document|artboard|whiteboard|slides|storyboard|preview)\/[a-z0-9][a-z0-9-]*$/;
 const HOSTS = {
-  codex: { env: 'CODEX_THREAD_ID', dir: 'codex-comment-watch' },
-  claude: { env: 'CLAUDE_CODE_SESSION_ID', dir: 'claude-comment-watch' },
-  pi: { env: 'PI_SESSION_ID', dir: 'pi-comment-watch' },
-  antigravity: { env: 'ANTIGRAVITY_CONVERSATION_ID', dir: 'agy-comment-watch' },
+  codex: 'CODEX_THREAD_ID',
+  claude: 'CLAUDE_CODE_SESSION_ID',
+  pi: 'PI_SESSION_ID',
+  antigravity: 'ANTIGRAVITY_CONVERSATION_ID',
 };
 
 function readJson(file) {
@@ -69,54 +69,9 @@ function checkouts(project) {
   return [...new Set(roots)];
 }
 
-function subscriptionFile(project, host, session) {
-  return path.join(project, '.ryugi/artifacts/.state', HOSTS[host].dir, `${session}.json`);
-}
-
-function aliveFile(project, host, session) {
-  return path.join(project, '.ryugi/artifacts/.state', HOSTS[host].dir, `${session}.alive`);
-}
-
-function beat(project, host, session, now = Date.now()) {
-  try {
-    const file = aliveFile(project, host, session);
-    fs.mkdirSync(path.dirname(file), { recursive: true });
-    fs.writeFileSync(file, String(now));
-  } catch {
-    // A missing heartbeat only makes the viewer say "tell the terminal"; never fail the watch.
-  }
-}
-
 function sessionOf(host, env = process.env) {
-  const session = env[HOSTS[host].env] || (host === 'codex' ? env.CODEX_SESSION_ID : null);
+  const session = env[HOSTS[host]] || (host === 'codex' ? env.CODEX_SESSION_ID : null);
   return UUID.test(session || '') ? session : null;
-}
-
-// A session can open artifacts in a project its watcher was not started in; the index names each one.
-function sessionIndexFile(host, session, env = process.env) {
-  const cache =
-    env.XDG_CACHE_HOME || process.env.XDG_CACHE_HOME || path.join(os.homedir(), '.cache');
-  return path.join(cache, 'ryugi', HOSTS[host].dir, `${session}.json`);
-}
-
-function sessionProjects(host, session, env = process.env) {
-  const file = readJson(sessionIndexFile(host, session, env));
-  return Array.isArray(file?.projects) ? file.projects.filter((p) => typeof p === 'string') : [];
-}
-
-function addSessionProject(host, session, project, env) {
-  const projects = sessionProjects(host, session, env);
-  if (projects.includes(project)) return;
-  const file = sessionIndexFile(host, session, env);
-  fs.mkdirSync(path.dirname(file), { recursive: true });
-  fs.writeFileSync(file, JSON.stringify({ projects: [...projects, project] }), { mode: 0o600 });
-}
-
-function subscriptions(project, host, session) {
-  const file = readJson(subscriptionFile(project, host, session));
-  return new Set(
-    Array.isArray(file?.artifacts) ? file.artifacts.filter((id) => ARTIFACT.test(id)) : [],
-  );
 }
 
 function lineage() {
@@ -173,7 +128,13 @@ function lineage() {
 }
 
 const bindingFile = (session, env) =>
-  path.join(path.dirname(sessionIndexFile('codex', session, env)), 'contexts', `${session}.json`);
+  path.join(
+    env.XDG_CACHE_HOME || process.env.XDG_CACHE_HOME || path.join(os.homedir(), '.cache'),
+    'ryugi',
+    'codex-comment-watch',
+    'contexts',
+    `${session}.json`,
+  );
 
 // Only hook stdin supplies the canonical session. An inherited thread id is a hint, not authority.
 function bindCodexSession(session, env = process.env) {
@@ -298,10 +259,10 @@ function identity(env, proof) {
 }
 
 // The launcher knows the real argv and cwd; hook text cannot safely reconstruct shell commands.
-function register(args, env = process.env, proof) {
+function subscriptionFor(args, env = process.env, proof) {
   const isStart = args[0] === 'start';
   const isPreviewRead = args[0] === 'comment' && (args[1] === 'list' || args[1] === 'read');
-  if (!isStart && !isPreviewRead) return;
+  if (!isStart && !isPreviewRead) return null;
   const option = (name) => {
     const index = args.indexOf(name);
     return index >= 0
@@ -309,37 +270,19 @@ function register(args, env = process.env, proof) {
       : args.find((arg) => arg.startsWith(`${name}=`))?.slice(name.length + 1);
   };
   const artifact = option('--artifact');
-  if (!ARTIFACT.test(artifact || '')) return;
-  if (isPreviewRead && !artifact.startsWith('preview/')) return;
+  if (!ARTIFACT.test(artifact || '')) return null;
+  if (isPreviewRead && !artifact.startsWith('preview/')) return null;
   const current = identity(env, proof);
-  if (!current) return;
-  const { host, session } = current;
-  const project = projectRoot(option('--project-dir') || process.cwd());
-  const artifacts = subscriptions(project, host, session);
-  artifacts.add(artifact);
-  const file = subscriptionFile(project, host, session);
-  fs.mkdirSync(path.dirname(file), { recursive: true });
-  fs.writeFileSync(
-    file,
-    JSON.stringify({ artifacts: [...artifacts], updatedAt: new Date().toISOString() }),
-    {
-      mode: 0o600,
-    },
-  );
-  addSessionProject(host, session, project, env);
+  if (!current) return null;
+  return { ...current, project: projectRoot(option('--project-dir') || process.cwd()), artifact };
 }
 
 module.exports = {
-  aliveFile,
-  beat,
   bindCodexSession,
   checkouts,
   projectRoot,
-  register,
   sessionOf,
-  sessionProjects,
-  subscriptionFile,
-  subscriptions,
+  subscriptionFor,
   unbindCodexSession,
   UUID,
 };

@@ -8,12 +8,19 @@ const PATH_FIELDS = ['file_path', 'path', 'notebook_path', 'Path', 'TargetFile',
 const PATCH_FILE = /^\*\*\* (?:Add|Update|Delete) File: (.+)$|^\*\*\* Move to: (.+)$/gm;
 
 function postToServer(project, pathname, body) {
+  return postToHub(
+    path.join(project, '.ryugi', 'artifacts', '.state', 'server-info'),
+    project,
+    pathname,
+    body,
+  );
+}
+
+function postToHub(infoFile, project, pathname, body) {
   return new Promise((resolve) => {
     let base;
     try {
-      const info = JSON.parse(
-        fs.readFileSync(path.join(project, '.ryugi', 'artifacts', '.state', 'server-info'), 'utf8'),
-      );
+      const info = JSON.parse(fs.readFileSync(infoFile, 'utf8'));
       base = new URL(info.url);
     } catch {
       resolve();
@@ -163,27 +170,6 @@ function hubProjectOf(project) {
   }
 }
 
-function reportDeliveries(project, host, session, events) {
-  if (!session) return Promise.resolve();
-  const posts = [];
-  for (const event of events) {
-    if (event?.type !== 'ryugi-comments' || !Array.isArray(event.threads)) continue;
-    const threads = event.threads.flatMap((item) =>
-      typeof item?.thread === 'string' ? [item.thread] : [],
-    );
-    if (threads.length)
-      posts.push(
-        postToServer(project, '/api/agent/delivered', {
-          host,
-          session,
-          artifact: event.artifact,
-          threads,
-        }),
-      );
-  }
-  return Promise.all(posts);
-}
-
 function projectOf(cwd) {
   try {
     return require('./comment-subscriptions.cjs').projectRoot(cwd);
@@ -217,4 +203,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { eventFrom, hubProjectOf, pathsOf, postToServer, readStdin, reportDeliveries };
+module.exports = { eventFrom, hubProjectOf, pathsOf, postToHub, postToServer, readStdin };

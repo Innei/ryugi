@@ -7,6 +7,8 @@ const os = require('node:os');
 const path = require('node:path');
 const { test } = require('node:test');
 
+const { startFakeApi } = require('./fake-agent-api.cjs');
+
 const source = path.resolve(__dirname, '../../skills/artifacts/app');
 const PARENT = '11111111-1111-4111-8111-111111111111';
 const CURRENT = '22222222-2222-4222-8222-222222222222';
@@ -19,6 +21,7 @@ function fixture(t) {
   const app = path.join(plugin, 'skills/artifacts/app');
   fs.mkdirSync(path.join(project, '.git'), { recursive: true });
   fs.mkdirSync(app, { recursive: true });
+  const api = startFakeApi(t, project);
   for (const name of fs.readdirSync(source))
     if (name.endsWith('.cjs') && !['cli.cjs', 'server.cjs'].includes(name))
       fs.copyFileSync(path.join(source, name), path.join(app, name));
@@ -79,17 +82,24 @@ function fixture(t) {
     assert.equal(result.status, 0, result.stderr);
     return result;
   };
-  const file = (host = 'codex', session = CURRENT) =>
-    path.join(
-      project,
-      '.ryugi/artifacts/.state',
-      host === 'antigravity' ? 'agy-comment-watch' : `${host}-comment-watch`,
-      `${session}.json`,
-    );
   const read = (host, session) =>
-    fs.existsSync(file(host, session))
-      ? JSON.parse(fs.readFileSync(file(host, session), 'utf8')).artifacts
-      : [];
+    api
+      .requests()
+      .filter(
+        (request) =>
+          request.path === '/api/agent/subscribe' &&
+          request.body?.host === host &&
+          request.body?.session === session,
+      )
+      .map((request) => {
+        assert.equal(request.body.project, project);
+        assert.equal(request.key, 'test-key');
+        return request.body.artifact;
+      });
+  const subscriptionFiles = () =>
+    fs
+      .readdirSync(path.join(project, '.ryugi/artifacts/.state'))
+      .filter((name) => name.endsWith('-comment-watch'));
   const hook = (event) => {
     const manifest = JSON.parse(fs.readFileSync(path.join(source, 'codex-hooks.json'), 'utf8'));
     for (const group of manifest.hooks[event] ?? [])
@@ -104,7 +114,7 @@ function fixture(t) {
         assert.equal(result.status, 0, result.stderr);
       }
   };
-  return { app, bind, env, file, hook, project, read, run };
+  return { app, bind, env, hook, project, read, run, subscriptionFiles };
 }
 
 for (const event of ['SessionStart', 'UserPromptSubmit'])
@@ -114,6 +124,7 @@ for (const event of ['SessionStart', 'UserPromptSubmit'])
     f.run(['start', '--artifact', 'document/bound']);
     assert.deepEqual(f.read('codex', CURRENT), ['document/bound']);
     assert.deepEqual(f.read('codex', PARENT), []);
+    assert.deepEqual(f.subscriptionFiles(), []);
   });
 
 test('starting the server headlessly does not subscribe to all project feedback', (t) => {
@@ -314,7 +325,7 @@ process.stdout.write(r.stdout);process.stderr.write(r.stderr);process.exitCode=r
   },
 );
 
-test('an Antigravity session registers its opened artifact under agy-comment-watch even with inherited Codex/Claude vars', (t) => {
+test('an Antigravity session subscribes as Antigravity even with inherited Codex/Claude vars', (t) => {
   const f = fixture(t);
   f.run(['start', '--artifact', 'document/agy-plan'], {
     ANTIGRAVITY_AGENT: '1',
@@ -323,4 +334,46 @@ test('an Antigravity session registers its opened artifact under agy-comment-wat
   });
   assert.deepEqual(f.read('antigravity', CURRENT), ['document/agy-plan']);
   assert.deepEqual(f.read('claude', PARENT), []);
+});
+
+function defaultHubIn(t) {
+  const home = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-home-')));
+  t.after(() => fs.rmSync(home, { recursive: true, force: true }));
+  const scratch = path.join(home, 'scratch');
+  const hub = startFakeApi(t, scratch);
+  fs.mkdirSync(path.join(home, '.ryugi', 'server'), { recursive: true });
+  fs.copyFileSync(
+    path.join(scratch, '.ryugi', 'artifacts', '.state', 'server-info'),
+    path.join(home, '.ryugi', 'server', 'server-info'),
+  );
+  const subscribed = () =>
+    hub
+      .requests()
+      .filter((request) => request.path === '/api/agent/subscribe')
+      .map(({ body }) => [body.host, body.session, body.project, body.artifact]);
+  return { home, subscribed };
+}
+
+test('a command pointed at an isolated hub also subscribes on the default hub the session listens to', (t) => {
+  const f = fixture(t);
+  const fallback = defaultHubIn(t);
+  f.run(['start', '--artifact', 'document/verify'], {
+    HOME: fallback.home,
+    CLAUDE_CODE_SESSION_ID: CURRENT,
+    RYUGI_SERVER_HOME: path.join(fallback.home, 'isolated'),
+  });
+  assert.deepEqual(f.read('claude', CURRENT), ['document/verify']);
+  assert.deepEqual(fallback.subscribed(), [['claude', CURRENT, f.project, 'document/verify']]);
+});
+
+test('a command on the default hub subscribes there once', (t) => {
+  const f = fixture(t);
+  const fallback = defaultHubIn(t);
+  f.run(['start', '--artifact', 'document/plain'], {
+    HOME: fallback.home,
+    CLAUDE_CODE_SESSION_ID: CURRENT,
+    RYUGI_SERVER_HOME: path.join(fallback.home, '.ryugi', 'server'),
+  });
+  assert.deepEqual(f.read('claude', CURRENT), ['document/plain']);
+  assert.deepEqual(fallback.subscribed(), []);
 });
