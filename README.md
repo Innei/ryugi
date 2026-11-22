@@ -1,9 +1,6 @@
 <p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="assets/logo/ryugi-wordmark-dark.svg">
-    <source media="(prefers-color-scheme: light)" srcset="assets/logo/ryugi-wordmark-light.svg">
-    <img src="assets/logo/ryugi-wordmark-light.svg" width="240" alt="Ryugi">
-  </picture>
+  <img src="assets/logo/ryugi-wordmark-light.svg#gh-light-mode-only" width="240" alt="Ryugi">
+  <img src="assets/logo/ryugi-wordmark-dark.svg#gh-dark-mode-only" width="240" alt="Ryugi">
 </p>
 
 <h1 align="center">Ryugi (流儀) — Interactive Artifacts for Coding Agents</h1>
