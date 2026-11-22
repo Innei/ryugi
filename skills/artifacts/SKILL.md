@@ -125,7 +125,9 @@ Publish only when requested. First publication for others: `publish --artifact
 omits visibility/profile flags to preserve access. Publishing follows references;
 private dependencies stay private. A printed action to make one public is for
 your human partner to decide. Keep actual URLs and inspect partial/unknown effects.
-Follow full login/upgrade links when human action is needed.
+Signing in prints a code and an address: give both to your human partner, who
+confirms the code on any device signed in to Ryugi Cloud, such as their phone;
+do not wait for it. Follow full upgrade links when human action is needed.
 
 When auto-publish is on, supported turn-end hooks keep private copies current;
 do not publish manually to maintain them. Phone/other-machine viewing can use
