@@ -86,7 +86,6 @@ function projectPaths(dir) {
 		info: node_path.default.join(state, "server-info"),
 		version: node_path.default.join(state, "server-version"),
 		owners: node_path.default.join(state, "owners"),
-		agent: node_path.default.join(state, "agent"),
 		stopped: node_path.default.join(state, "server-stopped"),
 		lock: node_path.default.join(state, "start.lock")
 	};
