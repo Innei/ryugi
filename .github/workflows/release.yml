@@ -11,7 +11,6 @@ on:
 permissions:
   contents: write
   id-token: write
-  models: read
 
 concurrency:
   group: release
@@ -172,14 +171,13 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ steps.release.outputs.version }}
-          # GitHub Models by default; set these repository variables and a
-          # RELEASE_NOTES_API_KEY secret to point at another OpenAI-compatible
-          # endpoint (Anthropic, OpenAI, a gateway).
-          RELEASE_NOTES_API_URL: ${{ vars.RELEASE_NOTES_API_URL || 'https://models.github.ai/inference/chat/completions' }}
-          RELEASE_NOTES_API_KEY: ${{ secrets.RELEASE_NOTES_API_KEY || github.token }}
-          RELEASE_NOTES_MODEL: ${{ vars.RELEASE_NOTES_MODEL || 'openai/gpt-4.1' }}
+          # DeepSeek by default; the repository variables point it at another
+          # OpenAI-compatible endpoint and model.
+          RELEASE_NOTES_API_URL: ${{ vars.RELEASE_NOTES_API_URL }}
+          RELEASE_NOTES_API_KEY: ${{ secrets.RELEASE_NOTES_API_KEY }}
+          RELEASE_NOTES_MODEL: ${{ vars.RELEASE_NOTES_MODEL }}
         run: |
-          node scripts/release-notes.mjs --tag "v$VERSION" --ai > /tmp/release-notes.md
+          node scripts/release-notes.mjs --tag "v$VERSION" --cloud ../ryugi-cloud --ai > /tmp/release-notes.md
           if gh release view "v$VERSION" > /dev/null 2>&1; then
             gh release edit "v$VERSION" --notes-file /tmp/release-notes.md
           else
