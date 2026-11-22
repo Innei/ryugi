@@ -186,24 +186,7 @@ jobs:
 
   daemon:
     needs: release
-    runs-on: macos-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          repository: ${{ env.CLOUD_REPO }}
-          ref: ${{ needs.release.outputs.tag }}
-          token: ${{ secrets.RYUGI_CLOUD_TOKEN }}
-          persist-credentials: false
-
-      - name: Add the Apple silicon target
-        run: rustup target add aarch64-apple-darwin
-
-      - name: Build ryugi-daemon for Apple silicon
-        run: scripts/build-daemon.sh daemon-dist
-
-      - name: Attach the binaries to the release
-        env:
-          GH_TOKEN: ${{ github.token }}
-          VERSION: ${{ needs.release.outputs.version }}
-        run: gh release upload "v$VERSION" daemon-dist/* --clobber -R "$GITHUB_REPOSITORY"
+    uses: ./.github/workflows/daemon.yml
+    with:
+      version: ${{ needs.release.outputs.version }}
+    secrets: inherit
