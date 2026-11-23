@@ -1,7 +1,7 @@
-// Generated from ryugi-cloud/packages/shared/src/review-evidence.ts. Do not edit.
+// Generated from ryugi-cloud/packages/artifacts/src/core/server/review/review-evidence.ts. Do not edit.
 Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
 let node_crypto = require("node:crypto");
-// ../shared/src/review-evidence.ts
+// src/core/server/review/review-evidence.ts
 const hash = (value) => (0, node_crypto.createHash)("sha256").update(JSON.stringify(value)).digest("hex");
 const reviewStateKey = (artifact, agent) => hash([artifact, agent]);
 function humanTokens(thread) {
