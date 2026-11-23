@@ -13,4 +13,8 @@ for t in "$SCRIPT_DIR"/test-*.sh; do
 done
 
 echo
+echo ">>> $SCRIPT_DIR/test-sidecar-proxy.cjs"
+node "$SCRIPT_DIR/test-sidecar-proxy.cjs"
+
+echo
 echo "=== All Antigravity tests passed ==="
