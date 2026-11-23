@@ -98,6 +98,35 @@ for event in ["SessionStart", "PreInvocation", "PreToolUse", "PostToolUse", "Sto
     if not isinstance(ryugi_hooks.get(event), list) or not ryugi_hooks[event]:
         fail(f"hooks/hooks-antigravity.json missing non-empty {event!r} handler list")
 
+# --- Antigravity UI sidecar ------------------------------------------------
+sidecar_dir = root / "sidecars" / "artifacts"
+sidecar_manifest_path = sidecar_dir / "sidecar.json"
+if not sidecar_manifest_path.is_file():
+    fail(f"Antigravity sidecar manifest missing at {sidecar_manifest_path}")
+sidecar_manifest = json.loads(sidecar_manifest_path.read_text(encoding="utf-8"))
+if sidecar_manifest.get("command") != "node":
+    fail(f"sidecar command must be 'node', got {sidecar_manifest.get('command')!r}")
+if sidecar_manifest.get("args") != ["server.cjs"]:
+    fail(f"sidecar args must be ['server.cjs'], got {sidecar_manifest.get('args')!r}")
+if not (sidecar_dir / "server.cjs").is_file():
+    fail(f"sidecar entrypoint missing at {sidecar_dir / 'server.cjs'}")
+if sidecar_manifest.get("restart_policy") != "always":
+    fail(f"sidecar restart_policy must be 'always', got {sidecar_manifest.get('restart_policy')!r}")
+if sidecar_manifest.get("display_name") != "Ryugi":
+    fail(f"sidecar display_name must be 'Ryugi', got {sidecar_manifest.get('display_name')!r}")
+if not isinstance(sidecar_manifest.get("description"), str) or not sidecar_manifest["description"].strip():
+    fail("sidecar description must be a non-empty string")
+if sidecar_manifest.get("has_web_ui") is not True:
+    fail("sidecar has_web_ui must be true")
+if sidecar_manifest.get("agent_permissions") != {"allows_user_interactions": False}:
+    fail("sidecar agent_permissions must set allows_user_interactions to false")
+ui_config = sidecar_manifest.get("ui_config")
+if not isinstance(ui_config, dict) or ui_config.get("display_name") != "Ryugi":
+    fail("sidecar ui_config must set display_name to 'Ryugi'")
+views = ui_config.get("views")
+if views != [{"path": "/", "entrypoint": "SIDECAR_UI_ENTRYPOINT_AUX_PANE", "title": "Ryugi"}]:
+    fail(f"sidecar ui_config.views mismatch: {views!r}")
+
 # --- Layout agy depends on -------------------------------------------------
 # A root plugin.json would be read instead of .antigravity-plugin/plugin.json,
 # a root hooks.json would conflict with other harnesses in the repo root, and
@@ -124,6 +153,9 @@ if report.get("name") != "ryugi":
 skills = report.get("components", {}).get("skills", 0)
 if skills < 1:
     raise SystemExit(f"FAIL: agy found no skills ({skills})")
+sidecars = report.get("components", {}).get("sidecars", 0)
+if sidecars < 1:
+    raise SystemExit(f"FAIL: agy found no sidecars ({sidecars})")
 errors = [f for f in report.get("findings", []) if f.get("severity") == "error"]
 if errors:
     raise SystemExit(f"FAIL: agy plugin validate reported errors: {errors}")
@@ -133,15 +165,27 @@ PY
   # without other harnesses' root files) in --strict mode (0 warnings).
   stage="$(mktemp -d)"
   trap 'rm -rf "$stage"' EXIT
-  cp -R "$REPO_ROOT/.antigravity-plugin" "$REPO_ROOT/assets" "$REPO_ROOT/skills" "$REPO_ROOT/hooks" "$stage/"
+  cp -R "$REPO_ROOT/.antigravity-plugin" "$REPO_ROOT/assets" "$REPO_ROOT/skills" "$REPO_ROOT/hooks" "$REPO_ROOT/sidecars" "$stage/"
   cp "$REPO_ROOT/hooks/hooks-antigravity.json" "$stage/hooks.json"
   rm -f "$stage/hooks/hooks.json" "$stage/hooks/hooks-cursor.json" "$stage/hooks/hooks-antigravity.json"
-  strict_out="$(agy plugin validate --strict "$stage" 2>&1)" \
+  strict_out="$(agy plugin validate --strict --json "$stage" 2>&1)" \
     || {
       echo "$strict_out" >&2
       echo "FAIL: agy plugin validate --strict failed on staged plugin" >&2
       exit 1
     }
+  python3 - "$strict_out" << 'PY'
+import json
+import sys
+
+report = json.loads(sys.argv[1])
+sidecars = report.get("components", {}).get("sidecars", 0)
+if sidecars < 1:
+    raise SystemExit(f"FAIL: staged strict validation found {sidecars} sidecars, expected >= 1")
+findings = [f for f in report.get("findings", []) if f.get("severity") in ("error", "warning")]
+if findings:
+    raise SystemExit(f"FAIL: staged strict validation reported findings: {findings}")
+PY
 else
   echo "SKIP: agy not on PATH; not running agy plugin validate"
 fi

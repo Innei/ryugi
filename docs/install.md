@@ -113,6 +113,8 @@ agy plugin install https://github.com/Innei/ryugi
 
 When installed through the unified installer (`--harness agy` or `--harness antigravity`), Ryugi stages its native `hooks.json` at the plugin root so `SessionStart` injects the `using-ryugi` bootstrap automatically (in `full` mode), `PreInvocation` attaches open Artboard/document selections and unread comment reminders, `Stop` flushes changes, and the background watcher delivers browser comments and submitted choices through the local Antigravity Language Server. When installed directly from the git repository URL without the unified installer, Antigravity lists each installed skill's description and the `using-ryugi` description prompts the model to load it at the start of a conversation.
 
+The plugin also ships an optional UI sidecar (`ryugi/artifacts`) that opens the local Ryugi Artifacts workbench directly inside Antigravity's right-hand Auxiliary Pane (`sidecar://ryugi/artifacts/`). Enable `ryugi/artifacts` in Antigravity Customizations or by adding `"ryugi/artifacts": { "enabled": true }` under `sidecars` in `~/.gemini/config/config.json`. When opened from a conversation with an active artifact subscription, the pane lands on that artifact automatically, follows newly opened artifacts in the conversation, and proxies live WebSocket updates from the local Ryugi server.
+
 ## Codex, Cursor
 
 The repository carries the manifests (`.codex-plugin/`,
