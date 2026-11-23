@@ -274,9 +274,30 @@ jobs:
       upload: true
     secrets: inherit
 
+  # Built from the artifacts-v<version> tag, which exists before the release job starts, so it never goes stale.
   daemon:
-    needs: release
+    needs: version
     uses: ./.github/workflows/daemon.yml
     with:
-      version: ${{ needs.release.outputs.version }}
+      version: ${{ needs.version.outputs.version }}
+      upload: false
     secrets: inherit
+
+  daemon-upload:
+    needs: [release, daemon]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: ryugi-daemon-*
+          path: daemon-dist
+          merge-multiple: true
+
+      - name: Attach the binaries to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.release.outputs.version }}
+        run: |
+          ls -l daemon-dist
+          [[ "$(find daemon-dist -type f | wc -l)" -eq 6 ]]
+          gh release upload "v$VERSION" daemon-dist/* --clobber -R "$GITHUB_REPOSITORY"

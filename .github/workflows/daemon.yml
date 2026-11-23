@@ -6,12 +6,21 @@ on:
       version:
         required: true
         type: string
+      upload:
+        description: Attach the binaries to the v<version> release instead of keeping them as workflow artifacts
+        required: true
+        type: boolean
   workflow_dispatch:
     inputs:
       version:
         description: Release whose ryugi-daemon to rebuild, sign and replace, e.g. 1.102.2
         required: true
         type: string
+      upload:
+        description: Attach the binaries to the v<version> release
+        required: false
+        default: true
+        type: boolean
 
 permissions:
   contents: write
@@ -19,6 +28,7 @@ permissions:
 env:
   CLOUD_REPO: ryugi-dev/ryugi-cloud
   ASSET: ryugi-daemon-darwin-arm64
+  UPLOAD: ${{ inputs.upload }}
 
 jobs:
   daemon:
@@ -106,10 +116,19 @@ jobs:
           cat "$ASSET.sha256"
 
       - name: Attach the binaries to the release
+        if: env.UPLOAD == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ inputs.version }}
         run: gh release upload "v$VERSION" "daemon-dist/$ASSET" "daemon-dist/$ASSET.sha256" --clobber -R "$GITHUB_REPOSITORY"
+
+      - name: Keep the binary for the release upload
+        if: env.UPLOAD != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.ASSET }}
+          path: daemon-dist/${{ env.ASSET }}*
+          retention-days: 3
 
       - name: Remove the keychain
         if: always() && steps.keychain.outputs.keychain != ''
@@ -163,8 +182,17 @@ jobs:
         run: file "daemon-dist/${{ matrix.asset }}" | tee /dev/stderr | grep -Eq 'statically linked|static-pie linked'
 
       - name: Attach the binary to the release
+        if: env.UPLOAD == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ inputs.version }}
           ASSET: ${{ matrix.asset }}
         run: gh release upload "v$VERSION" "daemon-dist/$ASSET" "daemon-dist/$ASSET.sha256" --clobber -R "$GITHUB_REPOSITORY"
+
+      - name: Keep the binary for the release upload
+        if: env.UPLOAD != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset }}
+          path: daemon-dist/${{ matrix.asset }}*
+          retention-days: 3
