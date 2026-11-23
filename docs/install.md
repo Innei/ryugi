@@ -303,6 +303,14 @@ active Muse sessions so the `SessionStart` hook takes effect — skills are acti
 immediately, hooks require approval on first install. Version is tracked in
 `.version-bump.json` so `scripts/bump-version.sh` keeps it in sync.
 
+## DeepSeek Harness
+
+```bash
+dsh plugin --profile <profile> add link:/path/to/ryugi/.dsh
+```
+
+Add `"dsh-plugin-ryugi"` to `dsh.profile.bundles` in `~/.dsh/profiles/<profile>/package.json`, then restart or reload DeepSeek Harness. The bundled Cordis plugin (`.dsh/`) registers all Ryugi skills with DSH's native `skill` service (`ryugi-<name>` kebab-case), injects `using-ryugi` + `references/dsh-tools.md` as a deduplicated, compaction-aware user message on `agent/pre-step`, and delivers browser comments and choice submissions back to active sessions via `agent.followup` / `agent.inject`. Full guide: [README.dsh.md](README.dsh.md).
+
 ## Writing a new integration
 
 See [porting-to-a-new-harness.md](porting-to-a-new-harness.md).
