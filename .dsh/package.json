@@ -1,20 +1,7 @@
 {
   "name": "dsh-plugin-ryugi",
-  "version": "1.103.0",
+  "version": "1.103.3",
   "description": "Ryugi skills and interactive artifacts integration for DeepSeek Harness (DSH).",
-  "type": "module",
-  "main": "./index.mjs",
-  "exports": {
-    ".": "./index.mjs",
-    "./cordis.patch.yml": "./cordis.patch.yml",
-    "./package.json": "./package.json"
-  },
-  "license": "SEE LICENSE IN LICENSE",
-  "homepage": "https://github.com/Innei/ryugi",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/Innei/ryugi.git"
-  },
   "keywords": [
     "deepseek-harness",
     "dsh",
@@ -25,10 +12,23 @@
     "brainstorming",
     "tdd"
   ],
+  "homepage": "https://github.com/Innei/ryugi",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Innei/ryugi.git"
+  },
+  "license": "SEE LICENSE IN LICENSE",
   "author": {
     "name": "Innei",
     "email": "i@innei.dev"
   },
+  "type": "module",
+  "exports": {
+    ".": "./index.mjs",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "main": "./index.mjs",
   "dsh": {
     "bundle": {
       "patch": "./cordis.patch.yml"
