@@ -1,0 +1,216 @@
+name: Hook
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        required: true
+        type: string
+      ref:
+        required: true
+        type: string
+      upload:
+        description: Attach the binaries to the v<version> release instead of keeping them as workflow artifacts
+        required: true
+        type: boolean
+    outputs:
+      commit:
+        value: ${{ jobs.commit.outputs.sha }}
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Release to attach ryugi-hook to, e.g. 1.105.1
+        required: true
+        type: string
+      ref:
+        description: Commit, branch or tag to build; defaults to v<version>
+        required: false
+        type: string
+      upload:
+        description: Attach the binaries to the v<version> release
+        required: false
+        default: true
+        type: boolean
+
+permissions:
+  contents: write
+
+env:
+  REF: ${{ inputs.ref || format('v{0}', inputs.version) }}
+  UPLOAD: ${{ inputs.upload }}
+
+jobs:
+  commit:
+    runs-on: ubuntu-latest
+    outputs:
+      sha: ${{ steps.sha.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.REF }}
+      - id: sha
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+  darwin:
+    needs: commit
+    runs-on: macos-latest
+    timeout-minutes: 45
+    env:
+      ASSET: ryugi-hook-darwin-arm64
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.commit.outputs.sha }}
+
+      - name: Add the Apple silicon target
+        run: rustup target add aarch64-apple-darwin
+
+      - name: Build ryugi-hook for Apple silicon
+        env:
+          RYUGI_VERSION: ${{ inputs.version }}
+        run: |
+          cargo build --release --locked --manifest-path hook/Cargo.toml --target aarch64-apple-darwin
+          mkdir -p hook-dist
+          cp hook/target/aarch64-apple-darwin/release/ryugi-hook "hook-dist/$ASSET"
+
+      - name: Import the Developer ID certificate into a throwaway keychain
+        id: keychain
+        env:
+          BUILD_CERTIFICATE_BASE64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
+          P12_PASSWORD: ${{ secrets.P12_PASSWORD }}
+        run: |
+          keychain="$RUNNER_TEMP/signing.keychain-db"
+          keychain_password="$(openssl rand -hex 24)"
+          echo "$BUILD_CERTIFICATE_BASE64" | base64 --decode > "$RUNNER_TEMP/certificate.p12"
+          security create-keychain -p "$keychain_password" "$keychain"
+          security set-keychain-settings -lut 21600 "$keychain"
+          security unlock-keychain -p "$keychain_password" "$keychain"
+          security import "$RUNNER_TEMP/certificate.p12" -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k "$keychain"
+          security set-key-partition-list -S apple-tool:,apple: -k "$keychain_password" "$keychain" > /dev/null
+          read -ra existing <<< "$(security list-keychains -d user | tr -d '"')"
+          security list-keychains -d user -s "$keychain" "${existing[@]}"
+          rm "$RUNNER_TEMP/certificate.p12"
+          identity="$(security find-identity -v -p codesigning "$keychain" | awk '/Developer ID Application/ { print $2; exit }')"
+          if [[ -z "$identity" ]]; then
+            echo "::error::the certificate holds no Developer ID Application identity"
+            exit 1
+          fi
+          echo "keychain=$keychain" >> "$GITHUB_OUTPUT"
+          echo "identity=$identity" >> "$GITHUB_OUTPUT"
+
+      - name: Sign ryugi-hook with the hardened runtime
+        env:
+          KEYCHAIN: ${{ steps.keychain.outputs.keychain }}
+          IDENTITY: ${{ steps.keychain.outputs.identity }}
+        run: |
+          codesign --force --timestamp --options runtime --identifier dev.ryugi.hook \
+            --keychain "$KEYCHAIN" --sign "$IDENTITY" "hook-dist/$ASSET"
+          codesign --verify --strict --verbose=2 "hook-dist/$ASSET"
+
+      - name: Notarize ryugi-hook
+        env:
+          NOTARY_PRIVATE_KEY_BASE64: ${{ secrets.NOTARY_PRIVATE_KEY_BASE64 }}
+          NOTARY_KEY_ID: ${{ secrets.NOTARY_KEY_ID }}
+          NOTARY_ISSUER_ID: ${{ secrets.NOTARY_ISSUER_ID }}
+        run: |
+          key="$RUNNER_TEMP/notary.p8"
+          echo "$NOTARY_PRIVATE_KEY_BASE64" | base64 --decode > "$key"
+          ditto -c -k "hook-dist/$ASSET" "$RUNNER_TEMP/$ASSET.zip"
+          xcrun notarytool submit "$RUNNER_TEMP/$ASSET.zip" --key "$key" --key-id "$NOTARY_KEY_ID" \
+            --issuer "$NOTARY_ISSUER_ID" --wait --timeout 30m --output-format json | tee "$RUNNER_TEMP/notary.json"
+          status="$(jq -r '.status' "$RUNNER_TEMP/notary.json")"
+          if [[ "$status" != "Accepted" ]]; then
+            xcrun notarytool log "$(jq -r '.id' "$RUNNER_TEMP/notary.json")" --key "$key" \
+              --key-id "$NOTARY_KEY_ID" --issuer "$NOTARY_ISSUER_ID" || true
+            echo "::error::notarization ended $status"
+            exit 1
+          fi
+          rm "$key"
+
+      - name: Checksum the signed binary
+        working-directory: hook-dist
+        run: shasum -a 256 "$ASSET" | tee "$ASSET.sha256"
+
+      - name: Attach the binary to the release
+        if: env.UPLOAD == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+        run: gh release upload "v$VERSION" "hook-dist/$ASSET" "hook-dist/$ASSET.sha256" --clobber -R "$GITHUB_REPOSITORY"
+
+      - name: Keep the binary for the release upload
+        if: env.UPLOAD != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.ASSET }}
+          path: hook-dist/
+          retention-days: 3
+
+      - name: Remove the keychain
+        if: always() && steps.keychain.outputs.keychain != ''
+        env:
+          KEYCHAIN: ${{ steps.keychain.outputs.keychain }}
+        run: security delete-keychain "$KEYCHAIN"
+
+  linux:
+    needs: commit
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            target: x86_64-unknown-linux-musl
+            asset: ryugi-hook-linux-x64
+          - runner: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-musl
+            asset: ryugi-hook-linux-arm64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.commit.outputs.sha }}
+
+      - name: Install rustup when the runner has none
+        run: |
+          if ! command -v rustup > /dev/null; then
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
+            echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+          fi
+
+      - name: Add the musl target
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y musl-tools
+          rustup target add ${{ matrix.target }}
+
+      - name: Build ryugi-hook for ${{ matrix.target }}
+        env:
+          RYUGI_VERSION: ${{ inputs.version }}
+        run: |
+          cargo build --release --locked --manifest-path hook/Cargo.toml --target ${{ matrix.target }}
+          mkdir -p hook-dist
+          cp "hook/target/${{ matrix.target }}/release/ryugi-hook" "hook-dist/${{ matrix.asset }}"
+
+      - name: Check it is a static binary
+        run: file "hook-dist/${{ matrix.asset }}" | tee /dev/stderr | grep -Eq 'statically linked|static-pie linked'
+
+      - name: Checksum the binary
+        working-directory: hook-dist
+        run: sha256sum "${{ matrix.asset }}" | tee "${{ matrix.asset }}.sha256"
+
+      - name: Attach the binary to the release
+        if: env.UPLOAD == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+          ASSET: ${{ matrix.asset }}
+        run: gh release upload "v$VERSION" "hook-dist/$ASSET" "hook-dist/$ASSET.sha256" --clobber -R "$GITHUB_REPOSITORY"
+
+      - name: Keep the binary for the release upload
+        if: env.UPLOAD != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset }}
+          path: hook-dist/
+          retention-days: 3
