@@ -1,4 +1,4 @@
-Ryugi License 1.0
+Ryugi License 1.1
 =================
 
 Copyright (c) 2026 Innei <i@innei.in>
@@ -58,26 +58,28 @@ worldwide, royalty-free, non-exclusive license to:
 3. Conditions
 -------------
 
-3.1 Restricted Parties. A Restricted Party receives none of the rights granted
-    in Section 2. Without limiting that, no Restricted Party may:
+3.1 Restricted Parties. A Restricted Party may use, run, copy and modify the
+    Software for its own internal work, including use by its employees and
+    contractors in the course of their jobs. It receives no other right in
+    Section 2, and in particular no Restricted Party may:
 
-  (a) use, run, execute, evaluate, benchmark, test, train on, fine-tune,
-      embed, index, or otherwise incorporate the Software or any part of it,
-      including its text, structure or examples, into any product, service,
-      agent, IDE, marketplace, model, dataset or internal tool;
-  (b) copy, reproduce, modify, translate, adapt, or create derivative works of
-      the Software;
-  (c) distribute, publish, sublicense, host, mirror, fork for republication, or
-      otherwise make the Software or any derivative work available to anyone;
-  (d) bundle, link, reference or ship the Software with a product or service;
-  (e) obtain the Software, or rights this license withholds, through an
-      Affiliate, subsidiary, intermediary, reseller, contractor, shell entity,
-      open-source mirror, another legal name, or a license of a different
-      version.
+  (a) publish, list, host or mirror the Software or any derivative work of it
+      in a Marketplace, or otherwise make it available to third parties;
+  (b) bundle, preinstall, ship, sell or offer the Software or any derivative
+      work as part of a product, service, agent, IDE or platform made
+      available to third parties;
+  (c) train or fine-tune a model on the Software, or include any part of it,
+      including its text, structure or examples, in a dataset, where that
+      model or dataset is made available to third parties or used in a
+      product or service offered to them;
+  (d) do any of the above through an Affiliate, subsidiary, intermediary,
+      reseller, contractor, shell entity, open-source mirror, another legal
+      name, or a license of a different version.
 
-    The restrictions in this section apply to the Restricted Party's own use and
-    to use on its behalf by employees, contractors, partners or automated
-    systems.
+    "Third parties" here means anyone outside the Restricted Party and its
+    Affiliates. Internal work does not include running the Software, or a
+    derivative work of it, as a feature of a product or service offered to
+    third parties.
 
 3.2 No Marketplace Ingestion. You may not perform Marketplace Ingestion of the
     Software. Publishing your own lawful derivative work of the Software in a

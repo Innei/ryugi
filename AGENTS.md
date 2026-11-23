@@ -38,7 +38,7 @@ A working integration starts `brainstorming` before any code is written; where a
 
 ## Licensing
 
-Skills, harness integrations and docs are under Ryugi License 1.0 (`LICENSE`): use, modification and redistribution are permitted; the Restricted Parties in Schedule A (major Chinese platform companies and their agent and IDE products) receive no rights, and scraping the skills into a marketplace is prohibited. Upstream Superpowers material and contributions made before 2026-11-04 remain MIT — see Exhibit B, and keep it intact when editing `LICENSE`. The `ryugi-artifacts` package the launcher installs is proprietary (npm `license`: `UNLICENSED`) and is not part of this repository.
+Skills, harness integrations and docs are under Ryugi License 1.1 (`LICENSE`): use, modification and redistribution are permitted; the Restricted Parties in Schedule A (major Chinese platform companies and their agent and IDE products) may use and modify the Software for their own internal work, including their employees at work, but may not put it in a marketplace, ship it in a product, or train models on it for others (Section 3.1), and scraping the skills into a marketplace is prohibited. Upstream Superpowers material and contributions made before 2026-11-04 remain MIT — see Exhibit B, and keep it intact when editing `LICENSE`. The `ryugi-artifacts` package the launcher installs is proprietary (npm `license`: `UNLICENSED`) and is not part of this repository.
 
 ## Tests
 

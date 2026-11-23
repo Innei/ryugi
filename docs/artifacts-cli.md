@@ -40,7 +40,7 @@ Cloud publish failures print their classified cause and any login or upgrade lin
 
 ## License
 
-Ryugi's skills, harness integrations and docs are under Ryugi License 1.0, which withholds all rights from the Restricted Parties in Schedule A and prohibits scraping them into a marketplace. `ryugi-artifacts` is proprietary (npm `license`: `UNLICENSED`) and not part of this repository; releases up to 1.51.2 were published under AGPL-3.0-only.
+Ryugi's skills, harness integrations and docs are under Ryugi License 1.1, which limits the Restricted Parties in Schedule A to internal use, with no marketplace listing, product bundling or model training for others, and prohibits scraping them into a marketplace. `ryugi-artifacts` is proprietary (npm `license`: `UNLICENSED`) and not part of this repository; releases up to 1.51.2 were published under AGPL-3.0-only.
 
 ## Agent reading
 

@@ -234,11 +234,13 @@ Fork of [Superpowers](https://github.com/obra/superpowers) v7.0.0 by Jesse Vince
 
 ## License
 
-Skills, harness integrations and docs: [Ryugi License 1.0](LICENSE) — free to
+Skills, harness integrations and docs: [Ryugi License 1.1](LICENSE) — free to
 use, modify and redistribute, with two exceptions. The Restricted Parties in
 Schedule A (Tencent, Alibaba, ByteDance, Baidu, Huawei, Xiaomi, Meituan, JD,
 PDD, NetEase, Kuaishou, Didi, Ant Group, iFlytek, SenseTime, and products such
-as WorkBuddy, Qwen, Qoder and Trae) receive no rights at all, and nobody may
+as WorkBuddy, Qwen, Qoder and Trae) may use and modify the skills for their own
+internal work, their employees included, but may not list them in a marketplace,
+ship them in a product, or train models on them for others; and nobody may
 scrape the skills into a marketplace. This is source-available, not an open
 source license; material derived from Superpowers and contributions made before
 2026-11-04 stay MIT (Exhibit B).
