@@ -33,9 +33,10 @@ jobs:
           persist-credentials: false
 
       - name: Install Zig for libghostty-vt
-        uses: mlugg/setup-zig@v2
-        with:
-          version: 0.15.2
+        # The official 0.15.2 build cannot link against the macOS 26+ SDK; Homebrew's is patched for it.
+        run: |
+          brew install zig@0.15
+          echo "$(brew --prefix zig@0.15)/bin" >> "$GITHUB_PATH"
 
       - name: Add the Apple silicon target
         run: rustup target add aarch64-apple-darwin
