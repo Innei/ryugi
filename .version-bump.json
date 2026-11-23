@@ -62,6 +62,10 @@
     {
       "path": "gemini-extension.json",
       "field": "version"
+    },
+    {
+      "path": ".dsh/package.json",
+      "field": "version"
     }
   ]
 }
