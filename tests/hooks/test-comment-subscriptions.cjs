@@ -224,7 +224,7 @@ test('simultaneous lifecycle hooks keep both issued launcher invocations usable'
       child.stdout.on('data', (chunk) => (output += chunk));
       child.stderr.on('data', (chunk) => (errors += chunk));
       child.on('error', reject);
-      child.on('exit', (code) => {
+      child.on('close', (code) => {
         if (code !== 0) return reject(new Error(errors));
         resolve(output.match(/--ryugi-session ([a-f0-9:-]+)/)?.[1]);
       });

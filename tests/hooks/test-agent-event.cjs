@@ -80,7 +80,7 @@ function run(command, input, env = {}) {
     let out = '';
     child.stdout.on('data', (chunk) => (out += chunk));
     child.stderr.on('data', () => {});
-    child.on('exit', (code) => resolve({ code, out }));
+    child.on('close', (code) => resolve({ code, out }));
     child.stdin.end(JSON.stringify(input));
   });
 }
