@@ -32,6 +32,11 @@ jobs:
           token: ${{ secrets.RYUGI_CLOUD_TOKEN }}
           persist-credentials: false
 
+      - name: Install Zig for libghostty-vt
+        uses: mlugg/setup-zig@v2
+        with:
+          version: 0.15.2
+
       - name: Add the Apple silicon target
         run: rustup target add aarch64-apple-darwin
 
@@ -138,6 +143,11 @@ jobs:
             curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
             echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
           fi
+
+      - name: Install Zig for libghostty-vt
+        uses: mlugg/setup-zig@v2
+        with:
+          version: 0.15.2
 
       - name: Add the musl target
         run: |
