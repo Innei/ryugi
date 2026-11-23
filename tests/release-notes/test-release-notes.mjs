@@ -57,7 +57,9 @@ function stub(reply) {
     req.on('end', () => {
       requests.push(JSON.parse(body));
       res.setHeader('Content-Type', 'application/json');
-      res.end(JSON.stringify({ choices: [{ message: { content: reply(requests.at(-1)) } }] }));
+      const out = reply(requests.at(-1));
+      const { content, finish_reason = 'stop' } = typeof out === 'string' ? { content: out } : out;
+      res.end(JSON.stringify({ choices: [{ message: { content }, finish_reason }] }));
     });
   });
   return new Promise((resolve) =>
@@ -82,8 +84,21 @@ before(() => {
   shas.skills = commit(pub, 'feat(skills): brainstorming asks one question at a time', {
     'skills/brainstorming/SKILL.md': 'one question\n',
   });
+  shas.ci = commit(pub, 'ci(release): reuse the binaries of an earlier release', {
+    '.github/workflows/release.yml': 'name: Release\n',
+  });
   commit(pub, 'chore: release 1.1.0', { 'package.json': '{"version":"1.1.0"}\n' });
   git(pub, 'tag', 'v1.1.0');
+  for (let i = 0; i < 6; i++) {
+    commit(pub, 'refactor(hub): reshape module ' + i, {
+      ['src/module-' + i + '.txt']: ('line ' + i + ' of a large refactor\n').repeat(600),
+    });
+  }
+  shas.late = commit(pub, 'fix(viewer): the late fix keeps its diff', {
+    'src/late.txt': 'late fix marker\n',
+  });
+  commit(pub, 'chore: release 1.2.0', { 'package.json': '{"version":"1.2.0"}\n' });
+  git(pub, 'tag', 'v1.2.0');
 
   init(cloud);
   commit(cloud, 'chore: init', { 'README.md': 'cloud\n' });
@@ -99,6 +114,9 @@ before(() => {
   });
   shas.daemon = commit(cloud, 'feat(daemon): the daemon resumes a session after sleep', {
     'daemon/src/main.rs': 'fn main() {}\n',
+  });
+  shas.cloudTest = commit(cloud, 'test(artifacts): the restart test waits longer', {
+    'packages/artifacts/test/restart.test.ts': 'export const wait = 1;\n',
   });
   shas.web = commit(cloud, 'feat(web): the dashboard shows team spaces', {
     'web/src/spaces.tsx': 'export const spaces = 1;\n',
@@ -140,7 +158,7 @@ test('a missing ryugi-cloud tag stops the note instead of leaving the changes ou
     assert.notEqual(code, 0);
     assert.match(stderr, /artifacts-v1\.0\.0/);
   } finally {
-    git(cloud, 'tag', 'artifacts-v1.0.0', 'HEAD~6');
+    git(cloud, 'tag', 'artifacts-v1.0.0', 'HEAD~7');
   }
 });
 
@@ -172,29 +190,175 @@ test('the AI sees private commits by subject and body only, never their diff', a
   }
 });
 
-test('an AI bullet about a private change needs no link', async () => {
-  const note = [
-    '## Hub & CLI',
-    '',
-    '- **Hub restarts itself** — After an update the hub comes back on its own.',
-    '',
-    '## Skills',
-    '',
-    '- **One question** — Brainstorming asks one at a time. ([abc](https://github.com/Innei/ryugi/commit/' +
-      shas.skills +
-      '))',
-  ].join('\n');
-  const server = await stub(() => note);
+const FULL_NOTE = [
+  '## Hub & CLI',
+  '',
+  '- **Hub restarts itself** — After an update the hub comes back on its own. [p1]',
+  '',
+  '## Viewer',
+  '',
+  '- **Tables wrap** — Long cells in evidence tables wrap. [p2]',
+  '',
+  '## Cloud links',
+  '',
+  '- **Links open the latest** — A published link opens on the latest version. [p3]',
+  '',
+  '## Daemon',
+  '',
+  '- **Resume after sleep** — Sessions resume after the machine sleeps. [p4]',
+  '',
+  '## Skills',
+  '',
+  '- **One question** — Brainstorming asks one at a time. ([abc](https://github.com/Innei/ryugi/commit/' +
+    shas.skills +
+    '))',
+].join('\n');
+
+const aiEnv = (server) => ({
+  RELEASE_NOTES_API_URL: server.url,
+  RELEASE_NOTES_API_KEY: 'test-key',
+});
+
+test('an AI bullet about a private change carries its marker, which the note drops', async () => {
+  const server = await stub(() => FULL_NOTE);
   try {
-    const { code, stdout } = await run(['--tag', 'v1.1.0', '--cloud', cloud, '--ai-strict'], {
-      RELEASE_NOTES_API_URL: server.url,
-      RELEASE_NOTES_API_KEY: 'test-key',
-    });
+    const { code, stdout } = await run(
+      ['--tag', 'v1.1.0', '--cloud', cloud, '--ai-strict'],
+      aiEnv(server),
+    );
     assert.equal(code, 0);
-    assert.match(stdout, /Hub restarts itself/);
+    assert.match(
+      stdout,
+      /^- \*\*Hub restarts itself\*\* — After an update the hub comes back on its own\.$/m,
+    );
+    assert.doesNotMatch(stdout, /\[p\d/);
     assert.match(
       stdout,
       /\*\*Full Changelog\*\*: https:\/\/github\.com\/Innei\/ryugi\/compare\/v1\.0\.0\.\.\.v1\.1\.0/,
+    );
+  } finally {
+    server.close();
+  }
+});
+
+test('the AI gets an id and a suggested section for each commit, and no CI commits', async () => {
+  const server = await stub(() => FULL_NOTE);
+  try {
+    await run(['--tag', 'v1.1.0', '--cloud', cloud, '--ai-strict'], aiEnv(server));
+    const commits = JSON.parse(server.requests[0].messages[1].content).commits;
+    const hub = commits.find((c) => c.subject.includes('hub restarts'));
+    assert.equal(hub.id, 'p1');
+    assert.equal(hub.area, 'Hub & CLI');
+    assert.equal(commits.find((c) => c.subject.includes('resumes a session')).area, 'Daemon');
+    assert.equal(commits.find((c) => c.sha === shas.skills).area, 'Skills');
+    assert.ok(!commits.some((c) => c.sha === shas.ci), 'ci commit reached the model');
+    assert.ok(
+      !commits.some((c) => c.subject.includes('restart test')),
+      'test commit reached the model',
+    );
+  } finally {
+    server.close();
+  }
+});
+
+test('an AI note that leaves out a feature falls back', async () => {
+  const note = FULL_NOTE.replace(/\n\n## Daemon\n\n[^\n]*/, '');
+  const server = await stub(() => note);
+  try {
+    const { code, stderr } = await run(
+      ['--tag', 'v1.1.0', '--cloud', cloud, '--ai-strict'],
+      aiEnv(server),
+    );
+    assert.equal(code, 1);
+    assert.match(stderr, /ai failed: .*the daemon resumes a session after sleep/);
+  } finally {
+    server.close();
+  }
+});
+
+test('an AI note that leaves out a public fix falls back', async () => {
+  const note = FULL_NOTE.replace(/\n\n## Skills\n\n[^\n]*/, '');
+  const server = await stub(() => note);
+  try {
+    const { code, stderr } = await run(
+      ['--tag', 'v1.1.0', '--cloud', cloud, '--ai-strict'],
+      aiEnv(server),
+    );
+    assert.equal(code, 1);
+    assert.match(stderr, /ai failed: .*brainstorming asks one question at a time/);
+  } finally {
+    server.close();
+  }
+});
+
+test('an AI bullet with neither a link nor a marker falls back even with private changes', async () => {
+  const server = await stub(() => FULL_NOTE.replace(' [p2]', ''));
+  try {
+    const { code, stderr } = await run(
+      ['--tag', 'v1.1.0', '--cloud', cloud, '--ai-strict'],
+      aiEnv(server),
+    );
+    assert.equal(code, 1);
+    assert.match(stderr, /ai failed: bullet without a link/);
+  } finally {
+    server.close();
+  }
+});
+
+test('an AI marker for a commit it was not given falls back', async () => {
+  const server = await stub(() => FULL_NOTE.replace('[p4]', '[p4, p9]'));
+  try {
+    const { code, stderr } = await run(
+      ['--tag', 'v1.1.0', '--cloud', cloud, '--ai-strict'],
+      aiEnv(server),
+    );
+    assert.equal(code, 1);
+    assert.match(stderr, /ai failed: unknown private marker p9/);
+  } finally {
+    server.close();
+  }
+});
+
+test('an AI note cut off at the token limit falls back', async () => {
+  const server = await stub(() => ({ content: FULL_NOTE, finish_reason: 'length' }));
+  try {
+    const { code, stderr } = await run(
+      ['--tag', 'v1.1.0', '--cloud', cloud, '--ai-strict'],
+      aiEnv(server),
+    );
+    assert.equal(code, 1);
+    assert.match(stderr, /ai failed: .*token limit/);
+  } finally {
+    server.close();
+  }
+});
+
+test('the last commit keeps its diff after large ones earlier in the range', async () => {
+  const server = await stub(() => '');
+  try {
+    await run(['--tag', 'v1.2.0', '--ai'], aiEnv(server));
+    const commits = JSON.parse(server.requests[0].messages[1].content).commits;
+    const late = commits.find((c) => c.sha === shas.late);
+    assert.match(late.diff, /late fix marker/);
+    const total = commits.reduce((sum, c) => sum + c.diff.length, 0);
+    assert.ok(total <= 40000, 'diffs total ' + total);
+  } finally {
+    server.close();
+  }
+});
+
+test('a fallback in Actions is written to the step summary', async () => {
+  const summary = path.join(root, 'summary.md');
+  const server = await stub(() => '## Skills\n\n- **One question** — Asked one at a time.');
+  try {
+    const { code } = await run(['--tag', 'v1.1.0', '--ai'], {
+      ...aiEnv(server),
+      GITHUB_STEP_SUMMARY: summary,
+    });
+    assert.equal(code, 0);
+    assert.match(
+      fs.readFileSync(summary, 'utf8'),
+      /AI release notes failed.*bullet without a link/s,
     );
   } finally {
     server.close();

@@ -8,11 +8,12 @@
 // Without --ai it renders the note deterministically from commit subjects.
 // --cloud adds the private ryugi-cloud commits between artifacts-v<previous>
 // and artifacts-v<version> that touch what ships; they never get a link, and
-// only their subject and body reach the model.
+// only their subject, body, a pN id and a suggested section reach the model.
 // With --ai it asks an OpenAI-compatible chat completions endpoint to rewrite
-// the same commits as user-facing notes, validating every link; if the call or
-// the validation fails it falls back to the deterministic note (or exits 1
-// with --ai-strict). Markdown goes to stdout.
+// the same commits as user-facing notes, validating every link and that every
+// feat, fix and perf commit is covered; if the call or the validation fails it
+// falls back to the deterministic note (or exits 1 with --ai-strict), and in
+// Actions says so in the step summary. Markdown goes to stdout.
 //
 // AI configuration:
 //   RELEASE_NOTES_API_URL  default https://api.deepseek.com/chat/completions
@@ -20,6 +21,7 @@
 //   RELEASE_NOTES_MODEL    default deepseek-flash
 
 import { execFileSync } from 'node:child_process';
+import { appendFileSync } from 'node:fs';
 
 import { CLOUD_HIDDEN_SCOPES, CLOUD_SHIPPED_PATHS, privateArea } from './release-notes-cloud.mjs';
 
@@ -99,6 +101,10 @@ const SCOPE_AREA = {
 // dependencies and internal refactors only reach a release as maintenance.
 const HIDDEN_SCOPES = new Set(['release', 'ci']);
 const TYPE_LABEL = { feat: 'New', fix: 'Fix', perf: 'Improved', style: 'Improved' };
+// The prompt alone did not keep the model from writing CI commits up as features.
+const AI_HIDDEN_TYPES = new Set(['ci', 'test', 'build']);
+const AI_REQUIRED_TYPES = new Set(['feat', 'fix', 'perf']);
+const AI_DIFF_BUDGET = 40000;
 
 // The one historical commit whose subject git truncated. Its diff adds the
 // storyboard type and makes comment watchers wake an agent on a storyboard.
@@ -111,7 +117,7 @@ const AI_SYSTEM_PROMPT = `You write release notes for Ryugi, a plugin that gives
 
 Audience: developers who use Ryugi inside a coding agent. They want to know what changed in how they work, not which files changed.
 
-Each commit is either public (it has a sha, stat and diff) or private (marked "private": true, with only its subject and body). Private commits come from a closed repository: describe them from their subject and body only, never invent a link or an identifier for them.
+Each commit is either public (it has a sha, stat and diff) or private (marked "private": true, with an id such as "p3" and only its subject and body). Private commits come from a closed repository: describe them from their subject and body only, never invent a link or an identifier for them. Each commit may carry an "area": the section its changes most likely belong to. Follow it unless the subject and body clearly say otherwise.
 
 Sections:
 - Hub & CLI: the local hub, the ryugi command, publishing from the agent, previews.
@@ -124,17 +130,19 @@ Rules:
 - Open with a lead paragraph of one or two sentences when the release contains a feature (feat) or more than one user-facing change. Skip it for a single fix, a version bump, or a maintenance release.
 - Then area sections in this order, omitting empty ones: ## Hub & CLI, ## Viewer, ## Cloud links, ## Daemon, ## Skills, ## Hosts, ## Detect agent, ## Docs, ## Brand, ## Other.
 - Each bullet is "**Short title** — one sentence, two at most, on the user-visible change." Keep the bold title under six words. Write for someone deciding whether to upgrade, not for someone reviewing the diff.
-- No file paths, command flags, option names, internal identifiers, line counts, or file lists. Mention a command only when the user must type it.
+- No file paths, command flags, option names, internal identifiers, line counts, file lists, pixel sizes or other measurements and internal limits. Mention a command only when the user must type it.
 - Merge commits that describe one change into one bullet. Each change appears once; do not repeat the same work in two sections.
 - Skip README, package metadata, specs, tests, CI, refactors, and routine dependency bumps. When every commit is documentation, write a single ## Docs bullet instead of a maintenance line.
-- End every bullet that covers public commits with their links: ([abc1234](https://github.com/Innei/ryugi/commit/FULL_SHA)). For several commits, separate the links with ", ". A bullet that covers only private commits ends without a link.
+- End every bullet with what it covers: first the links of its public commits, ([abc1234](https://github.com/Innei/ryugi/commit/FULL_SHA)), separated by ", " for several; then the ids of its private commits in square brackets, [p2] or [p2, p5]. Every bullet ends with at least one link or id. The ids are removed before publishing.
+- Every feat, fix and perf commit must be covered by some bullet.
 - If there are no commits, or nothing user-facing remains, output exactly one line: "Version bump only." or "Maintenance release: dependency and tooling updates."
 - No Full Changelog line; it is appended later. Output only Markdown, no code fence. English, no emojis, no marketing adjectives.
 
 Shape, not content:
 ## Viewer
 
-- **Design docs as the spec** — An approved design document now serves as the spec; the spec file only points to it, and approval is a question on the doc itself. ([8ace8fe](https://github.com/Innei/ryugi/commit/8ace8fe69234632a2e1e3619fefe82f707261819))`;
+- **Design docs as the spec** — An approved design document now serves as the spec; the spec file only points to it, and approval is a question on the doc itself. ([8ace8fe](https://github.com/Innei/ryugi/commit/8ace8fe69234632a2e1e3619fefe82f707261819))
+- **Comments wake the agent** — A comment on a storyboard now wakes the agent that made it. [p4]`;
 
 const root = execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' }).trim();
 const gitIn = (dir, ...args) =>
@@ -331,12 +339,22 @@ function renderDeterministic({ tag, from, rows, scope, privateRows = [] }) {
   return `${lines.join('\n')}\n`;
 }
 
+function forAi(row) {
+  const parsed = parseSubject(row.subject);
+  return !AI_HIDDEN_TYPES.has(parsed?.type) && !HIDDEN_SCOPES.has(parsed?.scope);
+}
+
 function aiCommitPayload(row) {
-  if (row.private) return { private: true, subject: row.subject, body: row.body };
+  const parsed = parseSubject(row.subject);
+  if (row.private) {
+    const area = privateArea(parsed ?? { scope: '' }, row.files, SCOPE_AREA);
+    return { private: true, id: row.id, area, subject: row.subject, body: row.body };
+  }
   let diff = git('show', '--format=', '--unified=2', '--no-color', row.sha);
   if (diff.length > 8000) diff = `${diff.slice(0, 8000)}\n[…diff truncated…]`;
   return {
     sha: row.sha,
+    ...(parsed && areaFor(parsed) ? { area: areaFor(parsed) } : {}),
     subject: row.subject,
     body: row.body,
     stat: git('show', '--stat', '--format=', row.sha).trim(),
@@ -344,20 +362,26 @@ function aiCommitPayload(row) {
   };
 }
 
+function fitDiffs(entries, budget) {
+  const order = entries
+    .map((_, index) => index)
+    .sort((a, b) => entries[a].diff.length - entries[b].diff.length);
+  let left = budget;
+  order.forEach((index, rank) => {
+    const share = Math.floor(left / (order.length - rank));
+    const entry = entries[index];
+    if (entry.diff.length > share) entry.diff = entry.diff.slice(0, share);
+    left -= entry.diff.length;
+  });
+}
+
 async function callAi(tag, from, commits) {
   if (!AI_KEY) throw new Error('no API key (set RELEASE_NOTES_API_KEY)');
-  let budget = 40000;
-  const payload = [];
-  for (const row of commits) {
-    const entry = aiCommitPayload(row);
-    if (entry.private) {
-      payload.push(entry);
-      continue;
-    }
-    if (entry.diff.length > budget) entry.diff = entry.diff.slice(0, budget);
-    budget -= entry.diff.length;
-    payload.push(entry);
-  }
+  const payload = commits.map(aiCommitPayload);
+  fitDiffs(
+    payload.filter((entry) => !entry.private),
+    AI_DIFF_BUDGET,
+  );
   const body = {
     model: AI_MODEL,
     messages: [
@@ -378,6 +402,8 @@ async function callAi(tag, from, commits) {
   });
   if (!response.ok) throw new Error(`${response.status} ${(await response.text()).slice(0, 300)}`);
   const data = await response.json();
+  if (data.choices?.[0]?.finish_reason === 'length')
+    throw new Error('completion stopped at the token limit');
   const content = data.choices?.[0]?.message?.content;
   if (!content) throw new Error('empty completion');
   return content;
@@ -386,6 +412,8 @@ async function callAi(tag, from, commits) {
 function normalizeAi(text, rows, privateRows) {
   const allowed = new Map(rows.map((row) => [row.sha, row.sha]));
   for (const row of rows) allowed.set(row.sha.slice(0, 7), row.sha);
+  const markers = new Set(privateRows.map((row) => row.id));
+  const cited = new Set();
   let out = text.trim();
   if (out.startsWith('```')) out = out.replace(/^```[a-z]*\n/, '').replace(/\n```$/, '');
   if (!out) throw new Error('empty output');
@@ -393,14 +421,30 @@ function normalizeAi(text, rows, privateRows) {
   if (out.includes('```')) throw new Error('code fence in output');
   if (/full changelog/i.test(out)) throw new Error('model wrote its own Full Changelog');
   if (/ryugi-cloud|ryugi-dev/i.test(out)) throw new Error('output names the private repository');
+  for (const bullet of out.split('\n').filter((line) => line.startsWith('- '))) {
+    if (
+      !/\]\(https:\/\/github\.com\/Innei\/ryugi\/(?:commit|pull)\//.test(bullet) &&
+      !/\[p\d+(?:\s*,\s*p\d+)*\]/.test(bullet)
+    ) {
+      throw new Error(`bullet without a link or private marker: ${bullet.slice(0, 80)}`);
+    }
+  }
   out = out.replaceAll(
     /\[([^\]]*)\]\((https:\/\/github\.com\/Innei\/ryugi\/commit\/([0-9a-f]{7,40}))\)/g,
     (whole, label, _url, sha) => {
       const full = allowed.get(sha);
       if (!full) throw new Error(`unknown commit link ${sha}`);
+      cited.add(full);
       return `[${full.slice(0, 7)}](${URL}/commit/${full})`;
     },
   );
+  out = out.replaceAll(/[ \t]*\[(p\d+(?:\s*,\s*p\d+)*)\]/g, (_whole, list) => {
+    for (const id of list.split(/\s*,\s*/)) {
+      if (!markers.has(id)) throw new Error(`unknown private marker ${id}`);
+      cited.add(id);
+    }
+    return '';
+  });
   for (const row of privateRows) {
     if (out.includes(row.sha.slice(0, 7)))
       throw new Error(`output carries private commit ${row.sha.slice(0, 7)}`);
@@ -413,12 +457,12 @@ function normalizeAi(text, rows, privateRows) {
   const oneLiner = /^(?:Version bump only\.|Maintenance release:)/.test(out);
   if (!bullets.length && !oneLiner) throw new Error('no bullets');
   if (bullets.length && !headings.length) throw new Error('bullets without a section');
-  for (const bullet of bullets) {
-    if (privateRows.length) break;
-    if (!/\]\(https:\/\/github\.com\/Innei\/ryugi\/(?:commit|pull)\//.test(bullet)) {
-      throw new Error(`bullet without a link: ${bullet.slice(0, 80)}`);
-    }
-  }
+  const missing = [...rows.map((row) => [row.sha, row]), ...privateRows.map((row) => [row.id, row])]
+    .filter(
+      ([key, row]) => AI_REQUIRED_TYPES.has(parseSubject(row.subject)?.type) && !cited.has(key),
+    )
+    .map(([, row]) => row.subject);
+  if (missing.length) throw new Error(`note leaves out ${missing.join('; ')}`);
   return out;
 }
 
@@ -450,16 +494,25 @@ async function main() {
   }
 
   try {
-    const commits = publicCommits(rows, args.scope);
+    const commits = publicCommits(rows, args.scope).filter(forAi);
+    const privateForAi = privateRows
+      .filter(forAi)
+      .map((row, index) => ({ ...row, id: `p${index + 1}` }));
     const content = normalizeAi(
-      await callAi(args.tag, from, [...commits, ...privateRows]),
+      await callAi(args.tag, from, [...commits, ...privateForAi]),
       commits,
-      privateRows,
+      privateForAi,
     );
     process.stdout.write(`${content}\n\n${footer(from, args.tag)}\n`);
   } catch (error) {
     const warning = process.env.GITHUB_ACTIONS === 'true' ? '::warning::' : '';
     console.error(`${warning}release-notes: ai failed: ${error.message}`);
+    if (process.env.GITHUB_STEP_SUMMARY) {
+      appendFileSync(
+        process.env.GITHUB_STEP_SUMMARY,
+        `### AI release notes failed\n\n${error.message}\n\nThe release uses the template note.\n`,
+      );
+    }
     if (args['ai-strict']) process.exit(1);
     process.stdout.write(deterministic);
   }
