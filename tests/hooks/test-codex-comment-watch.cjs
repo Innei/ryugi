@@ -592,22 +592,52 @@ test('desktop startup names a missing or unusable inherited runtime', (t) => {
   assert.equal(f.state(), null);
 });
 
-test('desktop delivery runs under the app-provided runtime, not a Node of its own', async (t) => {
+function appRuntime(f) {
+  const log = path.join(f.root, 'runtime.log');
+  const runtime = path.join(f.root, 'app-node');
+  fs.writeFileSync(
+    runtime,
+    `#!/bin/sh\necho "$$ $PPID" >> '${log}'\nexec '${process.execPath}' "$@"\n`,
+    {
+      mode: 0o755,
+    },
+  );
+  f.env.CODEX_MCP_NODE_PATH = runtime;
+  f.env.PATH = '/usr/bin:/bin';
+  return () => (fs.existsSync(log) ? fs.readFileSync(log, 'utf8').trim().split('\n') : []);
+}
+
+test('the app pipe is reached by the hook process itself under the app runtime, with only the host above it', async (t) => {
   const f = fixture(t);
   const app = await desktop(t, f);
   app.recover();
-  const log = path.join(f.root, 'runtime.log');
-  const runtime = path.join(f.root, 'app-node');
-  fs.writeFileSync(runtime, `#!/bin/sh\necho run >> '${log}'\nexec '${process.execPath}' "$@"\n`, {
-    mode: 0o755,
-  });
-  f.env.CODEX_MCP_NODE_PATH = runtime;
-  f.env.PATH = '/usr/bin:/bin';
-  f.start();
+  const launches = appRuntime(f);
+  const watcher = f.start();
+  await f.push('document/plan');
   await f.push('document/plan');
   await until(
-    () => app.calls.length > 0,
-    () => `desktop comment never arrived: ${JSON.stringify(f.state())}`,
+    () => app.calls.length > 1,
+    () => `desktop comments never arrived: ${JSON.stringify(f.state())} ${f.errors.join('')}`,
   );
-  assert.equal(fs.readFileSync(log, 'utf8').trim(), 'run');
+  assert.deepEqual(launches(), [`${watcher.pid} ${process.pid}`]);
+});
+
+test('SessionEnd stops a desktop watcher, its app runtime included', async (t) => {
+  const f = fixture(t);
+  const app = await desktop(t, f);
+  app.recover();
+  appRuntime(f);
+  const watcher = f.start();
+  await until(() => f.hub.sessions.has(id), 'the desktop watcher never connected');
+  const end = spawnSync(hook, ['codex-stop'], {
+    env: f.env,
+    input: JSON.stringify({ ...f.input, hook_event_name: 'SessionEnd' }),
+    encoding: 'utf8',
+  });
+  assert.equal(end.status, 0, end.stderr);
+  await until(
+    () => watcher.exitCode !== null || watcher.signalCode !== null,
+    'the app runtime kept running after SessionEnd',
+  );
+  await until(() => !f.hub.sessions.has(id), 'the hub channel stayed open');
 });

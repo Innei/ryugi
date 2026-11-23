@@ -40,25 +40,50 @@ const { execFile } = require('node:child_process');
 
 const desktopScript = fs.readFileSync(path.join(__dirname, '../../hook/src/desktop.cjs'), 'utf8');
 
+const fakeWatcherDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-bridge-'));
+after(() => fs.rmSync(fakeWatcherDir, { recursive: true, force: true }));
+const fakeWatcher = path.join(fakeWatcherDir, 'ryugi-hook');
+fs.writeFileSync(
+  fakeWatcher,
+  `#!${process.execPath}
+const request = JSON.parse(require('node:fs').readFileSync(process.env.RYUGI_TEST_REQUEST, 'utf8'));
+process.stdout.write('{"hookSpecificOutput":{}}\\n' + JSON.stringify({ ryugi: 'desktop', id: 7, ...request }) + '\\n');
+require('node:readline').createInterface({ input: process.stdin }).once('line', (line) => {
+  process.stderr.write(line);
+  process.exit(0);
+});
+`,
+  { mode: 0o755 },
+);
+
+let requests = 0;
 function runDesktop(session, message, timeoutMs) {
+  const requestFile = path.join(fakeWatcherDir, `request-${++requests}.json`);
+  fs.writeFileSync(requestFile, JSON.stringify({ session, message, timeoutMs }));
   return new Promise((resolve, reject) => {
-    const child = execFile(
+    execFile(
       process.execPath,
       ['-e', desktopScript],
-      { maxBuffer: 64 * 1024 * 1024 },
+      {
+        maxBuffer: 64 * 1024 * 1024,
+        env: {
+          ...process.env,
+          RYUGI_HOOK_SELF: fakeWatcher,
+          RYUGI_TEST_REQUEST: requestFile,
+        },
+      },
       (error, stdout, stderr) => {
         let reply;
         try {
-          reply = JSON.parse(stdout);
+          reply = JSON.parse(stderr);
         } catch {
           return reject(new Error(stderr || error?.message || 'no reply'));
         }
+        assert.equal(stdout, '{"hookSpecificOutput":{}}\n', 'hook output was not passed through');
+        assert.equal(reply.id, 7);
         if (reply.error) return reject(new Error(reply.error));
         resolve({ receipt: reply.receipt, warning: '' });
       },
-    );
-    child.stdin.end(
-      JSON.stringify({ session, message, pipe: process.env.CODEX_APP_TOOLS_PIPE_PATH, timeoutMs }),
     );
   });
 }

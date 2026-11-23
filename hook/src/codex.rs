@@ -189,8 +189,6 @@ fn queue_cli(ctx: &Ctx, remote: &str, message: &str) -> Outcome {
     }
 }
 
-const DESKTOP: &str = include_str!("desktop.cjs");
-
 fn queue_desktop(ctx: &Ctx, message: &str) -> Outcome {
     if !is_uuid(&ctx.session) {
         return Err("Desktop callback requires the valid hook session ID.".into());
@@ -206,20 +204,7 @@ fn queue_desktop(ctx: &Ctx, message: &str) -> Outcome {
             return Err("Ryugi desktop callbacks support the local host only; remote and cloud chats are unsupported.".into());
         }
     }
-    let runtime = desktop_runtime()?;
-    let pipe = crate::text::js_trim(&std::env::var("CODEX_APP_TOOLS_PIPE_PATH").unwrap_or_default()).to_string();
-    let request = json!({"session": ctx.session, "message": message, "pipe": pipe, "timeoutMs": 15000});
-    let mut command = Command::new(runtime);
-    command.args(["-e", DESKTOP]);
-    let (_, out, err) = run_with_timeout(command, Some(request.to_string().into_bytes()), Duration::from_secs(20), 1 << 20)?;
-    let reply: Value = serde_json::from_str(&out).map_err(|_| {
-        if err.is_empty() { "Codex desktop callback produced no reply.".to_string() } else { err.chars().take(800).collect() }
-    })?;
-    match (reply.get("receipt").and_then(Value::as_str), reply.get("error").and_then(Value::as_str)) {
-        (Some(receipt), _) => Ok((receipt.into(), String::new())),
-        (_, Some(error)) => Err(error.into()),
-        _ => Err("Codex desktop returned an invalid callback receipt.".into()),
-    }
+    crate::desktop::send(&ctx.session, message).map(|receipt| (receipt, String::new()))
 }
 
 fn watch(ctx: Ctx, input: &Value, remote: Option<String>) {
@@ -321,9 +306,12 @@ pub fn run(mode: &str) {
     }
     let remote = if mode == "watch" { cli_endpoint() } else { None };
     let failure = if mode == "watch" && remote.is_none() && has_desktop_pipe() { desktop_runtime().err() } else { None };
-    let Some(input) = crate::input::read_stdin(Duration::from_secs(30)).and_then(|b| serde_json::from_slice::<Value>(&b).ok()) else {
-        return;
+    let input = if crate::desktop::bridged() {
+        crate::desktop::bridged_input()
+    } else {
+        crate::input::read_stdin(Duration::from_secs(30)).and_then(|b| serde_json::from_slice::<Value>(&b).ok())
     };
+    let Some(input) = input else { return };
     let Some(ctx) = context(&input) else { return };
     match mode {
         "stop" => {
@@ -350,9 +338,18 @@ pub fn run(mode: &str) {
             if let Some(failure) = failure {
                 return notice(&input, &failure);
             }
+            if crate::desktop::bridged() {
+                return watch(ctx, &input, remote);
+            }
             if let Err(e) = crate::subs::bind_codex_session(&ctx.session) {
                 eprintln!("{e}");
                 std::process::exit(1);
+            }
+            if remote.is_none() && has_desktop_pipe() {
+                if let Ok(runtime) = desktop_runtime() {
+                    let failure = crate::desktop::hand_over(&runtime, &input);
+                    return notice(&input, &format!("Ryugi could not start the Codex desktop runtime: {failure}"));
+                }
             }
             watch(ctx, &input, remote);
         }

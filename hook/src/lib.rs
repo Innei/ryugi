@@ -3,6 +3,7 @@ pub mod channel;
 pub mod cmd;
 pub mod codex;
 pub mod context;
+pub mod desktop;
 pub mod event;
 pub mod evidence;
 pub mod flush;
