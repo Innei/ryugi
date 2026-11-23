@@ -689,8 +689,8 @@ async function testLiveHttpAndWebSocketProxy() {
       });
       assert.equal(clampedRes.statusCode, 200);
       assert.ok(
-        clampedRes.body.includes('window.location.replace("/")'),
-        `unsafe enter target ${unsafeTo} must clamp to "/"`,
+        clampedRes.body.includes('data-ryugi-empty-pane') && !clampedRes.body.includes('evil.example'),
+        `unsafe enter target ${unsafeTo} must fall back to the empty pane`,
       );
     }
 
@@ -714,11 +714,14 @@ async function testLiveHttpAndWebSocketProxy() {
       port: sidecarPort,
       reqPath: `/?token=super-secret&conversationId=${OTHER_CONV_ID}`,
     });
-    assert.equal(unsubscribedRes.statusCode, 200, 'unsubscribed conversationId must proxy root');
-    assert.equal(
-      unsubscribedRes.body,
-      'upstream-ok:/',
-      'token and conversationId must be stripped before proxying root to upstream',
+    assert.equal(unsubscribedRes.statusCode, 200, 'unsubscribed conversationId must get the empty pane');
+    assert.ok(
+      unsubscribedRes.body.includes('data-ryugi-empty-pane'),
+      'a conversation without an artifact must get the empty pane, not the hub home page',
+    );
+    assert.ok(
+      !unsubscribedRes.body.includes('super-secret'),
+      'the empty pane must never echo the Antigravity token',
     );
 
     const homeRes = await httpRequest({
@@ -1125,6 +1128,71 @@ async function testSubscriptionWatcherStream() {
   }
 }
 
+async function testEmptyPaneNeverLoadsHubHome() {
+  const serverDir = makeTempDir('ryugi-sidecar-empty-');
+  const env = { RYUGI_SERVER_HOME: serverDir };
+  const recorded = [];
+  const upstream = http.createServer((req, res) => {
+    recorded.push(req.url);
+    res.writeHead(200, { 'Content-Type': 'text/html' });
+    res.end(`upstream-ok:${req.url}`);
+  });
+  const sidecar = createSidecarServer({ env, upstreamCacheTtlMs: 0 });
+  try {
+    const upstreamPort = await listenServer(upstream);
+    const sidecarPort = await listenServer(sidecar);
+    fs.writeFileSync(
+      path.join(serverDir, 'server-info'),
+      JSON.stringify({ host: '127.0.0.1', port: upstreamPort, pid: process.pid }),
+    );
+
+    for (const query of [`?conversationId=${OTHER_CONV_ID}`, '']) {
+      const shell = await httpRequest({
+        port: sidecarPort,
+        reqPath: `/${query}`,
+        headers: { 'X-Sidecar-Token': 'agy-sidecar-secret' },
+      });
+      assert.equal(shell.statusCode, 200, 'the pane shell must load');
+      const src = new URL(shell.body.match(/<iframe\s+src="([^"]+)"/)[1].replace(/&amp;/g, '&'));
+      assert.equal(src.searchParams.get('to'), null, 'a pane without an artifact must not target the hub home');
+      const framed = await httpRequest({ port: sidecarPort, reqPath: `${src.pathname}${src.search}` });
+      assert.equal(framed.statusCode, 200, 'the empty pane must load in the frame');
+      assert.ok(framed.body.includes('data-ryugi-empty-pane'), 'the frame must show the empty pane');
+      assert.equal(
+        framed.headers['content-security-policy'],
+        EXPECTED_FRAME_ANCESTORS,
+        'the empty pane must allow embedding from the pane shell',
+      );
+      assert.ok(
+        !framed.body.includes('setInterval') && !framed.body.includes('location.reload'),
+        'the empty pane must not poll or reload',
+      );
+    }
+
+    const offline = await httpRequest({ port: sidecarPort, reqPath: '/_ryugi_sidecar/offline-probe' });
+    assert.ok(offline.statusCode > 0);
+    assert.deepEqual(
+      recorded.filter((url) => url === '/' || url.startsWith('/?') || url.startsWith('/api/hub')),
+      [],
+      'an empty pane must never ask the hub for its home page or artifact list',
+    );
+  } finally {
+    await closeServer(sidecar);
+    await closeServer(upstream);
+    fs.rmSync(serverDir, { recursive: true, force: true });
+  }
+}
+
+function testOfflinePageNeverFallsBackToHubHome() {
+  const { offlineHtml } = require('../../sidecars/artifacts/server.cjs');
+  const page = offlineHtml(CONV_ID);
+  assert.ok(
+    !page.includes("window.location.replace('/')"),
+    'once the hub is up, a waiting pane without an artifact must go to the empty pane, not the hub home',
+  );
+  assert.ok(page.includes('/_ryugi_sidecar/empty'), 'the waiting pane must know the empty pane');
+}
+
 async function main() {
   testResolveUpstream();
   testIsAllowedOrigin();
@@ -1134,6 +1202,8 @@ async function main() {
   await testLiveHttpAndWebSocketProxy();
   await testKeepAliveAndUpstreamCache();
   await testSubscriptionWatcherStream();
+  await testEmptyPaneNeverLoadsHubHome();
+  testOfflinePageNeverFallsBackToHubHome();
   console.log('PASS: Antigravity sidecar proxy unit and integration tests');
 }
 

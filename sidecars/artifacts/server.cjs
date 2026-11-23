@@ -265,13 +265,7 @@ function resolveLanding(req, url, env) {
     }
   }
 
-  if (hasAgyParams) {
-    const cleanParams = new URLSearchParams(url.searchParams);
-    cleanParams.delete('token');
-    cleanParams.delete('conversationId');
-    const qs = cleanParams.toString();
-    return { kind: 'proxy', targetPath: qs ? `/?${qs}` : '/' };
-  }
+  if (hasAgyParams) return { kind: 'empty' };
 
   return { kind: 'proxy', targetPath: `${url.pathname}${url.search}` };
 }
@@ -420,15 +414,7 @@ function enterHtml(target) {
 `;
 }
 
-function offlineHtml(initialConversationId = '') {
-  const safeConv = JSON.stringify(UUID.test(initialConversationId) ? initialConversationId : '');
-  return `<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Ryugi</title>
-  <style>
+const NOTICE_STYLE = `  <style>
     :root {
       color-scheme: light dark;
       --bg: #fafafa;
@@ -475,7 +461,35 @@ function offlineHtml(initialConversationId = '') {
       color: var(--muted);
     }
   </style>
-</head>
+`;
+
+function emptyHtml() {
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ryugi</title>
+${NOTICE_STYLE}</head>
+<body data-ryugi-empty-pane>
+  <main>
+    <h1>No artifact in this conversation yet</h1>
+    <p>When the agent opens an artifact in this conversation, it shows up here.</p>
+  </main>
+</body>
+</html>
+`;
+}
+
+function offlineHtml(initialConversationId = '') {
+  const safeConv = JSON.stringify(UUID.test(initialConversationId) ? initialConversationId : '');
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ryugi</title>
+${NOTICE_STYLE}</head>
 <body>
   <main>
     <h1>Waiting for Ryugi server</h1>
@@ -501,7 +515,7 @@ function offlineHtml(initialConversationId = '') {
               window.location.pathname === '/_ryugi_sidecar/enter' ||
               (window.location.pathname === '/' && (params.has('token') || params.has('conversationId')))
             ) {
-              window.location.replace('/');
+              window.location.replace('/_ryugi_sidecar/empty');
               return;
             }
             window.location.reload();
@@ -535,6 +549,10 @@ function sendHtml(res, statusCode, body, extraHeaders = {}) {
     ...extraHeaders,
   });
   res.end(body);
+}
+
+function sendEmptyHtml(res) {
+  sendHtml(res, 200, emptyHtml(), { 'content-security-policy': FRAME_ANCESTORS });
 }
 
 function sendOfflineHtml(res, conversationId = '') {
@@ -751,6 +769,11 @@ function createSidecarServer({ env = process.env, upstreamCacheTtlMs = 500 } = {
       return;
     }
 
+    if (req.method === 'GET' && url.pathname === '/_ryugi_sidecar/empty') {
+      sendEmptyHtml(res);
+      return;
+    }
+
     // Antigravity loads sidecar UIs on plugin:// which blocks ES module CORS and loopback WS;
     // hand off through a nonce-gated same-origin page on 127.0.0.1 so Ryugi sees Sec-Fetch-Site: same-origin.
     if (req.method === 'GET' && url.pathname === '/_ryugi_sidecar/enter') {
@@ -761,9 +784,13 @@ function createSidecarServer({ env = process.env, upstreamCacheTtlMs = 500 } = {
       const rawConv = url.searchParams.get('conv');
       const convId = rawConv && UUID.test(rawConv) ? rawConv : '';
       const rawTo = url.searchParams.get('to');
-      const target = isSafeRelativePath(rawTo) ? rawTo : '/';
+      const target = isSafeRelativePath(rawTo) ? rawTo : null;
       if (getUpstream({ fresh: true }).kind === 'offline') {
         sendOfflineHtml(res, convId);
+        return;
+      }
+      if (!target) {
+        sendEmptyHtml(res);
         return;
       }
       sendHtml(res, 200, enterHtml(target), { 'content-security-policy': FRAME_ANCESTORS });
@@ -775,8 +802,8 @@ function createSidecarServer({ env = process.env, upstreamCacheTtlMs = 500 } = {
     if (req.method === 'GET' && url.pathname === '/' && req.headers['x-sidecar-token'] && listenPort) {
       const rawConv = url.searchParams.get('conversationId');
       const convId = rawConv && UUID.test(rawConv) ? rawConv : '';
-      const target = resolveLandingPath(convId, env) || '/';
-      const iframeSrc = `http://127.0.0.1:${listenPort}/_ryugi_sidecar/enter?nonce=${frameNonce}&to=${encodeURIComponent(target)}&conv=${encodeURIComponent(convId)}`;
+      const target = resolveLandingPath(convId, env);
+      const iframeSrc = `http://127.0.0.1:${listenPort}/_ryugi_sidecar/enter?nonce=${frameNonce}${target ? `&to=${encodeURIComponent(target)}` : ''}&conv=${encodeURIComponent(convId)}`;
       sendHtml(
         res,
         200,
@@ -796,6 +823,10 @@ function createSidecarServer({ env = process.env, upstreamCacheTtlMs = 500 } = {
     }
 
     const resolution = resolveLanding(req, url, env);
+    if (resolution.kind === 'empty') {
+      sendEmptyHtml(res);
+      return;
+    }
     if (resolution.kind === 'redirect') {
       res.writeHead(302, {
         'cache-control': 'no-store',
@@ -982,6 +1013,7 @@ if (require.main === module) {
 
 module.exports = {
   createSidecarServer,
+  offlineHtml,
   isAllowedOrigin,
   resolveLandingPath,
   resolveUpstream,
