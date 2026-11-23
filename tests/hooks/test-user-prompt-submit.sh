@@ -70,6 +70,17 @@ expect "counts selected nodes that were not described" "$out" '2 more selected'
 expect "lists tweaks on other nodes" "$out" 'hero-2#13 <p> in pages/main/hero-2.html at `body > p`: color: rgb(0, 0, 0) → red'
 expect "points at the full file" "$out" '.ryugi/artifacts/.state/artboard/node-id/selection.json'
 
+dir="$(project removed)"
+cat > "$dir/.ryugi/artifacts/.state/artboard/node-id/selection.json" << 'JSON'
+{ "artifact": "artboard/node-id", "updatedAt": "2026-10-20T13:00:00.000Z", "selected": [], "more": 0, "tweaks": [],
+  "removed": [{ "id": "hero-2#9", "board": "hero-2", "file": "pages/main/hero-2.html", "tag": "small", "path": "body > small", "name": "fine print" }],
+  "nodes": [] }
+JSON
+out="$(run_hook "$dir" "删掉的那些去源文件里删了")"
+expect "lists elements deleted in the preview with file and path" "$out" 'hero-2#9 <small> in pages/main/hero-2.html at `body > small` "fine print"'
+expect "says deleted elements are still in the source" "$out" 'Deleted in the preview (still in the source; delete them there):'
+dir="$(project selected)"
+
 out="$(run_hook "$dir" "把 hero-2#5 的间距改大")"
 expect "resolves an ID typed in the message" "$out" 'hero-2#5 <span> in pages/main/hero-2.html at `body > span`'
 

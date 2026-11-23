@@ -72,7 +72,8 @@ function typedNodes(nodes, prompt) {
 
 function describe(session, { file, value }, prompt, budget) {
   const named = typedNodes(value.nodes, prompt);
-  if (!value.selected.length && !value.tweaks.length && !named.length) return '';
+  const removed = Array.isArray(value.removed) ? value.removed : [];
+  if (!value.selected.length && !value.tweaks.length && !removed.length && !named.length) return '';
   const head = [`Artboard ${value.artifact}, open in the viewer (updated ${value.updatedAt}):`];
   if (named.length) {
     head.push('Nodes named in this message:');
@@ -93,6 +94,10 @@ function describe(session, { file, value }, prompt, budget) {
   if (value.tweaks.length) {
     body.push('Preview tweaks on other nodes (not in the source yet):');
     for (const tweak of value.tweaks) body.push(`- ${where(tweak)}: ${change(tweak)}`);
+  }
+  if (removed.length) {
+    body.push('Deleted in the preview (still in the source; delete them there):');
+    for (const node of removed) body.push(`- ${where(node)}${node.name ? ` "${node.name}"` : ''}`);
   }
   const fixed = head.join('\n').length + tail.length + 2;
   const room = Math.max(0, budget - fixed);
