@@ -13,6 +13,11 @@ on:
         description: Attach the binaries to the v<version> release instead of keeping them as workflow artifacts
         required: true
         type: boolean
+      reuse:
+        description: Take the binaries from an earlier release whose hook/ is the same
+        required: false
+        default: true
+        type: boolean
     outputs:
       commit:
         value: ${{ jobs.commit.outputs.sha }}
@@ -31,6 +36,11 @@ on:
         required: false
         default: true
         type: boolean
+      reuse:
+        description: Take the binaries from an earlier release whose hook/ is the same instead of building
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: write
@@ -44,6 +54,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       sha: ${{ steps.sha.outputs.sha }}
+      from: ${{ steps.reuse.outputs.from }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -51,8 +62,62 @@ jobs:
       - id: sha
         run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
+      - name: Look for a release built from the same hook/
+        id: reuse
+        if: inputs.reuse
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          tree="$(git rev-parse HEAD:hook)"
+          for tag in $(gh release list -R "$GITHUB_REPOSITORY" -L 10 --exclude-drafts --json tagName --jq '.[].tagName'); do
+            [[ "$tag" != "v$VERSION" ]] || continue
+            git fetch -q --depth 1 origin "refs/tags/$tag:refs/tags/$tag" || continue
+            [[ "$(git rev-parse "$tag:hook")" == "$tree" ]] || continue
+            count="$(gh release view "$tag" -R "$GITHUB_REPOSITORY" --json assets --jq '[.assets[].name | select(startswith("ryugi-hook-"))] | length')"
+            if [[ "$count" -eq 6 ]]; then
+              echo "::notice::hook/ is unchanged since $tag; reusing its binaries"
+              echo "from=$tag" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          done
+
+  reuse:
+    needs: commit
+    if: needs.commit.outputs.from != ''
+    strategy:
+      matrix:
+        asset: [ryugi-hook-darwin-arm64, ryugi-hook-linux-x64, ryugi-hook-linux-arm64]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Take the binary from ${{ needs.commit.outputs.from }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FROM: ${{ needs.commit.outputs.from }}
+          ASSET: ${{ matrix.asset }}
+        run: |
+          gh release download "$FROM" -R "$GITHUB_REPOSITORY" -p "$ASSET" -p "$ASSET.sha256" -D hook-dist
+          (cd hook-dist && sha256sum -c "$ASSET.sha256")
+
+      - name: Attach the binary to the release
+        if: env.UPLOAD == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+          ASSET: ${{ matrix.asset }}
+        run: gh release upload "v$VERSION" "hook-dist/$ASSET" "hook-dist/$ASSET.sha256" --clobber -R "$GITHUB_REPOSITORY"
+
+      - name: Keep the binary for the release upload
+        if: env.UPLOAD != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset }}
+          path: hook-dist/
+          retention-days: 3
+
   darwin:
     needs: commit
+    if: needs.commit.outputs.from == ''
     runs-on: macos-latest
     timeout-minutes: 45
     env:
@@ -64,6 +129,10 @@ jobs:
 
       - name: Add the Apple silicon target
         run: rustup target add aarch64-apple-darwin
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: hook -> target
 
       - name: Build ryugi-hook for Apple silicon
         env:
@@ -154,6 +223,7 @@ jobs:
 
   linux:
     needs: commit
+    if: needs.commit.outputs.from == ''
     strategy:
       fail-fast: false
       matrix:
@@ -183,6 +253,11 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y musl-tools
           rustup target add ${{ matrix.target }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: hook -> target
+          key: ${{ matrix.target }}
 
       - name: Build ryugi-hook for ${{ matrix.target }}
         env:

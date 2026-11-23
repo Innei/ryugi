@@ -10,6 +10,14 @@ on:
         description: Attach the binaries to the v<version> release instead of keeping them as workflow artifacts
         required: true
         type: boolean
+      reuse:
+        description: Take the binaries from an earlier release built from the same daemon source
+        required: false
+        default: true
+        type: boolean
+    outputs:
+      source:
+        value: ${{ jobs.plan.outputs.source }}
   workflow_dispatch:
     inputs:
       version:
@@ -21,6 +29,11 @@ on:
         required: false
         default: true
         type: boolean
+      reuse:
+        description: Take the binaries from an earlier release built from the same daemon source instead of building
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: write
@@ -31,7 +44,96 @@ env:
   UPLOAD: ${{ inputs.upload }}
 
 jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      source: ${{ steps.plan.outputs.source }}
+      from: ${{ steps.plan.outputs.from }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ env.CLOUD_REPO }}
+          ref: artifacts-v${{ inputs.version }}
+          token: ${{ secrets.RYUGI_CLOUD_TOKEN }}
+          persist-credentials: false
+
+      - name: Fingerprint the daemon source and look for a release already built from it
+        id: plan
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+          REUSE: ${{ inputs.reuse }}
+        run: |
+          [[ -x scripts/daemon-source.sh ]] || exit 0
+          source="$(scripts/daemon-source.sh)"
+          expected="$(jq -r '.daemonSource // ""' packages/artifacts/package.json)"
+          if [[ -n "$expected" && "$expected" != "$source" ]]; then
+            echo "::error::package.json expects daemon source $expected but artifacts-v$VERSION fingerprints as $source"
+            exit 1
+          fi
+          echo "source=$source" >> "$GITHUB_OUTPUT"
+          [[ "$REUSE" == true ]] || exit 0
+          for tag in $(gh release list -R "$GITHUB_REPOSITORY" -L 15 --exclude-drafts --json tagName --jq '.[].tagName'); do
+            [[ "$tag" != "v$VERSION" ]] || continue
+            [[ "$(gh release download "$tag" -R "$GITHUB_REPOSITORY" -p ryugi-daemon.source -O - 2> /dev/null)" == "$source" ]] || continue
+            count="$(gh release view "$tag" -R "$GITHUB_REPOSITORY" --json assets --jq '[.assets[].name | select(startswith("ryugi-daemon-"))] | length')"
+            if [[ "$count" -eq 6 ]]; then
+              echo "::notice::daemon source $source is unchanged since $tag; reusing its binaries"
+              echo "from=$tag" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          done
+
+  reuse:
+    needs: plan
+    if: needs.plan.outputs.from != ''
+    strategy:
+      matrix:
+        asset: [ryugi-daemon-darwin-arm64, ryugi-daemon-linux-x64, ryugi-daemon-linux-arm64]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Take the binary from ${{ needs.plan.outputs.from }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FROM: ${{ needs.plan.outputs.from }}
+          ASSET: ${{ matrix.asset }}
+        run: |
+          gh release download "$FROM" -R "$GITHUB_REPOSITORY" -p "$ASSET" -p "$ASSET.sha256" -D daemon-dist
+          (cd daemon-dist && sha256sum -c "$ASSET.sha256")
+
+      - name: Attach the binary to the release
+        if: env.UPLOAD == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+          ASSET: ${{ matrix.asset }}
+        run: gh release upload "v$VERSION" "daemon-dist/$ASSET" "daemon-dist/$ASSET.sha256" --clobber -R "$GITHUB_REPOSITORY"
+
+      - name: Keep the binary for the release upload
+        if: env.UPLOAD != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset }}
+          path: daemon-dist/${{ matrix.asset }}*
+          retention-days: 3
+
+  mark:
+    needs: [plan, reuse, daemon, linux]
+    if: always() && inputs.upload && needs.plan.outputs.source != '' && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Record the daemon source the release's binaries were built from
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+          SOURCE: ${{ needs.plan.outputs.source }}
+        run: |
+          echo "$SOURCE" > ryugi-daemon.source
+          gh release upload "v$VERSION" ryugi-daemon.source --clobber -R "$GITHUB_REPOSITORY"
+
   daemon:
+    needs: plan
+    if: needs.plan.outputs.from == ''
     runs-on: macos-latest
     timeout-minutes: 45
     steps:
@@ -50,6 +152,10 @@ jobs:
 
       - name: Add the Apple silicon target
         run: rustup target add aarch64-apple-darwin
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: daemon -> target
 
       - name: Build ryugi-daemon for Apple silicon
         run: scripts/build-daemon.sh daemon-dist
@@ -137,6 +243,8 @@ jobs:
         run: security delete-keychain "$KEYCHAIN"
 
   linux:
+    needs: plan
+    if: needs.plan.outputs.from == ''
     strategy:
       fail-fast: false
       matrix:
@@ -174,6 +282,11 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y musl-tools
           rustup target add ${{ matrix.target }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: daemon -> target
+          key: ${{ matrix.target }}
 
       - name: Build ryugi-daemon for ${{ matrix.target }}
         run: scripts/build-daemon.sh daemon-dist ${{ matrix.target }}

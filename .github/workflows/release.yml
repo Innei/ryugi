@@ -297,7 +297,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ needs.release.outputs.version }}
+          SOURCE: ${{ needs.daemon.outputs.source }}
         run: |
           ls -l daemon-dist
           [[ "$(find daemon-dist -type f | wc -l)" -eq 6 ]]
+          [[ -z "$SOURCE" ]] || echo "$SOURCE" > daemon-dist/ryugi-daemon.source
           gh release upload "v$VERSION" daemon-dist/* --clobber -R "$GITHUB_REPOSITORY"
