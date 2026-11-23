@@ -95,10 +95,10 @@ const comments = (dir, threads) => ({
   threads,
 });
 
-test('the plugin monitor starts only once the artifacts skill runs', () => {
+test('the plugin monitor starts with every session, so preview comments reach one that never ran the artifacts skill', () => {
   const entries = JSON.parse(fs.readFileSync(path.join(repo, 'monitors/monitors.json'), 'utf8'));
   const entry = entries.find((item) => item.name === 'artifact-comments');
-  assert.equal(entry.when, 'on-skill-invoke:ryugi:artifacts');
+  assert.equal(entry.when, 'always');
 });
 
 test('a hub event becomes one notification and is acknowledged', async (t) => {
