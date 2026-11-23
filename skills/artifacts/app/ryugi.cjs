@@ -18,13 +18,7 @@ const RELEASES = path.join(
 );
 const LATEST_FILE = path.join(RELEASES, 'latest.json');
 const PLUGIN_ROOT = path.join(__dirname, '..', '..', '..');
-const HOOK_CACHE = path.join(
-  process.env.XDG_CACHE_HOME || path.join(os.homedir(), '.cache'),
-  'ryugi',
-  'hook',
-);
-const HOOK_RELEASE = 'https://github.com/Innei/ryugi/releases/download';
-const HOOK_ASSETS = { 'darwin-arm64': 1, 'linux-x64': 1, 'linux-arm64': 1 };
+const HOOK_HOME = path.join(os.homedir(), '.ryugi', 'hook');
 const win32 = process.platform === 'win32';
 
 const valid = (v) => /^\d+\.\d+\.\d+(?:[-+][0-9A-Z.-]+)?$/i.test(v || '');
@@ -248,7 +242,7 @@ function hookBin() {
   const local = path.join(PLUGIN_ROOT, 'hook', 'target', 'release', 'ryugi-hook');
   if (executable(local)) return local;
   const version = pluginVersion();
-  const cached = version && path.join(HOOK_CACHE, version, 'ryugi-hook');
+  const cached = version && path.join(HOOK_HOME, version, 'ryugi-hook');
   return cached && executable(cached) ? cached : null;
 }
 
@@ -261,74 +255,19 @@ function requestHookInstall() {
   } catch {}
 }
 
-const sha256 = (bytes) => nodeCrypto.createHash('sha256').update(bytes).digest('hex');
-
-async function fetchOk(url) {
-  const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
-  if (!res.ok) throw Object.assign(new Error(`${url}: HTTP ${res.status}`), { status: res.status });
-  return res;
-}
-
-function pruneHooks(current) {
-  let names = [];
-  try {
-    names = fs.readdirSync(HOOK_CACHE).filter(valid);
-  } catch {}
-  const older = names.filter((v) => v !== current && compare(v, current) <= 0).sort(compare);
-  older.pop();
-  for (const name of older)
-    fs.rmSync(path.join(HOOK_CACHE, name), { recursive: true, force: true });
-}
-
-// A 404 is a release whose binaries are still uploading, so it is asked again sooner than other failures.
 async function hookInstall() {
-  const asset = HOOK_ASSETS[`${process.platform}-${process.arch}`]
-    ? `ryugi-hook-${process.platform}-${process.arch}`
-    : null;
   const version = pluginVersion() || newestInstalled();
-  if (!asset || !valid(version)) return;
-  const dir = path.join(HOOK_CACHE, version);
-  const target = path.join(dir, 'ryugi-hook');
-  if (executable(target)) return;
-  fs.mkdirSync(dir, { recursive: true });
-  const failed = path.join(dir, '.failed');
+  if (!valid(version) || executable(path.join(HOOK_HOME, version, 'ryugi-hook'))) return;
+  let cli = path.join(__dirname, 'cli.cjs');
   try {
-    const last = JSON.parse(fs.readFileSync(failed, 'utf8'));
-    if (Date.now() - last.at < (last.status === 404 ? 5 : 60) * 60 * 1000) return;
-  } catch {}
-  const lock = path.join(dir, '.lock');
-  try {
-    fs.writeFileSync(lock, String(process.pid), { flag: 'wx' });
+    if (!fs.existsSync(cli)) cli = cliOf(resolveRelease());
   } catch {
-    try {
-      if (Date.now() - fs.statSync(lock).mtimeMs < 5 * 60 * 1000) return;
-      fs.rmSync(lock, { force: true });
-      fs.writeFileSync(lock, String(process.pid), { flag: 'wx' });
-    } catch {
-      return;
-    }
+    return;
   }
-  try {
-    const base = `${(process.env.RYUGI_HOOK_RELEASE_BASE || HOOK_RELEASE).replace(/\/+$/, '')}/v${version}/${asset}`;
-    const bytes = Buffer.from(await (await fetchOk(base)).arrayBuffer());
-    const expected = (await (await fetchOk(`${base}.sha256`)).text())
-      .trim()
-      .split(/\s+/)[0]
-      ?.toLowerCase();
-    if (expected !== sha256(bytes)) throw new Error(`${asset} failed its sha256 check`);
-    const temp = `${target}.${process.pid}.tmp`;
-    fs.writeFileSync(temp, bytes, { mode: 0o755 });
-    fs.chmodSync(temp, 0o755);
-    fs.renameSync(temp, target);
-    fs.rmSync(failed, { force: true });
-    pruneHooks(version);
-  } catch (error) {
-    try {
-      fs.writeFileSync(failed, JSON.stringify({ at: Date.now(), status: error.status ?? null }));
-    } catch {}
-  } finally {
-    fs.rmSync(lock, { force: true });
-  }
+  spawnSync(process.execPath, [cli, 'hook', 'install', version, '--background'], {
+    stdio: 'ignore',
+    timeout: 120000,
+  });
 }
 
 function main() {
@@ -366,18 +305,13 @@ function main() {
     env.RYUGI_ARTIFACTS_VERSION = localVersion();
   }
   requireOutputProtocol(cli);
-  let hook = hookBin();
+  const hook = hookBin();
   const marked =
     sessionProof ||
     process.env.CODEX_THREAD_ID ||
     process.env.CLAUDE_CODE_SESSION_ID ||
     process.env.PI_SESSION_ID ||
     process.env.ANTIGRAVITY_CONVERSATION_ID;
-  // A command that may subscribe waits for a first download: without the binary it records no subscription.
-  if (!hook && marked && (args[0] === 'start' || args[0] === 'comment')) {
-    spawnSync(process.execPath, [__filename, 'hook-install'], { stdio: 'ignore', timeout: 40000 });
-    hook = hookBin();
-  }
   let subscription = null;
   if (hook) {
     const prepared = spawnSync(

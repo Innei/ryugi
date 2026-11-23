@@ -37,16 +37,19 @@ out="$(resolve "$plugin")"
 code=$?
 if [ "$code" -ne 0 ] && [ -z "$out" ]; then pass "finds nothing when no binary exists"; else fail "finds nothing when no binary exists ($code: $out)"; fi
 
-cached="$TEST_ROOT/home/.cache/ryugi/hook/9.8.7/ryugi-hook"
-make_exe "$cached"
-make_exe "$TEST_ROOT/home/.cache/ryugi/hook/9.8.6/ryugi-hook"
-out="$(resolve "$plugin")"
-if [ "$out" = "$cached" ]; then pass "finds the cached binary of the plugin's version with an empty PATH"; else fail "finds the cached binary of the plugin's version with an empty PATH ($out)"; fi
-
+legacy="$TEST_ROOT/home/.cache/ryugi/hook/9.8.7/ryugi-hook"
 xdg="$TEST_ROOT/xdg/ryugi/hook/9.8.7/ryugi-hook"
+make_exe "$legacy"
 make_exe "$xdg"
 out="$(resolve "$plugin" XDG_CACHE_HOME="$TEST_ROOT/xdg")"
-if [ "$out" = "$xdg" ]; then pass "honours XDG_CACHE_HOME"; else fail "honours XDG_CACHE_HOME ($out)"; fi
+code=$?
+if [ "$code" -ne 0 ] && [ -z "$out" ]; then pass "no longer reads the old cache"; else fail "no longer reads the old cache ($out)"; fi
+
+cached="$TEST_ROOT/home/.ryugi/hook/9.8.7/ryugi-hook"
+make_exe "$cached"
+make_exe "$TEST_ROOT/home/.ryugi/hook/9.8.6/ryugi-hook"
+out="$(resolve "$plugin")"
+if [ "$out" = "$cached" ]; then pass "finds the binary of the plugin's version in ~/.ryugi/hook with an empty PATH"; else fail "finds the binary of the plugin's version in ~/.ryugi/hook with an empty PATH ($out)"; fi
 
 local_build="$plugin/hook/target/release/ryugi-hook"
 make_exe "$local_build"
@@ -62,7 +65,7 @@ out="$(resolve "$plugin" RYUGI_HOOK_BIN="$TEST_ROOT/missing")"
 code=$?
 if [ "$code" -ne 0 ] && [ -z "$out" ]; then pass "a missing RYUGI_HOOK_BIN finds nothing"; else fail "a missing RYUGI_HOOK_BIN finds nothing ($out)"; fi
 
-rm -f "$cached" "$local_build" "$xdg"
+rm -f "$cached" "$local_build"
 printf 'not executable' > "$cached"
 out="$(resolve "$plugin")"
 if [ -z "$out" ]; then pass "ignores a cached file that is not executable"; else fail "ignores a cached file that is not executable ($out)"; fi
@@ -79,7 +82,7 @@ if [ "$version" = "9.8.5" ]; then pass "a Codex package without package.json rea
 if command -v zsh > /dev/null 2>&1; then
   make_exe "$cached"
   out="$(env -i HOME="$TEST_ROOT/home" "$(command -v zsh)" -c '. "$1"; ryugi_hook_bin "$2"' _ "$LIB" "$plugin")"
-  if [ "$out" = "$cached" ]; then pass "finds the cached binary under zsh"; else fail "finds the cached binary under zsh ($out)"; fi
+  if [ "$out" = "$cached" ]; then pass "finds the binary under zsh"; else fail "finds the binary under zsh ($out)"; fi
 fi
 
 if [ "$FAILURES" -gt 0 ]; then

@@ -1,7 +1,11 @@
 use std::process::ExitCode;
 
 fn main() -> ExitCode {
+    ryugi_hook::usage::mark_used();
     let args: Vec<String> = std::env::args().skip(1).collect();
+    if let Some(role) = ryugi_hook::title::role(&args) {
+        ryugi_hook::title::set_ryugi_title(role);
+    }
     let rest = args.get(1..).unwrap_or_default();
     match args.first().map(String::as_str) {
         Some("--version") => println!("ryugi-hook {}", ryugi_hook::VERSION),

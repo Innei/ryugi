@@ -23,16 +23,20 @@ pub fn bridged_input() -> Option<Value> {
 // app runtime must replace this hook process rather than run as its child.
 pub fn hand_over(runtime: &Path, input: &Value) -> String {
     use std::os::unix::process::CommandExt;
-    let exe = match std::env::current_exe() {
-        Ok(exe) => exe,
-        Err(e) => return e.to_string(),
-    };
-    Command::new(runtime)
+    match std::env::current_exe() {
+        Ok(exe) => bridge(runtime, input, &exe).exec().to_string(),
+        Err(e) => e.to_string(),
+    }
+}
+
+fn bridge(runtime: &Path, input: &Value, exe: &Path) -> Command {
+    let mut command = Command::new(runtime);
+    command
         .args(["-e", BRIDGE])
         .env(INPUT, input.to_string())
         .env("RYUGI_HOOK_SELF", exe)
-        .exec()
-        .to_string()
+        .env("RYUGI_PROCESS_TITLE", crate::title::title("watch-comments", crate::title::version().as_deref()));
+    command
 }
 
 fn replies() -> &'static Mutex<Receiver<Value>> {
@@ -76,5 +80,22 @@ pub fn send(session: &str, message: &str) -> Result<String, String> {
             Err(RecvTimeoutError::Timeout) => return Err("Codex desktop callback timed out. Delivery is unconfirmed.".into()),
             Err(RecvTimeoutError::Disconnected) => return Err("The Codex desktop runtime closed.".into()),
         }
+    }
+}
+
+#[cfg(test)]
+mod bridge_tests {
+    use super::*;
+
+    #[test]
+    fn the_desktop_bridge_is_named_like_every_ryugi_watcher() {
+        let command = bridge(Path::new("node"), &json!({}), Path::new("/x/ryugi-hook"));
+        let title = command
+            .get_envs()
+            .find(|(key, _)| *key == "RYUGI_PROCESS_TITLE")
+            .and_then(|(_, value)| value)
+            .map(|value| value.to_string_lossy().into_owned());
+        assert_eq!(title, Some(crate::title::title("watch-comments", crate::title::version().as_deref())));
+        assert!(title.unwrap().starts_with("Ryugi watch-comments"));
     }
 }

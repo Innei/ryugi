@@ -13,12 +13,32 @@ pub fn manifest_version(root: &Path) -> Option<String> {
     })
 }
 
+fn home_version(exe: &Path, home: &Path) -> Option<String> {
+    let dir = exe.parent()?;
+    if dir.parent()? != home.join(".ryugi/hook") {
+        return None;
+    }
+    let version = dir.file_name()?.to_str()?;
+    version.starts_with(|c: char| c.is_ascii_digit()).then(|| version.to_string())
+}
+
 pub fn version() -> Option<String> {
     if let Some(v) = option_env!("RYUGI_VERSION") {
         return Some(v.to_string());
     }
     let exe = std::env::current_exe().ok()?;
+    if let Some(v) = std::env::var_os("HOME").and_then(|home| home_version(&exe, Path::new(&home))) {
+        return Some(v);
+    }
     manifest_version(exe.ancestors().nth(4)?)
+}
+
+pub fn role(args: &[String]) -> Option<&'static str> {
+    match args.first()?.as_str() {
+        "--version" => None,
+        "codex-watch" | "watch" => Some("watch-comments"),
+        _ => Some("hook"),
+    }
 }
 
 pub fn title(role: &str, version: Option<&str>) -> String {
@@ -28,12 +48,18 @@ pub fn title(role: &str, version: Option<&str>) -> String {
     }
 }
 
+// Launch Services check-in is slow and backs up when many short-lived processes register, so
+// only the long-lived watchers take a display name there; ps shows every title either way.
+fn registers(role: &str) -> bool {
+    role == "watch-comments"
+}
+
 pub fn set_ryugi_title(role: &str) {
-    set(&title(role, version().as_deref()));
+    set(&title(role, version().as_deref()), registers(role));
 }
 
 #[cfg(target_os = "macos")]
-fn set(text: &str) {
+fn set(text: &str, register: bool) {
     use std::ffi::{c_char, c_int, c_void, CStr, CString};
 
     let text = text.to_string();
@@ -48,7 +74,9 @@ fn set(text: &str) {
             fn pthread_setname_np(name: *const c_char) -> c_int;
         }
         pthread_setname_np(c_title.as_ptr());
-        set_launch_services_name(&c_title);
+        if register {
+            set_launch_services_name(&c_title);
+        }
     }
 
     unsafe fn overwrite_argv(title: &str) {
@@ -202,7 +230,7 @@ fn set(text: &str) {
 }
 
 #[cfg(target_os = "linux")]
-fn set(text: &str) {
+fn set(text: &str, _register: bool) {
     use std::ffi::{c_int, CString};
 
     const PR_SET_NAME: c_int = 15;
@@ -220,7 +248,7 @@ fn set(text: &str) {
 }
 
 #[cfg(not(any(target_os = "macos", target_os = "linux")))]
-fn set(_text: &str) {}
+fn set(_text: &str, _register: bool) {}
 
 #[cfg(test)]
 mod tests {
@@ -231,6 +259,29 @@ mod tests {
     fn titles_name_the_role_and_version() {
         assert_eq!(title("hook", Some("1.2.3")), "Ryugi hook (1.2.3)");
         assert_eq!(title("watch-comments", None), "Ryugi watch-comments");
+    }
+
+    #[test]
+    fn a_binary_in_the_hook_home_takes_its_version_from_its_directory() {
+        let home = Path::new("/home/me");
+        assert_eq!(home_version(Path::new("/home/me/.ryugi/hook/1.2.3/ryugi-hook"), home).as_deref(), Some("1.2.3"));
+        assert_eq!(home_version(Path::new("/home/me/src/ryugi/hook/target/release/ryugi-hook"), home), None);
+    }
+
+    #[test]
+    fn only_long_lived_watchers_register_their_name_with_launch_services() {
+        assert!(registers("watch-comments"));
+        assert!(!registers("hook"));
+    }
+
+    #[test]
+    fn roles_follow_the_command() {
+        let args = |list: &[&str]| list.iter().map(|s| s.to_string()).collect::<Vec<_>>();
+        assert_eq!(role(&args(&["codex-watch"])), Some("watch-comments"));
+        assert_eq!(role(&args(&["watch", "claude", "/p"])), Some("watch-comments"));
+        assert_eq!(role(&args(&["cmd-stop"])), Some("hook"));
+        assert_eq!(role(&args(&["subscribe"])), Some("hook"));
+        assert_eq!(role(&args(&["--version"])), None);
     }
 
     #[test]

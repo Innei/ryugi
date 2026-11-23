@@ -124,7 +124,7 @@ function deliver({ session, message, timeoutMs }) {
   });
 }
 
-process.title = 'Ryugi watch-comments';
+process.title = process.env.RYUGI_PROCESS_TITLE || 'Ryugi watch-comments';
 const watcher = spawn(process.env.RYUGI_HOOK_SELF, ['codex-watch'], {
   stdio: ['pipe', 'pipe', 'inherit'],
 });

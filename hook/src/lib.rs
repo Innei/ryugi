@@ -21,6 +21,7 @@ pub mod watch;
 pub mod worker;
 pub mod text;
 pub mod title;
+pub mod usage;
 #[cfg(test)]
 pub mod testdir;
 

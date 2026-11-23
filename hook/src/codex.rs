@@ -300,7 +300,6 @@ fn watch(ctx: Ctx, input: &Value, remote: Option<String>) {
 }
 
 pub fn run(mode: &str) {
-    crate::title::set_ryugi_title("watch-comments");
     if (mode == "watch" || mode == "bind") && matches!(crate::hosts::match_custom_host(), Ok(Some(_))) {
         return;
     }

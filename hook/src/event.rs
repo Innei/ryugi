@@ -113,7 +113,6 @@ pub fn event_from(input: &Value, host: &str, at: u64) -> Option<Value> {
 }
 
 pub fn run(args: &[String]) {
-    crate::title::set_ryugi_title("hook");
     let at = now_ms();
     let host = match args.first().map(String::as_str) {
         Some("antigravity") => "antigravity",

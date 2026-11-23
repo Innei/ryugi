@@ -322,7 +322,6 @@ fn watch(ctx: Ctx) {
 }
 
 pub fn run(mode: &str) {
-    crate::title::set_ryugi_title("watch-comments");
     let input = crate::input::read_stdin(Duration::from_secs(30))
         .and_then(|b| serde_json::from_slice::<Value>(&b).ok())
         .unwrap_or_else(|| json!({}));

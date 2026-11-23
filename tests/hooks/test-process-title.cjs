@@ -90,6 +90,11 @@ test('a hook waiting for its input runs as Ryugi hook (version)', { skip }, asyn
   assert.equal(await hookTitle(t, ['context']), shown(`Ryugi hook (${version})`));
 });
 
+test('hook commands that are not watchers run as Ryugi hook (version)', { skip }, async (t) => {
+  for (const command of ['subscribe', 'cmd-stop'])
+    assert.equal(await hookTitle(t, [command]), shown(`Ryugi hook (${version})`), command);
+});
+
 test('the launcher runs as Ryugi launcher (version)', { skip }, () => {
   assert.equal(titleOf(path.join(app, 'ryugi.cjs'), ['--version']), `Ryugi launcher (${version})`);
 });

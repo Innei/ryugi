@@ -54,7 +54,6 @@ fn register(project: &Path) {
 }
 
 pub fn run(args: &[String]) {
-    crate::title::set_ryugi_title("hook");
     let Some(project) = args.first().filter(|p| !p.is_empty()).map(PathBuf::from) else { return };
     if !published(&project) || !signed_in() {
         return register(&project);

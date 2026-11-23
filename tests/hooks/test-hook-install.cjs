@@ -2,7 +2,6 @@
 
 const assert = require('node:assert/strict');
 const { spawn } = require('node:child_process');
-const { createHash } = require('node:crypto');
 const fs = require('node:fs');
 const http = require('node:http');
 const os = require('node:os');
@@ -10,27 +9,6 @@ const path = require('node:path');
 const { test } = require('node:test');
 
 const repo = path.resolve(__dirname, '../..');
-const asset = `ryugi-hook-${process.platform}-${process.arch}`;
-const supported = ['darwin-arm64', 'linux-x64', 'linux-arm64'].includes(
-  `${process.platform}-${process.arch}`,
-);
-
-async function releases(t, files) {
-  const seen = [];
-  const server = http.createServer((req, res) => {
-    seen.push(req.url);
-    const body = files[req.url];
-    if (body === undefined) {
-      res.statusCode = 404;
-      res.end('missing');
-      return;
-    }
-    res.end(body);
-  });
-  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
-  t.after(() => server.close());
-  return { base: `http://127.0.0.1:${server.address().port}/download`, seen };
-}
 
 function plugin(t, version) {
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-hook-install-')));
@@ -43,153 +21,86 @@ function plugin(t, version) {
     path.join(root, 'plugin/package.json'),
     JSON.stringify({ name: 'ryugi', version }),
   );
-  return { root, launcher: path.join(app, 'ryugi.cjs'), cache: path.join(root, 'cache') };
+  const calls = path.join(root, 'cli-calls');
+  const release = path.join(root, 'release');
+  fs.writeFileSync(
+    path.join(app, 'cli.cjs'),
+    `const fs = require('fs');
+const args = process.argv.slice(2);
+if (args[0] === 'hook') {
+  fs.appendFileSync(${JSON.stringify(calls)}, JSON.stringify(args) + '\\n');
+  const until = Date.now() + 60000;
+  while (fs.existsSync(${JSON.stringify(path.join(root, 'hold'))}) && !fs.existsSync(${JSON.stringify(release)}) && Date.now() < until)
+    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 50);
+  process.exit(0);
+}
+console.log(JSON.stringify({schema:'ryugi.cli/v1', command:args.includes('--version')?'version':'start', outcome:'success', data:{status:'running',capabilities:['reviewBundlesV1']}}));
+`,
+  );
+  const read = () =>
+    fs.existsSync(calls)
+      ? fs.readFileSync(calls, 'utf8').trim().split('\n').filter(Boolean).map(JSON.parse)
+      : [];
+  return {
+    root,
+    home: path.join(root, 'home'),
+    launcher: path.join(app, 'ryugi.cjs'),
+    read,
+    release,
+  };
 }
 
-const sha = (bytes) => createHash('sha256').update(bytes).digest('hex');
-
-function install(p, base, env = {}) {
+function launch(p, args, env = {}) {
   return new Promise((resolve) => {
-    const child = spawn(process.execPath, [p.launcher, 'hook-install'], {
-      env: {
-        ...process.env,
-        XDG_CACHE_HOME: p.cache,
-        RYUGI_HOOK_RELEASE_BASE: base,
-        RYUGI_HOOK_BIN: '',
-        ...env,
-      },
+    const child = spawn(process.execPath, [p.launcher, ...args], {
+      env: { ...process.env, HOME: p.home, RYUGI_HOOK_BIN: '', RYUGI_NO_UPDATE_CHECK: '1', ...env },
       stdio: 'ignore',
     });
-    child.on('close', (status) => resolve({ status }));
+    child.on('close', (status) => resolve(status));
   });
 }
 
-test(
-  'hook-install downloads the binary of the plugin version and checks its sha256',
-  { skip: !supported },
-  async (t) => {
-    const p = plugin(t, '9.1.0');
-    const bytes = Buffer.from('#!/bin/sh\necho hook\n');
-    const r = await releases(t, {
-      [`/download/v9.1.0/${asset}`]: bytes,
-      [`/download/v9.1.0/${asset}.sha256`]: `${sha(bytes)}  ${asset}\n`,
-    });
-    assert.equal((await install(p, r.base)).status, 0);
-    const target = path.join(p.cache, 'ryugi/hook/9.1.0/ryugi-hook');
-    assert.deepEqual(fs.readFileSync(target), bytes);
-    assert.ok(fs.statSync(target).mode & 0o100);
-    const fetched = r.seen.length;
-    assert.equal((await install(p, r.base)).status, 0);
-    assert.equal(r.seen.length, fetched, 'an installed binary is not fetched again');
-  },
-);
-
-test('a binary that fails its sha256 check is never installed', { skip: !supported }, async (t) => {
-  const p = plugin(t, '9.2.0');
-  const r = await releases(t, {
-    [`/download/v9.2.0/${asset}`]: 'tampered',
-    [`/download/v9.2.0/${asset}.sha256`]: `${sha('original')}  ${asset}\n`,
+async function noNetwork(t) {
+  const seen = [];
+  const server = http.createServer((req, res) => {
+    seen.push(req.url);
+    res.statusCode = 404;
+    res.end();
   });
-  assert.equal((await install(p, r.base)).status, 0);
-  const dir = path.join(p.cache, 'ryugi/hook/9.2.0');
-  assert.ok(!fs.existsSync(path.join(dir, 'ryugi-hook')));
-  assert.deepEqual(
-    fs.readdirSync(dir).filter((n) => !n.startsWith('.')),
-    [],
-  );
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  t.after(() => server.close());
+  return { base: `http://127.0.0.1:${server.address().port}`, seen };
+}
+
+test("hook-install asks the CLI for the plugin version's binary and downloads nothing itself", async (t) => {
+  const p = plugin(t, '9.1.0');
+  const net = await noNetwork(t);
+  assert.equal(await launch(p, ['hook-install'], { RYUGI_HOOK_RELEASE_BASE: net.base }), 0);
+  assert.deepEqual(p.read(), [['hook', 'install', '9.1.0', '--background']]);
+  assert.deepEqual(net.seen, []);
+});
+
+test('hook-install leaves a binary already in ~/.ryugi/hook alone', async (t) => {
+  const p = plugin(t, '9.2.0');
+  const binary = path.join(p.home, '.ryugi/hook/9.2.0/ryugi-hook');
+  fs.mkdirSync(path.dirname(binary), { recursive: true });
+  fs.writeFileSync(binary, '#!/bin/sh\n', { mode: 0o755 });
+  assert.equal(await launch(p, ['hook-install']), 0);
+  assert.deepEqual(p.read(), []);
 });
 
 test(
-  'a release without the binary yet is retried later, not on every session',
-  { skip: !supported },
+  'a launcher command without a binary does not wait for the download',
+  { timeout: 20000 },
   async (t) => {
     const p = plugin(t, '9.3.0');
-    const r = await releases(t, {});
-    await install(p, r.base);
-    const first = r.seen.length;
-    assert.ok(first > 0);
-    await install(p, r.base);
-    assert.equal(r.seen.length, first, 'a fresh 404 is not fetched again at once');
-    const marker = path.join(p.cache, 'ryugi/hook/9.3.0/.failed');
-    const state = JSON.parse(fs.readFileSync(marker, 'utf8'));
-    assert.equal(state.status, 404);
-    fs.writeFileSync(marker, JSON.stringify({ ...state, at: Date.now() - 6 * 60 * 1000 }));
-    await install(p, r.base);
-    assert.ok(r.seen.length > first, 'a 404 older than five minutes is retried');
-  },
-);
-
-test(
-  'installing a version keeps the previous one and removes older ones',
-  { skip: !supported },
-  async (t) => {
-    const p = plugin(t, '9.5.0');
-    for (const v of ['9.3.0', '9.4.0', '9.10.0-beta'])
-      fs.mkdirSync(path.join(p.cache, 'ryugi/hook', v), { recursive: true });
-    const bytes = Buffer.from('bin');
-    const r = await releases(t, {
-      [`/download/v9.5.0/${asset}`]: bytes,
-      [`/download/v9.5.0/${asset}.sha256`]: sha(bytes),
-    });
-    await install(p, r.base);
-    assert.deepEqual(fs.readdirSync(path.join(p.cache, 'ryugi/hook')).sort(), [
-      '9.10.0-beta',
-      '9.4.0',
-      '9.5.0',
-    ]);
-  },
-);
-
-test(
-  'a launcher command during the first download waits for the binary and still subscribes',
-  { skip: !supported },
-  async (t) => {
-    const p = plugin(t, '9.6.0');
-    const app = path.dirname(p.launcher);
-    fs.writeFileSync(
-      path.join(app, 'cli.cjs'),
-      "console.log(JSON.stringify({schema:'ryugi.cli/v1', command:process.argv.includes('--version')?'version':'start', outcome:'success', data:{status:'running',capabilities:['reviewBundlesV1']}}));\n",
+    fs.writeFileSync(path.join(p.root, 'hold'), '');
+    const status = await launch(
+      p,
+      ['start', '--background', '--artifact', 'document/plan', '--project-dir', p.root],
+      { CLAUDE_CODE_SESSION_ID: '29ba4e4a-2224-4457-947d-c39ebcbc846c' },
     );
-    const record = path.join(p.root, 'subscribed.json');
-    const fake = Buffer.from(
-      `#!/bin/sh\ncase "$1" in\n  launch-prepare) printf '%s\\n' '{"host":"claude","session":"s","project":"/p","artifact":"document/plan"}' ;;\n  subscribe) cat > '${record}' ;;\nesac\n`,
-    );
-    const r = await releases(t, {
-      [`/download/v9.6.0/${asset}`]: fake,
-      [`/download/v9.6.0/${asset}.sha256`]: sha(fake),
-    });
-    const status = await new Promise((resolve) => {
-      const child = spawn(
-        process.execPath,
-        [
-          p.launcher,
-          'start',
-          '--background',
-          '--artifact',
-          'document/plan',
-          '--project-dir',
-          p.root,
-        ],
-        {
-          env: {
-            ...process.env,
-            XDG_CACHE_HOME: p.cache,
-            RYUGI_HOOK_RELEASE_BASE: r.base,
-            RYUGI_HOOK_BIN: '',
-            RYUGI_NO_UPDATE_CHECK: '1',
-            CLAUDE_CODE_SESSION_ID: '29ba4e4a-2224-4457-947d-c39ebcbc846c',
-          },
-          stdio: 'ignore',
-        },
-      );
-      child.on('close', resolve);
-    });
     assert.equal(status, 0);
-    assert.deepEqual(JSON.parse(fs.readFileSync(record, 'utf8')), {
-      host: 'claude',
-      session: 's',
-      project: '/p',
-      artifact: 'document/plan',
-    });
+    fs.writeFileSync(p.release, '');
   },
 );

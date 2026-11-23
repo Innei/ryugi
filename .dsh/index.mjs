@@ -42,8 +42,7 @@ function hookBin() {
   } catch {
     return null;
   }
-  const cache = process.env.XDG_CACHE_HOME || path.join(os.homedir(), '.cache');
-  const cached = path.join(cache, 'ryugi', 'hook', String(version), 'ryugi-hook');
+  const cached = path.join(os.homedir(), '.ryugi', 'hook', String(version), 'ryugi-hook');
   if (executable(cached)) return cached;
   if (!installRequested) {
     installRequested = true;

@@ -8,7 +8,6 @@ fn env_set(name: &str) -> bool {
 }
 
 pub fn run(args: &[String]) {
-    crate::title::set_ryugi_title("hook");
     let at = now_ms();
     let fallback = args.first().filter(|p| !p.is_empty()).map(PathBuf::from);
     let antigravity = fallback.is_none()

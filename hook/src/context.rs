@@ -515,7 +515,6 @@ fn spawn_antigravity_watch(project: &str, session: &str) {
 }
 
 pub fn run(args: &[String]) {
-    crate::title::set_ryugi_title("hook");
     let input = crate::input::read_stdin(Duration::from_secs(10))
         .and_then(|b| serde_json::from_slice::<Value>(&b).ok())
         .filter(Value::is_object)

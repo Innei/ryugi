@@ -165,7 +165,6 @@ fn read_input() -> Value {
 }
 
 pub fn run(mode: &str) {
-    crate::title::set_ryugi_title("watch-comments");
     let input = read_input();
     let Some(ctx) = context(&input) else { return };
     match mode {

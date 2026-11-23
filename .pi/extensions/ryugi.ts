@@ -90,8 +90,7 @@ function hookBin(): string | null {
   } catch {
     return null;
   }
-  const cache = process.env.XDG_CACHE_HOME || join(homedir(), '.cache');
-  const cached = join(cache, 'ryugi', 'hook', String(version), 'ryugi-hook');
+  const cached = join(homedir(), '.ryugi', 'hook', String(version), 'ryugi-hook');
   return executable(cached) ? cached : null;
 }
 

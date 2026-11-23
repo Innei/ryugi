@@ -8,7 +8,6 @@ fn claude_session() -> Option<String> {
 }
 
 pub fn claude(args: &[String]) {
-    crate::title::set_ryugi_title("watch-comments");
     if matches!(crate::hosts::match_custom_host(), Ok(Some(_))) {
         return;
     }
@@ -46,7 +45,6 @@ pub fn dsh(args: &[String]) {
 
 fn stdio_watch(args: &[String], agent: &str, needs_artifacts: bool) {
     use std::io::BufRead;
-    crate::title::set_ryugi_title("watch-comments");
     let cwd = args.first().map(PathBuf::from).unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
     let Some(session) = args.get(1).filter(|s| !s.is_empty()).cloned() else { return };
     let project = crate::paths::project_root(&cwd).unwrap_or(cwd);

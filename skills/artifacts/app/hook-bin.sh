@@ -34,7 +34,7 @@ ryugi_hook_bin() {
     return 0
   fi
   version="$(ryugi_plugin_version "$1")" || return 1
-  candidate="${XDG_CACHE_HOME:-${HOME:-}/.cache}/ryugi/hook/$version/ryugi-hook"
+  candidate="${HOME:-}/.ryugi/hook/$version/ryugi-hook"
   if [ -f "$candidate" ] && [ -x "$candidate" ]; then
     printf '%s\n' "$candidate"
     return 0
