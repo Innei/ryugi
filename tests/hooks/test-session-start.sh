@@ -12,7 +12,8 @@ FAILURES=0
 TEST_ROOT="$(mktemp -d)"
 
 cleanup() {
-  rm -rf "$TEST_ROOT"
+  # The hooks under test start a background hook-install that can still be writing here.
+  rm -rf "$TEST_ROOT" 2> /dev/null || true
 }
 trap cleanup EXIT
 
