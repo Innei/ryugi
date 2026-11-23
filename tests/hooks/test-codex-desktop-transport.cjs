@@ -36,7 +36,32 @@ after(() => {
     else process.env[key] = value;
   }
 });
-const transport = require('../../skills/artifacts/app/codex-desktop-transport.cjs');
+const { execFile } = require('node:child_process');
+
+const desktopScript = fs.readFileSync(path.join(__dirname, '../../hook/src/desktop.cjs'), 'utf8');
+
+function runDesktop(session, message, timeoutMs) {
+  return new Promise((resolve, reject) => {
+    const child = execFile(
+      process.execPath,
+      ['-e', desktopScript],
+      { maxBuffer: 64 * 1024 * 1024 },
+      (error, stdout, stderr) => {
+        let reply;
+        try {
+          reply = JSON.parse(stdout);
+        } catch {
+          return reject(new Error(stderr || error?.message || 'no reply'));
+        }
+        if (reply.error) return reject(new Error(reply.error));
+        resolve({ receipt: reply.receipt, warning: '' });
+      },
+    );
+    child.stdin.end(
+      JSON.stringify({ session, message, pipe: process.env.CODEX_APP_TOOLS_PIPE_PATH, timeoutMs }),
+    );
+  });
+}
 
 function encode(value) {
   const payload = Buffer.from(JSON.stringify(value), 'utf8');
@@ -131,11 +156,8 @@ async function desktop(
   };
 }
 
-function send(message = 'Ryugi comments changed.', signal, options = {}) {
-  return transport.sendDesktop({ session: SESSION }, message, signal, {
-    timeoutMs: 1000,
-    ...options,
-  });
+function send(message = 'Ryugi comments changed.') {
+  return runDesktop(SESSION, message, 5000);
 }
 
 async function disconnected(server) {
@@ -143,31 +165,6 @@ async function disconnected(server) {
   while (server.sockets.size && Date.now() < deadline) await delay(5);
   assert.equal(server.sockets.size, 0, 'the desktop connection was left open');
 }
-
-test('desktop pipe detection requires a nonempty inherited path', () => {
-  assert.equal(transport.hasDesktopPipe(), false);
-  process.env.CODEX_APP_TOOLS_PIPE_PATH = ' \t ';
-  assert.equal(transport.hasDesktopPipe(), false);
-  process.env.CODEX_APP_TOOLS_PIPE_PATH = 'fixture-only-pipe';
-  assert.equal(transport.hasDesktopPipe(), true);
-});
-
-test('invalid hook input and nonlocal caller hosts fail before connecting', async (t) => {
-  const server = await desktop(t);
-  for (const session of [undefined, '', `${SESSION}/other`]) {
-    await assert.rejects(transport.sendDesktop({ session }, 'Changed'), /session/i);
-  }
-  await assert.rejects(send('  '), /message/i);
-  for (const host of ['durable', 'ssh-fixture']) {
-    process.env.CODEX_APP_TOOLS_CALLER_HOST_ID = host;
-    await assert.rejects(send(), /local.*only|only.*local/i);
-  }
-  delete process.env.CODEX_APP_TOOLS_CALLER_HOST_ID;
-  delete process.env.CODEX_APP_TOOLS_PIPE_PATH;
-  await assert.rejects(send(), /CODEX_APP_TOOLS_PIPE_PATH/);
-  await delay(10);
-  assert.equal(server.connections, 0);
-});
 
 test('fragmented native callbacks preserve the hook session and discover each namespace', async (t) => {
   let catalogs = 0;
@@ -188,7 +185,6 @@ test('fragmented native callbacks preserve the hook session and discover each na
     receipt: JSON.stringify({ threadId: SESSION }),
     warning: '',
   });
-  process.env.CODEX_APP_TOOLS_CALLER_HOST_ID = 'local';
   await send('Second callback');
   await disconnected(server);
   assert.equal(server.connections, 2);
@@ -320,36 +316,5 @@ test('a pipe closing before acknowledgement fails the attempt', async (t) => {
   });
   await assert.rejects(send(), /closed.*acknowledg/i);
   await disconnected(server);
-  assert.equal(server.connections, 1);
-});
-
-test('a timeout closes the pending connection without retrying', async (t) => {
-  const server = await desktop(t, (request, socket) => {
-    if (request.method === 'tools/list') respond(socket, request, catalog());
-  });
-  await assert.rejects(send(undefined, undefined, { timeoutMs: 100 }), /timed out/i);
-  await disconnected(server);
-  assert.equal(server.connections, 1);
-  assert.deepEqual(
-    server.requests.map((request) => request.method),
-    ['tools/list', 'tools/call'],
-  );
-});
-
-test('abort closes an in-flight callback and rejects pre-aborted work before connecting', async (t) => {
-  const controller = new AbortController();
-  const server = await desktop(t, (request, socket) => {
-    if (request.method === 'tools/list') respond(socket, request, catalog());
-    else controller.abort(new Error('fixture watcher stopped'));
-  });
-  await assert.rejects(send(undefined, controller.signal), /fixture watcher stopped/);
-  await disconnected(server);
-  assert.equal(server.connections, 1);
-  assert.deepEqual(
-    server.requests.map((request) => request.method),
-    ['tools/list', 'tools/call'],
-  );
-  await assert.rejects(send(undefined, controller.signal), /fixture watcher stopped/);
-  await delay(10);
   assert.equal(server.connections, 1);
 });

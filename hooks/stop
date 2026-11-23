@@ -5,6 +5,7 @@ case "$0" in
   */* | *\\*) SCRIPT_DIR="$(cd "${0%[/\\]*}" && pwd)" ;;
   *) SCRIPT_DIR="$(pwd)" ;;
 esac
+. "$SCRIPT_DIR/../skills/artifacts/app/hook-bin.sh"
 
 if { [ -n "${ANTIGRAVITY_AGENT:-}" ] || [ -n "${PLUGIN_ROOT:-}" ] || [ -n "${PLUGIN_DATA:-}" ]; } \
   && [ -z "${CLAUDE_PROJECT_DIR:-}" ] \
@@ -12,18 +13,17 @@ if { [ -n "${ANTIGRAVITY_AGENT:-}" ] || [ -n "${PLUGIN_ROOT:-}" ] || [ -n "${PLU
   && [ -z "${CURSOR_PLUGIN_ROOT:-}" ] \
   && [ -z "${MUSE_PLUGIN_ROOT:-}" ] \
   && [ -z "${COPILOT_CLI:-}" ]; then
-  if command -v node > /dev/null 2>&1; then
-    node "$SCRIPT_DIR/flush-artifacts.cjs" 2> /dev/null
-  else
-    printf '{}\n'
+  if bin="$(ryugi_hook_bin "${SCRIPT_DIR%[/\\]*}")"; then
+    exec "$bin" flush 2> /dev/null
   fi
+  printf '{}\n'
   exit 0
 fi
 
 . "$SCRIPT_DIR/project-root.sh"
 project="$(ryugi_project_root "${CLAUDE_PROJECT_DIR:-$PWD}")"
 [ -f "$project/.ryugi/artifacts/.state/server-info" ] || [ -f "$project/.git" ] || exit 0
-command -v node > /dev/null 2>&1 || exit 0
+bin="$(ryugi_hook_bin "${SCRIPT_DIR%[/\\]*}")" || exit 0
 
-node "$SCRIPT_DIR/flush-artifacts.cjs" "$project" > /dev/null 2>&1
+"$bin" flush "$project" > /dev/null 2>&1
 exit 0

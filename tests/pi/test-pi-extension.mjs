@@ -162,8 +162,18 @@ test('pi tools reference documents pi-specific mappings', async () => {
 });
 
 const require = createRequire(import.meta.url);
-const { subscriptionFor } = require('../../skills/artifacts/app/comment-subscriptions.cjs');
 const { fakeHub } = require('../hooks/fake-hub.cjs');
+const hook = require('../hooks/hook-bin.cjs').hookBin();
+const { spawnSync } = require('node:child_process');
+
+function subscriptionFor(args, env) {
+  const result = spawnSync(hook, ['launch-prepare', '--', ...args], {
+    env: { PATH: process.env.PATH, HOME: process.env.HOME, ...env },
+    encoding: 'utf8',
+  });
+  if (result.stderr.includes('comment-watch-error')) throw new Error(result.stderr);
+  return result.stdout.trim() ? JSON.parse(result.stdout) : null;
+}
 
 const session = '019a4f5e-8a2b-7c3d-9e4f-0123456789ab';
 const at = (n) => `2026-11-03T10:00:${String(n).padStart(2, '0')}.000Z`;
@@ -266,6 +276,28 @@ test('a hub event wakes the Pi session and is acknowledged once delivered', asyn
 
   await firstHandler(handlers, 'session_shutdown')({ type: 'session_shutdown' }, ctx);
   await until(() => !hub.sessions.has(session), 'a shut-down session leaves the hub');
+});
+
+test('the comment watch runs in ryugi-hook, not in the Pi process', async (t) => {
+  const p = project(t);
+  const hub = hubFor(t);
+  const log = join(p.root, 'spawned.log');
+  const wrapper = join(p.root, 'ryugi-hook');
+  require('node:fs').writeFileSync(
+    wrapper,
+    `#!/bin/sh\necho "$@" >> '${log}'\nexec '${hook}' "$@"\n`,
+    { mode: 0o755 },
+  );
+  const saved = process.env.RYUGI_HOOK_BIN;
+  process.env.RYUGI_HOOK_BIN = wrapper;
+  t.after(() => (process.env.RYUGI_HOOK_BIN = saved));
+  const { handlers } = await loadExtension();
+  await startSession(t, handlers, sessionContext(p.root));
+  await hub.connected();
+  assert.match(
+    require('node:fs').readFileSync(log, 'utf8'),
+    new RegExp(`^watch pi ${p.root} ${session}`),
+  );
 });
 
 test('a delivery that throws or rejects is reported once, not acknowledged, and the watch keeps waking Pi', async (t) => {

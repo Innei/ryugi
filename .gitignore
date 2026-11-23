@@ -10,6 +10,7 @@
 */**/.ryugi/
 .DS_Store
 node_modules/
+hook/target/
 inspo
 triage/
 

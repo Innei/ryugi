@@ -8,8 +8,10 @@ const os = require('node:os');
 const path = require('node:path');
 const { test } = require('node:test');
 
+const { hookBin } = require('./hook-bin.cjs');
+
 const repo = path.resolve(__dirname, '../..');
-const hook = path.join(repo, 'hooks/start-artifacts.cjs');
+const bin = hookBin();
 
 function fakeServer() {
   const seen = [];
@@ -52,7 +54,7 @@ function setup() {
 
 const runHook = (project, env) =>
   new Promise((resolve) => {
-    const child = require('node:child_process').spawn(process.execPath, [hook, project], {
+    const child = require('node:child_process').spawn(bin, ['start', project], {
       env,
       stdio: 'ignore',
     });
@@ -84,6 +86,40 @@ test('registers the project with a running server when it has nothing published'
 
 test('does nothing when no server runs and nothing is published', () => {
   const { project, env } = setup();
-  const result = spawnSync(process.execPath, [hook, project], { env, timeout: 5000 });
+  const result = spawnSync(bin, ['start', project], { env, timeout: 5000 });
   assert.equal(result.status, 0);
+});
+
+test('starts the hub through the launcher when a document is published and the user is signed in', () => {
+  const { project, env } = setup();
+  const fakeBin = path.join(env.HOME, 'bin');
+  const argsFile = path.join(env.HOME, 'node-args');
+  fs.mkdirSync(fakeBin);
+  fs.writeFileSync(path.join(fakeBin, 'node'), `#!/bin/sh\nprintf '%s\\n' "$@" > '${argsFile}'\n`, {
+    mode: 0o755,
+  });
+  fs.mkdirSync(path.join(env.XDG_CONFIG_HOME, 'ryugi'), { recursive: true });
+  fs.writeFileSync(
+    path.join(env.XDG_CONFIG_HOME, 'ryugi/credentials.json'),
+    JSON.stringify({ token: 't' }),
+  );
+  fs.writeFileSync(
+    path.join(project, '.ryugi/config.json'),
+    JSON.stringify({ artifacts: { 'document/plan': { cloud: { id: 'c1' } } } }),
+  );
+  const result = spawnSync(bin, ['start', project], {
+    env: { ...env, PATH: `${fakeBin}:/usr/bin:/bin`, RYUGI_PLUGIN_ROOT: repo },
+    timeout: 5000,
+  });
+  assert.equal(result.status, 0);
+  assert.deepEqual(fs.readFileSync(argsFile, 'utf8').trim().split('\n'), [
+    path.join(repo, 'skills/artifacts/app/ryugi.cjs'),
+    'start',
+    '--background',
+    '--format',
+    'json',
+    '--no-open',
+    '--project-dir',
+    project,
+  ]);
 });

@@ -1,0 +1,35 @@
+name: Hooks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: cargo test
+        run: cargo test --locked --manifest-path hook/Cargo.toml
+
+      - name: tests/hooks
+        run: |
+          status=0
+          for test in tests/hooks/test-*.cjs; do
+            node --test "$test" || status=1
+          done
+          for test in tests/hooks/test-*.sh; do
+            bash "$test" || status=1
+          done
+          exit "$status"

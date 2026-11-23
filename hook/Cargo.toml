@@ -1,0 +1,25 @@
+[package]
+name = "ryugi-hook"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[lib]
+name = "ryugi_hook"
+path = "src/lib.rs"
+
+[[bin]]
+name = "ryugi-hook"
+path = "src/main.rs"
+
+[dependencies]
+serde_json = { version = "1", features = ["preserve_order", "float_roundtrip"] }
+sha2 = "0.10"
+unicode-segmentation = "1"
+
+[profile.release]
+opt-level = "z"
+lto = true
+strip = true
+codegen-units = 1
+panic = "abort"

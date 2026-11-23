@@ -177,7 +177,11 @@ assert_equals "$manifest_summary" "ryugi	$expected_version	./skills/	$source_hoo
 # Run the manifest's actual lifecycle command from the extracted archive.
 # This catches a declared hook whose module or shared watcher was not shipped.
 mkdir -p "$extracted/tests/hooks"
-cp "$REPO_ROOT/tests/hooks/test-codex-comment-watch.cjs" "$extracted/tests/hooks/"
+for helper in test-codex-comment-watch.cjs fake-hub.cjs fake-artifacts-release.cjs hook-bin.cjs; do
+  cp "$REPO_ROOT/tests/hooks/$helper" "$extracted/tests/hooks/"
+done
+RYUGI_HOOK_BIN="$(node -e 'process.stdout.write(require(process.argv[1]).hookBin())' "$REPO_ROOT/tests/hooks/hook-bin.cjs")"
+export RYUGI_HOOK_BIN
 if node --test --test-name-pattern="shipped lifecycle" "$extracted/tests/hooks/test-codex-comment-watch.cjs"; then
   pass "packaged lifecycle hooks deliver comments and stop on SessionEnd"
 else

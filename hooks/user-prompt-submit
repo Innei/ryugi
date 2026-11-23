@@ -5,6 +5,8 @@ case "$0" in
   */* | *\\*) SCRIPT_DIR="$(cd "${0%[/\\]*}" && pwd)" ;;
   *) SCRIPT_DIR="$(pwd)" ;;
 esac
+. "$SCRIPT_DIR/../skills/artifacts/app/hook-bin.sh"
+export RYUGI_PLUGIN_ROOT="${SCRIPT_DIR%[/\\]*}"
 
 is_antigravity=0
 if { [ -n "${ANTIGRAVITY_AGENT:-}" ] || [ -n "${PLUGIN_ROOT:-}" ] || [ -n "${PLUGIN_DATA:-}" ]; } \
@@ -16,15 +18,14 @@ if { [ -n "${ANTIGRAVITY_AGENT:-}" ] || [ -n "${PLUGIN_ROOT:-}" ] || [ -n "${PLU
   is_antigravity=1
 fi
 
-if ! command -v node > /dev/null 2>&1; then
+if ! bin="$(ryugi_hook_bin "$RYUGI_PLUGIN_ROOT")"; then
   [ "$is_antigravity" -eq 1 ] && printf '{}\n'
   exit 0
 fi
 
 . "$SCRIPT_DIR/project-root.sh"
 if [ "$is_antigravity" -eq 1 ]; then
-  node "$SCRIPT_DIR/selection-context.cjs"
-  exit 0
+  exec "$bin" context
 fi
 
 session="$(ryugi_real_dir "${CLAUDE_PROJECT_DIR:-$PWD}")"
@@ -32,5 +33,5 @@ project="$(ryugi_project_root "$session")"
 state="$project/.ryugi/artifacts/.state"
 [ -f "$state/server-info" ] || exit 0
 
-node "$SCRIPT_DIR/selection-context.cjs" "$project" "$session"
+"$bin" context "$project" "$session"
 exit 0

@@ -20,6 +20,36 @@ env:
   CLOUD_REPO: ryugi-dev/ryugi-cloud
 
 jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ env.CLOUD_REPO }}
+          ref: main
+          token: ${{ secrets.RYUGI_CLOUD_TOKEN }}
+          persist-credentials: false
+          sparse-checkout: packages/artifacts/package.json
+          sparse-checkout-cone-mode: false
+
+      - name: Read the version the release job will resolve
+        id: version
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+        run: echo "version=${INPUT_VERSION:-$(jq -r '.version' packages/artifacts/package.json)}" >> "$GITHUB_OUTPUT"
+
+  # Built from the commit main is on now, while the release job spends its half hour on the ryugi-cloud tests.
+  hook:
+    needs: version
+    uses: ./.github/workflows/hook.yml
+    with:
+      version: ${{ needs.version.outputs.version }}
+      ref: ${{ github.sha }}
+      upload: false
+    secrets: inherit
+
   release:
     runs-on: ubuntu-latest
     timeout-minutes: 75
@@ -132,6 +162,10 @@ jobs:
           RYUGI_SYNC_PLUGIN: '1'
         run: pnpm run build:cli
 
+      - name: Check ryugi-hook against the synced review evidence
+        working-directory: ryugi
+        run: cargo test --locked --manifest-path hook/Cargo.toml
+
       - name: Publish ryugi-artifacts to npm
         if: steps.release.outputs.publish == 'true'
         working-directory: ryugi-cloud/packages/artifacts
@@ -183,6 +217,62 @@ jobs:
           else
             gh release create "v$VERSION" --verify-tag --notes-file /tmp/release-notes.md
           fi
+
+  hook-guard:
+    needs: [release, hook]
+    if: always() && needs.release.result == 'success'
+    runs-on: ubuntu-latest
+    outputs:
+      stale: ${{ steps.diff.outputs.stale }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Compare hook/ between the built commit and the release tag
+        id: diff
+        env:
+          BUILT: ${{ needs.hook.result == 'success' && needs.hook.outputs.commit || '' }}
+          TAG: v${{ needs.release.outputs.version }}
+        run: |
+          git fetch -q --tags origin
+          if [[ -z "$BUILT" ]]; then
+            echo "::warning::the parallel ryugi-hook build did not finish; rebuilding it on $TAG"
+            echo "stale=true" >> "$GITHUB_OUTPUT"
+          elif git diff --quiet "$BUILT" "$TAG" -- hook/; then
+            echo "stale=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::hook/ changed on main after $BUILT; rebuilding ryugi-hook on $TAG"
+            echo "stale=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  hook-upload:
+    needs: [release, hook-guard]
+    if: always() && needs.hook-guard.result == 'success' && needs.hook-guard.outputs.stale == 'false'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: ryugi-hook-*
+          path: hook-dist
+          merge-multiple: true
+
+      - name: Attach the binaries to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.release.outputs.version }}
+        run: gh release upload "v$VERSION" hook-dist/* --clobber -R "$GITHUB_REPOSITORY"
+
+  hook-rebuild:
+    needs: [release, hook-guard]
+    if: always() && needs.hook-guard.result == 'success' && needs.hook-guard.outputs.stale == 'true'
+    uses: ./.github/workflows/hook.yml
+    with:
+      version: ${{ needs.release.outputs.version }}
+      ref: v${{ needs.release.outputs.version }}
+      upload: true
+    secrets: inherit
 
   daemon:
     needs: release

@@ -17,6 +17,11 @@ case "$0" in
   *) SCRIPT_DIR="$(pwd)" ;;
 esac
 PLUGIN_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+. "${SCRIPT_DIR}/../skills/artifacts/app/hook-bin.sh"
+hook_bin="$(ryugi_hook_bin "$PLUGIN_ROOT")" || hook_bin=""
+if [ -z "$hook_bin" ] && [ -z "${CURSOR_PLUGIN_ROOT:-}" ] && command -v node > /dev/null 2>&1; then
+  node "${PLUGIN_ROOT}/skills/artifacts/app/ryugi.cjs" hook-install < /dev/null > /dev/null 2>&1 &
+fi
 
 # Only treat this invocation as Antigravity when an Antigravity hook marker
 # (ANTIGRAVITY_AGENT, or Antigravity's plugin hook PLUGIN_ROOT/PLUGIN_DATA) is
@@ -80,42 +85,22 @@ fi
 
 # A project with published documents gets its artifacts server for the whole
 # session, so its owner can comment from the cloud. Backgrounded and silent:
-# it must never delay or break session start, and skips when node is missing.
+# it must never delay or break session start, and skips when ryugi-hook is missing.
 project_dir="${CLAUDE_PROJECT_DIR:-}"
-if [ -z "$project_dir" ] && [ "$is_antigravity" -eq 1 ] && [ -n "$stdin_payload" ] && command -v node > /dev/null 2>&1; then
-  project_dir="$(printf '%s' "$stdin_payload" | node -e '
-    let d = "";
-    process.stdin.on("data", (c) => (d += c));
-    process.stdin.on("end", () => {
-      try {
-        const j = JSON.parse(d);
-        const p = (typeof j.cwd === "string" && j.cwd) || (Array.isArray(j.workspacePaths) && typeof j.workspacePaths[0] === "string" ? j.workspacePaths[0] : "");
-        if (p) process.stdout.write(p);
-      } catch {}
-    });
-  ' 2> /dev/null || true)"
+if [ -z "$project_dir" ] && [ "$is_antigravity" -eq 1 ] && [ -n "$stdin_payload" ] && [ -n "$hook_bin" ]; then
+  project_dir="$(printf '%s' "$stdin_payload" | "$hook_bin" agy-cwd 2> /dev/null || true)"
 fi
 if [ -n "$project_dir" ]; then
   . "${SCRIPT_DIR}/project-root.sh"
   project_dir="$(ryugi_project_root "$project_dir")"
 fi
 if { [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] || [ "$is_antigravity" -eq 1 ]; } && [ -z "${CURSOR_PLUGIN_ROOT:-}" ] && [ "${OS:-}" != "Windows_NT" ] && [ -n "$project_dir" ] \
-  && [ -f "$project_dir/.ryugi/config.json" ] && command -v node > /dev/null 2>&1; then
-  RYUGI_ARTIFACTS_OWNER="$PPID" node "${SCRIPT_DIR}/start-artifacts.cjs" "$project_dir" < /dev/null > /dev/null 2>&1 &
+  && [ -f "$project_dir/.ryugi/config.json" ] && [ -n "$hook_bin" ]; then
+  RYUGI_ARTIFACTS_OWNER="$PPID" RYUGI_PLUGIN_ROOT="$PLUGIN_ROOT" "$hook_bin" start "$project_dir" < /dev/null > /dev/null 2>&1 &
 fi
 
-if [ "$is_antigravity" -eq 1 ] && [ -n "${ANTIGRAVITY_LS_ADDRESS:-}" ] && [ -f "${PLUGIN_ROOT}/skills/artifacts/app/agy-comment-watch.cjs" ] && command -v node > /dev/null 2>&1; then
-  printf '%s' "$stdin_payload" | node -e '
-    const { spawn } = require("node:child_process");
-    const fs = require("node:fs");
-    const payload = fs.readFileSync(0, "utf8");
-    const child = spawn(process.execPath, [process.argv[1], "watch"], {
-      detached: true,
-      stdio: ["pipe", "ignore", "ignore"],
-    });
-    child.stdin.end(payload);
-    child.unref();
-  ' "${PLUGIN_ROOT}/skills/artifacts/app/agy-comment-watch.cjs" > /dev/null 2>&1 || true
+if [ "$is_antigravity" -eq 1 ] && [ -n "${ANTIGRAVITY_LS_ADDRESS:-}" ] && [ -n "$hook_bin" ]; then
+  printf '%s' "$stdin_payload" | RYUGI_PLUGIN_ROOT="$PLUGIN_ROOT" "$hook_bin" detach watch antigravity > /dev/null 2>&1 || true
 fi
 
 # The ryugi-artifacts marketplace entry loads only the artifacts skills but

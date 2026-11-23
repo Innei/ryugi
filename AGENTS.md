@@ -24,7 +24,8 @@ The plugin ships without runtime dependencies. The artifacts app (artboard, docu
 Users install from `main`. The plugin and `ryugi-artifacts` share one version and release together from the `Release` workflow here.
 
 1. In `ryugi-cloud`, run `pnpm release <version|patch|minor|major>`. It commits the `packages/artifacts` version, pushes `main` with the tag `artifacts-v<version>` and starts the `Release` workflow here (`gh workflow run release.yml -R Innei/ryugi -f version=<version>`).
-2. The workflow waits for the `Artifacts` CI to pass on a `ryugi-cloud` main commit that contains the tag, publishes `ryugi-artifacts@<version>` to npm from the tag, copies the generated `output-bootstrap.cjs` and `comment-threads.cjs` here, runs `scripts/bump-version.sh <version>`, pushes the commit with the tag `v<version>` and creates the GitHub Release.
+2. The workflow waits for the `Artifacts` CI to pass on a `ryugi-cloud` main commit that contains the tag, publishes `ryugi-artifacts@<version>` to npm from the tag, copies the generated `output-bootstrap.cjs` here, runs `scripts/bump-version.sh <version>`, pushes the commit with the tag `v<version>` and creates the GitHub Release.
+3. In parallel, the `hook` job builds `ryugi-hook` for darwin-arm64, linux-x64 and linux-arm64 (`hook.yml`) from the commit `main` was on when the workflow started. Once the release exists, its binaries are attached to it, or rebuilt from the tag first when `hook/` changed on `main` in the meantime. The hooks download the binary of the plugin's version from that release on first use, so keep the interface between the hook shells and the binary add-only: shells on an unreleased `main` run against the released binary of the same version.
 
 A rerun skips whatever is already published or tagged. The workflow reads `ryugi-cloud` with the `RYUGI_CLOUD_TOKEN` secret (contents and actions, read-only) and publishes through npm trusted publishing.
 

@@ -1,0 +1,761 @@
+{
+  "humanTokens": [
+    {
+      "thread": {
+        "id": "t1",
+        "anchor": {},
+        "messages": [
+          {
+            "id": "m1",
+            "author": "human",
+            "text": "hi",
+            "at": "2026-11-01T00:00:00.000Z"
+          }
+        ]
+      },
+      "tokens": [
+        {
+          "token": "43bbe7f3f6d7dbde4640fd1f759398d164c6c0ea7e83648085fa1f87d158c62e",
+          "at": "2026-11-01T00:00:00.000Z"
+        }
+      ]
+    },
+    {
+      "thread": {
+        "id": "t2",
+        "anchor": {
+          "block": "b"
+        },
+        "messages": [
+          {
+            "id": "m1",
+            "author": "human",
+            "text": "中文 😀 \u0001\b\f\n\r\t\"\\   ",
+            "at": "2026-11-01T00:00:00.000Z",
+            "editedAt": "2026-11-02T00:00:00.000Z"
+          },
+          {
+            "id": "m2",
+            "author": "agent",
+            "text": "hi",
+            "at": "2026-11-01T00:00:00.000Z"
+          }
+        ]
+      },
+      "tokens": [
+        {
+          "token": "4207fc6d6e3c5c56314b2270e27e7525b20ba36424c0d77a66a2988bd0a1749d",
+          "at": "2026-11-02T00:00:00.000Z"
+        }
+      ]
+    },
+    {
+      "thread": {
+        "id": "t3",
+        "anchor": {},
+        "status": "resolved",
+        "statusBy": "human",
+        "statusAt": "2026-11-03T00:00:00.000Z",
+        "messages": []
+      },
+      "tokens": [
+        {
+          "token": "dd88f7da94a8a66638f2b860c5d60688dc687bfd6857f52567fdfeecca9b41db",
+          "at": "2026-11-03T00:00:00.000Z"
+        }
+      ]
+    },
+    {
+      "thread": {
+        "id": "t4",
+        "anchor": {},
+        "status": "resolved",
+        "statusBy": "agent",
+        "statusAt": 5,
+        "messages": [
+          {
+            "id": "m1",
+            "author": "human",
+            "text": "hi",
+            "at": 1.5e+21,
+            "deleted": true
+          }
+        ]
+      },
+      "tokens": [
+        {
+          "token": "618c0072a2c153124329a8d55d18244a854bbbd776611c86049181fc3b76a828",
+          "at": 1.5e+21
+        }
+      ]
+    },
+    {
+      "thread": {
+        "id": "t5",
+        "anchor": {
+          "ask": "q1"
+        },
+        "messages": [
+          {
+            "id": "m1",
+            "author": "human",
+            "text": "hi",
+            "at": "2026-11-01T00:00:00.000Z"
+          }
+        ]
+      },
+      "tokens": [
+        {
+          "token": "b2af371ebfcf0fce40af80f81ba3a511c48da3f77681defcf091ec2cce2dbe95",
+          "at": "2026-11-01T00:00:00.000Z"
+        }
+      ]
+    },
+    {
+      "thread": {
+        "id": "t6",
+        "anchor": {
+          "choice": null
+        },
+        "messages": [
+          {
+            "id": "m1",
+            "author": "human",
+            "text": "hi",
+            "at": "2026-11-01T00:00:00.000Z"
+          }
+        ]
+      },
+      "tokens": [
+        {
+          "token": "0124ef68ef0da017098f3857681afd3a3999ceec2e7ba124a92f17c3cd8ae397",
+          "at": "2026-11-01T00:00:00.000Z"
+        }
+      ]
+    },
+    {
+      "thread": {
+        "id": "t7",
+        "anchor": {
+          "submit": "x"
+        },
+        "messages": [
+          {
+            "id": "m1",
+            "author": "human",
+            "text": "hi",
+            "at": "2026-11-01T00:00:00.000Z"
+          }
+        ]
+      },
+      "tokens": [
+        {
+          "token": "c26ab0a539325c4daac8d6c208c548a058b08a1925412805c8241d8c4c9a9714",
+          "at": "2026-11-01T00:00:00.000Z"
+        }
+      ]
+    },
+    {
+      "thread": {
+        "id": "t8",
+        "anchor": {},
+        "messages": [
+          {
+            "id": "m1",
+            "author": "human",
+            "text": "hi",
+            "at": 1e-7,
+            "editedAt": 0
+          },
+          {
+            "id": "m9",
+            "author": "human",
+            "text": 0.30000000000000004,
+            "at": 123456789012345680000
+          }
+        ]
+      },
+      "tokens": [
+        {
+          "token": "d77cf777fda00a708a7447d9ea59ea06b78106f8b5be39225fc4b52d93fb588c",
+          "at": 0
+        },
+        {
+          "token": "b2b80a8d92ff1e3c48424e33e0892ea30b23719b6d0b1fbdff6db9de286223dc",
+          "at": 123456789012345680000
+        }
+      ]
+    },
+    {
+      "thread": {
+        "id": "t9",
+        "anchor": {},
+        "statusBy": "human",
+        "messages": [
+          {
+            "id": "m1",
+            "author": "human",
+            "text": "hi",
+            "at": 1700000000000,
+            "editedAt": 12.5
+          }
+        ]
+      },
+      "tokens": [
+        {
+          "token": "0acf0263ad345612acf1caf34ca2f811f7fa5888c7f4dda98b486564e10fbdd4",
+          "at": 12.5
+        },
+        {
+          "token": "eefc92f1ae7434c775ac3a070381e6c0f0f80c8dfe202874d1702e9ca6051970"
+        }
+      ]
+    }
+  ],
+  "reviewStateKey": [
+    {
+      "artifact": "document/plan",
+      "agent": "claude:abc",
+      "key": "97ec8d754818a056152ed7a4a44c37e2bda674e1fb24bcf8a6d0671e11fe48ae"
+    },
+    {
+      "artifact": "preview/x",
+      "agent": "codex:01a18caa-a157-7071-ac28-96aa9066af5f",
+      "key": "31d8a2a2d99bd3e7938dcda4a9cfa2d1fc1796cf7372079b036e7751a040ad75"
+    },
+    {
+      "artifact": "路径",
+      "agent": "é",
+      "key": "fb094ce63b95481e23f3b9061531abb70b13749b9495b9f0c11021dfc52935cf"
+    }
+  ],
+  "unreadThreadCount": [
+    {
+      "file": null,
+      "consumed": [],
+      "count": 0
+    },
+    {
+      "file": null,
+      "consumed": [
+        "43bbe7f3f6d7dbde4640fd1f759398d164c6c0ea7e83648085fa1f87d158c62e"
+      ],
+      "count": 0
+    },
+    {
+      "file": null,
+      "consumed": [
+        "43bbe7f3f6d7dbde4640fd1f759398d164c6c0ea7e83648085fa1f87d158c62e",
+        "4207fc6d6e3c5c56314b2270e27e7525b20ba36424c0d77a66a2988bd0a1749d",
+        "dd88f7da94a8a66638f2b860c5d60688dc687bfd6857f52567fdfeecca9b41db",
+        "618c0072a2c153124329a8d55d18244a854bbbd776611c86049181fc3b76a828",
+        "b2af371ebfcf0fce40af80f81ba3a511c48da3f77681defcf091ec2cce2dbe95",
+        "0124ef68ef0da017098f3857681afd3a3999ceec2e7ba124a92f17c3cd8ae397",
+        "c26ab0a539325c4daac8d6c208c548a058b08a1925412805c8241d8c4c9a9714",
+        "d77cf777fda00a708a7447d9ea59ea06b78106f8b5be39225fc4b52d93fb588c",
+        "b2b80a8d92ff1e3c48424e33e0892ea30b23719b6d0b1fbdff6db9de286223dc",
+        "0acf0263ad345612acf1caf34ca2f811f7fa5888c7f4dda98b486564e10fbdd4",
+        "eefc92f1ae7434c775ac3a070381e6c0f0f80c8dfe202874d1702e9ca6051970"
+      ],
+      "count": 0
+    },
+    {
+      "file": {},
+      "consumed": [],
+      "count": 0
+    },
+    {
+      "file": {},
+      "consumed": [
+        "43bbe7f3f6d7dbde4640fd1f759398d164c6c0ea7e83648085fa1f87d158c62e"
+      ],
+      "count": 0
+    },
+    {
+      "file": {},
+      "consumed": [
+        "43bbe7f3f6d7dbde4640fd1f759398d164c6c0ea7e83648085fa1f87d158c62e",
+        "4207fc6d6e3c5c56314b2270e27e7525b20ba36424c0d77a66a2988bd0a1749d",
+        "dd88f7da94a8a66638f2b860c5d60688dc687bfd6857f52567fdfeecca9b41db",
+        "618c0072a2c153124329a8d55d18244a854bbbd776611c86049181fc3b76a828",
+        "b2af371ebfcf0fce40af80f81ba3a511c48da3f77681defcf091ec2cce2dbe95",
+        "0124ef68ef0da017098f3857681afd3a3999ceec2e7ba124a92f17c3cd8ae397",
+        "c26ab0a539325c4daac8d6c208c548a058b08a1925412805c8241d8c4c9a9714",
+        "d77cf777fda00a708a7447d9ea59ea06b78106f8b5be39225fc4b52d93fb588c",
+        "b2b80a8d92ff1e3c48424e33e0892ea30b23719b6d0b1fbdff6db9de286223dc",
+        "0acf0263ad345612acf1caf34ca2f811f7fa5888c7f4dda98b486564e10fbdd4",
+        "eefc92f1ae7434c775ac3a070381e6c0f0f80c8dfe202874d1702e9ca6051970"
+      ],
+      "count": 0
+    },
+    {
+      "file": {
+        "threads": []
+      },
+      "consumed": [],
+      "count": 0
+    },
+    {
+      "file": {
+        "threads": []
+      },
+      "consumed": [
+        "43bbe7f3f6d7dbde4640fd1f759398d164c6c0ea7e83648085fa1f87d158c62e"
+      ],
+      "count": 0
+    },
+    {
+      "file": {
+        "threads": []
+      },
+      "consumed": [
+        "43bbe7f3f6d7dbde4640fd1f759398d164c6c0ea7e83648085fa1f87d158c62e",
+        "4207fc6d6e3c5c56314b2270e27e7525b20ba36424c0d77a66a2988bd0a1749d",
+        "dd88f7da94a8a66638f2b860c5d60688dc687bfd6857f52567fdfeecca9b41db",
+        "618c0072a2c153124329a8d55d18244a854bbbd776611c86049181fc3b76a828",
+        "b2af371ebfcf0fce40af80f81ba3a511c48da3f77681defcf091ec2cce2dbe95",
+        "0124ef68ef0da017098f3857681afd3a3999ceec2e7ba124a92f17c3cd8ae397",
+        "c26ab0a539325c4daac8d6c208c548a058b08a1925412805c8241d8c4c9a9714",
+        "d77cf777fda00a708a7447d9ea59ea06b78106f8b5be39225fc4b52d93fb588c",
+        "b2b80a8d92ff1e3c48424e33e0892ea30b23719b6d0b1fbdff6db9de286223dc",
+        "0acf0263ad345612acf1caf34ca2f811f7fa5888c7f4dda98b486564e10fbdd4",
+        "eefc92f1ae7434c775ac3a070381e6c0f0f80c8dfe202874d1702e9ca6051970"
+      ],
+      "count": 0
+    },
+    {
+      "file": {
+        "threads": [
+          {
+            "id": "t1",
+            "anchor": {},
+            "messages": [
+              {
+                "id": "m1",
+                "author": "human",
+                "text": "hi",
+                "at": "2026-11-01T00:00:00.000Z"
+              }
+            ]
+          },
+          {
+            "id": "t2",
+            "anchor": {
+              "block": "b"
+            },
+            "messages": [
+              {
+                "id": "m1",
+                "author": "human",
+                "text": "中文 😀 \u0001\b\f\n\r\t\"\\   ",
+                "at": "2026-11-01T00:00:00.000Z",
+                "editedAt": "2026-11-02T00:00:00.000Z"
+              },
+              {
+                "id": "m2",
+                "author": "agent",
+                "text": "hi",
+                "at": "2026-11-01T00:00:00.000Z"
+              }
+            ]
+          },
+          {
+            "id": "t3",
+            "anchor": {},
+            "status": "resolved",
+            "statusBy": "human",
+            "statusAt": "2026-11-03T00:00:00.000Z",
+            "messages": []
+          },
+          {
+            "id": "t4",
+            "anchor": {},
+            "status": "resolved",
+            "statusBy": "agent",
+            "statusAt": 5,
+            "messages": [
+              {
+                "id": "m1",
+                "author": "human",
+                "text": "hi",
+                "at": 1.5e+21,
+                "deleted": true
+              }
+            ]
+          },
+          {
+            "id": "t5",
+            "anchor": {
+              "ask": "q1"
+            },
+            "messages": [
+              {
+                "id": "m1",
+                "author": "human",
+                "text": "hi",
+                "at": "2026-11-01T00:00:00.000Z"
+              }
+            ]
+          },
+          {
+            "id": "t6",
+            "anchor": {
+              "choice": null
+            },
+            "messages": [
+              {
+                "id": "m1",
+                "author": "human",
+                "text": "hi",
+                "at": "2026-11-01T00:00:00.000Z"
+              }
+            ]
+          },
+          {
+            "id": "t7",
+            "anchor": {
+              "submit": "x"
+            },
+            "messages": [
+              {
+                "id": "m1",
+                "author": "human",
+                "text": "hi",
+                "at": "2026-11-01T00:00:00.000Z"
+              }
+            ]
+          },
+          {
+            "id": "t8",
+            "anchor": {},
+            "messages": [
+              {
+                "id": "m1",
+                "author": "human",
+                "text": "hi",
+                "at": 1e-7,
+                "editedAt": 0
+              },
+              {
+                "id": "m9",
+                "author": "human",
+                "text": 0.30000000000000004,
+                "at": 123456789012345680000
+              }
+            ]
+          },
+          {
+            "id": "t9",
+            "anchor": {},
+            "statusBy": "human",
+            "messages": [
+              {
+                "id": "m1",
+                "author": "human",
+                "text": "hi",
+                "at": 1700000000000,
+                "editedAt": 12.5
+              }
+            ]
+          }
+        ]
+      },
+      "consumed": [],
+      "count": 6
+    },
+    {
+      "file": {
+        "threads": [
+          {
+            "id": "t1",
+            "anchor": {},
+            "messages": [
+              {
+                "id": "m1",
+                "author": "human",
+                "text": "hi",
+                "at": "2026-11-01T00:00:00.000Z"
+              }
+            ]
+          },
+          {
+            "id": "t2",
+            "anchor": {
+              "block": "b"
+            },
+            "messages": [
+              {
+                "id": "m1",
+                "author": "human",
+                "text": "中文 😀 \u0001\b\f\n\r\t\"\\   ",
+                "at": "2026-11-01T00:00:00.000Z",
+                "editedAt": "2026-11-02T00:00:00.000Z"
+              },
+              {
+                "id": "m2",
+                "author": "agent",
+                "text": "hi",
+                "at": "2026-11-01T00:00:00.000Z"
+              }
+            ]
+          },
+          {
+            "id": "t3",
+            "anchor": {},
+            "status": "resolved",
+            "statusBy": "human",
+            "statusAt": "2026-11-03T00:00:00.000Z",
+            "messages": []
+          },
+          {
+            "id": "t4",
+            "anchor": {},
+            "status": "resolved",
+            "statusBy": "agent",
+            "statusAt": 5,
+            "messages": [
+              {
+                "id": "m1",
+                "author": "human",
+                "text": "hi",
+                "at": 1.5e+21,
+                "deleted": true
+              }
+            ]
+          },
+          {
+            "id": "t5",
+            "anchor": {
+              "ask": "q1"
+            },
+            "messages": [
+              {
+                "id": "m1",
+                "author": "human",
+                "text": "hi",
+                "at": "2026-11-01T00:00:00.000Z"
+              }
+            ]
+          },
+          {
+            "id": "t6",
+            "anchor": {
+              "choice": null
+            },
+            "messages": [
+              {
+                "id": "m1",
+                "author": "human",
+                "text": "hi",
+                "at": "2026-11-01T00:00:00.000Z"
+              }
+            ]
+          },
+          {
+            "id": "t7",
+            "anchor": {
+              "submit": "x"
+            },
+            "messages": [
+              {
+                "id": "m1",
+                "author": "human",
+                "text": "hi",
+                "at": "2026-11-01T00:00:00.000Z"
+              }
+            ]
+          },
+          {
+            "id": "t8",
+            "anchor": {},
+            "messages": [
+              {
+                "id": "m1",
+                "author": "human",
+                "text": "hi",
+                "at": 1e-7,
+                "editedAt": 0
+              },
+              {
+                "id": "m9",
+                "author": "human",
+                "text": 0.30000000000000004,
+                "at": 123456789012345680000
+              }
+            ]
+          },
+          {
+            "id": "t9",
+            "anchor": {},
+            "statusBy": "human",
+            "messages": [
+              {
+                "id": "m1",
+                "author": "human",
+                "text": "hi",
+                "at": 1700000000000,
+                "editedAt": 12.5
+              }
+            ]
+          }
+        ]
+      },
+      "consumed": [
+        "43bbe7f3f6d7dbde4640fd1f759398d164c6c0ea7e83648085fa1f87d158c62e"
+      ],
+      "count": 5
+    },
+    {
+      "file": {
+        "threads": [
+          {
+            "id": "t1",
+            "anchor": {},
+            "messages": [
+              {
+                "id": "m1",
+                "author": "human",
+                "text": "hi",
+                "at": "2026-11-01T00:00:00.000Z"
+              }
+            ]
+          },
+          {
+            "id": "t2",
+            "anchor": {
+              "block": "b"
+            },
+            "messages": [
+              {
+                "id": "m1",
+                "author": "human",
+                "text": "中文 😀 \u0001\b\f\n\r\t\"\\   ",
+                "at": "2026-11-01T00:00:00.000Z",
+                "editedAt": "2026-11-02T00:00:00.000Z"
+              },
+              {
+                "id": "m2",
+                "author": "agent",
+                "text": "hi",
+                "at": "2026-11-01T00:00:00.000Z"
+              }
+            ]
+          },
+          {
+            "id": "t3",
+            "anchor": {},
+            "status": "resolved",
+            "statusBy": "human",
+            "statusAt": "2026-11-03T00:00:00.000Z",
+            "messages": []
+          },
+          {
+            "id": "t4",
+            "anchor": {},
+            "status": "resolved",
+            "statusBy": "agent",
+            "statusAt": 5,
+            "messages": [
+              {
+                "id": "m1",
+                "author": "human",
+                "text": "hi",
+                "at": 1.5e+21,
+                "deleted": true
+              }
+            ]
+          },
+          {
+            "id": "t5",
+            "anchor": {
+              "ask": "q1"
+            },
+            "messages": [
+              {
+                "id": "m1",
+                "author": "human",
+                "text": "hi",
+                "at": "2026-11-01T00:00:00.000Z"
+              }
+            ]
+          },
+          {
+            "id": "t6",
+            "anchor": {
+              "choice": null
+            },
+            "messages": [
+              {
+                "id": "m1",
+                "author": "human",
+                "text": "hi",
+                "at": "2026-11-01T00:00:00.000Z"
+              }
+            ]
+          },
+          {
+            "id": "t7",
+            "anchor": {
+              "submit": "x"
+            },
+            "messages": [
+              {
+                "id": "m1",
+                "author": "human",
+                "text": "hi",
+                "at": "2026-11-01T00:00:00.000Z"
+              }
+            ]
+          },
+          {
+            "id": "t8",
+            "anchor": {},
+            "messages": [
+              {
+                "id": "m1",
+                "author": "human",
+                "text": "hi",
+                "at": 1e-7,
+                "editedAt": 0
+              },
+              {
+                "id": "m9",
+                "author": "human",
+                "text": 0.30000000000000004,
+                "at": 123456789012345680000
+              }
+            ]
+          },
+          {
+            "id": "t9",
+            "anchor": {},
+            "statusBy": "human",
+            "messages": [
+              {
+                "id": "m1",
+                "author": "human",
+                "text": "hi",
+                "at": 1700000000000,
+                "editedAt": 12.5
+              }
+            ]
+          }
+        ]
+      },
+      "consumed": [
+        "43bbe7f3f6d7dbde4640fd1f759398d164c6c0ea7e83648085fa1f87d158c62e",
+        "4207fc6d6e3c5c56314b2270e27e7525b20ba36424c0d77a66a2988bd0a1749d",
+        "dd88f7da94a8a66638f2b860c5d60688dc687bfd6857f52567fdfeecca9b41db",
+        "618c0072a2c153124329a8d55d18244a854bbbd776611c86049181fc3b76a828",
+        "b2af371ebfcf0fce40af80f81ba3a511c48da3f77681defcf091ec2cce2dbe95",
+        "0124ef68ef0da017098f3857681afd3a3999ceec2e7ba124a92f17c3cd8ae397",
+        "c26ab0a539325c4daac8d6c208c548a058b08a1925412805c8241d8c4c9a9714",
+        "d77cf777fda00a708a7447d9ea59ea06b78106f8b5be39225fc4b52d93fb588c",
+        "b2b80a8d92ff1e3c48424e33e0892ea30b23719b6d0b1fbdff6db9de286223dc",
+        "0acf0263ad345612acf1caf34ca2f811f7fa5888c7f4dda98b486564e10fbdd4",
+        "eefc92f1ae7434c775ac3a070381e6c0f0f80c8dfe202874d1702e9ca6051970"
+      ],
+      "count": 0
+    }
+  ]
+}

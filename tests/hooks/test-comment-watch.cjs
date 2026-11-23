@@ -1,16 +1,17 @@
 'use strict';
 
 const assert = require('node:assert/strict');
-const { execFileSync, spawn } = require('node:child_process');
+const { spawn } = require('node:child_process');
 const fs = require('node:fs');
 const net = require('node:net');
 const os = require('node:os');
 const path = require('node:path');
 const { test } = require('node:test');
 
+const { hookBin } = require('./hook-bin.cjs');
+
 const repo = path.resolve(__dirname, '../..');
-const watcher = path.join(repo, 'hooks/watch-comments.cjs');
-const { command } = require(path.join(repo, 'skills/artifacts/app/hub-channel.cjs'));
+const bin = hookBin();
 
 const until = async (check, ms = 10000) => {
   const start = Date.now();
@@ -67,10 +68,12 @@ const stoppedHome = fs.mkdtempSync(path.join(os.tmpdir(), 'cwt-home-'));
 fs.writeFileSync(path.join(stoppedHome, 'server-stopped'), JSON.stringify({ reason: 'stop' }));
 
 function run(t, cwd, env) {
-  const child = spawn(process.execPath, [watcher, cwd], {
+  const child = spawn(bin, ['watch', 'claude', cwd], {
     cwd,
     env: {
       ...process.env,
+      PATH: '/usr/bin:/bin',
+      RYUGI_PLUGIN_ROOT: repo,
       CLAUDE_CODE_SESSION_ID: undefined,
       RYUGI_SERVER_HOME: stoppedHome,
       ...env,
@@ -165,18 +168,27 @@ test('without a session id the watcher exits quietly', async (t) => {
   assert.equal(watching.output, '');
 });
 
-test('notification commands preserve paths with spaces, apostrophes and shell substitutions', (t) => {
-  const base = project(t);
-  const dir = path.join(base, "a b'$(touch WRONG)");
-  fs.mkdirSync(dir);
-  const args = execFileSync(
-    'bash',
-    ['-c', `set -- ${command(dir, 'document/plan')}; printf '%s\\0' "$@"`],
-    {
-      cwd: base,
-      encoding: 'utf8',
+test('the monitor shell waits for a binary that is still downloading', async (t) => {
+  const hub = fakeHub(t);
+  const dir = project(t);
+  const pending = path.join(dir, 'pending-ryugi-hook');
+  const child = spawn(path.join(repo, 'hooks/watch-comments'), [], {
+    cwd: dir,
+    env: {
+      PATH: '/usr/bin:/bin',
+      HOME: dir,
+      CLAUDE_PROJECT_DIR: dir,
+      CLAUDE_CODE_SESSION_ID: '11111111-1111-4111-8111-111111111111',
+      RYUGI_HUB_SOCKET: hub.socketPath,
+      RYUGI_SERVER_HOME: stoppedHome,
+      RYUGI_HOOK_BIN: pending,
     },
-  ).split('\0');
-  assert.equal(args[args.indexOf('--project-dir') + 1], dir);
-  assert.ok(!fs.existsSync(path.join(base, 'WRONG')));
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  t.after(() => child.kill());
+  await new Promise((resolve) => setTimeout(resolve, 1200));
+  fs.copyFileSync(bin, pending);
+  fs.chmodSync(pending, 0o755);
+  await until(() => hub.received.some((m) => m.t === 'hello'));
+  assert.equal(hub.received[0].host, 'claude');
 });

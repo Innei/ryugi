@@ -8,6 +8,7 @@ const path = require('node:path');
 const { test } = require('node:test');
 
 const { startFakeApi } = require('./fake-agent-api.cjs');
+const { hookBin, repo } = require('./hook-bin.cjs');
 
 const source = path.resolve(__dirname, '../../skills/artifacts/app');
 const PARENT = '11111111-1111-4111-8111-111111111111';
@@ -22,9 +23,9 @@ function fixture(t) {
   fs.mkdirSync(path.join(project, '.git'), { recursive: true });
   fs.mkdirSync(app, { recursive: true });
   const api = startFakeApi(t, project);
-  for (const name of fs.readdirSync(source))
-    if (name.endsWith('.cjs') && !['cli.cjs', 'server.cjs'].includes(name))
-      fs.copyFileSync(path.join(source, name), path.join(app, name));
+  for (const name of ['ryugi.cjs', 'output-bootstrap.cjs', 'codex-hook', 'hook-bin.sh'])
+    fs.copyFileSync(path.join(source, name), path.join(app, name));
+  fs.cpSync(path.join(repo, 'hooks'), path.join(plugin, 'hooks'), { recursive: true });
   fs.writeFileSync(
     path.join(app, 'cli.cjs'),
     `console.log(JSON.stringify({schema:'ryugi.cli/v1', command:process.argv.includes('--version')?'version':'start', outcome:'success', data:{status:'running',capabilities:['reviewBundlesV1']}}));\n`,
@@ -37,6 +38,7 @@ function fixture(t) {
     CODEX_THREAD_ID: PARENT,
     CODEX_SESSION_ID: PARENT,
     RYUGI_NO_UPDATE_CHECK: '1',
+    RYUGI_HOOK_BIN: hookBin(),
     RYUGI_CODEX_REMOTE: 'unix:///tmp/ryugi-subscriptions-no-server.sock',
   };
   for (const key of [
@@ -52,20 +54,16 @@ function fixture(t) {
   ])
     delete env[key];
   const bind = (session = CURRENT, overrides = {}) => {
-    const result = spawnSync(
-      process.execPath,
-      [path.join(app, 'codex-comment-watch.cjs'), 'bind'],
-      {
+    const result = spawnSync(env.RYUGI_HOOK_BIN, ['codex-bind'], {
+      cwd: project,
+      env: { ...env, ...overrides },
+      input: JSON.stringify({
+        session_id: session,
         cwd: project,
-        env: { ...env, ...overrides },
-        input: JSON.stringify({
-          session_id: session,
-          cwd: project,
-          hook_event_name: 'SessionStart',
-        }),
-        encoding: 'utf8',
-      },
-    );
+        hook_event_name: 'SessionStart',
+      }),
+      encoding: 'utf8',
+    });
     assert.equal(result.status, 0, result.stderr);
     return result.stdout.match(/--ryugi-session ([a-f0-9:-]+)/)?.[1];
   };
@@ -214,43 +212,13 @@ test('the hook-provided invocation disambiguates two sessions without trusting a
 
 test('simultaneous lifecycle hooks keep both issued launcher invocations usable', async (t) => {
   const f = fixture(t);
-  const barrier = path.join(f.env.XDG_CACHE_HOME, 'barrier');
-  fs.mkdirSync(barrier, { recursive: true });
-  const preload = path.join(barrier, 'preload.cjs');
-  const binding = path.join(
-    f.env.XDG_CACHE_HOME,
-    'ryugi/codex-comment-watch/contexts',
-    `${CURRENT}.json`,
-  );
-  fs.writeFileSync(
-    preload,
-    `const fs=require('node:fs');
-const read=fs.readFileSync;
-fs.readFileSync=function(file,...args){
-  try{return read.call(this,file,...args);}catch(error){
-    if(file===${JSON.stringify(binding)}&&error.code==='ENOENT'){
-      fs.writeFileSync(${JSON.stringify(barrier)}+'/'+process.pid+'.ready','');
-      const deadline=Date.now()+5000;
-      while(fs.readdirSync(${JSON.stringify(barrier)}).filter(f=>f.endsWith('.ready')).length<2){
-        if(Date.now()>deadline)throw new Error('concurrent hook barrier timed out');
-        Atomics.wait(new Int32Array(new SharedArrayBuffer(4)),0,0,10);
-      }
-    }
-    throw error;
-  }
-};`,
-  );
   const runHook = () =>
     new Promise((resolve, reject) => {
-      const child = spawn(
-        process.execPath,
-        ['--require', preload, path.join(f.app, 'codex-comment-watch.cjs'), 'bind'],
-        {
-          cwd: f.project,
-          env: f.env,
-          stdio: ['pipe', 'pipe', 'pipe'],
-        },
-      );
+      const child = spawn(f.env.RYUGI_HOOK_BIN, ['codex-bind'], {
+        cwd: f.project,
+        env: f.env,
+        stdio: ['pipe', 'pipe', 'pipe'],
+      });
       let output = '';
       let errors = '';
       child.stdout.on('data', (chunk) => (output += chunk));
@@ -277,16 +245,12 @@ test('an invocation from an ended session cannot fall back to an inherited paren
   const f = fixture(t);
   f.bind(PARENT);
   const proof = f.bind(CURRENT);
-  const result = spawnSync(
-    process.execPath,
-    [path.join(f.app, 'codex-comment-watch.cjs'), 'stop'],
-    {
-      cwd: f.project,
-      env: f.env,
-      input: JSON.stringify({ session_id: CURRENT, cwd: f.project, hook_event_name: 'SessionEnd' }),
-      encoding: 'utf8',
-    },
-  );
+  const result = spawnSync(f.env.RYUGI_HOOK_BIN, ['codex-stop'], {
+    cwd: f.project,
+    env: f.env,
+    input: JSON.stringify({ session_id: CURRENT, cwd: f.project, hook_event_name: 'SessionEnd' }),
+    encoding: 'utf8',
+  });
   assert.equal(result.status, 0, result.stderr);
   f.run(['--ryugi-session', proof, 'start', '--artifact', 'document/ended']);
   assert.deepEqual(f.read('codex', CURRENT), []);
@@ -308,7 +272,7 @@ test(
       [
         '-e',
         `const {spawnSync}=require('node:child_process');
-const r=spawnSync(process.execPath,[${JSON.stringify(path.join(f.app, 'codex-comment-watch.cjs'))},'bind'],{
+const r=spawnSync(${JSON.stringify(f.env.RYUGI_HOOK_BIN)},['codex-bind'],{
   input:${JSON.stringify(JSON.stringify({ session_id: CURRENT, cwd: f.project, hook_event_name: 'SessionStart' }))},
   encoding:'utf8'
 });

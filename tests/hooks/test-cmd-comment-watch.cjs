@@ -17,11 +17,10 @@ require('./fake-artifacts-release.cjs').seedFakeRelease(cacheHome);
 
 const repo = path.resolve(__dirname, '../..');
 const appDir = path.join(repo, 'skills/artifacts/app');
-const adapter = path.join(appDir, 'cmd-comment-watch.cjs');
-const codexAdapter = path.join(appDir, 'codex-comment-watch.cjs');
-const { loadCustomHosts, matchCustomHost } = require(path.join(appDir, 'custom-hosts.cjs'));
-const { subscriptionFor } = require(path.join(appDir, 'comment-subscriptions.cjs'));
-const { ensureWatch, UNSUBSCRIBE_EXIT_CODE } = require(adapter);
+const { hookBin } = require('./hook-bin.cjs');
+
+const hook = hookBin();
+const UNSUBSCRIBE_EXIT_CODE = 10;
 
 const THREAD = 'mcp:thr_01JXYZ.42';
 const CLAUDE_SESSION = '29ba4e4a-2224-4457-947d-c39ebcbc846c';
@@ -164,7 +163,7 @@ function fixture(t) {
     hub.send(THREAD, { t: 'retract', project, artifact, type: 'ryugi-comments' });
 
   const startWatch = (overrides = {}) => {
-    const child = spawn(process.execPath, [adapter, 'watch'], {
+    const child = spawn(hook, ['watch', 'cmd'], {
       cwd: project,
       env: { ...env, ...overrides },
       stdio: ['pipe', 'pipe', 'pipe'],
@@ -174,7 +173,7 @@ function fixture(t) {
     return child;
   };
   const stopWatch = () => {
-    const res = spawnSync(process.execPath, [adapter, 'stop'], {
+    const res = spawnSync(hook, ['cmd-stop'], {
       cwd: project,
       env,
       input: JSON.stringify({ host: 't3', session: THREAD, cwd: project }),
@@ -200,7 +199,15 @@ function fixture(t) {
   };
 }
 
-test('custom host config ignores built-in names, invalid entries and repo config, and wins priority over inner providers', (t) => {
+function prepare(env, args) {
+  const result = spawnSync(hook, ['launch-prepare', '--', ...args], { env, encoding: 'utf8' });
+  return {
+    subscription: result.stdout.trim() ? JSON.parse(result.stdout) : null,
+    stderr: result.stderr,
+  };
+}
+
+test('custom host config ignores built-in names, invalid entries and repo config, and wins priority over inner providers', async (t) => {
   const f = fixture(t);
   f.writeHosts({
     claude: { env: 'CLAUDE_CODE_SESSION_ID', command: ['/bin/true'] },
@@ -208,41 +215,61 @@ test('custom host config ignores built-in names, invalid entries and repo config
     t3: { env: 'T3CODE_THREAD_ID', agent: 'T3 Code', command: f.deliver.command },
     zcode: { env: 'ZCODE_SESSION_ID', command: ['/bin/true'] },
   });
-  // Repo config must never supply custom host commands.
   fs.mkdirSync(path.join(f.project, '.ryugi'), { recursive: true });
   fs.writeFileSync(
     path.join(f.project, '.ryugi', 'config.json'),
     JSON.stringify({ hosts: { evil: { env: 'EVIL_ID', command: ['/bin/echo'] } } }),
   );
+  const args = ['start', '--artifact', 'document/spec', '--project-dir', f.project];
+  const bare = { ...f.env };
+  delete bare.T3CODE_THREAD_ID;
 
-  const loaded = loadCustomHosts(f.env);
-  assert.deepEqual(
-    loaded.map((h) => h.host),
-    ['t3', 'zcode'],
-  );
+  assert.equal(prepare({ ...bare, BAD_ID: 'b-1' }, args).subscription, null);
+  assert.equal(prepare({ ...bare, EVIL_ID: 'e-1' }, args).subscription, null);
+  assert.equal(prepare({ ...bare, ZCODE_SESSION_ID: 'z-1' }, args).subscription.host, 'zcode');
 
-  // When both custom host and inner provider env vars are set, custom host takes precedence.
-  const sub = subscriptionFor(
-    ['start', '--artifact', 'document/spec', '--project-dir', f.project],
+  const { subscription } = prepare(
     {
       ...f.env,
       CLAUDE_CODE_SESSION_ID: CLAUDE_SESSION,
       ANTIGRAVITY_AGENT: '1',
       ANTIGRAVITY_CONVERSATION_ID: CLAUDE_SESSION,
     },
+    args,
   );
-  assert.deepEqual(sub, {
+  assert.deepEqual(subscription, {
     host: 't3',
     session: THREAD,
     project: f.project,
     artifact: 'document/spec',
   });
 
-  // Two active custom hosts fail closed instead of silently picking one.
-  assert.throws(
-    () => matchCustomHost({ ...f.env, ZCODE_SESSION_ID: 'z-1' }),
-    /ambiguous custom host/i,
-  );
+  const ambiguous = prepare({ ...f.env, ZCODE_SESSION_ID: 'z-1' }, args);
+  assert.equal(ambiguous.subscription, null);
+  assert.match(ambiguous.stderr, /ambiguous custom host/i);
+
+  // Each subscription above also started a detached watcher, as the launcher does.
+  const workers = path.join(f.data, 'cmd-comment-watch', 'workers');
+  const claimed = () =>
+    fs.existsSync(workers)
+      ? fs
+          .readdirSync(workers)
+          .flatMap((host) =>
+            fs.readdirSync(path.join(workers, host)).map((name) => path.join(workers, host, name)),
+          )
+      : [];
+  await until(() => claimed().length === 2, 'the started watchers never claimed their sessions');
+  const pids = claimed().map((file) => JSON.parse(fs.readFileSync(file, 'utf8')).pid);
+  for (const pid of pids) process.kill(pid, 'SIGTERM');
+  const alive = (pid) => {
+    try {
+      process.kill(pid, 0);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+  await until(() => !pids.some(alive), 'the started watchers did not stop');
 });
 
 test('cmd-comment-watch delivers hub events via user command, acknowledges queued receipt, and deduplicates workers', async (t) => {
@@ -333,16 +360,18 @@ test('cmd-comment-watch unsubscribes and exits cleanly on unsubscribe exit code 
   }
 });
 
-test('ensureWatch launches detached custom watcher, skips while healthy, and supersedes on config change', async (t) => {
+test('cmd-ensure launches detached custom watcher, skips while healthy, and supersedes on config change', async (t) => {
   const f = fixture(t);
-  const host1 = matchCustomHost(f.env);
-  assert.equal(ensureWatch(f.project, host1, f.env), true);
+  const ensureWatch = () => spawnSync(hook, ['cmd-ensure', f.project], { env: f.env }).status;
+  assert.equal(ensureWatch(), 0);
   await f.connected(1);
-  assert.equal(ensureWatch(f.project, host1, f.env), false);
+  assert.equal(ensureWatch(), 3);
 
   const deliver2 = writeDeliverScript(f.root, 'deliver2.cjs');
-  const host2 = { ...host1, command: deliver2.command };
-  assert.equal(ensureWatch(f.project, host2, f.env), true);
+  f.writeHosts({
+    t3: { env: 'T3CODE_THREAD_ID', agent: 'T3 Code', command: deliver2.command, timeoutMs: 5000 },
+  });
+  assert.equal(ensureWatch(), 0);
   await f.connected(2);
 
   await f.push('document/updated-cmd', 'use new script');
@@ -358,9 +387,8 @@ test('launcher subscribes under custom host, spawns cmd watcher, and suppresses 
   const plugin = path.join(f.root, 'plugin');
   const copiedApp = path.join(plugin, 'skills/artifacts/app');
   fs.mkdirSync(copiedApp, { recursive: true });
-  for (const name of fs.readdirSync(appDir))
-    if (name.endsWith('.cjs') && !['cli.cjs', 'server.cjs'].includes(name))
-      fs.copyFileSync(path.join(appDir, name), path.join(copiedApp, name));
+  for (const name of ['ryugi.cjs', 'output-bootstrap.cjs'])
+    fs.copyFileSync(path.join(appDir, name), path.join(copiedApp, name));
   fs.writeFileSync(
     path.join(copiedApp, 'cli.cjs'),
     `console.log(JSON.stringify({schema:'ryugi.cli/v1', command:process.argv.includes('--version')?'version':'start', outcome:'success', data:{status:'running',capabilities:['reviewBundlesV1']}}));\n`,
@@ -399,7 +427,7 @@ test('launcher subscribes under custom host, spawns cmd watcher, and suppresses 
 
   // Codex watch and bind hooks stay silent when a custom host owns the session.
   for (const mode of ['watch', 'bind']) {
-    const codexRes = spawnSync(process.execPath, [codexAdapter, mode], {
+    const codexRes = spawnSync(hook, [`codex-${mode}`], {
       cwd: f.project,
       env: { ...f.env, CODEX_THREAD_ID: CLAUDE_SESSION },
       input: JSON.stringify({

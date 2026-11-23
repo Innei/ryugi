@@ -1,14 +1,13 @@
+import { spawn } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import { readFile } from 'node:fs/promises';
-import { createRequire } from 'node:module';
+import os from 'node:os';
 import path from 'node:path';
+import { createInterface } from 'node:readline';
 import { fileURLToPath } from 'node:url';
 
-const require = createRequire(import.meta.url);
-const { projectRoot, UUID } = require('../skills/artifacts/app/comment-subscriptions.cjs');
-const { wakeMessage: formatRyugiWake } = require('../skills/artifacts/app/comment-watch.cjs');
-const { openHubChannel } = require('../skills/artifacts/app/hub-channel.cjs');
+const UUID = /^[\da-f]{8}(?:-[\da-f]{4}){3}-[\da-f]{12}$/i;
 
 export const name = 'ryugi';
 export const inject = [];
@@ -22,6 +21,64 @@ const pluginDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(pluginDir, '..');
 const skillsRoot = path.resolve(repoRoot, 'skills');
 const bootstrapSkillPath = path.resolve(skillsRoot, 'using-ryugi', 'SKILL.md');
+
+function executable(file) {
+  try {
+    const stat = fs.statSync(file);
+    return stat.isFile() && (stat.mode & 0o111) !== 0;
+  } catch {
+    return false;
+  }
+}
+
+function hookBin() {
+  const override = process.env.RYUGI_HOOK_BIN;
+  if (override) return executable(override) ? override : null;
+  const local = path.join(repoRoot, 'hook', 'target', 'release', 'ryugi-hook');
+  if (executable(local)) return local;
+  let version;
+  try {
+    version = JSON.parse(fs.readFileSync(path.join(repoRoot, 'package.json'), 'utf8')).version;
+  } catch {
+    return null;
+  }
+  const cache = process.env.XDG_CACHE_HOME || path.join(os.homedir(), '.cache');
+  const cached = path.join(cache, 'ryugi', 'hook', String(version), 'ryugi-hook');
+  if (executable(cached)) return cached;
+  if (!installRequested) {
+    installRequested = true;
+    try {
+      spawn(
+        process.execPath,
+        [path.join(skillsRoot, 'artifacts', 'app', 'ryugi.cjs'), 'hook-install'],
+        { detached: true, stdio: 'ignore' },
+      ).unref();
+    } catch {}
+  }
+  return null;
+}
+
+let installRequested = false;
+
+function hasArtifacts(workspace) {
+  let start;
+  try {
+    start = fs.realpathSync(workspace);
+  } catch {
+    return false;
+  }
+  let home = null;
+  try {
+    home = fs.realpathSync(os.homedir());
+  } catch {}
+  const chain = [];
+  for (let dir = start; ; dir = path.dirname(dir)) {
+    chain.push(dir);
+    if (fs.existsSync(path.join(dir, '.git')) && (dir !== home || dir === start)) break;
+    if (path.dirname(dir) === dir) return fs.existsSync(path.join(start, '.ryugi', 'artifacts'));
+  }
+  return chain.some((dir) => fs.existsSync(path.join(dir, '.ryugi', 'artifacts')));
+}
 
 let cachedBootstrap;
 
@@ -51,10 +108,7 @@ export function parseFrontmatter(content) {
     if (idx <= 0) continue;
     const key = rawLine.slice(0, idx).trim();
     let val = rawLine.slice(idx + 1).trim();
-    if (
-      (val.startsWith('"') && val.endsWith('"')) ||
-      (val.startsWith("'") && val.endsWith("'"))
-    ) {
+    if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
       val = val.slice(1, -1);
     }
     if (key) meta[key] = val;
@@ -64,7 +118,9 @@ export function parseFrontmatter(content) {
 
 export function toSessionUuid(sessionId) {
   if (typeof sessionId === 'string' && UUID.test(sessionId)) return sessionId;
-  const hash = createHash('sha256').update(`dsh:${String(sessionId)}`).digest('hex');
+  const hash = createHash('sha256')
+    .update(`dsh:${String(sessionId)}`)
+    .digest('hex');
   return [
     hash.slice(0, 8),
     hash.slice(8, 12),
@@ -181,7 +237,7 @@ export function createRyugiSkillProvider(rootDir = skillsRoot) {
       const skillDir = path.join(rootDir, entry.name);
       const skillFile = path.join(skillDir, 'SKILL.md');
       if (!fs.existsSync(skillFile)) continue;
-      let meta = {};
+      let meta;
       try {
         meta = parseFrontmatter(fs.readFileSync(skillFile, 'utf8'));
       } catch {
@@ -214,7 +270,8 @@ export function createRyugiSkillProvider(rootDir = skillsRoot) {
         candidates.find((c) => c.name === normalized) ||
         candidates.find((c) => c.name === `ryugi-${normalized}`);
       if (!found) return undefined;
-      const { rank: _rank, ...summary } = found;
+      const summary = { ...found };
+      delete summary.rank;
       const raw = await readFile(found.path, {
         encoding: 'utf8',
         ...(options?.signal ? { signal: options.signal } : {}),
@@ -283,41 +340,38 @@ export function apply(ctx, config = {}) {
   };
 
   const ensureCommentChannel = (sessionId, workspace) => {
-    if (!sessionId || !workspace || channels.has(sessionId)) return;
-    let root;
-    try {
-      root = projectRoot(workspace);
-    } catch {
-      root = workspace;
-    }
-    if (!fs.existsSync(path.join(root, '.ryugi', 'artifacts'))) return;
-
-    const sessionUuid = toSessionUuid(sessionId);
-    const channel = openHubChannel({
-      project: root,
-      host: 'pi',
-      session: sessionUuid,
-      agent: 'dsh',
-      onEvent: (event, id) => {
-        void (async () => {
-          try {
-            const agent = await resolveAgent(sessionId);
-            if (!agent) return;
-            const text = formatRyugiWake(event);
-            const msg = createDshUserMessage(text, 'notice', `Ryugi ${event.type}: ${event.artifact}`);
-            if (deliverWake(agent, msg)) {
-              channel.delivered(id);
-            }
-          } catch (error) {
-            log('warn', `comment delivery failed: ${error.message}`);
-          }
-        })();
-      },
-      onReplaced: () => {
-        channels.delete(sessionId);
-      },
+    if (!sessionId || !workspace || channels.has(sessionId) || !hasArtifacts(workspace)) return;
+    const bin = hookBin();
+    if (!bin) return;
+    const watcher = spawn(bin, ['watch', 'dsh', workspace, toSessionUuid(sessionId)], {
+      env: { ...process.env, RYUGI_PLUGIN_ROOT: repoRoot },
+      stdio: ['pipe', 'pipe', 'ignore'],
     });
+    const channel = { close: () => watcher.kill() };
     channels.set(sessionId, channel);
+    watcher.on('error', (error) => log('warn', `comment watch failed: ${error.message}`));
+    watcher.on('exit', () => {
+      if (channels.get(sessionId) === channel) channels.delete(sessionId);
+    });
+    watcher.stdin.on('error', () => {});
+    createInterface({ input: watcher.stdout }).on('line', (line) => {
+      void (async () => {
+        try {
+          const event = JSON.parse(line);
+          const agent = await resolveAgent(sessionId);
+          if (!agent) return;
+          const msg = createDshUserMessage(
+            event.content,
+            'notice',
+            `Ryugi ${event.type}: ${event.artifact}`,
+          );
+          if (deliverWake(agent, msg))
+            watcher.stdin.write(`${JSON.stringify({ delivered: event.id })}\n`);
+        } catch (error) {
+          log('warn', `comment delivery failed: ${error.message}`);
+        }
+      })();
+    });
   };
 
   // 2. Inject `using-ryugi` bootstrap as a user-role message (deduped & compaction-aware).

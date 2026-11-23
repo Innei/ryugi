@@ -5,6 +5,8 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 HOOK_UNDER_TEST="$REPO_ROOT/hooks/session-start"
 WRAPPER_UNDER_TEST="$REPO_ROOT/hooks/run-hook.cmd"
+. "$SCRIPT_DIR/hook-bin-path.sh"
+BIN="$(test_hook_bin "$REPO_ROOT")" || exit 1
 
 FAILURES=0
 TEST_ROOT="$(mktemp -d)"
@@ -261,10 +263,12 @@ agy_pub_home="$(make_home agy-published-repo)"
 agy_repo_dir="$(cd "$agy_pub_home" && pwd -P)/repo"
 mkdir -p "$agy_repo_dir/.git" "$agy_repo_dir/.ryugi" "$agy_repo_dir/packages/app" "$agy_pub_home/bin"
 printf '{"version":1,"artifacts":{"document/plan":{"cloud":{"id":"c1","url":"u","publishedAt":"t","visibility":"private"}}}}\n' > "$agy_repo_dir/.ryugi/config.json"
-printf '#!/usr/bin/env bash\ncase "$*" in *start-artifacts.cjs*) printf "%%s\\n" "$@" > "%s" ;; *) exec "%s" "$@" ;; esac\n' "$agy_pub_home/node-args" "$(command -v node)" > "$agy_pub_home/bin/node"
+printf '#!/bin/sh\nprintf "%%s\\n" "$@" > "%s"\n' "$agy_pub_home/node-args" > "$agy_pub_home/bin/node"
 chmod +x "$agy_pub_home/bin/node"
+mkdir -p "$agy_pub_home/.config/ryugi"
+printf '{"token":"t"}' > "$agy_pub_home/.config/ryugi/credentials.json"
 printf '{"hookEventName":"SessionStart","conversationId":"29ba4e4a-2224-4457-947d-c39ebcbc846c","workspacePaths":["%s"]}' "$agy_repo_dir/packages/app" \
-  | env -i PATH="$agy_pub_home/bin:${PATH:-}" HOME="$agy_pub_home" ANTIGRAVITY_AGENT=1 PLUGIN_ROOT="$REPO_ROOT" \
+  | env -i PATH="$agy_pub_home/bin:/usr/bin:/bin" HOME="$agy_pub_home" RYUGI_HOOK_BIN="$BIN" ANTIGRAVITY_AGENT=1 PLUGIN_ROOT="$REPO_ROOT" \
     bash "$HOOK_UNDER_TEST" > /dev/null 2>&1 || true
 for _ in 1 2 3 4 5 6 7 8 9 10; do
   [[ -s "$agy_pub_home/node-args" ]] && break
@@ -454,9 +458,11 @@ repo_home="$(make_home published-repo)"
 repo_dir="$(cd "$repo_home" && pwd -P)/repo"
 mkdir -p "$repo_dir/.git" "$repo_dir/.ryugi" "$repo_dir/packages/app" "$repo_home/bin"
 cp "$project_dir/.ryugi/config.json" "$repo_dir/.ryugi/config.json"
-printf '#!/usr/bin/env bash\nprintf "%%s\\n" "$@" > "%s"\n' "$repo_home/node-args" > "$repo_home/bin/node"
+printf '#!/bin/sh\nprintf "%%s\\n" "$@" > "%s"\n' "$repo_home/node-args" > "$repo_home/bin/node"
 chmod +x "$repo_home/bin/node"
-env -i PATH="$repo_home/bin:${PATH:-}" HOME="$repo_home" CLAUDE_PLUGIN_ROOT="$REPO_ROOT" CLAUDE_PROJECT_DIR="$repo_dir/packages/app" \
+mkdir -p "$repo_home/.config/ryugi"
+printf '{"token":"t"}' > "$repo_home/.config/ryugi/credentials.json"
+env -i PATH="$repo_home/bin:/usr/bin:/bin" HOME="$repo_home" RYUGI_HOOK_BIN="$BIN" CLAUDE_PLUGIN_ROOT="$REPO_ROOT" CLAUDE_PROJECT_DIR="$repo_dir/packages/app" \
   bash "$HOOK_UNDER_TEST" > /dev/null 2>&1 || true
 for _ in 1 2 3 4 5 6 7 8 9 10; do
   [[ -s "$repo_home/node-args" ]] && break
@@ -470,8 +476,9 @@ fi
 
 install_variant() {
   local root="$TEST_ROOT/plugins/cache/ryugi-dev/$1/1.71.0"
-  mkdir -p "$root/skills"
+  mkdir -p "$root/skills/artifacts/app"
   cp -R "$REPO_ROOT/hooks" "$root/hooks"
+  cp "$REPO_ROOT/skills/artifacts/app/hook-bin.sh" "$root/skills/artifacts/app/"
   cp -R "$REPO_ROOT/skills/using-ryugi" "$root/skills/using-ryugi"
   printf '%s\n' "$root"
 }
@@ -487,8 +494,9 @@ else
 fi
 
 agy_artifacts_only="$TEST_ROOT/plugins/ryugi-artifacts"
-mkdir -p "$agy_artifacts_only/skills/artifacts"
+mkdir -p "$agy_artifacts_only/skills/artifacts/app"
 cp -R "$REPO_ROOT/hooks" "$agy_artifacts_only/hooks"
+cp "$REPO_ROOT/skills/artifacts/app/hook-bin.sh" "$agy_artifacts_only/skills/artifacts/app/"
 if agy_artifacts_out="$(env -i PATH="${PATH:-}" HOME="$artifacts_home" PLUGIN_ROOT="$agy_artifacts_only" PLUGIN_DATA="$TEST_ROOT/plugin_data/ryugi-artifacts" \
   bash "$agy_artifacts_only/hooks/session-start" 2>&1)" && [[ "$agy_artifacts_out" == "{}" ]]; then
   pass "Antigravity artifacts-only install (without ANTIGRAVITY_AGENT) emits empty JSON object {}"

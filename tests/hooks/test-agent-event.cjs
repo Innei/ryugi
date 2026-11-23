@@ -8,7 +8,11 @@ const os = require('node:os');
 const path = require('node:path');
 const { test } = require('node:test');
 
+const { hookBin } = require('./hook-bin.cjs');
+
 const repo = path.resolve(__dirname, '../..');
+hookBin();
+const NO_NODE = { PATH: '/usr/bin:/bin' };
 const SESSION = '01a18caa-a157-7071-ac28-96aa9066af5f';
 
 function codexHooks() {
@@ -22,7 +26,9 @@ function claudeHooks() {
   return JSON.parse(fs.readFileSync(path.join(repo, 'hooks/hooks.json'), 'utf8')).hooks;
 }
 
-function commandFor(config, event, pattern = /agent-event|flush|stop/) {
+const AGENT_EVENT = /agent-event|codex-hook" event/;
+
+function commandFor(config, event, pattern = /agent-event|codex-hook" event|flush|stop/) {
   const entry = (config[event] ?? [])
     .flatMap((group) => group.hooks)
     .find((hook) => pattern.test(hook.command));
@@ -152,6 +158,61 @@ test('the Claude Code PreToolUse hook reports the edited file', async (t) => {
   );
 });
 
+test('agent events reach the hub from every host without node on PATH', async (t) => {
+  const dir = project(t);
+  const seen = await hub(t, dir);
+  const file = path.join(dir, 'a.txt');
+  const claude = await run(
+    commandFor(claudeHooks(), 'PreToolUse').command,
+    { hook_event_name: 'PreToolUse', session_id: 's1', cwd: dir, tool_input: { file_path: file } },
+    { ...NO_NODE, CLAUDE_PROJECT_DIR: dir },
+  );
+  const codex = await run(
+    commandFor(codexHooks(), 'PreToolUse').command,
+    {
+      hook_event_name: 'PreToolUse',
+      session_id: SESSION,
+      cwd: dir,
+      tool_input: { file_path: file },
+    },
+    NO_NODE,
+  );
+  const agy = await run(
+    `"${path.join(repo, 'hooks/run-hook.cmd')}" agent-event`,
+    { hookEventName: 'PostToolUse', conversationId: SESSION, cwd: dir },
+    { ...NO_NODE, ANTIGRAVITY_AGENT: '1', CLAUDE_PLUGIN_ROOT: '' },
+  );
+  assert.deepEqual(
+    [claude, codex].map((r) => r.out),
+    ['', ''],
+  );
+  assert.equal(agy.out, '{}\n');
+  await until(() => seen.length === 3);
+  assert.deepEqual(seen.map((r) => r.body.host).sort(), ['antigravity', 'claude', 'codex']);
+});
+
+test('without a ryugi-hook binary the Antigravity hook neither denies PreToolUse nor withholds {}', async (t) => {
+  const dir = project(t);
+  const cmd = `"${path.join(repo, 'hooks/run-hook.cmd')}" agent-event`;
+  const env = {
+    ...NO_NODE,
+    ANTIGRAVITY_AGENT: '1',
+    CLAUDE_PLUGIN_ROOT: '',
+    RYUGI_HOOK_BIN: path.join(dir, 'missing'),
+  };
+  const pre = await run(
+    cmd,
+    { hookEventName: 'PreToolUse', conversationId: SESSION, cwd: dir },
+    env,
+  );
+  const post = await run(
+    cmd,
+    { hookEventName: 'PostToolUse', conversationId: SESSION, cwd: dir },
+    env,
+  );
+  assert.deepEqual([pre.out, post.out], ['', '{}\n']);
+});
+
 test('every lifecycle event both hosts report is registered', () => {
   for (const event of [
     'UserPromptSubmit',
@@ -180,7 +241,7 @@ function agentEventHooks(config) {
   return Object.entries(config).flatMap(([event, groups]) =>
     groups
       .flatMap((group) => group.hooks)
-      .filter((hook) => /agent-event/.test(hook.command))
+      .filter((hook) => AGENT_EVENT.test(hook.command))
       .map((hook) => [event, hook]),
   );
 }
@@ -270,7 +331,7 @@ test('the Codex Stop hook exits before the host deadline even while the server k
 test('the turn-end flush never waits on a stdin that stays open', async (t) => {
   const dir = project(t);
   const seen = await hub(t, dir);
-  const child = spawn(process.execPath, [path.join(repo, 'hooks/flush-artifacts.cjs'), dir], {
+  const child = spawn(process.env.RYUGI_HOOK_BIN, ['flush', dir], {
     stdio: ['pipe', 'pipe', 'pipe'],
   });
   t.after(() => child.kill());
@@ -400,7 +461,7 @@ test('a hook in a linked worktree without its own hub reports to the main checko
   const { main, linked } = linkedWorktree(t);
   const seen = await hub(t, main);
   const result = await run(
-    commandFor(claudeHooks(), 'UserPromptSubmit', /agent-event/).command,
+    commandFor(claudeHooks(), 'UserPromptSubmit', AGENT_EVENT).command,
     { hook_event_name: 'UserPromptSubmit', session_id: SESSION, cwd: linked },
     { CLAUDE_PROJECT_DIR: linked },
   );

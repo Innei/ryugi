@@ -1,12 +1,11 @@
-import { readFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
+import { spawn } from 'node:child_process';
+import { readFileSync, statSync } from 'node:fs';
+import { homedir } from 'node:os';
+import { dirname, join, resolve } from 'node:path';
+import { createInterface } from 'node:readline';
 import { fileURLToPath } from 'node:url';
 
 import type { ExtensionAPI, ExtensionContext } from '@earendil-works/pi-coding-agent';
-
-import { projectRoot } from '../../skills/artifacts/app/comment-subscriptions.cjs';
-import { wakeMessage } from '../../skills/artifacts/app/comment-watch.cjs';
-import { openHubChannel } from '../../skills/artifacts/app/hub-channel.cjs';
 
 const EXTREMELY_IMPORTANT_MARKER = '<EXTREMELY_IMPORTANT>';
 const BOOTSTRAP_MARKER = 'ryugi:using-ryugi bootstrap for pi';
@@ -30,7 +29,7 @@ export default function ryugiPiExtension(pi: ExtensionAPI) {
   pi.on('session_start', async (_event, ctx) => {
     injectBootstrap = true;
     stopCommentWatch();
-    channel = watchComments(pi, ctx, projectRoot(ctx.cwd), ctx.sessionManager.getSessionId());
+    channel = watchComments(pi, ctx, ctx.cwd, ctx.sessionManager.getSessionId());
   });
 
   pi.on('session_shutdown', async () => {
@@ -69,8 +68,44 @@ export default function ryugiPiExtension(pi: ExtensionAPI) {
   });
 }
 
-function watchComments(pi: ExtensionAPI, ctx: ExtensionContext, project: string, session: string) {
-  // A throw escaping a socket callback is an uncaughtException, which exits Pi. Report each
+const HOOK_WAIT_MS = 60_000;
+
+function executable(file: string) {
+  try {
+    const stat = statSync(file);
+    return stat.isFile() && (stat.mode & 0o111) !== 0;
+  } catch {
+    return false;
+  }
+}
+
+function hookBin(): string | null {
+  const override = process.env.RYUGI_HOOK_BIN;
+  if (override) return executable(override) ? override : null;
+  const local = join(packageRoot, 'hook', 'target', 'release', 'ryugi-hook');
+  if (executable(local)) return local;
+  let version: string | undefined;
+  try {
+    version = JSON.parse(readFileSync(join(packageRoot, 'package.json'), 'utf8')).version;
+  } catch {
+    return null;
+  }
+  const cache = process.env.XDG_CACHE_HOME || join(homedir(), '.cache');
+  const cached = join(cache, 'ryugi', 'hook', String(version), 'ryugi-hook');
+  return executable(cached) ? cached : null;
+}
+
+function requestHookInstall() {
+  try {
+    spawn(process.execPath, [join(skillsDir, 'artifacts', 'app', 'ryugi.cjs'), 'hook-install'], {
+      detached: true,
+      stdio: 'ignore',
+    }).unref();
+  } catch {}
+}
+
+function watchComments(pi: ExtensionAPI, ctx: ExtensionContext, cwd: string, session: string) {
+  // A throw escaping a child-process callback is an uncaughtException, which exits Pi. Report each
   // distinct failure once instead, because the same one usually repeats on every event.
   let reported: string | undefined;
   const report = (error: unknown) => {
@@ -83,26 +118,54 @@ function watchComments(pi: ExtensionAPI, ctx: ExtensionContext, project: string,
       console.error(message);
     }
   };
-  const channel = openHubChannel({
-    project,
-    host: 'pi',
-    session,
-    agent: 'pi',
-    onEvent: (event: { type: string }, id: number) => {
+  let closed = false;
+  let child: ReturnType<typeof spawn> | undefined;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const start = (bin: string) => {
+    const watcher = spawn(bin, ['watch', 'pi', cwd, session], {
+      env: { ...process.env, RYUGI_PLUGIN_ROOT: packageRoot },
+      stdio: ['pipe', 'pipe', 'ignore'],
+    });
+    child = watcher;
+    watcher.on('error', report);
+    watcher.stdin?.on('error', () => {});
+    createInterface({ input: watcher.stdout! }).on('line', (line) => {
+      let event: { id: unknown; type: string; content: string };
+      try {
+        event = JSON.parse(line);
+      } catch {
+        return;
+      }
       try {
         // Typed as void, but a host may hand back a promise; its rejection must not escape either.
         Promise.resolve(
           pi.sendMessage(
-            { customType: event.type, content: wakeMessage(event), display: true },
+            { customType: event.type, content: event.content, display: true },
             { triggerTurn: true, deliverAs: 'followUp' },
           ),
-        ).then(() => channel.delivered(id), report);
+        ).then(() => watcher.stdin?.write(`${JSON.stringify({ delivered: event.id })}\n`), report);
       } catch (error) {
         report(error);
       }
+    });
+  };
+  // Pi starts the watch once per session, so a first-run download is waited out rather than skipped.
+  const deadline = Date.now() + HOOK_WAIT_MS;
+  const attempt = (first: boolean) => {
+    if (closed) return;
+    const bin = hookBin();
+    if (bin) return start(bin);
+    if (first) requestHookInstall();
+    if (Date.now() < deadline) timer = setTimeout(() => attempt(false), 1000);
+  };
+  attempt(true);
+  return {
+    close() {
+      closed = true;
+      if (timer) clearTimeout(timer);
+      child?.kill();
     },
-  });
-  return channel;
+  };
 }
 
 function getBootstrapContent(): string | null {

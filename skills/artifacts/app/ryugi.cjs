@@ -17,6 +17,14 @@ const RELEASES = path.join(
   'artifacts',
 );
 const LATEST_FILE = path.join(RELEASES, 'latest.json');
+const PLUGIN_ROOT = path.join(__dirname, '..', '..', '..');
+const HOOK_CACHE = path.join(
+  process.env.XDG_CACHE_HOME || path.join(os.homedir(), '.cache'),
+  'ryugi',
+  'hook',
+);
+const HOOK_RELEASE = 'https://github.com/Innei/ryugi/releases/download';
+const HOOK_ASSETS = { 'darwin-arm64': 1, 'linux-x64': 1, 'linux-arm64': 1 };
 const win32 = process.platform === 'win32';
 
 const valid = (v) => /^\d+\.\d+\.\d+(?:[-+][0-9A-Z.-]+)?$/i.test(v || '');
@@ -213,8 +221,122 @@ function ownerPid() {
   return Number.isInteger(parent) && parent > 1 ? parent : process.ppid;
 }
 
+function pluginVersion() {
+  return ['package.json', '.claude-plugin/plugin.json', '.codex-plugin/plugin.json']
+    .map((file) => {
+      try {
+        const manifest = JSON.parse(fs.readFileSync(path.join(PLUGIN_ROOT, file), 'utf8'));
+        return manifest.name === 'ryugi' ? manifest.version || null : null;
+      } catch {
+        return null;
+      }
+    })
+    .find(Boolean);
+}
+
+const executable = (file) => {
+  try {
+    return fs.statSync(file).isFile() && (fs.statSync(file).mode & 0o111) !== 0;
+  } catch {
+    return false;
+  }
+};
+
+function hookBin() {
+  if (process.env.RYUGI_HOOK_BIN)
+    return executable(process.env.RYUGI_HOOK_BIN) ? process.env.RYUGI_HOOK_BIN : null;
+  const local = path.join(PLUGIN_ROOT, 'hook', 'target', 'release', 'ryugi-hook');
+  if (executable(local)) return local;
+  const version = pluginVersion();
+  const cached = version && path.join(HOOK_CACHE, version, 'ryugi-hook');
+  return cached && executable(cached) ? cached : null;
+}
+
+function requestHookInstall() {
+  try {
+    spawn(process.execPath, [__filename, 'hook-install'], {
+      detached: true,
+      stdio: 'ignore',
+    }).unref();
+  } catch {}
+}
+
+const sha256 = (bytes) => nodeCrypto.createHash('sha256').update(bytes).digest('hex');
+
+async function fetchOk(url) {
+  const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
+  if (!res.ok) throw Object.assign(new Error(`${url}: HTTP ${res.status}`), { status: res.status });
+  return res;
+}
+
+function pruneHooks(current) {
+  let names = [];
+  try {
+    names = fs.readdirSync(HOOK_CACHE).filter(valid);
+  } catch {}
+  const older = names.filter((v) => v !== current && compare(v, current) <= 0).sort(compare);
+  older.pop();
+  for (const name of older)
+    fs.rmSync(path.join(HOOK_CACHE, name), { recursive: true, force: true });
+}
+
+// A 404 is a release whose binaries are still uploading, so it is asked again sooner than other failures.
+async function hookInstall() {
+  const asset = HOOK_ASSETS[`${process.platform}-${process.arch}`]
+    ? `ryugi-hook-${process.platform}-${process.arch}`
+    : null;
+  const version = pluginVersion() || newestInstalled();
+  if (!asset || !valid(version)) return;
+  const dir = path.join(HOOK_CACHE, version);
+  const target = path.join(dir, 'ryugi-hook');
+  if (executable(target)) return;
+  fs.mkdirSync(dir, { recursive: true });
+  const failed = path.join(dir, '.failed');
+  try {
+    const last = JSON.parse(fs.readFileSync(failed, 'utf8'));
+    if (Date.now() - last.at < (last.status === 404 ? 5 : 60) * 60 * 1000) return;
+  } catch {}
+  const lock = path.join(dir, '.lock');
+  try {
+    fs.writeFileSync(lock, String(process.pid), { flag: 'wx' });
+  } catch {
+    try {
+      if (Date.now() - fs.statSync(lock).mtimeMs < 5 * 60 * 1000) return;
+      fs.rmSync(lock, { force: true });
+      fs.writeFileSync(lock, String(process.pid), { flag: 'wx' });
+    } catch {
+      return;
+    }
+  }
+  try {
+    const base = `${(process.env.RYUGI_HOOK_RELEASE_BASE || HOOK_RELEASE).replace(/\/+$/, '')}/v${version}/${asset}`;
+    const bytes = Buffer.from(await (await fetchOk(base)).arrayBuffer());
+    const expected = (await (await fetchOk(`${base}.sha256`)).text())
+      .trim()
+      .split(/\s+/)[0]
+      ?.toLowerCase();
+    if (expected !== sha256(bytes)) throw new Error(`${asset} failed its sha256 check`);
+    const temp = `${target}.${process.pid}.tmp`;
+    fs.writeFileSync(temp, bytes, { mode: 0o755 });
+    fs.chmodSync(temp, 0o755);
+    fs.renameSync(temp, target);
+    fs.rmSync(failed, { force: true });
+    pruneHooks(version);
+  } catch (error) {
+    try {
+      fs.writeFileSync(failed, JSON.stringify({ at: Date.now(), status: error.status ?? null }));
+    } catch {}
+  } finally {
+    fs.rmSync(lock, { force: true });
+  }
+}
+
 function main() {
   const args = process.argv.slice(2);
+  if (args[0] === 'hook-install') {
+    void hookInstall();
+    return;
+  }
   let sessionProof;
   const proofIndex = args.indexOf('--ryugi-session');
   if (proofIndex >= 0) {
@@ -244,104 +366,57 @@ function main() {
     env.RYUGI_ARTIFACTS_VERSION = localVersion();
   }
   requireOutputProtocol(cli);
-  let customHost = null;
-  try {
-    customHost = require('./custom-hosts.cjs').matchCustomHost(process.env);
-  } catch (error) {
-    if (error.code !== 'MODULE_NOT_FOUND')
-      console.error(JSON.stringify({ type: 'comment-watch-error', message: error.message }));
-  }
-  let subscription = null;
-  if (
-    customHost ||
+  let hook = hookBin();
+  const marked =
     sessionProof ||
     process.env.CODEX_THREAD_ID ||
-    process.env.CODEX_SESSION_ID ||
     process.env.CLAUDE_CODE_SESSION_ID ||
     process.env.PI_SESSION_ID ||
-    process.env.ANTIGRAVITY_CONVERSATION_ID
-  ) {
-    try {
-      subscription = require('./comment-subscriptions.cjs').subscriptionFor(
-        args,
-        process.env,
-        sessionProof,
-      );
-    } catch (error) {
-      if (error.code !== 'MODULE_NOT_FOUND')
-        console.error(JSON.stringify({ type: 'comment-watch-error', message: error.message }));
-    }
+    process.env.ANTIGRAVITY_CONVERSATION_ID;
+  // A command that may subscribe waits for a first download: without the binary it records no subscription.
+  if (!hook && marked && (args[0] === 'start' || args[0] === 'comment')) {
+    spawnSync(process.execPath, [__filename, 'hook-install'], { stdio: 'ignore', timeout: 40000 });
+    hook = hookBin();
   }
-  const idx = args.indexOf('--project-dir');
-  const projectDir =
-    idx >= 0
-      ? args[idx + 1]
-      : args.find((arg) => arg.startsWith('--project-dir='))?.slice('--project-dir='.length);
-  if (customHost && (subscription || args[0] === 'start')) {
+  let subscription = null;
+  if (hook) {
+    const prepared = spawnSync(
+      hook,
+      ['launch-prepare', ...(sessionProof ? ['--ryugi-session', sessionProof] : []), '--', ...args],
+      {
+        encoding: 'utf8',
+        env: { ...process.env, RYUGI_PLUGIN_ROOT: PLUGIN_ROOT },
+        stdio: ['ignore', 'pipe', 'inherit'],
+        timeout: 15000,
+      },
+    );
     try {
-      require('./cmd-comment-watch.cjs').ensureWatch(
-        projectDir || process.cwd(),
-        customHost,
-        process.env,
-      );
+      subscription = prepared.stdout.trim() ? JSON.parse(prepared.stdout) : null;
     } catch {}
-  } else if (
-    !customHost &&
-    process.env.ANTIGRAVITY_CONVERSATION_ID &&
-    process.env.ANTIGRAVITY_LS_ADDRESS
-  ) {
-    try {
-      require('./agy-comment-watch.cjs').ensureWatch(projectDir || process.cwd(), process.env);
-    } catch {}
+  } else if (marked) {
+    requestHookInstall();
   }
   const given = Number(env.RYUGI_ARTIFACTS_OWNER);
   const owner = Number.isInteger(given) && given > 1 ? given : ownerPid();
   if (owner) env.RYUGI_ARTIFACTS_OWNER = String(owner);
   const child = spawn(process.execPath, [cli, ...args], { env, stdio: 'inherit' });
   for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => child.kill(signal));
-  child.on('close', async (code, signal) => {
+  child.on('close', (code, signal) => {
     process.exitCode = code ?? (signal ? 1 : 0);
-    if (subscription) await subscribe(subscription);
+    // The hub is running only once the CLI command has returned, so the subscription follows it.
+    if (subscription && hook)
+      spawnSync(hook, ['subscribe'], {
+        input: JSON.stringify(subscription),
+        stdio: ['pipe', 'ignore', 'inherit'],
+        timeout: 15000,
+      });
   });
-}
-
-// The hub is running only once the CLI command has returned, so the subscription follows it.
-async function subscribe(subscription) {
-  try {
-    const { hubProjectOf, postToHub, postToServer } = require('./agent-event.cjs');
-    await postToServer(hubProjectOf(subscription.project), '/api/agent/subscribe', subscription);
-    const defaultHome = path.join(os.homedir(), '.ryugi', 'server');
-    // The session's watcher dials the hub of the session's own environment, normally the default one, not the hub this command was pointed at.
-    if (
-      process.env.RYUGI_SERVER_HOME &&
-      path.resolve(process.env.RYUGI_SERVER_HOME) !== defaultHome
-    )
-      await postToHub(
-        path.join(defaultHome, 'server-info'),
-        subscription.project,
-        '/api/agent/subscribe',
-        subscription,
-      );
-  } catch (error) {
-    if (error.code !== 'MODULE_NOT_FOUND')
-      console.error(JSON.stringify({ type: 'comment-watch-error', message: error.message }));
-  }
 }
 
 // Copied on its own into installs, so it cannot require process-title.cjs.
 function setLauncherTitle() {
   if (win32) return;
-  const root = path.join(__dirname, '..', '..', '..');
-  const version = ['package.json', '.claude-plugin/plugin.json', '.codex-plugin/plugin.json']
-    .map((file) => {
-      try {
-        const manifest = JSON.parse(fs.readFileSync(path.join(root, file), 'utf8'));
-        return manifest.name === 'ryugi' ? manifest.version || null : null;
-      } catch {
-        return null;
-      }
-    })
-    .find(Boolean);
+  const version = pluginVersion();
   process.title = version ? `Ryugi launcher (${version})` : 'Ryugi launcher';
 }
 

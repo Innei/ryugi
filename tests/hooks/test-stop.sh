@@ -4,6 +4,9 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 HOOK="$REPO_ROOT/hooks/run-hook.cmd"
+. "$SCRIPT_DIR/hook-bin-path.sh"
+BIN="$(test_hook_bin "$REPO_ROOT")" || exit 1
+export RYUGI_HOOK_BIN="$BIN"
 
 FAILURES=0
 TEST_ROOT="$(mktemp -d)"
@@ -17,7 +20,7 @@ fail() {
 
 run_hook() {
   printf '{"hook_event_name":"Stop","cwd":"%s"}' "$1" \
-    | env -i PATH="${PATH:-}" HOME="$TEST_ROOT" CLAUDE_PROJECT_DIR="$1" bash "$HOOK" stop
+    | env -i PATH="${PATH:-}" HOME="$TEST_ROOT" RYUGI_HOOK_BIN="$BIN" CLAUDE_PROJECT_DIR="$1" bash "$HOOK" stop
 }
 
 echo "Stop hook"
@@ -40,11 +43,11 @@ if [ $((SECONDS - start)) -le 3 ]; then pass "returns within the timeout"; else 
 dir="$TEST_ROOT/repo"
 mkdir -p "$dir/.git" "$dir/.ryugi/artifacts/.state" "$dir/packages/app" "$TEST_ROOT/bin"
 printf '{"type":"server-started","url":"http://localhost:9/?key=k"}\n' > "$dir/.ryugi/artifacts/.state/server-info"
-printf '#!/usr/bin/env bash\nprintf "%%s\\n" "$@" > "%s"\n' "$TEST_ROOT/node-args" > "$TEST_ROOT/bin/node"
-chmod +x "$TEST_ROOT/bin/node"
+printf '#!/bin/sh\nprintf "%%s\\n" "$@" > "%s"\n' "$TEST_ROOT/hook-args" > "$TEST_ROOT/bin/ryugi-hook"
+chmod +x "$TEST_ROOT/bin/ryugi-hook"
 printf '{"hook_event_name":"Stop"}' \
-  | env -i PATH="$TEST_ROOT/bin:${PATH:-}" HOME="$TEST_ROOT" CLAUDE_PROJECT_DIR="$dir/packages/app" bash "$HOOK" stop > /dev/null || true
-if [ "$(tail -n 1 "$TEST_ROOT/node-args" 2> /dev/null)" = "$(cd "$dir" && pwd -P)" ]; then pass "flushes the repository's server from a session in a subdirectory"; else fail "flushes the repository's server from a session in a subdirectory"; fi
+  | env -i PATH=/usr/bin:/bin HOME="$TEST_ROOT" RYUGI_HOOK_BIN="$TEST_ROOT/bin/ryugi-hook" CLAUDE_PROJECT_DIR="$dir/packages/app" bash "$HOOK" stop > /dev/null || true
+if [ "$(cat "$TEST_ROOT/hook-args" 2> /dev/null)" = "$(printf 'flush\n%s' "$(cd "$dir" && pwd -P)")" ]; then pass "flushes the repository's server from a session in a subdirectory"; else fail "flushes the repository's server from a session in a subdirectory"; fi
 
 dir="$TEST_ROOT/shared"
 mkdir -p "$dir/.ryugi/artifacts/.state"
@@ -71,7 +74,7 @@ for _ in $(seq 1 50); do
   sleep 0.1
 done
 printf '{"type":"server-started","url":"http://localhost:%s/"}\n' "$(cat "$port_file")" > "$dir/.ryugi/artifacts/.state/server-info"
-printf '{"hook_event_name":"Stop","session_id":"s1"}' | node "$REPO_ROOT/hooks/flush-artifacts.cjs" "$dir"
+printf '{"hook_event_name":"Stop","session_id":"s1"}' | env -i PATH=/usr/bin:/bin "$BIN" flush "$dir"
 for _ in $(seq 1 30); do
   [ -s "$seen" ] && break
   sleep 0.1
@@ -81,7 +84,7 @@ expected="$(printf 'POST /api/agent/event %s\nPOST /api/cloud/flush %s' "$dir" "
 if [ "$(cat "$seen" 2> /dev/null)" = "$expected" ]; then pass "tells its project's server the turn ended and flushes it"; else fail "tells its project's server the turn ended and flushes it ($(cat "$seen" 2> /dev/null))"; fi
 
 agy_stop_out="$(printf '{"hookEventName":"Stop","conversationId":"s1","cwd":"%s"}' "$TEST_ROOT/none" \
-  | env -i PATH="${PATH:-}" HOME="$TEST_ROOT" PLUGIN_ROOT="$REPO_ROOT" bash "$HOOK" stop)"
+  | env -i PATH=/usr/bin:/bin HOME="$TEST_ROOT" RYUGI_HOOK_BIN="$BIN" PLUGIN_ROOT="$REPO_ROOT" bash "$HOOK" stop)"
 if [ "$agy_stop_out" = "{}" ]; then pass "Antigravity Stop hook outputs {} even without ANTIGRAVITY_AGENT"; else fail "Antigravity Stop hook outputs {} even without ANTIGRAVITY_AGENT ($agy_stop_out)"; fi
 
 if [ "$FAILURES" -gt 0 ]; then

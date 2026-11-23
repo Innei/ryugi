@@ -15,8 +15,10 @@ require('./fake-artifacts-release.cjs').seedFakeRelease(cacheHome);
 const { setTimeout: delay } = require('node:timers/promises');
 const { fakeHub } = require('./fake-hub.cjs');
 
+const { hookBin } = require('./hook-bin.cjs');
+
 const repo = path.resolve(__dirname, '../..');
-const adapter = path.join(repo, 'skills/artifacts/app/codex-comment-watch.cjs');
+const hook = hookBin();
 const id = '01a18caa-a157-7071-ac28-96aa9066af5f';
 const inherited = '01a18ca7-51af-77f0-8c4d-0c4bd2e2fcaf';
 const at = (n) => `2026-10-30T10:00:${String(n).padStart(2, '0')}.000Z`;
@@ -87,15 +89,16 @@ esac
   const errors = [];
   const app = path.join(root, 'app');
   fs.mkdirSync(app);
-  for (const name of fs.readdirSync(path.dirname(adapter)))
+  const appDir = path.join(repo, 'skills/artifacts/app');
+  for (const name of fs.readdirSync(appDir))
     if (/\.(?:cjs|json)$/.test(name))
-      fs.copyFileSync(path.join(path.dirname(adapter), name), path.join(app, name));
+      fs.copyFileSync(path.join(appDir, name), path.join(app, name));
   fs.writeFileSync(
     path.join(app, 'cli.cjs'),
     `console.log(JSON.stringify({schema:'ryugi.cli/v1', command:process.argv.includes('--version')?'version':'start', outcome:'success', data:{status:'running',capabilities:['reviewBundlesV1']}}));\n`,
   );
   const open = (artifact, session = id) => {
-    const bound = spawnSync(process.execPath, [adapter, 'bind'], {
+    const bound = spawnSync(hook, ['codex-bind'], {
       env,
       input: JSON.stringify({ ...input, session_id: session }),
       encoding: 'utf8',
@@ -182,7 +185,7 @@ esac
     if (activate)
       for (const artifact of ['document/plan', 'artboard/settings'])
         open(artifact, overrides.session_id ?? id);
-    const child = spawn(process.execPath, [adapter, 'watch'], {
+    const child = spawn(hook, ['codex-watch'], {
       cwd: project,
       env,
       stdio: ['pipe', 'pipe', 'pipe'],
@@ -373,7 +376,7 @@ test('SessionEnd stops delivery and leaves other sessions alone', async (t) => {
     () => f.hub.sessions.has(id) && f.hub.sessions.has(inherited),
     'watchers never connected',
   );
-  const end = spawnSync(process.execPath, [adapter, 'stop'], {
+  const end = spawnSync(hook, ['codex-stop'], {
     // Cleanup must still work when the desktop runtime/pipe has gone away.
     env: { ...f.env, CODEX_APP_TOOLS_PIPE_PATH: 'unavailable', CODEX_MCP_NODE_PATH: 'missing' },
     input: JSON.stringify({ ...f.input, hook_event_name: 'SessionEnd' }),
@@ -395,6 +398,14 @@ test('an invalid session identifier does not fall back to an inherited thread', 
   const child = f.start({ session_id: '' });
   await until(() => child.exitCode !== null, 'invalid input left a watcher running');
   assert.deepEqual(f.hub.hellos(), []);
+});
+
+test('on Windows, where ryugi-hook has no build, every Codex hook runs nothing', () => {
+  const entries = Object.values(hooks()).flatMap((groups) =>
+    groups.flatMap((group) => group.hooks),
+  );
+  assert.ok(entries.length > 0);
+  for (const entry of entries) assert.equal(entry.commandWindows, 'exit 0', entry.command);
 });
 
 test('the shipped lifecycle hooks invoke the portable watcher and stop it on session end', async (t) => {
@@ -558,75 +569,45 @@ test('a nonlocal desktop host is rejected without trying the CLI endpoint', asyn
   assert.equal(f.read().length, 0);
 });
 
-test(
-  'macOS startup replaces the whole watcher runtime before reading hook stdin',
-  { skip: process.platform !== 'darwin' || typeof process.execve !== 'function' },
-  async (t) => {
-    const f = fixture(t);
-    const runtime = path.join(f.root, 'runtime/bin/node');
-    const preload = path.join(f.root, 'startup.cjs');
-    const log = path.join(f.root, 'startup.jsonl');
-    fs.mkdirSync(path.dirname(runtime), { recursive: true });
-    // Homebrew Node locates libnode relative to its executable; standalone Node needs no library.
-    const lib = path.resolve(path.dirname(process.execPath), '../lib');
-    if (fs.existsSync(lib)) fs.symlinkSync(lib, path.join(f.root, 'runtime/lib'), 'dir');
-    fs.copyFileSync(process.execPath, runtime);
-    fs.chmodSync(runtime, 0o755);
-    fs.writeFileSync(
-      preload,
-      `require('node:fs').appendFileSync(${JSON.stringify(log)}, JSON.stringify({runtime:process.execPath,pid:process.pid,ppid:process.ppid,argv:process.argv,cwd:process.cwd()})+'\\n');`,
-    );
-    f.env.CODEX_APP_TOOLS_PIPE_PATH = path.join(f.root, 'unused.sock');
-    f.env.CODEX_MCP_NODE_PATH = runtime;
-    delete f.env.RYUGI_CODEX_REMOTE;
-    f.env.NODE_OPTIONS = `${f.env.NODE_OPTIONS || ''} --require=${preload}`.trim();
-    const child = f.start({}, false);
-    await until(() => Boolean(f.state()), 'replaced watcher lost the hook stdin context');
-    const starts = fs
-      .readFileSync(log, 'utf8')
-      .trim()
-      .split('\n')
-      .map((line) => JSON.parse(line));
-    assert.equal(starts.length, 2);
-    assert.equal(starts[0].runtime, process.execPath);
-    assert.equal(starts[1].runtime, runtime);
-    assert.equal(starts[1].pid, child.pid);
-    assert.equal(starts[1].pid, starts[0].pid);
-    assert.equal(starts[1].ppid, process.pid);
-    assert.deepEqual(
-      starts[1].argv,
-      starts[0].argv.map((arg, i) => (i === 0 ? runtime : arg)),
-    );
-    assert.equal(starts[1].cwd, f.project);
-    assert.equal(f.state().session, id);
-  },
-);
+test('desktop startup names a missing or unusable inherited runtime', (t) => {
+  const f = fixture(t);
+  const runtime = path.join(f.root, 'desktop-node');
+  fs.writeFileSync(runtime, 'not executable', { mode: 0o644 });
+  for (const [node, expected] of [
+    ['relative-node', /absolute CODEX_MCP_NODE_PATH/],
+    [runtime, /not an executable file/],
+  ]) {
+    const env = { ...f.env, CODEX_APP_TOOLS_PIPE_PATH: 'unused', CODEX_MCP_NODE_PATH: node };
+    delete env.RYUGI_CODEX_REMOTE;
+    const result = spawnSync(hook, ['codex-watch'], {
+      env,
+      input: JSON.stringify(f.input),
+      encoding: 'utf8',
+    });
+    assert.equal(result.status, 0, result.stderr);
+    const output = JSON.parse(result.stdout).hookSpecificOutput;
+    assert.equal(output.hookEventName, 'SessionStart');
+    assert.match(output.additionalContext, expected);
+  }
+  assert.equal(f.state(), null);
+});
 
-test(
-  'macOS startup diagnoses a missing inherited runtime or unavailable execve',
-  { skip: process.platform !== 'darwin' },
-  (t) => {
-    const f = fixture(t);
-    const preload = path.join(f.root, 'older-node.cjs');
-    fs.writeFileSync(preload, 'process.execve = undefined;');
-    const runtime = path.join(f.root, 'desktop-node');
-    fs.writeFileSync(runtime, '#!/bin/sh\nexit 99\n', { mode: 0o755 });
-    for (const [node, expected] of [
-      ['relative-node', /absolute CODEX_MCP_NODE_PATH/],
-      [runtime, /Node.js 22\.15.*process\.execve/],
-    ]) {
-      const env = { ...f.env, CODEX_APP_TOOLS_PIPE_PATH: 'unused', CODEX_MCP_NODE_PATH: node };
-      delete env.RYUGI_CODEX_REMOTE;
-      const result = spawnSync(process.execPath, ['--require', preload, adapter, 'watch'], {
-        env,
-        input: JSON.stringify(f.input),
-        encoding: 'utf8',
-      });
-      assert.equal(result.status, 0, result.stderr);
-      const output = JSON.parse(result.stdout).hookSpecificOutput;
-      assert.equal(output.hookEventName, 'SessionStart');
-      assert.match(output.additionalContext, expected);
-    }
-    assert.equal(f.state(), null);
-  },
-);
+test('desktop delivery runs under the app-provided runtime, not a Node of its own', async (t) => {
+  const f = fixture(t);
+  const app = await desktop(t, f);
+  app.recover();
+  const log = path.join(f.root, 'runtime.log');
+  const runtime = path.join(f.root, 'app-node');
+  fs.writeFileSync(runtime, `#!/bin/sh\necho run >> '${log}'\nexec '${process.execPath}' "$@"\n`, {
+    mode: 0o755,
+  });
+  f.env.CODEX_MCP_NODE_PATH = runtime;
+  f.env.PATH = '/usr/bin:/bin';
+  f.start();
+  await f.push('document/plan');
+  await until(
+    () => app.calls.length > 0,
+    () => `desktop comment never arrived: ${JSON.stringify(f.state())}`,
+  );
+  assert.equal(fs.readFileSync(log, 'utf8').trim(), 'run');
+});

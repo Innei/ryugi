@@ -4,6 +4,9 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 HOOK="$REPO_ROOT/hooks/run-hook.cmd"
+. "$SCRIPT_DIR/hook-bin-path.sh"
+BIN="$(test_hook_bin "$REPO_ROOT")" || exit 1
+NO_NODE="/usr/bin:/bin"
 
 FAILURES=0
 TEST_ROOT="$(mktemp -d)"
@@ -46,7 +49,7 @@ run_hook() {
   local dir="$1" prompt="$2"
   shift 2
   printf '{"hook_event_name":"UserPromptSubmit","cwd":"%s","prompt":"%s"}' "$dir" "$prompt" \
-    | env -i PATH="${PATH:-}" HOME="$TEST_ROOT" CLAUDE_PROJECT_DIR="$dir" "$@" bash "$HOOK" user-prompt-submit
+    | env -i PATH="$NO_NODE" HOME="$TEST_ROOT" RYUGI_HOOK_BIN="$BIN" CLAUDE_PROJECT_DIR="$dir" "$@" bash "$HOOK" user-prompt-submit
 }
 
 expect() {
@@ -161,8 +164,8 @@ out="$(run_hook "$dir" "继续")"
 expect "reminds about a document with unread comments" "$out" 'Unread comment evidence: document/relay (1).'
 expect "gives the command that lists them" "$out" "skills/artifacts/app/ryugi.cjs\" comment list --section threads --detail --format brief --project-dir \"$(cd "$dir" && pwd -P)\" --artifact document/relay"
 
-node - "$REPO_ROOT/skills/artifacts/app/comment-threads.cjs" "$dir" << 'NODE'
-const fs=require('node:fs'),path=require('node:path');const {humanTokens,reviewStateKey}=require(process.argv[2]);const root=path.join(process.argv[3],'.ryugi/artifacts');const artifact='document/relay',agent='Claude Code';const file=JSON.parse(fs.readFileSync(path.join(root,artifact,'comments.json'),'utf8'));const target=path.join(root,'.state','agent-review',`agent-${reviewStateKey(artifact,agent)}.json`);fs.mkdirSync(path.dirname(target),{recursive:true});fs.writeFileSync(target,JSON.stringify({artifact,agent,consumed:file.threads.flatMap(humanTokens).map(event=>event.token),frontiers:null}));
+node - "$dir" << 'NODE'
+const fs=require('node:fs'),path=require('node:path'),{createHash}=require('node:crypto');const hash=(v)=>createHash('sha256').update(JSON.stringify(v)).digest('hex');const reviewStateKey=(a,g)=>hash([a,g]);const humanTokens=(t)=>[...t.messages.filter(m=>m.author==='human').map(m=>({token:hash([t.id,'message',m.id,m.at,m.editedAt,m.deleted,m.text])})),...(t.statusBy==='human'?[{token:hash([t.id,'status',t.statusAt,t.status])}]:[])];const root=path.join(process.argv[2],'.ryugi/artifacts');const artifact='document/relay',agent='Claude Code';const file=JSON.parse(fs.readFileSync(path.join(root,artifact,'comments.json'),'utf8'));const target=path.join(root,'.state','agent-review',`agent-${reviewStateKey(artifact,agent)}.json`);fs.mkdirSync(path.dirname(target),{recursive:true});fs.writeFileSync(target,JSON.stringify({artifact,agent,consumed:file.threads.flatMap(humanTokens).map(event=>event.token),frontiers:null}));
 NODE
 out="$(run_hook "$dir" "继续")"
 if [[ -z "$out" ]]; then pass "is quiet once the receipt has been acknowledged"; else
@@ -260,7 +263,7 @@ echo "Antigravity PreInvocation"
 agy_dir="$(project agy-selected)"
 write_selection "$agy_dir"
 agy_out="$(printf '{"hookEventName":"PreInvocation","conversationId":"0b5f6c1e-3f0a-4a52-9d0e-6a4d3c2b1a00","cwd":"%s","lastUserInput":"看看 hero-2#5","invocationNum":0}' "$agy_dir" \
-  | env -i PATH="${PATH:-}" HOME="$TEST_ROOT" ANTIGRAVITY_AGENT=1 bash "$HOOK" user-prompt-submit)"
+  | env -i PATH="$NO_NODE" HOME="$TEST_ROOT" RYUGI_HOOK_BIN="$BIN" ANTIGRAVITY_AGENT=1 bash "$HOOK" user-prompt-submit)"
 if printf '%s' "$agy_out" | node -e '
 const fs = require("fs");
 const data = JSON.parse(fs.readFileSync(0, "utf8"));
@@ -274,7 +277,7 @@ else
 fi
 
 agy_later_out="$(printf '{"hookEventName":"PreInvocation","conversationId":"0b5f6c1e-3f0a-4a52-9d0e-6a4d3c2b1a00","cwd":"%s","lastUserInput":"看看 hero-2#5","invocationNum":1}' "$agy_dir" \
-  | env -i PATH="${PATH:-}" HOME="$TEST_ROOT" ANTIGRAVITY_AGENT=1 bash "$HOOK" user-prompt-submit)"
+  | env -i PATH="$NO_NODE" HOME="$TEST_ROOT" RYUGI_HOOK_BIN="$BIN" ANTIGRAVITY_AGENT=1 bash "$HOOK" user-prompt-submit)"
 if [[ "$agy_later_out" == "{}" ]]; then
   pass "Antigravity PreInvocation emits {} when invocationNum > 0"
 else
@@ -284,7 +287,7 @@ fi
 agy_empty_dir="$(project agy-empty)"
 rm "$agy_empty_dir/.ryugi/artifacts/.state/server-info"
 agy_empty_out="$(printf '{"hookEventName":"PreInvocation","conversationId":"0b5f6c1e-3f0a-4a52-9d0e-6a4d3c2b1a00","cwd":"%s","lastUserInput":"hello","invocationNum":0}' "$agy_empty_dir" \
-  | env -i PATH="${PATH:-}" HOME="$TEST_ROOT" ANTIGRAVITY_AGENT=1 bash "$HOOK" user-prompt-submit)"
+  | env -i PATH="$NO_NODE" HOME="$TEST_ROOT" RYUGI_HOOK_BIN="$BIN" ANTIGRAVITY_AGENT=1 bash "$HOOK" user-prompt-submit)"
 if [[ "$agy_empty_out" == "{}" ]]; then
   pass "Antigravity PreInvocation emits {} when no server or selection is active"
 else
@@ -292,7 +295,7 @@ else
 fi
 
 agy_omitted_out="$(printf '{"hookEventName":"PreInvocation","conversationId":"0b5f6c1e-3f0a-4a52-9d0e-6a4d3c2b1a00","workspacePaths":["%s"],"lastUserInput":"看看 hero-2#5"}' "$agy_dir" \
-  | env -i PATH="${PATH:-}" HOME="$TEST_ROOT" ANTIGRAVITY_AGENT=1 bash "$HOOK" user-prompt-submit)"
+  | env -i PATH="$NO_NODE" HOME="$TEST_ROOT" RYUGI_HOOK_BIN="$BIN" ANTIGRAVITY_AGENT=1 bash "$HOOK" user-prompt-submit)"
 if printf '%s' "$agy_omitted_out" | node -e '
 const fs = require("fs");
 const data = JSON.parse(fs.readFileSync(0, "utf8"));
@@ -306,7 +309,7 @@ else
 fi
 
 agy_missing_cwd="$(printf '{"hookEventName":"PreInvocation","conversationId":"0b5f6c1e-3f0a-4a52-9d0e-6a4d3c2b1a00","cwd":"%s/nonexistent-dir"}' "$TEST_ROOT" \
-  | env -i PATH="${PATH:-}" HOME="$TEST_ROOT" ANTIGRAVITY_AGENT=1 bash "$HOOK" user-prompt-submit)"
+  | env -i PATH="$NO_NODE" HOME="$TEST_ROOT" RYUGI_HOOK_BIN="$BIN" ANTIGRAVITY_AGENT=1 bash "$HOOK" user-prompt-submit)"
 if [[ "$agy_missing_cwd" == "{}" ]]; then
   pass "Antigravity PreInvocation emits {} cleanly when cwd does not exist"
 else
@@ -314,7 +317,7 @@ else
 fi
 
 agy_plugin_only_out="$(printf '{"hookEventName":"PreInvocation","conversationId":"0b5f6c1e-3f0a-4a52-9d0e-6a4d3c2b1a00","cwd":"%s","lastUserInput":"看看 hero-2#5","invocationNum":0}' "$agy_dir" \
-  | env -i PATH="${PATH:-}" HOME="$TEST_ROOT" PLUGIN_ROOT="$REPO_ROOT" bash "$HOOK" user-prompt-submit)"
+  | env -i PATH="$NO_NODE" HOME="$TEST_ROOT" RYUGI_HOOK_BIN="$BIN" PLUGIN_ROOT="$REPO_ROOT" bash "$HOOK" user-prompt-submit)"
 if printf '%s' "$agy_plugin_only_out" | node -e '
 const fs = require("fs");
 const data = JSON.parse(fs.readFileSync(0, "utf8"));
@@ -328,7 +331,7 @@ else
 fi
 
 claude_in_agy_out="$(printf '{"hook_event_name":"UserPromptSubmit","cwd":"%s","prompt":"看看 hero-2#5"}' "$agy_dir" \
-  | env -i PATH="${PATH:-}" HOME="$TEST_ROOT" ANTIGRAVITY_AGENT=1 CLAUDE_PROJECT_DIR="$agy_dir" bash "$HOOK" user-prompt-submit)"
+  | env -i PATH="$NO_NODE" HOME="$TEST_ROOT" RYUGI_HOOK_BIN="$BIN" ANTIGRAVITY_AGENT=1 CLAUDE_PROJECT_DIR="$agy_dir" bash "$HOOK" user-prompt-submit)"
 expect "Claude Code hook inside inherited ANTIGRAVITY_AGENT=1 still outputs plain text" "$claude_in_agy_out" 'Artboard artboard/node-id'
 
 if [[ "$FAILURES" -gt 0 ]]; then

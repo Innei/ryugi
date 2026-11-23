@@ -15,8 +15,10 @@ process.env.XDG_CACHE_HOME = cacheHome;
 after(() => fs.rmSync(cacheHome, { recursive: true, force: true }));
 require('./fake-artifacts-release.cjs').seedFakeRelease(cacheHome);
 
+const { hookBin } = require('./hook-bin.cjs');
+
 const repo = path.resolve(__dirname, '../..');
-const adapter = path.join(repo, 'skills/artifacts/app/agy-comment-watch.cjs');
+const hook = hookBin();
 const SESSION = '29ba4e4a-2224-4457-947d-c39ebcbc846c';
 const at = (n) => `2026-11-18T01:00:${String(n).padStart(2, '0')}.000Z`;
 
@@ -141,7 +143,7 @@ function fixture(t, ls) {
   const retract = (artifact) =>
     hub.send(SESSION, { t: 'retract', project, artifact, type: 'ryugi-comments' });
   const startWatch = (session = SESSION) => {
-    const child = spawn(process.execPath, [adapter, 'watch'], {
+    const child = spawn(hook, ['watch', 'antigravity'], {
       cwd: project,
       env,
       stdio: ['pipe', 'pipe', 'pipe'],
@@ -157,7 +159,7 @@ function fixture(t, ls) {
     return child;
   };
   const stopWatch = (session = SESSION) => {
-    const res = spawnSync(process.execPath, [adapter, 'stop'], {
+    const res = spawnSync(hook, ['agy-stop'], {
       cwd: project,
       env,
       input: JSON.stringify({
@@ -245,7 +247,7 @@ test('agy-comment-watch supersedes a worker with a stale lsAddress and exits cle
   const ls2 = await lsServer(t);
   const f = fixture(t, ls1);
 
-  const noLs = spawnSync(process.execPath, [adapter, 'watch'], {
+  const noLs = spawnSync(hook, ['watch', 'antigravity'], {
     cwd: f.project,
     env: { ...f.env, ANTIGRAVITY_LS_ADDRESS: '' },
     input: JSON.stringify({
@@ -275,14 +277,14 @@ test('agy-comment-watch supersedes a worker with a stale lsAddress and exits cle
   assert.equal(secondExit, 0);
 });
 
-test('ensureWatch launches a detached watcher and skips respawning while healthy', async (t) => {
-  const { ensureWatch } = require(adapter);
+test('agy-ensure launches a detached watcher and skips respawning while healthy', async (t) => {
   const ls = await lsServer(t);
   const f = fixture(t, ls);
+  const ensureWatch = () => spawnSync(hook, ['agy-ensure', f.project], { env: f.env }).status;
 
-  assert.equal(ensureWatch(f.project, f.env), true);
+  assert.equal(ensureWatch(), 0);
   await f.connected();
-  assert.equal(ensureWatch(f.project, f.env), false);
+  assert.equal(ensureWatch(), 3);
 
   await f.push('document/launcher', 'woken from launcher');
   await until(
