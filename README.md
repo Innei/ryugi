@@ -35,6 +35,12 @@ share it.
 npx ryugi-artifacts install
 ```
 
+<p align="center"><sub>Works with Claude Code · Codex · Cursor · Gemini CLI · OpenCode · Copilot CLI · Pi · Antigravity · Kimi Code · Qwen Code · Devin · Droid</sub></p>
+
+Free and local-first: artifacts live in your project and open from a local server, no account
+needed. In Claude Code, a comment you pin reaches the agent on its own — it edits, replies under
+your comment, and the page updates while you watch. Publish to Ryugi Cloud only when you want a link.
+
 The terminal wizard installs a persistent `ryugi` command, lets you select one or more
 harnesses, then asks which content to install:
 
