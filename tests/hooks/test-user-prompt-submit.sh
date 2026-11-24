@@ -198,6 +198,27 @@ expect "keeps the artboard selection first" "$out" 'hero-2#12 <div>'
 expect "still reminds about comments in a crowded context" "$out" 'document/relay (1)'
 if [[ "${#out}" -le 8200 ]]; then pass "stays within the context budget with documents"; else fail "stays within the context budget with documents (${#out})"; fi
 
+dir="$(doc_project doc-sessions)"
+write_doc_comments "$dir"
+mkdir -p "$dir/.ryugi/artifacts/document/other"
+cp "$dir/.ryugi/artifacts/document/relay/comments.json" "$dir/.ryugi/artifacts/document/other/comments.json"
+real="$(cd "$dir" && pwd -P)"
+one=11111111-1111-4111-8111-111111111111
+two=22222222-2222-4222-8222-222222222222
+three=33333333-3333-4333-8333-333333333333
+for pair in "$one document/relay" "$two document/other"; do
+  set -- $pair
+  printf '{"host":"claude","session":"%s","project":"%s","artifact":"%s"}' "$1" "$real" "$2" \
+    | env -i PATH="$NO_NODE" HOME="$TEST_ROOT" "$BIN" subscribe
+done
+out="$(run_hook "$dir" "继续" CLAUDE_CODE_SESSION_ID="$one")"
+expect "reminds a session of the artifact it opened" "$out" 'Unread comment evidence: document/relay (1).'
+if [[ "$out" != *document/other* ]]; then pass "leaves out an artifact another session opened"; else fail "leaves out an artifact another session opened"; fi
+out="$(run_hook "$dir" "继续" CLAUDE_CODE_SESSION_ID="$two")"
+expect "reminds the other session of its own artifact" "$out" 'Unread comment evidence: document/other (1).'
+out="$(run_hook "$dir" "继续" CLAUDE_CODE_SESSION_ID="$three")"
+expect "reminds a session that opened nothing of every artifact" "$out" 'Unread comment evidence: document/other (1), document/relay (1).'
+
 dir="$(doc_project many-docs)"
 write_selection "$dir"
 write_doc_comments "$dir"

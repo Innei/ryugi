@@ -100,12 +100,15 @@ fn is_codex(name: &str) -> bool {
     n == "codex" || n == "codex.exe"
 }
 
-pub fn binding_file(session: &str) -> PathBuf {
+fn cache_dir() -> PathBuf {
     env("XDG_CACHE_HOME")
         .map(PathBuf::from)
         .unwrap_or_else(|| crate::paths::home().unwrap_or_default().join(".cache"))
-        .join("ryugi/codex-comment-watch/contexts")
-        .join(format!("{session}.json"))
+        .join("ryugi")
+}
+
+pub fn binding_file(session: &str) -> PathBuf {
+    cache_dir().join("codex-comment-watch/contexts").join(format!("{session}.json"))
 }
 
 fn read_json(file: &Path) -> Option<Value> {
@@ -331,9 +334,50 @@ pub fn launch_prepare(args: &[String]) {
     }
 }
 
+fn opened_file(cache: &Path, host: &str, session: &str) -> PathBuf {
+    cache.join("sessions").join(host).join(format!("{}.json", crate::http::encode_component(session)))
+}
+
+fn opened_in(cache: &Path, project: &Path, host: &str, session: &str) -> Vec<String> {
+    let project = std::fs::canonicalize(project).unwrap_or_else(|_| project.to_path_buf());
+    read_json(&opened_file(cache, host, session))
+        .and_then(|v| v["projects"][project.to_string_lossy().as_ref()].as_array().cloned())
+        .map(|items| items.iter().filter_map(|i| i.as_str().map(str::to_string)).collect())
+        .unwrap_or_default()
+}
+
+pub fn opened(project: &Path, host: &str, session: &str) -> Vec<String> {
+    opened_in(&cache_dir(), project, host, session)
+}
+
+fn record_in(cache: &Path, subscription: &Value) {
+    let (Some(host), Some(session), Some(project), Some(artifact)) = (
+        subscription["host"].as_str().filter(|h| crate::hosts::valid_host_name(h)),
+        subscription["session"].as_str().filter(|s| crate::hosts::valid_session(s)),
+        subscription["project"].as_str(),
+        subscription["artifact"].as_str().filter(|a| crate::channel::valid_artifact(a)),
+    ) else {
+        return;
+    };
+    let file = opened_file(cache, host, session);
+    let mut record = read_json(&file).filter(|r| r["projects"].is_object()).unwrap_or_else(|| json!({"projects": {}}));
+    let artifacts = &mut record["projects"][project];
+    if !artifacts.is_array() {
+        *artifacts = json!([]);
+    }
+    let Some(list) = artifacts.as_array_mut() else { return };
+    if list.iter().any(|a| a.as_str() == Some(artifact)) {
+        return;
+    }
+    list.push(json!(artifact));
+    record["updatedAt"] = json!(crate::ids::iso_now());
+    let _ = write_private(&file, &crate::evidence::js_stringify(&record));
+}
+
 pub fn subscribe() {
     let Some(subscription) = crate::input::read_stdin_json(std::time::Duration::from_secs(5)) else { return };
     let Some(project) = subscription["project"].as_str().map(PathBuf::from) else { return };
+    record_in(&cache_dir(), &subscription);
     crate::hub::post_to_server(&crate::paths::hub_project_of(&project), "/api/agent/subscribe", Some(&subscription));
     let default_home = crate::paths::home().unwrap_or_default().join(".ryugi/server");
     if let Some(own) = env("RYUGI_SERVER_HOME") {
@@ -355,5 +399,26 @@ mod tests {
         let p = parse_row("9 8 Tue Nov  3 09:05:00 2026 /bin/zsh -l").unwrap();
         assert_eq!((p.started.as_str(), p.name.as_str()), ("Tue Nov  3 09:05:00 2026", "zsh -l"));
         assert!(parse_row("garbage").is_none());
+    }
+
+    #[test]
+    fn opened_artifacts_are_recorded_once_per_session_and_project() {
+        let cache = crate::testdir::TestDir::new("subs-cache");
+        let project = crate::testdir::TestDir::new("subs-project");
+        let other = crate::testdir::TestDir::new("subs-other");
+        let a = "11111111-1111-4111-8111-111111111111";
+        let sub = |session: &str, project: &Path, artifact: &str| {
+            record_in(cache.path(), &json!({"host": "claude", "session": session, "project": project, "artifact": artifact}))
+        };
+        sub(a, project.path(), "artboard/mine");
+        sub(a, project.path(), "document/notes");
+        sub(a, project.path(), "artboard/mine");
+        sub(a, project.path(), "../escape");
+        sub(a, other.path(), "artboard/elsewhere");
+        assert_eq!(opened_in(cache.path(), project.path(), "claude", a), vec!["artboard/mine", "document/notes"]);
+        assert_eq!(opened_in(cache.path(), other.path(), "claude", a), vec!["artboard/elsewhere"]);
+        assert!(opened_in(cache.path(), project.path(), "claude", "22222222-2222-4222-8222-222222222222").is_empty());
+        assert!(opened_in(cache.path(), project.path(), "codex", a).is_empty());
+        assert!(!project.path().join(".ryugi").exists());
     }
 }
