@@ -49,16 +49,32 @@ fn dir_entries(dir: &Path) -> Option<Vec<String>> {
     )
 }
 
+struct Mine(Option<std::collections::HashSet<String>>);
+
+impl Mine {
+    fn of(opened: Vec<String>) -> Mine {
+        let opened: std::collections::HashSet<String> = opened.into_iter().collect();
+        Mine((!opened.is_empty()).then_some(opened))
+    }
+
+    fn has(&self, artifact: &str) -> bool {
+        self.0.as_ref().is_none_or(|opened| opened.contains(artifact))
+    }
+}
+
 struct Selection {
     file: PathBuf,
     value: Value,
 }
 
-fn selection_files(state: &Path) -> Vec<Selection> {
+fn selection_files(state: &Path, mine: &Mine) -> Vec<Selection> {
     let mut files = Vec::new();
     for kind in dir_entries(state).unwrap_or_default() {
         let Some(ids) = dir_entries(&state.join(&kind)) else { continue };
         for id in ids {
+            if !mine.has(&format!("{kind}/{id}")) {
+                continue;
+            }
             let file = state.join(&kind).join(&id).join("selection.json");
             let Some(value) = read_json(&file) else { continue };
             if ["selected", "tweaks", "nodes"].iter().all(|k| value.get(k).is_some_and(Value::is_array)) {
@@ -228,10 +244,13 @@ fn open_unread(file: &Value, consumed: &[String]) -> Option<usize> {
     unread_thread_count(Some(&copy), consumed)
 }
 
-fn comment_reminders(project: &str, root: &Path, key: &str, launcher: &str) -> String {
+fn comment_reminders(project: &str, root: &Path, key: &str, launcher: &str, mine: &Mine) -> String {
     let mut waiting: Vec<(String, usize)> = Vec::new();
     for kind in ["document", "artboard", "whiteboard", "slides", "storyboard"] {
         for id in sorted_dir(&root.join(kind)) {
+            if !mine.has(&format!("{kind}/{id}")) {
+                continue;
+            }
             let Some(file) = read_json(&root.join(kind).join(&id).join("comments.json")) else { continue };
             if !truthy(Some(&file)) {
                 continue;
@@ -280,12 +299,12 @@ fn comment_reminders(project: &str, root: &Path, key: &str, launcher: &str) -> S
     format!("{head}{}{rest}.\n{command}", named.join(", "))
 }
 
-fn preview_reminders(project: &str, root: &Path, key: &str, launcher: &str) -> String {
+fn preview_reminders(project: &str, root: &Path, key: &str, launcher: &str, mine: &Mine) -> String {
     let preview_root = root.parent().unwrap_or(root).join("preview");
     let Some(mut ids) = dir_entries(&preview_root) else { return String::new() };
     ids.sort_by(|a, b| a.encode_utf16().cmp(b.encode_utf16()));
     let mut waiting = Vec::new();
-    for id in ids {
+    for id in ids.into_iter().filter(|id| mine.has(&format!("preview/{id}"))) {
         let Some(file) = read_json(&preview_root.join(&id).join("comments.json")) else { continue };
         if !file.get("threads").is_some_and(Value::is_array) {
             continue;
@@ -380,10 +399,10 @@ fn auto_publish_context(project: &str, session_id: &str, launcher: &str) -> Stri
     lines.join("\n")
 }
 
-fn document_selections(session: &Path, root: &Path, budget: i64) -> Vec<String> {
+fn document_selections(session: &Path, root: &Path, budget: i64, mine: &Mine) -> Vec<String> {
     let mut sections = Vec::new();
     let mut left = budget;
-    for id in sorted_dir(&root.join("document")) {
+    for id in sorted_dir(&root.join("document")).into_iter().filter(|id| mine.has(&format!("document/{id}"))) {
         let file = root.join(".state/document").join(&id).join("selection.json");
         let Some(value) = read_json(&file) else { continue };
         let Some(quote) = value.get("quote").and_then(Value::as_str).filter(|q| !q.is_empty()) else { continue };
@@ -426,10 +445,10 @@ fn element(item: &Value) -> String {
     out
 }
 
-fn whiteboard_selections(session: &Path, root: &Path, budget: i64) -> Vec<String> {
+fn whiteboard_selections(session: &Path, root: &Path, budget: i64, mine: &Mine) -> Vec<String> {
     let mut sections = Vec::new();
     let mut left = budget;
-    for id in sorted_dir(&root.join(".state/whiteboard")) {
+    for id in sorted_dir(&root.join(".state/whiteboard")).into_iter().filter(|id| mine.has(&format!("whiteboard/{id}"))) {
         let file = root.join(".state/whiteboard").join(&id).join("selection.json");
         let Some(value) = read_json(&file) else { continue };
         let selected = arr(&value, "selected");
@@ -453,10 +472,10 @@ fn whiteboard_selections(session: &Path, root: &Path, budget: i64) -> Vec<String
     sections
 }
 
-fn preview_selections(session: &Path, root: &Path, budget: i64) -> Vec<String> {
+fn preview_selections(session: &Path, root: &Path, budget: i64, mine: &Mine) -> Vec<String> {
     let mut sections = Vec::new();
     let mut left = budget;
-    for id in sorted_dir(&root.join(".state/preview")) {
+    for id in sorted_dir(&root.join(".state/preview")).into_iter().filter(|id| mine.has(&format!("preview/{id}"))) {
         let file = root.join(".state/preview").join(&id).join("selection.json");
         let Some(value) = read_json(&file) else { continue };
         let Some(sel) = value.get("selected").filter(|v| v.is_object() || v.is_array()) else { continue };
@@ -587,16 +606,18 @@ pub fn run(args: &[String]) {
     } else {
         "Claude Code"
     };
+    let host = if agy { "antigravity" } else { "claude" };
+    let mine = Mine::of(session_id.as_deref().map(|id| crate::subs::opened(&project, host, id)).unwrap_or_default());
     let reminders = [
-        preview_reminders(&project_text, &root, key, &launcher),
-        comment_reminders(&project_text, &root, key, &launcher),
+        preview_reminders(&project_text, &root, key, &launcher, &mine),
+        comment_reminders(&project_text, &root, key, &launcher, &mine),
         auto_publish,
     ]
     .into_iter()
     .filter(|r| !r.is_empty())
     .collect::<Vec<_>>()
     .join("\n\n");
-    let mut files = selection_files(&state);
+    let mut files = selection_files(&state, &mine);
     files.sort_by(|a, b| s(&b.value, "updatedAt").encode_utf16().cmp(s(&a.value, "updatedAt").encode_utf16()));
     let mut sections = Vec::new();
     let mut left = MAX_CONTEXT as i64 - if reminders.is_empty() { 0 } else { ulen(&reminders) as i64 + 2 };
@@ -611,13 +632,13 @@ pub fn run(args: &[String]) {
         left -= ulen(&section) as i64 + 2;
         sections.push(section);
     }
-    let documents = document_selections(&session, &root, left);
+    let documents = document_selections(&session, &root, left, &mine);
     for section in &documents {
         left -= ulen(section) as i64 + 2;
     }
     sections.extend(documents);
-    sections.extend(whiteboard_selections(&session, &root, left));
-    sections.extend(preview_selections(&session, &root, left));
+    sections.extend(whiteboard_selections(&session, &root, left, &mine));
+    sections.extend(preview_selections(&session, &root, left, &mine));
     if !reminders.is_empty() {
         sections.push(reminders);
     }
@@ -650,5 +671,48 @@ mod tests {
         let mut got: Vec<_> = out.into_iter().collect();
         got.sort();
         assert_eq!(got, vec!["hero-2#5", "hero-2#50"]);
+    }
+
+    fn two_artboards(t: &crate::testdir::TestDir) -> PathBuf {
+        let comments = r#"{"version":1,"threads":[{"id":"t1","anchor":{"x":1,"y":1},"status":"open","messages":[{"id":"m1","author":"human","text":"bigger","at":"2026-11-20T08:00:00.000Z"}]}]}"#;
+        for id in ["one", "two"] {
+            t.write(&format!(".ryugi/artifacts/artboard/{id}/comments.json"), comments);
+            t.write(
+                &format!(".ryugi/artifacts/.state/artboard/{id}/selection.json"),
+                &format!(r#"{{"artifact":"artboard/{id}","updatedAt":"2026-11-20T08:00:00.000Z","selected":[{{"id":"{id}#1","board":"{id}","file":"{id}.html","tag":"div","path":"body"}}],"tweaks":[],"nodes":[]}}"#),
+            );
+        }
+        t.path().join(".ryugi/artifacts")
+    }
+
+    fn reminded(root: &Path, mine: &Mine) -> String {
+        comment_reminders("/p", root, "Claude Code", "ryugi.cjs", mine).lines().next().unwrap_or_default().to_string()
+    }
+
+    fn selected(root: &Path, mine: &Mine) -> Vec<String> {
+        let mut got: Vec<String> = selection_files(&root.join(".state"), mine).iter().map(|f| s(&f.value, "artifact")).collect();
+        got.sort();
+        got
+    }
+
+    #[test]
+    fn each_session_is_reminded_only_of_the_artifacts_it_opened() {
+        let t = crate::testdir::TestDir::new("context-mine");
+        let root = two_artboards(&t);
+        let one = Mine::of(vec!["artboard/one".into()]);
+        let two = Mine::of(vec!["artboard/two".into()]);
+        assert_eq!(reminded(&root, &one), "Unread comment evidence: artboard/one (1).");
+        assert_eq!(reminded(&root, &two), "Unread comment evidence: artboard/two (1).");
+        assert_eq!(selected(&root, &one), vec!["artboard/one"]);
+        assert_eq!(selected(&root, &two), vec!["artboard/two"]);
+    }
+
+    #[test]
+    fn a_session_that_opened_nothing_sees_the_whole_project() {
+        let t = crate::testdir::TestDir::new("context-all");
+        let root = two_artboards(&t);
+        let nothing = Mine::of(vec![]);
+        assert_eq!(reminded(&root, &nothing), "Unread comment evidence: artboard/one (1), artboard/two (1).");
+        assert_eq!(selected(&root, &nothing), vec!["artboard/one", "artboard/two"]);
     }
 }
