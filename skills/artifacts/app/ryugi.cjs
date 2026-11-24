@@ -9,6 +9,12 @@ const path = require('node:path');
 
 const outputBootstrap = require('./output-bootstrap.cjs');
 
+// `process.execPath` is only a JavaScript runtime under node/bun. Hosts that embed bun in a compiled
+// binary (omp.exe) report themselves, so spawning it with a script path starts a whole new host session.
+function nodeBin() {
+  return /(^|[\\/])(node|bun)(\.exe)?$/i.test(process.execPath) ? process.execPath : 'node';
+}
+
 const LATEST_CHECK_MS = 24 * 60 * 60 * 1000;
 const RETRY_CHECK_MS = 60 * 60 * 1000;
 const RELEASES = path.join(
@@ -34,7 +40,7 @@ const cliOf = (version) =>
 const protocolChecks = new Map();
 function usesOutputProtocol(cli) {
   if (protocolChecks.has(cli)) return protocolChecks.get(cli);
-  const probe = spawnSync(process.execPath, [cli, '--version', '--format', 'json'], {
+  const probe = spawnSync(nodeBin(), [cli, '--version', '--format', 'json'], {
     env: { ...process.env, RYUGI_NO_UPDATE_CHECK: '1' },
     encoding: 'utf8',
     timeout: 5000,
@@ -248,7 +254,7 @@ function hookBin() {
 
 function requestHookInstall() {
   try {
-    spawn(process.execPath, [__filename, 'hook-install'], {
+    spawn(nodeBin(), [__filename, 'hook-install'], {
       detached: true,
       stdio: 'ignore',
     }).unref();
@@ -264,7 +270,7 @@ async function hookInstall() {
   } catch {
     return;
   }
-  spawnSync(process.execPath, [cli, 'hook', 'install', version, '--background'], {
+  spawnSync(nodeBin(), [cli, 'hook', 'install', version, '--background'], {
     stdio: 'ignore',
     timeout: 120000,
   });
@@ -333,7 +339,7 @@ function main() {
   const given = Number(env.RYUGI_ARTIFACTS_OWNER);
   const owner = Number.isInteger(given) && given > 1 ? given : ownerPid();
   if (owner) env.RYUGI_ARTIFACTS_OWNER = String(owner);
-  const child = spawn(process.execPath, [cli, ...args], { env, stdio: 'inherit' });
+  const child = spawn(nodeBin(), [cli, ...args], { env, stdio: 'inherit' });
   for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => child.kill(signal));
   child.on('close', (code, signal) => {
     process.exitCode = code ?? (signal ? 1 : 0);
@@ -365,4 +371,4 @@ function run() {
 
 if (require.main === module) run();
 
-module.exports = { npmCommand, run };
+module.exports = { nodeBin, npmCommand, run };

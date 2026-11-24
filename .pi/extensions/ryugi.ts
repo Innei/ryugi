@@ -7,6 +7,12 @@ import { fileURLToPath } from 'node:url';
 
 import type { ExtensionAPI, ExtensionContext } from '@earendil-works/pi-coding-agent';
 
+// `process.execPath` is only a JavaScript runtime under node/bun. omp.exe embeds bun and reports itself,
+// so spawning it with a script path starts a whole new omp session that loads this extension again.
+function nodeBin(): string {
+  return /(^|[\\/])(node|bun)(\.exe)?$/i.test(process.execPath) ? process.execPath : 'node';
+}
+
 const EXTREMELY_IMPORTANT_MARKER = '<EXTREMELY_IMPORTANT>';
 const BOOTSTRAP_MARKER = 'ryugi:using-ryugi bootstrap for pi';
 
@@ -96,7 +102,7 @@ function hookBin(): string | null {
 
 function requestHookInstall() {
   try {
-    spawn(process.execPath, [join(skillsDir, 'artifacts', 'app', 'ryugi.cjs'), 'hook-install'], {
+    spawn(nodeBin(), [join(skillsDir, 'artifacts', 'app', 'ryugi.cjs'), 'hook-install'], {
       detached: true,
       stdio: 'ignore',
     }).unref();

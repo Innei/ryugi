@@ -7,6 +7,13 @@ import path from 'node:path';
 import { createInterface } from 'node:readline';
 import { fileURLToPath } from 'node:url';
 
+// `process.execPath` is only a JavaScript runtime under node/bun. Hosts that embed bun in a compiled
+// binary (omp.exe) report themselves, so spawning it with a script path starts a whole new host session.
+function nodeBin() {
+  return /(^|[\\/])(node|bun)(\.exe)?$/i.test(process.execPath) ? process.execPath : 'node';
+}
+
+
 const UUID = /^[\da-f]{8}(?:-[\da-f]{4}){3}-[\da-f]{12}$/i;
 
 export const name = 'ryugi';
@@ -48,7 +55,7 @@ function hookBin() {
     installRequested = true;
     try {
       spawn(
-        process.execPath,
+        nodeBin(),
         [path.join(skillsRoot, 'artifacts', 'app', 'ryugi.cjs'), 'hook-install'],
         { detached: true, stdio: 'ignore' },
       ).unref();
