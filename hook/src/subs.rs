@@ -308,14 +308,26 @@ fn option<'a>(args: &'a [String], name: &str) -> Option<&'a str> {
     args.iter().find_map(|a| a.strip_prefix(&prefix))
 }
 
+/// Commands that show the calling agent is working on an artifact, so its comments should reach
+/// this session. Not only `start`: a session that resumes or is handed off under a new id picks
+/// the artifact up again with its next check, export or reply instead of leaving comments queued
+/// for the session that ended.
+fn works_on_artifact(args: &[String]) -> bool {
+    match args.first().map(String::as_str) {
+        Some("start" | "check" | "changes" | "storyboard" | "write-document") => true,
+        Some("comment") => matches!(args.get(1).map(String::as_str), Some("reply" | "resolve" | "ack")),
+        _ => false,
+    }
+}
+
 pub fn subscription_for(args: &[String], proof: Option<&str>) -> Result<Option<Value>, String> {
-    let start = args.first().is_some_and(|a| a == "start");
+    let working = works_on_artifact(args);
     let preview_read = args.first().is_some_and(|a| a == "comment") && args.get(1).is_some_and(|a| a == "list" || a == "read");
-    if !start && !preview_read {
+    if !working && !preview_read {
         return Ok(None);
     }
     let Some(artifact) = option(args, "--artifact").filter(|a| crate::channel::valid_artifact(a)) else { return Ok(None) };
-    if preview_read && !artifact.starts_with("preview/") {
+    if !working && !artifact.starts_with("preview/") {
         return Ok(None);
     }
     let Some((host, session, agent)) = identity(proof)? else { return Ok(None) };
@@ -437,6 +449,17 @@ mod tests {
         let p = parse_row("9 8 Tue Nov  3 09:05:00 2026 /bin/zsh -l").unwrap();
         assert_eq!((p.started.as_str(), p.name.as_str()), ("Tue Nov  3 09:05:00 2026", "zsh -l"));
         assert!(parse_row("garbage").is_none());
+    }
+
+    #[test]
+    fn working_on_an_artifact_subscribes_but_reading_it_does_not() {
+        let works = |line: &str| works_on_artifact(&line.split(' ').map(String::from).collect::<Vec<_>>());
+        for line in ["start --artifact a/b", "check --artifact a/b", "storyboard export --artifact a/b", "changes --artifact a/b", "comment reply --artifact a/b", "comment resolve --artifact a/b"] {
+            assert!(works(line), "{line}");
+        }
+        for line in ["get --artifact a/b", "comment list --artifact a/b", "comment read --artifact a/b", "publish --artifact a/b", "stop"] {
+            assert!(!works(line), "{line}");
+        }
     }
 
     #[test]
