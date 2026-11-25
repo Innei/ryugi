@@ -309,8 +309,8 @@ test('a hub event is queued to the hook session rather than an inherited parent 
   assert.equal(args[args.indexOf('--remote') + 1], f.env.RYUGI_CODEX_REMOTE);
   const message = args[args.indexOf('--message') + 1];
   assert.ok(message.includes('document/plan'));
-  assert.ok(message.includes('comment list --section threads --detail --format brief'));
-  assert.ok(message.includes('Change it'));
+  assert.ok(message.includes('\nComment list: document/plan · fake threads'));
+  assert.ok(!message.includes('Run: '));
   await until(() => f.hub.delivered().includes(sent), 'the delivery was never acknowledged');
   assert.equal(f.read().length, 1);
 });
@@ -514,10 +514,8 @@ test('desktop comments retry through the app pipe and acknowledge the hook sessi
   assert.equal(call.hostId, 'local');
   assert.equal(call.arguments.hostId, 'local');
   assert.equal(call.namespace, 'test_desktop');
-  assert.ok(
-    call.arguments.prompt.includes('comment list --section threads --detail --format brief'),
-  );
-  assert.ok(call.arguments.prompt.includes('Change it'));
+  assert.ok(call.arguments.prompt.includes('\nComment list: document/plan · fake threads'));
+  assert.ok(!call.arguments.prompt.includes('Run: '));
   assert.equal(JSON.parse(f.state().receipt).threadId, id);
   assert.equal(f.read().length, 0);
   await until(() => f.hub.delivered().includes(sent), 'the desktop delivery was not acknowledged');

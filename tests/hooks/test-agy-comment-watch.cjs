@@ -190,7 +190,8 @@ test('agy-comment-watch delivers hub events via SendAgentMessage, acknowledges t
   assert.equal(ls.calls[0].csrf, 'test-csrf-token');
   assert.equal(ls.calls[0].body.recipient, SESSION);
   assert.match(ls.calls[0].body.content, /Ryugi comments document\/spec \(1 unread\)/);
-  assert.match(ls.calls[0].body.content, /please clarify this/);
+  assert.match(ls.calls[0].body.content, /\nComment list: document\/spec · fake threads/);
+  assert.doesNotMatch(ls.calls[0].body.content, /Run: /);
   await until(() => f.hub.delivered().includes(sent), 'the delivery was never acknowledged');
   assert.equal(f.hub.hellos()[0].agent, 'Antigravity');
   assert.equal(f.hub.hellos()[0].host, 'antigravity');
@@ -220,7 +221,7 @@ test('agy-comment-watch falls back to SendUserCascadeMessage when SendAgentMessa
     (c) => c.url === '/exa.language_server_pb.LanguageServerService/SendUserCascadeMessage',
   );
   assert.equal(cascadeCall.body.cascadeId, SESSION);
-  assert.match(cascadeCall.body.items[0].text, /check fallback/);
+  assert.match(cascadeCall.body.items[0].text, /Comment list: document\/fallback · fake threads/);
   await until(() => f.hub.delivered().includes(sent), 'the fallback delivery was not acknowledged');
 
   f.stopWatch();
@@ -291,7 +292,7 @@ test('agy-ensure launches a detached watcher and skips respawning while healthy'
     () => ls.calls.length === 1,
     'watcher spawned by ensureWatch did not deliver the event',
   );
-  assert.match(ls.calls[0].body.content, /woken from launcher/);
+  assert.match(ls.calls[0].body.content, /Comment list: document\/launcher · fake threads/);
 
   f.stopWatch();
 });

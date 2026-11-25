@@ -240,6 +240,7 @@ test('custom host config ignores built-in names, invalid entries and repo config
   assert.deepEqual(subscription, {
     host: 't3',
     session: THREAD,
+    agent: 'T3 Code',
     project: f.project,
     artifact: 'document/spec',
   });
@@ -291,7 +292,8 @@ test('cmd-comment-watch delivers hub events via user command, acknowledges queue
   assert.equal(call.payload.project, f.project);
   assert.equal(call.payload.artifact, 'document/spec');
   assert.match(call.payload.wakeMessage, /Ryugi comments document\/spec \(1 unread\)/);
-  assert.match(call.payload.wakeMessage, /please update the schema/);
+  assert.match(call.payload.wakeMessage, /\nComment list: document\/spec · fake threads/);
+  assert.doesNotMatch(call.payload.wakeMessage, /Run: /);
   assert.equal(call.env.RYUGI_HOST, 't3');
   assert.equal(call.env.RYUGI_SESSION, THREAD);
   assert.equal(call.env.RYUGI_ARTIFACT, 'document/spec');
@@ -418,6 +420,7 @@ test('launcher subscribes under custom host, spawns cmd watcher, and suppresses 
   assert.deepEqual(subs[0].body, {
     host: 't3',
     session: THREAD,
+    agent: 'T3 Code',
     project: f.project,
     artifact: 'document/spec',
   });
