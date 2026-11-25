@@ -1,6 +1,6 @@
 {
   "name": "ryugi",
-  "version": "1.108.7",
+  "version": "1.109.1",
   "description": "Ryugi — Interactive Artifacts for Coding Agents: artboards, design docs, whiteboards, HTML benches and verify reports",
   "keywords": [
     "pi-package",
@@ -52,17 +52,17 @@
     "simple-git-hooks": "^2.14.0",
     "typescript": "^6.0.3"
   },
-  "pi": {
+  "omp": {
     "extensions": [
-      "./.pi/extensions/ryugi.ts"
+      "./.omp/extensions/ryugi.ts"
     ],
     "skills": [
       "./skills"
     ]
   },
-  "omp": {
+  "pi": {
     "extensions": [
-      "./.omp/extensions/ryugi.ts"
+      "./.pi/extensions/ryugi.ts"
     ],
     "skills": [
       "./skills"
