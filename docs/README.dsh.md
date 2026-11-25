@@ -7,6 +7,13 @@ Complete guide for using Ryugi with DeepSeek Harness (`dsh`).
 Install the bundled Cordis plugin package (`.dsh/`) into your DSH profile:
 
 ```bash
+dsh plugin --profile <profile> add github:Innei/ryugi#path:.dsh # install the latest version of main branch
+dsh plugin --profile <profile> add github:Innei/ryugi#<tag name|branch name>&path:.dsh # install from a specific branch or tag
+```
+
+Also, you can clone this repo and install the bundle with:
+
+```bash
 dsh plugin --profile <profile> add link:/path/to/ryugi/.dsh
 ```
 

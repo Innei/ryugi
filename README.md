@@ -224,7 +224,7 @@ That is the only flag Ryugi needs; leave the rest of your Claude Code settings a
 | Qwen Code     | `qwen extensions install Innei/ryugi`                                                                 |
 | Hermes Agent  | `hermes plugins install Innei/ryugi --enable`                                                         |
 | Muse          | `muse plugins install ./` then `muse plugins approve ryugi`                                           |
-| DeepSeek Harness | `dsh plugin --profile <profile> add link:/path/to/ryugi/.dsh` ([detail](docs/README.dsh.md))       |
+| DeepSeek Harness | `dsh plugin --profile <profile> add github:Innei/ryugi#path:.dsh` ([detail](docs/README.dsh.md))       |
 
 Updates and caveats: [docs/install.md](docs/install.md).
 
