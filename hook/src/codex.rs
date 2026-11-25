@@ -289,7 +289,7 @@ fn watch(ctx: Ctx, input: &Value, remote: Option<String>) {
     });
     let pusher = queue.clone();
     let on_stop = stop.clone();
-    let (channel, thread) = open(Options::new(ctx.project.clone(), "codex", &ctx.session, "Codex"), move |_, signal| match signal {
+    let (channel, thread) = open(Options::new(ctx.project.clone(), "codex", &ctx.session, &crate::subs::agent_of("codex")), move |_, signal| match signal {
         Signal::Event(event, id) => pusher.push(event, id),
         Signal::Retract(message) => pusher.retract(&message),
         Signal::Replaced => on_stop(),

@@ -17,10 +17,9 @@ pub fn claude(args: &[String]) {
         .map(PathBuf::from)
         .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
     let Some(session) = claude_session() else { return };
-    let cowork = std::env::var("CLAUDE_CODE_IS_COWORK").is_ok_and(|v| !v.is_empty());
-    let agent = if cowork { "Claude Cowork" } else { "Claude Code" };
+    let agent = crate::subs::agent_of("claude");
     crate::sys::exit_on_interrupt();
-    let (_channel, thread) = open(Options::new(project, "claude", &session, agent), |channel, signal| match signal {
+    let (_channel, thread) = open(Options::new(project, "claude", &session, &agent), |channel, signal| match signal {
         Signal::Event(event, id) => {
             let text = crate::wake::wake_message(&event, Some(crate::wake::NOTIFICATION_LIMIT));
             let mut out = std::io::stdout().lock();
@@ -36,14 +35,16 @@ pub fn claude(args: &[String]) {
 }
 
 pub fn pi(args: &[String]) {
-    stdio_watch(args, "pi", false);
+    stdio_watch(args, false);
 }
 
+/// DSH shares the `pi` channel and sets no marker of its own, so its watcher declares it.
 pub fn dsh(args: &[String]) {
-    stdio_watch(args, "dsh", true);
+    std::env::set_var("AI_AGENT", "dsh");
+    stdio_watch(args, true);
 }
 
-fn stdio_watch(args: &[String], agent: &str, needs_artifacts: bool) {
+fn stdio_watch(args: &[String], needs_artifacts: bool) {
     use std::io::BufRead;
     let cwd = args.first().map(PathBuf::from).unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
     let Some(session) = args.get(1).filter(|s| !s.is_empty()).cloned() else { return };
@@ -51,7 +52,11 @@ fn stdio_watch(args: &[String], agent: &str, needs_artifacts: bool) {
     if needs_artifacts && !project.join(".ryugi/artifacts").exists() {
         return;
     }
-    let (channel, thread) = open(Options::new(project, "pi", &session, agent), |_, signal| match signal {
+    // The comment lists this watcher runs for a notification read as this session's agent.
+    std::env::set_var("PI_SESSION_ID", &session);
+    std::env::remove_var("CLAUDE_CODE_SESSION_ID");
+    let agent = crate::subs::agent_of("pi");
+    let (channel, thread) = open(Options::new(project, "pi", &session, &agent), |_, signal| match signal {
         Signal::Event(event, id) => {
             let line = serde_json::json!({
                 "id": id,

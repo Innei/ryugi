@@ -148,7 +148,7 @@ fn watch(ctx: Ctx) {
         move || stop()
     });
     let pusher = queue.clone();
-    let (channel, thread) = open(Options::new(ctx.project.clone(), "antigravity", &ctx.session, "Antigravity"), move |_, signal| match signal {
+    let (channel, thread) = open(Options::new(ctx.project.clone(), "antigravity", &ctx.session, &crate::subs::agent_of("antigravity")), move |_, signal| match signal {
         Signal::Event(event, id) => pusher.push(event, id),
         Signal::Retract(message) => pusher.retract(&message),
         Signal::Replaced => stop(),

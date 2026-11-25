@@ -138,7 +138,7 @@ export function toSessionUuid(sessionId) {
 
 export function dshToolMapping(sessionUuid) {
   const sessionNote = sessionUuid
-    ? `\n\nFor live browser comment delivery back into this DSH session, prefix \`ryugi.cjs start --artifact ...\` commands in \`bash\` with \`PI_SESSION_ID=${sessionUuid}\` (or in \`pwsh\` set \`$env:PI_SESSION_ID="${sessionUuid}"\`).`
+    ? `\n\nFor live browser comment delivery back into this DSH session, prefix every \`ryugi.cjs\` command in \`bash\` with \`AI_AGENT=dsh PI_SESSION_ID=${sessionUuid}\` (or in \`pwsh\` set \`$env:AI_AGENT="dsh"; $env:PI_SESSION_ID="${sessionUuid}"\`).`
     : '';
 
   return `## DeepSeek Harness (DSH) tool mapping

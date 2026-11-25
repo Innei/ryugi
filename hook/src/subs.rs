@@ -239,13 +239,42 @@ fn bound_codex_session(proof: Option<&str>) -> Result<Option<String>, String> {
     Ok(None)
 }
 
-fn identity(proof: Option<&str>) -> Result<Option<(String, String)>, String> {
+/// The one place an agent's name is decided; watchers, subscriptions and the CLI binding all
+/// use it. The host is only the session channel and picks the family; a channel several
+/// harnesses share is told apart by their markers: Claude Code and Claude Cowork use
+/// `claude`, Pi, OMP and DSH use `pi`. A proven host (a bound Codex thread) keeps its own name
+/// whatever markers it inherited from the agent that started it.
+pub fn agent_of(host: &str) -> String {
+    agent_named(host, env)
+}
+
+fn agent_named(host: &str, env: impl Fn(&str) -> Option<String>) -> String {
+    let declared = env("AI_AGENT").and_then(|v| v.trim().split(['@', '_']).next().map(str::to_lowercase));
+    let name = match host {
+        "claude" if env("CLAUDE_CODE_IS_COWORK").is_some() => "Claude Cowork",
+        "claude" => "Claude Code",
+        "codex" => "Codex",
+        "antigravity" => "Antigravity",
+        "pi" => match declared.as_deref() {
+            Some("dsh") => "DeepSeek Harness",
+            Some("omp" | "oh-my-pi") => "OMP",
+            _ if env("OMPCODE").is_some() => "OMP",
+            _ => "Pi",
+        },
+        other => other,
+    };
+    name.to_string()
+}
+
+/// The calling agent's session: (host, session, agent name).
+fn identity(proof: Option<&str>) -> Result<Option<(String, String, String)>, String> {
     if let Some(custom) = crate::hosts::match_custom_host()? {
-        return Ok(Some((custom.host, custom.session)));
+        return Ok(Some((custom.host, custom.session, custom.agent)));
     }
+    let found = |host: &str, session: String| Ok(Some((host.to_string(), session, agent_of(host))));
     if proof.is_some() || session_of("codex").is_some() {
         if let Some(session) = bound_codex_session(proof)? {
-            return Ok(Some(("codex".into(), session)));
+            return found("codex", session);
         }
         if proof.is_some() {
             return Err("Artifact feedback session binding is no longer active.".into());
@@ -253,19 +282,22 @@ fn identity(proof: Option<&str>) -> Result<Option<(String, String)>, String> {
     }
     if env("ANTIGRAVITY_AGENT").is_some() {
         if let Some(s) = session_of("antigravity") {
-            return Ok(Some(("antigravity".into(), s)));
+            return found("antigravity", s);
         }
     }
     let hosts: Vec<(&str, String)> = ["claude", "pi"].iter().filter_map(|h| session_of(h).map(|s| (*h, s))).collect();
     match hosts.len() {
-        1 => return Ok(Some((hosts[0].0.into(), hosts[0].1.clone()))),
+        1 => return found(hosts[0].0, hosts[0].1.clone()),
         n if n > 1 => return Err("Artifact feedback has ambiguous agent session markers.".into()),
         _ => {}
     }
     if session_of("codex").is_some() {
         return Err("Artifact feedback needs a current Codex hook session binding.".into());
     }
-    Ok(session_of("antigravity").map(|s| ("antigravity".into(), s)))
+    match session_of("antigravity") {
+        Some(s) => found("antigravity", s),
+        None => Ok(None),
+    }
 }
 
 fn option<'a>(args: &'a [String], name: &str) -> Option<&'a str> {
@@ -286,10 +318,10 @@ pub fn subscription_for(args: &[String], proof: Option<&str>) -> Result<Option<V
     if preview_read && !artifact.starts_with("preview/") {
         return Ok(None);
     }
-    let Some((host, session)) = identity(proof)? else { return Ok(None) };
+    let Some((host, session, agent)) = identity(proof)? else { return Ok(None) };
     let dir = option(args, "--project-dir").map(PathBuf::from).unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
     let project = crate::paths::project_root(&dir).ok_or_else(|| format!("ENOENT: no such file or directory, realpath '{}'", dir.display()))?;
-    Ok(Some(json!({"host": host, "session": session, "project": project, "artifact": artifact})))
+    Ok(Some(json!({"host": host, "session": session, "agent": agent, "project": project, "artifact": artifact})))
 }
 
 fn report(message: &str) {
@@ -333,7 +365,7 @@ pub fn launch_prepare(args: &[String]) {
         println!("{s}");
     } else if matches!(rest.first().map(String::as_str), Some("comment" | "write-document")) {
         match identity(proof) {
-            Ok(Some((host, session))) => println!("{}", json!({ "host": host, "session": session })),
+            Ok(Some((host, session, agent))) => println!("{}", json!({ "host": host, "session": session, "agent": agent })),
             Err(error) => report(&error),
             Ok(None) => {}
         }
@@ -405,6 +437,22 @@ mod tests {
         let p = parse_row("9 8 Tue Nov  3 09:05:00 2026 /bin/zsh -l").unwrap();
         assert_eq!((p.started.as_str(), p.name.as_str()), ("Tue Nov  3 09:05:00 2026", "zsh -l"));
         assert!(parse_row("garbage").is_none());
+    }
+
+    #[test]
+    fn the_agent_is_named_by_the_harness_not_its_channel() {
+        let name = |host: &str, vars: &[(&str, &str)]| {
+            let vars: Vec<(String, String)> = vars.iter().map(|(k, v)| (k.to_string(), v.to_string())).collect();
+            agent_named(host, |key| vars.iter().find(|(k, _)| k == key).map(|(_, v)| v.clone()))
+        };
+        assert_eq!(name("pi", &[("OMPCODE", "1"), ("CLAUDECODE", "1")]), "OMP");
+        assert_eq!(name("pi", &[("AI_AGENT", "omp@19.2.0")]), "OMP");
+        assert_eq!(name("pi", &[("AI_AGENT", "dsh")]), "DeepSeek Harness");
+        assert_eq!(name("pi", &[]), "Pi");
+        assert_eq!(name("claude", &[("CLAUDE_CODE_IS_COWORK", "1")]), "Claude Cowork");
+        assert_eq!(name("claude", &[("OMPCODE", "1")]), "Claude Code");
+        assert_eq!(name("codex", &[("AI_AGENT", "claude-code_1"), ("CLAUDECODE", "1")]), "Codex");
+        assert_eq!(name("antigravity", &[]), "Antigravity");
     }
 
     #[test]

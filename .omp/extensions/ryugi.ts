@@ -172,7 +172,8 @@ function watchComments(omp: ExtensionAPI, ctx: ExtensionContext, cwd: string, se
 
   const start = (bin: string) => {
     const watcher = spawn(bin, ['watch', 'pi', cwd, session], {
-      env: { ...process.env, RYUGI_PLUGIN_ROOT: packageRoot },
+      // omp marks only the shells it spawns with OMPCODE; the watcher needs it to name the agent OMP, not Pi.
+      env: { ...process.env, OMPCODE: '1', RYUGI_PLUGIN_ROOT: packageRoot },
       stdio: ['pipe', 'pipe', 'ignore'],
     });
     child = watcher;

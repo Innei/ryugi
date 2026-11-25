@@ -195,7 +195,7 @@ test('dsh comment watch runs in ryugi-hook and wakes the session', async (t) => 
   const uuid = mod.toSessionUuid('session-watch-1');
   await until(() => hub.sessions.has(uuid), 'the dsh session never said hello to the hub');
   assert.equal(hub.hellos()[0].host, 'pi');
-  assert.equal(hub.hellos()[0].agent, 'dsh');
+  assert.equal(hub.hellos()[0].agent, 'DeepSeek Harness');
   assert.match(fs.readFileSync(spawned, 'utf8'), new RegExp(`^watch dsh ${root} ${uuid}`));
   hub.send(uuid, {
     t: 'event',

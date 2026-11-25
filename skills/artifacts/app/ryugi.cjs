@@ -371,6 +371,7 @@ function main() {
     process.env.ANTIGRAVITY_CONVERSATION_ID;
   // Only the current hook may bind this CLI process to a writer.
   delete env.RYUGI_WRITER_HOST;
+  delete env.RYUGI_WRITER_AGENT;
   let subscription = null;
   if (hook) {
     const prepared = spawnSync(
@@ -385,7 +386,11 @@ function main() {
     );
     try {
       const binding = prepared.stdout.trim() ? JSON.parse(prepared.stdout) : null;
-      if (binding?.host && binding?.session) env.RYUGI_WRITER_HOST = binding.host;
+      if (binding?.host && binding?.session) {
+        env.RYUGI_WRITER_HOST = binding.host;
+        // The hook names the agent; the CLI uses this name for authorship and read state.
+        if (binding.agent) env.RYUGI_WRITER_AGENT = binding.agent;
+      }
       if (binding?.artifact) subscription = binding;
     } catch {}
   } else if (marked) {
