@@ -220,6 +220,7 @@ That is the only flag Ryugi needs; leave the rest of your Claude Code settings a
 | Kimi Code     | `/plugins install https://github.com/Innei/ryugi`                                                     |
 | OpenCode      | [.opencode/INSTALL.md](.opencode/INSTALL.md)                                                          |
 | Pi            | `pi install git:github.com/Innei/ryugi`                                                               |
+| OMP           | `omp plugin install https://github.com/Innei/ryugi` (or `omp plugin link /path/to/ryugi`)             |
 | Qwen Code     | `qwen extensions install Innei/ryugi`                                                                 |
 | Hermes Agent  | `hermes plugins install Innei/ryugi --enable`                                                         |
 | Muse          | `muse plugins install ./` then `muse plugins approve ryugi`                                           |
