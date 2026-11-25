@@ -262,13 +262,17 @@ fn read_brief(argv: &[Value]) -> String {
     }
 }
 
+/// Every host and every event type come through here: the listing the agent would run next is
+/// inlined whenever the host can take it whole (no cap, or it fits the cap); only otherwise does
+/// the message fall back to the event's own brief and a Run line.
 pub fn wake_message(event: &Value, limit: Option<usize>) -> String {
     let Parts { head, brief, next } = wake_parts(event);
-    if limit.is_none() && truthy(event.get("argv")) && !truthy(event.get("withdrawn")) {
-        if let Some(argv) = event.get("argv").and_then(Value::as_array) {
+    if !truthy(event.get("withdrawn")) {
+        if let Some(argv) = event.get("argv").and_then(Value::as_array).filter(|a| !a.is_empty()) {
             let listed = read_brief(argv);
-            if !listed.is_empty() {
-                return format!("{head}. {next}\n{listed}");
+            let inline = format!("{head}. {next}\n{listed}");
+            if !listed.is_empty() && limit.map_or(true, |limit| ulen(&inline) <= limit) {
+                return inline;
             }
         }
     }

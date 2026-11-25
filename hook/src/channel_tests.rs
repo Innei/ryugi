@@ -216,7 +216,9 @@ fn a_hello_names_the_session_and_events_carry_their_commands() {
     let command = event["command"].as_str().unwrap();
     assert!(command.contains(" comment list --section threads --detail --format brief --project-dir "), "{command}");
     assert!(command.ends_with(" --artifact document/plan"), "{command}");
-    assert!(event.get("argv").is_none());
+    let argv: Vec<&str> = event["argv"].as_array().unwrap().iter().map(|a| a.as_str().unwrap()).collect();
+    assert_eq!(&argv[argv.len() - 2..], ["--artifact", "document/plan"]);
+    assert!(argv.contains(&"threads"));
     hub.send(json!({"t": "event", "id": 8, "event": {"type": "ryugi-answers", "project": s.project, "artifact": "document/plan", "submit": "s1"}}));
     let Signal::Event(event, _) = rx.recv_timeout(Duration::from_secs(5)).unwrap() else { panic!() };
     let argv: Vec<&str> = event["argv"].as_array().unwrap().iter().map(|a| a.as_str().unwrap()).collect();

@@ -262,9 +262,10 @@ test('a hub event wakes the Pi session and is acknowledged once delivered', asyn
   await until(() => sent.length === 1, 'a hub event wakes Pi');
   assert.equal(sent[0].message.customType, 'ryugi-comments');
   assert.deepEqual(sent[0].options, { triggerTurn: true, deliverAs: 'followUp' });
-  assert.match(sent[0].message.content, /artboard\/home/);
-  assert.match(sent[0].message.content, /comment list --section threads --detail --format brief/);
-  assert.match(sent[0].message.content, /Make the header smaller/);
+  // The listing the agent would run next is inlined, so there is no Run line to follow.
+  assert.match(sent[0].message.content, /^Ryugi comments artboard\/home \(1 unread\)\./);
+  assert.match(sent[0].message.content, /\nComment list: artboard\/home · fake threads/);
+  assert.doesNotMatch(sent[0].message.content, /Run:/);
   await until(() => hub.delivered().includes(first), 'the delivery is acknowledged');
 
   hub.event(session, p.root, { type: 'ryugi-choices', round: 'r1', groups: 1, threads: undefined });

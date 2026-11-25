@@ -222,12 +222,9 @@ fn decorate(mut event: Value) -> Value {
     let project = event["project"].as_str().unwrap_or_default().to_string();
     let artifact = event["artifact"].as_str().unwrap_or_default().to_string();
     let section = section_for(&event);
-    let comments = event.get("type").and_then(Value::as_str) == Some("ryugi-comments");
     if let Some(map) = event.as_object_mut() {
         map.insert("command".into(), json!(command(&launcher, &project, &artifact, section)));
-        if !comments {
-            map.insert("argv".into(), json!(list_argv(&launcher, &project, &artifact, section)));
-        }
+        map.insert("argv".into(), json!(list_argv(&launcher, &project, &artifact, section)));
     }
     event
 }
