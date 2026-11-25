@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url';
 // `process.execPath` is only a JavaScript runtime under node/bun. Hosts that embed bun in a compiled
 // binary (omp.exe) report themselves, so spawning it with a script path starts a whole new host session.
 function nodeBin() {
-  return /(^|[\\/])(node|bun)(\.exe)?$/i.test(process.execPath) ? process.execPath : 'node';
+  return /(?:^|[\\/])(?:node|bun)(?:\.exe)?$/i.test(process.execPath) ? process.execPath : 'node';
 }
 
 

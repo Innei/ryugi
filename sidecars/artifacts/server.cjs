@@ -1,6 +1,6 @@
 'use strict';
 
-const crypto = require('node:crypto');
+const { randomBytes, timingSafeEqual } = require('node:crypto');
 const fs = require('node:fs');
 const http = require('node:http');
 const net = require('node:net');
@@ -174,7 +174,7 @@ function isSafeRelativePath(value) {
     value.startsWith('/') &&
     !value.startsWith('//') &&
     !value.includes('\\') &&
-    !/[\u0000-\u001f\u007f]/.test(value)
+    ![...value].some((c) => c.charCodeAt(0) < 0x20 || c.charCodeAt(0) === 0x7f)
   );
 }
 
@@ -182,7 +182,7 @@ function isValidNonce(candidate, expected) {
   if (typeof candidate !== 'string') return false;
   const a = Buffer.from(candidate, 'utf8');
   const b = Buffer.from(expected, 'utf8');
-  return a.length === b.length && crypto.timingSafeEqual(a, b);
+  return a.length === b.length && timingSafeEqual(a, b);
 }
 
 function rewriteSingleCsp(value) {
@@ -279,11 +279,11 @@ function wantsOfflineHtml(req, url) {
 }
 
 function escapeHtmlAttr(value) {
-  return value.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+  return value.replaceAll('&', '&amp;').replaceAll('"', '&quot;');
 }
 
 function safeInlineJson(value) {
-  return JSON.stringify(value).replace(/</g, '\\u003c');
+  return JSON.stringify(value).replaceAll('<', '\\u003c');
 }
 
 function shellHtml({ iframeSrc, listenPort, frameNonce, conversationId }) {
@@ -607,7 +607,7 @@ function buildUpgradeRequest(req, upstreamHostHeader, upstreamOrigin) {
 }
 
 function createSidecarServer({ env = process.env, upstreamCacheTtlMs = 500 } = {}) {
-  const frameNonce = crypto.randomBytes(24).toString('hex');
+  const frameNonce = randomBytes(24).toString('hex');
   const upstreamAgent = new http.Agent({
     keepAlive: true,
     maxSockets: 32,
@@ -999,7 +999,7 @@ if (require.main === module) {
   const server = createSidecarServer({ env: process.env });
   server.listen(port, '127.0.0.1', () => {
     const addr = server.address();
-    console.log(`[sidecar] listening on 127.0.0.1:${addr && typeof addr === 'object' ? addr.port : port}`);
+    console.info(`[sidecar] listening on 127.0.0.1:${addr && typeof addr === 'object' ? addr.port : port}`);
   });
 
   const shutdown = () => {

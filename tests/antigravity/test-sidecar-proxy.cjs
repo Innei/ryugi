@@ -546,7 +546,7 @@ async function testLiveHttpAndWebSocketProxy() {
     );
     const iframeMatch = gatewayShellRes.body.match(/<iframe\s+src="([^"]+)"/);
     assert.ok(iframeMatch, 'gateway shell HTML must render an iframe element');
-    const iframeUrl = new URL(iframeMatch[1].replace(/&amp;/g, '&'));
+    const iframeUrl = new URL(iframeMatch[1].replaceAll('&amp;', '&'));
     assert.equal(
       iframeUrl.origin,
       `http://127.0.0.1:${sidecarPort}`,
@@ -1153,7 +1153,7 @@ async function testEmptyPaneNeverLoadsHubHome() {
         headers: { 'X-Sidecar-Token': 'agy-sidecar-secret' },
       });
       assert.equal(shell.statusCode, 200, 'the pane shell must load');
-      const src = new URL(shell.body.match(/<iframe\s+src="([^"]+)"/)[1].replace(/&amp;/g, '&'));
+      const src = new URL(shell.body.match(/<iframe\s+src="([^"]+)"/)[1].replaceAll('&amp;', '&'));
       assert.equal(src.searchParams.get('to'), null, 'a pane without an artifact must not target the hub home');
       const framed = await httpRequest({ port: sidecarPort, reqPath: `${src.pathname}${src.search}` });
       assert.equal(framed.statusCode, 200, 'the empty pane must load in the frame');
@@ -1204,7 +1204,7 @@ async function main() {
   await testSubscriptionWatcherStream();
   await testEmptyPaneNeverLoadsHubHome();
   testOfflinePageNeverFallsBackToHubHome();
-  console.log('PASS: Antigravity sidecar proxy unit and integration tests');
+  console.info('PASS: Antigravity sidecar proxy unit and integration tests');
 }
 
 main().catch((error) => {

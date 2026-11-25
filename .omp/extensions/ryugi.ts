@@ -11,7 +11,7 @@ import type { ExtensionAPI, ExtensionContext } from '@oh-my-pi/pi-coding-agent';
 // `process.execPath` is only a JavaScript runtime under node/bun. omp.exe embeds bun and reports itself,
 // so spawning it with a script path starts a whole new omp session that loads this extension again.
 export function nodeBin(execPath = process.execPath): string {
-  return /(^|[\\/])(node|bun)(\.exe)?$/i.test(execPath) ? execPath : 'node';
+  return /(?:^|[\\/])(?:node|bun)(?:\.exe)?$/i.test(execPath) ? execPath : 'node';
 }
 
 const UUID = /^[\da-f]{8}(?:-[\da-f]{4}){3}-[\da-f]{12}$/i;

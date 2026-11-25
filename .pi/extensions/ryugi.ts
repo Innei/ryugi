@@ -10,7 +10,7 @@ import type { ExtensionAPI, ExtensionContext } from '@earendil-works/pi-coding-a
 // `process.execPath` is only a JavaScript runtime under node/bun. omp.exe embeds bun and reports itself,
 // so spawning it with a script path starts a whole new omp session that loads this extension again.
 function nodeBin(): string {
-  return /(^|[\\/])(node|bun)(\.exe)?$/i.test(process.execPath) ? process.execPath : 'node';
+  return /(?:^|[\\/])(?:node|bun)(?:\.exe)?$/i.test(process.execPath) ? process.execPath : 'node';
 }
 
 const EXTREMELY_IMPORTANT_MARKER = '<EXTREMELY_IMPORTANT>';

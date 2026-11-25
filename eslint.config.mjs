@@ -8,6 +8,7 @@ export default defineConfig(
       'evals/**',
       'artifacts/bench/zoom/fixture/**',
       '.worktrees/**',
+      'docs/ryugi/skill-evals/**',
       'skills/artifacts/app/viewer/**',
       'skills/artifacts/app/runtime/**',
       'skills/artifacts/app/cli.cjs',
@@ -23,6 +24,13 @@ export default defineConfig(
       'unicorn/number-literal-case': 'off',
       // Its fixer rewrites `.filter().at(-1)` to `findLast`, which the ES2022 lib does not include.
       'unicorn/prefer-array-find': 'off',
+      'unicorn/import-style': 'off',
+      'no-empty': ['warn', { allowEmptyCatch: true }],
     },
+  },
+  {
+    // Pi, OMP and OpenCode load an extension through its default export.
+    files: ['.omp/**', '.pi/**', '.opencode/**'],
+    rules: { 'no-restricted-syntax': 'off' },
   },
 );
