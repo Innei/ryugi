@@ -219,9 +219,6 @@ jobs:
           fi
           pnpm install --frozen-lockfile
           scripts/bump-version.sh "$VERSION"
-          jq -r '.files[].path' .version-bump.json | sort -u | while IFS= read -r file; do
-            pnpm exec prettier --write --ignore-unknown "$file"
-          done
           scripts/bump-version.sh --check
           git add -A
           git config user.name 'github-actions[bot]'

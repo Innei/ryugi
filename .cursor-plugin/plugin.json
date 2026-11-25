@@ -7,7 +7,14 @@
   "displayName": "Ryugi",
   "homepage": "https://github.com/Innei/ryugi",
   "hooks": "./hooks/hooks-cursor.json",
-  "keywords": ["skills", "tdd", "debugging", "collaboration", "best-practices", "workflows"],
+  "keywords": [
+    "skills",
+    "tdd",
+    "debugging",
+    "collaboration",
+    "best-practices",
+    "workflows"
+  ],
   "license": "SEE LICENSE IN LICENSE",
   "name": "ryugi",
   "repository": "https://github.com/Innei/ryugi",

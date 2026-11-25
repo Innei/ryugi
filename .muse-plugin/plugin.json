@@ -47,7 +47,10 @@
       {
         "id": "session-start",
         "event": "SessionStart",
-        "command": ["bash", "hooks/session-start"],
+        "command": [
+          "bash",
+          "hooks/session-start"
+        ],
         "timeoutMs": 5000
       }
     ],

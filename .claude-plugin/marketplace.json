@@ -25,7 +25,10 @@
         "name": "Innei",
         "email": "i@innei.dev"
       },
-      "skills": ["./skills/artifacts", "./skills/interface-craft"]
+      "skills": [
+        "./skills/artifacts",
+        "./skills/interface-craft"
+      ]
     }
   ]
 }

@@ -10,7 +10,11 @@
     "shortDescription": "Skills for coding agents plus the artifacts workbench they design in",
     "longDescription": "Use Ryugi to guide agent work through brainstorming on a live Artboard, design documents and HTML test benches you can comment on, test-driven development, systematic debugging, and isolated worktrees.",
     "developerName": "Innei",
-    "capabilities": ["Interactive", "Read", "Write"],
+    "capabilities": [
+      "Interactive",
+      "Read",
+      "Write"
+    ],
     "websiteURL": "https://github.com/Innei/ryugi"
   },
   "keywords": [

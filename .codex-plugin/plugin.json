@@ -13,7 +13,11 @@
     "longDescription": "Use Ryugi to guide agent work through brainstorming on the Artboard, documents and HTML pages you can comment on, building an approved spec inline under test-driven development, systematic debugging, and isolated worktrees.",
     "developerName": "Innei",
     "category": "Developer Tools",
-    "capabilities": ["Interactive", "Read", "Write"],
+    "capabilities": [
+      "Interactive",
+      "Read",
+      "Write"
+    ],
     "defaultPrompt": [
       "I've got an idea for something I'd like to build.",
       "Let's add a feature to this project."

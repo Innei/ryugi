@@ -20,7 +20,6 @@ export default defineConfig(
   },
   {
     rules: {
-      // Prettier lowercases hex digits while unicorn's fixer uppercases them.
       'unicorn/number-literal-case': 'off',
       // Its fixer rewrites `.filter().at(-1)` to `findLast`, which the ES2022 lib does not include.
       'unicorn/prefer-array-find': 'off',
