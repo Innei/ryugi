@@ -181,7 +181,7 @@ same way.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/images/library-dark.webp">
-  <img src="docs/images/library-light.webp" alt="The artifact library for one project: type filters, search, and cards for an artboard, a document, a whiteboard and an HTML bench">
+  <img src="docs/images/library-light.webp" alt="The artifact library: a sidebar of projects, and for one project type filters, search and thumbnail cards for a slide deck, a whiteboard, an artboard, a document and an HTML bench">
 </picture>
 
 ```bash
