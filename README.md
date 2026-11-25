@@ -7,7 +7,7 @@
 
 <p align="center"><i>ryoo-ghee</i> · [ɾʲɯːɡʲi] · Japanese for “a school's own way of doing things”</p>
 
-<p align="center"><b>Interactive artboards, design docs, whiteboards, HTML benches, slides and verify reports for coding agents.</b><br>Your agent draws its options instead of describing them in Markdown. Pick, comment and send feedback straight back to your agent session.</p>
+<p align="center"><b>Interactive artboards, design docs, whiteboards, HTML benches, slides, data reports, video storyboards and verify reports for coding agents.</b><br>Your agent draws its options instead of describing them in Markdown. Pick, comment and send feedback straight back to your agent session.</p>
 
 <p align="center">
   <img src="docs/images/hero.webp" alt="A terminal asks Claude Code to mock up notification settings; three layouts stream onto the Ryugi artboard, the user picks the recommended one and submits, the terminal receives q1 → b, and the built page appears next to the approved design, where the user presses Pass">
@@ -24,6 +24,10 @@ Ryugi gives the agent pages to put that work on, and gives you a way to answer o
 - **HTML** — one page with real sliders to tune a component or a motion.
 - **Slides** — a deck the agent writes and you present, with your notes on a second screen; fix
   any slide by hand.
+- **Report** — charts and tables drawn from scripts that read your real data; refresh for new
+  numbers.
+- **Storyboard** — a demo video planned shot by shot with its voiceover, then cut on a multitrack
+  timeline and exported.
 - **Verify** — the built screen next to what you approved, and a report of what the agent proved
   by running it; pass or reject.
 
@@ -33,6 +37,12 @@ share it.
 
 ```bash
 npx ryugi-artifacts install
+```
+
+Having your agent install it? Paste this so it asks before choosing for you:
+
+```text
+Install Ryugi from https://github.com/Innei/ryugi. Follow "Installing with an AI agent" in its README, and ask me which install I want before you run anything.
 ```
 
 <p align="center"><sub>Works with Claude Code · Codex · Cursor · Gemini CLI · OpenCode · Copilot CLI · Pi · Antigravity · Kimi Code · Qwen Code · Devin · Droid</sub></p>
@@ -110,6 +120,33 @@ A one-page bench whose sliders keep their values when the agent rewrites the pag
 The agent writes the deck and it follows your light or dark look. Present it full screen, or in
 presenter mode with your notes and the next slide on your screen and the audience on another. Click
 a slide to fix a word, restyle or move a block yourself, or pin a comment for the agent.
+
+## Report — numbers from your real data
+
+**Use it when** the answer is numbers: commits per week, bundle size across releases, a benchmark.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/report-dark.webp">
+  <img src="docs/images/report-light.webp" alt="A report on Ryugi's growth: stat cards for npm downloads, releases and commits, then a star trend section with a Window slider set to 36 days over a Total stars line chart">
+</picture>
+
+Each data source is a script in the report's folder that prints JSON. The page draws stats, tables
+and charts from it, with sliders and toggles to slice the data. Refresh reruns the scripts on your
+machine, and a comment can point at one row or one point on a chart.
+
+## Storyboard — plan and cut a demo video
+
+**Use it when** you are making a product video: a launch film, a tutorial, a feature demo.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/storyboard-dark.webp">
+  <img src="docs/images/storyboard-light.webp" alt="The storyboard editor for a nine-shot launch video: the shot list on the left, the monitor playing the first shot with its caption, and a multitrack timeline with captions, overlay, picture, voice, music and effects tracks">
+</picture>
+
+The agent writes the shots in order, what happens on screen and the voiceover, and the page plays it
+back with captions before anything is recorded. Then you cut it in the editor — a monitor, a bin
+and a multitrack timeline for captions, overlays, picture, voice, music and effects — trimming,
+splitting, reordering and adding transitions, and export the result.
 
 ## Verify — you pass or reject
 
@@ -229,6 +266,45 @@ That is the only flag Ryugi needs; leave the rest of your Claude Code settings a
 Updates and caveats: [docs/install.md](docs/install.md).
 
 </details>
+
+## Installing with an AI agent
+
+This section is for the agent doing the install.
+
+1. **Ask which install they want and wait for the answer.** Don't choose for them, and don't
+   assume the full workflow: many people want only the artifacts.
+   - **Artifacts only** (`--mode artifacts`): artboards, documents, whiteboards, HTML benches,
+     slides, reports, storyboards and verify pages, with comments going back to the agent. The agent
+     opens one when asked, or when a picture decides faster than text. How it plans and writes code
+     stays the same.
+   - **Full workflow** (`--mode full`): the artifacts, plus skills that run every task as
+     brainstorm → spec → build under TDD → verify, with debugging and worktrees. They start on their
+     own: "Let's make a react todo list" opens a brainstorm and an artboard before any code.
+
+   If they are unsure, suggest Artifacts only; switching later is the same command with the other
+   mode.
+
+2. **Pick the harness**: the one you are running in, unless they name others. Targets:
+   `claude-code`, `codex`, `cursor`, `gemini`, `opencode`, `pi`, `copilot`, `agy`, comma-separated;
+   `none` installs only the `ryugi` command.
+3. **Check Node.js 20.12 or newer** with `node --version`.
+4. **Run the installer with explicit choices.** The wizard needs an interactive terminal, so pass
+   both flags and `--yes`:
+
+   ```bash
+   npx ryugi-artifacts install --mode artifacts --harness claude-code --yes
+   ```
+
+5. **Check it** with `ryugi doctor`. If `ryugi` isn't on PATH yet, pass on the PATH instructions
+   the installer printed.
+6. **Tell them what is left**: start a new session of the harness. In Codex, trust Ryugi's hooks
+   in `/hooks`. In Claude Code, offer to add `"disableArtifact": true` to
+   `~/.claude/settings.json` ([why](#claude-code-settings)); change that file only if they agree,
+   and keep their other settings.
+
+Devin, Droid, Kimi Code, Qwen Code, Hermes Agent, Muse, DeepSeek Harness and OMP are not installer
+targets. Their plugin commands in [Other harnesses](#work-with-your-harness) install the full
+workflow, with no Artifacts-only option; say so and let them choose before you run one.
 
 ## Credits
 
