@@ -313,6 +313,20 @@ dsh plugin --profile <profile> add link:/path/to/ryugi/.dsh
 
 Add `"dsh-plugin-ryugi"` to `dsh.profile.bundles` in `~/.dsh/profiles/<profile>/package.json`, then restart or reload DeepSeek Harness. The bundled Cordis plugin (`.dsh/`) registers all Ryugi skills with DSH's native `skill` service (`ryugi-<name>` kebab-case), injects `using-ryugi` + `references/dsh-tools.md` as a deduplicated, compaction-aware user message on `agent/pre-step`, and delivers browser comments and choice submissions back to active sessions via `agent.followup` / `agent.inject`. Full guide: [README.dsh.md](README.dsh.md).
 
+## OMP (Oh My Pi)
+
+```bash
+omp plugin install https://github.com/Innei/ryugi
+```
+
+For a local checkout:
+
+```bash
+omp plugin link /path/to/ryugi
+```
+
+Start a fresh OMP session after installing or updating. The package declares `"omp"` in `package.json`, exposing `skills/` and `.omp/extensions/ryugi.ts`, which injects `using-ryugi` + OMP tool mapping on `context` (with deduplication and post-compaction re-injection) and runs `ryugi-hook watch pi` to deliver browser comments and choice submissions directly to the active session. Full guide: [README.omp.md](README.omp.md).
+
 ## Writing a new integration
 
 See [porting-to-a-new-harness.md](porting-to-a-new-harness.md).
