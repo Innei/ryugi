@@ -331,6 +331,12 @@ pub fn launch_prepare(args: &[String]) {
     }
     if let Some(s) = subscription {
         println!("{s}");
+    } else if matches!(rest.first().map(String::as_str), Some("comment" | "write-document")) {
+        match identity(proof) {
+            Ok(Some((host, session))) => println!("{}", json!({ "host": host, "session": session })),
+            Err(error) => report(&error),
+            Ok(None) => {}
+        }
     }
 }
 
