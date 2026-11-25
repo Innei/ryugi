@@ -278,6 +278,17 @@ JSON
 out="$(run_hook "$dir" "继续")"
 expect "reminds about a storyboard with unread comments" "$out" 'storyboard/launch (1)'
 
+dir="$(project report-comments)"
+mkdir -p "$dir/.ryugi/artifacts/report/commits"
+cat > "$dir/.ryugi/artifacts/report/commits/comments.json" << 'JSON'
+{ "version": 1, "threads": [
+  { "id": "r1", "anchor": { "block": "days", "row": "Nov 2" }, "status": "open", "statusAt": "2026-11-25T08:00:00.000Z", "statusBy": "human",
+    "messages": [{ "id": "m1", "author": "human", "text": "is this a holiday", "at": "2026-11-25T08:00:00.000Z" }] }
+] }
+JSON
+out="$(run_hook "$dir" "继续")"
+expect "reminds about a report with unread comments" "$out" 'report/commits (1)'
+
 if grep -q '"UserPromptSubmit"' "$REPO_ROOT/hooks/hooks.json"; then pass "is registered in hooks.json"; else fail "is registered in hooks.json"; fi
 
 echo "Antigravity PreInvocation"

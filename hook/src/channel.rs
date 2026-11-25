@@ -91,7 +91,7 @@ fn safe_socket_dir(socket: &Path) -> bool {
 
 pub fn valid_artifact(artifact: &str) -> bool {
     let Some((kind, id)) = artifact.split_once('/') else { return false };
-    ["document", "artboard", "whiteboard", "slides", "storyboard", "preview"].contains(&kind)
+    ["document", "artboard", "whiteboard", "slides", "storyboard", "report", "preview"].contains(&kind)
         && id.bytes().next().is_some_and(|b| b.is_ascii_lowercase() || b.is_ascii_digit())
         && id.bytes().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-')
 }

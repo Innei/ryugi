@@ -246,7 +246,7 @@ fn open_unread(file: &Value, consumed: &[String]) -> Option<usize> {
 
 fn comment_reminders(project: &str, root: &Path, key: &str, launcher: &str, mine: &Mine) -> String {
     let mut waiting: Vec<(String, usize)> = Vec::new();
-    for kind in ["document", "artboard", "whiteboard", "slides", "storyboard"] {
+    for kind in ["document", "artboard", "whiteboard", "slides", "storyboard", "report"] {
         for id in sorted_dir(&root.join(kind)) {
             if !mine.has(&format!("{kind}/{id}")) {
                 continue;

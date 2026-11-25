@@ -8,7 +8,7 @@ const os = require('node:os');
 const path = require('node:path');
 
 const UUID = /^[\da-f]{8}(?:-[\da-f]{4}){3}-[\da-f]{12}$/i;
-const ARTIFACT = /^(?:document|artboard|whiteboard|slides|storyboard)\/[a-z0-9][a-z0-9-]*$/;
+const ARTIFACT = /^(?:document|artboard|whiteboard|slides|storyboard|report)\/[a-z0-9][a-z0-9-]*$/;
 const ARTIFACT_ID = /^[\w-]{8,64}$/;
 const LOOPBACK_HOSTS = new Set(['127.0.0.1', 'localhost', '::1']);
 const FRAME_ANCESTORS = 'frame-ancestors plugin: http://127.0.0.1:* http://localhost:*';
