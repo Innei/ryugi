@@ -160,3 +160,42 @@ test('the ryugi-artifacts.cjs alias runs the ryugi launcher', (t) => {
     `node "${path.join(fs.realpathSync(f.app), 'ryugi.cjs')}"`,
   );
 });
+
+test('a local build is versioned by everything the hub runs, so changing any part replaces the hub', (t) => {
+  const f = setup(t);
+  fs.writeFileSync(
+    path.join(f.app, 'cli.cjs'),
+    'process.stdout.write(JSON.stringify({schema:"ryugi.cli/v1",command:process.argv.includes("--version")?"version":"get",outcome:"success",data:{version:process.env.RYUGI_ARTIFACTS_VERSION,capabilities:["reviewBundlesV1"]}}))',
+  );
+  const daemon = process.platform === 'win32' ? 'ryugi-daemon.exe' : 'ryugi-daemon';
+  for (const file of ['document-engine.cjs', 'loro_wasm_bg.wasm', daemon])
+    fs.writeFileSync(path.join(f.app, file), file);
+  fs.mkdirSync(path.join(f.app, 'viewer', 'assets'), { recursive: true });
+  fs.writeFileSync(path.join(f.app, 'viewer', 'assets', 'index.js'), 'viewer');
+  fs.mkdirSync(path.join(f.app, 'runtime'));
+  fs.writeFileSync(path.join(f.app, 'runtime', 'ryugi-ui.js'), 'runtime');
+  const version = () => {
+    const out = spawnSync(
+      process.execPath,
+      [path.join(f.app, 'ryugi.cjs'), 'get', 'cloud', '--format', 'json'],
+      { env: f.env, encoding: 'utf8' },
+    );
+    assert.equal(out.status, 0, out.stderr);
+    return JSON.parse(out.stdout).data.version;
+  };
+  const seen = [version()];
+  assert.match(seen[0], /^local-[0-9a-f]{12}$/);
+  assert.equal(version(), seen[0]);
+  for (const [file, text] of [
+    ['document-engine.cjs', 'engine changed'],
+    ['loro_wasm_bg.wasm', 'wasm changed'],
+    [daemon, 'hub changed'],
+    ['viewer/assets/index.js', 'viewer changed'],
+    ['runtime/ryugi-ui.js', 'runtime changed'],
+  ]) {
+    fs.writeFileSync(path.join(f.app, file), text);
+    const next = version();
+    assert.ok(!seen.includes(next), `${file} did not change the local version`);
+    seen.push(next);
+  }
+});

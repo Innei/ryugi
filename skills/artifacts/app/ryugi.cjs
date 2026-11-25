@@ -67,16 +67,43 @@ function requireOutputProtocol(cli) {
     );
 }
 
-// The local checkout has no release version. Fingerprint the code that affects
-// the running server so start replaces an older process instead of reusing it.
+const LOCAL_FILES = [
+  'cli.cjs',
+  'document-engine.cjs',
+  'loro_wasm_bg.wasm',
+  win32 ? 'ryugi-daemon.exe' : 'ryugi-daemon',
+];
+const LOCAL_DIRS = ['viewer', 'runtime'];
+
+function treeOf(dir) {
+  let names = [];
+  try {
+    names = fs.readdirSync(dir, { recursive: true }).map(String).sort();
+  } catch {}
+  return names.flatMap((name) => {
+    try {
+      const stat = fs.statSync(path.join(dir, name));
+      return stat.isFile() ? [`${name}\0${stat.size}\0${stat.mtimeMs}\0`] : [];
+    } catch {
+      return [];
+    }
+  });
+}
+
+// The local checkout has no release version. Fingerprint everything the hub runs (the CLI, the
+// Rust hub, the document engine and the viewer and runtime it serves) so start replaces an older
+// hub instead of reusing it. The served trees are fingerprinted by size and mtime, not content,
+// because the launcher runs on every command.
 function localVersion() {
   const hash = nodeCrypto.createHash('sha256');
-  for (const name of ['cli.cjs', 'server.cjs']) {
+  for (const name of LOCAL_FILES) {
     try {
       hash.update(`${name}\0`);
       hash.update(fs.readFileSync(path.join(__dirname, name)));
     } catch {}
   }
+  for (const dir of LOCAL_DIRS)
+    for (const entry of treeOf(path.join(__dirname, dir))) hash.update(`${dir}/${entry}`);
   return `local-${hash.digest('hex').slice(0, 12)}`;
 }
 

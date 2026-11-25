@@ -40,7 +40,6 @@ permissions:
 
 env:
   CLOUD_REPO: ryugi-dev/ryugi-cloud
-  ASSET: ryugi-daemon-darwin-arm64
   UPLOAD: ${{ inputs.upload }}
 
 jobs:
@@ -77,7 +76,7 @@ jobs:
             [[ "$tag" != "v$VERSION" ]] || continue
             [[ "$(gh release download "$tag" -R "$GITHUB_REPOSITORY" -p ryugi-daemon.source -O - 2> /dev/null)" == "$source" ]] || continue
             count="$(gh release view "$tag" -R "$GITHUB_REPOSITORY" --json assets --jq '[.assets[].name | select(startswith("ryugi-daemon-"))] | length')"
-            if [[ "$count" -eq 6 ]]; then
+            if [[ "$count" -eq 10 ]]; then
               echo "::notice::daemon source $source is unchanged since $tag; reusing its binaries"
               echo "from=$tag" >> "$GITHUB_OUTPUT"
               exit 0
@@ -89,7 +88,12 @@ jobs:
     if: needs.plan.outputs.from != ''
     strategy:
       matrix:
-        asset: [ryugi-daemon-darwin-arm64, ryugi-daemon-linux-x64, ryugi-daemon-linux-arm64]
+        asset:
+          - ryugi-daemon-darwin-arm64
+          - ryugi-daemon-darwin-x64
+          - ryugi-daemon-linux-x64
+          - ryugi-daemon-linux-arm64
+          - ryugi-daemon-win32-x64.exe
     runs-on: ubuntu-latest
     steps:
       - name: Take the binary from ${{ needs.plan.outputs.from }}
@@ -118,7 +122,7 @@ jobs:
           retention-days: 3
 
   mark:
-    needs: [plan, reuse, daemon, linux]
+    needs: [plan, reuse, daemon, linux, windows]
     if: always() && inputs.upload && needs.plan.outputs.source != '' && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
     runs-on: ubuntu-latest
     steps:
@@ -134,8 +138,18 @@ jobs:
   daemon:
     needs: plan
     if: needs.plan.outputs.from == ''
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: aarch64-apple-darwin
+            asset: ryugi-daemon-darwin-arm64
+          - target: x86_64-apple-darwin
+            asset: ryugi-daemon-darwin-x64
     runs-on: macos-latest
     timeout-minutes: 45
+    env:
+      ASSET: ${{ matrix.asset }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -150,15 +164,16 @@ jobs:
           brew install zig@0.15
           echo "$(brew --prefix zig@0.15)/bin" >> "$GITHUB_PATH"
 
-      - name: Add the Apple silicon target
-        run: rustup target add aarch64-apple-darwin
+      - name: Add the ${{ matrix.target }} target
+        run: rustup target add ${{ matrix.target }}
 
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: daemon -> target
+          key: ${{ matrix.target }}
 
-      - name: Build ryugi-daemon for Apple silicon
-        run: scripts/build-daemon.sh daemon-dist
+      - name: Build ryugi-daemon for ${{ matrix.target }}
+        run: scripts/build-daemon.sh daemon-dist ${{ matrix.target }}
 
       - name: Import the Developer ID certificate into a throwaway keychain
         id: keychain
@@ -308,4 +323,55 @@ jobs:
         with:
           name: ${{ matrix.asset }}
           path: daemon-dist/${{ matrix.asset }}*
+          retention-days: 3
+
+  windows:
+    needs: plan
+    if: needs.plan.outputs.from == ''
+    runs-on: windows-latest
+    timeout-minutes: 30
+    env:
+      ASSET: ryugi-daemon-win32-x64.exe
+    defaults:
+      run:
+        shell: bash
+    steps:
+      # Bash would read the CRLF line endings Windows checkouts get by default as part of each command.
+      - run: git config --global core.autocrlf false
+
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ env.CLOUD_REPO }}
+          ref: artifacts-v${{ inputs.version }}
+          token: ${{ secrets.RYUGI_CLOUD_TOKEN }}
+          persist-credentials: false
+
+      - name: Add the MSVC target
+        run: rustup target add x86_64-pc-windows-msvc
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: daemon -> target
+
+      - name: Build ryugi-daemon for Windows
+        run: scripts/build-daemon.sh daemon-dist x86_64-pc-windows-msvc
+
+      - name: Check it reports the release version
+        env:
+          VERSION: ${{ inputs.version }}
+        run: '"daemon-dist/$ASSET" --version | tee /dev/stderr | grep -q "^ryugi-daemon $VERSION "'
+
+      - name: Attach the binary to the release
+        if: env.UPLOAD == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+        run: gh release upload "v$VERSION" "daemon-dist/$ASSET" "daemon-dist/$ASSET.sha256" --clobber -R "$GITHUB_REPOSITORY"
+
+      - name: Keep the binary for the release upload
+        if: env.UPLOAD != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.ASSET }}
+          path: daemon-dist/${{ env.ASSET }}*
           retention-days: 3

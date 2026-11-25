@@ -25,8 +25,11 @@ __pycache__/
 *.pyo
 .pytest_cache/
 
-# Local builds of the artifacts CLI, server and viewer; the skill's launcher otherwise installs the newest npm release. The viewer is a symlink to a local build, so it is ignored without a trailing slash.
-skills/artifacts/app/server.cjs
+# Local builds of the artifacts CLI, the Rust hub, its document engine and the viewer; the skill's launcher otherwise installs the newest npm release. The viewer is a symlink to a local build, so it is ignored without a trailing slash.
+skills/artifacts/app/cli.cjs
+skills/artifacts/app/document-engine.cjs
+skills/artifacts/app/loro_wasm_bg.wasm
+skills/artifacts/app/ryugi-daemon
+skills/artifacts/app/ryugi-daemon.exe
 skills/artifacts/app/viewer
 skills/artifacts/app/runtime/
-skills/artifacts/app/cli.cjs

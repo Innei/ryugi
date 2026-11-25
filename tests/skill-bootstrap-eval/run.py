@@ -214,7 +214,10 @@ def make_plugin(repo, root, arm, router_file=None, baseline_rev=BASELINE_REV):
     shutil.copy2(repo / ".claude-plugin/plugin.json", plugin / ".claude-plugin/plugin.json")
     shutil.copytree(
         repo / "skills", plugin / "skills",
-        ignore=shutil.ignore_patterns("node_modules", "viewer", "runtime", "cli.cjs", "server.cjs"),
+        ignore=shutil.ignore_patterns(
+            "node_modules", "viewer", "runtime", "cli.cjs", "document-engine.cjs",
+            "loro_wasm_bg.wasm", "ryugi-daemon", "ryugi-daemon.exe",
+        ),
     )
     if arm == "absent":
         shutil.rmtree(plugin / "skills/using-ryugi")

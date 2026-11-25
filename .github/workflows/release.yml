@@ -50,7 +50,10 @@ jobs:
       upload: false
     secrets: inherit
 
+  # Waits for the ryugi-daemon binaries: they go onto a draft release before npm or the plugin
+  # moves, because a CLI that cannot download its hub cannot start one.
   release:
+    needs: [version, daemon]
     runs-on: ubuntu-latest
     timeout-minutes: 75
     outputs:
@@ -112,6 +115,12 @@ jobs:
         with:
           node-version: 22
 
+      # The suite's global setup cargo-builds ryugi-daemon, whose libghostty-vt needs Zig.
+      - uses: mlugg/setup-zig@v2
+        if: steps.release.outputs.publish == 'true'
+        with:
+          version: 0.15.2
+
       - working-directory: ryugi-cloud
         timeout-minutes: 5
         run: pnpm install --frozen-lockfile
@@ -166,6 +175,27 @@ jobs:
         working-directory: ryugi
         run: cargo test --locked --manifest-path hook/Cargo.toml
 
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: ryugi-daemon-*
+          path: daemon-dist
+          merge-multiple: true
+
+      - name: Attach the ryugi-daemon binaries to a draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.release.outputs.version }}
+          SOURCE: ${{ needs.daemon.outputs.source }}
+        run: |
+          ls -l daemon-dist
+          [[ "$(find daemon-dist -type f | wc -l)" -eq 10 ]]
+          [[ -z "$SOURCE" ]] || echo "$SOURCE" > daemon-dist/ryugi-daemon.source
+          if ! gh release view "v$VERSION" -R "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            gh release create "v$VERSION" -R "$GITHUB_REPOSITORY" --draft --target "$GITHUB_REF_NAME" \
+              --title "v$VERSION" --notes "Release in progress."
+          fi
+          gh release upload "v$VERSION" daemon-dist/* --clobber -R "$GITHUB_REPOSITORY"
+
       - name: Publish ryugi-artifacts to npm
         if: steps.release.outputs.publish == 'true'
         working-directory: ryugi-cloud/packages/artifacts
@@ -200,7 +230,7 @@ jobs:
           git tag "v$VERSION"
           git push --atomic origin "HEAD:${GITHUB_REF_NAME}" "v$VERSION"
 
-      - name: Create GitHub Release
+      - name: Write the release notes
         working-directory: ryugi
         env:
           GH_TOKEN: ${{ github.token }}
@@ -212,11 +242,7 @@ jobs:
           RELEASE_NOTES_MODEL: ${{ vars.RELEASE_NOTES_MODEL }}
         run: |
           node scripts/release-notes.mjs --tag "v$VERSION" --cloud ../ryugi-cloud --ai > /tmp/release-notes.md
-          if gh release view "v$VERSION" > /dev/null 2>&1; then
-            gh release edit "v$VERSION" --notes-file /tmp/release-notes.md
-          else
-            gh release create "v$VERSION" --verify-tag --notes-file /tmp/release-notes.md
-          fi
+          gh release edit "v$VERSION" --notes-file /tmp/release-notes.md
 
   hook-guard:
     needs: [release, hook]
@@ -283,23 +309,30 @@ jobs:
       upload: false
     secrets: inherit
 
-  daemon-upload:
-    needs: [release, daemon]
+  # The draft becomes the public release only once every binary is on it: a public release is
+  # what `ryugi start` and `ryugi hook install` download from.
+  publish:
+    needs: [daemon, release, hook-upload, hook-rebuild]
+    if: always() && needs.release.result == 'success' && (needs.hook-upload.result == 'success' || needs.hook-rebuild.result == 'success')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v4
-        with:
-          pattern: ryugi-daemon-*
-          path: daemon-dist
-          merge-multiple: true
-
-      - name: Attach the binaries to the release
+      - name: Check every asset is on the release, then make it public
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ needs.release.outputs.version }}
           SOURCE: ${{ needs.daemon.outputs.source }}
         run: |
-          ls -l daemon-dist
-          [[ "$(find daemon-dist -type f | wc -l)" -eq 6 ]]
-          [[ -z "$SOURCE" ]] || echo "$SOURCE" > daemon-dist/ryugi-daemon.source
-          gh release upload "v$VERSION" daemon-dist/* --clobber -R "$GITHUB_REPOSITORY"
+          gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/v$VERSION" --jq .ref
+          assets="$(gh release view "v$VERSION" -R "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name')"
+          echo "$assets"
+          daemon="$(grep -c '^ryugi-daemon-' <<< "$assets" || true)"
+          hook="$(grep -c '^ryugi-hook-' <<< "$assets" || true)"
+          if [[ "$daemon" -ne 10 || "$hook" -ne 6 ]]; then
+            echo "::error::v$VERSION has $daemon ryugi-daemon and $hook ryugi-hook assets; it needs 10 and 6"
+            exit 1
+          fi
+          if [[ -n "$SOURCE" ]] && ! grep -qx 'ryugi-daemon.source' <<< "$assets"; then
+            echo "::error::v$VERSION has no ryugi-daemon.source"
+            exit 1
+          fi
+          gh release edit "v$VERSION" -R "$GITHUB_REPOSITORY" --draft=false --latest
