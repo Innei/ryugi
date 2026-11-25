@@ -359,7 +359,11 @@ jobs:
       - name: Check it reports the release version
         env:
           VERSION: ${{ inputs.version }}
-        run: '"daemon-dist/$ASSET" --version | tee /dev/stderr | grep -q "^ryugi-daemon $VERSION "'
+        # Git Bash on the Windows runner has no /dev/stderr to tee into.
+        run: |
+          reported="$("daemon-dist/$ASSET" --version)"
+          echo "$reported"
+          grep -q "^ryugi-daemon $VERSION " <<< "$reported"
 
       - name: Attach the binary to the release
         if: env.UPLOAD == 'true'
