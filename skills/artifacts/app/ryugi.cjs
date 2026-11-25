@@ -25,6 +25,7 @@ const RELEASES = path.join(
 const LATEST_FILE = path.join(RELEASES, 'latest.json');
 const PLUGIN_ROOT = path.join(__dirname, '..', '..', '..');
 const HOOK_HOME = path.join(os.homedir(), '.ryugi', 'hook');
+const DEV_LINK = process.env.RYUGI_DEV_LINK || path.join(os.homedir(), '.ryugi', 'dev.json');
 const win32 = process.platform === 'win32';
 
 const valid = (v) => /^\d+\.\d+\.\d+(?:[-+][0-9A-Z.-]+)?$/i.test(v || '');
@@ -105,6 +106,22 @@ function localVersion() {
   for (const dir of LOCAL_DIRS)
     for (const entry of treeOf(path.join(__dirname, dir))) hash.update(`${dir}/${entry}`);
   return `local-${hash.digest('hex').slice(0, 12)}`;
+}
+
+// `ryugi dev link` points every launcher on the machine, whichever plugin copy holds it, at one
+// frozen local build.
+function devLink() {
+  try {
+    const link = JSON.parse(fs.readFileSync(DEV_LINK, 'utf8'));
+    if (
+      typeof link.build === 'string' &&
+      typeof link.plugin === 'string' &&
+      typeof link.version === 'string' &&
+      fs.existsSync(path.join(link.build, 'cli.cjs'))
+    )
+      return link;
+  } catch {}
+  return null;
 }
 
 class LaunchError extends Error {}
@@ -272,6 +289,9 @@ const executable = (file) => {
 function hookBin() {
   if (process.env.RYUGI_HOOK_BIN)
     return executable(process.env.RYUGI_HOOK_BIN) ? process.env.RYUGI_HOOK_BIN : null;
+  const dev = devLink();
+  const linked = dev && path.join(dev.plugin, 'hook', 'target', 'release', 'ryugi-hook');
+  if (linked && executable(linked)) return linked;
   const local = path.join(PLUGIN_ROOT, 'hook', 'target', 'release', 'ryugi-hook');
   if (executable(local)) return local;
   const version = pluginVersion();
@@ -330,7 +350,11 @@ function main() {
     RYUGI_ARTIFACTS_COMMAND: `node "${__filename}"${sessionProof ? ` --ryugi-session ${sessionProof}` : ''}`,
   };
   let cli = local;
-  if (!fs.existsSync(local)) {
+  const dev = devLink();
+  if (dev) {
+    cli = path.join(dev.build, 'cli.cjs');
+    env.RYUGI_ARTIFACTS_VERSION = dev.version;
+  } else if (!fs.existsSync(local)) {
     const version = resolveRelease();
     cli = cliOf(version);
     env.RYUGI_ARTIFACTS_VERSION = version;

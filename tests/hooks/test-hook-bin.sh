@@ -85,6 +85,28 @@ if command -v zsh > /dev/null 2>&1; then
   if [ "$out" = "$cached" ]; then pass "finds the binary under zsh"; else fail "finds the binary under zsh ($out)"; fi
 fi
 
+dev_plugin="$TEST_ROOT/dev plugin"
+dev_build="$dev_plugin/hook/target/release/ryugi-hook"
+make_exe "$dev_build"
+make_exe "$local_build"
+mkdir -p "$TEST_ROOT/home/.ryugi"
+printf '{\n  "build": "/nowhere",\n  "plugin": "%s",\n  "version": "local-000000000000",\n  "linkedAt": "2026-11-25T00:00:00.000Z"\n}\n' "$dev_plugin" > "$TEST_ROOT/home/.ryugi/dev.json"
+out="$(resolve "$plugin")"
+if [ "$out" = "$dev_build" ]; then pass "a dev link's plugin build comes before the plugin's own"; else fail "a dev link's plugin build comes before the plugin's own ($out)"; fi
+
+out="$(resolve "$plugin" RYUGI_HOOK_BIN="$override")"
+if [ "$out" = "$override" ]; then pass "RYUGI_HOOK_BIN still wins over a dev link"; else fail "RYUGI_HOOK_BIN still wins over a dev link ($out)"; fi
+
+rm -f "$dev_build"
+out="$(resolve "$plugin")"
+if [ "$out" = "$local_build" ]; then pass "a dev link without a hook build falls through to the plugin's own"; else fail "a dev link without a hook build falls through to the plugin's own ($out)"; fi
+make_exe "$dev_build"
+out="$(resolve "$plugin" RYUGI_DEV_LINK="$TEST_ROOT/no-link.json")"
+if [ "$out" = "$local_build" ]; then pass "a missing RYUGI_DEV_LINK turns the dev link off"; else fail "a missing RYUGI_DEV_LINK turns the dev link off ($out)"; fi
+mv "$TEST_ROOT/home/.ryugi/dev.json" "$TEST_ROOT/other-link.json"
+out="$(resolve "$plugin" RYUGI_DEV_LINK="$TEST_ROOT/other-link.json")"
+if [ "$out" = "$dev_build" ]; then pass "RYUGI_DEV_LINK names the link file"; else fail "RYUGI_DEV_LINK names the link file ($out)"; fi
+
 if [ "$FAILURES" -gt 0 ]; then
   echo "$FAILURES failure(s)"
   exit 1

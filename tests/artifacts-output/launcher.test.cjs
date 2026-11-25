@@ -199,3 +199,94 @@ test('a local build is versioned by everything the hub runs, so changing any par
     seen.push(next);
   }
 });
+
+const reportingCli = (marker) =>
+  `process.stdout.write(JSON.stringify({schema:"ryugi.cli/v1",command:process.argv.includes("--version")?"version":"get",outcome:"success",data:{marker:${JSON.stringify(marker)},version:process.env.RYUGI_ARTIFACTS_VERSION,capabilities:["reviewBundlesV1"]}}))`;
+
+function linkDev(f, link) {
+  fs.mkdirSync(path.join(f.root, '.ryugi'), { recursive: true });
+  fs.writeFileSync(path.join(f.root, '.ryugi', 'dev.json'), JSON.stringify(link, null, 2));
+}
+
+function frozenBuild(f) {
+  const build = path.join(f.root, '.ryugi', 'dev', 'builds', 'abc123abc123');
+  fs.mkdirSync(build, { recursive: true });
+  fs.writeFileSync(path.join(build, 'cli.cjs'), reportingCli('dev'));
+  return build;
+}
+
+const runGet = (f) =>
+  spawnSync(process.execPath, [path.join(f.app, 'ryugi.cjs'), 'get', 'cloud', '--format', 'json'], {
+    env: f.env,
+    encoding: 'utf8',
+  });
+
+test("a dev link runs its frozen build under its version, before the launcher's own CLI", (t) => {
+  const f = setup(t);
+  fs.writeFileSync(path.join(f.app, 'cli.cjs'), reportingCli('own'));
+  linkDev(f, {
+    build: frozenBuild(f),
+    plugin: path.join(f.root, 'plugin'),
+    version: 'local-abc123abc123',
+    linkedAt: '2026-11-25T00:00:00.000Z',
+  });
+  const out = runGet(f);
+  assert.equal(out.status, 0, out.stderr);
+  assert.deepEqual(JSON.parse(out.stdout).data.marker, 'dev');
+  assert.equal(JSON.parse(out.stdout).data.version, 'local-abc123abc123');
+});
+
+test('a launcher copy without a CLI of its own runs the dev build without asking npm', (t) => {
+  const f = setup(t);
+  linkDev(f, {
+    build: frozenBuild(f),
+    plugin: path.join(f.root, 'plugin'),
+    version: 'local-abc123abc123',
+    linkedAt: '2026-11-25T00:00:00.000Z',
+  });
+  const out = runGet(f);
+  assert.equal(out.status, 0, out.stderr);
+  assert.equal(JSON.parse(out.stdout).data.marker, 'dev');
+});
+
+test('a dev link naming no usable build is ignored', (t) => {
+  const f = setup(t);
+  fs.writeFileSync(path.join(f.app, 'cli.cjs'), reportingCli('own'));
+  linkDev(f, {
+    build: path.join(f.root, 'gone'),
+    plugin: path.join(f.root, 'plugin'),
+    version: 'local-abc123abc123',
+    linkedAt: '2026-11-25T00:00:00.000Z',
+  });
+  const out = runGet(f);
+  assert.equal(out.status, 0, out.stderr);
+  assert.equal(JSON.parse(out.stdout).data.marker, 'own');
+  assert.match(JSON.parse(out.stdout).data.version, /^local-[0-9a-f]{12}$/);
+});
+
+test('RYUGI_DEV_LINK names the link file, so a missing one turns the machine link off', (t) => {
+  const f = setup(t);
+  fs.writeFileSync(path.join(f.app, 'cli.cjs'), reportingCli('own'));
+  linkDev(f, {
+    build: frozenBuild(f),
+    plugin: path.join(f.root, 'plugin'),
+    version: 'local-abc123abc123',
+    linkedAt: '2026-11-25T00:00:00.000Z',
+  });
+  const off = spawnSync(
+    process.execPath,
+    [path.join(f.app, 'ryugi.cjs'), 'get', 'cloud', '--format', 'json'],
+    { env: { ...f.env, RYUGI_DEV_LINK: path.join(f.root, 'none.json') }, encoding: 'utf8' },
+  );
+  assert.equal(off.status, 0, off.stderr);
+  assert.equal(JSON.parse(off.stdout).data.marker, 'own');
+  const elsewhere = path.join(f.root, 'elsewhere.json');
+  fs.renameSync(path.join(f.root, '.ryugi', 'dev.json'), elsewhere);
+  const on = spawnSync(
+    process.execPath,
+    [path.join(f.app, 'ryugi.cjs'), 'get', 'cloud', '--format', 'json'],
+    { env: { ...f.env, RYUGI_DEV_LINK: elsewhere }, encoding: 'utf8' },
+  );
+  assert.equal(on.status, 0, on.stderr);
+  assert.equal(JSON.parse(on.stdout).data.marker, 'dev');
+});
