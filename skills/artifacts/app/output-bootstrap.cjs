@@ -658,7 +658,8 @@ function resolveSelection(argv) {
 		"no-cli": { "type": "boolean" },
 		"bin-dir": { "type": "string" },
 		"binary": { "type": "string" },
-		"label": { "type": "string" }
+		"label": { "type": "string" },
+		"plugin": { "type": "string" }
 	}, configuredEnvironment(argv, {
 		"format": { "type": "string" },
 		"json": { "type": "boolean" },
@@ -767,7 +768,8 @@ function resolveSelection(argv) {
 		"no-cli": { "type": "boolean" },
 		"bin-dir": { "type": "string" },
 		"binary": { "type": "string" },
-		"label": { "type": "string" }
+		"label": { "type": "string" },
+		"plugin": { "type": "string" }
 	}));
 }
 function reportFailure(argv, error, selection) {
@@ -883,7 +885,8 @@ function reportFailure(argv, error, selection) {
 			"no-cli": { "type": "boolean" },
 			"bin-dir": { "type": "string" },
 			"binary": { "type": "string" },
-			"label": { "type": "string" }
+			"label": { "type": "string" },
+			"plugin": { "type": "string" }
 		});
 	}
 	const message = error instanceof Error ? error.message : String(error);
