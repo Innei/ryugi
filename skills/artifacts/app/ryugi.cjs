@@ -369,6 +369,8 @@ function main() {
     process.env.CLAUDE_CODE_SESSION_ID ||
     process.env.PI_SESSION_ID ||
     process.env.ANTIGRAVITY_CONVERSATION_ID;
+  // Only the current hook may bind this CLI process to a writer.
+  delete env.RYUGI_WRITER_HOST;
   let subscription = null;
   if (hook) {
     const prepared = spawnSync(
@@ -382,7 +384,9 @@ function main() {
       },
     );
     try {
-      subscription = prepared.stdout.trim() ? JSON.parse(prepared.stdout) : null;
+      const binding = prepared.stdout.trim() ? JSON.parse(prepared.stdout) : null;
+      if (binding?.host && binding?.session) env.RYUGI_WRITER_HOST = binding.host;
+      if (binding?.artifact) subscription = binding;
     } catch {}
   } else if (marked) {
     requestHookInstall();
