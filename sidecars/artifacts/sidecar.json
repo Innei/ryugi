@@ -4,17 +4,17 @@
   },
   "args": ["server.cjs"],
   "command": "node",
-  "description": "Local Ryugi Artifacts workbench inside Antigravity's auxiliary pane.",
-  "display_name": "Ryugi",
+  "description": "Local Artideck workbench inside Antigravity's auxiliary pane.",
+  "display_name": "Artideck",
   "has_web_ui": true,
   "restart_policy": "always",
   "ui_config": {
-    "display_name": "Ryugi",
+    "display_name": "Artideck",
     "views": [
       {
         "entrypoint": "SIDECAR_UI_ENTRYPOINT_AUX_PANE",
         "path": "/",
-        "title": "Ryugi"
+        "title": "Artideck"
       }
     ]
   }

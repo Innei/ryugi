@@ -1,17 +1,17 @@
-Ryugi License 1.1
-=================
+Artideck License 1.1
+====================
 
 Copyright (c) 2026 Innei <i@innei.in>
 
-This license governs the Ryugi skills, harness integrations, hooks, scripts and
-documentation in this repository (the "Software"), except the material listed in
-Exhibit B. It replaces the MIT License used by earlier releases, and it applies
+This license governs the Artideck (formerly Ryugi) skills, harness integrations,
+hooks, scripts and documentation in this repository (the "Software"), except
+the material listed in Exhibit B. It replaces the MIT License used by earlier releases, and it applies
 to this and every later release. It is not an open source license: Section 3
 withholds rights that the MIT License granted.
 
-The artifacts application — the published `ryugi-artifacts` npm package, its
-`dist/` output and the copies under `skills/artifacts/app/` — is not covered by
-this license. It is proprietary and not part of this repository; releases up to
+The artifacts application — the published `artideck` npm package (also
+published as `ryugi-artifacts`), its `dist/` output and the copies under
+`skills/artifacts/app/` — is not covered by this license. It is proprietary and not part of this repository; releases up to
 1.51.2 were published under AGPL-3.0-only.
 
 1. Definitions
@@ -95,8 +95,8 @@ worldwide, royalty-free, non-exclusive license to:
     the accompanying documentation or a README, and this license must be
     available at a URL named there.
 
-3.4 No trademark rights. This license grants no rights to the "Ryugi" name, its
-    logo, or any other trademark or service mark of the copyright holder.
+3.4 No trademark rights. This license grants no rights to the "Artideck" or
+    "Ryugi" names, their logos, or any other trademark or service mark of the copyright holder.
 
 4. Termination
 --------------

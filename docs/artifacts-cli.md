@@ -40,7 +40,7 @@ Cloud publish failures print their classified cause and any login or upgrade lin
 
 ## License
 
-Artideck's skills, harness integrations and docs are under Ryugi License 1.1, which limits the Restricted Parties in Schedule A to internal use, with no marketplace listing, product bundling or model training for others, and prohibits scraping them into a marketplace. `artideck` is proprietary (npm `license`: `UNLICENSED`) and not part of this repository; releases up to 1.51.2 were published under AGPL-3.0-only.
+Artideck's skills, harness integrations and docs are under Artideck License 1.1, which limits the Restricted Parties in Schedule A to internal use, with no marketplace listing, product bundling or model training for others, and prohibits scraping them into a marketplace. `artideck` is proprietary (npm `license`: `UNLICENSED`) and not part of this repository; releases up to 1.51.2 were published under AGPL-3.0-only.
 
 ## Agent reading
 

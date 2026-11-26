@@ -312,7 +312,7 @@ Fork of [Superpowers](https://github.com/obra/superpowers) v7.0.0 by Jesse Vince
 
 ## License
 
-Skills, harness integrations and docs: [Ryugi License 1.1](LICENSE) — free to
+Skills, harness integrations and docs: [Artideck License 1.1](LICENSE) — free to
 use, modify and redistribute, with two exceptions. The Restricted Parties in
 Schedule A (Tencent, Alibaba, ByteDance, Baidu, Huawei, Xiaomi, Meituan, JD,
 PDD, NetEase, Kuaishou, Didi, Ant Group, iFlytek, SenseTime, and products such

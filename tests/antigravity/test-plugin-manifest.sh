@@ -112,8 +112,8 @@ if not (sidecar_dir / "server.cjs").is_file():
     fail(f"sidecar entrypoint missing at {sidecar_dir / 'server.cjs'}")
 if sidecar_manifest.get("restart_policy") != "always":
     fail(f"sidecar restart_policy must be 'always', got {sidecar_manifest.get('restart_policy')!r}")
-if sidecar_manifest.get("display_name") != "Ryugi":
-    fail(f"sidecar display_name must be 'Ryugi', got {sidecar_manifest.get('display_name')!r}")
+if sidecar_manifest.get("display_name") != "Artideck":
+    fail(f"sidecar display_name must be 'Artideck', got {sidecar_manifest.get('display_name')!r}")
 if not isinstance(sidecar_manifest.get("description"), str) or not sidecar_manifest["description"].strip():
     fail("sidecar description must be a non-empty string")
 if sidecar_manifest.get("has_web_ui") is not True:
@@ -121,10 +121,10 @@ if sidecar_manifest.get("has_web_ui") is not True:
 if sidecar_manifest.get("agent_permissions") != {"allows_user_interactions": False}:
     fail("sidecar agent_permissions must set allows_user_interactions to false")
 ui_config = sidecar_manifest.get("ui_config")
-if not isinstance(ui_config, dict) or ui_config.get("display_name") != "Ryugi":
-    fail("sidecar ui_config must set display_name to 'Ryugi'")
+if not isinstance(ui_config, dict) or ui_config.get("display_name") != "Artideck":
+    fail("sidecar ui_config must set display_name to 'Artideck'")
 views = ui_config.get("views")
-if views != [{"path": "/", "entrypoint": "SIDECAR_UI_ENTRYPOINT_AUX_PANE", "title": "Ryugi"}]:
+if views != [{"path": "/", "entrypoint": "SIDECAR_UI_ENTRYPOINT_AUX_PANE", "title": "Artideck"}]:
     fail(f"sidecar ui_config.views mismatch: {views!r}")
 
 # --- Layout agy depends on -------------------------------------------------
