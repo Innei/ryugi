@@ -207,6 +207,26 @@ jobs:
           npm install -g npm@^11.15.0
           npm publish
 
+      - name: Publish the same build as artideck
+        if: steps.release.outputs.publish == 'true'
+        # The plugin is bumped even when the new name cannot publish yet.
+        continue-on-error: true
+        working-directory: ryugi-cloud/packages/artifacts
+        timeout-minutes: 8
+        env:
+          NPM_CONFIG_PROVENANCE: 'false'
+          VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          if npm view "artideck@$VERSION" version > /dev/null 2>&1; then
+            echo "artideck@$VERSION is already on npm."
+            exit 0
+          fi
+          [[ -f dist/cli.cjs && -f AGENTS.md ]]
+          jq '.name = "artideck"' package.json > package.json.tmp
+          mv package.json.tmp package.json
+          npm publish --ignore-scripts
+          git checkout -- package.json
+
       - name: Bump the plugin
         id: bump
         working-directory: ryugi
