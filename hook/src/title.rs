@@ -43,8 +43,8 @@ pub fn role(args: &[String]) -> Option<&'static str> {
 
 pub fn title(role: &str, version: Option<&str>) -> String {
     match version {
-        Some(v) => format!("Ryugi {role} ({v})"),
-        None => format!("Ryugi {role}"),
+        Some(v) => format!("Artideck {role} ({v})"),
+        None => format!("Artideck {role}"),
     }
 }
 
@@ -257,8 +257,8 @@ mod tests {
 
     #[test]
     fn titles_name_the_role_and_version() {
-        assert_eq!(title("hook", Some("1.2.3")), "Ryugi hook (1.2.3)");
-        assert_eq!(title("watch-comments", None), "Ryugi watch-comments");
+        assert_eq!(title("hook", Some("1.2.3")), "Artideck hook (1.2.3)");
+        assert_eq!(title("watch-comments", None), "Artideck watch-comments");
     }
 
     #[test]

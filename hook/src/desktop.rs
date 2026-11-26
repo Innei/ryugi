@@ -96,6 +96,6 @@ mod bridge_tests {
             .and_then(|(_, value)| value)
             .map(|value| value.to_string_lossy().into_owned());
         assert_eq!(title, Some(crate::title::title("watch-comments", crate::title::version().as_deref())));
-        assert!(title.unwrap().starts_with("Ryugi watch-comments"));
+        assert!(title.unwrap().starts_with("Artideck watch-comments"));
     }
 }

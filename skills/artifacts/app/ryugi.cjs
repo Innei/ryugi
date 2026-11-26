@@ -420,7 +420,7 @@ function main() {
 function setLauncherTitle() {
   if (win32) return;
   const version = pluginVersion();
-  process.title = version ? `Ryugi launcher (${version})` : 'Ryugi launcher';
+  process.title = version ? `Artideck launcher (${version})` : 'Artideck launcher';
 }
 
 function run() {

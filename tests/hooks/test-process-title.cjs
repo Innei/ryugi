@@ -52,7 +52,7 @@ async function hookTitle(t, args, env = {}) {
     } catch {
       seen = '';
     }
-    if (seen.startsWith('Ryugi ')) return seen;
+    if (seen.startsWith('Artideck ')) return seen;
     await delay(25);
   }
   return seen;
@@ -67,36 +67,36 @@ const project = () => {
 const skip = process.platform === 'win32';
 
 test(
-  'the Claude Code comment watcher runs as Ryugi watch-comments (version)',
+  'the Claude Code comment watcher runs as Artideck watch-comments (version)',
   { skip },
   async (t) => {
     const hub = fakeHub(t);
     assert.equal(
       await hookTitle(t, ['watch', 'claude', project()], hub.env),
-      shown(`Ryugi watch-comments (${version})`),
+      shown(`Artideck watch-comments (${version})`),
     );
   },
 );
 
-test('the Pi comment watcher runs as Ryugi watch-comments (version)', { skip }, async (t) => {
+test('the Pi comment watcher runs as Artideck watch-comments (version)', { skip }, async (t) => {
   const hub = fakeHub(t);
   assert.equal(
     await hookTitle(t, ['watch', 'pi', project(), '019a4f5e-8a2b-7c3d-9e4f-0123456789ab'], hub.env),
-    shown(`Ryugi watch-comments (${version})`),
+    shown(`Artideck watch-comments (${version})`),
   );
 });
 
-test('a hook waiting for its input runs as Ryugi hook (version)', { skip }, async (t) => {
-  assert.equal(await hookTitle(t, ['context']), shown(`Ryugi hook (${version})`));
+test('a hook waiting for its input runs as Artideck hook (version)', { skip }, async (t) => {
+  assert.equal(await hookTitle(t, ['context']), shown(`Artideck hook (${version})`));
 });
 
-test('hook commands that are not watchers run as Ryugi hook (version)', { skip }, async (t) => {
+test('hook commands that are not watchers run as Artideck hook (version)', { skip }, async (t) => {
   for (const command of ['subscribe', 'cmd-stop'])
-    assert.equal(await hookTitle(t, [command]), shown(`Ryugi hook (${version})`), command);
+    assert.equal(await hookTitle(t, [command]), shown(`Artideck hook (${version})`), command);
 });
 
-test('the launcher runs as Ryugi launcher (version)', { skip }, () => {
-  assert.equal(titleOf(path.join(app, 'ryugi.cjs'), ['--version']), `Ryugi launcher (${version})`);
+test('the launcher runs as Artideck launcher (version)', { skip }, () => {
+  assert.equal(titleOf(path.join(app, 'ryugi.cjs'), ['--version']), `Artideck launcher (${version})`);
 });
 
 test(
@@ -112,6 +112,6 @@ test(
     fs.mkdirSync(copied, { recursive: true });
     for (const name of ['ryugi.cjs', 'output-bootstrap.cjs'])
       fs.copyFileSync(path.join(app, name), path.join(copied, name));
-    assert.equal(titleOf(path.join(copied, 'ryugi.cjs'), ['--version']), 'Ryugi launcher');
+    assert.equal(titleOf(path.join(copied, 'ryugi.cjs'), ['--version']), 'Artideck launcher');
   },
 );
