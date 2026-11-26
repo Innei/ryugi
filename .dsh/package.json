@@ -1,6 +1,6 @@
 {
   "name": "dsh-plugin-adeck",
-  "version": "1.115.1",
+  "version": "1.116.0",
   "description": "Artideck skills and interactive artifacts integration for DeepSeek Harness (DSH).",
   "keywords": [
     "deepseek-harness",
