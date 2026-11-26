@@ -192,3 +192,26 @@ test('the monitor shell waits for a binary that is still downloading', async (t)
   await until(() => hub.received.some((m) => m.t === 'hello'));
   assert.equal(hub.received[0].host, 'claude');
 });
+
+test('after /clear or /resume the watch reconnects as the session its Claude process moved to', async (t) => {
+  const hub = fakeHub(t);
+  const dir = project(t);
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'cwt-follow-'));
+  t.after(() => fs.rmSync(home, { recursive: true, force: true }));
+  const first = '11111111-1111-4111-8111-111111111111';
+  const next = '22222222-2222-4222-8222-222222222222';
+  run(t, dir, {
+    CLAUDE_CODE_SESSION_ID: first,
+    CLAUDE_PID: '4242',
+    RYUGI_HUB_SOCKET: hub.socketPath,
+    RYUGI_SERVER_HOME: home,
+  });
+  await until(() => hub.received.some((m) => m.t === 'hello' && m.session === first));
+  const prompt = spawn(bin, ['event', 'claude'], {
+    cwd: dir,
+    env: { ...process.env, PATH: '/usr/bin:/bin', CLAUDE_PID: '4242', CLAUDE_CODE_SESSION_ID: next, RYUGI_SERVER_HOME: home, RYUGI_HUB_SOCKET: hub.socketPath },
+    stdio: ['pipe', 'ignore', 'ignore'],
+  });
+  prompt.stdin.end(JSON.stringify({ session_id: next, hook_event_name: 'UserPromptSubmit', cwd: dir, prompt: 'hi' }));
+  await until(() => hub.received.some((m) => m.t === 'hello' && m.session === next));
+});

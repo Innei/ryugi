@@ -7,6 +7,7 @@ pub mod desktop;
 pub mod event;
 pub mod evidence;
 pub mod flush;
+pub mod follow;
 pub mod hosts;
 pub mod http;
 pub mod ids;

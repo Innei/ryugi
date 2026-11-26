@@ -137,6 +137,7 @@ fn options(s: &Setup, starts: Arc<Mutex<Vec<PathBuf>>>) -> Options {
         agent: "Claude Code".into(),
         retry: Duration::from_millis(20),
         start_hub: Box::new(move |p| starts.lock().unwrap().push(p.to_path_buf())),
+        follow: None,
     }
 }
 
@@ -377,4 +378,16 @@ fn commands_keep_paths_with_quotes_and_substitutions_intact() {
     let at = args.iter().position(|a| *a == "--project-dir").unwrap();
     assert_eq!(args[at + 1], dir);
     assert!(!t.path().join("WRONG").exists());
+}
+
+#[test]
+fn a_claude_watch_reconnects_as_the_session_its_process_moved_to() {
+    let s = setup(true, None);
+    let hub = FakeHub::start(&s.socket, Mode::Welcome);
+    let mut opts = options(&s, Arc::default());
+    opts.follow = Some(crate::follow::file(&s.home, "4242"));
+    let (_channel, _rx) = collect(opts, true);
+    until(|| hub.received().iter().any(|m| m["t"] == "hello" && m["session"] == "s1"));
+    crate::follow::record(&s.home, "4242", "9d2b7c11-5e3f-4a8b-8c6d-1a2b3c4d5e6f");
+    until(|| hub.received().iter().any(|m| m["t"] == "hello" && m["session"] == "9d2b7c11-5e3f-4a8b-8c6d-1a2b3c4d5e6f"));
 }

@@ -161,6 +161,7 @@ pub struct Options {
     pub agent: String,
     pub retry: Duration,
     pub start_hub: Box<dyn Fn(&Path) + Send>,
+    pub follow: Option<PathBuf>,
 }
 
 impl Options {
@@ -174,6 +175,7 @@ impl Options {
             agent: agent.into(),
             retry: Duration::from_secs(1),
             start_hub: Box::new(launch_hub),
+            follow: None,
         }
     }
 }
@@ -238,6 +240,22 @@ struct Backoff {
 pub fn open(options: Options, mut on: impl FnMut(&Channel, Signal) + Send + 'static) -> (Channel, std::thread::JoinHandle<()>) {
     let channel = Channel { writer: Arc::new(Mutex::new(None)), closed: Arc::new(AtomicBool::new(false)) };
     let handle = channel.clone();
+    let following = Arc::new(Mutex::new(String::new()));
+    if let Some(file) = options.follow.clone() {
+        let (handle, following, every) = (channel.clone(), following.clone(), options.retry);
+        std::thread::spawn(move || {
+            while !handle.is_closed() {
+                std::thread::sleep(every);
+                let Some(now) = crate::follow::current(&file) else { continue };
+                if *following.lock().unwrap() == now {
+                    continue;
+                }
+                if let Some(stream) = handle.writer.lock().unwrap().as_ref() {
+                    let _ = stream.shutdown(std::net::Shutdown::Both);
+                }
+            }
+        });
+    }
     let socket_path = options.socket.clone();
     let thread = std::thread::spawn(move || {
         let retry_ms = options.retry.as_millis().max(1) as u64;
@@ -272,12 +290,18 @@ pub fn open(options: Options, mut on: impl FnMut(&Channel, Signal) + Send + 'sta
                     continue;
                 }
             };
+            let session = options
+                .follow
+                .as_deref()
+                .and_then(crate::follow::current)
+                .unwrap_or_else(|| options.session.clone());
+            *following.lock().unwrap() = session.clone();
             let hello = json!({
                 "t": "hello",
                 "protocol": PROTOCOL,
                 "version": plugin_version(),
                 "host": options.host,
-                "session": options.session,
+                "session": session,
                 "agent": options.agent,
             });
             let Ok(reader) = stream.try_clone() else { continue };

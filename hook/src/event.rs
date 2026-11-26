@@ -124,6 +124,11 @@ pub fn run(args: &[String]) {
         println!("{{}}");
     }
     let Some(input) = input else { return };
+    if host == "claude" {
+        if let (Some(pid), Some(session)) = (crate::watch::claude_pid(), str_field(&input, "session_id")) {
+            crate::follow::record(&crate::channel::server_home(), &pid, session);
+        }
+    }
     let Some(event) = event_from(&input, host, at) else { return };
     let project = input_cwd(&input)
         .and_then(|c| crate::paths::project_root(Path::new(c)))

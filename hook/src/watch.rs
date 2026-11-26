@@ -7,6 +7,10 @@ fn claude_session() -> Option<String> {
     std::env::var("CLAUDE_CODE_SESSION_ID").ok().filter(|s| crate::text::is_uuid(s))
 }
 
+pub fn claude_pid() -> Option<String> {
+    std::env::var("CLAUDE_PID").ok().filter(|p| !p.is_empty())
+}
+
 pub fn claude(args: &[String]) {
     if matches!(crate::hosts::match_custom_host(), Ok(Some(_))) {
         return;
@@ -19,7 +23,9 @@ pub fn claude(args: &[String]) {
     let Some(session) = claude_session() else { return };
     let agent = crate::subs::agent_of("claude");
     crate::sys::exit_on_interrupt();
-    let (_channel, thread) = open(Options::new(project, "claude", &session, &agent), |channel, signal| match signal {
+    let mut options = Options::new(project, "claude", &session, &agent);
+    options.follow = claude_pid().map(|pid| crate::follow::file(&crate::channel::server_home(), &pid));
+    let (_channel, thread) = open(options, |channel, signal| match signal {
         Signal::Event(event, id) => {
             let text = crate::wake::wake_message(&event, Some(crate::wake::NOTIFICATION_LIMIT));
             let mut out = std::io::stdout().lock();
