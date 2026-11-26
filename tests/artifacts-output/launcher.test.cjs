@@ -173,6 +173,22 @@ test('output conflicts fail before installer or subscription work', (t) => {
   assert.equal(fs.existsSync(path.join(f.root, 'cache')), false);
 });
 
+test('the adeck.cjs alias runs the ryugi launcher', (t) => {
+  const f = setup(t);
+  fs.copyFileSync(path.join(__dirname, '../../skills/artifacts/app/adeck.cjs'), path.join(f.app, 'adeck.cjs'));
+  fs.writeFileSync(
+    path.join(f.app, 'cli.cjs'),
+    'process.stdout.write(JSON.stringify({schema:"ryugi.cli/v1",command:process.argv.includes("--version")?"version":"get",outcome:"success",data:{ran:true,capabilities:["reviewBundlesV1"]}}))',
+  );
+  const out = spawnSync(
+    process.execPath,
+    [path.join(f.app, 'adeck.cjs'), 'get', 'cloud', '--format', 'json'],
+    { env: f.env, encoding: 'utf8' },
+  );
+  assert.equal(out.status, 0, out.stderr);
+  assert.equal(JSON.parse(out.stdout).data.ran, true);
+});
+
 test('the ryugi-artifacts.cjs alias runs the ryugi launcher', (t) => {
   const f = setup(t);
   fs.writeFileSync(

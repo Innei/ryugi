@@ -36,22 +36,22 @@ artifact lives in your project, opens from one local server, and becomes a link 
 share it.
 
 ```bash
-npx ryugi-artifacts install
+npx artideck install
 ```
 
 Having your agent install it? Paste this so it asks before choosing for you:
 
 ```text
-Install Ryugi from https://github.com/Innei/ryugi. Follow "Installing with an AI agent" in its README, and ask me which install I want before you run anything.
+Install Ryugi from https://github.com/Innei/artideck. Follow "Installing with an AI agent" in its README, and ask me which install I want before you run anything.
 ```
 
 <p align="center"><sub>Works with Claude Code · Codex · Cursor · Gemini CLI · OpenCode · Copilot CLI · Pi · Antigravity · Kimi Code · Qwen Code · Devin · Droid</sub></p>
 
 Free and local-first: artifacts live in your project and open from a local server, no account
 needed. In Claude Code, a comment you pin reaches the agent on its own — it edits, replies under
-your comment, and the page updates while you watch. Publish to Ryugi Cloud only when you want a link.
+your comment, and the page updates while you watch. Publish to Artideck Cloud only when you want a link.
 
-The terminal wizard installs a persistent `ryugi` command, lets you select one or more
+The terminal wizard installs a persistent `adeck` command, lets you select one or more
 harnesses, then asks which content to install:
 
 - **Artifacts only** — send `Show me three directions for a settings page` and an artboard opens.
@@ -59,7 +59,7 @@ harnesses, then asks which content to install:
   Send `Let's make a react todo list` and the agent opens an artboard before it writes code.
 
 <p align="center">
-  <a href="docs/install.md">Harnesses</a> · <a href="docs/artifacts-cli.md">CLI</a> · <a href="docs/workflow.md">Full workflow</a> · <a href="https://ryugi.innei.dev">Ryugi Cloud</a>
+  <a href="docs/install.md">Harnesses</a> · <a href="docs/artifacts-cli.md">CLI</a> · <a href="docs/workflow.md">Full workflow</a> · <a href="https://artideck.dev">Artideck Cloud</a>
 </p>
 
 ## Artboard — choose instead of imagine
@@ -185,33 +185,33 @@ same way.
 </picture>
 
 ```bash
-npx ryugi-artifacts
+npx artideck
 ```
 
 Local first, no subscription, no agent session needed. One server covers every project on the
 machine, with ⌘K to jump and links that survive a restart. `publish` shares one to
-[Ryugi Cloud](https://ryugi.innei.dev).
+[Artideck Cloud](https://artideck.dev).
 
-For a persistent `ryugi` command without a harness plugin:
+For a persistent `adeck` command without a harness plugin:
 
 ```bash
-npx ryugi-artifacts install --mode artifacts --harness none
-ryugi
-ryugi /path/to/project
+npx artideck install --mode artifacts --harness none
+adeck
+adeck /path/to/project
 ```
 
 Node.js 20.12 or newer is required. The installer keeps a complete runtime outside
-the npx cache and creates `~/.local/bin/ryugi` (a command shim on Windows). It prints
-PATH instructions for your shell. `npm install -g ryugi-artifacts` remains available;
-package-manager installations keep their original update channel. `ryugi update`
-updates the CLI and recorded plugins; `ryugi doctor` checks the install and
-`ryugi uninstall` removes owned entries while retaining artifacts and user data.
+the npx cache and creates `~/.local/bin/adeck` (a command shim on Windows). It prints
+PATH instructions for your shell. `npm install -g artideck` remains available;
+package-manager installations keep their original update channel. `adeck update`
+updates the CLI and recorded plugins; `adeck doctor` checks the install and
+`adeck uninstall` removes owned entries while retaining artifacts and user data.
 See the [CLI guide](docs/artifacts-cli.md) for commands and options.
 
 ## Add the full workflow
 
 Artifacts work on their own. If you also want the agent to build from what you approved, pick the
-full workflow at install (or run `ryugi install --mode full --harness codex,pi` later). Its skills make
+full workflow at install (or run `adeck install --mode full --harness codex,pi` later). Its skills make
 the agent reach for the artifacts at the right moment, and they fire on their own:
 
 ```mermaid
@@ -226,7 +226,7 @@ it. Debugging and worktrees are covered too. [How it works →](docs/workflow.md
 ## Work with your harness
 
 Have Node.js and npm available in the agent's environment. The plugin calls its own launcher,
-which downloads `ryugi-artifacts` on first use and caches each release under
+which downloads `artideck` on first use and caches each release under
 `~/.cache/ryugi/artifacts/` by default. It checks for updates at most once a day and can reuse a
 compatible cached release offline. The first run needs network access and a writable cache.
 
@@ -249,19 +249,19 @@ That is the only flag Ryugi needs; leave the rest of your Claude Code settings a
 
 | Harness       | Command                                                                                               |
 | ------------- | ----------------------------------------------------------------------------------------------------- |
-| Antigravity   | `agy plugin install https://github.com/Innei/ryugi`                                                   |
+| Antigravity   | `agy plugin install https://github.com/Innei/artideck`                                                   |
 | Codex, Cursor | Add this repo as a local plugin source ([detail](docs/install.md#codex-cursor))                       |
-| Devin CLI     | `devin plugins install Innei/ryugi`                                                                   |
-| Factory Droid | `droid plugin marketplace add https://github.com/Innei/ryugi` then `droid plugin install ryugi@ryugi` |
-| Gemini CLI    | `gemini extensions install https://github.com/Innei/ryugi`                                            |
-| Kimi Code     | `/plugins install https://github.com/Innei/ryugi`                                                     |
+| Devin CLI     | `devin plugins install Innei/artideck`                                                                   |
+| Factory Droid | `droid plugin marketplace add https://github.com/Innei/artideck` then `droid plugin install ryugi@ryugi` |
+| Gemini CLI    | `gemini extensions install https://github.com/Innei/artideck`                                            |
+| Kimi Code     | `/plugins install https://github.com/Innei/artideck`                                                     |
 | OpenCode      | [.opencode/INSTALL.md](.opencode/INSTALL.md)                                                          |
-| Pi            | `pi install git:github.com/Innei/ryugi`                                                               |
-| OMP           | `omp plugin install https://github.com/Innei/ryugi` (or `omp plugin link /path/to/ryugi`)             |
-| Qwen Code     | `qwen extensions install Innei/ryugi`                                                                 |
-| Hermes Agent  | `hermes plugins install Innei/ryugi --enable`                                                         |
+| Pi            | `pi install git:github.com/Innei/artideck`                                                               |
+| OMP           | `omp plugin install https://github.com/Innei/artideck` (or `omp plugin link /path/to/ryugi`)             |
+| Qwen Code     | `qwen extensions install Innei/artideck`                                                                 |
+| Hermes Agent  | `hermes plugins install Innei/artideck --enable`                                                         |
 | Muse          | `muse plugins install ./` then `muse plugins approve ryugi`                                           |
-| DeepSeek Harness | `dsh plugin --profile <profile> add github:Innei/ryugi#path:.dsh` ([detail](docs/README.dsh.md))       |
+| DeepSeek Harness | `dsh plugin --profile <profile> add github:Innei/artideck#path:.dsh` ([detail](docs/README.dsh.md))       |
 
 Updates and caveats: [docs/install.md](docs/install.md).
 
@@ -286,16 +286,16 @@ This section is for the agent doing the install.
 
 2. **Pick the harness**: the one you are running in, unless they name others. Targets:
    `claude-code`, `codex`, `cursor`, `gemini`, `opencode`, `pi`, `copilot`, `agy`, comma-separated;
-   `none` installs only the `ryugi` command.
+   `none` installs only the `adeck` command.
 3. **Check Node.js 20.12 or newer** with `node --version`.
 4. **Run the installer with explicit choices.** The wizard needs an interactive terminal, so pass
    both flags and `--yes`:
 
    ```bash
-   npx ryugi-artifacts install --mode artifacts --harness claude-code --yes
+   npx artideck install --mode artifacts --harness claude-code --yes
    ```
 
-5. **Check it** with `ryugi doctor`. If `ryugi` isn't on PATH yet, pass on the PATH instructions
+5. **Check it** with `adeck doctor`. If `adeck` isn't on PATH yet, pass on the PATH instructions
    the installer printed.
 6. **Tell them what is left**: start a new session of the harness. In Codex, trust Ryugi's hooks
    in `/hooks`. In Claude Code, offer to add `"disableArtifact": true` to
@@ -308,7 +308,7 @@ workflow, with no Artifacts-only option; say so and let them choose before you r
 
 ## Credits
 
-Fork of [Superpowers](https://github.com/obra/superpowers) v7.0.0 by Jesse Vincent and [Prime Radiant](https://primeradiant.com) ([UPSTREAM.md](UPSTREAM.md)). [Issues](https://github.com/Innei/ryugi/issues) and PRs welcome; [AGENTS.md](AGENTS.md) has the rules.
+Fork of [Superpowers](https://github.com/obra/superpowers) v7.0.0 by Jesse Vincent and [Prime Radiant](https://primeradiant.com) ([UPSTREAM.md](UPSTREAM.md)). [Issues](https://github.com/Innei/artideck/issues) and PRs welcome; [AGENTS.md](AGENTS.md) has the rules.
 
 ## License
 
@@ -323,4 +323,4 @@ scrape the skills into a marketplace. This is source-available, not an open
 source license; material derived from Superpowers and contributions made before
 2026-11-04 stay MIT (Exhibit B).
 
-The artifacts application, published to npm as [`ryugi-artifacts`](https://www.npmjs.com/package/ryugi-artifacts), is proprietary (npm `license`: `UNLICENSED`) and not part of this repository. Releases up to 1.51.2 were published under AGPL-3.0-only.
+The artifacts application, published to npm as [`artideck`](https://www.npmjs.com/package/artideck), is proprietary (npm `license`: `UNLICENSED`) and not part of this repository. Releases up to 1.51.2 were published under AGPL-3.0-only.

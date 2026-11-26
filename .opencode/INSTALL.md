@@ -14,7 +14,7 @@ Use the existing V1 plugin configuration:
 
 ```json
 {
-  "plugin": ["ryugi@git+https://github.com/Innei/ryugi.git"]
+  "plugin": ["ryugi@git+https://github.com/Innei/artideck.git"]
 }
 ```
 
@@ -24,7 +24,7 @@ Use the V2 plugin configuration:
 
 ```json
 {
-  "plugins": ["ryugi@git+https://github.com/Innei/ryugi.git"]
+  "plugins": ["ryugi@git+https://github.com/Innei/artideck.git"]
 }
 ```
 
@@ -79,7 +79,7 @@ V1 `plugin` key and the V2 `plugins` key):
 
 ```json
 {
-  "plugin": ["ryugi@git+https://github.com/Innei/ryugi.git#v7.0.0"]
+  "plugin": ["ryugi@git+https://github.com/Innei/artideck.git#v7.0.0"]
 }
 ```
 
@@ -105,7 +105,7 @@ the plugin, try installing with system npm and pointing OpenCode at the local
 package:
 
 ```powershell
-npm install ryugi@git+https://github.com/Innei/ryugi.git --prefix "$HOME\.config\opencode"
+npm install ryugi@git+https://github.com/Innei/artideck.git --prefix "$HOME\.config\opencode"
 ```
 
 Then use the absolute path of the installed package in `opencode.json` for your
@@ -162,5 +162,5 @@ Skills speak in actions ("create a todo", "dispatch a subagent", "read a file").
 
 ## Getting Help
 
-- Report issues: https://github.com/Innei/ryugi/issues
-- Full documentation: https://github.com/Innei/ryugi/blob/main/docs/README.opencode.md
+- Report issues: https://github.com/Innei/artideck/issues
+- Full documentation: https://github.com/Innei/artideck/blob/main/docs/README.opencode.md

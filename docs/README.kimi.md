@@ -17,13 +17,13 @@ Go to `Marketplace` > `Ryugi` and install it.
 You can also install from this repository:
 
 ```text
-/plugins install https://github.com/Innei/ryugi
+/plugins install https://github.com/Innei/artideck
 ```
 
 For unreleased validation against `dev`, pin the branch explicitly:
 
 ```text
-/plugins install https://github.com/Innei/ryugi/tree/dev
+/plugins install https://github.com/Innei/artideck/tree/dev
 ```
 
 Kimi Code applies plugin changes to new sessions. After installing, updating, enabling, disabling, or reloading a plugin, start a fresh session with `/new`.
@@ -78,7 +78,7 @@ Select Ryugi and update it from there. Start a fresh session with `/new` after u
 Kimi Code installs the latest GitHub release for a bare repository URL when one exists. To test unreleased changes before the next Ryugi release, install the branch explicitly:
 
 ```text
-/plugins install https://github.com/Innei/ryugi/tree/dev
+/plugins install https://github.com/Innei/artideck/tree/dev
 ```
 
 ### Skills not triggering

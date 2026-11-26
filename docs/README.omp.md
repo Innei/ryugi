@@ -7,7 +7,7 @@ Complete guide for using Ryugi with OMP (`omp`).
 Install or link this repository with OMP's native plugin manager:
 
 ```bash
-omp plugin install https://github.com/Innei/ryugi
+omp plugin install https://github.com/Innei/artideck
 ```
 
 For a local checkout:

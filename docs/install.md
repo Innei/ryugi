@@ -3,7 +3,7 @@
 Use the unified installer with Node.js 20.12 or newer:
 
 ```bash
-npx ryugi-artifacts install
+npx artideck install
 ```
 
 The terminal wizard selects Artifacts or Full workflow, then one or more detected
@@ -13,21 +13,21 @@ Copilot CLI and Antigravity (`agy`). Leave the target selection empty for CLI on
 choices:
 
 ```bash
-npx ryugi-artifacts install --mode artifacts --harness codex,pi
-npx ryugi-artifacts install --mode full --harness claude-code,agy
-npx ryugi-artifacts install --mode artifacts --harness none
+npx artideck install --mode artifacts --harness codex,pi
+npx artideck install --mode full --harness claude-code,agy
+npx artideck install --mode artifacts --harness none
 ```
 
-On Unix, `ryugi` is linked under `~/.local/bin` and its complete runtime is kept
+On Unix, `adeck` is linked under `~/.local/bin` and its complete runtime is kept
 under `$XDG_DATA_HOME/ryugi/install` (default `~/.local/share/ryugi/install`). Windows
 uses a command shim. PATH instructions match your shell. Global npm/pnpm/Yarn/Bun
 installations retain their original update channel; `--no-cli` keeps your existing
 CLI while installing plugins.
 
-`ryugi update` updates the CLI and recorded integrations, each in its current mode.
+`adeck update` updates the CLI and recorded integrations, each in its current mode.
 Use `--cli-only` or `--plugins-only` to select one part, and `--check` for a CLI
-version check without writes. `ryugi doctor` checks files and native registration.
-`ryugi uninstall` removes owned entries and retains project artifacts, comments,
+version check without writes. `adeck doctor` checks files and native registration.
+`adeck uninstall` removes owned entries and retains project artifacts, comments,
 plugin data and runtime caches. Modified files are preserved and reported.
 
 Git is required for plugin downloads outside Claude's marketplace. Use
@@ -54,7 +54,7 @@ exposes the artifacts and interface-craft skills without the workflow bootstrap.
 ## Claude Code
 
 ```bash
-/plugin marketplace add Innei/ryugi
+/plugin marketplace add Innei/artideck
 /plugin install ryugi@ryugi-dev
 ```
 
@@ -81,14 +81,14 @@ workflow skills (brainstorming, specs, TDD, debugging, verifying,
 worktrees), install the `ryugi-artifacts` entry instead of `ryugi`:
 
 ```bash
-npx ryugi-artifacts install
+npx artideck install
 ```
 
 Select Artifacts in the wizard, or pass `--mode artifacts --harness claude-code`.
 Both content modes are available for every unified-installer target. To install by hand:
 
 ```text
-/plugin install ryugi-artifacts --marketplace Innei/ryugi
+/plugin install ryugi-artifacts --marketplace Innei/artideck
 ```
 
 The two entries share the plugin name `ryugi`, so enable only one of them.
@@ -102,13 +102,13 @@ manual installation commands below retain their existing full-workflow behavior.
 ## Antigravity
 
 ```bash
-npx ryugi-artifacts install --mode full --harness agy
+npx artideck install --mode full --harness agy
 ```
 
 Or install directly from the repository with `agy`:
 
 ```bash
-agy plugin install https://github.com/Innei/ryugi
+agy plugin install https://github.com/Innei/artideck
 ```
 
 When installed through the unified installer (`--harness agy` or `--harness antigravity`), Ryugi stages its native `hooks.json` at the plugin root so `SessionStart` injects the `using-ryugi` bootstrap automatically (in `full` mode), `PreInvocation` attaches open Artboard/document selections and unread comment reminders, `Stop` flushes changes, and the background watcher delivers browser comments and submitted choices through the local Antigravity Language Server. When installed directly from the git repository URL without the unified installer, Antigravity lists each installed skill's description and the `using-ryugi` description prompts the model to load it at the start of a conversation.
@@ -187,28 +187,28 @@ These lifecycle hooks apply to Codex; Cursor keeps its own integration.
 ## Devin CLI
 
 ```bash
-devin plugins install Innei/ryugi
+devin plugins install Innei/artideck
 devin plugins update ryugi # update later
 ```
 
 ## Factory Droid
 
 ```bash
-droid plugin marketplace add https://github.com/Innei/ryugi
+droid plugin marketplace add https://github.com/Innei/artideck
 droid plugin install ryugi@ryugi
 ```
 
 ## Gemini CLI
 
 ```bash
-gemini extensions install https://github.com/Innei/ryugi
+gemini extensions install https://github.com/Innei/artideck
 gemini extensions update ryugi # update later
 ```
 
 ## Kimi Code
 
 ```text
-/plugins install https://github.com/Innei/ryugi
+/plugins install https://github.com/Innei/artideck
 ```
 
 Full guide: [README.kimi.md](README.kimi.md).
@@ -219,7 +219,7 @@ OpenCode uses its own plugin install; install Ryugi separately even if you
 already use it in another harness.
 
 ```text
-Fetch and follow instructions from https://raw.githubusercontent.com/Innei/ryugi/refs/heads/main/.opencode/INSTALL.md
+Fetch and follow instructions from https://raw.githubusercontent.com/Innei/artideck/refs/heads/main/.opencode/INSTALL.md
 ```
 
 Full guide: [README.opencode.md](README.opencode.md).
@@ -227,7 +227,7 @@ Full guide: [README.opencode.md](README.opencode.md).
 ## Pi
 
 ```bash
-pi install git:github.com/Innei/ryugi
+pi install git:github.com/Innei/artideck
 ```
 
 For local development, run Pi with a checkout loaded as a temporary package:
@@ -278,14 +278,14 @@ Qwen Code installs plugins from Claude Code marketplaces directly. Pick `ryugi`
 when prompted.
 
 ```bash
-qwen extensions install Innei/ryugi
+qwen extensions install Innei/artideck
 qwen extensions update ryugi # update later
 ```
 
 ## Hermes Agent
 
 ```bash
-hermes plugins install Innei/ryugi --enable
+hermes plugins install Innei/artideck --enable
 ```
 
 Restart any active Hermes sessions after installing. Hermes has no
@@ -316,7 +316,7 @@ Add `"dsh-plugin-ryugi"` to `dsh.profile.bundles` in `~/.dsh/profiles/<profile>/
 ## OMP (Oh My Pi)
 
 ```bash
-omp plugin install https://github.com/Innei/ryugi
+omp plugin install https://github.com/Innei/artideck
 ```
 
 For a local checkout:

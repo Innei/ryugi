@@ -114,7 +114,7 @@ function localVersion() {
   return `local-${hash.digest('hex').slice(0, 12)}`;
 }
 
-// `ryugi dev link` points every launcher on the machine, whichever plugin copy holds it, at one
+// `adeck dev link` points every launcher on the machine, whichever plugin copy holds it, at one
 // frozen local build.
 function devLink() {
   try {

@@ -3,18 +3,18 @@
 Open a project's saved artboards, documents and HTML pages without starting an agent session:
 
 ```bash
-npx ryugi-artifacts
-npx ryugi-artifacts /path/to/project
-npx ryugi-artifacts --no-open
+npx artideck
+npx artideck /path/to/project
+npx artideck --no-open
 ```
 
-Installed globally (`npm install -g ryugi-artifacts`), the command is `ryugi`; `ryugi-artifacts` stays as an alias. npx needs the package name, so `npx ryugi-artifacts` is the npx form.
+Installed globally (`npm install -g artideck`), the command is `adeck`, or `artideck` in full. npx needs the package name, so `npx artideck` is the npx form.
 
 The local library shows content previews, type filters and title/id search across every registered project. Sort by newest update, oldest update or name. Previews load as their cards come into view; opening a card takes you to the full artifact. The server reads `.ryugi/artifacts/` in each registered project and keeps the library in sync with file changes.
 
 The command reuses the machine's running server. Agent calls to `start --artifact …` return links without activating a browser tab when reusing a server; `--open` explicitly opens or focuses that artifact. Run from a subdirectory of a git repository, it uses the repository root's `.ryugi/artifacts/`, unless a directory between them already has its own. A new server stays in the terminal; Ctrl+C stops it and keeps your artifacts. Node.js is required.
 
-The first successful server start while signed out recommends signing in to Ryugi Cloud for sharing and reviewing artifacts from other devices. Sign-in is optional and local work continues immediately. Run `npx ryugi-artifacts publish --login` in that project to get a sign-in code and the address to confirm it at, on any device signed in to Ryugi Cloud. The recommendation appears once across projects on this machine, remembered as `login-hint-shown` beside the cloud credentials in the Ryugi configuration directory. Already signed-in accounts, help and version queries, and failed starts do not show it. Brief prints the recommendation and a `Sign in` command without blocking local work. Machine JSON carries the same warning and action in `warnings` and `next`.
+The first successful server start while signed out recommends signing in to Artideck Cloud for sharing and reviewing artifacts from other devices. Sign-in is optional and local work continues immediately. Run `npx artideck publish --login` in that project to get a sign-in code and the address to confirm it at, on any device signed in to Artideck Cloud. The recommendation appears once across projects on this machine, remembered as `login-hint-shown` beside the cloud credentials in the Ryugi configuration directory. Already signed-in accounts, help and version queries, and failed starts do not show it. Brief prints the recommendation and a `Sign in` command without blocking local work. Machine JSON carries the same warning and action in `warnings` and `next`.
 
 Browser links use a stable random ID, such as `/document/<id>` or `/artboard/<id>?page=review`. The ID is 21 letters and digits, without `_` or `-`; IDs written by earlier releases are 32 hex characters (or carry `_`/`-`) and keep working. Files and CLI locators keep their readable slugs (`document/design-notes`). Each artifact stores its browser ID in `.artifact-id` inside its directory; keep that file when renaming or moving the directory within its type. Existing slug links still open and switch to the ID address. When duplicating an artifact as new work, omit `.artifact-id` from the copy so it receives its own ID; conflicting IDs are reported instead of choosing one copy.
 
@@ -28,19 +28,19 @@ The home page (the server's `url`) lists the artifacts of every registered proje
 
 The status pill in the top bar shows the version, the cloud relay and an "Update" badge when npm has a newer release (checked once a day). Its panel shows uptime, address, relay, live pages and the registered projects, and has upgrade-and-restart, restart, stop and the server log, filterable by project.
 
-`npx ryugi-artifacts stop` stops the server for every project; `--project-dir` is accepted and ignored. A `start` with a different version identity replaces the running server on the same port; an identical version reuses it. Server-wide options (`--host`, `--url-host`, `--port`, `RYUGI_CLOUD_ORIGIN`) that differ from the running server's replace it too.
+`npx artideck stop` stops the server for every project; `--project-dir` is accepted and ignored. A `start` with a different version identity replaces the running server on the same port; an identical version reuses it. Server-wide options (`--host`, `--url-host`, `--port`, `RYUGI_CLOUD_ORIGIN`) that differ from the running server's replace it too.
 
 The server keeps its state in `~/.ryugi/server/` (`RYUGI_SERVER_HOME` moves it): `projects.json`, the key, the log and `server-info`. Each registered project also gets `.ryugi/artifacts/.state/server-info` pointing at it. The first `start` of this release stops per-project servers from earlier releases; reload their open tabs once, because the port changes.
 
-The same CLI runs what the skill uses: `npx ryugi-artifacts start`, `stop` and `publish` (`<command> --help` lists a command's options; add `--format json` for one JSON line). `npx ryugi-artifacts get <link>` reads a published Ryugi Cloud artifact with this machine's cloud sign-in and prints a bounded summary, including when piped. Follow its `Details` action for complete document content, or use `--source` for LiteXML. A local build of `ryugi-artifacts` can link gitignored output into `skills/artifacts/app/`; the skill's launcher prefers a local `cli.cjs` over the npm release.
+The same CLI runs what the skill uses: `npx artideck start`, `stop` and `publish` (`<command> --help` lists a command's options; add `--format json` for one JSON line). `npx artideck get <link>` reads a published Artideck Cloud artifact with this machine's cloud sign-in and prints a bounded summary, including when piped. Follow its `Details` action for complete document content, or use `--source` for LiteXML. A local build of `artideck` can link gitignored output into `skills/artifacts/app/`; the skill's launcher prefers a local `cli.cjs` over the npm release.
 
-`ryugi update` installs the newest release with the package manager that installed this one (npm, pnpm, yarn or bun, detected from the install path; `--pm` overrides it, `--check` only compares). For an npx, pnpm dlx or bunx run, a local build, or the launcher, it says how to update instead.
+`adeck update` installs the newest release with the package manager that installed this one (npm, pnpm, yarn or bun, detected from the install path; `--pm` overrides it, `--check` only compares). For an npx, pnpm dlx or bunx run, a local build, or the launcher, it says how to update instead.
 
 Cloud publish failures print their classified cause and any login or upgrade link in Brief. Machine JSON retains the HTTP status in `error.httpStatus` and quota facts in `error.details`. Account quota failures use `E_PLAN_LIMIT` and exit code 2; artifact storage exhaustion uses `E_ARTIFACT_STORAGE_LIMIT`, HTTP 413 and exit code 1. Auto-publish reports the same exhaustion reason immediately.
 
 ## License
 
-Ryugi's skills, harness integrations and docs are under Ryugi License 1.1, which limits the Restricted Parties in Schedule A to internal use, with no marketplace listing, product bundling or model training for others, and prohibits scraping them into a marketplace. `ryugi-artifacts` is proprietary (npm `license`: `UNLICENSED`) and not part of this repository; releases up to 1.51.2 were published under AGPL-3.0-only.
+Ryugi's skills, harness integrations and docs are under Ryugi License 1.1, which limits the Restricted Parties in Schedule A to internal use, with no marketplace listing, product bundling or model training for others, and prohibits scraping them into a marketplace. `artideck` is proprietary (npm `license`: `UNLICENSED`) and not part of this repository; releases up to 1.51.2 were published under AGPL-3.0-only.
 
 ## Agent reading
 
