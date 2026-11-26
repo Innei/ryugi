@@ -7,6 +7,13 @@ const path = require('node:path');
 
 const line = (message) => `${JSON.stringify(message)}\n`;
 
+// A hub started in this home outlives the test that started it; its home is the only lead to it.
+function stopHubIn(home) {
+  try {
+    process.kill(Number(fs.readFileSync(path.join(home, 'server.pid'), 'utf8')), 'SIGTERM');
+  } catch {}
+}
+
 function fakeHub(t) {
   const dir = fs.mkdtempSync('/tmp/fhub-');
   const socketPath = path.join(dir, 'hub.sock');
@@ -43,12 +50,19 @@ function fakeHub(t) {
       new Promise((resolve) => {
         for (const socket of sockets) socket.destroy();
         server.close(resolve);
+        stopHubIn(home);
         fs.rmSync(dir, { recursive: true, force: true });
         fs.rmSync(home, { recursive: true, force: true });
       }),
   );
   return {
-    env: { RYUGI_HUB_SOCKET: socketPath, RYUGI_SERVER_HOME: home },
+    // Launchers follow ~/.ryugi/dev.json ahead of the CLI a test hands them, and that real CLI
+    // starts a real hub in this home; a missing link file turns the machine's link off.
+    env: {
+      RYUGI_HUB_SOCKET: socketPath,
+      RYUGI_SERVER_HOME: home,
+      RYUGI_DEV_LINK: path.join(dir, 'no-dev-link.json'),
+    },
     received,
     sessions,
     hellos: () => received.filter((message) => message.t === 'hello'),
