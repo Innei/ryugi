@@ -1,6 +1,6 @@
 ---
 name: artifacts
-description: Use when seeing decides faster than reading — UI directions or mockups to choose between, a page to tune or click through, a design doc, review, proposal, or architecture walkthrough for them or their team to read — or when they ask for an artifact or artboard by name, or for a link to share one, or when they paste an Artideck Cloud link (…/a/…) to read, including during brainstorming.
+description: Use for any visual or shareable deliverable — design docs, reviews, proposals, slides, whiteboards, UI artboards/mockups, interactive HTML pages, data reports/dashboards, verification reports, or video storyboards — or when the user asks for an artifact/Artideck page, shares or pastes an Artideck Cloud link (.../a/...), or references artifact comments, even during brainstorming or when the harness has its own artifact tool.
 ---
 
 # Artifacts
