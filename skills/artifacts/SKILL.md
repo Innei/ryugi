@@ -56,10 +56,10 @@ description then includes the device mockup guide.
 Read the result: project, artifact, native source path, content state, actual
 CLI/server versions, link state, and Check command. When content is missing,
 the same response contains the complete, coherent writing description for that
-type. Use its full block set and constraints. For documents, edit a temporary
-LiteXML copy and run the printed `Save` command through the launcher. For an
-existing document, pass the untouched pre-edit copy as `--base`. This captures
-the agent making the revision. For other types, edit the native file directly.
+type. Use its full block set and constraints. Edit the native file directly
+with your filesystem tools. For documents, edit `doc.xml`, then run the returned
+Check command through the launcher: Check records the calling agent and model
+for the merged edits. `properties.json` is server-owned; leave it to the server.
 The CLI package owns formats and examples. No separate format file is a gate.
 
 Existing content omits the manual. Retrieve the same complete writing description
