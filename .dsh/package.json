@@ -1,6 +1,6 @@
 {
   "name": "dsh-plugin-ryugi",
-  "version": "1.113.3",
+  "version": "1.114.0",
   "description": "Ryugi skills and interactive artifacts integration for DeepSeek Harness (DSH).",
   "keywords": [
     "deepseek-harness",
