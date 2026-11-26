@@ -35,7 +35,7 @@ The Kimi plugin manifest lives at `.kimi-plugin/plugin.json`.
 The manifest does three things:
 
 1. Points Kimi Code at the existing `skills/` directory.
-2. Loads `using-ryugi` at session start through `sessionStart.skill`.
+2. Loads `using-adeck` at session start through `sessionStart.skill`.
 3. Provides Kimi-specific tool mapping through `skillInstructions`.
 
 Kimi Code reads Artideck skills from this repository. There are no copied skills, symlinks, hooks, or extra runtime dependencies.

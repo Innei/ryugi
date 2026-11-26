@@ -94,7 +94,7 @@ if (failures.length > 0) {
 console.info(JSON.stringify(result, null, 2));
 
 function isBootstrapSkillPath(filePath) {
-  return String(filePath).replaceAll('\\', '/').includes('using-ryugi/SKILL.md');
+  return String(filePath).replaceAll('\\', '/').includes('using-adeck/SKILL.md');
 }
 
 function makeOutput(text) {

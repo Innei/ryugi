@@ -19,7 +19,7 @@ Skills speak in actions ("invoke a skill", "dispatch a subagent", "create a todo
 
 ## Loading skills
 
-OMP discovers bundled Ryugi skills automatically, but does not expose a separate `Skill` tool. When a Ryugi workflow or instruction says to invoke a skill (for example `ryugi:brainstorming`, `ryugi:artifacts`, `ryugi:executing-specs`, `ryugi:test-driven-development`, `ryugi:systematic-debugging`, or `ryugi:verifying`), call `read` on `skill://<name>` (or read its `SKILL.md` path directly) and follow it. Using `read` is the sanctioned native skill-loading mechanism on OMP.
+OMP discovers bundled Ryugi skills automatically, but does not expose a separate `Skill` tool. When a Ryugi workflow or instruction says to invoke a skill (for example `adeck:brainstorming`, `adeck:artifacts`, `adeck:executing-specs`, `adeck:test-driven-development`, `adeck:systematic-debugging`, or `adeck:verifying`), call `read` on `skill://<name>` (or read its `SKILL.md` path directly) and follow it. Using `read` is the sanctioned native skill-loading mechanism on OMP.
 
 ## Live comment delivery
 

@@ -140,11 +140,11 @@ the actual answer using config; add `--project` for a project-only choice.
 
 ## Creative work
 
-For UI mockups, landing and marketing pages, visual direction exploration and interface critique, use ryugi:interface-craft to inform choices; it adds no approval gate. Pure documentation, precise cosmetic edits and non-UI visualizations do not require it.
+For UI mockups, landing and marketing pages, visual direction exploration and interface critique, use adeck:interface-craft to inform choices; it adds no approval gate. Pure documentation, precise cosmetic edits and non-UI visualizations do not require it.
 
 Load the project's design system (tokens, components, type) before the first
 frame. If it has none (framework defaults as installed are none) and the
-mockups cover several screens or a whole UI, use ryugi:design-system before
+mockups cover several screens or a whole UI, use adeck:design-system before
 drawing any screen; for one surface, say which type, scale and palette you
 are using. Use real copy and data, never lorem ipsum. An html page shows both
 themes when the product has them and the states the decision touches. Preview

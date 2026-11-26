@@ -35,8 +35,8 @@ manifest_path = Path(sys.argv[1])
 manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
 repo_root = manifest_path.parents[1]
 
-if manifest.get("name") != "ryugi":
-    raise AssertionError(f"plugin name: expected 'ryugi', got {manifest.get('name')!r}")
+if manifest.get("name") != "adeck":
+    raise AssertionError(f"plugin name: expected 'adeck', got {manifest.get('name')!r}")
 
 package = json.loads((repo_root / "package.json").read_text(encoding="utf-8"))
 if manifest.get("version") != package.get("version"):

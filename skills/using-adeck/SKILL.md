@@ -1,5 +1,5 @@
 ---
-name: using-ryugi
+name: using-adeck
 description: Use when starting any conversation - routes each task to the Ryugi workflow for its stage
 ---
 
@@ -11,12 +11,12 @@ If you were dispatched as a subagent to execute a specific task, ignore this ski
 
 Before you read project files or write code for a task, load the skill for its stage with the `Skill` tool and follow it:
 
-- Building or changing behavior ("let's build X", plan mode): `ryugi:brainstorming`
-- An approved spec to implement or resume: `ryugi:executing-specs`
-- A bug, failing test or unexpected behavior: `ryugi:systematic-debugging`
-- Writing implementation code: `ryugi:test-driven-development`, also when your human partner says to skip discussion
-- Work built or a bug fixed, and a visible bug before you fix it: `ryugi:verifying`, before calling it done
-- Something to show (mockups, a design doc, a share link): `ryugi:artifacts`
+- Building or changing behavior ("let's build X", plan mode): `adeck:brainstorming`
+- An approved spec to implement or resume: `adeck:executing-specs`
+- A bug, failing test or unexpected behavior: `adeck:systematic-debugging`
+- Writing implementation code: `adeck:test-driven-development`, also when your human partner says to skip discussion
+- Work built or a bug fixed, and a visible bug before you fix it: `adeck:verifying`, before calling it done
+- Something to show (mockups, a design doc, a share link): `adeck:artifacts`
 
 Plain questions and read-only checks need no skill. Your human partner's instructions override skills. A project's own skill for a step (its design system, checking the running app, shipping) does that step.
 

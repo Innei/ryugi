@@ -39,4 +39,4 @@ A test that fails when a token exists in the source but not on the tokens page. 
 
 ## Replacement plan
 
-Which screens move to the system, in what order, and which old styles are deleted. Empty for a new product. For screens that existed without tokens, it lists each literal value and the token that replaces it. A verify plan names the boards each built screen is compared against (ryugi:verifying).
+Which screens move to the system, in what order, and which old styles are deleted. Empty for a new product. For screens that existed without tokens, it lists each literal value and the token that replaces it. A verify plan names the boards each built screen is compared against (adeck:verifying).

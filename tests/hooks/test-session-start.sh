@@ -407,7 +407,7 @@ assert_command_output \
   "session-start reached through a backslash path still reads the skill" \
   "nested" \
   "" \
-  "Error reading using-ryugi skill" \
+  "Error reading using-adeck skill" \
   "$backslash_home" \
   CLAUDE_PLUGIN_ROOT="$REPO_ROOT" \
   "$bash_bin" -c 'cd "$1" && exec "$2" "$3"' _ "$backslash_cwd" "$bash_bin" "$backslash_hook"
@@ -480,7 +480,7 @@ install_variant() {
   mkdir -p "$root/skills/artifacts/app"
   cp -R "$REPO_ROOT/hooks" "$root/hooks"
   cp "$REPO_ROOT/skills/artifacts/app/hook-bin.sh" "$root/skills/artifacts/app/"
-  cp -R "$REPO_ROOT/skills/using-ryugi" "$root/skills/using-ryugi"
+  cp -R "$REPO_ROOT/skills/using-adeck" "$root/skills/using-adeck"
   printf '%s\n' "$root"
 }
 
@@ -535,6 +535,99 @@ assert_command_output \
   "$(make_home full-install)" \
   CLAUDE_PLUGIN_ROOT="$full_root" \
   bash "$full_root/hooks/session-start"
+
+lite_root="$(install_variant adeck-lite)"
+if lite_out="$(env -i PATH="${PATH:-}" HOME="$(make_home adeck-lite)" CLAUDE_PLUGIN_ROOT="$lite_root" \
+  bash "$lite_root/hooks/session-start" 2>&1)" && [[ -z "$lite_out" ]]; then
+  pass "the adeck-lite install injects no workflow bootstrap"
+else
+  fail "the adeck-lite install injects no workflow bootstrap"
+  echo "$lite_out" | sed 's/^/      /'
+fi
+
+if lite_data_out="$(env -i PATH="${PATH:-}" HOME="$(make_home adeck-lite-data)" CLAUDE_PLUGIN_ROOT="$REPO_ROOT" \
+  CLAUDE_PLUGIN_DATA="$TEST_ROOT/plugins/data/adeck-lite-ryugi-dev" \
+  bash "$HOOK_UNDER_TEST" 2>&1)" && [[ -z "$lite_data_out" ]]; then
+  pass "a directory-source adeck-lite install, named only by its data dir, injects no bootstrap"
+else
+  fail "a directory-source adeck-lite install, named only by its data dir, injects no bootstrap"
+  echo "$lite_data_out" | head -3 | sed 's/^/      /'
+fi
+
+legacy_run() {
+  local home="$1" data="$2"
+  shift 2
+  mkdir -p "$home/bin"
+  printf '#!/bin/sh\nprintf "%%s " "$@" >> "%s"\nprintf "\\n" >> "%s"\n' "$home/node-args" "$home/node-args" > "$home/bin/node"
+  chmod +x "$home/bin/node"
+  env -i PATH="$home/bin:/usr/bin:/bin" HOME="$home" RYUGI_HOOK_BIN="$BIN" CLAUDE_PLUGIN_ROOT="$REPO_ROOT" \
+    CLAUDE_PLUGIN_DATA="$TEST_ROOT/plugins/data/$data" "$@" bash "$HOOK_UNDER_TEST" 2>&1
+}
+migrated() {
+  for _ in 1 2 3 4 5 6 7 8 9 10; do
+    grep -q 'plugin-migrate' "$1/node-args" 2> /dev/null && return 0
+    sleep 0.2
+  done
+  return 1
+}
+
+legacy_home="$(make_home legacy-full)"
+legacy_out="$(legacy_run "$legacy_home" ryugi-ryugi-dev)"
+if [[ "$legacy_out" == *"old id ryugi@ryugi-dev"* ]] && migrated "$legacy_home"; then
+  pass "a ryugi@ryugi-dev session names its old skill prefix and starts the move to adeck"
+else
+  fail "a ryugi@ryugi-dev session names its old skill prefix and starts the move to adeck"
+  echo "$legacy_out" | head -3 | sed 's/^/      /'
+fi
+
+current_home="$(make_home adeck-full)"
+current_out="$(legacy_run "$current_home" adeck-ryugi-dev)"
+sleep 0.5
+if [[ "$current_out" != *"old id"* ]] && ! grep -q 'plugin-migrate' "$current_home/node-args" 2> /dev/null; then
+  pass "an adeck session neither mentions the old id nor starts a move"
+else
+  fail "an adeck session neither mentions the old id nor starts a move"
+fi
+
+legacy_lite_home="$(make_home legacy-lite)"
+legacy_lite_out="$(legacy_run "$legacy_lite_home" ryugi-artifacts-ryugi-dev)"
+if [[ -z "$legacy_lite_out" ]] && migrated "$legacy_lite_home"; then
+  pass "a ryugi-artifacts session stays silent but starts the move to adeck-lite"
+else
+  fail "a ryugi-artifacts session stays silent but starts the move to adeck-lite"
+  echo "$legacy_lite_out" | head -3 | sed 's/^/      /'
+fi
+
+notice_home="$(make_home legacy-notice)"
+mkdir -p "$notice_home/.ryugi"
+printf '{\n  "failures": 3,\n  "notice": true\n}\n' > "$notice_home/.ryugi/plugin-migration.json"
+notice_out="$(legacy_run "$notice_home" ryugi-ryugi-dev)"
+if [[ "$notice_out" == *"claude plugin install adeck@ryugi-dev --scope user"* ]]; then
+  pass "after the move failed three times the session tells how to finish it by hand"
+else
+  fail "after the move failed three times the session tells how to finish it by hand"
+fi
+
+moved_home="$(make_home legacy-notice-artideck)"
+mkdir -p "$moved_home/.artideck"
+printf '{\n  "failures": 3,\n  "notice": true\n}\n' > "$moved_home/.artideck/plugin-migration.json"
+moved_out="$(legacy_run "$moved_home" ryugi-ryugi-dev)"
+if [[ "$moved_out" == *"claude plugin install adeck@ryugi-dev --scope user"* ]]; then
+  pass "the three-failure notice is read from ~/.artideck once the home store has moved"
+else
+  fail "the three-failure notice is read from ~/.artideck once the home store has moved"
+fi
+
+scoped_home="$(make_home legacy-project)"
+scoped_project="$TEST_ROOT/scoped-project"
+mkdir -p "$scoped_project/.claude"
+printf '{"enabledPlugins":{"ryugi@ryugi-dev":true}}' > "$scoped_project/.claude/settings.json"
+scoped_out="$(legacy_run "$scoped_home" ryugi-ryugi-dev CLAUDE_PROJECT_DIR="$scoped_project")"
+if [[ "$scoped_out" == *".claude/settings.json"* ]]; then
+  pass "a project that enables ryugi@ryugi-dev is asked to switch its settings to adeck"
+else
+  fail "a project that enables ryugi@ryugi-dev is asked to switch its settings to adeck"
+fi
 
 if [[ "$FAILURES" -gt 0 ]]; then
   echo "STATUS: FAILED ($FAILURES failure(s))"

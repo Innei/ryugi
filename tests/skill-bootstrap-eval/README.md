@@ -3,14 +3,14 @@
 Compare installations using fresh Claude Code processes and disposable
 Git projects. The production skills and integrations are unchanged.
 
-| Arm            | `using-ryugi` available                                                | SessionStart injects its body                            |
+| Arm            | `using-adeck` available                                                | SessionStart injects its body                            |
 | -------------- | ---------------------------------------------------------------------- | -------------------------------------------------------- |
 | `full`         | Yes                                                                    | Yes, through the repository's real `hooks/session-start` |
 | `discoverable` | Yes, with its current description                                      | No                                                       |
 | `absent`       | No                                                                     | No                                                       |
 | `short`        | Yes, using the frozen candidate in `fixtures/short-router.md`          | Yes, through the same real hook                          |
-| `baseline`     | Yes, `using-ryugi` and `brainstorming` from `--baseline-rev`           | Yes, through the same real hook                          |
-| `bs-only`      | Yes, `using-ryugi` from `--baseline-rev`, working-tree `brainstorming` | Yes, through the same real hook                          |
+| `baseline`     | Yes, `using-adeck` and `brainstorming` from `--baseline-rev`           | Yes, through the same real hook                          |
+| `bs-only`      | Yes, `using-adeck` from `--baseline-rev`, working-tree `brainstorming` | Yes, through the same real hook                          |
 | `candidate`    | Yes, the working tree                                                  | Yes, through the same real hook                          |
 
 All other Ryugi skills are identical. Each process gets a private
@@ -35,7 +35,7 @@ python3 tests/skill-bootstrap-eval/run.py --model haiku --reps 5 --workers 5 --t
 ```
 
 `--router-file` selects an alternative candidate. Only the disposable
-plugin copy is changed; the production `using-ryugi` file is preserved.
+plugin copy is changed; the production `using-adeck` file is preserved.
 The original five-case, three-arm defaults remain available for repeating
 the initial ablation.
 

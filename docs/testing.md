@@ -21,7 +21,7 @@ Live in `tests/`. Currently:
 - `node --test tests/hooks/test-comment-watch.cjs` — the persistent Claude Code comment monitor: document and Artboard notifications, human updates with unchanged unread counts, CLI read cursors, restart recovery, partial writes, shell-safe paths, ignoring agent replies, routing each session only the artifacts it opened through the launcher, also when it opened them in another checkout of the same repository (main checkout or linked worktree) or in a project outside the repository (found through a per-session index under `$XDG_CACHE_HOME/ryugi`), and the actual manifest command from a repository subdirectory. Real Claude session results live in `docs/ryugi/skill-evals/`.
 - `node --test tests/hooks/test-codex-comment-watch.cjs` — Codex lifecycle hooks, launcher subscriptions, exact session routing, duplicate startup, queue retry, resolved-comment cancellation and session cleanup. The package suite also runs a lifecycle test from the extracted archive, where no root `hooks/` directory is shipped, so the Codex hooks run `skills/artifacts/app/codex-hook`.
 - `node --test tests/hooks/test-comment-subscriptions.cjs` — synchronous hook bindings, inherited parent IDs, nested harnesses, parallel sessions, and preventing server starts or read-only commands from subscribing to feedback.
-- `node --test tests/pi/test-pi-extension.mjs` — the Pi package manifest, `using-ryugi` bootstrap injection, and the Pi comment watch: waking only the session that opened an artifact, choice submits, delivery failures that throw or reject without stopping the watch, session replacement, reload and fork, and which host a nested Pi registers with. Real Pi session results live in `docs/ryugi/skill-evals/`.
+- `node --test tests/pi/test-pi-extension.mjs` — the Pi package manifest, `using-adeck` bootstrap injection, and the Pi comment watch: waking only the session that opened an artifact, choice submits, delivery failures that throw or reject without stopping the watch, session replacement, reload and fork, and which host a nested Pi registers with. Real Pi session results live in `docs/ryugi/skill-evals/`.
 - `node --test tests/hooks/test-codex-desktop-transport.cjs` — the desktop delivery script `ryugi-hook` runs under the app's own Node: native-pipe framing, tool discovery, exact-session receipts, errors and disconnects. The Codex watcher suite also exercises desktop comment/choice delivery, retry without CLI fallback, host rejection and macOS startup replacement. Tests use synthetic sessions and fake local pipes; see [desktop session evidence](ryugi/skill-evals/2026-11-02-codex-desktop-comment-watch.md) for real-host validation and limits.
 - `tests/kimi/` — bash/Python checks for Kimi plugin manifest wiring.
 - `tests/claude-code/test-marketplace-variants.sh` — the `ryugi-artifacts` marketplace entry loads only the artifacts skills, the full `ryugi` entry stays unrestricted, every entry's version is declared for `bump-version.sh`, and `claude plugin validate` passes when `claude` is installed.
@@ -36,11 +36,11 @@ Run plugin tests via the relevant directory's `run-*.sh` or `npm test`.
 
 The focused native Claude Code bootstrap ablation lives in
 [`tests/skill-bootstrap-eval/`](../tests/skill-bootstrap-eval/README.md).
-It compares full startup injection, discoverable-only `using-ryugi`, and
+It compares full startup injection, discoverable-only `using-adeck`, and
 removing that entry while retaining the other skills. The
-[2026-10-31 report](./ryugi/skill-evals/2026-10-31-using-ryugi-bootstrap.md)
+[2026-10-31 report](./ryugi/skill-evals/2026-10-31-using-adeck-bootstrap.md)
 keeps all 75 small-model samples and the observable evidence.
-The [follow-up router comparison](./ryugi/skill-evals/2026-10-31-using-ryugi-router.md)
+The [follow-up router comparison](./ryugi/skill-evals/2026-10-31-using-adeck-router.md)
 adds a frozen short candidate and direct/resumed execution boundaries:
 105 native Haiku sessions, with skill selection and actual behavior scored
 separately.

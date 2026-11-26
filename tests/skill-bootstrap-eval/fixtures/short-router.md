@@ -1,5 +1,5 @@
 ---
-name: using-ryugi
+name: using-adeck
 description: Use when choosing a Ryugi workflow for a task.
 ---
 
@@ -7,12 +7,12 @@ description: Use when choosing a Ryugi workflow for a task.
 
 Load the matching skill for the task's current stage:
 
-- New features or behavior changes: `ryugi:brainstorming` before implementation.
-- Approved designs ready to implement or resume: `ryugi:executing-specs`.
-- Bugs or unexpected behavior: `ryugi:systematic-debugging` before fixing.
-- Implementation: `ryugi:test-driven-development`.
-- Work built or a bug fixed: `ryugi:verifying` before reporting completion.
-- Visual comparisons, mockups or shared design documents: `ryugi:artifacts`.
+- New features or behavior changes: `adeck:brainstorming` before implementation.
+- Approved designs ready to implement or resume: `adeck:executing-specs`.
+- Bugs or unexpected behavior: `adeck:systematic-debugging` before fixing.
+- Implementation: `adeck:test-driven-development`.
+- Work built or a bug fixed: `adeck:verifying` before reporting completion.
+- Visual comparisons, mockups or shared design documents: `adeck:artifacts`.
 
 When your human partner says to skip discussion and code, proceed under TDD.
 Ordinary questions and read-only checks can be answered directly.

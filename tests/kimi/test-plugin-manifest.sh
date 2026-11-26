@@ -21,11 +21,11 @@ def assert_present(text, needle, label):
     if needle not in text:
         raise AssertionError(f"{label}: missing {needle!r}")
 
-assert_equal(manifest.get("name"), "ryugi", "plugin name")
+assert_equal(manifest.get("name"), "adeck", "plugin name")
 assert_equal(manifest.get("skills"), "./skills/", "skills path")
 assert_equal(
     manifest.get("sessionStart", {}).get("skill"),
-    "using-ryugi",
+    "using-adeck",
     "sessionStart.skill",
 )
 

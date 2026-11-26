@@ -26,11 +26,11 @@ groups use the human's `verdict`, independently of choice-round submission.
 - `reject`: read the reason and any pins on its boards, and fix it inside
   that group:
   - Behaviour or state (wrong content, a disabled control, a broken flow,
-    a wrong result): under ryugi:test-driven-development.
+    a wrong result): under adeck:test-driven-development.
   - Look only (layout, spacing, color, type): the rejected screenshot is
     the failing reproduction and the new screenshot is the check.
   - One commit per fix; exploratory work stays uncommitted, as
-    ryugi:executing-specs says.
+    adeck:executing-specs says.
   - Replace the evidence (same file, or add a board to the group), update
     `from` and `capturedAt`, reply on the reject thread with what changed
     and the commit, and leave the thread open.

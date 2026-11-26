@@ -14,7 +14,7 @@ _PLUGIN_DIR = os.path.abspath(
 )
 sys.path.insert(0, _PLUGIN_DIR)
 
-BOOTSTRAP_MARKER = "ryugi:using-ryugi bootstrap for hermes"
+BOOTSTRAP_MARKER = "adeck:using-adeck bootstrap for hermes"
 
 
 def _load_plugin():
@@ -50,7 +50,7 @@ class TestPluginRegistration:
         # The conftest mock raises on non-Path (mirroring hermes' real
         # register_skill), so reaching these asserts proves every
         # registration passed a pathlib.Path.
-        assert "using-ryugi" in mock_ctx._skills
+        assert "using-adeck" in mock_ctx._skills
         assert "brainstorming" in mock_ctx._skills
         for name, path in mock_ctx._skills.items():
             assert isinstance(path, Path)
@@ -107,7 +107,7 @@ class TestLayoutResolution:
         skills = tmp_path / "ryugi" / "skills"
         plugdir.mkdir(parents=True, exist_ok=True)
         shutil.copy(Path(_PLUGIN_DIR) / "__init__.py", plugdir / "__init__.py")
-        for skill in ("using-ryugi", "brainstorming"):
+        for skill in ("using-adeck", "brainstorming"):
             shutil.copytree(src_skills / skill, skills / skill)
         return plugdir
 
@@ -125,14 +125,14 @@ class TestLayoutResolution:
         plugdir = self._stage(tmp_path, "clone")
         mod = self._load_from(plugdir)
         mod.register(mock_ctx)
-        assert "using-ryugi" in mock_ctx._skills
+        assert "using-adeck" in mock_ctx._skills
 
     def test_flat_layout_resolves_nested_skills(self, tmp_path, mock_ctx):
         # flattened install: module at the plugin dir root, skills/ inside it.
         plugdir = self._stage(tmp_path, "flat")
         mod = self._load_from(plugdir)
         mod.register(mock_ctx)
-        assert "using-ryugi" in mock_ctx._skills
+        assert "using-adeck" in mock_ctx._skills
 
     def test_missing_skills_raises_loudly(self, tmp_path, mock_ctx):
         plugdir = tmp_path / "ryugi"

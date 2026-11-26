@@ -116,7 +116,7 @@ instead of describing it:
 | What is being decided                               | Where                                             |
 | --------------------------------------------------- | ------------------------------------------------- |
 | Several screens, states or visual questions at once | an artboard, in rounds: read `artboard-rounds.md` |
-| One surface or one dimension to tune                | an `html` page as ryugi:artifacts says            |
+| One surface or one dimension to tune                | an `html` page as adeck:artifacts says            |
 | Structure, architecture, tradeoffs                  | words: chat or the document                       |
 
 Requirements, scope, tradeoffs, and conceptual choices stay in words. A
@@ -131,13 +131,13 @@ plus the link. Showing a mockup doesn't send every question to the
 browser. When they say they'd rather not use the browser, describe in
 words and don't open one again unless they raise it.
 
-**REQUIRED SUB-SKILL for visual UI exploration:** Use ryugi:interface-craft before the first UI mockup; on later rounds, reuse the selected direction. It informs design judgment, not another question or approval gate. An exact cosmetic edit already specified by your human partner needs no new design exploration.
+**REQUIRED SUB-SKILL for visual UI exploration:** Use adeck:interface-craft before the first UI mockup; on later rounds, reuse the selected direction. It informs design judgment, not another question or approval gate. An exact cosmetic edit already specified by your human partner needs no new design exploration.
 
 **Mockups of their product look like their product.** Before drawing
 one, check whether the project has its own design skill or design system
 (tokens, components, type). If it does, load it first and draw with it.
 If it has none and several screens or a whole UI are being designed, or
-they ask for a design system, use ryugi:design-system: its first round is
+they ask for a design system, use adeck:design-system: its first round is
 the direction round, each direction drawn as a complete system. A single
 screen goes ahead as above.
 
@@ -149,7 +149,7 @@ words. They can override it.
 | Size                | The full description                       | Then                                                                                 |
 | ------------------- | ------------------------------------------ | ------------------------------------------------------------------------------------ |
 | A quick, clear task | the request itself                         | do it                                                                                |
-| A small change      | in chat, your calls marked                 | build it in the same turn; under ryugi:test-driven-development when behavior changes |
+| A small change      | in chat, your calls marked                 | build it in the same turn; under adeck:test-driven-development when behavior changes |
 | A project           | a written design: read `written-design.md` | wait for approval, then the handoff below                                            |
 
 If it grows mid-task, stop, say so, and step up a size.
@@ -180,9 +180,9 @@ The approved document is what gets built from. There is no plan document
 in between.
 
 After your human partner approves a project's document, say in one line
-that you're building it from the spec, then invoke ryugi:executing-specs
+that you're building it from the spec, then invoke adeck:executing-specs
 with the spec path (the pointer, for a document design). When they ask to just code it, now or in their
-instructions, build it under ryugi:test-driven-development instead, then
+instructions, build it under adeck:test-driven-development instead, then
 report.
 
 ## Red Flags

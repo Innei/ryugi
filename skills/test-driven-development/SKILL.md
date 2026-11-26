@@ -30,8 +30,8 @@ Write the test first. Watch it fail. Write minimal code to pass.
 
 Thinking "skip TDD just this once"? Stop. That's rationalization.
 
-**Before the first edit:** ryugi:using-git-worktrees decides where the
-work happens, unless ryugi:executing-specs already did at its Setup.
+**Before the first edit:** adeck:using-git-worktrees decides where the
+work happens, unless adeck:executing-specs already did at its Setup.
 
 ## The Iron Law
 

@@ -24,7 +24,7 @@ When a skill mentions "your instructions file", on Muse this is **`CLAUDE.md`** 
 
 ## Skill invocation
 
-Muse has native skill support via `muse skills`. To invoke a Ryugi skill, read its `SKILL.md` and follow the instructions. The bootstrap (`using-ryugi`) is injected automatically at `SessionStart` via the plugin hook — you are already following it, do not re-load it.
+Muse has native skill support via `muse skills`. To invoke a Ryugi skill, read its `SKILL.md` and follow the instructions. The bootstrap (`using-adeck`) is injected automatically at `SessionStart` via the plugin hook — you are already following it, do not re-load it.
 
 ## Subagent dispatch
 

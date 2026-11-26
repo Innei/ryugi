@@ -13,18 +13,23 @@ const marketplace = read(".claude-plugin/marketplace.json");
 const bump = read(".version-bump.json");
 const failures = [];
 
-const variant = marketplace.plugins.find((plugin) => plugin.name === "ryugi-artifacts");
-if (!variant) failures.push("marketplace has no ryugi-artifacts entry");
-else {
-  if (variant.source !== "./") failures.push(`ryugi-artifacts source is ${variant.source}`);
-  const skills = JSON.stringify(variant.skills);
-  if (skills !== JSON.stringify(["./skills/artifacts", "./skills/interface-craft"]))
-    failures.push(`ryugi-artifacts skills are ${skills}`);
-  if (/brainstorm|tdd/i.test(variant.description ?? "")) failures.push("ryugi-artifacts description names the workflow");
+for (const name of ["adeck-lite", "ryugi-artifacts"]) {
+  const variant = marketplace.plugins.find((plugin) => plugin.name === name);
+  if (!variant) failures.push(`marketplace has no ${name} entry`);
+  else {
+    if (variant.source !== "./") failures.push(`${name} source is ${variant.source}`);
+    const skills = JSON.stringify(variant.skills);
+    if (skills !== JSON.stringify(["./skills/artifacts", "./skills/interface-craft"]))
+      failures.push(`${name} skills are ${skills}`);
+    if (/brainstorm|tdd/i.test(variant.description ?? "")) failures.push(`${name} description names the workflow`);
+  }
 }
 
-const full = marketplace.plugins.find((plugin) => plugin.name === "ryugi");
-if (!full || full.skills) failures.push("the full ryugi entry must stay unrestricted");
+for (const name of ["adeck", "ryugi"]) {
+  const full = marketplace.plugins.find((plugin) => plugin.name === name);
+  if (!full || full.skills) failures.push(`the full ${name} entry must stay unrestricted`);
+}
+if (marketplace.name !== "ryugi-dev") failures.push(`marketplace is named ${marketplace.name}; installed users know it as ryugi-dev`);
 
 marketplace.plugins.forEach((_, index) => {
   const declared = bump.files.some(

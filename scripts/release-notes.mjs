@@ -73,7 +73,7 @@ const SCOPE_AREA = {
   'brainstorming': 'Skills',
   'executing-specs': 'Skills',
   'using-git-worktrees': 'Skills',
-  'using-ryugi': 'Skills',
+  'using-adeck': 'Skills',
   'verifying-ui': 'Skills',
   'interface-craft': 'Skills',
   'skill-evals': 'Skills',

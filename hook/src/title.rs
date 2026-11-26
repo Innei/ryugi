@@ -6,7 +6,7 @@ pub fn manifest_version(root: &Path) -> Option<String> {
     MANIFESTS.iter().find_map(|file| {
         let text = std::fs::read_to_string(root.join(file)).ok()?;
         let manifest: serde_json::Value = serde_json::from_str(&text).ok()?;
-        if manifest.get("name")?.as_str()? != "ryugi" {
+        if !matches!(manifest.get("name")?.as_str()?, "adeck" | "ryugi") {
             return None;
         }
         manifest.get("version")?.as_str().filter(|v| !v.is_empty()).map(str::to_string)
@@ -294,5 +294,12 @@ mod tests {
         assert_eq!(manifest_version(t.path()).as_deref(), Some("1.2.3"));
         t.write("package.json", r#"{"name":"ryugi","version":"1.2.4"}"#);
         assert_eq!(manifest_version(t.path()).as_deref(), Some("1.2.4"));
+    }
+
+    #[test]
+    fn the_version_comes_from_an_adeck_manifest_too() {
+        let t = TestDir::new("title-manifest-adeck");
+        t.write("package.json", r#"{"name":"adeck","version":"1.115.0"}"#);
+        assert_eq!(manifest_version(t.path()).as_deref(), Some("1.115.0"));
     }
 }

@@ -1,6 +1,6 @@
 # Steps on the Artboard
 
-One artboard for the whole system, named after the product (`<product>-design-system`). Each step gets its own canvas page; a new round of the same step goes below the last, as ryugi:artifacts says for appending. Boards are 1280×800 for screens, the device size for device screens, 640×400 or taller for a sheet; size `h` to the content.
+One artboard for the whole system, named after the product (`<product>-design-system`). Each step gets its own canvas page; a new round of the same step goes below the last, as adeck:artifacts says for appending. Boards are 1280×800 for screens, the device size for device screens, 640×400 or taller for a sheet; size `h` to the content.
 
 Device screens, in every step, follow the reference for the product's platform under [platforms/](platforms/): [ios.md](platforms/ios.md) for iPhone. A platform without a reference gets plain boards at its screen size; say there is no device frame for it yet. Icons are `<ryugi-icon name>` (Lucide) unless the platform reference adds more. Each board links `../tokens.css`, the one file holding the system's values: light on `:root`, dark on `[data-appearance="dark"]`, in the role names (`--color-bg`, `--color-surface`, `--color-text`, `--color-accent`…). Every screen reads these variables. [examples/](examples/) has a worked set for a made-up product; take its shape, not its values.
 
@@ -23,7 +23,7 @@ C draws every step below in one round, each on its own canvas page, with choice 
 
 **A, B, D:** a choice group of 2–3 boards, one per direction, each with the same sections so they compare:
 
-1. Five direction lines (ryugi:interface-craft: product, character, world, moments, signature); in B, quote the doc's tone
+1. Five direction lines (adeck:interface-craft: product, character, world, moments, signature); in B, quote the doc's tone
 2. Surface ramp, light and dark, with contrast ratios of each text role
 3. Accent and the rule for where it goes
 4. Type scale with real text from the product
@@ -77,4 +77,4 @@ If it does not read like this product, go back to step 1 with what they said.
 
 ## Spec
 
-Write the design as ryugi:brainstorming `written-design.md` says, with the landing section from [landing.md](landing.md). Name every chosen board by id.
+Write the design as adeck:brainstorming `written-design.md` says, with the landing section from [landing.md](landing.md). Name every chosen board by id.

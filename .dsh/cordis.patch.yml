@@ -1,4 +1,4 @@
 - insert:
-    - id: ryugi
-      name: dsh-plugin-ryugi
+    - id: adeck
+      name: dsh-plugin-adeck
       config: {}

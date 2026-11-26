@@ -16,13 +16,13 @@ export function nodeBin(execPath = process.execPath): string {
 
 const UUID = /^[\da-f]{8}(?:-[\da-f]{4}){3}-[\da-f]{12}$/i;
 const EXTREMELY_IMPORTANT_MARKER = '<EXTREMELY_IMPORTANT>';
-const BOOTSTRAP_MARKER = 'ryugi:using-ryugi bootstrap for omp';
+const BOOTSTRAP_MARKER = 'adeck:using-adeck bootstrap for omp';
 const HOOK_WAIT_MS = 60_000;
 
 const extensionDir = dirname(fileURLToPath(import.meta.url));
 const packageRoot = resolve(extensionDir, '../..');
 const skillsDir = resolve(packageRoot, 'skills');
-const bootstrapSkillPath = resolve(skillsDir, 'using-ryugi', 'SKILL.md');
+const bootstrapSkillPath = resolve(skillsDir, 'using-adeck', 'SKILL.md');
 
 let cachedBootstrap: string | null | undefined;
 
@@ -238,9 +238,9 @@ export function getBootstrapContent(): string | null {
     cachedBootstrap = `${EXTREMELY_IMPORTANT_MARKER}
 ${BOOTSTRAP_MARKER}
 
-You have Ryugi.
+You have Artideck.
 
-The using-ryugi skill content is included below and is already loaded for this OMP session. Follow it now. Do not try to load using-ryugi again.
+The using-adeck skill content is included below and is already loaded for this OMP session. Follow it now. Do not try to load using-adeck again.
 
 ${body}
 
@@ -261,7 +261,7 @@ function stripFrontmatter(content: string): string {
 export function ompToolMapping(): string {
   return `## OMP tool mapping
 
-OMP discovers installed skills automatically but does not expose a separate \`Skill\` tool. When a Ryugi instruction says to invoke a skill (such as \`ryugi:brainstorming\`, \`ryugi:artifacts\`, \`ryugi:executing-specs\`, \`ryugi:test-driven-development\`, \`ryugi:systematic-debugging\`, or \`ryugi:verifying\`), load it with \`read\` using \`skill://<name>\` (or read its \`SKILL.md\` path directly). Using \`read\` is the native skill-loading mechanism on OMP.
+OMP discovers installed skills automatically but does not expose a separate \`Skill\` tool. When a Ryugi instruction says to invoke a skill (such as \`adeck:brainstorming\`, \`adeck:artifacts\`, \`adeck:executing-specs\`, \`adeck:test-driven-development\`, \`adeck:systematic-debugging\`, or \`adeck:verifying\`), load it with \`read\` using \`skill://<name>\` (or read its \`SKILL.md\` path directly). Using \`read\` is the native skill-loading mechanism on OMP.
 
 OMP's built-in coding tools are lowercase:
 - Read a file, read a skill, or fetch a URL: \`read\` (supports local paths, \`skill://<name>\`, and \`http(s)://\` URLs)

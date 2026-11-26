@@ -21,7 +21,7 @@ Skills speak in actions ("invoke a skill", "dispatch a subagent", "create a todo
 
 ## Loading skills
 
-Antigravity discovers installed skills automatically and lists each skill's name, description, and `SKILL.md` path in your `<skills>` system prompt block, but does not expose a separate `Skill` tool. When a Ryugi workflow or instruction says to load or invoke a skill (for example `ryugi:brainstorming`, `ryugi:artifacts`, `ryugi:executing-specs`, `ryugi:test-driven-development`, `ryugi:systematic-debugging`, or `ryugi:verifying`), call `read_file` on that skill's `SKILL.md` path and follow it. Reading `SKILL.md` with `read_file` is the native skill-loading mechanism on Antigravity.
+Antigravity discovers installed skills automatically and lists each skill's name, description, and `SKILL.md` path in your `<skills>` system prompt block, but does not expose a separate `Skill` tool. When a Ryugi workflow or instruction says to load or invoke a skill (for example `adeck:brainstorming`, `adeck:artifacts`, `adeck:executing-specs`, `adeck:test-driven-development`, `adeck:systematic-debugging`, or `adeck:verifying`), call `read_file` on that skill's `SKILL.md` path and follow it. Reading `SKILL.md` with `read_file` is the native skill-loading mechanism on Antigravity.
 
 ## Subagent support
 

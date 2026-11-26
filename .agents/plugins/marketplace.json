@@ -5,7 +5,7 @@
   "name": "ryugi-dev",
   "plugins": [
     {
-      "name": "ryugi",
+      "name": "adeck",
       "source": {
         "source": "url",
         "url": "./"

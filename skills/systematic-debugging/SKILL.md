@@ -44,7 +44,7 @@ You MUST complete each phase before proceeding to the next.
    - Exact steps, and whether it happens every time
    - If not reproducible → gather more data, don't guess
    - A visible bug: capture the broken screen now, before any change —
-     ryugi:verifying needs the "before"
+     adeck:verifying needs the "before"
 
 3. **Check Recent Changes**
    - Git diff, recent commits, new dependencies, config, environment
@@ -125,9 +125,9 @@ You MUST complete each phase before proceeding to the next.
      script if there is no framework
    - MUST have before fixing
    - A purely visual bug (layout, spacing, color, type): the "before"
-     screenshot is the failing reproduction; ryugi:verifying's "after"
+     screenshot is the failing reproduction; adeck:verifying's "after"
      is the check
-   - Use the `ryugi:test-driven-development` skill for writing proper failing tests
+   - Use the `adeck:test-driven-development` skill for writing proper failing tests
 
 2. **Implement Single Fix**
    - Address the root cause identified, ONE change at a time
@@ -136,7 +136,7 @@ You MUST complete each phase before proceeding to the next.
 3. **Verify Fix**
    - Test passes, no other tests broken, issue actually resolved
    - Run the check and read its output before claiming success
-   - Use ryugi:verifying before you say it is fixed: prove it where the
+   - Use adeck:verifying before you say it is fixed: prove it where the
      bug was seen. A visible bug is fixed when your human partner passes it
 
 4. **If Fix Doesn't Work**

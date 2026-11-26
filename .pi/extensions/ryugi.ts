@@ -14,12 +14,12 @@ function nodeBin(): string {
 }
 
 const EXTREMELY_IMPORTANT_MARKER = '<EXTREMELY_IMPORTANT>';
-const BOOTSTRAP_MARKER = 'ryugi:using-ryugi bootstrap for pi';
+const BOOTSTRAP_MARKER = 'adeck:using-adeck bootstrap for pi';
 
 const extensionDir = dirname(fileURLToPath(import.meta.url));
 const packageRoot = resolve(extensionDir, '../..');
 const skillsDir = resolve(packageRoot, 'skills');
-const bootstrapSkillPath = resolve(skillsDir, 'using-ryugi', 'SKILL.md');
+const bootstrapSkillPath = resolve(skillsDir, 'using-adeck', 'SKILL.md');
 
 let cachedBootstrap: string | null | undefined;
 
@@ -182,9 +182,9 @@ function getBootstrapContent(): string | null {
     cachedBootstrap = `${EXTREMELY_IMPORTANT_MARKER}
 ${BOOTSTRAP_MARKER}
 
-You have Ryugi.
+You have Artideck.
 
-The using-ryugi skill content is included below and is already loaded for this Pi session. Follow it now. Do not try to load using-ryugi again.
+The using-adeck skill content is included below and is already loaded for this Pi session. Follow it now. Do not try to load using-adeck again.
 
 ${body}
 

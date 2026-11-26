@@ -16,18 +16,18 @@ function nodeBin() {
 
 const UUID = /^[\da-f]{8}(?:-[\da-f]{4}){3}-[\da-f]{12}$/i;
 
-export const name = 'ryugi';
+export const name = 'adeck';
 export const inject = [];
 
 const EXTREMELY_IMPORTANT_MARKER = '<EXTREMELY_IMPORTANT>';
-const BOOTSTRAP_MARKER = 'ryugi:using-ryugi bootstrap for dsh';
+const BOOTSTRAP_MARKER = 'adeck:using-adeck bootstrap for dsh';
 const SOURCE_KIND = `plugin:${name}`;
 const BUNDLED_SKILL_RANK = 600;
 
 const pluginDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(pluginDir, '..');
 const skillsRoot = path.resolve(repoRoot, 'skills');
-const bootstrapSkillPath = path.resolve(skillsRoot, 'using-ryugi', 'SKILL.md');
+const bootstrapSkillPath = path.resolve(skillsRoot, 'using-adeck', 'SKILL.md');
 
 function executable(file) {
   try {
@@ -145,7 +145,7 @@ export function dshToolMapping(sessionUuid) {
 
 Skills speak in actions rather than naming one runtime's tools. On DeepSeek Harness these resolve to:
 
-- Invoke a skill (\`Skill\` tool): call DSH's native \`skill\` tool with the Ryugi skill name, replacing \`:\` with \`-\` because DSH skill names use kebab-case (for example \`ryugi:brainstorming\` → \`ryugi-brainstorming\`, \`ryugi:artifacts\` → \`ryugi-artifacts\`, \`ryugi:executing-specs\` → \`ryugi-executing-specs\`, \`ryugi:test-driven-development\` → \`ryugi-test-driven-development\`, \`ryugi:systematic-debugging\` → \`ryugi-systematic-debugging\`, \`ryugi:verifying\` → \`ryugi-verifying\`, \`ryugi:using-git-worktrees\` → \`ryugi-using-git-worktrees\`, \`ryugi:interface-craft\` → \`ryugi-interface-craft\`, \`ryugi:design-system\` → \`ryugi-design-system\`).
+- Invoke a skill (\`Skill\` tool): call DSH's native \`skill\` tool with the Artideck skill name, replacing \`:\` with \`-\` because DSH skill names use kebab-case (for example \`adeck:brainstorming\` → \`adeck-brainstorming\`, \`adeck:artifacts\` → \`adeck-artifacts\`, \`adeck:executing-specs\` → \`adeck-executing-specs\`, \`adeck:test-driven-development\` → \`adeck-test-driven-development\`, \`adeck:systematic-debugging\` → \`adeck-systematic-debugging\`, \`adeck:verifying\` → \`adeck-verifying\`, \`adeck:using-git-worktrees\` → \`adeck-using-git-worktrees\`, \`adeck:interface-craft\` → \`adeck-interface-craft\`, \`adeck:design-system\` → \`adeck-design-system\`).
 - Read a file: \`read\` (and \`read_image\` for images)
 - Create a file: \`write\`
 - Edit a file: \`edit\` (or \`apply_patch\` for multi-hunk patches)
@@ -171,9 +171,9 @@ export function getBootstrapContent(sessionUuid) {
   return `${EXTREMELY_IMPORTANT_MARKER}
 ${BOOTSTRAP_MARKER}
 
-You have Ryugi.
+You have Artideck.
 
-The using-ryugi skill content is included below and is already loaded for this DeepSeek Harness session. Follow it now. Do not try to load using-ryugi again. For all other skills, use DSH's native \`skill\` tool.
+The using-adeck skill content is included below and is already loaded for this DeepSeek Harness session. Follow it now. Do not try to load using-adeck again. For all other skills, use DSH's native \`skill\` tool.
 
 ${cachedBootstrap}
 
@@ -249,13 +249,13 @@ export function createRyugiSkillProvider(rootDir = skillsRoot) {
       } catch {
         continue;
       }
-      const baseName = (meta.name || entry.name).replace(/^ryugi[:-]/, '');
-      const fullName = `ryugi-${baseName}`;
+      const baseName = (meta.name || entry.name).replace(/^(adeck|ryugi)[:-]/, '');
+      const fullName = `adeck-${baseName}`;
       candidates.push({
         name: fullName,
         description: meta.description || `Ryugi ${baseName} skill`,
         invocation: { modelInvocable: true, userInvocable: true },
-        provider: 'dsh-plugin-ryugi',
+        provider: 'dsh-plugin-adeck',
         source: 'bundled',
         rank: BUNDLED_SKILL_RANK,
         path: skillFile,
@@ -266,15 +266,15 @@ export function createRyugiSkillProvider(rootDir = skillsRoot) {
   };
 
   return {
-    name: 'dsh-plugin-ryugi',
+    name: 'dsh-plugin-adeck',
     list: () => Promise.resolve(discover()),
     async get(asked, options) {
       const candidates = discover();
       const rawName = typeof asked === 'string' ? asked : asked?.name;
-      const normalized = typeof rawName === 'string' ? rawName.replace(/^ryugi:/, 'ryugi-') : '';
+      const normalized = typeof rawName === 'string' ? rawName.replace(/^(adeck|ryugi):/, 'adeck-') : '';
       const found =
         candidates.find((c) => c.name === normalized) ||
-        candidates.find((c) => c.name === `ryugi-${normalized}`);
+        candidates.find((c) => c.name === `adeck-${normalized}`);
       if (!found) return undefined;
       const summary = { ...found };
       delete summary.rank;
@@ -380,7 +380,7 @@ export function apply(ctx, config = {}) {
     });
   };
 
-  // 2. Inject `using-ryugi` bootstrap as a user-role message (deduped & compaction-aware).
+  // 2. Inject `using-adeck` bootstrap as a user-role message (deduped & compaction-aware).
   ctx.on?.(
     'agent/pre-step',
     async ({ agent, signal }, next) => {

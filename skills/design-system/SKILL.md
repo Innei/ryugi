@@ -24,7 +24,7 @@ In C you extract, you do not redesign: tokens are the scattered values merged, l
 
 ## Steps
 
-Each step is one or more artboard rounds as ryugi:brainstorming `artboard-rounds.md` says: one question per group, 2–4 option boards, one recommended, a sticky with why. The title note opens with what the step decides and why it comes now.
+Each step is one or more artboard rounds as adeck:brainstorming `artboard-rounds.md` says: one question per group, 2–4 option boards, one recommended, a sticky with why. The title note opens with what the step decides and why it comes now.
 
 | Step        | On the board                                                                                   | Done when             |
 | ----------- | ---------------------------------------------------------------------------------------------- | --------------------- |
@@ -33,7 +33,7 @@ Each step is one or more artboard rounds as ryugi:brainstorming `artboard-rounds
 | 3 Layout    | One real page per board: navigation, header, content width and density, narrow and wide        | Layout sheet accepted |
 | 4 Rules     | One component per round with its usage rules; then every page redrawn in the system as flows   | They accept the pages |
 
-Then the written design plus [landing.md](landing.md), approved, goes to ryugi:executing-specs. A small product still gets a choice at step 1 and every step after it; only step 4 shrinks, to the three to five components its pages use.
+Then the written design plus [landing.md](landing.md), approved, goes to adeck:executing-specs. A small product still gets a choice at step 1 and every step after it; only step 4 shrinks, to the three to five components its pages use.
 
 ## Rules
 
@@ -41,17 +41,17 @@ Then the written design plus [landing.md](landing.md), approved, goes to ryugi:e
 - Your message for a round opens with its state line, one of these, in their language:
   - `Waiting on you: picks on the board. Next: step N (name), drawn after your picks.`
   - `Waiting on you: a reply. Next: the written design.` (when the whole-product pages are drawn)
-  - `Waiting on you: approval of the written design. Next: ryugi:executing-specs.` (when you hand over the written design)
+  - `Waiting on you: approval of the written design. Next: adeck:executing-specs.` (when you hand over the written design)
 
-  Then the link and what this round decides. This line is the "state, first line" of ryugi:using-ryugi's final message; never drop it for the list that follows.
+  Then the link and what this round decides. This line is the "state, first line" of adeck:using-adeck's final message; never drop it for the list that follows.
 
-- The written design is a round of its own: write it, hand it over, stop. Code starts only after their reply to the written design, through ryugi:executing-specs.
+- The written design is a round of its own: write it, hand it over, stop. Code starts only after their reply to the written design, through adeck:executing-specs.
 - No token code, token files or design docs in the product before the whole-product pages are accepted. Boards share `pages/tokens.css` and a CSS file under `pages/`.
 - Every value comes from existing code, the product doc, a reference they named, or a board they chose. No pages or fields the data or doc does not have.
 - "Don't ask, just draw" removes questions, not steps: draw the round with your recommendation marked and stop. "Go with the recommendation, continue" means take it and draw the next step. "Just build it" ends this skill; say the system is not settled.
 - Before handing over a round, run Check, look at every board in a browser, and read [checks.md](checks.md).
 
-ryugi:interface-craft supplies the taste (lenses, starting values, signs); ryugi:brainstorming owns the spec and approval.
+adeck:interface-craft supplies the taste (lenses, starting values, signs); adeck:brainstorming owns the spec and approval.
 
 ## Red Flags
 

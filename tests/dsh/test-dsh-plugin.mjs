@@ -15,10 +15,10 @@ test('dsh bundle manifest and cordis patch are valid', () => {
   const dshPkg = JSON.parse(fs.readFileSync(path.join(repoRoot, '.dsh', 'package.json'), 'utf8'));
   const patch = fs.readFileSync(path.join(repoRoot, '.dsh', 'cordis.patch.yml'), 'utf8');
 
-  assert.equal(dshPkg.name, 'dsh-plugin-ryugi');
+  assert.equal(dshPkg.name, 'dsh-plugin-adeck');
   assert.equal(dshPkg.version, rootPkg.version);
   assert.equal(dshPkg.dsh?.bundle?.patch, './cordis.patch.yml');
-  assert.match(patch, /name:\s*dsh-plugin-ryugi/);
+  assert.match(patch, /name:\s*dsh-plugin-adeck/);
 });
 
 test('dsh skill provider discovers all bundled ryugi skills and strips frontmatter', async () => {
@@ -31,13 +31,13 @@ test('dsh skill provider discovers all bundled ryugi skills and strips frontmatt
   for (const n of names) {
     assert.match(n, /^[a-z0-9][a-z0-9-]*$/, `skill name must be DSH-valid kebab-case: ${n}`);
   }
-  assert.ok(names.includes('ryugi-using-ryugi'));
-  assert.ok(names.includes('ryugi-brainstorming'));
-  assert.ok(names.includes('ryugi-artifacts'));
+  assert.ok(names.includes('adeck-using-adeck'));
+  assert.ok(names.includes('adeck-brainstorming'));
+  assert.ok(names.includes('adeck-artifacts'));
 
-  const loaded = await provider.get({ name: 'ryugi-brainstorming' });
+  const loaded = await provider.get({ name: 'adeck-brainstorming' });
   assert.ok(loaded);
-  assert.equal(loaded.name, 'ryugi-brainstorming');
+  assert.equal(loaded.name, 'adeck-brainstorming');
   assert.ok(!loaded.content.startsWith('---'), 'frontmatter should be stripped');
   assert.ok(loaded.content.length > 100);
 });
@@ -89,10 +89,10 @@ test('dsh apply registers skills provider, injects bootstrap once, reinjects aft
   }));
   assert.equal(first.messages.length, 2);
   assert.equal(first.messages[0].role, 'user');
-  assert.equal(first.messages[0].source.kind, 'plugin:ryugi');
+  assert.equal(first.messages[0].source.kind, 'plugin:adeck');
   assert.equal(first.messages[0].source.form, 'snapshot');
   assert.match(first.messages[0].content[0].text, /<EXTREMELY_IMPORTANT>/);
-  assert.match(first.messages[0].content[0].text, /ryugi:using-ryugi bootstrap for dsh/);
+  assert.match(first.messages[0].content[0].text, /adeck:using-adeck bootstrap for dsh/);
   assert.match(first.messages[0].content[0].text, /`ask_user_question`/);
   assert.match(first.messages[0].content[0].text, /`todo_write`/);
 
@@ -111,7 +111,7 @@ test('dsh apply registers skills provider, injects bootstrap once, reinjects aft
     messages: visibleMessages,
   }));
   assert.equal(compacted.messages.length, 2);
-  assert.equal(compacted.messages[0].source.kind, 'plugin:ryugi');
+  assert.equal(compacted.messages[0].source.kind, 'plugin:adeck');
 
   // 4. Delegated subagent sessions skip top-level bootstrap
   const childAgent = {

@@ -5,7 +5,7 @@ import { pathToFileURL } from 'node:url';
 const [, , inputPath] = process.argv;
 assert.ok(inputPath, 'pass the plugin module path');
 const pluginURL = pathToFileURL(fs.realpathSync(inputPath));
-const marker = '<EXTREMELY_IMPORTANT>\nYou have Ryugi.';
+const marker = '<EXTREMELY_IMPORTANT>\nYou have Artideck.';
 let generation = 0;
 
 function reply(flavor, session) {

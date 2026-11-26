@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Validate the native Antigravity plugin: the Marketplace manifest, the skill
-# description agy relies on to bootstrap using-ryugi, the Antigravity hooks
+# description agy relies on to bootstrap using-adeck, the Antigravity hooks
 # configuration, and the repo layout agy depends on. CI-safe; when `agy` is on
 # PATH, also runs `agy plugin validate` against the repo and `agy plugin
 # validate --strict` against a staged native Antigravity plugin.
@@ -34,8 +34,8 @@ for field in ["name", "description", "displayName", "logo",
     if not manifest.get(field):
         fail(f"manifest field {field!r} is missing or empty")
 
-if manifest["name"] != "ryugi":
-    fail(f"name must be 'ryugi', got {manifest['name']!r}")
+if manifest["name"] != "adeck":
+    fail(f"name must be 'adeck', got {manifest['name']!r}")
 if not re.fullmatch(r"[a-z0-9]+(-[a-z0-9]+)*", manifest["name"]):
     fail("name is not kebab-case")
 
@@ -77,13 +77,13 @@ if not any(entry.get("path") == ".antigravity-plugin/plugin.json"
            for entry in version_config.get("files", [])):
     fail(".version-bump.json does not register .antigravity-plugin/plugin.json")
 
-# --- Bootstrap: agy lists each skill's description, and using-ryugi's
+# --- Bootstrap: agy lists each skill's description, and using-adeck's
 # description + SessionStart hook get the model to load it at session start.
-skill_md = (root / "skills" / "using-ryugi" / "SKILL.md").read_text(encoding="utf-8")
+skill_md = (root / "skills" / "using-adeck" / "SKILL.md").read_text(encoding="utf-8")
 frontmatter = re.match(r"---\n(.*?)\n---\n", skill_md, re.DOTALL)
 description = frontmatter and re.search(r"^description:(.*)$", frontmatter.group(1), re.MULTILINE)
 if not description or "Use when starting any conversation" not in description.group(1):
-    fail("using-ryugi description no longer says 'Use when starting any "
+    fail("using-adeck description no longer says 'Use when starting any "
          "conversation'; Antigravity relies on it to bootstrap")
 
 # --- Antigravity hooks template --------------------------------------------
@@ -91,9 +91,9 @@ hooks_path = root / "hooks" / "hooks-antigravity.json"
 if not hooks_path.is_file():
     fail(f"Antigravity hooks template missing at {hooks_path}")
 hooks_data = json.loads(hooks_path.read_text(encoding="utf-8"))
-ryugi_hooks = hooks_data.get("ryugi")
+ryugi_hooks = hooks_data.get("adeck")
 if not isinstance(ryugi_hooks, dict):
-    fail("hooks/hooks-antigravity.json must define top-level 'ryugi' hook spec")
+    fail("hooks/hooks-antigravity.json must define top-level 'adeck' hook spec")
 for event in ["SessionStart", "PreInvocation", "PreToolUse", "PostToolUse", "Stop"]:
     if not isinstance(ryugi_hooks.get(event), list) or not ryugi_hooks[event]:
         fail(f"hooks/hooks-antigravity.json missing non-empty {event!r} handler list")
@@ -148,8 +148,8 @@ import json
 import sys
 
 report = json.loads(sys.argv[1])
-if report.get("name") != "ryugi":
-    raise SystemExit(f"FAIL: expected name 'ryugi', got {report.get('name')!r}")
+if report.get("name") != "adeck":
+    raise SystemExit(f"FAIL: expected name 'adeck', got {report.get('name')!r}")
 skills = report.get("components", {}).get("skills", 0)
 if skills < 1:
     raise SystemExit(f"FAIL: agy found no skills ({skills})")

@@ -277,7 +277,7 @@ function pluginVersion() {
     .map((file) => {
       try {
         const manifest = JSON.parse(fs.readFileSync(path.join(PLUGIN_ROOT, file), 'utf8'));
-        return manifest.name === 'ryugi' ? manifest.version || null : null;
+        return manifest.name === 'adeck' || manifest.name === 'ryugi' ? manifest.version || null : null;
       } catch {
         return null;
       }

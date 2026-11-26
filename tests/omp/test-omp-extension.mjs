@@ -53,7 +53,7 @@ test('omp extension injects bootstrap once, deduplicates, and reinjects after co
   assert.equal(first.messages[0].role, 'user');
   const injected = first.messages[0].content[0].text;
   assert.match(injected, /<EXTREMELY_IMPORTANT>/);
-  assert.match(injected, /ryugi:using-ryugi bootstrap for omp/);
+  assert.match(injected, /adeck:using-adeck bootstrap for omp/);
   assert.match(injected, /skill:\/\//);
   assert.match(injected, /`task`/);
   assert.match(injected, /`todo`/);
@@ -80,7 +80,7 @@ test('omp extension injects bootstrap once, deduplicates, and reinjects after co
   assert.equal(afterCompact.messages.length, 3);
   assert.equal(afterCompact.messages[0].role, 'compactionSummary');
   assert.equal(afterCompact.messages[1].role, 'user');
-  assert.match(afterCompact.messages[1].content[0].text, /ryugi:using-ryugi bootstrap for omp/);
+  assert.match(afterCompact.messages[1].content[0].text, /adeck:using-adeck bootstrap for omp/);
 
   await handlers.get('session_shutdown')({});
 });

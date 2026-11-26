@@ -1,6 +1,6 @@
 ---
 name: using-git-worktrees
-description: Use when ryugi:executing-specs or ryugi:test-driven-development sends you here before the first implementation edit, when uncommitted work has to move to or be committed on a branch other than the one checked out, or when work done in a worktree has landed
+description: Use when adeck:executing-specs or adeck:test-driven-development sends you here before the first implementation edit, when uncommitted work has to move to or be committed on a branch other than the one checked out, or when work done in a worktree has landed
 ---
 
 # Using Git Worktrees

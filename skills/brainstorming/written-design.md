@@ -24,7 +24,7 @@ document; do not copy it. After approval, write a pointer at
 <One sentence: what gets built and why.>
 
 - Design: `.artideck/artifacts/document/<id>/doc.xml`
-- Read: `adeck get --artifact document/<id> --detail --project-dir <repo-root>` (through the ryugi:artifacts launcher)
+- Read: `adeck get --artifact document/<id> --detail --project-dir <repo-root>` (through the adeck:artifacts launcher)
 - Boards: <artboard and whiteboard ids, if any>
 - Approved: YYYY-MM-DD
 ```

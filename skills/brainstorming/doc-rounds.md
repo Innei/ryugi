@@ -5,7 +5,7 @@ their browser, a round at a time. Each round holds only questions whose
 answers don't depend on each other; between rounds you rewrite what comes
 next from what they said. Most work converges in two or three rounds.
 
-**REQUIRED SUB-SKILL:** Use ryugi:artifacts, type `document`, for creating
+**REQUIRED SUB-SKILL:** Use adeck:artifacts, type `document`, for creating
 the document, editing it and reading comments. Name it after the
 topic (`mention-notifications`, `queue-redis-streams`).
 
@@ -23,7 +23,7 @@ Write it in their language. Top to bottom:
 4. **Round N**: five to seven items. Each item is a heading with the
    question, then your recommendation, then one line of why. When the item
    has options, the recommendation is an `<ask>` holding them, with
-   `recommend` on yours (ryugi:artifacts, Questions); an open item is an
+   `recommend` on yours (adeck:artifacts, Questions); an open item is an
    `<ask>` with no options. They pick or write on it, or comment.
 
 ## Building a Round
@@ -48,7 +48,7 @@ Write it in their language. Top to bottom:
 
 When they asked for a design, an architecture or a kickoff document, or
 their message is already a brief, skip the opening chat question. Write the
-outline first as ryugi:artifacts says, then fill it. Round 1's open items
+outline first as adeck:artifacts says, then fill it. Round 1's open items
 cover what the brief leaves out.
 
 Your first message is one line on how to answer, and the link. That's the
@@ -68,7 +68,7 @@ When they submit or say the round is done, or a comment lands:
 1. Re-read the document. Read Brief from `comment list --sections threads,asks --detail`
    for this project and document. Follow each collection's `More`;
    complete thread messages are included on the delivered page. Use the evidence before its exact
-   `Acknowledge`, as ryugi:artifacts says.
+   `Acknowledge`, as adeck:artifacts says.
 2. Process each question whose state is `submitted` and write its
    `comment note` after applying it. Move answered items to Settled as one line: changed, written
    or commented ones as theirs, submitted recommendations as accepted.

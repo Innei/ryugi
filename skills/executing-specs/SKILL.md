@@ -21,7 +21,7 @@ ledger and the tool results carry the record.
 between tasks. They approved the spec and chose inline execution so they
 would not have to answer "should I continue?". Execute every task without
 stopping. When they speak mid-run, do what they ask, answer it as
-ryugi:using-ryugi says, and take the next task.
+adeck:using-adeck says, and take the next task.
 
 **Rulings, not stalls.** Conflicts, ambiguities, gaps the spec is silent
 on — decide them. The spec is the binding authority, your task list is
@@ -40,18 +40,18 @@ guess. For those, stop and ask.
 
 ## When to Use
 
-- Your human partner approved a spec from ryugi:brainstorming and
+- Your human partner approved a spec from adeck:brainstorming and
   chose Inline at the handoff.
 - They point you at a design document and ask you to build it.
 - An older plan file with `Task N` headings works too: it already is a
   task list, so skip the slicing step.
 
 "Just code it" at the handoff means no spec execution: build the change
-under ryugi:test-driven-development and report.
+under adeck:test-driven-development and report.
 
 ## Setup
 
-**REQUIRED SUB-SKILL:** ryugi:using-git-worktrees decides whether you
+**REQUIRED SUB-SKILL:** adeck:using-git-worktrees decides whether you
 work in place or in a worktree, and creates the worktree. Follow its
 Where to work table before anything else.
 
@@ -83,10 +83,10 @@ ledger file is the record; harness todos are only a live view.
   if that happens, recover from `git log` and the spec.
 
 Read the spec once, end to end. A spec with a `Read:` line points to a
-document artifact: run that command through the ryugi:artifacts launcher,
+document artifact: run that command through the adeck:artifacts launcher,
 and the markdown it prints is the spec.
 
-**REQUIRED SUB-SKILL:** load ryugi:test-driven-development now,
+**REQUIRED SUB-SKILL:** load adeck:test-driven-development now,
 before slicing. It governs every task below.
 
 ## Slice the Spec
@@ -142,14 +142,14 @@ as the commit, never in a call of its own.
 
 ### 2. Do the work
 
-Under ryugi:test-driven-development, loaded at setup: write the
+Under adeck:test-driven-development, loaded at setup: write the
 brief's failing test, run it, and watch it fail for the expected reason. A
 test that passes before the implementation exists is a finding about the
 test. Then write the minimal code, run Verify, read its output, and
 compare it against `Expected:`. Three outcomes:
 
 - **Matches.** Commit — exploratory work skips the commit.
-- **The code is wrong.** Use ryugi:systematic-debugging. Find the
+- **The code is wrong.** Use adeck:systematic-debugging. Find the
   cause; never patch the symptom to make the output match.
 - **The task list is wrong** — a task contradicts the spec, an interface
   from an earlier task doesn't match what this task consumes, a command
@@ -172,7 +172,7 @@ in this session — not inferred from the diff looking right:
 - Verify's output was compared against `Expected:`.
 - Every deviation from the brief has a `Ruling:` line in the ledger.
 
-Evidence before claims (see ryugi:using-ryugi) governs the
+Evidence before claims (see adeck:using-adeck) governs the
 claim. If any item is missing, the task is not complete: finish it.
 
 ### 4. Complete the task
@@ -247,12 +247,12 @@ in the rulings list. There is no second fix pass.
 When the project has its own skill for checking the running product —
 launching the app in a simulator, driving a browser, a local test
 environment — run it now, on the finished branch, and keep what it showed as
-evidence for ryugi:verifying. Something it shows broken is a finding: fix it
+evidence for adeck:verifying. Something it shows broken is a finding: fix it
 under TDD like a Critical one, and ledger it.
 
 ## Finish
 
-Use ryugi:verifying first; fixes for its rejects follow that skill. Then
+Use adeck:verifying first; fixes for its rejects follow that skill. Then
 read every ledger line containing `Ruling:` and every `minor (deferred)`
 line, and pick the ones that depart from the spec or change what someone
 using the software gets, at most five. A deferred minor that someone would
@@ -260,7 +260,7 @@ run into counts as one. Your human partner judges those; the rest stay in
 the ledger, which is the full record until the work lands.
 
 - **With a verify report**, each picked ruling is its own claim, as
-  ryugi:verifying's `pages.md` says. Never copy the ledger into it.
+  adeck:verifying's `pages.md` says. Never copy the ledger into it.
 - **Without one**, your final message names them, one line each.
 
 Keep this spec's workspace until the work is done: delete it (never a
@@ -268,7 +268,7 @@ sibling's) when the last claim or group that waits on them has passed for
 work committed in place, or after landing for a branch. Exploratory work
 finishes as `exploring.md` says.
 
-Your final message follows ryugi:using-ryugi. It carries the verify link
+Your final message follows adeck:using-adeck. It carries the verify link
 and which groups wait on their verdict. The work is not done, and the ways
 to land it below wait, until every group that waits on them has passed.
 

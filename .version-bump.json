@@ -56,6 +56,14 @@
       "field": "plugins.1.version"
     },
     {
+      "path": ".claude-plugin/marketplace.json",
+      "field": "plugins.2.version"
+    },
+    {
+      "path": ".claude-plugin/marketplace.json",
+      "field": "plugins.3.version"
+    },
+    {
       "path": ".muse-plugin/marketplace.json",
       "field": "plugins.0.version"
     },

@@ -15,7 +15,7 @@ run_present_file_check() {
 }
 
 run_missing_file_check() {
-  mv "$RYUGI_SKILLS_DIR/using-ryugi/SKILL.md" "$TEST_HOME/using-ryugi.SKILL.md.bak"
+  mv "$RYUGI_SKILLS_DIR/using-adeck/SKILL.md" "$TEST_HOME/using-adeck.SKILL.md.bak"
 
   node "$SCRIPT_DIR/test-bootstrap-caching.mjs" "$RYUGI_PLUGIN_FILE" missing
 }

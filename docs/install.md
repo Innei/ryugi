@@ -43,7 +43,7 @@ harnesses read comments on request. Installation success does not certify live
 comment delivery. Start a new harness session after installation or a mode switch.
 Other integrations below remain available through their manual installation paths.
 
-In Full workflow mode, the bootstrap (`using-ryugi`) makes the skills fire on their
+In Full workflow mode, the bootstrap (`using-adeck`) makes the skills fire on their
 own. Open a clean session and send:
 
 > Let's make a react todo list
@@ -55,7 +55,7 @@ exposes the artifacts and interface-craft skills without the workflow bootstrap.
 
 ```bash
 /plugin marketplace add Innei/artideck
-/plugin install ryugi@ryugi-dev
+/plugin install adeck@ryugi-dev
 ```
 
 In interactive sessions, Artideck watches its document and Artboard comments
@@ -63,7 +63,7 @@ through Claude Code's plugin monitors. New comments reach the current
 session without another terminal message; Claude reads them and applies
 requested changes under the session's permissions. Open `/tasks` to find
 **Artideck document and Artboard comments** under **Monitors**, or stop it there.
-The watch starts the first time a session loads `ryugi:artifacts`, so sessions
+The watch starts the first time a session loads `adeck:artifacts`, so sessions
 that never open an artifact run no watcher. It then lasts for the session and
 also notices artifacts created later. A comment you resolve yourself does not
 wake Claude.
@@ -78,7 +78,7 @@ comment watches.
 
 To get artboards, documents, HTML pages and comment delivery without the
 workflow skills (brainstorming, specs, TDD, debugging, verifying,
-worktrees), install the `ryugi-artifacts` entry instead of `ryugi`:
+worktrees), install the `adeck-lite` entry instead of `adeck`:
 
 ```bash
 npx artideck install
@@ -88,16 +88,42 @@ Select Artifacts in the wizard, or pass `--mode artifacts --harness claude-code`
 Both content modes are available for every unified-installer target. To install by hand:
 
 ```text
-/plugin install ryugi-artifacts --marketplace Innei/artideck
+/plugin install adeck-lite@ryugi-dev
 ```
 
-The two entries share the plugin name `ryugi`, so enable only one of them.
+The two entries share one plugin, so enable only one of them.
 The installer disables the other one at user scope and warns when a
 project's `.claude/settings.json` or `.claude/settings.local.json` still
 enables it. Switching later is the same command with the other mode.
 
 For other supported harnesses, pass their target name to the unified installer;
 manual installation commands below retain their existing full-workflow behavior.
+
+## Moving from the ryugi plugin
+
+Before the rename the plugin was `ryugi` and its skills were `ryugi:<skill>`. It is
+now `adeck`, and skills are `adeck:<skill>`.
+
+- **Claude Code** installed from the marketplace moves on its own: the next
+  session (or any `adeck` command) installs `adeck@ryugi-dev` or
+  `adeck-lite@ryugi-dev` and disables `ryugi@ryugi-dev` or
+  `ryugi-artifacts@ryugi-dev`; a day later the old entry is uninstalled. To do
+  it yourself:
+
+  ```text
+  /plugin install adeck@ryugi-dev
+  /plugin uninstall ryugi@ryugi-dev
+  ```
+
+  A project that enables `ryugi@ryugi-dev` in its `.claude/settings.json` needs
+  that line renamed to `adeck@ryugi-dev`.
+- **Installs made with `npx artideck install`** (Codex, Copilot, Cursor, Gemini,
+  OpenCode, Pi, Antigravity) are re-registered under `adeck` by the CLI.
+- **Other harnesses installed by hand** keep the old name until you reinstall:
+  remove `ryugi` with that harness's command and install again with the
+  command in its section below.
+- **DeepSeek Harness**: replace `"dsh-plugin-ryugi"` with `"dsh-plugin-adeck"` in
+  `dsh.profile.bundles`.
 
 ## Antigravity
 
@@ -111,7 +137,7 @@ Or install directly from the repository with `agy`:
 agy plugin install https://github.com/Innei/artideck
 ```
 
-When installed through the unified installer (`--harness agy` or `--harness antigravity`), Artideck stages its native `hooks.json` at the plugin root so `SessionStart` injects the `using-ryugi` bootstrap automatically (in `full` mode), `PreInvocation` attaches open Artboard/document selections and unread comment reminders, `Stop` flushes changes, and the background watcher delivers browser comments and submitted choices through the local Antigravity Language Server. When installed directly from the git repository URL without the unified installer, Antigravity lists each installed skill's description and the `using-ryugi` description prompts the model to load it at the start of a conversation.
+When installed through the unified installer (`--harness agy` or `--harness antigravity`), Artideck stages its native `hooks.json` at the plugin root so `SessionStart` injects the `using-adeck` bootstrap automatically (in `full` mode), `PreInvocation` attaches open Artboard/document selections and unread comment reminders, `Stop` flushes changes, and the background watcher delivers browser comments and submitted choices through the local Antigravity Language Server. When installed directly from the git repository URL without the unified installer, Antigravity lists each installed skill's description and the `using-adeck` description prompts the model to load it at the start of a conversation.
 
 The plugin also ships an optional UI sidecar (`ryugi/artifacts`) that opens the local Artideck Artifacts workbench directly inside Antigravity's right-hand Auxiliary Pane (`sidecar://ryugi/artifacts/`). Enable `ryugi/artifacts` in Antigravity Customizations or by adding `"ryugi/artifacts": { "enabled": true }` under `sidecars` in `~/.gemini/config/config.json`. When opened from a conversation with an active artifact subscription, the pane lands on that artifact automatically, follows newly opened artifacts in the conversation, and proxies live WebSocket updates from the local Artideck server.
 
@@ -188,14 +214,14 @@ These lifecycle hooks apply to Codex; Cursor keeps its own integration.
 
 ```bash
 devin plugins install Innei/artideck
-devin plugins update ryugi # update later
+devin plugins update adeck # update later
 ```
 
 ## Factory Droid
 
 ```bash
 droid plugin marketplace add https://github.com/Innei/artideck
-droid plugin install ryugi@ryugi
+droid plugin install adeck@artideck
 ```
 
 ## Gemini CLI
@@ -237,7 +263,7 @@ pi -e /path/to/ryugi
 ```
 
 The Pi package loads the Artideck skills and a small extension that injects the
-`using-ryugi` bootstrap at session startup and again after compaction. Pi has
+`using-adeck` bootstrap at session startup and again after compaction. Pi has
 native skills, so no compatibility `Skill` tool is required. Subagent and
 task-list tools remain optional Pi companion packages.
 
@@ -296,11 +322,11 @@ loses the bootstrap — start a fresh session if skills stop triggering.
 
 ```bash
 muse plugins install ./
-muse plugins approve ryugi
-muse plugins update ryugi # update later
+muse plugins approve adeck
+muse plugins update adeck # update later
 ```
 
-`muse plugins install ./ryugi` after a clone works the same way. Restart any
+`muse plugins install ./artideck` after a clone works the same way. Restart any
 active Muse sessions so the `SessionStart` hook takes effect — skills are active
 immediately, hooks require approval on first install. Version is tracked in
 `.version-bump.json` so `scripts/bump-version.sh` keeps it in sync.
@@ -308,10 +334,10 @@ immediately, hooks require approval on first install. Version is tracked in
 ## DeepSeek Harness
 
 ```bash
-dsh plugin --profile <profile> add link:/path/to/ryugi/.dsh
+dsh plugin --profile <profile> add link:/path/to/artideck/.dsh
 ```
 
-Add `"dsh-plugin-ryugi"` to `dsh.profile.bundles` in `~/.dsh/profiles/<profile>/package.json`, then restart or reload DeepSeek Harness. The bundled Cordis plugin (`.dsh/`) registers all Artideck skills with DSH's native `skill` service (`ryugi-<name>` kebab-case), injects `using-ryugi` + `references/dsh-tools.md` as a deduplicated, compaction-aware user message on `agent/pre-step`, and delivers browser comments and choice submissions back to active sessions via `agent.followup` / `agent.inject`. Full guide: [README.dsh.md](README.dsh.md).
+Add `"dsh-plugin-adeck"` to `dsh.profile.bundles` in `~/.dsh/profiles/<profile>/package.json`, then restart or reload DeepSeek Harness. The bundled Cordis plugin (`.dsh/`) registers all Artideck skills with DSH's native `skill` service (`adeck-<name>` kebab-case), injects `using-adeck` + `references/dsh-tools.md` as a deduplicated, compaction-aware user message on `agent/pre-step`, and delivers browser comments and choice submissions back to active sessions via `agent.followup` / `agent.inject`. Full guide: [README.dsh.md](README.dsh.md).
 
 ## OMP (Oh My Pi)
 
@@ -325,7 +351,7 @@ For a local checkout:
 omp plugin link /path/to/ryugi
 ```
 
-Start a fresh OMP session after installing or updating. The package declares `"omp"` in `package.json`, exposing `skills/` and `.omp/extensions/ryugi.ts`, which injects `using-ryugi` + OMP tool mapping on `context` (with deduplication and post-compaction re-injection) and runs `ryugi-hook watch pi` to deliver browser comments and choice submissions directly to the active session. Full guide: [README.omp.md](README.omp.md).
+Start a fresh OMP session after installing or updating. The package declares `"omp"` in `package.json`, exposing `skills/` and `.omp/extensions/ryugi.ts`, which injects `using-adeck` + OMP tool mapping on `context` (with deduplication and post-compaction re-injection) and runs `ryugi-hook watch pi` to deliver browser comments and choice submissions directly to the active session. Full guide: [README.omp.md](README.omp.md).
 
 ## Writing a new integration
 

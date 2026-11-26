@@ -1,2 +1,2 @@
-@./skills/using-ryugi/SKILL.md
-@./skills/using-ryugi/references/gemini-tools.md
+@./skills/using-adeck/SKILL.md
+@./skills/using-adeck/references/gemini-tools.md

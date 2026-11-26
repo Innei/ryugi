@@ -94,10 +94,10 @@ const checks = [
     'review keeps nine ordered passes',
     passes.every((name) => evaluation.toLowerCase().includes('**' + name + '**')),
   ],
-  ['brainstorming integration', brainstorming.includes('ryugi:interface-craft')],
+  ['brainstorming integration', brainstorming.includes('adeck:interface-craft')],
   ['Artboard direction carried forward', rounds.includes('selected visual direction')],
   ['spec preserves design direction', spec.includes('selected visual direction')],
-  ['direct Artifacts integration', artifacts.includes('ryugi:interface-craft')],
+  ['direct Artifacts integration', artifacts.includes('adeck:interface-craft')],
   [
     'Muse registration',
     muse.capabilities.skills.some(

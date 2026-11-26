@@ -252,15 +252,15 @@ That is the only flag Artideck needs; leave the rest of your Claude Code setting
 | Antigravity   | `agy plugin install https://github.com/Innei/artideck`                                                   |
 | Codex, Cursor | Add this repo as a local plugin source ([detail](docs/install.md#codex-cursor))                       |
 | Devin CLI     | `devin plugins install Innei/artideck`                                                                   |
-| Factory Droid | `droid plugin marketplace add https://github.com/Innei/artideck` then `droid plugin install ryugi@ryugi` |
+| Factory Droid | `droid plugin marketplace add https://github.com/Innei/artideck` then `droid plugin install adeck@artideck` |
 | Gemini CLI    | `gemini extensions install https://github.com/Innei/artideck`                                            |
 | Kimi Code     | `/plugins install https://github.com/Innei/artideck`                                                     |
 | OpenCode      | [.opencode/INSTALL.md](.opencode/INSTALL.md)                                                          |
 | Pi            | `pi install git:github.com/Innei/artideck`                                                               |
-| OMP           | `omp plugin install https://github.com/Innei/artideck` (or `omp plugin link /path/to/ryugi`)             |
+| OMP           | `omp plugin install https://github.com/Innei/artideck` (or `omp plugin link /path/to/artideck`)             |
 | Qwen Code     | `qwen extensions install Innei/artideck`                                                                 |
 | Hermes Agent  | `hermes plugins install Innei/artideck --enable`                                                         |
-| Muse          | `muse plugins install ./` then `muse plugins approve ryugi`                                           |
+| Muse          | `muse plugins install ./` then `muse plugins approve adeck`                                           |
 | DeepSeek Harness | `dsh plugin --profile <profile> add github:Innei/artideck#path:.dsh` ([detail](docs/README.dsh.md))       |
 
 Updates and caveats: [docs/install.md](docs/install.md).

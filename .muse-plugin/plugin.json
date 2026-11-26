@@ -34,8 +34,8 @@
         "path": "skills/using-git-worktrees/SKILL.md"
       },
       {
-        "id": "using-ryugi",
-        "path": "skills/using-ryugi/SKILL.md"
+        "id": "using-adeck",
+        "path": "skills/using-adeck/SKILL.md"
       },
       {
         "id": "verifying",
@@ -63,7 +63,7 @@
   },
   "description": "Artideck skills for coding agents, plus the artifacts workbench they design in: brainstorming, artboards, documents and TDD.",
   "displayName": "Artideck",
-  "name": "ryugi",
+  "name": "adeck",
   "schemaVersion": 1,
   "version": "1.115.1"
 }

@@ -36,12 +36,12 @@ commits, so `git log` against `dev` lists old work again. Use `git diff` for `de
 | --------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
 | `superpowers` / `Superpowers` / `SUPERPOWERS`                                                                                     | `ryugi` / `Ryugi` / `RYUGI` (plugin name, `ryugi:` namespace, env vars)                  |
 | `.superpowers/` (project working dir)                                                                                             | `.ryugi/`                                                                                |
-| `skills/using-superpowers/`                                                                                                       | `skills/using-ryugi/` (rewritten as stage routing; keeps Evidence Before Claims)         |
+| `skills/using-superpowers/`                                                                                                       | `skills/using-adeck/` (rewritten as stage routing; keeps Evidence Before Claims)         |
 | `skills/executing-plans/`                                                                                                         | `skills/executing-specs/` (input is an approved spec; the executor writes `tasks.md`)    |
 | `skills/subagent-driven-development/scripts/{sdd-workspace,task-brief,review-package}`                                            | `skills/executing-specs/scripts/`                                                        |
 | `skills/requesting-code-review/code-reviewer.md`                                                                                  | `skills/executing-specs/code-reviewer.md`                                                |
 | `skills/finishing-a-development-branch/` worktree cleanup                                                                         | `skills/using-git-worktrees/` Cleanup section                                            |
-| `skills/verification-before-completion/`                                                                                          | Evidence Before Claims in `skills/using-ryugi/`                                          |
+| `skills/verification-before-completion/`                                                                                          | Evidence Before Claims in `skills/using-adeck/`                                          |
 | `skills/brainstorming/` visual companion                                                                                          | `skills/artifacts/` (rewritten: local artboard + html artifacts, source in `artifacts/`) |
 | `skills/writing-skills/`                                                                                                          | `.claude/skills/writing-skills/` (repo-local)                                            |
 | `skills/writing-plans/`, `skills/dispatching-parallel-agents/`, `skills/diagnosing-superpowers/`, `skills/receiving-code-review/` | removed                                                                                  |
@@ -56,7 +56,7 @@ hand-off to `using-git-worktrees`),
 Rewritten around Ryugi's workflow, so port ideas rather than diffs:
 `skills/brainstorming/` (handoff and Artboard sections), `skills/executing-specs/`,
 `skills/using-git-worktrees/` (Where to work table; upstream's native-tool rule and
-Cleanup survive), `skills/using-ryugi/`, `README.md`, `AGENTS.md`.
+Cleanup survive), `skills/using-adeck/`, `README.md`, `AGENTS.md`.
 
 ## Porting a change
 

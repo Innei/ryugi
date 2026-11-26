@@ -69,7 +69,7 @@ class ObservationTests(unittest.TestCase):
             "observer_stop": {"reason": "resume_task_started"},
             "trace": [
                 {"role": "assistant", "type": "tool_use", "name": "Skill", "id": "s",
-                 "input": {"skill": "ryugi:executing-specs"}},
+                 "input": {"skill": "adeck:executing-specs"}},
                 {"role": "assistant", "type": "tool_use", "name": "Write", "id": "w",
                  "input": {"file_path": "/project/clamp.test.cjs"}},
             ],
@@ -99,7 +99,7 @@ class ObservationTests(unittest.TestCase):
         edit = {"role": "assistant", "type": "tool_use", "name": "Edit", "id": "e",
                 "input": {"file_path": "/project/filter.cjs"}}
         skill = {"role": "assistant", "type": "tool_use", "name": "Skill", "id": "s",
-                 "input": {"skill": "ryugi:systematic-debugging"}}
+                 "input": {"skill": "adeck:systematic-debugging"}}
         self.assertFalse(score(self.look_record([edit]))["route_pass"])
         self.assertFalse(score(self.look_record([edit, skill]))["route_pass"])
         self.assertTrue(score(self.look_record([skill, edit]))["route_pass"])
@@ -126,19 +126,19 @@ class ArmTests(unittest.TestCase):
 
     def test_bs_only_pairs_the_frozen_router_with_the_working_brainstorming(self):
         plugin = self.plugin("bs-only")
-        self.assertEqual((plugin / "skills/using-ryugi/SKILL.md").read_text(), at_rev("skills/using-ryugi/SKILL.md"))
+        self.assertEqual((plugin / "skills/using-adeck/SKILL.md").read_text(), at_rev("skills/using-adeck/SKILL.md"))
         self.assertEqual((plugin / "skills/brainstorming/SKILL.md").read_text(),
                          (REPO / "skills/brainstorming/SKILL.md").read_text())
 
     def test_baseline_freezes_both_skills(self):
         plugin = self.plugin("baseline")
-        self.assertEqual((plugin / "skills/using-ryugi/SKILL.md").read_text(), at_rev("skills/using-ryugi/SKILL.md"))
+        self.assertEqual((plugin / "skills/using-adeck/SKILL.md").read_text(), at_rev("skills/using-adeck/SKILL.md"))
         self.assertEqual((plugin / "skills/brainstorming/SKILL.md").read_text(), at_rev("skills/brainstorming/SKILL.md"))
 
     def test_candidate_uses_the_working_tree(self):
         plugin = self.plugin("candidate")
-        self.assertEqual((plugin / "skills/using-ryugi/SKILL.md").read_text(),
-                         (REPO / "skills/using-ryugi/SKILL.md").read_text())
+        self.assertEqual((plugin / "skills/using-adeck/SKILL.md").read_text(),
+                         (REPO / "skills/using-adeck/SKILL.md").read_text())
 
     def test_injected_arms_get_the_session_start_hook(self):
         for arm in ("baseline", "bs-only", "candidate"):

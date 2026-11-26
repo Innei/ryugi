@@ -8,7 +8,7 @@ sys.path.insert(0, os.path.abspath(
     os.path.join(os.path.dirname(__file__), "../../.hermes-plugin")
 ))
 
-BOOTSTRAP_MARKER = "ryugi:using-ryugi bootstrap for hermes"
+BOOTSTRAP_MARKER = "adeck:using-adeck bootstrap for hermes"
 
 # Hermes spills injected context over 10,000 chars to a file, which breaks
 # inline injection semantics. The bootstrap must stay under it with margin.
@@ -50,7 +50,7 @@ class TestSkillsDirResolution:
         m = _load()
         skills = m._skills_dir()
         assert os.path.isfile(
-            os.path.join(skills, "using-ryugi", "SKILL.md")
+            os.path.join(skills, "using-adeck", "SKILL.md")
         )
 
 
@@ -61,11 +61,11 @@ class TestBootstrapContent:
         assert content.startswith("<EXTREMELY_IMPORTANT>")
         assert content.rstrip().endswith("</EXTREMELY_IMPORTANT>")
 
-    def test_contains_using_ryugi_body(self):
+    def test_contains_using_adeck_body(self):
         content = _bootstrap()
         # A distinctive line from the skill body proves the real SKILL.md was
         # embedded, not a stub.
-        assert "You have Ryugi" in content
+        assert "You have Artideck" in content
         assert "## Evidence Before Claims" in content
 
     def test_frontmatter_stripped(self):
@@ -76,7 +76,7 @@ class TestBootstrapContent:
         m = _load()
         content = _bootstrap()
         ref = os.path.join(
-            m._skills_dir(), "using-ryugi", "references", "hermes-tools.md"
+            m._skills_dir(), "using-adeck", "references", "hermes-tools.md"
         )
         with open(ref, encoding="utf-8") as f:
             ref_text = f.read().strip()
@@ -87,7 +87,7 @@ class TestBootstrapContent:
 
     def test_skill_view_guidance_present(self):
         content = _bootstrap()
-        assert 'skill_view("ryugi:brainstorming")' in content
+        assert 'skill_view("adeck:brainstorming")' in content
 
     def test_under_hermes_context_spill_limit(self):
         content = _bootstrap()

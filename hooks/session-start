@@ -38,15 +38,15 @@ if { [ -n "${ANTIGRAVITY_AGENT:-}" ] || [ -n "$env_plugin_root" ] || [ -n "$env_
   is_antigravity=1
 fi
 
-# Read using-ryugi content via bash's builtin $(< file) instead of
+# Read using-adeck content via bash's builtin $(< file) instead of
 # cat, for the same PATH-independence reason.
-skill_md="${PLUGIN_ROOT}/skills/using-ryugi/SKILL.md"
-has_using_ryugi=0
+skill_md="${PLUGIN_ROOT}/skills/using-adeck/SKILL.md"
+has_using_adeck=0
 if [ -r "$skill_md" ]; then
-  has_using_ryugi=1
-  using_ryugi_content="$(< "$skill_md")"
+  has_using_adeck=1
+  using_adeck_content="$(< "$skill_md")"
 else
-  using_ryugi_content="Error reading using-ryugi skill"
+  using_adeck_content="Error reading using-adeck skill"
 fi
 
 # Escape string for JSON embedding using bash parameter substitution.
@@ -62,11 +62,11 @@ escape_for_json() {
   printf '%s' "$s"
 }
 
-using_ryugi_escaped=$(escape_for_json "$using_ryugi_content")
+using_adeck_escaped=$(escape_for_json "$using_adeck_content")
 if [ "$is_antigravity" -eq 1 ]; then
-  session_context="<EXTREMELY_IMPORTANT>\nYou have Ryugi.\n\n**Below is the full content of your 'ryugi:using-ryugi' skill - your introduction to using skills. To load another skill on Antigravity, read its SKILL.md with \`read_file\`:**\n\n${using_ryugi_escaped}\n</EXTREMELY_IMPORTANT>"
+  session_context="<EXTREMELY_IMPORTANT>\nYou have Artideck.\n\n**Below is the full content of your 'adeck:using-adeck' skill - your introduction to using skills. To load another skill on Antigravity, read its SKILL.md with \`read_file\`:**\n\n${using_adeck_escaped}\n</EXTREMELY_IMPORTANT>"
 else
-  session_context="<EXTREMELY_IMPORTANT>\nYou have Ryugi.\n\n**Below is the full content of your 'ryugi:using-ryugi' skill - your introduction to using skills. For all other skills, use the 'Skill' tool:**\n\n${using_ryugi_escaped}\n</EXTREMELY_IMPORTANT>"
+  session_context="<EXTREMELY_IMPORTANT>\nYou have Artideck.\n\n**Below is the full content of your 'adeck:using-adeck' skill - your introduction to using skills. For all other skills, use the 'Skill' tool:**\n\n${using_adeck_escaped}\n</EXTREMELY_IMPORTANT>"
 fi
 
 emit_json() {
@@ -103,23 +103,55 @@ if [ "$is_antigravity" -eq 1 ] && [ -n "${ANTIGRAVITY_LS_ADDRESS:-}" ] && [ -n "
   printf '%s' "$stdin_payload" | RYUGI_PLUGIN_ROOT="$PLUGIN_ROOT" "$hook_bin" detach watch antigravity > /dev/null 2>&1 || true
 fi
 
-# The ryugi-artifacts marketplace entry loads only the artifacts skills but
-# still runs every hook. Its data dir (<entry>-<marketplace>) names the entry
-# for every marketplace source; a directory source runs hooks from the source
-# checkout, so the cache path alone cannot tell.
+# The adeck-lite and ryugi-artifacts marketplace entries load only the artifacts
+# skills but still run every hook. Their data dir (<entry>-<marketplace>) names
+# the entry for every marketplace source; a directory source runs hooks from the
+# source checkout, so the cache path alone cannot tell.
 plugin_data="${CLAUDE_PLUGIN_DATA:-${env_plugin_data}}"
-case "${plugin_data##*[/\\]}" in
-  ryugi-artifacts | ryugi-artifacts-*)
-    if [ "$is_antigravity" -eq 1 ]; then emit_json '{}\n'; fi
-    exit 0
-    ;;
+plugin_entry="${plugin_data##*[/\\]}"
+lite=0
+case "$plugin_entry" in
+  adeck-lite | adeck-lite-* | ryugi-artifacts | ryugi-artifacts-*) lite=1 ;;
 esac
 case "$PLUGIN_ROOT" in
-  */ryugi-artifacts | */ryugi-artifacts/* | *\\ryugi-artifacts | *\\ryugi-artifacts\\*)
-    if [ "$is_antigravity" -eq 1 ]; then emit_json '{}\n'; fi
-    exit 0
-    ;;
+  */adeck-lite | */adeck-lite/* | *\\adeck-lite | *\\adeck-lite\\* | */ryugi-artifacts | */ryugi-artifacts/* | *\\ryugi-artifacts | *\\ryugi-artifacts\\*) lite=1 ;;
 esac
+
+# Claude Code keeps a marketplace entry's id, so an install made before the
+# rename runs as ryugi@ryugi-dev until `adeck plugin-migrate` moves it.
+legacy_id=""
+if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -z "${CURSOR_PLUGIN_ROOT:-}" ] && [ -z "${COPILOT_CLI:-}" ] && [ -z "${MUSE_PLUGIN_ROOT:-}" ]; then
+  case "$plugin_entry" in
+    ryugi-artifacts-ryugi-dev) legacy_id="ryugi-artifacts@ryugi-dev" ;;
+    ryugi-ryugi-dev) legacy_id="ryugi@ryugi-dev" ;;
+  esac
+  case "$PLUGIN_ROOT" in
+    */ryugi-dev/ryugi-artifacts/* | *\\ryugi-dev\\ryugi-artifacts\\*) legacy_id="ryugi-artifacts@ryugi-dev" ;;
+    */ryugi-dev/ryugi/* | *\\ryugi-dev\\ryugi\\*) legacy_id="ryugi@ryugi-dev" ;;
+  esac
+fi
+if [ -n "$legacy_id" ] && command -v node > /dev/null 2>&1; then
+  node "${PLUGIN_ROOT}/skills/artifacts/app/adeck.cjs" plugin-migrate --format quiet < /dev/null > /dev/null 2>&1 &
+fi
+
+if [ "$lite" -eq 1 ]; then
+  if [ "$is_antigravity" -eq 1 ]; then emit_json '{}\n'; fi
+  exit 0
+fi
+
+if [ -n "$legacy_id" ]; then
+  session_context="${session_context}\n\nThis session loaded Artideck under its old id ${legacy_id}, so its skills are named ryugi:<skill>. Where a skill says adeck:<skill>, use ryugi:<skill>. Artideck moves this install to adeck@ryugi-dev on its own."
+  migration_state="${HOME:-}/.artideck/plugin-migration.json"
+  [ -d "${HOME:-}/.artideck" ] || migration_state="${HOME:-}/.ryugi/plugin-migration.json"
+  if [ -r "$migration_state" ] && [[ "$(< "$migration_state")" == *'"notice": true'* ]]; then
+    session_context="${session_context}\n\nMoving it failed three times. Ask the user to run: claude plugin install adeck@ryugi-dev --scope user, then claude plugin uninstall ${legacy_id} --scope user."
+  fi
+  for settings in "${CLAUDE_PROJECT_DIR:-}/.claude/settings.json" "${CLAUDE_PROJECT_DIR:-}/.claude/settings.local.json"; do
+    if [ -n "${CLAUDE_PROJECT_DIR:-}" ] && [ -r "$settings" ] && [[ "$(< "$settings")" == *'"ryugi@ryugi-dev"'* || "$(< "$settings")" == *'"ryugi-artifacts@ryugi-dev"'* ]]; then
+      session_context="${session_context}\n\nThis project's ${settings#"${CLAUDE_PROJECT_DIR}/"} still enables ryugi@ryugi-dev; suggest the user rename it to adeck@ryugi-dev (or ryugi-artifacts@ryugi-dev to adeck-lite@ryugi-dev)."
+    fi
+  done
+fi
 
 if [ -n "${CURSOR_PLUGIN_ROOT:-}" ]; then
   # Cursor sets CURSOR_PLUGIN_ROOT (may also set CLAUDE_PLUGIN_ROOT)
@@ -131,7 +163,7 @@ elif [ -n "${MUSE_PLUGIN_ROOT:-}" ]; then
   # Muse sets MUSE_PLUGIN_ROOT — try Claude-style nested output for Muse Spark
   emit_json '{\n  "hookSpecificOutput": {\n    "hookEventName": "SessionStart",\n    "additionalContext": "%s"\n  }\n}\n' "$session_context"
 elif [ "$is_antigravity" -eq 1 ]; then
-  if [ "$has_using_ryugi" -eq 0 ]; then
+  if [ "$has_using_adeck" -eq 0 ]; then
     emit_json '{}\n'
   else
     emit_json '{\n  "injectSteps": [\n    {\n      "systemMessage": {\n        "systemMessage": "%s"\n      }\n    }\n  ]\n}\n' "$session_context"

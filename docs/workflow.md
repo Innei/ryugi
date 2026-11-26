@@ -41,6 +41,6 @@ Two-hour autonomous stretches without "should I continue?" are normal. Because t
 - **Design** — `interface-craft`, `design-system`
 - **Discipline** — `test-driven-development`, `systematic-debugging`
 - **Workspace** — `using-git-worktrees`
-- **Meta** — `using-ryugi` (bootstrap, plus evidence before claims)
+- **Meta** — `using-adeck` (bootstrap, plus evidence before claims)
 
 `writing-skills` — creating and testing skills — lives at `.claude/skills/writing-skills/` and loads only when you work on Artideck itself.

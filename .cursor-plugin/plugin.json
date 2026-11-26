@@ -16,7 +16,7 @@
     "workflows"
   ],
   "license": "SEE LICENSE IN LICENSE",
-  "name": "ryugi",
+  "name": "adeck",
   "repository": "https://github.com/Innei/artideck",
   "skills": "./skills/",
   "version": "1.115.1"

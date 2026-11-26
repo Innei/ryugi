@@ -117,8 +117,8 @@ const getBootstrapContent = (toolMapping) => {
   // Return cached result on subsequent calls
   if (_bootstrapCache.has(toolMapping)) return _bootstrapCache.get(toolMapping);
 
-  // Try to load using-ryugi skill
-  const skillPath = path.join(ryugiSkillsDir, 'using-ryugi', 'SKILL.md');
+  // Try to load using-adeck skill
+  const skillPath = path.join(ryugiSkillsDir, 'using-adeck', 'SKILL.md');
   if (!fs.existsSync(skillPath)) {
     _bootstrapCache.set(toolMapping, null);
     return null;
@@ -130,9 +130,9 @@ const getBootstrapContent = (toolMapping) => {
   _bootstrapCache.set(
     toolMapping,
     `<EXTREMELY_IMPORTANT>
-You have Ryugi.
+You have Artideck.
 
-**IMPORTANT: The using-ryugi skill content is included below. It is ALREADY LOADED - you are currently following it. Do NOT use the skill tool to load "using-ryugi" again - that would be redundant.**
+**IMPORTANT: The using-adeck skill content is included below. It is ALREADY LOADED - you are currently following it. Do NOT use the skill tool to load "using-adeck" again - that would be redundant.**
 
 ${content}
 

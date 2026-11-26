@@ -42,12 +42,12 @@ else
   exit 1
 fi
 
-# Test 3: Check using-ryugi skill exists (critical for bootstrap)
-echo "Test 3: Checking using-ryugi skill (required for bootstrap)..."
-if [ -f "$RYUGI_SKILLS_DIR/using-ryugi/SKILL.md" ]; then
-  echo "  [PASS] using-ryugi skill exists"
+# Test 3: Check using-adeck skill exists (critical for bootstrap)
+echo "Test 3: Checking using-adeck skill (required for bootstrap)..."
+if [ -f "$RYUGI_SKILLS_DIR/using-adeck/SKILL.md" ]; then
+  echo "  [PASS] using-adeck skill exists"
 else
-  echo "  [FAIL] using-ryugi skill not found (required for bootstrap)"
+  echo "  [FAIL] using-adeck skill not found (required for bootstrap)"
   exit 1
 fi
 

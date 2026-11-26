@@ -12,7 +12,7 @@ Use the existing V1 plugin configuration:
 
 ```json
 {
-  "plugin": ["ryugi@git+https://github.com/Innei/artideck.git"]
+  "plugin": ["adeck@git+https://github.com/Innei/artideck.git"]
 }
 ```
 
@@ -22,7 +22,7 @@ Use the V2 plugin configuration:
 
 ```json
 {
-  "plugins": ["ryugi@git+https://github.com/Innei/artideck.git"]
+  "plugins": ["adeck@git+https://github.com/Innei/artideck.git"]
 }
 ```
 
@@ -111,7 +111,7 @@ V1 `plugin` key and the V2 `plugins` key):
 
 ```json
 {
-  "plugin": ["ryugi@git+https://github.com/Innei/artideck.git#v7.0.0"]
+  "plugin": ["adeck@git+https://github.com/Innei/artideck.git#v7.0.0"]
 }
 ```
 
@@ -128,7 +128,7 @@ The plugin does two things, using host-flavor-specific APIs:
    - **V1:** via `experimental.chat.messages.transform` hook
    - **V2:** via `ctx.session.hook("context")` — the V2 equivalent (confirmed active at runtime)
 
-Controller sessions receive the using-ryugi bootstrap in transient model
+Controller sessions receive the using-adeck bootstrap in transient model
 context. Delegated child sessions keep access to native skills but do not receive
 the controller bootstrap. A manual fork without a parent session keeps controller
 behavior. When V2 native compaction retains earlier user messages (the default
@@ -202,7 +202,7 @@ the plugin, try installing with system npm and pointing OpenCode at the local
 package:
 
 ```powershell
-npm install ryugi@git+https://github.com/Innei/artideck.git --prefix "$HOME\.config\opencode"
+npm install adeck@git+https://github.com/Innei/artideck.git --prefix "$HOME\.config\opencode"
 ```
 
 Then use the absolute path of the installed package in `opencode.json` for your

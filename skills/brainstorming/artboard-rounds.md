@@ -4,7 +4,7 @@ Visual questions go on an artboard a round at a time, like the document's
 rounds: each group is one question, its boards are the options, and one
 board is your recommendation.
 
-**REQUIRED SUB-SKILL:** Use ryugi:artifacts, type `artboard`, for the
+**REQUIRED SUB-SKILL:** Use adeck:artifacts, type `artboard`, for the
 canvas, the boards and reading what they selected. Name it after the topic
 (`settings-page`).
 
@@ -34,7 +34,7 @@ id>"` for your recommended board (the viewer tags it), and a sticky beside
   (Flows in the artifacts CLI artboard writing description). Options for one
   step of the path still sit in a choice group.
 
-- Use ryugi:interface-craft for UI design judgment. If direction is the open question, compare coherent directions and explain their rationale; once chosen, keep the **selected visual direction** and tokens fixed while comparing one layout or interaction dimension per later group.
+- Use adeck:interface-craft for UI design judgment. If direction is the open question, compare coherent directions and explain their rationale; once chosen, keep the **selected visual direction** and tokens fixed while comparing one layout or interaction dimension per later group.
 
 Your message is one line on what's on the board, plus the link.
 
@@ -43,7 +43,7 @@ Your message is one line on what's on the board, plus the link.
 When they answer:
 
 1. Read Brief from `comment list --sections threads,groups,rounds --detail`
-   for this project and artboard, as ryugi:artifacts says under Choice groups.
+   for this project and artboard, as adeck:artifacts says under Choice groups.
    Match each group's `round` to a `submitted` round. Follow printed
    `More` for each collection; complete thread messages are included on each
    delivered page. A preview instead requires its printed `Read`. Use the evidence before its
@@ -55,7 +55,7 @@ When they answer:
    playback otherwise. In the document, name the chosen board with a
    `<ref artboard=… board=…>` (artifacts CLI document writing description), not as plain
    text.
-3. Append the next round below the last one, as ryugi:artifacts says.
+3. Append the next round below the last one, as adeck:artifacts says.
    Earlier rounds stay as history.
 4. In the terminal, one line: what changed, and what the new round asks.
 

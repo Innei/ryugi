@@ -1,6 +1,6 @@
 {
   "contextFileName": "GEMINI.md",
   "description": "Artideck skills for coding agents, plus the artifacts workbench they design in: brainstorming, artboards, documents and TDD.",
-  "name": "ryugi",
+  "name": "adeck",
   "version": "1.115.1"
 }

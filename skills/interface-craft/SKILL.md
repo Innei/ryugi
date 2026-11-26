@@ -7,7 +7,7 @@ description: Use when a visible product interface needs design judgment, includi
 
 A design technique, not a mandatory extra phase. Two halves, in order: set a direction from the product, then check the screen against things that can fail. Nothing here is a house style; the project's system and accepted decisions outrank every default below.
 
-**Integration:** Project design system and explicit decisions take priority. Ryugi:brainstorming owns requirements and approval; ryugi:artifacts owns visual presentation; ryugi:verifying owns the human verdict for built UI. This skill adds **no new approval gate**.
+**Integration:** Project design system and explicit decisions take priority. Ryugi:brainstorming owns requirements and approval; adeck:artifacts owns visual presentation; adeck:verifying owns the human verdict for built UI. This skill adds **no new approval gate**.
 
 ## Pick the mode
 
@@ -17,7 +17,7 @@ A design technique, not a mandatory extra phase. Two halves, in order: set a dir
 | **Repair** | An existing screen, with defects or with a request to improve it          | Audit with [signs](references/signs.md), report findings with locations, fix only the agreed scope     |
 | **Edit**   | One exact visual change is specified                                      | Make that change. No audit, no direction, no questions                                                 |
 
-Not a UI task: backend work, architecture diagrams, pure copy, generic documents that happen to have a visual format. Building a whole design system: ryugi:design-system orders the stages; this skill judges each board.
+Not a UI task: backend work, architecture diagrams, pure copy, generic documents that happen to have a visual format. Building a whole design system: adeck:design-system orders the stages; this skill judges each board.
 
 Landing pages, marketing and pricing pages, onboarding, empty states, settings and emails are product interfaces too; use this skill for them.
 

@@ -17,7 +17,7 @@ import time
 
 
 BASE_ARMS = ("full", "discoverable", "absent")
-FROZEN_ARMS = {"baseline": ("using-ryugi", "brainstorming"), "bs-only": ("using-ryugi",), "candidate": ()}
+FROZEN_ARMS = {"baseline": ("using-adeck", "brainstorming"), "bs-only": ("using-adeck",), "candidate": ()}
 ARMS = (*BASE_ARMS, "short", *FROZEN_ARMS)
 BASELINE_REV = "984c6891"
 CASES = {
@@ -220,10 +220,10 @@ def make_plugin(repo, root, arm, router_file=None, baseline_rev=BASELINE_REV):
         ),
     )
     if arm == "absent":
-        shutil.rmtree(plugin / "skills/using-ryugi")
+        shutil.rmtree(plugin / "skills/using-adeck")
     if arm == "short":
         router_file = router_file or repo / "tests/skill-bootstrap-eval/fixtures/short-router.md"
-        shutil.copy2(router_file, plugin / "skills/using-ryugi/SKILL.md")
+        shutil.copy2(router_file, plugin / "skills/using-adeck/SKILL.md")
     for skill in FROZEN_ARMS.get(arm, ()):
         frozen = subprocess.check_output(
             ["git", "show", f"{baseline_rev}:skills/{skill}/SKILL.md"], cwd=repo, text=True)
@@ -489,7 +489,7 @@ def main():
     for plugin in plugins.values():
         write_port_shim(plugin, real_cli)
     write_open_shims(root / "shims")
-    source = repo / "skills/using-ryugi/SKILL.md"
+    source = repo / "skills/using-adeck/SKILL.md"
     write_json(root / "manifest.json", {
         "repo_head": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=repo, text=True).strip(),
         "bootstrap_sha256": hashlib.sha256(source.read_bytes()).hexdigest(),
@@ -498,8 +498,8 @@ def main():
         "settings": json.loads(settings.read_text()), "cases": CASES, "arms": args.arms,
         "model": args.model,
         "selected_cases": args.cases,
-        "arm_bootstraps": {arm: (plugin / "skills/using-ryugi/SKILL.md").read_text()
-                           if (plugin / "skills/using-ryugi/SKILL.md").exists() else None
+        "arm_bootstraps": {arm: (plugin / "skills/using-adeck/SKILL.md").read_text()
+                           if (plugin / "skills/using-adeck/SKILL.md").exists() else None
                            for arm, plugin in plugins.items()},
         "baseline_rev": args.baseline_rev,
         "arm_brainstorming": {arm: (plugin / "skills/brainstorming/SKILL.md").read_text()

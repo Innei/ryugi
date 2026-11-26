@@ -1,6 +1,6 @@
 # Checks
 
-System-level failures seen across real projects. ryugi:interface-craft `references/signs.md` covers screen-level signs (contrast, gradients, type, copy); this list adds what goes wrong when a whole system is built. Read both before handing over a round. Write findings as `location — sign — fix`.
+System-level failures seen across real projects. adeck:interface-craft `references/signs.md` covers screen-level signs (contrast, gradients, type, copy); this list adds what goes wrong when a whole system is built. Read both before handing over a round. Write findings as `location — sign — fix`.
 
 ## Controls
 

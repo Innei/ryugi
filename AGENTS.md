@@ -31,7 +31,7 @@ A rerun skips whatever is already published or tagged. The workflow reads `ryugi
 
 ## Harness Integrations
 
-A real integration loads the `using-ryugi` bootstrap at session start. The acceptance test: open a clean session in the harness and send exactly
+A real integration loads the `using-adeck` bootstrap at session start. The acceptance test: open a clean session in the harness and send exactly
 
 > Let's make a react todo list
 
