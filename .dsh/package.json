@@ -1,21 +1,22 @@
 {
   "name": "dsh-plugin-ryugi",
   "version": "1.114.0",
-  "description": "Ryugi skills and interactive artifacts integration for DeepSeek Harness (DSH).",
+  "description": "Artideck skills and interactive artifacts integration for DeepSeek Harness (DSH).",
   "keywords": [
     "deepseek-harness",
     "dsh",
     "dsh-plugin",
+    "artideck",
     "ryugi",
     "skills",
     "artifacts",
     "brainstorming",
     "tdd"
   ],
-  "homepage": "https://github.com/Innei/ryugi",
+  "homepage": "https://artideck.dev",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Innei/ryugi.git"
+    "url": "https://github.com/Innei/artideck.git"
   },
   "license": "SEE LICENSE IN LICENSE",
   "author": {

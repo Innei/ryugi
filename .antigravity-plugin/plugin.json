@@ -5,8 +5,8 @@
   },
   "category": "Developer Tools",
   "description": "Make your coding agent a better engineer, and show the work in an artifacts workbench",
-  "displayName": "Ryugi",
-  "homepage": "https://github.com/Innei/ryugi",
+  "displayName": "Artideck",
+  "homepage": "https://artideck.dev",
   "keywords": [
     "skills",
     "tdd",
@@ -18,7 +18,7 @@
   "license": "SEE LICENSE IN LICENSE",
   "logo": "assets/antigravity-logo.png",
   "name": "ryugi",
-  "repository": "https://github.com/Innei/ryugi",
+  "repository": "https://github.com/Innei/artideck",
   "suggestedPrompts": [
     "I've got an idea for something I'd like to build",
     "Let's figure out why this broke"

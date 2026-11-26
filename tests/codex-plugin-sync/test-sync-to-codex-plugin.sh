@@ -251,7 +251,7 @@ EOF
 
   printf 'antigravity png fixture\n' > "$repo/assets/antigravity-logo.png"
 
-  cat > "$repo/assets/ryugi-small.svg" << 'EOF'
+  cat > "$repo/assets/artideck-small.svg" << 'EOF'
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1"></svg>
 EOF
 
@@ -313,7 +313,7 @@ EOF
     .pre-commit-config.yaml \
     assets/antigravity-logo.png \
     assets/app-icon.png \
-    assets/ryugi-small.svg \
+    assets/artideck-small.svg \
     evals/drill/README.md \
     hooks/hooks-codex.json \
     hooks/run-hook.cmd \
@@ -388,7 +388,7 @@ write_synced_destination_fixture() {
 }
 EOF
 
-  cat > "$repo/plugins/ryugi/assets/ryugi-small.svg" << 'EOF'
+  cat > "$repo/plugins/ryugi/assets/artideck-small.svg" << 'EOF'
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1"></svg>
 EOF
 
@@ -445,7 +445,7 @@ EOF
   git -C "$repo" add \
     plugins/ryugi/.codex-plugin/plugin.json \
     plugins/ryugi/assets/app-icon.png \
-    plugins/ryugi/assets/ryugi-small.svg \
+    plugins/ryugi/assets/artideck-small.svg \
     plugins/ryugi/hooks/hooks-codex.json \
     plugins/ryugi/hooks/run-hook.cmd \
     plugins/ryugi/hooks/session-start \
@@ -671,7 +671,7 @@ main() {
   assert_not_contains "$preview_section" ".kimi-plugin/plugin.json" "Preview excludes Kimi manifest from Codex sync"
   assert_not_contains "$preview_section" ".antigravity-plugin/plugin.json" "Preview excludes Antigravity manifest from Codex sync"
   assert_not_contains "$preview_section" "assets/antigravity-logo.png" "Preview excludes Antigravity logo from Codex sync"
-  assert_contains "$preview_section" "assets/ryugi-small.svg" "Preview includes SVG asset"
+  assert_contains "$preview_section" "assets/artideck-small.svg" "Preview includes SVG asset"
   assert_contains "$preview_section" "assets/app-icon.png" "Preview includes PNG asset"
   assert_contains "$preview_section" "hooks/hooks-codex.json" "Preview includes Codex hook manifest"
   assert_contains "$preview_section" "hooks/session-start" "Preview includes session-start hook"
@@ -685,7 +685,7 @@ main() {
   assert_not_contains "$preview_section" ".pre-commit-config.yaml" "Preview excludes repo pre-commit config"
   assert_not_contains "$preview_section" "index.js" "Preview excludes OpenCode root entrypoint"
   assert_not_contains "$preview_output" "Overlay file (.codex-plugin/plugin.json) will be regenerated" "Preview omits overlay regeneration note"
-  assert_not_contains "$preview_output" "Assets (ryugi-small.svg, app-icon.png) will be seeded from" "Preview omits assets seeding note"
+  assert_not_contains "$preview_output" "Assets (artideck-small.svg, app-icon.png) will be seeded from" "Preview omits assets seeding note"
   assert_contains "$preview_section" "skills/example/SKILL.md" "Preview reflects dirty tracked destination file"
   assert_not_matches "$preview_section" "\\*deleting +skills/example/agents/openai\\.yaml" "Preview preserves destination-owned OpenAI agent metadata"
   assert_current_branch "$dest" "$dest_branch" "Preview leaves destination checkout on its original branch"

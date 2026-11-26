@@ -1,5 +1,5 @@
 {
-  "description": "Development marketplace for the Ryugi skills and artifacts workbench",
+  "description": "Development marketplace for the Artideck skills and artifacts workbench",
   "name": "ryugi-dev",
   "owner": {
     "name": "Innei",
@@ -8,7 +8,7 @@
   "plugins": [
     {
       "name": "ryugi",
-      "description": "Ryugi skills for coding agents, plus the artifacts workbench they design in: brainstorming, artboards, documents and TDD.",
+      "description": "Artideck skills for coding agents, plus the artifacts workbench they design in: brainstorming, artboards, documents and TDD.",
       "version": "1.114.0",
       "source": "./",
       "author": {

@@ -61,8 +61,8 @@
     "source": "native",
     "manifestDir": ".muse-plugin"
   },
-  "description": "Ryugi skills for coding agents, plus the artifacts workbench they design in: brainstorming, artboards, documents and TDD.",
-  "displayName": "Ryugi",
+  "description": "Artideck skills for coding agents, plus the artifacts workbench they design in: brainstorming, artboards, documents and TDD.",
+  "displayName": "Artideck",
   "name": "ryugi",
   "schemaVersion": 1,
   "version": "1.114.0"
