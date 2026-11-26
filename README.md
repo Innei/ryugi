@@ -3,7 +3,7 @@
   <img src="assets/logo/artideck-wordmark-dark.svg#gh-dark-mode-only" width="240" alt="Artideck">
 </p>
 
-<h1 align="center">Artideck — Interactive Artifacts for Coding Agents</h1>
+<h1 align="center">Artideck — Artifacts for Coding Agents, Made to Decide With You</h1>
 
 <p align="center"><i>Formerly Ryugi (流儀)</i></p>
 
