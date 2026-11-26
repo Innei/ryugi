@@ -203,6 +203,8 @@ jobs:
         env:
           # The package is built from a private repository; provenance would attest this one as its source.
           NPM_CONFIG_PROVENANCE: 'false'
+          # Daemon assets are already on the draft release and are not part of the npm package.
+          RYUGI_SKIP_DAEMON_BUILD: '1'
         run: |
           npm install -g npm@^11.15.0
           npm publish
