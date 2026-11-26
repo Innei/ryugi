@@ -9,6 +9,7 @@ const path = require('node:path');
 const { after, test } = require('node:test');
 const { setTimeout: delay } = require('node:timers/promises');
 const { fakeHub } = require('./fake-hub.cjs');
+const { stopWorkers } = require('./workers.cjs');
 
 const cacheHome = fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-agy-cache-'));
 process.env.XDG_CACHE_HOME = cacheHome;
@@ -64,7 +65,7 @@ async function lsServer(t, options = {}) {
     });
   });
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
-  t.after(() => server.close());
+  t.after(() => server.listening && server.close());
   return {
     address: `127.0.0.1:${server.address().port}`,
     calls,
@@ -74,13 +75,13 @@ async function lsServer(t, options = {}) {
     setFailSendAgent(v) {
       failSendAgent = v;
     },
+    close: () => new Promise((resolve) => server.close(resolve)),
   };
 }
 
 function fixture(t, ls) {
   const hub = fakeHub(t);
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-agy-watch-')));
-  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const project = path.join(root, 'project');
   const data = path.join(root, 'plugin-data');
   fs.mkdirSync(path.join(project, '.git'), { recursive: true });
@@ -110,6 +111,8 @@ function fixture(t, ls) {
         child.kill('SIGTERM');
       } catch {}
     }
+    stopWorkers(data);
+    fs.rmSync(root, { recursive: true, force: true });
   });
   let nextId = 0;
   const connected = (count = 1) =>
@@ -295,4 +298,18 @@ test('agy-ensure launches a detached watcher and skips respawning while healthy'
   assert.match(ls.calls[0].body.content, /Comment list: document\/launcher · fake threads/);
 
   f.stopWatch();
+});
+
+test('agy-comment-watch exits and releases its worker once its language server stops listening', { timeout: 20000 }, async (t) => {
+  const ls = await lsServer(t);
+  const f = fixture(t, ls);
+  const child = f.startWatch();
+  const exited = new Promise((resolve) => child.on('exit', resolve));
+  await f.connected();
+  const worker = path.join(f.data, 'agy-comment-watch', 'workers', `${SESSION}.json`);
+  assert.ok(fs.existsSync(worker));
+
+  await ls.close();
+  assert.equal(await exited, 0);
+  assert.equal(fs.existsSync(worker), false);
 });

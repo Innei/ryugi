@@ -9,6 +9,7 @@ const { after, test } = require('node:test');
 const { setTimeout: delay } = require('node:timers/promises');
 const { fakeHub } = require('./fake-hub.cjs');
 const { startFakeApi } = require('./fake-agent-api.cjs');
+const { stopWorkers } = require('./workers.cjs');
 
 const cacheHome = fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-cmd-cache-'));
 process.env.XDG_CACHE_HOME = cacheHome;
@@ -80,7 +81,6 @@ process.exit(mode.code ?? 0);
 function fixture(t) {
   const hub = fakeHub(t);
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-cmd-watch-')));
-  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const project = path.join(root, 'project');
   const data = path.join(root, 'plugin-data');
   const configHome = path.join(root, 'config-home');
@@ -128,6 +128,8 @@ function fixture(t) {
         child.kill('SIGTERM');
       } catch {}
     }
+    stopWorkers(data);
+    fs.rmSync(root, { recursive: true, force: true });
   });
 
   let nextId = 0;

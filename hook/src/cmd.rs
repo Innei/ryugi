@@ -299,10 +299,12 @@ fn watch(ctx: Ctx) {
                 return;
             }
             queue.close();
+            // Closing the channel ends the thread main joins on, and main may exit before this one
+            // gets past the close; the worker file has to go first.
+            crate::worker::release(&file, &token);
             if let Some(ch) = slot.lock().unwrap().as_ref() {
                 ch.close();
             }
-            crate::worker::release(&file, &token);
             std::process::exit(0);
         })
     };

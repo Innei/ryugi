@@ -49,22 +49,38 @@ fn context(input: &Value) -> Option<Ctx> {
     })
 }
 
+// Antigravity starts each language server on a fresh port and re-runs ensure with the new
+// address, so a watcher whose server stopped listening can never deliver again.
+const PROBE_EVERY: Duration = Duration::from_secs(2);
+const PROBE_MISSES: u32 = 2;
+
 struct RpcError {
     status: Option<u16>,
     message: String,
 }
 
-fn ls_rpc(ctx: &Ctx, method: &str, payload: &Value) -> Result<String, RpcError> {
+fn ls_endpoint(ctx: &Ctx) -> Result<(String, u16), String> {
     let base = if ctx.ls_address.starts_with("http://") { ctx.ls_address.clone() } else { format!("http://{}", ctx.ls_address) };
-    let url = crate::http::parse_url(&base).ok_or(RpcError { status: None, message: format!("Invalid URL: {base}") })?;
+    let url = crate::http::parse_url(&base).ok_or(format!("Invalid URL: {base}"))?;
     let host = if url.host == "localhost" { "127.0.0.1".to_string() } else { url.host.clone() };
+    Ok((host, url.port))
+}
+
+fn listening(host: &str, port: u16) -> bool {
+    use std::net::{TcpStream, ToSocketAddrs};
+    let addr = (host, port).to_socket_addrs().ok().and_then(|mut addrs| addrs.next());
+    addr.is_some_and(|addr| TcpStream::connect_timeout(&addr, Duration::from_secs(1)).is_ok())
+}
+
+fn ls_rpc(ctx: &Ctx, method: &str, payload: &Value) -> Result<String, RpcError> {
+    let (host, port) = ls_endpoint(ctx).map_err(|message| RpcError { status: None, message })?;
     let body = payload.to_string();
     let mut headers = vec![("Content-Type", "application/json".to_string())];
     if !ctx.csrf.is_empty() {
         headers.push(("x-codeium-csrf-token", ctx.csrf.clone()));
     }
     let target = format!("/exa.language_server_pb.LanguageServerService/{method}");
-    let res = crate::http::request(&host, url.port, "POST", &target, &headers, Some(body.as_bytes()), Instant::now() + Duration::from_secs(5))
+    let res = crate::http::request(&host, port, "POST", &target, &headers, Some(body.as_bytes()), Instant::now() + Duration::from_secs(5))
         .ok_or_else(|| RpcError { status: None, message: format!("LS RPC {method} timed out") })?;
     let out = String::from_utf8_lossy(&res.body).into_owned();
     if (200..300).contains(&res.status) {
@@ -136,10 +152,12 @@ fn watch(ctx: Ctx) {
         let (queue, slot, file) = (queue.clone(), slot.clone(), ctx.file.clone());
         Arc::new(move || {
             queue.close();
+            // Closing the channel ends the thread main joins on, and main may exit before this one
+            // gets past the close; the worker file has to go first.
+            crate::worker::release(&file, &token);
             if let Some(ch) = slot.lock().unwrap().as_ref() {
                 ch.close();
             }
-            crate::worker::release(&file, &token);
             std::process::exit(0);
         })
     };
@@ -147,6 +165,19 @@ fn watch(ctx: Ctx) {
         let stop = stop.clone();
         move || stop()
     });
+    if let Ok((host, port)) = ls_endpoint(&ctx) {
+        let stop = stop.clone();
+        std::thread::spawn(move || {
+            let mut misses = 0;
+            loop {
+                std::thread::sleep(PROBE_EVERY);
+                misses = if listening(&host, port) { 0 } else { misses + 1 };
+                if misses >= PROBE_MISSES {
+                    stop();
+                }
+            }
+        });
+    }
     let pusher = queue.clone();
     let (channel, thread) = open(Options::new(ctx.project.clone(), "antigravity", &ctx.session, &crate::subs::agent_of("antigravity")), move |_, signal| match signal {
         Signal::Event(event, id) => pusher.push(event, id),
