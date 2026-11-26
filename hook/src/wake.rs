@@ -263,7 +263,7 @@ fn read_brief(argv: &[Value]) -> String {
 }
 
 /// Every host and every event type come through here: the listing the agent would run next is
-/// inlined whenever the host can take it whole (no cap, or it fits the cap); only otherwise does
+/// inlined whenever the host can take it whole (no cap, or every line fits the per-line cap); only otherwise does
 /// the message fall back to the event's own brief and a Run line.
 pub fn wake_message(event: &Value, limit: Option<usize>) -> String {
     let Parts { head, brief, next } = wake_parts(event);
@@ -271,7 +271,7 @@ pub fn wake_message(event: &Value, limit: Option<usize>) -> String {
         if let Some(argv) = event.get("argv").and_then(Value::as_array).filter(|a| !a.is_empty()) {
             let listed = read_brief(argv);
             let inline = format!("{head}. {next}\n{listed}");
-            if !listed.is_empty() && limit.map_or(true, |limit| ulen(&inline) <= limit) {
+            if !listed.is_empty() && limit.map_or(true, |limit| inline.lines().all(|line| ulen(line) <= limit)) {
                 return inline;
             }
         }
@@ -325,6 +325,33 @@ mod tests {
         }
         assert!(text.contains(CUT_MARK));
         assert!(!text.contains('\u{fffd}'));
+    }
+
+    fn listing_event(lines: &[String]) -> Value {
+        let script = format!("process.stdout.write({})", serde_json::to_string(&lines.join("\n")).unwrap());
+        json!({"type": "ryugi-comments", "artifact": "document/plan", "unread": 1, "argv": ["-e", script], "command": "node list"})
+    }
+
+    #[test]
+    fn a_listing_whose_lines_each_fit_is_inlined_with_its_receipt() {
+        let lines: Vec<String> = (0..6)
+            .map(|n| format!("line {n} {}", "x".repeat(150)))
+            .chain(["Acknowledge: node ryugi.cjs comment ack --receipt r-123".to_string()])
+            .collect();
+        let text = wake_message(&listing_event(&lines), Some(NOTIFICATION_LIMIT));
+        assert!(text.contains("--receipt r-123"), "{text}");
+        assert!(!text.contains("Run: node list"), "{text}");
+        for line in text.lines() {
+            assert!(ulen(line) <= NOTIFICATION_LIMIT, "{}", ulen(line));
+        }
+    }
+
+    #[test]
+    fn a_listing_with_a_line_over_the_cap_falls_back_to_run() {
+        let lines = vec!["y".repeat(NOTIFICATION_LIMIT + 1), "--receipt r-123".to_string()];
+        let text = wake_message(&listing_event(&lines), Some(NOTIFICATION_LIMIT));
+        assert!(text.contains("Run: node list"), "{text}");
+        assert!(!text.contains("r-123"), "{text}");
     }
 
     #[test]
