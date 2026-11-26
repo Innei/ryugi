@@ -40,6 +40,8 @@ function fixture(t) {
     RYUGI_NO_UPDATE_CHECK: '1',
     RYUGI_HOOK_BIN: hookBin(),
     RYUGI_CODEX_REMOTE: 'unix:///tmp/ryugi-subscriptions-no-server.sock',
+    // Launchers follow the machine dev link ahead of this fake CLI, and the real one reserves Cloud links.
+    RYUGI_DEV_LINK: path.join(root, 'no-dev-link.json'),
   };
   for (const key of [
     'CLAUDE_CODE_SESSION_ID',
