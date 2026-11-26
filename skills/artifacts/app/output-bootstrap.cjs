@@ -60,16 +60,13 @@ const storeOf = (project) => node_path.default.join(project, STORE_DIR);
 const legacyStoreOf = (project) => node_path.default.join(project, LEGACY_STORE_DIR);
 const isDir = (file) => {
 	try {
-		return node_fs.default.lstatSync(file).isDirectory();
+		return node_fs.default.statSync(file).isDirectory();
 	} catch {
 		return false;
 	}
 };
-const readableRootOf = (project) => {
-	const legacy = node_path.default.join(project, LEGACY_STORE_DIR);
-	const store = !isDir(storeOf(project)) && isDir(legacy) ? legacy : storeOf(project);
-	return node_path.default.join(store, "artifacts");
-};
+const readableStoreOf = (base) => !isDir(storeOf(base)) && isDir(legacyStoreOf(base)) ? legacyStoreOf(base) : storeOf(base);
+const readableRootOf = (project) => node_path.default.join(readableStoreOf(project), "artifacts");
 const hasStore = (dir) => isDir(node_path.default.join(storeOf(dir), "artifacts")) || isDir(node_path.default.join(legacyStoreOf(dir), "artifacts"));
 // src/core/cli/kit/paths.ts
 var CliError = class extends Error {
