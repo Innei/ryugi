@@ -30,7 +30,7 @@ fi
 
 session="$(ryugi_real_dir "${CLAUDE_PROJECT_DIR:-$PWD}")"
 project="$(ryugi_project_root "$session")"
-state="$project/.ryugi/artifacts/.state"
+state="$(ryugi_store "$project")/artifacts/.state"
 [ -f "$state/server-info" ] || exit 0
 
 "$bin" context "$project" "$session"

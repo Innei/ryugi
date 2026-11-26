@@ -15,6 +15,14 @@ ryugi_real_dir() {
   ryugi_native_path "$real"
 }
 
+ryugi_store() {
+  if [ ! -d "$1/.artideck" ] && [ -d "$1/.ryugi" ]; then
+    printf '%s\n' "$1/.ryugi"
+  else
+    printf '%s\n' "$1/.artideck"
+  fi
+}
+
 # Claude Code can run hooks with an empty PATH, so the walk uses no external commands.
 ryugi_project_root() {
   local dir current parent home saved=""
@@ -25,7 +33,7 @@ ryugi_project_root() {
   home="$(cd "${HOME:-/nonexistent}" 2> /dev/null && pwd -P)"
   current="$dir"
   while :; do
-    [ -z "$saved" ] && [ -d "$current/.ryugi/artifacts" ] && saved="$current"
+    [ -z "$saved" ] && { [ -d "$current/.artideck/artifacts" ] || [ -d "$current/.ryugi/artifacts" ]; } && saved="$current"
     if [ -e "$current/.git" ] && { [ "$current" != "$home" ] || [ "$dir" = "$home" ]; }; then
       ryugi_native_path "${saved:-$current}"
       return

@@ -429,7 +429,7 @@ pub fn subscribe() {
     let Some(project) = subscription["project"].as_str().map(PathBuf::from) else { return };
     record_in(&cache_dir(), &subscription);
     crate::hub::post_to_server(&crate::paths::hub_project_of(&project), "/api/agent/subscribe", Some(&subscription));
-    let default_home = crate::paths::home().unwrap_or_default().join(".ryugi/server");
+    let default_home = crate::paths::user_store().join("server");
     if let Some(own) = env("RYUGI_SERVER_HOME") {
         let own = crate::event::resolve(&std::env::current_dir().unwrap_or_default(), &own);
         if own != default_home {
@@ -497,5 +497,6 @@ mod tests {
         assert!(opened_in(cache.path(), project.path(), "claude", "22222222-2222-4222-8222-222222222222").is_empty());
         assert!(opened_in(cache.path(), project.path(), "codex", a).is_empty());
         assert!(!project.path().join(".ryugi").exists());
+        assert!(!project.path().join(".artideck").exists());
     }
 }

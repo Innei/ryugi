@@ -457,8 +457,8 @@ fi
 
 repo_home="$(make_home published-repo)"
 repo_dir="$(cd "$repo_home" && pwd -P)/repo"
-mkdir -p "$repo_dir/.git" "$repo_dir/.ryugi" "$repo_dir/packages/app" "$repo_home/bin"
-cp "$project_dir/.ryugi/config.json" "$repo_dir/.ryugi/config.json"
+mkdir -p "$repo_dir/.git" "$repo_dir/.artideck" "$repo_dir/packages/app" "$repo_home/bin"
+cp "$project_dir/.ryugi/config.json" "$repo_dir/.artideck/config.json"
 printf '#!/bin/sh\nprintf "%%s\\n" "$@" > "%s"\n' "$repo_home/node-args" > "$repo_home/bin/node"
 chmod +x "$repo_home/bin/node"
 mkdir -p "$repo_home/.config/ryugi"

@@ -26,7 +26,7 @@ fn worker_file(project: &Path, session: &str) -> PathBuf {
         .ok()
         .filter(|v| !v.is_empty())
         .map(PathBuf::from)
-        .unwrap_or_else(|| project.join(".ryugi/artifacts/.state"));
+        .unwrap_or_else(|| crate::paths::artifacts_root(project).join(".state"));
     data.join("agy-comment-watch/workers").join(format!("{session}.json"))
 }
 

@@ -36,6 +36,25 @@ base="$TEST_ROOT/saved"
 mkdir -p "$base/.git" "$base/packages/app/.ryugi/artifacts" "$base/packages/app/src"
 expect_root "the nearest directory with saved artifacts wins below the repository root" "$base/packages/app/src" "$base/packages/app"
 
+base="$TEST_ROOT/moved"
+mkdir -p "$base/.git" "$base/packages/app/.artideck/artifacts" "$base/packages/app/src"
+expect_root "the nearest directory with a moved store wins below the repository root" "$base/packages/app/src" "$base/packages/app"
+
+expect_store() {
+  local description="$1" dir="$2" want="$3" got
+  got="$(ryugi_store "$dir")"
+  if [ "$got" = "$want" ]; then pass "$description"; else
+    fail "$description"
+    echo "    want: $want"
+    echo "    got:  $got"
+  fi
+}
+store="$TEST_ROOT/store"
+mkdir -p "$store/none" "$store/old/.ryugi" "$store/both/.ryugi" "$store/both/.artideck"
+expect_store "a project without a store gets .artideck" "$store/none" "$store/none/.artideck"
+expect_store "a project not yet moved is read from .ryugi" "$store/old" "$store/old/.ryugi"
+expect_store "a moved project is read from .artideck" "$store/both" "$store/both/.artideck"
+
 base="$TEST_ROOT/worktree"
 mkdir -p "$base/.git" "$base/worktrees/feature/src"
 printf 'gitdir: ../../.git/worktrees/feature\n' > "$base/worktrees/feature/.git"

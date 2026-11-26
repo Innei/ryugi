@@ -5,6 +5,7 @@ export default defineConfig(
     ignores: [
       '**/pnpm-lock.yaml',
       '.ryugi/**',
+      '.artideck/**',
       'evals/**',
       'artifacts/bench/zoom/fixture/**',
       '.worktrees/**',

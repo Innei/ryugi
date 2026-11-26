@@ -53,6 +53,24 @@ function credentialsFile(env, platform, home) {
 }
 // src/core/server/cloud/settings.ts
 const settingsFileFor = (credentialsFile) => node_path.default.join(node_path.default.dirname(credentialsFile), "config.json");
+// src/core/server/store.ts
+const STORE_DIR = ".artideck";
+const LEGACY_STORE_DIR = ".ryugi";
+const storeOf = (project) => node_path.default.join(project, STORE_DIR);
+const legacyStoreOf = (project) => node_path.default.join(project, LEGACY_STORE_DIR);
+const isDir = (file) => {
+	try {
+		return node_fs.default.lstatSync(file).isDirectory();
+	} catch {
+		return false;
+	}
+};
+const readableRootOf = (project) => {
+	const legacy = node_path.default.join(project, LEGACY_STORE_DIR);
+	const store = !isDir(storeOf(project)) && isDir(legacy) ? legacy : storeOf(project);
+	return node_path.default.join(store, "artifacts");
+};
+const hasStore = (dir) => isDir(node_path.default.join(storeOf(dir), "artifacts")) || isDir(node_path.default.join(legacyStoreOf(dir), "artifacts"));
 // src/core/cli/kit/paths.ts
 var CliError = class extends Error {
 	fields;
@@ -74,7 +92,7 @@ function projectRoot(dir) {
 		if (node_fs.default.existsSync(node_path.default.join(current, ".git")) && (current !== home || dir === home)) break;
 		if (node_path.default.dirname(current) === current) return dir;
 	}
-	return chain.find((candidate) => node_fs.default.existsSync(node_path.default.join(candidate, ".ryugi", "artifacts"))) ?? chain.at(-1);
+	return chain.find((candidate) => hasStore(candidate)) ?? chain.at(-1);
 }
 function projectPaths(dir) {
 	let project;
@@ -85,7 +103,7 @@ function projectPaths(dir) {
 		throw new CliError(`Project directory not found: ${dir}`);
 	}
 	project = projectRoot(project);
-	const root = node_path.default.join(project, ".ryugi", "artifacts");
+	const root = readableRootOf(project);
 	const state = node_path.default.join(root, ".state");
 	return {
 		project,
@@ -378,7 +396,7 @@ const EXIT_WORDS = {
 	143: "INTERRUPTED"
 };
 const RECOVERY = {
-	E_ARTIFACT_NOT_FOUND: "check --artifact and --project-dir; artifacts live in <project>/.ryugi/artifacts/<type>/<id>/",
+	E_ARTIFACT_NOT_FOUND: "check --artifact and --project-dir; artifacts live in <project>/.artideck/artifacts/<type>/<id>/",
 	E_ARGUMENT_INVALID: "run the command with --help for its options",
 	E_CURSOR_EXPIRED: "run the read again without --cursor or --snapshot",
 	E_CURSOR_MISMATCH: "run the read again without --cursor or --snapshot"

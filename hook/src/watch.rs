@@ -55,7 +55,7 @@ fn stdio_watch(args: &[String], needs_artifacts: bool) {
     let cwd = args.first().map(PathBuf::from).unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
     let Some(session) = args.get(1).filter(|s| !s.is_empty()).cloned() else { return };
     let project = crate::paths::project_root(&cwd).unwrap_or(cwd);
-    if needs_artifacts && !project.join(".ryugi/artifacts").exists() {
+    if needs_artifacts && !crate::paths::has_store(&project) {
         return;
     }
     // The comment lists this watcher runs for a notification read as this session's agent.

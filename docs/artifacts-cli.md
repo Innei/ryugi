@@ -10,9 +10,9 @@ npx artideck --no-open
 
 Installed globally (`npm install -g artideck`), the command is `adeck`, or `artideck` in full. npx needs the package name, so `npx artideck` is the npx form.
 
-The local library shows content previews, type filters and title/id search across every registered project. Sort by newest update, oldest update or name. Previews load as their cards come into view; opening a card takes you to the full artifact. The server reads `.ryugi/artifacts/` in each registered project and keeps the library in sync with file changes.
+The local library shows content previews, type filters and title/id search across every registered project. Sort by newest update, oldest update or name. Previews load as their cards come into view; opening a card takes you to the full artifact. The server reads `.artideck/artifacts/` in each registered project and keeps the library in sync with file changes.
 
-The command reuses the machine's running server. Agent calls to `start --artifact …` return links without activating a browser tab when reusing a server; `--open` explicitly opens or focuses that artifact. Run from a subdirectory of a git repository, it uses the repository root's `.ryugi/artifacts/`, unless a directory between them already has its own. A new server stays in the terminal; Ctrl+C stops it and keeps your artifacts. Node.js is required.
+The command reuses the machine's running server. Agent calls to `start --artifact …` return links without activating a browser tab when reusing a server; `--open` explicitly opens or focuses that artifact. Run from a subdirectory of a git repository, it uses the repository root's `.artideck/artifacts/`, unless a directory between them already has its own. A new server stays in the terminal; Ctrl+C stops it and keeps your artifacts. Node.js is required.
 
 The first successful server start while signed out recommends signing in to Artideck Cloud for sharing and reviewing artifacts from other devices. Sign-in is optional and local work continues immediately. Run `npx artideck publish --login` in that project to get a sign-in code and the address to confirm it at, on any device signed in to Artideck Cloud. The recommendation appears once across projects on this machine, remembered as `login-hint-shown` beside the cloud credentials in the Artideck configuration directory. Already signed-in accounts, help and version queries, and failed starts do not show it. Brief prints the recommendation and a `Sign in` command without blocking local work. Machine JSON carries the same warning and action in `warnings` and `next`.
 
@@ -22,7 +22,7 @@ Artboard page links restore the selected page on refresh and support browser bac
 
 ## One server for the machine
 
-One server serves every project on this machine and stays up until you stop it. It listens on the first free port of 27319, 27320 and 27321, and serves artboard boards from 27329, 27330 or 27331; `--port` picks another one, and `RYUGI_ARTIFACTS_PORTS` / `RYUGI_ARTIFACTS_BOARD_PORTS` replace the lists. `start` in a project registers that project with the server, starting the server first when none runs. Artifacts stay in each project's `.ryugi/artifacts/`.
+One server serves every project on this machine and stays up until you stop it. It listens on the first free port of 27319, 27320 and 27321, and serves artboard boards from 27329, 27330 or 27331; `--port` picks another one, and `RYUGI_ARTIFACTS_PORTS` / `RYUGI_ARTIFACTS_BOARD_PORTS` replace the lists. `start` in a project registers that project with the server, starting the server first when none runs. Artifacts stay in each project's `.artideck/artifacts/`.
 
 The home page (the server's `url`) lists the artifacts of every registered project, newest first under "Recent · all projects", or one project at a time from the sidebar. Dormant projects (unused for 7 days) are folded; right-click a project to remove it from the list (its files stay). The search box searches this project or all projects, and ⌘K opens a palette grouped by project: ↵ opens, ⌘↵ opens in a new tab.
 
@@ -30,7 +30,9 @@ The status pill in the top bar shows the version, the cloud relay and an "Update
 
 `npx artideck stop` stops the server for every project; `--project-dir` is accepted and ignored. A `start` with a different version identity replaces the running server on the same port; an identical version reuses it. Server-wide options (`--host`, `--url-host`, `--port`, `RYUGI_CLOUD_ORIGIN`) that differ from the running server's replace it too.
 
-The server keeps its state in `~/.ryugi/server/` (`RYUGI_SERVER_HOME` moves it): `projects.json`, the key, the log and `server-info`. Each registered project also gets `.ryugi/artifacts/.state/server-info` pointing at it. The first `start` of this release stops per-project servers from earlier releases; reload their open tabs once, because the port changes.
+The server keeps its state in `~/.artideck/server/` (`RYUGI_SERVER_HOME` moves it): `projects.json`, the key, the log and `server-info`. Each registered project also gets `.artideck/artifacts/.state/server-info` pointing at it. The first `start` of this release stops per-project servers from earlier releases; reload their open tabs once, because the port changes.
+
+A project that still has `.ryugi/` from before the Artideck rename moves to `.artideck/` the first time a command opens it, and `~/.ryugi` moves to `~/.artideck` before the server starts. Files already present in both places stay in `.ryugi/` and are listed. `adeck migrate` does both on request; when git tracks the old directory, commit the rename with `git add -A .ryugi .artideck .gitignore`.
 
 The same CLI runs what the skill uses: `npx artideck start`, `stop` and `publish` (`<command> --help` lists a command's options; add `--format json` for one JSON line). `npx artideck get <link>` reads a published Artideck Cloud artifact with this machine's cloud sign-in and prints a bounded summary, including when piped. Follow its `Details` action for complete document content, or use `--source` for LiteXML. A local build of `artideck` can link gitignored output into `skills/artifacts/app/`; the skill's launcher prefers a local `cli.cjs` over the npm release.
 

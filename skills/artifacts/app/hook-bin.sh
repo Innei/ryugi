@@ -21,9 +21,17 @@ ryugi_plugin_version() {
   return 1
 }
 
+ryugi_user_store() {
+  if [ ! -d "${HOME:-}/.artideck" ] && [ -d "${HOME:-}/.ryugi" ]; then
+    printf '%s\n' "${HOME:-}/.ryugi"
+  else
+    printf '%s\n' "${HOME:-}/.artideck"
+  fi
+}
+
 ryugi_dev_plugin() {
   local line rest link
-  link="${RYUGI_DEV_LINK:-${HOME:-}/.ryugi/dev.json}"
+  link="${RYUGI_DEV_LINK:-$(ryugi_user_store)/dev.json}"
   [ -r "$link" ] || return 1
   while IFS= read -r line || [ -n "$line" ]; do
     case "$line" in
@@ -59,7 +67,7 @@ ryugi_hook_bin() {
     return 0
   fi
   version="$(ryugi_plugin_version "$1")" || return 1
-  candidate="${HOME:-}/.ryugi/hook/$version/ryugi-hook"
+  candidate="$(ryugi_user_store)/hook/$version/ryugi-hook"
   if [ -f "$candidate" ] && [ -x "$candidate" ]; then
     printf '%s\n' "$candidate"
     return 0

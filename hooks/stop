@@ -22,7 +22,7 @@ fi
 
 . "$SCRIPT_DIR/project-root.sh"
 project="$(ryugi_project_root "${CLAUDE_PROJECT_DIR:-$PWD}")"
-[ -f "$project/.ryugi/artifacts/.state/server-info" ] || [ -f "$project/.git" ] || exit 0
+[ -f "$(ryugi_store "$project")/artifacts/.state/server-info" ] || [ -f "$project/.git" ] || exit 0
 bin="$(ryugi_hook_bin "${SCRIPT_DIR%[/\\]*}")" || exit 0
 
 "$bin" flush "$project" > /dev/null 2>&1

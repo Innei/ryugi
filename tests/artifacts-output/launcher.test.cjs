@@ -249,13 +249,13 @@ test('a local build is versioned by everything the hub runs, so changing any par
 const reportingCli = (marker) =>
   `process.stdout.write(JSON.stringify({schema:"ryugi.cli/v1",command:process.argv.includes("--version")?"version":"get",outcome:"success",data:{marker:${JSON.stringify(marker)},version:process.env.RYUGI_ARTIFACTS_VERSION,capabilities:["reviewBundlesV1"]}}))`;
 
-function linkDev(f, link) {
-  fs.mkdirSync(path.join(f.root, '.ryugi'), { recursive: true });
-  fs.writeFileSync(path.join(f.root, '.ryugi', 'dev.json'), JSON.stringify(link, null, 2));
+function linkDev(f, link, store = '.artideck') {
+  fs.mkdirSync(path.join(f.root, store), { recursive: true });
+  fs.writeFileSync(path.join(f.root, store, 'dev.json'), JSON.stringify(link, null, 2));
 }
 
-function frozenBuild(f) {
-  const build = path.join(f.root, '.ryugi', 'dev', 'builds', 'abc123abc123');
+function frozenBuild(f, store = '.artideck') {
+  const build = path.join(f.root, store, 'dev', 'builds', 'abc123abc123');
   fs.mkdirSync(build, { recursive: true });
   fs.writeFileSync(path.join(build, 'cli.cjs'), reportingCli('dev'));
   return build;
@@ -280,6 +280,24 @@ test("a dev link runs its frozen build under its version, before the launcher's 
   assert.equal(out.status, 0, out.stderr);
   assert.deepEqual(JSON.parse(out.stdout).data.marker, 'dev');
   assert.equal(JSON.parse(out.stdout).data.version, 'local-abc123abc123');
+});
+
+test('a dev link in a home not yet moved from ~/.ryugi is still followed', (t) => {
+  const f = setup(t);
+  fs.writeFileSync(path.join(f.app, 'cli.cjs'), reportingCli('own'));
+  linkDev(
+    f,
+    {
+      build: frozenBuild(f, '.ryugi'),
+      plugin: path.join(f.root, 'plugin'),
+      version: 'local-abc123abc123',
+      linkedAt: '2026-11-25T00:00:00.000Z',
+    },
+    '.ryugi',
+  );
+  const out = runGet(f);
+  assert.equal(out.status, 0, out.stderr);
+  assert.equal(JSON.parse(out.stdout).data.marker, 'dev');
 });
 
 test('a launcher copy without a CLI of its own runs the dev build without asking npm', (t) => {
@@ -327,7 +345,7 @@ test('RYUGI_DEV_LINK names the link file, so a missing one turns the machine lin
   assert.equal(off.status, 0, off.stderr);
   assert.equal(JSON.parse(off.stdout).data.marker, 'own');
   const elsewhere = path.join(f.root, 'elsewhere.json');
-  fs.renameSync(path.join(f.root, '.ryugi', 'dev.json'), elsewhere);
+  fs.renameSync(path.join(f.root, '.artideck', 'dev.json'), elsewhere);
   const on = spawnSync(
     process.execPath,
     [path.join(f.app, 'ryugi.cjs'), 'get', 'cloud', '--format', 'json'],

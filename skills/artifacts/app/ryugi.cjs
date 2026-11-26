@@ -24,8 +24,12 @@ const RELEASES = path.join(
 );
 const LATEST_FILE = path.join(RELEASES, 'latest.json');
 const PLUGIN_ROOT = path.join(__dirname, '..', '..', '..');
-const HOOK_HOME = path.join(os.homedir(), '.ryugi', 'hook');
-const DEV_LINK = process.env.RYUGI_DEV_LINK || path.join(os.homedir(), '.ryugi', 'dev.json');
+const USER_STORE = ((home) =>
+  !fs.existsSync(path.join(home, '.artideck')) && fs.existsSync(path.join(home, '.ryugi'))
+    ? path.join(home, '.ryugi')
+    : path.join(home, '.artideck'))(os.homedir());
+const HOOK_HOME = path.join(USER_STORE, 'hook');
+const DEV_LINK = process.env.RYUGI_DEV_LINK || path.join(USER_STORE, 'dev.json');
 const win32 = process.platform === 'win32';
 
 const valid = (v) => /^\d+\.\d+\.\d+(?:[-+][0-9A-Z.-]+)?$/i.test(v || '');

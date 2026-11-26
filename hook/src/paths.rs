@@ -12,7 +12,7 @@ pub fn project_root_in(cwd: &Path, home: Option<&Path>) -> Option<PathBuf> {
     loop {
         chain.push(current);
         if current.join(".git").exists() && (Some(current) != home.as_deref() || dir == current) {
-            let found = chain.iter().find(|c| c.join(".ryugi/artifacts").exists());
+            let found = chain.iter().find(|c| has_store(c));
             return Some(found.copied().unwrap_or(current).to_path_buf());
         }
         match current.parent() {
@@ -73,8 +73,43 @@ pub fn checkouts(project: &Path) -> Vec<PathBuf> {
     roots
 }
 
+pub const STORE_DIR: &str = ".artideck";
+pub const LEGACY_STORE_DIR: &str = ".ryugi";
+
+fn readable(base: &Path) -> PathBuf {
+    let legacy = base.join(LEGACY_STORE_DIR);
+    match !base.join(STORE_DIR).is_dir() && legacy.is_dir() {
+        true => legacy,
+        false => base.join(STORE_DIR),
+    }
+}
+
+pub fn has_store(dir: &Path) -> bool {
+    dir.join(STORE_DIR).join("artifacts").is_dir() || dir.join(LEGACY_STORE_DIR).join("artifacts").is_dir()
+}
+
+pub fn is_hook_home(dir: &Path, home: &Path) -> bool {
+    [STORE_DIR, LEGACY_STORE_DIR].iter().any(|name| dir == home.join(name).join("hook"))
+}
+
+pub fn store(project: &Path) -> PathBuf {
+    readable(project)
+}
+
+pub fn artifacts_root(project: &Path) -> PathBuf {
+    store(project).join("artifacts")
+}
+
+pub fn user_store_in(home: &Path) -> PathBuf {
+    readable(home)
+}
+
+pub fn user_store() -> PathBuf {
+    user_store_in(&home().unwrap_or_default())
+}
+
 pub fn server_info(project: &Path) -> PathBuf {
-    project.join(".ryugi/artifacts/.state/server-info")
+    artifacts_root(project).join(".state/server-info")
 }
 
 pub fn has_hub(project: &Path) -> bool {
@@ -119,6 +154,39 @@ mod tests {
         t.mkdir("packages/app/.ryugi/artifacts");
         let dir = t.mkdir("packages/app/src");
         assert_eq!(project_root_in(&dir, None), Some(t.path().join("packages/app")));
+    }
+
+    #[test]
+    fn a_project_that_moved_to_the_new_store_still_claims_its_subdirectories() {
+        let t = TestDir::new("root-new-store");
+        t.mkdir(".git");
+        t.mkdir("packages/app/.artideck/artifacts");
+        let dir = t.mkdir("packages/app/src");
+        assert_eq!(project_root_in(&dir, None), Some(t.path().join("packages/app")));
+    }
+
+    #[test]
+    fn a_project_is_read_from_the_new_store_or_from_the_old_one_until_it_moves() {
+        let t = TestDir::new("store-read");
+        let none = t.mkdir("none");
+        assert_eq!(artifacts_root(&none), none.join(".artideck/artifacts"));
+        let old = t.mkdir("old");
+        t.mkdir("old/.ryugi/artifacts");
+        assert_eq!(artifacts_root(&old), old.join(".ryugi/artifacts"));
+        let both = t.mkdir("both");
+        t.mkdir("both/.ryugi/artifacts");
+        t.mkdir("both/.artideck/artifacts");
+        assert_eq!(artifacts_root(&both), both.join(".artideck/artifacts"));
+    }
+
+    #[test]
+    fn the_user_store_is_the_old_home_only_until_it_moves() {
+        let t = TestDir::new("user-store");
+        assert_eq!(user_store_in(t.path()), t.path().join(".artideck"));
+        t.mkdir(".ryugi");
+        assert_eq!(user_store_in(t.path()), t.path().join(".ryugi"));
+        t.mkdir(".artideck");
+        assert_eq!(user_store_in(t.path()), t.path().join(".artideck"));
     }
 
     #[test]

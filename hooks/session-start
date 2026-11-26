@@ -95,7 +95,7 @@ if [ -n "$project_dir" ]; then
   project_dir="$(ryugi_project_root "$project_dir")"
 fi
 if { [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] || [ "$is_antigravity" -eq 1 ]; } && [ -z "${CURSOR_PLUGIN_ROOT:-}" ] && [ "${OS:-}" != "Windows_NT" ] && [ -n "$project_dir" ] \
-  && [ -f "$project_dir/.ryugi/config.json" ] && [ -n "$hook_bin" ]; then
+  && [ -f "$(ryugi_store "$project_dir")/config.json" ] && [ -n "$hook_bin" ]; then
   RYUGI_ARTIFACTS_OWNER="$PPID" RYUGI_PLUGIN_ROOT="$PLUGIN_ROOT" "$hook_bin" start "$project_dir" < /dev/null > /dev/null 2>&1 &
 fi
 

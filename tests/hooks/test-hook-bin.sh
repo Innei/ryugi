@@ -49,7 +49,13 @@ cached="$TEST_ROOT/home/.ryugi/hook/9.8.7/ryugi-hook"
 make_exe "$cached"
 make_exe "$TEST_ROOT/home/.ryugi/hook/9.8.6/ryugi-hook"
 out="$(resolve "$plugin")"
-if [ "$out" = "$cached" ]; then pass "finds the binary of the plugin's version in ~/.ryugi/hook with an empty PATH"; else fail "finds the binary of the plugin's version in ~/.ryugi/hook with an empty PATH ($out)"; fi
+if [ "$out" = "$cached" ]; then pass "finds the binary of the plugin's version in a home not yet moved from ~/.ryugi with an empty PATH"; else fail "finds the binary of the plugin's version in a home not yet moved from ~/.ryugi with an empty PATH ($out)"; fi
+
+moved="$TEST_ROOT/home/.artideck/hook/9.8.7/ryugi-hook"
+make_exe "$moved"
+out="$(resolve "$plugin")"
+if [ "$out" = "$moved" ]; then pass "finds the binary of the plugin's version in ~/.artideck/hook with an empty PATH"; else fail "finds the binary of the plugin's version in ~/.artideck/hook with an empty PATH ($out)"; fi
+cached="$moved"
 
 local_build="$plugin/hook/target/release/ryugi-hook"
 make_exe "$local_build"
@@ -89,8 +95,8 @@ dev_plugin="$TEST_ROOT/dev plugin"
 dev_build="$dev_plugin/hook/target/release/ryugi-hook"
 make_exe "$dev_build"
 make_exe "$local_build"
-mkdir -p "$TEST_ROOT/home/.ryugi"
-printf '{\n  "build": "/nowhere",\n  "plugin": "%s",\n  "version": "local-000000000000",\n  "linkedAt": "2026-11-25T00:00:00.000Z"\n}\n' "$dev_plugin" > "$TEST_ROOT/home/.ryugi/dev.json"
+mkdir -p "$TEST_ROOT/home/.artideck"
+printf '{\n  "build": "/nowhere",\n  "plugin": "%s",\n  "version": "local-000000000000",\n  "linkedAt": "2026-11-25T00:00:00.000Z"\n}\n' "$dev_plugin" > "$TEST_ROOT/home/.artideck/dev.json"
 out="$(resolve "$plugin")"
 if [ "$out" = "$dev_build" ]; then pass "a dev link's plugin build comes before the plugin's own"; else fail "a dev link's plugin build comes before the plugin's own ($out)"; fi
 
@@ -103,7 +109,7 @@ if [ "$out" = "$local_build" ]; then pass "a dev link without a hook build falls
 make_exe "$dev_build"
 out="$(resolve "$plugin" RYUGI_DEV_LINK="$TEST_ROOT/no-link.json")"
 if [ "$out" = "$local_build" ]; then pass "a missing RYUGI_DEV_LINK turns the dev link off"; else fail "a missing RYUGI_DEV_LINK turns the dev link off ($out)"; fi
-mv "$TEST_ROOT/home/.ryugi/dev.json" "$TEST_ROOT/other-link.json"
+mv "$TEST_ROOT/home/.artideck/dev.json" "$TEST_ROOT/other-link.json"
 out="$(resolve "$plugin" RYUGI_DEV_LINK="$TEST_ROOT/other-link.json")"
 if [ "$out" = "$dev_build" ]; then pass "RYUGI_DEV_LINK names the link file"; else fail "RYUGI_DEV_LINK names the link file ($out)"; fi
 

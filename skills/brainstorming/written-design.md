@@ -11,24 +11,25 @@ could build from without going back to your human partner. Cover:
 - selected visual direction for UI work (product, character, world, moments, optional signature), its rationale and accepted visual choices, so implementation can preserve intent without the original Artboard
 - every artifact the conversation used: type, id and path or its link,
   and what was decided there, stated in the text too, since
-  `.ryugi/artifacts/` may not be committed
+  `.artideck/artifacts/` may not be committed
 
 **Where it goes:** a design that converged in a document artifact is that
 document; do not copy it. After approval, write a pointer at
-`docs/ryugi/specs/YYYY-MM-DD-<topic>-design.md`:
+`docs/artideck/specs/YYYY-MM-DD-<topic>-design.md`, or in
+`docs/ryugi/specs/` when the repository already has that directory:
 
 ```md
 # <Title>
 
 <One sentence: what gets built and why.>
 
-- Design: `.ryugi/artifacts/document/<id>/doc.xml`
+- Design: `.artideck/artifacts/document/<id>/doc.xml`
 - Read: `adeck get --artifact document/<id> --detail --project-dir <repo-root>` (through the ryugi:artifacts launcher)
 - Boards: <artboard and whiteboard ids, if any>
 - Approved: YYYY-MM-DD
 ```
 
-Commit the pointer and `.ryugi/artifacts/document/<id>/` together. If the
+Commit the pointer and `.artideck/artifacts/document/<id>/` together. If the
 repo's `.gitignore` ignores that directory, `git add -f` its `doc.xml`,
 `comments.json` and `assets/`, never its `.artifact-id`; leave
 `.gitignore` as it is. When your human partner says not to commit the

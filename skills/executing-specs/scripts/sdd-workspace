@@ -3,7 +3,7 @@
 # short-lived artifacts: task briefs, implementer reports, review packages,
 # and the progress ledger. Print the plan directory's absolute path.
 #
-# One directory per plan (.ryugi/sdd/<plan-basename>/) so a follow-up
+# One directory per plan (.artideck/sdd/<plan-basename>/) so a follow-up
 # plan in the same working tree can never read or overwrite another plan's
 # artifacts. A stale ledger misread as current progress makes controllers
 # skip whole task sequences — plan-scoping removes that failure structurally.
@@ -21,7 +21,7 @@
 # The workspace lives in the working tree (not under .git/) because Claude Code
 # treats .git/ as a protected path and denies agent writes there — which blocks
 # an implementer subagent from writing its report file. A self-ignoring
-# .gitignore at .ryugi/sdd/ keeps every plan's workspace out of
+# .gitignore at .artideck/sdd/ keeps every plan's workspace out of
 # `git status` and out of accidental commits without modifying any tracked file.
 #
 # Single source of truth for the workspace location, so task-brief and
@@ -52,7 +52,9 @@ slug=$(basename "$plan" .md)
 # Bash, rev-parse prints C:/Users/... while pwd prints /c/Users/..., and the
 # repo-relative marker check needs both in the same form.
 root=$(CDPATH='' cd -- "$(git rev-parse --show-toplevel)" && pwd -P)
-base="$root/.ryugi/sdd"
+store="$root/.artideck"
+[ ! -d "$store" ] && [ -d "$root/.ryugi" ] && store="$root/.ryugi"
+base="$store/sdd"
 
 # Normalize the plan path (physical directory, so relative/absolute/../
 # spellings of one plan compare equal) and express it as the marker value:

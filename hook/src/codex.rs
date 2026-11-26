@@ -112,7 +112,7 @@ fn context(input: &Value) -> Option<Ctx> {
     let data = env("PLUGIN_DATA")
         .or_else(|| env("CLAUDE_PLUGIN_DATA"))
         .map(PathBuf::from)
-        .unwrap_or_else(|| project.join(".ryugi/artifacts/.state"));
+        .unwrap_or_else(|| crate::paths::artifacts_root(&project).join(".state"));
     Some(Ctx {
         session: session.into(),
         file: data.join("codex-comment-watch/workers").join(format!("{session}.json")),

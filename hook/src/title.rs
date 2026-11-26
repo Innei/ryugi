@@ -15,7 +15,7 @@ pub fn manifest_version(root: &Path) -> Option<String> {
 
 fn home_version(exe: &Path, home: &Path) -> Option<String> {
     let dir = exe.parent()?;
-    if dir.parent()? != home.join(".ryugi/hook") {
+    if !crate::paths::is_hook_home(dir.parent()?, home) {
         return None;
     }
     let version = dir.file_name()?.to_str()?;
@@ -265,6 +265,7 @@ mod tests {
     fn a_binary_in_the_hook_home_takes_its_version_from_its_directory() {
         let home = Path::new("/home/me");
         assert_eq!(home_version(Path::new("/home/me/.ryugi/hook/1.2.3/ryugi-hook"), home).as_deref(), Some("1.2.3"));
+        assert_eq!(home_version(Path::new("/home/me/.artideck/hook/1.2.4/ryugi-hook"), home).as_deref(), Some("1.2.4"));
         assert_eq!(home_version(Path::new("/home/me/src/ryugi/hook/target/release/ryugi-hook"), home), None);
     }
 

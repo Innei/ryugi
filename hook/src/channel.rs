@@ -59,7 +59,7 @@ fn env(name: &str) -> Option<String> {
 }
 
 fn default_server_home() -> PathBuf {
-    crate::paths::home().unwrap_or_default().join(".ryugi/server")
+    crate::paths::user_store().join("server")
 }
 
 pub fn hub_socket_path() -> PathBuf {
@@ -263,7 +263,7 @@ pub fn open(options: Options, mut on: impl FnMut(&Channel, Signal) + Send + 'sta
         let unreachable = |backoff: &mut Backoff, on: &mut dyn FnMut(&Channel, Signal)| {
             if stopped_by_user(&options.server_home) {
                 on(&handle, Signal::Waiting("stopped"));
-            } else if !options.project.join(".ryugi/artifacts").exists() {
+            } else if !crate::paths::has_store(&options.project) {
                 on(&handle, Signal::Waiting("not-a-ryugi-project"));
             } else {
                 backoff.since = backoff.since.saturating_add(1);

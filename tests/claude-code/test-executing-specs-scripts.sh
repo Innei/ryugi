@@ -65,7 +65,7 @@ PLAN
   # --- task-start: brief path + BASE in one call ---
   local out
   out="$(cd "$repo" && "$EP_SCRIPTS/task-start" plan.md 1)"
-  if [[ "$out" == *"brief: $repo/.ryugi/sdd/plan/task-1-brief.md"* ]]; then
+  if [[ "$out" == *"brief: $repo/.artideck/sdd/plan/task-1-brief.md"* ]]; then
     pass "task-start prints the brief path under the plan's workspace"
   else
     fail "task-start prints the brief path under the plan's workspace"
@@ -77,7 +77,7 @@ PLAN
     fail "task-start prints BASE as the current HEAD"
     echo "    got: $out"
   fi
-  if [[ -s "$repo/.ryugi/sdd/plan/task-1-brief.md" ]]; then
+  if [[ -s "$repo/.artideck/sdd/plan/task-1-brief.md" ]]; then
     pass "task-start writes the brief file"
   else
     fail "task-start writes the brief file"
@@ -89,7 +89,7 @@ PLAN
   head="$(cd "$repo" && git rev-parse HEAD)"
   out="$(cd "$repo" && "$EP_SCRIPTS/task-done" plan.md 1 "$base" -- sh -c 'echo "Ran 3 tests"; echo OK')"
   rc=$?
-  local ledger="$repo/.ryugi/sdd/plan/progress.md"
+  local ledger="$repo/.artideck/sdd/plan/progress.md"
   local expected="Task 1: complete (commits ${base:0:7}..${head:0:7}, tests: sh -c 'echo \"Ran 3 tests\"; echo OK' → OK)"
   if [[ -f "$ledger" ]] && grep -qF "$expected" "$ledger"; then
     pass "task-done appends the completion line with commit range and test result"
@@ -105,7 +105,7 @@ PLAN
     fail "task-done prints the tail of the test output"
     echo "    got: $out"
   fi
-  if [[ -s "$repo/.ryugi/sdd/plan/task-1-tests.log" ]]; then
+  if [[ -s "$repo/.artideck/sdd/plan/task-1-tests.log" ]]; then
     pass "task-done keeps the full test output in the workspace"
   else
     fail "task-done keeps the full test output in the workspace"
@@ -224,7 +224,7 @@ PLAN
   fi
 
   (cd "$repo" && echo explored >> search.txt && echo fresh > explore-new.txt && echo theirs >> billing.txt)
-  printf 'Exploratory: may be thrown away.\nsearch.txt\nexplore-new.txt\n' > "$repo/.ryugi/sdd/plan/EXPLORING"
+  printf 'Exploratory: may be thrown away.\nsearch.txt\nexplore-new.txt\n' > "$repo/.artideck/sdd/plan/EXPLORING"
   rc=0
   out="$(cd "$repo" && "$EP_SCRIPTS/review-package" plan.md --exploring 2>&1)" || rc=$?
   pkg="$(printf '%s\n' "$out" | sed -n 's/^wrote \(.*\): .*$/\1/p')"
@@ -238,7 +238,7 @@ PLAN
   fi
 
   rc=0
-  rm "$repo/.ryugi/sdd/plan/EXPLORING"
+  rm "$repo/.artideck/sdd/plan/EXPLORING"
   (cd "$repo" && "$EP_SCRIPTS/review-package" plan.md --exploring > /dev/null 2>&1) || rc=$?
   if [[ "$rc" -eq 2 ]]; then
     pass "review-package --exploring without an EXPLORING file errors with exit 2"

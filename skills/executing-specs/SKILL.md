@@ -69,7 +69,7 @@ ledger file is the record; harness todos are only a live view.
 
 - Each spec owns a workspace: at skill start, run
   `bash scripts/sdd-workspace SPEC_FILE` — it prints the spec's
-  git-ignored directory (`<repo-root>/.ryugi/sdd/<spec-basename>/`),
+  git-ignored directory (`<repo-root>/.artideck/sdd/<spec-basename>/`),
   home to this spec's task list, ledger, briefs and review packages.
   Another spec's directory is never yours to read or write, apart from
   reading its `EXPLORING` at Setup.

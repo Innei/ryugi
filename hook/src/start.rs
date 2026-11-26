@@ -15,12 +15,12 @@ fn truthy(v: Option<&Value>) -> bool {
 pub fn server_home() -> PathBuf {
     match std::env::var("RYUGI_SERVER_HOME").ok().filter(|v| !v.is_empty()) {
         Some(dir) => PathBuf::from(dir),
-        None => crate::paths::home().unwrap_or_default().join(".ryugi/server"),
+        None => crate::paths::user_store().join("server"),
     }
 }
 
 fn published(project: &Path) -> bool {
-    let Some(config) = read_json(&project.join(".ryugi/config.json")) else { return false };
+    let Some(config) = read_json(&crate::paths::store(project).join("config.json")) else { return false };
     let Some(artifacts) = config.get("artifacts").and_then(Value::as_object) else { return false };
     artifacts.iter().any(|(key, entry)| {
         key.starts_with("document/")

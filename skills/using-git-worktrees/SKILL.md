@@ -19,7 +19,7 @@ git rev-parse --path-format=absolute --git-dir --git-common-dir
 git rev-parse --show-superproject-working-tree
 git branch --show-current
 git status --porcelain
-cat .ryugi/sdd/*/EXPLORING
+cat .artideck/sdd/*/EXPLORING
 ```
 
 The answer holds for the rest of the session. When another skill sends

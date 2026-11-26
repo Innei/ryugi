@@ -28,8 +28,15 @@ function formatHostForUrl(host) {
   return host.includes(':') ? `[${host}]` : host;
 }
 
+function readableStore(dir) {
+  const legacy = path.join(dir, '.ryugi');
+  return !fs.existsSync(path.join(dir, '.artideck')) && fs.existsSync(legacy)
+    ? legacy
+    : path.join(dir, '.artideck');
+}
+
 function serverHome(env = process.env) {
-  return env.RYUGI_SERVER_HOME || path.join(os.homedir(), '.ryugi', 'server');
+  return env.RYUGI_SERVER_HOME || path.join(readableStore(os.homedir()), 'server');
 }
 
 function isPidAlive(pid) {
@@ -111,7 +118,7 @@ function resolveUpstream(env = process.env) {
 function readSafeArtifactId(project, artifact) {
   if (typeof project !== 'string' || !path.isAbsolute(project)) return null;
   try {
-    const artifactsRoot = fs.realpathSync(path.join(project, '.ryugi', 'artifacts'));
+    const artifactsRoot = fs.realpathSync(path.join(readableStore(project), 'artifacts'));
     const idFile = path.join(artifactsRoot, ...artifact.split('/'), '.artifact-id');
     const realIdFile = fs.realpathSync(idFile);
     if (!realIdFile.startsWith(`${artifactsRoot}${path.sep}`)) return null;

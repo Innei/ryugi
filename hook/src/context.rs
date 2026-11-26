@@ -343,7 +343,7 @@ fn sha16(text: &str) -> String {
 }
 
 fn auto_publish_context(project: &str, session_id: &str, launcher: &str) -> String {
-    let state = Path::new(project).join(".ryugi/artifacts/.state");
+    let state = crate::paths::artifacts_root(Path::new(project)).join(".state");
     let home = crate::paths::home().unwrap_or_default();
     let credentials = credentials_path(&home);
     let token = read_json(&credentials).and_then(|c| c.get("token").and_then(Value::as_str).map(str::to_string));
@@ -570,7 +570,7 @@ pub fn run(args: &[String]) {
         },
     };
     let project_text = project.to_string_lossy().into_owned();
-    let root = project.join(".ryugi/artifacts");
+    let root = crate::paths::artifacts_root(&project);
     let state = root.join(".state");
     let raw_session = crate::input::nonempty(&input, "session_id")
         .or_else(|| crate::input::nonempty(&input, "conversationId"))
