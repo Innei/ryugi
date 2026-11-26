@@ -400,12 +400,18 @@ test('an invalid session identifier does not fall back to an inherited thread', 
   assert.deepEqual(f.hub.hellos(), []);
 });
 
-test('on Windows, where ryugi-hook has no build, every Codex hook runs nothing', () => {
+test('on Windows, every Codex hook uses the portable Node watcher', () => {
   const entries = Object.values(hooks()).flatMap((groups) =>
     groups.flatMap((group) => group.hooks),
   );
   assert.ok(entries.length > 0);
-  for (const entry of entries) assert.equal(entry.commandWindows, 'exit 0', entry.command);
+  for (const entry of entries) {
+    const expected = entry.command.replace(
+      '${PLUGIN_ROOT}/skills/artifacts/app/codex-hook',
+      '${PLUGIN_ROOT}/skills/artifacts/app/codex-hook.cmd',
+    );
+    assert.equal(entry.commandWindows, expected, entry.command);
+  }
 });
 
 test('the shipped lifecycle hooks invoke the portable watcher and stop it on session end', async (t) => {

@@ -9,6 +9,9 @@ const path = require('node:path');
 const { after, beforeEach, test } = require('node:test');
 const { setTimeout: delay } = require('node:timers/promises');
 
+const nativeDesktopTest = (name, fn) =>
+  test(name, { skip: process.platform === 'win32' }, fn);
+
 const SESSION = '11111111-1111-4111-8111-111111111111';
 const INHERITED = '22222222-2222-4222-8222-222222222222';
 const MAX_FRAME_BYTES = 8 * 1024 * 1024;
@@ -191,7 +194,7 @@ async function disconnected(server) {
   assert.equal(server.sockets.size, 0, 'the desktop connection was left open');
 }
 
-test('fragmented native callbacks preserve the hook session and discover each namespace', async (t) => {
+nativeDesktopTest('fragmented native callbacks preserve the hook session and discover each namespace', async (t) => {
   let catalogs = 0;
   const server = await desktop(t, async (request, socket) => {
     const result =
@@ -242,7 +245,7 @@ test('fragmented native callbacks preserve the hook session and discover each na
   assert.notEqual(calls[0].params.turnId, calls[1].params.turnId);
 });
 
-test('RPC errors during discovery or delivery remain failures', async (t) => {
+nativeDesktopTest('RPC errors during discovery or delivery remain failures', async (t) => {
   for (const phase of ['tools/list', 'tools/call']) {
     const server = await desktop(t, (request, socket) => {
       if (request.method !== phase) return respond(socket, request, catalog());
@@ -260,7 +263,7 @@ test('RPC errors during discovery or delivery remain failures', async (t) => {
   }
 });
 
-test('an unsuccessful native tool result remains a delivery failure', async (t) => {
+nativeDesktopTest('an unsuccessful native tool result remains a delivery failure', async (t) => {
   const server = await desktop(t, (request, socket) => {
     respond(
       socket,
@@ -281,7 +284,7 @@ test('an unsuccessful native tool result remains a delivery failure', async (t) 
   );
 });
 
-test('missing, invalid and mismatched callback receipts are rejected', async (t) => {
+nativeDesktopTest('missing, invalid and mismatched callback receipts are rejected', async (t) => {
   for (const contentItems of [
     [],
     [{ type: 'inputText', text: 'not JSON' }],
@@ -300,7 +303,7 @@ test('missing, invalid and mismatched callback receipts are rejected', async (t)
   }
 });
 
-test('an unavailable callback tool stops after discovery', async (t) => {
+nativeDesktopTest('an unavailable callback tool stops after discovery', async (t) => {
   const server = await desktop(t, (request, socket) => respond(socket, request, { tools: [] }));
   await assert.rejects(
     send(),
@@ -313,7 +316,7 @@ test('an unavailable callback tool stops after discovery', async (t) => {
   );
 });
 
-test('malformed native response JSON fails the attempt', async (t) => {
+nativeDesktopTest('malformed native response JSON fails the attempt', async (t) => {
   const server = await desktop(t, (_request, socket) =>
     socket.write(Buffer.from([1, 0, 0, 0, 123])),
   );
@@ -321,7 +324,7 @@ test('malformed native response JSON fails the attempt', async (t) => {
   await disconnected(server);
 });
 
-test('native request and response frames are limited to 8 MiB', async (t) => {
+nativeDesktopTest('native request and response frames are limited to 8 MiB', async (t) => {
   const oversized = Buffer.alloc(4);
   oversized.writeUInt32LE(MAX_FRAME_BYTES + 1);
   const responseServer = await desktop(t, (_request, socket) => socket.write(oversized));
@@ -334,7 +337,7 @@ test('native request and response frames are limited to 8 MiB', async (t) => {
   assert.ok(requestServer.requests.every((request) => request.method === 'tools/list'));
 });
 
-test('a pipe closing before acknowledgement fails the attempt', async (t) => {
+nativeDesktopTest('a pipe closing before acknowledgement fails the attempt', async (t) => {
   const server = await desktop(t, (request, socket) => {
     if (request.method === 'tools/list') respond(socket, request, catalog());
     else socket.end();
