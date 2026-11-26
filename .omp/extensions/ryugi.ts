@@ -30,6 +30,7 @@ export default function ryugiOmpExtension(omp: ExtensionAPI) {
   let injectBootstrap = true;
   let channel: { close: () => void } | undefined;
   let ownedSessionEnv: string | undefined;
+  let session: string | undefined;
 
   const stopCommentWatch = () => {
     channel?.close();
@@ -40,14 +41,19 @@ export default function ryugiOmpExtension(omp: ExtensionAPI) {
     ownedSessionEnv = undefined;
   };
 
-  omp.on('session_start', async (_event, ctx) => {
+  // `/new` and `/resume` (session_switch) and `/fork` (session_branch) change the session inside one omp
+  // process without another session_start. The bash tool follows the new id, so `ryugi start` subscribes
+  // it; the comment watch has to follow it too, or the new session's comments never arrive.
+  const followSession = async (_event: unknown, ctx: ExtensionContext) => {
+    const rawSessionId = ctx.sessionManager?.getSessionId?.();
+    const sessionUuid = rawSessionId ? toSessionUuid(rawSessionId) : undefined;
+    const key = sessionUuid ? `${ctx.cwd}\n${sessionUuid}` : undefined;
+    if (key !== undefined && key === session) return;
+    session = key;
     injectBootstrap = true;
     stopCommentWatch();
+    if (!sessionUuid) return;
 
-    const rawSessionId = ctx.sessionManager?.getSessionId?.();
-    if (!rawSessionId) return;
-
-    const sessionUuid = toSessionUuid(rawSessionId);
     const hasOuterHost = Boolean(
       process.env.CLAUDE_CODE_SESSION_ID ||
         process.env.CODEX_THREAD_ID ||
@@ -61,7 +67,11 @@ export default function ryugiOmpExtension(omp: ExtensionAPI) {
       ownedSessionEnv = sessionUuid;
       channel = watchComments(omp, ctx, ctx.cwd, sessionUuid);
     }
-  });
+  };
+
+  omp.on('session_start', followSession);
+  omp.on('session_switch', followSession);
+  omp.on('session_branch', followSession);
 
   omp.on('session_shutdown', async () => {
     stopCommentWatch();

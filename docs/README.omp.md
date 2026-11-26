@@ -29,7 +29,7 @@ Start a fresh OMP session after installing or updating.
 
 1. The repo-root `package.json` declares `"omp": { "extensions": ["./.omp/extensions/ryugi.ts"], "skills": ["./skills"] }`.
 2. `.omp/extensions/ryugi.ts` injects `using-ryugi` + OMP tool mapping as a user-role message on `context` with deduplication and post-compaction re-injection (`session_start`, `session_compact`, `agent_end`, `context`).
-3. On `session_start`, the extension spawns `ryugi-hook watch pi` (installing `ryugi-hook` in the background if absent, safely invoking `node` rather than `omp.exe`) and delivers browser comments, choice submissions, and document answers directly into the active OMP session via `sendMessage(..., { triggerTurn: true, deliverAs: 'followUp' })`.
+3. On `session_start`, and again whenever `/new`, `/resume` or `/fork` moves the process to another session (`session_switch`, `session_branch`), the extension (re)spawns `ryugi-hook watch pi` for the current session (installing `ryugi-hook` in the background if absent, safely invoking `node` rather than `omp.exe`) and delivers browser comments, choice submissions, and document answers directly into the active OMP session via `sendMessage(..., { triggerTurn: true, deliverAs: 'followUp' })`.
 
 ## Tool Mapping
 

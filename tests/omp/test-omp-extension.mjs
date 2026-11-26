@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -82,4 +83,76 @@ test('omp extension injects bootstrap once, deduplicates, and reinjects after co
   assert.match(afterCompact.messages[1].content[0].text, /ryugi:using-ryugi bootstrap for omp/);
 
   await handlers.get('session_shutdown')({});
+});
+
+test('comment watch follows /new, /resume and /fork to the current session', async (t) => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-omp-watch-'));
+  const log = path.join(dir, 'spawns.log');
+  const bin = path.join(dir, 'ryugi-hook');
+  // Records `<session> <pid>` per watcher and stays alive like the real one.
+  fs.writeFileSync(bin, `#!/bin/sh\necho "$4 $$" >> "${log}"\nexec sleep 30\n`, { mode: 0o755 });
+
+  const saved = {};
+  for (const key of ['RYUGI_HOOK_BIN', 'PI_SESSION_ID', 'CLAUDE_CODE_SESSION_ID', 'CODEX_THREAD_ID', 'ANTIGRAVITY_CONVERSATION_ID']) {
+    saved[key] = process.env[key];
+    delete process.env[key];
+  }
+  process.env.RYUGI_HOOK_BIN = bin;
+  t.after(() => {
+    for (const [key, value] of Object.entries(saved)) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  const mod = await import(pathToFileURL(path.join(repoRoot, '.omp', 'extensions', 'ryugi.ts')).href);
+  const handlers = new Map();
+  mod.default({ on: (event, fn) => handlers.set(event, fn), sendMessage() {} });
+
+  const A = '01a21376-581e-73b1-ba0f-6ff23cfc2c83';
+  const B = '01a216b3-ffcf-74e3-b3bc-989d39b402fb';
+  const C = '01a21800-0000-7000-8000-000000000000';
+  const ctxFor = (id) => ({ cwd: dir, sessionManager: { getSessionId: () => id }, ui: { notify() {} } });
+  const spawns = async (count) => {
+    for (let i = 0; i < 100; i++) {
+      const lines = fs.existsSync(log) ? fs.readFileSync(log, 'utf8').trim().split('\n').filter(Boolean) : [];
+      if (lines.length >= count) return lines.map((line) => line.split(' '));
+      await new Promise((r) => setTimeout(r, 20));
+    }
+    assert.fail(`expected ${count} watcher spawns`);
+  };
+  const alive = (pid) => {
+    try {
+      process.kill(Number(pid), 0);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  await handlers.get('session_start')({}, ctxFor(A));
+  const [[firstSession, firstPid]] = await spawns(1);
+  assert.equal(firstSession, A);
+
+  // `/new` or `/resume`: the watch moves to the new session and the old watcher stops.
+  await handlers.get('session_switch')({ reason: 'new' }, ctxFor(B));
+  const afterSwitch = await spawns(2);
+  assert.equal(afterSwitch[1][0], B);
+  for (let i = 0; i < 50 && alive(firstPid); i++) await new Promise((r) => setTimeout(r, 20));
+  assert.equal(alive(firstPid), false);
+
+  // `/branch` rewinds within the same session: the running watcher is kept.
+  await handlers.get('session_branch')({ reason: 'branch' }, ctxFor(B));
+  // `/fork` lands in a new session.
+  await handlers.get('session_branch')({ reason: 'fork' }, ctxFor(C));
+  const afterFork = await spawns(3);
+  assert.deepEqual(
+    afterFork.map(([session]) => session),
+    [A, B, C],
+  );
+
+  await handlers.get('session_shutdown')({});
+  for (let i = 0; i < 50 && alive(afterFork[2][1]); i++) await new Promise((r) => setTimeout(r, 20));
+  assert.equal(alive(afterFork[2][1]), false);
 });
