@@ -1,22 +1,22 @@
 <p align="center">
-  <img src="assets/logo/ryugi-wordmark-light.svg#gh-light-mode-only" width="240" alt="Ryugi">
-  <img src="assets/logo/ryugi-wordmark-dark.svg#gh-dark-mode-only" width="240" alt="Ryugi">
+  <img src="assets/logo/artideck-wordmark-light.svg#gh-light-mode-only" width="240" alt="Artideck">
+  <img src="assets/logo/artideck-wordmark-dark.svg#gh-dark-mode-only" width="240" alt="Artideck">
 </p>
 
-<h1 align="center">Ryugi (流儀) — Interactive Artifacts for Coding Agents</h1>
+<h1 align="center">Artideck — Interactive Artifacts for Coding Agents</h1>
 
-<p align="center"><i>ryoo-ghee</i> · [ɾʲɯːɡʲi] · Japanese for “a school's own way of doing things”</p>
+<p align="center"><i>Formerly Ryugi (流儀)</i></p>
 
 <p align="center"><b>Interactive artboards, design docs, whiteboards, HTML benches, slides, data reports, video storyboards and verify reports for coding agents.</b><br>Your agent draws its options instead of describing them in Markdown. Pick, comment and send feedback straight back to your agent session.</p>
 
 <p align="center">
-  <img src="docs/images/hero.webp" alt="A terminal asks Claude Code to mock up notification settings; three layouts stream onto the Ryugi artboard, the user picks the recommended one and submits, the terminal receives q1 → b, and the built page appears next to the approved design, where the user presses Pass">
+  <img src="docs/images/hero.webp" alt="A terminal asks Claude Code to mock up notification settings; three layouts stream onto the Artideck artboard, the user picks the recommended one and submits, the terminal receives q1 → b, and the built page appears next to the approved design, where the user presses Pass">
 </p>
 
 Ask an agent for a settings page and you get three paragraphs describing three layouts. Ask for a
 design and you get a wall of Markdown you can't point at.
 
-Ryugi gives the agent pages to put that work on, and gives you a way to answer on them:
+Artideck gives the agent pages to put that work on, and gives you a way to answer on them:
 
 - **Artboard** — every option drawn side by side; pick one.
 - **Document** — a design doc with the agent's questions inline; comment on any sentence.
@@ -42,7 +42,7 @@ npx artideck install
 Having your agent install it? Paste this so it asks before choosing for you:
 
 ```text
-Install Ryugi from https://github.com/Innei/artideck. Follow "Installing with an AI agent" in its README, and ask me which install I want before you run anything.
+Install Artideck from https://github.com/Innei/artideck. Follow "Installing with an AI agent" in its README, and ask me which install I want before you run anything.
 ```
 
 <p align="center"><sub>Works with Claude Code · Codex · Cursor · Gemini CLI · OpenCode · Copilot CLI · Pi · Antigravity · Kimi Code · Qwen Code · Devin · Droid</sub></p>
@@ -232,7 +232,7 @@ compatible cached release offline. The first run needs network access and a writ
 
 ### Claude Code settings
 
-Ryugi replaces Claude's hosted Artifacts with the Artboard, documents, whiteboards, HTML
+Artideck replaces Claude's hosted Artifacts with the Artboard, documents, whiteboards, HTML
 benches and decks. Turn the hosted ones off by adding this key to the top level of `~/.claude/settings.json` —
 keep your other settings:
 
@@ -242,7 +242,7 @@ keep your other settings:
 }
 ```
 
-That is the only flag Ryugi needs; leave the rest of your Claude Code settings alone.
+That is the only flag Artideck needs; leave the rest of your Claude Code settings alone.
 
 <details>
 <summary>Other harnesses</summary>
@@ -297,7 +297,7 @@ This section is for the agent doing the install.
 
 5. **Check it** with `adeck doctor`. If `adeck` isn't on PATH yet, pass on the PATH instructions
    the installer printed.
-6. **Tell them what is left**: start a new session of the harness. In Codex, trust Ryugi's hooks
+6. **Tell them what is left**: start a new session of the harness. In Codex, trust Artideck's hooks
    in `/hooks`. In Claude Code, offer to add `"disableArtifact": true` to
    `~/.claude/settings.json` ([why](#claude-code-settings)); change that file only if they agree,
    and keep their other settings.

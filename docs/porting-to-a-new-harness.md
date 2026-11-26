@@ -1,7 +1,7 @@
-# Porting Ryugi to a New Harness
+# Porting Artideck to a New Harness
 
 This guide explains how to add support for a new harness — an IDE, CLI, or
-agent runner that isn't Claude Code — so that Ryugi skills auto-trigger
+agent runner that isn't Claude Code — so that Artideck skills auto-trigger
 there the same way they do natively.
 
 It is written in two layers. **Part 1–3** explain how the system works and how
@@ -28,9 +28,9 @@ writing anything:
 
 ---
 
-## Part 1 — How Ryugi works across harnesses
+## Part 1 — How Artideck works across harnesses
 
-Ryugi is the same content everywhere. What changes per harness is the thin
+Artideck is the same content everywhere. What changes per harness is the thin
 layer that delivers that content to the model and translates its instructions
 into the harness's native tools. Three components:
 
@@ -80,7 +80,7 @@ edited in the user's home.)
 
 ## Part 2 — Can this harness be supported?
 
-A harness can support Ryugi only if it can do all of the following. Check
+A harness can support Artideck only if it can do all of the following. Check
 these before writing code — if the first one fails, stop.
 
 ### Hard requirement: automatic session-start injection
@@ -98,7 +98,7 @@ one non-negotiable capability. It can take any form:
   pointing at the extension's own `GEMINI.md`) — not a file you edit in the user's
   home.
 
-If the only way to get Ryugi in front of the model is for your human
+If the only way to get Artideck in front of the model is for your human
 partner to opt in each session (paste a prompt, run a command, enable a mode),
 the harness
 **cannot** be properly supported. The acceptance test in Part 3 will fail, and
@@ -331,7 +331,7 @@ ones in spirit:
   - **Build/dependency check.** Decide how the harness loads your module:
     does it run the source directly (pi's `.ts` is referenced as-is from
     `package.json`; OpenCode ships plain `.js`), or does it need a transpile/build
-    step? Ryugi is zero-runtime-dependency. pi's `import type
+    step? Artideck is zero-runtime-dependency. pi's `import type
 { ExtensionAPI }` works specifically because the harness runs the `.ts`
     directly, supplies that type at load, and the repo never type-checks the file
     in CI — the import isn't even declared as a dependency. If _your_ harness
@@ -403,7 +403,7 @@ itself via `dirname`, so the script body doesn't depend on this — but the
 command in the manifest does.)
 
 **Discovering the harness's contract.** The three facts above — env var, JSON
-field/nesting, matcher strings — are the harness's contract, not Ryugi',
+field/nesting, matcher strings — are the harness's contract, not Artideck',
 so you have to source them. Read the harness's hook docs, or find out
 empirically: register a throwaway session-start hook that dumps its environment
 and emits a marker, then observe which env var identifies the harness and
@@ -796,7 +796,7 @@ dispatcher pattern.
   complete acceptance-test transcript (the "Let's make a react todo list"
   session showing `brainstorming` auto-triggering). A PR without this proof will
   be closed.
-- Ryugi is a zero-dependency plugin. Don't add a third-party runtime
+- Artideck is a zero-dependency plugin. Don't add a third-party runtime
   dependency. Adding a new harness is the one carve-out the contributor rules
   allow, and even then keep it to what the integration strictly requires —
   type-only imports that compile away are fine; runtime packages are not.
@@ -826,7 +826,7 @@ Use this as the live index; when in doubt, read the files, not this table.
 ## Appendix B — Gotchas that have bitten porters
 
 - **Opt-in isn't a port.** If your human partner has to do anything per session
-  to get Ryugi, the acceptance test fails. Re-read Part 2.
+  to get Artideck, the acceptance test fails. Re-read Part 2.
 - **Wrong JSON field → silent failure or double injection.** Shape A only.
   Confirm the exact field/nesting; Claude Code reads two fields without dedup.
 - **Hook-config schema varies per harness.** Shape A. Cursor's `hooks-cursor.json`

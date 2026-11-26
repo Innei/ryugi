@@ -33,7 +33,7 @@ Two-hour autonomous stretches without "should I continue?" are normal. Because t
 
 **Design system first** — `design-system` activates when a project without a system of its own needs several screens or a whole UI, when its screens exist but have no tokens, when only a product doc exists, or when you ask for a design system. On one artboard, one step per round: a direction chosen from the product's tone, tokens one dimension at a time, layout on real pages, then each component with its usage rules. The whole product is redrawn in the system before any token code is written, and a spec lands code tokens, `DESIGN.md`, a tokens page, a gallery and a guard test. Screens that exist without tokens keep their tone: the values are extracted and merged, not redesigned. A product doc supplies the pages, fields and tone.
 
-**Your project's own skills come first at their step** — a design system before mockups, a verify skill before reporting, a ship skill for merging. Ryugi sets the process; your project carries its domain.
+**Your project's own skills come first at their step** — a design system before mockups, a verify skill before reporting, a ship skill for merging. Artideck sets the process; your project carries its domain.
 
 ## What's inside
 
@@ -43,4 +43,4 @@ Two-hour autonomous stretches without "should I continue?" are normal. Because t
 - **Workspace** — `using-git-worktrees`
 - **Meta** — `using-ryugi` (bootstrap, plus evidence before claims)
 
-`writing-skills` — creating and testing skills — lives at `.claude/skills/writing-skills/` and loads only when you work on Ryugi itself.
+`writing-skills` — creating and testing skills — lives at `.claude/skills/writing-skills/` and loads only when you work on Artideck itself.

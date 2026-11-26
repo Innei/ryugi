@@ -1,10 +1,10 @@
-# Ryugi for Kimi Code
+# Artideck for Kimi Code
 
-Complete guide for using Ryugi with [Kimi Code](https://github.com/MoonshotAI/kimi-code).
+Complete guide for using Artideck with [Kimi Code](https://github.com/MoonshotAI/kimi-code).
 
 ## Installation
 
-Ryugi is available in Kimi Code's plugin marketplace.
+Artideck is available in Kimi Code's plugin marketplace.
 
 Open the plugin manager:
 
@@ -12,7 +12,7 @@ Open the plugin manager:
 /plugins
 ```
 
-Go to `Marketplace` > `Ryugi` and install it.
+Go to `Marketplace` > `ryugi` and install it.
 
 You can also install from this repository:
 
@@ -38,7 +38,7 @@ The manifest does three things:
 2. Loads `using-ryugi` at session start through `sessionStart.skill`.
 3. Provides Kimi-specific tool mapping through `skillInstructions`.
 
-Kimi Code reads Ryugi skills from this repository. There are no copied skills, symlinks, hooks, or extra runtime dependencies.
+Kimi Code reads Artideck skills from this repository. There are no copied skills, symlinks, hooks, or extra runtime dependencies.
 
 ## Tool Mapping
 
@@ -63,7 +63,7 @@ Use Kimi Code's plugin manager:
 /plugins
 ```
 
-Select Ryugi and update it from there. Start a fresh session with `/new` after updating.
+Select `ryugi` and update it from there. Start a fresh session with `/new` after updating.
 
 ## Troubleshooting
 
@@ -75,7 +75,7 @@ Select Ryugi and update it from there. Start a fresh session with `/new` after u
 
 ### Direct GitHub install used an old release
 
-Kimi Code installs the latest GitHub release for a bare repository URL when one exists. To test unreleased changes before the next Ryugi release, install the branch explicitly:
+Kimi Code installs the latest GitHub release for a bare repository URL when one exists. To test unreleased changes before the next Artideck release, install the branch explicitly:
 
 ```text
 /plugins install https://github.com/Innei/artideck/tree/dev

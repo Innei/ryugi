@@ -1,6 +1,6 @@
-# Ryugi for OpenCode
+# Artideck for OpenCode
 
-Complete guide for using Ryugi with [OpenCode.ai](https://opencode.ai).
+Complete guide for using Artideck with [OpenCode.ai](https://opencode.ai).
 
 ## Installation
 
@@ -94,16 +94,16 @@ description: Use when [condition] - [what it does]
 
 Create project-specific skills in `.opencode/skills/` within your project.
 
-**V2 Skill Priority:** Project skills > Personal skills > Ryugi skills. On
-tested V1 1.18.31, bundled Ryugi skills take precedence when a personal
+**V2 Skill Priority:** Project skills > Personal skills > Artideck skills. On
+tested V1 1.18.31, bundled Artideck skills take precedence when a personal
 or project skill has the same name; use distinct names for personal and project
 skills. This behavior is unchanged by the migration.
 
 ## Updating
 
-OpenCode installs Ryugi through a git-backed package spec. Some OpenCode
+OpenCode installs Artideck through a git-backed package spec. Some OpenCode
 and Bun versions pin that resolved git dependency in a lockfile or cache, so a
-restart may not pick up the newest Ryugi commit. If updates do not appear,
+restart may not pick up the newest Artideck commit. If updates do not appear,
 clear OpenCode's package cache or reinstall the plugin.
 
 To pin a specific version, add a tag or commit to the spec (same form for the

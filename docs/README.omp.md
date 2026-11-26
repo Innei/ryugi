@@ -1,6 +1,6 @@
-# Ryugi for OMP (Oh My Pi)
+# Artideck for OMP (Oh My Pi)
 
-Complete guide for using Ryugi with OMP (`omp`).
+Complete guide for using Artideck with OMP (`omp`).
 
 ## Installation
 
