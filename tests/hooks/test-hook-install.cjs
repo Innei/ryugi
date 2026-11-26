@@ -72,13 +72,21 @@ async function noNetwork(t) {
   return { base: `http://127.0.0.1:${server.address().port}`, seen };
 }
 
-test("hook-install asks the CLI for the plugin version's binary and downloads nothing itself", async (t) => {
-  const p = plugin(t, '9.1.0');
-  const net = await noNetwork(t);
-  assert.equal(await launch(p, ['hook-install'], { RYUGI_HOOK_RELEASE_BASE: net.base }), 0);
-  assert.deepEqual(p.read(), [['hook', 'install', '9.1.0', '--background']]);
-  assert.deepEqual(net.seen, []);
-});
+test(
+  process.platform === 'win32'
+    ? 'hook-install is a no-op on Windows, where the launcher uses the Node hook'
+    : "hook-install asks the CLI for the plugin version's binary and downloads nothing itself",
+  async (t) => {
+    const p = plugin(t, '9.1.0');
+    const net = await noNetwork(t);
+    assert.equal(await launch(p, ['hook-install'], { RYUGI_HOOK_RELEASE_BASE: net.base }), 0);
+    assert.deepEqual(
+      p.read(),
+      process.platform === 'win32' ? [] : [['hook', 'install', '9.1.0', '--background']],
+    );
+    assert.deepEqual(net.seen, []);
+  },
+);
 
 test('hook-install leaves a binary already in ~/.ryugi/hook alone', async (t) => {
   const p = plugin(t, '9.2.0');

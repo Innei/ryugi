@@ -286,17 +286,22 @@ const executable = (file) => {
   }
 };
 
-function hookBin() {
+function hookCommand() {
   if (process.env.RYUGI_HOOK_BIN)
-    return executable(process.env.RYUGI_HOOK_BIN) ? process.env.RYUGI_HOOK_BIN : null;
+    return executable(process.env.RYUGI_HOOK_BIN)
+      ? { file: process.env.RYUGI_HOOK_BIN, args: [] }
+      : null;
+  const codexHook = path.join(__dirname, 'codex-hook.cjs');
+  if (win32)
+    return fs.existsSync(codexHook) ? { file: nodeBin(), args: [codexHook] } : null;
   const dev = devLink();
   const linked = dev && path.join(dev.plugin, 'hook', 'target', 'release', 'ryugi-hook');
-  if (linked && executable(linked)) return linked;
+  if (linked && executable(linked)) return { file: linked, args: [] };
   const local = path.join(PLUGIN_ROOT, 'hook', 'target', 'release', 'ryugi-hook');
-  if (executable(local)) return local;
+  if (executable(local)) return { file: local, args: [] };
   const version = pluginVersion();
   const cached = version && path.join(HOOK_HOME, version, 'ryugi-hook');
-  return cached && executable(cached) ? cached : null;
+  return cached && executable(cached) ? { file: cached, args: [] } : null;
 }
 
 function requestHookInstall() {
@@ -309,6 +314,7 @@ function requestHookInstall() {
 }
 
 async function hookInstall() {
+  if (win32) return;
   const version = pluginVersion() || newestInstalled();
   if (!valid(version) || executable(path.join(HOOK_HOME, version, 'ryugi-hook'))) return;
   let cli = path.join(__dirname, 'cli.cjs');
@@ -362,7 +368,7 @@ function main() {
     env.RYUGI_ARTIFACTS_VERSION = localVersion();
   }
   requireOutputProtocol(cli);
-  const hook = hookBin();
+  const hook = hookCommand();
   const marked =
     sessionProof ||
     process.env.CODEX_THREAD_ID ||
@@ -375,8 +381,14 @@ function main() {
   let subscription = null;
   if (hook) {
     const prepared = spawnSync(
-      hook,
-      ['launch-prepare', ...(sessionProof ? ['--ryugi-session', sessionProof] : []), '--', ...args],
+      hook.file,
+      [
+        ...hook.args,
+        'launch-prepare',
+        ...(sessionProof ? ['--ryugi-session', sessionProof] : []),
+        '--',
+        ...args,
+      ],
       {
         encoding: 'utf8',
         env: { ...process.env, RYUGI_PLUGIN_ROOT: PLUGIN_ROOT },
@@ -405,7 +417,7 @@ function main() {
     process.exitCode = code ?? (signal ? 1 : 0);
     // The hub is running only once the CLI command has returned, so the subscription follows it.
     if (subscription && hook)
-      spawnSync(hook, ['subscribe'], {
+      spawnSync(hook.file, [...hook.args, 'subscribe'], {
         input: JSON.stringify(subscription),
         stdio: ['pipe', 'ignore', 'inherit'],
         timeout: 15000,
