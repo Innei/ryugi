@@ -209,8 +209,6 @@ jobs:
 
       - name: Publish the same build as artideck
         if: steps.release.outputs.publish == 'true'
-        # The plugin is bumped even when the new name cannot publish yet.
-        continue-on-error: true
         working-directory: ryugi-cloud/packages/artifacts
         timeout-minutes: 8
         env:

@@ -131,6 +131,36 @@ test('a fresh latest pointer to an unusable CLI still permits a working offline 
   assert.equal(JSON.parse(out.stdout).data.cached, true);
 });
 
+test('the latest release is looked up and installed as artideck', (t) => {
+  const f = setup(t);
+  const log = path.join(f.root, 'npm.log');
+  const cli = `process.stdout.write(JSON.stringify({schema:"ryugi.cli/v1",command:process.argv.includes("--version")?"version":"get",outcome:"success",data:{from:__filename,capabilities:["reviewBundlesV1"]}}))`;
+  fs.writeFileSync(
+    path.join(f.root, 'bin', 'npm'),
+    [
+      `#!${process.execPath}`,
+      "const fs = require('node:fs'), path = require('node:path');",
+      'const args = process.argv.slice(2);',
+      `fs.appendFileSync(${JSON.stringify(log)}, args.join(' ') + '\\n');`,
+      "if (args[0] === 'view') { if (args[1] !== 'artideck') process.exit(1); console.log('1.70.0'); process.exit(0); }",
+      "const prefix = args[args.indexOf('--prefix') + 1];",
+      "const name = args.at(-1).split('@')[0];",
+      "const dist = path.join(prefix, 'node_modules', name, 'dist');",
+      'fs.mkdirSync(dist, { recursive: true });',
+      `fs.writeFileSync(path.join(dist, 'cli.cjs'), ${JSON.stringify(cli)});`,
+    ].join('\n'),
+    { mode: 0o755 },
+  );
+  const out = spawnSync(
+    process.execPath,
+    [path.join(f.app, 'ryugi.cjs'), 'get', 'cloud', '--format', 'json'],
+    { env: f.env, encoding: 'utf8' },
+  );
+  assert.equal(out.status, 0, out.stdout + out.stderr);
+  assert.match(JSON.parse(out.stdout).data.from, /1\.70\.0[\\/]node_modules[\\/]artideck[\\/]dist/);
+  assert.match(fs.readFileSync(log, 'utf8'), /artideck@1\.70\.0/);
+});
+
 test('output conflicts fail before installer or subscription work', (t) => {
   const f = setup(t);
   const out = spawnSync(

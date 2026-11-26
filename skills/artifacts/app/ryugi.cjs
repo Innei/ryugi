@@ -36,8 +36,14 @@ const compare = (a, b) => {
   for (let i = 0; i < 3; i++) if (x[i] !== y[i]) return x[i] - y[i];
   return 0;
 };
-const cliOf = (version) =>
-  path.join(RELEASES, version, 'node_modules', 'ryugi-artifacts', 'dist', 'cli.cjs');
+const PACKAGE = 'artideck';
+// Releases cached before the rename sit under the old package name and still serve as fallbacks.
+const PACKAGES = [PACKAGE, 'ryugi-artifacts'];
+const cliIn = (dir, name) => path.join(dir, 'node_modules', name, 'dist', 'cli.cjs');
+const cliOf = (version) => {
+  const dir = path.join(RELEASES, version);
+  return PACKAGES.map((name) => cliIn(dir, name)).find((cli) => fs.existsSync(cli)) || cliIn(dir, PACKAGE);
+};
 const protocolChecks = new Map();
 function usesOutputProtocol(cli) {
   if (protocolChecks.has(cli)) return protocolChecks.get(cli);
@@ -64,7 +70,7 @@ function usesOutputProtocol(cli) {
 function requireOutputProtocol(cli) {
   if (!usesOutputProtocol(cli))
     throw new LaunchError(
-      `The installed CLI does not provide ryugi.cli/v1 with reviewBundlesV1. Install a current ryugi-artifacts release or rebuild the local CLI.`,
+      `The installed CLI does not provide ryugi.cli/v1 with reviewBundlesV1. Install a current ${PACKAGE} release or rebuild the local CLI.`,
     );
 }
 
@@ -182,7 +188,7 @@ const NEEDS_NETWORK = `network access and a writable ${RELEASES}, so rerun outsi
 function askNpm() {
   const result = npm([
     'view',
-    'ryugi-artifacts',
+    PACKAGE,
     'version',
     '--prefer-online',
     '--fetch-retries=0',
@@ -211,7 +217,7 @@ function install(version) {
     fs.mkdirSync(staging, { recursive: true });
   } catch {
     return fallback(
-      `Could not install ryugi-artifacts@${version}; the first start of each version needs ${NEEDS_NETWORK}.`,
+      `Could not install ${PACKAGE}@${version}; the first start of each version needs ${NEEDS_NETWORK}.`,
     );
   }
   const result = npm([
@@ -223,15 +229,12 @@ function install(version) {
     '--no-audit',
     '--no-fund',
     '--loglevel=error',
-    `ryugi-artifacts@${version}`,
+    `${PACKAGE}@${version}`,
   ]);
-  if (
-    result.status !== 0 ||
-    !fs.existsSync(path.join(staging, 'node_modules', 'ryugi-artifacts', 'dist', 'cli.cjs'))
-  ) {
+  if (result.status !== 0 || !fs.existsSync(cliIn(staging, PACKAGE))) {
     fs.rmSync(staging, { recursive: true, force: true });
     return fallback(
-      `Could not install ryugi-artifacts@${version} from npm; the first start of each version needs ${NEEDS_NETWORK}. npm said: ${(result.stderr || result.stdout || '').trim()}`,
+      `Could not install ${PACKAGE}@${version} from npm; the first start of each version needs ${NEEDS_NETWORK}. npm said: ${(result.stderr || result.stdout || '').trim()}`,
     );
   }
   try {
@@ -240,7 +243,7 @@ function install(version) {
   fs.rmSync(staging, { recursive: true, force: true });
   if (!fs.existsSync(cliOf(version)))
     throw new LaunchError(
-      `Installed ryugi-artifacts@${version} but could not move it into ${target}`,
+      `Installed ${PACKAGE}@${version} but could not move it into ${target}`,
     );
   requireOutputProtocol(cliOf(version));
   return version;
@@ -252,7 +255,7 @@ function resolveRelease() {
   const latest = askNpm();
   if (!latest)
     return fallback(
-      `Could not reach npm for the latest ryugi-artifacts; the first start needs ${NEEDS_NETWORK}.`,
+      `Could not reach npm for the latest ${PACKAGE}; the first start needs ${NEEDS_NETWORK}.`,
     );
   record(latest, Date.now());
   return install(latest);
