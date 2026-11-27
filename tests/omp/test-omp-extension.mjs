@@ -156,3 +156,32 @@ test('comment watch follows /new, /resume and /fork to the current session', asy
   for (let i = 0; i < 50 && alive(afterFork[2][1]); i++) await new Promise((r) => setTimeout(r, 20));
   assert.equal(alive(afterFork[2][1]), false);
 });
+
+test('hookBin resolves ~/.artideck/hook with ~/.ryugi fallback and spawns set windowsHide', async (t) => {
+  const pkg = JSON.parse(fs.readFileSync(path.join(repoRoot, 'package.json'), 'utf8'));
+  const extSource = fs.readFileSync(path.join(repoRoot, '.omp', 'extensions', 'ryugi.ts'), 'utf8');
+  assert.match(extSource, /detached:\s*true[\s\S]*?windowsHide:\s*true/);
+
+  const mod = await import(pathToFileURL(path.join(repoRoot, '.omp', 'extensions', 'ryugi.ts')).href);
+  const savedHookBin = process.env.RYUGI_HOOK_BIN;
+  delete process.env.RYUGI_HOOK_BIN;
+  const fakeHome = fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-omp-home-'));
+  t.after(() => {
+    if (savedHookBin === undefined) delete process.env.RYUGI_HOOK_BIN;
+    else process.env.RYUGI_HOOK_BIN = savedHookBin;
+    fs.rmSync(fakeHome, { recursive: true, force: true });
+  });
+
+  const binName = process.platform === 'win32' ? 'adeck-hook.exe' : 'adeck-hook';
+  const legacyDir = path.join(fakeHome, '.ryugi', 'hook', pkg.version);
+  fs.mkdirSync(legacyDir, { recursive: true });
+  const legacyBin = path.join(legacyDir, binName);
+  fs.writeFileSync(legacyBin, 'fake', { mode: 0o755 });
+  assert.equal(mod.hookBin(fakeHome), legacyBin);
+
+  const artideckDir = path.join(fakeHome, '.artideck', 'hook', pkg.version);
+  fs.mkdirSync(artideckDir, { recursive: true });
+  const artideckBin = path.join(artideckDir, binName);
+  fs.writeFileSync(artideckBin, 'fake', { mode: 0o755 });
+  assert.equal(mod.hookBin(fakeHome), artideckBin);
+});
