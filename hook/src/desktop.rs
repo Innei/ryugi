@@ -89,7 +89,7 @@ mod bridge_tests {
 
     #[test]
     fn the_desktop_bridge_is_named_like_every_ryugi_watcher() {
-        let command = bridge(Path::new("node"), &json!({}), Path::new("/x/ryugi-hook"));
+        let command = bridge(Path::new("node"), &json!({}), Path::new("/x/adeck-hook"));
         let title = command
             .get_envs()
             .find(|(key, _)| *key == "RYUGI_PROCESS_TITLE")

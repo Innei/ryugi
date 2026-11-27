@@ -27,7 +27,7 @@ make_exe() {
   chmod +x "$1"
 }
 
-echo "ryugi-hook binary discovery"
+echo "adeck-hook binary discovery"
 
 plugin="$TEST_ROOT/plugin"
 mkdir -p "$plugin"
@@ -37,32 +37,32 @@ out="$(resolve "$plugin")"
 code=$?
 if [ "$code" -ne 0 ] && [ -z "$out" ]; then pass "finds nothing when no binary exists"; else fail "finds nothing when no binary exists ($code: $out)"; fi
 
-legacy="$TEST_ROOT/home/.cache/ryugi/hook/9.8.7/ryugi-hook"
-xdg="$TEST_ROOT/xdg/ryugi/hook/9.8.7/ryugi-hook"
+legacy="$TEST_ROOT/home/.cache/ryugi/hook/9.8.7/adeck-hook"
+xdg="$TEST_ROOT/xdg/ryugi/hook/9.8.7/adeck-hook"
 make_exe "$legacy"
 make_exe "$xdg"
 out="$(resolve "$plugin" XDG_CACHE_HOME="$TEST_ROOT/xdg")"
 code=$?
 if [ "$code" -ne 0 ] && [ -z "$out" ]; then pass "no longer reads the old cache"; else fail "no longer reads the old cache ($out)"; fi
 
-cached="$TEST_ROOT/home/.ryugi/hook/9.8.7/ryugi-hook"
+cached="$TEST_ROOT/home/.ryugi/hook/9.8.7/adeck-hook"
 make_exe "$cached"
-make_exe "$TEST_ROOT/home/.ryugi/hook/9.8.6/ryugi-hook"
+make_exe "$TEST_ROOT/home/.ryugi/hook/9.8.6/adeck-hook"
 out="$(resolve "$plugin")"
 if [ "$out" = "$cached" ]; then pass "finds the binary of the plugin's version in a home not yet moved from ~/.ryugi with an empty PATH"; else fail "finds the binary of the plugin's version in a home not yet moved from ~/.ryugi with an empty PATH ($out)"; fi
 
-moved="$TEST_ROOT/home/.artideck/hook/9.8.7/ryugi-hook"
+moved="$TEST_ROOT/home/.artideck/hook/9.8.7/adeck-hook"
 make_exe "$moved"
 out="$(resolve "$plugin")"
 if [ "$out" = "$moved" ]; then pass "finds the binary of the plugin's version in ~/.artideck/hook with an empty PATH"; else fail "finds the binary of the plugin's version in ~/.artideck/hook with an empty PATH ($out)"; fi
 cached="$moved"
 
-local_build="$plugin/hook/target/release/ryugi-hook"
+local_build="$plugin/hook/target/release/adeck-hook"
 make_exe "$local_build"
 out="$(resolve "$plugin")"
 if [ "$out" = "$local_build" ]; then pass "prefers a local release build in the plugin checkout"; else fail "prefers a local release build in the plugin checkout ($out)"; fi
 
-override="$TEST_ROOT/override/ryugi-hook"
+override="$TEST_ROOT/override/adeck-hook"
 make_exe "$override"
 out="$(resolve "$plugin" RYUGI_HOOK_BIN="$override")"
 if [ "$out" = "$override" ]; then pass "RYUGI_HOOK_BIN wins"; else fail "RYUGI_HOOK_BIN wins ($out)"; fi
@@ -92,7 +92,7 @@ if command -v zsh > /dev/null 2>&1; then
 fi
 
 dev_plugin="$TEST_ROOT/dev plugin"
-dev_build="$dev_plugin/hook/target/release/ryugi-hook"
+dev_build="$dev_plugin/hook/target/release/adeck-hook"
 make_exe "$dev_build"
 make_exe "$local_build"
 mkdir -p "$TEST_ROOT/home/.artideck"
@@ -117,4 +117,4 @@ if [ "$FAILURES" -gt 0 ]; then
   echo "$FAILURES failure(s)"
   exit 1
 fi
-echo "All ryugi-hook discovery tests passed"
+echo "All adeck-hook discovery tests passed"

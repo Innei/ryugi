@@ -9,7 +9,7 @@
     {
       "name": "adeck",
       "description": "Artideck skills for coding agents, plus the artifacts workbench they design in: brainstorming, artboards, documents and TDD.",
-      "version": "1.116.0",
+      "version": "1.117.1",
       "source": "./",
       "author": {
         "name": "Innei",

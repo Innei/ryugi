@@ -1,0 +1,63 @@
+{
+  "variant": "after",
+  "task": "two-docs",
+  "rep": "2",
+  "host": "claude",
+  "project": "/tmp/brief-eval/after-claude-two-docs-2/project",
+  "docs": [
+    "document/alpha",
+    "document/beta"
+  ],
+  "started": 1795726652591,
+  "checks": [
+    {
+      "name": "alpha#b1 /June/",
+      "ok": true
+    },
+    {
+      "name": "beta#b1 /one reviewer/i",
+      "ok": true
+    },
+    {
+      "name": "alpha/t1 replied",
+      "ok": true
+    },
+    {
+      "name": "beta/t1 replied",
+      "ok": true
+    }
+  ],
+  "unread": [
+    {
+      "artifact": "document/alpha",
+      "unread": 0
+    },
+    {
+      "artifact": "document/beta",
+      "unread": 0
+    }
+  ],
+  "consumed": true,
+  "completed": true,
+  "tasksDone": true,
+  "humanOverwritten": null,
+  "metrics": {
+    "host": "claude",
+    "inputTokens": 191396,
+    "cachedTokens": 172307,
+    "outputTokens": 2291,
+    "totalTokens": 193687,
+    "roundTrips": 45,
+    "toolCalls": 50,
+    "docReads": 4,
+    "cliCalls": 24,
+    "cliChars": 6999,
+    "actionChars": 0,
+    "utilization": 1,
+    "repeatedReads": 2,
+    "acks": 0,
+    "failedCalls": 2
+  },
+  "elapsed": 60192,
+  "transcript": "/private/tmp/claude-501/-Users-innei-git-innei-repo-ryugi-cloud/b419a06a-cf49-4252-b732-21fea91e8fd5/tasks/abda9437134b17646.output"
+}

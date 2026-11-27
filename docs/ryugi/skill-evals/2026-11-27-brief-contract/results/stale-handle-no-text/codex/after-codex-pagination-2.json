@@ -1,0 +1,89 @@
+{
+  "variant": "after",
+  "task": "pagination",
+  "rep": "2",
+  "host": "codex",
+  "project": "/tmp/brief-eval/after-codex-pagination-2/project",
+  "docs": [
+    "document/glossary"
+  ],
+  "started": 1795763019063,
+  "checks": [
+    {
+      "name": "glossary/t1 replied /Relay/i",
+      "ok": true
+    },
+    {
+      "name": "glossary/t2 replied /Hub/i",
+      "ok": true
+    },
+    {
+      "name": "glossary/t3 replied /Artifact/i",
+      "ok": true
+    },
+    {
+      "name": "glossary/t4 replied /Board/i",
+      "ok": true
+    },
+    {
+      "name": "glossary/t5 replied /Round/i",
+      "ok": true
+    },
+    {
+      "name": "glossary/t6 replied /Thread/i",
+      "ok": true
+    },
+    {
+      "name": "glossary/t7 replied /Receipt/i",
+      "ok": true
+    },
+    {
+      "name": "glossary/t8 replied /Snapshot/i",
+      "ok": true
+    },
+    {
+      "name": "glossary/t9 replied /Cursor/i",
+      "ok": true
+    },
+    {
+      "name": "glossary/t10 replied /Launcher/i",
+      "ok": true
+    },
+    {
+      "name": "glossary/t11 replied /Daemon/i",
+      "ok": true
+    },
+    {
+      "name": "glossary/t12 replied /Engine/i",
+      "ok": true
+    }
+  ],
+  "unread": [
+    {
+      "artifact": "document/glossary",
+      "unread": 0
+    }
+  ],
+  "consumed": true,
+  "completed": true,
+  "tasksDone": true,
+  "humanOverwritten": null,
+  "metrics": {
+    "host": "codex",
+    "inputTokens": 104952,
+    "cachedTokens": 90880,
+    "outputTokens": 493,
+    "totalTokens": 105445,
+    "roundTrips": 20,
+    "toolCalls": 18,
+    "docReads": 0,
+    "cliCalls": 16,
+    "cliChars": 3935,
+    "actionChars": 0,
+    "utilization": 1,
+    "repeatedReads": 0,
+    "acks": 0,
+    "failedCalls": 0
+  },
+  "elapsed": 31496
+}

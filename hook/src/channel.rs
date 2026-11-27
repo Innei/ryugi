@@ -50,8 +50,12 @@ pub fn list_argv(launcher: &str, project: &str, artifact: &str, section: &str) -
     }
     let mut argv: Vec<String> = [launcher, "comment", "list", "--section", section].map(String::from).to_vec();
     argv.extend(section_flags(section).iter().map(|f| f.to_string()));
-    argv.extend(["--detail", "--format", "brief", "--project-dir", project, "--artifact", artifact].map(String::from));
+    argv.extend(["--detail", "--hold", "--format", "brief", "--project-dir", project, "--artifact", artifact].map(String::from));
     argv
+}
+
+pub fn deliver_argv(launcher: &str, project: &str, artifact: &str) -> Vec<String> {
+    [launcher, "comment", "deliver", "--project-dir", project, "--artifact", artifact].map(String::from).to_vec()
 }
 
 fn env(name: &str) -> Option<String> {
@@ -219,7 +223,7 @@ impl Channel {
     }
 }
 
-fn decorate(mut event: Value) -> Value {
+fn decorate(mut event: Value, host: &str, session: &str) -> Value {
     let launcher = crate::context::launcher();
     let project = event["project"].as_str().unwrap_or_default().to_string();
     let artifact = event["artifact"].as_str().unwrap_or_default().to_string();
@@ -227,6 +231,10 @@ fn decorate(mut event: Value) -> Value {
     if let Some(map) = event.as_object_mut() {
         map.insert("command".into(), json!(command(&launcher, &project, &artifact, section)));
         map.insert("argv".into(), json!(list_argv(&launcher, &project, &artifact, section)));
+        map.insert("reader".into(), json!({"host": host, "session": session}));
+        if !artifact.starts_with("preview/") {
+            map.insert("deliver".into(), json!(deliver_argv(&launcher, &project, &artifact)));
+        }
     }
     event
 }
@@ -324,7 +332,7 @@ pub fn open(options: Options, mut on: impl FnMut(&Channel, Signal) + Send + 'sta
                     Some("event") => {
                         if let Some(event) = message.get("event").filter(|e| well_formed(e)) {
                             let id = message.get("id").cloned().unwrap_or(Value::Null);
-                            on(&handle, Signal::Event(decorate(event.clone()), id));
+                            on(&handle, Signal::Event(decorate(event.clone(), &options.host, &session), id));
                         }
                     }
                     Some("retract") => on(&handle, Signal::Retract(message)),

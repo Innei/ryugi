@@ -1,0 +1,53 @@
+{
+  "variant": "after",
+  "task": "follow-up",
+  "rep": "3",
+  "host": "codex",
+  "project": "/tmp/brief-eval/after-codex-follow-up-3/project",
+  "docs": [
+    "document/cache"
+  ],
+  "started": 1795763068639,
+  "checks": [
+    {
+      "name": "cache#b1 /5 minutes/",
+      "ok": true
+    },
+    {
+      "name": "cache#b2 /1000/",
+      "ok": true
+    },
+    {
+      "name": "cache/t1 replied",
+      "ok": true
+    }
+  ],
+  "unread": [
+    {
+      "artifact": "document/cache",
+      "unread": 0
+    }
+  ],
+  "consumed": true,
+  "completed": true,
+  "tasksDone": true,
+  "humanOverwritten": null,
+  "metrics": {
+    "host": "codex",
+    "inputTokens": 150038,
+    "cachedTokens": 137472,
+    "outputTokens": 861,
+    "totalTokens": 150899,
+    "roundTrips": 15,
+    "toolCalls": 13,
+    "docReads": 0,
+    "cliCalls": 11,
+    "cliChars": 4375,
+    "actionChars": 0,
+    "utilization": 1,
+    "repeatedReads": 0,
+    "acks": 0,
+    "failedCalls": 0
+  },
+  "elapsed": 41978
+}

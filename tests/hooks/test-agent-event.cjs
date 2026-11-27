@@ -191,7 +191,7 @@ test('agent events reach the hub from every host without node on PATH', async (t
   assert.deepEqual(seen.map((r) => r.body.host).sort(), ['antigravity', 'claude', 'codex']);
 });
 
-test('without a ryugi-hook binary the Antigravity hook neither denies PreToolUse nor withholds {}', async (t) => {
+test('without an adeck-hook binary the Antigravity hook neither denies PreToolUse nor withholds {}', async (t) => {
   const dir = project(t);
   const cmd = `"${path.join(repo, 'hooks/run-hook.cmd')}" agent-event`;
   const env = {

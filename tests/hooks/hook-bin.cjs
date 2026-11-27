@@ -14,7 +14,7 @@ function hookBin() {
       stdio: ['ignore', 'inherit', 'inherit'],
     },
   );
-  process.env.RYUGI_HOOK_BIN = path.join(repo, 'hook/target/debug/ryugi-hook');
+  process.env.RYUGI_HOOK_BIN = path.join(repo, 'hook/target/debug/adeck-hook');
   return process.env.RYUGI_HOOK_BIN;
 }
 

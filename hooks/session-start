@@ -94,7 +94,7 @@ fi
 
 # A project with published documents gets its artifacts server for the whole
 # session, so its owner can comment from the cloud. Backgrounded and silent:
-# it must never delay or break session start, and skips when ryugi-hook is missing.
+# it must never delay or break session start, and skips when adeck-hook is missing.
 project_dir="${CLAUDE_PROJECT_DIR:-}"
 if [ -z "$project_dir" ] && [ "$is_antigravity" -eq 1 ] && [ -n "$stdin_payload" ] && [ -n "$hook_bin" ]; then
   project_dir="$(printf '%s' "$stdin_payload" | "$hook_bin" agy-cwd 2> /dev/null || true)"

@@ -24,7 +24,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: Release to attach ryugi-hook to, e.g. 1.105.1
+        description: Release to attach adeck-hook (ryugi-hook up to 1.116.0) to, e.g. 1.105.1
         required: true
         type: string
       ref:
@@ -55,6 +55,7 @@ jobs:
     outputs:
       sha: ${{ steps.sha.outputs.sha }}
       from: ${{ steps.reuse.outputs.from }}
+      hook: ${{ steps.names.outputs.hook }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -62,19 +63,33 @@ jobs:
       - id: sha
         run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
+      # Releases up to 1.116.0 name the binary ryugi-hook; a rebuild of one keeps the name its plugin looks for.
+      - name: Name the binaries of v${{ inputs.version }}
+        id: names
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          base="${VERSION%%[-+]*}"
+          if [[ "$(printf '%s\n' "$base" 1.116.0 | sort -V | tail -n 1)" == 1.116.0 ]]; then
+            echo "hook=ryugi-hook" >> "$GITHUB_OUTPUT"
+          else
+            echo "hook=adeck-hook" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Look for a release built from the same hook/
         id: reuse
         if: inputs.reuse
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ inputs.version }}
+          HOOK: ${{ steps.names.outputs.hook }}
         run: |
           tree="$(git rev-parse HEAD:hook)"
           for tag in $(gh release list -R "$GITHUB_REPOSITORY" -L 10 --exclude-drafts --json tagName --jq '.[].tagName'); do
             [[ "$tag" != "v$VERSION" ]] || continue
             git fetch -q --depth 1 origin "refs/tags/$tag:refs/tags/$tag" || continue
             [[ "$(git rev-parse "$tag:hook")" == "$tree" ]] || continue
-            count="$(gh release view "$tag" -R "$GITHUB_REPOSITORY" --json assets --jq '[.assets[].name | select(startswith("ryugi-hook-"))] | length')"
+            count="$(gh release view "$tag" -R "$GITHUB_REPOSITORY" --json assets --jq "[.assets[].name | select(startswith(\"$HOOK-\"))] | length")"
             if [[ "$count" -eq 6 ]]; then
               echo "::notice::hook/ is unchanged since $tag; reusing its binaries"
               echo "from=$tag" >> "$GITHUB_OUTPUT"
@@ -87,7 +102,10 @@ jobs:
     if: needs.commit.outputs.from != ''
     strategy:
       matrix:
-        asset: [ryugi-hook-darwin-arm64, ryugi-hook-linux-x64, ryugi-hook-linux-arm64]
+        asset:
+          - ${{ needs.commit.outputs.hook }}-darwin-arm64
+          - ${{ needs.commit.outputs.hook }}-linux-x64
+          - ${{ needs.commit.outputs.hook }}-linux-arm64
     runs-on: ubuntu-latest
     steps:
       - name: Take the binary from ${{ needs.commit.outputs.from }}
@@ -121,7 +139,8 @@ jobs:
     runs-on: macos-latest
     timeout-minutes: 45
     env:
-      ASSET: ryugi-hook-darwin-arm64
+      ASSET: ${{ needs.commit.outputs.hook }}-darwin-arm64
+      HOOK: ${{ needs.commit.outputs.hook }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -134,13 +153,13 @@ jobs:
         with:
           workspaces: hook -> target
 
-      - name: Build ryugi-hook for Apple silicon
+      - name: Build ${{ needs.commit.outputs.hook }} for Apple silicon
         env:
           RYUGI_VERSION: ${{ inputs.version }}
         run: |
           cargo build --release --locked --manifest-path hook/Cargo.toml --target aarch64-apple-darwin
           mkdir -p hook-dist
-          cp hook/target/aarch64-apple-darwin/release/ryugi-hook "hook-dist/$ASSET"
+          cp "hook/target/aarch64-apple-darwin/release/$HOOK" "hook-dist/$ASSET"
 
       - name: Import the Developer ID certificate into a throwaway keychain
         id: keychain
@@ -167,7 +186,7 @@ jobs:
           echo "keychain=$keychain" >> "$GITHUB_OUTPUT"
           echo "identity=$identity" >> "$GITHUB_OUTPUT"
 
-      - name: Sign ryugi-hook with the hardened runtime
+      - name: Sign ${{ needs.commit.outputs.hook }} with the hardened runtime
         env:
           KEYCHAIN: ${{ steps.keychain.outputs.keychain }}
           IDENTITY: ${{ steps.keychain.outputs.identity }}
@@ -176,7 +195,7 @@ jobs:
             --keychain "$KEYCHAIN" --sign "$IDENTITY" "hook-dist/$ASSET"
           codesign --verify --strict --verbose=2 "hook-dist/$ASSET"
 
-      - name: Notarize ryugi-hook
+      - name: Notarize ${{ needs.commit.outputs.hook }}
         env:
           NOTARY_PRIVATE_KEY_BASE64: ${{ secrets.NOTARY_PRIVATE_KEY_BASE64 }}
           NOTARY_KEY_ID: ${{ secrets.NOTARY_KEY_ID }}
@@ -230,10 +249,10 @@ jobs:
         include:
           - runner: ubuntu-24.04
             target: x86_64-unknown-linux-musl
-            asset: ryugi-hook-linux-x64
+            asset: ${{ needs.commit.outputs.hook }}-linux-x64
           - runner: ubuntu-24.04-arm
             target: aarch64-unknown-linux-musl
-            asset: ryugi-hook-linux-arm64
+            asset: ${{ needs.commit.outputs.hook }}-linux-arm64
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 30
     steps:
@@ -259,13 +278,14 @@ jobs:
           workspaces: hook -> target
           key: ${{ matrix.target }}
 
-      - name: Build ryugi-hook for ${{ matrix.target }}
+      - name: Build ${{ needs.commit.outputs.hook }} for ${{ matrix.target }}
         env:
           RYUGI_VERSION: ${{ inputs.version }}
+          HOOK: ${{ needs.commit.outputs.hook }}
         run: |
           cargo build --release --locked --manifest-path hook/Cargo.toml --target ${{ matrix.target }}
           mkdir -p hook-dist
-          cp "hook/target/${{ matrix.target }}/release/ryugi-hook" "hook-dist/${{ matrix.asset }}"
+          cp "hook/target/${{ matrix.target }}/release/$HOOK" "hook-dist/${{ matrix.asset }}"
 
       - name: Check it is a static binary
         run: file "hook-dist/${{ matrix.asset }}" | tee /dev/stderr | grep -Eq 'statically linked|static-pie linked'

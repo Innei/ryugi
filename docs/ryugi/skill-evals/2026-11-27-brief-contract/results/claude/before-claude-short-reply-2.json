@@ -1,0 +1,54 @@
+{
+  "variant": "before",
+  "task": "short-reply",
+  "rep": "2",
+  "host": "claude",
+  "project": "/tmp/brief-eval/before-claude-short-reply-2/project",
+  "docs": [
+    "document/retry-policy"
+  ],
+  "started": 1795726405681,
+  "checks": [
+    {
+      "name": "retry-policy#b1 /three/i",
+      "ok": true
+    },
+    {
+      "name": "retry-policy#b1 lacks /five/i",
+      "ok": true
+    },
+    {
+      "name": "retry-policy/t1 replied",
+      "ok": true
+    }
+  ],
+  "unread": [
+    {
+      "artifact": "document/retry-policy",
+      "unread": 0
+    }
+  ],
+  "consumed": true,
+  "completed": true,
+  "tasksDone": true,
+  "humanOverwritten": null,
+  "metrics": {
+    "host": "claude",
+    "inputTokens": 165426,
+    "cachedTokens": 147547,
+    "outputTokens": 1690,
+    "totalTokens": 167116,
+    "roundTrips": 24,
+    "toolCalls": 28,
+    "docReads": 5,
+    "cliCalls": 11,
+    "cliChars": 7443,
+    "actionChars": 1498,
+    "utilization": 0.7987370683864033,
+    "repeatedReads": 0,
+    "acks": 1,
+    "failedCalls": 1
+  },
+  "elapsed": 40114,
+  "transcript": "/private/tmp/claude-501/-Users-innei-git-innei-repo-ryugi-cloud/b419a06a-cf49-4252-b732-21fea91e8fd5/tasks/a178982ff7fd7a74e.output"
+}

@@ -50,7 +50,7 @@ jobs:
       upload: false
     secrets: inherit
 
-  # Waits for the ryugi-daemon binaries: they go onto a draft release before npm or the plugin
+  # Waits for the adeck-daemon binaries: they go onto a draft release before npm or the plugin
   # moves, because a CLI that cannot download its hub cannot start one.
   release:
     needs: [version, daemon]
@@ -115,7 +115,7 @@ jobs:
         with:
           node-version: 22
 
-      # The suite's global setup cargo-builds ryugi-daemon, whose libghostty-vt needs Zig.
+      # The suite's global setup cargo-builds adeck-daemon, whose libghostty-vt needs Zig.
       - uses: mlugg/setup-zig@v2
         if: steps.release.outputs.publish == 'true'
         with:
@@ -171,17 +171,17 @@ jobs:
           RYUGI_SYNC_PLUGIN: '1'
         run: pnpm run build:cli
 
-      - name: Check ryugi-hook against the synced review evidence
+      - name: Check adeck-hook against the synced review evidence
         working-directory: ryugi
         run: cargo test --locked --manifest-path hook/Cargo.toml
 
       - uses: actions/download-artifact@v4
         with:
-          pattern: ryugi-daemon-*
+          pattern: adeck-daemon-*
           path: daemon-dist
           merge-multiple: true
 
-      - name: Attach the ryugi-daemon binaries to a draft release
+      - name: Attach the adeck-daemon binaries to a draft release
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ steps.release.outputs.version }}
@@ -189,7 +189,7 @@ jobs:
         run: |
           ls -l daemon-dist
           [[ "$(find daemon-dist -type f | wc -l)" -eq 10 ]]
-          [[ -z "$SOURCE" ]] || echo "$SOURCE" > daemon-dist/ryugi-daemon.source
+          [[ -z "$SOURCE" ]] || echo "$SOURCE" > daemon-dist/adeck-daemon.source
           if ! gh release view "v$VERSION" -R "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
             gh release create "v$VERSION" -R "$GITHUB_REPOSITORY" --draft --target "$GITHUB_REF_NAME" \
               --title "v$VERSION" --notes "Release in progress."
@@ -281,12 +281,12 @@ jobs:
         run: |
           git fetch -q --tags origin
           if [[ -z "$BUILT" ]]; then
-            echo "::warning::the parallel ryugi-hook build did not finish; rebuilding it on $TAG"
+            echo "::warning::the parallel adeck-hook build did not finish; rebuilding it on $TAG"
             echo "stale=true" >> "$GITHUB_OUTPUT"
           elif git diff --quiet "$BUILT" "$TAG" -- hook/; then
             echo "stale=false" >> "$GITHUB_OUTPUT"
           else
-            echo "::notice::hook/ changed on main after $BUILT; rebuilding ryugi-hook on $TAG"
+            echo "::notice::hook/ changed on main after $BUILT; rebuilding adeck-hook on $TAG"
             echo "stale=true" >> "$GITHUB_OUTPUT"
           fi
 
@@ -297,7 +297,7 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          pattern: ryugi-hook-*
+          pattern: adeck-hook-*
           path: hook-dist
           merge-multiple: true
 
@@ -342,14 +342,14 @@ jobs:
           gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/v$VERSION" --jq .ref
           assets="$(gh release view "v$VERSION" -R "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name')"
           echo "$assets"
-          daemon="$(grep -c '^ryugi-daemon-' <<< "$assets" || true)"
-          hook="$(grep -c '^ryugi-hook-' <<< "$assets" || true)"
+          daemon="$(grep -c '^adeck-daemon-' <<< "$assets" || true)"
+          hook="$(grep -c '^adeck-hook-' <<< "$assets" || true)"
           if [[ "$daemon" -ne 10 || "$hook" -ne 6 ]]; then
-            echo "::error::v$VERSION has $daemon ryugi-daemon and $hook ryugi-hook assets; it needs 10 and 6"
+            echo "::error::v$VERSION has $daemon adeck-daemon and $hook adeck-hook assets; it needs 10 and 6"
             exit 1
           fi
-          if [[ -n "$SOURCE" ]] && ! grep -qx 'ryugi-daemon.source' <<< "$assets"; then
-            echo "::error::v$VERSION has no ryugi-daemon.source"
+          if [[ -n "$SOURCE" ]] && ! grep -qx 'adeck-daemon.source' <<< "$assets"; then
+            echo "::error::v$VERSION has no adeck-daemon.source"
             exit 1
           fi
           gh release edit "v$VERSION" -R "$GITHUB_REPOSITORY" --draft=false --latest

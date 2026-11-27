@@ -16,6 +16,8 @@ if (args.includes('--version')) {
     data: { capabilities: ['reviewBundlesV1'] },
   }));
 } else {
+  if (process.env.RYUGI_FAKE_CLI_LOG)
+    require('node:fs').appendFileSync(process.env.RYUGI_FAKE_CLI_LOG, JSON.stringify({ args, host: process.env.RYUGI_WRITER_HOST ?? null, agent: process.env.RYUGI_WRITER_AGENT ?? null, thread: process.env.CODEX_THREAD_ID ?? null }) + '\\n');
   console.log(\`Comment list: \${flag('--artifact')} · fake \${flag('--section')}\`);
 }
 `;

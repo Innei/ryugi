@@ -1,0 +1,55 @@
+{
+  "variant": "after",
+  "task": "concurrent-edit",
+  "rep": "3",
+  "host": "claude",
+  "project": "/tmp/brief-eval/after-claude-concurrent-edit-3/project",
+  "docs": [
+    "document/pricing"
+  ],
+  "started": 1795727154224,
+  "checks": [
+    {
+      "name": "pricing#b1 /12 dollars/",
+      "ok": true
+    },
+    {
+      "name": "pricing#b2 /15%/",
+      "ok": true
+    },
+    {
+      "name": "human edit kept",
+      "ok": true,
+      "humanKept": true
+    }
+  ],
+  "unread": [
+    {
+      "artifact": "document/pricing",
+      "unread": 0
+    }
+  ],
+  "consumed": true,
+  "completed": true,
+  "tasksDone": true,
+  "humanOverwritten": false,
+  "metrics": {
+    "host": "claude",
+    "inputTokens": 185675,
+    "cachedTokens": 167984,
+    "outputTokens": 1882,
+    "totalTokens": 187557,
+    "roundTrips": 27,
+    "toolCalls": 32,
+    "docReads": 0,
+    "cliCalls": 14,
+    "cliChars": 5649,
+    "actionChars": 0,
+    "utilization": 1,
+    "repeatedReads": 0,
+    "acks": 0,
+    "failedCalls": 1
+  },
+  "elapsed": 45124,
+  "transcript": "/private/tmp/claude-501/-Users-innei-git-innei-repo-ryugi-cloud/b419a06a-cf49-4252-b732-21fea91e8fd5/tasks/a0b8cc83bffde087e.output"
+}

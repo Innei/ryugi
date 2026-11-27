@@ -1,0 +1,53 @@
+{
+  "variant": "after",
+  "task": "resolve-only",
+  "rep": "1",
+  "host": "codex",
+  "project": "/tmp/brief-eval/after-codex-resolve-only-1/project",
+  "docs": [
+    "document/release"
+  ],
+  "started": 1795763547157,
+  "checks": [
+    {
+      "name": "release text unchanged",
+      "ok": true
+    },
+    {
+      "name": "release/t1 answered or resolved",
+      "ok": true
+    },
+    {
+      "name": "release/t2 answered or resolved",
+      "ok": true
+    }
+  ],
+  "unread": [
+    {
+      "artifact": "document/release",
+      "unread": 0
+    }
+  ],
+  "consumed": true,
+  "completed": true,
+  "tasksDone": true,
+  "humanOverwritten": null,
+  "metrics": {
+    "host": "codex",
+    "inputTokens": 79181,
+    "cachedTokens": 72704,
+    "outputTokens": 348,
+    "totalTokens": 79529,
+    "roundTrips": 6,
+    "toolCalls": 4,
+    "docReads": 0,
+    "cliCalls": 4,
+    "cliChars": 649,
+    "actionChars": 0,
+    "utilization": 1,
+    "repeatedReads": 0,
+    "acks": 0,
+    "failedCalls": 0
+  },
+  "elapsed": 26630
+}

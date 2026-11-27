@@ -55,19 +55,19 @@ ryugi_hook_bin() {
     return 0
   fi
   if dev="$(ryugi_dev_plugin)"; then
-    candidate="$dev/hook/target/release/ryugi-hook"
+    candidate="$dev/hook/target/release/adeck-hook"
     if [ -f "$candidate" ] && [ -x "$candidate" ]; then
       printf '%s\n' "$candidate"
       return 0
     fi
   fi
-  candidate="$1/hook/target/release/ryugi-hook"
+  candidate="$1/hook/target/release/adeck-hook"
   if [ -f "$candidate" ] && [ -x "$candidate" ]; then
     printf '%s\n' "$candidate"
     return 0
   fi
   version="$(ryugi_plugin_version "$1")" || return 1
-  candidate="$(ryugi_user_store)/hook/$version/ryugi-hook"
+  candidate="$(ryugi_user_store)/hook/$version/adeck-hook"
   if [ -f "$candidate" ] && [ -x "$candidate" ]; then
     printf '%s\n' "$candidate"
     return 0

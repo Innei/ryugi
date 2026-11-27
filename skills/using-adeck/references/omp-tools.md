@@ -23,4 +23,4 @@ OMP discovers bundled Ryugi skills automatically, but does not expose a separate
 
 ## Live comment delivery
 
-The OMP Ryugi extension (`.omp/extensions/ryugi.ts`) spawns `ryugi-hook watch pi` on `session_start` and delivers browser comments, choice submissions, and document answers directly into the active OMP session via `sendMessage(..., { triggerTurn: true, deliverAs: 'followUp' })`.
+The OMP Ryugi extension (`.omp/extensions/ryugi.ts`) spawns `adeck-hook watch pi` on `session_start` and delivers browser comments, choice submissions, and document answers directly into the active OMP session via `sendMessage(..., { triggerTurn: true, deliverAs: 'followUp' })`.

@@ -279,11 +279,11 @@ test('a hub event wakes the Pi session and is acknowledged once delivered', asyn
   await until(() => !hub.sessions.has(session), 'a shut-down session leaves the hub');
 });
 
-test('the comment watch runs in ryugi-hook, not in the Pi process', async (t) => {
+test('the comment watch runs in adeck-hook, not in the Pi process', async (t) => {
   const p = project(t);
   const hub = hubFor(t);
   const log = join(p.root, 'spawned.log');
-  const wrapper = join(p.root, 'ryugi-hook');
+  const wrapper = join(p.root, 'adeck-hook');
   require('node:fs').writeFileSync(
     wrapper,
     `#!/bin/sh\necho "$@" >> '${log}'\nexec '${hook}' "$@"\n`,

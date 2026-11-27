@@ -15,9 +15,10 @@ without a verdict.
 **They decided on the page.** On their next message, read both. The
 report: `comment list --artifact verify/<id>`. The artboard: use the
 artifacts launcher to read `comment list --sections groups,threads --detail`
-for this project and artboard in Brief. Inspect groups with `kind=verify`. Follow
-each collection's printed `More`; the delivered thread page includes
-complete messages. Use the evidence before its exact `Acknowledge`. Verify
+for this project and artboard in Brief. Inspect groups with `kind=verify`.
+Continue any collection that names a cursor; the delivered thread page
+includes complete messages. Reply to or resolve each thread once you have used
+it. Verify
 groups use the human's `verdict`, independently of choice-round submission.
 
 - `pass`: done for that group. Leave its files alone.
