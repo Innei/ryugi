@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>JPEG Compressor</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: "Inter", system-ui, sans-serif;
+      color: #1c2924;
+      background: #f4f6f2;
+      --muted: #53645b;
+      --line: #dce4dd;
+      --green: #20533d;
+      --wash: #edf4ed;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    main { max-width: 1092px; margin: auto; padding: clamp(26px, 6vw, 70px) 24px; }
+    h1, h2, p, dl, dd { margin: 0; }
+    h1 { font-size: clamp(2rem, 5.7vw, 3.6rem); letter-spacing: -.068em; line-height: 1; font-weight: 750; }
+    h2 { font-size: 1.12rem; letter-spacing: -.025em; }
+    .intro { display: grid; gap: 13px; margin-bottom: 32px; }
+    .intro p, small, .muted { color: var(--muted); }
+    .workspace { display: grid; grid-template-columns: minmax(260px, 326px) minmax(0, 1fr); gap: 18px; align-items: stretch; }
+    .panel { background: #fff; border: 1px solid var(--line); border-radius: 18px; padding: 20px; min-width: 0; }
+    .settings { display: grid; align-content: start; gap: 22px; }
+    .section { display: grid; gap: 10px; }
+    .section + .section { border-top: 1px solid var(--line); padding-top: 20px; }
+    .field-title, .preview-bar { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+    label, .label { font-size: .83rem; font-weight: 700; }
+    .upload { position: relative; display: grid; place-items: center; gap: 6px; min-height: 104px; padding: 12px; border: 1px dashed #9bb5a4; border-radius: 11px; background: #f5f8f4; color: var(--green); cursor: pointer; text-align: center; }
+    .upload:hover, .upload:focus-within { background: var(--wash); border-color: var(--green); }
+    .upload input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+    #filename { max-width: 100%; overflow-wrap: anywhere; font-weight: 500; }
+    .badge { padding: 4px 8px; border-radius: 7px; background: var(--wash); color: var(--green); font-size: .77rem; font-weight: 750; font-variant-numeric: tabular-nums; }
+    input[type="range"] { width: 100%; margin: 4px 0 0; accent-color: var(--green); cursor: pointer; }
+    .range-labels { display: flex; justify-content: space-between; }
+    .width-input { position: relative; }
+    .width-input input { width: 100%; border-radius: 9px; border: 1px solid #bacabe; background: #fff; color: inherit; font: inherit; padding: 9px 59px 9px 11px; }
+    .width-input span { position: absolute; right: 12px; top: 11px; color: var(--muted); font-size: .82rem; pointer-events: none; }
+    .preview { display: grid; grid-template-rows: auto minmax(254px, 1fr) auto auto; gap: 15px; }
+    #dimensions { text-align: right; }
+    .stage { display: grid; place-items: center; min-width: 0; overflow: hidden; border: 1px solid var(--line); border-radius: 11px; background-color: #f5f8f4; background-image: radial-gradient(#d4dfd5 1px, transparent 1px); background-size: 15px 15px; }
+    #preview-image { display: block; max-width: 100%; max-height: 420px; object-fit: contain; }
+    .empty { display: grid; justify-items: center; gap: 10px; padding: 20px; text-align: center; }
+    .empty-icon { display: grid; place-items: center; width: 48px; height: 48px; border: 1px solid #d3e1d5; border-radius: 12px; color: var(--green); background: var(--wash); }
+    .empty strong { font-size: .9rem; }
+    .stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border: 1px solid var(--line); border-radius: 11px; }
+    .stats div { display: grid; gap: 5px; padding: 11px 13px; }
+    .stats div + div { border-left: 1px solid var(--line); }
+    dt { font-size: .75rem; color: var(--muted); }
+    dd { font-weight: 750; font-size: .94rem; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+    #difference { color: var(--green); }
+    .actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    #status { font-size: .79rem; color: var(--muted); }
+    #status.error { color: #a02f20; }
+    button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; margin-left: auto; border: 0; border-radius: 9px; padding: 10px 14px; min-height: 40px; background: var(--green); color: #fff; font: inherit; font-size: .82rem; font-weight: 700; white-space: nowrap; cursor: pointer; }
+    button:hover:enabled { background: #163e2c; }
+    button:disabled { color: #52665a; background: #e7eee7; cursor: default; }
+    :focus-visible, .upload:focus-within { outline: 2px solid #347452; outline-offset: 3px; }
+    [hidden] { display: none !important; }
+    @media (max-width: 660px) {
+      main { padding-inline: 14px; }
+      .workspace { grid-template-columns: 1fr; }
+      .panel { padding: 15px; }
+      .preview { grid-template-rows: auto minmax(215px, 1fr) auto auto; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header class="intro">
+      <h1>JPEG Compressor</h1>
+      <p>Resize and compress an image locally on your device.</p>
+    </header>
+
+    <div class="workspace">
+      <section class="panel settings" aria-labelledby="settings-heading">
+        <h2 id="settings-heading">Image settings</h2>
+
+        <div class="section">
+          <span class="label">Source image</span>
+          <label class="upload" for="source-image">
+            <ryugi-icon name="upload" size="19" aria-hidden="true"></ryugi-icon>
+            <span>Choose image</span>
+            <small id="filename">Select a local image file</small>
+            <input id="source-image" type="file" accept="image/*" aria-label="Choose a local image" aria-describedby="filename">
+          </label>
+        </div>
+
+        <div class="section">
+          <div class="field-title">
+            <label for="jpeg-quality">JPEG quality</label>
+            <output class="badge" id="quality-value" for="jpeg-quality">80%</output>
+          </div>
+          <input id="jpeg-quality" type="range" min="1" max="100" value="80">
+          <div class="range-labels" aria-hidden="true"><small>Smaller file</small><small>Higher quality</small></div>
+        </div>
+
+        <div class="section">
+          <label for="max-width">Max width</label>
+          <div class="width-input">
+            <input id="max-width" type="number" min="1" step="1" value="1600" required aria-describedby="width-help">
+            <span aria-hidden="true">px</span>
+          </div>
+          <small id="width-help">Images keep their proportions. Smaller images stay at their original width.</small>
+        </div>
+      </section>
+
+      <section class="panel preview" aria-labelledby="preview-heading">
+        <div class="preview-bar">
+          <h2 id="preview-heading">Compressed preview</h2>
+          <small id="dimensions" hidden></small>
+        </div>
+
+        <div class="stage">
+          <div class="empty" id="preview-placeholder">
+            <span class="empty-icon"><ryugi-icon name="image" size="23" aria-hidden="true"></ryugi-icon></span>
+            <strong id="placeholder-label">Choose an image to preview it</strong>
+          </div>
+          <img id="preview-image" alt="Compressed JPEG preview" hidden>
+        </div>
+
+        <dl class="stats">
+          <div><dt>Original</dt><dd id="original-size">—</dd></div>
+          <div><dt>Compressed</dt><dd id="compressed-size">—</dd></div>
+          <div><dt>Size change</dt><dd id="difference">—</dd></div>
+        </dl>
+
+        <div class="actions">
+          <span id="status" role="status"></span>
+          <button id="download-jpeg" type="button" disabled>
+            <ryugi-icon name="download" size="16" aria-hidden="true"></ryugi-icon> Download JPEG
+          </button>
+        </div>
+      </section>
+    </div>
+  </main>
+  <script>
+    const source = document.getElementById('source-image');
+    const filename = document.getElementById('filename');
+    const quality = document.getElementById('jpeg-quality');
+    const qualityValue = document.getElementById('quality-value');
+    const maxWidth = document.getElementById('max-width');
+    const preview = document.getElementById('preview-image');
+    const placeholder = document.getElementById('preview-placeholder');
+    const placeholderLabel = document.getElementById('placeholder-label');
+    const dimensions = document.getElementById('dimensions');
+    const originalSize = document.getElementById('original-size');
+    const compressedSize = document.getElementById('compressed-size');
+    const difference = document.getElementById('difference');
+    const status = document.getElementById('status');
+    const download = document.getElementById('download-jpeg');
+
+    let file;
+    let image;
+    let outputUrl;
+    let revision = 0;
+    let timer;
+    const number = new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 });
+
+    function formatSize(bytes) {
+      if (bytes < 1000) return bytes + ' B';
+      if (bytes < 1000000) return number.format(bytes / 1000) + ' kB';
+      return number.format(bytes / 1000000) + ' MB';
+    }
+
+    function setStatus(message = '', error = false) {
+      status.textContent = message;
+      status.classList.toggle('error', error);
+    }
+
+    function clearResult(message) {
+      preview.hidden = true;
+      preview.removeAttribute('src');
+      if (outputUrl) URL.revokeObjectURL(outputUrl);
+      outputUrl = undefined;
+      placeholder.hidden = false;
+      placeholderLabel.textContent = message;
+      dimensions.hidden = true;
+      compressedSize.textContent = '—';
+      difference.textContent = '—';
+      download.disabled = true;
+    }
+
+    async function compress(expectedRevision) {
+      const width = Math.min(image.naturalWidth, maxWidth.valueAsNumber);
+      const height = Math.max(1, Math.round(image.naturalHeight * width / image.naturalWidth));
+      const canvas = document.createElement('canvas');
+
+      try {
+        canvas.width = width;
+        canvas.height = height;
+        const context = canvas.getContext('2d');
+        context.fillStyle = '#fff';
+        context.fillRect(0, 0, width, height);
+        context.drawImage(image, 0, 0, width, height);
+        const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', Number(quality.value) / 100));
+        if (expectedRevision !== revision) return;
+        if (!blob || blob.type !== 'image/jpeg') throw new Error('JPEG encoding failed');
+
+        const percentage = file.size ? (blob.size - file.size) / file.size : 0;
+        outputUrl = URL.createObjectURL(blob);
+        preview.src = outputUrl;
+        preview.hidden = false;
+        placeholder.hidden = true;
+        dimensions.textContent = width + ' × ' + height + ' px';
+        dimensions.hidden = false;
+        compressedSize.textContent = formatSize(blob.size);
+        difference.textContent = new Intl.NumberFormat(undefined, {
+          style: 'percent', maximumFractionDigits: 1, signDisplay: 'exceptZero'
+        }).format(percentage);
+        download.disabled = false;
+        setStatus('JPEG ready');
+      } catch {
+        if (expectedRevision === revision) {
+          clearResult('Preview unavailable');
+          setStatus('Could not create a JPEG. Try a smaller max width.', true);
+        }
+      } finally {
+        canvas.width = 0;
+        canvas.height = 0;
+      }
+    }
+
+    function scheduleCompression() {
+      qualityValue.textContent = quality.value + '%';
+      if (!image) return;
+      clearTimeout(timer);
+      const expectedRevision = ++revision;
+      if (!maxWidth.validity.valid) {
+        clearResult('Enter a valid max width to preview');
+        setStatus('Max width must be a positive whole number.', true);
+        return;
+      }
+      clearResult('Creating preview…');
+      setStatus('Compressing…');
+      timer = setTimeout(() => compress(expectedRevision), 120);
+    }
+
+    source.addEventListener('change', async () => {
+      const expectedRevision = ++revision;
+      clearTimeout(timer);
+      file = source.files[0];
+      image = undefined;
+      filename.textContent = file ? file.name : 'Select a local image file';
+      originalSize.textContent = file ? formatSize(file.size) : '—';
+      clearResult(file ? 'Reading image…' : 'Choose an image to preview it');
+      setStatus();
+      if (!file) return;
+
+      const candidate = new Image();
+      const sourceUrl = URL.createObjectURL(file);
+      try {
+        candidate.src = sourceUrl;
+        await candidate.decode();
+        if (expectedRevision !== revision) return;
+        image = candidate;
+        scheduleCompression();
+      } catch {
+        if (expectedRevision === revision) {
+          clearResult('Preview unavailable');
+          setStatus('Could not read this image. Choose another file.', true);
+        }
+      } finally {
+        URL.revokeObjectURL(sourceUrl);
+      }
+    });
+
+    for (const control of [quality, maxWidth]) {
+      control.addEventListener('input', scheduleCompression);
+      control.addEventListener('change', scheduleCompression);
+    }
+
+    download.addEventListener('click', () => {
+      if (!outputUrl) return;
+      const link = document.createElement('a');
+      link.href = outputUrl;
+      link.download = (file.name.replace(/\.[^.]+$/, '') || 'image') + '-compressed.jpg';
+      document.body.append(link);
+      link.click();
+      link.remove();
+    });
+  </script>
+</body>
+</html>

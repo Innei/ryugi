@@ -1,0 +1,1 @@
+[Created index.html](./index.html) with three draft search previews, 1–5 tone ratings, a favorite picker, a review note, and a live summary.

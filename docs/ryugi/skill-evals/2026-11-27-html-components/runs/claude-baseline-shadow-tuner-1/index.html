@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Pricing card shadow tuner</title>
+    <style>
+      :root { color-scheme: light dark; font-family: system-ui, -apple-system, sans-serif; }
+      body { margin: 0; padding: 24px; }
+      h1 { font-size: 18px; margin: 0 0 4px; }
+      .sub { margin: 0 0 20px; opacity: 0.7; font-size: 13px; }
+      .layout { display: grid; grid-template-columns: minmax(260px, 340px) 1fr; gap: 24px; align-items: start; }
+      @media (max-width: 760px) { .layout { grid-template-columns: 1fr; } }
+      .controls { display: flex; flex-direction: column; gap: 14px; }
+      .field { display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+      .field > span { display: flex; justify-content: space-between; font-weight: 500; }
+      .field small { opacity: 0.6; font-weight: 400; }
+      .colour-row { display: flex; gap: 10px; align-items: center; }
+      .colour-row input[type="color"] { width: 44px; height: 32px; padding: 0; border: 1px solid #8884; border-radius: 6px; background: none; cursor: pointer; }
+      .colour-row code { font-size: 12px; }
+      .stage { border-radius: 16px; padding: 48px 24px; display: flex; justify-content: center; align-items: center; min-height: 420px; transition: background 0.2s; }
+      .stage-toggle { display: flex; gap: 8px; align-items: center; font-size: 13px; margin-bottom: 10px; }
+      .card { width: 280px; background: #fff; color: #111; padding: 28px 24px; box-sizing: border-box; }
+      .card .tier { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: #6b5cff; }
+      .card .price { font-size: 40px; font-weight: 700; margin: 10px 0 2px; }
+      .card .price small { font-size: 14px; font-weight: 400; color: #666; }
+      .card p { font-size: 13px; color: #555; margin: 0 0 18px; }
+      .card ul { list-style: none; padding: 0; margin: 0 0 22px; font-size: 14px; display: grid; gap: 8px; }
+      .card li::before { content: "✓"; color: #6b5cff; margin-right: 8px; font-weight: 700; }
+      .card .cta { display: block; text-align: center; background: #6b5cff; color: #fff; padding: 10px; border-radius: 8px; font-weight: 600; font-size: 14px; }
+      pre { margin: 0; padding: 14px; border-radius: 10px; background: #8881; border: 1px solid #8883; font-size: 12.5px; overflow-x: auto; white-space: pre-wrap; }
+      .output-head { display: flex; justify-content: space-between; align-items: center; margin: 18px 0 8px; font-size: 13px; font-weight: 600; }
+      #copy-status { font-weight: 400; font-size: 12px; opacity: 0.7; margin-right: 8px; }
+    </style>
+  </head>
+  <body>
+    <h1>Pricing card shadow tuner</h1>
+    <p class="sub">Drag the controls to change the shadow on the sample card, then copy the CSS.</p>
+
+    <div class="layout">
+      <section class="controls" aria-label="Shadow controls">
+        <label class="field"><span>Elevation (Y offset) <small>px</small></span>
+          <ryugi-slider-input id="elevation" value="12" min="0" max="64" step="1"></ryugi-slider-input>
+        </label>
+        <label class="field"><span>Blur <small>px</small></span>
+          <ryugi-slider-input id="blur" value="32" min="0" max="120" step="1"></ryugi-slider-input>
+        </label>
+        <label class="field"><span>Spread <small>px</small></span>
+          <ryugi-slider-input id="spread" value="-8" min="-40" max="40" step="1"></ryugi-slider-input>
+        </label>
+        <label class="field"><span>Corner radius <small>px</small></span>
+          <ryugi-slider-input id="radius" value="16" min="0" max="40" step="1"></ryugi-slider-input>
+        </label>
+        <div class="field">
+          <span>Shadow colour</span>
+          <div class="colour-row">
+            <input id="colour" type="color" value="#1e1b4b" aria-label="Shadow colour" />
+            <code id="colour-hex">#1e1b4b</code>
+          </div>
+        </div>
+        <label class="field"><span>Shadow opacity <small>%</small></span>
+          <ryugi-slider-input id="opacity" value="18" min="0" max="100" step="1"></ryugi-slider-input>
+        </label>
+        <label class="field"><span>Ambient layer <small>adds a tight contact shadow</small></span>
+          <ryugi-switch id="ambient" checked></ryugi-switch>
+        </label>
+      </section>
+
+      <section>
+        <label class="stage-toggle">Dark page background <ryugi-switch id="dark-stage" size="small"></ryugi-switch></label>
+        <div class="stage" id="stage">
+          <div class="card" id="card">
+            <div class="tier">Pro</div>
+            <div class="price">$24<small> / month</small></div>
+            <p>For growing teams that need more room.</p>
+            <ul>
+              <li>Unlimited projects</li>
+              <li>Priority support</li>
+              <li>Advanced analytics</li>
+              <li>SSO &amp; audit log</li>
+            </ul>
+            <span class="cta">Choose Pro</span>
+          </div>
+        </div>
+
+        <div class="output-head">
+          <span>Resulting CSS</span>
+          <span><span id="copy-status" role="status"></span><ryugi-button id="copy" variant="primary" size="small" icon="copy">Copy CSS</ryugi-button></span>
+        </div>
+        <pre id="css"></pre>
+      </section>
+    </div>
+
+    <script>
+      const defaults = { elevation: 12, blur: 32, spread: -8, radius: 16, opacity: 18, ambient: true, darkStage: false };
+      const state = { ...defaults, colour: '#1e1b4b' };
+      const $ = (id) => document.getElementById(id);
+
+      const rgba = (hex, a) => {
+        const n = parseInt(hex.slice(1), 16);
+        return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${+a.toFixed(3)})`;
+      };
+
+      function render() {
+        const a = state.opacity / 100;
+        const main = `0 ${state.elevation}px ${state.blur}px ${state.spread}px ${rgba(state.colour, a)}`;
+        const layers = [main];
+        if (state.ambient) {
+          const y = Math.max(1, Math.round(state.elevation / 6));
+          layers.unshift(`0 ${y}px ${Math.max(2, y * 2)}px 0 ${rgba(state.colour, Math.min(1, a * 0.6))}`);
+        }
+        const shadow = layers.join(',\n    ');
+        const card = $('card');
+        card.style.boxShadow = layers.join(', ');
+        card.style.borderRadius = state.radius + 'px';
+        $('stage').style.background = state.darkStage ? '#15161c' : '#f3f4f8';
+        $('colour-hex').textContent = state.colour;
+        $('css').textContent = `.pricing-card {\n  border-radius: ${state.radius}px;\n  box-shadow:\n    ${shadow};\n}`;
+      }
+
+      const map = { elevation: 'elevation', blur: 'blur', spread: 'spread', radius: 'radius', opacity: 'opacity' };
+
+      document.addEventListener('ryugi-change', (e) => {
+        const id = e.target.id;
+        if (map[id]) state[map[id]] = Number(e.detail.value ?? defaults[id]);
+        else if (id === 'ambient') state.ambient = !!e.detail.checked;
+        else if (id === 'dark-stage') state.darkStage = !!e.detail.checked;
+        else return;
+        render();
+      });
+
+      const colour = $('colour');
+      const onColour = () => { state.colour = colour.value; render(); };
+      colour.addEventListener('input', onColour);
+      colour.addEventListener('change', onColour);
+
+      document.addEventListener('ryugi-ui:ready', () => {
+        for (const id of Object.keys(map)) {
+          const v = Number($(id).value);
+          if (!Number.isNaN(v)) state[id] = v;
+        }
+        state.ambient = !!$('ambient').checked;
+        state.darkStage = !!$('dark-stage').checked;
+        state.colour = colour.value;
+        render();
+      }, { once: true });
+
+      $('copy').addEventListener('click', async () => {
+        const text = $('css').textContent;
+        try {
+          await navigator.clipboard.writeText(text);
+          $('copy-status').textContent = 'Copied';
+        } catch {
+          const r = document.createRange();
+          r.selectNodeContents($('css'));
+          const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+          $('copy-status').textContent = 'Selected, press ⌘C / Ctrl+C';
+        }
+        setTimeout(() => ($('copy-status').textContent = ''), 2000);
+      });
+
+      render();
+    </script>
+  </body>
+</html>

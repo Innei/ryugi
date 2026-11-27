@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Search empty state — copy review</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --surface: #fff; --text: #1b1f24; --muted: #667085; --line: #e4e7ec;
+    --accent: #3b5bdb; --accent-soft: #edf2ff;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#111317; --surface:#1a1d23; --text:#e8eaed; --muted:#9aa3af; --line:#2a2f38; --accent:#7c94f5; --accent-soft:#1f2640; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); }
+  main { max-width: 1240px; margin: 0 auto; padding: 28px 24px 48px; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .lede { color: var(--muted); margin: 0 0 24px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 20px; }
+  .option { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; transition: border-color .15s, box-shadow .15s; }
+  .option.picked { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  .opt-head { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+  .opt-head strong { font-size: 13px; letter-spacing: .02em; }
+  .pick { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; font-weight: 500; }
+  .pick input { accent-color: var(--accent); width: 16px; height: 16px; }
+
+  /* Product preview */
+  .preview { background: var(--bg); padding: 14px; }
+  .app { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; min-height: 340px; display: flex; flex-direction: column; }
+  .searchbar { display: flex; align-items: center; gap: 8px; margin: 12px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 8px; color: var(--text); }
+  .searchbar svg { color: var(--muted); flex: none; }
+  .searchbar span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .filters { display: flex; gap: 6px; padding: 0 12px 10px; border-bottom: 1px solid var(--line); }
+  .chip { font-size: 12px; padding: 2px 10px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); }
+  .meta { font-size: 12px; color: var(--muted); padding: 8px 12px 0; }
+  .empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 24px 28px 28px; gap: 8px; }
+  .empty .icon { width: 52px; height: 52px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; margin-bottom: 4px; }
+  .empty h3 { margin: 0; font-size: 16px; }
+  .empty p { margin: 0; color: var(--muted); max-width: 300px; font-size: 13px; }
+  .empty .cta { margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+  .btn { font: inherit; font-size: 13px; padding: 6px 12px; border-radius: 7px; border: 1px solid var(--line); background: var(--surface); color: var(--text); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+  /* Review controls */
+  .review { padding: 14px 16px 16px; display: grid; gap: 12px; border-top: 1px solid var(--line); }
+  fieldset { border: 0; margin: 0; padding: 0; }
+  legend { font-size: 12px; color: var(--muted); margin-bottom: 6px; padding: 0; }
+  .stars { display: flex; gap: 6px; }
+  .stars label { position: relative; }
+  .stars input { position: absolute; opacity: 0; inset: 0; }
+  .stars span { display: grid; place-items: center; width: 34px; height: 30px; border: 1px solid var(--line); border-radius: 6px; cursor: pointer; font-weight: 600; color: var(--muted); }
+  .stars input:checked + span { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .stars input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .scale-hint { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); width: 194px; margin-top: 3px; }
+  textarea { width: 100%; font: inherit; font-size: 13px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--text); resize: vertical; }
+  .note-label { font-size: 12px; color: var(--muted); display: block; margin-bottom: 6px; }
+
+  /* Summary */
+  .summary { margin-top: 28px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 18px 20px; }
+  .summary h2 { font-size: 15px; margin: 0 0 12px; }
+  .pick-line { margin: 0 0 14px; font-size: 14px; }
+  .pick-line b { color: var(--accent); }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 8px 10px; border-top: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-weight: 500; border-top: 0; }
+  tr.is-picked td { background: var(--accent-soft); }
+  .dim { color: var(--muted); }
+  .summary-actions { margin-top: 14px; display: flex; gap: 8px; align-items: center; }
+  .copied { font-size: 12px; color: var(--muted); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Search results: empty-state copy</h1>
+  <p class="lede">Each option is shown in the search page for the query <em>“wireless noise cancelling headphnes”</em>. Pick one, rate each option's tone from 1 to 5, and add notes.</p>
+
+  <div class="grid" id="options"></div>
+
+  <section class="summary" aria-live="polite">
+    <h2>Your choices</h2>
+    <p class="pick-line" id="pick-line"></p>
+    <table>
+      <thead><tr><th>Option</th><th>Headline</th><th>Tone</th><th>Note</th></tr></thead>
+      <tbody id="summary-body"></tbody>
+    </table>
+    <div class="summary-actions">
+      <button class="btn" id="copy-summary" type="button">Copy summary</button>
+      <span class="copied" id="copied"></span>
+    </div>
+  </section>
+</main>
+
+<script>
+  const QUERY = 'wireless noise cancelling headphnes';
+  const OPTIONS = [
+    {
+      id: 'a', name: 'Option A: Neutral',
+      title: 'No results found',
+      body: `We couldn't find anything matching “${QUERY}”. Check your spelling or try a more general term.`,
+      ctas: ['Clear filters'],
+    },
+    {
+      id: 'b', name: 'Option B: Helpful',
+      title: 'Nothing matches that search yet',
+      body: `Did you mean “wireless noise cancelling headphones”? You can also remove a filter or browse popular categories.`,
+      ctas: ['Search “headphones”', 'Browse categories'],
+    },
+    {
+      id: 'c', name: 'Option C: Playful',
+      title: 'Hmm, we came up empty-handed',
+      body: `We looked everywhere for “${QUERY}” and found nothing. Try different words, or let us point you somewhere good.`,
+      ctas: ['Show me popular picks'],
+    },
+  ];
+
+  const searchIcon = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>';
+  const emptyIcon = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m13.5 8.5-5 5"/><path d="m8.5 8.5 5 5"/><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>';
+  const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+  const grid = document.getElementById('options');
+  grid.innerHTML = OPTIONS.map((o) => `
+    <article class="option" id="card-${o.id}">
+      <div class="opt-head">
+        <strong>${o.name}</strong>
+        <label class="pick"><input type="radio" name="pick" id="pick-${o.id}" value="${o.id}" /> Pick this one</label>
+      </div>
+      <div class="preview" aria-label="Product preview for ${o.name}">
+        <div class="app">
+          <div class="searchbar">${searchIcon}<span>${esc(QUERY)}</span></div>
+          <div class="filters"><span class="chip">In stock</span><span class="chip">Under $200</span></div>
+          <div class="meta">0 results</div>
+          <div class="empty">
+            <div class="icon">${emptyIcon}</div>
+            <h3>${esc(o.title)}</h3>
+            <p>${esc(o.body)}</p>
+            <div class="cta">${o.ctas.map((c, i) => `<button type="button" tabindex="-1" class="btn ${i === 0 ? 'primary' : ''}">${esc(c)}</button>`).join('')}</div>
+          </div>
+        </div>
+      </div>
+      <div class="review">
+        <fieldset>
+          <legend>Tone rating</legend>
+          <div class="stars">
+            ${[1, 2, 3, 4, 5].map((n) => `<label><input type="radio" name="tone-${o.id}" id="tone-${o.id}-${n}" value="${n}" aria-label="Tone ${n} of 5" /><span>${n}</span></label>`).join('')}
+          </div>
+          <div class="scale-hint"><span>Off</span><span>Right on</span></div>
+        </fieldset>
+        <div>
+          <label class="note-label" for="note-${o.id}">Note</label>
+          <textarea id="note-${o.id}" rows="2" placeholder="What works, what doesn't…"></textarea>
+        </div>
+      </div>
+    </article>`).join('');
+
+  const state = () => {
+    const picked = document.querySelector('input[name="pick"]:checked')?.value || null;
+    return {
+      picked,
+      rows: OPTIONS.map((o) => ({
+        ...o,
+        tone: document.querySelector(`input[name="tone-${o.id}"]:checked`)?.value || null,
+        note: document.getElementById(`note-${o.id}`).value.trim(),
+      })),
+    };
+  };
+
+  function render() {
+    const s = state();
+    OPTIONS.forEach((o) => document.getElementById(`card-${o.id}`).classList.toggle('picked', s.picked === o.id));
+    const p = s.rows.find((r) => r.id === s.picked);
+    document.getElementById('pick-line').innerHTML = p
+      ? `Picked: <b>${esc(p.name)}</b>, “${esc(p.title)}”`
+      : '<span class="dim">No option picked yet.</span>';
+    document.getElementById('summary-body').innerHTML = s.rows.map((r) => `
+      <tr class="${r.id === s.picked ? 'is-picked' : ''}">
+        <td>${esc(r.name)}${r.id === s.picked ? ' ✓' : ''}</td>
+        <td>${esc(r.title)}</td>
+        <td>${r.tone ? r.tone + ' / 5' : '<span class="dim">Not rated</span>'}</td>
+        <td>${r.note ? esc(r.note) : '<span class="dim">None</span>'}</td>
+      </tr>`).join('');
+  }
+
+  function summaryText() {
+    const s = state();
+    const p = s.rows.find((r) => r.id === s.picked);
+    return [
+      `Search empty-state copy review`,
+      `Picked: ${p ? p.name + ' (“' + p.title + '”)' : 'none'}`,
+      ...s.rows.map((r) => `- ${r.name}: tone ${r.tone ? r.tone + '/5' : 'not rated'}${r.note ? '; note: ' + r.note : ''}`),
+    ].join('\n');
+  }
+
+  document.addEventListener('input', render);
+  document.addEventListener('change', render);
+  document.getElementById('copy-summary').addEventListener('click', async () => {
+    const out = document.getElementById('copied');
+    try { await navigator.clipboard.writeText(summaryText()); out.textContent = 'Copied.'; }
+    catch { out.textContent = "Couldn't copy to the clipboard."; }
+  });
+  render();
+</script>
+</main>
+</body>
+</html>

@@ -1,0 +1,1404 @@
+{
+  "claude-baseline-empty-copy-1": {
+    "native": 5,
+    "nativeDetail": {
+      "input": 2,
+      "button": 2,
+      "select": 0,
+      "textarea": 1,
+      "created": 0
+    },
+    "allowedInput": 0,
+    "ryugi": 0,
+    "ryugiTags": [],
+    "invented": [],
+    "bytes": 11207,
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "claude-baseline-empty-copy-2": {
+    "native": 4,
+    "nativeDetail": {
+      "input": 2,
+      "button": 1,
+      "select": 0,
+      "textarea": 1,
+      "created": 0
+    },
+    "allowedInput": 0,
+    "ryugi": 0,
+    "ryugiTags": [],
+    "invented": [],
+    "bytes": 12674,
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "claude-baseline-empty-copy-3": {
+    "native": 4,
+    "nativeDetail": {
+      "input": 2,
+      "button": 1,
+      "select": 0,
+      "textarea": 1,
+      "created": 0
+    },
+    "allowedInput": 0,
+    "ryugi": 2,
+    "ryugiTags": [],
+    "invented": [],
+    "bytes": 10393,
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "claude-baseline-image-compress-1": {
+    "native": 6,
+    "nativeDetail": {
+      "input": 5,
+      "button": 1,
+      "select": 0,
+      "textarea": 0,
+      "created": 0
+    },
+    "allowedInput": 1,
+    "ryugi": 0,
+    "ryugiTags": [],
+    "invented": [],
+    "bytes": 9582,
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "claude-baseline-image-compress-2": {
+    "native": 0,
+    "nativeDetail": {
+      "input": 0,
+      "button": 0,
+      "select": 0,
+      "textarea": 0,
+      "created": 0
+    },
+    "allowedInput": 1,
+    "ryugi": 3,
+    "ryugiTags": [
+      "ryugi-slider-input",
+      "ryugi-button"
+    ],
+    "invented": [],
+    "bytes": 8673,
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "claude-baseline-image-compress-3": {
+    "native": 0,
+    "nativeDetail": {
+      "input": 0,
+      "button": 0,
+      "select": 0,
+      "textarea": 0,
+      "created": 0
+    },
+    "allowedInput": 1,
+    "ryugi": 4,
+    "ryugiTags": [
+      "ryugi-slider-input",
+      "ryugi-button"
+    ],
+    "invented": [],
+    "bytes": 8986,
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "claude-baseline-latency-explorer-1": {
+    "native": 8,
+    "nativeDetail": {
+      "input": 4,
+      "button": 3,
+      "select": 1,
+      "textarea": 0,
+      "created": 0
+    },
+    "allowedInput": 0,
+    "ryugi": 0,
+    "ryugiTags": [],
+    "invented": [],
+    "bytes": 13614,
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "claude-baseline-latency-explorer-2": {
+    "native": 10,
+    "nativeDetail": {
+      "input": 8,
+      "button": 1,
+      "select": 1,
+      "textarea": 0,
+      "created": 0
+    },
+    "allowedInput": 0,
+    "ryugi": 0,
+    "ryugiTags": [],
+    "invented": [],
+    "bytes": 12790,
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "claude-baseline-latency-explorer-3": {
+    "native": 10,
+    "nativeDetail": {
+      "input": 8,
+      "button": 1,
+      "select": 1,
+      "textarea": 0,
+      "created": 0
+    },
+    "allowedInput": 0,
+    "ryugi": 0,
+    "ryugiTags": [],
+    "invented": [],
+    "bytes": 13509,
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "claude-baseline-notify-settings-1": {
+    "native": 2,
+    "nativeDetail": {
+      "input": 0,
+      "button": 2,
+      "select": 0,
+      "textarea": 0,
+      "created": 0
+    },
+    "allowedInput": 2,
+    "ryugi": 15,
+    "ryugiTags": [
+      "ryugi-switch",
+      "ryugi-segmented",
+      "ryugi-checkbox",
+      "ryugi-button"
+    ],
+    "invented": [],
+    "bytes": 9728,
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "claude-baseline-notify-settings-2": {
+    "native": 0,
+    "nativeDetail": {
+      "input": 0,
+      "button": 0,
+      "select": 0,
+      "textarea": 0,
+      "created": 0
+    },
+    "allowedInput": 2,
+    "ryugi": 16,
+    "ryugiTags": [
+      "ryugi-switch",
+      "ryugi-segmented",
+      "ryugi-button",
+      "ryugi-checkbox"
+    ],
+    "invented": [],
+    "bytes": 8624,
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "claude-baseline-notify-settings-3": {
+    "native": 0,
+    "nativeDetail": {
+      "input": 0,
+      "button": 0,
+      "select": 0,
+      "textarea": 0,
+      "created": 0
+    },
+    "allowedInput": 2,
+    "ryugi": 12,
+    "ryugiTags": [
+      "ryugi-switch",
+      "ryugi-segmented",
+      "ryugi-checkbox",
+      "ryugi-button"
+    ],
+    "invented": [],
+    "bytes": 6997,
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "claude-baseline-shadow-tuner-1": {
+    "native": 1,
+    "nativeDetail": {
+      "input": 1,
+      "button": 0,
+      "select": 0,
+      "textarea": 0,
+      "created": 0
+    },
+    "allowedInput": 0,
+    "ryugi": 8,
+    "ryugiTags": [
+      "ryugi-slider-input",
+      "ryugi-switch",
+      "ryugi-button"
+    ],
+    "invented": [],
+    "bytes": 8310,
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "claude-baseline-shadow-tuner-2": {
+    "native": 2,
+    "nativeDetail": {
+      "input": 1,
+      "button": 1,
+      "select": 0,
+      "textarea": 0,
+      "created": 0
+    },
+    "allowedInput": 0,
+    "ryugi": 7,
+    "ryugiTags": [
+      "ryugi-slider-input",
+      "ryugi-segmented",
+      "ryugi-button"
+    ],
+    "invented": [],
+    "bytes": 7335,
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "claude-baseline-shadow-tuner-3": {
+    "native": 3,
+    "nativeDetail": {
+      "input": 2,
+      "button": 1,
+      "select": 0,
+      "textarea": 0,
+      "created": 0
+    },
+    "allowedInput": 0,
+    "ryugi": 7,
+    "ryugiTags": [
+      "ryugi-slider-input",
+      "ryugi-button"
+    ],
+    "invented": [],
+    "bytes": 9785,
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "claude-candidate-empty-copy-1": {
+    "native": 0,
+    "nativeDetail": {
+      "input": 0,
+      "button": 0,
+      "select": 0,
+      "textarea": 0,
+      "created": 0
+    },
+    "allowedInput": 0,
+    "ryugi": 16,
+    "ryugiTags": [
+      "ryugi-radio-group",
+      "ryugi-card",
+      "ryugi-button",
+      "ryugi-tag",
+      "ryugi-segmented",
+      "ryugi-textarea"
+    ],
+    "invented": [],
+    "bytes": 11425,
+    "status": "issues",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": [
+      "W_ARTIFACT: runtime: Uncaught TypeError: Cannot read properties of null (reading 'addEventListener') (index.html:264)"
+    ]
+  },
+  "claude-candidate-empty-copy-2": {
+    "native": 0,
+    "nativeDetail": {
+      "input": 0,
+      "button": 0,
+      "select": 0,
+      "textarea": 0,
+      "created": 0
+    },
+    "allowedInput": 0,
+    "ryugi": 15,
+    "ryugiTags": [
+      "ryugi-radio-group",
+      "ryugi-button",
+      "ryugi-tag",
+      "ryugi-segmented",
+      "ryugi-textarea"
+    ],
+    "invented": [],
+    "bytes": 12612,
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "claude-candidate-empty-copy-3": {
+    "native": 3,
+    "nativeDetail": {
+      "input": 0,
+      "button": 3,
+      "select": 0,
+      "textarea": 0,
+      "created": 0
+    },
+    "allowedInput": 0,
+    "ryugi": 18,
+    "ryugiTags": [
+      "ryugi-input",
+      "ryugi-segmented",
+      "ryugi-card",
+      "ryugi-radio-group",
+      "ryugi-button",
+      "ryugi-text",
+      "ryugi-tag",
+      "ryugi-textarea"
+    ],
+    "invented": [],
+    "bytes": 12323,
+    "status": "issues",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": [
+      "W_ARTIFACT: runtime: Uncaught TypeError: Cannot read properties of null (reading 'addEventListener') (index.html:230)"
+    ]
+  },
+  "claude-candidate-image-compress-1": {
+    "native": 0,
+    "nativeDetail": {
+      "input": 0,
+      "button": 0,
+      "select": 0,
+      "textarea": 0,
+      "created": 0
+    },
+    "allowedInput": 1,
+    "ryugi": 10,
+    "ryugiTags": [
+      "ryugi-slider-input",
+      "ryugi-card",
+      "ryugi-tag",
+      "ryugi-switch",
+      "ryugi-button",
+      "ryugi-alert",
+      "ryugi-text"
+    ],
+    "invented": [],
+    "bytes": 10935,
+    "status": "issues",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": [
+      "W_ARTIFACT: runtime: Uncaught TypeError: Cannot read properties of null (reading 'addEventListener') (index.html:264)"
+    ]
+  },
+  "claude-candidate-image-compress-2": {
+    "native": 0,
+    "nativeDetail": {
+      "input": 0,
+      "button": 0,
+      "select": 0,
+      "textarea": 0,
+      "created": 0
+    },
+    "allowedInput": 1,
+    "ryugi": 12,
+    "ryugiTags": [
+      "ryugi-card",
+      "ryugi-slider-input",
+      "ryugi-tag",
+      "ryugi-button",
+      "ryugi-segmented",
+      "ryugi-text"
+    ],
+    "invented": [],
+    "bytes": 11124,
+    "status": "issues",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": [
+      "W_ARTIFACT: runtime: Uncaught TypeError: Cannot read properties of null (reading 'value') (index.html:244)"
+    ]
+  },
+  "claude-candidate-image-compress-3": {
+    "native": 0,
+    "nativeDetail": {
+      "input": 0,
+      "button": 0,
+      "select": 0,
+      "textarea": 0,
+      "created": 0
+    },
+    "allowedInput": 1,
+    "ryugi": 24,
+    "ryugiTags": [
+      "ryugi-slider-input",
+      "ryugi-button",
+      "ryugi-card",
+      "ryugi-text",
+      "ryugi-tag"
+    ],
+    "invented": [],
+    "bytes": 10750,
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "claude-candidate-latency-explorer-1": {
+    "native": 0,
+    "nativeDetail": {
+      "input": 0,
+      "button": 0,
+      "select": 0,
+      "textarea": 0,
+      "created": 0
+    },
+    "allowedInput": 0,
+    "ryugi": 19,
+    "ryugiTags": [
+      "ryugi-card",
+      "ryugi-segmented",
+      "ryugi-input",
+      "ryugi-slider-input",
+      "ryugi-checkbox",
+      "ryugi-button"
+    ],
+    "invented": [],
+    "bytes": 14097,
+    "status": "issues",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": [
+      "W_ARTIFACT: runtime: Uncaught TypeError: Cannot set properties of null (setting 'textContent') (index.html:243)"
+    ]
+  },
+  "claude-candidate-latency-explorer-2": {
+    "native": 0,
+    "nativeDetail": {
+      "input": 0,
+      "button": 0,
+      "select": 0,
+      "textarea": 0,
+      "created": 0
+    },
+    "allowedInput": 0,
+    "ryugi": 18,
+    "ryugiTags": [
+      "ryugi-input",
+      "ryugi-segmented",
+      "ryugi-slider-input",
+      "ryugi-checkbox",
+      "ryugi-card",
+      "ryugi-tag"
+    ],
+    "invented": [],
+    "bytes": 9857,
+    "status": "issues",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": [
+      "W_ARTIFACT: runtime: Uncaught TypeError: Cannot set properties of null (setting 'textContent') (index.html:155)"
+    ]
+  },
+  "claude-candidate-latency-explorer-3": {
+    "native": 0,
+    "nativeDetail": {
+      "input": 0,
+      "button": 0,
+      "select": 0,
+      "textarea": 0,
+      "created": 0
+    },
+    "allowedInput": 0,
+    "ryugi": 22,
+    "ryugiTags": [
+      "ryugi-card",
+      "ryugi-input",
+      "ryugi-segmented",
+      "ryugi-divider",
+      "ryugi-switch",
+      "ryugi-slider-input",
+      "ryugi-tag"
+    ],
+    "invented": [],
+    "bytes": 11891,
+    "status": "issues",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": [
+      "W_ARTIFACT: runtime: Uncaught TypeError: Cannot read properties of null (reading 'value') (index.html:238)"
+    ]
+  },
+  "claude-candidate-notify-settings-1": {
+    "native": 0,
+    "nativeDetail": {
+      "input": 0,
+      "button": 0,
+      "select": 0,
+      "textarea": 0,
+      "created": 0
+    },
+    "allowedInput": 2,
+    "ryugi": 23,
+    "ryugiTags": [
+      "ryugi-card",
+      "ryugi-switch",
+      "ryugi-segmented",
+      "ryugi-select",
+      "ryugi-text",
+      "ryugi-button"
+    ],
+    "invented": [],
+    "bytes": 9058,
+    "status": "issues",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": [
+      "W_ARTIFACT: runtime: Uncaught TypeError: Cannot read properties of null (reading 'checked') (index.html:118)"
+    ]
+  },
+  "claude-candidate-notify-settings-2": {
+    "native": 0,
+    "nativeDetail": {
+      "input": 0,
+      "button": 0,
+      "select": 0,
+      "textarea": 0,
+      "created": 0
+    },
+    "allowedInput": 0,
+    "ryugi": 25,
+    "ryugiTags": [
+      "ryugi-card",
+      "ryugi-switch",
+      "ryugi-segmented",
+      "ryugi-select",
+      "ryugi-text",
+      "ryugi-button"
+    ],
+    "invented": [],
+    "bytes": 8591,
+    "status": "issues",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": [
+      "W_ARTIFACT: runtime: Uncaught TypeError: Cannot read properties of null (reading 'classList') (index.html:159)"
+    ]
+  },
+  "claude-candidate-notify-settings-3": {
+    "native": 0,
+    "nativeDetail": {
+      "input": 0,
+      "button": 0,
+      "select": 0,
+      "textarea": 0,
+      "created": 0
+    },
+    "allowedInput": 0,
+    "ryugi": 25,
+    "ryugiTags": [
+      "ryugi-card",
+      "ryugi-switch",
+      "ryugi-segmented",
+      "ryugi-checkbox",
+      "ryugi-button",
+      "ryugi-select"
+    ],
+    "invented": [],
+    "bytes": 9000,
+    "status": "issues",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": [
+      "W_ARTIFACT: runtime: Uncaught TypeError: Cannot read properties of null (reading 'checked') (index.html:131)"
+    ]
+  },
+  "claude-candidate-shadow-tuner-1": {
+    "native": 0,
+    "nativeDetail": {
+      "input": 0,
+      "button": 0,
+      "select": 0,
+      "textarea": 0,
+      "created": 0
+    },
+    "allowedInput": 0,
+    "ryugi": 13,
+    "ryugiTags": [
+      "ryugi-slider-input",
+      "ryugi-color-picker",
+      "ryugi-divider",
+      "ryugi-segmented",
+      "ryugi-button",
+      "ryugi-text"
+    ],
+    "invented": [],
+    "bytes": 7454,
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "claude-candidate-shadow-tuner-2": {
+    "native": 0,
+    "nativeDetail": {
+      "input": 0,
+      "button": 0,
+      "select": 0,
+      "textarea": 0,
+      "created": 0
+    },
+    "allowedInput": 0,
+    "ryugi": 14,
+    "ryugiTags": [
+      "ryugi-slider-input",
+      "ryugi-color-picker",
+      "ryugi-divider",
+      "ryugi-switch",
+      "ryugi-segmented",
+      "ryugi-button",
+      "ryugi-text"
+    ],
+    "invented": [],
+    "bytes": 9105,
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "claude-candidate-shadow-tuner-3": {
+    "native": 0,
+    "nativeDetail": {
+      "input": 0,
+      "button": 0,
+      "select": 0,
+      "textarea": 0,
+      "created": 0
+    },
+    "allowedInput": 0,
+    "ryugi": 13,
+    "ryugiTags": [
+      "ryugi-slider-input",
+      "ryugi-color-picker",
+      "ryugi-switch",
+      "ryugi-divider",
+      "ryugi-segmented",
+      "ryugi-button"
+    ],
+    "invented": [],
+    "bytes": 10838,
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "codex-baseline-empty-copy-1": {
+    "native": 19,
+    "nativeDetail": {
+      "input": 18,
+      "button": 0,
+      "select": 0,
+      "textarea": 1,
+      "created": 0
+    },
+    "allowedInput": 0,
+    "ryugi": 0,
+    "ryugiTags": [],
+    "invented": [],
+    "bytes": 18546,
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "codex-baseline-empty-copy-2": {
+    "native": 3,
+    "nativeDetail": {
+      "input": 2,
+      "button": 0,
+      "select": 0,
+      "textarea": 1,
+      "created": 0
+    },
+    "allowedInput": 0,
+    "ryugi": 0,
+    "ryugiTags": [],
+    "invented": [],
+    "bytes": 13728,
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "codex-baseline-empty-copy-3": {
+    "native": 3,
+    "nativeDetail": {
+      "input": 1,
+      "button": 0,
+      "select": 0,
+      "textarea": 1,
+      "created": 1
+    },
+    "allowedInput": 0,
+    "ryugi": 0,
+    "ryugiTags": [],
+    "invented": [],
+    "bytes": 11247,
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "codex-baseline-image-compress-1": {
+    "native": 3,
+    "nativeDetail": {
+      "input": 2,
+      "button": 1,
+      "select": 0,
+      "textarea": 0,
+      "created": 0
+    },
+    "allowedInput": 1,
+    "ryugi": 3,
+    "ryugiTags": [],
+    "invented": [],
+    "bytes": 13445,
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "codex-baseline-image-compress-2": {
+    "native": 3,
+    "nativeDetail": {
+      "input": 2,
+      "button": 1,
+      "select": 0,
+      "textarea": 0,
+      "created": 0
+    },
+    "allowedInput": 1,
+    "ryugi": 1,
+    "ryugiTags": [],
+    "invented": [],
+    "bytes": 12478,
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "codex-baseline-image-compress-3": {
+    "native": 3,
+    "nativeDetail": {
+      "input": 2,
+      "button": 1,
+      "select": 0,
+      "textarea": 0,
+      "created": 0
+    },
+    "allowedInput": 1,
+    "ryugi": 3,
+    "ryugiTags": [],
+    "invented": [],
+    "bytes": 15391,
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "codex-baseline-latency-explorer-1": {
+    "native": 5,
+    "nativeDetail": {
+      "input": 2,
+      "button": 1,
+      "select": 2,
+      "textarea": 0,
+      "created": 0
+    },
+    "allowedInput": 0,
+    "ryugi": 5,
+    "ryugiTags": [],
+    "invented": [],
+    "bytes": 15607,
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "codex-baseline-latency-explorer-2": {
+    "native": 4,
+    "nativeDetail": {
+      "input": 2,
+      "button": 1,
+      "select": 1,
+      "textarea": 0,
+      "created": 0
+    },
+    "allowedInput": 0,
+    "ryugi": 6,
+    "ryugiTags": [],
+    "invented": [],
+    "bytes": 17516,
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "codex-baseline-latency-explorer-3": {
+    "native": 4,
+    "nativeDetail": {
+      "input": 2,
+      "button": 0,
+      "select": 2,
+      "textarea": 0,
+      "created": 0
+    },
+    "allowedInput": 0,
+    "ryugi": 5,
+    "ryugiTags": [],
+    "invented": [],
+    "bytes": 15314,
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "codex-baseline-notify-settings-1": {
+    "native": 7,
+    "nativeDetail": {
+      "input": 5,
+      "button": 1,
+      "select": 1,
+      "textarea": 0,
+      "created": 0
+    },
+    "allowedInput": 2,
+    "ryugi": 7,
+    "ryugiTags": [],
+    "invented": [],
+    "bytes": 12895,
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "codex-baseline-notify-settings-2": {
+    "native": 9,
+    "nativeDetail": {
+      "input": 7,
+      "button": 1,
+      "select": 1,
+      "textarea": 0,
+      "created": 0
+    },
+    "allowedInput": 2,
+    "ryugi": 7,
+    "ryugiTags": [],
+    "invented": [],
+    "bytes": 14040,
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "codex-baseline-notify-settings-3": {
+    "native": 9,
+    "nativeDetail": {
+      "input": 7,
+      "button": 1,
+      "select": 1,
+      "textarea": 0,
+      "created": 0
+    },
+    "allowedInput": 2,
+    "ryugi": 7,
+    "ryugiTags": [],
+    "invented": [],
+    "bytes": 12409,
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "codex-baseline-shadow-tuner-1": {
+    "native": 9,
+    "nativeDetail": {
+      "input": 7,
+      "button": 2,
+      "select": 0,
+      "textarea": 0,
+      "created": 0
+    },
+    "allowedInput": 0,
+    "ryugi": 6,
+    "ryugiTags": [],
+    "invented": [],
+    "bytes": 16407,
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "codex-baseline-shadow-tuner-2": {
+    "native": 8,
+    "nativeDetail": {
+      "input": 5,
+      "button": 2,
+      "select": 0,
+      "textarea": 1,
+      "created": 0
+    },
+    "allowedInput": 0,
+    "ryugi": 7,
+    "ryugiTags": [],
+    "invented": [],
+    "bytes": 13116,
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "codex-baseline-shadow-tuner-3": {
+    "native": 8,
+    "nativeDetail": {
+      "input": 6,
+      "button": 2,
+      "select": 0,
+      "textarea": 0,
+      "created": 0
+    },
+    "allowedInput": 0,
+    "ryugi": 2,
+    "ryugiTags": [],
+    "invented": [],
+    "bytes": 15905,
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "codex-candidate-empty-copy-1": {
+    "native": 0,
+    "nativeDetail": {
+      "input": 0,
+      "button": 0,
+      "select": 0,
+      "textarea": 0,
+      "created": 0
+    },
+    "allowedInput": 0,
+    "ryugi": 42,
+    "ryugiTags": [
+      "ryugi-segmented",
+      "ryugi-card",
+      "ryugi-tag",
+      "ryugi-textarea"
+    ],
+    "invented": [],
+    "bytes": 17298,
+    "status": "issues",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": [
+      "W_ARTIFACT: runtime: Uncaught TypeError: Cannot read properties of null (reading 'textContent') (index.html:362)"
+    ]
+  },
+  "codex-candidate-empty-copy-2": {
+    "native": 0,
+    "nativeDetail": {
+      "input": 0,
+      "button": 0,
+      "select": 0,
+      "textarea": 0,
+      "created": 0
+    },
+    "allowedInput": 0,
+    "ryugi": 40,
+    "ryugiTags": [
+      "ryugi-card",
+      "ryugi-tag",
+      "ryugi-segmented",
+      "ryugi-textarea"
+    ],
+    "invented": [],
+    "bytes": 16931,
+    "status": "issues",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": [
+      "W_ARTIFACT: runtime: Uncaught TypeError: Cannot set properties of null (setting 'hidden') (index.html:416)"
+    ]
+  },
+  "codex-candidate-empty-copy-3": {
+    "native": 0,
+    "nativeDetail": {
+      "input": 0,
+      "button": 0,
+      "select": 0,
+      "textarea": 0,
+      "created": 0
+    },
+    "allowedInput": 0,
+    "ryugi": 40,
+    "ryugiTags": [
+      "ryugi-card",
+      "ryugi-tag",
+      "ryugi-radio-group",
+      "ryugi-textarea"
+    ],
+    "invented": [],
+    "bytes": 15643,
+    "status": "issues",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": [
+      "W_ARTIFACT: runtime: Uncaught TypeError: Cannot read properties of null (reading 'textContent') (index.html:352)"
+    ]
+  },
+  "codex-candidate-image-compress-1": {
+    "native": 0,
+    "nativeDetail": {
+      "input": 0,
+      "button": 0,
+      "select": 0,
+      "textarea": 0,
+      "created": 0
+    },
+    "allowedInput": 1,
+    "ryugi": 9,
+    "ryugiTags": [
+      "ryugi-card",
+      "ryugi-button",
+      "ryugi-slider-input",
+      "ryugi-alert"
+    ],
+    "invented": [],
+    "bytes": 12588,
+    "status": "issues",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": [
+      "W_ARTIFACT: runtime: Uncaught TypeError: Cannot read properties of null (reading 'addEventListener') (index.html:328)"
+    ]
+  },
+  "codex-candidate-image-compress-2": {
+    "native": 0,
+    "nativeDetail": {
+      "input": 0,
+      "button": 0,
+      "select": 0,
+      "textarea": 0,
+      "created": 0
+    },
+    "allowedInput": 1,
+    "ryugi": 7,
+    "ryugiTags": [
+      "ryugi-card",
+      "ryugi-button",
+      "ryugi-slider-input",
+      "ryugi-alert"
+    ],
+    "invented": [],
+    "bytes": 11260,
+    "status": "issues",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": [
+      "W_ARTIFACT: runtime: Uncaught TypeError: Cannot read properties of null (reading 'addEventListener') (index.html:257)"
+    ]
+  },
+  "codex-candidate-image-compress-3": {
+    "native": 0,
+    "nativeDetail": {
+      "input": 0,
+      "button": 0,
+      "select": 0,
+      "textarea": 0,
+      "created": 0
+    },
+    "allowedInput": 1,
+    "ryugi": 5,
+    "ryugiTags": [
+      "ryugi-button",
+      "ryugi-slider-input"
+    ],
+    "invented": [],
+    "bytes": 11360,
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "codex-candidate-latency-explorer-1": {
+    "native": 0,
+    "nativeDetail": {
+      "input": 0,
+      "button": 0,
+      "select": 0,
+      "textarea": 0,
+      "created": 0
+    },
+    "allowedInput": 0,
+    "ryugi": 22,
+    "ryugiTags": [
+      "ryugi-tag",
+      "ryugi-card",
+      "ryugi-input",
+      "ryugi-select",
+      "ryugi-slider-input"
+    ],
+    "invented": [],
+    "bytes": 14929,
+    "status": "issues",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": [
+      "W_ARTIFACT: runtime: Uncaught TypeError: Cannot set properties of null (setting 'innerHTML') (index.html:239)"
+    ]
+  },
+  "codex-candidate-latency-explorer-2": {
+    "native": 0,
+    "nativeDetail": {
+      "input": 0,
+      "button": 0,
+      "select": 0,
+      "textarea": 0,
+      "created": 0
+    },
+    "allowedInput": 0,
+    "ryugi": 15,
+    "ryugiTags": [
+      "ryugi-badge",
+      "ryugi-input",
+      "ryugi-select",
+      "ryugi-slider-input",
+      "ryugi-tag"
+    ],
+    "invented": [],
+    "bytes": 16785,
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "codex-candidate-latency-explorer-3": {
+    "native": 0,
+    "nativeDetail": {
+      "input": 0,
+      "button": 0,
+      "select": 0,
+      "textarea": 0,
+      "created": 0
+    },
+    "allowedInput": 0,
+    "ryugi": 23,
+    "ryugiTags": [
+      "ryugi-tag",
+      "ryugi-card",
+      "ryugi-input",
+      "ryugi-select",
+      "ryugi-slider-input"
+    ],
+    "invented": [],
+    "bytes": 15454,
+    "status": "issues",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": [
+      "W_ARTIFACT: runtime: Uncaught TypeError: Cannot read properties of null (reading 'value') (index.html:306)"
+    ]
+  },
+  "codex-candidate-notify-settings-1": {
+    "native": 0,
+    "nativeDetail": {
+      "input": 0,
+      "button": 0,
+      "select": 0,
+      "textarea": 0,
+      "created": 0
+    },
+    "allowedInput": 2,
+    "ryugi": 16,
+    "ryugiTags": [
+      "ryugi-card",
+      "ryugi-switch",
+      "ryugi-select",
+      "ryugi-checkbox",
+      "ryugi-alert",
+      "ryugi-button"
+    ],
+    "invented": [],
+    "bytes": 10689,
+    "status": "issues",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": [
+      "W_ARTIFACT: runtime: Uncaught TypeError: Cannot read properties of null (reading 'checked') (index.html:288)"
+    ]
+  },
+  "codex-candidate-notify-settings-2": {
+    "native": 0,
+    "nativeDetail": {
+      "input": 0,
+      "button": 0,
+      "select": 0,
+      "textarea": 0,
+      "created": 0
+    },
+    "allowedInput": 2,
+    "ryugi": 19,
+    "ryugiTags": [
+      "ryugi-card",
+      "ryugi-switch",
+      "ryugi-select",
+      "ryugi-button"
+    ],
+    "invented": [],
+    "bytes": 8152,
+    "status": "issues",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": [
+      "W_ARTIFACT: runtime: Uncaught TypeError: Cannot read properties of null (reading 'addEventListener') (index.html:196)"
+    ]
+  },
+  "codex-candidate-notify-settings-3": {
+    "native": 0,
+    "nativeDetail": {
+      "input": 0,
+      "button": 0,
+      "select": 0,
+      "textarea": 0,
+      "created": 0
+    },
+    "allowedInput": 2,
+    "ryugi": 14,
+    "ryugiTags": [
+      "ryugi-card",
+      "ryugi-switch",
+      "ryugi-select",
+      "ryugi-checkbox",
+      "ryugi-button"
+    ],
+    "invented": [],
+    "bytes": 10064,
+    "status": "issues",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": [
+      "W_ARTIFACT: runtime: Uncaught TypeError: Cannot read properties of null (reading 'checked') (index.html:211)"
+    ]
+  },
+  "codex-candidate-shadow-tuner-1": {
+    "native": 0,
+    "nativeDetail": {
+      "input": 0,
+      "button": 0,
+      "select": 0,
+      "textarea": 0,
+      "created": 0
+    },
+    "allowedInput": 0,
+    "ryugi": 15,
+    "ryugiTags": [
+      "ryugi-slider-input",
+      "ryugi-color-picker",
+      "ryugi-card",
+      "ryugi-tag",
+      "ryugi-button"
+    ],
+    "invented": [],
+    "bytes": 10322,
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "codex-candidate-shadow-tuner-2": {
+    "native": 0,
+    "nativeDetail": {
+      "input": 0,
+      "button": 0,
+      "select": 0,
+      "textarea": 0,
+      "created": 0
+    },
+    "allowedInput": 0,
+    "ryugi": 13,
+    "ryugiTags": [
+      "ryugi-button",
+      "ryugi-slider-input",
+      "ryugi-color-picker",
+      "ryugi-card",
+      "ryugi-tag"
+    ],
+    "invented": [],
+    "bytes": 10195,
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "codex-candidate-shadow-tuner-3": {
+    "native": 0,
+    "nativeDetail": {
+      "input": 0,
+      "button": 0,
+      "select": 0,
+      "textarea": 0,
+      "created": 0
+    },
+    "allowedInput": 0,
+    "ryugi": 14,
+    "ryugiTags": [
+      "ryugi-button",
+      "ryugi-slider-input",
+      "ryugi-color-picker",
+      "ryugi-badge",
+      "ryugi-card"
+    ],
+    "invented": [],
+    "bytes": 11731,
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  }
+}

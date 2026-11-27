@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Notification settings · Team Chat</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --background: #f7f7fb;
+      --surface: #fff;
+      --ink: #211e32;
+      --muted: #625e73;
+      --line: #e8e5ef;
+      --accent: #5c43c8;
+      --accent-dark: #4e36b0;
+      --lavender: #f0ecfe;
+      --radius: 16px;
+      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+    body { margin: 0; color: var(--ink); background: var(--background); font-size: 14px; }
+    button, select, input { font: inherit; }
+    :focus-visible { outline: 3px solid var(--accent); outline-offset: 4px; }
+
+    .topbar { background: var(--surface); border-bottom: 1px solid var(--line); }
+    .topbar-inner {
+      width: min(1040px, calc(100% - 48px));
+      min-height: 64px;
+      margin-inline: auto;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .brand-icon, .section-icon {
+      display: grid;
+      place-items: center;
+      flex: none;
+    }
+    .brand-icon { width: 34px; height: 34px; border-radius: 10px; background: var(--accent); color: #fff; }
+    .brand { font-size: 15px; font-weight: 750; }
+    .topbar-divider { width: 1px; height: 19px; background: var(--line); margin-inline: 3px; }
+    .topbar-context { color: var(--muted); }
+
+    .layout {
+      width: min(1040px, calc(100% - 48px));
+      margin: 42px auto 52px;
+      display: grid;
+      grid-template-columns: 198px minmax(0, 740px);
+      gap: 36px;
+      align-items: start;
+    }
+    .section-nav { position: sticky; top: 22px; }
+    .nav-label { margin: 8px 0 8px 12px; font-size: 12px; font-weight: 700; color: var(--muted); }
+    .section-nav a {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 40px;
+      padding: 9px 12px;
+      border-radius: 9px;
+      color: var(--muted);
+      text-decoration: none;
+      font-weight: 550;
+    }
+    .section-nav a:hover, .section-nav a:focus-visible { background: var(--lavender); color: var(--accent-dark); }
+
+    .page-heading { margin-bottom: 24px; }
+    h1 { margin: 0 0 8px; font-size: clamp(28px, 5vw, 37px); line-height: 1.12; letter-spacing: -.045em; }
+    p { margin: 0; }
+    .description { color: var(--muted); line-height: 1.5; }
+    .page-heading .description { font-size: 15px; }
+    .cards { display: grid; gap: 14px; }
+    .card {
+      padding: 18px 20px;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: 0 2px 4px #24174b05;
+      scroll-margin-top: 18px;
+    }
+    .card:target { border-color: #a797ee; }
+    .section-heading {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+    .section-icon { width: 40px; height: 40px; border-radius: 11px; background: var(--lavender); color: var(--accent-dark); }
+    h2 { margin: 0 0 3px; font-size: 16px; letter-spacing: -.015em; }
+    .section-heading .description { font-size: 13px; }
+    .card-body { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
+    .setting-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+    .field-label { font-size: 13px; font-weight: 650; }
+    .switch {
+      appearance: none;
+      position: relative;
+      width: 44px;
+      height: 25px;
+      margin: 0 0 0 auto;
+      border: 1px solid transparent;
+      border-radius: 20px;
+      background: #756f86;
+      cursor: pointer;
+      flex: none;
+      transition: background .15s;
+    }
+    .switch::before {
+      content: "";
+      position: absolute;
+      left: 3px;
+      top: 3px;
+      width: 17px;
+      height: 17px;
+      background: #fff;
+      border-radius: 50%;
+      box-shadow: 0 1px 3px #211e3240;
+      transition: transform .15s;
+    }
+    .switch:checked { background: var(--accent); }
+    .switch:checked::before { transform: translateX(19px); }
+    select, input[type="time"] {
+      min-height: 38px;
+      border: 1px solid #dcd7e8;
+      border-radius: 8px;
+      color: var(--ink);
+      background-color: var(--surface);
+      padding: 6px 10px;
+    }
+    select { min-width: 160px; }
+    select:disabled { color: var(--muted); background: var(--background); cursor: default; }
+    .channels, .times { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; }
+    .channel {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 38px;
+      padding: 6px 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 550;
+      cursor: pointer;
+    }
+    .channel:hover { border-color: #a797ee; }
+    .channel:has(:checked) { background: #f7f4ff; border-color: #d3c8fb; }
+    .channel input { width: 15px; height: 15px; margin: 0; accent-color: var(--accent); cursor: pointer; }
+    .hash { color: var(--muted); font-size: 16px; font-weight: 500; }
+    .time-field { display: grid; gap: 6px; }
+    .time-field input { width: 100%; min-width: 0; }
+    .actions { display: flex; gap: 12px; justify-content: flex-end; align-items: center; margin-top: 18px; }
+    .status { margin-right: auto; color: var(--muted); font-size: 13px; }
+    .status[data-saved="true"] { color: #246344; }
+    button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 40px;
+      padding: 9px 15px;
+      border: 1px solid transparent;
+      border-radius: 9px;
+      background: var(--accent);
+      color: #fff;
+      font-weight: 650;
+      cursor: pointer;
+    }
+    button:hover { background: var(--accent-dark); }
+    ryugi-icon { flex: none; }
+
+    @media (max-width: 730px) {
+      .layout { grid-template-columns: minmax(0, 1fr); gap: 18px; margin-top: 20px; }
+      .section-nav { position: static; display: flex; flex-wrap: wrap; gap: 5px; }
+      .nav-label { display: none; }
+      .section-nav a { min-height: 35px; padding: 6px 9px; gap: 6px; font-size: 12px; }
+    }
+    @media (max-width: 420px) {
+      .topbar-inner, .layout { width: calc(100% - 28px); }
+      .card { padding: 15px; }
+      .channels { grid-template-columns: 1fr; }
+      select { min-width: 0; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .switch, .switch::before { transition: none; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <span class="brand-icon"><ryugi-icon name="message-square" size="18" aria-hidden="true"></ryugi-icon></span>
+      <span class="brand">Team Chat</span>
+      <span class="topbar-divider" aria-hidden="true"></span>
+      <span class="topbar-context">Settings</span>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav class="section-nav" aria-label="Notification sections">
+      <p class="nav-label">On this page</p>
+      <a id="review-digest" href="#email-digest"><ryugi-icon name="mail" size="16" aria-hidden="true"></ryugi-icon>Email digest</a>
+      <a id="review-channels" href="#muted-channels"><ryugi-icon name="hash" size="16" aria-hidden="true"></ryugi-icon>Muted channels</a>
+      <a id="review-hours" href="#quiet-hours"><ryugi-icon name="moon" size="16" aria-hidden="true"></ryugi-icon>Quiet hours</a>
+    </nav>
+
+    <main>
+      <header class="page-heading">
+        <h1>Notifications</h1>
+        <p class="description">Choose what reaches you and when.</p>
+      </header>
+
+      <form id="notification-settings">
+        <div class="cards">
+          <section class="card" id="email-digest" aria-labelledby="digest-heading">
+            <div class="section-heading">
+              <span class="section-icon"><ryugi-icon name="mail" size="19" aria-hidden="true"></ryugi-icon></span>
+              <div>
+                <h2 id="digest-heading"><label for="digest-enabled">Email digest</label></h2>
+                <p class="description" id="digest-description">Get a summary of your unread conversations by email.</p>
+              </div>
+              <input class="switch" type="checkbox" role="switch" id="digest-enabled" name="digest-enabled" aria-describedby="digest-description" checked>
+            </div>
+            <div class="card-body setting-row">
+              <label class="field-label" for="digest-frequency">Digest frequency</label>
+              <select id="digest-frequency" name="digest-frequency">
+                <option value="daily">Daily</option>
+                <option value="weekdays">Weekdays only</option>
+                <option value="weekly">Weekly</option>
+              </select>
+            </div>
+          </section>
+
+          <section class="card" id="muted-channels" aria-labelledby="channels-heading">
+            <div class="section-heading">
+              <span class="section-icon"><ryugi-icon name="hash" size="19" aria-hidden="true"></ryugi-icon></span>
+              <div>
+                <h2 id="channels-heading">Muted channels</h2>
+                <p class="description" id="channels-description">Select channels to silence their notifications.</p>
+              </div>
+            </div>
+            <div class="card-body channels" role="group" aria-labelledby="channels-heading" aria-describedby="channels-description">
+              <label class="channel"><input type="checkbox" id="mute-general" name="muted-channel" value="general"><span class="hash" aria-hidden="true">#</span> general</label>
+              <label class="channel"><input type="checkbox" id="mute-design" name="muted-channel" value="design"><span class="hash" aria-hidden="true">#</span> design</label>
+              <label class="channel"><input type="checkbox" id="mute-engineering" name="muted-channel" value="engineering"><span class="hash" aria-hidden="true">#</span> engineering</label>
+              <label class="channel"><input type="checkbox" id="mute-random" name="muted-channel" value="random" checked><span class="hash" aria-hidden="true">#</span> random</label>
+            </div>
+          </section>
+
+          <section class="card" id="quiet-hours" aria-labelledby="hours-heading">
+            <div class="section-heading">
+              <span class="section-icon"><ryugi-icon name="moon" size="19" aria-hidden="true"></ryugi-icon></span>
+              <div>
+                <h2 id="hours-heading">Quiet hours</h2>
+                <p class="description">Pause notifications every day during these hours, in your local time.</p>
+              </div>
+            </div>
+            <div class="card-body times">
+              <div class="time-field">
+                <label class="field-label" for="quiet-start">Start time</label>
+                <input type="time" id="quiet-start" name="quiet-start" value="22:00" required>
+              </div>
+              <div class="time-field">
+                <label class="field-label" for="quiet-end">End time</label>
+                <input type="time" id="quiet-end" name="quiet-end" value="08:00" required>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <div class="actions">
+          <output class="status" id="save-status" role="status"></output>
+          <button type="submit" id="save-settings">Save settings</button>
+        </div>
+      </form>
+    </main>
+  </div>
+
+  <script>
+    const form = document.getElementById('notification-settings');
+    const digest = document.getElementById('digest-enabled');
+    const frequency = document.getElementById('digest-frequency');
+    const start = document.getElementById('quiet-start');
+    const end = document.getElementById('quiet-end');
+    const channels = Array.from(form.querySelectorAll('[name="muted-channel"]'));
+    const status = document.getElementById('save-status');
+
+    function readSettings() {
+      return JSON.stringify({
+        emailDigest: digest.checked,
+        digestFrequency: frequency.value,
+        mutedChannels: channels.filter(channel => channel.checked).map(channel => channel.value),
+        quietStart: start.value,
+        quietEnd: end.value
+      });
+    }
+
+    let savedSettings = readSettings();
+
+    function render() {
+      frequency.disabled = !digest.checked;
+      const hasChanges = readSettings() !== savedSettings;
+      if (hasChanges || status.dataset.saved !== 'true') {
+        status.textContent = hasChanges ? 'Unsaved changes' : '';
+        status.dataset.saved = 'false';
+      }
+    }
+
+    form.addEventListener('input', render);
+    form.addEventListener('change', render);
+    form.addEventListener('submit', event => {
+      event.preventDefault();
+      savedSettings = readSettings();
+      status.dataset.saved = 'true';
+      status.textContent = 'Notification settings saved.';
+    });
+    render();
+  </script>
+</body>
+</html>

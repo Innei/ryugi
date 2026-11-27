@@ -1,0 +1,384 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Shadow Studio — Pricing Card Shadow Editor</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;650;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: "DM Sans", system-ui, sans-serif;
+      color: #23213a;
+      background: #f8f7fc;
+      --accent: #6348d9;
+      --muted: #625e77;
+      --line: #e7e4ef;
+      --mono: "IBM Plex Mono", ui-monospace, monospace;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    button, input { font: inherit; }
+    button { cursor: pointer; }
+    ryugi-icon { display: inline-flex; align-items: center; justify-content: center; }
+    :focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+    .topbar { background: #fff; border-bottom: 1px solid var(--line); }
+    .topbar-inner {
+      max-width: 1192px;
+      margin: auto;
+      padding: 15px 32px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: -.025em;
+    }
+    .mark {
+      flex: 0 0 32px;
+      width: 32px;
+      height: 32px;
+      display: grid;
+      place-items: center;
+      border-radius: 9px;
+      background: #ebe5ff;
+      color: #583bcf;
+    }
+    main { max-width: 1192px; margin: auto; padding: 37px 32px 42px; }
+    .intro { margin-bottom: 26px; }
+    h1, h2, p { margin: 0; }
+    h1 { font-size: clamp(34px, 5vw, 45px); line-height: 1.1; letter-spacing: -.055em; }
+    .intro p { margin-top: 9px; font-size: 15px; color: var(--muted); line-height: 1.5; }
+    .workspace { display: grid; grid-template-columns: minmax(270px, 344px) minmax(0, 1fr); gap: 22px; align-items: start; }
+    .panel { background: #fff; border: 1px solid var(--line); border-radius: 16px; }
+    .settings { padding: 21px 22px 23px; }
+    .panel-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    h2 { font-size: 15px; letter-spacing: -.015em; line-height: 1.4; }
+    .reset, .copy {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      white-space: nowrap;
+      font-weight: 700;
+      font-size: 12px;
+      min-height: 32px;
+      border-radius: 7px;
+    }
+    .reset { padding: 0 8px; margin-right: -8px; border: 1px solid transparent; background: transparent; color: var(--muted); }
+    .reset:hover { color: var(--accent); background: #f6f3ff; }
+    .sliders { display: grid; gap: 19px; margin-top: 22px; }
+    .field-heading { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+    label { font-weight: 650; font-size: 13px; }
+    output {
+      border: 1px solid #edeaf3;
+      background: #f8f7fb;
+      border-radius: 6px;
+      padding: 3px 6px;
+      min-width: 54px;
+      text-align: center;
+      color: #514b68;
+      font: 11px/16px var(--mono);
+    }
+    input[type="range"] {
+      --fill: 0%;
+      display: block;
+      appearance: none;
+      width: 100%;
+      height: 18px;
+      padding: 0;
+      margin: 8px 0 0;
+      background: transparent;
+      cursor: pointer;
+    }
+    input[type="range"]::-webkit-slider-runnable-track {
+      height: 5px;
+      border-radius: 10px;
+      background: linear-gradient(to right, #765de6 var(--fill), #eae6f3 var(--fill));
+    }
+    input[type="range"]::-moz-range-track {
+      height: 5px;
+      border-radius: 10px;
+      background: linear-gradient(to right, #765de6 var(--fill), #eae6f3 var(--fill));
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      appearance: none;
+      width: 16px;
+      height: 16px;
+      margin-top: -5.5px;
+      border: 2px solid #fff;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 0 1px var(--accent);
+    }
+    input[type="range"]::-moz-range-thumb {
+      box-sizing: border-box;
+      width: 16px;
+      height: 16px;
+      border: 2px solid #fff;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 0 1px var(--accent);
+    }
+    .field-help { color: var(--muted); font-size: 11px; }
+    .color-section { margin-top: 20px; padding-top: 17px; border-top: 1px solid var(--line); }
+    .color-control { display: flex; align-items: center; gap: 9px; margin-top: 9px; padding: 5px 8px; border: 1px solid var(--line); border-radius: 8px; }
+    input[type="color"] { border: 0; background: transparent; padding: 0; width: 30px; height: 28px; cursor: pointer; }
+    input[type="color"]::-webkit-color-swatch-wrapper { padding: 2px; }
+    input[type="color"]::-webkit-color-swatch { border: 1px solid #0002; border-radius: 5px; }
+    input[type="color"]::-moz-color-swatch { border: 1px solid #0002; border-radius: 5px; }
+    .hex-input {
+      width: 100%;
+      min-width: 0;
+      min-height: 27px;
+      border: 0;
+      border-radius: 3px;
+      padding: 0 3px;
+      background: none;
+      color: #39334f;
+      font: 12px var(--mono);
+    }
+    .hex-input[aria-invalid="true"] { color: #a12945; }
+    .opacity-field { margin-top: 15px; }
+    .results { display: grid; gap: 16px; min-width: 0; }
+    .preview { overflow: hidden; }
+    .preview-header { padding: 13px 17px; min-height: 49px; }
+    .live { display: inline-flex; align-items: center; gap: 6px; color: #5944af; background: #f0ebff; border-radius: 20px; padding: 4px 9px; font-size: 11px; font-weight: 700; }
+    .live::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: #785ce6; }
+    .stage {
+      border-top: 1px solid var(--line);
+      min-height: 371px;
+      display: grid;
+      place-items: center;
+      padding: 31px 26px;
+      background-color: #f1eef9;
+      background-image: radial-gradient(#c5badf 1px, transparent 1px);
+      background-size: 17px 17px;
+      background-position: center;
+    }
+    .pricing-card { background: #fff; border: 1px solid #e9e5f2; width: min(100%, 294px); padding: 22px; }
+    .plan-label { font-size: 13px; font-weight: 700; color: #5940c5; }
+    .price { display: flex; align-items: baseline; gap: 5px; margin-top: 6px; }
+    .price strong { font-size: 45px; font-weight: 700; line-height: 1; letter-spacing: -.075em; }
+    .billing { font-size: 13px; color: var(--muted); }
+    .plan-description { margin-top: 9px; color: var(--muted); font-size: 12px; }
+    .features { list-style: none; padding: 14px 0 0; margin: 15px 0 17px; border-top: 1px solid #efecf5; display: grid; gap: 8px; }
+    .features li { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+    .features ryugi-icon { color: #6549d5; }
+    .sample-cta { display: block; width: 100%; border-radius: 8px; background: #6348d9; color: #fff; text-align: center; padding: 9px 10px; font-weight: 700; font-size: 12px; line-height: 18px; }
+    .code-panel { padding: 13px 16px 15px; min-width: 0; }
+    .code-actions { display: flex; align-items: center; gap: 8px; }
+    .copy-status { font-size: 12px; color: var(--muted); }
+    .copy { padding: 0 10px; border: 1px solid #e5dffe; background: #f4f0ff; color: #5136b9; }
+    .copy:hover { background: #ece4ff; }
+    pre {
+      margin: 10px 0 0;
+      padding: 11px 13px;
+      background: #25213a;
+      color: #f4f0ff;
+      border-radius: 8px;
+      overflow: auto;
+      font: 12px/1.55 var(--mono);
+      tab-size: 2;
+    }
+    .code-selector { color: #d6c6ff; }
+    .code-property { color: #bdb1fb; }
+    .code-value { color: #f7dfad; }
+    @media (max-width: 770px) {
+      main { padding: 28px 18px 30px; }
+      .topbar-inner { padding: 13px 18px; }
+      .workspace { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+      .settings { padding: 16px; }
+      .sliders { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 14px; }
+      .stage { min-height: 350px; }
+    }
+    @media (max-width: 375px) {
+      .sliders { grid-template-columns: minmax(0, 1fr); }
+      .copy-status:empty { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner"><span class="mark" aria-hidden="true"><ryugi-icon name="layers" size="18"></ryugi-icon></span>Shadow Studio</div>
+  </header>
+  <main>
+    <div class="intro">
+      <h1>Pricing card shadow</h1>
+      <p>Fine-tune the shadow on a sample card and copy the CSS when it looks right.</p>
+    </div>
+    <div class="workspace">
+      <section class="panel settings" aria-labelledby="settings-title">
+        <div class="panel-heading">
+          <h2 id="settings-title">Shadow settings</h2>
+          <button class="reset" id="reset-shadow" type="button"><ryugi-icon name="rotate-ccw" size="14" aria-hidden="true"></ryugi-icon> Reset</button>
+        </div>
+        <div class="sliders">
+          <div>
+            <div class="field-heading"><label for="elevation">Elevation</label><output id="elevation-value" for="elevation">16 px</output></div>
+            <input id="elevation" type="range" min="-48" max="64" value="16" aria-describedby="elevation-help">
+            <div id="elevation-help" class="field-help">Vertical offset</div>
+          </div>
+          <div>
+            <div class="field-heading"><label for="blur">Blur</label><output id="blur-value" for="blur">36 px</output></div>
+            <input id="blur" type="range" min="0" max="120" value="36">
+          </div>
+          <div>
+            <div class="field-heading"><label for="spread">Spread</label><output id="spread-value" for="spread">−6 px</output></div>
+            <input id="spread" type="range" min="-32" max="40" value="-6">
+          </div>
+          <div>
+            <div class="field-heading"><label for="corner-radius">Corner radius</label><output id="corner-radius-value" for="corner-radius">20 px</output></div>
+            <input id="corner-radius" type="range" min="0" max="64" value="20">
+          </div>
+        </div>
+        <div class="color-section">
+          <label for="shadow-color">Shadow colour</label>
+          <div class="color-control">
+            <input id="shadow-color" type="color" value="#38265f">
+            <input id="shadow-hex" class="hex-input" type="text" aria-label="Shadow colour hex code" value="#38265F" maxlength="7" spellcheck="false" autocomplete="off">
+          </div>
+          <div class="opacity-field">
+            <div class="field-heading"><label for="shadow-opacity">Opacity</label><output id="shadow-opacity-value" for="shadow-opacity">22%</output></div>
+            <input id="shadow-opacity" type="range" min="0" max="100" value="22">
+          </div>
+        </div>
+      </section>
+      <div class="results">
+        <section class="panel preview" aria-labelledby="preview-title">
+          <div class="panel-heading preview-header">
+            <h2 id="preview-title">Card preview</h2>
+            <span class="live">Live</span>
+          </div>
+          <div class="stage">
+            <article class="pricing-card" id="pricing-card" aria-label="Pro pricing card example">
+              <h3 class="plan-label" style="margin:0">Pro plan</h3>
+              <p class="price"><strong>$29</strong><span class="billing">/ month</span></p>
+              <p class="plan-description">For teams ready to do more.</p>
+              <ul class="features">
+                <li><ryugi-icon name="check" size="14" aria-hidden="true"></ryugi-icon> Unlimited projects</li>
+                <li><ryugi-icon name="check" size="14" aria-hidden="true"></ryugi-icon> Team collaboration</li>
+                <li><ryugi-icon name="check" size="14" aria-hidden="true"></ryugi-icon> Priority support</li>
+              </ul>
+              <span class="sample-cta">Get started</span>
+            </article>
+          </div>
+        </section>
+        <section class="panel code-panel" aria-labelledby="css-title">
+          <div class="panel-heading">
+            <h2 id="css-title">Generated CSS</h2>
+            <div class="code-actions">
+              <span class="copy-status" id="copy-status" role="status"></span>
+              <button class="copy" id="copy-css" type="button"><ryugi-icon name="copy" size="14" aria-hidden="true"></ryugi-icon> Copy CSS</button>
+            </div>
+          </div>
+          <pre><code id="css-code"><span class="code-selector">.pricing-card</span> {
+  <span class="code-property">border-radius</span>: <span id="css-radius" class="code-value"></span>;
+  <span class="code-property">box-shadow</span>: <span id="css-shadow" class="code-value"></span>;
+}</code></pre>
+        </section>
+      </div>
+    </div>
+  </main>
+  <script>
+    const byId = (id) => document.getElementById(id);
+    const sliders = ['elevation', 'blur', 'spread', 'corner-radius', 'shadow-opacity'].map(byId);
+    const colorPicker = byId('shadow-color');
+    const hexInput = byId('shadow-hex');
+    const card = byId('pricing-card');
+    const code = byId('css-code');
+    const copyButton = byId('copy-css');
+    const copyStatus = byId('copy-status');
+
+    function render() {
+      for (const slider of sliders) {
+        const isOpacity = slider.id === 'shadow-opacity';
+        const value = slider.valueAsNumber;
+        const unit = isOpacity ? '%' : ' px';
+        byId(slider.id + '-value').textContent = String(value).replace('-', '−') + unit;
+        slider.setAttribute('aria-valuetext', value + (isOpacity ? ' percent' : ' pixels'));
+        const position = (value - Number(slider.min)) / (Number(slider.max) - Number(slider.min));
+        slider.style.setProperty('--fill', position * 100 + '%');
+      }
+
+      const [elevation, blur, spread, radius, opacity] = sliders.map((slider) => slider.valueAsNumber);
+      const hex = colorPicker.value.slice(1);
+      const [red, green, blue] = hex.match(/../g).map((channel) => parseInt(channel, 16));
+      const radiusCss = radius + 'px';
+      const shadowCss = `0 ${elevation}px ${blur}px ${spread}px rgb(${red} ${green} ${blue} / ${opacity}%)`;
+      card.style.borderRadius = radiusCss;
+      card.style.boxShadow = shadowCss;
+      byId('css-radius').textContent = radiusCss;
+      byId('css-shadow').textContent = shadowCss;
+      copyStatus.textContent = '';
+    }
+
+    function syncPicker() {
+      hexInput.value = colorPicker.value.toUpperCase();
+      hexInput.removeAttribute('aria-invalid');
+      render();
+    }
+
+    function readHex() {
+      const value = hexInput.value.trim().replace(/^#/, '');
+      if (!/^(?:[a-f\d]{3}|[a-f\d]{6})$/i.test(value)) {
+        hexInput.setAttribute('aria-invalid', 'true');
+        return false;
+      }
+
+      const expanded = value.length === 3 ? Array.from(value, (digit) => digit + digit).join('') : value;
+      colorPicker.value = '#' + expanded;
+      hexInput.removeAttribute('aria-invalid');
+      render();
+      return true;
+    }
+
+    for (const eventName of ['input', 'change']) {
+      sliders.forEach((slider) => slider.addEventListener(eventName, render));
+      colorPicker.addEventListener(eventName, syncPicker);
+    }
+    hexInput.addEventListener('input', readHex);
+    hexInput.addEventListener('change', () => {
+      if (readHex()) hexInput.value = colorPicker.value.toUpperCase();
+    });
+    byId('reset-shadow').addEventListener('click', () => {
+      sliders.forEach((slider) => { slider.value = slider.defaultValue; });
+      colorPicker.value = colorPicker.defaultValue;
+      syncPicker();
+    });
+
+    function selectCode() {
+      const selection = window.getSelection();
+      const range = document.createRange();
+      range.selectNodeContents(code);
+      selection.removeAllRanges();
+      selection.addRange(range);
+      return selection;
+    }
+
+    copyButton.addEventListener('click', async () => {
+      const css = code.textContent;
+      let copied = false;
+      try {
+        await navigator.clipboard.writeText(css);
+        copied = true;
+      } catch {
+        const selection = selectCode();
+        if (code.textContent === css) {
+          try {
+            copied = document.execCommand('copy');
+          } catch {
+            copied = false;
+          }
+        }
+        if (copied) selection.removeAllRanges();
+      }
+      copyStatus.textContent = copied && code.textContent === css
+        ? 'Copied!'
+        : copied ? '' : 'CSS selected. Press Ctrl+C or ⌘C.';
+    });
+
+    render();
+  </script>
+</body>
+</html>

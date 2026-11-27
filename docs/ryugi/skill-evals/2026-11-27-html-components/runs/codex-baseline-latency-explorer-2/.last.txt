@@ -1,0 +1,1 @@
+Built the [Latency Explorer](index.html) with 24 sample endpoints, HTTP method and path filters, p95 sorting, and a configurable slow threshold.

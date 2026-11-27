@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Pricing card shadow tuner</title>
+    <style>
+      :root {
+        --bg: #f4f5f7;
+        --fg: #1b1d22;
+        --muted: #6b7180;
+        --line: #e2e4e9;
+        --panel: #ffffff;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root { --bg: #15171b; --fg: #eceef2; --muted: #9aa0ad; --line: #2a2d34; --panel: #1d2025; }
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+        color: var(--fg);
+        background: var(--bg);
+      }
+      main {
+        display: grid;
+        grid-template-columns: minmax(280px, 360px) 1fr;
+        gap: 24px;
+        padding: 24px;
+        min-height: 100vh;
+      }
+      @media (max-width: 760px) { main { grid-template-columns: 1fr; } }
+      h1 { font-size: 18px; margin: 0 0 4px; }
+      .sub { color: var(--muted); margin: 0 0 20px; }
+      .controls {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 20px;
+        align-self: start;
+      }
+      .field { margin-bottom: 16px; }
+      .field label { display: flex; justify-content: space-between; font-weight: 600; margin-bottom: 6px; }
+      .field label span { font-weight: 400; color: var(--muted); font-variant-numeric: tabular-nums; }
+      .color-row { display: flex; gap: 10px; align-items: center; }
+      .color-row input[type="color"] {
+        width: 44px; height: 32px; padding: 0; border: 1px solid var(--line);
+        border-radius: 6px; background: none; cursor: pointer;
+      }
+      .color-row code { color: var(--muted); }
+      .stage-wrap { display: flex; flex-direction: column; gap: 16px; }
+      .stage {
+        flex: 1;
+        display: grid;
+        place-items: center;
+        border-radius: 12px;
+        border: 1px solid var(--line);
+        padding: 48px 24px;
+        min-height: 460px;
+        transition: background .2s;
+      }
+      .card {
+        width: 300px;
+        background: #fff;
+        color: #1b1d22;
+        padding: 28px;
+        transition: box-shadow .12s, border-radius .12s;
+      }
+      .card .plan { font-size: 13px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: #5b5bd6; }
+      .card .price { font-size: 40px; font-weight: 700; margin: 8px 0 2px; }
+      .card .price small { font-size: 15px; font-weight: 500; color: #6b7180; }
+      .card .desc { color: #6b7180; margin: 0 0 18px; }
+      .card ul { list-style: none; padding: 0; margin: 0 0 22px; }
+      .card li { padding: 6px 0; border-top: 1px solid #eef0f3; display: flex; gap: 8px; align-items: center; }
+      .card li::before { content: "✓"; color: #2f9e6e; font-weight: 700; }
+      .card .cta {
+        display: block; width: 100%; padding: 11px; border: 0; border-radius: 8px;
+        background: #5b5bd6; color: #fff; font-weight: 600; font-size: 14px; cursor: pointer;
+      }
+      .output {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 16px;
+      }
+      .output-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+      .output-head strong { font-size: 14px; }
+      pre {
+        margin: 0; padding: 12px; border-radius: 8px;
+        background: #0f1115; color: #d6e2ff;
+        font: 13px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace;
+        white-space: pre-wrap; word-break: break-all;
+      }
+      .status { color: #2f9e6e; font-size: 12px; margin-left: 8px; }
+      .bg-row { display: flex; align-items: center; gap: 10px; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="controls" aria-label="Shadow controls">
+        <h1>Pricing card shadow</h1>
+        <p class="sub">Adjust the values; the card and CSS update live.</p>
+
+        <div class="field">
+          <label for="elevation">Elevation (y-offset) <span id="elevation-val"></span></label>
+          <ryugi-slider-input id="elevation" value="12" min="0" max="48" step="1" style="width:100%"></ryugi-slider-input>
+        </div>
+        <div class="field">
+          <label for="blur">Blur <span id="blur-val"></span></label>
+          <ryugi-slider-input id="blur" value="32" min="0" max="120" step="1" style="width:100%"></ryugi-slider-input>
+        </div>
+        <div class="field">
+          <label for="spread">Spread <span id="spread-val"></span></label>
+          <ryugi-slider-input id="spread" value="-8" min="-40" max="40" step="1" style="width:100%"></ryugi-slider-input>
+        </div>
+        <div class="field">
+          <label for="radius">Corner radius <span id="radius-val"></span></label>
+          <ryugi-slider-input id="radius" value="16" min="0" max="40" step="1" style="width:100%"></ryugi-slider-input>
+        </div>
+        <div class="field">
+          <label for="shadowColor">Shadow colour</label>
+          <div class="color-row">
+            <input id="shadowColor" type="color" value="#1b1f3b" aria-label="Shadow colour" />
+            <code id="color-val"></code>
+          </div>
+        </div>
+        <div class="field">
+          <label for="opacity">Shadow opacity <span id="opacity-val"></span></label>
+          <ryugi-slider-input id="opacity" value="18" min="0" max="100" step="1" style="width:100%"></ryugi-slider-input>
+        </div>
+        <div class="field">
+          <label for="stageBg">Preview background</label>
+          <div class="bg-row">
+            <input id="stageBg" type="color" value="#eef0f4" aria-label="Preview background" />
+            <ryugi-button id="reset" variant="outlined" size="small" icon="rotate-ccw">Reset</ryugi-button>
+          </div>
+        </div>
+      </section>
+
+      <section class="stage-wrap">
+        <div class="stage" id="stage" aria-label="Pricing card preview">
+          <article class="card" id="card">
+            <div class="plan">Pro</div>
+            <div class="price">$24<small> / month</small></div>
+            <p class="desc">For growing teams that need more room.</p>
+            <ul>
+              <li>Unlimited projects</li>
+              <li>10 team seats</li>
+              <li>Priority support</li>
+              <li>Advanced analytics</li>
+            </ul>
+            <button class="cta" type="button">Start free trial</button>
+          </article>
+        </div>
+
+        <div class="output">
+          <div class="output-head">
+            <strong>CSS</strong>
+            <span>
+              <span class="status" id="copyStatus" role="status"></span>
+              <ryugi-button id="copy" variant="primary" size="small" icon="copy">Copy CSS</ryugi-button>
+            </span>
+          </div>
+          <pre id="css"></pre>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      const defaults = { elevation: 12, blur: 32, spread: -8, radius: 16, opacity: 18, shadowColor: '#1b1f3b', stageBg: '#eef0f4' };
+      const sliderIds = ['elevation', 'blur', 'spread', 'radius', 'opacity'];
+      const $ = (id) => document.getElementById(id);
+
+      function num(id) {
+        const el = $(id);
+        const v = Number(el.value ?? el.getAttribute('value'));
+        return Number.isFinite(v) ? v : defaults[id];
+      }
+
+      function hexToRgb(hex) {
+        const h = hex.replace('#', '');
+        return [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16));
+      }
+
+      let cssText = '';
+      function render() {
+        const y = num('elevation'), blur = num('blur'), spread = num('spread'), radius = num('radius');
+        const alpha = Math.round(num('opacity')) / 100;
+        const color = $('shadowColor').value || defaults.shadowColor;
+        const [r, g, b] = hexToRgb(color);
+        const rgba = `rgba(${r}, ${g}, ${b}, ${alpha})`;
+        const shadow = `0 ${y}px ${blur}px ${spread}px ${rgba}`;
+
+        const card = $('card');
+        card.style.boxShadow = shadow;
+        card.style.borderRadius = radius + 'px';
+        $('stage').style.background = $('stageBg').value;
+
+        $('elevation-val').textContent = y + 'px';
+        $('blur-val').textContent = blur + 'px';
+        $('spread-val').textContent = spread + 'px';
+        $('radius-val').textContent = radius + 'px';
+        $('opacity-val').textContent = Math.round(alpha * 100) + '%';
+        $('color-val').textContent = color;
+
+        cssText = `.pricing-card {\n  border-radius: ${radius}px;\n  box-shadow: ${shadow};\n}`;
+        $('css').textContent = cssText;
+      }
+
+      document.addEventListener('ryugi-change', render);
+      document.addEventListener('input', render);
+      document.addEventListener('change', render);
+      document.addEventListener('ryugi-ui:ready', render, { once: true });
+
+      $('reset').addEventListener('click', () => {
+        sliderIds.forEach((id) => {
+          const el = $(id);
+          el.value = defaults[id];
+          el.setAttribute('value', defaults[id]);
+        });
+        $('shadowColor').value = defaults.shadowColor;
+        $('stageBg').value = defaults.stageBg;
+        render();
+      });
+
+      $('copy').addEventListener('click', async () => {
+        const status = $('copyStatus');
+        try {
+          await navigator.clipboard.writeText(cssText);
+          status.textContent = 'Copied';
+        } catch {
+          const range = document.createRange();
+          range.selectNodeContents($('css'));
+          const sel = getSelection();
+          sel.removeAllRanges();
+          sel.addRange(range);
+          status.textContent = 'Selected — press ⌘/Ctrl+C';
+        }
+        setTimeout(() => (status.textContent = ''), 2000);
+      });
+
+      render();
+    </script>
+  </body>
+</html>

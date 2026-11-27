@@ -1,0 +1,1 @@
+Created [index.html](./index.html) with three sample copy options in an illustrative search layout, a single preference pick, 1–5 tone ratings for each, an optional note, and a live summary.

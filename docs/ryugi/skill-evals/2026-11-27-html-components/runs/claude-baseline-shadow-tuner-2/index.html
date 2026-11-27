@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Pricing card shadow tuner</title>
+    <style>
+      :root { color-scheme: light dark; font-family: system-ui, -apple-system, sans-serif; }
+      body { margin: 0; display: grid; grid-template-columns: 340px 1fr; min-height: 100vh; }
+      aside { padding: 24px; border-right: 1px solid color-mix(in srgb, currentColor 12%, transparent); display: flex; flex-direction: column; gap: 18px; }
+      h1 { font-size: 18px; margin: 0; }
+      .field { display: flex; flex-direction: column; gap: 6px; }
+      .field > label { font-size: 13px; font-weight: 600; }
+      .hint { font-size: 12px; opacity: .6; }
+      .color-row { display: flex; gap: 10px; align-items: center; }
+      .color-row input[type=color] { width: 44px; height: 32px; border: none; padding: 0; background: none; cursor: pointer; }
+      .color-row code { font-size: 13px; }
+      main { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 28px; padding: 40px; }
+      .stage { padding: 56px; border-radius: 16px; display: flex; justify-content: center; transition: background .2s; }
+      .stage.light { background: #f4f5f7; color: #111; }
+      .stage.dark { background: #16181d; color: #eee; }
+      .card { width: 280px; padding: 28px; display: flex; flex-direction: column; gap: 14px; background: #fff; color: #111; }
+      .stage.dark .card { background: #23262d; color: #eee; }
+      .card .plan { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: #5b5bd6; }
+      .card .price { font-size: 40px; font-weight: 700; }
+      .card .price span { font-size: 15px; font-weight: 400; opacity: .6; }
+      .card ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; font-size: 14px; }
+      .card li::before { content: "✓ "; color: #5b5bd6; font-weight: 700; }
+      .card button { margin-top: 8px; padding: 10px; border: 0; border-radius: 8px; background: #5b5bd6; color: #fff; font-weight: 600; font-size: 14px; }
+      .css-out { width: min(520px, 100%); }
+      pre { margin: 0 0 10px; padding: 14px; border-radius: 10px; font-size: 13px; background: color-mix(in srgb, currentColor 7%, transparent); white-space: pre-wrap; }
+      .copy-row { display: flex; gap: 10px; align-items: center; }
+      #copy-status { font-size: 13px; opacity: .7; }
+    </style>
+  </head>
+  <body>
+    <aside>
+      <h1>Shadow tuner</h1>
+      <div class="field">
+        <label for="elevation">Elevation (y-offset, px)</label>
+        <ryugi-slider-input id="elevation" value="12" min="0" max="48" step="1"></ryugi-slider-input>
+      </div>
+      <div class="field">
+        <label for="blur">Blur (px)</label>
+        <ryugi-slider-input id="blur" value="32" min="0" max="120" step="1"></ryugi-slider-input>
+      </div>
+      <div class="field">
+        <label for="spread">Spread (px)</label>
+        <ryugi-slider-input id="spread" value="-6" min="-40" max="40" step="1"></ryugi-slider-input>
+      </div>
+      <div class="field">
+        <label for="radius">Corner radius (px)</label>
+        <ryugi-slider-input id="radius" value="16" min="0" max="40" step="1"></ryugi-slider-input>
+      </div>
+      <div class="field">
+        <label for="shadow-color">Shadow colour</label>
+        <div class="color-row">
+          <input id="shadow-color" type="color" value="#1e1b4b" aria-label="Shadow colour" />
+          <code id="color-hex">#1e1b4b</code>
+        </div>
+      </div>
+      <div class="field">
+        <label for="opacity">Shadow opacity (%)</label>
+        <ryugi-slider-input id="opacity" value="18" min="0" max="100" step="1"></ryugi-slider-input>
+      </div>
+      <div class="field">
+        <label for="backdrop">Preview background</label>
+        <ryugi-segmented id="backdrop" value="light">
+          <option value="light">Light</option>
+          <option value="dark">Dark</option>
+        </ryugi-segmented>
+        <span class="hint">Only affects the preview, not the CSS.</span>
+      </div>
+    </aside>
+
+    <main>
+      <div class="stage light" id="stage">
+        <div class="card" id="card">
+          <div class="plan">Pro</div>
+          <div class="price">$24<span> / month</span></div>
+          <ul>
+            <li>Unlimited projects</li>
+            <li>Priority support</li>
+            <li>Advanced analytics</li>
+            <li>Team workspaces</li>
+          </ul>
+          <button type="button" tabindex="-1">Get started</button>
+        </div>
+      </div>
+
+      <div class="css-out">
+        <pre id="css"></pre>
+        <div class="copy-row">
+          <ryugi-button id="copy" variant="primary" icon="copy">Copy CSS</ryugi-button>
+          <output id="copy-status" aria-live="polite"></output>
+        </div>
+      </div>
+    </main>
+
+    <script>
+      const defaults = { elevation: 12, blur: 32, spread: -6, radius: 16, opacity: 18 };
+      const vals = { ...defaults };
+      const $ = (id) => document.getElementById(id);
+
+      const hexToRgb = (hex) => {
+        const n = parseInt(hex.slice(1), 16);
+        return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+      };
+
+      function cssText() {
+        const [r, g, b] = hexToRgb($('shadow-color').value);
+        const a = +(vals.opacity / 100).toFixed(2);
+        return {
+          radius: `${vals.radius}px`,
+          shadow: `0 ${vals.elevation}px ${vals.blur}px ${vals.spread}px rgba(${r}, ${g}, ${b}, ${a})`,
+        };
+      }
+
+      function render() {
+        const { radius, shadow } = cssText();
+        const card = $('card');
+        card.style.borderRadius = radius;
+        card.style.boxShadow = shadow;
+        $('color-hex').textContent = $('shadow-color').value;
+        $('css').textContent = `.pricing-card {\n  border-radius: ${radius};\n  box-shadow: ${shadow};\n}`;
+      }
+
+      function readNumber(id, raw) {
+        const n = Number(raw);
+        if (Number.isFinite(n)) vals[id] = n;
+      }
+
+      document.addEventListener('ryugi-change', (e) => {
+        const id = e.target.id;
+        if (id in vals) readNumber(id, e.detail.value);
+        if (id === 'backdrop') $('stage').className = 'stage ' + (e.detail.value === 'dark' ? 'dark' : 'light');
+        render();
+      });
+      $('shadow-color').addEventListener('input', render);
+      $('shadow-color').addEventListener('change', render);
+
+      $('copy').addEventListener('click', async () => {
+        const text = $('css').textContent;
+        try {
+          await navigator.clipboard.writeText(text);
+          $('copy-status').textContent = 'Copied!';
+        } catch {
+          const range = document.createRange();
+          range.selectNodeContents($('css'));
+          const sel = getSelection(); sel.removeAllRanges(); sel.addRange(range);
+          $('copy-status').textContent = 'Clipboard blocked — text selected, press ⌘/Ctrl+C.';
+        }
+        setTimeout(() => ($('copy-status').textContent = ''), 2500);
+      });
+
+      document.addEventListener('ryugi-ui:ready', () => {
+        for (const id of Object.keys(vals)) readNumber(id, $(id).value);
+        const bd = $('backdrop').value;
+        $('stage').className = 'stage ' + (bd === 'dark' ? 'dark' : 'light');
+        render();
+      }, { once: true });
+
+      render();
+    </script>
+  </body>
+</html>

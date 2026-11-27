@@ -1,0 +1,1 @@
+Built [index.html](./index.html) with 24 sample endpoints, HTTP method filtering, path search, p95 sorting, and an adjustable threshold that highlights slow endpoints.

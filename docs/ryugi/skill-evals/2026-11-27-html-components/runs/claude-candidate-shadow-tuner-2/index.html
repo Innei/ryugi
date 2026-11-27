@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Pricing card shadow tuner</title>
+    <style>
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font: 14px/1.5 system-ui, -apple-system, sans-serif;
+        display: grid;
+        grid-template-columns: 340px 1fr;
+        min-height: 100vh;
+      }
+      aside {
+        padding: 24px;
+        display: grid;
+        gap: 18px;
+        align-content: start;
+        border-right: 1px solid rgba(128, 128, 128, 0.2);
+      }
+      h1 { font-size: 16px; margin: 0; }
+      .field { display: grid; gap: 6px; }
+      .field label { font-size: 12px; font-weight: 600; opacity: 0.75; display: flex; justify-content: space-between; }
+      .row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+      main { display: grid; grid-template-rows: 1fr auto; }
+      .stage {
+        display: grid;
+        place-items: center;
+        padding: 56px 24px;
+        transition: background 0.2s;
+      }
+      .stage[data-bg='light'] { background: #f4f5f7; }
+      .stage[data-bg='white'] { background: #ffffff; }
+      .stage[data-bg='dark'] { background: #15171c; }
+
+      /* Sample pricing card (product mock) */
+      .pricing {
+        width: 300px;
+        background: #ffffff;
+        color: #1b1d22;
+        padding: 28px;
+        display: grid;
+        gap: 16px;
+        border: 1px solid rgba(17, 24, 39, 0.06);
+      }
+      .stage[data-bg='dark'] .pricing { background: #1f2229; color: #eef0f4; border-color: rgba(255,255,255,0.06); }
+      .pricing .plan { font-size: 13px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #5b5bd6; }
+      .pricing .price { font-size: 40px; font-weight: 700; line-height: 1; }
+      .pricing .price small { font-size: 14px; font-weight: 500; opacity: 0.6; }
+      .pricing p { margin: 0; opacity: 0.7; }
+      .pricing ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+      .pricing li::before { content: '✓'; color: #5b5bd6; font-weight: 700; margin-right: 8px; }
+      .pricing .cta {
+        margin-top: 4px;
+        text-align: center;
+        padding: 11px;
+        background: #5b5bd6;
+        color: #fff;
+        font-weight: 600;
+        border-radius: 8px;
+      }
+      .code {
+        padding: 16px 24px 24px;
+        display: grid;
+        gap: 10px;
+        border-top: 1px solid rgba(128, 128, 128, 0.2);
+      }
+      pre {
+        margin: 0;
+        padding: 14px 16px;
+        border-radius: 8px;
+        background: rgba(128, 128, 128, 0.1);
+        font: 13px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+      @media (max-width: 760px) {
+        body { grid-template-columns: 1fr; }
+        aside { border-right: 0; border-bottom: 1px solid rgba(128,128,128,.2); }
+      }
+    </style>
+  </head>
+  <body>
+    <aside>
+      <h1>Pricing card shadow</h1>
+
+      <div class="field">
+        <label>Elevation (y offset, px)</label>
+        <ryugi-slider-input id="elevation" value="12" min="0" max="48" step="1"></ryugi-slider-input>
+      </div>
+      <div class="field">
+        <label>Blur (px)</label>
+        <ryugi-slider-input id="blur" value="32" min="0" max="120" step="1"></ryugi-slider-input>
+      </div>
+      <div class="field">
+        <label>Spread (px)</label>
+        <ryugi-slider-input id="spread" value="-8" min="-40" max="40" step="1"></ryugi-slider-input>
+      </div>
+      <div class="field">
+        <label>Corner radius (px)</label>
+        <ryugi-slider-input id="radius" value="16" min="0" max="40" step="1"></ryugi-slider-input>
+      </div>
+      <div class="field">
+        <label>Shadow colour</label>
+        <ryugi-color-picker id="color" value="#1b1d4a29" alpha trigger="field" defaultFormat="hex"></ryugi-color-picker>
+      </div>
+
+      <ryugi-divider></ryugi-divider>
+
+      <div class="row">
+        <span>Add contact shadow layer</span>
+        <ryugi-switch id="contact" checked></ryugi-switch>
+      </div>
+      <div class="field">
+        <label>Preview background</label>
+        <ryugi-segmented id="bg" value="light" block>
+          <ryugi-segment value="light">Light</ryugi-segment>
+          <ryugi-segment value="white">White</ryugi-segment>
+          <ryugi-segment value="dark">Dark</ryugi-segment>
+        </ryugi-segmented>
+      </div>
+
+      <ryugi-button id="reset" icon="rotate-ccw" variant="outlined">Reset to defaults</ryugi-button>
+    </aside>
+
+    <main>
+      <section class="stage" id="stage" data-bg="light">
+        <div class="pricing" id="card">
+          <div class="plan">Pro</div>
+          <div class="price">$24 <small>/ month</small></div>
+          <p>Everything a growing team needs to ship faster.</p>
+          <ul>
+            <li>Unlimited projects</li>
+            <li>10 team seats</li>
+            <li>Priority support</li>
+            <li>Advanced analytics</li>
+          </ul>
+          <div class="cta">Start free trial</div>
+        </div>
+      </section>
+
+      <section class="code">
+        <div class="row">
+          <ryugi-text strong>CSS</ryugi-text>
+          <ryugi-button id="copy" icon="copy" size="small">Copy CSS</ryugi-button>
+        </div>
+        <pre id="css"></pre>
+      </section>
+    </main>
+
+    <script>
+      const DEFAULTS = {
+        elevation: 12, blur: 32, spread: -8, radius: 16,
+        color: '#1b1d4a29', contact: true, bg: 'light',
+      };
+      const state = { ...DEFAULTS };
+      const card = document.getElementById('card');
+      const stage = document.getElementById('stage');
+      const cssOut = document.getElementById('css');
+
+      const colorToCss = (c) => {
+        if (c == null || c === '') return 'rgba(0, 0, 0, 0.16)';
+        if (typeof c === 'object') {
+          if (typeof c.toHexString === 'function') return c.toHexString();
+          if ('r' in c) return `rgba(${c.r}, ${c.g}, ${c.b}, ${c.a ?? 1})`;
+        }
+        return String(c);
+      };
+
+      // A faint, tight shadow derived from the main colour for grounding.
+      const contactColor = (c) => {
+        const s = colorToCss(c);
+        const hex = s.match(/^#([0-9a-f]{6})([0-9a-f]{2})?$/i);
+        if (hex) {
+          const a = hex[2] ? parseInt(hex[2], 16) / 255 : 1;
+          const rgb = hex[1].match(/../g).map((h) => parseInt(h, 16));
+          return `rgba(${rgb.join(', ')}, ${+(Math.min(a, 1) * 0.5).toFixed(3)})`;
+        }
+        return s;
+      };
+
+      const buildShadow = () => {
+        const n = (v) => (Number(v) === 0 ? '0' : `${Number(v)}px`);
+        const main = `0 ${n(state.elevation)} ${n(state.blur)} ${n(state.spread)} ${colorToCss(state.color)}`;
+        if (!state.contact) return main;
+        const y = Math.max(1, Math.round(Number(state.elevation) / 8));
+        const b = Math.max(2, Math.round(Number(state.blur) / 10));
+        return `0 ${y}px ${b}px 0 ${contactColor(state.color)},\n    ${main}`;
+      };
+
+      const render = () => {
+        const shadow = buildShadow();
+        card.style.boxShadow = shadow.replace(/\n\s*/g, ' ');
+        card.style.borderRadius = `${Number(state.radius)}px`;
+        stage.dataset.bg = state.bg;
+        cssOut.textContent =
+          `.pricing-card {\n  border-radius: ${Number(state.radius)}px;\n  box-shadow: ${shadow};\n}`;
+      };
+
+      document.addEventListener('ryugi-change', (e) => {
+        const id = e.target.id;
+        if (!(id in state)) return;
+        state[id] = 'checked' in e.detail ? e.detail.checked : e.detail.value;
+        render();
+      });
+
+      document.addEventListener('ryugi-ui:ready', () => {
+        // Pick up any restored values.
+        for (const id of ['elevation', 'blur', 'spread', 'radius', 'color', 'bg']) {
+          const el = document.getElementById(id);
+          if (el && el.value != null && el.value !== '') state[id] = el.value;
+        }
+        const sw = document.getElementById('contact');
+        if (typeof sw.checked === 'boolean') state.contact = sw.checked;
+
+        document.getElementById('reset').addEventListener('click', () => {
+          Object.assign(state, DEFAULTS);
+          for (const id of ['elevation', 'blur', 'spread', 'radius', 'color', 'bg']) {
+            document.getElementById(id).value = DEFAULTS[id];
+          }
+          sw.checked = DEFAULTS.contact;
+          render();
+        });
+
+        document.getElementById('copy').addEventListener('click', async () => {
+          try {
+            await navigator.clipboard.writeText(cssOut.textContent);
+            window.ryugiToast.success({ id: 'copy', title: 'CSS copied' });
+          } catch {
+            const range = document.createRange();
+            range.selectNodeContents(cssOut);
+            const sel = getSelection();
+            sel.removeAllRanges();
+            sel.addRange(range);
+            window.ryugiToast.warning({ id: 'copy', title: 'Clipboard blocked', description: 'CSS is selected, press ⌘C / Ctrl+C.' });
+          }
+        });
+
+        render();
+      }, { once: true });
+
+      render();
+    </script>
+  </body>
+</html>

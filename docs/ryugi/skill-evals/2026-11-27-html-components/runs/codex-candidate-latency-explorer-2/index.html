@@ -1,0 +1,366 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>API Latency Explorer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #101416;
+      --panel: #151a1d;
+      --raised: #191f22;
+      --line: #2a3337;
+      --ink: #eef3f2;
+      --muted: #a4b2b5;
+      --dim: #87979b;
+      --mint: #8be6cd;
+      --tail: #367b70;
+      --slow: #ffac87;
+      --slow-bar: #b26248;
+      --mono: "IBM Plex Mono", ui-monospace, monospace;
+      --lobe-color-primary: #76d9bd;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font: 14px/1.5 "DM Sans", system-ui, sans-serif;
+    }
+    .topbar { border-bottom: 1px solid var(--line); }
+    .top-inner, main, .footer {
+      width: min(1200px, calc(100% - 80px));
+      margin-inline: auto;
+    }
+    .top-inner {
+      min-height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .brand { display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 700; }
+    .brand-mark {
+      display: grid;
+      place-items: center;
+      height: 30px;
+      width: 30px;
+      border: 1px solid #335a50;
+      border-radius: 8px;
+      background: #1b302c;
+      color: var(--mint);
+    }
+    .sample { display: flex; align-items: center; gap: 8px; color: var(--muted); font: 11px var(--mono); }
+    main { padding-top: 39px; }
+    .eyebrow {
+      color: var(--mint);
+      font: 500 11px var(--mono);
+      letter-spacing: .13em;
+      text-transform: uppercase;
+      margin: 0 0 9px;
+    }
+    h1 {
+      margin: 0;
+      font-size: clamp(31px, 5vw, 47px);
+      letter-spacing: -.055em;
+      line-height: 1.1;
+      font-weight: 700;
+    }
+    .intro { color: var(--muted); margin: 12px 0 25px; }
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      margin: 0 0 20px;
+    }
+    .metric { padding: 15px 20px 16px; min-width: 0; }
+    .metric + .metric { border-left: 1px solid var(--line); }
+    .metric dt { color: var(--muted); font-size: 12px; }
+    .metric dd { margin: 4px 0 0; display: flex; align-items: baseline; flex-wrap: wrap; column-gap: 8px; }
+    .metric output { font: 500 25px/1.15 var(--mono); letter-spacing: -.045em; }
+    .metric .unit { color: var(--dim); font: 11px var(--mono); }
+    #slow-count { color: var(--slow); }
+    .explorer { border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
+    .controls {
+      display: grid;
+      grid-template-columns: minmax(165px, 1.25fr) minmax(160px, .8fr) minmax(210px, 1.25fr) minmax(145px, .75fr);
+      gap: 16px;
+      padding: 17px 20px 18px;
+    }
+    .field { display: grid; gap: 7px; min-width: 0; align-content: start; }
+    .field-label { color: var(--muted); font-size: 12px; font-weight: 600; }
+    .field ryugi-input, .field ryugi-select, .field ryugi-slider-input { display: block; width: 100%; }
+    .field ryugi-slider-input { padding-top: 1px; }
+    .table-top {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px 22px;
+      border-top: 1px solid var(--line);
+      padding: 13px 20px;
+    }
+    h2 { margin: 0; font-size: 15px; letter-spacing: -.02em; }
+    .results { color: var(--dim); font: 11px var(--mono); margin-left: 9px; }
+    .legend { display: flex; flex-wrap: wrap; gap: 7px 16px; color: var(--muted); font-size: 11px; }
+    .legend-item { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+    .swatch { display: inline-block; width: 10px; height: 6px; border-radius: 2px; background: var(--swatch); }
+    .table-scroll { overflow-x: auto; border-radius: 0 0 12px 12px; }
+    table { width: 100%; min-width: 680px; border-collapse: collapse; table-layout: fixed; }
+    .col-method { width: 98px; }
+    .col-path { width: 31%; }
+    .col-number { width: 92px; }
+    th {
+      color: var(--muted);
+      background: var(--raised);
+      font: 500 10px var(--mono);
+      text-align: left;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+    th, td { border-top: 1px solid var(--line); padding: 0 12px; }
+    th:first-child, td:first-child { padding-left: 20px; }
+    th:last-child, td:last-child { padding-right: 20px; }
+    th { height: 40px; }
+    td { height: 45px; }
+    td.path { font: 12px var(--mono); overflow-wrap: anywhere; }
+    .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    td.num { color: var(--muted); font: 12px var(--mono); }
+    td.p95 { color: var(--ink); font-weight: 600; }
+    tr.slow td { background: #211c1c; }
+    tr.slow td:first-child { box-shadow: inset 2px 0 var(--slow-bar); }
+    tr.slow td.p95 { color: var(--slow); }
+    tbody tr:hover td { background: #202729; }
+    tbody tr.slow:hover td { background: #2a2220; }
+    .axis { display: flex; justify-content: space-between; letter-spacing: 0; text-transform: none; }
+    .plot {
+      position: relative;
+      height: 14px;
+      background: repeating-linear-gradient(to right, var(--line) 0 1px, transparent 1px 25%);
+      border-right: 1px solid var(--line);
+    }
+    .bar, .threshold-line { position: absolute; display: block; }
+    .bar { left: 0; height: 6px; top: 4px; border-radius: 2px; }
+    .bar.p95-bar { background: var(--tail); width: var(--p95); }
+    .bar.p50-bar { background: var(--mint); width: var(--p50); }
+    tr.slow .p95-bar { background: var(--slow-bar); }
+    .threshold-line {
+      left: clamp(0px, var(--threshold), calc(100% - 1px));
+      top: -1px;
+      height: 16px;
+      border-left: 1px dashed #d2aaa0;
+    }
+    .empty { color: var(--muted); text-align: center; height: 100px; }
+    .footer { color: var(--dim); font-size: 11px; padding-block: 14px 28px; }
+    @media (max-width: 950px) {
+      .controls { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 560px) {
+      .top-inner, main, .footer { width: calc(100% - 28px); }
+      main { padding-top: 27px; }
+      .controls, .table-top { padding-inline: 13px; }
+      .controls { gap: 12px; grid-template-columns: minmax(0, 1fr); }
+      .metric { padding: 12px 9px; }
+      .metric output { font-size: 21px; }
+      .metric .unit { font-size: 10px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="top-inner">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true"><ryugi-icon name="activity" size="17"></ryugi-icon></span>
+        API Observability
+      </div>
+      <div class="sample"><ryugi-badge status="default" dot></ryugi-badge> Simulated data</div>
+    </div>
+  </header>
+  <main>
+    <header>
+      <p class="eyebrow">Request performance</p>
+      <h1>Latency explorer</h1>
+      <p class="intro">Compare median and tail latency across 24 API endpoints.</p>
+    </header>
+
+    <dl class="summary" aria-label="Matching endpoint summary">
+      <div class="metric"><dt>Matching endpoints</dt><dd><output id="match-count">24</output><span class="unit">/ 24</span></dd></div>
+      <div class="metric"><dt>Slow endpoints</dt><dd><output id="slow-count">8</output><span class="unit" id="threshold-summary">&gt; 500 ms p95</span></dd></div>
+      <div class="metric"><dt>Highest p95</dt><dd><output id="max-p95">1,280</output><span class="unit" id="max-unit">ms</span></dd></div>
+    </dl>
+
+    <section class="explorer" aria-labelledby="endpoint-title">
+      <div class="controls" role="group" aria-label="Endpoint filters and sorting">
+        <div class="field">
+          <span id="search-label" class="field-label">Search by path</span>
+          <ryugi-input id="path-search" type="search" aria-label="Search by path" placeholder="e.g. /orders" allowClear></ryugi-input>
+        </div>
+        <div class="field">
+          <span id="method-label" class="field-label">HTTP method</span>
+          <ryugi-select id="method-filter" value="all" aria-labelledby="method-label">
+            <ryugi-option value="all">All methods</ryugi-option>
+            <ryugi-option value="GET">GET</ryugi-option>
+            <ryugi-option value="POST">POST</ryugi-option>
+            <ryugi-option value="PUT">PUT</ryugi-option>
+            <ryugi-option value="PATCH">PATCH</ryugi-option>
+            <ryugi-option value="DELETE">DELETE</ryugi-option>
+          </ryugi-select>
+        </div>
+        <div class="field">
+          <span id="threshold-label" class="field-label">Slow threshold (ms)</span>
+          <ryugi-slider-input id="slow-threshold" value="500" min="0" max="1500" step="1" aria-labelledby="threshold-label"></ryugi-slider-input>
+        </div>
+        <div class="field">
+          <span id="sort-label" class="field-label">Sort by p95</span>
+          <ryugi-select id="p95-sort" value="desc" aria-labelledby="sort-label">
+            <ryugi-option value="desc">Highest first</ryugi-option>
+            <ryugi-option value="asc">Lowest first</ryugi-option>
+          </ryugi-select>
+        </div>
+      </div>
+
+      <div class="table-top">
+        <div><h2 id="endpoint-title" style="display:inline">Endpoints</h2><span class="results" id="results" role="status"></span></div>
+        <div class="legend" aria-label="Latency chart legend">
+          <span class="legend-item"><i class="swatch" style="--swatch:var(--mint)"></i>p50</span>
+          <span class="legend-item"><i class="swatch" style="--swatch:var(--tail)"></i>p95</span>
+          <span class="legend-item"><i class="swatch" style="--swatch:var(--slow-bar)"></i>Slow p95</span>
+          <span class="legend-item"><i aria-hidden="true" style="height:10px;border-left:1px dashed #d2aaa0"></i>Threshold</span>
+        </div>
+      </div>
+
+      <div class="table-scroll" tabindex="0" role="region" aria-label="Endpoint latency table">
+        <table aria-labelledby="endpoint-title">
+          <colgroup>
+            <col class="col-method"><col class="col-path"><col><col class="col-number"><col class="col-number">
+          </colgroup>
+          <thead>
+            <tr>
+              <th scope="col">Method</th>
+              <th scope="col">Path</th>
+              <th scope="col" aria-label="Latency chart from 0 to 1500 milliseconds">
+                <div class="axis" aria-hidden="true"><span>0</span><span>375</span><span>750</span><span>1,125</span><span>1,500 ms</span></div>
+              </th>
+              <th class="num" scope="col">p50</th>
+              <th class="num" id="p95-heading" scope="col" aria-sort="descending">p95 <span id="sort-arrow" aria-hidden="true">↓</span></th>
+            </tr>
+          </thead>
+          <tbody id="endpoint-rows"></tbody>
+        </table>
+      </div>
+      <template id="endpoint-row">
+        <tr>
+          <td><ryugi-tag variant="outlined" size="small"></ryugi-tag></td>
+          <td class="path"></td>
+          <td aria-hidden="true"><div class="plot"><span class="bar p95-bar"></span><span class="bar p50-bar"></span><span class="threshold-line"></span></div></td>
+          <td class="num p50"></td><td class="num p95"></td>
+        </tr>
+      </template>
+    </section>
+  </main>
+  <footer class="footer">p50 is the median request latency. 95% of requests complete at or below the p95 latency.</footer>
+  <script>
+    const endpoints = [
+      ["POST",   "/v1/reports/export",           412, 1280],
+      ["POST",   "/v1/orders",                   235,  914],
+      ["GET",    "/v1/search",                   189,  842],
+      ["GET",    "/v1/analytics/overview",       264,  765],
+      ["POST",   "/v1/payments",                 163,  683],
+      ["GET",    "/v1/orders",                   142,  608],
+      ["POST",   "/v1/imports",                  181,  556],
+      ["PATCH",  "/v1/orders/:id",               132,  523],
+      ["GET",    "/v1/products",                 118,  471],
+      ["POST",   "/v1/auth/token",                98,  432],
+      ["GET",    "/v1/customers",                 96,  388],
+      ["GET",    "/v1/orders/:id",                81,  350],
+      ["PUT",    "/v1/inventory/:sku",           109,  324],
+      ["POST",   "/v1/customers",                 87,  302],
+      ["GET",    "/v1/inventory",                 78,  274],
+      ["GET",    "/v1/products/:id",              64,  248],
+      ["PATCH",  "/v1/customers/:id",             72,  217],
+      ["GET",    "/v1/customers/:id",             58,  191],
+      ["PUT",    "/v1/users/me/preferences",      51,  167],
+      ["GET",    "/v1/users/me",                  48,  151],
+      ["DELETE", "/v1/sessions/:id",              42,  130],
+      ["DELETE", "/v1/cart/items/:id",            37,  112],
+      ["GET",    "/v1/feature-flags",              24,   78],
+      ["GET",    "/v1/health",                      9,   26],
+    ].map(([method, path, p50, p95]) => ({ method, path, p50, p95 }));
+
+    const methodColors = { GET: "cyan", POST: "geekblue", PUT: "purple", PATCH: "gold", DELETE: "volcano" };
+    const byId = (id) => document.getElementById(id);
+    const number = new Intl.NumberFormat("en-US");
+    const ms = (value) => number.format(value) + " ms";
+    const scaleMax = 1500;
+    const percent = (value) => 100 * value / scaleMax + "%";
+    const controls = ["path-search", "method-filter", "p95-sort", "slow-threshold"];
+
+    function render() {
+      const query = String(byId("path-search").value ?? "").trim().toLowerCase();
+      const method = byId("method-filter").value ?? "all";
+      const ascending = byId("p95-sort").value === "asc";
+      const thresholdValue = byId("slow-threshold").value;
+      const threshold = thresholdValue == null || thresholdValue === "" ? 500 : Number(thresholdValue);
+      const matches = endpoints
+        .filter((endpoint) => (method === "all" || endpoint.method === method) && endpoint.path.toLowerCase().includes(query))
+        .sort((a, b) => ascending ? a.p95 - b.p95 : b.p95 - a.p95);
+
+      const slowCount = matches.filter((endpoint) => endpoint.p95 > threshold).length;
+      byId("match-count").textContent = matches.length;
+      byId("slow-count").textContent = slowCount;
+      byId("threshold-summary").textContent = "> " + ms(threshold) + " p95";
+      byId("max-p95").textContent = matches.length ? number.format(Math.max(...matches.map((endpoint) => endpoint.p95))) : "—";
+      byId("max-unit").hidden = matches.length === 0;
+      byId("results").textContent = matches.length + " of " + endpoints.length;
+      byId("p95-heading").setAttribute("aria-sort", ascending ? "ascending" : "descending");
+      byId("sort-arrow").textContent = ascending ? "↑" : "↓";
+
+      const rows = byId("endpoint-rows");
+      rows.style.setProperty("--threshold", percent(threshold));
+      if (!matches.length) {
+        const row = document.createElement("tr");
+        const cell = row.insertCell();
+        cell.colSpan = 5;
+        cell.className = "empty";
+        cell.textContent = "No endpoints match your filters.";
+        rows.replaceChildren(row);
+        return;
+      }
+
+      const fragment = document.createDocumentFragment();
+      const template = byId("endpoint-row");
+      for (const endpoint of matches) {
+        const row = template.content.cloneNode(true);
+        const slow = endpoint.p95 > threshold;
+        row.querySelector("tr").classList.toggle("slow", slow);
+        const tag = row.querySelector("ryugi-tag");
+        tag.setAttribute("color", methodColors[endpoint.method]);
+        tag.textContent = endpoint.method;
+        row.querySelector(".path").textContent = endpoint.path;
+        row.querySelector(".p50").textContent = ms(endpoint.p50);
+        const p95Cell = row.querySelector(".p95");
+        p95Cell.textContent = ms(endpoint.p95);
+        if (slow) p95Cell.setAttribute("aria-label", ms(endpoint.p95) + ", above the slow threshold");
+        const plot = row.querySelector(".plot");
+        plot.style.setProperty("--p50", percent(endpoint.p50));
+        plot.style.setProperty("--p95", percent(endpoint.p95));
+        fragment.append(row);
+      }
+      rows.replaceChildren(fragment);
+    }
+
+    document.addEventListener("ryugi-ui:ready", () => {
+      document.addEventListener("ryugi-change", (event) => {
+        if (controls.includes(event.target.id)) render();
+      });
+      render();
+    }, { once: true });
+  </script>
+</body>
+</html>

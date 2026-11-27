@@ -1,0 +1,400 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Search empty state · Copy review</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f8f6f2;
+      --white: #fff;
+      --ink: #25212a;
+      --muted: #625b67;
+      --line: #e4dde5;
+      --accent: #6c395f;
+      --accent-wash: #f5eaf2;
+      --preview-line: #e9e7ed;
+      font: 15px/1.5 "Avenir Next", Avenir, system-ui, sans-serif;
+      color: var(--ink);
+      background: var(--paper);
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    body, h1, h2, h3, p, dl, dd { margin: 0; }
+    .wrap { width: min(1280px, calc(100% - 72px)); margin-inline: auto; }
+    .top { border-bottom: 1px solid var(--line); }
+    .top .wrap {
+      min-height: 62px;
+      display: flex;
+      gap: 11px;
+      align-items: center;
+      font-weight: 700;
+    }
+    .mark {
+      width: 29px;
+      height: 29px;
+      border-radius: 9px;
+      background: var(--accent);
+      color: white;
+      display: grid;
+      place-items: center;
+    }
+    .magnifier {
+      display: inline-block;
+      width: 1em;
+      height: 1em;
+      position: relative;
+      flex: none;
+    }
+    .magnifier::before {
+      content: "";
+      position: absolute;
+      inset: 0 .22em .22em 0;
+      border: max(1.4px, .085em) solid currentColor;
+      border-radius: 50%;
+    }
+    .magnifier::after {
+      content: "";
+      position: absolute;
+      width: .37em;
+      height: max(1.4px, .085em);
+      border-radius: 2px;
+      background: currentColor;
+      right: .025em;
+      bottom: .14em;
+      transform: rotate(45deg);
+    }
+    main { padding-block: 40px 52px; }
+    h1, .summary h2 {
+      font-family: Georgia, "Times New Roman", serif;
+      font-weight: 400;
+      letter-spacing: -.055em;
+    }
+    h1 { font-size: clamp(2.6rem, 5vw, 4.3rem); line-height: 1.01; }
+    .intro p { margin-top: 12px; color: var(--muted); }
+    .intro .preview-context { margin-top: 9px; font-size: .82rem; }
+    fieldset { border: 0; padding: 0; margin: 0; min-inline-size: 0; }
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 18px;
+      margin-top: 27px;
+    }
+    .card {
+      min-width: 0;
+      background: var(--white);
+      border: 1px solid var(--line);
+      border-radius: 17px;
+      box-shadow: 0 3px 8px #30223806;
+    }
+    .card:has(.pick input:checked) {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 1px var(--accent);
+    }
+    .card header {
+      min-height: 63px;
+      padding: 11px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .option-title { display: flex; align-items: center; gap: 9px; }
+    .letter {
+      display: grid;
+      place-items: center;
+      width: 27px;
+      height: 27px;
+      border-radius: 8px;
+      background: var(--accent-wash);
+      color: var(--accent);
+      font-size: .79rem;
+      font-weight: 750;
+    }
+    .card h2 { font-size: .99rem; line-height: 1.25; }
+    .pick {
+      display: inline-flex;
+      gap: 6px;
+      align-items: center;
+      padding: 7px 9px;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      font-size: .79rem;
+      font-weight: 650;
+      cursor: pointer;
+    }
+    .pick:has(input:checked) { color: var(--accent); background: var(--accent-wash); border-color: #d6b9cd; }
+    .pick input { margin: 0; accent-color: var(--accent); width: 14px; height: 14px; }
+    .pick .selected, .pick:has(input:checked) .choose { display: none; }
+    .pick:has(input:checked) .selected { display: inline; }
+    .preview {
+      margin-inline: 12px;
+      border: 1px solid var(--preview-line);
+      border-radius: 11px;
+      background: #fdfcfe;
+      overflow: hidden;
+      font-family: system-ui, sans-serif;
+    }
+    .search-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 10px 10px 0;
+      padding: 7px 9px;
+      border: 1px solid #e5e1e8;
+      border-radius: 7px;
+      background: var(--white);
+      color: #393440;
+      font-size: .8rem;
+    }
+    .search-bar .magnifier { color: #6a6172; }
+    .results-bar {
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--preview-line);
+      color: #655d6c;
+      font-size: .73rem;
+    }
+    .empty {
+      min-height: 189px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 21px 12px 23px;
+      text-align: center;
+    }
+    .empty-icon {
+      display: grid;
+      place-items: center;
+      width: 46px;
+      height: 46px;
+      border-radius: 14px;
+      font-size: 23px;
+      color: var(--accent);
+      background: var(--accent-wash);
+    }
+    .empty h3 { margin-top: 12px; font-size: 1.06rem; letter-spacing: -.027em; line-height: 1.28; }
+    .empty p { max-width: 30ch; margin-top: 6px; font-size: .86rem; line-height: 1.45; color: #655d6c; }
+    .rating { margin: 14px 16px 16px; }
+    .rating legend { padding: 0; font-size: .83rem; font-weight: 700; }
+    .scale { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 5px; margin-top: 7px; }
+    .score { position: relative; cursor: pointer; }
+    .score span {
+      display: grid;
+      place-items: center;
+      min-height: 34px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      font-size: .82rem;
+      font-weight: 650;
+    }
+    .score:hover span, .pick:hover { background: var(--accent-wash); }
+    .score input:checked + span { background: var(--accent); border-color: var(--accent); color: white; }
+    .score input:focus-visible + span, .pick:has(input:focus-visible), textarea:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 3px;
+    }
+    .scale-labels { display: flex; justify-content: space-between; gap: 8px; margin-top: 5px; color: var(--muted); font-size: .73rem; }
+    .notes { margin-top: 22px; }
+    .notes label { display: block; margin-bottom: 6px; font-weight: 700; }
+    .optional { margin-left: 5px; color: var(--muted); font-size: .82rem; font-weight: 400; }
+    textarea {
+      display: block;
+      width: 100%;
+      min-height: 75px;
+      resize: vertical;
+      padding: 11px 13px;
+      border: 1px solid #cfc4cf;
+      border-radius: 10px;
+      background: white;
+      color: inherit;
+      font: inherit;
+    }
+    textarea::placeholder { color: var(--muted); }
+    .summary {
+      margin-top: 22px;
+      padding: 20px 23px;
+      border-radius: 16px;
+      background: #34263a;
+      color: #fff;
+    }
+    .summary h2 { font-size: 1.85rem; line-height: 1.15; }
+    .summary dl {
+      display: grid;
+      grid-template-columns: 1fr 1.65fr 1.35fr;
+      gap: 18px;
+      margin-top: 14px;
+      padding-top: 13px;
+      border-top: 1px solid #ffffff35;
+    }
+    .summary dt { margin-bottom: 3px; color: #e1cddd; font-size: .78rem; font-weight: 700; }
+    .summary dd { font-size: .87rem; overflow-wrap: anywhere; }
+    .summary dd ul { display: flex; flex-wrap: wrap; gap: 2px 14px; list-style: none; padding: 0; margin: 0; }
+    #summary-note { white-space: pre-wrap; }
+    @media (max-width: 1040px) { .wrap { width: calc(100% - 32px); } .cards { gap: 10px; } }
+    @media (max-width: 860px) {
+      .cards { grid-template-columns: 1fr; gap: 14px; }
+      .empty { min-height: 173px; }
+      .scale { max-width: 320px; }
+      .scale-labels { max-width: 320px; }
+    }
+    @media (max-width: 580px) {
+      main { padding-block: 30px; }
+      .summary dl { grid-template-columns: 1fr; gap: 11px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="top">
+    <div class="wrap"><span class="mark" aria-hidden="true"><span class="magnifier"></span></span>Copy review</div>
+  </header>
+  <main class="wrap">
+    <header class="intro">
+      <h1>Search empty state</h1>
+      <p>Choose your favorite and rate how well each option’s tone fits the product.</p>
+      <p class="preview-context">Sample copy in an illustrative search layout</p>
+    </header>
+
+    <form id="copy-review">
+      <fieldset class="cards" id="options">
+        <legend class="sr-only">Choose one search empty-state option</legend>
+      </fieldset>
+      <div class="notes">
+        <label for="review-note">Review note <span class="optional">Optional</span></label>
+        <textarea id="review-note" name="note" rows="2" placeholder="What worked, or what would you change?"></textarea>
+      </div>
+    </form>
+
+    <section class="summary" aria-labelledby="summary-heading">
+      <h2 id="summary-heading">Your review</h2>
+      <dl>
+        <div><dt>Preferred option</dt><dd><output id="summary-pick" form="copy-review">No option selected</output></dd></div>
+        <div><dt>Tone ratings</dt><dd><ul id="summary-ratings" aria-label="Tone ratings by option"></ul></dd></div>
+        <div><dt>Note</dt><dd id="summary-note">No note added</dd></div>
+      </dl>
+    </section>
+  </main>
+
+  <template id="option-template">
+    <article class="card">
+      <header>
+        <div class="option-title">
+          <span class="letter" aria-hidden="true"></span>
+          <h2></h2>
+        </div>
+        <label class="pick">
+          <input name="preferred" type="radio">
+          <span class="choose">Choose</span><span class="selected" aria-hidden="true">Selected</span>
+        </label>
+      </header>
+      <div class="preview">
+        <div class="search-bar"><span class="magnifier" aria-hidden="true"></span>quarterly roadmap</div>
+        <div class="results-bar">0 results</div>
+        <div class="empty">
+          <span class="empty-icon" aria-hidden="true"><span class="magnifier"></span></span>
+          <h3></h3>
+          <p></p>
+        </div>
+      </div>
+      <fieldset class="rating">
+        <legend>Tone rating <span class="sr-only"></span></legend>
+        <div class="scale"></div>
+        <div class="scale-labels" aria-hidden="true"><span>Poor fit</span><span>Great fit</span></div>
+      </fieldset>
+    </article>
+  </template>
+  <template id="score-template">
+    <label class="score">
+      <input class="sr-only" type="radio">
+      <span aria-hidden="true"></span>
+    </label>
+  </template>
+  <script>
+    const options = [
+      {
+        key: 'a', letter: 'A', name: 'Direct',
+        headline: 'No results found',
+        body: 'Try a different search term.'
+      },
+      {
+        key: 'b', letter: 'B', name: 'Guiding',
+        headline: 'No matches for “quarterly roadmap”',
+        body: 'Check your spelling or try a broader search like “roadmap”.'
+      },
+      {
+        key: 'c', letter: 'C', name: 'Conversational',
+        headline: 'We came up empty',
+        body: 'Try a shorter search. You might find what you’re looking for.'
+      }
+    ];
+
+    const form = document.getElementById('copy-review');
+    const cards = document.getElementById('options');
+    const optionTemplate = document.getElementById('option-template');
+    const scoreTemplate = document.getElementById('score-template');
+    const summaryPick = document.getElementById('summary-pick');
+    const summaryRatings = document.getElementById('summary-ratings');
+    const summaryNote = document.getElementById('summary-note');
+    const note = document.getElementById('review-note');
+    const ratingSummaries = new Map();
+
+    for (const option of options) {
+      const label = 'Option ' + option.letter + ' · ' + option.name;
+      const card = optionTemplate.content.cloneNode(true);
+      card.querySelector('.letter').textContent = option.letter;
+      card.querySelector('h2').textContent = option.name;
+      card.querySelector('h3').textContent = option.headline;
+      card.querySelector('.empty p').textContent = option.body;
+      card.querySelector('legend .sr-only').textContent = ' for ' + label;
+
+      const pick = card.querySelector('.pick input');
+      pick.id = 'pick-' + option.key;
+      pick.value = option.key;
+      pick.setAttribute('aria-label', 'Choose ' + label);
+
+      const scale = card.querySelector('.scale');
+      for (let value = 1; value <= 5; value++) {
+        const score = scoreTemplate.content.cloneNode(true);
+        const input = score.querySelector('input');
+        input.name = 'rating-' + option.key;
+        input.id = input.name + '-' + value;
+        input.value = value;
+        const description = value === 1 ? ', poor fit' : value === 5 ? ', great fit' : '';
+        input.setAttribute('aria-label', value + ' out of 5' + description);
+        score.querySelector('span').textContent = value;
+        scale.append(score);
+      }
+      cards.append(card);
+
+      const ratingSummary = document.createElement('li');
+      summaryRatings.append(ratingSummary);
+      ratingSummaries.set(option.key, ratingSummary);
+    }
+
+    function render() {
+      const values = new FormData(form);
+      const chosen = options.find(option => option.key === values.get('preferred'));
+      summaryPick.value = chosen ? 'Option ' + chosen.letter + ' · ' + chosen.name : 'No option selected';
+
+      for (const option of options) {
+        const rating = values.get('rating-' + option.key);
+        ratingSummaries.get(option.key).textContent =
+          option.letter + ' · ' + (rating ? rating + '/5' : 'Unrated');
+      }
+      summaryNote.textContent = note.value.trim() || 'No note added';
+    }
+
+    form.addEventListener('input', render);
+    form.addEventListener('change', render);
+    form.addEventListener('submit', event => event.preventDefault());
+    render();
+  </script>
+</body>
+</html>

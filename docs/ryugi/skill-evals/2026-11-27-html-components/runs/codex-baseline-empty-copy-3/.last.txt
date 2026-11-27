@@ -1,0 +1,1 @@
+Wrote [index.html](./index.html) with three sample copy options in a shared search-results mockup, a favorite picker, 1–5 tone ratings, a note field, and a live summary.

@@ -1,0 +1,1 @@
+Built the [notification settings prototype](./index.html) with email digest controls, multi-channel muting, quiet hours, and a Save confirmation. Settings are stored for the current page session.

@@ -1,0 +1,1 @@
+Created `index.html` with p50 and p95 latency for 24 sample API endpoints, HTTP method filtering, path search, p95 sorting, and an adjustable slow threshold.

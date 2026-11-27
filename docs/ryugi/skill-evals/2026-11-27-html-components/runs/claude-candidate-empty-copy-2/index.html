@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Search empty state — copy review</title>
+    <style>
+      :root {
+        --bg: #f6f7f9;
+        --fg: #1b1f24;
+        --muted: #66707c;
+        --line: #e3e6ea;
+        --panel: #ffffff;
+        --accent: #2f6bff;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #0f1114;
+          --fg: #e8eaed;
+          --muted: #9aa3ad;
+          --line: #2a2f36;
+          --panel: #171a1f;
+          --accent: #6f98ff;
+        }
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        padding: 32px 24px 64px;
+        background: var(--bg);
+        color: var(--fg);
+        font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+      }
+      main { max-width: 1240px; margin: 0 auto; display: grid; gap: 28px; }
+      header h1 { margin: 0 0 4px; font-size: 22px; }
+      header p { margin: 0; color: var(--muted); }
+
+      .options {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+        gap: 20px;
+      }
+      .option {
+        display: grid;
+        gap: 14px;
+        padding: 16px;
+        border-radius: 14px;
+        border: 2px solid transparent;
+        background: color-mix(in srgb, var(--panel) 60%, transparent);
+        transition: border-color 0.15s;
+      }
+      .option.picked { border-color: var(--accent); }
+      .option-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+      .option-head h2 { margin: 0; font-size: 15px; }
+
+      /* Product mock */
+      .screen {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 1px 2px rgb(0 0 0 / 0.04), 0 6px 20px rgb(0 0 0 / 0.05);
+      }
+      .topbar {
+        display: flex; align-items: center; gap: 10px;
+        padding: 10px 14px; border-bottom: 1px solid var(--line);
+      }
+      .logo { width: 22px; height: 22px; border-radius: 6px; background: var(--accent); flex: none; }
+      .searchbox {
+        flex: 1; display: flex; align-items: center; gap: 8px;
+        padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px;
+        color: var(--fg); font-size: 13px;
+      }
+      .searchbox .ph { color: var(--muted); display: inline-flex; }
+      .filters {
+        display: flex; gap: 6px; padding: 8px 14px; border-bottom: 1px solid var(--line);
+        font-size: 12px; color: var(--muted);
+      }
+      .chip { padding: 2px 9px; border: 1px solid var(--line); border-radius: 999px; }
+      .meta { padding: 10px 14px 0; font-size: 12px; color: var(--muted); }
+      .empty {
+        display: grid; justify-items: center; text-align: center; gap: 8px;
+        padding: 36px 28px 44px;
+      }
+      .empty .art {
+        width: 56px; height: 56px; border-radius: 50%;
+        display: grid; place-items: center;
+        background: color-mix(in srgb, var(--accent) 12%, transparent);
+        color: var(--accent); margin-bottom: 6px;
+      }
+      .empty h3 { margin: 0; font-size: 17px; font-weight: 600; }
+      .empty p { margin: 0; max-width: 300px; color: var(--muted); font-size: 13px; }
+      .empty ul { margin: 4px 0 0; padding: 0; list-style: none; color: var(--muted); font-size: 13px; text-align: left; }
+      .empty ul li::before { content: "•  "; }
+      .empty .cta { margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+      .fakebtn {
+        padding: 6px 12px; border-radius: 7px; font-size: 13px;
+        border: 1px solid var(--line); color: var(--fg); background: transparent;
+      }
+      .fakebtn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+      .feedback { display: grid; gap: 10px; }
+      .field-label { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+
+      .summary { display: grid; gap: 12px; }
+      .summary h2 { margin: 0; font-size: 17px; }
+      table { width: 100%; border-collapse: collapse; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+      th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+      th { font-size: 12px; color: var(--muted); font-weight: 500; }
+      tr:last-child td { border-bottom: 0; }
+      tr.is-picked td { background: color-mix(in srgb, var(--accent) 8%, transparent); }
+      .stars { letter-spacing: 2px; color: #f5a623; white-space: nowrap; }
+      .stars .off { color: var(--line); }
+      .note { white-space: pre-wrap; color: var(--fg); }
+      .none { color: var(--muted); font-style: italic; }
+      .summary-actions { display: flex; gap: 8px; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>Search results — empty state copy</h1>
+        <p>Each option is shown in the results page for the query <b>“wireless headphnes”</b> with no matches. Pick one, rate its tone and leave a note.</p>
+      </header>
+
+      <ryugi-radio-group id="pick" horizontal value="">
+        <ryugi-radio value="a">Pick Option A</ryugi-radio>
+        <ryugi-radio value="b">Pick Option B</ryugi-radio>
+        <ryugi-radio value="c">Pick Option C</ryugi-radio>
+      </ryugi-radio-group>
+
+      <section class="options" id="options"></section>
+
+      <section class="summary">
+        <h2>Your choices</h2>
+        <div id="summary"></div>
+        <div class="summary-actions">
+          <ryugi-button id="copy-summary" icon="copy" variant="outlined">Copy summary</ryugi-button>
+        </div>
+      </section>
+    </main>
+
+    <template id="option-tpl">
+      <article class="option">
+        <div class="option-head">
+          <h2></h2>
+          <ryugi-tag class="tone-tag" variant="borderless" size="small"></ryugi-tag>
+        </div>
+        <div class="screen">
+          <div class="topbar">
+            <div class="logo"></div>
+            <div class="searchbox">
+              <span class="ph"><ryugi-icon name="search" size="14"></ryugi-icon></span>
+              wireless headphnes
+            </div>
+          </div>
+          <div class="filters">
+            <span class="chip">All</span><span class="chip">Products</span><span class="chip">Articles</span><span class="chip">Help</span>
+          </div>
+          <div class="meta">0 results</div>
+          <div class="empty"></div>
+        </div>
+        <div class="feedback">
+          <div>
+            <div class="field-label">Tone rating (1 = off, 5 = spot on)</div>
+            <ryugi-segmented class="rating" value="" block>
+              <ryugi-segment value="1">1</ryugi-segment>
+              <ryugi-segment value="2">2</ryugi-segment>
+              <ryugi-segment value="3">3</ryugi-segment>
+              <ryugi-segment value="4">4</ryugi-segment>
+              <ryugi-segment value="5">5</ryugi-segment>
+            </ryugi-segmented>
+          </div>
+          <div>
+            <div class="field-label">Note</div>
+            <ryugi-textarea class="note-input" rows="3" placeholder="What works, what doesn't…"></ryugi-textarea>
+          </div>
+        </div>
+      </article>
+    </template>
+
+    <script>
+      const OPTIONS = [
+        {
+          id: 'a',
+          name: 'Option A — Direct',
+          tone: 'Neutral',
+          icon: 'search-x',
+          html: `
+            <h3>No results for “wireless headphnes”</h3>
+            <p>Check the spelling or try a broader search term.</p>
+            <div class="cta"><span class="fakebtn">Clear search</span></div>`,
+        },
+        {
+          id: 'b',
+          name: 'Option B — Helpful',
+          tone: 'Guiding',
+          icon: 'lightbulb',
+          html: `
+            <h3>We couldn’t find a match</h3>
+            <p>Did you mean <a href="#" style="color:var(--accent)">wireless headphones</a>? You can also:</p>
+            <ul>
+              <li>Use fewer or more general words</li>
+              <li>Remove filters</li>
+              <li>Browse popular categories</li>
+            </ul>
+            <div class="cta"><span class="fakebtn primary">Search “wireless headphones”</span><span class="fakebtn">Browse categories</span></div>`,
+        },
+        {
+          id: 'c',
+          name: 'Option C — Playful',
+          tone: 'Friendly',
+          icon: 'telescope',
+          html: `
+            <h3>Hmm, nothing turned up</h3>
+            <p>We looked everywhere for “wireless headphnes” and came back empty-handed. A typo, maybe? Try again, or let us point you somewhere good.</p>
+            <div class="cta"><span class="fakebtn primary">Show me what’s popular</span><span class="fakebtn">Contact support</span></div>`,
+        },
+      ];
+
+      const state = { pick: '', ratings: {}, notes: {} };
+      const container = document.getElementById('options');
+      const tpl = document.getElementById('option-tpl');
+
+      for (const opt of OPTIONS) {
+        const node = tpl.content.firstElementChild.cloneNode(true);
+        node.id = 'option-' + opt.id;
+        node.querySelector('h2').textContent = opt.name;
+        node.querySelector('.tone-tag').textContent = opt.tone;
+        const empty = node.querySelector('.empty');
+        empty.innerHTML = `<div class="art"><ryugi-icon name="${opt.icon}" size="26"></ryugi-icon></div>` + opt.html;
+        const rating = node.querySelector('.rating');
+        rating.id = 'rating-' + opt.id;
+        rating.dataset.opt = opt.id;
+        const note = node.querySelector('.note-input');
+        note.id = 'note-' + opt.id;
+        note.dataset.opt = opt.id;
+        container.appendChild(node);
+      }
+
+      const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+      const stars = (n) => {
+        if (!n) return '<span class="none">Not rated</span>';
+        return `<span class="stars">${'★'.repeat(n)}<span class="off">${'★'.repeat(5 - n)}</span></span> ${n}/5`;
+      };
+
+      const render = () => {
+        for (const opt of OPTIONS) {
+          document.getElementById('option-' + opt.id).classList.toggle('picked', state.pick === opt.id);
+        }
+        const picked = OPTIONS.find((o) => o.id === state.pick);
+        const rows = OPTIONS.map((o) => {
+          const r = Number(state.ratings[o.id]) || 0;
+          const n = (state.notes[o.id] || '').trim();
+          return `<tr class="${state.pick === o.id ? 'is-picked' : ''}">
+            <td><b>${esc(o.name)}</b>${state.pick === o.id ? ' &nbsp;✓ Picked' : ''}</td>
+            <td>${stars(r)}</td>
+            <td>${n ? `<span class="note">${esc(n)}</span>` : '<span class="none">No note</span>'}</td>
+          </tr>`;
+        }).join('');
+        document.getElementById('summary').innerHTML = `
+          <p style="margin:0 0 10px">Picked: ${picked ? `<b>${esc(picked.name)}</b>` : '<span class="none">none yet</span>'}</p>
+          <table>
+            <thead><tr><th>Option</th><th>Tone</th><th>Note</th></tr></thead>
+            <tbody>${rows}</tbody>
+          </table>`;
+      };
+
+      const summaryText = () => {
+        const picked = OPTIONS.find((o) => o.id === state.pick);
+        const lines = ['Search empty state — copy review', 'Picked: ' + (picked ? picked.name : 'none'), ''];
+        for (const o of OPTIONS) {
+          const r = Number(state.ratings[o.id]) || 0;
+          lines.push(`${o.name}${state.pick === o.id ? ' (picked)' : ''}`);
+          lines.push(`  Tone: ${r ? r + '/5' : 'not rated'}`);
+          lines.push(`  Note: ${(state.notes[o.id] || '').trim() || '—'}`);
+        }
+        return lines.join('\n');
+      };
+
+      document.addEventListener('ryugi-change', (e) => {
+        const t = e.target;
+        if (t.id === 'pick') state.pick = e.detail.value || '';
+        else if (t.id.startsWith('rating-')) state.ratings[t.dataset.opt] = e.detail.value;
+        else if (t.id.startsWith('note-')) state.notes[t.dataset.opt] = e.detail.value || '';
+        render();
+      });
+
+      document.addEventListener(
+        'ryugi-ui:ready',
+        () => {
+          document.getElementById('copy-summary').addEventListener('click', async () => {
+            try {
+              await navigator.clipboard.writeText(summaryText());
+              window.ryugiToast.success({ id: 'copy', title: 'Summary copied' });
+            } catch {
+              window.ryugiToast.error({ id: 'copy', title: 'Copy failed' });
+            }
+          });
+          render();
+        },
+        { once: true },
+      );
+      render();
+    </script>
+  </body>
+</html>

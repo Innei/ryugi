@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Notification settings — team chat prototype</title>
+    <style>
+      :root { color-scheme: light dark; }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        padding: 32px 24px 48px;
+        font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+        background: color-mix(in srgb, Canvas 94%, CanvasText 6%);
+        color: CanvasText;
+      }
+      main { max-width: 640px; margin: 0 auto; display: grid; gap: 20px; }
+      header h1 { margin: 0 0 4px; font-size: 22px; font-weight: 600; }
+      header p { margin: 0; opacity: 0.65; }
+      .section-title {
+        display: flex; align-items: center; gap: 8px;
+        margin: 0 0 4px; font-size: 15px; font-weight: 600;
+      }
+      .section-sub { margin: 0 0 12px; opacity: 0.65; font-size: 13px; }
+      .row {
+        display: flex; align-items: center; justify-content: space-between;
+        gap: 16px; padding: 12px 0;
+      }
+      .row + .row { border-top: 1px solid color-mix(in srgb, CanvasText 10%, transparent); }
+      .row .label { display: grid; gap: 2px; }
+      .row .label span:last-child { font-size: 13px; opacity: 0.6; }
+      .row.disabled .label { opacity: 0.45; }
+      .control { flex: 0 0 auto; }
+      .wide { width: 100%; }
+      .times { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding-top: 4px; }
+      .times label { display: grid; gap: 6px; font-size: 13px; }
+      .times label span { opacity: 0.7; }
+      input[type="time"] {
+        font: inherit; color: inherit; height: 36px; padding: 0 10px;
+        border-radius: 8px; background: transparent;
+        border: 1px solid color-mix(in srgb, CanvasText 18%, transparent);
+      }
+      input[type="time"]:focus { outline: 2px solid var(--lobe-color-primary, #1677ff); outline-offset: -1px; }
+      input[type="time"]:disabled { opacity: 0.45; }
+      .summary { margin-top: 10px; font-size: 13px; opacity: 0.7; }
+      footer {
+        display: flex; align-items: center; justify-content: space-between; gap: 12px;
+        position: sticky; bottom: 0; padding: 12px 0;
+      }
+      .actions { display: flex; gap: 8px; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>Notifications</h1>
+        <p>Choose how and when the workspace reaches you.</p>
+      </header>
+
+      <ryugi-card variant="outlined">
+        <h2 class="section-title"><ryugi-icon name="mail" size="16"></ryugi-icon>Email digest</h2>
+        <p class="section-sub">A summary of unread mentions and threads sent to your inbox.</p>
+        <div class="row">
+          <div class="label"><span>Send email digest</span><span>Only includes activity you haven't seen.</span></div>
+          <ryugi-switch id="digest" class="control" checked></ryugi-switch>
+        </div>
+        <div class="row" id="freq-row">
+          <div class="label"><span>Frequency</span><span>When the digest arrives.</span></div>
+          <ryugi-segmented id="frequency" class="control" value="daily">
+            <ryugi-segment value="hourly">Hourly</ryugi-segment>
+            <ryugi-segment value="daily">Daily</ryugi-segment>
+            <ryugi-segment value="weekly">Weekly</ryugi-segment>
+          </ryugi-segmented>
+        </div>
+      </ryugi-card>
+
+      <ryugi-card variant="outlined">
+        <h2 class="section-title"><ryugi-icon name="bell-off" size="16"></ryugi-icon>Muted channels</h2>
+        <p class="section-sub">You won't get push or email notifications from these. Mentions still show a badge.</p>
+        <ryugi-select id="muted" class="wide" style="width:100%" mode="multiple" showSearch allowClear placeholder="Pick channels to mute" value="random,watercooler">
+          <ryugi-option value="general">#general</ryugi-option>
+          <ryugi-option value="random">#random</ryugi-option>
+          <ryugi-option value="engineering">#engineering</ryugi-option>
+          <ryugi-option value="design">#design</ryugi-option>
+          <ryugi-option value="deploys">#deploys</ryugi-option>
+          <ryugi-option value="support">#support</ryugi-option>
+          <ryugi-option value="watercooler">#watercooler</ryugi-option>
+          <ryugi-option value="announcements">#announcements</ryugi-option>
+        </ryugi-select>
+        <div class="summary" id="muted-summary"></div>
+      </ryugi-card>
+
+      <ryugi-card variant="outlined">
+        <h2 class="section-title"><ryugi-icon name="moon" size="16"></ryugi-icon>Quiet hours</h2>
+        <p class="section-sub">Notifications are held and delivered when quiet hours end.</p>
+        <div class="times">
+          <label for="quiet-start"><span>Start</span><input id="quiet-start" type="time" value="22:00" /></label>
+          <label for="quiet-end"><span>End</span><input id="quiet-end" type="time" value="08:00" /></label>
+        </div>
+        <div class="summary" id="quiet-summary"></div>
+      </ryugi-card>
+
+      <footer>
+        <ryugi-text type="secondary" id="dirty-note">All changes saved</ryugi-text>
+        <div class="actions">
+          <ryugi-button id="reset" variant="borderless" icon="rotate-ccw">Discard</ryugi-button>
+          <ryugi-button id="save" variant="filled" icon="check">Save changes</ryugi-button>
+        </div>
+      </footer>
+    </main>
+
+    <script>
+      const $ = (id) => document.getElementById(id);
+      const toList = (v) =>
+        Array.isArray(v) ? v : v == null || v === '' ? [] : String(v).split(',').filter(Boolean);
+
+      const readState = () => ({
+        digest: !!$('digest').checked,
+        frequency: $('frequency').value,
+        muted: toList($('muted').value).slice().sort(),
+        quietStart: $('quiet-start').value,
+        quietEnd: $('quiet-end').value,
+      });
+      let saved = null;
+
+      const fmt = (t) => {
+        if (!t) return '—';
+        const [h, m] = t.split(':').map(Number);
+        const d = new Date(2000, 0, 1, h, m);
+        return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+      };
+      const duration = (a, b) => {
+        if (!a || !b) return null;
+        const toMin = (t) => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
+        let diff = toMin(b) - toMin(a);
+        if (diff <= 0) diff += 1440;
+        const h = Math.floor(diff / 60), m = diff % 60;
+        return h + 'h' + (m ? ' ' + m + 'm' : '');
+      };
+
+      const render = () => {
+        const s = readState();
+        $('freq-row').classList.toggle('disabled', !s.digest);
+        $('frequency').disabled = !s.digest;
+        $('muted-summary').textContent = s.muted.length
+          ? s.muted.length + ' channel' + (s.muted.length > 1 ? 's' : '') + ' muted'
+          : 'No channels muted';
+        const dur = duration(s.quietStart, s.quietEnd);
+        $('quiet-summary').textContent =
+          s.quietStart === s.quietEnd
+            ? 'Start and end are the same — quiet hours are off.'
+            : 'Quiet from ' + fmt(s.quietStart) + ' to ' + fmt(s.quietEnd) +
+              (dur ? ' (' + dur + ')' : '') + ', every day.';
+        const dirty = saved && JSON.stringify(s) !== JSON.stringify(saved);
+        $('dirty-note').textContent = dirty ? 'You have unsaved changes' : 'All changes saved';
+        $('dirty-note').setAttribute('type', dirty ? 'warning' : 'secondary');
+        $('reset').disabled = !dirty;
+      };
+
+      document.addEventListener('ryugi-change', render);
+      document.addEventListener('input', render);
+      document.addEventListener('change', render);
+
+      document.addEventListener(
+        'ryugi-ui:ready',
+        () => {
+          saved = readState();
+
+          $('save').addEventListener('click', () => {
+            const btn = $('save');
+            btn.loading = true;
+            btn.setAttribute('loading', '');
+            setTimeout(() => {
+              btn.loading = false;
+              btn.removeAttribute('loading');
+              saved = readState();
+              const s = saved;
+              window.ryugiToast.success({
+                id: 'save-result',
+                title: 'Notification settings saved',
+                description:
+                  (s.digest ? s.frequency[0].toUpperCase() + s.frequency.slice(1) + ' digest' : 'Digest off') +
+                  ' · ' + s.muted.length + ' muted · quiet ' + fmt(s.quietStart) + '–' + fmt(s.quietEnd),
+              });
+              render();
+            }, 600);
+          });
+
+          $('reset').addEventListener('click', () => {
+            if (!saved) return;
+            $('digest').checked = saved.digest;
+            $('frequency').value = saved.frequency;
+            $('muted').value = saved.muted;
+            $('quiet-start').value = saved.quietStart;
+            $('quiet-end').value = saved.quietEnd;
+            render();
+            window.ryugiToast.info({ id: 'save-result', title: 'Changes discarded' });
+          });
+
+          render();
+        },
+        { once: true },
+      );
+    </script>
+  </body>
+</html>

@@ -1,0 +1,1 @@
+Built the [latency explorer](/private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/tmp.vuZ4qFIKLP/index.html) with 24 sample endpoints, HTTP method filtering, path search, p95 sorting, and slow-endpoint highlighting above an adjustable threshold that defaults to 350 ms.

@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="ryugi-ui" content="1" />
+    <title>JPEG compressor — quality & max width</title>
+    <style>
+      :root { color-scheme: light dark; font-family: system-ui, -apple-system, sans-serif; }
+      body { margin: 0; padding: 24px; max-width: 1100px; margin-inline: auto; }
+      h1 { font-size: 20px; margin: 0 0 4px; }
+      .sub { margin: 0 0 20px; opacity: .7; font-size: 14px; }
+      .controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px 24px; align-items: end; margin-bottom: 20px; }
+      .field { display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600; }
+      .field small { font-weight: 400; opacity: .65; }
+      .drop { border: 1.5px dashed color-mix(in srgb, currentColor 30%, transparent); border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+      .drop.over { border-color: #1677ff; background: color-mix(in srgb, #1677ff 8%, transparent); }
+      .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 16px; }
+      .stat { border-radius: 10px; padding: 12px 14px; background: color-mix(in srgb, currentColor 6%, transparent); }
+      .stat .k { font-size: 12px; opacity: .65; }
+      .stat .v { font-size: 20px; font-weight: 650; font-variant-numeric: tabular-nums; margin-top: 2px; }
+      .good { color: #389e0d; } .bad { color: #cf1322; }
+      .previews { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+      @media (max-width: 720px) { .previews { grid-template-columns: 1fr; } }
+      figure { margin: 0; display: flex; flex-direction: column; gap: 6px; }
+      figcaption { font-size: 13px; font-weight: 600; display: flex; justify-content: space-between; }
+      figcaption span { font-weight: 400; opacity: .65; }
+      .frame { border-radius: 10px; min-height: 220px; display: grid; place-items: center; overflow: hidden;
+        background: repeating-conic-gradient(color-mix(in srgb, currentColor 8%, transparent) 0 25%, transparent 0 50%) 0 0 / 16px 16px; }
+      .frame img { max-width: 100%; max-height: 60vh; display: block; }
+      .empty { opacity: .5; font-size: 13px; }
+      .actions { display: flex; gap: 12px; align-items: center; margin-top: 16px; }
+      #status { font-size: 13px; opacity: .7; }
+    </style>
+  </head>
+  <body>
+    <h1>JPEG compressor</h1>
+    <p class="sub">Everything runs locally in your browser — the image is never uploaded.</p>
+
+    <div class="controls">
+      <label class="drop" id="drop" for="file">
+        Image file <small>Choose or drop a PNG, JPEG, WebP…</small>
+        <input id="file" type="file" accept="image/*" />
+      </label>
+      <div class="field">
+        <span>JPEG quality <small>(1–100)</small></span>
+        <ryugi-slider-input id="quality" value="80" min="1" max="100" step="1"></ryugi-slider-input>
+      </div>
+      <div class="field">
+        <span>Max width <small>(px, never upscales)</small></span>
+        <ryugi-slider-input id="maxWidth" value="1600" min="100" max="6000" step="50"></ryugi-slider-input>
+      </div>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><div class="k">Original size</div><div class="v" id="origSize">—</div></div>
+      <div class="stat"><div class="k">Compressed size</div><div class="v" id="newSize">—</div></div>
+      <div class="stat"><div class="k">Change</div><div class="v" id="saving">—</div></div>
+      <div class="stat"><div class="k">Dimensions</div><div class="v" id="dims" style="font-size:16px">—</div></div>
+    </div>
+
+    <div class="previews">
+      <figure>
+        <figcaption>Original <span id="origMeta"></span></figcaption>
+        <div class="frame" id="origFrame"><span class="empty">No image selected</span></div>
+      </figure>
+      <figure>
+        <figcaption>Compressed preview <span id="newMeta"></span></figcaption>
+        <div class="frame" id="newFrame"><span class="empty">Compressed result appears here</span></div>
+      </figure>
+    </div>
+
+    <div class="actions">
+      <ryugi-button id="download" variant="primary" icon="download" disabled>Download JPEG</ryugi-button>
+      <span id="status" aria-live="polite"></span>
+    </div>
+
+    <script>
+      const $ = (id) => document.getElementById(id);
+      const fileInput = $('file');
+      let img = null, file = null, origUrl = null, outBlob = null, outUrl = null, timer = null, job = 0;
+      const params = { quality: 80, maxWidth: 1600 };
+
+      const fmt = (b) => b < 1024 ? b + ' B' : b < 1048576 ? (b / 1024).toFixed(1) + ' KB' : (b / 1048576).toFixed(2) + ' MB';
+
+      function readParam(id) {
+        const el = $(id);
+        const v = Number(el && el.value);
+        if (Number.isFinite(v) && v > 0) params[id] = v;
+      }
+
+      document.addEventListener('ryugi-ui:ready', () => { readParam('quality'); readParam('maxWidth'); schedule(); }, { once: true });
+      document.addEventListener('ryugi-change', (e) => {
+        if (e.target.id === 'quality' || e.target.id === 'maxWidth') {
+          const v = Number(e.detail.value);
+          if (Number.isFinite(v) && v > 0) params[e.target.id] = v;
+          schedule();
+        }
+      });
+
+      function schedule() { clearTimeout(timer); timer = setTimeout(compress, 120); }
+
+      async function loadFile(f) {
+        if (!f || !f.type.startsWith('image/')) { $('status').textContent = 'Please choose an image file.'; return; }
+        file = f;
+        if (origUrl) URL.revokeObjectURL(origUrl);
+        origUrl = URL.createObjectURL(f);
+        const el = new Image();
+        el.src = origUrl;
+        try { await el.decode(); } catch { $('status').textContent = 'Could not decode this image.'; return; }
+        img = el;
+        $('origFrame').replaceChildren(el.cloneNode());
+        $('origSize').textContent = fmt(f.size);
+        $('origMeta').textContent = `${el.naturalWidth}×${el.naturalHeight} · ${f.type.replace('image/', '').toUpperCase()}`;
+        compress();
+      }
+
+      fileInput.addEventListener('change', () => loadFile(fileInput.files[0]));
+      const drop = $('drop');
+      ['dragenter', 'dragover'].forEach((t) => drop.addEventListener(t, (e) => { e.preventDefault(); drop.classList.add('over'); }));
+      ['dragleave', 'drop'].forEach((t) => drop.addEventListener(t, (e) => { e.preventDefault(); drop.classList.remove('over'); }));
+      drop.addEventListener('drop', (e) => loadFile(e.dataTransfer.files[0]));
+
+      function compress() {
+        if (!img) return;
+        const id = ++job;
+        const w0 = img.naturalWidth, h0 = img.naturalHeight;
+        const scale = Math.min(1, params.maxWidth / w0);
+        const w = Math.max(1, Math.round(w0 * scale)), h = Math.max(1, Math.round(h0 * scale));
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#fff'; // JPEG has no alpha: flatten onto white
+        ctx.fillRect(0, 0, w, h);
+        ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(img, 0, 0, w, h);
+        $('status').textContent = 'Compressing…';
+        canvas.toBlob((blob) => {
+          if (id !== job || !blob) return;
+          outBlob = blob;
+          if (outUrl) URL.revokeObjectURL(outUrl);
+          outUrl = URL.createObjectURL(blob);
+          const out = new Image(); out.src = outUrl; out.alt = 'Compressed preview';
+          $('newFrame').replaceChildren(out);
+          $('newSize').textContent = fmt(blob.size);
+          const pct = (1 - blob.size / file.size) * 100;
+          const s = $('saving');
+          s.textContent = pct >= 0 ? `−${pct.toFixed(1)}%` : `+${(-pct).toFixed(1)}%`;
+          s.className = 'v ' + (pct >= 0 ? 'good' : 'bad');
+          $('dims').textContent = `${w0}×${h0} → ${w}×${h}`;
+          $('newMeta').textContent = `${w}×${h} · JPEG q${params.quality}`;
+          $('download').removeAttribute('disabled');
+          $('status').textContent = pct < 0 ? 'Result is larger than the original — try lower quality or width.' : '';
+        }, 'image/jpeg', params.quality / 100);
+      }
+
+      $('download').addEventListener('click', () => {
+        if (!outBlob) return;
+        const base = (file.name.replace(/\.[^.]+$/, '') || 'image');
+        const a = document.createElement('a');
+        a.href = outUrl;
+        a.download = `${base}-q${params.quality}-w${params.maxWidth}.jpg`;
+        document.body.appendChild(a); a.click(); a.remove();
+      });
+    </script>
+  </body>
+</html>

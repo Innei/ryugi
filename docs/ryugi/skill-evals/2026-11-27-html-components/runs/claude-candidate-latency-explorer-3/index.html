@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>API latency explorer — p50 / p95 across 24 endpoints</title>
+    <style>
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        padding: 24px;
+        font: 14px/1.45 system-ui, -apple-system, sans-serif;
+        color: var(--lobe-color-text, #1f1f1f);
+        background: var(--lobe-color-bg-layout, #f7f7f8);
+      }
+      @media (prefers-color-scheme: dark) {
+        body { color: #e6e6e6; background: #141414; }
+      }
+      .wrap { max-width: 1100px; margin: 0 auto; display: grid; gap: 16px; }
+      header h1 { margin: 0; font-size: 20px; }
+      header p { margin: 4px 0 0; opacity: 0.65; }
+      .controls {
+        display: grid;
+        grid-template-columns: minmax(200px, 1fr) auto auto;
+        gap: 16px;
+        align-items: end;
+      }
+      .controls .field { display: grid; gap: 6px; }
+      .controls label, .threshold label { font-size: 12px; opacity: 0.65; font-weight: 500; }
+      .threshold { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; align-items: center; }
+      .threshold label { grid-column: 1 / -1; }
+      .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+      .stat .k { font-size: 12px; opacity: 0.6; }
+      .stat .v { font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; }
+      table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+      th, td { padding: 9px 12px; text-align: left; border-bottom: 1px solid rgba(128,128,128,0.15); }
+      th { font-size: 12px; font-weight: 500; opacity: 0.65; white-space: nowrap; }
+      th.num, td.num { text-align: right; }
+      td.path { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; }
+      tr.slow td { background: rgba(255, 77, 79, 0.08); }
+      tr.slow td.p95 { color: #e5484d; font-weight: 600; }
+      .bar-cell { width: 34%; min-width: 180px; }
+      .bar {
+        position: relative; height: 10px; border-radius: 5px;
+        background: rgba(128,128,128,0.12);
+      }
+      .bar .p95b, .bar .p50b { position: absolute; top: 0; bottom: 0; left: 0; border-radius: 5px; }
+      .bar .p95b { background: rgba(22, 119, 255, 0.35); }
+      .bar .p50b { background: #1677ff; }
+      tr.slow .bar .p95b { background: rgba(229, 72, 77, 0.4); }
+      tr.slow .bar .p50b { background: #e5484d; }
+      .bar .th {
+        position: absolute; top: -3px; bottom: -3px; width: 2px;
+        background: #e5484d; opacity: 0.8;
+      }
+      .sort-head { display: inline-flex; align-items: center; gap: 4px; }
+      .empty { padding: 32px; text-align: center; opacity: 0.6; }
+      .legend { display: flex; gap: 16px; font-size: 12px; opacity: 0.7; align-items: center; }
+      .sw { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
+      .tablecard { overflow-x: auto; }
+      @media (max-width: 760px) {
+        .controls { grid-template-columns: 1fr; }
+        .stats { grid-template-columns: repeat(2, 1fr); }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header>
+        <h1>API latency explorer</h1>
+        <p>p50 / p95 response times, last 24 h, 24 endpoints (sample data)</p>
+      </header>
+
+      <ryugi-card>
+        <div class="controls">
+          <div class="field">
+            <label for="search">Search path</label>
+            <ryugi-input id="search" placeholder="e.g. /orders" allowClear aria-label="Search path"></ryugi-input>
+          </div>
+          <div class="field">
+            <label>HTTP method</label>
+            <ryugi-segmented id="method" value="ALL">
+              <ryugi-segment value="ALL">All</ryugi-segment>
+              <ryugi-segment value="GET">GET</ryugi-segment>
+              <ryugi-segment value="POST">POST</ryugi-segment>
+              <ryugi-segment value="PUT">PUT</ryugi-segment>
+              <ryugi-segment value="PATCH">PATCH</ryugi-segment>
+              <ryugi-segment value="DELETE">DELETE</ryugi-segment>
+            </ryugi-segmented>
+          </div>
+          <div class="field">
+            <label>Sort by p95</label>
+            <ryugi-segmented id="sort" value="desc">
+              <ryugi-segment value="desc">Slowest first</ryugi-segment>
+              <ryugi-segment value="asc">Fastest first</ryugi-segment>
+              <ryugi-segment value="none">Path</ryugi-segment>
+            </ryugi-segmented>
+          </div>
+        </div>
+        <ryugi-divider></ryugi-divider>
+        <div class="threshold">
+          <label>Slow threshold (p95, ms): endpoints above this are highlighted</label>
+          <ryugi-switch id="highlight" checked></ryugi-switch>
+          <ryugi-slider-input id="threshold" value="400" min="50" max="2000" step="25" style="width:100%"></ryugi-slider-input>
+        </div>
+      </ryugi-card>
+
+      <div class="stats">
+        <ryugi-card class="stat"><div class="k">Showing</div><div class="v" id="s-count">–</div></ryugi-card>
+        <ryugi-card class="stat"><div class="k">Above threshold</div><div class="v" id="s-slow">–</div></ryugi-card>
+        <ryugi-card class="stat"><div class="k">Median p50</div><div class="v" id="s-p50">–</div></ryugi-card>
+        <ryugi-card class="stat"><div class="k">Worst p95</div><div class="v" id="s-p95">–</div></ryugi-card>
+      </div>
+
+      <ryugi-card class="tablecard">
+        <div class="legend">
+          <span><span class="sw" style="background:#1677ff"></span>p50</span>
+          <span><span class="sw" style="background:rgba(22,119,255,.35)"></span>p95</span>
+          <span><span class="sw" style="background:#e5484d;width:2px"></span>threshold</span>
+          <span style="margin-left:auto">Bar scale: 0 – <span id="scale-max"></span> ms</span>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Method</th>
+              <th>Path</th>
+              <th class="num">Req / min</th>
+              <th class="num">p50</th>
+              <th class="num"><span class="sort-head">p95 <span id="sort-ind"></span></span></th>
+              <th class="num">p95 / p50</th>
+              <th class="bar-cell">Distribution</th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+        <div id="empty" class="empty" hidden>No endpoints match these filters.</div>
+      </ryugi-card>
+    </div>
+
+    <script>
+      // [method, path, p50 ms, p95 ms, req/min]
+      const DATA = [
+        ['GET', '/v1/health', 3, 9, 1200],
+        ['GET', '/v1/users/me', 28, 74, 4820],
+        ['GET', '/v1/users/{id}', 34, 98, 2210],
+        ['PATCH', '/v1/users/{id}', 62, 188, 140],
+        ['POST', '/v1/auth/login', 118, 342, 610],
+        ['POST', '/v1/auth/refresh', 22, 61, 3900],
+        ['POST', '/v1/auth/logout', 15, 40, 320],
+        ['GET', '/v1/products', 85, 290, 3150],
+        ['GET', '/v1/products/{id}', 41, 132, 5400],
+        ['GET', '/v1/search', 210, 780, 1870],
+        ['GET', '/v1/cart', 37, 110, 1640],
+        ['PUT', '/v1/cart/items/{id}', 58, 172, 890],
+        ['DELETE', '/v1/cart/items/{id}', 31, 95, 260],
+        ['POST', '/v1/orders', 340, 1180, 175],
+        ['GET', '/v1/orders', 96, 365, 720],
+        ['GET', '/v1/orders/{id}', 44, 150, 980],
+        ['POST', '/v1/payments/charge', 520, 1640, 160],
+        ['POST', '/v1/payments/webhook', 74, 260, 95],
+        ['GET', '/v1/reports/daily', 860, 2350, 12],
+        ['POST', '/v1/uploads', 410, 1420, 48],
+        ['DELETE', '/v1/uploads/{id}', 66, 205, 9],
+        ['GET', '/v1/notifications', 52, 230, 2050],
+        ['PUT', '/v1/settings', 49, 140, 75],
+        ['POST', '/v1/recommendations', 180, 540, 1340],
+      ].map(([method, path, p50, p95, rpm]) => ({ method, path, p50, p95, rpm }));
+
+      const METHOD_COLOR = { GET: 'blue', POST: 'green', PUT: 'orange', PATCH: 'purple', DELETE: 'red' };
+      const state = { search: '', method: 'ALL', sort: 'desc', threshold: 400, highlight: true };
+
+      const fmt = (ms) => (ms >= 1000 ? (ms / 1000).toFixed(2) + ' s' : ms + ' ms');
+      const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+      const median = (a) => {
+        if (!a.length) return null;
+        const s = [...a].sort((x, y) => x - y), m = s.length >> 1;
+        return s.length % 2 ? s[m] : Math.round((s[m - 1] + s[m]) / 2);
+      };
+
+      function render() {
+        const q = state.search.trim().toLowerCase();
+        let rows = DATA.filter(
+          (d) => (state.method === 'ALL' || d.method === state.method) && (!q || d.path.toLowerCase().includes(q)),
+        );
+        if (state.sort === 'desc') rows.sort((a, b) => b.p95 - a.p95);
+        else if (state.sort === 'asc') rows.sort((a, b) => a.p95 - b.p95);
+        else rows.sort((a, b) => a.path.localeCompare(b.path) || a.method.localeCompare(b.method));
+
+        const th = state.threshold;
+        const scale = Math.max(...DATA.map((d) => d.p95), th) * 1.05;
+        const pct = (v) => Math.min(100, (v / scale) * 100).toFixed(2) + '%';
+        const isSlow = (d) => state.highlight && d.p95 > th;
+
+        document.getElementById('rows').innerHTML = rows
+          .map((d) => `
+            <tr class="${isSlow(d) ? 'slow' : ''}">
+              <td><ryugi-tag color="${METHOD_COLOR[d.method]}" size="small">${d.method}</ryugi-tag></td>
+              <td class="path">${esc(d.path)}</td>
+              <td class="num">${d.rpm.toLocaleString()}</td>
+              <td class="num">${fmt(d.p50)}</td>
+              <td class="num p95">${fmt(d.p95)}</td>
+              <td class="num">${(d.p95 / d.p50).toFixed(1)}×</td>
+              <td class="bar-cell">
+                <div class="bar" title="p50 ${d.p50} ms · p95 ${d.p95} ms">
+                  <div class="p95b" style="width:${pct(d.p95)}"></div>
+                  <div class="p50b" style="width:${pct(d.p50)}"></div>
+                  ${state.highlight ? `<div class="th" style="left:${pct(th)}"></div>` : ''}
+                </div>
+              </td>
+            </tr>`)
+          .join('');
+
+        document.getElementById('empty').hidden = rows.length > 0;
+        document.getElementById('scale-max').textContent = Math.round(scale).toLocaleString();
+        document.getElementById('sort-ind').textContent = state.sort === 'desc' ? '↓' : state.sort === 'asc' ? '↑' : '';
+        document.getElementById('s-count').textContent = `${rows.length} / ${DATA.length}`;
+        const slow = rows.filter((d) => d.p95 > th).length;
+        const sSlow = document.getElementById('s-slow');
+        sSlow.textContent = state.highlight ? String(slow) : '–';
+        sSlow.style.color = state.highlight && slow ? '#e5484d' : '';
+        const m = median(rows.map((d) => d.p50));
+        document.getElementById('s-p50').textContent = m == null ? '–' : fmt(m);
+        document.getElementById('s-p95').textContent = rows.length ? fmt(Math.max(...rows.map((d) => d.p95))) : '–';
+      }
+
+      document.addEventListener('ryugi-change', (e) => {
+        const id = e.target.id;
+        if (!(id in state)) return;
+        if (id === 'highlight') state.highlight = !!(e.detail.checked ?? e.detail.value);
+        else if (id === 'threshold') state.threshold = Number(e.detail.value) || 0;
+        else state[id] = e.detail.value ?? (id === 'search' ? '' : state[id]);
+        render();
+      });
+
+      document.addEventListener(
+        'ryugi-ui:ready',
+        () => {
+          const v = (id) => document.getElementById(id);
+          state.search = v('search').value || '';
+          state.method = v('method').value || 'ALL';
+          state.sort = v('sort').value || 'desc';
+          state.threshold = Number(v('threshold').value) || 400;
+          state.highlight = v('highlight').checked !== false;
+          render();
+        },
+        { once: true },
+      );
+    </script>
+  </body>
+</html>

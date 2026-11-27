@@ -1,0 +1,405 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pricing Card Shadow Studio</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #221d30;
+      --muted: #625c71;
+      --line: #e8e4ee;
+      --accent: #623ec4;
+      --lobe-color-primary: #623ec4;
+      font-family: "Inter", system-ui, sans-serif;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: #f8f7fb;
+      color: var(--ink);
+    }
+
+    .studio {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: clamp(24px, 5vw, 72px) clamp(16px, 4vw, 48px);
+    }
+
+    .page-header { margin-bottom: 32px; }
+
+    .heading-icon {
+      display: grid;
+      place-items: center;
+      width: 44px;
+      height: 44px;
+      margin-bottom: 16px;
+      border-radius: 12px;
+      background: #ede7fc;
+      color: var(--accent);
+    }
+
+    h1, h2, h3, p, pre { margin: 0; }
+
+    h1 {
+      font-size: clamp(32px, 5vw, 52px);
+      line-height: 1.06;
+      letter-spacing: -0.055em;
+      font-weight: 760;
+    }
+
+    .page-header p {
+      margin-top: 12px;
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.55;
+    }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: minmax(265px, 326px) minmax(0, 1fr);
+      gap: 20px;
+      align-items: start;
+    }
+
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      background: #fff;
+      min-width: 0;
+    }
+
+    .controls { padding: 22px; }
+
+    .panel-heading {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    h2 {
+      font-size: 16px;
+      letter-spacing: -0.02em;
+      font-weight: 720;
+    }
+
+    .fields {
+      display: grid;
+      gap: 21px;
+      margin-top: 24px;
+    }
+
+    .field { min-width: 0; }
+
+    .field-label {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 8px;
+      margin-bottom: 8px;
+      font-size: 13px;
+      font-weight: 650;
+    }
+
+    .unit {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 500;
+    }
+
+    ryugi-slider-input { display: block; width: 100%; }
+
+    .colour-field {
+      padding-top: 16px;
+      border-top: 1px solid var(--line);
+    }
+
+    .colour-field ryugi-color-picker { display: block; width: 100%; }
+
+    .results {
+      display: grid;
+      gap: 16px;
+      min-width: 0;
+    }
+
+    .preview { overflow: hidden; }
+
+    .preview .panel-heading { padding: 15px 19px; }
+
+    .preview-indicator {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .stage {
+      display: grid;
+      place-items: center;
+      min-height: 380px;
+      padding: clamp(28px, 5vw, 54px) 24px;
+      border-top: 1px solid var(--line);
+      background-color: #f1edf7;
+      background-image: radial-gradient(circle, #d6cde5 0.85px, transparent 0.95px);
+      background-size: 17px 17px;
+    }
+
+    .pricing-card {
+      display: block;
+      width: min(100%, 286px);
+      background: #fff;
+      border-radius: 20px;
+      box-shadow: 0 12px 32px -6px rgba(42, 25, 75, 0.24);
+    }
+
+    .pricing-content { padding: 23px; }
+
+    .plan-label {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+    }
+
+    .plan-icon {
+      display: grid;
+      place-items: center;
+      width: 31px;
+      height: 31px;
+      border-radius: 9px;
+      color: var(--accent);
+      background: #f0eafd;
+    }
+
+    h3 {
+      font-size: 17px;
+      letter-spacing: -0.025em;
+    }
+
+    .price {
+      display: flex;
+      align-items: baseline;
+      gap: 5px;
+      margin: 12px 0 2px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .price strong {
+      color: var(--ink);
+      font-size: 43px;
+      font-weight: 740;
+      letter-spacing: -0.065em;
+      line-height: 1.1;
+    }
+
+    .plan-description {
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .features {
+      display: grid;
+      gap: 9px;
+      margin: 17px 0 0;
+      padding: 15px 0 0;
+      border-top: 1px solid var(--line);
+      list-style: none;
+    }
+
+    .features li {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .features ryugi-icon { flex: none; color: var(--accent); }
+
+    .css-panel { padding: 14px 16px 16px; }
+
+    pre {
+      margin-top: 11px;
+      padding: 12px 14px;
+      border: 1px solid #eee9f3;
+      border-radius: 10px;
+      background: #f8f6fb;
+      color: #43316d;
+      font: 12px/1.65 ui-monospace, SFMono-Regular, Consolas, monospace;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      user-select: text;
+    }
+
+    code { font: inherit; }
+
+    @media (max-width: 680px) {
+      .workspace { grid-template-columns: minmax(0, 1fr); }
+      .stage { min-height: 320px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="studio">
+    <header class="page-header">
+      <div class="heading-icon" aria-hidden="true"><ryugi-icon name="layers" size="22"></ryugi-icon></div>
+      <h1>Pricing card shadow studio</h1>
+      <p>Tune the shadow and corners, then copy the CSS for your pricing cards.</p>
+    </header>
+
+    <div class="workspace">
+      <section class="panel controls" aria-labelledby="controls-title">
+        <div class="panel-heading">
+          <h2 id="controls-title">Shadow settings</h2>
+          <ryugi-button id="reset" variant="borderless" size="small" icon="rotate-ccw">Reset</ryugi-button>
+        </div>
+
+        <div class="fields">
+          <div class="field">
+            <div class="field-label"><span id="elevation-label">Elevation</span><span class="unit">px</span></div>
+            <ryugi-slider-input id="elevation" aria-labelledby="elevation-label" value="12" min="0" max="96" step="1"></ryugi-slider-input>
+          </div>
+          <div class="field">
+            <div class="field-label"><span id="blur-label">Blur</span><span class="unit">px</span></div>
+            <ryugi-slider-input id="blur" aria-labelledby="blur-label" value="32" min="0" max="128" step="1"></ryugi-slider-input>
+          </div>
+          <div class="field">
+            <div class="field-label"><span id="spread-label">Spread</span><span class="unit">px</span></div>
+            <ryugi-slider-input id="spread" aria-labelledby="spread-label" value="-6" min="-40" max="40" step="1"></ryugi-slider-input>
+          </div>
+          <div class="field">
+            <div class="field-label"><span id="radius-label">Corner radius</span><span class="unit">px</span></div>
+            <ryugi-slider-input id="radius" aria-labelledby="radius-label" value="20" min="0" max="64" step="1"></ryugi-slider-input>
+          </div>
+          <div class="field colour-field">
+            <div class="field-label" id="colour-label">Shadow colour</div>
+            <ryugi-color-picker id="colour" aria-labelledby="colour-label" value="rgba(42, 25, 75, 0.24)" alpha defaultFormat="rgb" trigger="field"></ryugi-color-picker>
+          </div>
+        </div>
+      </section>
+
+      <div class="results">
+        <section class="panel preview" aria-labelledby="preview-title">
+          <div class="panel-heading">
+            <h2 id="preview-title">Card preview</h2>
+            <div class="preview-indicator"><ryugi-badge dot status="success"></ryugi-badge>Live</div>
+          </div>
+
+          <div class="stage">
+            <ryugi-card class="pricing-card" id="pricing-card" variant="borderless">
+              <article class="pricing-content" aria-labelledby="plan-title">
+                <div class="plan-label">
+                  <div class="plan-icon" aria-hidden="true"><ryugi-icon name="zap" size="16"></ryugi-icon></div>
+                  <h3 id="plan-title">Pro</h3>
+                </div>
+                <p class="price"><strong>$24</strong> / month</p>
+                <p class="plan-description">For teams ready to do more.</p>
+                <ul class="features">
+                  <li><ryugi-icon name="check" size="14" aria-hidden="true"></ryugi-icon>Unlimited projects</li>
+                  <li><ryugi-icon name="check" size="14" aria-hidden="true"></ryugi-icon>Team collaboration</li>
+                  <li><ryugi-icon name="check" size="14" aria-hidden="true"></ryugi-icon>Priority support</li>
+                </ul>
+              </article>
+            </ryugi-card>
+          </div>
+        </section>
+
+        <section class="panel css-panel" aria-labelledby="css-title">
+          <div class="panel-heading">
+            <h2 id="css-title">Generated CSS</h2>
+            <ryugi-button id="copy" variant="filled" size="small" icon="copy">Copy CSS</ryugi-button>
+          </div>
+          <pre><code id="css-code">box-shadow: 0 12px 32px -6px rgba(42, 25, 75, 0.24);
+border-radius: 20px;</code></pre>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    document.addEventListener('ryugi-ui:ready', () => {
+      const defaults = {
+        elevation: 12,
+        blur: 32,
+        spread: -6,
+        radius: 20,
+        colour: 'rgba(42, 25, 75, 0.24)',
+      };
+      const controls = Object.fromEntries(
+        Object.keys(defaults).map(id => [id, document.getElementById(id)])
+      );
+      const state = { ...defaults };
+      const card = document.getElementById('pricing-card');
+      const code = document.getElementById('css-code');
+
+      function render() {
+        const shadow = `0 ${state.elevation}px ${state.blur}px ${state.spread}px ${state.colour}`;
+        const radius = `${state.radius}px`;
+        card.style.boxShadow = shadow;
+        card.style.borderRadius = radius;
+        code.textContent = `box-shadow: ${shadow};\nborder-radius: ${radius};`;
+      }
+
+      function updateValue(id, value) {
+        if (id === 'colour') {
+          if (typeof value === 'string' && CSS.supports('color', value)) {
+            state.colour = value;
+          }
+          return;
+        }
+
+        if ((typeof value === 'number' || typeof value === 'string') &&
+            String(value).trim() && Number.isFinite(Number(value))) {
+          const control = controls[id];
+          const minimum = Number(control.getAttribute('min'));
+          const maximum = Number(control.getAttribute('max'));
+          state[id] = Math.min(maximum, Math.max(minimum, Number(value)));
+        }
+      }
+
+      for (const [id, control] of Object.entries(controls)) {
+        updateValue(id, control.value);
+        control.addEventListener('ryugi-change', event => {
+          updateValue(id, event.detail.value);
+          render();
+        });
+      }
+
+      document.getElementById('reset').addEventListener('click', () => {
+        for (const [id, value] of Object.entries(defaults)) {
+          controls[id].value = value;
+        }
+        Object.assign(state, defaults);
+        render();
+      });
+
+      document.getElementById('copy').addEventListener('click', async () => {
+        try {
+          await navigator.clipboard.writeText(code.textContent);
+          window.ryugiToast.success({ id: 'css-copy', title: 'CSS copied' });
+        } catch {
+          const selection = window.getSelection();
+          const range = document.createRange();
+          range.selectNodeContents(code);
+          selection.removeAllRanges();
+          selection.addRange(range);
+          window.ryugiToast.info({
+            id: 'css-copy',
+            title: 'CSS selected',
+            description: 'Press Ctrl+C or ⌘C to copy.',
+          });
+        }
+      });
+
+      render();
+    }, { once: true });
+  </script>
+</body>
+</html>

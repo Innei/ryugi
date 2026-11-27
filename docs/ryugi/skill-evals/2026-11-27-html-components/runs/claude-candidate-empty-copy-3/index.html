@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Search empty state: copy review</title>
+    <style>
+      :root { color-scheme: light dark; }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        padding: 28px;
+        font: 14px/1.5 system-ui, -apple-system, sans-serif;
+        display: grid;
+        gap: 24px;
+        max-width: 1240px;
+        margin-inline: auto;
+      }
+      header h1 { margin: 0 0 4px; font-size: 20px; }
+      header p { margin: 0; opacity: 0.7; }
+      .toolbar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+      .toolbar label { font-weight: 600; }
+      .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+      @media (max-width: 960px) { .grid { grid-template-columns: 1fr; } }
+      .option { display: grid; gap: 12px; align-content: start; }
+      .option-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+      .option-head h2 { margin: 0; font-size: 15px; }
+      .field { display: grid; gap: 6px; }
+      .field > span { font-size: 12px; font-weight: 600; opacity: 0.75; }
+
+      /* Mocked product screen */
+      .mock {
+        --p-bg: #ffffff; --p-fg: #1a1d23; --p-muted: #6b7280; --p-line: #e5e7eb;
+        --p-soft: #f3f4f6; --p-accent: #2563eb; --p-accent-fg: #fff;
+        background: var(--p-bg); color: var(--p-fg);
+        border: 1px solid var(--p-line); border-radius: 12px; overflow: hidden;
+        font-family: Inter, system-ui, sans-serif;
+        outline: 2px solid transparent; outline-offset: 3px; transition: outline-color .15s;
+      }
+      .option.picked .mock { outline-color: var(--lobe-color-primary, #2563eb); }
+      .mock-bar { display: flex; gap: 8px; align-items: center; padding: 12px; border-bottom: 1px solid var(--p-line); }
+      .mock-logo { width: 22px; height: 22px; border-radius: 6px; background: var(--p-accent); flex: none; }
+      .mock-search {
+        flex: 1; display: flex; align-items: center; gap: 6px; min-width: 0;
+        background: var(--p-soft); border-radius: 8px; padding: 7px 10px; font-size: 13px;
+      }
+      .mock-search span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .mock-meta { padding: 10px 16px; font-size: 12px; color: var(--p-muted); border-bottom: 1px solid var(--p-line); display: flex; gap: 6px; flex-wrap: wrap; }
+      .mock-chip { background: var(--p-soft); border-radius: 999px; padding: 2px 8px; color: var(--p-fg); }
+      .mock-empty { padding: 40px 24px 44px; text-align: center; display: grid; justify-items: center; gap: 10px; min-height: 300px; align-content: center; }
+      .mock-illo { width: 56px; height: 56px; border-radius: 50%; background: var(--p-soft); display: grid; place-items: center; color: var(--p-muted); }
+      .mock-empty h3 { margin: 4px 0 0; font-size: 17px; font-weight: 600; }
+      .mock-empty p { margin: 0; font-size: 13px; color: var(--p-muted); max-width: 300px; }
+      .mock-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-top: 6px; }
+      .p-btn { font: inherit; font-size: 13px; padding: 7px 14px; border-radius: 8px; border: 1px solid var(--p-line); background: var(--p-bg); color: var(--p-fg); }
+      .p-btn.primary { background: var(--p-accent); color: var(--p-accent-fg); border-color: var(--p-accent); }
+      .p-links { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; margin-top: 4px; }
+      .p-links span { font-size: 12px; border: 1px solid var(--p-line); border-radius: 999px; padding: 3px 10px; }
+      .mock-dark .mock {
+        --p-bg: #15171c; --p-fg: #e8eaed; --p-muted: #9aa0a9; --p-line: #2a2e36; --p-soft: #20232a; --p-accent: #3b82f6;
+      }
+
+      /* Summary */
+      .summary h2 { margin: 0 0 12px; font-size: 16px; }
+      table { width: 100%; border-collapse: collapse; }
+      th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid color-mix(in srgb, currentColor 12%, transparent); vertical-align: top; }
+      th { font-size: 12px; opacity: 0.7; font-weight: 600; }
+      td.note { white-space: pre-wrap; max-width: 420px; }
+      .stars { letter-spacing: 2px; color: #f5a524; }
+      .muted { opacity: 0.5; }
+      .summary-foot { margin-top: 14px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Search results · empty state copy</h1>
+      <p>Three candidates shown inside the results page. Pick one, rate each one's tone from 1 to 5, and add notes.</p>
+    </header>
+
+    <div class="toolbar">
+      <label for="query">Preview query</label>
+      <ryugi-input id="query" value="wireless headphnes" placeholder="Search term" style="width:240px" aria-label="Preview query"></ryugi-input>
+      <ryugi-segmented id="scheme" value="light" size="small">
+        <ryugi-segment value="light">Light</ryugi-segment>
+        <ryugi-segment value="dark">Dark</ryugi-segment>
+      </ryugi-segmented>
+    </div>
+
+    <div class="grid" id="grid"></div>
+
+    <ryugi-card class="summary" variant="outlined">
+      <h2>Your choices</h2>
+      <div class="toolbar" style="margin-bottom:14px">
+        <label>Pick</label>
+        <ryugi-radio-group id="pick" horizontal>
+          <ryugi-radio value="A">A · Direct</ryugi-radio>
+          <ryugi-radio value="B">B · Friendly</ryugi-radio>
+          <ryugi-radio value="C">C · Action-led</ryugi-radio>
+        </ryugi-radio-group>
+      </div>
+      <table>
+        <thead><tr><th>Option</th><th>Headline</th><th>Tone</th><th>Note</th><th></th></tr></thead>
+        <tbody id="summary-body"></tbody>
+      </table>
+      <div class="summary-foot">
+        <ryugi-button id="copy" icon="copy">Copy summary</ryugi-button>
+        <ryugi-text type="secondary" id="status"></ryugi-text>
+      </div>
+    </ryugi-card>
+
+    <script>
+      const OPTIONS = [
+        {
+          key: 'A', name: 'Direct',
+          title: (q) => `No results for "${q}"`,
+          body: 'Check the spelling or try a broader search term.',
+          actions: ['<button class="p-btn primary">Clear search</button>'],
+          extra: '',
+        },
+        {
+          key: 'B', name: 'Friendly',
+          title: () => 'Hmm, nothing turned up',
+          body: (q) => `We couldn't find anything matching "${q}". Try different keywords, or start from something popular:`,
+          actions: [],
+          extra: '<div class="p-links"><span>Headphones</span><span>Speakers</span><span>Chargers</span></div>',
+        },
+        {
+          key: 'C', name: 'Action-led',
+          title: (q) => `Nothing matches "${q}" yet`,
+          body: 'Try removing a filter. Still nothing? Tell us what you need and we’ll look into adding it.',
+          actions: ['<button class="p-btn primary">Remove filters</button>', '<button class="p-btn">Request it</button>'],
+          extra: '',
+        },
+      ];
+
+      const state = { query: 'wireless headphnes', pick: null, scheme: 'light',
+        tone: { A: null, B: null, C: null }, note: { A: '', B: '', C: '' } };
+      const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+      const val = (v, q) => (typeof v === 'function' ? v(q) : v);
+      const q = () => esc(state.query.trim() || 'your search');
+
+      const grid = document.getElementById('grid');
+      grid.innerHTML = OPTIONS.map((o) => `
+        <section class="option" id="opt-${o.key}">
+          <div class="option-head">
+            <h2>Option ${o.key} · ${o.name}</h2>
+            <ryugi-tag id="tag-${o.key}" color="blue" style="display:none">Picked</ryugi-tag>
+          </div>
+          <div class="mock" aria-label="Product preview, option ${o.key}">
+            <div class="mock-bar">
+              <div class="mock-logo"></div>
+              <div class="mock-search"><ryugi-icon name="search" size="14"></ryugi-icon><span data-q></span></div>
+            </div>
+            <div class="mock-meta"><span>0 results</span><span class="mock-chip">In stock</span><span class="mock-chip">Under $100</span></div>
+            <div class="mock-empty">
+              <div class="mock-illo"><ryugi-icon name="search-x" size="26"></ryugi-icon></div>
+              <h3 data-title></h3>
+              <p data-body></p>
+              ${o.extra}
+              ${o.actions.length ? `<div class="mock-actions">${o.actions.join('')}</div>` : ''}
+            </div>
+          </div>
+          <div class="field">
+            <span>Tone (1 = off, 5 = spot on)</span>
+            <ryugi-segmented id="tone-${o.key}" block>
+              ${[1, 2, 3, 4, 5].map((n) => `<ryugi-segment value="${n}">${n}</ryugi-segment>`).join('')}
+            </ryugi-segmented>
+          </div>
+          <div class="field">
+            <span>Note</span>
+            <ryugi-textarea id="note-${o.key}" rows="3" placeholder="What works, what doesn't…"></ryugi-textarea>
+          </div>
+        </section>`).join('');
+
+      const renderPreviews = () => {
+        document.body.classList.toggle('mock-dark', state.scheme === 'dark');
+        OPTIONS.forEach((o) => {
+          const root = document.getElementById('opt-' + o.key);
+          root.querySelector('[data-q]').textContent = state.query;
+          root.querySelector('[data-title]').innerHTML = val(o.title, q());
+          root.querySelector('[data-body]').innerHTML = val(o.body, q());
+          root.classList.toggle('picked', state.pick === o.key);
+          document.getElementById('tag-' + o.key).style.display = state.pick === o.key ? '' : 'none';
+        });
+      };
+
+      const stars = (n) => n ? `<span class="stars">${'★'.repeat(n)}${'☆'.repeat(5 - n)}</span> ${n}/5` : '<span class="muted">Not rated</span>';
+
+      const renderSummary = () => {
+        document.getElementById('summary-body').innerHTML = OPTIONS.map((o) => `
+          <tr>
+            <td><strong>${o.key}</strong> · ${o.name}</td>
+            <td>${val(o.title, q())}</td>
+            <td>${stars(state.tone[o.key])}</td>
+            <td class="note">${state.note[o.key].trim() ? esc(state.note[o.key]) : '<span class="muted">No note</span>'}</td>
+            <td>${state.pick === o.key ? '<ryugi-tag color="blue">Picked</ryugi-tag>' : ''}</td>
+          </tr>`).join('');
+        const rated = OPTIONS.filter((o) => state.tone[o.key]).length;
+        document.getElementById('status').textContent =
+          `${state.pick ? 'Picked ' + state.pick : 'No pick yet'} · ${rated}/3 rated`;
+      };
+
+      const render = () => { renderPreviews(); renderSummary(); };
+
+      const summaryText = () => {
+        const lines = ['Search empty state: copy review', `Preview query: "${state.query}"`,
+          `Pick: ${state.pick ? state.pick + ' · ' + OPTIONS.find((o) => o.key === state.pick).name : 'none'}`, ''];
+        OPTIONS.forEach((o) => {
+          const plainTitle = val(o.title, state.query.trim() || 'your search');
+          lines.push(`${o.key} · ${o.name}${state.pick === o.key ? ' (picked)' : ''}`,
+            `  Headline: ${plainTitle}`,
+            `  Tone: ${state.tone[o.key] ? state.tone[o.key] + '/5' : 'not rated'}`,
+            `  Note: ${state.note[o.key].trim() || '-'}`);
+        });
+        return lines.join('\n');
+      };
+
+      document.addEventListener('ryugi-change', (e) => {
+        const id = e.target.id || '';
+        const v = e.detail.value;
+        if (id === 'query') state.query = v ?? '';
+        else if (id === 'scheme') state.scheme = v;
+        else if (id === 'pick') state.pick = v;
+        else if (id.startsWith('tone-')) state.tone[id.slice(5)] = v == null ? null : Number(v);
+        else if (id.startsWith('note-')) state.note[id.slice(5)] = v ?? '';
+        else return;
+        render();
+      });
+
+      document.addEventListener('ryugi-ui:ready', () => {
+        document.getElementById('copy').addEventListener('click', async () => {
+          try {
+            await navigator.clipboard.writeText(summaryText());
+            window.ryugiToast.success({ id: 'copy', title: 'Summary copied' });
+          } catch {
+            window.ryugiToast.error({ id: 'copy', title: 'Copy failed', description: 'Clipboard not available.' });
+          }
+        });
+        render();
+      }, { once: true });
+
+      render();
+    </script>
+  </body>
+</html>

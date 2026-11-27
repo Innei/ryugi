@@ -1,0 +1,1 @@
+Created [index.html](index.html) with a local image picker, adjustable JPEG quality and max width, a live preview, before-and-after file sizes, and a download button.

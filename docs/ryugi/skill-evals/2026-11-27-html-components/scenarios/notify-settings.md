@@ -1,0 +1,1 @@
+Prototype the notification settings page for our team chat app: an email digest on/off, digest frequency, which channels to mute (several at once), quiet hours start and end, and a Save button that confirms it saved. I want to click through it and judge the layout.

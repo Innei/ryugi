@@ -1,0 +1,1 @@
+Build an explorer for p50/p95 latency of our 24 API endpoints (make up realistic data). I want to filter by HTTP method, search by path, sort by p95, and set a threshold above which endpoints are highlighted as slow.
