@@ -1,0 +1,53 @@
+{
+  "variant": "after",
+  "task": "long-thread",
+  "rep": "2",
+  "host": "codex",
+  "project": "/tmp/brief-eval/after-codex-long-thread-2/project",
+  "docs": [
+    "document/limits"
+  ],
+  "started": 1795726836159,
+  "checks": [
+    {
+      "name": "limits#h-limits /^Rate limits$/",
+      "ok": true
+    },
+    {
+      "name": "limits#b1 /100 requests per minute/",
+      "ok": true
+    },
+    {
+      "name": "limits/t1 replied",
+      "ok": true
+    }
+  ],
+  "unread": [
+    {
+      "artifact": "document/limits",
+      "unread": 0
+    }
+  ],
+  "consumed": true,
+  "completed": true,
+  "tasksDone": true,
+  "humanOverwritten": null,
+  "metrics": {
+    "host": "codex",
+    "inputTokens": 160477,
+    "cachedTokens": 145664,
+    "outputTokens": 742,
+    "totalTokens": 161219,
+    "roundTrips": 13,
+    "toolCalls": 11,
+    "docReads": 0,
+    "cliCalls": 11,
+    "cliChars": 6471,
+    "actionChars": 0,
+    "utilization": 1,
+    "repeatedReads": 0,
+    "acks": 0,
+    "failedCalls": 0
+  },
+  "elapsed": 33993
+}

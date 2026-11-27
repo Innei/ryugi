@@ -469,6 +469,28 @@ test('a submitted round is queued', async (t) => {
   assert.ok(message.includes('Ryugi choices artboard/settings round r1 submitted'), message);
 });
 
+test('the inline listing reads as the hook session the agent is bound to, not the inherited thread', async (t) => {
+  const f = fixture(t);
+  const calls = path.join(f.root, 'cli-calls.jsonl');
+  f.env.RYUGI_FAKE_CLI_LOG = calls;
+  f.write('document/plan', f.comments());
+  f.open('document/plan');
+  f.start();
+  await f.push('document/plan');
+  await until(() => f.read().length > 0, 'the comment never reached the codex queue');
+  const reads = fs
+    .readFileSync(calls, 'utf8')
+    .trim()
+    .split('\n')
+    .map((line) => JSON.parse(line))
+    .filter((call) => call.args[0] === 'comment' && call.args[1] === 'list');
+  assert.ok(reads.length > 0, 'the watcher did not read the listing');
+  assert.deepEqual(
+    { host: reads[0].host, agent: reads[0].agent, thread: reads[0].thread },
+    { host: 'codex', agent: 'Codex', thread: id },
+  );
+});
+
 test('submitted document answers are queued with the listed answers inline', async (t) => {
   const f = fixture(t);
   f.write('document/plan', { version: 1, threads: [] });
@@ -485,7 +507,7 @@ test('submitted document answers are queued with the listed answers inline', asy
   const message = args[args.indexOf('--message') + 1];
   assert.ok(
     message.startsWith(
-      'Ryugi answers document/plan submitted (s1). Apply each answer, then settle it with comment note --ask <id>.\nComment list: document/plan',
+      'Ryugi answers document/plan submitted (s1).\nComment list: document/plan',
     ),
     message,
   );

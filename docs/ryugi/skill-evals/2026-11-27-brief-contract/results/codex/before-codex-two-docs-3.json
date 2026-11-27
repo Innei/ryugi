@@ -1,0 +1,62 @@
+{
+  "variant": "before",
+  "task": "two-docs",
+  "rep": "3",
+  "host": "codex",
+  "project": "/tmp/brief-eval/before-codex-two-docs-3/project",
+  "docs": [
+    "document/alpha",
+    "document/beta"
+  ],
+  "started": 1795726720919,
+  "checks": [
+    {
+      "name": "alpha#b1 /June/",
+      "ok": true
+    },
+    {
+      "name": "beta#b1 /one reviewer/i",
+      "ok": true
+    },
+    {
+      "name": "alpha/t1 replied",
+      "ok": true
+    },
+    {
+      "name": "beta/t1 replied",
+      "ok": true
+    }
+  ],
+  "unread": [
+    {
+      "artifact": "document/alpha",
+      "unread": 0
+    },
+    {
+      "artifact": "document/beta",
+      "unread": 0
+    }
+  ],
+  "consumed": true,
+  "completed": true,
+  "tasksDone": true,
+  "humanOverwritten": null,
+  "metrics": {
+    "host": "codex",
+    "inputTokens": 212503,
+    "cachedTokens": 183296,
+    "outputTokens": 1285,
+    "totalTokens": 213788,
+    "roundTrips": 18,
+    "toolCalls": 16,
+    "docReads": 1,
+    "cliCalls": 13,
+    "cliChars": 4705,
+    "actionChars": 2692,
+    "utilization": 0.42784272051009564,
+    "repeatedReads": 0,
+    "acks": 2,
+    "failedCalls": 0
+  },
+  "elapsed": 47478
+}

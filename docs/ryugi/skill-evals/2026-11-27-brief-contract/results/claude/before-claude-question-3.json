@@ -1,0 +1,50 @@
+{
+  "variant": "before",
+  "task": "question",
+  "rep": "3",
+  "host": "claude",
+  "project": "/tmp/brief-eval/before-claude-question-3/project",
+  "docs": [
+    "document/retries"
+  ],
+  "started": 1795726778737,
+  "checks": [
+    {
+      "name": "retries text unchanged",
+      "ok": true
+    },
+    {
+      "name": "retries/t1 replied /thousand|carrier|drop/i",
+      "ok": true
+    }
+  ],
+  "unread": [
+    {
+      "artifact": "document/retries",
+      "unread": 0
+    }
+  ],
+  "consumed": true,
+  "completed": true,
+  "tasksDone": true,
+  "humanOverwritten": null,
+  "metrics": {
+    "host": "claude",
+    "inputTokens": 86497,
+    "cachedTokens": 72049,
+    "outputTokens": 1178,
+    "totalTokens": 87675,
+    "roundTrips": 9,
+    "toolCalls": 10,
+    "docReads": 0,
+    "cliCalls": 5,
+    "cliChars": 2298,
+    "actionChars": 1361,
+    "utilization": 0.40774586597040907,
+    "repeatedReads": 0,
+    "acks": 1,
+    "failedCalls": 0
+  },
+  "elapsed": 30106,
+  "transcript": "/private/tmp/claude-501/-Users-innei-git-innei-repo-ryugi-cloud/b419a06a-cf49-4252-b732-21fea91e8fd5/tasks/a0904f93af1644020.output"
+}

@@ -1,0 +1,53 @@
+{
+  "variant": "after",
+  "task": "short-reply",
+  "rep": "2",
+  "host": "codex",
+  "project": "/tmp/brief-eval/after-codex-short-reply-2/project",
+  "docs": [
+    "document/retry-policy"
+  ],
+  "started": 1795763050926,
+  "checks": [
+    {
+      "name": "retry-policy#b1 /three/i",
+      "ok": true
+    },
+    {
+      "name": "retry-policy#b1 lacks /five/i",
+      "ok": true
+    },
+    {
+      "name": "retry-policy/t1 replied",
+      "ok": true
+    }
+  ],
+  "unread": [
+    {
+      "artifact": "document/retry-policy",
+      "unread": 0
+    }
+  ],
+  "consumed": true,
+  "completed": true,
+  "tasksDone": true,
+  "humanOverwritten": null,
+  "metrics": {
+    "host": "codex",
+    "inputTokens": 102211,
+    "cachedTokens": 89344,
+    "outputTokens": 698,
+    "totalTokens": 102909,
+    "roundTrips": 7,
+    "toolCalls": 5,
+    "docReads": 0,
+    "cliCalls": 8,
+    "cliChars": 934,
+    "actionChars": 0,
+    "utilization": 1,
+    "repeatedReads": 0,
+    "acks": 0,
+    "failedCalls": 0
+  },
+  "elapsed": 33027
+}

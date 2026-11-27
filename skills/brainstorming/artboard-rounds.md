@@ -44,10 +44,10 @@ When they answer:
 
 1. Read Brief from `comment list --sections threads,groups,rounds --detail`
    for this project and artboard, as adeck:artifacts says under Choice groups.
-   Match each group's `round` to a `submitted` round. Follow printed
-   `More` for each collection; complete thread messages are included on each
-   delivered page. A preview instead requires its printed `Read`. Use the evidence before its
-   exact `Acknowledge`. When they answered in the terminal instead, record
+   Match each group's `round` to a `submitted` round. Continue any
+   collection that names a cursor; complete thread messages are included on
+   each delivered page, and a preview names the snapshot to read them from.
+   Reply to or resolve each thread once you have used it. When they answered in the terminal instead, record
    it on the board first. A page submit is already recorded: read it before
    continuing. Read what they selected when they point at nodes or tweaks.
 2. Record each answered group as a decision, theirs or the recommendation

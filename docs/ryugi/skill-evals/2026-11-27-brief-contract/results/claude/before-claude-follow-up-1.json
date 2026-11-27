@@ -1,0 +1,54 @@
+{
+  "variant": "before",
+  "task": "follow-up",
+  "rep": "1",
+  "host": "claude",
+  "project": "/tmp/brief-eval/before-claude-follow-up-1/project",
+  "docs": [
+    "document/cache"
+  ],
+  "started": 1795726352847,
+  "checks": [
+    {
+      "name": "cache#b1 /5 minutes/",
+      "ok": true
+    },
+    {
+      "name": "cache#b2 /1000/",
+      "ok": true
+    },
+    {
+      "name": "cache/t1 replied",
+      "ok": true
+    }
+  ],
+  "unread": [
+    {
+      "artifact": "document/cache",
+      "unread": 0
+    }
+  ],
+  "consumed": true,
+  "completed": true,
+  "tasksDone": true,
+  "humanOverwritten": null,
+  "metrics": {
+    "host": "claude",
+    "inputTokens": 115580,
+    "cachedTokens": 98609,
+    "outputTokens": 1508,
+    "totalTokens": 117088,
+    "roundTrips": 18,
+    "toolCalls": 20,
+    "docReads": 2,
+    "cliCalls": 7,
+    "cliChars": 2179,
+    "actionChars": 1371,
+    "utilization": 0.3708122992198256,
+    "repeatedReads": 0,
+    "acks": 1,
+    "failedCalls": 0
+  },
+  "elapsed": 40142,
+  "transcript": "/private/tmp/claude-501/-Users-innei-git-innei-repo-ryugi-cloud/b419a06a-cf49-4252-b732-21fea91e8fd5/tasks/ae65b975cebe01766.output"
+}

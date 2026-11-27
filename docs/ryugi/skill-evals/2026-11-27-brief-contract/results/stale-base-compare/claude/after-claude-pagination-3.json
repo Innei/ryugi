@@ -1,0 +1,90 @@
+{
+  "variant": "after",
+  "task": "pagination",
+  "rep": "3",
+  "host": "claude",
+  "project": "/tmp/brief-eval/after-claude-pagination-3/project",
+  "docs": [
+    "document/glossary"
+  ],
+  "started": 1795726706548,
+  "checks": [
+    {
+      "name": "glossary/t1 replied /Relay/i",
+      "ok": true
+    },
+    {
+      "name": "glossary/t2 replied /Hub/i",
+      "ok": true
+    },
+    {
+      "name": "glossary/t3 replied /Artifact/i",
+      "ok": true
+    },
+    {
+      "name": "glossary/t4 replied /Board/i",
+      "ok": true
+    },
+    {
+      "name": "glossary/t5 replied /Round/i",
+      "ok": true
+    },
+    {
+      "name": "glossary/t6 replied /Thread/i",
+      "ok": true
+    },
+    {
+      "name": "glossary/t7 replied /Receipt/i",
+      "ok": true
+    },
+    {
+      "name": "glossary/t8 replied /Snapshot/i",
+      "ok": true
+    },
+    {
+      "name": "glossary/t9 replied /Cursor/i",
+      "ok": true
+    },
+    {
+      "name": "glossary/t10 replied /Launcher/i",
+      "ok": true
+    },
+    {
+      "name": "glossary/t11 replied /Daemon/i",
+      "ok": true
+    },
+    {
+      "name": "glossary/t12 replied /Engine/i",
+      "ok": true
+    }
+  ],
+  "unread": [
+    {
+      "artifact": "document/glossary",
+      "unread": 0
+    }
+  ],
+  "consumed": true,
+  "completed": true,
+  "tasksDone": true,
+  "humanOverwritten": null,
+  "metrics": {
+    "host": "claude",
+    "inputTokens": 139060,
+    "cachedTokens": 121923,
+    "outputTokens": 1256,
+    "totalTokens": 140316,
+    "roundTrips": 25,
+    "toolCalls": 28,
+    "docReads": 0,
+    "cliCalls": 19,
+    "cliChars": 6555,
+    "actionChars": 0,
+    "utilization": 1,
+    "repeatedReads": 0,
+    "acks": 0,
+    "failedCalls": 1
+  },
+  "elapsed": 35107,
+  "transcript": "/private/tmp/claude-501/-Users-innei-git-innei-repo-ryugi-cloud/b419a06a-cf49-4252-b732-21fea91e8fd5/tasks/a0a06b5550294293b.output"
+}
