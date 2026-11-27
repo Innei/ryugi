@@ -11,6 +11,7 @@ if { [ -n "${ANTIGRAVITY_AGENT:-}" ] || [ -n "${PLUGIN_ROOT:-}" ] || [ -n "${PLU
   && [ -z "${CLAUDE_PROJECT_DIR:-}" ] \
   && [ -z "${CLAUDE_PLUGIN_ROOT:-}" ] \
   && [ -z "${CURSOR_PLUGIN_ROOT:-}" ] \
+  && [ -z "${ZCODE_PLUGIN_ROOT:-}" ] \
   && [ -z "${MUSE_PLUGIN_ROOT:-}" ] \
   && [ -z "${COPILOT_CLI:-}" ]; then
   if bin="$(ryugi_hook_bin "${SCRIPT_DIR%[/\\]*}")"; then

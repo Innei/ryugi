@@ -74,6 +74,10 @@
     {
       "path": ".dsh/package.json",
       "field": "version"
+    },
+    {
+      "path": ".zcode-plugin/plugin.json",
+      "field": "version"
     }
   ]
 }

@@ -262,6 +262,7 @@ That is the only flag Artideck needs; leave the rest of your Claude Code setting
 | Hermes Agent  | `hermes plugins install Innei/artideck --enable`                                                         |
 | Muse          | `muse plugins install ./` then `muse plugins approve adeck`                                           |
 | DeepSeek Harness | `dsh plugin --profile <profile> add github:Innei/artideck#path:.dsh` ([detail](docs/README.dsh.md))       |
+| ZCode            | `zcode plugins marketplace add /path/to/artideck` then `zcode plugins install adeck@ryugi-dev` ([detail](docs/README.zcode.md)) |
 
 Updates and caveats: [docs/install.md](docs/install.md).
 
@@ -302,7 +303,7 @@ This section is for the agent doing the install.
    `~/.claude/settings.json` ([why](#claude-code-settings)); change that file only if they agree,
    and keep their other settings.
 
-Devin, Droid, Kimi Code, Qwen Code, Hermes Agent, Muse, DeepSeek Harness and OMP are not installer
+Devin, Droid, Kimi Code, Qwen Code, Hermes Agent, Muse, DeepSeek Harness, OMP and ZCode are not installer
 targets. Their plugin commands in [Other harnesses](#work-with-your-harness) install the full
 workflow, with no Artifacts-only option; say so and let them choose before you run one.
 

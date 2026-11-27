@@ -33,6 +33,7 @@ if { [ -n "${ANTIGRAVITY_AGENT:-}" ] || [ -n "$env_plugin_root" ] || [ -n "$env_
   && [ -z "${CURSOR_PLUGIN_ROOT:-}" ] \
   && [ -z "${CLAUDE_PLUGIN_ROOT:-}" ] \
   && [ -z "${CLAUDE_PROJECT_DIR:-}" ] \
+  && [ -z "${ZCODE_PLUGIN_ROOT:-}" ] \
   && [ -z "${MUSE_PLUGIN_ROOT:-}" ] \
   && [ -z "${COPILOT_CLI:-}" ]; then
   is_antigravity=1
@@ -63,7 +64,15 @@ escape_for_json() {
 }
 
 using_adeck_escaped=$(escape_for_json "$using_adeck_content")
-if [ "$is_antigravity" -eq 1 ]; then
+if [ -n "${ZCODE_PLUGIN_ROOT:-}" ]; then
+  zcode_tools_md="${PLUGIN_ROOT}/skills/using-adeck/references/zcode-tools.md"
+  if [ -r "$zcode_tools_md" ]; then
+    zcode_tools_escaped=$(escape_for_json "$(< "$zcode_tools_md")")
+    session_context="<EXTREMELY_IMPORTANT>\nYou have Artideck.\n\n**Below is the full content of your 'adeck:using-adeck' skill - your introduction to using skills. For all other skills, use the 'Skill' tool:**\n\n${using_adeck_escaped}\n\n${zcode_tools_escaped}\n</EXTREMELY_IMPORTANT>"
+  else
+    session_context="<EXTREMELY_IMPORTANT>\nYou have Artideck.\n\n**Below is the full content of your 'adeck:using-adeck' skill - your introduction to using skills. For all other skills, use the 'Skill' tool:**\n\n${using_adeck_escaped}\n</EXTREMELY_IMPORTANT>"
+  fi
+elif [ "$is_antigravity" -eq 1 ]; then
   session_context="<EXTREMELY_IMPORTANT>\nYou have Artideck.\n\n**Below is the full content of your 'adeck:using-adeck' skill - your introduction to using skills. To load another skill on Antigravity, read its SKILL.md with \`read_file\`:**\n\n${using_adeck_escaped}\n</EXTREMELY_IMPORTANT>"
 else
   session_context="<EXTREMELY_IMPORTANT>\nYou have Artideck.\n\n**Below is the full content of your 'adeck:using-adeck' skill - your introduction to using skills. For all other skills, use the 'Skill' tool:**\n\n${using_adeck_escaped}\n</EXTREMELY_IMPORTANT>"
@@ -120,7 +129,7 @@ esac
 # Claude Code keeps a marketplace entry's id, so an install made before the
 # rename runs as ryugi@ryugi-dev until `adeck plugin-migrate` moves it.
 legacy_id=""
-if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -z "${CURSOR_PLUGIN_ROOT:-}" ] && [ -z "${COPILOT_CLI:-}" ] && [ -z "${MUSE_PLUGIN_ROOT:-}" ]; then
+if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -z "${CURSOR_PLUGIN_ROOT:-}" ] && [ -z "${ZCODE_PLUGIN_ROOT:-}" ] && [ -z "${COPILOT_CLI:-}" ] && [ -z "${MUSE_PLUGIN_ROOT:-}" ]; then
   case "$plugin_entry" in
     ryugi-artifacts-ryugi-dev) legacy_id="ryugi-artifacts@ryugi-dev" ;;
     ryugi-ryugi-dev) legacy_id="ryugi@ryugi-dev" ;;
@@ -153,7 +162,10 @@ if [ -n "$legacy_id" ]; then
   done
 fi
 
-if [ -n "${CURSOR_PLUGIN_ROOT:-}" ]; then
+if [ -n "${ZCODE_PLUGIN_ROOT:-}" ]; then
+  # ZCode sets both ZCODE_PLUGIN_ROOT and CLAUDE_PLUGIN_ROOT; match ZCode first
+  emit_json '{\n  "hookSpecificOutput": {\n    "hookEventName": "SessionStart",\n    "additionalContext": "%s"\n  }\n}\n' "$session_context"
+elif [ -n "${CURSOR_PLUGIN_ROOT:-}" ]; then
   # Cursor sets CURSOR_PLUGIN_ROOT (may also set CLAUDE_PLUGIN_ROOT)
   emit_json '{\n  "additional_context": "%s"\n}\n' "$session_context"
 elif [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -z "${COPILOT_CLI:-}" ] && [ -z "${MUSE_PLUGIN_ROOT:-}" ]; then
