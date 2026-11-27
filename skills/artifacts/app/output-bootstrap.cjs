@@ -392,12 +392,6 @@ const EXIT_WORDS = {
 	130: "INTERRUPTED",
 	143: "INTERRUPTED"
 };
-const RECOVERY = {
-	E_ARTIFACT_NOT_FOUND: "check --artifact and --project-dir; artifacts live in <project>/.artideck/artifacts/<type>/<id>/",
-	E_ARGUMENT_INVALID: "run the command with --help for its options",
-	E_CURSOR_EXPIRED: "run the read again without --cursor or --snapshot",
-	E_CURSOR_MISMATCH: "run the read again without --cursor or --snapshot"
-};
 const statusWord = (status, code) => code ? EXIT_WORDS[code] ?? "FAILED" : clean(status).replaceAll("_", " ").toUpperCase();
 const commandName = (id) => {
 	const words = id.replaceAll(/[._]/g, " ").trim();
@@ -407,8 +401,9 @@ function pageText(page) {
 	const offset = page.offset ?? 0;
 	if (!page.hasMore && offset === 0) return null;
 	const of = page.total === null ? "" : ` of ${page.total}`;
-	if (page.offset === void 0) return `${page.returned}${of} shown${page.total === null && page.hasMore ? " · more available" : ""}`;
-	return `${page.returned ? `${offset + 1}–${offset + page.returned}` : "none"}${of}`;
+	const cursor = page.hasMore && page.nextCursor ? ` · cursor ${page.nextCursor}` : "";
+	if (page.offset === void 0) return `${page.returned}${of} shown${page.total === null && page.hasMore ? " · more available" : ""}${cursor}`;
+	return `${page.returned ? `${offset + 1}–${offset + page.returned}` : "none"}${of}${cursor}`;
 }
 const quote = (value) => /^[\w./:@=+-]+$/.test(value) ? value : `'${value.replaceAll("'", "'\\''")}'`;
 function actionText(action) {
@@ -454,8 +449,6 @@ function renderText(view, wire, options, collection, requiredFields = [], code =
 	if (wire.error) {
 		lines.push(`${clean(wire.error.code)}: ${clean(wire.error.message)}`);
 		if (wire.error.httpStatus !== void 0 && wire.error.httpStatus >= 500) lines.push(`HTTP: ${wire.error.httpStatus}`);
-		const hint = RECOVERY[wire.error.code];
-		if (hint) lines.push(`Next: ${hint}`);
 		const details = wire.error.details;
 		if (details && typeof details === "object" && !Array.isArray(details)) {
 			for (const [key, detail] of Object.entries(details)) if (!errorActions.some((action) => action.label === key)) facts([{
@@ -539,17 +532,8 @@ function renderText(view, wire, options, collection, requiredFields = [], code =
 	for (const warning of wire.warnings ?? []) lines.push(`Warning: ${clean(warning.message)}`);
 	const given = view.actions ?? wire.next ?? [];
 	const actions = [...given, ...errorActions.filter((action) => !given.some((other) => actionText(other) === actionText(action)))];
-	const used = /* @__PURE__ */ new Set();
-	const details = actions.find((action) => action.label === "Details");
-	for (const omission of omissions) {
-		if (omission.count === void 0) continue;
-		const more = `${omission.count} more ${lastSegment(omission.path)}`;
-		if (details && !used.has(details)) {
-			used.add(details);
-			lines.push(`${more} · Details: ${actionText(details)}`);
-		} else lines.push(more);
-	}
-	for (const action of actions) if (!used.has(action)) lines.push(`${clean(action.label ?? "Next")}: ${action.reason ? `${clean(action.reason)} · ` : ""}${actionText(action)}`);
+	for (const omission of omissions) if (omission.count !== void 0) lines.push(`${omission.count} more ${lastSegment(omission.path)}`);
+	for (const action of actions) if (action.kind === "url") lines.push(`${clean(action.label ?? "Link")}: ${action.url}`);
 	return `${lines.join("\n")}\n`;
 }
 function renderFailure(wire, options, code = 1) {
@@ -629,6 +613,7 @@ function resolveSelection(argv) {
 		"sections": { "type": "string" },
 		"section": { "type": "string" },
 		"snapshot": { "type": "string" },
+		"hold": { "type": "boolean" },
 		"status": { "type": "string" },
 		"waiting-on": { "type": "string" },
 		"kind": { "type": "string" },
@@ -741,6 +726,7 @@ function resolveSelection(argv) {
 		"sections": { "type": "string" },
 		"section": { "type": "string" },
 		"snapshot": { "type": "string" },
+		"hold": { "type": "boolean" },
 		"status": { "type": "string" },
 		"waiting-on": { "type": "string" },
 		"kind": { "type": "string" },
@@ -860,6 +846,7 @@ function reportFailure(argv, error, selection) {
 			"sections": { "type": "string" },
 			"section": { "type": "string" },
 			"snapshot": { "type": "string" },
+			"hold": { "type": "boolean" },
 			"status": { "type": "string" },
 			"waiting-on": { "type": "string" },
 			"kind": { "type": "string" },

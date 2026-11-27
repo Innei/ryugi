@@ -1,5 +1,5 @@
 name: adeck
-version: 1.116.0
+version: 1.117.0
 description: Artideck skills and workflow bootstrap for Hermes Agent, plus the artifacts workbench
 author: Innei
 provides_hooks:
