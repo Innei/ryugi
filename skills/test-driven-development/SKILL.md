@@ -110,15 +110,16 @@ Confirm:
 
 **Other tests fail?** Fix now.
 
-**"Other tests" means the project's suite, not just your file.** A
-green run of the test you wrote is not a green suite. Before you call
-the change done, run the project's test command (bare `pytest`,
-`npm test`, `cargo test` — whatever the repo uses) even when your task
-named only one test file. A scope statement in your task bounds the
-deliverable, not your verification. Any failure that run shows —
-including one you didn't cause — goes in your report by name; a red
-test you watched scroll past and didn't mention is a report falsified
-by omission.
+**"Other tests" means every test your change can reach, not just your
+file.** A green run of the test you wrote is not a green change. Before
+you call the change done, run the tests that exercise the code you
+touched: the files that import it, its callers' tests, and the
+end-to-end tests that load it. Search for them; a scope statement in
+your task bounds the deliverable, not your verification. The full suite
+runs once, when the branch lands (adeck:executing-specs `landing.md`).
+Say which tests you ran. Any failure a run shows — including one you
+didn't cause — goes in your report by name; a red test you watched
+scroll past and didn't mention is a report falsified by omission.
 
 ### REFACTOR - Clean Up
 

@@ -231,11 +231,11 @@ whether the spec names the input that triggers it. Then:
 
 Fix the Critical and Important findings yourself in ONE pass. Each fix is
 verified by TDD, not by a second reviewer: write the test that reproduces
-the finding, watch it fail, make it pass, then run the whole suite. Record
+the finding, watch it fail, make it pass, then run every test the fix can reach. Record
 each in the ledger as
-`Final: fixed <finding> — <test name> RED→GREEN, suite <N>/<N>`. A fix
-without a test that failed first is not verified; a suite that is not
-green after the pass means the pass is not over. Do not dispatch a
+`Final: fixed <finding> — <test name> RED→GREEN, reached tests <N>/<N>`. A fix
+without a test that failed first is not verified; a reached test that
+is not green after the pass means the pass is not over. Do not dispatch a
 re-review.
 
 A finding you decide not to fix is a ruling — `Final: Ruling: <finding> —
