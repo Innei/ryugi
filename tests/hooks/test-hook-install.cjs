@@ -11,7 +11,7 @@ const { test } = require('node:test');
 const repo = path.resolve(__dirname, '../..');
 
 function plugin(t, version) {
-  const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-hook-install-')));
+  const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'adeck-hook-install-')));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const app = path.join(root, 'plugin/skills/artifacts/app');
   fs.mkdirSync(app, { recursive: true });
@@ -82,7 +82,7 @@ test("hook-install asks the CLI for the plugin version's binary and downloads no
 
 test('hook-install leaves a binary already in ~/.ryugi/hook alone', async (t) => {
   const p = plugin(t, '9.2.0');
-  const binary = path.join(p.home, '.ryugi/hook/9.2.0/ryugi-hook');
+  const binary = path.join(p.home, '.ryugi/hook/9.2.0/adeck-hook');
   fs.mkdirSync(path.dirname(binary), { recursive: true });
   fs.writeFileSync(binary, '#!/bin/sh\n', { mode: 0o755 });
   assert.equal(await launch(p, ['hook-install']), 0);

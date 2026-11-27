@@ -264,9 +264,9 @@ mod tests {
     #[test]
     fn a_binary_in_the_hook_home_takes_its_version_from_its_directory() {
         let home = Path::new("/home/me");
-        assert_eq!(home_version(Path::new("/home/me/.ryugi/hook/1.2.3/ryugi-hook"), home).as_deref(), Some("1.2.3"));
-        assert_eq!(home_version(Path::new("/home/me/.artideck/hook/1.2.4/ryugi-hook"), home).as_deref(), Some("1.2.4"));
-        assert_eq!(home_version(Path::new("/home/me/src/ryugi/hook/target/release/ryugi-hook"), home), None);
+        assert_eq!(home_version(Path::new("/home/me/.ryugi/hook/1.2.3/adeck-hook"), home).as_deref(), Some("1.2.3"));
+        assert_eq!(home_version(Path::new("/home/me/.artideck/hook/1.2.4/adeck-hook"), home).as_deref(), Some("1.2.4"));
+        assert_eq!(home_version(Path::new("/home/me/src/ryugi/hook/target/release/adeck-hook"), home), None);
     }
 
     #[test]

@@ -38,10 +38,24 @@ function executable(file) {
   }
 }
 
+// ~/.artideck, or ~/.ryugi until the CLI moves it there.
+function userStore() {
+  const isDir = (dir) => {
+    try {
+      return fs.statSync(dir).isDirectory();
+    } catch {
+      return false;
+    }
+  };
+  const store = path.join(os.homedir(), '.artideck');
+  const legacy = path.join(os.homedir(), '.ryugi');
+  return !isDir(store) && isDir(legacy) ? legacy : store;
+}
+
 function hookBin() {
   const override = process.env.RYUGI_HOOK_BIN;
   if (override) return executable(override) ? override : null;
-  const local = path.join(repoRoot, 'hook', 'target', 'release', 'ryugi-hook');
+  const local = path.join(repoRoot, 'hook', 'target', 'release', 'adeck-hook');
   if (executable(local)) return local;
   let version;
   try {
@@ -49,7 +63,7 @@ function hookBin() {
   } catch {
     return null;
   }
-  const cached = path.join(os.homedir(), '.ryugi', 'hook', String(version), 'ryugi-hook');
+  const cached = path.join(userStore(), 'hook', String(version), 'adeck-hook');
   if (executable(cached)) return cached;
   if (!installRequested) {
     installRequested = true;

@@ -3,6 +3,15 @@
 version = 4
 
 [[package]]
+name = "adeck-hook"
+version = "0.0.0"
+dependencies = [
+ "serde_json",
+ "sha2",
+ "unicode-segmentation",
+]
+
+[[package]]
 name = "block-buffer"
 version = "0.10.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -118,15 +127,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1fbf4db142a473a8d80c26bbf18454ed458bf8d26c8219c331daecfdbd079001"
 dependencies = [
  "proc-macro2",
-]
-
-[[package]]
-name = "ryugi-hook"
-version = "0.0.0"
-dependencies = [
- "serde_json",
- "sha2",
- "unicode-segmentation",
 ]
 
 [[package]]

@@ -400,7 +400,7 @@ test('an invalid session identifier does not fall back to an inherited thread', 
   assert.deepEqual(f.hub.hellos(), []);
 });
 
-test('on Windows, where ryugi-hook has no build, every Codex hook runs nothing', () => {
+test('on Windows, where adeck-hook has no build, every Codex hook runs nothing', () => {
   const entries = Object.values(hooks()).flatMap((groups) =>
     groups.flatMap((group) => group.hooks),
   );

@@ -171,7 +171,7 @@ test('without a session id the watcher exits quietly', async (t) => {
 test('the monitor shell waits for a binary that is still downloading', async (t) => {
   const hub = fakeHub(t);
   const dir = project(t);
-  const pending = path.join(dir, 'pending-ryugi-hook');
+  const pending = path.join(dir, 'pending-adeck-hook');
   const child = spawn(path.join(repo, 'hooks/watch-comments'), [], {
     cwd: dir,
     env: {

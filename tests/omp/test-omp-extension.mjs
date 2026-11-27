@@ -88,7 +88,7 @@ test('omp extension injects bootstrap once, deduplicates, and reinjects after co
 test('comment watch follows /new, /resume and /fork to the current session', async (t) => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-omp-watch-'));
   const log = path.join(dir, 'spawns.log');
-  const bin = path.join(dir, 'ryugi-hook');
+  const bin = path.join(dir, 'adeck-hook');
   // Records `<session> <pid>` per watcher and stays alive like the real one.
   fs.writeFileSync(bin, `#!/bin/sh\necho "$4 $$" >> "${log}"\nexec sleep 30\n`, { mode: 0o755 });
 

@@ -43,10 +43,10 @@ if [ $((SECONDS - start)) -le 3 ]; then pass "returns within the timeout"; else 
 dir="$TEST_ROOT/repo"
 mkdir -p "$dir/.git" "$dir/.ryugi/artifacts/.state" "$dir/packages/app" "$TEST_ROOT/bin"
 printf '{"type":"server-started","url":"http://localhost:9/?key=k"}\n' > "$dir/.ryugi/artifacts/.state/server-info"
-printf '#!/bin/sh\nprintf "%%s\\n" "$@" > "%s"\n' "$TEST_ROOT/hook-args" > "$TEST_ROOT/bin/ryugi-hook"
-chmod +x "$TEST_ROOT/bin/ryugi-hook"
+printf '#!/bin/sh\nprintf "%%s\\n" "$@" > "%s"\n' "$TEST_ROOT/hook-args" > "$TEST_ROOT/bin/adeck-hook"
+chmod +x "$TEST_ROOT/bin/adeck-hook"
 printf '{"hook_event_name":"Stop"}' \
-  | env -i PATH=/usr/bin:/bin HOME="$TEST_ROOT" RYUGI_HOOK_BIN="$TEST_ROOT/bin/ryugi-hook" CLAUDE_PROJECT_DIR="$dir/packages/app" bash "$HOOK" stop > /dev/null || true
+  | env -i PATH=/usr/bin:/bin HOME="$TEST_ROOT" RYUGI_HOOK_BIN="$TEST_ROOT/bin/adeck-hook" CLAUDE_PROJECT_DIR="$dir/packages/app" bash "$HOOK" stop > /dev/null || true
 if [ "$(cat "$TEST_ROOT/hook-args" 2> /dev/null)" = "$(printf 'flush\n%s' "$(cd "$dir" && pwd -P)")" ]; then pass "flushes the repository's server from a session in a subdirectory"; else fail "flushes the repository's server from a session in a subdirectory"; fi
 
 dir="$TEST_ROOT/shared"

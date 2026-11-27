@@ -1,15 +1,15 @@
 [package]
-name = "ryugi-hook"
+name = "adeck-hook"
 version = "0.0.0"
 edition = "2021"
 publish = false
 
 [lib]
-name = "ryugi_hook"
+name = "adeck_hook"
 path = "src/lib.rs"
 
 [[bin]]
-name = "ryugi-hook"
+name = "adeck-hook"
 path = "src/main.rs"
 
 [dependencies]

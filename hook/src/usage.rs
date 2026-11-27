@@ -10,7 +10,7 @@ pub fn mark_used() {
 
 fn mark(exe: &Path, home: &Path) {
     let Some(dir) = exe.parent() else { return };
-    if exe.file_name().is_none_or(|name| name != "ryugi-hook") || !dir.parent().is_some_and(|parent| crate::paths::is_hook_home(parent, home)) {
+    if exe.file_name().is_none_or(|name| name != "adeck-hook") || !dir.parent().is_some_and(|parent| crate::paths::is_hook_home(parent, home)) {
         return;
     }
     let used = dir.join("last-used");

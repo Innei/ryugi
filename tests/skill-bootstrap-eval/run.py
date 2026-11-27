@@ -216,7 +216,7 @@ def make_plugin(repo, root, arm, router_file=None, baseline_rev=BASELINE_REV):
         repo / "skills", plugin / "skills",
         ignore=shutil.ignore_patterns(
             "node_modules", "viewer", "runtime", "cli.cjs", "document-engine.cjs",
-            "loro_wasm_bg.wasm", "ryugi-daemon", "ryugi-daemon.exe",
+            "loro_wasm_bg.wasm", "adeck-daemon", "adeck-daemon.exe",
         ),
     )
     if arm == "absent":
