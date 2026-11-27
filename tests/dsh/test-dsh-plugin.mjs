@@ -270,3 +270,45 @@ test('dsh starts no comment watch for a workspace without artifacts', async (t) 
     fs.existsSync(spawned) ? fs.readFileSync(spawned, 'utf8') : '',
   );
 });
+
+test('hasArtifacts detects .artideck and .ryugi stores, hookBin resolves ~/.artideck/hook, and spawns set windowsHide', async (t) => {
+  const pkg = JSON.parse(fs.readFileSync(path.join(repoRoot, 'package.json'), 'utf8'));
+  const dshSource = fs.readFileSync(path.join(repoRoot, '.dsh', 'index.mjs'), 'utf8');
+  assert.match(dshSource, /detached:\s*true,\s*stdio:\s*'ignore',\s*windowsHide:\s*true/);
+
+  const mod = await import(pathToFileURL(path.join(repoRoot, '.dsh', 'index.mjs')).href);
+  const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-dsh-store-'));
+  const savedHookBin = process.env.RYUGI_HOOK_BIN;
+  delete process.env.RYUGI_HOOK_BIN;
+  t.after(() => {
+    if (savedHookBin === undefined) delete process.env.RYUGI_HOOK_BIN;
+    else process.env.RYUGI_HOOK_BIN = savedHookBin;
+    fs.rmSync(scratch, { recursive: true, force: true });
+  });
+
+  const artideckProject = path.join(scratch, 'proj-artideck');
+  fs.mkdirSync(path.join(artideckProject, '.artideck', 'artifacts'), { recursive: true });
+  assert.equal(mod.hasArtifacts(artideckProject), true);
+
+  const legacyProject = path.join(scratch, 'proj-legacy');
+  fs.mkdirSync(path.join(legacyProject, '.ryugi', 'artifacts'), { recursive: true });
+  assert.equal(mod.hasArtifacts(legacyProject), true);
+
+  const emptyProject = path.join(scratch, 'proj-empty');
+  fs.mkdirSync(emptyProject, { recursive: true });
+  assert.equal(mod.hasArtifacts(emptyProject), false);
+
+  const fakeHome = path.join(scratch, 'home');
+  const binName = process.platform === 'win32' ? 'ryugi-hook.exe' : 'ryugi-hook';
+  const legacyDir = path.join(fakeHome, '.ryugi', 'hook', pkg.version);
+  fs.mkdirSync(legacyDir, { recursive: true });
+  const legacyBin = path.join(legacyDir, binName);
+  fs.writeFileSync(legacyBin, 'fake', { mode: 0o755 });
+  assert.equal(mod.hookBin(fakeHome), legacyBin);
+
+  const artideckDir = path.join(fakeHome, '.artideck', 'hook', pkg.version);
+  fs.mkdirSync(artideckDir, { recursive: true });
+  const artideckBin = path.join(artideckDir, binName);
+  fs.writeFileSync(artideckBin, 'fake', { mode: 0o755 });
+  assert.equal(mod.hookBin(fakeHome), artideckBin);
+});

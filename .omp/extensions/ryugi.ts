@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { readFileSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, statSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { createInterface } from 'node:readline';
@@ -140,7 +140,13 @@ function resolveHookCandidate(basePath: string): string | null {
   return null;
 }
 
-function hookBin(): string | null {
+function userStore(home = homedir()): string {
+  return !existsSync(join(home, '.artideck')) && existsSync(join(home, '.ryugi'))
+    ? join(home, '.ryugi')
+    : join(home, '.artideck');
+}
+
+export function hookBin(home = homedir()): string | null {
   const override = process.env.RYUGI_HOOK_BIN;
   if (override) return resolveHookCandidate(override);
   const local = resolveHookCandidate(join(packageRoot, 'hook', 'target', 'release', 'ryugi-hook'));
@@ -151,7 +157,7 @@ function hookBin(): string | null {
   } catch {
     return null;
   }
-  return resolveHookCandidate(join(homedir(), '.ryugi', 'hook', String(version), 'ryugi-hook'));
+  return resolveHookCandidate(join(userStore(home), 'hook', String(version), 'ryugi-hook'));
 }
 
 function requestHookInstall() {
@@ -159,6 +165,7 @@ function requestHookInstall() {
     spawn(nodeBin(), [join(skillsDir, 'artifacts', 'app', 'ryugi.cjs'), 'hook-install'], {
       detached: true,
       stdio: 'ignore',
+      windowsHide: true,
     }).unref();
   } catch {}
 }
@@ -185,6 +192,7 @@ function watchComments(omp: ExtensionAPI, ctx: ExtensionContext, cwd: string, se
       // omp marks only the shells it spawns with OMPCODE; the watcher needs it to name the agent OMP, not Pi.
       env: { ...process.env, OMPCODE: '1', RYUGI_PLUGIN_ROOT: packageRoot },
       stdio: ['pipe', 'pipe', 'ignore'],
+      windowsHide: true,
     });
     child = watcher;
     watcher.on('error', report);

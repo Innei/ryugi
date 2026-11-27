@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import { readFileSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, statSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { createInterface } from 'node:readline';
@@ -76,28 +76,43 @@ export default function ryugiPiExtension(pi: ExtensionAPI) {
 
 const HOOK_WAIT_MS = 60_000;
 
-function executable(file: string) {
+function executable(file: string): boolean {
   try {
     const stat = statSync(file);
-    return stat.isFile() && (stat.mode & 0o111) !== 0;
+    if (!stat.isFile()) return false;
+    return process.platform === 'win32' ? true : (stat.mode & 0o111) !== 0;
   } catch {
     return false;
   }
 }
 
+function resolveHookCandidate(basePath: string): string | null {
+  if (executable(basePath)) return basePath;
+  if (process.platform === 'win32' && !basePath.endsWith('.exe')) {
+    const exe = `${basePath}.exe`;
+    if (executable(exe)) return exe;
+  }
+  return null;
+}
+
+function userStore(home = homedir()): string {
+  return !existsSync(join(home, '.artideck')) && existsSync(join(home, '.ryugi'))
+    ? join(home, '.ryugi')
+    : join(home, '.artideck');
+}
+
 function hookBin(): string | null {
   const override = process.env.RYUGI_HOOK_BIN;
-  if (override) return executable(override) ? override : null;
-  const local = join(packageRoot, 'hook', 'target', 'release', 'ryugi-hook');
-  if (executable(local)) return local;
+  if (override) return resolveHookCandidate(override);
+  const local = resolveHookCandidate(join(packageRoot, 'hook', 'target', 'release', 'ryugi-hook'));
+  if (local) return local;
   let version: string | undefined;
   try {
     version = JSON.parse(readFileSync(join(packageRoot, 'package.json'), 'utf8')).version;
   } catch {
     return null;
   }
-  const cached = join(homedir(), '.ryugi', 'hook', String(version), 'ryugi-hook');
-  return executable(cached) ? cached : null;
+  return resolveHookCandidate(join(userStore(), 'hook', String(version), 'ryugi-hook'));
 }
 
 function requestHookInstall() {
@@ -105,6 +120,7 @@ function requestHookInstall() {
     spawn(nodeBin(), [join(skillsDir, 'artifacts', 'app', 'ryugi.cjs'), 'hook-install'], {
       detached: true,
       stdio: 'ignore',
+      windowsHide: true,
     }).unref();
   } catch {}
 }
@@ -130,6 +146,7 @@ function watchComments(pi: ExtensionAPI, ctx: ExtensionContext, cwd: string, ses
     const watcher = spawn(bin, ['watch', 'pi', cwd, session], {
       env: { ...process.env, RYUGI_PLUGIN_ROOT: packageRoot },
       stdio: ['pipe', 'pipe', 'ignore'],
+      windowsHide: true,
     });
     child = watcher;
     watcher.on('error', report);
@@ -198,7 +215,7 @@ ${piToolMapping()}
 }
 
 function stripFrontmatter(content: string): string {
-  const match = content.match(/^---\n[\s\S]*?\n---\n([\s\S]*)$/);
+  const match = content.match(/^---\r?\n[\s\S]*?\r?\n---\r?\n([\s\S]*)$/);
   return (match ? match[1] : content).trim();
 }
 

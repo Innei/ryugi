@@ -32,32 +32,48 @@ const bootstrapSkillPath = path.resolve(skillsRoot, 'using-adeck', 'SKILL.md');
 function executable(file) {
   try {
     const stat = fs.statSync(file);
-    return stat.isFile() && (stat.mode & 0o111) !== 0;
+    if (!stat.isFile()) return false;
+    return process.platform === 'win32' ? true : (stat.mode & 0o111) !== 0;
   } catch {
     return false;
   }
 }
 
-function hookBin() {
+function resolveHookCandidate(basePath) {
+  if (executable(basePath)) return basePath;
+  if (process.platform === 'win32' && !basePath.endsWith('.exe')) {
+    const exe = `${basePath}.exe`;
+    if (executable(exe)) return exe;
+  }
+  return null;
+}
+
+function userStore(home = os.homedir()) {
+  return !fs.existsSync(path.join(home, '.artideck')) && fs.existsSync(path.join(home, '.ryugi'))
+    ? path.join(home, '.ryugi')
+    : path.join(home, '.artideck');
+}
+
+export function hookBin(home = os.homedir()) {
   const override = process.env.RYUGI_HOOK_BIN;
-  if (override) return executable(override) ? override : null;
-  const local = path.join(repoRoot, 'hook', 'target', 'release', 'ryugi-hook');
-  if (executable(local)) return local;
+  if (override) return resolveHookCandidate(override);
+  const local = resolveHookCandidate(path.join(repoRoot, 'hook', 'target', 'release', 'ryugi-hook'));
+  if (local) return local;
   let version;
   try {
     version = JSON.parse(fs.readFileSync(path.join(repoRoot, 'package.json'), 'utf8')).version;
   } catch {
     return null;
   }
-  const cached = path.join(os.homedir(), '.ryugi', 'hook', String(version), 'ryugi-hook');
-  if (executable(cached)) return cached;
+  const cached = resolveHookCandidate(path.join(userStore(home), 'hook', String(version), 'ryugi-hook'));
+  if (cached) return cached;
   if (!installRequested) {
     installRequested = true;
     try {
       spawn(
         nodeBin(),
         [path.join(skillsRoot, 'artifacts', 'app', 'ryugi.cjs'), 'hook-install'],
-        { detached: true, stdio: 'ignore' },
+        { detached: true, stdio: 'ignore', windowsHide: true },
       ).unref();
     } catch {}
   }
@@ -66,7 +82,14 @@ function hookBin() {
 
 let installRequested = false;
 
-function hasArtifacts(workspace) {
+function hasArtifactStore(dir) {
+  return (
+    fs.existsSync(path.join(dir, '.artideck', 'artifacts')) ||
+    fs.existsSync(path.join(dir, '.ryugi', 'artifacts'))
+  );
+}
+
+export function hasArtifacts(workspace) {
   let start;
   try {
     start = fs.realpathSync(workspace);
@@ -81,9 +104,9 @@ function hasArtifacts(workspace) {
   for (let dir = start; ; dir = path.dirname(dir)) {
     chain.push(dir);
     if (fs.existsSync(path.join(dir, '.git')) && (dir !== home || dir === start)) break;
-    if (path.dirname(dir) === dir) return fs.existsSync(path.join(start, '.ryugi', 'artifacts'));
+    if (path.dirname(dir) === dir) return hasArtifactStore(start);
   }
-  return chain.some((dir) => fs.existsSync(path.join(dir, '.ryugi', 'artifacts')));
+  return chain.some(hasArtifactStore);
 }
 
 let cachedBootstrap;
@@ -352,6 +375,7 @@ export function apply(ctx, config = {}) {
     const watcher = spawn(bin, ['watch', 'dsh', workspace, toSessionUuid(sessionId)], {
       env: { ...process.env, RYUGI_PLUGIN_ROOT: repoRoot },
       stdio: ['pipe', 'pipe', 'ignore'],
+      windowsHide: true,
     });
     const channel = { close: () => watcher.kill() };
     channels.set(sessionId, channel);
