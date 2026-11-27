@@ -91,10 +91,11 @@ function projectRoot(dir) {
 	}
 	return chain.find((candidate) => hasStore(candidate)) ?? chain.at(-1);
 }
+const realProject = (dir) => process.platform === "win32" ? node_fs.default.realpathSync.native(dir) : node_fs.default.realpathSync(dir);
 function projectPaths(dir) {
 	let project;
 	try {
-		project = node_fs.default.realpathSync(node_path.default.resolve(dir));
+		project = realProject(node_path.default.resolve(dir));
 		if (!node_fs.default.statSync(project).isDirectory()) throw new Error("Not a directory");
 	} catch {
 		throw new CliError(`Project directory not found: ${dir}`);
