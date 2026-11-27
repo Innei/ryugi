@@ -1,0 +1,156 @@
+以下是按顺序的模拟。除读取 `./skill/verifying/verdicts.md` 和 `pages.md` 外，没有真的执行任何命令；每处假设的输出都标了"假设"。
+
+## 1. 摸清现状(并行)
+
+```bash
+cd /Users/p/git/notes-app && git status --short && git log --oneline -5 && git show --stat a1b2c3d
+```
+假设:工作区干净,HEAD 是 `a1b2c3d`,它改了 `src/export/csv-writer.ts`、`src/export/export.ts`、`src/export/export.test.ts`。
+
+```bash
+tail -20 .artideck/sdd/2026-11-10-export-design/progress.md
+```
+假设:所有 Task 都有 complete 行,有 Final review 行,还没有这次 reject 的记录。
+
+```bash
+adeck comment list --artifact verify/export
+```
+假设:报告里有两个 claim,没有 gap:
+- `ruling-stream`(human):pending。
+- `ruling-quotes`(human):reject,线程里是伙伴那句原话。
+
+```bash
+adeck start --artifact verify/export --help
+cat .artideck/artifacts/verify/export/verify.xml
+```
+假设:帮助给出格式 `<claim id judge from capturedAt>`,内含 `<title>/<ask>/<p>/<result>/<output file>`,以及 `<gap id>`。报告现状假设如下:
+- `ruling-quotes` 的 `<output>`、`from`、`capturedAt` 已是 `a1b2c3d` 的新证据。
+- 它的标题和 `<ask>` 还是"字段按 RFC 4180 加引号"。
+- `ruling-stream` 的证据是 `a1b2c3d` 之前采的,输出文件首行记着命令 `$ pnpm tsx scripts/export-bench.ts --count 12000`。
+- 开头段落写着旧的例行检查数字。
+
+## 2. 本次会话内的证明(并行)
+
+修复改了 CSV 写入器,流式导出也走它,所以 `ruling-stream` 的证据过期了,要重采。
+
+```bash
+pnpm test > .artideck/sdd/2026-11-10-export-design/reject-ruling-quotes-suite.log 2>&1; echo "exit=$?"; tail -15 .artideck/sdd/2026-11-10-export-design/reject-ruling-quotes-suite.log
+```
+假设:`exit=0`,`Tests 48 passed (48)`。
+
+```bash
+pnpm tsx scripts/export-bench.ts --count 12000 > .artideck/artifacts/verify/export/out/ruling-stream.txt 2>&1; echo "exit=$?"; tail -5 .artideck/artifacts/verify/export/out/ruling-stream.txt
+```
+覆盖同一个文件,不留编号副本。假设:`exit=0`,12001 行(含表头),分 24 批写出,峰值内存与上次同量级。
+
+不加引号以后,正文里有分号或换行会怎样,这是伙伴判这条时会问的,所以实测一次:
+```bash
+pnpm tsx scripts/export-sample.ts --title '买菜; 做饭' --body $'第一行\n第二行' | cat -A
+```
+假设:标题里的分号让该行多出一列,正文里的换行把一条笔记断成两行,没有任何转义。
+
+"Excel 打开要干净"要在 Excel 里证明,先试本机:
+```bash
+mdfind "kMDItemCFBundleIdentifier == 'com.microsoft.Excel'"; date "+%Y-%m-%dT%H:%M%z"
+```
+假设:没有结果(本机没装 Excel),时间是 `2026-11-28T15:20+0800`。这一项进报告的 gap。
+
+## 3. 更新验证报告 `.artideck/artifacts/verify/export/verify.xml`
+
+Edit 1,开头段落的例行检查一行:
+```xml
+<p>例行检查：pnpm test 48/48 通过（a1b2c3d，2026-11-28 15:20）。</p>
+```
+
+Edit 2,`ruling-stream` 只换属性(证据文件已覆盖):
+```xml
+<claim id="ruling-stream" judge="human" from="本机 macOS，feat/export @ a1b2c3d" capturedAt="2026-11-28T15:20+08:00">
+```
+
+Edit 3,`ruling-quotes` 整块替换。`<output>` 和 `from` 是已换好的,标题和 ask 改成现在的决定:
+```xml
+<claim id="ruling-quotes" judge="human" from="本机 macOS，feat/export @ a1b2c3d" capturedAt="2026-11-28T15:20+08:00">
+  <title>整个文件用分号分隔，字段不加引号</title>
+  <ask>标题或正文里有分号或换行时这条就错了：实测 `买菜; 做饭` 会多出一列，正文里的换行会把一条笔记断成两行。你说了不要引号，所以我没有转义，也没有替换字符。这类笔记要怎么处理，请你定。</ask>
+  <p>按你的意见改的：含逗号的字段不加引号也不会错列，Excel 打开没有多余的引号。原来的"按 RFC 4180 加引号"作废。</p>
+  <result>含逗号的示例笔记导出为分号分隔，全文件没有引号。</result>
+  <output file="out/ruling-quotes.txt"/>
+</claim>
+```
+
+Edit 4,新增 gap:
+```xml
+<gap id="excel-open">没有在 Excel 里打开过导出的文件：这台机器没有装 Excel。分号是否自动分列取决于 Excel 的区域设置，我无法确认。需要你用 Excel 打开一次导出文件，告诉我是否干净；或者 waive 这一条。</gap>
+```
+
+## 4. 回写设计文档 `.artideck/artifacts/document/export-design/doc.xml`(全文)
+
+```xml
+<doc>
+  <h1>CSV 导出</h1>
+  <h2>导出格式</h2>
+  <p>每条笔记一行：id、title、body、updatedAt。UTF-8，逗号分隔。</p>
+  <p><ref verify="export"/> 实现改为整个文件用分号分隔，字段不加引号。</p>
+  <h2>大批量导出</h2>
+  <p>超过 10000 条时，先在服务端生成完整文件，再一次性下载。</p>
+  <p><ref verify="export"/> 实现改为流式，每 500 条写一次。</p>
+  <h2>权限</h2>
+  <p>只能导出自己的笔记。</p>
+  <h2>实现结论</h2>
+  <p><ref verify="export"/></p>
+  <p>和设计不同的决定：</p>
+  <ul>
+    <li>大批量导出改成流式，每 500 条写一次，不在服务端生成完整文件：一万条以上的完整文件超出内存。用户需要断点续传时这条就错了。</li>
+    <li>整个文件用分号分隔，字段不加引号，不再是逗号分隔：含逗号的字段不加引号也不会错列，Excel 打开没有多余的引号。标题或正文里有分号或换行时这条就错了：那一行会错列或断行。</li>
+  </ul>
+  <p>设计没写、实现时定下的：无。</p>
+  <p>踩到的坑：</p>
+  <ul>
+    <li>流式导出测试挂起：游标没关导致连接池耗尽；在 finally 里关游标。</li>
+    <li>改成分号后测试里仍然输出逗号：CSV 写入器把分隔符存成模块级常量，模块加载时就定死了；改为每次调用时传入分隔符。</li>
+  </ul>
+</doc>
+```
+
+## 5. 检查(并行)
+
+```bash
+adeck check --artifact verify/export
+adeck check --artifact document/export-design
+```
+假设:两者都没有警告和来源提示。报告显示 2 个 claim 等人判、1 个 gap。
+
+## 6. 提交文档、记台账、回复 reject 线程(同一次调用)
+
+```bash
+cd /Users/p/git/notes-app \
+&& git add .artideck/artifacts/document/export-design/doc.xml .artideck/artifacts/verify/export/verify.xml .artideck/artifacts/verify/export/out/ruling-stream.txt \
+&& git commit -m "docs(export): write back semicolon/no-quote decision and refresh verify evidence" \
+&& cat >> .artideck/sdd/2026-11-10-export-design/progress.md <<'EOF'
+Verify: reject ruling-quotes（"不要引号，Excel 打开要干净。含逗号的字段改成分号分隔整个文件。"）— fixed a1b2c3d：整个文件分号分隔、字段不加引号 — export.test.ts「分号分隔且不加引号」RED→GREEN, suite 48/48
+Verify: Ruling: 「字段按 RFC 4180 加引号」作废 — 被伙伴的 reject 取代 — 无代价，这是伙伴的决定
+Verify: Ruling: 标题/正文含分号或换行时不转义、不替换字符 — 伙伴明确不要引号，替换字符会悄悄改掉笔记内容 — 错了的话这类笔记导出后错列或断行；已写进 ruling-quotes 的 ask，等伙伴裁决
+Verify: 坑：CSV 写入器把分隔符缓存为模块级常量 — 改为每次调用传入
+Verify: ruling-stream 证据在 a1b2c3d 上重采（写入器变了，旧证据过期）；新增 gap excel-open（本机无 Excel）
+EOF
+git log --oneline -1 \
+&& adeck comment reply --artifact verify/export --claim ruling-quotes --text "已改（a1b2c3d）：整个文件用分号分隔，字段不加引号，证据已换成新的导出结果。注意：标题或正文里有分号或换行时会错列或断行，我没有擅自转义或替换，请你在这条里定。另外 ruling-stream 的证据因为写入器改动重采了一次，结论没变。"
+```
+假设:提交成功,SHA 为 `d4e5f6a`;回复已发出。台账里的测试名取自步骤 1 的 `git show`,是假设的名字。线程保持打开,不记 pass,不推送。工作区保留。
+
+## 7. 发给伙伴的最终消息
+
+> **未完成:reject 已修好(`a1b2c3d`),等你在验证报告上裁决。** 报告:`verify/export`(`adeck open --artifact verify/export`)。例行检查:`pnpm test` 48/48 通过。
+>
+> 需要你的:
+> 1. **`ruling-quotes`(整个文件分号分隔、不加引号)**:pass 还是 reject。实测标题或正文里有分号或换行时,那一行会错列或断行。你说了不要引号,所以我没有转义,也没有替换字符。如果这类笔记要处理,请告诉我怎么处理,例如把换行换成空格。
+> 2. **`ruling-stream`(大批量改成流式)**:仍待你裁决。写入器改了,证据已在 `a1b2c3d` 上重采,结论没变。
+> 3. **gap `excel-open`**:这台机器没装 Excel,我没法确认文件在 Excel 里打开是否干净、分号是否自动分列。请你用 Excel 打开一次导出文件告诉我结果,或者 waive 这一条。
+>
+> 可能改变你决定的:
+> - 笔记正文带换行很常见,第 1 条里的断行问题可能影响大部分导出。
+> - Excel 是否把分号当分隔符取决于区域设置,没有验证过。
+>
+> 设计文档的"导出格式"和"实现结论"已按这次修改回写。三条都过了之后再谈怎么合入 `main`。
+
+SUMMARY: 完成了 `ruling-quotes` reject 的收尾(全量测试、重采过期证据、改写 claim、新增 Excel gap、回写设计文档并提交、记台账、回复 reject 线程且保持打开);现在等伙伴裁决 `ruling-quotes`、`ruling-stream` 并处理 gap `excel-open`,之后才谈合入。

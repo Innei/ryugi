@@ -1,0 +1,1 @@
+PASS — Agent wrote, checked, and handed off the verify report, and neither edited the spec markdown nor created a design document for write-back.

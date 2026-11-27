@@ -1,0 +1,140 @@
+Both reference files are read (`verdicts.md`, `pages.md`). Nothing below was run; this is the simulated sequence, with each assumed output marked.
+
+## 1. Read the report state and the repair commit
+
+```
+cd /Users/p/git/notes-app && git status --short && git log --oneline -3 && git show --stat a1b2c3d
+adeck comment list --artifact verify/export
+adeck get --artifact verify/export --detail
+```
+
+Assumed output:
+- The tree is clean, HEAD is `a1b2c3d` on `feat/export`, and the commit touches `src/export/csv-writer.ts` and `src/export/csv-writer.test.ts`.
+- The report has three claims: `ruling-stream` (passed), `export-own-notes` (checked by agent) and `ruling-quotes` (rejected, open thread `t-7` carrying the reject text).
+- `ruling-quotes` already has the new output file `ruling-quotes.txt`, with `from` and `capturedAt` updated, but its title and ask still describe RFC 4180 quoting.
+
+## 2. Fresh proof of the repair
+
+```
+pnpm test > .artideck/sdd/2026-11-10-export-design/reject-ruling-quotes.log 2>&1; echo "exit=$?"; tail -12 .artideck/sdd/2026-11-10-export-design/reject-ruling-quotes.log
+```
+
+Assumed output: `exit=0`, `Tests  49 passed (49)`.
+
+## 3. Walk the neighbours
+
+Check whether the other claims' evidence shows the old comma format, and what an unquoted field containing `;` or a newline produces:
+
+```
+grep -ln "id,title" .artideck/artifacts/verify/export/*
+pnpm exec tsx -e "import {writeRow} from './src/export/csv-writer'; process.stdout.write(writeRow({id:'1',title:'a;b',body:'line1\nline2',updatedAt:'2026-11-28'}, ';'))"
+ls /Applications | grep -i excel
+```
+
+Assumed output:
+- The grep finds no match, so no other claim's evidence is stale.
+- The probe prints `1;a;b;line1` then `line2;2026-11-28`: five columns, and the row breaks in two.
+- Excel is not installed on this Mac.
+
+## 4. Update the claim and add the gap
+
+```
+adeck start --artifact verify/export --help
+```
+
+Assumed: the writing description confirms the `claim`, `title`, `ask`, `output` and `gap` elements used below.
+
+Edit `.artideck/artifacts/verify/export/doc.xml`, replacing the `ruling-quotes` claim's title, ask and paragraph (`from`, `capturedAt` and `<output>` stay as already replaced):
+
+```xml
+<claim id="ruling-quotes" judge="human" from="本机 feat/export @ a1b2c3d" capturedAt="2026-11-28T10:40:00+08:00">
+  <title>整个文件用分号分隔，字段不加引号</title>
+  <ask>如果笔记的标题或正文里会出现分号或换行，这条就错了：不加引号时，分号会多出一列，换行会把一条笔记断成两行。</ask>
+  <p>按你的驳回意见改的：去掉 RFC 4180 引号，分隔符从逗号换成分号，含逗号的字段不再需要引号。字段里的分号和换行原样写出，没有转义，因为任何替换都会改动笔记内容。</p>
+  <output file="ruling-quotes.txt"/>
+</claim>
+```
+
+Add under the gaps section:
+
+```xml
+<gap id="excel-open">没有在 Excel 里打开导出的文件：这台机器没装 Excel。分号能否自动分列取决于系统的列表分隔符设置，不带 BOM 的 UTF-8 中文在 Excel 里可能乱码。需要你在自己的 Excel 里打开一次导出文件，告诉我分列和中文是否正常。</gap>
+```
+
+## 5. Write back to the design document
+
+Write `.artideck/artifacts/document/export-design/doc.xml` in full:
+
+```xml
+<doc>
+  <h1>CSV 导出</h1>
+  <h2>导出格式</h2>
+  <p>每条笔记一行：id、title、body、updatedAt。UTF-8，逗号分隔。</p>
+  <p><ref verify="export"/> 实现改为分号分隔，字段不加引号。</p>
+  <h2>大批量导出</h2>
+  <p>超过 10000 条时，先在服务端生成完整文件，再一次性下载。</p>
+  <p><ref verify="export"/> 实现改为流式，每 500 条写一次。</p>
+  <h2>权限</h2>
+  <p>只能导出自己的笔记。</p>
+  <h2>实现结论</h2>
+  <p><ref verify="export"/></p>
+  <p>和设计不同的决定：</p>
+  <ul>
+    <li>大批量导出改成流式，每 500 条写一次，不在服务端生成完整文件：一万条以上的完整文件超出内存。用户需要断点续传时这条就错了。</li>
+    <li>整个文件改成分号分隔，字段不加引号：验收时要求 Excel 打开要干净，含逗号的字段不能靠引号。标题或正文里有分号或换行时这条就错了。</li>
+  </ul>
+  <p>设计没写、实现时定下的：</p>
+  <ul><li>字段里的分号和换行原样写出，不转义：不加引号时任何替换都会改动笔记内容。</li></ul>
+  <p>踩到的坑：</p>
+  <ul>
+    <li>流式导出测试挂起：游标没关导致连接池耗尽；在 finally 里关游标。</li>
+    <li>改分隔符后测试仍输出逗号：分隔符是模块级常量，加载时就定死了；改成每次调用时传入。</li>
+  </ul>
+</doc>
+```
+
+```
+adeck check --artifact document/export-design && adeck check --artifact verify/export
+```
+
+Assumed output: both clean, with no warnings or provenance notes. The report link is `http://localhost:4400/verify/export`, with 1 claim pending on a human and 1 gap open.
+
+## 6. Reply on the reject thread, leaving it open
+
+```
+adeck comment reply --artifact verify/export --thread t-7 --text "已改（a1b2c3d）：整个文件改成分号分隔，字段不再加引号；证据已换成新的导出输出。注意：字段里的分号和换行现在原样写出，会错列或断行，这一点写进了这条的提问里。没有其他结论的证据受影响。"
+```
+
+## 7. Commit the document change with the ledger lines
+
+```
+git check-ignore -q .artideck/artifacts || git add .artideck/artifacts/document/export-design/doc.xml .artideck/artifacts/verify/export/doc.xml .artideck/artifacts/verify/export/ruling-quotes.txt \
+ && git commit -m "docs(export): write back semicolon decision and delimiter pitfall" \
+ && cat >> .artideck/sdd/2026-11-10-export-design/progress.md <<'EOF'
+Verify: 驳回 ruling-quotes 已修 — 分号分隔、不加引号（a1b2c3d），csv-writer 分隔符测试 RED→GREEN，suite 49/49（pnpm test）。原「字段按 RFC 4180 加引号」的裁定作废，由你的驳回意见取代。
+Verify: 坑 — 分隔符是模块级常量，加载时缓存；改为每次调用传入。
+Ruling: 字段里的分号和换行原样写出，不转义 — 你要求不加引号，任何替换都会改动笔记内容 — 错了的代价：含分号的字段多出一列，多行正文把一条笔记断成两行。
+Verify: 设计文档已回写（导出格式、实现结论），ruling-quotes 等待裁决，gap excel-open 未关。
+EOF
+git status --short && git log --oneline -2
+```
+
+Assumed output: the artifacts directory is tracked, the commit is created as `e4f5a6b`, and the tree is clean. Nothing is pushed, and the workspace stays because a claim is still pending.
+
+## 8. Final message to my partner
+
+> **未完成，等你裁决**：引号那条已按你的意见改好（`a1b2c3d`，文件改成分号分隔、不加引号，`pnpm test` 49/49 通过），现在等你重新判。
+>
+> 报告：http://localhost:4400/verify/export
+>
+> 需要你做的：
+> 1. 判 `ruling-quotes`（“整个文件用分号分隔，字段不加引号”）：通过或驳回。
+> 2. 在你的 Excel 里打开一次导出文件，告诉我分列和中文是否正常。这台机器没装 Excel，我没法验证。
+>
+> 可能改变你决定的：
+> - 不加引号后，标题或正文里的分号会多出一列，换行会把一条笔记断成两行（已实测）。多行正文的笔记都会受影响；我没有做替换，因为那会改动笔记内容。
+> - 分号在 Excel 里能否自动分列，取决于系统的列表分隔符设置；不带 BOM 的 UTF-8 中文可能乱码。两点都未验证。
+>
+> 设计文档已回写（导出格式、实现结论），提交 `e4f5a6b`。你判完在这里告诉我；通过后再谈怎么合入。
+
+SUMMARY: Re-ran the suite, updated the rejected claim's title and ask, added an Excel gap, wrote the semicolon decision and delimiter pitfall back to the design document, replied on the reject thread, and committed with ledger lines — all simulated; the work now waits on my partner's verdict on `ruling-quotes` and their Excel check.

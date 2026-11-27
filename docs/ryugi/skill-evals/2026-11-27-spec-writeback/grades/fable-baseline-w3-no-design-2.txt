@@ -1,0 +1,1 @@
+l transcript wrote verify report and handed off; did not create design doc or edit spec. PASS.

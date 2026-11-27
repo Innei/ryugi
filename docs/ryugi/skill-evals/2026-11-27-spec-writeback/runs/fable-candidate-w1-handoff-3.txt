@@ -1,0 +1,146 @@
+以下は、この時点からターン終了までの模擬実行です(実際に実行したのは `./skill/` 配下の3ファイルの読み取りのみ)。
+
+仮定:
+- プロジェクト検証で使った開発サーバーが `http://localhost:8787` でまだ動いている。
+- フィクスチャは alice(20000 件)と bob(3 件)で、セッション cookie がワークスペースにある。
+- `.artideck/artifacts/` は git 管理下にある。
+- `adeck start` は verify の記述仕様を返し、下の要素名はそれに一致する。
+
+## ツール呼び出し(順番どおり)
+
+**1. shell** — レポートを開始し、記述仕様を取得する
+
+```bash
+cd /Users/p/git/notes-app && adeck start --artifact verify/export
+```
+
+仮定した出力: 記述仕様(`claim` / `result` / `output` / `ask` / `gap` / `ref`)と、パス `.artideck/artifacts/verify/export/doc.xml`。
+
+**2. shell** — 定例チェックと現在のコミットを取る
+
+```bash
+pnpm test > .artideck/sdd/2026-11-10-export-design/final-suite.log 2>&1; echo "exit=$?"; tail -n 6 .artideck/sdd/2026-11-10-export-design/final-suite.log; git rev-parse --short HEAD; git status --short
+```
+
+仮定した出力: `exit=0`、`Tests  32 passed (32)`、`a41c9e2`、status は空。
+
+**3. shell** — 主張の証拠として、20000 件のダウンロードを実行する
+
+```bash
+mkdir -p .artideck/artifacts/verify/export/output && { date -u +%FT%TZ; curl -sS -N -b .artideck/sdd/2026-11-10-export-design/alice.cookie -D - -o /tmp/export-alice.csv -w 'ttfb=%{time_starttransfer}s total=%{time_total}s size=%{size_download}\n' http://localhost:8787/api/export.csv; head -n 1 /tmp/export-alice.csv; python3 -I -c 'import csv,sys; r=list(csv.reader(open(sys.argv[1],encoding="utf-8",newline=""))); print("rows", len(r)-1, "unique_ids", len({x[0] for x in r[1:]}), "cols", {len(x) for x in r})' /tmp/export-alice.csv; } > .artideck/artifacts/verify/export/output/stream-20000.txt 2>&1; cat .artideck/artifacts/verify/export/output/stream-20000.txt
+```
+
+仮定した出力:
+
+```
+2026-11-28T06:12:40Z
+HTTP/1.1 200 OK
+content-type: text/csv; charset=utf-8
+content-disposition: attachment; filename="notes.csv"
+transfer-encoding: chunked
+
+ttfb=0.041s total=3.870s size=9482113
+id,title,body,updatedAt
+rows 20000 unique_ids 20000 cols {4}
+```
+
+**4. shell** — 同じエンドポイントを共有する隣接フローを歩く(小規模エクスポートと権限)
+
+```bash
+curl -sS -b .artideck/sdd/2026-11-10-export-design/bob.cookie -o /tmp/export-bob.csv -w 'bob status=%{http_code}\n' http://localhost:8787/api/export.csv; python3 -I -c 'import csv,sys; r=list(csv.reader(open(sys.argv[1],encoding="utf-8",newline=""))); print("bob rows", len(r)-1)' /tmp/export-bob.csv; curl -sS -o /dev/null -w 'anonymous status=%{http_code}\n' http://localhost:8787/api/export.csv; rm -f /tmp/export-alice.csv /tmp/export-bob.csv
+```
+
+仮定した出力: `bob status=200`、`bob rows 3`、`anonymous status=401`。
+
+**5. write** — `.artideck/artifacts/verify/export/doc.xml`(全文)
+
+```xml
+<verify>
+  <h1>CSV 导出：验证</h1>
+  <p>1 条由我验证，2 条等你判断，1 个缺口。例行检查：pnpm test 32/32 通过（a41c9e2）。同一接口的相邻流程也走过：3 条笔记的小导出只返回本人的 3 行，未登录返回 401。项目自带的浏览器检查已下载成功，作为辅助证据。</p>
+
+  <claim id="stream-20000" judge="agent" from="本地开发服务器 localhost:8787，feat/export @ a41c9e2" capturedAt="2026-11-28T06:12:40Z">
+    <title>20000 条笔记以流式方式完整下载</title>
+    <result>分块传输，41 毫秒收到首字节，3.87 秒下完；20000 行、id 无重复、每行 4 列。</result>
+    <output file="output/stream-20000.txt"/>
+  </claim>
+
+  <claim id="ruling-streaming" judge="human" from="本地开发服务器 localhost:8787，feat/export @ a41c9e2" capturedAt="2026-11-28T06:12:40Z">
+    <title>大批量导出改成流式，不在服务端生成完整文件</title>
+    <ask>设计写的是“先生成完整文件，再一次性下载”，实现没有这样做。如果用户需要断点续传，或者需要下载中断后拿到的一定是完整文件，这个决定就是错的。</ask>
+    <p>一万条以上的完整文件在 Worker 上会超出内存，所以改成每 500 条写一次、边查边发。代价是服务端没有完整文件：下载中途断开只能从头再来，也无法续传。</p>
+  </claim>
+
+  <claim id="ruling-quoting" judge="human" from="本地开发服务器 localhost:8787，feat/export @ a41c9e2" capturedAt="2026-11-28T06:12:40Z">
+    <title>含逗号、引号或换行的字段按 RFC 4180 加引号</title>
+    <ask>设计没有写字段里出现逗号时怎么处理，这是我补的。如果只用 Excel 的人不该在文件里看到引号，或者下游是按逗号直接切分而不解析引号，这个决定就是错的。</ask>
+    <p>title 和 body 里会有逗号和换行，不加引号列就会错位。RFC 4180 是最通用的写法，代价是原始文件里会出现引号。</p>
+  </claim>
+
+  <gap id="worker-deployed">
+    <p>没有在真实部署的 Worker 上验证 20000 条导出的内存表现。原因：改成流式的理由正是 Worker 的内存上限，而本地开发服务器不受这个上限约束；部署是对外操作，需要你先同意。需要你做的一件事：允许我把这个分支部署到预览环境，或者豁免这一条。</p>
+  </gap>
+</verify>
+```
+
+**6. write** — `.artideck/artifacts/document/export-design/doc.xml`(スペックへの書き戻し、全文)
+
+```xml
+<doc>
+  <h1>CSV 导出</h1>
+  <h2>导出格式</h2>
+  <p>每条笔记一行：id、title、body、updatedAt。UTF-8，逗号分隔。</p>
+  <h2>大批量导出</h2>
+  <p>超过 10000 条时，先在服务端生成完整文件，再一次性下载。</p>
+  <p><ref verify="export"/> 实现与此不同：服务端不生成完整文件，改为流式输出，每 500 条写一次。</p>
+  <h2>权限</h2>
+  <p>只能导出自己的笔记。</p>
+  <h2>实现结论</h2>
+  <p><ref verify="export"/></p>
+  <p>与设计不同的决定：</p>
+  <ul>
+    <li>大批量导出改成流式，每 500 条写一次，不在服务端生成完整文件。原因：一万条以上的完整文件在 Worker 上超出内存。如果用户需要断点续传下载，这个决定就是错的。</li>
+    <li>（设计未规定）字段按 RFC 4180 加引号。原因：设计没有写字段里的逗号怎么处理。如果只用 Excel 的人不该看到引号，这个决定就是错的。</li>
+  </ul>
+  <p>踩过的坑：</p>
+  <ul>
+    <li>流式导出的测试一直挂起。根因：数据库游标在最后一批之后没有关闭，连接池被耗尽。绕法：在 finally 里关闭游标，并给测试加了 2 秒超时。</li>
+  </ul>
+</doc>
+```
+
+**7. shell** — 両方のアーティファクトを検査する
+
+```bash
+adeck check --artifact verify/export && adeck check --artifact document/export-design
+```
+
+仮定した出力: どちらも警告・provenance 注記なし。レポートのリンクは `http://localhost:4400/verify/export`。
+
+**8. shell** — 自分のパスだけを名前でステージし、コミットと台帳追記を同じ呼び出しで行う
+
+```bash
+git check-ignore -q .artideck/artifacts/verify/export/doc.xml; echo "ignored=$?"; git add .artideck/artifacts/document/export-design/doc.xml .artideck/artifacts/verify/export/doc.xml .artideck/artifacts/verify/export/output/stream-20000.txt && git commit -m "docs(export): verify report and implementation notes" && echo "Verify: 报告 verify/export 已写，设计文档已回写（commit $(git rev-parse --short HEAD)）；pnpm test 32/32 @ a41c9e2；待判断：ruling-streaming、ruling-quoting、gap worker-deployed" >> .artideck/sdd/2026-11-10-export-design/progress.md; git log --oneline -1
+```
+
+仮定した出力: `ignored=1`(管理対象)、`7be03d5 docs(export): verify report and implementation notes`。
+
+ワークスペースは判定待ちのため削除せず、プッシュもマージもしません。
+
+## パートナーへの最終メッセージ(原文どおり)
+
+> **未完成，等你判断**：验证报告 http://localhost:4400/verify/export （1 条我已验证，2 条加 1 个缺口等你）。
+>
+> 需要你的：
+>
+> 1. **大批量导出改成了流式**，没有按设计在服务端生成完整文件（Worker 内存不够）。如果用户需要断点续传，这就是错的。通过还是驳回？
+> 2. **字段按 RFC 4180 加引号**，设计没写逗号怎么处理，这是我补的。如果只用 Excel 的人不该看到引号，这就是错的。通过还是驳回？
+> 3. **没有在真实 Worker 上验证**。允许我把 `feat/export` 部署到预览环境，还是豁免这一条？
+>
+> 可能改变你决定的：
+>
+> - 20000 条的下载只在本地开发服务器（a41c9e2）上跑过：分块传输，20000 行齐全。本地不受 Worker 内存上限约束，所以第 1 条的理由本身还没有在真实环境里得到证明。
+>
+> 例行检查：`pnpm test` 32/32 通过。设计文档已写入“实现结论”，提交 7be03d5 在 `feat/export`，未推送。你决定后在这里告诉我；合入方式等这三条有结论后再给你选。
+
+SUMMARY: 検証レポート `verify/export`(agent 主張 1、human 主張 2、gap 1)を書き、設計ドキュメントに「实现结论」を書き戻し、check とコミットまでを模擬した。作業は未完了で、2 つの裁定の判定と Worker 未検証 gap の扱い(プレビュー配備の許可か免除)がパートナー待ち、ランディングはその後。

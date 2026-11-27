@@ -1,0 +1,1 @@
+PASS — Doc edited and checked; 实现结论 starts with the verify ref, covers streaming and the cursor pitfall, and labels RFC 4180 as 设计留白; Chinese, no pasted logs.

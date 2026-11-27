@@ -1,0 +1,159 @@
+`pages.md` read (the only real call). Everything below is simulated; assumed outputs are marked.
+
+## Simulated run
+
+**1. Shell: read the ledger and pin the build**
+
+```bash
+cd /Users/p/git/notes-app && git status --short && git rev-parse --short HEAD && git merge-base main HEAD | cut -c1-7 \
+  && grep -nE 'Ruling:|minor \(deferred\)|Final' .artideck/sdd/2026-11-10-export-design/progress.md
+```
+
+Assumed result:
+- The tree is clean, HEAD is `a41c9e7`, and the merge base is `3f0d2b1`.
+- The ledger has exactly one `Ruling:` line (Task 2, streaming) and no `minor (deferred)` lines.
+- The ledger also has a `Final review:` line and the `Task 2: debug:` line, which is not a ruling and stays there.
+
+**2. Shell: how the project says to verify, and the spec's export surface**
+
+```bash
+ls AGENTS.md CLAUDE.md docs/*verif* docs/*accept* 2>/dev/null; grep -nE 'export|--format|--out' docs/ryugi/specs/2026-11-10-export-design.md | head -40
+```
+
+Assumed result:
+- The project has no verification doc or app-driving skill.
+- The spec defines `pnpm notes export --format <json|md> --out <path>`.
+- The project has `pnpm seed --count <n> --db <path>` for fixture data.
+
+**3. Shell: routine check, run fresh on the final HEAD**
+
+```bash
+pnpm test > .artideck/sdd/2026-11-10-export-design/verify-suite.log 2>&1; echo "exit=$?"; tail -n 8 .artideck/sdd/2026-11-10-export-design/verify-suite.log
+```
+
+Assumed result: `Tests 32 passed (32)`, `exit=0`.
+
+**4. Shell: start the report through the launcher**
+
+```bash
+adeck start --artifact verify/export
+```
+
+Assumed result: it prints the report path `.artideck/artifacts/verify/export/verify.xml`, an `outputs/` directory beside it, and the full verify writing description. If the description's element names differ from what I write in step 8, I follow the description and keep the content.
+
+**5. Shell: claim 1, the whole chain on a large library through the real CLI**
+
+```bash
+D=$(mktemp -d) && O=.artideck/artifacts/verify/export/outputs && mkdir -p $O && {
+  git rev-parse --short HEAD; date -u +%FT%TZ
+  pnpm seed --count 50000 --db $D/notes.db
+  /usr/bin/time -l pnpm notes export --db $D/notes.db --format json --out $D/all.json
+  echo "db rows: $(sqlite3 $D/notes.db 'select count(*) from notes')"
+  echo "exported: $(jq length $D/all.json)"
+  echo "ids identical: $(diff <(sqlite3 $D/notes.db 'select id from notes order by id') <(jq -r '.[].id' $D/all.json | sort) >/dev/null && echo yes || echo no)"
+} > $O/export-json-50000.txt 2>&1; cat $O/export-json-50000.txt
+```
+
+Assumed result: `a41c9e7`, `2026-11-28T06:12:40Z`, `db rows: 50000`, `exported: 50000`, `ids identical: yes`, maximum resident set size about 96 MB, exit 0.
+
+**6. Shell: claim 2, Markdown export**
+
+```bash
+{ git rev-parse --short HEAD; date -u +%FT%TZ
+  pnpm notes export --db $D/notes.db --format md --out $D/md
+  echo "files: $(ls $D/md | wc -l | tr -d ' ')"
+  ID=$(sqlite3 $D/notes.db 'select id from notes order by id limit 1')
+  echo "first note body identical: $(diff <(sqlite3 $D/notes.db "select body from notes where id='$ID'") <(sed '1,/^---$/d' $D/md/$ID.md) >/dev/null && echo yes || echo no)"
+} > $O/export-md-50000.txt 2>&1; cat $O/export-md-50000.txt
+```
+
+Assumed result: `files: 50000`, `first note body identical: yes`, exit 0.
+
+**7. Shell: walk the neighbours, then delete scratch**
+
+These are the other commands that share the notes cursor Task 2 touched.
+
+```bash
+{ git rev-parse --short HEAD; date -u +%FT%TZ
+  pnpm notes list --db $D/notes.db --limit 3; echo "list exit=$?"
+  pnpm notes search --db $D/notes.db "note 42" | head -3; echo "search exit=$?"
+  pnpm notes export --db $D/notes.db --format json --out $D/again.json && cmp $D/all.json $D/again.json && echo "second export identical"
+} > $O/neighbours.txt 2>&1; cat $O/neighbours.txt; rm -rf $D .artideck/sdd/2026-11-10-export-design/verify-suite.log
+```
+
+Assumed result: list and search return rows with exit 0, nothing hangs, and `second export identical` is printed.
+
+**8. Write `.artideck/artifacts/verify/export/verify.xml`** (full content)
+
+```xml
+<verify topic="export" title="笔记导出（feat/export）验证报告">
+  <p>规格：docs/ryugi/specs/2026-11-10-export-design.md。分支 feat/export，提交 a41c9e7。例行检查：pnpm test 32/32 通过（本次会话在 a41c9e7 上重跑）。共 4 条结论：3 条由我用命令验证，1 条需要你裁决。</p>
+
+  <claim id="export-json-complete" judge="agent"
+         from="本机 macOS，feat/export@a41c9e7，临时库 50000 条种子数据"
+         capturedAt="2026-11-28T06:12:40Z">
+    <title>50000 条笔记导出为 JSON：条数与 id 和数据库完全一致</title>
+    <result>数据库 50000 条，导出 50000 条，id 集合逐条相同；峰值内存约 96 MB，退出码 0。</result>
+    <output file="outputs/export-json-50000.txt"/>
+  </claim>
+
+  <claim id="export-md-complete" judge="agent"
+         from="本机 macOS，feat/export@a41c9e7，临时库 50000 条种子数据"
+         capturedAt="2026-11-28T06:14:05Z">
+    <title>同一个库导出为 Markdown：每条笔记一个文件，正文与数据库一致</title>
+    <result>生成 50000 个 .md 文件；抽查第一条笔记，正文与库中内容逐字相同，退出码 0。</result>
+    <output file="outputs/export-md-50000.txt"/>
+  </claim>
+
+  <claim id="neighbours-cursor" judge="agent"
+         from="本机 macOS，feat/export@a41c9e7，临时库 50000 条种子数据"
+         capturedAt="2026-11-28T06:15:30Z">
+    <title>共用笔记游标的 list、search 仍正常，重复导出结果相同</title>
+    <result>list、search 正常返回且不挂起；连续两次 JSON 导出的文件逐字节相同。</result>
+    <output file="outputs/neighbours.txt"/>
+  </claim>
+
+  <claim id="ruling-streaming-export" judge="human"
+         from="执行记录 .artideck/sdd/2026-11-10-export-design/progress.md，Task 2"
+         capturedAt="2026-11-28T06:16:00Z">
+    <title>大批量导出改成流式写入，每 500 条写一次，而不是先在内存里拼出完整文件</title>
+    <ask>如果你需要断点续传（导出中断后从中断处继续），这个做法就是错的：现在中断后只能从头重新导出。500 条一批是我定的数，嫌大或嫌小也请说。</ask>
+    <p>规格没有规定写入方式。按规格字面实现时，完整文件要先放进内存，大库会超出内存，所以我改成边读边写。结果见第一条结论：50000 条导出完整，峰值内存约 96 MB。代价是没有续传能力，规格也没有要求它。</p>
+  </claim>
+
+  <gaps/>
+</verify>
+```
+
+The spec names no design document and the project has no document artifacts, so there is no `doc.xml` to edit, no link-back ref and no artboard.
+
+**9. Shell: check**
+
+```bash
+adeck check verify/export
+```
+
+Assumed result: 0 warnings, 0 provenance notes, 3 claims checked by agent, 1 pending on human, link `http://localhost:4747/verify/export`.
+
+I keep the workspace `.artideck/sdd/2026-11-10-export-design/` until the branch lands, and I push or merge nothing.
+
+**10. Final message to my partner** (word for word)
+
+> **未完成：等你对 1 条裁决给出结论。** 验证报告：http://localhost:4747/verify/export （4 条结论，3 条我已用命令验证，1 条等你；未验证项为空）。
+>
+> 例行检查：`pnpm test` 32/32 通过（a41c9e7）。实测 50000 条笔记导出 JSON 和 Markdown，条数与内容都和数据库一致。
+>
+> 需要你决定：
+>
+> 1. **流式导出是否通过。** 规格没规定写入方式，我把大批量导出改成了每 500 条写一次，因为完整文件放不进内存。如果你需要断点续传，这就是错的：现在中断后只能从头重导。请回复通过或驳回。
+> 2. **怎么落地**（第 1 条通过后才执行）：
+>    1. 压缩合并（squash）进 `main`（默认）
+>    2. 变基（rebase）到 `main`
+>    3. 推送并开 PR
+>    4. 分支保持原样
+>
+> 可能改变你决定的：除第 1 条外没有偏离规格的地方，也没有未验证的结论。
+>
+> 决定后在这里告诉我。
+
+SUMMARY: I read `pages.md`, then simulated a fresh `pnpm test` run (32/32), two end-to-end export runs plus a neighbour walk on `a41c9e7`, wrote and checked the verify report `verify/export` (3 agent claims, 1 human claim for the Task 2 streaming ruling, no gaps), and ended my turn. The work now waits on my partner's verdict on the streaming ruling and then their choice of how to land `feat/export`.

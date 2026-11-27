@@ -1,0 +1,1 @@
+PASS — Design doc rewritten after the fix: delimiter-caching pitfall added, RFC 4180 quoting replaced with semicolon/no-quote under 导出格式 and 实现结论, no verdicts; thread replied, left open.

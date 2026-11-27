@@ -1,0 +1,1 @@
+FAIL — The design doc says "验证时否决了加引号的做法", which records a reject verdict (否决 ≈ 驳回) and breaks item 4; other items hold.

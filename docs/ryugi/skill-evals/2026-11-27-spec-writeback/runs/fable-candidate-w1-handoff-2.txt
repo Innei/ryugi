@@ -1,0 +1,192 @@
+Below is the simulated run from entering adeck:verifying to the end of my turn. Only the read of `skill/verifying/pages.md` was real; every other output is assumed and marked as such.
+
+## 1. Start the report and pin the build
+
+**Tool call (shell):**
+```
+cd /Users/p/git/notes-app && adeck start --artifact verify/export && git rev-parse --short HEAD && git status --short
+```
+Assumed output:
+- `adeck` creates `.artideck/artifacts/verify/export/verify.xml` and prints the verify writing description. I assume it matches the elements `pages.md` names: `claim` with `judge`, `from`, `capturedAt`, plus `<result>`, `<output>`, `<ask>`, `<gap>`.
+- HEAD is `a41c9e2`, the commit of the final fix.
+- The working tree is clean apart from the new report directory.
+
+## 2. Routine check, rerun in this session
+
+**Tool call (shell):**
+```
+pnpm test > .artideck/sdd/2026-11-10-export-design/test-final.log 2>&1; echo "exit=$?"; tail -n 6 .artideck/sdd/2026-11-10-export-design/test-final.log
+```
+Assumed output: `exit=0`, `Tests  32 passed (32)`.
+
+## 3. Capture the 20000-note download and walk the neighbours
+
+The browser check from project verification stays as supporting evidence. The report needs raw output from the current HEAD, so I capture it again with a command.
+
+Assumptions about the project:
+- Its docs give `pnpm dev` (localhost:3000) and `pnpm db:seed`.
+- The export endpoint is `GET /api/notes/export`.
+- The seed writes session cookies to `.dev/alice.cookie` and `.dev/bob.cookie`.
+- Seeded bodies contain commas and newlines.
+
+Records are counted with a CSV parser, because `wc -l` miscounts once quoted fields contain newlines.
+
+**Tool call (shell):**
+```
+cd /Users/p/git/notes-app && OUT=.artideck/artifacts/verify/export/download-20000.txt && TMP=$(mktemp -d) && {
+  echo "\$ git rev-parse --short HEAD"; git rev-parse --short HEAD
+  echo "\$ pnpm db:seed --user alice --notes 20000 && pnpm db:seed --user bob --notes 3"
+  pnpm db:seed --user alice --notes 20000 | tail -n 1; pnpm db:seed --user bob --notes 3 | tail -n 1
+  (pnpm dev > "$TMP/dev.log" 2>&1 &) ; sleep 5
+  echo "\$ curl alice /api/notes/export"
+  curl -sS -b .dev/alice.cookie -D - -o "$TMP/alice.csv" -w 'http=%{http_code} bytes=%{size_download} ttfb=%{time_starttransfer}s total=%{time_total}s\n' http://localhost:3000/api/notes/export
+  echo "\$ parse alice.csv"
+  python3 -I -c "import csv,sys; r=list(csv.reader(open(sys.argv[1],encoding='utf-8',newline=''))); print('header=',r[0]); print('records=',len(r)-1); print('unique_ids=',len({x[0] for x in r[1:]})); print('bad_width=',sum(len(x)!=4 for x in r))" "$TMP/alice.csv"
+  echo "\$ curl bob /api/notes/export (邻居：小批量 + 权限)"
+  curl -sS -b .dev/bob.cookie -o "$TMP/bob.csv" -w 'http=%{http_code}\n' http://localhost:3000/api/notes/export
+  python3 -I -c "import csv,sys; a={x[0] for x in list(csv.reader(open(sys.argv[1],encoding='utf-8',newline='')))[1:]}; b=[x[0] for x in list(csv.reader(open(sys.argv[2],encoding='utf-8',newline='')))[1:]]; print('bob_records=',len(b)); print('overlap_with_alice=',len(a&set(b)))" "$TMP/alice.csv" "$TMP/bob.csv"
+  echo "\$ curl (no cookie) /api/notes/export"
+  curl -sS -o /dev/null -w 'http=%{http_code}\n' http://localhost:3000/api/notes/export
+} > "$OUT" 2>&1; pkill -f "pnpm dev"; rm -rf "$TMP"; date -u +%Y-%m-%dT%H:%M:%SZ; cat "$OUT"
+```
+Assumed output (timestamp `2026-11-28T09:42:10Z`):
+```
+$ git rev-parse --short HEAD
+a41c9e2
+$ pnpm db:seed --user alice --notes 20000 && pnpm db:seed --user bob --notes 3
+seeded 20000 notes for alice
+seeded 3 notes for bob
+$ curl alice /api/notes/export
+HTTP/1.1 200 OK
+content-type: text/csv; charset=utf-8
+content-disposition: attachment; filename="notes.csv"
+transfer-encoding: chunked
+
+http=200 bytes=6843127 ttfb=0.041s total=3.870s
+$ parse alice.csv
+header= ['id', 'title', 'body', 'updatedAt']
+records= 20000
+unique_ids= 20000
+bad_width= 0
+$ curl bob /api/notes/export (邻居：小批量 + 权限)
+http=200
+bob_records= 3
+overlap_with_alice= 0
+$ curl (no cookie) /api/notes/export
+http=401
+```
+
+## 4. Write the verify report
+
+**Tool call (write)** — `/Users/p/git/notes-app/.artideck/artifacts/verify/export/verify.xml`, full content:
+
+```xml
+<verify>
+  <h1>CSV 导出：验证</h1>
+  <p>例行检查：pnpm test 32/32 通过（feat/export @ a41c9e2，本次会话重跑）。共 3 条结论：1 条由我用命令验证，2 条是实现时我做的决定，等你判断。另有 1 项未验证。设计文档：<ref document="export-design"/>。</p>
+
+  <claim id="download-20000" judge="agent"
+         from="本地 dev server（pnpm dev，localhost:3000），feat/export @ a41c9e2"
+         capturedAt="2026-11-28T09:42:10Z">
+    <title>20000 条笔记可以一次流式下载完整</title>
+    <result>以 alice 登录下载：200，分块传输，首字节 0.041 秒，共 20000 条记录、id 无重复、每行 4 列；邻居流程：bob 的 3 条小批量导出正常且与 alice 无重叠，未登录返回 401。</result>
+    <output file="download-20000.txt"/>
+    <p>旁证：项目自己的浏览器检查也在同一提交上完成了一次下载。它只是旁证，这条结论以上面的命令输出为准。</p>
+  </claim>
+
+  <claim id="ruling-streaming" judge="human"
+         from="feat/export @ a41c9e2，ledger Task 2"
+         capturedAt="2026-11-28T09:42:10Z">
+    <title>大批量导出改成了流式（每 500 条写一次），没有按 spec 先在服务端生成完整文件</title>
+    <ask>如果用户需要断点续传（下载中断后从中间接着下），这个决定就是错的：流式响应中断后只能从头重新下载。你要的是哪一种？</ask>
+    <p>spec 写的是超过 10000 条时先在服务端生成完整文件再一次性下载。实现时，一万条以上的完整文件在 Worker 上超出内存，所以改成边读边写：每 500 条写一次，服务端不保留完整文件。用户看到的仍然是一次下载、一个文件。</p>
+  </claim>
+
+  <claim id="ruling-rfc4180" judge="human"
+         from="feat/export @ a41c9e2，ledger Task 1"
+         capturedAt="2026-11-28T09:42:10Z">
+    <title>含逗号、引号或换行的字段按 RFC 4180 加双引号</title>
+    <ask>如果导出的文件要给不解析引号、只按逗号直接拆分的工具用，或者你不希望只用 Excel 的人看到引号，这个决定就是错的。可以接受吗？</ask>
+    <p>spec 只说了“逗号分隔”，没说正文里本身有逗号时怎么办，这一点是 spec 留空的，不是偏离。不处理的话，正文里带逗号的笔记会错列。我选了 RFC 4180 的标准写法。</p>
+  </claim>
+
+  <gap id="worker-memory">
+    <what>流式导出在真实部署的 Worker 内存上限下的表现</what>
+    <why>以上证据都来自本地 dev server，本地不执行线上的内存上限；这个分支没有部署过，部署是工作区之外的动作，我没有擅自做。</why>
+    <need>允许我把 feat/export 部署到一个预览环境（或告诉我可用的预览环境），我在上面重跑 20000 条下载。</need>
+  </gap>
+</verify>
+```
+
+## 5. Write back to the design document
+
+Streaming departs from the spec, so the "大批量导出" section gets a reference and one sentence. Quoting was left open by the spec, so "导出格式" stays as it is and the point is marked as left open in the closing section.
+
+**Tool call (write)** — `/Users/p/git/notes-app/.artideck/artifacts/document/export-design/doc.xml`, full content:
+
+```xml
+<doc>
+  <h1>CSV 导出</h1>
+  <h2>导出格式</h2>
+  <p>每条笔记一行：id、title、body、updatedAt。UTF-8，逗号分隔。</p>
+  <h2>大批量导出</h2>
+  <p>超过 10000 条时，先在服务端生成完整文件，再一次性下载。</p>
+  <p><ref verify="export"/> 实现与此不同：改为流式下载，每 500 条写一次，服务端不生成完整文件。</p>
+  <h2>权限</h2>
+  <p>只能导出自己的笔记。</p>
+  <h2>实现结论</h2>
+  <p><ref verify="export"/></p>
+  <p>与 spec 不同的决定：</p>
+  <ul>
+    <li>大批量导出改为流式，每 500 条写一次，不在服务端生成完整文件。原因：一万条以上的完整文件在 Worker 上超出内存。如果用户需要断点续传下载，这个决定就是错的。</li>
+    <li>（spec 留空，不算偏离）字段按 RFC 4180 加引号。原因：spec 没说字段里有逗号时怎么处理。如果只用 Excel 的人不能接受看到引号，或下游工具不解析引号，这个决定就是错的。</li>
+  </ul>
+  <p>踩过的坑：</p>
+  <ul>
+    <li>现象：流式导出的测试一直挂起。根因：数据库游标在最后一批之后没有关闭，连接池被耗尽。绕法：在 finally 里关闭游标，并给测试加了 2 秒超时。</li>
+  </ul>
+</doc>
+```
+
+## 6. Check both artifacts
+
+**Tool call (shell):**
+```
+cd /Users/p/git/notes-app && adeck check --artifact verify/export && adeck check --artifact document/export-design
+```
+Assumed output:
+- Both checks come back with no warnings and no provenance notes.
+- The report shows 1 agent claim checked, 2 human claims pending, 1 gap.
+- The report link is `http://localhost:4747/verify/export`.
+
+## 7. Commit the document with the work
+
+Tests were rerun in step 2 and no code has changed since. I stage my own paths by name, and the ledger append rides in the same call. I assume `.artideck/artifacts/` is tracked and `.artideck/sdd/` is git-ignored.
+
+**Tool call (shell):**
+```
+cd /Users/p/git/notes-app && git add .artideck/artifacts/document/export-design/doc.xml .artideck/artifacts/verify/export/verify.xml .artideck/artifacts/verify/export/download-20000.txt && git commit -m "docs(export): write implementation notes back to design, add verify report" && echo "Verify: 报告 verify/export 已写（1 条已验证，2 条 Ruling 等人判断，1 项未验证：真实 Worker 内存上限）；设计文档已回写实现结论 — commit $(git rev-parse --short HEAD)，pnpm test 32/32 @ a41c9e2" >> .artideck/sdd/2026-11-10-export-design/progress.md && git status --short && git log --oneline -1
+```
+Assumed output: commit `7d3f0b8` on `feat/export`, working tree clean.
+
+The workspace stays in place and nothing is pushed. Landing waits for the verdicts, so I end the turn here without polling.
+
+## 8. Final message to my partner
+
+> **未完成：等你对 2 条决定给结论，另有 1 项需要你批准。**
+>
+> 验证报告：http://localhost:4747/verify/export（3 条结论，1 条我已验证，2 条等你）
+>
+> 需要你的：
+>
+> 1. **大批量导出改成了流式**（每 500 条写一次），没有按 spec 先在服务端生成完整文件，因为一万条以上的完整文件在 Worker 上超出内存。如果用户需要断点续传，这个决定就是错的。通过还是驳回？
+> 2. **含逗号、引号、换行的字段按 RFC 4180 加双引号**。spec 在这点上留空。如果下游工具不解析引号，或你不接受只用 Excel 的人看到引号，这个决定就是错的。通过还是驳回？
+> 3. **是否允许我把 `feat/export` 部署到预览环境**（或告诉我可用的环境），在真实 Worker 上重跑 20000 条下载？不需要的话回复“免”，这一项就按豁免处理。
+>
+> 可能影响你判断的：
+>
+> - 未验证：流式导出在真实 Worker 内存上限下的表现。现有证据都来自本地 dev server（`feat/export` @ `a41c9e2`）：20000 条完整下载、分块传输、id 无重复；小批量导出、他人笔记不可见、未登录 401 也都走过。`pnpm test` 32/32。
+>
+> 你在这里回复编号和结论即可。三项都有结论后，我再给出合入 `main` 的方式；现在分支未推送。
+
+SUMMARY: I wrote verify report `verify/export` (one agent-verified 20000-note streamed download claim, two rulings as human claims, one gap for the real Worker memory limit), wrote "实现结论" back into the design document and committed both on `feat/export`, all simulated; the work now waits on my partner for verdicts on the two rulings and a yes or waive on the preview deploy, with landing held until then.

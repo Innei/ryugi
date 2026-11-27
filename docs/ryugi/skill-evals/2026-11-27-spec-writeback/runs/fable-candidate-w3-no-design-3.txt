@@ -1,0 +1,125 @@
+Before simulating, I really read `./skill/verifying/pages.md`. Everything below is simulated, and nothing was run. The spec names no design document, so there is no write-back and the report holds everything.
+
+## Simulated tool calls, in order
+
+**1. Shell: state of the branch and what the ledger holds**
+
+```
+cd /Users/p/git/notes-app && git status --short && git rev-parse --short HEAD && git merge-base --short main HEAD 2>/dev/null || git merge-base main HEAD; grep -n "Ruling:\|minor (deferred)\|Final" .artideck/sdd/2026-11-10-export-design/progress.md; ls AGENTS.md CLAUDE.md README.md 2>/dev/null; grep -n -i "verif\|验收\|export" AGENTS.md README.md package.json 2>/dev/null | head -40
+```
+
+Assumed output:
+- The tree is clean and HEAD is `4e1c9a2`.
+- The ledger has the one `Task 2: Ruling:` line and the `Final review:` line, with no `minor (deferred)` and no unfixed `Final:` findings.
+- The project has no verification doc beyond `pnpm test`.
+- `package.json` exposes the export as `pnpm notes export --format md --out <dir>`, reading the database from `NOTES_DB`, with a seed script `pnpm notes seed --count <n>`.
+
+**2. Shell: the verify report writing description**
+
+```
+adeck start --artifact verify/export --help
+```
+
+Assumed output: it creates `.artideck/verify/export/` containing `verify.xml` and an `output/` directory, and prints the writing description. I assume the claim elements are the ones `pages.md` names: `<claim judge from capturedAt>`, `<result>`, `<output>`, `<ask>` and `<gap>`.
+
+**3. Shell: routine check, fresh in this session**
+
+```
+cd /Users/p/git/notes-app && pnpm test > .artideck/sdd/2026-11-10-export-design/final-test.log 2>&1; echo "exit=$?"; tail -8 .artideck/sdd/2026-11-10-export-design/final-test.log
+```
+
+Assumed output: `Tests 32 passed (32)`, `exit=0`.
+
+**4. Shell: the whole chain across batch boundaries (1,200 notes is three writes)**
+
+```
+cd /Users/p/git/notes-app && export NOTES_DB=/tmp/notes-verify/e2e.db && rm -rf /tmp/notes-verify && mkdir -p /tmp/notes-verify && pnpm notes seed --count 1200 && { pnpm notes export --format md --out /tmp/notes-verify/out-1200; echo "exit=$?"; echo "db rows: $(sqlite3 $NOTES_DB 'select count(*) from notes')"; echo "exported: $(ls /tmp/notes-verify/out-1200 | wc -l)"; sqlite3 $NOTES_DB 'select id from notes order by id' > /tmp/notes-verify/db-ids.txt; ls /tmp/notes-verify/out-1200 | sed 's/\.md$//' | sort -n > /tmp/notes-verify/out-ids.txt; diff /tmp/notes-verify/db-ids.txt /tmp/notes-verify/out-ids.txt && echo "ids identical"; pnpm notes export --format md --out /tmp/notes-verify/out-1200-b >/dev/null && diff -r /tmp/notes-verify/out-1200 /tmp/notes-verify/out-1200-b && echo "rerun identical"; } > .artideck/verify/export/output/e2e-1200.txt 2>&1; cat .artideck/verify/export/output/e2e-1200.txt
+```
+
+Assumed output: `exit=0`, `db rows: 1200`, `exported: 1200`, `ids identical`, `rerun identical`.
+
+**5. Shell: the reason for the ruling (50,000 notes under a 64 MB heap cap)**
+
+```
+cd /Users/p/git/notes-app && export NOTES_DB=/tmp/notes-verify/big.db && pnpm notes seed --count 50000 && { NODE_OPTIONS=--max-old-space-size=64 /usr/bin/time -l pnpm notes export --format md --out /tmp/notes-verify/out-50k; echo "exit=$?"; echo "exported: $(ls /tmp/notes-verify/out-50k | wc -l)"; } > .artideck/verify/export/output/big-50000.txt 2>&1; tail -20 .artideck/verify/export/output/big-50000.txt
+```
+
+Assumed output: `exit=0`, `exported: 50000`, maximum resident set size about 92 MB, wall time 11.4 s.
+
+**6. Shell: neighbours (0, 499, 500 and 501 notes, then an interrupt mid-export)**
+
+The interrupt case covers the cursor that hung in Task 2, and shows what a person gets once export is streamed.
+
+```
+cd /Users/p/git/notes-app && { for n in 0 499 500 501; do export NOTES_DB=/tmp/notes-verify/n$n.db; pnpm notes seed --count $n >/dev/null; pnpm notes export --format md --out /tmp/notes-verify/out-$n; echo "n=$n exit=$? exported=$(ls /tmp/notes-verify/out-$n 2>/dev/null | wc -l)"; done; export NOTES_DB=/tmp/notes-verify/big.db; pnpm notes export --format md --out /tmp/notes-verify/out-int & pid=$!; sleep 2; kill -INT $pid; wait $pid; echo "interrupt exit=$? left=$(ls /tmp/notes-verify/out-int | wc -l)"; sleep 1; pgrep -f "notes export" || echo "no export process left"; } > .artideck/verify/export/output/neighbours.txt 2>&1; cat .artideck/verify/export/output/neighbours.txt
+```
+
+Assumed output:
+- The four boundary runs exit 0 with exported counts 0, 499, 500 and 501.
+- The interrupted run prints `interrupt exit=130 left=9000` and `no export process left`.
+
+So an interrupted export exits cleanly without hanging, but leaves the 9,000 notes already written on disk. That is a consequence of the streaming ruling and goes into the human claim.
+
+**7. Write `.artideck/verify/export/verify.xml`, full content**
+
+```xml
+<verify topic="export" title="笔记导出：验证报告">
+  <p>规格：<code>docs/ryugi/specs/2026-11-10-export-design.md</code>。分支 <code>feat/export</code> @ <code>4e1c9a2</code>。例行检查：<code>pnpm test</code> 32/32 通过（2026-11-28，本次会话重新运行）。3 条结论由我验证，1 条需要你裁决，没有未验证项。</p>
+
+  <claim id="e2e-1200" judge="agent" title="导出 1,200 条笔记：条数与 ID 与数据库完全一致，重复导出结果相同"
+         from="本机 macOS · feat/export @ 4e1c9a2 · /tmp/notes-verify 临时种子库" capturedAt="2026-11-28T10:12:00+08:00">
+    <result>库中 1200 条，导出 1200 个文件，ID 逐条 diff 无差异；跨 3 次写入（500/500/200），再次导出结果逐字节相同。</result>
+    <output file="output/e2e-1200.txt"/>
+  </claim>
+
+  <claim id="big-50000" judge="agent" title="50,000 条笔记在 64 MB 堆上限下完整导出"
+         from="本机 macOS · feat/export @ 4e1c9a2 · /tmp/notes-verify 临时种子库" capturedAt="2026-11-28T10:15:00+08:00">
+    <result>退出码 0，导出 50000 个文件，峰值常驻内存约 92 MB，耗时 11.4 s。</result>
+    <output file="output/big-50000.txt"/>
+  </claim>
+
+  <claim id="neighbours" judge="agent" title="批次边界与中断：0 / 499 / 500 / 501 条全部正确；中途 Ctrl-C 后进程立即退出、不挂起"
+         from="本机 macOS · feat/export @ 4e1c9a2 · /tmp/notes-verify 临时种子库" capturedAt="2026-11-28T10:19:00+08:00">
+    <result>四个边界条数导出数量均与库一致；50,000 条导出 2 秒后中断，退出码 130，无残留进程，输出目录留下已写入的 9000 条。</result>
+    <output file="output/neighbours.txt"/>
+  </claim>
+
+  <claim id="ruling-streaming" judge="human" title="大批量导出改为流式写入，每 500 条写一次（规格写的是一次性生成完整文件）"
+         from="本机 macOS · feat/export @ 4e1c9a2 · /tmp/notes-verify 临时种子库" capturedAt="2026-11-28T10:19:00+08:00">
+    <p>规格要求先在内存里生成完整导出再写盘；实际数据量下完整文件超出内存，所以改成按游标读取、每 500 条写一次。导出结果与一次性写入相同（见上面三条），但行为有两点不同：导出中断或失败时，已写入的部分会留在输出目录里，不会回滚；导出不支持断点续传，中断后只能从头重来。</p>
+    <ask>如果你需要“要么全部导出、要么什么都不留”，或者需要中断后从断点继续，这个决定就是错的：前者要改成先写临时目录再整体改名，后者要记录游标位置。两者都不需要的话请通过。</ask>
+  </claim>
+
+  <gaps/>
+</verify>
+```
+
+**8. Shell: check the report and delete the scratch data, now that the evidence is copied**
+
+```
+cd /Users/p/git/notes-app && adeck check verify/export && rm -rf /tmp/notes-verify && git status --short
+```
+
+Assumed output:
+- `adeck check` reports no warnings and no provenance notes, counts 3 agent claims, 1 human claim pending and 0 gaps, and prints the link `http://localhost:4310/verify/export`.
+- `git status` is clean, because `.artideck/` is git-ignored.
+
+Nothing is committed, pushed or deleted here. The workspace stays until the work lands.
+
+## Final message to my partner
+
+> **未完成：等你对 1 条裁决。** 验证报告：http://localhost:4310/verify/export （3 条我已验证，1 条等你，未验证项为空；`pnpm test` 32/32）
+>
+> 需要你决定的：
+>
+> 1. **流式导出是否通过。** 规格写的是一次性生成完整文件，我改成了每 500 条写一次，因为完整文件超出内存。代价：导出中断时已写入的部分会留在输出目录（实测中断后留下 9000 条），而且不能断点续传。请回复“1 通过”或“1 拒绝”。
+> 2. **怎么合入**（等 1 通过后执行）：a. squash 进 `main`（默认） b. rebase 到 `main` c. push 并开 PR d. 分支保持原样。
+>
+> 可能影响你决定的：
+>
+> - 所有验证都在本机用种子数据跑（最多 50,000 条），没有用真实笔记库跑过。
+> - 分支 `feat/export` 还没有 push。
+>
+> 决定好了在这里告诉我。
+
+SUMMARY: I read `pages.md`, re-ran the suite and three end-to-end export checks (all assumed to pass), wrote and checked the verify report `verify/export`, and handed it off; the work now waits on my partner for the verdict on the streaming ruling and then their choice of how to land `feat/export`.

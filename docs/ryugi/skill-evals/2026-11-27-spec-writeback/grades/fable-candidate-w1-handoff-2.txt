@@ -1,0 +1,1 @@
+PASS — Design doc edited and checked; 实现结论 starts with the verify ref, covers streaming and the cursor pitfall, and marks RFC 4180 as spec-left-open; Chinese, no ledger pastes.

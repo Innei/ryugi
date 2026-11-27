@@ -1,0 +1,230 @@
+以下是从此刻到本轮结束的完整模拟。除上面读取的 `pages.md` 和 `verdicts.md` 外,没有真正执行任何东西;凡是需要工具输出的地方,都写明了我假设的结果。
+
+---
+
+## 1. 启动 verify report,拿写作说明
+
+```bash
+cd /Users/p/git/notes-app && adeck start --artifact verify/export --help
+```
+
+**假设输出:** 创建 `.artideck/artifacts/verify/export/doc.xml`,打印 verify 的写作说明和本地链接 `http://localhost:4400/verify/export`。假设的结构如下:
+
+- 根元素 `<verify>`,含 `h1` 和 `p`。
+- `<claim id judge from capturedAt>`,内含 `<title>`、`<result>`、`<output file>`、`<ask>`、`<p>`。
+- `<gap id>`。
+
+## 2. 看清现状(并行)
+
+```bash
+cd /Users/p/git/notes-app && git status --short && git rev-parse --short HEAD && git branch --show-current \
+  && git check-ignore -v .artideck/artifacts/verify/export/doc.xml .artideck/artifacts/document/export-design/doc.xml; \
+  grep -nE 'Ruling:|minor \(deferred\)|Final' .artideck/sdd/2026-11-10-export-design/progress.md
+```
+
+**假设输出:**
+
+- 工作区只有未跟踪的 `.artideck/artifacts/verify/export/`。
+- HEAD 是 `a41c9e7`(Final 修复的提交),分支 `feat/export`。
+- `check-ignore` 无输出,即 artifacts 受 git 跟踪,只有 `.artideck/sdd/` 被忽略。
+- ledger 中有两条 `Ruling:`、一条 Final fixed,没有 `minor (deferred)`。
+
+```
+Read /Users/p/git/notes-app/AGENTS.md
+```
+
+**假设输出:** 项目的验证方式是 `pnpm dev`(本地 Worker 运行时,`http://localhost:8787`)和 `pnpm seed`。项目验证阶段留下的 dev server 仍在运行,库里有 `demo`(20000 条笔记)和 `demo2`(3 条笔记)两个夹具用户,会话 cookie 在 `.dev/demo.cookie` 和 `.dev/demo2.cookie`。
+
+## 3. 常规检查(本会话重新跑)
+
+```bash
+cd /Users/p/git/notes-app && pnpm test > .artideck/sdd/2026-11-10-export-design/verify-suite.log 2>&1; echo "exit=$?"; tail -n 8 .artideck/sdd/2026-11-10-export-design/verify-suite.log
+```
+
+**假设输出:** `Tests  32 passed (32)`,`exit=0`。
+
+## 4. 在运行中的应用里抓证据(整条链路和相邻流程)
+
+浏览器检查是项目验证阶段做的。报告需要可读的原始输出,所以在同一个 dev server、同一个提交上重新抓一次。
+
+```bash
+cd /Users/p/git/notes-app && OUT=.artideck/artifacts/verify/export/streamed-download.txt && TMP=$(mktemp -d) && COUNT='
+const fs=require("fs");const s=fs.readFileSync(process.argv[1],"utf8");
+let q=false,rows=0,cur=false;
+for(let i=0;i<s.length;i++){const c=s[i];
+  if(c==="\""){ if(q&&s[i+1]==="\""){i++;} else q=!q; cur=true; }
+  else if(c==="\n"&&!q){ if(cur) rows++; cur=false; }
+  else if(c!=="\r") cur=true; }
+if(cur) rows++;
+console.log("header="+s.slice(0,s.indexOf("\n")).trim()+" records="+(rows-1)+" unterminated_quote="+q);' && {
+  echo "## env"; date -u +%Y-%m-%dT%H:%M:%SZ; git rev-parse --short HEAD; echo "pnpm dev @ http://localhost:8787";
+  echo "## 1. demo (20000 notes)";
+  curl -sS -N -b .dev/demo.cookie -D - -o "$TMP/big.csv" \
+    -w 'http=%{http_code} bytes=%{size_download} ttfb=%{time_starttransfer}s total=%{time_total}s\n' \
+    http://localhost:8787/api/notes/export.csv;
+  node -e "$COUNT" "$TMP/big.csv";
+  echo "## 2. neighbour: demo2 (3 notes, below the 10000 threshold)";
+  curl -sS -b .dev/demo2.cookie -o "$TMP/small.csv" -w 'http=%{http_code} bytes=%{size_download}\n' http://localhost:8787/api/notes/export.csv;
+  node -e "$COUNT" "$TMP/small.csv";
+  echo "## 3. neighbour: permissions — demo2's export vs demo's ids";
+  cut -d, -f1 "$TMP/small.csv" | tail -n +2 | sort > "$TMP/small.ids"; cut -d, -f1 "$TMP/big.csv" | tail -n +2 | sort > "$TMP/big.ids";
+  echo "ids_shared=$(comm -12 "$TMP/small.ids" "$TMP/big.ids" | wc -l | tr -d ' ')";
+  echo "## 4. neighbour: no session";
+  curl -sS -o /dev/null -w 'http=%{http_code}\n' http://localhost:8787/api/notes/export.csv;
+} > "$OUT" 2>&1; rm -rf "$TMP"; cat "$OUT"
+```
+
+**假设输出(即 `streamed-download.txt` 的内容):**
+
+```
+## env
+2026-11-28T07:42:10Z
+a41c9e7
+pnpm dev @ http://localhost:8787
+## 1. demo (20000 notes)
+HTTP/1.1 200 OK
+Content-Type: text/csv; charset=utf-8
+Content-Disposition: attachment; filename="notes.csv"
+Transfer-Encoding: chunked
+
+http=200 bytes=9184332 ttfb=0.041s total=3.870s
+header=id,title,body,updatedAt records=20000 unterminated_quote=false
+## 2. neighbour: demo2 (3 notes, below the 10000 threshold)
+http=200 bytes=412
+header=id,title,body,updatedAt records=3 unterminated_quote=false
+## 3. neighbour: permissions — demo2's export vs demo's ids
+ids_shared=0
+## 4. neighbour: no session
+http=401
+```
+
+读输出的结论:
+
+- 20000 条全部到达,文件完整(没有未闭合的引号)。
+- 响应是 chunked、没有 `Content-Length`,首字节 0.041s 而全程 3.87s,说明是边写边发。
+- 三个相邻流程(小批量导出、只能导出自己的笔记、未登录)都正常。
+
+## 5. 写 verify report
+
+```
+Write /Users/p/git/notes-app/.artideck/artifacts/verify/export/doc.xml
+```
+
+```xml
+<verify>
+  <h1>CSV 导出:验证</h1>
+  <p>3 条结论:1 条我已用命令验证,2 条是实现时我做的决定,等你判断;另有 1 项未验证。常规检查:pnpm test 32/32 通过(a41c9e7)。相邻流程也在运行中的应用里走过:3 条笔记的小批量导出、只能导出自己的笔记、未登录返回 401,输出在第一条结论的同一个文件里。本功能没有需要看屏幕判断的部分,没有画板。</p>
+
+  <claim id="streamed-20000" judge="agent" from="本地 pnpm dev(localhost:8787),feat/export @ a41c9e7" capturedAt="2026-11-28T15:42:10+08:00">
+    <title>20000 条笔记可以流式下载,文件完整</title>
+    <result>HTTP 200,chunked 无 Content-Length,首字节 0.041s、全程 3.87s;按 RFC 4180 解析得到表头加 20000 条记录,没有未闭合的引号。</result>
+    <output file="streamed-download.txt"/>
+  </claim>
+
+  <claim id="ruling-streaming" judge="human" from="feat/export @ a41c9e7,Task 2 的决定" capturedAt="2026-11-28T15:42:10+08:00">
+    <title>大批量导出改成了流式:每 500 条写一次,不在服务端生成完整文件</title>
+    <ask>设计文档写的是"先在服务端生成完整文件,再一次性下载",这里没有照做。如果用户需要断点续传(下载中断后从断点继续),这个决定就是错的:流式响应没有 Content-Length,也不支持 Range,中断后只能重新下载。</ask>
+    <p>原因:一万条以上的完整文件在 Worker 上超出内存,按设计文档的做法无法生成。改成流式后内存占用只和一批(500 条)有关。代价是浏览器下载时显示不了总大小和剩余时间,中途出错时用户拿到的是一个不完整的文件。</p>
+  </claim>
+
+  <claim id="ruling-quoting" judge="human" from="feat/export @ a41c9e7,Task 1 的决定" capturedAt="2026-11-28T15:42:10+08:00">
+    <title>字段按 RFC 4180 加引号</title>
+    <ask>设计文档只写了"逗号分隔",没说标题或正文里有逗号、引号、换行时怎么办,这一点是我定的。如果导出的文件主要是给人直接看原始文本,或交给不认 RFC 4180 引号的工具处理,这个决定就是错的:他们会看到多出来的引号。</ask>
+    <p>原因:不加引号的话,正文里的一个逗号或换行就会让这一行错列,文件无法被可靠地读回。RFC 4180 是 Excel、Numbers 和各语言 CSV 库都认的写法。</p>
+  </claim>
+
+  <gap id="worker-memory">未在真实的 Worker 运行环境上验证 20000 条导出的内存占用。以上证据来自本地 pnpm dev,本地运行时不执行线上的内存上限,而"超出内存"正是改成流式的理由。我没有做是因为部署到预览环境是工作区之外的动作,需要你先同意。需要你做的一件事:允许我部署到预览环境后再测,或者豁免这一项。</gap>
+</verify>
+```
+
+## 6. 写回设计文档
+
+规则是:偏离设计的写在"差异"里,设计没写而由我定的单独列出,不贴 ledger,不写裁决结果。
+
+```
+Write /Users/p/git/notes-app/.artideck/artifacts/document/export-design/doc.xml
+```
+
+```xml
+<doc>
+  <h1>CSV 导出</h1>
+  <h2>导出格式</h2>
+  <p>每条笔记一行:id、title、body、updatedAt。UTF-8,逗号分隔。</p>
+  <h2>大批量导出</h2>
+  <p>超过 10000 条时,先在服务端生成完整文件,再一次性下载。</p>
+  <p><ref verify="export"/> 实现与此不同:改为流式导出,每 500 条写一次,不在服务端生成完整文件。</p>
+  <h2>权限</h2>
+  <p>只能导出自己的笔记。</p>
+  <h2>实现结论</h2>
+  <p><ref verify="export"/></p>
+  <p>与设计不同的决定:</p>
+  <ul>
+    <li>大批量导出改成流式,每 500 条写一次,不在服务端生成完整文件。原因:一万条以上的完整文件在 Worker 上超出内存。如果用户需要断点续传下载,这个决定就是错的。</li>
+  </ul>
+  <p>设计没有写明、实现时定下的:</p>
+  <ul>
+    <li>字段按 RFC 4180 加引号。设计没说字段里有逗号时怎么处理。如果使用者不希望在原始文本里看到引号,这个决定就是错的。</li>
+  </ul>
+  <p>踩过的坑:</p>
+  <ul>
+    <li>流式导出的测试一直挂起。根因:数据库游标在最后一批之后没有关闭,连接池被耗尽。绕法:在 finally 里关闭游标,并给该测试加了 2 秒超时。</li>
+  </ul>
+</doc>
+```
+
+## 7. check(并行)
+
+```bash
+cd /Users/p/git/notes-app && adeck check --artifact verify/export
+```
+
+```bash
+cd /Users/p/git/notes-app && adeck check --artifact document/export-design
+```
+
+**假设输出:**
+
+- 两者都是 0 warnings、0 provenance notes。
+- `verify/export` 的状态是 1 条 checked by agent、2 条 pending(human)、1 个 gap open。
+- 链接为 `http://localhost:4400/verify/export`。
+
+## 8. 提交(按路径点名暂存,ledger 追加在同一次调用里)
+
+```bash
+cd /Users/p/git/notes-app && git add .artideck/artifacts/verify/export/doc.xml .artideck/artifacts/verify/export/streamed-download.txt .artideck/artifacts/document/export-design/doc.xml \
+  && git commit -m "docs(export): verify report and implementation notes written back to the design" \
+  && printf '%s\n' "Verify: 报告 verify/export 已写(1 条已验证,2 条决定待判断,1 项未验证:真实 Worker 内存);设计文档已写回实现结论 — commit $(git rev-parse --short HEAD),pnpm test → 32/32" >> .artideck/sdd/2026-11-10-export-design/progress.md \
+  && git log --oneline -1 && git status --short
+```
+
+**假设输出:** `e7d02b5 docs(export): verify report and implementation notes written back to the design`,工作区干净。
+
+追加的 ledger 行:
+
+```
+Verify: 报告 verify/export 已写(1 条已验证,2 条决定待判断,1 项未验证:真实 Worker 内存);设计文档已写回实现结论 — commit e7d02b5,pnpm test → 32/32
+```
+
+没有推送,没有删除 workspace(裁决未回,工作未落地),不轮询。
+
+## 9. 发给伙伴的最终消息(原文)
+
+> **未完成:等你的判断。** 导出功能已在 `feat/export` 上实现并验证,验证报告:http://localhost:4400/verify/export
+>
+> 报告共 3 条结论:1 条我已验证(20000 条笔记流式下载,文件完整,共 20000 条记录),2 条需要你判断,另有 1 项未验证。
+>
+> 需要你决定:
+>
+> 1. **大批量导出改成了流式**(每 500 条写一次),没有按设计"先在服务端生成完整文件"。原因是一万条以上的完整文件在 Worker 上超出内存。如果用户需要断点续传下载,这个决定就是错的。通过还是驳回?
+> 2. **字段按 RFC 4180 加引号**。设计没写字段里有逗号时怎么处理,这是我定的。如果使用者不希望在原始文本里看到引号,这个决定就是错的。通过还是驳回?
+> 3. **真实 Worker 上的内存占用没有验证。** 允许我部署到预览环境再测,还是豁免这一项?
+>
+> 可能改变你决定的:
+>
+> - 以上证据全部来自本地 `pnpm dev`(a41c9e7),本地运行时不执行线上的内存上限。"流式导出在线上不超内存"目前没有被证明。
+>
+> 常规检查:`pnpm test` 32/32 通过。设计文档已写回"实现结论"。决定好了在这里告诉我(按编号回复即可);三项都有结果之后,我再给出合入方式。
+
+---
+
+SUMMARY: 重跑了 `pnpm test`(假设 32/32),在本地运行的应用里重新抓了 20000 条流式下载和三个相邻流程的证据,写了验证报告 `verify/export`(1 条已验证的结论、2 条决定待判断、1 个真实 Worker 内存的 gap),把实现结论写回了设计文档,两个 `adeck check` 通过后在 `feat/export` 上提交并追加了 ledger;现在等伙伴对两条决定给出通过或驳回,并决定 gap 是部署预览环境验证还是豁免,合入方式在此之后才给。

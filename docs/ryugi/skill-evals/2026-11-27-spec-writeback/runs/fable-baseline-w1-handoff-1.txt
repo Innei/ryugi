@@ -1,0 +1,207 @@
+Simulation from the start of adeck:verifying to the end of my turn. Nothing was run except reading `skill/verifying/pages.md`, `skill/verifying/verdicts.md` and `skill/executing-specs/landing.md`. Every tool output below is assumed, and each assumption is stated.
+
+Only output claims exist here (a file's contents, headers, counts), so this is a verify report with no artboard page.
+
+---
+
+## 1. Check what project verification left, and whether it is stale
+
+Narration: `核对浏览器检查的证据是否晚于最后一次提交。`
+
+```bash
+cd /Users/p/git/notes-app && git log -1 --format='%h %cI %s' && git status --short && ls -lT .artideck/sdd/2026-11-10-export-design/project-verify/ && sed -n '1,80p' AGENTS.md
+```
+
+Assumed output:
+- HEAD is `a41c9e2 2026-11-28T14:02:11+08:00 fix: stream export in batches`, on `feat/export`, with a clean tree.
+- `project-verify/` holds `browser-check.log`, `notes-export.csv` and the cookie jars `alice.cookie` and `bob.cookie`, all timestamped 14:20, after HEAD, so not stale.
+- `AGENTS.md` says to verify against `pnpm dev` on `http://localhost:8787` with fixture users `alice` (seeded with 20000 notes) and `bob` (3 notes). The dev server is still running.
+
+## 2. Routine check, in this session
+
+```bash
+cd /Users/p/git/notes-app && pnpm test > .artideck/sdd/2026-11-10-export-design/suite.log 2>&1; echo "exit=$?"; tail -6 .artideck/sdd/2026-11-10-export-design/suite.log
+```
+
+Assumed output: `Tests 32 passed (32)`, `exit=0`.
+
+## 3. Run the chain and walk the neighbours, into one output file
+
+Narration: `跑 20000 条导出，并走一遍相邻流程。`
+
+```bash
+cd /Users/p/git/notes-app && W=.artideck/sdd/2026-11-10-export-design && B=http://localhost:8787 && {
+  echo "# feat/export @ $(git rev-parse --short HEAD) — local dev $B — $(date '+%Y-%m-%dT%H:%M:%S%z')"
+  echo "## 1. alice: 20000 notes"
+  curl -sS -b $W/project-verify/alice.cookie -D - -o $W/alice.csv \
+    -w 'http=%{http_code} bytes=%{size_download} ttfb=%{time_starttransfer}s total=%{time_total}s\n' $B/api/notes/export
+  python3 - $W/alice.csv <<'PY'
+import csv, sys
+raw = open(sys.argv[1], 'rb').read()
+text = raw.decode('utf-8')                      # raises if not UTF-8
+rows = list(csv.reader(text.splitlines(keepends=True)))
+head, data = rows[0], rows[1:]
+print('header=', head)
+print('rows=', len(data), 'unique_ids=', len({r[0] for r in data}),
+      'bad_width=', sum(len(r) != 4 for r in data))
+print('rows_with_comma_quote_or_newline=', sum(any(c in f for f in r for c in ',"\n') for r in data))
+print('raw_quote_chars=', text.count('"'))
+PY
+  echo "## 2. same bytes as the file the browser check downloaded"
+  cmp $W/alice.csv $W/project-verify/notes-export.csv && echo identical
+  echo "## 3. bob: 3 notes (small path, own notes only)"
+  curl -sS -b $W/project-verify/bob.cookie -o $W/bob.csv -w 'http=%{http_code}\n' $B/api/notes/export
+  python3 -c "
+import csv,sys
+a={r[0] for r in list(csv.reader(open(sys.argv[1],encoding='utf-8',newline='')))[1:]}
+b={r[0] for r in list(csv.reader(open(sys.argv[2],encoding='utf-8',newline='')))[1:]}
+print('bob_rows=',len(b),'ids_shared_with_alice=',len(a&b))" $W/alice.csv $W/bob.csv
+  echo "## 4. no session"
+  curl -sS -o /dev/null -w 'http=%{http_code}\n' $B/api/notes/export
+  echo "## 5. 15 downloads aborted mid-stream, then one full export"
+  for i in $(seq 1 15); do curl -sS -m 0.3 -b $W/project-verify/alice.cookie -o /dev/null $B/api/notes/export 2>/dev/null; done
+  curl -sS -m 30 -b $W/project-verify/alice.cookie -o /dev/null -w 'http=%{http_code} bytes=%{size_download}\n' $B/api/notes/export
+} > $W/export-run.txt 2>&1; cat $W/export-run.txt
+```
+
+Assumed output:
+
+```
+# feat/export @ a41c9e2 — local dev http://localhost:8787 — 2026-11-28T14:41:07+0800
+## 1. alice: 20000 notes
+HTTP/1.1 200 OK
+Content-Type: text/csv; charset=utf-8
+Content-Disposition: attachment; filename="notes.csv"
+Transfer-Encoding: chunked
+
+http=200 bytes=9482113 ttfb=0.041s total=3.870s
+header= ['id', 'title', 'body', 'updatedAt']
+rows= 20000 unique_ids= 20000 bad_width= 0
+rows_with_comma_quote_or_newline= 6312
+raw_quote_chars= 14208
+## 2. same bytes as the file the browser check downloaded
+identical
+## 3. bob: 3 notes (small path, own notes only)
+http=200
+bob_rows= 3 ids_shared_with_alice= 0
+## 4. no session
+http=401
+## 5. 15 downloads aborted mid-stream, then one full export
+http=200 bytes=9482113
+```
+
+What I read from it:
+- **Streaming:** the response is chunked with no `Content-Length`, and the first byte arrives at 41 ms.
+- **Content:** 20000 rows, 20000 unique ids, four columns in every row, valid UTF-8.
+- **Aborted downloads:** the pool survives 15 of them. I assumed the pool size is 10, read from the project's db config.
+
+## 4. Start the verify report
+
+```bash
+cd /Users/p/git/notes-app && adeck start --artifact verify/export
+```
+
+Assumed output: the verify writing description, the path `.artideck/artifacts/verify/export/doc.xml`, and the link `http://localhost:4680/verify/export`. I assumed the schema is `<verify>` with `<h1>`, `<p>`, `<claim id judge from capturedAt>` holding `<title>`, `<result>`, `<output file>`, `<ask>` and `<p>`, plus `<gap id>`. If the real description differs, I follow it instead.
+
+```bash
+cd /Users/p/git/notes-app && cp .artideck/sdd/2026-11-10-export-design/export-run.txt .artideck/artifacts/verify/export/export-run.txt
+```
+
+**Write** `/Users/p/git/notes-app/.artideck/artifacts/verify/export/doc.xml`:
+
+```xml
+<verify>
+  <h1>CSV 导出 — 验证</h1>
+  <p>分支 feat/export @ a41c9e2。例行检查：pnpm test 32/32 通过。3 条结论：1 条我已验证，2 条是实现时我做的决定，等你裁决；另有 1 项未验证。走过的相邻流程（输出在同一份文件里）：3 条笔记的小批量导出、只导出自己的笔记（bob 的文件与 alice 的 id 无交集）、未登录返回 401、连续 15 次中途断开下载后仍能完整导出。</p>
+
+  <claim id="stream-20000" judge="agent"
+         from="本地 dev server（localhost:8787），feat/export @ a41c9e2，夹具用户 alice（20000 条笔记）"
+         capturedAt="2026-11-28T14:41:07+08:00">
+    <title>20000 条笔记可以流式下载为一个完整的 CSV</title>
+    <result>HTTP 200，分块传输，首字节 41ms，全程 3.9s；文件 20000 行、20000 个不同 id、每行 4 列、UTF-8；与浏览器检查下载到的文件逐字节相同。</result>
+    <output file="export-run.txt"/>
+  </claim>
+
+  <claim id="ruling-streaming" judge="human"
+         from="feat/export @ a41c9e2；设计文档「大批量导出」一节"
+         capturedAt="2026-11-28T14:41:07+08:00">
+    <title>大批量导出改成了流式下载，没有按设计在服务端先生成完整文件</title>
+    <ask>如果用户需要断点续传、需要下载进度（总大小），或者必须保证拿到的文件要么完整要么失败，这条就错了，应改回设计里的「先生成、再一次性下载」。</ask>
+    <p>设计写的是超过 10000 条时先在服务端生成完整文件。实现时我判断一万条以上的完整文件会超出 Worker 的内存，于是改为每 500 条写一批、边查边发，所有数量都走同一条路径。代价：响应没有 Content-Length，浏览器不显示总大小，也不能续传；如果中途出错，用户得到的是一个被截断、但状态码仍是 200 的文件。「超出内存」是我的判断，没有在线上运行时实测过，见下面的未验证项。</p>
+  </claim>
+
+  <claim id="ruling-rfc4180" judge="human"
+         from="feat/export @ a41c9e2；设计文档「导出格式」一节"
+         capturedAt="2026-11-28T14:41:07+08:00">
+    <title>含逗号、引号或换行的字段按 RFC 4180 加双引号</title>
+    <ask>如果导出的文件要给「按逗号直接切分」的脚本或工具用，或者你想要别的处理方式（例如去掉逗号、改用制表符分隔），这条就错了。</ask>
+    <p>设计只说「逗号分隔」，没说标题或正文里本身有逗号怎么办。我选了 RFC 4180：字段含逗号、双引号或换行时整体加双引号，内部的双引号写成两个；其余字段不加。这次的 20000 条里有 6312 行包含这类字段。不认引号的工具会把这些行切错列，或把引号当作内容显示出来。</p>
+  </claim>
+
+  <gap id="worker-runtime">没有在线上 Worker 运行时验证 20000 条导出：本地 dev server 不施加内存上限，所以「流式不会超内存」和「完整文件会超内存」都只有本地证据。我不能自己做，因为部署是工作区之外的动作。需要你：允许我部署一个预览环境并在上面重跑，或者豁免这一项。</gap>
+</verify>
+```
+
+## 5. Link the design document back to the report
+
+Narration: `在设计文档里讨论这两处的小节加上回链，正文不动。`
+
+```bash
+cd /Users/p/git/notes-app && adeck start --artifact document/export-design --help
+```
+
+Assumed output: the document writing description, confirming that `<ref verify="<slug>"/>` shows the report's status in place. I leave the approved text as it is; whether 「大批量导出」 gets rewritten is your partner's verdict on `ruling-streaming`, not mine.
+
+**Write** `/Users/p/git/notes-app/.artideck/artifacts/document/export-design/doc.xml`:
+
+```xml
+<doc>
+  <h1>CSV 导出</h1>
+  <h2>导出格式</h2>
+  <p>每条笔记一行：id、title、body、updatedAt。UTF-8，逗号分隔。</p>
+  <ref verify="export"/>
+  <h2>大批量导出</h2>
+  <p>超过 10000 条时，先在服务端生成完整文件，再一次性下载。</p>
+  <ref verify="export"/>
+  <h2>权限</h2>
+  <p>只能导出自己的笔记。</p>
+</doc>
+```
+
+## 6. Check both artifacts, clean up scratch, and ledger
+
+```bash
+cd /Users/p/git/notes-app && adeck check --artifact verify/export && adeck check --artifact document/export-design
+```
+
+Assumed output: both pass with no warnings or provenance notes. The report shows 1 claim checked by agent, 2 pending on human and 1 open gap, at `http://localhost:4680/verify/export`.
+
+```bash
+cd /Users/p/git/notes-app && W=.artideck/sdd/2026-11-10-export-design && rm $W/alice.csv $W/bob.csv $W/export-run.txt $W/suite.log && echo "Verify: verify/export — 1 条已验证，2 条裁决待你判断（流式导出、RFC 4180 引号），1 项未验证（线上 Worker 运行时）；pnpm test 32/32 @ a41c9e2" >> $W/progress.md && git status --short
+```
+
+- **Removed:** only the scratch files I created; the evidence is already copied into the report.
+- **Appended to the ledger:** `Verify: verify/export — 1 条已验证，2 条裁决待你判断（流式导出、RFC 4180 引号），1 项未验证（线上 Worker 运行时）；pnpm test 32/32 @ a41c9e2`
+- **Assumed `git status --short`:** empty, because `.artideck/` is git-ignored, so there is nothing to commit.
+- **Kept:** the workspace, until the work lands.
+- **Not done:** no push or deploy, and no landing options offered, because those wait for the verdicts.
+
+## 7. Final message to my partner (word for word)
+
+> **未完成，等你裁决**：CSV 导出已在 `feat/export` 上实现，验证报告在 http://localhost:4680/verify/export 。3 条结论里 1 条我已验证（20000 条流式下载），2 条等你，另有 1 项没验证。
+>
+> 需要你决定：
+>
+> 1. **大批量导出改成了流式，没有按设计先在服务端生成完整文件。** 通过还是驳回？如果用户需要断点续传、下载进度，或者不能接受中途出错时拿到一个被截断的文件，这条就错了。
+> 2. **含逗号、引号或换行的字段按 RFC 4180 加双引号**（设计没写）。通过还是驳回？如果文件要给按逗号直接切分的工具用，这条就错了。
+> 3. **线上 Worker 运行时没验证。** 允许我部署一个预览环境重跑，还是豁免这一项？
+>
+> 可能改变你决定的：
+>
+> - 第 1 条的理由「完整文件会超出 Worker 内存」是我的判断，没有实测过；20000 条的证据全部来自本地 dev server，而它不限制内存。
+>
+> 在报告页上裁决或者直接在这里回编号都行，定了告诉我一声；全部通过之后我再给合入方式。
+
+I end my turn here and do not poll.
+
+SUMMARY: I re-proved the 20000-note streamed export in-session (all outputs assumed), wrote the verify report `verify/export` with one agent claim, two human ruling claims and one gap, added `<ref verify="export"/>` to the two design-doc sections, and ran `adeck check` on both. The work now waits on my partner for verdicts on the streaming and RFC 4180 rulings and a deploy-preview-or-waive decision on the Worker-runtime gap; landing waits on those.

@@ -252,7 +252,9 @@ under TDD like a Critical one, and ledger it.
 
 ## Finish
 
-Use adeck:verifying first; fixes for its rejects follow that skill. Then
+Use adeck:verifying first; fixes for its rejects follow that skill, and its
+`pages.md` says how the spec's design document gets the build's
+conclusions and pitfalls written back into it. Then
 read every ledger line containing `Ruling:` and every `minor (deferred)`
 line, and pick the ones that depart from the spec or change what someone
 using the software gets, at most five. A deferred minor that someone would

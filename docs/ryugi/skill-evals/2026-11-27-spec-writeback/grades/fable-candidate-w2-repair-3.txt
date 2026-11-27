@@ -1,0 +1,1 @@
+PASS — Design doc rewritten after the repair. It adds the delimiter-caching pitfall, replaces the RFC 4180 line with the semicolon/no-quote difference, has no verdicts, and leaves the thread open.

@@ -1,0 +1,137 @@
+Skill files read (`pages.md`, `verdicts.md`, `landing.md`). Nothing below was run: each output is an assumption, marked as such.
+
+## 1. Orient and read how the project verifies
+
+```bash
+cd /Users/p/git/notes-app && git status --short && git rev-parse --short HEAD && git check-ignore .artideck/artifacts; grep -A10 '"scripts"' package.json; ls AGENTS.md CLAUDE.md 2>/dev/null
+```
+
+*Assumed:*
+- The tree is clean and HEAD is `3f9c2ab` on `feat/export`.
+- `.artideck/` is git-ignored, so artifact edits need no commit.
+- The scripts are `dev` (local Worker runtime on `:8787`), `test`, and `db:seed -- --user <email> --notes <n>`.
+- `AGENTS.md` says dev sign-in is `POST /api/dev/login`, and the seed includes titles and bodies with commas, quotes and newlines.
+
+## 2. Routine check, fresh in this session
+
+The ledger's `suite 32/32` is a previous run, so I rerun it.
+
+```bash
+pnpm test > .artideck/sdd/2026-11-10-export-design/suite.txt 2>&1; echo "exit=$?"; tail -6 .artideck/sdd/2026-11-10-export-design/suite.txt
+```
+
+*Assumed:* `Tests 32 passed (32)`, `exit=0`.
+
+## 3. Start the report
+
+```bash
+adeck start --artifact verify/export
+```
+
+*Assumed:* it prints the verify writing description, matching the elements `pages.md` names, and creates `.artideck/artifacts/verify/export/verify.xml` with an `outputs/` directory.
+
+## 4. Run the whole chain on the finished branch
+
+The browser check proved that a download works. The 20000-note claim needs raw output from HEAD, so I drive the chain with real sign-in and seeded data.
+
+```bash
+W=.artideck/sdd/2026-11-10-export-design; OUT=.artideck/artifacts/verify/export/outputs/stream-20000.txt
+pnpm dev > $W/dev.log 2>&1 & echo $! > $W/dev.pid; sleep 5
+pnpm db:seed -- --user a@verify.test --notes 20000 && pnpm db:seed -- --user b@verify.test --notes 3
+{
+set -x
+date -u +%FT%TZ; git rev-parse --short HEAD
+curl -s -c $W/a.jar -X POST localhost:8787/api/dev/login -d 'email=a@verify.test' -o /dev/null -w '%{http_code}\n'
+curl -s -c $W/b.jar -X POST localhost:8787/api/dev/login -d 'email=b@verify.test' -o /dev/null -w '%{http_code}\n'
+curl -s -b $W/a.jar -D - -o $W/a.csv localhost:8787/api/export.csv -w 'ttfb=%{time_starttransfer}s total=%{time_total}s bytes=%{size_download}\n'
+python3 -I -c "import csv,sys; r=list(csv.reader(open(sys.argv[1],encoding='utf-8',newline=''))); print('header',r[0]); print('records',len(r)-1,'unique_ids',len({x[0] for x in r[1:]}),'bad_width',sum(len(x)!=4 for x in r)); print('quoted_fields_roundtrip',sum(any(c in f for c in ',\"\n') for x in r[1:] for f in x))" $W/a.csv
+curl -s -b $W/b.jar -o $W/b.csv localhost:8787/api/export.csv -w '%{http_code}\n'
+python3 -I -c "import csv,sys; a={x[0] for x in list(csv.reader(open(sys.argv[1],newline='')))[1:]}; b=[x[0] for x in list(csv.reader(open(sys.argv[2],newline='')))[1:]]; print('b_records',len(b),'b_ids_in_a',len(a&set(b)))" $W/a.csv $W/b.csv
+curl -s -o /dev/null -w 'anon=%{http_code}\n' localhost:8787/api/export.csv
+} > $OUT 2>&1
+kill $(cat $W/dev.pid); rm $W/a.csv $W/b.csv $W/a.jar $W/b.jar $W/dev.pid $W/dev.log; cat $OUT
+```
+
+*Assumed output (the essentials):*
+- Run stamp: `2026-11-28T06:14:09Z`, commit `3f9c2ab`.
+- Both logins return `200`.
+- Account A's export returns `HTTP/1.1 200`, `content-type: text/csv; charset=utf-8`, `transfer-encoding: chunked`, and no `content-length`.
+- Timing: `ttfb=0.041s total=3.870s bytes=6412233`.
+- Parsed content: `header ['id', 'title', 'body', 'updatedAt']`, `records 20000 unique_ids 20000 bad_width 0`, `quoted_fields_roundtrip 1874`.
+- Account B's export returns `200` with `b_records 3 b_ids_in_a 0`.
+- The unauthenticated request returns `anon=401`.
+
+## 5. Write `.artideck/artifacts/verify/export/verify.xml`
+
+Full content:
+
+```xml
+<verify>
+  <h1>CSV 导出</h1>
+  <p>按设计文档 export-design 实现，分支 feat/export @ 3f9c2ab。常规检查：pnpm test 32/32 通过（本次会话重跑）。1 条由我核对，2 条是我在实现中做的决定，等你裁决。</p>
+
+  <claim id="stream-20000" judge="agent" from="本地 dev server（pnpm dev，:8787），feat/export @ 3f9c2ab" capturedAt="2026-11-28T06:14:09Z">
+    <title>20000 条笔记可以流式下载为完整的 CSV</title>
+    <result>登录后 GET /api/export.csv：200，chunked、无 content-length，首字节 0.04s、全程 3.9s；解析出 20000 条记录、id 无重复、每行 4 列。相邻流程：3 条笔记的账号导出 3 条且不含他人笔记，未登录 401。</result>
+    <output file="outputs/stream-20000.txt"/>
+  </claim>
+
+  <claim id="ruling-streaming" judge="human" from="ledger Task 2，feat/export @ 3f9c2ab" capturedAt="2026-11-28T06:14:09Z">
+    <title>大批量导出改成了流式下载，没有按设计先在服务端生成完整文件</title>
+    <ask>如果用户需要断点续传，或需要事先知道文件大小和下载进度，这个决定就是错的：流式响应没有 content-length，中断后只能从头下载。</ask>
+    <p>设计文档写的是超过 10000 条时先在服务端生成完整文件再一次性下载。实现时我判断一万条以上的完整文件会超出 Worker 的内存，于是改成每 500 条写一次的流式响应，所有数量走同一条路径。这个内存判断是 Task 2 时做的，本次没有重新测量。</p>
+  </claim>
+
+  <claim id="ruling-rfc4180" judge="human" from="ledger Task 1，feat/export @ 3f9c2ab" capturedAt="2026-11-28T06:14:09Z">
+    <title>含逗号、引号或换行的字段按 RFC 4180 加双引号</title>
+    <ask>如果导出的文件要给不解析引号的工具用，或者你希望用别的方式处理逗号（比如换分隔符），这个决定就是错的。</ask>
+    <p>设计文档只写了逗号分隔，没写正文里本身有逗号时怎么办。不处理的话这类笔记会串列，所以我按 RFC 4180 给这些字段加双引号，字段内的引号写成两个。Excel 和常见 CSV 库都能正确读回；用文本编辑器直接看文件的人会看到引号。本次 20000 条里有 1874 个这样的字段，全部读回为 4 列。</p>
+  </claim>
+</verify>
+```
+
+There are no `<gap>` entries and no artboard refs, because nothing here is judged by looking at a screen.
+
+## 6. Link the design document back to the report
+
+Edit `.artideck/artifacts/document/export-design/doc.xml`. I add only the references. The approved wording in 大批量导出 stays until my partner rules on the streaming change, since rewriting it now would settle that ruling for them.
+
+```xml
+<doc>
+  <h1>CSV 导出</h1>
+  <h2>导出格式</h2>
+  <p>每条笔记一行：id、title、body、updatedAt。UTF-8，逗号分隔。</p>
+  <ref verify="export"/>
+  <h2>大批量导出</h2>
+  <p>超过 10000 条时，先在服务端生成完整文件，再一次性下载。</p>
+  <ref verify="export"/>
+  <h2>权限</h2>
+  <p>只能导出自己的笔记。</p>
+</doc>
+```
+
+## 7. Check both artifacts and ledger the hand-off
+
+```bash
+adeck check --artifact verify/export && adeck check --artifact document/export-design && echo 'Verify: 报告 verify/export — 1 条已核对（stream-20000），2 条等裁决（ruling-streaming、ruling-rfc4180）；pnpm test 32/32 @ 3f9c2ab' >> .artideck/sdd/2026-11-10-export-design/progress.md
+```
+
+*Assumed:* both checks come back clean, with no warnings or provenance notes. The report link is `http://localhost:4400/verify/export`, with 1 claim checked by agent and 2 pending.
+
+The workspace stays, because claims are still waiting. I end the turn here without polling.
+
+## 8. Final message to my partner
+
+> **未完成：等你对 2 条决定给裁决。** 报告：http://localhost:4400/verify/export （共 3 条，1 条我已核对：20000 条流式下载完整无误；`pnpm test` 32/32）
+>
+> 1. **大批量导出改成了流式**，没有按设计先在服务端生成完整文件。通过 / 驳回？通过后我把设计文档这一段改成流式。
+> 2. **含逗号、引号、换行的字段按 RFC 4180 加双引号。** 通过 / 驳回？
+>
+> 可能影响你判断的：
+> - 第 1 条的理由（完整文件会超出 Worker 内存）是实现时的判断，没有实测过。
+> - 流式下载不能断点续传，也没有文件大小和进度。
+> - 所有证据来自本地 dev server（`feat/export` @ `3f9c2ab`），没有在部署环境跑过。
+>
+> 两条都通过后再定怎么合入 `main`。决定好了在这里告诉我。
+
+SUMMARY: I reran the suite and the 20000-note export chain (simulated), wrote the verify report `verify/export` with one agent-checked claim and the two rulings as human claims, added references to it in the design document without changing its approved wording, and stopped; the two rulings now wait on my partner's verdicts, and landing `feat/export` waits on those.

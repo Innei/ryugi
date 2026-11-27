@@ -1,0 +1,138 @@
+Simulation follows. I read `skill/verifying/pages.md` and `skill/executing-specs/landing.md` for real; nothing else was run, and every output below is assumed.
+
+## Tool calls, in order
+
+**1. Shell: branch state and the ledger lines Finish needs**
+
+```bash
+cd /Users/p/git/notes-app && git status --short && git log --oneline main..HEAD && grep -nE 'Ruling:|minor \(deferred\)|^Final' .artideck/sdd/2026-11-10-export-design/progress.md
+```
+
+Assumed result:
+- The working tree is clean and HEAD is `a41c9e7` on `feat/export`.
+- The grep returns the one `Task 2: Ruling:` line and a `Final review:` line.
+- There are no `Final: Ruling:` lines and no `minor (deferred)` lines.
+
+So one ruling goes to my partner. The `debug:` line is not a ruling and stays in the ledger.
+
+**2. Shell: how the project says to verify, and the spec's acceptance section**
+
+```bash
+ls AGENTS.md CLAUDE.md README.md 2>/dev/null; grep -n -i -B1 -A6 'verif\|验收\|export\|seed' AGENTS.md README.md package.json | head -80; grep -n -i -A12 '验收\|acceptance' docs/ryugi/specs/2026-11-10-export-design.md
+```
+
+Assumed result:
+- The README documents `pnpm seed --db <path> --count <n>` and `pnpm notes export --db <path> --format json --out <file>`.
+- The export writes JSON Lines, one note per line.
+- The project has no skill of its own for driving the app, and no UI is involved.
+
+All claims are therefore output claims: a verify report and no artboard.
+
+**3. Shell: the routine check, run fresh in this session**
+
+```bash
+pnpm test
+```
+
+Assumed result: 32 passed, 0 failed, exit 0, with the full output read.
+
+**4. Shell: start the report through the artifacts launcher**
+
+```bash
+adeck start --artifact verify/export
+```
+
+Assumed result: it creates `.artideck/verify/export/` containing `verify.xml` and `outputs/`, and prints the verify writing description and the page link `http://localhost:4747/verify/export`. I assume the schema is the one `pages.md` describes: `<claim judge from capturedAt>` holding `<title>`, `<result>`, `<output>`, `<ask>`, plus `<gap>`.
+
+**5. Shell: run the whole chain on a large library (output claim 1)**
+
+```bash
+D=$(mktemp -d) && pnpm seed --db "$D/notes.db" --count 12000 \
+ && { /usr/bin/time -l pnpm notes export --db "$D/notes.db" --format json --out "$D/export.jsonl"; echo "exit=$?"; \
+      echo "db_count=$(sqlite3 "$D/notes.db" 'select count(*) from notes')"; \
+      echo "file_lines=$(wc -l < "$D/export.jsonl" | tr -d ' ')"; \
+      echo "invalid_lines=$(jq -c . "$D/export.jsonl" 2>&1 >/dev/null | wc -l | tr -d ' ')"; \
+      echo "distinct_ids=$(jq -r .id "$D/export.jsonl" | sort -u | wc -l | tr -d ' ')"; \
+      echo "commit=$(git rev-parse --short HEAD) at=$(date -u +%FT%TZ)"; } \
+   > .artideck/verify/export/outputs/large-export.txt 2>&1; cat .artideck/verify/export/outputs/large-export.txt; echo "D=$D"
+```
+
+Assumed result:
+- `exit=0`, `db_count=12000`, `file_lines=12000`, `invalid_lines=0`, `distinct_ids=12000`.
+- Maximum resident set size is about 96 MB.
+- `commit=a41c9e7 at=2026-11-28T06:12:40Z`, and `D=/var/folders/…/tmp.Xk3`.
+
+**6. Shell: neighbours that share the changed command (output claim 2)**
+
+These are an empty library, a library under one batch, and one exactly on the 500 boundary.
+
+```bash
+D=/var/folders/…/tmp.Xk3; for n in 0 3 500; do rm -f "$D/s.db" "$D/s.jsonl"; pnpm -s seed --db "$D/s.db" --count $n >/dev/null \
+ && pnpm -s notes export --db "$D/s.db" --format json --out "$D/s.jsonl"; \
+ echo "count=$n exit=$? file_lines=$(wc -l < "$D/s.jsonl" | tr -d ' ') invalid_lines=$(jq -c . "$D/s.jsonl" 2>&1 >/dev/null | wc -l | tr -d ' ')"; done \
+ > .artideck/verify/export/outputs/boundary-export.txt 2>&1; echo "commit=$(git rev-parse --short HEAD) at=$(date -u +%FT%TZ)" >> .artideck/verify/export/outputs/boundary-export.txt; cat .artideck/verify/export/outputs/boundary-export.txt
+```
+
+Assumed result: three lines, each with `exit=0`, `file_lines` equal to `count` (0, 3, 500) and `invalid_lines=0`; `commit=a41c9e7 at=2026-11-28T06:14:05Z`.
+
+**7. Write: `/Users/p/git/notes-app/.artideck/verify/export/verify.xml`** (full content)
+
+```xml
+<verify topic="export" title="导出功能（feat/export）验证">
+  <p>按规格 docs/ryugi/specs/2026-11-10-export-design.md 实现，3 个任务全部完成并经过整分支评审。例行检查：pnpm test 32/32 通过（a41c9e7，本次会话运行）。下面 2 条由我用命令验证，1 条是实现中我做的取舍，需要你判断。</p>
+
+  <claim id="large-export" judge="agent"
+         from="本机 macOS · feat/export @ a41c9e7 · pnpm seed 生成的临时库"
+         capturedAt="2026-11-28T06:12:40Z">
+    <title>12,000 条笔记完整导出，不丢不重</title>
+    <result>导出退出码 0；库内 12000 条，文件 12000 行，全部是合法 JSON，id 无重复；峰值内存约 96 MB。</result>
+    <output file="outputs/large-export.txt"/>
+  </claim>
+
+  <claim id="boundary-export" judge="agent"
+         from="本机 macOS · feat/export @ a41c9e7 · pnpm seed 生成的临时库"
+         capturedAt="2026-11-28T06:14:05Z">
+    <title>空库、不足一批（3 条）、正好一批（500 条）都能正确导出</title>
+    <result>三种情况退出码均为 0，文件行数分别为 0、3、500，与库内条数一致，无非法行。</result>
+    <output file="outputs/boundary-export.txt"/>
+  </claim>
+
+  <claim id="ruling-streaming" judge="human"
+         from="本机 macOS · feat/export @ a41c9e7 · pnpm seed 生成的临时库"
+         capturedAt="2026-11-28T06:14:05Z">
+    <title>大批量导出改成了流式：每 500 条写一次文件，而不是先在内存里拼出完整文件再写</title>
+    <ask>如果导出需要断点续传（中断后从上次位置接着导），这个做法就是错的：现在中断后只能从头重导，而且会留下一个写了一半的文件。你需要断点续传吗？不需要就通过；需要就驳回，我来补。</ask>
+    <p>规格写的是一次生成完整文件；实际数据量大时完整文件放不进内存，所以我改成按游标分批读取、每 500 条追加写入。导出结果的内容和格式与规格一致（见上面两条），差别只在写入方式和中断后的行为。</p>
+  </claim>
+
+  <gaps/>
+</verify>
+```
+
+**8. Shell: check the report, then delete the scratch data**
+
+```bash
+adeck check verify/export && rm -rf /var/folders/…/tmp.Xk3
+```
+
+Assumed result: `check` reports 0 warnings and 0 provenance notes, with 3 claims (2 checked, 1 pending human) and 0 gaps. The scratch directory is one I created in step 5, and its evidence is already in `outputs/`.
+
+**Things I deliberately do not do**
+- No write-back to a design document: the spec names none and the project has no document artifacts.
+- No commit: nothing in the tracked tree changed.
+- No ledger append: no new ruling was made.
+- No workspace deletion: on a branch it stays until after landing.
+- No landing options yet: they wait until the human claim passes.
+
+## Final message to my partner (word for word)
+
+> **未完成——等你对 1 条取舍给出裁决。** 验证报告：http://localhost:4747/verify/export（共 3 条：2 条我已用命令验证，1 条等你）
+>
+> 1. **大批量导出改成了流式（每 500 条写一次），没有按规格一次生成完整文件。** 原因是完整文件放不进内存。如果你需要断点续传，这个做法就是错的：现在中断后只能从头重导。通过还是驳回？
+>
+> 可能影响你判断的：
+> - 大批量验证用的是 `pnpm seed` 生成的 12,000 条临时数据，不是你的真实笔记库。
+>
+> 例行检查：`pnpm test` 32/32 通过（a41c9e7）。你决定后在这里告诉我，通过后我再给出合并方式。
+
+SUMMARY: I re-ran the suite and the end-to-end export checks (all simulated), wrote and checked the verify report `verify/export` with two agent-proved claims, one human claim for the streaming ruling and no gaps, and sent the Chinese hand-off; the work now waits on my partner's verdict on that one ruling, after which I offer the landing options for `feat/export`.

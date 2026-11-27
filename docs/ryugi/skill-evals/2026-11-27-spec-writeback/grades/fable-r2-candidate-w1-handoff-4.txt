@@ -1,0 +1,1 @@
+PASS — Design doc edited and checked; ends with 实现结论 led by verify ref, covering streaming, open quoting and cursor pitfall; inline 大批量导出 ref; nothing pasted.

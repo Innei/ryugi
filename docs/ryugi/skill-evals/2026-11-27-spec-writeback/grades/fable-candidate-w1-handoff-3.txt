@@ -1,0 +1,1 @@
+FAIL — The RFC 4180 quoting item is marked "设计未规定" but sits under the "与设计不同的决定" list, so it is still filed as a deviation.
