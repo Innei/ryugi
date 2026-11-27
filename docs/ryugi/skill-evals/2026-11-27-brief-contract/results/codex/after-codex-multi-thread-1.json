@@ -1,0 +1,65 @@
+{
+  "variant": "after",
+  "task": "multi-thread",
+  "rep": "1",
+  "host": "codex",
+  "project": "/tmp/brief-eval/after-codex-multi-thread-1/project",
+  "docs": [
+    "document/onboarding"
+  ],
+  "started": 1795763509100,
+  "checks": [
+    {
+      "name": "onboarding#b1 /first sign-in/i",
+      "ok": true
+    },
+    {
+      "name": "onboarding#b2 /five/i",
+      "ok": true
+    },
+    {
+      "name": "onboarding#b3 /first step/i",
+      "ok": true
+    },
+    {
+      "name": "onboarding/t1 replied",
+      "ok": true
+    },
+    {
+      "name": "onboarding/t2 replied",
+      "ok": true
+    },
+    {
+      "name": "onboarding/t3 replied",
+      "ok": true
+    }
+  ],
+  "unread": [
+    {
+      "artifact": "document/onboarding",
+      "unread": 0
+    }
+  ],
+  "consumed": true,
+  "completed": true,
+  "tasksDone": true,
+  "humanOverwritten": null,
+  "metrics": {
+    "host": "codex",
+    "inputTokens": 102812,
+    "cachedTokens": 77312,
+    "outputTokens": 701,
+    "totalTokens": 103513,
+    "roundTrips": 10,
+    "toolCalls": 8,
+    "docReads": 0,
+    "cliCalls": 9,
+    "cliChars": 1477,
+    "actionChars": 0,
+    "utilization": 1,
+    "repeatedReads": 0,
+    "acks": 0,
+    "failedCalls": 0
+  },
+  "elapsed": 35159
+}

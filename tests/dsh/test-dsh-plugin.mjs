@@ -144,14 +144,14 @@ async function until(check, explanation, timeout = 5000) {
   assert.fail(explanation);
 }
 
-test('dsh comment watch runs in ryugi-hook and wakes the session', async (t) => {
+test('dsh comment watch runs in adeck-hook and wakes the session', async (t) => {
   const { fakeHub } = require('../hooks/fake-hub.cjs');
   const hook = require('../hooks/hook-bin.cjs').hookBin();
   const hub = fakeHub(t);
   const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-dsh-hook-'));
   t.after(() => fs.rmSync(scratch, { recursive: true, force: true }));
   const spawned = path.join(scratch, 'spawned.log');
-  const wrapper = path.join(scratch, 'ryugi-hook');
+  const wrapper = path.join(scratch, 'adeck-hook');
   fs.writeFileSync(wrapper, `#!/bin/sh\necho "$@" >> '${spawned}'\nexec '${hook}' "$@"\n`, {
     mode: 0o755,
   });
@@ -229,7 +229,7 @@ test('dsh starts no comment watch for a workspace without artifacts', async (t) 
   const workspace = path.join(scratch, 'workspace');
   fs.mkdirSync(path.join(workspace, '.git'), { recursive: true });
   const spawned = path.join(scratch, 'spawned.log');
-  const wrapper = path.join(scratch, 'ryugi-hook');
+  const wrapper = path.join(scratch, 'adeck-hook');
   fs.writeFileSync(wrapper, `#!/bin/sh\necho "$@" >> '${spawned}'\nexec '${hook}' "$@"\n`, {
     mode: 0o755,
   });
@@ -299,7 +299,7 @@ test('hasArtifacts detects .artideck and .ryugi stores, hookBin resolves ~/.arti
   assert.equal(mod.hasArtifacts(emptyProject), false);
 
   const fakeHome = path.join(scratch, 'home');
-  const binName = process.platform === 'win32' ? 'ryugi-hook.exe' : 'ryugi-hook';
+  const binName = process.platform === 'win32' ? 'adeck-hook.exe' : 'adeck-hook';
   const legacyDir = path.join(fakeHome, '.ryugi', 'hook', pkg.version);
   fs.mkdirSync(legacyDir, { recursive: true });
   const legacyBin = path.join(legacyDir, binName);

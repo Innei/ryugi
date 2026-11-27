@@ -65,10 +65,10 @@ they already answered in chat.
 
 When they submit or say the round is done, or a comment lands:
 
-1. Re-read the document. Read Brief from `comment list --sections threads,asks --detail`
-   for this project and document. Follow each collection's `More`;
-   complete thread messages are included on the delivered page. Use the evidence before its exact
-   `Acknowledge`, as adeck:artifacts says.
+1. Read Brief from `comment list --sections threads,asks --detail` for this
+   project and document, and continue any collection that names a cursor.
+   Complete thread messages are included on the delivered page; reply to or
+   resolve each thread once you have used it, as adeck:artifacts says.
 2. Process each question whose state is `submitted` and write its
    `comment note` after applying it. Move answered items to Settled as one line: changed, written
    or commented ones as theirs, submitted recommendations as accepted.

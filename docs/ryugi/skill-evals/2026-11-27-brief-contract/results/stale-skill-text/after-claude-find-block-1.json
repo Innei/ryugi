@@ -1,0 +1,50 @@
+{
+  "variant": "after",
+  "task": "find-block",
+  "rep": "1",
+  "host": "claude",
+  "project": "/tmp/brief-eval/after-claude-find-block-1/project",
+  "docs": [
+    "document/relay"
+  ],
+  "started": 1795726352827,
+  "checks": [
+    {
+      "name": "relay text unchanged",
+      "ok": true
+    },
+    {
+      "name": "relay/t1 replied /\\bk1\\b/",
+      "ok": true
+    }
+  ],
+  "unread": [
+    {
+      "artifact": "document/relay",
+      "unread": 0
+    }
+  ],
+  "consumed": true,
+  "completed": true,
+  "tasksDone": true,
+  "humanOverwritten": null,
+  "metrics": {
+    "host": "claude",
+    "inputTokens": 113287,
+    "cachedTokens": 97326,
+    "outputTokens": 759,
+    "totalTokens": 114046,
+    "roundTrips": 9,
+    "toolCalls": 10,
+    "docReads": 0,
+    "cliCalls": 4,
+    "cliChars": 5660,
+    "actionChars": 0,
+    "utilization": 1,
+    "repeatedReads": 0,
+    "acks": 0,
+    "failedCalls": 0
+  },
+  "elapsed": 30091,
+  "transcript": "/private/tmp/claude-501/-Users-innei-git-innei-repo-ryugi-cloud/b419a06a-cf49-4252-b732-21fea91e8fd5/tasks/abd1927624eadd44f.output"
+}

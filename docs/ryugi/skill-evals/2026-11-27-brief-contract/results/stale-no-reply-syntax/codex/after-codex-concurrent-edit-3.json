@@ -1,0 +1,54 @@
+{
+  "variant": "after",
+  "task": "concurrent-edit",
+  "rep": "3",
+  "host": "codex",
+  "project": "/tmp/brief-eval/after-codex-concurrent-edit-3/project",
+  "docs": [
+    "document/pricing"
+  ],
+  "started": 1795727196369,
+  "checks": [
+    {
+      "name": "pricing#b1 /12 dollars/",
+      "ok": true
+    },
+    {
+      "name": "pricing#b2 /15%/",
+      "ok": true
+    },
+    {
+      "name": "human edit kept",
+      "ok": true,
+      "humanKept": true
+    }
+  ],
+  "unread": [
+    {
+      "artifact": "document/pricing",
+      "unread": 0
+    }
+  ],
+  "consumed": true,
+  "completed": true,
+  "tasksDone": true,
+  "humanOverwritten": false,
+  "metrics": {
+    "host": "codex",
+    "inputTokens": 215740,
+    "cachedTokens": 199936,
+    "outputTokens": 1098,
+    "totalTokens": 216838,
+    "roundTrips": 18,
+    "toolCalls": 16,
+    "docReads": 0,
+    "cliCalls": 15,
+    "cliChars": 7357,
+    "actionChars": 0,
+    "utilization": 1,
+    "repeatedReads": 1,
+    "acks": 0,
+    "failedCalls": 0
+  },
+  "elapsed": 42845
+}

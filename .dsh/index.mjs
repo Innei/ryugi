@@ -48,16 +48,24 @@ function resolveHookCandidate(basePath) {
   return null;
 }
 
+// ~/.artideck, or ~/.ryugi until the CLI moves it there.
 function userStore(home = os.homedir()) {
-  return !fs.existsSync(path.join(home, '.artideck')) && fs.existsSync(path.join(home, '.ryugi'))
-    ? path.join(home, '.ryugi')
-    : path.join(home, '.artideck');
+  const isDir = (dir) => {
+    try {
+      return fs.statSync(dir).isDirectory();
+    } catch {
+      return false;
+    }
+  };
+  const store = path.join(home, '.artideck');
+  const legacy = path.join(home, '.ryugi');
+  return !isDir(store) && isDir(legacy) ? legacy : store;
 }
 
 export function hookBin(home = os.homedir()) {
   const override = process.env.RYUGI_HOOK_BIN;
   if (override) return resolveHookCandidate(override);
-  const local = resolveHookCandidate(path.join(repoRoot, 'hook', 'target', 'release', 'ryugi-hook'));
+  const local = resolveHookCandidate(path.join(repoRoot, 'hook', 'target', 'release', 'adeck-hook'));
   if (local) return local;
   let version;
   try {
@@ -65,7 +73,7 @@ export function hookBin(home = os.homedir()) {
   } catch {
     return null;
   }
-  const cached = resolveHookCandidate(path.join(userStore(home), 'hook', String(version), 'ryugi-hook'));
+  const cached = resolveHookCandidate(path.join(userStore(home), 'hook', String(version), 'adeck-hook'));
   if (cached) return cached;
   if (!installRequested) {
     installRequested = true;

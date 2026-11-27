@@ -83,7 +83,7 @@ const LOCAL_FILES = [
   'cli.cjs',
   'document-engine.cjs',
   'loro_wasm_bg.wasm',
-  win32 ? 'ryugi-daemon.exe' : 'ryugi-daemon',
+  win32 ? 'adeck-daemon.exe' : 'adeck-daemon',
 ];
 const LOCAL_DIRS = ['viewer', 'runtime'];
 
@@ -309,12 +309,12 @@ function resolveHookCandidate(basePath) {
 function hookBin() {
   if (process.env.RYUGI_HOOK_BIN) return resolveHookCandidate(process.env.RYUGI_HOOK_BIN);
   const dev = devLink();
-  const linked = dev && resolveHookCandidate(path.join(dev.plugin, 'hook', 'target', 'release', 'ryugi-hook'));
+  const linked = dev && resolveHookCandidate(path.join(dev.plugin, 'hook', 'target', 'release', 'adeck-hook'));
   if (linked) return linked;
-  const local = resolveHookCandidate(path.join(PLUGIN_ROOT, 'hook', 'target', 'release', 'ryugi-hook'));
+  const local = resolveHookCandidate(path.join(PLUGIN_ROOT, 'hook', 'target', 'release', 'adeck-hook'));
   if (local) return local;
   const version = pluginVersion();
-  return version ? resolveHookCandidate(path.join(HOOK_HOME, version, 'ryugi-hook')) : null;
+  return version ? resolveHookCandidate(path.join(HOOK_HOME, version, 'adeck-hook')) : null;
 }
 
 function requestHookInstall() {
@@ -329,7 +329,7 @@ function requestHookInstall() {
 
 async function hookInstall() {
   const version = pluginVersion() || newestInstalled();
-  if (!valid(version) || resolveHookCandidate(path.join(HOOK_HOME, version, 'ryugi-hook'))) return;
+  if (!valid(version) || resolveHookCandidate(path.join(HOOK_HOME, version, 'adeck-hook'))) return;
   let cli = path.join(__dirname, 'cli.cjs');
   try {
     if (!fs.existsSync(cli)) cli = cliOf(resolveRelease());

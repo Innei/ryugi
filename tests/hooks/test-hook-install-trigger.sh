@@ -26,7 +26,7 @@ wait_for_call() {
   return 1
 }
 
-echo "Missing ryugi-hook triggers a background download"
+echo "Missing adeck-hook triggers a background download"
 
 rm -f "$TEST_ROOT/node-calls"
 env -i PATH="$TEST_ROOT/bin:/usr/bin:/bin" HOME="$TEST_ROOT" RYUGI_HOOK_BIN="$TEST_ROOT/missing" CLAUDE_PLUGIN_ROOT="$REPO_ROOT" \

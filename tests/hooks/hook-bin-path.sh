@@ -5,5 +5,5 @@ test_hook_bin() {
     return
   fi
   cargo build --quiet --manifest-path "$1/hook/Cargo.toml" >&2 || return 1
-  printf '%s\n' "$1/hook/target/debug/ryugi-hook"
+  printf '%s\n' "$1/hook/target/debug/adeck-hook"
 }

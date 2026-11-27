@@ -1,0 +1,49 @@
+{
+  "variant": "after",
+  "task": "find-block",
+  "rep": "2",
+  "host": "codex",
+  "project": "/tmp/brief-eval/after-codex-find-block-2/project",
+  "docs": [
+    "document/relay"
+  ],
+  "started": 1795727413958,
+  "checks": [
+    {
+      "name": "relay text unchanged",
+      "ok": true
+    },
+    {
+      "name": "relay/t1 replied /\\bk1\\b/",
+      "ok": true
+    }
+  ],
+  "unread": [
+    {
+      "artifact": "document/relay",
+      "unread": 0
+    }
+  ],
+  "consumed": true,
+  "completed": true,
+  "tasksDone": true,
+  "humanOverwritten": null,
+  "metrics": {
+    "host": "codex",
+    "inputTokens": 105036,
+    "cachedTokens": 91136,
+    "outputTokens": 412,
+    "totalTokens": 105448,
+    "roundTrips": 9,
+    "toolCalls": 7,
+    "docReads": 0,
+    "cliCalls": 6,
+    "cliChars": 5783,
+    "actionChars": 0,
+    "utilization": 1,
+    "repeatedReads": 0,
+    "acks": 0,
+    "failedCalls": 0
+  },
+  "elapsed": 22692
+}

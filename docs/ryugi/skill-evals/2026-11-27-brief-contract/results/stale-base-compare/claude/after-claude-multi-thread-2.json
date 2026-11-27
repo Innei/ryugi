@@ -1,0 +1,66 @@
+{
+  "variant": "after",
+  "task": "multi-thread",
+  "rep": "2",
+  "host": "claude",
+  "project": "/tmp/brief-eval/after-claude-multi-thread-2/project",
+  "docs": [
+    "document/onboarding"
+  ],
+  "started": 1795726588403,
+  "checks": [
+    {
+      "name": "onboarding#b1 /first sign-in/i",
+      "ok": true
+    },
+    {
+      "name": "onboarding#b2 /five/i",
+      "ok": true
+    },
+    {
+      "name": "onboarding#b3 /first step/i",
+      "ok": true
+    },
+    {
+      "name": "onboarding/t1 replied",
+      "ok": true
+    },
+    {
+      "name": "onboarding/t2 replied",
+      "ok": true
+    },
+    {
+      "name": "onboarding/t3 replied",
+      "ok": true
+    }
+  ],
+  "unread": [
+    {
+      "artifact": "document/onboarding",
+      "unread": 0
+    }
+  ],
+  "consumed": true,
+  "completed": true,
+  "tasksDone": true,
+  "humanOverwritten": null,
+  "metrics": {
+    "host": "claude",
+    "inputTokens": 217901,
+    "cachedTokens": 198310,
+    "outputTokens": 2516,
+    "totalTokens": 220417,
+    "roundTrips": 33,
+    "toolCalls": 39,
+    "docReads": 2,
+    "cliCalls": 17,
+    "cliChars": 5199,
+    "actionChars": 0,
+    "utilization": 1,
+    "repeatedReads": 2,
+    "acks": 0,
+    "failedCalls": 1
+  },
+  "elapsed": 50114,
+  "transcript": "/private/tmp/claude-501/-Users-innei-git-innei-repo-ryugi-cloud/b419a06a-cf49-4252-b732-21fea91e8fd5/tasks/a1fe9ff03e732dd91.output"
+}

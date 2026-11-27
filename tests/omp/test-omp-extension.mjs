@@ -88,7 +88,7 @@ test('omp extension injects bootstrap once, deduplicates, and reinjects after co
 test('comment watch follows /new, /resume and /fork to the current session', async (t) => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-omp-watch-'));
   const log = path.join(dir, 'spawns.log');
-  const bin = path.join(dir, 'ryugi-hook');
+  const bin = path.join(dir, 'adeck-hook');
   // Records `<session> <pid>` per watcher and stays alive like the real one.
   fs.writeFileSync(bin, `#!/bin/sh\necho "$4 $$" >> "${log}"\nexec sleep 30\n`, { mode: 0o755 });
 
@@ -172,7 +172,7 @@ test('hookBin resolves ~/.artideck/hook with ~/.ryugi fallback and spawns set wi
     fs.rmSync(fakeHome, { recursive: true, force: true });
   });
 
-  const binName = process.platform === 'win32' ? 'ryugi-hook.exe' : 'ryugi-hook';
+  const binName = process.platform === 'win32' ? 'adeck-hook.exe' : 'adeck-hook';
   const legacyDir = path.join(fakeHome, '.ryugi', 'hook', pkg.version);
   fs.mkdirSync(legacyDir, { recursive: true });
   const legacyBin = path.join(legacyDir, binName);

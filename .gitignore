@@ -29,7 +29,7 @@ __pycache__/
 skills/artifacts/app/cli.cjs
 skills/artifacts/app/document-engine.cjs
 skills/artifacts/app/loro_wasm_bg.wasm
-skills/artifacts/app/ryugi-daemon
-skills/artifacts/app/ryugi-daemon.exe
+skills/artifacts/app/adeck-daemon
+skills/artifacts/app/adeck-daemon.exe
 skills/artifacts/app/viewer
 skills/artifacts/app/runtime/

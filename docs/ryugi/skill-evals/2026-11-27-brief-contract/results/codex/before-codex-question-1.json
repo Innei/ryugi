@@ -1,0 +1,49 @@
+{
+  "variant": "before",
+  "task": "question",
+  "rep": "1",
+  "host": "codex",
+  "project": "/tmp/brief-eval/before-codex-question-1/project",
+  "docs": [
+    "document/retries"
+  ],
+  "started": 1795726368010,
+  "checks": [
+    {
+      "name": "retries text unchanged",
+      "ok": true
+    },
+    {
+      "name": "retries/t1 replied /thousand|carrier|drop/i",
+      "ok": true
+    }
+  ],
+  "unread": [
+    {
+      "artifact": "document/retries",
+      "unread": 0
+    }
+  ],
+  "consumed": true,
+  "completed": true,
+  "tasksDone": true,
+  "humanOverwritten": null,
+  "metrics": {
+    "host": "codex",
+    "inputTokens": 144468,
+    "cachedTokens": 122880,
+    "outputTokens": 596,
+    "totalTokens": 145064,
+    "roundTrips": 7,
+    "toolCalls": 5,
+    "docReads": 0,
+    "cliCalls": 5,
+    "cliChars": 2187,
+    "actionChars": 1350,
+    "utilization": 0.3827160493827161,
+    "repeatedReads": 0,
+    "acks": 1,
+    "failedCalls": 0
+  },
+  "elapsed": 28840
+}

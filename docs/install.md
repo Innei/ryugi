@@ -351,7 +351,7 @@ For a local checkout:
 omp plugin link /path/to/ryugi
 ```
 
-Start a fresh OMP session after installing or updating. The package declares `"omp"` in `package.json`, exposing `skills/` and `.omp/extensions/ryugi.ts`, which injects `using-adeck` + OMP tool mapping on `context` (with deduplication and post-compaction re-injection) and runs `ryugi-hook watch pi` to deliver browser comments and choice submissions directly to the active session. Full guide: [README.omp.md](README.omp.md).
+Start a fresh OMP session after installing or updating. The package declares `"omp"` in `package.json`, exposing `skills/` and `.omp/extensions/ryugi.ts`, which injects `using-adeck` + OMP tool mapping on `context` (with deduplication and post-compaction re-injection) and runs `adeck-hook watch pi` to deliver browser comments and choice submissions directly to the active session. Full guide: [README.omp.md](README.omp.md).
 
 ## Writing a new integration
 

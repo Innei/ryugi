@@ -1,0 +1,54 @@
+{
+  "variant": "after",
+  "task": "long-thread",
+  "rep": "1",
+  "host": "claude",
+  "project": "/tmp/brief-eval/after-claude-long-thread-1/project",
+  "docs": [
+    "document/limits"
+  ],
+  "started": 1795727316167,
+  "checks": [
+    {
+      "name": "limits#h-limits /^Rate limits$/",
+      "ok": true
+    },
+    {
+      "name": "limits#b1 /100 requests per minute/",
+      "ok": true
+    },
+    {
+      "name": "limits/t1 replied",
+      "ok": true
+    }
+  ],
+  "unread": [
+    {
+      "artifact": "document/limits",
+      "unread": 0
+    }
+  ],
+  "consumed": true,
+  "completed": true,
+  "tasksDone": true,
+  "humanOverwritten": null,
+  "metrics": {
+    "host": "claude",
+    "inputTokens": 109376,
+    "cachedTokens": 94860,
+    "outputTokens": 987,
+    "totalTokens": 110363,
+    "roundTrips": 15,
+    "toolCalls": 17,
+    "docReads": 0,
+    "cliCalls": 7,
+    "cliChars": 992,
+    "actionChars": 0,
+    "utilization": 1,
+    "repeatedReads": 0,
+    "acks": 0,
+    "failedCalls": 0
+  },
+  "elapsed": 30075,
+  "transcript": "/private/tmp/claude-501/-Users-innei-git-innei-repo-ryugi-cloud/b419a06a-cf49-4252-b732-21fea91e8fd5/tasks/a5b523763fa479dbd.output"
+}

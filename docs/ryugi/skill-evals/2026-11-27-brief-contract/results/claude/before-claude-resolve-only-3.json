@@ -1,0 +1,54 @@
+{
+  "variant": "before",
+  "task": "resolve-only",
+  "rep": "3",
+  "host": "claude",
+  "project": "/tmp/brief-eval/before-claude-resolve-only-3/project",
+  "docs": [
+    "document/release"
+  ],
+  "started": 1795726714833,
+  "checks": [
+    {
+      "name": "release text unchanged",
+      "ok": true
+    },
+    {
+      "name": "release/t1 answered or resolved",
+      "ok": true
+    },
+    {
+      "name": "release/t2 answered or resolved",
+      "ok": true
+    }
+  ],
+  "unread": [
+    {
+      "artifact": "document/release",
+      "unread": 0
+    }
+  ],
+  "consumed": true,
+  "completed": true,
+  "tasksDone": true,
+  "humanOverwritten": null,
+  "metrics": {
+    "host": "claude",
+    "inputTokens": 63948,
+    "cachedTokens": 49949,
+    "outputTokens": 849,
+    "totalTokens": 64797,
+    "roundTrips": 10,
+    "toolCalls": 10,
+    "docReads": 0,
+    "cliCalls": 7,
+    "cliChars": 2490,
+    "actionChars": 1761,
+    "utilization": 0.29277108433734944,
+    "repeatedReads": 0,
+    "acks": 1,
+    "failedCalls": 0
+  },
+  "elapsed": 25097,
+  "transcript": "/private/tmp/claude-501/-Users-innei-git-innei-repo-ryugi-cloud/b419a06a-cf49-4252-b732-21fea91e8fd5/tasks/a8902a94d85a5a8b7.output"
+}

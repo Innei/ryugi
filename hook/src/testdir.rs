@@ -8,7 +8,7 @@ pub struct TestDir(pub PathBuf);
 impl TestDir {
     pub fn new(name: &str) -> TestDir {
         let n = NEXT.fetch_add(1, Ordering::SeqCst);
-        let dir = std::env::temp_dir().join(format!("ryugi-hook-{name}-{}-{n}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("adeck-hook-{name}-{}-{n}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         TestDir(std::fs::canonicalize(&dir).unwrap())

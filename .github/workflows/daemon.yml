@@ -21,7 +21,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: Release whose ryugi-daemon to rebuild, sign and replace, e.g. 1.102.2
+        description: Release whose adeck-daemon (ryugi-daemon up to 1.116.0) to rebuild, sign and replace, e.g. 1.102.2
         required: true
         type: string
       upload:
@@ -48,7 +48,21 @@ jobs:
     outputs:
       source: ${{ steps.plan.outputs.source }}
       from: ${{ steps.plan.outputs.from }}
+      daemon: ${{ steps.names.outputs.daemon }}
     steps:
+      # Releases up to 1.116.0 name the hub ryugi-daemon; a rebuild of one keeps the name its CLI downloads.
+      - name: Name the binaries of v${{ inputs.version }}
+        id: names
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          base="${VERSION%%[-+]*}"
+          if [[ "$(printf '%s\n' "$base" 1.116.0 | sort -V | tail -n 1)" == 1.116.0 ]]; then
+            echo "daemon=ryugi-daemon" >> "$GITHUB_OUTPUT"
+          else
+            echo "daemon=adeck-daemon" >> "$GITHUB_OUTPUT"
+          fi
+
       - uses: actions/checkout@v4
         with:
           repository: ${{ env.CLOUD_REPO }}
@@ -62,6 +76,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ inputs.version }}
           REUSE: ${{ inputs.reuse }}
+          DAEMON: ${{ steps.names.outputs.daemon }}
         run: |
           [[ -x scripts/daemon-source.sh ]] || exit 0
           source="$(scripts/daemon-source.sh)"
@@ -74,8 +89,8 @@ jobs:
           [[ "$REUSE" == true ]] || exit 0
           for tag in $(gh release list -R "$GITHUB_REPOSITORY" -L 15 --exclude-drafts --json tagName --jq '.[].tagName'); do
             [[ "$tag" != "v$VERSION" ]] || continue
-            [[ "$(gh release download "$tag" -R "$GITHUB_REPOSITORY" -p ryugi-daemon.source -O - 2> /dev/null)" == "$source" ]] || continue
-            count="$(gh release view "$tag" -R "$GITHUB_REPOSITORY" --json assets --jq '[.assets[].name | select(startswith("ryugi-daemon-"))] | length')"
+            [[ "$(gh release download "$tag" -R "$GITHUB_REPOSITORY" -p "$DAEMON.source" -O - 2> /dev/null)" == "$source" ]] || continue
+            count="$(gh release view "$tag" -R "$GITHUB_REPOSITORY" --json assets --jq "[.assets[].name | select(startswith(\"$DAEMON-\"))] | length")"
             if [[ "$count" -eq 10 ]]; then
               echo "::notice::daemon source $source is unchanged since $tag; reusing its binaries"
               echo "from=$tag" >> "$GITHUB_OUTPUT"
@@ -89,11 +104,11 @@ jobs:
     strategy:
       matrix:
         asset:
-          - ryugi-daemon-darwin-arm64
-          - ryugi-daemon-darwin-x64
-          - ryugi-daemon-linux-x64
-          - ryugi-daemon-linux-arm64
-          - ryugi-daemon-win32-x64.exe
+          - ${{ needs.plan.outputs.daemon }}-darwin-arm64
+          - ${{ needs.plan.outputs.daemon }}-darwin-x64
+          - ${{ needs.plan.outputs.daemon }}-linux-x64
+          - ${{ needs.plan.outputs.daemon }}-linux-arm64
+          - ${{ needs.plan.outputs.daemon }}-win32-x64.exe
     runs-on: ubuntu-latest
     steps:
       - name: Take the binary from ${{ needs.plan.outputs.from }}
@@ -131,9 +146,10 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ inputs.version }}
           SOURCE: ${{ needs.plan.outputs.source }}
+          DAEMON: ${{ needs.plan.outputs.daemon }}
         run: |
-          echo "$SOURCE" > ryugi-daemon.source
-          gh release upload "v$VERSION" ryugi-daemon.source --clobber -R "$GITHUB_REPOSITORY"
+          echo "$SOURCE" > "$DAEMON.source"
+          gh release upload "v$VERSION" "$DAEMON.source" --clobber -R "$GITHUB_REPOSITORY"
 
   daemon:
     needs: plan
@@ -143,9 +159,9 @@ jobs:
       matrix:
         include:
           - target: aarch64-apple-darwin
-            asset: ryugi-daemon-darwin-arm64
+            asset: ${{ needs.plan.outputs.daemon }}-darwin-arm64
           - target: x86_64-apple-darwin
-            asset: ryugi-daemon-darwin-x64
+            asset: ${{ needs.plan.outputs.daemon }}-darwin-x64
     runs-on: macos-latest
     timeout-minutes: 45
     env:
@@ -172,7 +188,7 @@ jobs:
           workspaces: daemon -> target
           key: ${{ matrix.target }}
 
-      - name: Build ryugi-daemon for ${{ matrix.target }}
+      - name: Build ${{ needs.plan.outputs.daemon }} for ${{ matrix.target }}
         run: scripts/build-daemon.sh daemon-dist ${{ matrix.target }}
 
       - name: Import the Developer ID certificate into a throwaway keychain
@@ -200,7 +216,7 @@ jobs:
           echo "keychain=$keychain" >> "$GITHUB_OUTPUT"
           echo "identity=$identity" >> "$GITHUB_OUTPUT"
 
-      - name: Sign ryugi-daemon with the hardened runtime
+      - name: Sign ${{ needs.plan.outputs.daemon }} with the hardened runtime
         env:
           KEYCHAIN: ${{ steps.keychain.outputs.keychain }}
           IDENTITY: ${{ steps.keychain.outputs.identity }}
@@ -210,7 +226,7 @@ jobs:
           codesign --verify --strict --verbose=2 "daemon-dist/$ASSET"
           codesign --display --verbose=2 "daemon-dist/$ASSET"
 
-      - name: Notarize ryugi-daemon
+      - name: Notarize ${{ needs.plan.outputs.daemon }}
         env:
           NOTARY_PRIVATE_KEY_BASE64: ${{ secrets.NOTARY_PRIVATE_KEY_BASE64 }}
           NOTARY_KEY_ID: ${{ secrets.NOTARY_KEY_ID }}
@@ -266,10 +282,10 @@ jobs:
         include:
           - runner: ubuntu-24.04
             target: x86_64-unknown-linux-musl
-            asset: ryugi-daemon-linux-x64
+            asset: ${{ needs.plan.outputs.daemon }}-linux-x64
           - runner: ubuntu-24.04-arm
             target: aarch64-unknown-linux-musl
-            asset: ryugi-daemon-linux-arm64
+            asset: ${{ needs.plan.outputs.daemon }}-linux-arm64
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 30
     steps:
@@ -303,7 +319,7 @@ jobs:
           workspaces: daemon -> target
           key: ${{ matrix.target }}
 
-      - name: Build ryugi-daemon for ${{ matrix.target }}
+      - name: Build ${{ needs.plan.outputs.daemon }} for ${{ matrix.target }}
         run: scripts/build-daemon.sh daemon-dist ${{ matrix.target }}
 
       - name: Check it is a static binary
@@ -331,7 +347,8 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 30
     env:
-      ASSET: ryugi-daemon-win32-x64.exe
+      ASSET: ${{ needs.plan.outputs.daemon }}-win32-x64.exe
+      DAEMON: ${{ needs.plan.outputs.daemon }}
     defaults:
       run:
         shell: bash
@@ -353,7 +370,7 @@ jobs:
         with:
           workspaces: daemon -> target
 
-      - name: Build ryugi-daemon for Windows
+      - name: Build ${{ needs.plan.outputs.daemon }} for Windows
         run: scripts/build-daemon.sh daemon-dist x86_64-pc-windows-msvc
 
       - name: Check it reports the release version
@@ -363,7 +380,7 @@ jobs:
         run: |
           reported="$("daemon-dist/$ASSET" --version)"
           echo "$reported"
-          grep -q "^ryugi-daemon $VERSION " <<< "$reported"
+          grep -q "^$DAEMON $VERSION " <<< "$reported"
 
       - name: Attach the binary to the release
         if: env.UPLOAD == 'true'

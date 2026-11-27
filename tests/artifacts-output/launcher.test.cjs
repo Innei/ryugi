@@ -213,7 +213,7 @@ test('a local build is versioned by everything the hub runs, so changing any par
     path.join(f.app, 'cli.cjs'),
     'process.stdout.write(JSON.stringify({schema:"ryugi.cli/v1",command:process.argv.includes("--version")?"version":"get",outcome:"success",data:{version:process.env.RYUGI_ARTIFACTS_VERSION,capabilities:["reviewBundlesV1"]}}))',
   );
-  const daemon = process.platform === 'win32' ? 'ryugi-daemon.exe' : 'ryugi-daemon';
+  const daemon = process.platform === 'win32' ? 'adeck-daemon.exe' : 'adeck-daemon';
   for (const file of ['document-engine.cjs', 'loro_wasm_bg.wasm', daemon])
     fs.writeFileSync(path.join(f.app, file), file);
   fs.mkdirSync(path.join(f.app, 'viewer', 'assets'), { recursive: true });

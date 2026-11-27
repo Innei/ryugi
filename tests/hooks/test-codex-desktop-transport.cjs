@@ -42,7 +42,7 @@ const desktopScript = fs.readFileSync(path.join(__dirname, '../../hook/src/deskt
 
 const fakeWatcherDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ryugi-bridge-'));
 after(() => fs.rmSync(fakeWatcherDir, { recursive: true, force: true }));
-const fakeWatcher = path.join(fakeWatcherDir, 'ryugi-hook');
+const fakeWatcher = path.join(fakeWatcherDir, 'adeck-hook');
 fs.writeFileSync(
   fakeWatcher,
   `#!${process.execPath}

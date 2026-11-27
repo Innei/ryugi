@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import { existsSync, readFileSync, statSync } from 'node:fs';
+import { readFileSync, statSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { createInterface } from 'node:readline';
@@ -95,16 +95,24 @@ function resolveHookCandidate(basePath: string): string | null {
   return null;
 }
 
-function userStore(home = homedir()): string {
-  return !existsSync(join(home, '.artideck')) && existsSync(join(home, '.ryugi'))
-    ? join(home, '.ryugi')
-    : join(home, '.artideck');
+// ~/.artideck, or ~/.ryugi until the CLI moves it there.
+function userStore(): string {
+  const isDir = (dir: string) => {
+    try {
+      return statSync(dir).isDirectory();
+    } catch {
+      return false;
+    }
+  };
+  const store = join(homedir(), '.artideck');
+  const legacy = join(homedir(), '.ryugi');
+  return !isDir(store) && isDir(legacy) ? legacy : store;
 }
 
 function hookBin(): string | null {
   const override = process.env.RYUGI_HOOK_BIN;
   if (override) return resolveHookCandidate(override);
-  const local = resolveHookCandidate(join(packageRoot, 'hook', 'target', 'release', 'ryugi-hook'));
+  const local = resolveHookCandidate(join(packageRoot, 'hook', 'target', 'release', 'adeck-hook'));
   if (local) return local;
   let version: string | undefined;
   try {
@@ -112,7 +120,7 @@ function hookBin(): string | null {
   } catch {
     return null;
   }
-  return resolveHookCandidate(join(userStore(), 'hook', String(version), 'ryugi-hook'));
+  return resolveHookCandidate(join(userStore(), 'hook', String(version), 'adeck-hook'));
 }
 
 function requestHookInstall() {

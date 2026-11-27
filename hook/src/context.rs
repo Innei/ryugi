@@ -244,7 +244,7 @@ fn open_unread(file: &Value, consumed: &[String]) -> Option<usize> {
     unread_thread_count(Some(&copy), consumed)
 }
 
-fn comment_reminders(project: &str, root: &Path, key: &str, launcher: &str, mine: &Mine) -> String {
+fn comment_reminders(root: &Path, key: &str, mine: &Mine) -> String {
     let mut waiting: Vec<(String, usize)> = Vec::new();
     for kind in ["document", "artboard", "whiteboard", "slides", "storyboard", "report"] {
         for id in sorted_dir(&root.join(kind)) {
@@ -265,19 +265,6 @@ fn comment_reminders(project: &str, root: &Path, key: &str, launcher: &str, mine
     if waiting.is_empty() {
         return String::new();
     }
-    let mut kinds: Vec<&str> = waiting.iter().map(|(a, _)| a.split('/').next().unwrap_or("")).collect();
-    kinds.dedup();
-    let unique: std::collections::HashSet<&str> = kinds.iter().copied().collect();
-    let target = if waiting.len() == 1 {
-        waiting[0].0.clone()
-    } else if unique.len() == 1 {
-        format!("{}/<id>", kinds[0])
-    } else {
-        "<type>/<id>".into()
-    };
-    let command = format!(
-        "List them with `node \"{launcher}\" comment list --section threads --detail --format brief --project-dir \"{project}\" --artifact {target}`."
-    );
     let head = "Unread comment evidence: ";
     let mut named: Vec<String> = Vec::new();
     for (index, (artifact, count)) in waiting.iter().enumerate() {
@@ -285,7 +272,7 @@ fn comment_reminders(project: &str, root: &Path, key: &str, launcher: &str, mine
         let mut next = named.clone();
         next.push(format!("{artifact} ({count})"));
         let tail = if more > 0 { format!(", and {more} more artifact(s)") } else { String::new() };
-        if ulen(head) + ulen(&next.join(", ")) + ulen(&tail) + ulen(&command) + 2 > MAX_REMINDERS {
+        if ulen(head) + ulen(&next.join(", ")) + ulen(&tail) + 1 > MAX_REMINDERS {
             break;
         }
         named = next;
@@ -296,10 +283,10 @@ fn comment_reminders(project: &str, root: &Path, key: &str, launcher: &str, mine
     } else {
         String::new()
     };
-    format!("{head}{}{rest}.\n{command}", named.join(", "))
+    format!("{head}{}{rest}.", named.join(", "))
 }
 
-fn preview_reminders(project: &str, root: &Path, key: &str, launcher: &str, mine: &Mine) -> String {
+fn preview_reminders(root: &Path, key: &str, mine: &Mine) -> String {
     let preview_root = root.parent().unwrap_or(root).join("preview");
     let Some(mut ids) = dir_entries(&preview_root) else { return String::new() };
     ids.sort_by(|a, b| a.encode_utf16().cmp(b.encode_utf16()));
@@ -319,10 +306,7 @@ fn preview_reminders(project: &str, root: &Path, key: &str, launcher: &str, mine
         return String::new();
     }
     let summary = waiting.iter().map(|(id, c)| format!("{id} ({c})")).collect::<Vec<_>>().join(", ");
-    let id_arg = if waiting.len() == 1 { format!(" --id {}", waiting[0].0) } else { String::new() };
-    format!(
-        "Unread local preview comments: {summary}.\nList them with `node \"{launcher}\" preview comments{id_arg} --project-dir \"{project}\"`."
-    )
+    format!("Unread local preview comments: {summary}.")
 }
 
 pub fn credentials_path(home: &Path) -> PathBuf {
@@ -609,8 +593,8 @@ pub fn run(args: &[String]) {
     let host = if agy { "antigravity" } else { "claude" };
     let mine = Mine::of(session_id.as_deref().map(|id| crate::subs::opened(&project, host, id)).unwrap_or_default());
     let reminders = [
-        preview_reminders(&project_text, &root, key, &launcher, &mine),
-        comment_reminders(&project_text, &root, key, &launcher, &mine),
+        preview_reminders(&root, key, &mine),
+        comment_reminders(&root, key, &mine),
         auto_publish,
     ]
     .into_iter()
@@ -686,7 +670,7 @@ mod tests {
     }
 
     fn reminded(root: &Path, mine: &Mine) -> String {
-        comment_reminders("/p", root, "Claude Code", "ryugi.cjs", mine).lines().next().unwrap_or_default().to_string()
+        comment_reminders(root, "Claude Code", mine).lines().next().unwrap_or_default().to_string()
     }
 
     fn selected(root: &Path, mine: &Mine) -> Vec<String> {
@@ -714,5 +698,30 @@ mod tests {
         let nothing = Mine::of(vec![]);
         assert_eq!(reminded(&root, &nothing), "Unread comment evidence: artboard/one (1), artboard/two (1).");
         assert_eq!(selected(&root, &nothing), vec!["artboard/one", "artboard/two"]);
+    }
+
+    #[test]
+    fn a_comment_reminder_names_what_waits_and_no_command() {
+        let t = crate::testdir::TestDir::new("context-no-command");
+        let root = two_artboards(&t);
+        let one = Mine::of(vec!["artboard/one".into()]);
+        assert_eq!(
+            comment_reminders(&root, "Claude Code", &one),
+            "Unread comment evidence: artboard/one (1)."
+        );
+    }
+
+    #[test]
+    fn a_preview_reminder_names_what_waits_and_no_command() {
+        let t = crate::testdir::TestDir::new("context-preview-no-command");
+        let root = two_artboards(&t);
+        t.write(
+            ".ryugi/preview/p1/comments.json",
+            r#"{"version":1,"threads":[{"id":"t1","anchor":{"x":1,"y":1},"status":"open","messages":[{"id":"m1","author":"human","text":"bigger","at":"2026-11-20T08:00:00.000Z"}]}]}"#,
+        );
+        assert_eq!(
+            preview_reminders(&root, "Claude Code", &Mine::of(vec![])),
+            "Unread local preview comments: p1 (1)."
+        );
     }
 }
