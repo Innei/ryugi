@@ -1,6 +1,6 @@
 ---
 name: verifying
-description: Use before telling your human partner that work is done, fixed, live or ready, whatever it touched — UI, an API, a CLI, data, a deploy, performance — and before fixing a bug they can see, to capture it first
+description: Use before telling your human partner that work built or changed in a project is done, fixed, live or ready, whatever it touched — UI, an API, a CLI, data, a deploy, performance — and before fixing a bug they can see, to capture it first. Not for routine tasks done for them in an app or website, such as filling a form or saving a draft
 ---
 
 # Verifying

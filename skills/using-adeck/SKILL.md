@@ -15,7 +15,7 @@ Before you read project files or write code for a task, load the skill for its s
 - An approved spec to implement or resume: `adeck:executing-specs`
 - A bug, failing test or unexpected behavior: `adeck:systematic-debugging`
 - Writing implementation code: `adeck:test-driven-development`, also when your human partner says to skip discussion
-- Work built or a bug fixed, and a visible bug before you fix it: `adeck:verifying`, before calling it done
+- Work built or a bug fixed in a project, and a visible bug before you fix it: `adeck:verifying`, before calling it done. A task done for your human partner in an app or website (filling a form, posting, saving a draft) is checked in that app, without the skill
 - Something to show (mockups, a design doc, a share link): `adeck:artifacts`
 
 Plain questions and read-only checks need no skill. Your human partner's instructions override skills. A project's own skill for a step (its design system, checking the running app, shipping) does that step.
