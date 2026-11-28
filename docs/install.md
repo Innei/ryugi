@@ -353,6 +353,15 @@ omp plugin link /path/to/ryugi
 
 Start a fresh OMP session after installing or updating. The package declares `"omp"` in `package.json`, exposing `skills/` and `.omp/extensions/ryugi.ts`, which injects `using-adeck` + OMP tool mapping on `context` (with deduplication and post-compaction re-injection) and runs `adeck-hook watch pi` to deliver browser comments and choice submissions directly to the active session. Full guide: [README.omp.md](README.omp.md).
 
+## ZCode
+
+```bash
+zcode plugins marketplace add /path/to/artideck
+zcode plugins install adeck@ryugi-dev
+```
+
+Start a fresh ZCode session after installing or updating. `.zcode-plugin/plugin.json` exposes `skills/`, while ZCode loads `hooks/hooks.json` so `hooks/session-start` injects `using-adeck` + `references/zcode-tools.md` via `hookSpecificOutput.additionalContext`. Full guide: [README.zcode.md](README.zcode.md).
+
 ## Writing a new integration
 
 See [porting-to-a-new-harness.md](porting-to-a-new-harness.md).

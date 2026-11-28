@@ -63,6 +63,7 @@ EXCLUDES=(
   "/.pre-commit-config.yaml"
   "/.version-bump.json"
   "/.worktrees/"
+  "/.zcode-plugin/"
   ".DS_Store"
 
   # Root ceremony files

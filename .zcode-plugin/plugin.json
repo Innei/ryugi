@@ -1,0 +1,24 @@
+{
+  "name": "adeck",
+  "version": "1.118.0",
+  "description": "Artideck skills for coding agents, plus the artifacts workbench they design in: brainstorming, artboards, documents and TDD.",
+  "author": {
+    "name": "Innei",
+    "email": "i@innei.dev"
+  },
+  "homepage": "https://artideck.dev",
+  "repository": "https://github.com/Innei/artideck",
+  "license": "SEE LICENSE IN LICENSE",
+  "keywords": [
+    "zcode",
+    "artideck",
+    "adeck",
+    "skills",
+    "artifacts",
+    "brainstorming",
+    "tdd",
+    "debugging",
+    "workflow"
+  ],
+  "skills": "skills"
+}

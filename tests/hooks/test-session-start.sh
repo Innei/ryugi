@@ -629,6 +629,18 @@ else
   fail "a project that enables ryugi@ryugi-dev is asked to switch its settings to adeck"
 fi
 
+zcode_home="$(make_home zcode-env)"
+zcode_out="$(env -i PATH="${PATH:-}" HOME="$zcode_home" ANTIGRAVITY_AGENT=1 ZCODE_PLUGIN_ROOT="$REPO_ROOT" CLAUDE_PLUGIN_ROOT="$REPO_ROOT" bash "$HOOK_UNDER_TEST" 2>&1)"
+if [[ "$zcode_out" == *'"hookEventName": "SessionStart"'* ]] \
+  && [[ "$zcode_out" == *"ZCode Tool Mapping"* ]] \
+  && [[ "$zcode_out" != *'"additional_context"'* ]] \
+  && [[ "$zcode_out" != *'"injectSteps"'* ]]; then
+  pass "ZCODE_PLUGIN_ROOT takes precedence over CLAUDE_PLUGIN_ROOT and ANTIGRAVITY_AGENT and injects zcode-tools.md"
+else
+  fail "ZCODE_PLUGIN_ROOT takes precedence over CLAUDE_PLUGIN_ROOT and ANTIGRAVITY_AGENT and injects zcode-tools.md"
+  echo "$zcode_out" | head -5 | sed 's/^/      /'
+fi
+
 if [[ "$FAILURES" -gt 0 ]]; then
   echo "STATUS: FAILED ($FAILURES failure(s))"
   exit 1
